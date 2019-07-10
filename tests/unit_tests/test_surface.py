@@ -1,5 +1,7 @@
+from functools import partial
+from random import uniform, seed
+
 import numpy as np
-from random import random
 import openmc
 import pytest
 
@@ -330,11 +332,13 @@ def test_quadric():
 
 
 def test_cylinder_from_points():
-    for _ in range(10):
+    seed(1)  # Make random numbers reproducible
+    for _ in range(100):
         # Generate cylinder in random direction
-        p1 = np.array([random(), random(), random()])
-        p2 = np.array([random(), random(), random()])
-        r = random()
+        xi = partial(uniform, -10.0, 10.0)
+        p1 = np.array([xi(), xi(), xi()])
+        p2 = np.array([xi(), xi(), xi()])
+        r = uniform(1.0, 100.0)
         s = openmc.model.cylinder_from_points(p1, p2, r)
 
         # Points p1 and p2 need to be inside cylinder
@@ -342,16 +346,19 @@ def test_cylinder_from_points():
         assert p2 in -s
 
         # Points further along the line should be inside cylinder as well
-        t = 100*random() - 200
+        t = uniform(-100.0, 100.0)
         p = p1 + t*(p2 - p1)
         assert p in -s
 
-        # Check that a point outside cylinder is in positive half-space. We do
-        # this by constructing a plane that includes the cylinder's axis,
-        # finding the normal to the plane, and using it to find a point slightly
-        # more than one radius away from the axis.
+        # Check that points outside cylinder are in positive half-space and
+        # inside are in negative half-space. We do this by constructing a plane
+        # that includes the cylinder's axis, finding the normal to the plane,
+        # and using it to find a point slightly more/less than one radius away
+        # from the axis.
         plane = openmc.Plane.from_points(p1, p2, (0., 0., 0.))
         n = np.array([plane.a, plane.b, plane.c])
         n /= np.linalg.norm(n)
-        assert (p1 + 1.1*r*n) in +s
-        assert (p2 + 1.1*r*n) in +s
+        assert p1 + 1.1*r*n in +s
+        assert p2 + 1.1*r*n in +s
+        assert p1 + 0.9*r*n in -s
+        assert p2 + 0.9*r*n in -s

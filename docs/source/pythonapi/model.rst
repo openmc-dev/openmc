@@ -15,6 +15,7 @@ Convenience Functions
    openmc.model.hexagonal_prism
    openmc.model.rectangular_prism
    openmc.model.subdivide
+   openmc.model.pin
 
 TRISO Fuel Modeling
 -------------------

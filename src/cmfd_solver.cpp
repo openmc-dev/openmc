@@ -101,7 +101,7 @@ int cmfd_linsolver_1g(const double* A_data, const double* b, double* x,
     for (int irb = 0; irb < 2; irb++) {
 
       // Loop around matrix rows
-#pragma omp parallel for
+      #pragma omp parallel for reduction (+:err)
       for (int irow = 0; irow < cmfd::dim; irow++) {
         int g, i, j, k;
         matrix_to_indices(irow, g, i, j, k);
@@ -127,12 +127,13 @@ int cmfd_linsolver_1g(const double* A_data, const double* b, double* x,
 
         // Compute residual and update error
         double res = (tmpx[irow] - x[irow]) / tmpx[irow];
-        err += res * res;
+        err = res * res;
       }
     }
 
     // Check convergence
     err = std::sqrt(err / cmfd::dim);
+    std::cout << err << "\n";
     if (err < tol)
       return igs;
 
@@ -168,7 +169,7 @@ int cmfd_linsolver_2g(const double* A_data, const double* b, double* x,
     for (int irb = 0; irb < 2; irb++) {
 
       // Loop around matrix rows
-#pragma omp parallel for
+      #pragma omp parallel for reduction (+:err)
       for (int irow = 0; irow < cmfd::dim; irow+=2) {
         int g, i, j, k;
         matrix_to_indices(irow, g, i, j, k);
@@ -219,7 +220,7 @@ int cmfd_linsolver_2g(const double* A_data, const double* b, double* x,
 
         // Compute residual and update error
         double res = (tmpx[irow] - x[irow]) / tmpx[irow];
-        err += res * res;
+        err = res * res;
       }
     }
 
@@ -257,7 +258,6 @@ int cmfd_linsolver_ng(const double* A_data, const double* b, double* x,
     std::vector<double> tmpx {x, x+cmfd::dim};
 
     // Loop around matrix rows
-#pragma omp parallel for
     for (int irow = 0; irow < cmfd::dim; irow++) {
       // Get index of diagonal for current row
       int didx = get_diagonal_index(irow);

@@ -14,6 +14,8 @@ extern "C" {
   int openmc_cell_get_fill(int32_t index, int* type, int32_t** indices, int32_t* n);
   int openmc_cell_get_id(int32_t index, int32_t* id);
   int openmc_cell_get_temperature(int32_t index, const int32_t* instance, double* T);
+  int openmc_cell_get_name(int32_t index, const char*& name);
+  int openmc_cell_set_name(int32_t index, const char* name);
   int openmc_cell_set_fill(int32_t index, int type, int32_t n, const int32_t* indices);
   int openmc_cell_set_id(int32_t index, int32_t id);
   int openmc_cell_set_temperature(int32_t index, double T, const int32_t* instance);
@@ -58,6 +60,8 @@ extern "C" {
   int openmc_material_set_density(int32_t index, double density, const char* units);
   int openmc_material_set_densities(int32_t index, int n, const char** name, const double* density);
   int openmc_material_set_id(int32_t index, int32_t id);
+  int openmc_material_get_name(int32_t index, const char*& name);
+  int openmc_material_set_name(int32_t index, const char* name);
   int openmc_material_set_volume(int32_t index, double volume);
   int openmc_material_filter_get_bins(int32_t index, const int32_t** bins, size_t* n);
   int openmc_material_filter_set_bins(int32_t index, size_t n, const int32_t* bins);

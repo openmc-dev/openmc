@@ -395,9 +395,9 @@ def cylinder_from_points(p1, p2, r, **kwargs):
     dx = x2 - x1
     dy = y2 - y1
     dz = z2 - z1
-    cx = y1*z2 + y2*z1
-    cy = -(x1*z2 + x2*z1)
-    cz = x1*y2 + x2*y1
+    cx = y1*z2 - y2*z1
+    cy = x2*z1 - x1*z2
+    cz = x1*y2 - x2*y1
 
     # Given p=(x,y,z), p1=(x1, y1, z1), p2=(x2, y2, z2), the equation for the
     # cylinder can be derived as r = |(p - p1) ⨯ (p - p2)| / |p2 - p1|.

@@ -1,3 +1,6 @@
+from functools import partial
+from random import uniform, seed
+
 import numpy as np
 import openmc
 import pytest
@@ -329,14 +332,33 @@ def test_quadric():
 
 
 def test_cylinder_from_points():
-    # Generate 45-degree rotated cylinder in x-y plane with radius 1
-    p1 = (0, 0, 0)
-    p2 = (1, 1, 0)
-    s = openmc.model.cylinder_from_points(p1, p2, 1)
+    seed(1)  # Make random numbers reproducible
+    for _ in range(100):
+        # Generate cylinder in random direction
+        xi = partial(uniform, -10.0, 10.0)
+        p1 = np.array([xi(), xi(), xi()])
+        p2 = np.array([xi(), xi(), xi()])
+        r = uniform(1.0, 100.0)
+        s = openmc.model.cylinder_from_points(p1, p2, r)
 
-    # Points p1 and p2 need to be inside cylinder
-    assert p1 in -s
-    assert p2 in -s
-    assert (-1, 1, 0) in +s
-    assert (1, -1, 0) in +s
-    assert (0, 0, 1.5) in +s
+        # Points p1 and p2 need to be inside cylinder
+        assert p1 in -s
+        assert p2 in -s
+
+        # Points further along the line should be inside cylinder as well
+        t = uniform(-100.0, 100.0)
+        p = p1 + t*(p2 - p1)
+        assert p in -s
+
+        # Check that points outside cylinder are in positive half-space and
+        # inside are in negative half-space. We do this by constructing a plane
+        # that includes the cylinder's axis, finding the normal to the plane,
+        # and using it to find a point slightly more/less than one radius away
+        # from the axis.
+        plane = openmc.Plane.from_points(p1, p2, (0., 0., 0.))
+        n = np.array([plane.a, plane.b, plane.c])
+        n /= np.linalg.norm(n)
+        assert p1 + 1.1*r*n in +s
+        assert p2 + 1.1*r*n in +s
+        assert p1 + 0.9*r*n in -s
+        assert p2 + 0.9*r*n in -s

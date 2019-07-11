@@ -409,10 +409,10 @@ def cylinder_from_points(p1, p2, r, **kwargs):
     kwargs['d'] = -2*dx*dy
     kwargs['e'] = -2*dy*dz
     kwargs['f'] = -2*dx*dz
-    kwargs['g'] = cy*dz - cz*dy
-    kwargs['h'] = cz*dx - cx*dz
-    kwargs['j'] = cx*dy - cy*dx
-    kwargs['k'] = -(dx*dx + dy*dy + dz*dz)*r*r
+    kwargs['g'] = 2*(cy*dz - cz*dy)
+    kwargs['h'] = 2*(cz*dx - cx*dz)
+    kwargs['j'] = 2*(cx*dy - cy*dx)
+    kwargs['k'] = cx*cx + cy*cy + cz*cz - (dx*dx + dy*dy + dz*dz)*r*r
 
     return openmc.Quadric(**kwargs)
 

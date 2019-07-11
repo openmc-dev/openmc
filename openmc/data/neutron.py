@@ -801,15 +801,14 @@ class IncidentNeutron(EqualityMixin):
         """
         with tempfile.TemporaryDirectory() as tmpdir:
             # Run NJOY to create an ACE library
-            ace_file = os.path.join(tmpdir, 'ace')
-            xsdir_file = os.path.join(tmpdir, 'xsdir')
-            pendf_file = os.path.join(tmpdir, 'pendf')
+            kwargs.setdefault('ace', os.path.join(tmpdir, 'ace'))
+            kwargs.setdefault('xsdir', os.path.join(tmpdir, 'xsdir'))
+            kwargs.setdefault('pendf', os.path.join(tmpdir, 'pendf'))
             kwargs['evaluation'] = evaluation
-            make_ace(filename, temperatures, ace_file, xsdir_file,
-                     pendf_file, **kwargs)
+            make_ace(filename, temperatures, **kwargs)
 
             # Create instance from ACE tables within library
-            lib = Library(ace_file)
+            lib = Library(kwargs['ace'])
             data = cls.from_ace(lib.tables[0])
             for table in lib.tables[1:]:
                 data.add_temperature_from_ace(table)
@@ -821,7 +820,7 @@ class IncidentNeutron(EqualityMixin):
 
             # Add 0K elastic scattering cross section
             if '0K' not in data.energy:
-                pendf = Evaluation(pendf_file)
+                pendf = Evaluation(kwargs['pendf'])
                 file_obj = StringIO(pendf.section[3, 2])
                 get_head_record(file_obj)
                 params, xs = get_tab1_record(file_obj)

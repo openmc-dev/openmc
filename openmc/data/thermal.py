@@ -761,15 +761,14 @@ class ThermalScattering(EqualityMixin):
         """
         with tempfile.TemporaryDirectory() as tmpdir:
             # Run NJOY to create an ACE library
-            ace_file = os.path.join(tmpdir, 'ace')
-            xsdir_file = os.path.join(tmpdir, 'xsdir')
+            kwargs.setdefault('ace', os.path.join(tmpdir, 'ace'))
+            kwargs.setdefault('xsdir', os.path.join(tmpdir, 'xsdir'))
             kwargs['evaluation'] = evaluation
             kwargs['evaluation_thermal'] = evaluation_thermal
-            make_ace_thermal(filename, filename_thermal, temperatures,
-                             ace_file, xsdir_file, **kwargs)
+            make_ace_thermal(filename, filename_thermal, temperatures, **kwargs)
 
             # Create instance from ACE tables within library
-            lib = Library(ace_file)
+            lib = Library(kwargs['ace'])
             data = cls.from_ace(lib.tables[0])
             for table in lib.tables[1:]:
                 data.add_temperature_from_ace(table)

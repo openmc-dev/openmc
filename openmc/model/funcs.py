@@ -449,7 +449,7 @@ def subdivide(surfaces):
 
 
 def pin(surfaces, materials, subdivisions=None, divide_vols=True,
-        universe_id=None, name=""):
+        **kwargs):
     """Convenience function for building a fuel pin
 
     Parameters
@@ -472,10 +472,9 @@ def pin(surfaces, materials, subdivisions=None, divide_vols=True,
         materials will also be divided by the number of divisions.
         Otherwise the volume of the original material will not be
         modified before subdivision
-    universe_id : None or int
-        Identifier for this universe
-    name : str
-        Name for this universe
+    kwargs:
+        Additional key-word arguments to be passed to
+        :class:`openmc.Universe`, like ``name="Fuel pin"``
 
     Returns
     -------
@@ -483,6 +482,9 @@ def pin(surfaces, materials, subdivisions=None, divide_vols=True,
         Universe of concentric cylinders filled with the desired
         materials
     """
+    if "cells" in kwargs:
+        raise SyntaxError(
+            "Cells will be set by this function, not from input arguments.")
     check_type("materials",  materials, Iterable, Material)
     check_length("surfaces", surfaces, len(materials) - 1, len(materials) - 1)
     # Check that all surfaces are of similar orientation
@@ -573,4 +575,4 @@ def pin(surfaces, materials, subdivisions=None, divide_vols=True,
     # Build the universe
     regions = subdivide(surfaces)
     cells = [Cell(fill=f, region=r) for r, f in zip(regions, materials)]
-    return Universe(universe_id=universe_id, name=name, cells=cells)
+    return Universe(cells=cells, **kwargs)

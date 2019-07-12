@@ -61,14 +61,19 @@ def test_failure(pin_mats, good_radii):
     with pytest.raises(TypeError, match="surfaces"):
         pin(surfs, pin_mats)
 
+    # Passing cells argument
+    with pytest.raises(SyntaxError, match="Cells"):
+        pin(surfs, pin_mats, cells=[])
+
 
 @pytest.mark.parametrize(
     "surf_type", [openmc.ZCylinder, openmc.XCylinder, openmc.YCylinder])
 def test_subdivide(pin_mats, good_radii, surf_type):
     """Test the subdivision with various orientations"""
     surfs = [surf_type(r=r) for r in good_radii]
-    fresh = pin(surfs, pin_mats)
+    fresh = pin(surfs, pin_mats, name="fresh pin")
     assert len(fresh.cells) == len(pin_mats)
+    assert fresh.name == "fresh pin"
 
     # subdivide inner region
     N = 5

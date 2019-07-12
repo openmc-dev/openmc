@@ -66,6 +66,16 @@ def test_failure(pin_mats, good_radii):
         pin(surfs, pin_mats, cells=[])
 
 
+def test_pins_of_universes(pin_mats, good_radii):
+    """Build a pin with a Universe in one ring"""
+    u1 = openmc.Universe(cells=[openmc.Cell(fill=pin_mats[1])])
+    new_items = pin_mats[:1] + (u1, ) + pin_mats[2:]
+    new_pin = pin(
+        [openmc.ZCylinder(r=r) for r in good_radii], new_items,
+        subdivisions={0: 2}, divide_vols=True)
+    assert len(new_pin.cells) == len(pin_mats) + 1
+
+
 @pytest.mark.parametrize(
     "surf_type", [openmc.ZCylinder, openmc.XCylinder, openmc.YCylinder])
 def test_subdivide(pin_mats, good_radii, surf_type):

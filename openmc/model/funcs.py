@@ -448,7 +448,7 @@ def subdivide(surfaces):
     return regions
 
 
-def pin(surfaces, materials, subdivisions=None, divide_vols=True,
+def pin(surfaces, items, subdivisions=None, divide_vols=True,
         **kwargs):
     """Convenience function for building a fuel pin
 
@@ -456,22 +456,24 @@ def pin(surfaces, materials, subdivisions=None, divide_vols=True,
     ----------
     surfaces : iterable of :class:`openmc.Cylinder`
         Cylinders used to define boundaries
-        between materials. All cylinders must be
+        between items. All cylinders must be
         concentric and of the same orientation, e.g.
         all :class:`openmc.ZCylinder`
-    materials : iterable of :class:`openmc.Material`
-        Materials to go between ``surfaces``. There must be one
-        more material than surfaces, corresponding to the material
-        that spans all space outside the final ring.
+    items : iterable
+        Objects to go between ``surfaces``. These can be anything
+        that can fill a :class:`openmc.Cell`, including
+        :class:`openmc.Material`, or other :class:`openmc.Universe`
+        objects. There must be one more item than surfaces,
+        which will span all space outside the final ring.
     subdivisions : None or dict of int to int
         Dictionary describing which rings to subdivide and how
         many times. Keys are indexes of the annular rings
         to be divided. Will construct equal area rings
     divide_vols : bool
         If this evaluates to ``True``, then volumes of subdivided
-        materials will also be divided by the number of divisions.
-        Otherwise the volume of the original material will not be
-        modified before subdivision
+        :class:`openmc.Material`s will also be divided by the
+        number of divisions.  Otherwise the volume of the
+        original material will not be modified before subdivision
     kwargs:
         Additional key-word arguments to be passed to
         :class:`openmc.Universe`, like ``name="Fuel pin"``
@@ -480,13 +482,13 @@ def pin(surfaces, materials, subdivisions=None, divide_vols=True,
     -------
     :class:`openmc.Universe`
         Universe of concentric cylinders filled with the desired
-        materials
+        items
     """
     if "cells" in kwargs:
         raise SyntaxError(
             "Cells will be set by this function, not from input arguments.")
-    check_type("materials",  materials, Iterable, Material)
-    check_length("surfaces", surfaces, len(materials) - 1, len(materials) - 1)
+    check_type("items",  items, Iterable)
+    check_length("surfaces", surfaces, len(items) - 1, len(items) - 1)
     # Check that all surfaces are of similar orientation
     check_type("surface", surfaces[0], Cylinder)
     surf_type = type(surfaces[0])
@@ -511,8 +513,8 @@ def pin(surfaces, materials, subdivisions=None, divide_vols=True,
         if cur_rad <= prev_rad:
             raise ValueError(
                 "Surfaces do not appear to be increasing in radius. "
-                "Surface {} at index {} has radius {:7.3E} compared to "
-                "previous radius of {:7.5E}".format(
+                "Surface {} at index {} has radius {:7.3e} compared to "
+                "previous radius of {:7.5e}".format(
                     surf.id, ix, cur_rad, prev_rad))
         prev_rad = cur_rad
         centers.add(center_getter(surf))
@@ -536,8 +538,8 @@ def pin(surfaces, materials, subdivisions=None, divide_vols=True,
             "outer ring", max(subdivisions), len(surfaces), equality=True)
 
         # ensure ability to concatenate
-        if not isinstance(materials, list):
-            materials = list(materials)
+        if not isinstance(items, list):
+            items = list(items)
         if not isinstance(surfaces, list):
             surfaces = list(surfaces)
 
@@ -549,10 +551,8 @@ def pin(surfaces, materials, subdivisions=None, divide_vols=True,
             nr = subdivisions[ring_index]
             new_surfs = []
 
-            if ring_index == 0:
-                lower_rad = 0.0
-            else:
-                lower_rad = surfaces[ring_index - 1].r
+            lower_rad = 0.0 if ring_index == 0 else surfaces[ring_index - 1].r
+
             upper_rad = surfaces[ring_index].r
 
             area_term = (upper_rad ** 2 - lower_rad ** 2) / nr
@@ -564,15 +564,15 @@ def pin(surfaces, materials, subdivisions=None, divide_vols=True,
             surfaces = (
                     surfaces[:ring_index] + new_surfs + surfaces[ring_index:])
 
-            if divide_vols and materials[ring_index].volume is not None:
-                materials[ring_index].volume /= nr
+            filler = items[ring_index]
+            if (divide_vols and hasattr(filler, "volume")
+                    and filler.volume is not None):
+                filler.volume /= nr
 
-            materials = (
-                    materials[:ring_index]
-                    + [materials[ring_index].clone() for _i in range(nr - 1)]
-                    + materials[ring_index:])
+            items[ring_index:ring_index] = [
+                filler.clone() for _i in range(nr - 1)]
 
     # Build the universe
     regions = subdivide(surfaces)
-    cells = [Cell(fill=f, region=r) for r, f in zip(regions, materials)]
+    cells = [Cell(fill=f, region=r) for r, f in zip(regions, items)]
     return Universe(cells=cells, **kwargs)

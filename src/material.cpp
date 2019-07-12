@@ -898,6 +898,9 @@ void Material::to_hdf5(hid_t group) const
   if (volume_ > 0.0) {
     write_attribute(material_group, "volume", volume_);
   }
+  if (temperature_ > 0.0) {
+    write_attribute(material_group, "temperature", temperature_);
+  }
   write_dataset(material_group, "name", name_);
   write_dataset(material_group, "atom_density", density_);
 

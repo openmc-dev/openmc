@@ -287,6 +287,8 @@ class Material(IDManagerMixin):
         material.depletable = bool(group.attrs['depletable'])
         if 'volume' in group.attrs:
             material.volume = group.attrs['volume']
+        if "temperature" in group.attrs:
+            material.temperature = group.attrs["temperature"]
 
         # Read the names of the S(a,b) tables for this Material and add them
         if 'sab_names' in group:

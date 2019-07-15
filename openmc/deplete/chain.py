@@ -602,16 +602,16 @@ class Chain(object):
             for ix in reversed(capt_index):
                 parent.reactions.pop(ix)
 
-            all_meta = False
+            all_meta = True
 
             for tgt, br in new_ratios.items():
-                all_meta |= ("_m" in tgt)
+                all_meta = all_meta and  ("_m" in tgt)
                 parent.reactions.append(ReactionTuple(
                     "(n,gamma)", tgt, capt_Q, br))
 
             if all_meta and sums[parent_name] != 1.0:
                 ground_br = 1.0 - sums[parent_name]
-                ground_tgt = grounds.get(parent_name, None)
+                ground_tgt = grounds.get(parent_name)
                 if ground_tgt is None:
                     pz, pa, pm = zam(parent_name)
                     ground_tgt = gnd_name(pz, pa + 1, 0)

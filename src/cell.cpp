@@ -114,19 +114,12 @@ generate_rpn(int32_t cell_id, std::vector<int32_t> infix)
   std::vector<int32_t> rpn;
   std::vector<int32_t> stack;
 
-  bool in_complement = false;
-
   for (int32_t token : infix) {
     if (token < OP_UNION) {
       // If token is not an operator, add it to output
-      if (in_complement) { token *= -1; }
       rpn.push_back(token);
     } else if (token < OP_RIGHT_PAREN) {
       // Regular operators union, intersection, complement
-      if (in_complement) {
-        if (token == OP_UNION) token = OP_INTERSECTION;
-        else if (token == OP_INTERSECTION) token = OP_UNION;
-      }
       while (stack.size() > 0) {
         int32_t op = stack.back();
 
@@ -139,19 +132,14 @@ generate_rpn(int32_t cell_id, std::vector<int32_t> infix)
           // is less than that of op, move op to the output queue and push the
           // token on to the stack. Note that only complement is
           // right-associative.
-          if (op == OP_COMPLEMENT) { in_complement = false; }
-          else { rpn.push_back(op); }
+          rpn.push_back(op);
           stack.pop_back();
         } else {
           break;
         }
       }
 
-      if (token == OP_COMPLEMENT) {
-        in_complement = true;
-      } else {
-        stack.push_back(token);
-      }
+      stack.push_back(token);
 
     } else if (token == OP_LEFT_PAREN) {
       // If the token is a left parenthesis, push it onto the stack
@@ -169,9 +157,7 @@ generate_rpn(int32_t cell_id, std::vector<int32_t> infix)
                   << cell_id;
           fatal_error(err_msg);
         }
-        int32_t op = stack.back();
-        if (op == OP_COMPLEMENT) { in_complement = false; }
-        else { rpn.push_back(op); }
+        rpn.push_back(stack.back());
         stack.pop_back();
       }
 
@@ -193,10 +179,6 @@ generate_rpn(int32_t cell_id, std::vector<int32_t> infix)
 
     rpn.push_back(stack.back());
     stack.pop_back();
-  }
-
-  for (int32_t val : rpn) {
-    std::cout << val << std::endl;
   }
 
   return rpn;
@@ -604,24 +586,61 @@ BoundingBox CSGCell::bounding_box_simple() const {
   return bbox;
 }
 
-BoundingBox CSGCell::bounding_box_complex() const {
+BoundingBox CSGCell::bounding_box_complex(std::vector<int32_t> rpn) const {
 
-  std::vector<BoundingBox> stack(rpn_.size());
-  int i_stack = -1;
+  std::reverse(rpn.begin(), rpn.end());
 
-  for (int32_t token : rpn_) {
-    if (token == OP_UNION) {
-      stack[i_stack - 1].update(stack[i_stack]);
-      i_stack--;
-    } else if (token == OP_INTERSECTION) {
-      stack[i_stack - 1].intersect(stack[i_stack]);
-      i_stack--;
-    } else {
-      i_stack++;
-      stack[i_stack] = model::surfaces[abs(token)-1]->bounding_box(token > 0);
+  BoundingBox current = model::surfaces[abs(rpn.back()) - 1]->bounding_box(rpn.back() > 0);
+  rpn.pop_back();
+
+  while (rpn.size()) {
+    int32_t one = rpn.back(); rpn.pop_back();
+    int32_t two = rpn.back(); rpn.pop_back();
+
+    assert(one < OP_UNION);
+
+    if (two >= OP_UNION) {
+      if (two == OP_UNION) {
+        current.update(model::surfaces[abs(one)-1]->bounding_box(one > 0));
+      } else if (two == OP_INTERSECTION) {
+        current.intersect(model::surfaces[abs(one)-1]->bounding_box(one > 0));
+      }
+    } else { // two surfaces in a row, create sub-rpn for parenthesis
+      std::vector<int32_t> subrpn;
+      subrpn.push_back(one);
+      subrpn.push_back(two);
+      int32_t sone = one;
+      int32_t stwo = two;
+      // add until last two tokens are operators
+      while ((subrpn.back() < OP_UNION) || (*(subrpn.rbegin() + 1) < OP_UNION)) {
+        subrpn.push_back(rpn.back());
+        rpn.pop_back();
+      }
+
+      // handle complement case
+      if (subrpn.back() == OP_COMPLEMENT) {
+        subrpn.pop_back();
+        for (auto& token : subrpn) {
+          if (token < OP_UNION) { token *= -1; }
+          else if (token == OP_UNION) { token = OP_INTERSECTION; }
+          else if (token == OP_INTERSECTION) { token = OP_UNION; }
+        }
+        subrpn.push_back(rpn.back());
+        rpn.pop_back();
+      }
+      // get bbox for the subrpn
+      int32_t op = subrpn.back();
+      subrpn.pop_back();
+      BoundingBox sub_box = bounding_box_complex(subrpn);
+      if (op == OP_UNION) {
+        current.update(sub_box);
+      } else if (op == OP_INTERSECTION) {
+        current.intersect(sub_box);
+      }
     }
   }
-  return stack[i_stack];
+
+  return current;
 }
 
 BoundingBox CSGCell::bounding_box() const {
@@ -632,7 +651,7 @@ BoundingBox CSGCell::bounding_box() const {
       return bounding_box_simple();
     }
     else {
-      return bounding_box_complex();
+      return bounding_box_complex(rpn_);
     }
   }
 }
@@ -679,6 +698,8 @@ CSGCell::contains_complex(Position r, Direction u, int32_t on_surface) const
     } else if (token == OP_INTERSECTION) {
       stack[i_stack-1] = stack[i_stack-1] && stack[i_stack];
       i_stack --;
+    } else if (token == OP_COMPLEMENT) {
+      stack[i_stack] = !stack[i_stack];
     } else {
       // If the token is not an operator, evaluate the sense of particle with
       // respect to the surface and see if the token matches the sense. If the

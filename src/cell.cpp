@@ -594,9 +594,11 @@ BoundingBox CSGCell::bounding_box_complex(std::vector<int32_t> rpn) const {
   rpn.pop_back();
 
   while (rpn.size()) {
+    // move through the rpn in twos
     int32_t one = rpn.back(); rpn.pop_back();
     int32_t two = rpn.back(); rpn.pop_back();
 
+    // the first token should always be a surface
     assert(one < OP_UNION);
 
     if (two >= OP_UNION) {
@@ -605,19 +607,20 @@ BoundingBox CSGCell::bounding_box_complex(std::vector<int32_t> rpn) const {
       } else if (two == OP_INTERSECTION) {
         current.intersect(model::surfaces[abs(one)-1]->bounding_box(one > 0));
       }
-    } else { // two surfaces in a row, create sub-rpn for parenthesis
+    } else {
+    // two surfaces in a row, create sub-rpn for region in parenthesis
       std::vector<int32_t> subrpn;
       subrpn.push_back(one);
       subrpn.push_back(two);
       int32_t sone = one;
       int32_t stwo = two;
-      // add until last two tokens are operators
+      // add until last two tokens in the sub-rpn are operators
       while ((subrpn.back() < OP_UNION) || (*(subrpn.rbegin() + 1) < OP_UNION)) {
         subrpn.push_back(rpn.back());
         rpn.pop_back();
       }
 
-      // handle complement case
+      // handle complement case using De Morgan's laws
       if (subrpn.back() == OP_COMPLEMENT) {
         subrpn.pop_back();
         for (auto& token : subrpn) {
@@ -628,10 +631,12 @@ BoundingBox CSGCell::bounding_box_complex(std::vector<int32_t> rpn) const {
         subrpn.push_back(rpn.back());
         rpn.pop_back();
       }
-      // get bbox for the subrpn
-      int32_t op = subrpn.back();
-      subrpn.pop_back();
+      // save the last operator, tells us how to combine this region
+      // with our current bounding box
+      int32_t op = subrpn.back(); subrpn.pop_back();
+      // get bounding box for the subrpn
       BoundingBox sub_box = bounding_box_complex(subrpn);
+      // combine the sub-rpn bounding box with our current cell box
       if (op == OP_UNION) {
         current.update(sub_box);
       } else if (op == OP_INTERSECTION) {
@@ -644,16 +649,12 @@ BoundingBox CSGCell::bounding_box_complex(std::vector<int32_t> rpn) const {
 }
 
 BoundingBox CSGCell::bounding_box() const {
-  if (rpn_.size() == 0) {
-    return {-INFTY, INFTY, -INFTY, INFTY, -INFTY, INFTY};
-  } else {
     if (simple_) {
       return bounding_box_simple();
     }
     else {
       return bounding_box_complex(rpn_);
     }
-  }
 }
 
 //==============================================================================

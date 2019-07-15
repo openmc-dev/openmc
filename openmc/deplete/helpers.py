@@ -102,16 +102,16 @@ class ChainFissHelper(FissionEnergyHelper):
         self._fission_E = fiss_E
 
     def get_fission_energy(self, fiss_rates, _mat_index):
-        """Return a vector of the isotopic fission energy for this material
+        """Return fission energy for this material
 
-        parameters
+        Parameters
         ----------
         fission_rates : numpy.ndarray
             fission reaction rate for each isotope in the specified
-            material. should be ordered corresponding to initial
-            ``rate_index`` used in :meth:`set_fission_q`
+            material. Should be ordered corresponding to initial
+            ``rate_index`` used in :meth:`prepare`
         _mat_index : int
-            index for the material requested. Unused, as all
+            index for the material requested. Unused, as identical
             isotopes in all materials have the same Q value.
         """
         return dot(fiss_rates, self._fission_E)

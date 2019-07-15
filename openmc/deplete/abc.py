@@ -173,6 +173,12 @@ class ReactionRateHelper(ABC):
 
     Reaction rates are passed back to the operator for be used in
     an :class:`openmc.deplete.OperatorResult` instance
+
+    Attributes
+    ----------
+    nuclides : list of str
+        All nuclides with desired reaction rates. Ordered to be
+        consistent with :class:`openmc.deplete.Operator`
     """
 
     def __init__(self):
@@ -183,7 +189,6 @@ class ReactionRateHelper(ABC):
     @abstractmethod
     def generate_tallies(self, materials, scores):
         """Use the capi to build tallies needed for reaction rates"""
-        pass
 
     @property
     def nuclides(self):
@@ -222,6 +227,8 @@ class ReactionRateHelper(ABC):
 
         Parameters
         ----------
+        energy : float
+            Energy produced in this region [W]
         number : iterable of float
             Number density [#/b/cm] of each nuclide tracked in the calculation.
             Ordered identically to :attr:`nuclides`
@@ -242,6 +249,12 @@ class ReactionRateHelper(ABC):
 
 class FissionEnergyHelper(ABC):
     """Abstract class for normalizing fission reactions to a given level
+
+    Attributes
+    ----------
+    nuclides : list of str
+        All nuclides with desired reaction rates. Ordered to be
+        consistent with :class:`openmc.deplete.Operator`
     """
 
     def __init__(self):
@@ -258,12 +271,10 @@ class FissionEnergyHelper(ABC):
         :meth:`get_fission_energy`.
         ``materials`` should be a list of all materials tracked
         on the operator to which this object is attached"""
-        pass
 
     @abstractmethod
     def get_fission_energy(self, fission_rates, mat_index):
         """Return fission energy in this material given fission rates"""
-        pass
 
     @property
     def nuclides(self):

@@ -24,7 +24,7 @@ from . import comm
 from .abc import TransportOperator, OperatorResult
 from .atom_number import AtomNumber
 from .reaction_rates import ReactionRates
-from .helpers import DirectRxnRateHelper, ChainFissHelper
+from .helpers import DirectReactionRateHelper, ChainFissHelper
 
 
 def _distribute(items):
@@ -154,7 +154,7 @@ class Operator(TransportOperator):
             self.local_mats, self._burnable_nucs, self.chain.reactions)
 
         # Get class to assist working with tallies
-        self._rate_helper = DirectRxnRateHelper()
+        self._rate_helper = DirectReactionRateHelper()
         self._energy_helper = ChainFissHelper()
 
 

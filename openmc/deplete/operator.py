@@ -513,7 +513,7 @@ class Operator(TransportOperator):
 
         """
         rates = self.reaction_rates
-        rates[:, :, :] = 0.0
+        rates.fill(0.0)
 
         # Get k and uncertainty
         k_combined = openmc.capi.keff()
@@ -527,7 +527,6 @@ class Operator(TransportOperator):
         react_ind = [rates.index_rx[react] for react in self.chain.reactions]
 
         # Compute fission power
-        # TODO : improve this calculation
 
         # Keep track of energy produced from all reactions in eV per source
         # particle
@@ -545,7 +544,7 @@ class Operator(TransportOperator):
             slab = materials.index(mat)
 
             # Zero out reaction rates and nuclide numbers
-            number[:] = 0.0
+            number.fill(0.0)
 
             # Get new number densities
             for nuc, i_nuc_results in zip(nuclides, nuc_ind):
@@ -559,7 +558,7 @@ class Operator(TransportOperator):
                 tally_rates[:, fission_ind], i)
 
             # Divide by total number and store
-            rates[i, :, :] = self._rate_helper.divide_by_adens(number)
+            rates[i] = self._rate_helper.divide_by_adens(number)
 
         # Reduce energy produced from all processes
         energy = comm.allreduce(energy)

@@ -31,6 +31,7 @@ extern "C" const int BC_PERIODIC;
 //==============================================================================
 
 class Surface;
+
 struct BoundingBox;
 
 namespace model {
@@ -51,7 +52,7 @@ struct BoundingBox
   double zmin = -INFTY;
   double zmax = INFTY;
 
-  // in-place update
+  // in-place update to include another bounding box
   inline void update(const BoundingBox& other) {
     xmin = std::min(xmin, other.xmin);
     xmax = std::max(xmax, other.xmax);
@@ -61,7 +62,7 @@ struct BoundingBox
     zmax = std::max(zmax, other.zmax);
   };
 
-  // in-place intersection
+  // in-place intersection with another bounding box
   inline void intersect(const BoundingBox& other) {
     xmin = std::max(xmin, other.xmin);
     xmax = std::min(xmax, other.xmax);
@@ -298,6 +299,7 @@ public:
   Direction normal(Position r) const;
   void to_hdf5_inner(hid_t group_id) const;
   BoundingBox bounding_box(bool pos_side) const;
+
   double y0_, z0_, radius_;
 };
 
@@ -317,6 +319,7 @@ public:
   Direction normal(Position r) const;
   void to_hdf5_inner(hid_t group_id) const;
   BoundingBox bounding_box(bool pos_side) const;
+
   double x0_, z0_, radius_;
 };
 
@@ -336,6 +339,7 @@ public:
   Direction normal(Position r) const;
   void to_hdf5_inner(hid_t group_id) const;
   BoundingBox bounding_box(bool pos_side) const;
+
   double x0_, y0_, radius_;
 };
 
@@ -355,6 +359,7 @@ public:
   Direction normal(Position r) const;
   void to_hdf5_inner(hid_t group_id) const;
   BoundingBox bounding_box(bool pos_side) const;
+
   double x0_, y0_, z0_, radius_;
 };
 
@@ -374,6 +379,7 @@ public:
   Direction normal(Position r) const;
   void to_hdf5_inner(hid_t group_id) const;
   BoundingBox bounding_box(bool pos_side) const;
+
   double x0_, y0_, z0_, radius_sq_;
 };
 
@@ -393,6 +399,7 @@ public:
   Direction normal(Position r) const;
   void to_hdf5_inner(hid_t group_id) const;
   BoundingBox bounding_box(bool pos_side) const;
+
   double x0_, y0_, z0_, radius_sq_;
 };
 
@@ -412,6 +419,7 @@ public:
   Direction normal(Position r) const;
   void to_hdf5_inner(hid_t group_id) const;
   BoundingBox bounding_box(bool pos_side) const;
+
   double x0_, y0_, z0_, radius_sq_;
 };
 
@@ -430,6 +438,7 @@ public:
   Direction normal(Position r) const;
   void to_hdf5_inner(hid_t group_id) const;
   BoundingBox bounding_box(bool pos_side) const;
+
   // Ax^2 + By^2 + Cz^2 + Dxy + Eyz + Fxz + Gx + Hy + Jz + K = 0
   double A_, B_, C_, D_, E_, F_, G_, H_, J_, K_;
 };

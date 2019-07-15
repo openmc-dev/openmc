@@ -13,7 +13,7 @@ from .abc import ReactionRateHelper, FissionEnergyHelper
 # -------------------------------------
 
 
-class DirectRxnRateHelper(ReactionRateHelper):
+class DirectReactionRateHelper(ReactionRateHelper):
     """Class that generates tallies for one-group rates"""
 
     def generate_tallies(self, materials, scores):

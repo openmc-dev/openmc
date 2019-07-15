@@ -203,7 +203,7 @@ protected:
   bool contains_simple(Position r, Direction u, int32_t on_surface) const;
   bool contains_complex(Position r, Direction u, int32_t on_surface) const;
   BoundingBox bounding_box_simple() const;
-  BoundingBox bounding_box_complex() const;
+  BoundingBox bounding_box_complex(std::vector<int32_t> rpn) const;
 };
 
 //==============================================================================

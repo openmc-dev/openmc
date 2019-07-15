@@ -5,8 +5,7 @@
 </geometry>
 <?xml version='1.0' encoding='utf-8'?>
 <materials>
-  <material depletable="true" id="1">
-    <temperature>294</temperature>
+  <material depletable="true" id="1" temperature="294">
     <density units="g/cm3" value="4.5" />
     <nuclide ao="1.0" name="U235" />
   </material>

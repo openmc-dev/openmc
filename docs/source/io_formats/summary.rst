@@ -116,6 +116,13 @@ The current version of the summary file format is 6.0.
            - **sab_names** (*char[][]*) -- Names of
              S(:math:`\alpha,\beta`) tables assigned to the material.
 
+:Attributes: - **volume** (*double[]*) -- Volume of this material [cm^3]. Only
+               present if ``volume`` supplied
+             - **temperature** (*double[]*) -- Temperature of this material [K].
+               Only present in ``temperature`` supplied
+             - **depletable** (*int[]*) -- ``1`` if the material can be depleted,
+               ``0`` otherwise. Always present
+
 **/nuclides/**
 
 :Attributes: - **n_nuclides** (*int*) -- Number of nuclides in the problem.

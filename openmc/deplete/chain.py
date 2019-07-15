@@ -10,6 +10,7 @@ import math
 import re
 from collections import OrderedDict, defaultdict
 from collections.abc import Mapping
+from warnings import warn
 
 from openmc.checkvalue import check_type, check_less_than
 from openmc.data import gnd_name, zam
@@ -537,7 +538,7 @@ class Chain(object):
             prod_flag = False
 
             for product in sub:
-                if product not in self.nuclide_dict:
+                if product not in self:
                     if strict:
                         raise KeyError(product)
                     missing_products[parent] = product
@@ -571,19 +572,19 @@ class Chain(object):
             sums[parent] = this_sum
 
         if len(missing_parents) > 0:
-            print("The following nuclides were not found in {}: {}".format(
-                self.__class__.__name__, ", ".join(sorted(missing_parents))))
+            warn("The following nuclides were not found in {}: {}".format(
+                 self.__class__.__name__, ", ".join(sorted(missing_parents))))
 
         if len(no_capture) > 0:
-            print("The following nuclides did not have capture reactions: "
-                  "{}".format(", ".join(sorted(no_capture))))
+            warn("The following nuclides did not have capture reactions: "
+                 "{}".format(", ".join(sorted(no_capture))))
 
         if len(missing_products) > 0:
             tail = ("{} -> {}".format(k, v)
                     for k, v in sorted(missing_products.items()))
-            print("The following products were not found in the {} and "
-                  "parents were unmodified: \n{}".format(
-                      self.__class__.__name__, ", ".join(tail)))
+            warn("The following products were not found in the {} and "
+                 "parents were unmodified: \n{}".format(
+                     self.__class__.__name__, ", ".join(tail)))
 
         # Insert new ReactionTuples with updated branch ratios
 

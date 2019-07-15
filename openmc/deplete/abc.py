@@ -10,11 +10,12 @@ from pathlib import Path
 from abc import ABC, abstractmethod
 from xml.etree import ElementTree as ET
 from warnings import warn
+from numbers import Real
 
 from numpy import nonzero, empty
 
 from openmc.data import DataLibrary, JOULE_PER_EV
-from openmc.checkvalue import check_type
+from openmc.checkvalue import check_type, check_greater_than
 from .chain import Chain
 
 OperatorResult = namedtuple('OperatorResult', ['k', 'rates'])
@@ -55,17 +56,21 @@ class TransportOperator(ABC):
     fission_q : dict, optional
         Dictionary of nuclides and their fission Q values [eV]. If not given,
         values will be pulled from the ``chain_file``.
+    dilute_initial : float, optional
+        Initial atom density [atoms/cm^3] to add for nuclides that are zero
+        in initial condition to ensure they exist in the decay chain.
+        Only done for nuclides with reaction rates.
+        Defaults to 1.0e3.
 
     Attributes
     ----------
     dilute_initial : float
-        Initial atom density to add for nuclides that are zero in initial
-        condition to ensure they exist in the decay chain.  Only done for
-        nuclides with reaction rates. Defaults to 1.0e3.
-
+        Initial atom density [atoms/cm^3] to add for nuclides that are zero
+        in initial condition to ensure they exist in the decay chain.
+        Only done for nuclides with reaction rates.
     """
-    def __init__(self, chain_file=None, fission_q=None):
-        self.dilute_initial = 1.0e3
+    def __init__(self, chain_file=None, fission_q=None, dilute_initial=1.0e3):
+        self.dilute_initial = dilute_initial
         self.output_dir = '.'
 
         # Read depletion chain
@@ -88,6 +93,17 @@ class TransportOperator(ABC):
                      "of adding depletion_chain to OPENMC_CROSS_SECTIONS",
                      FutureWarning)
         self.chain = Chain.from_xml(chain_file, fission_q)
+
+    @property
+    def dilute_initial(self):
+        """Initial atom density for nuclides with zero initial concentration"""
+        return self._dilute_initial
+
+    @dilute_initial.setter
+    def dilute_initial(self, value):
+        check_type("dilute_initial", value, Real)
+        check_greater_than("dilute_initial", value, 0.0, equality=True)
+        self._dilute_initial = value
 
     @abstractmethod
     def __call__(self, vec, print_out=True):

@@ -87,7 +87,7 @@ def global_bounding_box():
     llc = np.zeros((3,), dtype=float)
     urc = np.zeros((3,), dtype=float)
     _dll.openmc_global_bounding_box(llc.ctypes.data_as(POINTER(c_double)),
-                             urc.ctypes.data_as(POINTER(c_double)))
+                                    urc.ctypes.data_as(POINTER(c_double)))
 
     return llc, urc
 

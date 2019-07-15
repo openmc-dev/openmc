@@ -183,6 +183,14 @@ class Cell(_FortranObjectWithID):
 
         _dll.openmc_cell_set_temperature(self._index, T, instance)
 
+    @property
+    def bounding_box(self):
+        llc = np.zeros((3,), dtype=float)
+        urc = np.zeros((3,), dtype=float)
+        _dll.openmc_bounding_box(b'Cell', self.id,
+                                 llc.ctypes.data_as(POINTER(c_double)),
+                                 urc.ctypes.data_as(POINTER(c_double)))
+        return llc, urc
 
 class _CellMapping(Mapping):
     def __getitem__(self, key):

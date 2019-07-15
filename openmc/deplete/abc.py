@@ -214,10 +214,13 @@ class ReactionRateHelper(ABC):
     def get_material_rates(self, mat_id, nuc_index, react_index):
         """Return 2D array of [nuclide, reaction] reaction rates
 
-        ``nuc_index`` and ``react_index`` are orderings of nuclides
-        and reactions such that the ordering is consistent between
-        reaction tallies and energy deposition tallies"""
-        pass
+        Parameters
+        ----------
+        nuc_index : list of str
+            Ordering of desired nuclides
+        react_index : list of str
+            Ordering of reactions
+        """
 
     def divide_by_adens(self, number):
         """Normalize reaction rates by number of nuclides
@@ -230,12 +233,12 @@ class ReactionRateHelper(ABC):
         energy : float
             Energy produced in this region [W]
         number : iterable of float
-            Number density [#/b/cm] of each nuclide tracked in the calculation.
+            Number density [atoms/b/cm] of each nuclide tracked in the calculation.
             Ordered identically to :attr:`nuclides`
 
         Returns
         -------
-        results : :class:`numpy.ndarray`
+        results : `numpy.ndarray`
             2D array ``[n_nuclides, n_rxns]`` of reaction rates normalized by
             the number of nuclides
         """
@@ -265,16 +268,32 @@ class FissionEnergyHelper(ABC):
     def prepare(self, chain_nucs, rate_index, materials):
         """Perform work needed to obtain fission energy per material
 
-        ``chain_nucs`` is all nuclides tracked in the depletion chain,
-        while ``rate_index`` should be a mapping from nuclide name
-        to index in the reaction rate vector used in
-        :meth:`get_fission_energy`.
-        ``materials`` should be a list of all materials tracked
-        on the operator to which this object is attached"""
+        Parameters
+        ----------
+        chain_nucs : list of str
+            All nuclides to be tracked in this problem
+        rate_index : dict of str to int
+            Mapping from nuclide name to index in the
+            reaction rate vector used in :meth:`get_energy`.
+        materials : list of str
+            All materials tracked on the operator helped by this
+            object
+        """
 
     @abstractmethod
     def get_fission_energy(self, fission_rates, mat_index):
-        """Return fission energy in this material given fission rates"""
+        """Return fission energy in this material given fission rates
+
+        Parameters
+        ----------
+        fission_rates : numpy.ndarray
+            fission reaction rate for each isotope in the specified
+            material. Should be ordered corresponding to initial
+            ``rate_index`` used in :meth:`prepare`
+        mat_index : int
+            Index for the material requested.
+        """
+
 
     @property
     def nuclides(self):

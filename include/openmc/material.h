@@ -6,6 +6,7 @@
 #include <unordered_map>
 #include <vector>
 
+#include <gsl/gsl>
 #include <hdf5.h>
 #include "pugixml.hpp"
 #include "xtensor/xtensor.hpp"
@@ -35,6 +36,7 @@ extern std::unordered_map<int32_t, int32_t> material_map;
 class Material
 {
 public:
+  //----------------------------------------------------------------------------
   // Types
   struct ThermalTable {
     int index_table; //!< Index of table in data::thermal_scatt
@@ -42,11 +44,15 @@ public:
     double fraction; //!< How often to use table
   };
 
-  // Constructors
+  //----------------------------------------------------------------------------
+  // Constructors, destructors, factory functions
   Material() {};
   explicit Material(pugi::xml_node material_node);
+  ~Material();
 
+  //----------------------------------------------------------------------------
   // Methods
+
   void calculate_xs(Particle& p) const;
 
   //! Assign thermal scattering tables to specific nuclides within the material
@@ -59,12 +65,65 @@ public:
   //! Finalize the material, assigning tables, normalize density, etc.
   void finalize();
 
-  //! Set total density of the material
-  int set_density(double density, std::string units);
-
   //! Write material data to HDF5
   void to_hdf5(hid_t group) const;
 
+  //! Add nuclide to the material
+  //
+  //! \param[in] nuclide Name of the nuclide
+  //! \param[in] density Density of the nuclide in [atom/b-cm]
+  void add_nuclide(const std::string& nuclide, double density);
+
+  //! Set atom densities for the material
+  //
+  //! \param[in] name Name of each nuclide
+  //! \param[in] density Density of each nuclide in [atom/b-cm]
+  void set_densities(const std::vector<std::string>& name,
+    const std::vector<double>& density);
+
+  //----------------------------------------------------------------------------
+  // Accessors
+
+  //! Get density in [atom/b-cm]
+  //! \return Density in [atom/b-cm]
+  double density() const { return density_; }
+
+  //! Get density in [g/cm^3]
+  //! \return Density in [g/cm^3]
+  double density_gpcc() const { return density_gpcc_; }
+
+  //! Set total density of the material
+  //
+  //! \param[in] density Density value
+  //! \param[in] units Units of density
+  void set_density(double density, gsl::cstring_span units);
+
+  //! Get nuclides in material
+  //! \return Indices into the global nuclides vector
+  gsl::span<const int> nuclides() const { return {nuclide_.data(), nuclide_.size()}; }
+
+  //! Get densities of each nuclide in material
+  //! \return Densities in [atom/b-cm]
+  gsl::span<const double> densities() const { return {atom_density_.data(), atom_density_.size()}; }
+
+  //! Get ID of material
+  //! \return ID of material
+  int32_t id() const { return id_; }
+
+  //! Assign a unique ID to the material
+  //! \param[in] Unique ID to assign. A value of -1 indicates that an ID
+  //!   should be automatically assigned.
+  void set_id(int32_t id);
+
+  //! Get whether material is fissionable
+  //! \return Whether material is fissionable
+  bool fissionable() const { return fissionable_; }
+
+  //! Get volume of material
+  //! \return Volume in [cm^3]
+  double volume() const;
+
+  //----------------------------------------------------------------------------
   // Data
   int32_t id_; //!< Unique ID
   std::string name_; //!< Name of material
@@ -95,6 +154,9 @@ public:
   std::unique_ptr<Bremsstrahlung> ttb_;
 
 private:
+  //----------------------------------------------------------------------------
+  // Private methods
+
   //! Calculate the collision stopping power
   void collision_stopping_power(double* s_col, bool positron);
 
@@ -106,6 +168,10 @@ private:
 
   void calculate_neutron_xs(Particle& p) const;
   void calculate_photon_xs(Particle& p) const;
+
+  //----------------------------------------------------------------------------
+  // Private data members
+  gsl::index index_;
 };
 
 //==============================================================================

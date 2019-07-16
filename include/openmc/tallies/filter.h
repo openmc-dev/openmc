@@ -7,6 +7,8 @@
 #include <unordered_map>
 #include <vector>
 
+#include <gsl/gsl>
+
 #include "openmc/hdf5_interface.h"
 #include "openmc/particle.h"
 #include "pugixml.hpp"
@@ -43,12 +45,33 @@ namespace openmc {
 class Filter
 {
 public:
-  virtual ~Filter() = default;
+  //----------------------------------------------------------------------------
+  // Constructors, destructors, factory functions
 
-  virtual std::string type() const = 0;
+  Filter();
+  virtual ~Filter();
+
+  //! Create a new tally filter
+  //
+  //! \param[in] type  Type of the filter
+  //! \param[in] id  Unique ID for the filter. If none is passed, an ID is
+  //!    automatically assigned
+  //! \return Pointer to the new filter object
+  static Filter* create(const std::string& type, int32_t id = -1);
+
+  //! Create a new tally filter from an XML node
+  //
+  //! \param[in] node XML node
+  //! \return Pointer to the new filter object
+  static Filter* create(pugi::xml_node node);
 
   //! Uses an XML input to fill the filter's data fields.
   virtual void from_xml(pugi::xml_node node) = 0;
+
+  //----------------------------------------------------------------------------
+  // Methods
+
+  virtual std::string type() const = 0;
 
   //! Matches a tally event to a set of filter bins and weights.
   //!
@@ -71,11 +94,32 @@ public:
   //! "Incoming Energy [0.625E-6, 20.0)".
   virtual std::string text_label(int bin) const = 0;
 
-  virtual void initialize() {}
+  //----------------------------------------------------------------------------
+  // Accessors
 
-  int32_t id_;
+  //! Get unique ID of filter
+  //! \return Unique ID
+  int32_t id() const { return id_; }
 
+  //! Assign a unique ID to the filter
+  //! \param[in]  Unique ID to assign. A value of -1 indicates that an ID should
+  //!   be automatically assigned
+  void set_id(int32_t id);
+
+  //! Get number of bins
+  //! \return Number of bins
+  int n_bins() const { return n_bins_; }
+
+  gsl::index index() const { return index_; }
+
+  //----------------------------------------------------------------------------
+  // Data members
+
+protected:
   int n_bins_;
+private:
+  int32_t id_ {-1};
+  gsl::index index_;
 };
 
 //==============================================================================
@@ -98,8 +142,6 @@ namespace model {
 //==============================================================================
 // Non-member functions
 //==============================================================================
-
-Filter* allocate_filter(const std::string& type);
 
 //! Make sure index corresponds to a valid filter
 int verify_filter(int32_t index);

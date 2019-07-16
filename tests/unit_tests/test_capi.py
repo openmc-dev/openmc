@@ -113,7 +113,7 @@ def test_material(capi_init):
     m.volume = 10.0
     assert m.volume == 10.0
 
-    with pytest.raises(exc.InvalidArgumentError):
+    with pytest.raises(exc.OpenMCError):
         m.set_density(1.0, 'goblins')
 
     rho = 2.25e-2

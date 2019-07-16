@@ -32,8 +32,6 @@ extern "C" const int BC_PERIODIC;
 
 class Surface;
 
-struct BoundingBox;
-
 namespace model {
   extern std::vector<std::unique_ptr<Surface>> surfaces;
   extern std::unordered_map<int, int> surface_map;

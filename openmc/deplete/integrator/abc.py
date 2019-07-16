@@ -81,8 +81,7 @@ class Integrator(ABC):
         """
 
     def __iter__(self):
-        for dt, p in zip(self.timesteps, self.power):
-            yield dt, p
+        return zip(self.timesteps, self.power)
 
     def __len__(self):
         return len(self.timesteps)
@@ -109,7 +108,7 @@ class Integrator(ABC):
             return 0.0, 0
         return self.operator.prev_res[-1].time[-1], len(self.operator.prev_res)
 
-    def integrate_all(self):
+    def integrate(self):
         """Perform the entire depletion process across all steps"""
         with self.operator as conc:
             t, i_start = self._get_start_data()
@@ -145,8 +144,3 @@ class Integrator(ABC):
         Results.save(
             self.operator, conc_list, results_list, time_list,
             power, index, proc_time)
-
-    @classmethod
-    def integrate(cls, operator, timesteps, power=None, power_density=None):
-        """High-level interface for depleting with this integrator"""
-        return cls(operator, timesteps, power, power_density).integrate_all()

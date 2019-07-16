@@ -55,7 +55,7 @@ class Operator(TransportOperator):
     Instances of this class can be used to perform depletion using OpenMC as the
     transport operator. Normally, a user needn't call methods of this class
     directly. Instead, an instance of this class is passed to an integrator
-    function, such as :func:`openmc.deplete.integrator.cecm`.
+    class, such as :class:`openmc.deplete.CECMIntegrator`.
 
     Parameters
     ----------

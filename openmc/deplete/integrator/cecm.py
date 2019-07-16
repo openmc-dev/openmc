@@ -58,16 +58,3 @@ class CECMIntegrator(Integrator):
         time1, x_end = timed_deplete(self.chain, conc, res_middle.rates, dt)
 
         return time0 + time1, [x_middle, x_end], [res_middle]
-
-
-def cecm(operator, timesteps, power=None, power_density=None, print_out=False):
-    # TODO Remove print_out since depletion timings are stored
-    return CECMIntegrator(
-        operator, timesteps, power, power_density).integrate_all()
-
-
-try:
-    cecm.__doc__ = (
-        dedent(CECMIntegrator.__doc__) + dedent(Integrator.__init__.__doc__))
-except AttributeError:
-    pass

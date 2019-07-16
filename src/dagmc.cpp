@@ -215,17 +215,6 @@ void load_dagmc_geometry()
       model::universes[it->second]->cells_.push_back(i);
     }
 
-    // check for temperature assignment
-    std::string temp_value;
-    if (model::DAG->has_prop(vol_handle, "temp")) {
-      rval = model::DAG->prop_value(vol_handle, "temp", temp_value);
-      MB_CHK_ERR_CONT(rval);
-      double temp = std::stod(temp_value);
-      c->sqrtkT_.push_back(std::sqrt(K_BOLTZMANN * temp));
-    } else {
-      c->sqrtkT_.push_back(std::sqrt(K_BOLTZMANN * settings::temperature_default));
-    }
-
     // MATERIALS
 
     if (model::DAG->is_implicit_complement(vol_handle)) {
@@ -295,6 +284,24 @@ void load_dagmc_geometry()
         legacy_assign_material(mat_value, c);
       }
     }
+
+    // check for temperature assignment
+    std::string temp_value;
+
+    if (c->material_[0] == MATERIAL_VOID) { continue; }
+
+    auto& mat = model::materials[c->material_[0]];
+    if (model::DAG->has_prop(vol_handle, "temp")) {
+      rval = model::DAG->prop_value(vol_handle, "temp", temp_value);
+      MB_CHK_ERR_CONT(rval);
+      double temp = std::stod(temp_value);
+      c->sqrtkT_.push_back(std::sqrt(K_BOLTZMANN * temp));
+    } else if (mat->temperature_ > 0.0) {
+      c->sqrtkT_.push_back(std::sqrt(K_BOLTZMANN * mat->temperature_));
+    } else {
+      c->sqrtkT_.push_back(std::sqrt(K_BOLTZMANN * settings::temperature_default));
+    }
+
   }
 
   // allocate the cell overlap count if necessary

@@ -29,3 +29,5 @@ def test_complex_cell_capi():
 
         assert tuple(cell_box[0]) == expected_boxes[cell_id][0]
         assert tuple(cell_box[1]) == expected_boxes[cell_id][1]
+
+    openmc.capi.finalize()

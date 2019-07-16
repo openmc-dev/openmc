@@ -290,7 +290,7 @@ void load_dagmc_geometry()
 
     if (c->material_[0] == MATERIAL_VOID) { continue; }
 
-    auto& mat = model::materials[c->material_[0]];
+    auto& mat = model::materials[model::material_map[c->material_[0]]];
     if (model::DAG->has_prop(vol_handle, "temp")) {
       rval = model::DAG->prop_value(vol_handle, "temp", temp_value);
       MB_CHK_ERR_CONT(rval);

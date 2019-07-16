@@ -279,18 +279,16 @@ Tally::Tally(pugi::xml_node node)
 
   // Allocate and store filter user ids
   std::vector<Filter*> filters;
-  if (!filter_ids.empty()) {
-    for (int filter_id : filter_ids) {
-      // Determine if filter ID is valid
-      auto it = model::filter_map.find(filter_id);
-      if (it == model::filter_map.end()) {
-        throw std::runtime_error{"Could not find filter " + std::to_string(filter_id)
-          + " specified on tally " + std::to_string(id_)};
-      }
-
-      // Store the index of the filter
-      filters.push_back(model::tally_filters[it->second].get());
+  for (int filter_id : filter_ids) {
+    // Determine if filter ID is valid
+    auto it = model::filter_map.find(filter_id);
+    if (it == model::filter_map.end()) {
+      throw std::runtime_error{"Could not find filter " + std::to_string(filter_id)
+        + " specified on tally " + std::to_string(id_)};
     }
+
+    // Store the index of the filter
+    filters.push_back(model::tally_filters[it->second].get());
   }
 
   // Set the filters

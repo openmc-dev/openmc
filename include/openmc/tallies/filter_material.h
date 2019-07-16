@@ -5,6 +5,8 @@
 #include <unordered_map>
 #include <vector>
 
+#include <gsl/gsl>
+
 #include "openmc/tallies/filter.h"
 
 namespace openmc {
@@ -16,13 +18,17 @@ namespace openmc {
 class MaterialFilter : public Filter
 {
 public:
+  //----------------------------------------------------------------------------
+  // Constructors, destructors
+
   ~MaterialFilter() = default;
+
+  //----------------------------------------------------------------------------
+  // Methods
 
   std::string type() const override {return "material";}
 
   void from_xml(pugi::xml_node node) override;
-
-  void initialize() override;
 
   void get_all_bins(const Particle* p, int estimator, FilterMatch& match)
   const override;
@@ -30,6 +36,19 @@ public:
   void to_statepoint(hid_t filter_group) const override;
 
   std::string text_label(int bin) const override;
+
+  //----------------------------------------------------------------------------
+  // Accessors
+
+  std::vector<int32_t>& materials() { return materials_; }
+
+  const std::vector<int32_t>& materials() const { return materials_; }
+
+  void set_materials(gsl::span<const int32_t> materials);
+
+private:
+  //----------------------------------------------------------------------------
+  // Data members
 
   //! The indices of the materials binned by this filter.
   std::vector<int32_t> materials_;

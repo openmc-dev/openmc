@@ -18,7 +18,13 @@ enum class LegendreAxis {
 class SpatialLegendreFilter : public Filter
 {
 public:
+  //----------------------------------------------------------------------------
+  // Constructors, destructors
+
   ~SpatialLegendreFilter() = default;
+
+  //----------------------------------------------------------------------------
+  // Methods
 
   std::string type() const override {return "spatiallegendre";}
 
@@ -30,6 +36,23 @@ public:
   void to_statepoint(hid_t filter_group) const override;
 
   std::string text_label(int bin) const override;
+
+  //----------------------------------------------------------------------------
+  // Accessors
+
+  int order() const { return order_; }
+  void set_order(int order);
+
+  LegendreAxis axis() const { return axis_; }
+  void set_axis(LegendreAxis axis);
+
+  double min() const { return min_; }
+  double max() const { return max_; }
+  void set_minmax(double min, double max);
+
+private:
+  //----------------------------------------------------------------------------
+  // Data members
 
   int order_;
 

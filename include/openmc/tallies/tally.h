@@ -2,8 +2,10 @@
 #define OPENMC_TALLIES_TALLY_H
 
 #include "openmc/constants.h"
+#include "openmc/tallies/filter.h"
 #include "openmc/tallies/trigger.h"
 
+#include <gsl/gsl>
 #include "pugixml.hpp"
 #include "xtensor/xfixed.hpp"
 #include "xtensor/xtensor.hpp"
@@ -21,24 +23,33 @@ namespace openmc {
 
 class Tally {
 public:
-  Tally();
+  //----------------------------------------------------------------------------
+  // Constructors, destructors, factory functions
+  explicit Tally(int32_t id);
+  explicit Tally(pugi::xml_node node);
+  ~Tally();
+  static Tally* create(int32_t id = -1);
 
-  void init_from_xml(pugi::xml_node node);
+  //----------------------------------------------------------------------------
+  // Accessors
+
+  void set_id(int32_t id);
+
+  void set_active(bool active) { active_ = active; }
 
   void set_scores(pugi::xml_node node);
 
-  void set_scores(std::vector<std::string> scores);
+  void set_scores(const std::vector<std::string>& scores);
 
   void set_nuclides(pugi::xml_node node);
 
-  //----------------------------------------------------------------------------
-  // Methods for getting and setting filter/stride data.
+  void set_nuclides(const std::vector<std::string>& nuclides);
 
   const std::vector<int32_t>& filters() const {return filters_;}
 
   int32_t filters(int i) const {return filters_[i];}
 
-  void set_filters(const int32_t filter_indices[], int n);
+  void set_filters(gsl::span<Filter*> filters);
 
   int32_t strides(int i) const {return strides_[i];}
 
@@ -112,6 +123,8 @@ private:
   std::vector<int32_t> strides_;
 
   int32_t n_filter_bins_ {0};
+
+  gsl::index index_;
 };
 
 //==============================================================================

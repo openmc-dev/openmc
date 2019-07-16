@@ -8,21 +8,32 @@ namespace openmc {
 void
 DelayedGroupFilter::from_xml(pugi::xml_node node)
 {
-  groups_ = get_node_array<int>(node, "bins");
-  n_bins_ = groups_.size();
+  auto groups = get_node_array<int>(node, "bins");
+  this->set_groups(groups);
+}
+
+void
+DelayedGroupFilter::set_groups(gsl::span<int> groups)
+{
+  // Clear existing groups
+  groups_.clear();
+  groups_.reserve(groups.size());
 
   // Make sure all the group index values are valid.
   // TODO: do these need to be decremented for zero-based indexing?
-  for (auto group : groups_) {
+  for (auto group : groups) {
     if (group < 1) {
-      fatal_error("Encountered delayedgroup bin with index "
-        + std::to_string(group) + " which is less than 1");
+      throw std::invalid_argument{"Encountered delayedgroup bin with index "
+        + std::to_string(group) + " which is less than 1"};
     } else if (group > MAX_DELAYED_GROUPS) {
-      fatal_error("Encountered delayedgroup bin with index "
+      throw std::invalid_argument{"Encountered delayedgroup bin with index "
         + std::to_string(group) + " which is greater than MAX_DELATED_GROUPS ("
-        + std::to_string(MAX_DELAYED_GROUPS) + ")");
+        + std::to_string(MAX_DELAYED_GROUPS) + ")"};
     }
+    groups_.push_back(group);
   }
+
+  n_bins_ = groups_.size();
 }
 
 void

@@ -84,7 +84,7 @@ _dll.openmc_global_bounding_box.restype = c_int
 _dll.openmc_global_bounding_box.errcheck = _error_handler
 
 def global_bounding_box():
-
+    """Calculate a global bounding box for the model"""
     llc = np.zeros((3,), dtype=float)
     urc = np.zeros((3,), dtype=float)
     _dll.openmc_global_bounding_box(llc.ctypes.data_as(POINTER(c_double)),
@@ -93,7 +93,15 @@ def global_bounding_box():
     return llc, urc
 
 def bounding_box(geom_type, geom_id):
+    """Get a bounding box for a geometric object
 
+    Parameters
+    ----------
+    geom_type : str
+        Type of geometry object. One of ('surface', 'cell', 'universe')
+    geom_id : int
+        Id of the object. Can be positive or negative for surfaces.
+    """
     geomt = c_char_p(geom_type.encode())
     llc = np.zeros((3,), dtype=float)
     urc = np.zeros((3,), dtype=float)

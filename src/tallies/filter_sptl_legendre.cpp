@@ -37,6 +37,9 @@ SpatialLegendreFilter::from_xml(pugi::xml_node node)
 void
 SpatialLegendreFilter::set_order(int order)
 {
+  if (order < 0) {
+    throw std::invalid_argument{"Legendre order must be non-negative."};
+  }
   order_ = order;
   n_bins_ = order_ + 1;
 }

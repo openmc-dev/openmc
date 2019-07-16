@@ -74,6 +74,9 @@ ZernikeFilter::text_label(int bin) const
 void
 ZernikeFilter::set_order(int order)
 {
+  if (order < 0) {
+    throw std::invalid_argument{"Zernike order must be non-negative."};
+  }
   order_ = order;
   n_bins_ = ((order+1) * (order+2)) / 2;
 }
@@ -111,7 +114,7 @@ ZernikeRadialFilter::text_label(int bin) const
 void
 ZernikeRadialFilter::set_order(int order)
 {
-  order_ = order;
+  ZernikeFilter::set_order(order);
   n_bins_ = order / 2 + 1;
 }
 

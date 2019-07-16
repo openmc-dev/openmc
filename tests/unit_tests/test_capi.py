@@ -123,7 +123,6 @@ def test_material(capi_init):
 
     m.set_density(0.1, 'g/cm3')
     assert m.density == pytest.approx(0.1)
-
     assert m.name == "Hot borated water"
 
 def test_material_add_nuclide(capi_init):
@@ -473,7 +472,6 @@ def test_position(capi_init):
     assert tuple(pos) == (1.3, 2.3, 3.3)
 
 def test_bounding_box(capi_init):
-
     inf = sys.float_info.max
 
     expected_llc = (-inf, -0.63, -inf)
@@ -524,7 +522,6 @@ def test_bounding_box(capi_init):
 
 
 def test_global_bounding_box(capi_init):
-
     inf = sys.float_info.max
 
     expected_llc = (-0.63, -0.63, -inf)

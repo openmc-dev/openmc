@@ -1083,6 +1083,7 @@ openmc_cell_get_temperature(int32_t index, const int32_t* instance, double* T)
   return 0;
 }
 
+//! Get the name of a cell
 extern "C" int
 openmc_cell_get_name(int32_t index, const char*& name) {
   if (index < 0 || index >= model::cells.size()) {
@@ -1095,6 +1096,7 @@ openmc_cell_get_name(int32_t index, const char*& name) {
   return 0;
 }
 
+//! Set the name of a cell
 extern "C" int
 openmc_cell_set_name(int32_t index, const char* name) {
   if (index < 0 || index >= model::cells.size()) {

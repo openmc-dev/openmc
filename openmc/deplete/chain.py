@@ -484,14 +484,9 @@ class Chain(object):
     def set_capture_branches(self, branch_ratios, strict=True):
         """Set the capture branching ratios
 
-        ``branch_ratios`` may be modified in place, only to
-        insert missing ground state reactions. These will be
-        inserted only if:
-
-            1) There is no branch directly to a ground state
-               target, and
-            2) The sum of all ratios on this branch does not
-               equal 1.
+        To provide a buffer around floating point precisions,
+        the sum of all branching ratios from a single parent
+        cannot be greater than 1.00001.
 
         Parameters
         ----------
@@ -568,7 +563,7 @@ class Chain(object):
             capt_ix_map[parent] = indexes
 
             this_sum = sum(sub.values())
-            check_less_than(parent + " ratios", this_sum, 1.0, True)
+            check_less_than(parent + " ratios", this_sum, 1.00001)
             sums[parent] = this_sum
 
         if len(missing_parents) > 0:

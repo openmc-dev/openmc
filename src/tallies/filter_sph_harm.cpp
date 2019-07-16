@@ -37,7 +37,7 @@ SphericalHarmonicsFilter::set_cosine(gsl::cstring_span cosine)
     cosine_ = SphericalHarmonicsCosine::particle;
   } else {
     std::stringstream err_msg;
-    err_msg << "Unrecognized cosine type, \"" << cos
+    err_msg << "Unrecognized cosine type, \"" << cosine
             << "\" in spherical harmonics filter";
     throw std::invalid_argument{err_msg.str()};
   }

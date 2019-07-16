@@ -5,6 +5,7 @@ These tests integrate a simple test problem described in dummy_geometry.py.
 
 from pytest import approx
 import openmc.deplete
+from openmc.deplete import CECMIntegrator
 
 from tests import dummy_operator
 
@@ -18,7 +19,8 @@ def test_cecm(run_in_tmpdir):
     # Perform simulation using the MCNPX/MCNP6 algorithm
     dt = [0.75, 0.75]
     power = 1.0
-    openmc.deplete.cecm(op, dt, power, print_out=False)
+    integrator = CECMIntegrator(op, dt, power)
+    integrator.integrate()
 
     # Load the files
     res = openmc.deplete.ResultsList(op.output_dir / "depletion_results.h5")

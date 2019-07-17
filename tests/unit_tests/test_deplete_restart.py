@@ -6,7 +6,7 @@ problem described in dummy_geometry.py.
 
 from pytest import approx
 import openmc.deplete
-from openmc.deplete import CECMIntegrator
+from openmc.deplete import CECMIntegrator, PredictorIntegrator
 
 from tests import dummy_operator
 
@@ -21,7 +21,7 @@ def test_restart_predictor(run_in_tmpdir):
     # Perform simulation using the predictor algorithm
     dt = [0.75]
     power = 1.0
-    openmc.deplete.predictor(op, dt, power, print_out=False)
+    PredictorIntegrator(op, dt, power).integrate()
 
     # Load the files
     prev_res = openmc.deplete.ResultsList(op.output_dir / "depletion_results.h5")
@@ -31,7 +31,7 @@ def test_restart_predictor(run_in_tmpdir):
     op.output_dir = output_dir
 
     # Perform restarts simulation using the predictor algorithm
-    openmc.deplete.predictor(op, dt, power, print_out=False)
+    PredictorIntegrator(op, dt, power).integrate()
 
     # Load the files
     res = openmc.deplete.ResultsList(op.output_dir / "depletion_results.h5")
@@ -102,7 +102,7 @@ def test_restart_predictor_cecm(run_in_tmpdir):
     # Perform simulation using the predictor algorithm
     dt = [0.75]
     power = 1.0
-    openmc.deplete.predictor(op, dt, power, print_out=False)
+    PredictorIntegrator(op, dt, power).integrate()
 
     # Load the files
     prev_res = openmc.deplete.ResultsList(op.output_dir / "depletion_results.h5")
@@ -154,7 +154,7 @@ def test_restart_cecm_predictor(run_in_tmpdir):
     op.output_dir = output_dir
 
     # Perform restarts simulation using the predictor algorithm
-    openmc.deplete.predictor(op, dt, power, print_out=False)
+    PredictorIntegrator(op, dt, power).integrate()
 
     # Load the files
     res = openmc.deplete.ResultsList(op.output_dir / "depletion_results.h5")

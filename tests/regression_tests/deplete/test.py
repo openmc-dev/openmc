@@ -54,7 +54,7 @@ def test_full(run_in_tmpdir):
     power = 2.337e15*4*JOULE_PER_EV*1e6  # MeV/second cm from CASMO
 
     # Perform simulation using the predictor algorithm
-    openmc.deplete.integrator.predictor(op, dt, power)
+    openmc.deplete.PredictorIntegrator(op, dt, power).integrate()
 
     # Get path to test and reference results
     path_test = op.output_dir / 'depletion_results.h5'

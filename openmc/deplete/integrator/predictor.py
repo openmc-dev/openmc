@@ -1,14 +1,12 @@
 """First-order predictor algorithm."""
 
-import copy
-from collections.abc import Iterable
+from copy import deepcopy
 
+from .abc import Integrator
 from .cram import timed_deplete
-from ..results import Results
 
 
-def predictor(operator, timesteps, power=None, power_density=None,
-              print_out=True):
+class PredictorIntegrator(Integrator):
     r"""Deplete using a first-order predictor algorithm.
 
     Implements the first-order predictor algorithm. This algorithm is
@@ -26,81 +24,125 @@ def predictor(operator, timesteps, power=None, power_density=None,
     operator : openmc.deplete.TransportOperator
         The operator object to simulate on.
     timesteps : iterable of float
-        Array of timesteps in units of [s]. Note that values are not cumulative.
+        Array of timesteps in units of [s]. Note that values are not
+        cumulative.
     power : float or iterable of float, optional
-        Power of the reactor in [W]. A single value indicates that the power is
-        constant over all timesteps. An iterable indicates potentially different
-        power levels for each timestep. For a 2D problem, the power can be given
-        in [W/cm] as long as the "volume" assigned to a depletion material is
-        actually an area in [cm^2]. Either `power` or `power_density` must be
+        Power of the reactor in [W]. A single value indicates that
+        the power is constant over all timesteps. An iterable
+        indicates potentially different power levels for each timestep.
+        For a 2D problem, the power can be given in [W/cm] as long
+        as the "volume" assigned to a depletion material is actually
+        an area in [cm^2]. Either ``power`` or ``power_density`` must be
         specified.
     power_density : float or iterable of float, optional
-        Power density of the reactor in [W/gHM]. It is multiplied by initial
-        heavy metal inventory to get total power if `power` is not speficied.
-    print_out : bool, optional
-        Whether or not to print out time.
-
+        Power density of the reactor in [W/gHM]. It is multiplied by
+        initial heavy metal inventory to get total power if ``power``
+        is not speficied.
     """
-    if power is None:
-        if power_density is None:
-            raise ValueError(
-                "Neither power nor power density was specified.")
-        if not isinstance(power_density, Iterable):
-            power = power_density*operator.heavy_metal
-        else:
-            power = [i*operator.heavy_metal for i in power_density]
 
-    if not isinstance(power, Iterable):
-        power = [power]*len(timesteps)
+    def __init__(self, operator, timesteps, power=None, power_density=None):
+        """
+        Parameters
+        ----------
+        operator : openmc.deplete.TransportOperator
+            The operator object to simulate on.
+        timesteps : iterable of float
+            Array of timesteps in units of [s]. Note that values are not
+            cumulative.
+        power : float or iterable of float, optional
+            Power of the reactor in [W]. A single value indicates that
+            the power is constant over all timesteps. An iterable
+            indicates potentially different power levels for each timestep.
+            For a 2D problem, the power can be given in [W/cm] as long
+            as the "volume" assigned to a depletion material is actually
+            an area in [cm^2]. Either ``power`` or ``power_density`` must be
+            specified.
+        power_density : float or iterable of float, optional
+            Power density of the reactor in [W/gHM]. It is multiplied by
+            initial heavy metal inventory to get total power if ``power``
+            is not speficied.
+        """
+        super().__init__(operator, timesteps, power, power_density)
+        self._dep_proc_time = None
 
-    proc_time = None
+    def __call__(self, conc, rates, dt, power):
+        """Perform the integration across one time step
 
-    # Generate initial conditions
-    with operator as vec:
-        # Initialize time and starting index
-        if operator.prev_res is None:
-            t = 0.0
-            i_res = 0
-        else:
-            t = operator.prev_res[-1].time[-1]
-            i_res = len(operator.prev_res) - 1
+        Parameters
+        ----------
+        conc : numpy.ndarray
+            Initial concentrations for all nuclides in [atom]
+        rates : openmc.deplete.ReactionRates
+            Reaction rates from operator
+        dt : float
+            Time in [s] for the entire depletion interval
+        power : float
+            Power of the system [W]
 
-        chain = operator.chain
+        Returns
+        -------
+        proc_time : float
+            Time spent in CRAM routines for all materials
+        conc_list : list of numpy.ndarray
+            Concentrations at end of interval
+        op_results : empty list
+            Kept for consistency with API. No intermediate calls to
+            operator with predictor
 
-        for i, (dt, p) in enumerate(zip(timesteps, power)):
-            # Get beginning-of-timestep concentrations and reaction rates
-            # Avoid doing first transport run if already done in previous
-            # calculation
-            if i > 0 or operator.prev_res is None:
-                x = [copy.deepcopy(vec)]
-                op_results = [operator(x[0], p)]
+        """
+        proc_time, conc_end = timed_deplete(self.chain, conc, rates, dt)
+        return proc_time, conc_end, []
 
-                # Create results, write to disk
-                Results.save(operator, x, op_results, [t, t + dt], p, i_res + i, proc_time)
+    def _get_start_data(self):
+        if self.operator.prev_res is None:
+            return 0.0, 0
+        return (
+            self.operator.prev_res[-1].time[-1],
+            len(self.operator.prev_res) - 1)
+
+    def _get_bos_data(self, step_index, step_power, prev_conc):
+        if step_index > 0 or self.operator.prev_res is None:
+            conc = deepcopy(prev_conc)
+            res = self.operator(conc, step_power)
+            if step_index == len(self) - 1:
+                tvec = [self.timesteps[step_index]] * 2
             else:
-                # Get initial concentration
-                x = [operator.prev_res[-1].data[0]]
+                tvec = self.timesteps[step_index:step_index + 2]
 
-                # Get rates
-                op_results = [operator.prev_res[-1]]
-                op_results[0].rates = op_results[0].rates[0]
+            self._save_results(
+                [conc], [res], tvec, step_power,
+                self._istart + step_index, self._dep_proc_time)
+        else:
+            # Get previous concentration
+            conc = self.operator.prev_res[-1].data[0]
 
-                # Scale reaction rates by ratio of powers
-                power_res = operator.prev_res[-1].power
-                ratio_power = p / power_res
-                op_results[0].rates *= ratio_power[0]
+            # Get reaction rates and keff
+            res = self.operator.prev_res[-1]
+            res.rates = res.rates[0]
+            res.k = res.k[0]
 
-            # Deplete for full timestep
-            proc_time, x_end = timed_deplete(
-                chain, x[0], op_results[0].rates, dt, print_out)
+            # Scale rates by ratio of powers
+            res.rates *= step_power / res.power[0]
 
-            # Advance time, update vector
-            t += dt
-            vec = copy.deepcopy(x_end)
+        return conc, res
 
-        # Perform one last simulation
-        x = [copy.deepcopy(vec)]
-        op_results = [operator(x[0], power[-1])]
+    def integrate(self):
+        """Perform the entire depletion process across all steps"""
 
-        # Create results, write to disk
-        Results.save(operator, x, op_results, [t, t], p, i_res + len(timesteps), proc_time)
+        with self.operator as conc:
+            t, self._istart = self._get_start_data()
+
+            for i, (dt, p) in enumerate(self):
+                conc, res = self._get_bos_data(i, p, conc)
+                # __call__ returns empty list since there aren't
+                # intermediate transport solutions
+                self._dep_proc_time, conc, _res_list = self(
+                    conc, res.rates, dt, p)
+
+                t += dt
+
+            # Final simulation
+            res_list = [self.operator(conc, p)]
+            self._save_results(
+                [conc], res_list, [t, t], p,
+                self._istart + len(self), self._dep_proc_time)

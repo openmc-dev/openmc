@@ -16,7 +16,6 @@ transport-depletion coupling algorithms <http://hdl.handle.net/1721.1/113721>`_.
    :nosignatures:
    :template: myfunction.rst
 
-   integrator.predictor
    integrator.celi
    integrator.leqi
    integrator.cf4
@@ -29,6 +28,7 @@ transport-depletion coupling algorithms <http://hdl.handle.net/1721.1/113721>`_.
     :nosignatures:
     :template:  myclassinherit.rst
 
+    integrator.PredictorIntegrator
     integrator.CECMIntegrator
 
 Each of these functions expects a "transport operator" to be passed. An operator

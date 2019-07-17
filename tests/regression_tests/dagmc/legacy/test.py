@@ -11,14 +11,8 @@ pytestmark = pytest.mark.skipif(
     not openmc.capi._dagmc_enabled(),
     reason="DAGMC CAD geometry is not enabled.")
 
-
-class DAGMCPyAPITestHarness(PyAPITestHarness):
-
-    def _compare_inputs(self):
-        super()._compare_inputs()
-
-
-def test_dagmc():
+@pytest.fixture(scope="module")
+def dagmc_model():
     model = openmc.model.Model()
 
     # settings
@@ -56,9 +50,10 @@ def test_dagmc():
     mats = openmc.Materials([u235, water])
     model.materials = mats
 
-    harness = PyAPITestHarness('statepoint.5.h5', model=model)
-    model.settings.verbosity = 1
-    harness._build_inputs()
+    yield model
+
+def test_dagmc_temps(dagmc_model):
+    dagmc_model.export_to_xml()
 
     # check cell temps as well here
     openmc.capi.init([])
@@ -73,5 +68,6 @@ def test_dagmc():
 
     openmc.capi.finalize()
 
-    model.settings.verbosity = 7
+def test_dagmc(dagmc_model):
+    harness = PyAPITestHarness('statepoint.5.h5', model=dagmc_model)
     harness.main()

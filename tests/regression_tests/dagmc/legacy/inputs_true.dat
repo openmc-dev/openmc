@@ -22,7 +22,6 @@
       <parameters>-4 -4 -4 4 4 4</parameters>
     </space>
   </source>
-  <verbosity>7</verbosity>
   <temperature_tolerance>50.0</temperature_tolerance>
   <dagmc>true</dagmc>
 </settings>

@@ -25,7 +25,7 @@ class CECMIntegrator(Integrator):
         \end{aligned}
     """
 
-    def __call__(self, conc, rates, dt, power):
+    def __call__(self, conc, rates, dt, power, _i=-1):
         """Integrate using CE/CM
 
         Parameters
@@ -38,6 +38,8 @@ class CECMIntegrator(Integrator):
             Time in [s] for the entire depletion interval
         power : float
             Power of the system [W]
+        _i : int, optional
+            Current iteration count. Not used
 
         Returns
         -------

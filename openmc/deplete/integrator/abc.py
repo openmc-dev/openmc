@@ -54,7 +54,7 @@ class Integrator(ABC):
         self.power = power
 
     @abstractmethod
-    def __call__(self, conc, rates, dt, power):
+    def __call__(self, conc, rates, dt, power, i):
         """Perform the integration across one time step
 
         Parameters
@@ -67,6 +67,8 @@ class Integrator(ABC):
             Time in [s] for the entire depletion interval
         power : float
             Power of the system [W]
+        i : int
+            Current depletion step index
 
         Returns
         -------
@@ -111,11 +113,11 @@ class Integrator(ABC):
     def integrate(self):
         """Perform the entire depletion process across all steps"""
         with self.operator as conc:
-            t, i_start = self._get_start_data()
+            t, self._ires = self._get_start_data()
 
             for i, (dt, p) in enumerate(self):
                 conc, res = self._get_bos_data(i, p, conc)
-                proc_time, conc_list, res_list = self(conc, res.rates, dt, p)
+                proc_time, conc_list, res_list = self(conc, res.rates, dt, p, i)
 
                 # Insert BOS concentration, transport results
                 conc_list.insert(0, conc)
@@ -125,7 +127,7 @@ class Integrator(ABC):
                 conc = conc_list.pop()
 
                 self._save_results(
-                    conc_list, res_list, [t, t + dt], p, i_start + i,
+                    conc_list, res_list, [t, t + dt], p, self._ires + i,
                     proc_time)
 
                 t += dt
@@ -133,7 +135,7 @@ class Integrator(ABC):
             # Final simulation
             res_list = [self.operator(conc, p)]
             self._save_results(
-                [conc], res_list, [t, t], p, i_start + len(self))
+                [conc], res_list, [t, t], p, self._ires + len(self))
 
     def _save_results(self, conc_list, results_list, time_list, power,
                       index, proc_time=None):

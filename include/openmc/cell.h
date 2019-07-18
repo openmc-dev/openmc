@@ -134,6 +134,14 @@ public:
   //!   all instances is set.
   void set_temperature(double T, int32_t instance = -1);
 
+  //! Get the name of a cell
+  //! \return Cell name
+  std::string name() const;
+
+  //! Set the temperature of a cell instance
+  //! \param[in] name Cell name
+  void set_name(const std::string& name);
+
   //----------------------------------------------------------------------------
   // Data members
 

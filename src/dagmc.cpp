@@ -35,10 +35,9 @@ const bool dagmc_enabled = false;
 
 #ifdef DAGMC
 
-const std::string DAGMC_FILENAME = "dagmc.h5m";
-
 namespace openmc {
 
+const std::string DAGMC_FILENAME = settings::path_input + "dagmc.h5m";
 
 namespace simulation {
 
@@ -54,8 +53,16 @@ moab::DagMC* DAG;
 } // namespace model
 
 
+void check_dagmc_file() {
+  if (!file_exists(DAGMC_FILENAME)) {
+    fatal_error("Geometry DAGMC file '" + DAGMC_FILENAME + "' does not exist!");
+  }
+}
+
 bool get_uwuw_materials_xml(std::string& s) {
-  UWUW uwuw(DAGMC_FILENAME.c_str());
+  check_dagmc_file();
+
+  UWUW uwuw((settings::path_input + DAGMC_FILENAME).c_str());
 
   std::stringstream ss;
   bool uwuw_mats_present = false;
@@ -376,11 +383,7 @@ void load_dagmc_geometry()
 void read_geometry_dagmc()
 {
   // Check if dagmc.h5m exists
-  std::string filename = settings::path_input + "dagmc.h5m";
-  if (!file_exists(filename)) {
-    fatal_error("Geometry DAGMC file '" + filename + "' does not exist!");
-  }
-
+  check_dagmc_file();
   write_message("Reading DAGMC geometry...", 5);
   load_dagmc_geometry();
 

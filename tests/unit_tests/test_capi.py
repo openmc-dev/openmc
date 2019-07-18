@@ -479,9 +479,6 @@ def test_bounding_box(capi_init):
 
     llc, urc = openmc.capi.bounding_box("Surface", 5)
 
-    print(llc)
-    print(urc)
-
     assert tuple(llc) == expected_llc
     assert tuple(urc) == expected_urc
 

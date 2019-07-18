@@ -1382,14 +1382,13 @@ openmc_material_set_id(int32_t index, int32_t id)
 }
 
 extern "C" int
-openmc_material_get_name(int32_t index, char** name) {
+openmc_material_get_name(int32_t index, const char** name) {
   if (index < 0 || index >= model::materials.size()) {
     strcpy(openmc_err_msg, "Index in materials array is out of bounds.");
     return OPENMC_E_OUT_OF_BOUNDS;
   }
 
-  auto name_str = model::materials[index]->name();
-  strcpy(*name, name_str.c_str());
+  *name = model::materials[index]->name_.data();
 
   return 0;
 }

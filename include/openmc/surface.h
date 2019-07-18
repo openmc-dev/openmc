@@ -50,26 +50,38 @@ struct BoundingBox
   double zmin = -INFTY;
   double zmax = INFTY;
 
-  // in-place update to include another bounding box
-  inline void update(const BoundingBox& other) {
-    xmin = std::min(xmin, other.xmin);
-    xmax = std::max(xmax, other.xmax);
-    ymin = std::min(ymin, other.ymin);
-    ymax = std::max(ymax, other.ymax);
-    zmin = std::min(zmin, other.zmin);
-    zmax = std::max(zmax, other.zmax);
-  };
 
-  // in-place intersection with another bounding box
-  inline void intersect(const BoundingBox& other) {
+  inline BoundingBox operator &(const BoundingBox& other) {
+    BoundingBox result = *this;
+    return result &= other;
+  }
+
+  inline BoundingBox operator |(const BoundingBox& other) {
+    BoundingBox result = *this;
+    return result |= other;
+  }
+
+  // intersect operator
+  inline BoundingBox& operator &=(const BoundingBox& other) {
     xmin = std::max(xmin, other.xmin);
     xmax = std::min(xmax, other.xmax);
     ymin = std::max(ymin, other.ymin);
     ymax = std::min(ymax, other.ymax);
     zmin = std::max(zmin, other.zmin);
     zmax = std::min(zmax, other.zmax);
+    return *this;
   }
 
+  // union operator
+  inline BoundingBox& operator |=(const BoundingBox& other) {
+    xmin = std::min(xmin, other.xmin);
+    xmax = std::max(xmax, other.xmax);
+    ymin = std::min(ymin, other.ymin);
+    ymax = std::max(ymax, other.ymax);
+    zmin = std::min(zmin, other.zmin);
+    zmax = std::max(zmax, other.zmax);
+    return *this;
+  }
 
 };
 

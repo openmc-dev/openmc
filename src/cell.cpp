@@ -252,6 +252,18 @@ Cell::set_temperature(double T, int32_t instance)
   }
 }
 
+std::string
+Cell::name() const
+{
+  return name_;
+}
+
+void
+Cell::set_name(const std::string& name)
+{
+  name_ = name;
+}
+
 //==============================================================================
 // CSGCell implementation
 //==============================================================================
@@ -1085,13 +1097,14 @@ openmc_cell_get_temperature(int32_t index, const int32_t* instance, double* T)
 
 //! Get the name of a cell
 extern "C" int
-openmc_cell_get_name(int32_t index, const char*& name) {
+openmc_cell_get_name(int32_t index, char*& name) {
   if (index < 0 || index >= model::cells.size()) {
     strcpy(openmc_err_msg, "Index in cells array is out of bounds.");
     return OPENMC_E_OUT_OF_BOUNDS;
   }
 
-  name = model::cells[index]->name_.c_str();
+  auto name_str = model::cells[index]->name_;
+  strcpy(name, name_str.c_str());
 
   return 0;
 }
@@ -1105,7 +1118,7 @@ openmc_cell_set_name(int32_t index, const char* name) {
   }
 
   std::string name_str(name);
-  model::cells[index]->name_ = name_str;
+  model::cells[index]->set_name(name_str);
 
   return 0;
 }

@@ -653,7 +653,7 @@ BoundingBox SurfaceXCylinder::bounding_box(bool pos_side) const {
   if (!pos_side) {
     return {-INFTY, INFTY, y0_ - radius_, y0_ + radius_, z0_ - radius_, z0_ + radius_};
   } else {
-    return {-INFTY, INFTY, -INFTY, INFTY, -INFTY, INFTY};
+    return {};
   }
 }
 //==============================================================================
@@ -693,7 +693,7 @@ BoundingBox SurfaceYCylinder::bounding_box(bool pos_side) const {
   if (!pos_side) {
     return {x0_ - radius_, x0_ + radius_, -INFTY, INFTY, z0_ - radius_, z0_ + radius_};
   } else {
-    return {-INFTY, INFTY, -INFTY, INFTY, -INFTY, INFTY};
+    return {};
   }
 }
 
@@ -734,7 +734,7 @@ BoundingBox SurfaceZCylinder::bounding_box(bool pos_side) const {
   if (!pos_side) {
     return {x0_ - radius_, x0_ + radius_, y0_ - radius_, y0_ + radius_, -INFTY, INFTY};
   } else {
-    return {-INFTY, INFTY, -INFTY, INFTY, -INFTY, INFTY};
+    return {};
   }
 }
 
@@ -813,7 +813,7 @@ BoundingBox SurfaceSphere::bounding_box(bool pos_side) const {
             y0_ - radius_, y0_ + radius_,
             z0_ - radius_, z0_ + radius_};
   } else {
-    return {-INFTY, INFTY, -INFTY, INFTY, -INFTY, INFTY};
+    return {};
   }
 }
 

@@ -1191,8 +1191,7 @@ void read_surfaces(pugi::xml_node node)
       }
 
       // See if this surface makes part of the global bounding box.
-      BoundingBox bb = surf->bounding_box(true);
-      bb.intersect(surf->bounding_box(false));
+      auto bb = surf->bounding_box(true) & surf->bounding_box(false);
       if (bb.xmin > -INFTY && bb.xmin < xmin) {
         xmin = bb.xmin;
         i_xmin = i_surf;

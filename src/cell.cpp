@@ -213,7 +213,7 @@ BoundingBox Universe::bounding_box() const {
   } else {
     for (const auto& cell : cells_) {
       auto& c = model::cells[cell];
-      bbox.update(c->bounding_box());
+      bbox |= c->bounding_box();
     }
   }
   return bbox;
@@ -581,7 +581,7 @@ CSGCell::to_hdf5(hid_t cell_group) const
 BoundingBox CSGCell::bounding_box_simple() const {
   BoundingBox bbox;
   for (int32_t token : rpn_) {
-    bbox.intersect(model::surfaces[abs(token)-1]->bounding_box(token > 0));
+    bbox &= model::surfaces[abs(token)-1]->bounding_box(token > 0);
   }
   return bbox;
 }
@@ -603,9 +603,9 @@ BoundingBox CSGCell::bounding_box_complex(std::vector<int32_t> rpn) const {
 
     if (two >= OP_UNION) {
       if (two == OP_UNION) {
-        current.update(model::surfaces[abs(one)-1]->bounding_box(one > 0));
+        current |= model::surfaces[abs(one)-1]->bounding_box(one > 0);
       } else if (two == OP_INTERSECTION) {
-        current.intersect(model::surfaces[abs(one)-1]->bounding_box(one > 0));
+        current &= model::surfaces[abs(one)-1]->bounding_box(one > 0);
       }
     } else {
     // two surfaces in a row, create sub-rpn for region in parenthesis
@@ -638,9 +638,9 @@ BoundingBox CSGCell::bounding_box_complex(std::vector<int32_t> rpn) const {
       BoundingBox sub_box = bounding_box_complex(subrpn);
       // combine the sub-rpn bounding box with our current cell box
       if (op == OP_UNION) {
-        current.update(sub_box);
+        current |= sub_box;
       } else if (op == OP_INTERSECTION) {
-        current.intersect(sub_box);
+        current &= sub_box;
       }
     }
   }

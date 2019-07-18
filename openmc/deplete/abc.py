@@ -250,23 +250,44 @@ class ReactionRateHelper(ABC):
         return results
 
 
-class FissionEnergyHelper(ABC):
-    """Abstract class for normalizing fission reactions to a given level
+class EnergyHelper(ABC):
+    """Abstract class for obtaining energy produced
+
+    The ultimate goal of this helper is to provide instances of
+    :class:`openmc.deplete.Operator` with the total energy produced
+    in a transport simulation. This information, provided with the
+    power requested by the user and reaction rates from a
+    :class:`ReactionRateHelper` will scale reaction rates to the
+    correct values.
 
     Attributes
     ----------
     nuclides : list of str
         All nuclides with desired reaction rates. Ordered to be
         consistent with :class:`openmc.deplete.Operator`
+    energy : float
+        Total energy [eV/s] produced in a transport simulation.
+        Updated in the material iteration with :meth:`update`.
     """
 
     def __init__(self):
         self._nuclides = None
-        self._fission_E = None
+        self._energy = 0.0
+
+    @property
+    def energy(self):
+        return self._energy
+
+    def reset(self):
+        """Reset energy produced prior to unpacking tallies"""
+        self._energy = 0.0
 
     @abstractmethod
     def prepare(self, chain_nucs, rate_index, materials):
-        """Perform work needed to obtain fission energy per material
+        """Perform work needed to obtain energy produced
+
+        This method is called prior to the transport simulations
+        in :meth:`openmc.deplete.Operator.initial_condition`.
 
         Parameters
         ----------
@@ -274,15 +295,15 @@ class FissionEnergyHelper(ABC):
             All nuclides to be tracked in this problem
         rate_index : dict of str to int
             Mapping from nuclide name to index in the
-            reaction rate vector used in :meth:`get_energy`.
+            `fission_rates` for :meth:`update`.
         materials : list of str
             All materials tracked on the operator helped by this
-            object
+            object. Should correspond to
+            :attr:`openmc.deplete.Operator.burnable_materials`
         """
 
-    @abstractmethod
-    def get_fission_energy(self, fission_rates, mat_index):
-        """Return fission energy in this material given fission rates
+    def update(self, fission_rates, mat_index):
+        """Update the energy produced
 
         Parameters
         ----------
@@ -291,9 +312,9 @@ class FissionEnergyHelper(ABC):
             material. Should be ordered corresponding to initial
             ``rate_index`` used in :meth:`prepare`
         mat_index : int
-            Index for the material requested.
+            Index for the specific material in the list of all burnable
+            materials.
         """
-
 
     @property
     def nuclides(self):

@@ -24,7 +24,7 @@ from . import comm
 from .abc import TransportOperator, OperatorResult
 from .atom_number import AtomNumber
 from .reaction_rates import ReactionRates
-from .helpers import DirectReactionRateHelper, ChainFissHelper
+from .helpers import DirectReactionRateHelper, ChainFissionHelper
 
 
 def _distribute(items):
@@ -154,9 +154,9 @@ class Operator(TransportOperator):
         self.reaction_rates = ReactionRates(
             self.local_mats, self._burnable_nucs, self.chain.reactions)
 
-        # Get class to assist working with tallies
+        # Get classes to assist working with tallies
         self._rate_helper = DirectReactionRateHelper()
-        self._energy_helper = ChainFissHelper()
+        self._energy_helper = ChainFissionHelper()
 
 
     def __call__(self, vec, power, print_out=True):
@@ -534,7 +534,7 @@ class Operator(TransportOperator):
 
         # Keep track of energy produced from all reactions in eV per source
         # particle
-        energy = 0.0
+        self._energy_helper.reset()
 
         # Create arrays to store fission Q values, reaction rates, and nuclide
         # numbers, zeroed out in material iteration
@@ -558,17 +558,13 @@ class Operator(TransportOperator):
                 mat_index, nuc_ind, react_ind)
 
             # Accumulate energy from fission
-            energy += self._energy_helper.get_fission_energy(
-                tally_rates[:, fission_ind], i)
+            self._energy_helper.update(tally_rates[:, fission_ind], mat_index)
 
             # Divide by total number and store
             rates[i] = self._rate_helper.divide_by_adens(number)
 
         # Reduce energy produced from all processes
-        print("Energy - {}: {:9.7e}".format(comm.rank, energy))
-        energy = comm.allreduce(energy)
-        if comm.rank == 0:
-            print("Energy: {:9.7e}".format(energy))
+        energy = comm.allreduce(self._energy_helper.energy)
 
         # Determine power in eV/s
         power /= JOULE_PER_EV

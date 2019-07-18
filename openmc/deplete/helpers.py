@@ -6,7 +6,7 @@ from itertools import product
 from numpy import dot, zeros
 
 from openmc.capi import Tally, MaterialFilter
-from .abc import ReactionRateHelper, FissionEnergyHelper
+from .abc import ReactionRateHelper, EnergyHelper
 
 # -------------------------------------
 # Helpers for generating reaction rates
@@ -68,8 +68,12 @@ class DirectReactionRateHelper(ReactionRateHelper):
 # ------------------------------------
 
 
-class ChainFissHelper(FissionEnergyHelper):
+class ChainFissionHelper(EnergyHelper):
     """Fission Q-values are pulled from chain"""
+
+    def __init__(self):
+        super().__init__()
+        self._fission_q_vector = None
 
     def prepare(self, chain_nucs, rate_index, _materials):
         """Populate the fission Q value vector from a chain.
@@ -86,23 +90,23 @@ class ChainFissHelper(FissionEnergyHelper):
         _materials : list of str
             Unused. Materials to be tracked for this helper.
         """
-        if (self._fission_E is not None
-                and self._fission_E.shape == (len(rate_index),)):
+        if (self._fission_q_vector is not None
+                and self._fission_q_vector.shape == (len(rate_index),)):
             return
 
-        fiss_E = zeros(len(rate_index))
+        fission_qs = zeros(len(rate_index))
 
         for nuclide in chain_nucs:
             if nuclide.name in rate_index:
                 for rx in nuclide.reactions:
                     if rx.type == "fission":
-                        fiss_E[rate_index[nuclide.name]] = rx.Q
+                        fission_qs[rate_index[nuclide.name]] = rx.Q
                         break
 
-        self._fission_E = fiss_E
+        self._fission_q_vector = fission_qs
 
-    def get_fission_energy(self, fiss_rates, _mat_index):
-        """Return fission energy for this material
+    def update(self, fission_rates, _mat_index):
+        """Update energy produced with fission rates in a material
 
         Parameters
         ----------
@@ -114,4 +118,4 @@ class ChainFissHelper(FissionEnergyHelper):
             index for the material requested. Unused, as identical
             isotopes in all materials have the same Q value.
         """
-        return dot(fiss_rates, self._fission_E)
+        self._energy += dot(fission_rates, self._fission_q_vector)

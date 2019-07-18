@@ -551,7 +551,7 @@ class Operator(TransportOperator):
                 number[i_nuc_results] = self.number[mat, nuc]
 
             tally_rates = self._rate_helper.get_material_rates(
-                i, nuc_ind, react_ind)
+                slab, nuc_ind, react_ind)
 
             # Accumulate energy from fission
             energy += self._energy_helper.get_fission_energy(

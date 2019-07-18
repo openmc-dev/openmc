@@ -138,6 +138,7 @@ class Operator(TransportOperator):
         openmc.reset_auto_ids()
         self.burnable_mats, volume, nuclides = self._get_burnable_mats()
         self.local_mats = _distribute(self.burnable_mats)
+        self._mat_index_map = {}
 
         # Determine which nuclides have incident neutron data
         self.nuclides_with_data = self._get_nuclides_with_data()
@@ -386,6 +387,10 @@ class Operator(TransportOperator):
         self._energy_helper.prepare(
             self.chain.nuclides, self.reaction_rates.index_nuc, materials)
 
+        # Generate map from local materials => material index
+        self._mat_index_map = {
+            lm: self.burnable_mats.index(lm) for lm in self.local_mats}
+
         # Return number density vector
         return list(self.number.get_mat_slice(np.s_[:]))
 
@@ -519,7 +524,6 @@ class Operator(TransportOperator):
         k_combined = openmc.capi.keff()
 
         # Extract tally bins
-        materials = self.burnable_mats
         nuclides = self._rate_helper.nuclides
 
         # Form fast map
@@ -541,7 +545,7 @@ class Operator(TransportOperator):
         # Extract results
         for i, mat in enumerate(self.local_mats):
             # Get tally index
-            slab = materials.index(mat)
+            mat_index = self._mat_index_map[mat]
 
             # Zero out reaction rates and nuclide numbers
             number.fill(0.0)
@@ -551,7 +555,7 @@ class Operator(TransportOperator):
                 number[i_nuc_results] = self.number[mat, nuc]
 
             tally_rates = self._rate_helper.get_material_rates(
-                slab, nuc_ind, react_ind)
+                mat_index, nuc_ind, react_ind)
 
             # Accumulate energy from fission
             energy += self._energy_helper.get_fission_energy(
@@ -561,7 +565,10 @@ class Operator(TransportOperator):
             rates[i] = self._rate_helper.divide_by_adens(number)
 
         # Reduce energy produced from all processes
+        print("Energy - {}: {:9.7e}".format(comm.rank, energy))
         energy = comm.allreduce(energy)
+        if comm.rank == 0:
+            print("Energy: {:9.7e}".format(energy))
 
         # Determine power in eV/s
         power /= JOULE_PER_EV

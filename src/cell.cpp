@@ -207,7 +207,7 @@ Universe::to_hdf5(hid_t universes_group) const
 }
 
 BoundingBox Universe::bounding_box() const {
-  BoundingBox bbox;
+  BoundingBox bbox = {INFTY, -INFTY, INFTY, -INFTY, INFTY, -INFTY};
   if (cells_.size() == 0) {
     return {};
   } else {

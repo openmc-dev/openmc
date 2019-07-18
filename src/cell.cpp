@@ -252,18 +252,6 @@ Cell::set_temperature(double T, int32_t instance)
   }
 }
 
-std::string
-Cell::name() const
-{
-  return name_;
-}
-
-void
-Cell::set_name(const std::string& name)
-{
-  name_ = name;
-}
-
 //==============================================================================
 // CSGCell implementation
 //==============================================================================

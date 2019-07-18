@@ -92,6 +92,13 @@ public:
   //! \return Density in [g/cm^3]
   double density_gpcc() const { return density_gpcc_; }
 
+  //! Get name
+  //! \return Material name
+  std::string name() const { return name_; }
+
+  //! Set name
+  void set_name(const std::string& name) { name_ = name; }
+
   //! Set total density of the material
   //
   //! \param[in] density Density value

@@ -136,11 +136,11 @@ public:
 
   //! Get the name of a cell
   //! \return Cell name
-  std::string name() const;
+  std::string name() const { return name_; };
 
   //! Set the temperature of a cell instance
   //! \param[in] name Cell name
-  void set_name(const std::string& name);
+  void set_name(const std::string& name) { name_ = name; };
 
   //----------------------------------------------------------------------------
   // Data members

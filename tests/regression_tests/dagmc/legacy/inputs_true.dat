@@ -1,6 +1,6 @@
 <?xml version='1.0' encoding='utf-8'?>
 <materials>
-  <material depletable="true" id="40" name="fuel" temperature="320">
+  <material depletable="true" id="40" name="fuel">
     <density units="g/cc" value="11" />
     <nuclide ao="1.0" name="U235" />
   </material>
@@ -22,7 +22,6 @@
       <parameters>-4 -4 -4 4 4 4</parameters>
     </space>
   </source>
-  <temperature_tolerance>50.0</temperature_tolerance>
   <dagmc>true</dagmc>
 </settings>
 <?xml version='1.0' encoding='utf-8'?>

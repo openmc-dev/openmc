@@ -271,16 +271,6 @@ Direction DAGSurface::reflect(Position r, Direction u) const
   return simulation::last_dir;
 }
 
-BoundingBox DAGSurface::bounding_box(bool pos_side) const
-{
-  moab::ErrorCode rval;
-  moab::EntityHandle surf = dagmc_ptr_->entity_by_index(2, dag_index_);
-  double min[3], max[3];
-  rval = dagmc_ptr_->getobb(surf, min, max);
-  MB_CHK_ERR_CONT(rval);
-  return {min[0], max[0], min[1], max[1], min[2], max[2]};
-}
-
 void DAGSurface::to_hdf5(hid_t group_id) const {}
 
 #endif
@@ -549,37 +539,6 @@ bool SurfacePlane::periodic_translate(const PeriodicSurface* other, Position& r,
   r.z -= d * C_;
 
   return false;
-}
-
-BoundingBox
-SurfacePlane::bounding_box(bool pos_side) const
-{
-  BoundingBox bbox = {-INFTY, INFTY, -INFTY, INFTY, -INFTY, INFTY};
-  if (A_ == 0.0 && B_ == 0.0) {
-    double val = D_ / C_;
-    if (pos_side) {
-      bbox.zmin = val;
-    } else {
-      bbox.zmax = val;
-    }
-  } else if (A_ == 0.0 && C_ == 0.0) {
-    double val = D_ / B_;
-    if (pos_side) {
-    bbox.ymin = val;
-    } else {
-    bbox.ymax = val;
-    }
-  } else if (B_ == 0.0 && C_ == 0.0) {
-    double val = D_ / A_;
-    if (pos_side) {
-    bbox.xmin = val;
-    } else {
-    bbox.xmax = val;
-    }
-  }
-
-  return bbox;
-
 }
 
 //==============================================================================
@@ -976,10 +935,6 @@ void SurfaceXCone::to_hdf5_inner(hid_t group_id) const
   write_dataset(group_id, "coefficients", coeffs);
 }
 
-BoundingBox SurfaceXCone::bounding_box(bool pos_side) const {
-  return {-INFTY, INFTY, -INFTY, INFTY, -INFTY, INFTY};
-}
-
 //==============================================================================
 // SurfaceYCone implementation
 //==============================================================================
@@ -1013,10 +968,6 @@ void SurfaceYCone::to_hdf5_inner(hid_t group_id) const
   write_dataset(group_id, "coefficients", coeffs);
 }
 
-BoundingBox SurfaceYCone::bounding_box(bool pos_side) const {
-  return {-INFTY, INFTY, -INFTY, INFTY, -INFTY, INFTY};
-}
-
 //==============================================================================
 // SurfaceZCone implementation
 //==============================================================================
@@ -1048,10 +999,6 @@ void SurfaceZCone::to_hdf5_inner(hid_t group_id) const
   write_string(group_id, "type", "z-cone", false);
   std::array<double, 4> coeffs {{x0_, y0_, z0_, radius_sq_}};
   write_dataset(group_id, "coefficients", coeffs);
-}
-
-BoundingBox SurfaceZCone::bounding_box(bool pos_side) const {
-  return {-INFTY, INFTY, -INFTY, INFTY, -INFTY, INFTY};
 }
 
 //==============================================================================
@@ -1145,10 +1092,6 @@ void SurfaceQuadric::to_hdf5_inner(hid_t group_id) const
   write_string(group_id, "type", "quadric", false);
   std::array<double, 10> coeffs {{A_, B_, C_, D_, E_, F_, G_, H_, J_, K_}};
   write_dataset(group_id, "coefficients", coeffs);
-}
-
-BoundingBox SurfaceQuadric::bounding_box(bool pos_side) const {
-  return {-INFTY, INFTY, -INFTY, INFTY, -INFTY, INFTY};
 }
 
 //==============================================================================

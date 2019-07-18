@@ -128,7 +128,7 @@ public:
   virtual void to_hdf5(hid_t group_id) const = 0;
 
   //! Get the BoundingBox for this surface.
-  virtual BoundingBox bounding_box(bool pos_side) const = 0;
+  virtual BoundingBox bounding_box(bool pos_side) const { return {}; }
 };
 
 class CSGSurface : public Surface
@@ -138,8 +138,6 @@ public:
   CSGSurface();
 
   void to_hdf5(hid_t group_id) const;
-
-  virtual BoundingBox bounding_box(bool pos_side) const = 0;
 
 protected:
   virtual void to_hdf5_inner(hid_t group_id) const = 0;
@@ -158,8 +156,6 @@ public:
   double distance(Position r, Direction u, bool coincident) const;
   Direction normal(Position r) const;
   Direction reflect(Position r, Direction u) const;
-  //! Get the bounding box of this surface.
-  BoundingBox bounding_box(bool pos_side) const;
 
   void to_hdf5(hid_t group_id) const;
 
@@ -193,8 +189,6 @@ public:
   virtual bool periodic_translate(const PeriodicSurface* other, Position& r,
                                   Direction& u) const = 0;
 
-  //! Get the bounding box for this surface.
-  virtual BoundingBox bounding_box(bool pos_side) const = 0;
 };
 
 //==============================================================================
@@ -276,7 +270,6 @@ public:
   void to_hdf5_inner(hid_t group_id) const;
   bool periodic_translate(const PeriodicSurface* other, Position& r,
                           Direction& u) const;
-  BoundingBox bounding_box(bool pos_side) const;
 
   double A_, B_, C_, D_;
 };
@@ -376,7 +369,6 @@ public:
   double distance(Position r, Direction u, bool coincident) const;
   Direction normal(Position r) const;
   void to_hdf5_inner(hid_t group_id) const;
-  BoundingBox bounding_box(bool pos_side) const;
 
   double x0_, y0_, z0_, radius_sq_;
 };
@@ -396,7 +388,6 @@ public:
   double distance(Position r, Direction u, bool coincident) const;
   Direction normal(Position r) const;
   void to_hdf5_inner(hid_t group_id) const;
-  BoundingBox bounding_box(bool pos_side) const;
 
   double x0_, y0_, z0_, radius_sq_;
 };
@@ -416,7 +407,6 @@ public:
   double distance(Position r, Direction u, bool coincident) const;
   Direction normal(Position r) const;
   void to_hdf5_inner(hid_t group_id) const;
-  BoundingBox bounding_box(bool pos_side) const;
 
   double x0_, y0_, z0_, radius_sq_;
 };
@@ -435,7 +425,6 @@ public:
   double distance(Position r, Direction u, bool coincident) const;
   Direction normal(Position r) const;
   void to_hdf5_inner(hid_t group_id) const;
-  BoundingBox bounding_box(bool pos_side) const;
 
   // Ax^2 + By^2 + Cz^2 + Dxy + Eyz + Fxz + Gx + Hy + Jz + K = 0
   double A_, B_, C_, D_, E_, F_, G_, H_, J_, K_;

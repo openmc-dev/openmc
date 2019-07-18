@@ -127,8 +127,8 @@ constexpr int TEMPERATURE_NEAREST {1};
 constexpr int TEMPERATURE_INTERPOLATION {2};
 
 // Energy deposition method
-constexpr int FISS_EDEP_LOCAL_PHOTON {0};
-constexpr int FISS_EDEP_LOCAL {1};
+constexpr int E_DEP_LOCAL_PHOTON {0};
+constexpr int E_DEP_LOCAL {1};
 
 // Reaction types
 // TODO: Convert to enum

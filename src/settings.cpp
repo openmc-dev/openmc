@@ -81,7 +81,7 @@ int64_t n_particles {-1};
 
 int electron_treatment {ELECTRON_TTB};
 std::array<double, 4> energy_cutoff {0.0, 1000.0, 0.0, 0.0};
-int fiss_edep_mode {FISS_EDEP_LOCAL_PHOTON};
+int energy_dep_mode {E_DEP_LOCAL_PHOTON};
 int legendre_to_tabular_points {C_NONE};
 int max_order {0};
 int n_log_bins {8000};
@@ -361,14 +361,14 @@ void read_settings_xml()
     }
   }
 
-  if (check_for_node(root, "fiss_edep_mode")) {
-    auto temp_str = get_node_value(root, "fiss_edep_mode", true, true);
+  if (check_for_node(root, "energy_deposition")) {
+    auto temp_str = get_node_value(root, "energy_deposition", true, true);
     if (temp_str == "local") {
-      fiss_edep_mode = FISS_EDEP_LOCAL;
+      energy_dep_mode = E_DEP_LOCAL;
     } else if (temp_str == "local photon") {
-      fiss_edep_mode = FISS_EDEP_LOCAL_PHOTON;
+      energy_dep_mode = E_DEP_LOCAL_PHOTON;
     } else {
-      fatal_error("Unrecognized fission energy deposition mode: " + temp_str + ".");
+      fatal_error("Unrecognized energy deposition mode: " + temp_str + ".");
     }
   }
 

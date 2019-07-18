@@ -255,16 +255,16 @@ Nuclide::Nuclide(hid_t group, const std::vector<double>& temperature, int i_nucl
     hid_t fer_group = open_group(group, "fission_energy_release");
     fission_q_prompt_ = read_function(fer_group, "q_prompt");
     // Set local recoverable energy from fission events
-    switch (settings::fiss_edep_mode) {
-      case FISS_EDEP_LOCAL :
+    switch (settings::energy_dep_mode) {
+      case E_DEP_LOCAL :
         fission_q_recov_ = read_function(fer_group, "q_recoverable");
         break;
-      case FISS_EDEP_LOCAL_PHOTON :
+      case E_DEP_LOCAL_PHOTON :
         // Check interpolation scheme
         // If polynomial, read in and operate on all coefficients
         // Otherwise, operate on second row of data, the abscissa
         hid_t recov_group = open_dataset(fer_group, "q_recoverable");
-        std::str func_type;
+        std::string func_type;
         read_attribute(recov_group, "type", func_type);
         close_dataset(recov_group);
 

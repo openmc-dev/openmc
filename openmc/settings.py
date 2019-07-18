@@ -49,11 +49,11 @@ class Settings(object):
         Mesh to be used to calculate Shannon entropy. If the mesh dimensions are
         not specified. OpenMC assigns a mesh such that 20 source sites per mesh
         cell are to be expected on average.
-    fiss_edep_mode: {'local photon', 'local'}
-        Treatement for fission energy deposition. If ``local photon``, default,
+    energy_deposition: {'local photon', 'local'}
+        Treatement for energy deposition. If ``local photon``,
         then the energy from fission neutrons will be applied through the history,
-        not just at the fission site. Otherwise, deposit all fission energy at the
-        fission site.
+        not just at the fission site. Otherwise, deposit all energy at the
+        fission site. Default: ``local photon``
     generations_per_batch : int
         Number of generations per batch
     inactive : int
@@ -189,7 +189,7 @@ class Settings(object):
         self._entropy_mesh = None
 
         # Fission energy deposition
-        self._fiss_edep_mode = None
+        self._energy_deposition = None
 
         # Trigger subelement
         self._trigger_active = None
@@ -369,8 +369,8 @@ class Settings(object):
         return self._dagmc
 
     @property
-    def fiss_edep_mode(self):
-        return self._fiss_edep_mode
+    def energy_deposition(self):
+        return self._energy_deposition
 
     @run_mode.setter
     def run_mode(self, run_mode):
@@ -569,9 +569,10 @@ class Settings(object):
         cv.check_length('entropy mesh upper-right corner', entropy.upper_right, 3)
         self._entropy_mesh = entropy
 
-    @fiss_edep_mode.setter
-    def fiss_edep_mode(self, mode):
-        cv.check_value("fiss_edep_mode", fiss_edep_mode, ("local photon", "local"))
+    @energy_deposition.setter
+    def energy_deposition(self, mode):
+        cv.check_value("energy_deposition", mode, ("local photon", "local"))
+        self._energy_deposition = mode
 
     @trigger_active.setter
     def trigger_active(self, trigger_active):
@@ -741,6 +742,10 @@ class Settings(object):
         if self._energy_mode is not None:
             element = ET.SubElement(root, "energy_mode")
             element.text = str(self._energy_mode)
+
+    def _create_energy_dep_subelement(self, root):
+        element = ET.SubElement(root, "energy_deposition")
+        element.text = str(self._energy_dep)
 
     def _create_max_order_subelement(self, root):
         if self._max_order is not None:
@@ -1174,6 +1179,11 @@ class Settings(object):
         if text is not None:
             self.dagmc = text in ('true', '1')
 
+    def _energy_dep_from_xml_element(self, root):
+        text = get_text(root, "energy_deposition")
+        if text is not None:
+            self.energy_deposition = text
+
     def export_to_xml(self, path='settings.xml'):
         """Export simulation settings to an XML file.
 
@@ -1220,6 +1230,7 @@ class Settings(object):
         self._create_create_fission_neutrons_subelement(root_element)
         self._create_log_grid_bins_subelement(root_element)
         self._create_dagmc_subelement(root_element)
+        self._create_energy_dep_subelement(root_element)
 
         # Clean the indentation in the file to be user-readable
         clean_indentation(root_element)

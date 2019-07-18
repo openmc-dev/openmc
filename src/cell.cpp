@@ -1085,14 +1085,14 @@ openmc_cell_get_temperature(int32_t index, const int32_t* instance, double* T)
 
 //! Get the name of a cell
 extern "C" int
-openmc_cell_get_name(int32_t index, char*& name) {
+openmc_cell_get_name(int32_t index, char** name) {
   if (index < 0 || index >= model::cells.size()) {
     strcpy(openmc_err_msg, "Index in cells array is out of bounds.");
     return OPENMC_E_OUT_OF_BOUNDS;
   }
 
   auto name_str = model::cells[index]->name_;
-  strcpy(name, name_str.c_str());
+  strcpy(*name, name_str.c_str());
 
   return 0;
 }

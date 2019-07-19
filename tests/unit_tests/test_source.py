@@ -36,6 +36,8 @@ def test_source_file():
     assert 'file' in elem.attrib
 
 def test_pyne_r2s_source_file():
-    filename = 'source_1.h5m'
+    filename = "/files_test_source/source_1.h5m"
     src = openmc.Source(filename=filename)
     assert src.file == filename
+    # test source sampling
+

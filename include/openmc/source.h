@@ -12,6 +12,7 @@
 #include "openmc/distribution_multi.h"
 #include "openmc/distribution_spatial.h"
 #include "openmc/particle.h"
+#include "pyne/source_sampling.h"
 
 namespace openmc {
 
@@ -62,6 +63,14 @@ extern "C" void initialize_source();
 //! source strength
 //! \return Sampled source site
 Particle::Bank sample_external_source();
+
+//! Sample a site from pyne source
+//! \return Sampled source site
+Particle::Bank sample_pyne_source();
+
+//! Convert a pyne source particle to an openmc source site
+//! \return Sampled source site
+Particle::Bank convert_pyne_source_particle(pyne::SourceParticle);
 
 //! Fill source bank at end of generation for fixed source simulations
 void fill_source_bank_fixedsource();

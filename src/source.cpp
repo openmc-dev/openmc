@@ -23,6 +23,7 @@
 #include "openmc/simulation.h"
 #include "openmc/state_point.h"
 #include "openmc/xml_interface.h"
+#include "pyne/source_sampling.h" // for pyne source sampling
 
 namespace openmc {
 

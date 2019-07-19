@@ -15,6 +15,7 @@
 #include "openmc/distribution_multi.h"
 #include "openmc/distribution_spatial.h"
 #include "openmc/particle.h"
+#include "pyne/source_sampling.h"
 
 namespace openmc {
 

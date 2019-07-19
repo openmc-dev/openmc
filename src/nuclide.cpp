@@ -255,7 +255,7 @@ Nuclide::Nuclide(hid_t group, const std::vector<double>& temperature, int i_nucl
     hid_t fer_group = open_group(group, "fission_energy_release");
     fission_q_prompt_ = read_function(fer_group, "q_prompt");
     // Set local recoverable energy from fission events
-    switch (settings::energy_dep_mode) {
+    switch (settings::energy_deposition) {
       case E_DEP_LOCAL :
         fission_q_recov_ = read_function(fer_group, "q_recoverable");
         break;

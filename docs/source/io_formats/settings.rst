@@ -118,6 +118,23 @@ or ``multi-group``.
 
   *Default*: continuous-energy
 
+.. _energy_deposition:
+
+-------------------------------
+``<energy_deposition>`` Element
+-------------------------------
+
+The ``<energy_deposition>`` element tells OpenMC how to distribute energy from
+fission neutrons. Options are:
+
+  * ``local photons``: Energy of prompt and delayed neutrons is deposited through
+    the history of a fission neutron, but energy from fission fragments is
+    deposited at the fission site
+  * ``local``: All the energy produced by fission is deposited at the fission
+    site
+
+  *Default*: ``local photons``
+
 --------------------------
 ``<entropy_mesh>`` Element
 --------------------------

@@ -49,11 +49,11 @@ class Settings(object):
         Mesh to be used to calculate Shannon entropy. If the mesh dimensions are
         not specified. OpenMC assigns a mesh such that 20 source sites per mesh
         cell are to be expected on average.
-    energy_deposition: {'local photon', 'local'}
-        Treatement for energy deposition. If ``local photon``,
+    energy_deposition: {'local photons', 'local'}
+        Treatement for energy deposition. If ``local photons``,
         then the energy from fission neutrons will be applied through the history,
         not just at the fission site. Otherwise, deposit all energy at the
-        fission site. Default: ``local photon``
+        fission site. Default: ``local photons``
     generations_per_batch : int
         Number of generations per batch
     inactive : int
@@ -188,7 +188,7 @@ class Settings(object):
         # Shannon entropy mesh
         self._entropy_mesh = None
 
-        # Fission energy deposition
+        # Energy deposition
         self._energy_deposition = None
 
         # Trigger subelement
@@ -371,6 +371,11 @@ class Settings(object):
     @property
     def energy_deposition(self):
         return self._energy_deposition
+
+    @energy_deposition.setter
+    def energy_deposition(self, mode):
+        cv.check_value("energy deposition", mode, ("local photons", "local"))
+        self._energy_deposition= mode
 
     @run_mode.setter
     def run_mode(self, run_mode):
@@ -569,11 +574,6 @@ class Settings(object):
         cv.check_length('entropy mesh upper-right corner', entropy.upper_right, 3)
         self._entropy_mesh = entropy
 
-    @energy_deposition.setter
-    def energy_deposition(self, mode):
-        cv.check_value("energy_deposition", mode, ("local photon", "local"))
-        self._energy_deposition = mode
-
     @trigger_active.setter
     def trigger_active(self, trigger_active):
         cv.check_type('trigger active', trigger_active, bool)
@@ -744,8 +744,14 @@ class Settings(object):
             element.text = str(self._energy_mode)
 
     def _create_energy_dep_subelement(self, root):
-        element = ET.SubElement(root, "energy_deposition")
-        element.text = str(self._energy_dep)
+        if self._energy_deposition is not None:
+            element = ET.SubElement(root, "energy_deposition")
+            element.text = str(self._energy_deposition)
+
+    def _energy_dep_from_xml_element(self, root):
+        text = get_text(root, "energy_deposition")
+        if text is not None:
+            self.energy_deposition = text
 
     def _create_max_order_subelement(self, root):
         if self._max_order is not None:
@@ -1179,11 +1185,6 @@ class Settings(object):
         if text is not None:
             self.dagmc = text in ('true', '1')
 
-    def _energy_dep_from_xml_element(self, root):
-        text = get_text(root, "energy_deposition")
-        if text is not None:
-            self.energy_deposition = text
-
     def export_to_xml(self, path='settings.xml'):
         """Export simulation settings to an XML file.
 
@@ -1296,6 +1297,7 @@ class Settings(object):
         settings._create_fission_neutrons_from_xml_element(root)
         settings._log_grid_bins_from_xml_element(root)
         settings._dagmc_from_xml_element(root)
+        settings._energy_dep_from_xml_element(root)
 
         # TODO: Get volume calculations
 

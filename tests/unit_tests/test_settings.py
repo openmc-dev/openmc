@@ -51,6 +51,7 @@ def test_export_to_xml(run_in_tmpdir):
     s.photon_transport = False
     s.electron_treatment = 'led'
     s.dagmc = False
+    s.energy_deposition = "local"
 
     # Make sure exporting XML works
     s.export_to_xml()
@@ -104,3 +105,4 @@ def test_export_to_xml(run_in_tmpdir):
     assert not s.photon_transport
     assert s.electron_treatment == 'led'
     assert not s.dagmc
+    assert s.energy_deposition == "local"

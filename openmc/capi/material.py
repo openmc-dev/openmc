@@ -1,5 +1,5 @@
 from collections.abc import Mapping
-from ctypes import byref, c_int, c_int32, c_double, c_char_p, POINTER, c_size_t
+from ctypes import c_int, c_int32, c_double, c_char_p, POINTER, c_size_t
 from weakref import WeakValueDictionary
 
 import numpy as np
@@ -48,12 +48,12 @@ _dll.openmc_material_set_densities.errcheck = _error_handler
 _dll.openmc_material_set_id.argtypes = [c_int32, c_int32]
 _dll.openmc_material_set_id.restype = c_int
 _dll.openmc_material_set_id.errcheck = _error_handler
-_dll.openmc_cell_get_name.argtypes = [c_int32, POINTER(c_char_p)]
-_dll.openmc_cell_get_name.restype = c_int
-_dll.openmc_cell_get_name.errcheck = _error_handler
-_dll.openmc_cell_set_name.argtypes = [c_int32, c_char_p]
-_dll.openmc_cell_set_name.restype = c_int
-_dll.openmc_cell_set_name.errcheck = _error_handler
+_dll.openmc_material_get_name.argtypes = [c_int32, POINTER(c_char_p)]
+_dll.openmc_material_get_name.restype = c_int
+_dll.openmc_material_get_name.errcheck = _error_handler
+_dll.openmc_material_set_name.argtypes = [c_int32, c_char_p]
+_dll.openmc_material_set_name.restype = c_int
+_dll.openmc_material_set_name.errcheck = _error_handler
 _dll.openmc_material_set_volume.argtypes = [c_int32, c_double]
 _dll.openmc_material_set_volume.restype = c_int
 _dll.openmc_material_set_volume.errcheck = _error_handler
@@ -133,7 +133,7 @@ class Material(_FortranObjectWithID):
     @property
     def name(self):
         name = c_char_p()
-        _dll.openmc_material_get_name(self._index, byref(name))
+        _dll.openmc_material_get_name(self._index, name)
         return name.value.decode()
 
     @name.setter

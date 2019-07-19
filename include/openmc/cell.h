@@ -211,7 +211,7 @@ protected:
   bool contains_simple(Position r, Direction u, int32_t on_surface) const;
   bool contains_complex(Position r, Direction u, int32_t on_surface) const;
   BoundingBox bounding_box_simple() const;
-  BoundingBox bounding_box_complex(std::vector<int32_t> rpn) const;
+  static BoundingBox bounding_box_complex(std::vector<int32_t> rpn);
 };
 
 //==============================================================================
@@ -220,9 +220,7 @@ protected:
 class DAGCell : public Cell
 {
 public:
-  moab::DagMC* dagmc_ptr_;
   DAGCell();
-  int32_t dag_index_;
 
   bool contains(Position r, Direction u, int32_t on_surface) const;
 
@@ -232,6 +230,9 @@ public:
   BoundingBox bounding_box() const;
 
   void to_hdf5(hid_t group_id) const;
+
+  moab::DagMC* dagmc_ptr_; //!< Pointer to DagMC instance
+  int32_t dag_index_;      //!< DagMC index of cell
 };
 #endif
 

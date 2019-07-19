@@ -1,11 +1,12 @@
 
 #include "openmc/cell.h"
 
+#include <cctype>
 #include <cmath>
 #include <sstream>
 #include <set>
 #include <string>
-#include <cctype>
+#include <gsl/gsl>
 
 #include "openmc/capi.h"
 #include "openmc/constants.h"
@@ -586,7 +587,7 @@ BoundingBox CSGCell::bounding_box_simple() const {
   return bbox;
 }
 
-BoundingBox CSGCell::bounding_box_complex(std::vector<int32_t> rpn) const {
+BoundingBox CSGCell::bounding_box_complex(std::vector<int32_t> rpn) {
 
   std::reverse(rpn.begin(), rpn.end());
 
@@ -599,7 +600,7 @@ BoundingBox CSGCell::bounding_box_complex(std::vector<int32_t> rpn) const {
     int32_t two = rpn.back(); rpn.pop_back();
 
     // the first token should always be a surface
-    assert(one < OP_UNION);
+    Expects(one < OP_UNION);
 
     if (two >= OP_UNION) {
       if (two == OP_UNION) {
@@ -608,14 +609,16 @@ BoundingBox CSGCell::bounding_box_complex(std::vector<int32_t> rpn) const {
         current &= model::surfaces[abs(one)-1]->bounding_box(one > 0);
       }
     } else {
-    // two surfaces in a row, create sub-rpn for region in parenthesis
+      // two surfaces in a row (left parenthesis),
+      // create sub-rpn for region in parenthesis
       std::vector<int32_t> subrpn;
       subrpn.push_back(one);
       subrpn.push_back(two);
       int32_t sone = one;
       int32_t stwo = two;
       // add until last two tokens in the sub-rpn are operators
-      while ((subrpn.back() < OP_UNION) || (*(subrpn.rbegin() + 1) < OP_UNION)) {
+      // (indicates a right parenthesis)
+      while (!((subrpn.back() >= OP_UNION) && (*(subrpn.rbegin() + 1) >= OP_UNION))) {
         subrpn.push_back(rpn.back());
         rpn.pop_back();
       }
@@ -649,12 +652,7 @@ BoundingBox CSGCell::bounding_box_complex(std::vector<int32_t> rpn) const {
 }
 
 BoundingBox CSGCell::bounding_box() const {
-    if (simple_) {
-      return bounding_box_simple();
-    }
-    else {
-      return bounding_box_complex(rpn_);
-    }
+  return simple_ ? bounding_box_simple() : bounding_box_complex(rpn_);
 }
 
 //==============================================================================
@@ -1091,7 +1089,7 @@ openmc_cell_get_name(int32_t index, const char** name) {
     return OPENMC_E_OUT_OF_BOUNDS;
   }
 
-  *name = model::cells[index]->name_.c_str();
+  *name = model::cells[index]->name_.data();
 
   return 0;
 }

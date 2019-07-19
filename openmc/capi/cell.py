@@ -1,5 +1,5 @@
 from collections.abc import Mapping, Iterable
-from ctypes import byref, c_int, c_int32, c_double, c_char_p, POINTER
+from ctypes import c_int, c_int32, c_double, c_char_p, POINTER
 from weakref import WeakValueDictionary
 
 import numpy as np
@@ -111,7 +111,7 @@ class Cell(_FortranObjectWithID):
     @property
     def name(self):
         name = c_char_p()
-        _dll.openmc_cell_get_name(self._index, byref(name))
+        _dll.openmc_cell_get_name(self._index, name)
         return name.value.decode()
 
     @name.setter
@@ -185,8 +185,8 @@ class Cell(_FortranObjectWithID):
 
     @property
     def bounding_box(self):
-        llc = np.zeros((3,), dtype=float)
-        urc = np.zeros((3,), dtype=float)
+        llc = np.zeros(3)
+        urc = np.zeros(3)
         _dll.openmc_bounding_box(b'Cell', self.id,
                                  llc.ctypes.data_as(POINTER(c_double)),
                                  urc.ctypes.data_as(POINTER(c_double)))

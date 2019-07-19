@@ -487,16 +487,16 @@ openmc_bounding_box(const char* geom_type, const int32_t id, double* llc, double
   if (gtype == "universe") {
     // negative ids only apply to surfaces
     if (id <= 0) { return OPENMC_E_GEOMETRY; }
-    const auto& u = model::universes[model::universe_map[id]];
+    const auto& u = model::universes[model::universe_map.at(id)];
     bbox = u->bounding_box();
   } else if (gtype == "cell") {
     // negative ids only apply to surfaces
     if (id <= 0) { return OPENMC_E_GEOMETRY; }
-    const auto& c = model::cells[model::cell_map[id]];
+    const auto& c = model::cells[model::cell_map.at(id)];
     bbox = c->bounding_box();
   } else if (gtype == "surface") {
     if (id == 0) { return OPENMC_E_GEOMETRY; }
-    const auto& s = model::surfaces[model::surface_map[abs(id)]];
+    const auto& s = model::surfaces[model::surface_map.at(abs(id))];
     bbox = s->bounding_box(id > 0);
   } else {
     std::stringstream msg;

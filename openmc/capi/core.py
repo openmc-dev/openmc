@@ -102,7 +102,7 @@ def bounding_box(geom_type, geom_id):
     geom_type : str
         Type of geometry object. One of ('surface', 'cell', 'universe')
     geom_id : int
-        Id of the object. Can be positive or negative for surfaces.
+        ID of the object. Can be positive or negative for surfaces.
     """
     geomt = c_char_p(geom_type.encode())
     llc = np.zeros(3)

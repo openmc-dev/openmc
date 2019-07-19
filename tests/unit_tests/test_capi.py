@@ -508,13 +508,13 @@ def test_bounding_box(capi_init):
     assert tuple(urc) == expected_urc
 
     # make sure that proper assertions are raised
-    with pytest.raises(openmc.exceptions.GeometryError):
+    with pytest.raises(openmc.exceptions.InvalidIDError):
         openmc.capi.bounding_box("Cell", -1)
 
-    with pytest.raises(openmc.exceptions.GeometryError):
+    with pytest.raises(openmc.exceptions.InvalidIDError):
         openmc.capi.bounding_box("Surface", 0)
 
-    with pytest.raises(openmc.exceptions.GeometryError):
+    with pytest.raises(openmc.exceptions.InvalidTypeError):
         openmc.capi.bounding_box("Region", 1)
 
 

@@ -88,22 +88,20 @@ class Integrator(ABC):
     def __len__(self):
         return len(self.timesteps)
 
-    def _get_bos_data(self, step_index, step_power, prev_conc):
-        if step_index > 0 or self.operator.prev_res is None:
-            x = deepcopy(prev_conc)
-            res = self.operator(x, step_power)
-        else:
-            # Get previous concentration
-            x = self.operator.prev_res[-1].data[0]
-
-            # Get reaction rates and keff
-            res = self.operator.prev_res[-1]
-            res.rates = res.rates[0]
-            res.k = res.k[0]
-
-            # Scale rates by ratio of powers
-            res.rates *= step_power / res.power[0]
+    def _get_bos_data_from_openmc(self, step_index, step_power, bos_conc):
+        x = deepcopy(bos_conc)
+        res = self.operator(x, step_power)
         return x, res
+
+    def _get_bos_data_from_restart(self, step_index, step_power, bos_conc):
+        res = self.operator.prev_res[-1]
+        bos_conc = res.data[0]
+        res.rates = res.rates[0]
+        res.k = res.k[0]
+
+        # Scale rates by ratio of powers
+        res.rates *= step_power / res.power[0]
+        return bos_conc, res
 
     def _get_start_data(self):
         if self.operator.prev_res is None:
@@ -116,7 +114,10 @@ class Integrator(ABC):
             t, self._ires = self._get_start_data()
 
             for i, (dt, p) in enumerate(self):
-                conc, res = self._get_bos_data(i, p, conc)
+                if i > 0 or self.operator.prev_res is None:
+                    conc, res = self._get_bos_data_from_openmc(i, p, conc)
+                else:
+                    conc, res = self._get_bos_data_from_restart(i, p, conc)
                 proc_time, conc_list, res_list = self(conc, res.rates, dt, p, i)
 
                 # Insert BOS concentration, transport results

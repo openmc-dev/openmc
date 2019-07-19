@@ -21,6 +21,7 @@
 #include "openmc/simulation.h"
 #include "openmc/state_point.h"
 #include "openmc/xml_interface.h"
+#include "pyne/source_sampling.h" // for pyne source sampling
 
 namespace openmc {
 
@@ -259,10 +260,22 @@ void initialize_source()
     // Read in the source bank
     if (filetype == "source" || filetype == "statepoint") {
       read_source_bank(file_id);
-    } else {
-      // filetype is "pyne_r2s_source"
+    } 
+
+    // Read in the pyne_r2s_source
+    if (filetype == "pyne_r2s_source") {
       msg << "Reading PyNE R2S photon source from " << settings::path_source << "...";
       write_message(msg, 6);
+      // Generation source sites from pyne source
+      for (int64_t i = 0; i < simulation::work_per_rank; ++i) {
+      // initialize random number seed
+      int64_t id = simulation::total_gen*settings::n_particles +
+        simulation::work_index[mpi::rank] + i + 1;
+      set_particle_seed(id);
+
+      // sample external source distribution
+      simulation::source_bank[i] = sample_pyne_source();
+      }
     }
 
     // Close file
@@ -326,6 +339,68 @@ Particle::Bank sample_external_source()
   prn_set_stream(STREAM_TRACKING);
 
   return site;
+}
+
+Particle::Bank sample_pyne_source()
+{
+  // Set the random number generator to the source stream.
+  prn_set_stream(STREAM_SOURCE);
+
+  // Determine total source strength
+  double total_strength = 0.0;
+  // Change to get total strength from pyne_source file
+  /// for (auto& s : model::external_sources)
+  ///   total_strength += s.strength();
+  total_strength = 1.0; // for test
+
+  // Sample from among multiple source distributions
+  /// int i = 0;
+  /// if (model::external_sources.size() > 1) {
+  ///   double xi = prn()*total_strength;
+  ///   double c = 0.0;
+  ///   for (; i < model::external_sources.size(); ++i) {
+  ///     c += model::external_sources[i].strength();
+  ///     if (xi < c) break;
+  ///   }
+  /// }
+
+  // Sample source site from i-th source distribution
+  /// Particle::Bank site {model::external_sources[i].sample()};
+  std::vector<double> rands {0.5, 0.5, 0.5, 0.5, 0.5, 0.5};
+  std::string e_bounds_file ("e_bounds");
+  std::vector<double> e_bounds = pyne::read_e_bounds(e_bounds_file);
+  std::map<std::string, std::string> tag_names;
+  tag_names.insert(std::pair<std::string, std::string> ("src_tag_name",
+        "source_density"));
+  tag_names.insert(std::pair<std::string, std::string> ("bias_tag_name",
+        "biased_source_density"));
+  tag_names.insert(std::pair<std::string, std::string> ("cell_number_tag_name",
+        "cell_number"));
+  tag_names.insert(std::pair<std::string, std::string> ("cell_fracs_tag_name",
+        "cell_fracs"));
+  pyne::Sampler* sampler = new pyne::Sampler(settings::path_source, tag_names, e_bounds, 1);
+  pyne::SourceParticle src = sampler->particle_birth(rands);
+  Particle::Bank site = convert_pyne_source_particle(src);
+
+  // If running in MG, convert site % E to group
+  if (!settings::run_CE) {
+    site.E = lower_bound_index(data::rev_energy_bins.begin(),
+      data::rev_energy_bins.end(), site.E);
+    site.E = data::num_energy_groups - site.E;
+  }
+
+  // Set the random number generator back to the tracking stream.
+  prn_set_stream(STREAM_TRACKING);
+
+  return site;
+}
+
+Particle::Bank convert_pyne_source_particle(pyne::SourceParticle pyne_src)
+{
+  Particle::Bank site;
+  site.r = Position(pyne_src.get_x(), pyne_src.get_y(), pyne_src.get_z());
+  site.E = pyne_src.get_e() * 1.0e6; // pyne src energy unit is MeV
+  site.wgt = pyne_src.get_w();
 }
 
 void free_memory_source()

@@ -2,9 +2,10 @@ import sys
 
 import numpy as np
 import openmc.capi
+import pytest
 
-
-def test_complex_cell(run_in_tmpdir):
+@pytest.fixture(autouse=True)
+def complex_cell(run_in_tmpdir):
 
     openmc.reset_auto_ids()
 
@@ -51,10 +52,12 @@ def test_complex_cell(run_in_tmpdir):
     c2.region = +s2 & -s5 & +s12 & -s15 & ~(+s3 & -s4 & +s13 & -s14)
 
     c3 = openmc.Cell(fill=zr90)
-    c3.region = ((+s1 & -s7 & +s17 & -s16) | (+s7 & -s6 & +s11 & -s17)) & (-s2 | +s5 | -s12 | +s15)
+    c3.region = ((+s1 & -s7 & +s17 & -s16) | (+s7 & -s6 & +s11 & -s17)) \
+                & (-s2 | +s5 | -s12 | +s15)
 
     c4 = openmc.Cell(fill=n14)
-    c4.region = ((+s1 & -s7 & +s11 & -s17) | (+s7 & -s6 & +s17 & -s16)) & ~(+s2 & -s5 & +s12 & -s15)
+    c4.region = ((+s1 & -s7 & +s11 & -s17) | (+s7 & -s6 & +s17 & -s16)) & \
+                ~(+s2 & -s5 & +s12 & -s15)
 
     model.geometry.root_universe = openmc.Universe()
     model.geometry.root_universe.add_cells([c1, c2, c3, c4])
@@ -72,22 +75,22 @@ def test_complex_cell(run_in_tmpdir):
     openmc.capi.finalize()
     openmc.capi.init()
 
-    inf = sys.float_info.max
-
-    expected_boxes = { 1 : (( -4.,  -4., -inf), ( 4.,  4., inf)),
-                       2 : (( -7.,  -7., -inf), ( 7.,  7., inf)),
-                       3 : ((-10., -10., -inf), (10., 10., inf)),
-                       4 : ((-10., -10., -inf), (10., 10., inf)) }
-
-    for cell_id, cell in openmc.capi.cells.items():
-        cell_box = cell.bounding_box
-
-        assert tuple(cell_box[0]) == expected_boxes[cell_id][0]
-        assert tuple(cell_box[1]) == expected_boxes[cell_id][1]
-
-        cell_box = openmc.capi.bounding_box("Cell", cell_id)
-
-        assert tuple(cell_box[0]) == expected_boxes[cell_id][0]
-        assert tuple(cell_box[1]) == expected_boxes[cell_id][1]
+    yield
 
     openmc.capi.finalize()
+
+inf = sys.float_info.max
+
+expected_results = ( (1, (( -4.,  -4., -inf), ( 4.,  4., inf))),
+                     (2, (( -7.,  -7., -inf), ( 7.,  7., inf))),
+                     (3, ((-10., -10., -inf), (10., 10., inf))),
+                     (4, ((-10., -10., -inf), (10., 10., inf))) )
+@pytest.mark.parametrize("cell_id,expected_box", expected_results)
+def test_cell_box(cell_id, expected_box):
+    cell_box = openmc.capi.cells[cell_id].bounding_box
+    assert tuple(cell_box[0]) == expected_box[0]
+    assert tuple(cell_box[1]) == expected_box[1]
+
+    cell_box = openmc.capi.bounding_box("Cell", cell_id)
+    assert tuple(cell_box[0]) == expected_box[0]
+    assert tuple(cell_box[1]) == expected_box[1]

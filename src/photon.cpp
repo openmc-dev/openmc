@@ -181,8 +181,7 @@ PhotonInteraction::PhotonInteraction(hid_t group, int i_element)
   read_dataset(rgroup, "J", profile_pdf_);
 
   // Get Compton profile momentum grid. By deafult, an xtensor has a size of 1.
-  // TODO: Change to zero when xtensor is updated
-  if (data::compton_profile_pz.size() == 1) {
+  if (data::compton_profile_pz.size() == 0) {
     read_dataset(rgroup, "pz", data::compton_profile_pz);
   }
   close_group(rgroup);
@@ -213,8 +212,7 @@ PhotonInteraction::PhotonInteraction(hid_t group, int i_element)
     // Get energy grids used for bremsstrahlung DCS and for stopping powers
     xt::xtensor<double, 1> electron_energy;
     read_dataset(rgroup, "electron_energy", electron_energy);
-    // TODO: Change to zero when xtensor is updated
-    if (data::ttb_k_grid.size() == 1) {
+    if (data::ttb_k_grid.size() == 0) {
       read_dataset(rgroup, "photon_energy", data::ttb_k_grid);
     }
 
@@ -255,8 +253,7 @@ PhotonInteraction::PhotonInteraction(hid_t group, int i_element)
     }
 
     // Set incident particle energy grid
-    // TODO: Change to zero when xtensor is updated
-    if (data::ttb_e_grid.size() == 1) {
+    if (data::ttb_e_grid.size() == 0) {
       data::ttb_e_grid = electron_energy;
     }
 

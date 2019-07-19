@@ -1,5 +1,6 @@
 ############################################################################
-# Copyright (c) 2016, Johan Mabille, Sylvain Corlay and Wolf Vollprecht    #
+# Copyright (c) Johan Mabille, Sylvain Corlay and Wolf Vollprecht          #
+# Copyright (c) QuantStack                                                 #
 #                                                                          #
 # Distributed under the terms of the BSD 3-Clause License.                 #
 #                                                                          #
@@ -28,16 +29,71 @@ message(STATUS "Building xtensor v${${PROJECT_NAME}_VERSION}")
 # Dependencies
 # ============
 
-#find_package(xtl 0.4.9 REQUIRED)
+set(xtl_REQUIRED_VERSION 0.6.7)
+find_package(xtl ${xtl_REQUIRED_VERSION} REQUIRED)
+message(STATUS "Found xtl: ${xtl_INCLUDE_DIRS}/xtl")
 
-#message(STATUS "Found xtl: ${xtl_INCLUDE_DIRS}/xtl")
+find_package(nlohmann_json 3.1.1 QUIET)
 
-#find_package(nlohmann_json 3.1.1)
+# Optional dependencies
+# =====================
+
+OPTION(XTENSOR_USE_XSIMD "simd acceleration for xtensor" OFF)
+OPTION(XTENSOR_USE_TBB "enable parallelization using intel TBB" OFF)
+OPTION(XTENSOR_USE_OPENMP "enable parallelization using OpenMP" OFF)
+if(XTENSOR_USE_TBB AND XTENSOR_USE_OPENMP)
+    message(
+        FATAL 
+        "XTENSOR_USE_TBB and XTENSOR_USE_OPENMP cannot both be active at once"
+    )
+endif()
+
+if(XTENSOR_USE_XSIMD)
+    set(xsimd_REQUIRED_VERSION 7.4.0)
+    find_package(xsimd ${xsimd_REQUIRED_VERSION} REQUIRED)
+    message(STATUS "Found xsimd: ${xsimd_INCLUDE_DIRS}/xsimd")
+endif()
+
+if(XTENSOR_USE_TBB)
+    set(CMAKE_MODULE_PATH "${CMAKE_MODULE_PATH}" "${CMAKE_CURRENT_SOURCE_DIR}/cmake/")
+    find_package(TBB REQUIRED)
+    message(STATUS "Found intel TBB: ${TBB_INCLUDE_DIRS}")
+endif()
+
+if(XTENSOR_USE_OPENMP)
+    find_package(OpenMP REQUIRED)
+    if (OPENMP_FOUND)
+        # Set openmp variables now
+
+        # Create private target just for this lib
+        # https://cliutils.gitlab.io/modern-cmake/chapters/packages/OpenMP.html
+        # Probably not safe for cmake < 3.4 ..
+        find_package(Threads REQUIRED)
+        add_library(OpenMP::OpenMP_CXX_xtensor IMPORTED INTERFACE)
+        set_property(
+            TARGET 
+            OpenMP::OpenMP_CXX_xtensor
+            PROPERTY 
+            INTERFACE_COMPILE_OPTIONS ${OpenMP_CXX_FLAGS}
+        )
+        # Only works if the same flag is passed to the linker; use CMake 3.9+ otherwise (Intel, AppleClang)
+        set_property(
+            TARGET 
+            OpenMP::OpenMP_CXX_xtensor
+            PROPERTY 
+            INTERFACE_LINK_LIBRARIES ${OpenMP_CXX_FLAGS} Threads::Threads)
+
+        message(STATUS "OpenMP Found")
+    else()
+        message(FATAL "Failed to locate OpenMP")
+    endif()
+endif()
 
 # Build
 # =====
 
 set(XTENSOR_HEADERS
+    ${XTENSOR_INCLUDE_DIR}/xtensor/xaccessible.hpp
     ${XTENSOR_INCLUDE_DIR}/xtensor/xaccumulator.hpp
     ${XTENSOR_INCLUDE_DIR}/xtensor/xadapt.hpp
     ${XTENSOR_INCLUDE_DIR}/xtensor/xarray.hpp
@@ -47,16 +103,19 @@ set(XTENSOR_HEADERS
     ${XTENSOR_INCLUDE_DIR}/xtensor/xbuffer_adaptor.hpp
     ${XTENSOR_INCLUDE_DIR}/xtensor/xbuilder.hpp
     ${XTENSOR_INCLUDE_DIR}/xtensor/xcomplex.hpp
-    ${XTENSOR_INCLUDE_DIR}/xtensor/xconcepts.hpp
     ${XTENSOR_INCLUDE_DIR}/xtensor/xcontainer.hpp
     ${XTENSOR_INCLUDE_DIR}/xtensor/xcsv.hpp
+    ${XTENSOR_INCLUDE_DIR}/xtensor/xdynamic_view.hpp
     ${XTENSOR_INCLUDE_DIR}/xtensor/xeval.hpp
     ${XTENSOR_INCLUDE_DIR}/xtensor/xexception.hpp
     ${XTENSOR_INCLUDE_DIR}/xtensor/xexpression.hpp
+    ${XTENSOR_INCLUDE_DIR}/xtensor/xexpression_holder.hpp
+    ${XTENSOR_INCLUDE_DIR}/xtensor/xexpression_traits.hpp
     ${XTENSOR_INCLUDE_DIR}/xtensor/xfixed.hpp
     ${XTENSOR_INCLUDE_DIR}/xtensor/xfunction.hpp
     ${XTENSOR_INCLUDE_DIR}/xtensor/xfunctor_view.hpp
     ${XTENSOR_INCLUDE_DIR}/xtensor/xgenerator.hpp
+    ${XTENSOR_INCLUDE_DIR}/xtensor/xhistogram.hpp
     ${XTENSOR_INCLUDE_DIR}/xtensor/xindex_view.hpp
     ${XTENSOR_INCLUDE_DIR}/xtensor/xinfo.hpp
     ${XTENSOR_INCLUDE_DIR}/xtensor/xio.hpp
@@ -64,7 +123,10 @@ set(XTENSOR_HEADERS
     ${XTENSOR_INCLUDE_DIR}/xtensor/xiterator.hpp
     ${XTENSOR_INCLUDE_DIR}/xtensor/xjson.hpp
     ${XTENSOR_INCLUDE_DIR}/xtensor/xlayout.hpp
+    ${XTENSOR_INCLUDE_DIR}/xtensor/xmanipulation.hpp
+    ${XTENSOR_INCLUDE_DIR}/xtensor/xmasked_view.hpp
     ${XTENSOR_INCLUDE_DIR}/xtensor/xmath.hpp
+    ${XTENSOR_INCLUDE_DIR}/xtensor/xmime.hpp
     ${XTENSOR_INCLUDE_DIR}/xtensor/xnoalias.hpp
     ${XTENSOR_INCLUDE_DIR}/xtensor/xnorm.hpp
     ${XTENSOR_INCLUDE_DIR}/xtensor/xnpy.hpp
@@ -74,6 +136,7 @@ set(XTENSOR_HEADERS
     ${XTENSOR_INCLUDE_DIR}/xtensor/xoptional_assembly.hpp
     ${XTENSOR_INCLUDE_DIR}/xtensor/xoptional_assembly_base.hpp
     ${XTENSOR_INCLUDE_DIR}/xtensor/xoptional_assembly_storage.hpp
+    ${XTENSOR_INCLUDE_DIR}/xtensor/xpad.hpp
     ${XTENSOR_INCLUDE_DIR}/xtensor/xrandom.hpp
     ${XTENSOR_INCLUDE_DIR}/xtensor/xreducer.hpp
     ${XTENSOR_INCLUDE_DIR}/xtensor/xscalar.hpp
@@ -102,13 +165,13 @@ target_link_libraries(xtensor INTERFACE xtl)
 
 OPTION(XTENSOR_ENABLE_ASSERT "xtensor bound check" OFF)
 OPTION(XTENSOR_CHECK_DIMENSION "xtensor dimension check" OFF)
-OPTION(XTENSOR_USE_XSIMD "simd acceleration for xtensor" OFF)
 OPTION(BUILD_TESTS "xtensor test suite" OFF)
 OPTION(BUILD_BENCHMARK "xtensor benchmark" OFF)
 OPTION(DOWNLOAD_GTEST "build gtest from downloaded sources" OFF)
 OPTION(DOWNLOAD_GBENCHMARK "download google benchmark and build from source" ON)
 OPTION(DEFAULT_COLUMN_MAJOR "set default layout to column major" OFF)
 OPTION(DISABLE_VS2017 "disables the compilation of some test with Visual Studio 2017" OFF)
+OPTION(CPP17 "enables C++17" OFF)
 
 if(DOWNLOAD_GTEST OR GTEST_SRC_DIR)
     set(BUILD_TESTS ON)
@@ -120,13 +183,6 @@ endif()
 
 if(XTENSOR_CHECK_DIMENSION)
     add_definitions(-DXTENSOR_ENABLE_CHECK_DIMENSION)
-endif()
-
-if(XTENSOR_USE_XSIMD)
-    add_definitions(-DXTENSOR_USE_XSIMD)
-    find_package(xsimd 4.1.6 REQUIRED)
-    message(STATUS "Found xsimd: ${xsimd_INCLUDE_DIRS}/xsimd")
-    target_link_libraries(xtensor INTERFACE xsimd)
 endif()
 
 if(DEFAULT_COLUMN_MAJOR)
@@ -143,6 +199,11 @@ endif()
 
 if(BUILD_BENCHMARK)
     add_subdirectory(benchmark)
+endif()
+
+if(XTENSOR_USE_OPENMP)
+    # Link xtensor itself to OpenMP to propagate to user projects
+    target_link_libraries(xtensor INTERFACE OpenMP::OpenMP_CXX_xtensor)
 endif()
 
 # Installation

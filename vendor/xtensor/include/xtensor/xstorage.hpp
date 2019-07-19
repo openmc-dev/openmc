@@ -1,5 +1,6 @@
 /***************************************************************************
-* Copyright (c) 2016, Johan Mabille, Sylvain Corlay and Wolf Vollprecht    *
+* Copyright (c) Johan Mabille, Sylvain Corlay and Wolf Vollprecht          *
+* Copyright (c) QuantStack                                                 *
 *                                                                          *
 * Distributed under the terms of the BSD 3-Clause License.                 *
 *                                                                          *
@@ -21,15 +22,6 @@
 #include "xtensor_simd.hpp"
 #include "xutils.hpp"
 
-#ifndef XTENSOR_ALIGNMENT
-    #ifdef XTENSOR_USE_XSIMD
-        #include <xsimd/xsimd.hpp>
-        #define XTENSOR_ALIGNMENT XSIMD_DEFAULT_ALIGNMENT
-    #else
-        #define XTENSOR_ALIGNMENT 0
-    #endif
-#endif
-
 namespace xt
 {
 
@@ -40,21 +32,21 @@ namespace xt
                                                                                std::input_iterator_tag>::value>::type;
     }
 
-    template <class T, class Allocator = std::allocator<T>>
+    template <class T, class A = std::allocator<T>>
     class uvector
     {
     public:
 
-        using allocator_type = Allocator;
+        using allocator_type = A;
 
-        using value_type = typename allocator_type::value_type;
-        using reference = typename allocator_type::reference;
-        using const_reference = typename allocator_type::const_reference;
-        using pointer = typename allocator_type::pointer;
-        using const_pointer = typename allocator_type::const_pointer;
+        using value_type = typename std::allocator_traits<A>::value_type;
+        using reference = value_type&;
+        using const_reference = const value_type&;
+        using pointer = typename std::allocator_traits<A>::pointer;
+        using const_pointer = typename std::allocator_traits<A>::const_pointer;
 
-        using size_type = typename allocator_type::size_type;
-        using difference_type = typename allocator_type::difference_type;
+        using size_type = typename std::allocator_traits<A>::size_type;
+        using difference_type = typename std::allocator_traits<A>::difference_type;
 
         using iterator = pointer;
         using const_iterator = const_pointer;
@@ -86,9 +78,17 @@ namespace xt
         bool empty() const noexcept;
         size_type size() const noexcept;
         void resize(size_type size);
+        size_type max_size() const noexcept;
+        void reserve(size_type new_cap);
+        size_type capacity() const noexcept;
+        void shrink_to_fit();
+        void clear();
 
         reference operator[](size_type i);
         const_reference operator[](size_type i) const;
+
+        reference at(size_type i);
+        const_reference at(size_type i) const;
 
         reference front();
         const_reference front() const;
@@ -162,10 +162,11 @@ namespace xt
     namespace detail
     {
         template <class A>
-        inline typename A::pointer safe_init_allocate(A& alloc, typename A::size_type size)
+        inline typename std::allocator_traits<A>::pointer
+        safe_init_allocate(A& alloc, typename std::allocator_traits<A>::size_type size)
         {
-            using pointer = typename A::pointer;
-            using value_type = typename A::value_type;
+            using pointer = typename std::allocator_traits<A>::pointer;
+            using value_type = typename std::allocator_traits<A>::value_type;
             pointer res = alloc.allocate(size);
             if (!xtrivially_default_constructible<value_type>::value)
             {
@@ -178,10 +179,11 @@ namespace xt
         }
 
         template <class A>
-        inline void safe_destroy_deallocate(A& alloc, typename A::pointer ptr, typename A::size_type size)
+        inline void safe_destroy_deallocate(A& alloc, typename std::allocator_traits<A>::pointer ptr,
+                                            typename std::allocator_traits<A>::size_type size)
         {
-            using pointer = typename A::pointer;
-            using value_type = typename A::value_type;
+            using pointer = typename std::allocator_traits<A>::pointer;
+            using value_type = typename std::allocator_traits<A>::value_type;
             if (ptr != nullptr)
             {
                 if (!xtrivially_default_constructible<value_type>::value)
@@ -366,6 +368,34 @@ namespace xt
     }
 
     template <class T, class A>
+    inline auto uvector<T, A>::max_size() const noexcept -> size_type
+    {
+        return m_allocator.max_size();
+    }
+
+    template <class T, class A>
+    inline void uvector<T, A>::reserve(size_type /*new_cap*/)
+    {
+    }
+    
+    template <class T, class A>
+    inline auto uvector<T, A>::capacity() const noexcept -> size_type
+    {
+        return size();
+    }
+
+    template <class T, class A>
+    inline void uvector<T, A>::shrink_to_fit()
+    {
+    }
+
+    template <class T, class A>
+    inline void uvector<T, A>::clear()
+    {
+        resize(size_type(0));
+    }
+
+    template <class T, class A>
     inline auto uvector<T, A>::operator[](size_type i) -> reference
     {
         return p_begin[i];
@@ -375,6 +405,22 @@ namespace xt
     inline auto uvector<T, A>::operator[](size_type i) const -> const_reference
     {
         return p_begin[i];
+    }
+
+    template <class T, class A>
+    inline auto uvector<T, A>::at(size_type i) -> reference
+    {
+        if(i >= size())
+            throw std::out_of_range("Out of range in uvector access");
+        return this->operator[](i);
+    }
+
+    template <class T, class A>
+    inline auto uvector<T, A>::at(size_type i) const -> const_reference
+    {
+        if(i >= size())
+            throw std::out_of_range("Out of range in uvector access");
+        return this->operator[](i);
     }
 
     template <class T, class A>
@@ -550,7 +596,7 @@ namespace xt
         };
 
         template <class T, std::size_t A>
-        struct allocator_alignment<xsimd::aligned_allocator<T, A>>
+        struct allocator_alignment<xt_simd::aligned_allocator<T, A>>
         {
             constexpr static std::size_t value = A;
         };
@@ -563,13 +609,13 @@ namespace xt
 
         using self_type = svector<T, N, A, Init>;
         using allocator_type = A;
-        using size_type = typename A::size_type;
-        using value_type = typename A::value_type;
-        using pointer = typename A::pointer;
-        using const_pointer = typename A::const_pointer;
-        using reference = typename A::reference;
-        using const_reference = typename A::const_reference;
-        using difference_type = typename A::difference_type;
+        using size_type = typename std::allocator_traits<A>::size_type;
+        using value_type = typename std::allocator_traits<A>::value_type;
+        using pointer = typename std::allocator_traits<A>::pointer;
+        using const_pointer = typename std::allocator_traits<A>::const_pointer;
+        using reference = value_type&;
+        using const_reference = const value_type&;
+        using difference_type = typename std::allocator_traits<A>::difference_type;
 
         using iterator = pointer;
         using const_iterator = const_pointer;
@@ -621,14 +667,13 @@ namespace xt
         reference operator[](size_type idx);
         const_reference operator[](size_type idx) const;
 
+        reference at(size_type idx);
+        const_reference at(size_type idx) const;
+
         pointer data();
         const_pointer data() const;
 
-        void resize(size_type n);
-
-        size_type capacity() const;
         void push_back(const T& elt);
-
         void pop_back();
 
         iterator begin();
@@ -645,9 +690,14 @@ namespace xt
         const_reverse_iterator rend() const;
         const_reverse_iterator crend() const;
 
-        size_type size() const;
-
         bool empty() const;
+        size_type size() const;
+        void resize(size_type n);
+        size_type max_size() const noexcept;
+        size_type capacity() const;
+        void reserve(size_type n);
+        void shrink_to_fit();
+        void clear();
 
         reference front();
         const_reference front() const;
@@ -805,7 +855,7 @@ namespace xt
     template <class T, std::size_t N, class A, bool Init>
     inline void svector<T, N, A, Init>::assign(size_type n, const value_type& v)
     {
-        if (n > N)
+        if (n > N && n > capacity())
         {
             grow(n);
         }
@@ -825,7 +875,7 @@ namespace xt
     inline void svector<T, N, A, Init>::assign(IT other_begin, IT other_end)
     {
         std::size_t size = static_cast<std::size_t>(other_end - other_begin);
-        if (size > N)
+        if (size > N && size > capacity())
         {
             grow(size);
         }
@@ -846,6 +896,22 @@ namespace xt
     }
 
     template <class T, std::size_t N, class A, bool Init>
+    inline auto svector<T, N, A, Init>::at(size_type idx) -> reference
+    {
+        if(idx >= size())
+            throw std::out_of_range("Out of range in svector access");
+        return this->operator[](idx);
+    }
+
+    template <class T, std::size_t N, class A, bool Init>
+    inline auto svector<T, N, A, Init>::at(size_type idx) const -> const_reference
+    {
+        if(idx >= size())
+            throw std::out_of_range("Out of range in svector access");
+        return this->operator[](idx);
+    }
+
+    template <class T, std::size_t N, class A, bool Init>
     inline auto svector<T, N, A, Init>::data() -> pointer
     {
         return m_begin;
@@ -860,21 +926,49 @@ namespace xt
     template <class T, std::size_t N, class A, bool Init>
     void svector<T, N, A, Init>::resize(size_type n)
     {
-        if (n > N)
+        if (n > N && n > capacity())
         {
             grow(n);
         }
+        size_type old_size = size();
         m_end = m_begin + n;
-        if (Init)
+        if (Init && old_size < size())
         {
-            std::fill(begin(), end(), T());
+            std::fill(begin() + old_size, end(), T());
         }
+    }
+
+    template <class T, std::size_t N, class A, bool Init>
+    inline auto svector<T, N, A, Init>::max_size() const noexcept -> size_type
+    {
+        return m_allocator.max_size();
     }
 
     template <class T, std::size_t N, class A, bool Init>
     inline auto svector<T, N, A, Init>::capacity() const -> size_type
     {
         return static_cast<std::size_t>(m_capacity - m_begin);
+    }
+
+    template <class T, std::size_t N, class A, bool Init>
+    inline void svector<T, N, A, Init>::reserve(size_type n)
+    {
+        if(n > N && n > capacity())
+        {
+            grow(n);
+        }
+    }
+
+    template <class T, std::size_t N, class A, bool Init>
+    inline void svector<T, N, A, Init>::shrink_to_fit()
+    {
+        // No op for now
+    }
+
+    template <class T, std::size_t N, class A, bool Init>
+    inline void svector<T, N, A, Init>::clear()
+    {
+        resize(size_type(0));
     }
 
     template <class T, std::size_t N, class A, bool Init>
@@ -1091,6 +1185,7 @@ namespace xt
     template <std::size_t ON, class OA, bool InitA>
     inline void svector<T, N, A, Init>::swap(svector<T, ON, OA, InitA>& rhs)
     {
+        using std::swap;
         if (this == &rhs)
         {
             return;
@@ -1099,45 +1194,43 @@ namespace xt
         // We can only avoid copying elements if neither vector is small.
         if (!this->on_stack() && !rhs.on_stack())
         {
-            std::swap(this->m_begin, rhs.m_begin);
-            std::swap(this->m_end, rhs.m_end);
-            std::swap(this->m_capacity, rhs.m_capacity);
+            swap(this->m_begin, rhs.m_begin);
+            swap(this->m_end, rhs.m_end);
+            swap(this->m_capacity, rhs.m_capacity);
             return;
         }
 
-        if (rhs.size() > this->capacity())
+        size_type rhs_old_size = rhs.size();
+        size_type old_size = this->size();
+
+        if (rhs_old_size > old_size)
         {
-            this->resize(rhs.size());
+            this->resize(rhs_old_size);
         }
-        if (this->size() > rhs.capacity())
+        else if (old_size > rhs_old_size)
         {
-            rhs.resize(this->size());
+            rhs.resize(old_size);
         }
 
         // Swap the shared elements.
-        size_t num_shared = (std::min)(this->size(), rhs.size());
-
-        for (size_type i = 0; i != num_shared; ++i)
+        size_type min_size = (std::min)(old_size, rhs_old_size);
+        for (size_type i = 0; i < min_size; ++i)
         {
-            std::swap((*this)[i], rhs[i]);
+            swap((*this)[i], rhs[i]);
         }
 
         // Copy over the extra elts.
-        if (this->size() > rhs.size())
+        if (old_size > rhs_old_size)
         {
-            size_t elements_diff = this->size() - rhs.size();
-            std::copy(this->begin() + num_shared, this->end(), rhs.end());
-            rhs.m_end = rhs.end() + elements_diff;
-            this->destroy_range(this->begin() + num_shared, this->end());
-            this->m_end = this->begin() + num_shared;
+            std::copy(this->begin() + min_size, this->end(), rhs.begin() + min_size);
+            this->destroy_range(this->begin() + min_size, this->end());
+            this->m_end = this->begin() + min_size;
         }
-        else if (rhs.size() > this->size())
+        else if (rhs_old_size > old_size)
         {
-            size_t elements_diff = rhs.size() - this->size();
-            std::uninitialized_copy(rhs.begin() + num_shared, rhs.end(), this->end());
-            this->m_end = this->end() + elements_diff;
-            this->destroy_range(rhs.begin() + num_shared, rhs.end());
-            rhs.m_end = rhs.begin() + num_shared;
+            std::copy(rhs.begin() + min_size, rhs.end(), this->begin() + min_size);
+            this->destroy_range(rhs.begin() + min_size, rhs.end());
+            rhs.m_end = rhs.begin() + min_size;
         }
     }
 
@@ -1161,7 +1254,9 @@ namespace xt
         else
         {
             // If this wasn't grown from the inline copy, grow the allocated space.
-            new_alloc = reinterpret_cast<pointer>(realloc(this->m_begin, new_capacity * sizeof(T)));
+            new_alloc = m_allocator.allocate(new_capacity);
+            std::uninitialized_copy(m_begin, m_end, new_alloc);
+            m_allocator.deallocate(m_begin, std::size_t(m_capacity - m_begin));
         }
         XTENSOR_ASSERT(new_alloc);
 
@@ -1225,7 +1320,14 @@ namespace xt
         lhs.swap(rhs);
     }
 
-#define XTENSOR_SELECT_ALIGN (XTENSOR_ALIGNMENT != 0 ? XTENSOR_ALIGNMENT : alignof(T))
+    #define XTENSOR_SELECT_ALIGN (XTENSOR_DEFAULT_ALIGNMENT != 0 ? XTENSOR_DEFAULT_ALIGNMENT : alignof(T))
+
+    template <class X, class T, std::size_t N, class A, bool B>
+    struct rebind_container<X, svector<T, N, A, B>>
+    {
+        using allocator = typename A::template rebind<X>::other;
+        using type = svector<X, N, allocator, B>;
+    };
 
     /**
      * This array class is modeled after ``std::array`` but adds optional alignment through a template parameter.
@@ -1239,7 +1341,7 @@ namespace xt
         // Note: this is for alignment detection. The allocator serves no other purpose than
         //       that of a trait here.
         using allocator_type = std::conditional_t<Align != 0,
-                                                  xsimd::aligned_allocator<T, Align>,
+                                                  xt_simd::aligned_allocator<T, Align>,
                                                   std::allocator<T>>;
     };
 
@@ -1247,6 +1349,47 @@ namespace xt
     #define XTENSOR_CONST
 #else
     #define XTENSOR_CONST const
+#endif
+
+#if defined(__GNUC__) && __GNUC__ < 5 && !defined(__clang__)
+    #define GCC4_FALLBACK
+
+    namespace const_array_detail
+    {
+        template <class T, std::size_t N>
+        struct array_traits
+        {
+            using storage_type = T[N];
+
+            static constexpr T& ref(const storage_type& t, std::size_t n) noexcept
+            {
+                return const_cast<T&>(t[n]);
+            }
+
+            static constexpr T* ptr(const storage_type& t) noexcept
+            {
+                return const_cast<T*>(t);
+            }
+        };
+
+        template <class T>
+        struct array_traits<T, 0>
+        {
+            struct empty {};
+
+            using storage_type = empty;
+
+            static constexpr T& ref(const storage_type& /*t*/, std::size_t /*n*/) noexcept
+            {
+                return *static_cast<T*>(nullptr);
+            }
+
+            static constexpr T* ptr(const storage_type& /*t*/) noexcept
+            {
+                return nullptr;
+            }
+        };
+    }
 #endif
 
     /**
@@ -1271,7 +1414,11 @@ namespace xt
 
         constexpr const_reference operator[](std::size_t idx) const
         {
+        #ifdef GCC4_FALLBACK
+            return const_array_detail::array_traits<T, N>::ref(m_data, idx);
+        #else
             return m_data[idx];
+        #endif
         }
 
         constexpr const_iterator begin() const noexcept
@@ -1286,12 +1433,12 @@ namespace xt
 
         constexpr const_iterator cbegin() const noexcept
         {
-            return m_data;
+            return data();
         }
 
         constexpr const_iterator cend() const noexcept
         {
-            return m_data + N;
+            return data() + N;
         }
 
         // TODO make constexpr once C++17 arrives
@@ -1317,17 +1464,35 @@ namespace xt
 
         constexpr const_pointer data() const noexcept
         {
+        #ifdef GCC4_FALLBACK
+            return const_array_detail::array_traits<T, N>::ptr(m_data);
+        #else
             return m_data;
+        #endif
         }
 
         constexpr const_reference front() const noexcept
         {
+        #ifdef GCC4_FALLBACK
+            return const_array_detail::array_traits<T, N>::ref(m_data, 0);
+        #else
             return m_data[0];
+        #endif
         }
 
         constexpr const_reference back() const noexcept
         {
+        #ifdef GCC4_FALLBACK
+            return N ? const_array_detail::array_traits<T, N>::ref(m_data, N - 1) :
+                       const_array_detail::array_traits<T, N>::ref(m_data, 0);
+        #else
             return m_data[size() - 1];
+        #endif
+        }
+
+        constexpr bool empty() const noexcept
+        {
+            return size() == size_type(0);
         }
 
         constexpr size_type size() const noexcept
@@ -1335,12 +1500,385 @@ namespace xt
             return N;
         }
 
+    #ifdef GCC4_FALLBACK
+        XTENSOR_CONST typename const_array_detail::array_traits<T, N>::storage_type m_data;
+    #else
         XTENSOR_CONST T m_data[N > 0 ? N : 1];
+    #endif
     };
+
+#undef GCC4_FALLBACK
+
+
+    template <class T, std::size_t N>
+    inline bool operator==(const const_array<T, N>& lhs, const const_array<T, N>& rhs)
+    {
+        return std::equal(lhs.cbegin(), lhs.cend(), rhs.cbegin());
+    }
+
+    template <class T, std::size_t N>
+    inline bool operator!=(const const_array<T, N>& lhs, const const_array<T, N>& rhs)
+    {
+        return !(lhs == rhs);
+    }
+
+    template <class T, std::size_t N>
+    inline bool operator<(const const_array<T, N>& lhs, const const_array<T, N>& rhs)
+    {
+        return std::lexicographical_compare(lhs.begin(), lhs.end(),
+                                            rhs.begin(), rhs.end());
+    }
+
+    template <class T, std::size_t N>
+    inline bool operator<=(const const_array<T, N>& lhs, const const_array<T, N>& rhs)
+    {
+        return !(lhs > rhs);
+    }
+
+    template <class T, std::size_t N>
+    inline bool operator>(const const_array<T, N>& lhs, const const_array<T, N>& rhs)
+    {
+        return rhs < lhs;
+    }
+
+    template <class T, std::size_t N>
+    inline bool operator>=(const const_array<T, N>& lhs, const const_array<T, N>& rhs)
+    {
+        return !(lhs < rhs);
+    }
+
+// Workaround for rebind_container problems on GCC 8 with C++17 enabled
+#if defined(__GNUC__) && __GNUC__ > 6 && !defined(__clang__) && __cplusplus >= 201703L
+    template <class X, class T, std::size_t N>
+    struct rebind_container<X, aligned_array<T, N>>
+    {
+        using type = aligned_array<X, N>;
+    };
+
+    template <class X, class T, std::size_t N>
+    struct rebind_container<X, const_array<T, N>>
+    {
+        using type = const_array<X, N>;
+    };
+#endif
+
+    /**
+     * @class fixed_shape
+     * Fixed shape implementation for compile time defined arrays.
+     * @sa xshape
+     */
+    template <std::size_t... X>
+    class fixed_shape
+    {
+    public:
+
+#if defined(_MSC_VER)
+        using cast_type = std::array<std::size_t, sizeof...(X)>;
+        #define XTENSOR_FIXED_SHAPE_CONSTEXPR inline
+#else
+        using cast_type = const_array<std::size_t, sizeof...(X)>;
+        #define XTENSOR_FIXED_SHAPE_CONSTEXPR constexpr
+#endif
+        using value_type = std::size_t;
+        using size_type = std::size_t;
+
+        constexpr static std::size_t size()
+        {
+            return sizeof...(X);
+        }
+
+        XTENSOR_FIXED_SHAPE_CONSTEXPR operator cast_type() const
+        {
+            return cast_type({X...});
+        }
+
+        XTENSOR_FIXED_SHAPE_CONSTEXPR auto begin() const
+        {
+            return m_array.begin();
+        }
+
+        XTENSOR_FIXED_SHAPE_CONSTEXPR auto end() const
+        {
+            return m_array.end();
+        }
+
+        auto rbegin() const
+        {
+            return m_array.rbegin();
+        }
+
+        auto rend() const
+        {
+            return m_array.rend();
+        }
+
+        XTENSOR_FIXED_SHAPE_CONSTEXPR auto cbegin() const
+        {
+            return m_array.cbegin();
+        }
+
+        XTENSOR_FIXED_SHAPE_CONSTEXPR auto cend() const
+        {
+            return m_array.cend();
+        }
+
+        XTENSOR_FIXED_SHAPE_CONSTEXPR std::size_t operator[](std::size_t idx) const
+        {
+            return m_array[idx];
+        }
+
+        XTENSOR_FIXED_SHAPE_CONSTEXPR bool empty() const
+        {
+            return sizeof...(X) == 0; 
+        }
+
+    private:
+
+         XTENSOR_CONSTEXPR_ENHANCED_STATIC cast_type m_array = cast_type({X...});
+    };
+
+#ifdef XTENSOR_HAS_CONSTEXPR_ENHANCED
+    template <std::size_t... X>
+    constexpr typename fixed_shape<X...>::cast_type fixed_shape<X...>::m_array;
+#endif
+
+#undef XTENSOR_FIXED_SHAPE_CONSTEXPR
+
+    template <class E, std::ptrdiff_t Start, std::ptrdiff_t End = -1>
+    class sequence_view
+    {
+    public:
+
+        using value_type = typename E::value_type;
+        using reference = typename E::reference;
+        using const_reference = typename E::const_reference;
+        using pointer = typename E::pointer;
+        using const_pointer = typename E::const_pointer;
+
+        using size_type = typename E::size_type;
+        using difference_type = typename E::difference_type;
+
+        using iterator = typename E::iterator;
+        using const_iterator = typename E::const_iterator;
+        using reverse_iterator = typename E::reverse_iterator;
+        using const_reverse_iterator = typename E::const_reverse_iterator;
+
+        explicit sequence_view(const E& container);
+
+        template <std::ptrdiff_t OS, std::ptrdiff_t OE>
+        explicit sequence_view(const sequence_view<E, OS, OE>& other);
+
+        template <class T, class R = decltype(std::declval<T>().begin())>
+        operator T() const;
+
+        bool empty() const;
+        size_type size() const;
+        const_reference operator[](std::size_t idx) const;
+
+        const_iterator end() const;
+        const_iterator begin() const;
+        const_iterator cend() const;
+        const_iterator cbegin() const;
+
+        const_reverse_iterator rend() const;
+        const_reverse_iterator rbegin() const;
+        const_reverse_iterator crend() const;
+        const_reverse_iterator crbegin() const;
+
+        const_reference front() const;
+        const_reference back() const;
+
+        const E& storage() const;
+
+    private:
+
+        const E& m_sequence;
+    };
+
+    template <class E, std::ptrdiff_t Start, std::ptrdiff_t End>
+    sequence_view<E, Start, End>::sequence_view(const E& container)
+        : m_sequence(container)
+    {
+    }
+
+    template <class E, std::ptrdiff_t Start, std::ptrdiff_t End>
+    template <std::ptrdiff_t OS, std::ptrdiff_t OE>
+    sequence_view<E, Start, End>::sequence_view(const sequence_view<E, OS, OE>& other)
+        : m_sequence(other.storage())
+    {
+    }
+
+    template <class E, std::ptrdiff_t Start, std::ptrdiff_t End>
+    template <class T, class R>
+    sequence_view<E, Start, End>::operator T() const
+    {
+        T ret = xtl::make_sequence<T>(this->size());
+        std::copy(this->cbegin(), this->cend(), ret.begin());
+        return ret;
+    }
+
+    template <class E, std::ptrdiff_t Start, std::ptrdiff_t End>
+    bool sequence_view<E, Start, End>::empty() const
+    {
+        return size() == size_type(0);
+    }
+
+    template <class E, std::ptrdiff_t Start, std::ptrdiff_t End>
+    auto sequence_view<E, Start, End>::size() const -> size_type
+    {
+        if (End == -1)
+        {
+            return m_sequence.size() - static_cast<size_type>(Start);
+        }
+        else
+        {
+            return static_cast<size_type>(End - Start);
+        }
+    }
+
+    template <class E, std::ptrdiff_t Start, std::ptrdiff_t End>
+    auto sequence_view<E, Start, End>::operator[](std::size_t idx) const -> const_reference
+    {
+        return m_sequence[idx + static_cast<std::size_t>(Start)];
+    }
+
+    template <class E, std::ptrdiff_t Start, std::ptrdiff_t End>
+    auto  sequence_view<E, Start, End>::end() const -> const_iterator
+    {
+        if (End != -1)
+        {
+            return m_sequence.begin() + End;
+        }
+        else
+        {
+            return m_sequence.end();
+        }
+    }
+
+    template <class E, std::ptrdiff_t Start, std::ptrdiff_t End>
+    auto  sequence_view<E, Start, End>::begin() const -> const_iterator
+    {
+        return m_sequence.begin() + Start;
+    }
+
+    template <class E, std::ptrdiff_t Start, std::ptrdiff_t End>
+    auto  sequence_view<E, Start, End>::cend() const -> const_iterator
+    {
+        return end();
+    }
+
+    template <class E, std::ptrdiff_t Start, std::ptrdiff_t End>
+    auto  sequence_view<E, Start, End>::cbegin() const -> const_iterator
+    {
+        return begin();
+    }
+
+    template <class E, std::ptrdiff_t Start, std::ptrdiff_t End>
+    auto sequence_view<E, Start, End>::rend() const -> const_reverse_iterator
+    {
+        return const_reverse_iterator(begin());
+    }
+
+    template <class E, std::ptrdiff_t Start, std::ptrdiff_t End>
+    auto sequence_view<E, Start, End>::rbegin() const -> const_reverse_iterator
+    {
+        return const_reverse_iterator(end());
+    }
+
+    template <class E, std::ptrdiff_t Start, std::ptrdiff_t End>
+    auto sequence_view<E, Start, End>::crend() const -> const_reverse_iterator
+    {
+        return rend();
+    }
+
+    template <class E, std::ptrdiff_t Start, std::ptrdiff_t End>
+    auto sequence_view<E, Start, End>::crbegin() const -> const_reverse_iterator
+    {
+        return rbegin();
+    }
+
+    template <class E, std::ptrdiff_t Start, std::ptrdiff_t End>
+    auto sequence_view<E, Start, End>::front() const -> const_reference
+    {
+        return *(m_sequence.begin() + Start);
+    }
+
+    template <class E, std::ptrdiff_t Start, std::ptrdiff_t End>
+    auto sequence_view<E, Start, End>::back() const -> const_reference
+    {
+        if (End == -1)
+        {
+            return m_sequence.back();
+        }
+        else
+        {
+            return m_sequence[static_cast<std::size_t>(End - 1)];
+        }
+    }
+
+    template <class E, std::ptrdiff_t Start, std::ptrdiff_t End>
+    const E& sequence_view<E, Start, End>::storage() const
+    {
+        return m_sequence;
+    }
+
+
+    template <class T, std::ptrdiff_t TB, std::ptrdiff_t TE>
+    inline bool operator==(const sequence_view<T, TB, TE>& lhs, const sequence_view<T, TB, TE>& rhs)
+    {
+        return lhs.size() == rhs.size() && std::equal(lhs.begin(), lhs.end(), rhs.begin());
+    }
+
+    template <class T, std::ptrdiff_t TB, std::ptrdiff_t TE>
+    inline bool operator!=(const sequence_view<T, TB, TE>& lhs, const sequence_view<T, TB, TE>& rhs)
+    {
+        return !(lhs == rhs);
+    }
 }
 
+/******************************
+ * std::tuple_size extensions *
+ ******************************/
+
+// The C++ standard defines tuple_size as a class, however
+// G++ 8 C++ library does define it as a struct hence we get
+// clang warnings here
+
+#if defined(__clang__)
+    # pragma clang diagnostic push
+    # pragma clang diagnostic ignored "-Wmismatched-tags"
+#endif
+
+namespace std
+{
+    template <class T, std::size_t N>
+    class tuple_size<xt::const_array<T, N>> :
+        public integral_constant<std::size_t, N>
+    {
+    };
+
+    template <std::size_t... N>
+    class tuple_size<xt::fixed_shape<N...>> :
+        public integral_constant<std::size_t, sizeof...(N)>
+    {
+    };
+
+    template <class T, std::ptrdiff_t Start, std::ptrdiff_t End>
+    class tuple_size<xt::sequence_view<T, Start, End>> :
+        public integral_constant<std::size_t, std::size_t(End - Start)>
+    {
+    };
+
+    // Undefine tuple size for not-known sequence view size
+    template <class T, std::ptrdiff_t Start>
+    class tuple_size<xt::sequence_view<T, Start, -1>>;
+}
+
+#if defined(__clang__)
+    # pragma clang diagnostic pop
+#endif
+
 #undef XTENSOR_CONST
-#undef XTENSOR_ALIGNMENT
 #undef XTENSOR_SELECT_ALIGN
 
 #endif

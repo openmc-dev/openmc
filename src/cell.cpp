@@ -1102,8 +1102,7 @@ openmc_cell_set_name(int32_t index, const char* name) {
     return OPENMC_E_OUT_OF_BOUNDS;
   }
 
-  std::string name_str(name);
-  model::cells[index]->set_name(name_str);
+  model::cells[index]->set_name(name);
 
   return 0;
 }

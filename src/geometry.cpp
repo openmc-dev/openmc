@@ -477,7 +477,7 @@ openmc_find_cell(const double* xyz, int32_t* index, int32_t* instance)
 }
 
 extern "C" int
-openmc_bounding_box(const char* geom_type, const int32_t index, double* llc, double* urc) {
+openmc_bounding_box(const char* geom_type, const int32_t id, double* llc, double* urc) {
 
   BoundingBox bbox;
 
@@ -495,7 +495,7 @@ openmc_bounding_box(const char* geom_type, const int32_t index, double* llc, dou
     const auto& c = model::cells[model::cell_map.at(id)];
     bbox = c->bounding_box();
   } else if (gtype == "surface") {
-    if (id == 0) { return OPENMC_E_INVALID_IDY; }
+    if (id == 0) { return OPENMC_E_INVALID_ID; }
     const auto& s = model::surfaces[model::surface_map.at(abs(id))];
     bbox = s->bounding_box(id > 0);
   } else {

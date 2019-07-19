@@ -484,18 +484,27 @@ openmc_bounding_box(const char* geom_type, const int32_t id, double* llc, double
   std::string gtype(geom_type);
   to_lower(gtype);
 
+  // negative ids only for surfaces
+  if (id < 0 && gtype != "surface") {
+    std::stringstream msg;
+    msg << "Negative ID " << id << " passed to bounding box for "
+        << "non-surface geom type '" << geom_type << "'" << std::endl;
+    set_errmsg(msg);
+    return OPENMC_E_INVALID_ID;
+  }
+  // id should never be zero
+  if (id == 0) {
+    set_errmsg("Invalid ID 0 for surface bounding box.");
+    return OPENMC_E_INVALID_ID;
+  }
+
   if (gtype == "universe") {
-    // negative ids only apply to surfaces
-    if (id <= 0) { return OPENMC_E_INVALID_ID; }
     const auto& u = model::universes[model::universe_map.at(id)];
     bbox = u->bounding_box();
   } else if (gtype == "cell") {
-    // negative ids only apply to surfaces
-    if (id <= 0) { return OPENMC_E_INVALID_ID; }
     const auto& c = model::cells[model::cell_map.at(id)];
     bbox = c->bounding_box();
   } else if (gtype == "surface") {
-    if (id == 0) { return OPENMC_E_INVALID_ID; }
     const auto& s = model::surfaces[model::surface_map.at(abs(id))];
     bbox = s->bounding_box(id > 0);
   } else {

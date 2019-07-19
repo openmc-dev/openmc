@@ -100,30 +100,17 @@ class PredictorIntegrator(Integrator):
             self.operator.prev_res[-1].time[-1],
             len(self.operator.prev_res) - 1)
 
-    def _get_bos_data(self, step_index, step_power, prev_conc):
-        if step_index > 0 or self.operator.prev_res is None:
-            conc = deepcopy(prev_conc)
-            res = self.operator(conc, step_power)
-            if step_index == len(self) - 1:
-                tvec = [self.timesteps[step_index]] * 2
-            else:
-                tvec = self.timesteps[step_index:step_index + 2]
-
-            self._save_results(
-                [conc], [res], tvec, step_power,
-                self._istart + step_index, self._dep_proc_time)
+    def _get_bos_data_from_openmc(self, step_index, step_power, prev_conc):
+        conc = deepcopy(prev_conc)
+        res = self.operator(conc, step_power)
+        if step_index == len(self) - 1:
+            tvec = [self.timesteps[step_index]] * 2
         else:
-            # Get previous concentration
-            conc = self.operator.prev_res[-1].data[0]
+            tvec = self.timesteps[step_index:step_index + 2]
 
-            # Get reaction rates and keff
-            res = self.operator.prev_res[-1]
-            res.rates = res.rates[0]
-            res.k = res.k[0]
-
-            # Scale rates by ratio of powers
-            res.rates *= step_power / res.power[0]
-
+        self._save_results(
+            [conc], [res], tvec, step_power,
+            self._istart + step_index, self._dep_proc_time)
         return conc, res
 
     def integrate(self):
@@ -133,7 +120,11 @@ class PredictorIntegrator(Integrator):
             t, self._istart = self._get_start_data()
 
             for i, (dt, p) in enumerate(self):
-                conc, res = self._get_bos_data(i, p, conc)
+                if i > 0 or self.operator.prev_res is None:
+                    conc, res = self._get_bos_data_from_openmc(i, p, conc)
+                else:
+                    conc, res = self._get_bos_data_from_restart(i, p, conc)
+
                 # __call__ returns empty list since there aren't
                 # intermediate transport solutions
                 self._dep_proc_time, conc, _res_list = self(

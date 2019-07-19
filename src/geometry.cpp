@@ -501,6 +501,7 @@ openmc_bounding_box(const char* geom_type, const int32_t id, double* llc, double
   } else {
     std::stringstream msg;
     msg << "Geometry type: " << gtype << " is invalid.";
+    set_errmsg(msg);
     return OPENMC_E_GEOMETRY;
   }
 

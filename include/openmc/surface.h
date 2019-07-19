@@ -171,7 +171,7 @@ public:
 
   void to_hdf5(hid_t group_id) const;
 
-  moab::DagMC* dagmc_ptr_; //!< Pointer to the DagMC instance
+  moab::DagMC* dagmc_ptr_; //!< Pointer to DagMC instance
   int32_t dag_index_;      //!< DagMC index of surface
 };
 #endif

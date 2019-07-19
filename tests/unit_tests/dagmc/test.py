@@ -13,7 +13,8 @@ pytestmark = pytest.mark.skipif(
     not openmc.capi._dagmc_enabled(),
     reason="DAGMC CAD geometry is not enabled.")
 
-def test_dagmc_temperatures():
+@pytest.fixture(scope="module", autouse=True)
+def dagmc_model():
     model = openmc.model.Model()
 
     # settings
@@ -54,16 +55,9 @@ def test_dagmc_temperatures():
 
     model.export_to_xml()
 
-    # check cell temps as well here
     openmc.capi.init()
 
-    expected_temps = { 1 : 320.0,  # assigned by material
-                       2 : 300.0,  # assigned in dagmc file
-                       3 : 293.6 } # assigned by default
-
-    for cell_id, temp in expected_temps.items():
-        capi_cell = openmc.capi.cells[cell_id]
-        assert np.isclose(capi_cell.get_temperature(), temp)
+    yield
 
     openmc.capi.finalize()
 
@@ -73,3 +67,10 @@ def test_dagmc_temperatures():
     for f in input_files:
         if os.path.exists(f):
             os.remove(f)
+
+@pytest.mark.parametrize("cell_id,exp_temp", ((1, 320.0),  # assigned by material
+                                              (2, 300.0),  # assigned in dagmc file
+                                              (3, 293.6))) # assigned by default
+def test_dagmc_temperatures(cell_id, exp_temp):
+    cell = openmc.capi.cells[cell_id]
+    assert np.isclose(cell.get_temperature(), exp_temp)

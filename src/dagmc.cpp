@@ -140,7 +140,7 @@ void legacy_assign_material(const std::string& mat_string, DAGCell* c)
   }
 
   if (settings::verbosity >= 10) {
-    Material* m = model::materials[model::material_map[c->material_[0]]].get();
+    const auto& m = model::materials[model::material_map.at(c->material_[0])];
     std::stringstream msg;
     msg << "DAGMC material " << mat_string << " was assigned";
     if (mat_found_by_name) {
@@ -297,7 +297,7 @@ void load_dagmc_geometry()
 
     if (c->material_[0] == MATERIAL_VOID) { continue; }
 
-    auto& mat = model::materials[model::material_map[c->material_[0]]];
+    const auto& mat = model::materials[model::material_map.at(c->material_[0])];
     if (model::DAG->has_prop(vol_handle, "temp")) {
       rval = model::DAG->prop_value(vol_handle, "temp", temp_value);
       MB_CHK_ERR_CONT(rval);

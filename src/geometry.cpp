@@ -519,7 +519,7 @@ openmc_bounding_box(const char* geom_type, const int32_t id, double* llc, double
 }
 
 extern "C" int openmc_global_bounding_box(double* llc, double* urc) {
-  auto bbox = model::universes[model::root_universe]->bounding_box();
+  auto bbox = model::universes.at(model::root_universe)->bounding_box();
 
   // set lower left corner values
   llc[0] = bbox.xmin;

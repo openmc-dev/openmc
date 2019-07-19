@@ -61,7 +61,6 @@ void check_dagmc_file() {
 
 bool get_uwuw_materials_xml(std::string& s) {
   check_dagmc_file();
-
   UWUW uwuw((settings::path_input + DAGMC_FILENAME).c_str());
 
   std::stringstream ss;
@@ -295,8 +294,10 @@ void load_dagmc_geometry()
     // check for temperature assignment
     std::string temp_value;
 
+    // no temperature if void
     if (c->material_[0] == MATERIAL_VOID) { continue; }
 
+    // assign cell temperature
     const auto& mat = model::materials[model::material_map.at(c->material_[0])];
     if (model::DAG->has_prop(vol_handle, "temp")) {
       rval = model::DAG->prop_value(vol_handle, "temp", temp_value);

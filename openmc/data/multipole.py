@@ -5,6 +5,7 @@ import os
 import h5py
 import numpy as np
 from scipy.signal import find_peaks
+import numpy.polynomial.polynomial as poly
 
 import openmc.checkvalue as cv
 from ..exceptions import DataError
@@ -86,11 +87,11 @@ def _broaden_wmp_polynomials(E, dopp, n):
 
     Parameters
     ----------
-    E : Real
+    E : float
         Energy to evaluate at.
-    dopp : Real
+    dopp : float
         sqrt(atomic weight ratio / kT) in units of eV.
-    n : Integral
+    n : int
         Number of components to the polynomial.
 
     Returns
@@ -137,7 +138,7 @@ def _broaden_wmp_polynomials(E, dopp, n):
 
 def _vectfit_xs(energy, ce_xs, mts, rtol=1e-3, atol=1e-5, orders=None,
                 n_vf_iter=30, log=False, path_out=None, **kwargs):
-    r"""Generate multipole data from point-wise cross sections.
+    r"""Convert point-wise cross section to multipole data via Vector Fitting.
 
     Parameters
     ----------
@@ -145,13 +146,13 @@ def _vectfit_xs(energy, ce_xs, mts, rtol=1e-3, atol=1e-5, orders=None,
         Energy array
     ce_xs : np.ndarray
         Point-wise cross sections to be fitted
-    mts : Iterable of Integral
+    mts : Iterable of int
         Reaction list
-    rtol : Real, optional
+    rtol : float, optional
         Relative error tolerance
-    atol : Real, optional
+    atol : float, optional
         Absolute error tolerance
-    orders : Iterable of Integral, optional
+    orders : Iterable of int, optional
         A list of orders (number of poles) to be searched
     n_vf_iter : Integral, optional
         Number of maximum VF iterations
@@ -204,9 +205,9 @@ def _vectfit_xs(energy, ce_xs, mts, rtol=1e-3, atol=1e-5, orders=None,
             weight[i, ce_xs[i]<=MIN_CROSS_SECTION] = \
                max(weight[i, ce_xs[i]>MIN_CROSS_SECTION])
 
+    # detect peaks (resonances) and determine VF order search range
     peaks, _ = find_peaks(ce_xs[0]+ce_xs[1])
     n_peaks = peaks.size
-    # order search
     if orders is not None:
         # make sure orders are even integers
         orders = list(set([int(i/2)*2 for i in orders if i>=2]))
@@ -219,6 +220,7 @@ def _vectfit_xs(energy, ce_xs, mts, rtol=1e-3, atol=1e-5, orders=None,
         print("Found {} peaks".format(n_peaks))
         print("Fitting orders from {} to {}".format(orders[0], orders[-1]))
 
+    # perform VF with increasing orders
     found_ideal = False
     n_discarded = 0 # for accelation, number of discarded searches
     best_quality = best_ratio = -np.inf
@@ -371,7 +373,7 @@ def _vectfit_xs(energy, ce_xs, mts, rtol=1e-3, atol=1e-5, orders=None,
 
 def _vectfit_nuclide(endf_file, njoy_error=5e-4, vf_error=1e-3, vf_pieces=None,
                      log=False, path_out=None, mp_filename=None, **kwargs):
-    r"""Convert point-wise cross section to multipole data via Vector Fitting.
+    r"""Generate multipole data for a nuclide from ENDF.
 
     Parameters
     ----------
@@ -481,8 +483,7 @@ def _vectfit_nuclide(endf_file, njoy_error=5e-4, vf_error=1e-3, vf_pieces=None,
 
     alpha = nuc_ce.atomic_weight_ratio/(K_BOLTZMANN*TEMPERATURE_LIMIT)
 
-    poles, residues = None, None
-    piece_idxs = [0]
+    poles, residues = [], []
     # VF piece by piece
     for i_piece in range(vf_pieces):
         if log:
@@ -504,13 +505,8 @@ def _vectfit_nuclide(endf_file, njoy_error=5e-4, vf_error=1e-3, vf_pieces=None,
         p, r = _vectfit_xs(energy[e_idx], ce_xs[:, e_idx], mts, rtol=vf_error,
                        log=log, path_out=path_out, **kwargs)
 
-        if poles is None:
-            poles, residues = p, r
-        else:
-            poles = np.hstack(poles, p)
-            residues = np.hstack(residues, r)
-
-        piece_idxs.append(piece_idxs[-1] + p.size)
+        poles.append(p)
+        residues.append(r)
 
     # gather multipole data into a dictionary
     mp_data = {"name": nuc_ce.name,
@@ -518,8 +514,7 @@ def _vectfit_nuclide(endf_file, njoy_error=5e-4, vf_error=1e-3, vf_pieces=None,
                "E_min": E_min,
                "E_max": E_max,
                "poles": poles,
-               "residues": residues,
-               "piece_idxs": piece_idxs}
+               "residues": residues}
 
     # dump multipole data to files
     if path_out:
@@ -536,21 +531,21 @@ def _vectfit_nuclide(endf_file, njoy_error=5e-4, vf_error=1e-3, vf_pieces=None,
 
     return mp_data
 
-def _windowing(mp_data, max_relerr=1e-3, min_abserr=1e-5, n_w=None, n_cf=None,
+def _windowing(mp_data, rtol=1e-3, atol=1e-5, n_win=None, n_cf=None,
                log=False):
-    r"""Optimization of the windows from multipole data
+    r"""Generate window multipole library from multipole data.
 
     Parameters
     ----------
     mp_data : dict
         Multipole data
-    max_relerr : float, optional
+    rtol : float, optional
         Maximum relative error tolerance
-    min_abserr : float, optional
+    atol : float, optional
         Minimum absolute error tolerance
-    n_w : integer, optional
+    n_win : int, optional
         Number of equal-in-mementum spaced energy windows
-    n_cf : integer, optional
+    n_cf : int, optional
         Number of curve fitting order
     log : bool, optional
         Whether to display log
@@ -570,19 +565,126 @@ def _windowing(mp_data, max_relerr=1e-3, min_abserr=1e-5, n_w=None, n_cf=None,
     E_max = mp_data["E_max"]
     mp_poles = mp_data["poles"]
     mp_residues = mp_data["residues"]
-    mp_pieces = mp_data["piece_idxs"]
+
+    n_pieces = len(mp_poles)
+    piece_width = (sqrt(E_max) - sqrt(E_min)) / n_pieces
+    alpha = awr / (K_BOLTZMANN*TEMPERATURE_LIMIT)
 
     # determine window size and CF order
-    if n_w is None:
-        n_w = OPTIMIZED[name][1]
+    if n_win is None:
+        n_win = OPTIMIZED[name][1]
     if n_cf is None:
         n_cf = OPTIMIZED[name][2]
-    # make sure window size is not exceeding piece size
-    if n_w < 2*(len(mp_pieces) - 1):
-        raise ValueError('Windows number too large.')
+    # inner window size
+    spacing = (sqrt(E_max) - sqrt(E_min)) / n_win
+    # make sure inner window size is smaller than piece size
+    if spacing > piece_width:
+        raise ValueError('Windows spacing cannot larger than piece spacing.')
 
-    # optimize windows one by one
-    spacing = (sqrt(E_max) - sqrt(E_min))/n_w
+    # sort poles (and residues) by the real component of the pole
+    for ip in range(n_pieces):
+        indices = mp_poles[ip].argsort()
+        mp_poles[ip] = mp_poles[ip][indices]
+        mp_residues[ip] = mp_residues[ip][indices]
+
+    # initialize an array to record if each pole is used or not
+    poles_unused = [np.ones_like(p, dtype=int) for p in mp_poles]
+
+    # optimize the windows: the goal is to find the least set of significant
+    # consecutive poles and curve fit coefficients to reproduce cross section
+    win_data = []
+    for iw in range(n_win):
+        # inner window boundaries
+        inbegin = sqrt(E_min) + spacing * iw
+        inend = inbegin + spacing
+        incenter = (inbegin + inend) / 2.0
+        # extend window energy range for Doppler broadening 
+        if iw == 0 or sqrt(alpha)*inbegin < 4.0:
+            e_start = inbegin**2
+        else:
+            e_start = max(E_min, (sqrt(alpha)*inbegin-4.0)**2/alpha)
+        e_end = min(E_max, (sqrt(alpha)*inend + 4.0)**2/alpha)
+
+        # locate piece and relevant poles
+        i_piece = int((inbegin - sqrt(E_min))/piece_width + 0.5)
+        poles, residues = mp_poles[i_piece], mp_residues[i_piece]
+        n_poles = poles.size
+
+        # energy points for fitting
+        n_points = min(max(100, (e_end - e_start)*4), 10000)
+        energy = np.logspace(np.log10(e_start), np.log10(e_end), n_points)
+        # reference xs from multipole form
+        xs_ref = m.evaluate(energy, poles, residues)
+
+        # start from 0 poles, initialize pointers to the center nearest pole
+        center_pole_ind = np.argmin((np.fabs(poles.real - incenter)))
+        lp, rp = center_pole_ind, center_pole_ind
+        while True:
+            # calculate the cross sections contributed by the windowed poles
+            if rp > lp:
+                xs_wp = m.evaluate(energy, poles[lp:rp], residues[lp:rp])
+            else:
+                xs_wp = np.zeros_like(xs_ref)
+
+            # do least squares polynomial fit on the difference
+            coefs = poly.polyfit(energy, np.transpose(xs_ref - xs_wp), n_cf)
+            xs_fit = np.transpose(poly.polyval(energy, coefs))
+
+            # assess the result
+            abserr = np.abs(xs_fit + xs_wp - xs_ref)
+            relerr = abserr / xs_ref
+            if not np.any(np.isnan(abserr)):
+                if np.all(abserr<=atol) or np.all(relerr[abserr>atol] < rtol)):
+                    # meet tolerances
+                    break
+
+            # try to include one more (center nearest) pole
+            if rp+1 >= n_poles:
+                lp = lp - 1
+            elif lp-1 < 0 or poles[rp+1] - incenter <= incenter - poles[lp-1]:
+                rp = rp + 1
+            else:
+                lp = lp - 1
+
+        # save data for this window
+        win_data.append((i_piece, lp, rp, coefs))
+        # mark the windowed poles are used poles
+        poles_unused[i_piece][lp:rp] = 0
+
+    # flatten and shrink: keep used poles and remove unused
+    data = [] # used poles and residues
+    n_used = [0] # accumulated number of poles for each piece 
+    for ip in range(n_pieces):
+        used = (poles_unused[ip] == 0)
+        data.append(np.column_stack(mp_poles[ip][used], mp_residues[ip][used]))
+        n_used.append(n_used[-1] + used.sum())
+    # stack poles/residues in sequence vertically
+    data = np.vstack(data)
+
+    # new start/end pole indices
+    windows = []
+    curvefit = []
+    for iw in range(n_win):
+        ip, lp, rp, coefs = win_data[iw]
+        adjust = n_used[ip] - (poles_unused[ip][:lp] == 0).sum()
+        lp = lp + adjust + 1
+        rp = rp + adjust
+        windows.append([lp, rp])
+        curvefit.append(coefs)
+
+    # construct the WindowedMultipole object
+    wmp = WindowedMultipole(name)
+    wmp.spacing = spacing
+    wmp.sqrtAWR = sqrt(awr)
+    wmp.E_min = E_min
+    wmp.E_max = E_max
+    wmp.data = data
+    wmp.windows = np.asarray(windows)
+    wmp.curvefit = np.asarray(curvefit)
+    #TODO: currently all polynomial curvefit will be Doppler brodened
+    wmp.broaden_poly = np.ones((n_win,), dtype=bool)
+
+    return wmp
 
 class WindowedMultipole(EqualityMixin):
     """Resonant cross sections represented in the windowed multipole format.

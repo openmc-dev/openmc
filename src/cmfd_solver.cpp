@@ -127,7 +127,7 @@ int cmfd_linsolver_1g(const double* A_data, const double* b, double* x,
 
         // Compute residual and update error
         double res = (tmpx[irow] - x[irow]) / tmpx[irow];
-        err = res * res;
+        err += res * res;
       }
     }
 

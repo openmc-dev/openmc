@@ -133,7 +133,6 @@ int cmfd_linsolver_1g(const double* A_data, const double* b, double* x,
 
     // Check convergence
     err = std::sqrt(err / cmfd::dim);
-    std::cout << err << "\n";
     if (err < tol)
       return igs;
 
@@ -220,7 +219,7 @@ int cmfd_linsolver_2g(const double* A_data, const double* b, double* x,
 
         // Compute residual and update error
         double res = (tmpx[irow] - x[irow]) / tmpx[irow];
-        err = res * res;
+        err += res * res;
       }
     }
 

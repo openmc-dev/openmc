@@ -532,8 +532,8 @@ def _vectfit_nuclide(endf_file, njoy_error=5e-4, vf_error=1e-3, vf_pieces=None,
     return mp_data
 
 def _windowing(mp_data, rtol=1e-3, atol=1e-5, n_win=None, n_cf=None,
-               log=False):
-    r"""Generate window multipole library from multipole data.
+               spacing=None, log=False):
+    r"""Generate windowed multipole library from multipole data.
 
     Parameters
     ----------
@@ -547,6 +547,8 @@ def _windowing(mp_data, rtol=1e-3, atol=1e-5, n_win=None, n_cf=None,
         Number of equal-in-mementum spaced energy windows
     n_cf : int, optional
         Number of curve fitting order
+    spacing : float, optional
+        Inner window spacing (sqrt energy space)
     log : bool, optional
         Whether to display log
 
@@ -557,6 +559,9 @@ def _windowing(mp_data, rtol=1e-3, atol=1e-5, n_win=None, n_cf=None,
         format.
 
     """
+
+    if log:
+        print("Start windowing")
     
     # unpack multipole data
     name = mp_data["name"]
@@ -572,14 +577,23 @@ def _windowing(mp_data, rtol=1e-3, atol=1e-5, n_win=None, n_cf=None,
 
     # determine window size and CF order
     if n_win is None:
-        n_win = OPTIMIZED[name][1]
-    if n_cf is None:
-        n_cf = OPTIMIZED[name][2]
+        if spacing is not None:
+            # Ensure the windows are within the multipole energy range
+            n_win = int((sqrt(E_max) - sqrt(E_min)) / spacing)
+            E_max = (sqrt(E_min) + n_win*spacing)**2
+        else:
+            # TODO: optimize windows spacing
+            n_win = OPTIMIZED[name][1]
+
     # inner window size
     spacing = (sqrt(E_max) - sqrt(E_min)) / n_win
-    # make sure inner window size is smaller than piece size
+    # make sure inner window size is smaller than energy piece size
     if spacing > piece_width:
-        raise ValueError('Windows spacing cannot larger than piece spacing.')
+        raise ValueError('Window spacing cannot be larger than piece spacing.')
+
+    # TODO: optimize curve fit order
+    if n_cf is None:
+        n_cf = OPTIMIZED[name][2]
 
     # sort poles (and residues) by the real component of the pole
     for ip in range(n_pieces):
@@ -594,6 +608,9 @@ def _windowing(mp_data, rtol=1e-3, atol=1e-5, n_win=None, n_cf=None,
     # consecutive poles and curve fit coefficients to reproduce cross section
     win_data = []
     for iw in range(n_win):
+        if log:
+            print("Processing window {}/{}...".format(iw+1, n_win))
+
         # inner window boundaries
         inbegin = sqrt(E_min) + spacing * iw
         inend = inbegin + spacing
@@ -648,7 +665,7 @@ def _windowing(mp_data, rtol=1e-3, atol=1e-5, n_win=None, n_cf=None,
 
         # save data for this window
         win_data.append((i_piece, lp, rp, coefs))
-        # mark the windowed poles are used poles
+        # mark the windowed poles as used poles
         poles_unused[i_piece][lp:rp] = 0
 
     # flatten and shrink: keep used poles and remove unused
@@ -681,7 +698,7 @@ def _windowing(mp_data, rtol=1e-3, atol=1e-5, n_win=None, n_cf=None,
     wmp.data = data
     wmp.windows = np.asarray(windows)
     wmp.curvefit = np.asarray(curvefit)
-    #TODO: currently all polynomial curvefit will be Doppler brodened
+    # TODO: check if Doppler brodening of the polynomial curvefit is negligible
     wmp.broaden_poly = np.ones((n_win,), dtype=bool)
 
     return wmp

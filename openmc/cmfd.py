@@ -196,8 +196,8 @@ class CMFDRun(object):
     ----------
     tally_begin : int
         Batch number at which CMFD tallies should begin accummulating
-    feedback_begin: int
-        Batch number at which CMFD feedback should be turned on
+    cmfd_begin: int
+        Batch number at which CMFD solver should start executing
     ref_d : list of floats
         List of reference diffusion coefficients to fix CMFD parameters to
     dhat_reset : bool
@@ -310,7 +310,7 @@ class CMFDRun(object):
         """
         # Variables that users can modify
         self._tally_begin = 1
-        self._feedback_begin = 1
+        self._cmfd_begin = 1
         self._ref_d = []
         self._dhat_reset = False
         self._display = {'balance': False, 'dominance': False,
@@ -418,8 +418,8 @@ class CMFDRun(object):
         return self._tally_begin
 
     @property
-    def feedback_begin(self):
-        return self._feedback_begin
+    def cmfd_begin(self):
+        return self._cmfd_begin
 
     @property
     def ref_d(self):
@@ -531,11 +531,11 @@ class CMFDRun(object):
         check_greater_than('CMFD tally begin batch', begin, 0)
         self._tally_begin = begin
 
-    @feedback_begin.setter
-    def feedback_begin(self, begin):
+    @cmfd_begin.setter
+    def cmfd_begin(self, begin):
         check_type('CMFD feedback begin batch', begin, Integral)
         check_greater_than('CMFD feedback begin batch', begin, 0)
-        self._feedback_begin = begin
+        self._cmfd_begin = begin
 
     @ref_d.setter
     def ref_d(self, diff_params):
@@ -801,13 +801,8 @@ class CMFDRun(object):
         # Run next batch
         status = openmc.capi.next_batch()
 
-        # Perform CMFD calculation if on
-        if self._cmfd_on:
-            self._execute_cmfd()
-
-            # Write CMFD output if CMFD on for current batch
-            if openmc.capi.master():
-                self._write_cmfd_output()
+        # Perform CMFD calculations
+        self._execute_cmfd()
 
         # Write CMFD data to statepoint
         if openmc.capi.is_statepoint_batch():
@@ -865,7 +860,7 @@ class CMFDRun(object):
                     cmfd_group = f.create_group("cmfd")
                     cmfd_group.attrs['cmfd_on'] = self._cmfd_on
                     cmfd_group.attrs['feedback'] = self._feedback
-                    cmfd_group.attrs['feedback_begin'] = self._feedback_begin
+                    cmfd_group.attrs['cmfd_begin'] = self._cmfd_begin
                     cmfd_group.attrs['mesh_id'] = self._mesh_id
                     cmfd_group.attrs['tally_begin'] = self._tally_begin
                     cmfd_group.attrs['time_cmfd'] = self._time_cmfd
@@ -1040,9 +1035,9 @@ class CMFDRun(object):
                                     dtype=int)
 
         # Check CMFD tallies accummulated before feedback turned on
-        if self._feedback and self._feedback_begin < self._tally_begin:
+        if self._feedback and self._cmfd_begin < self._tally_begin:
             raise ValueError('Tally begin must be less than or equal to '
-                             'feedback begin')
+                             'CMFD begin')
 
         # Set number of batches where cmfd tallies should be reset
         self._n_resets = len(self._reset)
@@ -1072,7 +1067,7 @@ class CMFDRun(object):
                 cmfd_group = f['cmfd']
                 self._cmfd_on = cmfd_group.attrs['cmfd_on']
                 self._feedback = cmfd_group.attrs['feedback']
-                self._feedback_begin = cmfd_group.attrs['feedback_begin']
+                self._cmfd_begin = cmfd_group.attrs['cmfd_begin']
                 self._tally_begin = cmfd_group.attrs['tally_begin']
                 self._time_cmfd = cmfd_group.attrs['time_cmfd']
                 self._time_cmfdbuild = cmfd_group.attrs['time_cmfdbuild']
@@ -1169,9 +1164,8 @@ class CMFDRun(object):
         # Add 1 as next_batch has not been called yet
         current_batch = openmc.capi.current_batch() + 1
 
-        # Check to activate CMFD diffusion and possible feedback
-        # Check to activate CMFD tallies
-        if self._tally_begin == current_batch:
+        # Check to activate CMFD solver and possible feedback
+        if self._cmfd_begin == current_batch:
             self._cmfd_on = True
 
         # Check to reset tallies
@@ -1181,35 +1175,46 @@ class CMFDRun(object):
 
     def _execute_cmfd(self):
         """Runs CMFD calculation on master node"""
-        # Run CMFD on single processor on master
         if openmc.capi.master():
             # Start CMFD timer
             time_start_cmfd = time.time()
 
-            # Create CMFD data from OpenMC tallies
-            self._set_up_cmfd()
+            if openmc.capi.current_batch() >= self._tally_begin:
+                # Calculate all cross sections based on tally window averages
+                self._compute_xs()
 
-            # Call solver
-            self._cmfd_solver_execute()
+        # Execute CMFD algorithm if CMFD on for current batch
+        if self._cmfd_on:
+            # Run CMFD on single processor on master
+            if openmc.capi.master():
+                # Create CMFD data based on OpenMC tallies
+                self._set_up_cmfd()
 
-            # Store k-effective
-            self._k_cmfd.append(self._keff)
+                # Call solver
+                self._cmfd_solver_execute()
 
-            # Check to perform adjoint on last batch
-            if (openmc.capi.current_batch() == openmc.capi.settings.batches
-                    and self._run_adjoint):
-                self._cmfd_solver_execute(adjoint=True)
+                # Store k-effective
+                self._k_cmfd.append(self._keff)
 
-            # Calculate fission source
-            self._calc_fission_source()
+                # Check to perform adjoint on last batch
+                if (openmc.capi.current_batch() == openmc.capi.settings.batches
+                        and self._run_adjoint):
+                    self._cmfd_solver_execute(adjoint=True)
 
-        # Calculate weight factors
-        self._cmfd_reweight(True)
+                # Calculate fission source
+                self._calc_fission_source()
+
+            # Calculate weight factors
+            self._cmfd_reweight()
 
         # Stop CMFD timer
         if openmc.capi.master():
             time_stop_cmfd = time.time()
             self._time_cmfd += time_stop_cmfd - time_start_cmfd
+            if self._cmfd_on:
+                # Write CMFD output if CMFD on for current batch
+                self._write_cmfd_output()
+
 
     def _cmfd_tally_reset(self):
         """Resets all CMFD tallies in memory"""
@@ -1228,9 +1233,6 @@ class CMFDRun(object):
         """Configures CMFD object for a CMFD eigenvalue calculation
 
         """
-        # Calculate all cross sections based on tally window averages
-        self._compute_xs()
-
         # Compute effective downscatter cross section
         if self._downscatter:
             self._compute_effective_downscatter()
@@ -1422,96 +1424,85 @@ class CMFDRun(object):
         self._src_cmp.append(np.sqrt(1.0 / self._norm
                              * np.sum((self._cmfd_src - self._openmc_src)**2)))
 
-    def _cmfd_reweight(self, new_weights):
-        """Performs weighting of particles in source bank
+    def _cmfd_reweight(self):
+        """Performs weighting of particles in source bank"""
+        # Get spatial dimensions and energy groups
+        nx, ny, nz, ng = self._indices
 
-        Parameters
-        ----------
-        new_weights : bool
-            Whether to reweight particles or not
+        # Count bank site in mesh and reverse due to egrid structured
+        outside = self._count_bank_sites()
 
-        """
-        # Compute new weight factors
-        if new_weights:
+        # Check and raise error if source sites exist outside of CMFD mesh
+        if openmc.capi.master() and outside:
+            raise OpenMCError('Source sites outside of the CMFD mesh')
 
-            # Get spatial dimensions and energy groups
-            nx, ny, nz, ng = self._indices
+        # Have master compute weight factors, ignore any zeros in
+        # sourcecounts or cmfd_src
+        if openmc.capi.master():
+            # Compute normalization factor
+            norm = np.sum(self._sourcecounts) / np.sum(self._cmfd_src)
 
-            # Count bank site in mesh and reverse due to egrid structured
-            outside = self._count_bank_sites()
+            # Define target reshape dimensions for sourcecounts. This
+            # defines how self._sourcecounts is ordered by dimension
+            target_shape = [nz, ny, nx, ng]
 
-            # Check and raise error if source sites exist outside of CMFD mesh
-            if openmc.capi.master() and outside:
-                raise OpenMCError('Source sites outside of the CMFD mesh')
+            # Reshape sourcecounts to target shape. Swap x and z axes so
+            # that the shape is now [nx, ny, nz, ng]
+            sourcecounts = np.swapaxes(
+                    self._sourcecounts.reshape(target_shape), 0, 2)
 
-            # Have master compute weight factors, ignore any zeros in
-            # sourcecounts or cmfd_src
-            if openmc.capi.master():
-                # Compute normalization factor
-                norm = np.sum(self._sourcecounts) / np.sum(self._cmfd_src)
+            # Flip index of energy dimension
+            sourcecounts = np.flip(sourcecounts, axis=3)
 
-                # Define target reshape dimensions for sourcecounts. This
-                # defines how self._sourcecounts is ordered by dimension
-                target_shape = [nz, ny, nx, ng]
+            # Compute weight factors
+            div_condition = np.logical_and(sourcecounts > 0,
+                                           self._cmfd_src > 0)
+            self._weightfactors = (np.divide(self._cmfd_src * norm,
+                                   sourcecounts, where=div_condition,
+                                   out=np.ones_like(self._cmfd_src),
+                                   dtype=np.float32))
 
-                # Reshape sourcecounts to target shape. Swap x and z axes so
-                # that the shape is now [nx, ny, nz, ng]
-                sourcecounts = np.swapaxes(
-                        self._sourcecounts.reshape(target_shape), 0, 2)
+        if not self._feedback:
+            return
 
-                # Flip index of energy dimension
-                sourcecounts = np.flip(sourcecounts, axis=3)
+        # Broadcast weight factors to all procs
+        if have_mpi:
+            self._weightfactors = self._intracomm.bcast(
+                                  self._weightfactors)
 
-                # Compute weight factors
-                div_condition = np.logical_and(sourcecounts > 0,
-                                               self._cmfd_src > 0)
-                self._weightfactors = (np.divide(self._cmfd_src * norm,
-                                       sourcecounts, where=div_condition,
-                                       out=np.ones_like(self._cmfd_src),
-                                       dtype=np.float32))
+        m = openmc.capi.meshes[self._mesh_id]
+        energy = self._egrid
+        ng = self._indices[3]
 
-            if (not self._feedback
-                    or openmc.capi.current_batch() < self._feedback_begin):
-                return
+        # Get locations and energies of all particles in source bank
+        source_xyz = openmc.capi.source_bank()['r']
+        source_energies = openmc.capi.source_bank()['E']
 
-            # Broadcast weight factors to all procs
-            if have_mpi:
-                self._weightfactors = self._intracomm.bcast(
-                                      self._weightfactors)
+        # Convert xyz location to the CMFD mesh index
+        mesh_ijk = np.floor((source_xyz-m.lower_left)/m.width).astype(int)
 
-            m = openmc.capi.meshes[self._mesh_id]
-            energy = self._egrid
-            ng = self._indices[3]
+        # Determine which energy bin each particle's energy belongs to
+        # Separate into cases bases on where source energies lies on egrid
+        energy_bins = np.zeros(len(source_energies), dtype=int)
+        idx = np.where(source_energies < energy[0])
+        energy_bins[idx] = ng - 1
+        idx = np.where(source_energies > energy[-1])
+        energy_bins[idx] = 0
+        idx = np.where((source_energies >= energy[0]) &
+                       (source_energies <= energy[-1]))
+        energy_bins[idx] = ng - np.digitize(source_energies, energy)
 
-            # Get locations and energies of all particles in source bank
-            source_xyz = openmc.capi.source_bank()['r']
-            source_energies = openmc.capi.source_bank()['E']
+        # Determine weight factor of each particle based on its mesh index
+        # and energy bin and updates its weight
+        openmc.capi.source_bank()['wgt'] *= self._weightfactors[
+                mesh_ijk[:,0], mesh_ijk[:,1], mesh_ijk[:,2], energy_bins]
 
-            # Convert xyz location to the CMFD mesh index
-            mesh_ijk = np.floor((source_xyz-m.lower_left)/m.width).astype(int)
-
-            # Determine which energy bin each particle's energy belongs to
-            # Separate into cases bases on where source energies lies on egrid
-            energy_bins = np.zeros(len(source_energies), dtype=int)
-            idx = np.where(source_energies < energy[0])
-            energy_bins[idx] = ng - 1
-            idx = np.where(source_energies > energy[-1])
-            energy_bins[idx] = 0
-            idx = np.where((source_energies >= energy[0]) &
-                           (source_energies <= energy[-1]))
-            energy_bins[idx] = ng - np.digitize(source_energies, energy)
-
-            # Determine weight factor of each particle based on its mesh index
-            # and energy bin and updates its weight
-            openmc.capi.source_bank()['wgt'] *= self._weightfactors[
-                    mesh_ijk[:,0], mesh_ijk[:,1], mesh_ijk[:,2], energy_bins]
-
-            if openmc.capi.master() and np.any(source_energies < energy[0]):
-                print(' WARNING: Source pt below energy grid')
-                sys.stdout.flush()
-            if openmc.capi.master() and np.any(source_energies > energy[-1]):
-                print(' WARNING: Source pt above energy grid')
-                sys.stdout.flush()
+        if openmc.capi.master() and np.any(source_energies < energy[0]):
+            print(' WARNING: Source pt below energy grid')
+            sys.stdout.flush()
+        if openmc.capi.master() and np.any(source_energies > energy[-1]):
+            print(' WARNING: Source pt above energy grid')
+            sys.stdout.flush()
 
     def _count_bank_sites(self):
         """Determines the number of fission bank sites in each cell of a given
@@ -1939,6 +1930,8 @@ class CMFDRun(object):
         tally_results = tallies[tally_id].results[:,0,1]
         flux = np.where(is_cmfd_accel, tally_results, 0.)
 
+        # TODO do this check after flux reshape
+        # TODO need to update is_cmfd_accel, current, and coremap
         # Detect zero flux, abort if located
         if np.any(flux[is_cmfd_accel] < _TINY_BIT):
             # Get index of zero flux in flux array

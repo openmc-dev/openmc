@@ -36,7 +36,7 @@
 <?xml version='1.0' encoding='utf-8'?>
 <tallies>
   <filter id="1" type="particle">
-    <bins>2</bins>
+    <bins>photon</bins>
   </filter>
   <tally id="1">
     <filters>1</filters>

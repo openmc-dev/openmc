@@ -1141,7 +1141,7 @@ class CMFDRun(object):
         self._dhat = np.zeros((nx, ny, nz, ng, 6))
 
         # Set reference diffusion parameters
-        if self._ref_d:
+        if list(self._ref_d):
             self._set_reference_params = True
             # Check length of reference diffusion parameters equal to number of
             # energy groups
@@ -2214,7 +2214,8 @@ class CMFDRun(object):
         res = leakage + interactions - scattering - (1.0 / keff) * fission
 
         # Normalize res by flux and bank res
-        self._resnb = np.divide(res, self._flux, where=self._flux > 0)
+        self._resnb = np.divide(res, self._flux, where=self._flux > 0,
+                                out=np.zeros_like(self._flux))
 
         # Calculate RMS and record for this batch
         self._balance.append(np.sqrt(

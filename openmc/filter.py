@@ -583,10 +583,6 @@ class ParticleFilter(Filter):
                              + cls.short_name.lower() + "' but got '"
                              + group['type'][()].decode() + " instead")
 
-        if 'meshes' not in kwargs:
-            raise ValueError(cls.__name__ + " requires a 'meshes' keyword "
-                             "argument.")
-
         particles = [b.decode() for b in group['bins'][()]]
         filter_id = int(group.name.split('/')[-1].lstrip('filter '))
         return cls(particles, filter_id=filter_id)

@@ -4,9 +4,6 @@
 Test Suite
 ==========
 
-Running Tests
--------------
-
 The OpenMC test suite consists of two parts, a regression test suite and a unit
 test suite. The regression test suite is based on regression or integrated
 testing where different types of input files are configured and the full OpenMC
@@ -14,27 +11,35 @@ code is executed. Results from simulations are compared with expected
 results. The unit tests are primarily intended to test individual
 functions/classes in the OpenMC Python API.
 
-The test suite relies on the third-party `pytest <https://pytest.org>`_
-package. To run either or both the regression and unit test suites, it is
-assumed that you have OpenMC fully installed, i.e., the :ref:`scripts_openmc`
-executable is available on your :envvar:`PATH` and the :mod:`openmc` Python
-module is importable. In development where it would be onerous to continually
-install OpenMC every time a small change is made, it is recommended to install
-OpenMC in development/editable mode. With setuptools, this is accomplished by
-running::
+Prerequisites
+-------------
 
-    python setup.py develop
+- The test suite relies on the third-party `pytest <https://pytest.org>`_
+  package. To run either or both the regression and unit test suites, it is
+  assumed that you have OpenMC fully installed, i.e., the :ref:`scripts_openmc`
+  executable is available on your :envvar:`PATH` and the :mod:`openmc` Python
+  module is importable. In development where it would be onerous to continually
+  install OpenMC every time a small change is made, it is recommended to install
+  OpenMC in development/editable mode. With setuptools, this is accomplished by
+  running::
 
-or using pip (recommended)::
+      python setup.py develop
 
-    pip install -e .[test]
+  or using pip (recommended)::
 
-It is also assumed that you have cross section data available that is pointed to
-by the :envvar:`OPENMC_CROSS_SECTIONS` environment variables. Furthermore, to
-run unit tests for the :mod:`openmc.data` module, it is necessary to have
-ENDF/B-VII.1 data available and pointed to by the :envvar:`OPENMC_ENDF_DATA`
-environment variable. All data sources can be obtained using the
-``tools/ci/travis-before-script.sh`` script.
+      pip install -e .[test]
+
+- The test suite requires a specific set of cross section data in order for
+  tests to pass. A download URL for the data that OpenMC expects can be found
+  within ``tools/ci/download-xs.sh``.
+- In addition to the HDF5 data, some tests rely on ENDF files. A download URL
+  for those can also be found in ``tools/ci/download-xs.sh``.
+- Some tests require `NJOY <https://www.njoy21.io/NJOY2016>`_ to preprocess
+  cross section data. The test suite assumes that you have an ``njoy``
+  executable available on your :envvar:`PATH`.
+
+Running Tests
+-------------
 
 To execute the test suite, go to the ``tests/`` directory and run::
 
@@ -45,6 +50,17 @@ you must have the `pytest-cov <https://pypi.python.org/pypi/pytest-cov>`_ plugin
 installed and run::
 
     pytest --cov=../openmc --cov-report=html
+
+Generating XML Inputs
+---------------------
+
+Many of the regression tests rely on the Python API to build an appropriate
+model. However, it can sometimes be desirable to work directly with the XML
+input files rather than having to run a script in order to run the problem/test.
+To build the input files for a test without actually running the test, you can
+run::
+
+    pytest --build-inputs <name-of-test>
 
 Adding Tests to the Regression Suite
 ------------------------------------

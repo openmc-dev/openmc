@@ -94,7 +94,7 @@ public:
 
   //! Get name
   //! \return Material name
-  std::string name() const { return name_; }
+  const std::string& name() const { return name_; }
 
   //! Set name
   void set_name(const std::string& name) { name_ = name; }

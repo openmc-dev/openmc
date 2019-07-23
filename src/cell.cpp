@@ -1089,7 +1089,7 @@ openmc_cell_get_name(int32_t index, const char** name) {
     return OPENMC_E_OUT_OF_BOUNDS;
   }
 
-  *name = model::cells[index]->name_.data();
+  *name = model::cells[index]->name().data();
 
   return 0;
 }

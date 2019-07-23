@@ -1388,7 +1388,7 @@ openmc_material_get_name(int32_t index, const char** name) {
     return OPENMC_E_OUT_OF_BOUNDS;
   }
 
-  *name = model::materials[index]->name_.data();
+  *name = model::materials[index]->name().data();
 
   return 0;
 }

@@ -1945,7 +1945,7 @@ class CMFDRun(object):
                               np.sum(self._flux_rate, axis=4), 0.0)
 
         # Detect zero flux, abort if located and cmfd is on
-        if np.any(self._flux[is_accel[...,:]] < _TINY_BIT) and self.cmfd_on:
+        if np.any(self._flux[is_accel[...,:]] < _TINY_BIT) and self._cmfd_on:
             # Get index of first zero flux in flux array
             idx = np.argwhere(self._flux[is_accel[...,:]] < _TINY_BIT)[0]
 

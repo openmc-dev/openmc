@@ -1918,35 +1918,12 @@ class CMFDRun(object):
         # Get tallies in-memory
         tallies = openmc.capi.tallies
 
-        # Ravel coremap as 1d array similar to how tally data is arranged
-        coremap = np.ravel(self._coremap.swapaxes(0, 2))
-
         # Set conditional numpy array as boolean vector based on coremap
-        # Repeat each value for number of groups in problem
-        is_cmfd_accel = np.repeat(coremap != _CMFD_NOACCEL, ng)
+        is_accel = self._coremap != _CMFD_NOACCEL
 
         # Get flux from CMFD tally 0
         tally_id = self._tally_ids[0]
-        tally_results = tallies[tally_id].results[:,0,1]
-        flux = np.where(is_cmfd_accel, tally_results, 0.)
-
-        # TODO do this check after flux reshape
-        # TODO need to update is_cmfd_accel, current, and coremap
-        # Detect zero flux, abort if located
-        if np.any(flux[is_cmfd_accel] < _TINY_BIT):
-            # Get index of zero flux in flux array
-            idx = np.argmax(np.where(is_cmfd_accel, flux, 1) < _TINY_BIT)
-
-            # Convert scalar idx to index in flux matrix
-            mat_idx = np.unravel_index(idx, self._flux.shape)
-
-            # Throw error message (one-based indexing)
-            # Index of group is flipped
-            err_message = 'Detected zero flux without coremap overlay' + \
-                          ' at mesh: (' + \
-                          ', '.join(str(i+1) for i in mat_idx[:-1]) + \
-                          ') in group ' + str(ng-mat_idx[-1])
-            raise OpenMCError(err_message)
+        flux = tallies[tally_id].results[:,0,1]
 
         # Define target tally reshape dimensions. This defines how openmc
         # tallies are ordered by dimension
@@ -1964,7 +1941,21 @@ class CMFDRun(object):
         self._flux_rate = np.append(self._flux_rate, reshape_flux, axis=4)
 
         # Compute flux as aggregate of banked flux_rate over tally window
-        self._flux = np.sum(self._flux_rate, axis=4)
+        self._flux = np.where(is_accel[...,np.newaxis],
+                              np.sum(self._flux_rate, axis=4), 0.0)
+
+        # Detect zero flux, abort if located and cmfd is on
+        if np.any(self._flux[is_accel[...,:]] < _TINY_BIT) and self.cmfd_on:
+            # Get index of first zero flux in flux array
+            idx = np.argwhere(self._flux[is_accel[...,:]] < _TINY_BIT)[0]
+
+            # Throw error message (one-based indexing)
+            # Index of group is flipped
+            err_message = 'Detected zero flux without coremap overlay' + \
+                          ' at mesh: (' + \
+                          ', '.join(str(i+1) for i in idx[:-1]) + \
+                          ') in group ' + str(ng-idx[-1])
+            raise OpenMCError(err_message)
 
         # Get total rr from CMFD tally 0
         totalrr = tallies[tally_id].results[:,1,1]
@@ -2065,10 +2056,7 @@ class CMFDRun(object):
 
         # Get surface currents from CMFD tally 2
         tally_id = self._tally_ids[2]
-        tally_results = tallies[tally_id].results[:,0,1]
-
-        # Filter tally results to include only accelerated regions
-        current = np.where(np.repeat(is_cmfd_accel, 12), tally_results, 0.)
+        current = tallies[tally_id].results[:,0,1]
 
         # Define target tally reshape dimensions for current
         target_tally_shape = [nz, ny, nx, 12, ng, 1]
@@ -2087,7 +2075,8 @@ class CMFDRun(object):
                                        axis=5)
 
         # Compute current as aggregate of banked current_rate over tally window
-        self._current = np.sum(self._current_rate, axis=5)
+        self._current = np.where(is_accel[...,np.newaxis,np.newaxis], 
+                                 np.sum(self._current_rate, axis=5), 0.0)
 
         # Get p1 scatter rr from CMFD tally 3
         tally_id = self._tally_ids[3]

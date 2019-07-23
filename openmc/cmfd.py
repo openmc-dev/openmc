@@ -1490,7 +1490,7 @@ class CMFDRun(object):
         energy_bins[idx] = 0
         idx = np.where((source_energies >= energy[0]) &
                        (source_energies <= energy[-1]))
-        energy_bins[idx] = ng - np.digitize(source_energies, energy)
+        energy_bins[idx] = ng - np.digitize(source_energies[idx], energy)
 
         # Determine weight factor of each particle based on its mesh index
         # and energy bin and updates its weight
@@ -1547,7 +1547,7 @@ class CMFDRun(object):
         energy_bins[idx] = ng - 1
         idx = np.where((source_energies >= energy[0]) &
                        (source_energies <= energy[-1]))
-        energy_bins[idx] = np.digitize(source_energies, energy) - 1
+        energy_bins[idx] = np.digitize(source_energies[idx], energy) - 1
 
         # Determine all unique combinations of mesh bin and energy bin, and
         # count number of particles that belong to these combinations

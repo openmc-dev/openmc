@@ -300,7 +300,7 @@ void load_dagmc_geometry()
     std::string temp_value;
 
     // no temperature if void
-    if (c->material_[0] == MATERIAL_VOID) { continue; }
+    if (c->material_[0] == MATERIAL_VOID) continue;
 
     // assign cell temperature
     const auto& mat = model::materials[model::material_map.at(c->material_[0])];

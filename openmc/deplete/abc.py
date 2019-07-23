@@ -11,9 +11,9 @@ from abc import ABC, abstractmethod
 from xml.etree import ElementTree as ET
 from warnings import warn
 
-from numpy import zeros, nonzero
+from numpy import nonzero, empty
 
-from openmc.data import DataLibrary
+from openmc.data import DataLibrary, JOULE_PER_EV
 from openmc.checkvalue import check_type
 from .chain import Chain
 
@@ -188,7 +188,7 @@ class ReactionRateHelper(ABC):
 
     @abstractmethod
     def generate_tallies(self, materials, scores):
-        """Use the capi to build tallies needed for reaction rates"""
+        """Use the C API to build tallies needed for reaction rates"""
 
     @property
     def nuclides(self):
@@ -201,13 +201,15 @@ class ReactionRateHelper(ABC):
         self._nuclides = nuclides
         self._rate_tally.nuclides = nuclides
 
-    def _reset_results_cache(self, nnucs, nreact):
-        """Cache for results for a given material"""
+    def _get_results_cache(self, nnucs, nreact):
+        """Cache for results for a given material
+
+        Creates an empty array of shape ``(nnucs, nreact)``
+        if the shape does not match the current cache.
+        """
         if (self._results_cache is None
                 or self._results_cache.shape != (nnucs, nreact)):
-            self._results_cache = zeros((nnucs, nreact))
-        else:
-            self._results_cache.fill(0.0)
+            self._results_cache = empty((nnucs, nreact))
         return self._results_cache
 
     @abstractmethod
@@ -216,6 +218,8 @@ class ReactionRateHelper(ABC):
 
         Parameters
         ----------
+        mat_id : int
+            Unique ID for the requested material
         nuc_index : list of str
             Ordering of desired nuclides
         react_index : list of str
@@ -230,17 +234,13 @@ class ReactionRateHelper(ABC):
 
         Parameters
         ----------
-        energy : float
-            Energy produced in this region [W]
-        number : iterable of float
-            Number density [atoms/b/cm] of each nuclide tracked in the calculation.
             Ordered identically to :attr:`nuclides`
 
         Returns
         -------
-        results : `numpy.ndarray`
-            2D array ``[n_nuclides, n_rxns]`` of reaction rates normalized by
-            the number of nuclides
+        results : numpy.ndarray
+            Array of reactions rates of shape ``(n_nuclides, n_rxns)``
+            normalized by the number of nuclides
         """
 
         mask = nonzero(number)
@@ -266,7 +266,7 @@ class EnergyHelper(ABC):
         All nuclides with desired reaction rates. Ordered to be
         consistent with :class:`openmc.deplete.Operator`
     energy : float
-        Total energy [eV/s] produced in a transport simulation.
+        Total energy [J/s/source neutron] produced in a transport simulation.
         Updated in the material iteration with :meth:`update`.
     """
 
@@ -276,7 +276,7 @@ class EnergyHelper(ABC):
 
     @property
     def energy(self):
-        return self._energy
+        return self._energy * JOULE_PER_EV
 
     def reset(self):
         """Reset energy produced prior to unpacking tallies"""

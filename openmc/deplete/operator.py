@@ -19,7 +19,6 @@ import numpy as np
 
 import openmc
 import openmc.capi
-from openmc.data import JOULE_PER_EV
 from . import comm
 from .abc import TransportOperator, OperatorResult
 from .atom_number import AtomNumber
@@ -138,7 +137,11 @@ class Operator(TransportOperator):
         openmc.reset_auto_ids()
         self.burnable_mats, volume, nuclides = self._get_burnable_mats()
         self.local_mats = _distribute(self.burnable_mats)
-        self._mat_index_map = {}
+
+        # Generate map from local materials => material index
+        self._mat_index_map = {
+            lm: self.burnable_mats.index(lm) for lm in self.local_mats}
+
 
         # Determine which nuclides have incident neutron data
         self.nuclides_with_data = self._get_nuclides_with_data()
@@ -157,7 +160,6 @@ class Operator(TransportOperator):
         # Get classes to assist working with tallies
         self._rate_helper = DirectReactionRateHelper()
         self._energy_helper = ChainFissionHelper()
-
 
     def __call__(self, vec, power, print_out=True):
         """Runs a simulation.
@@ -387,10 +389,6 @@ class Operator(TransportOperator):
         self._energy_helper.prepare(
             self.chain.nuclides, self.reaction_rates.index_nuc, materials)
 
-        # Generate map from local materials => material index
-        self._mat_index_map = {
-            lm: self.burnable_mats.index(lm) for lm in self.local_mats}
-
         # Return number density vector
         return list(self.number.get_mat_slice(np.s_[:]))
 
@@ -564,10 +562,8 @@ class Operator(TransportOperator):
             rates[i] = self._rate_helper.divide_by_adens(number)
 
         # Reduce energy produced from all processes
+        # J / s / source neutron
         energy = comm.allreduce(self._energy_helper.energy)
-
-        # Determine power in eV/s
-        power /= JOULE_PER_EV
 
         # Scale reaction rates to obtain units of reactions/sec
         rates *= power / energy

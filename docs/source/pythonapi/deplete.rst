@@ -75,8 +75,8 @@ data, such as number densities and reaction rates for each material.
    :template: myclass.rst
 
    AtomNumber
-   ChainFissHelper
-   DirectRxnRateHelper
+   ChainFissionHelper
+   DirectReactionRateHelper
    OperatorResult
    ReactionRates
    Results
@@ -92,7 +92,7 @@ The following classes are abstract classes that can be used to extend the
    :template: myclass.rst
 
    ReactionRateHelper
-   FissionEnergyHelper
+   EnergyHelper
    TransportOperator
 
 Each of the integrator functions also relies on a number of "helper" functions

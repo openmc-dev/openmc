@@ -1,5 +1,5 @@
 import glob
-import os
+import shutil
 
 import numpy as np
 import pytest
@@ -13,17 +13,9 @@ pytestmark = pytest.mark.skipif(
     not openmc.capi._dagmc_enabled(),
     reason="DAGMC CAD geometry is not enabled.")
 
-@pytest.fixture(scope='module', autouse=True)
-def setup_dagmc_unit_test(request):
-    # Change to test directory
-    olddir = request.fspath.dirpath().chdir()
-    try:
-        yield
-    finally:
-        olddir.chdir()
-
 @pytest.fixture(scope="module", autouse=True)
-def dagmc_model(setup_dagmc_unit_test):
+def dagmc_model(request):
+
     model = openmc.model.Model()
 
     # settings
@@ -62,20 +54,16 @@ def dagmc_model(setup_dagmc_unit_test):
     mats = openmc.Materials([u235, water])
     model.materials = mats
 
-    model.export_to_xml()
-
-    openmc.capi.init()
-
-    yield
+    # location of  dagmc file in test directory
+    dagmc_file = request.fspath.dirpath() + "/dagmc.h5m"
+    # move to a temporary directory
+    with cdtemp():
+        shutil.copyfile(dagmc_file, "./dagmc.h5m")
+        model.export_to_xml()
+        openmc.capi.init()
+        yield
 
     openmc.capi.finalize()
-
-    # cleanup
-    input_files = glob.glob("*.xml")
-    input_files += glob.glob("*.h5")
-    for f in input_files:
-        if os.path.exists(f):
-            os.remove(f)
 
 @pytest.mark.parametrize("cell_id,exp_temp", ((1, 320.0),  # assigned by material
                                               (2, 300.0),  # assigned in dagmc file

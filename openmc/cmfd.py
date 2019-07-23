@@ -1945,9 +1945,10 @@ class CMFDRun(object):
                               np.sum(self._flux_rate, axis=4), 0.0)
 
         # Detect zero flux, abort if located and cmfd is on
-        if np.any(self._flux[is_accel[...,:]] < _TINY_BIT) and self._cmfd_on:
+        zero_flux = np.logical_and(self._flux < _TINY_BIT, is_accel[...,np.newaxis])
+        if np.any(zero_flux) and self._cmfd_on:
             # Get index of first zero flux in flux array
-            idx = np.argwhere(self._flux[is_accel[...,:]] < _TINY_BIT)[0]
+            idx = np.argwhere(zero_flux)[0]
 
             # Throw error message (one-based indexing)
             # Index of group is flipped

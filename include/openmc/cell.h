@@ -136,7 +136,7 @@ public:
 
   //! Get the name of a cell
   //! \return Cell name
-  std::string name() const { return name_; };
+  const std::string& name() const { return name_; };
 
   //! Set the temperature of a cell instance
   //! \param[in] name Cell name

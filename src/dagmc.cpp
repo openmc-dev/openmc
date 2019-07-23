@@ -37,7 +37,7 @@ const bool dagmc_enabled = false;
 
 namespace openmc {
 
-const std::string DAGMC_FILENAME = settings::path_input + "dagmc.h5m";
+const std::string DAGMC_FILENAME = "dagmc.h5m";
 
 namespace simulation {
 
@@ -54,8 +54,9 @@ moab::DagMC* DAG;
 
 
 void check_dagmc_file() {
-  if (!file_exists(DAGMC_FILENAME)) {
-    fatal_error("Geometry DAGMC file '" + DAGMC_FILENAME + "' does not exist!");
+  std::string filename = settings::path_input + DAGMC_FILENAME;
+  if (!file_exists(filename)) {
+    fatal_error("Geometry DAGMC file '" + filename + "' does not exist!");
   }
 }
 
@@ -153,14 +154,18 @@ void legacy_assign_material(const std::string& mat_string, DAGCell* c)
 
 void load_dagmc_geometry()
 {
+  check_dagmc_file();
+
   if (!model::DAG) {
     model::DAG = new moab::DagMC();
   }
 
+
+  std::string filename = settings::path_input + DAGMC_FILENAME;
   // --- Materials ---
 
   // create uwuw instance
-  UWUW uwuw(DAGMC_FILENAME.c_str());
+  UWUW uwuw(filename.c_str());
 
   // check for uwuw material definitions
   bool using_uwuw = !uwuw.material_library.empty();
@@ -173,7 +178,7 @@ void load_dagmc_geometry()
   int32_t dagmc_univ_id = 0; // universe is always 0 for DAGMC runs
 
   // load the DAGMC geometry
-  moab::ErrorCode rval = model::DAG->load_file(DAGMC_FILENAME.c_str());
+  moab::ErrorCode rval = model::DAG->load_file(filename.c_str());
   MB_CHK_ERR_CONT(rval);
 
   // initialize acceleration data structures

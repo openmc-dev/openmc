@@ -13,8 +13,17 @@ pytestmark = pytest.mark.skipif(
     not openmc.capi._dagmc_enabled(),
     reason="DAGMC CAD geometry is not enabled.")
 
+@pytest.fixture(scope='module', autouse=True)
+def setup_dagmc_unit_test(request):
+    # Change to test directory
+    olddir = request.fspath.dirpath().chdir()
+    try:
+        yield
+    finally:
+        olddir.chdir()
+
 @pytest.fixture(scope="module", autouse=True)
-def dagmc_model():
+def dagmc_model(setup_dagmc_unit_test):
     model = openmc.model.Model()
 
     # settings

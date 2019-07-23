@@ -14,7 +14,14 @@ from .abc import ReactionRateHelper, EnergyHelper
 
 
 class DirectReactionRateHelper(ReactionRateHelper):
-    """Class that generates tallies for one-group rates"""
+    """Class that generates tallies for one-group rates
+
+    Attributes
+    ----------
+    nuclides : list of str
+        All nuclides with desired reaction rates. Ordered to be
+        consistent with :class:`openmc.deplete.Operator`
+    """
 
     def generate_tallies(self, materials, scores):
         """Produce one-group reaction rate tally
@@ -41,7 +48,7 @@ class DirectReactionRateHelper(ReactionRateHelper):
         Parameters
         ----------
         mat_id : int
-            Unique id for the requested material
+            Unique ID for the requested material
         nuc_index : iterable of int
             Index for each nuclide in :attr:`nuclides` in the
             desired reaction rate matrix
@@ -50,11 +57,12 @@ class DirectReactionRateHelper(ReactionRateHelper):
 
         Returns
         -------
-        rates : :class:`numpy.ndarray`
-            2D matrix ``(len(nuc_index), len(react_index))`` with the
+        rates : numpy.ndarray
+            Array with shape ``(n_nuclides, n_rxns)`` with the
             reaction rates in this material
         """
-        results = self._reset_results_cache(len(nuc_index), len(react_index))
+        results = self._get_results_cache(len(nuc_index), len(react_index))
+        results.fill(0.0)
         full_tally_res = self._rate_tally.results[mat_id, :, 1]
         for i_tally, (i_nuc, i_react) in enumerate(
                 product(nuc_index, react_index)):
@@ -63,13 +71,23 @@ class DirectReactionRateHelper(ReactionRateHelper):
         return results
 
 
-# ------------------------------------
-# Helpers for obtaining fission energy
-# ------------------------------------
+# ----------------------------
+# Helpers for obtaining energy
+# ----------------------------
 
 
 class ChainFissionHelper(EnergyHelper):
-    """Fission Q-values are pulled from chain"""
+    """Computes energy using fission Q values from depletion chain
+
+    Attributes
+    ----------
+    nuclides : list of str
+        All nuclides with desired reaction rates. Ordered to be
+        consistent with :class:`openmc.deplete.Operator`
+    energy : float
+        Total energy [J/s/source neutron] produced in a transport simulation.
+        Updated in the material iteration with :meth:`update`.
+    """
 
     def __init__(self):
         super().__init__()
@@ -78,8 +96,8 @@ class ChainFissionHelper(EnergyHelper):
     def prepare(self, chain_nucs, rate_index, _materials):
         """Populate the fission Q value vector from a chain.
 
-        Paramters
-        ---------
+        Parameters
+        ----------
         chain_nucs : iterable of :class:`openmc.deplete.Nuclide`
             Nuclides used in this depletion chain. Do not need
             to be ordered

@@ -234,6 +234,8 @@ class ReactionRateHelper(ABC):
 
         Parameters
         ----------
+        number : iterable of float
+            Number density [atoms/b-cm] of each nuclide tracked in the calculation.
             Ordered identically to :attr:`nuclides`
 
         Returns

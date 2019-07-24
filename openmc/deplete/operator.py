@@ -13,6 +13,7 @@ from itertools import chain
 import os
 import time
 import xml.etree.ElementTree as ET
+from warnings import warn
 
 import h5py
 import numpy as np
@@ -23,7 +24,9 @@ from . import comm
 from .abc import TransportOperator, OperatorResult
 from .atom_number import AtomNumber
 from .reaction_rates import ReactionRates
-from .helpers import DirectReactionRateHelper, ChainFissionHelper
+from .helpers import (
+    DirectReactionRateHelper, ChainFissionHelper, EnergyFromTallyHelper,
+)
 
 
 def _distribute(items):
@@ -73,9 +76,15 @@ class Operator(TransportOperator):
         in the previous results.
     diff_burnable_mats : bool, optional
         Whether to differentiate burnable materials with multiple instances
+    tally_energy : bool, optional
+        If True, then tally the total energy production during the transport
+        simulation. This value will be used to scale reaction rates. Otherwise,
+        treat fission Q value as constant across all materials according to
+        ``chain_file``. Default: False.
     fission_q : dict, optional
         Dictionary of nuclides and their fission Q values [eV]. If not given,
         values will be pulled from the ``chain_file``.
+        Not used if ``tally_energy`` is True.
 
     Attributes
     ----------
@@ -113,7 +122,11 @@ class Operator(TransportOperator):
 
     """
     def __init__(self, geometry, settings, chain_file=None, prev_results=None,
-                 diff_burnable_mats=False, fission_q=None):
+                 diff_burnable_mats=False, tally_energy=False, fission_q=None):
+        if tally_energy and fission_q is not None:
+            warn("Fission Q dictionary not used when Operator.tally_energy "
+                 "is used.")
+            fission_q = None
         super().__init__(chain_file, fission_q)
         self.round_number = False
         self.settings = settings
@@ -159,7 +172,10 @@ class Operator(TransportOperator):
 
         # Get classes to assist working with tallies
         self._rate_helper = DirectReactionRateHelper()
-        self._energy_helper = ChainFissionHelper()
+        if tally_energy:
+            self._energy_helper = EnergyFromTallyHelper()
+        else:
+            self._energy_helper = ChainFissionHelper()
 
     def __call__(self, vec, power, print_out=True):
         """Runs a simulation.

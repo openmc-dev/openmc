@@ -6,6 +6,7 @@ from itertools import product
 from numpy import dot, zeros
 
 from openmc.capi import Tally, MaterialFilter
+from . import comm
 from .abc import ReactionRateHelper, EnergyHelper
 
 # -------------------------------------
@@ -137,3 +138,30 @@ class ChainFissionHelper(EnergyHelper):
             isotopes in all materials have the same Q value.
         """
         self._energy += dot(fission_rates, self._fission_q_vector)
+
+
+class EnergyFromTallyHelper(EnergyHelper):
+    """Compute energy production with a tally"""
+
+    def __init__(self):
+        super().__init__()
+        self._tally = None
+        # TODO Use energy deposition mode setting to set score
+        self._score = "fission-q-recoverable"
+
+    def prepare(self, *args, **kwargs):
+        """Create the global energy deposition tally
+
+        No arguments are needed.
+        """
+        self._tally = Tally()
+        self._tally.scores = [self._score]
+
+    def reset(self):
+        """Compute total energy produced in the system"""
+        if comm.rank > 0:
+            # set energy to zero on this process
+            # to avoid repeatedly counting the
+            # global energy production for each process
+            return super().reset()
+        self._energy = self._tally.results[..., 1].sum()

@@ -91,7 +91,6 @@ expected_results = ( (1, (( -4.,  -4., -inf), ( 4.,  4., inf))),
                      (5, ((-inf, -inf, -inf), (inf, inf, inf))) )
 @pytest.mark.parametrize("cell_id,expected_box", expected_results)
 def test_cell_box(cell_id, expected_box):
-    print("Cell {}".format(cell_id))
     cell_box = openmc.capi.cells[cell_id].bounding_box
     assert tuple(cell_box[0]) == expected_box[0]
     assert tuple(cell_box[1]) == expected_box[1]

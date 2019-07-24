@@ -476,57 +476,6 @@ openmc_find_cell(const double* xyz, int32_t* index, int32_t* instance)
   return 0;
 }
 
-extern "C" int
-openmc_bounding_box(const char* geom_type, const int32_t id, double* llc, double* urc) {
-
-  BoundingBox bbox;
-
-  std::string gtype(geom_type);
-  to_lower(gtype);
-
-  // negative ids only for surfaces
-  if (id < 0 && gtype != "surface") {
-    std::stringstream msg;
-    msg << "Negative ID " << id << " passed to bounding box for "
-        << "non-surface geom type '" << geom_type << "'" << std::endl;
-    set_errmsg(msg);
-    return OPENMC_E_INVALID_ID;
-  }
-  // id should never be zero
-  if (id == 0) {
-    set_errmsg("Invalid ID 0 for surface bounding box.");
-    return OPENMC_E_INVALID_ID;
-  }
-
-  if (gtype == "universe") {
-    const auto& u = model::universes[model::universe_map.at(id)];
-    bbox = u->bounding_box();
-  } else if (gtype == "cell") {
-    const auto& c = model::cells[model::cell_map.at(id)];
-    bbox = c->bounding_box();
-  } else if (gtype == "surface") {
-    const auto& s = model::surfaces[model::surface_map.at(abs(id))];
-    bbox = s->bounding_box(id > 0);
-  } else {
-    std::stringstream msg;
-    msg << "Geometry type: " << gtype << " is invalid.";
-    set_errmsg(msg);
-    return OPENMC_E_INVALID_TYPE;
-  }
-
-  // set lower left corner values
-  llc[0] = bbox.xmin;
-  llc[1] = bbox.ymin;
-  llc[2] = bbox.zmin;
-
-  // set upper right corner values
-  urc[0] = bbox.xmax;
-  urc[1] = bbox.ymax;
-  urc[2] = bbox.zmax;
-
-  return 0;
-}
-
 extern "C" int openmc_global_bounding_box(double* llc, double* urc) {
   auto bbox = model::universes.at(model::root_universe)->bounding_box();
 

@@ -587,6 +587,7 @@ BoundingBox CSGCell::bounding_box_simple() const {
   return bbox;
 }
 
+
 void CSGCell::apply_demorgan(std::vector<int32_t>& rpn) {
   for (auto& token : rpn) {
     if (token < OP_UNION) { token *= -1; }
@@ -601,11 +602,12 @@ BoundingBox CSGCell::bounding_box_complex(std::vector<int32_t> rpn) {
   // sub-region that the complement connects to. This indicates
   // that the entire region is a complement and we can apply
   // De Morgan's laws immediately
-  if ((rpn.back() == OP_COMPLEMENT)) {
+  if (rpn.back() == OP_COMPLEMENT) {
       rpn.pop_back();
       apply_demorgan(rpn);
   }
 
+  // reverse the rpn to make popping easier
   std::reverse(rpn.begin(), rpn.end());
 
   BoundingBox current = model::surfaces[abs(rpn.back()) - 1]->bounding_box(rpn.back() > 0);
@@ -631,8 +633,6 @@ BoundingBox CSGCell::bounding_box_complex(std::vector<int32_t> rpn) {
       std::vector<int32_t> subrpn;
       subrpn.push_back(one);
       subrpn.push_back(two);
-      int32_t sone = one;
-      int32_t stwo = two;
       // add until last two tokens in the sub-rpn are operators
       // (indicates a right parenthesis)
       while (!((subrpn.back() >= OP_UNION) && (*(subrpn.rbegin() + 1) >= OP_UNION))) {
@@ -1091,6 +1091,28 @@ openmc_cell_get_temperature(int32_t index, const int32_t* instance, double* T)
     set_errmsg(e.what());
     return OPENMC_E_UNASSIGNED;
   }
+  return 0;
+}
+
+//! Get the bounding box of a cell
+extern "C" int
+openmc_cell_bounding_box(const int32_t index, double* llc, double* urc) {
+
+  BoundingBox bbox;
+
+  const auto& c = model::cells[index];
+  bbox = c->bounding_box();
+
+  // set lower left corner values
+  llc[0] = bbox.xmin;
+  llc[1] = bbox.ymin;
+  llc[2] = bbox.zmin;
+
+  // set upper right corner values
+  urc[0] = bbox.xmax;
+  urc[1] = bbox.ymax;
+  urc[2] = bbox.zmax;
+
   return 0;
 }
 

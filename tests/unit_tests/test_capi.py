@@ -475,52 +475,6 @@ def test_position(capi_init):
 
     assert tuple(pos) == (1.3, 2.3, 3.3)
 
-def test_bounding_box(capi_init):
-    inf = sys.float_info.max
-
-    expected_llc = (-inf, -0.63, -inf)
-    expected_urc = (inf, inf, inf)
-
-    llc, urc = openmc.capi.bounding_box("Surface", 5)
-
-    assert tuple(llc) == expected_llc
-    assert tuple(urc) == expected_urc
-
-
-    expected_llc = (-inf, -inf, -inf)
-    expected_urc = (inf, -0.63, inf)
-
-    llc, urc = openmc.capi.bounding_box("Surface", -5)
-
-    assert tuple(llc) == expected_llc
-    assert tuple(urc) == expected_urc
-
-    expected_llc = (-0.39218, -0.39218, -inf)
-    expected_urc = (0.39218, 0.39218, inf)
-
-    llc, urc = openmc.capi.bounding_box("Cell", 1)
-
-    assert tuple(llc) == expected_llc
-    assert tuple(urc) == expected_urc
-
-    expected_llc = (-0.45720, -0.45720, -inf)
-    expected_urc = (0.45720, 0.45720, inf)
-
-    llc, urc = openmc.capi.bounding_box("Cell", 2)
-
-    assert tuple(llc) == expected_llc
-    assert tuple(urc) == expected_urc
-
-    # make sure that proper assertions are raised
-    with pytest.raises(openmc.exceptions.InvalidIDError):
-        openmc.capi.bounding_box("Cell", -1)
-
-    with pytest.raises(openmc.exceptions.InvalidIDError):
-        openmc.capi.bounding_box("Surface", 0)
-
-    with pytest.raises(openmc.exceptions.InvalidTypeError):
-        openmc.capi.bounding_box("Region", 1)
-
 
 def test_global_bounding_box(capi_init):
     inf = sys.float_info.max

@@ -1,3 +1,5 @@
+import sys
+
 from collections.abc import Mapping, Iterable
 from ctypes import c_int, c_int32, c_double, c_char_p, POINTER
 from weakref import WeakValueDictionary
@@ -190,11 +192,17 @@ class Cell(_FortranObjectWithID):
 
     @property
     def bounding_box(self):
+        inf = sys.float_info.max
         llc = np.zeros(3)
         urc = np.zeros(3)
         _dll.openmc_cell_bounding_box(self._index,
                                  llc.ctypes.data_as(POINTER(c_double)),
                                  urc.ctypes.data_as(POINTER(c_double)))
+        llc[llc == inf] = np.inf
+        urc[urc == inf] = np.inf
+        llc[llc == -inf] = -np.inf
+        urc[urc == -inf] = -np.inf
+
         return llc, urc
 
 class _CellMapping(Mapping):

@@ -1,6 +1,5 @@
 from collections.abc import Mapping
 import os
-import sys
 
 import numpy as np
 import pytest
@@ -477,10 +476,8 @@ def test_position(capi_init):
 
 
 def test_global_bounding_box(capi_init):
-    inf = sys.float_info.max
-
-    expected_llc = (-0.63, -0.63, -inf)
-    expected_urc = (0.63, 0.63, inf)
+    expected_llc = (-0.63, -0.63, -np.inf)
+    expected_urc = (0.63, 0.63, np.inf)
 
     llc, urc = openmc.capi.global_bounding_box()
 

@@ -1,5 +1,3 @@
-import sys
-
 import numpy as np
 import openmc.capi
 import pytest
@@ -82,13 +80,17 @@ def complex_cell(run_in_tmpdir):
 
     openmc.capi.finalize()
 
-inf = sys.float_info.max
 
-expected_results = ( (1, (( -4.,  -4., -inf), ( 4.,  4., inf))),
-                     (2, (( -7.,  -7., -inf), ( 7.,  7., inf))),
-                     (3, ((-10., -10., -inf), (10., 10., inf))),
-                     (4, ((-10., -10., -inf), (10., 10., inf))),
-                     (5, ((-inf, -inf, -inf), (inf, inf, inf))) )
+expected_results = ( (1, (( -4.,  -4., -np.inf),
+                          (  4.,   4.,  np.inf))),
+                     (2, (( -7.,  -7., -np.inf),
+                          (  7.,   7.,  np.inf))),
+                     (3, ((-10., -10., -np.inf),
+                          ( 10.,  10.,  np.inf))),
+                     (4, ((-10., -10., -np.inf),
+                          ( 10.,  10.,  np.inf))),
+                     (5, ((-np.inf, -np.inf, -np.inf),
+                          ( np.inf,  np.inf,  np.inf))) )
 @pytest.mark.parametrize("cell_id,expected_box", expected_results)
 def test_cell_box(cell_id, expected_box):
     cell_box = openmc.capi.cells[cell_id].bounding_box

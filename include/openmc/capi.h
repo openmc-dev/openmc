@@ -31,7 +31,7 @@ extern "C" {
   int openmc_filter_set_id(int32_t index, int32_t id);
   int openmc_finalize();
   int openmc_find_cell(const double* xyz, int32_t* index, int32_t* instance);
-  int openmc_bounding_box(const char* geom_type, const int32_t id, double* llc, double* urc);
+  int openmc_cell_bounding_box(const int32_t index, double* llc, double* urc);
   int openmc_global_bounding_box(double* llc, double* urc);
   int openmc_fission_bank(void** ptr, int64_t* n);
   int openmc_get_cell_index(int32_t id, int32_t* index);

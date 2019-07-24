@@ -73,11 +73,6 @@ _dll.openmc_simulation_finalize.errcheck = _error_handler
 _dll.openmc_statepoint_write.argtypes = [c_char_p, POINTER(c_bool)]
 _dll.openmc_statepoint_write.restype = c_int
 _dll.openmc_statepoint_write.errcheck = _error_handler
-_dll.openmc_bounding_box.argtypes = [c_char_p, c_int,
-                                     POINTER(c_double),
-                                     POINTER(c_double)]
-_dll.openmc_bounding_box.restype = c_int
-_dll.openmc_bounding_box.errcheck = _error_handler
 _dll.openmc_global_bounding_box.argtypes = [POINTER(c_double),
                                             POINTER(c_double)]
 _dll.openmc_global_bounding_box.restype = c_int
@@ -92,28 +87,6 @@ def global_bounding_box():
                                     urc.ctypes.data_as(POINTER(c_double)))
 
     return llc, urc
-
-
-def bounding_box(geom_type, geom_id):
-    """Get a bounding box for a geometric object
-
-    Parameters
-    ----------
-    geom_type : str
-        Type of geometry object. One of ('surface', 'cell', 'universe')
-    geom_id : int
-        ID of the object. Can be positive or negative for surfaces.
-    """
-    geomt = c_char_p(geom_type.encode())
-    llc = np.zeros(3)
-    urc = np.zeros(3)
-    _dll.openmc_bounding_box(geomt,
-                             geom_id,
-                             llc.ctypes.data_as(POINTER(c_double)),
-                             urc.ctypes.data_as(POINTER(c_double)))
-
-    return llc, urc
-
 
 def calculate_volumes():
     """Run stochastic volume calculation"""

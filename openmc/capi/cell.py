@@ -49,6 +49,11 @@ _dll.openmc_get_cell_index.argtypes = [c_int32, POINTER(c_int32)]
 _dll.openmc_get_cell_index.restype = c_int
 _dll.openmc_get_cell_index.errcheck = _error_handler
 _dll.cells_size.restype = c_int
+_dll.openmc_cell_bounding_box.argtypes = [c_int,
+                                          POINTER(c_double),
+                                          POINTER(c_double)]
+_dll.openmc_cell_bounding_box.restype = c_int
+_dll.openmc_cell_bounding_box.errcheck = _error_handler
 
 
 class Cell(_FortranObjectWithID):
@@ -187,7 +192,7 @@ class Cell(_FortranObjectWithID):
     def bounding_box(self):
         llc = np.zeros(3)
         urc = np.zeros(3)
-        _dll.openmc_bounding_box(b'Cell', self.id,
+        _dll.openmc_cell_bounding_box(self._index,
                                  llc.ctypes.data_as(POINTER(c_double)),
                                  urc.ctypes.data_as(POINTER(c_double)))
         return llc, urc

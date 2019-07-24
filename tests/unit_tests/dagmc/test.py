@@ -1,4 +1,3 @@
-import glob
 import shutil
 
 import numpy as np
@@ -13,6 +12,7 @@ pytestmark = pytest.mark.skipif(
     not openmc.capi._dagmc_enabled(),
     reason="DAGMC CAD geometry is not enabled.")
 
+
 @pytest.fixture(scope="module", autouse=True)
 def dagmc_model(request):
 
@@ -24,8 +24,8 @@ def dagmc_model(request):
     model.settings.particles = 100
     model.settings.temperature = {'tolerance': 50.0}
     model.settings.verbosity = 1
-    source_box = openmc.stats.Box([-4, -4, -4],
-                                  [ 4,  4,  4])
+    source_box = openmc.stats.Box([ -4, -4, -4 ],
+                                  [  4,  4,  4 ])
     source = openmc.Source(space=source_box)
     model.settings.source = source
 
@@ -65,9 +65,10 @@ def dagmc_model(request):
 
     openmc.capi.finalize()
 
-@pytest.mark.parametrize("cell_id,exp_temp", ((1, 320.0),  # assigned by material
-                                              (2, 300.0),  # assigned in dagmc file
-                                              (3, 293.6))) # assigned by default
+
+@pytest.mark.parametrize("cell_id,exp_temp", ((1, 320.0),   # assigned by material
+                                              (2, 300.0),   # assigned in dagmc file
+                                              (3, 293.6)))  # assigned by default
 def test_dagmc_temperatures(cell_id, exp_temp):
     cell = openmc.capi.cells[cell_id]
     assert np.isclose(cell.get_temperature(), exp_temp)

@@ -129,6 +129,7 @@ class Chain(object):
         self.nuclides = []
         self.reactions = []
         self.nuclide_dict = OrderedDict()
+        self._default_fsn_yields = None
 
     def __contains__(self, nuclide):
         return nuclide in self.nuclide_dict
@@ -374,13 +375,27 @@ class Chain(object):
             clean_indentation(root_elem)
             tree.write(str(filename), encoding='utf-8')
 
-    def form_matrix(self, rates):
+    def _build_default_yields(self):
+        """Return dictionary {str: {str: float}}"""
+        # Take lowest energy for back compatability
+        # Should be removed by end of this feature
+        out = {}
+        for nuc in self.nuclides:
+            if len(nuc.yield_data) == 0:
+                continue
+            _energy, yield_data = sorted(nuc.yield_data.items())[0]
+            out[nuc.name] = {prod: frac for prod, frac in yield_data}
+        return out
+
+    def form_matrix(self, rates, fission_yields=None):
         """Forms depletion matrix.
 
         Parameters
         ----------
         rates : numpy.ndarray
             2D array indexed by (nuclide, reaction)
+        fission_yields : dictionary of tuple to float, optional
+            Option to use a custom set of fission yields
 
         Returns
         -------
@@ -390,6 +405,11 @@ class Chain(object):
         """
         matrix = defaultdict(float)
         reactions = set()
+
+        if fission_yields is None:
+            if self._default_fsn_yields is None:
+                self._default_fsn_yields = self._build_default_yields()
+            fission_yields = self._default_fsn_yields
 
         for i, nuc in enumerate(self.nuclides):
 
@@ -438,8 +458,7 @@ class Chain(object):
                             # Assume that we should always use thermal fission
                             # yields. At some point it would be nice to account
                             # for the energy-dependence..
-                            energy, data = sorted(nuc.yield_data.items())[0]
-                            for product, y in data:
+                            for product, y in fission_yields[nuc.name].items():
                                 yield_val = y * path_rate
                                 if yield_val != 0.0:
                                     k = self.nuclide_dict[product]

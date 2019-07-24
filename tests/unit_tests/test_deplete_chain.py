@@ -3,6 +3,7 @@
 from collections.abc import Mapping
 import os
 from pathlib import Path
+from itertools import product
 
 import numpy as np
 from openmc.data import zam, ATOMIC_SYMBOL
@@ -220,6 +221,12 @@ def test_form_matrix(simple_chain):
     assert mat[1, 2] == mat12
     assert mat[2, 2] == mat22
 
+    # Pass equivalent fission yields directly
+    # Ensure identical matrix is formed
+    f_yields = {"C": {"A": 0.0292737, "B": 0.002566345}}
+    new_mat = chain.form_matrix(react[0], f_yields)
+    for r, c in product(range(3), range(3)):
+        assert new_mat[r, c] == mat[r, c]
 
 def test_getitem():
     """ Test nuc_by_ind converter function. """

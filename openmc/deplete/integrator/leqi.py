@@ -5,7 +5,7 @@ from collections.abc import Iterable
 from itertools import repeat
 
 from .celi import celi_inner
-from .cram import deplete
+from .cram import timed_deplete
 from ..results import Results
 
 
@@ -137,22 +137,24 @@ def leqi(operator, timesteps, power=None, power_density=None, print_out=True):
 
             inputs = list(zip(op_res_last.rates, op_results[0].rates,
                               repeat(dt_l), repeat(dt)))
-            x_new = deplete(chain, x[0], inputs, dt, print_out,
-                            matrix_func=_leqi_f1)
-            x_new = deplete(chain, x_new, inputs, dt, print_out,
-                            matrix_func=_leqi_f2)
+            time_1, x_new = timed_deplete(
+                chain, x[0], inputs, dt, print_out, matrix_func=_leqi_f1)
+            time_2, x_new = timed_deplete(
+                chain, x_new, inputs, dt, print_out, matrix_func=_leqi_f2)
             x.append(x_new)
             op_results.append(operator(x[1], p))
 
             inputs = list(zip(op_res_last.rates, op_results[0].rates,
                               op_results[1].rates, repeat(dt_l), repeat(dt)))
-            x_new = deplete(chain, x[0], inputs, dt, print_out,
-                            matrix_func=_leqi_f3)
-            x_new = deplete(chain, x_new, inputs, dt, print_out,
-                            matrix_func=_leqi_f4)
+            time_3, x_new = timed_deplete(
+                chain, x[0], inputs, dt, print_out, matrix_func=_leqi_f3)
+            time_4, x_new = timed_deplete(
+                chain, x_new, inputs, dt, print_out, matrix_func=_leqi_f4)
 
             # Create results, write to disk
-            Results.save(operator, x, op_results, [t, t+dt], p, i_res+i)
+            Results.save(
+                operator, x, op_results, [t, t+dt], p, i_res+i,
+                time_1 + time_2 + time_3 + time_4)
 
             # update results
             op_res_last = copy.deepcopy(op_results[0])
@@ -164,4 +166,5 @@ def leqi(operator, timesteps, power=None, power_density=None, print_out=True):
         op_results = [operator(x[0], power[-1])]
 
         # Create results, write to disk
-        Results.save(operator, x, op_results, [t, t], p, i_res + len(timesteps))
+        Results.save(
+            operator, x, op_results, [t, t], p, i_res + len(timesteps))

@@ -3,7 +3,7 @@
 import copy
 from collections.abc import Iterable
 
-from .cram import deplete
+from .cram import timed_deplete
 from ..results import Results
 
 
@@ -53,6 +53,8 @@ def predictor(operator, timesteps, power=None, power_density=None,
     if not isinstance(power, Iterable):
         power = [power]*len(timesteps)
 
+    proc_time = None
+
     # Generate initial conditions
     with operator as vec:
         # Initialize time and starting index
@@ -74,7 +76,7 @@ def predictor(operator, timesteps, power=None, power_density=None,
                 op_results = [operator(x[0], p)]
 
                 # Create results, write to disk
-                Results.save(operator, x, op_results, [t, t + dt], p, i_res + i)
+                Results.save(operator, x, op_results, [t, t + dt], p, i_res + i, proc_time)
             else:
                 # Get initial concentration
                 x = [operator.prev_res[-1].data[0]]
@@ -89,7 +91,8 @@ def predictor(operator, timesteps, power=None, power_density=None,
                 op_results[0].rates *= ratio_power[0]
 
             # Deplete for full timestep
-            x_end = deplete(chain, x[0], op_results[0].rates, dt, print_out)
+            proc_time, x_end = timed_deplete(
+                chain, x[0], op_results[0].rates, dt, print_out)
 
             # Advance time, update vector
             t += dt
@@ -100,4 +103,4 @@ def predictor(operator, timesteps, power=None, power_density=None,
         op_results = [operator(x[0], power[-1])]
 
         # Create results, write to disk
-        Results.save(operator, x, op_results, [t, t], p, i_res + len(timesteps))
+        Results.save(operator, x, op_results, [t, t], p, i_res + len(timesteps), proc_time)

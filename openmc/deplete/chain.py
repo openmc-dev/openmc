@@ -10,8 +10,10 @@ import math
 import re
 from collections import OrderedDict, defaultdict
 from collections.abc import Mapping
+from warnings import warn
 
-from openmc.checkvalue import check_type
+from openmc.checkvalue import check_type, check_less_than
+from openmc.data import gnd_name, zam
 
 # Try to use lxml if it is available. It preserves the order of attributes and
 # provides a pretty-printer by default. If not available,
@@ -451,3 +453,163 @@ class Chain(object):
         matrix_dok = sp.dok_matrix((n, n))
         dict.update(matrix_dok, matrix)
         return matrix_dok.tocsr()
+
+    def get_capture_branches(self):
+        """Return a dictionary with capture branching ratios
+
+        Returns
+        -------
+        capt :
+            nested dict of parent nuclide keys with capture targets and
+            branching ratios::
+
+                {"Am241": {"Am242": 0.91, "Am242_m1": 0.09}}
+
+        See Also
+        --------
+        :meth:`set_capture_branches`
+
+        """
+
+        capt = {}
+        for nuclide in self.nuclides:
+            nuc_capt = {}
+            for rx in nuclide.reactions:
+                if rx.type == "(n,gamma)" and rx.branching_ratio != 1.0:
+                    nuc_capt[rx.target] = rx.branching_ratio
+            if len(nuc_capt) > 0:
+                capt[nuclide.name] = nuc_capt
+        return capt
+
+    def set_capture_branches(self, branch_ratios, strict=True):
+        """Set the capture branching ratios
+
+        To provide a buffer around floating point precisions,
+        the sum of all branching ratios from a single parent
+        cannot be greater than 1.00001.
+
+        Parameters
+        ----------
+        branch_ratios : dict of {str: {str: float}}
+            Capture branching ratios to be inserted.
+            First layer keys are names of parent nuclides, e.g.
+            ``"Am241"``. The capture branching ratios for these
+            parents will be modified. Corresponding values are
+            dictionaries of ``{target: branching_ratio}``
+        strict : bool
+            If this evalutes to ``True``, then all parents and
+            products must exist in the :class:`Chain`. A
+            :class:`KeyError` will be raised at the first
+            nuclide that does not exist. Otherwise, print
+            a warning message for missing parents and/or
+            products.
+
+        See Also
+        --------
+        :meth:`get_capture_branches`
+        """
+
+        # Store some useful information through the validation stage
+
+        sums = {}
+        capt_ix_map = {}
+        grounds = {}
+
+        missing_parents = set()
+        missing_products = {}
+        no_capture = set()
+
+        # Check for validity before manipulation
+
+        for parent, sub in branch_ratios.items():
+            if parent not in self:
+                if strict:
+                    raise KeyError(parent)
+                missing_parents.add(parent)
+                continue
+
+            # Make sure all products are present in the chain
+
+            prod_flag = False
+
+            for product in sub:
+                if product not in self:
+                    if strict:
+                        raise KeyError(product)
+                    missing_products[parent] = product
+                    prod_flag = True
+                    break
+
+            if prod_flag:
+                continue
+
+            # Make sure this nuclide has capture reactions
+
+            indexes = []
+            for ix, rx in enumerate(self[parent].reactions):
+                if rx.type == "(n,gamma)":
+                    indexes.append(ix)
+                    if "_m" not in rx.target:
+                        grounds[parent] = rx.target
+
+            if len(indexes) == 0:
+                if strict:
+                    raise AttributeError(
+                        "Nuclide {} does not have capture reactions in "
+                        "this {}".format(parent, self.__class__.__name__))
+                no_capture.add(parent)
+                continue
+
+            capt_ix_map[parent] = indexes
+
+            this_sum = sum(sub.values())
+            check_less_than(parent + " ratios", this_sum, 1.00001)
+            sums[parent] = this_sum
+
+        if len(missing_parents) > 0:
+            warn("The following nuclides were not found in {}: {}".format(
+                 self.__class__.__name__, ", ".join(sorted(missing_parents))))
+
+        if len(no_capture) > 0:
+            warn("The following nuclides did not have capture reactions: "
+                 "{}".format(", ".join(sorted(no_capture))))
+
+        if len(missing_products) > 0:
+            tail = ("{} -> {}".format(k, v)
+                    for k, v in sorted(missing_products.items()))
+            warn("The following products were not found in the {} and "
+                 "parents were unmodified: \n{}".format(
+                     self.__class__.__name__, ", ".join(tail)))
+
+        # Insert new ReactionTuples with updated branch ratios
+
+        for parent_name, capt_index in capt_ix_map.items():
+
+            parent = self[parent_name]
+            new_ratios = branch_ratios[parent_name]
+            capt_index = capt_ix_map[parent_name]
+
+            # Assume Q value is independent of target state
+            capt_Q = parent.reactions[capt_index[0]].Q
+
+            # Remove existing capture reactions
+
+            for ix in reversed(capt_index):
+                parent.reactions.pop(ix)
+
+            all_meta = True
+
+            for tgt, br in new_ratios.items():
+                all_meta = all_meta and  ("_m" in tgt)
+                parent.reactions.append(ReactionTuple(
+                    "(n,gamma)", tgt, capt_Q, br))
+
+            if all_meta and sums[parent_name] != 1.0:
+                ground_br = 1.0 - sums[parent_name]
+                ground_tgt = grounds.get(parent_name)
+                if ground_tgt is None:
+                    pz, pa, pm = zam(parent_name)
+                    ground_tgt = gnd_name(pz, pa + 1, 0)
+                new_ratios[ground_tgt] = ground_br
+                parent.reactions.append(ReactionTuple(
+                    "(n,gamma)", ground_tgt, capt_Q, ground_br))

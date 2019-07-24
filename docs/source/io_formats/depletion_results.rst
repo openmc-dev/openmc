@@ -12,9 +12,10 @@ The current version of the depletion results file format is 1.0.
              - **version** (*int[2]*) -- Major and minor version of the
                statepoint file format.
 
-:Datasets: - **eigenvalues** (*double[][]*) -- k-eigenvalues at each
+:Datasets: - **eigenvalues** (*double[][][2]*) -- k-eigenvalues at each
              time/stage. This array has shape (number of timesteps, number of
-             stages).
+             stages, value). The last axis contains the eigenvalue and the 
+             associated uncertainty
            - **number** (*double[][][][]*) -- Total number of atoms. This array
              has shape (number of timesteps, number of stages, number of
              materials, number of nuclides).
@@ -24,6 +25,9 @@ The current version of the depletion results file format is 1.0.
              nuclides, number of reactions).
            - **time** (*double[][2]*) -- Time in [s] at beginning/end of each
              step.
+           - **depletion time** (*double[]*) -- Average process time in [s] 
+             spent depleting a material across all burnable materials and,
+             if applicable, MPI processes.
 
 **/materials/<id>/**
 

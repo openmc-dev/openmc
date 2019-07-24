@@ -212,6 +212,39 @@ Universe::to_hdf5(hid_t universes_group) const
 // Cell implementation
 //==============================================================================
 
+double
+Cell::temperature(int32_t instance) const
+{
+  if (sqrtkT_.size() < 1) {
+    throw std::runtime_error{"Cell temperature has not yet been set."};
+  }
+
+  if (instance >= 0) {
+    double sqrtkT = sqrtkT_.size() == 1 ?
+      sqrtkT_.at(0) :
+      sqrtkT_.at(instance);
+    return sqrtkT * sqrtkT / K_BOLTZMANN;
+  } else {
+    return sqrtkT_[0] * sqrtkT_[0] / K_BOLTZMANN;
+  }
+}
+
+void
+Cell::set_temperature(double T, int32_t instance)
+{
+  if (instance >= 0) {
+    sqrtkT_.at(instance) = std::sqrt(K_BOLTZMANN * T);
+  } else {
+    for (auto& T_ : sqrtkT_) {
+      T_ = std::sqrt(K_BOLTZMANN * T);
+    }
+  }
+}
+
+//==============================================================================
+// CSGCell implementation
+//==============================================================================
+
 CSGCell::CSGCell() {} // empty constructor
 
 CSGCell::CSGCell(pugi::xml_node cell_node)
@@ -701,6 +734,13 @@ UniversePartitioner::UniversePartitioner(const Universe& univ)
   // Populate the partition lists.
   partitions_.resize(surfs_.size() + 1);
   for (auto i_cell : univ.cells_) {
+    // It is difficult to determine the bounds of a complex cell, so add complex
+    // cells to all partitions.
+    if (!model::cells[i_cell]->simple_) {
+      for (auto& p : partitions_) p.push_back(i_cell);
+      continue;
+    }
+
     // Find the tokens for bounding z-planes.
     int32_t lower_token = 0, upper_token = 0;
     double min_z, max_z;
@@ -910,27 +950,18 @@ openmc_cell_set_fill(int32_t index, int type, int32_t n,
 extern "C" int
 openmc_cell_set_temperature(int32_t index, double T, const int32_t* instance)
 {
-  if (index >= 0 && index < model::cells.size()) {
-    Cell& c {*model::cells[index]};
-
-    if (instance) {
-      if (*instance >= 0 && *instance < c.sqrtkT_.size()) {
-        c.sqrtkT_[*instance] = std::sqrt(K_BOLTZMANN * T);
-      } else {
-        strcpy(openmc_err_msg, "Distribcell instance is out of bounds.");
-        return OPENMC_E_OUT_OF_BOUNDS;
-      }
-    } else {
-      for (auto& T_ : c.sqrtkT_) {
-        T_ = std::sqrt(K_BOLTZMANN * T);
-      }
-    }
-
-  } else {
+  if (index < 0 || index >= model::cells.size()) {
     strcpy(openmc_err_msg, "Index in cells array is out of bounds.");
     return OPENMC_E_OUT_OF_BOUNDS;
   }
 
+  int32_t instance_index = instance ? *instance : -1;
+  try {
+    model::cells[index]->set_temperature(T, instance_index);
+  } catch (const std::exception& e) {
+    set_errmsg(e.what());
+    return OPENMC_E_UNASSIGNED;
+  }
   return 0;
 }
 
@@ -942,25 +973,13 @@ openmc_cell_get_temperature(int32_t index, const int32_t* instance, double* T)
     return OPENMC_E_OUT_OF_BOUNDS;
   }
 
-  Cell& c {*model::cells[index]};
-
-  if (c.sqrtkT_.size() < 1) {
-    strcpy(openmc_err_msg, "Cell temperature has not yet been set.");
+  int32_t instance_index = instance ? *instance : -1;
+  try {
+    *T = model::cells[index]->temperature(instance_index);
+  } catch (const std::exception& e) {
+    set_errmsg(e.what());
     return OPENMC_E_UNASSIGNED;
   }
-
-  if (instance) {
-    if (*instance >= 0 && *instance < c.n_instances_) {
-      double sqrtkT = c.sqrtkT_.size() == 1 ? c.sqrtkT_[0] : c.sqrtkT_[*instance];
-      *T = sqrtkT * sqrtkT / K_BOLTZMANN;
-    } else {
-      strcpy(openmc_err_msg, "Distribcell instance is out of bounds.");
-      return OPENMC_E_OUT_OF_BOUNDS;
-    }
-  } else {
-    *T = c.sqrtkT_[0] * c.sqrtkT_[0] / K_BOLTZMANN;
-  }
-
   return 0;
 }
 

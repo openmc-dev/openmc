@@ -8,6 +8,8 @@ from sys import exit
 
 from h5py import get_config
 
+from unittest.mock import Mock
+
 from .dummy_comm import DummyCommunicator
 
 try:
@@ -27,6 +29,7 @@ try:
 except ImportError:
     comm = DummyCommunicator()
     have_mpi = False
+    MPI = Mock()
 
 from .nuclide import *
 from .chain import *

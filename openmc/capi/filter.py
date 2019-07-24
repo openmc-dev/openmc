@@ -28,10 +28,10 @@ _dll.openmc_cell_filter_get_bins.argtypes = [
 _dll.openmc_cell_filter_get_bins.restype = c_int
 _dll.openmc_cell_filter_get_bins.errcheck = _error_handler
 _dll.openmc_energy_filter_get_bins.argtypes = [
-    c_int32, POINTER(POINTER(c_double)), POINTER(c_int32)]
+    c_int32, POINTER(POINTER(c_double)), POINTER(c_size_t)]
 _dll.openmc_energy_filter_get_bins.restype = c_int
 _dll.openmc_energy_filter_get_bins.errcheck = _error_handler
-_dll.openmc_energy_filter_set_bins.argtypes = [c_int32, c_int32, POINTER(c_double)]
+_dll.openmc_energy_filter_set_bins.argtypes = [c_int32, c_size_t, POINTER(c_double)]
 _dll.openmc_energy_filter_set_bins.restype = c_int
 _dll.openmc_energy_filter_set_bins.errcheck = _error_handler
 _dll.openmc_filter_get_id.argtypes = [c_int32, POINTER(c_int32)]
@@ -53,10 +53,10 @@ _dll.openmc_legendre_filter_set_order.argtypes = [c_int32, c_int]
 _dll.openmc_legendre_filter_set_order.restype = c_int
 _dll.openmc_legendre_filter_set_order.errcheck = _error_handler
 _dll.openmc_material_filter_get_bins.argtypes = [
-    c_int32, POINTER(POINTER(c_int32)), POINTER(c_int32)]
+    c_int32, POINTER(POINTER(c_int32)), POINTER(c_size_t)]
 _dll.openmc_material_filter_get_bins.restype = c_int
 _dll.openmc_material_filter_get_bins.errcheck = _error_handler
-_dll.openmc_material_filter_set_bins.argtypes = [c_int32, c_int32, POINTER(c_int32)]
+_dll.openmc_material_filter_set_bins.argtypes = [c_int32, c_size_t, POINTER(c_int32)]
 _dll.openmc_material_filter_set_bins.restype = c_int
 _dll.openmc_material_filter_set_bins.errcheck = _error_handler
 _dll.openmc_mesh_filter_get_mesh.argtypes = [c_int32, POINTER(c_int32)]
@@ -93,6 +93,7 @@ _dll.openmc_zernike_filter_set_order.argtypes = [c_int32, c_int]
 _dll.openmc_zernike_filter_set_order.restype = c_int
 _dll.openmc_zernike_filter_set_order.errcheck = _error_handler
 _dll.tally_filters_size.restype = c_size_t
+
 
 class Filter(_FortranObjectWithID):
     __instances = WeakValueDictionary()
@@ -148,7 +149,7 @@ class EnergyFilter(Filter):
     @property
     def bins(self):
         energies = POINTER(c_double)()
-        n = c_int32()
+        n = c_size_t()
         _dll.openmc_energy_filter_get_bins(self._index, energies, n)
         return as_array(energies, (n.value,))
 
@@ -231,7 +232,7 @@ class MaterialFilter(Filter):
     @property
     def bins(self):
         materials = POINTER(c_int32)()
-        n = c_int32()
+        n = c_size_t()
         _dll.openmc_material_filter_get_bins(self._index, materials, n)
         return [Material(index=materials[i]) for i in range(n.value)]
 

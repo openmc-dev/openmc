@@ -47,9 +47,10 @@ std::unordered_map<int32_t, int32_t> material_map;
 //==============================================================================
 
 Material::Material(pugi::xml_node node)
+  : index_{model::materials.size()}
 {
   if (check_for_node(node, "id")) {
-    id_ = std::stoi(get_node_value(node, "id"));
+    this->set_id(std::stoi(get_node_value(node, "id")));
   } else {
     fatal_error("Must specify id of material in materials XML file.");
   }
@@ -329,6 +330,11 @@ Material::Material(pugi::xml_node node)
       thermal_tables_.push_back({index_table, 0, fraction});
     }
   }
+}
+
+Material::~Material()
+{
+  model::material_map.erase(id_);
 }
 
 void Material::finalize()
@@ -849,11 +855,41 @@ void Material::calculate_photon_xs(Particle& p) const
   }
 }
 
-int Material::set_density(double density, std::string units)
+void Material::set_id(int32_t id)
 {
+  Expects(id >= -1);
+
+  // Clear entry in material map if an ID was already assigned before
+  if (id_ != -1) {
+    model::material_map.erase(id_);
+    id_ = -1;
+  }
+
+  // Make sure no other material has same ID
+  if (model::material_map.find(id) != model::material_map.end()) {
+    throw std::runtime_error{"Two materials have the same ID: " + std::to_string(id)};
+  }
+
+  // If no ID specified, auto-assign next ID in sequence
+  if (id == -1) {
+    id = 0;
+    for (const auto& f : model::materials) {
+      id = std::max(id, f->id_);
+    }
+    ++id;
+  }
+
+  // Update ID and entry in material map
+  id_ = id;
+  model::material_map[id] = index_;
+}
+
+void Material::set_density(double density, gsl::cstring_span units)
+{
+  Expects(density >= 0.0);
+
   if (nuclide_.empty()) {
-    set_errmsg("No nuclides exist in material yet.");
-    return OPENMC_E_ALLOCATE;
+    throw std::runtime_error{"No nuclides exist in material yet."};
   }
 
   if (units == "atom/b-cm") {
@@ -884,10 +920,51 @@ int Material::set_density(double density, std::string units)
     density_ *= f;
     atom_density_ *= f;
   } else {
-    set_errmsg("Invalid units '" + units + "' specified.");
-    return OPENMC_E_INVALID_ARGUMENT;
+    throw std::invalid_argument{"Invalid units '" + std::string(units.data())
+      + "' specified."};
   }
-  return 0;
+}
+
+void Material::set_densities(const std::vector<std::string>& name,
+  const std::vector<double>& density)
+{
+  auto n = name.size();
+  Expects(n > 0);
+  Expects(n == density.size());
+
+  if (n != nuclide_.size()) {
+    nuclide_.resize(n);
+    atom_density_ = xt::zeros<double>({n});
+  }
+
+  double sum_density = 0.0;
+  for (gsl::index i = 0; i < n; ++i) {
+    const auto& nuc {name[i]};
+    if (data::nuclide_map.find(nuc) == data::nuclide_map.end()) {
+      int err = openmc_load_nuclide(nuc.c_str());
+      if (err < 0) throw std::runtime_error{openmc_err_msg};
+    }
+
+    nuclide_[i] = data::nuclide_map.at(nuc);
+    Expects(density[i] > 0.0);
+    atom_density_(i) = density[i];
+    sum_density += density[i];
+  }
+
+  // Set total density to the sum of the vector
+  this->set_density(sum_density, "atom/b-cm");
+
+  // Assign S(a,b) tables
+  this->init_thermal();
+}
+
+double Material::volume() const
+{
+  if (volume_ < 0.0) {
+    throw std::runtime_error{"Volume for material with ID="
+      + std::to_string(id_) + " not set."};
+  }
+  return volume_;
 }
 
 void Material::to_hdf5(hid_t group) const
@@ -897,6 +974,9 @@ void Material::to_hdf5(hid_t group) const
   write_attribute(material_group, "depletable", static_cast<int>(depletable_));
   if (volume_ > 0.0) {
     write_attribute(material_group, "volume", volume_);
+  }
+  if (temperature_ > 0.0) {
+    write_attribute(material_group, "temperature", temperature_);
   }
   write_dataset(material_group, "name", name_);
   write_dataset(material_group, "atom_density", density_);
@@ -943,6 +1023,42 @@ void Material::to_hdf5(hid_t group) const
   }
 
   close_group(material_group);
+}
+
+void Material::add_nuclide(const std::string& name, double density)
+{
+  // Check if nuclide is already in material
+  for (int i = 0; i < nuclide_.size(); ++i) {
+    int i_nuc = nuclide_[i];
+    if (data::nuclides[i_nuc]->name_ == name) {
+      double awr = data::nuclides[i_nuc]->awr_;
+      density_ += density - atom_density_(i);
+      density_gpcc_ += (density - atom_density_(i))
+        * awr * MASS_NEUTRON / N_AVOGADRO;
+      atom_density_(i) = density;
+      return;
+    }
+  }
+
+  // If nuclide wasn't found, extend nuclide/density arrays
+  int err = openmc_load_nuclide(name.c_str());
+  if (err < 0) throw std::runtime_error{openmc_err_msg};
+
+  // Append new nuclide/density
+  int i_nuc = data::nuclide_map[name];
+  nuclide_.push_back(i_nuc);
+
+  auto n = nuclide_.size();
+
+  // Create copy of atom_density_ array with one extra entry
+  xt::xtensor<double, 1> atom_density = xt::zeros<double>({n});
+  xt::view(atom_density, xt::range(0, n-1)) = atom_density_;
+  atom_density(n-1) = density;
+  atom_density_ = atom_density;
+
+  density_ += density;
+  density_gpcc_ += density * data::nuclides[i_nuc]->awr_
+    * MASS_NEUTRON / N_AVOGADRO;
 }
 
 //==============================================================================
@@ -1098,19 +1214,6 @@ void read_materials_xml()
     model::materials.push_back(std::make_unique<Material>(material_node));
   }
   model::materials.shrink_to_fit();
-
-  // Populate the material map.
-  for (int i = 0; i < model::materials.size(); i++) {
-    int32_t mid = model::materials[i]->id_;
-    auto search = model::material_map.find(mid);
-    if (search == model::material_map.end()) {
-      model::material_map[mid] = i;
-    } else {
-      std::stringstream err_msg;
-      err_msg << "Two or more materials use the same unique ID: " << mid;
-      fatal_error(err_msg);
-    }
-  }
 }
 
 void free_memory_material()
@@ -1141,40 +1244,10 @@ openmc_material_add_nuclide(int32_t index, const char* name, double density)
 {
   int err = 0;
   if (index >= 0 && index < model::materials.size()) {
-    auto& m = model::materials[index];
-
-    // Check if nuclide is already in material
-    for (int i = 0; i < m->nuclide_.size(); ++i) {
-      int i_nuc = m->nuclide_[i];
-      if (data::nuclides[i_nuc]->name_ == name) {
-        double awr = data::nuclides[i_nuc]->awr_;
-        m->density_ += density - m->atom_density_(i);
-        m->density_gpcc_ += (density - m->atom_density_(i))
-          * awr * MASS_NEUTRON / N_AVOGADRO;
-        m->atom_density_(i) = density;
-        return 0;
-      }
-    }
-
-    // If nuclide wasn't found, extend nuclide/density arrays
-    err = openmc_load_nuclide(name);
-
-    if (err == 0) {
-      // Append new nuclide/density
-      int i_nuc = data::nuclide_map[name];
-      m->nuclide_.push_back(i_nuc);
-
-      auto n = m->nuclide_.size();
-
-      // Create copy of atom_density_ array with one extra entry
-      xt::xtensor<double, 1> atom_density = xt::zeros<double>({n});
-      xt::view(atom_density, xt::range(0, n-1)) = m->atom_density_;
-      atom_density(n-1) = density;
-      m->atom_density_ = atom_density;
-
-      m->density_ += density;
-      m->density_gpcc_ += density * data::nuclides[i_nuc]->awr_
-        * MASS_NEUTRON / N_AVOGADRO;
+    try {
+      model::materials[index]->add_nuclide(name, density);
+    } catch (const std::runtime_error& e) {
+      return OPENMC_E_DATA;
     }
   } else {
     set_errmsg("Index in materials array is out of bounds.");
@@ -1184,14 +1257,14 @@ openmc_material_add_nuclide(int32_t index, const char* name, double density)
 }
 
 extern "C" int
-openmc_material_get_densities(int32_t index, int** nuclides, double** densities, int* n)
+openmc_material_get_densities(int32_t index, const int** nuclides, const double** densities, int* n)
 {
   if (index >= 0 && index < model::materials.size()) {
     auto& mat = model::materials[index];
-    if (!mat->nuclide_.empty()) {
-      *nuclides = mat->nuclide_.data();
-      *densities = mat->atom_density_.data();
-      *n = mat->nuclide_.size();
+    if (!mat->nuclides().empty()) {
+      *nuclides = mat->nuclides().data();
+      *densities = mat->densities().data();
+      *n = mat->nuclides().size();
       return 0;
     } else {
       set_errmsg("Material atom density array has not been allocated.");
@@ -1208,7 +1281,7 @@ openmc_material_get_density(int32_t index, double* density)
 {
   if (index >= 0 && index < model::materials.size()) {
     auto& mat = model::materials[index];
-    *density = mat->density_gpcc_;
+    *density = mat->density_gpcc();
     return 0;
   } else {
     set_errmsg("Index in materials array is out of bounds.");
@@ -1220,7 +1293,7 @@ extern "C" int
 openmc_material_get_fissionable(int32_t index, bool* fissionable)
 {
   if (index >= 0 && index < model::materials.size()) {
-    *fissionable = model::materials[index]->fissionable_;
+    *fissionable = model::materials[index]->fissionable();
     return 0;
   } else {
     set_errmsg("Index in materials array is out of bounds.");
@@ -1232,7 +1305,7 @@ extern "C" int
 openmc_material_get_id(int32_t index, int32_t* id)
 {
   if (index >= 0 && index < model::materials.size()) {
-    *id = model::materials[index]->id_;
+    *id = model::materials[index]->id();
     return 0;
   } else {
     set_errmsg("Index in materials array is out of bounds.");
@@ -1244,16 +1317,13 @@ extern "C" int
 openmc_material_get_volume(int32_t index, double* volume)
 {
   if (index >= 0 && index < model::materials.size()) {
-    auto& m = model::materials[index];
-    if (m->volume_ >= 0.0) {
-      *volume = m->volume_;
-      return 0;
-    } else {
-      std::stringstream msg;
-      msg << "Volume for material with ID=" << m->id_ << " not set.";
-      set_errmsg(msg);
+    try {
+      *volume = model::materials[index]->volume();
+    } catch (const std::exception& e) {
+      set_errmsg(e.what());
       return OPENMC_E_UNASSIGNED;
     }
+    return 0;
   } else {
     set_errmsg("Index in materials array is out of bounds.");
     return OPENMC_E_OUT_OF_BOUNDS;
@@ -1264,59 +1334,51 @@ extern "C" int
 openmc_material_set_density(int32_t index, double density, const char* units)
 {
   if (index >= 0 && index < model::materials.size()) {
-    return model::materials[index]->set_density(density, units);
+    try {
+      model::materials[index]->set_density(density, units);
+    } catch (const std::exception& e) {
+      set_errmsg(e.what());
+      return OPENMC_E_UNASSIGNED;
+    }
   } else {
     set_errmsg("Index in materials array is out of bounds.");
     return OPENMC_E_OUT_OF_BOUNDS;
   }
+  return 0;
 }
 
 extern "C" int
 openmc_material_set_densities(int32_t index, int n, const char** name, const double* density)
 {
   if (index >= 0 && index < model::materials.size()) {
-    auto& mat {model::materials[index]};
-    if (n != mat->nuclide_.size()) {
-      mat->nuclide_.resize(n);
-      mat->atom_density_ = xt::zeros<double>({n});
+    try {
+      model::materials[index]->set_densities({name, name + n}, {density, density + n});
+    } catch (const std::exception& e) {
+      set_errmsg(e.what());
+      return OPENMC_E_UNASSIGNED;
     }
-
-    double sum_density = 0.0;
-    for (int i = 0; i < n; ++i) {
-      std::string nuc {name[i]};
-      if (data::nuclide_map.find(nuc) == data::nuclide_map.end()) {
-        int err = openmc_load_nuclide(nuc.c_str());
-        if (err < 0) return err;
-      }
-
-      mat->nuclide_[i] = data::nuclide_map[nuc];
-      mat->atom_density_(i) = density[i];
-      sum_density += density[i];
-    }
-
-    // Set total density to the sum of the vector
-    int err = mat->set_density(sum_density, "atom/b-cm");
-
-    // Assign S(a,b) tables
-    mat->init_thermal();
-    return err;
   } else {
     set_errmsg("Index in materials array is out of bounds.");
     return OPENMC_E_OUT_OF_BOUNDS;
   }
+  return 0;
 }
 
 extern "C" int
 openmc_material_set_id(int32_t index, int32_t id)
 {
   if (index >= 0 && index < model::materials.size()) {
-    model::materials[index]->id_ = id;
-    model::material_map[id] = index;
-    return 0;
+    try {
+      model::materials.at(index)->set_id(id);
+    } catch (const std::exception& e) {
+      set_errmsg(e.what());
+      return OPENMC_E_UNASSIGNED;
+    }
   } else {
     set_errmsg("Index in materials array is out of bounds.");
     return OPENMC_E_OUT_OF_BOUNDS;
   }
+  return 0;
 }
 
 extern "C" int

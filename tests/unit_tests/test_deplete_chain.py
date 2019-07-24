@@ -243,3 +243,89 @@ def test_set_fiss_q():
         for rx in chain_nuc.reactions:
             if rx.type == 'fission':
                 assert rx.Q == q
+
+
+def test_get_set_chain_br(simple_chain):
+    """Test minor modifications to capture branch ratios"""
+    expected = {"C": {"A": 0.7, "B": 0.3}}
+    assert simple_chain.get_capture_branches() == expected
+
+    # safely modify
+    new_chain = Chain.from_xml("chain_test.xml")
+    new_br = {"C": {"A": 0.5, "B": 0.5}, "A": {"C": 0.99, "B": 0.01}}
+    new_chain.set_capture_branches(new_br)
+    assert new_chain.get_capture_branches() == new_br
+
+    # write, re-read
+    new_chain.export_to_xml("chain_mod.xml")
+    assert Chain.from_xml("chain_mod.xml").get_capture_branches() == new_br
+
+    # Test non-strict [warn, not error] setting
+    bad_br = {"B": {"X": 0.6, "A": 0.4}, "X": {"A": 0.5, "C": 0.5}}
+    bad_br.update(new_br)
+    new_chain.set_capture_branches(bad_br, strict=False)
+    assert new_chain.get_capture_branches() == new_br
+
+    # Ensure capture reactions are removed
+    rem_br = {"A": {"C": 1.0}}
+    new_chain.set_capture_branches(rem_br)
+    # A is not in returned dict because there is no branch
+    assert "A" not in new_chain.get_capture_branches()
+
+
+def test_capture_branch_infer_ground():
+    """Ensure the ground state is infered if not given"""
+    # Make up a metastable capture transition:
+    infer_br = {"Xe135": {"Xe136_m1": 0.5}}
+    set_br = {"Xe135": {"Xe136": 0.5, "Xe136_m1": 0.5}}
+
+    chain_file = Path(__file__).parents[1] / "chain_simple.xml"
+    chain = Chain.from_xml(chain_file)
+
+    # Create nuclide to be added into the chain
+    xe136m = nuclide.Nuclide()
+    xe136m.name = "Xe136_m1"
+
+    chain.nuclides.append(xe136m)
+    chain.nuclide_dict[xe136m.name] = len(chain.nuclides) - 1
+
+    chain.set_capture_branches(infer_br)
+
+    assert chain.get_capture_branches() == set_br
+
+
+def test_capture_branch_no_rxn():
+    """Ensure capture reactions that don't exist aren't created"""
+    u4br = {"U234": {"U235": 0.5, "U235_m1": 0.5}}
+
+    chain_file = Path(__file__).parents[1] / "chain_simple.xml"
+    chain = Chain.from_xml(chain_file)
+
+    u5m = nuclide.Nuclide()
+    u5m.name = "U235_m1"
+
+    chain.nuclides.append(u5m)
+    chain.nuclide_dict[u5m.name] = len(chain.nuclides) - 1
+
+    phrase = "U234 does not have capture reactions"
+    with pytest.raises(AttributeError, match=phrase):
+        chain.set_capture_branches(u4br)
+
+
+def test_capture_branch_failures(simple_chain):
+    """Test failure modes for setting capture branch ratios"""
+
+    # Parent isotope not present
+    br = {"X": {"A": 0.6, "B": 0.7}}
+    with pytest.raises(KeyError, match="X"):
+        simple_chain.set_capture_branches(br)
+
+    # Product isotope not present
+    br = {"C": {"X": 0.4, "A": 0.2, "B": 0.4}}
+    with pytest.raises(KeyError, match="X"):
+        simple_chain.set_capture_branches(br)
+
+    # Sum of ratios > 1.0
+    br = {"C": {"A": 1.0, "B": 1.0}}
+    with pytest.raises(ValueError, match="C ratios"):
+        simple_chain.set_capture_branches(br)

@@ -51,3 +51,20 @@ attributes:
   :type:
     The type of data contained in the file. Accepted values are 'neutron',
     'thermal', 'photon', and 'wmp'.
+
+.. _depletion_element:
+
+-----------------------------
+``<depletion_chain>`` Element
+-----------------------------
+
+The ``<depletion_chain>`` element indicates the location of the depletion chain file.
+This file contains information describing how nuclides decay and transmute to other
+nuclides through the depletion process. This element has a single attribute, ``path``,
+pointing to the location of the chain file.
+
+.. code-block:: xml
+
+    <depletion_chain path="/opt/data/chain_endfb7.xml"/>
+
+The structure of the depletion chain file is explained in :ref:`io_depletion_chain`.

@@ -309,7 +309,7 @@ prepare_distribcell()
   for (auto& filt : model::tally_filters) {
     auto* distrib_filt = dynamic_cast<DistribcellFilter*>(filt.get());
     if (distrib_filt) {
-      distribcells.insert(distrib_filt->cell_);
+      distribcells.insert(distrib_filt->cell());
     }
   }
 

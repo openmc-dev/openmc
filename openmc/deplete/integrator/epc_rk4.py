@@ -3,7 +3,7 @@
 import copy
 from collections.abc import Iterable
 
-from .cram import deplete
+from .cram import timed_deplete
 from ..results import Results
 
 
@@ -105,30 +105,35 @@ def epc_rk4(operator, timesteps, power=None, power_density=None, print_out=True)
                 op_results[0].rates *= ratio_power[0]
 
             # Step 1: deplete with matrix 1/2*A(y0)
-            x_new = deplete(chain, x[0], op_results[0].rates, dt, print_out,
-                            matrix_func=_rk4_f1)
+            time_1, x_new = timed_deplete(
+                chain, x[0], op_results[0].rates, dt, print_out,
+                matrix_func=_rk4_f1)
             x.append(x_new)
             op_results.append(operator(x[1], p))
 
             # Step 2: deplete with matrix 1/2*A(y1)
-            x_new = deplete(chain, x[0], op_results[1].rates, dt, print_out,
-                            matrix_func=_rk4_f1)
+            time_2, x_new = timed_deplete(
+                chain, x[0], op_results[1].rates, dt, print_out,
+                matrix_func=_rk4_f1)
             x.append(x_new)
             op_results.append(operator(x[2], p))
 
             # Step 3: deplete with matrix A(y2)
-            x_new = deplete(chain, x[0], op_results[2].rates, dt, print_out)
+            time_3, x_new = timed_deplete(
+                chain, x[0], op_results[2].rates, dt, print_out)
             x.append(x_new)
             op_results.append(operator(x[3], p))
 
             # Step 4: deplete with matrix 1/6*A(y0)+1/3*A(y1)+1/3*A(y2)+1/6*A(y3)
             rates = list(zip(op_results[0].rates, op_results[1].rates,
                              op_results[2].rates, op_results[3].rates))
-            x_end = deplete(chain, x[0], rates, dt, print_out,
-                            matrix_func=_rk4_f4)
+            time_4, x_end = timed_deplete(
+                chain, x[0], rates, dt, print_out, matrix_func=_rk4_f4)
 
             # Create results, write to disk
-            Results.save(operator, x, op_results, [t, t + dt], p, i_res + i)
+            Results.save(
+                operator, x, op_results, [t, t + dt], p, i_res + i,
+                time_1 + time_2 + time_3 + time_4)
 
             # Advance time, update vector
             t += dt
@@ -139,4 +144,5 @@ def epc_rk4(operator, timesteps, power=None, power_density=None, print_out=True)
         op_results = [operator(x[0], power[-1])]
 
         # Create results, write to disk
-        Results.save(operator, x, op_results, [t, t], p, i_res + len(timesteps))
+        Results.save(
+            operator, x, op_results, [t, t], p, i_res + len(timesteps))

@@ -7,11 +7,14 @@ to run a full depletion simulation.
 from collections import namedtuple
 import os
 from pathlib import Path
-from abc import ABCMeta, abstractmethod
+from abc import ABC, abstractmethod
 from xml.etree import ElementTree as ET
 from warnings import warn
 
-from openmc.data import DataLibrary
+from numpy import nonzero, empty
+
+from openmc.data import DataLibrary, JOULE_PER_EV
+from openmc.checkvalue import check_type
 from .chain import Chain
 
 OperatorResult = namedtuple('OperatorResult', ['k', 'rates'])
@@ -34,7 +37,7 @@ except AttributeError:
     pass
 
 
-class TransportOperator(metaclass=ABCMeta):
+class TransportOperator(ABC):
     """Abstract class defining a transport operator
 
     Each depletion integrator is written to work with a generic transport
@@ -160,3 +163,167 @@ class TransportOperator(metaclass=ABCMeta):
 
     def finalize(self):
         pass
+
+
+class ReactionRateHelper(ABC):
+    """Abstract class for generating reaction rates for operators
+
+    Responsible for generating reaction rate tallies for burnable
+    materials, given nuclides and scores from the operator.
+
+    Reaction rates are passed back to the operator for be used in
+    an :class:`openmc.deplete.OperatorResult` instance
+
+    Attributes
+    ----------
+    nuclides : list of str
+        All nuclides with desired reaction rates. Ordered to be
+        consistent with :class:`openmc.deplete.Operator`
+    """
+
+    def __init__(self):
+        self._nuclides = None
+        self._rate_tally = None
+        self._results_cache = None
+
+    @abstractmethod
+    def generate_tallies(self, materials, scores):
+        """Use the C API to build tallies needed for reaction rates"""
+
+    @property
+    def nuclides(self):
+        """List of nuclides with requested reaction rates"""
+        return self._nuclides
+
+    @nuclides.setter
+    def nuclides(self, nuclides):
+        check_type("nuclides", nuclides, list, str)
+        self._nuclides = nuclides
+        self._rate_tally.nuclides = nuclides
+
+    def _get_results_cache(self, nnucs, nreact):
+        """Cache for results for a given material
+
+        Creates an empty array of shape ``(nnucs, nreact)``
+        if the shape does not match the current cache.
+        """
+        if (self._results_cache is None
+                or self._results_cache.shape != (nnucs, nreact)):
+            self._results_cache = empty((nnucs, nreact))
+        return self._results_cache
+
+    @abstractmethod
+    def get_material_rates(self, mat_id, nuc_index, react_index):
+        """Return 2D array of [nuclide, reaction] reaction rates
+
+        Parameters
+        ----------
+        mat_id : int
+            Unique ID for the requested material
+        nuc_index : list of str
+            Ordering of desired nuclides
+        react_index : list of str
+            Ordering of reactions
+        """
+
+    def divide_by_adens(self, number):
+        """Normalize reaction rates by number of nuclides
+
+        Acts on the current material examined by
+        :meth:`get_material_rates`
+
+        Parameters
+        ----------
+        number : iterable of float
+            Number density [atoms/b-cm] of each nuclide tracked in the calculation.
+            Ordered identically to :attr:`nuclides`
+
+        Returns
+        -------
+        results : numpy.ndarray
+            Array of reactions rates of shape ``(n_nuclides, n_rxns)``
+            normalized by the number of nuclides
+        """
+
+        mask = nonzero(number)
+        results = self._results_cache
+        for col in range(results.shape[1]):
+            results[mask, col] /= number[mask]
+        return results
+
+
+class EnergyHelper(ABC):
+    """Abstract class for obtaining energy produced
+
+    The ultimate goal of this helper is to provide instances of
+    :class:`openmc.deplete.Operator` with the total energy produced
+    in a transport simulation. This information, provided with the
+    power requested by the user and reaction rates from a
+    :class:`ReactionRateHelper` will scale reaction rates to the
+    correct values.
+
+    Attributes
+    ----------
+    nuclides : list of str
+        All nuclides with desired reaction rates. Ordered to be
+        consistent with :class:`openmc.deplete.Operator`
+    energy : float
+        Total energy [J/s/source neutron] produced in a transport simulation.
+        Updated in the material iteration with :meth:`update`.
+    """
+
+    def __init__(self):
+        self._nuclides = None
+        self._energy = 0.0
+
+    @property
+    def energy(self):
+        return self._energy * JOULE_PER_EV
+
+    def reset(self):
+        """Reset energy produced prior to unpacking tallies"""
+        self._energy = 0.0
+
+    @abstractmethod
+    def prepare(self, chain_nucs, rate_index, materials):
+        """Perform work needed to obtain energy produced
+
+        This method is called prior to the transport simulations
+        in :meth:`openmc.deplete.Operator.initial_condition`.
+
+        Parameters
+        ----------
+        chain_nucs : list of str
+            All nuclides to be tracked in this problem
+        rate_index : dict of str to int
+            Mapping from nuclide name to index in the
+            `fission_rates` for :meth:`update`.
+        materials : list of str
+            All materials tracked on the operator helped by this
+            object. Should correspond to
+            :attr:`openmc.deplete.Operator.burnable_materials`
+        """
+
+    def update(self, fission_rates, mat_index):
+        """Update the energy produced
+
+        Parameters
+        ----------
+        fission_rates : numpy.ndarray
+            fission reaction rate for each isotope in the specified
+            material. Should be ordered corresponding to initial
+            ``rate_index`` used in :meth:`prepare`
+        mat_index : int
+            Index for the specific material in the list of all burnable
+            materials.
+        """
+
+    @property
+    def nuclides(self):
+        """List of nuclides with requested reaction rates"""
+        return self._nuclides
+
+    @nuclides.setter
+    def nuclides(self, nuclides):
+        check_type("nuclides", nuclides, list, str)
+        self._nuclides = nuclides

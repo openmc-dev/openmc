@@ -587,7 +587,24 @@ BoundingBox CSGCell::bounding_box_simple() const {
   return bbox;
 }
 
+void CSGCell::apply_demorgan(std::vector<int32_t>& rpn) {
+  for (auto& token : rpn) {
+    if (token < OP_UNION) { token *= -1; }
+    else if (token == OP_UNION) { token = OP_INTERSECTION; }
+    else if (token == OP_INTERSECTION) { token = OP_UNION; }
+  }
+}
+
 BoundingBox CSGCell::bounding_box_complex(std::vector<int32_t> rpn) {
+
+  // if the last operator is a complement op, there is no
+  // sub-region that the complement connects to. This indicates
+  // that the entire region is a complement and we can apply
+  // De Morgan's laws immediately
+  if ((rpn.back() == OP_COMPLEMENT)) {
+      rpn.pop_back();
+      apply_demorgan(rpn);
+  }
 
   std::reverse(rpn.begin(), rpn.end());
 
@@ -626,11 +643,7 @@ BoundingBox CSGCell::bounding_box_complex(std::vector<int32_t> rpn) {
       // handle complement case using De Morgan's laws
       if (subrpn.back() == OP_COMPLEMENT) {
         subrpn.pop_back();
-        for (auto& token : subrpn) {
-          if (token < OP_UNION) { token *= -1; }
-          else if (token == OP_UNION) { token = OP_INTERSECTION; }
-          else if (token == OP_INTERSECTION) { token = OP_UNION; }
-        }
+        apply_demorgan(subrpn);
         subrpn.push_back(rpn.back());
         rpn.pop_back();
       }

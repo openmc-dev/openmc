@@ -46,7 +46,7 @@ def complex_cell(run_in_tmpdir):
     s17 = openmc.YPlane(y0=0.0)
 
     c1 = openmc.Cell(fill=u235)
-    c1.region = +s3 & -s4 & +s13 & -s14
+    c1.region = ~(-s3 | +s4 | ~(+s13 & -s14))
 
     c2 = openmc.Cell(fill=u238)
     c2.region = +s2 & -s5 & +s12 & -s15 & ~(+s3 & -s4 & +s13 & -s14)
@@ -59,8 +59,11 @@ def complex_cell(run_in_tmpdir):
     c4.region = ((+s1 & -s7 & +s11 & -s17) | (+s7 & -s6 & +s17 & -s16)) & \
                 ~(+s2 & -s5 & +s12 & -s15)
 
+    c5 = openmc.Cell(fill=n14)
+    c5.region = ~(+s1 & -s6 & +s11 & -s16)
+
     model.geometry.root_universe = openmc.Universe()
-    model.geometry.root_universe.add_cells([c1, c2, c3, c4])
+    model.geometry.root_universe.add_cells([c1, c2, c3, c4, c5])
 
     model.settings.batches = 10
     model.settings.inactive = 5
@@ -84,13 +87,11 @@ inf = sys.float_info.max
 expected_results = ( (1, (( -4.,  -4., -inf), ( 4.,  4., inf))),
                      (2, (( -7.,  -7., -inf), ( 7.,  7., inf))),
                      (3, ((-10., -10., -inf), (10., 10., inf))),
-                     (4, ((-10., -10., -inf), (10., 10., inf))) )
+                     (4, ((-10., -10., -inf), (10., 10., inf))),
+                     (5, ((-inf, -inf, -inf), (inf, inf, inf))) )
 @pytest.mark.parametrize("cell_id,expected_box", expected_results)
 def test_cell_box(cell_id, expected_box):
+    print("Cell {}".format(cell_id))
     cell_box = openmc.capi.cells[cell_id].bounding_box
-    assert tuple(cell_box[0]) == expected_box[0]
-    assert tuple(cell_box[1]) == expected_box[1]
-
-    cell_box = openmc.capi.bounding_box("Cell", cell_id)
     assert tuple(cell_box[0]) == expected_box[0]
     assert tuple(cell_box[1]) == expected_box[1]

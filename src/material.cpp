@@ -1382,6 +1382,30 @@ openmc_material_set_id(int32_t index, int32_t id)
 }
 
 extern "C" int
+openmc_material_get_name(int32_t index, const char** name) {
+  if (index < 0 || index >= model::materials.size()) {
+    set_errmsg("Index in materials array is out of bounds.");
+    return OPENMC_E_OUT_OF_BOUNDS;
+  }
+
+  *name = model::materials[index]->name().data();
+
+  return 0;
+}
+
+extern "C" int
+openmc_material_set_name(int32_t index, const char* name) {
+  if (index < 0 || index >= model::materials.size()) {
+    set_errmsg("Index in materials array is out of bounds.");
+    return OPENMC_E_OUT_OF_BOUNDS;
+  }
+
+  model::materials[index]->set_name(name);
+
+  return 0;
+}
+
+extern "C" int
 openmc_material_set_volume(int32_t index, double volume)
 {
   if (index >= 0 && index < model::materials.size()) {

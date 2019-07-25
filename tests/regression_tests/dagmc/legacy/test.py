@@ -45,5 +45,4 @@ def test_dagmc():
     mats = openmc.Materials([u235, water])
     model.materials = mats
 
-    harness = PyAPITestHarness('statepoint.5.h5', model=model)
-    harness.main()
+    model.export_to_xml()

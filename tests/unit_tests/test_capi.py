@@ -35,6 +35,14 @@ def pincell_model():
     zernike_tally.scores = ['fission']
     pincell.tallies.append(zernike_tally)
 
+    # Add an energy function tally
+    energyfunc_tally = openmc.Tally()
+    energyfunc_filter = openmc.EnergyFunctionFilter(
+        [0.0, 20e6], [0.0, 20e6])
+    energyfunc_tally.scores = ['fission']
+    energyfunc_tally.filters = [energyfunc_filter]
+    pincell.tallies.append(energyfunc_tally)
+
     # Write XML files in tmpdir
     with cdtemp():
         pincell.export_to_xml()
@@ -170,10 +178,19 @@ def test_settings(capi_init):
 def test_tally_mapping(capi_init):
     tallies = openmc.capi.tallies
     assert isinstance(tallies, Mapping)
-    assert len(tallies) == 2
+    assert len(tallies) == 3
     for tally_id, tally in tallies.items():
         assert isinstance(tally, openmc.capi.Tally)
         assert tally_id == tally.id
+
+
+def test_energy_function_filter(capi_init):
+    """Test special __new__ and __init__ for EnergyFunctionFilter"""
+    efunc = openmc.capi.EnergyFunctionFilter([0.0, 1.0], [0.0, 2.0])
+    assert len(efunc.energy) == 2
+    assert efunc.energy == [0.0, 1.0]
+    assert len(efunc.y) == 2
+    assert efunc.y == [0.0, 2.0]
 
 
 def test_tally(capi_init):
@@ -211,6 +228,16 @@ def test_tally(capi_init):
     assert len(t2.filters[1].bins) == 3
     assert t2.filters[0].order == 5
 
+    t3 = openmc.capi.tallies[3]
+    assert len(t3.filters) == 1
+    t3_f = t3.filters[0]
+    assert isinstance(t3_f, openmc.capi.EnergyFunctionFilter)
+    assert len(t3_f.energy) == 2
+    assert len(t3_f.y) == 2
+    t3_f.set_interp_data([0.0, 1.0, 2.0], [0.0, 1.0, 4.0])
+    assert len(t3_f.energy) == 3
+    assert len(t3_f.y) == 3
+
 
 def test_new_tally(capi_init):
     with pytest.raises(exc.AllocationError):
@@ -219,7 +246,7 @@ def test_new_tally(capi_init):
     new_tally.scores = ['flux']
     new_tally_with_id = openmc.capi.Tally(10)
     new_tally_with_id.scores = ['flux']
-    assert len(openmc.capi.tallies) == 4
+    assert len(openmc.capi.tallies) == 5
 
 
 def test_tally_activate(capi_simulation_init):

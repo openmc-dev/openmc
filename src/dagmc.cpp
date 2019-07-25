@@ -35,10 +35,9 @@ const bool dagmc_enabled = false;
 
 #ifdef DAGMC
 
-const std::string DAGMC_FILENAME = "dagmc.h5m";
-
 namespace openmc {
 
+const std::string DAGMC_FILENAME = "dagmc.h5m";
 
 namespace simulation {
 
@@ -54,8 +53,16 @@ moab::DagMC* DAG;
 } // namespace model
 
 
+void check_dagmc_file() {
+  std::string filename = settings::path_input + DAGMC_FILENAME;
+  if (!file_exists(filename)) {
+    fatal_error("Geometry DAGMC file '" + filename + "' does not exist!");
+  }
+}
+
 bool get_uwuw_materials_xml(std::string& s) {
-  UWUW uwuw(DAGMC_FILENAME.c_str());
+  check_dagmc_file();
+  UWUW uwuw((settings::path_input + DAGMC_FILENAME).c_str());
 
   std::stringstream ss;
   bool uwuw_mats_present = false;
@@ -133,7 +140,7 @@ void legacy_assign_material(const std::string& mat_string, DAGCell* c)
   }
 
   if (settings::verbosity >= 10) {
-    Material* m = model::materials[model::material_map[c->material_[0]]].get();
+    const auto& m = model::materials[model::material_map.at(c->material_[0])];
     std::stringstream msg;
     msg << "DAGMC material " << mat_string << " was assigned";
     if (mat_found_by_name) {
@@ -147,14 +154,18 @@ void legacy_assign_material(const std::string& mat_string, DAGCell* c)
 
 void load_dagmc_geometry()
 {
+  check_dagmc_file();
+
   if (!model::DAG) {
     model::DAG = new moab::DagMC();
   }
 
+
+  std::string filename = settings::path_input + DAGMC_FILENAME;
   // --- Materials ---
 
   // create uwuw instance
-  UWUW uwuw(DAGMC_FILENAME.c_str());
+  UWUW uwuw(filename.c_str());
 
   // check for uwuw material definitions
   bool using_uwuw = !uwuw.material_library.empty();
@@ -167,7 +178,7 @@ void load_dagmc_geometry()
   int32_t dagmc_univ_id = 0; // universe is always 0 for DAGMC runs
 
   // load the DAGMC geometry
-  moab::ErrorCode rval = model::DAG->load_file(DAGMC_FILENAME.c_str());
+  moab::ErrorCode rval = model::DAG->load_file(filename.c_str());
   MB_CHK_ERR_CONT(rval);
 
   // initialize acceleration data structures
@@ -213,17 +224,6 @@ void load_dagmc_geometry()
       model::universe_map[dagmc_univ_id] = model::universes.size() - 1;
     } else {
       model::universes[it->second]->cells_.push_back(i);
-    }
-
-    // check for temperature assignment
-    std::string temp_value;
-    if (model::DAG->has_prop(vol_handle, "temp")) {
-      rval = model::DAG->prop_value(vol_handle, "temp", temp_value);
-      MB_CHK_ERR_CONT(rval);
-      double temp = std::stod(temp_value);
-      c->sqrtkT_.push_back(std::sqrt(K_BOLTZMANN * temp));
-    } else {
-      c->sqrtkT_.push_back(std::sqrt(K_BOLTZMANN * settings::temperature_default));
     }
 
     // MATERIALS
@@ -295,6 +295,26 @@ void load_dagmc_geometry()
         legacy_assign_material(mat_value, c);
       }
     }
+
+    // check for temperature assignment
+    std::string temp_value;
+
+    // no temperature if void
+    if (c->material_[0] == MATERIAL_VOID) continue;
+
+    // assign cell temperature
+    const auto& mat = model::materials[model::material_map.at(c->material_[0])];
+    if (model::DAG->has_prop(vol_handle, "temp")) {
+      rval = model::DAG->prop_value(vol_handle, "temp", temp_value);
+      MB_CHK_ERR_CONT(rval);
+      double temp = std::stod(temp_value);
+      c->sqrtkT_.push_back(std::sqrt(K_BOLTZMANN * temp));
+    } else if (mat->temperature_ > 0.0) {
+      c->sqrtkT_.push_back(std::sqrt(K_BOLTZMANN * mat->temperature_));
+    } else {
+      c->sqrtkT_.push_back(std::sqrt(K_BOLTZMANN * settings::temperature_default));
+    }
+
   }
 
   // allocate the cell overlap count if necessary
@@ -369,11 +389,7 @@ void load_dagmc_geometry()
 void read_geometry_dagmc()
 {
   // Check if dagmc.h5m exists
-  std::string filename = settings::path_input + "dagmc.h5m";
-  if (!file_exists(filename)) {
-    fatal_error("Geometry DAGMC file '" + filename + "' does not exist!");
-  }
-
+  check_dagmc_file();
   write_message("Reading DAGMC geometry...", 5);
   load_dagmc_geometry();
 

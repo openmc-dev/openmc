@@ -5,7 +5,6 @@ import os
 import h5py
 import numpy as np
 from scipy.signal import find_peaks
-import numpy.polynomial.polynomial as poly
 
 import openmc.checkvalue as cv
 from ..exceptions import DataError
@@ -16,6 +15,8 @@ from .neutron import IncidentNeutron
 from .resonance import ResonanceRange
 
 import vectfit as m
+
+from .optimized_wmp import OPTIMIZED
 
 # Constants that determine which value to access
 _MP_EA = 0       # Pole
@@ -546,7 +547,7 @@ def _windowing(mp_data, rtol=1e-3, atol=1e-5, n_win=None, n_cf=None,
     n_win : int, optional
         Number of equal-in-mementum spaced energy windows
     n_cf : int, optional
-        Number of curve fitting order
+        Curve fitting order
     spacing : float, optional
         Inner window spacing (sqrt energy space)
     log : bool, optional
@@ -575,7 +576,7 @@ def _windowing(mp_data, rtol=1e-3, atol=1e-5, n_win=None, n_cf=None,
     piece_width = (sqrt(E_max) - sqrt(E_min)) / n_pieces
     alpha = awr / (K_BOLTZMANN*TEMPERATURE_LIMIT)
 
-    # determine window size and CF order
+    # determine window size and curve fit order
     if n_win is None:
         if spacing is not None:
             # Ensure the windows are within the multipole energy range
@@ -583,7 +584,7 @@ def _windowing(mp_data, rtol=1e-3, atol=1e-5, n_win=None, n_cf=None,
             E_max = (sqrt(E_min) + n_win*spacing)**2
         else:
             # TODO: optimize windows spacing
-            n_win = OPTIMIZED[name][1]
+            n_win = OPTIMIZED[name][2]
 
     # inner window size
     spacing = (sqrt(E_max) - sqrt(E_min)) / n_win
@@ -593,13 +594,13 @@ def _windowing(mp_data, rtol=1e-3, atol=1e-5, n_win=None, n_cf=None,
 
     # TODO: optimize curve fit order
     if n_cf is None:
-        n_cf = OPTIMIZED[name][2]
+        n_cf = OPTIMIZED[name][3]
 
     # sort poles (and residues) by the real component of the pole
     for ip in range(n_pieces):
         indices = mp_poles[ip].argsort()
         mp_poles[ip] = mp_poles[ip][indices]
-        mp_residues[ip] = mp_residues[ip][indices]
+        mp_residues[ip] = mp_residues[ip][:, indices]
 
     # initialize an array to record if each pole is used or not
     poles_unused = [np.ones_like(p, dtype=int) for p in mp_poles]
@@ -623,7 +624,7 @@ def _windowing(mp_data, rtol=1e-3, atol=1e-5, n_win=None, n_cf=None,
         e_end = min(E_max, (sqrt(alpha)*inend + 4.0)**2/alpha)
 
         # locate piece and relevant poles
-        i_piece = int((inbegin - sqrt(E_min))/piece_width + 0.5)
+        i_piece = min(n_pieces-1, int((inbegin - sqrt(E_min))/piece_width + 0.5))
         poles, residues = mp_poles[i_piece], mp_residues[i_piece]
         n_poles = poles.size
 
@@ -633,32 +634,39 @@ def _windowing(mp_data, rtol=1e-3, atol=1e-5, n_win=None, n_cf=None,
         # reference xs from multipole form
         xs_ref = m.evaluate(energy, poles, residues)
 
+        # curve fit matrix
+        matrix = np.vstack([energy**(0.5*i-1) for i in range(n_cf+1)]).T
+
         # start from 0 poles, initialize pointers to the center nearest pole
         center_pole_ind = np.argmin((np.fabs(poles.real - incenter)))
         lp, rp = center_pole_ind, center_pole_ind
         while True:
+            if log:
+                print("Trying poles {} to {}".format(lp, rp))
             # calculate the cross sections contributed by the windowed poles
             if rp > lp:
-                xs_wp = m.evaluate(energy, poles[lp:rp], residues[lp:rp])
+                xs_wp = m.evaluate(energy, poles[lp:rp], residues[:, lp:rp])
             else:
                 xs_wp = np.zeros_like(xs_ref)
 
-            # do least squares polynomial fit on the difference
-            coefs = poly.polyfit(energy, np.transpose(xs_ref - xs_wp), n_cf)
-            xs_fit = np.transpose(poly.polyval(energy, coefs))
+            # do least square curve fit on the remains
+            coefs = np.linalg.lstsq(matrix, (xs_ref - xs_wp).T, rcond=None)[0]
+            xs_fit = (matrix @ coefs).T
 
             # assess the result
             abserr = np.abs(xs_fit + xs_wp - xs_ref)
             relerr = abserr / xs_ref
             if not np.any(np.isnan(abserr)):
-                if np.all(abserr<=atol) or np.all(relerr[abserr>atol] < rtol)):
+                if np.all(abserr<=atol) or np.all(relerr[abserr>atol]<rtol):
                     # meet tolerances
+                    if log:
+                        print("Accuracy satisfied.")
                     break
 
             # try to include one more (center nearest) pole
-            if rp+1 >= n_poles:
+            if rp >= n_poles:
                 lp = lp - 1
-            elif lp-1 < 0 or poles[rp+1] - incenter <= incenter - poles[lp-1]:
+            elif lp <= 0 or poles[rp+1] - incenter <= incenter - poles[lp-1]:
                 rp = rp + 1
             else:
                 lp = lp - 1
@@ -670,11 +678,10 @@ def _windowing(mp_data, rtol=1e-3, atol=1e-5, n_win=None, n_cf=None,
 
     # flatten and shrink: keep used poles and remove unused
     data = [] # used poles and residues
-    n_used = [0] # accumulated number of poles for each piece 
     for ip in range(n_pieces):
         used = (poles_unused[ip] == 0)
-        data.append(np.column_stack(mp_poles[ip][used], mp_residues[ip][used]))
-        n_used.append(n_used[-1] + used.sum())
+        # stack poles and residues for library format
+        data.append(np.vstack([mp_poles[ip][used], mp_residues[ip][:, used]]).T)
     # stack poles/residues in sequence vertically
     data = np.vstack(data)
 
@@ -683,9 +690,11 @@ def _windowing(mp_data, rtol=1e-3, atol=1e-5, n_win=None, n_cf=None,
     curvefit = []
     for iw in range(n_win):
         ip, lp, rp, coefs = win_data[iw]
-        adjust = n_used[ip] - (poles_unused[ip][:lp] == 0).sum()
-        lp = lp + adjust + 1
-        rp = rp + adjust
+        # adjust indices and change to 1-based for the library format
+        n_unused = sum([(poles_unused[i]==1).sum() for i in range(ip)]) + \
+                  (poles_unused[ip][:lp]==1).sum()
+        lp = lp - n_unused + 1
+        rp = rp - n_unused
         windows.append([lp, rp])
         curvefit.append(coefs)
 

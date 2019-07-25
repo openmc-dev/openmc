@@ -73,7 +73,9 @@ def test_cell(capi_init):
     assert isinstance(cell.fill, openmc.capi.Material)
     cell.fill = openmc.capi.materials[1]
     assert str(cell) == 'Cell[0]'
-
+    assert cell.name == "Fuel"
+    cell.name = "Not fuel"
+    assert cell.name == "Not fuel"
 
 def test_cell_temperature(capi_init):
     cell = openmc.capi.cells[1]
@@ -122,7 +124,9 @@ def test_material(capi_init):
 
     m.set_density(0.1, 'g/cm3')
     assert m.density == pytest.approx(0.1)
-
+    assert m.name == "Hot borated water"
+    m.name = "Not hot borated water"
+    assert m.name == "Not hot borated water"
 
 def test_material_add_nuclide(capi_init):
     m = openmc.capi.materials[3]
@@ -469,3 +473,13 @@ def test_position(capi_init):
     pos[2] = 3.3
 
     assert tuple(pos) == (1.3, 2.3, 3.3)
+
+
+def test_global_bounding_box(capi_init):
+    expected_llc = (-0.63, -0.63, -np.inf)
+    expected_urc = (0.63, 0.63, np.inf)
+
+    llc, urc = openmc.capi.global_bounding_box()
+
+    assert tuple(llc) == expected_llc
+    assert tuple(urc) == expected_urc

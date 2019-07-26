@@ -155,7 +155,7 @@ def _vectfit_xs(energy, ce_xs, mts, rtol=1e-3, atol=1e-5, orders=None,
         Absolute error tolerance
     orders : Iterable of int, optional
         A list of orders (number of poles) to be searched
-    n_vf_iter : Integral, optional
+    n_vf_iter : int, optional
         Number of maximum VF iterations
     log : Bool, optional
         Whether to print log
@@ -631,8 +631,9 @@ def _windowing(mp_data, rtol=1e-3, atol=1e-5, n_win=None, n_cf=None,
         # energy points for fitting
         n_points = min(max(100, (e_end - e_start)*4), 10000)
         energy = np.logspace(np.log10(e_start), np.log10(e_end), n_points)
+        energy_sqrt = np.sqrt(energy)
         # reference xs from multipole form
-        xs_ref = m.evaluate(energy, poles, residues)
+        xs_ref = m.evaluate(energy_sqrt, poles, residues*1j)/energy
 
         # curve fit matrix
         matrix = np.vstack([energy**(0.5*i-1) for i in range(n_cf+1)]).T
@@ -645,7 +646,8 @@ def _windowing(mp_data, rtol=1e-3, atol=1e-5, n_win=None, n_cf=None,
                 print("Trying poles {} to {}".format(lp, rp))
             # calculate the cross sections contributed by the windowed poles
             if rp > lp:
-                xs_wp = m.evaluate(energy, poles[lp:rp], residues[:, lp:rp])
+                xs_wp = m.evaluate(energy_sqrt, poles[lp:rp],
+                                   residues[:, lp:rp]*1j) / energy
             else:
                 xs_wp = np.zeros_like(xs_ref)
 
@@ -657,7 +659,9 @@ def _windowing(mp_data, rtol=1e-3, atol=1e-5, n_win=None, n_cf=None,
             abserr = np.abs(xs_fit + xs_wp - xs_ref)
             relerr = abserr / xs_ref
             if not np.any(np.isnan(abserr)):
-                if np.all(abserr<=atol) or np.all(relerr[abserr>atol]<rtol):
+                if np.all(abserr<=atol) or np.all(relerr[abserr>atol]<rtol) or (
+                   relerr.max()<2*rtol and
+                   (relerr[abserr>atol]>rtol).sum()<0.02*relerr.size):
                     # meet tolerances
                     if log:
                         print("Accuracy satisfied.")
@@ -666,7 +670,7 @@ def _windowing(mp_data, rtol=1e-3, atol=1e-5, n_win=None, n_cf=None,
             # try to include one more (center nearest) pole
             if rp >= n_poles:
                 lp = lp - 1
-            elif lp <= 0 or poles[rp+1] - incenter <= incenter - poles[lp-1]:
+            elif lp <= 0 or poles[rp] - incenter <= incenter - poles[lp-1]:
                 rp = rp + 1
             else:
                 lp = lp - 1

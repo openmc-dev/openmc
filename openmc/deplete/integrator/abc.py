@@ -149,3 +149,87 @@ class Integrator(ABC):
         Results.save(
             self.operator, conc_list, results_list, time_list,
             power, index, proc_time)
+
+
+class SI_Integrator(Integrator):
+    """Abstract for the Stochastic Implicit Euler integrators
+
+    Does not provide a ``__call__`` method, but scales and resets
+    the number of particles used in initial transport calculation
+    """
+    def __init__(self, operator, timesteps, power=None, power_density=None,
+                 n_steps=10):
+        """
+        Parameters
+        ----------
+        operator : openmc.deplete.TransportOperator
+            The operator object to simulate on.
+        timesteps : iterable of float
+            Array of timesteps in units of [s]. Note that values are not
+            cumulative.
+        power : float or iterable of float, optional
+            Power of the reactor in [W]. A single value indicates that
+            the power is constant over all timesteps. An iterable
+            indicates potentially different power levels for each timestep.
+            For a 2D problem, the power can be given in [W/cm] as long
+            as the "volume" assigned to a depletion material is actually
+            an area in [cm^2]. Either ``power`` or ``power_density`` must be
+            specified.
+        power_density : float or iterable of float, optional
+            Power density of the reactor in [W/gHM]. It is multiplied by
+            initial heavy metal inventory to get total power if ``power``
+            is not speficied.
+        n_stages : int, optional
+            Number of  stages. Default : 10
+    """
+
+    def __init__(self, operator, timesteps, power=None, power_density=None,
+                 n_stages=10):
+        super().__init__(operator, timesteps, power, power_density)
+        self.n_stages = n_stages
+
+    def _get_bos_data_from_openmc(self, step_index, step_power, bos_conc):
+        reset_particles = False
+        if step_index == 0 and hasattr(self.operator, "settings"):
+            reset_particles = True
+            self.operator.settings.particles *= self.n_stages
+        inherited = super()._get_bos_data_from_openmc(
+            step_index, step_power, bos_conc)
+        if reset_particles:
+            self.operator.settings.particles //= self.n_stages
+        return inherited
+
+    def integrate(self):
+        """Perform the entire depletion process across all steps"""
+        with self.operator as conc:
+            t, self._ires = self._get_start_data()
+
+            for i, (dt, p) in enumerate(self):
+                if i == 0:
+                    if self.operator.prev_res is None:
+                        conc, res = self._get_bos_data_from_openmc(i, p, conc)
+                    else:
+                        conc, res = self._get_bos_data_from_restart(i, p, conc)
+                else:
+                    # Pull rates, k from previous iteration w/o
+                    # re-running transport
+                    res = res_list[-1]  # defined in previous i iteration
+
+                proc_time, conc_list, res_list = self(conc, res.rates, dt, p, i)
+
+                # Insert BOS concentration, transport results
+                conc_list.insert(0, conc)
+                res_list.insert(0, res)
+
+                # Remove actual EOS concentration for next step
+                conc = conc_list.pop()
+
+                self._save_results(
+                    conc_list, res_list, [t, t + dt], p, self._ires + i,
+                    proc_time)
+
+                t += dt
+
+            # No final simulation for SIE, use last iteration results
+            self._save_results(
+                [conc], [res_list[-1]], [t, t], p, self._ires + len(self))

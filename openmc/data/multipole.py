@@ -726,10 +726,8 @@ class WindowedMultipole(EqualityMixin):
 
     Attributes
     ----------
-    fit_order : int
-        Order of the windowed curvefit.
-    fissionable : bool
-        Whether or not the target nuclide has fission data.
+    name : str
+        Name of the nuclide using the GND naming convention
     spacing : float
         The width of each window in sqrt(E)-space.  For example, the frst window
         will end at (sqrt(E_min) + spacing)**2 and the second window at
@@ -783,6 +781,18 @@ class WindowedMultipole(EqualityMixin):
     @property
     def fissionable(self):
         return self.data.shape[1] == 4
+
+    @property
+    def n_poles(self):
+        return self.data.shape[0]
+
+    @property
+    def n_windows(self):
+        return self.windows.shape[0]
+
+    @property
+    def poles_per_window(self):
+        return (self.windows[:, 1] - self.windows[:, 0] + 1).mean()
 
     @property
     def spacing(self):

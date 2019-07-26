@@ -1,5 +1,6 @@
 from numbers import Real
 from math import exp, erf, pi, sqrt
+import warnings
 
 import os
 import h5py
@@ -16,7 +17,6 @@ from .resonance import ResonanceRange
 
 import vectfit as m
 
-from .optimized_wmp import OPTIMIZED
 
 # Constants that determine which value to access
 _MP_EA = 0       # Pole
@@ -576,25 +576,25 @@ def _windowing(mp_data, rtol=1e-3, atol=1e-5, n_win=None, n_cf=None,
     piece_width = (sqrt(E_max) - sqrt(E_min)) / n_pieces
     alpha = awr / (K_BOLTZMANN*TEMPERATURE_LIMIT)
 
-    # determine window size and curve fit order
+    # determine window size
     if n_win is None:
         if spacing is not None:
             # Ensure the windows are within the multipole energy range
             n_win = int((sqrt(E_max) - sqrt(E_min)) / spacing)
             E_max = (sqrt(E_min) + n_win*spacing)**2
         else:
-            # TODO: optimize windows spacing
-            n_win = OPTIMIZED[name][2]
-
+            warnings.warn("Number of windows or window size not specified.")
+            n_win = 1000
     # inner window size
     spacing = (sqrt(E_max) - sqrt(E_min)) / n_win
     # make sure inner window size is smaller than energy piece size
     if spacing > piece_width:
         raise ValueError('Window spacing cannot be larger than piece spacing.')
 
-    # TODO: optimize curve fit order
+    # determine curve fit order
     if n_cf is None:
-        n_cf = OPTIMIZED[name][3]
+        warnings.warn("Curvefit order not specified.")
+        n_cf = 5
 
     # sort poles (and residues) by the real component of the pole
     for ip in range(n_pieces):
@@ -726,19 +726,19 @@ class WindowedMultipole(EqualityMixin):
 
     Attributes
     ----------
-    fit_order : Integral
+    fit_order : int
         Order of the windowed curvefit.
     fissionable : bool
         Whether or not the target nuclide has fission data.
-    spacing : Real
+    spacing : float
         The width of each window in sqrt(E)-space.  For example, the frst window
         will end at (sqrt(E_min) + spacing)**2 and the second window at
         (sqrt(E_min) + 2*spacing)**2.
-    sqrtAWR : Real
+    sqrtAWR : float
         Square root of the atomic weight ratio of the target nuclide.
-    E_min : Real
+    E_min : float
         Lowest energy in eV the library is valid for.
-    E_max : Real
+    E_max : float
         Highest energy in eV the library is valid for.
     data : np.ndarray
         A 2D array of complex poles and residues.  data[i, 0] gives the energy
@@ -979,16 +979,19 @@ class WindowedMultipole(EqualityMixin):
         return out
 
     @classmethod
-    def from_endf(cls, endf_file, **kwargs):
+    def from_endf(cls, endf_file, vf_options={}, wmp_options={}):
         """Generate windowed multipole neutron data from an ENDF evaluation.
 
         Parameters
         ----------
         endf_file : str
             Path to ENDF evaluation
-        **kwargs
-            Keyword arguments passed to :func:`openmc.data.multipole._vectfit_nuclide`
-            and :func:`openmc.data.WindowedMultipole.from_multipole`
+        vf_options : dict
+            Dictionary of keyword arguments passed to
+            :func:`openmc.data.multipole._vectfit_nuclide`
+        wmp_options : dict
+            Dictionary of keyword arguments passed to
+            :func:`openmc.data.WindowedMultipole.from_multipole`
 
         Returns
         -------
@@ -999,10 +1002,10 @@ class WindowedMultipole(EqualityMixin):
         """
 
         # generate multipole data from EDNF
-        mp_data = _vectfit_nuclide(endf_file, **kwargs)
+        mp_data = _vectfit_nuclide(endf_file, **vf_options)
 
         # windowing
-        return cls.from_multipole(mp_data, **kwargs)
+        return cls.from_multipole(mp_data, **wmp_options)
 
     @classmethod
     def from_multipole(cls, mp_data, **kwargs):

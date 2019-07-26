@@ -16,6 +16,7 @@ import xml.etree.ElementTree as ET
 
 import h5py
 import numpy as np
+from uncertainties import ufloat
 
 import openmc
 import openmc.capi
@@ -526,7 +527,7 @@ class Operator(TransportOperator):
         rates[:, :, :] = 0.0
 
         # Get k and uncertainty
-        k_combined = openmc.capi.keff()
+        k_combined = ufloat(*openmc.capi.keff())
 
         # Extract tally bins
         materials = self.burnable_mats

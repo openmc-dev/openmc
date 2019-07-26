@@ -21,8 +21,8 @@ class Results(object):
 
     Attributes
     ----------
-    k : list of float
-        Eigenvalue for each substep.
+    k : list of (float, float)
+        Eigenvalue and uncertainty for each substep.
     time : list of float
         Time at beginning, end of step, in seconds.
     power : float
@@ -446,7 +446,7 @@ class Results(object):
             for mat_i in range(n_mat):
                 results[i, mat_i, :] = x[offset + i][mat_i][:]
 
-        results.k = [r.k for r in op_results]
+        results.k = [(r.k.nominal_value, r.k.std_dev) for r in op_results]
         results.rates = [r.rates for r in op_results]
         results.time = t
         results.power = power

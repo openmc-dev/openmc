@@ -11,6 +11,8 @@ import os
 from unittest.mock import MagicMock
 
 import numpy as np
+from uncertainties import ufloat
+
 from openmc.deplete import (ReactionRates, Results, ResultsList, comm,
                             OperatorResult)
 
@@ -74,8 +76,8 @@ def test_results_save(run_in_tmpdir):
     t1 = [0.0, 1.0]
     t2 = [1.0, 2.0]
 
-    op_result1 = [OperatorResult(k, rates) for k, rates in zip(eigvl1, rate1)]
-    op_result2 = [OperatorResult(k, rates) for k, rates in zip(eigvl2, rate2)]
+    op_result1 = [OperatorResult(ufloat(*k), rates) for k, rates in zip(eigvl1, rate1)]
+    op_result2 = [OperatorResult(ufloat(*k), rates) for k, rates in zip(eigvl2, rate2)]
     Results.save(op, x1, op_result1, t1, 0, 0)
     Results.save(op, x2, op_result2, t2, 0, 1)
 

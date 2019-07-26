@@ -26,7 +26,15 @@ class ResultsList(list):
                 self.append(Results.from_hdf5(fh, i))
 
     def get_atoms(self, mat, nuc):
-        """Get nuclide concentration over time from a single material
+        """Get number of nuclides over time from a single material
+
+        .. note::
+
+            Initial values for some isotopes that do not appear in
+            initial concentrations may be non-zero, depending on the
+            value of :class:`openmc.deplete.Operator` ``dilute_initial``.
+            The :class:`openmc.deplete.Operator` adds isotopes according
+            to this setting, which can be set to zero.
 
         Parameters
         ----------
@@ -55,6 +63,14 @@ class ResultsList(list):
 
     def get_reaction_rate(self, mat, nuc, rx):
         """Get reaction rate in a single material/nuclide over time
+
+        .. note::
+
+            Initial values for some isotopes that do not appear in
+            initial concentrations may be non-zero, depending on the
+            value of :class:`openmc.deplete.Operator` ``dilute_initial``
+            The :class:`openmc.deplete.Operator` adds isotopes according
+            to this setting, which can be set to zero.
 
         Parameters
         ----------

@@ -8,7 +8,7 @@ from pytest import approx
 import openmc.deplete
 from openmc.deplete import (
     CECMIntegrator, PredictorIntegrator, CELIIntegrator, LEQIIntegrator,
-    EPC_RK4_Integrator,
+    EPC_RK4_Integrator, CF4Integrator
 )
 
 from tests import dummy_operator
@@ -186,7 +186,7 @@ def test_restart_cf4(run_in_tmpdir):
     # Perform simulation
     dt = [0.75]
     power = 1.0
-    openmc.deplete.cf4(op, dt, power, print_out=False)
+    CF4Integrator(op, dt, power).integrate()
 
     # Load the files
     prev_res = openmc.deplete.ResultsList(op.output_dir / "depletion_results.h5")
@@ -196,7 +196,7 @@ def test_restart_cf4(run_in_tmpdir):
     op.output_dir = output_dir
 
     # Perform restarts simulation
-    openmc.deplete.cf4(op, dt, power, print_out=False)
+    CF4Integrator(op, dt, power).integrate()
 
     # Load the files
     res = openmc.deplete.ResultsList(op.output_dir / "depletion_results.h5")

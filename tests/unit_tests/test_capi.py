@@ -188,9 +188,9 @@ def test_energy_function_filter(capi_init):
     """Test special __new__ and __init__ for EnergyFunctionFilter"""
     efunc = openmc.capi.EnergyFunctionFilter([0.0, 1.0], [0.0, 2.0])
     assert len(efunc.energy) == 2
-    assert efunc.energy == [0.0, 1.0]
+    assert (efunc.energy == [0.0, 1.0]).all()
     assert len(efunc.y) == 2
-    assert efunc.y == [0.0, 2.0]
+    assert (efunc.y == [0.0, 2.0]).all()
 
 
 def test_tally(capi_init):

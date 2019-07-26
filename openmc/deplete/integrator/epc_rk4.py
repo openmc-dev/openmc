@@ -1,23 +1,10 @@
 """The EPC-RK4 integrator."""
 
-import copy
-from collections.abc import Iterable
-
 from .cram import timed_deplete
-from ..results import Results
+from .abc import Integrator
 
 
-# Functions to form the special matrix for depletion
-def _rk4_f1(chain, rates):
-    return 1/2 * chain.form_matrix(rates)
-
-def _rk4_f4(chain, rates):
-    return 1/6 * chain.form_matrix(rates[0]) + \
-           1/3 * chain.form_matrix(rates[1]) + \
-           1/3 * chain.form_matrix(rates[2]) + \
-           1/6 * chain.form_matrix(rates[3])
-
-def epc_rk4(operator, timesteps, power=None, power_density=None, print_out=True):
+class EPC_RK4_Integrator(Integrator):
     r"""Deplete using the EPC-RK4 algorithm.
 
     Implements an extended predictor-corrector algorithm with traditional
@@ -35,114 +22,67 @@ def epc_rk4(operator, timesteps, power=None, power_density=None, print_out=True)
         F_4 &= h A(y_3) \\
         y_4 &= \text{expm}(1/6 F_1 + 1/3 F_2 + 1/3 F_3 + 1/6 F_4) y_0
         \end{aligned}
-
-    Parameters
-    ----------
-    operator : openmc.deplete.TransportOperator
-        The operator object to simulate on.
-    timesteps : iterable of float
-        Array of timesteps in units of [s]. Note that values are not cumulative.
-    power : float or iterable of float, optional
-        Power of the reactor in [W]. A single value indicates that the power is
-        constant over all timesteps. An iterable indicates potentially different
-        power levels for each timestep. For a 2D problem, the power can be given
-        in [W/cm] as long as the "volume" assigned to a depletion material is
-        actually an area in [cm^2]. Either `power` or `power_density` must be
-        specified.
-    power_density : float or iterable of float, optional
-        Power density of the reactor in [W/gHM]. It is multiplied by initial
-        heavy metal inventory to get total power if `power` is not speficied.
-    print_out : bool, optional
-        Whether or not to print out time.
-
     """
-    if power is None:
-        if power_density is None:
-            raise ValueError(
-                "Neither power nor power density was specified.")
-        if not isinstance(power_density, Iterable):
-            power = power_density*operator.heavy_metal
-        else:
-            power = [i*operator.heavy_metal for i in power_density]
 
-    if not isinstance(power, Iterable):
-        power = [power]*len(timesteps)
+    def __call__(self, conc, rates, dt, power, _i):
+        """Perform the integration across one time step
 
-    # Generate initial conditions
-    with operator as vec:
-        # Initialize time and starting index
-        if operator.prev_res is None:
-            t = 0.0
-            i_res = 0
-        else:
-            t = operator.prev_res[-1].time[-1]
-            i_res = len(operator.prev_res)
+        Parameters
+        ----------
+        conc : numpy.ndarray
+            Initial concentrations for all nuclides in [atom]
+        rates : openmc.deplete.ReactionRates
+            Reaction rates from operator
+        dt : float
+            Time in [s] for the entire depletion interval
+        power : float
+            Power of the system [W]
+        i : int
+            Current depletion step index, unused.
 
-        chain = operator.chain
+        Returns
+        -------
+        proc_time : float
+            Time spent in CRAM routines for all materials
+        conc_list : list of numpy.ndarray
+            Concentrations at each of the intermediate points with
+            the final concentration as the last element
+        op_results : list of openmc.deplete.OperatorResult
+            Eigenvalue and reaction rates from intermediate transport
+            simulations
+        """
 
-        for i, (dt, p) in enumerate(zip(timesteps, power)):
-            # Get beginning-of-timestep concentrations and reaction rates
-            # Avoid doing first transport run if already done in previous
-            # calculation
-            if i > 0 or operator.prev_res is None:
-                x = [copy.deepcopy(vec)]
-                op_results = [operator(x[0], p)]
+        # Step 1: deplete with matrix A(y0) / 2
+        time1, conc1 = timed_deplete(
+            self.chain, conc, rates, dt, matrix_func=_rk4_f1)
+        res1 = self.operator(conc1, power)
 
-            else:
-                # Get initial concentration
-                x = [operator.prev_res[-1].data[0]]
+        # Step 2: deplete with matrix A(y1) / 2
+        time2, conc2 = timed_deplete(
+            self.chain, conc, res1.rates, dt, matrix_func=_rk4_f1)
+        res2 = self.operator(conc2, power)
 
-                # Get rates
-                op_results = [operator.prev_res[-1]]
-                op_results[0].rates = op_results[0].rates[0]
+        # Step 3: deplete with matrix A(y2)
+        time3, conc3 = timed_deplete(
+            self.chain, conc, res2.rates, dt)
+        res3 = self.operator(conc3, power)
 
-                # Set first stage value of keff
-                op_results[0].k = op_results[0].k[0]
+        # Step 4: deplete with matrix built from weighted rates
+        list_rates = list(zip(rates, res1.rates, res2.rates, res3.rates))
+        time4, conc4 = timed_deplete(
+            self.chain, conc, list_rates, dt, matrix_func=_rk4_f4)
 
-                # Scale reaction rates by ratio of powers
-                power_res = operator.prev_res[-1].power
-                ratio_power = p / power_res
-                op_results[0].rates *= ratio_power[0]
+        return (time1 + time2 + time3 + time4, [conc1, conc2, conc3, conc4],
+                [res1, res2, res3])
 
-            # Step 1: deplete with matrix 1/2*A(y0)
-            time_1, x_new = timed_deplete(
-                chain, x[0], op_results[0].rates, dt, print_out,
-                matrix_func=_rk4_f1)
-            x.append(x_new)
-            op_results.append(operator(x[1], p))
 
-            # Step 2: deplete with matrix 1/2*A(y1)
-            time_2, x_new = timed_deplete(
-                chain, x[0], op_results[1].rates, dt, print_out,
-                matrix_func=_rk4_f1)
-            x.append(x_new)
-            op_results.append(operator(x[2], p))
+# Functions to form the special matrix for depletion
+def _rk4_f1(chain, rates):
+    return 1/2 * chain.form_matrix(rates)
 
-            # Step 3: deplete with matrix A(y2)
-            time_3, x_new = timed_deplete(
-                chain, x[0], op_results[2].rates, dt, print_out)
-            x.append(x_new)
-            op_results.append(operator(x[3], p))
 
-            # Step 4: deplete with matrix 1/6*A(y0)+1/3*A(y1)+1/3*A(y2)+1/6*A(y3)
-            rates = list(zip(op_results[0].rates, op_results[1].rates,
-                             op_results[2].rates, op_results[3].rates))
-            time_4, x_end = timed_deplete(
-                chain, x[0], rates, dt, print_out, matrix_func=_rk4_f4)
-
-            # Create results, write to disk
-            Results.save(
-                operator, x, op_results, [t, t + dt], p, i_res + i,
-                time_1 + time_2 + time_3 + time_4)
-
-            # Advance time, update vector
-            t += dt
-            vec = copy.deepcopy(x_end)
-
-        # Perform one last simulation
-        x = [copy.deepcopy(vec)]
-        op_results = [operator(x[0], power[-1])]
-
-        # Create results, write to disk
-        Results.save(
-            operator, x, op_results, [t, t], p, i_res + len(timesteps))
+def _rk4_f4(chain, rates):
+    return 1/6 * chain.form_matrix(rates[0]) + \
+           1/3 * chain.form_matrix(rates[1]) + \
+           1/3 * chain.form_matrix(rates[2]) + \
+           1/6 * chain.form_matrix(rates[3])

@@ -20,8 +20,8 @@ Result of applying transport operator
 
 Parameters
 ----------
-k : float
-    Resulting eigenvalue
+k : uncertainties.ufloat
+    Resulting eigenvalue and standard deviation
 rates : openmc.deplete.ReactionRates
     Resulting reaction rates
 

@@ -3,6 +3,8 @@
 import copy
 from collections.abc import Iterable
 
+from uncertainties import ufloat
+
 from .cram import timed_deplete
 from ..results import Results
 from ..abc import OperatorResult
@@ -82,7 +84,7 @@ def si_celi(operator, timesteps, power=None, power_density=None,
             op_results[0].rates = op_results[0].rates[0]
 
             # Set first stage value of keff
-            op_results[0].k = op_results[0].k[0]
+            op_results[0].k = ufloat(*op_results[0].k[0])
 
             # Scale reaction rates by ratio of powers
             power_res = operator.prev_res[-1].power

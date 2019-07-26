@@ -2,7 +2,9 @@ from copy import deepcopy
 from abc import ABC, abstractmethod
 from collections.abc import Iterable
 
-from openmc.deplete import Results
+from uncertainties import ufloat
+
+from openmc.deplete import Results, OperatorResult
 
 
 class Integrator(ABC):
@@ -96,12 +98,12 @@ class Integrator(ABC):
     def _get_bos_data_from_restart(self, step_index, step_power, bos_conc):
         res = self.operator.prev_res[-1]
         bos_conc = res.data[0]
-        res.rates = res.rates[0]
-        res.k = res.k[0]
+        rates = res.rates[0]
+        k = ufloat(res.k[0,0], res.k[0, 1])
 
         # Scale rates by ratio of powers
-        res.rates *= step_power / res.power[0]
-        return bos_conc, res
+        rates *= step_power / res.power[0]
+        return bos_conc, OperatorResult(k, rates)
 
     def _get_start_data(self):
         if self.operator.prev_res is None:

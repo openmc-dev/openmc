@@ -35,6 +35,9 @@ _FIT_F = 2       # Fission
 # Upper temperature limit
 TEMPERATURE_LIMIT = 3000
 
+# Logging control
+DETAILED_LOGGING = 1
+
 def _faddeeva(z):
     r"""Evaluate the complex Faddeeva function.
 
@@ -158,7 +161,7 @@ def _vectfit_xs(energy, ce_xs, mts, rtol=1e-3, atol=1e-5, orders=None,
         A list of orders (number of poles) to be searched
     n_vf_iter : int, optional
         Number of maximum VF iterations
-    log : bool, optional
+    log : bool or int, optional
         Whether to print running logs
     path_out : str, optional
         Path to save the figures
@@ -228,7 +231,7 @@ def _vectfit_xs(energy, ce_xs, mts, rtol=1e-3, atol=1e-5, orders=None,
     best_quality = best_ratio = -np.inf
     for i, order in enumerate(orders):
         if log:
-            print("Order={} {}/{}".format(order, i, len(orders)))
+            print("Order={}({}/{})".format(order, i, len(orders)))
         # initial guessed poles
         poles = np.linspace(s[0], s[-1], order/2)
         poles = poles + poles*0.01j
@@ -237,7 +240,7 @@ def _vectfit_xs(energy, ce_xs, mts, rtol=1e-3, atol=1e-5, orders=None,
         found_better = False
         # fitting iteration
         for i_vf in range(n_vf_iter):
-            if log:
+            if log > DETAILED_LOGGING:
                 print("VF iteration {}/{}".format(i_vf+1, n_vf_iter))
 
             # call vf
@@ -256,7 +259,7 @@ def _vectfit_xs(energy, ce_xs, mts, rtol=1e-3, atol=1e-5, orders=None,
             new_poles = np.array(new_poles)
             # re-calculate residues if poles changed
             if n_real_poles > 0:
-                if log:
+                if log > DETAILED_LOGGING:
                     print("  # real poles: {}".format(n_real_poles))
                 new_poles, residues, cf, f_fit, rms = \
                       m.vectfit(f, s, new_poles, weight, skip_pole=True)
@@ -279,14 +282,14 @@ def _vectfit_xs(energy, ce_xs, mts, rtol=1e-3, atol=1e-5, orders=None,
             if np.any(test_xs < -atol):
                 quality = -np.inf
 
-            if log:
+            if log > DETAILED_LOGGING:
                 print("  # poles: {}".format(new_poles.size))
                 print("  Max relative error: {:.3f}%".format(maxre*100))
                 print("  Satisfaction: {:.1f}%, {:.1f}%".format(ratio*100, ratio2*100))
                 print("  Quality: {:.2f}".format(quality))
 
             if quality > best_quality:
-                if log:
+                if log > DETAILED_LOGGING:
                     print("  Best by far!")
                 found_better = True
                 best_quality, best_ratio = quality, ratio
@@ -298,7 +301,7 @@ def _vectfit_xs(energy, ce_xs, mts, rtol=1e-3, atol=1e-5, orders=None,
                     found_ideal = True
                     break
             else:
-                if log:
+                if log > DETAILED_LOGGING:
                     print("  Discarded!")
 
         if found_ideal:
@@ -311,7 +314,7 @@ def _vectfit_xs(energy, ce_xs, mts, rtol=1e-3, atol=1e-5, orders=None,
             if order > max(2*n_peaks, 50) and best_ratio > 0.7:
                 n_discarded += 1
                 if n_discarded >= 10 or (n_discarded >= 5 and best_ratio > 0.9):
-                    if log:
+                    if log > DETAILED_LOGGING:
                         print("Couldn't get better results. Stop!")
                     break
 
@@ -387,7 +390,7 @@ def _vectfit_nuclide(endf_file, njoy_error=5e-4, vf_error=1e-3, vf_pieces=None,
         Fractional error tolerance for data fitting
     vf_pieces : integer, optional
         Number of equal-in-mementum spaced energy pieces for data fitting
-    log : bool, optional
+    log : bool or int, optional
         Whether to print running logs
     path_out : str, optional
         Path to write out data files
@@ -551,7 +554,7 @@ def _windowing(mp_data, rtol=1e-3, atol=1e-5, n_win=None, n_cf=None,
         Curve fitting order
     spacing : float, optional
         Inner window spacing (sqrt energy space)
-    log : bool, optional
+    log : bool or int, optional
         Whether to print running logs
 
     Returns
@@ -597,6 +600,10 @@ def _windowing(mp_data, rtol=1e-3, atol=1e-5, n_win=None, n_cf=None,
         warnings.warn("Curvefit order not specified.")
         n_cf = 5
 
+    if log:
+        print("# windows: {}, spacing: {}, CF order: {}".format(
+               n_win, spacing, n_cf))
+
     # sort poles (and residues) by the real component of the pole
     for ip in range(n_pieces):
         indices = mp_poles[ip].argsort()
@@ -610,7 +617,7 @@ def _windowing(mp_data, rtol=1e-3, atol=1e-5, n_win=None, n_cf=None,
     # consecutive poles and curve fit coefficients to reproduce cross section
     win_data = []
     for iw in range(n_win):
-        if log:
+        if log > DETAILED_LOGGING:
             print("Processing window {}/{}...".format(iw+1, n_win))
 
         # inner window boundaries
@@ -643,7 +650,7 @@ def _windowing(mp_data, rtol=1e-3, atol=1e-5, n_win=None, n_cf=None,
         center_pole_ind = np.argmin((np.fabs(poles.real - incenter)))
         lp, rp = center_pole_ind, center_pole_ind
         while True:
-            if log:
+            if log > DETAILED_LOGGING:
                 print("Trying poles {} to {}".format(lp, rp))
             # calculate the cross sections contributed by the windowed poles
             if rp > lp:
@@ -664,13 +671,14 @@ def _windowing(mp_data, rtol=1e-3, atol=1e-5, n_win=None, n_cf=None,
                 if re.size == 0 or np.all(re <= rtol) or \
                    (re.max() < 2*rtol and (re>rtol).sum() < 0.01*relerr.size):
                     # meet tolerances
-                    if log:
+                    if log > DETAILED_LOGGING:
                         print("Accuracy satisfied.")
                     break
 
             # we expect curvefit succeeds for the first window
+            # TODO: find the energy boundary below which no poles are allowed
             if iw == 0:
-                raise RuntimeError('Curvefit failed for the first window!')
+                raise RuntimeError('Pure curvefit failed for the first window!')
 
             # try to include one more (center nearest) pole
             if rp >= n_poles:
@@ -1002,11 +1010,11 @@ class WindowedMultipole(EqualityMixin):
         endf_file : str
             Path to ENDF evaluation
         vf_options : dict
-            Dictionary of keyword arguments passed to
-            :func:`openmc.data.multipole._vectfit_nuclide`
+            Dictionary of keyword arguments, e.g. {'rtol':0.001, 'log':True},
+            passed to :func:`openmc.data.multipole._vectfit_nuclide`
         wmp_options : dict
-            Dictionary of keyword arguments passed to
-            :func:`openmc.data.WindowedMultipole.from_multipole`
+            Dictionary of keyword arguments, e.g. {'search': True, 'log': True},
+            passed to :func:`openmc.data.WindowedMultipole.from_multipole`
 
         Returns
         -------
@@ -1032,7 +1040,7 @@ class WindowedMultipole(EqualityMixin):
             Dictionary or Path to the multipole data
         search : bool, optional
             Whether to search for optimal window size and curvefit order
-        log : bool, optional
+        log : bool or int, optional
             Whether to print running logs
         **kwargs
             Keyword arguments passed to :func:`openmc.data.multipole._windowing`
@@ -1073,7 +1081,9 @@ class WindowedMultipole(EqualityMixin):
                     wmp = _windowing(mp_data, log=log, **kwargs)
                 except:
                     continue
-                # wmp library metric: less poles, less CF order and less windows
+                # wmp library metric:
+                # - performance (average # used poles per window and CF order)
+                # - memory (# windows)
                 metric = -(wmp.poles_per_window*10 + wmp.fit_order +
                            0.01*wmp.n_windows)
                 if best_wmp is None or metric > best_metric:
@@ -1081,6 +1091,13 @@ class WindowedMultipole(EqualityMixin):
                         print("Best library by far.")
                     best_wmp = deepcopy(wmp)
                     best_metric = metric
+
+        # return the best wmp library
+        if log:
+            print("Best WMP library: {} poles, {} windows, {} used poles per "
+             "window, {} CF order".format(best_wmp.n_poles, best_wmp.n_windows,
+             best_wmp.poles_per_window, best_wmp.fit_order))
+
         return best_wmp
 
     def _evaluate(self, E, T):

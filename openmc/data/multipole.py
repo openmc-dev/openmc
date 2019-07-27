@@ -1,5 +1,6 @@
 from numbers import Real
 from math import exp, erf, pi, sqrt
+from copy import deepcopy
 import warnings
 
 import os
@@ -157,8 +158,8 @@ def _vectfit_xs(energy, ce_xs, mts, rtol=1e-3, atol=1e-5, orders=None,
         A list of orders (number of poles) to be searched
     n_vf_iter : int, optional
         Number of maximum VF iterations
-    log : Bool, optional
-        Whether to print log
+    log : bool, optional
+        Whether to print running logs
     path_out : str, optional
         Path to save the figures
     **kwargs
@@ -387,7 +388,7 @@ def _vectfit_nuclide(endf_file, njoy_error=5e-4, vf_error=1e-3, vf_pieces=None,
     vf_pieces : integer, optional
         Number of equal-in-mementum spaced energy pieces for data fitting
     log : bool, optional
-        Whether to display log
+        Whether to print running logs
     path_out : str, optional
         Path to write out data files
     mp_filename : str, optional
@@ -551,7 +552,7 @@ def _windowing(mp_data, rtol=1e-3, atol=1e-5, n_win=None, n_cf=None,
     spacing : float, optional
         Inner window spacing (sqrt energy space)
     log : bool, optional
-        Whether to display log
+        Whether to print running logs
 
     Returns
     -------
@@ -659,13 +660,17 @@ def _windowing(mp_data, rtol=1e-3, atol=1e-5, n_win=None, n_cf=None,
             abserr = np.abs(xs_fit + xs_wp - xs_ref)
             relerr = abserr / xs_ref
             if not np.any(np.isnan(abserr)):
-                if np.all(abserr<=atol) or np.all(relerr[abserr>atol]<rtol) or (
-                   relerr.max()<2*rtol and
-                   (relerr[abserr>atol]>rtol).sum()<0.02*relerr.size):
+                re = relerr[abserr>atol]
+                if re.size == 0 or np.all(re <= rtol) or \
+                   (re.max() < 2*rtol and (re>rtol).sum() < 0.01*relerr.size):
                     # meet tolerances
                     if log:
                         print("Accuracy satisfied.")
                     break
+
+            # we expect curvefit succeeds for the first window
+            if iw == 0:
+                raise RuntimeError('Curvefit failed for the first window!')
 
             # try to include one more (center nearest) pole
             if rp >= n_poles:
@@ -1018,17 +1023,17 @@ class WindowedMultipole(EqualityMixin):
         return cls.from_multipole(mp_data, **wmp_options)
 
     @classmethod
-    def from_multipole(cls, mp_data, **kwargs):
+    def from_multipole(cls, mp_data, search=False, log=False, **kwargs):
         """Generate windowed multipole neutron data from multipole data.
 
         Parameters
         ----------
         mp_data : dictionary or str
             Dictionary or Path to the multipole data
+        search : bool, optional
+            Whether to search for optimal window size and curvefit order
         log : bool, optional
-            Whether to display log
-        path_out : str, optional
-            Path to write out data files
+            Whether to print running logs
         **kwargs
             Keyword arguments passed to :func:`openmc.data.multipole._windowing`
 
@@ -1046,8 +1051,37 @@ class WindowedMultipole(EqualityMixin):
             with open(mp_data, 'rb') as f:
                 mp_data = pickle.load(f)
 
-        # windowing
-        return _windowing(mp_data, **kwargs)
+        # windowing with specific options
+        if not search:
+            return _windowing(mp_data, log=log, **kwargs)
+
+        # search optimal WMP in a range of window size and CF order
+        if log:
+            print("Start searching ...")
+        n_poles = sum([p.size for p in mp_data["poles"]])
+        n_win_min = max(5, n_poles//20)
+        n_win_max = 2000 if n_poles < 2000 else 8000
+        best_wmp, best_metric = None, None
+        for n_w in np.unique(np.linspace(n_win_min, n_win_max, 20, dtype=int)):
+            for n_cf in range(2, 11):
+                if log:
+                    print("Testing N_win={} N_cf={}".format(n_w, n_cf))
+                # update arguments dictionary
+                kwargs.update(n_win=n_w, n_cf=n_cf)
+                # windowing
+                try:
+                    wmp = _windowing(mp_data, log=log, **kwargs)
+                except:
+                    continue
+                # wmp library metric: less poles, less CF order and less windows
+                metric = -(wmp.poles_per_window*10 + wmp.fit_order +
+                           0.01*wmp.n_windows)
+                if best_wmp is None or metric > best_metric:
+                    if log:
+                        print("Best library by far.")
+                    best_wmp = deepcopy(wmp)
+                    best_metric = metric
+        return best_wmp
 
     def _evaluate(self, E, T):
         """Compute scattering, absorption, and fission cross sections.

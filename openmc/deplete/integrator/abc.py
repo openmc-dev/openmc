@@ -97,7 +97,9 @@ class Integrator(ABC):
 
     def _get_bos_data_from_restart(self, step_index, step_power, bos_conc):
         res = self.operator.prev_res[-1]
-        bos_conc = res.data[0]
+        # Depletion methods expect list of arrays
+        # See Operator.__call__, Operator.initial_condition
+        bos_conc = list(res.data[0])
         rates = res.rates[0]
         k = ufloat(res.k[0,0], res.k[0, 1])
 

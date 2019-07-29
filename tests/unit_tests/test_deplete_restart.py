@@ -90,8 +90,8 @@ def test_restart_cecm(run_in_tmpdir):
     assert y1[1] == approx(s1[0])
     assert y2[1] == approx(s1[1])
 
-    assert y1[3] == approx(s2[0])
-    assert y2[3] == approx(s2[1])
+    assert y1[2] == approx(s2[0])
+    assert y2[2] == approx(s2[1])
 
 
 def test_restart_predictor_cecm(run_in_tmpdir):
@@ -211,8 +211,8 @@ def test_restart_cf4(run_in_tmpdir):
     assert y1[1] == approx(s1[0])
     assert y2[1] == approx(s1[1])
 
-    assert y1[3] == approx(s2[0])
-    assert y2[3] == approx(s2[1])
+    assert y1[2] == approx(s2[0])
+    assert y2[2] == approx(s2[1])
 
 
 def test_restart_epc_rk4(run_in_tmpdir):
@@ -250,8 +250,8 @@ def test_restart_epc_rk4(run_in_tmpdir):
     assert y1[1] == approx(s1[0])
     assert y2[1] == approx(s1[1])
 
-    assert y1[3] == approx(s2[0])
-    assert y2[3] == approx(s2[1])
+    assert y1[2] == approx(s2[0])
+    assert y2[2] == approx(s2[1])
 
 
 def test_restart_celi(run_in_tmpdir):
@@ -289,8 +289,8 @@ def test_restart_celi(run_in_tmpdir):
     assert y1[1] == approx(s1[0])
     assert y2[1] == approx(s1[1])
 
-    assert y1[3] == approx(s2[0])
-    assert y2[3] == approx(s2[1])
+    assert y1[2] == approx(s2[0])
+    assert y2[2] == approx(s2[1])
 
 
 def test_restart_leqi(run_in_tmpdir):
@@ -328,8 +328,8 @@ def test_restart_leqi(run_in_tmpdir):
     assert y1[1] == approx(s1[0])
     assert y2[1] == approx(s1[1])
 
-    assert y1[3] == approx(s2[0])
-    assert y2[3] == approx(s2[1])
+    assert y1[2] == approx(s2[0])
+    assert y2[2] == approx(s2[1])
 
 def test_restart_si_celi(run_in_tmpdir):
     """Integral regression test of integrator algorithm using SI-CELI."""
@@ -366,8 +366,8 @@ def test_restart_si_celi(run_in_tmpdir):
     assert y1[1] == approx(s1[0])
     assert y2[1] == approx(s1[1])
 
-    assert y1[3] == approx(s2[0])
-    assert y2[3] == approx(s2[1])
+    assert y1[2] == approx(s2[0])
+    assert y2[2] == approx(s2[1])
 
 
 def test_restart_si_leqi(run_in_tmpdir):
@@ -406,5 +406,5 @@ def test_restart_si_leqi(run_in_tmpdir):
     assert y1[1] == approx(s1[0])
     assert y2[1] == approx(s1[1])
 
-    assert y1[3] == approx(s2[0])
-    assert y2[3] == approx(s2[1])
+    assert y1[2] == approx(s2[0])
+    assert y2[2] == approx(s2[1])

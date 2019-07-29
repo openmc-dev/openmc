@@ -471,7 +471,7 @@ def pin(surfaces, items, subdivisions=None, divide_vols=True,
         to be divided. Will construct equal area rings
     divide_vols : bool
         If this evaluates to ``True``, then volumes of subdivided
-        :class:`openmc.Material`s will also be divided by the
+        :class:`openmc.Material` instances will also be divided by the
         number of divisions.  Otherwise the volume of the
         original material will not be modified before subdivision
     kwargs:

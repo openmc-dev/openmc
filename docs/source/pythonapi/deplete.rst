@@ -87,7 +87,7 @@ The following classes are abstract classes that can be used to extend the
 :mod:`openmc.deplete` capabilities:
 
 .. autosummary::
-   :toctree:generated
+   :toctree: generated
    :nosignatures:
    :template: myclass.rst
 

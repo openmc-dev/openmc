@@ -19,9 +19,9 @@ class DirectReactionRateHelper(ReactionRateHelper):
     Parameters
     ----------
     n_nucs : int
+        Number of burnable nuclides tracked by :class:`openmc.deplete.Operator`
     n_react : int
-        Number of burnable nuclides and reactions tracked
-        by :class:`openmc.deplete.Operator`.
+        Number of reactions tracked by :class:`openmc.deplete.Operator`
 
     Attributes
     ----------

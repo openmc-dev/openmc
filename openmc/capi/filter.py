@@ -221,9 +221,18 @@ class EnergyFunctionFilter(Filter):
             raise AttributeError("Need both energy and y or neither")
         super().__init__(uid, new, index)
         if energy is not None:
-            self.set_interp_data(energy, y)
+            self.set_data(energy, y)
 
-    def set_interp_data(self, energy, y):
+    def set_data(self, energy, y):
+        """Set the interpolation information for the filter
+
+        Parameters
+        ----------
+        energy : numpy.ndarray
+            Independent variable for the interpolation
+        y : numpy.ndarray
+            Dependent variable for the interpolation
+        """
         energy_array = np.asarray(energy)
         y_array = np.asarray(y)
         energy_p = energy_array.ctypes.data_as(POINTER(c_double))

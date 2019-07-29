@@ -94,7 +94,7 @@ EnergyFunctionFilter::text_label(int bin) const
 // C-API functions
 //==============================================================================
 
-extern"C" int
+extern "C" int
 openmc_energyfunc_filter_set_data(int32_t index, size_t n, const double* energy,
                                   const double* y)
 {
@@ -116,7 +116,7 @@ openmc_energyfunc_filter_set_data(int32_t index, size_t n, const double* energy,
   return 0;
 }
 
-extern"C" int
+extern "C" int
 openmc_energyfunc_filter_get_energy(int32_t index, size_t *n, const double** energy)
 {
   // ensure this is a valid index to allocated filter
@@ -137,7 +137,7 @@ openmc_energyfunc_filter_get_energy(int32_t index, size_t *n, const double** ene
   return 0;
 }
 
-extern"C" int
+extern "C" int
 openmc_energyfunc_filter_get_y(int32_t index, size_t *n, const double** y)
 {
   // ensure this is a valid index to allocated filter

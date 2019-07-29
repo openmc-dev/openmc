@@ -234,7 +234,7 @@ def test_tally(capi_init):
     assert isinstance(t3_f, openmc.capi.EnergyFunctionFilter)
     assert len(t3_f.energy) == 2
     assert len(t3_f.y) == 2
-    t3_f.set_interp_data([0.0, 1.0, 2.0], [0.0, 1.0, 4.0])
+    t3_f.set_data([0.0, 1.0, 2.0], [0.0, 1.0, 4.0])
     assert len(t3_f.energy) == 3
     assert len(t3_f.y) == 3
 

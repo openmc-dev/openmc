@@ -12,13 +12,6 @@ Josey's thesis, `Development and analysis of high order neutron
 transport-depletion coupling algorithms <http://hdl.handle.net/1721.1/113721>`_.
 
 .. autosummary::
-   :toctree: generated
-   :nosignatures:
-   :template: myfunction.rst
-
-   integrator.si_leqi
-
-.. autosummary::
     :toctree: generated
     :nosignatures:
     :template:  myclassinherit.rst
@@ -30,6 +23,7 @@ transport-depletion coupling algorithms <http://hdl.handle.net/1721.1/113721>`_.
     integrator.EPC_RK4_Integrator
     integrator.LEQIIntegrator
     integrator.SI_CELI_Integrator
+    integrator.SI_LEQI_Integrator
 
 Each of these functions expects a "transport operator" to be passed. An operator
 specific to OpenMC is available using the following class:

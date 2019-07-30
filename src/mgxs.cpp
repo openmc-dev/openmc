@@ -522,7 +522,7 @@ Mgxs::get_xs(int xstype, int gin, const int* gout, const double* mu,
     break;
   case MG_GET_XS_DECAY_RATE:
     if (dg != nullptr) {
-      val = xs_t->decay_rate(a, *dg + 1);
+      val = xs_t->decay_rate(a, *dg);
     } else {
       val = xs_t->decay_rate(a, 0);
     }

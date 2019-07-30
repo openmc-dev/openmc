@@ -1,6 +1,5 @@
 import openmc
 import openmc.capi
-from openmc.stats import Box
 
 import pytest
 from tests.testing_harness import PyAPITestHarness
@@ -17,8 +16,10 @@ def test_dagmc():
     model.settings.inactive = 0
     model.settings.particles = 100
 
-    source = openmc.Source(space=Box([-4, -4, -4],
-                                     [ 4,  4,  4]))
+    source_box = openmc.stats.Box([-4, -4, -4],
+                                  [ 4,  4,  4])
+    source = openmc.Source(space=source_box)
+
     model.settings.source = source
 
     model.settings.dagmc = True
@@ -45,5 +46,4 @@ def test_dagmc():
     mats = openmc.Materials([u235, water])
     model.materials = mats
 
-    harness = PyAPITestHarness('statepoint.5.h5', model=model)
-    harness.main()
+    model.export_to_xml()

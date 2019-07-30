@@ -15,23 +15,26 @@ DistribcellFilter::from_xml(pugi::xml_node node)
   if (cells.size() != 1) {
     fatal_error("Only one cell can be specified per distribcell filter.");
   }
-  cell_ = cells[0];
-}
 
-void
-DistribcellFilter::initialize()
-{
-  // Convert the cell ID to an index of the global array.
-  auto search = model::cell_map.find(cell_);
-  if (search != model::cell_map.end()) {
-    cell_ = search->second;
-    n_bins_ = model::cells[cell_]->n_instances_;
-  } else {
+  // Find index in global cells vector corresponding to cell ID
+  auto search = model::cell_map.find(cells[0]);
+  if (search == model::cell_map.end()) {
     std::stringstream err_msg;
     err_msg << "Could not find cell " << cell_
             << " specified on tally filter.";
-    fatal_error(err_msg);
+    throw std::runtime_error{err_msg.str()};
   }
+
+  this->set_cell(search->second);
+}
+
+void
+DistribcellFilter::set_cell(int32_t cell)
+{
+  Expects(cell >= 0);
+  Expects(cell < model::cells.size());
+  cell_ = cell;
+  n_bins_ = model::cells[cell]->n_instances_;
 }
 
 void

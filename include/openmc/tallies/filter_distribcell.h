@@ -14,13 +14,17 @@ namespace openmc {
 class DistribcellFilter : public Filter
 {
 public:
+  //----------------------------------------------------------------------------
+  // Constructors, destructors
+
   ~DistribcellFilter() = default;
+
+  //----------------------------------------------------------------------------
+  // Methods
 
   std::string type() const override {return "distribcell";}
 
   void from_xml(pugi::xml_node node) override;
-
-  void initialize() override;
 
   void get_all_bins(const Particle* p, int estimator, FilterMatch& match)
   const override;
@@ -28,6 +32,17 @@ public:
   void to_statepoint(hid_t filter_group) const override;
 
   std::string text_label(int bin) const override;
+
+  //----------------------------------------------------------------------------
+  // Accessors
+
+  int32_t cell() const { return cell_; }
+
+  void set_cell(int32_t cell);
+
+private:
+  //----------------------------------------------------------------------------
+  // Data members
 
   int32_t cell_;
 };

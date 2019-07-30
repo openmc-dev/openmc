@@ -12,21 +12,34 @@ namespace openmc {
 void
 SphericalHarmonicsFilter::from_xml(pugi::xml_node node)
 {
-  order_ = std::stoi(get_node_value(node, "order"));
-  n_bins_ = (order_ + 1) * (order_ + 1);
-
+  this->set_order(std::stoi(get_node_value(node, "order")));
   if (check_for_node(node, "cosine")) {
-    auto cos = get_node_value(node, "cosine", true);
-    if (cos == "scatter") {
-      cosine_ = SphericalHarmonicsCosine::scatter;
-    } else if (cos == "particle") {
-      cosine_ = SphericalHarmonicsCosine::particle;
-    } else {
-      std::stringstream err_msg;
-      err_msg << "Unrecognized cosine type, \"" << cos
-              << "\" in spherical harmonics filter";
-      fatal_error(err_msg);
-    }
+    this->set_cosine(get_node_value(node, "cosine", true));
+  }
+}
+
+void
+SphericalHarmonicsFilter::set_order(int order)
+{
+  if (order < 0) {
+    throw std::invalid_argument{"Spherical harmonics order must be non-negative."};
+  }
+  order_ = order;
+  n_bins_ = (order_ + 1) * (order_ + 1);
+}
+
+void
+SphericalHarmonicsFilter::set_cosine(gsl::cstring_span cosine)
+{
+  if (cosine == "scatter") {
+    cosine_ = SphericalHarmonicsCosine::scatter;
+  } else if (cosine == "particle") {
+    cosine_ = SphericalHarmonicsCosine::particle;
+  } else {
+    std::stringstream err_msg;
+    err_msg << "Unrecognized cosine type, \"" << cosine
+            << "\" in spherical harmonics filter";
+    throw std::invalid_argument{err_msg.str()};
   }
 }
 
@@ -121,7 +134,7 @@ openmc_sphharm_filter_get_order(int32_t index, int* order)
   if (err) return err;
 
   // Output the order.
-  *order = filt->order_;
+  *order = filt->order();
   return 0;
 }
 
@@ -135,7 +148,7 @@ openmc_sphharm_filter_get_cosine(int32_t index, char cosine[])
   if (err) return err;
 
   // Output the cosine.
-  if (filt->cosine_ == SphericalHarmonicsCosine::scatter) {
+  if (filt->cosine() == SphericalHarmonicsCosine::scatter) {
     strcpy(cosine, "scatter");
   } else {
     strcpy(cosine, "particle");
@@ -153,8 +166,7 @@ openmc_sphharm_filter_set_order(int32_t index, int order)
   if (err) return err;
 
   // Update the filter.
-  filt->order_ = order;
-  filt->n_bins_ = (order + 1) * (order + 1);
+  filt->set_order(order);
   return 0;
 }
 
@@ -168,12 +180,10 @@ openmc_sphharm_filter_set_cosine(int32_t index, const char cosine[])
   if (err) return err;
 
   // Update the filter.
-  if (strcmp(cosine, "scatter") == 0) {
-    filt->cosine_ = SphericalHarmonicsCosine::scatter;
-  } else if (strcmp(cosine, "particle") == 0) {
-    filt->cosine_ = SphericalHarmonicsCosine::particle;
-  } else {
-    set_errmsg("Invalid spherical harmonics cosine.");
+  try {
+    filt->set_cosine(cosine);
+  } catch (const std::invalid_argument& e) {
+    set_errmsg(e.what());
     return OPENMC_E_INVALID_ARGUMENT;
   }
   return 0;

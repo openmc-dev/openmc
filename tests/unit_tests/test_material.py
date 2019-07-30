@@ -189,6 +189,8 @@ def test_from_xml(run_in_tmpdir):
     m1.add_nuclide('H1', 1.0)
     m1.add_nuclide('O16', 2.0)
     m1.add_s_alpha_beta('c_H_in_H2O')
+    m1.temperature = 300
+    m1.volume = 100
     m1.set_density('g/cm3', 0.9)
     m1.isotropic = ['H1']
     m2 = openmc.Material(2, 'zirc')
@@ -209,6 +211,8 @@ def test_from_xml(run_in_tmpdir):
     assert m1.name == 'water'
     assert m1.nuclides == [('H1', 1.0, 'ao'), ('O16', 2.0, 'ao')]
     assert m1.isotropic == ['H1']
+    assert m1.temperature == 300
+    assert m1.volume == 100
     m2 = mats[1]
     assert m2.nuclides == [('Zr90', 1.0, 'wo')]
     assert m2.density == 10.0

@@ -16,7 +16,25 @@ namespace openmc {
 void
 EnergyFilter::from_xml(pugi::xml_node node)
 {
-  bins_ = get_node_array<double>(node, "bins");
+  auto bins = get_node_array<double>(node, "bins");
+  this->set_bins(bins);
+}
+
+void
+EnergyFilter::set_bins(gsl::span<const double> bins)
+{
+  // Clear existing bins
+  bins_.clear();
+  bins_.reserve(bins.size());
+
+  // Copy bins, ensuring they are valid
+  for (gsl::index i = 0; i < bins.size(); ++i) {
+    if (i > 0 && bins[i] <= bins[i-1]) {
+      throw std::runtime_error{"Energy bins must be monotonically increasing."};
+    }
+    bins_.push_back(bins[i]);
+  }
+
   n_bins_ = bins_.size() - 1;
 
   // In MG mode, check if the filter bins match the transport bins.
@@ -27,7 +45,7 @@ EnergyFilter::from_xml(pugi::xml_node node)
   if (!settings::run_CE) {
     if (n_bins_ == data::num_energy_groups) {
       matches_transport_groups_ = true;
-      for (auto i = 0; i < n_bins_ + 1; i++) {
+      for (gsl::index i = 0; i < n_bins_ + 1; ++i) {
         if (data::rev_energy_bins[i] != bins_[i]) {
           matches_transport_groups_ = false;
           break;
@@ -111,7 +129,7 @@ EnergyoutFilter::text_label(int bin) const
 //==============================================================================
 
 extern"C" int
-openmc_energy_filter_get_bins(int32_t index, double** energies, int32_t* n)
+openmc_energy_filter_get_bins(int32_t index, const double** energies, size_t* n)
 {
   // Make sure this is a valid index to an allocated filter.
   if (int err = verify_filter(index)) return err;
@@ -127,13 +145,13 @@ openmc_energy_filter_get_bins(int32_t index, double** energies, int32_t* n)
   }
 
   // Output the bins.
-  *energies = filt->bins_.data();
-  *n = filt->bins_.size();
+  *energies = filt->bins().data();
+  *n = filt->bins().size();
   return 0;
 }
 
 extern "C" int
-openmc_energy_filter_set_bins(int32_t index, int32_t n, const double* energies)
+openmc_energy_filter_set_bins(int32_t index, size_t n, const double* energies)
 {
   // Make sure this is a valid index to an allocated filter.
   if (int err = verify_filter(index)) return err;
@@ -149,10 +167,7 @@ openmc_energy_filter_set_bins(int32_t index, int32_t n, const double* energies)
   }
 
   // Update the filter.
-  filt->bins_.clear();
-  filt->bins_.resize(n);
-  for (int i = 0; i < n; i++) filt->bins_[i] = energies[i];
-  filt->n_bins_ = n - 1;
+  filt->set_bins({energies, n});
   return 0;
 }
 

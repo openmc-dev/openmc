@@ -2,20 +2,18 @@
 
 import copy
 
-from uncertainties import ufloat
-
 from .abc import SI_Integrator
 from .cram import timed_deplete
 from .celi import _celi_f1, _celi_f2
 from ..abc import OperatorResult
-from ..results import Results
 
 
 class SI_CELI_Integrator(SI_Integrator):
     r"""Deplete using the si-ce/li cfq4 algorithm.
 
-    Implements the stochastic implicit ce/li predictor-corrector algorithm using
-    the `fourth order commutator-free integrator <https://doi.org/10.1137/05063042>`_.
+    Implements the stochastic implicit ce/li predictor-corrector algorithm
+    using the `fourth order commutator-free integrator
+    <https://doi.org/10.1137/05063042>`_.
 
     detailed algorithm can be found in section 3.2 in `colin josey's thesis
     <http://hdl.handle.net/1721.1/113721>`_.
@@ -52,7 +50,7 @@ class SI_CELI_Integrator(SI_Integrator):
         inter_conc = copy.deepcopy(eos_conc)
 
         # Begin iteration
-        for j in range(self.n_stages + 1):
+        for j in range(self.n_steps + 1):
             inter_res = self.operator(inter_conc, power)
 
             if j <= 1:

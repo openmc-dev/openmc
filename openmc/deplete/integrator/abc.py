@@ -110,7 +110,7 @@ class Integrator(ABC):
     def _get_start_data(self):
         if self.operator.prev_res is None:
             return 0.0, 0
-        return self.operator.prev_res[-1].time[-1], len(self.operator.prev_res)
+        return self.operator.prev_res[-1].time[-1], len(self.operator.prev_res) - 1
 
     def integrate(self):
         """Perform the entire depletion process across all steps"""

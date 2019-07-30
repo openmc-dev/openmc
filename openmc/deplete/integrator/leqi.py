@@ -66,7 +66,7 @@ class LEQIIntegrator(Integrator):
             simulation
         """
         if i == 0:
-            if self._ires <= 1:  # need at least previous transport solution
+            if self._ires < 1:  # need at least previous transport solution
                 self._prev_rates = bos_rates
                 return CELIIntegrator.__call__(
                     self, bos_conc, bos_rates, dt, power, i)

@@ -16,7 +16,7 @@ from .data import K_BOLTZMANN
 from .neutron import IncidentNeutron
 from .resonance import ResonanceRange
 
-import vectfit as m
+import vectfit as vf
 
 
 # Constants that determine which value to access
@@ -244,7 +244,7 @@ def _vectfit_xs(energy, ce_xs, mts, rtol=1e-3, atol=1e-5, orders=None,
                 print("VF iteration {}/{}".format(i_vf+1, n_vf_iter))
 
             # call vf
-            poles, residues, cf, f_fit, rms = m.vectfit(f, s, poles, weight)
+            poles, residues, cf, f_fit, rms = vf.vectfit(f, s, poles, weight)
 
             # convert real pole to conjugate pairs
             n_real_poles = 0
@@ -262,10 +262,10 @@ def _vectfit_xs(energy, ce_xs, mts, rtol=1e-3, atol=1e-5, orders=None,
                 if log > DETAILED_LOGGING:
                     print("  # real poles: {}".format(n_real_poles))
                 new_poles, residues, cf, f_fit, rms = \
-                      m.vectfit(f, s, new_poles, weight, skip_pole=True)
+                      vf.vectfit(f, s, new_poles, weight, skip_pole=True)
 
             # assess the result on test grid
-            test_xs = m.evaluate(test_s, new_poles, residues) / test_energy
+            test_xs = vf.evaluate(test_s, new_poles, residues) / test_energy
             abserr = np.abs(test_xs - test_xs_ref)
             relerr = abserr / test_xs_ref
             if np.any(np.isnan(abserr)):
@@ -521,7 +521,7 @@ def _vectfit_nuclide(endf_file, njoy_error=5e-4, vf_error=1e-3, vf_pieces=None,
                "poles": poles,
                "residues": residues}
 
-    # dump multipole data to files
+    # dump multipole data to file
     if path_out:
         import pickle
         if not os.path.exists(path_out):
@@ -565,9 +565,6 @@ def _windowing(mp_data, rtol=1e-3, atol=1e-5, n_win=None, n_cf=None,
 
     """
 
-    if log:
-        print("Start windowing")
-    
     # unpack multipole data
     name = mp_data["name"]
     awr = mp_data["AWR"]
@@ -601,7 +598,7 @@ def _windowing(mp_data, rtol=1e-3, atol=1e-5, n_win=None, n_cf=None,
         n_cf = 5
 
     if log:
-        print("# windows: {}, spacing: {}, CF order: {}".format(
+        print("Windowing with # windows: {}, spacing: {}, CF order: {}".format(
                n_win, spacing, n_cf))
 
     # sort poles (and residues) by the real component of the pole
@@ -641,7 +638,7 @@ def _windowing(mp_data, rtol=1e-3, atol=1e-5, n_win=None, n_cf=None,
         energy = np.logspace(np.log10(e_start), np.log10(e_end), n_points)
         energy_sqrt = np.sqrt(energy)
         # reference xs from multipole form
-        xs_ref = m.evaluate(energy_sqrt, poles, residues*1j)/energy
+        xs_ref = vf.evaluate(energy_sqrt, poles, residues*1j) / energy
 
         # curve fit matrix
         matrix = np.vstack([energy**(0.5*i-1) for i in range(n_cf+1)]).T
@@ -654,8 +651,8 @@ def _windowing(mp_data, rtol=1e-3, atol=1e-5, n_win=None, n_cf=None,
                 print("Trying poles {} to {}".format(lp, rp))
             # calculate the cross sections contributed by the windowed poles
             if rp > lp:
-                xs_wp = m.evaluate(energy_sqrt, poles[lp:rp],
-                                   residues[:, lp:rp]*1j) / energy
+                xs_wp = vf.evaluate(energy_sqrt, poles[lp:rp],
+                                    residues[:, lp:rp]*1j) / energy
             else:
                 xs_wp = np.zeros_like(xs_ref)
 
@@ -693,7 +690,7 @@ def _windowing(mp_data, rtol=1e-3, atol=1e-5, n_win=None, n_cf=None,
         # mark the windowed poles as used poles
         poles_unused[i_piece][lp:rp] = 0
 
-    # flatten and shrink: keep used poles and remove unused
+    # flatten and shrink by removing unused poles
     data = [] # used poles and residues
     for ip in range(n_pieces):
         used = (poles_unused[ip] == 0)

@@ -4,8 +4,6 @@ import copy
 from collections.abc import Iterable
 from itertools import repeat
 
-from uncertainties import ufloat
-
 from .abc import SI_Integrator
 from .si_celi import SI_CELI_Integrator
 from .leqi import _leqi_f1, _leqi_f2, _leqi_f3, _leqi_f4
@@ -75,7 +73,7 @@ class SI_LEQI_Integrator(SI_Integrator):
         proc_time += time1
         inter_conc = copy.deepcopy(eos_conc)
 
-        for j in range(self.n_stages + 1):
+        for j in range(self.n_steps + 1):
             inter_res = self.operator(inter_conc, power)
 
             if j <= 1:

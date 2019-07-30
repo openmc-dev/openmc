@@ -1,7 +1,5 @@
 """The CE/CM integrator."""
 
-from textwrap import dedent
-
 from .abc import Integrator
 from .cram import timed_deplete
 

@@ -1,7 +1,5 @@
 """First-order predictor algorithm."""
 
-from copy import deepcopy
-
 from .abc import Integrator
 from .cram import timed_deplete
 

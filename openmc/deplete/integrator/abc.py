@@ -101,7 +101,7 @@ class Integrator(ABC):
         # See Operator.__call__, Operator.initial_condition
         bos_conc = list(res.data[0])
         rates = res.rates[0]
-        k = ufloat(res.k[0,0], res.k[0, 1])
+        k = ufloat(res.k[0, 0], res.k[0, 1])
 
         # Scale rates by ratio of powers
         rates *= step_power / res.power[0]
@@ -110,7 +110,8 @@ class Integrator(ABC):
     def _get_start_data(self):
         if self.operator.prev_res is None:
             return 0.0, 0
-        return self.operator.prev_res[-1].time[-1], len(self.operator.prev_res) - 1
+        return (self.operator.prev_res[-1].time[-1],
+                len(self.operator.prev_res) - 1)
 
     def integrate(self):
         """Perform the entire depletion process across all steps"""
@@ -181,14 +182,12 @@ class SI_Integrator(Integrator):
             Power density of the reactor in [W/gHM]. It is multiplied by
             initial heavy metal inventory to get total power if ``power``
             is not speficied.
-        n_stages : int, optional
-            Number of  stages. Default : 10
-    """
-
-    def __init__(self, operator, timesteps, power=None, power_density=None,
-                 n_stages=10):
+        n_steps : int, optional
+            Number of stochastic iterations per depletion interval.
+            Default : 10
+        """
         super().__init__(operator, timesteps, power, power_density)
-        self.n_stages = n_stages
+        self.n_steps = n_steps
 
     def _get_bos_data_from_openmc(self, step_index, step_power, bos_conc):
         reset_particles = False

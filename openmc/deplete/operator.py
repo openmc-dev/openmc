@@ -163,7 +163,8 @@ class Operator(TransportOperator):
             self.local_mats, self._burnable_nucs, self.chain.reactions)
 
         # Get classes to assist working with tallies
-        self._rate_helper = DirectReactionRateHelper()
+        self._rate_helper = DirectReactionRateHelper(
+            self.reaction_rates.n_nuc, self.reaction_rates.n_react)
         self._energy_helper = ChainFissionHelper()
 
     def __call__(self, vec, power, print_out=True):

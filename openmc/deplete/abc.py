@@ -190,17 +190,23 @@ class ReactionRateHelper(ABC):
     Reaction rates are passed back to the operator for be used in
     an :class:`openmc.deplete.OperatorResult` instance
 
+    Parameters
+    ----------
+    n_nucs : int
+        Number of burnable nuclides tracked by :class:`openmc.deplete.Operator`
+    n_react : int
+        Number of reactions tracked by :class:`openmc.deplete.Operator`
+
     Attributes
     ----------
     nuclides : list of str
-        All nuclides with desired reaction rates. Ordered to be
-        consistent with :class:`openmc.deplete.Operator`
+        All nuclides with desired reaction rates.
     """
 
-    def __init__(self):
+    def __init__(self, n_nucs, n_react):
         self._nuclides = None
         self._rate_tally = None
-        self._results_cache = None
+        self._results_cache = empty((n_nucs, n_react))
 
     @abstractmethod
     def generate_tallies(self, materials, scores):
@@ -216,17 +222,6 @@ class ReactionRateHelper(ABC):
         check_type("nuclides", nuclides, list, str)
         self._nuclides = nuclides
         self._rate_tally.nuclides = nuclides
-
-    def _get_results_cache(self, nnucs, nreact):
-        """Cache for results for a given material
-
-        Creates an empty array of shape ``(nnucs, nreact)``
-        if the shape does not match the current cache.
-        """
-        if (self._results_cache is None
-                or self._results_cache.shape != (nnucs, nreact)):
-            self._results_cache = empty((nnucs, nreact))
-        return self._results_cache
 
     @abstractmethod
     def get_material_rates(self, mat_id, nuc_index, react_index):
@@ -252,7 +247,6 @@ class ReactionRateHelper(ABC):
         ----------
         number : iterable of float
             Number density [atoms/b-cm] of each nuclide tracked in the calculation.
-            Ordered identically to :attr:`nuclides`
 
         Returns
         -------

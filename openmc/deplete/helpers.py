@@ -16,11 +16,17 @@ from .abc import ReactionRateHelper, EnergyHelper
 class DirectReactionRateHelper(ReactionRateHelper):
     """Class that generates tallies for one-group rates
 
+    Parameters
+    ----------
+    n_nucs : int
+        Number of burnable nuclides tracked by :class:`openmc.deplete.Operator`
+    n_react : int
+        Number of reactions tracked by :class:`openmc.deplete.Operator`
+
     Attributes
     ----------
     nuclides : list of str
-        All nuclides with desired reaction rates. Ordered to be
-        consistent with :class:`openmc.deplete.Operator`
+        All nuclides with desired reaction rates.
     """
 
     def generate_tallies(self, materials, scores):
@@ -61,14 +67,13 @@ class DirectReactionRateHelper(ReactionRateHelper):
             Array with shape ``(n_nuclides, n_rxns)`` with the
             reaction rates in this material
         """
-        results = self._get_results_cache(len(nuc_index), len(react_index))
-        results.fill(0.0)
+        self._results_cache.fill(0.0)
         full_tally_res = self._rate_tally.results[mat_id, :, 1]
         for i_tally, (i_nuc, i_react) in enumerate(
                 product(nuc_index, react_index)):
-            results[i_nuc, i_react] = full_tally_res[i_tally]
+            self._results_cache[i_nuc, i_react] = full_tally_res[i_tally]
 
-        return results
+        return self._results_cache
 
 
 # ----------------------------

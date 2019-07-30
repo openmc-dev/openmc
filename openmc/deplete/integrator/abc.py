@@ -4,6 +4,7 @@ from collections.abc import Iterable
 
 from uncertainties import ufloat
 
+from openmc.capi import statepoint_write
 from openmc.deplete import Results, OperatorResult
 
 
@@ -111,6 +112,7 @@ class Integrator(ABC):
     def _get_bos_data_from_openmc(self, step_index, step_power, bos_conc):
         x = deepcopy(bos_conc)
         res = self.operator(x, step_power)
+        self._write_statepoint(step_index)
         return x, res
 
     def _get_bos_data_from_restart(self, step_index, step_power, bos_conc):
@@ -160,16 +162,20 @@ class Integrator(ABC):
             res_list = [self.operator(conc, p)]
             self._save_results(
                 [conc], res_list, [t, t], p, self._ires + len(self))
+            self._write_statepoint(len(self))
 
     def _save_results(self, conc_list, results_list, time_list, power,
                       index, proc_time=None):
-        """Save the results at the end of of one step
-
-        Abstracted to support the predictor's unique save location
-        """
+        """Save the results at the end of of one step"""
         Results.save(
             self.operator, conc_list, results_list, time_list,
             power, index, proc_time)
+
+    def _write_statepoint(self, step_index):
+        """Use capi to write a statepoint for this index"""
+        statepoint_write(
+            "openmc_simulation_n{}.h5".format(step_index + self._ires),
+            write_source=False)
 
 
 class SI_Integrator(Integrator):
@@ -252,3 +258,4 @@ class SI_Integrator(Integrator):
             # No final simulation for SIE, use last iteration results
             self._save_results(
                 [conc], [res_list[-1]], [t, t], p, self._ires + len(self))
+            self._write_statepoint(len(self))

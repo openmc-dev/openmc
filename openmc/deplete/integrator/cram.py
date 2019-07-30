@@ -14,7 +14,7 @@ import scipy.sparse.linalg as sla
 from .. import comm
 
 
-def deplete(chain, x, rates, dt, print_out=True, matrix_func=None):
+def deplete(chain, x, rates, dt, matrix_func=None):
     """Deplete materials using given reaction rates for a specified time
 
     Parameters
@@ -27,28 +27,21 @@ def deplete(chain, x, rates, dt, print_out=True, matrix_func=None):
         Reaction rates (from transport operator)
     dt : float
         Time in [s] to deplete for
-    print_out : bool, optional
-        Whether to show elapsed time
-    maxtrix_func : function, optional
-        Function to form the depletion matrix
+    maxtrix_func : Callable, optional
+        Function of two variables: ``chain`` and ``rates``.
+        Expected to return the depletion matrix required by
+        :func:`CRAM48`.
 
     Returns
     -------
     x_result : list of numpy.ndarray
         Updated atom number vectors for each material
-
     """
-    t_start = time.time()
 
     # Use multiprocessing pool to distribute work
     with Pool() as pool:
         iters = zip(repeat(chain), x, rates, repeat(dt), repeat(matrix_func))
         x_result = list(pool.starmap(_cram_wrapper, iters))
-
-    t_end = time.time()
-    if comm.rank == 0:
-        if print_out:
-            print("Time to matexp: ", t_end - t_start)
 
     return x_result
 

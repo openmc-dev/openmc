@@ -153,7 +153,7 @@ class Operator(TransportOperator):
         self.reaction_rates = ReactionRates(
             self.local_mats, self._burnable_nucs, self.chain.reactions)
 
-    def __call__(self, vec, power, print_out=True):
+    def __call__(self, vec, power):
         """Runs a simulation.
 
         Parameters
@@ -162,8 +162,6 @@ class Operator(TransportOperator):
             Total atoms to be used in function.
         power : float
             Power of the reactor in [W]
-        print_out : bool, optional
-            Whether or not to print out time.
 
         Returns
         -------
@@ -191,13 +189,6 @@ class Operator(TransportOperator):
 
         # Extract results
         op_result = self._unpack_tallies_and_normalize(power)
-
-        if comm.rank == 0:
-            time_unpack = time.time()
-
-            if print_out:
-                print("Time to openmc: ", time_openmc - time_start)
-                print("Time to unpack: ", time_unpack - time_openmc)
 
         return copy.deepcopy(op_result)
 

@@ -87,15 +87,13 @@ class TransportOperator(metaclass=ABCMeta):
         self.chain = Chain.from_xml(chain_file, fission_q)
 
     @abstractmethod
-    def __call__(self, vec, print_out=True):
+    def __call__(self, vec):
         """Runs a simulation.
 
         Parameters
         ----------
         vec : list of numpy.ndarray
             Total atoms to be used in function.
-        print_out : bool, optional
-            Whether or not to print out time.
 
         Returns
         -------

@@ -1,3 +1,5 @@
+import sys
+
 from contextlib import contextmanager
 from ctypes import (CDLL, c_bool, c_int, c_int32, c_int64, c_double, c_char_p,
                     c_char, POINTER, Structure, c_void_p, create_string_buffer)
@@ -73,7 +75,25 @@ _dll.openmc_simulation_finalize.errcheck = _error_handler
 _dll.openmc_statepoint_write.argtypes = [c_char_p, POINTER(c_bool)]
 _dll.openmc_statepoint_write.restype = c_int
 _dll.openmc_statepoint_write.errcheck = _error_handler
+_dll.openmc_global_bounding_box.argtypes = [POINTER(c_double),
+                                            POINTER(c_double)]
+_dll.openmc_global_bounding_box.restype = c_int
+_dll.openmc_global_bounding_box.errcheck = _error_handler
 
+
+def global_bounding_box():
+    """Calculate a global bounding box for the model"""
+    inf = sys.float_info.max
+    llc = np.zeros(3)
+    urc = np.zeros(3)
+    _dll.openmc_global_bounding_box(llc.ctypes.data_as(POINTER(c_double)),
+                                    urc.ctypes.data_as(POINTER(c_double)))
+    llc[llc == inf] = np.inf
+    urc[urc == inf] = np.inf
+    llc[llc == -inf] = -np.inf
+    urc[urc == -inf] = -np.inf
+
+    return llc, urc
 
 def calculate_volumes():
     """Run stochastic volume calculation"""

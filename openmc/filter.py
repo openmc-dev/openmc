@@ -32,7 +32,8 @@ _CURRENT_NAMES = (
     'z-min out', 'z-min in', 'z-max out', 'z-max in'
 )
 
-_PARTICLE_IDS = {'neutron': 1, 'photon': 2, 'electron': 3, 'positron': 4}
+_PARTICLES = {'neutron', 'photon', 'electron', 'positron'}
+
 
 class FilterMeta(ABCMeta):
     def __new__(cls, name, bases, namespace, **kwargs):
@@ -547,10 +548,9 @@ class ParticleFilter(Filter):
 
     Parameters
     ----------
-    bins : str, int, or iterable of Integral
-        The Particles to tally. Either str with particle type or their
-        ID numbers can be used ('neutron' = 1, 'photon' = 2, 'electron' = 3,
-        'positron' = 4).
+    bins : str, or iterable of str
+        The particles to tally represented as strings ('neutron', 'photon',
+        'electron', 'positron').
     filter_id : int
         Unique identifier for the filter
 
@@ -571,15 +571,21 @@ class ParticleFilter(Filter):
     @bins.setter
     def bins(self, bins):
         bins = np.atleast_1d(bins)
-        cv.check_iterable_type('filter bins', bins, (Integral, str))
+        cv.check_iterable_type('filter bins', bins, str)
         for edge in bins:
-            if isinstance(edge, Integral):
-                cv.check_value('filter bin', edge, _PARTICLE_IDS.values())
-            else:
-                cv.check_value('filter bin', edge, _PARTICLE_IDS.keys())
-        bins = np.atleast_1d([b if isinstance(b, Integral) else _PARTICLE_IDS[b]
-                              for b in bins])
+            cv.check_value('filter bin', edge, _PARTICLES)
         self._bins = bins
+
+    @classmethod
+    def from_hdf5(cls, group, **kwargs):
+        if group['type'][()].decode() != cls.short_name.lower():
+            raise ValueError("Expected HDF5 data for filter type '"
+                             + cls.short_name.lower() + "' but got '"
+                             + group['type'][()].decode() + " instead")
+
+        particles = [b.decode() for b in group['bins'][()]]
+        filter_id = int(group.name.split('/')[-1].lstrip('filter '))
+        return cls(particles, filter_id=filter_id)
 
 
 class MeshFilter(Filter):

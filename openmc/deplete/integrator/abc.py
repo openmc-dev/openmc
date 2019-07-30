@@ -34,6 +34,16 @@ class Integrator(ABC):
             initial heavy metal inventory to get total power if ``power``
             is not speficied.
         """
+        # Check number of stages previously used
+        if operator.prev_res is not None:
+            res = operator.prev_res[-1]
+            if res.data.shape[0] != self._N_STAGES:
+                raise ValueError(
+                    "{} incompatible with previous restart calculation. "
+                    "Previous scheme used {} intermediate solutions, while "
+                    "this uses {}".format(
+                        self.__class__.__name__, res.data.shape[0],
+                        self._N_STAGES))
         self.operator = operator
         self.chain = operator.chain
         if not isinstance(timesteps, Iterable):
@@ -82,6 +92,14 @@ class Integrator(ABC):
         op_results : list of openmc.deplete.OperatorResult
             Eigenvalue and reaction rates from intermediate transport
             simulations
+        """
+
+    @property
+    @abstractmethod
+    def _N_STAGES(self):
+        """Number of intermediate transport solutions
+
+        Needed to ensure schemes are consistent with restarts
         """
 
     def __iter__(self):

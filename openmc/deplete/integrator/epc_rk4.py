@@ -23,6 +23,7 @@ class EPC_RK4_Integrator(Integrator):
         y_4 &= \text{expm}(1/6 F_1 + 1/3 F_2 + 1/3 F_3 + 1/6 F_4) y_0
         \end{aligned}
     """
+    _N_STAGES = 4
 
     def __call__(self, conc, rates, dt, power, _i):
         """Perform the integration across one time step

@@ -37,6 +37,7 @@ class PredictorIntegrator(Integrator):
         initial heavy metal inventory to get total power if ``power``
         is not speficied.
     """
+    _N_STAGES = 1
 
     def __call__(self, conc, rates, dt, power, _i=None):
         """Perform the integration across one time step

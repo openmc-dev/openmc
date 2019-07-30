@@ -37,6 +37,7 @@ class LEQIIntegrator(Integrator):
 
     It is initialized using the CE/LI algorithm.
     """
+    _N_STAGES = 2
 
     def __call__(self, bos_conc, bos_rates, dt, power, i):
         """Perform the integration across one time step

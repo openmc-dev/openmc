@@ -23,6 +23,7 @@ class CELIIntegrator(Integrator):
                    \text{expm}(\frac{5h}{12} A_0 + \frac{h}{12} A1) y_n
         \end{aligned}
     """
+    _N_STAGES = 2
 
     def __call__(self, bos_conc, rates, dt, power, _i=-1):
         """Perform the integration across one time step

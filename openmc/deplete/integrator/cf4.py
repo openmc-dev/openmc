@@ -28,6 +28,7 @@ class CF4Integrator(Integrator):
                \text{expm}(-1/12 F_1 + 1/6 F_2 + 1/6 F_3 + 1/4  F_4) y_0
         \end{aligned}
     """
+    _N_STAGES = 4
 
     def __call__(self, bos_conc, bos_rates, dt, power, i):
         """Perform the integration across one time step

@@ -21,6 +21,7 @@ class SI_LEQI_Integrator(SI_Integrator):
     Detailed algorithm can be found in Section 3.2 in `Colin Josey's thesis
     <http://hdl.handle.net/1721.1/113721>`_.
     """
+    _N_STAGES = 2
 
     def __call__(self, bos_conc, bos_rates, dt, power, i):
         """Perform the integration across one time step

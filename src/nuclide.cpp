@@ -18,7 +18,7 @@
 #include "xtensor/xbuilder.hpp"
 #include "xtensor/xview.hpp"
 
-#include <algorithm> // for sort
+#include <algorithm> // for sort, min_element
 #include <string> // for to_string, stoi
 
 namespace openmc {
@@ -30,6 +30,8 @@ namespace openmc {
 namespace data {
 std::array<double, 2> energy_min {0.0, 0.0};
 std::array<double, 2> energy_max {INFTY, INFTY};
+double temperature_min {0.0};
+double temperature_max {INFTY};
 std::vector<std::unique_ptr<Nuclide>> nuclides;
 std::unordered_map<std::string, int> nuclide_map;
 } // namespace data
@@ -153,6 +155,12 @@ Nuclide::Nuclide(hid_t group, const std::vector<double>& temperature, int i_nucl
 
   // Sort temperatures to read
   std::sort(temps_to_read.begin(), temps_to_read.end());
+
+  double T_min_read = *std::min_element(temps_to_read.cbegin(), temps_to_read.cend());
+  double T_max_read = *std::max_element(temps_to_read.cbegin(), temps_to_read.cend());
+
+  data::temperature_min = std::max(data::temperature_min, T_min_read);
+  data::temperature_max = std::min(data::temperature_max, T_max_read);
 
   hid_t energy_group = open_group(group, "energy");
   for (const auto& T : temps_to_read) {

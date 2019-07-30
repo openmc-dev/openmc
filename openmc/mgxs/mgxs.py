@@ -2751,7 +2751,7 @@ class TransportXS(MGXS):
             p1_tally = p1_tally.get_slice(filters=[openmc.LegendreFilter],
                                           filter_bins=[('P1',)],
                                           squeeze=True)
-            p1_tally.scores = ['scatter-1']
+            p1_tally._scores = ['scatter-1']
 
             self._rxn_rate_tally = self.tallies['total'] - p1_tally
             self._rxn_rate_tally.sparse = self.sparse

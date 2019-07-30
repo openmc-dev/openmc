@@ -28,6 +28,7 @@ env:
     - LD_LIBRARY_PATH=$HOME/MOAB/lib:$HOME/DAGMC/lib
     - PATH=$PATH:$HOME/NJOY2016/build
     - COVERALLS_PARALLEL=true
+    - NUMPY_EXPERIMENTAL_ARRAY_FUNCTION=0
 matrix:
   include:
     - python: "3.5"

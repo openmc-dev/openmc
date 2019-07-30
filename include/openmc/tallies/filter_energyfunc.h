@@ -15,6 +15,9 @@ namespace openmc {
 class EnergyFunctionFilter : public Filter
 {
 public:
+  //----------------------------------------------------------------------------
+  // Constructors, destructors
+
   EnergyFunctionFilter()
     : Filter {}
   {
@@ -22,6 +25,9 @@ public:
   }
 
   ~EnergyFunctionFilter() = default;
+
+  //----------------------------------------------------------------------------
+  // Methods
 
   std::string type() const override {return "energyfunction";}
 
@@ -33,6 +39,10 @@ public:
   void to_statepoint(hid_t filter_group) const override;
 
   std::string text_label(int bin) const override;
+
+private:
+  //----------------------------------------------------------------------------
+  // Data members
 
   //! Incident neutron energy interpolation grid.
   std::vector<double> energy_;

@@ -42,8 +42,7 @@ Each ``material`` element can have the following attributes or sub-elements:
     Volume of the material in cm^3.
 
   :temperature:
-    An element with no attributes which is used to set the default temperature
-    of the material in Kelvin.
+    Temperature of the material in Kelvin.
 
     *Default*: If a material default temperature is not given and a cell
     temperature is not specified, the :ref:`global default temperature

@@ -15,7 +15,13 @@ namespace openmc {
 class ParticleFilter : public Filter
 {
 public:
+  //----------------------------------------------------------------------------
+  // Constructors, destructors
+
   ~ParticleFilter() = default;
+
+  //----------------------------------------------------------------------------
+  // Methods
 
   std::string type() const override {return "particle";}
 
@@ -27,6 +33,17 @@ public:
   void to_statepoint(hid_t filter_group) const override;
 
   std::string text_label(int bin) const override;
+
+  //----------------------------------------------------------------------------
+  // Accessors
+
+  const std::vector<Particle::Type>& particles() const { return particles_; }
+
+  void set_particles(gsl::span<Particle::Type> particles);
+
+private:
+  //----------------------------------------------------------------------------
+  // Data members
 
   std::vector<Particle::Type> particles_;
 };

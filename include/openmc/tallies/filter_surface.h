@@ -5,6 +5,8 @@
 #include <unordered_map>
 #include <vector>
 
+#include <gsl/gsl>
+
 #include "openmc/tallies/filter.h"
 
 namespace openmc {
@@ -16,13 +18,17 @@ namespace openmc {
 class SurfaceFilter : public Filter
 {
 public:
+  //----------------------------------------------------------------------------
+  // Constructors, destructors
+
   ~SurfaceFilter() = default;
+
+  //----------------------------------------------------------------------------
+  // Methods
 
   std::string type() const override {return "surface";}
 
   void from_xml(pugi::xml_node node) override;
-
-  void initialize() override;
 
   void get_all_bins(const Particle* p, int estimator, FilterMatch& match)
   const override;
@@ -30,6 +36,15 @@ public:
   void to_statepoint(hid_t filter_group) const override;
 
   std::string text_label(int bin) const override;
+
+  //----------------------------------------------------------------------------
+  // Accessors
+
+  void set_surfaces(gsl::span<int32_t> surfaces);
+
+private:
+  //----------------------------------------------------------------------------
+  // Data members
 
   //! The indices of the surfaces binned by this filter.
   std::vector<int32_t> surfaces_;

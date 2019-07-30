@@ -14,7 +14,13 @@ namespace openmc {
 class LegendreFilter : public Filter
 {
 public:
+  //----------------------------------------------------------------------------
+  // Constructors, destructors
+
   ~LegendreFilter() = default;
+
+  //----------------------------------------------------------------------------
+  // Methods
 
   std::string type() const override {return "legendre";}
 
@@ -26,6 +32,17 @@ public:
   void to_statepoint(hid_t filter_group) const override;
 
   std::string text_label(int bin) const override;
+
+  //----------------------------------------------------------------------------
+  // Accessors
+
+  int order() const { return order_; }
+
+  void set_order(int order);
+
+private:
+  //----------------------------------------------------------------------------
+  // Data members
 
   int order_;
 };

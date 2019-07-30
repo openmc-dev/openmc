@@ -411,7 +411,7 @@ class Library(EqualityMixin):
             # after it). If it's too short, then we apply the ENDF float regular
             # expression. We don't do this by default because it's expensive!
             if xss.size != nxs[1] + 1:
-                datastr = ENDF_FLOAT_RE.sub(r'\1e\2', datastr)
+                datastr = ENDF_FLOAT_RE.sub(r'\1e\2\3', datastr)
                 xss = np.fromstring(datastr, sep=' ')
                 assert xss.size == nxs[1] + 1
 

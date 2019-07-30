@@ -1,9 +1,11 @@
 from copy import deepcopy
 from abc import ABC, abstractmethod
 from collections.abc import Iterable
+from numbers import Integral
 
 from uncertainties import ufloat
 
+from openmc.checkvalue import check_type, check_greater_than
 from openmc.capi import statepoint_write
 from openmc.deplete import Results, OperatorResult
 
@@ -60,9 +62,12 @@ class Integrator(ABC):
                 power = [p * operator.heavy_metal for p in power_density]
 
         if not isinstance(power, Iterable):
-            # TODO Maybe use itertools.zip_longest?
             # Ensure that power is single value if that is the case
             power = [power] * len(self.timesteps)
+        elif len(power) != len(self.timesteps):
+            raise ValueError(
+                "Number of time steps != number of powers. {} vs {}".format(
+                    len(self.timesteps), len(power)))
 
         self.power = power
 
@@ -208,8 +213,10 @@ class SI_Integrator(Integrator):
             is not speficied.
         n_steps : int, optional
             Number of stochastic iterations per depletion interval.
-            Default : 10
+            Must be greater than zero. Default : 10
         """
+        check_type("n_steps", n_steps, Integral)
+        check_greater_than("n_steps", n_steps, 0)
         super().__init__(operator, timesteps, power, power_density)
         self.n_steps = n_steps
 

@@ -12,9 +12,11 @@ from unittest.mock import MagicMock
 
 import numpy as np
 from uncertainties import ufloat
+import pytest
 
-from openmc.deplete import (ReactionRates, Results, ResultsList, comm,
-                            OperatorResult)
+from openmc.deplete import (
+    ReactionRates, Results, ResultsList, comm, OperatorResult,
+    PredictorIntegrator, SI_CELI_Integrator)
 
 
 def test_results_save(run_in_tmpdir):
@@ -99,3 +101,32 @@ def test_results_save(run_in_tmpdir):
 
     np.testing.assert_array_equal(res[1].k, eigvl2)
     np.testing.assert_array_equal(res[1].time, t2)
+
+
+@pytest.mark.parametrize("timesteps", (1, [1]))
+def test_bad_integrator_inputs(timesteps):
+    """Test failure modes for Integrator inputs"""
+
+    op = MagicMock()
+    op.prev_res = None
+    op.chain = None
+    op.heavy_metal = 1.0
+
+    # No power nor power density given
+    with pytest.raises(ValueError, match="Either power or power density"):
+        PredictorIntegrator(op, timesteps)
+
+    # Length of power != length time
+    with pytest.raises(ValueError, match="number of powers"):
+        PredictorIntegrator(op, timesteps, power=[1, 2])
+
+    # Length of power density != length time
+    with pytest.raises(ValueError, match="number of powers"):
+        PredictorIntegrator(op, timesteps, power_density=[1, 2])
+
+    # SI integrator with bad steps
+    with pytest.raises(TypeError, match="n_steps"):
+        SI_CELI_Integrator(op, timesteps, [1], n_steps=2.5)
+
+    with pytest.raises(ValueError, match="n_steps"):
+        SI_CELI_Integrator(op, timesteps, [1], n_steps=0)

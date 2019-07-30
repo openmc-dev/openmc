@@ -200,9 +200,6 @@ class CMFDRun(object):
         Batch number at which CMFD solver should start executing
     ref_d : list of floats
         List of reference diffusion coefficients to fix CMFD parameters to
-    dhat_reset : bool
-        Indicate whether :math:`\widehat{D}` nonlinear CMFD parameters should
-        be reset to zero before solving CMFD eigenproblem.
     display : dict
         Dictionary indicating which CMFD results to output. Note that CMFD
         k-effective will always be outputted. Acceptable keys are:
@@ -312,7 +309,6 @@ class CMFDRun(object):
         self._tally_begin = 1
         self._cmfd_begin = 1
         self._ref_d = []
-        self._dhat_reset = False
         self._display = {'balance': False, 'dominance': False,
                          'entropy': False, 'source': False}
         self._downscatter = False
@@ -339,7 +335,6 @@ class CMFDRun(object):
         self._egrid = None
         self._albedo = None
         self._coremap = None
-        self._n_resets = 0
         self._mesh_id = None
         self._tally_ids = None
         self._energy_filters = None
@@ -424,10 +419,6 @@ class CMFDRun(object):
     @property
     def ref_d(self):
         return self._ref_d
-
-    @property
-    def dhat_reset(self):
-        return self._dhat_reset
 
     @property
     def display(self):
@@ -542,11 +533,6 @@ class CMFDRun(object):
         check_type('Reference diffusion params', diff_params,
                    Iterable, Real)
         self._ref_d = np.array(diff_params)
-
-    @dhat_reset.setter
-    def dhat_reset(self, dhat_reset):
-        check_type('CMFD Dhat reset', dhat_reset, bool)
-        self._dhat_reset = dhat_reset
 
     @display.setter
     def display(self, display):
@@ -762,22 +748,23 @@ class CMFDRun(object):
         calling :func:`openmc.capi.simulation_init`
 
         """
-        # Configure CMFD parameters and tallies
+        # Configure CMFD parameters
         self._configure_cmfd()
 
-        # Initialize all arrays used for CMFD solver
-        self._allocate_cmfd()
+        # Create tally objects
+        self._create_cmfd_tally()
 
-        # Compute and store array indices used to build cross section
-        # arrays
-        self._precompute_array_indices()
+        if openmc.capi.master():
+            # Compute and store array indices used to build cross section
+            # arrays
+            self._precompute_array_indices()
 
-        # Compute and store row and column indices used to build CMFD
-        # matrices
-        self._precompute_matrix_indices()
+            # Compute and store row and column indices used to build CMFD
+            # matrices
+            self._precompute_matrix_indices()
 
-        # Initialize all variables used for linear solver in C++
-        self._initialize_linsolver()
+            # Initialize all variables used for linear solver in C++
+            self._initialize_linsolver()
 
         # Initialize simulation
         openmc.capi.simulation_init()
@@ -818,8 +805,9 @@ class CMFDRun(object):
         # Finalize simuation
         openmc.capi.simulation_finalize()
 
-        # Print out CMFD timing statistics
-        self._write_cmfd_timing_stats()
+        if openmc.capi.master():
+            # Print out CMFD timing statistics
+            self._write_cmfd_timing_stats()
 
     def statepoint_write(self, filename=None):
         """Write all simulation parameters to statepoint
@@ -943,53 +931,33 @@ class CMFDRun(object):
 
     def _write_cmfd_timing_stats(self):
         """Write CMFD timing stats to buffer after finalizing simulation"""
-        if openmc.capi.master():
-            outstr = ("=====================>     "
-                      "CMFD TIMING STATISTICS     <====================\n\n"
-                      "   Time in CMFD                    =  {:.5E} seconds\n"
-                      "     Building matrices             =  {:.5E} seconds\n"
-                      "     Solving matrices              =  {:.5E} seconds\n")
-            print(outstr.format(self._time_cmfd, self._time_cmfdbuild,
-                                self._time_cmfdsolve))
-            sys.stdout.flush()
+        outstr = ("=====================>     "
+                  "CMFD TIMING STATISTICS     <====================\n\n"
+                  "   Time in CMFD                    =  {:.5E} seconds\n"
+                  "     Building matrices             =  {:.5E} seconds\n"
+                  "     Solving matrices              =  {:.5E} seconds\n")
+        print(outstr.format(self._time_cmfd, self._time_cmfdbuild,
+                            self._time_cmfdsolve))
+        sys.stdout.flush()
 
     def _configure_cmfd(self):
         """Initialize CMFD parameters and set CMFD input variables"""
         # Check if restarting simulation from statepoint file
         if not openmc.capi.settings.restart_run:
-            # Read in cmfd input defined in Python
-            self._read_cmfd_input()
-
-            # Set up CMFD coremap
-            self._set_coremap()
-
-            # Extract spatial and energy indices
-            nx, ny, nz, ng = self._indices
-
-            # Allocate parameters that need to stored for tally window
-            self._openmc_src_rate = np.zeros((nx, ny, nz, ng, 0))
-            self._flux_rate = np.zeros((nx, ny, nz, ng, 0))
-            self._total_rate = np.zeros((nx, ny, nz, ng, 0))
-            self._p1scatt_rate = np.zeros((nx, ny, nz, ng, 0))
-            self._scatt_rate = np.zeros((nx, ny, nz, ng, ng, 0))
-            self._nfiss_rate = np.zeros((nx, ny, nz, ng, ng, 0))
-            self._current_rate = np.zeros((nx, ny, nz, 12, ng, 0))
-
-            # Initialize timers
-            self._time_cmfd = 0.0
-            self._time_cmfdbuild = 0.0
-            self._time_cmfdsolve = 0.0
-
-            # Initialize parameters for CMFD tally windows
-            self._set_tally_window()
+            # Define all variables necessary for running CMFD
+            self._initialize_cmfd()
 
         else:
             # Reset CMFD parameters from statepoint file
             path_statepoint = openmc.capi.settings.path_statepoint
             self._reset_cmfd(path_statepoint)
 
-    def _read_cmfd_input(self):
-        """Sets values of additional instance variables based on user input"""
+    def _initialize_cmfd(self):
+        """Sets values of CMFD instance variables based on user input,
+           separating between variables that only exist on all processes
+           and those that only exist on the master process
+
+        """
         # Print message to user and flush output to stdout
         if openmc.capi.settings.verbosity >= 7 and openmc.capi.master():
             print(' Configuring CMFD parameters for simulation')
@@ -1019,34 +987,55 @@ class CMFDRun(object):
             self._indices[3] = 1
             self._energy_filters = False
 
-        # Set global albedo
-        if self._mesh.albedo is not None:
-            self._albedo = np.array(self._mesh.albedo)
-        else:
-            self._albedo = np.array([1., 1., 1., 1., 1., 1.])
-
         # Get acceleration map, otherwise set all regions to be accelerated
         if self._mesh.map is not None:
             check_length('CMFD coremap', self._mesh.map,
                          np.product(self._indices[0:3]))
-            self._coremap = np.array(self._mesh.map)
+            if openmc.capi.master():
+                self._coremap = np.array(self._mesh.map)
         else:
-            self._coremap = np.ones((np.product(self._indices[0:3])),
-                                    dtype=int)
+            if openmc.capi.master():
+                self._coremap = np.ones((np.product(self._indices[0:3])),
+                                        dtype=int)
 
         # Check CMFD tallies accummulated before feedback turned on
         if self._feedback and self._cmfd_begin < self._tally_begin:
             raise ValueError('Tally begin must be less than or equal to '
                              'CMFD begin')
 
-        # Set number of batches where cmfd tallies should be reset
-        self._n_resets = len(self._reset)
+        # Initialize parameters for CMFD tally windows
+        self._set_tally_window()
 
-        # Create tally objects
-        self._create_cmfd_tally()
+        # Define all variables that will exist only on master process
+        if openmc.capi.master():
+            # Set global albedo
+            if self._mesh.albedo is not None:
+                self._albedo = np.array(self._mesh.albedo)
+            else:
+                self._albedo = np.array([1., 1., 1., 1., 1., 1.])
+
+            # Set up CMFD coremap
+            self._set_coremap()
+
+            # Extract spatial and energy indices
+            nx, ny, nz, ng = self._indices
+
+            # Allocate parameters that need to be stored for tally window
+            self._openmc_src_rate = np.zeros((nx, ny, nz, ng, 0))
+            self._flux_rate = np.zeros((nx, ny, nz, ng, 0))
+            self._total_rate = np.zeros((nx, ny, nz, ng, 0))
+            self._p1scatt_rate = np.zeros((nx, ny, nz, ng, 0))
+            self._scatt_rate = np.zeros((nx, ny, nz, ng, ng, 0))
+            self._nfiss_rate = np.zeros((nx, ny, nz, ng, ng, 0))
+            self._current_rate = np.zeros((nx, ny, nz, 12, ng, 0))
+
+            # Initialize timers
+            self._time_cmfd = 0.0
+            self._time_cmfdbuild = 0.0
+            self._time_cmfdsolve = 0.0
 
     def _reset_cmfd(self, filename):
-        """Reset all CMFD  parameters from statepoint
+        """Reset all CMFD parameters from statepoint
 
         Parameters
         ----------
@@ -1065,32 +1054,28 @@ class CMFDRun(object):
                     print(' Loading CMFD data from {}...'.format(filename))
                     sys.stdout.flush()
                 cmfd_group = f['cmfd']
+
+                # Define variables that exist on all processes
                 self._cmfd_on = cmfd_group.attrs['cmfd_on']
                 self._feedback = cmfd_group.attrs['feedback']
                 self._cmfd_begin = cmfd_group.attrs['cmfd_begin']
                 self._tally_begin = cmfd_group.attrs['tally_begin']
-                self._time_cmfd = cmfd_group.attrs['time_cmfd']
-                self._time_cmfdbuild = cmfd_group.attrs['time_cmfdbuild']
-                self._time_cmfdsolve = cmfd_group.attrs['time_cmfdsolve']
-                self._window_size = cmfd_group.attrs['window_size']
-                self._window_type = cmfd_group.attrs['window_type']
                 self._k_cmfd = list(cmfd_group['k_cmfd'])
                 self._dom = list(cmfd_group['dom'])
                 self._src_cmp = list(cmfd_group['src_cmp'])
                 self._balance = list(cmfd_group['balance'])
                 self._entropy = list(cmfd_group['entropy'])
                 self._reset = list(cmfd_group['reset'])
-                self._albedo = cmfd_group['albedo'][()]
-                self._coremap = cmfd_group['coremap'][()]
                 self._egrid = cmfd_group['egrid'][()]
                 self._indices = cmfd_group['indices'][()]
-                self._current_rate = cmfd_group['current_rate'][()]
-                self._flux_rate = cmfd_group['flux_rate'][()]
-                self._nfiss_rate = cmfd_group['nfiss_rate'][()]
-                self._openmc_src_rate = cmfd_group['openmc_src_rate'][()]
-                self._p1scatt_rate = cmfd_group['p1scatt_rate'][()]
-                self._scatt_rate = cmfd_group['scatt_rate'][()]
-                self._total_rate = cmfd_group['total_rate'][()]
+                default_egrid = np.array([_ENERGY_MIN_NEUTRON,
+                                          _ENERGY_MAX_NEUTRON])
+                self._energy_filters = not np.array_equal(self._egrid,
+                                                          default_egrid)
+                self._window_size = cmfd_group.attrs['window_size']
+                self._window_type = cmfd_group.attrs['window_type']
+                self._reset_every = (self._window_type == 'expanding' or
+                                     self._window_type == 'rolling')
 
                 # Overwrite CMFD mesh properties
                 cmfd_mesh_name = 'mesh ' + str(cmfd_group.attrs['mesh_id'])
@@ -1100,49 +1085,21 @@ class CMFDRun(object):
                 self._mesh.upper_right = cmfd_mesh['upper_right'][()]
                 self._mesh.width = cmfd_mesh['width'][()]
 
-                # Store tally ids from statepoint run
-                sp_tally_ids = list(cmfd_group['tally_ids'])
-
-        # Set CMFD variables not in statepoint file
-        default_egrid = np.array([_ENERGY_MIN_NEUTRON, _ENERGY_MAX_NEUTRON])
-        self._energy_filters = not np.array_equal(self._egrid, default_egrid)
-        self._n_resets = len(self._reset)
-        self._mat_dim = np.max(self._coremap) + 1
-        self._reset_every = (self._window_type == 'expanding' or
-                             self._window_type == 'rolling')
-
-        # Recreate CMFD tallies in memory
-        self._create_cmfd_tally()
-
-    def _allocate_cmfd(self):
-        """Allocates all numpy arrays and lists used in CMFD algorithm"""
-        # Extract spatial and energy indices
-        nx, ny, nz, ng = self._indices
-
-        # Allocate dimensions for each mesh cell
-        self._hxyz = np.zeros((nx, ny, nz, 3))
-        self._hxyz[:] = openmc.capi.meshes[self._mesh_id].width
-
-        # Allocate flux, cross sections and diffusion coefficient
-        self._flux = np.zeros((nx, ny, nz, ng))
-        self._totalxs = np.zeros((nx, ny, nz, ng))
-        self._p1scattxs = np.zeros((nx, ny, nz, ng))
-        self._scattxs = np.zeros((nx, ny, nz, ng, ng))  # Incoming, outgoing
-        self._nfissxs = np.zeros((nx, ny, nz, ng, ng))  # Incoming, outgoing
-        self._diffcof = np.zeros((nx, ny, nz, ng))
-
-        # Allocate dtilde and dhat
-        self._dtilde = np.zeros((nx, ny, nz, ng, 6))
-        self._dhat = np.zeros((nx, ny, nz, ng, 6))
-
-        # Set reference diffusion parameters
-        if list(self._ref_d):
-            self._set_reference_params = True
-            # Check length of reference diffusion parameters equal to number of
-            # energy groups
-            if len(self._ref_d) != self._indices[3]:
-                raise OpenMCError('Number of reference diffusion parameters '
-                                  'must equal number of CMFD energy groups')
+                # Define variables that exist only on master process
+                if openmc.capi.master():
+                    self._time_cmfd = cmfd_group.attrs['time_cmfd']
+                    self._time_cmfdbuild = cmfd_group.attrs['time_cmfdbuild']
+                    self._time_cmfdsolve = cmfd_group.attrs['time_cmfdsolve']
+                    self._albedo = cmfd_group['albedo'][()]
+                    self._coremap = cmfd_group['coremap'][()]
+                    self._current_rate = cmfd_group['current_rate'][()]
+                    self._flux_rate = cmfd_group['flux_rate'][()]
+                    self._nfiss_rate = cmfd_group['nfiss_rate'][()]
+                    self._openmc_src_rate = cmfd_group['openmc_src_rate'][()]
+                    self._p1scatt_rate = cmfd_group['p1scatt_rate'][()]
+                    self._scatt_rate = cmfd_group['scatt_rate'][()]
+                    self._total_rate = cmfd_group['total_rate'][()]
+                    self._mat_dim = np.max(self._coremap) + 1
 
     def _set_tally_window(self):
         """Sets parameters to handle different tally window options"""
@@ -1169,7 +1126,7 @@ class CMFDRun(object):
             self._cmfd_on = True
 
         # Check to reset tallies
-        if ((self._n_resets > 0 and current_batch in self._reset)
+        if ((len(self._reset) > 0 and current_batch in self._reset)
                 or self._reset_every):
             self._cmfd_tally_reset()
 
@@ -2206,12 +2163,37 @@ class CMFDRun(object):
             (ng * num_accel)))
 
     def _precompute_array_indices(self):
-        """Computes the indices used to populate certain cross section arrays.
-        These indices are used in _compute_dtilde and _compute_dhat
+        """Initializes cross section arrays and computes the indices
+        used to populate dtilde and dhat
 
         """
         # Extract spatial indices
-        nx, ny, nz = self._indices[:3]
+        nx, ny, nz, ng = self._indices
+
+        # Allocate dimensions for each mesh cell
+        self._hxyz = np.zeros((nx, ny, nz, 3))
+        self._hxyz[:] = openmc.capi.meshes[self._mesh_id].width
+
+        # Allocate flux, cross sections and diffusion coefficient
+        self._flux = np.zeros((nx, ny, nz, ng))
+        self._totalxs = np.zeros((nx, ny, nz, ng))
+        self._p1scattxs = np.zeros((nx, ny, nz, ng))
+        self._scattxs = np.zeros((nx, ny, nz, ng, ng))  # Incoming, outgoing
+        self._nfissxs = np.zeros((nx, ny, nz, ng, ng))  # Incoming, outgoing
+        self._diffcof = np.zeros((nx, ny, nz, ng))
+
+        # Allocate dtilde and dhat
+        self._dtilde = np.zeros((nx, ny, nz, ng, 6))
+        self._dhat = np.zeros((nx, ny, nz, ng, 6))
+
+        # Set reference diffusion parameters
+        if list(self._ref_d):
+            self._set_reference_params = True
+            # Check length of reference diffusion parameters equal to number of
+            # energy groups
+            if len(self._ref_d) != self._indices[3]:
+                raise OpenMCError('Number of reference diffusion parameters '
+                                  'must equal number of CMFD energy groups')
 
         # Logical for determining whether region of interest is accelerated
         # region

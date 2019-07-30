@@ -53,7 +53,7 @@ class SI_LEQI_Integrator(SI_Integrator):
             simulation
         """
         if i == 0:
-            if self._ires <= 1:
+            if self._ires < 1:
                 self._prev_rates = bos_rates
                 # Perform CELI for initial steps
                 return SI_CELI_Integrator.__call__(

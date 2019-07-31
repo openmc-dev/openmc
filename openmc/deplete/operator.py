@@ -85,6 +85,11 @@ class Operator(TransportOperator):
         Dictionary of nuclides and their fission Q values [eV]. If not given,
         values will be pulled from the ``chain_file``.
         Not used if ``tally_energy`` is True.
+    dilute_initial : float, optional
+        Initial atom density [atoms/cm^3] to add for nuclides that are zero
+        in initial condition to ensure they exist in the decay chain.
+        Only done for nuclides with reaction rates.
+        Defaults to 1.0e3.
 
     Attributes
     ----------
@@ -93,9 +98,9 @@ class Operator(TransportOperator):
     settings : openmc.Settings
         OpenMC settings object
     dilute_initial : float
-        Initial atom density to add for nuclides that are zero in initial
-        condition to ensure they exist in the decay chain. Only done for
-        nuclides with reaction rates. Defaults to 1.0e3.
+        Initial atom density [atoms/cm^3] to add for nuclides that
+        are zero in initial condition to ensure they exist in the decay
+        chain. Only done for nuclides with reaction rates.
     output_dir : pathlib.Path
         Path to output directory to save results.
     round_number : bool
@@ -119,15 +124,15 @@ class Operator(TransportOperator):
         Results from a previous depletion calculation
     diff_burnable_mats : bool
         Whether to differentiate burnable materials with multiple instances
-
     """
     def __init__(self, geometry, settings, chain_file=None, prev_results=None,
-                 diff_burnable_mats=False, tally_energy=False, fission_q=None):
+                 diff_burnable_mats=False, tally_energy=False, fission_q=None,
+                 dilute_initial=1.0e3):
         if tally_energy and fission_q is not None:
             warn("Fission Q dictionary not used when Operator.tally_energy "
                  "is used.")
             fission_q = None
-        super().__init__(chain_file, fission_q)
+        super().__init__(chain_file, fission_q, dilute_initial)
         self.round_number = False
         self.settings = settings
         self.geometry = geometry
@@ -171,7 +176,8 @@ class Operator(TransportOperator):
             self.local_mats, self._burnable_nucs, self.chain.reactions)
 
         # Get classes to assist working with tallies
-        self._rate_helper = DirectReactionRateHelper()
+        self._rate_helper = DirectReactionRateHelper(
+            self.reaction_rates.n_nuc, self.reaction_rates.n_react)
         if tally_energy:
             self._energy_helper = EnergyFromTallyHelper()
         else:

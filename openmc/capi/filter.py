@@ -34,6 +34,18 @@ _dll.openmc_energy_filter_get_bins.errcheck = _error_handler
 _dll.openmc_energy_filter_set_bins.argtypes = [c_int32, c_size_t, POINTER(c_double)]
 _dll.openmc_energy_filter_set_bins.restype = c_int
 _dll.openmc_energy_filter_set_bins.errcheck = _error_handler
+_dll.openmc_energyfunc_filter_set_data.restype = c_int
+_dll.openmc_energyfunc_filter_set_data.errcheck = _error_handler
+_dll.openmc_energyfunc_filter_set_data.argtypes = [
+    c_int32, c_size_t, POINTER(c_double), POINTER(c_double)]
+_dll.openmc_energyfunc_filter_get_energy.resttpe = c_int
+_dll.openmc_energyfunc_filter_get_energy.errcheck = _error_handler
+_dll.openmc_energyfunc_filter_get_energy.argtypes = [
+    c_int32, POINTER(c_size_t), POINTER(POINTER(c_double))]
+_dll.openmc_energyfunc_filter_get_y.resttpe = c_int
+_dll.openmc_energyfunc_filter_get_y.errcheck = _error_handler
+_dll.openmc_energyfunc_filter_get_y.argtypes = [
+    c_int32, POINTER(c_size_t), POINTER(POINTER(c_double))]
 _dll.openmc_filter_get_id.argtypes = [c_int32, POINTER(c_int32)]
 _dll.openmc_filter_get_id.restype = c_int
 _dll.openmc_filter_get_id.errcheck = _error_handler
@@ -200,6 +212,48 @@ class DistribcellFilter(Filter):
 
 class EnergyFunctionFilter(Filter):
     filter_type = 'energyfunction'
+
+    def __new__(cls, energy=None, y=None, uid=None, new=True, index=None):
+        return super().__new__(cls, uid=uid, new=new, index=index)
+
+    def __init__(self, energy=None, y=None, uid=None, new=True, index=None):
+        if (energy is None) != (y is None):
+            raise AttributeError("Need both energy and y or neither")
+        super().__init__(uid, new, index)
+        if energy is not None:
+            self.set_data(energy, y)
+
+    def set_data(self, energy, y):
+        """Set the interpolation information for the filter
+
+        Parameters
+        ----------
+        energy : numpy.ndarray
+            Independent variable for the interpolation
+        y : numpy.ndarray
+            Dependent variable for the interpolation
+        """
+        energy_array = np.asarray(energy)
+        y_array = np.asarray(y)
+        energy_p = energy_array.ctypes.data_as(POINTER(c_double))
+        y_p = y_array.ctypes.data_as(POINTER(c_double))
+
+        _dll.openmc_energyfunc_filter_set_data(
+            self._index, len(energy_array), energy_p, y_p)
+
+    @property
+    def energy(self):
+        return self._get_attr(_dll.openmc_energyfunc_filter_get_energy)
+
+    @property
+    def y(self):
+        return self._get_attr(_dll.openmc_energyfunc_filter_get_y)
+
+    def _get_attr(self, cfunc):
+        array_p = POINTER(c_double)()
+        n = c_size_t()
+        cfunc(self._index, n, array_p)
+        return as_array(array_p, (n.value, ))
 
 
 class LegendreFilter(Filter):

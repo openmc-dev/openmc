@@ -9,6 +9,7 @@
 #include "openmc/lattice.h"
 #include "openmc/settings.h"
 #include "openmc/simulation.h"
+#include "openmc/string_utils.h"
 #include "openmc/surface.h"
 
 
@@ -474,5 +475,22 @@ openmc_find_cell(const double* xyz, int32_t* index, int32_t* instance)
   *instance = p.cell_instance_;
   return 0;
 }
+
+extern "C" int openmc_global_bounding_box(double* llc, double* urc) {
+  auto bbox = model::universes.at(model::root_universe)->bounding_box();
+
+  // set lower left corner values
+  llc[0] = bbox.xmin;
+  llc[1] = bbox.ymin;
+  llc[2] = bbox.zmin;
+
+  // set upper right corner values
+  urc[0] = bbox.xmax;
+  urc[1] = bbox.ymax;
+  urc[2] = bbox.zmax;
+
+  return 0;
+}
+
 
 } // namespace openmc

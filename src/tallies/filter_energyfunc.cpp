@@ -21,12 +21,37 @@ EnergyFunctionFilter::from_xml(pugi::xml_node node)
   if (!check_for_node(node, "energy"))
     fatal_error("Energy grid not specified for EnergyFunction filter.");
 
-  energy_ = get_node_array<double>(node, "energy");
+  auto energy = get_node_array<double>(node, "energy");
 
   if (!check_for_node(node, "y"))
     fatal_error("y values not specified for EnergyFunction filter.");
 
-  y_ = get_node_array<double>(node, "y");
+  auto y = get_node_array<double>(node, "y");
+
+  this->set_data(energy, y);
+}
+
+void
+EnergyFunctionFilter::set_data(gsl::span<const double> energy,
+                               gsl::span<const double> y)
+{
+  // Check for consistent sizes with new data
+  if (energy.size() != y.size()) {
+    fatal_error("Energy grid and y values are not consistent");
+  }
+  energy_.clear();
+  energy_.reserve(energy.size());
+  y_.clear();
+  y_.reserve(y.size());
+
+  // Copy over energy values, ensuring they are valid
+  for (gsl::index i = 0; i < energy.size(); ++i) {
+    if (i > 0 && energy[i] <= energy[i - 1]) {
+      throw std::runtime_error{"Energy bins must be monotonically increasing."};
+    }
+    energy_.push_back(energy[i]);
+    y_.push_back(y[i]);
+  }
 }
 
 void
@@ -63,6 +88,74 @@ EnergyFunctionFilter::text_label(int bin) const
       << "([ " << energy_.front() << ", ..., " << energy_.back() << "]) = "
       << "[" << y_.front() << ", ..., " << y_.back() << "]";
   return out.str();
+}
+
+//==============================================================================
+// C-API functions
+//==============================================================================
+
+extern "C" int
+openmc_energyfunc_filter_set_data(int32_t index, size_t n, const double* energy,
+                                  const double* y)
+{
+  // Ensure this is a valid index to allocated filter
+  if (int err = verify_filter(index)) return err;
+
+  // Get a pointer to the filter
+  const auto& filt_base = model::tally_filters[index].get();
+  // Downcast to EnergyFunctionFilter
+  auto* filt = dynamic_cast<EnergyFunctionFilter*>(filt_base);
+
+  // Check if a valid filter was produced
+  if (!filt) {
+    set_errmsg("Tried to set interpolation data for non-energy function filter.");
+    return OPENMC_E_INVALID_TYPE;
+  }
+
+  filt->set_data({energy, n}, {y, n});
+  return 0;
+}
+
+extern "C" int
+openmc_energyfunc_filter_get_energy(int32_t index, size_t *n, const double** energy)
+{
+  // ensure this is a valid index to allocated filter
+  if (int err = verify_filter(index)) return err;
+
+  // get a pointer to the filter
+  const auto& filt_base = model::tally_filters[index].get();
+  // downcast to EnergyFunctionFilter
+  auto* filt = dynamic_cast<EnergyFunctionFilter*>(filt_base);
+
+  // check if a valid filter was produced
+  if (!filt) {
+    set_errmsg("Tried to set interpolation data for non-energy function filter.");
+    return OPENMC_E_INVALID_TYPE;
+  }
+  *energy = filt->energy().data();
+  *n = filt->energy().size();
+  return 0;
+}
+
+extern "C" int
+openmc_energyfunc_filter_get_y(int32_t index, size_t *n, const double** y)
+{
+  // ensure this is a valid index to allocated filter
+  if (int err = verify_filter(index)) return err;
+
+  // get a pointer to the filter
+  const auto& filt_base = model::tally_filters[index].get();
+  // downcast to EnergyFunctionFilter
+  auto* filt = dynamic_cast<EnergyFunctionFilter*>(filt_base);
+
+  // check if a valid filter was produced
+  if (!filt) {
+    set_errmsg("Tried to set interpolation data for non-energy function filter.");
+    return OPENMC_E_INVALID_TYPE;
+  }
+  *y = filt->y().data();
+  *n = filt->y().size();
+  return 0;
 }
 
 } // namespace openmc

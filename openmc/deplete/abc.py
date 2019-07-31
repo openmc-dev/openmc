@@ -10,11 +10,12 @@ from pathlib import Path
 from abc import ABC, abstractmethod
 from xml.etree import ElementTree as ET
 from warnings import warn
+from numbers import Real
 
 from numpy import nonzero, empty
 
 from openmc.data import DataLibrary, JOULE_PER_EV
-from openmc.checkvalue import check_type
+from openmc.checkvalue import check_type, check_greater_than
 from .chain import Chain
 
 OperatorResult = namedtuple('OperatorResult', ['k', 'rates'])
@@ -55,17 +56,21 @@ class TransportOperator(ABC):
     fission_q : dict, optional
         Dictionary of nuclides and their fission Q values [eV]. If not given,
         values will be pulled from the ``chain_file``.
+    dilute_initial : float, optional
+        Initial atom density [atoms/cm^3] to add for nuclides that are zero
+        in initial condition to ensure they exist in the decay chain.
+        Only done for nuclides with reaction rates.
+        Defaults to 1.0e3.
 
     Attributes
     ----------
     dilute_initial : float
-        Initial atom density to add for nuclides that are zero in initial
-        condition to ensure they exist in the decay chain.  Only done for
-        nuclides with reaction rates. Defaults to 1.0e3.
-
+        Initial atom density [atoms/cm^3] to add for nuclides that are zero
+        in initial condition to ensure they exist in the decay chain.
+        Only done for nuclides with reaction rates.
     """
-    def __init__(self, chain_file=None, fission_q=None):
-        self.dilute_initial = 1.0e3
+    def __init__(self, chain_file=None, fission_q=None, dilute_initial=1.0e3):
+        self.dilute_initial = dilute_initial
         self.output_dir = '.'
 
         # Read depletion chain
@@ -88,6 +93,17 @@ class TransportOperator(ABC):
                      "of adding depletion_chain to OPENMC_CROSS_SECTIONS",
                      FutureWarning)
         self.chain = Chain.from_xml(chain_file, fission_q)
+
+    @property
+    def dilute_initial(self):
+        """Initial atom density for nuclides with zero initial concentration"""
+        return self._dilute_initial
+
+    @dilute_initial.setter
+    def dilute_initial(self, value):
+        check_type("dilute_initial", value, Real)
+        check_greater_than("dilute_initial", value, 0.0, equality=True)
+        self._dilute_initial = value
 
     @abstractmethod
     def __call__(self, vec, print_out=True):
@@ -174,17 +190,23 @@ class ReactionRateHelper(ABC):
     Reaction rates are passed back to the operator for be used in
     an :class:`openmc.deplete.OperatorResult` instance
 
+    Parameters
+    ----------
+    n_nucs : int
+        Number of burnable nuclides tracked by :class:`openmc.deplete.Operator`
+    n_react : int
+        Number of reactions tracked by :class:`openmc.deplete.Operator`
+
     Attributes
     ----------
     nuclides : list of str
-        All nuclides with desired reaction rates. Ordered to be
-        consistent with :class:`openmc.deplete.Operator`
+        All nuclides with desired reaction rates.
     """
 
-    def __init__(self):
+    def __init__(self, n_nucs, n_react):
         self._nuclides = None
         self._rate_tally = None
-        self._results_cache = None
+        self._results_cache = empty((n_nucs, n_react))
 
     @abstractmethod
     def generate_tallies(self, materials, scores):
@@ -200,17 +222,6 @@ class ReactionRateHelper(ABC):
         check_type("nuclides", nuclides, list, str)
         self._nuclides = nuclides
         self._rate_tally.nuclides = nuclides
-
-    def _get_results_cache(self, nnucs, nreact):
-        """Cache for results for a given material
-
-        Creates an empty array of shape ``(nnucs, nreact)``
-        if the shape does not match the current cache.
-        """
-        if (self._results_cache is None
-                or self._results_cache.shape != (nnucs, nreact)):
-            self._results_cache = empty((nnucs, nreact))
-        return self._results_cache
 
     @abstractmethod
     def get_material_rates(self, mat_id, nuc_index, react_index):
@@ -236,7 +247,6 @@ class ReactionRateHelper(ABC):
         ----------
         number : iterable of float
             Number density [atoms/b-cm] of each nuclide tracked in the calculation.
-            Ordered identically to :attr:`nuclides`
 
         Returns
         -------

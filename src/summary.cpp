@@ -92,6 +92,7 @@ void write_geometry(hid_t file)
 #ifdef DAGMC
   if (settings::dagmc) {
     write_attribute(geom_group, "dagmc", 1);
+    close_group(geom_group);
     return;
   }
 #endif

@@ -65,6 +65,8 @@ public:
   //! \param group_id An HDF5 group id.
   void to_hdf5(hid_t group_id) const;
 
+  BoundingBox bounding_box() const;
+
   std::unique_ptr<UniversePartitioner> partitioner_;
 };
 
@@ -114,6 +116,9 @@ public:
   //! \param group_id An HDF5 group id.
   virtual void to_hdf5(hid_t group_id) const = 0;
 
+  //! Get the BoundingBox for this cell.
+  virtual BoundingBox bounding_box() const = 0;
+
   //----------------------------------------------------------------------------
   // Accessors
 
@@ -128,6 +133,14 @@ public:
   //! \param[in] instance Instance index. If -1 is given, the temperature for
   //!   all instances is set.
   void set_temperature(double T, int32_t instance = -1);
+
+  //! Get the name of a cell
+  //! \return Cell name
+  const std::string& name() const { return name_; };
+
+  //! Set the temperature of a cell instance
+  //! \param[in] name Cell name
+  void set_name(const std::string& name) { name_ = name; };
 
   //----------------------------------------------------------------------------
   // Data members
@@ -192,9 +205,14 @@ public:
 
   void to_hdf5(hid_t group_id) const;
 
+  BoundingBox bounding_box() const;
+
 protected:
   bool contains_simple(Position r, Direction u, int32_t on_surface) const;
   bool contains_complex(Position r, Direction u, int32_t on_surface) const;
+  BoundingBox bounding_box_simple() const;
+  static BoundingBox bounding_box_complex(std::vector<int32_t> rpn);
+  static void apply_demorgan(std::vector<int32_t>& rpn);
 };
 
 //==============================================================================
@@ -203,16 +221,19 @@ protected:
 class DAGCell : public Cell
 {
 public:
-  moab::DagMC* dagmc_ptr_;
   DAGCell();
-  int32_t dag_index_;
 
   bool contains(Position r, Direction u, int32_t on_surface) const;
 
   std::pair<double, int32_t>
   distance(Position r, Direction u, int32_t on_surface) const;
 
+  BoundingBox bounding_box() const;
+
   void to_hdf5(hid_t group_id) const;
+
+  moab::DagMC* dagmc_ptr_; //!< Pointer to DagMC instance
+  int32_t dag_index_;      //!< DagMC index of cell
 };
 #endif
 

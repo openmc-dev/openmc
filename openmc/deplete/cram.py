@@ -51,11 +51,15 @@ def deplete(chain, x, rates, dt, matrix_func=None):
             "to the number of compositions {}".format(len(fission_yields),
                 len(x)))
 
+    if matrix_func is None:
+        matrices = map(chain.form_matrix, rates, fission_yields)
+    else:
+        matrices = map(matrix_func, repeat(chain), rates, fission_yields)
+
     # Use multiprocessing pool to distribute work
     with Pool() as pool:
-        iters = zip(repeat(chain), x, rates, repeat(dt),
-                    fission_yields, repeat(matrix_func))
-        x_result = list(pool.starmap(_cram_wrapper, iters))
+        inputs = zip(matrices, x, repeat(dt))
+        x_result = list(pool.starmap(CRAM48, inputs))
 
     return x_result
 
@@ -77,38 +81,6 @@ def timed_deplete(*args, **kwargs):
     start = time.time()
     results = deplete(*args, **kwargs)
     return time.time() - start, results
-
-
-def _cram_wrapper(chain, n0, rates, dt, fission_yields, matrix_func=None):
-    """Wraps depletion matrix creation / CRAM solve for multiprocess execution
-
-    Parameters
-    ----------
-    chain : openmc.deplete.Chain
-        Depletion chain used to construct the burnup matrix
-    n0 : numpy.array
-        Vector to operate a matrix exponent on.
-    rates : numpy.ndarray
-        2D array indexed by nuclide then by cell.
-    dt : float
-        Time to integrate to.
-    maxtrix_func : function, optional
-        Function to form the depletion matrix
-    fission_yields : dict
-        Single-energy fission yields of the form
-        ``{parent: {product: fission_yield}}``
-
-    Returns
-    -------
-    numpy.array
-        Results of the matrix exponent.
-    """
-
-    if matrix_func is None:
-        A = chain.form_matrix(rates, fission_yields)
-    else:
-        A = matrix_func(chain, rates, fission_yields)
-    return CRAM48(A, n0, dt)
 
 
 def CRAM16(A, n0, dt):

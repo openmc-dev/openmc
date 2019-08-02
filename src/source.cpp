@@ -374,7 +374,6 @@ Particle::Bank sample_pyne_source(pyne::Sampler* sampler)
   for (int i=0; i<6; i++){
       rands.push_back(prn());
   }
-  std::cout<<"check point 1, rands:"<<rands[0]<<" "<<rands[1]<<" "<<rands[2]<<" "<<rands[3]<<" "<<rands[4]<<" "<<rands[5]<<std::endl;
   pyne::SourceParticle src = sampler->particle_birth(rands);
   Particle::Bank site = convert_pyne_source_particle(src);
 
@@ -388,7 +387,6 @@ Particle::Bank sample_pyne_source(pyne::Sampler* sampler)
   // Set the random number generator back to the tracking stream.
   prn_set_stream(STREAM_TRACKING);
 
-  std::cout<<"check point 2, site "<<"site.r = ("<<site.r[0]<<", "<<site.r[1]<<", "<<site.r[2]<<"), site.E="<<site.E<<", site.wgt="<<site.wgt<<std::endl;
   return site;
 }
 
@@ -398,6 +396,13 @@ Particle::Bank convert_pyne_source_particle(pyne::SourceParticle pyne_src)
   site.r = Position(pyne_src.get_x(), pyne_src.get_y(), pyne_src.get_z());
   site.E = pyne_src.get_e() * 1.0e6; // pyne src energy unit is MeV
   site.wgt = pyne_src.get_w();
+  site.delayed_group = 0;
+  // Check for particle type
+  if (settings::photon_transport == false) {
+    site.particle = Particle::Type::neutron;
+  } else if (settings::photon_transport == true) {
+    site.particle= Particle::Type::photon;
+  }
   return site;
 }
 

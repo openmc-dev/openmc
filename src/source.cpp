@@ -264,8 +264,6 @@ void initialize_source()
 
     // Read in the pyne_r2s_source
     if (filetype == "pyne_r2s_source") {
-      msg << "Reading PyNE R2S photon source from " << settings::path_source << "...";
-      write_message(msg, 6);
       // Generation source sites from pyne source
       for (int64_t i = 0; i < simulation::work_per_rank; ++i) {
       // initialize random number seed

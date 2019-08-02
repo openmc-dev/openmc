@@ -436,7 +436,7 @@ Particle::Bank sample_pyne_source(pyne::Sampler* sampler)
   // Set the random number generator back to the tracking stream.
   prn_set_stream(STREAM_TRACKING);
 
-  //std::cout<<"check point 2, site "<<"site.r = ("<<site.r[0]<<", "<<site.r[1]<<", "<<site.r[2]<<". site.e="<<site.E<<" site.wgt="<<site.wgt<<std::endl;
+  std::cout<<"check point 2, site "<<"site.r = ("<<site.r[0]<<", "<<site.r[1]<<", "<<site.r[2]<<"), site.E="<<site.E<<", site.wgt="<<site.wgt<<std::endl;
   return site;
 }
 

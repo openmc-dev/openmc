@@ -64,9 +64,13 @@ extern "C" void initialize_source();
 //! \return Sampled source site
 Particle::Bank sample_external_source();
 
+//! Initialize pyne sampler instance
+//! \return Sampler*
+pyne::Sampler* initialize_pyne_sampler();
+
 //! Sample a site from pyne source
 //! \return Sampled source site
-Particle::Bank sample_pyne_source();
+Particle::Bank sample_pyne_source(pyne::Sampler*);
 
 //! Convert a pyne source particle to an openmc source site
 //! \return Sampled source site

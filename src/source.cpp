@@ -264,6 +264,8 @@ void initialize_source()
 
     // Read in the pyne_r2s_source
     if (filetype == "pyne_r2s_source") {
+      // initial sampler
+      pyne::Sampler* sampler = initialize_pyne_sampler();
       // Generation source sites from pyne source
       for (int64_t i = 0; i < simulation::work_per_rank; ++i) {
       // initialize random number seed
@@ -272,7 +274,7 @@ void initialize_source()
       set_particle_seed(id);
 
       // sample external source distribution
-      simulation::source_bank[i] = sample_pyne_source();
+      simulation::source_bank[i] = sample_pyne_source(sampler);
       }
     }
 
@@ -339,7 +341,24 @@ Particle::Bank sample_external_source()
   return site;
 }
 
-Particle::Bank sample_pyne_source()
+pyne::Sampler* initialize_pyne_sampler(){
+  std::string e_bounds_file ("e_bounds");
+  std::vector<double> e_bounds = pyne::read_e_bounds(e_bounds_file);
+  std::map<std::string, std::string> tag_names;
+  tag_names.insert(std::pair<std::string, std::string> ("src_tag_name",
+        "source_density"));
+  tag_names.insert(std::pair<std::string, std::string> ("bias_tag_name",
+        "biased_source_density"));
+  tag_names.insert(std::pair<std::string, std::string> ("cell_number_tag_name",
+        "cell_number"));
+  tag_names.insert(std::pair<std::string, std::string> ("cell_fracs_tag_name",
+        "cell_fracs"));
+  //pyne::Sampler* sampler = new pyne::Sampler(settings::path_source, tag_names, e_bounds, 1);
+  pyne::Sampler* sampler = new pyne::Sampler(settings::path_source, tag_names, e_bounds, 1);
+  return sampler;
+}
+
+Particle::Bank sample_pyne_source(pyne::Sampler* sampler)
 {
   // Set the random number generator to the source stream.
   prn_set_stream(STREAM_SOURCE);
@@ -355,19 +374,7 @@ Particle::Bank sample_pyne_source()
   for (int i=0; i<6; i++){
       rands.push_back(prn());
   }
-  //std::cout<<"check point 1, rands:"<<rands[0]<<" "<<rands[1]<<" "<<rands[2]<<" "<<rands[3]<<" "<<rands[4]<<" "<<rands[5]<<std::endl;
-  std::string e_bounds_file ("e_bounds");
-  std::vector<double> e_bounds = pyne::read_e_bounds(e_bounds_file);
-  std::map<std::string, std::string> tag_names;
-  tag_names.insert(std::pair<std::string, std::string> ("src_tag_name",
-        "source_density"));
-  tag_names.insert(std::pair<std::string, std::string> ("bias_tag_name",
-        "biased_source_density"));
-  tag_names.insert(std::pair<std::string, std::string> ("cell_number_tag_name",
-        "cell_number"));
-  tag_names.insert(std::pair<std::string, std::string> ("cell_fracs_tag_name",
-        "cell_fracs"));
-  pyne::Sampler* sampler = new pyne::Sampler(settings::path_source, tag_names, e_bounds, 1);
+  std::cout<<"check point 1, rands:"<<rands[0]<<" "<<rands[1]<<" "<<rands[2]<<" "<<rands[3]<<" "<<rands[4]<<" "<<rands[5]<<std::endl;
   pyne::SourceParticle src = sampler->particle_birth(rands);
   Particle::Bank site = convert_pyne_source_particle(src);
 
@@ -381,7 +388,7 @@ Particle::Bank sample_pyne_source()
   // Set the random number generator back to the tracking stream.
   prn_set_stream(STREAM_TRACKING);
 
-  //std::cout<<"check point 2, site "<<"site.r = ("<<site.r[0]<<", "<<site.r[1]<<", "<<site.r[2]<<". site.e="<<site.E<<" site.wgt="<<site.wgt<<std::endl;
+  std::cout<<"check point 2, site "<<"site.r = ("<<site.r[0]<<", "<<site.r[1]<<", "<<site.r[2]<<"), site.E="<<site.E<<", site.wgt="<<site.wgt<<std::endl;
   return site;
 }
 

@@ -131,7 +131,8 @@ def test_from_xml(simple_chain):
     # Yield tests
     assert nuc.yield_energies == [0.0253]
     assert list(nuc.yield_data) == [0.0253]
-    assert nuc.yield_data[0.0253] == [("A", 0.0292737), ("B", 0.002566345)]
+    assert nuc.yield_data[0.0253].products == ("A", "B")
+    assert (nuc.yield_data[0.0253].yields == [0.0292737, 0.002566345]).all()
 
 
 def test_export_to_xml(run_in_tmpdir):
@@ -163,7 +164,8 @@ def test_export_to_xml(run_in_tmpdir):
         nuclide.ReactionTuple("(n,gamma)", "B", 0.0, 0.3)
     ]
     C.yield_energies = [0.0253]
-    C.yield_data = {0.0253: [("A", 0.0292737), ("B", 0.002566345)]}
+    C.yield_data = nuclide.FissionYieldDistribution.from_dict({
+        0.0253: {"A": 0.0292737, "B": 0.002566345}})
 
     chain = Chain()
     chain.nuclides = [A, B, C]

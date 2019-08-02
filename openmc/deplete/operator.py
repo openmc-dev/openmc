@@ -25,7 +25,8 @@ from .abc import TransportOperator, OperatorResult
 from .atom_number import AtomNumber
 from .reaction_rates import ReactionRates
 from .results_list import ResultsList
-from .helpers import DirectReactionRateHelper, ChainFissionHelper
+from .helpers import (
+    DirectReactionRateHelper, ChainFissionHelper, FissionYieldHelper)
 
 
 def _distribute(items):
@@ -177,6 +178,8 @@ class Operator(TransportOperator):
         self._rate_helper = DirectReactionRateHelper(
             self.reaction_rates.n_nuc, self.reaction_rates.n_react)
         self._energy_helper = ChainFissionHelper()
+        self._fsn_yield_helper = FissionYieldHelper(
+            self.chain.nuclides, len(self.burnable_mats))
 
     def __call__(self, vec, power):
         """Runs a simulation.
@@ -204,8 +207,10 @@ class Operator(TransportOperator):
 
         # Update material compositions and tally nuclides
         self._update_materials()
-        self._rate_helper.nuclides = self._get_tally_nuclides()
-        self._energy_helper.nuclides = self._rate_helper.nuclides
+        nuclides = self._get_tally_nuclides()
+        self._rate_helper.nuclides = nuclides
+        self._energy_helper.nuclides = nuclides
+        self._fsn_yield_helper.set_fissionable_nuclides(nuclides)
 
         # Run OpenMC
         openmc.capi.reset()
@@ -409,6 +414,10 @@ class Operator(TransportOperator):
         self._rate_helper.generate_tallies(materials, self.chain.reactions)
         self._energy_helper.prepare(
             self.chain.nuclides, self.reaction_rates.index_nuc, materials)
+        # Tell fission yield helper what materials this process is
+        # responsible for
+        self._fsn_yield_helper.generate_tallies(
+                materials, tuple(sorted(self._mat_index_map.values())))
 
         # Return number density vector
         return list(self.number.get_mat_slice(np.s_[:]))
@@ -554,6 +563,7 @@ class Operator(TransportOperator):
         # Keep track of energy produced from all reactions in eV per source
         # particle
         self._energy_helper.reset()
+        self._fsn_yield_helper.unpack()
 
         # Create arrays to store fission Q values, reaction rates, and nuclide
         # numbers, zeroed out in material iteration
@@ -576,6 +586,9 @@ class Operator(TransportOperator):
             tally_rates = self._rate_helper.get_material_rates(
                 mat_index, nuc_ind, react_ind)
 
+            # Compute fission yields for this material
+            self._fsn_yield_helper.compute_yields(i)
+
             # Accumulate energy from fission
             self._energy_helper.update(tally_rates[:, fission_ind], mat_index)
 
@@ -588,6 +601,9 @@ class Operator(TransportOperator):
 
         # Scale reaction rates to obtain units of reactions/sec
         rates *= power / energy
+
+        # Store new fission yields on the chain
+        self.chain.fission_yields = self._fsn_yield_helper.libraries
 
         return OperatorResult(k_combined, rates)
 

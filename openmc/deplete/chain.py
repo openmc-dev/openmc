@@ -452,9 +452,6 @@ class Chain(object):
                                 k = self.nuclide_dict[target]
                                 matrix[k, i] += path_rate * br
                         else:
-                            # Assume that we should always use thermal fission
-                            # yields. At some point it would be nice to account
-                            # for the energy-dependence..
                             for product, y in fission_yields[nuc.name].items():
                                 yield_val = y * path_rate
                                 if yield_val != 0.0:

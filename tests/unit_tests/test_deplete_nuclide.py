@@ -2,6 +2,8 @@
 
 import xml.etree.ElementTree as ET
 
+import numpy
+
 from openmc.deplete import nuclide
 
 
@@ -69,11 +71,10 @@ def test_from_xml():
         nuclide.ReactionTuple('(n,gamma)', 'U236', 6545200.0, 1.0),
         nuclide.ReactionTuple('fission', None, 193405400.0, 1.0),
     ]
+    expected_yield_data = nuclide.FissionYieldDistribution.from_dict({
+        0.0253: {"Xe138": 0.0481413, "Zr100": 0.0497641, "Te134": 0.062155}})
     assert u235.yield_energies == [0.0253]
-    assert u235.yield_data == {
-        0.0253: [('Te134', 0.062155), ('Zr100', 0.0497641),
-                 ('Xe138', 0.0481413)]
-    }
+    assert u235.yield_data == expected_yield_data
 
 
 def test_to_xml_element():
@@ -91,7 +92,8 @@ def test_to_xml_element():
         nuclide.ReactionTuple('(n,gamma)', 'A', 0.0, 1.0)
     ]
     C.yield_energies = [0.0253]
-    C.yield_data = {0.0253: [("A", 0.0292737), ("B", 0.002566345)]}
+    C.yield_data = nuclide.FissionYieldDistribution.from_dict(
+        {0.0253: {"A": 0.0292737, "B": 0.002566345}})
     element = C.to_xml_element()
 
     assert element.get("half_life") == "0.123"
@@ -114,3 +116,39 @@ def test_to_xml_element():
     assert float(rx_elems[1].get("Q")) == 0.0
 
     assert element.find('neutron_fission_yields') is not None
+
+
+def test_fission_yield_distribution():
+    """Test an energy-dependent yield distribution"""
+    yield_dict = {
+        0.0253: {"Xe135": 7.85e-4, "Gd155": 4.08e-12, "Sm149": 1.71e-12},
+        1.40e7: {"Xe135": 4.54e-3, "Gd155": 5.83e-8, "Sm149": 2.69e-8},
+        5.00e5: {"Xe135": 1.12e-3, "Gd155": 1.32e-12},  # drop Sm149
+    }
+    yield_dist = nuclide.FissionYieldDistribution.from_dict(yield_dict)
+    assert len(yield_dist) == len(yield_dict)
+    assert yield_dist.energies == tuple(sorted(yield_dict.keys()))
+    for exp_ene, exp_dist in yield_dict.items():
+        act_dist = yield_dict[exp_ene]
+        for exp_prod, exp_yield in exp_dist.items():
+            assert act_dist[exp_prod] == exp_yield
+    exp_yield_matrix = numpy.array([
+        [4.08e-12, 1.71e-12, 7.85e-4],
+        [1.32e-12, 0.0, 1.12e-3],
+        [5.83e-8, 2.69e-8, 4.54e-3]])
+    assert numpy.array_equal(yield_dist.yield_matrix, exp_yield_matrix)
+
+    # Test the operations / special methods for fission yield
+    orig_yield_obj = yield_dist[0.0253]
+    # __getitem__ return yields as a view into yield matrix
+    assert orig_yield_obj.yields.base is yield_dist.yield_matrix
+    copied_yield = orig_yield_obj.copy()
+    # copied yields own their own memory -> not a view
+    assert copied_yield.yields.base is None
+
+    # Fission yield feature uses scaled and incremented
+    mod_yields = orig_yield_obj * 2
+    assert numpy.array_equal(orig_yield_obj.yields * 2, mod_yields.yields)
+    mod_yields += orig_yield_obj
+    assert numpy.array_equal(orig_yield_obj.yields * 3, mod_yields.yields)
+

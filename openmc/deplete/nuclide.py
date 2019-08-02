@@ -3,11 +3,18 @@
 Contains the per-nuclide components of a depletion chain.
 """
 
+from numbers import Real
 from collections import namedtuple
+from collections.abc import Iterable, Mapping
+
 try:
     import lxml.etree as ET
 except ImportError:
     import xml.etree.ElementTree as ET
+
+from numpy import asarray, fromiter, empty
+
+from openmc.checkvalue import check_type, check_length
 
 
 DecayTuple = namedtuple('DecayTuple', 'type target branching_ratio')
@@ -83,7 +90,7 @@ class Nuclide(object):
         Maps tabulated energy to list of (product, yield) for all
         neutron-induced fission products.
     yield_energies : list of float
-        Energies at which fission product yiels exist
+        Energies at which fission product yields exist
 
     """
 
@@ -165,12 +172,7 @@ class Nuclide(object):
 
         fpy_elem = element.find('neutron_fission_yields')
         if fpy_elem is not None:
-            for yields_elem in fpy_elem.iter('fission_yields'):
-                E = float(yields_elem.get('energy'))
-                products = yields_elem.find('products').text.split()
-                yields = [float(y) for y in
-                          yields_elem.find('data').text.split()]
-                nuc.yield_data[E] = list(zip(products, yields))
+            nuc.yield_data = FissionYieldDistribution.from_xml_element(fpy_elem)
             nuc.yield_energies = list(sorted(nuc.yield_data.keys()))
 
         return nuc
@@ -211,14 +213,181 @@ class Nuclide(object):
             fpy_elem = ET.SubElement(elem, 'neutron_fission_yields')
             energy_elem = ET.SubElement(fpy_elem, 'energies')
             energy_elem.text = ' '.join(str(E) for E in self.yield_energies)
-
-            for E in self.yield_energies:
-                yields_elem = ET.SubElement(fpy_elem, 'fission_yields')
-                yields_elem.set('energy', str(E))
-
-                products_elem = ET.SubElement(yields_elem, 'products')
-                products_elem.text = ' '.join(x[0] for x in self.yield_data[E])
-                data_elem = ET.SubElement(yields_elem, 'data')
-                data_elem.text = ' '.join(str(x[1]) for x in self.yield_data[E])
+            self.yield_data.to_xml_element(fpy_elem)
 
         return elem
+
+
+class FissionYieldDistribution(Mapping):
+    """Class for storing energy-dependent fission yields for a single nuclide
+
+    Parameters
+    ----------
+    ordered_energies : iterable of real
+        Energies for which fission yield data exist
+    orderded_products : iterable of str
+        Fission products produced by this parent at all energies
+    group_fission_yields : numpy.ndarray or iterable of iterable of float
+        Array of shape ``(n_energy, n_products)`` where
+        ``group_fission_yields[g][j]`` is the yield of
+        ``ordered_products[j]`` due to a fission in energy region ``g``.
+
+    Attributes
+    ----------
+    energies : tuple
+        Energies for which fission yields exist. Converted for
+        indexing
+    products : tuple
+        Fission products produced at all energies. Converted
+        for indexing
+    yield_matrix : numpy.ndarray
+        Array ``(n_energy, n_products)`` where
+        ``yield_matrix[g, j]`` is the fission yield of product
+        ``j`` for energy group ``g``.
+
+    See Also
+    --------
+    :meth:`from_xml`, :meth:`from_dict`
+    """
+
+    def __init__(self, ordered_energies, ordered_products, group_fission_yields):
+        check_type("energies", ordered_energies, Iterable, Real)
+        self.energies = tuple(ordered_energies)
+        check_type("products", ordered_products, Iterable, str)
+        self.products = tuple(ordered_products)
+        yield_matrix = asarray(group_fission_yields, dtype=float)
+        if yield_matrix.shape != (len(self.energies), len(self.products)):
+            raise ValueError(
+                "Shape of yield matrix inconsistent. "
+                "Should be ({}, {}), is {}".format(
+                    len(energy_map), len(ordered_products), yield_matrix.shape))
+        self.yield_matrix = yield_matrix
+
+    def __len__(self):
+        return len(self.energies)
+
+    def __getitem__(self, energy):
+        if energy not in self.energies:
+            raise KeyError(energy)
+        return _FissionYield(
+            self.products, self.yield_matrix[self.energies.index(energy)])
+
+    def __iter__(self):
+        return iter(self.energies)
+
+    @classmethod
+    def from_xml_element(cls, element):
+        """Construct a distribution from a depletion chain xml file
+
+        Parameters
+        ----------
+        element : xml.etree.ElementTree.Element
+            XML element to pull fission yield data from
+
+        Returns
+        -------
+        FissionYieldDistribution
+        """
+        yields = {}
+        for elem_index, yield_elem in enumerate(element.iter("fission_yields")):
+            energy = float(yield_elem.get("energy"))
+            products = yield_elem.find("products").text.split()
+            yield_mapobj = map(float, yield_elem.find("data").text.split())
+            # Get a map of products to their corresponding yield
+            yields[energy] = dict(zip(products, yield_mapobj))
+
+        return cls.from_dict(yields)
+
+    @classmethod
+    def from_dict(cls, fission_yields):
+        """Construct a distribution from a dictionary of yields
+
+        Parameters
+        -----------
+        fission_yields : dict
+            Dictionary ``{energy: {product: yield}}``
+
+        Returns
+        -------
+        FissionYieldDistribution
+        """
+        # mapping {energy: {product: value}}
+        energies = tuple(sorted(fission_yields))
+
+        # Get a consistent set of products to produce a matrix of yields
+        shared_prod = set()
+        for prod_set in map(set, fission_yields.values()):
+            shared_prod |= prod_set
+        ordered_prod = tuple(sorted(shared_prod))
+
+        yield_matrix = empty((len(energies), len(shared_prod)))
+
+        for g_index, energy in enumerate(sorted(energies)):
+            prod_map = fission_yields[energy]
+            for prod_ix, product in enumerate(ordered_prod):
+                yield_val = prod_map.get(product)
+                if yield_val is None:
+                    yield_matrix[g_index, prod_ix] = 0.0
+                else:
+                    yield_matrix[g_index, prod_ix] = yield_val
+
+        return cls(energies, ordered_prod, yield_matrix)
+
+    def to_xml_element(self, root):
+        """Write fission yield data to an xml element
+
+        Parameters
+        ----------
+        root : xml.etree.ElementTree.Element
+            Element to write distribution data to
+        """
+        for energy, yield_obj in self.items():
+            yield_element = ET.SubElement(root, "fission_yields")
+            yield_element.set("energy", str(energy))
+            product_elem = ET.SubElement(yield_element, "products")
+            product_elem.text = " ".join(map(str, yield_obj.products))
+            data_elem = ET.SubElement(yield_element, "data")
+            data_elem.text = " ".join(map(str, yield_obj.yields))
+
+
+class _FissionYield(Mapping):
+    """Mapping for fission yields of a parent at a specific energy
+
+    Abstracted to support nested dictionary-like behavior for
+    :class:`FissionYieldDistribution`, and allowing math operations
+    on a single vector of yields
+
+    Parameters
+    ----------
+    products : tuple of str
+        Products for this specific distribution
+    yields : numpy.ndarray
+        View into associated :attr:`FissionYieldDistribution.yield_matrix`
+    """
+
+    def __init__(self, products, yields):
+        self.products = products
+        self.yields = yields
+
+    def __getitem__(self, product):
+        if product not in self.products:
+            raise KeyError(product)
+        return self.yields[self.products.index(product)]
+
+    def __len__(self):
+        return len(self.products)
+
+    def __iter__(self):
+        return iter(self.products)
+
+    def __iadd__(self, other):
+        """Increment value from other fission yield"""
+        self.yields += other.yields
+        return self
+
+    def __mul__(self, value):
+        return _FissionYield(self.products, self.yields * value)
+
+    def copy(self):
+        """Return an identical yield object, with unique yields"""
+        return _FissionYield(self.products, self.yields.copy())

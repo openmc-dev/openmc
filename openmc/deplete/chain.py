@@ -129,7 +129,6 @@ class Chain(object):
         self.nuclides = []
         self.reactions = []
         self.nuclide_dict = OrderedDict()
-        self._default_fsn_yields = None
 
     def __contains__(self, nuclide):
         return nuclide in self.nuclide_dict
@@ -375,7 +374,7 @@ class Chain(object):
             clean_indentation(root_elem)
             tree.write(str(filename), encoding='utf-8')
 
-    def _build_default_yields(self):
+    def get_thermal_fission_yields(self):
         """Return dictionary {str: {str: float}}"""
         # Take lowest energy for back compatability
         # Should be removed by end of this feature
@@ -383,8 +382,8 @@ class Chain(object):
         for nuc in self.nuclides:
             if len(nuc.yield_data) == 0:
                 continue
-            _energy, yield_data = sorted(nuc.yield_data.items())[0]
-            out[nuc.name] = {prod: frac for prod, frac in yield_data}
+            yield_obj = nuc.yield_data[min(nuc.yield_energies)]
+            out[nuc.name] = dict(yield_obj)
         return out
 
     def form_matrix(self, rates, fission_yields=None):
@@ -407,9 +406,7 @@ class Chain(object):
         reactions = set()
 
         if fission_yields is None:
-            if self._default_fsn_yields is None:
-                self._default_fsn_yields = self._build_default_yields()
-            fission_yields = self._default_fsn_yields
+            fission_yields = self.get_thermal_fission_yields()
 
         for i, nuc in enumerate(self.nuclides):
 

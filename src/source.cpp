@@ -353,7 +353,11 @@ Particle::Bank sample_pyne_source()
   ///   total_strength += s.strength();
   total_strength = 1.0; // for test
 
-  std::vector<double> rands {0.5, 0.5, 0.5, 0.5, 0.5, 0.5};
+  std::vector<double> rands;;
+  for (int i=0; i<6; i++){
+      rands.push_back(prn());
+  }
+  //std::cout<<"check point 1, rands:"<<rands[0]<<" "<<rands[1]<<" "<<rands[2]<<" "<<rands[3]<<" "<<rands[4]<<" "<<rands[5]<<std::endl;
   std::string e_bounds_file ("e_bounds");
   std::vector<double> e_bounds = pyne::read_e_bounds(e_bounds_file);
   std::map<std::string, std::string> tag_names;
@@ -379,6 +383,7 @@ Particle::Bank sample_pyne_source()
   // Set the random number generator back to the tracking stream.
   prn_set_stream(STREAM_TRACKING);
 
+  //std::cout<<"check point 2, site "<<"site.r = ("<<site.r[0]<<", "<<site.r[1]<<", "<<site.r[2]<<". site.e="<<site.E<<" site.wgt="<<site.wgt<<std::endl;
   return site;
 }
 

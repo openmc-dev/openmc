@@ -30,7 +30,9 @@ def deplete(chain, x, rates, dt, matrix_func=None):
     dt : float
         Time in [s] to deplete for
     maxtrix_func : Callable, optional
-        Function of two variables: ``chain`` and ``rates``.
+        Function to form the depletion matrix after calling
+        ``matrix_func(chain, rates, fission_yields)``, where
+        ``fission_yields = {parent: {product: yield_frac}}``
         Expected to return the depletion matrix required by
         :func:`CRAM48`.
 
@@ -40,9 +42,15 @@ def deplete(chain, x, rates, dt, matrix_func=None):
         Updated atom number vectors for each material
     """
 
+    if not hasattr(chain, "fission_yields"):
+        fission_yields = repeat(chain.get_thermal_fission_yields())
+    else:
+        fission_yields = chain.fission_yields
+
     # Use multiprocessing pool to distribute work
     with Pool() as pool:
-        iters = zip(repeat(chain), x, rates, repeat(dt), repeat(matrix_func))
+        iters = zip(repeat(chain), x, rates, repeat(dt),
+                    fission_yields, repeat(matrix_func))
         x_result = list(pool.starmap(_cram_wrapper, iters))
 
     return x_result
@@ -67,7 +75,7 @@ def timed_deplete(*args, **kwargs):
     return time.time() - start, results
 
 
-def _cram_wrapper(chain, n0, rates, dt, matrix_func=None):
+def _cram_wrapper(chain, n0, rates, dt, fission_yields, matrix_func=None):
     """Wraps depletion matrix creation / CRAM solve for multiprocess execution
 
     Parameters
@@ -82,6 +90,9 @@ def _cram_wrapper(chain, n0, rates, dt, matrix_func=None):
         Time to integrate to.
     maxtrix_func : function, optional
         Function to form the depletion matrix
+    fission_yields : dict
+        Single-energy fission yields of the form
+        ``{parent: {product: fission_yield}}``
 
     Returns
     -------
@@ -90,9 +101,9 @@ def _cram_wrapper(chain, n0, rates, dt, matrix_func=None):
     """
 
     if matrix_func is None:
-        A = chain.form_matrix(rates)
+        A = chain.form_matrix(rates, fission_yields)
     else:
-        A = matrix_func(chain, rates)
+        A = matrix_func(chain, rates, fission_yields)
     return CRAM48(A, n0, dt)
 
 

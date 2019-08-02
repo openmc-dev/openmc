@@ -6,6 +6,42 @@ from openmc.deplete.reaction_rates import ReactionRates
 from openmc.deplete.abc import TransportOperator, OperatorResult
 
 
+class TestChain(object):
+
+    @staticmethod
+    def get_thermal_fission_yields():
+        return None
+
+    def form_matrix(self, rates, _fission_yields=None):
+        """Forms the f(y) matrix in y' = f(y)y.
+
+        Nominally a depletion matrix, this is abstracted on the off chance
+        that the function f has nothing to do with depletion at all.
+
+        Parameters
+        ----------
+        rates : numpy.ndarray
+            Slice of reaction rates for a single material
+        _fission_yields : optional
+            Not used
+
+        Returns
+        -------
+        scipy.sparse.csr_matrix
+            Sparse matrix representing f(y).
+        """
+
+        y_1 = rates[0, 0]
+        y_2 = rates[1, 0]
+
+        a11 = np.sin(y_2)
+        a12 = np.cos(y_1)
+        a21 = -np.cos(y_2)
+        a22 = np.sin(y_1)
+
+        return sp.csr_matrix(np.array([[a11, a12], [a21, a22]]))
+
+
 class DummyOperator(TransportOperator):
     """This is a dummy operator class with no statistical uncertainty.
 
@@ -21,6 +57,7 @@ class DummyOperator(TransportOperator):
     """
     def __init__(self, previous_results=None):
         self.prev_res = previous_results
+        self.chain = TestChain()
 
     def __call__(self, vec, power, print_out=False):
         """Evaluates F(y)
@@ -51,38 +88,6 @@ class DummyOperator(TransportOperator):
 
         # Create a fake rates object
         return OperatorResult(ufloat(0.0, 0.0), reaction_rates)
-
-    @property
-    def chain(self):
-        return self
-
-    def form_matrix(self, rates):
-        """Forms the f(y) matrix in y' = f(y)y.
-
-        Nominally a depletion matrix, this is abstracted on the off chance
-        that the function f has nothing to do with depletion at all.
-
-        Parameters
-        ----------
-        rates : numpy.ndarray
-            Slice of reaction rates for a single material
-
-        Returns
-        -------
-        scipy.sparse.csr_matrix
-            Sparse matrix representing f(y).
-        """
-
-        y_1 = rates[0, 0]
-        y_2 = rates[1, 0]
-
-        mat = np.zeros((2, 2))
-        a11 = np.sin(y_2)
-        a12 = np.cos(y_1)
-        a21 = -np.cos(y_2)
-        a22 = np.sin(y_1)
-
-        return sp.csr_matrix(np.array([[a11, a12], [a21, a22]]))
 
     @property
     def volume(self):

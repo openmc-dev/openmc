@@ -425,6 +425,8 @@ Particle::Bank sample_pyne_source(pyne::Sampler* sampler)
       ++n_reject;
     }
   }
+  pyne::SourceParticle src = sampler->particle_birth(rands);
+  Particle::Bank site = convert_pyne_source_particle(src);
 
   // If running in MG, convert site % E to group
   if (!settings::run_CE) {
@@ -436,7 +438,6 @@ Particle::Bank sample_pyne_source(pyne::Sampler* sampler)
   // Set the random number generator back to the tracking stream.
   prn_set_stream(STREAM_TRACKING);
 
-  std::cout<<"check point 2, site "<<"site.r = ("<<site.r[0]<<", "<<site.r[1]<<", "<<site.r[2]<<"), site.E="<<site.E<<", site.wgt="<<site.wgt<<std::endl;
   return site;
 }
 

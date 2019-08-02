@@ -353,19 +353,6 @@ Particle::Bank sample_pyne_source()
   ///   total_strength += s.strength();
   total_strength = 1.0; // for test
 
-  // Sample from among multiple source distributions
-  /// int i = 0;
-  /// if (model::external_sources.size() > 1) {
-  ///   double xi = prn()*total_strength;
-  ///   double c = 0.0;
-  ///   for (; i < model::external_sources.size(); ++i) {
-  ///     c += model::external_sources[i].strength();
-  ///     if (xi < c) break;
-  ///   }
-  /// }
-
-  // Sample source site from i-th source distribution
-  /// Particle::Bank site {model::external_sources[i].sample()};
   std::vector<double> rands {0.5, 0.5, 0.5, 0.5, 0.5, 0.5};
   std::string e_bounds_file ("e_bounds");
   std::vector<double> e_bounds = pyne::read_e_bounds(e_bounds_file);
@@ -401,6 +388,7 @@ Particle::Bank convert_pyne_source_particle(pyne::SourceParticle pyne_src)
   site.r = Position(pyne_src.get_x(), pyne_src.get_y(), pyne_src.get_z());
   site.E = pyne_src.get_e() * 1.0e6; // pyne src energy unit is MeV
   site.wgt = pyne_src.get_w();
+  return site;
 }
 
 void free_memory_source()

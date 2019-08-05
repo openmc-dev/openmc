@@ -151,4 +151,3 @@ def test_fission_yield_distribution():
     assert numpy.array_equal(orig_yield_obj.yields * 2, mod_yields.yields)
     mod_yields += orig_yield_obj
     assert numpy.array_equal(orig_yield_obj.yields * 3, mod_yields.yields)
-

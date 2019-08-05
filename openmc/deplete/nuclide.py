@@ -12,9 +12,9 @@ try:
 except ImportError:
     import xml.etree.ElementTree as ET
 
-from numpy import asarray, fromiter, empty
+from numpy import asarray, empty
 
-from openmc.checkvalue import check_type, check_length
+from openmc.checkvalue import check_type
 
 
 DecayTuple = namedtuple('DecayTuple', 'type target branching_ratio')
@@ -260,7 +260,8 @@ class FissionYieldDistribution(Mapping):
             raise ValueError(
                 "Shape of yield matrix inconsistent. "
                 "Should be ({}, {}), is {}".format(
-                    len(energy_map), len(ordered_products), yield_matrix.shape))
+                    len(ordered_energies), len(ordered_products),
+                    yield_matrix.shape))
         self.yield_matrix = yield_matrix
 
     def __len__(self):

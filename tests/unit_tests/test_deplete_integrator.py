@@ -80,7 +80,7 @@ def test_results_save(run_in_tmpdir):
     Results.save(op, x2, op_result2, t2, 0, 1)
 
     # Load the files
-    res = ResultsList("depletion_results.h5")
+    res = ResultsList.from_hdf5("depletion_results.h5")
 
     for i in range(stages):
         for mat_i, mat in enumerate(burn_list):

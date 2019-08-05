@@ -12,7 +12,7 @@ def res():
     """Load the reference results"""
     filename = (Path(__file__).parents[1] / 'regression_tests' / 'deplete'
                 / 'test_reference.h5')
-    return openmc.deplete.ResultsList(filename)
+    return openmc.deplete.ResultsList.from_hdf5(filename)
 
 
 def test_get_atoms(res):

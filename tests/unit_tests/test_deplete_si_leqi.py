@@ -21,7 +21,7 @@ def test_si_leqi(run_in_tmpdir):
     openmc.deplete.si_leqi(op, dt, power, print_out=False)
 
     # Load the files
-    res = openmc.deplete.ResultsList(op.output_dir / "depletion_results.h5")
+    res = openmc.deplete.ResultsList.from_hdf5(op.output_dir / "depletion_results.h5")
 
     _, y1 = res.get_atoms("1", "1")
     _, y2 = res.get_atoms("1", "2")

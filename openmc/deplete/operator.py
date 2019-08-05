@@ -23,6 +23,7 @@ from . import comm
 from .abc import TransportOperator, OperatorResult
 from .atom_number import AtomNumber
 from .reaction_rates import ReactionRates
+from .results_list import ResultsList
 from .helpers import DirectReactionRateHelper, ChainFissionHelper
 
 
@@ -72,7 +73,8 @@ class Operator(TransportOperator):
         specified, the depletion calculation will start from the latest state
         in the previous results.
     diff_burnable_mats : bool, optional
-        Whether to differentiate burnable materials with multiple instances
+        Whether to differentiate burnable materials with multiple instances.
+        Default: False.
     fission_q : dict, optional
         Dictionary of nuclides and their fission Q values [eV]. If not given,
         values will be pulled from the ``chain_file``.
@@ -121,18 +123,10 @@ class Operator(TransportOperator):
                  dilute_initial=1.0e3):
         super().__init__(chain_file, fission_q, dilute_initial)
         self.round_number = False
+        self.prev_res = None
         self.settings = settings
         self.geometry = geometry
         self.diff_burnable_mats = diff_burnable_mats
-
-        if prev_results is not None:
-            # Reload volumes into geometry
-            prev_results[-1].transfer_volumes(geometry)
-
-            # Store previous results in operator
-            self.prev_res = prev_results
-        else:
-            self.prev_res = None
 
         # Differentiate burnable materials with multiple instances
         if self.diff_burnable_mats:
@@ -147,6 +141,21 @@ class Operator(TransportOperator):
         self._mat_index_map = {
             lm: self.burnable_mats.index(lm) for lm in self.local_mats}
 
+        if prev_results is not None:
+            # Reload volumes into geometry
+            prev_results[-1].transfer_volumes(geometry)
+
+            # Store previous results in operator
+            # Distribute reaction rates according to those tracked
+            # on this process
+            if comm.size == 1:
+                self.prev_res = prev_results
+            else:
+                self.prev_res = ResultsList()
+                mat_indexes = _distribute(range(len(self.burnable_mats)))
+                for res_obj in prev_results:
+                    new_res = res_obj.distribute(self.local_mats, mat_indexes)
+                    self.prev_res.append(new_res)
 
         # Determine which nuclides have incident neutron data
         self.nuclides_with_data = self._get_nuclides_with_data()

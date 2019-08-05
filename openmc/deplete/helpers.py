@@ -1,10 +1,9 @@
 """
 Class for normalizing fission energy deposition
 """
-from collections import defaultdict
 from itertools import product
 
-from numpy import dot, zeros, newaxis, divide, asarray
+from numpy import dot, zeros, newaxis, asarray, empty_like, where
 
 from openmc.capi import (
     Tally, MaterialFilter, EnergyFilter)
@@ -290,12 +289,19 @@ class FissionYieldHelper(object):
             len(self._reaction_tally.nuclides))
 
         # Get results specific to this process
-        self.results = result_view[self.local_indexes, ...]
+        fission_rates = result_view[self.local_indexes]
+        self.results = empty_like(fission_rates)
 
-        # scale fission yields proportional to total fission rate
-        fsn_rate = self.results.sum(axis=1)
-        # TODO Guard against divide by zero
-        self.results /= fsn_rate[:, newaxis, :]
+        # scale group fission rates proportional to total fission rate
+        fission_total = fission_rates.sum(axis=1)
+        nz_mat, nz_nuc = fission_total.nonzero()
+        self.results[nz_mat, :, nz_nuc] = (
+            fission_rates[nz_mat, :, nz_nuc]
+            / fission_total[nz_mat, newaxis, nz_nuc])
+
+        # directly set values to zero where total fission rate is zero
+        z_mat, z_nuc = where(fission_total == 0.0)
+        self.results[z_mat, :, z_nuc] = 0.0
 
     def compute_yields(self, local_mat_index):
         """Compute single fission yields using :attr:`results`

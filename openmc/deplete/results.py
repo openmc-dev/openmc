@@ -153,6 +153,34 @@ class Results(object):
         # Create storage array
         self.data = np.zeros((stages, self.n_mat, self.n_nuc))
 
+    def distribute(self, local_materials, ranges):
+        """Create a new object containing data for distributed materials
+
+        Parameters
+        ----------
+        local_materials : iterable of str
+            Materials for this process
+        ranges : iterable of int
+
+        Returns
+        -------
+        Results
+            - New results object
+        """
+        new = Results()
+        new.volume = {lm: self.volume[lm] for lm in local_materials}
+        new.mat_to_ind = dict(zip(
+            local_materials, range(len(local_materials))))
+        # Direct transfer
+        direct_attrs = ("time", "k", "power", "nuc_to_ind",
+                        "mat_to_hdf5_ind", "proc_time")
+        for attr in direct_attrs:
+            setattr(new, attr, getattr(self, attr))
+        # Get applicable slice of data
+        new.data = self.data[:, ranges]
+        new.rates = [r[ranges] for r in self.rates]
+        return new
+
     def export_to_hdf5(self, filename, step):
         """Export results to an HDF5 file
 

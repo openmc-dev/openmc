@@ -17,6 +17,7 @@ from numpy import nonzero, empty
 from openmc.data import DataLibrary, JOULE_PER_EV
 from openmc.checkvalue import check_type, check_greater_than
 from .chain import Chain
+from .results_list import ResultsList
 
 OperatorResult = namedtuple('OperatorResult', ['k', 'rates'])
 OperatorResult.__doc__ = """\
@@ -61,6 +62,8 @@ class TransportOperator(ABC):
         in initial condition to ensure they exist in the decay chain.
         Only done for nuclides with reaction rates.
         Defaults to 1.0e3.
+    prev_results : ResultsList, optional
+        Results from a previous depletion calculation.
 
     Attributes
     ----------
@@ -68,8 +71,12 @@ class TransportOperator(ABC):
         Initial atom density [atoms/cm^3] to add for nuclides that are zero
         in initial condition to ensure they exist in the decay chain.
         Only done for nuclides with reaction rates.
+    prev_res : ResultsList or None
+        Results from a previous depletion calculation. ``None`` if no
+        results are to be used.
     """
-    def __init__(self, chain_file=None, fission_q=None, dilute_initial=1.0e3):
+    def __init__(self, chain_file=None, fission_q=None, dilute_initial=1.0e3,
+                 prev_results=None):
         self.dilute_initial = dilute_initial
         self.output_dir = '.'
 
@@ -93,6 +100,11 @@ class TransportOperator(ABC):
                      "of adding depletion_chain to OPENMC_CROSS_SECTIONS",
                      FutureWarning)
         self.chain = Chain.from_xml(chain_file, fission_q)
+        if prev_results is None:
+            self.prev_res = None
+        else:
+            check_type("previous results", prev_results, ResultsList)
+            self.prev_results = prev_res
 
     @property
     def dilute_initial(self):
@@ -122,7 +134,6 @@ class TransportOperator(ABC):
             Eigenvalue and reaction rates resulting from transport operator
 
         """
-        pass
 
     def __enter__(self):
         # Save current directory and move to specific output directory
@@ -157,8 +168,6 @@ class TransportOperator(ABC):
             Total density for initial conditions.
         """
 
-        pass
-
     @abstractmethod
     def get_results_info(self):
         """Returns volume list, cell lists, and nuc lists.
@@ -174,8 +183,6 @@ class TransportOperator(ABC):
         full_burn_list : list of int
             All burnable materials in the geometry.
         """
-
-        pass
 
     def finalize(self):
         pass

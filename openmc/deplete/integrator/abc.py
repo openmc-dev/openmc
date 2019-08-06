@@ -40,13 +40,13 @@ class Integrator(ABC):
         # Check number of stages previously used
         if operator.prev_res is not None:
             res = operator.prev_res[-1]
-            if res.data.shape[0] != self._N_STAGES:
+            if res.data.shape[0] != self._num_stages:
                 raise ValueError(
                     "{} incompatible with previous restart calculation. "
                     "Previous scheme used {} intermediate solutions, while "
                     "this uses {}".format(
                         self.__class__.__name__, res.data.shape[0],
-                        self._N_STAGES))
+                        self._num_stages))
         self.operator = operator
         self.chain = operator.chain
         if not isinstance(timesteps, Iterable):
@@ -102,7 +102,7 @@ class Integrator(ABC):
 
     @property
     @abstractmethod
-    def _N_STAGES(self):
+    def _num_stages(self):
         """Number of intermediate transport solutions
 
         Needed to ensure schemes are consistent with restarts
@@ -141,7 +141,7 @@ class Integrator(ABC):
     def integrate(self):
         """Perform the entire depletion process across all steps"""
         with self.operator as conc:
-            t, self._ires = self._get_start_data()
+            t, self._i_res = self._get_start_data()
 
             for i, (dt, p) in enumerate(self):
                 if i > 0 or self.operator.prev_res is None:
@@ -157,29 +157,21 @@ class Integrator(ABC):
                 # Remove actual EOS concentration for next step
                 conc = conc_list.pop()
 
-                self._save_results(
-                    conc_list, res_list, [t, t + dt], p, self._ires + i,
-                    proc_time)
+                Results.save(self.operator, conc_list, res_list, [t, t + dt],
+                             p, self._i_res + i, proc_time)
 
                 t += dt
 
             # Final simulation
             res_list = [self.operator(conc, p)]
-            self._save_results(
-                [conc], res_list, [t, t], p, self._ires + len(self))
+            Results.save(self.operator, [conc], res_list, [t, t],
+                         p, self._i_res + len(self), proc_time)
             self._write_statepoint(len(self))
-
-    def _save_results(self, conc_list, results_list, time_list, power,
-                      index, proc_time=None):
-        """Save the results at the end of of one step"""
-        Results.save(
-            self.operator, conc_list, results_list, time_list,
-            power, index, proc_time)
 
     def _write_statepoint(self, step_index):
         """Use C API to write a statepoint for this index"""
         statepoint_write(
-            "openmc_simulation_n{}.h5".format(step_index + self._ires),
+            "openmc_simulation_n{}.h5".format(step_index + self._i_res),
             write_source=False)
 
 
@@ -234,7 +226,7 @@ class SI_Integrator(Integrator):
     def integrate(self):
         """Perform the entire depletion process across all steps"""
         with self.operator as conc:
-            t, self._ires = self._get_start_data()
+            t, self._i_res = self._get_start_data()
 
             for i, (dt, p) in enumerate(self):
                 if i == 0:
@@ -256,13 +248,12 @@ class SI_Integrator(Integrator):
                 # Remove actual EOS concentration for next step
                 conc = conc_list.pop()
 
-                self._save_results(
-                    conc_list, res_list, [t, t + dt], p, self._ires + i,
-                    proc_time)
+                Results.save(self.operator, conc_list, res_list, [t, t + dt],
+                             p, self._i_res + i, proc_time)
 
                 t += dt
 
             # No final simulation for SIE, use last iteration results
-            self._save_results(
-                [conc], [res_list[-1]], [t, t], p, self._ires + len(self))
+            Results.save(self.operator, [conc], [res_list[-1]], [t, t],
+                         p, self._i_res + len(self), proc_time)
             self._write_statepoint(len(self))

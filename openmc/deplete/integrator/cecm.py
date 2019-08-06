@@ -22,7 +22,7 @@ class CECMIntegrator(Integrator):
         y_{n+1} &= \text{expm}(A_c h) y_n
         \end{aligned}
     """
-    _N_STAGES = 2
+    _num_stages = 2
 
     def __call__(self, conc, rates, dt, power, _i=-1):
         """Integrate using CE/CM

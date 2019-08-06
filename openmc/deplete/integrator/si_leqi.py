@@ -21,7 +21,7 @@ class SI_LEQI_Integrator(SI_Integrator):
     Detailed algorithm can be found in Section 3.2 in `Colin Josey's thesis
     <http://hdl.handle.net/1721.1/113721>`_.
     """
-    _N_STAGES = 2
+    _num_stages = 2
 
     def __call__(self, bos_conc, bos_rates, dt, power, i):
         """Perform the integration across one time step
@@ -52,20 +52,20 @@ class SI_LEQI_Integrator(SI_Integrator):
             simulation
         """
         if i == 0:
-            if self._ires < 1:
+            if self._i_res < 1:
                 self._prev_rates = bos_rates
                 # Perform CELI for initial steps
                 return SI_CELI_Integrator.__call__(
                     self, bos_conc, bos_rates, dt, power, i)
             prev_res = self.operator.prev_res[-2]
-            prevdt = self.timesteps[i] - prev_res.time[0]
+            prev_dt = self.timesteps[i] - prev_res.time[0]
             self._prev_rates = prev_res.rates[0]
         else:
-            prevdt = self.timesteps[i - 1]
+            prev_dt = self.timesteps[i - 1]
 
         # Perform remaining LE/QI
         inputs = list(zip(self._prev_rates, bos_rates,
-                          repeat(prevdt), repeat(dt)))
+                          repeat(prev_dt), repeat(dt)))
         proc_time, inter_conc = timed_deplete(
             self.chain, bos_conc, inputs, dt, matrix_func=_leqi_f1)
         time1, eos_conc = timed_deplete(
@@ -85,7 +85,7 @@ class SI_LEQI_Integrator(SI_Integrator):
                 res_bar = OperatorResult(k, rates)
 
             inputs = list(zip(self._prev_rates, bos_rates, res_bar.rates,
-                              repeat(prevdt), repeat(dt)))
+                              repeat(prev_dt), repeat(dt)))
             time1, inter_conc = timed_deplete(
                 self.chain, bos_conc, inputs, dt, matrix_func=_leqi_f3)
             time2, inter_conc = timed_deplete(

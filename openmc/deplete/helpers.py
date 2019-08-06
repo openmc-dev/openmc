@@ -277,8 +277,14 @@ class FissionYieldHelper(object):
         """Unpack fission rate tallies to produce :attr:`results`
 
         Resets :attr:`libraries` under the assumption this is called
-        during the :class:`openmc.deplete.Operator` unpackign process
+        during the :class:`openmc.deplete.Operator` unpacking process
         """
+        # if this process is not responsible for depleting anything
+        # [more processes than burnable materials]
+        # don't do anything
+        if self.local_indexes.size == 0:
+            return
+
         # clear old libraries
         self.libraries = []
 

@@ -187,6 +187,7 @@ CASL_CHAIN = {
     'Sb127': (False, 3, 2, None),
     'Te127': (False, 3, -1, None),
     'Te127_m1': (False, 3, -1, None),
+    'Te129': (False, 3, 2, None),
     'Te129_m1': (False, 3, 2, None),
     'Te132': (False, 3, 2, None),
     'I127': (True, 3, 1, None),

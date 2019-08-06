@@ -2,20 +2,20 @@
 
 import copy
 
-from .abc import SI_Integrator
+from .abc import SIIntegrator
 from .cram import timed_deplete
 from .celi import _celi_f1, _celi_f2
 from ..abc import OperatorResult
 
 
-class SI_CELI_Integrator(SI_Integrator):
-    r"""Deplete using the si-ce/li cfq4 algorithm.
+class SICELIIntegrator(SIIntegrator):
+    r"""Deplete using the SI-CE/LI CFQ4 algorithm.
 
-    Implements the stochastic implicit ce/li predictor-corrector algorithm
+    Implements the stochastic implicit CE/LI predictor-corrector algorithm
     using the `fourth order commutator-free integrator
     <https://doi.org/10.1137/05063042>`_.
 
-    detailed algorithm can be found in section 3.2 in `colin josey's thesis
+    Detailed algorithm can be found in section 3.2 in `colin josey's thesis
     <http://hdl.handle.net/1721.1/113721>`_.
     """
     _num_stages = 2

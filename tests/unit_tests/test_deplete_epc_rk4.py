@@ -4,7 +4,7 @@ These tests integrate a simple test problem described in dummy_geometry.py.
 """
 
 from pytest import approx
-from openmc.deplete import EPC_RK4_Integrator, ResultsList
+from openmc.deplete import EPCRK4Integrator, ResultsList
 
 from tests import dummy_operator
 
@@ -18,7 +18,7 @@ def test_epc_rk4(run_in_tmpdir):
     # Perform simulation using the epc_rk4 algorithm
     dt = [0.75, 0.75]
     power = 1.0
-    EPC_RK4_Integrator(op, dt, power).integrate()
+    EPCRK4Integrator(op, dt, power).integrate()
 
     # Load the files
     res = ResultsList(op.output_dir / "depletion_results.h5")

@@ -1,18 +1,16 @@
 """The SI-LE/QI CFQ4 integrator."""
 
 import copy
-from collections.abc import Iterable
 from itertools import repeat
 
-from .abc import SI_Integrator
-from .si_celi import SI_CELI_Integrator
+from .abc import SIIntegrator
+from .si_celi import SICELIIntegrator
 from .leqi import _leqi_f1, _leqi_f2, _leqi_f3, _leqi_f4
 from .cram import timed_deplete
-from ..results import Results
 from ..abc import OperatorResult
 
 
-class SI_LEQI_Integrator(SI_Integrator):
+class SILEQIIntegrator(SIIntegrator):
     r"""Deplete using the SI-LE/QI CFQ4 algorithm.
 
     Implements the Stochastic Implicit LE/QI Predictor-Corrector algorithm using
@@ -55,7 +53,7 @@ class SI_LEQI_Integrator(SI_Integrator):
             if self._i_res < 1:
                 self._prev_rates = bos_rates
                 # Perform CELI for initial steps
-                return SI_CELI_Integrator.__call__(
+                return SICELIIntegrator.__call__(
                     self, bos_conc, bos_rates, dt, power, i)
             prev_res = self.operator.prev_res[-2]
             prev_dt = self.timesteps[i] - prev_res.time[0]

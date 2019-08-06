@@ -4,7 +4,7 @@ These tests integrate a simple test problem described in dummy_geometry.py.
 """
 
 from pytest import approx
-from openmc.deplete import SI_CELI_Integrator, ResultsList
+from openmc.deplete import SICELIIntegrator, ResultsList
 
 from tests import dummy_operator
 
@@ -18,7 +18,7 @@ def test_si_celi(run_in_tmpdir):
     # Perform simulation using the si_celi algorithm
     dt = [0.75, 0.75]
     power = 1.0
-    SI_CELI_Integrator(op, dt, power).integrate()
+    SICELIIntegrator(op, dt, power).integrate()
 
     # Load the files
     res = ResultsList(op.output_dir / "depletion_results.h5")

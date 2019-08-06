@@ -4,7 +4,7 @@ from .cram import timed_deplete
 from .abc import Integrator
 
 
-class EPC_RK4_Integrator(Integrator):
+class EPCRK4Integrator(Integrator):
     r"""Deplete using the EPC-RK4 algorithm.
 
     Implements an extended predictor-corrector algorithm with traditional

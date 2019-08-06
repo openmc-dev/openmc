@@ -187,6 +187,19 @@ class TransportOperator(ABC):
     def finalize(self):
         pass
 
+    @abstractmethod
+    def write_bos_data(self, step):
+        """Document beginning of step data for a given step
+
+        Called at the beginning of a depletion step and at
+        the final point in the simulation.
+
+        Parameters
+        ----------
+        step : int
+            Current depletion step including restarts
+        """
+
 
 class ReactionRateHelper(ABC):
     """Abstract class for generating reaction rates for operators

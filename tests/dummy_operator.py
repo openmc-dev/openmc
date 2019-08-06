@@ -116,6 +116,9 @@ class DummyOperator(TransportOperator):
         """Maps cell name to index in global geometry."""
         return self.local_mats
 
+    @staticmethod
+    def write_bos_data(_step):
+        """Empty method but avoids calls to C API"""
 
     @property
     def reaction_rates(self):

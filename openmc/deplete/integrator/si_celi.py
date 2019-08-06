@@ -18,7 +18,7 @@ class SI_CELI_Integrator(SI_Integrator):
     detailed algorithm can be found in section 3.2 in `colin josey's thesis
     <http://hdl.handle.net/1721.1/113721>`_.
     """
-    _N_STAGES = 2
+    _num_stages = 2
 
     def __call__(self, bos_conc, bos_rates, dt, power, _i):
         """Perform the integration across one time step

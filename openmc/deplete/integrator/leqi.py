@@ -37,7 +37,7 @@ class LEQIIntegrator(Integrator):
 
     It is initialized using the CE/LI algorithm.
     """
-    _N_STAGES = 2
+    _num_stages = 2
 
     def __call__(self, bos_conc, bos_rates, dt, power, i):
         """Perform the integration across one time step
@@ -67,21 +67,21 @@ class LEQIIntegrator(Integrator):
             simulation
         """
         if i == 0:
-            if self._ires < 1:  # need at least previous transport solution
+            if self._i_res < 1:  # need at least previous transport solution
                 self._prev_rates = bos_rates
                 return CELIIntegrator.__call__(
                     self, bos_conc, bos_rates, dt, power, i)
             prev_res = self.operator.prev_res[-2]
-            prevdt = self.timesteps[i] - prev_res.time[0]
+            prev_dt = self.timesteps[i] - prev_res.time[0]
             self._prev_rates = prev_res.rates[0]
         else:
-            prevdt = self.timesteps[i - 1]
+            prev_dt = self.timesteps[i - 1]
 
         # Remaining LE/QI
         bos_res = self.operator(bos_conc, power)
 
         le_inputs = list(zip(
-            self._prev_rates, bos_res.rates, repeat(prevdt), repeat(dt)))
+            self._prev_rates, bos_res.rates, repeat(prev_dt), repeat(dt)))
 
         time1, conc_inter = timed_deplete(
             self.chain, bos_conc, le_inputs, dt, matrix_func=_leqi_f1)
@@ -92,7 +92,7 @@ class LEQIIntegrator(Integrator):
 
         qi_inputs = list(zip(
             self._prev_rates, bos_res.rates, res_inter.rates,
-            repeat(prevdt), repeat(dt)))
+            repeat(prev_dt), repeat(dt)))
 
         time3, conc_inter = timed_deplete(
             self.chain, bos_conc, qi_inputs, dt, matrix_func=_leqi_f3)

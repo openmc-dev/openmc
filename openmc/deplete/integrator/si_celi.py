@@ -32,14 +32,14 @@ class SI_CELI_Integrator(SI_Integrator):
         dt : float
             Time in [s] for the entire depletion interval
         power : float
-            Power of the system [W]
+            Power of the system in [W]
         _i : int
             Current depletion step index. Unused
 
         Returns
         -------
         proc_time : float
-            Time spent in CRAM routines for all materials
+            Time spent in CRAM routines for all materials in [s]
         bos_conc_list : list of numpy.ndarray
             Concentrations at each of the intermediate points with
             the final bos_concentration as the last element

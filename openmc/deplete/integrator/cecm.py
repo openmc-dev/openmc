@@ -43,7 +43,7 @@ class CECMIntegrator(Integrator):
         Returns
         -------
         proc_time : float
-            Time spent in CRAM routines for all materials
+            Time spent in CRAM routines for all materials in [s]
         conc_list : list of numpy.ndarray
             Concentrations at each of the intermediate points with
             the final concentration as the last element

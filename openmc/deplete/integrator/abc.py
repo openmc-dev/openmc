@@ -84,14 +84,14 @@ class Integrator(ABC):
         dt : float
             Time in [s] for the entire depletion interval
         power : float
-            Power of the system [W]
+            Power of the system in [W]
         i : int
             Current depletion step index
 
         Returns
         -------
         proc_time : float
-            Time spent in CRAM routines for all materials
+            Time spent in CRAM routines for all materials in [s]
         conc_list : list of numpy.ndarray
             Concentrations at each of the intermediate points with
             the final concentration as the last element
@@ -177,7 +177,7 @@ class Integrator(ABC):
             power, index, proc_time)
 
     def _write_statepoint(self, step_index):
-        """Use capi to write a statepoint for this index"""
+        """Use C API to write a statepoint for this index"""
         statepoint_write(
             "openmc_simulation_n{}.h5".format(step_index + self._ires),
             write_source=False)

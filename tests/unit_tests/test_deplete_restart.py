@@ -8,7 +8,7 @@ from pytest import approx, raises
 import openmc.deplete
 from openmc.deplete import (
     CECMIntegrator, PredictorIntegrator, CELIIntegrator, LEQIIntegrator,
-    EPC_RK4_Integrator, CF4Integrator, SI_CELI_Integrator, SI_LEQI_Integrator
+    EPCRK4Integrator, CF4Integrator, SICELIIntegrator, SILEQIIntegrator
 )
 
 from tests import dummy_operator
@@ -192,7 +192,7 @@ def test_restart_epc_rk4(run_in_tmpdir):
     # Perform simulation
     dt = [0.75]
     power = 1.0
-    EPC_RK4_Integrator(op, dt, power).integrate()
+    EPCRK4Integrator(op, dt, power).integrate()
 
     # Load the files
     prev_res = openmc.deplete.ResultsList(op.output_dir / "depletion_results.h5")
@@ -202,7 +202,7 @@ def test_restart_epc_rk4(run_in_tmpdir):
     op.output_dir = output_dir
 
     # Perform restarts simulation
-    EPC_RK4_Integrator(op, dt, power).integrate()
+    EPCRK4Integrator(op, dt, power).integrate()
 
     # Load the files
     res = openmc.deplete.ResultsList(op.output_dir / "depletion_results.h5")
@@ -308,7 +308,7 @@ def test_restart_si_celi(run_in_tmpdir):
     # Perform simulation
     dt = [0.75]
     power = 1.0
-    SI_CELI_Integrator(op, dt, power).integrate()
+    SICELIIntegrator(op, dt, power).integrate()
 
     # Load the files
     prev_res = openmc.deplete.ResultsList(op.output_dir / "depletion_results.h5")
@@ -318,7 +318,7 @@ def test_restart_si_celi(run_in_tmpdir):
     op.output_dir = output_dir
 
     # Perform restarts simulation
-    SI_CELI_Integrator(op, dt, power).integrate()
+    SICELIIntegrator(op, dt, power).integrate()
 
     # Load the files
     res = openmc.deplete.ResultsList(op.output_dir / "depletion_results.h5")
@@ -348,7 +348,7 @@ def test_restart_si_leqi(run_in_tmpdir):
     dt = [0.75]
     power = 1.0
     nstages = 10
-    SI_LEQI_Integrator(op, dt, power, nstages).integrate()
+    SILEQIIntegrator(op, dt, power, nstages).integrate()
 
     # Load the files
     prev_res = openmc.deplete.ResultsList(op.output_dir / "depletion_results.h5")
@@ -358,7 +358,7 @@ def test_restart_si_leqi(run_in_tmpdir):
     op.output_dir = output_dir
 
     # Perform restarts simulation
-    SI_LEQI_Integrator(op, dt, power, nstages).integrate()
+    SILEQIIntegrator(op, dt, power, nstages).integrate()
 
     # Load the files
     res = openmc.deplete.ResultsList(op.output_dir / "depletion_results.h5")

@@ -20,10 +20,10 @@ transport-depletion coupling algorithms <http://hdl.handle.net/1721.1/113721>`_.
     integrator.CF4Integrator
     integrator.CECMIntegrator
     integrator.CELIIntegrator
-    integrator.EPC_RK4_Integrator
+    integrator.EPCRK4Integrator
     integrator.LEQIIntegrator
-    integrator.SI_CELI_Integrator
-    integrator.SI_LEQI_Integrator
+    integrator.SICELIIntegrator
+    integrator.SILEQIIntegrator
 
 Each of these functions expects a "transport operator" to be passed. An operator
 specific to OpenMC is available using the following class:

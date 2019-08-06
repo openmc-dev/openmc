@@ -170,7 +170,7 @@ class Integrator(ABC):
             self.operator.write_bos_data(len(self) + self._i_res)
 
 
-class SI_Integrator(Integrator):
+class SIIntegrator(Integrator):
     """Abstract for the Stochastic Implicit Euler integrators
 
     Does not provide a ``__call__`` method, but scales and resets

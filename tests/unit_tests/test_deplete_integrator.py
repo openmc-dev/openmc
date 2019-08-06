@@ -16,7 +16,7 @@ import pytest
 
 from openmc.deplete import (
     ReactionRates, Results, ResultsList, comm, OperatorResult,
-    PredictorIntegrator, SI_CELI_Integrator)
+    PredictorIntegrator, SICELIIntegrator)
 
 
 def test_results_save(run_in_tmpdir):
@@ -126,7 +126,7 @@ def test_bad_integrator_inputs(timesteps):
 
     # SI integrator with bad steps
     with pytest.raises(TypeError, match="n_steps"):
-        SI_CELI_Integrator(op, timesteps, [1], n_steps=2.5)
+        SICELIIntegrator(op, timesteps, [1], n_steps=2.5)
 
     with pytest.raises(ValueError, match="n_steps"):
-        SI_CELI_Integrator(op, timesteps, [1], n_steps=0)
+        SICELIIntegrator(op, timesteps, [1], n_steps=0)

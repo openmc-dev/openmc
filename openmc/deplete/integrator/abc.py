@@ -114,16 +114,17 @@ class Integrator(ABC):
     def __len__(self):
         return len(self.timesteps)
 
-    def _get_bos_data_from_openmc(self, step_index, step_power, bos_conc):
+    def _get_bos_data_from_operator(self, step_index, step_power, bos_conc):
+        """Get beginning of step concentrations, reaction rates from Operator"""
         x = deepcopy(bos_conc)
         res = self.operator(x, step_power)
-        self._write_statepoint(step_index)
+        self.operator.write_bos_data(step_index + self._i_res)
         return x, res
 
     def _get_bos_data_from_restart(self, step_index, step_power, bos_conc):
+        """Get beginning of step concentrations, reaction rates from restart"""
         res = self.operator.prev_res[-1]
         # Depletion methods expect list of arrays
-        # See Operator.__call__, Operator.initial_condition
         bos_conc = list(res.data[0])
         rates = res.rates[0]
         k = ufloat(res.k[0, 0], res.k[0, 1])
@@ -145,7 +146,7 @@ class Integrator(ABC):
 
             for i, (dt, p) in enumerate(self):
                 if i > 0 or self.operator.prev_res is None:
-                    conc, res = self._get_bos_data_from_openmc(i, p, conc)
+                    conc, res = self._get_bos_data_from_operator(i, p, conc)
                 else:
                     conc, res = self._get_bos_data_from_restart(i, p, conc)
                 proc_time, conc_list, res_list = self(conc, res.rates, dt, p, i)
@@ -166,13 +167,7 @@ class Integrator(ABC):
             res_list = [self.operator(conc, p)]
             Results.save(self.operator, [conc], res_list, [t, t],
                          p, self._i_res + len(self), proc_time)
-            self._write_statepoint(len(self))
-
-    def _write_statepoint(self, step_index):
-        """Use C API to write a statepoint for this index"""
-        statepoint_write(
-            "openmc_simulation_n{}.h5".format(step_index + self._i_res),
-            write_source=False)
+            self.operator.write_bos_data(len(self) + self._i_res)
 
 
 class SI_Integrator(Integrator):
@@ -212,12 +207,12 @@ class SI_Integrator(Integrator):
         super().__init__(operator, timesteps, power, power_density)
         self.n_steps = n_steps
 
-    def _get_bos_data_from_openmc(self, step_index, step_power, bos_conc):
+    def _get_bos_data_from_operator(self, step_index, step_power, bos_conc):
         reset_particles = False
         if step_index == 0 and hasattr(self.operator, "settings"):
             reset_particles = True
             self.operator.settings.particles *= self.n_stages
-        inherited = super()._get_bos_data_from_openmc(
+        inherited = super()._get_bos_data_from_operator(
             step_index, step_power, bos_conc)
         if reset_particles:
             self.operator.settings.particles //= self.n_stages
@@ -231,7 +226,7 @@ class SI_Integrator(Integrator):
             for i, (dt, p) in enumerate(self):
                 if i == 0:
                     if self.operator.prev_res is None:
-                        conc, res = self._get_bos_data_from_openmc(i, p, conc)
+                        conc, res = self._get_bos_data_from_operator(i, p, conc)
                     else:
                         conc, res = self._get_bos_data_from_restart(i, p, conc)
                 else:
@@ -256,4 +251,4 @@ class SI_Integrator(Integrator):
             # No final simulation for SIE, use last iteration results
             Results.save(self.operator, [conc], [res_list[-1]], [t, t],
                          p, self._i_res + len(self), proc_time)
-            self._write_statepoint(len(self))
+            self.operator.write_bos_data(self._i_res + len(self))

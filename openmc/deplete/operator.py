@@ -204,6 +204,19 @@ class Operator(TransportOperator):
 
         return copy.deepcopy(op_result)
 
+    @staticmethod
+    def write_bos_data(step):
+        """Write a state-point file with beginning of step data
+
+        Parameters
+        ----------
+        step : int
+            Current depletion step including restarts
+        """
+        openmc.capi.statepoint_write(
+            "openmc_simulation_n{}.h5".format(step),
+            write_source=False)
+
     def _differentiate_burnable_mats(self):
         """Assign distribmats for each burnable material
 

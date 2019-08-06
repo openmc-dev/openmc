@@ -51,14 +51,14 @@ class PredictorIntegrator(Integrator):
         dt : float
             Time in [s] for the entire depletion interval
         power : float
-            Power of the system [W]
+            Power of the system in [W]
         _i : int or None
             Iteration index. Not used
 
         Returns
         -------
         proc_time : float
-            Time spent in CRAM routines for all materials
+            Time spent in CRAM routines for all materials in [s]
         conc_list : list of numpy.ndarray
             Concentrations at end of interval
         op_results : empty list

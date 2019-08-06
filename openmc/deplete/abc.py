@@ -106,13 +106,15 @@ class TransportOperator(ABC):
         self._dilute_initial = value
 
     @abstractmethod
-    def __call__(self, vec):
+    def __call__(self, vec, power):
         """Runs a simulation.
 
         Parameters
         ----------
         vec : list of numpy.ndarray
             Total atoms to be used in function.
+        power : float
+            Power of the reactor in [W]
 
         Returns
         -------

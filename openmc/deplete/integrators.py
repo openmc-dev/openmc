@@ -142,7 +142,7 @@ class CECMIntegrator(Integrator):
     """
     _num_stages = 2
 
-    def __call__(self, conc, rates, dt, power, _i=-1):
+    def __call__(self, conc, rates, dt, power, _i=None):
         """Integrate using CE/CM
 
         Parameters
@@ -232,7 +232,7 @@ class CF4Integrator(Integrator):
     """
     _num_stages = 4
 
-    def __call__(self, bos_conc, bos_rates, dt, power, i):
+    def __call__(self, bos_conc, bos_rates, dt, power, _i=None):
         """Perform the integration across one time step
 
         Parameters
@@ -245,8 +245,8 @@ class CF4Integrator(Integrator):
             Time in [s] for the entire depletion interval
         power : float
             Power of the system in [W]
-        i : int
-            Current depletion step index
+        _i : int, optional
+            Current depletion step index. Not used
 
         Returns
         -------
@@ -339,7 +339,7 @@ class CELIIntegrator(Integrator):
     """
     _num_stages = 2
 
-    def __call__(self, bos_conc, rates, dt, power, _i=-1):
+    def __call__(self, bos_conc, rates, dt, power, _i=None):
         """Perform the integration across one time step
 
         Parameters
@@ -352,7 +352,7 @@ class CELIIntegrator(Integrator):
             Time in [s] for the entire depletion interval
         power : float
             Power of the system in [W]
-        _i : int
+        _i : int, optional
             Current iteration count. Not used
 
         Returns
@@ -433,7 +433,7 @@ class EPCRK4Integrator(Integrator):
     """
     _num_stages = 4
 
-    def __call__(self, conc, rates, dt, power, _i):
+    def __call__(self, conc, rates, dt, power, _i=None):
         """Perform the integration across one time step
 
         Parameters
@@ -446,7 +446,7 @@ class EPCRK4Integrator(Integrator):
             Time in [s] for the entire depletion interval
         power : float
             Power of the system in [W]
-        i : int
+        _i : int, optional
             Current depletion step index, unused.
 
         Returns
@@ -663,7 +663,7 @@ class SICELIIntegrator(SIIntegrator):
     """
     _num_stages = 2
 
-    def __call__(self, bos_conc, bos_rates, dt, power, _i):
+    def __call__(self, bos_conc, bos_rates, dt, power, _i=None):
         """Perform the integration across one time step
 
         Parameters
@@ -676,8 +676,8 @@ class SICELIIntegrator(SIIntegrator):
             Time in [s] for the entire depletion interval
         power : float
             Power of the system in [W]
-        _i : int
-            Current depletion step index. Unused
+        _i : int, optional
+            Current depletion step index. Not used
 
         Returns
         -------

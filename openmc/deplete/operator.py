@@ -16,6 +16,7 @@ import xml.etree.ElementTree as ET
 
 import h5py
 import numpy as np
+from uncertainties import ufloat
 
 import openmc
 import openmc.capi
@@ -56,7 +57,7 @@ class Operator(TransportOperator):
     Instances of this class can be used to perform depletion using OpenMC as the
     transport operator. Normally, a user needn't call methods of this class
     directly. Instead, an instance of this class is passed to an integrator
-    function, such as :func:`openmc.deplete.integrator.cecm`.
+    class, such as :class:`openmc.deplete.CECMIntegrator`.
 
     Parameters
     ----------
@@ -113,15 +114,16 @@ class Operator(TransportOperator):
         Initial heavy metal inventory
     local_mats : list of str
         All burnable material IDs being managed by a single process
-    prev_res : ResultsList
-        Results from a previous depletion calculation
+    prev_res : ResultsList or None
+        Results from a previous depletion calculation. ``None`` if no
+        results are to be used.
     diff_burnable_mats : bool
         Whether to differentiate burnable materials with multiple instances
     """
     def __init__(self, geometry, settings, chain_file=None, prev_results=None,
                  diff_burnable_mats=False, fission_q=None,
                  dilute_initial=1.0e3):
-        super().__init__(chain_file, fission_q, dilute_initial)
+        super().__init__(chain_file, fission_q, dilute_initial, prev_results)
         self.round_number = False
         self.prev_res = None
         self.settings = settings
@@ -141,7 +143,7 @@ class Operator(TransportOperator):
         self._mat_index_map = {
             lm: self.burnable_mats.index(lm) for lm in self.local_mats}
 
-        if prev_results is not None:
+        if self.prev_res is not None:
             # Reload volumes into geometry
             prev_results[-1].transfer_volumes(geometry)
 
@@ -176,7 +178,7 @@ class Operator(TransportOperator):
             self.reaction_rates.n_nuc, self.reaction_rates.n_react)
         self._energy_helper = ChainFissionHelper()
 
-    def __call__(self, vec, power, print_out=True):
+    def __call__(self, vec, power):
         """Runs a simulation.
 
         Parameters
@@ -185,8 +187,6 @@ class Operator(TransportOperator):
             Total atoms to be used in function.
         power : float
             Power of the reactor in [W]
-        print_out : bool, optional
-            Whether or not to print out time.
 
         Returns
         -------
@@ -216,14 +216,20 @@ class Operator(TransportOperator):
         # Extract results
         op_result = self._unpack_tallies_and_normalize(power)
 
-        if comm.rank == 0:
-            time_unpack = time.time()
-
-            if print_out:
-                print("Time to openmc: ", time_openmc - time_start)
-                print("Time to unpack: ", time_unpack - time_openmc)
-
         return copy.deepcopy(op_result)
+
+    @staticmethod
+    def write_bos_data(step):
+        """Write a state-point file with beginning of step data
+
+        Parameters
+        ----------
+        step : int
+            Current depletion step including restarts
+        """
+        openmc.capi.statepoint_write(
+            "openmc_simulation_n{}.h5".format(step),
+            write_source=False)
 
     def _differentiate_burnable_mats(self):
         """Assign distribmats for each burnable material
@@ -534,7 +540,7 @@ class Operator(TransportOperator):
         rates.fill(0.0)
 
         # Get k and uncertainty
-        k_combined = openmc.capi.keff()
+        k_combined = ufloat(*openmc.capi.keff())
 
         # Extract tally bins
         nuclides = self._rate_helper.nuclides

@@ -18,6 +18,42 @@ class SILEQIIntegrator(SIIntegrator):
 
     Detailed algorithm can be found in Section 3.2 in `Colin Josey's thesis
     <http://hdl.handle.net/1721.1/113721>`_.
+
+    Parameters
+    ----------
+    operator : openmc.deplete.TransportOperator
+        The operator object to simulate on.
+    timesteps : iterable of float
+        Array of timesteps in units of [s]. Note that values are not
+        cumulative.
+    power : float or iterable of float, optional
+        Power of the reactor in [W]. A single value indicates that
+        the power is constant over all timesteps. An iterable
+        indicates potentially different power levels for each timestep.
+        For a 2D problem, the power can be given in [W/cm] as long
+        as the "volume" assigned to a depletion material is actually
+        an area in [cm^2]. Either ``power`` or ``power_density`` must be
+        specified.
+    power_density : float or iterable of float, optional
+        Power density of the reactor in [W/gHM]. It is multiplied by
+        initial heavy metal inventory to get total power if ``power``
+        is not speficied.
+    n_steps : int, optional
+        Number of stochastic iterations per depletion interval.
+        Must be greater than zero. Default : 10
+
+    Attributes
+    ----------
+    operator : openmc.deplete.TransportOperator
+        Operator to perform transport simulations
+    chain : openmc.deplete.Chain
+        Depletion chain
+    timesteps : iterable of float
+        Size of each depletion interval in [s]
+    power : iterable of float
+        Power of the reactor in [W] for each interval in :attr:`timesteps`
+    n_steps : int
+        Number of stochastic iterations per depletion interval
     """
     _num_stages = 2
 

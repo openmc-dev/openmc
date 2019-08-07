@@ -12,18 +12,18 @@ Josey's thesis, `Development and analysis of high order neutron
 transport-depletion coupling algorithms <http://hdl.handle.net/1721.1/113721>`_.
 
 .. autosummary::
-   :toctree: generated
-   :nosignatures:
-   :template: myfunction.rst
+    :toctree: generated
+    :nosignatures:
+    :template:  myintegrator.rst
 
-   integrator.predictor
-   integrator.cecm
-   integrator.celi
-   integrator.leqi
-   integrator.cf4
-   integrator.epc_rk4
-   integrator.si_celi
-   integrator.si_leqi
+    PredictorIntegrator
+    CECMIntegrator
+    CELIIntegrator
+    CF4Integrator
+    EPCRK4Integrator
+    LEQIIntegrator
+    SICELIIntegrator
+    SILEQIIntegrator
 
 Each of these functions expects a "transport operator" to be passed. An operator
 specific to OpenMC is available using the following class:
@@ -95,7 +95,18 @@ The following classes are abstract classes that can be used to extend the
    EnergyHelper
    TransportOperator
 
-Each of the integrator functions also relies on a number of "helper" functions
+Custom integrators can be developed by subclassing from the following abstract
+base classes:
+
+.. autosummary::
+   :toctree: generated
+   :nosignatures:
+   :template: myintegrator.rst
+
+   Integrator
+   SIIntegrator
+
+Each of the integrator classes also relies on a number of "helper" functions
 as follows:
 
 .. autosummary::
@@ -103,5 +114,5 @@ as follows:
    :nosignatures:
    :template: myfunction.rst
 
-   integrator.CRAM16
-   integrator.CRAM48
+   cram.CRAM16
+   cram.CRAM48

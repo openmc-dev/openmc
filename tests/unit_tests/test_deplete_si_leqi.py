@@ -4,7 +4,7 @@ These tests integrate a simple test problem described in dummy_geometry.py.
 """
 
 from pytest import approx
-import openmc.deplete
+from openmc.deplete import SILEQIIntegrator, ResultsList
 
 from tests import dummy_operator
 
@@ -18,10 +18,10 @@ def test_si_leqi(run_in_tmpdir):
     # Perform simulation using the si_leqi algorithm
     dt = [0.75, 0.75]
     power = 1.0
-    openmc.deplete.si_leqi(op, dt, power, print_out=False)
+    SILEQIIntegrator(op, dt, power, 10).integrate()
 
     # Load the files
-    res = openmc.deplete.ResultsList(op.output_dir / "depletion_results.h5")
+    res = ResultsList(op.output_dir / "depletion_results.h5")
 
     _, y1 = res.get_atoms("1", "1")
     _, y2 = res.get_atoms("1", "2")

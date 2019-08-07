@@ -21,7 +21,7 @@ def test_celi(run_in_tmpdir):
     CELIIntegrator(op, dt, power).integrate()
 
     # Load the files
-    res = ResultsList(op.output_dir / "depletion_results.h5")
+    res = ResultsList.from_hdf5(op.output_dir / "depletion_results.h5")
 
     _, y1 = res.get_atoms("1", "1")
     _, y2 = res.get_atoms("1", "2")

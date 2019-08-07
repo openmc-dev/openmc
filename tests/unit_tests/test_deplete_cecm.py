@@ -4,8 +4,7 @@ These tests integrate a simple test problem described in dummy_geometry.py.
 """
 
 from pytest import approx
-import openmc.deplete
-from openmc.deplete import CECMIntegrator
+from openmc.deplete import CECMIntegrator, ResultsList
 
 from tests import dummy_operator
 
@@ -23,7 +22,7 @@ def test_cecm(run_in_tmpdir):
     integrator.integrate()
 
     # Load the files
-    res = openmc.deplete.ResultsList(op.output_dir / "depletion_results.h5")
+    res = ResultsList.from_hdf5(op.output_dir / "depletion_results.h5")
 
     _, y1 = res.get_atoms("1", "1")
     _, y2 = res.get_atoms("1", "2")

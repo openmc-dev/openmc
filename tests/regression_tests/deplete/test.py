@@ -66,8 +66,8 @@ def test_full(run_in_tmpdir):
         return
 
     # Load the reference/test results
-    res_test = openmc.deplete.ResultsList(path_test)
-    res_ref = openmc.deplete.ResultsList(path_reference)
+    res_test = openmc.deplete.ResultsList.from_hdf5(path_test)
+    res_ref = openmc.deplete.ResultsList.from_hdf5(path_reference)
 
     # Assert same mats
     for mat in res_ref[0].mat_to_ind:

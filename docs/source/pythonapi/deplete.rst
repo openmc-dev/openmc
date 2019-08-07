@@ -16,14 +16,14 @@ transport-depletion coupling algorithms <http://hdl.handle.net/1721.1/113721>`_.
     :nosignatures:
     :template:  myintegrator.rst
 
-    integrator.PredictorIntegrator
-    integrator.CECMIntegrator
-    integrator.CELIIntegrator
-    integrator.CF4Integrator
-    integrator.EPCRK4Integrator
-    integrator.LEQIIntegrator
-    integrator.SICELIIntegrator
-    integrator.SILEQIIntegrator
+    PredictorIntegrator
+    CECMIntegrator
+    CELIIntegrator
+    CF4Integrator
+    EPCRK4Integrator
+    LEQIIntegrator
+    SICELIIntegrator
+    SILEQIIntegrator
 
 Each of these functions expects a "transport operator" to be passed. An operator
 specific to OpenMC is available using the following class:
@@ -114,5 +114,5 @@ as follows:
    :nosignatures:
    :template: myfunction.rst
 
-   integrator.CRAM16
-   integrator.CRAM48
+   cram.CRAM16
+   cram.CRAM48

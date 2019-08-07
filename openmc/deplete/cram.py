@@ -11,7 +11,9 @@ import numpy as np
 import scipy.sparse as sp
 import scipy.sparse.linalg as sla
 
-from .. import comm
+from . import comm
+
+__all__ = ["deplete", "timed_deplete", "CRAM16", "CRAM48"]
 
 
 def deplete(chain, x, rates, dt, matrix_func=None):

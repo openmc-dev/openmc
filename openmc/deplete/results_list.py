@@ -24,7 +24,7 @@ class ResultsList(list):
         Returns
         -------
         new : ResultsList
-           New instance of depletion results
+            New instance of depletion results
         """
         with h5py.File(str(filename), "r") as fh:
             check_filetype_version(fh, 'depletion results', _VERSION_RESULTS[0])

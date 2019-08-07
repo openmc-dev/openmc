@@ -165,7 +165,7 @@ class Results(object):
         Returns
         -------
         Results
-            - New results object
+            New results object
         """
         new = Results()
         new.volume = {lm: self.volume[lm] for lm in local_materials}

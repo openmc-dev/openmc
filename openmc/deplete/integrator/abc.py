@@ -118,9 +118,11 @@ class Integrator(ABC):
         """
 
     def __iter__(self):
+        """Return pairs of time steps in [s] and powers in [W]"""
         return zip(self.timesteps, self.power)
 
     def __len__(self):
+        """Return integer number of depletion intervals"""
         return len(self.timesteps)
 
     def _get_bos_data_from_operator(self, step_index, step_power, bos_conc):
@@ -180,7 +182,7 @@ class Integrator(ABC):
 
 
 class SIIntegrator(Integrator):
-    """Abstract for the Stochastic Implicit Euler integrators
+    """Abstract class for the Stochastic Implicit Euler integrators
 
     Does not provide a ``__call__`` method, but scales and resets
     the number of particles used in initial transport calculation

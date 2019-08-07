@@ -37,14 +37,20 @@ def bare_xs(run_in_tmpdir):
 class BareDepleteOperator(TransportOperator):
     """Very basic class for testing the initialization."""
 
-    # declare abstract methods so object can be created
-    def __call__(self, *args, **kwargs):
+    @staticmethod
+    def __call__(*args, **kwargs):
         pass
 
-    def initial_condition(self):
+    @staticmethod
+    def initial_condition():
         pass
 
-    def get_results_info(self):
+    @staticmethod
+    def get_results_info():
+        pass
+
+    @staticmethod
+    def write_bos_data():
         pass
 
 

@@ -8,8 +8,7 @@ class EPCRK4Integrator(Integrator):
     r"""Deplete using the EPC-RK4 algorithm.
 
     Implements an extended predictor-corrector algorithm with traditional
-    Runge-Kutta 4 method.
-    This algorithm is mathematically defined as:
+    Runge-Kutta 4 method. This algorithm is mathematically defined as:
 
     .. math::
         \begin{aligned}
@@ -22,6 +21,37 @@ class EPCRK4Integrator(Integrator):
         F_4 &= h A(y_3) \\
         y_4 &= \text{expm}(1/6 F_1 + 1/3 F_2 + 1/3 F_3 + 1/6 F_4) y_0
         \end{aligned}
+
+    Parameters
+    ----------
+    operator : openmc.deplete.TransportOperator
+        Operator to perform transport simulations
+    timesteps : iterable of float
+        Array of timesteps in units of [s]. Note that values are not
+        cumulative.
+    power : float or iterable of float, optional
+        Power of the reactor in [W]. A single value indicates that
+        the power is constant over all timesteps. An iterable
+        indicates potentially different power levels for each timestep.
+        For a 2D problem, the power can be given in [W/cm] as long
+        as the "volume" assigned to a depletion material is actually
+        an area in [cm^2]. Either ``power`` or ``power_density`` must be
+        specified.
+    power_density : float or iterable of float, optional
+        Power density of the reactor in [W/gHM]. It is multiplied by
+        initial heavy metal inventory to get total power if ``power``
+        is not speficied.
+
+    Attributes
+    ----------
+    operator : openmc.deplete.TransportOperator
+        Operator to perform transport simulations
+    chain : openmc.deplete.Chain
+        Depletion chain
+    timesteps : iterable of float
+        Size of each depletion interval in [s]
+    power : iterable of float
+        Power of the reactor in [W] for each interval in :attr:`timesteps`
     """
     _num_stages = 4
 

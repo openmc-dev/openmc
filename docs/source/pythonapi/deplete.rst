@@ -17,9 +17,9 @@ transport-depletion coupling algorithms <http://hdl.handle.net/1721.1/113721>`_.
     :template:  myclassinherit.rst
 
     integrator.PredictorIntegrator
-    integrator.CF4Integrator
     integrator.CECMIntegrator
     integrator.CELIIntegrator
+    integrator.CF4Integrator
     integrator.EPCRK4Integrator
     integrator.LEQIIntegrator
     integrator.SICELIIntegrator

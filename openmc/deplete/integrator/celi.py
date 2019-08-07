@@ -22,6 +22,37 @@ class CELIIntegrator(Integrator):
         y_{n+1} &= \text{expm}(\frac{h}{12} A_0 + \frac{5h}{12} A1)
                    \text{expm}(\frac{5h}{12} A_0 + \frac{h}{12} A1) y_n
         \end{aligned}
+
+    Parameters
+    ----------
+    operator : openmc.deplete.TransportOperator
+        Operator to perform transport simulations
+    timesteps : iterable of float
+        Array of timesteps in units of [s]. Note that values are not
+        cumulative.
+    power : float or iterable of float, optional
+        Power of the reactor in [W]. A single value indicates that
+        the power is constant over all timesteps. An iterable
+        indicates potentially different power levels for each timestep.
+        For a 2D problem, the power can be given in [W/cm] as long
+        as the "volume" assigned to a depletion material is actually
+        an area in [cm^2]. Either ``power`` or ``power_density`` must be
+        specified.
+    power_density : float or iterable of float, optional
+        Power density of the reactor in [W/gHM]. It is multiplied by
+        initial heavy metal inventory to get total power if ``power``
+        is not speficied.
+
+    Attributes
+    ----------
+    operator : openmc.deplete.TransportOperator
+        Operator to perform transport simulations
+    chain : openmc.deplete.Chain
+        Depletion chain
+    timesteps : iterable of float
+        Size of each depletion interval in [s]
+    power : iterable of float
+        Power of the reactor in [W] for each interval in :attr:`timesteps`
     """
     _num_stages = 2
 

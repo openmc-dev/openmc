@@ -161,6 +161,9 @@ class Results(object):
         local_materials : iterable of str
             Materials for this process
         ranges : iterable of int
+            Slice-like object indicating indicies of ``local_materials``
+            in the material dimension of :attr:`data` and each element
+            in :attr:`rates`
 
         Returns
         -------

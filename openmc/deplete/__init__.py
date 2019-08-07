@@ -38,4 +38,4 @@ from .reaction_rates import *
 from .abc import *
 from .results import *
 from .results_list import *
-from .integrator import *
+from .integrators import *

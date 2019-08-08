@@ -6,13 +6,15 @@
 
 #include <memory>
 #include <vector>
+#ifdef DAGMC
+#include <pyne/pyne>
+#endif
 
 #include "pugixml.hpp"
 
 #include "openmc/distribution_multi.h"
 #include "openmc/distribution_spatial.h"
 #include "openmc/particle.h"
-#include "pyne/source_sampling.h"
 
 namespace openmc {
 
@@ -64,6 +66,7 @@ extern "C" void initialize_source();
 //! \return Sampled source site
 Particle::Bank sample_external_source();
 
+#ifdef DAGMC
 //! Initialize pyne sampler instance
 //! \return Sampler*
 pyne::Sampler* initialize_pyne_sampler();
@@ -75,6 +78,7 @@ Particle::Bank sample_pyne_source(pyne::Sampler*);
 //! Convert a pyne source particle to an openmc source site
 //! \return Sampled source site
 Particle::Bank convert_pyne_source_particle(pyne::SourceParticle);
+#endif
 
 //! Fill source bank at end of generation for fixed source simulations
 void fill_source_bank_fixedsource();

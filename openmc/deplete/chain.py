@@ -375,9 +375,19 @@ class Chain(object):
             tree.write(str(filename), encoding='utf-8')
 
     def get_thermal_fission_yields(self):
-        """Return dictionary {str: {str: float}}"""
-        # Take lowest energy for back compatability
-        # Should be removed by end of this feature
+        """Return fission yields at lowest incident neutron energy
+
+        Used as the default set of fission yields for :meth:`form_matrix`
+        if ``fission_yields`` are not provided
+
+        Returns
+        -------
+        fission_yields : dict
+            Dictionary of ``{parent : {product : f_yield}}``
+            where ``parent`` and ``product`` are both string
+            names of nuclides with yield data and ``f_yield``
+            is a float for the fission yield.
+        """
         out = {}
         for nuc in self.nuclides:
             if len(nuc.yield_data) == 0:
@@ -393,14 +403,20 @@ class Chain(object):
         ----------
         rates : numpy.ndarray
             2D array indexed by (nuclide, reaction)
-        fission_yields : dictionary of tuple to float, optional
-            Option to use a custom set of fission yields
+        fission_yields : dict, optional
+            Option to use a custom set of fission yields. Expected
+            to be of the form ``{parent : {product : f_yield}}``
+            with string nuclide names for ``parent`` and ``product``,
+            and ``f_yield`` as the respective fission yield
 
         Returns
         -------
         scipy.sparse.csr_matrix
             Sparse matrix representing depletion.
 
+        See Also
+        --------
+        :meth:`get_thermal_fission_yields`
         """
         matrix = defaultdict(float)
         reactions = set()

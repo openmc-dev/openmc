@@ -65,6 +65,7 @@ for a depletion chain:
    DecayTuple
    Nuclide
    ReactionTuple
+   FissionYieldDistribution
 
 The following classes are used during a depletion simulation and store auxiliary
 data, such as number densities and reaction rates for each material.
@@ -77,6 +78,7 @@ data, such as number densities and reaction rates for each material.
    AtomNumber
    ChainFissionHelper
    DirectReactionRateHelper
+   FissionYieldHelper
    OperatorResult
    ReactionRates
    Results

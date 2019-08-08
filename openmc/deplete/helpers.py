@@ -163,7 +163,7 @@ class FissionYieldHelper(object):
 
     Parameters
     ----------
-    chain_nuclides : iterable of openmc.deplete.nuclide
+    chain_nuclides : iterable of openmc.deplete.Nuclide
         Nuclides tracked in the depletion chain. Not necessary
         that all have yield data.
     n_bmats : int
@@ -176,15 +176,9 @@ class FissionYieldHelper(object):
     results : numpy.ndarray
         Array of tally results for this process with shape
         ``(n_local_mat, n_energy, n_nucs)``
-    libraries : list of dict
-        List of fission yield dictionaries of the form
-        ``{parent: {product: yield}}``. Populated in
-        :meth:`compute_yields` and reset during
-        :meth:`unpack`.
     """
 
     def __init__(self, chain_nuclides, n_bmats):
-        self.libraries = []
         self._chain_nuclides = {}
         self._chain_set = set()
         self._tally_map = {}
@@ -245,7 +239,7 @@ class FissionYieldHelper(object):
         Parameters
         ----------
         nuclides : iterable of str
-            nuclides with non-zero densities that are candidates
+            Nuclides with non-zero densities that are candidates
             for the fission tally. Not necessary that all are nuclides
             with fission yields, but at least one must be
 
@@ -275,18 +269,12 @@ class FissionYieldHelper(object):
 
     def unpack(self):
         """Unpack fission rate tallies to produce :attr:`results`
-
-        Resets :attr:`libraries` under the assumption this is called
-        during the :class:`openmc.deplete.Operator` unpacking process
         """
         # if this process is not responsible for depleting anything
         # [more processes than burnable materials]
         # don't do anything
         if self.local_indexes.size == 0:
             return
-
-        # clear old libraries
-        self.libraries = []
 
         # get view into tally results
         # new shape: [material, energy, parent nuclide]
@@ -312,7 +300,7 @@ class FissionYieldHelper(object):
     def compute_yields(self, local_mat_index):
         """Compute single fission yields using :attr:`results`
 
-        Produces a new library in :attr:`self.libraries`
+        Produces a new library in :attr:`libraries`
 
         Parameters
         ----------
@@ -320,6 +308,11 @@ class FissionYieldHelper(object):
             Index for material tracked on this process that
             exists in :attr:`local_mat_index` and fits within
             the first axis in :attr:`results`
+
+        Returns
+        -------
+        library : dict
+            Dictionary of ``{parent: {product: fyield}}``
         """
         tally_results = self.results[local_mat_index]
 
@@ -337,9 +330,8 @@ class FissionYieldHelper(object):
                 initial_library[parent] += yield_data * fiss_frac
 
         # convert to dictionary that can be passed to Chain.form_matrix
-        # {parent: {product: yield}}
         library = {}
         for k, yield_obj in initial_library.items():
             library[k.name] = dict(zip(yield_obj.products, yield_obj.yields))
 
-        self.libraries.append(library)
+        return library

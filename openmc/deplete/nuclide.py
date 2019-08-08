@@ -260,6 +260,10 @@ class Nuclide(object):
         ValueError
             If ``strict`` evaluates to ``True`` and an inconistency was
             found
+
+        See Also
+        --------
+        openmc.deplete.Chain.validate
         """
 
         branch_getter = attrgetter("branching_ratio")

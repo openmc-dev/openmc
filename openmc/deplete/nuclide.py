@@ -3,7 +3,9 @@
 Contains the per-nuclide components of a depletion chain.
 """
 
-from collections import namedtuple
+from collections import namedtuple, defaultdict
+from operator import attrgetter, itemgetter
+from warnings import warn
 try:
     import lxml.etree as ET
 except ImportError:
@@ -222,3 +224,100 @@ class Nuclide(object):
                 data_elem.text = ' '.join(str(x[1]) for x in self.yield_data[E])
 
         return elem
+
+    def validate(self, strict=True, quiet=False, tolerance=1e-4):
+        """Search for possible inconsistencies
+
+        The following checks are performed:
+
+            1) for all non-fission reactions and decay modes,
+               do the sum of branching ratios equal about 1?
+            2) for fission reactions, do the sum of fission yield
+               fractions equal about 2?
+
+        Parameters
+        ----------
+        strict : bool, optional
+            Raise exceptions at the first inconsistency if true.
+            Otherwise mark a warning
+        quiet : bool, optional
+            Flag to supress warnings and return immediately at
+            the first inconsistency. Used only if
+            ``strict`` does not evaluate to ``True``.
+        tolerance : float, optional
+            Absolute tolerance for comparisons. Used to compare computed
+            value ``x`` to intended value ``y`` as::
+
+                valid = (y - tolerance <= x <= y + tolerance)
+
+        Returns
+        -------
+        valid : bool
+            True if no inconsistencies were found
+
+        Raises
+        ------
+        ValueError
+            If ``strict`` evaluates to ``True`` and an inconistency was
+            found
+        """
+
+        branch_getter = attrgetter("branching_ratio")
+        msg_func = ("Nuclide {name} has {prop} that sum to {actual} "
+                    "instead of {expected} +/- {tol:7.4e}").format
+        type_map = defaultdict(set)
+        valid = True
+
+        # check decay modes
+        if len(self.decay_modes) > 0:
+            sum_br = sum(map(branch_getter, self.decay_modes))
+            stat = 1.0 - tolerance <= sum_br <= 1.0 + tolerance
+            if not stat:
+                msg = msg_func(
+                    name=self.name, actual=sum_br, expected=1.0, tol=tolerance,
+                    prop="decay mode branch ratios")
+                if strict:
+                    raise ValueError(msg)
+                elif quiet:
+                    return False
+                warn(msg)
+                valid = False
+
+        if len(self.reactions) > 0:
+            type_map.clear()
+            for reaction in self.reactions:
+                type_map[reaction.type].add(reaction)
+            for rxn_type, reactions in type_map.items():
+                sum_rxn = sum(map(branch_getter, reactions))
+                stat = 1.0 - tolerance <= sum_rxn <= 1.0 + tolerance
+                if stat:
+                    continue
+                msg = msg_func(
+                    name=self.name, actual=sum_br, expected=1.0, tol=tolerance,
+                    prop="{} reaction branch ratios".format(rxn_type))
+                if strict:
+                    raise ValueError(msg)
+                elif quiet:
+                    return False
+                warn(msg)
+                valid = False
+
+        if len(self.yield_data) > 0:
+            yield_getter = itemgetter(1)
+            for energy, yield_list in self.yield_data.items():
+                sum_yield = sum(map(yield_getter, yield_list))
+                stat = 2.0 - tolerance <= sum_yield <= 2.0 + tolerance
+                if stat:
+                    continue
+                msg = msg_func(
+                    name=self.name, actual=sum_yield,
+                    expected=2.0, tol=tolerance,
+                    prop="fission yields (E = {:7.4e} eV)".format(energy))
+                if strict:
+                    raise ValueError(msg)
+                elif quiet:
+                    return False
+                warn(msg)
+                valid = False
+
+        return valid

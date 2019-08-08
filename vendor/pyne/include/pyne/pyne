@@ -1,0 +1,12 @@
+// PYNE source sampling support
+// measure.h and source_sampling.h from pyne/src
+
+#pragma once
+
+#ifndef PYNE_PYNE_H_INCLUDED
+#define PYNE_PYNE_H_INCLUDED
+
+#include "measure.h"
+#include "source_sampling.h"
+
+#endif // PYNE_PYNE_H_INCLUDED

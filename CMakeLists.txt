@@ -140,6 +140,20 @@ target_include_directories(gsl INTERFACE vendor/gsl/include)
 target_compile_definitions(gsl INTERFACE GSL_THROW_ON_CONTRACT_VIOLATION)
 
 #===============================================================================
+# PyNE R2S source sampling support - need DAGMC/MOAB
+#===============================================================================
+if(dagmc)
+  add_library(pyne INTERFACE)
+  #  add_subdirectory(vendor/pyne_source_sampling)
+  target_include_directories(pyne INTERFACE vendor/pyne/include)
+
+  # Make sure contract violations throw exceptions
+  target_compile_definitions(pyne INTERFACE PYNE_THROW_ON_CONTRACT_VIOLATION)
+endif()
+
+
+
+#===============================================================================
 # RPATH information
 #===============================================================================
 
@@ -314,6 +328,7 @@ if(dagmc)
   target_compile_definitions(libopenmc PRIVATE DAGMC)
   target_link_libraries(libopenmc ${DAGMC_LIBRARIES})
   target_include_directories(libopenmc PRIVATE ${DAGMC_INCLUDE_DIRS})
+  target_link_libraries(libopenmc pyne)
 endif()
 
 #===============================================================================

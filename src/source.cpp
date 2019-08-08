@@ -2,7 +2,10 @@
 
 #include <algorithm> // for move
 #include <sstream> // for stringstream
-
+//#include "pyne/source_sampling.h" // for pyne source sampling
+#ifdef DAGMC
+#include <pyne/pyne> // for pyne source sampling
+#endif
 #include "xtensor/xadapt.hpp"
 
 #include "openmc/bank.h"
@@ -21,7 +24,6 @@
 #include "openmc/simulation.h"
 #include "openmc/state_point.h"
 #include "openmc/xml_interface.h"
-#include "pyne/source_sampling.h" // for pyne source sampling
 
 namespace openmc {
 
@@ -262,6 +264,7 @@ void initialize_source()
       read_source_bank(file_id);
     } 
 
+#ifdef DAGMC
     // Read in the pyne_r2s_source
     if (filetype == "pyne_r2s_source") {
       // initial sampler
@@ -277,6 +280,7 @@ void initialize_source()
       simulation::source_bank[i] = sample_pyne_source(sampler);
       }
     }
+#endif
 
     // Close file
     file_close(file_id);
@@ -341,6 +345,7 @@ Particle::Bank sample_external_source()
   return site;
 }
 
+#ifdef DAGMC
 pyne::Sampler* initialize_pyne_sampler(){
   std::string e_bounds_file ("e_bounds");
   std::vector<double> e_bounds = pyne::read_e_bounds(e_bounds_file);
@@ -409,6 +414,7 @@ Particle::Bank convert_pyne_source_particle(pyne::SourceParticle pyne_src)
   }
   return site;
 }
+#endif
 
 void free_memory_source()
 {

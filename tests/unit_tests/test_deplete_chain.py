@@ -230,6 +230,7 @@ def test_form_matrix(simple_chain):
     for r, c in product(range(3), range(3)):
         assert new_mat[r, c] == mat[r, c]
 
+
 def test_getitem():
     """ Test nuc_by_ind converter function. """
     chain = Chain()
@@ -338,3 +339,10 @@ def test_capture_branch_failures(simple_chain):
     br = {"C": {"A": 1.0, "B": 1.0}}
     with pytest.raises(ValueError, match="C ratios"):
         simple_chain.set_capture_branches(br)
+
+
+def test_simple_fission_yields(simple_chain):
+    """Check the default fission yields that can be used to form the matrix
+    """
+    fission_yields = simple_chain.get_thermal_fission_yields()
+    assert fission_yields == {"C": {"A": 0.0292737, "B": 0.002566345}}

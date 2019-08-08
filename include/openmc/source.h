@@ -7,7 +7,8 @@
 #include <memory>
 #include <vector>
 #ifdef DAGMC
-#include <pyne/pyne>
+#include "pyne_source_sampling/source_sampling.h"
+//#include "source_sampling.h"
 #endif
 
 #include "pugixml.hpp"

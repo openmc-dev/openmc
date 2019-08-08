@@ -65,7 +65,7 @@ kwargs = {
     # Dependencies
     'python_requires': '>=3.4',
     'install_requires': [
-        'numpy==1.16.3', 'h5py', 'scipy', 'ipython', 'matplotlib',
+        'numpy>=1.9', 'h5py', 'scipy', 'ipython', 'matplotlib',
         'pandas', 'lxml', 'uncertainties'
     ],
     'extras_require': {

@@ -6,6 +6,8 @@
 # Note 32 of the 255 nuclides appeare twice as they are both activation
 # nuclides (category 1) and fission product nuclides (category 3).
 
+# Te-129 has been added due to it's link to I129 production.
+
 CASL_CHAIN = {
     # Nuclide: (Stable, CAT, IFPY, Special yield treatment)
     # Stable: True if nuclide has no decay reactions

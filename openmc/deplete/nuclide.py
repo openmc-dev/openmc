@@ -221,9 +221,17 @@ class Nuclide(object):
 class FissionYieldDistribution(Mapping):
     """Class for storing energy-dependent fission yields for a single nuclide
 
+    Can be used as a dictionary mapping energies and products to fission
+    yields::
+
+        >>> fydist = FissionYieldDistribution.from_dict({
+        ...     {0.0253: {"Xe135": 0.021}})
+        >>> fydist[0.0253]["Xe135"]
+        0.021
+
     Parameters
     ----------
-    ordered_energies : iterable of real
+    ordered_energies : iterable of float
         Energies for which fission yield data exist
     orderded_products : iterable of str
         Fission products produced by this parent at all energies
@@ -247,7 +255,7 @@ class FissionYieldDistribution(Mapping):
 
     See Also
     --------
-    :meth:`from_xml`, :meth:`from_dict`
+    :meth:`from_xml_element`, :meth:`from_dict`
     """
 
     def __init__(self, ordered_energies, ordered_products, group_fission_yields):
@@ -354,7 +362,7 @@ class FissionYieldDistribution(Mapping):
 class _FissionYield(Mapping):
     """Mapping for fission yields of a parent at a specific energy
 
-    Abstracted to support nested dictionary-like behavior for
+    Separated to support nested dictionary-like behavior for
     :class:`FissionYieldDistribution`, and allowing math operations
     on a single vector of yields
 

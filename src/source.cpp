@@ -2,8 +2,8 @@
 
 #include <algorithm> // for move
 #include <sstream> // for stringstream
-#include "pyne_source_sampling/source_sampling.h" // for pyne source sampling
 #ifdef DAGMC
+#include "pyne_source_sampling/source_sampling.h" // for pyne source sampling
 #endif
 #include "xtensor/xadapt.hpp"
 

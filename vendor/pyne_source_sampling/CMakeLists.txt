@@ -1,7 +1,5 @@
-# Create a library called "pyne_source_sampling" which includes the source file:
-#  - ".cxx".
+# Create a library called "pyne_source_sampling".
 # The extension is already found. Any number of sources could be listed here.
-cmake_minimum_required (VERSION 3.3 FATAL_ERROR)
 
 # Find MOAB
 find_package(MOAB REQUIRED)

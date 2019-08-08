@@ -565,6 +565,9 @@ class Operator(TransportOperator):
         self._energy_helper.reset()
         self._fsn_yield_helper.unpack()
 
+        # Store fission yield dictionaries
+        fission_yields = []
+
         # Create arrays to store fission Q values, reaction rates, and nuclide
         # numbers, zeroed out in material iteration
         number = np.empty(rates.n_nuc)
@@ -587,7 +590,7 @@ class Operator(TransportOperator):
                 mat_index, nuc_ind, react_ind)
 
             # Compute fission yields for this material
-            self._fsn_yield_helper.compute_yields(i)
+            fission_yields.append(self._fsn_yield_helper.compute_yields(i))
 
             # Accumulate energy from fission
             self._energy_helper.update(tally_rates[:, fission_ind], mat_index)
@@ -603,7 +606,7 @@ class Operator(TransportOperator):
         rates *= power / energy
 
         # Store new fission yields on the chain
-        self.chain.fission_yields = self._fsn_yield_helper.libraries
+        self.chain.fission_yields = fission_yields
 
         return OperatorResult(k_combined, rates)
 

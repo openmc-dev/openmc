@@ -91,9 +91,6 @@ def test_fission_yield_helper():
         }
     }
 
-    assert len(helper.libraries) == 0
-    helper.compute_yields(0)
-    assert len(helper.libraries) == 1
-    act_library = helper.libraries[0]
+    act_library = helper.compute_yields(0)
     for parent, sub_yields in exp_lib.items():
         assert act_library[parent] == pytest.approx(sub_yields)

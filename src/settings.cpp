@@ -105,10 +105,7 @@ int verbosity {7};
 double weight_cutoff {0.25};
 double weight_survive {1.0};
 int pyne_source_mode {-1};
-<<<<<<< HEAD
 std::vector<double> pyne_source_e_bounds {-1.0};
-=======
->>>>>>> set pyne source mode from python api
 
 } // namespace settings
 
@@ -423,14 +420,11 @@ void read_settings_xml()
     pyne_source_mode = std::stoi(get_node_value(root, "pyne_source_mode"));
   }
 
-<<<<<<< HEAD
   // Pyne source energy boundaries
   if (check_for_node(root, "pyne_source_e_bounds")) {
     pyne_source_e_bounds = get_node_array<double>(root, "pyne_source_e_bounds");
   }
 
-=======
->>>>>>> set pyne source mode from python api
   // Probability tables
   if (check_for_node(root, "ptables")) {
     urr_ptables_on = get_node_value_bool(root, "ptables");

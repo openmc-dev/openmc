@@ -633,6 +633,18 @@ class IncidentNeutron(EqualityMixin):
             rx = Reaction.from_ace(ace, i)
             data.reactions[rx.mt] = rx
 
+        # If present, use fission xs to compute "fission heating" coefficient
+        fission_reaction = data.reactions.get(18)
+        if fission_reaction is not None:
+            fission_xs = fission_reaction.xs[strT].y
+
+            # Compute "fission-less" heating coefficient
+            no_fission_heating = Reaction(999)
+            no_fission_heating.xs[strT] = Tabulated1D(
+                energy, heating_number * (total_xs - fission_xs))
+            no_fission_heating.redundant = True
+            data.reactions[999] = no_fission_heating
+
         # Some photon production reactions may be assigned to MTs that don't
         # exist, usually MT=4. In this case, we create a new reaction and add
         # them

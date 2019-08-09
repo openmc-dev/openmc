@@ -266,6 +266,10 @@ void initialize_source()
 #ifdef DAGMC
     // Read in the pyne_r2s_source
     if (filetype == "pyne_r2s_source") {
+      // check the pyne_source_mode
+      if (settings::pyne_source_mode < 0 or settings::pyne_source_mode > 5) {
+        fatal_error(std::string("Wrong pyne_source_mode. Must be 0, 1, 2, 3, 4 or 5"));
+      }
       // initial sampler
       pyne::Sampler* sampler = initialize_pyne_sampler();
       // Generation source sites from pyne source
@@ -357,7 +361,7 @@ pyne::Sampler* initialize_pyne_sampler(){
         "cell_number"));
   tag_names.insert(std::pair<std::string, std::string> ("cell_fracs_tag_name",
         "cell_fracs"));
-  pyne::Sampler* sampler = new pyne::Sampler(settings::path_source, tag_names, e_bounds, 1);
+  pyne::Sampler* sampler = new pyne::Sampler(settings::path_source, tag_names, e_bounds, settings::pyne_source_mode);
   return sampler;
 }
 

@@ -331,7 +331,7 @@ class FissionYieldDistribution(Mapping):
 
         yield_matrix = empty((len(energies), len(shared_prod)))
 
-        for g_index, energy in enumerate(sorted(energies)):
+        for g_index, energy in enumerate(energies):
             prod_map = fission_yields[energy]
             for prod_ix, product in enumerate(ordered_prod):
                 yield_val = prod_map.get(product)

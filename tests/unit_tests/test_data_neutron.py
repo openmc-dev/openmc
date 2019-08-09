@@ -205,6 +205,18 @@ def test_derived_products(am244):
     assert total_neutron.yield_(6e6) == pytest.approx(4.2558)
 
 
+def test_heating(run_in_tmpdir, am244):
+    assert 999 in am244.reactions  # TBD
+    strT = min(am244.reactions[1].xs.keys())
+    total_xs = am244.reactions[1].xs[strT].y
+    fission_xs = am244.reactions[18].xs[strT].y
+    total_heating = am244.reactions[301].xs[strT].y
+    no_fission_heating = am244.reactions[999].xs[strT].y
+    heating_number = total_heating / total_xs
+    assert no_fission_heating == pytest.approx(
+        heating_number * (total_xs - fission_xs))
+
+
 def test_urr(pu239):
     for T, ptable in pu239.urr.items():
         assert T.endswith('K')

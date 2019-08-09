@@ -82,6 +82,8 @@ class Settings(object):
     pyne_source_mode : int
         Determine the mode of the pyne source sampler. Required if a pyne
         source file is used.
+    pyne_source_e_bounds : tuple or list
+        The energy boundaries of the pyne source.
     resonance_scattering : dict
         Settings for resonance elastic scattering. Accepted keys are 'enable'
         (bool), 'method' (str), 'energy_min' (float), 'energy_max' (float), and
@@ -183,6 +185,7 @@ class Settings(object):
         self._seed = None
         self._survival_biasing = None
         self._pyne_source_mode = None
+        self._pyne_source_e_bounds = None
 
         # Shannon entropy mesh
         self._entropy_mesh = None
@@ -287,6 +290,10 @@ class Settings(object):
     @property
     def pyne_source_mode(self):
         return self._pyne_source_mode
+
+    @property
+    def pyne_source_e_bounds(self):
+        return self._pyne_source_e_bounds
 
     @property
     def entropy_mesh(self):
@@ -536,6 +543,20 @@ class Settings(object):
     def pyne_source_mode(self, pyne_source_mode):
         cv.check_type('pyne source mode', pyne_source_mode, int)
         self._pyne_source_mode = pyne_source_mode
+
+    @pyne_source_e_bounds.setter
+    def pyne_source_e_bounds(self, pyne_source_e_bounds):
+        cv.check_type('pyne source e_bounds', pyne_source_e_bounds, Iterable,
+                Real)
+        cv.check_length('pyne source e_bounds minimum length',
+                pyne_source_e_bounds, 2, float('inf'))
+        cv.check_value('pyne source lowest energy boundary',
+                pyne_source_e_bounds[0], [0.0])
+        # e_bounds should increse
+        for i in range(1, len(pyne_source_e_bounds)):
+            cv.check_greater_than('pyne source energy',
+                    pyne_source_e_bounds[i], pyne_source_e_bounds[i-1])
+        self._pyne_source_e_bounds = pyne_source_e_bounds
 
     @cutoff.setter
     def cutoff(self, cutoff):
@@ -833,6 +854,11 @@ class Settings(object):
             element = ET.SubElement(root, "pyne_source_mode")
             element.text = str(self._pyne_source_mode).lower()
 
+    def _create_pyne_source_e_bounds_subelement(self, root):
+        if self._pyne_source_e_bounds is not None:
+            element = ET.SubElement(root, "pyne_source_e_bounds")
+            element.text = ' '.join(map(str, self._pyne_source_e_bounds))
+
     def _create_cutoff_subelement(self, root):
         if self._cutoff is not None:
             element = ET.SubElement(root, "cutoff")
@@ -1068,6 +1094,11 @@ class Settings(object):
         if text is not None:
             self.pyne_source_mode = int(text)
 
+    def _pyne_source_e_bounds_from_xml_element(self, root):
+        text = get_text(root, 'pyne_source_e_bounds')
+        if text is not None:
+            self.pyne_source_e_bounds = [float(x) for x in text.split()]
+
     def _cutoff_from_xml_element(self, root):
         elem = root.find('cutoff')
         if elem is not None:
@@ -1213,6 +1244,7 @@ class Settings(object):
         self._create_seed_subelement(root_element)
         self._create_survival_biasing_subelement(root_element)
         self._create_pyne_source_mode_subelement(root_element)
+        self._create_pyne_source_e_bounds_subelement(root_element)
         self._create_cutoff_subelement(root_element)
         self._create_entropy_mesh_subelement(root_element)
         self._create_trigger_subelement(root_element)
@@ -1280,6 +1312,7 @@ class Settings(object):
         settings._seed_from_xml_element(root)
         settings._survival_biasing_from_xml_element(root)
         settings._pyne_source_mode_from_xml_element(root)
+        settings._pyne_source_e_bounds_from_xml_element(root)
         settings._cutoff_from_xml_element(root)
         settings._entropy_mesh_from_xml_element(root)
         settings._trigger_from_xml_element(root)

@@ -266,9 +266,13 @@ void initialize_source()
 #ifdef DAGMC
     // Read in the pyne_r2s_source
     if (filetype == "pyne_r2s_source") {
-      // check the pyne_source_mode
+      // check pyne_source_mode
       if (settings::pyne_source_mode < 0 or settings::pyne_source_mode > 5) {
         fatal_error(std::string("Wrong pyne_source_mode. Must be 0, 1, 2, 3, 4 or 5"));
+      }
+      // check pyne_source_e_bounds
+      if (settings::pyne_source_e_bounds.size() < 2) {
+        fatal_error(std::string("Wrong pyne_source_e_bounds!"));
       }
       // initial sampler
       pyne::Sampler* sampler = initialize_pyne_sampler();
@@ -350,8 +354,6 @@ Particle::Bank sample_external_source()
 
 #ifdef DAGMC
 pyne::Sampler* initialize_pyne_sampler(){
-  std::string e_bounds_file ("e_bounds");
-  std::vector<double> e_bounds = pyne::read_e_bounds(e_bounds_file);
   std::map<std::string, std::string> tag_names;
   tag_names.insert(std::pair<std::string, std::string> ("src_tag_name",
         "source_density"));
@@ -361,7 +363,8 @@ pyne::Sampler* initialize_pyne_sampler(){
         "cell_number"));
   tag_names.insert(std::pair<std::string, std::string> ("cell_fracs_tag_name",
         "cell_fracs"));
-  pyne::Sampler* sampler = new pyne::Sampler(settings::path_source, tag_names, e_bounds, settings::pyne_source_mode);
+  pyne::Sampler* sampler = new pyne::Sampler(settings::path_source, tag_names,
+		 settings::pyne_source_e_bounds, settings::pyne_source_mode);
   return sampler;
 }
 

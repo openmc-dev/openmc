@@ -357,7 +357,6 @@ pyne::Sampler* initialize_pyne_sampler(){
         "cell_number"));
   tag_names.insert(std::pair<std::string, std::string> ("cell_fracs_tag_name",
         "cell_fracs"));
-  //pyne::Sampler* sampler = new pyne::Sampler(settings::path_source, tag_names, e_bounds, 1);
   pyne::Sampler* sampler = new pyne::Sampler(settings::path_source, tag_names, e_bounds, 1);
   return sampler;
 }

@@ -104,6 +104,7 @@ int trigger_batch_interval {1};
 int verbosity {7};
 double weight_cutoff {0.25};
 double weight_survive {1.0};
+int pyne_source_mode {-1};
 
 } // namespace settings
 
@@ -411,6 +412,11 @@ void read_settings_xml()
   // Survival biasing
   if (check_for_node(root, "survival_biasing")) {
     survival_biasing = get_node_value_bool(root, "survival_biasing");
+  }
+
+  // Pyne source sampling mode
+  if (check_for_node(root, "pyne_source_mode")) {
+    pyne_source_mode = std::stoi(get_node_value(root, "pyne_source_mode"));
   }
 
   // Probability tables

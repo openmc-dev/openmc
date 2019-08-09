@@ -90,6 +90,7 @@ extern int trigger_batch_interval;   //!< Batch interval for triggers
 extern "C" int verbosity;                //!< How verbose to make output
 extern double weight_cutoff;         //!< Weight cutoff for Russian roulette
 extern double weight_survive;        //!< Survival weight after Russian roulette
+extern int pyne_source_mode;         //!< Mode of the pyne source sampler
 } // namespace settings
 
 //==============================================================================

@@ -79,6 +79,9 @@ class Settings(object):
         Whether to use photon transport.
     ptables : bool
         Determine whether probability tables are used.
+    pyne_source_mode : int
+        Determine the mode of the pyne source sampler. Required if a pyne
+        source file is used.
     resonance_scattering : dict
         Settings for resonance elastic scattering. Accepted keys are 'enable'
         (bool), 'method' (str), 'energy_min' (float), 'energy_max' (float), and
@@ -179,6 +182,7 @@ class Settings(object):
         self._ptables = None
         self._seed = None
         self._survival_biasing = None
+        self._pyne_source_mode = None
 
         # Shannon entropy mesh
         self._entropy_mesh = None
@@ -279,6 +283,10 @@ class Settings(object):
     @property
     def survival_biasing(self):
         return self._survival_biasing
+
+    @property
+    def pyne_source_mode(self):
+        return self._pyne_source_mode
 
     @property
     def entropy_mesh(self):
@@ -523,6 +531,11 @@ class Settings(object):
     def survival_biasing(self, survival_biasing):
         cv.check_type('survival biasing', survival_biasing, bool)
         self._survival_biasing = survival_biasing
+
+    @pyne_source_mode.setter
+    def pyne_source_mode(self, pyne_source_mode):
+        cv.check_type('pyne source mode', pyne_source_mode, int)
+        self._pyne_source_mode = pyne_source_mode
 
     @cutoff.setter
     def cutoff(self, cutoff):
@@ -815,6 +828,11 @@ class Settings(object):
             element = ET.SubElement(root, "survival_biasing")
             element.text = str(self._survival_biasing).lower()
 
+    def _create_pyne_source_mode_subelement(self, root):
+        if self._pyne_source_mode is not None:
+            element = ET.SubElement(root, "pyne_source_mode")
+            element.text = str(self._pyne_source_mode).lower()
+
     def _create_cutoff_subelement(self, root):
         if self._cutoff is not None:
             element = ET.SubElement(root, "cutoff")
@@ -1045,6 +1063,11 @@ class Settings(object):
         if text is not None:
             self.survival_biasing = text in ('true', '1')
 
+    def _pyne_source_mode_from_xml_element(self, root):
+        text = get_text(root, 'pyne_source_mode')
+        if text is not None:
+            self.pyne_source_mode = int(text)
+
     def _cutoff_from_xml_element(self, root):
         elem = root.find('cutoff')
         if elem is not None:
@@ -1189,6 +1212,7 @@ class Settings(object):
         self._create_ptables_subelement(root_element)
         self._create_seed_subelement(root_element)
         self._create_survival_biasing_subelement(root_element)
+        self._create_pyne_source_mode_subelement(root_element)
         self._create_cutoff_subelement(root_element)
         self._create_entropy_mesh_subelement(root_element)
         self._create_trigger_subelement(root_element)
@@ -1255,6 +1279,7 @@ class Settings(object):
         settings._ptables_from_xml_element(root)
         settings._seed_from_xml_element(root)
         settings._survival_biasing_from_xml_element(root)
+        settings._pyne_source_mode_from_xml_element(root)
         settings._cutoff_from_xml_element(root)
         settings._entropy_mesh_from_xml_element(root)
         settings._trigger_from_xml_element(root)

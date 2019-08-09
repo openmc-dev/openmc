@@ -337,7 +337,7 @@ target_link_libraries(openmc libopenmc)
 # Ensure C++14 standard is used. Starting with CMake 3.8, another way this could
 # be done is using the cxx_std_14 compiler feature.
 set_target_properties(
-    openmc libopenmc faddeeva pugixml
+    openmc libopenmc faddeeva pugixml pyne_source_sampling
     PROPERTIES CXX_STANDARD 14 CXX_EXTENSIONS OFF)
 if(dagmc)
   set_target_properties(openmc pyne_source_sampling

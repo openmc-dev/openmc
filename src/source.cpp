@@ -374,18 +374,56 @@ Particle::Bank sample_pyne_source(pyne::Sampler* sampler)
   prn_set_stream(STREAM_SOURCE);
 
   // Determine total source strength
-  double total_strength = 0.0;
-  // Change to get total strength from pyne_source file
-  /// for (auto& s : model::external_sources)
-  ///   total_strength += s.strength();
-  total_strength = 1.0; // for test
+  double total_strength = 1.0;
 
-  std::vector<double> rands;;
-  for (int i=0; i<6; i++){
-      rands.push_back(prn());
+  // Repeat sampling source location until a good site has been found
+  bool found = false;
+  int n_reject = 0;
+  int max_void_rejection = 100;
+  std::vector<double> rands;
+  pyne::SourceParticle src;
+  Particle::Bank site;
+  // step 1: There are 6 random numbers used to sample the
+  //         mesh element index, energy, x, y, z, weight
+  //         1.1 sample mesh element index using rands[0] and rands[1]
+  //         1.2 sample particle location x, y, z using rands[2, 3, 4]
+  //         1.3 sample energy
+  // step 2: check the location of the particle (in the geom? void?)
+  // step 3: If this partilce failed in the check, repeat from 1.2 to try
+  //         another location x, y, z.
+  //         If failed max_void_rejection times, repeat from 1.1 to try another
+  //         mesh element & energy.
+  // step 4: If particle passes the check. Done and convert it to openmc format.
+  while (!found) {
+    // Generate rands used in particle_birth
+    // For each mesh element, try at most max_void_rejection times
+    if (!found and (n_reject == 0 or n_reject == max_void_rejection)){
+      // rands[0] and rands[1] are used for alias table, determin the mesh index
+      // rands[6] for energy
+      // rands[2], rands[3] and rands[4] for x, y, and z
+      // initialize the rands at the beginning for each mesh element
+      rands.resize(0);
+      for (int i=0; i<6; i++){
+          rands.push_back(prn());
+      }
+      // reset n_reject and sample particle in new mesh element
+      n_reject = 0;
+    }
+    if (!found and n_reject != 0) {
+      // update the rands for x, y, z
+      rands[2] = prn();
+      rands[3] = prn();
+      rands[4] = prn();
+    }
+    // Sample particle
+    src = sampler->particle_birth(rands);
+    site = convert_pyne_source_particle(src);
+    // Check for rejection
+    found = check_pyne_source_particle(site);
+    if (!found) {
+      ++n_reject;
+    }
   }
-  pyne::SourceParticle src = sampler->particle_birth(rands);
-  Particle::Bank site = convert_pyne_source_particle(src);
 
   // If running in MG, convert site % E to group
   if (!settings::run_CE) {
@@ -418,6 +456,28 @@ Particle::Bank convert_pyne_source_particle(pyne::SourceParticle pyne_src)
     site.particle= Particle::Type::photon;
   }
   return site;
+}
+
+bool check_pyne_source_particle(Particle::Bank site)
+{
+  // Search to see if location exists in geometry
+  bool found = false;
+  int32_t cell_index, instance;
+  double xyz[] {site.r.x, site.r.y, site.r.z};
+  int err = openmc_find_cell(xyz, &cell_index, &instance);
+  found = (err != OPENMC_E_GEOMETRY);
+
+  // Determine material
+  if (found) {
+    const auto& c = model::cells[cell_index];
+    auto mat_index = c->material_.size() == 1
+      ? c->material_[0] : c->material_[instance];
+  
+    if (mat_index == MATERIAL_VOID) {
+      found = false;
+    }
+  }
+  return found;
 }
 #endif
 

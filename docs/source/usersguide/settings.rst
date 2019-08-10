@@ -174,8 +174,7 @@ R2S source file `source.h5m`::
   settings.pyne_source_mode = 1
   settings.pyne_source_e_bounds = np.array([0.0, 1.0e6])
 
-For more detail of PyNE mesh based source sampling, see
-`mesh based source sampling <http://pyne.io/usersguide/source_sampling.html>`_
+For more detail of PyNE mesh based source sampling, see pyne_source_sampling_.
 
 For a full list of all classes related to statistical distributions, see
 :ref:`pythonapi_stats`.
@@ -282,3 +281,4 @@ As an example, to write a statepoint file every five batches::
   settings.statepoint = {'batches': range(5, n + 5, 5)}
 
 .. _NIST ESTAR database: https://physics.nist.gov/PhysRefData/Star/Text/ESTAR.html
+.. _pyne_source_sampling: http://pyne.io/usersguide/source_sampling.html

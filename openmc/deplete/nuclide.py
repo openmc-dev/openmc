@@ -231,13 +231,15 @@ class FissionYieldDistribution(Mapping):
 
     Parameters
     ----------
-    ordered_energies : iterable of float
-        Energies for which fission yield data exist
-    orderded_products : iterable of str
-        Fission products produced by this parent at all energies
-    group_fission_yields : numpy.ndarray or iterable of iterable of float
+    energies : iterable of float
+        Energies for which fission yield data exist. Must be ordered
+        by increasing energy
+    products : iterable of str
+        Fission products produced by this parent at all energies.
+        Must be ordered alphabetically
+    yield_matrix : numpy.ndarray or iterable of iterable of float
         Array of shape ``(n_energy, n_products)`` where
-        ``group_fission_yields[g][j]`` is the yield of
+        ``yield_matrix[g][j]`` is the yield of
         ``ordered_products[j]`` due to a fission in energy region ``g``.
 
     Attributes
@@ -255,20 +257,21 @@ class FissionYieldDistribution(Mapping):
 
     See Also
     --------
-    :meth:`from_xml_element`, :meth:`from_dict`
+    * :meth:`from_xml_element`, :meth:`from_dict` - Construction methods
+    * :class:`FissionYield` - Class used for storing yields at a given energy
     """
 
-    def __init__(self, ordered_energies, ordered_products, group_fission_yields):
-        check_type("energies", ordered_energies, Iterable, Real)
-        self.energies = tuple(ordered_energies)
-        check_type("products", ordered_products, Iterable, str)
-        self.products = tuple(ordered_products)
-        yield_matrix = asarray(group_fission_yields, dtype=float)
+    def __init__(self, energies, products, yield_matrix):
+        check_type("energies", energies, Iterable, Real)
+        self.energies = tuple(energies)
+        check_type("products", products, Iterable, str)
+        self.products = tuple(products)
+        yield_matrix = asarray(yield_matrix, dtype=float)
         if yield_matrix.shape != (len(self.energies), len(self.products)):
             raise ValueError(
                 "Shape of yield matrix inconsistent. "
                 "Should be ({}, {}), is {}".format(
-                    len(ordered_energies), len(ordered_products),
+                    len(energies), len(products),
                     yield_matrix.shape))
         self.yield_matrix = yield_matrix
 
@@ -278,7 +281,7 @@ class FissionYieldDistribution(Mapping):
     def __getitem__(self, energy):
         if energy not in self.energies:
             raise KeyError(energy)
-        return _FissionYield(
+        return FissionYield(
             self.products, self.yield_matrix[self.energies.index(energy)])
 
     def __iter__(self):
@@ -321,13 +324,13 @@ class FissionYieldDistribution(Mapping):
         FissionYieldDistribution
         """
         # mapping {energy: {product: value}}
-        energies = tuple(sorted(fission_yields))
+        energies = sorted(fission_yields)
 
         # Get a consistent set of products to produce a matrix of yields
         shared_prod = set()
         for prod_set in map(set, fission_yields.values()):
             shared_prod |= prod_set
-        ordered_prod = tuple(sorted(shared_prod))
+        ordered_prod = sorted(shared_prod)
 
         yield_matrix = empty((len(energies), len(shared_prod)))
 
@@ -335,10 +338,8 @@ class FissionYieldDistribution(Mapping):
             prod_map = fission_yields[energy]
             for prod_ix, product in enumerate(ordered_prod):
                 yield_val = prod_map.get(product)
-                if yield_val is None:
-                    yield_matrix[g_index, prod_ix] = 0.0
-                else:
-                    yield_matrix[g_index, prod_ix] = yield_val
+                yield_matrix[g_index, prod_ix] = (
+                    0.0 if yield_val is None else yield_val)
 
         return cls(energies, ordered_prod, yield_matrix)
 
@@ -359,19 +360,47 @@ class FissionYieldDistribution(Mapping):
             data_elem.text = " ".join(map(str, yield_obj.yields))
 
 
-class _FissionYield(Mapping):
+class FissionYield(Mapping):
     """Mapping for fission yields of a parent at a specific energy
 
     Separated to support nested dictionary-like behavior for
     :class:`FissionYieldDistribution`, and allowing math operations
-    on a single vector of yields
+    on a single vector of yields. Can in turn be used like a
+    dictionary to fetch fission yields.
+
+    Does not support resizing / inserting new products that do
+    not exist.
 
     Parameters
     ----------
     products : tuple of str
         Products for this specific distribution
     yields : numpy.ndarray
-        View into associated :attr:`FissionYieldDistribution.yield_matrix`
+        Fission product yields for each product in ``products``
+
+    Attributes
+    ----------
+    products : tuple of str
+        Products for this specific distribution
+    yields : numpy.ndarray
+        Fission product yields for each product in ``products``
+
+    Examples
+    --------
+    >>> import numpy
+    >>> fy_vector = FissionYield(
+    ...     ("Xe135", "I129", "Sm149"),
+    ...     numpy.array((0.002, 0.001, 0.0003)))
+    >>> fy_vector["Xe135"]
+    0.002
+    >>> new = fy_vector.copy()
+    >>> fy_vector *= 2
+    >>> fy_vector["Xe135"]
+    0.004
+    >>> new["Xe135"]
+    0.002
+    >>> (new + fy_vector)["Sm149"]
+    0.0009
     """
 
     def __init__(self, products, yields):
@@ -395,8 +424,8 @@ class _FissionYield(Mapping):
         return self
 
     def __mul__(self, value):
-        return _FissionYield(self.products, self.yields * value)
+        return FissionYield(self.products, self.yields * value)
 
     def copy(self):
         """Return an identical yield object, with unique yields"""
-        return _FissionYield(self.products, self.yields.copy())
+        return FissionYield(self.products, self.yields.copy())

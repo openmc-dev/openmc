@@ -26,7 +26,8 @@ from .atom_number import AtomNumber
 from .reaction_rates import ReactionRates
 from .results_list import ResultsList
 from .helpers import (
-    DirectReactionRateHelper, ChainFissionHelper, ConstantFissionYieldHelper)
+    DirectReactionRateHelper, ChainFissionHelper, ConstantFissionYieldHelper,
+    FissionYieldCutoffHelper)
 
 
 def _distribute(items):
@@ -85,10 +86,23 @@ class Operator(TransportOperator):
         in initial condition to ensure they exist in the decay chain.
         Only done for nuclides with reaction rates.
         Defaults to 1.0e3.
-    fission_yield_energy : float, optional
-        Energy [eV] to pull fission product yields from. Passed to the
-        :class:`openmc.deplete.ConstantFissionYieldHelper`. Default:
-        0.0253 eV
+    fission_yield_mode : str, {"constant", "cutoff"}
+        Key indicating what fission product yield scheme to use. The
+        key determines what fission energy helper is used::
+
+            * "constant": :class:`openmc.deplete.ConstantFissionYieldHelper`
+            * "cutoff": :class:`openmc.deplete.FissionYieldCutoffHelper`
+
+        The documentation on these classes describe their methodology
+        and differences. ``"constant"`` will treat fission yields as
+        constant with respect to energy, while ``"cutoff"`` will
+        compute effective yields based on the number of fission events
+        above and below a cutoff. Default: ``"constant"``
+    fission_yield_opts : dict of str to option, optional
+        Optional arguments to pass to the helper determined by
+        ``fission_yield_mode``. Will be passed directly on to the
+        helper. Passing a value of None will use the defaults for
+        the associated helper.
 
     Attributes
     ----------
@@ -125,9 +139,19 @@ class Operator(TransportOperator):
     diff_burnable_mats : bool
         Whether to differentiate burnable materials with multiple instances
     """
+    _fission_helpers_ = {
+        "constant": ConstantFissionYieldHelper,
+        "cutoff": FissionYieldCutoffHelper,
+    }
+
     def __init__(self, geometry, settings, chain_file=None, prev_results=None,
                  diff_burnable_mats=False, fission_q=None,
-                 dilute_initial=1.0e3, fission_yield_energy=0.0253):
+                 dilute_initial=1.0e3, fission_yield_mode="constant",
+                 fission_yield_opts=None):
+        if fission_yield_mode not in self._fission_helpers_:
+            raise KeyError(
+                "fission_yield_mode must be one of {}, not {}".format(
+                    ", ".join(self._fission_helpers_), fission_yield_mode))
         super().__init__(chain_file, fission_q, dilute_initial, prev_results)
         self.round_number = False
         self.prev_res = None
@@ -182,8 +206,16 @@ class Operator(TransportOperator):
         self._rate_helper = DirectReactionRateHelper(
             self.reaction_rates.n_nuc, self.reaction_rates.n_react)
         self._energy_helper = ChainFissionHelper()
-        self._fsn_yield_helper = ConstantFissionYieldHelper(
-            self.chain.nuclides, energy=fission_yield_energy)
+
+        # Select and create fission yield helper
+        fission_helper = self._fission_helpers_[fission_yield_mode]
+        if fission_yield_opts is None:
+            self._fsn_yield_helper = fission_helper(self.chain.nuclides)
+        else:
+            self._fsn_yield_helper = fission_yield_mode(
+                self.chain.nuclides, **fission_yield_opts)
+        if hasattr(self._fsn_yield_helper, "n_bmats"):
+            self._fsn_yield_helper.n_bmats = len(self.burnable_mats)
 
     def __call__(self, vec, power):
         """Runs a simulation.

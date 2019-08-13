@@ -480,13 +480,14 @@ class TalliedFissionYieldHelper(FissionYieldHelper):
     chain_nuclides : iterable of openmc.deplete.Nuclide
         Nuclides tracked in the depletion chain. Not necessary
         that all have yield data.
-    n_bmats : int
+    n_bmats : int, optional
         Number of burnable materials tracked in the problem.
 
     Attributes
     ----------
     n_bmats : int
-        Number of burnable materials tracked in the problem
+        Number of burnable materials tracked in the problem.
+        Must be set prior to generating tallies
     constant_yields : dict of str to :class:`openmc.deplete.FissionYield`
         Fission yields for all nuclides that only have one set of
         fission yield data. Can be accessed as ``{parent: {product: yield}}``
@@ -494,12 +495,25 @@ class TalliedFissionYieldHelper(FissionYieldHelper):
 
     _upper_energy = 20.0e6  # upper energy for tallies
 
-    def __init__(self, chain_nuclides, n_bmats):
+    def __init__(self, chain_nuclides, n_bmats=None):
         super().__init__(chain_nuclides)
         self.n_bmats = n_bmats
         self._local_indexes = None
         self._fission_rate_tally = None
         self._tally_index = {}
+
+    @property
+    def n_bmats(self):
+        return self._n_bmats
+
+    @n_bmats.setter
+    def n_bmats(self, value):
+        if value is None:
+            self._n_bmats = None
+            return
+        check_type("n_bmats", value, Integral)
+        check_greater_than("n_bmats", value, 0)
+        sef._n_bmats = value
 
     def generate_tallies(self, materials, mat_indexes):
         """Construct the fission rate tally
@@ -512,6 +526,8 @@ class TalliedFissionYieldHelper(FissionYieldHelper):
             Indexes for materials in ``materials`` tracked on this
             process
         """
+        if self._n_bmat is None:
+            raise AttributeError("Number of burnable materials is not set")
         self._local_indexes = asarray(mat_indexes)
 
         # Tally group-wise fission reaction rates

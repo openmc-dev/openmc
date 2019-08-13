@@ -238,7 +238,7 @@ class FissionYieldCutoffHelper(TalliedFissionYieldHelper):
     chain_nuclides : iterable of openmc.deplete.Nuclide
         Nuclides tracked in the depletion chain. Not necessary
         that all have yield data.
-    n_bmats : int
+    n_bmats : int, optional
         Number of burnable materials tracked in the problem
     cutoff : float, optional
         Cutoff energy in [eV] below which all fissions will be
@@ -254,7 +254,8 @@ class FissionYieldCutoffHelper(TalliedFissionYieldHelper):
     Attributes
     ----------
     n_bmats : int
-        Number of burnable materials tracked in the problem
+        Number of burnable materials tracked in the problem.
+        Must be set prior to generating tallies
     thermal_yields : dict
         Dictionary of the form ``{parent: {product: yield}}``
         with thermal yields

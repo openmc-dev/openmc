@@ -78,6 +78,7 @@ data, such as number densities and reaction rates for each material.
 
    AtomNumber
    ChainFissionHelper
+   ConstantFissionYieldHelper
    DirectReactionRateHelper
    OperatorResult
    ReactionRates

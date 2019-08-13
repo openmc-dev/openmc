@@ -114,9 +114,9 @@ so it should not be necessary in practice to generate it yourself.
 -------------------------------
 
 This script generates a depletion chain file called ``chain_endfb71.xml``
-using ENDF/B 7.1 nuclear data. If the :envvar:`OPENMC_ENDF_DATA` variable
+using ENDF/B-VII.1 nuclear data. If the :envvar:`OPENMC_ENDF_DATA` variable
 is not set, and ``"neutron"``, ``"decay"``, ``"nfy"`` directories
-to not exist, then ENDF/B 7.1 293 K data will be downloaded.
+do not exist, then ENDF/B-VII.1 data will be downloaded.
 
 .. _scripts_depletion_chain_casl:
 
@@ -125,16 +125,16 @@ to not exist, then ENDF/B 7.1 293 K data will be downloaded.
 ------------------------------------
 
 This script generates a depletion chain called ``chain_casl.xml``
-using a ENDF/B 7.1 nuclear data for a simplified chain.
+using ENDF/B-VII.1 nuclear data for a simplified chain.
 The nuclides were chosen by CASL-ORIGEN, which can be found in
 Appendix A of Kang Seog Kim, "Specification for the VERA Depletion
 Benchmark Suite", CASL-U-2015-1014-000, Rev. 0, ORNL/TM-2016/53, 2016.
-``Te129`` has been added into this chain due to it's link to
+``Te129`` has been added into this chain due to its link to
 ``I129`` production.
 
 If the :envvar:`OPENMC_ENDF_DATA` variable is not set,
 and ``"neutron"``, ``"decay"``, ``"nfy"`` directories
-to not exist, then ENDF/B 7.1 293 K data will be downloaded.
+to not exist, then ENDF/B-VII.1 data will be downloaded.
 
 .. _scripts_stopping:
 

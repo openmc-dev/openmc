@@ -231,9 +231,9 @@ class Nuclide(object):
         The following checks are performed:
 
             1) for all non-fission reactions and decay modes,
-               do the sum of branching ratios equal about 1?
-            2) for fission reactions, do the sum of fission yield
-               fractions equal about 2?
+               does the sum of branching ratios equal about one?
+            2) for fission reactions, does the sum of fission yield
+               fractions equal about two?
 
         Parameters
         ----------
@@ -241,7 +241,7 @@ class Nuclide(object):
             Raise exceptions at the first inconsistency if true.
             Otherwise mark a warning
         quiet : bool, optional
-            Flag to supress warnings and return immediately at
+            Flag to suppress warnings and return immediately at
             the first inconsistency. Used only if
             ``strict`` does not evaluate to ``True``.
         tolerance : float, optional
@@ -273,8 +273,8 @@ class Nuclide(object):
         valid = True
 
         # check decay modes
-        if len(self.decay_modes) > 0:
-            sum_br = sum(map(branch_getter, self.decay_modes))
+        if self.decay_modes:
+            sum_br = sum(m.branching_ratio for m in self.decay_modes)
             stat = 1.0 - tolerance <= sum_br <= 1.0 + tolerance
             if not stat:
                 msg = msg_func(
@@ -287,12 +287,12 @@ class Nuclide(object):
                 warn(msg)
                 valid = False
 
-        if len(self.reactions) > 0:
+        if self.reactions:
             type_map.clear()
             for reaction in self.reactions:
                 type_map[reaction.type].add(reaction)
             for rxn_type, reactions in type_map.items():
-                sum_rxn = sum(map(branch_getter, reactions))
+                sum_rxn = sum(rx.branching_ratio for rx in reactions)
                 stat = 1.0 - tolerance <= sum_rxn <= 1.0 + tolerance
                 if stat:
                     continue
@@ -306,10 +306,10 @@ class Nuclide(object):
                 warn(msg)
                 valid = False
 
-        if len(self.yield_data) > 0:
+        if self.yield_data > 0:
             yield_getter = itemgetter(1)
             for energy, yield_list in self.yield_data.items():
-                sum_yield = sum(map(yield_getter, yield_list))
+                sum_yield = sum(y[1] for y in yield_list)
                 stat = 2.0 - tolerance <= sum_yield <= 2.0 + tolerance
                 if stat:
                     continue

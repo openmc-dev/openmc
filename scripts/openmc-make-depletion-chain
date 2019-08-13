@@ -36,7 +36,7 @@ def main():
     for flist, ftype in zip(
             (decay_files, neutron_files, nfy_files),
             ("decay", "neutron", "nfy")):
-        if len(flist) == 0:
+        if not flist:
             raise IOError("No {} endf files found in {}".format(ftype, endf_dir))
 
     chain = openmc.deplete.Chain.from_endf(decay_files, nfy_files, neutron_files)

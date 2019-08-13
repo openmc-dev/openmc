@@ -210,7 +210,7 @@ class Operator(TransportOperator):
         nuclides = self._get_tally_nuclides()
         self._rate_helper.nuclides = nuclides
         self._energy_helper.nuclides = nuclides
-        self._fsn_yield_helper.set_fissionable_nuclides(nuclides)
+        self._fsn_yield_helper.update_nuclides_from_operator(nuclides)
 
         # Run OpenMC
         openmc.capi.reset()
@@ -590,7 +590,7 @@ class Operator(TransportOperator):
                 mat_index, nuc_ind, react_ind)
 
             # Compute fission yields for this material
-            fission_yields.append(self._fsn_yield_helper.compute_yields(i))
+            fission_yields.append(self._fsn_yield_helper.weighted_yields(i))
 
             # Accumulate energy from fission
             self._energy_helper.update(tally_rates[:, fission_ind], mat_index)

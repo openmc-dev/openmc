@@ -364,6 +364,108 @@ class EnergyHelper(ABC):
         self._nuclides = nuclides
 
 
+class FissionYieldHelper(ABC):
+    """Abstract class for processing energy dependent fission yields
+
+    Parameters
+    ----------
+    chain_nuclides : iterable of openmc.deplete.Nuclide
+        Nuclides tracked in the depletion chain. Not necessary
+        that all have yield data.
+
+    Attributes
+    ----------
+    n_bmats : int
+        Number of burnable materials tracked in the problem
+    constant_yields : dict of str to :class:`openmc.deplete.FissionYield`
+        Fission yields for all nuclides that only have one set of
+        fission yield data. Can be accessed as ``{parent: {product: yield}}``
+    """
+
+    def __init__(self, chain_nuclides):
+        self._chain_nuclides = {}
+        self._constant_yields = {}
+
+        # Get all nuclides with fission yield data
+        for nuc in chain_nuclides:
+            if len(nuc.yield_data) == 1:
+                self._constant_yields[nuc.name] = (
+                    nuc.yield_data[nuc.yield_energies[0]])
+            elif len(nuc.yield_data) > 1:
+                self._chain_nuclides[nuc.name] = nuc
+        self._chain_set = set(self._chain_nuclides) | set(self._constant_yields)
+
+    @property
+    def constant_yields(self):
+        out = {}
+        for key, sub in self._constant_yields.items():
+            out[key] = sub.copy()
+        return out
+
+    @abstractmethod
+    def weighted_yields(self, local_mat_index):
+        """Return fission yields for a specific material
+
+        Parameters
+        ----------
+        local_mat_index : int
+            Index for material tracked on this process that
+            exists in :attr:`local_mat_index` and fits within
+            the first axis in :attr:`results`
+
+        Returns
+        -------
+        library : dict
+            Dictionary of ``{parent: {product: fyield}}``
+        """
+
+    @staticmethod
+    def unpack():
+        """Unpack tally data prior to compute fission yields.
+
+        Called after a :meth:`openmc.deplete.Operator.__call__`
+        routine during the normalization of reaction rates.
+
+        Not necessary for all subclasses to implement, unless tallies
+        are used.
+        """
+
+    @staticmethod
+    def generate_tallies(materials, mat_indexes):
+        """Construct tallies necessary for computing fission yields
+
+        Called during the operator set up phase prior to depleting.
+        Not necessary for subclasses to implement
+
+        Parameters
+        ----------
+        materials : iterable of C-API materials
+            Materials to be used in :class:`openmc.capi.MaterialFilter`
+        mat_indexes : iterable of int
+            Indexes for materials in ``materials`` tracked on this
+            process
+        """
+
+    def update_nuclides_from_operator(self, nuclides):
+        """Return nuclides with non-zero densities and yield data
+
+        Parameters
+        ----------
+        nuclides : iterable of str
+            Nuclides with non-zero densities from the
+            :class:`openmc.deplete.Operator`
+
+        Returns
+        -------
+        nuclides : tuple of str
+            Union of nuclides that the :class:`openmc.deplete.Operator`
+            says have non-zero densities at this stage and those that
+            have yield data. Sorted by nuclide name
+
+        """
+        return tuple(sorted(self._chain_set & set(nuclides)))
+
+
 class Integrator(ABC):
     """Abstract class for solving the time-integration for depletion
 

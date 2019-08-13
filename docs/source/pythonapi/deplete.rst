@@ -6,7 +6,7 @@
 
 .. module:: openmc.deplete
 
-Several functions are provided that implement different time-integration
+Several classes are provided that implement different time-integration
 algorithms for depletion calculations, which are described in detail in Colin
 Josey's thesis, `Development and analysis of high order neutron
 transport-depletion coupling algorithms <http://hdl.handle.net/1721.1/113721>`_.
@@ -25,7 +25,7 @@ transport-depletion coupling algorithms <http://hdl.handle.net/1721.1/113721>`_.
     SICELIIntegrator
     SILEQIIntegrator
 
-Each of these functions expects a "transport operator" to be passed. An operator
+Each of these classes expects a "transport operator" to be passed. An operator
 specific to OpenMC is available using the following class:
 
 .. autosummary::
@@ -79,7 +79,6 @@ data, such as number densities and reaction rates for each material.
    AtomNumber
    ChainFissionHelper
    DirectReactionRateHelper
-   FissionYieldHelper
    OperatorResult
    ReactionRates
    Results
@@ -94,8 +93,9 @@ The following classes are abstract classes that can be used to extend the
    :nosignatures:
    :template: myclass.rst
 
-   ReactionRateHelper
    EnergyHelper
+   FissionYieldHelper
+   ReactionRateHelper
    TransportOperator
 
 Custom integrators can be developed by subclassing from the following abstract

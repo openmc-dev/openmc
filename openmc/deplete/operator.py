@@ -26,7 +26,7 @@ from .atom_number import AtomNumber
 from .reaction_rates import ReactionRates
 from .results_list import ResultsList
 from .helpers import (
-    DirectReactionRateHelper, ChainFissionHelper, FissionYieldHelper)
+    DirectReactionRateHelper, ChainFissionHelper, ConstantFissionYieldHelper)
 
 
 def _distribute(items):
@@ -85,6 +85,10 @@ class Operator(TransportOperator):
         in initial condition to ensure they exist in the decay chain.
         Only done for nuclides with reaction rates.
         Defaults to 1.0e3.
+    fission_yield_energy : float, optional
+        Energy [eV] to pull fission product yields from. Passed to the
+        :class:`openmc.deplete.ConstantFissionYieldHelper`. Default:
+        0.0253 eV
 
     Attributes
     ----------
@@ -123,7 +127,7 @@ class Operator(TransportOperator):
     """
     def __init__(self, geometry, settings, chain_file=None, prev_results=None,
                  diff_burnable_mats=False, fission_q=None,
-                 dilute_initial=1.0e3):
+                 dilute_initial=1.0e3, fission_yield_energy=0.0253):
         super().__init__(chain_file, fission_q, dilute_initial, prev_results)
         self.round_number = False
         self.prev_res = None
@@ -178,8 +182,8 @@ class Operator(TransportOperator):
         self._rate_helper = DirectReactionRateHelper(
             self.reaction_rates.n_nuc, self.reaction_rates.n_react)
         self._energy_helper = ChainFissionHelper()
-        self._fsn_yield_helper = FissionYieldHelper(
-            self.chain.nuclides, len(self.burnable_mats))
+        self._fsn_yield_helper = ConstantFissionYieldHelper(
+            self.chain.nuclides, energy=fission_yield_energy)
 
     def __call__(self, vec, power):
         """Runs a simulation.

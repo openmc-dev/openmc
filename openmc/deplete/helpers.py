@@ -2,12 +2,19 @@
 Class for normalizing fission energy deposition
 """
 from itertools import product
+from numbers import Real
 
 from numpy import dot, zeros, newaxis, asarray, empty_like, where
 
+from openmc.checkvalue import check_type, check_greater_than
 from openmc.capi import (
     Tally, MaterialFilter, EnergyFilter)
-from .abc import ReactionRateHelper, EnergyHelper
+from .abc import (
+    ReactionRateHelper, EnergyHelper, FissionYieldHelper)
+
+__all__ = (
+    "DirectReactionRateHelper", "ChainFissionHelper",
+    "ConstantFissionYieldHelper")
 
 # -------------------------------------
 # Helpers for generating reaction rates
@@ -150,152 +157,68 @@ class ChainFissionHelper(EnergyHelper):
 # ------------------------------------
 
 
-class FissionYieldHelper(object):
-    """Class for using energy-dependent fission yields in depletion chain
-
-    Creates a tally across all burnable materials to score the fission
-    rate in nuclides with yield data. An energy filter is used to
-    compute this rates in a group structure corresponding to the
-    fission yield data. This tally data is used to compute the
-    relative number of fission events in each energy region,
-    which serve as the weights for each energy-dependent fission
-    yield distribution.
+class ConstantFissionYieldHelper(FissionYieldHelper):
+    """Class that uses a single set of fission yields on each isotope
 
     Parameters
     ----------
     chain_nuclides : iterable of openmc.deplete.Nuclide
         Nuclides tracked in the depletion chain. Not necessary
         that all have yield data.
-    n_bmats : int
-        Number of burnable materials tracked in the problem
+    energy : float, optional
+        Key in :attr:`openmc.deplete.Nuclide.yield_data` corresponding
+        to the desired set of fission yield data. Typically one of
+        ``{0.0253, 500000, 14000000}`` corresponding to 0.0253 eV,
+        500 keV, and 14 MeV yield libraries. If the specific key is not
+        found, will fall back to closest energy present.
+        Default: 0.0253 eV for thermal yields
 
     Attributes
     ----------
-    energy_bounds : tuple of float
-        Sorted energy bounds from the tally filter
-    results : numpy.ndarray
-        Array of tally results for this process with shape
-        ``(n_local_mat, n_energy, n_nucs)``
+    constant_yields : dict of str to :class:`openmc.deplete.FissionYield`
+        Fission yields for all nuclides that only have one set of
+        fission yield data. Can be accessed as ``{parent: {product: yield}}``
+    energy : float
+        Energy of fission yield libraries.
     """
 
-    def __init__(self, chain_nuclides, n_bmats):
-        self._chain_nuclides = {}
-        self._chain_set = set()
-        self._tally_map = {}
-        # TODO Support user-requested minimum energy?
-        yield_energies = {0.0}
-
-        # Get nuclides with fission yield data, names
-        # and all energy points
-        # Names are provided from operator tally nuclides
-        for nuc in chain_nuclides:
-            if len(nuc.yield_data) == 0:
+    def __init__(self, chain_nuclides, energy=0.0253):
+        check_type("energy", energy, Real)
+        check_greater_than("energy", energy, 0.0, equality=True)
+        self._energy = energy
+        super().__init__(chain_nuclides)
+        # Iterate over all nuclides with > 1 set of yields
+        for name, nuc in self._chain_nuclides.items():
+            yield_data = nuc.yield_data.get(energy)
+            if yield_data is not None:
+                self._constant_yields[name] = yield_data
                 continue
-            self._chain_nuclides[nuc.name] = nuc
-            self._chain_set.add(nuc.name)
-            yield_energies.update(nuc.yield_energies)
-
-        # Create energy grid
-        self._energy_bounds = tuple(sorted(yield_energies))
-        self.n_bmats = n_bmats
-
-        self._reaction_tally = None
-        self.results = None
-        self.local_indexes = None
+            # Specific energy not found, use closest energy
+            distances = [abs(energy - ene) for ene in nuc.yield_energies]
+            min_index = min(
+                range(len(nuc.yield_energies)), key=distances.__getitem__)
+            self._constant_yields[name] = (
+                nuc.yield_data[nuc.yield_energies[min_index]])
 
     @property
-    def energy_bounds(self):
-        return self._energy_bounds
+    def energy(self):
+        return self._energy
 
-    def generate_tallies(self, materials, mat_indexes):
-        """Construct the fission rate tally
-
-        Parameters
-        ----------
-        materials : iterable of C-API materials
-            Materials to be used in :class:`openmc.capi.MaterialFilter`
-        mat_indexes : iterable of int
-            Indexes for materials in ``materials`` tracked on this
-            process
-        """
-        # Tally group-wise fission reaction rates
-        self._reaction_tally = Tally()
-        self._reaction_tally.scores = ['fission']
-
-        # Tally energy-weighted group-wise fission reaction rate
-        # Used to evaluated linear interpolation between fission yield points
-        self._weighted_reaction_tally = Tally()
-        self._weighted_reaction_tally.scores = ['fission']
-
-        filters = [
-            MaterialFilter(materials), EnergyFilter(self._energy_bounds)]
-
-        self._reaction_tally.filters = filters
-        self.local_indexes = asarray(mat_indexes)
-
-    def set_fissionable_nuclides(self, nuclides):
-        """List of string of nuclides with data to be tallied
+    def weighted_yields(self, _local_mat_index=None):
+        """Return fission yields for all nuclides requested
 
         Parameters
         ----------
-        nuclides : iterable of str
-            Nuclides with non-zero densities that are candidates
-            for the fission tally. Not necessary that all are nuclides
-            with fission yields, but at least one must be
+        _local_mat_index : int, optional
+            Current material index. Not used since all yields are
+            constant
 
         Returns
         -------
-        nuclides : tuple of str
-            Nuclides ordered as they appear in the tally and in
-            the nuclide column of :attr:`results`
-
-        Raises
-        ------
-        ValueError
-            If no nuclides in ``nuclides`` are tracked on this
-            object
+        library : dict
+            Dictionary of ``{parent: {product: fyield}}``
         """
-        # Set of all nuclides with positive density
-        # and fission yield data
-        nuc_set = self._chain_set & set(nuclides)
-        if len(nuc_set) == 0:
-            raise ValueError(
-                "No overlap between chain nuclides with fission yields and "
-                "requested tally nuclides")
-        nuclides = tuple(sorted(nuc_set))
-        self._tally_index = [self._chain_nuclides[n] for n in nuclides]
-        self._reaction_tally.nuclides = nuclides
-        return nuclides
-
-    def unpack(self):
-        """Unpack fission rate tallies to produce :attr:`results`
-        """
-        # if this process is not responsible for depleting anything
-        # [more processes than burnable materials]
-        # don't do anything
-        if self.local_indexes.size == 0:
-            return
-
-        # get view into tally results
-        # new shape: [material, energy, parent nuclide]
-        result_view = self._reaction_tally.results[..., 1].reshape(
-            self.n_bmats, len(self._energy_bounds) - 1,
-            len(self._reaction_tally.nuclides))
-
-        # Get results specific to this process
-        fission_rates = result_view[self.local_indexes]
-        self.results = empty_like(fission_rates)
-
-        # scale group fission rates proportional to total fission rate
-        fission_total = fission_rates.sum(axis=1)
-        nz_mat, nz_nuc = fission_total.nonzero()
-        self.results[nz_mat, :, nz_nuc] = (
-            fission_rates[nz_mat, :, nz_nuc]
-            / fission_total[nz_mat, newaxis, nz_nuc])
-
-        # directly set values to zero where total fission rate is zero
-        z_mat, z_nuc = where(fission_total == 0.0)
-        self.results[z_mat, :, z_nuc] = 0.0
+        return self.constant_yields
 
     def compute_yields(self, local_mat_index):
         """Compute single fission yields using :attr:`results`

@@ -97,6 +97,7 @@ The following classes are abstract classes that can be used to extend the
    EnergyHelper
    FissionYieldHelper
    ReactionRateHelper
+   TalliedFissionYieldHelper
    TransportOperator
 
 Custom integrators can be developed by subclassing from the following abstract

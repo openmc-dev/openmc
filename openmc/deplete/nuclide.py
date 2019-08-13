@@ -367,6 +367,8 @@ class FissionYield(Mapping):
     :class:`FissionYieldDistribution`, and allowing math operations
     on a single vector of yields. Can in turn be used like a
     dictionary to fetch fission yields.
+    Supports multiplication of a scalar to scale the fission
+    yields and addition of another set of yields.
 
     Does not support resizing / inserting new products that do
     not exist.
@@ -401,6 +403,8 @@ class FissionYield(Mapping):
     0.002
     >>> (new + fy_vector)["Sm149"]
     0.0009
+    >>> dict(new)
+    {"Xe135": 0.002, "I129": 0.001, "Sm149": 0.0003}
     """
 
     def __init__(self, products, yields):
@@ -418,13 +422,32 @@ class FissionYield(Mapping):
     def __iter__(self):
         return iter(self.products)
 
+    def __add__(self, other):
+        new = self.copy()
+        new += other
+        return new
+
     def __iadd__(self, other):
         """Increment value from other fission yield"""
         self.yields += other.yields
         return self
 
-    def __mul__(self, value):
-        return FissionYield(self.products, self.yields * value)
+    def __imul__(self, scalar):
+        self.yields *= scalar
+        return self
+
+    def __mul__(self, scalar):
+        new = self.copy()
+        new *= scalar
+        return new
+
+    def __rmul__(self, scalar):
+        new = self.copy()
+        new *= scalar
+        return new
+
+    def __repr__(self):
+        return "<{}: {}>".format(self.__class__.__name__, repr(dict(self)))
 
     def copy(self):
         """Return an identical yield object, with unique yields"""

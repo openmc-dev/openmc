@@ -620,9 +620,9 @@ class Chain(object):
 
         The following checks are performed for all nuclides present:
 
-            1) For all non-fission reactions, do the sum of branching
-               ratios equal about 1?
-            2) For fission reactions, do the sum of fission yield
+            1) For all non-fission reactions, does the sum of branching
+               ratios equal about one?
+            2) For fission reactions, does the sum of fission yield
                fractions equal about 2?
 
         Parameters
@@ -631,7 +631,7 @@ class Chain(object):
             Raise exceptions at the first inconsistency if true.
             Otherwise mark a warning
         quiet : bool, optional
-            Flag to supress warnings and return immediately at
+            Flag to suppress warnings and return immediately at
             the first inconsistency. Used only if
             ``strict`` does not evaluate to ``True``.
         tolerance : float, optional
@@ -662,5 +662,5 @@ class Chain(object):
             stat = self[name].validate(strict, quiet, tolerance)
             if quiet and not stat:
                 return stat
-            valid &= stat
+            valid = valid and stat
         return valid

@@ -202,6 +202,24 @@ class ConstantFissionYieldHelper(FissionYieldHelper):
             self._constant_yields[name] = (
                 nuc.yield_data[nuc.yield_energies[min_index]])
 
+    @classmethod
+    def from_operator(cls, operator, energy=0.0253):
+        """Return a new ConstantFissionYieldHelper using operator data
+
+        Parameters
+        ----------
+        operator : openmc.deplete.TransportOperator
+            operator with a depletion chain
+        energy : float, optional
+            Energy for default fission yield libraries for nuclides with
+            multiple sets of yield data
+
+        Returns
+        -------
+        ConstantFissionYieldHelper
+        """
+        return cls(operator.chain.nuclides, energy=energy)
+
     @property
     def energy(self):
         return self._energy
@@ -301,6 +319,36 @@ class FissionYieldCutoffHelper(TalliedFissionYieldHelper):
                 fast = yields[energies[-rev_ix]]
             self._thermal_yields[name] = thermal
             self._fast_yields[name] = fast
+
+    @classmethod
+    def from_operator(cls, operator, cutoff=112.0,
+                      thermal_energy=0.0253, fast_energy=500e3):
+        """Construct a helper from an operator
+
+        All keyword arguments are identical to their counterpart
+        in the main ``__init__`` method
+
+        Parameters
+        ----------
+        operator : openmc.deplete.Operator
+            Operator with a chain and burnable materials
+        cutoff : float, optional
+            Cutoff energy for tallying fast and thermal fissions
+        thermal_energy : float, optional
+            Energy to use when pulling thermal fission yields from
+            nuclides with multiple sets of yields
+        fast_energy : float, optional
+            Energy to use when pulling fast fission yields from
+            nuclides with multiple sets of yields
+
+        Returns
+        -------
+        FissionYieldCutoffHelper
+
+        """
+        return cls(operator.chain.nuclides, len(operator.burnable_mats),
+                   cutoff=cutoff, thermal_energy=thermal_energy,
+                   fast_energy=fast_energy)
 
     @staticmethod
     def _find_fallback_energy(name, energies, cutoff, check_under):

@@ -209,13 +209,10 @@ class Operator(TransportOperator):
 
         # Select and create fission yield helper
         fission_helper = self._fission_helpers_[fission_yield_mode]
-        if fission_yield_opts is None:
-            self._fsn_yield_helper = fission_helper(self.chain.nuclides)
-        else:
-            self._fsn_yield_helper = fission_yield_mode(
-                self.chain.nuclides, **fission_yield_opts)
-        if hasattr(self._fsn_yield_helper, "n_bmats"):
-            self._fsn_yield_helper.n_bmats = len(self.burnable_mats)
+        fission_yield_opts = (
+            {} if fission_yield_opts is None else fission_yield_opts)
+        self._fsn_yield_helper = fission_helper.from_operator(
+            self, **fission_yield_opts)
 
     def __call__(self, vec, power):
         """Runs a simulation.

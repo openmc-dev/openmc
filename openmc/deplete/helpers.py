@@ -350,12 +350,12 @@ class FissionYieldCutoffHelper(TalliedFissionYieldHelper):
         For nuclides with both yield data above and below
         the cutoff energy, the effective yield for nuclide ``A``
         will be a weighted sum of fast and thermal yields. The
-        weights will be the fraction of ``A``s fission events
+        weights will be the fraction of ``A`` fission events
         in the above and below the cutoff energy.
 
         If ``A`` has fission product distribution ``F``
         for fast fissions and ``T`` for thermal fissions, and
-        70% of ``A``'s fissions are considered thermal, then
+        70% of ``A`` fissions are considered thermal, then
         the effective fission product yield distributions
         for ``A`` is ``0.7 * T + 0.3 * F``
 

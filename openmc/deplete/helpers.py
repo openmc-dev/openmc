@@ -3,18 +3,20 @@ Class for normalizing fission energy deposition
 """
 from itertools import product
 from numbers import Real
+import operator
 
-from numpy import dot, zeros, newaxis, asarray, empty_like, where
+from numpy import dot, zeros, newaxis
 
 from openmc.checkvalue import check_type, check_greater_than
 from openmc.capi import (
     Tally, MaterialFilter, EnergyFilter)
 from .abc import (
-    ReactionRateHelper, EnergyHelper, FissionYieldHelper)
+    ReactionRateHelper, EnergyHelper, FissionYieldHelper,
+    TalliedFissionYieldHelper)
 
 __all__ = (
     "DirectReactionRateHelper", "ChainFissionHelper",
-    "ConstantFissionYieldHelper")
+    "ConstantFissionYieldHelper", "FissionYieldCutoffHelper")
 
 # -------------------------------------
 # Helpers for generating reaction rates
@@ -220,41 +222,174 @@ class ConstantFissionYieldHelper(FissionYieldHelper):
         """
         return self.constant_yields
 
-    def compute_yields(self, local_mat_index):
-        """Compute single fission yields using :attr:`results`
 
-        Produces a new library in :attr:`libraries`
+class FissionYieldCutoffHelper(TalliedFissionYieldHelper):
+    """Helper that computes fission yields based on a cutoff energy
+
+    Tally fission rates above and below the cutoff energy.
+    Assume that all fissions below cutoff energy have use thermal fission
+    product yield distributions, while all fissions above use a faster
+    set of yield distributions.
+
+    Uses a limit of 20 MeV for tallying fission.
+
+    Parameters
+    ----------
+    chain_nuclides : iterable of openmc.deplete.Nuclide
+        Nuclides tracked in the depletion chain. Not necessary
+        that all have yield data.
+    n_bmats : int
+        Number of burnable materials tracked in the problem
+    cutoff : float, optional
+        Cutoff energy in [eV] below which all fissions will be
+        use thermal yields. All other fissions will use a
+        faster set of yields. Default: 112 [eV]
+    thermal_energy : float, optional
+        Energy of yield data corresponding to thermal yields.
+        Default: 0.0253 [eV]
+    fast_energy : float, optional
+        Energy of yield data corresponding to fast yields.
+        Default: 500 [kev]
+
+    Attributes
+    ----------
+    n_bmats : int
+        Number of burnable materials tracked in the problem
+    thermal_yields : dict
+        Dictionary of the form ``{parent: {product: yield}}``
+        with thermal yields
+    fast_yields : dict
+        Dictionary of the form ``{parent: {product: yield}}``
+        with fast yields
+    results : numpy.ndarray
+        Array of fission rate fractions with shape
+        ``(n_mats, 2, n_nucs)``. ``results[:, 0]``
+        corresponds to the fraction of all fissions
+        that occured below ``cutoff``. The number
+        of materials in the first axis corresponds
+        to the number of materials burned by the
+        :class:`openmc.deplete.Operator`
+    """
+
+    def __init__(self, chain_nuclides, n_bmats, cutoff=112.0,
+                 thermal_energy=0.0253, fast_energy=500.0e3):
+        check_type("cutoff", cutoff, Real)
+        check_type("thermal_energy", thermal_energy, Real)
+        check_type("fast_energy", fast_energy, Real)
+        check_greater_than("thermal_energy", thermal_energy, 0.0, equality=True)
+        check_greater_than("cutoff", cutoff, thermal_energy, equality=False)
+        check_greater_than("fast_energy", fast_energy, cutoff, equality=False)
+        super().__init__(chain_nuclides, n_bmats)
+        self._cutoff = cutoff
+        self._thermal_yields = {}
+        self._fast_yields = {}
+        for name, nuc in self._chain_nuclides.items():
+            yields = nuc.yield_data
+            energies = nuc.yield_energies
+            thermal = yields.get(thermal_energy)
+            if thermal is None:
+                # find first index >= cutoff
+                ix = self._find_fallback_energy(
+                    name, energies, cutoff, True)
+                thermal = yields[energies[ix - 1]]
+            fast = yields.get(fast_energy)
+            if fast is None:
+                # find first index <= cutoff
+                rev_ix = self._find_fallback_energy(
+                    name, list(reversed(energies)), cutoff, False)
+                fast = yields[energies[-rev_ix]]
+            self._thermal_yields[name] = thermal
+            self._fast_yields[name] = fast
+
+    @staticmethod
+    def _find_fallback_energy(name, energies, cutoff, check_under):
+        cutoff_func = operator.ge if check_under else operator.le
+        found = False
+        for ix, ene in enumerate(energies):
+            if cutoff_func(ene, cutoff):
+                found = True
+                break
+        if found and ix != 0:
+            return ix
+        domain = "thermal" if check_under else "fast"
+        raise ValueError("Could not find {} yields for {} "
+                         "with cutoff {} eV".format(domain, name, cutoff))
+
+    def generate_tallies(self, materials, mat_indexes):
+        """Use C API to produce a fission rate tally in burnable materials
+
+        Include a :class:`openmc.capi.EnergyFilter` to tally fission rates
+        above and below cutoff energy.
+
+        Parameters
+        ----------
+        materials : iterable of :class:`openmc.capi.Material`
+            Materials to be used in :class:`openmc.capi.MaterialFilter`
+        mat_indexes : iterable of int
+            Indexes for materials in ``materials`` tracked on this
+            process
+        """
+        super().generate_tallies(materials, mat_indexes)
+        energy_filter = EnergyFilter()
+        energy_filter.bins = (0.0, self._cutoff, self._upper_energy)
+        self._fission_rate_tally.filters.append(energy_filter)
+
+    def unpack(self):
+        """Obtain fast and thermal fission fractions from tally"""
+        fission_rates = self._fission_rate_tally.results[..., 1].reshape(
+            self.n_bmats, 2, len(self._tally_index))
+        self.results = fission_rates[self._local_indexes]
+        total_fission = self.results.sum(axis=1)
+        nz_mat, nz_nuc = total_fission.nonzero()
+        self.results[nz_mat, :, nz_nuc] /= total_fission[nz_mat, newaxis, nz_nuc]
+
+    def weighted_yields(self, local_mat_index):
+        """Return fission yields for a specific material
+
+        For nuclides with both yield data above and below
+        the cutoff energy, the effective yield for nuclide ``A``
+        will be a weighted sum of fast and thermal yields. The
+        weights will be the fraction of ``A``s fission events
+        in the above and below the cutoff energy.
+
+        If ``A`` has fission product distribution ``F``
+        for fast fissions and ``T`` for thermal fissions, and
+        70% of ``A``'s fissions are considered thermal, then
+        the effective fission product yield distributions
+        for ``A`` is ``0.7 * T + 0.3 * F``
 
         Parameters
         ----------
         local_mat_index : int
-            Index for material tracked on this process that
-            exists in :attr:`local_mat_index` and fits within
-            the first axis in :attr:`results`
+            Index for specific burnable material. Effective
+            yields will be produced using
+            ``self.results[local_mat_index]``
 
         Returns
         -------
         library : dict
             Dictionary of ``{parent: {product: fyield}}``
         """
-        tally_results = self.results[local_mat_index]
+        rates = self.results[local_mat_index]
+        yields = self.constant_yields
+        # iterate over thermal then fast yields, prefer __mul__ to __rmul__
+        for therm_frac, nuc in zip(rates[0], self._tally_index):
+            yields[nuc.name] = self._thermal_yields[nuc.name] * therm_frac
 
-        # Dictionary {parent_nuclide : [product, yield_vector]}
-        initial_library = {}
-        for i_energy, energy in enumerate(self._energy_bounds[1:]):
-            for i_nuc, fiss_frac in enumerate(tally_results[i_energy]):
-                parent = self._tally_index[i_nuc]
-                yield_data = parent.yield_data.get(energy)
-                if yield_data is None:
-                    continue
-                if parent not in initial_library:
-                    initial_library[parent] = yield_data * fiss_frac
-                    continue
-                initial_library[parent] += yield_data * fiss_frac
+        for fast_frac, nuc in zip(rates[1], self._tally_index):
+            yields[nuc.name] += self._fast_yields[nuc.name] * fast_frac
+        return yields
 
-        # convert to dictionary that can be passed to Chain.form_matrix
-        library = {}
-        for k, yield_obj in initial_library.items():
-            library[k.name] = dict(zip(yield_obj.products, yield_obj.yields))
+    @property
+    def thermal_yields(self):
+        out = {}
+        for key, sub in self._thermal_yields.items():
+            out[key] = sub.copy()
+        return out
 
-        return library
+    @property
+    def fast_yields(self):
+        out = {}
+        for key, sub in self._fast_yields.items():
+            out[key] = sub.copy()
+        return out

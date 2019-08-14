@@ -57,6 +57,9 @@ Benchmarking
 Coupling and Multi-physics
 --------------------------
 
+- Miriam A. Kreher, Benoit Forget, and Kord Smith, "Single-Batch Monte Carlo
+  Multiphysics Coupling," *Proc. M&C*, Portland, Oregon, Aug. 25-29 (2019).
+
 - Ze-Long Zhao, Yongwei Yang, and Shuang Hong, "`Application of FLUKA and OpenMC
   in coupled physics calculation of target and subcritical reactor for ADS
   <https://doi.org/10.1007/s41365-018-0539-1>`_," *Nucl. Sci. Tech.*, **30**: 10
@@ -112,6 +115,10 @@ Coupling and Multi-physics
 --------------------------
 Geometry and Visualization
 --------------------------
+
+- Sterling Harper, Paul Romano, Benoit Forget, and Kord Smith, "Efficient
+  dynamic threadsafe neighbor lists for Monte Carlo ray tracing," *Proc. M&C*,
+  Portland, Oregon, Aug. 25-29 (2019).
 
 - Jin-Yang Li, Long Gu, Hu-Shan Xu, Nadezha Korepanova, Rui Yu, Yan-Lei Zhu, and
   Chang-Ping Qin, "`CAD modeling study on FLUKA and OpenMC for accelerator
@@ -303,6 +310,11 @@ Multigroup Cross Section Generation
 Doppler Broadening
 ------------------
 
+- Jonathan A. Walsh, Benoit Forget, Kord S. Smith, and Forrest B. Brown,
+  "`On-the-fly Doppler broadening of unresolved resonance region cross sections
+  <https://doi.org/10.1016/j.pnucene.2017.05.032>`_," *Prog. Nucl. Energy*,
+  **101**, 444-460 (2017).
+
 - Colin Josey, Pablo Ducru, Benoit Forget, and Kord Smith, "`Windowed multipole
   for cross section Doppler broadening
   <https://doi.org/10.1016/j.jcp.2015.08.013>`_," *J. Comput. Phys.*, **307**,
@@ -312,6 +324,12 @@ Doppler Broadening
   "On-the-fly Doppler Broadening of Unresolved Resonance Region Cross Sections
   via Probability Band Interpolation," *Proc. PHYSOR*, Sun Valley, Idaho, May
   1-5, 2016.
+
+- Jonathan A. Walsh, Benoit Forget, Kord S. Smith, Brian C. Kiedrowski, and
+  Forrest B. Brown, "`Direct, on-the-fly calculation of unresolved resonance
+  region cross sections in Monte Carlo simulations
+  <http://hdl.handle.net/1721.1/108644>`_," *Proc. Joint Int. Conf. M&C+SNA+MC*,
+  Nashville, Tennessee, Apr. 19--23 (2015).
 
 - Colin Josey, Benoit Forget, and Kord Smith, "`Windowed multipole sensitivity
   to target accuracy of the optimization procedure
@@ -365,11 +383,6 @@ Nuclear Data
   Carlo particle transport codes
   <https://doi.org/10.1016/j.cpc.2015.05.025>`_", *Comput. Phys. Commun.*,
   **196**, 134-142 (2015).
-
-- Jonathan A. Walsh, Benoit Forget, Kord S. Smith, Brian C. Kiedrowski, and
-  Forrest B. Brown, "Direct, on-the-fly calculation of unresolved resonance
-  region cross sections in Monte Carlo simulations," *Proc. Joint
-  Int. Conf. M&C+SNA+MC*, Nashville, Tennessee, Apr. 19--23 (2015).
 
 - Amanda L. Lund, Andrew R. Siegel, Benoit Forget, Colin Josey, and
   Paul K. Romano, "Using fractional cascading to accelerate cross section
@@ -480,6 +493,10 @@ Parallelism
 ---------
 Depletion
 ---------
+
+- Jose L. Salcedo-Perez, Benoit Forget, Kord Smith, and Paul Romano, "Hybrid
+  tallies to improve performance in depletion Monte Carlo simulations," *Proc.
+  M&C*, Aug. 25-29 (2019).
 
 - Zhao-Qing Liu, Ze-Long Zhao, Yong-Wei Yang, Yu-Cui Gao, Hai-Yan Meng, and
   Qing-Yu Gao, "`Development and validation of depletion code system IMPC-Burnup

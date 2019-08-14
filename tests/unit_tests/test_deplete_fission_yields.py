@@ -19,13 +19,11 @@ def nuclide_bundle():
         1.40e7: {"Xe135": 4.54e-3, "Gd155": 5.83e-8}}
     u235 = Nuclide()
     u235.name = "U235"
-    u235.yield_energies = (0.0253, 5.0e5, 1.40e7)
     u235.yield_data = FissionYieldDistribution.from_dict(u5yield_dict)
 
     u8yield_dict = {5.00e5: {"Xe135": 1.12e-3, "Gd155": 1.32e-12}}
     u238 = Nuclide()
     u238.name = "U238"
-    u238.yield_energies = (5.00e5,)
     u238.yield_data = FissionYieldDistribution.from_dict(u8yield_dict)
 
     xe135 = Nuclide()

@@ -3,6 +3,7 @@
 import xml.etree.ElementTree as ET
 
 import numpy
+import pytest
 
 from openmc.deplete import nuclide
 
@@ -73,8 +74,12 @@ def test_from_xml():
     ]
     expected_yield_data = nuclide.FissionYieldDistribution.from_dict({
         0.0253: {"Xe138": 0.0481413, "Zr100": 0.0497641, "Te134": 0.062155}})
-    assert u235.yield_energies == [0.0253]
     assert u235.yield_data == expected_yield_data
+    # test accessing the yield energies through the FissionYieldDistribution
+    assert u235.yield_energies == (0.0253, )
+    assert u235.yield_energies is u235.yield_data.energies
+    with pytest.raises(AttributeError):  # not settable
+        u235.yield_energies = [0.0253, 5e5]
 
 
 def test_to_xml_element():
@@ -91,7 +96,6 @@ def test_to_xml_element():
         nuclide.ReactionTuple('fission', None, 2.0e8, 1.0),
         nuclide.ReactionTuple('(n,gamma)', 'A', 0.0, 1.0)
     ]
-    C.yield_energies = [0.0253]
     C.yield_data = nuclide.FissionYieldDistribution.from_dict(
         {0.0253: {"A": 0.0292737, "B": 0.002566345}})
     element = C.to_xml_element()

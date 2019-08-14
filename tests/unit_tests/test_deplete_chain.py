@@ -7,7 +7,7 @@ from itertools import product
 
 import numpy as np
 from openmc.data import zam, ATOMIC_SYMBOL
-from openmc.deplete import comm, Chain, reaction_rates, nuclide
+from openmc.deplete import comm, Chain, reaction_rates, nuclide, cram
 import pytest
 
 from tests import cdtemp
@@ -359,3 +359,10 @@ def test_fission_yield_attribute(simple_chain):
     empty_chain.fission_yields = [thermal_yields] * 2
     assert empty_chain.fission_yields[0] == thermal_yields
     assert empty_chain.fission_yields[1] == thermal_yields
+
+    # test failure with deplete function
+    # number fission yields != number of materials
+    dummy_conc = [[1, 2]] * (len(empty_chain.fission_yields) + 1)
+    with pytest.raises(
+            ValueError, match="fission yield.*not equal.*compositions"):
+       cram.deplete(empty_chain, dummy_conc, None, 0.5)

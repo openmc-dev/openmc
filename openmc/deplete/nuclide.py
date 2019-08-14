@@ -86,9 +86,9 @@ class Nuclide(object):
     reactions : list of openmc.deplete.ReactionTuple
         Reaction information. Each element of the list is a named tuple with
         attribute 'type', 'target', 'Q', and 'branching_ratio'.
-    yield_data : dict of float to list
-        Maps tabulated energy to list of (product, yield) for all
-        neutron-induced fission products.
+    yield_data : dict of float to :class:`openmc.deplete.FissionYieldDistribution`
+        Fission product yields at tabulated energies for this nuclide. Can be
+        treated as a nested dictionary ``{energy: {product: yield}}``
     yield_energies : list of float
         Energies at which fission product yields exist
 
@@ -300,15 +300,15 @@ class FissionYieldDistribution(Mapping):
         -------
         FissionYieldDistribution
         """
-        yields = {}
+        all_yields = {}
         for elem_index, yield_elem in enumerate(element.iter("fission_yields")):
             energy = float(yield_elem.get("energy"))
             products = yield_elem.find("products").text.split()
-            yield_mapobj = map(float, yield_elem.find("data").text.split())
+            yields = map(float, yield_elem.find("data").text.split())
             # Get a map of products to their corresponding yield
-            yields[energy] = dict(zip(products, yield_mapobj))
+            all_yields[energy] = dict(zip(products, yields))
 
-        return cls.from_dict(yields)
+        return cls.from_dict(all_yields)
 
     @classmethod
     def from_dict(cls, fission_yields):
@@ -327,9 +327,7 @@ class FissionYieldDistribution(Mapping):
         energies = sorted(fission_yields)
 
         # Get a consistent set of products to produce a matrix of yields
-        shared_prod = set()
-        for prod_set in map(set, fission_yields.values()):
-            shared_prod |= prod_set
+        shared_prod = set.union(*(set(x) for x in fission_yields.values()))
         ordered_prod = sorted(shared_prod)
 
         yield_matrix = empty((len(energies), len(shared_prod)))
@@ -421,6 +419,9 @@ class FissionYield(Mapping):
 
     def __iter__(self):
         return iter(self.products)
+
+    def items(self):
+        return zip(self.products, self.yields)
 
     def __add__(self, other):
         new = self.copy()

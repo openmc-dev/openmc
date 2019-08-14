@@ -77,6 +77,7 @@ data, such as number densities and reaction rates for each material.
    :template: myclass.rst
 
    AtomNumber
+   AveragedFissionYieldHelper
    ChainFissionHelper
    ConstantFissionYieldHelper
    DirectReactionRateHelper

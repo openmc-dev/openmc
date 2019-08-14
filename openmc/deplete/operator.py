@@ -27,7 +27,7 @@ from .reaction_rates import ReactionRates
 from .results_list import ResultsList
 from .helpers import (
     DirectReactionRateHelper, ChainFissionHelper, ConstantFissionYieldHelper,
-    FissionYieldCutoffHelper)
+    FissionYieldCutoffHelper, AveragedFissionYieldHelper)
 
 
 def _distribute(items):
@@ -92,6 +92,7 @@ class Operator(TransportOperator):
 
             * "constant": :class:`openmc.deplete.ConstantFissionYieldHelper`
             * "cutoff": :class:`openmc.deplete.FissionYieldCutoffHelper`
+            * "average": :class:`openmc.deplete.AveragedFissionYieldHelper`
 
         The documentation on these classes describe their methodology
         and differences. ``"constant"`` will treat fission yields as
@@ -140,6 +141,7 @@ class Operator(TransportOperator):
         Whether to differentiate burnable materials with multiple instances
     """
     _fission_helpers_ = {
+        "average": AveragedFissionYieldHelper,
         "constant": ConstantFissionYieldHelper,
         "cutoff": FissionYieldCutoffHelper,
     }

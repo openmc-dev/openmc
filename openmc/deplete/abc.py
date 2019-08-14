@@ -504,6 +504,8 @@ class TalliedFissionYieldHelper(FissionYieldHelper):
     constant_yields : dict of str to :class:`openmc.deplete.FissionYield`
         Fission yields for all nuclides that only have one set of
         fission yield data. Can be accessed as ``{parent: {product: yield}}``
+    results : None or numpy.ndarray
+        Tally results shaped in a manner useful to this helper.
     """
 
     _upper_energy = 20.0e6  # upper energy for tallies
@@ -513,7 +515,8 @@ class TalliedFissionYieldHelper(FissionYieldHelper):
         self.n_bmats = n_bmats
         self._local_indexes = None
         self._fission_rate_tally = None
-        self._tally_index = {}
+        self._tally_nucs = []
+        self.results = None
 
     def generate_tallies(self, materials, mat_indexes):
         """Construct the fission rate tally
@@ -554,10 +557,10 @@ class TalliedFissionYieldHelper(FissionYieldHelper):
         if len(overlap) == 0:
             # tally no nuclides, but keep the Tally alive
             self._fission_rate_tally.nuclides = None
-            self._tally_index = []
+            self._tally_nucs = []
             return tuple()
         nuclides = tuple(sorted(overlap))
-        self._tally_index = [self._chain_nuclides[n] for n in nuclides]
+        self._tally_nucs = [self._chain_nuclides[n] for n in nuclides]
         self._fission_rate_tally.nuclides = nuclides
         return nuclides
 
@@ -586,6 +589,7 @@ class TalliedFissionYieldHelper(FissionYieldHelper):
         """
         return cls(operator.chain.nuclides, len(operator.burnable_mats),
                    **kwargs)
+
 
 class Integrator(ABC):
     """Abstract class for solving the time-integration for depletion

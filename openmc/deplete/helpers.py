@@ -9,14 +9,15 @@ from numpy import dot, zeros, newaxis
 
 from openmc.checkvalue import check_type, check_greater_than
 from openmc.capi import (
-    Tally, MaterialFilter, EnergyFilter)
+    Tally, MaterialFilter, EnergyFilter, EnergyFunctionFilter)
 from .abc import (
     ReactionRateHelper, EnergyHelper, FissionYieldHelper,
     TalliedFissionYieldHelper)
 
 __all__ = (
     "DirectReactionRateHelper", "ChainFissionHelper",
-    "ConstantFissionYieldHelper", "FissionYieldCutoffHelper")
+    "ConstantFissionYieldHelper", "FissionYieldCutoffHelper",
+    "AveragedFissionYieldHelper")
 
 # -------------------------------------
 # Helpers for generating reaction rates
@@ -386,7 +387,7 @@ class FissionYieldCutoffHelper(TalliedFissionYieldHelper):
     def unpack(self):
         """Obtain fast and thermal fission fractions from tally"""
         fission_rates = self._fission_rate_tally.results[..., 1].reshape(
-            self.n_bmats, 2, len(self._tally_index))
+            self.n_bmats, 2, len(self._tally_nucs))
         self.results = fission_rates[self._local_indexes]
         total_fission = self.results.sum(axis=1)
         nz_mat, nz_nuc = total_fission.nonzero()
@@ -422,10 +423,10 @@ class FissionYieldCutoffHelper(TalliedFissionYieldHelper):
         rates = self.results[local_mat_index]
         yields = self.constant_yields
         # iterate over thermal then fast yields, prefer __mul__ to __rmul__
-        for therm_frac, nuc in zip(rates[0], self._tally_index):
+        for therm_frac, nuc in zip(rates[0], self._tally_nucs):
             yields[nuc.name] = self._thermal_yields[nuc.name] * therm_frac
 
-        for fast_frac, nuc in zip(rates[1], self._tally_index):
+        for fast_frac, nuc in zip(rates[1], self._tally_nucs):
             yields[nuc.name] += self._fast_yields[nuc.name] * fast_frac
         return yields
 
@@ -442,3 +443,149 @@ class FissionYieldCutoffHelper(TalliedFissionYieldHelper):
         for key, sub in self._fast_yields.items():
             out[key] = sub.copy()
         return out
+
+
+class AveragedFissionYieldHelper(TalliedFissionYieldHelper):
+    r"""Class that computes fission yields based on average fission energy
+
+    Computes average energy at which fission events occured
+    reactions for all nuclides with multiple sets of fission yields
+    by
+
+    .. math::
+
+        \bar{E} = \frac{
+            \int_0^\infty E\sigma_f(E)\phi(E)dE
+        }{
+            \int_0^\infty\sigma_f(E)\phi(E)dE
+        }
+
+    If the average energy for a nuclide is below the lowest energy
+    with yield data, that set of fission yields is taken.
+    Conversely, if the average energy is above the highest energy
+    with yield data, that set of fission yields is used.
+    For the case where the average energy is between two sets
+    of yields, a geometric mean of the yield distributions is
+    used.
+
+    Parameters
+    ----------
+    chain_nuclides : iterable of openmc.deplete.Nuclide
+        Nuclides tracked in the depletion chain. Not necessary
+        that all have yield data.
+    n_bmats : int
+        Number of burnable materials tracked in the problem.
+
+    Attributes
+    ----------
+    n_bmats : int
+        Number of burnable materials tracked in the problem.
+    constant_yields : dict of str to :class:`openmc.deplete.FissionYield`
+        Fission yields for all nuclides that only have one set of
+        fission yield data. Can be accessed as ``{parent: {product: yield}}``
+    results : None or numpy.ndarray
+        If tallies have been generated and unpacked, then the array will
+        have shape ``(n_mats, n_tnucs)``, where ``n_mats`` is the number
+        of materials where fission reactions were tallied and ``n_tnucs``
+        is the number of nuclides with multiple sets of fission yields.
+    """
+
+    def __init__(self, chain_nuclides, n_bmats):
+        super().__init__(chain_nuclides, n_bmats)
+        self._weighted_tally = None
+
+    def generate_tallies(self, materials, mat_indexes):
+        """Construct tallies to determine average energy of fissions
+
+        Parameters
+        ----------
+        materials : iterable of :class:`openmc.capi.Material`
+            Materials to be used in :class:`openmc.capi.MaterialFilter`
+        mat_indexes : iterable of int
+            Indexes for materials in ``materials`` tracked on this
+            process
+        """
+        super().generate_tallies(materials, mat_indexes)
+        fission_tally = self._fission_rate_tally
+
+        weighted_tally = Tally()
+        weighted_tally.filters = fission_tally.filters.copy()
+        weighted_tally.nuclides = fission_tally.nuclides
+        weighted_tally.scores = ['fission']
+
+        ene_bin = EnergyFilter()
+        ene_bin.bins = (0, self._upper_energy)
+        fission_tally.filters.append(ene_bin)
+
+        ene_filter = EnergyFunctionFilter()
+        ene_filter.set_data((0, self._upper_energy), (0, self._upper_energy))
+        weighted_tally.filters.append(ene_filter)
+        self._weighted_tally = weighted_tally
+
+    def unpack(self):
+        """Unpack tallies and populate :attr:`results` with average energies"""
+        fission_results = (
+            self._fission_rate_tally.results[self._local_indexes, :, 1])
+        self.results = (
+            self._weighted_tally.results[self._local_indexes, :, 1]).copy()
+        nz_mat, nz_nuc = fission_results.nonzero()
+        self.results[nz_mat, nz_nuc] /= fission_results[nz_mat, nz_nuc]
+
+    def weighted_yields(self, local_mat_index):
+        """Return fission yields for a specific material
+
+        Use the computed average energy of fission
+        events to determine fission yields. If average
+        energy is between two sets of yields, linearly
+        interpolate bewteen the two.
+        Otherwise take the closet set of yields.
+
+        Parameters
+        ----------
+        local_mat_index : int
+            Index for specific burnable material. Effective
+            yields will be produced using
+            ``self.results[local_mat_index]``
+
+        Returns
+        -------
+        library : dict
+            Dictionary of ``{parent: {product: fyield}}``
+        """
+        mat_yields = {}
+        average_energies = self.results[local_mat_index]
+        for avg_e, nuc in zip(average_energies, self._tally_nucs):
+            nuc_energies = nuc.yield_energies
+            if avg_e <= nuc_energies[0]:
+                mat_yields[nuc.name] = nuc.yield_data[nuc_energies[0]]
+                continue
+            if avg_e >= nuc_energies[-1]:
+                mat_yields[nuc.name] = nuc.yield_data[nuc_energies[-1]]
+                continue
+            # in-between two energies
+            # linear search since there are usually ~3 energies
+            for ix, ene in enumerate(nuc_energies[:-1]):
+                if nuc_energies[ix + 1] > avg_e:
+                    break
+            lower, upper = nuc_energies[ix:ix + 2]
+            fast_frac = (avg_e - lower) / (upper - lower)
+            mat_yields[nuc.name] = (
+                nuc.yield_data[lower] * (1 - fast_frac)
+                + nuc.yield_data[upper] * fast_frac)
+        mat_yields.update(self.constant_yields)
+        return mat_yields
+
+    @classmethod
+    def from_operator(cls, operator):
+        """Return a new helper with data from an operator
+
+        Parameters
+        ----------
+        operator : openmc.deplete.Operator
+            Operator with a depletion chain
+
+        Returns
+        -------
+        AveragedFissionYieldHelper
+        """
+        return cls(operator.chain.nuclides, len(operator.burnable_mats))

@@ -9,7 +9,8 @@ from itertools import chain
 import math
 import re
 from collections import OrderedDict, defaultdict
-from collections.abc import Mapping
+from collections.abc import Mapping, Iterable
+from numbers import Real
 from warnings import warn
 
 from openmc.checkvalue import check_type, check_less_than
@@ -122,13 +123,22 @@ class Chain(object):
         Reactions that are tracked in the depletion chain
     nuclide_dict : OrderedDict of str to int
         Maps a nuclide name to an index in nuclides.
-
+    fission_yields : None or iterable of dict
+        List of effective fission yields for materials. Each dictionary
+        should be of the form ``{parent: {product: yield}}`` with
+        types ``{str: {str: Real}}``, where ``yield`` is the fission product yield
+        for isotope ``parent`` producing isotope ``product``.
+        A single entry indicates yields are constant across all materials.
+        Otherwise, an entry can be added for each material to be burned.
+        Ordering should be identical to how the operator orders reaction
+        rates for burnable materials.
     """
 
     def __init__(self):
         self.nuclides = []
         self.reactions = []
         self.nuclide_dict = OrderedDict()
+        self._fission_yields = None
 
     def __contains__(self, nuclide):
         return nuclide in self.nuclide_dict
@@ -642,3 +652,20 @@ class Chain(object):
                 new_ratios[ground_tgt] = ground_br
                 parent.reactions.append(ReactionTuple(
                     "(n,gamma)", ground_tgt, capt_Q, ground_br))
+
+    @property
+    def fission_yields(self):
+        if self._fission_yields is None:
+            self._fission_yields = [self.get_thermal_fission_yields()]
+        return self._fission_yields
+
+    @fission_yields.setter
+    def fission_yields(self, yields):
+        if yields is None:
+            self._fission_yields = None
+            return
+        if isinstance(yields, Mapping):
+            self._fission_yields = [yields]
+            return
+        check_type("fission_yields", yields, Iterable, Mapping)
+        self._fission_yields = yields

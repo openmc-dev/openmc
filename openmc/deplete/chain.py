@@ -15,6 +15,7 @@ from warnings import warn
 
 from openmc.checkvalue import check_type, check_less_than
 from openmc.data import gnd_name, zam
+from .nuclide import FissionYieldDistribution
 
 # Try to use lxml if it is available. It preserves the order of attributes and
 # provides a pretty-printer by default. If not available,
@@ -276,11 +277,12 @@ class Chain(object):
                 fpy = fpy_data[parent]
 
                 if fpy.energies is not None:
-                    nuclide.yield_energies = fpy.energies
+                    yield_energies = fpy.energies
                 else:
-                    nuclide.yield_energies = [0.0]
+                    yield_energies = [0.0]
 
-                for E, table in zip(nuclide.yield_energies, fpy.independent):
+                yield_data = {}
+                for E, table in zip(yield_energies, fpy.independent):
                     yield_replace = 0.0
                     yields = defaultdict(float)
                     for product, y in table.items():
@@ -294,10 +296,10 @@ class Chain(object):
 
                     if yield_replace > 0.0:
                         missing_fp.append((parent, E, yield_replace))
+                    yield_data[E] = yields
 
-                    nuclide.yield_data[E] = []
-                    for k in sorted(yields, key=openmc.data.zam):
-                        nuclide.yield_data[E].append((k, yields[k]))
+                nuclide.yield_data = (
+                    FissionYieldDistribution.from_dict(yield_data))
 
         # Display warnings
         if missing_daughter:

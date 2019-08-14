@@ -86,10 +86,10 @@ class Nuclide(object):
     reactions : list of openmc.deplete.ReactionTuple
         Reaction information. Each element of the list is a named tuple with
         attribute 'type', 'target', 'Q', and 'branching_ratio'.
-    yield_data : dict of float to :class:`openmc.deplete.FissionYieldDistribution`
+    yield_data : FissionYieldDistribution or None
         Fission product yields at tabulated energies for this nuclide. Can be
         treated as a nested dictionary ``{energy: {product: yield}}``
-    yield_energies : list of float
+    yield_energies : tuple of float or None
         Energies at which fission product yields exist
 
     """
@@ -107,8 +107,7 @@ class Nuclide(object):
         self.reactions = []
 
         # Neutron fission yields, if present
-        self.yield_data = {}
-        self.yield_energies = []
+        self._yield_data = None
 
     @property
     def n_decay_modes(self):
@@ -117,6 +116,25 @@ class Nuclide(object):
     @property
     def n_reaction_paths(self):
         return len(self.reactions)
+
+    @property
+    def yield_data(self):
+        if self._yield_data is None:
+            return {}
+        return self._yield_data
+
+    @yield_data.setter
+    def yield_data(self, fission_yields):
+        check_type("fission_yields", fission_yields, Mapping)
+        if isinstance(fission_yields, FissionYieldDistribution):
+            self._yield_data = fission_yields
+        self._yield_data = FissionYieldDistribution.from_dict(fission_yields)
+
+    @property
+    def yield_energies(self):
+        if self._yield_data is None:
+            return None
+        return self.yield_data.energies
 
     @classmethod
     def from_xml(cls, element, fission_q=None):
@@ -173,7 +191,6 @@ class Nuclide(object):
         fpy_elem = element.find('neutron_fission_yields')
         if fpy_elem is not None:
             nuc.yield_data = FissionYieldDistribution.from_xml_element(fpy_elem)
-            nuc.yield_energies = list(sorted(nuc.yield_data.keys()))
 
         return nuc
 

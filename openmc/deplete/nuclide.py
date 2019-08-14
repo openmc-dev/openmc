@@ -236,7 +236,7 @@ class Nuclide(object):
 
 
 class FissionYieldDistribution(Mapping):
-    """Class for storing energy-dependent fission yields for a single nuclide
+    """Energy-dependent fission product yields for a single nuclide
 
     Can be used as a dictionary mapping energies and products to fission
     yields::

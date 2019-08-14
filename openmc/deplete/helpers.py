@@ -376,8 +376,11 @@ class FissionYieldCutoffHelper(TalliedFissionYieldHelper):
         materials : iterable of :class:`openmc.capi.Material`
             Materials to be used in :class:`openmc.capi.MaterialFilter`
         mat_indexes : iterable of int
-            Indexes for materials in ``materials`` tracked on this
-            process
+            Indices of tallied materials that will have their fission
+            yields computed by this helper. Necessary as the
+            :class:`openmc.deplete.Operator` that uses this helper
+            may only burn a subset of all materials when running
+            in parallel mode.
         """
         super().generate_tallies(materials, mat_indexes)
         energy_filter = EnergyFilter()
@@ -465,8 +468,9 @@ class AveragedFissionYieldHelper(TalliedFissionYieldHelper):
     Conversely, if the average energy is above the highest energy
     with yield data, that set of fission yields is used.
     For the case where the average energy is between two sets
-    of yields, a geometric mean of the yield distributions is
-    used.
+    of yields, the effective fission yield computed by
+    linearly interpolating between yields provided at the
+    nearest energies above and below the average.
 
     Parameters
     ----------
@@ -502,8 +506,11 @@ class AveragedFissionYieldHelper(TalliedFissionYieldHelper):
         materials : iterable of :class:`openmc.capi.Material`
             Materials to be used in :class:`openmc.capi.MaterialFilter`
         mat_indexes : iterable of int
-            Indexes for materials in ``materials`` tracked on this
-            process
+            Indices of tallied materials that will have their fission
+            yields computed by this helper. Necessary as the
+            :class:`openmc.deplete.Operator` that uses this helper
+            may only burn a subset of all materials when running
+            in parallel mode.
         """
         super().generate_tallies(materials, mat_indexes)
         fission_tally = self._fission_rate_tally

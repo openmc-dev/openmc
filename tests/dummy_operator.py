@@ -7,6 +7,13 @@ from openmc.deplete.abc import TransportOperator, OperatorResult
 
 
 class TestChain(object):
+    """Empty chain to assist with unit testing depletion routines
+
+    Only really provides the form_matrix function, but acts like
+    a real Chain
+    """
+
+    fission_yields = [None]
 
     @staticmethod
     def get_thermal_fission_yields():

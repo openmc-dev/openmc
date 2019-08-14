@@ -86,19 +86,16 @@ class Operator(TransportOperator):
         in initial condition to ensure they exist in the decay chain.
         Only done for nuclides with reaction rates.
         Defaults to 1.0e3.
-    fission_yield_mode : str, {"constant", "cutoff"}
+    fission_yield_mode : ("constant", "cutoff", "average")
         Key indicating what fission product yield scheme to use. The
-        key determines what fission energy helper is used::
+        key determines what fission energy helper is used:
 
-            * "constant": :class:`openmc.deplete.ConstantFissionYieldHelper`
-            * "cutoff": :class:`openmc.deplete.FissionYieldCutoffHelper`
-            * "average": :class:`openmc.deplete.AveragedFissionYieldHelper`
+        * "constant": :class:`~openmc.deplete.helpers.ConstantFissionYieldHelper`
+        * "cutoff": :class:`~openmc.deplete.helpers.FissionYieldCutoffHelper`
+        * "average": :class:`~openmc.deplete.helpers.AveragedFissionYieldHelper`
 
         The documentation on these classes describe their methodology
-        and differences. ``"constant"`` will treat fission yields as
-        constant with respect to energy, while ``"cutoff"`` will
-        compute effective yields based on the number of fission events
-        above and below a cutoff. Default: ``"constant"``
+        and differences. Default: ``"constant"``
     fission_yield_opts : dict of str to option, optional
         Optional arguments to pass to the helper determined by
         ``fission_yield_mode``. Will be passed directly on to the

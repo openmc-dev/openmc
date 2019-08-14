@@ -443,8 +443,11 @@ class FissionYieldHelper(ABC):
         materials : iterable of C-API materials
             Materials to be used in :class:`openmc.capi.MaterialFilter`
         mat_indexes : iterable of int
-            Indexes for materials in ``materials`` tracked on this
-            process
+            Indices of tallied materials that will have their fission
+            yields computed by this helper. Necessary as the
+            :class:`openmc.deplete.Operator` that uses this helper
+            may only burn a subset of all materials when running
+            in parallel mode.
         """
 
     def update_nuclides_from_operator(self, nuclides):
@@ -526,8 +529,11 @@ class TalliedFissionYieldHelper(FissionYieldHelper):
         materials : iterable of :class:`openmc.capi.Material`
             Materials to be used in :class:`openmc.capi.MaterialFilter`
         mat_indexes : iterable of int
-            Indexes for materials in ``materials`` tracked on this
-            process
+            Indices of tallied materials that will have their fission
+            yields computed by this helper. Necessary as the
+            :class:`openmc.deplete.Operator` that uses this helper
+            may only burn a subset of all materials when running
+            in parallel mode.
         """
         self._local_indexes = asarray(mat_indexes)
 

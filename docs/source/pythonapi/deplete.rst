@@ -77,16 +77,25 @@ data, such as number densities and reaction rates for each material.
    :template: myclass.rst
 
    AtomNumber
-   AveragedFissionYieldHelper
-   ChainFissionHelper
-   ConstantFissionYieldHelper
-   DirectReactionRateHelper
-   FissionYieldCutoffHelper
    OperatorResult
    ReactionRates
    Results
    ResultsList
 
+The following classes are used to help the :class:`openmc.deplete.Operator`
+compute quantities like effective fission yields, reaction rates, and
+total system energy.
+
+.. autosummary::
+   :toctree: generated
+   :nosignatures:
+   :template: myclass.rst
+
+   helpers.AveragedFissionYieldHelper
+   helpers.ChainFissionHelper
+   helpers.ConstantFissionYieldHelper
+   helpers.DirectReactionRateHelper
+   helpers.FissionYieldCutoffHelper
 
 The following classes are abstract classes that can be used to extend the
 :mod:`openmc.deplete` capabilities:

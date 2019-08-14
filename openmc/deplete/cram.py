@@ -42,10 +42,14 @@ def deplete(chain, x, rates, dt, matrix_func=None):
         Updated atom number vectors for each material
     """
 
-    if not hasattr(chain, "fission_yields"):
-        fission_yields = repeat(chain.get_thermal_fission_yields())
-    else:
-        fission_yields = chain.fission_yields
+    fission_yields = chain.fission_yields
+    if len(fission_yields) == 1:
+        fission_yields = repeat(fission_yields[0])
+    elif len(fission_yields) != len(x):
+        raise ValueError(
+            "Number of material fission yield distributions {} is not equal "
+            "to the number of compositions {}".format(len(fission_yields),
+                len(x)))
 
     # Use multiprocessing pool to distribute work
     with Pool() as pool:

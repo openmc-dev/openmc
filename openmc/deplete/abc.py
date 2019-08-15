@@ -497,13 +497,9 @@ class TalliedFissionYieldHelper(FissionYieldHelper):
     chain_nuclides : iterable of openmc.deplete.Nuclide
         Nuclides tracked in the depletion chain. Not necessary
         that all have yield data.
-    n_bmats : int
-        Number of burnable materials tracked in the problem.
 
     Attributes
     ----------
-    n_bmats : int
-        Number of burnable materials tracked in the problem.
     constant_yields : dict of str to :class:`openmc.deplete.FissionYield`
         Fission yields for all nuclides that only have one set of
         fission yield data. Can be accessed as ``{parent: {product: yield}}``
@@ -513,9 +509,8 @@ class TalliedFissionYieldHelper(FissionYieldHelper):
 
     _upper_energy = 20.0e6  # upper energy for tallies
 
-    def __init__(self, chain_nuclides, n_bmats):
+    def __init__(self, chain_nuclides):
         super().__init__(chain_nuclides)
-        self.n_bmats = n_bmats
         self._local_indexes = None
         self._fission_rate_tally = None
         self._tally_nucs = []
@@ -577,24 +572,6 @@ class TalliedFissionYieldHelper(FissionYieldHelper):
         Abstract because each subclass will need to arrange its
         tally data.
         """
-
-    @classmethod
-    def from_operator(cls, operator, **kwargs):
-        """Create a new instance by pulling data from the operator
-
-        Require the more concrete :class:`openmc.deplete.Operator`
-        because this needs knowledge of burnable materials
-
-        Parameters
-        ----------
-        operator : openmc.deplete.TransportOperator
-            Operator with a depletion chain
-        kwargs: optional
-            Optional keyword arguments to be passed to the underlying
-            ``__init__`` method
-        """
-        return cls(operator.chain.nuclides, len(operator.burnable_mats),
-                   **kwargs)
 
 
 class Integrator(ABC):

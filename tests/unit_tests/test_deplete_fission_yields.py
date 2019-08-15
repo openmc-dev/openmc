@@ -142,7 +142,7 @@ class AverageProxy(ProxyMixin, AveragedFissionYieldHelper):
 
 @pytest.mark.parametrize("avg_energy", (0.01, 100, 15e6))
 def test_averaged_helper(nuclide_bundle, avg_energy):
-    proxy = AverageProxy(nuclide_bundle, len(MATERIALS))
+    proxy = AverageProxy(nuclide_bundle)
     proxy.generate_tallies(MATERIALS, [0])
     tallied_nucs = proxy.update_nuclides_from_operator(
         [n.name for n in nuclide_bundle])

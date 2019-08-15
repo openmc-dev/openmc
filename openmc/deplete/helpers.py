@@ -299,7 +299,8 @@ class FissionYieldCutoffHelper(TalliedFissionYieldHelper):
         check_greater_than("thermal_energy", thermal_energy, 0.0, equality=True)
         check_greater_than("cutoff", cutoff, thermal_energy, equality=False)
         check_greater_than("fast_energy", fast_energy, cutoff, equality=False)
-        super().__init__(chain_nuclides, n_bmats)
+        self.n_bmats = n_bmats
+        super().__init__(chain_nuclides)
         self._cutoff = cutoff
         self._thermal_yields = {}
         self._fast_yields = {}
@@ -477,13 +478,9 @@ class AveragedFissionYieldHelper(TalliedFissionYieldHelper):
     chain_nuclides : iterable of openmc.deplete.Nuclide
         Nuclides tracked in the depletion chain. Not necessary
         that all have yield data.
-    n_bmats : int
-        Number of burnable materials tracked in the problem.
 
     Attributes
     ----------
-    n_bmats : int
-        Number of burnable materials tracked in the problem.
     constant_yields : dict of str to :class:`openmc.deplete.FissionYield`
         Fission yields for all nuclides that only have one set of
         fission yield data. Can be accessed as ``{parent: {product: yield}}``
@@ -494,8 +491,8 @@ class AveragedFissionYieldHelper(TalliedFissionYieldHelper):
         is the number of nuclides with multiple sets of fission yields.
     """
 
-    def __init__(self, chain_nuclides, n_bmats):
-        super().__init__(chain_nuclides, n_bmats)
+    def __init__(self, chain_nuclides):
+        super().__init__(chain_nuclides)
         self._weighted_tally = None
 
     def generate_tallies(self, materials, mat_indexes):
@@ -588,11 +585,11 @@ class AveragedFissionYieldHelper(TalliedFissionYieldHelper):
 
         Parameters
         ----------
-        operator : openmc.deplete.Operator
+        operator : openmc.deplete.TransportOperator
             Operator with a depletion chain
 
         Returns
         -------
         AveragedFissionYieldHelper
         """
-        return cls(operator.chain.nuclides, len(operator.burnable_mats))
+        return cls(operator.chain.nuclides)

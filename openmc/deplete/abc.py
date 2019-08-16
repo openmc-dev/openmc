@@ -556,8 +556,11 @@ class TalliedFissionYieldHelper(FissionYieldHelper):
         """
         overlap = set(self._chain_nuclides).intersection(set(nuclides))
         if len(overlap) == 0:
+            if self._fission_rate_tally is None:
+                # No tally to update
+                return tuple()
             # tally no nuclides, but keep the Tally alive
-            self._fission_rate_tally.nuclides = None
+            self._fission_rate_tally.nuclides = []
             self._tally_nucs = []
             return tuple()
         nuclides = tuple(sorted(overlap))

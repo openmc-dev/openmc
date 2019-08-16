@@ -390,6 +390,9 @@ class FissionYieldCutoffHelper(TalliedFissionYieldHelper):
 
     def unpack(self):
         """Obtain fast and thermal fission fractions from tally"""
+        if not self._tally_nucs:
+            self.results = None
+            return
         fission_rates = self._fission_rate_tally.results[..., 1].reshape(
             self.n_bmats, 2, len(self._tally_nucs))
         self.results = fission_rates[self._local_indexes]
@@ -424,8 +427,10 @@ class FissionYieldCutoffHelper(TalliedFissionYieldHelper):
         library : dict
             Dictionary of ``{parent: {product: fyield}}``
         """
-        rates = self.results[local_mat_index]
         yields = self.constant_yields
+        if not self._tally_nucs:
+            return yields
+        rates = self.results[local_mat_index]
         # iterate over thermal then fast yields, prefer __mul__ to __rmul__
         for therm_frac, nuc in zip(rates[0], self._tally_nucs):
             yields[nuc.name] = self._thermal_yields[nuc.name] * therm_frac
@@ -528,6 +533,9 @@ class AveragedFissionYieldHelper(TalliedFissionYieldHelper):
 
     def unpack(self):
         """Unpack tallies and populate :attr:`results` with average energies"""
+        if not self._tally_nucs:
+            self.results = None
+            return
         fission_results = (
             self._fission_rate_tally.results[self._local_indexes, :, 1])
         self.results = (
@@ -556,6 +564,8 @@ class AveragedFissionYieldHelper(TalliedFissionYieldHelper):
         library : dict
             Dictionary of ``{parent: {product: fyield}}``
         """
+        if not self._tally_nucs:
+            return self.constant_yields
         mat_yields = {}
         average_energies = self.results[local_mat_index]
         for avg_e, nuc in zip(average_energies, self._tally_nucs):

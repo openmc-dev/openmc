@@ -33,9 +33,8 @@ def main():
     nfy_files = tuple((endf_dir / "nfy").glob("*endf"))
 
     # check files exist
-    for flist, ftype in zip(
-            (decay_files, neutron_files, nfy_files),
-            ("decay", "neutron", "nfy")):
+    for flist, ftype in [(decay_files, "decay"), (neutron_files, "neutron"),
+                         (nfy_files, "neutron fission product yield")]:
         if not flist:
             raise IOError("No {} endf files found in {}".format(ftype, endf_dir))
 

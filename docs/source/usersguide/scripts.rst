@@ -127,8 +127,9 @@ do not exist, then ENDF/B-VII.1 data will be downloaded.
 This script generates a depletion chain called ``chain_casl.xml``
 using ENDF/B-VII.1 nuclear data for a simplified chain.
 The nuclides were chosen by CASL-ORIGEN, which can be found in
-Appendix A of Kang Seog Kim, "Specification for the VERA Depletion
-Benchmark Suite", CASL-U-2015-1014-000, Rev. 0, ORNL/TM-2016/53, 2016.
+Appendix A of Kang Seog Kim, `"Specification for the VERA Depletion
+Benchmark Suite" <https://doi.org/10.2172/1256820>`_,
+CASL-U-2015-1014-000, Rev. 0, ORNL/TM-2016/53, 2016.
 ``Te129`` has been added into this chain due to its link to
 ``I129`` production.
 

@@ -242,7 +242,7 @@ class Operator(TransportOperator):
         nuclides = self._get_tally_nuclides()
         self._rate_helper.nuclides = nuclides
         self._energy_helper.nuclides = nuclides
-        self._fsn_yield_helper.update_nuclides_from_operator(nuclides)
+        self._fsn_yield_helper.update_tally_nuclides(nuclides)
 
         # Run OpenMC
         openmc.capi.reset()

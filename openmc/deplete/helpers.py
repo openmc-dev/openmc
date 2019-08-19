@@ -519,7 +519,6 @@ class AveragedFissionYieldHelper(TalliedFissionYieldHelper):
 
         weighted_tally = Tally()
         weighted_tally.filters = fission_tally.filters.copy()
-        weighted_tally.nuclides = fission_tally.nuclides
         weighted_tally.scores = ['fission']
 
         ene_bin = EnergyFilter()
@@ -530,6 +529,32 @@ class AveragedFissionYieldHelper(TalliedFissionYieldHelper):
         ene_filter.set_data((0, self._upper_energy), (0, self._upper_energy))
         weighted_tally.filters.append(ene_filter)
         self._weighted_tally = weighted_tally
+
+    def update_tally_nuclides(self, nuclides):
+        """Tally nuclides with non-zero density and multiple yields
+
+        Must be run after :meth:`generate_tallies`.
+
+        Parameters
+        ----------
+        nuclides : iterable of str
+            Potential nuclides to be tallied, such as those with
+            non-zero density at this stage.
+
+        Returns
+        -------
+        nuclides : tuple of str
+            Union of input nuclides and those that have multiple sets
+            of yield data.  Sorted by nuclide name
+
+        Raises
+        ------
+        AttributeError
+            If tallies not generated
+        """
+        tally_nucs = super().update_tally_nuclides(nuclides)
+        self._weighted_tally.nuclides = tally_nucs
+        return tally_nucs
 
     def unpack(self):
         """Unpack tallies and populate :attr:`results` with average energies"""

@@ -450,7 +450,7 @@ class FissionYieldHelper(ABC):
             in parallel mode.
         """
 
-    def update_nuclides_from_operator(self, nuclides):
+    def update_tally_nuclides(self, nuclides):
         """Return nuclides with non-zero densities and yield data
 
         Parameters
@@ -489,7 +489,7 @@ class TalliedFissionYieldHelper(FissionYieldHelper):
 
     Generates a basic fission rate tally in all burnable materials with
     :meth:`generate_tallies`, and set nuclides to be tallied with
-    :meth:`update_nuclides_from_operator`. Subclasses will need to implement
+    :meth:`update_tally_nuclides`. Subclasses will need to implement
     :meth:`unpack` and :meth:`weighted_yields`.
 
     Parameters
@@ -538,31 +538,32 @@ class TalliedFissionYieldHelper(FissionYieldHelper):
 
         self._fission_rate_tally.filters = [MaterialFilter(materials)]
 
-    def update_nuclides_from_operator(self, nuclides):
+    def update_tally_nuclides(self, nuclides):
         """Tally nuclides with non-zero density and multiple yields
+
+        Must be run after :meth:`generate_tallies`.
 
         Parameters
         ----------
         nuclides : iterable of str
-            Nuclides with non-zero densities from the
-            :class:`openmc.deplete.Operator`
+            Potential nuclides to be tallied, such as those with
+            non-zero density at this stage.
 
         Returns
         -------
         nuclides : tuple of str
-            Union of nuclides that the :class:`openmc.deplete.Operator`
-            says have non-zero densities at this stage and those that
-            have multiple sets of yield data. Sorted by nuclide name
+            Union of input nuclides and those that have multiple sets
+            of yield data.  Sorted by nuclide name
+
+        Raises
+        ------
+        AttributeError
+            If tallies not generated
         """
+        if self._fission_rate_tally is None:
+            raise AttributeError(
+                "Tallies not built. Run generate_tallies first")
         overlap = set(self._chain_nuclides).intersection(set(nuclides))
-        if len(overlap) == 0:
-            if self._fission_rate_tally is None:
-                # No tally to update
-                return tuple()
-            # tally no nuclides, but keep the Tally alive
-            self._fission_rate_tally.nuclides = []
-            self._tally_nucs = []
-            return tuple()
         nuclides = tuple(sorted(overlap))
         self._tally_nucs = [self._chain_nuclides[n] for n in nuclides]
         self._fission_rate_tally.nuclides = nuclides

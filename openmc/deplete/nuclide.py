@@ -4,7 +4,6 @@ Contains the per-nuclide components of a depletion chain.
 """
 
 from collections import namedtuple, defaultdict
-from operator import attrgetter, itemgetter
 from warnings import warn
 try:
     import lxml.etree as ET
@@ -266,10 +265,8 @@ class Nuclide(object):
         openmc.deplete.Chain.validate
         """
 
-        branch_getter = attrgetter("branching_ratio")
         msg_func = ("Nuclide {name} has {prop} that sum to {actual} "
                     "instead of {expected} +/- {tol:7.4e}").format
-        type_map = defaultdict(set)
         valid = True
 
         # check decay modes
@@ -288,7 +285,7 @@ class Nuclide(object):
                 valid = False
 
         if self.reactions:
-            type_map.clear()
+            type_map = defaultdict(set)
             for reaction in self.reactions:
                 type_map[reaction.type].add(reaction)
             for rxn_type, reactions in type_map.items():
@@ -306,8 +303,7 @@ class Nuclide(object):
                 warn(msg)
                 valid = False
 
-        if self.yield_data > 0:
-            yield_getter = itemgetter(1)
+        if self.yield_data:
             for energy, yield_list in self.yield_data.items():
                 sum_yield = sum(y[1] for y in yield_list)
                 stat = 2.0 - tolerance <= sum_yield <= 2.0 + tolerance

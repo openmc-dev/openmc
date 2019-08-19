@@ -623,7 +623,7 @@ class Chain(object):
             1) For all non-fission reactions, does the sum of branching
                ratios equal about one?
             2) For fission reactions, does the sum of fission yield
-               fractions equal about 2?
+               fractions equal about two?
 
         Parameters
         ----------
@@ -639,6 +639,7 @@ class Chain(object):
             value ``x`` to intended value ``y`` as::
 
                 valid = (y - tolerance <= x <= y + tolerance)
+
         Returns
         -------
         valid : bool

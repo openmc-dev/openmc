@@ -176,7 +176,7 @@ def test_validate():
 
     # restore reactions, invalidate fission yields
     nuc.reactions.append(reaction)
-    fission_yields = nuc.yield_data[1e6].pop()
+    nuc.yield_data[1e6].pop()
 
     with pytest.raises(ValueError, match=r"fission yields.*1\.0*e"):
         nuc.validate(strict=True, quiet=False, tolerance=0.0)

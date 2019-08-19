@@ -34,24 +34,24 @@
 <?xml version='1.0' encoding='utf-8'?>
 <tallies>
   <mesh id="1">
-    <dimension>17</dimension>
-    <lower_left>-10.0</lower_left>
-    <upper_right>10.0</upper_right>
+    <dimension>5</dimension>
+    <lower_left>-7.5</lower_left>
+    <upper_right>7.5</upper_right>
   </mesh>
   <mesh id="2">
-    <dimension>17 17</dimension>
-    <lower_left>-10.0 -10.0</lower_left>
-    <upper_right>10.0 10.0</upper_right>
+    <dimension>5 5</dimension>
+    <lower_left>-7.5 -7.5</lower_left>
+    <upper_right>7.5 7.5</upper_right>
   </mesh>
   <mesh id="3">
-    <dimension>17 17 17</dimension>
-    <lower_left>-10.0 -10.0 -183.0</lower_left>
-    <upper_right>10.0 10.0 183.0</upper_right>
+    <dimension>5 5 5</dimension>
+    <lower_left>-7.5 -7.5 -7.5</lower_left>
+    <upper_right>7.5 7.5 7.5</upper_right>
   </mesh>
   <mesh id="4" type="rectilinear">
-    <x_grid>-10.0 -8.823529411764707 -7.647058823529411 -6.470588235294118 -5.294117647058823 -4.117647058823529 -2.9411764705882355 -1.7647058823529402 -0.5882352941176467 0.5882352941176467 1.764705882352942 2.9411764705882355 4.117647058823529 5.294117647058824 6.4705882352941195 7.647058823529413 8.823529411764707 10.0</x_grid>
-    <y_grid>-10.0 -8.823529411764707 -7.647058823529411 -6.470588235294118 -5.294117647058823 -4.117647058823529 -2.9411764705882355 -1.7647058823529402 -0.5882352941176467 0.5882352941176467 1.764705882352942 2.9411764705882355 4.117647058823529 5.294117647058824 6.4705882352941195 7.647058823529413 8.823529411764707 10.0</y_grid>
-    <z_grid>1.0 1.683624003879018 2.8345897864376153 4.772383405596668 8.034899257376447 13.52774925846868 22.77564337001445 38.34561988154435 64.55960607618856 108.69410247084474 182.99999999999991</z_grid>
+    <x_grid>-7.5 -6.617647058823529 -5.735294117647059 -4.852941176470589 -3.9705882352941178 -3.0882352941176467 -2.2058823529411766 -1.3235294117647065 -0.4411764705882355 0.4411764705882355 1.3235294117647065 2.2058823529411757 3.0882352941176467 3.9705882352941178 4.852941176470587 5.735294117647058 6.617647058823529 7.5</x_grid>
+    <y_grid>-7.5 -6.617647058823529 -5.735294117647059 -4.852941176470589 -3.9705882352941178 -3.0882352941176467 -2.2058823529411766 -1.3235294117647065 -0.4411764705882355 0.4411764705882355 1.3235294117647065 2.2058823529411757 3.0882352941176467 3.9705882352941178 4.852941176470587 5.735294117647058 6.617647058823529 7.5</y_grid>
+    <z_grid>1.0 1.223224374241637 1.4962778697388448 1.8302835609029084 2.2388474634702153 2.7386127875258306 3.3499379133114306 4.09772570775871 5.012437964687018 6.131336292779302 7.500000000000001</z_grid>
   </mesh>
   <filter id="1" type="mesh">
     <bins>1</bins>
@@ -77,35 +77,35 @@
   <filter id="8" type="meshsurface">
     <bins>4</bins>
   </filter>
-  <tally id="1" name="tally 1">
+  <tally id="1">
     <filters>1</filters>
     <scores>total</scores>
   </tally>
-  <tally id="2" name="tally 2">
+  <tally id="2">
     <filters>5</filters>
     <scores>current</scores>
   </tally>
-  <tally id="3" name="tally 3">
+  <tally id="3">
     <filters>2</filters>
     <scores>total</scores>
   </tally>
-  <tally id="4" name="tally 4">
+  <tally id="4">
     <filters>6</filters>
     <scores>current</scores>
   </tally>
-  <tally id="5" name="tally 5">
+  <tally id="5">
     <filters>3</filters>
     <scores>total</scores>
   </tally>
-  <tally id="6" name="tally 6">
+  <tally id="6">
     <filters>7</filters>
     <scores>current</scores>
   </tally>
-  <tally id="7" name="tally 7">
+  <tally id="7">
     <filters>4</filters>
     <scores>total</scores>
   </tally>
-  <tally id="8" name="tally 8">
+  <tally id="8">
     <filters>8</filters>
     <scores>current</scores>
   </tally>

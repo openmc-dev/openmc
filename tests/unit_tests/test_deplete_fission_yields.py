@@ -109,7 +109,7 @@ def test_cutoff_helper(nuclide_bundle, therm_frac):
     proxy = CutoffProxy(nuclide_bundle, n_bmats)
     proxy.generate_tallies(MATERIALS, [0])
     non_zero_nucs = [n.name for n in nuclide_bundle]
-    tally_nucs = proxy.update_nuclides_from_operator(non_zero_nucs)
+    tally_nucs = proxy.update_tally_nuclides(non_zero_nucs)
     assert tally_nucs == ("U235",)
     # Emulate building tallies
     # material x energy, tallied_nuclides, 3
@@ -144,7 +144,7 @@ class AverageProxy(ProxyMixin, AveragedFissionYieldHelper):
 def test_averaged_helper(nuclide_bundle, avg_energy):
     proxy = AverageProxy(nuclide_bundle)
     proxy.generate_tallies(MATERIALS, [0])
-    tallied_nucs = proxy.update_nuclides_from_operator(
+    tallied_nucs = proxy.update_tally_nuclides(
         [n.name for n in nuclide_bundle])
     assert tallied_nucs == ("U235", )
     # enforce some average energy

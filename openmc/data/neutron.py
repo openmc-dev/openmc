@@ -453,7 +453,7 @@ class IncidentNeutron(EqualityMixin):
             if rx.redundant:
                 photon_rx = any(p.particle == 'photon' for p in rx.products)
                 keep_mts = (4, 16, 103, 104, 105, 106, 107,
-                            203, 204, 205, 206, 207, 301, 444)
+                            203, 204, 205, 206, 207, 301, 444, 999)
                 if not (photon_rx or rx.mt in keep_mts):
                     continue
 

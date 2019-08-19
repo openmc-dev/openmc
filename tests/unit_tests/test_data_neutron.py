@@ -206,7 +206,7 @@ def test_derived_products(am244):
 
 
 def test_heating(run_in_tmpdir, am244):
-    assert 999 in am244.reactions  # TBD
+    assert 999 in am244.reactions
     strT = min(am244.reactions[1].xs.keys())
     total_xs = am244.reactions[1].xs[strT].y
     fission_xs = am244.reactions[18].xs[strT].y
@@ -215,6 +215,12 @@ def test_heating(run_in_tmpdir, am244):
     heating_number = total_heating / total_xs
     assert no_fission_heating == pytest.approx(
         heating_number * (total_xs - fission_xs))
+    # Re-read to ensure data is written
+    am244.export_to_hdf5("Am244.h5")
+    new = openmc.data.IncidentNeutron.from_hdf5("Am244.h5")
+    assert 999 in new.reactions
+    new_rxn = new.reactions[999].xs[strT].y
+    assert (new_rxn == no_fission_heating).all()
 
 
 def test_urr(pu239):

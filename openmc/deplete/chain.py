@@ -454,70 +454,96 @@ class Chain(object):
         dict.update(matrix_dok, matrix)
         return matrix_dok.tocsr()
 
-    def get_capture_branches(self):
-        """Return a dictionary with capture branching ratios
+    def get_branch_ratios(self, reaction="(n,gamma)"):
+        """Return a dictionary with reaction branching ratios
+
+        Parameters
+        ----------
+        reaction : str, optional
+            Reaction name like ``"(n,gamma)"`` [default], or
+            ``"(n,alpha)"``.
 
         Returns
         -------
-        capt :
-            nested dict of parent nuclide keys with capture targets and
-            branching ratios::
+        branches : dict
+            nested dict of parent nuclide keys with reaction targets and
+            branching ratios. Consider the capture, ``"(n,gamma)"``,
+            reaction for Am241::
 
                 {"Am241": {"Am242": 0.91, "Am242_m1": 0.09}}
 
         See Also
         --------
-        :meth:`set_capture_branches`
-
+        :meth:`set_branch_ratios`
         """
 
         capt = {}
         for nuclide in self.nuclides:
             nuc_capt = {}
             for rx in nuclide.reactions:
-                if rx.type == "(n,gamma)" and rx.branching_ratio != 1.0:
+                if rx.type == reaction and rx.branching_ratio != 1.0:
                     nuc_capt[rx.target] = rx.branching_ratio
             if len(nuc_capt) > 0:
                 capt[nuclide.name] = nuc_capt
         return capt
 
-    def set_capture_branches(self, branch_ratios, strict=True):
-        """Set the capture branching ratios
-
-        To provide a buffer around floating point precisions,
-        the sum of all branching ratios from a single parent
-        cannot be greater than 1.00001.
+    def set_branch_ratios(self, branch_ratios, reaction="(n,gamma)",
+                          strict=True, tolerance=1e-5):
+        """Set the branching ratios for a given reactions
 
         Parameters
         ----------
         branch_ratios : dict of {str: {str: float}}
             Capture branching ratios to be inserted.
             First layer keys are names of parent nuclides, e.g.
-            ``"Am241"``. The capture branching ratios for these
+            ``"Am241"``. The branching ratios for these
             parents will be modified. Corresponding values are
             dictionaries of ``{target: branching_ratio}``
-        strict : bool
-            If this evalutes to ``True``, then all parents and
-            products must exist in the :class:`Chain`. A
-            :class:`KeyError` will be raised at the first
-            nuclide that does not exist. Otherwise, print
-            a warning message for missing parents and/or
-            products.
+        reaction : str, optional
+            Reaction name like ``"(n,gamma)"`` [default], or
+            ``"(n, alpha)"``.
+        strict : bool, optional
+            Error control. If this evalutes to ``True``, then errors will
+            be raised if inconsistencies are found. Otherwise, warnings
+            will be raised for most issues.
+        tolerance : float, optional
+            Tolerance on the sum of all branching ratios for a
+            single parent. Will be checked with::
+
+                1 - tol < sum_br < 1 + tol
+
+        Raises
+        ------
+        IndexError
+            If no isotopes were found on the chain that have the requested
+            reaction
+        KeyError
+            If ``strict`` evaluates to ``False`` and a parent isotope in
+            ``branch_ratios`` does not exist on the chain
+        AttributeError
+            If ``strict`` evaluates to ``False`` and a parent isotope in
+            ``branch_ratios`` does not have the requested reaction
+        ValueError
+            If ``strict`` evalutes to ``False`` and the sum of one parents
+            branch ratios is outside  1 +/- ``tolerance``
 
         See Also
         --------
-        :meth:`get_capture_branches`
+        :meth:`get_branch_ratios`
         """
 
         # Store some useful information through the validation stage
 
         sums = {}
-        capt_ix_map = {}
+        rxn_ix_map = {}
         grounds = {}
+
+        tolerance = abs(tolerance)
 
         missing_parents = set()
         missing_products = {}
-        no_capture = set()
+        missing_reaction = set()
+        bad_sums = {}
 
         # Check for validity before manipulation
 
@@ -543,11 +569,11 @@ class Chain(object):
             if prod_flag:
                 continue
 
-            # Make sure this nuclide has capture reactions
+            # Make sure this nuclide has the reaction
 
             indexes = []
             for ix, rx in enumerate(self[parent].reactions):
-                if rx.type == "(n,gamma)":
+                if rx.type == reaction:
                     indexes.append(ix)
                     if "_m" not in rx.target:
                         grounds[parent] = rx.target
@@ -555,24 +581,39 @@ class Chain(object):
             if len(indexes) == 0:
                 if strict:
                     raise AttributeError(
-                        "Nuclide {} does not have capture reactions in "
-                        "this {}".format(parent, self.__class__.__name__))
-                no_capture.add(parent)
+                        "Nuclide {} does not have {} reactions".format(
+                            parent, reaction))
+                missing_reaction.add(parent)
                 continue
 
-            capt_ix_map[parent] = indexes
-
             this_sum = sum(sub.values())
-            check_less_than(parent + " ratios", this_sum, 1.00001)
-            sums[parent] = this_sum
+            # sum of branching ratios can be lower than 1 if no ground
+            # target is given, but never greater
+            if (this_sum >= 1 + tolerance or (grounds[parent] in sub
+                                              and this_sum <= 1 - tolerance)):
+                if strict:
+                    msg = ("Sum of {} branching ratios for {} "
+                           "({:7.3f}) outside tolerance of 1 +/- "
+                           "{:5.3e}".format(
+                               reaction, parent, this_sum, tolerance))
+                    raise ValueError(msg)
+                bad_sums[parent] = this_sum
+            else:
+                rxn_ix_map[parent] = indexes
+                sums[parent] = this_sum
+
+        if len(rxn_ix_map) == 0:
+            raise IndexError(
+                "No {} reactions found in this {}".format(
+                    reaction, self.__class__.__name__))
 
         if len(missing_parents) > 0:
             warn("The following nuclides were not found in {}: {}".format(
                  self.__class__.__name__, ", ".join(sorted(missing_parents))))
 
-        if len(no_capture) > 0:
-            warn("The following nuclides did not have capture reactions: "
-                 "{}".format(", ".join(sorted(no_capture))))
+        if len(missing_reaction) > 0:
+            warn("The following nuclides did not have {} reactions: "
+                 "{}".format(reaction, ", ".join(sorted(missing_reaction))))
 
         if len(missing_products) > 0:
             tail = ("{} -> {}".format(k, v)
@@ -581,28 +622,35 @@ class Chain(object):
                  "parents were unmodified: \n{}".format(
                      self.__class__.__name__, ", ".join(tail)))
 
+        if len(bad_sums) > 0:
+            tail = ("{}: {:5.3f}".format(k, s)
+                    for k, s in sorted(bad_sums.items()))
+            warn("The following parent nuclides were given {} branch ratios "
+                 "with a sum outside tolerance of 1 +/- {:5.3e}:\n{}".format(
+                     reaction, tolerance, "\n".join(tail)))
+
         # Insert new ReactionTuples with updated branch ratios
 
-        for parent_name, capt_index in capt_ix_map.items():
+        for parent_name, rxn_index in rxn_ix_map.items():
 
             parent = self[parent_name]
             new_ratios = branch_ratios[parent_name]
-            capt_index = capt_ix_map[parent_name]
+            rxn_index = rxn_ix_map[parent_name]
 
             # Assume Q value is independent of target state
-            capt_Q = parent.reactions[capt_index[0]].Q
+            rxn_Q = parent.reactions[rxn_index[0]].Q
 
-            # Remove existing capture reactions
+            # Remove existing reactions
 
-            for ix in reversed(capt_index):
+            for ix in reversed(rxn_index):
                 parent.reactions.pop(ix)
 
             all_meta = True
 
             for tgt, br in new_ratios.items():
-                all_meta = all_meta and  ("_m" in tgt)
+                all_meta = all_meta and ("_m" in tgt)
                 parent.reactions.append(ReactionTuple(
-                    "(n,gamma)", tgt, capt_Q, br))
+                    reaction, tgt, rxn_Q, br))
 
             if all_meta and sums[parent_name] != 1.0:
                 ground_br = 1.0 - sums[parent_name]
@@ -612,4 +660,4 @@ class Chain(object):
                     ground_tgt = gnd_name(pz, pa + 1, 0)
                 new_ratios[ground_tgt] = ground_br
                 parent.reactions.append(ReactionTuple(
-                    "(n,gamma)", ground_tgt, capt_Q, ground_br))
+                    reaction, ground_tgt, rxn_Q, ground_br))

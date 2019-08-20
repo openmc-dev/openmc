@@ -545,6 +545,9 @@ class Chain(object):
         missing_reaction = set()
         bad_sums = {}
 
+        # Secondary products, like alpha particles, should not be modified
+        secondary = "He4" if reaction == "(n,a)" else None
+
         # Check for validity before manipulation
 
         for parent, sub in branch_ratios.items():
@@ -573,7 +576,7 @@ class Chain(object):
 
             indexes = []
             for ix, rx in enumerate(self[parent].reactions):
-                if rx.type == reaction:
+                if rx.type == reaction and rx.target != secondary:
                     indexes.append(ix)
                     if "_m" not in rx.target:
                         grounds[parent] = rx.target

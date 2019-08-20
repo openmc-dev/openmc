@@ -330,14 +330,17 @@ def test_capture_branch_failures(simple_chain):
         simple_chain.set_branch_ratios(br, "(n,gamma)")
 
 
-@pytest.mark.parametrize("reaction", ("(n,alpha)", "(n,2n)"))
-def test_set_general_branches(reaction):
-    """Test setting of non-capture branching ratios"""
+
+def test_set_alpha_branches():
+    """Test setting of alpha reaction branching ratios"""
     # Build a mock chain
     chain = Chain()
 
     parent = nuclide.Nuclide()
     parent.name = "A"
+
+    he4 = nuclide.Nuclide()
+    he4.name = "He4"
 
     ground_tgt = nuclide.Nuclide()
     ground_tgt.name = "B"
@@ -345,23 +348,32 @@ def test_set_general_branches(reaction):
     meta_tgt = nuclide.Nuclide()
     meta_tgt.name = "B_m1"
 
-    for ix, nuc in enumerate((parent, ground_tgt, meta_tgt)):
+    for ix, nuc in enumerate((parent, ground_tgt, meta_tgt, he4)):
         chain.nuclides.append(nuc)
         chain.nuclide_dict[nuc.name] = ix
 
     # add reactions to parent
     parent.reactions.append(nuclide.ReactionTuple(
-        reaction, ground_tgt.name, 1.0, 0.6))
+        "(n,a)", ground_tgt.name, 1.0, 0.6))
     parent.reactions.append(nuclide.ReactionTuple(
-        reaction, meta_tgt.name, 1.0, 0.4))
+        "(n,a)", meta_tgt.name, 1.0, 0.4))
+    parent.reactions.append(nuclide.ReactionTuple(
+        "(n,a)", he4.name, 1.0, 1.0))
 
     expected_ref = {"A": {"B": 0.6, "B_m1": 0.4}}
 
-    assert chain.get_branch_ratios(reaction) == expected_ref
+    assert chain.get_branch_ratios("(n,a)") == expected_ref
 
     # alter and check again
 
     altered = {"A": {"B": 0.5, "B_m1": 0.5}}
 
-    chain.set_branch_ratios(altered, reaction)
-    assert chain.get_branch_ratios(reaction) == altered
+    chain.set_branch_ratios(altered, "(n,a)")
+    assert chain.get_branch_ratios("(n,a)") == altered
+
+    # make sure that alpha particle still produced
+    for r in parent.reactions:
+        if r.target == he4.name:
+            break
+    else:
+        raise ValueError("Helium has been removed and should not have been")

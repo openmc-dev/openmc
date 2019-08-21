@@ -742,7 +742,7 @@ void write_tally_results_nr(hid_t file_id)
     } else {
       // Receive buffer not significant at other processors
 #ifdef OPENMC_MPI
-      MPI_Reduce(values.data(), nullptr, values.size(), MPI_REAL8, MPI_SUM,
+      MPI_Reduce(values.data(), nullptr, values.size(), MPI_DOUBLE, MPI_SUM,
             0, mpi::intracomm);
 #endif
     }

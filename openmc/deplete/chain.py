@@ -10,9 +10,10 @@ import math
 import re
 from collections import OrderedDict, defaultdict
 from collections.abc import Mapping
+from numbers import Real
 from warnings import warn
 
-from openmc.checkvalue import check_type, check_less_than
+from openmc.checkvalue import check_type, check_less_than, check_greater_than
 from openmc.data import gnd_name, zam
 
 # Try to use lxml if it is available. It preserves the order of attributes and
@@ -613,3 +614,54 @@ class Chain(object):
                 new_ratios[ground_tgt] = ground_br
                 parent.reactions.append(ReactionTuple(
                     "(n,gamma)", ground_tgt, capt_Q, ground_br))
+
+    def validate(self, strict=True, quiet=False, tolerance=1e-4):
+        """Search for possible inconsistencies
+
+        The following checks are performed for all nuclides present:
+
+            1) For all non-fission reactions, does the sum of branching
+               ratios equal about one?
+            2) For fission reactions, does the sum of fission yield
+               fractions equal about two?
+
+        Parameters
+        ----------
+        strict : bool, optional
+            Raise exceptions at the first inconsistency if true.
+            Otherwise mark a warning
+        quiet : bool, optional
+            Flag to suppress warnings and return immediately at
+            the first inconsistency. Used only if
+            ``strict`` does not evaluate to ``True``.
+        tolerance : float, optional
+            Absolute tolerance for comparisons. Used to compare computed
+            value ``x`` to intended value ``y`` as::
+
+                valid = (y - tolerance <= x <= y + tolerance)
+
+        Returns
+        -------
+        valid : bool
+            True if no inconsistencies were found
+
+        Raises
+        ------
+        ValueError
+            If ``strict`` evaluates to ``True`` and an inconistency was
+            found
+
+        See Also
+        --------
+        openmc.deplete.Nuclide.validate
+        """
+        check_type("tolerance", tolerance, Real)
+        check_greater_than("tolerance", tolerance, 0.0, True)
+        valid = True
+        # Sort through nuclides by name
+        for name in sorted(self.nuclide_dict):
+            stat = self[name].validate(strict, quiet, tolerance)
+            if quiet and not stat:
+                return stat
+            valid = valid and stat
+        return valid

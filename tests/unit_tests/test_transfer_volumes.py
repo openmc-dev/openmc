@@ -22,7 +22,7 @@ def test_transfer_volumes(run_in_tmpdir):
     PredictorIntegrator(op, dt, power).integrate()
 
     # Load the files
-    res = ResultsList(op.output_dir / "depletion_results.h5")
+    res = openmc.deplete.ResultsList.from_hdf5(op.output_dir / "depletion_results.h5")
 
     # Create a dictionary of volumes to transfer
     res[0].volume['1'] = 1.5

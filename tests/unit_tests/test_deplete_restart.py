@@ -27,7 +27,7 @@ def test_restart_predictor(run_in_tmpdir):
     PredictorIntegrator(op, dt, power).integrate()
 
     # Load the files
-    prev_res = openmc.deplete.ResultsList(op.output_dir / "depletion_results.h5")
+    prev_res = openmc.deplete.ResultsList.from_hdf5(op.output_dir / "depletion_results.h5")
 
     # Re-create depletion operator and load previous results
     op = dummy_operator.DummyOperator(prev_res)
@@ -37,7 +37,7 @@ def test_restart_predictor(run_in_tmpdir):
     PredictorIntegrator(op, dt, power).integrate()
 
     # Load the files
-    res = openmc.deplete.ResultsList(op.output_dir / "depletion_results.h5")
+    res = openmc.deplete.ResultsList.from_hdf5(op.output_dir / "depletion_results.h5")
 
     _, y1 = res.get_atoms("1", "1")
     _, y2 = res.get_atoms("1", "2")
@@ -67,7 +67,7 @@ def test_restart_cecm(run_in_tmpdir):
     cecm.integrate()
 
     # Load the files
-    prev_res = openmc.deplete.ResultsList(op.output_dir / "depletion_results.h5")
+    prev_res = openmc.deplete.ResultsList.from_hdf5(op.output_dir / "depletion_results.h5")
 
     # Re-create depletion operator and load previous results
     op = dummy_operator.DummyOperator(prev_res)
@@ -78,7 +78,7 @@ def test_restart_cecm(run_in_tmpdir):
     cecm_restart.integrate()
 
     # Load the files
-    res = openmc.deplete.ResultsList(op.output_dir / "depletion_results.h5")
+    res = openmc.deplete.ResultsList.from_hdf5(op.output_dir / "depletion_results.h5")
 
     _, y1 = res.get_atoms("1", "1")
     _, y2 = res.get_atoms("1", "2")
@@ -107,7 +107,7 @@ def test_restart_predictor_cecm(run_in_tmpdir):
     PredictorIntegrator(op, dt, power).integrate()
 
     # Load the files
-    prev_res = openmc.deplete.ResultsList(op.output_dir / "depletion_results.h5")
+    prev_res = openmc.deplete.ResultsList.from_hdf5(op.output_dir / "depletion_results.h5")
 
     # Re-create depletion operator and load previous results
     op = dummy_operator.DummyOperator(prev_res)
@@ -133,7 +133,7 @@ def test_restart_cecm_predictor(run_in_tmpdir):
     cecm.integrate()
 
     # Load the files
-    prev_res = openmc.deplete.ResultsList(op.output_dir / "depletion_results.h5")
+    prev_res = openmc.deplete.ResultsList.from_hdf5(op.output_dir / "depletion_results.h5")
 
     # Re-create depletion operator and load previous results
     op = dummy_operator.DummyOperator(prev_res)
@@ -156,7 +156,7 @@ def test_restart_cf4(run_in_tmpdir):
     CF4Integrator(op, dt, power).integrate()
 
     # Load the files
-    prev_res = openmc.deplete.ResultsList(op.output_dir / "depletion_results.h5")
+    prev_res = openmc.deplete.ResultsList.from_hdf5(op.output_dir / "depletion_results.h5")
 
     # Re-create depletion operator and load previous results
     op = dummy_operator.DummyOperator(prev_res)
@@ -166,7 +166,7 @@ def test_restart_cf4(run_in_tmpdir):
     CF4Integrator(op, dt, power).integrate()
 
     # Load the files
-    res = openmc.deplete.ResultsList(op.output_dir / "depletion_results.h5")
+    res = openmc.deplete.ResultsList.from_hdf5(op.output_dir / "depletion_results.h5")
 
     _, y1 = res.get_atoms("1", "1")
     _, y2 = res.get_atoms("1", "2")
@@ -195,7 +195,7 @@ def test_restart_epc_rk4(run_in_tmpdir):
     EPCRK4Integrator(op, dt, power).integrate()
 
     # Load the files
-    prev_res = openmc.deplete.ResultsList(op.output_dir / "depletion_results.h5")
+    prev_res = openmc.deplete.ResultsList.from_hdf5(op.output_dir / "depletion_results.h5")
 
     # Re-create depletion operator and load previous results
     op = dummy_operator.DummyOperator(prev_res)
@@ -205,7 +205,7 @@ def test_restart_epc_rk4(run_in_tmpdir):
     EPCRK4Integrator(op, dt, power).integrate()
 
     # Load the files
-    res = openmc.deplete.ResultsList(op.output_dir / "depletion_results.h5")
+    res = openmc.deplete.ResultsList.from_hdf5(op.output_dir / "depletion_results.h5")
 
     _, y1 = res.get_atoms("1", "1")
     _, y2 = res.get_atoms("1", "2")
@@ -234,7 +234,7 @@ def test_restart_celi(run_in_tmpdir):
     CELIIntegrator(op, dt, power).integrate()
 
     # Load the files
-    prev_res = openmc.deplete.ResultsList(op.output_dir / "depletion_results.h5")
+    prev_res = openmc.deplete.ResultsList.from_hdf5(op.output_dir / "depletion_results.h5")
 
     # Re-create depletion operator and load previous results
     op = dummy_operator.DummyOperator(prev_res)
@@ -244,7 +244,7 @@ def test_restart_celi(run_in_tmpdir):
     CELIIntegrator(op, dt, power).integrate()
 
     # Load the files
-    res = openmc.deplete.ResultsList(op.output_dir / "depletion_results.h5")
+    res = openmc.deplete.ResultsList.from_hdf5(op.output_dir / "depletion_results.h5")
 
     _, y1 = res.get_atoms("1", "1")
     _, y2 = res.get_atoms("1", "2")
@@ -273,7 +273,7 @@ def test_restart_leqi(run_in_tmpdir):
     LEQIIntegrator(op, dt, power).integrate()
 
     # Load the files
-    prev_res = openmc.deplete.ResultsList(op.output_dir / "depletion_results.h5")
+    prev_res = openmc.deplete.ResultsList.from_hdf5(op.output_dir / "depletion_results.h5")
 
     # Re-create depletion operator and load previous results
     op = dummy_operator.DummyOperator(prev_res)
@@ -283,7 +283,7 @@ def test_restart_leqi(run_in_tmpdir):
     LEQIIntegrator(op, dt, power).integrate()
 
     # Load the files
-    res = openmc.deplete.ResultsList(op.output_dir / "depletion_results.h5")
+    res = openmc.deplete.ResultsList.from_hdf5(op.output_dir / "depletion_results.h5")
 
     _, y1 = res.get_atoms("1", "1")
     _, y2 = res.get_atoms("1", "2")
@@ -311,7 +311,7 @@ def test_restart_si_celi(run_in_tmpdir):
     SICELIIntegrator(op, dt, power).integrate()
 
     # Load the files
-    prev_res = openmc.deplete.ResultsList(op.output_dir / "depletion_results.h5")
+    prev_res = openmc.deplete.ResultsList.from_hdf5(op.output_dir / "depletion_results.h5")
 
     # Re-create depletion operator and load previous results
     op = dummy_operator.DummyOperator(prev_res)
@@ -321,7 +321,7 @@ def test_restart_si_celi(run_in_tmpdir):
     SICELIIntegrator(op, dt, power).integrate()
 
     # Load the files
-    res = openmc.deplete.ResultsList(op.output_dir / "depletion_results.h5")
+    res = openmc.deplete.ResultsList.from_hdf5(op.output_dir / "depletion_results.h5")
 
     _, y1 = res.get_atoms("1", "1")
     _, y2 = res.get_atoms("1", "2")
@@ -351,7 +351,7 @@ def test_restart_si_leqi(run_in_tmpdir):
     SILEQIIntegrator(op, dt, power, nstages).integrate()
 
     # Load the files
-    prev_res = openmc.deplete.ResultsList(op.output_dir / "depletion_results.h5")
+    prev_res = openmc.deplete.ResultsList.from_hdf5(op.output_dir / "depletion_results.h5")
 
     # Re-create depletion operator and load previous results
     op = dummy_operator.DummyOperator(prev_res)
@@ -361,7 +361,7 @@ def test_restart_si_leqi(run_in_tmpdir):
     SILEQIIntegrator(op, dt, power, nstages).integrate()
 
     # Load the files
-    res = openmc.deplete.ResultsList(op.output_dir / "depletion_results.h5")
+    res = openmc.deplete.ResultsList.from_hdf5(op.output_dir / "depletion_results.h5")
 
     _, y1 = res.get_atoms("1", "1")
     _, y2 = res.get_atoms("1", "2")

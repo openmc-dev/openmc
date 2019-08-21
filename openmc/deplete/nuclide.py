@@ -123,15 +123,19 @@ class Nuclide(object):
     @property
     def yield_data(self):
         if self._yield_data is None:
-            return {}
+            return None
         return self._yield_data
 
     @yield_data.setter
     def yield_data(self, fission_yields):
-        check_type("fission_yields", fission_yields, Mapping)
-        if isinstance(fission_yields, FissionYieldDistribution):
-            self._yield_data = fission_yields
-        self._yield_data = FissionYieldDistribution(fission_yields)
+        if fission_yields is None:
+            self._yield_data = None
+        else:
+            check_type("fission_yields", fission_yields, Mapping)
+            if isinstance(fission_yields, FissionYieldDistribution):
+                self._yield_data = fission_yields
+            else:
+                self._yield_data = FissionYieldDistribution(fission_yields)
 
     @property
     def yield_energies(self):

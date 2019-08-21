@@ -400,7 +400,7 @@ class Chain(object):
         """
         out = {}
         for nuc in self.nuclides:
-            if not nuc.yield_data:
+            if nuc.yield_data is None:
                 continue
             yield_obj = nuc.yield_data[min(nuc.yield_energies)]
             out[nuc.name] = dict(yield_obj)

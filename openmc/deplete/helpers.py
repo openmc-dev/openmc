@@ -313,19 +313,24 @@ class FissionYieldCutoffHelper(TalliedFissionYieldHelper):
             thermal = yields.get(thermal_energy)
             fast = yields.get(fast_energy)
             if thermal is None or fast is None:
-                insert_ix = bisect.bisect_left(energies, cutoff)
+                cutoff_ix = bisect.bisect_left(energies, cutoff)
                 # if zero, then all energies > cutoff
                 # if len(energies), then all energies <= cutoff
-                if insert_ix == 0 or insert_ix == len(energies):
+                if cutoff_ix == 0 or cutoff_ix == len(energies):
                     tail = map("{:5.3e}".format, energies)
                     raise ValueError(
                         "Cannot find replacement fission yields for {} given "
                         "cutoff {:5.3e} eV. Yields provided at [{}] eV".format(
                             name, cutoff, ", ".join(tail)))
+                # find closest energy to requested thermal, fast energies
                 if thermal is None:
-                    thermal = yields[energies[insert_ix - 1]]
+                    min_E = min(energies[:cutoff_ix],
+                                key=lambda e: abs(e - thermal_energy))
+                    thermal = yields[min_E]
                 if fast is None:
-                    fast = yields[energies[insert_ix]]
+                    min_E = min(energies[cutoff_ix:],
+                                key=lambda e: abs(e - fast_energy))
+                    fast = yields[min_E]
             self._thermal_yields[name] = thermal
             self._fast_yields[name] = fast
 
@@ -369,7 +374,7 @@ class FissionYieldCutoffHelper(TalliedFissionYieldHelper):
             in parallel mode.
         """
         super().generate_tallies(materials, mat_indexes)
-        energy_filter = EnergyFilter(bins=[0.0, self._cutoff, self._upper_energy])
+        energy_filter = EnergyFilter([0.0, self._cutoff, self._upper_energy])
         self._fission_rate_tally.filters = (
             self._fission_rate_tally.filters + [energy_filter])
 
@@ -497,7 +502,7 @@ class AveragedFissionYieldHelper(TalliedFissionYieldHelper):
         fission_tally = self._fission_rate_tally
         filters = fission_tally.filters
 
-        ene_filter = EnergyFilter(bins=[0, self._upper_energy])
+        ene_filter = EnergyFilter([0, self._upper_energy])
         fission_tally.filters = filters + [ene_filter]
 
         func_filter = EnergyFunctionFilter()

@@ -387,6 +387,8 @@ class FissionYieldHelper(ABC):
 
         # Get all nuclides with fission yield data
         for nuc in chain_nuclides:
+            if nuc.yield_data is None:
+                continue
             if len(nuc.yield_data) == 1:
                 self._constant_yields[nuc.name] = (
                     nuc.yield_data[nuc.yield_energies[0]])

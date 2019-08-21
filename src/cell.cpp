@@ -16,6 +16,7 @@
 #include "openmc/hdf5_interface.h"
 #include "openmc/lattice.h"
 #include "openmc/material.h"
+#include "openmc/nuclide.h"
 #include "openmc/settings.h"
 #include "openmc/surface.h"
 #include "openmc/xml_interface.h"
@@ -244,6 +245,16 @@ Cell::temperature(int32_t instance) const
 void
 Cell::set_temperature(double T, int32_t instance)
 {
+  if (settings::temperature_method == TEMPERATURE_INTERPOLATION) {
+    if (T < data::temperature_min) {
+      throw std::runtime_error{"Temperature is below minimum temperature at "
+        "which data is available."};
+    } else if (T > data::temperature_max) {
+      throw std::runtime_error{"Temperature is above maximum temperature at "
+        "which data is available."};
+    }
+  }
+
   if (instance >= 0) {
     sqrtkT_.at(instance) = std::sqrt(K_BOLTZMANN * T);
   } else {
@@ -1057,7 +1068,6 @@ openmc_cell_set_fill(int32_t index, int type, int32_t n,
   return 0;
 }
 
-//TODO: make sure data is loaded for this temperature
 extern "C" int
 openmc_cell_set_temperature(int32_t index, double T, const int32_t* instance)
 {

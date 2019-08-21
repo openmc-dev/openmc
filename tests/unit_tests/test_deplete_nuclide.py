@@ -84,8 +84,7 @@ def test_from_xml():
 def test_to_xml_element():
     """Test writing nuclide data to an XML element."""
 
-    C = nuclide.Nuclide()
-    C.name = "C"
+    C = nuclide.Nuclide("C")
     C.half_life = 0.123
     C.decay_modes = [
         nuclide.DecayTuple('beta-', 'B', 0.99),

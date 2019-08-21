@@ -207,8 +207,7 @@ class Chain(object):
         for idx, parent in enumerate(sorted(decay_data, key=openmc.data.zam)):
             data = decay_data[parent]
 
-            nuclide = Nuclide()
-            nuclide.name = parent
+            nuclide = Nuclide(parent)
 
             chain.nuclides.append(nuclide)
             chain.nuclide_dict[parent] = idx

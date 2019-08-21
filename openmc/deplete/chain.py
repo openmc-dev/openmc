@@ -127,7 +127,7 @@ class Chain(object):
     fission_yields : None or iterable of dict
         List of effective fission yields for materials. Each dictionary
         should be of the form ``{parent: {product: yield}}`` with
-        types ``{str: {str: Real}}``, where ``yield`` is the fission product yield
+        types ``{str: {str: float}}``, where ``yield`` is the fission product yield
         for isotope ``parent`` producing isotope ``product``.
         A single entry indicates yields are constant across all materials.
         Otherwise, an entry can be added for each material to be burned.
@@ -395,14 +395,14 @@ class Chain(object):
         Returns
         -------
         fission_yields : dict
-            Dictionary of ``{parent : {product : f_yield}}``
+            Dictionary of ``{parent: {product: f_yield}}``
             where ``parent`` and ``product`` are both string
             names of nuclides with yield data and ``f_yield``
             is a float for the fission yield.
         """
         out = {}
         for nuc in self.nuclides:
-            if len(nuc.yield_data) == 0:
+            if not nuc.yield_data:
                 continue
             yield_obj = nuc.yield_data[min(nuc.yield_energies)]
             out[nuc.name] = dict(yield_obj)

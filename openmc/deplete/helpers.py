@@ -317,7 +317,7 @@ class FissionYieldCutoffHelper(TalliedFissionYieldHelper):
             if fast is None:
                 # find first index <= cutoff
                 rev_ix = self._find_fallback_energy(
-                    name, list(reversed(energies)), cutoff, False)
+                    name, reversed(energies), cutoff, False)
                 fast = yields[energies[-rev_ix]]
             self._thermal_yields[name] = thermal
             self._fast_yields[name] = fast
@@ -518,7 +518,7 @@ class AveragedFissionYieldHelper(TalliedFissionYieldHelper):
         fission_tally = self._fission_rate_tally
 
         weighted_tally = Tally()
-        weighted_tally.filters = fission_tally.filters.copy()
+        weighted_tally.filters = fission_tally.filters
         weighted_tally.scores = ['fission']
 
         ene_bin = EnergyFilter()

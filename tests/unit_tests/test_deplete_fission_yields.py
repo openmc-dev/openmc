@@ -5,7 +5,6 @@ from unittest.mock import Mock
 
 import pytest
 import numpy
-
 from openmc.deplete.nuclide import Nuclide, FissionYieldDistribution
 from openmc.deplete.helpers import (
     FissionYieldCutoffHelper, ConstantFissionYieldHelper,
@@ -75,10 +74,10 @@ def test_cutoff_construction(nuclide_bundle):
         "U235": nuclide_bundle.u235.yield_data[0.0253]}
     assert helper.fast_yields == {"U235": nuclide_bundle.u235.yield_data[5e5]}
     # test failures in cutoff: super low, super high
-    with pytest.raises(ValueError, match="thermal yields"):
+    with pytest.raises(ValueError, match="replacement fission yields"):
         FissionYieldCutoffHelper(
             nuclide_bundle, 1, thermal_energy=0.001, cutoff=0.002)
-    with pytest.raises(ValueError, match="fast yields"):
+    with pytest.raises(ValueError, match="replacement fission yields"):
         FissionYieldCutoffHelper(
             nuclide_bundle, 1, cutoff=15e6, fast_energy=17e6)
 

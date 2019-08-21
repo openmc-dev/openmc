@@ -137,7 +137,7 @@ class Operator(TransportOperator):
     diff_burnable_mats : bool
         Whether to differentiate burnable materials with multiple instances
     """
-    _fission_helpers_ = {
+    _fission_helpers = {
         "average": AveragedFissionYieldHelper,
         "constant": ConstantFissionYieldHelper,
         "cutoff": FissionYieldCutoffHelper,
@@ -147,10 +147,10 @@ class Operator(TransportOperator):
                  diff_burnable_mats=False, fission_q=None,
                  dilute_initial=1.0e3, fission_yield_mode="constant",
                  fission_yield_opts=None):
-        if fission_yield_mode not in self._fission_helpers_:
+        if fission_yield_mode not in self._fission_helpers:
             raise KeyError(
                 "fission_yield_mode must be one of {}, not {}".format(
-                    ", ".join(self._fission_helpers_), fission_yield_mode))
+                    ", ".join(self._fission_helpers), fission_yield_mode))
         super().__init__(chain_file, fission_q, dilute_initial, prev_results)
         self.round_number = False
         self.prev_res = None
@@ -207,10 +207,10 @@ class Operator(TransportOperator):
         self._energy_helper = ChainFissionHelper()
 
         # Select and create fission yield helper
-        fission_helper = self._fission_helpers_[fission_yield_mode]
+        fission_helper = self._fission_helpers[fission_yield_mode]
         fission_yield_opts = (
             {} if fission_yield_opts is None else fission_yield_opts)
-        self._fsn_yield_helper = fission_helper.from_operator(
+        self._yield_helper = fission_helper.from_operator(
             self, **fission_yield_opts)
 
     def __call__(self, vec, power):
@@ -242,7 +242,7 @@ class Operator(TransportOperator):
         nuclides = self._get_tally_nuclides()
         self._rate_helper.nuclides = nuclides
         self._energy_helper.nuclides = nuclides
-        self._fsn_yield_helper.update_tally_nuclides(nuclides)
+        self._yield_helper.update_tally_nuclides(nuclides)
 
         # Run OpenMC
         openmc.capi.reset()
@@ -448,8 +448,8 @@ class Operator(TransportOperator):
             self.chain.nuclides, self.reaction_rates.index_nuc, materials)
         # Tell fission yield helper what materials this process is
         # responsible for
-        self._fsn_yield_helper.generate_tallies(
-                materials, tuple(sorted(self._mat_index_map.values())))
+        self._yield_helper.generate_tallies(
+            materials, tuple(sorted(self._mat_index_map.values())))
 
         # Return number density vector
         return list(self.number.get_mat_slice(np.s_[:]))
@@ -595,7 +595,7 @@ class Operator(TransportOperator):
         # Keep track of energy produced from all reactions in eV per source
         # particle
         self._energy_helper.reset()
-        self._fsn_yield_helper.unpack()
+        self._yield_helper.unpack()
 
         # Store fission yield dictionaries
         fission_yields = []
@@ -622,7 +622,7 @@ class Operator(TransportOperator):
                 mat_index, nuc_ind, react_ind)
 
             # Compute fission yields for this material
-            fission_yields.append(self._fsn_yield_helper.weighted_yields(i))
+            fission_yields.append(self._yield_helper.weighted_yields(i))
 
             # Accumulate energy from fission
             self._energy_helper.update(tally_rates[:, fission_ind], mat_index)

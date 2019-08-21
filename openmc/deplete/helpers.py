@@ -1,9 +1,10 @@
 """
 Class for normalizing fission energy deposition
 """
+from copy import deepcopy
 from itertools import product
 from numbers import Real
-import operator
+import bisect
 
 from numpy import dot, zeros, newaxis
 
@@ -200,8 +201,8 @@ class ConstantFissionYieldHelper(FissionYieldHelper):
             distances = [abs(energy - ene) for ene in nuc.yield_energies]
             min_index = min(
                 range(len(nuc.yield_energies)), key=distances.__getitem__)
-            self._constant_yields[name] = (
-                nuc.yield_data[nuc.yield_energies[min_index]])
+            min_E = min(nuc.yield_energies, key=lambda e: abs(e - energy))
+            self._constant_yields[name] = nuc.yield_data[min_E]
 
     @classmethod
     def from_operator(cls, operator, **kwargs):
@@ -310,17 +311,21 @@ class FissionYieldCutoffHelper(TalliedFissionYieldHelper):
             yields = nuc.yield_data
             energies = nuc.yield_energies
             thermal = yields.get(thermal_energy)
-            if thermal is None:
-                # find first index >= cutoff
-                ix = self._find_fallback_energy(
-                    name, energies, cutoff, True)
-                thermal = yields[energies[ix - 1]]
             fast = yields.get(fast_energy)
-            if fast is None:
-                # find first index <= cutoff
-                rev_ix = self._find_fallback_energy(
-                    name, reversed(energies), cutoff, False)
-                fast = yields[energies[-rev_ix]]
+            if thermal is None or fast is None:
+                insert_ix = bisect.bisect_left(energies, cutoff)
+                # if zero, then all energies > cutoff
+                # if len(energies), then all energies <= cutoff
+                if insert_ix == 0 or insert_ix == len(energies):
+                    tail = map("{:5.3e}".format, energies)
+                    raise ValueError(
+                        "Cannot find replacement fission yields for {} given "
+                        "cutoff {:5.3e} eV. Yields provided at [{}] eV".format(
+                            name, cutoff, ", ".join(tail)))
+                if thermal is None:
+                    thermal = yields[energies[insert_ix - 1]]
+                if fast is None:
+                    fast = yields[energies[insert_ix]]
             self._thermal_yields[name] = thermal
             self._fast_yields[name] = fast
 
@@ -345,20 +350,6 @@ class FissionYieldCutoffHelper(TalliedFissionYieldHelper):
         """
         return cls(operator.chain.nuclides, len(operator.burnable_mats),
                    **kwargs)
-
-    @staticmethod
-    def _find_fallback_energy(name, energies, cutoff, check_under):
-        cutoff_func = operator.ge if check_under else operator.le
-        found = False
-        for ix, ene in enumerate(energies):
-            if cutoff_func(ene, cutoff):
-                found = True
-                break
-        if found and ix != 0:
-            return ix
-        domain = "thermal" if check_under else "fast"
-        raise ValueError("Could not find {} yields for {} "
-                         "with cutoff {} eV".format(domain, name, cutoff))
 
     def generate_tallies(self, materials, mat_indexes):
         """Use C API to produce a fission rate tally in burnable materials
@@ -435,17 +426,11 @@ class FissionYieldCutoffHelper(TalliedFissionYieldHelper):
 
     @property
     def thermal_yields(self):
-        out = {}
-        for key, sub in self._thermal_yields.items():
-            out[key] = sub.copy()
-        return out
+        return deepcopy(self._thermal_yields)
 
     @property
     def fast_yields(self):
-        out = {}
-        for key, sub in self._fast_yields.items():
-            out[key] = sub.copy()
-        return out
+        return deepcopy(self._fast_yields)
 
 
 class AveragedFissionYieldHelper(TalliedFissionYieldHelper):

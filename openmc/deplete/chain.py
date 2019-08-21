@@ -663,11 +663,8 @@ class Chain(object):
 
     @fission_yields.setter
     def fission_yields(self, yields):
-        if yields is None:
-            self._fission_yields = None
-            return
-        if isinstance(yields, Mapping):
-            self._fission_yields = [yields]
-            return
-        check_type("fission_yields", yields, Iterable, Mapping)
+        if yields is not None:
+            if isinstance(yields, Mapping):
+                yields = [yields]
+            check_type("fission_yields", yields, Iterable, Mapping)
         self._fission_yields = yields

@@ -377,7 +377,7 @@ def test_validate(simple_chain):
 
     # Fix fission yields but keep to restore later
     old_yields = simple_chain["C"].yield_data
-    simple_chain["C"].yield_data = {0.0253: [("A", 1.4), ("B", 0.6)]}
+    simple_chain["C"].yield_data = {0.0253: {"A": 1.4, "B": 0.6}}
 
     assert simple_chain.validate(strict=True, tolerance=0.0)
     with pytest.warns(None) as record:

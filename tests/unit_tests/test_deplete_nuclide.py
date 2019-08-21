@@ -177,8 +177,8 @@ def test_validate():
     # fission yields
 
     nuc.yield_data = {
-        0.0253: [("0", 1.5), ("1", 0.5)],
-        1e6: [("0", 1.5), ("1", 0.5)],
+        0.0253: {"0": 1.5, "1": 0.5},
+        1e6: {"0": 1.5, "1": 0.5},
     }
 
     # nuclide is good and should have no warnings raise
@@ -212,7 +212,7 @@ def test_validate():
 
     # restore reactions, invalidate fission yields
     nuc.reactions.append(reaction)
-    nuc.yield_data[1e6].pop()
+    nuc.yield_data[1e6].yields *= 2
 
     with pytest.raises(ValueError, match=r"fission yields.*1\.0*e"):
         nuc.validate(strict=True, quiet=False, tolerance=0.0)

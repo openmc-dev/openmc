@@ -321,8 +321,8 @@ class Nuclide(object):
                 valid = False
 
         if self.yield_data:
-            for energy, yield_list in self.yield_data.items():
-                sum_yield = sum(y[1] for y in yield_list)
+            for energy, fission_yield in self.yield_data.items():
+                sum_yield = fission_yield.yields.sum()
                 stat = 2.0 - tolerance <= sum_yield <= 2.0 + tolerance
                 if stat:
                     continue

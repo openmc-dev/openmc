@@ -126,6 +126,12 @@ namespace data {
 extern std::array<double, 2> energy_min;
 extern std::array<double, 2> energy_max;
 
+//! Minimum temperature in [K] that nuclide data is available at
+extern double temperature_min;
+
+//! Maximum temperature in [K] that nuclide data is available at
+extern double temperature_max;
+
 extern std::vector<std::unique_ptr<Nuclide>> nuclides;
 extern std::unordered_map<std::string, int> nuclide_map;
 

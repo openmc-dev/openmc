@@ -91,7 +91,7 @@ def test_cutoff_failure(key):
         FissionYieldCutoffHelper(None, None, **{key: -1})
 
 
-class ProxyMixin(object):
+class ProxyMixin:
     """Mixing that overloads the tally generation"""
     def generate_tallies(self, materials, mat_indexes):
         self._fission_rate_tally = Mock()

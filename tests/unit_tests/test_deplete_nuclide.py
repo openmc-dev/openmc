@@ -76,7 +76,7 @@ def test_from_xml():
         0.0253: {"Xe138": 0.0481413, "Zr100": 0.0497641, "Te134": 0.062155}})
     assert u235.yield_data == expected_yield_data
     # test accessing the yield energies through the FissionYieldDistribution
-    assert u235.yield_energies == (0.0253, )
+    assert u235.yield_energies == (0.0253,)
     assert u235.yield_energies is u235.yield_data.energies
     with pytest.raises(AttributeError):  # not settable
         u235.yield_energies = [0.0253, 5e5]

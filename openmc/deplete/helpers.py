@@ -166,8 +166,8 @@ class ConstantFissionYieldHelper(FissionYieldHelper):
     Parameters
     ----------
     chain_nuclides : iterable of openmc.deplete.Nuclide
-        Nuclides tracked in the depletion chain. Not necessary
-        that all have yield data.
+        Nuclides tracked in the depletion chain. All nuclides are
+        not required to have fission yield data.
     energy : float, optional
         Key in :attr:`openmc.deplete.Nuclide.yield_data` corresponding
         to the desired set of fission yield data. Typically one of
@@ -204,22 +204,24 @@ class ConstantFissionYieldHelper(FissionYieldHelper):
                 nuc.yield_data[nuc.yield_energies[min_index]])
 
     @classmethod
-    def from_operator(cls, operator, energy=0.0253):
+    def from_operator(cls, operator, **kwargs):
         """Return a new ConstantFissionYieldHelper using operator data
+
+        All keyword arguments should be identical to their counterpart
+        in the main ``__init__`` method
 
         Parameters
         ----------
         operator : openmc.deplete.TransportOperator
             operator with a depletion chain
-        energy : float, optional
-            Energy for default fission yield libraries for nuclides with
-            multiple sets of yield data
+        kwargs:
+            Additional keyword arguments to be used in construction
 
         Returns
         -------
         ConstantFissionYieldHelper
         """
-        return cls(operator.chain.nuclides, energy=energy)
+        return cls(operator.chain.nuclides, **kwargs)
 
     @property
     def energy(self):
@@ -255,8 +257,8 @@ class FissionYieldCutoffHelper(TalliedFissionYieldHelper):
     Parameters
     ----------
     chain_nuclides : iterable of openmc.deplete.Nuclide
-        Nuclides tracked in the depletion chain. Not necessary
-        that all have yield data.
+        Nuclides tracked in the depletion chain. All nuclides are
+        not required to have fission yield data.
     n_bmats : int, optional
         Number of burnable materials tracked in the problem
     cutoff : float, optional
@@ -323,25 +325,18 @@ class FissionYieldCutoffHelper(TalliedFissionYieldHelper):
             self._fast_yields[name] = fast
 
     @classmethod
-    def from_operator(cls, operator, cutoff=112.0,
-                      thermal_energy=0.0253, fast_energy=500e3):
+    def from_operator(cls, operator, **kwargs):
         """Construct a helper from an operator
 
-        All keyword arguments are identical to their counterpart
+        All keyword arguments should be identical to their counterpart
         in the main ``__init__`` method
 
         Parameters
         ----------
         operator : openmc.deplete.Operator
             Operator with a chain and burnable materials
-        cutoff : float, optional
-            Cutoff energy for tallying fast and thermal fissions
-        thermal_energy : float, optional
-            Energy to use when pulling thermal fission yields from
-            nuclides with multiple sets of yields
-        fast_energy : float, optional
-            Energy to use when pulling fast fission yields from
-            nuclides with multiple sets of yields
+        kwargs:
+            Additional keyword arguments to be used in construction
 
         Returns
         -------
@@ -349,8 +344,7 @@ class FissionYieldCutoffHelper(TalliedFissionYieldHelper):
 
         """
         return cls(operator.chain.nuclides, len(operator.burnable_mats),
-                   cutoff=cutoff, thermal_energy=thermal_energy,
-                   fast_energy=fast_energy)
+                   **kwargs)
 
     @staticmethod
     def _find_fallback_energy(name, energies, cutoff, check_under):
@@ -481,8 +475,8 @@ class AveragedFissionYieldHelper(TalliedFissionYieldHelper):
     Parameters
     ----------
     chain_nuclides : iterable of openmc.deplete.Nuclide
-        Nuclides tracked in the depletion chain. Not necessary
-        that all have yield data.
+        Nuclides tracked in the depletion chain. All nuclides are
+        not required to have fission yield data.
 
     Attributes
     ----------
@@ -615,13 +609,18 @@ class AveragedFissionYieldHelper(TalliedFissionYieldHelper):
         return mat_yields
 
     @classmethod
-    def from_operator(cls, operator):
+    def from_operator(cls, operator, **kwargs):
         """Return a new helper with data from an operator
+
+        All keyword arguments should be identical to their counterpart
+        in the main ``__init__`` method
 
         Parameters
         ----------
         operator : openmc.deplete.TransportOperator
             Operator with a depletion chain
+        kwargs :
+            Additional keyword arguments to be used in construction
 
         Returns
         -------

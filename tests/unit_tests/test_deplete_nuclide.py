@@ -71,7 +71,7 @@ def test_from_xml():
         nuclide.ReactionTuple('(n,gamma)', 'U236', 6545200.0, 1.0),
         nuclide.ReactionTuple('fission', None, 193405400.0, 1.0),
     ]
-    expected_yield_data = nuclide.FissionYieldDistribution.from_dict({
+    expected_yield_data = nuclide.FissionYieldDistribution({
         0.0253: {"Xe138": 0.0481413, "Zr100": 0.0497641, "Te134": 0.062155}})
     assert u235.yield_data == expected_yield_data
     # test accessing the yield energies through the FissionYieldDistribution
@@ -94,7 +94,7 @@ def test_to_xml_element():
         nuclide.ReactionTuple('fission', None, 2.0e8, 1.0),
         nuclide.ReactionTuple('(n,gamma)', 'A', 0.0, 1.0)
     ]
-    C.yield_data = nuclide.FissionYieldDistribution.from_dict(
+    C.yield_data = nuclide.FissionYieldDistribution(
         {0.0253: {"A": 0.0292737, "B": 0.002566345}})
     element = C.to_xml_element()
 
@@ -127,7 +127,7 @@ def test_fission_yield_distribution():
         1.40e7: {"Xe135": 4.54e-3, "Gd155": 5.83e-8, "Sm149": 2.69e-8},
         5.00e5: {"Xe135": 1.12e-3, "Gd155": 1.32e-12},  # drop Sm149
     }
-    yield_dist = nuclide.FissionYieldDistribution.from_dict(yield_dict)
+    yield_dist = nuclide.FissionYieldDistribution(yield_dict)
     assert len(yield_dist) == len(yield_dict)
     assert yield_dist.energies == tuple(sorted(yield_dict.keys()))
     for exp_ene, exp_dist in yield_dict.items():

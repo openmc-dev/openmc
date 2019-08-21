@@ -160,7 +160,7 @@ def test_export_to_xml(run_in_tmpdir):
         nuclide.ReactionTuple("(n,gamma)", "A", 0.0, 0.7),
         nuclide.ReactionTuple("(n,gamma)", "B", 0.0, 0.3)
     ]
-    C.yield_data = nuclide.FissionYieldDistribution.from_dict({
+    C.yield_data = nuclide.FissionYieldDistribution({
         0.0253: {"A": 0.0292737, "B": 0.002566345}})
 
     chain = Chain()

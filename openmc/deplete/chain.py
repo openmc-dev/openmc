@@ -10,7 +10,6 @@ import math
 import re
 from collections import OrderedDict, defaultdict
 from collections.abc import Mapping, Iterable
-from numbers import Real
 from warnings import warn
 
 from openmc.checkvalue import check_type, check_less_than
@@ -127,8 +126,8 @@ class Chain(object):
     fission_yields : None or iterable of dict
         List of effective fission yields for materials. Each dictionary
         should be of the form ``{parent: {product: yield}}`` with
-        types ``{str: {str: float}}``, where ``yield`` is the fission product yield
-        for isotope ``parent`` producing isotope ``product``.
+        types ``{str: {str: float}}``, where ``yield`` is the fission product
+        yield for isotope ``parent`` producing isotope ``product``.
         A single entry indicates yields are constant across all materials.
         Otherwise, an entry can be added for each material to be burned.
         Ordering should be identical to how the operator orders reaction
@@ -222,7 +221,8 @@ class Chain(object):
                     if mode.daughter in decay_data:
                         target = mode.daughter
                     else:
-                        print('missing {} {} {}'.format(parent, ','.join(mode.modes), mode.daughter))
+                        print('missing {} {} {}'.format(
+                            parent, ','.join(mode.modes), mode.daughter))
                         target = replace_missing(mode.daughter, decay_data)
 
                     # Write branching ratio, taking care to ensure sum is unity
@@ -285,7 +285,7 @@ class Chain(object):
                     yield_replace = 0.0
                     yields = defaultdict(float)
                     for product, y in table.items():
-                        # Handle fission products that have no decay data available
+                        # Handle fission products that have no decay data
                         if product not in decay_data:
                             daughter = replace_missing(product, decay_data)
                             product = daughter
@@ -297,8 +297,7 @@ class Chain(object):
                         missing_fp.append((parent, E, yield_replace))
                     yield_data[E] = yields
 
-                nuclide.yield_data = (
-                    FissionYieldDistribution.from_dict(yield_data))
+                nuclide.yield_data = FissionYieldDistribution(yield_data)
 
         # Display warnings
         if missing_daughter:

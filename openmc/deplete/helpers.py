@@ -378,9 +378,9 @@ class FissionYieldCutoffHelper(TalliedFissionYieldHelper):
             in parallel mode.
         """
         super().generate_tallies(materials, mat_indexes)
-        energy_filter = EnergyFilter()
-        energy_filter.bins = (0.0, self._cutoff, self._upper_energy)
-        self._fission_rate_tally.filters.append(energy_filter)
+        energy_filter = EnergyFilter(bins=[0.0, self._cutoff, self._upper_energy])
+        self._fission_rate_tally.filters = (
+            self._fission_rate_tally.filters + [energy_filter])
 
     def unpack(self):
         """Obtain fast and thermal fission fractions from tally"""
@@ -510,18 +510,16 @@ class AveragedFissionYieldHelper(TalliedFissionYieldHelper):
         """
         super().generate_tallies(materials, mat_indexes)
         fission_tally = self._fission_rate_tally
+        filters = fission_tally.filters
 
+        ene_filter = EnergyFilter(bins=[0, self._upper_energy])
+        fission_tally.filters = filters + [ene_filter]
+
+        func_filter = EnergyFunctionFilter()
+        func_filter.set_data((0, self._upper_energy), (0, self._upper_energy))
         weighted_tally = Tally()
-        weighted_tally.filters = fission_tally.filters
         weighted_tally.scores = ['fission']
-
-        ene_bin = EnergyFilter()
-        ene_bin.bins = (0, self._upper_energy)
-        fission_tally.filters.append(ene_bin)
-
-        ene_filter = EnergyFunctionFilter()
-        ene_filter.set_data((0, self._upper_energy), (0, self._upper_energy))
-        weighted_tally.filters.append(ene_filter)
+        weighted_tally.filters = filters + [func_filter]
         self._weighted_tally = weighted_tally
 
     def update_tally_nuclides(self, nuclides):

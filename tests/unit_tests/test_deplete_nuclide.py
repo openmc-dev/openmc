@@ -4,7 +4,6 @@ import xml.etree.ElementTree as ET
 
 import numpy
 import pytest
-
 from openmc.deplete import nuclide
 
 

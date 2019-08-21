@@ -396,10 +396,7 @@ class FissionYieldHelper(ABC):
 
     @property
     def constant_yields(self):
-        out = {}
-        for key, sub in self._constant_yields.items():
-            out[key] = sub.copy()
-        return out
+        return deepcopy(self._constant_yields)
 
     @abstractmethod
     def weighted_yields(self, local_mat_index):

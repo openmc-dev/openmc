@@ -371,13 +371,11 @@ class FissionYieldHelper(ABC):
     Parameters
     ----------
     chain_nuclides : iterable of openmc.deplete.Nuclide
-        Nuclides tracked in the depletion chain. Not necessary
-        that all have yield data.
+        Nuclides tracked in the depletion chain. All nuclides are
+        not required to have fission yield data.
 
     Attributes
     ----------
-    n_bmats : int
-        Number of burnable materials tracked in the problem
     constant_yields : dict of str to :class:`openmc.deplete.FissionYield`
         Fission yields for all nuclides that only have one set of
         fission yield data. Can be accessed as ``{parent: {product: yield}}``
@@ -473,13 +471,15 @@ class FissionYieldHelper(ABC):
     def from_operator(cls, operator, **kwargs):
         """Create a new instance by pulling data from the operator
 
+        All keyword arguments should be identical to their counterpart
+        in the main ``__init__`` method
+
         Parameters
         ----------
         operator : openmc.deplete.TransportOperator
             Operator with a depletion chain
         kwargs: optional
-            Optional keyword arguments to be passed to the underlying
-            ``__init__`` method
+            Additional keyword arguments to be used in constuction
         """
         return cls(operator.chain.nuclides, **kwargs)
 
@@ -560,9 +560,8 @@ class TalliedFissionYieldHelper(FissionYieldHelper):
         AttributeError
             If tallies not generated
         """
-        if self._fission_rate_tally is None:
-            raise AttributeError(
-                "Tallies not built. Run generate_tallies first")
+        assert self._fission_rate_tally is not None, (
+                "Run generate_tallies first")
         overlap = set(self._chain_nuclides).intersection(set(nuclides))
         nuclides = tuple(sorted(overlap))
         self._tally_nucs = [self._chain_nuclides[n] for n in nuclides]

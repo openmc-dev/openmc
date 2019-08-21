@@ -2,6 +2,8 @@
 
 import xml.etree.ElementTree as ET
 
+import pytest
+
 from openmc.deplete import nuclide
 
 
@@ -114,3 +116,92 @@ def test_to_xml_element():
     assert float(rx_elems[1].get("Q")) == 0.0
 
     assert element.find('neutron_fission_yields') is not None
+
+
+def test_validate():
+
+    nuc = nuclide.Nuclide()
+    nuc.name = "Test"
+
+    # decay modes: type, target, branching_ratio
+
+    nuc.decay_modes = [
+        nuclide.DecayTuple("type 0", "0", 0.5),
+        nuclide.DecayTuple("type 1", "1", 0.5),
+    ]
+
+    # reactions: type, target, Q, branching_ratio
+    nuc.reactions = [
+        nuclide.ReactionTuple("0", "0", 1000, 0.3),
+        nuclide.ReactionTuple("0", "1", 1000, 0.3),
+        nuclide.ReactionTuple("1", "2", 1000, 1.0),
+        nuclide.ReactionTuple("0", "3", 1000, 0.4),
+    ]
+
+    # fission yields
+
+    nuc.yield_data = {
+        0.0253: [("0", 1.5), ("1", 0.5)],
+        1e6: [("0", 1.5), ("1", 0.5)],
+    }
+
+    # nuclide is good and should have no warnings raise
+    with pytest.warns(None) as record:
+        assert nuc.validate(strict=True, quiet=False, tolerance=0.0)
+    assert len(record) == 0
+
+    # invalidate decay modes
+    decay = nuc.decay_modes.pop()
+    with pytest.raises(ValueError, match="decay mode"):
+        nuc.validate(strict=True, quiet=False, tolerance=0.0)
+
+    with pytest.warns(UserWarning) as record:
+        assert not nuc.validate(strict=False, quiet=False, tolerance=0.0)
+        assert not nuc.validate(strict=False, quiet=True, tolerance=0.0)
+    assert len(record) == 1
+    assert "decay mode" in record[0].message.args[0]
+
+    # restore decay modes, invalidate reactions
+    nuc.decay_modes.append(decay)
+    reaction = nuc.reactions.pop()
+
+    with pytest.raises(ValueError, match="0 reaction"):
+        nuc.validate(strict=True, quiet=False, tolerance=0.0)
+
+    with pytest.warns(UserWarning) as record:
+        assert not nuc.validate(strict=False, quiet=False, tolerance=0.0)
+        assert not nuc.validate(strict=False, quiet=True, tolerance=0.0)
+    assert len(record) == 1
+    assert "0 reaction" in record[0].message.args[0]
+
+    # restore reactions, invalidate fission yields
+    nuc.reactions.append(reaction)
+    nuc.yield_data[1e6].pop()
+
+    with pytest.raises(ValueError, match=r"fission yields.*1\.0*e"):
+        nuc.validate(strict=True, quiet=False, tolerance=0.0)
+
+    with pytest.warns(UserWarning) as record:
+        assert not nuc.validate(strict=False, quiet=False, tolerance=0.0)
+        assert not nuc.validate(strict=False, quiet=True, tolerance=0.0)
+    assert len(record) == 1
+    assert "1.0" in record[0].message.args[0]
+
+    # invalidate everything, check that error is raised at decay modes
+
+    decay = nuc.decay_modes.pop()
+    reaction = nuc.reactions.pop()
+
+    with pytest.raises(ValueError, match="decay mode"):
+        nuc.validate(strict=True, quiet=False, tolerance=0.0)
+
+    # check for warnings
+    # should be one warning for decay modes, reactions, fission yields
+
+    with pytest.warns(UserWarning) as record:
+        assert not nuc.validate(strict=False, quiet=False, tolerance=0.0)
+        assert not nuc.validate(strict=False, quiet=True, tolerance=0.0)
+    assert len(record) == 3
+    assert "decay mode" in record[0].message.args[0]
+    assert "0 reaction" in record[1].message.args[0]
+    assert "1.0" in record[2].message.args[0]

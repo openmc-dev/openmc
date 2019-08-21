@@ -3,16 +3,15 @@
 Contains the per-nuclide components of a depletion chain.
 """
 
-from numbers import Real
 from collections import namedtuple
-from collections.abc import Iterable, Mapping
+from collections.abc import Mapping
 
 try:
     import lxml.etree as ET
 except ImportError:
     import xml.etree.ElementTree as ET
 
-from numpy import asarray, empty
+from numpy import empty
 
 from openmc.checkvalue import check_type
 
@@ -132,7 +131,7 @@ class Nuclide(object):
         check_type("fission_yields", fission_yields, Mapping)
         if isinstance(fission_yields, FissionYieldDistribution):
             self._yield_data = fission_yields
-        self._yield_data = FissionYieldDistribution.from_dict(fission_yields)
+        self._yield_data = FissionYieldDistribution(fission_yields)
 
     @property
     def yield_energies(self):
@@ -245,7 +244,7 @@ class FissionYieldDistribution(Mapping):
     Can be used as a dictionary mapping energies and products to fission
     yields::
 
-        >>> fydist = FissionYieldDistribution.from_dict({
+        >>> fydist = FissionYieldDistribution{
         ...     {0.0253: {"Xe135": 0.021}})
         >>> fydist[0.0253]["Xe135"]
         0.021
@@ -266,11 +265,10 @@ class FissionYieldDistribution(Mapping):
     Attributes
     ----------
     energies : tuple
-        Energies for which fission yields exist. Converted for
-        indexing
+        Energies for which fission yields exist. Sorted by
+        increasing energy
     products : tuple
-        Fission products produced at all energies. Converted
-        for indexing
+        Fission products produced at all energies. Sorted by name.
     yield_matrix : numpy.ndarray
         Array ``(n_energy, n_products)`` where
         ``yield_matrix[g, j]`` is the fission yield of product
@@ -278,22 +276,28 @@ class FissionYieldDistribution(Mapping):
 
     See Also
     --------
-    * :meth:`from_xml_element`, :meth:`from_dict` - Construction methods
+    * :meth:`from_xml_element` - Construction methods
     * :class:`FissionYield` - Class used for storing yields at a given energy
     """
 
-    def __init__(self, energies, products, yield_matrix):
-        check_type("energies", energies, Iterable, Real)
+    def __init__(self, fission_yields):
+        # mapping {energy: {product: value}}
+        energies = sorted(fission_yields)
+
+        # Get a consistent set of products to produce a matrix of yields
+        shared_prod = set.union(*(set(x) for x in fission_yields.values()))
+        ordered_prod = sorted(shared_prod)
+
+        yield_matrix = empty((len(energies), len(shared_prod)))
+
+        for g_index, energy in enumerate(energies):
+            prod_map = fission_yields[energy]
+            for prod_ix, product in enumerate(ordered_prod):
+                yield_val = prod_map.get(product)
+                yield_matrix[g_index, prod_ix] = (
+                    0.0 if yield_val is None else yield_val)
         self.energies = tuple(energies)
-        check_type("products", products, Iterable, str)
-        self.products = tuple(products)
-        yield_matrix = asarray(yield_matrix, dtype=float)
-        if yield_matrix.shape != (len(self.energies), len(self.products)):
-            raise ValueError(
-                "Shape of yield matrix inconsistent. "
-                "Should be ({}, {}), is {}".format(
-                    len(energies), len(products),
-                    yield_matrix.shape))
+        self.products = tuple(ordered_prod)
         self.yield_matrix = yield_matrix
 
     def __len__(self):
@@ -329,38 +333,7 @@ class FissionYieldDistribution(Mapping):
             # Get a map of products to their corresponding yield
             all_yields[energy] = dict(zip(products, yields))
 
-        return cls.from_dict(all_yields)
-
-    @classmethod
-    def from_dict(cls, fission_yields):
-        """Construct a distribution from a dictionary of yields
-
-        Parameters
-        -----------
-        fission_yields : dict
-            Dictionary ``{energy: {product: yield}}``
-
-        Returns
-        -------
-        FissionYieldDistribution
-        """
-        # mapping {energy: {product: value}}
-        energies = sorted(fission_yields)
-
-        # Get a consistent set of products to produce a matrix of yields
-        shared_prod = set.union(*(set(x) for x in fission_yields.values()))
-        ordered_prod = sorted(shared_prod)
-
-        yield_matrix = empty((len(energies), len(shared_prod)))
-
-        for g_index, energy in enumerate(energies):
-            prod_map = fission_yields[energy]
-            for prod_ix, product in enumerate(ordered_prod):
-                yield_val = prod_map.get(product)
-                yield_matrix[g_index, prod_ix] = (
-                    0.0 if yield_val is None else yield_val)
-
-        return cls(energies, ordered_prod, yield_matrix)
+        return cls(all_yields)
 
     def to_xml_element(self, root):
         """Write fission yield data to an xml element

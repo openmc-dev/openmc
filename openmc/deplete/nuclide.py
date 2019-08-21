@@ -68,11 +68,16 @@ except AttributeError:
 class Nuclide(object):
     """Decay modes, reactions, and fission yields for a single nuclide.
 
+    Parameters
+    ----------
+    name : str, optional
+        GND name of this nuclide, e.g. ``"He4"``, ``"Am242_m1"``
+
     Attributes
     ----------
-    name : str
+    name : str or None
         Name of nuclide.
-    half_life : float
+    half_life : float or None
         Half life of nuclide in [s].
     decay_energy : float
         Energy deposited from decay in [eV].
@@ -91,12 +96,11 @@ class Nuclide(object):
         treated as a nested dictionary ``{energy: {product: yield}}``
     yield_energies : tuple of float or None
         Energies at which fission product yields exist
-
     """
 
-    def __init__(self):
+    def __init__(self, name=None):
         # Information about the nuclide
-        self.name = None
+        self.name = name
         self.half_life = None
         self.decay_energy = 0.0
 

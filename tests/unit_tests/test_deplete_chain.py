@@ -141,8 +141,7 @@ def test_export_to_xml(run_in_tmpdir):
     # Prevent different MPI ranks from conflicting
     filename = 'test{}.xml'.format(comm.rank)
 
-    A = nuclide.Nuclide()
-    A.name = "A"
+    A = nuclide.Nuclide("A")
     A.half_life = 2.36520e4
     A.decay_modes = [
         nuclide.DecayTuple("beta1", "B", 0.6),
@@ -150,14 +149,12 @@ def test_export_to_xml(run_in_tmpdir):
     ]
     A.reactions = [nuclide.ReactionTuple("(n,gamma)", "C", 0.0, 1.0)]
 
-    B = nuclide.Nuclide()
-    B.name = "B"
+    B = nuclide.Nuclide("B")
     B.half_life = 3.29040e4
     B.decay_modes = [nuclide.DecayTuple("beta", "A", 1.0)]
     B.reactions = [nuclide.ReactionTuple("(n,gamma)", "C", 0.0, 1.0)]
 
-    C = nuclide.Nuclide()
-    C.name = "C"
+    C = nuclide.Nuclide("C")
     C.reactions = [
         nuclide.ReactionTuple("fission", None, 2.0e8, 1.0),
         nuclide.ReactionTuple("(n,gamma)", "A", 0.0, 0.7),
@@ -292,8 +289,7 @@ def test_capture_branch_infer_ground():
     chain = Chain.from_xml(chain_file)
 
     # Create nuclide to be added into the chain
-    xe136m = nuclide.Nuclide()
-    xe136m.name = "Xe136_m1"
+    xe136m = nuclide.Nuclide("Xe136_m1")
 
     chain.nuclides.append(xe136m)
     chain.nuclide_dict[xe136m.name] = len(chain.nuclides) - 1
@@ -310,8 +306,7 @@ def test_capture_branch_no_rxn():
     chain_file = Path(__file__).parents[1] / "chain_simple.xml"
     chain = Chain.from_xml(chain_file)
 
-    u5m = nuclide.Nuclide()
-    u5m.name = "U235_m1"
+    u5m = nuclide.Nuclide("U235_m1")
 
     chain.nuclides.append(u5m)
     chain.nuclide_dict[u5m.name] = len(chain.nuclides) - 1

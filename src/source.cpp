@@ -448,7 +448,7 @@ Particle::Bank convert_pyne_source_particle(pyne::SourceParticle pyne_src)
   // Sample angle
   UPtrAngle angle_ = UPtrAngle{new Isotropic()};
   site.u = angle_->sample();
-  site.E = pyne_src.get_e() * 1.0e6; // pyne src energy unit is MeV
+  site.E = pyne_src.get_e();
   site.wgt = pyne_src.get_w();
   site.delayed_group = 0;
   // Check for particle type

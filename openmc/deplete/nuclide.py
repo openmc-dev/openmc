@@ -3,9 +3,11 @@
 Contains the per-nuclide components of a depletion chain.
 """
 
+import bisect
 from collections.abc import Mapping
 from collections import namedtuple, defaultdict
 from warnings import warn
+from numbers import Real
 try:
     import lxml.etree as ET
 except ImportError:
@@ -339,6 +341,7 @@ class Nuclide(object):
 
         return valid
 
+
 class FissionYieldDistribution(Mapping):
     """Energy-dependent fission product yields for a single nuclide
 
@@ -504,10 +507,15 @@ class FissionYield(Mapping):
         self.products = products
         self.yields = yields
 
+    def __contains__(self, product):
+        ix = bisect.bisect_left(self.products, product)
+        return ix != len(self.products) and self.products[ix] == product
+
     def __getitem__(self, product):
-        if product not in self.products:
+        ix = bisect.bisect_left(self.products, product)
+        if ix == len(self.products) or self.products[ix] != product:
             raise KeyError(product)
-        return self.yields[self.products.index(product)]
+        return self.yields[ix]
 
     def __len__(self):
         return len(self.products)
@@ -516,35 +524,42 @@ class FissionYield(Mapping):
         return iter(self.products)
 
     def items(self):
+        """Return pairs of product, yield"""
         return zip(self.products, self.yields)
 
     def __add__(self, other):
-        new = self.copy()
+        if not isinstance(other, FissionYield):
+            return NotImplemented
+        new = FissionYield(self.products, self.yields.copy())
         new += other
         return new
 
     def __iadd__(self, other):
         """Increment value from other fission yield"""
+        if not isinstance(other, FissionYield):
+            return NotImplemented
         self.yields += other.yields
         return self
 
+    def __radd__(self, other):
+        return self + other
+
     def __imul__(self, scalar):
+        if not isinstance(scalar, Real):
+            return NotImplemented
         self.yields *= scalar
         return self
 
     def __mul__(self, scalar):
-        new = self.copy()
+        if not isinstance(scalar, Real):
+            return NotImplemented
+        new = FissionYield(self.products, self.yields.copy())
         new *= scalar
         return new
 
     def __rmul__(self, scalar):
-        new = self.copy()
-        new *= scalar
-        return new
+        return self * scalar
 
     def __repr__(self):
-        return "<{}: {}>".format(self.__class__.__name__, repr(dict(self)))
-
-    def copy(self):
-        """Return an identical yield object, with unique yields"""
-        return FissionYield(self.products, self.yields.copy())
+        return "<{} containing {} products and yields>".format(
+            self.__class__.__name__, len(self))

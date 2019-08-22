@@ -330,7 +330,6 @@ def test_capture_branch_failures(simple_chain):
         simple_chain.set_branch_ratios(br, "(n,gamma)")
 
 
-
 def test_set_alpha_branches():
     """Test setting of alpha reaction branching ratios"""
     # Build a mock chain
@@ -377,3 +376,55 @@ def test_set_alpha_branches():
             break
     else:
         raise ValueError("Helium has been removed and should not have been")
+
+
+def test_validate(simple_chain):
+    """Test the validate method"""
+
+    # current chain is invalid
+    # fission yields do not sum to 2.0
+    with pytest.raises(ValueError, match="Nuclide C.*fission yields"):
+        simple_chain.validate(strict=True, tolerance=0.0)
+
+    with pytest.warns(UserWarning) as record:
+        assert not simple_chain.validate(strict=False, quiet=False, tolerance=0.0)
+        assert not simple_chain.validate(strict=False, quiet=True, tolerance=0.0)
+    assert len(record) == 1
+    assert "Nuclide C" in record[0].message.args[0]
+
+    # Fix fission yields but keep to restore later
+    old_yields = simple_chain["C"].yield_data
+    simple_chain["C"].yield_data = {0.0253: [("A", 1.4), ("B", 0.6)]}
+
+    assert simple_chain.validate(strict=True, tolerance=0.0)
+    with pytest.warns(None) as record:
+        assert simple_chain.validate(strict=False, quiet=False, tolerance=0.0)
+    assert len(record) == 0
+
+    # Mess up "earlier" nuclide's reactions
+    decay_mode = simple_chain["A"].decay_modes.pop()
+
+    with pytest.raises(ValueError, match="Nuclide A.*decay mode"):
+        simple_chain.validate(strict=True, tolerance=0.0)
+
+    # restore old fission yields
+    simple_chain["C"].yield_data = old_yields
+
+    with pytest.warns(UserWarning) as record:
+        assert not simple_chain.validate(strict=False, quiet=False, tolerance=0.0)
+    assert len(record) == 2
+    assert "Nuclide A" in record[0].message.args[0]
+    assert "Nuclide C" in record[1].message.args[0]
+
+    # restore decay modes
+    simple_chain["A"].decay_modes.append(decay_mode)
+
+
+def test_validate_inputs():
+    c = Chain()
+
+    with pytest.raises(TypeError, match="tolerance"):
+        c.validate(tolerance=None)
+
+    with pytest.raises(ValueError, match="tolerance"):
+        c.validate(tolerance=-1)

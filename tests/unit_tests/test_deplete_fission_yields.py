@@ -206,7 +206,7 @@ def test_cutoff_helper(materials, nuclide_bundle, therm_frac):
 
     non_zero_nucs = [n.name for n in nuclide_bundle]
     tally_nucs = helper.update_tally_nuclides(non_zero_nucs)
-    assert tally_nucs == ("Pu239", "U235",)
+    assert tally_nucs == ["Pu239", "U235",]
 
     # Check tallies
     fission_tally = helper._fission_rate_tally
@@ -249,7 +249,7 @@ def test_averaged_helper(materials, nuclide_bundle, avg_energy):
     helper.generate_tallies(materials, [0])
     tallied_nucs = helper.update_tally_nuclides(
         [n.name for n in nuclide_bundle])
-    assert tallied_nucs == ("Pu239", "U235")
+    assert tallied_nucs == ["Pu239", "U235"]
 
     # check generated tallies
     fission_tally = helper._fission_rate_tally

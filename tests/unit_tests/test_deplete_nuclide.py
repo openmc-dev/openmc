@@ -134,25 +134,42 @@ def test_fission_yield_distribution():
         act_dist = yield_dict[exp_ene]
         for exp_prod, exp_yield in exp_dist.items():
             assert act_dist[exp_prod] == exp_yield
-    exp_yield_matrix = numpy.array([
+    exp_yield = numpy.array([
         [4.08e-12, 1.71e-12, 7.85e-4],
         [1.32e-12, 0.0, 1.12e-3],
         [5.83e-8, 2.69e-8, 4.54e-3]])
-    assert numpy.array_equal(yield_dist.yield_matrix, exp_yield_matrix)
+    assert numpy.array_equal(yield_dist.yield_matrix, exp_yield)
 
     # Test the operations / special methods for fission yield
-    orig_yield_obj = yield_dist[0.0253]
+    orig_yields = yield_dist[0.0253]
+    assert len(orig_yields) == len(yield_dict[0.0253])
+    for key, value in yield_dict[0.0253].items():
+        assert key in orig_yields
+        assert orig_yields[key] == value
     # __getitem__ return yields as a view into yield matrix
-    assert orig_yield_obj.yields.base is yield_dist.yield_matrix
-    copied_yield = orig_yield_obj.copy()
-    # copied yields own their own memory -> not a view
-    assert copied_yield.yields.base is None
+    assert orig_yields.yields.base is yield_dist.yield_matrix
 
     # Fission yield feature uses scaled and incremented
-    mod_yields = orig_yield_obj * 2
-    assert numpy.array_equal(orig_yield_obj.yields * 2, mod_yields.yields)
-    mod_yields += orig_yield_obj
-    assert numpy.array_equal(orig_yield_obj.yields * 3, mod_yields.yields)
+    mod_yields = orig_yields * 2
+    assert numpy.array_equal(orig_yields.yields * 2, mod_yields.yields)
+    mod_yields += orig_yields
+    assert numpy.array_equal(orig_yields.yields * 3, mod_yields.yields)
+
+    # Failure modes for adding, multiplying yields
+    similar = numpy.empty_like(orig_yields.yields)
+    with pytest.raises(TypeError):
+        orig_yields + similar
+    with pytest.raises(TypeError):
+        similar + orig_yields
+    with pytest.raises(TypeError):
+        orig_yields += similar
+    with pytest.raises(TypeError):
+        orig_yields * similar
+    with pytest.raises(TypeError):
+        similar * orig_yields
+    with pytest.raises(TypeError):
+        orig_yields *= similar
+
 
 def test_validate():
 

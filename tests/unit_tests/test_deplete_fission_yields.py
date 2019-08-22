@@ -63,13 +63,12 @@ def materials(tmpdir_factory):
         with capi.run_in_memory():
             yield [capi.Material(), capi.Material()]
     finally:
-        print(os.path.abspath(os.curdir))
-        os.remove(tmpdir / "settings.xml")
-        os.remove(tmpdir / "geometry.xml")
-        os.remove(tmpdir / "materials.xml")
-        os.remove(tmpdir / "summary.h5")
+        # Convert to strings as os.remove in py 3.5 doesn't support Paths
+        for file_path in ("settings.xml", "geometry.xml", "materials.xml",
+                          "summary.h5"):
+            os.remove(str(tmpdir / file_path))
         orig.chdir()
-        os.rmdir(tmpdir)
+        os.rmdir(str(tmpdir))
 
 
 def proxy_tally_data(tally, fill=None):

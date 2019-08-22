@@ -355,16 +355,12 @@ class FissionYieldDistribution(Mapping):
 
     Parameters
     ----------
-    energies : iterable of float
-        Energies for which fission yield data exist. Must be ordered
-        by increasing energy
-    products : iterable of str
-        Fission products produced by this parent at all energies.
-        Must be ordered alphabetically
-    yield_matrix : numpy.ndarray or iterable of iterable of float
-        Array of shape ``(n_energy, n_products)`` where
-        ``yield_matrix[g][j]`` is the yield of
-        ``ordered_products[j]`` due to a fission in energy region ``g``.
+    fission_yields : dict
+        Dictionary of energies and fission product yields for that energy.
+        Expected to be of the form ``{float: {str: float}}``. The first
+        float is the energy, typically in eV, that represents this
+        distribution. The underlying dictionary maps fission products
+        to their respective yields.
 
     Attributes
     ----------
@@ -415,6 +411,11 @@ class FissionYieldDistribution(Mapping):
 
     def __iter__(self):
         return iter(self.energies)
+
+    def __repr__(self):
+        return "<{} with {} products at {} energies>".format(
+            self.__class__.__name__, self.yield_matrix.shape[1],
+            len(self.energies))
 
     @classmethod
     def from_xml_element(cls, element):

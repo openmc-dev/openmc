@@ -12,7 +12,7 @@ from collections import OrderedDict, defaultdict
 from collections.abc import Mapping
 from warnings import warn
 
-from openmc.checkvalue import check_type, check_less_than
+from openmc.checkvalue import check_type
 from openmc.data import gnd_name, zam
 
 # Try to use lxml if it is available. It preserves the order of attributes and
@@ -103,6 +103,19 @@ def replace_missing(product, decay_data):
     return product
 
 
+_secondary_particles = {
+    "p": ["H1"], "d": ["H2"], "t": ["H3"], "3He": ["He3"], "a": ["He4"],
+    "2nd": ["H2"], "na": ["He4"], "n3a": ["He4"] * 3, "2na": ["He4"],
+    "3na": ["He4"], "np": ["H1"], "n2a": ["He4"] * 2,
+    "2n2a": ["He4"] * 2, "nd": ["H2"], "nt": ["H3"],
+    "nHe-3": ["He3"], "nd2a": ["H2", "He4"], "nt2a": ["H3", "He4", "He4"],
+    "2np": ["H1"], "3np": ["H1"], "n2p": ["H1"] * 2,
+    "2a": ["He4"] * 2, "3a": ["He4"] * 3, "2p": ["H1"] * 2,
+    "pa": ["H1", "He4"], "t2a": ["H3", "He4", "He4"],
+    "d2a": ["H2", "He4", "He4"], "pd": ["H1", "H2"], "pt": ["H1", "H3"],
+    "da": ["H2", "He4"]}
+
+
 class Chain(object):
     """Full representation of a depletion chain.
 
@@ -122,7 +135,6 @@ class Chain(object):
         Reactions that are tracked in the depletion chain
     nuclide_dict : OrderedDict of str to int
         Maps a nuclide name to an index in nuclides.
-
     """
 
     def __init__(self):
@@ -546,7 +558,8 @@ class Chain(object):
         bad_sums = {}
 
         # Secondary products, like alpha particles, should not be modified
-        secondary = "He4" if reaction == "(n,a)" else None
+        secondary = _secondary_particles.get(
+            reaction[reaction.index(",") + 1:-1], [])
 
         # Check for validity before manipulation
 
@@ -576,7 +589,7 @@ class Chain(object):
 
             indexes = []
             for ix, rx in enumerate(self[parent].reactions):
-                if rx.type == reaction and rx.target != secondary:
+                if rx.type == reaction and rx.target not in secondary:
                     indexes.append(ix)
                     if "_m" not in rx.target:
                         grounds[parent] = rx.target

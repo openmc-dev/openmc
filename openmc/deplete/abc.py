@@ -458,13 +458,13 @@ class FissionYieldHelper(ABC):
 
         Returns
         -------
-        nuclides : tuple of str
+        nuclides : list of str
             Union of nuclides that the :class:`openmc.deplete.Operator`
             says have non-zero densities at this stage and those that
             have yield data. Sorted by nuclide name
 
         """
-        return tuple(sorted(self._chain_set & set(nuclides)))
+        return sorted(self._chain_set & set(nuclides))
 
     @classmethod
     def from_operator(cls, operator, **kwargs):
@@ -550,7 +550,7 @@ class TalliedFissionYieldHelper(FissionYieldHelper):
 
         Returns
         -------
-        nuclides : tuple of str
+        nuclides : list of str
             Union of input nuclides and those that have multiple sets
             of yield data.  Sorted by nuclide name
 
@@ -562,7 +562,7 @@ class TalliedFissionYieldHelper(FissionYieldHelper):
         assert self._fission_rate_tally is not None, (
                 "Run generate_tallies first")
         overlap = set(self._chain_nuclides).intersection(set(nuclides))
-        nuclides = tuple(sorted(overlap))
+        nuclides = sorted(overlap)
         self._tally_nucs = [self._chain_nuclides[n] for n in nuclides]
         self._fission_rate_tally.nuclides = nuclides
         return nuclides

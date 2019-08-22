@@ -199,8 +199,6 @@ class ConstantFissionYieldHelper(FissionYieldHelper):
                 continue
             # Specific energy not found, use closest energy
             distances = [abs(energy - ene) for ene in nuc.yield_energies]
-            min_index = min(
-                range(len(nuc.yield_energies)), key=distances.__getitem__)
             min_E = min(nuc.yield_energies, key=lambda e: abs(e - energy))
             self._constant_yields[name] = nuc.yield_data[min_E]
 
@@ -307,21 +305,24 @@ class FissionYieldCutoffHelper(TalliedFissionYieldHelper):
         self._cutoff = cutoff
         self._thermal_yields = {}
         self._fast_yields = {}
+        convert_to_constant = set()
         for name, nuc in self._chain_nuclides.items():
             yields = nuc.yield_data
             energies = nuc.yield_energies
             thermal = yields.get(thermal_energy)
             fast = yields.get(fast_energy)
             if thermal is None or fast is None:
+                if cutoff <= energies[0]:
+                    # use lowest energy yields as constant
+                    self._constant_yields[name] = yields[energies[0]]
+                    convert_to_constant.add(name)
+                    continue
+                if cutoff >= energies[-1]:
+                    # use highest energy yields as constant
+                    self._constant_yields[name] = yields[energies[-1]]
+                    convert_to_constant.add(name)
+                    continue
                 cutoff_ix = bisect.bisect_left(energies, cutoff)
-                # if zero, then all energies > cutoff
-                # if len(energies), then all energies <= cutoff
-                if cutoff_ix == 0 or cutoff_ix == len(energies):
-                    tail = map("{:5.3e}".format, energies)
-                    raise ValueError(
-                        "Cannot find replacement fission yields for {} given "
-                        "cutoff {:5.3e} eV. Yields provided at [{}] eV".format(
-                            name, cutoff, ", ".join(tail)))
                 # find closest energy to requested thermal, fast energies
                 if thermal is None:
                     min_E = min(energies[:cutoff_ix],
@@ -333,6 +334,8 @@ class FissionYieldCutoffHelper(TalliedFissionYieldHelper):
                     fast = yields[min_E]
             self._thermal_yields[name] = thermal
             self._fast_yields[name] = fast
+        for name in convert_to_constant:
+            self._chain_nuclides.pop(name)
 
     @classmethod
     def from_operator(cls, operator, **kwargs):

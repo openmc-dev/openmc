@@ -111,7 +111,6 @@ def nuclide_bundle():
 
     pu239 = Nuclide("Pu239")
     pu239.yield_data = FissionYieldDistribution({
-        0.0253: {"Xe135": 3.141e-3, "Sm149": 8.19e-10, "Gd155": 1.66e-9},
         5.0e5: {"Xe135": 6.14e-3, "Sm149": 9.429e-10, "Gd155": 5.24e-9},
         2e6: {"Xe135": 6.15e-3, "Sm149": 9.42e-10, "Gd155": 5.29e-9}})
 
@@ -127,8 +126,8 @@ def test_constant_helper(nuclide_bundle, input_energy, yield_energy):
     assert helper.energy == input_energy
     assert helper.constant_yields == {
         "U235": nuclide_bundle.u235.yield_data[yield_energy],
-        "U238": nuclide_bundle.u238.yield_data[5.00e5],  # only epithermal
-        "Pu239": nuclide_bundle.pu239.yield_data[yield_energy]}
+        "U238": nuclide_bundle.u238.yield_data[5.00e5],
+        "Pu239": nuclide_bundle.pu239.yield_data[5e5]}
     assert helper.constant_yields == helper.weighted_yields(1)
 
 
@@ -140,50 +139,54 @@ def test_cutoff_construction(nuclide_bundle):
     # defaults
     helper = FissionYieldCutoffHelper(nuclide_bundle, 1)
     assert helper.constant_yields == {
-        "U238": u238.yield_data[5.0e5]}
-    assert helper.thermal_yields == {
-        "U235": u235.yield_data[0.0253],
-        "Pu239": pu239.yield_data[0.0253]}
-    assert helper.fast_yields == {
-        "U235": u235.yield_data[5e5],
+        "U238": u238.yield_data[5.0e5],
         "Pu239": pu239.yield_data[5e5]}
+    assert helper.thermal_yields == {"U235": u235.yield_data[0.0253]}
+    assert helper.fast_yields == {"U235": u235.yield_data[5e5]}
 
     # use 14 MeV yields
     helper = FissionYieldCutoffHelper(nuclide_bundle, 1, fast_energy=14e6)
     assert helper.constant_yields == {
-        "U238": u238.yield_data[5.0e5]}
-    assert helper.thermal_yields == {
-        "U235": u235.yield_data[0.0253],
-        "Pu239": pu239.yield_data[0.0253]}
-    assert helper.fast_yields == {
-        "U235": u235.yield_data[14e6],
-        "Pu239": pu239.yield_data[2e6]}
+        "U238": u238.yield_data[5.0e5],
+        "Pu239": pu239.yield_data[5e5]}
+    assert helper.thermal_yields == {"U235": u235.yield_data[0.0253]}
+    assert helper.fast_yields == {"U235": u235.yield_data[14e6]}
 
     # specify missing thermal yields -> use 0.0253
     helper = FissionYieldCutoffHelper(nuclide_bundle, 1, thermal_energy=1)
-    assert helper.thermal_yields == {
-        "U235": u235.yield_data[0.0253],
-        "Pu239": pu239.yield_data[0.0253]}
-    assert helper.fast_yields == {
-        "U235": u235.yield_data[5e5],
-        "Pu239": pu239.yield_data[5e5]}
+    assert helper.thermal_yields == {"U235": u235.yield_data[0.0253]}
+    assert helper.fast_yields == {"U235": u235.yield_data[5e5]}
 
     # request missing fast yields -> use epithermal
     helper = FissionYieldCutoffHelper(nuclide_bundle, 1, fast_energy=1e4)
+    assert helper.thermal_yields == {"U235": u235.yield_data[0.0253]}
+    assert helper.fast_yields == {"U235": u235.yield_data[5e5]}
+
+    # higher cutoff energy -> obtain fast and "faster" yields
+    helper = FissionYieldCutoffHelper(nuclide_bundle, 1, cutoff=1e6,
+                                      thermal_energy=5e5, fast_energy=14e6)
+    assert helper.constant_yields == {"U238": u238.yield_data[5e5]}
     assert helper.thermal_yields == {
-        "U235": u235.yield_data[0.0253],
-        "Pu239": pu239.yield_data[0.0253]}
+        "U235": u235.yield_data[5e5], "Pu239": pu239.yield_data[5e5]}
     assert helper.fast_yields == {
-        "U235": u235.yield_data[5e5],
+        "U235": u235.yield_data[14e6], "Pu239": pu239.yield_data[2e6]}
+
+    # test super low and super high cutoff energies
+    helper = FissionYieldCutoffHelper(
+        nuclide_bundle, 1, thermal_energy=0.001, cutoff=0.002)
+    assert helper.fast_yields == {}
+    assert helper.thermal_yields == {}
+    assert helper.constant_yields == {
+        "U235": u235.yield_data[0.0253], "U238": u238.yield_data[5e5],
         "Pu239": pu239.yield_data[5e5]}
 
-    # test failures in cutoff: super low, super high
-    with pytest.raises(ValueError, match="replacement fission yields"):
-        FissionYieldCutoffHelper(
-            nuclide_bundle, 1, thermal_energy=0.001, cutoff=0.002)
-    with pytest.raises(ValueError, match="replacement fission yields"):
-        FissionYieldCutoffHelper(
-            nuclide_bundle, 1, cutoff=15e6, fast_energy=17e6)
+    helper = FissionYieldCutoffHelper(
+        nuclide_bundle, 1, cutoff=15e6, fast_energy=17e6)
+    assert helper.thermal_yields == {}
+    assert helper.fast_yields == {}
+    assert helper.constant_yields == {
+        "U235": u235.yield_data[14e6], "U238": u238.yield_data[5e5],
+        "Pu239": pu239.yield_data[2e6]}
 
 
 @pytest.mark.parametrize("key", ("cutoff", "thermal_energy", "fast_energy"))
@@ -197,7 +200,8 @@ def test_cutoff_failure(key):
 # emulate some split between fast and thermal U235 fissions
 @pytest.mark.parametrize("therm_frac", (0.5, 0.2, 0.8))
 def test_cutoff_helper(materials, nuclide_bundle, therm_frac):
-    helper = FissionYieldCutoffHelper(nuclide_bundle, len(materials))
+    helper = FissionYieldCutoffHelper(nuclide_bundle, len(materials),
+                                      cutoff=1e6, fast_energy=14e6)
     helper.generate_tallies(materials, [0])
 
     non_zero_nucs = [n.name for n in nuclide_bundle]

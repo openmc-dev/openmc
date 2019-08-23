@@ -22,12 +22,8 @@ def model():
 
     cyl = openmc.ZCylinder(r=0.4)
     big_cyl = openmc.ZCylinder(r=0.5)
-    c1 = openmc.Cell(fill=uo2, region=-cyl)
-    c2 = openmc.Cell(fill=water, region=+cyl)
-    pin = openmc.Universe(cells=[c1, c2])
-    c3 = openmc.Cell(fill=uo2, region=-big_cyl)
-    c4 = openmc.Cell(fill=water, region=+big_cyl)
-    big_pin = openmc.Universe(cells=[c3, c4])
+    pin = openmc.model.pin([cyl], [uo2, water])
+    big_pin = openmc.model.pin([big_cyl], [uo2, water])
 
     d = 1.2
     inner_lattice = openmc.RectLattice()

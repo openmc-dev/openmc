@@ -104,17 +104,17 @@ def replace_missing(product, decay_data):
     return product
 
 
-_secondary_particles = {
-    "p": ["H1"], "d": ["H2"], "t": ["H3"], "3He": ["He3"], "a": ["He4"],
-    "2nd": ["H2"], "na": ["He4"], "n3a": ["He4"] * 3, "2na": ["He4"],
-    "3na": ["He4"], "np": ["H1"], "n2a": ["He4"] * 2,
-    "2n2a": ["He4"] * 2, "nd": ["H2"], "nt": ["H3"],
-    "nHe-3": ["He3"], "nd2a": ["H2", "He4"], "nt2a": ["H3", "He4", "He4"],
-    "2np": ["H1"], "3np": ["H1"], "n2p": ["H1"] * 2,
-    "2a": ["He4"] * 2, "3a": ["He4"] * 3, "2p": ["H1"] * 2,
-    "pa": ["H1", "He4"], "t2a": ["H3", "He4", "He4"],
-    "d2a": ["H2", "He4", "He4"], "pd": ["H1", "H2"], "pt": ["H1", "H3"],
-    "da": ["H2", "He4"]}
+_SECONDARY_PARTICLES = {
+    "(n,p)": ["H1"], "(n,d)": ["H2"], "(n,t)": ["H3"], "(n,3He)": ["He3"],
+    "(n,a)": ["He4"], "(n,2nd)": ["H2"], "(n,na)": ["He4"], "(n,3na)": ["He4"],
+    "(n,n3a)": ["He4"] * 3, "(n,2na)": ["He4"], "(n,np)": ["H1"],
+    "(n,n2a)": ["He4"] * 2, "(n,2n2a)": ["He4"] * 2, "(n,nd)": ["H2"],
+    "(n,nt)": ["H3"], "(n,nHe-3)": ["He3"], "(n,nd2a)": ["H2", "He4"],
+    "(n,nt2a)": ["H3", "He4", "He4"], "(n,2np)": ["H1"], "(n,3np)": ["H1"],
+    "(n,n2p)": ["H1"] * 2, "(n,2a)": ["He4"] * 2, "(n,3a)": ["He4"] * 3,
+    "(n,2p)": ["H1"] * 2, "(n,pa)": ["H1", "He4"],
+    "(n,t2a)": ["H3", "He4", "He4"], "(n,d2a)": ["H2", "He4", "He4"],
+    "(n,pd)": ["H1", "H2"], "(n,pt)": ["H1", "H3"], "(n,da)": ["H2", "He4"]}
 
 
 class Chain(object):
@@ -559,8 +559,7 @@ class Chain(object):
         bad_sums = {}
 
         # Secondary products, like alpha particles, should not be modified
-        secondary = _secondary_particles.get(
-            reaction[reaction.index(",") + 1:-1], [])
+        secondary = _SECONDARY_PARTICLES.get(reaction, [])
 
         # Check for validity before manipulation
 

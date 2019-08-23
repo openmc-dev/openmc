@@ -24,9 +24,7 @@ def model():
     model.materials.extend([fuel, water])
 
     cyl = openmc.ZCylinder(r=0.4)
-    c1 = openmc.Cell(fill=fuel, region=-cyl)
-    c2 = openmc.Cell(fill=water, region=+cyl)
-    pin = openmc.Universe(cells=[c1, c2])
+    pin = openmc.model.pin([cyl], [fuel, water])
     d = 1.2
     lattice = openmc.RectLattice()
     lattice.lower_left = (-d, -d)
@@ -45,7 +43,7 @@ def model():
     model.settings.particles = 1000
 
     energy_filter = openmc.EnergyFilter([0.0, 0.253, 1.0e3, 1.0e6, 20.0e6])
-    distrib_filter = openmc.DistribcellFilter(c1)
+    distrib_filter = openmc.DistribcellFilter(pin.cells[1])
     tally = openmc.Tally(name='distribcell tally')
     tally.filters = [energy_filter, distrib_filter]
     tally.scores = ['nu-fission', 'total']

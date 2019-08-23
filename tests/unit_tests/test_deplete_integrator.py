@@ -7,7 +7,6 @@ will be left unimplemented and testing will be done via regression.
 """
 
 import copy
-import os
 from unittest.mock import MagicMock
 
 import numpy as np
@@ -17,6 +16,8 @@ import pytest
 from openmc.deplete import (
     ReactionRates, Results, ResultsList, comm, OperatorResult,
     PredictorIntegrator, SICELIIntegrator)
+
+from tests import dummy_operator
 
 
 def test_results_save(run_in_tmpdir):
@@ -41,10 +42,11 @@ def test_results_save(run_in_tmpdir):
         full_burn_list.append(str(2*i))
         full_burn_list.append(str(2*i + 1))
 
-    burn_list = full_burn_list[2*comm.rank : 2*comm.rank + 2]
+    burn_list = full_burn_list[2*comm.rank: 2*comm.rank + 2]
     nuc_list = ["na", "nb"]
 
-    op.get_results_info.return_value = vol_dict, nuc_list, burn_list, full_burn_list
+    op.get_results_info.return_value = (
+        vol_dict, nuc_list, burn_list, full_burn_list)
 
     # Construct x
     x1 = []
@@ -130,3 +132,30 @@ def test_bad_integrator_inputs(timesteps):
 
     with pytest.raises(ValueError, match="n_steps"):
         SICELIIntegrator(op, timesteps, [1], n_steps=0)
+
+
+@pytest.mark.parametrize("scheme", dummy_operator.SCHEMES)
+def test_integrator(run_in_tmpdir, scheme):
+    """Test the integrators against their expected values"""
+
+    bundle = dummy_operator.SCHEMES[scheme]
+    operator = dummy_operator.DummyOperator()
+    bundle.solver(operator, [0.75, 0.75], 1.0).integrate()
+
+    # get expected results
+
+    res = ResultsList.from_hdf5(
+        operator.output_dir / "depletion_results.h5")
+
+    t1, y1 = res.get_atoms("1", "1")
+    t2, y2 = res.get_atoms("1", "2")
+
+    assert (t1 == [0.0, 0.75, 1.5]).all()
+    assert y1 == pytest.approx(bundle.atoms_1)
+    assert (t2 == [0.0, 0.75, 1.5]).all()
+    assert y2 == pytest.approx(bundle.atoms_2)
+
+    # test structure of depletion time dataset
+    dep_time = res.get_depletion_time()
+    assert dep_time.shape == (2, )
+    assert all(dep_time > 0)

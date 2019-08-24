@@ -469,7 +469,7 @@ def _vectfit_nuclide(endf_file, njoy_error=5e-4, vf_error=1e-3, vf_pieces=None,
         mts = [2, 27]
 
     if log:
-        print("  MTs: {})".format(mts))
+        print("  MTs: {}".format(mts))
         print("  Energy range: {:.3e} to {:.3e} eV ({} points)".format(
               E_min, E_max, n_points))
 
@@ -480,8 +480,8 @@ def _vectfit_nuclide(endf_file, njoy_error=5e-4, vf_error=1e-3, vf_pieces=None,
         # divide into pieces for complex nuclides
         peaks, _ = find_peaks(total_xs)
         n_peaks = peaks.size
-        if n_peaks > 300 or n_points > 50000 or n_peaks * n_points > 100*30000:
-            vf_pieces = max(5, n_peaks // 80,  n_points // 5000)
+        if n_peaks > 200 or n_points > 30000 or n_peaks * n_points > 100*10000:
+            vf_pieces = max(5, n_peaks // 50,  n_points // 2000)
         else:
             vf_pieces = 1
     piece_width = (sqrt(E_max) - sqrt(E_min)) / vf_pieces

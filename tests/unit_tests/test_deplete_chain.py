@@ -248,29 +248,29 @@ def test_set_fiss_q():
 def test_get_set_chain_br(simple_chain):
     """Test minor modifications to capture branch ratios"""
     expected = {"C": {"A": 0.7, "B": 0.3}}
-    assert simple_chain.get_capture_branches() == expected
+    assert simple_chain.get_branch_ratios() == expected
 
     # safely modify
     new_chain = Chain.from_xml("chain_test.xml")
     new_br = {"C": {"A": 0.5, "B": 0.5}, "A": {"C": 0.99, "B": 0.01}}
-    new_chain.set_capture_branches(new_br)
-    assert new_chain.get_capture_branches() == new_br
+    new_chain.set_branch_ratios(new_br)
+    assert new_chain.get_branch_ratios() == new_br
 
     # write, re-read
     new_chain.export_to_xml("chain_mod.xml")
-    assert Chain.from_xml("chain_mod.xml").get_capture_branches() == new_br
+    assert Chain.from_xml("chain_mod.xml").get_branch_ratios() == new_br
 
     # Test non-strict [warn, not error] setting
     bad_br = {"B": {"X": 0.6, "A": 0.4}, "X": {"A": 0.5, "C": 0.5}}
     bad_br.update(new_br)
-    new_chain.set_capture_branches(bad_br, strict=False)
-    assert new_chain.get_capture_branches() == new_br
+    new_chain.set_branch_ratios(bad_br, strict=False)
+    assert new_chain.get_branch_ratios() == new_br
 
     # Ensure capture reactions are removed
     rem_br = {"A": {"C": 1.0}}
-    new_chain.set_capture_branches(rem_br)
+    new_chain.set_branch_ratios(rem_br)
     # A is not in returned dict because there is no branch
-    assert "A" not in new_chain.get_capture_branches()
+    assert "A" not in new_chain.get_branch_ratios()
 
 
 def test_capture_branch_infer_ground():
@@ -289,9 +289,9 @@ def test_capture_branch_infer_ground():
     chain.nuclides.append(xe136m)
     chain.nuclide_dict[xe136m.name] = len(chain.nuclides) - 1
 
-    chain.set_capture_branches(infer_br)
+    chain.set_branch_ratios(infer_br, "(n,gamma)")
 
-    assert chain.get_capture_branches() == set_br
+    assert chain.get_branch_ratios("(n,gamma)") == set_br
 
 
 def test_capture_branch_no_rxn():
@@ -307,9 +307,8 @@ def test_capture_branch_no_rxn():
     chain.nuclides.append(u5m)
     chain.nuclide_dict[u5m.name] = len(chain.nuclides) - 1
 
-    phrase = "U234 does not have capture reactions"
-    with pytest.raises(AttributeError, match=phrase):
-        chain.set_capture_branches(u4br)
+    with pytest.raises(AttributeError, match="U234"):
+        chain.set_branch_ratios(u4br)
 
 
 def test_capture_branch_failures(simple_chain):
@@ -318,17 +317,65 @@ def test_capture_branch_failures(simple_chain):
     # Parent isotope not present
     br = {"X": {"A": 0.6, "B": 0.7}}
     with pytest.raises(KeyError, match="X"):
-        simple_chain.set_capture_branches(br)
+        simple_chain.set_branch_ratios(br)
 
     # Product isotope not present
     br = {"C": {"X": 0.4, "A": 0.2, "B": 0.4}}
     with pytest.raises(KeyError, match="X"):
-        simple_chain.set_capture_branches(br)
+        simple_chain.set_branch_ratios(br)
 
     # Sum of ratios > 1.0
     br = {"C": {"A": 1.0, "B": 1.0}}
-    with pytest.raises(ValueError, match="C ratios"):
-        simple_chain.set_capture_branches(br)
+    with pytest.raises(ValueError, match=r"Sum of \(n,gamma\).*for C"):
+        simple_chain.set_branch_ratios(br, "(n,gamma)")
+
+
+def test_set_alpha_branches():
+    """Test setting of alpha reaction branching ratios"""
+    # Build a mock chain
+    chain = Chain()
+
+    parent = nuclide.Nuclide()
+    parent.name = "A"
+
+    he4 = nuclide.Nuclide()
+    he4.name = "He4"
+
+    ground_tgt = nuclide.Nuclide()
+    ground_tgt.name = "B"
+
+    meta_tgt = nuclide.Nuclide()
+    meta_tgt.name = "B_m1"
+
+    for ix, nuc in enumerate((parent, ground_tgt, meta_tgt, he4)):
+        chain.nuclides.append(nuc)
+        chain.nuclide_dict[nuc.name] = ix
+
+    # add reactions to parent
+    parent.reactions.append(nuclide.ReactionTuple(
+        "(n,a)", ground_tgt.name, 1.0, 0.6))
+    parent.reactions.append(nuclide.ReactionTuple(
+        "(n,a)", meta_tgt.name, 1.0, 0.4))
+    parent.reactions.append(nuclide.ReactionTuple(
+        "(n,a)", he4.name, 1.0, 1.0))
+
+    expected_ref = {"A": {"B": 0.6, "B_m1": 0.4}}
+
+    assert chain.get_branch_ratios("(n,a)") == expected_ref
+
+    # alter and check again
+
+    altered = {"A": {"B": 0.5, "B_m1": 0.5}}
+
+    chain.set_branch_ratios(altered, "(n,a)")
+    assert chain.get_branch_ratios("(n,a)") == altered
+
+    # make sure that alpha particle still produced
+    for r in parent.reactions:
+        if r.target == he4.name:
+            break
+    else:
+        raise ValueError("Helium has been removed and should not have been")
 
 
 def test_validate(simple_chain):

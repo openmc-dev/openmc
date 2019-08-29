@@ -82,7 +82,7 @@ Particle::Bank convert_pyne_source_particle(pyne::SourceParticle);
 
 //! Check the source particle converted from pyne source
 //! \return Bool
-bool check_pyne_source_particle(Particle::Bank);
+bool check_pyne_source_particle(const Particle::Bank&);
 #endif
 
 //! Fill source bank at end of generation for fixed source simulations

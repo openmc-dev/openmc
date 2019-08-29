@@ -168,7 +168,7 @@ specified. For example, the following would sample the source from a PyNE
 R2S source file `source.h5m`::
 
   source = openmc.Source()
-  source.file = `source.h5m`
+  source.file = "source.h5m"
   ...
 
   settings.pyne_source_mode = 1

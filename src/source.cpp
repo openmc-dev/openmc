@@ -402,7 +402,7 @@ Particle::Bank sample_pyne_source(pyne::Sampler* sampler)
       // rands[6] for energy
       // rands[2], rands[3] and rands[4] for x, y, and z
       // initialize the rands at the beginning for each mesh element
-      rands.resize(0);
+      rands.clear();
       for (int i=0; i<6; i++){
           rands.push_back(prn());
       }

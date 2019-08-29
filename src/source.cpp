@@ -355,14 +355,10 @@ Particle::Bank sample_external_source()
 #ifdef DAGMC
 pyne::Sampler* initialize_pyne_sampler(){
   std::map<std::string, std::string> tag_names;
-  tag_names.insert(std::pair<std::string, std::string> ("src_tag_name",
-        "source_density"));
-  tag_names.insert(std::pair<std::string, std::string> ("bias_tag_name",
-        "biased_source_density"));
-  tag_names.insert(std::pair<std::string, std::string> ("cell_number_tag_name",
-        "cell_number"));
-  tag_names.insert(std::pair<std::string, std::string> ("cell_fracs_tag_name",
-        "cell_fracs"));
+  tag_names["src_tag_name"] = "source_density";
+  tag_names["bias_tag_name"] = "biased_source_density";
+  tag_names["cell_number_tag_name"] = "cell_number";
+  tag_names["cell_fracs_tag_name"] = "cell_fracs";
   pyne::Sampler* sampler = new pyne::Sampler(settings::path_source, tag_names,
 		 settings::pyne_source_e_bounds, settings::pyne_source_mode);
   return sampler;

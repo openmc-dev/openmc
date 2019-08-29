@@ -397,7 +397,7 @@ Particle::Bank sample_pyne_source(pyne::Sampler* sampler)
   while (!found) {
     // Generate rands used in particle_birth
     // For each mesh element, try at most max_void_rejection times
-    if (!found and (n_reject == 0 or n_reject == max_void_rejection)){
+    if (!found and (n_reject == 0 or n_reject == max_void_rejection)) {
       // rands[0] and rands[1] are used for alias table, determin the mesh index
       // rands[6] for energy
       // rands[2], rands[3] and rands[4] for x, y, and z

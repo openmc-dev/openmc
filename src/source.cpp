@@ -436,14 +436,13 @@ Particle::Bank sample_pyne_source(pyne::Sampler* sampler)
   return site;
 }
 
-Particle::Bank convert_pyne_source_particle(pyne::SourceParticle pyne_src)
+Particle::Bank convert_pyne_source_particle(const pyne::SourceParticle& pyne_src)
 {
   Particle::Bank site;
   site.r = Position(pyne_src.get_x(), pyne_src.get_y(), pyne_src.get_z());
 
-  // Sample angle
   Isotropic angle;
-  site.u = angle_->sample();
+  site.u = angle.sample();
   site.E = pyne_src.get_e();
   site.wgt = pyne_src.get_w();
   site.delayed_group = 0;
@@ -457,7 +456,7 @@ Particle::Bank convert_pyne_source_particle(pyne::SourceParticle pyne_src)
 }
 #endif
 
-bool check_pyne_source_particle(Particle::Bank site)
+bool check_pyne_source_particle(const Particle::Bank& site)
 {
   // Search to see if location exists in geometry
   bool found = false;

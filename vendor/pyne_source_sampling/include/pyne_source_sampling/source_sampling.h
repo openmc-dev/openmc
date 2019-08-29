@@ -120,12 +120,12 @@ namespace pyne {
                    std::vector<int> cell_list);
     ~SourceParticle();
 
-    double get_x() {return x;};
-    double get_y() {return y;};
-    double get_z() {return z;};
-    double get_e() {return e;};
-    double get_w() {return w;};
-    std::vector<int> get_cell_list() {return cell_list;};
+    double get_x() const {return x;};
+    double get_y() const {return y;};
+    double get_z() const {return z;};
+    double get_e() const {return e;};
+    double get_w() const {return w;};
+    std::vector<int> const get_cell_list() {return cell_list;};
     private:
     double x; // x coordinate
     double y; // y coordinate

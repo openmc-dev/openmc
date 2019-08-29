@@ -83,7 +83,7 @@ class Settings(object):
         Determine the mode of the PyNE source sampler. Required if a PyNE
         source file is used.
     pyne_source_e_bounds : iterable of float
-        The energy boundaries of the pyne source.
+        The energy boundaries of the PyNE source in [eV].
     resonance_scattering : dict
         Settings for resonance elastic scattering. Accepted keys are 'enable'
         (bool), 'method' (str), 'energy_min' (float), 'energy_max' (float), and

@@ -105,7 +105,7 @@ int verbosity {7};
 double weight_cutoff {0.25};
 double weight_survive {1.0};
 int pyne_source_mode {-1};
-std::vector<double> pyne_source_e_bounds {-1.0};
+std::vector<double> pyne_source_e_bounds;
 
 } // namespace settings
 

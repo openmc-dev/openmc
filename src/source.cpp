@@ -272,7 +272,7 @@ void initialize_source()
       }
       // check pyne_source_e_bounds
       if (settings::pyne_source_e_bounds.size() < 2) {
-        fatal_error(std::string("Wrong pyne_source_e_bounds!"));
+        fatal_error("Wrong pyne_source_e_bounds!");
       }
       // initial sampler
       pyne::Sampler* sampler = initialize_pyne_sampler();

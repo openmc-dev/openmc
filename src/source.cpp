@@ -268,7 +268,7 @@ void initialize_source()
     if (filetype == "pyne_r2s_source") {
       // check pyne_source_mode
       if (settings::pyne_source_mode < 0 or settings::pyne_source_mode > 5) {
-        fatal_error(std::string("Wrong pyne_source_mode. Must be 0, 1, 2, 3, 4 or 5"));
+        fatal_error("Wrong pyne_source_mode. Must be 0, 1, 2, 3, 4 or 5");
       }
       // check pyne_source_e_bounds
       if (settings::pyne_source_e_bounds.size() < 2) {

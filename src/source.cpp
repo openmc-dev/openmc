@@ -446,7 +446,7 @@ Particle::Bank convert_pyne_source_particle(pyne::SourceParticle pyne_src)
   site.r = Position(pyne_src.get_x(), pyne_src.get_y(), pyne_src.get_z());
 
   // Sample angle
-  UPtrAngle angle_ = UPtrAngle{new Isotropic()};
+  Isotropic angle;
   site.u = angle_->sample();
   site.E = pyne_src.get_e();
   site.wgt = pyne_src.get_w();

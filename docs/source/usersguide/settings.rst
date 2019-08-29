@@ -164,7 +164,7 @@ following would generate a photon source::
 The PyNE R2S source file is also supported as an option to create a mesh-based
 source. If the PyNE source file is used, the `source.file`,
 :attr:`Settings.pyne_source_mode` and :attr:`Settings.pyne_source_e_bounds` attributes should be
-specifited. For example, the following would sample the source from PyNE
+specified. For example, the following would sample the source from a PyNE
 R2S source file `source.h5m`::
 
   source = openmc.Source()

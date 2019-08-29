@@ -161,7 +161,7 @@ following would generate a photon source::
 
   settings.source = source
 
-The PyNE R2S source file is also supported as an option to create mesh based
+The PyNE R2S source file is also supported as an option to create a mesh-based
 source. If the PYNE source file is used, the `source.file`,
 `settings.pyne_source_mode` and `settings.pyne_source_e_bounds` should be
 specifited. For example, the following would sample the source from PyNE

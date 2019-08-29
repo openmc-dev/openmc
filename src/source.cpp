@@ -275,7 +275,7 @@ void initialize_source()
         fatal_error("Wrong pyne_source_e_bounds!");
       }
       // initial sampler
-      pyne::Sampler* sampler = initialize_pyne_sampler();
+      pyne::Sampler sampler = initialize_pyne_sampler();
       // Generation source sites from pyne source
       for (int64_t i = 0; i < simulation::work_per_rank; ++i) {
         // initialize random number seed
@@ -353,18 +353,18 @@ Particle::Bank sample_external_source()
 }
 
 #ifdef DAGMC
-pyne::Sampler* initialize_pyne_sampler(){
+pyne::Sampler initialize_pyne_sampler(){
   std::map<std::string, std::string> tag_names;
   tag_names["src_tag_name"] = "source_density";
   tag_names["bias_tag_name"] = "biased_source_density";
   tag_names["cell_number_tag_name"] = "cell_number";
   tag_names["cell_fracs_tag_name"] = "cell_fracs";
-  pyne::Sampler* sampler = new pyne::Sampler(settings::path_source, tag_names,
+  pyne::Sampler sampler = pyne::Sampler(settings::path_source, tag_names,
 		 settings::pyne_source_e_bounds, settings::pyne_source_mode);
   return sampler;
 }
 
-Particle::Bank sample_pyne_source(pyne::Sampler* sampler)
+Particle::Bank sample_pyne_source(pyne::Sampler sampler)
 {
   // Set the random number generator to the source stream.
   prn_set_stream(STREAM_SOURCE);
@@ -412,7 +412,7 @@ Particle::Bank sample_pyne_source(pyne::Sampler* sampler)
       rands[4] = prn();
     }
     // Sample particle
-    src = sampler->particle_birth(rands);
+    src = sampler.particle_birth(rands);
     site = convert_pyne_source_particle(src);
     // Check for rejection
     found = check_pyne_source_particle(site);

@@ -1,8 +1,5 @@
 # Create a library called "pyne_source_sampling".
 
-# Find DAGMC/MOAB
-find_package(DAGMC REQUIRED)
-
 add_library(pyne_source_sampling STATIC
 	include/pyne_source_sampling/source_sampling.cpp
 	include/pyne_source_sampling/measure.cpp)

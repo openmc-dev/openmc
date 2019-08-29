@@ -278,13 +278,13 @@ void initialize_source()
       pyne::Sampler* sampler = initialize_pyne_sampler();
       // Generation source sites from pyne source
       for (int64_t i = 0; i < simulation::work_per_rank; ++i) {
-      // initialize random number seed
-      int64_t id = simulation::total_gen*settings::n_particles +
-        simulation::work_index[mpi::rank] + i + 1;
-      set_particle_seed(id);
+        // initialize random number seed
+        int64_t id = simulation::total_gen*settings::n_particles +
+          simulation::work_index[mpi::rank] + i + 1;
+        set_particle_seed(id);
 
-      // sample external source distribution
-      simulation::source_bank[i] = sample_pyne_source(sampler);
+        // sample external source distribution
+        simulation::source_bank[i] = sample_pyne_source(sampler);
       }
     }
 #endif

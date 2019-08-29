@@ -452,7 +452,7 @@ Particle::Bank convert_pyne_source_particle(pyne::SourceParticle pyne_src)
   site.wgt = pyne_src.get_w();
   site.delayed_group = 0;
   // Check for particle type
-  if (settings::photon_transport == false) {
+  if (!settings::photon_transport) {
     site.particle = Particle::Type::neutron;
   } else if (settings::photon_transport == true) {
     site.particle= Particle::Type::photon;

@@ -80,7 +80,7 @@ class Settings(object):
     ptables : bool
         Determine whether probability tables are used.
     pyne_source_mode : int
-        Determine the mode of the pyne source sampler. Required if a pyne
+        Determine the mode of the PyNE source sampler. Required if a PyNE
         source file is used.
     pyne_source_e_bounds : tuple or list
         The energy boundaries of the pyne source.

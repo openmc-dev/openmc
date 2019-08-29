@@ -1,8 +1,5 @@
 import openmc
 import openmc.stats
-import os
-import warnings
-import itertools
 
 def test_source():
     space = openmc.stats.Point()
@@ -36,4 +33,3 @@ def test_source_file():
     elem = src.to_xml_element()
     assert 'strength' in elem.attrib
     assert 'file' in elem.attrib
-

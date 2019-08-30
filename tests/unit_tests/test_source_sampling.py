@@ -1,11 +1,7 @@
 import os
 import warnings
-import itertools
-
 import pytest
-from operator import itemgetter
 from random import uniform, seed
-
 import numpy as np
 from numpy.testing import assert_array_equal, assert_array_almost_equal
 
@@ -34,10 +30,6 @@ DEFAULT_USER = 2
 SUBVOXEL_ANALOG = 3
 SUBVOXEL_UNIFORM = 4
 SUBVOXEL_USER = 5
-
-
-def try_rm_file(filename):
-    return lambda: os.remove(filename) if os.path.exists(filename) else None
 
 
 def test_sampler_tag_names_map():

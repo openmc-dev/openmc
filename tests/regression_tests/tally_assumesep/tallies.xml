@@ -5,17 +5,17 @@
 
   <filter id="1">
     <type>cell</type>
-    <bins>21</bins>
+    <bins>1</bins>
   </filter>
 
   <filter id="2">
     <type>cell</type>
-    <bins>22</bins>
+    <bins>2</bins>
   </filter>
 
   <filter id="3">
     <type>cell</type>
-    <bins>23</bins>
+    <bins>3</bins>
   </filter>
 
   <tally id="1">

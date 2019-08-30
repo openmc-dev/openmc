@@ -425,11 +425,9 @@ class FissionYieldCutoffHelper(TalliedFissionYieldHelper):
             return yields
         rates = self.results[local_mat_index]
         # iterate over thermal then fast yields, prefer __mul__ to __rmul__
-        for therm_frac, nuc in zip(rates[0], self._tally_nucs):
-            yields[nuc.name] = self._thermal_yields[nuc.name] * therm_frac
-
-        for fast_frac, nuc in zip(rates[1], self._tally_nucs):
-            yields[nuc.name] += self._fast_yields[nuc.name] * fast_frac
+        for therm_frac, fast_frac, nuc in zip(rates[0], rates[1], self._tally_nucs):
+            yields[nuc.name] = (self._thermal_yields[nuc.name] * therm_frac
+                                + self._fast_yields[nuc.name] * fast_frac)
         return yields
 
     @property
@@ -444,9 +442,7 @@ class FissionYieldCutoffHelper(TalliedFissionYieldHelper):
 class AveragedFissionYieldHelper(TalliedFissionYieldHelper):
     r"""Class that computes fission yields based on average fission energy
 
-    Computes average energy at which fission events occured
-    reactions for all nuclides with multiple sets of fission yields
-    by
+    Computes average energy at which fission events occured with
 
     .. math::
 
@@ -481,6 +477,8 @@ class AveragedFissionYieldHelper(TalliedFissionYieldHelper):
         have shape ``(n_mats, n_tnucs)``, where ``n_mats`` is the number
         of materials where fission reactions were tallied and ``n_tnucs``
         is the number of nuclides with multiple sets of fission yields.
+        Data in the array are the average energy of fission events for
+        tallied nuclides across burnable materials.
     """
 
     def __init__(self, chain_nuclides):

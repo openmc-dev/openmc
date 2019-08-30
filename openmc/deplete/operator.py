@@ -86,7 +86,7 @@ class Operator(TransportOperator):
         in initial condition to ensure they exist in the decay chain.
         Only done for nuclides with reaction rates.
         Defaults to 1.0e3.
-    fission_yield_mode : ("constant", "cutoff", "average")
+    fission_yield_mode : {"constant", "cutoff", "average"}
         Key indicating what fission product yield scheme to use. The
         key determines what fission energy helper is used:
 

@@ -731,6 +731,7 @@ class Chain(object):
                 yields = [yields]
             check_type("fission_yields", yields, Iterable, Mapping)
         self._fission_yields = yields
+
     def validate(self, strict=True, quiet=False, tolerance=1e-4):
         """Search for possible inconsistencies
 

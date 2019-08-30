@@ -171,6 +171,22 @@ score_fission_delayed_dg(int i_tally, int d_bin, double score, int score_index)
   dg_match.bins_[i_bin] = original_bin;
 }
 
+//! Helper function to retrieve fission q value from a nuclide
+
+double get_nuc_fission_q(const Nuclide& nuc, const Particle* p, int score_bin)
+{
+  if (score_bin == SCORE_FISS_Q_PROMPT) {
+    if (nuc.fission_q_prompt_) {
+      return (*nuc.fission_q_prompt_)(p->E_last_);
+    }
+  } else if (score_bin == SCORE_FISS_Q_RECOV) {
+    if (nuc.fission_q_recov_) {
+      return (*nuc.fission_q_recov_)(p->E_last_);
+    }
+  }
+  return 0.0;
+}
+
 //! Helper function for nu-fission tallies with energyout filters.
 //
 //! In this case, we may need to score to multiple bins if there were multiple
@@ -1040,17 +1056,9 @@ score_general_ce(Particle* p, int i_tally, int start_index,
           // No fission events occur if survival biasing is on -- need to
           // calculate fraction of absorptions that would have resulted in
           // fission scaled by the Q-value
-          const auto& nuc {*data::nuclides[p->event_nuclide_]};
+          const Nuclide& nuc {*data::nuclides[p->event_nuclide_]};
           if (p->neutron_xs_[p->event_nuclide_].absorption > 0) {
-            double q_value = 0.;
-            if (score_bin == SCORE_FISS_Q_PROMPT) {
-              if (nuc.fission_q_prompt_)
-                q_value = (*nuc.fission_q_prompt_)(p->E_last_);
-            } else if (score_bin == SCORE_FISS_Q_RECOV) {
-              if (nuc.fission_q_recov_)
-                q_value = (*nuc.fission_q_recov_)(p->E_last_);
-            }
-            score = p->wgt_absorb_ * q_value
+            score = p->wgt_absorb_ * get_nuc_fission_q(nuc, p, score_bin)
               * p->neutron_xs_[p->event_nuclide_].fission
               / p->neutron_xs_[p->event_nuclide_].absorption * flux;
           }
@@ -1060,51 +1068,27 @@ score_general_ce(Particle* p, int i_tally, int start_index,
           // All fission events will contribute, so again we can use particle's
           // weight entering the collision as the estimate for the fission
           // reaction rate
-          const auto& nuc {*data::nuclides[p->event_nuclide_]};
+          const Nuclide& nuc {*data::nuclides[p->event_nuclide_]};
           if (p->neutron_xs_[p->event_nuclide_].absorption > 0) {
-            double q_value = 0.;
-            if (score_bin == SCORE_FISS_Q_PROMPT) {
-              if (nuc.fission_q_prompt_)
-                q_value = (*nuc.fission_q_prompt_)(p->E_last_);
-            } else if (score_bin == SCORE_FISS_Q_RECOV) {
-              if (nuc.fission_q_recov_)
-                q_value = (*nuc.fission_q_recov_)(p->E_last_);
-            }
-            score = p->wgt_last_ * q_value
+            score = p->wgt_last_ * get_nuc_fission_q(nuc, p, score_bin)
               * p->neutron_xs_[p->event_nuclide_].fission
               / p->neutron_xs_[p->event_nuclide_].absorption * flux;
           }
         }
       } else {
         if (i_nuclide >= 0) {
-          const auto& nuc {*data::nuclides[i_nuclide]};
-          double q_value = 0.;
-          if (score_bin == SCORE_FISS_Q_PROMPT) {
-            if (nuc.fission_q_prompt_)
-              q_value = (*nuc.fission_q_prompt_)(p->E_last_);
-          } else if (score_bin == SCORE_FISS_Q_RECOV) {
-            if (nuc.fission_q_recov_)
-              q_value = (*nuc.fission_q_recov_)(p->E_last_);
-          }
-          score = q_value * p->neutron_xs_[i_nuclide].fission
-            * atom_density * flux;
+          const Nuclide& nuc {*data::nuclides[i_nuclide]};
+          score = get_nuc_fission_q(nuc, p, score_bin)
+            * p->neutron_xs_[i_nuclide].fission * atom_density * flux;
         } else {
           if (p->material_ != MATERIAL_VOID) {
             const Material& material {*model::materials[p->material_]};
             for (auto i = 0; i < material.nuclide_.size(); ++i) {
               auto j_nuclide = material.nuclide_[i];
               auto atom_density = material.atom_density_(i);
-              const auto& nuc {*data::nuclides[j_nuclide]};
-              double q_value = 0.;
-              if (score_bin == SCORE_FISS_Q_PROMPT) {
-                if (nuc.fission_q_prompt_)
-                  q_value = (*nuc.fission_q_prompt_)(p->E_last_);
-              } else if (score_bin == SCORE_FISS_Q_RECOV) {
-                if (nuc.fission_q_recov_)
-                  q_value = (*nuc.fission_q_recov_)(p->E_last_);
-              }
-              score += q_value * p->neutron_xs_[j_nuclide].fission
-                * atom_density * flux;
+              const Nuclide& nuc {*data::nuclides[j_nuclide]};
+              score += get_nuc_fission_q(nuc, p, score_bin)
+                * p->neutron_xs_[j_nuclide].fission * atom_density * flux;
             }
           }
         }

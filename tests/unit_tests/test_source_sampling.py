@@ -76,17 +76,17 @@ def test_single_hex_tag_names_map():
     tag_names = {"cell_number_tag_name": "cell_number",
                  "cell_fracs_tag_name": "cell_fracs"}
     with pytest.raises(ValueError):
-        sampler = Sampler(filenema, tag_names, e_bounds, DEFAULT_ANGLOG)
+        sampler = Sampler(filename, tag_names, e_bounds, DEFAULT_ANALOG)
     with pytest.raises(ValueError):
-        sampler = Sampler(filenema, tag_names, e_bounds, DEFAULT_UNIFORM)
+        sampler = Sampler(filename, tag_names, e_bounds, DEFAULT_UNIFORM)
     with pytest.raises(ValueError):
-        sampler = Sampler(filenema, tag_names, e_bounds, DEFAULT_USER)
+        sampler = Sampler(filename, tag_names, e_bounds, DEFAULT_USER)
     with pytest.raises(ValueError):
-        sampler = Sampler(filenema, tag_names, e_bounds, SUBVOXEL_USER)
+        sampler = Sampler(filename, tag_names, e_bounds, SUBVOXEL_USER)
     with pytest.raises(ValueError):
-        sampler = Sampler(filenema, tag_names, e_bounds, SUBVOXEL_UNIFORM)
+        sampler = Sampler(filename, tag_names, e_bounds, SUBVOXEL_UNIFORM)
     with pytest.raises(ValueError):
-        sampler = Sampler(filenema, tag_names, e_bounds, SUBVOXEL_USER)
+        sampler = Sampler(filename, tag_names, e_bounds, SUBVOXEL_USER)
 #
 #    # bias_tag_name not given
 #    tag_names = {"src_tag_name": "src",
@@ -94,9 +94,9 @@ def test_single_hex_tag_names_map():
 #                 "cell_fracs_tag_name": "cell_fracs"}
 
     with pytest.raises(ValueError):
-        sampler = Sampler(filenema, tag_names, e_bounds, DEFAULT_USER)
+        sampler = Sampler(filename, tag_names, e_bounds, DEFAULT_USER)
     with pytest.raises(ValueError):
-        sampler = Sampler(filenema, tag_names, e_bounds, SUBVOXEL_USER)
+        sampler = Sampler(filename, tag_names, e_bounds, SUBVOXEL_USER)
 
     # wrong bias_tag data (non-zero source_density biased to zero -> NAN weight)
     m.src = NativeMeshTag(2, float)
@@ -108,8 +108,8 @@ def test_single_hex_tag_names_map():
                  "cell_number_tag_name": "cell_number",
                  "cell_fracs_tag_name": "cell_fracs",
                  "bias_tag_name": "bias"}
-    with pytest.raises(ValueError):
-        sampler = Sampler(filenema, tag_names, e_bounds, SUBVOXEL_USER)
+    with pytest.raises(RuntimeError):
+        sampler = Sampler(filename, tag_names, e_bounds, SUBVOXEL_USER)
 
 
 #@with_setup(None, try_rm_file('sampling_mesh.h5m'))

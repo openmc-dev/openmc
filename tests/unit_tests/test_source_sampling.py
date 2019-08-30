@@ -4,7 +4,6 @@ import itertools
 
 import pytest
 from operator import itemgetter
-#from nose.tools import assert_equal, with_setup, assert_almost_equal, assert_raises
 from random import uniform, seed
 
 import numpy as np
@@ -41,7 +40,6 @@ def try_rm_file(filename):
     return lambda: os.remove(filename) if os.path.exists(filename) else None
 
 
-#@with_setup(None, try_rm_file('sampling_mesh.h5m'))
 def test_single_hex_tag_names_map():
     """This test tests uniform sampling within a single hex volume element.
     This is done by dividing the volume element in 4 smaller hex and ensuring
@@ -87,12 +85,11 @@ def test_single_hex_tag_names_map():
         sampler = Sampler(filename, tag_names, e_bounds, SUBVOXEL_UNIFORM)
     with pytest.raises(ValueError):
         sampler = Sampler(filename, tag_names, e_bounds, SUBVOXEL_USER)
-#
-#    # bias_tag_name not given
-#    tag_names = {"src_tag_name": "src",
-#                 "cell_number_tag_name": "cell_number",
-#                 "cell_fracs_tag_name": "cell_fracs"}
 
+    # bias_tag_name not given
+    tag_names = {"src_tag_name": "src",
+                 "cell_number_tag_name": "cell_number",
+                 "cell_fracs_tag_name": "cell_fracs"}
     with pytest.raises(ValueError):
         sampler = Sampler(filename, tag_names, e_bounds, DEFAULT_USER)
     with pytest.raises(ValueError):
@@ -112,7 +109,6 @@ def test_single_hex_tag_names_map():
         sampler = Sampler(filename, tag_names, e_bounds, SUBVOXEL_USER)
 
 
-#@with_setup(None, try_rm_file('sampling_mesh.h5m'))
 def test_analog_single_hex():
     """This test tests that particles of sampled evenly within the phase-space
     of a single mesh volume element with one energy group in an analog sampling
@@ -146,7 +142,6 @@ def test_analog_single_hex():
 
     for i in range(num_samples):
         s = sampler.particle_birth(np.array([uniform(0, 1) for x in range(6)]))
-        #assert_equal(s.w, 1.0)  # analog: all weights must be one
         assert s.w == 1.0  # analog: all weights must be one
         tally[int(s.x*num_divs), int(s.y*num_divs), int(s.z*num_divs),
               int(s.e*num_divs)] += score
@@ -158,7 +153,6 @@ def test_analog_single_hex():
             assert(abs(np.sum(np.rollaxis(tally, i)[j, :, :, :]) - 0.5) < 0.05)
 
 
-#@with_setup(None, try_rm_file('sampling_mesh.h5m'))
 def test_analog_multiple_hex():
     """This test tests that particle are sampled uniformly from a uniform source
     defined on eight mesh volume elements in two energy groups. This is done
@@ -197,7 +191,6 @@ def test_analog_multiple_hex():
     tally = np.zeros(shape=(num_divs, num_divs, num_divs, num_divs))
     for i in range(num_samples):
         s = sampler.particle_birth([uniform(0, 1) for x in range(6)])
-#        assert_equal(s.w, 1.0)
         assert s.w == 1.0
         tally[int(s.x*num_divs), int(s.y*num_divs), int(s.z*num_divs),
               int(s.e*num_divs)] += score
@@ -208,7 +201,6 @@ def test_analog_multiple_hex():
             assert(abs(halfspace_sum - 0.5)/0.5 < 0.1)
 
 
-#@with_setup(None, try_rm_file('tet.h5m'))
 def test_analog_single_tet():
     """This test tests uniform sampling within a single tetrahedron. This is
     done by dividing the tetrahedron in 4 smaller tetrahedrons and ensuring
@@ -240,7 +232,6 @@ def test_analog_single_tet():
     tally = np.zeros(shape=(4))
     for i in range(num_samples):
         s = sampler.particle_birth([uniform(0., 1.) for x in range(6)])
-#        assert_equal(s.w, 1.0)
         assert s.w == 1.0
         for i, tet in enumerate(subtets):
             if point_in_tet(tet, [s.x, s.y, s.z]):
@@ -251,7 +242,6 @@ def test_analog_single_tet():
         assert(abs(t - 0.25)/0.25 < 0.2)
 
 
-#@with_setup(None, try_rm_file('sampling_mesh.h5m'))
 def test_uniform():
     """This test tests that the uniform biasing scheme:
     1. Samples space uniformly. This is checked using the same method
@@ -289,10 +279,8 @@ def test_uniform():
     for i in range(num_samples):
         s = sampler.particle_birth(np.array([uniform(0, 1) for x in range(6)]))
         if s.x < 3.0:
-            #assert_almost_equal(s.w, 0.7)  # hand calcs
             assert s.w == pytest.approx(0.7, 0.7*0.05)
         else:
-#            assert_almost_equal(s.w, 2.8)  # hand calcs
             assert s.w == pytest.approx(2.8, 2.8*0.05)
 
         spatial_tally[int(s.x*num_divs/3.5),
@@ -319,7 +307,6 @@ def test_uniform():
                / expected_e_tally[i] < 0.1)
 
 
-#@with_setup(None, try_rm_file('sampling_mesh.h5m'))
 def test_single_hex_single_subvoxel_analog():
     """This test tests that particles of sampled evenly within the phase-space
     of a single mesh volume element (also a sub-voxel) with one energy group
@@ -352,9 +339,7 @@ def test_single_hex_single_subvoxel_analog():
 
     for i in range(num_samples):
         s = sampler.particle_birth(np.array([uniform(0., 1.) for x in range(6)]))
-#        assert_equal(s.w, 1.0)  # analog: all weights must be one
         assert s.w == 1.0 # analog: all weights must be one
-#        assert_equal(s.cell_list[0], 11)  # analog: the cell number
         assert s.cell_list[0] == 11
         tally[int(s.x*num_divs), int(s.y*num_divs), int(s.z*num_divs),
               int(s.e*num_divs)] += score
@@ -366,7 +351,6 @@ def test_single_hex_single_subvoxel_analog():
             assert(abs(np.sum(np.rollaxis(tally, i)[j, :, :, :]) - 0.5) < 0.05)
 
 
-#@with_setup(None, try_rm_file('sampling_mesh.h5m'))
 def test_single_hex_multiple_subvoxel_analog():
     """This test tests that particles of sampled analog within the phase-space
     of a single mesh volume element but multiple sub-voxels with one energy
@@ -398,7 +382,6 @@ def test_single_hex_multiple_subvoxel_analog():
     tally = [0.0] * 3
     for i in range(num_samples):
         s = sampler.particle_birth(np.array([uniform(0, 1) for x in range(6)]))
-#        assert_equal(s.w, 1.0)  # analog: all weights must be one
         assert s.w == 1.0
         if s.cell_list[0] == 11:
             tally[0] += score
@@ -408,13 +391,11 @@ def test_single_hex_multiple_subvoxel_analog():
             tally[2] += score
 
     # Test that each source particle in each cell has right frequency
-#    assert_equal(tally[0], 0.0)
     assert tally[0] == 0.0
     assert(abs(tally[1] - 0.2)/0.2 < 0.05)
     assert(abs(tally[2] - 0.8)/0.8 < 0.05)
 
 
-#@with_setup(None, try_rm_file('sampling_mesh.h5m'))
 def test_multiple_hex_multiple_subvoxel_analog():
     """This test tests that particle are sampled analog from a uniform source
     defined on eight mesh volume elements in two energy groups.
@@ -446,9 +427,7 @@ def test_multiple_hex_multiple_subvoxel_analog():
     tally = np.zeros(shape=(num_divs, num_divs, num_divs, num_divs))
     for i in range(num_samples):
         s = sampler.particle_birth([uniform(0, 1) for x in range(6)])
-#        assert_equal(s.w, 1.0)
         assert s.w == 1.0
-#        assert_equal(s.cell_list[0], 4*int(s.x*num_divs) + 2*int(s.y*num_divs)
         assert s.cell_list[0] == 4*int(s.x*num_divs) + 2*int(s.y*num_divs) + \
                       int(s.z*num_divs) + 1
         tally[int(s.x*num_divs), int(s.y*num_divs), int(s.z*num_divs),
@@ -457,10 +436,8 @@ def test_multiple_hex_multiple_subvoxel_analog():
     for i in range(0, 4):
         for j in range(0, 2):
             halfspace_sum = np.sum(np.rollaxis(tally, i)[j, :, :, :])
-#            assert(abs(halfspace_sum - 0.5)/0.5 < 0.1)
             assert abs(halfspace_sum - 0.5)/0.5 < 0.1
 
-#@with_setup(None, try_rm_file('sampling_mesh.h5m'))
 def test_single_hex_subvoxel_uniform():
     """This test tests that particles of sampled evenly within the phase-space
     of a single mesh volume element with one energy group in an uniform sampling
@@ -493,9 +470,7 @@ def test_single_hex_subvoxel_uniform():
 
     for i in range(num_samples):
         s = sampler.particle_birth(np.array([uniform(0., 1.) for x in range(6)]))
-#        assert_equal(s.w, 1.0)  # analog: all weights must be one
         assert s.w == 1.0
-#        assert_equal(s.cell_list[0], 11)  # analog: the cell number
         assert s.cell_list[0] == 11
         tally[int(s.x*num_divs), int(s.y*num_divs), int(s.z*num_divs),
               int(s.e*num_divs)] += score
@@ -507,7 +482,6 @@ def test_single_hex_subvoxel_uniform():
             assert(abs(np.sum(np.rollaxis(tally, i)[j, :, :, :]) - 0.5) < 0.05)
 
 
-#@with_setup(None, try_rm_file('sampling_mesh.h5m'))
 def test_single_hex_multiple_subvoxel_uniform():
     """This test tests that particles of sampled evenly within the phase-space
     of a single mesh volume element with one energy group in an uniform sampling
@@ -550,14 +524,10 @@ def test_single_hex_multiple_subvoxel_uniform():
             assert(abs(s.w - 1.6)/1.6 < 0.05)
 
     # Test that each source particle in each cell has right frequency
-#    assert_equal(tally[0], 0.0)
     assert tally[0] == 0.0
-#    assert(abs(tally[1] - 0.5) < 0.05)
     assert abs(tally[1] - 0.5) < 0.05
-#    assert(abs(tally[2] - 0.5) < 0.05)
     assert abs(tally[2] - 0.5) < 0.05
 
-#@with_setup(None, try_rm_file('sampling_mesh.h5m'))
 def test_multiple_hex_multiple_subvoxel_uniform():
     """This test tests that particle are sampled uniformly from a uniform source
     defined on eight mesh volume elements in two energy groups.
@@ -593,8 +563,6 @@ def test_multiple_hex_multiple_subvoxel_uniform():
     for i in range(num_samples):
         s = sampler.particle_birth([uniform(0, 1) for x in range(6)])
         # check the cell_number
-#        assert_equal(s.cell_list[0], 4*int(s.x*num_divs) + 2*int(s.y*num_divs)
-#                     + int(s.z*num_divs))
         assert s.cell_list[0] == 4*int(s.x*num_divs) + 2*int(s.y*num_divs) + \
                        int(s.z*num_divs)
         # check the weight of each subvoxel
@@ -603,7 +571,6 @@ def test_multiple_hex_multiple_subvoxel_uniform():
             exp_w = (s.cell_list[0] + 1) / 2 * 0.4
             out_w = s.w
             assert(abs(out_w - exp_w)/exp_w < 0.05)  # hand calculate
-        # count the tally
         tally[s.cell_list[0]] += score
 
     # check the real sample rate
@@ -612,7 +579,6 @@ def test_multiple_hex_multiple_subvoxel_uniform():
             assert(abs(item - 0.25)/0.25 < 0.05)
 
 
-#@with_setup(None, try_rm_file('sampling_mesh.h5m'))
 def test_bias():
     """This test tests that a user-specified biasing scheme:
     1. Samples space uniformly according to the scheme.
@@ -651,20 +617,16 @@ def test_bias():
         s = sampler.particle_birth(np.array([uniform(0, 1) for x in range(6)]))
         if s.x < 3:
             if s.e < 0.5:
-#                assert_almost_equal(s.w, 1.6)  # hand calcs
                 assert s.w == pytest.approx(1.6, 1.6*0.05)
                 tally[0] += score
             else:
-#                assert_almost_equal(s.w, 0.4)  # hand calcs
                 assert s.w == pytest.approx(0.4, 0.4*0.05)
                 tally[1] += score
         else:
             if s.e < 0.5:
-#                assert_almost_equal(s.w, 2.4)  # hand calcs
                 assert s.w == pytest.approx(2.4, 2.4*0.05)
                 tally[2] += score
             else:
-#                assert_almost_equal(s.w, 0.8)  # hand calcs
                 assert s.w == pytest.approx(0.8, 0.8*0.05)
                 tally[3] += score
 
@@ -673,7 +635,6 @@ def test_bias():
         assert(abs(a-b)/b < 0.25)
 
 
-#@with_setup(None, try_rm_file('sampling_mesh.h5m'))
 def test_bias_spatial():
     """This test tests a user-specified biasing scheme for which the only 1
     bias group is supplied for a source distribution containing two energy
@@ -716,10 +677,8 @@ def test_bias_spatial():
     for i in range(num_samples):
         s = sampler.particle_birth(np.array([uniform(0, 1) for x in range(6)]))
         if s.x < 3.0:
-#            assert_almost_equal(s.w, 0.7)  # hand calcs
             assert s.w == pytest.approx(0.7, 0.7*0.05)
         else:
-#            assert_almost_equal(s.w, 2.8)  # hand calcs
             assert s.w == pytest.approx(2.8, 2.8*0.05)
 
         spatial_tally[int(s.x*num_divs/3.5),
@@ -746,7 +705,6 @@ def test_bias_spatial():
                / expected_e_tally[i] < 0.1)
 
 
-#@with_setup(None, try_rm_file('sampling_mesh.h5m'))
 def test_subvoxel_multiple_hex_bias_1():
     """This test tests that particle are sampled from a biased source
     defined on two voxels (2*2 = 4 sub-voxels) with the biased tag length of 1.
@@ -821,7 +779,6 @@ def test_subvoxel_multiple_hex_bias_1():
                            ) / exp_tally[v, c, e] < 0.05)
 
 
-#@with_setup(None, try_rm_file('sampling_mesh.h5m'))
 def test_subvoxel_multiple_hex_bias_max_num_cells_num_e_groups():
     """This test tests that particle are sampled from a biased source
     defined on two voxels (2*2 = 4 sub-voxels) with the biased tag length
@@ -894,7 +851,6 @@ def test_subvoxel_multiple_hex_bias_max_num_cells_num_e_groups():
                            ) / exp_tally[v, c, e] < 0.05)
 
 
-#@with_setup(None, try_rm_file('sampling_mesh.h5m'))
 def test_subvoxel_multiple_hex_bias_e_groups():
     """This test tests that particle are sampled from a biased source
     defined on two voxels (2*2 = 4 sub-voxels) with the biased tag length
@@ -1579,7 +1535,6 @@ def _get_e_dis_exp(mode, cell_fracs, src_tag, bias_tag=None):
     return e_dis_exp
 
 
-#@with_setup(None, try_rm_file('sampling_mesh.h5m'))
 def _source_sampling_test_template(mode, cell_fracs_list, src_tag,
                                    bias_tag=None):
     """
@@ -1721,7 +1676,6 @@ def _source_sampling_test_template(mode, cell_fracs_list, src_tag,
         # check w, and c for each particle
         # calculate the expected weight and cell_number
         exp_w, exp_c = _cal_exp_w_c(s, mode, cell_fracs, src_tag, bias_tag)
-#        assert_equal(s.w, exp_w)
         assert s.w == exp_w
         # when mode in (0, 1, 2), the set exp_c is (-1), otherwise it contains
         # several available cell number
@@ -1750,5 +1704,4 @@ def _source_sampling_test_template(mode, cell_fracs_list, src_tag,
         if e_dis_exp[i] > 0:
             assert(abs(e_dis[i] - e_dis_exp[i]) / e_dis_exp[i] < 0.05)
         else:
-#            assert_equal(e_dis[i], 0.0)
             assert e_dis[i] == 0.0

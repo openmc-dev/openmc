@@ -134,7 +134,7 @@ def test_analog_single_tet():
     tag_names = {"src_tag_name": "src"}
     sampler = Sampler(filename, tag_names, np.array([0., 1.]), DEFAULT_ANALOG)
     os.remove(filename)
-    num_samples = 5000
+    num_samples = 500
     score = 1.0/num_samples
     tally = np.zeros(shape=(4))
     for i in range(num_samples):
@@ -156,7 +156,7 @@ def test_alias_table():
     seed(1953)
     pdf = np.array([0.1, 0.2, 0.7])
     at = AliasTable(pdf)
-    num_samples = 50000
+    num_samples = 500
     score = 1.0/num_samples
     tally = np.zeros(shape=(3))
 
@@ -886,7 +886,7 @@ def _source_sampling_test_template(mode, cell_fracs_list, src_tag,
     os.remove(filename)
 
     # sampling and tally, tally should be defined by the mesh cell_fracs
-    num_samples = 5000
+    num_samples = 500
     particles = []
 
     seed(1953)

@@ -187,6 +187,56 @@ double get_nuc_fission_q(const Nuclide& nuc, const Particle* p, int score_bin)
   return 0.0;
 }
 
+double score_fission_q(const Particle* p, int score_bin, const Tally& tally, 
+  double flux, int i_nuclide, double atom_density)
+{
+  if (tally.estimator_ == ESTIMATOR_ANALOG) {
+    const Nuclide& nuc {*data::nuclides[p->event_nuclide_]};
+    if (settings::survival_biasing) {
+      // No fission events occur if survival biasing is on -- need to
+      // calculate fraction of absorptions that would have resulted in
+      // fission scaled by the Q-value
+      if (p->neutron_xs_[p->event_nuclide_].absorption > 0) {
+        return p->wgt_absorb_ * get_nuc_fission_q(nuc, p, score_bin)
+               * p->neutron_xs_[p->event_nuclide_].fission * flux
+               / p->neutron_xs_[p->event_nuclide_].absorption;
+      }
+    } else {
+      // Skip any non-absorption events
+      if (p->event_ == EVENT_SCATTER) return 0.0;
+      // All fission events will contribute, so again we can use particle's
+      // weight entering the collision as the estimate for the fission
+      // reaction rate
+      if (p->neutron_xs_[p->event_nuclide_].absorption > 0) {
+        return p->wgt_last_ * get_nuc_fission_q(nuc, p, score_bin)
+               * p->neutron_xs_[p->event_nuclide_].fission * flux
+               / p->neutron_xs_[p->event_nuclide_].absorption;
+      }
+    }
+  } else {
+    if (i_nuclide >= 0) {
+      const Nuclide& nuc {*data::nuclides[i_nuclide]};
+      return get_nuc_fission_q(nuc, p, score_bin) * atom_density * flux
+             * p->neutron_xs_[i_nuclide].fission;
+    } else {
+      if (p->material_ != MATERIAL_VOID) {
+        const Material& material {*model::materials[p->material_]};
+        double score {0.0};
+        for (auto i = 0; i < material.nuclide_.size(); ++i) {
+          auto j_nuclide = material.nuclide_[i];
+          auto atom_density = material.atom_density_(i);
+          const Nuclide& nuc {*data::nuclides[j_nuclide]};
+          score += get_nuc_fission_q(nuc, p, score_bin) * atom_density 
+            * p->neutron_xs_[j_nuclide].fission;
+        }
+        return score * flux;
+      }
+    }
+  }
+  return 0.0;
+}
+
+
 //! Helper function for nu-fission tallies with energyout filters.
 //
 //! In this case, we may need to score to multiple bins if there were multiple
@@ -339,7 +389,7 @@ void
 score_general_ce(Particle* p, int i_tally, int start_index,
   int filter_index, int i_nuclide, double atom_density, double flux)
 {
-  auto& tally {*model::tallies[i_tally]};
+  Tally& tally {*model::tallies[i_tally]};
 
   // Get the pre-collision energy of the particle.
   auto E = p->E_last_;
@@ -1048,51 +1098,8 @@ score_general_ce(Particle* p, int i_tally, int start_index,
 
     case SCORE_FISS_Q_PROMPT:
     case SCORE_FISS_Q_RECOV:
-      //continue;
       if (p->macro_xs_.absorption == 0.) continue;
-      score = 0.;
-      if (tally.estimator_ == ESTIMATOR_ANALOG) {
-        if (settings::survival_biasing) {
-          // No fission events occur if survival biasing is on -- need to
-          // calculate fraction of absorptions that would have resulted in
-          // fission scaled by the Q-value
-          const Nuclide& nuc {*data::nuclides[p->event_nuclide_]};
-          if (p->neutron_xs_[p->event_nuclide_].absorption > 0) {
-            score = p->wgt_absorb_ * get_nuc_fission_q(nuc, p, score_bin)
-              * p->neutron_xs_[p->event_nuclide_].fission
-              / p->neutron_xs_[p->event_nuclide_].absorption * flux;
-          }
-        } else {
-          // Skip any non-absorption events
-          if (p->event_ == EVENT_SCATTER) continue;
-          // All fission events will contribute, so again we can use particle's
-          // weight entering the collision as the estimate for the fission
-          // reaction rate
-          const Nuclide& nuc {*data::nuclides[p->event_nuclide_]};
-          if (p->neutron_xs_[p->event_nuclide_].absorption > 0) {
-            score = p->wgt_last_ * get_nuc_fission_q(nuc, p, score_bin)
-              * p->neutron_xs_[p->event_nuclide_].fission
-              / p->neutron_xs_[p->event_nuclide_].absorption * flux;
-          }
-        }
-      } else {
-        if (i_nuclide >= 0) {
-          const Nuclide& nuc {*data::nuclides[i_nuclide]};
-          score = get_nuc_fission_q(nuc, p, score_bin)
-            * p->neutron_xs_[i_nuclide].fission * atom_density * flux;
-        } else {
-          if (p->material_ != MATERIAL_VOID) {
-            const Material& material {*model::materials[p->material_]};
-            for (auto i = 0; i < material.nuclide_.size(); ++i) {
-              auto j_nuclide = material.nuclide_[i];
-              auto atom_density = material.atom_density_(i);
-              const Nuclide& nuc {*data::nuclides[j_nuclide]};
-              score += get_nuc_fission_q(nuc, p, score_bin)
-                * p->neutron_xs_[j_nuclide].fission * atom_density * flux;
-            }
-          }
-        }
-      }
+      score = score_fission_q(p, score_bin, tally, flux, i_nuclide, atom_density);
       break;
 
 

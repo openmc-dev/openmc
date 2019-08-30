@@ -6,7 +6,8 @@ from unittest.mock import Mock
 import bisect
 
 import pytest
-import numpy
+import numpy as np
+import openmc
 from openmc import capi
 from openmc.deplete.nuclide import Nuclide, FissionYieldDistribution
 from openmc.deplete.helpers import (
@@ -19,46 +20,25 @@ def materials(tmpdir_factory):
     """Use C API to construct realistic materials for testing tallies"""
     tmpdir = tmpdir_factory.mktemp("capi")
     orig = tmpdir.chdir()
-    # Create proxy xml files to please openmc
-    with open("geometry.xml", "w") as stream:
-        stream.write("""
-<?xml version='1.0' encoding='utf-8'?>
-<geometry>
-  <cell id="1" material="1" name="fuel" region="1 -2 3 -4" universe="1" />
-  <surface boundary="reflective" coeffs="-0.63" id="1" type="x-plane" />
-  <surface boundary="reflective" coeffs="0.63" id="2" type="x-plane" />
-  <surface boundary="reflective" coeffs="-0.63" id="3" type="y-plane" />
-  <surface boundary="reflective" coeffs="0.63" id="4" type="y-plane" />
-</geometry>
-""")
-    with open("settings.xml", "w") as stream:
-        stream.write("""
-<?xml version='1.0' encoding='utf-8'?>
-<settings>
-  <run_mode>eigenvalue</run_mode>
-  <particles>100</particles>
-  <batches>10</batches>
-  <inactive>0</inactive>
-  <verbosity>1</verbosity>
-  <source strength="1.0">
-    <space type="point">
-      <parameters>0.0 0.0 0.0</parameters>
-    </space>
-  </source>
-</settings>
-""")
-    with open("materials.xml", "w") as stream:
-        stream.write("""
-<?xml version='1.0' encoding='utf-8'?>
-<materials>
-  <material depletable="true" id="1" name="U" volume="71.67537585">
-    <density units="g/cc" value="10.4" />
-    <nuclide ao="1.0" name="U235" />
-    <nuclide ao="1.0" name="U238" />
-    <nuclide ao="1.0" name="Xe135" />
-    <nuclide ao="1.0" name="Pu239" />
-  </material>
-</materials>""")
+    # Create proxy problem to please openmc
+    mfuel = openmc.Material(name="test_fuel")
+    mfuel.volume = 1.0
+    for nuclide in ["U235", "U238", "Xe135", "Pu239"]:
+        mfuel.add_nuclide(nuclide, 1.0)
+    openmc.Materials([mfuel]).export_to_xml()
+    # Geometry
+    box = openmc.rectangular_prism(1.0, 1.0, boundary_type="reflective")
+    cell = openmc.Cell(fill=mfuel, region=box)
+    root = openmc.Universe(cells=[cell])
+    openmc.Geometry(root).export_to_xml()
+    # settings
+    settings = openmc.Settings()
+    settings.particles = 100
+    settings.inactive = 0
+    settings.batches = 10
+    settings.verbosity = 1
+    settings.export_to_xml()
+
     try:
         with capi.run_in_memory():
             yield [capi.Material(), capi.Material()]
@@ -87,7 +67,7 @@ def proxy_tally_data(tally, fill=None):
         if isinstance(tfilter, capi.EnergyFilter):
             this_bins -= 1
         n_bins *= max(this_bins, 1)
-    data = numpy.empty((n_bins, n_nucs * n_scores, 3))
+    data = np.empty((n_bins, n_nucs * n_scores, 3))
     if fill is not None:
         data.fill(fill)
     return data
@@ -229,7 +209,7 @@ def test_cutoff_helper(materials, nuclide_bundle, therm_frac):
 
     helper.unpack()
     # expected results of shape (n_mats, 2, n_tnucs)
-    expected_results = numpy.empty((1, 2, len(tally_nucs)))
+    expected_results = np.empty((1, 2, len(tally_nucs)))
     expected_results[:, 0] = therm_frac
     expected_results[:, 1] = 1 - therm_frac
     assert helper.results == pytest.approx(expected_results)
@@ -285,7 +265,7 @@ def test_averaged_helper(materials, nuclide_bundle, avg_energy):
     helper._weighted_tally.results = weighted_results
 
     helper.unpack()
-    expected_results = numpy.ones((1, len(tallied_nucs))) * avg_energy
+    expected_results = np.ones((1, len(tallied_nucs))) * avg_energy
     assert helper.results == pytest.approx(expected_results)
 
     actual_yields = helper.weighted_yields(0)

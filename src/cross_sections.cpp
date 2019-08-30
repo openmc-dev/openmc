@@ -359,9 +359,9 @@ read_ce_cross_sections(const std::vector<std::vector<double>>& nuc_temps,
 
   // Show minimum/maximum temperature
   write_message("Minimum neutron data temperature: " +
-    std::to_string(data::temperature_min) + " K");
+    std::to_string(data::temperature_min) + " K", 4);
   write_message("Maximum neutron data temperature: " +
-    std::to_string(data::temperature_max) + " K");
+    std::to_string(data::temperature_max) + " K", 4);
 
   // If the user wants multipole, make sure we found a multipole library.
   if (settings::temperature_multipole) {

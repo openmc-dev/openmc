@@ -364,7 +364,7 @@ pyne::Sampler initialize_pyne_sampler(){
   return sampler;
 }
 
-Particle::Bank sample_pyne_source(pyne::Sampler sampler)
+Particle::Bank sample_pyne_source(pyne::Sampler& sampler)
 {
   // Set the random number generator to the source stream.
   prn_set_stream(STREAM_SOURCE);

@@ -73,7 +73,7 @@ pyne::Sampler initialize_pyne_sampler();
 
 //! Sample a site from pyne source
 //! \return Sampled source site
-Particle::Bank sample_pyne_source(pyne::Sampler);
+Particle::Bank sample_pyne_source(pyne::Sampler&);
 
 //! Convert a pyne source particle to an openmc source site
 //! \return Sampled source site

@@ -1,3 +1,4 @@
+from collections.abc import Iterable
 from numbers import Real
 import sys
 from xml.etree import ElementTree as ET
@@ -25,7 +26,12 @@ class Source(object):
         Strength of the source
     particle : {'neutron', 'photon'}
         Source particle type
-
+    pyne_source_mode : int
+        Determine the mode of the PyNE source sampler. Required if a PyNE
+        source file is used.
+    pyne_source_e_bounds : iterable of float
+        The energy boundaries of the PyNE source in [eV].
+ 
     Attributes
     ----------
     space : openmc.stats.Spatial or None
@@ -40,7 +46,12 @@ class Source(object):
         Strength of the source
     particle : {'neutron', 'photon'}
         Source particle type
-
+    pyne_source_mode : int
+        Determine the mode of the PyNE source sampler. Required if a PyNE
+        source file is used.
+    pyne_source_e_bounds : iterable of float
+        The energy boundaries of the PyNE source in [eV].
+ 
     """
 
     def __init__(self, space=None, angle=None, energy=None, filename=None,
@@ -49,6 +60,8 @@ class Source(object):
         self._angle = None
         self._energy = None
         self._file = None
+        self._pyne_source_mode = None
+        self._pyne_source_e_bounds = None
 
         if space is not None:
             self.space = space
@@ -85,6 +98,14 @@ class Source(object):
     def particle(self):
         return self._particle
 
+    @property
+    def pyne_source_mode(self):
+        return self._pyne_source_mode
+
+    @property
+    def pyne_source_e_bounds(self):
+        return self._pyne_source_e_bounds
+ 
     @file.setter
     def file(self, filename):
         cv.check_type('source file', filename, str)
@@ -116,6 +137,36 @@ class Source(object):
         cv.check_value('source particle', particle, ['neutron', 'photon'])
         self._particle = particle
 
+    @pyne_source_mode.setter
+    def pyne_source_mode(self, pyne_source_mode):
+        cv.check_type('pyne source mode', pyne_source_mode, int)
+        self._pyne_source_mode = pyne_source_mode
+
+    @pyne_source_e_bounds.setter
+    def pyne_source_e_bounds(self, pyne_source_e_bounds):
+        cv.check_type('pyne source e_bounds', pyne_source_e_bounds, Iterable,
+                Real)
+        cv.check_length('pyne source e_bounds minimum length',
+                pyne_source_e_bounds, 2, float('inf'))
+        cv.check_value('pyne source lowest energy boundary',
+                pyne_source_e_bounds[0], [0.0])
+        # e_bounds should increse
+        for i in range(1, len(pyne_source_e_bounds)):
+            cv.check_greater_than('pyne source energy',
+                    pyne_source_e_bounds[i], pyne_source_e_bounds[i-1])
+        self._pyne_source_e_bounds = pyne_source_e_bounds
+
+
+    def _create_pyne_source_mode_subelement(self, element):
+        if self._pyne_source_mode is not None:
+            sub_elem = ET.SubElement(element, 'pyne_source_mode')
+            sub_elem.text = str(self._pyne_source_mode).lower()
+
+    def _create_pyne_source_e_bounds_subelement(self, element):
+        if self._pyne_source_e_bounds is not None:
+            sub_elem = ET.SubElement(element, 'pyne_source_e_bounds')
+            sub_elem.text = ' '.join(map(str, self._pyne_source_e_bounds))
+
     def to_xml_element(self):
         """Return XML representation of the source
 
@@ -137,6 +188,10 @@ class Source(object):
             element.append(self.angle.to_xml_element())
         if self.energy is not None:
             element.append(self.energy.to_xml_element('energy'))
+        if self.pyne_source_mode is not None:
+            self._create_pyne_source_mode_subelement(element)
+        if self.pyne_source_e_bounds is not None:
+            self._create_pyne_source_e_bounds_subelement(element)
         return element
 
     @classmethod
@@ -179,5 +234,14 @@ class Source(object):
         energy = elem.find('energy')
         if energy is not None:
             source.energy = Univariate.from_xml_element(energy)
+
+        pyne_source_mode = get_text(elem, 'pyne_source_mode')
+        if pyne_source_mode is not None:
+            self.pyne_source_mode = int(pyne_source_mode)
+
+        pyne_source_e_bounds = get_text(elem, 'pyne_source_e_bounds')
+        if pyne_source_e_bounds is not None:
+            self.pyne_source_e_bounds = [float(x) for x in 
+                    pyne_source_e_bounds.split()]
 
         return source

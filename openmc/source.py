@@ -26,6 +26,8 @@ class Source(object):
         Strength of the source
     particle : {'neutron', 'photon'}
         Source particle type
+    source_type : str, optional
+        External source type. {'pyne'}
     pyne_source_mode : int
         Determine the mode of the PyNE source sampler. Required if a PyNE
         source file is used.
@@ -46,6 +48,8 @@ class Source(object):
         Strength of the source
     particle : {'neutron', 'photon'}
         Source particle type
+    source_type : str, optional
+        External source type. {'pyne'}
     pyne_source_mode : int
         Determine the mode of the PyNE source sampler. Required if a PyNE
         source file is used.
@@ -60,6 +64,7 @@ class Source(object):
         self._angle = None
         self._energy = None
         self._file = None
+        self._source_type = None
         self._pyne_source_mode = None
         self._pyne_source_e_bounds = None
 
@@ -97,6 +102,10 @@ class Source(object):
     @property
     def particle(self):
         return self._particle
+
+    @property
+    def source_type(self):
+        return self._source_type
 
     @property
     def pyne_source_mode(self):
@@ -137,6 +146,11 @@ class Source(object):
         cv.check_value('source particle', particle, ['neutron', 'photon'])
         self._particle = particle
 
+    @source_type.setter
+    def source_type(self, source_type):
+        cv.check_value('source type', source_type, ['pyne'])
+        self._source_type = source_type
+
     @pyne_source_mode.setter
     def pyne_source_mode(self, pyne_source_mode):
         cv.check_type('pyne source mode', pyne_source_mode, int)
@@ -156,6 +170,10 @@ class Source(object):
                     pyne_source_e_bounds[i], pyne_source_e_bounds[i-1])
         self._pyne_source_e_bounds = pyne_source_e_bounds
 
+    def _create_source_type_subelement(self, element):
+        if self._source_type is not None:
+            sub_elem = ET.SubElement(element, 'source_type')
+            sub_elem.text = str(self._source_type).lower()
 
     def _create_pyne_source_mode_subelement(self, element):
         if self._pyne_source_mode is not None:
@@ -188,6 +206,8 @@ class Source(object):
             element.append(self.angle.to_xml_element())
         if self.energy is not None:
             element.append(self.energy.to_xml_element('energy'))
+        if self.source_type is not None:
+            self._create_source_type_subelement(element)
         if self.pyne_source_mode is not None:
             self._create_pyne_source_mode_subelement(element)
         if self.pyne_source_e_bounds is not None:
@@ -234,6 +254,10 @@ class Source(object):
         energy = elem.find('energy')
         if energy is not None:
             source.energy = Univariate.from_xml_element(energy)
+
+        source_type = elem.find('source_type')
+        if source_type is not None:
+            source.source_type = source_type
 
         pyne_source_mode = get_text(elem, 'pyne_source_mode')
         if pyne_source_mode is not None:

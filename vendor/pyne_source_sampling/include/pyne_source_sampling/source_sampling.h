@@ -143,6 +143,8 @@ namespace pyne {
   /// Mesh based Monte Carlo source sampling.
   class Sampler {
   public:
+    /// Default constructor
+    Sampler();
     /// Constuctor for analog and uniform sampling
     /// \param filename The path to the MOAB mesh (.h5m) file
     /// \param src_tag_name The name of the tag that describes the unbiased 

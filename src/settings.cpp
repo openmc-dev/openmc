@@ -104,8 +104,8 @@ int trigger_batch_interval {1};
 int verbosity {7};
 double weight_cutoff {0.25};
 double weight_survive {1.0};
-int pyne_source_mode {-1};
-std::vector<double> pyne_source_e_bounds;
+//int pyne_source_mode {-1};
+//std::vector<double> pyne_source_e_bounds;
 
 } // namespace settings
 
@@ -394,15 +394,15 @@ void read_settings_xml()
   for (pugi::xml_node node : root.children("source")) {
     model::external_sources.emplace_back(node);
 
-    // Get pyne_source_mode option
-    if (check_for_node(node, "pyne_source_mode")) {
-      pyne_source_mode = std::stoi(get_node_value(node, "pyne_source_mode"));
-    }
-
-    // Get pyne_source_e_bounds option
-    if (check_for_node(node, "pyne_source_e_bounds")) {
-      pyne_source_e_bounds = get_node_array<double>(node, "pyne_source_e_bounds");
-      }
+//    // Get pyne_source_mode option
+//    if (check_for_node(node, "pyne_source_mode")) {
+//      pyne_source_mode = std::stoi(get_node_value(node, "pyne_source_mode"));
+//    }
+//
+//    // Get pyne_source_e_bounds option
+//    if (check_for_node(node, "pyne_source_e_bounds")) {
+//      pyne_source_e_bounds = get_node_array<double>(node, "pyne_source_e_bounds");
+//      }
     }
 
   // If no source specified, default to isotropic point source at origin with Watt spectrum

@@ -44,8 +44,23 @@ public:
   //! \return Sampled site
   Particle::Bank sample() const;
 
+#ifdef DAGMC
+  //! Initialize the PyNE source sampler
+  //! \return PyNE source sampler
+  pyne::Sampler initialize_pyne_sampler();
+#endif
+
   // Properties
   double strength() const { return strength_; }
+  std::string file_; //!< External source file
+  std::string source_type_; //!< External source type
+#ifdef DAGMC
+  int pyne_source_mode_; //!< PyNE source mode, 0, 1, 2, 3, 4, or 5
+  std::vector<double> pyne_source_e_bounds_; //!< Energy boundaries for pyne source
+  pyne::Sampler sampler_; //!< PyNE sampler
+  bool pyne_sampler_initialized_ {false}; //!< record the state of the sampler
+#endif
+
 private:
   Particle::Type particle_ {Particle::Type::neutron}; //!< Type of particle emitted
   double strength_ {1.0}; //!< Source strength
@@ -69,7 +84,7 @@ Particle::Bank sample_external_source();
 #ifdef DAGMC
 //! Initialize pyne sampler instance
 //! \return Sampler
-pyne::Sampler initialize_pyne_sampler();
+//pyne::Sampler initialize_pyne_sampler();
 
 //! Sample a site from pyne source
 //! \return Sampled source site

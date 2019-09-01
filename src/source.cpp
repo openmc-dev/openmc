@@ -41,7 +41,9 @@ std::vector<SourceDistribution> external_sources;
 //==============================================================================
 
 SourceDistribution::SourceDistribution(UPtrSpace space, UPtrAngle angle, UPtrDist energy)
-  : space_{std::move(space)}, angle_{std::move(angle)}, energy_{std::move(energy)} { }
+  : space_{std::move(space)}, angle_{std::move(angle)}, energy_{std::move(energy)} {
+  //sampler_ = pyne::Sampler();
+  }
 
 SourceDistribution::SourceDistribution(pugi::xml_node node)
 {
@@ -63,17 +65,74 @@ SourceDistribution::SourceDistribution(pugi::xml_node node)
     strength_ = std::stod(get_node_value(node, "strength"));
   }
 
+  // Check for external source type
+  if (check_for_node(node, "source_type")){
+    source_type_ = get_node_value(node, "source_type"); 
+  }
+
+//  // Check for external source file
+//  if (check_for_node(node, "file")) {
+//    // Copy path of source file
+//    settings::path_source = get_node_value(node, "file", false, true);
+//    
+//
+//    // Check if source file exists
+//    if (!file_exists(settings::path_source)) {
+//      std::stringstream msg;
+//      msg << "Source file '" << settings::path_source <<  "' does not exist.";
+//      fatal_error(msg);
+//    }
   // Check for external source file
   if (check_for_node(node, "file")) {
     // Copy path of source file
-    settings::path_source = get_node_value(node, "file", false, true);
-
+    file_ = get_node_value(node, "file", false, true);
+    
     // Check if source file exists
-    if (!file_exists(settings::path_source)) {
+    if (!file_exists(file_)) {
       std::stringstream msg;
-      msg << "Source file '" << settings::path_source <<  "' does not exist.";
+      msg << "Source file '" << file_ <<  "' does not exist.";
       fatal_error(msg);
     }
+
+#ifdef DAGMC
+    // Initialize pyne sampler
+    if (source_type_ == "pyne") {
+      // Open the binary file
+      hid_t file_id = file_open(file_, 'r', true);
+      // Read the file type
+      std::string filetype;
+      read_attribute(file_id, "filetype", filetype);
+      if (filetype != "pyne_r2s_source") {
+        std::stringstream msg;
+        msg << "Source file '" << file_ <<  "' is not pyne_r2s_source file.";
+        fatal_error(msg);
+      }
+
+      // check pyne_source_mode
+      if (check_for_node(node, "pyne_source_mode")) {
+          pyne_source_mode_ = std::stoi(get_node_value(node, "pyne_source_mode"));
+          if (pyne_source_mode_ < 0 or pyne_source_mode_ > 5) {
+            fatal_error("Wrong pyne_source_mode. Must be 0, 1, 2, 3, 4 or 5");
+          }
+      }
+//      if (settings::pyne_source_mode < 0 or settings::pyne_source_mode > 5) {
+//        fatal_error("Wrong pyne_source_mode. Must be 0, 1, 2, 3, 4 or 5");
+//      }
+      // check pyne_source_e_bounds
+      if (check_for_node(node, "pyne_source_e_bounds")) {
+        pyne_source_e_bounds_ = get_node_array<double>(node, "pyne_source_e_bounds");
+        if (pyne_source_e_bounds_.size() < 2) {
+          fatal_error("Wrong pyne_source_e_bounds!");
+        }
+      }
+//      if (settings::pyne_source_e_bounds.size() < 2) {
+//        fatal_error("Wrong pyne_source_e_bounds!");
+//      }
+      // initial sampler
+      sampler_ = initialize_pyne_sampler();
+      pyne_sampler_initialized_ = true;
+    }
+#endif
 
   } else {
 
@@ -254,7 +313,7 @@ void initialize_source()
     read_attribute(file_id, "filetype", filetype);
 
     // Check to make sure this is a source file
-    if (filetype != "source" && filetype != "statepoint" && filetype != "pyne_r2s_source") {
+    if (filetype != "source" && filetype != "statepoint") {
       fatal_error("Specified starting source file not a source file type.");
     }
 
@@ -263,31 +322,31 @@ void initialize_source()
       read_source_bank(file_id);
     } 
 
-#ifdef DAGMC
-    // Read in the pyne_r2s_source
-    if (filetype == "pyne_r2s_source") {
-      // check pyne_source_mode
-      if (settings::pyne_source_mode < 0 or settings::pyne_source_mode > 5) {
-        fatal_error("Wrong pyne_source_mode. Must be 0, 1, 2, 3, 4 or 5");
-      }
-      // check pyne_source_e_bounds
-      if (settings::pyne_source_e_bounds.size() < 2) {
-        fatal_error("Wrong pyne_source_e_bounds!");
-      }
-      // initial sampler
-      pyne::Sampler sampler = initialize_pyne_sampler();
-      // Generation source sites from pyne source
-      for (int64_t i = 0; i < simulation::work_per_rank; ++i) {
-        // initialize random number seed
-        int64_t id = simulation::total_gen*settings::n_particles +
-          simulation::work_index[mpi::rank] + i + 1;
-        set_particle_seed(id);
-
-        // sample external source distribution
-        simulation::source_bank[i] = sample_pyne_source(sampler);
-      }
-    }
-#endif
+//#ifdef DAGMC
+//    // Read in the pyne_r2s_source
+//    if (filetype == "pyne_r2s_source") {
+//      // check pyne_source_mode
+//      if (settings::pyne_source_mode < 0 or settings::pyne_source_mode > 5) {
+//        fatal_error("Wrong pyne_source_mode. Must be 0, 1, 2, 3, 4 or 5");
+//      }
+//      // check pyne_source_e_bounds
+//      if (settings::pyne_source_e_bounds.size() < 2) {
+//        fatal_error("Wrong pyne_source_e_bounds!");
+//      }
+//      // initial sampler
+//      pyne::Sampler sampler = initialize_pyne_sampler();
+//      // Generation source sites from pyne source
+//      for (int64_t i = 0; i < simulation::work_per_rank; ++i) {
+//        // initialize random number seed
+//        int64_t id = simulation::total_gen*settings::n_particles +
+//          simulation::work_index[mpi::rank] + i + 1;
+//        set_particle_seed(id);
+//
+//        // sample external source distribution
+//        simulation::source_bank[i] = sample_pyne_source(sampler);
+//      }
+//    }
+//#endif
 
     // Close file
     file_close(file_id);
@@ -337,7 +396,17 @@ Particle::Bank sample_external_source()
   }
 
   // Sample source site from i-th source distribution
-  Particle::Bank site {model::external_sources[i].sample()};
+  Particle::Bank site;
+//  Particle::Bank site {model::external_sources[i].sample()};
+#ifdef DAGMC
+  if (model::external_sources[i].source_type_ == "pyne") {
+    site = sample_pyne_source(model::external_sources[i].sampler_);
+  } else {
+    fatal_error("External source type is not 'pyne'");
+  }
+#else 
+  site = {model::external_sources[i].sample()};
+#endif
 
   // If running in MG, convert site % E to group
   if (!settings::run_CE) {
@@ -353,24 +422,24 @@ Particle::Bank sample_external_source()
 }
 
 #ifdef DAGMC
-pyne::Sampler initialize_pyne_sampler(){
+pyne::Sampler SourceDistribution::initialize_pyne_sampler(){
   std::map<std::string, std::string> tag_names;
   tag_names["src_tag_name"] = "source_density";
   tag_names["bias_tag_name"] = "biased_source_density";
   tag_names["cell_number_tag_name"] = "cell_number";
   tag_names["cell_fracs_tag_name"] = "cell_fracs";
-  pyne::Sampler sampler = pyne::Sampler(settings::path_source, tag_names,
-		 settings::pyne_source_e_bounds, settings::pyne_source_mode);
+  pyne::Sampler sampler = pyne::Sampler(file_, tag_names,
+		 pyne_source_e_bounds_, pyne_source_mode_);
   return sampler;
 }
 
 Particle::Bank sample_pyne_source(pyne::Sampler& sampler)
 {
   // Set the random number generator to the source stream.
-  prn_set_stream(STREAM_SOURCE);
+//  prn_set_stream(STREAM_SOURCE);
 
   // Determine total source strength
-  double total_strength = 1.0;
+//  double total_strength = 1.0;
 
   // Repeat sampling source location until a good site has been found
   bool found = false;
@@ -421,15 +490,15 @@ Particle::Bank sample_pyne_source(pyne::Sampler& sampler)
     }
   }
 
-  // If running in MG, convert site % E to group
-  if (!settings::run_CE) {
-    site.E = lower_bound_index(data::rev_energy_bins.begin(),
-      data::rev_energy_bins.end(), site.E);
-    site.E = data::num_energy_groups - site.E;
-  }
-
-  // Set the random number generator back to the tracking stream.
-  prn_set_stream(STREAM_TRACKING);
+//  // If running in MG, convert site % E to group
+//  if (!settings::run_CE) {
+//    site.E = lower_bound_index(data::rev_energy_bins.begin(),
+//      data::rev_energy_bins.end(), site.E);
+//    site.E = data::num_energy_groups - site.E;
+//  }
+//
+//  // Set the random number generator back to the tracking stream.
+//  prn_set_stream(STREAM_TRACKING);
 
   return site;
 }

@@ -2,6 +2,7 @@
 
 #include <algorithm> // for move
 #include <sstream> // for stringstream
+#include <map>
 #ifdef DAGMC
 #include "pyne_source_sampling/source_sampling.h" // for pyne source sampling
 #endif

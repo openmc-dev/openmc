@@ -40,6 +40,9 @@ public:
   SourceDistribution(UPtrSpace space, UPtrAngle angle, UPtrDist energy);
   explicit SourceDistribution(pugi::xml_node node);
 
+  ~SourceDistribution();
+  SourceDistribution(const SourceDistribution &source_distribution);
+  SourceDistribution& operator=(const SourceDistribution& source_distribution);
   //! Sample from the external source distribution
   //! \return Sampled site
   Particle::Bank sample() const;
@@ -47,7 +50,7 @@ public:
 #ifdef DAGMC
   //! Initialize the PyNE source sampler
   //! \return PyNE source sampler
-  pyne::Sampler initialize_pyne_sampler();
+  pyne::Sampler* initialize_pyne_sampler();
 #endif
 
   // Properties
@@ -57,7 +60,7 @@ public:
 #ifdef DAGMC
   int pyne_source_mode_; //!< PyNE source mode, 0, 1, 2, 3, 4, or 5
   std::vector<double> pyne_source_e_bounds_; //!< Energy boundaries for pyne source
-  pyne::Sampler sampler_; //!< PyNE sampler
+  pyne::Sampler* sampler_ {NULL}; //!< PyNE sampler
   bool pyne_sampler_initialized_ {false}; //!< record the state of the sampler
 #endif
 
@@ -88,7 +91,7 @@ Particle::Bank sample_external_source();
 
 //! Sample a site from pyne source
 //! \return Sampled source site
-Particle::Bank sample_pyne_source(pyne::Sampler&);
+Particle::Bank sample_pyne_source(pyne::Sampler*);
 
 //! Convert a pyne source particle to an openmc source site
 //! \return Sampled source site

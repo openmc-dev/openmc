@@ -63,11 +63,6 @@ std::vector<double> pyne::read_e_bounds(std::string e_bounds_file){
 
 
 // C++ API
-pyne::Sampler::Sampler(){
-  at = NULL;
-  mesh = NULL;
-}
-
 pyne::Sampler::Sampler(std::string filename, 
                  std::string src_tag_name, 
                  std::vector<double> e_bounds, 

@@ -33,6 +33,16 @@ namespace openmc {
 namespace model {
 
 std::vector<SourceDistribution> external_sources;
+std::map<std::string, std::string> tag_names {
+  {"src_tag_name", "source_density"},
+  {"bias_tag_name", "biased_source_density"},
+  {"cell_number_tag_name", "cell_number"},
+  {"cell_fracs_tag_name", "cell_fracs"}
+};
+//tag_names["src_tag_name"] = "source_density";
+//tag_names["bias_tag_name"] = "biased_source_density";
+//tag_names["cell_number_tag_name"] = "cell_number";
+//tag_names["cell_fracs_tag_name"] = "cell_fracs";
 
 }
 
@@ -42,7 +52,6 @@ std::vector<SourceDistribution> external_sources;
 
 SourceDistribution::SourceDistribution(UPtrSpace space, UPtrAngle angle, UPtrDist energy)
   : space_{std::move(space)}, angle_{std::move(angle)}, energy_{std::move(energy)} {
-  //sampler_ = pyne::Sampler();
   }
 
 SourceDistribution::SourceDistribution(pugi::xml_node node)
@@ -200,6 +209,41 @@ SourceDistribution::SourceDistribution(pugi::xml_node node)
   }
 }
 
+SourceDistribution::~SourceDistribution() {
+#ifdef DAGMC
+  delete sampler_;
+  sampler_ = NULL;
+#endif
+}
+
+SourceDistribution::SourceDistribution(const SourceDistribution& source_distribution) {
+  strength_ = source_distribution.strength();
+  file_ = source_distribution.file_;
+  source_type_ = source_distribution.source_type_;
+#ifdef DAGMC
+  pyne_source_mode_ = source_distribution.pyne_source_mode_;
+  sampler_ = new pyne::Sampler(source_distribution.file_,
+    model::tag_names, source_distribution.pyne_source_e_bounds_,
+    source_distribution.pyne_source_mode_);
+#endif
+}
+
+SourceDistribution& SourceDistribution::operator=(const SourceDistribution& source_distribution) {
+  if (this == &source_distribution) return  *this;
+  else {
+#ifdef DAGMC
+    delete sampler_;
+    sampler_ = new pyne::Sampler(source_distribution.file_,
+      model::tag_names, source_distribution.pyne_source_e_bounds_,
+      source_distribution.pyne_source_mode_);
+    pyne_source_mode_ = source_distribution.pyne_source_mode_;
+#endif
+    strength_ = source_distribution.strength();
+    file_ = source_distribution.file_;
+    source_type_ = source_distribution.source_type_;
+  }
+  return *this;
+}
 
 Particle::Bank SourceDistribution::sample() const
 {
@@ -422,18 +466,13 @@ Particle::Bank sample_external_source()
 }
 
 #ifdef DAGMC
-pyne::Sampler SourceDistribution::initialize_pyne_sampler(){
-  std::map<std::string, std::string> tag_names;
-  tag_names["src_tag_name"] = "source_density";
-  tag_names["bias_tag_name"] = "biased_source_density";
-  tag_names["cell_number_tag_name"] = "cell_number";
-  tag_names["cell_fracs_tag_name"] = "cell_fracs";
-  pyne::Sampler sampler = pyne::Sampler(file_, tag_names,
+pyne::Sampler* SourceDistribution::initialize_pyne_sampler(){
+  pyne::Sampler* sampler = new pyne::Sampler(file_, model::tag_names,
 		 pyne_source_e_bounds_, pyne_source_mode_);
   return sampler;
 }
 
-Particle::Bank sample_pyne_source(pyne::Sampler& sampler)
+Particle::Bank sample_pyne_source(pyne::Sampler* sampler)
 {
   // Set the random number generator to the source stream.
 //  prn_set_stream(STREAM_SOURCE);
@@ -481,7 +520,7 @@ Particle::Bank sample_pyne_source(pyne::Sampler& sampler)
       rands[4] = prn();
     }
     // Sample particle
-    src = sampler.particle_birth(rands);
+    src = sampler->particle_birth(rands);
     site = convert_pyne_source_particle(src);
     // Check for rejection
     found = check_pyne_source_particle(site);

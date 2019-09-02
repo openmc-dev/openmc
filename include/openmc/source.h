@@ -56,7 +56,7 @@ public:
   // Properties
   double strength() const { return strength_; }
   std::string file_; //!< External source file
-  std::string source_type_; //!< External source type
+  std::string source_type_ {"openmc"}; //!< External source type
 #ifdef DAGMC
   int pyne_source_mode_; //!< PyNE source mode, 0, 1, 2, 3, 4, or 5
   std::vector<double> pyne_source_e_bounds_; //!< Energy boundaries for pyne source

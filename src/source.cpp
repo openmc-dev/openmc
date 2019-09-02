@@ -397,8 +397,6 @@ Particle::Bank sample_external_source()
 #ifdef DAGMC
   if (model::external_sources[i].source_type_ == "pyne") {
     site = sample_pyne_source(model::external_sources[i].sampler_);
-  } else {
-    fatal_error("External source type is not 'pyne'");
   }
 #else 
   site = {model::external_sources[i].sample()};

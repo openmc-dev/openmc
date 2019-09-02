@@ -27,7 +27,7 @@ class Source(object):
     particle : {'neutron', 'photon'}
         Source particle type
     source_type : str, optional
-        External source type. {'pyne'}
+        External source type. {'openmc', 'pyne'}
     pyne_source_mode : int
         Determine the mode of the PyNE source sampler. Required if a PyNE
         source file is used.
@@ -49,7 +49,7 @@ class Source(object):
     particle : {'neutron', 'photon'}
         Source particle type
     source_type : str, optional
-        External source type. {'pyne'}
+        External source type. {'openmc', 'pyne'}
     pyne_source_mode : int
         Determine the mode of the PyNE source sampler. Required if a PyNE
         source file is used.
@@ -148,7 +148,7 @@ class Source(object):
 
     @source_type.setter
     def source_type(self, source_type):
-        cv.check_value('source type', source_type, ['pyne'])
+        cv.check_value('source type', source_type, ['openmc', 'pyne'])
         self._source_type = source_type
 
     @pyne_source_mode.setter

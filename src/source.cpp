@@ -39,10 +39,6 @@ std::map<std::string, std::string> tag_names {
   {"cell_number_tag_name", "cell_number"},
   {"cell_fracs_tag_name", "cell_fracs"}
 };
-//tag_names["src_tag_name"] = "source_density";
-//tag_names["bias_tag_name"] = "biased_source_density";
-//tag_names["cell_number_tag_name"] = "cell_number";
-//tag_names["cell_fracs_tag_name"] = "cell_fracs";
 
 }
 
@@ -79,18 +75,6 @@ SourceDistribution::SourceDistribution(pugi::xml_node node)
     source_type_ = get_node_value(node, "source_type"); 
   }
 
-//  // Check for external source file
-//  if (check_for_node(node, "file")) {
-//    // Copy path of source file
-//    settings::path_source = get_node_value(node, "file", false, true);
-//    
-//
-//    // Check if source file exists
-//    if (!file_exists(settings::path_source)) {
-//      std::stringstream msg;
-//      msg << "Source file '" << settings::path_source <<  "' does not exist.";
-//      fatal_error(msg);
-//    }
   // Check for external source file
   if (check_for_node(node, "file")) {
     // Copy path of source file
@@ -124,9 +108,6 @@ SourceDistribution::SourceDistribution(pugi::xml_node node)
             fatal_error("Wrong pyne_source_mode. Must be 0, 1, 2, 3, 4 or 5");
           }
       }
-//      if (settings::pyne_source_mode < 0 or settings::pyne_source_mode > 5) {
-//        fatal_error("Wrong pyne_source_mode. Must be 0, 1, 2, 3, 4 or 5");
-//      }
       // check pyne_source_e_bounds
       if (check_for_node(node, "pyne_source_e_bounds")) {
         pyne_source_e_bounds_ = get_node_array<double>(node, "pyne_source_e_bounds");
@@ -134,9 +115,6 @@ SourceDistribution::SourceDistribution(pugi::xml_node node)
           fatal_error("Wrong pyne_source_e_bounds!");
         }
       }
-//      if (settings::pyne_source_e_bounds.size() < 2) {
-//        fatal_error("Wrong pyne_source_e_bounds!");
-//      }
       // initial sampler
       sampler_ = initialize_pyne_sampler();
       pyne_sampler_initialized_ = true;
@@ -366,32 +344,6 @@ void initialize_source()
       read_source_bank(file_id);
     } 
 
-//#ifdef DAGMC
-//    // Read in the pyne_r2s_source
-//    if (filetype == "pyne_r2s_source") {
-//      // check pyne_source_mode
-//      if (settings::pyne_source_mode < 0 or settings::pyne_source_mode > 5) {
-//        fatal_error("Wrong pyne_source_mode. Must be 0, 1, 2, 3, 4 or 5");
-//      }
-//      // check pyne_source_e_bounds
-//      if (settings::pyne_source_e_bounds.size() < 2) {
-//        fatal_error("Wrong pyne_source_e_bounds!");
-//      }
-//      // initial sampler
-//      pyne::Sampler sampler = initialize_pyne_sampler();
-//      // Generation source sites from pyne source
-//      for (int64_t i = 0; i < simulation::work_per_rank; ++i) {
-//        // initialize random number seed
-//        int64_t id = simulation::total_gen*settings::n_particles +
-//          simulation::work_index[mpi::rank] + i + 1;
-//        set_particle_seed(id);
-//
-//        // sample external source distribution
-//        simulation::source_bank[i] = sample_pyne_source(sampler);
-//      }
-//    }
-//#endif
-
     // Close file
     file_close(file_id);
 
@@ -441,7 +393,6 @@ Particle::Bank sample_external_source()
 
   // Sample source site from i-th source distribution
   Particle::Bank site;
-//  Particle::Bank site {model::external_sources[i].sample()};
 #ifdef DAGMC
   if (model::external_sources[i].source_type_ == "pyne") {
     site = sample_pyne_source(model::external_sources[i].sampler_);
@@ -474,12 +425,6 @@ pyne::Sampler* SourceDistribution::initialize_pyne_sampler(){
 
 Particle::Bank sample_pyne_source(pyne::Sampler* sampler)
 {
-  // Set the random number generator to the source stream.
-//  prn_set_stream(STREAM_SOURCE);
-
-  // Determine total source strength
-//  double total_strength = 1.0;
-
   // Repeat sampling source location until a good site has been found
   bool found = false;
   int n_reject = 0;
@@ -528,16 +473,6 @@ Particle::Bank sample_pyne_source(pyne::Sampler* sampler)
       ++n_reject;
     }
   }
-
-//  // If running in MG, convert site % E to group
-//  if (!settings::run_CE) {
-//    site.E = lower_bound_index(data::rev_energy_bins.begin(),
-//      data::rev_energy_bins.end(), site.E);
-//    site.E = data::num_energy_groups - site.E;
-//  }
-//
-//  // Set the random number generator back to the tracking stream.
-//  prn_set_stream(STREAM_TRACKING);
 
   return site;
 }

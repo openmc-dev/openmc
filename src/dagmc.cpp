@@ -172,7 +172,7 @@ void load_dagmc_geometry()
 
   // notify user if UWUW materials are going to be used
   if (using_uwuw) {
-    std::cout << "Found UWUW Materials in the DAGMC geometry file.\n";
+    write_message("Found UWUW Materials in the DAGMC geometry file.", 6);
   }
 
   int32_t dagmc_univ_id = 0; // universe is always 0 for DAGMC runs

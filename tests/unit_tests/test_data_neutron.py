@@ -206,21 +206,19 @@ def test_derived_products(am244):
 
 
 def test_heating(run_in_tmpdir, am244):
+    assert 318 in am244.reactions
     assert 999 in am244.reactions
-    strT = min(am244.reactions[1].xs.keys())
-    total_xs = am244.reactions[1].xs[strT].y
-    fission_xs = am244.reactions[18].xs[strT].y
-    total_heating = am244.reactions[301].xs[strT].y
-    no_fission_heating = am244.reactions[999].xs[strT].y
-    heating_number = total_heating / total_xs
-    assert no_fission_heating == pytest.approx(
-        heating_number * (total_xs - fission_xs))
-    # Re-read to ensure data is written
-    am244.export_to_hdf5("Am244.h5")
-    new = openmc.data.IncidentNeutron.from_hdf5("Am244.h5")
-    assert 999 in new.reactions
-    new_rxn = new.reactions[999].xs[strT].y
-    assert (new_rxn == no_fission_heating).all()
+    # compare values in 999 reaction
+    total_heating = am244.reactions[301].xs["294K"]
+    fission_heating = am244.reactions[318].xs["294K"]
+    expected_y = total_heating.y - fission_heating(total_heating.x)
+    assert am244.reactions[999].xs["294K"].y == pytest.approx(expected_y)
+
+    am244.export_to_hdf5("am244.h5")
+    read_in = openmc.data.IncidentNeutron.from_hdf5("am244.h5")
+    assert 318 in read_in.reactions
+    assert 999 in read_in.reactions
+    assert read_in.reactions[999].xs["294K"].y == pytest.approx(expected_y)
 
 
 def test_urr(pu239):

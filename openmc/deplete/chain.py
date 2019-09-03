@@ -9,12 +9,13 @@ from itertools import chain
 import math
 import re
 from collections import OrderedDict, defaultdict
-from collections.abc import Mapping
+from collections.abc import Mapping, Iterable
 from numbers import Real
 from warnings import warn
 
 from openmc.checkvalue import check_type, check_greater_than
 from openmc.data import gnd_name, zam
+from .nuclide import FissionYieldDistribution
 
 # Try to use lxml if it is available. It preserves the order of attributes and
 # provides a pretty-printer by default. If not available,
@@ -136,12 +137,22 @@ class Chain(object):
         Reactions that are tracked in the depletion chain
     nuclide_dict : OrderedDict of str to int
         Maps a nuclide name to an index in nuclides.
+    fission_yields : None or iterable of dict
+        List of effective fission yields for materials. Each dictionary
+        should be of the form ``{parent: {product: yield}}`` with
+        types ``{str: {str: float}}``, where ``yield`` is the fission product
+        yield for isotope ``parent`` producing isotope ``product``.
+        A single entry indicates yields are constant across all materials.
+        Otherwise, an entry can be added for each material to be burned.
+        Ordering should be identical to how the operator orders reaction
+        rates for burnable materials.
     """
 
     def __init__(self):
         self.nuclides = []
         self.reactions = []
         self.nuclide_dict = OrderedDict()
+        self._fission_yields = None
 
     def __contains__(self, nuclide):
         return nuclide in self.nuclide_dict
@@ -209,8 +220,7 @@ class Chain(object):
         for idx, parent in enumerate(sorted(decay_data, key=openmc.data.zam)):
             data = decay_data[parent]
 
-            nuclide = Nuclide()
-            nuclide.name = parent
+            nuclide = Nuclide(parent)
 
             chain.nuclides.append(nuclide)
             chain.nuclide_dict[parent] = idx
@@ -225,7 +235,8 @@ class Chain(object):
                     if mode.daughter in decay_data:
                         target = mode.daughter
                     else:
-                        print('missing {} {} {}'.format(parent, ','.join(mode.modes), mode.daughter))
+                        print('missing {} {} {}'.format(
+                            parent, ','.join(mode.modes), mode.daughter))
                         target = replace_missing(mode.daughter, decay_data)
 
                     # Write branching ratio, taking care to ensure sum is unity
@@ -279,15 +290,16 @@ class Chain(object):
                 fpy = fpy_data[parent]
 
                 if fpy.energies is not None:
-                    nuclide.yield_energies = fpy.energies
+                    yield_energies = fpy.energies
                 else:
-                    nuclide.yield_energies = [0.0]
+                    yield_energies = [0.0]
 
-                for E, table in zip(nuclide.yield_energies, fpy.independent):
+                yield_data = {}
+                for E, table in zip(yield_energies, fpy.independent):
                     yield_replace = 0.0
                     yields = defaultdict(float)
                     for product, y in table.items():
-                        # Handle fission products that have no decay data available
+                        # Handle fission products that have no decay data
                         if product not in decay_data:
                             daughter = replace_missing(product, decay_data)
                             product = daughter
@@ -297,10 +309,9 @@ class Chain(object):
 
                     if yield_replace > 0.0:
                         missing_fp.append((parent, E, yield_replace))
+                    yield_data[E] = yields
 
-                    nuclide.yield_data[E] = []
-                    for k in sorted(yields, key=openmc.data.zam):
-                        nuclide.yield_data[E].append((k, yields[k]))
+                nuclide.yield_data = FissionYieldDistribution(yield_data)
 
         # Display warnings
         if missing_daughter:
@@ -387,22 +398,55 @@ class Chain(object):
             clean_indentation(root_elem)
             tree.write(str(filename), encoding='utf-8')
 
-    def form_matrix(self, rates):
+    def get_thermal_fission_yields(self):
+        """Return fission yields at lowest incident neutron energy
+
+        Used as the default set of fission yields for :meth:`form_matrix`
+        if ``fission_yields`` are not provided
+
+        Returns
+        -------
+        fission_yields : dict
+            Dictionary of ``{parent: {product: f_yield}}``
+            where ``parent`` and ``product`` are both string
+            names of nuclides with yield data and ``f_yield``
+            is a float for the fission yield.
+        """
+        out = {}
+        for nuc in self.nuclides:
+            if nuc.yield_data is None:
+                continue
+            yield_obj = nuc.yield_data[min(nuc.yield_energies)]
+            out[nuc.name] = dict(yield_obj)
+        return out
+
+    def form_matrix(self, rates, fission_yields=None):
         """Forms depletion matrix.
 
         Parameters
         ----------
         rates : numpy.ndarray
             2D array indexed by (nuclide, reaction)
+        fission_yields : dict, optional
+            Option to use a custom set of fission yields. Expected
+            to be of the form ``{parent : {product : f_yield}}``
+            with string nuclide names for ``parent`` and ``product``,
+            and ``f_yield`` as the respective fission yield
 
         Returns
         -------
         scipy.sparse.csr_matrix
             Sparse matrix representing depletion.
 
+        See Also
+        --------
+        :meth:`get_thermal_fission_yields`
         """
         matrix = defaultdict(float)
         reactions = set()
+
+        if fission_yields is None:
+            fission_yields = self.get_thermal_fission_yields()
 
         for i, nuc in enumerate(self.nuclides):
 
@@ -448,11 +492,7 @@ class Chain(object):
                                 k = self.nuclide_dict[target]
                                 matrix[k, i] += path_rate * br
                         else:
-                            # Assume that we should always use thermal fission
-                            # yields. At some point it would be nice to account
-                            # for the energy-dependence..
-                            energy, data = sorted(nuc.yield_data.items())[0]
-                            for product, y in data:
+                            for product, y in fission_yields[nuc.name].items():
                                 yield_val = y * path_rate
                                 if yield_val != 0.0:
                                     k = self.nuclide_dict[product]
@@ -677,6 +717,20 @@ class Chain(object):
                 new_ratios[ground_tgt] = ground_br
                 parent.reactions.append(ReactionTuple(
                     reaction, ground_tgt, rxn_Q, ground_br))
+
+    @property
+    def fission_yields(self):
+        if self._fission_yields is None:
+            self._fission_yields = [self.get_thermal_fission_yields()]
+        return self._fission_yields
+
+    @fission_yields.setter
+    def fission_yields(self, yields):
+        if yields is not None:
+            if isinstance(yields, Mapping):
+                yields = [yields]
+            check_type("fission_yields", yields, Iterable, Mapping)
+        self._fission_yields = yields
 
     def validate(self, strict=True, quiet=False, tolerance=1e-4):
         """Search for possible inconsistencies

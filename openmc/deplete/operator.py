@@ -25,7 +25,9 @@ from .abc import TransportOperator, OperatorResult
 from .atom_number import AtomNumber
 from .reaction_rates import ReactionRates
 from .results_list import ResultsList
-from .helpers import DirectReactionRateHelper, ChainFissionHelper
+from .helpers import (
+    DirectReactionRateHelper, ChainFissionHelper, ConstantFissionYieldHelper,
+    FissionYieldCutoffHelper, AveragedFissionYieldHelper)
 
 
 def _distribute(items):
@@ -84,6 +86,21 @@ class Operator(TransportOperator):
         in initial condition to ensure they exist in the decay chain.
         Only done for nuclides with reaction rates.
         Defaults to 1.0e3.
+    fission_yield_mode : {"constant", "cutoff", "average"}
+        Key indicating what fission product yield scheme to use. The
+        key determines what fission energy helper is used:
+
+        * "constant": :class:`~openmc.deplete.helpers.ConstantFissionYieldHelper`
+        * "cutoff": :class:`~openmc.deplete.helpers.FissionYieldCutoffHelper`
+        * "average": :class:`~openmc.deplete.helpers.AveragedFissionYieldHelper`
+
+        The documentation on these classes describe their methodology
+        and differences. Default: ``"constant"``
+    fission_yield_opts : dict of str to option, optional
+        Optional arguments to pass to the helper determined by
+        ``fission_yield_mode``. Will be passed directly on to the
+        helper. Passing a value of None will use the defaults for
+        the associated helper.
 
     Attributes
     ----------
@@ -120,9 +137,20 @@ class Operator(TransportOperator):
     diff_burnable_mats : bool
         Whether to differentiate burnable materials with multiple instances
     """
+    _fission_helpers = {
+        "average": AveragedFissionYieldHelper,
+        "constant": ConstantFissionYieldHelper,
+        "cutoff": FissionYieldCutoffHelper,
+    }
+
     def __init__(self, geometry, settings, chain_file=None, prev_results=None,
                  diff_burnable_mats=False, fission_q=None,
-                 dilute_initial=1.0e3):
+                 dilute_initial=1.0e3, fission_yield_mode="constant",
+                 fission_yield_opts=None):
+        if fission_yield_mode not in self._fission_helpers:
+            raise KeyError(
+                "fission_yield_mode must be one of {}, not {}".format(
+                    ", ".join(self._fission_helpers), fission_yield_mode))
         super().__init__(chain_file, fission_q, dilute_initial, prev_results)
         self.round_number = False
         self.prev_res = None
@@ -178,6 +206,13 @@ class Operator(TransportOperator):
             self.reaction_rates.n_nuc, self.reaction_rates.n_react)
         self._energy_helper = ChainFissionHelper()
 
+        # Select and create fission yield helper
+        fission_helper = self._fission_helpers[fission_yield_mode]
+        fission_yield_opts = (
+            {} if fission_yield_opts is None else fission_yield_opts)
+        self._yield_helper = fission_helper.from_operator(
+            self, **fission_yield_opts)
+
     def __call__(self, vec, power):
         """Runs a simulation.
 
@@ -204,8 +239,10 @@ class Operator(TransportOperator):
 
         # Update material compositions and tally nuclides
         self._update_materials()
-        self._rate_helper.nuclides = self._get_tally_nuclides()
-        self._energy_helper.nuclides = self._rate_helper.nuclides
+        nuclides = self._get_tally_nuclides()
+        self._rate_helper.nuclides = nuclides
+        self._energy_helper.nuclides = nuclides
+        self._yield_helper.update_tally_nuclides(nuclides)
 
         # Run OpenMC
         openmc.capi.reset()
@@ -409,6 +446,10 @@ class Operator(TransportOperator):
         self._rate_helper.generate_tallies(materials, self.chain.reactions)
         self._energy_helper.prepare(
             self.chain.nuclides, self.reaction_rates.index_nuc, materials)
+        # Tell fission yield helper what materials this process is
+        # responsible for
+        self._yield_helper.generate_tallies(
+            materials, tuple(sorted(self._mat_index_map.values())))
 
         # Return number density vector
         return list(self.number.get_mat_slice(np.s_[:]))
@@ -554,6 +595,10 @@ class Operator(TransportOperator):
         # Keep track of energy produced from all reactions in eV per source
         # particle
         self._energy_helper.reset()
+        self._yield_helper.unpack()
+
+        # Store fission yield dictionaries
+        fission_yields = []
 
         # Create arrays to store fission Q values, reaction rates, and nuclide
         # numbers, zeroed out in material iteration
@@ -576,6 +621,9 @@ class Operator(TransportOperator):
             tally_rates = self._rate_helper.get_material_rates(
                 mat_index, nuc_ind, react_ind)
 
+            # Compute fission yields for this material
+            fission_yields.append(self._yield_helper.weighted_yields(i))
+
             # Accumulate energy from fission
             self._energy_helper.update(tally_rates[:, fission_ind], mat_index)
 
@@ -588,6 +636,9 @@ class Operator(TransportOperator):
 
         # Scale reaction rates to obtain units of reactions/sec
         rates *= power / energy
+
+        # Store new fission yields on the chain
+        self.chain.fission_yields = fission_yields
 
         return OperatorResult(k_combined, rates)
 

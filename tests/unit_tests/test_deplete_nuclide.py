@@ -2,8 +2,8 @@
 
 import xml.etree.ElementTree as ET
 
+import numpy
 import pytest
-
 from openmc.deplete import nuclide
 
 
@@ -71,18 +71,20 @@ def test_from_xml():
         nuclide.ReactionTuple('(n,gamma)', 'U236', 6545200.0, 1.0),
         nuclide.ReactionTuple('fission', None, 193405400.0, 1.0),
     ]
-    assert u235.yield_energies == [0.0253]
-    assert u235.yield_data == {
-        0.0253: [('Te134', 0.062155), ('Zr100', 0.0497641),
-                 ('Xe138', 0.0481413)]
-    }
+    expected_yield_data = nuclide.FissionYieldDistribution({
+        0.0253: {"Xe138": 0.0481413, "Zr100": 0.0497641, "Te134": 0.062155}})
+    assert u235.yield_data == expected_yield_data
+    # test accessing the yield energies through the FissionYieldDistribution
+    assert u235.yield_energies == (0.0253,)
+    assert u235.yield_energies is u235.yield_data.energies
+    with pytest.raises(AttributeError):  # not settable
+        u235.yield_energies = [0.0253, 5e5]
 
 
 def test_to_xml_element():
     """Test writing nuclide data to an XML element."""
 
-    C = nuclide.Nuclide()
-    C.name = "C"
+    C = nuclide.Nuclide("C")
     C.half_life = 0.123
     C.decay_modes = [
         nuclide.DecayTuple('beta-', 'B', 0.99),
@@ -92,8 +94,8 @@ def test_to_xml_element():
         nuclide.ReactionTuple('fission', None, 2.0e8, 1.0),
         nuclide.ReactionTuple('(n,gamma)', 'A', 0.0, 1.0)
     ]
-    C.yield_energies = [0.0253]
-    C.yield_data = {0.0253: [("A", 0.0292737), ("B", 0.002566345)]}
+    C.yield_data = nuclide.FissionYieldDistribution(
+        {0.0253: {"A": 0.0292737, "B": 0.002566345}})
     element = C.to_xml_element()
 
     assert element.get("half_life") == "0.123"
@@ -116,6 +118,57 @@ def test_to_xml_element():
     assert float(rx_elems[1].get("Q")) == 0.0
 
     assert element.find('neutron_fission_yields') is not None
+
+
+def test_fission_yield_distribution():
+    """Test an energy-dependent yield distribution"""
+    yield_dict = {
+        0.0253: {"Xe135": 7.85e-4, "Gd155": 4.08e-12, "Sm149": 1.71e-12},
+        1.40e7: {"Xe135": 4.54e-3, "Gd155": 5.83e-8, "Sm149": 2.69e-8},
+        5.00e5: {"Xe135": 1.12e-3, "Gd155": 1.32e-12},  # drop Sm149
+    }
+    yield_dist = nuclide.FissionYieldDistribution(yield_dict)
+    assert len(yield_dist) == len(yield_dict)
+    assert yield_dist.energies == tuple(sorted(yield_dict.keys()))
+    for exp_ene, exp_dist in yield_dict.items():
+        act_dist = yield_dict[exp_ene]
+        for exp_prod, exp_yield in exp_dist.items():
+            assert act_dist[exp_prod] == exp_yield
+    exp_yield = numpy.array([
+        [4.08e-12, 1.71e-12, 7.85e-4],
+        [1.32e-12, 0.0, 1.12e-3],
+        [5.83e-8, 2.69e-8, 4.54e-3]])
+    assert numpy.array_equal(yield_dist.yield_matrix, exp_yield)
+
+    # Test the operations / special methods for fission yield
+    orig_yields = yield_dist[0.0253]
+    assert len(orig_yields) == len(yield_dict[0.0253])
+    for key, value in yield_dict[0.0253].items():
+        assert key in orig_yields
+        assert orig_yields[key] == value
+    # __getitem__ return yields as a view into yield matrix
+    assert orig_yields.yields.base is yield_dist.yield_matrix
+
+    # Fission yield feature uses scaled and incremented
+    mod_yields = orig_yields * 2
+    assert numpy.array_equal(orig_yields.yields * 2, mod_yields.yields)
+    mod_yields += orig_yields
+    assert numpy.array_equal(orig_yields.yields * 3, mod_yields.yields)
+
+    # Failure modes for adding, multiplying yields
+    similar = numpy.empty_like(orig_yields.yields)
+    with pytest.raises(TypeError):
+        orig_yields + similar
+    with pytest.raises(TypeError):
+        similar + orig_yields
+    with pytest.raises(TypeError):
+        orig_yields += similar
+    with pytest.raises(TypeError):
+        orig_yields * similar
+    with pytest.raises(TypeError):
+        similar * orig_yields
+    with pytest.raises(TypeError):
+        orig_yields *= similar
 
 
 def test_validate():
@@ -141,8 +194,8 @@ def test_validate():
     # fission yields
 
     nuc.yield_data = {
-        0.0253: [("0", 1.5), ("1", 0.5)],
-        1e6: [("0", 1.5), ("1", 0.5)],
+        0.0253: {"0": 1.5, "1": 0.5},
+        1e6: {"0": 1.5, "1": 0.5},
     }
 
     # nuclide is good and should have no warnings raise
@@ -176,7 +229,7 @@ def test_validate():
 
     # restore reactions, invalidate fission yields
     nuc.reactions.append(reaction)
-    nuc.yield_data[1e6].pop()
+    nuc.yield_data[1e6].yields *= 2
 
     with pytest.raises(ValueError, match=r"fission yields.*1\.0*e"):
         nuc.validate(strict=True, quiet=False, tolerance=0.0)

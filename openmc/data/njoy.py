@@ -1,10 +1,8 @@
-import argparse
 from collections import namedtuple
 from io import StringIO
 import os
 import shutil
 from subprocess import Popen, PIPE, STDOUT, CalledProcessError
-import sys
 import tempfile
 
 from . import endf
@@ -237,8 +235,9 @@ def make_ace(filename, temperatures=None, ace='ace', xsdir='xsdir', pendf=None,
         Fractional error tolerance for NJOY processing
     broadr : bool, optional
         Indicating whether to Doppler broaden XS when running NJOY
-    heatr : bool, optional
-        Indicating whether to add heating kerma when running NJOY
+    heatr : bool or str, optional
+        Indicating whether to add heating kerma when running NJOY. If string,
+        write the output tape to this file
     gaspr : bool, optional
         Indicating whether to add gas production data when running NJOY
     purr : bool, optional
@@ -292,6 +291,7 @@ def make_ace(filename, temperatures=None, ace='ace', xsdir='xsdir', pendf=None,
     if heatr:
         nheatr_in = nlast
         nheatr = nheatr_in + 1
+        tapeout[nheatr] = "heatr" if heatr is True else heatr
         commands += _TEMPLATE_HEATR
         nlast = nheatr
 

@@ -211,6 +211,7 @@ extern "C" void print_particle(Particle* p)
 void print_plot()
 {
   header("PLOTTING SUMMARY", 5);
+  if (settings::verbosity < 5) return;
 
   for (auto pl : model::plots) {
     // Plot id
@@ -453,6 +454,7 @@ void print_runtime()
 
   // display header block
   header("Timing Statistics", 6);
+  if (settings::verbosity < 6) return;
 
   // Save state of cout
   auto f {std::cout.flags()};
@@ -537,6 +539,7 @@ void print_results()
 
   // display header block for results
   header("Results", 4);
+  if (settings::verbosity < 4) return;
 
   // Calculate t-value for confidence intervals
   int n = simulation::n_realizations;

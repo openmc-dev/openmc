@@ -3,7 +3,7 @@ import openmc.capi
 import pytest
 
 @pytest.fixture(autouse=True)
-def complex_cell(run_in_tmpdir):
+def complex_cell(run_in_tmpdir, mpi_intracomm):
 
     openmc.reset_auto_ids()
 
@@ -74,7 +74,7 @@ def complex_cell(run_in_tmpdir):
     model.export_to_xml()
 
     openmc.capi.finalize()
-    openmc.capi.init()
+    openmc.capi.init(intracomm=mpi_intracomm)
 
     yield
 

@@ -1,9 +1,8 @@
-#!/usr/bin/env python
-
 from collections.abc import Callable
 from math import exp
 import os
 import random
+import shutil
 
 import numpy as np
 import pytest
@@ -11,6 +10,10 @@ import openmc.data
 
 
 _ENDF_DATA = os.environ['OPENMC_ENDF_DATA']
+
+# Check if NJOY is available
+needs_njoy = pytest.mark.skipif(shutil.which('njoy') is None,
+                                reason="NJOY not installed")
 
 
 @pytest.fixture(scope='module')
@@ -101,6 +104,7 @@ def test_graphite_xs(graphite):
     assert elastic([1e-3, 1.0]) == pytest.approx([0.0, 0.62586153])
 
 
+@needs_njoy
 def test_graphite_njoy():
     path_c0 = os.path.join(_ENDF_DATA, 'neutrons', 'n-006_C_000.endf')
     path_gr = os.path.join(_ENDF_DATA, 'thermal_scatt', 'tsl-graphite.endf')
@@ -112,6 +116,7 @@ def test_graphite_njoy():
     assert graphite.temperatures == ['296K']
 
 
+@needs_njoy
 def test_export_to_hdf5(tmpdir, h2o_njoy, hzrh_njoy, graphite):
     filename = str(tmpdir.join('water.h5'))
     h2o_njoy.export_to_hdf5(filename)
@@ -131,6 +136,7 @@ def test_export_to_hdf5(tmpdir, h2o_njoy, hzrh_njoy, graphite):
     assert os.path.exists(filename)
 
 
+@needs_njoy
 def test_continuous_dist(h2o_njoy):
     for temperature, dist in h2o_njoy.inelastic.distribution.items():
         assert temperature.endswith('K')
@@ -173,6 +179,7 @@ def test_hzrh_elastic(hzrh):
         assert dist.debye_waller > 0.0
 
 
+@needs_njoy
 def test_hzrh_njoy(hzrh_njoy):
     endf, ace = hzrh_njoy
 

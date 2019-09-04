@@ -393,10 +393,6 @@ void read_settings_xml()
   // Get point to list of <source> elements and make sure there is at least one
   for (pugi::xml_node node : root.children("source")) {
     model::external_sources.emplace_back(node);
-//    // Check for source type option
-//    if (check_for_node(node_output, "source_type")) {
-//      source_type = get_node_value_bool(node_source, "source_type");
-//    }
 
     // Get pyne_source_mode option
     if (check_for_node(node, "pyne_source_mode")) {
@@ -408,30 +404,6 @@ void read_settings_xml()
       pyne_source_e_bounds = get_node_array<double>(node, "pyne_source_e_bounds");
       }
     }
-//  }
-//  // Check for source options
-//  if (check_for_node(root, "source")) {
-//    // Get pointer to output node
-//    pugi::xml_node node_source = root.child("source");
-//
-////    // Check for source type option
-////    if (check_for_node(node_output, "source_type")) {
-////      source_type = get_node_value_bool(node_source, "source_type");
-////    }
-//
-//    // Get pyne_source_mode option
-//    if (check_for_node(node_source, "pyne_source_mode")) {
-//      pyne_source_mode = std::stoi(get_node_value(node_source, "pyne_source_mode"));
-//    }
-//
-//    // Get pyne_source_e_bounds option
-//    if (check_for_node(node_source, "pyne_source_e_bounds")) {
-//      pyne_source_e_bounds = get_node_array<double>(node_source, "pyne_source_e_bounds");
-//      }
-//    }
-//  }
-
-
 
   // If no source specified, default to isotropic point source at origin with Watt spectrum
   if (model::external_sources.empty()) {
@@ -452,16 +424,6 @@ void read_settings_xml()
   if (check_for_node(root, "survival_biasing")) {
     survival_biasing = get_node_value_bool(root, "survival_biasing");
   }
-
-//  // Pyne source sampling mode
-//  if (check_for_node(root, "pyne_source_mode")) {
-//    pyne_source_mode = std::stoi(get_node_value(root, "pyne_source_mode"));
-//  }
-//
-//  // Pyne source energy boundaries
-//  if (check_for_node(root, "pyne_source_e_bounds")) {
-//    pyne_source_e_bounds = get_node_array<double>(root, "pyne_source_e_bounds");
-//  }
 
   // Probability tables
   if (check_for_node(root, "ptables")) {

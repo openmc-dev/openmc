@@ -556,17 +556,17 @@ class IncidentNeutron(EqualityMixin):
         total_heating = data.reactions.get(301)
         fission_heating = data.reactions.get(318)
         if total_heating is not None and fission_heating is not None:
-            fission_less_heating = Reaction(999)
-            fission_less_heating.redundant = True
+            non_fission_heating = Reaction(999)
+            non_fission_heating.redundant = True
             for strT, total in total_heating.xs.items():
                 fission = fission_heating.xs.get(strT)
                 if fission is None:
                     continue
-                fission_less_heating.xs[strT] = Tabulated1D(
+                non_fission_heating.xs[strT] = Tabulated1D(
                     total.x, total.y - fission(total.x),
                     breakpoints=total.breakpoints,
                     interpolation=total.interpolation)
-            data.reactions[999] = fission_less_heating
+            data.reactions[999] = non_fission_heating
 
         return data
 
@@ -847,8 +847,8 @@ class IncidentNeutron(EqualityMixin):
                     interpolation=fission_kerma.interpolation)
 
                 fission_heating = Reaction(318)
-                fission_less_heating = Reaction(999)
-                fission_less_heating.redundant = True
+                non_fission_heating = Reaction(999)
+                non_fission_heating.redundant = True
 
                 for strT, fission_xs in data.reactions[18].xs.items():
                     total_heating = data.reactions[301].xs.get(strT)
@@ -859,14 +859,14 @@ class IncidentNeutron(EqualityMixin):
                         breakpoints=fission_xs.breakpoints,
                         interpolation=fission_xs.interpolation)
                     fission_heating.xs[strT] = heater_at_temp
-                    fission_less_heating.xs[strT] = Tabulated1D(
+                    non_fission_heating.xs[strT] = Tabulated1D(
                         total_heating.x,
                         total_heating.y - heater_at_temp(total_heating.x),
                         breakpoints=total_heating.breakpoints,
                         interpolation=total_heating.interpolation)
 
                 data.reactions[318] = fission_heating
-                data.reactions[999] = fission_less_heating
+                data.reactions[999] = non_fission_heating
 
             # Add 0K elastic scattering cross section
             if '0K' not in data.energy:

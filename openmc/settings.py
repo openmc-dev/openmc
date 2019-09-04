@@ -280,7 +280,6 @@ class Settings(object):
     def survival_biasing(self):
         return self._survival_biasing
 
-
     @property
     def entropy_mesh(self):
         return self._entropy_mesh

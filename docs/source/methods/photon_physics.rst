@@ -579,7 +579,7 @@ sampled using the leading order term of the Sauter–Gluckstern–Hull
 distribution,
 
 .. math::
-    :label: sauter–gluckstern–hull
+    :label: sauter-gluckstern-hull
 
     p(\mu_{\pm}) = C(1 - \beta_{\pm}\mu_{\pm})^{-2},
 
@@ -588,7 +588,7 @@ ratio of the velocity of the charged particle to the speed of light given in
 :eq:`beta-2`.
 
 The inverse transform method is used to sample :math:`\mu_{-}` and
-:math:`\mu_{+}` from :eq:`sauter–gluckstern–hull`, using the sampling formula
+:math:`\mu_{+}` from :eq:`sauter-gluckstern-hull`, using the sampling formula
 
 .. math::
     :label: sample-mu

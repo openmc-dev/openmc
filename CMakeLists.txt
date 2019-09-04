@@ -120,6 +120,11 @@ target_include_directories(pugixml PUBLIC vendor/pugixml/)
 # xtensor header-only library
 #===============================================================================
 
+# CMake 3.13+ will complain about policy CMP0079 unless it is set explicitly
+if (NOT (CMAKE_VERSION VERSION_LESS 3.13))
+  cmake_policy(SET CMP0079 NEW)
+endif()
+
 add_subdirectory(vendor/xtl)
 add_subdirectory(vendor/xtensor)
 target_link_libraries(xtensor INTERFACE xtl)

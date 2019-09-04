@@ -13,7 +13,8 @@ import h5py
 from . import HDF5_VERSION, HDF5_VERSION_MAJOR
 from .ace import Library, Table, get_table, get_metadata
 from .data import ATOMIC_SYMBOL, K_BOLTZMANN, EV_PER_MEV
-from .endf import Evaluation, SUM_RULES, get_head_record, get_tab1_record
+from .endf import (
+    Evaluation, SUM_RULES, get_head_record, get_tab1_record, get_evaluations)
 from .fission_energy import FissionEnergyRelease
 from .function import Tabulated1D, Sum, ResonancesWithBackground
 from .grid import linearize, thin
@@ -833,39 +834,25 @@ class IncidentNeutron(EqualityMixin):
             if (1, 458) in ev.section:
                 data.fission_energy = FissionEnergyRelease.from_endf(ev, data)
                 # Add 318 fission heating data from heatr
-                heatr = Evaluation(kwargs["heatr"])
-                f318 = StringIO(heatr.section[3, 318])
-                get_head_record(f318)
-                _params, fission_kerma = get_tab1_record(f318)
-                # Assume that only cross section changes with temperature
-                # to compute heating data for multiple temperatures
-                f18 = StringIO(heatr.section[3, 18])
-                get_head_record(f18)
-                _params, fission_xs_heatr = get_tab1_record(f18)
-                heat_num = Tabulated1D(
-                    fission_kerma.x,
-                    fission_kerma.y / fission_xs_heatr(fission_kerma.x),
-                    breakpoints=fission_kerma.breakpoints,
-                    interpolation=fission_kerma.interpolation)
-
-                fission_heating = Reaction(318)
                 non_fission_heating = Reaction(999)
                 non_fission_heating.redundant = True
+                fission_heating = Reaction(318)
 
-                for strT, fission_xs in data.reactions[18].xs.items():
-                    total_heating = data.reactions[301].xs.get(strT)
-                    if total_heating is None:
+                heatr_evals = get_evaluations(kwargs["heatr"])
+                for heatr in heatr_evals:
+                    temp = "{}K".format(round(heatr.target["temperature"]))
+                    f318 = StringIO(heatr.section[3, 318])
+                    get_head_record(f318)
+                    _params, fission_kerma = get_tab1_record(f318)
+                    fission_heating.xs[temp] = fission_kerma
+                    total_heating_xs = data.reactions[301].xs.get(temp)
+                    if total_heating_xs is None:
                         continue
-                    heater_at_temp = Tabulated1D(
-                        fission_xs.x, heat_num(fission_xs.x) * fission_xs.y,
-                        breakpoints=fission_xs.breakpoints,
-                        interpolation=fission_xs.interpolation)
-                    fission_heating.xs[strT] = heater_at_temp
-                    non_fission_heating.xs[strT] = Tabulated1D(
-                        total_heating.x,
-                        total_heating.y - heater_at_temp(total_heating.x),
-                        breakpoints=total_heating.breakpoints,
-                        interpolation=total_heating.interpolation)
+                    non_fission_heating.xs[temp] = Tabulated1D(
+                        fission_kerma.x,
+                        total_heating_xs(fission_kerma.x) - fission_kerma.y,
+                        breakpoints=fission_kerma.breakpoints,
+                        interpolation=fission_kerma.interpolation)
 
                 data.reactions[318] = fission_heating
                 data.reactions[999] = non_fission_heating

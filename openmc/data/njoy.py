@@ -213,10 +213,20 @@ def make_pendf(filename, pendf='pendf', error=0.001, stdout=False):
              heatr=False, purr=False, acer=False, stdout=stdout)
 
 
-def make_ace(filename, temperatures=None, ace='ace', xsdir='xsdir', pendf=None,
-             error=0.001, broadr=True, heatr=True, gaspr=True, purr=True,
-             acer=True, evaluation=None, **kwargs):
+def make_ace(filename, temperatures=None, ace=None, xsdir=None,
+             output_dir=None, pendf=False, error=0.001, broadr=True,
+             heatr=True, gaspr=True, purr=True, acer=True, evaluation=None,
+             **kwargs):
     """Generate incident neutron ACE file from an ENDF file
+
+    File names can be passed to
+    ``[ace, xsdir, pendf, broadr, heatr, gaspr, purr]``
+    to specify the exact output for the given module.
+    Otherwise, the files will be writen to the current directory
+    or directory specified by ``output_dir``. Default file
+    names mirror the variable names, e.g. ``heatr`` output
+    will be written to a file named ``heatr`` unless otherwise
+    specified.
 
     Parameters
     ----------
@@ -226,22 +236,30 @@ def make_ace(filename, temperatures=None, ace='ace', xsdir='xsdir', pendf=None,
         Temperatures in Kelvin to produce ACE files at. If omitted, data is
         produced at room temperature (293.6 K).
     ace : str, optional
-        Path of ACE file to write
+        Path of ACE file to write. Defaults to ``"ace"``
     xsdir : str, optional
-        Path of xsdir file to write
+        Path of xsdir file to write. Defaults to ``"xsdir"``
+    output_dir : str, optional
+        Directory to write output for requested modules. If not provided
+        and at least one of ``[pendf, broadr, heatr, gaspr, purr, acer]``
+        is ``True``, then write output files to current directory. If given,
+        must be a path to a directory.
     pendf : str, optional
         Path of pendf file to write. If omitted, the pendf file is not saved.
     error : float, optional
         Fractional error tolerance for NJOY processing
-    broadr : bool, optional
-        Indicating whether to Doppler broaden XS when running NJOY
+    broadr : bool or str, optional
+        Indicating whether to Doppler broaden XS when running NJOY. If string,
+        write the output tape to this file.
     heatr : bool or str, optional
         Indicating whether to add heating kerma when running NJOY. If string,
-        write the output tape to this file
-    gaspr : bool, optional
-        Indicating whether to add gas production data when running NJOY
-    purr : bool, optional
-        Indicating whether to add probability table when running NJOY
+        write the output tape to this file.
+    gaspr : bool or str, optional
+        Indicating whether to add gas production data when running NJOY.
+        If string, write the output tape to this file.
+    purr : bool or str, optional
+        Indicating whether to add probability table when running NJOY.
+        If string, write the output tape to this file.
     acer : bool, optional
         Indicating whether to generate ACE file when running NJOY
     evaluation : openmc.data.endf.Evaluation, optional
@@ -256,6 +274,12 @@ def make_ace(filename, temperatures=None, ace='ace', xsdir='xsdir', pendf=None,
         If the NJOY process returns with a non-zero status
 
     """
+    if output_dir is None:
+        output_dir = os.path.abspath(os.curdir)
+    else:
+        assert os.path.isdir(output_dir), output_dir
+        output_dir = os.path.abspath(output_dir)
+
     ev = evaluation if evaluation is not None else endf.Evaluation(filename)
     mat = ev.material
     zsymam = ev.target['zsymam']
@@ -274,8 +298,9 @@ def make_ace(filename, temperatures=None, ace='ace', xsdir='xsdir', pendf=None,
     nendf, npendf = 20, 21
     tapein = {nendf: filename}
     tapeout = {}
-    if pendf is not None:
-        tapeout[npendf] = pendf
+    if pendf:
+        tapeout[npendf] = (os.path.join(output_dir, "pendf") if pendf is True
+                           else pendf)
 
     # reconr
     commands += _TEMPLATE_RECONR
@@ -284,6 +309,8 @@ def make_ace(filename, temperatures=None, ace='ace', xsdir='xsdir', pendf=None,
     # broadr
     if broadr:
         nbroadr = nlast + 1
+        tapeout[nbroadr] = (
+            os.path.join(output_dir, "broadr") if broadr is True else broadr)
         commands += _TEMPLATE_BROADR
         nlast = nbroadr
 
@@ -291,7 +318,8 @@ def make_ace(filename, temperatures=None, ace='ace', xsdir='xsdir', pendf=None,
     if heatr:
         nheatr_in = nlast
         nheatr = nheatr_in + 1
-        tapeout[nheatr] = "heatr" if heatr is True else heatr
+        tapeout[nheatr] = (os.path.join(output_dir, "heatr") if heatr is True
+                           else heatr)
         commands += _TEMPLATE_HEATR
         nlast = nheatr
 
@@ -299,6 +327,8 @@ def make_ace(filename, temperatures=None, ace='ace', xsdir='xsdir', pendf=None,
     if gaspr:
         ngaspr_in = nlast
         ngaspr = ngaspr_in + 1
+        tapeout[ngaspr] = (os.path.join(output_dir, "gaspr") if gaspr is True
+                           else gaspr)
         commands += _TEMPLATE_GASPR
         nlast = ngaspr
 
@@ -306,6 +336,8 @@ def make_ace(filename, temperatures=None, ace='ace', xsdir='xsdir', pendf=None,
     if purr:
         npurr_in = nlast
         npurr = npurr_in + 1
+        tapeout[npurr] = (os.path.join(output_dir, "purr") if purr is True
+                          else purr)
         commands += _TEMPLATE_PURR
         nlast = npurr
 
@@ -323,16 +355,18 @@ def make_ace(filename, temperatures=None, ace='ace', xsdir='xsdir', pendf=None,
             commands += _TEMPLATE_ACER.format(**locals())
 
             # Indicate tapes to save for each ACER run
-            tapeout[nace] = fname.format(ace, temperature)
-            tapeout[ndir] = fname.format(xsdir, temperature)
+            tapeout[nace] = fname.format("ace", temperature)
+            tapeout[ndir] = fname.format("xsdir", temperature)
     commands += 'stop\n'
     run(commands, tapein, tapeout, **kwargs)
 
     if acer:
+        ace = os.path.join(output_dir, "ace") if ace is None else ace
+        xsdir = os.path.join(output_dir, "xsdir") if xsdir is None else xsdir
         with open(ace, 'w') as ace_file, open(xsdir, 'w') as xsdir_file:
             for temperature in temperatures:
                 # Get contents of ACE file
-                text = open(fname.format(ace, temperature), 'r').read()
+                text = open(fname.format("ace", temperature), 'r').read()
 
                 # If the target is metastable, make sure that ZAID in the ACE file reflects
                 # this by adding 400
@@ -345,13 +379,13 @@ def make_ace(filename, temperatures=None, ace='ace', xsdir='xsdir', pendf=None,
                 ace_file.write(text)
 
                 # Concatenate into destination xsdir file
-                text = open(fname.format(xsdir, temperature), 'r').read()
+                text = open(fname.format("xsdir", temperature), 'r').read()
                 xsdir_file.write(text)
 
         # Remove ACE/xsdir files for each temperature
         for temperature in temperatures:
-            os.remove(fname.format(ace, temperature))
-            os.remove(fname.format(xsdir, temperature))
+            os.remove(fname.format("ace", temperature))
+            os.remove(fname.format("xsdir", temperature))
 
 
 def make_ace_thermal(filename, filename_thermal, temperatures=None,

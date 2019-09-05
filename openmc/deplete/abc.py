@@ -17,7 +17,7 @@ from numpy import nonzero, empty, asarray
 from uncertainties import ufloat
 
 from openmc.data import DataLibrary, JOULE_PER_EV
-from openmc.capi import MaterialFilter, Tally
+from openmc.lib import MaterialFilter, Tally
 from openmc.checkvalue import check_type, check_greater_than
 from .results import Results
 from .chain import Chain
@@ -438,7 +438,7 @@ class FissionYieldHelper(ABC):
         Parameters
         ----------
         materials : iterable of C-API materials
-            Materials to be used in :class:`openmc.capi.MaterialFilter`
+            Materials to be used in :class:`openmc.lib.MaterialFilter`
         mat_indexes : iterable of int
             Indices of tallied materials that will have their fission
             yields computed by this helper. Necessary as the
@@ -520,8 +520,8 @@ class TalliedFissionYieldHelper(FissionYieldHelper):
 
         Parameters
         ----------
-        materials : iterable of :class:`openmc.capi.Material`
-            Materials to be used in :class:`openmc.capi.MaterialFilter`
+        materials : iterable of :class:`openmc.lib.Material`
+            Materials to be used in :class:`openmc.lib.MaterialFilter`
         mat_indexes : iterable of int
             Indices of tallied materials that will have their fission
             yields computed by this helper. Necessary as the

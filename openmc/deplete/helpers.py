@@ -9,7 +9,7 @@ import bisect
 from numpy import dot, zeros, newaxis
 
 from openmc.checkvalue import check_type, check_greater_than
-from openmc.capi import (
+from openmc.lib import (
     Tally, MaterialFilter, EnergyFilter, EnergyFunctionFilter)
 from .abc import (
     ReactionRateHelper, EnergyHelper, FissionYieldHelper,
@@ -44,7 +44,7 @@ class DirectReactionRateHelper(ReactionRateHelper):
     def generate_tallies(self, materials, scores):
         """Produce one-group reaction rate tally
 
-        Uses the :mod:`openmc.capi` to generate a tally
+        Uses the :mod:`openmc.lib` to generate a tally
         of relevant reactions across all burnable materials.
 
         Parameters
@@ -362,13 +362,13 @@ class FissionYieldCutoffHelper(TalliedFissionYieldHelper):
     def generate_tallies(self, materials, mat_indexes):
         """Use C API to produce a fission rate tally in burnable materials
 
-        Include a :class:`openmc.capi.EnergyFilter` to tally fission rates
+        Include a :class:`openmc.lib.EnergyFilter` to tally fission rates
         above and below cutoff energy.
 
         Parameters
         ----------
-        materials : iterable of :class:`openmc.capi.Material`
-            Materials to be used in :class:`openmc.capi.MaterialFilter`
+        materials : iterable of :class:`openmc.lib.Material`
+            Materials to be used in :class:`openmc.lib.MaterialFilter`
         mat_indexes : iterable of int
             Indices of tallied materials that will have their fission
             yields computed by this helper. Necessary as the
@@ -490,8 +490,8 @@ class AveragedFissionYieldHelper(TalliedFissionYieldHelper):
 
         Parameters
         ----------
-        materials : iterable of :class:`openmc.capi.Material`
-            Materials to be used in :class:`openmc.capi.MaterialFilter`
+        materials : iterable of :class:`openmc.lib.Material`
+            Materials to be used in :class:`openmc.lib.MaterialFilter`
         mat_indexes : iterable of int
             Indices of tallied materials that will have their fission
             yields computed by this helper. Necessary as the

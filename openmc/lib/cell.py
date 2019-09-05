@@ -63,7 +63,7 @@ class Cell(_FortranObjectWithID):
 
     This class exposes a cell that is stored internally in the OpenMC
     library. To obtain a view of a cell with a given ID, use the
-    :data:`openmc.capi.cells` mapping.
+    :data:`openmc.lib.cells` mapping.
 
     Parameters
     ----------

@@ -1,11 +1,11 @@
 import openmc
-import openmc.capi
+import openmc.lib
 
 import pytest
 from tests.testing_harness import PyAPITestHarness
 
 pytestmark = pytest.mark.skipif(
-    not openmc.capi._dagmc_enabled(),
+    not openmc.lib._dagmc_enabled(),
     reason="DAGMC CAD geometry is not enabled.")
 
 def test_dagmc():

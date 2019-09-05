@@ -8,7 +8,7 @@ import bisect
 import pytest
 import numpy as np
 import openmc
-from openmc import capi
+from openmc import lib
 from openmc.deplete.nuclide import Nuclide, FissionYieldDistribution
 from openmc.deplete.helpers import (
     FissionYieldCutoffHelper, ConstantFissionYieldHelper,
@@ -18,7 +18,7 @@ from openmc.deplete.helpers import (
 @pytest.fixture(scope="module")
 def materials(tmpdir_factory):
     """Use C API to construct realistic materials for testing tallies"""
-    tmpdir = tmpdir_factory.mktemp("capi")
+    tmpdir = tmpdir_factory.mktemp("lib")
     orig = tmpdir.chdir()
     # Create proxy problem to please openmc
     mfuel = openmc.Material(name="test_fuel")
@@ -40,8 +40,8 @@ def materials(tmpdir_factory):
     settings.export_to_xml()
 
     try:
-        with capi.run_in_memory():
-            yield [capi.Material(), capi.Material()]
+        with lib.run_in_memory():
+            yield [lib.Material(), lib.Material()]
     finally:
         # Convert to strings as os.remove in py 3.5 doesn't support Paths
         for file_path in ("settings.xml", "geometry.xml", "materials.xml",
@@ -64,7 +64,7 @@ def proxy_tally_data(tally, fill=None):
         if not hasattr(tfilter, "bins"):
             continue
         this_bins = len(tfilter.bins)
-        if isinstance(tfilter, capi.EnergyFilter):
+        if isinstance(tfilter, lib.EnergyFilter):
             this_bins -= 1
         n_bins *= max(this_bins, 1)
     data = np.empty((n_bins, n_nucs * n_scores, 3))
@@ -192,9 +192,9 @@ def test_cutoff_helper(materials, nuclide_bundle, therm_frac):
     assert fission_tally is not None
     filters = fission_tally.filters
     assert len(filters) == 2
-    assert isinstance(filters[0], capi.MaterialFilter)
+    assert isinstance(filters[0], lib.MaterialFilter)
     assert len(filters[0].bins) == len(materials)
-    assert isinstance(filters[1], capi.EnergyFilter)
+    assert isinstance(filters[1], lib.EnergyFilter)
     # lower, cutoff, and upper energy
     assert len(filters[1].bins) == 3
 
@@ -235,9 +235,9 @@ def test_averaged_helper(materials, nuclide_bundle, avg_energy):
     assert fission_tally is not None
     fission_filters = fission_tally.filters
     assert len(fission_filters) == 2
-    assert isinstance(fission_filters[0], capi.MaterialFilter)
+    assert isinstance(fission_filters[0], lib.MaterialFilter)
     assert len(fission_filters[0].bins) == len(materials)
-    assert isinstance(fission_filters[1], capi.EnergyFilter)
+    assert isinstance(fission_filters[1], lib.EnergyFilter)
     assert len(fission_filters[1].bins) == 2
     assert fission_tally.scores == ["fission"]
     assert fission_tally.nuclides == list(tallied_nucs)
@@ -246,9 +246,9 @@ def test_averaged_helper(materials, nuclide_bundle, avg_energy):
     assert weighted_tally is not None
     weighted_filters = weighted_tally.filters
     assert len(weighted_filters) == 2
-    assert isinstance(weighted_filters[0], capi.MaterialFilter)
+    assert isinstance(weighted_filters[0], lib.MaterialFilter)
     assert len(weighted_filters[0].bins) == len(materials)
-    assert isinstance(weighted_filters[1], capi.EnergyFunctionFilter)
+    assert isinstance(weighted_filters[1], lib.EnergyFunctionFilter)
     assert len(weighted_filters[1].energy) == 2
     assert len(weighted_filters[1].y) == 2
     assert weighted_tally.scores == ["fission"]

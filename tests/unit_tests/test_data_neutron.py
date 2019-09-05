@@ -1,19 +1,15 @@
 from collections.abc import Mapping, Callable
 import os
-import shutil
 
 import numpy as np
 import pandas as pd
 import pytest
 import openmc.data
 
+from . import needs_njoy
 
 _TEMPERATURES = [300., 600., 900.]
 _ENDF_DATA = os.environ['OPENMC_ENDF_DATA']
-
-# Check if NJOY is available
-needs_njoy = pytest.mark.skipif(shutil.which('njoy') is None,
-                                reason="NJOY not installed")
 
 
 @pytest.fixture(scope='module')

@@ -481,7 +481,7 @@ def test_ace_convert(run_in_tmpdir):
     filename = os.path.join(_ENDF_DATA, 'neutrons', 'n-001_H_001.endf')
     ace_ascii = 'ace_ascii'
     ace_binary = 'ace_binary'
-    openmc.data.njoy.make_ace(filename, ace=ace_ascii)
+    openmc.data.njoy.make_ace(filename, acer=ace_ascii)
 
     # Convert to binary
     openmc.data.ace.ascii_to_binary(ace_ascii, ace_binary)

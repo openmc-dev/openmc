@@ -4,6 +4,7 @@ import os
 import shutil
 from subprocess import Popen, PIPE, STDOUT, CalledProcessError
 import tempfile
+from pathlib import Path
 
 from . import endf
 
@@ -213,14 +214,14 @@ def make_pendf(filename, pendf='pendf', error=0.001, stdout=False):
              heatr=False, purr=False, acer=False, stdout=stdout)
 
 
-def make_ace(filename, temperatures=None, ace=None, xsdir=None,
+def make_ace(filename, temperatures=None, acer=True, xsdir=None,
              output_dir=None, pendf=False, error=0.001, broadr=True,
-             heatr=True, gaspr=True, purr=True, acer=True, evaluation=None,
+             heatr=True, gaspr=True, purr=True, evaluation=None,
              **kwargs):
     """Generate incident neutron ACE file from an ENDF file
 
     File names can be passed to
-    ``[ace, xsdir, pendf, broadr, heatr, gaspr, purr]``
+    ``[acer, xsdir, pendf, broadr, heatr, gaspr, purr]``
     to specify the exact output for the given module.
     Otherwise, the files will be writen to the current directory
     or directory specified by ``output_dir``. Default file
@@ -235,10 +236,13 @@ def make_ace(filename, temperatures=None, ace=None, xsdir=None,
     temperatures : iterable of float, optional
         Temperatures in Kelvin to produce ACE files at. If omitted, data is
         produced at room temperature (293.6 K).
-    ace : str, optional
-        Path of ACE file to write. Defaults to ``"ace"``
+    acer : bool or str, optional
+        Flag indicating if acer should be run. If a string is give, write the
+        resulting ``ace`` file to this location. Path of ACE file to write.
+        Defaults to ``"ace"``
     xsdir : str, optional
-        Path of xsdir file to write. Defaults to ``"xsdir"``
+        Path of xsdir file to write. Defaults to ``"xsdir"`` in the same
+        directory as ``acer``
     output_dir : str, optional
         Directory to write output for requested modules. If not provided
         and at least one of ``[pendf, broadr, heatr, gaspr, purr, acer]``
@@ -260,8 +264,6 @@ def make_ace(filename, temperatures=None, ace=None, xsdir=None,
     purr : bool or str, optional
         Indicating whether to add probability table when running NJOY.
         If string, write the output tape to this file.
-    acer : bool, optional
-        Indicating whether to generate ACE file when running NJOY
     evaluation : openmc.data.endf.Evaluation, optional
         If the ENDF file contains multiple material evaluations, this argument
         indicates which evaluation should be used.
@@ -272,13 +274,16 @@ def make_ace(filename, temperatures=None, ace=None, xsdir=None,
     ------
     subprocess.CalledProcessError
         If the NJOY process returns with a non-zero status
+    IOError
+        If ``output_dir`` does not point to a directory
 
     """
     if output_dir is None:
-        output_dir = os.path.abspath(os.curdir)
+        output_dir = Path()
     else:
-        assert os.path.isdir(output_dir), output_dir
-        output_dir = os.path.abspath(output_dir)
+        output_dir = Path(output_dir)
+        if not output_dir.is_dir():
+            raise IOError("{} is not a directory".format(output_dir))
 
     ev = evaluation if evaluation is not None else endf.Evaluation(filename)
     mat = ev.material
@@ -299,8 +304,7 @@ def make_ace(filename, temperatures=None, ace=None, xsdir=None,
     tapein = {nendf: filename}
     tapeout = {}
     if pendf:
-        tapeout[npendf] = (os.path.join(output_dir, "pendf") if pendf is True
-                           else pendf)
+        tapeout[npendf] = (output_dir / "pendf") if pendf is True else pendf
 
     # reconr
     commands += _TEMPLATE_RECONR
@@ -309,8 +313,7 @@ def make_ace(filename, temperatures=None, ace=None, xsdir=None,
     # broadr
     if broadr:
         nbroadr = nlast + 1
-        tapeout[nbroadr] = (
-            os.path.join(output_dir, "broadr") if broadr is True else broadr)
+        tapeout[nbroadr] = (output_dir / "broadr") if broadr is True else broadr
         commands += _TEMPLATE_BROADR
         nlast = nbroadr
 
@@ -318,8 +321,7 @@ def make_ace(filename, temperatures=None, ace=None, xsdir=None,
     if heatr:
         nheatr_in = nlast
         nheatr = nheatr_in + 1
-        tapeout[nheatr] = (os.path.join(output_dir, "heatr") if heatr is True
-                           else heatr)
+        tapeout[nheatr] = (output_dir / "heatr") if heatr is True else heatr
         commands += _TEMPLATE_HEATR
         nlast = nheatr
 
@@ -327,8 +329,7 @@ def make_ace(filename, temperatures=None, ace=None, xsdir=None,
     if gaspr:
         ngaspr_in = nlast
         ngaspr = ngaspr_in + 1
-        tapeout[ngaspr] = (os.path.join(output_dir, "gaspr") if gaspr is True
-                           else gaspr)
+        tapeout[ngaspr] = (output_dir / "gaspr") if gaspr is True else gaspr
         commands += _TEMPLATE_GASPR
         nlast = ngaspr
 
@@ -336,8 +337,7 @@ def make_ace(filename, temperatures=None, ace=None, xsdir=None,
     if purr:
         npurr_in = nlast
         npurr = npurr_in + 1
-        tapeout[npurr] = (os.path.join(output_dir, "purr") if purr is True
-                          else purr)
+        tapeout[npurr] = (output_dir / "purr") if purr is True else purr
         commands += _TEMPLATE_PURR
         nlast = npurr
 
@@ -361,15 +361,15 @@ def make_ace(filename, temperatures=None, ace=None, xsdir=None,
     run(commands, tapein, tapeout, **kwargs)
 
     if acer:
-        ace = os.path.join(output_dir, "ace") if ace is None else ace
-        xsdir = os.path.join(output_dir, "xsdir") if xsdir is None else xsdir
-        with open(ace, 'w') as ace_file, open(xsdir, 'w') as xsdir_file:
+        ace = (output_dir / "ace") if acer is True else Path(acer)
+        xsdir = (ace.parent / "xsdir") if xsdir is None else xsdir
+        with ace.open('w') as ace_file, xsdir.open('w') as xsdir_file:
             for temperature in temperatures:
                 # Get contents of ACE file
                 text = open(fname.format("ace", temperature), 'r').read()
 
-                # If the target is metastable, make sure that ZAID in the ACE file reflects
-                # this by adding 400
+                # If the target is metastable, make sure that ZAID in the ACE
+                # file reflects this by adding 400
                 if ev.target['isomeric_state'] > 0:
                     mass_first_digit = int(text[3])
                     if mass_first_digit <= 2:

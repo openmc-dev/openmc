@@ -553,7 +553,7 @@ class IncidentNeutron(EqualityMixin):
             fer_group = group['fission_energy_release']
             data.fission_energy = FissionEnergyRelease.from_hdf5(fer_group)
 
-        # Rebuild fission-less heating
+        # Rebuild non-fission heating
         total_heating = data.reactions.get(301)
         fission_heating = data.reactions.get(318)
         if total_heating is not None and fission_heating is not None:
@@ -564,9 +564,7 @@ class IncidentNeutron(EqualityMixin):
                 if fission is None:
                     continue
                 non_fission_heating.xs[strT] = Tabulated1D(
-                    total.x, total.y - fission(total.x),
-                    breakpoints=total.breakpoints,
-                    interpolation=total.interpolation)
+                    total.x, total.y - fission(total.x))
             data.reactions[999] = non_fission_heating
 
         return data

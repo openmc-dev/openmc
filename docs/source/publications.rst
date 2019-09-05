@@ -501,7 +501,7 @@ Depletion
 
 - Jose L. Salcedo-Perez, Benoit Forget, Kord Smith, and Paul Romano, "Hybrid
   tallies to improve performance in depletion Monte Carlo simulations," *Proc.
-  M&C*, 927-936, Portland, Oregn, Aug. 25-29 (2019).
+  M&C*, 927-936, Portland, Oregon, Aug. 25-29 (2019).
 
 - Zhao-Qing Liu, Ze-Long Zhao, Yong-Wei Yang, Yu-Cui Gao, Hai-Yan Meng, and
   Qing-Yu Gao, "`Development and validation of depletion code system IMPC-Burnup
@@ -533,7 +533,7 @@ Sensitivity Analysis
 
 - Abdulla Alhajri and Benoit Forget, "Eigenvalue Sensitivity in Monte Carlo
   Simulations to Nuclear Data Parameters using the Multipole Formalism," *Proc.
-  M&C*, 1895-1906, Portland, Oregn, Aug. 25-29 (2019).
+  M&C*, 1895-1906, Portland, Oregon, Aug. 25-29 (2019).
 
 - Xingjie Peng, Jingang Liang, Benoit Forget, and Kord Smith, "`Calculation of
   adjoint-weighted reactor kinetics parameters in OpenMC

@@ -62,7 +62,7 @@ New Features
   - The :meth:`openmc.Plane.from_points` function creates a plane given three
     points that pass through it.
   - The :func:`openmc.model.pin` function creates a pin cell universe given a
-    sequence of radii and materials.
+    sequence of concentric cylinders and materials.
 
 ------------------
 Python API Changes

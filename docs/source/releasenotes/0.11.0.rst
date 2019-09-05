@@ -81,6 +81,8 @@ Python API Changes
   :func:`openmc.model.rectangular_prism`.
 - The ``get_hexagonal_prism`` function has been renamed
   :func:`openmc.model.hexagonal_prism`.
+- Python bindings to the C/C++ API have been move from ``openmc.capi`` to
+  :mod:`openmc.lib`.
 
 ---------
 Bug Fixes

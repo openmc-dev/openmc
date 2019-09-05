@@ -815,14 +815,13 @@ class IncidentNeutron(EqualityMixin):
         with tempfile.TemporaryDirectory() as tmpdir:
             # Run NJOY to create an ACE library
             kwargs.setdefault("output_dir", tmpdir)
-            for key in ("ace", "xsdir", "pendf", "heatr", "broadr",
-                        "gaspr", "purr"):
+            for key in ("acer", "pendf", "heatr", "broadr", "gaspr", "purr"):
                 kwargs.setdefault(key, os.path.join(kwargs["output_dir"], key))
             kwargs['evaluation'] = evaluation
             make_ace(filename, temperatures, **kwargs)
 
             # Create instance from ACE tables within library
-            lib = Library(kwargs['ace'])
+            lib = Library(kwargs['acer'])
             data = cls.from_ace(lib.tables[0])
             for table in lib.tables[1:]:
                 data.add_temperature_from_ace(table)

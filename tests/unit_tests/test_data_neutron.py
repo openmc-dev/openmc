@@ -205,6 +205,22 @@ def test_derived_products(am244):
     assert total_neutron.yield_(6e6) == pytest.approx(4.2558)
 
 
+def test_heating(run_in_tmpdir, am244):
+    assert 318 in am244.reactions
+    assert 999 in am244.reactions
+    # compare values in 999 reaction
+    total_heating = am244.reactions[301].xs["294K"]
+    fission_heating = am244.reactions[318].xs["294K"]
+    expected_y = total_heating.y - fission_heating(total_heating.x)
+    assert am244.reactions[999].xs["294K"].y == pytest.approx(expected_y)
+
+    am244.export_to_hdf5("am244.h5")
+    read_in = openmc.data.IncidentNeutron.from_hdf5("am244.h5")
+    assert 318 in read_in.reactions
+    assert 999 in read_in.reactions
+    assert read_in.reactions[999].xs["294K"].y == pytest.approx(expected_y)
+
+
 def test_urr(pu239):
     for T, ptable in pu239.urr.items():
         assert T.endswith('K')
@@ -465,7 +481,7 @@ def test_ace_convert(run_in_tmpdir):
     filename = os.path.join(_ENDF_DATA, 'neutrons', 'n-001_H_001.endf')
     ace_ascii = 'ace_ascii'
     ace_binary = 'ace_binary'
-    openmc.data.njoy.make_ace(filename, ace=ace_ascii)
+    openmc.data.njoy.make_ace(filename, acer=ace_ascii)
 
     # Convert to binary
     openmc.data.ace.ascii_to_binary(ace_ascii, ace_binary)

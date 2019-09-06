@@ -50,8 +50,8 @@ def pincell_model():
 
 
 @pytest.fixture(scope='module')
-def capi_init(pincell_model):
-    openmc.capi.init()
+def capi_init(pincell_model, mpi_intracomm):
+    openmc.capi.init(intracomm=mpi_intracomm)
     yield
     openmc.capi.finalize()
 
@@ -408,11 +408,11 @@ def test_mesh(capi_init):
     assert msf.mesh == mesh
 
 
-def test_restart(capi_init):
+def test_restart(capi_init, mpi_intracomm):
     # Finalize and re-init to make internal state consistent with XML.
     openmc.capi.hard_reset()
     openmc.capi.finalize()
-    openmc.capi.init()
+    openmc.capi.init(intracomm=mpi_intracomm)
     openmc.capi.simulation_init()
 
     # Run for 7 batches then write a statepoint.

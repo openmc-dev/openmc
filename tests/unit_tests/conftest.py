@@ -1,6 +1,17 @@
 import openmc
 import pytest
 
+from tests.regression_tests import config
+
+
+@pytest.fixture(scope='module')
+def mpi_intracomm():
+    if config['mpi']:
+        from mpi4py import MPI
+        return MPI.COMM_WORLD
+    else:
+        return None
+
 
 @pytest.fixture(scope='module')
 def uo2():

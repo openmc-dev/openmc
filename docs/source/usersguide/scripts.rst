@@ -106,6 +106,37 @@ Compton profile data using an existing data library from `Geant4
 <http://geant4.cern.ch/>`_. Note that OpenMC includes this data file by default
 so it should not be necessary in practice to generate it yourself.
 
+
+.. _scripts_depletion_chain:
+
+-------------------------------
+``openmc-make-depletion-chain``
+-------------------------------
+
+This script generates a depletion chain file called ``chain_endfb71.xml``
+using ENDF/B-VII.1 nuclear data. If the :envvar:`OPENMC_ENDF_DATA` variable
+is not set, and ``"neutron"``, ``"decay"``, ``"nfy"`` directories
+do not exist, then ENDF/B-VII.1 data will be downloaded.
+
+.. _scripts_depletion_chain_casl:
+
+------------------------------------
+``openmc-make-depletion-chain-casl``
+------------------------------------
+
+This script generates a depletion chain called ``chain_casl.xml``
+using ENDF/B-VII.1 nuclear data for a simplified chain.
+The nuclides were chosen by CASL-ORIGEN, which can be found in
+Appendix A of Kang Seog Kim, `"Specification for the VERA Depletion
+Benchmark Suite" <https://doi.org/10.2172/1256820>`_,
+CASL-U-2015-1014-000, Rev. 0, ORNL/TM-2016/53, 2016.
+``Te129`` has been added into this chain due to its link to
+``I129`` production.
+
+If the :envvar:`OPENMC_ENDF_DATA` variable is not set,
+and ``"neutron"``, ``"decay"``, ``"nfy"`` directories
+to not exist, then ENDF/B-VII.1 data will be downloaded.
+
 .. _scripts_stopping:
 
 -------------------------------

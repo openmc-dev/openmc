@@ -231,6 +231,10 @@ std::string reaction_name(int mt)
     return  "(n,Xa)";
   } else if (mt == 301) {
     return "heating";
+  } else if (mt == 318) {
+    return "fission-heating";
+  } else if (mt == 999) {
+    return "non-fission-heating";
   } else if (mt == 444) {
     return  "damage-energy";
   } else if (mt == COHERENT) {

@@ -21,6 +21,10 @@ extern "C" {
   int openmc_cell_set_temperature(int32_t index, double T, const int32_t* instance);
   int openmc_energy_filter_get_bins(int32_t index, const double** energies, size_t* n);
   int openmc_energy_filter_set_bins(int32_t index, size_t n, const double* energies);
+  int openmc_energyfunc_filter_get_energy(int32_t index, size_t* n, const double** energy);
+  int openmc_energyfunc_filter_get_y(int32_t index, size_t* n, const double** y);
+  int openmc_energyfunc_filter_set_data(int32_t index, size_t n,
+                                        const double* energies, const double* y);
   int openmc_extend_cells(int32_t n, int32_t* index_start, int32_t* index_end);
   int openmc_extend_filters(int32_t n, int32_t* index_start, int32_t* index_end);
   int openmc_extend_materials(int32_t n, int32_t* index_start, int32_t* index_end);

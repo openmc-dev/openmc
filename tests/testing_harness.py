@@ -72,10 +72,12 @@ class TestHarness(object):
         # Read the statepoint file.
         statepoint = glob.glob(self._sp_name)[0]
         with openmc.StatePoint(statepoint) as sp:
-            # Write out k-combined.
-            outstr = 'k-combined:\n'
-            form = '{0:12.6E} {1:12.6E}\n'
-            outstr += form.format(sp.k_combined.n, sp.k_combined.s)
+            outstr = ''
+            if sp.run_mode == 'eigenvalue':
+                # Write out k-combined.
+                outstr += 'k-combined:\n'
+                form = '{0:12.6E} {1:12.6E}\n'
+                outstr += form.format(sp.k_combined.n, sp.k_combined.s)
 
             # Write out tally data.
             for i, tally_ind in enumerate(sp.tallies):

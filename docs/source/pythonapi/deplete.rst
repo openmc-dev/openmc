@@ -6,26 +6,26 @@
 
 .. module:: openmc.deplete
 
-Several functions are provided that implement different time-integration
+Several classes are provided that implement different time-integration
 algorithms for depletion calculations, which are described in detail in Colin
 Josey's thesis, `Development and analysis of high order neutron
 transport-depletion coupling algorithms <http://hdl.handle.net/1721.1/113721>`_.
 
 .. autosummary::
-   :toctree: generated
-   :nosignatures:
-   :template: myfunction.rst
+    :toctree: generated
+    :nosignatures:
+    :template:  myintegrator.rst
 
-   integrator.predictor
-   integrator.cecm
-   integrator.celi
-   integrator.leqi
-   integrator.cf4
-   integrator.epc_rk4
-   integrator.si_celi
-   integrator.si_leqi
+    PredictorIntegrator
+    CECMIntegrator
+    CELIIntegrator
+    CF4Integrator
+    EPCRK4Integrator
+    LEQIIntegrator
+    SICELIIntegrator
+    SILEQIIntegrator
 
-Each of these functions expects a "transport operator" to be passed. An operator
+Each of these classes expects a "transport operator" to be passed. An operator
 specific to OpenMC is available using the following class:
 
 .. autosummary::
@@ -65,6 +65,8 @@ for a depletion chain:
    DecayTuple
    Nuclide
    ReactionTuple
+   FissionYieldDistribution
+   FissionYield
 
 The following classes are used during a depletion simulation and store auxiliary
 data, such as number densities and reaction rates for each material.
@@ -75,13 +77,25 @@ data, such as number densities and reaction rates for each material.
    :template: myclass.rst
 
    AtomNumber
-   ChainFissionHelper
-   DirectReactionRateHelper
    OperatorResult
    ReactionRates
    Results
    ResultsList
 
+The following classes are used to help the :class:`openmc.deplete.Operator`
+compute quantities like effective fission yields, reaction rates, and
+total system energy.
+
+.. autosummary::
+   :toctree: generated
+   :nosignatures:
+   :template: myclass.rst
+
+   helpers.AveragedFissionYieldHelper
+   helpers.ChainFissionHelper
+   helpers.ConstantFissionYieldHelper
+   helpers.DirectReactionRateHelper
+   helpers.FissionYieldCutoffHelper
 
 The following classes are abstract classes that can be used to extend the
 :mod:`openmc.deplete` capabilities:
@@ -91,11 +105,24 @@ The following classes are abstract classes that can be used to extend the
    :nosignatures:
    :template: myclass.rst
 
-   ReactionRateHelper
    EnergyHelper
+   FissionYieldHelper
+   ReactionRateHelper
+   TalliedFissionYieldHelper
    TransportOperator
 
-Each of the integrator functions also relies on a number of "helper" functions
+Custom integrators can be developed by subclassing from the following abstract
+base classes:
+
+.. autosummary::
+   :toctree: generated
+   :nosignatures:
+   :template: myintegrator.rst
+
+   Integrator
+   SIIntegrator
+
+Each of the integrator classes also relies on a number of "helper" functions
 as follows:
 
 .. autosummary::
@@ -103,5 +130,5 @@ as follows:
    :nosignatures:
    :template: myfunction.rst
 
-   integrator.CRAM16
-   integrator.CRAM48
+   cram.CRAM16
+   cram.CRAM48

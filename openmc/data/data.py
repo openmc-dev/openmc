@@ -358,7 +358,12 @@ def zam(name):
         symbol, A, state = _GND_NAME_RE.match(name).groups()
     except AttributeError:
         raise ValueError("'{}' does not appear to be a nuclide name in GND "
-                         "format.".format(name))
+                         "format".format(name))
+
+    if symbol not in ATOMIC_NUMBER:
+        raise ValueError("'{}' is not a recognized element symbol"
+                         .format(symbol))
+
     metastable = int(state[2:]) if state else 0
     return (ATOMIC_NUMBER[symbol], int(A), metastable)
 

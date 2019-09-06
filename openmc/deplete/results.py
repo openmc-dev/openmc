@@ -21,8 +21,8 @@ class Results(object):
 
     Attributes
     ----------
-    k : list of float
-        Eigenvalue for each substep.
+    k : list of (float, float)
+        Eigenvalue and uncertainty for each substep.
     time : list of float
         Time at beginning, end of step, in seconds.
     power : float
@@ -152,6 +152,37 @@ class Results(object):
 
         # Create storage array
         self.data = np.zeros((stages, self.n_mat, self.n_nuc))
+
+    def distribute(self, local_materials, ranges):
+        """Create a new object containing data for distributed materials
+
+        Parameters
+        ----------
+        local_materials : iterable of str
+            Materials for this process
+        ranges : iterable of int
+            Slice-like object indicating indicies of ``local_materials``
+            in the material dimension of :attr:`data` and each element
+            in :attr:`rates`
+
+        Returns
+        -------
+        Results
+            New results object
+        """
+        new = Results()
+        new.volume = {lm: self.volume[lm] for lm in local_materials}
+        new.mat_to_ind = dict(zip(
+            local_materials, range(len(local_materials))))
+        # Direct transfer
+        direct_attrs = ("time", "k", "power", "nuc_to_ind",
+                        "mat_to_hdf5_ind", "proc_time")
+        for attr in direct_attrs:
+            setattr(new, attr, getattr(self, attr))
+        # Get applicable slice of data
+        new.data = self.data[:, ranges]
+        new.rates = [r[ranges] for r in self.rates]
+        return new
 
     def export_to_hdf5(self, filename, step):
         """Export results to an HDF5 file
@@ -425,16 +456,7 @@ class Results(object):
         # Get indexing terms
         vol_dict, nuc_list, burn_list, full_burn_list = op.get_results_info()
 
-        # For a restart calculation, limit number of stages saved to meet the
-        # format of the hdf5 file
         stages = len(x)
-        offset = 0
-        if op.prev_res is not None and op.prev_res[0].n_stages < stages:
-            offset = stages - op.prev_res[0].n_stages
-            stages = min(stages, op.prev_res[0].n_stages)
-            warn("Number of restart integrator stages saved limited by initial"
-                 " depletion integrator choice to {}"
-                 .format(op.prev_res[0].n_stages))
 
         # Create results
         results = Results()
@@ -444,9 +466,9 @@ class Results(object):
 
         for i in range(stages):
             for mat_i in range(n_mat):
-                results[i, mat_i, :] = x[offset + i][mat_i][:]
+                results[i, mat_i, :] = x[i][mat_i]
 
-        results.k = [r.k for r in op_results]
+        results.k = [(r.k.nominal_value, r.k.std_dev) for r in op_results]
         results.rates = [r.rates for r in op_results]
         results.time = t
         results.power = power

@@ -413,6 +413,8 @@ class Material(IDManagerMixin):
             Z, _, _ = openmc.data.zam(nuclide)
         except ValueError as e:
             warnings.warn(str(e))
+        except KeyError as e:
+            warnings.warn(repr(e))
         else:
             # For actinides, have the material be depletable by default
             if Z >= 89:

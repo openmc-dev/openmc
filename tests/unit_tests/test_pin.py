@@ -2,7 +2,7 @@
 Tests for constructing Pin universes
 """
 
-import numpy
+import numpy as np
 import pytest
 
 import openmc
@@ -98,8 +98,8 @@ def test_subdivide(pin_mats, good_radii, surf_type):
     # check volumes of new rings
     radii = get_pin_radii(div0)
     bounds = [0] + radii[:N]
-    sqrs = numpy.square(bounds)
-    assert sqrs[1:] - sqrs[:-1] == pytest.approx(good_radii[0] ** 2 / N)
+    sqrs = np.square(bounds)
+    assert np.all(sqrs[1:] - sqrs[:-1] == pytest.approx(good_radii[0] ** 2 / N))
 
     # subdivide non-inner most region
     new_pin = pin(surfs, pin_mats, {1: N})
@@ -112,6 +112,6 @@ def test_subdivide(pin_mats, good_radii, surf_type):
 
     # check volumes of new rings
     radii = get_pin_radii(new_pin)
-    sqrs = numpy.square(radii[:N + 1])
-    assert sqrs[1:] - sqrs[:-1] == pytest.approx(
-        (good_radii[1] ** 2 - good_radii[0] ** 2) / N)
+    sqrs = np.square(radii[:N + 1])
+    assert np.all(sqrs[1:] - sqrs[:-1] == pytest.approx(
+        (good_radii[1] ** 2 - good_radii[0] ** 2) / N))

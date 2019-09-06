@@ -1,0 +1,53 @@
+<?xml version='1.0' encoding='utf-8'?>
+<geometry>
+  <cell id="1" material="1" region="-1" universe="1" />
+  <cell id="2" material="2" region="1" universe="1" />
+  <cell id="3" material="1" region="-2" universe="2" />
+  <cell id="4" material="2" region="2" universe="2" />
+  <cell fill="3" id="5" universe="4" />
+  <cell fill="5" id="6" region="3 -4 5 -6" universe="6" />
+  <lattice id="3">
+    <pitch>1.2 1.2</pitch>
+    <outer>1</outer>
+    <dimension>2 2</dimension>
+    <lower_left>-1.2 -1.2</lower_left>
+    <universes>
+2 1 
+1 1 </universes>
+  </lattice>
+  <lattice id="5">
+    <pitch>2.4 2.4</pitch>
+    <dimension>2 2</dimension>
+    <lower_left>-2.4 -2.4</lower_left>
+    <universes>
+4 4 
+4 4 </universes>
+  </lattice>
+  <surface coeffs="0.0 0.0 0.4" id="1" type="z-cylinder" />
+  <surface coeffs="0.0 0.0 0.5" id="2" type="z-cylinder" />
+  <surface boundary="reflective" coeffs="-2.4" id="3" name="minimum x" type="x-plane" />
+  <surface boundary="reflective" coeffs="2.4" id="4" name="maximum x" type="x-plane" />
+  <surface boundary="reflective" coeffs="-2.4" id="5" name="minimum y" type="y-plane" />
+  <surface boundary="reflective" coeffs="2.4" id="6" name="maximum y" type="y-plane" />
+</geometry>
+<?xml version='1.0' encoding='utf-8'?>
+<materials>
+  <material depletable="true" id="1" name="UO2">
+    <density units="g/cm3" value="10.0" />
+    <nuclide ao="1.0" name="U235" />
+    <nuclide ao="2.0" name="O16" />
+  </material>
+  <material id="2" name="light water">
+    <density units="g/cm3" value="1.0" />
+    <nuclide ao="2.0" name="H1" />
+    <nuclide ao="1.0" name="O16" />
+    <sab name="c_H_in_H2O" />
+  </material>
+</materials>
+<?xml version='1.0' encoding='utf-8'?>
+<settings>
+  <run_mode>eigenvalue</run_mode>
+  <particles>1000</particles>
+  <batches>10</batches>
+  <inactive>5</inactive>
+</settings>

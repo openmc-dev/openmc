@@ -11,10 +11,12 @@ import numpy as np
 import scipy.sparse as sp
 import scipy.sparse.linalg as sla
 
-from .. import comm
+from . import comm
+
+__all__ = ["deplete", "timed_deplete", "CRAM16", "CRAM48"]
 
 
-def deplete(chain, x, rates, dt, print_out=True, matrix_func=None):
+def deplete(chain, x, rates, dt, matrix_func=None):
     """Deplete materials using given reaction rates for a specified time
 
     Parameters
@@ -27,28 +29,37 @@ def deplete(chain, x, rates, dt, print_out=True, matrix_func=None):
         Reaction rates (from transport operator)
     dt : float
         Time in [s] to deplete for
-    print_out : bool, optional
-        Whether to show elapsed time
-    maxtrix_func : function, optional
-        Function to form the depletion matrix
+    maxtrix_func : Callable, optional
+        Function to form the depletion matrix after calling
+        ``matrix_func(chain, rates, fission_yields)``, where
+        ``fission_yields = {parent: {product: yield_frac}}``
+        Expected to return the depletion matrix required by
+        :func:`CRAM48`.
 
     Returns
     -------
     x_result : list of numpy.ndarray
         Updated atom number vectors for each material
-
     """
-    t_start = time.time()
+
+    fission_yields = chain.fission_yields
+    if len(fission_yields) == 1:
+        fission_yields = repeat(fission_yields[0])
+    elif len(fission_yields) != len(x):
+        raise ValueError(
+            "Number of material fission yield distributions {} is not equal "
+            "to the number of compositions {}".format(len(fission_yields),
+                len(x)))
+
+    if matrix_func is None:
+        matrices = map(chain.form_matrix, rates, fission_yields)
+    else:
+        matrices = map(matrix_func, repeat(chain), rates, fission_yields)
 
     # Use multiprocessing pool to distribute work
     with Pool() as pool:
-        iters = zip(repeat(chain), x, rates, repeat(dt), repeat(matrix_func))
-        x_result = list(pool.starmap(_cram_wrapper, iters))
-
-    t_end = time.time()
-    if comm.rank == 0:
-        if print_out:
-            print("Time to matexp: ", t_end - t_start)
+        inputs = zip(matrices, x, repeat(dt))
+        x_result = list(pool.starmap(CRAM48, inputs))
 
     return x_result
 
@@ -70,35 +81,6 @@ def timed_deplete(*args, **kwargs):
     start = time.time()
     results = deplete(*args, **kwargs)
     return time.time() - start, results
-
-
-def _cram_wrapper(chain, n0, rates, dt, matrix_func=None):
-    """Wraps depletion matrix creation / CRAM solve for multiprocess execution
-
-    Parameters
-    ----------
-    chain : openmc.deplete.Chain
-        Depletion chain used to construct the burnup matrix
-    n0 : numpy.array
-        Vector to operate a matrix exponent on.
-    rates : numpy.ndarray
-        2D array indexed by nuclide then by cell.
-    dt : float
-        Time to integrate to.
-    maxtrix_func : function, optional
-        Function to form the depletion matrix
-
-    Returns
-    -------
-    numpy.array
-        Results of the matrix exponent.
-    """
-
-    if matrix_func is None:
-        A = chain.form_matrix(rates)
-    else:
-        A = matrix_func(chain, rates)
-    return CRAM48(A, n0, dt)
 
 
 def CRAM16(A, n0, dt):

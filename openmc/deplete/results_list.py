@@ -8,22 +8,34 @@ from openmc.checkvalue import check_filetype_version
 class ResultsList(list):
     """A list of openmc.deplete.Results objects
 
-    Parameters
-    ----------
-    filename : str
-        The filename to read from.
-
+    It is recommended to use :meth:`from_hdf5` over
+    direct creation.
     """
-    def __init__(self, filename):
-        super().__init__()
+
+    @classmethod
+    def from_hdf5(cls, filename):
+        """Load in depletion results from a previous file
+
+        Parameters
+        ----------
+        filename : str
+            Path to depletion result file
+
+        Returns
+        -------
+        new : ResultsList
+            New instance of depletion results
+        """
         with h5py.File(str(filename), "r") as fh:
             check_filetype_version(fh, 'depletion results', _VERSION_RESULTS[0])
+            new = cls()
 
             # Get number of results stored
             n = fh["number"][...].shape[0]
 
             for i in range(n):
-                self.append(Results.from_hdf5(fh, i))
+                new.append(Results.from_hdf5(fh, i))
+        return new
 
     def get_atoms(self, mat, nuc):
         """Get number of nuclides over time from a single material

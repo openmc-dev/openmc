@@ -25,7 +25,7 @@ surface is a locus of zeros of a function of Cartesian coordinates
 
 Defining a surface alone is not sufficient to specify a volume -- in order to
 define an actual volume, one must reference the *half-space* of a surface. A
-surface half-space is the region whose points satisfy a positive of negative
+surface half-space is the region whose points satisfy a positive or negative
 inequality of the surface equation. For example, for a sphere of radius one
 centered at the origin, the surface equation is :math:`f(x,y,z) = x^2 + y^2 +
 z^2 - 1 = 0`. Thus, we say that the negative half-space of the sphere, is

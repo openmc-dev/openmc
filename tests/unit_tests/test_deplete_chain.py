@@ -3,10 +3,11 @@
 from collections.abc import Mapping
 import os
 from pathlib import Path
+from itertools import product
 
 import numpy as np
 from openmc.data import zam, ATOMIC_SYMBOL
-from openmc.deplete import comm, Chain, reaction_rates, nuclide
+from openmc.deplete import comm, Chain, reaction_rates, nuclide, cram
 import pytest
 
 from tests import cdtemp
@@ -128,9 +129,10 @@ def test_from_xml(simple_chain):
     assert [r.branching_ratio for r in nuc.reactions] == [1.0, 0.7, 0.3]
 
     # Yield tests
-    assert nuc.yield_energies == [0.0253]
+    assert nuc.yield_energies == (0.0253,)
     assert list(nuc.yield_data) == [0.0253]
-    assert nuc.yield_data[0.0253] == [("A", 0.0292737), ("B", 0.002566345)]
+    assert nuc.yield_data[0.0253].products == ("A", "B")
+    assert (nuc.yield_data[0.0253].yields == [0.0292737, 0.002566345]).all()
 
 
 def test_export_to_xml(run_in_tmpdir):
@@ -139,8 +141,7 @@ def test_export_to_xml(run_in_tmpdir):
     # Prevent different MPI ranks from conflicting
     filename = 'test{}.xml'.format(comm.rank)
 
-    A = nuclide.Nuclide()
-    A.name = "A"
+    A = nuclide.Nuclide("A")
     A.half_life = 2.36520e4
     A.decay_modes = [
         nuclide.DecayTuple("beta1", "B", 0.6),
@@ -148,21 +149,19 @@ def test_export_to_xml(run_in_tmpdir):
     ]
     A.reactions = [nuclide.ReactionTuple("(n,gamma)", "C", 0.0, 1.0)]
 
-    B = nuclide.Nuclide()
-    B.name = "B"
+    B = nuclide.Nuclide("B")
     B.half_life = 3.29040e4
     B.decay_modes = [nuclide.DecayTuple("beta", "A", 1.0)]
     B.reactions = [nuclide.ReactionTuple("(n,gamma)", "C", 0.0, 1.0)]
 
-    C = nuclide.Nuclide()
-    C.name = "C"
+    C = nuclide.Nuclide("C")
     C.reactions = [
         nuclide.ReactionTuple("fission", None, 2.0e8, 1.0),
         nuclide.ReactionTuple("(n,gamma)", "A", 0.0, 0.7),
         nuclide.ReactionTuple("(n,gamma)", "B", 0.0, 0.3)
     ]
-    C.yield_energies = [0.0253]
-    C.yield_data = {0.0253: [("A", 0.0292737), ("B", 0.002566345)]}
+    C.yield_data = nuclide.FissionYieldDistribution({
+        0.0253: {"A": 0.0292737, "B": 0.002566345}})
 
     chain = Chain()
     chain.nuclides = [A, B, C]
@@ -220,6 +219,13 @@ def test_form_matrix(simple_chain):
     assert mat[1, 2] == mat12
     assert mat[2, 2] == mat22
 
+    # Pass equivalent fission yields directly
+    # Ensure identical matrix is formed
+    f_yields = {"C": {"A": 0.0292737, "B": 0.002566345}}
+    new_mat = chain.form_matrix(react[0], f_yields)
+    for r, c in product(range(3), range(3)):
+        assert new_mat[r, c] == mat[r, c]
+
 
 def test_getitem():
     """ Test nuc_by_ind converter function. """
@@ -248,29 +254,29 @@ def test_set_fiss_q():
 def test_get_set_chain_br(simple_chain):
     """Test minor modifications to capture branch ratios"""
     expected = {"C": {"A": 0.7, "B": 0.3}}
-    assert simple_chain.get_capture_branches() == expected
+    assert simple_chain.get_branch_ratios() == expected
 
     # safely modify
     new_chain = Chain.from_xml("chain_test.xml")
     new_br = {"C": {"A": 0.5, "B": 0.5}, "A": {"C": 0.99, "B": 0.01}}
-    new_chain.set_capture_branches(new_br)
-    assert new_chain.get_capture_branches() == new_br
+    new_chain.set_branch_ratios(new_br)
+    assert new_chain.get_branch_ratios() == new_br
 
     # write, re-read
     new_chain.export_to_xml("chain_mod.xml")
-    assert Chain.from_xml("chain_mod.xml").get_capture_branches() == new_br
+    assert Chain.from_xml("chain_mod.xml").get_branch_ratios() == new_br
 
     # Test non-strict [warn, not error] setting
     bad_br = {"B": {"X": 0.6, "A": 0.4}, "X": {"A": 0.5, "C": 0.5}}
     bad_br.update(new_br)
-    new_chain.set_capture_branches(bad_br, strict=False)
-    assert new_chain.get_capture_branches() == new_br
+    new_chain.set_branch_ratios(bad_br, strict=False)
+    assert new_chain.get_branch_ratios() == new_br
 
     # Ensure capture reactions are removed
     rem_br = {"A": {"C": 1.0}}
-    new_chain.set_capture_branches(rem_br)
+    new_chain.set_branch_ratios(rem_br)
     # A is not in returned dict because there is no branch
-    assert "A" not in new_chain.get_capture_branches()
+    assert "A" not in new_chain.get_branch_ratios()
 
 
 def test_capture_branch_infer_ground():
@@ -283,15 +289,14 @@ def test_capture_branch_infer_ground():
     chain = Chain.from_xml(chain_file)
 
     # Create nuclide to be added into the chain
-    xe136m = nuclide.Nuclide()
-    xe136m.name = "Xe136_m1"
+    xe136m = nuclide.Nuclide("Xe136_m1")
 
     chain.nuclides.append(xe136m)
     chain.nuclide_dict[xe136m.name] = len(chain.nuclides) - 1
 
-    chain.set_capture_branches(infer_br)
+    chain.set_branch_ratios(infer_br, "(n,gamma)")
 
-    assert chain.get_capture_branches() == set_br
+    assert chain.get_branch_ratios("(n,gamma)") == set_br
 
 
 def test_capture_branch_no_rxn():
@@ -301,15 +306,13 @@ def test_capture_branch_no_rxn():
     chain_file = Path(__file__).parents[1] / "chain_simple.xml"
     chain = Chain.from_xml(chain_file)
 
-    u5m = nuclide.Nuclide()
-    u5m.name = "U235_m1"
+    u5m = nuclide.Nuclide("U235_m1")
 
     chain.nuclides.append(u5m)
     chain.nuclide_dict[u5m.name] = len(chain.nuclides) - 1
 
-    phrase = "U234 does not have capture reactions"
-    with pytest.raises(AttributeError, match=phrase):
-        chain.set_capture_branches(u4br)
+    with pytest.raises(AttributeError, match="U234"):
+        chain.set_branch_ratios(u4br)
 
 
 def test_capture_branch_failures(simple_chain):
@@ -318,14 +321,140 @@ def test_capture_branch_failures(simple_chain):
     # Parent isotope not present
     br = {"X": {"A": 0.6, "B": 0.7}}
     with pytest.raises(KeyError, match="X"):
-        simple_chain.set_capture_branches(br)
+        simple_chain.set_branch_ratios(br)
 
     # Product isotope not present
     br = {"C": {"X": 0.4, "A": 0.2, "B": 0.4}}
     with pytest.raises(KeyError, match="X"):
-        simple_chain.set_capture_branches(br)
+        simple_chain.set_branch_ratios(br)
 
     # Sum of ratios > 1.0
     br = {"C": {"A": 1.0, "B": 1.0}}
-    with pytest.raises(ValueError, match="C ratios"):
-        simple_chain.set_capture_branches(br)
+    with pytest.raises(ValueError, match=r"Sum of \(n,gamma\).*for C"):
+        simple_chain.set_branch_ratios(br, "(n,gamma)")
+
+
+def test_set_alpha_branches():
+    """Test setting of alpha reaction branching ratios"""
+    # Build a mock chain
+    chain = Chain()
+
+    parent = nuclide.Nuclide()
+    parent.name = "A"
+
+    he4 = nuclide.Nuclide()
+    he4.name = "He4"
+
+    ground_tgt = nuclide.Nuclide()
+    ground_tgt.name = "B"
+
+    meta_tgt = nuclide.Nuclide()
+    meta_tgt.name = "B_m1"
+
+    for ix, nuc in enumerate((parent, ground_tgt, meta_tgt, he4)):
+        chain.nuclides.append(nuc)
+        chain.nuclide_dict[nuc.name] = ix
+
+    # add reactions to parent
+    parent.reactions.append(nuclide.ReactionTuple(
+        "(n,a)", ground_tgt.name, 1.0, 0.6))
+    parent.reactions.append(nuclide.ReactionTuple(
+        "(n,a)", meta_tgt.name, 1.0, 0.4))
+    parent.reactions.append(nuclide.ReactionTuple(
+        "(n,a)", he4.name, 1.0, 1.0))
+
+    expected_ref = {"A": {"B": 0.6, "B_m1": 0.4}}
+
+    assert chain.get_branch_ratios("(n,a)") == expected_ref
+
+    # alter and check again
+
+    altered = {"A": {"B": 0.5, "B_m1": 0.5}}
+
+    chain.set_branch_ratios(altered, "(n,a)")
+    assert chain.get_branch_ratios("(n,a)") == altered
+
+    # make sure that alpha particle still produced
+    for r in parent.reactions:
+        if r.target == he4.name:
+            break
+    else:
+        raise ValueError("Helium has been removed and should not have been")
+
+
+def test_simple_fission_yields(simple_chain):
+    """Check the default fission yields that can be used to form the matrix
+    """
+    fission_yields = simple_chain.get_thermal_fission_yields()
+    assert fission_yields == {"C": {"A": 0.0292737, "B": 0.002566345}}
+
+
+def test_fission_yield_attribute(simple_chain):
+    """Test the fission_yields property"""
+    thermal_yields = simple_chain.get_thermal_fission_yields()
+    # generate default with property
+    assert simple_chain.fission_yields[0] == thermal_yields
+    empty_chain = Chain()
+    empty_chain.fission_yields = thermal_yields
+    assert empty_chain.fission_yields[0] == thermal_yields
+    empty_chain.fission_yields = [thermal_yields] * 2
+    assert empty_chain.fission_yields[0] == thermal_yields
+    assert empty_chain.fission_yields[1] == thermal_yields
+
+    # test failure with deplete function
+    # number fission yields != number of materials
+    dummy_conc = [[1, 2]] * (len(empty_chain.fission_yields) + 1)
+    with pytest.raises(
+            ValueError, match="fission yield.*not equal.*compositions"):
+       cram.deplete(empty_chain, dummy_conc, None, 0.5)
+
+def test_validate(simple_chain):
+    """Test the validate method"""
+
+    # current chain is invalid
+    # fission yields do not sum to 2.0
+    with pytest.raises(ValueError, match="Nuclide C.*fission yields"):
+        simple_chain.validate(strict=True, tolerance=0.0)
+
+    with pytest.warns(UserWarning) as record:
+        assert not simple_chain.validate(strict=False, quiet=False, tolerance=0.0)
+        assert not simple_chain.validate(strict=False, quiet=True, tolerance=0.0)
+    assert len(record) == 1
+    assert "Nuclide C" in record[0].message.args[0]
+
+    # Fix fission yields but keep to restore later
+    old_yields = simple_chain["C"].yield_data
+    simple_chain["C"].yield_data = {0.0253: {"A": 1.4, "B": 0.6}}
+
+    assert simple_chain.validate(strict=True, tolerance=0.0)
+    with pytest.warns(None) as record:
+        assert simple_chain.validate(strict=False, quiet=False, tolerance=0.0)
+    assert len(record) == 0
+
+    # Mess up "earlier" nuclide's reactions
+    decay_mode = simple_chain["A"].decay_modes.pop()
+
+    with pytest.raises(ValueError, match="Nuclide A.*decay mode"):
+        simple_chain.validate(strict=True, tolerance=0.0)
+
+    # restore old fission yields
+    simple_chain["C"].yield_data = old_yields
+
+    with pytest.warns(UserWarning) as record:
+        assert not simple_chain.validate(strict=False, quiet=False, tolerance=0.0)
+    assert len(record) == 2
+    assert "Nuclide A" in record[0].message.args[0]
+    assert "Nuclide C" in record[1].message.args[0]
+
+    # restore decay modes
+    simple_chain["A"].decay_modes.append(decay_mode)
+
+
+def test_validate_inputs():
+    c = Chain()
+
+    with pytest.raises(TypeError, match="tolerance"):
+        c.validate(tolerance=None)
+
+    with pytest.raises(ValueError, match="tolerance"):
+        c.validate(tolerance=-1)

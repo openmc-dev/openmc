@@ -1,11 +1,9 @@
-import sys
 from collections import OrderedDict
-from collections.abc import Iterable, Mapping, MutableMapping
+from collections.abc import Mapping, MutableMapping
 from io import StringIO
 from math import log10
 from numbers import Integral, Real
 import os
-import shutil
 import tempfile
 from warnings import warn
 
@@ -15,7 +13,8 @@ import h5py
 from . import HDF5_VERSION, HDF5_VERSION_MAJOR
 from .ace import Library, Table, get_table, get_metadata
 from .data import ATOMIC_SYMBOL, K_BOLTZMANN, EV_PER_MEV
-from .endf import Evaluation, SUM_RULES, get_head_record, get_tab1_record
+from .endf import (
+    Evaluation, SUM_RULES, get_head_record, get_tab1_record, get_evaluations)
 from .fission_energy import FissionEnergyRelease
 from .function import Tabulated1D, Sum, ResonancesWithBackground
 from .grid import linearize, thin
@@ -453,7 +452,7 @@ class IncidentNeutron(EqualityMixin):
             if rx.redundant:
                 photon_rx = any(p.particle == 'photon' for p in rx.products)
                 keep_mts = (4, 16, 103, 104, 105, 106, 107,
-                            203, 204, 205, 206, 207, 301, 444)
+                            203, 204, 205, 206, 207, 301, 318, 444)
                 if not (photon_rx or rx.mt in keep_mts):
                     continue
 
@@ -553,6 +552,20 @@ class IncidentNeutron(EqualityMixin):
         if 'fission_energy_release' in group:
             fer_group = group['fission_energy_release']
             data.fission_energy = FissionEnergyRelease.from_hdf5(fer_group)
+
+        # Rebuild non-fission heating
+        total_heating = data.reactions.get(301)
+        fission_heating = data.reactions.get(318)
+        if total_heating is not None and fission_heating is not None:
+            non_fission_heating = Reaction(999)
+            non_fission_heating.redundant = True
+            for strT, total in total_heating.xs.items():
+                fission = fission_heating.xs.get(strT)
+                if fission is None:
+                    continue
+                non_fission_heating.xs[strT] = Tabulated1D(
+                    total.x, total.y - fission(total.x))
+            data.reactions[999] = non_fission_heating
 
         return data
 
@@ -801,14 +814,14 @@ class IncidentNeutron(EqualityMixin):
         """
         with tempfile.TemporaryDirectory() as tmpdir:
             # Run NJOY to create an ACE library
-            kwargs.setdefault('ace', os.path.join(tmpdir, 'ace'))
-            kwargs.setdefault('xsdir', os.path.join(tmpdir, 'xsdir'))
-            kwargs.setdefault('pendf', os.path.join(tmpdir, 'pendf'))
+            kwargs.setdefault("output_dir", tmpdir)
+            for key in ("acer", "pendf", "heatr", "broadr", "gaspr", "purr"):
+                kwargs.setdefault(key, os.path.join(kwargs["output_dir"], key))
             kwargs['evaluation'] = evaluation
             make_ace(filename, temperatures, **kwargs)
 
             # Create instance from ACE tables within library
-            lib = Library(kwargs['ace'])
+            lib = Library(kwargs['acer'])
             data = cls.from_ace(lib.tables[0])
             for table in lib.tables[1:]:
                 data.add_temperature_from_ace(table)
@@ -817,6 +830,29 @@ class IncidentNeutron(EqualityMixin):
             ev = evaluation if evaluation is not None else Evaluation(filename)
             if (1, 458) in ev.section:
                 data.fission_energy = FissionEnergyRelease.from_endf(ev, data)
+                # Add 318 fission heating data from heatr
+                non_fission_heating = Reaction(999)
+                non_fission_heating.redundant = True
+                fission_heating = Reaction(318)
+
+                heatr_evals = get_evaluations(kwargs["heatr"])
+                for heatr in heatr_evals:
+                    temp = "{}K".format(round(heatr.target["temperature"]))
+                    f318 = StringIO(heatr.section[3, 318])
+                    get_head_record(f318)
+                    _params, fission_kerma = get_tab1_record(f318)
+                    fission_heating.xs[temp] = fission_kerma
+                    total_heating_xs = data.reactions[301].xs.get(temp)
+                    if total_heating_xs is None:
+                        continue
+                    non_fission_heating.xs[temp] = Tabulated1D(
+                        fission_kerma.x,
+                        total_heating_xs(fission_kerma.x) - fission_kerma.y,
+                        breakpoints=fission_kerma.breakpoints,
+                        interpolation=fission_kerma.interpolation)
+
+                data.reactions[318] = fission_heating
+                data.reactions[999] = non_fission_heating
 
             # Add 0K elastic scattering cross section
             if '0K' not in data.energy:

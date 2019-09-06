@@ -39,7 +39,7 @@ def test_full(run_in_tmpdir):
     space = openmc.stats.Box(lower_left, upper_right)
     settings.source = openmc.Source(space=space)
     settings.seed = 1
-    settings.verbosity = 3
+    settings.verbosity = 1
 
     # Create operator
     chain_file = Path(__file__).parents[2] / 'chain_simple.xml'
@@ -54,7 +54,7 @@ def test_full(run_in_tmpdir):
     power = 2.337e15*4*JOULE_PER_EV*1e6  # MeV/second cm from CASMO
 
     # Perform simulation using the predictor algorithm
-    openmc.deplete.integrator.predictor(op, dt, power)
+    openmc.deplete.PredictorIntegrator(op, dt, power).integrate()
 
     # Get path to test and reference results
     path_test = op.output_dir / 'depletion_results.h5'
@@ -66,8 +66,8 @@ def test_full(run_in_tmpdir):
         return
 
     # Load the reference/test results
-    res_test = openmc.deplete.ResultsList(path_test)
-    res_ref = openmc.deplete.ResultsList(path_reference)
+    res_test = openmc.deplete.ResultsList.from_hdf5(path_test)
+    res_ref = openmc.deplete.ResultsList.from_hdf5(path_reference)
 
     # Assert same mats
     for mat in res_ref[0].mat_to_ind:
@@ -101,3 +101,18 @@ def test_full(run_in_tmpdir):
 
             assert correct, "Discrepancy in mat {} and nuc {}\n{}\n{}".format(
                 mat, nuc, y_old, y_test)
+
+    # Compare statepoint files with depletion results
+
+    t_test, k_test = res_test.get_eigenvalue()
+    t_ref, k_ref = res_ref.get_eigenvalue()
+    k_state = np.empty_like(k_ref)
+
+    # Get statepoint files for all BOS points and EOL
+    for n in range(N + 1):
+        statepoint = openmc.StatePoint("openmc_simulation_n{}.h5".format(n))
+        k_n = statepoint.k_combined
+        k_state[n] = [k_n.nominal_value, k_n.std_dev]
+    # Look for exact match pulling from statepoint and depletion_results
+    assert np.all(k_state == k_test)
+    assert np.allclose(k_test, k_ref)

@@ -171,6 +171,140 @@ score_fission_delayed_dg(int i_tally, int d_bin, double score, int score_index)
   dg_match.bins_[i_bin] = original_bin;
 }
 
+//! Helper function to retrieve fission q value from a nuclide
+
+double get_nuc_fission_q(const Nuclide& nuc, const Particle* p, int score_bin)
+{
+  if (score_bin == SCORE_FISS_Q_PROMPT) {
+    if (nuc.fission_q_prompt_) {
+      return (*nuc.fission_q_prompt_)(p->E_last_);
+    }
+  } else if (score_bin == SCORE_FISS_Q_RECOV) {
+    if (nuc.fission_q_recov_) {
+      return (*nuc.fission_q_recov_)(p->E_last_);
+    }
+  }
+  return 0.0;
+}
+
+//! Helper function to score fission energy
+//
+//! Pulled out to support both the fission_q scores and energy deposition
+//! score
+
+double score_fission_q(const Particle* p, int score_bin, const Tally& tally, 
+  double flux, int i_nuclide, double atom_density)
+{
+  if (tally.estimator_ == ESTIMATOR_ANALOG) {
+    const Nuclide& nuc {*data::nuclides[p->event_nuclide_]};
+    if (settings::survival_biasing) {
+      // No fission events occur if survival biasing is on -- need to
+      // calculate fraction of absorptions that would have resulted in
+      // fission scaled by the Q-value
+      if (p->neutron_xs_[p->event_nuclide_].absorption > 0) {
+        return p->wgt_absorb_ * get_nuc_fission_q(nuc, p, score_bin)
+               * p->neutron_xs_[p->event_nuclide_].fission * flux
+               / p->neutron_xs_[p->event_nuclide_].absorption;
+      }
+    } else {
+      // Skip any non-absorption events
+      if (p->event_ == EVENT_SCATTER) return 0.0;
+      // All fission events will contribute, so again we can use particle's
+      // weight entering the collision as the estimate for the fission
+      // reaction rate
+      if (p->neutron_xs_[p->event_nuclide_].absorption > 0) {
+        return p->wgt_last_ * get_nuc_fission_q(nuc, p, score_bin)
+               * p->neutron_xs_[p->event_nuclide_].fission * flux
+               / p->neutron_xs_[p->event_nuclide_].absorption;
+      }
+    }
+  } else {
+    if (i_nuclide >= 0) {
+      const Nuclide& nuc {*data::nuclides[i_nuclide]};
+      return get_nuc_fission_q(nuc, p, score_bin) * atom_density * flux
+             * p->neutron_xs_[i_nuclide].fission;
+    } else {
+      if (p->material_ != MATERIAL_VOID) {
+        const Material& material {*model::materials[p->material_]};
+        double score {0.0};
+        for (auto i = 0; i < material.nuclide_.size(); ++i) {
+          auto j_nuclide = material.nuclide_[i];
+          auto atom_density = material.atom_density_(i);
+          const Nuclide& nuc {*data::nuclides[j_nuclide]};
+          score += get_nuc_fission_q(nuc, p, score_bin) * atom_density 
+            * p->neutron_xs_[j_nuclide].fission;
+        }
+        return score * flux;
+      }
+    }
+  }
+  return 0.0;
+}
+
+//! Helper function to obtain the kerma coefficient for a given nuclide
+
+double get_nuclide_neutron_heating(const Particle* p, const Nuclide& nuc,
+    int rxn_index, int i_nuclide)
+{
+  size_t mt = nuc.reaction_index_[rxn_index];
+  if (mt == C_NONE) return 0.0;
+  auto i_temp = p->neutron_xs_[i_nuclide].index_temp;
+  if (i_temp < 0) return 0.0; // Can be true due to multipole
+  const auto& rxn {*nuc.reactions_[mt]};
+  const auto& xs {rxn.xs_[i_temp]};
+  auto i_grid = p->neutron_xs_[i_nuclide].index_grid;
+  if (i_grid < xs.threshold) return 0.0;
+  auto f = p->neutron_xs_[i_nuclide].interp_factor;
+  return (1.0 - f) * xs.value[i_grid-xs.threshold]
+    + f * xs.value[i_grid-xs.threshold+1];
+}
+
+//! Helper function to obtain neutron heating [eV]
+
+double score_neutron_heating(const Particle* p, const Tally& tally, double flux,
+    int rxn_bin, int i_nuclide, double atom_density)
+{
+  double score;
+  // Get heating macroscopic "cross section"
+  double heating_xs;
+  if (i_nuclide >= 0) {
+    const Nuclide& nuc {*data::nuclides[i_nuclide]};    
+    heating_xs = get_nuclide_neutron_heating(p, nuc, rxn_bin, i_nuclide);
+    if (tally.estimator_ == ESTIMATOR_ANALOG) {
+      heating_xs /= p->neutron_xs_[i_nuclide].total;
+    } else {
+      heating_xs *= atom_density;
+    }
+  } else {
+    if (p->material_ != MATERIAL_VOID) {
+      heating_xs = 0.0;
+      const Material& material {*model::materials[p->material_]};
+      for (auto i = 0; i< material.nuclide_.size(); ++i) {
+        int j_nuclide = material.nuclide_[i];
+        double atom_density {material.atom_density_(i)};
+        const Nuclide& nuc {*data::nuclides[j_nuclide]};
+        heating_xs += atom_density * get_nuclide_neutron_heating(p, nuc, rxn_bin, j_nuclide);
+      }
+      if (tally.estimator_ == ESTIMATOR_ANALOG) {
+        heating_xs /= p->macro_xs_.total;
+      }
+    }
+  }
+  score = heating_xs * flux;
+  if (tally.estimator_ == ESTIMATOR_ANALOG) {
+    // All events score to a heating tally bin. We actually use a
+    // collision estimator in place of an analog one since there is no
+    // reaction-wise heating cross section
+    if (settings::survival_biasing) {
+      // Account for the fact that some weight has been absorbed
+      score *= p->wgt_last_ + p->wgt_absorb_;
+    } else {
+      score *= p->wgt_last_;
+    }
+  }
+  return score;
+}
+
 //! Helper function for nu-fission tallies with energyout filters.
 //
 //! In this case, we may need to score to multiple bins if there were multiple
@@ -323,7 +457,7 @@ void
 score_general_ce(Particle* p, int i_tally, int start_index,
   int filter_index, int i_nuclide, double atom_density, double flux)
 {
-  auto& tally {*model::tallies[i_tally]};
+  Tally& tally {*model::tallies[i_tally]};
 
   // Get the pre-collision energy of the particle.
   auto E = p->E_last_;
@@ -1032,83 +1166,8 @@ score_general_ce(Particle* p, int i_tally, int start_index,
 
     case SCORE_FISS_Q_PROMPT:
     case SCORE_FISS_Q_RECOV:
-      //continue;
       if (p->macro_xs_.absorption == 0.) continue;
-      score = 0.;
-      if (tally.estimator_ == ESTIMATOR_ANALOG) {
-        if (settings::survival_biasing) {
-          // No fission events occur if survival biasing is on -- need to
-          // calculate fraction of absorptions that would have resulted in
-          // fission scaled by the Q-value
-          const auto& nuc {*data::nuclides[p->event_nuclide_]};
-          if (p->neutron_xs_[p->event_nuclide_].absorption > 0) {
-            double q_value = 0.;
-            if (score_bin == SCORE_FISS_Q_PROMPT) {
-              if (nuc.fission_q_prompt_)
-                q_value = (*nuc.fission_q_prompt_)(p->E_last_);
-            } else if (score_bin == SCORE_FISS_Q_RECOV) {
-              if (nuc.fission_q_recov_)
-                q_value = (*nuc.fission_q_recov_)(p->E_last_);
-            }
-            score = p->wgt_absorb_ * q_value
-              * p->neutron_xs_[p->event_nuclide_].fission
-              / p->neutron_xs_[p->event_nuclide_].absorption * flux;
-          }
-        } else {
-          // Skip any non-absorption events
-          if (p->event_ == EVENT_SCATTER) continue;
-          // All fission events will contribute, so again we can use particle's
-          // weight entering the collision as the estimate for the fission
-          // reaction rate
-          const auto& nuc {*data::nuclides[p->event_nuclide_]};
-          if (p->neutron_xs_[p->event_nuclide_].absorption > 0) {
-            double q_value = 0.;
-            if (score_bin == SCORE_FISS_Q_PROMPT) {
-              if (nuc.fission_q_prompt_)
-                q_value = (*nuc.fission_q_prompt_)(p->E_last_);
-            } else if (score_bin == SCORE_FISS_Q_RECOV) {
-              if (nuc.fission_q_recov_)
-                q_value = (*nuc.fission_q_recov_)(p->E_last_);
-            }
-            score = p->wgt_last_ * q_value
-              * p->neutron_xs_[p->event_nuclide_].fission
-              / p->neutron_xs_[p->event_nuclide_].absorption * flux;
-          }
-        }
-      } else {
-        if (i_nuclide >= 0) {
-          const auto& nuc {*data::nuclides[i_nuclide]};
-          double q_value = 0.;
-          if (score_bin == SCORE_FISS_Q_PROMPT) {
-            if (nuc.fission_q_prompt_)
-              q_value = (*nuc.fission_q_prompt_)(p->E_last_);
-          } else if (score_bin == SCORE_FISS_Q_RECOV) {
-            if (nuc.fission_q_recov_)
-              q_value = (*nuc.fission_q_recov_)(p->E_last_);
-          }
-          score = q_value * p->neutron_xs_[i_nuclide].fission
-            * atom_density * flux;
-        } else {
-          if (p->material_ != MATERIAL_VOID) {
-            const Material& material {*model::materials[p->material_]};
-            for (auto i = 0; i < material.nuclide_.size(); ++i) {
-              auto j_nuclide = material.nuclide_[i];
-              auto atom_density = material.atom_density_(i);
-              const auto& nuc {*data::nuclides[j_nuclide]};
-              double q_value = 0.;
-              if (score_bin == SCORE_FISS_Q_PROMPT) {
-                if (nuc.fission_q_prompt_)
-                  q_value = (*nuc.fission_q_prompt_)(p->E_last_);
-              } else if (score_bin == SCORE_FISS_Q_RECOV) {
-                if (nuc.fission_q_recov_)
-                  q_value = (*nuc.fission_q_recov_)(p->E_last_);
-              }
-              score += q_value * p->neutron_xs_[j_nuclide].fission
-                * atom_density * flux;
-            }
-          }
-        }
-      }
+      score = score_fission_q(p, score_bin, tally, flux, i_nuclide, atom_density);
       break;
 
 
@@ -1154,105 +1213,8 @@ score_general_ce(Particle* p, int i_tally, int start_index,
     case SCORE_HEATING:
       score = 0.;
       if (p->type_ == Particle::Type::neutron) {
-        if (tally.estimator_ == ESTIMATOR_ANALOG) {
-          // All events score to a heating tally bin. We actually use a
-          // collision estimator in place of an analog one since there is no
-          // reaction-wise heating cross section
-          if (settings::survival_biasing) {
-            // We need to account for the fact that some weight was already
-            // absorbed
-            score = p->wgt_last_ + p->wgt_absorb_;
-          } else {
-            score = p->wgt_last_;
-          }
-          if (i_nuclide >= 0) {
-            // Calculate nuclide heating cross section
-            double macro_heating = 0.;
-            const auto& nuc {*data::nuclides[i_nuclide]};
-            auto m = nuc.reaction_index_[NEUTRON_HEATING];
-            if (m == C_NONE) continue;
-            const auto& rxn {*nuc.reactions_[m]};
-            auto i_temp = p->neutron_xs_[i_nuclide].index_temp;
-            if (i_temp >= 0) { // Can be false due to multipole
-              auto i_grid = p->neutron_xs_[i_nuclide].index_grid;
-              auto f = p->neutron_xs_[i_nuclide].interp_factor;
-              const auto& xs {rxn.xs_[i_temp]};
-              if (i_grid >= xs.threshold) {
-                macro_heating = ((1.0 - f) * xs.value[i_grid-xs.threshold]
-                  + f * xs.value[i_grid-xs.threshold+1]);
-              }
-            }
-            score *= macro_heating * flux / p->neutron_xs_[i_nuclide].total;
-          } else {
-            if (p->material_ != MATERIAL_VOID) {
-              // Calculate material heating cross section
-              double macro_heating = 0.;
-              const Material& material {*model::materials[p->material_]};
-              for (auto i = 0; i < material.nuclide_.size(); ++i) {
-                auto j_nuclide = material.nuclide_[i];
-                auto atom_density = material.atom_density_(i);
-                const auto& nuc {*data::nuclides[j_nuclide]};
-                auto m = nuc.reaction_index_[NEUTRON_HEATING];
-                if (m == C_NONE) continue;
-                const auto& rxn {*nuc.reactions_[m]};
-                auto i_temp = p->neutron_xs_[j_nuclide].index_temp;
-                if (i_temp >= 0) { // Can be false due to multipole
-                  auto i_grid = p->neutron_xs_[j_nuclide].index_grid;
-                  auto f = p->neutron_xs_[j_nuclide].interp_factor;
-                  const auto& xs {rxn.xs_[i_temp]};
-                  if (i_grid >= xs.threshold) {
-                    macro_heating += ((1.0 - f) * xs.value[i_grid-xs.threshold]
-                      + f * xs.value[i_grid-xs.threshold+1]) * atom_density;
-                  }
-                }
-              }
-              score *= macro_heating * flux / p->macro_xs_.total;
-            } else {
-              score = 0.;
-            }
-          }
-        } else {
-          // Calculate neutron heating cross section on-the-fly
-          if (i_nuclide >= 0) {
-            const auto& nuc {*data::nuclides[i_nuclide]};
-            auto m = nuc.reaction_index_[NEUTRON_HEATING];
-            if (m == C_NONE) continue;
-            const auto& rxn {*nuc.reactions_[m]};
-            auto i_temp = p->neutron_xs_[i_nuclide].index_temp;
-            if (i_temp >= 0) { // Can be false due to multipole
-              auto i_grid = p->neutron_xs_[i_nuclide].index_grid;
-              auto f = p->neutron_xs_[i_nuclide].interp_factor;
-              const auto& xs {rxn.xs_[i_temp]};
-              if (i_grid >= xs.threshold) {
-                score = ((1.0 - f) * xs.value[i_grid-xs.threshold]
-                  + f * xs.value[i_grid-xs.threshold+1]) * atom_density * flux;
-              }
-            }
-          } else {
-            if (p->material_ != MATERIAL_VOID) {
-              const Material& material {*model::materials[p->material_]};
-              for (auto i = 0; i < material.nuclide_.size(); ++i) {
-                auto j_nuclide = material.nuclide_[i];
-                auto atom_density = material.atom_density_(i);
-                const auto& nuc {*data::nuclides[j_nuclide]};
-                auto m = nuc.reaction_index_[NEUTRON_HEATING];
-                if (m == C_NONE) continue;
-                const auto& rxn {*nuc.reactions_[m]};
-                auto i_temp = p->neutron_xs_[j_nuclide].index_temp;
-                if (i_temp >= 0) { // Can be false due to multipole
-                  auto i_grid = p->neutron_xs_[j_nuclide].index_grid;
-                  auto f = p->neutron_xs_[j_nuclide].interp_factor;
-                  const auto& xs {rxn.xs_[i_temp]};
-                  if (i_grid >= xs.threshold) {
-                    score += ((1.0 - f) * xs.value[i_grid-xs.threshold]
-                      + f * xs.value[i_grid-xs.threshold+1]) * atom_density
-                      * flux;
-                  }
-                }
-              }
-            }
-          }
-        }
+        score = score_neutron_heating(p, tally, flux, NEUTRON_HEATING,
+            i_nuclide, atom_density);
       } else if (p->type_ == Particle::Type::photon) {
         if (tally.estimator_ == ESTIMATOR_ANALOG) {
           // Score direct energy deposition in the collision

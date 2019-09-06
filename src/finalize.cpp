@@ -127,7 +127,9 @@ int openmc_finalize()
 
   // Free all MPI types
 #ifdef OPENMC_MPI
-  MPI_Type_free(&mpi::bank);
+  int init_called;
+  MPI_Initialized(&init_called);
+  if (init_called) MPI_Type_free(&mpi::bank);
 #endif
 
   return 0;

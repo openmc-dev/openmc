@@ -128,7 +128,7 @@ class Operator(TransportOperator):
     burnable_mats : list of str
         All burnable material IDs
     heavy_metal : float
-        Initial heavy metal inventory
+        Initial heavy metal inventory [g]
     local_mats : list of str
         All burnable material IDs being managed by a single process
     prev_res : ResultsList or None

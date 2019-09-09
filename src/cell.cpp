@@ -618,16 +618,16 @@ BoundingBox CSGCell::bounding_box_complex(std::vector<int32_t> rpn) {
       apply_demorgan(rpn);
   }
 
-  // reverse the rpn to make popping easier
-  std::reverse(rpn.begin(), rpn.end());
+  auto it = rpn.begin();
+  BoundingBox current = model::surfaces[abs(*it) - 1]->bounding_box(*it > 0);
+  it++;
 
-  BoundingBox current = model::surfaces[abs(rpn.back()) - 1]->bounding_box(rpn.back() > 0);
-  rpn.pop_back();
-
-  while (rpn.size()) {
+  while (it < rpn.end()) {
     // move through the rpn in twos
-    int32_t one = rpn.back(); rpn.pop_back();
-    int32_t two = rpn.back(); rpn.pop_back();
+    int32_t one = *it;
+    it++;
+    int32_t two = *it;
+    it++;
 
     // the first token should always be a surface
     Expects(one < OP_UNION);
@@ -646,21 +646,24 @@ BoundingBox CSGCell::bounding_box_complex(std::vector<int32_t> rpn) {
       subrpn.push_back(two);
       // add until last two tokens in the sub-rpn are operators
       // (indicates a right parenthesis)
-      while (!((subrpn.back() >= OP_UNION) && (*(subrpn.rbegin() + 1) >= OP_UNION))) {
-        subrpn.push_back(rpn.back());
-        rpn.pop_back();
+      while (!((*it >= OP_UNION) && (*(it + 1) >= OP_UNION))) {
+        subrpn.push_back(*it);
+        it++;
       }
 
+      // add first operator to the subrpn
+      subrpn.push_back(*it);
+      it++;
+
       // handle complement case using De Morgan's laws
-      if (subrpn.back() == OP_COMPLEMENT) {
-        subrpn.pop_back();
+      if (*it == OP_COMPLEMENT) {
         apply_demorgan(subrpn);
-        subrpn.push_back(rpn.back());
-        rpn.pop_back();
+        it++;
       }
       // save the last operator, tells us how to combine this region
       // with our current bounding box
-      int32_t op = subrpn.back(); subrpn.pop_back();
+      int32_t op = *it;
+      it++;
       // get bounding box for the subrpn
       BoundingBox sub_box = bounding_box_complex(subrpn);
       // combine the sub-rpn bounding box with our current cell box

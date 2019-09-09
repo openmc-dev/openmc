@@ -83,6 +83,13 @@ struct BoundingBox
     return *this;
   }
 
+  inline bool is_valid() {
+    return xmin <= xmax &&
+           ymin <= ymax &&
+           zmin <= zmax;
+  }
+
+
 };
 
 //==============================================================================

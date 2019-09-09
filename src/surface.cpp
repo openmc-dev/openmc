@@ -11,6 +11,7 @@
 #include "openmc/settings.h"
 #include "openmc/string_utils.h"
 #include "openmc/xml_interface.h"
+#include "openmc/random_lcg.h"
 
 namespace openmc {
 
@@ -22,7 +23,7 @@ extern "C" const int BC_TRANSMIT {0};
 extern "C" const int BC_VACUUM {1};
 extern "C" const int BC_REFLECT {2};
 extern "C" const int BC_PERIODIC {3};
-
+extern "C" const int BC_WHITE {4};
 //==============================================================================
 // Global variables
 //==============================================================================
@@ -147,6 +148,8 @@ Surface::Surface(pugi::xml_node surf_node)
     } else if (surf_bc == "reflective" || surf_bc == "reflect"
                || surf_bc == "reflecting") {
       bc_ = BC_REFLECT;
+    } else if (surf_bc == "white" || surf_bc == "diffuse") {
+      bc_ = BC_WHITE;
     } else if (surf_bc == "periodic") {
       bc_ = BC_PERIODIC;
     } else {
@@ -192,6 +195,59 @@ Surface::reflect(Position r, Direction u) const
   return u -= (2.0 * projection / magnitude) * n;
 }
 
+Direction
+Surface::diffuse_reflect(Position r, Direction u) const
+{
+  // Diffuse reflect direction according to the normal.
+  // cosine distribution 
+  
+  Direction n = normal(r);
+  n = n/n.norm();
+  const double projection = std::max(-1.0, std::min(1.0, n.dot(u)));
+  
+  // sample from inverse function, u=sqrt(rand) since p(u)=2u, so F(u)=u^2 
+  const double cosine = (projection>=0.0) ? 
+                  -std::sqrt(prn()) : std::sqrt(prn());  
+  
+  // handle special case for very large cosine  
+  if(std::fabs(cosine)>1.0001){
+    std::cout<<"cosine="<<"\n";
+    exit(-1);
+  }else if(std::fabs(cosine)>=1.000){
+    return u = cosine * n;
+  }
+
+  // sample azimuthal distribution uniformly 
+  double t1, t2, rr, ss, tt;
+  for(;;){
+    t1 = 2.0 * prn() - 1.0;
+    t2 = 2.0 * prn() - 1.0;  
+    rr = t1 * t1 + t2 * t2;
+    if(rr<=1.0) break;
+  }
+  rr = std::sqrt((1.0 - cosine * cosine)/rr);
+  t1 = t1 * rr;
+  t2 = t2 * rr;
+  
+  // determine the direction off surface relative to norm 
+  if (std::fabs(n[2]<=0.9)) { // for the general normal
+    tt = (std::sqrt(n[0]*n[0]+n[1]*n[1]));
+    ss = 1.0/tt;
+    u[0] = n[0] * cosine + (t1*n[0]*n[2]-t2*n[1])*ss;
+    u[1] = n[1] * cosine + (t1*n[1]*n[2]+t2*n[0])*ss;
+    u[2] = n[2] * cosine - t1*tt;    
+  } else {  // for the normal is almost along with z-axis  
+    tt = (std::sqrt(n[0]*n[0]+n[2]*n[2]));
+    ss = 1.0/tt;   
+    u[0] = n[0] * cosine + (t1*n[0]*n[1]+t2*n[2])*ss;
+    u[1] = n[1] * cosine - t1*tt;
+    u[2] = n[2] * cosine + (t1*n[1]*n[2]-t2*n[0])*ss; 
+  }
+  
+  // normalize the direction 
+  return u = u/u.norm();    
+}
+
 CSGSurface::CSGSurface() : Surface{} {};
 CSGSurface::CSGSurface(pugi::xml_node surf_node) : Surface{surf_node} {};
 
@@ -212,6 +268,9 @@ CSGSurface::to_hdf5(hid_t group_id) const
       break;
     case BC_REFLECT :
       write_string(surf_group, "boundary_type", "reflective", false);
+      break;
+    case BC_WHITE :
+      write_string(surf_group, "boundary_type", "white", false);
       break;
     case BC_PERIODIC :
       write_string(surf_group, "boundary_type", "periodic", false);

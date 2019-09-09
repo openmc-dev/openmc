@@ -490,6 +490,56 @@ Particle::cross_surface()
     }
     return;
 
+  } else if (surf->bc_ == BC_WHITE && settings::run_mode != RUN_MODE_PLOTTING) {
+    // =======================================================================
+    // WHITE BOUNDARY
+
+    // Do not handle white boundary conditions on lower universes
+    if (n_coord_ != 1) {
+      this->mark_as_lost("Cannot diffuse reflect particle " + std::to_string(id_) +
+        " off surface in a lower universe.");
+      return;
+    }
+
+    if (!model::active_surface_tallies.empty()) {
+      score_surface_tally(this, model::active_surface_tallies);
+    }
+
+    if (!model::active_meshsurf_tallies.empty()) {
+      Position r {this->r()};
+      this->r() -= TINY_BIT * this->u();
+      score_surface_tally(this, model::active_meshsurf_tallies);
+      this->r() = r;
+    }
+
+    // Diffuse Reflect particle off surface
+    Direction u = surf->diffuse_reflect(this->r(), this->u()); 
+
+    // Make sure new particle direction is normalized
+    this->u() = u / u.norm();
+
+    // Reassign particle's cell and surface
+    coord_[0].cell = cell_last_[n_coord_last_ - 1];
+    surface_ = -surface_;
+
+    if (!settings::dagmc) {
+      n_coord_ = 1;
+      if (!find_cell(this, true)) {
+        this->mark_as_lost("Couldn't find particle after diffuse reflecting from surface "
+                           + std::to_string(surf->id_) + ".");
+        return;
+      }
+    }
+
+    // Set previous coordinate going slightly past surface crossing
+    // r_last_current_ = this->r() + TINY_BIT*this->u();
+
+    // Diagnostic message
+    if (settings::verbosity >= 10 || simulation::trace) {
+      write_message("    Diffuse reflected from surface " + std::to_string(surf->id_));
+    }
+    return;
+
   } else if (surf->bc_ == BC_PERIODIC && settings::run_mode != RUN_MODE_PLOTTING) {
     // =======================================================================
     // PERIODIC BOUNDARY

@@ -54,10 +54,17 @@ public:
   //! \param[in] dset Dataset containing coefficients
   explicit Polynomial(hid_t dset);
 
+  //! Construct polynomial using coefficients
+  //! \param[in] c Coefficients in order of increasing order
+  Polynomial(std::vector<double> c) : coef_{c} {};
+
   //! Evaluate the polynomials
   //! \param[in] x independent variable
   //! \return Polynomial evaluated at x
   double operator()(double x) const override;
+
+  // Accessor
+  const std::vector<double>&coeffs() const { return coef_; }
 private:
   std::vector<double> coef_; //!< Polynomial coefficients
 };

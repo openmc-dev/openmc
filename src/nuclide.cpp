@@ -263,6 +263,54 @@ Nuclide::Nuclide(hid_t group, const std::vector<double>& temperature, int i_nucl
     hid_t fer_group = open_group(group, "fission_energy_release");
     fission_q_prompt_ = read_function(fer_group, "q_prompt");
     fission_q_recov_ = read_function(fer_group, "q_recoverable");
+
+    // Check that fission q data is Tabulated1D or Polynomial
+    Tabulated1D* tab_recov = dynamic_cast<Tabulated1D*>(fission_q_recov_.get());
+    Polynomial* poly_recov = dynamic_cast<Polynomial*>(fission_q_recov_.get());
+    if (nullptr == tab_recov && nullptr == poly_recov) {
+      throw std::runtime_error{"Recoverable fission energy in " + object_name(fer_group)
+        + " is not Tabulated1D nor Polynomial."};
+    }
+
+    // Subtract away energy from prompt neutrons and photons
+    // needed for energy deposition tally, as neutron and photon
+    // heating are included in MT=301
+
+    auto prompt_neutrons = read_function(fer_group, "prompt_neutrons");
+    std::vector<double> mod_data;
+
+    // Check if fission_q and prompt_neutrons are tabulated 1D
+
+    if (tab_recov) {
+      Tabulated1D* neutrons = dynamic_cast<Tabulated1D*>(prompt_neutrons.get());
+      if (nullptr == neutrons) {
+        throw std::runtime_error{"prompt_neutrons not Tabulated1D in " + 
+          object_name(fer_group)};
+      }
+      auto recov_data = tab_recov->y();
+      auto recov_x = tab_recov->x();
+      int i=0;
+      for (auto yit = recov_data.cbegin(); yit != recov_data.cend(); ++yit) {
+        mod_data.push_back(*yit - (*neutrons)(recov_x[i]));
+        ++i;
+      }
+      modified_fission_q_ = std::make_unique<Tabulated1D>(tab_recov->x(), mod_data);
+    } else {
+        Polynomial* neutrons = dynamic_cast<Polynomial*>(prompt_neutrons.get());
+      if (nullptr == neutrons) {
+        throw std::runtime_error{"prompt_neutrons not Polynomial in " + 
+          object_name(fer_group)};
+      }
+      auto recov_data = poly_recov->coeffs();
+      auto neutron_data = neutrons->coeffs();
+      int i=0;
+      for (auto it = recov_data.cbegin(); it != recov_data.cend(); ++it) {
+        mod_data.push_back(*it - neutron_data.at(i));
+        ++i;
+      }
+      modified_fission_q_ = std::make_unique<Polynomial>(mod_data);
+    }
+    
     close_group(fer_group);
   }
 

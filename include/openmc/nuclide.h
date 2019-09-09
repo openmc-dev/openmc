@@ -80,6 +80,8 @@ public:
   std::unique_ptr<Function1D> total_nu_; //!< Total neutron yield
   std::unique_ptr<Function1D> fission_q_prompt_; //!< Prompt fission energy release
   std::unique_ptr<Function1D> fission_q_recov_; //!< Recoverable fission energy release
+  //! Fission energy release without prompt neutrons
+  std::unique_ptr<Function1D> modified_fission_q_;
 
   // Resonance scattering information
   bool resonant_ {false};

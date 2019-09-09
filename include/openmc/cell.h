@@ -212,7 +212,8 @@ protected:
   bool contains_complex(Position r, Direction u, int32_t on_surface) const;
   BoundingBox bounding_box_simple() const;
   static BoundingBox bounding_box_complex(std::vector<int32_t> rpn);
-  static void apply_demorgan(std::vector<int32_t>& rpn);
+  static void apply_demorgan(std::vector<int32_t>::iterator start,
+                               std::vector<int32_t>::iterator end);
 };
 
 //==============================================================================

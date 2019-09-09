@@ -233,6 +233,7 @@ constexpr int N_XT    {205};
 constexpr int N_X3HE  {206};
 constexpr int N_XA    {207};
 constexpr int NEUTRON_HEATING {301};
+constexpr int FISSION_HEATING {318};
 constexpr int DAMAGE_ENERGY {444};
 constexpr int COHERENT {502};
 constexpr int INCOHERENT {504};

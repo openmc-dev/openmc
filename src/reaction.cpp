@@ -121,6 +121,8 @@ std::string reaction_name(int mt)
     return  "fission-q-recoverable";
   } else if (mt == SCORE_HEATING) {
     return  "heating";
+  } else if (mt == SCORE_ENERGY_DEPOSITION) {
+    return "energy-deposition";
 
   // Normal ENDF-based reactions
   } else if (mt == TOTAL_XS) {

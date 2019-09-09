@@ -113,6 +113,9 @@ score_str_to_int(std::string score_str)
   if (score_str == "heating")
     return SCORE_HEATING;
 
+  if (score_str == "energy-deposition")
+    return SCORE_ENERGY_DEPOSITION;
+
   if (score_str == "current")
     return SCORE_CURRENT;
 

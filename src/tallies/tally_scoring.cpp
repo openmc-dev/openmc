@@ -183,6 +183,10 @@ double get_nuc_fission_q(const Nuclide& nuc, const Particle* p, int score_bin)
     if (nuc.fission_q_recov_) {
       return (*nuc.fission_q_recov_)(p->E_last_);
     }
+  } else if (score_bin == SCORE_ENERGY_DEPOSITION) {
+    if (nuc.modified_fission_q_) {
+      return (*nuc.modified_fission_q_)(p->E_last_);
+    }
   }
   return 0.0;
 }
@@ -1209,7 +1213,6 @@ score_general_ce(Particle* p, int i_tally, int start_index,
       }
       break;
 
-
     case SCORE_HEATING:
       score = 0.;
       if (p->type_ == Particle::Type::neutron) {
@@ -1261,6 +1264,16 @@ score_general_ce(Particle* p, int i_tally, int start_index,
           }
         }
       }
+      break;
+
+    case SCORE_ENERGY_DEPOSITION:
+      // Need to obtain three items: total heating, fission heating
+      // and the modified fission q recoverable
+      // Fission heating is removed because this energy is included in 
+      // the modified q recoverable data
+      score = score_neutron_heating( p, tally, flux, NEUTRON_HEATING, i_nuclide, atom_density)
+        - score_neutron_heating(p, tally, flux, FISSION_HEATING, i_nuclide, atom_density)
+        + score_fission_q(p, SCORE_ENERGY_DEPOSITION, tally, flux, i_nuclide, atom_density);
       break;
 
     default:
@@ -1316,7 +1329,7 @@ score_general_ce(Particle* p, int i_tally, int start_index,
       }
     }
 
-    // Add derivative information on score for differnetial tallies.
+    // Add derivative information on score for differential tallies.
     if (tally.deriv_ != C_NONE)
       apply_derivative_to_score(p, i_tally, i_nuclide, atom_density, score_bin,
         score);

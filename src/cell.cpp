@@ -598,53 +598,45 @@ BoundingBox CSGCell::bounding_box_simple() const {
   return bbox;
 }
 
+
+void CSGCell::apply_demorgan(std::vector<int32_t>::iterator start,
+                             std::vector<int32_t>::iterator stop)
+{
+  while(start < stop) {
+    if (*start < OP_UNION) { *start *= -1; }
+    else if (*start == OP_UNION) { *start = OP_INTERSECTION; }
+    else if (*start == OP_INTERSECTION) { *start = OP_UNION; }
+    start++;
+  }
+}
+
 auto find_right_parenthesis(std::vector<int32_t>::iterator start,
                             std::vector<int32_t>& rpn)
 {
   // parenthesis level counter
-  int counter = 1;
-  std::cout << "FINDING" << std::endl;
+  int counter = 0;
+
   // start at the beginning
   auto it = start;
   while(it < rpn.end()) {
     int32_t one = *it;
     int32_t two = *(it+1);
 
-    std::cout << "Counter: " << counter << std::endl;
-    std::cout << "One: " << one << std::endl;
-    std::cout << "Two: " << two << std::endl;
-
     if (one < OP_UNION && two < OP_UNION) {
       counter++;
     } else if (one >= OP_UNION && two >= OP_UNION) {
       counter--;
+      while(*it >= OP_UNION) { it++; }
+      it--;
     }
 
-    if (counter == 0) {
-      if (two == OP_COMPLEMENT) { it++; }
-      std::cout << "BREAK" << std::endl;
-      break;
-    }
+    if (counter == 0) { break; }
     it++;
   }
-  std::cout << "DONE" << std::endl;
   return it;
 }
 
-void CSGCell::apply_demorgan(std::vector<int32_t>::iterator start,
-                             std::vector<int32_t>::iterator end) {
-  auto it = start;
-  while (it <= end) {
-    int32_t token = *it;
-    if (token < OP_UNION) { token *= -1; }
-    else if (token == OP_UNION) { token = OP_INTERSECTION; }
-    else if (token == OP_INTERSECTION) { token = OP_UNION; }
-    it++;
-  }
-}
-
 BoundingBox CSGCell::bounding_box_complex(std::vector<int32_t> rpn) {
-
   // if the last operator is a complement op, there is no
   // sub-region that the complement connects to. This indicates
   // that the entire region is a complement and we can apply
@@ -654,23 +646,23 @@ BoundingBox CSGCell::bounding_box_complex(std::vector<int32_t> rpn) {
       apply_demorgan(rpn.begin(), rpn.end());
   }
 
-  std::cout << "RPN" << std::endl;
-  for (auto i : rpn) { std::cout << i << " "; }
-  std::cout << std::endl;
-
-  // start with an invalid box
-  BoundingBox current;
-  current.xmin = INFTY;
-  current.xmax = -INFTY;
+  // check for parenthesis with complement at the start of the rpn
+  auto initial_right = find_right_parenthesis(rpn.begin(), rpn);
+  if (initial_right != rpn.end() && *initial_right == OP_COMPLEMENT) {
+    apply_demorgan(rpn.begin(), initial_right);
+    rpn.erase(initial_right);
+  }
 
   auto it = rpn.begin();
+  BoundingBox current = model::surfaces[abs(*it) - 1]->bounding_box(*it > 0);
+  it++;
+
   while (it < rpn.end()) {
     // move through the rpn in twos
-    int32_t one = *it; it++;
-    int32_t two = *it; it++;
-
-    std::cout << "One: " << one << std::endl;
-    std::cout << "Two: " << two << std::endl;
+    int32_t one = *it;
+    it++;
+    int32_t two = *it;
+    it++;
 
     // the first token should always be a surface
     Expects(one < OP_UNION);
@@ -682,55 +674,39 @@ BoundingBox CSGCell::bounding_box_complex(std::vector<int32_t> rpn) {
         current &= model::surfaces[abs(one)-1]->bounding_box(one > 0);
       }
     } else {
-
-      auto close = find_right_parenthesis(it, rpn);
-
-      std::vector<int32_t> subrpn(it - 2, close);
-
-      if (*close == OP_COMPLEMENT && *it < OP_UNION) {
-        apply_demorgan(it - 2, close);
-        it -= 2;
-      } else if (close == rpn.end()) {
-        current = model::surfaces[abs(one)-1]->bounding_box(one > 0);
-        it--;
-      } else {
-        int32_t op = *it;
-        BoundingBox sub_box = bounding_box_complex(subrpn);
-        // combine the sub-rpn bounding box with our current cell box
-        if (op == OP_UNION) {
-          current |= sub_box;
-        } else if (op == OP_INTERSECTION) {
-          current &= sub_box;
-        }
-        it = close;
+      // two surfaces in a row (left parenthesis),
+      // create sub-rpn for region in parenthesis
+      std::vector<int32_t> subrpn;
+      subrpn.push_back(one);
+      subrpn.push_back(two);
+      // add until last two tokens in the sub-rpn are operators
+      // (indicates a right parenthesis)
+      while (!((*it >= OP_UNION) && (*(it + 1) >= OP_UNION))) {
+        subrpn.push_back(*it);
+        it++;
       }
-      // // two surfaces in a row (left parenthesis),
-      // // create sub-rpn for region in parenthesis
-      // std::vector<int32_t> subrpn;
-      // subrpn.push_back(one);
-      // subrpn.push_back(two);
-      // // add until last two tokens in the sub-rpn are operators
-      // // (indicates a right parenthesis)
-      // while (!((*it >= OP_UNION) && (*(it + 1) >= OP_UNION))) {
-      //   subrpn.push_back(*it);
-      //   it++;
-      // }
 
-      // // add first operator to the subrpn
-      // subrpn.push_back(*it);
-      // it++;
+      // add first operator to the subrpn
+      subrpn.push_back(*it);
+      it++;
 
-      // // handle complement case using De Morgan's laws
-      // if (*it == OP_COMPLEMENT) {
-      //   apply_demorgan(subrpn);
-      //   it++;
-      // }
-      // // save the last operator, tells us how to combine this region
-      // // with our current bounding box
-      // int32_t op = *it;
-      // it++;
-      // // get bounding box for the subrpn
-      // BoundingBox sub_box = bounding_box_complex(subrpn);
+      // handle complement case using De Morgan's laws
+      if (*it == OP_COMPLEMENT) {
+        apply_demorgan(subrpn.begin(), subrpn.end());
+        it++;
+      }
+      // save the last operator, tells us how to combine this region
+      // with our current bounding box
+      int32_t op = *it;
+      it++;
+      // get bounding box for the subrpn
+      BoundingBox sub_box = bounding_box_complex(subrpn);
+      // combine the sub-rpn bounding box with our current cell box
+      if (op == OP_UNION) {
+        current |= sub_box;
+      } else if (op == OP_INTERSECTION) {
+        current &= sub_box;
+      }
     }
   }
 

@@ -81,6 +81,12 @@ public:
   //! \param[in] dset Dataset containing tabulated data
   explicit Tabulated1D(hid_t dset);
 
+  //! Construct using x and y data
+  //! \param[in] x independent variable
+  //! \param[in] y dependent variable to be interpolated
+  //! Assumes no breakpoints with linear interpolation
+  Tabulated1D(std::vector<double> x, std::vector<double> y);
+
   //! Evaluate the tabulated function
   //! \param[in] x independent variable
   //! \return Function evaluated at x

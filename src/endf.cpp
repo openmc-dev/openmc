@@ -151,6 +151,16 @@ Tabulated1D::Tabulated1D(hid_t dset)
   n_pairs_ = x_.size();
 }
 
+Tabulated1D::Tabulated1D(std::vector<double> x, std::vector<double> y)
+{
+  x_ = x;
+  y_ = y;
+  n_pairs_ = x.size();
+  int_.push_back(Interpolation::lin_lin);
+  nbt_.push_back(x.size());
+  n_regions_ = 1;
+}
+
 double Tabulated1D::operator()(double x) const
 {
   // find which bin the abscissa is in -- if the abscissa is outside the

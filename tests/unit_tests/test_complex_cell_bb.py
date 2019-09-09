@@ -47,7 +47,7 @@ def complex_cell(run_in_tmpdir, mpi_intracomm):
     c1.region = ~(-s3 | +s4 | ~(+s13 & -s14))
 
     c2 = openmc.Cell(fill=u238)
-    c2.region = +s2 & -s5 & +s12 & -s15 & ~(+s3 & -s4 & +s13 & -s14)
+    c2.region =  ~(+s3 & -s4 & +s13 & -s14) & +s2 & -s5 & +s12 & -s15
 
     c3 = openmc.Cell(fill=zr90)
     c3.region = ((+s1 & -s7 & +s17 & -s16) | (+s7 & -s6 & +s11 & -s17)) \

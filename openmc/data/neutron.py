@@ -834,6 +834,7 @@ class IncidentNeutron(EqualityMixin):
                 non_fission_heating = Reaction(999)
                 non_fission_heating.redundant = True
                 fission_heating = Reaction(318)
+                fission_heating.redundant = True
 
                 heatr_evals = get_evaluations(kwargs["heatr"])
                 for heatr in heatr_evals:

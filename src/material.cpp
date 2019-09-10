@@ -28,6 +28,8 @@
 #include "openmc/string_utils.h"
 #include "openmc/thermal.h"
 #include "openmc/xml_interface.h"
+// cvmt 
+#include "openmc/position.h"
 
 namespace openmc {
 
@@ -185,6 +187,59 @@ Material::Material(pugi::xml_node node)
         } else {
           densities.push_back(-std::stod(get_node_value(node_nuc, "wo")));
         }
+        
+        // cvmt: read and store polynomial represetation of nuclide densities
+        if(check_for_node(node_nuc, "poly_coeffs")){
+          continuous_num_density_ = true;
+          auto type     = get_node_value(node_nuc, "poly_type");
+          auto coeffs   = get_node_array<double>(node_nuc, "poly_coeffs");
+          auto n_coeffs = coeffs.size();
+          struct PolyProperty temp_poly; 
+          //
+          temp_poly.type_     = type;
+          temp_poly.n_coeffs_ = n_coeffs;
+          //
+          for(int i=0; i<=n_coeffs; i++){
+            temp_poly.coeffs_[i]=coeffs[i];
+          }
+          if(temp_poly.type_ == "zernike1d") {
+            temp_poly.order_ = 2 * (n_coeffs - 2);
+          } else if(temp_poly.type_ == "zernike") {
+            auto p = 1;
+            auto temp_int = 0;
+            while(p < n_coeffs) {
+              p += temp_int + 1;
+              temp_int += 1; 
+            }
+            if(p == n_coeffs) {
+              temp_poly.order_ = temp_int - 1;
+            } else {
+              fatal_error("Correct polynomial order could not be determined.");
+            }
+          }
+          if(temp_poly.type_ == "zernike1d") {
+            auto ii = 1;
+            for(int p=0; p<=temp_poly.order_+1; p=p+2){
+              temp_poly.poly_norm_[ii-1] = std::sqrt(p+1);
+              ii = ii + 1;
+            }
+          } else if(temp_poly.type_ == "zernike") {
+            auto ii = 1;
+            for(int p=0; p<=temp_poly.order_+1; p=p+1){
+              for(int q=-p; q<=p; q=q+2) {
+                if(q==0) {
+                  temp_poly.poly_norm_[ii-1] = std::sqrt(p + 1.0);
+                } else {
+                  temp_poly.poly_norm_[ii-1] = std::sqrt(2.0 * p + 2.0);
+                }
+                ii = ii + 1;
+              }
+            }
+          }
+          poly_densities_.push_back(temp_poly);
+        }
+        // cvmt 
+        
       }
     }
   }
@@ -1435,5 +1490,73 @@ openmc_extend_materials(int32_t n, int32_t* index_start, int32_t* index_end)
 }
 
 extern "C" size_t n_materials() { return model::materials.size(); }
+
+//
+// cvmt functions 
+double 
+PolyProperty::evaluate(Position r) {
+  double results {0.0}; 
+  if(type_ == "zernike1d"){ 
+    results = evaluate_zernike1d(r);
+  } else if (type_ == "zernike"){
+    results = evaluate_zernike(r);
+   }
+  return results;
+}
+
+double 
+PolyProperty::evaluate_zernike1d(Position r) {
+  int i;
+  double rho;
+  int c_index;
+  double poly_val;
+  double property {0.0};
+  //
+  rho = std::sqrt(r.x * r.x + r.y * r.y) / coeffs_[0];
+  c_index = 2;
+  for( i=0; i <= order_; i=i+2){
+      poly_val = calc_zn_one_d(i,rho,0.0);
+      property += poly_val * coeffs_[c_index-1];
+      c_index = c_index + 1;
+  }
+  return property;
+}
+
+double 
+PolyProperty::evaluate_zernike(Position r) {
+  int i, j, k;
+  double rho;
+  double phi;
+  double property {0.0}; 
+  //! Get normalized positions
+  rho = sqrt(  r.x *  r.x + r.y * r.y) / coeffs_[0];
+  phi = std::atan2(r.y,r.x);
+  k = 2; //! Keeps tracking of index in this % coeffs
+  calc_zn_old(order_, rho, phi, poly_norm_, poly_results_);
+  for( i=0; i<=order_; i++){
+    for( j=1; j<=i+1; j++){
+      property += poly_results_[k-1-1] * coeffs_[k-1];
+      //printf("this -> poly_results_= %15.7f\n", this -> poly_results_[k-1-1]);
+      //printf("this -> coeffs_= %15.7f\n", this -> coeffs_[k-1];
+      k = k + 1;
+    }
+  }
+  if (property < -1.0E-8) {
+     //write(*,*) 'Property = ', property
+     fatal_error("A negative number density below -1E-8 was calculated\n");
+  } else if (property < 0.0) {
+     printf("Warning: A negative number density between -1E-8 and 0 was calculated\n");
+  }
+  return property;
+}
+
+PolyProperty::PolyProperty(){
+  }
+
+PolyProperty::~PolyProperty(){
+    n_coeffs_ = 0;
+  }
+
+// cvmt 
 
 } // namespace openmc

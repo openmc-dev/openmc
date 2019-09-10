@@ -90,6 +90,9 @@ extern int trigger_batch_interval;   //!< Batch interval for triggers
 extern "C" int verbosity;                //!< How verbose to make output
 extern double weight_cutoff;         //!< Weight cutoff for Russian roulette
 extern double weight_survive;        //!< Survival weight after Russian roulette
+// cvmt variables data block
+extern int num_intervals;                //! cvmt: number of intervals in cvmt sampling 
+extern int fet_order;                    //! cvmt: number of orders in FETs 
 } // namespace settings
 
 //==============================================================================

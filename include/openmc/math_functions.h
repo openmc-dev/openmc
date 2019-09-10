@@ -273,5 +273,10 @@ std::complex<double> faddeeva(std::complex<double> z);
 //! \return Derivative of Faddeeva function evaluated at z
 std::complex<double> w_derivative(std::complex<double> z, int order);
 
+// cvmt evaluate function 
+extern "C" double calc_zn_one_d(int n, double rho, double phi);
+extern "C" void calc_zn_old(int n, double rho, double phi, double sqrt_norm[], double zn[]);
+
+
 } // namespace openmc
 #endif // OPENMC_MATH_FUNCTIONS_H

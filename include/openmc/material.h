@@ -33,6 +33,21 @@ extern std::unordered_map<int32_t, int32_t> material_map;
 //! A substance with constituent nuclides and thermal scattering data
 //==============================================================================
 
+struct PolyProperty{
+  std::string type_;                       //! user readable type
+  double coeffs_[100];                     //! coefficients for poly evaluation
+  int n_coeffs_;                           //! number of coeffs
+  int order_;                              //! the order of the expansion
+  int geom_norm_offset_;                   //! offset for the geom_norms coeffs
+  double poly_results_[100];               //! variables used in evaluation property
+  double poly_norm_[100];                  //! polynomial norm available to property for efficiency
+  double evaluate(Position r);             //! Evaluate function
+  double evaluate_zernike1d(Position r);
+  double evaluate_zernike(Position r); 
+  PolyProperty();
+  ~PolyProperty();
+};
+
 class Material
 {
 public:
@@ -143,7 +158,11 @@ public:
   bool fissionable_ {false}; //!< Does this material contain fissionable nuclides
   bool depletable_ {false}; //!< Is the material depletable?
   std::vector<bool> p0_; //!< Indicate which nuclides are to be treated with iso-in-lab scattering
-
+  
+  // CVMT: variables data block
+  bool continuous_num_density_ {false};      //! cvmt flag: indicator the continuous materials number density
+  std::vector<PolyProperty> poly_densities_; //! store cvmt polynomial number density 
+  
   // To improve performance of tallying, we store an array (direct address
   // table) that indicates for each nuclide in data::nuclides the index of the
   // corresponding nuclide in the nuclide_ vector. If it is not present in the

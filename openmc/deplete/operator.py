@@ -13,6 +13,7 @@ from itertools import chain
 import os
 import time
 import xml.etree.ElementTree as ET
+from warnings import warn
 
 import h5py
 import numpy as np
@@ -27,7 +28,7 @@ from .reaction_rates import ReactionRates
 from .results_list import ResultsList
 from .helpers import (
     DirectReactionRateHelper, ChainFissionHelper, ConstantFissionYieldHelper,
-    FissionYieldCutoffHelper, AveragedFissionYieldHelper)
+    FissionYieldCutoffHelper, AveragedFissionYieldHelper, EnergyScoreHelper)
 
 
 def _distribute(items):
@@ -78,9 +79,16 @@ class Operator(TransportOperator):
     diff_burnable_mats : bool, optional
         Whether to differentiate burnable materials with multiple instances.
         Default: False.
+    energy_mode : {"energy-deposition", "fission-q"}
+        Indicator for computing system energy. ``"energy-deposition"`` will
+        compute with a single energy deposition tally, taking fission energy
+        release data and heating into consideration. ``"fission-q"`` will
+        use the fission Q values from the depletion chain, not taking
+        heating into consideration.
     fission_q : dict, optional
         Dictionary of nuclides and their fission Q values [eV]. If not given,
-        values will be pulled from the ``chain_file``.
+        values will be pulled from the ``chain_file``. Only applicable
+        if ``"energy_mode" == "fission-q"``
     dilute_initial : float, optional
         Initial atom density [atoms/cm^3] to add for nuclides that are zero
         in initial condition to ensure they exist in the decay chain.
@@ -144,13 +152,22 @@ class Operator(TransportOperator):
     }
 
     def __init__(self, geometry, settings, chain_file=None, prev_results=None,
-                 diff_burnable_mats=False, fission_q=None,
-                 dilute_initial=1.0e3, fission_yield_mode="constant",
-                 fission_yield_opts=None):
+                 diff_burnable_mats=False, energy_mode="fission-q",
+                 fission_q=None, dilute_initial=1.0e3,
+                 fission_yield_mode="constant", fission_yield_opts=None):
         if fission_yield_mode not in self._fission_helpers:
             raise KeyError(
                 "fission_yield_mode must be one of {}, not {}".format(
                     ", ".join(self._fission_helpers), fission_yield_mode))
+        if energy_mode == "energy-deposition":
+            if fission_q is not None:
+                warn("Fission Q dictionary not used if energy deposition "
+                     "is used")
+                fission_q = None
+        elif energy_mode != "fission-q":
+            raise ValueError(
+                "energy_mode {} not supported. Must be energy-deposition "
+                "or fission-q".format(energy_mode))
         super().__init__(chain_file, fission_q, dilute_initial, prev_results)
         self.round_number = False
         self.prev_res = None
@@ -204,7 +221,9 @@ class Operator(TransportOperator):
         # Get classes to assist working with tallies
         self._rate_helper = DirectReactionRateHelper(
             self.reaction_rates.n_nuc, self.reaction_rates.n_react)
-        self._energy_helper = ChainFissionHelper()
+        self._energy_helper = (
+            ChainFissionHelper() if energy_mode == "fission-q"
+            else EnergyScoreHelper())
 
         # Select and create fission yield helper
         fission_helper = self._fission_helpers[fission_yield_mode]

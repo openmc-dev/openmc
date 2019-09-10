@@ -56,7 +56,7 @@ extensions = ['sphinx.ext.autodoc',
               'sphinx_numfig',
               'notebook_sphinxext']
 if not on_rtd:
-    extensions.append('sphinx.ext.imgconverter')
+    extensions.append('sphinxcontrib.rsvgconverter')
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']

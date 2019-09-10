@@ -158,6 +158,7 @@ def generate_initial_number_density():
 
     return temperature, sab, initial_density, burn
 
+
 def segment_pin(n_rings, n_wedges, r_fuel, r_gap, r_clad):
     """ Calculates a segmented pin.
 
@@ -248,6 +249,7 @@ def segment_pin(n_rings, n_wedges, r_fuel, r_gap, r_clad):
 
     return fuel_u, v_segment, v_gap, v_clad
 
+
 def generate_geometry(n_rings, n_wedges):
     """ Generates example geometry.
 
@@ -296,12 +298,12 @@ def generate_geometry(n_rings, n_wedges):
     lattice.outer = all_water_u
 
     # Bound universe
-    x_low = openmc.XPlane(x0=-pitch*n_pin/2, boundary_type='reflective')
-    x_high = openmc.XPlane(x0=pitch*n_pin/2, boundary_type='reflective')
-    y_low = openmc.YPlane(y0=-pitch*n_pin/2, boundary_type='reflective')
-    y_high = openmc.YPlane(y0=pitch*n_pin/2, boundary_type='reflective')
-    z_low = openmc.ZPlane(z0=-10, boundary_type='reflective')
-    z_high = openmc.ZPlane(z0=10, boundary_type='reflective')
+    x_low = openmc.XPlane(-pitch*n_pin/2, 'reflective')
+    x_high = openmc.XPlane(pitch*n_pin/2, 'reflective')
+    y_low = openmc.YPlane(-pitch*n_pin/2, 'reflective')
+    y_high = openmc.YPlane(pitch*n_pin/2, 'reflective')
+    z_low = openmc.ZPlane(-10, 'reflective')
+    z_high = openmc.ZPlane(10, 'reflective')
 
     # Compute bounding box
     lower_left = [-pitch*n_pin/2, -pitch*n_pin/2, -10]
@@ -317,9 +319,10 @@ def generate_geometry(n_rings, n_wedges):
     v_cool = pitch**2 - (v_gap + v_clad + n_rings * n_wedges * v_segment)
 
     # Store volumes for later usage
-    volume = {'fuel': v_segment, 'gap':v_gap, 'clad':v_clad, 'cool':v_cool}
+    volume = {'fuel': v_segment, 'gap': v_gap, 'clad': v_clad, 'cool': v_cool}
 
     return geometry, volume, mapping, lower_left, upper_right
+
 
 def generate_problem(n_rings=5, n_wedges=8):
     """ Merges geometry and materials.

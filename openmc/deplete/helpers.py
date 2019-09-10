@@ -9,6 +9,7 @@ from collections import defaultdict
 
 from numpy import dot, zeros, newaxis
 
+from . import comm
 from openmc.checkvalue import check_type, check_greater_than
 from openmc.lib import (
     Tally, MaterialFilter, EnergyFilter, EnergyFunctionFilter)
@@ -156,6 +157,47 @@ class ChainFissionHelper(EnergyHelper):
         """
         self._energy += dot(fission_rates, self._fission_q_vector)
 
+
+class EnergyScoreHelper(EnergyHelper):
+    """Class responsible for obtaining system energy via a tally score
+
+    Attributes
+    ----------
+    nuclides : list of str
+        List of nuclides with reaction rates. Not needed, but provided
+        for a consistent API across other :class:`EnergyHelper`
+    energy : float
+        System energy [eV] computed from the tally. Will be zero for
+        all MPI processes that are not the "master" process to avoid
+        artificially increasing the tallied energy.
+
+    """
+
+    def __init__(self):
+        super().__init__()
+        self._tally = None
+
+    def prepare(self, *args, **kwargs):
+        """Create a tally for system energy production
+
+        Input arguments are not used, as the only information needed
+        is :attr:`score`
+
+        """
+        self._tally = Tally()
+        self._tally.scores = ["energy-deposition"]
+
+    def reset(self):
+        """Obtain system energy from tally
+
+        Only the master process, ``comm.rank == 0`` will
+        have a non-zero :attr:`energy` taken from the tally.
+        This avoids accidentally scaling the system power by
+        the number of MPI processes
+        """
+        super().reset()
+        if not comm.rank:
+            self._energy = self._tally.results[0, 0, 1]
 
 # ------------------------------------
 # Helper for collapsing fission yields

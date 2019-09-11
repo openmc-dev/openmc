@@ -398,7 +398,7 @@ class Chain(object):
             clean_indentation(root_elem)
             tree.write(str(filename), encoding='utf-8')
 
-    def get_thermal_fission_yields(self):
+    def get_default_fission_yields(self):
         """Return fission yields at lowest incident neutron energy
 
         Used as the default set of fission yields for :meth:`form_matrix`
@@ -440,13 +440,13 @@ class Chain(object):
 
         See Also
         --------
-        :meth:`get_thermal_fission_yields`
+        :meth:`get_default_fission_yields`
         """
         matrix = defaultdict(float)
         reactions = set()
 
         if fission_yields is None:
-            fission_yields = self.get_thermal_fission_yields()
+            fission_yields = self.get_default_fission_yields()
 
         for i, nuc in enumerate(self.nuclides):
 
@@ -721,7 +721,7 @@ class Chain(object):
     @property
     def fission_yields(self):
         if self._fission_yields is None:
-            self._fission_yields = [self.get_thermal_fission_yields()]
+            self._fission_yields = [self.get_default_fission_yields()]
         return self._fission_yields
 
     @fission_yields.setter

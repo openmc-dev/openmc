@@ -412,7 +412,7 @@ class Chain(object):
             names of nuclides with yield data and ``f_yield``
             is a float for the fission yield.
         """
-        out = {}
+        out = defaultdict(dict)
         for nuc in self.nuclides:
             if nuc.yield_data is None:
                 continue

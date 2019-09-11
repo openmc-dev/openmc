@@ -385,13 +385,13 @@ def test_set_alpha_branches():
 def test_simple_fission_yields(simple_chain):
     """Check the default fission yields that can be used to form the matrix
     """
-    fission_yields = simple_chain.get_thermal_fission_yields()
+    fission_yields = simple_chain.get_default_fission_yields()
     assert fission_yields == {"C": {"A": 0.0292737, "B": 0.002566345}}
 
 
 def test_fission_yield_attribute(simple_chain):
     """Test the fission_yields property"""
-    thermal_yields = simple_chain.get_thermal_fission_yields()
+    thermal_yields = simple_chain.get_default_fission_yields()
     # generate default with property
     assert simple_chain.fission_yields[0] == thermal_yields
     empty_chain = Chain()

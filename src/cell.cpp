@@ -612,7 +612,7 @@ void CSGCell::apply_demorgan(std::vector<int32_t>::iterator start,
 std::vector<int32_t>::iterator
 CSGCell::find_left_parenthesis(std::vector<int32_t>::iterator start,
                                const std::vector<int32_t>& rpn) {
-
+  // start search at zero
   int level = 0;
   auto it = start;
   while (it != rpn.begin()) {
@@ -643,12 +643,7 @@ CSGCell::find_left_parenthesis(std::vector<int32_t>::iterator start,
 }
 
 void CSGCell::remove_complements(std::vector<int32_t>& rpn) {
-  if (rpn.back() == OP_COMPLEMENT) {
-    apply_demorgan(rpn.begin(), rpn.end());
-    rpn.pop_back();
-  }
-
-  std::vector<int32_t>::iterator it = std::find(rpn.begin(), rpn.end(), OP_COMPLEMENT);
+  auto it = std::find(rpn.begin(), rpn.end(), OP_COMPLEMENT);
   while (it != rpn.end()) {
     // find the opening parenthesis (if any)
     auto left = find_left_parenthesis(it, rpn);
@@ -663,13 +658,15 @@ void CSGCell::remove_complements(std::vector<int32_t>& rpn) {
 }
 
 BoundingBox CSGCell::bounding_box_complex(std::vector<int32_t> rpn) {
-
+  // remove complements by adjusting surface signs and operators
   remove_complements(rpn);
 
+  // use the first token to set the bounding box
   auto it = rpn.begin();
   BoundingBox current = model::surfaces[abs(*it) - 1]->bounding_box(*it > 0);
   it++;
 
+  // loop over tokens
   while (it < rpn.end()) {
     // move through the rpn in twos
     int32_t one = *it; it++;
@@ -713,7 +710,6 @@ BoundingBox CSGCell::bounding_box_complex(std::vector<int32_t> rpn) {
       }
     }
   }
-
   return current;
 }
 

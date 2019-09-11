@@ -430,7 +430,7 @@ class MultiLevelBreitWigner(ResonanceRange):
 
             # Determine penetration at modified energy for competitive reaction
             if gx > 0:
-                Ex = E + self.q[l]*(A + 1)/A
+                Ex = E + self.q_value[l]*(A + 1)/A
                 rho = k*self.channel_radius[l](Ex)
                 rhohat = k*self.scattering_radius[l](Ex)
                 px[i], sx[i] = penetration_shift(l, rho)
@@ -915,14 +915,25 @@ class Unresolved(ResonanceRange):
         Minimum energy of the unresolved resonance range in eV
     energy_max : float
         Maximum energy of the unresolved resonance range in eV
-    scatter : openmc.data.Function1D
-        Scattering radii as a function of energy
+    channel : dict
+        Dictionary whose keys are l-values and values are channel radii as a
+        function of energy
+    scattering : dict
+        Dictionary whose keys are l-values and values are scattering radii as a
+        function of energy
 
     Attributes
     ----------
     add_to_background : bool
         If True, file 3 contains partial cross sections to be added to the
         average unresolved cross sections calculated from parameters.
+    atomic_weight_ratio : float
+        Atomic weight ratio of the target nuclide given as a function of
+        l-value. Note that this may be different than the value for the
+        evaluation as a whole.
+    channel_radius : dict
+        Dictionary whose keys are l-values and values are channel radii as a
+        function of energy
     energies : Iterable of float
         Energies at which parameters are tabulated
     energy_max : float
@@ -931,18 +942,21 @@ class Unresolved(ResonanceRange):
         Minimum energy of the unresolved resonance range in eV
     parameters : list of pandas.DataFrame
         Average resonance parameters at each energy
-    scattering_radius : openmc.data.Function1D
-        Scattering radii as a function of energy
+    scattering_radius : dict
+        Dictionary whose keys are l-values and values are scattering radii as a
+        function of energy
     target_spin : float
         Intrinsic spin, :math:`I`, of the target nuclide
 
     """
 
-    def __init__(self, target_spin, energy_min, energy_max, scatter):
-        super().__init__(target_spin, energy_min, energy_max, None, scatter)
+    def __init__(self, target_spin, energy_min, energy_max, channel, scattering):
+        super().__init__(target_spin, energy_min, energy_max, channel,
+                         scattering)
         self.energies = None
         self.parameters = None
         self.add_to_background = False
+        self.atomic_weight_ratio = None
 
     @classmethod
     def from_endf(cls, file_obj, items, fission_widths):
@@ -967,9 +981,9 @@ class Unresolved(ResonanceRange):
         """
         # Read energy-dependent scattering radius if present
         energy_min, energy_max = items[0:2]
-        nro = items[4]
+        nro, naps = items[4:6]
         if nro != 0:
-            params, scattering_radius = get_tab1_record(file_obj)
+            params, ape = get_tab1_record(file_obj)
 
         # Get SPI, AP, and LSSF
         formalism = items[3]
@@ -977,22 +991,46 @@ class Unresolved(ResonanceRange):
             items = get_cont_record(file_obj)
             target_spin = items[0]
             if nro == 0:
-                scattering_radius = items[1]
+                ap = Polynomial((items[1],))
             add_to_background = (items[2] == 0)
+
+        channel_radius = {}
+        scattering_radius = {}
 
         if not fission_widths and formalism == 1:
             # Case A -- fission widths not given, all parameters are
             # energy-independent
             NLS = items[4]
-            columns = ['L', 'J', 'd', 'amun', 'gn', 'gg', 'gf']
+            columns = ['L', 'J', 'd', 'amun', 'gn0', 'gg']
             records = []
             for ls in range(NLS):
                 items, values = get_list_record(file_obj)
+                awri = items[0]
                 l = items[2]
+
+                # Calculate channel radius from ENDF-102 equation D.14
+                a = Polynomial((0.123 * (NEUTRON_MASS*awri)**(1./3.) + 0.08,))
+
+                # Construct scattering and channel radius
+                if nro == 0:
+                    scattering_radius[l] = ap
+                    if naps == 0:
+                        channel_radius[l] = a
+                    elif naps == 1:
+                        channel_radius[l] = ap
+                elif nro == 1:
+                    scattering_radius[l] = ape
+                    if naps == 0:
+                        channel_radius[l] = a
+                    elif naps == 1:
+                        channel_radius[l] = ape
+                    elif naps == 2:
+                        channel_radius[l] = ap
+
                 NJS = items[5]
                 for j in range(NJS):
-                    d, j, amun, gn, gg = values[6*j:6*j + 5]
-                    records.append([l, j, d, amun, gn, gg, 0.0])
+                    d, j, amun, gn0, gg = values[6*j:6*j + 5]
+                    records.append([l, j, d, amun, gn0, gg])
             parameters = pd.DataFrame.from_records(records, columns=columns)
             energies = None
 
@@ -1002,15 +1040,35 @@ class Unresolved(ResonanceRange):
             items, energies = get_list_record(file_obj)
             target_spin = items[0]
             if nro == 0:
-                scattering_radius = items[1]
+                ap = Polynomial((items[1],))
             add_to_background = (items[2] == 0)
             NE, NLS = items[4:6]
-            l_values = np.zeros(NLS, int)
-            records = [[] for e in energies]
-            columns = ['L', 'J', 'd', 'amun', 'gn0', 'gg', 'gf']
+            records = []
+            columns = ['L', 'J', 'E', 'd', 'amun', 'amuf', 'gn0', 'gg', 'gf']
             for ls in range(NLS):
                 items = get_cont_record(file_obj)
+                awri = items[0]
                 l = items[2]
+
+                # Calculate channel radius from ENDF-102 equation D.14
+                a = Polynomial((0.123 * (NEUTRON_MASS*awri)**(1./3.) + 0.08,))
+
+                # Construct scattering and channel radius
+                if nro == 0:
+                    scattering_radius[l] = ap
+                    if naps == 0:
+                        channel_radius[l] = a
+                    elif naps == 1:
+                        channel_radius[l] = ap
+                elif nro == 1:
+                    scattering_radius[l] = ape
+                    if naps == 0:
+                        channel_radius[l] = a
+                    elif naps == 1:
+                        channel_radius[l] = ape
+                    elif naps == 2:
+                        channel_radius[l] = ap
+
                 NJS = items[4]
                 for j in range(NJS):
                     items, values = get_list_record(file_obj)
@@ -1020,19 +1078,41 @@ class Unresolved(ResonanceRange):
                     amun = values[2]
                     gn0 = values[3]
                     gg = values[4]
-                    gf = values[6:]
-                    for k, gf_i in enumerate(gf):
-                        records[k].append([l, j, d, amun, gn0, gg, gf])
-            parameters = [pd.DataFrame(r, columns=columns) for r in records]
+                    gfs = values[6:]
+                    for E, gf in zip(energies, gfs):
+                        records.append([l, j, E, d, amun, muf, gn0, gg, gf])
+            parameters = pd.DataFrame.from_records(records, columns=columns)
 
         elif formalism == 2:
             # Case C -- all parameters are energy-dependent
             NLS = items[4]
-            columns = ['L', 'J', 'E', 'd', 'gx', 'gn0', 'gg', 'gf']
+            columns = ['L', 'J', 'E', 'd', 'amux', 'amun', 'amuf', 'gx', 'gn0',
+                       'gg', 'gf']
             records = []
             for ls in range(NLS):
                 items = get_cont_record(file_obj)
+                awri = items[0]
                 l = items[2]
+
+                # Calculate channel radius from ENDF-102 equation D.14
+                a = Polynomial((0.123 * (NEUTRON_MASS*awri)**(1./3.) + 0.08,))
+
+                # Construct scattering and channel radius
+                if nro == 0:
+                    scattering_radius[l] = ap
+                    if naps == 0:
+                        channel_radius[l] = a
+                    elif naps == 1:
+                        channel_radius[l] = ap
+                elif nro == 1:
+                    scattering_radius[l] = ape
+                    if naps == 0:
+                        channel_radius[l] = a
+                    elif naps == 1:
+                        channel_radius[l] = ape
+                    elif naps == 2:
+                        channel_radius[l] = ap
+
                 NJS = items[4]
                 for j in range(NJS):
                     items, values = get_list_record(file_obj)
@@ -1040,7 +1120,6 @@ class Unresolved(ResonanceRange):
                     j = items[0]
                     amux = values[2]
                     amun = values[3]
-                    amug = values[4]
                     amuf = values[5]
                     for k in range(1, ne + 1):
                         E = values[6*k]
@@ -1049,13 +1128,16 @@ class Unresolved(ResonanceRange):
                         gn0 = values[6*k + 3]
                         gg = values[6*k + 4]
                         gf = values[6*k + 5]
-                        records.append([l, j, E, d, gx, gn0, gg, gf])
+                        records.append([l, j, E, d, amux, amun, amuf, gx, gn0,
+                                        gg, gf])
             parameters = pd.DataFrame.from_records(records, columns=columns)
             energies = None
 
-        urr = cls(target_spin, energy_min, energy_max, scattering_radius)
+        urr = cls(target_spin, energy_min, energy_max, channel_radius,
+                  scattering_radius)
         urr.parameters = parameters
         urr.add_to_background = add_to_background
+        urr.atomic_weight_ratio = awri
         urr.energies = energies
 
         return urr

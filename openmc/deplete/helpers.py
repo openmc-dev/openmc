@@ -5,6 +5,7 @@ from copy import deepcopy
 from itertools import product
 from numbers import Real
 import bisect
+from collections import defaultdict
 
 from numpy import dot, zeros, newaxis
 
@@ -179,9 +180,11 @@ class ConstantFissionYieldHelper(FissionYieldHelper):
 
     Attributes
     ----------
-    constant_yields : dict of str to :class:`openmc.deplete.FissionYield`
+    constant_yields : collections.defaultdict
         Fission yields for all nuclides that only have one set of
-        fission yield data. Can be accessed as ``{parent: {product: yield}}``
+        fission yield data. Dictionary of form ``{str: {str: float}}``
+        representing yields for ``{parent: {product: yield}}``. Default
+        return object is an empty dictionary
     energy : float
         Energy of fission yield libraries.
     """
@@ -237,7 +240,7 @@ class ConstantFissionYieldHelper(FissionYieldHelper):
 
         Returns
         -------
-        library : dict
+        library : collections.defaultdict
             Dictionary of ``{parent: {product: fyield}}``
         """
         return self.constant_yields
@@ -282,6 +285,11 @@ class FissionYieldCutoffHelper(TalliedFissionYieldHelper):
     fast_yields : dict
         Dictionary of the form ``{parent: {product: yield}}``
         with fast yields
+    constant_yields : collections.defaultdict
+        Fission yields for all nuclides that only have one set of
+        fission yield data. Dictionary of form ``{str: {str: float}}``
+        representing yields for ``{parent: {product: yield}}``. Default
+        return object is an empty dictionary
     results : numpy.ndarray
         Array of fission rate fractions with shape
         ``(n_mats, 2, n_nucs)``. ``results[:, 0]``
@@ -417,7 +425,7 @@ class FissionYieldCutoffHelper(TalliedFissionYieldHelper):
 
         Returns
         -------
-        library : dict
+        library : collections.defaultdict
             Dictionary of ``{parent: {product: fyield}}``
         """
         yields = self.constant_yields
@@ -469,9 +477,11 @@ class AveragedFissionYieldHelper(TalliedFissionYieldHelper):
 
     Attributes
     ----------
-    constant_yields : dict of str to :class:`openmc.deplete.FissionYield`
+    constant_yields : collections.defaultdict
         Fission yields for all nuclides that only have one set of
-        fission yield data. Can be accessed as ``{parent: {product: yield}}``
+        fission yield data. Dictionary of form ``{str: {str: float}}``
+        representing yields for ``{parent: {product: yield}}``. Default
+        return object is an empty dictionary
     results : None or numpy.ndarray
         If tallies have been generated and unpacked, then the array will
         have shape ``(n_mats, n_tnucs)``, where ``n_mats`` is the number
@@ -569,12 +579,13 @@ class AveragedFissionYieldHelper(TalliedFissionYieldHelper):
 
         Returns
         -------
-        library : dict
-            Dictionary of ``{parent: {product: fyield}}``
+        library : collections.defaultdict
+            Dictionary of ``{parent: {product: fyield}}``. Default return
+            value is an empty dictionary
         """
         if not self._tally_nucs:
             return self.constant_yields
-        mat_yields = {}
+        mat_yields = defaultdict(dict)
         average_energies = self.results[local_mat_index]
         for avg_e, nuc in zip(average_energies, self._tally_nucs):
             nuc_energies = nuc.yield_energies

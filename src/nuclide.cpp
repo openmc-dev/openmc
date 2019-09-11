@@ -287,8 +287,8 @@ Nuclide::Nuclide(hid_t group, const std::vector<double>& temperature, int i_nucl
         throw std::runtime_error{"prompt_neutrons not Tabulated1D in " + 
           object_name(fer_group)};
       }
-      auto recov_data = tab_recov->y();
-      auto recov_x = tab_recov->x();
+      const auto& recov_data = tab_recov->y();
+      const auto& recov_x = tab_recov->x();
       int i=0;
       for (auto yit = recov_data.cbegin(); yit != recov_data.cend(); ++yit) {
         mod_data.push_back(*yit - (*neutrons)(recov_x[i]));
@@ -301,8 +301,8 @@ Nuclide::Nuclide(hid_t group, const std::vector<double>& temperature, int i_nucl
         throw std::runtime_error{"prompt_neutrons not Polynomial in " + 
           object_name(fer_group)};
       }
-      auto recov_data = poly_recov->coeffs();
-      auto neutron_data = neutrons->coeffs();
+      const auto& recov_data = poly_recov->coeffs();
+      const auto& neutron_data = neutrons->coeffs();
       int i=0;
       for (auto it = recov_data.cbegin(); it != recov_data.cend(); ++it) {
         mod_data.push_back(*it - neutron_data.at(i));

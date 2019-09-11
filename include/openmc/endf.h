@@ -64,7 +64,7 @@ public:
   double operator()(double x) const override;
 
   // Accessor
-  const std::vector<double>&coeffs() const { return coef_; }
+  const std::vector<double>& coeffs() const { return coef_; }
 private:
   std::vector<double> coef_; //!< Polynomial coefficients
 };

@@ -598,7 +598,6 @@ BoundingBox CSGCell::bounding_box_simple() const {
   return bbox;
 }
 
-
 void CSGCell::apply_demorgan(std::vector<int32_t>::iterator start,
                              std::vector<int32_t>::iterator stop)
 {
@@ -610,48 +609,62 @@ void CSGCell::apply_demorgan(std::vector<int32_t>::iterator start,
   }
 }
 
-auto find_right_parenthesis(std::vector<int32_t>::iterator start,
-                            std::vector<int32_t>& rpn)
-{
-  // parenthesis level counter
-  int counter = 0;
+std::vector<int32_t>::iterator
+CSGCell::find_left_parenthesis(std::vector<int32_t>::iterator start,
+                               const std::vector<int32_t>& rpn) {
 
-  // start at the beginning
+  int level = 0;
   auto it = start;
-  while(it < rpn.end()) {
+  while (it != rpn.begin()) {
+    // move through the rpn two at a time
     int32_t one = *it;
-    int32_t two = *(it+1);
+    int32_t two = *(it - 1);
 
+    // decrement parenthesis level if there are two adjacent surfaces
     if (one < OP_UNION && two < OP_UNION) {
-      counter++;
+      level--;
+    // increment if there are two adjacent operators
     } else if (one >= OP_UNION && two >= OP_UNION) {
-      counter--;
-      while(*it >= OP_UNION) { it++; }
-      it--;
+      level++;
     }
 
-    if (counter == 0) { break; }
-    it++;
+    // if the level gets to zero, return the position
+    if (level == 0) {
+      // move the iterator back one before leaving the loop
+      // so that all tokens in the parenthesis are included
+      it--;
+      break;
+    }
+
+    // continue loop
+    it--;
   }
   return it;
 }
 
-BoundingBox CSGCell::bounding_box_complex(std::vector<int32_t> rpn) {
-  // if the last operator is a complement op, there is no
-  // sub-region that the complement connects to. This indicates
-  // that the entire region is a complement and we can apply
-  // De Morgan's laws immediately
+void CSGCell::remove_complements(std::vector<int32_t>& rpn) {
   if (rpn.back() == OP_COMPLEMENT) {
-      rpn.pop_back();
-      apply_demorgan(rpn.begin(), rpn.end());
+    apply_demorgan(rpn.begin(), rpn.end());
+    rpn.pop_back();
   }
 
-  // check for parenthesis with complement at the start of the rpn
-  auto initial_right = find_right_parenthesis(rpn.begin(), rpn);
-  if (initial_right != rpn.end() && *initial_right == OP_COMPLEMENT) {
-    apply_demorgan(rpn.begin(), initial_right);
-    rpn.erase(initial_right);
+  std::vector<int32_t>::iterator it = std::find(rpn.begin(), rpn.end(), OP_COMPLEMENT);
+  while (it != rpn.end()) {
+    // find the opening parenthesis (if any)
+    auto left = find_left_parenthesis(it, rpn);
+    // apply DeMorgan's law to any surfaces/operators between these
+    // positions in the RPN
+    apply_demorgan(left, it);
+    rpn.erase(it);
+
+    // update iterator position
+    it = std::find(rpn.begin(), rpn.end(), OP_COMPLEMENT);
   }
+}
+
+BoundingBox CSGCell::bounding_box_complex(std::vector<int32_t> rpn) {
+
+  remove_complements(rpn);
 
   auto it = rpn.begin();
   BoundingBox current = model::surfaces[abs(*it) - 1]->bounding_box(*it > 0);
@@ -659,10 +672,8 @@ BoundingBox CSGCell::bounding_box_complex(std::vector<int32_t> rpn) {
 
   while (it < rpn.end()) {
     // move through the rpn in twos
-    int32_t one = *it;
-    it++;
-    int32_t two = *it;
-    it++;
+    int32_t one = *it; it++;
+    int32_t two = *it; it++;
 
     // the first token should always be a surface
     Expects(one < OP_UNION);
@@ -682,19 +693,12 @@ BoundingBox CSGCell::bounding_box_complex(std::vector<int32_t> rpn) {
       // add until last two tokens in the sub-rpn are operators
       // (indicates a right parenthesis)
       while (!((*it >= OP_UNION) && (*(it + 1) >= OP_UNION))) {
-        subrpn.push_back(*it);
-        it++;
+        subrpn.push_back(*it); it++;
       }
 
       // add first operator to the subrpn
-      subrpn.push_back(*it);
-      it++;
+      subrpn.push_back(*it); it++;
 
-      // handle complement case using De Morgan's laws
-      if (*it == OP_COMPLEMENT) {
-        apply_demorgan(subrpn.begin(), subrpn.end());
-        it++;
-      }
       // save the last operator, tells us how to combine this region
       // with our current bounding box
       int32_t op = *it;

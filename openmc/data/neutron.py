@@ -777,9 +777,10 @@ class IncidentNeutron(EqualityMixin):
         for mt, rx in data.reactions.items():
             if mt in (19, 20, 21, 38):
                 if (5, mt) not in ev.section:
-                    neutron = data.reactions[18].products[0]
-                    rx.products[0].applicability = neutron.applicability
-                    rx.products[0].distribution = neutron.distribution
+                    if rx.products:
+                        neutron = data.reactions[18].products[0]
+                        rx.products[0].applicability = neutron.applicability
+                        rx.products[0].distribution = neutron.distribution
 
         # Read fission energy release (requires that we already know nu for
         # fission)

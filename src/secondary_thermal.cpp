@@ -61,7 +61,7 @@ CoherentElasticAE::sample(double E_in, double& E_out, double& mu) const
 
 IncoherentElasticAE::IncoherentElasticAE(hid_t group)
 {
-  read_attribute(group, "debye_waller", debye_waller_);
+  read_dataset(group, "debye_waller", debye_waller_);
 }
 
 void

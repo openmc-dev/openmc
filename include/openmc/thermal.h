@@ -76,11 +76,6 @@ private:
     std::unique_ptr<AngleEnergy> distribution; //!< Secondary angle-energy distribution
   };
 
-  //! Upper threshold for incoherent inelastic scattering (usually ~4 eV)
-  double threshold_inelastic_;
-  //! Upper threshold for coherent/incoherent elastic scattering
-  double threshold_elastic_ {0.0};
-
   // Inelastic scattering data
   Reaction elastic_;
   Reaction inelastic_;

@@ -210,22 +210,15 @@ ThermalData::ThermalData(hid_t group)
     if (temp == "coherent_elastic") {
       auto xs = dynamic_cast<CoherentElasticXS*>(elastic_.xs.get());
       elastic_.distribution = std::make_unique<CoherentElasticAE>(*xs);
-
-      // Set threshold energy
-      threshold_elastic_ = xs->bragg_edges().back();
-
     } else {
-      auto xs = dynamic_cast<Tabulated1D*>(elastic_.xs.get());
       if (temp == "incoherent_elastic") {
         elastic_.distribution = std::make_unique<IncoherentElasticAE>(dgroup);
       } else if (temp == "incoherent_elastic_discrete") {
+        auto xs = dynamic_cast<Tabulated1D*>(elastic_.xs.get());
         elastic_.distribution = std::make_unique<IncoherentElasticAEDiscrete>(
           dgroup, xs->x()
         );
       }
-
-      // Set threshold energy
-      threshold_elastic_ = xs->x().back();
     }
 
     close_group(elastic_group);
@@ -239,10 +232,6 @@ ThermalData::ThermalData(hid_t group)
     // Read inelastic cross section
     inelastic_.xs = read_function(inelastic_group, "xs");
 
-    // Set inelastic threshold
-    auto xs = dynamic_cast<Tabulated1D*>(inelastic_.xs.get());
-    threshold_inelastic_ = xs->x().back();
-
     // Read angle-energy distribution
     hid_t dgroup = open_group(inelastic_group, "distribution");
     std::string temp;
@@ -250,6 +239,7 @@ ThermalData::ThermalData(hid_t group)
     if (temp == "incoherent_inelastic") {
       inelastic_.distribution = std::make_unique<IncoherentInelasticAE>(dgroup);
     } else if (temp == "incoherent_inelastic_discrete") {
+      auto xs = dynamic_cast<Tabulated1D*>(inelastic_.xs.get());
       inelastic_.distribution = std::make_unique<IncoherentInelasticAEDiscrete>(
         dgroup, xs->x()
       );

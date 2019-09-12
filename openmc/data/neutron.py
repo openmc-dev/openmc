@@ -830,33 +830,66 @@ class IncidentNeutron(EqualityMixin):
             # Add fission energy release data
             ev = evaluation if evaluation is not None else Evaluation(filename)
             if (1, 458) in ev.section:
-                data.fission_energy = FissionEnergyRelease.from_endf(ev, data)
-                # Add 318 fission heating data from heatr
-                non_fission_heating = Reaction(999)
-                non_fission_heating.redundant = True
-                fission_heating = Reaction(318)
-                fission_heating.redundant = True
+                data.fission_energy = f = FissionEnergyRelease.from_endf(ev, data)
+            else:
+                f = None
 
-                heatr_evals = get_evaluations(kwargs["heatr"])
-                for heatr in heatr_evals:
-                    temp = "{}K".format(round(heatr.target["temperature"]))
-                    f318 = StringIO(heatr.section[3, 318])
-                    get_head_record(f318)
-                    _params, fission_kerma = get_tab1_record(f318)
-                    total_heating_xs = data.reactions[301].xs.get(temp)
-                    if total_heating_xs is None:
-                        fission_heating.xs[temp] = fission_kerma
-                        continue
-                    # Cast fission heating to same grid as total heating
-                    new_fission_heat_xs = fission_kerma(total_heating_xs.x)
-                    fission_heating.xs[temp] = Tabulated1D(
-                        total_heating_xs.x, new_fission_heat_xs)
-                    non_fission_heating.xs[temp] = Tabulated1D(
-                        total_heating_xs.x,
-                        total_heating_xs.y - new_fission_heat_xs)
+            # For energy deposition, we want to store two different KERMAs:
+            # one calculated assuming outgoing photons deposit their energy
+            # locally, and one calculated assuming they carry their energy
+            # away. This requires two HEATR runs (which make_ace does by
+            # default). Here, we just need to correct for the fact that NJOY
+            # uses a fission heating number of h = EFR, whereas we want:
+            #
+            # 1) h = EFR + EGP + EGD + EB (for local case)
+            # 2) h = EFR + EB (for non-local case)
+            #
+            # The best way to handle this is to subtract off the fission
+            # KERMA that NJOY calculates and add back exactly what we want.
 
-                data.reactions[318] = fission_heating
-                data.reactions[999] = non_fission_heating
+            heating_local = Reaction(901)
+            heating_local.redundant = True
+
+            # Helper function to get a cross section from an ENDF file on a
+            # given energy grid
+            def get_file3_xs(ev, mt, E):
+                file_obj = StringIO(ev.section[3, mt])
+                get_head_record(file_obj)
+                _, xs = get_tab1_record(file_obj)
+                return xs(E)
+
+            heatr_evals = get_evaluations(kwargs["heatr"])
+            heatr_local_evals = get_evaluations(kwargs["heatr"] + "_local")
+            for ev, ev_local in zip(heatr_evals, heatr_local_evals):
+                temp = "{}K".format(round(ev.target["temperature"]))
+
+                # Get total KERMA (originally from ACE file) and energy grid
+                kerma = data.reactions[301].xs[temp]
+                E = kerma.x
+
+                if f is not None:
+                    # Replace fission KERMA with (EFR + EB)*sigma_f
+                    fission = data.reactions[18].xs[temp]
+                    kerma_fission = get_file3_xs(ev, 318, E)
+                    kerma.y = kerma.y - kerma_fission + (
+                        f.fragments(E) + f.betas(E)) * fission.y
+
+                # For local KERMA, we first need to get the values from the
+                # HEATR run with photon energy deposited locally and put
+                # them on the same energy grid
+                kerma_local = get_file3_xs(ev_local, 301, E)
+
+                if f is not None:
+                    # When photons deposit their energy locally, we replace the
+                    # fission KERMA with (EFR + EGP + EGD + EB)*sigma_f
+                    kerma_fission_local = get_file3_xs(ev_local, 318, E)
+                    kerma_local = kerma_local - kerma_fission_local + (
+                        f.fragments(E) + f.prompt_photons(E)
+                        + f.delayed_photons(E) + f.betas(E))*fission.y
+
+                heating_local.xs[temp] = Tabulated1D(E, kerma_local)
+
+            data.reactions[901] = heating_local
 
             # Add 0K elastic scattering cross section
             if '0K' not in data.energy:

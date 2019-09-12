@@ -642,7 +642,7 @@ CSGCell::find_left_parenthesis(std::vector<int32_t>::iterator start,
   return it;
 }
 
-void CSGCell::remove_complements(std::vector<int32_t>& rpn) {
+void CSGCell::remove_complement_ops(std::vector<int32_t>& rpn) {
   auto it = std::find(rpn.begin(), rpn.end(), OP_COMPLEMENT);
   while (it != rpn.end()) {
     // find the opening parenthesis (if any)
@@ -659,7 +659,7 @@ void CSGCell::remove_complements(std::vector<int32_t>& rpn) {
 
 BoundingBox CSGCell::bounding_box_complex(std::vector<int32_t> rpn) {
   // remove complements by adjusting surface signs and operators
-  remove_complements(rpn);
+  remove_complement_ops(rpn);
 
   // use the first token to set the bounding box
   auto it = rpn.begin();

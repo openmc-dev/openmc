@@ -214,7 +214,7 @@ protected:
   static BoundingBox bounding_box_complex(std::vector<int32_t> rpn);
   static void apply_demorgan(std::vector<int32_t>::iterator start,
                              std::vector<int32_t>::iterator stop);
-  static void remove_complements(std::vector<int32_t>& rpn);
+  static void remove_complement_ops(std::vector<int32_t>& rpn);
   static std::vector<int32_t>::iterator
   find_left_parenthesis(std::vector<int32_t>::iterator start,
                         const std::vector<int32_t>& rpn);

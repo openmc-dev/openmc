@@ -616,7 +616,7 @@ CSGCell::find_left_parenthesis(std::vector<int32_t>::iterator start,
   int level = 0;
   auto it = start;
   while (it != rpn.begin()) {
-    // move through the rpn two at a time
+    // look at two tokens at a time
     int32_t one = *it;
     int32_t two = *(it - 1);
 
@@ -636,7 +636,7 @@ CSGCell::find_left_parenthesis(std::vector<int32_t>::iterator start,
       break;
     }
 
-    // continue loop
+    // continue loop, one token at a time
     it--;
   }
   return it;
@@ -669,8 +669,8 @@ BoundingBox CSGCell::bounding_box_complex(std::vector<int32_t> rpn) {
   // loop over tokens
   while (it < rpn.end()) {
     // move through the rpn in twos
-    int32_t one = *it; it++;
-    int32_t two = *it; it++;
+    int32_t one = *it++;
+    int32_t two = *it++;
 
     // the first token should always be a surface
     Expects(one < OP_UNION);
@@ -684,22 +684,22 @@ BoundingBox CSGCell::bounding_box_complex(std::vector<int32_t> rpn) {
     } else {
       // two surfaces in a row (left parenthesis),
       // create sub-rpn for region in parenthesis
-      std::vector<int32_t> subrpn;
-      subrpn.push_back(one);
-      subrpn.push_back(two);
       // add until last two tokens in the sub-rpn are operators
       // (indicates a right parenthesis)
-      while (!((*it >= OP_UNION) && (*(it + 1) >= OP_UNION))) {
-        subrpn.push_back(*it); it++;
+      auto subrpn_start = it - 2; // include current tokens
+      auto subrpn_end = it;
+      while (!((*subrpn_end >= OP_UNION) && (*(subrpn_end + 1) >= OP_UNION))) {
+        subrpn_end++;
       }
 
-      // add first operator to the subrpn
-      subrpn.push_back(*it); it++;
+      // create the subrpn, including the first of our current tokens
+      std::vector<int32_t> subrpn(subrpn_start, ++subrpn_end);
 
       // save the last operator, tells us how to combine this region
       // with our current bounding box
-      int32_t op = *it;
-      it++;
+      int32_t op = *subrpn_end++;
+      it = subrpn_end;
+
       // get bounding box for the subrpn
       BoundingBox sub_box = bounding_box_complex(subrpn);
       // combine the sub-rpn bounding box with our current cell box

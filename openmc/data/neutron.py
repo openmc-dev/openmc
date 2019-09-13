@@ -813,6 +813,15 @@ class IncidentNeutron(EqualityMixin):
             for table in lib.tables[1:]:
                 data.add_temperature_from_ace(table)
 
+            # Add 0K elastic scattering cross section
+            if '0K' not in data.energy:
+                pendf = Evaluation(kwargs['pendf'])
+                file_obj = StringIO(pendf.section[3, 2])
+                get_head_record(file_obj)
+                params, xs = get_tab1_record(file_obj)
+                data.energy['0K'] = xs.x
+                data[2].xs['0K'] = xs
+
             # Add fission energy release data
             ev = evaluation if evaluation is not None else Evaluation(filename)
             if (1, 458) in ev.section:
@@ -833,8 +842,9 @@ class IncidentNeutron(EqualityMixin):
             # The best way to handle this is to subtract off the fission
             # KERMA that NJOY calculates and add back exactly what we want.
 
-            heating_local = Reaction(901)
-            heating_local.redundant = True
+            # If NJOY is not run with HEATR at all, skip everything below
+            if not kwargs["heatr"]:
+                return data
 
             # Helper function to get a cross section from an ENDF file on a
             # given energy grid
@@ -843,6 +853,9 @@ class IncidentNeutron(EqualityMixin):
                 get_head_record(file_obj)
                 _, xs = get_tab1_record(file_obj)
                 return xs(E)
+
+            heating_local = Reaction(901)
+            heating_local.redundant = True
 
             heatr_evals = get_evaluations(kwargs["heatr"])
             heatr_local_evals = get_evaluations(kwargs["heatr"] + "_local")
@@ -876,15 +889,6 @@ class IncidentNeutron(EqualityMixin):
                 heating_local.xs[temp] = Tabulated1D(E, kerma_local)
 
             data.reactions[901] = heating_local
-
-            # Add 0K elastic scattering cross section
-            if '0K' not in data.energy:
-                pendf = Evaluation(kwargs['pendf'])
-                file_obj = StringIO(pendf.section[3, 2])
-                get_head_record(file_obj)
-                params, xs = get_tab1_record(file_obj)
-                data.energy['0K'] = xs.x
-                data[2].xs['0K'] = xs
 
         return data
 

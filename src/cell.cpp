@@ -601,7 +601,7 @@ BoundingBox CSGCell::bounding_box_simple() const {
 void CSGCell::apply_demorgan(std::vector<int32_t>::iterator start,
                              std::vector<int32_t>::iterator stop)
 {
-  while(start < stop) {
+  while (start < stop) {
     if (*start < OP_UNION) { *start *= -1; }
     else if (*start == OP_UNION) { *start = OP_INTERSECTION; }
     else if (*start == OP_INTERSECTION) { *start = OP_UNION; }

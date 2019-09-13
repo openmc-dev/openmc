@@ -730,7 +730,7 @@ class IncidentNeutron(EqualityMixin):
 
         # Instantiate incident neutron data
         data = cls(name, atomic_number, mass_number, metastable,
-                   atomic_weight_ratio, temperature)
+                   atomic_weight_ratio, [temperature])
 
         if (2, 151) in ev.section:
             data.resonances = res.Resonances.from_endf(ev)

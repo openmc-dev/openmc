@@ -212,12 +212,24 @@ protected:
   bool contains_complex(Position r, Direction u, int32_t on_surface) const;
   BoundingBox bounding_box_simple() const;
   static BoundingBox bounding_box_complex(std::vector<int32_t> rpn);
+
+  //! Applies DeMorgan's laws to a section of the RPN
   static void apply_demorgan(std::vector<int32_t>::iterator start,
                              std::vector<int32_t>::iterator stop);
+
+  //! Removes complement operators from the RPN
   static void remove_complement_ops(std::vector<int32_t>& rpn);
+
+  //! Returns the beginning position of a parenthesis block (immediately before
+  //! two surface tokens) in the RPN given a starting position at the end of
+  //! that block (immediately after two surface tokens)
   static std::vector<int32_t>::iterator
   find_left_parenthesis(std::vector<int32_t>::iterator start,
                         const std::vector<int32_t>& rpn);
+
+  //! Returns the ending position of a parenthesis block (immediately after two
+  //! operator tokens) in the RPN given a starting position at the beginning of
+  //! that block (immediately before two surface tokens)
   static std::vector<int32_t>::iterator
   find_right_parenthesis(std::vector<int32_t>::iterator start,
                         const std::vector<int32_t>& rpn);

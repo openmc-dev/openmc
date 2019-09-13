@@ -54,9 +54,8 @@ REACTION_NAME = {1: '(n,total)', 2: '(n,elastic)', 4: '(n,level)',
                  198: '(n,n3p)', 199: '(n,3n2pa)', 200: '(n,5n2p)', 203: '(n,Xp)',
                  204: '(n,Xd)', 205: '(n,Xt)', 206: '(n,X3He)', 207: '(n,Xa)',
                  301: 'heating', 444: 'damage-energy',
-                 318: "fission-heating", 999: "non-fission-heating",
                  649: '(n,pc)', 699: '(n,dc)', 749: '(n,tc)', 799: '(n,3Hec)',
-                 849: '(n,ac)', 891: '(n,2nc)'}
+                 849: '(n,ac)', 891: '(n,2nc)', 901: 'heating-local'}
 REACTION_NAME.update({i: '(n,n{})'.format(i - 50) for i in range(50, 91)})
 REACTION_NAME.update({i: '(n,p{})'.format(i - 600) for i in range(600, 649)})
 REACTION_NAME.update({i: '(n,d{})'.format(i - 650) for i in range(650, 699)})

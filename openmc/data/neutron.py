@@ -452,7 +452,7 @@ class IncidentNeutron(EqualityMixin):
             if rx.redundant:
                 photon_rx = any(p.particle == 'photon' for p in rx.products)
                 keep_mts = (4, 16, 103, 104, 105, 106, 107,
-                            203, 204, 205, 206, 207, 301, 318, 444)
+                            203, 204, 205, 206, 207, 301, 444, 901)
                 if not (photon_rx or rx.mt in keep_mts):
                     continue
 
@@ -552,20 +552,6 @@ class IncidentNeutron(EqualityMixin):
         if 'fission_energy_release' in group:
             fer_group = group['fission_energy_release']
             data.fission_energy = FissionEnergyRelease.from_hdf5(fer_group)
-
-        # Rebuild non-fission heating
-        total_heating = data.reactions.get(301)
-        fission_heating = data.reactions.get(318)
-        if total_heating is not None and fission_heating is not None:
-            non_fission_heating = Reaction(999)
-            non_fission_heating.redundant = True
-            for strT, total in total_heating.xs.items():
-                fission = fission_heating.xs.get(strT)
-                if fission is None:
-                    continue
-                non_fission_heating.xs[strT] = Tabulated1D(
-                    total.x, total.y - fission(total.x))
-            data.reactions[999] = non_fission_heating
 
         return data
 

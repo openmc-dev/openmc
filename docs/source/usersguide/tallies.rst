@@ -263,6 +263,11 @@ The following tables show all valid scores:
     |                      |deposition (analog estimator) or pre-generated     |
     |                      |photon heating number.                             |
     +----------------------+---------------------------------------------------+
+    |heating-local         |Total nuclear heating in units of eV per source    |
+    |                      |particle assuming energy from secondary photons is |
+    |                      |deposited locally. Note that this score should only|
+    |                      |be used for incident neutrons.                     |
+    +----------------------+---------------------------------------------------+
     |kappa-fission         |The recoverable energy production rate due to      |
     |                      |fission. The recoverable energy is defined as the  |
     |                      |fission product kinetic energy, prompt and delayed |

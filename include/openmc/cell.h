@@ -218,6 +218,10 @@ protected:
   static std::vector<int32_t>::iterator
   find_left_parenthesis(std::vector<int32_t>::iterator start,
                         const std::vector<int32_t>& rpn);
+  static std::vector<int32_t>::iterator
+  find_right_parenthesis(std::vector<int32_t>::iterator start,
+                        const std::vector<int32_t>& rpn);
+
 };
 
 //==============================================================================

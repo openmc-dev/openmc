@@ -613,7 +613,7 @@ std::vector<int32_t>::iterator
 CSGCell::find_left_parenthesis(std::vector<int32_t>::iterator start,
                                const std::vector<int32_t>& rpn) {
   // start search at zero
-  int level = 0;
+  int parenthesis_level = 0;
   auto it = start;
   while (it != rpn.begin()) {
     // look at two tokens at a time
@@ -622,16 +622,16 @@ CSGCell::find_left_parenthesis(std::vector<int32_t>::iterator start,
 
     // decrement parenthesis level if there are two adjacent surfaces
     if (one < OP_UNION && two < OP_UNION) {
-      level--;
+      parenthesis_level--;
     // increment if there are two adjacent operators
     } else if (one >= OP_UNION && two >= OP_UNION) {
-      level++;
+      parenthesis_level++;
     }
 
     // if the level gets to zero, return the position
-    if (level == 0) {
+    if (parenthesis_level == 0) {
       // move the iterator back one before leaving the loop
-      // so that all tokens in the parenthesis are included
+      // so that all tokens in the parenthesis block are included
       it--;
       break;
     }
@@ -645,26 +645,25 @@ CSGCell::find_left_parenthesis(std::vector<int32_t>::iterator start,
 std::vector<int32_t>::iterator
 CSGCell::find_right_parenthesis(std::vector<int32_t>::iterator start,
                                 const std::vector<int32_t>& rpn) {
-  // start search at zero
-  int level = 0;
+  int parenthesis_level = 0;
   auto it = start;
   while (it != rpn.end()) {
     // look at two tokens at a time
     int32_t one = *it;
     int32_t two = *(it + 1);
 
-    // decrement parenthesis level if there are two adjacent surfaces
+    // increment parenthesis level if there are two adjacent surfaces
     if (one < OP_UNION && two < OP_UNION) {
-      level++;
-    // increment if there are two adjacent operators
+      parenthesis_level++;
+    // decrement if there are two adjacent operators
     } else if (one >= OP_UNION && two >= OP_UNION) {
-      level--;
+      parenthesis_level--;
     }
 
     // if the level gets to zero, return the position
-    if (level == 0) {
-      // move the iterator back one before leaving the loop
-      // so that all tokens in the parenthesis are included
+    if (parenthesis_level == 0) {
+      // move the iterator forward one before leaving the loop
+      // so that all tokens in the parenthesis block are included
       it++;
       break;
     }
@@ -675,17 +674,18 @@ CSGCell::find_right_parenthesis(std::vector<int32_t>::iterator start,
   return it;
 }
 
-
 void CSGCell::remove_complement_ops(std::vector<int32_t>& rpn) {
   auto it = std::find(rpn.begin(), rpn.end(), OP_COMPLEMENT);
   while (it != rpn.end()) {
     // find the opening parenthesis (if any)
     auto left = find_left_parenthesis(it, rpn);
+    std::vector<int32_t> tmp(left, it+1);
+
     // apply DeMorgan's law to any surfaces/operators between these
     // positions in the RPN
     apply_demorgan(left, it);
+    // remove complement operator
     rpn.erase(it);
-
     // update iterator position
     it = std::find(rpn.begin(), rpn.end(), OP_COMPLEMENT);
   }
@@ -718,8 +718,6 @@ BoundingBox CSGCell::bounding_box_complex(std::vector<int32_t> rpn) {
     } else {
       // two surfaces in a row (left parenthesis),
       // create sub-rpn for region in parenthesis
-      // add until last two tokens in the sub-rpn are operators
-      // (indicates a right parenthesis)
       auto subrpn_start = it - 2; // include current tokens
       auto subrpn_end = find_right_parenthesis(subrpn_start, rpn);
 

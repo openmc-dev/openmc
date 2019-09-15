@@ -901,7 +901,38 @@ Dxy + Eyz + Fxz + Gx + Hy + Jz + K = 0`. Thus, the gradient to the surface is
 ------------------------------
 White Boundary Conditions
 ------------------------------
+The white boundary condition is usually applied in deterministic code, where the particle
+will hit the surface and travel back with isotropic angular distribution. Essentially, the
+change of particle's direction will comply to the cosine distribution instead of uniform 
+distribution. 
+The probability distribution function (pdf)  for the reflected direction can be expressed 
+as follows, 
+.. math::
+    : label: white-reflection-pdf
 
+
+where mu is the cosine of the polar angle between reflected direction and the normal to the 
+surface; and theta is the azimuthal angle. 
+Thus, the cosine of the polar angle can extracted like this,
+.. math::
+    : label: white-reflection-cosine
+
+and the azimuthal angle is uniform in the range of 2*PI, 
+.. math:: 
+    : label: white-reflection-unifrm
+
+Then, cosine can be obtained by analytical inversion of cumulative probability distribution (cdf)
+like this, 
+.. math::
+    : label: white-reflection-sqrt-prn
+
+Eventually, the final reflected direction vector can be computed via the rotation of normal to 
+the surface like this,
+.. math::
+    : label: white-reflection-rotation
+
+The white boundary condition can apply to any kind of surface, as long as the normal to the surface
+is known as mentioned above in :ref:`reflection`. 
 
 .. _constructive solid geometry: http://en.wikipedia.org/wiki/Constructive_solid_geometry
 .. _surfaces: http://en.wikipedia.org/wiki/Surface

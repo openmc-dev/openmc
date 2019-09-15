@@ -617,6 +617,10 @@ condition has been applied, the particle is killed and any surface current
 tallies are scored to as needed. If a reflective boundary condition has been
 applied to the surface, surface current tallies are scored to and then the
 particle's direction is changed according to the procedure in :ref:`reflection`.
+Note that the white boundary condition can be considered as the speciall case of 
+reflective boundary condition, where the same processing method will be applied to
+deal with the surface current tallies scoring, except for determining the 
+changes of particle's direction according to the procedures in :ref:`white`. 
 
 Next, we need to determine what cell is beyond the surface in the direction of
 travel of the particle so that we can evaluate cross sections based on its
@@ -890,6 +894,13 @@ Dxy + Eyz + Fxz + Gx + Hy + Jz + K = 0`. Thus, the gradient to the surface is
 
     \nabla f = \left ( \begin{array}{c} 2Ax + Dy + Fz + G \\ 2By + Dx + Ez + H
     \\ 2Cz + Ey + Fx + J \end{array} \right ).
+
+
+.. _white:
+
+------------------------------
+White Boundary Conditions
+------------------------------
 
 
 .. _constructive solid geometry: http://en.wikipedia.org/wiki/Constructive_solid_geometry

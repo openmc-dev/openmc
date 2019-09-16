@@ -143,7 +143,7 @@ class Tally(_FortranObjectWithID):
 
     This class exposes a tally that is stored internally in the OpenMC
     library. To obtain a view of a tally with a given ID, use the
-    :data:`openmc.capi.tallies` mapping.
+    :data:`openmc.lib.tallies` mapping.
 
     Parameters
     ----------

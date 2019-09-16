@@ -31,7 +31,7 @@ kwargs = {
 
     # Data files and librarries
     'package_data': {
-        'openmc.capi': ['libopenmc.{}'.format(suffix)],
+        'openmc.lib': ['libopenmc.{}'.format(suffix)],
         'openmc.data': ['mass16.txt', 'BREMX.DAT', '*.h5']
     },
 

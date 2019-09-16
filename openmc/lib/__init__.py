@@ -1,14 +1,14 @@
 """
-This module provides bindings to C functions defined by OpenMC shared library.
-When the :mod:`openmc` package is imported, the OpenMC shared library is
-automatically loaded. Calls to the OpenMC library can then be via functions or
-objects in the :mod:`openmc.capi` subpackage, for example:
+This module provides bindings to C/C++ functions defined by OpenMC shared
+library. When the :mod:`openmc.lib` package is imported, the OpenMC shared
+library is automatically loaded. Calls to the OpenMC library can then be via
+functions or objects in :mod:`openmc.lib`, for example:
 
 .. code-block:: python
 
-    openmc.capi.init()
-    openmc.capi.run()
-    openmc.capi.finalize()
+    openmc.lib.init()
+    openmc.lib.run()
+    openmc.lib.finalize()
 
 """
 
@@ -33,7 +33,7 @@ if os.environ.get('READTHEDOCS', None) != 'True':
 else:
     # For documentation builds, we don't actually have the shared library
     # available. Instead, we create a mock object so that when the modules
-    # within the openmc.capi package try to configure arguments and return
+    # within the openmc.lib package try to configure arguments and return
     # values for symbols, no errors occur
     from unittest.mock import Mock
     _dll = Mock()

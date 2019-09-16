@@ -221,9 +221,11 @@ class Operator(TransportOperator):
         # Get classes to assist working with tallies
         self._rate_helper = DirectReactionRateHelper(
             self.reaction_rates.n_nuc, self.reaction_rates.n_react)
-        self._energy_helper = (
-            ChainFissionHelper() if energy_mode == "fission-q"
-            else EnergyScoreHelper())
+        if energy_mode == "fission-q":
+            self._energy_helper = ChainFissionHelper()
+        else:
+            score = 301 if settings.photon_transport else 901
+            self._energy_helper = EnergyScoreHelper(score)
 
         # Select and create fission yield helper
         fission_helper = self._fission_helpers[fission_yield_mode]

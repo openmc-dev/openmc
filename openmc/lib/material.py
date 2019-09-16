@@ -66,7 +66,7 @@ class Material(_FortranObjectWithID):
 
     This class exposes a material that is stored internally in the OpenMC
     library. To obtain a view of a material with a given ID, use the
-    :data:`openmc.capi.materials` mapping.
+    :data:`openmc.lib.materials` mapping.
 
     Parameters
     ----------

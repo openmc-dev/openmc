@@ -19,7 +19,7 @@ import numpy as np
 from uncertainties import ufloat
 
 import openmc
-import openmc.capi
+import openmc.lib
 from . import comm
 from .abc import TransportOperator, OperatorResult
 from .atom_number import AtomNumber
@@ -245,8 +245,8 @@ class Operator(TransportOperator):
         self._yield_helper.update_tally_nuclides(nuclides)
 
         # Run OpenMC
-        openmc.capi.reset()
-        openmc.capi.run()
+        openmc.lib.reset()
+        openmc.lib.run()
 
         time_openmc = time.time()
 
@@ -264,7 +264,7 @@ class Operator(TransportOperator):
         step : int
             Current depletion step including restarts
         """
-        openmc.capi.statepoint_write(
+        openmc.lib.statepoint_write(
             "openmc_simulation_n{}.h5".format(step),
             write_source=False)
 
@@ -438,10 +438,10 @@ class Operator(TransportOperator):
 
         # Initialize OpenMC library
         comm.barrier()
-        openmc.capi.init(intracomm=comm)
+        openmc.lib.init(intracomm=comm)
 
         # Generate tallies in memory
-        materials = [openmc.capi.materials[int(i)]
+        materials = [openmc.lib.materials[int(i)]
                      for i in self.burnable_mats]
         self._rate_helper.generate_tallies(materials, self.chain.reactions)
         self._energy_helper.prepare(
@@ -456,7 +456,7 @@ class Operator(TransportOperator):
 
     def finalize(self):
         """Finalize a depletion simulation and release resources."""
-        openmc.capi.finalize()
+        openmc.lib.finalize()
 
     def _update_materials(self):
         """Updates material compositions in OpenMC on all processes."""
@@ -491,7 +491,7 @@ class Operator(TransportOperator):
                             number_i[mat, nuc] = 0.0
 
                 # Update densities on C API side
-                mat_internal = openmc.capi.materials[int(mat)]
+                mat_internal = openmc.lib.materials[int(mat)]
                 mat_internal.set_densities(nuclides, densities)
 
                 #TODO Update densities on the Python side, otherwise the
@@ -581,7 +581,7 @@ class Operator(TransportOperator):
         rates.fill(0.0)
 
         # Get k and uncertainty
-        k_combined = ufloat(*openmc.capi.keff())
+        k_combined = ufloat(*openmc.lib.keff())
 
         # Extract tally bins
         nuclides = self._rate_helper.nuclides

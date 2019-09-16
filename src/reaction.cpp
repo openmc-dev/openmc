@@ -88,193 +88,189 @@ Reaction::Reaction(hid_t group, const std::vector<int>& temperatures)
 std::string reaction_name(int mt)
 {
   if (mt == SCORE_FLUX) {
-    return  "flux";
+    return "flux";
   } else if (mt == SCORE_TOTAL) {
-    return  "total";
+    return "total";
   } else if (mt == SCORE_SCATTER) {
-    return  "scatter";
+    return "scatter";
   } else if (mt == SCORE_NU_SCATTER) {
-    return  "nu-scatter";
+    return "nu-scatter";
   } else if (mt == SCORE_ABSORPTION) {
-    return  "absorption";
+    return "absorption";
   } else if (mt == SCORE_FISSION) {
-    return  "fission";
+    return "fission";
   } else if (mt == SCORE_NU_FISSION) {
-    return  "nu-fission";
+    return "nu-fission";
   } else if (mt == SCORE_DECAY_RATE) {
-    return  "decay-rate";
+    return "decay-rate";
   } else if (mt == SCORE_DELAYED_NU_FISSION) {
-    return  "delayed-nu-fission";
+    return "delayed-nu-fission";
   } else if (mt == SCORE_PROMPT_NU_FISSION) {
-    return  "prompt-nu-fission";
+    return "prompt-nu-fission";
   } else if (mt == SCORE_KAPPA_FISSION) {
-    return  "kappa-fission";
+    return "kappa-fission";
   } else if (mt == SCORE_CURRENT) {
-    return  "current";
+    return "current";
   } else if (mt == SCORE_EVENTS) {
-    return  "events";
+    return "events";
   } else if (mt == SCORE_INVERSE_VELOCITY) {
-    return  "inverse-velocity";
+    return "inverse-velocity";
   } else if (mt == SCORE_FISS_Q_PROMPT) {
-    return  "fission-q-prompt";
+    return "fission-q-prompt";
   } else if (mt == SCORE_FISS_Q_RECOV) {
-    return  "fission-q-recoverable";
-  } else if (mt == SCORE_HEATING) {
-    return  "heating";
+    return "fission-q-recoverable";
 
   // Normal ENDF-based reactions
   } else if (mt == TOTAL_XS) {
-    return  "(n,total)";
+    return "(n,total)";
   } else if (mt == ELASTIC) {
-    return  "(n,elastic)";
+    return "(n,elastic)";
   } else if (mt == N_LEVEL) {
-    return  "(n,level)";
+    return "(n,level)";
   } else if (mt == N_2ND) {
-    return  "(n,2nd)";
+    return "(n,2nd)";
   } else if (mt == N_2N) {
-    return  "(n,2n)";
+    return "(n,2n)";
   } else if (mt == N_3N) {
-    return  "(n,3n)";
+    return "(n,3n)";
   } else if (mt == N_FISSION) {
-    return  "(n,fission)";
+    return "(n,fission)";
   } else if (mt == N_F) {
-    return  "(n,f)";
+    return "(n,f)";
   } else if (mt == N_NF) {
-    return  "(n,nf)";
+    return "(n,nf)";
   } else if (mt == N_2NF) {
-    return  "(n,2nf)";
+    return "(n,2nf)";
   } else if (mt == N_NA) {
-    return  "(n,na)";
+    return "(n,na)";
   } else if (mt == N_N3A) {
-    return  "(n,n3a)";
+    return "(n,n3a)";
   } else if (mt == N_2NA) {
-    return  "(n,2na)";
+    return "(n,2na)";
   } else if (mt == N_3NA) {
-    return  "(n,3na)";
+    return "(n,3na)";
   } else if (mt == N_NP) {
-    return  "(n,np)";
+    return "(n,np)";
   } else if (mt == N_N2A) {
-    return  "(n,n2a)";
+    return "(n,n2a)";
   } else if (mt == N_2N2A) {
-    return  "(n,2n2a)";
+    return "(n,2n2a)";
   } else if (mt == N_ND) {
-    return  "(n,nd)";
+    return "(n,nd)";
   } else if (mt == N_NT) {
-    return  "(n,nt)";
+    return "(n,nt)";
   } else if (mt == N_N3HE) {
-    return  "(n,nHe-3)";
+    return "(n,nHe-3)";
   } else if (mt == N_ND2A) {
-    return  "(n,nd2a)";
+    return "(n,nd2a)";
   } else if (mt == N_NT2A) {
-    return  "(n,nt2a)";
+    return "(n,nt2a)";
   } else if (mt == N_4N) {
-    return  "(n,4n)";
+    return "(n,4n)";
   } else if (mt == N_3NF) {
-    return  "(n,3nf)";
+    return "(n,3nf)";
   } else if (mt == N_2NP) {
-    return  "(n,2np)";
+    return "(n,2np)";
   } else if (mt == N_3NP) {
-    return  "(n,3np)";
+    return "(n,3np)";
   } else if (mt == N_N2P) {
-    return  "(n,n2p)";
+    return "(n,n2p)";
   } else if (mt == N_NPA) {
-    return  "(n,npa)";
+    return "(n,npa)";
   } else if (N_N1 <= mt && mt <= N_N40) {
-    return  "(n,n" + std::to_string(mt-50) + ")";
+    return "(n,n" + std::to_string(mt-50) + ")";
   } else if (mt == N_NC) {
-    return  "(n,nc)";
+    return "(n,nc)";
   } else if (mt == N_DISAPPEAR) {
-    return  "(n,disappear)";
+    return "(n,disappear)";
   } else if (mt == N_GAMMA) {
-    return  "(n,gamma)";
+    return "(n,gamma)";
   } else if (mt == N_P) {
-    return  "(n,p)";
+    return "(n,p)";
   } else if (mt == N_D) {
-    return  "(n,d)";
+    return "(n,d)";
   } else if (mt == N_T) {
-    return  "(n,t)";
+    return "(n,t)";
   } else if (mt == N_3HE) {
-    return  "(n,3He)";
+    return "(n,3He)";
   } else if (mt == N_A) {
-    return  "(n,a)";
+    return "(n,a)";
   } else if (mt == N_2A) {
-    return  "(n,2a)";
+    return "(n,2a)";
   } else if (mt == N_3A) {
-    return  "(n,3a)";
+    return "(n,3a)";
   } else if (mt == N_2P) {
-    return  "(n,2p)";
+    return "(n,2p)";
   } else if (mt == N_PA) {
-    return  "(n,pa)";
+    return "(n,pa)";
   } else if (mt == N_T2A) {
-    return  "(n,t2a)";
+    return "(n,t2a)";
   } else if (mt == N_D2A) {
-    return  "(n,d2a)";
+    return "(n,d2a)";
   } else if (mt == N_PD) {
-    return  "(n,pd)";
+    return "(n,pd)";
   } else if (mt == N_PT) {
-    return  "(n,pt)";
+    return "(n,pt)";
   } else if (mt == N_DA) {
-    return  "(n,da)";
+    return "(n,da)";
   } else if (mt == 201) {
-    return  "(n,Xn)";
+    return "(n,Xn)";
   } else if (mt == 202) {
-    return  "(n,Xgamma)";
-  } else if (mt == 203) {
-    return  "(n,Xp)";
-  } else if (mt == 204) {
-    return  "(n,Xd)";
-  } else if (mt == 205) {
-    return  "(n,Xt)";
-  } else if (mt == 206) {
-    return  "(n,X3He)";
-  } else if (mt == 207) {
-    return  "(n,Xa)";
-  } else if (mt == 301) {
+    return "(n,Xgamma)";
+  } else if (mt == N_XP) {
+    return "(n,Xp)";
+  } else if (mt == N_XD) {
+    return "(n,Xd)";
+  } else if (mt == N_XT) {
+    return "(n,Xt)";
+  } else if (mt == N_X3HE) {
+    return "(n,X3He)";
+  } else if (mt == N_XA) {
+    return "(n,Xa)";
+  } else if (mt == HEATING) {
     return "heating";
-  } else if (mt == 318) {
-    return "fission-heating";
-  } else if (mt == 999) {
-    return "non-fission-heating";
-  } else if (mt == 444) {
-    return  "damage-energy";
+  } else if (mt == DAMAGE_ENERGY) {
+    return "damage-energy";
   } else if (mt == COHERENT) {
-    return  "coherent scatter";
+    return "coherent scatter";
   } else if (mt == INCOHERENT) {
-    return  "incoherent scatter";
+    return "incoherent scatter";
   } else if (mt == PAIR_PROD_ELEC) {
-    return  "pair production, electron";
+    return "pair production, electron";
   } else if (mt == PAIR_PROD) {
-    return  "pair production";
+    return "pair production";
   } else if (mt == PAIR_PROD_NUC) {
-    return  "pair production, nuclear";
+    return "pair production, nuclear";
   } else if (mt == PHOTOELECTRIC) {
-    return  "photoelectric";
+    return "photoelectric";
   } else if (534 <= mt && mt <= 572) {
     std::stringstream name;
     name << "photoelectric, " << SUBSHELLS[mt - 534] << " subshell";
     return name.str();
   } else if (600 <= mt && mt <= 648) {
-    return  "(n,p" + std::to_string(mt-600) + ")";
+    return "(n,p" + std::to_string(mt-600) + ")";
   } else if (mt == 649) {
-    return  "(n,pc)";
+    return "(n,pc)";
   } else if (650 <= mt && mt <= 698) {
-    return  "(n,d" + std::to_string(mt-650) + ")";
+    return "(n,d" + std::to_string(mt-650) + ")";
   } else if (mt == 699) {
-    return  "(n,dc)";
+    return "(n,dc)";
   } else if (700 <= mt && mt <= 748) {
-    return  "(n,t" + std::to_string(mt-700) + ")";
+    return "(n,t" + std::to_string(mt-700) + ")";
   } else if (mt == 749) {
-    return  "(n,tc)";
+    return "(n,tc)";
   } else if (750 <= mt && mt <= 798) {
-    return  "(n,3He" + std::to_string(mt-750) + ")";
+    return "(n,3He" + std::to_string(mt-750) + ")";
   } else if (mt == 799) {
-    return  "(n,3Hec)";
+    return "(n,3Hec)";
   } else if (800 <= mt && mt <= 848) {
-    return  "(n,a" + std::to_string(mt-800) + ")";
+    return "(n,a" + std::to_string(mt-800) + ")";
   } else if (mt == 849) {
-    return  "(n,ac)";
+    return "(n,ac)";
+  } else if (mt == HEATING_LOCAL) {
+    return "heating-local";
   } else {
-    return  "MT=" + std::to_string(mt);
+    return "MT=" + std::to_string(mt);
   }
 }
 

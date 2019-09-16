@@ -7,6 +7,7 @@ densities is all done in-memory instead of through the filesystem.
 
 """
 
+import sys
 import copy
 from collections import OrderedDict
 from itertools import chain
@@ -237,6 +238,10 @@ class Operator(TransportOperator):
     def __call__(self, vec, power):
         """Runs a simulation.
 
+        Simulation will abort under the following circumstances:
+
+            1) No energy is computed using OpenMC tallies.
+
         Parameters
         ----------
         vec : list of numpy.ndarray
@@ -272,7 +277,16 @@ class Operator(TransportOperator):
         time_openmc = time.time()
 
         # Extract results
-        op_result = self._unpack_tallies_and_normalize(power)
+        try:
+            op_result = self._unpack_tallies_and_normalize(power)
+        except ZeroDivisionError:
+            if comm.rank == 0:
+                sys.stderr.flush()
+                print(" No energy reported from openmc tallies. Do you have "
+                      "MT901 data?\n", file=sys.stderr, flush=True)
+            comm.barrier()
+            comm.Abort(1)
+
 
         return copy.deepcopy(op_result)
 
@@ -654,6 +668,10 @@ class Operator(TransportOperator):
         # Reduce energy produced from all processes
         # J / s / source neutron
         energy = comm.allreduce(self._energy_helper.energy)
+
+        # Guard against divide by zero
+        if energy == 0:
+            raise ZeroDivisionError
 
         # Scale reaction rates to obtain units of reactions/sec
         rates *= power / energy

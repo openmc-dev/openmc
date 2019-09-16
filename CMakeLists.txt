@@ -336,7 +336,7 @@ set_target_properties(
 add_custom_command(TARGET libopenmc POST_BUILD
   COMMAND ${CMAKE_COMMAND} -E copy
   $<TARGET_FILE:libopenmc>
-  ${CMAKE_CURRENT_SOURCE_DIR}/openmc/capi/$<TARGET_FILE_NAME:libopenmc>
+  ${CMAKE_CURRENT_SOURCE_DIR}/openmc/lib/$<TARGET_FILE_NAME:libopenmc>
   COMMENT "Copying libopenmc to Python module directory")
 
 #===============================================================================

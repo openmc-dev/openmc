@@ -1,5 +1,5 @@
 import numpy as np
-import openmc.capi
+import openmc.lib
 import pytest
 
 @pytest.fixture(autouse=True)
@@ -73,12 +73,12 @@ def complex_cell(run_in_tmpdir, mpi_intracomm):
 
     model.export_to_xml()
 
-    openmc.capi.finalize()
-    openmc.capi.init(intracomm=mpi_intracomm)
+    openmc.lib.finalize()
+    openmc.lib.init(intracomm=mpi_intracomm)
 
     yield
 
-    openmc.capi.finalize()
+    openmc.lib.finalize()
 
 
 expected_results = ( (1, (( -4.,  -4., -np.inf),
@@ -93,6 +93,6 @@ expected_results = ( (1, (( -4.,  -4., -np.inf),
                           ( np.inf,  np.inf,  np.inf))) )
 @pytest.mark.parametrize("cell_id,expected_box", expected_results)
 def test_cell_box(cell_id, expected_box):
-    cell_box = openmc.capi.cells[cell_id].bounding_box
+    cell_box = openmc.lib.cells[cell_id].bounding_box
     assert tuple(cell_box[0]) == expected_box[0]
     assert tuple(cell_box[1]) == expected_box[1]

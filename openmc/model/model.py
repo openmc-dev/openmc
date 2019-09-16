@@ -147,7 +147,7 @@ class Model(object):
 
         """
         # Import the depletion module.  This is done here rather than the module
-        # header to delay importing openmc.capi (through openmc.deplete) which
+        # header to delay importing openmc.lib (through openmc.deplete) which
         # can be tough to install properly.
         import openmc.deplete as dep
 

@@ -617,7 +617,7 @@ condition has been applied, the particle is killed and any surface current
 tallies are scored to as needed. If a reflective boundary condition has been
 applied to the surface, surface current tallies are scored to and then the
 particle's direction is changed according to the procedure in :ref:`reflection`.
-Note that the white boundary condition can be considered as the speciall case of 
+Note that the white boundary condition can be considered as the special case of 
 reflective boundary condition, where the same processing method will be applied to
 deal with the surface current tallies scoring, except for determining the 
 changes of particle's direction according to the procedures in :ref:`white`. 
@@ -901,37 +901,63 @@ Dxy + Eyz + Fxz + Gx + Hy + Jz + K = 0`. Thus, the gradient to the surface is
 ------------------------------
 White Boundary Conditions
 ------------------------------
-The white boundary condition is usually applied in deterministic code, where the particle
-will hit the surface and travel back with isotropic angular distribution. Essentially, the
-change of particle's direction will comply to the cosine distribution instead of uniform 
-distribution. 
-The probability distribution function (pdf)  for the reflected direction can be expressed 
+The white boundary condition is usually applied in deterministic codes, where the particle
+will hit the surface and travel back with isotropic angular distribution. The change in 
+particle's direction is sampled from a cosine distribution instead of uniform. 
+Figure :num:`fig-cosine-dist` shows an example of cosine-distribution reflection on the 
+arbitrary surface relative to the surface normal.
+
+.. _fig-cosine-dist:
+
+.. figure:: ../_images/cosine-dist.png
+   :align: center
+   :figclass: align-center
+
+   Cosine-distribution reflection on the arbitrary surface.
+
+The probability density function (pdf)  for the reflected direction can be expressed 
 as follows, 
 .. math::
     : label: white-reflection-pdf
+    
+    f(\mu, \phi) = frac{\miu}{\pi} d\miu d\phi = 2\mu d\mu frac{d\phi}{2\pi}
+    \mu \in [0, 1]
+    \phi \in [0, 2\pi]
 
-
-where mu is the cosine of the polar angle between reflected direction and the normal to the 
-surface; and theta is the azimuthal angle. 
+where :math:`{mu = cos(\theta)}` is the cosine of the polar angle between reflected direction 
+and the normal to the surface; and :math: `{\theta}` is the azimuthal angle. 
 Thus, the cosine of the polar angle can extracted like this,
 .. math::
     : label: white-reflection-cosine
+    
+   f(\mu)d\mu = 2\mu d\mu
+
 
 and the azimuthal angle is uniform in the range of 2*PI, 
 .. math:: 
     : label: white-reflection-unifrm
+    
+    f(\phi) = frac{d\phi}{2\pi} 
 
-Then, cosine can be obtained by analytical inversion of cumulative probability distribution (cdf)
+Then, the cosine can be obtained by analytical inversion of cumulative density distribution (cdf)
 like this, 
 .. math::
     : label: white-reflection-sqrt-prn
+    
+    \mu = \sqrt{\eta_(1)} 
+    \phi = 2\pi \eta_(2) 
 
+where :math: `{\eta}` is the uniform random number, simply computed from random number generator. 
 Eventually, the final reflected direction vector can be computed via the rotation of normal to 
 the surface like this,
 .. math::
     : label: white-reflection-rotation
 
-The white boundary condition can apply to any kind of surface, as long as the normal to the surface
+    u^' = u \mu + frac{uw \sqrt{1-\mu^2} cos(\phi) - v \sqrt{1-\mu^2}sin(\phi)}{\sqrt{1-w^2}}
+    v^' = v \mu + frac{vw \sqrt{1-\mu^2} cos(phi) + u \sqrt{1-\mu^2} sin(phi)}{\sqrt{1-w^2}}
+    w^' = w \mu - \sqrt{1-w^2} \sqrt{1-\mu^2} cos(\phi)
+
+The white reflection boundary can apply to any kind of surface, as long as the normal to the surface
 is known as mentioned above in :ref:`reflection`. 
 
 .. _constructive solid geometry: http://en.wikipedia.org/wiki/Constructive_solid_geometry

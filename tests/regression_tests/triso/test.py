@@ -54,12 +54,12 @@ class TRISOTestHarness(PyAPITestHarness):
         inner_univ = openmc.Universe(cells=[c1, c2, c3, c4, c5])
 
         # Define box to contain lattice and to pack TRISO particles in
-        min_x = openmc.XPlane(x0=-0.5, boundary_type='reflective')
-        max_x = openmc.XPlane(x0=0.5, boundary_type='reflective')
-        min_y = openmc.YPlane(y0=-0.5, boundary_type='reflective')
-        max_y = openmc.YPlane(y0=0.5, boundary_type='reflective')
-        min_z = openmc.ZPlane(z0=-0.5, boundary_type='reflective')
-        max_z = openmc.ZPlane(z0=0.5, boundary_type='reflective')
+        min_x = openmc.XPlane(-0.5, 'reflective')
+        max_x = openmc.XPlane(0.5, 'reflective')
+        min_y = openmc.YPlane(-0.5, 'reflective')
+        max_y = openmc.YPlane(0.5, 'reflective')
+        min_z = openmc.ZPlane(-0.5, 'reflective')
+        max_z = openmc.ZPlane(0.5, 'reflective')
         box_region = +min_x & -max_x & +min_y & -max_y & +min_z & -max_z
         box = openmc.Cell(region=box_region)
 

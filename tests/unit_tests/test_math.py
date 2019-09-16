@@ -2,7 +2,7 @@ import numpy as np
 import scipy as sp
 
 import openmc
-import openmc.capi
+import openmc.lib
 
 import pytest
 
@@ -15,10 +15,10 @@ def test_t_percentile():
     # The reference solutions come from Scipy
     ref_ts = [[sp.stats.t.ppf(p, df) for p in test_ps] for df in test_dfs]
 
-    test_ts = [[openmc.capi.math.t_percentile(p, df) for p in test_ps]
+    test_ts = [[openmc.lib.math.t_percentile(p, df) for p in test_ps]
                for df in test_dfs]
 
-    # The 5 DoF approximation in openmc.capi.math.t_percentile is off by up to
+    # The 5 DoF approximation in openmc.lib.math.t_percentile is off by up to
     # 8e-3 from the scipy solution, so test that one separately with looser
     # tolerance
     assert np.allclose(ref_ts[:-1], test_ts[:-1])
@@ -35,7 +35,7 @@ def test_calc_pn():
 
     test_vals = []
     for x in test_xs:
-        test_vals.append(openmc.capi.math.calc_pn(max_order, x).tolist())
+        test_vals.append(openmc.lib.math.calc_pn(max_order, x).tolist())
 
     test_vals = np.swapaxes(np.array(test_vals), 0, 1)
 
@@ -55,7 +55,7 @@ def test_evaluate_legendre():
     # evaluate legendre incorporates the (2l+1)/2 term on its own
     test_coeffs = [1. for l in range(max_order + 1)]
 
-    test_vals = np.array([openmc.capi.math.evaluate_legendre(test_coeffs, x)
+    test_vals = np.array([openmc.lib.math.evaluate_legendre(test_coeffs, x)
                           for x in test_xs])
 
     assert np.allclose(ref_vals, test_vals)
@@ -98,7 +98,7 @@ def test_calc_rn():
             ref_vals.append(ylm)
 
     test_vals = []
-    test_vals = openmc.capi.math.calc_rn(max_order, test_uvw)
+    test_vals = openmc.lib.math.calc_rn(max_order, test_uvw)
 
     assert np.allclose(ref_vals, test_vals)
 
@@ -133,7 +133,7 @@ def test_calc_zn():
         -8.98437500e-02, -1.08693628e-01, 1.78813094e-01,
         -1.98191857e-01, 1.65964201e-02, 2.77013853e-04])
 
-    test_vals = openmc.capi.math.calc_zn(n, rho, phi)
+    test_vals = openmc.lib.math.calc_zn(n, rho, phi)
 
     assert np.allclose(ref_vals, test_vals)
 
@@ -147,7 +147,7 @@ def test_calc_zn_rad():
         1.00000000e+00, -5.00000000e-01, -1.25000000e-01,
         4.37500000e-01, -2.89062500e-01,-8.98437500e-02])
 
-    test_vals = openmc.capi.math.calc_zn_rad(n, rho)
+    test_vals = openmc.lib.math.calc_zn_rad(n, rho)
 
     assert np.allclose(ref_vals, test_vals)
 
@@ -160,7 +160,7 @@ def test_rotate_angle():
     # reference: mu of 0 pulls the vector the bottom, so:
     ref_uvw = np.array([0., 0., -1.])
 
-    test_uvw = openmc.capi.math.rotate_angle(uvw0, mu, phi)
+    test_uvw = openmc.lib.math.rotate_angle(uvw0, mu, phi)
 
     assert np.array_equal(ref_uvw, test_uvw)
 
@@ -168,51 +168,51 @@ def test_rotate_angle():
     mu = 1.
     ref_uvw = np.array([1., 0., 0.])
 
-    test_uvw = openmc.capi.math.rotate_angle(uvw0, mu, phi)
+    test_uvw = openmc.lib.math.rotate_angle(uvw0, mu, phi)
 
     assert np.array_equal(ref_uvw, test_uvw)
 
     # Now to test phi is None
     mu = 0.9
-    settings = openmc.capi.settings
+    settings = openmc.lib.settings
     settings.seed = 1
 
     # When seed = 1, phi will be sampled as 1.9116495709698769
     # The resultant reference is from hand-calculations given the above
     ref_uvw = [0.9, 0.410813051297112, 0.1457142302040]
-    test_uvw = openmc.capi.math.rotate_angle(uvw0, mu)
+    test_uvw = openmc.lib.math.rotate_angle(uvw0, mu)
 
     assert np.allclose(ref_uvw, test_uvw)
 
 
 def test_maxwell_spectrum():
-    settings = openmc.capi.settings
+    settings = openmc.lib.settings
     settings.seed = 1
     T = 0.5
     ref_val = 0.6129982175261098
-    test_val = openmc.capi.math.maxwell_spectrum(T)
+    test_val = openmc.lib.math.maxwell_spectrum(T)
 
     assert ref_val == test_val
 
 
 def test_watt_spectrum():
-    settings = openmc.capi.settings
+    settings = openmc.lib.settings
     settings.seed = 1
     a = 0.5
     b = 0.75
     ref_val = 0.6247242713640233
-    test_val = openmc.capi.math.watt_spectrum(a, b)
+    test_val = openmc.lib.math.watt_spectrum(a, b)
 
     assert ref_val == test_val
 
 
 def test_normal_dist():
-    settings = openmc.capi.settings
+    settings = openmc.lib.settings
     settings.seed = 1
     a = 14.08
     b = 0.0
     ref_val = 14.08
-    test_val = openmc.capi.math.normal_variate(a, b)
+    test_val = openmc.lib.math.normal_variate(a, b)
 
     assert ref_val == pytest.approx(test_val)
 
@@ -220,7 +220,7 @@ def test_normal_dist():
     a = 14.08
     b = 1.0
     ref_val = 16.436645416691427
-    test_val = openmc.capi.math.normal_variate(a, b)
+    test_val = openmc.lib.math.normal_variate(a, b)
 
     assert ref_val == pytest.approx(test_val)
 
@@ -234,13 +234,13 @@ def test_broaden_wmp_polynomials():
     n = 6
 
     ref_val = [2., 1.41421356, 1.0001, 0.70731891, 0.50030001, 0.353907]
-    test_val = openmc.capi.math.broaden_wmp_polynomials(test_E, test_dopp, n)
+    test_val = openmc.lib.math.broaden_wmp_polynomials(test_E, test_dopp, n)
 
     assert np.allclose(ref_val, test_val)
 
     # now beta < 6
     test_dopp = 5.
     ref_val = [1.99999885, 1.41421356, 1.04, 0.79195959, 0.6224, 0.50346003]
-    test_val = openmc.capi.math.broaden_wmp_polynomials(test_E, test_dopp, n)
+    test_val = openmc.lib.math.broaden_wmp_polynomials(test_E, test_dopp, n)
 
     assert np.allclose(ref_val, test_val)

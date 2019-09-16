@@ -14,10 +14,10 @@ class SourceTestHarness(PyAPITestHarness):
         materials = openmc.Materials([mat])
         materials.export_to_xml()
 
-        cyl = openmc.XCylinder(boundary_type='vacuum', r=1.0)
-        x_plane_left = openmc.XPlane(boundary_type='vacuum', x0=-1.0)
-        x_plane_center = openmc.XPlane(boundary_type='transmission', x0=1.0)
-        x_plane_right = openmc.XPlane(boundary_type='vacuum', x0=1.0e9)
+        cyl = openmc.XCylinder(r=1.0, boundary_type='vacuum')
+        x_plane_left = openmc.XPlane(-1.0, 'vacuum')
+        x_plane_center = openmc.XPlane(1.0)
+        x_plane_right = openmc.XPlane(1.0e9, 'vacuum')
 
         inner_cyl_left = openmc.Cell()
         inner_cyl_right = openmc.Cell()
@@ -31,7 +31,7 @@ class SourceTestHarness(PyAPITestHarness):
         geometry.export_to_xml()
 
         source = openmc.Source()
-        source.space = openmc.stats.Point((0,0,0))
+        source.space = openmc.stats.Point((0, 0, 0))
         source.angle = openmc.stats.Monodirectional()
         source.energy = openmc.stats.Discrete([14.0e6], [1.0])
         source.particle = 'neutron'

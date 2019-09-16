@@ -10,6 +10,7 @@ from collections import defaultdict
 from numpy import dot, zeros, newaxis
 
 from . import comm
+import openmc.data
 from openmc.checkvalue import check_type, check_greater_than
 from openmc.lib import (
     Tally, MaterialFilter, EnergyFilter, EnergyFunctionFilter)
@@ -161,6 +162,12 @@ class ChainFissionHelper(EnergyHelper):
 class EnergyScoreHelper(EnergyHelper):
     """Class responsible for obtaining system energy via a tally score
 
+    Parameters
+    ----------
+    reaction_mt : int or None
+        Valid score to use when obtaining system energy from openmc.
+        Defaults to 901 [heating assuming local photons]
+
     Attributes
     ----------
     nuclides : list of str
@@ -170,12 +177,27 @@ class EnergyScoreHelper(EnergyHelper):
         System energy [eV] computed from the tally. Will be zero for
         all MPI processes that are not the "master" process to avoid
         artificially increasing the tallied energy.
+    score : int
+        MT reaction number that is scored.
 
     """
 
-    def __init__(self):
+    def __init__(self, score=None):
         super().__init__()
+        self.score = score
         self._tally = None
+
+    @property
+    def score(self):
+        return self._score
+
+    @score.setter
+    def score(self, value):
+        if value is None:
+            self._score = 901
+        else:
+            check_type("score", value, int)
+            self._score = value
 
     def prepare(self, *args, **kwargs):
         """Create a tally for system energy production
@@ -185,7 +207,7 @@ class EnergyScoreHelper(EnergyHelper):
 
         """
         self._tally = Tally()
-        self._tally.scores = ["energy-deposition"]
+        self._tally.scores = [self.score]
 
     def reset(self):
         """Obtain system energy from tally

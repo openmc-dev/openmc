@@ -253,8 +253,8 @@ def hexagonal_prism(edge_length=1., orientation='y', origin=(0., 0.),
     x, y = origin
 
     if orientation == 'y':
-        right = XPlane(x0=x + sqrt(3.)/2*l, boundary_type=boundary_type)
-        left = XPlane(x0=x - sqrt(3.)/2*l, boundary_type=boundary_type)
+        right = XPlane(x + sqrt(3.)/2*l, boundary_type)
+        left = XPlane(x - sqrt(3.)/2*l, boundary_type)
         c = sqrt(3.)/3.
 
         # y = -x/sqrt(3) + a

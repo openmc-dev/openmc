@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-
 from collections.abc import Mapping, Callable
 import os
 
@@ -8,6 +6,7 @@ import pandas as pd
 import pytest
 import openmc.data
 
+from . import needs_njoy
 
 _TEMPERATURES = [300., 600., 900.]
 _ENDF_DATA = os.environ['OPENMC_ENDF_DATA']
@@ -198,6 +197,7 @@ def test_fission(pu239):
     assert photon.particle == 'photon'
 
 
+@needs_njoy
 def test_derived_products(am244):
     fission = am244.reactions[18]
     total_neutron = fission.derived_products[0]
@@ -236,6 +236,7 @@ def test_urr(pu239):
     assert ptable.table.shape[0] == ptable.energy.size
 
 
+@needs_njoy
 def test_get_reaction_components(h2):
     assert h2.get_reaction_components(1) == [2, 16, 102]
     assert h2.get_reaction_components(101) == [102]
@@ -453,6 +454,7 @@ def test_laboratory(be9):
         assert np.all((-1. <= mu.x) & (mu.x <= 1.))
 
 
+@needs_njoy
 def test_correlated(tmpdir):
     endf_file = os.path.join(_ENDF_DATA, 'neutrons', 'n-014_Si_030.endf')
     si30 = openmc.data.IncidentNeutron.from_njoy(endf_file, heatr=False)
@@ -463,6 +465,7 @@ def test_correlated(tmpdir):
     si30_copy = openmc.data.IncidentNeutron.from_hdf5(filename)
 
 
+@needs_njoy
 def test_nbody(tmpdir, h2):
     # Convert to HDF5 and read back
     filename = str(tmpdir.join('h2.h5'))
@@ -477,6 +480,7 @@ def test_nbody(tmpdir, h2):
     assert nbody1.q_value == nbody2.q_value
 
 
+@needs_njoy
 def test_ace_convert(run_in_tmpdir):
     filename = os.path.join(_ENDF_DATA, 'neutrons', 'n-001_H_001.endf')
     ace_ascii = 'ace_ascii'

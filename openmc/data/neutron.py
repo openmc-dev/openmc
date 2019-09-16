@@ -834,6 +834,7 @@ class IncidentNeutron(EqualityMixin):
                 non_fission_heating = Reaction(999)
                 non_fission_heating.redundant = True
                 fission_heating = Reaction(318)
+                fission_heating.redundant = True
 
                 heatr_evals = get_evaluations(kwargs["heatr"])
                 for heatr in heatr_evals:
@@ -841,15 +842,17 @@ class IncidentNeutron(EqualityMixin):
                     f318 = StringIO(heatr.section[3, 318])
                     get_head_record(f318)
                     _params, fission_kerma = get_tab1_record(f318)
-                    fission_heating.xs[temp] = fission_kerma
                     total_heating_xs = data.reactions[301].xs.get(temp)
                     if total_heating_xs is None:
+                        fission_heating.xs[temp] = fission_kerma
                         continue
+                    # Cast fission heating to same grid as total heating
+                    new_fission_heat_xs = fission_kerma(total_heating_xs.x)
+                    fission_heating.xs[temp] = Tabulated1D(
+                        total_heating_xs.x, new_fission_heat_xs)
                     non_fission_heating.xs[temp] = Tabulated1D(
-                        fission_kerma.x,
-                        total_heating_xs(fission_kerma.x) - fission_kerma.y,
-                        breakpoints=fission_kerma.breakpoints,
-                        interpolation=fission_kerma.interpolation)
+                        total_heating_xs.x,
+                        total_heating_xs.y - new_fission_heat_xs)
 
                 data.reactions[318] = fission_heating
                 data.reactions[999] = non_fission_heating

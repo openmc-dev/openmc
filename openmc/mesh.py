@@ -350,18 +350,14 @@ class RegularMesh(MeshBase):
         n_dim = len(self.dimension)
 
         # Build the cell which will contain the lattice
-        xplanes = [openmc.XPlane(x0=self.lower_left[0],
-                                 boundary_type=bc[0]),
-                   openmc.XPlane(x0=self.upper_right[0],
-                                 boundary_type=bc[1])]
+        xplanes = [openmc.XPlane(self.lower_left[0], bc[0]),
+                   openmc.XPlane(self.upper_right[0], bc[1])]
         if n_dim == 1:
-            yplanes = [openmc.YPlane(y0=-1e10, boundary_type='reflective'),
-                       openmc.YPlane(y0=1e10, boundary_type='reflective')]
+            yplanes = [openmc.YPlane(-1e10, 'reflective'),
+                       openmc.YPlane(1e10, 'reflective')]
         else:
-            yplanes = [openmc.YPlane(y0=self.lower_left[1],
-                                     boundary_type=bc[2]),
-                       openmc.YPlane(y0=self.upper_right[1],
-                                     boundary_type=bc[3])]
+            yplanes = [openmc.YPlane(self.lower_left[1], bc[2]),
+                       openmc.YPlane(self.upper_right[1], bc[3])]
 
         if n_dim <= 2:
             # Would prefer to have the z ranges be the max supported float, but
@@ -371,13 +367,11 @@ class RegularMesh(MeshBase):
             # inconsistency between what numpy uses as the max float and what
             # Fortran expects for a real(8), so this avoids code complication
             # and achieves the same goal.
-            zplanes = [openmc.ZPlane(z0=-1e10, boundary_type='reflective'),
-                       openmc.ZPlane(z0=1e10, boundary_type='reflective')]
+            zplanes = [openmc.ZPlane(-1e10, 'reflective'),
+                       openmc.ZPlane(1e10, 'reflective')]
         else:
-            zplanes = [openmc.ZPlane(z0=self.lower_left[2],
-                                     boundary_type=bc[4]),
-                       openmc.ZPlane(z0=self.upper_right[2],
-                                     boundary_type=bc[5])]
+            zplanes = [openmc.ZPlane(self.lower_left[2], bc[4]),
+                       openmc.ZPlane(self.upper_right[2], bc[5])]
         root_cell = openmc.Cell()
         root_cell.region = ((+xplanes[0] & -xplanes[1]) &
                             (+yplanes[0] & -yplanes[1]) &

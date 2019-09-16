@@ -83,7 +83,7 @@ class TestChain(object):
     fission_yields = [None]
 
     @staticmethod
-    def get_thermal_fission_yields():
+    def get_default_fission_yields():
         return None
 
     def form_matrix(self, rates, _fission_yields=None):

@@ -695,51 +695,28 @@ BoundingBox CSGCell::bounding_box_complex(std::vector<int32_t> rpn) {
   // remove complements by adjusting surface signs and operators
   remove_complement_ops(rpn);
 
-  // use the first token to set the bounding box
-  auto it = rpn.begin();
-  BoundingBox current = model::surfaces[abs(*it) - 1]->bounding_box(*it > 0);
-  it++;
+  std::vector<BoundingBox> stack(rpn.size());
+  int i_stack = -1;
 
-  // loop over tokens
-  while (it < rpn.end()) {
-    // move through the rpn in twos
-    int32_t one = *it++;
-    int32_t two = *it++;
-
-    // the first token should always be a surface
-    Expects(one < OP_UNION);
-
-    if (two >= OP_UNION) {
-      if (two == OP_UNION) {
-        current |= model::surfaces[abs(one)-1]->bounding_box(one > 0);
-      } else if (two == OP_INTERSECTION) {
-        current &= model::surfaces[abs(one)-1]->bounding_box(one > 0);
-      }
+  for (auto& token : rpn) {
+    if (token == OP_UNION) {
+      stack[i_stack - 1] = stack[i_stack - 1] | stack[i_stack];
+      i_stack--;
+    } else if (token == OP_INTERSECTION) {
+      stack[i_stack - 1] = stack[i_stack - 1] & stack[i_stack];
+      i_stack--;
     } else {
-      // two surfaces in a row (left parenthesis),
-      // create sub-rpn for region in parenthesis
-      auto subrpn_start = it - 2; // include current tokens
-      auto subrpn_end = find_right_parenthesis(subrpn_start, rpn);
-
-      // create the subrpn, including the first of our current tokens
-      std::vector<int32_t> subrpn(subrpn_start, subrpn_end);
-
-      // save the last operator, tells us how to combine this region
-      // with our current bounding box
-      int32_t op = *subrpn_end++;
-      it = subrpn_end;
-
-      // get bounding box for the sub-rpn
-      BoundingBox sub_box = bounding_box_complex(subrpn);
-      // combine the sub-rpn bounding box with our current cell box
-      if (op == OP_UNION) {
-        current |= sub_box;
-      } else if (op == OP_INTERSECTION) {
-        current &= sub_box;
-      }
+      i_stack++;
+      stack[i_stack] = model::surfaces[abs(token) - 1]->bounding_box(token > 0);
     }
   }
-  return current;
+
+  if (i_stack == 0) {
+    return stack[i_stack];
+  } else {
+    return BoundingBox();
+  }
+
 }
 
 BoundingBox CSGCell::bounding_box() const {

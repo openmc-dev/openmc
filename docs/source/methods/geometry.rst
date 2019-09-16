@@ -920,11 +920,11 @@ as follows,
 .. math::
     : label: white-reflection-pdf
     
-    f(\mu, \phi) = frac{\miu}{\pi} d\miu d\phi = 2\mu d\mu frac{d\phi}{2\pi}
+    f(\mu, \phi) = frac{\mu}{\pi} d\mu d\phi = 2\mu d\mu frac{d\phi}{2\pi}
     \mu \in [0, 1]
     \phi \in [0, 2\pi]
 
-where :math:`{mu = cos(\theta)}` is the cosine of the polar angle between reflected direction 
+where :math:`{\mu = cos(\theta)}` is the cosine of the polar angle between reflected direction 
 and the normal to the surface; and :math: `{\theta}` is the azimuthal angle. 
 Thus, the cosine of the polar angle can extracted like this,
 .. math::
@@ -933,29 +933,29 @@ Thus, the cosine of the polar angle can extracted like this,
    f(\mu)d\mu = 2\mu d\mu
 
 
-and the azimuthal angle is uniform in the range of 2*PI, 
+and the azimuthal angle is uniform, 
 .. math:: 
     : label: white-reflection-unifrm
     
     f(\phi) = frac{d\phi}{2\pi} 
 
-Then, the cosine can be obtained by analytical inversion of cumulative density distribution (cdf)
+Then, the cosine can be sampled by analytical inversion of cumulative density distribution (cdf)
 like this, 
 .. math::
     : label: white-reflection-sqrt-prn
     
-    \mu = \sqrt{\eta_(1)} 
+    \mu = sqrt{\eta_(1)} 
     \phi = 2\pi \eta_(2) 
 
-where :math: `{\eta}` is the uniform random number, simply computed from random number generator. 
+where :math: `{\eta}` is the uniform random number, simply computed by random number generator. 
 Eventually, the final reflected direction vector can be computed via the rotation of normal to 
 the surface like this,
 .. math::
     : label: white-reflection-rotation
 
-    u^' = u \mu + frac{uw \sqrt{1-\mu^2} cos(\phi) - v \sqrt{1-\mu^2}sin(\phi)}{\sqrt{1-w^2}}
-    v^' = v \mu + frac{vw \sqrt{1-\mu^2} cos(phi) + u \sqrt{1-\mu^2} sin(phi)}{\sqrt{1-w^2}}
-    w^' = w \mu - \sqrt{1-w^2} \sqrt{1-\mu^2} cos(\phi)
+    u^' = u \mu + frac{uw sqrt{1-\mu^2} cos(\phi) - v sqrt{1-\mu^2}sin(\phi)}{sqrt{1-w^2}}
+    v^' = v \mu + frac{vw sqrt{1-\mu^2} cos(phi) + u sqrt{1-\mu^2} sin(phi)}{sqrt{1-w^2}}
+    w^' = w \mu - sqrt{1-w^2} sqrt{1-\mu^2} cos(\phi)
 
 The white reflection boundary can apply to any kind of surface, as long as the normal to the surface
 is known as mentioned above in :ref:`reflection`. 

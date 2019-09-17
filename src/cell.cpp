@@ -642,38 +642,6 @@ CSGCell::find_left_parenthesis(std::vector<int32_t>::iterator start,
   return it;
 }
 
-std::vector<int32_t>::iterator
-CSGCell::find_right_parenthesis(std::vector<int32_t>::iterator start,
-                                const std::vector<int32_t>& rpn) {
-  int parenthesis_level = 0;
-  auto it = start;
-  while (it != rpn.end()) {
-    // look at two tokens at a time
-    int32_t one = *it;
-    int32_t two = *(it + 1);
-
-    // increment parenthesis level if there are two adjacent surfaces
-    if (one < OP_UNION && two < OP_UNION) {
-      parenthesis_level++;
-    // decrement if there are two adjacent operators
-    } else if (one >= OP_UNION && two >= OP_UNION) {
-      parenthesis_level--;
-    }
-
-    // if the level gets to zero, return the position
-    if (parenthesis_level == 0) {
-      // move the iterator forward one before leaving the loop
-      // so that all tokens in the parenthesis block are included
-      it++;
-      break;
-    }
-
-    // continue loop, one token at a time
-    it++;
-  }
-  return it;
-}
-
 void CSGCell::remove_complement_ops(std::vector<int32_t>& rpn) {
   auto it = std::find(rpn.begin(), rpn.end(), OP_COMPLEMENT);
   while (it != rpn.end()) {
@@ -711,12 +679,8 @@ BoundingBox CSGCell::bounding_box_complex(std::vector<int32_t> rpn) {
     }
   }
 
-  if (i_stack == 0) {
-    return stack[i_stack];
-  } else {
-    return BoundingBox();
-  }
-
+  Ensures(i_stack == 0);
+  return stack.front();
 }
 
 BoundingBox CSGCell::bounding_box() const {

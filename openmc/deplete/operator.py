@@ -225,7 +225,7 @@ class Operator(TransportOperator):
         if energy_mode == "fission-q":
             self._energy_helper = ChainFissionHelper()
         else:
-            score = 301 if settings.photon_transport else 901
+            score = "heating" if settings.photon_transport else "heating-local"
             self._energy_helper = EnergyScoreHelper(score)
 
         # Select and create fission yield helper

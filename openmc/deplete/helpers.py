@@ -10,7 +10,6 @@ from collections import defaultdict
 from numpy import dot, zeros, newaxis
 
 from . import comm
-import openmc.data
 from openmc.checkvalue import check_type, check_greater_than
 from openmc.lib import (
     Tally, MaterialFilter, EnergyFilter, EnergyFunctionFilter)
@@ -164,9 +163,9 @@ class EnergyScoreHelper(EnergyHelper):
 
     Parameters
     ----------
-    reaction_mt : int or None
-        Valid score to use when obtaining system energy from openmc.
-        Defaults to 901 [heating assuming local photons]
+    score : string
+        Valid score to use when obtaining system energy from OpenMC.
+        Defaults to "heating-local"
 
     Attributes
     ----------
@@ -177,27 +176,15 @@ class EnergyScoreHelper(EnergyHelper):
         System energy [eV] computed from the tally. Will be zero for
         all MPI processes that are not the "master" process to avoid
         artificially increasing the tallied energy.
-    score : int
-        MT reaction number that is scored.
+    score : str
+        Score used to obtain system energy
 
     """
 
-    def __init__(self, score=None):
+    def __init__(self, score="heating-local"):
         super().__init__()
         self.score = score
         self._tally = None
-
-    @property
-    def score(self):
-        return self._score
-
-    @score.setter
-    def score(self, value):
-        if value is None:
-            self._score = 901
-        else:
-            check_type("score", value, int)
-            self._score = value
 
     def prepare(self, *args, **kwargs):
         """Create a tally for system energy production

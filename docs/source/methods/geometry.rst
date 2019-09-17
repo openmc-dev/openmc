@@ -924,8 +924,8 @@ as follows,
     \mu \in [0, 1]
     \phi \in [0, 2\pi]
 
-where :math:`{\mu = cos(\theta)}` is the cosine of the polar angle between reflected direction 
-and the normal to the surface; and :math: `{\theta}` is the azimuthal angle. 
+where :math:`\mu = cos(\theta)` is the cosine of the polar angle between reflected direction 
+and the normal to the surface; and :math:`\theta` is the azimuthal angle. 
 Thus, the cosine of the polar angle can extracted like this,
 .. math::
     : label: white-reflection-cosine
@@ -935,7 +935,7 @@ Thus, the cosine of the polar angle can extracted like this,
 
 and the azimuthal angle is uniform, 
 .. math:: 
-    : label: white-reflection-unifrm
+    : label: white-reflection-uniform
     
     f(\phi) = frac{d\phi}{2\pi} 
 
@@ -947,7 +947,7 @@ like this,
     \mu = sqrt{\eta_(1)} 
     \phi = 2\pi \eta_(2) 
 
-where :math: `{\eta}` is the uniform random number, simply computed by random number generator. 
+where :math:`\eta` is the uniform random number, simply computed by random number generator. 
 Eventually, the final reflected direction vector can be computed via the rotation of normal to 
 the surface like this,
 .. math::

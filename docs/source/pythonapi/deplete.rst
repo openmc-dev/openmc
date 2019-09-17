@@ -6,7 +6,22 @@
 
 .. module:: openmc.deplete
 
-Several classes are provided that implement different time-integration
+Primary API
+-----------
+
+The two primary requirements to perform depletion with :mod:`openmc.deplete`
+are:
+
+    1) A transport operator
+    2) A time-integration scheme
+
+The former is responsible for executing a transport code, like OpenMC,
+and retaining important information required for depletion. The most common examples
+are reaction rates and power normalization data. The latter is responsible for
+projecting reaction rates and compositions forward in calendar time across
+some step size :math:`\Delta t`, and obtaining new compositions given a power
+or power density. The :class:`Operator` is provided to handle communicating with
+OpenMC. Several classes are provided that implement different time-integration
 algorithms for depletion calculations, which are described in detail in Colin
 Josey's thesis, `Development and analysis of high order neutron
 transport-depletion coupling algorithms <http://hdl.handle.net/1721.1/113721>`_.
@@ -35,6 +50,38 @@ specific to OpenMC is available using the following class:
 
    Operator
 
+The :class:`Operator` must also have some knowledge of how nuclides transmute
+and decay. This is handled by the :class:`Chain`
+
+Minimal Example
+---------------
+
+A minimal example for performing depletion would be:
+
+.. code:: Python
+
+    >>> import openmc
+    >>> import openmc.deplete
+    >>> geometry = openmc.Geometry.from_xml()
+    >>> settings = openmc.Settings.from_xml()
+
+    # Representation of a depletion chain
+    >>> chain_file = "chain_casl.xml"
+    >>> operator = openmc.deplete.Operator(
+    ...     geometry, settings, chain_file)
+
+    # Set up 5 time steps of one day each
+    >>> dt = [24 * 60 * 60] * 5
+    >>> power = 1E6  # constant power of 1 MW
+
+    # Deplete using mid-point predictor-corrector
+    >>> cecm = openmc.deplete.CECMIntegrator(
+    ...     operator, dt, power)
+    >>> cecm.integrate()
+
+Internal Classes and Functions
+------------------------------
+
 When running in parallel using `mpi4py <http://mpi4py.scipy.org>`_, the MPI
 intercommunicator used can be changed by modifying the following module
 variable. If it is not explicitly modified, it defaults to
@@ -45,9 +92,6 @@ variable. If it is not explicitly modified, it defaults to
    MPI intercommunicator used to call OpenMC library
 
    :type: mpi4py.MPI.Comm
-
-Internal Classes and Functions
-------------------------------
 
 During a depletion calculation, the depletion chain, reaction rates, and number
 densities are managed through a series of internal classes that are not normally
@@ -110,19 +154,35 @@ total system energy.
    helpers.DirectReactionRateHelper
    helpers.FissionYieldCutoffHelper
 
-The following classes are abstract classes that can be used to extend the
-:mod:`openmc.deplete` capabilities:
+
+Abstract Base Classes
+---------------------
+
+A good starting point for extending capabilities in :mod:`openmc.deplete` is
+to examine the following abstract base classes. Custom classes can
+inherit from :class:`abc.TransportOperator` to implement alternative 
+schemes for collecting reaction rates and other data from a transport code
+prior to depleting materials
+
+.. autosummary::
+   :toctree: generated
+   :nosignatures:
+   :template: mycallable.rst
+
+   abc.TransportOperator
+
+The following classes are abstract classes used to pass information from
+OpenMC simulations back on to the :class:`abc.TransportOperator`
 
 .. autosummary::
    :toctree: generated
    :nosignatures:
    :template: myclass.rst
 
-   EnergyHelper
-   FissionYieldHelper
-   ReactionRateHelper
-   TalliedFissionYieldHelper
-   TransportOperator
+   abc.EnergyHelper
+   abc.FissionYieldHelper
+   abc.ReactionRateHelper
+   abc.TalliedFissionYieldHelper
 
 Custom integrators can be developed by subclassing from the following abstract
 base classes:

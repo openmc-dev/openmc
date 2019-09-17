@@ -31,7 +31,7 @@ specific to OpenMC is available using the following class:
 .. autosummary::
    :toctree: generated
    :nosignatures:
-   :template: myclass.rst
+   :template: mycallable.rst
 
    Operator
 
@@ -82,6 +82,19 @@ data, such as number densities and reaction rates for each material.
    Results
    ResultsList
 
+The following functions are used to solve the depletion equations, with
+:func:`cram.CRAM48` being the default.
+
+.. autosummary::
+   :toctree: generated
+   :nosignatures:
+   :template: myfunction.rst
+
+   cram.CRAM16
+   cram.CRAM48
+   cram.deplete
+   cram.timed_deplete
+
 The following classes are used to help the :class:`openmc.deplete.Operator`
 compute quantities like effective fission yields, reaction rates, and
 total system energy.
@@ -119,16 +132,5 @@ base classes:
    :nosignatures:
    :template: myintegrator.rst
 
-   Integrator
-   SIIntegrator
-
-Each of the integrator classes also relies on a number of "helper" functions
-as follows:
-
-.. autosummary::
-   :toctree: generated
-   :nosignatures:
-   :template: myfunction.rst
-
-   cram.CRAM16
-   cram.CRAM48
+   abc.Integrator
+   abc.SIIntegrator

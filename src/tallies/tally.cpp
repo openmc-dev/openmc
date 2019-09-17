@@ -111,7 +111,10 @@ score_str_to_int(std::string score_str)
     return SCORE_FISS_Q_RECOV;
 
   if (score_str == "heating")
-    return SCORE_HEATING;
+    return HEATING;
+
+  if (score_str == "heating-local")
+    return HEATING_LOCAL;
 
   if (score_str == "current")
     return SCORE_CURRENT;

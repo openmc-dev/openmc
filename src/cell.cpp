@@ -598,81 +598,89 @@ BoundingBox CSGCell::bounding_box_simple() const {
   return bbox;
 }
 
+void CSGCell::apply_demorgan(std::vector<int32_t>::iterator start,
+                             std::vector<int32_t>::iterator stop)
+{
+  while (start < stop) {
+    if (*start < OP_UNION) { *start *= -1; }
+    else if (*start == OP_UNION) { *start = OP_INTERSECTION; }
+    else if (*start == OP_INTERSECTION) { *start = OP_UNION; }
+    start++;
+  }
+}
 
-void CSGCell::apply_demorgan(std::vector<int32_t>& rpn) {
-  for (auto& token : rpn) {
-    if (token < OP_UNION) { token *= -1; }
-    else if (token == OP_UNION) { token = OP_INTERSECTION; }
-    else if (token == OP_INTERSECTION) { token = OP_UNION; }
+std::vector<int32_t>::iterator
+CSGCell::find_left_parenthesis(std::vector<int32_t>::iterator start,
+                               const std::vector<int32_t>& rpn) {
+  // start search at zero
+  int parenthesis_level = 0;
+  auto it = start;
+  while (it != rpn.begin()) {
+    // look at two tokens at a time
+    int32_t one = *it;
+    int32_t two = *(it - 1);
+
+    // decrement parenthesis level if there are two adjacent surfaces
+    if (one < OP_UNION && two < OP_UNION) {
+      parenthesis_level--;
+    // increment if there are two adjacent operators
+    } else if (one >= OP_UNION && two >= OP_UNION) {
+      parenthesis_level++;
+    }
+
+    // if the level gets to zero, return the position
+    if (parenthesis_level == 0) {
+      // move the iterator back one before leaving the loop
+      // so that all tokens in the parenthesis block are included
+      it--;
+      break;
+    }
+
+    // continue loop, one token at a time
+    it--;
+  }
+  return it;
+}
+
+void CSGCell::remove_complement_ops(std::vector<int32_t>& rpn) {
+  auto it = std::find(rpn.begin(), rpn.end(), OP_COMPLEMENT);
+  while (it != rpn.end()) {
+    // find the opening parenthesis (if any)
+    auto left = find_left_parenthesis(it, rpn);
+    std::vector<int32_t> tmp(left, it+1);
+
+    // apply DeMorgan's law to any surfaces/operators between these
+    // positions in the RPN
+    apply_demorgan(left, it);
+    // remove complement operator
+    rpn.erase(it);
+    // update iterator position
+    it = std::find(rpn.begin(), rpn.end(), OP_COMPLEMENT);
   }
 }
 
 BoundingBox CSGCell::bounding_box_complex(std::vector<int32_t> rpn) {
+  // remove complements by adjusting surface signs and operators
+  remove_complement_ops(rpn);
 
-  // if the last operator is a complement op, there is no
-  // sub-region that the complement connects to. This indicates
-  // that the entire region is a complement and we can apply
-  // De Morgan's laws immediately
-  if (rpn.back() == OP_COMPLEMENT) {
-      rpn.pop_back();
-      apply_demorgan(rpn);
-  }
+  std::vector<BoundingBox> stack(rpn.size());
+  int i_stack = -1;
 
-  // reverse the rpn to make popping easier
-  std::reverse(rpn.begin(), rpn.end());
-
-  BoundingBox current = model::surfaces[abs(rpn.back()) - 1]->bounding_box(rpn.back() > 0);
-  rpn.pop_back();
-
-  while (rpn.size()) {
-    // move through the rpn in twos
-    int32_t one = rpn.back(); rpn.pop_back();
-    int32_t two = rpn.back(); rpn.pop_back();
-
-    // the first token should always be a surface
-    Expects(one < OP_UNION);
-
-    if (two >= OP_UNION) {
-      if (two == OP_UNION) {
-        current |= model::surfaces[abs(one)-1]->bounding_box(one > 0);
-      } else if (two == OP_INTERSECTION) {
-        current &= model::surfaces[abs(one)-1]->bounding_box(one > 0);
-      }
+  for (auto& token : rpn) {
+    if (token == OP_UNION) {
+      stack[i_stack - 1] = stack[i_stack - 1] | stack[i_stack];
+      i_stack--;
+    } else if (token == OP_INTERSECTION) {
+      stack[i_stack - 1] = stack[i_stack - 1] & stack[i_stack];
+      i_stack--;
     } else {
-      // two surfaces in a row (left parenthesis),
-      // create sub-rpn for region in parenthesis
-      std::vector<int32_t> subrpn;
-      subrpn.push_back(one);
-      subrpn.push_back(two);
-      // add until last two tokens in the sub-rpn are operators
-      // (indicates a right parenthesis)
-      while (!((subrpn.back() >= OP_UNION) && (*(subrpn.rbegin() + 1) >= OP_UNION))) {
-        subrpn.push_back(rpn.back());
-        rpn.pop_back();
-      }
-
-      // handle complement case using De Morgan's laws
-      if (subrpn.back() == OP_COMPLEMENT) {
-        subrpn.pop_back();
-        apply_demorgan(subrpn);
-        subrpn.push_back(rpn.back());
-        rpn.pop_back();
-      }
-      // save the last operator, tells us how to combine this region
-      // with our current bounding box
-      int32_t op = subrpn.back(); subrpn.pop_back();
-      // get bounding box for the subrpn
-      BoundingBox sub_box = bounding_box_complex(subrpn);
-      // combine the sub-rpn bounding box with our current cell box
-      if (op == OP_UNION) {
-        current |= sub_box;
-      } else if (op == OP_INTERSECTION) {
-        current &= sub_box;
-      }
+      i_stack++;
+      stack[i_stack] = model::surfaces[abs(token) - 1]->bounding_box(token > 0);
     }
   }
 
-  return current;
+  Ensures(i_stack == 0);
+  return stack.front();
 }
 
 BoundingBox CSGCell::bounding_box() const {

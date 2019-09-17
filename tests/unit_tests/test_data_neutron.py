@@ -205,20 +205,22 @@ def test_derived_products(am244):
     assert total_neutron.yield_(6e6) == pytest.approx(4.2558)
 
 
-def test_heating(run_in_tmpdir, am244):
-    assert 318 in am244.reactions
-    assert 999 in am244.reactions
-    # compare values in 999 reaction
-    total_heating = am244.reactions[301].xs["294K"]
-    fission_heating = am244.reactions[318].xs["294K"]
-    expected_y = total_heating.y - fission_heating(total_heating.x)
-    assert am244.reactions[999].xs["294K"].y == pytest.approx(expected_y)
+def test_kerma(run_in_tmpdir, am244, h2):
+    # Make sure kerma w/ local photon is >= regular kerma
+    for nuc in (am244, h2):
+        assert 301 in nuc
+        assert 901 in nuc
+        for T in nuc.temperatures:
+            k, k_local = nuc[301].xs[T], nuc[901].xs[T]
+            assert np.all(k.x == k_local.x)
+            assert np.all(k_local.y >= k.y)
 
-    am244.export_to_hdf5("am244.h5")
-    read_in = openmc.data.IncidentNeutron.from_hdf5("am244.h5")
-    assert 318 in read_in.reactions
-    assert 999 in read_in.reactions
-    assert read_in.reactions[999].xs["294K"].y == pytest.approx(expected_y)
+    # Make sure 301/901 get exported/imported correctly
+    h2.export_to_hdf5("H2.h5")
+    read_in = openmc.data.IncidentNeutron.from_hdf5("H2.h5")
+    assert 301 in read_in
+    assert 901 in read_in
+    assert np.all(read_in[901].xs['300K'].y == h2[901].xs['300K'].y)
 
 
 def test_urr(pu239):

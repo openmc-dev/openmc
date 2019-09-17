@@ -319,7 +319,7 @@ class Tally(_FortranObjectWithID):
     @scores.setter
     def scores(self, scores):
         scores_ = (c_char_p * len(scores))()
-        scores_[:] = [str(x).encode() for x in scores]
+        scores_[:] = [x.encode() for x in scores]
         _dll.openmc_tally_set_scores(self._index, len(scores), scores_)
 
     @property

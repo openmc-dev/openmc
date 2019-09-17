@@ -5,6 +5,9 @@ from .results import Results, _VERSION_RESULTS
 from openmc.checkvalue import check_filetype_version
 
 
+__all__ = ["ResultsList"]
+
+
 class ResultsList(list):
     """A list of openmc.deplete.Results objects
 

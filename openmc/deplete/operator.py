@@ -30,6 +30,9 @@ from .helpers import (
     FissionYieldCutoffHelper, AveragedFissionYieldHelper)
 
 
+__all__ = ["Operator", "OperatorResult"]
+
+
 def _distribute(items):
     """Distribute items across MPI communicator
 

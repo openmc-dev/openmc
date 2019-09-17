@@ -5,23 +5,23 @@ Heating and Energy Deposition
 =============================
 
 As particles traverse a problem, some portion of their energy is deposited at 
-collision sites. There are a variety of mechanisms that contribute to the
-energy deposition, including down-scattering from higher to lower energies,
-fission events, and reactions with positive Q-values. The information describing
-how much energy is deposited for a specific reaction is referred to as 
+collision sites. This energy is deposited when charged particles, including
+electrons and recoil nuclei, undergo electromagnetic interactions with
+surrounding electons and ions. The information describing how much energy
+is deposited for a specific reaction is referred to as 
 "heating numbers" and can be computed using a program like NJOY with the
 ``heatr`` module.
 
-These heating numbers are the product of reaction-specific coefficients and
+These heating rate is the product of reaction-specific coefficients and
 a reaction cross section
 
 .. math::
 
-    H(E) = \phi(E)\sum_i\rho_i\sum_rk_{i, r}
+    H(E) = \phi(E)\sum_i\rho_i\sum_rk_{i, r}(E),
 
 and has units energy per time, typically eV / s.
-Here, :math:`k_{i, r}` are the KERMA [Kinetic Energy Release in Materials]
-coefficients for reaction :math:`r` of isotope :math:`i`.
+Here, :math:`k_{i, r}` are the KERMA (Kinetic Energy Release in Materials)
+[Mack97]_ coefficients for reaction :math:`r` of isotope :math:`i`.
 The KERMA coefficients have units energy :math:`\times` cross-section, e.g.
 eV-barn, and can be used much like a reaction cross section for the purpose
 of tallying energy deposition.
@@ -33,14 +33,16 @@ requested
 
 .. math::
 
-    k_{i, r}(E) = \left(E + Q_{i, r} - \bar{E}_{i, r, n} - \bar{E}_{i, r, \gamma}\right)\sigma_{i, r}(E)
+    k_{i, r}(E) = \left(E + Q_{i, r} - \bar{E}_{i, r, n}
+    - \bar{E}_{i, r, \gamma}\right)\sigma_{i, r}(E),
 
-removing the energy of secondary neutrons and photons from the sum of
-incident neutron energy, :math:`E`, and the reaction :math:`Q` value.
+removing the energy of neutral particles (neutrons and photons) that are
+transported away from the reaction site :math:`\bar{E}`, and the reaction
+:math:`Q` value.
 
----------------------------
-The Special Case of Fission
----------------------------
+-------
+Fission
+-------
 
 During a fission event, there are potentially many secondary particles, and all
 must be considered. The total energy released in a fission event is typically
@@ -54,14 +56,16 @@ broken up into the following categories:
 - :math:`E_{\beta}` - energy of released :math:`\beta` particles
 - :math:`E_{\nu}` - energy of neutrinos
 
-These components are defined in MT=458 data in a standard ENDF/B-VII file.
-All these quantities have some energy dependence, but this dependence is not shown to
-make the following demonstrations cleaner.
-As neutrinos scarcely interact with matter, the recoverable energy from fission is defined as
+These components are defined in MF=1,MT=458 data in a standard ENDF/B-6 formatted
+file. All these quantities may depend upon incident neutron energy,
+but this dependence is not shown to make the following demonstrations cleaner.
+As neutrinos scarcely interact with matter, the recoverable energy from
+fission is defined as
 
 .. math::
 
-    E_r\equiv E_{fr} + E_{n,p} + E_{n, d} + E_{\gamma, p} + E_{\gamma, d} + E_{\beta}
+    E_r\equiv E_{fr} + E_{n,p} + E_{n, d} + E_{\gamma, p}
+    + E_{\gamma, d} + E_{\beta}
 
 Furthermore, the energy of the secondary neutrons and photons is given as
 :math:`E_{n, p}` and :math:`E_{\gamma, p}`, respectively.
@@ -75,34 +79,35 @@ NJOY computes the fission KERMA coefficient using this energy-balance method to 
 
 .. note::
 
-    The energy from delayed neutrons and photons and beta particles are intentionally
-    left out from the NJOY calculations
+    The energy from delayed neutrons and photons and beta particles is intentionally
+    left out from the NJOY calculations.
 
 ---------------------
 OpenMC Implementation
 ---------------------
 
-For fissile isotopes, OpenMC makes modifications to the heating reaction to include
-all relevant components of fission energy release. These modifications are made to
-the total heating reaction, MT=301. Breaking the total heating number into
-a fission and non-fission section, one can write
+For fissile isotopes, OpenMC makes modifications to the heating reaction to
+include all relevant components of fission energy release. These modifications
+are made to the total heating reaction, MT=301. Breaking the total heating
+KERMA into a fission and non-fission section, one can write
 
 .. math::
 
-    H_i(E) = H_{i, nf}(E) + \left[E_{fr}(E) + E_{\gamma, p}\right]\sigma_{i, f}(E)
+    k_i(E) = k_{i, nf}(E) + \left[E_{fr}(E) + E_{\gamma, p}\right]\sigma_{i, f}(E)
 
-OpenMC seeks to modify the total heating data to include energy from :math:`\beta` particles
-and, conditionally, delayed photons. This conditional inclusion depends on the simulation
-mode: neutron transport, or coupled neutron-photon transport. The heating due to fission
-is removed using MT=318 data, and then re-built using the desired components of fission
-energy release from MT=458 data.
+OpenMC seeks to modify the total heating data to include energy from
+:math:`\beta` particles and, conditionally, delayed photons. This conditional
+inclusion depends on the simulation mode: neutron transport, or coupled
+neutron-photon transport. The heating due to fission is removed using MT=318
+data, and then re-built using the desired components of fission energy release
+from MF=1,MT=458 data.
 
 Neutron Transport
 -----------------
 
-For this case, OpenMC instructs ``heatr`` to produce heating coefficients assuming
-that energy from photons, :math:`E_{\gamma, p}` and :math:`E_{\gamma, d}`,
-is deposited at the fission site.
+For this case, OpenMC instructs ``heatr`` to produce heating coefficients
+assuming that energy from photons, :math:`E_{\gamma, p}` and
+:math:`E_{\gamma, d}`, is deposited at the fission site.
 Let :math:`N901` represent the total heating number returned from this ``heatr`` 
 run with :math:`N918` reflecting fission heating computed from NJOY.
 :math:`M901` represent the following modification
@@ -119,11 +124,12 @@ if ``901`` is included in :attr:`openmc.Tally.scores`.
 Coupled neutron-photon transport
 --------------------------------
 
-Here, OpenMC instructs ``heatr`` to remove the assumption of local photon energy.
-However, the definitions provided in the NJOY manual indicate that, regardless of
-this mode, the prompt photon energy is still included in :math:`k_{i, f}`, 
-and therefore must be manually removed. Let :math:`N301` represent the total
-heating number returned from this ``heatr`` run and :math:`M301` be
+Here, OpenMC instructs ``heatr`` to assume that energy from photons is not
+deposited locally. However, the definitions provided in the NJOY manual
+indicate that, regardless of this mode, the prompt photon energy is still
+included in :math:`k_{i, f}`, and therefore must be manually removed.
+Let :math:`N301` represent the total heating number returned from this
+``heatr`` run and :math:`M301` be
 
 .. math::
 
@@ -131,4 +137,13 @@ heating number returned from this ``heatr`` run and :math:`M301` be
       + \left[E_{i, fr}(E) + E_{i, \beta}(E)\right]\sigma_{i, f}(E).
 
 This modified heating data is stored as the MT=301 reaction and will be scored
-if ``301`` is included in :attr:`openmc.Tally.scores`.
+if ``heating`` is included in :attr:`openmc.Tally.scores`.
+
+----------
+References
+----------
+
+.. [Mack97] Abdou, M.A., Maynard, C.W., and Wright, R.Q. MACK: computer
+   program to calculate neutron energy release parameters (fluence-to-kerma
+   factors) and multigroup neutron reaction cross sections from nuclear data
+   in ENDF Format. Oak Ridge National Laboratory report ORNL-TM-3994.

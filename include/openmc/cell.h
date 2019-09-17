@@ -232,15 +232,6 @@ protected:
   find_left_parenthesis(std::vector<int32_t>::iterator start,
                         const std::vector<int32_t>& rpn);
 
-  //! Returns the ending position of a parenthesis block (immediately after two
-  //! operator tokens) in the RPN given a starting position at the beginning of
-  //! that block (immediately before two surface tokens)
-  //! \param start Starting position of the search
-  //! \param rpn The rpn being searched
-  static std::vector<int32_t>::iterator
-  find_right_parenthesis(std::vector<int32_t>::iterator start,
-                        const std::vector<int32_t>& rpn);
-
 };
 
 //==============================================================================

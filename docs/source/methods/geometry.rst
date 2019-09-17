@@ -901,6 +901,7 @@ Dxy + Eyz + Fxz + Gx + Hy + Jz + K = 0`. Thus, the gradient to the surface is
 ------------------------------
 White Boundary Conditions
 ------------------------------
+
 The white boundary condition is usually applied in deterministic codes, where the particle
 will hit the surface and travel back with isotropic angular distribution. The change in 
 particle's direction is sampled from a cosine distribution instead of uniform. 
@@ -947,7 +948,7 @@ like this,
     \mu = sqrt{\eta_(1)} 
     \phi = 2\pi \eta_(2) 
 
-where :math:`\eta` is the uniform random number, simply computed by random number generator. 
+where :math:`\eta` is the uniform random number that is simply computed by the random number generator. 
 Eventually, the final reflected direction vector can be computed via the rotation of normal to 
 the surface like this,
 .. math::

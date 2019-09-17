@@ -205,7 +205,7 @@ class EnergyScoreHelper(EnergyHelper):
         the number of MPI processes
         """
         super().reset()
-        if not comm.rank:
+        if comm.rank == 0:
             self._energy = self._tally.results[0, 0, 1]
 
 # ------------------------------------

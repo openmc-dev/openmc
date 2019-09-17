@@ -84,8 +84,7 @@ class Operator(TransportOperator):
         Indicator for computing system energy. ``"energy-deposition"`` will
         compute with a single energy deposition tally, taking fission energy
         release data and heating into consideration. ``"fission-q"`` will
-        use the fission Q values from the depletion chain, not taking
-        heating into consideration.
+        use the fission Q values from the depletion chain
     fission_q : dict, optional
         Dictionary of nuclides and their fission Q values [eV]. If not given,
         values will be pulled from the ``chain_file``. Only applicable
@@ -261,8 +260,6 @@ class Operator(TransportOperator):
         # Update status
         self.number.set_density(vec)
 
-        time_start = time.time()
-
         # Update material compositions and tally nuclides
         self._update_materials()
         nuclides = self._get_tally_nuclides()
@@ -273,8 +270,6 @@ class Operator(TransportOperator):
         # Run OpenMC
         openmc.lib.reset()
         openmc.lib.run()
-
-        time_openmc = time.time()
 
         # Extract results
         op_result = self._unpack_tallies_and_normalize(power)

@@ -277,16 +277,7 @@ class Operator(TransportOperator):
         time_openmc = time.time()
 
         # Extract results
-        try:
-            op_result = self._unpack_tallies_and_normalize(power)
-        except ZeroDivisionError:
-            if comm.rank == 0:
-                sys.stderr.flush()
-                print(" No energy reported from openmc tallies. Do you have "
-                      "MT901 data?\n", file=sys.stderr, flush=True)
-            comm.barrier()
-            comm.Abort(1)
-
+        op_result = self._unpack_tallies_and_normalize(power)
 
         return copy.deepcopy(op_result)
 
@@ -671,7 +662,12 @@ class Operator(TransportOperator):
 
         # Guard against divide by zero
         if energy == 0:
-            raise ZeroDivisionError
+            if comm.rank == 0:
+                sys.stderr.flush()
+                print(" No energy reported from OpenMC tallies. Do your HDF5 "
+                      "files have heating data?\n", file=sys.stderr, flush=True)
+            comm.barrier()
+            comm.Abort(1)
 
         # Scale reaction rates to obtain units of reactions/sec
         rates *= power / energy

@@ -95,6 +95,7 @@ total system energy.
    helpers.ChainFissionHelper
    helpers.ConstantFissionYieldHelper
    helpers.DirectReactionRateHelper
+   helpers.EnergyScoreHelper
    helpers.FissionYieldCutoffHelper
 
 The following classes are abstract classes that can be used to extend the

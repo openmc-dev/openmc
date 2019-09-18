@@ -12,7 +12,7 @@ from openmc.region import Region, Intersection, Union
 from openmc.mixin import IDManagerMixin
 
 
-_BOUNDARY_TYPES = ['transmission', 'vacuum', 'reflective', 'periodic']
+_BOUNDARY_TYPES = ['transmission', 'vacuum', 'reflective', 'periodic', 'white']
 
 _WARNING_UPPER = """\
 "{}(...) accepts an argument named '{}', not '{}'. Future versions of OpenMC \
@@ -32,7 +32,7 @@ class Surface(IDManagerMixin, metaclass=ABCMeta):
     surface_id : int, optional
         Unique identifier for the surface. If not specified, an identifier will
         automatically be assigned.
-    boundary_type : {'transmission, 'vacuum', 'reflective', 'periodic'}, optional
+    boundary_type : {'transmission, 'vacuum', 'reflective', 'periodic', 'white'}, optional
         Boundary condition that defines the behavior for particles hitting the
         surface. Defaults to transmissive boundary condition where particles
         freely pass through the surface. Note that periodic boundary conditions
@@ -44,7 +44,7 @@ class Surface(IDManagerMixin, metaclass=ABCMeta):
 
     Attributes
     ----------
-    boundary_type : {'transmission, 'vacuum', 'reflective', 'periodic'}
+    boundary_type : {'transmission, 'vacuum', 'reflective', 'periodic', 'white'}
         Boundary condition that defines the behavior for particles hitting the
         surface.
     coefficients : dict
@@ -336,7 +336,7 @@ class Plane(Surface):
         The 'C' parameter for the plane. Defaults to 0.
     d : float, optional
         The 'D' parameter for the plane. Defaults to 0.
-    boundary_type : {'transmission, 'vacuum', 'reflective'}, optional
+    boundary_type : {'transmission, 'vacuum', 'reflective', 'white'}, optional
         Boundary condition that defines the behavior for particles hitting the
         surface. Defaults to transmissive boundary condition where particles
         freely pass through the surface.
@@ -356,7 +356,7 @@ class Plane(Surface):
         The 'C' parameter for the plane
     d : float
         The 'D' parameter for the plane
-    boundary_type : {'transmission, 'vacuum', 'reflective'}
+    boundary_type : {'transmission, 'vacuum', 'reflective', 'white'}
         Boundary condition that defines the behavior for particles hitting the
         surface.
     periodic_surface : openmc.Surface
@@ -533,7 +533,7 @@ class XPlane(Plane):
     ----------
     x0 : float, optional
         Location of the plane. Defaults to 0.
-    boundary_type : {'transmission, 'vacuum', 'reflective', 'periodic'}, optional
+    boundary_type : {'transmission, 'vacuum', 'reflective', 'periodic', 'white'}, optional
         Boundary condition that defines the behavior for particles hitting the
         surface. Defaults to transmissive boundary condition where particles
         freely pass through the surface. Only axis-aligned periodicity is
@@ -548,7 +548,7 @@ class XPlane(Plane):
     ----------
     x0 : float
         Location of the plane
-    boundary_type : {'transmission, 'vacuum', 'reflective', 'periodic'}
+    boundary_type : {'transmission, 'vacuum', 'reflective', 'periodic', 'white'}
         Boundary condition that defines the behavior for particles hitting the
         surface.
     periodic_surface : openmc.Surface
@@ -658,7 +658,7 @@ class YPlane(Plane):
     ----------
     y0 : float, optional
         Location of the plane
-    boundary_type : {'transmission, 'vacuum', 'reflective', 'periodic'}, optional
+    boundary_type : {'transmission, 'vacuum', 'reflective', 'periodic', 'white'}, optional
         Boundary condition that defines the behavior for particles hitting the
         surface. Defaults to transmissive boundary condition where particles
         freely pass through the surface. Only axis-aligned periodicity is
@@ -673,7 +673,7 @@ class YPlane(Plane):
     ----------
     y0 : float
         Location of the plane
-    boundary_type : {'transmission, 'vacuum', 'reflective', 'periodic'}
+    boundary_type : {'transmission, 'vacuum', 'reflective', 'periodic', 'white'}
         Boundary condition that defines the behavior for particles hitting the
         surface.
     periodic_surface : openmc.Surface
@@ -784,7 +784,7 @@ class ZPlane(Plane):
     surface_id : int, optional
         Unique identifier for the surface. If not specified, an identifier will
         automatically be assigned.
-    boundary_type : {'transmission, 'vacuum', 'reflective', 'periodic'}, optional
+    boundary_type : {'transmission, 'vacuum', 'reflective', 'periodic', 'white'}, optional
         Boundary condition that defines the behavior for particles hitting the
         surface. Defaults to transmissive boundary condition where particles
         freely pass through the surface. Only axis-aligned periodicity is
@@ -798,7 +798,7 @@ class ZPlane(Plane):
     ----------
     z0 : float
         Location of the plane
-    boundary_type : {'transmission, 'vacuum', 'reflective', 'periodic'}
+    boundary_type : {'transmission, 'vacuum', 'reflective', 'periodic', 'white'}
         Boundary condition that defines the behavior for particles hitting the
         surface.
     periodic_surface : openmc.Surface
@@ -908,7 +908,7 @@ class Cylinder(Surface):
     ----------
     r : float, optional
         Radius of the cylinder. Defaults to 1.
-    boundary_type : {'transmission, 'vacuum', 'reflective'}, optional
+    boundary_type : {'transmission, 'vacuum', 'reflective', 'white'}, optional
         Boundary condition that defines the behavior for particles hitting the
         surface. Defaults to transmissive boundary condition where particles
         freely pass through the surface.
@@ -923,7 +923,7 @@ class Cylinder(Surface):
     ----------
     r : float
         Radius of the cylinder
-    boundary_type : {'transmission, 'vacuum', 'reflective'}
+    boundary_type : {'transmission, 'vacuum', 'reflective', 'white'}
         Boundary condition that defines the behavior for particles hitting the
         surface.
     coefficients : dict
@@ -963,7 +963,7 @@ class XCylinder(Cylinder):
         z-coordinate of the center of the cylinder. Defaults to 0.
     r : float, optional
         Radius of the cylinder. Defaults to 0.
-    boundary_type : {'transmission, 'vacuum', 'reflective'}, optional
+    boundary_type : {'transmission, 'vacuum', 'reflective', 'white'}, optional
         Boundary condition that defines the behavior for particles hitting the
         surface. Defaults to transmissive boundary condition where particles
         freely pass through the surface.
@@ -980,7 +980,7 @@ class XCylinder(Cylinder):
         y-coordinate of the center of the cylinder
     z0 : float
         z-coordinate of the center of the cylinder
-    boundary_type : {'transmission, 'vacuum', 'reflective'}
+    boundary_type : {'transmission, 'vacuum', 'reflective', 'white'}
         Boundary condition that defines the behavior for particles hitting the
         surface.
     coefficients : dict
@@ -1110,7 +1110,7 @@ class YCylinder(Cylinder):
         z-coordinate of the center of the cylinder. Defaults to 0.
     r : float, optional
         Radius of the cylinder. Defaults to 1.
-    boundary_type : {'transmission, 'vacuum', 'reflective'}, optional
+    boundary_type : {'transmission, 'vacuum', 'reflective', 'white'}, optional
         Boundary condition that defines the behavior for particles hitting the
         surface. Defaults to transmissive boundary condition where particles
         freely pass through the surface.
@@ -1127,7 +1127,7 @@ class YCylinder(Cylinder):
         x-coordinate of the center of the cylinder
     z0 : float
         z-coordinate of the center of the cylinder
-    boundary_type : {'transmission, 'vacuum', 'reflective'}
+    boundary_type : {'transmission, 'vacuum', 'reflective', 'white'}
         Boundary condition that defines the behavior for particles hitting the
         surface.
     coefficients : dict
@@ -1254,7 +1254,7 @@ class ZCylinder(Cylinder):
     surface_id : int, optional
         Unique identifier for the surface. If not specified, an identifier will
         automatically be assigned.
-    boundary_type : {'transmission, 'vacuum', 'reflective'}, optional
+    boundary_type : {'transmission, 'vacuum', 'reflective', 'white'}, optional
         Boundary condition that defines the behavior for particles hitting the
         surface. Defaults to transmissive boundary condition where particles
         freely pass through the surface.
@@ -1274,7 +1274,7 @@ class ZCylinder(Cylinder):
         x-coordinate of the center of the cylinder
     y0 : float
         y-coordinate of the center of the cylinder
-    boundary_type : {'transmission, 'vacuum', 'reflective'}
+    boundary_type : {'transmission, 'vacuum', 'reflective', 'white'}
         Boundary condition that defines the behavior for particles hitting the
         surface.
     coefficients : dict
@@ -1405,7 +1405,7 @@ class Sphere(Surface):
         z-coordinate of the center of the sphere. Defaults to 0.
     r : float, optional
         Radius of the sphere. Defaults to 1.
-    boundary_type : {'transmission, 'vacuum', 'reflective'}, optional
+    boundary_type : {'transmission, 'vacuum', 'reflective', 'white'}, optional
         Boundary condition that defines the behavior for particles hitting the
         surface. Defaults to transmissive boundary condition where particles
         freely pass through the surface.
@@ -1425,7 +1425,7 @@ class Sphere(Surface):
         z-coordinate of the center of the sphere
     r : float
         Radius of the sphere
-    boundary_type : {'transmission, 'vacuum', 'reflective'}
+    boundary_type : {'transmission, 'vacuum', 'reflective', 'white'}
         Boundary condition that defines the behavior for particles hitting the
         surface.
     coefficients : dict
@@ -1582,7 +1582,7 @@ class Cone(Surface):
     surface_id : int, optional
         Unique identifier for the surface. If not specified, an identifier will
         automatically be assigned.
-    boundary_type : {'transmission, 'vacuum', 'reflective'}, optional
+    boundary_type : {'transmission, 'vacuum', 'reflective', 'white'}, optional
         Boundary condition that defines the behavior for particles hitting the
         surface. Defaults to transmissive boundary condition where particles
         freely pass through the surface.
@@ -1599,7 +1599,7 @@ class Cone(Surface):
         z-coordinate of the apex
     r2 : float
         Parameter related to the aperature
-    boundary_type : {'transmission, 'vacuum', 'reflective'}
+    boundary_type : {'transmission, 'vacuum', 'reflective', 'white'}
         Boundary condition that defines the behavior for particles hitting the
         surface.
     coefficients : dict
@@ -1700,7 +1700,7 @@ class XCone(Cone):
         z-coordinate of the apex. Defaults to 0.
     r2 : float, optional
         Parameter related to the aperature. Defaults to 1.
-    boundary_type : {'transmission, 'vacuum', 'reflective'}, optional
+    boundary_type : {'transmission, 'vacuum', 'reflective', 'white'}, optional
         Boundary condition that defines the behavior for particles hitting the
         surface. Defaults to transmissive boundary condition where particles
         freely pass through the surface.
@@ -1720,7 +1720,7 @@ class XCone(Cone):
         z-coordinate of the apex
     r2 : float
         Parameter related to the aperature
-    boundary_type : {'transmission, 'vacuum', 'reflective'}
+    boundary_type : {'transmission, 'vacuum', 'reflective', 'white'}
         Boundary condition that defines the behavior for particles hitting the
         surface.
     coefficients : dict
@@ -1771,7 +1771,7 @@ class YCone(Cone):
         z-coordinate of the apex. Defaults to 0.
     r2 : float, optional
         Parameter related to the aperature. Defaults to 1.
-    boundary_type : {'transmission, 'vacuum', 'reflective'}, optional
+    boundary_type : {'transmission, 'vacuum', 'reflective', 'white'}, optional
         Boundary condition that defines the behavior for particles hitting the
         surface. Defaults to transmissive boundary condition where particles
         freely pass through the surface.
@@ -1791,7 +1791,7 @@ class YCone(Cone):
         z-coordinate of the apex
     r2 : float
         Parameter related to the aperature
-    boundary_type : {'transmission, 'vacuum', 'reflective'}
+    boundary_type : {'transmission, 'vacuum', 'reflective', 'white'}
         Boundary condition that defines the behavior for particles hitting the
         surface.
     coefficients : dict
@@ -1842,7 +1842,7 @@ class ZCone(Cone):
         z-coordinate of the apex. Defaults to 0.
     r2 : float, optional
         Parameter related to the aperature. Defaults to 1.
-    boundary_type : {'transmission, 'vacuum', 'reflective'}, optional
+    boundary_type : {'transmission, 'vacuum', 'reflective', 'white'}, optional
         Boundary condition that defines the behavior for particles hitting the
         surface. Defaults to transmissive boundary condition where particles
         freely pass through the surface.
@@ -1862,7 +1862,7 @@ class ZCone(Cone):
         z-coordinate of the apex
     r2 : float
         Parameter related to the aperature
-    boundary_type : {'transmission, 'vacuum', 'reflective'}
+    boundary_type : {'transmission, 'vacuum', 'reflective', 'white'}
         Boundary condition that defines the behavior for particles hitting the
         surface.
     coefficients : dict
@@ -1907,7 +1907,7 @@ class Quadric(Surface):
     ----------
     a, b, c, d, e, f, g, h, j, k : float, optional
         coefficients for the surface. All default to 0.
-    boundary_type : {'transmission, 'vacuum', 'reflective', 'periodic'}, optional
+    boundary_type : {'transmission, 'vacuum', 'reflective', 'periodic', 'white'}, optional
         Boundary condition that defines the behavior for particles hitting the
         surface. Defaults to transmissive boundary condition where particles
         freely pass through the surface.
@@ -1921,7 +1921,7 @@ class Quadric(Surface):
     ----------
     a, b, c, d, e, f, g, h, j, k : float
         coefficients for the surface
-    boundary_type : {'transmission, 'vacuum', 'reflective', 'periodic'}
+    boundary_type : {'transmission, 'vacuum', 'reflective', 'periodic', 'white'}
         Boundary condition that defines the behavior for particles hitting the
         surface.
     coefficients : dict

@@ -29,8 +29,8 @@ operator class requires a :class:`openmc.Geometry` instance and a
     op = openmc.deplete.Operator(geom, settings)
 
 :mod:`openmc.deplete` supports multiple time-integration methods for determining
-material compositions over time. Each method appears as a different function.
-For example, :func:`openmc.deplete.integrator.cecm` runs a depletion calculation
+material compositions over time. Each method appears as a different class.
+For example, :class:`openmc.deplete.CECMIntegrator` runs a depletion calculation
 using the CE/CM algorithm (deplete over a timestep using the middle-of-step
 reaction rates). An instance of :class:`openmc.deplete.Operator` is passed to
 one of these functions along with the power level and timesteps::
@@ -38,7 +38,7 @@ one of these functions along with the power level and timesteps::
     power = 1200.0e6
     days = 24*60*60
     timesteps = [10.0*days, 10.0*days, 10.0*days]
-    openmc.deplete.cecm(op, power, timesteps)
+    openmc.deplete.CECMIntegrator(op, power, timesteps).integrate()
 
 The coupled transport-depletion problem is executed, and once it is done a
 ``depletion_results.h5`` file is written. The results can be analyzed using the
@@ -46,7 +46,7 @@ The coupled transport-depletion problem is executed, and once it is done a
 easy retrieval of k-effective, nuclide concentrations, and reaction rates over
 time::
 
-    results = openmc.deplete.ResultsList("depletion_results.h5")
+    results = openmc.deplete.ResultsList.from_hdf5("depletion_results.h5")
     time, keff = results.get_eigenvalue()
 
 Note that the coupling between the transport solver and the transmutation solver

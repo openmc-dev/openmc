@@ -24,6 +24,7 @@ General Usage
     nuclear-data
     nuclear-data-resonance-covariance
     cad-geom
+    pincell-depletion
 
 --------
 Geometry

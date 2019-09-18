@@ -10,9 +10,6 @@ from uncertainties import ufloat
 import openmc.data
 
 
-_ENDF_DATA = os.environ['OPENMC_ENDF_DATA']
-
-
 def ufloat_close(a, b):
     assert a.nominal_value == pytest.approx(b.nominal_value)
     assert a.std_dev == pytest.approx(b.std_dev)
@@ -21,14 +18,16 @@ def ufloat_close(a, b):
 @pytest.fixture(scope='module')
 def nb90():
     """Nb90 decay data."""
-    filename = os.path.join(_ENDF_DATA, 'decay', 'dec-041_Nb_090.endf')
+    endf_data = os.environ['OPENMC_ENDF_DATA']
+    filename = os.path.join(endf_data, 'decay', 'dec-041_Nb_090.endf')
     return openmc.data.Decay.from_endf(filename)
 
 
 @pytest.fixture(scope='module')
 def u235_yields():
     """U235 fission product yield data."""
-    filename = os.path.join(_ENDF_DATA, 'nfy', 'nfy-092_U_235.endf')
+    endf_data = os.environ['OPENMC_ENDF_DATA']
+    filename = os.path.join(endf_data, 'nfy', 'nfy-092_U_235.endf')
     return openmc.data.FissionProductYields.from_endf(filename)
 
 

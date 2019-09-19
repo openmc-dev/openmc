@@ -139,6 +139,18 @@ The following functions are used to solve the depletion equations, with
    cram.deplete
    cram.timed_deplete
 
+
+:func:`cram.CRAM16` and :func:`cram.CRAM48` are aliases to the ``__call__``
+methods for the following classes
+
+.. autosummary::
+   :toctree: generated
+   :nosignatures:
+   :template: mycallable.rst
+
+   cram.Cram16Solver
+   cram.Cram48Solver
+
 The following classes are used to help the :class:`openmc.deplete.Operator`
 compute quantities like effective fission yields, reaction rates, and
 total system energy.
@@ -185,8 +197,8 @@ OpenMC simulations back on to the :class:`abc.TransportOperator`
    abc.ReactionRateHelper
    abc.TalliedFissionYieldHelper
 
-Custom integrators can be developed by subclassing from the following abstract
-base classes:
+Custom integrators or depletion solvers can be developed by subclassing from
+the following abstract base classes:
 
 .. autosummary::
    :toctree: generated
@@ -195,3 +207,5 @@ base classes:
 
    abc.Integrator
    abc.SIIntegrator
+   abc.DepSystemSolver
+   abc.IPFCramSolver

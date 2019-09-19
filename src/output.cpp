@@ -638,17 +638,22 @@ write_tallies()
   for (auto i_tally = 0; i_tally < model::tallies.size(); ++i_tally) {
     const auto& tally {*model::tallies[i_tally]};
 
+    // Write header block.
+    std::string tally_header("TALLY " + std::to_string(tally.id_));
+    if (!tally.name_.empty()) tally_header += ": " + tally.name_;
+    tallies_out << header(tally_header) << "\n\n";
+
+    if (!tally.writeable_) {
+      tallies_out << " Internal\n\n";
+      continue;
+    }
+
     // Calculate t-value for confidence intervals
     double t_value = 1;
     if (settings::confidence_intervals) {
       auto alpha = 1 - CONFIDENCE_LEVEL;
       t_value = t_percentile(1 - alpha*0.5, tally.n_realizations_ - 1);
     }
-
-    // Write header block.
-    std::string tally_header("TALLY " + std::to_string(tally.id_));
-    if (!tally.name_.empty()) tally_header += ": " + tally.name_;
-    tallies_out << header(tally_header) << "\n\n";
 
     // Write derivative information.
     if (tally.deriv_ != C_NONE) {

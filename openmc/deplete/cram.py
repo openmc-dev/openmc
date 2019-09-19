@@ -13,8 +13,6 @@ import scipy.sparse.linalg as sla
 
 from . import comm
 
-__all__ = ["deplete", "timed_deplete", "CRAM16", "CRAM48"]
-
 
 def deplete(chain, x, rates, dt, matrix_func=None):
     """Deplete materials using given reaction rates for a specified time

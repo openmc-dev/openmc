@@ -45,6 +45,8 @@ _REACTIONS = [
 ]
 
 
+__all__ = ["Chain"]
+
 def replace_missing(product, decay_data):
     """Replace missing product with suitable decay daughter.
 

@@ -7,6 +7,9 @@ from collections import OrderedDict
 import numpy as np
 
 
+__all__ = ["ReactionRates"]
+
+
 class ReactionRates(np.ndarray):
     """Reaction rates resulting from a transport operator call
 

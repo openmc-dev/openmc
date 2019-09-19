@@ -202,7 +202,7 @@ public:
   void transport();
   
   //! cvmt sampling: continuous varying materials tracking 
-  double sampling_cvmt(Particle *);
+  double sampling_cvmt(Particle *, double);
   void move_particle_coord(LocalCoord &coord,double ds);
   void simpsons_path_integration(double &optical_depth, double distance, std::vector<double> &xs_t, bool dbg_file, int it_num);
   void estimate_flight_distance(std::vector<double> xs_t, double distance, double tau_hat, double &s);

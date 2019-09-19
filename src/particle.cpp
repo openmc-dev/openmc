@@ -231,7 +231,7 @@ Particle::transport()
       d_collision = -std::log(prn()) / macro_xs_.total; 
       
       // cvmt: continuous varying materials tracking  
-      if(model::materials[material_]->continuous_num_density_) d_collision = sampling_cvmt(this);
+      if(model::materials[material_]->continuous_num_density_) d_collision = sampling_cvmt(this, boundary.distance);
       //
     }
 
@@ -686,14 +686,13 @@ Particle::write_restart() const
 // cvmt implementation 
 //==============================================================================
 double 
-Particle::sampling_cvmt(Particle *p){
+Particle::sampling_cvmt(Particle *p, double d_boundary){
   std::vector<double> xs_t; //! The total cross section along flight path
   double PNC;          //! local variables in the following  
   double tau_hat; 
   Position xyz_orig;  
   double d_collision {0.0};
   double optical_depth {0.0};
-  double d_boundary {0.0};
   //
   xs_t.resize(settings::num_intervals + 1);
   simpsons_path_integration(optical_depth, d_boundary, xs_t, false, 0);

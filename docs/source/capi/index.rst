@@ -1,17 +1,17 @@
 .. _capi:
 
-=====
-C API
-=====
+=========
+C/C++ API
+=========
 
 The libopenmc shared library that is built when installing OpenMC exports a
 number of C interoperable functions and global variables that can be used for
-in-memory coupling. While it is possible to directly use the C API as documented
-here for coupling, most advanced users will find it easier to work with the
-Python bindings in the :py:mod:`openmc.capi` module.
+in-memory coupling. While it is possible to directly use the C/C++ API as
+documented here for coupling, most advanced users will find it easier to work
+with the Python bindings in the :py:mod:`openmc.lib` module.
 
-.. warning:: The C API is still experimental and may undergo substantial changes
-             in future releases.
+.. warning:: The C/C++ API is still experimental and may undergo substantial
+             changes in future releases.
 
 ----------------
 Type Definitions

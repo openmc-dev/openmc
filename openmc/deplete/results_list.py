@@ -5,6 +5,9 @@ from .results import Results, _VERSION_RESULTS
 from openmc.checkvalue import check_filetype_version
 
 
+__all__ = ["ResultsList"]
+
+
 class ResultsList(list):
     """A list of openmc.deplete.Results objects
 
@@ -137,7 +140,7 @@ class ResultsList(list):
     def get_depletion_time(self):
         """Return an array of the average time to deplete a material
 
-        ..note::
+        .. note::
 
             Will have one fewer row than number of other methods,
             like :meth:`get_eigenvalues`, because no depletion
@@ -145,7 +148,6 @@ class ResultsList(list):
 
         Returns
         -------
-
         times : :class:`numpy.ndarray`
             Vector of average time to deplete a single material
             across all processes and materials.

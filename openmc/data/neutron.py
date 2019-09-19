@@ -452,7 +452,7 @@ class IncidentNeutron(EqualityMixin):
             if rx.redundant:
                 photon_rx = any(p.particle == 'photon' for p in rx.products)
                 keep_mts = (4, 16, 103, 104, 105, 106, 107,
-                            203, 204, 205, 206, 207, 301, 318, 444)
+                            203, 204, 205, 206, 207, 301, 444, 901)
                 if not (photon_rx or rx.mt in keep_mts):
                     continue
 
@@ -552,20 +552,6 @@ class IncidentNeutron(EqualityMixin):
         if 'fission_energy_release' in group:
             fer_group = group['fission_energy_release']
             data.fission_energy = FissionEnergyRelease.from_hdf5(fer_group)
-
-        # Rebuild non-fission heating
-        total_heating = data.reactions.get(301)
-        fission_heating = data.reactions.get(318)
-        if total_heating is not None and fission_heating is not None:
-            non_fission_heating = Reaction(999)
-            non_fission_heating.redundant = True
-            for strT, total in total_heating.xs.items():
-                fission = fission_heating.xs.get(strT)
-                if fission is None:
-                    continue
-                non_fission_heating.xs[strT] = Tabulated1D(
-                    total.x, total.y - fission(total.x))
-            data.reactions[999] = non_fission_heating
 
         return data
 
@@ -744,7 +730,7 @@ class IncidentNeutron(EqualityMixin):
 
         # Instantiate incident neutron data
         data = cls(name, atomic_number, mass_number, metastable,
-                   atomic_weight_ratio, temperature)
+                   atomic_weight_ratio, [temperature])
 
         if (2, 151) in ev.section:
             data.resonances = res.Resonances.from_endf(ev)
@@ -777,9 +763,10 @@ class IncidentNeutron(EqualityMixin):
         for mt, rx in data.reactions.items():
             if mt in (19, 20, 21, 38):
                 if (5, mt) not in ev.section:
-                    neutron = data.reactions[18].products[0]
-                    rx.products[0].applicability = neutron.applicability
-                    rx.products[0].distribution = neutron.distribution
+                    if rx.products:
+                        neutron = data.reactions[18].products[0]
+                        rx.products[0].applicability = neutron.applicability
+                        rx.products[0].distribution = neutron.distribution
 
         # Read fission energy release (requires that we already know nu for
         # fission)
@@ -826,34 +813,6 @@ class IncidentNeutron(EqualityMixin):
             for table in lib.tables[1:]:
                 data.add_temperature_from_ace(table)
 
-            # Add fission energy release data
-            ev = evaluation if evaluation is not None else Evaluation(filename)
-            if (1, 458) in ev.section:
-                data.fission_energy = FissionEnergyRelease.from_endf(ev, data)
-                # Add 318 fission heating data from heatr
-                non_fission_heating = Reaction(999)
-                non_fission_heating.redundant = True
-                fission_heating = Reaction(318)
-
-                heatr_evals = get_evaluations(kwargs["heatr"])
-                for heatr in heatr_evals:
-                    temp = "{}K".format(round(heatr.target["temperature"]))
-                    f318 = StringIO(heatr.section[3, 318])
-                    get_head_record(f318)
-                    _params, fission_kerma = get_tab1_record(f318)
-                    fission_heating.xs[temp] = fission_kerma
-                    total_heating_xs = data.reactions[301].xs.get(temp)
-                    if total_heating_xs is None:
-                        continue
-                    non_fission_heating.xs[temp] = Tabulated1D(
-                        fission_kerma.x,
-                        total_heating_xs(fission_kerma.x) - fission_kerma.y,
-                        breakpoints=fission_kerma.breakpoints,
-                        interpolation=fission_kerma.interpolation)
-
-                data.reactions[318] = fission_heating
-                data.reactions[999] = non_fission_heating
-
             # Add 0K elastic scattering cross section
             if '0K' not in data.energy:
                 pendf = Evaluation(kwargs['pendf'])
@@ -862,6 +821,74 @@ class IncidentNeutron(EqualityMixin):
                 params, xs = get_tab1_record(file_obj)
                 data.energy['0K'] = xs.x
                 data[2].xs['0K'] = xs
+
+            # Add fission energy release data
+            ev = evaluation if evaluation is not None else Evaluation(filename)
+            if (1, 458) in ev.section:
+                data.fission_energy = f = FissionEnergyRelease.from_endf(ev, data)
+            else:
+                f = None
+
+            # For energy deposition, we want to store two different KERMAs:
+            # one calculated assuming outgoing photons deposit their energy
+            # locally, and one calculated assuming they carry their energy
+            # away. This requires two HEATR runs (which make_ace does by
+            # default). Here, we just need to correct for the fact that NJOY
+            # uses a fission heating number of h = EFR, whereas we want:
+            #
+            # 1) h = EFR + EGP + EGD + EB (for local case)
+            # 2) h = EFR + EB (for non-local case)
+            #
+            # The best way to handle this is to subtract off the fission
+            # KERMA that NJOY calculates and add back exactly what we want.
+
+            # If NJOY is not run with HEATR at all, skip everything below
+            if not kwargs["heatr"]:
+                return data
+
+            # Helper function to get a cross section from an ENDF file on a
+            # given energy grid
+            def get_file3_xs(ev, mt, E):
+                file_obj = StringIO(ev.section[3, mt])
+                get_head_record(file_obj)
+                _, xs = get_tab1_record(file_obj)
+                return xs(E)
+
+            heating_local = Reaction(901)
+            heating_local.redundant = True
+
+            heatr_evals = get_evaluations(kwargs["heatr"])
+            heatr_local_evals = get_evaluations(kwargs["heatr"] + "_local")
+            for ev, ev_local in zip(heatr_evals, heatr_local_evals):
+                temp = "{}K".format(round(ev.target["temperature"]))
+
+                # Get total KERMA (originally from ACE file) and energy grid
+                kerma = data.reactions[301].xs[temp]
+                E = kerma.x
+
+                if f is not None:
+                    # Replace fission KERMA with (EFR + EB)*sigma_f
+                    fission = data.reactions[18].xs[temp]
+                    kerma_fission = get_file3_xs(ev, 318, E)
+                    kerma.y = kerma.y - kerma_fission + (
+                        f.fragments(E) + f.betas(E)) * fission.y
+
+                # For local KERMA, we first need to get the values from the
+                # HEATR run with photon energy deposited locally and put
+                # them on the same energy grid
+                kerma_local = get_file3_xs(ev_local, 301, E)
+
+                if f is not None:
+                    # When photons deposit their energy locally, we replace the
+                    # fission KERMA with (EFR + EGP + EGD + EB)*sigma_f
+                    kerma_fission_local = get_file3_xs(ev_local, 318, E)
+                    kerma_local = kerma_local - kerma_fission_local + (
+                        f.fragments(E) + f.prompt_photons(E)
+                        + f.delayed_photons(E) + f.betas(E))*fission.y
+
+                heating_local.xs[temp] = Tabulated1D(E, kerma_local)
+
+            data.reactions[901] = heating_local
 
         return data
 

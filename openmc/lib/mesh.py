@@ -50,7 +50,7 @@ class RegularMesh(_FortranObjectWithID):
 
     This class exposes a mesh that is stored internally in the OpenMC
     library. To obtain a view of a mesh with a given ID, use the
-    :data:`openmc.capi.meshes` mapping.
+    :data:`openmc.lib.meshes` mapping.
 
     Parameters
     ----------

@@ -34,12 +34,12 @@ def centers(request, container):
 
 @pytest.fixture(scope='module')
 def centers_rectangular_prism():
-    min_x = openmc.XPlane(x0=0)
-    max_x = openmc.XPlane(x0=1)
-    min_y = openmc.YPlane(y0=0)
-    max_y = openmc.YPlane(y0=1)
-    min_z = openmc.ZPlane(z0=0)
-    max_z = openmc.ZPlane(z0=1)
+    min_x = openmc.XPlane(0)
+    max_x = openmc.XPlane(1)
+    min_y = openmc.YPlane(0)
+    max_y = openmc.YPlane(1)
+    min_z = openmc.ZPlane(0)
+    max_z = openmc.ZPlane(1)
     region = +min_x & -max_x & +min_y & -max_y & +min_z & -max_z
     return openmc.model.pack_spheres(radius=_RADIUS, region=region,
         pf=_PACKING_FRACTION, initial_pf=0.2)
@@ -48,8 +48,8 @@ def centers_rectangular_prism():
 @pytest.fixture(scope='module')
 def centers_x_cylinder():
     cylinder = openmc.XCylinder(r=1, y0=1, z0=2)
-    min_x = openmc.XPlane(x0=0)
-    max_x = openmc.XPlane(x0=1)
+    min_x = openmc.XPlane(0)
+    max_x = openmc.XPlane(1)
     region = +min_x & -max_x & -cylinder
     return openmc.model.pack_spheres(radius=_RADIUS, region=region,
         pf=_PACKING_FRACTION, initial_pf=0.2)
@@ -58,8 +58,8 @@ def centers_x_cylinder():
 @pytest.fixture(scope='module')
 def centers_y_cylinder():
     cylinder = openmc.YCylinder(r=1, x0=1, z0=2)
-    min_y = openmc.YPlane(y0=0)
-    max_y = openmc.YPlane(y0=1)
+    min_y = openmc.YPlane(0)
+    max_y = openmc.YPlane(1)
     region = +min_y & -max_y & -cylinder
     return openmc.model.pack_spheres(radius=_RADIUS, region=region,
         pf=_PACKING_FRACTION, initial_pf=0.2)
@@ -68,8 +68,8 @@ def centers_y_cylinder():
 @pytest.fixture(scope='module')
 def centers_z_cylinder():
     cylinder = openmc.ZCylinder(r=1, x0=1, y0=2)
-    min_z = openmc.ZPlane(z0=0)
-    max_z = openmc.ZPlane(z0=1)
+    min_z = openmc.ZPlane(0)
+    max_z = openmc.ZPlane(1)
     region = +min_z & -max_z & -cylinder
     return openmc.model.pack_spheres(radius=_RADIUS, region=region,
         pf=_PACKING_FRACTION, initial_pf=0.2)

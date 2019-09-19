@@ -52,9 +52,9 @@ class _PlotBase(Structure):
 
     C-Type Attributes
     -----------------
-    origin : openmc.capi.plot._Position
+    origin : openmc.lib.plot._Position
         A position defining the origin of the plot.
-    width_ : openmc.capi.plot._Position
+    width_ : openmc.lib.plot._Position
         The width of the plot along the x, y, and z axes, respectively
     basis_ : c_int
         The axes basis of the plot view.
@@ -222,7 +222,7 @@ def id_map(plot):
 
     Parameters
     ----------
-    plot : openmc.capi.plot._PlotBase
+    plot : openmc.lib.plot._PlotBase
         Object describing the slice of the model to be generated
 
     Returns
@@ -250,7 +250,7 @@ def property_map(plot):
 
     Parameters
     ----------
-    plot : openmc.capi.plot._PlotBase
+    plot : openmc.lib.plot._PlotBase
         Object describing the slice of the model to be generated
 
     Returns

@@ -527,10 +527,10 @@ class Complement(Region):
     The Complement of an existing :class:`openmc.Region` can be created by using
     the ~ operator as the following example demonstrates:
 
-    >>> xl = openmc.XPlane(x0=-10.0)
-    >>> xr = openmc.XPlane(x0=10.0)
-    >>> yl = openmc.YPlane(y0=-10.0)
-    >>> yr = openmc.YPlane(y0=10.0)
+    >>> xl = openmc.XPlane(-10.0)
+    >>> xr = openmc.XPlane(10.0)
+    >>> yl = openmc.YPlane(-10.0)
+    >>> yr = openmc.YPlane(10.0)
     >>> inside_box = +xl & -xr & +yl & -yr
     >>> outside_box = ~inside_box
     >>> type(outside_box)

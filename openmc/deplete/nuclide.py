@@ -17,6 +17,10 @@ from numpy import empty
 
 from openmc.checkvalue import check_type
 
+__all__ = [
+    "DecayTuple", "ReactionTuple", "Nuclide", "FissionYield",
+    "FissionYieldDistribution"]
+
 
 DecayTuple = namedtuple('DecayTuple', 'type target branching_ratio')
 DecayTuple.__doc__ = """\

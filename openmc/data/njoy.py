@@ -71,7 +71,14 @@ broadr / %%%%%%%%%%%%%%%%%%%%%%% Doppler broaden XS %%%%%%%%%%%%%%%%%%%%%%%%%%%%
 _TEMPLATE_HEATR = """
 heatr / %%%%%%%%%%%%%%%%%%%%%%%%% Add heating kerma %%%%%%%%%%%%%%%%%%%%%%%%%%%%
 {nendf} {nheatr_in} {nheatr} /
-{mat} 4 /
+{mat} 4 0 0 0 /
+302 318 402 444 /
+"""
+
+_TEMPLATE_HEATR_LOCAL = """
+heatr / %%%%%%%%%%%%%%%%% Add heating kerma (local photons) %%%%%%%%%%%%%%%%%%%%
+{nendf} {nheatr_in} {nheatr_local} /
+{mat} 4 0 0 1 /
 302 318 402 444 /
 """
 
@@ -216,8 +223,7 @@ def make_pendf(filename, pendf='pendf', error=0.001, stdout=False):
 
 def make_ace(filename, temperatures=None, acer=True, xsdir=None,
              output_dir=None, pendf=False, error=0.001, broadr=True,
-             heatr=True, gaspr=True, purr=True, evaluation=None,
-             **kwargs):
+             heatr=True, gaspr=True, purr=True, evaluation=None, **kwargs):
     """Generate incident neutron ACE file from an ENDF file
 
     File names can be passed to
@@ -320,7 +326,11 @@ def make_ace(filename, temperatures=None, acer=True, xsdir=None,
     # heatr
     if heatr:
         nheatr_in = nlast
-        nheatr = nheatr_in + 1
+        nheatr_local = nheatr_in + 1
+        tapeout[nheatr_local] = (output_dir / "heatr_local") if heatr is True \
+            else heatr + '_local'
+        commands += _TEMPLATE_HEATR_LOCAL
+        nheatr = nheatr_local + 1
         tapeout[nheatr] = (output_dir / "heatr") if heatr is True else heatr
         commands += _TEMPLATE_HEATR
         nlast = nheatr

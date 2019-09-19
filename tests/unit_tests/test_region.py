@@ -11,8 +11,8 @@ def reset():
 
 
 def test_union(reset):
-    s1 = openmc.XPlane(surface_id=1, x0=5)
-    s2 = openmc.XPlane(surface_id=2, x0=-5)
+    s1 = openmc.XPlane(x0=5, surface_id=1)
+    s2 = openmc.XPlane(x0=-5, surface_id=2)
     region = +s1 | -s2
     assert isinstance(region, openmc.Union)
 
@@ -42,8 +42,8 @@ def test_union(reset):
 
 
 def test_intersection(reset):
-    s1 = openmc.XPlane(surface_id=1, x0=5)
-    s2 = openmc.XPlane(surface_id=2, x0=-5)
+    s1 = openmc.XPlane(x0=5, surface_id=1)
+    s2 = openmc.XPlane(x0=-5, surface_id=2)
     region = -s1 & +s2
     assert isinstance(region, openmc.Intersection)
 
@@ -75,9 +75,9 @@ def test_intersection(reset):
 
 
 def test_complement(reset):
-    zcyl = openmc.ZCylinder(surface_id=1, r=1.)
-    z0 = openmc.ZPlane(surface_id=2, z0=-5.)
-    z1 = openmc.ZPlane(surface_id=3, z0=5.)
+    zcyl = openmc.ZCylinder(r=1., surface_id=1)
+    z0 = openmc.ZPlane(-5., surface_id=2)
+    z1 = openmc.ZPlane(5., surface_id=3)
     outside = +zcyl | -z0 | +z1
     inside = ~outside
     outside_equiv = ~(-zcyl & +z0 & -z1)
@@ -151,8 +151,8 @@ def test_extend_clone():
 def test_from_expression(reset):
     # Create surface dictionary
     s1 = openmc.ZCylinder(surface_id=1)
-    s2 = openmc.ZPlane(surface_id=2, z0=-10.)
-    s3 = openmc.ZPlane(surface_id=3, z0=10.)
+    s2 = openmc.ZPlane(-10., surface_id=2)
+    s3 = openmc.ZPlane(10., surface_id=3)
     surfs = {1: s1, 2: s2, 3: s3}
 
     r = openmc.Region.from_expression('-1 2 -3', surfs)

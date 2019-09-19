@@ -17,7 +17,7 @@ This release of OpenMC adds several major new features: :ref:`depletion
 <usersguide_depletion>`, photon transport, and support for CAD geometries
 through DAGMC. In addition, the core codebase has been rewritten in C++14 (it
 was previously written in Fortran 2008). This makes compiling the code
-cosiderably simpler as no Fortran compiler is needed.
+considerably simpler as no Fortran compiler is needed.
 
 Functional expansion tallies are now supported through several new tally filters
 that can be arbitrarily combined:
@@ -40,6 +40,7 @@ random, non-overlapping configuration of spheres within the region.
 New Features
 ------------
 
+- Support for rectilinear meshes through :class:`openmc.RectilinearMesh`.
 - The :class:`Geometry`, :class:`Materials`, and :class:`Settings` classes now
   have a ``from_xml`` method that will build an instance from an existing XML
   file.
@@ -54,6 +55,34 @@ New Features
 - The :mod:`openmc.data` module now supports reading and sampling from ENDF File
   32 resonance covariance data (`PR 1024
   <https://github.com/openmc-dev/openmc/pull/1024>`_).
+- Several new convenience functions/methods have been added:
+
+  - The :func:`openmc.model.cylinder_from_points` function creates a cylinder
+    given two points passing through its center and a radius.
+  - The :meth:`openmc.Plane.from_points` function creates a plane given three
+    points that pass through it.
+  - The :func:`openmc.model.pin` function creates a pin cell universe given a
+    sequence of concentric cylinders and materials.
+
+------------------
+Python API Changes
+------------------
+
+- All surface classes now have coefficient arguments given as lowercase names.
+- The order of arguments in surface classes has been changed so that
+  coefficients are the first arguments (rather than the optional surface ID).
+  This means you can now write::
+
+      x = openmc.XPlane(5.0, 'reflective')
+      zc = openmc.ZCylinder(0., 0., 10.)
+
+- The ``Mesh`` class has been renamed :class:`openmc.RegularMesh`.
+- The ``get_rectangular_prism`` function has been renamed
+  :func:`openmc.model.rectangular_prism`.
+- The ``get_hexagonal_prism`` function has been renamed
+  :func:`openmc.model.hexagonal_prism`.
+- Python bindings to the C/C++ API have been move from ``openmc.capi`` to
+  :mod:`openmc.lib`.
 
 ---------
 Bug Fixes

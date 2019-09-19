@@ -432,7 +432,8 @@ Particle::cross_surface()
     }
     return;
 
-  } else if (surf->bc_ == BC_REFLECT && (settings::run_mode != RUN_MODE_PLOTTING)) {
+  } else if ((surf->bc_ == BC_REFLECT || surf->bc_ == BC_WHITE) 
+                                    && (settings::run_mode != RUN_MODE_PLOTTING)) {
     // =======================================================================
     // PARTICLE REFLECTS FROM SURFACE
 
@@ -461,10 +462,11 @@ Particle::cross_surface()
       score_surface_tally(this, model::active_meshsurf_tallies);
       this->r() = r;
     }
-
-    // Reflect particle off surface
-    Direction u = surf->reflect(this->r(), this->u());
-
+     
+    Direction u = (surf->bc_ == BC_REFLECT) ?
+      surf->reflect(this->r(), this->u()) :
+      surf->diffuse_reflect(this->r(), this->u());
+    
     // Make sure new particle direction is normalized
     this->u() = u / u.norm();
 

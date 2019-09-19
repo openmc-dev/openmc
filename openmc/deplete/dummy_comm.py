@@ -1,3 +1,5 @@
+import sys
+
 class DummyCommunicator(object):
     rank = 0
     size = 1
@@ -25,3 +27,6 @@ class DummyCommunicator(object):
 
     def scatter(self, sendobj, root=0):
         return sendobj[0]
+
+    def Abort(self, exit_code_or_msg):
+        sys.exit(exit_code_or_msg)

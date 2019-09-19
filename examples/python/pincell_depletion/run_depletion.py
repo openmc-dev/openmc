@@ -132,14 +132,15 @@ settings_file.entropy_mesh = entropy_mesh
 op = openmc.deplete.Operator(geometry, settings_file, chain_file)
 
 # Perform simulation using the predictor algorithm
-openmc.deplete.integrator.predictor(op, time_steps, power)
+integrator = openmc.deplete.PredictorIntegrator(op, time_steps, power)
+integrator.integrate()
 
 ###############################################################################
 #                    Read depletion calculation results
 ###############################################################################
 
 # Open results file
-results = openmc.deplete.ResultsList("depletion_results.h5")
+results = openmc.deplete.ResultsList.from_hdf5("depletion_results.h5")
 
 # Obtain K_eff as a function of time
 time, keff = results.get_eigenvalue()

@@ -43,7 +43,7 @@ class Nuclide(_FortranObject):
 
     This class exposes a nuclide that is stored internally in the OpenMC
     solver. To obtain a view of a nuclide with a given name, use the
-    :data:`openmc.capi.nuclides` mapping.
+    :data:`openmc.lib.nuclides` mapping.
 
     Parameters
     ----------

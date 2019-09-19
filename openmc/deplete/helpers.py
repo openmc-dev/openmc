@@ -5,11 +5,13 @@ from copy import deepcopy
 from itertools import product
 from numbers import Real
 import bisect
+from collections import defaultdict
 
 from numpy import dot, zeros, newaxis
 
+from . import comm
 from openmc.checkvalue import check_type, check_greater_than
-from openmc.capi import (
+from openmc.lib import (
     Tally, MaterialFilter, EnergyFilter, EnergyFunctionFilter)
 from .abc import (
     ReactionRateHelper, EnergyHelper, FissionYieldHelper,
@@ -44,7 +46,7 @@ class DirectReactionRateHelper(ReactionRateHelper):
     def generate_tallies(self, materials, scores):
         """Produce one-group reaction rate tally
 
-        Uses the :mod:`openmc.capi` to generate a tally
+        Uses the :mod:`openmc.lib` to generate a tally
         of relevant reactions across all burnable materials.
 
         Parameters
@@ -156,6 +158,56 @@ class ChainFissionHelper(EnergyHelper):
         self._energy += dot(fission_rates, self._fission_q_vector)
 
 
+class EnergyScoreHelper(EnergyHelper):
+    """Class responsible for obtaining system energy via a tally score
+
+    Parameters
+    ----------
+    score : string
+        Valid score to use when obtaining system energy from OpenMC.
+        Defaults to "heating-local"
+
+    Attributes
+    ----------
+    nuclides : list of str
+        List of nuclides with reaction rates. Not needed, but provided
+        for a consistent API across other :class:`EnergyHelper`
+    energy : float
+        System energy [eV] computed from the tally. Will be zero for
+        all MPI processes that are not the "master" process to avoid
+        artificially increasing the tallied energy.
+    score : str
+        Score used to obtain system energy
+
+    """
+
+    def __init__(self, score="heating-local"):
+        super().__init__()
+        self.score = score
+        self._tally = None
+
+    def prepare(self, *args, **kwargs):
+        """Create a tally for system energy production
+
+        Input arguments are not used, as the only information needed
+        is :attr:`score`
+
+        """
+        self._tally = Tally()
+        self._tally.scores = [self.score]
+
+    def reset(self):
+        """Obtain system energy from tally
+
+        Only the master process, ``comm.rank == 0`` will
+        have a non-zero :attr:`energy` taken from the tally.
+        This avoids accidentally scaling the system power by
+        the number of MPI processes
+        """
+        super().reset()
+        if comm.rank == 0:
+            self._energy = self._tally.results[0, 0, 1]
+
 # ------------------------------------
 # Helper for collapsing fission yields
 # ------------------------------------
@@ -179,9 +231,11 @@ class ConstantFissionYieldHelper(FissionYieldHelper):
 
     Attributes
     ----------
-    constant_yields : dict of str to :class:`openmc.deplete.FissionYield`
+    constant_yields : collections.defaultdict
         Fission yields for all nuclides that only have one set of
-        fission yield data. Can be accessed as ``{parent: {product: yield}}``
+        fission yield data. Dictionary of form ``{str: {str: float}}``
+        representing yields for ``{parent: {product: yield}}``. Default
+        return object is an empty dictionary
     energy : float
         Energy of fission yield libraries.
     """
@@ -237,7 +291,7 @@ class ConstantFissionYieldHelper(FissionYieldHelper):
 
         Returns
         -------
-        library : dict
+        library : collections.defaultdict
             Dictionary of ``{parent: {product: fyield}}``
         """
         return self.constant_yields
@@ -282,6 +336,11 @@ class FissionYieldCutoffHelper(TalliedFissionYieldHelper):
     fast_yields : dict
         Dictionary of the form ``{parent: {product: yield}}``
         with fast yields
+    constant_yields : collections.defaultdict
+        Fission yields for all nuclides that only have one set of
+        fission yield data. Dictionary of form ``{str: {str: float}}``
+        representing yields for ``{parent: {product: yield}}``. Default
+        return object is an empty dictionary
     results : numpy.ndarray
         Array of fission rate fractions with shape
         ``(n_mats, 2, n_nucs)``. ``results[:, 0]``
@@ -362,13 +421,13 @@ class FissionYieldCutoffHelper(TalliedFissionYieldHelper):
     def generate_tallies(self, materials, mat_indexes):
         """Use C API to produce a fission rate tally in burnable materials
 
-        Include a :class:`openmc.capi.EnergyFilter` to tally fission rates
+        Include a :class:`openmc.lib.EnergyFilter` to tally fission rates
         above and below cutoff energy.
 
         Parameters
         ----------
-        materials : iterable of :class:`openmc.capi.Material`
-            Materials to be used in :class:`openmc.capi.MaterialFilter`
+        materials : iterable of :class:`openmc.lib.Material`
+            Materials to be used in :class:`openmc.lib.MaterialFilter`
         mat_indexes : iterable of int
             Indices of tallied materials that will have their fission
             yields computed by this helper. Necessary as the
@@ -417,7 +476,7 @@ class FissionYieldCutoffHelper(TalliedFissionYieldHelper):
 
         Returns
         -------
-        library : dict
+        library : collections.defaultdict
             Dictionary of ``{parent: {product: fyield}}``
         """
         yields = self.constant_yields
@@ -469,9 +528,11 @@ class AveragedFissionYieldHelper(TalliedFissionYieldHelper):
 
     Attributes
     ----------
-    constant_yields : dict of str to :class:`openmc.deplete.FissionYield`
+    constant_yields : collections.defaultdict
         Fission yields for all nuclides that only have one set of
-        fission yield data. Can be accessed as ``{parent: {product: yield}}``
+        fission yield data. Dictionary of form ``{str: {str: float}}``
+        representing yields for ``{parent: {product: yield}}``. Default
+        return object is an empty dictionary
     results : None or numpy.ndarray
         If tallies have been generated and unpacked, then the array will
         have shape ``(n_mats, n_tnucs)``, where ``n_mats`` is the number
@@ -490,8 +551,8 @@ class AveragedFissionYieldHelper(TalliedFissionYieldHelper):
 
         Parameters
         ----------
-        materials : iterable of :class:`openmc.capi.Material`
-            Materials to be used in :class:`openmc.capi.MaterialFilter`
+        materials : iterable of :class:`openmc.lib.Material`
+            Materials to be used in :class:`openmc.lib.MaterialFilter`
         mat_indexes : iterable of int
             Indices of tallied materials that will have their fission
             yields computed by this helper. Necessary as the
@@ -569,12 +630,13 @@ class AveragedFissionYieldHelper(TalliedFissionYieldHelper):
 
         Returns
         -------
-        library : dict
-            Dictionary of ``{parent: {product: fyield}}``
+        library : collections.defaultdict
+            Dictionary of ``{parent: {product: fyield}}``. Default return
+            value is an empty dictionary
         """
         if not self._tally_nucs:
             return self.constant_yields
-        mat_yields = {}
+        mat_yields = defaultdict(dict)
         average_energies = self.results[local_mat_index]
         for avg_e, nuc in zip(average_energies, self._tally_nucs):
             nuc_energies = nuc.yield_energies

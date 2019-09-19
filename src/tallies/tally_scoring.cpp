@@ -192,7 +192,7 @@ double get_nuc_fission_q(const Nuclide& nuc, const Particle* p, int score_bin)
 //! Pulled out to support both the fission_q scores and energy deposition
 //! score
 
-double score_fission_q(const Particle* p, int score_bin, const Tally& tally, 
+double score_fission_q(const Particle* p, int score_bin, const Tally& tally,
   double flux, int i_nuclide, double atom_density)
 {
   if (tally.estimator_ == ESTIMATOR_ANALOG) {
@@ -243,7 +243,7 @@ double score_fission_q(const Particle* p, int score_bin, const Tally& tally,
           }
           
           const Nuclide& nuc {*data::nuclides[j_nuclide]};
-          score += get_nuc_fission_q(nuc, p, score_bin) * atom_density 
+          score += get_nuc_fission_q(nuc, p, score_bin) * atom_density
             * p->neutron_xs_[j_nuclide].fission;
         }
         return score * flux;
@@ -280,7 +280,7 @@ double score_neutron_heating(const Particle* p, const Tally& tally, double flux,
   // Get heating macroscopic "cross section"
   double heating_xs;
   if (i_nuclide >= 0) {
-    const Nuclide& nuc {*data::nuclides[i_nuclide]};    
+    const Nuclide& nuc {*data::nuclides[i_nuclide]};
     heating_xs = get_nuclide_neutron_heating(p, nuc, rxn_bin, i_nuclide);
     if (tally.estimator_ == ESTIMATOR_ANALOG) {
       heating_xs /= p->neutron_xs_[i_nuclide].total;
@@ -1342,10 +1342,10 @@ score_general_ce(Particle* p, int i_tally, int start_index,
       break;
 
 
-    case SCORE_HEATING:
+    case HEATING:
       score = 0.;
       if (p->type_ == Particle::Type::neutron) {
-        score = score_neutron_heating(p, tally, flux, NEUTRON_HEATING,
+        score = score_neutron_heating(p, tally, flux, HEATING,
             i_nuclide, atom_density);
       } else if (p->type_ == Particle::Type::photon) {
         if (tally.estimator_ == ESTIMATOR_ANALOG) {

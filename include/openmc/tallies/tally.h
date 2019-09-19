@@ -98,6 +98,9 @@ public:
   //! (e.g. specific cell, specific energy group, etc.)
   xt::xtensor<double, 3> results_;
 
+  //! True if this tally should be written to statepoint files
+  bool writeable_ {true};
+
   //----------------------------------------------------------------------------
   // Miscellaneous public members.
 

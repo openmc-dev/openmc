@@ -14,7 +14,9 @@ from copy import deepcopy
 from warnings import warn
 from numbers import Real, Integral
 
-from numpy import nonzero, empty, asarray
+from numpy import nonzero, empty, asarray, float64, real
+import scipy.sparse as sp
+import scipy.sparse.linalg as sla
 from uncertainties import ufloat
 
 from openmc.data import DataLibrary, JOULE_PER_EV
@@ -855,3 +857,116 @@ class SIIntegrator(Integrator):
             Results.save(self.operator, [conc], [res_list[-1]], [t, t],
                          p, self._i_res + len(self), proc_time)
             self.operator.write_bos_data(self._i_res + len(self))
+
+
+class DepSystemSolver(ABC):
+    r"""Abstract class for solving depletion equations
+
+    Responsible for solving
+
+    .. math::
+
+        \frac{\partial \vec{N}}{\partial t} = \bar{A}\vec{N}(t),
+
+    for :math:`0< t\leq t +\Delta t`, given :math:`\vec{N}(0) = \vec{N}_0`
+
+    """
+
+    @abstractmethod
+    def __call__(self, A, n0, dt):
+        """Solve the linear system of equations for depletion
+
+        Parameters
+        ----------
+        A : scipy.sparse.csr_matrix
+            Sparse transmutation matrix ``A[j, i]`` desribing rates at
+            which isotope ``i`` transmutes to isotope ``j``
+        n0 : numpy.ndarray
+            Initial compositions, typically given in number of atoms in some
+            material or an atom density
+        dt : float
+            Time [s] of the specific interval to be solved
+
+        Returns
+        -------
+        numpy.ndarray
+            Final compositions after ``dt``. Should be of identical shape
+            to ``n0``.
+
+        """
+
+
+class IPFCramSolver(DepSystemSolver):
+    r"""Abstract class that implements the IPF form of CRAM
+
+    Provides a :meth:`__call__` that utilizes an incomplete
+    partial factorization (IPF) for the Chebyshev Rational Approximation
+    Method (CRAM) [Pusa16]_
+
+    Concrete subclasses must provide two complex vectors :attr:`alpha`
+    and :attr:`theta` that make up the coefficients of the decompostion.
+    Vectors are expected to be of equal length ``N``.
+    Subclases are also expected to provide a coefficient :attr:`alpha0`
+    used in the final scaling step.
+
+    Attributes
+    ----------
+    alpha : numpy.ndarray
+        Complex residues of poles :attr:`theta` in the incomplete partial
+        factorization. Denoted as :math:`\tilde{\alpha}`
+    theta : numpy.ndarray
+        Complex poles :math:`\theta` of the rational approximation
+    alpha0 : float
+        Limit of the approximation at infinity
+
+    References
+    ----------
+
+    .. [Pusa16] M. Pusa, "Higher-Order Chebyshev Rational Approximation
+       Method and Application to Burnup Equations," Nuclear Science And
+       Engineering, 182:3,297-318
+       `DOI: 10.13182/NSE15-26 <https://doi.org/10.13182/NSE15-26>`_
+
+    """
+
+    @property
+    @abstractmethod
+    def alpha(self):
+        pass
+
+    @property
+    @abstractmethod
+    def theta(self):
+        pass
+
+    @property
+    @abstractmethod
+    def alpha0(self):
+        pass
+
+    def __call__(self, A, n0, dt):
+        """Solve depletion equations using IPF CRAM
+
+        Parameters
+        ----------
+        A : scipy.sparse.csr_matrix
+            Sparse transmutation matrix ``A[j, i]`` desribing rates at
+            which isotope ``i`` transmutes to isotope ``j``
+        n0 : numpy.ndarray
+            Initial compositions, typically given in number of atoms in some
+            material or an atom density
+        dt : float
+            Time [s] of the specific interval to be solved
+
+        Returns
+        -------
+        numpy.ndarray
+            Final compositions after ``dt``
+
+        """
+        A = sp.csr_matrix(A * dt, dtype=float64)
+        y = asarray(n0, dtype=float64)
+        ident = sp.eye(A.shape[0])
+        for alpha, theta in zip(self.alpha, self.theta):
+            y += 2*real(alpha*sla.spsolve(A - theta*ident, y))
+        return y * self.alpha0

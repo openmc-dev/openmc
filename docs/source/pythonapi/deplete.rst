@@ -51,14 +51,14 @@ specific to OpenMC is available using the following class:
    Operator
 
 The :class:`Operator` must also have some knowledge of how nuclides transmute
-and decay. This is handled by the :class:`Chain`
+and decay. This is handled by the :class:`Chain`.
 
 Minimal Example
 ---------------
 
 A minimal example for performing depletion would be:
 
-.. code:: Python
+.. code::
 
     >>> import openmc
     >>> import openmc.deplete
@@ -72,7 +72,7 @@ A minimal example for performing depletion would be:
 
     # Set up 5 time steps of one day each
     >>> dt = [24 * 60 * 60] * 5
-    >>> power = 1E6  # constant power of 1 MW
+    >>> power = 1e6  # constant power of 1 MW
 
     # Deplete using mid-point predictor-corrector
     >>> cecm = openmc.deplete.CECMIntegrator(

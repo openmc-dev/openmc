@@ -1221,6 +1221,30 @@ openmc_tally_set_active(int32_t index, bool active)
 }
 
 extern "C" int
+openmc_tally_get_writeable(int32_t index, bool* writeable)
+{
+  if (index < 0 || index >= model::tallies.size()) {
+    set_errmsg("Index in tallies array is out of bounds.");
+    return OPENMC_E_OUT_OF_BOUNDS;
+  }
+  *writeable = model::tallies[index]->writeable_;
+
+  return 0;
+}
+
+extern "C" int
+openmc_tally_set_writeable(int32_t index, bool writeable)
+{
+  if (index < 0 || index >= model::tallies.size()) {
+    set_errmsg("Index in tallies array is out of bounds.");
+    return OPENMC_E_OUT_OF_BOUNDS;
+  }
+  model::tallies[index]->writeable_ = writeable;
+
+  return 0;
+}
+
+extern "C" int
 openmc_tally_get_scores(int32_t index, int** scores, int* n)
 {
   if (index < 0 || index >= model::tallies.size()) {

@@ -256,9 +256,18 @@ def test_tally_activate(capi_simulation_init):
     assert t.active
 
 
+def test_tally_writeable(capi_simulation_init):
+    t = openmc.lib.tallies[1]
+    assert t.writeable
+    t.writeable = False
+    assert not t.writeable
+    # Revert tally to writeable state for capi_run fixtures
+    t.writeable = True
+
+
 def test_tally_results(capi_run):
     t = openmc.lib.tallies[1]
-    assert t.num_realizations == 10  # t was made active in test_tally
+    assert t.num_realizations == 10  # t was made active in test_tally_active
     assert np.all(t.mean >= 0)
     nonzero = (t.mean > 0.0)
     assert np.all(t.std_dev[nonzero] >= 0)

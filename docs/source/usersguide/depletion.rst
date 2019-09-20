@@ -62,7 +62,7 @@ The default energy deposition mode, ``"fission-q"``, instructs the
 :class:`openmc.deplete.Operator` to normalize reaction rates using the product
 of fission reaction rates and fission Q values taken from the depletion chain.
 This approach does not consider indirect contributions to energy deposition,
-including neutron heating or kinetic energy of fission fragments. In doing this,
+such as neutron heating and energy from secondary photons. In doing this,
 the energy deposited during a transport calculation will be lower than expected.
 This causes the reaction rates to be over-adjusted to hit the user-specific power,
 or power density, leading to an over-depletion of burnable materials.
@@ -79,7 +79,7 @@ be, including indirect components. Some examples are provided below::
     chain.export_to_xml("chain_mod_q.xml")
     op = openmc.deplete.Operator(geometry, setting, "chain_mod_q.xml")
 
-    # pass the modified fission Q directly to the operator
+    # alternatively, pass the modified fission Q directly to the operator
     op = openmc.deplete.Operator(geometry, setting, "chain.xml",
         fission_q=fission_q)
 
@@ -132,6 +132,6 @@ transport step.
 
 .. note::
 
-    This will increase the total memory usage and run time due to increased
-    tallies and material definitions.
+    This will increase the total memory usage and run time due to an increased
+    number of tallies and material definitions.
 

@@ -433,11 +433,23 @@ void load_state_point()
         // Read sum, sum_sq, and N for each bin
         std::string name = "tally " + std::to_string(tally->id_);
         hid_t tally_group = open_group(tallies_group, name.c_str());
-        auto& results = tally->results_;
-        read_tally_results(tally_group, results.shape()[0],
-          results.shape()[1], results.data());
-        read_dataset(tally_group, "n_realizations", tally->n_realizations_);
-        close_group(tally_group);
+
+        int internal;
+        if (attribute_exists(tally_group, "internal")) {
+          read_attribute(tally_group, "internal", internal);
+        } else {
+         internal = 0;
+        }
+        if (internal) {
+          tally->writeable_ = false;
+        } else {
+
+          auto& results = tally->results_;
+          read_tally_results(tally_group, results.shape()[0],
+            results.shape()[1], results.data());
+          read_dataset(tally_group, "n_realizations", tally->n_realizations_);
+          close_group(tally_group);
+        }
       }
 
       close_group(tallies_group);
@@ -705,6 +717,7 @@ void write_tally_results_nr(hid_t file_id)
   for (const auto& t : model::tallies) {
     // Skip any tallies that are not active
     if (!t->active_) continue;
+    if (!t->writeable_) continue;
 
     if (mpi::master && !object_exists(file_id, "tallies_present")) {
       write_attribute(file_id, "tallies_present", 1);

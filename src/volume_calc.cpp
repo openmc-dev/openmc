@@ -311,21 +311,19 @@ void VolumeCalculation::to_hdf5(const std::string& filename,
     // Create array of nuclide names from the vector
     auto n_nuc = result.nuclides.size();
 
-    if (!result.nuclides.empty()) {
-      std::vector<std::string> nucnames;
-      for (int i_nuc : result.nuclides) {
-        nucnames.push_back(data::nuclides[i_nuc]->name_);
-      }
-
-      // Create array of total # of atoms with uncertainty for each nuclide
-      xt::xtensor<double, 2> atom_data({n_nuc, 2});
-      xt::view(atom_data, xt::all(), 0) = xt::adapt(result.atoms);
-      xt::view(atom_data, xt::all(), 1) = xt::adapt(result.uncertainty);
-
-      // Write results
-      write_dataset(group_id, "nuclides", nucnames);
-      write_dataset(group_id, "atoms", atom_data);
+    std::vector<std::string> nucnames;
+    for (int i_nuc : result.nuclides) {
+      nucnames.push_back(data::nuclides[i_nuc]->name_);
     }
+
+    // Create array of total # of atoms with uncertainty for each nuclide
+    xt::xtensor<double, 2> atom_data({n_nuc, 2});
+    xt::view(atom_data, xt::all(), 0) = xt::adapt(result.atoms);
+    xt::view(atom_data, xt::all(), 1) = xt::adapt(result.uncertainty);
+
+    // Write results
+    write_dataset(group_id, "nuclides", nucnames);
+    write_dataset(group_id, "atoms", atom_data);
 
     close_group(group_id);
   }

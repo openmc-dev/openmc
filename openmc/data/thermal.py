@@ -600,6 +600,8 @@ class ThermalScattering(EqualityMixin):
 
         # Get new name that is GND-consistent
         ace_name, xs = ace.name.split('.')
+        if not xs.endswith('t'):
+            raise TypeError("{} is not a thermal scattering ACE table.".format(ace))
         name = get_thermal_name(ace_name)
 
         # Assign temperature to the running list

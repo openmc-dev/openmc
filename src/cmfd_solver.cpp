@@ -3,6 +3,9 @@
 #include <vector>
 #include <cmath>
 
+#ifdef _OPENMP
+#include <omp.h>
+#endif
 #include "xtensor/xtensor.hpp"
 
 #include "openmc/error.h"
@@ -28,6 +31,10 @@ double spectral;
 int nx, ny, nz, ng;
 
 xt::xtensor<int, 2> indexmap;
+
+int n_threads;
+
+int n_threads_reset;
 
 } // namespace cmfd
 
@@ -101,7 +108,7 @@ int cmfd_linsolver_1g(const double* A_data, const double* b, double* x,
     for (int irb = 0; irb < 2; irb++) {
 
       // Loop around matrix rows
-      #pragma omp parallel for reduction (+:err)
+      #pragma omp parallel for reduction (+:err) num_threads(cmfd::n_threads)
       for (int irow = 0; irow < cmfd::dim; irow++) {
         int g, i, j, k;
         matrix_to_indices(irow, g, i, j, k);
@@ -168,7 +175,7 @@ int cmfd_linsolver_2g(const double* A_data, const double* b, double* x,
     for (int irb = 0; irb < 2; irb++) {
 
       // Loop around matrix rows
-      #pragma omp parallel for reduction (+:err)
+      #pragma omp parallel for reduction (+:err) num_threads(cmfd::n_threads)
       for (int irow = 0; irow < cmfd::dim; irow+=2) {
         int g, i, j, k;
         matrix_to_indices(irow, g, i, j, k);
@@ -304,7 +311,7 @@ extern "C"
 void openmc_initialize_linsolver(const int* indptr, int len_indptr,
                                  const int* indices, int n_elements, int dim,
                                  double spectral, const int* cmfd_indices,
-                                 const int* map)
+                                 const int* map, int n_threads)
 {
   // Store elements of indptr
   for (int i = 0; i < len_indptr; i++)
@@ -331,6 +338,13 @@ void openmc_initialize_linsolver(const int* indptr, int len_indptr,
     cmfd::indexmap.resize({static_cast<size_t>(dim), 3});
     set_indexmap(map);
   }
+
+#ifdef _OPENMP
+  // Set number of threads to run CMFD solver on and store number of threads
+  // to reset to after solver finishes executing
+  cmfd::n_threads = n_threads;
+  cmfd::n_threads_reset = omp_get_max_threads(); 
+#endif
 }
 
 //==============================================================================
@@ -342,14 +356,20 @@ extern "C"
 int openmc_run_linsolver(const double* A_data, const double* b, double* x,
                          double tol)
 {
+  int result;
+
   switch (cmfd::ng) {
   case 1:
-    return cmfd_linsolver_1g(A_data, b, x, tol);
+    result = cmfd_linsolver_1g(A_data, b, x, tol);
+    break;
   case 2:
-    return cmfd_linsolver_2g(A_data, b, x, tol);
+    result = cmfd_linsolver_2g(A_data, b, x, tol);
+    break;
   default:
-    return cmfd_linsolver_ng(A_data, b, x, tol);
+    result = cmfd_linsolver_ng(A_data, b, x, tol);
+    break;
   }
+  return result;
 }
 
 void free_memory_cmfd()

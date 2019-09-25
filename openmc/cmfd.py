@@ -196,7 +196,7 @@ class CMFDRun(object):
     ----------
     tally_begin : int
         Batch number at which CMFD tallies should begin accummulating
-    cmfd_begin: int
+    solver_begin: int
         Batch number at which CMFD solver should start executing
     ref_d : list of floats
         List of reference diffusion coefficients to fix CMFD parameters to
@@ -307,8 +307,8 @@ class CMFDRun(object):
         """
         # Variables that users can modify
         self._tally_begin = 1
-        self._cmfd_begin = 1
-        self._ref_d = []
+        self._solver_begin = 1
+        self._ref_d = np.array([])
         self._display = {'balance': False, 'dominance': False,
                          'entropy': False, 'source': False}
         self._downscatter = False
@@ -328,6 +328,7 @@ class CMFDRun(object):
         self._window_type = 'none'
         self._window_size = 10
         self._intracomm = None
+        self._n_threads = 1
 
         # External variables used during runtime but users cannot control
         self._set_reference_params = False
@@ -413,8 +414,8 @@ class CMFDRun(object):
         return self._tally_begin
 
     @property
-    def cmfd_begin(self):
-        return self._cmfd_begin
+    def solver_begin(self):
+        return self._solver_begin
 
     @property
     def ref_d(self):
@@ -493,6 +494,10 @@ class CMFDRun(object):
         return self._indices
 
     @property
+    def n_threads(self):
+        return self._n_threads
+
+    @property
     def cmfd_src(self):
         return self._cmfd_src
 
@@ -522,11 +527,12 @@ class CMFDRun(object):
         check_greater_than('CMFD tally begin batch', begin, 0)
         self._tally_begin = begin
 
-    @cmfd_begin.setter
-    def cmfd_begin(self, begin):
+    @solver_begin.setter
+    def solver_begin(self, begin):
         check_type('CMFD feedback begin batch', begin, Integral)
         check_greater_than('CMFD feedback begin batch', begin, 0)
-        self._cmfd_begin = begin
+        self._solver_begin = begin
+
 
     @ref_d.setter
     def ref_d(self, diff_params):
@@ -677,6 +683,12 @@ class CMFDRun(object):
         check_length('Gauss-Seidel tolerance', gauss_seidel_tolerance, 2)
         self._gauss_seidel_tolerance = gauss_seidel_tolerance
 
+    @n_threads.setter
+    def n_threads(self, n_threads):
+        check_type('CMFD number of threads', n_threads, Integral)
+        check_greater_than('CMFD number of threads', n_threads, 0)
+        self._n_threads = n_threads
+
     def run(self, **kwargs):
         """Run OpenMC with coarse mesh finite difference acceleration
 
@@ -692,7 +704,8 @@ class CMFDRun(object):
         """
         with self.run_in_memory(**kwargs):
             for _ in self.iter_batches():
-                pass
+                print('done')
+                #pass
 
     @contextmanager
     def run_in_memory(self, **kwargs):
@@ -787,6 +800,7 @@ class CMFDRun(object):
 
         # Run next batch
         status = openmc.capi.next_batch()
+        print('2')
 
         # Perform CMFD calculations
         self._execute_cmfd()
@@ -848,7 +862,7 @@ class CMFDRun(object):
                     cmfd_group = f.create_group("cmfd")
                     cmfd_group.attrs['cmfd_on'] = self._cmfd_on
                     cmfd_group.attrs['feedback'] = self._feedback
-                    cmfd_group.attrs['cmfd_begin'] = self._cmfd_begin
+                    cmfd_group.attrs['solver_begin'] = self._solver_begin
                     cmfd_group.attrs['mesh_id'] = self._mesh_id
                     cmfd_group.attrs['tally_begin'] = self._tally_begin
                     cmfd_group.attrs['time_cmfd'] = self._time_cmfd
@@ -904,7 +918,7 @@ class CMFDRun(object):
 
         args = temp_loss.indptr, len(temp_loss.indptr), \
             temp_loss.indices, len(temp_loss.indices), n, \
-            self._spectral, self._indices, coremap
+            self._spectral, self._indices, coremap, self._n_threads
         return openmc.capi._dll.openmc_initialize_linsolver(*args)
 
     def _write_cmfd_output(self):
@@ -933,9 +947,9 @@ class CMFDRun(object):
         """Write CMFD timing stats to buffer after finalizing simulation"""
         outstr = ("=====================>     "
                   "CMFD TIMING STATISTICS     <====================\n\n"
-                  "   Time in CMFD                    =  {:.5E} seconds\n"
-                  "     Building matrices             =  {:.5E} seconds\n"
-                  "     Solving matrices              =  {:.5E} seconds\n")
+                  "   Time in CMFD                    =  {:.5e} seconds\n"
+                  "     Building matrices             =  {:.5e} seconds\n"
+                  "     Solving matrices              =  {:.5e} seconds\n")
         print(outstr.format(self._time_cmfd, self._time_cmfdbuild,
                             self._time_cmfdsolve))
         sys.stdout.flush()
@@ -999,7 +1013,7 @@ class CMFDRun(object):
                                         dtype=int)
 
         # Check CMFD tallies accummulated before feedback turned on
-        if self._feedback and self._cmfd_begin < self._tally_begin:
+        if self._feedback and self._solver_begin < self._tally_begin:
             raise ValueError('Tally begin must be less than or equal to '
                              'CMFD begin')
 
@@ -1058,7 +1072,7 @@ class CMFDRun(object):
                 # Define variables that exist on all processes
                 self._cmfd_on = cmfd_group.attrs['cmfd_on']
                 self._feedback = cmfd_group.attrs['feedback']
-                self._cmfd_begin = cmfd_group.attrs['cmfd_begin']
+                self._solver_begin = cmfd_group.attrs['solver_begin']
                 self._tally_begin = cmfd_group.attrs['tally_begin']
                 self._k_cmfd = list(cmfd_group['k_cmfd'])
                 self._dom = list(cmfd_group['dom'])
@@ -1122,7 +1136,7 @@ class CMFDRun(object):
         current_batch = openmc.capi.current_batch() + 1
 
         # Check to activate CMFD solver and possible feedback
-        if self._cmfd_begin == current_batch:
+        if self._solver_begin == current_batch:
             self._cmfd_on = True
 
         # Check to reset tallies
@@ -1436,7 +1450,7 @@ class CMFDRun(object):
         source_energies = openmc.capi.source_bank()['E']
 
         # Convert xyz location to the CMFD mesh index
-        mesh_ijk = np.floor((source_xyz-m.lower_left)/m.width).astype(int)
+        mesh_ijk = np.floor((source_xyz - m.lower_left)/m.width).astype(int)
 
         # Determine which energy bin each particle's energy belongs to
         # Separate into cases bases on where source energies lies on egrid
@@ -1455,10 +1469,10 @@ class CMFDRun(object):
                 mesh_ijk[:,0], mesh_ijk[:,1], mesh_ijk[:,2], energy_bins]
 
         if openmc.capi.master() and np.any(source_energies < energy[0]):
-            print(' WARNING: Source pt below energy grid')
+            print(' WARNING: Source point below energy grid')
             sys.stdout.flush()
         if openmc.capi.master() and np.any(source_energies > energy[-1]):
-            print(' WARNING: Source pt above energy grid')
+            print(' WARNING: Source point above energy grid')
             sys.stdout.flush()
 
     def _count_bank_sites(self):
@@ -1814,8 +1828,8 @@ class CMFDRun(object):
         if self._power_monitor and openmc.capi.master():
             str1 = ' {:d}:'.format(iter)
             str2 = 'k-eff: {:0.8f}'.format(k_n)
-            str3 = 'k-error:  {:.5E}'.format(kerr)
-            str4 = 'src-error:  {:.5E}'.format(serr)
+            str3 = 'k-error:  {:.5e}'.format(kerr)
+            str4 = 'src-error:  {:.5e}'.format(serr)
             str5 = '  {:d}'.format(innerits)
             print('{:8s}{:20s}{:25s}{:s}{:s}'.format(str1, str2, str3, str4,
                                                      str5))
@@ -1898,11 +1912,12 @@ class CMFDRun(object):
         self._flux_rate = np.append(self._flux_rate, reshape_flux, axis=4)
 
         # Compute flux as aggregate of banked flux_rate over tally window
-        self._flux = np.where(is_accel[...,np.newaxis],
+        self._flux = np.where(is_accel[..., np.newaxis],
                               np.sum(self._flux_rate, axis=4), 0.0)
 
         # Detect zero flux, abort if located and cmfd is on
-        zero_flux = np.logical_and(self._flux < _TINY_BIT, is_accel[...,np.newaxis])
+        zero_flux = np.logical_and(self._flux < _TINY_BIT,
+                                   is_accel[..., np.newaxis])
         if np.any(zero_flux) and self._cmfd_on:
             # Get index of first zero flux in flux array
             idx = np.argwhere(zero_flux)[0]
@@ -2033,7 +2048,7 @@ class CMFDRun(object):
                                        axis=5)
 
         # Compute current as aggregate of banked current_rate over tally window
-        self._current = np.where(is_accel[...,np.newaxis,np.newaxis], 
+        self._current = np.where(is_accel[..., np.newaxis, np.newaxis], 
                                  np.sum(self._current_rate, axis=5), 0.0)
 
         # Get p1 scatter rr from CMFD tally 3
@@ -2142,12 +2157,12 @@ class CMFDRun(object):
 
         # Compute scattering rr by broadcasting flux in outgoing energy and
         # summing over incoming energy
-        scattering = np.sum(self._scattxs * self._flux[:,:,:,:,np.newaxis],
+        scattering = np.sum(self._scattxs * self._flux[:,:,:,:, np.newaxis],
                             axis=3)
 
         # Compute fission rr by broadcasting flux in outgoing energy and
         # summing over incoming energy
-        fission = np.sum(self._nfissxs * self._flux[:,:,:,:,np.newaxis],
+        fission = np.sum(self._nfissxs * self._flux[:,:,:,:, np.newaxis],
                          axis=3)
 
         # Compute residual
@@ -2187,11 +2202,11 @@ class CMFDRun(object):
         self._dhat = np.zeros((nx, ny, nz, ng, 6))
 
         # Set reference diffusion parameters
-        if list(self._ref_d):
+        if self._ref_d.size > 0:
             self._set_reference_params = True
             # Check length of reference diffusion parameters equal to number of
             # energy groups
-            if len(self._ref_d) != self._indices[3]:
+            if self._ref_d.size != self._indices[3]:
                 raise OpenMCError('Number of reference diffusion parameters '
                                   'must equal number of CMFD energy groups')
 

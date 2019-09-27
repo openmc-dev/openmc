@@ -539,7 +539,7 @@ class TalliedFissionYieldHelper(FissionYieldHelper):
 
         # Tally group-wise fission reaction rates
         self._fission_rate_tally = Tally()
-        self._fission_rate_tally.writeable = False
+        self._fission_rate_tally.writable = False
         self._fission_rate_tally.scores = ['fission']
 
         self._fission_rate_tally.filters = [MaterialFilter(materials)]

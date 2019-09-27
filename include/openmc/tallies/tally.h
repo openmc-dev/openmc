@@ -37,6 +37,8 @@ public:
 
   void set_active(bool active) { active_ = active; }
 
+  void set_writable(bool writable) { writable_ = writable; }
+
   void set_scores(pugi::xml_node node);
 
   void set_scores(const std::vector<std::string>& scores);
@@ -54,6 +56,8 @@ public:
   int32_t strides(int i) const {return strides_[i];}
 
   int32_t n_filter_bins() const {return n_filter_bins_;}
+
+  bool get_writable() const { return writable_;}
 
   //----------------------------------------------------------------------------
   // Other methods.

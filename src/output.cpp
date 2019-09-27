@@ -643,7 +643,7 @@ write_tallies()
     if (!tally.name_.empty()) tally_header += ": " + tally.name_;
     tallies_out << header(tally_header) << "\n\n";
 
-    if (!tally.writeable_) {
+    if (!tally.writable_) {
       tallies_out << " Internal\n\n";
       continue;
     }

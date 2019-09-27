@@ -171,7 +171,7 @@ openmc_statepoint_write(const char* filename, bool* write_source)
 
         write_dataset(tally_group, "name",  tally->name_);
 
-        if (tally->writeable_) {
+        if (tally->writable_) {
           write_attribute(tally_group, "internal", 0);
         } else {
           write_attribute(tally_group, "internal", 1);
@@ -239,7 +239,7 @@ openmc_statepoint_write(const char* filename, bool* write_source)
 
         // Write all tally results
         for (const auto& tally : model::tallies) {
-          if (!tally->writeable_) continue;
+          if (!tally->writable_) continue;
           // Write sum and sum_sq for each bin
           std::string name = "tally " + std::to_string(tally->id_);
           hid_t tally_group = open_group(tallies_group, name.c_str());
@@ -434,14 +434,12 @@ void load_state_point()
         std::string name = "tally " + std::to_string(tally->id_);
         hid_t tally_group = open_group(tallies_group, name.c_str());
 
-        int internal;
+        int internal=0;
         if (attribute_exists(tally_group, "internal")) {
           read_attribute(tally_group, "internal", internal);
-        } else {
-         internal = 0;
         }
         if (internal) {
-          tally->writeable_ = false;
+          tally->writable_ = false;
         } else {
 
           auto& results = tally->results_;
@@ -717,7 +715,7 @@ void write_tally_results_nr(hid_t file_id)
   for (const auto& t : model::tallies) {
     // Skip any tallies that are not active
     if (!t->active_) continue;
-    if (!t->writeable_) continue;
+    if (!t->writable_) continue;
 
     if (mpi::master && !object_exists(file_id, "tallies_present")) {
       write_attribute(file_id, "tallies_present", 1);

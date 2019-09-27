@@ -139,18 +139,6 @@ The following functions are used to solve the depletion equations, with
    cram.deplete
    cram.timed_deplete
 
-
-:func:`cram.CRAM16` and :func:`cram.CRAM48` are aliases to the ``__call__``
-methods for the following classes
-
-.. autosummary::
-   :toctree: generated
-   :nosignatures:
-   :template: mycallable.rst
-
-   cram.Cram16Solver
-   cram.Cram48Solver
-
 The following classes are used to help the :class:`openmc.deplete.Operator`
 compute quantities like effective fission yields, reaction rates, and
 total system energy.

@@ -256,13 +256,13 @@ def test_tally_activate(lib_simulation_init):
     assert t.active
 
 
-def test_tally_writeable(lib_simulation_init):
+def test_tally_writable(lib_simulation_init):
     t = openmc.lib.tallies[1]
-    assert t.writeable
-    t.writeable = False
-    assert not t.writeable
-    # Revert tally to writeable state for lib_run fixtures
-    t.writeable = True
+    assert t.writable
+    t.writable = False
+    assert not t.writable
+    # Revert tally to writable state for lib_run fixtures
+    t.writable = True
 
 
 def test_tally_results(lib_run):

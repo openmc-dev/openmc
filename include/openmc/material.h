@@ -120,7 +120,7 @@ public:
   //! Assign a unique ID to the material
   //! \param[in] Unique ID to assign. A value of -1 indicates that an ID
   //!   should be automatically assigned.
-  void set_id(int32_t id);
+  void set_id(int32_t id = -1);
 
   //! Get whether material is fissionable
   //! \return Whether material is fissionable
@@ -132,7 +132,7 @@ public:
 
   //----------------------------------------------------------------------------
   // Data
-  int32_t id_; //!< Unique ID
+  int32_t id_ {-1}; //!< Unique ID
   std::string name_; //!< Name of material
   std::vector<int> nuclide_; //!< Indices in nuclides vector
   std::vector<int> element_; //!< Indices in elements vector

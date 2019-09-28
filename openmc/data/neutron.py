@@ -588,6 +588,9 @@ class IncidentNeutron(EqualityMixin):
 
         # If mass number hasn't been specified, make an educated guess
         zaid, xs = ace.name.split('.')
+        if not xs.endswith('c'):
+            raise TypeError(
+                "{} is not a continuous-energy neutron ACE table.".format(ace))
         name, element, Z, mass_number, metastable = \
             get_metadata(int(zaid), metastable_scheme)
 

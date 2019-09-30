@@ -185,8 +185,8 @@ OpenMC simulations back on to the :class:`abc.TransportOperator`
    abc.ReactionRateHelper
    abc.TalliedFissionYieldHelper
 
-Custom integrators can be developed by subclassing from the following abstract
-base classes:
+Custom integrators or depletion solvers can be developed by subclassing from
+the following abstract base classes:
 
 .. autosummary::
    :toctree: generated
@@ -195,3 +195,5 @@ base classes:
 
    abc.Integrator
    abc.SIIntegrator
+   abc.DepSystemSolver
+   abc.IPFCramSolver

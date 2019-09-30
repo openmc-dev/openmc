@@ -1227,7 +1227,7 @@ openmc_tally_get_writable(int32_t index, bool* writable)
     set_errmsg("Index in tallies array is out of bounds.");
     return OPENMC_E_OUT_OF_BOUNDS;
   }
-  *writable = model::tallies[index]->get_writable();
+  *writable = model::tallies[index]->writable();
 
   return 0;
 }

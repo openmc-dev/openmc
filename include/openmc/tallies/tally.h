@@ -57,7 +57,7 @@ public:
 
   int32_t n_filter_bins() const {return n_filter_bins_;}
 
-  bool get_writable() const { return writable_;}
+  bool writable() const { return writable_;}
 
   //----------------------------------------------------------------------------
   // Other methods.

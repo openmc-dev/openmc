@@ -120,7 +120,7 @@ public:
   //! Assign a unique ID to the material
   //! \param[in] Unique ID to assign. A value of -1 indicates that an ID
   //!   should be automatically assigned.
-  void set_id(int32_t id = -1);
+  void set_id(int32_t id);
 
   //! Get whether material is fissionable
   //! \return Whether material is fissionable

@@ -110,6 +110,7 @@ extern "C" {
   int openmc_tally_get_nuclides(int32_t index, int** nuclides, int* n);
   int openmc_tally_get_scores(int32_t index, int** scores, int* n);
   int openmc_tally_get_type(int32_t index, int32_t* type);
+  int openmc_tally_get_writable(int32_t index, bool* writable);
   int openmc_tally_reset(int32_t index);
   int openmc_tally_results(int32_t index, double** ptr, size_t shape_[3]);
   int openmc_tally_set_active(int32_t index, bool active);
@@ -119,6 +120,7 @@ extern "C" {
   int openmc_tally_set_nuclides(int32_t index, int n, const char** nuclides);
   int openmc_tally_set_scores(int32_t index, int n, const char** scores);
   int openmc_tally_set_type(int32_t index, const char* type);
+  int openmc_tally_set_writable(int32_t index, bool writable);
   int openmc_zernike_filter_get_order(int32_t index, int* order);
   int openmc_zernike_filter_get_params(int32_t index, double* x, double* y, double* r);
   int openmc_zernike_filter_set_order(int32_t index, int order);

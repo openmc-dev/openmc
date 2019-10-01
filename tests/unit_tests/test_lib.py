@@ -50,24 +50,24 @@ def pincell_model():
 
 
 @pytest.fixture(scope='module')
-def capi_init(pincell_model, mpi_intracomm):
+def lib_init(pincell_model, mpi_intracomm):
     openmc.lib.init(intracomm=mpi_intracomm)
     yield
     openmc.lib.finalize()
 
 
 @pytest.fixture(scope='module')
-def capi_simulation_init(capi_init):
+def lib_simulation_init(lib_init):
     openmc.lib.simulation_init()
     yield
 
 
 @pytest.fixture(scope='module')
-def capi_run(capi_simulation_init):
+def lib_run(lib_simulation_init):
     openmc.lib.run()
 
 
-def test_cell_mapping(capi_init):
+def test_cell_mapping(lib_init):
     cells = openmc.lib.cells
     assert isinstance(cells, Mapping)
     assert len(cells) == 3
@@ -76,7 +76,7 @@ def test_cell_mapping(capi_init):
         assert cell_id == cell.id
 
 
-def test_cell(capi_init):
+def test_cell(lib_init):
     cell = openmc.lib.cells[1]
     assert isinstance(cell.fill, openmc.lib.Material)
     cell.fill = openmc.lib.materials[1]
@@ -85,7 +85,7 @@ def test_cell(capi_init):
     cell.name = "Not fuel"
     assert cell.name == "Not fuel"
 
-def test_cell_temperature(capi_init):
+def test_cell_temperature(lib_init):
     cell = openmc.lib.cells[1]
     cell.set_temperature(100.0, 0)
     assert cell.get_temperature(0) == 100.0
@@ -93,7 +93,7 @@ def test_cell_temperature(capi_init):
     assert cell.get_temperature() == 200.0
 
 
-def test_new_cell(capi_init):
+def test_new_cell(lib_init):
     with pytest.raises(exc.AllocationError):
         openmc.lib.Cell(1)
     new_cell = openmc.lib.Cell()
@@ -101,7 +101,7 @@ def test_new_cell(capi_init):
     assert len(openmc.lib.cells) == 5
 
 
-def test_material_mapping(capi_init):
+def test_material_mapping(lib_init):
     mats = openmc.lib.materials
     assert isinstance(mats, Mapping)
     assert len(mats) == 3
@@ -110,7 +110,7 @@ def test_material_mapping(capi_init):
         assert mat_id == mat.id
 
 
-def test_material(capi_init):
+def test_material(lib_init):
     m = openmc.lib.materials[3]
     assert m.nuclides == ['H1', 'O16', 'B10', 'B11']
 
@@ -136,14 +136,14 @@ def test_material(capi_init):
     m.name = "Not hot borated water"
     assert m.name == "Not hot borated water"
 
-def test_material_add_nuclide(capi_init):
+def test_material_add_nuclide(lib_init):
     m = openmc.lib.materials[3]
     m.add_nuclide('Xe135', 1e-12)
     assert m.nuclides[-1] == 'Xe135'
     assert m.densities[-1] == 1e-12
 
 
-def test_new_material(capi_init):
+def test_new_material(lib_init):
     with pytest.raises(exc.AllocationError):
         openmc.lib.Material(1)
     new_mat = openmc.lib.Material()
@@ -151,7 +151,7 @@ def test_new_material(capi_init):
     assert len(openmc.lib.materials) == 5
 
 
-def test_nuclide_mapping(capi_init):
+def test_nuclide_mapping(lib_init):
     nucs = openmc.lib.nuclides
     assert isinstance(nucs, Mapping)
     assert len(nucs) == 13
@@ -160,7 +160,7 @@ def test_nuclide_mapping(capi_init):
         assert name == nuc.name
 
 
-def test_settings(capi_init):
+def test_settings(lib_init):
     settings = openmc.lib.settings
     assert settings.batches == 10
     settings.batches = 10
@@ -175,7 +175,7 @@ def test_settings(capi_init):
     settings.run_mode = 'eigenvalue'
 
 
-def test_tally_mapping(capi_init):
+def test_tally_mapping(lib_init):
     tallies = openmc.lib.tallies
     assert isinstance(tallies, Mapping)
     assert len(tallies) == 3
@@ -184,7 +184,7 @@ def test_tally_mapping(capi_init):
         assert tally_id == tally.id
 
 
-def test_energy_function_filter(capi_init):
+def test_energy_function_filter(lib_init):
     """Test special __new__ and __init__ for EnergyFunctionFilter"""
     efunc = openmc.lib.EnergyFunctionFilter([0.0, 1.0], [0.0, 2.0])
     assert len(efunc.energy) == 2
@@ -193,7 +193,7 @@ def test_energy_function_filter(capi_init):
     assert (efunc.y == [0.0, 2.0]).all()
 
 
-def test_tally(capi_init):
+def test_tally(lib_init):
     t = openmc.lib.tallies[1]
     assert t.type == 'volume'
     assert len(t.filters) == 2
@@ -239,7 +239,7 @@ def test_tally(capi_init):
     assert len(t3_f.y) == 3
 
 
-def test_new_tally(capi_init):
+def test_new_tally(lib_init):
     with pytest.raises(exc.AllocationError):
         openmc.lib.Material(1)
     new_tally = openmc.lib.Tally()
@@ -249,16 +249,25 @@ def test_new_tally(capi_init):
     assert len(openmc.lib.tallies) == 5
 
 
-def test_tally_activate(capi_simulation_init):
+def test_tally_activate(lib_simulation_init):
     t = openmc.lib.tallies[1]
     assert not t.active
     t.active = True
     assert t.active
 
 
-def test_tally_results(capi_run):
+def test_tally_writable(lib_simulation_init):
     t = openmc.lib.tallies[1]
-    assert t.num_realizations == 10  # t was made active in test_tally
+    assert t.writable
+    t.writable = False
+    assert not t.writable
+    # Revert tally to writable state for lib_run fixtures
+    t.writable = True
+
+
+def test_tally_results(lib_run):
+    t = openmc.lib.tallies[1]
+    assert t.num_realizations == 10  # t was made active in test_tally_active
     assert np.all(t.mean >= 0)
     nonzero = (t.mean > 0.0)
     assert np.all(t.std_dev[nonzero] >= 0)
@@ -269,26 +278,26 @@ def test_tally_results(capi_run):
     assert t2.mean.size == (n + 1) * (n + 2) // 2 * 3 # Number of Zernike coeffs * 3 cells
 
 
-def test_global_tallies(capi_run):
+def test_global_tallies(lib_run):
     assert openmc.lib.num_realizations() == 5
     gt = openmc.lib.global_tallies()
     for mean, std_dev in gt:
         assert mean >= 0
 
 
-def test_statepoint(capi_run):
+def test_statepoint(lib_run):
     openmc.lib.statepoint_write('test_sp.h5')
     assert os.path.exists('test_sp.h5')
 
 
-def test_source_bank(capi_run):
+def test_source_bank(lib_run):
     source = openmc.lib.source_bank()
     assert np.all(source['E'] > 0.0)
     assert np.all(source['wgt'] == 1.0)
     assert np.allclose(np.linalg.norm(source['u'], axis=1), 1.0)
 
 
-def test_by_batch(capi_run):
+def test_by_batch(lib_run):
     openmc.lib.hard_reset()
 
     # Running next batch before simulation is initialized should raise an
@@ -313,7 +322,7 @@ def test_by_batch(capi_run):
         openmc.lib.simulation_finalize()
 
 
-def test_reset(capi_run):
+def test_reset(lib_run):
     # Init and run 10 batches.
     openmc.lib.hard_reset()
     openmc.lib.simulation_init()
@@ -344,7 +353,7 @@ def test_reset(capi_run):
         openmc.lib.simulation_finalize()
 
 
-def test_reproduce_keff(capi_init):
+def test_reproduce_keff(lib_init):
     # Get k-effective after run
     openmc.lib.hard_reset()
     openmc.lib.run()
@@ -357,7 +366,7 @@ def test_reproduce_keff(capi_init):
     assert keff0 == pytest.approx(keff1)
 
 
-def test_find_cell(capi_init):
+def test_find_cell(lib_init):
     cell, instance = openmc.lib.find_cell((0., 0., 0.))
     assert cell is openmc.lib.cells[1]
     cell, instance = openmc.lib.find_cell((0.4, 0., 0.))
@@ -366,14 +375,14 @@ def test_find_cell(capi_init):
         openmc.lib.find_cell((100., 100., 100.))
 
 
-def test_find_material(capi_init):
+def test_find_material(lib_init):
     mat = openmc.lib.find_material((0., 0., 0.))
     assert mat is openmc.lib.materials[1]
     mat = openmc.lib.find_material((0.4, 0., 0.))
     assert mat is openmc.lib.materials[2]
 
 
-def test_mesh(capi_init):
+def test_mesh(lib_init):
     mesh = openmc.lib.RegularMesh()
     mesh.dimension = (2, 3, 4)
     assert mesh.dimension == (2, 3, 4)
@@ -408,7 +417,7 @@ def test_mesh(capi_init):
     assert msf.mesh == mesh
 
 
-def test_restart(capi_init, mpi_intracomm):
+def test_restart(lib_init, mpi_intracomm):
     # Finalize and re-init to make internal state consistent with XML.
     openmc.lib.hard_reset()
     openmc.lib.finalize()
@@ -440,7 +449,7 @@ def test_restart(capi_init, mpi_intracomm):
     assert keff0 == pytest.approx(keff1)
 
 
-def test_load_nuclide(capi_init):
+def test_load_nuclide(lib_init):
     # load multiple nuclides
     openmc.lib.load_nuclide('H3')
     assert 'H3' in openmc.lib.nuclides
@@ -451,7 +460,7 @@ def test_load_nuclide(capi_init):
         openmc.lib.load_nuclide('Pu3')
 
 
-def test_id_map(capi_init):
+def test_id_map(lib_init):
     expected_ids = np.array([[(3, 3), (2, 2), (3, 3)],
                              [(2, 2), (1, 1), (2, 2)],
                              [(3, 3), (2, 2), (3, 3)]], dtype='int32')
@@ -469,7 +478,7 @@ def test_id_map(capi_init):
     ids = openmc.lib.plot.id_map(s)
     assert np.array_equal(expected_ids, ids)
 
-def test_property_map(capi_init):
+def test_property_map(lib_init):
     expected_properties = np.array(
         [[(293.6, 0.740582), (293.6, 6.55), (293.6, 0.740582)],
          [ (293.6, 6.55), (293.6, 10.29769),  (293.6, 6.55)],
@@ -489,7 +498,7 @@ def test_property_map(capi_init):
     assert np.allclose(expected_properties, properties, atol=1e-04)
 
 
-def test_position(capi_init):
+def test_position(lib_init):
 
     pos = openmc.lib.plot._Position(1.0, 2.0, 3.0)
 
@@ -502,7 +511,7 @@ def test_position(capi_init):
     assert tuple(pos) == (1.3, 2.3, 3.3)
 
 
-def test_global_bounding_box(capi_init):
+def test_global_bounding_box(lib_init):
     expected_llc = (-0.63, -0.63, -np.inf)
     expected_urc = (0.63, 0.63, np.inf)
 

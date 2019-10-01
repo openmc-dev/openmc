@@ -155,7 +155,8 @@ RegularMesh::RegularMesh(pugi::xml_node node)
     fatal_error("Must specify either <upper_right> and <width> on a mesh.");
   }
 
-  if (shape_.dimension() > 0) {
+  // TODO: Change to zero when xtensor is updated
+  if (shape_.size() > 1) {
     if (shape_.size() != lower_left_.size()) {
       fatal_error("Number of entries on <lower_left> must be the same "
         "as the number of entries on <dimension>.");

@@ -132,7 +132,7 @@ public:
 
   //----------------------------------------------------------------------------
   // Data
-  int32_t id_; //!< Unique ID
+  int32_t id_ {-1}; //!< Unique ID
   std::string name_; //!< Name of material
   std::vector<int> nuclide_; //!< Indices in nuclides vector
   std::vector<int> element_; //!< Indices in elements vector

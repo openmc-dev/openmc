@@ -873,8 +873,8 @@ void Material::set_id(int32_t id)
   // If no ID specified, auto-assign next ID in sequence
   if (id == -1) {
     id = 0;
-    for (const auto& f : model::materials) {
-      id = std::max(id, f->id_);
+    for (const auto& m : model::materials) {
+      id = std::max(id, m->id_);
     }
     ++id;
   }

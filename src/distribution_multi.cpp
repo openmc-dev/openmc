@@ -59,8 +59,14 @@ Direction PolarAzimuthal::sample() const
   double mu = mu_->sample();
   if (mu == 1.0) return u_ref_;
 
-  // Sample the azimuthal angle with an offset to match azimuth conventions
-  double phi = phi_->sample() + 0.5*PI;
+  // Sample azimuthal angle
+  double phi = phi_->sample();
+
+  // If the reference direction is along the z-axis, rotate the aziumthal angle
+  // to match spherical coordinate conventions.
+  // TODO: apply this change directly to rotate_angle
+  if (u_ref_.x == 0 && u_ref_.y == 0) phi += 0.5*PI;
+
   return rotate_angle(u_ref_, mu, &phi);
 }
 

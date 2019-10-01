@@ -665,6 +665,12 @@ Direction rotate_angle(Direction u, double mu, const double* phi)
     return {mu*u.x + a*(u.x*u.y*cosphi + u.z*sinphi) / b,
             mu*u.y - a*b*cosphi,
             mu*u.z + a*(u.y*u.z*cosphi - u.x*sinphi) / b};
+    // TODO: use the following code to make PolarAzimuthal distributions match
+    // spherical coordinate conventions. Remove the related fixup code in
+    // PolarAzimuthal::sample.
+    //return {mu*u.x + a*(-u.x*u.y*sinphi + u.z*cosphi) / b,
+    //        mu*u.y + a*b*sinphi,
+    //        mu*u.z - a*(u.y*u.z*sinphi + u.x*cosphi) / b};
   }
 }
 

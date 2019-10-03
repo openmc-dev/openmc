@@ -960,8 +960,8 @@ normal using the equations from :ref:`transform-coordinates`. The white boundary
 condition can be applied to any kind of surface, as long as the normal to the
 surface is known as in :ref:`reflection`.
 
-.. _constructive solid geometry: http://en.wikipedia.org/wiki/Constructive_solid_geometry
-.. _surfaces: http://en.wikipedia.org/wiki/Surface
+.. _constructive solid geometry: https://en.wikipedia.org/wiki/Constructive_solid_geometry
+.. _surfaces: https://en.wikipedia.org/wiki/Surface
 .. _MCNP: http://mcnp.lanl.gov
 .. _Serpent: http://montecarlo.vtt.fi
 .. _Monte Carlo Performance benchmark: https://github.com/mit-crpg/benchmarks/tree/master/mc-performance/openmc

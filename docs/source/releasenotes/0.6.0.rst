@@ -35,13 +35,13 @@ Bug Fixes
 - d7a7d0_: Fix bug with <element> specifying xs attribute
 - 85b3cb_: Fix out-of-bounds error with OpenMP threading
 
-.. _41f7ca: https://github.com/mit-crpg/openmc/commit/41f7ca
-.. _038736: https://github.com/mit-crpg/openmc/commit/038736
-.. _46f9e8: https://github.com/mit-crpg/openmc/commit/46f9e8
-.. _d1ca35: https://github.com/mit-crpg/openmc/commit/d1ca35
-.. _0291c0: https://github.com/mit-crpg/openmc/commit/0291c0
-.. _d7a7d0: https://github.com/mit-crpg/openmc/commit/d7a7d0
-.. _85b3cb: https://github.com/mit-crpg/openmc/commit/85b3cb
+.. _41f7ca: https://github.com/openmc-dev/openmc/commit/41f7ca
+.. _038736: https://github.com/openmc-dev/openmc/commit/038736
+.. _46f9e8: https://github.com/openmc-dev/openmc/commit/46f9e8
+.. _d1ca35: https://github.com/openmc-dev/openmc/commit/d1ca35
+.. _0291c0: https://github.com/openmc-dev/openmc/commit/0291c0
+.. _d7a7d0: https://github.com/openmc-dev/openmc/commit/d7a7d0
+.. _85b3cb: https://github.com/openmc-dev/openmc/commit/85b3cb
 
 ------------
 Contributors

@@ -25,13 +25,16 @@ _THERMAL_DATA = {
     13: ThermalTuple('orthod', [1002], 1),
     26: ThermalTuple('be', [4009], 1),
     27: ThermalTuple('bebeo', [4009], 1),
-    31: ThermalTuple('graph', [6000, 6012, 6013], 1),
+    30: ThermalTuple('graph', [6000, 6012, 6013], 1),
+    31: ThermalTuple('grph10', [6000, 6012, 6013], 1),
+    32: ThermalTuple('grph30', [6000, 6012, 6013], 1),
     33: ThermalTuple('lch4', [1001], 1),
     34: ThermalTuple('sch4', [1001], 1),
     37: ThermalTuple('hch2', [1001], 1),
+    38: ThermalTuple('mesi00', [1001], 1),
     39: ThermalTuple('lucite', [1001], 1),
     40: ThermalTuple('benz', [1001, 6000, 6012], 2),
-    41: ThermalTuple('od2o', [8016, 8017, 8018], 1),
+    42: ThermalTuple('tol00', [1001], 1),
     43: ThermalTuple('sisic', [14028, 14029, 14030], 1),
     44: ThermalTuple('csic', [6000, 6012, 6013], 1),
     46: ThermalTuple('obeo', [8016, 8017, 8018], 1),
@@ -39,12 +42,16 @@ _THERMAL_DATA = {
     48: ThermalTuple('uuo2', [92238], 1),
     49: ThermalTuple('sio2-b', [8016, 8017, 8018, 14028, 14029, 14030], 3),
     50: ThermalTuple('oice', [8016, 8017, 8018], 1),
+    51: ThermalTuple('od2o', [8016, 8017, 8018], 1),
     52: ThermalTuple('mg24', [12024], 1),
     53: ThermalTuple('al27', [13027], 1),
     55: ThermalTuple('yyh2', [39089], 1),
     56: ThermalTuple('fe56', [26056], 1),
     58: ThermalTuple('zrzrh', [40000, 40090, 40091, 40092, 40094, 40096], 1),
     59: ThermalTuple('cacah2', [20040, 20042, 20043, 20044, 20046, 20048], 1),
+    60: ThermalTuple('asap00', [13027], 1),
+    71: ThermalTuple('n-un', [7014, 7015], 1),
+    72: ThermalTuple('u-un', [92238], 1),
     75: ThermalTuple('ouo2', [8016, 8017, 8018], 1),
 }
 
@@ -444,7 +451,21 @@ def make_ace_thermal(filename, filename_thermal, temperatures=None,
     mat_thermal = ev_thermal.material
     zsymam_thermal = ev_thermal.target['zsymam']
 
+    # Determine name, isotopes based on MAT number
     data = _THERMAL_DATA[mat_thermal]
+    if ev_thermal.info['library'][0] == 'JEFF':
+        # JEFF uses MAT=48 for O in Sapphire even though ENDF already uses
+        # that MAT number for U in UO2. It also assigns MAT=49 (which is
+        # supposed to be Ca in CaH2) to silicon.
+        if ev_thermal.material == 48:
+            data = ThermalTuple('osap00', [8016, 8017, 8018], 1)
+        elif ev_thermal.gnd_name == 'Si28':
+            data = ThermalTuple('si00', [14028], 1)
+    elif ev_thermal.info['library'] != ('ENDF/B', 8, 0):
+        # Before ENDF/B-VIII.0, crystalline graphite was MAT=31
+        if ev_thermal.material == 31:
+            data = ThermalTuple('graph', [6000, 6012, 6013], 1)
+
     zaids = ' '.join(str(zaid) for zaid in data.zaids[:3])
 
     # Determine name of library

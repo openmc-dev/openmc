@@ -82,10 +82,10 @@ A minimal example for performing depletion would be:
 Internal Classes and Functions
 ------------------------------
 
-When running in parallel using `mpi4py <http://mpi4py.scipy.org>`_, the MPI
-intercommunicator used can be changed by modifying the following module
-variable. If it is not explicitly modified, it defaults to
-``mpi4py.MPI.COMM_WORLD``.
+When running in parallel using `mpi4py
+<https://mpi4py.readthedocs.io/en/stable/>`_, the MPI intercommunicator used can
+be changed by modifying the following module variable. If it is not explicitly
+modified, it defaults to ``mpi4py.MPI.COMM_WORLD``.
 
 .. data:: comm
 
@@ -161,7 +161,7 @@ Abstract Base Classes
 
 A good starting point for extending capabilities in :mod:`openmc.deplete` is
 to examine the following abstract base classes. Custom classes can
-inherit from :class:`abc.TransportOperator` to implement alternative 
+inherit from :class:`abc.TransportOperator` to implement alternative
 schemes for collecting reaction rates and other data from a transport code
 prior to depleting materials
 

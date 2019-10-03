@@ -141,7 +141,7 @@ be performed before the run is finished. This include the following:
 
   - All allocatable arrays are deallocated.
 
-.. _probability distributions: http://en.wikipedia.org/wiki/Probability_distribution
-.. _Monte Carlo: http://en.wikipedia.org/wiki/Monte_Carlo_method
-.. _central limit theorem: http://en.wikipedia.org/wiki/Central_limit_theorem
-.. _pseudorandom number: http://en.wikipedia.org/wiki/Pseudorandom_number_generator
+.. _probability distributions: https://en.wikipedia.org/wiki/Probability_distribution
+.. _Monte Carlo: https://en.wikipedia.org/wiki/Monte_Carlo_method
+.. _central limit theorem: https://en.wikipedia.org/wiki/Central_limit_theorem
+.. _pseudorandom number: https://en.wikipedia.org/wiki/Pseudorandom_number_generator

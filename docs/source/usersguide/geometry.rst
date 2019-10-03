@@ -396,8 +396,8 @@ if needed, lattices, the last step is to create an instance of
    geom.root_universe = root_univ
    geom.export_to_xml()
 
-.. _constructive solid geometry: http://en.wikipedia.org/wiki/Constructive_solid_geometry
-.. _quadratic surfaces: http://en.wikipedia.org/wiki/Quadric
+.. _constructive solid geometry: https://en.wikipedia.org/wiki/Constructive_solid_geometry
+.. _quadratic surfaces: https://en.wikipedia.org/wiki/Quadric
 
 --------------------------
 Using CAD-based Geometry

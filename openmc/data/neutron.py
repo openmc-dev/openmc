@@ -874,7 +874,7 @@ class IncidentNeutron(EqualityMixin):
                     fission = data.reactions[18].xs[temp]
                     kerma_fission = get_file3_xs(ev, 318, E)
                     kerma.y = kerma.y - kerma_fission + (
-                        f.fragments(E) + f.betas(E)) * fission.y
+                        f.fragments(E) + f.betas(E)) * fission(E)
 
                 # For local KERMA, we first need to get the values from the
                 # HEATR run with photon energy deposited locally and put
@@ -887,7 +887,7 @@ class IncidentNeutron(EqualityMixin):
                     kerma_fission_local = get_file3_xs(ev_local, 318, E)
                     kerma_local = kerma_local - kerma_fission_local + (
                         f.fragments(E) + f.prompt_photons(E)
-                        + f.delayed_photons(E) + f.betas(E))*fission.y
+                        + f.delayed_photons(E) + f.betas(E))*fission(E)
 
                 heating_local.xs[temp] = Tabulated1D(E, kerma_local)
 

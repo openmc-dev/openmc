@@ -14,6 +14,13 @@ bool importance_splitting = false;
 bool weight_splitting = false;
 std::map<int,double> importances;
 
+/*
+importances[1] = 1.0;
+importances[2] = 2.0;
+importances[3] = 4.0;
+importances[4] = 8.0;
+*/
+
 void
 read_variance_reduction(pugi::xml_node *node)
 {

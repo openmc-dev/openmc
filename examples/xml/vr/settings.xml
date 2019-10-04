@@ -1,0 +1,27 @@
+<?xml version="1.0"?>
+<settings>
+
+  <run_mode>fixed source</run_mode>
+  <batches>10</batches>
+  <inactive>0</inactive>
+  <particles>10000</particles>
+
+  <!-- Starting source -->
+  <source>
+    <space type="point">
+      <parameters>0 0 0</parameters>
+    </space>
+    <energy type="discrete">
+      <parameters>14.08e6 1.0</parameters>
+    </energy>
+  </source>
+
+  <variance_reduction>
+    <importance value="1.0" cell="1"/>
+    <importance value="2.0" cell="2"/>
+    <importance value="4.0" cell="3"/>
+    <importance value="8.0" cell="4"/>
+    <importance value="1.0" cell="1"/>
+      
+  </variance_reduction>
+</settings>

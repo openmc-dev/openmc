@@ -1,0 +1,9 @@
+<?xml version="1.0"?>
+<materials>
+
+  <material id="1">
+    <density value="7.8" units="g/cc" />
+    <nuclide name="Fe56" ao="1.0" />
+  </material>
+
+</materials>

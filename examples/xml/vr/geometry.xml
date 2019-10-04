@@ -1,0 +1,17 @@
+<?xml version="1.0"?>
+<geometry>
+
+  <!-- Definition of Cells -->
+  <cell id="1" universe="0" material="1" region="-1" />
+  <cell id="2" universe="0" material="1" region="1 -2" />
+  <cell id="3" universe="0" material="1" region="2 -3" />
+  <cell id="4" universe="0" material="1" region="3 -4" />
+  <cell id="5" universe="0" material="1" region="4" />
+
+  <!-- Defition of Surfaces -->
+  <surface id="1" type="sphere" coeffs="0 0 0 10" />
+  <surface id="2" type="sphere" coeffs="0 0 0 20" />
+  <surface id="3" type="sphere" coeffs="0 0 0 30" />
+  <surface id="4" type="sphere" boundary="vacuum" coeffs="0 0 0 40" />
+
+</geometry>

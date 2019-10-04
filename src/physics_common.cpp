@@ -57,17 +57,17 @@ void roulette(Particle* p, double importance_ratio) {
   // this is a kill event
   double random = prn();
   //std::cout << random << " " << importance_ratio;
-  if ( random >= importance_ratio) {
-    //std::cout << " kill" << std::endl;
-    p->alive_ = false;
-    p->wgt_ = 0.;
-    p->wgt_last_ = 0.;
-  } else {
+  if ( random < importance_ratio) {
     //std::cout << " survive " << std::endl;
     p->wgt_last_ = p->wgt_;
     //std::cout << p->last_wgt << " ";
     p->wgt_ /= importance_ratio;
-    //std::cout << p->wgt << std::endl;
+    //std::cout << p->wgt << std::endl;  
+  } else {
+    //std::cout << " kill" << std::endl;
+    p->alive_ = false;
+    p->wgt_ = 0.;
+    p->wgt_last_ = 0.;
   }
   return;
 }

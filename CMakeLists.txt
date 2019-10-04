@@ -267,11 +267,10 @@ list(APPEND libopenmc_SOURCES
   src/wmp.cpp
   src/xml_interface.cpp
   src/xsdata.cpp
-  src/xml_interface.h
   src/xml_interface.cpp
-  src/pugixml/pugixml.cpp
-  src/pugixml/pugixml.hpp)
+  vendor/pugixml/pugixml.cpp
 )
+
 
 # For Visual Studio compilers
 if(MSVC)

@@ -516,10 +516,10 @@ class Cell(IDManagerMixin):
             # thus far.
             def create_surface_elements(node, element, memo=None):
                 if isinstance(node, Halfspace):
-                    if memo and node.surface.id in memo['surfaces']:
+                    if memo and id(node.surface) in memo:
                         return
                     if memo is not None:
-                        memo['surfaces'].add(node.surface.id)
+                        memo.add(id(node.surface))
                     xml_element.append(node.surface.to_xml_element())
 
                 elif isinstance(node, Complement):

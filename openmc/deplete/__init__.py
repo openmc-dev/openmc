@@ -4,11 +4,10 @@ openmc.deplete
 
 A depletion front-end tool.
 """
-from sys import exit
+import sys
+from unittest.mock import Mock
 
 from h5py import get_config
-
-from unittest.mock import Mock
 
 from .dummy_comm import DummyCommunicator
 
@@ -22,7 +21,7 @@ try:
     if not get_config().mpi and comm.size > 1:
         # Raise exception only on process 0
         if comm.rank:
-            exit()
+            sys.exit()
         raise RuntimeError(
             "Need parallel HDF5 installed to perform depletion with MPI"
         )

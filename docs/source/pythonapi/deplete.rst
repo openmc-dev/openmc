@@ -126,8 +126,15 @@ data, such as number densities and reaction rates for each material.
    Results
    ResultsList
 
-The following functions are used to solve the depletion equations, with
-:func:`cram.CRAM48` being the default.
+The following class and functions are used to solve the depletion equations,
+with :func:`cram.CRAM48` being the default.
+
+.. autosummary::
+   :toctree: generated
+   :nosignatures:
+   :template: myintegrator.rst
+
+   cram.IPFCramSolver
 
 .. autosummary::
    :toctree: generated
@@ -196,4 +203,3 @@ the following abstract base classes:
    abc.Integrator
    abc.SIIntegrator
    abc.DepSystemSolver
-   abc.IPFCramSolver

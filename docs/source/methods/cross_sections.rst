@@ -8,13 +8,14 @@ Cross Section Representations
 Continuous-Energy Data
 ----------------------
 
-The data governing the interaction of neutrons with
-various nuclei for continous-energy problems are represented using the ACE
-format which is used by MCNP_ and Serpent_. ACE-format data can be generated
-with the NJOY_ nuclear data processing system which converts raw
-`ENDF/B data`_ into linearly-interpolable data as required by most Monte Carlo
-codes. The use of a standard cross section format allows for a direct comparison
-of OpenMC with other codes since the same cross section libraries can be used.
+In OpenMC, the data governing the interaction of neutrons with various nuclei
+for continous-energy problems are represented using an HDF5 format that can be
+produced by converting files in the ACE format, which is used by MCNP_ and
+Serpent_. ACE-format data can be generated with the NJOY_ nuclear data
+processing system, which converts raw `ENDF/B data`_ into linearly-interpolable
+data as required by most Monte Carlo codes. Since ACE-format data can be
+converted into OpenMC's HDF5 format, it is possible to perform direct comparison
+of OpenMC with other codes using the same underlying nuclear data library.
 
 The ACE format contains continuous-energy cross sections for the following types
 of reactions: elastic scattering, fission (or first-chance fission,
@@ -31,7 +32,7 @@ data can be used.
 Energy Grid Methods
 -------------------
 
-The method by which continuous energy cross sections for each nuclide in a
+The method by which continuous-energy cross sections for each nuclide in a
 problem are stored as a function of energy can have a substantial effect on the
 performance of a Monte Carlo simulation. Since the ACE format is based on
 linearly-interpolable cross sections, each nuclide has cross sections tabulated
@@ -72,9 +73,9 @@ Windowed Multipole Representation
 ---------------------------------
 
 In addition to the usual pointwise representation of cross sections, OpenMC
-offers support for an experimental data format called windowed multipole (WMP).
-This data format requires less memory than pointwise cross sections, and it
-allows on-the-fly Doppler broadening to arbitrary temperature.
+offers support for an data format called windowed multipole (WMP). This data
+format requires less memory than pointwise cross sections, and it allows
+on-the-fly Doppler broadening to arbitrary temperature.
 
 The multipole method was introduced by Hwang_ and the faster windowed multipole
 method by Josey_. In the multipole format, cross section resonances are
@@ -258,7 +259,7 @@ where a material has a very large cross sections relative to the other material
 used to minimize this error.
 
 Finally, the above options for representing the physics do not have to be
-consistent across the problem.  The number of groups and the structure, however,
+consistent across the problem. The number of groups and the structure, however,
 does have to be consistent across the data sets. That is to say that each
 microscopic or macroscopic data set does not have to apply the same scattering
 expansion, treatment of multiplicity or angular representation of the cross

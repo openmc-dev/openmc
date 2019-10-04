@@ -109,7 +109,8 @@ The current version of the statepoint file format is 17.0.
 
 **/tallies/tally <uid>/**
 
-:Attributes: - **internal** (*int*) -- Flag indicating the presence of tally
+:Attributes:
+             - **internal** (*int*) -- Flag indicating the presence of tally
                data (0) or absence of tally data (1). All user defined
                tallies will have a value of 0 unless otherwise instructed.
 

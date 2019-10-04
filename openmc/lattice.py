@@ -771,10 +771,10 @@ class RectLattice(Lattice):
 
         """
         # If the element already contains the Lattice subelement, then return
-        if memo and self._id in memo['lattices']:
+        if memo and id(self) in memo:
             return
         if memo is not None:
-            memo['lattices'].add(self._id)
+            memo.add(id(self))
 
         lattice_subelement = ET.Element("lattice")
         lattice_subelement.set("id", str(self._id))
@@ -1289,10 +1289,10 @@ class HexLattice(Lattice):
 
     def create_xml_subelement(self, xml_element, memo=None):
         # If the element does contain the Lattice subelement, then return
-        if memo and self._id in memo['lattices']:
+        if memo and id(self) in memo:
             return
         if memo is not None:
-            memo['lattices'].add(self._id)
+            memo.add(id(self))
 
         lattice_subelement = ET.Element("hex_lattice")
         lattice_subelement.set("id", str(self._id))

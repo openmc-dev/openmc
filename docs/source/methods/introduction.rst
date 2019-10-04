@@ -139,7 +139,7 @@ be performed before the run is finished. This include the following:
 
   - If requested, a source file is written to disk.
 
-  - All allocatable arrays are deallocated.
+  - Dynamically-allocated memory should be freed.
 
 .. _probability distributions: https://en.wikipedia.org/wiki/Probability_distribution
 .. _Monte Carlo: https://en.wikipedia.org/wiki/Monte_Carlo_method

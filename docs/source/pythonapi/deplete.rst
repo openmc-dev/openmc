@@ -1,10 +1,10 @@
 .. _pythonapi_deplete:
 
+.. module:: openmc.deplete
+
 ----------------------------------
 :mod:`openmc.deplete` -- Depletion
 ----------------------------------
-
-.. module:: openmc.deplete
 
 Primary API
 -----------

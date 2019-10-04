@@ -1298,11 +1298,10 @@ section over the range of velocities considered:
 where it should be noted that the maximum is taken over the range :math:`[v_n -
 4/\beta, 4_n + 4\beta]`. This method is known as Doppler broadening rejection
 correction (DBRC) and was first introduced by `Becker et al.`_. OpenMC has an
-implementation of DBRC as well as an accelerated sampling method that are
-described fully in `Walsh et al.`_
+implementation of DBRC as well as an accelerated sampling method that samples the `relative velocity`_ directly.
 
 .. _Becker et al.: https://doi.org/10.1016/j.anucene.2008.12.001
-.. _Walsh et al.: https://doi.org/10.1016/j.anucene.2014.01.017
+.. _relative velocity: https://doi.org/10.1016/j.anucene.2017.12.044
 
 .. _sab_tables:
 

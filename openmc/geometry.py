@@ -87,10 +87,7 @@ class Geometry(object):
         """
         # Create XML representation
 
-        memo = {'cells' : set(),
-                'surfaces' : set(),
-                'lattices' : set(),
-                'universes' : set()}
+        memo = set()
 
         root_element = ET.Element("geometry")
         self.root_universe.create_xml_subelement(root_element, memo)

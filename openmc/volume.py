@@ -186,6 +186,9 @@ class VolumeCalculation(object):
     def threshold(self, threshold):
         name = 'volume std. dev. threshold'
         cv.check_type(name, threshold, Real)        
+        if (threshold <= 0.0):
+            raise ValueError("Invalid value '{}' (<= 0.0) provided for volume "
+                             "calculation threshold.".format(threshold))
         self._threshold = threshold
 
     @volumes.setter
@@ -224,7 +227,7 @@ class VolumeCalculation(object):
                 threshold = f.attrs['threshold']
             except KeyError:
                 threshold = None
-                
+
             volumes = {}
             atoms = {}
             ids = []

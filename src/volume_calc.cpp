@@ -71,7 +71,40 @@ VolumeCalculation::VolumeCalculation(pugi::xml_node node)
 
 }
 
-std::vector<VolumeCalculation::Result> VolumeCalculation::execute() const
+std::vector<VolumeCalculation::Result> VolumeCalculation::execute() const {
+
+  std::vector<VolumeCalculation::Result> results;
+  size_t offset = 0;
+
+  results = _execute(offset);
+  offset += n_samples_;
+
+  double max_err = -INFTY;
+  for (int i = 0; i < results.size(); i++) {
+    max_err = std::max(max_err, results[i].volume[1]);
+  }
+
+  double error_limit = 1E-05;
+  int iters = 1;
+  while (max_err > error_limit) {
+    std::cout << "Iter " << iters++ << std::endl;
+    std::vector<VolumeCalculation::Result> tmp = _execute(offset);
+    max_err = -INFTY;
+    for (int i = 0; i < results.size(); i++) {
+      auto& result = results[i];
+      result += tmp[i];
+      max_err = std::max(max_err, result.volume[1]);
+    }
+    
+    offset += n_samples_;
+
+    std::cout << "Max error: " << max_err << std::endl;
+  }
+
+  return results;
+}
+
+std::vector<VolumeCalculation::Result> VolumeCalculation::_execute(size_t seed_offset) const
 {
   // Shared data that is collected from all threads
   int n = domain_ids_.size();
@@ -102,7 +135,7 @@ std::vector<VolumeCalculation::Result> VolumeCalculation::execute() const
     // Sample locations and count hits
     #pragma omp for
     for (int i = i_start; i < i_end; i++) {
-      set_particle_seed(i);
+      set_particle_seed(seed_offset + i);
 
       p.n_coord_ = 1;
       Position xi {prn(), prn(), prn()};
@@ -248,6 +281,7 @@ std::vector<VolumeCalculation::Result> VolumeCalculation::execute() const
       result.volume[0] = static_cast<double>(total_hits) / n_samples_ * volume_sample;
       result.volume[1] = std::sqrt(result.volume[0]
         * (volume_sample - result.volume[0]) / n_samples_);
+      result.num_samples = n_samples_;
 
       for (int j = 0; j < n_nuc; ++j) {
         // Determine total number of atoms. At this point, we have values in

@@ -32,8 +32,7 @@ class VolumeCalculation(object):
         Upper-right coordinates of bounding box used to sample points. If this
         argument is not supplied, an attempt is made to automatically determine
         a bounding box.
-    threshold : float
-        Threshold for the maxmimum standard deviation of volumes
+        
 
     Attributes
     ----------
@@ -58,13 +57,17 @@ class VolumeCalculation(object):
         in each domain specified.
     volumes : dict
         Dictionary mapping unique IDs of domains to estimated volumes in cm^3.
+    threshold : float
+        Threshold for the maxmimum standard deviation of volumes
+    trigger_type : {'variance', 'std_dev', 'rel_err'}
+        Value type used to halt volume calculation
 
     """
-    def __init__(self, domains, samples, lower_left=None,
-                 upper_right=None, threshold=None):
+    def __init__(self, domains, samples, lower_left=None, upper_right=None):
         self._atoms = {}
         self._volumes = {}
         self._threshold = None
+        self._trigger_type = None
 
         cv.check_type('domains', domains, Iterable,
                       (openmc.Cell, openmc.Material, openmc.Universe))
@@ -78,9 +81,6 @@ class VolumeCalculation(object):
 
         self.samples = samples
         
-        if threshold is not None:
-            self.threshold = threshold
-
         if lower_left is not None:
             if upper_right is None:
                 raise ValueError('Both lower-left and upper-right coordinates '
@@ -134,6 +134,10 @@ class VolumeCalculation(object):
     @property
     def threshold(self):
         return self._threshold
+
+    @property
+    def trigger_type(self):
+        return self._trigger_type
 
     @property
     def domain_type(self):
@@ -191,6 +195,12 @@ class VolumeCalculation(object):
                              "calculation threshold.".format(threshold))
         self._threshold = threshold
 
+    @trigger_type.setter
+    def trigger_type(self, trigger_type):
+        cv.check_value('tally trigger type', trigger_type,
+                       ['variance', 'std_dev', 'rel_err'])
+        self._trigger_type = trigger_type
+
     @volumes.setter
     def volumes(self, volumes):
         cv.check_type('volumes', volumes, Mapping)
@@ -200,6 +210,19 @@ class VolumeCalculation(object):
     def atoms(self, atoms):
         cv.check_type('atoms', atoms, Mapping)
         self._atoms = atoms
+
+    def set_trigger(self, threshold, trigger_type):
+        """Set a trigger on the voulme calculation
+
+        Parameters
+        ----------
+        threshold : float
+            Threshold for the maxmimum standard deviation of volumes
+        trigger_type : {'variance', 'std_dev', 'rel_err'}
+            Value type used to halt volume calculation
+        """
+        self.trigger_type = trigger_type
+        self.threshold = threshold
 
     @classmethod
     def from_hdf5(cls, filename):
@@ -223,10 +246,16 @@ class VolumeCalculation(object):
             samples = f.attrs['samples']
             lower_left = f.attrs['lower_left']
             upper_right = f.attrs['upper_right']
+
             try:
                 threshold = f.attrs['threshold']
             except KeyError:
                 threshold = None
+
+            try:
+                trigger_type = f.attrs['trigger_type'].decode()
+            except KeyError:
+                trigger_type = None
 
             volumes = {}
             atoms = {}
@@ -257,7 +286,11 @@ class VolumeCalculation(object):
                 domains = [openmc.Universe(uid) for uid in ids]
 
         # Instantiate the class and assign results
-        vol = cls(domains, samples, lower_left, upper_right, threshold)
+        vol = cls(domains, samples, lower_left, upper_right)
+        
+        if threshold is not None:
+            vol.set_trigger(threshold, trigger_type)
+
         vol.volumes = volumes
         vol.atoms = atoms
         return vol
@@ -305,4 +338,5 @@ class VolumeCalculation(object):
         if self.threshold:
             threshold_elem = ET.SubElement(element, "threshold")
             threshold_elem.text = str(self.threshold)
+            threshold_elem.set("type", self.trigger_type)
         return element

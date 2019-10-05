@@ -30,25 +30,41 @@ public:
       Expects(volume.size() == other.volume.size());
       Expects(atoms.size() == atoms.size());
 
+      auto& a_samples = num_samples;
+      auto& b_samples = other.num_samples;
+
       size_t total_samples = num_samples + other.num_samples;
 
       for (int i = 0; i < volume.size(); i++) {
-        // average volume results
-        volume[0] = (num_samples * volume[0] + other.num_samples * other.volume[0]) / total_samples;
+        // calculate weighted average of volume results
+        auto& a_vol = volume[0];
+        auto& b_vol = other.volume[1];
+        volume[0] = (a_samples * a_vol + b_samples * b_vol) / total_samples;
+
         // propagate error
-        volume[1] = std::sqrt(num_samples * volume[1] *volume[1] + other.num_samples * other.volume[1] * other.volume[1]) / total_samples;
+        auto& a_err = volume[1];
+        auto& b_err = other.volume[1];
+        volume[1] = std::sqrt(a_samples * a_err * a_err + b_samples * b_err * b_err) / total_samples;
       }
 
       for (int i = 0; i < atoms.size(); i++) {
-        atoms[i] = (num_samples * atoms[i] + other.num_samples * other.atoms[i]) / total_samples;
-        uncertainty[i] = std::sqrt(num_samples * uncertainty[i] * uncertainty[i] + other.num_samples * other.uncertainty[i] * other.uncertainty[i]) / total_samples;
+        // calculate weighted average of atom results
+        auto& a_atoms = atoms[i];
+        auto& b_atoms = other.atoms[i];
+        atoms[i] = (a_samples * a_atoms + b_samples * b_atoms) / total_samples;
+
+        // propagate error
+        auto& a_err = uncertainty[i];
+        auto& b_err = other.uncertainty[i];
+        uncertainty[i] = std::sqrt(a_samples * a_err * a_err + b_samples * b_err * b_err) / total_samples;
       }
 
+      // update number of samples on the returned set of results;
       num_samples = total_samples;
-      
-      return *this;
 
+      return *this;
     }
+    
   }; // Results for a single domain
 
   // Constructors

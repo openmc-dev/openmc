@@ -37,6 +37,16 @@ arguments are not necessary. For example,
 Of course, the volumes that you *need* this capability for are often the ones
 with complex definitions.
 
+A threshold for the uncertainty in volume estimates can be specified using
+::attr::`openmc.VolumeCalculation.threshold` ::
+
+    vol_calc.threshold = 1E-05
+
+If a threshold is provided, calculations will be performed iteratively using the 
+number of samples specified on the calculation until all volume estimates have a 
+standard deviation lower than this value. If no threshold is provided, the 
+calculation will run the number of samples specified once and return the result.
+
 Once you have one or more :class:`openmc.VolumeCalculation` objects created, you
 can then assign then to :attr:`Settings.volume_calculations`::
 

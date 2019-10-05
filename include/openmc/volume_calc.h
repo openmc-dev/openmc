@@ -87,7 +87,7 @@ public:
   // Data members
   int domain_type_; //!< Type of domain (cell, material, etc.)
   size_t n_samples_; //!< Number of samples to use
-  double trigger_ {-1.0}; //!< Error threshold for domain volumes
+  double threshold_ {-1.0}; //!< Error threshold for domain volumes
   Position lower_left_; //!< Lower-left position of bounding box
   Position upper_right_; //!< Upper-right position of bounding box
   std::vector<int> domain_ids_; //!< IDs of domains to find volumes of

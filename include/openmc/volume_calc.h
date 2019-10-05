@@ -38,7 +38,7 @@ public:
       for (int i = 0; i < volume.size(); i++) {
         // calculate weighted average of volume results
         auto& a_vol = volume[0];
-        auto& b_vol = other.volume[1];
+        auto& b_vol = other.volume[0];
         volume[0] = (a_samples * a_vol + b_samples * b_vol) / total_samples;
 
         // propagate error

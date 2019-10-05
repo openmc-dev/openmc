@@ -73,32 +73,24 @@ VolumeCalculation::VolumeCalculation(pugi::xml_node node)
 
 std::vector<VolumeCalculation::Result> VolumeCalculation::execute() const {
 
-  std::vector<VolumeCalculation::Result> results;
-  size_t offset = 0;
-
-  results = _execute(offset);
-  offset += n_samples_;
-
-  double max_err = -INFTY;
-  for (int i = 0; i < results.size(); i++) {
-    max_err = std::max(max_err, results[i].volume[1]);
-  }
-
+  std::vector<VolumeCalculation::Result> results = _execute();
+  size_t offset = n_samples_;
   double error_limit = 1E-05;
-  int iters = 1;
-  while (max_err > error_limit) {
-    std::cout << "Iter " << iters++ << std::endl;
-    std::vector<VolumeCalculation::Result> tmp = _execute(offset);
+  double max_err;
+
+  while (true) {
+    // check maximum error value for all domains
     max_err = -INFTY;
-    for (int i = 0; i < results.size(); i++) {
-      auto& result = results[i];
-      result += tmp[i];
-      max_err = std::max(max_err, result.volume[1]);
-    }
-    
+    for (const auto& result : results) { max_err = std::max(max_err, result.volume[1]); }
+
+    // exit once we're below our error limit
+    if (max_err <= error_limit) { break; }
+
+    std::vector<VolumeCalculation::Result> tmp = _execute(offset);
     offset += n_samples_;
 
-    std::cout << "Max error: " << max_err << std::endl;
+    // update current results
+    for (int i = 0; i < results.size(); i++) { results[i] += tmp[i]; }
   }
 
   return results;

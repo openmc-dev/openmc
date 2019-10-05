@@ -79,11 +79,11 @@ VolumeCalculation::VolumeCalculation(pugi::xml_node node)
     pugi::xml_node threshold_node = node.child("threshold");
     std::string tmp = get_node_value(threshold_node, "type");
     if (tmp == "variance") {
-      threshold_type_ = ThresholdType::VARIANCE;
+      trigger_type_ = ThresholdType::VARIANCE;
     } else if (tmp == "std_dev") {
-      threshold_type_ = ThresholdType::STD_DEV;    
+      trigger_type_ = ThresholdType::STD_DEV;    
     } else if ( tmp == "rel_err") {
-      threshold_type_ = ThresholdType::REL_ERR;
+      trigger_type_ = ThresholdType::REL_ERR;
     } else {
       std::stringstream msg;
       msg << "Invalid volume calculation trigger type '" << tmp << "' provided.";
@@ -118,7 +118,7 @@ std::vector<VolumeCalculation::Result> VolumeCalculation::execute() const {
     max_val = -INFTY;
     for (const auto& result : results) { 
       double val;
-      switch (threshold_type_) {
+      switch (trigger_type_) {
         case ThresholdType::STD_DEV:
           val = result.volume[1]; 
           break;
@@ -372,6 +372,19 @@ void VolumeCalculation::to_hdf5(const std::string& filename,
   write_attribute(file_id, "upper_right", upper_right_);
   if (threshold_ != -1.0) {
     write_attribute(file_id, "threshold", threshold_);
+
+    switch(trigger_type_) {
+      case ThresholdType::VARIANCE:
+        write_attribute(file_id, "trigger_type", "variance");
+        break;
+      case ThresholdType::STD_DEV:
+        write_attribute(file_id, "trigger_type", "std_dev");
+        break;
+      case ThresholdType::REL_ERR:
+        write_attribute(file_id, "trigger_type", "rel_err");
+        break;
+    }
+    
   }
 
   if (domain_type_ == FILTER_CELL) {

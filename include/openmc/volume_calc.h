@@ -88,8 +88,8 @@ public:
 
   // Data members
   int domain_type_; //!< Type of domain (cell, material, etc.)
-  int n_samples_; //!< Number of samples to use
-  int seed_offset_;
+  size_t n_samples_; //!< Number of samples to use
+  double error_trigger_ {-1.0}; //!< Error below which the calculation will stop
   Position lower_left_; //!< Lower-left position of bounding box
   Position upper_right_; //!< Upper-right position of bounding box
   std::vector<int> domain_ids_; //!< IDs of domains to find volumes of

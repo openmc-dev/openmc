@@ -74,4 +74,4 @@ class VolumeTest(PyAPITestHarness):
 
 def test_volume_calc():
     harness = VolumeTest('')
-    harness.main()
+    harness._build_inputs()

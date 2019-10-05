@@ -68,11 +68,11 @@ VolumeCalculation::VolumeCalculation(pugi::xml_node node)
         fatal_error(msg);
   }
 
-  if (check_for_node(node, "error_trigger")) {
-    error_trigger_ = std::stod(get_node_value(node, "error_trigger"));
-    if (error_trigger_ <= 0.0) {
+  if (check_for_node(node, "trigger")) {
+    trigger_ = std::stod(get_node_value(node, "trigger"));
+    if (trigger_ <= 0.0) {
       std::stringstream msg;
-      msg << "Invalid error trigger " << error_trigger_ << " provided for a volume calculation.";
+      msg << "Invalid error threshold " << trigger_ << " provided for a volume calculation.";
       fatal_error(msg);
     }
   }
@@ -89,9 +89,11 @@ VolumeCalculation::VolumeCalculation(pugi::xml_node node)
 
 std::vector<VolumeCalculation::Result> VolumeCalculation::execute() const {
 
+  // execute the calculation once
   std::vector<VolumeCalculation::Result> results = _execute();
 
-  if (error_trigger_ <= 0.0) { return results; }
+  // if no std. dev. threshold is set, return these resuls
+  if (trigger_ == -1.0) { return results; }
 
   size_t offset = n_samples_;
   double max_err;
@@ -102,8 +104,9 @@ std::vector<VolumeCalculation::Result> VolumeCalculation::execute() const {
     for (const auto& result : results) { max_err = std::max(max_err, result.volume[1]); }
 
     // exit once we're below our error limit
-    if (max_err <= error_trigger_) { break; }
+    if (max_err <= trigger_) { break; }
 
+    // perform the calculation
     std::vector<VolumeCalculation::Result> tmp = _execute(offset);
     offset += n_samples_;
 
@@ -333,6 +336,7 @@ void VolumeCalculation::to_hdf5(const std::string& filename,
   write_attribute(file_id, "samples", n_samples_);
   write_attribute(file_id, "lower_left", lower_left_);
   write_attribute(file_id, "upper_right", upper_right_);
+  write_attribute(file_id, "trigger", trigger_);
   if (domain_type_ == FILTER_CELL) {
     write_attribute(file_id, "domain_type", "cell");
   }

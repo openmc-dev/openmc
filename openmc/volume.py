@@ -12,7 +12,7 @@ from uncertainties import ufloat
 import openmc
 import openmc.checkvalue as cv
 
-_VERSION_VOLUME = 1
+_VERSION_VOLUME = 2
 
 
 class VolumeCalculation(object):
@@ -32,6 +32,8 @@ class VolumeCalculation(object):
         Upper-right coordinates of bounding box used to sample points. If this
         argument is not supplied, an attempt is made to automatically determine
         a bounding box.
+    trigger : float
+        Threshold for the maxmimum standard deviation of volumes
 
     Attributes
     ----------
@@ -45,6 +47,8 @@ class VolumeCalculation(object):
         Lower-left coordinates of bounding box used to sample points
     upper_right : Iterable of float
         Upper-right coordinates of bounding box used to sample points
+    trigger : float
+        Threshold for the maximum standard deviation of volume in the calculation
     atoms : dict
         Dictionary mapping unique IDs of domains to a mapping of nuclides to
         total number of atoms for each nuclide present in the domain. For
@@ -57,9 +61,10 @@ class VolumeCalculation(object):
 
     """
     def __init__(self, domains, samples, lower_left=None,
-                 upper_right=None):
+                 upper_right=None, trigger=None):
         self._atoms = {}
         self._volumes = {}
+        self._trigger = None
 
         cv.check_type('domains', domains, Iterable,
                       (openmc.Cell, openmc.Material, openmc.Universe))
@@ -72,6 +77,9 @@ class VolumeCalculation(object):
         self.ids = [d.id for d in domains]
 
         self.samples = samples
+        
+        if trigger is not None:
+            self.trigger = trigger
 
         if lower_left is not None:
             if upper_right is None:
@@ -124,6 +132,10 @@ class VolumeCalculation(object):
         return self._upper_right
 
     @property
+    def trigger(self):
+        return self._trigger
+
+    @property
     def domain_type(self):
         return self._domain_type
 
@@ -170,6 +182,12 @@ class VolumeCalculation(object):
         cv.check_length(name, upper_right, 3)
         self._upper_right = upper_right
 
+    @trigger.setter    
+    def trigger(self, trigger):
+        name = 'Volume std. dev. trigger'
+        cv.check_type(name, trigger, Real)        
+        self._trigger = trigger
+
     @volumes.setter
     def volumes(self, volumes):
         cv.check_type('volumes', volumes, Mapping)
@@ -202,6 +220,10 @@ class VolumeCalculation(object):
             samples = f.attrs['samples']
             lower_left = f.attrs['lower_left']
             upper_right = f.attrs['upper_right']
+            trigger = f.attrs['trigger']
+
+            if trigger == -1.0:
+                trigger = None
 
             volumes = {}
             atoms = {}
@@ -232,7 +254,7 @@ class VolumeCalculation(object):
                 domains = [openmc.Universe(uid) for uid in ids]
 
         # Instantiate the class and assign results
-        vol = cls(domains, samples, lower_left, upper_right)
+        vol = cls(domains, samples, lower_left, upper_right, trigger)
         vol.volumes = volumes
         vol.atoms = atoms
         return vol
@@ -277,4 +299,7 @@ class VolumeCalculation(object):
         ll_elem.text = ' '.join(str(x) for x in self.lower_left)
         ur_elem = ET.SubElement(element, "upper_right")
         ur_elem.text = ' '.join(str(x) for x in self.upper_right)
+        if self.trigger:
+            trigger_elem = ET.SubElement(element, "trigger")
+            trigger_elem.text = str(self.trigger)
         return element

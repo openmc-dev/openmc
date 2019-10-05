@@ -59,7 +59,23 @@ VolumeCalculation::VolumeCalculation(pugi::xml_node node)
   domain_ids_ = get_node_array<int>(node, "domain_ids");
   lower_left_ = get_node_array<double>(node, "lower_left");
   upper_right_ = get_node_array<double>(node, "upper_right");
-  n_samples_ = std::stoi(get_node_value(node, "samples"));
+  std::stringstream size_t_stream(get_node_value(node, "samples"));
+  size_t_stream >> n_samples_;
+  if (size_t_stream.fail()) {
+    std::stringstream msg;
+    msg << "Could not read number of samples ("
+        << size_t_stream.str() << ")\n";
+        fatal_error(msg);
+  }
+
+  if (check_for_node(node, "error_trigger")) {
+    error_trigger_ = std::stod(get_node_value(node, "error_trigger"));
+    if (error_trigger_ <= 0.0) {
+      std::stringstream msg;
+      msg << "Invalid error trigger " << error_trigger_ << " provided for a volume calculation.";
+      fatal_error(msg);
+    }
+  }
 
   // Ensure there are no duplicates by copying elements to a set and then
   // comparing the length with the original vector
@@ -74,8 +90,10 @@ VolumeCalculation::VolumeCalculation(pugi::xml_node node)
 std::vector<VolumeCalculation::Result> VolumeCalculation::execute() const {
 
   std::vector<VolumeCalculation::Result> results = _execute();
+
+  if (error_trigger_ <= 0.0) { return results; }
+
   size_t offset = n_samples_;
-  double error_limit = 1E-05;
   double max_err;
 
   while (true) {
@@ -84,7 +102,7 @@ std::vector<VolumeCalculation::Result> VolumeCalculation::execute() const {
     for (const auto& result : results) { max_err = std::max(max_err, result.volume[1]); }
 
     // exit once we're below our error limit
-    if (max_err <= error_limit) { break; }
+    if (max_err <= error_trigger_) { break; }
 
     std::vector<VolumeCalculation::Result> tmp = _execute(offset);
     offset += n_samples_;
@@ -104,9 +122,9 @@ std::vector<VolumeCalculation::Result> VolumeCalculation::_execute(size_t seed_o
   std::vector<std::vector<int>> master_hits(n); // Number of hits for each material in each domain
 
   // Divide work over MPI processes
-  int min_samples = n_samples_ / mpi::n_procs;
-  int remainder = n_samples_ % mpi::n_procs;
-  int i_start, i_end;
+  size_t min_samples = n_samples_ / mpi::n_procs;
+  size_t remainder = n_samples_ % mpi::n_procs;
+  size_t i_start, i_end;
   if (mpi::rank < remainder) {
     i_start = (min_samples + 1)*mpi::rank;
     i_end = i_start + min_samples + 1;
@@ -126,7 +144,7 @@ std::vector<VolumeCalculation::Result> VolumeCalculation::_execute(size_t seed_o
 
     // Sample locations and count hits
     #pragma omp for
-    for (int i = i_start; i < i_end; i++) {
+    for (size_t i = i_start; i < i_end; i++) {
       set_particle_seed(seed_offset + i);
 
       p.n_coord_ = 1;

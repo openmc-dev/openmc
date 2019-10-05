@@ -78,8 +78,6 @@ public:
   //! \return Vector of results for each user-specified domain
   std::vector<Result> execute() const;
 
-  std::vector<Result> _execute(size_t seed_offset = 0) const;
-
   //! \brief Write volume calculation results to HDF5 file
   //
   //! \param[in] filename  Path to HDF5 file to write
@@ -89,7 +87,7 @@ public:
   // Data members
   int domain_type_; //!< Type of domain (cell, material, etc.)
   size_t n_samples_; //!< Number of samples to use
-  double error_trigger_ {-1.0}; //!< Error below which the calculation will stop
+  double trigger_ {-1.0}; //!< Error threshold for domain volumes
   Position lower_left_; //!< Lower-left position of bounding box
   Position upper_right_; //!< Upper-right position of bounding box
   std::vector<int> domain_ids_; //!< IDs of domains to find volumes of
@@ -103,6 +101,14 @@ private:
   //! \param[in,out] hits Number of hits corresponding to each material
   void check_hit(int i_material, std::vector<int>& indices,
     std::vector<int>& hits) const;
+
+  //! \brief Perform calculation for domain volumes and average nuclide density 
+  //!   using n_samples_
+  //
+  //! \param[in] seed_offset Seed offset used for independent calculations
+  //! \return Vector of results for each user-specified domain
+  std::vector<Result> _execute(size_t seed_offset = 0) const;
+
 
 };
 

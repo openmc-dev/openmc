@@ -75,6 +75,21 @@ VolumeCalculation::VolumeCalculation(pugi::xml_node node)
       msg << "Invalid error threshold " << threshold_ << " provided for a volume calculation.";
       fatal_error(msg);
     }
+
+    pugi::xml_node threshold_node = node.child("threshold");
+    std::string tmp = get_node_value(threshold_node, "type");
+    if (tmp == "variance") {
+      threshold_type_ = ThresholdType::VARIANCE;
+    } else if (tmp == "std_dev") {
+      threshold_type_ = ThresholdType::STD_DEV;    
+    } else if ( tmp == "rel_err") {
+      threshold_type_ = ThresholdType::REL_ERR;
+    } else {
+      std::stringstream msg;
+      msg << "Invalid volume calculation trigger type '" << tmp << "' provided.";
+      fatal_error(msg);
+    }
+
   }
 
   // Ensure there are no duplicates by copying elements to a set and then
@@ -96,15 +111,30 @@ std::vector<VolumeCalculation::Result> VolumeCalculation::execute() const {
   if (threshold_ == -1.0) { return results; }
 
   size_t offset = n_samples_;
-  double max_err;
+  double max_val;
 
   while (true) {
     // check maximum error value for all domains
-    max_err = -INFTY;
-    for (const auto& result : results) { max_err = std::max(max_err, result.volume[1]); }
+    max_val = -INFTY;
+    for (const auto& result : results) { 
+      double val;
+      switch (threshold_type_) {
+        case ThresholdType::STD_DEV:
+          val = result.volume[1]; 
+          break;
+        case ThresholdType::REL_ERR:
+          val = result.volume[1] / result.volume[0];
+          break;
+        case ThresholdType::VARIANCE:
+          val = result.volume[1] * result.volume[1];
+          break;
+      }
+      // update max
+      max_val = std::max(max_val, val);    
+      }
 
     // exit once we're below our error limit
-    if (max_err <= threshold_) { break; }
+    if (max_val <= threshold_) { break; }
 
     // perform the calculation
     std::vector<VolumeCalculation::Result> tmp = _execute(offset);
@@ -307,6 +337,10 @@ std::vector<VolumeCalculation::Result> VolumeCalculation::_execute(size_t seed_o
           result.nuclides.push_back(j);
           result.atoms.push_back(mean);
           result.uncertainty.push_back(stdev);
+        } else {
+          result.nuclides.push_back(j);
+          result.atoms.push_back(0.0);
+          result.uncertainty.push_back(INFTY);
         }
       }
     }
@@ -339,7 +373,7 @@ void VolumeCalculation::to_hdf5(const std::string& filename,
   if (threshold_ != -1.0) {
     write_attribute(file_id, "threshold", threshold_);
   }
-  
+
   if (domain_type_ == FILTER_CELL) {
     write_attribute(file_id, "domain_type", "cell");
   }

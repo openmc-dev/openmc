@@ -60,91 +60,6 @@ void read_geometry_xml()
   model::root_universe = find_root_universe();
 }
 
-void CellCountStorage::clear() {
-  if (instance_ != nullptr) {
-    delete instance_;
-    instance_ = nullptr;
-  }
-}
-
-void CellCountStorage::set_cell_count_for_univ(int32_t univ, int32_t cell, int count) {
-    counts[univ][cell] = count;
-}
-
-  void CellCountStorage::increment_count_for_univ(int32_t univ, int32_t cell) {
-    if (has_count(univ,cell)) {
-      counts[univ][cell] += 1;
-    } else {
-      counts[univ][cell] = 1;
-    }
-  }
-
-bool CellCountStorage::has_count(int32_t univ, int32_t cell) {
-  return counts.count(univ) && counts[univ].count(cell);
-}
-
-bool CellCountStorage::has_count(int32_t univ) {
-  return counts.count(univ);
-}
-
-void CellCountStorage::absorb_b_into_a(int32_t a, int32_t b) {
-  std::map<int32_t, int> b_map = counts[b];
-
-  for (auto it : b_map) {
-    if (has_count(a, it.first)) {
-      counts[a][it.first] += it.second;
-    } else {
-      counts[a][it.first] = it.second;
-      }
-  }
-}
-
-auto CellCountStorage::get_count(int32_t univ) {
-    return counts[univ];
-}
-
-void LevelCountStorage::clear() {
-  if (instance_ != nullptr) {
-    delete instance_;
-    instance_ = nullptr;
-    }
-}
-
-void LevelCountStorage::set_cell_count_for_univ(int32_t univ, int count) {
-  counts[univ] = count;
-}
-
-void LevelCountStorage::increment_count_for_univ(int32_t univ) {
-  if (has_count(univ)) {
-    counts[univ] += 1;
-  } else {
-    counts[univ] = 1;
-  }
-}
-
-bool LevelCountStorage::has_count(int32_t univ) {
-  return counts.count(univ);
-}
-
-void LevelCountStorage::absorb_b_into_a(int32_t a, int32_t b) {
-  if (has_count(a)) {
-    counts[a] += counts[b];
-  } else {
-    counts[a] = counts[b];
-  }
-}
-
-void LevelCountStorage::set_count(int32_t univ, int count) {
-  counts[univ] = count;
-}
-
-int LevelCountStorage::get_count(int32_t univ) {
-  return counts[univ];
-}
-
-CellCountStorage* CellCountStorage::instance_ = nullptr;
-LevelCountStorage* LevelCountStorage::instance_ = nullptr;
-
 //==============================================================================
 
 void
@@ -480,31 +395,19 @@ prepare_distribcell()
 void
 count_cell_instances(int32_t univ_indx)
 {
-  CellCountStorage* counter = CellCountStorage::instance();
+  for (int32_t cell_indx : model::universes[univ_indx]->cells_) {
+    Cell& c = *model::cells[cell_indx];
+    ++c.n_instances_;
 
-  if (counter->has_count(univ_indx)) {
-    std::map<int32_t, int> univ_counts = counter->get_count(univ_indx);
-    for(auto it : univ_counts) {
-      Cell& c = *model::cells[it.first];
-      c.n_instances_ += it.second;
-    }
-  } else {
-    for (int32_t cell_indx : model::universes[univ_indx]->cells_) {
-      Cell& c = *model::cells[cell_indx];
-      ++c.n_instances_;
-      counter->increment_count_for_univ(univ_indx, cell_indx);
+    if (c.type_ == FILL_UNIVERSE) {
+      // This cell contains another universe.  Recurse into that universe.
+      count_cell_instances(c.fill_);
 
-      if (c.type_ == FILL_UNIVERSE) {
-        // This cell contains another universe.  Recurse into that universe.
-        count_cell_instances(c.fill_);
-        counter->absorb_b_into_a(univ_indx, c.fill_);
-      } else if (c.type_ == FILL_LATTICE) {
-        // This cell contains a lattice.  Recurse into the lattice universes.
-        Lattice& lat = *model::lattices[c.fill_];
-        for (auto it = lat.begin(); it != lat.end(); ++it) {
-          count_cell_instances(*it);
-          counter->absorb_b_into_a(univ_indx, *it);
-        }
+    } else if (c.type_ == FILL_LATTICE) {
+      // This cell contains a lattice.  Recurse into the lattice universes.
+      Lattice& lat = *model::lattices[c.fill_];
+      for (auto it = lat.begin(); it != lat.end(); ++it) {
+        count_cell_instances(*it);
       }
     }
   }
@@ -626,12 +529,6 @@ distribcell_path(int32_t target_cell, int32_t map, int32_t target_offset)
 int
 maximum_levels(int32_t univ)
 {
-  LevelCountStorage* counter = LevelCountStorage::instance();
-
-  if (counter->has_count(univ)) {
-    return counter->get_count(univ);
-  }
-
   int levels_below {0};
 
   for (int32_t cell_indx : model::universes[univ]->cells_) {
@@ -649,7 +546,6 @@ maximum_levels(int32_t univ)
   }
 
   ++levels_below;
-  counter->set_count(univ, levels_below);
   return levels_below;
 }
 

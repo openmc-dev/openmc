@@ -268,14 +268,12 @@ void load_dagmc_geometry()
     std::string cmp_str = mat_value;
     to_lower(cmp_str);
 
-    if (cmp_str.find("graveyard") != std::string::npos) {
+    if (cmp_str == "graveyard") {
       graveyard = vol_handle;
     }
 
     // material void checks
-    if (cmp_str.find("void") != std::string::npos   ||
-        cmp_str.find("vacuum") != std::string::npos ||
-        cmp_str.find("graveyard") != std::string::npos) {
+    if (cmp_str == "void" || cmp_str == "vacuum" || cmp_str == "graveyard") {
       c->material_.push_back(MATERIAL_VOID);
     } else {
       if (using_uwuw) {

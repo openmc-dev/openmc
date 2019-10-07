@@ -135,10 +135,6 @@ int openmc_finalize()
 
 int openmc_reset()
 {
-
-  CellCountStorage::instance()->clear();
-  LevelCountStorage::instance()->clear();
-
   for (auto& t : model::tallies) {
     t->reset();
   }

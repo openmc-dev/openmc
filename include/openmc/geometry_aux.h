@@ -7,78 +7,8 @@
 #include <cstdint>
 #include <string>
 #include <vector>
-#include <map>
 
 namespace openmc {
-  struct  CellCountStorage {
-  private:
-    CellCountStorage() {}
-    CellCountStorage(CellCountStorage& c) {}
-    CellCountStorage(const CellCountStorage& c) {}
-
-    static CellCountStorage* instance_;
-
-    std::map<int32_t, std::map<int32_t, int>> counts;
-
-  public:
-
-    static CellCountStorage* instance() {
-      if (instance_ == nullptr)
-        instance_ = new CellCountStorage;
-
-      return instance_;
-    }
-
-
-
-    void clear();
-
-    void set_cell_count_for_univ(int32_t univ, int32_t cell, int count);
-
-    void increment_count_for_univ(int32_t univ, int32_t cell);
-
-    bool has_count(int32_t univ, int32_t cell);
-
-    bool has_count(int32_t univ);
-
-    void absorb_b_into_a(int32_t a, int32_t b);
-
-    auto get_count(int32_t univ);
-  };
-
-  struct  LevelCountStorage {
-  private:
-    LevelCountStorage() {}
-    LevelCountStorage(LevelCountStorage& c) {}
-    LevelCountStorage(const LevelCountStorage& c) {}
-
-    static LevelCountStorage* instance_;
-
-    std::map<int32_t, int> counts;
-
-  public:
-
-    static LevelCountStorage* instance() {
-      if (instance_ == nullptr)
-        instance_ = new LevelCountStorage;
-
-      return instance_;
-    }
-
-    void clear();
-
-    void set_cell_count_for_univ(int32_t univ, int count);
-
-    void increment_count_for_univ(int32_t univ);
-
-    bool has_count(int32_t univ);
-
-    void absorb_b_into_a(int32_t a, int32_t b);
-
-    void set_count(int32_t univ, int count);
-
-    int get_count(int32_t univ);
-  };
 
 void read_geometry_xml();
 

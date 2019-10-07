@@ -48,4 +48,12 @@
     <lower_left>-1.0 -1.0 -6.0</lower_left>
     <upper_right>1.0 1.0 6.0</upper_right>
   </volume_calc>
+  <volume_calc>
+    <domain_type>cell</domain_type>
+    <domain_ids>1 2 3</domain_ids>
+    <samples>100</samples>
+    <lower_left>-1.0 -1.0 -6.0</lower_left>
+    <upper_right>1.0 1.0 6.0</upper_right>
+    <threshold threshold="0.0001" type="std_dev" />
+  </volume_calc>
 </settings>

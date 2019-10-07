@@ -69,19 +69,20 @@ VolumeCalculation::VolumeCalculation(pugi::xml_node node)
   }
 
   if (check_for_node(node, "threshold")) {
-    threshold_ = std::stod(get_node_value(node, "threshold"));
+    pugi::xml_node threshold_node = node.child("threshold");
+ 
+    threshold_ = std::stod(get_node_value(threshold_node, "threshold"));
     if (threshold_ <= 0.0) {
       std::stringstream msg;
       msg << "Invalid error threshold " << threshold_ << " provided for a volume calculation.";
       fatal_error(msg);
     }
 
-    pugi::xml_node threshold_node = node.child("threshold");
     std::string tmp = get_node_value(threshold_node, "type");
     if (tmp == "variance") {
       trigger_type_ = ThresholdType::VARIANCE;
     } else if (tmp == "std_dev") {
-      trigger_type_ = ThresholdType::STD_DEV;    
+      trigger_type_ = ThresholdType::STD_DEV;
     } else if ( tmp == "rel_err") {
       trigger_type_ = ThresholdType::REL_ERR;
     } else {
@@ -116,11 +117,11 @@ std::vector<VolumeCalculation::Result> VolumeCalculation::execute() const {
   while (true) {
     // check maximum error value for all domains
     max_val = -INFTY;
-    for (const auto& result : results) { 
+    for (const auto& result : results) {
       double val;
       switch (trigger_type_) {
         case ThresholdType::STD_DEV:
-          val = result.volume[1]; 
+          val = result.volume[1];
           break;
         case ThresholdType::REL_ERR:
           val = result.volume[1] / result.volume[0];
@@ -129,8 +130,9 @@ std::vector<VolumeCalculation::Result> VolumeCalculation::execute() const {
           val = result.volume[1] * result.volume[1];
           break;
       }
-      // update max
-      max_val = std::max(max_val, val);    
+      // update max if entry is valid
+      if (val > 0.0) { max_val = std::max(max_val, val); }
+
       }
 
     // exit once we're below our error limit
@@ -306,7 +308,7 @@ std::vector<VolumeCalculation::Result> VolumeCalculation::_execute(size_t seed_o
       for (int j = 0; j < master_indices[i_domain].size(); ++j) {
         total_hits += master_hits[i_domain][j];
         double f = static_cast<double>(master_hits[i_domain][j]) / n_samples_;
-        double var_f = f*(1.0 - f)/n_samples_;
+        double var_f = f*(1.0 - f) / n_samples_;
 
         int i_material = master_indices[i_domain][j];
         if (i_material == MATERIAL_VOID) continue;
@@ -340,7 +342,7 @@ std::vector<VolumeCalculation::Result> VolumeCalculation::_execute(size_t seed_o
         } else {
           result.nuclides.push_back(j);
           result.atoms.push_back(0.0);
-          result.uncertainty.push_back(INFTY);
+          result.uncertainty.push_back(0.0);
         }
       }
     }
@@ -384,7 +386,7 @@ void VolumeCalculation::to_hdf5(const std::string& filename,
         write_attribute(file_id, "trigger_type", "rel_err");
         break;
     }
-    
+
   }
 
   if (domain_type_ == FILTER_CELL) {

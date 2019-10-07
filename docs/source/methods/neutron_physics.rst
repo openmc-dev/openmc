@@ -1298,11 +1298,10 @@ section over the range of velocities considered:
 where it should be noted that the maximum is taken over the range :math:`[v_n -
 4/\beta, 4_n + 4\beta]`. This method is known as Doppler broadening rejection
 correction (DBRC) and was first introduced by `Becker et al.`_. OpenMC has an
-implementation of DBRC as well as an accelerated sampling method that are
-described fully in `Walsh et al.`_
+implementation of DBRC as well as an accelerated sampling method that samples the `relative velocity`_ directly.
 
-.. _Becker et al.: http://dx.doi.org/10.1016/j.anucene.2008.12.001
-.. _Walsh et al.: http://dx.doi.org/10.1016/j.anucene.2014.01.017
+.. _Becker et al.: https://doi.org/10.1016/j.anucene.2008.12.001
+.. _relative velocity: https://doi.org/10.1016/j.anucene.2017.12.044
 
 .. _sab_tables:
 
@@ -1645,23 +1644,23 @@ another.
 
 .. |sab| replace:: S(:math:`\alpha,\beta,T`)
 
-.. _SIGMA1 method: http://dx.doi.org/10.13182/NSE76-1
+.. _SIGMA1 method: https://doi.org/10.13182/NSE76-1
 
 .. _scaled interpolation: http://www.ans.org/pubs/journals/nse/a_26575
 
-.. _probability table method: http://dx.doi.org/10.13182/NSE72-3
+.. _probability table method: https://doi.org/10.13182/NSE72-3
 
-.. _Watt fission spectrum: http://dx.doi.org/10.1103/PhysRev.87.1037
+.. _Watt fission spectrum: https://doi.org/10.1103/PhysRev.87.1037
 
 .. _Foderaro: http://hdl.handle.net/1721.1/1716
 
-.. _OECD: http://www.oecd-nea.org/dbprog/MMRW-BOOKS.html
+.. _OECD: http://www.oecd-nea.org/tools/abstract/detail/NEA-1792
 
-.. _NJOY: https://njoy.github.io/NJOY2016/
+.. _NJOY: https://www.njoy21.io/NJOY2016/
 
 .. _PREPRO: http://www-nds.iaea.org/ndspub/endf/prepro/
 
-.. _ENDF-6 Format: http://www-nds.iaea.org/ndspub/documents/endf/endf102/endf102.pdf
+.. _ENDF-6 Format: https://www.oecd-nea.org/dbdata/data/manual-endf/endf102.pdf
 
 .. _Monte Carlo Sampler: https://laws.lanl.gov/vhosts/mcnp.lanl.gov/pdf_files/la-9721.pdf
 
@@ -1669,7 +1668,7 @@ another.
 
 .. _MC21: http://www.osti.gov/bridge/servlets/purl/903083-HT5p1o/903083.pdf
 
-.. _Romano: http://dx.doi.org/10.1016/j.cpc.2014.11.001
+.. _Romano: https://doi.org/10.1016/j.cpc.2014.11.001
 
 .. _Sutton and Brown: http://www.osti.gov/bridge/product.biblio.jsp?osti_id=307911
 

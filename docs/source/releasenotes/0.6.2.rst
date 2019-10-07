@@ -33,10 +33,10 @@ Bug Fixes
 - e6abb9_: Fix segfault when tallying in a void material
 - 291b45_: Handle metastable nuclides in NNDC data and multiplicities in MT=5 data
 
-.. _26fb93: https://github.com/mit-crpg/openmc/commit/26fb93
-.. _2f07c0: https://github.com/mit-crpg/openmc/commit/2f07c0
-.. _e6abb9: https://github.com/mit-crpg/openmc/commit/e6abb9
-.. _291b45: https://github.com/mit-crpg/openmc/commit/291b45
+.. _26fb93: https://github.com/openmc-dev/openmc/commit/26fb93
+.. _2f07c0: https://github.com/openmc-dev/openmc/commit/2f07c0
+.. _e6abb9: https://github.com/openmc-dev/openmc/commit/e6abb9
+.. _291b45: https://github.com/openmc-dev/openmc/commit/291b45
 
 ------------
 Contributors

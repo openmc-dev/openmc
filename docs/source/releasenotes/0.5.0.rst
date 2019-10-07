@@ -39,11 +39,11 @@ Bug Fixes
 - 6f8d9d_: Set default tally labels.
 - 6a3a5e_: Fix problem with corner-crossing in lattices.
 
-.. _737b90: https://github.com/mit-crpg/openmc/commit/737b90
-.. _a819b4: https://github.com/mit-crpg/openmc/commit/a819b4
-.. _b11696: https://github.com/mit-crpg/openmc/commit/b11696
-.. _2bd46a: https://github.com/mit-crpg/openmc/commit/2bd46a
-.. _7a1f08: https://github.com/mit-crpg/openmc/commit/7a1f08
-.. _c0e3ec: https://github.com/mit-crpg/openmc/commit/c0e3ec
-.. _6f8d9d: https://github.com/mit-crpg/openmc/commit/6f8d9d
-.. _6a3a5e: https://github.com/mit-crpg/openmc/commit/6a3a5e
+.. _737b90: https://github.com/openmc-dev/openmc/commit/737b90
+.. _a819b4: https://github.com/openmc-dev/openmc/commit/a819b4
+.. _b11696: https://github.com/openmc-dev/openmc/commit/b11696
+.. _2bd46a: https://github.com/openmc-dev/openmc/commit/2bd46a
+.. _7a1f08: https://github.com/openmc-dev/openmc/commit/7a1f08
+.. _c0e3ec: https://github.com/openmc-dev/openmc/commit/c0e3ec
+.. _6f8d9d: https://github.com/openmc-dev/openmc/commit/6f8d9d
+.. _6a3a5e: https://github.com/openmc-dev/openmc/commit/6a3a5e

@@ -4,11 +4,11 @@
 Heating and Energy Deposition
 =============================
 
-As particles traverse a problem, some portion of their energy is deposited at 
+As particles traverse a problem, some portion of their energy is deposited at
 collision sites. This energy is deposited when charged particles, including
 electrons and recoil nuclei, undergo electromagnetic interactions with
 surrounding electons and ions. The information describing how much energy
-is deposited for a specific reaction is referred to as 
+is deposited for a specific reaction is referred to as
 "heating numbers" and can be computed using a program like NJOY with the
 ``heatr`` module.
 
@@ -108,7 +108,7 @@ Neutron Transport
 For this case, OpenMC instructs ``heatr`` to produce heating coefficients
 assuming that energy from photons, :math:`E_{\gamma, p}` and
 :math:`E_{\gamma, d}`, is deposited at the fission site.
-Let :math:`N901` represent the total heating number returned from this ``heatr`` 
+Let :math:`N901` represent the total heating number returned from this ``heatr``
 run with :math:`N918` reflecting fission heating computed from NJOY.
 :math:`M901` represent the following modification
 
@@ -119,7 +119,7 @@ run with :math:`N918` reflecting fission heating computed from NJOY.
       + E_{i, \gamma, d}\right]\sigma_{i, f}(E).
 
 This modified heating data is stored as the MT=901 reaction and will be scored
-if ``901`` is included in :attr:`openmc.Tally.scores`.
+if ``heating-local`` is included in :attr:`openmc.Tally.scores`.
 
 Coupled neutron-photon transport
 --------------------------------

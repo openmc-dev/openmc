@@ -18,7 +18,7 @@ GROUP_STRUCTURES = {}
 
 .. _CASMO: https://www.studsvik.com/SharepointFiles/CASMO-5%20Development%20and%20Applications.pdf
 .. _XMAS-172: https://www-nds.iaea.org/wimsd/energy.htm
-.. _SHEM-361: https://www.polymtl.ca/merlin/libraries.htm
+.. _SHEM-361: https://www.polymtl.ca/merlin/downloads/FP214.pdf
 .. _activation: https://fispact.ukaea.uk/wiki/Keyword:GETXS
 .. _CCFE-709: https://fispact.ukaea.uk/wiki/CCFE-709_group_structure
 .. _UKAEA-1102: https://fispact.ukaea.uk/wiki/UKAEA-1102_group_structure

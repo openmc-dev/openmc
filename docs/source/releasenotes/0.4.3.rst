@@ -40,12 +40,12 @@ Bug Fixes
 - 3212f5_: Fixed issue with blank line at beginning of XML files.
 
 .. _nelsonag: https://github.com/nelsonag
-.. _33f29a: https://github.com/mit-crpg/openmc/commit/33f29a
-.. _1c472d: https://github.com/mit-crpg/openmc/commit/1c472d
-.. _3c6e80: https://github.com/mit-crpg/openmc/commit/3c6e80
-.. _3bd35b: https://github.com/mit-crpg/openmc/commit/3bd35b
-.. _0069d5: https://github.com/mit-crpg/openmc/commit/0069d5
-.. _7af2cf: https://github.com/mit-crpg/openmc/commit/7af2cf
-.. _460ef1: https://github.com/mit-crpg/openmc/commit/460ef1
-.. _85a60e: https://github.com/mit-crpg/openmc/commit/85a60e
-.. _3212f5: https://github.com/mit-crpg/openmc/commit/3212f5
+.. _33f29a: https://github.com/openmc-dev/openmc/commit/33f29a
+.. _1c472d: https://github.com/openmc-dev/openmc/commit/1c472d
+.. _3c6e80: https://github.com/openmc-dev/openmc/commit/3c6e80
+.. _3bd35b: https://github.com/openmc-dev/openmc/commit/3bd35b
+.. _0069d5: https://github.com/openmc-dev/openmc/commit/0069d5
+.. _7af2cf: https://github.com/openmc-dev/openmc/commit/7af2cf
+.. _460ef1: https://github.com/openmc-dev/openmc/commit/460ef1
+.. _85a60e: https://github.com/openmc-dev/openmc/commit/85a60e
+.. _3212f5: https://github.com/openmc-dev/openmc/commit/3212f5

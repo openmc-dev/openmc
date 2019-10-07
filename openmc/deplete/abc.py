@@ -28,7 +28,7 @@ from .results_list import ResultsList
 __all__ = [
     "OperatorResult", "TransportOperator", "ReactionRateHelper",
     "EnergyHelper", "FissionYieldHelper", "TalliedFissionYieldHelper",
-    "Integrator", "SIIntegrator"]
+    "Integrator", "SIIntegrator", "DepSystemSolver"]
 
 
 OperatorResult = namedtuple('OperatorResult', ['k', 'rates'])

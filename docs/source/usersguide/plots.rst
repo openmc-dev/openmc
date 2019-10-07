@@ -66,7 +66,7 @@ particular cells/materials should be given colors of your choosing::
   }
 
 Note that colors can be given as RGB tuples or by a string indicating a valid
-`SVG color <https://www.w3.org/TR/SVG/types.html#ColorKeywords>`_.
+`SVG color <https://www.w3.org/TR/SVG11/types.html#ColorKeywords>`_.
 
 When you're done creating your :class:`openmc.Plot` instances, you need to then
 assign them to a :class:`openmc.Plots` collection and export it to XML::

@@ -17,7 +17,8 @@ system for installing multiple versions of software packages and their
 dependencies and switching easily between them. `conda-forge
 <https://conda-forge.github.io/>`_ is a community-led conda channel of
 installable packages. For instructions on installing conda, please consult their
-`documentation <http://conda.pydata.org/docs/install/quick.html>`_.
+`documentation
+<https://docs.conda.io/projects/conda/en/latest/user-guide/install/>`_.
 
 Once you have `conda` installed on your system, add the `conda-forge` channel to
 your configuration with:
@@ -444,7 +445,7 @@ as for OpenMC.
 .. admonition:: Optional
    :class: note
 
-   `mpi4py <http://mpi4py.scipy.org/>`_
+   `mpi4py <https://mpi4py.readthedocs.io/en/stable/>`_
       mpi4py provides Python bindings to MPI for running distributed-memory
       parallel runs. This package is needed if you plan on running depletion
       simulations in parallel using MPI.
@@ -483,9 +484,9 @@ Make sure to replace the last string on the second line with the path to the
 schemas.xml file in your own OpenMC source directory.
 
 .. _GNU Emacs: http://www.gnu.org/software/emacs/
-.. _validation: http://en.wikipedia.org/wiki/XML_validation
+.. _validation: https://en.wikipedia.org/wiki/XML_validation
 .. _RELAX NG: http://relaxng.org/
 .. _NNDC: http://www.nndc.bnl.gov/endf/b7.1/acefiles.html
 .. _ctest: http://www.cmake.org/cmake/help/v2.8.12/ctest.html
-.. _Conda: https://conda.io/docs/
+.. _Conda: https://docs.conda.io/en/latest/
 .. _pip: https://pip.pypa.io/en/stable/

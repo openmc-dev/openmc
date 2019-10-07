@@ -40,6 +40,7 @@ random, non-overlapping configuration of spheres within the region.
 New Features
 ------------
 
+- White boundary conditions can be applied to surfaces
 - Support for rectilinear meshes through :class:`openmc.RectilinearMesh`.
 - The :class:`Geometry`, :class:`Materials`, and :class:`Settings` classes now
   have a ``from_xml`` method that will build an instance from an existing XML
@@ -47,7 +48,8 @@ New Features
 - Predefined energy group structures can be found in
   :data:`openmc.mgxs.GROUP_STRUCTURES`.
 - New tally scores: ``H1-production``, ``H2-production``, ``H3-production``,
-  ``He3-production``, ``He4-production``, ``heating``, and ``damage-energy``
+  ``He3-production``, ``He4-production``, ``heating``, ``heating-local``, and
+  ``damage-energy``.
 - Switched to cell-based neighor lists (`PR 1140
   <https://github.com/openmc-dev/openmc/pull/1140>`_)
 - Two new probability distributions that can be used for source distributions:
@@ -129,3 +131,4 @@ This release contains new contributions from the following people:
 - `Jonathan Shimwell <https://github.com/Shimwell>`_
 - `Patrick Shriwise <https://github.com/pshriwise>`_
 - `John Tramm <https://github.com/jtramm>`_
+- `Jiankai Yu <https://github.com/rockfool>`_

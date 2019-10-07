@@ -17,7 +17,7 @@ from .abc import DepSystemSolver
 
 __all__ = [
     "deplete", "timed_deplete", "CRAM16", "CRAM48",
-    "Cram16Solver", "Cram48Solver"]
+    "Cram16Solver", "Cram48Solver", "IPFCramSolver"]
 
 
 def deplete(chain, x, rates, dt, matrix_func=None):
@@ -88,16 +88,13 @@ def timed_deplete(*args, **kwargs):
 
 
 class IPFCramSolver(DepSystemSolver):
-    r"""Class for solving depletion systems with IPF Cram
+    r"""CRAM depletion solver that uses incomplete partial factorization
 
     Provides a :meth:`__call__` that utilizes an incomplete
     partial factorization (IPF) for the Chebyshev Rational Approximation
-    Method (CRAM)
-
-    M. Pusa, "Higher-Order Chebyshev Rational Approximation
-    Method and Application to Burnup Equations," Nuclear Science And
-    Engineering, 182:3,297-318
-    `DOI: 10.13182/NSE15-26 <https://doi.org/10.13182/NSE15-26>`_
+    Method (CRAM), as described in the following paper: M. Pusa, "`Higher-Order
+    Chebyshev Rational Approximation Method and Application to Burnup Equations
+    <https://doi.org/10.13182/NSE15-26>`_," Nucl. Sci. Eng., 182:3, 297-318.
 
     Parameters
     ----------
@@ -256,4 +253,3 @@ Cram48Solver = IPFCramSolver(c48_alpha, c48_theta, c48_alpha0)
 del c48_alpha, c48_alpha0, c48_theta, alpha_r, alpha_i, theta_r, theta_i
 
 CRAM48 = Cram48Solver.__call__
-

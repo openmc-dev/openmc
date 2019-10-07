@@ -67,6 +67,6 @@ the idea is to determine the new multiplicative and additive constants in
    .. rubric:: References
 
 
-.. _L'Ecuyer: http://dx.doi.org/10.1090/S0025-5718-99-00996-5
+.. _L'Ecuyer: https://doi.org/10.1090/S0025-5718-99-00996-5
 .. _Brown: https://laws.lanl.gov/vhosts/mcnp.lanl.gov/pdf_files/anl-rn-arb-stride.pdf
-.. _linear congruential generator: http://en.wikipedia.org/wiki/Linear_congruential_generator
+.. _linear congruential generator: https://en.wikipedia.org/wiki/Linear_congruential_generator

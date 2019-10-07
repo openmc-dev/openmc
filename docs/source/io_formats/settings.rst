@@ -333,7 +333,7 @@ or sub-elements:
     velocity sampling) or "dbrc" (Doppler broadening rejection correction).
     Descriptions of each of these methods are documented here_.
 
-    .. _here: http://dx.doi.org/10.1016/j.anucene.2017.12.044
+    .. _here: https://doi.org/10.1016/j.anucene.2017.12.044
 
     *Default*: "rvs"
 

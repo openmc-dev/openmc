@@ -92,7 +92,9 @@ class IPFCramSolver(DepSystemSolver):
 
     Provides a :meth:`__call__` that utilizes an incomplete
     partial factorization (IPF) for the Chebyshev Rational Approximation
-    Method (CRAM), as described in the following paper: M. Pusa, "`Higher-Order Chebyshev Rational Approximation Method and Application to Burnup Equations <https://doi.org/10.13182/NSE15-26>`_," Nucl. Sci. Eng., 182:3, 297-318.
+    Method (CRAM), as described in the following paper: M. Pusa, "`Higher-Order
+    Chebyshev Rational Approximation Method and Application to Burnup Equations
+    <https://doi.org/10.13182/NSE15-26>`_," Nucl. Sci. Eng., 182:3, 297-318.
 
     Parameters
     ----------

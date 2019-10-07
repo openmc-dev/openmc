@@ -45,8 +45,11 @@ class VolumeTest(PyAPITestHarness):
         vol_calcs = [
             openmc.VolumeCalculation(list(root.cells.values()), 100000),
             openmc.VolumeCalculation([water, fuel], 100000, ll, ur),
-            openmc.VolumeCalculation([root], 100000, ll, ur)
+            openmc.VolumeCalculation([root], 100000, ll, ur),
+            openmc.VolumeCalculation(list(root.cells.values()), 100)
         ]
+
+        vol_calcs[-1].set_trigger(1e-04, 'std_dev')
 
         # Define settings
         settings = openmc.Settings()
@@ -62,6 +65,11 @@ class VolumeTest(PyAPITestHarness):
             # Read volume calculation results
             volume_calc = openmc.VolumeCalculation.from_hdf5(filename)
 
+            if volume_calc.samples == 100:
+                assert(volume_calc.trigger_type == 'std_dev')
+                assert(volume_calc.threshold == 1e-04)
+                
+
             # Write cell volumes and total # of atoms for each nuclide
             for uid, volume in sorted(volume_calc.volumes.items()):
                 outstr += 'Domain {}: {} cm^3\n'.format(uid, volume)
@@ -74,4 +82,4 @@ class VolumeTest(PyAPITestHarness):
 
 def test_volume_calc():
     harness = VolumeTest('')
-    harness._build_inputs()
+    harness.main()

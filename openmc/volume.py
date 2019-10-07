@@ -336,7 +336,7 @@ class VolumeCalculation(object):
         ur_elem = ET.SubElement(element, "upper_right")
         ur_elem.text = ' '.join(str(x) for x in self.upper_right)
         if self.threshold:
-            threshold_elem = ET.SubElement(element, "threshold")
-            threshold_elem.text = str(self.threshold)
-            threshold_elem.set("type", self.trigger_type)
+            trigger_elem = ET.SubElement(element, "threshold")
+            trigger_elem.set("type", self.trigger_type)
+            trigger_elem.set("threshold", str(self.threshold))
         return element

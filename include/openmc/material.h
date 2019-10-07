@@ -56,44 +56,6 @@ class PolyProperty{
   void set_type(std::string type);
   void set_norm(double norm[]);
   void set_radius(double radius);
-/*
-PolyProperty(const PolyProperty& other){
-    type_     = other.type_;
-    n_coeffs_ = other.n_coeffs_;
-    order_    = other.order_;
-    coeffs_.resize(other.n_coeffs_);
-    for(int i=0; i<n_coeffs_; i++){
-      coeffs_[i] = other.coeffs_[i];
-    }
-    poly_results_.resize(other.n_coeffs_);
-    for(int i=0; i<n_coeffs_; i++){
-      poly_results_[i] = other.poly_results_[i];
-    }
-    poly_norm_.resize(other.n_coeffs_);
-    for(int i=0; i<n_coeffs_; i++){
-      poly_norm_[i] = other.poly_norm_[i];
-    }
-  };
-  PolyProperty & operator = (const PolyProperty & other){
-    type_     = other.type_;
-    n_coeffs_ = other.n_coeffs_;
-    order_    = other.order_;
-    coeffs_.resize(n_coeffs_);
-    for(int i=0; i<n_coeffs_; i++){
-      coeffs_[i] = other.coeffs_[i];
-    }
-    poly_results_.resize(other.n_coeffs_);
-    for(int i=0; i<n_coeffs_; i++){
-      poly_results_[i] = other.poly_results_[i];
-    }
-    poly_norm_.resize(other.n_coeffs_);
-    for(int i=0; i<n_coeffs_; i++){
-      poly_norm_[i] = other.poly_norm_[i];
-    }
-    return *this;
-  }
-  */
-  // update values
 };
 
 class Material

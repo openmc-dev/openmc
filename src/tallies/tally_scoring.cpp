@@ -225,17 +225,14 @@ double score_fission_q(const Particle* p, int score_bin, const Tally& tally,
              * p->neutron_xs_[i_nuclide].fission;
     } else {
       if (p->material_ != MATERIAL_VOID) {
-        //const Material& material {*model::materials[p->material_]};
-        //cvmt 
-        Material& material {*model::materials[p->material_]};
         
-        double score {0.0};
+	Material& material {*model::materials[p->material_]};
+        
+	double score {0.0};
         for (auto i = 0; i < material.nuclide_.size(); ++i) {
           auto j_nuclide = material.nuclide_[i];
           
-          //cvmt: FETs in number density 
-          //auto atom_density = material.atom_density_(i);
-          double atom_density {0.0};
+	  double atom_density {0.0};
           if(material.continuous_num_density_) {
             atom_density = material.poly_densities_[i].evaluate(p->coord_[p->n_coord_-1].r);
           } else {
@@ -290,15 +287,12 @@ double score_neutron_heating(const Particle* p, const Tally& tally, double flux,
   } else {
     if (p->material_ != MATERIAL_VOID) {
       heating_xs = 0.0;
-      //const Material& material {*model::materials[p->material_]};
-      //cvmt 
+       
       Material& material {*model::materials[p->material_]};
       
       for (auto i = 0; i< material.nuclide_.size(); ++i) {
         int j_nuclide = material.nuclide_[i];
         
-        //cvmt: FETs in number density 
-        //auto atom_density = material.atom_density_(i);
         double atom_density {0.0};
         if(material.continuous_num_density_) {
           atom_density = material.poly_densities_[i].evaluate(p->coord_[p->n_coord_-1].r);
@@ -753,16 +747,12 @@ score_general_ce(Particle* p, int i_tally, int start_index,
           if (p->material_ != MATERIAL_VOID) {
             // const Material& material {*model::materials[p->material_]};
             
-            //cvmt 
             Material& material {*model::materials[p->material_]};
             
             for (auto i = 0; i < material.nuclide_.size(); ++i) {
               auto j_nuclide = material.nuclide_[i];
-              // auto atom_density = material.atom_density_(i);
               
-              //cvmt: FETs in number density 
-              //auto atom_density = material.atom_density_(i);
-              double atom_density {0.0};
+	      double atom_density {0.0};
               if(material.continuous_num_density_) {
                 atom_density = material.poly_densities_[i].evaluate(p->coord_[p->n_coord_-1].r);
               } else {
@@ -888,14 +878,11 @@ score_general_ce(Particle* p, int i_tally, int start_index,
               {*dynamic_cast<DelayedGroupFilter*>(
               model::tally_filters[i_dg_filt].get())};
             if (p->material_ != MATERIAL_VOID) {
-              // cvmt 
-              // const Material& material {*model::materials[p->material_]};  
-              Material& material {*model::materials[p->material_]};
+              
+	      Material& material {*model::materials[p->material_]};
               for (auto i = 0; i < material.nuclide_.size(); ++i) {
                 auto j_nuclide = material.nuclide_[i];
-                
-                // cvmt: FETs in number density 
-                //auto atom_density = material.atom_density_(i);
+                 
                 double atom_density {0.0};
                 if(material.continuous_num_density_) {
                   atom_density = material.poly_densities_[i].evaluate(p->coord_[p->n_coord_-1].r);
@@ -919,14 +906,12 @@ score_general_ce(Particle* p, int i_tally, int start_index,
           } else {
             score = 0.;
             if (p->material_ != MATERIAL_VOID) {
-              // const Material& material {*model::materials[p->material_]};
-              // cvmt 
+               
               Material& material {*model::materials[p->material_]};
-              for (auto i = 0; i < material.nuclide_.size(); ++i) {
+              
+	      for (auto i = 0; i < material.nuclide_.size(); ++i) {
                 auto j_nuclide = material.nuclide_[i];
-                
-                // cvmt: FETs in number density
-                //auto atom_density = material.atom_density_(i);
+                 
                 double atom_density {0.0};
                 if(material.continuous_num_density_) {
                   atom_density = material.poly_densities_[i].evaluate(p->coord_[p->n_coord_-1].r);
@@ -1077,15 +1062,12 @@ score_general_ce(Particle* p, int i_tally, int start_index,
               {*dynamic_cast<DelayedGroupFilter*>(
               model::tally_filters[i_dg_filt].get())};
             if (p->material_ != MATERIAL_VOID) {
-              // const Material& material {*model::materials[p->material_]};
-              // cvmt 
+               
               Material& material {*model::materials[p->material_]};
               
               for (auto i = 0; i < material.nuclide_.size(); ++i) {
                 auto j_nuclide = material.nuclide_[i];
                 
-                //cvmt: FETs in number density 
-                //auto atom_density = material.atom_density_(i);
                 double atom_density {0.0};
                 if(material.continuous_num_density_) {
                   atom_density = material.poly_densities_[i].evaluate(p->coord_[p->n_coord_-1].r);
@@ -1114,15 +1096,12 @@ score_general_ce(Particle* p, int i_tally, int start_index,
           } else {
             score = 0.;
             if (p->material_ != MATERIAL_VOID) {
-              //const Material& material {*model::materials[p->material_]};
-              //cvmt 
+               
               Material& material {*model::materials[p->material_]};
               
               for (auto i = 0; i < material.nuclide_.size(); ++i) {
                 auto j_nuclide = material.nuclide_[i];
-                
-                //cvmt: FETs in number density 
-                //auto atom_density = material.atom_density_(i);
+                 
                 double atom_density {0.0};
                 if(material.continuous_num_density_) {
                   atom_density = material.poly_densities_[i].evaluate(p->coord_[p->n_coord_-1].r);
@@ -1197,15 +1176,12 @@ score_general_ce(Particle* p, int i_tally, int start_index,
           }
         } else {
           if (p->material_ != MATERIAL_VOID) {
-            //const Material& material {*model::materials[p->material_]};
-            //cvmt 
+             
             Material& material {*model::materials[p->material_]};
             
             for (auto i = 0; i < material.nuclide_.size(); ++i) {
               auto j_nuclide = material.nuclide_[i];
               
-              // cvmt : FETs in number density 
-              //auto atom_density = material.atom_density_(i);
               double atom_density {0.0};
               if(material.continuous_num_density_) {
                 atom_density = material.poly_densities_[i].evaluate(p->coord_[p->n_coord_-1].r);
@@ -1245,15 +1221,12 @@ score_general_ce(Particle* p, int i_tally, int start_index,
         } else {
           score = 0.;
           if (p->material_ != MATERIAL_VOID) {
-            //const Material& material {*model::materials[p->material_]};
-            //cvmt 
+             
             Material& material {*model::materials[p->material_]};
             
             for (auto i = 0; i < material.nuclide_.size(); ++i) {
               auto j_nuclide = material.nuclide_[i];
               
-              //cvmt: FETs in number density 
-              //auto atom_density = material.atom_density_(i);
               double atom_density {0.0};
               if(material.continuous_num_density_) {
                 atom_density = material.poly_densities_[i].evaluate(p->coord_[p->n_coord_-1].r);
@@ -1304,15 +1277,12 @@ score_general_ce(Particle* p, int i_tally, int start_index,
         } else {
           score = 0.;
           if (p->material_ != MATERIAL_VOID) {
-            //const Material& material {*model::materials[p->material_]};
-            //cvmt 
+             
             Material& material {*model::materials[p->material_]};
                         
             for (auto i = 0; i < material.nuclide_.size(); ++i) {
               auto j_nuclide = material.nuclide_[i];
               
-              //cvmt: FETs in number density 
-              //auto atom_density = material.atom_density_(i);
               double atom_density {0.0};
               if(material.continuous_num_density_) {
                 atom_density = material.poly_densities_[i].evaluate(p->coord_[p->n_coord_-1].r);
@@ -1366,15 +1336,12 @@ score_general_ce(Particle* p, int i_tally, int start_index,
               heating(i_grid))) * atom_density * flux;
           } else {
             if (p->material_ != MATERIAL_VOID) {
-              //const Material& material {*model::materials[p->material_]};
-              //cvmt 
+               
               Material& material {*model::materials[p->material_]};
               
               for (auto i = 0; i < material.nuclide_.size(); ++i) {
                 auto i_element = material.element_[i];
                 
-                //cvmt: FETs in number density 
-                //auto atom_density = material.atom_density_(i);
                 double atom_density {0.0};
                 if(material.continuous_num_density_) {
                   atom_density = material.poly_densities_[i].evaluate(p->coord_[p->n_coord_-1].r);
@@ -1422,22 +1389,18 @@ score_general_ce(Particle* p, int i_tally, int start_index,
           }
         } else {
           if (p->material_ != MATERIAL_VOID) {
-            //const Material& material {*model::materials[p->material_]};
-            //cvmt 
+             
             Material& material {*model::materials[p->material_]};
             
             for (auto i = 0; i < material.nuclide_.size(); ++i) {
               auto j_nuclide = material.nuclide_[i];
               
-              //cvmt: FETs in number density 
-              //auto atom_density = material.atom_density_(i);
               double atom_density {0.0};
               if(material.continuous_num_density_) {
                 atom_density = material.poly_densities_[i].evaluate(p->coord_[p->n_coord_-1].r);
               } else {
                 atom_density = material.atom_density_(i);
               }
-              //
               
               const auto& nuc {*data::nuclides[j_nuclide]};
               auto m = nuc.reaction_index_[score_bin];
@@ -2183,16 +2146,13 @@ score_all_nuclides(Particle* p, int i_tally, double flux,
   int filter_index)
 {
   const Tally& tally {*model::tallies[i_tally]};
-  //const Material& material {*model::materials[p->material_]};
-  //cvmt 
+  
   Material& material {*model::materials[p->material_]};
 
   // Score all individual nuclide reaction rates.
   for (auto i = 0; i < material.nuclide_.size(); ++i) {
     auto i_nuclide = material.nuclide_[i];
     
-    //cvmt: FETs in number density 
-    //auto atom_density = material.atom_density_(i);
     double atom_density {0.0};
     if(material.continuous_num_density_) {
       atom_density = material.poly_densities_[i].evaluate(p->coord_[p->n_coord_-1].r);

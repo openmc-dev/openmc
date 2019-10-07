@@ -28,7 +28,6 @@
 #include "openmc/string_utils.h"
 #include "openmc/thermal.h"
 #include "openmc/xml_interface.h"
-// cvmt 
 #include "openmc/position.h"
 
 namespace openmc {
@@ -191,8 +190,8 @@ Material::Material(pugi::xml_node node)
         // cvmt: read and store polynomial represetation of nuclide densities
         if(check_for_node(node_nuc, "poly_coeffs")){
           continuous_num_density_ = true;
-          auto type     = get_node_value(node_nuc, "poly_type");
-          auto coeffs   = get_node_array<double>(node_nuc, "poly_coeffs");
+          auto type = get_node_value(node_nuc, "poly_type");
+          auto coeffs = get_node_array<double>(node_nuc, "poly_coeffs");
           auto n_coeffs = coeffs.size();
           int order = {0}; 
           std::vector<double> temp_vec;
@@ -218,27 +217,27 @@ Material::Material(pugi::xml_node node)
           temp_poly.set_order(order);
           if(type == "zernike1d") {
             auto ii = 1;
-            for(int p=0; p<=order+1; p=p+2){
-              temp_vec.push_back(std::sqrt(p+1));
-              ii = ii + 1;
+            for(int p = 0; p <= order + 1; p = p + 2){
+              temp_vec.push_back(std::sqrt(p + 1));
+              ii += 1;
             }
           } else if(type == "zernike") {
             auto ii = 1;
-            for(int p=0; p<=order+1; p=p+1){
-              for(int q=-p; q<=p; q=q+2) {
-                if(q==0) {
+            for(int p = 0; p <= order + 1; p = p + 1){
+              for(int q = -p; q <= p; q = q + 2) {
+                if(q == 0) {
                   temp_vec.push_back(std::sqrt(p + 1.0));
                 } else {
                   temp_vec.push_back(std::sqrt(2.0 * p + 2.0));
                 }
-                ii = ii + 1;
+                ii += 1;
               }
             }
           }
           temp_poly.set_norm(temp_vec.data());
           poly_densities_.push_back(temp_poly);
         }
-        // cvmt 
+        // end cvmt materials reading  
       }
     }
   }
@@ -1491,7 +1490,7 @@ openmc_extend_materials(int32_t n, int32_t* index_start, int32_t* index_end)
 extern "C" size_t n_materials() { return model::materials.size(); }
 
 //
-// cvmt functions 
+// cvmt functions definition 
 double 
 PolyProperty::evaluate(Position r) {
   double results {0.0}; 
@@ -1505,37 +1504,34 @@ PolyProperty::evaluate(Position r) {
 
 double 
 PolyProperty::evaluate_zernike1d(Position r) {
-  int i;
   double rho;
   int c_index;
   double poly_val;
   double property {0.0};
-  //
   rho = std::sqrt(r.x * r.x + r.y * r.y) / coeffs_[0];
   c_index = 2;
-  for( i=0; i <= order_; i=i+2){
+  for(int i = 0; i <= order_; i = i + 2){
       calc_zn_rad(i, rho, &poly_val);
       property += poly_val * coeffs_[c_index-1];
-      c_index = c_index + 1;
+      c_index += 1;
   }
   return property;
 }
 
 double 
 PolyProperty::evaluate_zernike(Position r) {
-  int i, j, k;
+  int k;
   double rho;
   double phi;
   double property {0.0}; 
-  // Get normalized positions
-  rho = sqrt(  r.x *  r.x + r.y * r.y) / coeffs_[0];
+  rho = sqrt(r.x * r.x + r.y * r.y) / coeffs_[0];
   phi = std::atan2(r.y, r.x);
-  k = 2; // Keeps tracking of index in this->coeffs_
+  k = 2; 
   calc_zn(order_, rho, phi, poly_results_.data());
-  for( i=0; i<=order_; i++){
-    for( j=1; j<=i+1; j++){
-      property += poly_results_[k-1-1] * coeffs_[k-1];
-      k = k + 1;
+  for(int i = 0; i <= order_; i++){
+    for(int j = 1; j <= i + 1; j++){
+      property += poly_results_[k-2] * coeffs_[k-1];
+      k += 1;
     }
   }
   if (property < -1.0E-8) {
@@ -1562,28 +1558,32 @@ PolyProperty::~PolyProperty(){
 
 void PolyProperty::set_type(std::string type){
   type_ = type;
+  return;
 }
 
 void PolyProperty::set_order(int order){
   order_ = order;
+  return;
 }
 
 void PolyProperty::set_coeffs(double coeffs[]){
-  for(int i=0; i<n_coeffs_; i++){
-    coeffs_[i]=coeffs[i];
+  for(int i = 0; i < n_coeffs_; i++){
+    coeffs_[i] = coeffs[i];
   }
+  return;
 }
 
 void PolyProperty::set_norm(double norm[]){
-  for(int i=0; i<n_coeffs_; i++){
-    poly_norm_[i]=norm[i];
+  for(int i = 0; i < n_coeffs_; i++){
+    poly_norm_[i] = norm[i];
   }
+  return;
 }
 
 void PolyProperty::set_radius(double radius){
   radius_ = radius;
+  return;
 }
-
-// cvmt 
+ 
 
 } // namespace openmc

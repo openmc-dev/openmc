@@ -194,17 +194,15 @@ Material::Material(pugi::xml_node node)
           auto type     = get_node_value(node_nuc, "poly_type");
           auto coeffs   = get_node_array<double>(node_nuc, "poly_coeffs");
           auto n_coeffs = coeffs.size();
-          struct PolyProperty temp_poly; 
-          //
-          temp_poly.type_     = type;
-          temp_poly.n_coeffs_ = n_coeffs;
-          //
-          for(int i=0; i<=n_coeffs; i++){
-            temp_poly.coeffs_[i]=coeffs[i];
-          }
-          if(temp_poly.type_ == "zernike1d") {
-            temp_poly.order_ = 2 * (n_coeffs - 2);
-          } else if(temp_poly.type_ == "zernike") {
+          int order = {0}; 
+          std::vector<double> temp_vec;
+          PolyProperty temp_poly(n_coeffs - 1); 
+          temp_poly.set_type(type);
+          temp_poly.set_radius(coeffs[0]);
+          temp_poly.set_coeffs(coeffs.data()+1);
+          if(type == "zernike1d") {
+            order = 2 * (n_coeffs - 2);
+          } else if(type == "zernike") {
             auto p = 1;
             auto temp_int = 0;
             while(p < n_coeffs) {
@@ -212,34 +210,35 @@ Material::Material(pugi::xml_node node)
               temp_int += 1; 
             }
             if(p == n_coeffs) {
-              temp_poly.order_ = temp_int - 1;
+              order = temp_int - 1;
             } else {
               fatal_error("Correct polynomial order could not be determined.");
             }
           }
-          if(temp_poly.type_ == "zernike1d") {
+          temp_poly.set_order(order);
+          if(type == "zernike1d") {
             auto ii = 1;
-            for(int p=0; p<=temp_poly.order_+1; p=p+2){
-              temp_poly.poly_norm_[ii-1] = std::sqrt(p+1);
+            for(int p=0; p<=order+1; p=p+2){
+              temp_vec.push_back(std::sqrt(p+1));
               ii = ii + 1;
             }
-          } else if(temp_poly.type_ == "zernike") {
+          } else if(type == "zernike") {
             auto ii = 1;
-            for(int p=0; p<=temp_poly.order_+1; p=p+1){
+            for(int p=0; p<=order+1; p=p+1){
               for(int q=-p; q<=p; q=q+2) {
                 if(q==0) {
-                  temp_poly.poly_norm_[ii-1] = std::sqrt(p + 1.0);
+                  temp_vec.push_back(std::sqrt(p + 1.0));
                 } else {
-                  temp_poly.poly_norm_[ii-1] = std::sqrt(2.0 * p + 2.0);
+                  temp_vec.push_back(std::sqrt(2.0 * p + 2.0));
                 }
                 ii = ii + 1;
               }
             }
           }
+          temp_poly.set_norm(temp_vec.data());
           poly_densities_.push_back(temp_poly);
         }
         // cvmt 
-        
       }
     }
   }
@@ -1528,21 +1527,18 @@ PolyProperty::evaluate_zernike(Position r) {
   double rho;
   double phi;
   double property {0.0}; 
-  //! Get normalized positions
+  // Get normalized positions
   rho = sqrt(  r.x *  r.x + r.y * r.y) / coeffs_[0];
   phi = std::atan2(r.y, r.x);
-  k = 2; //! Keeps tracking of index in this % coeffs
-  calc_zn(order_, rho, phi, poly_results_);
+  k = 2; // Keeps tracking of index in this->coeffs_
+  calc_zn(order_, rho, phi, poly_results_.data());
   for( i=0; i<=order_; i++){
     for( j=1; j<=i+1; j++){
       property += poly_results_[k-1-1] * coeffs_[k-1];
-      //printf("this -> poly_results_= %15.7f\n", this -> poly_results_[k-1-1]);
-      //printf("this -> coeffs_= %15.7f\n", this -> coeffs_[k-1];
       k = k + 1;
     }
   }
   if (property < -1.0E-8) {
-     //write(*,*) 'Property = ', property
      fatal_error("A negative number density below -1E-8 was calculated\n");
   } else if (property < 0.0) {
      printf("Warning: A negative number density between -1E-8 and 0 was calculated\n");
@@ -1550,12 +1546,43 @@ PolyProperty::evaluate_zernike(Position r) {
   return property;
 }
 
-PolyProperty::PolyProperty(){
-  }
+PolyProperty::PolyProperty(int n_size){
+  n_coeffs_ = n_size;
+  coeffs_.resize(n_coeffs_);
+  poly_results_.resize(n_coeffs_);
+  poly_norm_.resize(n_coeffs_);
+}
 
 PolyProperty::~PolyProperty(){
     n_coeffs_ = 0;
+    coeffs_.resize(0);
+    poly_results_.resize(0);
+    poly_norm_.resize(0);
+}
+
+void PolyProperty::set_type(std::string type){
+  type_ = type;
+}
+
+void PolyProperty::set_order(int order){
+  order_ = order;
+}
+
+void PolyProperty::set_coeffs(double coeffs[]){
+  for(int i=0; i<n_coeffs_; i++){
+    coeffs_[i]=coeffs[i];
   }
+}
+
+void PolyProperty::set_norm(double norm[]){
+  for(int i=0; i<n_coeffs_; i++){
+    poly_norm_[i]=norm[i];
+  }
+}
+
+void PolyProperty::set_radius(double radius){
+  radius_ = radius;
+}
 
 // cvmt 
 

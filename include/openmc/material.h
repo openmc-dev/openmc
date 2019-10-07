@@ -33,19 +33,67 @@ extern std::unordered_map<int32_t, int32_t> material_map;
 //! A substance with constituent nuclides and thermal scattering data
 //==============================================================================
 
-struct PolyProperty{
+class PolyProperty{
+  private:
   std::string type_;                       //! user readable type
-  double coeffs_[100];                     //! coefficients for poly evaluation
   int n_coeffs_;                           //! number of coeffs
   int order_;                              //! the order of the expansion
-  int geom_norm_offset_;                   //! offset for the geom_norms coeffs
-  double poly_results_[100];               //! variables used in evaluation property
-  double poly_norm_[100];                  //! polynomial norm available to property for efficiency
+  double radius_;                          //! the radius of the expansion
+  std::vector<double> coeffs_;             //! coefficients for poly evaluation
+  std::vector<double> poly_norm_;          //! polynomial norm available to property for efficiency
+  public: 
+  std::vector<double> poly_results_;       //! variables used in evaluation property
   double evaluate(Position r);             //! Evaluate function
   double evaluate_zernike1d(Position r);
   double evaluate_zernike(Position r); 
-  PolyProperty();
+  // construction function
+  PolyProperty(int n_size);
+  // destruction function
   ~PolyProperty();
+  //setting functions
+  void set_order(int order);
+  void set_coeffs(double coeffs[]);
+  void set_type(std::string type);
+  void set_norm(double norm[]);
+  void set_radius(double radius);
+/*
+PolyProperty(const PolyProperty& other){
+    type_     = other.type_;
+    n_coeffs_ = other.n_coeffs_;
+    order_    = other.order_;
+    coeffs_.resize(other.n_coeffs_);
+    for(int i=0; i<n_coeffs_; i++){
+      coeffs_[i] = other.coeffs_[i];
+    }
+    poly_results_.resize(other.n_coeffs_);
+    for(int i=0; i<n_coeffs_; i++){
+      poly_results_[i] = other.poly_results_[i];
+    }
+    poly_norm_.resize(other.n_coeffs_);
+    for(int i=0; i<n_coeffs_; i++){
+      poly_norm_[i] = other.poly_norm_[i];
+    }
+  };
+  PolyProperty & operator = (const PolyProperty & other){
+    type_     = other.type_;
+    n_coeffs_ = other.n_coeffs_;
+    order_    = other.order_;
+    coeffs_.resize(n_coeffs_);
+    for(int i=0; i<n_coeffs_; i++){
+      coeffs_[i] = other.coeffs_[i];
+    }
+    poly_results_.resize(other.n_coeffs_);
+    for(int i=0; i<n_coeffs_; i++){
+      poly_results_[i] = other.poly_results_[i];
+    }
+    poly_norm_.resize(other.n_coeffs_);
+    for(int i=0; i<n_coeffs_; i++){
+      poly_norm_[i] = other.poly_norm_[i];
+    }
+    return *this;
+  }
+  */
+  // update values
 };
 
 class Material

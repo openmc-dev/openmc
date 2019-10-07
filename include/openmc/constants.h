@@ -371,18 +371,6 @@ constexpr int SCORE_FISS_Q_PROMPT      {-14}; // prompt fission Q-value
 constexpr int SCORE_FISS_Q_RECOV       {-15}; // recoverable fission Q-value
 constexpr int SCORE_DECAY_RATE         {-16}; // delayed neutron precursor decay rate
 
-//cvmt: FETs in number density 
-constexpr int SCORE_KAPPA_FISSION_ZN   {-23}; // Zernike poly expansion for kappa fission
-constexpr int SCORE_ABSORPTION_ZN      {-24}; // Zernike poly expansion for absorption
-constexpr int SCORE_FLUX_ZN            {-25}; // Zernike poly expansion for flux
-constexpr int SCORE_FISSION_ZN         {-26}; // Micro rate of fission with Zernike polynomial
-constexpr int SCORE_GAMMA_ZN           {-27}; // Micro rate of fission with Zernike polynomial
-constexpr int SCORE_KAPPA_FISSION_Z1D  {-28}; // Zernike poly expansion 1D kappa fission
-constexpr int SCORE_ABSORPTION_Z1D     {-29}; // Zernike poly expansion 1D absorption
-constexpr int SCORE_FLUX_Z1D           {-30}; // Zernike poly expansion 1D flux
-constexpr int SCORE_FISSION_Z1D        {-31}; // Micro rate of fission with Zernike polynomial
-constexpr int SCORE_GAMMA_Z1D          {-32}; // Micro rate of n-gamma with Zernike polynomial
-
 // Tally map bin finding
 constexpr int NO_BIN_FOUND {-1};
 

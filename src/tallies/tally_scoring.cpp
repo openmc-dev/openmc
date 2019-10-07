@@ -494,11 +494,6 @@ score_general_ce(Particle* p, int i_tally, int start_index,
 
     switch (score_bin) {
     
-    //cvmt FETs Score 
-    case SCORE_FLUX_Z1D:
-    case SCORE_FLUX_ZN:
-    // 
-
     case SCORE_FLUX:
       if (tally.estimator_ == ESTIMATOR_ANALOG) {
         // All events score to a flux bin. We actually use a collision estimator
@@ -607,10 +602,6 @@ score_general_ce(Particle* p, int i_tally, int start_index,
       }
       break;
 
-    // cvmt FETs Score
-    case SCORE_ABSORPTION_Z1D:
-    case SCORE_ABSORPTION_ZN:
-    //
     
     case SCORE_ABSORPTION:
       if (tally.estimator_ == ESTIMATOR_ANALOG) {
@@ -635,10 +626,6 @@ score_general_ce(Particle* p, int i_tally, int start_index,
       }
       break;
 
-    //cmvt: FETs Score
-    case SCORE_FISSION_Z1D:
-    case SCORE_FISSION_ZN:
-    //
     
     case SCORE_FISSION:
       if (p->macro_xs_.absorption == 0) continue;

@@ -73,7 +73,7 @@ Windowed Multipole Representation
 ---------------------------------
 
 In addition to the usual pointwise representation of cross sections, OpenMC
-offers support for an data format called windowed multipole (WMP). This data
+offers support for a data format called windowed multipole (WMP). This data
 format requires less memory than pointwise cross sections, and it allows
 on-the-fly Doppler broadening to arbitrary temperature.
 

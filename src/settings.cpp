@@ -107,7 +107,6 @@ double weight_survive {1.0};
 
 // cvmt variables data block
 int num_intervals {10};                //! cvmt: number of intervals in cvmt sampling 
-int fet_order {10};                    //! cvmt: number of orders in FETs 
 } // namespace settings
 
 //==============================================================================

@@ -231,7 +231,8 @@ Particle::transport()
       d_collision = -std::log(prn()) / macro_xs_.total; 
       
       // cvmt: continuous varying materials tracking  
-      if(model::materials[material_]->continuous_num_density_) d_collision = sampling_cvmt(this, boundary.distance);
+      if(model::materials[material_]->continuous_num_density_) 
+	      d_collision = sampling_cvmt(this, boundary.distance);
       //
     }
 

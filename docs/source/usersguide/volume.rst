@@ -42,8 +42,8 @@ or relative error of volume estimates using ::attr::`openmc.VolumeCalculation.se
 
     vol_calc.set_trigger(1e-05, 'std_dev')
 
-If a threshold is provided, calculations will be performed iteratively using the 
-number of samples specified on the calculation until all volume uncertainties are below 
+If a threshold is provided, calculations will be performed iteratively using the
+number of samples specified on the calculation until all volume uncertainties are below
 the threshold value. If no threshold is provided, the calculation will run the number of
 samples specified once and return the result.
 

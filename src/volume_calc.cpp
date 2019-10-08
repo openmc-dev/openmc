@@ -320,10 +320,6 @@ std::vector<VolumeCalculation::Result> VolumeCalculation::execute() const
             result.nuclides.push_back(j);
             result.atoms.push_back(mean);
             result.uncertainty.push_back(stdev);
-          } else {
-            result.nuclides.push_back(j);
-            result.atoms.push_back(0.0);
-            result.uncertainty.push_back(0.0);
           }
         }
       }
@@ -358,21 +354,23 @@ void VolumeCalculation::to_hdf5(const std::string& filename,
   write_attribute(file_id, "samples", n_samples_);
   write_attribute(file_id, "lower_left", lower_left_);
   write_attribute(file_id, "upper_right", upper_right_);
-  if (threshold_ != -1.0) {
+  // Write trigger info 
+  if (trigger_type_ != ThresholdType::NONE) {
+    write_attribute(file_id, "iterations", results[0].iterations);
     write_attribute(file_id, "threshold", threshold_);
-
+    std::string trigger_str;
     switch(trigger_type_) {
       case ThresholdType::VARIANCE:
-        write_attribute(file_id, "trigger_type", "variance");
+        trigger_str = "variance";
         break;
       case ThresholdType::STD_DEV:
-        write_attribute(file_id, "trigger_type", "std_dev");
+        trigger_str = "std_dev";
         break;
       case ThresholdType::REL_ERR:
-        write_attribute(file_id, "trigger_type", "rel_err");
+        trigger_str = "rel_err";
         break;
     }
-
+    write_attribute(file_id, "trigger_type", trigger_str);
   }
 
   if (domain_type_ == FILTER_CELL) {

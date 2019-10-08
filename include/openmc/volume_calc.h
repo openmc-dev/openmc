@@ -12,7 +12,7 @@
 
 namespace openmc {
 
-enum class ThresholdType {
+enum class VolumeTriggerMetric {
   NONE = 0,
   VARIANCE = 1,
   STD_DEV = 2,
@@ -56,7 +56,7 @@ public:
   int domain_type_; //!< Type of domain (cell, material, etc.)
   size_t n_samples_; //!< Number of samples to use
   double threshold_ {-1.0}; //!< Error threshold for domain volumes
-  ThresholdType trigger_type_ {ThresholdType::NONE};
+  VolumeTriggerMetric trigger_type_ {VolumeTriggerMetric::NONE}; //!< Trigger metric for the volume calculation
   Position lower_left_; //!< Lower-left position of bounding box
   Position upper_right_; //!< Upper-right position of bounding box
   std::vector<int> domain_ids_; //!< IDs of domains to find volumes of

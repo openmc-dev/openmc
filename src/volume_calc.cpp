@@ -80,11 +80,11 @@ VolumeCalculation::VolumeCalculation(pugi::xml_node node)
 
     std::string tmp = get_node_value(threshold_node, "type");
     if (tmp == "variance") {
-      trigger_type_ = ThresholdType::VARIANCE;
+      trigger_type_ = VolumeTriggerMetric::VARIANCE;
     } else if (tmp == "std_dev") {
-      trigger_type_ = ThresholdType::STD_DEV;
+      trigger_type_ = VolumeTriggerMetric::STD_DEV;
     } else if ( tmp == "rel_err") {
-      trigger_type_ = ThresholdType::REL_ERR;
+      trigger_type_ = VolumeTriggerMetric::REL_ERR;
     } else {
       std::stringstream msg;
       msg << "Invalid volume calculation trigger type '" << tmp << "' provided.";
@@ -292,16 +292,16 @@ std::vector<VolumeCalculation::Result> VolumeCalculation::execute() const
         result.iterations = iterations;
 
         // update threshold value if needed
-        if (trigger_type_ != ThresholdType::NONE) {
+        if (trigger_type_ != VolumeTriggerMetric::NONE) {
           double val = 0.0;
           switch (trigger_type_) {
-            case ThresholdType::STD_DEV:
+            case VolumeTriggerMetric::STD_DEV:
               val = result.volume[1];
               break;
-            case ThresholdType::REL_ERR:
+            case VolumeTriggerMetric::REL_ERR:
               val = result.volume[1] / result.volume[0];
               break;
-            case ThresholdType::VARIANCE:
+            case VolumeTriggerMetric::VARIANCE:
               val = result.volume[1] * result.volume[1];
               break;
           }
@@ -337,7 +337,7 @@ std::vector<VolumeCalculation::Result> VolumeCalculation::execute() const
 #endif
     
     // return results of the calculation
-    if (trigger_type_ == ThresholdType::NONE || max_vol_err < threshold_) { 
+    if (trigger_type_ == VolumeTriggerMetric::NONE || max_vol_err < threshold_) { 
       return results;
     }    
 
@@ -374,18 +374,18 @@ void VolumeCalculation::to_hdf5(const std::string& filename,
   write_attribute(file_id, "lower_left", lower_left_);
   write_attribute(file_id, "upper_right", upper_right_);
   // Write trigger info 
-  if (trigger_type_ != ThresholdType::NONE) {
+  if (trigger_type_ != VolumeTriggerMetric::NONE) {
     write_attribute(file_id, "iterations", results[0].iterations);
     write_attribute(file_id, "threshold", threshold_);
     std::string trigger_str;
     switch(trigger_type_) {
-      case ThresholdType::VARIANCE:
+      case VolumeTriggerMetric::VARIANCE:
         trigger_str = "variance";
         break;
-      case ThresholdType::STD_DEV:
+      case VolumeTriggerMetric::STD_DEV:
         trigger_str = "std_dev";
         break;
-      case ThresholdType::REL_ERR:
+      case VolumeTriggerMetric::REL_ERR:
         trigger_str = "rel_err";
         break;
     }

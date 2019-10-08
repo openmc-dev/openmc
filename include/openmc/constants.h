@@ -22,7 +22,7 @@ using double_4dvec = std::vector<std::vector<std::vector<std::vector<double>>>>;
 constexpr int VERSION_MAJOR {0};
 constexpr int VERSION_MINOR {11};
 constexpr int VERSION_RELEASE {0};
-constexpr bool VERSION_DEV {true};
+constexpr bool VERSION_DEV {false};
 constexpr std::array<int, 3> VERSION {VERSION_MAJOR, VERSION_MINOR, VERSION_RELEASE};
 
 // HDF5 data format

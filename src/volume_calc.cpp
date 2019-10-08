@@ -325,10 +325,29 @@ std::vector<VolumeCalculation::Result> VolumeCalculation::execute() const
       }
     }
 
+#ifdef OPENMC_MPI
+    // update maximum error value on all processes
+    if (mpi::master) {
+      for (int i = 1; i < mpi::n_procs; i++) {
+        MPI_Send(&max_vol_err, 1, MPI_DOUBLE, i, 0, mpi::intracomm);
+      }
+    } else {
+      MPI_Recv(&max_vol_err, 1, MPI_DOUBLE, 0, 0, mpi::intracomm, MPI_STATUS_IGNORE);
+    } 
+#endif
+    
     // return results of the calculation
     if (trigger_type_ == ThresholdType::NONE || max_vol_err < threshold_) { 
       return results;
     }    
+
+#ifdef OPENMC_MPI
+    // if iterating in MPI, need to zero indices and hits to they aren't counted twice
+    if (!mpi::master) {
+      for (auto& v : master_indices) { std::fill(v.begin(), v.end(), 0.0); }
+      for (auto& v : master_hits) { std::fill(v.begin(), v.end(), 0.0); }
+    }
+#endif
 
   } // end while
 }

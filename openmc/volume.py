@@ -58,7 +58,9 @@ class VolumeCalculation(object):
     volumes : dict
         Dictionary mapping unique IDs of domains to estimated volumes in cm^3.
     threshold : float
-        Threshold for the maxmimum standard deviation of volumes
+        Threshold for the maxmimum standard deviation of volumes.
+    iterations : int
+        Number of iterations over samples (for calculations with a trigger).
     trigger_type : {'variance', 'std_dev', 'rel_err'}
         Value type used to halt volume calculation
 
@@ -68,6 +70,7 @@ class VolumeCalculation(object):
         self._volumes = {}
         self._threshold = None
         self._trigger_type = None
+        self._iterations = None
 
         cv.check_type('domains', domains, Iterable,
                       (openmc.Cell, openmc.Material, openmc.Universe))
@@ -140,6 +143,10 @@ class VolumeCalculation(object):
         return self._trigger_type
 
     @property
+    def iterations(self):
+        return self._iterations
+
+    @property
     def domain_type(self):
         return self._domain_type
 
@@ -189,10 +196,8 @@ class VolumeCalculation(object):
     @threshold.setter    
     def threshold(self, threshold):
         name = 'volume std. dev. threshold'
-        cv.check_type(name, threshold, Real)        
-        if (threshold <= 0.0):
-            raise ValueError("Invalid value '{}' (<= 0.0) provided for volume "
-                             "calculation threshold.".format(threshold))
+        cv.check_type(name, threshold, Real)
+        cv.check_greater_than(name, threshold, 0.0)
         self._threshold = threshold
 
     @trigger_type.setter
@@ -200,6 +205,13 @@ class VolumeCalculation(object):
         cv.check_value('tally trigger type', trigger_type,
                        ['variance', 'std_dev', 'rel_err'])
         self._trigger_type = trigger_type
+
+    @iterations.setter
+    def iterations(self, iterations):
+        name = 'volume calculation iterations'
+        cv.check_type(name, iterations, Integral)
+        cv.check_greater_than(name, iterations, 0)
+        self._iterations = iterations
 
     @volumes.setter
     def volumes(self, volumes):
@@ -247,15 +259,9 @@ class VolumeCalculation(object):
             lower_left = f.attrs['lower_left']
             upper_right = f.attrs['upper_right']
 
-            try:
-                threshold = f.attrs['threshold']
-            except KeyError:
-                threshold = None
-
-            try:
-                trigger_type = f.attrs['trigger_type'].decode()
-            except KeyError:
-                trigger_type = None
+            threshold = f.attrs.get('threshold')
+            trigger_type = f.attrs.get('trigger_type')
+            iterations = f.attrs.get('iterations', 1)
 
             volumes = {}
             atoms = {}
@@ -288,9 +294,10 @@ class VolumeCalculation(object):
         # Instantiate the class and assign results
         vol = cls(domains, samples, lower_left, upper_right)
         
-        if threshold is not None:
-            vol.set_trigger(threshold, trigger_type)
+        if trigger_type is not None:
+            vol.set_trigger(threshold, trigger_type.decode())
 
+        vol.iterations = iterations
         vol.volumes = volumes
         vol.atoms = atoms
         return vol

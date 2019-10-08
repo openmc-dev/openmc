@@ -38,7 +38,7 @@ def dagmc_model(request):
     model.tallies = [tally]
 
     # materials
-    u235 = openmc.Material(name="fuel")
+    u235 = openmc.Material(name="no-void fuel")
     u235.add_nuclide('U235', 1.0, 'ao')
     u235.set_density('g/cc', 11)
     u235.id = 40

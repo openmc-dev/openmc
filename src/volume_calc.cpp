@@ -64,13 +64,13 @@ VolumeCalculation::VolumeCalculation(pugi::xml_node node)
   if (size_t_stream.fail()) {
     std::stringstream msg;
     msg << "Could not read number of samples ("
-        << size_t_stream.str() << ")\n";
+        << size_t_stream.str() << ")";
         fatal_error(msg);
   }
 
   if (check_for_node(node, "threshold")) {
     pugi::xml_node threshold_node = node.child("threshold");
- 
+
     threshold_ = std::stod(get_node_value(threshold_node, "threshold"));
     if (threshold_ <= 0.0) {
       std::stringstream msg;
@@ -124,6 +124,7 @@ std::vector<VolumeCalculation::Result> VolumeCalculation::execute() const
   }
 
   while (true) {
+
     #pragma omp parallel
     {
       // Variables that are private to each thread
@@ -223,7 +224,8 @@ std::vector<VolumeCalculation::Result> VolumeCalculation::execute() const
     iterations++;
     size_t total_samples = iterations * n_samples_;
 
-    double max_vol_err = -INFTY;
+    // reset
+    double trigger_val = -INFTY;
 
     // Set size for members of the Result struct
     std::vector<Result> results(n);
@@ -237,7 +239,7 @@ std::vector<VolumeCalculation::Result> VolumeCalculation::execute() const
       auto n_nuc = data::nuclides.size();
       xt::xtensor<double, 2> atoms({n_nuc, 2}, 0.0);
 
-  #ifdef OPENMC_MPI
+#ifdef OPENMC_MPI
       if (mpi::master) {
         for (int j = 1; j < mpi::n_procs; j++) {
           int q;
@@ -264,7 +266,7 @@ std::vector<VolumeCalculation::Result> VolumeCalculation::execute() const
         MPI_Send(&q, 1, MPI_INTEGER, 0, 0, mpi::intracomm);
         MPI_Send(&buffer[0], 2*q, MPI_INTEGER, 0, 1, mpi::intracomm);
       }
-  #endif
+#endif
 
       if (mpi::master) {
         int total_hits = 0;
@@ -299,14 +301,14 @@ std::vector<VolumeCalculation::Result> VolumeCalculation::execute() const
               val = result.volume[1];
               break;
             case VolumeTriggerMetric::REL_ERR:
-              val = result.volume[1] / result.volume[0];
+              val = result.volume[0] == 0.0 ? 0.0 : result.volume[1] / result.volume[0];
               break;
             case VolumeTriggerMetric::VARIANCE:
               val = result.volume[1] * result.volume[1];
               break;
           }
           // update max if entry is valid
-          if (val > 0.0) { max_vol_err = std::max(max_vol_err, val); }
+          if (val > 0.0) { trigger_val = std::max(trigger_val, val); }
         }
 
         for (int j = 0; j < n_nuc; ++j) {
@@ -323,29 +325,30 @@ std::vector<VolumeCalculation::Result> VolumeCalculation::execute() const
           }
         }
       }
-    }
+    } // end domain loop
+
+    // if no trigger is applied, we're done
+    if (trigger_type_ == VolumeTriggerMetric::NONE) { return results; }
 
 #ifdef OPENMC_MPI
     // update maximum error value on all processes
     if (mpi::master) {
       for (int i = 1; i < mpi::n_procs; i++) {
-        MPI_Send(&max_vol_err, 1, MPI_DOUBLE, i, 0, mpi::intracomm);
+        MPI_Send(&trigger_val, 1, MPI_DOUBLE, i, 0, mpi::intracomm);
       }
     } else {
-      MPI_Recv(&max_vol_err, 1, MPI_DOUBLE, 0, 0, mpi::intracomm, MPI_STATUS_IGNORE);
-    } 
+      MPI_Recv(&trigger_val, 1, MPI_DOUBLE, 0, 0, mpi::intracomm, MPI_STATUS_IGNORE);
+    }
 #endif
-    
+
     // return results of the calculation
-    if (trigger_type_ == VolumeTriggerMetric::NONE || max_vol_err < threshold_) { 
-      return results;
-    }    
+    if (trigger_val < threshold_) { return results; }
 
 #ifdef OPENMC_MPI
-    // if iterating in MPI, need to zero indices and hits to they aren't counted twice
+    // if iterating in an MPI run, need to zero indices and hits so they aren't counted twice
     if (!mpi::master) {
-      for (auto& v : master_indices) { std::fill(v.begin(), v.end(), 0.0); }
-      for (auto& v : master_hits) { std::fill(v.begin(), v.end(), 0.0); }
+      for (auto& v : master_indices) { std::fill(v.begin(), v.end(), 0); }
+      for (auto& v : master_hits) { std::fill(v.begin(), v.end(), 0); }
     }
 #endif
 
@@ -373,7 +376,7 @@ void VolumeCalculation::to_hdf5(const std::string& filename,
   write_attribute(file_id, "samples", n_samples_);
   write_attribute(file_id, "lower_left", lower_left_);
   write_attribute(file_id, "upper_right", upper_right_);
-  // Write trigger info 
+  // Write trigger info
   if (trigger_type_ != VolumeTriggerMetric::NONE) {
     write_attribute(file_id, "iterations", results[0].iterations);
     write_attribute(file_id, "threshold", threshold_);
@@ -390,6 +393,8 @@ void VolumeCalculation::to_hdf5(const std::string& filename,
         break;
     }
     write_attribute(file_id, "trigger_type", trigger_str);
+  } else {
+    write_attribute(file_id, "iterations", 1);
   }
 
   if (domain_type_ == FILTER_CELL) {

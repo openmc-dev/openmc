@@ -64,7 +64,7 @@ class VolumeTest(PyAPITestHarness):
             openmc.VolumeCalculation(list(root.cells.values()), 100)
         ]
 
-       
+
         vol_calcs[3].set_trigger(self.exp_std_dev, 'std_dev')
 
         vol_calcs[4].set_trigger(self.exp_rel_err, 'rel_err')
@@ -102,7 +102,7 @@ class VolumeTest(PyAPITestHarness):
                 assert(volume_calc.threshold == self.exp_variance)
                 assert(volume_calc.iterations == self.variance_iters)
                 for vol in volume_calc.volumes.values():
-                    assert(vol.std_dev * vol.std_dev <= self.exp_variance)            
+                    assert(vol.std_dev * vol.std_dev <= self.exp_variance)
             else:
                 assert(volume_calc.trigger_type == None)
                 assert(volume_calc.threshold == None)

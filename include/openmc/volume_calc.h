@@ -31,8 +31,8 @@ public:
     std::array<double, 2> volume; //!< Mean/standard deviation of volume
     std::vector<int> nuclides; //!< Index of nuclides
     std::vector<double> atoms; //!< Number of atoms for each nuclide
-    std::vector<double> uncertainty; //!< Uncertainty on number of atoms    
-    int iterations;
+    std::vector<double> uncertainty; //!< Uncertainty on number of atoms
+    int iterations; //!< Number of iterations needed to obtain the results
   }; // Results for a single domain
 
   // Constructors

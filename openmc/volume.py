@@ -32,7 +32,6 @@ class VolumeCalculation(object):
         Upper-right coordinates of bounding box used to sample points. If this
         argument is not supplied, an attempt is made to automatically determine
         a bounding box.
-        
 
     Attributes
     ----------
@@ -59,10 +58,10 @@ class VolumeCalculation(object):
         Dictionary mapping unique IDs of domains to estimated volumes in cm^3.
     threshold : float
         Threshold for the maxmimum standard deviation of volumes.
-    iterations : int
-        Number of iterations over samples (for calculations with a trigger).
     trigger_type : {'variance', 'std_dev', 'rel_err'}
         Value type used to halt volume calculation
+    iterations : int
+        Number of iterations over samples (for calculations with a trigger).
 
     """
     def __init__(self, domains, samples, lower_left=None, upper_right=None):
@@ -83,7 +82,7 @@ class VolumeCalculation(object):
         self.ids = [d.id for d in domains]
 
         self.samples = samples
-        
+
         if lower_left is not None:
             if upper_right is None:
                 raise ValueError('Both lower-left and upper-right coordinates '
@@ -193,7 +192,7 @@ class VolumeCalculation(object):
         cv.check_length(name, upper_right, 3)
         self._upper_right = upper_right
 
-    @threshold.setter    
+    @threshold.setter
     def threshold(self, threshold):
         name = 'volume std. dev. threshold'
         cv.check_type(name, threshold, Real)
@@ -203,7 +202,7 @@ class VolumeCalculation(object):
     @trigger_type.setter
     def trigger_type(self, trigger_type):
         cv.check_value('tally trigger type', trigger_type,
-                       ['variance', 'std_dev', 'rel_err'])
+                       ('variance', 'std_dev', 'rel_err'))
         self._trigger_type = trigger_type
 
     @iterations.setter
@@ -293,7 +292,7 @@ class VolumeCalculation(object):
 
         # Instantiate the class and assign results
         vol = cls(domains, samples, lower_left, upper_right)
-        
+
         if trigger_type is not None:
             vol.set_trigger(threshold, trigger_type.decode())
 

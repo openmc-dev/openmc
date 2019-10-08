@@ -107,6 +107,7 @@ std::vector<VolumeCalculation::Result> VolumeCalculation::execute() const {
 
   // execute the calculation once
   std::vector<VolumeCalculation::Result> results = _execute();
+  return results;
 
   // if no std. dev. threshold is set, return these resuls
   if (threshold_ == -1.0) { return results; }
@@ -139,7 +140,7 @@ std::vector<VolumeCalculation::Result> VolumeCalculation::execute() const {
     if (max_val <= threshold_) { break; }
 
     // perform the calculation
-    std::vector<VolumeCalculation::Result> tmp = _execute(offset);
+    std::vector<VolumeCalculation::Result> tmp = _execute();
     offset += n_samples_;
 
     // update current results
@@ -149,12 +150,13 @@ std::vector<VolumeCalculation::Result> VolumeCalculation::execute() const {
   return results;
 }
 
-std::vector<VolumeCalculation::Result> VolumeCalculation::_execute(size_t seed_offset) const
+std::vector<VolumeCalculation::Result> VolumeCalculation::_execute() const
 {
   // Shared data that is collected from all threads
   int n = domain_ids_.size();
   std::vector<std::vector<int>> master_indices(n); // List of material indices for each domain
   std::vector<std::vector<int>> master_hits(n); // Number of hits for each material in each domain
+  int iterations = 0;
 
   // Divide work over MPI processes
   size_t min_samples = n_samples_ / mpi::n_procs;
@@ -168,187 +170,218 @@ std::vector<VolumeCalculation::Result> VolumeCalculation::_execute(size_t seed_o
     i_end = i_start + min_samples;
   }
 
-  #pragma omp parallel
-  {
-    // Variables that are private to each thread
-    std::vector<std::vector<int>> indices(n);
-    std::vector<std::vector<int>> hits(n);
-    Particle p;
+  while (true) {
+    #pragma omp parallel
+    {
+      // Variables that are private to each thread
+      std::vector<std::vector<int>> indices(n);
+      std::vector<std::vector<int>> hits(n);
+      Particle p;
 
-    prn_set_stream(STREAM_VOLUME);
+      prn_set_stream(STREAM_VOLUME);
 
-    // Sample locations and count hits
-    #pragma omp for
-    for (size_t i = i_start; i < i_end; i++) {
-      set_particle_seed(seed_offset + i);
+      // Sample locations and count hits
+      #pragma omp for
+      for (size_t i = i_start; i < i_end; i++) {
+        set_particle_seed(iterations * n_samples_ + i);
 
-      p.n_coord_ = 1;
-      Position xi {prn(), prn(), prn()};
-      p.r() = lower_left_ + xi*(upper_right_ - lower_left_);
-      p.u() = {0.5, 0.5, 0.5};
+        p.n_coord_ = 1;
+        Position xi {prn(), prn(), prn()};
+        p.r() = lower_left_ + xi*(upper_right_ - lower_left_);
+        p.u() = {0.5, 0.5, 0.5};
 
-      // If this location is not in the geometry at all, move on to next block
-      if (!find_cell(&p, false)) continue;
+        // If this location is not in the geometry at all, move on to next block
+        if (!find_cell(&p, false)) continue;
 
-      if (domain_type_ == FILTER_MATERIAL) {
-        if (p.material_ != MATERIAL_VOID) {
-          for (int i_domain = 0; i_domain < n; i_domain++) {
-            if (model::materials[p.material_]->id_ == domain_ids_[i_domain]) {
-              this->check_hit(p.material_, indices[i_domain], hits[i_domain]);
-              break;
+        if (domain_type_ == FILTER_MATERIAL) {
+          if (p.material_ != MATERIAL_VOID) {
+            for (int i_domain = 0; i_domain < n; i_domain++) {
+              if (model::materials[p.material_]->id_ == domain_ids_[i_domain]) {
+                this->check_hit(p.material_, indices[i_domain], hits[i_domain]);
+                break;
+              }
             }
           }
-        }
-      } else if (domain_type_ == FILTER_CELL) {
-        for (int level = 0; level < p.n_coord_; ++level) {
-          for (int i_domain=0; i_domain < n; i_domain++) {
-            if (model::cells[p.coord_[level].cell]->id_ == domain_ids_[i_domain]) {
-              this->check_hit(p.material_, indices[i_domain], hits[i_domain]);
-              break;
+        } else if (domain_type_ == FILTER_CELL) {
+          for (int level = 0; level < p.n_coord_; ++level) {
+            for (int i_domain=0; i_domain < n; i_domain++) {
+              if (model::cells[p.coord_[level].cell]->id_ == domain_ids_[i_domain]) {
+                this->check_hit(p.material_, indices[i_domain], hits[i_domain]);
+                break;
+              }
             }
           }
-        }
-      } else if (domain_type_ == FILTER_UNIVERSE) {
-        for (int level = 0; level < p.n_coord_; ++level) {
-          for (int i_domain = 0; i_domain < n; ++i_domain) {
-            if (model::universes[p.coord_[level].universe]->id_ == domain_ids_[i_domain]) {
-              check_hit(p.material_, indices[i_domain], hits[i_domain]);
-              break;
+        } else if (domain_type_ == FILTER_UNIVERSE) {
+          for (int level = 0; level < p.n_coord_; ++level) {
+            for (int i_domain = 0; i_domain < n; ++i_domain) {
+              if (model::universes[p.coord_[level].universe]->id_ == domain_ids_[i_domain]) {
+                check_hit(p.material_, indices[i_domain], hits[i_domain]);
+                break;
+              }
             }
           }
         }
       }
-    }
 
-    // At this point, each thread has its own pair of index/hits lists and we now
-    // need to reduce them. OpenMP is not nearly smart enough to do this on its own,
-    // so we have to manually reduce them
+      // At this point, each thread has its own pair of index/hits lists and we now
+      // need to reduce them. OpenMP is not nearly smart enough to do this on its own,
+      // so we have to manually reduce them
 
-#ifdef _OPENMP
-    #pragma omp for ordered schedule(static)
-    for (int i = 0; i < omp_get_num_threads(); ++i) {
-      #pragma omp ordered
-      for (int i_domain = 0; i_domain < n; ++i_domain) {
-        for (int j = 0; j < indices[i_domain].size(); ++j) {
-          // Check if this material has been added to the master list and if so,
-          // accumulate the number of hits
-          bool already_added = false;
-          for (int k = 0; k < master_indices[i_domain].size(); k++) {
-            if (indices[i_domain][j] == master_indices[i_domain][k]) {
-              master_hits[i_domain][k] += hits[i_domain][j];
-              already_added = true;
+  #ifdef _OPENMP
+      int n_threads = omp_get_num_threads();
+  #else
+      int n_threads = 1;
+  #endif
+
+      #pragma omp for ordered schedule(static)
+      for (int i = 0; i < n_threads; ++i) {
+        #pragma omp ordered
+        for (int i_domain = 0; i_domain < n; ++i_domain) {
+          for (int j = 0; j < indices[i_domain].size(); ++j) {
+            // Check if this material has been added to the master list and if so,
+            // accumulate the number of hits
+            bool already_added = false;
+            for (int k = 0; k < master_indices[i_domain].size(); k++) {
+              if (indices[i_domain][j] == master_indices[i_domain][k]) {
+                master_hits[i_domain][k] += hits[i_domain][j];
+                already_added = true;
+              }
             }
-          }
-          if (!already_added) {
-            // If we made it here, the material hasn't yet been added to the master
-            // list, so add entries to the master indices and master hits lists
-            master_indices[i_domain].push_back(indices[i_domain][j]);
-            master_hits[i_domain].push_back(hits[i_domain][j]);
+            if (!already_added) {
+              // If we made it here, the material hasn't yet been added to the master
+              // list, so add entries to the master indices and master hits lists
+              master_indices[i_domain].push_back(indices[i_domain][j]);
+              master_hits[i_domain].push_back(hits[i_domain][j]);
+            }
           }
         }
       }
-    }
-#else
-    master_indices = indices;
-    master_hits = hits;
-#endif
+      prn_set_stream(STREAM_TRACKING);
+    } // omp parallel
 
-    prn_set_stream(STREAM_TRACKING);
-  } // omp parallel
+    // Reduce hits onto master process
 
-  // Reduce hits onto master process
+    // Determine volume of bounding box
+    Position d {upper_right_ - lower_left_};
+    double volume_sample = d.x*d.y*d.z;
 
-  // Determine volume of bounding box
-  Position d {upper_right_ - lower_left_};
-  double volume_sample = d.x*d.y*d.z;
+    // bump iteration counter and get total number
+    // of samples at this point
+    iterations++;
+    size_t total_samples = iterations * n_samples_;
 
-  // Set size for members of the Result struct
-  std::vector<Result> results(n);
+    double max_vol_err = -INFTY;
 
-  for (int i_domain = 0; i_domain < n; ++i_domain) {
-    // Get reference to result for this domain
-    auto& result {results[i_domain]};
+    // Set size for members of the Result struct
+    std::vector<Result> results(n);
 
-    // Create 2D array to store atoms/uncertainty for each nuclide. Later this
-    // is compressed into vectors storing only those nuclides that are non-zero
-    auto n_nuc = data::nuclides.size();
-    xt::xtensor<double, 2> atoms({n_nuc, 2}, 0.0);
+    for (int i_domain = 0; i_domain < n; ++i_domain) {
+      // Get reference to result for this domain
+      auto& result {results[i_domain]};
 
-#ifdef OPENMC_MPI
-    if (mpi::master) {
-      for (int j = 1; j < mpi::n_procs; j++) {
-        int q;
-        MPI_Recv(&q, 1, MPI_INTEGER, j, 0, mpi::intracomm, MPI_STATUS_IGNORE);
+      // Create 2D array to store atoms/uncertainty for each nuclide. Later this
+      // is compressed into vectors storing only those nuclides that are non-zero
+      auto n_nuc = data::nuclides.size();
+      xt::xtensor<double, 2> atoms({n_nuc, 2}, 0.0);
+
+  #ifdef OPENMC_MPI
+      if (mpi::master) {
+        for (int j = 1; j < mpi::n_procs; j++) {
+          int q;
+          MPI_Recv(&q, 1, MPI_INTEGER, j, 0, mpi::intracomm, MPI_STATUS_IGNORE);
+          int buffer[2*q];
+          MPI_Recv(&buffer[0], 2*q, MPI_INTEGER, j, 1, mpi::intracomm, MPI_STATUS_IGNORE);
+          for (int k = 0; k < q; ++k) {
+            for (int m = 0; m < master_indices[i_domain].size(); ++m) {
+              if (buffer[2*k] == master_indices[i_domain][m]) {
+                master_hits[i_domain][m] += buffer[2*k + 1];
+                break;
+              }
+            }
+          }
+        }
+      } else {
+        int q = master_indices[i_domain].size();
         int buffer[2*q];
-        MPI_Recv(&buffer[0], 2*q, MPI_INTEGER, j, 1, mpi::intracomm, MPI_STATUS_IGNORE);
         for (int k = 0; k < q; ++k) {
-          for (int m = 0; m < master_indices[i_domain].size(); ++m) {
-            if (buffer[2*k] == master_indices[i_domain][m]) {
-              master_hits[i_domain][m] += buffer[2*k + 1];
+          buffer[2*k] = master_indices[i_domain][k];
+          buffer[2*k + 1] = master_hits[i_domain][k];
+        }
+
+        MPI_Send(&q, 1, MPI_INTEGER, 0, 0, mpi::intracomm);
+        MPI_Send(&buffer[0], 2*q, MPI_INTEGER, 0, 1, mpi::intracomm);
+      }
+  #endif
+
+      if (mpi::master) {
+        int total_hits = 0;
+        for (int j = 0; j < master_indices[i_domain].size(); ++j) {
+          total_hits += master_hits[i_domain][j];
+          double f = static_cast<double>(master_hits[i_domain][j]) / total_samples;
+          double var_f = f*(1.0 - f) / total_samples;
+
+          int i_material = master_indices[i_domain][j];
+          if (i_material == MATERIAL_VOID) continue;
+
+          const auto& mat = model::materials[i_material];
+          for (int k = 0; k < mat->nuclide_.size(); ++k) {
+            // Accumulate nuclide density
+            int i_nuclide = mat->nuclide_[k];
+            atoms(i_nuclide, 0) += mat->atom_density_[k] * f;
+            atoms(i_nuclide, 1) += std::pow(mat->atom_density_[k], 2) * var_f;
+          }
+        }
+
+        // Determine volume
+        result.volume[0] = static_cast<double>(total_hits) / total_samples * volume_sample;
+        result.volume[1] = std::sqrt(result.volume[0]
+          * (volume_sample - result.volume[0]) / total_samples);
+        result.num_samples = total_samples;
+
+        // update threshold value if needed
+        if (trigger_type_ != ThresholdType::NONE) {
+          double val = 0.0;
+          switch (trigger_type_) {
+            case ThresholdType::STD_DEV:
+              val = result.volume[1];
               break;
-            }
+            case ThresholdType::REL_ERR:
+              val = result.volume[1] / result.volume[0];
+              break;
+            case ThresholdType::VARIANCE:
+              val = result.volume[1] * result.volume[1];
+              break;
+          }
+          // update max if entry is valid
+          if (val > 0.0) { max_vol_err = std::max(max_vol_err, val); }
+        }
+
+        for (int j = 0; j < n_nuc; ++j) {
+          // Determine total number of atoms. At this point, we have values in
+          // atoms/b-cm. To get to atoms we multiply by 10^24 V.
+          double mean = 1.0e24 * volume_sample * atoms(j, 0);
+          double stdev = 1.0e24 * volume_sample * std::sqrt(atoms(j, 1));
+
+          // Convert full arrays to vectors
+          if (mean > 0.0) {
+            result.nuclides.push_back(j);
+            result.atoms.push_back(mean);
+            result.uncertainty.push_back(stdev);
+          } else {
+            result.nuclides.push_back(j);
+            result.atoms.push_back(0.0);
+            result.uncertainty.push_back(0.0);
           }
         }
       }
-    } else {
-      int q = master_indices[i_domain].size();
-      int buffer[2*q];
-      for (int k = 0; k < q; ++k) {
-        buffer[2*k] = master_indices[i_domain][k];
-        buffer[2*k + 1] = master_hits[i_domain][k];
-      }
-
-      MPI_Send(&q, 1, MPI_INTEGER, 0, 0, mpi::intracomm);
-      MPI_Send(&buffer[0], 2*q, MPI_INTEGER, 0, 1, mpi::intracomm);
     }
-#endif
 
-    if (mpi::master) {
-      int total_hits = 0;
-      for (int j = 0; j < master_indices[i_domain].size(); ++j) {
-        total_hits += master_hits[i_domain][j];
-        double f = static_cast<double>(master_hits[i_domain][j]) / n_samples_;
-        double var_f = f*(1.0 - f) / n_samples_;
+    // return results of the calculation
+    if (trigger_type_ == ThresholdType::NONE || max_vol_err < threshold_) { 
+      return results;
+    }    
 
-        int i_material = master_indices[i_domain][j];
-        if (i_material == MATERIAL_VOID) continue;
-
-        const auto& mat = model::materials[i_material];
-        for (int k = 0; k < mat->nuclide_.size(); ++k) {
-          // Accumulate nuclide density
-          int i_nuclide = mat->nuclide_[k];
-          atoms(i_nuclide, 0) += mat->atom_density_[k] * f;
-          atoms(i_nuclide, 1) += std::pow(mat->atom_density_[k], 2) * var_f;
-        }
-      }
-
-      // Determine volume
-      result.volume[0] = static_cast<double>(total_hits) / n_samples_ * volume_sample;
-      result.volume[1] = std::sqrt(result.volume[0]
-        * (volume_sample - result.volume[0]) / n_samples_);
-      result.num_samples = n_samples_;
-
-      for (int j = 0; j < n_nuc; ++j) {
-        // Determine total number of atoms. At this point, we have values in
-        // atoms/b-cm. To get to atoms we multiply by 10^24 V.
-        double mean = 1.0e24 * volume_sample * atoms(j, 0);
-        double stdev = 1.0e24 * volume_sample * std::sqrt(atoms(j, 1));
-
-        // Convert full arrays to vectors
-        if (mean > 0.0) {
-          result.nuclides.push_back(j);
-          result.atoms.push_back(mean);
-          result.uncertainty.push_back(stdev);
-        } else {
-          result.nuclides.push_back(j);
-          result.atoms.push_back(0.0);
-          result.uncertainty.push_back(0.0);
-        }
-      }
-    }
-  }
-
-  return results;
+  } // end while
 }
 
 void VolumeCalculation::to_hdf5(const std::string& filename,

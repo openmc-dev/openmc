@@ -31,48 +31,8 @@ public:
     std::array<double, 2> volume; //!< Mean/standard deviation of volume
     std::vector<int> nuclides; //!< Index of nuclides
     std::vector<double> atoms; //!< Number of atoms for each nuclide
-    std::vector<double> uncertainty; //!< Uncertainty on number of atoms
-    size_t num_samples;
-
-    Result& operator +=( const Result& other) {
-      Expects(volume.size() == other.volume.size());
-      Expects(atoms.size() == atoms.size());
-
-      auto& a_samples = num_samples;
-      auto& b_samples = other.num_samples;
-
-      size_t total_samples = num_samples + other.num_samples;
-
-      for (int i = 0; i < volume.size(); i++) {
-        // calculate weighted average of volume results
-        auto& a_vol = volume[0];
-        auto& b_vol = other.volume[0];
-        volume[0] = (a_samples * a_vol + b_samples * b_vol) / total_samples;
-
-        // propagate error
-        auto& a_err = volume[1];
-        auto& b_err = other.volume[1];
-        volume[1] = std::sqrt(a_samples * a_err * a_err + b_samples * b_err * b_err) / total_samples;
-      }
-
-      for (int i = 0; i < atoms.size(); i++) {
-        // calculate weighted average of atom results
-        auto& a_atoms = atoms[i];
-        auto& b_atoms = other.atoms[i];
-        atoms[i] = (a_samples * a_atoms + b_samples * b_atoms) / total_samples;
-
-        // propagate error
-        auto& a_err = uncertainty[i];
-        auto& b_err = other.uncertainty[i];
-        uncertainty[i] = std::sqrt(a_samples * a_err * a_err + b_samples * b_err * b_err) / total_samples;
-      }
-
-      // update number of samples on the returned set of results;
-      num_samples = total_samples;
-
-      return *this;
-    }
-    
+    std::vector<double> uncertainty; //!< Uncertainty on number of atoms    
+    int iterations;
   }; // Results for a single domain
 
   // Constructors
@@ -110,14 +70,6 @@ private:
   //! \param[in,out] hits Number of hits corresponding to each material
   void check_hit(int i_material, std::vector<int>& indices,
     std::vector<int>& hits) const;
-
-  //! \brief Perform calculation for domain volumes and average nuclide density 
-  //!   using n_samples_
-  //
-  //! \param[in] seed_offset Seed offset used for independent calculations
-  //! \return Vector of results for each user-specified domain
-  std::vector<Result> _execute() const;
-
 
 };
 

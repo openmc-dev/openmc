@@ -103,54 +103,7 @@ VolumeCalculation::VolumeCalculation(pugi::xml_node node)
 
 }
 
-std::vector<VolumeCalculation::Result> VolumeCalculation::execute() const {
-
-  // execute the calculation once
-  std::vector<VolumeCalculation::Result> results = _execute();
-  return results;
-
-  // if no std. dev. threshold is set, return these resuls
-  if (threshold_ == -1.0) { return results; }
-
-  size_t offset = n_samples_;
-  double max_val;
-
-  while (true) {
-    // check maximum error value for all domains
-    max_val = -INFTY;
-    for (const auto& result : results) {
-      double val;
-      switch (trigger_type_) {
-        case ThresholdType::STD_DEV:
-          val = result.volume[1];
-          break;
-        case ThresholdType::REL_ERR:
-          val = result.volume[1] / result.volume[0];
-          break;
-        case ThresholdType::VARIANCE:
-          val = result.volume[1] * result.volume[1];
-          break;
-      }
-      // update max if entry is valid
-      if (val > 0.0) { max_val = std::max(max_val, val); }
-
-      }
-
-    // exit once we're below our error limit
-    if (max_val <= threshold_) { break; }
-
-    // perform the calculation
-    std::vector<VolumeCalculation::Result> tmp = _execute();
-    offset += n_samples_;
-
-    // update current results
-    for (int i = 0; i < results.size(); i++) { results[i] += tmp[i]; }
-  }
-
-  return results;
-}
-
-std::vector<VolumeCalculation::Result> VolumeCalculation::_execute() const
+std::vector<VolumeCalculation::Result> VolumeCalculation::execute() const
 {
   // Shared data that is collected from all threads
   int n = domain_ids_.size();
@@ -336,7 +289,7 @@ std::vector<VolumeCalculation::Result> VolumeCalculation::_execute() const
         result.volume[0] = static_cast<double>(total_hits) / total_samples * volume_sample;
         result.volume[1] = std::sqrt(result.volume[0]
           * (volume_sample - result.volume[0]) / total_samples);
-        result.num_samples = total_samples;
+        result.iterations = iterations;
 
         // update threshold value if needed
         if (trigger_type_ != ThresholdType::NONE) {

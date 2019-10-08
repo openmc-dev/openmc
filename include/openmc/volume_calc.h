@@ -13,9 +13,10 @@
 namespace openmc {
 
 enum class ThresholdType {
-  VARIANCE = 0,
-  STD_DEV = 1,
-  REL_ERR = 2
+  NONE = 0,
+  VARIANCE = 1,
+  STD_DEV = 2,
+  REL_ERR = 3
 };
 
 //==============================================================================
@@ -115,7 +116,7 @@ private:
   //
   //! \param[in] seed_offset Seed offset used for independent calculations
   //! \return Vector of results for each user-specified domain
-  std::vector<Result> _execute(size_t seed_offset = 0) const;
+  std::vector<Result> _execute() const;
 
 
 };

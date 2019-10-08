@@ -8,6 +8,19 @@ from tests.testing_harness import PyAPITestHarness
 
 
 class VolumeTest(PyAPITestHarness):
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        self.exp_std_dev = 1e-01
+        self.std_dev_iters = 521
+
+        self.exp_rel_err = 1e-01
+        self.rel_err_iters = 10
+
+        self.exp_variance = 5e-02
+        self.variance_iters = 105
+
     def _build_inputs(self):
         # Define materials
         water = openmc.Material(1)
@@ -46,10 +59,17 @@ class VolumeTest(PyAPITestHarness):
             openmc.VolumeCalculation(list(root.cells.values()), 100000),
             openmc.VolumeCalculation([water, fuel], 100000, ll, ur),
             openmc.VolumeCalculation([root], 100000, ll, ur),
+            openmc.VolumeCalculation(list(root.cells.values()), 100),
+            openmc.VolumeCalculation([water, fuel], 100, ll, ur),
             openmc.VolumeCalculation(list(root.cells.values()), 100)
         ]
 
-        vol_calcs[-1].set_trigger(1e-04, 'std_dev')
+       
+        vol_calcs[3].set_trigger(self.exp_std_dev, 'std_dev')
+
+        vol_calcs[4].set_trigger(self.exp_rel_err, 'rel_err')
+
+        vol_calcs[5].set_trigger(self.exp_variance, 'variance')
 
         # Define settings
         settings = openmc.Settings()
@@ -65,10 +85,28 @@ class VolumeTest(PyAPITestHarness):
             # Read volume calculation results
             volume_calc = openmc.VolumeCalculation.from_hdf5(filename)
 
-            if volume_calc.samples == 100:
+            if i == 3:
                 assert(volume_calc.trigger_type == 'std_dev')
-                assert(volume_calc.threshold == 1e-04)
-                
+                assert(volume_calc.threshold == self.exp_std_dev)
+                assert(volume_calc.iterations == self.std_dev_iters)
+                for vol in volume_calc.volumes.values():
+                    assert(vol.std_dev <= self.exp_std_dev)
+            elif i == 4:
+                assert(volume_calc.trigger_type == 'rel_err')
+                assert(volume_calc.threshold == self.exp_rel_err)
+                assert(volume_calc.iterations == self.rel_err_iters)
+                for vol in volume_calc.volumes.values():
+                    assert(vol.std_dev/vol.nominal_value <= self.exp_rel_err)
+            elif i == 5:
+                assert(volume_calc.trigger_type == 'variance')
+                assert(volume_calc.threshold == self.exp_variance)
+                assert(volume_calc.iterations == self.variance_iters)
+                for vol in volume_calc.volumes.values():
+                    assert(vol.std_dev * vol.std_dev <= self.exp_variance)            
+            else:
+                assert(volume_calc.trigger_type == None)
+                assert(volume_calc.threshold == None)
+                assert(volume_calc.iterations == 1)
 
             # Write cell volumes and total # of atoms for each nuclide
             for uid, volume in sorted(volume_calc.volumes.items()):

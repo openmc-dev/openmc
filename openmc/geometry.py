@@ -376,7 +376,8 @@ class Geometry(object):
         surfaces = OrderedDict()
 
         for cell in self.get_all_cells().values():
-            surfaces = cell.region.get_surfaces(surfaces)
+            if cell.region is not None:
+                surfaces = cell.region.get_surfaces(surfaces)
         return surfaces
 
     def get_materials_by_name(self, name, case_sensitive=False, matching=False):

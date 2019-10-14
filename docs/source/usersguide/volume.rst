@@ -38,7 +38,7 @@ Of course, the volumes that you *need* this capability for are often the ones
 with complex definitions.
 
 A threshold can be applied for the calculation's variance, standard deviation,
-or relative error of volume estimates using ::attr::`openmc.VolumeCalculation.set_trigger`::
+or relative error of volume estimates using :meth:`openmc.VolumeCalculation.set_trigger`::
 
     vol_calc.set_trigger(1e-05, 'std_dev')
 

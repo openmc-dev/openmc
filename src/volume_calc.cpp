@@ -301,7 +301,7 @@ std::vector<VolumeCalculation::Result> VolumeCalculation::execute() const
               val = result.volume[1];
               break;
             case TriggerMetric::relative_error:
-              val = result.volume[0] == 0.0 ? 0.0 : result.volume[1] / result.volume[0];
+              val = result.volume[0] == 0.0 ? INFTY : result.volume[1] / result.volume[0];
               break;
             case TriggerMetric::variance:
               val = result.volume[1] * result.volume[1];

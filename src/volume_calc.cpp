@@ -59,14 +59,7 @@ VolumeCalculation::VolumeCalculation(pugi::xml_node node)
   domain_ids_ = get_node_array<int>(node, "domain_ids");
   lower_left_ = get_node_array<double>(node, "lower_left");
   upper_right_ = get_node_array<double>(node, "upper_right");
-  std::stringstream size_t_stream(get_node_value(node, "samples"));
-  size_t_stream >> n_samples_;
-  if (size_t_stream.fail()) {
-    std::stringstream msg;
-    msg << "Could not read number of samples ("
-        << size_t_stream.str() << ")";
-        fatal_error(msg);
-  }
+  n_samples_ = std::stoull(get_node_value(node, "samples"));
 
   if (check_for_node(node, "threshold")) {
     pugi::xml_node threshold_node = node.child("threshold");

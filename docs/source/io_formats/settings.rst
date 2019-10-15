@@ -459,6 +459,15 @@ attributes/sub-elements:
 
     *Default*: None
 
+  :library:
+    If this attribute is given, it indicates that the source is to be instanciated
+    from an externally compiled source function. This source can be as complex as
+    is required to define the source for your problem. The only requirement that
+    is made upon this source, is that there is a function called sample_source()
+    more documentation on how to build sources can be found in :ref:`custom_source`
+
+    *Deafult*: None
+     
   :space:
     An element specifying the spatial distribution of source sites. This element
     has the following attributes:
@@ -590,6 +599,66 @@ attributes/sub-elements:
     "initial_source.h5"
 
     *Default*: false
+
+.. _custom_source:
+
+Custom Sources
+++++++++++++++++++++++++++++++++++++
+
+It is often the case that one may wish to simulate a complex source distribution,
+which may include physics not present within OpenMC or to be phase space complex. It
+is possible to define complex source with an externally defined source function
+and loaded at runtime. A simple example source is shown below. 
+
+.. code-block:: c++
+
+   #include <iostream>
+   #include "openmc/random_lcg.h"
+   #include "openmc/source.h"
+   #include "openmc/particle.h"
+
+   // you must have external C linkage here
+   extern "C" openmc::Particle::Bank sample_source() {
+     openmc::Particle::Bank particle;
+      // wgt
+      particle.particle = openmc::Particle::Type::neutron;
+      particle.wgt = 1.0;
+      // position 
+      double angle = 2.*M_PI*openmc::prn();
+      double radius = 3.0;
+      particle.r.x = radius*std::cos(angle);
+      particle.r.y = radius*std::sin(angle);
+      particle.r.z = 0.;
+      // angle
+      particle.u = {1.,0,0};
+      particle.E = 14.08e6;
+      particle.delayed_group = 0;
+      return particle;    
+  }
+
+The above source, creates 14.08 MeV neutrons, with an istropic direction
+vector but distributed in a ring of radius three cm. This routine is
+not particular complex, but should serve as an example upon which to build
+more complicated sources. 
+
+  .. note:: The function signature must be declared to be extern.
+	    
+  .. note:: You should only use the openmc::prn() random number generator
+
+In order to build your external source you need the CMakeLists.txt file that
+was created during the OpenMC installation process (found in the share subdirectory)
+and your source file(s). 
+
+.. code-block:: bash
+
+   cp $HOME/openmc/share/CMakeLists.txt.
+   mkdir bld
+   cd bld
+   cmake .. -DSOURCE_FILES=source_sampling.cpp
+   make
+
+You will now have a libsouce.so file in this directory, now point the library
+attribute of source to this file and you will be able to sample particles. 
 
 .. _univariate:
 

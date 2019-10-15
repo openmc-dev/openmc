@@ -23,6 +23,8 @@ The current version of the volume file format is 1.0.
                bounding box
              - **upper_right** (*double[3]*) -- Upper-right coordinates of
                bounding box
+             - **threshold** (*double*) -- Threshold used for volume uncertainty
+             - **trigger_type** (*char[]*) -- Trigger type used for volume uncertainty
 
 **/domain_<id>/**
 

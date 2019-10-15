@@ -13,13 +13,8 @@ class VolumeTest(PyAPITestHarness):
         super().__init__(*args, **kwargs)
 
         self.exp_std_dev = 1e-01
-        self.std_dev_iters = 521
-
         self.exp_rel_err = 1e-01
-        self.rel_err_iters = 10
-
         self.exp_variance = 5e-02
-        self.variance_iters = 105
 
     def _build_inputs(self):
         # Define materials
@@ -85,28 +80,32 @@ class VolumeTest(PyAPITestHarness):
             # Read volume calculation results
             volume_calc = openmc.VolumeCalculation.from_hdf5(filename)
 
+            outstr += 'Trigger Type: {}\n'.format(volume_calc.trigger_type)
+            outstr += 'Trigger threshold: {}\n'.format(volume_calc.threshold)
+            outstr += 'Iterations: {}\n'.format(volume_calc.iterations)
+
             if i == 3:
                 assert(volume_calc.trigger_type == 'std_dev')
                 assert(volume_calc.threshold == self.exp_std_dev)
-                assert(volume_calc.iterations == self.std_dev_iters)
-                for vol in volume_calc.volumes.values():
-                    assert(vol.std_dev <= self.exp_std_dev)
             elif i == 4:
                 assert(volume_calc.trigger_type == 'rel_err')
                 assert(volume_calc.threshold == self.exp_rel_err)
-                assert(volume_calc.iterations == self.rel_err_iters)
-                for vol in volume_calc.volumes.values():
-                    assert(vol.std_dev/vol.nominal_value <= self.exp_rel_err)
             elif i == 5:
                 assert(volume_calc.trigger_type == 'variance')
                 assert(volume_calc.threshold == self.exp_variance)
-                assert(volume_calc.iterations == self.variance_iters)
-                for vol in volume_calc.volumes.values():
-                    assert(vol.std_dev * vol.std_dev <= self.exp_variance)
             else:
                 assert(volume_calc.trigger_type == None)
                 assert(volume_calc.threshold == None)
                 assert(volume_calc.iterations == 1)
+
+            # if a trigger is applied, make sure the calculation satisfies the trigger
+            for vol in volume_calc.volumes.values():
+                if volume_calc.trigger_type == 'std_dev':
+                    assert(vol.std_dev <= self.exp_std_dev)
+                if volume_calc.trigger_type == 'rel_err':
+                    assert(vol.std_dev/vol.nominal_value <= self.exp_rel_err)
+                if volume_calc.trigger_type == 'variance':
+                    assert(vol.std_dev * vol.std_dev <= self.exp_variance)
 
             # Write cell volumes and total # of atoms for each nuclide
             for uid, volume in sorted(volume_calc.volumes.items()):

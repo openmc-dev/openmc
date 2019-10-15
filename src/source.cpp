@@ -77,9 +77,9 @@ SourceDistribution::SourceDistribution(pugi::xml_node node)
      settings::path_source_library = get_node_value(node, "library", false, true);
      // check if it exists
      if (!file_exists(settings::path_source_library)) {
-	std::stringstream msg;
-	msg << "Library file " << settings::path_source_library << "' does not exist.";
-	fatal_error(msg);
+      	std::stringstream msg;
+      	msg << "Library file " << settings::path_source_library << "' does not exist.";
+	      fatal_error(msg);
      }
   } else {
 

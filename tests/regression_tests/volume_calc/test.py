@@ -59,7 +59,6 @@ class VolumeTest(PyAPITestHarness):
             openmc.VolumeCalculation(list(root.cells.values()), 100)
         ]
 
-
         vol_calcs[3].set_trigger(self.exp_std_dev, 'std_dev')
 
         vol_calcs[4].set_trigger(self.exp_rel_err, 'rel_err')

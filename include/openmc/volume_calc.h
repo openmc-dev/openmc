@@ -2,6 +2,7 @@
 #define OPENMC_VOLUME_CALC_H
 
 #include "openmc/position.h"
+#include "openmc/tallies/trigger.h"
 
 #include "pugixml.hpp"
 #include "xtensor/xtensor.hpp"
@@ -11,13 +12,6 @@
 #include <gsl/gsl>
 
 namespace openmc {
-
-enum class VolumeTriggerMetric {
-  NONE = 0,
-  VARIANCE = 1,
-  STD_DEV = 2,
-  REL_ERR = 3
-};
 
 //==============================================================================
 // Volume calculation class
@@ -56,7 +50,7 @@ public:
   int domain_type_; //!< Type of domain (cell, material, etc.)
   size_t n_samples_; //!< Number of samples to use
   double threshold_ {-1.0}; //!< Error threshold for domain volumes
-  VolumeTriggerMetric trigger_type_ {VolumeTriggerMetric::NONE}; //!< Trigger metric for the volume calculation
+  TriggerMetric trigger_type_ {TriggerMetric::not_active}; //!< Trigger metric for the volume calculation
   Position lower_left_; //!< Lower-left position of bounding box
   Position upper_right_; //!< Upper-right position of bounding box
   std::vector<int> domain_ids_; //!< IDs of domains to find volumes of

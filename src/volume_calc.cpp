@@ -80,11 +80,11 @@ VolumeCalculation::VolumeCalculation(pugi::xml_node node)
 
     std::string tmp = get_node_value(threshold_node, "type");
     if (tmp == "variance") {
-      trigger_type_ = VolumeTriggerMetric::VARIANCE;
+      trigger_type_ = TriggerMetric::variance;
     } else if (tmp == "std_dev") {
-      trigger_type_ = VolumeTriggerMetric::STD_DEV;
+      trigger_type_ = TriggerMetric::standard_deviation;
     } else if ( tmp == "rel_err") {
-      trigger_type_ = VolumeTriggerMetric::REL_ERR;
+      trigger_type_ = TriggerMetric::relative_error;
     } else {
       std::stringstream msg;
       msg << "Invalid volume calculation trigger type '" << tmp << "' provided.";
@@ -294,16 +294,16 @@ std::vector<VolumeCalculation::Result> VolumeCalculation::execute() const
         result.iterations = iterations;
 
         // update threshold value if needed
-        if (trigger_type_ != VolumeTriggerMetric::NONE) {
+        if (trigger_type_ != TriggerMetric::not_active) {
           double val = 0.0;
           switch (trigger_type_) {
-            case VolumeTriggerMetric::STD_DEV:
+            case TriggerMetric::standard_deviation:
               val = result.volume[1];
               break;
-            case VolumeTriggerMetric::REL_ERR:
+            case TriggerMetric::relative_error:
               val = result.volume[0] == 0.0 ? 0.0 : result.volume[1] / result.volume[0];
               break;
-            case VolumeTriggerMetric::VARIANCE:
+            case TriggerMetric::variance:
               val = result.volume[1] * result.volume[1];
               break;
           }
@@ -328,7 +328,7 @@ std::vector<VolumeCalculation::Result> VolumeCalculation::execute() const
     } // end domain loop
 
     // if no trigger is applied, we're done
-    if (trigger_type_ == VolumeTriggerMetric::NONE) { return results; }
+    if (trigger_type_ == TriggerMetric::not_active) { return results; }
 
 #ifdef OPENMC_MPI
     // update maximum error value on all processes
@@ -377,18 +377,18 @@ void VolumeCalculation::to_hdf5(const std::string& filename,
   write_attribute(file_id, "lower_left", lower_left_);
   write_attribute(file_id, "upper_right", upper_right_);
   // Write trigger info
-  if (trigger_type_ != VolumeTriggerMetric::NONE) {
+  if (trigger_type_ != TriggerMetric::not_active) {
     write_attribute(file_id, "iterations", results[0].iterations);
     write_attribute(file_id, "threshold", threshold_);
     std::string trigger_str;
     switch(trigger_type_) {
-      case VolumeTriggerMetric::VARIANCE:
+      case TriggerMetric::variance:
         trigger_str = "variance";
         break;
-      case VolumeTriggerMetric::STD_DEV:
+      case TriggerMetric::standard_deviation:
         trigger_str = "std_dev";
         break;
-      case VolumeTriggerMetric::REL_ERR:
+      case TriggerMetric::relative_error:
         trigger_str = "rel_err";
         break;
     }

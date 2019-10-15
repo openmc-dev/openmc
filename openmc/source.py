@@ -49,7 +49,7 @@ class Source(object):
         self._angle = None
         self._energy = None
         self._file = None
-        self._source_library = None
+        self._library = None
 
         if space is not None:
             self.space = space
@@ -70,7 +70,7 @@ class Source(object):
 
     @property
     def library(self):
-        return self._source_library
+        return self._library
 
     @property
     def space(self):
@@ -100,7 +100,7 @@ class Source(object):
     @library.setter
     def library(self, library_name):
         cv.check_type('library', library_name, str)
-        self._source_library = library_name
+        self._library = library_name
 
     @space.setter
     def space(self, space):

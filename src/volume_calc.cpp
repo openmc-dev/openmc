@@ -333,9 +333,7 @@ std::vector<VolumeCalculation::Result> VolumeCalculation::execute() const
 #ifdef OPENMC_MPI
     // update maximum error value on all processes
     if (mpi::master) {
-      for (int i = 1; i < mpi::n_procs; i++) {
-        MPI_Send(&trigger_val, 1, MPI_DOUBLE, i, 0, mpi::intracomm);
-      }
+      MPI_Bcast(&trigger_val, 1, MPI_DOUBLE, mpi:intracomm);
     } else {
       MPI_Recv(&trigger_val, 1, MPI_DOUBLE, 0, 0, mpi::intracomm, MPI_STATUS_IGNORE);
     }

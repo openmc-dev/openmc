@@ -409,7 +409,7 @@ class Cell(IDManagerMixin):
 
         return universes
 
-    def clone(self, clone_materials=True,  memo=None):
+    def clone(self, clone_materials=True, clone_regions=True,  memo=None):
         """Create a copy of this cell with a new unique ID, and clones
         the cell's region and fill.
 
@@ -417,7 +417,12 @@ class Cell(IDManagerMixin):
         ----------
         clone_materials : boolean
             Whether to create separates copies of the materials filling cells
-            under this cell in the CSG tree, or the material filling this cell
+            contained in this cell, or the material filling this cell.
+            Default is True.
+        clone_regions : boolean
+            Whether to create separates copies of the regions bounding cells
+            contained in this cell, and the region bounding this cell.
+            Default is True.
         memo : dict or None
             A nested dictionary of previously cloned objects. This parameter
             is used internally and should not be specified by the user.
@@ -446,7 +451,10 @@ class Cell(IDManagerMixin):
             self._paths = paths
 
             if self.region is not None:
-                clone.region = self.region.clone(memo)
+                if clone_regions:
+                    clone.region = self.region.clone(memo)
+                else:
+                    clone.region = self.region
             if self.fill is not None:
                 if self.fill_type == 'distribmat':
                     if not clone_materials:
@@ -460,7 +468,8 @@ class Cell(IDManagerMixin):
                     else:
                         clone.fill = self.fill.clone(memo)
                 else:
-                    clone.fill = self.fill.clone(clone_materials, memo)
+                    clone.fill = self.fill.clone(clone_materials,
+                         clone_regions, memo)
 
             # Memoize the clone
             memo[self] = clone

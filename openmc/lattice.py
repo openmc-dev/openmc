@@ -449,7 +449,7 @@ class Lattice(IDManagerMixin, metaclass=ABCMeta):
                 return []
         return [(self, idx)] + u.find(p)
 
-    def clone(self, clone_materials=True, memo=None):
+    def clone(self, clone_materials=True, clone_regions=True, memo=None):
         """Create a copy of this lattice with a new unique ID, and clones
         all universes within this lattice.
 
@@ -457,7 +457,10 @@ class Lattice(IDManagerMixin, metaclass=ABCMeta):
         ----------
         clone_materials : boolean
             Whether to create separates copies of the materials filling cells
-            under this lattice in the CSG tree
+            contained in this lattice and its outer universe. Default is True.
+        clone_regions : boolean
+            Whether to create separates copies of the regions bounding cells
+            contained in this lattice and its outer universe. Default is True.
         memo : dict or None
             A nested dictionary of previously cloned objects. This parameter
             is used internally and should not be specified by the user.
@@ -478,22 +481,23 @@ class Lattice(IDManagerMixin, metaclass=ABCMeta):
             clone.id = None
 
             if self.outer is not None:
-                clone.outer = self.outer.clone(clone_materials, memo)
+                clone.outer = self.outer.clone(clone_materials, clone_regions,
+                     memo)
 
             # Assign universe clones to the lattice clone
             for i in self.indices:
                 if isinstance(self, RectLattice):
                     clone.universes[i] = self.universes[i].clone(
-                         clone_materials, memo)
+                         clone_materials, clone_regions, memo)
                 else:
                     if self.ndim == 2:
                         clone.universes[i[0]][i[1]] = \
                             self.universes[i[0]][i[1]].clone(clone_materials,
-                                                             memo)
+                                 clone_regions, memo)
                     else:
                         clone.universes[i[0]][i[1]][i[2]] = \
                             self.universes[i[0]][i[1]][i[2]].clone(
-                            clone_materials, memo)
+                            clone_materials, clone_regions, memo)
 
             # Memoize the clone
             memo[self] = clone
@@ -800,7 +804,8 @@ class RectLattice(Lattice):
 
         # Check routine inputs
         if self.ndim == 3:
-            raise NotImplementedError("LNS discretization is not implemented for 3D lattices")
+            raise NotImplementedError("LNS discretization is not implemented "
+                                      "for 3D lattices")
 
         cv.check_value('strategy', strategy, ('degenerate', 'lns'))
         cv.check_type('universes_to_ignore', universes_to_ignore, Iterable,
@@ -853,7 +858,7 @@ class RectLattice(Lattice):
                 pattern[1, 1] = getattr(self.universes[j][i], attribute)
 
                 # Create a neighborhood pattern based on the universe's
-                # neighbors in the grid, and the lattice neighbors at the edges
+                # neighbors in the grid, and lattice's neighbors at the edges
                 if i == 0:
                     if len(lattice_neighbors) > 0:
                         pattern[:, 0] = lattice_neighbors[3]
@@ -954,7 +959,8 @@ class RectLattice(Lattice):
                     # Look at transpose of pattern and its rotations
                     pattern = np.transpose(pattern)
                     for rot in range(4):
-                        if not found and tuple(map(tuple, pattern)) == known_pattern:
+                        if not found and \
+                             tuple(map(tuple, pattern)) == known_pattern:
                             found = True
 
                             # Save location of the pattern in the lattice
@@ -990,7 +996,7 @@ class RectLattice(Lattice):
 
             # Create a clone of the universe, without cloning materials
             new_universe = self.universes[first_pos[1]][first_pos[0]].clone(
-                 clone_materials=False)
+                 clone_materials=False, clone_regions=False)
 
             # Call LNS on the immediate sub lattices of this universe
             for cell_id, sub_cell in new_universe.cells.items():
@@ -998,9 +1004,9 @@ class RectLattice(Lattice):
                 sub_universe = sub_cell.fill
 
                 try:
-                    sub_neighbors = [pattern[0][0], pattern[0][1], pattern[0][2],
-                                     pattern[1][0], pattern[1][2],
-                                     pattern[2][0], pattern[2][1], pattern[2][2]]
+                    sub_neighbors = [pattern[0][0], pattern[0][1],
+                         pattern[0][2], pattern[1][0], pattern[1][2],
+                         pattern[2][0], pattern[2][1], pattern[2][2]]
                     sub_universe.discretize(strategy, universes_to_ignore,
                                             materials_to_clone,
                                             lattice_neighbors=sub_neighbors,
@@ -1024,13 +1030,16 @@ class RectLattice(Lattice):
 
             # Build a symmetric universe for the transposed lattices
             if any(pattern_data['transpositions']):
-                sym_universe = new_universe.clone(clone_materials=False)
+                sym_universe = new_universe.clone(clone_materials=False,
+                     clone_regions=False)
                 for cell_id, sub_cell in sym_universe.cells.items():
                     sub_universe = sub_cell.fill
-                    # NOTE: this will fail if there are two nested lattices
-                    if "Lattice" in str(type(sub_universe)):
+
+                    try:
                         sub_universe.universes = np.transpose(
                              sub_universe.universes)
+                    except:
+                        continue
 
             # Rebuild lattice from pattern using rotation and symmetries
             for index, location in enumerate(pattern_data['locations']):

@@ -412,7 +412,12 @@ install(DIRECTORY include/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
 file(WRITE ${CMAKE_BINARY_DIR}/CMakeLists.txt "
 cmake_minimum_required(VERSION 3.3 FATAL_ERROR)
 project(openmc_sources C CXX)
-add_library(source SHARED \$\{SOURCE_FILES\})
+add_library(source SHARED \$\{SOURCE_FILES\})")
+get_target_property(cxx_std openmc CXX_STANDARD)
+get_target_property(cxx_ext openmc CXX_EXTENSIONS)
+file(APPEND ${CMAKE_BINARY_DIR}/CMakeLists.txt "
+set_target_properties(source PROPERTIES CXX_STANDARD ${cxx_std} 
+    CXX_EXTENSIONS ${cxx_ext})
 target_include_directories(source PUBLIC ${PROJECT_SOURCE_DIR}/include 
   ${PROJECT_SOURCE_DIR}/vendor/pugixml ${HDF5_INCLUDE_DIRS})
 target_link_libraries(source ${ldflags} ${HDF5_LIBRARIES} ${HDF5_HL_LIBRARIES})

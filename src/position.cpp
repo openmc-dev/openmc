@@ -88,9 +88,9 @@ Position
 Position::rotate(const std::vector<double>& rotation) const
 {
   return {
+    x*rotation[0] + y*rotation[1] + z*rotation[2],
     x*rotation[3] + y*rotation[4] + z*rotation[5],
-    x*rotation[6] + y*rotation[7] + z*rotation[8],
-    x*rotation[9] + y*rotation[10] + z*rotation[11]
+    x*rotation[6] + y*rotation[7] + z*rotation[8]
   };
 }
 

@@ -1492,98 +1492,89 @@ extern "C" size_t n_materials() { return model::materials.size(); }
 //
 // cvmt functions definition 
 double 
-PolyProperty::evaluate(Position r) {
-  double results {0.0}; 
-  if(type_ == "zernike1d"){ 
-    results = evaluate_zernike1d(r);
-  } else if (type_ == "zernike"){
-    results = evaluate_zernike(r);
-   }
-  return results;
+PolyProperty::evaluate(Position r) 
+{
+  if (type_ == "zernike1d") { 
+    return evaluate_zernike1d(r);
+  } else if (type_ == "zernike") {
+    return evaluate_zernike(r);
+  }
 }
 
 double 
-PolyProperty::evaluate_zernike1d(Position r) {
-  double rho;
+PolyProperty::evaluate_zernike1d(Position r) 
+{
   int c_index;
-  double poly_val;
-  double property {0.0};
+  double rho, poly_val, property;
   rho = std::sqrt(r.x * r.x + r.y * r.y) / coeffs_[0];
   c_index = 2;
-  for(int i = 0; i <= order_; i = i + 2){
+  property = 0.0;
+  for (int i = 0; i <= order_; i = i + 2) {
       calc_zn_rad(i, rho, &poly_val);
-      property += poly_val * coeffs_[c_index-1];
+      property += poly_val * coeffs_[c_index - 1];
       c_index += 1;
   }
   return property;
 }
 
 double 
-PolyProperty::evaluate_zernike(Position r) {
+PolyProperty::evaluate_zernike(Position r) 
+{
   int k;
-  double rho;
-  double phi;
-  double property {0.0}; 
+  double rho, phi, property;
   rho = sqrt(r.x * r.x + r.y * r.y) / coeffs_[0];
   phi = std::atan2(r.y, r.x);
   k = 2; 
   calc_zn(order_, rho, phi, poly_results_.data());
-  for(int i = 0; i <= order_; i++){
-    for(int j = 1; j <= i + 1; j++){
-      property += poly_results_[k-2] * coeffs_[k-1];
+  property = 0.0;
+  for (int i = 0; i <= order_; i++) {
+    for (int j = 1; j <= i + 1; j++) {
+      property += poly_results_[k - 2] * coeffs_[k - 1];
       k += 1;
     }
   }
   if (property < -1.0E-8) {
-     fatal_error("A negative number density below -1E-8 was calculated\n");
+     fatal_error("A negative number density below -1E-8 was calculated.");
   } else if (property < 0.0) {
-     printf("Warning: A negative number density between -1E-8 and 0 was calculated\n");
+     warning("A negative number density between -1E-8 and 0 was calculated.");
   }
   return property;
 }
 
-PolyProperty::PolyProperty(int n_size){
+PolyProperty::PolyProperty(int n_size)
+{
   n_coeffs_ = n_size;
   coeffs_.resize(n_coeffs_);
   poly_results_.resize(n_coeffs_);
   poly_norm_.resize(n_coeffs_);
 }
 
-PolyProperty::~PolyProperty(){
+PolyProperty::~PolyProperty()
+{
     n_coeffs_ = 0;
     coeffs_.resize(0);
     poly_results_.resize(0);
     poly_norm_.resize(0);
 }
 
-void PolyProperty::set_type(std::string type){
-  type_ = type;
-  return;
-}
+void PolyProperty::set_type(std::string type) {type_ = type;}
 
-void PolyProperty::set_order(int order){
-  order_ = order;
-  return;
-}
+void PolyProperty::set_order(int order) {order_ = order;}
 
-void PolyProperty::set_coeffs(double coeffs[]){
-  for(int i = 0; i < n_coeffs_; i++){
+void PolyProperty::set_radius(double radius) {radius_ = radius;}
+
+void PolyProperty::set_coeffs(double coeffs[])
+{
+  for (int i = 0; i < n_coeffs_; i++) {
     coeffs_[i] = coeffs[i];
   }
-  return;
 }
 
-void PolyProperty::set_norm(double norm[]){
-  for(int i = 0; i < n_coeffs_; i++){
+void PolyProperty::set_norm(double norm[])
+{
+  for (int i = 0; i < n_coeffs_; i++) {
     poly_norm_[i] = norm[i];
   }
-  return;
-}
-
-void PolyProperty::set_radius(double radius){
-  radius_ = radius;
-  return;
 }
  
-
 } // namespace openmc

@@ -2,7 +2,10 @@
 
 #include <algorithm> // for move
 #include <sstream> // for stringstream
+
+#if defined (__unix__) || (defined (__APPLE__) && defined (__MACH__))
 #include <dlfcn.h> // for dlopen
+#endif
 
 #include <fmt/core.h>
 #include "xtensor/xadapt.hpp"
@@ -277,12 +280,17 @@ void initialize_source()
     msg << "Sampling from library source " << settings::path_source << "...";
     write_message(msg, 6);
 
+    #if defined (__unix__) || (defined (__APPLE__) && defined (__MACH__))
     // Open the library
     void* source_library = dlopen(settings::path_source_library.c_str(),RTLD_LAZY);
     if(!source_library) {
       std::stringstream msg("Couldnt open source library " + settings::path_source_library);
       fatal_error(msg);
     }
+    #else
+    std::stringstream msg("This feature has not yet been implemented for non POSIX systems");
+    fatal_error(msg);
+    #endif
 
     // load the symbol
     typedef Particle::Bank (*sample_t)();

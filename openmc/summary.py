@@ -154,8 +154,9 @@ class Summary(object):
 
                 if 'rotation' in group:
                     rotation = group['rotation'][()]
-                    rotation = np.asarray(rotation, dtype=np.int)
-                    cell._rotation = rotation
+                    if rotation.size == 9:
+                        rotation.shape = (3, 3)
+                    cell.rotation = rotation
 
             elif fill_type == 'material':
                 cell.temperature = group['temperature'][()]

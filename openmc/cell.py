@@ -63,6 +63,10 @@ class Cell(IDManagerMixin):
            \sin\phi \sin\theta \sin\psi & -\sin\phi \cos\psi + \cos\phi
            \sin\theta \sin\psi \\ -\sin\theta & \sin\phi \cos\theta & \cos\phi
            \cos\theta \end{array} \right ]
+
+        A rotation matrix can also be specified directly by setting this
+        attribute to a nested list (or 2D numpy array) that specifies each
+        element of the matrix.
     rotation_matrix : numpy.ndarray
         The rotation matrix defined by the angles specified in the
         :attr:`Cell.rotation` property.
@@ -227,21 +231,24 @@ class Cell(IDManagerMixin):
 
     @rotation.setter
     def rotation(self, rotation):
-        cv.check_type('cell rotation', rotation, Iterable, Real)
         cv.check_length('cell rotation', rotation, 3)
         self._rotation = np.asarray(rotation)
 
         # Save rotation matrix -- the reason we do this instead of having it be
         # automatically calculated when the rotation_matrix property is accessed
         # is so that plotting on a rotated geometry can be done faster.
-        phi, theta, psi = self.rotation*(-pi/180.)
-        c3, s3 = cos(phi), sin(phi)
-        c2, s2 = cos(theta), sin(theta)
-        c1, s1 = cos(psi), sin(psi)
-        self._rotation_matrix = np.array([
-            [c1*c2, c1*s2*s3 - c3*s1, s1*s3 + c1*c3*s2],
-            [c2*s1, c1*c3 + s1*s2*s3, c3*s1*s2 - c1*s3],
-            [-s2, c2*s3, c2*c3]])
+        if self._rotation.ndim == 2:
+            # User specified rotation matrix directly
+            self._rotation_matrix = self._rotation
+        else:
+            phi, theta, psi = self.rotation*(-pi/180.)
+            c3, s3 = cos(phi), sin(phi)
+            c2, s2 = cos(theta), sin(theta)
+            c1, s1 = cos(psi), sin(psi)
+            self._rotation_matrix = np.array([
+                [c1*c2, c1*s2*s3 - c3*s1, s1*s3 + c1*c3*s2],
+                [c2*s1, c1*c3 + s1*s2*s3, c3*s1*s2 - c1*s3],
+                [-s2, c2*s3, c2*c3]])
 
     @translation.setter
     def translation(self, translation):
@@ -516,7 +523,7 @@ class Cell(IDManagerMixin):
             element.set("translation", ' '.join(map(str, self.translation)))
 
         if self.rotation is not None:
-            element.set("rotation", ' '.join(map(str, self.rotation)))
+            element.set("rotation", ' '.join(map(str, self.rotation.ravel())))
 
         return element
 

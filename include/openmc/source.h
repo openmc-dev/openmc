@@ -77,8 +77,7 @@ Particle::Bank sample_pyne_source(pyne::Sampler*);
 
 //! Convert a pyne source particle to an openmc source site
 //! \return Sampled source site
-Particle::Bank convert_pyne_source_particle(pyne::SourceParticle);
-#endif
+Particle::Bank convert_pyne_source_particle(const pyne::SourceParticle&);
 
 //! Check the source particle converted from pyne source
 //! \return Bool

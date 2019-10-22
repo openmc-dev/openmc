@@ -420,8 +420,6 @@ Particle::Bank sample_pyne_source(pyne::Sampler* sampler)
       ++n_reject;
     }
   }
-  pyne::SourceParticle src = sampler->particle_birth(rands);
-  Particle::Bank site = convert_pyne_source_particle(src);
 
   // If running in MG, convert site % E to group
   if (!settings::run_CE) {
@@ -454,7 +452,6 @@ Particle::Bank convert_pyne_source_particle(const pyne::SourceParticle& pyne_src
   }
   return site;
 }
-#endif
 
 bool check_pyne_source_particle(const Particle::Bank& site)
 {

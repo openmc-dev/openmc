@@ -986,7 +986,7 @@ class Library(object):
             xsdata.num_azimuthal = self.num_azimuthal
 
         if nuclide != 'total':
-            xsdata.atomic_weight_ratio = self._nuclides[nuclide][1]
+            xsdata.atomic_weight_ratio = self._nuclides[nuclide]
 
         if subdomain is None:
             subdomain = 'all'

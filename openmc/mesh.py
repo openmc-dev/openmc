@@ -53,6 +53,12 @@ class MeshBase(IDManagerMixin, metaclass=ABCMeta):
         else:
             self._name = ''
 
+    def __repr__(self):
+        string = type(self).__name__ + '\n'
+        string += '{0: <16}{1}{2}\n'.format('\tID', '=\t', self._id)
+        string += '{0: <16}{1}{2}\n'.format('\tName', '=\t', self._name)
+        return string
+
     @classmethod
     def from_hdf5(cls, group):
         """Create mesh from HDF5 group
@@ -126,7 +132,10 @@ class RegularMesh(MeshBase):
 
     @property
     def n_dimension(self):
-        return len(self._dimension)
+        if self._dimension is not None:
+            return len(self._dimension)
+        else:
+            return None
 
     @property
     def lower_left(self):
@@ -187,11 +196,9 @@ class RegularMesh(MeshBase):
         self._width = width
 
     def __repr__(self):
-        string = 'RegularMesh\n'
-        string += '{0: <16}{1}{2}\n'.format('\tID', '=\t', self._id)
-        string += '{0: <16}{1}{2}\n'.format('\tName', '=\t', self._name)
-        string += '{0: <16}{1}{2}\n'.format('\tType', '=\t', self._type)
-        string += '{0: <16}{1}{2}\n'.format('\tBasis', '=\t', self._dimension)
+        string = super().__repr__()
+        string += '{0: <16}{1}{2}\n'.format('\tDimensions', '=\t', self.n_dimension)
+        string += '{0: <16}{1}{2}\n'.format('\tMesh Cells', '=\t', self._dimension)
         string += '{0: <16}{1}{2}\n'.format('\tWidth', '=\t', self._lower_left)
         string += '{0: <16}{1}{2}\n'.format('\tOrigin', '=\t', self._upper_right)
         string += '{0: <16}{1}{2}\n'.format('\tPixels', '=\t', self._width)
@@ -521,6 +528,17 @@ class RectilinearMesh(MeshBase):
     def z_grid(self, grid):
         cv.check_type('mesh z_grid', grid, Iterable, Real)
         self._z_grid = grid
+
+    def __repr__(self):
+        string = super().__repr__()
+        string += '{0: <16}{1}{2}\n'.format('\tDimensions', '=\t', self.n_dimension)
+        x_grid_str = str(self._x_grid) if not self._x_grid else len(self._x_grid)
+        y_grid_str = str(self._y_grid) if not self._y_grid else len(self._y_grid)
+        z_grid_str = str(self._z_grid) if not self._z_grid else len(self._z_grid)
+        string += '{0: <16}{1}{2}\n'.format('\tx pnts:', '=\t', x_grid_str)
+        string += '{0: <16}{1}{2}\n'.format('\ty pnts:', '=\t', y_grid_str)
+        string += '{0: <16}{1}{2}\n'.format('\tz pnts:', '=\t', z_grid_str)
+        return string
 
     @classmethod
     def from_hdf5(cls, group):

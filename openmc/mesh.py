@@ -530,14 +530,24 @@ class RectilinearMesh(MeshBase):
         self._z_grid = grid
 
     def __repr__(self):
+        fmt = '{0: <16}{1}{2}\n'
         string = super().__repr__()
-        string += '{0: <16}{1}{2}\n'.format('\tDimensions', '=\t', self.n_dimension)
+        string += fmt.format('\tDimensions', '=\t', self.n_dimension)
         x_grid_str = str(self._x_grid) if not self._x_grid else len(self._x_grid)
+        string += fmt.format('\tN X pnts:', '=\t', x_grid_str)
+        if self._x_grid:
+            string += fmt.format('\tX Min:', '=\t', self._x_grid[0])
+            string += fmt.format('\tX Max:', '=\t', self._x_grid[-1])
         y_grid_str = str(self._y_grid) if not self._y_grid else len(self._y_grid)
+        string += fmt.format('\tN Y pnts:', '=\t', y_grid_str)
+        if self._y_grid:
+            string += fmt.format('\tY Min:', '=\t', self._y_grid[0])
+            string += fmt.format('\tY Max:', '=\t', self._y_grid[-1])
         z_grid_str = str(self._z_grid) if not self._z_grid else len(self._z_grid)
-        string += '{0: <16}{1}{2}\n'.format('\tx pnts:', '=\t', x_grid_str)
-        string += '{0: <16}{1}{2}\n'.format('\ty pnts:', '=\t', y_grid_str)
-        string += '{0: <16}{1}{2}\n'.format('\tz pnts:', '=\t', z_grid_str)
+        string += fmt.format('\tN Z pnts:', '=\t', z_grid_str)
+        if self._z_grid:
+            string += fmt.format('\tZ Min:', '=\t', self._z_grid[0])
+            string += fmt.format('\tZ Max:', '=\t', self._z_grid[-1])
         return string
 
     @classmethod

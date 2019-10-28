@@ -1,0 +1,447 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<element name="geometry" xmlns="http://relaxng.org/ns/structure/1.0" datatypeLibrary="http://www.w3.org/2001/XMLSchema-datatypes">
+  <interleave>
+    <zeroOrMore>
+      <element name="cell">
+        <interleave>
+          <choice>
+            <element name="id">
+              <data type="int"/>
+            </element>
+            <attribute name="id">
+              <data type="int"/>
+            </attribute>
+          </choice>
+          <optional>
+            <choice>
+              <element name="name">
+                <data type="string">
+                  <param name="maxLength">52</param>
+                </data>
+              </element>
+              <attribute name="name">
+                <data type="string">
+                  <param name="maxLength">52</param>
+                </data>
+              </attribute>
+            </choice>
+          </optional>
+          <optional>
+            <choice>
+              <element name="universe">
+                <data type="int"/>
+              </element>
+              <attribute name="universe">
+                <data type="int"/>
+              </attribute>
+            </choice>
+          </optional>
+          <choice>
+            <choice>
+              <element name="fill">
+                <data type="int"/>
+              </element>
+              <attribute name="fill">
+                <data type="int"/>
+              </attribute>
+            </choice>
+            <choice>
+              <element name="material">
+                <list>
+                  <oneOrMore>
+                    <choice>
+                      <data type="int"/>
+                      <value>void</value>
+                    </choice>
+                  </oneOrMore>
+                </list>
+              </element>
+              <attribute name="material">
+                <list>
+                  <oneOrMore>
+                    <choice>
+                      <data type="int"/>
+                      <value>void</value>
+                    </choice>
+                  </oneOrMore>
+                </list>
+              </attribute>
+            </choice>
+          </choice>
+          <optional>
+            <choice>
+              <element name="temperature">
+                <list>
+                  <oneOrMore>
+                    <data type="double"/>
+                  </oneOrMore>
+                </list>
+              </element>
+              <attribute name="temperature">
+                <list>
+                  <oneOrMore>
+                    <data type="double"/>
+                  </oneOrMore>
+                </list>
+              </attribute>
+            </choice>
+          </optional>
+          <optional>
+            <choice>
+              <element name="region">
+                <data type="string"/>
+              </element>
+              <attribute name="region">
+                <data type="string"/>
+              </attribute>
+            </choice>
+          </optional>
+          <optional>
+            <choice>
+              <element name="rotation">
+                <list>
+                  <oneOrMore>
+                    <data type="double"/>
+                  </oneOrMore>
+                </list>
+              </element>
+              <attribute name="rotation">
+                <list>
+                  <oneOrMore>
+                    <data type="double"/>
+                  </oneOrMore>
+                </list>
+              </attribute>
+            </choice>
+          </optional>
+          <optional>
+            <choice>
+              <element name="translation">
+                <list>
+                  <oneOrMore>
+                    <data type="double"/>
+                  </oneOrMore>
+                </list>
+              </element>
+              <attribute name="translation">
+                <list>
+                  <oneOrMore>
+                    <data type="double"/>
+                  </oneOrMore>
+                </list>
+              </attribute>
+            </choice>
+          </optional>
+        </interleave>
+      </element>
+    </zeroOrMore>
+    <zeroOrMore>
+      <element name="surface">
+        <interleave>
+          <choice>
+            <element name="id">
+              <data type="int"/>
+            </element>
+            <attribute name="id">
+              <data type="int"/>
+            </attribute>
+          </choice>
+          <optional>
+            <choice>
+              <element name="name">
+                <data type="string">
+                  <param name="maxLength">52</param>
+                </data>
+              </element>
+              <attribute name="name">
+                <data type="string">
+                  <param name="maxLength">52</param>
+                </data>
+              </attribute>
+            </choice>
+          </optional>
+          <choice>
+            <element name="type">
+              <data type="string">
+                <param name="maxLength">15</param>
+              </data>
+            </element>
+            <attribute name="type">
+              <data type="string">
+                <param name="maxLength">15</param>
+              </data>
+            </attribute>
+          </choice>
+          <choice>
+            <element name="coeffs">
+              <list>
+                <oneOrMore>
+                  <data type="double"/>
+                </oneOrMore>
+              </list>
+            </element>
+            <attribute name="coeffs">
+              <list>
+                <oneOrMore>
+                  <data type="double"/>
+                </oneOrMore>
+              </list>
+            </attribute>
+          </choice>
+          <optional>
+            <choice>
+              <element name="boundary">
+                <choice>
+                  <value>transmit</value>
+                  <value>reflective</value>
+                  <value>vacuum</value>
+                  <value>periodic</value>
+                </choice>
+              </element>
+              <attribute name="boundary">
+                <choice>
+                  <value>transmit</value>
+                  <value>reflective</value>
+                  <value>vacuum</value>
+                  <value>periodic</value>
+                </choice>
+              </attribute>
+            </choice>
+          </optional>
+          <optional>
+            <choice>
+              <element name="periodic_surface_id">
+                <data type="int"/>
+              </element>
+              <attribute name="periodic_surface_id">
+                <data type="int"/>
+              </attribute>
+            </choice>
+          </optional>
+        </interleave>
+      </element>
+    </zeroOrMore>
+    <zeroOrMore>
+      <element name="lattice">
+        <interleave>
+          <choice>
+            <element name="id">
+              <data type="int"/>
+            </element>
+            <attribute name="id">
+              <data type="int"/>
+            </attribute>
+          </choice>
+          <optional>
+            <choice>
+              <element name="name">
+                <data type="string">
+                  <param name="maxLength">52</param>
+                </data>
+              </element>
+              <attribute name="name">
+                <data type="string">
+                  <param name="maxLength">52</param>
+                </data>
+              </attribute>
+            </choice>
+          </optional>
+          <choice>
+            <element name="dimension">
+              <list>
+                <oneOrMore>
+                  <data type="positiveInteger"/>
+                </oneOrMore>
+              </list>
+            </element>
+            <attribute name="dimension">
+              <list>
+                <oneOrMore>
+                  <data type="positiveInteger"/>
+                </oneOrMore>
+              </list>
+            </attribute>
+          </choice>
+          <choice>
+            <element name="lower_left">
+              <list>
+                <oneOrMore>
+                  <data type="double"/>
+                </oneOrMore>
+              </list>
+            </element>
+            <attribute name="lower_left">
+              <list>
+                <oneOrMore>
+                  <data type="double"/>
+                </oneOrMore>
+              </list>
+            </attribute>
+          </choice>
+          <choice>
+            <element name="pitch">
+              <list>
+                <oneOrMore>
+                  <data type="double"/>
+                </oneOrMore>
+              </list>
+            </element>
+            <attribute name="pitch">
+              <list>
+                <oneOrMore>
+                  <data type="double"/>
+                </oneOrMore>
+              </list>
+            </attribute>
+          </choice>
+          <choice>
+            <element name="universes">
+              <list>
+                <oneOrMore>
+                  <data type="int"/>
+                </oneOrMore>
+              </list>
+            </element>
+            <attribute name="universes">
+              <list>
+                <oneOrMore>
+                  <data type="int"/>
+                </oneOrMore>
+              </list>
+            </attribute>
+          </choice>
+          <optional>
+            <choice>
+              <element name="outer">
+                <data type="int"/>
+              </element>
+              <attribute name="outer">
+                <data type="int"/>
+              </attribute>
+            </choice>
+          </optional>
+        </interleave>
+      </element>
+    </zeroOrMore>
+    <zeroOrMore>
+      <element name="hex_lattice">
+        <interleave>
+          <choice>
+            <element name="id">
+              <data type="int"/>
+            </element>
+            <attribute name="id">
+              <data type="int"/>
+            </attribute>
+          </choice>
+          <optional>
+            <choice>
+              <element name="name">
+                <data type="string">
+                  <param name="maxLength">52</param>
+                </data>
+              </element>
+              <attribute name="name">
+                <data type="string">
+                  <param name="maxLength">52</param>
+                </data>
+              </attribute>
+            </choice>
+          </optional>
+          <choice>
+            <element name="n_rings">
+              <data type="int"/>
+            </element>
+            <attribute name="n_rings">
+              <data type="int"/>
+            </attribute>
+          </choice>
+          <optional>
+            <choice>
+              <element name="n_axial">
+                <data type="int"/>
+              </element>
+              <attribute name="n_axial">
+                <data type="int"/>
+              </attribute>
+            </choice>
+          </optional>
+          <choice>
+            <element name="center">
+              <list>
+                <oneOrMore>
+                  <data type="double"/>
+                </oneOrMore>
+              </list>
+            </element>
+            <attribute name="center">
+              <list>
+                <oneOrMore>
+                  <data type="double"/>
+                </oneOrMore>
+              </list>
+            </attribute>
+          </choice>
+          <choice>
+            <element name="pitch">
+              <list>
+                <oneOrMore>
+                  <data type="double"/>
+                </oneOrMore>
+              </list>
+            </element>
+            <attribute name="pitch">
+              <list>
+                <oneOrMore>
+                  <data type="double"/>
+                </oneOrMore>
+              </list>
+            </attribute>
+          </choice>
+          <optional>
+            <choice>
+              <element name="orientation">
+                <choice>
+                  <value>x</value>
+                  <value>y</value>
+                </choice>
+              </element>
+              <attribute name="orientation">
+                <choice>
+                  <value>x</value>
+                  <value>y</value>
+                </choice>
+              </attribute>
+            </choice>
+          </optional>
+          <choice>
+            <element name="universes">
+              <list>
+                <oneOrMore>
+                  <data type="int"/>
+                </oneOrMore>
+              </list>
+            </element>
+            <attribute name="universes">
+              <list>
+                <oneOrMore>
+                  <data type="int"/>
+                </oneOrMore>
+              </list>
+            </attribute>
+          </choice>
+          <optional>
+            <choice>
+              <element name="outer">
+                <data type="int"/>
+              </element>
+              <attribute name="outer">
+                <data type="int"/>
+              </attribute>
+            </choice>
+          </optional>
+        </interleave>
+      </element>
+    </zeroOrMore>
+  </interleave>
+</element>

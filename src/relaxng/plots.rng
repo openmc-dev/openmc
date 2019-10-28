@@ -1,0 +1,293 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<element name="plots" xmlns="http://relaxng.org/ns/structure/1.0" datatypeLibrary="http://www.w3.org/2001/XMLSchema-datatypes">
+  <zeroOrMore>
+    <element name="plot">
+      <interleave>
+        <optional>
+          <choice>
+            <element name="id">
+              <data type="int"/>
+            </element>
+            <attribute name="id">
+              <data type="int"/>
+            </attribute>
+          </choice>
+        </optional>
+        <optional>
+          <choice>
+            <element name="filename">
+              <data type="string">
+                <param name="maxLength">50</param>
+              </data>
+            </element>
+            <attribute name="filename">
+              <data type="string">
+                <param name="maxLength">50</param>
+              </data>
+            </attribute>
+          </choice>
+        </optional>
+        <optional>
+          <choice>
+            <element name="type">
+              <choice>
+                <value>slice</value>
+                <value>voxel</value>
+              </choice>
+            </element>
+            <attribute name="type">
+              <choice>
+                <value>slice</value>
+                <value>voxel</value>
+              </choice>
+            </attribute>
+          </choice>
+        </optional>
+        <optional>
+          <choice>
+            <element name="color_by">
+              <choice>
+                <value>cell</value>
+                <value>material</value>
+              </choice>
+            </element>
+            <attribute name="color_by">
+              <choice>
+                <value>cell</value>
+                <value>material</value>
+              </choice>
+            </attribute>
+          </choice>
+        </optional>
+        <optional>
+          <choice>
+            <element name="level">
+              <data type="int"/>
+            </element>
+            <attribute name="level">
+              <data type="int"/>
+            </attribute>
+          </choice>
+        </optional>
+        <optional>
+          <choice>
+            <element name="origin">
+              <list>
+                <oneOrMore>
+                  <data type="double"/>
+                </oneOrMore>
+              </list>
+            </element>
+            <attribute name="origin">
+              <list>
+                <oneOrMore>
+                  <data type="double"/>
+                </oneOrMore>
+              </list>
+            </attribute>
+          </choice>
+        </optional>
+        <optional>
+          <choice>
+            <element name="width">
+              <list>
+                <oneOrMore>
+                  <data type="double"/>
+                </oneOrMore>
+              </list>
+            </element>
+            <attribute name="width">
+              <list>
+                <oneOrMore>
+                  <data type="double"/>
+                </oneOrMore>
+              </list>
+            </attribute>
+          </choice>
+        </optional>
+        <optional>
+          <choice>
+            <element name="basis">
+              <choice>
+                <value>xy</value>
+                <value>yz</value>
+                <value>xz</value>
+              </choice>
+            </element>
+            <attribute name="basis">
+              <choice>
+                <value>xy</value>
+                <value>yz</value>
+                <value>xz</value>
+              </choice>
+            </attribute>
+          </choice>
+        </optional>
+        <optional>
+          <choice>
+            <element name="pixels">
+              <list>
+                <oneOrMore>
+                  <data type="int"/>
+                </oneOrMore>
+              </list>
+            </element>
+            <attribute name="pixels">
+              <list>
+                <oneOrMore>
+                  <data type="int"/>
+                </oneOrMore>
+              </list>
+            </attribute>
+          </choice>
+        </optional>
+        <optional>
+          <choice>
+            <element name="background">
+              <list>
+                <oneOrMore>
+                  <data type="int"/>
+                </oneOrMore>
+              </list>
+            </element>
+            <attribute name="background">
+              <list>
+                <oneOrMore>
+                  <data type="int"/>
+                </oneOrMore>
+              </list>
+            </attribute>
+          </choice>
+        </optional>
+        <zeroOrMore>
+          <element name="color">
+            <interleave>
+              <choice>
+                <element name="id">
+                  <data type="int"/>
+                </element>
+                <attribute name="id">
+                  <data type="int"/>
+                </attribute>
+              </choice>
+              <choice>
+                <element name="rgb">
+                  <list>
+                    <oneOrMore>
+                      <data type="int"/>
+                    </oneOrMore>
+                  </list>
+                </element>
+                <attribute name="rgb">
+                  <list>
+                    <oneOrMore>
+                      <data type="int"/>
+                    </oneOrMore>
+                  </list>
+                </attribute>
+              </choice>
+            </interleave>
+          </element>
+        </zeroOrMore>
+        <zeroOrMore>
+          <element name="mask">
+            <interleave>
+              <choice>
+                <element name="components">
+                  <list>
+                    <oneOrMore>
+                      <data type="int"/>
+                    </oneOrMore>
+                  </list>
+                </element>
+                <attribute name="components">
+                  <list>
+                    <oneOrMore>
+                      <data type="int"/>
+                    </oneOrMore>
+                  </list>
+                </attribute>
+              </choice>
+              <choice>
+                <element name="background">
+                  <list>
+                    <oneOrMore>
+                      <data type="int"/>
+                    </oneOrMore>
+                  </list>
+                </element>
+                <attribute name="background">
+                  <list>
+                    <oneOrMore>
+                      <data type="int"/>
+                    </oneOrMore>
+                  </list>
+                </attribute>
+              </choice>
+            </interleave>
+          </element>
+        </zeroOrMore>
+        <zeroOrMore>
+          <element name="meshlines">
+            <interleave>
+              <choice>
+                <element name="meshtype">
+                  <choice>
+                    <value>tally</value>
+                    <value>entropy</value>
+                    <value>ufs</value>
+                    <value>cmfd</value>
+                  </choice>
+                </element>
+                <attribute name="meshtype">
+                  <choice>
+                    <value>tally</value>
+                    <value>entropy</value>
+                    <value>ufs</value>
+                    <value>cmfd</value>
+                  </choice>
+                </attribute>
+              </choice>
+              <optional>
+                <choice>
+                  <element name="id">
+                    <data type="int"/>
+                  </element>
+                  <attribute name="id">
+                    <data type="int"/>
+                  </attribute>
+                </choice>
+              </optional>
+              <choice>
+                <element name="linewidth">
+                  <data type="int"/>
+                </element>
+                <attribute name="linewidth">
+                  <data type="int"/>
+                </attribute>
+              </choice>
+              <optional>
+                <choice>
+                  <element name="color">
+                    <list>
+                      <oneOrMore>
+                        <data type="int"/>
+                      </oneOrMore>
+                    </list>
+                  </element>
+                  <attribute name="color">
+                    <list>
+                      <oneOrMore>
+                        <data type="int"/>
+                      </oneOrMore>
+                    </list>
+                  </attribute>
+                </choice>
+              </optional>
+            </interleave>
+          </element>
+        </zeroOrMore>
+      </interleave>
+    </element>
+  </zeroOrMore>
+</element>

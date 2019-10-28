@@ -1,0 +1,30 @@
+<?xml version="1.0"?>
+<geometry>
+
+  <cell id="1" fill="5" region="1 -2 3 -4" />
+  <cell id="201" universe="21" material="1" region="-5" />
+  <cell id="202" universe="21" material="2" region="5" />
+  <cell id="203" universe="22" material="1" region="-5" />
+  <cell id="204" universe="22" material="2" region="5" />
+  <cell id="205" universe="23" material="1" region="-5" />
+  <cell id="206" universe="23" material="2" region="5" />
+  <cell id="207" universe="20" material="1" region="-5" />
+  <cell id="208" universe="20" material="2" region="5" />
+
+  <lattice id="5">
+    <dimension>2 2</dimension>
+    <lower_left>-2.0 -2.0</lower_left>
+    <pitch>2.0 2.0</pitch>
+    <universes>
+      20 21
+      22 23
+    </universes>
+  </lattice>
+
+  <surface id="1" type="x-plane" coeffs="-2.0" boundary="vacuum" />
+  <surface id="2" type="x-plane" coeffs="2.0" boundary="vacuum" />
+  <surface id="3" type="y-plane" coeffs="-2.0" boundary="vacuum" />
+  <surface id="4" type="y-plane" coeffs="2.0" boundary="vacuum" />
+  <surface id="5" type="z-cylinder" coeffs="0.0 0.0 0.3" />
+
+</geometry>

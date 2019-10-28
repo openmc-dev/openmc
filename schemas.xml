@@ -1,0 +1,9 @@
+<?xml version="1.0"?>
+<locatingRules xmlns="http://thaiopensource.com/ns/locating-rules/1.0">
+  <documentElement localName="geometry" uri="src/relaxng/geometry.rnc"/>
+  <documentElement localName="materials" uri="src/relaxng/materials.rnc"/>
+  <documentElement localName="settings" uri="src/relaxng/settings.rnc"/>
+  <documentElement localName="tallies" uri="src/relaxng/tallies.rnc"/>
+  <documentElement localName="plots" uri="src/relaxng/plots.rnc"/>
+  <documentElement localName="cross_sections" uri="src/relaxng/cross_sections.rnc"/>
+</locatingRules>

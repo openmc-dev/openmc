@@ -1,0 +1,31 @@
+<?xml version='1.0' encoding='utf-8'?>
+<geometry>
+  <cell id="1" fill="5" region="151 -152 153 -154 1380 -1370" />
+
+  <cell id="52" material="9" name="Fuel rod active region - 1.6% enr radial 0: Fuel 1.6%" region="-35" universe="8" />
+  <cell id="53" material="5" name="Fuel rod active region - 1.6% enr radial 1: Helium" region="35 -36" universe="8" />
+  <cell id="54" material="7" name="Fuel rod active region - 1.6% enr radial outer: Zircaloy 4" region="36" universe="8" />
+  <cell fill="8" id="1253" name="Fuel cell" region="-150" universe="763" />
+  <cell id="1254" material="15" name="Water" region="150" universe="763" />
+
+  <lattice id="5">
+    <dimension>2 2</dimension>
+    <lower_left>-1.25984 -1.25984</lower_left>
+    <pitch>1.25984 1.25984</pitch>
+    <universes>
+      763 763
+      763 763
+    </universes>
+  </lattice>
+
+  <surface coeffs="0.0 0.0 0.39218" id="35" name="Fuel pellet OR" type="z-cylinder" />
+  <surface coeffs="0.0 0.0 0.40005" id="36" name="Fuel clad IR" type="z-cylinder" />
+  <surface coeffs="0.0 0.0 0.4572" id="150" name="Fuel clad OR" type="z-cylinder" />
+  <surface boundary="reflective" coeffs="-1.25984" id="151" name="minimum x" type="x-plane" />
+  <surface boundary="reflective" coeffs="1.25984" id="152" name="maximum x" type="x-plane" />
+  <surface boundary="reflective" coeffs="-1.25984" id="153" name="minimum y" type="y-plane" />
+  <surface boundary="reflective" coeffs="1.25984" id="154" name="maximum y" type="y-plane" />
+  <surface boundary="reflective" coeffs="1.0" id="1370" name="Highest Extent" type="z-plane" />
+  <surface boundary="reflective" coeffs="-1.0" id="1380" name="Lowest Extent" type="z-plane" />
+
+</geometry>

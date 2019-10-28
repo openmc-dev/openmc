@@ -1,0 +1,14 @@
+<?xml version="1.0"?>
+<tallies>
+
+  <filter id="1">
+    <type>cell</type>
+    <bins>1 2 3 4</bins>
+  </filter>
+
+  <tally id="1">
+    <filters>1</filters>
+    <scores>total</scores>
+  </tally>
+
+</tallies>

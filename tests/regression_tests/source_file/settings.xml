@@ -1,0 +1,15 @@
+<?xml version="1.0"?>
+<settings>
+  <state_point batches="10" />
+  <source_point separate="true" />
+  <eigenvalue>
+    <batches>10</batches>
+    <inactive>5</inactive>
+    <particles>1000</particles>
+  </eigenvalue>
+  <source>
+    <space type="box">
+      <parameters>-4 -4 -4  4  4  4</parameters>
+    </space>
+  </source>
+</settings>

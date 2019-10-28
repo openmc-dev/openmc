@@ -1,0 +1,12 @@
+<?xml version='1.0' encoding='utf-8'?>
+<settings>
+  <run_mode>eigenvalue</run_mode>
+  <particles>1000</particles>
+  <batches>1</batches>
+  <inactive>0</inactive>
+  <source>
+    <space type="box">
+      <parameters>-1 -1 -1 1 1 1</parameters>
+    </space>
+  </source>
+</settings>

@@ -1,0 +1,22 @@
+<?xml version="1.0"?>
+<settings>
+
+  <survival_biasing>true</survival_biasing>
+
+  <cutoff>
+    <weight>0.50</weight>
+    <weight_avg>1.2</weight_avg>
+  </cutoff>
+
+  <run_mode>eigenvalue</run_mode>
+  <batches>10</batches>
+  <inactive>5</inactive>
+  <particles>1000</particles>
+
+  <source>
+    <space type="box">
+      <parameters>-4 -4 -4  4  4  4</parameters>
+    </space>
+  </source>
+
+</settings>

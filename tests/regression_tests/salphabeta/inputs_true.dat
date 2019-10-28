@@ -1,0 +1,60 @@
+<?xml version='1.0' encoding='utf-8'?>
+<geometry>
+  <cell id="1" material="1" region="1 -2" universe="1" />
+  <cell id="2" material="2" region="2 -3" universe="1" />
+  <cell id="3" material="3" region="3 -4" universe="1" />
+  <cell id="4" material="4" region="4 -5" universe="1" />
+  <surface boundary="vacuum" coeffs="-10" id="1" type="x-plane" />
+  <surface coeffs="-5" id="2" type="x-plane" />
+  <surface coeffs="0" id="3" type="x-plane" />
+  <surface coeffs="5" id="4" type="x-plane" />
+  <surface boundary="vacuum" coeffs="10" id="5" type="x-plane" />
+</geometry>
+<?xml version='1.0' encoding='utf-8'?>
+<materials>
+  <material depletable="true" id="1">
+    <density units="g/cc" value="4.5" />
+    <nuclide ao="1.0" name="U235" />
+    <nuclide ao="1.0" name="H1" />
+    <sab fraction="0.5" name="c_H_in_H2O" />
+  </material>
+  <material depletable="true" id="2">
+    <density units="g/cc" value="4.5" />
+    <nuclide ao="1.0" name="U235" />
+    <nuclide ao="1.0" name="C0" />
+    <sab name="c_Graphite" />
+  </material>
+  <material depletable="true" id="3">
+    <density units="g/cc" value="4.5" />
+    <nuclide ao="1.0" name="U235" />
+    <nuclide ao="1.0" name="Be9" />
+    <nuclide ao="1.0" name="O16" />
+    <sab name="c_Be_in_BeO" />
+    <sab name="c_O_in_BeO" />
+  </material>
+  <material depletable="true" id="4">
+    <density units="g/cm3" value="5.90168" />
+    <nuclide ao="0.3" name="H1" />
+    <nuclide ao="0.15" name="Zr90" />
+    <nuclide ao="0.1" name="Zr91" />
+    <nuclide ao="0.1" name="Zr92" />
+    <nuclide ao="0.05" name="Zr94" />
+    <nuclide ao="0.05" name="Zr96" />
+    <nuclide ao="0.1" name="U235" />
+    <nuclide ao="0.15" name="U238" />
+    <sab name="c_Zr_in_ZrH" />
+    <sab name="c_H_in_ZrH" />
+  </material>
+</materials>
+<?xml version='1.0' encoding='utf-8'?>
+<settings>
+  <run_mode>eigenvalue</run_mode>
+  <particles>400</particles>
+  <batches>5</batches>
+  <inactive>0</inactive>
+  <source strength="1.0">
+    <space type="box">
+      <parameters>-4 -4 -4 4 4 4</parameters>
+    </space>
+  </source>
+</settings>

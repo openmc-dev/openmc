@@ -1,0 +1,13 @@
+<?xml version="1.0"?>
+<geometry>
+
+  <!-- Reflective box -->
+  <surface id="1" type="x-plane" coeffs="-5" boundary="reflective"/>
+  <surface id="2" type="x-plane" coeffs="5" boundary="reflective"/>
+  <surface id="3" type="y-plane" coeffs="-5" boundary="reflective"/>
+  <surface id="4" type="y-plane" coeffs="5" boundary="reflective"/>
+  <surface id="5" type="z-plane" coeffs="-5" boundary="reflective"/>
+  <surface id="6" type="z-plane" coeffs="5" boundary="reflective"/>
+  <cell id="1" material="1" region="1 -2 3 -4 5 -6" />
+    
+</geometry>

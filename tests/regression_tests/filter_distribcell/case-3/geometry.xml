@@ -1,0 +1,181 @@
+<?xml version="1.0"?>
+<geometry>
+
+  <surface id="1" type="z-cylinder" coeffs="0. 0. 0.41" />
+  <surface id="2" type="z-cylinder" coeffs="0. 0. 0.475" />
+  <surface id="3" type="z-cylinder" coeffs="0. 0. 0.56" />
+  <surface id="4" type="z-cylinder" coeffs="0. 0. 0.62" />
+  <surface id="5" type="z-cylinder" coeffs="0. 0. 187.6" />
+  <surface id="6" type="z-cylinder" coeffs="0. 0. 209.0" />
+  <surface id="7" type="z-cylinder" coeffs="0. 0. 229.0" />
+  <surface id="8" type="z-cylinder" coeffs="0. 0. 249.0" boundary="vacuum" />
+
+  <surface id="31" type="z-plane" coeffs="-229.0" boundary="vacuum" />
+  <surface id="32" type="z-plane" coeffs="-199.0" />
+  <surface id="33" type="z-plane" coeffs="-193.0" />
+  <surface id="34" type="z-plane" coeffs="-183.0" />
+  <surface id="35" type="z-plane" coeffs="0.0" />
+  <surface id="36" type="z-plane" coeffs="183.0" />
+  <surface id="37" type="z-plane" coeffs="203.0" />
+  <surface id="38" type="z-plane" coeffs="215.0" />
+  <surface id="39" type="z-plane" coeffs="223.0" boundary="vacuum" />
+
+  <!-- All geometry on base universe -->
+  <cell id="1"  fill="200"    region="  -6 34 -35" /> <!-- Lower core -->
+  <cell id="2"  fill="201"    region="  -6 35 -36" /> <!-- Upper core -->
+  <cell id="3"  material="8"  region="  -7 31 -32" /> <!-- Lower core plate region -->
+  <cell id="4"  material="9"  region="  -5 32 -33" /> <!-- Bottom nozzle region -->
+  <cell id="5"  material="12" region="  -5 33 -34" /> <!-- Bottom FA region -->
+  <cell id="6"  material="11" region="  -5 36 -37" /> <!-- Top FA region -->
+  <cell id="7"  material="10" region="  -5 37 -38" /> <!-- Top nozzle region -->
+  <cell id="8"  material="7"  region="  -7 38 -39" /> <!-- Upper plate region -->
+  <cell id="9"  material="4"  region="6 -7 32 -38" /> <!-- Downcomer -->
+  <cell id="10" material="5"  region="7 -8 31 -39" /> <!-- RPV -->
+  <cell id="11" material="6"  region="5 -6 32 -34" /> <!-- Bottom of radial reflector -->
+  <cell id="12" material="7"  region="5 -6 36 -38" /> <!-- Top of radial reflector -->
+
+  <!-- Fuel pin, cladding, cold water -->
+  <cell id="21" universe="1" material="1" region="-1"   />
+  <cell id="22" universe="1" material="2" region="1 -2" />
+  <cell id="23" universe="1" material="3" region="2"    />
+
+  <!-- Instrumentation guide tube -->
+  <cell id="24" universe="2" material="3" region="-3"   />
+  <cell id="25" universe="2" material="2" region="3 -4" />
+  <cell id="26" universe="2" material="3" region="4"    />
+
+  <!-- Fuel pin, cladding, hot water -->
+  <cell id="27" universe="3" material="1" region="-1"   />
+  <cell id="28" universe="3" material="2" region="1 -2" />
+  <cell id="29" universe="3" material="4" region="2"    />
+
+  <!-- Instrumentation guide tube -->
+  <cell id="30" universe="4" material="4" region="-3"   />
+  <cell id="31" universe="4" material="2" region="3 -4" />
+  <cell id="32" universe="4" material="4" region="4"    />
+
+  <!-- cell for water assembly (cold) -->
+  <cell id="50" universe="5" material="4" region="34 -35" />
+
+  <!-- containing cell for fuel assembly -->
+  <cell id="60" universe="6" fill="100"   region="34 -35" />
+
+  <!-- cell for water assembly (hot) -->
+  <cell id="70" universe="7" material="3" region="35 -36" />
+
+  <!-- containing cell for fuel assembly -->
+  <cell id="80" universe="8" fill="101"   region="35 -36" />
+
+  <!-- Fuel Assembly (Lower Half) -->
+  <lattice id="100">
+    <dimension>17 17</dimension>
+    <lower_left>-10.71 -10.71</lower_left>
+    <pitch>1.26 1.26</pitch>
+    <universes>
+      1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1
+      1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1
+      1 1 1 1 1 2 1 1 2 1 1 2 1 1 1 1 1
+      1 1 1 2 1 1 1 1 1 1 1 1 1 2 1 1 1
+      1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1
+      1 1 2 1 1 2 1 1 2 1 1 2 1 1 2 1 1
+      1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1
+      1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1
+      1 1 2 1 1 2 1 1 2 1 1 2 1 1 2 1 1
+      1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1
+      1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1
+      1 1 2 1 1 2 1 1 2 1 1 2 1 1 2 1 1
+      1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1
+      1 1 1 2 1 1 1 1 1 1 1 1 1 2 1 1 1
+      1 1 1 1 1 2 1 1 2 1 1 2 1 1 1 1 1
+      1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1
+      1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1
+    </universes>
+  </lattice>
+
+  <!-- Fuel Assembly (Upper Half) -->
+  <lattice id="101">
+    <dimension>17 17</dimension>
+    <lower_left>-10.71 -10.71</lower_left>
+    <pitch>1.26 1.26</pitch>
+    <universes>
+      3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3
+      3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3
+      3 3 3 3 3 4 3 3 4 3 3 4 3 3 3 3 3
+      3 3 3 4 3 3 3 3 3 3 3 3 3 4 3 3 3
+      3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3
+      3 3 4 3 3 4 3 3 4 3 3 4 3 3 4 3 3
+      3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3
+      3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3
+      3 3 4 3 3 4 3 3 4 3 3 4 3 3 4 3 3
+      3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3
+      3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3
+      3 3 4 3 3 4 3 3 4 3 3 4 3 3 4 3 3
+      3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3
+      3 3 3 4 3 3 3 3 3 3 3 3 3 4 3 3 3
+      3 3 3 3 3 4 3 3 4 3 3 4 3 3 3 3 3
+      3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3
+      3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3
+    </universes>
+  </lattice>
+
+  <!-- Core Lattice (Lower Half) -->
+  <lattice id="200">
+    <dimension>21 21</dimension>
+    <lower_left>-224.91 -224.91</lower_left>
+    <pitch>21.42 21.42</pitch>
+    <universes>
+      5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5
+      5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5
+      5 5 5 5 5 5 5 6 6 6 6 6 6 6 5 5 5 5 5 5 5
+      5 5 5 5 5 6 6 6 6 6 6 6 6 6 6 6 5 5 5 5 5
+      5 5 5 5 6 6 6 6 6 6 6 6 6 6 6 6 6 5 5 5 5
+      5 5 5 6 6 6 6 6 6 6 6 6 6 6 6 6 6 6 5 5 5
+      5 5 5 6 6 6 6 6 6 6 6 6 6 6 6 6 6 6 5 5 5
+      5 5 6 6 6 6 6 6 6 6 6 6 6 6 6 6 6 6 6 5 5
+      5 5 6 6 6 6 6 6 6 6 6 6 6 6 6 6 6 6 6 5 5
+      5 5 6 6 6 6 6 6 6 6 6 6 6 6 6 6 6 6 6 5 5
+      5 5 6 6 6 6 6 6 6 6 6 6 6 6 6 6 6 6 6 5 5
+      5 5 6 6 6 6 6 6 6 6 6 6 6 6 6 6 6 6 6 5 5
+      5 5 6 6 6 6 6 6 6 6 6 6 6 6 6 6 6 6 6 5 5
+      5 5 6 6 6 6 6 6 6 6 6 6 6 6 6 6 6 6 6 5 5
+      5 5 5 6 6 6 6 6 6 6 6 6 6 6 6 6 6 6 5 5 5
+      5 5 5 6 6 6 6 6 6 6 6 6 6 6 6 6 6 6 5 5 5
+      5 5 5 5 6 6 6 6 6 6 6 6 6 6 6 6 6 5 5 5 5
+      5 5 5 5 5 6 6 6 6 6 6 6 6 6 6 6 5 5 5 5 5
+      5 5 5 5 5 5 5 6 6 6 6 6 6 6 5 5 5 5 5 5 5
+      5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5
+      5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5
+    </universes>
+  </lattice>
+
+  <!-- Core Lattice (Upper Half) -->
+  <lattice id="201">
+    <dimension>21 21</dimension>
+    <lower_left>-224.91 -224.91</lower_left>
+    <pitch>21.42 21.42</pitch>
+    <universes>
+      7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7
+      7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7
+      7 7 7 7 7 7 7 8 8 8 8 8 8 8 7 7 7 7 7 7 7
+      7 7 7 7 7 8 8 8 8 8 8 8 8 8 8 8 7 7 7 7 7
+      7 7 7 7 8 8 8 8 8 8 8 8 8 8 8 8 8 7 7 7 7
+      7 7 7 8 8 8 8 8 8 8 8 8 8 8 8 8 8 8 7 7 7
+      7 7 7 8 8 8 8 8 8 8 8 8 8 8 8 8 8 8 7 7 7
+      7 7 8 8 8 8 8 8 8 8 8 8 8 8 8 8 8 8 8 7 7
+      7 7 8 8 8 8 8 8 8 8 8 8 8 8 8 8 8 8 8 7 7
+      7 7 8 8 8 8 8 8 8 8 8 8 8 8 8 8 8 8 8 7 7
+      7 7 8 8 8 8 8 8 8 8 8 8 8 8 8 8 8 8 8 7 7
+      7 7 8 8 8 8 8 8 8 8 8 8 8 8 8 8 8 8 8 7 7
+      7 7 8 8 8 8 8 8 8 8 8 8 8 8 8 8 8 8 8 7 7
+      7 7 8 8 8 8 8 8 8 8 8 8 8 8 8 8 8 8 8 7 7
+      7 7 7 8 8 8 8 8 8 8 8 8 8 8 8 8 8 8 7 7 7
+      7 7 7 8 8 8 8 8 8 8 8 8 8 8 8 8 8 8 7 7 7
+      7 7 7 7 8 8 8 8 8 8 8 8 8 8 8 8 8 7 7 7 7
+      7 7 7 7 7 8 8 8 8 8 8 8 8 8 8 8 7 7 7 7 7
+      7 7 7 7 7 7 7 8 8 8 8 8 8 8 7 7 7 7 7 7 7
+      7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7
+      7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7
+    </universes>
+  </lattice>
+
+</geometry>

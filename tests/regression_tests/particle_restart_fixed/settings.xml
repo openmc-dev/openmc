@@ -1,0 +1,14 @@
+<?xml version="1.0"?>
+<settings>
+
+  <run_mode>fixed source</run_mode>
+  <batches>12</batches>
+  <particles>1000</particles>
+
+  <source>
+    <space type="box">
+      <parameters>-10 -10 -5  10  10  5</parameters>
+    </space>
+  </source>
+
+</settings>

@@ -1,0 +1,64 @@
+<?xml version="1.0"?>
+<tallies>     
+
+  <filter id="1">
+    <type>cell</type>
+    <bins>1</bins>
+  </filter>
+
+  <filter id="2">
+    <type>distribcell</type>
+    <bins>1</bins>
+  </filter>
+
+  <filter id="3">
+    <type>cell</type>
+    <bins>60</bins>
+  </filter>
+
+  <filter id="4">
+    <type>distribcell</type>
+    <bins>60</bins>
+  </filter>
+
+  <filter id="5">
+    <type>cell</type>
+    <bins>27</bins>
+  </filter>
+
+  <filter id="6">
+    <type>distribcell</type>
+    <bins>27</bins>
+  </filter>
+
+  <tally id="1">
+    <filters>1</filters>
+    <scores>total</scores>
+  </tally>
+
+  <tally id="2">
+    <filters>2</filters>
+    <scores>total</scores>
+  </tally>
+
+  <tally id="3">
+    <filters>3</filters>
+    <scores>total</scores>
+  </tally>
+
+  <tally id="4">
+    <filters>4</filters>
+    <scores>total</scores>
+  </tally>
+
+  <tally id="5">
+    <filters>5</filters>
+    <scores>total</scores>
+  </tally>
+
+  <tally id="6">
+    <filters>6</filters>
+    <scores>total</scores>
+  </tally>
+
+</tallies>

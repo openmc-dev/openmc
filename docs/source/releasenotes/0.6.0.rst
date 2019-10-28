@@ -1,0 +1,57 @@
+===================
+What's New in 0.6.0
+===================
+
+-------------------
+System Requirements
+-------------------
+
+There are no special requirements for running the OpenMC code. As of this
+release, OpenMC has been tested on a variety of Linux distributions, Mac OS X,
+and Microsoft Windows 7. Memory requirements will vary depending on the size of
+the problem at hand (mostly on the number of nuclides in the problem).
+
+------------
+New Features
+------------
+
+- Legendre and spherical harmonic expansion tally scores
+- CMake is now default build system
+- Regression test suite based on CTests and NNDC cross sections
+- FoX is now a git submodule
+- Support for older cross sections (e.g. MCNP 66c)
+- Progress bar for plots
+- Expanded support for natural elements via <natural_elements> in settings.xml
+
+---------
+Bug Fixes
+---------
+
+- 41f7ca_: Fixed erroneous results from survival biasing
+- 038736_: Fix tallies over void materials
+- 46f9e8_: Check for negative values in probability tables
+- d1ca35_: Fixed sampling of angular distribution
+- 0291c0_: Fixed indexing error in plotting
+- d7a7d0_: Fix bug with <element> specifying xs attribute
+- 85b3cb_: Fix out-of-bounds error with OpenMP threading
+
+.. _41f7ca: https://github.com/openmc-dev/openmc/commit/41f7ca
+.. _038736: https://github.com/openmc-dev/openmc/commit/038736
+.. _46f9e8: https://github.com/openmc-dev/openmc/commit/46f9e8
+.. _d1ca35: https://github.com/openmc-dev/openmc/commit/d1ca35
+.. _0291c0: https://github.com/openmc-dev/openmc/commit/0291c0
+.. _d7a7d0: https://github.com/openmc-dev/openmc/commit/d7a7d0
+.. _85b3cb: https://github.com/openmc-dev/openmc/commit/85b3cb
+
+------------
+Contributors
+------------
+
+This release contains new contributions from the following people:
+
+- `Sterling Harper <smharper@mit.edu>`_
+- `Bryan Herman <bherman@mit.edu>`_
+- `Nick Horelik <nhorelik@mit.edu>`_
+- `Adam Nelson <nelsonag@umich.edu>`_
+- `Paul Romano <paul.k.romano@gmail.com>`_
+- `Jon Walsh <walshjon@mit.edu>`_

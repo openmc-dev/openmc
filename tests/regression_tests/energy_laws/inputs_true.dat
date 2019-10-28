@@ -1,0 +1,23 @@
+<?xml version='1.0' encoding='utf-8'?>
+<geometry>
+  <cell id="1" material="1" region="-1" universe="1" />
+  <surface boundary="reflective" coeffs="0.0 0.0 0.0 100.0" id="1" type="sphere" />
+</geometry>
+<?xml version='1.0' encoding='utf-8'?>
+<materials>
+  <material depletable="true" id="1">
+    <density units="g/cm3" value="20.0" />
+    <nuclide ao="1.0" name="U233" />
+    <nuclide ao="1.0" name="Am244" />
+    <nuclide ao="1.0" name="H2" />
+    <nuclide ao="1.0" name="Na23" />
+    <nuclide ao="1.0" name="Ta181" />
+  </material>
+</materials>
+<?xml version='1.0' encoding='utf-8'?>
+<settings>
+  <run_mode>eigenvalue</run_mode>
+  <particles>1000</particles>
+  <batches>10</batches>
+  <inactive>5</inactive>
+</settings>

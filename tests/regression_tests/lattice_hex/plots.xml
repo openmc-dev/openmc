@@ -1,0 +1,32 @@
+<?xml version="1.0"?>
+<plots>
+
+  <plot id="1" type="slice" basis="xy" color_by="cell">
+    <filename>xy_cell</filename>
+    <origin>0 0 0</origin>
+    <width>30 30</width>
+    <pixels>500 500</pixels>
+  </plot>
+
+  <plot id="2" type="slice" basis="xy" color_by="material">
+    <filename>xy_material</filename>
+    <origin>0 0 0</origin>
+    <width>30 30</width>
+    <pixels>500 500</pixels>
+  </plot>
+
+  <plot id="3" type="slice" basis="yz" color_by="cell">
+    <filename>yz_cell</filename>
+    <origin>0 0 0</origin>
+    <width>50 400</width>
+    <pixels>500 4000</pixels>
+  </plot>
+
+  <plot id="4" type="slice" basis="yz" color_by="material">
+    <filename>yz_material</filename>
+    <origin>0 0 0</origin>
+    <width>5 5</width>
+    <pixels>500 500</pixels>
+  </plot>
+
+</plots>

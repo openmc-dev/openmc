@@ -1,0 +1,639 @@
+\documentclass[tikz]{standalone}
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath}
+\usepackage{tikz}
+\usepackage{pgfplots}
+\pgfplotsset{compat=1.11}
+\usetikzlibrary{shapes,snakes,shadows,arrows,calc,decorations.markings,patterns,fit,matrix,spy}
+\usepackage{fixltx2e}
+\pagestyle{empty}
+\begin{document}
+
+    % these dimensions are determined in arrow_dimms.ods
+
+    \def\scale{1.0}
+
+    \def\latWidth{0.2808363589*\scale}
+
+    \def\RPVOR{3*\scale}
+    \def\rectW{0.75*\scale}
+    \def\RPVIR{2.8694005485*\scale}
+    \def\BarrelIR{2.4547472901*\scale}
+    \def\BarrelOR{2.5293848766*\scale}
+    \def\ShieldOR{2.6040224631*\scale}
+
+    \def\bafCIRx{0.9829272561*\scale}
+    \def\bafCIRy{2.1062726917*\scale}
+    \def\bafCORx{1.0119529842*\scale}
+    \def\bafCORy{2.1352984197*\scale}
+    \def\bafMIRx{1.8254363328*\scale}
+    \def\bafMIRy{1.5445999739*\scale}
+    \def\bafMORx{1.8544620609*\scale}
+    \def\bafMORy{1.573625702*\scale}
+
+    \tikzset{Assembly/.style={
+        inner sep=0pt,
+        text width=\latWidth in,
+        minimum size=\latWidth in,
+        draw=black,
+        align=center
+        }
+    }
+
+    \def\tkzRPV{(0,0) circle (\RPVIR) (0,0) circle (\RPVOR)}
+    \def\tkzBarrel{(0,0) circle (\BarrelIR) (0,0) circle (\BarrelOR)}
+    \def\tkzShields{(0,0) circle (\BarrelOR) (0,0) circle (\ShieldOR)}
+
+    \def\tkzBaffCOR{(-\bafCORx, -\bafCORy) rectangle (\bafCORx, \bafCORy)}
+    \def\tkzBaffCIR{(-\bafCIRx, -\bafCIRy) rectangle (\bafCIRx, \bafCIRy)}
+    \def\tkzBaffMOR{(-\bafMORx, -\bafMORy) rectangle (\bafMORx, \bafMORy)}
+    \def\tkzBaffMIR{(-\bafMIRx, -\bafMIRy) rectangle (\bafMIRx, \bafMIRy) }
+    \def\tkzBaffleC{ \tkzBaffCIR \tkzBaffCOR }
+    \def\tkzBaffleM{ \tkzBaffMIR \tkzBaffMOR }
+
+    \def\tkzBaffCClip{\tkzBaffCIR (-\RPVOR, -\RPVOR) rectangle (\RPVOR, \RPVOR)}
+    \def\tkzBaffMClip{\tkzBaffMIR (-\RPVOR, -\RPVOR) rectangle (\RPVOR, \RPVOR)}
+
+    \def\highenr{blue!50}
+    \def\midenr{yellow!50}
+    \def\lowenr{red!50}
+    \def\lightgray{black!25}
+    \def\darkgray{black!80}
+
+      \begin{tikzpicture}[x=1in,y=1in, xshift=3in]
+\scalebox{0.6}{
+        % draw RPV, barrel, and shield panels
+
+        \path[fill=black,even odd rule] \tkzRPV;
+        \path[fill=black,even odd rule] \tkzBarrel;
+        \begin{scope}
+          \clip[rotate around={45:(0,0)}] (-\RPVOR, -\rectW) rectangle (\RPVOR, \rectW) (-\rectW, \RPVOR) rectangle (\rectW, -\RPVOR);
+          \path[fill=black,even odd rule] \tkzShields;
+        \end{scope}
+
+
+        % draw assembly row/column headers
+
+        \draw[red, thick] ($(-7*\latWidth,\RPVOR/\latWidth*\latWidth)$) node[above, anchor=south] {R} -- ($(-7*\latWidth,4*\latWidth)$);
+        \draw[red, thick] ($(-6*\latWidth,\RPVOR/\latWidth*\latWidth)$) node[above, anchor=south] {P} -- ($(-6*\latWidth,6*\latWidth)$);
+        \draw[red, thick] ($(-5*\latWidth,\RPVOR/\latWidth*\latWidth)$) node[above, anchor=south] {N} -- ($(-5*\latWidth,7*\latWidth)$);
+        \draw[red, thick] ($(-4*\latWidth,\RPVOR/\latWidth*\latWidth)$) node[above, anchor=south] {M} -- ($(-4*\latWidth,7*\latWidth)$);
+        \draw[red, thick] ($(-3*\latWidth,\RPVOR/\latWidth*\latWidth)$) node[above, anchor=south] {L} -- ($(-3*\latWidth,8*\latWidth)$);
+        \draw[red, thick] ($(-2*\latWidth,\RPVOR/\latWidth*\latWidth)$) node[above, anchor=south] {K} -- ($(-2*\latWidth,8*\latWidth)$);
+        \draw[red, thick] ($(-1*\latWidth,\RPVOR/\latWidth*\latWidth)$) node[above, anchor=south] {J} -- ($(-1*\latWidth,8*\latWidth)$);
+        \draw[red, thick] ($(-0*\latWidth,\RPVOR/\latWidth*\latWidth)$) node[above, anchor=south] {H} -- ($(-0*\latWidth,8*\latWidth)$);
+        \draw[red, thick] ($(1*\latWidth,\RPVOR/\latWidth*\latWidth)$) node[above, anchor=south] {G} -- ($(1*\latWidth,8*\latWidth)$);
+        \draw[red, thick] ($(2*\latWidth,\RPVOR/\latWidth*\latWidth)$) node[above, anchor=south] {F} -- ($(2*\latWidth,8*\latWidth)$);
+        \draw[red, thick] ($(3*\latWidth,\RPVOR/\latWidth*\latWidth)$) node[above, anchor=south] {E} -- ($(3*\latWidth,8*\latWidth)$);
+        \draw[red, thick] ($(4*\latWidth,\RPVOR/\latWidth*\latWidth)$) node[above, anchor=south] {D} -- ($(4*\latWidth,7*\latWidth)$);
+        \draw[red, thick] ($(5*\latWidth,\RPVOR/\latWidth*\latWidth)$) node[above, anchor=south] {C} -- ($(5*\latWidth,7*\latWidth)$);
+        \draw[red, thick] ($(6*\latWidth,\RPVOR/\latWidth*\latWidth)$) node[above, anchor=south] {B} -- ($(6*\latWidth,6*\latWidth)$);
+        \draw[red, thick] ($(7*\latWidth,\RPVOR/\latWidth*\latWidth)$) node[above, anchor=south] {A} -- ($(7*\latWidth,4*\latWidth)$);
+
+        \begin{scope}[rotate=90]
+          \draw[red, thick] ($(-7*\latWidth,\RPVOR/\latWidth*\latWidth)$) node[left, anchor=east] {15} -- ($(-7*\latWidth,4*\latWidth)$);
+          \draw[red, thick] ($(-6*\latWidth,\RPVOR/\latWidth*\latWidth)$) node[left, anchor=east] {14} -- ($(-6*\latWidth,6*\latWidth)$);
+          \draw[red, thick] ($(-5*\latWidth,\RPVOR/\latWidth*\latWidth)$) node[left, anchor=east] {13} -- ($(-5*\latWidth,7*\latWidth)$);
+          \draw[red, thick] ($(-4*\latWidth,\RPVOR/\latWidth*\latWidth)$) node[left, anchor=east] {12} -- ($(-4*\latWidth,7*\latWidth)$);
+          \draw[red, thick] ($(-3*\latWidth,\RPVOR/\latWidth*\latWidth)$) node[left, anchor=east] {11} -- ($(-3*\latWidth,8*\latWidth)$);
+          \draw[red, thick] ($(-2*\latWidth,\RPVOR/\latWidth*\latWidth)$) node[left, anchor=east] {10} -- ($(-2*\latWidth,8*\latWidth)$);
+          \draw[red, thick] ($(-1*\latWidth,\RPVOR/\latWidth*\latWidth)$) node[left, anchor=east] {9} -- ($(-1*\latWidth,8*\latWidth)$);
+          \draw[red, thick] ($(-0*\latWidth,\RPVOR/\latWidth*\latWidth)$) node[left, anchor=east] {8} -- ($(-0*\latWidth,8*\latWidth)$);
+          \draw[red, thick] ($(1*\latWidth,\RPVOR/\latWidth*\latWidth)$) node[left, anchor=east] {7} -- ($(1*\latWidth,8*\latWidth)$);
+          \draw[red, thick] ($(2*\latWidth,\RPVOR/\latWidth*\latWidth)$) node[left, anchor=east] {6} -- ($(2*\latWidth,8*\latWidth)$);
+          \draw[red, thick] ($(3*\latWidth,\RPVOR/\latWidth*\latWidth)$) node[left, anchor=east] {5} -- ($(3*\latWidth,8*\latWidth)$);
+          \draw[red, thick] ($(4*\latWidth,\RPVOR/\latWidth*\latWidth)$) node[left, anchor=east] {4} -- ($(4*\latWidth,7*\latWidth)$);
+          \draw[red, thick] ($(5*\latWidth,\RPVOR/\latWidth*\latWidth)$) node[left, anchor=east] {3} -- ($(5*\latWidth,7*\latWidth)$);
+          \draw[red, thick] ($(6*\latWidth,\RPVOR/\latWidth*\latWidth)$) node[left, anchor=east] {2} -- ($(6*\latWidth,6*\latWidth)$);
+          \draw[red, thick] ($(7*\latWidth,\RPVOR/\latWidth*\latWidth)$) node[left, anchor=east] {1} -- ($(7*\latWidth,4*\latWidth)$);
+        \end{scope}
+
+        % draw fuel assembly nodes
+        \node [Assembly, fill=\lightgray, opacity=0.3] at ($(-8*\latWidth,8*\latWidth)$) {};
+        \node [Assembly, fill=\lightgray, opacity=0.3] at ($(-7*\latWidth,8*\latWidth)$) {};
+        \node [Assembly, fill=\lightgray, opacity=0.3] at ($(-6*\latWidth,8*\latWidth)$) {};
+        \node [Assembly, fill=\lightgray, opacity=0.3] at ($(-5*\latWidth,8*\latWidth)$) {};
+        \node [Assembly, fill=\lightgray, opacity=0.3] at ($(-4*\latWidth,8*\latWidth)$) {};
+        \node [Assembly, fill=\lightgray, opacity=0.3] at ($(-3*\latWidth,8*\latWidth)$) {};
+        \node [Assembly, fill=\lightgray, opacity=0.3] at ($(-2*\latWidth,8*\latWidth)$) {};
+        \node [Assembly, fill=\lightgray, opacity=0.3] at ($(-1*\latWidth,8*\latWidth)$) {};
+        \node [Assembly, fill=\lightgray, opacity=0.3] at ($(-0*\latWidth,8*\latWidth)$) {};
+        \node [Assembly, fill=\lightgray, opacity=0.3] at ($( 1*\latWidth,8*\latWidth)$) {};
+        \node [Assembly, fill=\lightgray, opacity=0.3] at ($( 2*\latWidth,8*\latWidth)$) {};
+        \node [Assembly, fill=\lightgray, opacity=0.3] at ($( 3*\latWidth,8*\latWidth)$) {};
+        \node [Assembly, fill=\lightgray, opacity=0.3] at ($( 4*\latWidth,8*\latWidth)$) {};
+        \node [Assembly, fill=\lightgray, opacity=0.3] at ($( 5*\latWidth,8*\latWidth)$) {};
+        \node [Assembly, fill=\lightgray, opacity=0.3] at ($( 6*\latWidth,8*\latWidth)$) {};
+        \node [Assembly, fill=\lightgray, opacity=0.3] at ($( 7*\latWidth,8*\latWidth)$) {};
+        \node [Assembly, fill=\lightgray, opacity=0.3] at ($( 8*\latWidth,8*\latWidth)$) {};
+
+        \node [Assembly, fill=\lightgray, opacity=0.3] at ($(-8*\latWidth,7*\latWidth)$) {};
+        \node [Assembly, fill=\lightgray, opacity=0.3] at ($(-7*\latWidth,7*\latWidth)$) {};
+        \node [Assembly, fill=\lightgray, opacity=0.3] at ($(-6*\latWidth,7*\latWidth)$) {};
+        \node [Assembly, fill=\lightgray, opacity=0.3] at ($(-5*\latWidth,7*\latWidth)$) {};
+        \node [Assembly, fill=\lightgray, opacity=0.3] at ($(-4*\latWidth,7*\latWidth)$) {};
+        \node [Assembly, fill=\highenr] at ($(-3*\latWidth,7*\latWidth)$) {}; % L1
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($(-3*\latWidth,7*\latWidth)$) {};
+        \node [Assembly, fill=\highenr] at ($(-2*\latWidth,7*\latWidth)$) {6}; % K1
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($(-2*\latWidth,7*\latWidth)$) {};
+        \node [Assembly, fill=\highenr] at ($(-1*\latWidth,7*\latWidth)$) {}; % J1
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($(-1*\latWidth,7*\latWidth)$) {};
+        \node [Assembly, fill=\highenr] at ($(-0*\latWidth,7*\latWidth)$) {6}; % H1
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($(-0*\latWidth,7*\latWidth)$) {};
+        \node [Assembly, fill=\highenr] at ($( 1*\latWidth,7*\latWidth)$) {}; % G1
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($( 1*\latWidth,7*\latWidth)$) {};
+        \node [Assembly, fill=\highenr] at ($( 2*\latWidth,7*\latWidth)$) {6}; % F1
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($( 2*\latWidth,7*\latWidth)$) {};
+        \node [Assembly, fill=\highenr] at ($( 3*\latWidth,7*\latWidth)$) {}; % E1
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($( 3*\latWidth,7*\latWidth)$) {};
+        \node [Assembly, fill=\lightgray, opacity=0.3] at ($( 4*\latWidth,7*\latWidth)$) {};
+        \node [Assembly, fill=\lightgray, opacity=0.3] at ($( 5*\latWidth,7*\latWidth)$) {};
+        \node [Assembly, fill=\lightgray, opacity=0.3] at ($( 6*\latWidth,7*\latWidth)$) {};
+        \node [Assembly, fill=\lightgray, opacity=0.3] at ($( 7*\latWidth,7*\latWidth)$) {};
+        \node [Assembly, fill=\lightgray, opacity=0.3] at ($( 8*\latWidth,7*\latWidth)$) {};
+
+        \node [Assembly, fill=\lightgray, opacity=0.3] at ($(-8*\latWidth,6*\latWidth)$) {};
+        \node [Assembly, fill=\lightgray, opacity=0.3] at ($(-7*\latWidth,6*\latWidth)$) {};
+        \node [Assembly, fill=\lightgray, opacity=0.3] at ($(-6*\latWidth,6*\latWidth)$) {};
+        \node [Assembly, fill=\highenr] at ($(-5*\latWidth,6*\latWidth)$) {}; % N2
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($(-5*\latWidth,6*\latWidth)$) {};
+        \node [Assembly, fill=\highenr] at ($(-4*\latWidth,6*\latWidth)$) {}; % M2
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($(-4*\latWidth,6*\latWidth)$) {};
+        \node [Assembly, fill=\highenr] at ($(-3*\latWidth,6*\latWidth)$) {16}; % L2
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($(-3*\latWidth,6*\latWidth)$) {};
+        \node [Assembly, fill=\lowenr] at ($(-2*\latWidth,6*\latWidth)$) {}; % K2
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($(-2*\latWidth,6*\latWidth)$) {};
+        \node [Assembly, fill=\highenr] at ($(-1*\latWidth,6*\latWidth)$) {20}; % J2
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($(-1*\latWidth,6*\latWidth)$) {};
+        \node [Assembly, fill=\lowenr] at ($(-0*\latWidth,6*\latWidth)$) {}; % H2
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($(-0*\latWidth,6*\latWidth)$) {};
+        \node [Assembly, fill=\highenr] at ($( 1*\latWidth,6*\latWidth)$) {20}; % G2
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($( 1*\latWidth,6*\latWidth)$) {};
+        \node [Assembly, fill=\lowenr] at ($( 2*\latWidth,6*\latWidth)$) {}; % F2
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($( 2*\latWidth,6*\latWidth)$) {};
+        \node [Assembly, fill=\highenr] at ($( 3*\latWidth,6*\latWidth)$) {16}; % E2
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($( 3*\latWidth,6*\latWidth)$) {};
+        \node [Assembly, fill=\highenr] at ($( 4*\latWidth,6*\latWidth)$) {}; % D2
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($( 4*\latWidth,6*\latWidth)$) {};
+        \node [Assembly, fill=\highenr] at ($( 5*\latWidth,6*\latWidth)$) {}; % C2
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($( 5*\latWidth,6*\latWidth)$) {};
+        \node [Assembly, fill=\lightgray, opacity=0.3] at ($( 6*\latWidth,6*\latWidth)$) {};
+        \node [Assembly, fill=\lightgray, opacity=0.3] at ($( 7*\latWidth,6*\latWidth)$) {};
+        \node [Assembly, fill=\lightgray, opacity=0.3] at ($( 8*\latWidth,6*\latWidth)$) {};
+
+        \node [Assembly, fill=\lightgray, opacity=0.3] at ($(-8*\latWidth,5*\latWidth)$) {};
+        \node [Assembly, fill=\lightgray, opacity=0.3] at ($(-7*\latWidth,5*\latWidth)$) {};
+        \node [Assembly, fill=\highenr] at ($(-6*\latWidth,5*\latWidth)$) {}; % P3
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($(-6*\latWidth,5*\latWidth)$) {};
+        \node [Assembly, fill=\highenr] at ($(-5*\latWidth,5*\latWidth)$) {15}; % N3
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($(-5*\latWidth,5*\latWidth)$) {};
+        \node [Assembly, fill=\midenr] at ($(-4*\latWidth,5*\latWidth)$) {16}; % M3
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($(-4*\latWidth,5*\latWidth)$) {};
+        \node [Assembly, fill=\lowenr] at ($(-3*\latWidth,5*\latWidth)$) {}; % L3
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($(-3*\latWidth,5*\latWidth)$) {};
+        \node [Assembly, fill=\midenr] at ($(-2*\latWidth,5*\latWidth)$) {16}; % K3
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($(-2*\latWidth,5*\latWidth)$) {};
+        \node [Assembly, fill=\lowenr] at ($(-1*\latWidth,5*\latWidth)$) {}; % J3
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($(-1*\latWidth,5*\latWidth)$) {};
+        \node [Assembly, fill=\midenr] at ($(-0*\latWidth,5*\latWidth)$) {16}; % H3
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($(-0*\latWidth,5*\latWidth)$) {};
+        \node [Assembly, fill=\lowenr] at ($( 1*\latWidth,5*\latWidth)$) {}; % G3
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($( 1*\latWidth,5*\latWidth)$) {};
+        \node [Assembly, fill=\midenr] at ($( 2*\latWidth,5*\latWidth)$) {16}; % F3
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($( 2*\latWidth,5*\latWidth)$) {};
+        \node [Assembly, fill=\lowenr] at ($( 3*\latWidth,5*\latWidth)$) {}; % E3
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($( 3*\latWidth,5*\latWidth)$) {};
+        \node [Assembly, fill=\midenr] at ($( 4*\latWidth,5*\latWidth)$) {16}; % D3
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($( 4*\latWidth,5*\latWidth)$) {};
+        \node [Assembly, fill=\highenr] at ($( 5*\latWidth,5*\latWidth)$) {15}; % C3
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($( 5*\latWidth,5*\latWidth)$) {};
+        \node [Assembly, fill=\highenr] at ($( 6*\latWidth,5*\latWidth)$) {}; % B3
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($( 6*\latWidth,5*\latWidth)$) {};
+        \node [Assembly, fill=\lightgray, opacity=0.3] at ($( 7*\latWidth,5*\latWidth)$) {};
+        \node [Assembly, fill=\lightgray, opacity=0.3] at ($( 8*\latWidth,5*\latWidth)$) {};
+
+        \node [Assembly, fill=\lightgray, opacity=0.3] at ($(-8*\latWidth,4*\latWidth)$) {};
+        \node [Assembly, fill=\lightgray, opacity=0.3] at ($(-7*\latWidth,4*\latWidth)$) {};
+        \node [Assembly, fill=\highenr] at ($(-6*\latWidth,4*\latWidth)$) {}; % P4
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($(-6*\latWidth,4*\latWidth)$) {};
+        \node [Assembly, fill=\midenr] at ($(-5*\latWidth,4*\latWidth)$) {16}; % N4
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($(-5*\latWidth,4*\latWidth)$) {};
+        \node [Assembly, fill=\midenr] at ($(-4*\latWidth,4*\latWidth)$) {}; % M4
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($(-4*\latWidth,4*\latWidth)$) {};
+        \node [Assembly, fill=\midenr] at ($(-3*\latWidth,4*\latWidth)$) {16}; % L4
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($(-3*\latWidth,4*\latWidth)$) {};
+        \node [Assembly, fill=\lowenr] at ($(-2*\latWidth,4*\latWidth)$) {}; % K4
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($(-2*\latWidth,4*\latWidth)$) {};
+        \node [Assembly, fill=\midenr] at ($(-1*\latWidth,4*\latWidth)$) {12}; % J4
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($(-1*\latWidth,4*\latWidth)$) {};
+        \node [Assembly, fill=\lowenr] at ($(-0*\latWidth,4*\latWidth)$) {}; % H4
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($(-0*\latWidth,4*\latWidth)$) {};
+        \node [Assembly, fill=\midenr] at ($( 1*\latWidth,4*\latWidth)$) {12}; % G4
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($( 1*\latWidth,4*\latWidth)$) {};
+        \node [Assembly, fill=\lowenr] at ($( 2*\latWidth,4*\latWidth)$) {}; % F4
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($( 2*\latWidth,4*\latWidth)$) {};
+        \node [Assembly, fill=\midenr] at ($( 3*\latWidth,4*\latWidth)$) {16}; % E4
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($( 3*\latWidth,4*\latWidth)$) {};
+        \node [Assembly, fill=\midenr] at ($( 4*\latWidth,4*\latWidth)$) {}; % D4
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($( 4*\latWidth,4*\latWidth)$) {};
+        \node [Assembly, fill=\midenr] at ($( 5*\latWidth,4*\latWidth)$) {16}; % C4
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($( 5*\latWidth,4*\latWidth)$) {};
+        \node [Assembly, fill=\highenr] at ($( 6*\latWidth,4*\latWidth)$) {}; % B4
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($( 6*\latWidth,4*\latWidth)$) {};
+        \node [Assembly, fill=\lightgray, opacity=0.3] at ($( 7*\latWidth,4*\latWidth)$) {};
+        \node [Assembly, fill=\lightgray, opacity=0.3] at ($( 8*\latWidth,4*\latWidth)$) {};
+
+        \node [Assembly, fill=\lightgray, opacity=0.3] at ($(-8*\latWidth,3*\latWidth)$) {};
+        \node [Assembly, fill=\highenr] at ($(-7*\latWidth,3*\latWidth)$) {}; % R5
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($(-7*\latWidth,3*\latWidth)$) {};
+        \node [Assembly, fill=\highenr] at ($(-6*\latWidth,3*\latWidth)$) {16}; % P5
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($(-6*\latWidth,3*\latWidth)$) {};
+        \node [Assembly, fill=\lowenr] at ($(-5*\latWidth,3*\latWidth)$) {}; % N5
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($(-5*\latWidth,3*\latWidth)$) {};
+        \node [Assembly, fill=\midenr] at ($(-4*\latWidth,3*\latWidth)$) {16}; % M5
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($(-4*\latWidth,3*\latWidth)$) {};
+        \node [Assembly, fill=\lowenr] at ($(-3*\latWidth,3*\latWidth)$) {}; % L5
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($(-3*\latWidth,3*\latWidth)$) {};
+        \node [Assembly, fill=\midenr] at ($(-2*\latWidth,3*\latWidth)$) {12}; % K5
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($(-2*\latWidth,3*\latWidth)$) {};
+        \node [Assembly, fill=\lowenr] at ($(-1*\latWidth,3*\latWidth)$) {}; % J5
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($(-1*\latWidth,3*\latWidth)$) {};
+        \node [Assembly, fill=\midenr] at ($(-0*\latWidth,3*\latWidth)$) {12}; % H5
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($(-0*\latWidth,3*\latWidth)$) {};
+        \node [Assembly, fill=\lowenr] at ($( 1*\latWidth,3*\latWidth)$) {}; % G5
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($( 1*\latWidth,3*\latWidth)$) {};
+        \node [Assembly, fill=\midenr] at ($( 2*\latWidth,3*\latWidth)$) {12}; % F5
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($( 2*\latWidth,3*\latWidth)$) {};
+        \node [Assembly, fill=\lowenr] at ($( 3*\latWidth,3*\latWidth)$) {}; % E5
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($( 3*\latWidth,3*\latWidth)$) {};
+        \node [Assembly, fill=\midenr] at ($( 4*\latWidth,3*\latWidth)$) {16}; % D5
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($( 4*\latWidth,3*\latWidth)$) {};
+        \node [Assembly, fill=\lowenr] at ($( 5*\latWidth,3*\latWidth)$) {}; % C5
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($( 5*\latWidth,3*\latWidth)$) {};
+        \node [Assembly, fill=\highenr] at ($( 6*\latWidth,3*\latWidth)$) {16}; % B5
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($( 6*\latWidth,3*\latWidth)$) {};
+        \node [Assembly, fill=\highenr] at ($( 7*\latWidth,3*\latWidth)$) {}; % A5
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($( 7*\latWidth,3*\latWidth)$) {};
+        \node [Assembly, fill=\lightgray, opacity=0.3] at ($( 8*\latWidth,3*\latWidth)$) {};
+
+        \node [Assembly, fill=\lightgray, opacity=0.3] at ($(-8*\latWidth,2*\latWidth)$) {};
+        \node [Assembly, fill=\highenr] at ($(-7*\latWidth,2*\latWidth)$) {6}; % R6
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($(-7*\latWidth,2*\latWidth)$) {};
+        \node [Assembly, fill=\lowenr] at ($(-6*\latWidth,2*\latWidth)$) {}; % P6
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($(-6*\latWidth,2*\latWidth)$) {};
+        \node [Assembly, fill=\midenr] at ($(-5*\latWidth,2*\latWidth)$) {16}; % N6
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($(-5*\latWidth,2*\latWidth)$) {};
+        \node [Assembly, fill=\lowenr] at ($(-4*\latWidth,2*\latWidth)$) {}; % M6
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($(-4*\latWidth,2*\latWidth)$) {};
+        \node [Assembly, fill=\midenr] at ($(-3*\latWidth,2*\latWidth)$) {12}; % L6
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($(-3*\latWidth,2*\latWidth)$) {};
+        \node [Assembly, fill=\lowenr] at ($(-2*\latWidth,2*\latWidth)$) {}; % K6
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($(-2*\latWidth,2*\latWidth)$) {};
+        \node [Assembly, fill=\midenr] at ($(-1*\latWidth,2*\latWidth)$) {12}; % J6
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($(-1*\latWidth,2*\latWidth)$) {};
+        \node [Assembly, fill=\lowenr] at ($(-0*\latWidth,2*\latWidth)$) {}; % H6
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($(-0*\latWidth,2*\latWidth)$) {};
+        \node [Assembly, fill=\midenr] at ($( 1*\latWidth,2*\latWidth)$) {12}; % G6
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($( 1*\latWidth,2*\latWidth)$) {};
+        \node [Assembly, fill=\lowenr] at ($( 2*\latWidth,2*\latWidth)$) {}; % F6
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($( 2*\latWidth,2*\latWidth)$) {};
+        \node [Assembly, fill=\midenr] at ($( 3*\latWidth,2*\latWidth)$) {12}; % E6
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($( 3*\latWidth,2*\latWidth)$) {};
+        \node [Assembly, fill=\lowenr] at ($( 4*\latWidth,2*\latWidth)$) {}; % D6
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($( 4*\latWidth,2*\latWidth)$) {};
+        \node [Assembly, fill=\midenr] at ($( 5*\latWidth,2*\latWidth)$) {16}; % C6
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($( 5*\latWidth,2*\latWidth)$) {};
+        \node [Assembly, fill=\lowenr] at ($( 6*\latWidth,2*\latWidth)$) {}; % B6
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($( 6*\latWidth,2*\latWidth)$) {};
+        \node [Assembly, fill=\highenr] at ($( 7*\latWidth,2*\latWidth)$) {6}; % A6
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($( 7*\latWidth,2*\latWidth)$) {};
+        \node [Assembly, fill=\lightgray, opacity=0.3] at ($( 8*\latWidth,2*\latWidth)$) {};
+
+        \node [Assembly, fill=\lightgray, opacity=0.3] at ($(-8*\latWidth,1*\latWidth)$) {};
+        \node [Assembly, fill=\highenr] at ($(-7*\latWidth,1*\latWidth)$) {}; % R7
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($(-7*\latWidth,1*\latWidth)$) {};
+        \node [Assembly, fill=\highenr] at ($(-6*\latWidth,1*\latWidth)$) {20}; % P7
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($(-6*\latWidth,1*\latWidth)$) {};
+        \node [Assembly, fill=\lowenr] at ($(-5*\latWidth,1*\latWidth)$) {}; % N7
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($(-5*\latWidth,1*\latWidth)$) {};
+        \node [Assembly, fill=\midenr] at ($(-4*\latWidth,1*\latWidth)$) {12}; % M7
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($(-4*\latWidth,1*\latWidth)$) {};
+        \node [Assembly, fill=\lowenr] at ($(-3*\latWidth,1*\latWidth)$) {}; % L7
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($(-3*\latWidth,1*\latWidth)$) {};
+        \node [Assembly, fill=\midenr] at ($(-2*\latWidth,1*\latWidth)$) {12}; % K7
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($(-2*\latWidth,1*\latWidth)$) {};
+        \node [Assembly, fill=\lowenr] at ($(-1*\latWidth,1*\latWidth)$) {}; % J7
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($(-1*\latWidth,1*\latWidth)$) {};
+        \node [Assembly, fill=\midenr] at ($(-0*\latWidth,1*\latWidth)$) {16}; % H7
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($(-0*\latWidth,1*\latWidth)$) {};
+        \node [Assembly, fill=\lowenr] at ($( 1*\latWidth,1*\latWidth)$) {}; % G7
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($( 1*\latWidth,1*\latWidth)$) {};
+        \node [Assembly, fill=\midenr] at ($( 2*\latWidth,1*\latWidth)$) {12}; % F7
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($( 2*\latWidth,1*\latWidth)$) {};
+        \node [Assembly, fill=\lowenr] at ($( 3*\latWidth,1*\latWidth)$) {}; % E7
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($( 3*\latWidth,1*\latWidth)$) {};
+        \node [Assembly, fill=\midenr] at ($( 4*\latWidth,1*\latWidth)$) {12}; % D7
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($( 4*\latWidth,1*\latWidth)$) {};
+        \node [Assembly, fill=\lowenr] at ($( 5*\latWidth,1*\latWidth)$) {}; % C7
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($( 5*\latWidth,1*\latWidth)$) {};
+        \node [Assembly, fill=\highenr] at ($( 6*\latWidth,1*\latWidth)$) {20}; % B7
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($( 6*\latWidth,1*\latWidth)$) {};
+        \node [Assembly, fill=\highenr] at ($( 7*\latWidth,1*\latWidth)$) {}; % A7
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($( 7*\latWidth,1*\latWidth)$) {};
+        \node [Assembly, fill=\lightgray, opacity=0.3] at ($( 8*\latWidth,1*\latWidth)$) {};
+
+        \node [Assembly, fill=\lightgray, opacity=0.3] at ($(-8*\latWidth,0*\latWidth)$) {};
+        \node [Assembly, fill=\highenr] at ($(-7*\latWidth,0*\latWidth)$) {6}; % R8
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($(-7*\latWidth,0*\latWidth)$) {};
+        \node [Assembly, fill=\lowenr] at ($(-6*\latWidth,0*\latWidth)$) {}; % P8
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($(-6*\latWidth,0*\latWidth)$) {};
+        \node [Assembly, fill=\midenr] at ($(-5*\latWidth,0*\latWidth)$) {16}; % N8
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($(-5*\latWidth,0*\latWidth)$) {};
+        \node [Assembly, fill=\lowenr] at ($(-4*\latWidth,0*\latWidth)$) {}; % M8
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($(-4*\latWidth,0*\latWidth)$) {};
+        \node [Assembly, fill=\midenr] at ($(-3*\latWidth,0*\latWidth)$) {12}; % L8
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($(-3*\latWidth,0*\latWidth)$) {};
+        \node [Assembly, fill=\lowenr] at ($(-2*\latWidth,0*\latWidth)$) {}; % K8
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($(-2*\latWidth,0*\latWidth)$) {};
+        \node [Assembly, fill=\midenr] at ($(-1*\latWidth,0*\latWidth)$) {16}; % J8
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($(-1*\latWidth,0*\latWidth)$) {};
+        \node [Assembly, fill=\lowenr] at ($(-0*\latWidth,0*\latWidth)$) {}; % H8
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($(-0*\latWidth,0*\latWidth)$) {};
+        \node [Assembly, fill=\midenr] at ($( 1*\latWidth,0*\latWidth)$) {16}; % G8
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($( 1*\latWidth,0*\latWidth)$) {};
+        \node [Assembly, fill=\lowenr] at ($( 2*\latWidth,0*\latWidth)$) {}; % F8
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($( 2*\latWidth,0*\latWidth)$) {};
+        \node [Assembly, fill=\midenr] at ($( 3*\latWidth,0*\latWidth)$) {12}; % E8
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($( 3*\latWidth,0*\latWidth)$) {};
+        \node [Assembly, fill=\lowenr] at ($( 4*\latWidth,0*\latWidth)$) {}; % D8
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($( 4*\latWidth,0*\latWidth)$) {};
+        \node [Assembly, fill=\midenr] at ($( 5*\latWidth,0*\latWidth)$) {16}; % C8
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($( 5*\latWidth,0*\latWidth)$) {};
+        \node [Assembly, fill=\lowenr] at ($( 6*\latWidth,0*\latWidth)$) {}; % B8
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($( 6*\latWidth,0*\latWidth)$) {};
+        \node [Assembly, fill=\highenr] at ($( 7*\latWidth,0*\latWidth)$) {6}; % A8
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($( 7*\latWidth,0*\latWidth)$) {};
+        \node [Assembly, fill=\lightgray, opacity=0.3] at ($( 8*\latWidth,0*\latWidth)$) {};
+
+
+        \node [Assembly, fill=\lightgray, opacity=0.3] at ($(-8*\latWidth,-1*\latWidth)$) {};
+        \node [Assembly, fill=\highenr] at ($(-7*\latWidth,-1*\latWidth)$) {}; % R9
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($(-7*\latWidth,-1*\latWidth)$) {};
+        \node [Assembly, fill=\highenr] at ($(-6*\latWidth,-1*\latWidth)$) {20}; % P9
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($(-6*\latWidth,-1*\latWidth)$) {};
+        \node [Assembly, fill=\lowenr] at ($(-5*\latWidth,-1*\latWidth)$) {}; % N9
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($(-5*\latWidth,-1*\latWidth)$) {};
+        \node [Assembly, fill=\midenr] at ($(-4*\latWidth,-1*\latWidth)$) {12}; % M9
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($(-4*\latWidth,-1*\latWidth)$) {};
+        \node [Assembly, fill=\lowenr] at ($(-3*\latWidth,-1*\latWidth)$) {}; % L9
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($(-3*\latWidth,-1*\latWidth)$) {};
+        \node [Assembly, fill=\midenr] at ($(-2*\latWidth,-1*\latWidth)$) {12}; % K9
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($(-2*\latWidth,-1*\latWidth)$) {};
+        \node [Assembly, fill=\lowenr] at ($(-1*\latWidth,-1*\latWidth)$) {}; % J9
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($(-1*\latWidth,-1*\latWidth)$) {};
+        \node [Assembly, fill=\midenr] at ($(-0*\latWidth,-1*\latWidth)$) {16}; % H9
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($(-0*\latWidth,-1*\latWidth)$) {};
+        \node [Assembly, fill=\lowenr] at ($( 1*\latWidth,-1*\latWidth)$) {}; % G9
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($( 1*\latWidth,-1*\latWidth)$) {};
+        \node [Assembly, fill=\midenr] at ($( 2*\latWidth,-1*\latWidth)$) {12}; % F9
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($( 2*\latWidth,-1*\latWidth)$) {};
+        \node [Assembly, fill=\lowenr] at ($( 3*\latWidth,-1*\latWidth)$) {}; % E9
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($( 3*\latWidth,-1*\latWidth)$) {};
+        \node [Assembly, fill=\midenr] at ($( 4*\latWidth,-1*\latWidth)$) {12}; % D9
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($( 4*\latWidth,-1*\latWidth)$) {};
+        \node [Assembly, fill=\lowenr] at ($( 5*\latWidth,-1*\latWidth)$) {}; % C9
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($( 5*\latWidth,-1*\latWidth)$) {};
+        \node [Assembly, fill=\highenr] at ($( 6*\latWidth,-1*\latWidth)$) {20}; % B9
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($( 6*\latWidth,-1*\latWidth)$) {};
+        \node [Assembly, fill=\highenr] at ($( 7*\latWidth,-1*\latWidth)$) {}; % A9
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($( 7*\latWidth,-1*\latWidth)$) {};
+        \node [Assembly, fill=\lightgray, opacity=0.3] at ($( 8*\latWidth,-1*\latWidth)$) {};
+
+        \node [Assembly, fill=\lightgray, opacity=0.3] at ($(-8*\latWidth,-2*\latWidth)$) {};
+        \node [Assembly, fill=\highenr] at ($(-7*\latWidth,-2*\latWidth)$) {6}; % R10
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($(-7*\latWidth,-2*\latWidth)$) {};
+        \node [Assembly, fill=\lowenr] at ($(-6*\latWidth,-2*\latWidth)$) {}; % P10
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($(-6*\latWidth,-2*\latWidth)$) {};
+        \node [Assembly, fill=\midenr] at ($(-5*\latWidth,-2*\latWidth)$) {16}; % N10
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($(-5*\latWidth,-2*\latWidth)$) {};
+        \node [Assembly, fill=\lowenr] at ($(-4*\latWidth,-2*\latWidth)$) {}; % M10
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($(-4*\latWidth,-2*\latWidth)$) {};
+        \node [Assembly, fill=\midenr] at ($(-3*\latWidth,-2*\latWidth)$) {12}; % L10
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($(-3*\latWidth,-2*\latWidth)$) {};
+        \node [Assembly, fill=\lowenr] at ($(-2*\latWidth,-2*\latWidth)$) {}; % K10
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($(-2*\latWidth,-2*\latWidth)$) {};
+        \node [Assembly, fill=\midenr] at ($(-1*\latWidth,-2*\latWidth)$) {12}; % J10
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($(-1*\latWidth,-2*\latWidth)$) {};
+        \node [Assembly, fill=\lowenr] at ($(-0*\latWidth,-2*\latWidth)$) {}; % H10
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($(-0*\latWidth,-2*\latWidth)$) {};
+        \node [Assembly, fill=\midenr] at ($( 1*\latWidth,-2*\latWidth)$) {12}; % G10
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($( 1*\latWidth,-2*\latWidth)$) {};
+        \node [Assembly, fill=\lowenr] at ($( 2*\latWidth,-2*\latWidth)$) {}; % F10
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($( 2*\latWidth,-2*\latWidth)$) {};
+        \node [Assembly, fill=\midenr] at ($( 3*\latWidth,-2*\latWidth)$) {12}; % E10
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($( 3*\latWidth,-2*\latWidth)$) {};
+        \node [Assembly, fill=\lowenr] at ($( 4*\latWidth,-2*\latWidth)$) {}; % D10
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($( 4*\latWidth,-2*\latWidth)$) {};
+        \node [Assembly, fill=\midenr] at ($( 5*\latWidth,-2*\latWidth)$) {16}; % C10
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($( 5*\latWidth,-2*\latWidth)$) {};
+        \node [Assembly, fill=\lowenr] at ($( 6*\latWidth,-2*\latWidth)$) {}; % B10
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($( 6*\latWidth,-2*\latWidth)$) {};
+        \node [Assembly, fill=\highenr] at ($( 7*\latWidth,-2*\latWidth)$) {6}; % A10
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($( 7*\latWidth,-2*\latWidth)$) {};
+        \node [Assembly, fill=\lightgray, opacity=0.3] at ($( 8*\latWidth,-2*\latWidth)$) {};
+
+        \node [Assembly, fill=\lightgray, opacity=0.3] at ($(-8*\latWidth,-3*\latWidth)$) {};
+        \node [Assembly, fill=\highenr] at ($(-7*\latWidth,-3*\latWidth)$) {}; % R11
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($(-7*\latWidth,-3*\latWidth)$) {};
+        \node [Assembly, fill=\highenr] at ($(-6*\latWidth,-3*\latWidth)$) {16}; % P11
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($(-6*\latWidth,-3*\latWidth)$) {};
+        \node [Assembly, fill=\lowenr] at ($(-5*\latWidth,-3*\latWidth)$) {}; % N11
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($(-5*\latWidth,-3*\latWidth)$) {};
+        \node [Assembly, fill=\midenr] at ($(-4*\latWidth,-3*\latWidth)$) {16}; % M11
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($(-4*\latWidth,-3*\latWidth)$) {};
+        \node [Assembly, fill=\lowenr] at ($(-3*\latWidth,-3*\latWidth)$) {}; % L11
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($(-3*\latWidth,-3*\latWidth)$) {};
+        \node [Assembly, fill=\midenr] at ($(-2*\latWidth,-3*\latWidth)$) {12}; % K11
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($(-2*\latWidth,-3*\latWidth)$) {};
+        \node [Assembly, fill=\lowenr] at ($(-1*\latWidth,-3*\latWidth)$) {}; % J11
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($(-1*\latWidth,-3*\latWidth)$) {};
+        \node [Assembly, fill=\midenr] at ($(-0*\latWidth,-3*\latWidth)$) {12}; % H11
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($(-0*\latWidth,-3*\latWidth)$) {};
+        \node [Assembly, fill=\lowenr] at ($( 1*\latWidth,-3*\latWidth)$) {}; % G11
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($( 1*\latWidth,-3*\latWidth)$) {};
+        \node [Assembly, fill=\midenr] at ($( 2*\latWidth,-3*\latWidth)$) {12}; % F11
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($( 2*\latWidth,-3*\latWidth)$) {};
+        \node [Assembly, fill=\lowenr] at ($( 3*\latWidth,-3*\latWidth)$) {}; % E11
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($( 3*\latWidth,-3*\latWidth)$) {};
+        \node [Assembly, fill=\midenr] at ($( 4*\latWidth,-3*\latWidth)$) {16}; % D11
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($( 4*\latWidth,-3*\latWidth)$) {};
+        \node [Assembly, fill=\lowenr] at ($( 5*\latWidth,-3*\latWidth)$) {}; % C11
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($( 5*\latWidth,-3*\latWidth)$) {};
+        \node [Assembly, fill=\highenr] at ($( 6*\latWidth,-3*\latWidth)$) {16}; % B11
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($( 6*\latWidth,-3*\latWidth)$) {};
+        \node [Assembly, fill=\highenr] at ($( 7*\latWidth,-3*\latWidth)$) {}; % A11
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($( 7*\latWidth,-3*\latWidth)$) {};
+        \node [Assembly, fill=\lightgray, opacity=0.3] at ($( 8*\latWidth,-3*\latWidth)$) {};
+
+        \node [Assembly, fill=\lightgray, opacity=0.3] at ($(-8*\latWidth,-4*\latWidth)$) {};
+        \node [Assembly, fill=\lightgray, opacity=0.3] at ($(-7*\latWidth,-4*\latWidth)$) {};
+        \node [Assembly, fill=\highenr] at ($(-6*\latWidth,-4*\latWidth)$) {}; % P12
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($(-6*\latWidth,-4*\latWidth)$) {};
+        \node [Assembly, fill=\midenr] at ($(-5*\latWidth,-4*\latWidth)$) {16}; % N12
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($(-5*\latWidth,-4*\latWidth)$) {};
+        \node [Assembly, fill=\midenr] at ($(-4*\latWidth,-4*\latWidth)$) {}; % M12
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($(-4*\latWidth,-4*\latWidth)$) {};
+        \node [Assembly, fill=\midenr] at ($(-3*\latWidth,-4*\latWidth)$) {16}; % L12
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($(-3*\latWidth,-4*\latWidth)$) {};
+        \node [Assembly, fill=\lowenr] at ($(-2*\latWidth,-4*\latWidth)$) {}; % K12
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($(-2*\latWidth,-4*\latWidth)$) {};
+        \node [Assembly, fill=\midenr] at ($(-1*\latWidth,-4*\latWidth)$) {12}; % J12
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($(-1*\latWidth,-4*\latWidth)$) {};
+        \node [Assembly, fill=\lowenr] at ($(-0*\latWidth,-4*\latWidth)$) {}; % H12
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($(-0*\latWidth,-4*\latWidth)$) {};
+        \node [Assembly, fill=\midenr] at ($( 1*\latWidth,-4*\latWidth)$) {12}; % G12
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($( 1*\latWidth,-4*\latWidth)$) {};
+        \node [Assembly, fill=\lowenr] at ($( 2*\latWidth,-4*\latWidth)$) {}; % F12
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($( 2*\latWidth,-4*\latWidth)$) {};
+        \node [Assembly, fill=\midenr] at ($( 3*\latWidth,-4*\latWidth)$) {16}; % E12
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($( 3*\latWidth,-4*\latWidth)$) {};
+        \node [Assembly, fill=\midenr] at ($( 4*\latWidth,-4*\latWidth)$) {}; % D12
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($( 4*\latWidth,-4*\latWidth)$) {};
+        \node [Assembly, fill=\midenr] at ($( 5*\latWidth,-4*\latWidth)$) {16}; % C12
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($( 5*\latWidth,-4*\latWidth)$) {};
+        \node [Assembly, fill=\highenr] at ($( 6*\latWidth,-4*\latWidth)$) {}; % B12
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($( 6*\latWidth,-4*\latWidth)$) {};
+        \node [Assembly, fill=\lightgray, opacity=0.3] at ($( 7*\latWidth,-4*\latWidth)$) {};
+        \node [Assembly, fill=\lightgray, opacity=0.3] at ($( 8*\latWidth,-4*\latWidth)$) {};
+
+
+        \node [Assembly, fill=\lightgray, opacity=0.3] at ($(-8*\latWidth,-5*\latWidth)$) {};
+        \node [Assembly, fill=\lightgray, opacity=0.3] at ($(-7*\latWidth,-5*\latWidth)$) {};
+        \node [Assembly, fill=\highenr] at ($(-6*\latWidth,-5*\latWidth)$) {}; % P13
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($(-6*\latWidth,-5*\latWidth)$) {};
+        \node [Assembly, fill=\highenr] at ($(-5*\latWidth,-5*\latWidth)$) {15}; % N13
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($(-5*\latWidth,-5*\latWidth)$) {};
+        \node [Assembly, fill=\midenr] at ($(-4*\latWidth,-5*\latWidth)$) {16}; % M13
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($(-4*\latWidth,-5*\latWidth)$) {};
+        \node [Assembly, fill=\lowenr] at ($(-3*\latWidth,-5*\latWidth)$) {}; % L13
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($(-3*\latWidth,-5*\latWidth)$) {};
+        \node [Assembly, fill=\midenr] at ($(-2*\latWidth,-5*\latWidth)$) {16}; % K13
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($(-2*\latWidth,-5*\latWidth)$) {};
+        \node [Assembly, fill=\lowenr] at ($(-1*\latWidth,-5*\latWidth)$) {}; % J13
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($(-1*\latWidth,-5*\latWidth)$) {};
+        \node [Assembly, fill=\midenr] at ($(-0*\latWidth,-5*\latWidth)$) {16}; % H13
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($(-0*\latWidth,-5*\latWidth)$) {};
+        \node [Assembly, fill=\lowenr] at ($( 1*\latWidth,-5*\latWidth)$) {}; % G13
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($( 1*\latWidth,-5*\latWidth)$) {};
+        \node [Assembly, fill=\midenr] at ($( 2*\latWidth,-5*\latWidth)$) {16}; % F13
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($( 2*\latWidth,-5*\latWidth)$) {};
+        \node [Assembly, fill=\lowenr] at ($( 3*\latWidth,-5*\latWidth)$) {}; % E13
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($( 3*\latWidth,-5*\latWidth)$) {};
+        \node [Assembly, fill=\midenr] at ($( 4*\latWidth,-5*\latWidth)$) {16}; % D13
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($( 4*\latWidth,-5*\latWidth)$) {};
+        \node [Assembly, fill=\highenr] at ($( 5*\latWidth,-5*\latWidth)$) {15}; % C13
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($( 5*\latWidth,-5*\latWidth)$) {};
+        \node [Assembly, fill=\highenr] at ($( 6*\latWidth,-5*\latWidth)$) {}; % B13
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($( 6*\latWidth,-5*\latWidth)$) {};
+        \node [Assembly, fill=\lightgray, opacity=0.3] at ($( 7*\latWidth,-5*\latWidth)$) {};
+        \node [Assembly, fill=\lightgray, opacity=0.3] at ($( 8*\latWidth,-5*\latWidth)$) {};
+
+        \node [Assembly, fill=\lightgray, opacity=0.3] at ($(-8*\latWidth,-6*\latWidth)$) {};
+        \node [Assembly, fill=\lightgray, opacity=0.3] at ($(-7*\latWidth,-6*\latWidth)$) {};
+        \node [Assembly, fill=\lightgray, opacity=0.3] at ($(-6*\latWidth,-6*\latWidth)$) {};
+        \node [Assembly, fill=\highenr] at ($(-5*\latWidth,-6*\latWidth)$) {}; % N14
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($(-5*\latWidth,-6*\latWidth)$) {};
+        \node [Assembly, fill=\highenr] at ($(-4*\latWidth,-6*\latWidth)$) {}; % M14
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($(-4*\latWidth,-6*\latWidth)$) {};
+        \node [Assembly, fill=\highenr] at ($(-3*\latWidth,-6*\latWidth)$) {16}; % L14
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($(-3*\latWidth,-6*\latWidth)$) {};
+        \node [Assembly, fill=\lowenr] at ($(-2*\latWidth,-6*\latWidth)$) {}; % K14
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($(-2*\latWidth,-6*\latWidth)$) {};
+        \node [Assembly, fill=\highenr] at ($(-1*\latWidth,-6*\latWidth)$) {20}; % J14
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($(-1*\latWidth,-6*\latWidth)$) {};
+        \node [Assembly, fill=\lowenr] at ($(-0*\latWidth,-6*\latWidth)$) {}; % H14
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($(-0*\latWidth,-6*\latWidth)$) {};
+        \node [Assembly, fill=\highenr] at ($( 1*\latWidth,-6*\latWidth)$) {20}; % G14
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($( 1*\latWidth,-6*\latWidth)$) {};
+        \node [Assembly, fill=\lowenr] at ($( 2*\latWidth,-6*\latWidth)$) {}; % F14
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($( 2*\latWidth,-6*\latWidth)$) {};
+        \node [Assembly, fill=\highenr] at ($( 3*\latWidth,-6*\latWidth)$) {16}; % E14
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($( 3*\latWidth,-6*\latWidth)$) {};
+        \node [Assembly, fill=\highenr] at ($( 4*\latWidth,-6*\latWidth)$) {}; % D14
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($( 4*\latWidth,-6*\latWidth)$) {};
+        \node [Assembly, fill=\highenr] at ($( 5*\latWidth,-6*\latWidth)$) {}; % C14
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($( 5*\latWidth,-6*\latWidth)$) {};
+        \node [Assembly, fill=\lightgray, opacity=0.3] at ($( 6*\latWidth,-6*\latWidth)$) {};
+        \node [Assembly, fill=\lightgray, opacity=0.3] at ($( 7*\latWidth,-6*\latWidth)$) {};
+        \node [Assembly, fill=\lightgray, opacity=0.3] at ($( 8*\latWidth,-6*\latWidth)$) {};
+
+        \node [Assembly, fill=\lightgray, opacity=0.3] at ($(-8*\latWidth,-7*\latWidth)$) {};
+        \node [Assembly, fill=\lightgray, opacity=0.3] at ($(-7*\latWidth,-7*\latWidth)$) {};
+        \node [Assembly, fill=\lightgray, opacity=0.3] at ($(-6*\latWidth,-7*\latWidth)$) {};
+        \node [Assembly, fill=\lightgray, opacity=0.3] at ($(-5*\latWidth,-7*\latWidth)$) {};
+        \node [Assembly, fill=\lightgray, opacity=0.3] at ($(-4*\latWidth,-7*\latWidth)$) {};
+        \node [Assembly, fill=\highenr] at ($(-3*\latWidth,-7*\latWidth)$) {}; % L15
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($(-3*\latWidth,-7*\latWidth)$) {};
+        \node [Assembly, fill=\highenr] at ($(-2*\latWidth,-7*\latWidth)$) {6}; % K15
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($(-2*\latWidth,-7*\latWidth)$) {};
+        \node [Assembly, fill=\highenr] at ($(-1*\latWidth,-7*\latWidth)$) {}; % J15
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($(-1*\latWidth,-7*\latWidth)$) {};
+        \node [Assembly, fill=\highenr] at ($(-0*\latWidth,-7*\latWidth)$) {6}; % H15
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($(-0*\latWidth,-7*\latWidth)$) {};
+        \node [Assembly, fill=\highenr] at ($( 1*\latWidth,-7*\latWidth)$) {}; % G15
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($( 1*\latWidth,-7*\latWidth)$) {};
+        \node [Assembly, fill=\highenr] at ($( 2*\latWidth,-7*\latWidth)$) {6}; % F15
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($( 2*\latWidth,-7*\latWidth)$) {};
+        \node [Assembly, fill=\highenr] at ($( 3*\latWidth,-7*\latWidth)$) {}; % E15
+        \node [Assembly, fill=\darkgray, opacity=0.7] at ($( 3*\latWidth,-7*\latWidth)$) {};
+        \node [Assembly, fill=\lightgray, opacity=0.3] at ($( 4*\latWidth,-7*\latWidth)$) {};
+        \node [Assembly, fill=\lightgray, opacity=0.3] at ($( 5*\latWidth,-7*\latWidth)$) {};
+        \node [Assembly, fill=\lightgray, opacity=0.3] at ($( 6*\latWidth,-7*\latWidth)$) {};
+        \node [Assembly, fill=\lightgray, opacity=0.3] at ($( 7*\latWidth,-7*\latWidth)$) {};
+        \node [Assembly, fill=\lightgray, opacity=0.3] at ($( 8*\latWidth,-7*\latWidth)$) {};
+
+        \node [Assembly, fill=\lightgray, opacity=0.3] at ($(-8*\latWidth,-8*\latWidth)$) {};
+        \node [Assembly, fill=\lightgray, opacity=0.3] at ($(-7*\latWidth,-8*\latWidth)$) {};
+        \node [Assembly, fill=\lightgray, opacity=0.3] at ($(-6*\latWidth,-8*\latWidth)$) {};
+        \node [Assembly, fill=\lightgray, opacity=0.3] at ($(-5*\latWidth,-8*\latWidth)$) {};
+        \node [Assembly, fill=\lightgray, opacity=0.3] at ($(-4*\latWidth,-8*\latWidth)$) {};
+        \node [Assembly, fill=\lightgray, opacity=0.3] at ($(-3*\latWidth,-8*\latWidth)$) {};
+        \node [Assembly, fill=\lightgray, opacity=0.3] at ($(-2*\latWidth,-8*\latWidth)$) {};
+        \node [Assembly, fill=\lightgray, opacity=0.3] at ($(-1*\latWidth,-8*\latWidth)$) {};
+        \node [Assembly, fill=\lightgray, opacity=0.3] at ($(-0*\latWidth,-8*\latWidth)$) {};
+        \node [Assembly, fill=\lightgray, opacity=0.3] at ($( 1*\latWidth,-8*\latWidth)$) {};
+        \node [Assembly, fill=\lightgray, opacity=0.3] at ($( 2*\latWidth,-8*\latWidth)$) {};
+        \node [Assembly, fill=\lightgray, opacity=0.3] at ($( 3*\latWidth,-8*\latWidth)$) {};
+        \node [Assembly, fill=\lightgray, opacity=0.3] at ($( 4*\latWidth,-8*\latWidth)$) {};
+        \node [Assembly, fill=\lightgray, opacity=0.3] at ($( 5*\latWidth,-8*\latWidth)$) {};
+        \node [Assembly, fill=\lightgray, opacity=0.3] at ($( 6*\latWidth,-8*\latWidth)$) {};
+        \node [Assembly, fill=\lightgray, opacity=0.3] at ($( 7*\latWidth,-8*\latWidth)$) {};
+        \node [Assembly, fill=\lightgray, opacity=0.3] at ($( 8*\latWidth,-8*\latWidth)$) {};
+
+        % draw baffle north/south
+
+        \begin{scope}[even odd rule]
+          \clip[rotate=90] \tkzBaffMClip;
+          \path[fill=black] \tkzBaffleC;
+        \end{scope}
+        \begin{scope}[even odd rule]
+          \clip \tkzBaffCClip;
+          \clip \tkzBaffMClip;
+          \path[fill=black, rotate=90] \tkzBaffleM;
+        \end{scope}
+
+        % draw baffle east/west
+
+        \begin{scope}[rotate=90]
+          \begin{scope}[even odd rule]
+            \clip[rotate=90] \tkzBaffMClip;
+            \path[fill=black] \tkzBaffleC;
+          \end{scope}
+          \begin{scope}[even odd rule]
+            \clip \tkzBaffCClip;
+            \clip \tkzBaffMClip;
+            \path[fill=black, rotate=90] \tkzBaffleM;
+          \end{scope}
+        \end{scope}}
+      \end{tikzpicture}
+\end{document}

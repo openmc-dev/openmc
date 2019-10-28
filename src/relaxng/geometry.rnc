@@ -1,0 +1,55 @@
+element geometry {
+  element cell {
+    (element id { xsd:int } | attribute id { xsd:int }) &
+    (element name { xsd:string { maxLength="52" } } |
+      attribute name { xsd:string { maxLength="52" } })? &
+    (element universe { xsd:int } | attribute universe { xsd:int })? &
+    (
+      (element fill { xsd:int } | attribute fill { xsd:int }) |
+      (element material { list { ( xsd:int | "void" )+ } } |
+        attribute material { list { ( xsd:int | "void" )+ } })
+    ) &
+    (element temperature { list { xsd:double+ } } |
+      attribute temperature { list { xsd:double+ } } )? &
+    (element region { xsd:string } | attribute region { xsd:string })? &
+    (element rotation { list { xsd:double+ } } | attribute rotation { list { xsd:double+ } })? &
+    (element translation { list { xsd:double+ } } | attribute translation { list { xsd:double+ } })?
+  }*
+
+  & element surface {
+    (element id { xsd:int } | attribute id { xsd:int }) &
+    (element name { xsd:string { maxLength="52" } } |
+      attribute name { xsd:string { maxLength="52" } })? &
+    (element type { xsd:string { maxLength = "15" } } |
+     attribute type { xsd:string { maxLength = "15" } }) &
+    (element coeffs { list { xsd:double+ } } | attribute coeffs { list { xsd:double+ } }) &
+    (element boundary { ( "transmit" | "reflective" | "vacuum" | "periodic" ) } |
+     attribute boundary { ( "transmit" | "reflective" | "vacuum" | "periodic" ) })? &
+    (element periodic_surface_id { xsd:int } | attribute periodic_surface_id { xsd:int })?
+  }*
+
+  & element lattice {
+    (element id { xsd:int } | attribute id { xsd:int }) &
+    (element name { xsd:string { maxLength="52" } } |
+      attribute name { xsd:string { maxLength="52" } })? &
+    (element dimension { list { xsd:positiveInteger+ } } |
+      attribute dimension { list { xsd:positiveInteger+ } }) &
+    (element lower_left { list { xsd:double+ } } | attribute lower_left { list { xsd:double+ } }) &
+    (element pitch { list { xsd:double+ } } | attribute pitch { list { xsd:double+ } }) &
+    (element universes { list { xsd:int+ } } | attribute universes { list { xsd:int+ } }) &
+    (element outer { xsd:int } | attribute outer { xsd:int })?
+  }*
+
+  & element hex_lattice {
+    (element id { xsd:int } | attribute id { xsd:int }) &
+    (element name { xsd:string { maxLength="52" } } |
+      attribute name { xsd:string { maxLength="52" } })? &
+    (element n_rings { xsd:int } | attribute n_rings { xsd:int }) &
+    (element n_axial { xsd:int } | attribute n_axial { xsd:int })? &
+    (element center { list { xsd:double+ } } | attribute center { list { xsd:double+ } }) &
+    (element pitch { list { xsd:double+ } } | attribute pitch { list { xsd:double+ } }) &
+    (element orientation { ( "x" | "y" ) } | attribute orientation { ( "x" | "y" ) })? &
+    (element universes { list { xsd:int+ } } | attribute universes { list { xsd:int+ } }) &
+    (element outer { xsd:int } | attribute outer { xsd:int })?
+  }*
+}

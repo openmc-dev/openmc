@@ -1,0 +1,81 @@
+<?xml version='1.0' encoding='utf-8'?>
+<geometry>
+  <cell id="13" material="13" region="-9 10 -11" universe="9" />
+  <cell id="14" material="14" region="9" universe="9" />
+  <cell id="15" material="16" name="coolant" region="-12 10 -11" universe="10" />
+  <cell id="16" material="17" name="zirconium_shell" region="12 -13 10 -11" universe="10" />
+  <cell id="17" material="15" name="lead_shell" region="13 -14 10 -11" universe="10" />
+  <cell id="18" material="14" name="matrix coolant surround" region="14 10 -11" universe="10" />
+  <cell id="19" material="14" universe="11" />
+  <cell fill="12" id="20" name="container cell" region="-15 16 -17 18 19 -20 10 -11" universe="13" />
+  <hex_lattice id="12" n_rings="2" name="regular fuel assembly">
+    <pitch>1.4</pitch>
+    <outer>11</outer>
+    <center>0.0 0.0</center>
+    <universes>
+  10
+10  10
+  9 
+10  10
+  10</universes>
+  </hex_lattice>
+  <surface coeffs="0.0 0.0 0.7" id="9" type="z-cylinder" />
+  <surface boundary="reflective" coeffs="0.0" id="10" type="z-plane" />
+  <surface boundary="reflective" coeffs="10.0" id="11" type="z-plane" />
+  <surface coeffs="0.0 0.0 0.293" id="12" type="z-cylinder" />
+  <surface coeffs="0.0 0.0 0.35" id="13" type="z-cylinder" />
+  <surface coeffs="0.0 0.0 0.352" id="14" type="z-cylinder" />
+  <surface boundary="reflective" coeffs="1.4" id="15" type="y-plane" />
+  <surface boundary="reflective" coeffs="-1.4" id="16" type="y-plane" />
+  <surface boundary="reflective" coeffs="1.7320508075688772 1.0 0.0 2.8" id="17" type="plane" />
+  <surface boundary="reflective" coeffs="-1.7320508075688772 1.0 0.0 -2.8" id="18" type="plane" />
+  <surface boundary="reflective" coeffs="1.7320508075688772 1.0 0.0 -2.8" id="19" type="plane" />
+  <surface boundary="reflective" coeffs="-1.7320508075688772 1.0 0.0 2.8" id="20" type="plane" />
+</geometry>
+<?xml version='1.0' encoding='utf-8'?>
+<materials>
+  <material depletable="true" id="13">
+    <density units="sum" />
+    <nuclide ao="0.0049817" name="U235" />
+  </material>
+  <material id="14">
+    <density units="atom/b-cm" value="0.017742" />
+    <nuclide ao="1.0" name="C0" />
+    <sab name="c_Graphite" />
+  </material>
+  <material id="15" name="Lead">
+    <density units="g/cm3" value="10.32" />
+    <nuclide ao="0.014" name="Pb204" />
+    <nuclide ao="0.241" name="Pb206" />
+    <nuclide ao="0.221" name="Pb207" />
+    <nuclide ao="0.524" name="Pb208" />
+  </material>
+  <material id="16">
+    <density units="atom/b-cm" value="0.00054464" />
+    <nuclide ao="1.0" name="He4" />
+  </material>
+  <material id="17" name="Zirc4">
+    <density units="sum" />
+    <nuclide ao="0.02217" name="Zr90" />
+    <nuclide ao="0.004781" name="Zr91" />
+    <nuclide ao="0.007228" name="Zr92" />
+    <nuclide ao="0.007169" name="Zr94" />
+    <nuclide ao="0.001131" name="Zr96" />
+  </material>
+</materials>
+<?xml version='1.0' encoding='utf-8'?>
+<settings>
+  <run_mode>eigenvalue</run_mode>
+  <particles>1000</particles>
+  <batches>5</batches>
+  <inactive>2</inactive>
+  <source strength="1.0">
+    <space type="box">
+      <parameters>-0.9899494936611666 -0.9899494936611666 0.0 0.9899494936611666 0.9899494936611666 10.0</parameters>
+    </space>
+  </source>
+  <output>
+    <summary>false</summary>
+  </output>
+  <seed>22</seed>
+</settings>

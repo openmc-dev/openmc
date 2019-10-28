@@ -1,0 +1,26 @@
+<?xml version="1.0"?>
+<materials>
+
+  <material id="1">
+    <density value="0.1" units="atom/b-cm" />
+    <nuclide name="U235" ao="1.0" />
+  </material>
+
+  <material id="2">
+    <density value="4.5e22" units="atom/cm3" />
+    <nuclide name="U235" ao="1.0" />
+  </material>
+
+  <material id="3">
+    <density value="12.3e3" units="kg/m3" />
+    <nuclide name="U235" ao="1.0" />
+  </material>
+
+  <material id="4">
+    <density units="sum" />
+    <nuclide name="U235" ao="0.3e-2" />
+    <nuclide name="U238" ao="0.5e-1" />
+    <nuclide name="H1" ao="0.1e-2" />
+  </material>
+
+</materials>

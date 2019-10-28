@@ -1,0 +1,25 @@
+<?xml version="1.0"?>
+<geometry>
+
+  <surface id="1" type="x-plane" coeffs="-10" boundary="vacuum" />
+  <surface id="2" type="x-plane" coeffs="-7" />
+  <surface id="3" type="x-plane" coeffs="-4" />
+  <surface id="4" type="x-plane" coeffs="4" />
+  <surface id="5" type="x-plane" coeffs="7" />
+  <surface id="6" type="x-plane" coeffs="10" boundary="vacuum" />
+  <surface id="7" type="x-plane" coeffs="0" />
+
+  <surface id="11" type="y-plane" coeffs="-10" boundary="vacuum" />
+  <surface id="12" type="y-plane" coeffs="-7" />
+  <surface id="13" type="y-plane" coeffs="-4" />
+  <surface id="14" type="y-plane" coeffs="4" />
+  <surface id="15" type="y-plane" coeffs="7" />
+  <surface id="16" type="y-plane" coeffs="10" boundary="vacuum" />
+  <surface id="17" type="y-plane" coeffs="0" />
+
+  <cell id="1" material="1" region="3 -4 13 -14" />
+  <cell id="2" material="2" region="2 -5 12 -15 ~(3 -4 13 -14)" />
+  <cell id="3" material="3" region="((1 -7 17 -16) | (7 -6 11 -17)) (-2 | 5 | -12 | 15)" />
+  <cell id="4" material="4" region="((1 -7 11 -17) | (7 -6 17 -16)) ~(2 -5 12 -15)" />
+
+</geometry>

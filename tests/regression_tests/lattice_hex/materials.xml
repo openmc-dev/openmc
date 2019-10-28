@@ -1,0 +1,42 @@
+<?xml version="1.0"?>
+<materials>
+
+  <!-- Material 01: Water -->
+  <material id="01">
+    <density value="0.998" units="g/cc"/>
+    <nuclide name="H1"  ao="2.0"/>
+    <nuclide name="O16" ao="1.0"/>
+    <nuclide name="B10" ao="0.00085"/>
+  </material>
+
+  <!-- Material 13: Fuel (3.30%) -->
+  <material id="13">
+    <density value="10.371" units="g/cc"/>
+    <nuclide name="U235" ao="0.033408078"/>
+    <nuclide name="U238" ao="0.966591922"/>
+    <nuclide name="O16"  ao="2.0"/>
+  </material>
+
+  <!-- Material 21: Zircaloy -->
+  <material id="21">
+    <density value="6.44" units="g/cc" />
+    <nuclide name="Zr90"  wo="0.501807"/>
+    <nuclide name="Zr91"  wo="0.110712"/>
+    <nuclide name="Zr92"  wo="0.170991"/>
+    <nuclide name="Zr94"  wo="0.177057"/>
+    <nuclide name="Zr96"  wo="0.029133"/>
+  </material>
+
+  <!-- Material 22: Steel -->
+  <material id="22">
+    <density value="7.9" units="g/cc"/>
+    <nuclide name="Mn55" wo="2"/>
+    <nuclide name="Ni58" wo="6.83"/>
+    <nuclide name="Ni60" wo="2.61"/>
+    <nuclide name="Cr53" wo="1.71"/>
+    <nuclide name="Fe54" wo="3.98257"/>
+    <nuclide name="Fe56" wo="63.03447"/>
+    <nuclide name="Fe57" wo="1.4763"/>
+  </material>
+
+</materials>

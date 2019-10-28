@@ -1,0 +1,10 @@
+<?xml version='1.0' encoding='utf-8'?>
+<geometry>
+    <cell id="1" material="1" name="cell 1" region="-1" universe="0" />
+    <cell id="2" material="2" name="cell 2" region="1 4 -5 6 -7" universe="0" />
+    <surface coeffs="0 0 0.54" id="1" name="Fuel OR" type="z-cylinder" />
+    <surface boundary="reflective" coeffs="-0.63" id="4" name="left" type="x-plane" />
+    <surface boundary="reflective" coeffs="0.63" id="5" name="right" type="x-plane" />
+    <surface boundary="reflective" coeffs="-0.63" id="6" name="bottom" type="y-plane" />
+    <surface boundary="reflective" coeffs="0.63" id="7" name="top" type="y-plane" />
+</geometry>

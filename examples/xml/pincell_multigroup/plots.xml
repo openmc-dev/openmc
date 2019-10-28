@@ -1,0 +1,28 @@
+<?xml version="1.0"?>
+<plots>
+
+<plot>
+  <id>1</id>
+  <filename>mat</filename>
+  <color_by>material</color_by>
+  <origin>0 0 0</origin>
+  <width>1.26 1.26</width>
+  <type>slice</type>
+  <pixels>1000 1000 </pixels>
+  <color id="1" rgb="255 0   0" />
+  <color id="2" rgb="0   0   0" />
+  <color id="3" rgb="0   255 0" />
+  <color id="4" rgb="0   0   255" />
+</plot>
+
+<plot>
+  <id>2</id>
+  <filename>cell</filename>
+  <color_by>cell</color_by>
+  <origin>0 0 0</origin>
+  <width>1.26 1.26</width>
+  <type>slice</type>
+  <pixels>1000 1000 </pixels>
+</plot>
+
+</plots>

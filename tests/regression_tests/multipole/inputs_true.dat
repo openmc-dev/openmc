@@ -1,0 +1,55 @@
+<?xml version='1.0' encoding='utf-8'?>
+<geometry>
+  <cell id="1" material="1" universe="1" />
+  <cell id="11" material="2" region="-1" temperature="500 700 0 800" universe="11" />
+  <cell id="12" material="1" region="1" universe="11" />
+  <cell fill="101" id="101" region="2 -3 4 -5" universe="0" />
+  <lattice id="101">
+    <pitch>2.0 2.0</pitch>
+    <outer>1</outer>
+    <dimension>2 2</dimension>
+    <lower_left>-2.0 -2.0</lower_left>
+    <universes>
+11 11 
+11 11 </universes>
+  </lattice>
+  <surface coeffs="0.0 0.0 0.3" id="1" type="z-cylinder" />
+  <surface boundary="reflective" coeffs="-3.0" id="2" type="x-plane" />
+  <surface boundary="reflective" coeffs="3.0" id="3" type="x-plane" />
+  <surface boundary="reflective" coeffs="-3.0" id="4" type="y-plane" />
+  <surface boundary="reflective" coeffs="3.0" id="5" type="y-plane" />
+</geometry>
+<?xml version='1.0' encoding='utf-8'?>
+<materials>
+  <material id="1">
+    <density units="g/cc" value="1.0" />
+    <nuclide ao="2.0" name="H1" />
+    <nuclide ao="1.0" name="O16" />
+    <sab name="c_H_in_H2O" />
+  </material>
+  <material depletable="true" id="2">
+    <density units="g/cc" value="4.5" />
+    <nuclide ao="1.0" name="U235" />
+  </material>
+</materials>
+<?xml version='1.0' encoding='utf-8'?>
+<settings>
+  <run_mode>eigenvalue</run_mode>
+  <particles>1000</particles>
+  <batches>5</batches>
+  <inactive>0</inactive>
+  <source strength="1.0">
+    <space type="box">
+      <parameters>-1 -1 -1 1 1 1</parameters>
+    </space>
+  </source>
+  <temperature_multipole>true</temperature_multipole>
+  <temperature_tolerance>1000</temperature_tolerance>
+</settings>
+<?xml version='1.0' encoding='utf-8'?>
+<tallies>
+  <tally id="1">
+    <nuclides>U235 O16 total</nuclides>
+    <scores>total fission (n,gamma) elastic (n,p)</scores>
+  </tally>
+</tallies>

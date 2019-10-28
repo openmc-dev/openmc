@@ -1,0 +1,68 @@
+<?xml version='1.0' encoding='utf-8'?>
+<geometry>
+  <cell id="13" material="void" region="-9 10 -11" universe="9" />
+  <cell id="14" material="13" region="-9 11 -12" universe="9" />
+  <cell id="15" material="void" region="~(-9 10 -12)" universe="9" />
+  <surface boundary="vacuum" coeffs="0.0 0.0 1.0" id="9" type="x-cylinder" />
+  <surface boundary="vacuum" coeffs="-1.0" id="10" type="x-plane" />
+  <surface coeffs="1.0" id="11" type="x-plane" />
+  <surface boundary="vacuum" coeffs="1000000000.0" id="12" type="x-plane" />
+</geometry>
+<?xml version='1.0' encoding='utf-8'?>
+<materials>
+  <material id="13">
+    <density units="g/cm3" value="2.6989" />
+    <nuclide ao="1.0" name="Al27" />
+  </material>
+</materials>
+<?xml version='1.0' encoding='utf-8'?>
+<settings>
+  <run_mode>fixed source</run_mode>
+  <particles>10000</particles>
+  <batches>1</batches>
+  <source strength="1.0">
+    <space type="point">
+      <parameters>0 0 0</parameters>
+    </space>
+    <angle reference_uvw="1.0 0.0 0.0" type="monodirectional" />
+    <energy type="discrete">
+      <parameters>14000000.0 1.0</parameters>
+    </energy>
+  </source>
+  <electron_treatment>ttb</electron_treatment>
+  <photon_transport>true</photon_transport>
+  <cutoff>
+    <energy_photon>1000.0</energy_photon>
+  </cutoff>
+</settings>
+<?xml version='1.0' encoding='utf-8'?>
+<tallies>
+  <filter id="1" type="surface">
+    <bins>9</bins>
+  </filter>
+  <filter id="2" type="particle">
+    <bins>photon</bins>
+  </filter>
+  <tally id="1">
+    <filters>1 2</filters>
+    <scores>current</scores>
+  </tally>
+  <tally id="2">
+    <filters>2</filters>
+    <nuclides>Al27 total</nuclides>
+    <scores>total heating</scores>
+    <estimator>tracklength</estimator>
+  </tally>
+  <tally id="3">
+    <filters>2</filters>
+    <nuclides>Al27 total</nuclides>
+    <scores>total heating</scores>
+    <estimator>collision</estimator>
+  </tally>
+  <tally id="4">
+    <filters>2</filters>
+    <nuclides>Al27 total</nuclides>
+    <scores>total heating</scores>
+    <estimator>analog</estimator>
+  </tally>
+</tallies>

@@ -1,0 +1,46 @@
+include CMakeLists.txt
+include LICENSE
+include CODE_OF_CONDUCT.md
+include CONTRIBUTING.md
+include schemas.xml
+include pyproject.toml
+include pytest.ini
+include openmc/data/reconstruct.pyx
+include docs/source/_templates/layout.html
+include docs/sphinxext/LICENSE
+recursive-include . *.rst
+recursive-include cmake *.cmake
+recursive-include docs *.css
+recursive-include docs *.dia
+recursive-include docs *.png
+recursive-include docs *.py
+recursive-include docs *.svg
+recursive-include docs *.tex
+recursive-include docs *.txt
+recursive-include docs Makefile
+recursive-include examples *.h5
+recursive-include examples *.ipynb
+recursive-include examples *.png
+recursive-include examples *.py
+recursive-include examples *.xml
+recursive-include man *.1
+recursive-include src *.F90
+recursive-include src *.c
+recursive-include src *.cc
+recursive-include src *.cpp
+recursive-include src *.h
+recursive-include src *.hpp
+recursive-include src *.rnc
+recursive-include src *.rng
+recursive-include tests *.dat
+recursive-include tests *.h5
+recursive-include tests *.py
+recursive-include tests *.xml
+recursive-include vendor CMakeLists.txt
+recursive-include vendor *.cmake.in
+recursive-include vendor *.cc
+recursive-include vendor *.cpp
+recursive-include vendor *.hh
+recursive-include vendor *.hpp
+prune docs/build
+prune docs/source/pythonapi/generated/

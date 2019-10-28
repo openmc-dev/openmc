@@ -1,0 +1,29 @@
+/* override table width restrictions */
+.wy-table-responsive table td, .wy-table-responsive table th {
+    white-space: normal;
+}
+
+.wy-table-responsive {
+    margin-bottom: 24px;
+    max-width: 100%;
+    overflow: visible;
+}
+
+.wy-plain-list-disc, .rst-content .section ul, .rst-content .toctree-wrapper ul, article ul {
+    margin-bottom: 0px;
+}
+
+.wy-table, .rst-content table.docutils, .rst-content table.field-list {
+    margin-bottom: 0px;
+}
+
+.wy-side-nav-search {
+    background-color: #343131;
+}
+
+/* Make embedded Jupyter notebooks look better */
+div#notebook-container.container {
+    padding: 0px;
+    width: auto;
+    box-shadow: none;
+}

@@ -1,0 +1,27 @@
+<?xml version="1.0"?>
+<settings>
+
+  <!--
+  ===============================================================
+  Description: Rectangular Array of Water-Moderated MOX Fuel Rods
+  Case:        MIX-COMP-THERM-002, PNL-30
+  Written By:  Paul Romano
+  Date:        9/6/2012
+  ===============================================================
+  -->
+
+  <run_mode>eigenvalue</run_mode>
+  <batches>10</batches>
+  <inactive>5</inactive>
+  <particles>100</particles>
+
+  <source>
+    <space type="box">
+      <parameters>
+         0.     0.     3.5560
+        21.336 21.336 94.9960
+      </parameters>
+    </space>
+  </source>
+
+</settings>

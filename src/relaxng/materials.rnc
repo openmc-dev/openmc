@@ -1,0 +1,41 @@
+element materials {
+  element material {
+    (element id { xsd:int } | attribute id { xsd:int }) &
+
+    (element name { xsd:string } | attribute name { xsd:string })? &
+
+    (element depletable { xsd:boolean } | attribute depletable { xsd:boolean })? &
+
+    (element volume { xsd:double } | attribute volume { xsd:double })? &
+
+    (element temperature { xsd:double } | attribute temperature { xsd:double })? &
+
+    element density {
+      (element value { xsd:double } | attribute value { xsd:double })? &
+      (element units { xsd:string { maxLength = "10" } } |
+        attribute units { xsd:string { maxLength = "10" } })
+    } &
+
+    element nuclide {
+      (element name { xsd:string } | attribute name { xsd:string }) &
+      (
+        (element ao { xsd:double } | attribute ao { xsd:double }) |
+        (element wo { xsd:double } | attribute wo { xsd:double })
+      )
+    }*  &
+
+    element isotropic { xsd:string }? &
+
+    element macroscopic {
+      (element name { xsd:string } |
+        attribute name { xsd:string })
+    }*  &
+
+    element sab {
+      (element name { xsd:string } | attribute name { xsd:string }) &
+      (element fraction { xsd:double } | attribute fraction { xsd:double })?
+    }*
+  }+ &
+
+  element cross_sections { xsd:string { maxLength = "255" } }?
+}

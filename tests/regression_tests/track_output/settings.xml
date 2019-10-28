@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<settings>
+
+  <!-- Parameters for criticality calculation -->
+  <run_mode>eigenvalue</run_mode>
+  <batches>2</batches>
+  <inactive>0</inactive>
+  <particles>100</particles>
+
+  <!-- Starting source -->
+  <source>
+    <space type="box">
+      <parameters>-1 -1 -1  1  1  1</parameters>
+    </space>
+  </source>
+
+  <track>
+    1 1 1
+    1 1 2
+  </track>
+
+</settings>

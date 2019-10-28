@@ -1,0 +1,12 @@
+element cross_sections {
+  element library {
+    (element materials { xsd:string } |
+      attribute materials { xsd:string }) &
+    (element type { xsd:string } |
+      attribute type { xsd:string }) &
+    (element path { xsd:string } |
+      attribute path { xsd:string })
+  }* &
+
+  element directory { xsd:string { maxLength = "255" } }?
+}

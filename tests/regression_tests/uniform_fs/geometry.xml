@@ -1,0 +1,13 @@
+<?xml version="1.0"?>
+<geometry>
+
+  <!-- Cube with side length of 20 cm -->
+  <surface id="1" type="x-plane" coeffs="-10" boundary="vacuum"/>
+  <surface id="2" type="x-plane" coeffs="10" boundary="vacuum"/>
+  <surface id="3" type="y-plane" coeffs="-10" boundary="vacuum"/>
+  <surface id="4" type="y-plane" coeffs="10" boundary="vacuum"/>
+  <surface id="5" type="z-plane" coeffs="-10" boundary="vacuum"/>
+  <surface id="6" type="z-plane" coeffs="10" boundary="vacuum"/>
+  <cell id="1" material="1" region="1 -2 3 -4 5 -6" />
+
+</geometry>

@@ -1,0 +1,45 @@
+<?xml version='1.0' encoding='utf-8'?>
+<geometry>
+  <cell id="13" material="13" region="-9" universe="9" />
+  <surface boundary="reflective" coeffs="0.0 0.0 0.0 1000000000.0" id="9" type="sphere" />
+</geometry>
+<?xml version='1.0' encoding='utf-8'?>
+<materials>
+  <material id="13">
+    <density units="g/cm3" value="0.998207" />
+    <nuclide ao="0.11187657362844" name="H1" />
+    <nuclide ao="1.7426371559999997e-05" name="H2" />
+    <nuclide ao="0.8877694078259999" name="O16" />
+    <nuclide ao="0.000336592174" name="O17" />
+  </material>
+</materials>
+<?xml version='1.0' encoding='utf-8'?>
+<settings>
+  <run_mode>fixed source</run_mode>
+  <particles>10000</particles>
+  <batches>1</batches>
+  <source particle="photon" strength="1.0">
+    <space type="point">
+      <parameters>0 0 0</parameters>
+    </space>
+    <angle type="isotropic" />
+    <energy type="discrete">
+      <parameters>10000000.0 1.0</parameters>
+    </energy>
+  </source>
+  <electron_treatment>ttb</electron_treatment>
+  <photon_transport>true</photon_transport>
+  <cutoff>
+    <energy_photon>1000.0</energy_photon>
+  </cutoff>
+</settings>
+<?xml version='1.0' encoding='utf-8'?>
+<tallies>
+  <filter id="1" type="particle">
+    <bins>photon</bins>
+  </filter>
+  <tally id="1">
+    <filters>1</filters>
+    <scores>flux</scores>
+  </tally>
+</tallies>

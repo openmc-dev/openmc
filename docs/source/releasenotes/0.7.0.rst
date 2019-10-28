@@ -1,0 +1,65 @@
+===================
+What's New in 0.7.0
+===================
+
+-------------------
+System Requirements
+-------------------
+
+There are no special requirements for running the OpenMC code. As of this
+release, OpenMC has been tested on a variety of Linux distributions, Mac OS X,
+and Microsoft Windows 7. Memory requirements will vary depending on the size of
+the problem at hand (mostly on the number of nuclides in the problem).
+
+------------
+New Features
+------------
+
+- Complete Python API
+- Python 3 compatability for all scripts
+- All scripts consistently named openmc-* and installed together
+- New 'distribcell' tally filter for repeated cells
+- Ability to specify outer lattice universe
+- XML input validation utility (openmc-validate-xml)
+- Support for hexagonal lattices
+- Material union energy grid method
+- Tally triggers
+- Remove dependence on PETSc
+- Significant OpenMP performance improvements
+- Support for Fortran 2008 MPI interface
+- Use of Travis CI for continuous integration
+- Simplifications and improvements to test suite
+
+---------
+Bug Fixes
+---------
+
+- b5f712_: Fix bug in spherical harmonics tallies
+- e6675b_: Ensure all constants are double precision
+- 04e2c1_: Fix potential bug in sample_nuclide routine
+- 6121d9_: Fix bugs related to particle track files
+- 2f0e89_: Fixes for nuclide specification in tallies
+
+.. _b5f712: https://github.com/openmc-dev/openmc/commit/b5f712
+.. _e6675b: https://github.com/openmc-dev/openmc/commit/e6675b
+.. _04e2c1: https://github.com/openmc-dev/openmc/commit/04e2c1
+.. _6121d9: https://github.com/openmc-dev/openmc/commit/6121d9
+.. _2f0e89: https://github.com/openmc-dev/openmc/commit/2f0e89
+
+------------
+Contributors
+------------
+
+This release contains new contributions from the following people:
+
+- `Will Boyd <wbinventor@gmail.com>`_
+- `Matt Ellis <mellis13@mit.edu>`_
+- `Sterling Harper <sterlingmharper@mit.edu>`_
+- `Bryan Herman <bherman@mit.edu>`_
+- `Nicholas Horelik <nicholas.horelik@gmail.com>`_
+- `Colin Josey <cjosey@mit.edu>`_
+- `William Lyu <PaleNeutron@users.noreply.github.com>`_
+- `Adam Nelson <nelsonag@umich.edu>`_
+- `Paul Romano <paul.k.romano@gmail.com>`_
+- `Anthony Scopatz <scopatz@gmail.com>`_
+- `Jon Walsh <walshjon@mit.edu>`_

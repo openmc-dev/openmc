@@ -1,0 +1,53 @@
+===================
+What's New in 0.4.1
+===================
+
+-------------------
+System Requirements
+-------------------
+
+There are no special requirements for running the OpenMC code. As of this
+release, OpenMC has been tested on a variety of Linux distributions as well as
+Mac OS X. However, it has not been tested yet on any releases of Microsoft
+Windows. Memory requirements will vary depending on the size of the problem at
+hand (mostly on the number of nuclides in the problem).
+
+------------
+New Features
+------------
+
+- A batching method has been implemented so that statistics can be calculated
+  based on multiple generations instead of a single generation. This can help to
+  overcome problems with underpredicted variance in problems where there is
+  correlation between successive fission source iterations.
+- Users now have the option to select a non-unionized energy grid for problems
+  with many nuclides where the use of a unionized grid is not feasible.
+- Improved plotting capability (Nick Horelik). The plotting input is now in
+  ``plots.xml`` instead of ``plot.xml``.
+- Added multiple estimators for k-effective and added a global tally for
+  leakage.
+- Moved cross section-related output into cross_sections.out.
+- Improved timing capabilities.
+- Can now use more than 2**31 - 1 particles per generation.
+- Improved fission bank synchronization method. This also necessitated changing
+  the source bank to be of type Bank rather than of type Particle.
+- Added HDF5 output (not complete yet).
+- Major changes to tally implementation.
+
+---------
+Bug Fixes
+---------
+
+- `b206a8`_: Fixed subtle error in the sampling of energy distributions.
+- `800742`_: Fixed error in sampling of angle and rotating angles.
+- `a07c08`_: Fixed bug in linear-linear interpolation during sampling energy.
+- `a75283`_: Fixed energy and energyout tally filters to support many bins.
+- `95cfac`_: Fixed error in cell neighbor searches.
+- `83a803`_: Fixed bug related to probability tables.
+
+.. _b206a8: https://github.com/openmc-dev/openmc/commit/b206a8
+.. _800742: https://github.com/openmc-dev/openmc/commit/800742
+.. _a07c08: https://github.com/openmc-dev/openmc/commit/a07c08
+.. _a75283: https://github.com/openmc-dev/openmc/commit/a75283
+.. _95cfac: https://github.com/openmc-dev/openmc/commit/95cfac
+.. _83a803: https://github.com/openmc-dev/openmc/commit/83a803

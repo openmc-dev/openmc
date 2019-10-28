@@ -1,0 +1,16 @@
+<?xml version="1.0"?>
+<settings>
+
+  <run_mode>eigenvalue</run_mode>
+  <batches>7</batches>
+  <inactive>3</inactive>
+  <particles>1000</particles>
+  <generations_per_batch>3</generations_per_batch>
+
+  <source>
+    <space type="box">
+      <parameters>-4 -4 -4  4  4  4</parameters>
+    </space>
+  </source>
+
+</settings>

@@ -1,0 +1,9 @@
+<?xml version="1.0"?>
+<geometry>
+  <surface id="1" type="z-cylinder" coeffs="0. 0. 5.0" />
+  <surface id="2" type="z-cylinder" coeffs="0. 0. 10.0" />
+  <surface id="3" type="z-cylinder" coeffs="0. 0. 15.0" boundary="vacuum" />
+  <cell id="1" material="1" region="-1" />
+  <cell id="2" material="2" region="1 -2" />
+  <cell id="3" material="3" region="2 -3" />
+</geometry>

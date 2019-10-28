@@ -1,0 +1,57 @@
+<?xml version='1.0' encoding='utf-8'?>
+<geometry>
+  <cell id="1" material="1" region="-1" universe="1" />
+  <cell id="2" material="2" region="1" universe="1" />
+  <cell fill="2" id="3" region="2 -3 4 -5" universe="3" />
+  <lattice id="2">
+    <pitch>1.2 1.2</pitch>
+    <outer>1</outer>
+    <dimension>2 2</dimension>
+    <lower_left>-1.2 -1.2</lower_left>
+    <universes>
+1 1 
+1 1 </universes>
+  </lattice>
+  <surface coeffs="0.0 0.0 0.4" id="1" type="z-cylinder" />
+  <surface boundary="reflective" coeffs="-1.2" id="2" name="minimum x" type="x-plane" />
+  <surface boundary="reflective" coeffs="1.2" id="3" name="maximum x" type="x-plane" />
+  <surface boundary="reflective" coeffs="-1.2" id="4" name="minimum y" type="y-plane" />
+  <surface boundary="reflective" coeffs="1.2" id="5" name="maximum y" type="y-plane" />
+</geometry>
+<?xml version='1.0' encoding='utf-8'?>
+<materials>
+  <material depletable="true" id="1" name="UO2">
+    <density units="g/cm3" value="10.29769" />
+    <nuclide ao="4.4843e-06" name="U234" />
+    <nuclide ao="0.00055815" name="U235" />
+    <nuclide ao="0.022408" name="U238" />
+    <nuclide ao="0.045829" name="O16" />
+  </material>
+  <material id="2" name="light water">
+    <density units="g/cm3" value="1.0" />
+    <nuclide ao="2.0" name="H1" />
+    <nuclide ao="1.0" name="O16" />
+    <sab name="c_H_in_H2O" />
+  </material>
+</materials>
+<?xml version='1.0' encoding='utf-8'?>
+<settings>
+  <run_mode>eigenvalue</run_mode>
+  <particles>1000</particles>
+  <batches>10</batches>
+  <inactive>5</inactive>
+</settings>
+<?xml version='1.0' encoding='utf-8'?>
+<tallies>
+  <filter id="1" type="energy">
+    <bins>0.0 0.253 1000.0 1000000.0 20000000.0</bins>
+  </filter>
+  <filter id="2" type="distribcell">
+    <bins>1</bins>
+  </filter>
+  <tally id="1" name="distribcell tally">
+    <filters>1 2</filters>
+    <nuclides>U234 U235 U238</nuclides>
+    <scores>nu-fission total</scores>
+  </tally>
+</tallies>

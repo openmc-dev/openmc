@@ -1,0 +1,17 @@
+<?xml version="1.0"?>
+<geometry>
+  <cell id="11" universe="11" material="1"/>
+  <cell id="12" universe="12" material="2" region=""/>
+
+  <lattice id="21" dimension="2 2" lower_left="-2.0 -2.0"
+    pitch="2.0 2.0" outer="12">
+    <universes>
+      11 12
+      12 11
+    </universes>
+  </lattice>
+
+
+  <surface id="101" type="z-cylinder" coeffs="0.0 0.0 5.0" boundary="vacuum"/>
+  <cell id="101" universe="0" fill="21" region="-101"/>
+</geometry>

@@ -1,0 +1,133 @@
+====================
+What's New in 0.11.0
+====================
+
+.. currentmodule:: openmc
+
+-------
+Summary
+-------
+
+This release of OpenMC adds several major new features: :ref:`depletion
+<usersguide_depletion>`, photon transport, and support for CAD geometries
+through DAGMC. In addition, the core codebase has been rewritten in C++14 (it
+was previously written in Fortran 2008). This makes compiling the code
+considerably simpler as no Fortran compiler is needed.
+
+Functional expansion tallies are now supported through several new tally filters
+that can be arbitrarily combined:
+
+- :class:`openmc.LegendreFilter`
+- :class:`openmc.SpatialLegendreFilter`
+- :class:`openmc.SphericalHarmonicsFilter`
+- :class:`openmc.ZernikeFilter`
+- :class:`openmc.ZernikeRadialFilter`
+
+Note that these filters replace the use expansion scores like ``scatter-P1``.
+Instead, a normal ``scatter`` score should be used along with a
+:class:`openmc.LegendreFilter`.
+
+The interface for random sphere packing has been significantly improved. A new
+:func:`openmc.model.pack_spheres` function takes a region and generates a
+random, non-overlapping configuration of spheres within the region.
+
+------------
+New Features
+------------
+
+- White boundary conditions can be applied to surfaces
+- Support for rectilinear meshes through :class:`openmc.RectilinearMesh`.
+- The :class:`Geometry`, :class:`Materials`, and :class:`Settings` classes now
+  have a ``from_xml`` method that will build an instance from an existing XML
+  file.
+- Predefined energy group structures can be found in
+  :data:`openmc.mgxs.GROUP_STRUCTURES`.
+- New tally scores: ``H1-production``, ``H2-production``, ``H3-production``,
+  ``He3-production``, ``He4-production``, ``heating``, ``heating-local``, and
+  ``damage-energy``.
+- Switched to cell-based neighor lists (`PR 1140
+  <https://github.com/openmc-dev/openmc/pull/1140>`_)
+- Two new probability distributions that can be used for source distributions:
+  :class:`openmc.stats.Normal` and :class:`openmc.stats.Muir`
+- The :mod:`openmc.data` module now supports reading and sampling from ENDF File
+  32 resonance covariance data (`PR 1024
+  <https://github.com/openmc-dev/openmc/pull/1024>`_).
+- Several new convenience functions/methods have been added:
+
+  - The :func:`openmc.model.cylinder_from_points` function creates a cylinder
+    given two points passing through its center and a radius.
+  - The :meth:`openmc.Plane.from_points` function creates a plane given three
+    points that pass through it.
+  - The :func:`openmc.model.pin` function creates a pin cell universe given a
+    sequence of concentric cylinders and materials.
+
+------------------
+Python API Changes
+------------------
+
+- All surface classes now have coefficient arguments given as lowercase names.
+- The order of arguments in surface classes has been changed so that
+  coefficients are the first arguments (rather than the optional surface ID).
+  This means you can now write::
+
+      x = openmc.XPlane(5.0, 'reflective')
+      zc = openmc.ZCylinder(0., 0., 10.)
+
+- The ``Mesh`` class has been renamed :class:`openmc.RegularMesh`.
+- The ``get_rectangular_prism`` function has been renamed
+  :func:`openmc.model.rectangular_prism`.
+- The ``get_hexagonal_prism`` function has been renamed
+  :func:`openmc.model.hexagonal_prism`.
+- Python bindings to the C/C++ API have been move from ``openmc.capi`` to
+  :mod:`openmc.lib`.
+
+---------
+Bug Fixes
+---------
+
+- `Rotate azimuthal distributions correctly for source sampling <https://github.com/openmc-dev/openmc/pull/1363>`_
+- `Fix reading ASCII ACE tables in Python 3 <https://github.com/openmc-dev/openmc/pull/1176>`_
+- `Fix bug for distributed temperatures <https://github.com/openmc-dev/openmc/pull/1178>`_
+- `Fix bug for distance to boundary in complex cells <https://github.com/openmc-dev/openmc/pull/1172>`_
+- `Bug fixes for precursor decay rate tallies <https://github.com/openmc-dev/openmc/pull/1156>`_
+- `Check for invalid surface IDs in region expression <https://github.com/openmc-dev/openmc/pull/1142>`_
+- `Support for 32-bit operating systems <https://github.com/openmc-dev/openmc/pull/1071>`_
+- `Avoid segfault from unused nuclides <https://github.com/openmc-dev/openmc/pull/979>`_
+- `Avoid overflow when broadcasting tally results <https://github.com/openmc-dev/openmc/pull/962>`_
+
+------------
+Contributors
+------------
+
+This release contains new contributions from the following people:
+
+- `Brody Bassett <https://github.com/brbass>`_
+- `Will Boyd <https://github.com/wbinventor>`_
+- `Andrew Davis <https://github.com/makeclean>`_
+- `Iurii Drobyshev <https://github.com/dryuri92>`_
+- `Guillaume Giudicelli <https://github.com/GiudGiud>`_
+- `Brittany Grayson <https://github.com/graybri3>`_
+- `Zhuoran Han <https://github.com/hanzhuoran>`_
+- `Sterling Harper <https://github.com/smharper>`_
+- `Andrew Johnson <https://github.com/drewejohnson>`_
+- `Colin Josey <https://github.com/cjosey>`_
+- `Shikhar Kumar <https://github.com/shikhar413>`_
+- `Travis Labossiere-Hickman <https://github.com/tjlaboss>`_
+- `Matias Lavista <https://github.com/matiaslavista>`_
+- `Jingang Liang <https://github.com/liangjg>`_
+- `Alex Lindsay <https://github.com/lindsayad>`_
+- `Johnny Liu <https://github.com/johnnyliu27>`_
+- `Amanda Lund <https://github.com/amandalund>`_
+- `Jan Malec <https://github.com/janmalec>`_
+- `Isaac Meyer <https://github.com/icmeyer>`_
+- `April Novak <https://github.com/aprilnovak>`_
+- `Adam Nelson <https://github.com/nelsonag>`_
+- `Gavin Ridley <https://github.com/gridley>`_
+- `Jose Salcedo Perez <https://github.com/salcedop>`_
+- `Paul Romano <https://github.com/paulromano>`_
+- `Sam Shaner <https://github.com/samuelshaner>`_
+- `Jonathan Shimwell <https://github.com/Shimwell>`_
+- `Patrick Shriwise <https://github.com/pshriwise>`_
+- `John Tramm <https://github.com/jtramm>`_
+- `Jiankai Yu <https://github.com/rockfool>`_
+- `Xiaokang Zhang <https://github.com/zxkjack123>`_

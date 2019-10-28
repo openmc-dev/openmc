@@ -1,0 +1,34 @@
+<?xml version='1.0' encoding='utf-8'?>
+<geometry>
+  <cell id="1" material="1" region="1 -2" universe="0" />
+  <surface boundary="reflective" coeffs="0.0" id="1" type="x-plane" />
+  <surface boundary="vacuum" coeffs="929.45" id="2" type="x-plane" />
+</geometry>
+<?xml version='1.0' encoding='utf-8'?>
+<materials>
+  <cross_sections>2g.h5</cross_sections>
+  <material id="1" name="mat_1">
+    <density units="macro" value="1.0" />
+    <macroscopic name="mat_1" />
+  </material>
+</materials>
+<?xml version='1.0' encoding='utf-8'?>
+<settings>
+  <run_mode>eigenvalue</run_mode>
+  <particles>1000</particles>
+  <batches>10</batches>
+  <inactive>5</inactive>
+  <source strength="1.0">
+    <space type="box">
+      <parameters>0.0 -1000.0 -1000.0 929.45 1000.0 1000.0</parameters>
+    </space>
+  </source>
+  <output>
+    <summary>false</summary>
+  </output>
+  <energy_mode>multi-group</energy_mode>
+  <survival_biasing>true</survival_biasing>
+  <tabular_legendre>
+    <enable>false</enable>
+  </tabular_legendre>
+</settings>

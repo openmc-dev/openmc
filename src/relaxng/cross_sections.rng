@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<element name="cross_sections" xmlns="http://relaxng.org/ns/structure/1.0" datatypeLibrary="http://www.w3.org/2001/XMLSchema-datatypes">
+  <interleave>
+    <zeroOrMore>
+      <element name="library">
+        <interleave>
+          <choice>
+            <element name="materials">
+              <data type="string"/>
+            </element>
+            <attribute name="materials">
+              <data type="string"/>
+            </attribute>
+          </choice>
+          <choice>
+            <element name="type">
+              <data type="string"/>
+            </element>
+            <attribute name="type">
+              <data type="string"/>
+            </attribute>
+          </choice>
+          <choice>
+            <element name="path">
+              <data type="string"/>
+            </element>
+            <attribute name="path">
+              <data type="string"/>
+            </attribute>
+          </choice>
+        </interleave>
+      </element>
+    </zeroOrMore>
+    <optional>
+      <element name="directory">
+        <data type="string">
+          <param name="maxLength">255</param>
+        </data>
+      </element>
+    </optional>
+  </interleave>
+</element>

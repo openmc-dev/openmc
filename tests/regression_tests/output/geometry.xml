@@ -1,0 +1,8 @@
+<?xml version="1.0"?>
+<geometry>
+
+  <!-- Sphere with radius 10 -->
+  <surface id="1" type="sphere" coeffs="0 0 0 10" boundary="vacuum"/>
+  <cell id="1" material="1" region="-1" />
+    
+</geometry>

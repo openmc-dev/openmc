@@ -764,22 +764,24 @@ class RectLattice(Lattice):
                     0 <= idx[1] < self.shape[1] and
                     0 <= idx[2] < self.shape[2])
 
-    def discretize(self, strategy="degenerate", universes_to_ignore=[],
+    def discretize(self, strategy="degenerate",
+                   rotate_universe_with_neighbors=False,
+                   universes_to_ignore=[],
                    materials_to_clone=[],
                    lattice_neighbors=[], attribute="id"):
-        """Discretize the lattice with either degenerate or a recursive local
+        """Discretize the lattice with either a degenerate or a recursive local
         neighbor symmetry strategy
 
-        Degenerate clones every universe in the lattice, thus making them all
+        'Degenerate' clones every universe in the lattice, thus making them all
         uniquely defined. This is typically required if depletion or thermal
-        hydraulics will make every fuel pin environment unique.
+        hydraulics will make every universe's environment unique.
 
-        Local neighbor symmetry separates fuel pins with similar neighborhoods.
+        'Local neighbor symmetry' groups universes with similar neighborhoods.
         These clusters of cells and materials provide increased convergence
         speed to multi-group cross sections tallies. The recursion allows
         the modelling of neighbor universes on multiple scales, for example
-        to discriminate between the baffle and the neighbor lattices for a
-        latttice in the outer part of a light water reactor. The recursion is
+        to discriminate between the baffle and the neighbor lattices of a
+        latttice in the outer ring of a light water reactor. The recursion is
         only implemented for lattices exactly right below the starting lattice
         (starting lattice contains universe contains cell contains the lattice)
 
@@ -787,11 +789,15 @@ class RectLattice(Lattice):
         ----------
         strategy : String
             Which strategy to adopt when discretizing the lattice
+        rotate_universe_with_neighbors : boolean
+            Whether lattice universes (especially sublattices) with rotated/
+            symmetric neighbor patterns should also be rotated/symmetrized.
+            Default is False.
         universes_to_ignore : Iterable of Universe
             Lattice universes that need not be discretized
         materials_to_clone : Iterable of Material
             List of materials that should be cloned when discretizing
-        lattice_neighbors : Iterable of Int or String
+        lattice_neighbors : Iterable of Integral or String
             List of attributes of the lattice's neighbors. By default, if
             present, the lattice outer universe will be used. The neighbors
             are represented as follows [top left, top, top right, left, right,
@@ -808,6 +814,8 @@ class RectLattice(Lattice):
                                       "for 3D lattices")
 
         cv.check_value('strategy', strategy, ('degenerate', 'lns'))
+        cv.check_type('rotate_universe_with_neighbors',
+                      rotate_universe_with_neighbors, bool)
         cv.check_type('universes_to_ignore', universes_to_ignore, Iterable,
                       openmc.Universe)
         cv.check_type('materials_to_clone', materials_to_clone, Iterable,
@@ -818,7 +826,7 @@ class RectLattice(Lattice):
         if len(lattice_neighbors) > 0:
             if attribute == 'id':
                  cv.check_type('lattice_neighbors', lattice_neighbors,
-                               Iterable, int)
+                               Iterable, Integral)
             elif attribute == 'name':
                  cv.check_type('lattice_neighbors', lattice_neighbors,
                                Iterable, str)
@@ -1007,11 +1015,13 @@ class RectLattice(Lattice):
                     sub_neighbors = [pattern[0][0], pattern[0][1],
                          pattern[0][2], pattern[1][0], pattern[1][2],
                          pattern[2][0], pattern[2][1], pattern[2][2]]
-                    sub_universe.discretize(strategy, universes_to_ignore,
+                    sub_universe.discretize(strategy,
+                                            rotate_universe_with_neighbors,
+                                            universes_to_ignore,
                                             materials_to_clone,
                                             lattice_neighbors=sub_neighbors,
                                             attribute=attribute)
-                except:
+                except AttributeError:
                     continue
 
             # Replace only the materials in materials_to_clone
@@ -1019,26 +1029,28 @@ class RectLattice(Lattice):
                 material_cloned = False
 
                 for cell in new_universe.get_all_cells().values():
-                    if cell.fill.id == material.id:
 
-                        # Only a single clone of each material is necessary
-                        if not material_cloned:
-                            material_clone = material.clone()
-                            material_cloned = True
+                    if cell.fill is not None:
+                        if cell.fill.id == material.id:
 
-                        cell.fill = material_clone
+                            # Only a single clone of each material is necessary
+                            if not material_cloned:
+                                material_clone = material.clone()
+                                material_cloned = True
+
+                            cell.fill = material_clone
 
             # Build a symmetric universe for the transposed lattices
             if any(pattern_data['transpositions']):
                 sym_universe = new_universe.clone(clone_materials=False,
-                     clone_regions=False)
+                                                  clone_regions=False)
                 for cell_id, sub_cell in sym_universe.cells.items():
                     sub_universe = sub_cell.fill
 
                     try:
                         sub_universe.universes = np.transpose(
                              sub_universe.universes)
-                    except:
+                    except AttributeError:
                         continue
 
             # Rebuild lattice from pattern using rotation and symmetries
@@ -1048,7 +1060,8 @@ class RectLattice(Lattice):
                 j = location[1]
 
                 # Unrotated and untransposed case
-                if (pattern_data['rotations'][index] == 0 and
+                if not rotate_universe_with_neighbors or\
+                     (pattern_data['rotations'][index] == 0 and
                      not pattern_data['transpositions'][index]):
                     self.universes[j][i] = new_universe
 

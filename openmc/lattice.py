@@ -1018,6 +1018,12 @@ class RectLattice(Lattice):
                          pattern[2][0], pattern[2][1], pattern[2][2]]
                     elif strategy == "degenerate":
                         sub_neighbors = []
+
+                    # Revert to regular LNS if neighbor rotations are not
+                    # present in the sub_universe (sub-lattice)
+                    if not rotate_universe_with_neighbors:
+                        sub_neighbors = []
+
                     sub_universe.discretize(strategy,
                                             rotate_universe_with_neighbors,
                                             universes_to_ignore,

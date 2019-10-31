@@ -1012,9 +1012,12 @@ class RectLattice(Lattice):
                 sub_universe = sub_cell.fill
 
                 try:
-                    sub_neighbors = [pattern[0][0], pattern[0][1],
+                    if strategy == "lns":
+                        sub_neighbors = [pattern[0][0], pattern[0][1],
                          pattern[0][2], pattern[1][0], pattern[1][2],
                          pattern[2][0], pattern[2][1], pattern[2][2]]
+                    elif strategy == "degenerate":
+                        sub_neighbors = []
                     sub_universe.discretize(strategy,
                                             rotate_universe_with_neighbors,
                                             universes_to_ignore,
@@ -1041,7 +1044,8 @@ class RectLattice(Lattice):
                             cell.fill = material_clone
 
             # Build a symmetric universe for the transposed lattices
-            if any(pattern_data['transpositions']):
+            if rotate_universe_with_neighbors and\
+                 any(pattern_data['transpositions']):
                 sym_universe = new_universe.clone(clone_materials=False,
                                                   clone_regions=False)
                 for cell_id, sub_cell in sym_universe.cells.items():

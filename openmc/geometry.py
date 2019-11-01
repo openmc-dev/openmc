@@ -87,7 +87,6 @@ class Geometry(object):
 
         """
         # Create XML representation
-
         memo = set()
 
         root_element = ET.Element("geometry")

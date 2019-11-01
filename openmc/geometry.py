@@ -10,6 +10,7 @@ import openmc
 import openmc._xml as xml
 from openmc.checkvalue import check_type
 
+
 class Geometry(object):
     """Geometry representing a collection of surfaces, cells, and universes.
 

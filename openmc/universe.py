@@ -12,6 +12,7 @@ import openmc.checkvalue as cv
 from openmc.plots import _SVG_COLORS
 from openmc.mixin import IDManagerMixin
 
+
 class Universe(IDManagerMixin):
     """A collection of cells that can be repeated.
 
@@ -519,10 +520,10 @@ class Universe(IDManagerMixin):
         xml_element : xml.etree.ElementTree.Element
             XML element to be added to
 
-        memo : dict or None
-            A dictionary containing sets of universe, lattice, cell, and surface
-            id sets already written to the xml_element. This parameter
-            is used internally and should not be specified by the user.
+        memo : set or None
+            A set of object id's representing geometry entities already
+            written to the xml_element. This parameter is used internally
+            and should not be specified by users.
 
         Returns
         -------

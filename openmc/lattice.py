@@ -455,11 +455,11 @@ class Lattice(IDManagerMixin, metaclass=ABCMeta):
 
         Parameters
         ----------
-        clone_materials : boolean
-            Whether to create separates copies of the materials filling cells
+        clone_materials : bool
+            Whether to create separate copies of the materials filling cells
             contained in this lattice and its outer universe. Default is True.
-        clone_regions : boolean
-            Whether to create separates copies of the regions bounding cells
+        clone_regions : bool
+            Whether to create separate copies of the regions bounding cells
             contained in this lattice and its outer universe. Default is True.
         memo : dict or None
             A nested dictionary of previously cloned objects. This parameter
@@ -787,9 +787,9 @@ class RectLattice(Lattice):
 
         Parameters
         ----------
-        strategy : String
+        strategy : str
             Which strategy to adopt when discretizing the lattice
-        rotate_universe_with_neighbors : boolean
+        rotate_universe_with_neighbors : bool
             Whether lattice universes (especially sublattices) with rotated/
             symmetric neighbor patterns should also be rotated/symmetrized.
             Default is False.
@@ -797,12 +797,12 @@ class RectLattice(Lattice):
             Lattice universes that need not be discretized
         materials_to_clone : Iterable of Material
             List of materials that should be cloned when discretizing
-        lattice_neighbors : Iterable of Integral or String
+        lattice_neighbors : Iterable of Integral or str
             List of attributes of the lattice's neighbors. By default, if
             present, the lattice outer universe will be used. The neighbors
             are represented as follows [top left, top, top right, left, right,
             bottom left, bottom, bottom right]
-        attribute : String
+        attribute : str
             Which universe attribute to use when detecting neighbor symmetry
             patterns. Can be the 'id' or the 'name' of the lattice universes
 
@@ -1007,7 +1007,7 @@ class RectLattice(Lattice):
                  clone_materials=False, clone_regions=False)
 
             # Call LNS on the immediate sub lattices of this universe
-            for cell_id, sub_cell in new_universe.cells.items():
+            for sub_cell in new_universe.cells.values():
 
                 sub_universe = sub_cell.fill
 

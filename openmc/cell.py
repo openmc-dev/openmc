@@ -415,12 +415,12 @@ class Cell(IDManagerMixin):
 
         Parameters
         ----------
-        clone_materials : boolean
-            Whether to create separates copies of the materials filling cells
+        clone_materials : bool
+            Whether to create separate copies of the materials filling cells
             contained in this cell, or the material filling this cell.
             Default is True.
-        clone_regions : boolean
-            Whether to create separates copies of the regions bounding cells
+        clone_regions : bool
+            Whether to create separate copies of the regions bounding cells
             contained in this cell, and the region bounding this cell.
             Default is True.
         memo : dict or None

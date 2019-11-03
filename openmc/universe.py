@@ -483,10 +483,10 @@ class Universe(IDManagerMixin):
 
         Parameters
         ----------
-        clone_materials : boolean
+        clone_materials : bool
             Whether to create separates copies of the materials filling cells
             contained in this universe. Default is True.
-        clone_regions : boolean
+        clone_regions : bool
             Whether to create separates copies of the regions bounding cells
             contained in this universe. Default is True.
         memo : dict or None

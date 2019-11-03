@@ -82,7 +82,7 @@ scatter(Particle* p)
   int gin = p->g_last_ - 1;
   int gout = p->g_ - 1;
   int i_mat = p->material_;
-  data::macro_xs[i_mat].sample_scatter(gin, gout, p->mu_, p->wgt_);
+  data::mgInterface.macro_xs[i_mat].sample_scatter(gin, gout, p->mu_, p->wgt_);
 
   // Adjust return value for fortran indexing
   // TODO: Remove when no longer needed
@@ -92,7 +92,7 @@ scatter(Particle* p)
   p->u() = rotate_angle(p->u(), p->mu_, nullptr);
 
   // Update energy value for downstream compatability (in tallying)
-  p->E_ = data::energy_bin_avg[gout];
+  p->E_ = data::mgInterface.energy_bin_avg[gout];
 
   // Set event component
   p->event_ = EVENT_SCATTER;
@@ -148,7 +148,7 @@ create_fission_sites(Particle* p, std::vector<Particle::Bank>& bank)
     // the energy in the fission bank
     int dg;
     int gout;
-    data::macro_xs[p->material_].sample_fission_energy(p->g_ - 1, dg, gout);
+    data::mgInterface.macro_xs[p->material_].sample_fission_energy(p->g_ - 1, dg, gout);
     site.E = gout + 1;
     site.delayed_group = dg + 1;
 

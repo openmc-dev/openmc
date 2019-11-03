@@ -19,29 +19,24 @@
 namespace openmc {
 
 //==============================================================================
-// Global variable definitions
-//==============================================================================
-
-namespace data {
-
-int num_energy_groups;
-int num_delayed_groups;
-std::vector<double> energy_bins;
-std::vector<double> energy_bin_avg;
-std::vector<double> rev_energy_bins;
-
-} // namesapce data
-
-//==============================================================================
 // Mgxs data loading interface methods
 //==============================================================================
 
-void read_mgxs()
+namespace data {
+  MgxsInterface mgInterface;
+}
+
+MgxsInterface::MgxsInterface(const std::string& path_cross_sections)
+{
+  init(path_cross_sections);
+}
+
+void MgxsInterface::init(const std::string& path_cross_sections)
 {
   // Check if MGXS Library exists
-  if (!file_exists(settings::path_cross_sections)) {
+  if (!file_exists(path_cross_sections)) {
     // Could not find MGXS Library file
-    fatal_error("Cross sections HDF5 file '" + settings::path_cross_sections +
+    fatal_error("Cross sections HDF5 file '" + path_cross_sections +
       "' does not exist.");
   }
 
@@ -53,7 +48,7 @@ void read_mgxs()
   get_temperatures(nuc_temps, dummy);
 
   // Open file for reading
-  hid_t file_id = file_open(settings::path_cross_sections, 'r');
+  hid_t file_id = file_open(path_cross_sections, 'r');
 
   // Read filetype
   std::string type;
@@ -92,7 +87,7 @@ void read_mgxs()
         already_read.insert(name);
       }
 
-      if (data::nuclides_MG[i_nuc].fissionable) {
+      if (nuclides_MG[i_nuc].fissionable) {
         mat->fissionable_ = true;
       }
     }
@@ -104,7 +99,7 @@ void read_mgxs()
 //==============================================================================
 
 void
-add_mgxs(hid_t file_id, const std::string& name,
+MgxsInterface::add_mgxs(hid_t file_id, const std::string& name,
   const std::vector<double>& temperature)
 {
   write_message("Loading " + std::string(name) + " data...", 6);
@@ -118,13 +113,14 @@ add_mgxs(hid_t file_id, const std::string& name,
                 + "provided MGXS Library");
   }
 
-  data::nuclides_MG.emplace_back(xs_grp, temperature);
+  nuclides_MG.emplace_back(xs_grp, temperature, num_energy_groups,
+      num_delayed_groups);
   close_group(xs_grp);
 }
 
 //==============================================================================
 
-void create_macro_xs()
+void MgxsInterface::create_macro_xs()
 {
   // Get temperatures to read for each material
   auto kTs = get_mat_kTs();
@@ -144,20 +140,21 @@ void create_macro_xs()
       // material
       std::vector<Mgxs*> mgxs_ptr;
       for (int i_nuclide : mat->nuclide_) {
-        mgxs_ptr.push_back(&data::nuclides_MG[i_nuclide]);
+        mgxs_ptr.push_back(&nuclides_MG[i_nuclide]);
       }
 
-      data::macro_xs.emplace_back(mat->name_, kTs[i], mgxs_ptr, atom_densities);
+      macro_xs.emplace_back(mat->name_, kTs[i], mgxs_ptr, atom_densities,
+          num_energy_groups, num_delayed_groups);
     } else {
       // Preserve the ordering of materials by including a blank entry
-      data::macro_xs.emplace_back();
+      macro_xs.emplace_back();
     }
   }
 }
 
 //==============================================================================
 
-std::vector<std::vector<double>> get_mat_kTs()
+std::vector<std::vector<double>> MgxsInterface::get_mat_kTs()
 {
   std::vector<std::vector<double>> kTs(model::materials.size());
 
@@ -186,7 +183,7 @@ std::vector<std::vector<double>> get_mat_kTs()
 
 //==============================================================================
 
-void read_mg_cross_sections_header()
+void MgxsInterface::read_mg_cross_sections_header()
 {
   // Check if MGXS Library exists
   if (!file_exists(settings::path_cross_sections)) {
@@ -200,24 +197,25 @@ void read_mg_cross_sections_header()
   hid_t file_id = file_open(settings::path_cross_sections, 'r', true);
 
   ensure_exists(file_id, "energy_groups", true);
-  read_attribute(file_id, "energy_groups", data::num_energy_groups);
+  read_attribute(file_id, "energy_groups", num_energy_groups);
 
   if (attribute_exists(file_id, "delayed_groups")) {
-    read_attribute(file_id, "delayed_groups", data::num_delayed_groups);
+    read_attribute(file_id, "delayed_groups", num_delayed_groups);
   } else {
-    data::num_delayed_groups = 0;
+    num_delayed_groups = 0;
   }
 
   ensure_exists(file_id, "group structure", true);
-  read_attribute(file_id, "group structure", data::rev_energy_bins);
+  read_attribute(file_id, "group structure", rev_energy_bins);
 
   // Reverse energy bins
-  std::copy(data::rev_energy_bins.crbegin(), data::rev_energy_bins.crend(),
-    std::back_inserter(data::energy_bins));
+  std::copy(rev_energy_bins.crbegin(), rev_energy_bins.crend(),
+    std::back_inserter(data::mgInterface.energy_bins));
 
   // Create average energies
-  for (int i = 0; i < data::energy_bins.size() - 1; ++i) {
-    data::energy_bin_avg.push_back(0.5*(data::energy_bins[i] + data::energy_bins[i+1]));
+  for (int i = 0; i < data::mgInterface.energy_bins.size() - 1; ++i) {
+    data::mgInterface.energy_bin_avg.push_back(0.5*
+    (data::mgInterface.energy_bins[i] + data::mgInterface.energy_bins[i+1]));
   }
 
   // Add entries into libraries for MG data
@@ -236,8 +234,8 @@ void read_mg_cross_sections_header()
 
   // Get the minimum and maximum energies
   int neutron = static_cast<int>(Particle::Type::neutron);
-  data::energy_min[neutron] = data::energy_bins.back();
-  data::energy_max[neutron] = data::energy_bins.front();
+  data::energy_min[neutron] = data::mgInterface.energy_bins.back();
+  data::energy_max[neutron] = data::mgInterface.energy_bins.front();
 
   // Close MGXS HDF5 file
   file_close(file_id);
@@ -251,7 +249,7 @@ void
 calculate_xs_c(int i_mat, int gin, double sqrtkT, Direction u,
      double& total_xs, double& abs_xs, double& nu_fiss_xs)
 {
-  data::macro_xs[i_mat].calculate_xs(gin - 1, sqrtkT, u, total_xs, abs_xs,
+  data::mgInterface.macro_xs[i_mat].calculate_xs(gin - 1, sqrtkT, u, total_xs, abs_xs,
        nu_fiss_xs);
 }
 
@@ -269,7 +267,7 @@ get_nuclide_xs(int index, int xstype, int gin, const int* gout,
   } else {
     gout_c_p = gout;
   }
-  return data::nuclides_MG[index].get_xs(xstype, gin - 1, gout_c_p, mu, dg);
+  return data::mgInterface.nuclides_MG[index].get_xs(xstype, gin - 1, gout_c_p, mu, dg);
 }
 
 //==============================================================================
@@ -286,7 +284,7 @@ get_macro_xs(int index, int xstype, int gin, const int* gout,
   } else {
     gout_c_p = gout;
   }
-  return data::macro_xs[index].get_xs(xstype, gin - 1, gout_c_p, mu, dg);
+  return data::mgInterface.macro_xs[index].get_xs(xstype, gin - 1, gout_c_p, mu, dg);
 }
 
 //==============================================================================
@@ -301,7 +299,7 @@ get_name_c(int index, int name_len, char* name)
   std::strcpy(name, str.c_str());
 
   // Now get the data and copy to the C-string
-  str = data::nuclides_MG[index - 1].name;
+  str = data::mgInterface.nuclides_MG[index - 1].name;
   std::strcpy(name, str.c_str());
 
   // Finally, remove the null terminator
@@ -313,7 +311,7 @@ get_name_c(int index, int name_len, char* name)
 double
 get_awr_c(int index)
 {
-  return data::nuclides_MG[index - 1].awr;
+  return data::mgInterface.nuclides_MG[index - 1].awr;
 }
 
 } // namespace openmc

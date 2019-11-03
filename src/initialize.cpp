@@ -260,8 +260,8 @@ void read_input_xml()
       read_ce_cross_sections(nuc_temps, thermal_temps);
     } else {
       // Create material macroscopic data for MGXS
-      read_mgxs();
-      create_macro_xs();
+      data::mgInterface.init(settings::path_cross_sections);
+      data::mgInterface.create_macro_xs();
     }
     simulation::time_read_xs.stop();
   }

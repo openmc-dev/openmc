@@ -12,36 +12,41 @@
 namespace openmc {
 
 //==============================================================================
-// Global variables
+// Global MGXS data container structure
 //==============================================================================
+
+struct MgxsInterface
+{
+  int num_energy_groups;
+  int num_delayed_groups;
+
+  std::vector<Mgxs> nuclides_MG;
+  std::vector<Mgxs> macro_xs;
+
+  std::vector<double> energy_bins;
+  std::vector<double> energy_bin_avg;
+  std::vector<double> rev_energy_bins;
+
+  MgxsInterface() = default;
+
+  // Construct from path to cross sections file
+  MgxsInterface(const std::string& path_cross_sections);
+
+  void init(const std::string& path_cross_sections);
+
+  void add_mgxs(hid_t file_id, const std::string& name,
+         const std::vector<double>& temperature);
+
+  void create_macro_xs();
+
+  std::vector<std::vector<double>> get_mat_kTs();
+
+  void read_mg_cross_sections_header();
+};
 
 namespace data {
-
-extern std::vector<Mgxs> nuclides_MG;
-extern std::vector<Mgxs> macro_xs;
-extern int num_energy_groups;
-extern int num_delayed_groups;
-extern std::vector<double> energy_bins;
-extern std::vector<double> energy_bin_avg;
-extern std::vector<double> rev_energy_bins;
-
-} // namespace data
-
-//==============================================================================
-// Mgxs data loading interface methods
-//==============================================================================
-
-void read_mgxs();
-
-void
-add_mgxs(hid_t file_id, const std::string& name,
-     const std::vector<double>& temperature);
-
-void create_macro_xs();
-
-std::vector<std::vector<double>> get_mat_kTs();
-
-void read_mg_cross_sections_header();
+  extern MgxsInterface mgInterface;
+}
 
 //==============================================================================
 // Mgxs tracking/transport/tallying interface methods

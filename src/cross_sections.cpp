@@ -155,7 +155,7 @@ void read_cross_sections_xml()
   if (settings::run_CE) {
     read_ce_cross_sections_xml();
   } else {
-    read_mg_cross_sections_header();
+    data::mgInterface.read_mg_cross_sections_header();
   }
 
   // Establish mapping between (type, material) and index in libraries

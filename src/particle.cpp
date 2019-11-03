@@ -123,7 +123,7 @@ Particle::from_source(const Bank* src)
   } else {
     g_ = static_cast<int>(src->E);
     g_last_ = static_cast<int>(src->E);
-    E_ = data::energy_bin_avg[g_ - 1];
+    E_ = data::mgInterface.energy_bin_avg[g_ - 1];
   }
   E_last_ = E_;
 }

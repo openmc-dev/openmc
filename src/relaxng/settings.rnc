@@ -75,7 +75,11 @@ element settings {
             attribute parameters { list { xsd:double+ } })? &
           element x { distribution }? &
           element y { distribution }? &
-          element z { distribution }?
+          element z { distribution }? &
+          element r { distribution }? &
+          element theta { distribution }? &
+          element phi { distribution }? & 
+          element origin { list { xsd:double, xsd:double, xsd:double } }? 
         }? &
         element angle {
           (element type { xsd:string } | attribute type { xsd:string }) &

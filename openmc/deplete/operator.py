@@ -82,6 +82,7 @@ class Operator(TransportOperator):
         in the previous results.
     diff_burnable_mats : bool, optional
         Whether to differentiate burnable materials with multiple instances.
+        Volumes are divided equally from the original material volume.
         Default: False.
     energy_mode : {"energy-deposition", "fission-q"}
         Indicator for computing system energy. ``"energy-deposition"`` will

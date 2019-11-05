@@ -457,10 +457,10 @@ class Lattice(IDManagerMixin, metaclass=ABCMeta):
         ----------
         clone_materials : bool
             Whether to create separate copies of the materials filling cells
-            contained in this lattice and its outer universe. Default is True.
+            contained in this lattice and its outer universe.
         clone_regions : bool
             Whether to create separate copies of the regions bounding cells
-            contained in this lattice and its outer universe. Default is True.
+            contained in this lattice and its outer universe.
         memo : dict or None
             A nested dictionary of previously cloned objects. This parameter
             is used internally and should not be specified by the user.
@@ -792,7 +792,6 @@ class RectLattice(Lattice):
         rotate_universe_with_neighbors : bool
             Whether lattice universes (especially sublattices) with rotated/
             symmetric neighbor patterns should also be rotated/symmetrized.
-            Default is False.
         universes_to_ignore : Iterable of Universe
             Lattice universes that need not be discretized
         materials_to_clone : Iterable of Material
@@ -809,9 +808,9 @@ class RectLattice(Lattice):
         """
 
         # Check routine inputs
-        if self.ndim == 3:
+        if self.ndim != 2:
             raise NotImplementedError("LNS discretization is not implemented "
-                                      "for 3D lattices")
+                                      "for 1D and 3D lattices")
 
         cv.check_value('strategy', strategy, ('degenerate', 'lns'))
         cv.check_type('rotate_universe_with_neighbors',
@@ -846,6 +845,86 @@ class RectLattice(Lattice):
         # it was rotated and/or symmetrized
         patterns = {}
 
+        # Define an auxiliary function that returns a universe's neighbors
+        # that are outside the lattice
+        def find_edge_neighbors(i, j):
+
+            # Left edge
+            if i == 0:
+                pattern[:, 0] = lattice_neighbors[3]
+                if j == 0:
+                    pattern[0, 0] = lattice_neighbors[0]
+                elif j == self.shape[1] - 1:
+                    pattern[2, 0] = lattice_neighbors[5]
+
+            # Bottom edge
+            if j == 0:
+                pattern[0, 1] = lattice_neighbors[1]
+                if i != 0:
+                    pattern[0, 0] = lattice_neighbors[1]
+                if i != self.shape[0] - 1:
+                    pattern[0, 2] = lattice_neighbors[1]
+
+            # Right edge
+            if i == self.shape[0] - 1:
+                pattern[:, 2] = lattice_neighbors[4]
+                if j == 0:
+                    pattern[0, 2] = lattice_neighbors[2]
+                elif j == self.shape[1] - 1:
+                    pattern[2, 2] = lattice_neighbors[7]
+
+            # Top edge
+            if j == self.shape[1] - 1:
+                pattern[2, 1] = lattice_neighbors[6]
+                if i != 0:
+                    pattern[2, 0] = lattice_neighbors[6]
+                if i != self.shape[0] - 1:
+                    pattern[2, 2] = lattice_neighbors[6]
+
+        # Define an auxiliary function that returns a universe's neighbors
+        # among the universes inside the lattice
+        def find_lattice_neighbors(i, j):
+
+            # Away from left edge
+            if i != 0:
+                if j > 0:
+                    pattern[0, 0] = getattr(self.universes[j-1][i-1],
+                                            attribute)
+                pattern[1, 0] = getattr(self.universes[j][i-1], attribute)
+                if j < self.shape[1] - 1:
+                    pattern[2, 0] = getattr(self.universes[j+1][i-1],
+                                            attribute)
+
+            # Away from bottom edge
+            if j != 0:
+                if i > 0:
+                    pattern[0, 0] = getattr(self.universes[j-1][i-1],
+                                            attribute)
+                pattern[0, 1] = getattr(self.universes[j-1][i], attribute)
+                if i < self.shape[0] - 1:
+                    pattern[0, 2] = getattr(self.universes[j-1][i+1],
+                                            attribute)
+
+            # Away from right edge
+            if i != self.shape[0] - 1:
+                if j > 0:
+                    pattern[0, 2] = getattr(self.universes[j-1][i+1],
+                                            attribute)
+                pattern[1, 2] = getattr(self.universes[j][i+1], attribute)
+                if j < self.shape[1] - 1:
+                    pattern[2, 2] = getattr(self.universes[j+1][i+1],
+                                            attribute)
+
+            # Away from top edge
+            if j != self.shape[1] - 1:
+                if i > 0:
+                    pattern[2, 0] = getattr(self.universes[j+1][i-1],
+                                            attribute)
+                pattern[2, 1] = getattr(self.universes[j+1][i], attribute)
+                if i < self.shape[0] - 1:
+                    pattern[2, 2] = getattr(self.universes[j+1][i+1],
+                                            attribute)
+
         # Analyze lattice, find unique patterns, ignoring rotations and symmetries
         for j in range(self.shape[1]):
             for i in range(self.shape[0]):
@@ -863,81 +942,19 @@ class RectLattice(Lattice):
                         warning.warn("Universe name is larger than 100 "
                              "characters, which may hinder neighbor search.")
 
-                pattern[1, 1] = getattr(self.universes[j][i], attribute)
-
                 # Create a neighborhood pattern based on the universe's
                 # neighbors in the grid, and lattice's neighbors at the edges
-                if i == 0:
-                    if len(lattice_neighbors) > 0:
-                        pattern[:, 0] = lattice_neighbors[3]
-                        if j == 0:
-                            pattern[0, 0] = lattice_neighbors[0]
-                        elif j == self.shape[1] - 1:
-                            pattern[2, 0] = lattice_neighbors[5]
-                    else:
-                        pattern[:, 0] = dummy_neighbor
-                else:
-                    if j > 0:
-                        pattern[0, 0] = getattr(self.universes[j-1][i-1],
-                                                attribute)
-                    pattern[1, 0] = getattr(self.universes[j][i-1], attribute)
-                    if j < self.shape[1] - 1:
-                        pattern[2, 0] = getattr(self.universes[j+1][i-1],
-                                                attribute)
 
-                if j == 0:
-                    if len(lattice_neighbors) > 0:
-                        pattern[0, 1] = lattice_neighbors[1]
-                        if i != 0:
-                            pattern[0, 0] = lattice_neighbors[1]
-                        if i != self.shape[0] - 1:
-                            pattern[0, 2] = lattice_neighbors[1]
-                    else:
-                        pattern[0, :] = dummy_neighbor
+                # Find neighbors among lattice's neighbors at the edges
+                if len(lattice_neighbors) > 0:
+                    find_edge_neighbors(i, j)
                 else:
-                    if i > 0:
-                        pattern[0, 0] = getattr(self.universes[j-1][i-1],
-                                                attribute)
-                    pattern[0, 1] = getattr(self.universes[j-1][i], attribute)
-                    if i < self.shape[0] - 1:
-                        pattern[0, 2] = getattr(self.universes[j-1][i+1],
-                                                attribute)
+                    pattern[:, :] = dummy_neighbor
 
-                if i == self.shape[0] - 1:
-                    if len(lattice_neighbors) > 0:
-                        pattern[:, 2] = lattice_neighbors[4]
-                        if j == 0:
-                            pattern[0, 2] = lattice_neighbors[2]
-                        elif j == self.shape[1] - 1:
-                            pattern[2, 2] = lattice_neighbors[7]
-                    else:
-                        pattern[:, 2] = dummy_neighbor
-                else:
-                    if j > 0:
-                        pattern[0, 2] = getattr(self.universes[j-1][i+1],
-                                                attribute)
-                    pattern[1, 2] = getattr(self.universes[j][i+1], attribute)
-                    if j < self.shape[1] - 1:
-                        pattern[2, 2] = getattr(self.universes[j+1][i+1],
-                                                attribute)
+                # Find neighbors among the lattice's universes
+                find_lattice_neighbors(i, j)
 
-                if j == self.shape[1] - 1:
-                    if len(lattice_neighbors) > 0:
-                        pattern[2, 1] = lattice_neighbors[6]
-                        if i != 0:
-                            pattern[2, 0] = lattice_neighbors[6]
-                        if i != self.shape[0] - 1:
-                            pattern[2, 2] = lattice_neighbors[6]
-                    else:
-                        pattern[2, :] = dummy_neighbor
-                else:
-                    if i > 0:
-                        pattern[2, 0] = getattr(self.universes[j+1][i-1],
-                                                attribute)
-                    pattern[2, 1] = getattr(self.universes[j+1][i], attribute)
-                    if i < self.shape[0] - 1:
-                        pattern[2, 2] = getattr(self.universes[j+1][i+1],
-                                                attribute)
+                pattern[1, 1] = getattr(self.universes[j][i], attribute)
 
                 # Look for pattern in dictionary of patterns found
                 found = False

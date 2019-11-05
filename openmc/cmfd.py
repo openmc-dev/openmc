@@ -295,6 +295,8 @@ class CMFDRun(object):
         Time for building CMFD matrices, in seconds
     time_cmfdsolve : float
         Time for solving CMFD matrix equations, in seconds
+    use_all_threads : bool
+        Whether to use all threads allocated to OpenMC for CMFD solver
     intracomm : mpi4py.MPI.Intracomm or None
         MPI intercommunicator for running MPI commands
 
@@ -328,7 +330,7 @@ class CMFDRun(object):
         self._window_type = 'none'
         self._window_size = 10
         self._intracomm = None
-        self._n_threads = 1
+        self._use_all_threads = False
 
         # External variables used during runtime but users cannot control
         self._set_reference_params = False
@@ -494,8 +496,8 @@ class CMFDRun(object):
         return self._indices
 
     @property
-    def n_threads(self):
-        return self._n_threads
+    def use_all_threads(self):
+        return self._use_all_threads
 
     @property
     def cmfd_src(self):
@@ -683,11 +685,10 @@ class CMFDRun(object):
         check_length('Gauss-Seidel tolerance', gauss_seidel_tolerance, 2)
         self._gauss_seidel_tolerance = gauss_seidel_tolerance
 
-    @n_threads.setter
-    def n_threads(self, n_threads):
-        check_type('CMFD number of threads', n_threads, Integral)
-        check_greater_than('CMFD number of threads', n_threads, 0)
-        self._n_threads = n_threads
+    @use_all_threads.setter
+    def use_all_threads(self, use_all_threads):
+        check_type('CMFD use all threads', use_all_threads, bool)
+        self._use_all_threads = use_all_threads
 
     def run(self, **kwargs):
         """Run OpenMC with coarse mesh finite difference acceleration
@@ -704,8 +705,7 @@ class CMFDRun(object):
         """
         with self.run_in_memory(**kwargs):
             for _ in self.iter_batches():
-                print('done')
-                #pass
+                pass
 
     @contextmanager
     def run_in_memory(self, **kwargs):
@@ -800,7 +800,6 @@ class CMFDRun(object):
 
         # Run next batch
         status = openmc.capi.next_batch()
-        print('2')
 
         # Perform CMFD calculations
         self._execute_cmfd()
@@ -918,7 +917,7 @@ class CMFDRun(object):
 
         args = temp_loss.indptr, len(temp_loss.indptr), \
             temp_loss.indices, len(temp_loss.indices), n, \
-            self._spectral, self._indices, coremap, self._n_threads
+            self._spectral, self._indices, coremap, self._use_all_threads
         return openmc.capi._dll.openmc_initialize_linsolver(*args)
 
     def _write_cmfd_output(self):

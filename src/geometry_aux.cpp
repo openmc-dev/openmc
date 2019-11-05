@@ -18,6 +18,7 @@
 #include "openmc/settings.h"
 #include "openmc/surface.h"
 #include "openmc/tallies/filter.h"
+#include "openmc/tallies/filter_cell_instance.h"
 #include "openmc/tallies/filter_distribcell.h"
 
 
@@ -319,12 +320,19 @@ find_root_universe()
 void
 prepare_distribcell()
 {
-  // Find all cells listed in a DistribcellFilter.
+  // Find all cells listed in a DistribcellFilter or CellInstanceFilter
   std::unordered_set<int32_t> distribcells;
   for (auto& filt : model::tally_filters) {
     auto* distrib_filt = dynamic_cast<DistribcellFilter*>(filt.get());
     if (distrib_filt) {
       distribcells.insert(distrib_filt->cell());
+    }
+
+    auto* ci_filt = dynamic_cast<CellInstanceFilter*>(filt.get());
+    if (ci_filt) {
+      for (const auto& i : ci_filt->cell_instances()) {
+        distribcells.insert(i.index_cell);
+      }
     }
   }
 

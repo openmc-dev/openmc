@@ -142,7 +142,7 @@ def test_cmfd_feed():
     harness.main()
 
 def test_cmfd_multithread():
-    """Test 1 group CMFD solver with CMFD feedback"""
+    """Test 1 group CMFD solver with all available threads"""
     # Initialize and set CMFD mesh
     cmfd_mesh = cmfd.CMFDMesh()
     cmfd_mesh.lower_left = (-10.0, -1.0, -1.0)

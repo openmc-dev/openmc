@@ -309,7 +309,12 @@ class Operator(TransportOperator):
             # Assign distribmats to cells
             for cell in self.geometry.get_all_material_cells().values():
                 if cell.fill in distribmats and cell.num_instances > 1:
-                    cell.fill = [cell.fill.clone()
+                    mat = cell.fill
+                    if mat.volume is None:
+                        raise RuntimeError("Volume not specified for depletable "
+                                           "material with ID={}.".format(mat.id))
+                    mat.volume /= mat.num_instances
+                    cell.fill = [mat.clone()
                                  for i in range(cell.num_instances)]
 
     def _get_burnable_mats(self):

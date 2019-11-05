@@ -12,8 +12,6 @@ import pytest
 
 from tests import cdtemp
 
-_ENDF_DATA = Path(os.environ['OPENMC_ENDF_DATA'])
-
 _TEST_CHAIN = """\
 <depletion_chain>
   <nuclide name="A" half_life="23652.0" decay_modes="2" decay_energy="0.0" reactions="1">
@@ -67,9 +65,10 @@ def test_len():
 
 def test_from_endf():
     """Test depletion chain building from ENDF files"""
-    decay_data = (_ENDF_DATA / 'decay').glob('*.endf')
-    fpy_data = (_ENDF_DATA / 'nfy').glob('*.endf')
-    neutron_data = (_ENDF_DATA / 'neutrons').glob('*.endf')
+    endf_data = Path(os.environ['OPENMC_ENDF_DATA'])
+    decay_data = (endf_data / 'decay').glob('*.endf')
+    fpy_data = (endf_data / 'nfy').glob('*.endf')
+    neutron_data = (endf_data / 'neutrons').glob('*.endf')
     chain = Chain.from_endf(decay_data, fpy_data, neutron_data)
 
     assert len(chain) == len(chain.nuclides) == len(chain.nuclide_dict) == 3820
@@ -385,13 +384,13 @@ def test_set_alpha_branches():
 def test_simple_fission_yields(simple_chain):
     """Check the default fission yields that can be used to form the matrix
     """
-    fission_yields = simple_chain.get_thermal_fission_yields()
+    fission_yields = simple_chain.get_default_fission_yields()
     assert fission_yields == {"C": {"A": 0.0292737, "B": 0.002566345}}
 
 
 def test_fission_yield_attribute(simple_chain):
     """Test the fission_yields property"""
-    thermal_yields = simple_chain.get_thermal_fission_yields()
+    thermal_yields = simple_chain.get_default_fission_yields()
     # generate default with property
     assert simple_chain.fission_yields[0] == thermal_yields
     empty_chain = Chain()

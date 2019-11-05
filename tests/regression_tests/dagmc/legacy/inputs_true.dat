@@ -1,6 +1,6 @@
 <?xml version='1.0' encoding='utf-8'?>
 <materials>
-  <material depletable="true" id="40" name="fuel">
+  <material depletable="true" id="40" name="no-void fuel">
     <density units="g/cc" value="11" />
     <nuclide ao="1.0" name="U235" />
   </material>

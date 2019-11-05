@@ -261,7 +261,13 @@ The following tables show all valid scores:
     |                      |produced by NJOY's HEATR module while for photons, |
     |                      |this is tallied from either direct photon energy   |
     |                      |deposition (analog estimator) or pre-generated     |
-    |                      |photon heating number.                             |
+    |                      |photon heating number. See :ref:`methods_heating`  |
+    +----------------------+---------------------------------------------------+
+    |heating-local         |Total nuclear heating in units of eV per source    |
+    |                      |particle assuming energy from secondary photons is |
+    |                      |deposited locally. Note that this score should only|
+    |                      |be used for incident neutrons. See                 |
+    |                      |:ref:`methods_heating`.                            |
     +----------------------+---------------------------------------------------+
     |kappa-fission         |The recoverable energy production rate due to      |
     |                      |fission. The recoverable energy is defined as the  |

@@ -5,6 +5,7 @@ to run a full depletion simulation.
 """
 
 from collections import namedtuple
+from collections import defaultdict
 from collections.abc import Iterable
 import os
 from pathlib import Path
@@ -17,11 +18,18 @@ from numpy import nonzero, empty, asarray
 from uncertainties import ufloat
 
 from openmc.data import DataLibrary, JOULE_PER_EV
-from openmc.capi import MaterialFilter, Tally
+from openmc.lib import MaterialFilter, Tally
 from openmc.checkvalue import check_type, check_greater_than
 from .results import Results
 from .chain import Chain
 from .results_list import ResultsList
+
+
+__all__ = [
+    "OperatorResult", "TransportOperator", "ReactionRateHelper",
+    "EnergyHelper", "FissionYieldHelper", "TalliedFissionYieldHelper",
+    "Integrator", "SIIntegrator", "DepSystemSolver"]
+
 
 OperatorResult = namedtuple('OperatorResult', ['k', 'rates'])
 OperatorResult.__doc__ = """\
@@ -376,14 +384,17 @@ class FissionYieldHelper(ABC):
 
     Attributes
     ----------
-    constant_yields : dict of str to :class:`openmc.deplete.FissionYield`
+    constant_yields : collections.defaultdict
         Fission yields for all nuclides that only have one set of
-        fission yield data. Can be accessed as ``{parent: {product: yield}}``
+        fission yield data. Dictionary of form ``{str: {str: float}}``
+        representing yields for ``{parent: {product: yield}}``. Default
+        return object is an empty dictionary
+
     """
 
     def __init__(self, chain_nuclides):
         self._chain_nuclides = {}
-        self._constant_yields = {}
+        self._constant_yields = defaultdict(dict)
 
         # Get all nuclides with fission yield data
         for nuc in chain_nuclides:
@@ -407,14 +418,16 @@ class FissionYieldHelper(ABC):
         Parameters
         ----------
         local_mat_index : int
-            Index for material tracked on this process that
-            exists in :attr:`local_mat_index` and fits within
-            the first axis in :attr:`results`
+            Index for the material with requested fission yields.
+            Should correspond to the material represented in
+            ``mat_indexes[local_mat_index]`` during
+            :meth:`generate_tallies`.
 
         Returns
         -------
-        library : dict
-            Dictionary of ``{parent: {product: fyield}}``
+        library : collections.abc.Mapping
+            Dictionary-like object mapping ``{str: {str: float}``.
+            This reflects fission yields for ``{parent: {product: fyield}}``.
         """
 
     @staticmethod
@@ -438,7 +451,7 @@ class FissionYieldHelper(ABC):
         Parameters
         ----------
         materials : iterable of C-API materials
-            Materials to be used in :class:`openmc.capi.MaterialFilter`
+            Materials to be used in :class:`openmc.lib.MaterialFilter`
         mat_indexes : iterable of int
             Indices of tallied materials that will have their fission
             yields computed by this helper. Necessary as the
@@ -520,8 +533,8 @@ class TalliedFissionYieldHelper(FissionYieldHelper):
 
         Parameters
         ----------
-        materials : iterable of :class:`openmc.capi.Material`
-            Materials to be used in :class:`openmc.capi.MaterialFilter`
+        materials : iterable of :class:`openmc.lib.Material`
+            Materials to be used in :class:`openmc.lib.MaterialFilter`
         mat_indexes : iterable of int
             Indices of tallied materials that will have their fission
             yields computed by this helper. Necessary as the
@@ -533,6 +546,7 @@ class TalliedFissionYieldHelper(FissionYieldHelper):
 
         # Tally group-wise fission reaction rates
         self._fission_rate_tally = Tally()
+        self._fission_rate_tally.writable = False
         self._fission_rate_tally.scores = ['fission']
 
         self._fission_rate_tally.filters = [MaterialFilter(materials)]
@@ -842,3 +856,40 @@ class SIIntegrator(Integrator):
             Results.save(self.operator, [conc], [res_list[-1]], [t, t],
                          p, self._i_res + len(self), proc_time)
             self.operator.write_bos_data(self._i_res + len(self))
+
+
+class DepSystemSolver(ABC):
+    r"""Abstract class for solving depletion equations
+
+    Responsible for solving
+
+    .. math::
+
+        \frac{\partial \vec{N}}{\partial t} = \bar{A}\vec{N}(t),
+
+    for :math:`0< t\leq t +\Delta t`, given :math:`\vec{N}(0) = \vec{N}_0`
+
+    """
+
+    @abstractmethod
+    def __call__(self, A, n0, dt):
+        """Solve the linear system of equations for depletion
+
+        Parameters
+        ----------
+        A : scipy.sparse.csr_matrix
+            Sparse transmutation matrix ``A[j, i]`` desribing rates at
+            which isotope ``i`` transmutes to isotope ``j``
+        n0 : numpy.ndarray
+            Initial compositions, typically given in number of atoms in some
+            material or an atom density
+        dt : float
+            Time [s] of the specific interval to be solved
+
+        Returns
+        -------
+        numpy.ndarray
+            Final compositions after ``dt``. Should be of identical shape
+            to ``n0``.
+
+        """

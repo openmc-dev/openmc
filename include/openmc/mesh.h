@@ -33,9 +33,10 @@ extern std::unordered_map<int32_t, int32_t> mesh_map;
 class Mesh
 {
 public:
-  // Constructors
+  // Constructors and destructor
   Mesh() = default;
   Mesh(pugi::xml_node node);
+  virtual ~Mesh() = default;
 
   // Methods
 

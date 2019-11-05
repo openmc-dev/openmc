@@ -45,6 +45,8 @@ class VolumeCalculation(object):
         Lower-left coordinates of bounding box used to sample points
     upper_right : Iterable of float
         Upper-right coordinates of bounding box used to sample points
+    threshold : float
+        Threshold for the maximum standard deviation of volume in the calculation
     atoms : dict
         Dictionary mapping unique IDs of domains to a mapping of nuclides to
         total number of atoms for each nuclide present in the domain. For
@@ -54,12 +56,20 @@ class VolumeCalculation(object):
         in each domain specified.
     volumes : dict
         Dictionary mapping unique IDs of domains to estimated volumes in cm^3.
+    threshold : float
+        Threshold for the maxmimum standard deviation of volumes.
+    trigger_type : {'variance', 'std_dev', 'rel_err'}
+        Value type used to halt volume calculation
+    iterations : int
+        Number of iterations over samples (for calculations with a trigger).
 
     """
-    def __init__(self, domains, samples, lower_left=None,
-                 upper_right=None):
+    def __init__(self, domains, samples, lower_left=None, upper_right=None):
         self._atoms = {}
         self._volumes = {}
+        self._threshold = None
+        self._trigger_type = None
+        self._iterations = None
 
         cv.check_type('domains', domains, Iterable,
                       (openmc.Cell, openmc.Material, openmc.Universe))
@@ -124,6 +134,18 @@ class VolumeCalculation(object):
         return self._upper_right
 
     @property
+    def threshold(self):
+        return self._threshold
+
+    @property
+    def trigger_type(self):
+        return self._trigger_type
+
+    @property
+    def iterations(self):
+        return self._iterations
+
+    @property
     def domain_type(self):
         return self._domain_type
 
@@ -170,6 +192,26 @@ class VolumeCalculation(object):
         cv.check_length(name, upper_right, 3)
         self._upper_right = upper_right
 
+    @threshold.setter
+    def threshold(self, threshold):
+        name = 'volume std. dev. threshold'
+        cv.check_type(name, threshold, Real)
+        cv.check_greater_than(name, threshold, 0.0)
+        self._threshold = threshold
+
+    @trigger_type.setter
+    def trigger_type(self, trigger_type):
+        cv.check_value('tally trigger type', trigger_type,
+                       ('variance', 'std_dev', 'rel_err'))
+        self._trigger_type = trigger_type
+
+    @iterations.setter
+    def iterations(self, iterations):
+        name = 'volume calculation iterations'
+        cv.check_type(name, iterations, Integral)
+        cv.check_greater_than(name, iterations, 0)
+        self._iterations = iterations
+
     @volumes.setter
     def volumes(self, volumes):
         cv.check_type('volumes', volumes, Mapping)
@@ -179,6 +221,19 @@ class VolumeCalculation(object):
     def atoms(self, atoms):
         cv.check_type('atoms', atoms, Mapping)
         self._atoms = atoms
+
+    def set_trigger(self, threshold, trigger_type):
+        """Set a trigger on the voulme calculation
+
+        Parameters
+        ----------
+        threshold : float
+            Threshold for the maxmimum standard deviation of volumes
+        trigger_type : {'variance', 'std_dev', 'rel_err'}
+            Value type used to halt volume calculation
+        """
+        self.trigger_type = trigger_type
+        self.threshold = threshold
 
     @classmethod
     def from_hdf5(cls, filename):
@@ -203,6 +258,10 @@ class VolumeCalculation(object):
             lower_left = f.attrs['lower_left']
             upper_right = f.attrs['upper_right']
 
+            threshold = f.attrs.get('threshold')
+            trigger_type = f.attrs.get('trigger_type')
+            iterations = f.attrs.get('iterations', 1)
+
             volumes = {}
             atoms = {}
             ids = []
@@ -212,13 +271,12 @@ class VolumeCalculation(object):
                     ids.append(domain_id)
                     group = f[obj_name]
                     volume = ufloat(*group['volume'][()])
+                    volumes[domain_id] = volume
                     nucnames = group['nuclides'][()]
                     atoms_ = group['atoms'][()]
-
                     atom_dict = OrderedDict()
                     for name_i, atoms_i in zip(nucnames, atoms_):
                         atom_dict[name_i.decode()] = ufloat(*atoms_i)
-                    volumes[domain_id] = volume
                     atoms[domain_id] = atom_dict
 
         # Instantiate some throw-away domains that are used by the constructor
@@ -234,6 +292,11 @@ class VolumeCalculation(object):
 
         # Instantiate the class and assign results
         vol = cls(domains, samples, lower_left, upper_right)
+
+        if trigger_type is not None:
+            vol.set_trigger(threshold, trigger_type.decode())
+
+        vol.iterations = iterations
         vol.volumes = volumes
         vol.atoms = atoms
         return vol
@@ -278,4 +341,8 @@ class VolumeCalculation(object):
         ll_elem.text = ' '.join(str(x) for x in self.lower_left)
         ur_elem = ET.SubElement(element, "upper_right")
         ur_elem.text = ' '.join(str(x) for x in self.upper_right)
+        if self.threshold:
+            trigger_elem = ET.SubElement(element, "threshold")
+            trigger_elem.set("type", self.trigger_type)
+            trigger_elem.set("threshold", str(self.threshold))
         return element

@@ -58,7 +58,8 @@ Coupling and Multi-physics
 --------------------------
 
 - Miriam A. Kreher, Benoit Forget, and Kord Smith, "Single-Batch Monte Carlo
-  Multiphysics Coupling," *Proc. M&C*, Portland, Oregon, Aug. 25-29 (2019).
+  Multiphysics Coupling," *Proc. M&C*, 1789-1797, Portland, Oregon, Aug. 25-29
+  (2019).
 
 - Ze-Long Zhao, Yongwei Yang, and Shuang Hong, "`Application of FLUKA and OpenMC
   in coupled physics calculation of target and subcritical reactor for ADS
@@ -118,7 +119,7 @@ Geometry and Visualization
 
 - Sterling Harper, Paul Romano, Benoit Forget, and Kord Smith, "Efficient
   dynamic threadsafe neighbor lists for Monte Carlo ray tracing," *Proc. M&C*,
-  Portland, Oregon, Aug. 25-29 (2019).
+  918-926, Portland, Oregon, Aug. 25-29 (2019).
 
 - Jin-Yang Li, Long Gu, Hu-Shan Xu, Nadezha Korepanova, Rui Yu, Yan-Lei Zhu, and
   Chang-Ping Qin, "`CAD modeling study on FLUKA and OpenMC for accelerator
@@ -140,6 +141,10 @@ Geometry and Visualization
 -------------
 Miscellaneous
 -------------
+
+- Shikhar Kumar, Benoit Forget, and Kord Smith, "Analysis of fission source
+  convergence for a 3-D SMR core using functional expansion tallies," *Proc.
+  M&C*, 937-947, Portland, Oregon, Aug. 25-29 (2019).
 
 - Faisal Qayyum, Muhammad R. Ali, Awais Zahur, and R. Khan, "`Improvements in
   methodology to determine feedback reactivity coefficients
@@ -361,7 +366,7 @@ Nuclear Data
 - Jonathan A. Walsh, Benoit Forget, Kord S. Smith, and Forrest B. Brown,
   "`Uncertainty in Fast Reactor-Relevant Critical Benchmark Simulations Due to
   Unresolved Resonance Structure
-  <https://www.kns.org/paper_file/paper/MC2017_2017_3/P197S03-09WalshJ.pdf>`_,"
+  <https://www.kns.org/files/int_paper/paper/MC2017_2017_3/P197S03-09WalshJ.pdf>`_,"
   *Proc. Int. Conf. Mathematics & Computational Methods Applied to Nuclear
   Science and Engineering*, Jeju, Korea, Apr. 16-20, 2017.
 
@@ -404,7 +409,7 @@ Parallelism
 
 - Paul K. Romano and Andrew R. Siegel, "`Limits on the efficiency of event-based
   algorithms for Monte Carlo neutron transport
-  <https://www.kns.org/paper_file/paper/MC2017_2017_2/P099S02-02RomanoP.pdf>`_,"
+  <https://www.kns.org/files/int_paper/paper/MC2017_2017_2/P099S02-02RomanoP.pdf>`_,"
   *Proc. Int. Conf. Mathematics & Computational Methods Applied to Nuclear
   Science and Engineering*, Jeju, Korea, Apr. 16-20, 2017.
 
@@ -496,7 +501,7 @@ Depletion
 
 - Jose L. Salcedo-Perez, Benoit Forget, Kord Smith, and Paul Romano, "Hybrid
   tallies to improve performance in depletion Monte Carlo simulations," *Proc.
-  M&C*, Aug. 25-29 (2019).
+  M&C*, 927-936, Portland, Oregon, Aug. 25-29 (2019).
 
 - Zhao-Qing Liu, Ze-Long Zhao, Yong-Wei Yang, Yu-Cui Gao, Hai-Yan Meng, and
   Qing-Yu Gao, "`Development and validation of depletion code system IMPC-Burnup
@@ -525,6 +530,10 @@ Depletion
 --------------------
 Sensitivity Analysis
 --------------------
+
+- Abdulla Alhajri and Benoit Forget, "Eigenvalue Sensitivity in Monte Carlo
+  Simulations to Nuclear Data Parameters using the Multipole Formalism," *Proc.
+  M&C*, 1895-1906, Portland, Oregon, Aug. 25-29 (2019).
 
 - Xingjie Peng, Jingang Liang, Benoit Forget, and Kord Smith, "`Calculation of
   adjoint-weighted reactor kinetics parameters in OpenMC

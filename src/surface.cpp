@@ -11,6 +11,8 @@
 #include "openmc/settings.h"
 #include "openmc/string_utils.h"
 #include "openmc/xml_interface.h"
+#include "openmc/random_lcg.h"
+#include "openmc/math_functions.h"
 
 namespace openmc {
 
@@ -22,7 +24,7 @@ extern "C" const int BC_TRANSMIT {0};
 extern "C" const int BC_VACUUM {1};
 extern "C" const int BC_REFLECT {2};
 extern "C" const int BC_PERIODIC {3};
-
+extern "C" const int BC_WHITE {4};
 //==============================================================================
 // Global variables
 //==============================================================================
@@ -147,6 +149,8 @@ Surface::Surface(pugi::xml_node surf_node)
     } else if (surf_bc == "reflective" || surf_bc == "reflect"
                || surf_bc == "reflecting") {
       bc_ = BC_REFLECT;
+    } else if (surf_bc == "white") {
+      bc_ = BC_WHITE;
     } else if (surf_bc == "periodic") {
       bc_ = BC_PERIODIC;
     } else {
@@ -192,6 +196,27 @@ Surface::reflect(Position r, Direction u) const
   return u -= (2.0 * projection / magnitude) * n;
 }
 
+Direction
+Surface::diffuse_reflect(Position r, Direction u) const
+{
+  // Diffuse reflect direction according to the normal.
+  // cosine distribution 
+  
+  Direction n = this->normal(r);
+  n /= n.norm();
+  const double projection = n.dot(u);
+  
+  // sample from inverse function, u=sqrt(rand) since p(u)=2u, so F(u)=u^2 
+  const double mu = (projection>=0.0) ? 
+                  -std::sqrt(prn()) : std::sqrt(prn());  
+  
+  // sample azimuthal distribution uniformly 
+  u = rotate_angle(n, mu, nullptr);
+  
+  // normalize the direction 
+  return u/u.norm();    
+}
+
 CSGSurface::CSGSurface() : Surface{} {};
 CSGSurface::CSGSurface(pugi::xml_node surf_node) : Surface{surf_node} {};
 
@@ -212,6 +237,9 @@ CSGSurface::to_hdf5(hid_t group_id) const
       break;
     case BC_REFLECT :
       write_string(surf_group, "boundary_type", "reflective", false);
+      break;
+    case BC_WHITE :
+      write_string(surf_group, "boundary_type", "white", false);
       break;
     case BC_PERIODIC :
       write_string(surf_group, "boundary_type", "periodic", false);

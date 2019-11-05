@@ -11,7 +11,7 @@ from numpy.ctypeslib import as_array
 from openmc.exceptions import AllocationError
 from . import _dll
 from .error import _error_handler
-import openmc.capi
+import openmc.lib
 
 
 class _Bank(Structure):
@@ -127,7 +127,7 @@ def find_cell(xyz):
 
     Returns
     -------
-    openmc.capi.Cell
+    openmc.lib.Cell
         Cell containing the point
     int
         If the cell at the given point is repeated in the geometry, this
@@ -137,7 +137,7 @@ def find_cell(xyz):
     index = c_int32()
     instance = c_int32()
     _dll.openmc_find_cell((c_double*3)(*xyz), index, instance)
-    return openmc.capi.Cell(index=index.value), instance.value
+    return openmc.lib.Cell(index=index.value), instance.value
 
 
 def find_material(xyz):
@@ -150,7 +150,7 @@ def find_material(xyz):
 
     Returns
     -------
-    openmc.capi.Material or None
+    openmc.lib.Material or None
         Material containing the point, or None is no material is found
 
     """
@@ -158,8 +158,8 @@ def find_material(xyz):
     instance = c_int32()
     _dll.openmc_find_cell((c_double*3)(*xyz), index, instance)
 
-    mats = openmc.capi.Cell(index=index.value).fill
-    if isinstance(mats, (openmc.capi.Material, type(None))):
+    mats = openmc.lib.Cell(index=index.value).fill
+    if isinstance(mats, (openmc.lib.Material, type(None))):
         return mats
     else:
         return mats[instance.value]
@@ -225,21 +225,21 @@ def iter_batches():
 
     This function returns a generator-iterator that allows Python code to be run
     between batches in an OpenMC simulation. It should be used in conjunction
-    with :func:`openmc.capi.simulation_init` and
-    :func:`openmc.capi.simulation_finalize`. For example:
+    with :func:`openmc.lib.simulation_init` and
+    :func:`openmc.lib.simulation_finalize`. For example:
 
     .. code-block:: Python
 
-        with openmc.capi.run_in_memory():
-            openmc.capi.simulation_init()
-            for _ in openmc.capi.iter_batches():
+        with openmc.lib.run_in_memory():
+            openmc.lib.simulation_init()
+            for _ in openmc.lib.iter_batches():
                 # Look at convergence of tallies, for example
                 ...
-            openmc.capi.simulation_finalize()
+            openmc.lib.simulation_finalize()
 
     See Also
     --------
-    openmc.capi.next_batch
+    openmc.lib.next_batch
 
     """
     while True:
@@ -365,11 +365,11 @@ def run_in_memory(**kwargs):
     block, all memory that was allocated during the block is freed. For
     example::
 
-        with openmc.capi.run_in_memory():
+        with openmc.lib.run_in_memory():
             for i in range(n_iters):
-                openmc.capi.reset()
+                openmc.lib.reset()
                 do_stuff()
-                openmc.capi.run()
+                openmc.lib.run()
 
     Parameters
     ----------

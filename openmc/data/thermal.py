@@ -33,10 +33,12 @@ _THERMAL_NAMES = {
     'c_Be': ('be', 'be-metal', 'be-met', 'be00'),
     'c_BeO': ('beo',),
     'c_Be_in_BeO': ('bebeo', 'be-beo', 'be-o', 'be/o', 'bbeo00'),
+    'c_Be_in_Be2C': ('bebe2c',),
     'c_C6H6': ('benz', 'c6h6'),
     'c_C_in_SiC': ('csic', 'c-sic'),
     'c_Ca_in_CaH2': ('cah', 'cah00'),
     'c_D_in_D2O': ('dd2o', 'd-d2o', 'hwtr', 'hw', 'dhw00'),
+    'c_D_in_D2O_ice': ('dice',),
     'c_Fe56': ('fe', 'fe56', 'fe-56'),
     'c_Graphite': ('graph', 'grph', 'gr', 'gr00'),
     'c_Graphite_10p': ('grph10',),
@@ -45,6 +47,7 @@ _THERMAL_NAMES = {
     'c_H_in_CH2': ('hch2', 'poly', 'pol', 'h-poly', 'pol00'),
     'c_H_in_CH4_liquid': ('lch4', 'lmeth'),
     'c_H_in_CH4_solid': ('sch4', 'smeth'),
+    'c_H_in_CH4_solid_phase_II': ('sch4p2',),
     'c_H_in_H2O': ('hh2o', 'h-h2o', 'lwtr', 'lw', 'lw00'),
     'c_H_in_H2O_solid': ('hice', 'h-ice', 'ice00'),
     'c_H_in_C5O2H8': ('lucite', 'c5o2h8', 'h-luci'),
@@ -600,6 +603,8 @@ class ThermalScattering(EqualityMixin):
 
         # Get new name that is GND-consistent
         ace_name, xs = ace.name.split('.')
+        if not xs.endswith('t'):
+            raise TypeError("{} is not a thermal scattering ACE table.".format(ace))
         name = get_thermal_name(ace_name)
 
         # Assign temperature to the running list

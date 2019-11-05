@@ -5,7 +5,7 @@ import numpy as np
 import pytest
 import openmc
 import openmc.exceptions as exc
-import openmc.capi
+import openmc.lib
 
 from tests import cdtemp
 
@@ -50,68 +50,68 @@ def pincell_model():
 
 
 @pytest.fixture(scope='module')
-def capi_init(pincell_model, mpi_intracomm):
-    openmc.capi.init(intracomm=mpi_intracomm)
+def lib_init(pincell_model, mpi_intracomm):
+    openmc.lib.init(intracomm=mpi_intracomm)
     yield
-    openmc.capi.finalize()
+    openmc.lib.finalize()
 
 
 @pytest.fixture(scope='module')
-def capi_simulation_init(capi_init):
-    openmc.capi.simulation_init()
+def lib_simulation_init(lib_init):
+    openmc.lib.simulation_init()
     yield
 
 
 @pytest.fixture(scope='module')
-def capi_run(capi_simulation_init):
-    openmc.capi.run()
+def lib_run(lib_simulation_init):
+    openmc.lib.run()
 
 
-def test_cell_mapping(capi_init):
-    cells = openmc.capi.cells
+def test_cell_mapping(lib_init):
+    cells = openmc.lib.cells
     assert isinstance(cells, Mapping)
     assert len(cells) == 3
     for cell_id, cell in cells.items():
-        assert isinstance(cell, openmc.capi.Cell)
+        assert isinstance(cell, openmc.lib.Cell)
         assert cell_id == cell.id
 
 
-def test_cell(capi_init):
-    cell = openmc.capi.cells[1]
-    assert isinstance(cell.fill, openmc.capi.Material)
-    cell.fill = openmc.capi.materials[1]
+def test_cell(lib_init):
+    cell = openmc.lib.cells[1]
+    assert isinstance(cell.fill, openmc.lib.Material)
+    cell.fill = openmc.lib.materials[1]
     assert str(cell) == 'Cell[0]'
     assert cell.name == "Fuel"
     cell.name = "Not fuel"
     assert cell.name == "Not fuel"
 
-def test_cell_temperature(capi_init):
-    cell = openmc.capi.cells[1]
+def test_cell_temperature(lib_init):
+    cell = openmc.lib.cells[1]
     cell.set_temperature(100.0, 0)
     assert cell.get_temperature(0) == 100.0
     cell.set_temperature(200)
     assert cell.get_temperature() == 200.0
 
 
-def test_new_cell(capi_init):
+def test_new_cell(lib_init):
     with pytest.raises(exc.AllocationError):
-        openmc.capi.Cell(1)
-    new_cell = openmc.capi.Cell()
-    new_cell_with_id = openmc.capi.Cell(10)
-    assert len(openmc.capi.cells) == 5
+        openmc.lib.Cell(1)
+    new_cell = openmc.lib.Cell()
+    new_cell_with_id = openmc.lib.Cell(10)
+    assert len(openmc.lib.cells) == 5
 
 
-def test_material_mapping(capi_init):
-    mats = openmc.capi.materials
+def test_material_mapping(lib_init):
+    mats = openmc.lib.materials
     assert isinstance(mats, Mapping)
     assert len(mats) == 3
     for mat_id, mat in mats.items():
-        assert isinstance(mat, openmc.capi.Material)
+        assert isinstance(mat, openmc.lib.Material)
         assert mat_id == mat.id
 
 
-def test_material(capi_init):
-    m = openmc.capi.materials[3]
+def test_material(lib_init):
+    m = openmc.lib.materials[3]
     assert m.nuclides == ['H1', 'O16', 'B10', 'B11']
 
     old_dens = m.densities
@@ -136,32 +136,32 @@ def test_material(capi_init):
     m.name = "Not hot borated water"
     assert m.name == "Not hot borated water"
 
-def test_material_add_nuclide(capi_init):
-    m = openmc.capi.materials[3]
+def test_material_add_nuclide(lib_init):
+    m = openmc.lib.materials[3]
     m.add_nuclide('Xe135', 1e-12)
     assert m.nuclides[-1] == 'Xe135'
     assert m.densities[-1] == 1e-12
 
 
-def test_new_material(capi_init):
+def test_new_material(lib_init):
     with pytest.raises(exc.AllocationError):
-        openmc.capi.Material(1)
-    new_mat = openmc.capi.Material()
-    new_mat_with_id = openmc.capi.Material(10)
-    assert len(openmc.capi.materials) == 5
+        openmc.lib.Material(1)
+    new_mat = openmc.lib.Material()
+    new_mat_with_id = openmc.lib.Material(10)
+    assert len(openmc.lib.materials) == 5
 
 
-def test_nuclide_mapping(capi_init):
-    nucs = openmc.capi.nuclides
+def test_nuclide_mapping(lib_init):
+    nucs = openmc.lib.nuclides
     assert isinstance(nucs, Mapping)
     assert len(nucs) == 13
     for name, nuc in nucs.items():
-        assert isinstance(nuc, openmc.capi.Nuclide)
+        assert isinstance(nuc, openmc.lib.Nuclide)
         assert name == nuc.name
 
 
-def test_settings(capi_init):
-    settings = openmc.capi.settings
+def test_settings(lib_init):
+    settings = openmc.lib.settings
     assert settings.batches == 10
     settings.batches = 10
     assert settings.inactive == 5
@@ -175,36 +175,36 @@ def test_settings(capi_init):
     settings.run_mode = 'eigenvalue'
 
 
-def test_tally_mapping(capi_init):
-    tallies = openmc.capi.tallies
+def test_tally_mapping(lib_init):
+    tallies = openmc.lib.tallies
     assert isinstance(tallies, Mapping)
     assert len(tallies) == 3
     for tally_id, tally in tallies.items():
-        assert isinstance(tally, openmc.capi.Tally)
+        assert isinstance(tally, openmc.lib.Tally)
         assert tally_id == tally.id
 
 
-def test_energy_function_filter(capi_init):
+def test_energy_function_filter(lib_init):
     """Test special __new__ and __init__ for EnergyFunctionFilter"""
-    efunc = openmc.capi.EnergyFunctionFilter([0.0, 1.0], [0.0, 2.0])
+    efunc = openmc.lib.EnergyFunctionFilter([0.0, 1.0], [0.0, 2.0])
     assert len(efunc.energy) == 2
     assert (efunc.energy == [0.0, 1.0]).all()
     assert len(efunc.y) == 2
     assert (efunc.y == [0.0, 2.0]).all()
 
 
-def test_tally(capi_init):
-    t = openmc.capi.tallies[1]
+def test_tally(lib_init):
+    t = openmc.lib.tallies[1]
     assert t.type == 'volume'
     assert len(t.filters) == 2
-    assert isinstance(t.filters[0], openmc.capi.MaterialFilter)
-    assert isinstance(t.filters[1], openmc.capi.EnergyFilter)
+    assert isinstance(t.filters[0], openmc.lib.MaterialFilter)
+    assert isinstance(t.filters[1], openmc.lib.EnergyFilter)
 
     # Create new filter and replace existing
     with pytest.raises(exc.AllocationError):
-        openmc.capi.MaterialFilter(uid=1)
-    mats = openmc.capi.materials
-    f = openmc.capi.MaterialFilter([mats[2], mats[1]])
+        openmc.lib.MaterialFilter(uid=1)
+    mats = openmc.lib.materials
+    f = openmc.lib.MaterialFilter([mats[2], mats[1]])
     assert f.bins[0] == mats[2]
     assert f.bins[1] == mats[1]
     t.filters = [f]
@@ -221,17 +221,17 @@ def test_tally(capi_init):
     t.scores = new_scores
     assert t.scores == new_scores
 
-    t2 = openmc.capi.tallies[2]
+    t2 = openmc.lib.tallies[2]
     assert len(t2.filters) == 2
-    assert isinstance(t2.filters[0], openmc.capi.ZernikeFilter)
-    assert isinstance(t2.filters[1], openmc.capi.CellFilter)
+    assert isinstance(t2.filters[0], openmc.lib.ZernikeFilter)
+    assert isinstance(t2.filters[1], openmc.lib.CellFilter)
     assert len(t2.filters[1].bins) == 3
     assert t2.filters[0].order == 5
 
-    t3 = openmc.capi.tallies[3]
+    t3 = openmc.lib.tallies[3]
     assert len(t3.filters) == 1
     t3_f = t3.filters[0]
-    assert isinstance(t3_f, openmc.capi.EnergyFunctionFilter)
+    assert isinstance(t3_f, openmc.lib.EnergyFunctionFilter)
     assert len(t3_f.energy) == 2
     assert len(t3_f.y) == 2
     t3_f.set_data([0.0, 1.0, 2.0], [0.0, 1.0, 4.0])
@@ -239,146 +239,155 @@ def test_tally(capi_init):
     assert len(t3_f.y) == 3
 
 
-def test_new_tally(capi_init):
+def test_new_tally(lib_init):
     with pytest.raises(exc.AllocationError):
-        openmc.capi.Material(1)
-    new_tally = openmc.capi.Tally()
+        openmc.lib.Material(1)
+    new_tally = openmc.lib.Tally()
     new_tally.scores = ['flux']
-    new_tally_with_id = openmc.capi.Tally(10)
+    new_tally_with_id = openmc.lib.Tally(10)
     new_tally_with_id.scores = ['flux']
-    assert len(openmc.capi.tallies) == 5
+    assert len(openmc.lib.tallies) == 5
 
 
-def test_tally_activate(capi_simulation_init):
-    t = openmc.capi.tallies[1]
+def test_tally_activate(lib_simulation_init):
+    t = openmc.lib.tallies[1]
     assert not t.active
     t.active = True
     assert t.active
 
 
-def test_tally_results(capi_run):
-    t = openmc.capi.tallies[1]
-    assert t.num_realizations == 10  # t was made active in test_tally
+def test_tally_writable(lib_simulation_init):
+    t = openmc.lib.tallies[1]
+    assert t.writable
+    t.writable = False
+    assert not t.writable
+    # Revert tally to writable state for lib_run fixtures
+    t.writable = True
+
+
+def test_tally_results(lib_run):
+    t = openmc.lib.tallies[1]
+    assert t.num_realizations == 10  # t was made active in test_tally_active
     assert np.all(t.mean >= 0)
     nonzero = (t.mean > 0.0)
     assert np.all(t.std_dev[nonzero] >= 0)
     assert np.all(t.ci_width()[nonzero] >= 1.95*t.std_dev[nonzero])
 
-    t2 = openmc.capi.tallies[2]
+    t2 = openmc.lib.tallies[2]
     n = 5
     assert t2.mean.size == (n + 1) * (n + 2) // 2 * 3 # Number of Zernike coeffs * 3 cells
 
 
-def test_global_tallies(capi_run):
-    assert openmc.capi.num_realizations() == 5
-    gt = openmc.capi.global_tallies()
+def test_global_tallies(lib_run):
+    assert openmc.lib.num_realizations() == 5
+    gt = openmc.lib.global_tallies()
     for mean, std_dev in gt:
         assert mean >= 0
 
 
-def test_statepoint(capi_run):
-    openmc.capi.statepoint_write('test_sp.h5')
+def test_statepoint(lib_run):
+    openmc.lib.statepoint_write('test_sp.h5')
     assert os.path.exists('test_sp.h5')
 
 
-def test_source_bank(capi_run):
-    source = openmc.capi.source_bank()
+def test_source_bank(lib_run):
+    source = openmc.lib.source_bank()
     assert np.all(source['E'] > 0.0)
     assert np.all(source['wgt'] == 1.0)
     assert np.allclose(np.linalg.norm(source['u'], axis=1), 1.0)
 
 
-def test_by_batch(capi_run):
-    openmc.capi.hard_reset()
+def test_by_batch(lib_run):
+    openmc.lib.hard_reset()
 
     # Running next batch before simulation is initialized should raise an
     # exception
     with pytest.raises(exc.AllocationError):
-        openmc.capi.next_batch()
+        openmc.lib.next_batch()
 
-    openmc.capi.simulation_init()
+    openmc.lib.simulation_init()
     try:
-        for _ in openmc.capi.iter_batches():
+        for _ in openmc.lib.iter_batches():
             # Make sure we can get k-effective during inactive/active batches
-            mean, std_dev = openmc.capi.keff()
+            mean, std_dev = openmc.lib.keff()
             assert 0.0 < mean < 2.5
             assert std_dev > 0.0
-        assert openmc.capi.num_realizations() == 5
+        assert openmc.lib.num_realizations() == 5
 
         for i in range(3):
-            openmc.capi.next_batch()
-        assert openmc.capi.num_realizations() == 8
+            openmc.lib.next_batch()
+        assert openmc.lib.num_realizations() == 8
 
     finally:
-        openmc.capi.simulation_finalize()
+        openmc.lib.simulation_finalize()
 
 
-def test_reset(capi_run):
+def test_reset(lib_run):
     # Init and run 10 batches.
-    openmc.capi.hard_reset()
-    openmc.capi.simulation_init()
+    openmc.lib.hard_reset()
+    openmc.lib.simulation_init()
     try:
         for i in range(10):
-            openmc.capi.next_batch()
+            openmc.lib.next_batch()
 
         # Make sure there are 5 realizations for the 5 active batches.
-        assert openmc.capi.num_realizations() == 5
-        assert openmc.capi.tallies[2].num_realizations == 5
-        _, keff_sd1 = openmc.capi.keff()
-        tally_sd1 = openmc.capi.tallies[2].std_dev[0]
+        assert openmc.lib.num_realizations() == 5
+        assert openmc.lib.tallies[2].num_realizations == 5
+        _, keff_sd1 = openmc.lib.keff()
+        tally_sd1 = openmc.lib.tallies[2].std_dev[0]
 
         # Reset and run 3 more batches.  Check the number of realizations.
-        openmc.capi.reset()
+        openmc.lib.reset()
         for i in range(3):
-            openmc.capi.next_batch()
-        assert openmc.capi.num_realizations() == 3
-        assert openmc.capi.tallies[2].num_realizations == 3
+            openmc.lib.next_batch()
+        assert openmc.lib.num_realizations() == 3
+        assert openmc.lib.tallies[2].num_realizations == 3
 
         # Check the tally std devs to make sure results were cleared.
-        _, keff_sd2 = openmc.capi.keff()
-        tally_sd2 = openmc.capi.tallies[2].std_dev[0]
+        _, keff_sd2 = openmc.lib.keff()
+        tally_sd2 = openmc.lib.tallies[2].std_dev[0]
         assert keff_sd2 > keff_sd1
         assert tally_sd2 > tally_sd1
 
     finally:
-        openmc.capi.simulation_finalize()
+        openmc.lib.simulation_finalize()
 
 
-def test_reproduce_keff(capi_init):
+def test_reproduce_keff(lib_init):
     # Get k-effective after run
-    openmc.capi.hard_reset()
-    openmc.capi.run()
-    keff0 = openmc.capi.keff()
+    openmc.lib.hard_reset()
+    openmc.lib.run()
+    keff0 = openmc.lib.keff()
 
     # Reset, run again, and get k-effective again. they should match
-    openmc.capi.hard_reset()
-    openmc.capi.run()
-    keff1 = openmc.capi.keff()
+    openmc.lib.hard_reset()
+    openmc.lib.run()
+    keff1 = openmc.lib.keff()
     assert keff0 == pytest.approx(keff1)
 
 
-def test_find_cell(capi_init):
-    cell, instance = openmc.capi.find_cell((0., 0., 0.))
-    assert cell is openmc.capi.cells[1]
-    cell, instance = openmc.capi.find_cell((0.4, 0., 0.))
-    assert cell is openmc.capi.cells[2]
+def test_find_cell(lib_init):
+    cell, instance = openmc.lib.find_cell((0., 0., 0.))
+    assert cell is openmc.lib.cells[1]
+    cell, instance = openmc.lib.find_cell((0.4, 0., 0.))
+    assert cell is openmc.lib.cells[2]
     with pytest.raises(exc.GeometryError):
-        openmc.capi.find_cell((100., 100., 100.))
+        openmc.lib.find_cell((100., 100., 100.))
 
 
-def test_find_material(capi_init):
-    mat = openmc.capi.find_material((0., 0., 0.))
-    assert mat is openmc.capi.materials[1]
-    mat = openmc.capi.find_material((0.4, 0., 0.))
-    assert mat is openmc.capi.materials[2]
+def test_find_material(lib_init):
+    mat = openmc.lib.find_material((0., 0., 0.))
+    assert mat is openmc.lib.materials[1]
+    mat = openmc.lib.find_material((0.4, 0., 0.))
+    assert mat is openmc.lib.materials[2]
 
 
-def test_mesh(capi_init):
-    mesh = openmc.capi.RegularMesh()
+def test_mesh(lib_init):
+    mesh = openmc.lib.RegularMesh()
     mesh.dimension = (2, 3, 4)
     assert mesh.dimension == (2, 3, 4)
     with pytest.raises(exc.AllocationError):
-        mesh2 = openmc.capi.RegularMesh(mesh.id)
+        mesh2 = openmc.lib.RegularMesh(mesh.id)
 
     # Make sure each combination of parameters works
     ll = (0., 0., 0.)
@@ -394,70 +403,70 @@ def test_mesh(capi_init):
     assert mesh.upper_right == pytest.approx(ur)
     assert mesh.width == pytest.approx(width)
 
-    meshes = openmc.capi.meshes
+    meshes = openmc.lib.meshes
     assert isinstance(meshes, Mapping)
     assert len(meshes) == 1
     for mesh_id, mesh in meshes.items():
-        assert isinstance(mesh, openmc.capi.RegularMesh)
+        assert isinstance(mesh, openmc.lib.RegularMesh)
         assert mesh_id == mesh.id
 
-    mf = openmc.capi.MeshFilter(mesh)
+    mf = openmc.lib.MeshFilter(mesh)
     assert mf.mesh == mesh
 
-    msf = openmc.capi.MeshSurfaceFilter(mesh)
+    msf = openmc.lib.MeshSurfaceFilter(mesh)
     assert msf.mesh == mesh
 
 
-def test_restart(capi_init, mpi_intracomm):
+def test_restart(lib_init, mpi_intracomm):
     # Finalize and re-init to make internal state consistent with XML.
-    openmc.capi.hard_reset()
-    openmc.capi.finalize()
-    openmc.capi.init(intracomm=mpi_intracomm)
-    openmc.capi.simulation_init()
+    openmc.lib.hard_reset()
+    openmc.lib.finalize()
+    openmc.lib.init(intracomm=mpi_intracomm)
+    openmc.lib.simulation_init()
 
     # Run for 7 batches then write a statepoint.
     for i in range(7):
-        openmc.capi.next_batch()
-    openmc.capi.statepoint_write('restart_test.h5', True)
+        openmc.lib.next_batch()
+    openmc.lib.statepoint_write('restart_test.h5', True)
 
     # Run 3 more batches and copy the keff.
     for i in range(3):
-        openmc.capi.next_batch()
-    keff0 = openmc.capi.keff()
+        openmc.lib.next_batch()
+    keff0 = openmc.lib.keff()
 
     # Restart the simulation from the statepoint and the 3 remaining active batches.
-    openmc.capi.simulation_finalize()
-    openmc.capi.hard_reset()
-    openmc.capi.finalize()
-    openmc.capi.init(args=('-r', 'restart_test.h5'))
-    openmc.capi.simulation_init()
+    openmc.lib.simulation_finalize()
+    openmc.lib.hard_reset()
+    openmc.lib.finalize()
+    openmc.lib.init(args=('-r', 'restart_test.h5'))
+    openmc.lib.simulation_init()
     for i in range(3):
-        openmc.capi.next_batch()
-    keff1 = openmc.capi.keff()
-    openmc.capi.simulation_finalize()
+        openmc.lib.next_batch()
+    keff1 = openmc.lib.keff()
+    openmc.lib.simulation_finalize()
 
     # Compare the keff values.
     assert keff0 == pytest.approx(keff1)
 
 
-def test_load_nuclide(capi_init):
+def test_load_nuclide(lib_init):
     # load multiple nuclides
-    openmc.capi.load_nuclide('H3')
-    assert 'H3' in openmc.capi.nuclides
-    openmc.capi.load_nuclide('Pu239')
-    assert 'Pu239' in openmc.capi.nuclides
+    openmc.lib.load_nuclide('H3')
+    assert 'H3' in openmc.lib.nuclides
+    openmc.lib.load_nuclide('Pu239')
+    assert 'Pu239' in openmc.lib.nuclides
     # load non-existent nuclide
     with pytest.raises(exc.DataError):
-        openmc.capi.load_nuclide('Pu3')
+        openmc.lib.load_nuclide('Pu3')
 
 
-def test_id_map(capi_init):
+def test_id_map(lib_init):
     expected_ids = np.array([[(3, 3), (2, 2), (3, 3)],
                              [(2, 2), (1, 1), (2, 2)],
                              [(3, 3), (2, 2), (3, 3)]], dtype='int32')
 
     # create a plot object
-    s = openmc.capi.plot._PlotBase()
+    s = openmc.lib.plot._PlotBase()
     s.width = 1.26
     s.height = 1.26
     s.v_res = 3
@@ -466,17 +475,17 @@ def test_id_map(capi_init):
     s.basis = 'xy'
     s.level = -1
 
-    ids = openmc.capi.plot.id_map(s)
+    ids = openmc.lib.plot.id_map(s)
     assert np.array_equal(expected_ids, ids)
 
-def test_property_map(capi_init):
+def test_property_map(lib_init):
     expected_properties = np.array(
         [[(293.6, 0.740582), (293.6, 6.55), (293.6, 0.740582)],
          [ (293.6, 6.55), (293.6, 10.29769),  (293.6, 6.55)],
          [(293.6, 0.740582), (293.6, 6.55), (293.6, 0.740582)]], dtype='float')
 
     # create a plot object
-    s = openmc.capi.plot._PlotBase()
+    s = openmc.lib.plot._PlotBase()
     s.width = 1.26
     s.height = 1.26
     s.v_res = 3
@@ -485,13 +494,13 @@ def test_property_map(capi_init):
     s.basis = 'xy'
     s.level = -1
 
-    properties = openmc.capi.plot.property_map(s)
+    properties = openmc.lib.plot.property_map(s)
     assert np.allclose(expected_properties, properties, atol=1e-04)
 
 
-def test_position(capi_init):
+def test_position(lib_init):
 
-    pos = openmc.capi.plot._Position(1.0, 2.0, 3.0)
+    pos = openmc.lib.plot._Position(1.0, 2.0, 3.0)
 
     assert tuple(pos) == (1.0, 2.0, 3.0)
 
@@ -502,11 +511,11 @@ def test_position(capi_init):
     assert tuple(pos) == (1.3, 2.3, 3.3)
 
 
-def test_global_bounding_box(capi_init):
+def test_global_bounding_box(lib_init):
     expected_llc = (-0.63, -0.63, -np.inf)
     expected_urc = (0.63, 0.63, np.inf)
 
-    llc, urc = openmc.capi.global_bounding_box()
+    llc, urc = openmc.lib.global_bounding_box()
 
     assert tuple(llc) == expected_llc
     assert tuple(urc) == expected_urc

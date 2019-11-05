@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-
 from collections.abc import Mapping, Callable
 import os
 
@@ -8,9 +6,9 @@ import pandas as pd
 import pytest
 import openmc.data
 
+from . import needs_njoy
 
 _TEMPERATURES = [300., 600., 900.]
-_ENDF_DATA = os.environ['OPENMC_ENDF_DATA']
 
 
 @pytest.fixture(scope='module')
@@ -24,14 +22,16 @@ def pu239():
 @pytest.fixture(scope='module')
 def xe135():
     """Xe135 ENDF data (contains SLBW resonance range)"""
-    filename = os.path.join(_ENDF_DATA, 'neutrons', 'n-054_Xe_135.endf')
+    endf_data = os.environ['OPENMC_ENDF_DATA']
+    filename = os.path.join(endf_data, 'neutrons', 'n-054_Xe_135.endf')
     return openmc.data.IncidentNeutron.from_endf(filename)
 
 
 @pytest.fixture(scope='module')
 def sm150():
     """Sm150 ENDF data (contains MLBW resonance range)"""
-    filename = os.path.join(_ENDF_DATA, 'neutrons', 'n-062_Sm_150.endf')
+    endf_data = os.environ['OPENMC_ENDF_DATA']
+    filename = os.path.join(endf_data, 'neutrons', 'n-062_Sm_150.endf')
     return openmc.data.IncidentNeutron.from_endf(filename)
 
 
@@ -39,69 +39,79 @@ def sm150():
 def gd154():
     """Gd154 ENDF data (contains Reich Moore resonance range and reosnance
     covariance with LCOMP=1)."""
-    filename = os.path.join(_ENDF_DATA, 'neutrons', 'n-064_Gd_154.endf')
+    endf_data = os.environ['OPENMC_ENDF_DATA']
+    filename = os.path.join(endf_data, 'neutrons', 'n-064_Gd_154.endf')
     return openmc.data.IncidentNeutron.from_endf(filename, covariance=True)
 
 
 @pytest.fixture(scope='module')
 def cl35():
     """Cl35 ENDF data (contains RML resonance range)"""
-    filename = os.path.join(_ENDF_DATA, 'neutrons', 'n-017_Cl_035.endf')
+    endf_data = os.environ['OPENMC_ENDF_DATA']
+    filename = os.path.join(endf_data, 'neutrons', 'n-017_Cl_035.endf')
     return openmc.data.IncidentNeutron.from_endf(filename)
 
 
 @pytest.fixture(scope='module')
 def am241():
     """Am241 ENDF data (contains Madland-Nix fission energy distribution)."""
-    filename = os.path.join(_ENDF_DATA, 'neutrons', 'n-095_Am_241.endf')
+    endf_data = os.environ['OPENMC_ENDF_DATA']
+    filename = os.path.join(endf_data, 'neutrons', 'n-095_Am_241.endf')
     return openmc.data.IncidentNeutron.from_endf(filename)
 
 
 @pytest.fixture(scope='module')
 def u233():
     """U233 ENDF data (contains Watt fission energy distribution)."""
-    filename = os.path.join(_ENDF_DATA, 'neutrons', 'n-092_U_233.endf')
+    endf_data = os.environ['OPENMC_ENDF_DATA']
+    filename = os.path.join(endf_data, 'neutrons', 'n-092_U_233.endf')
     return openmc.data.IncidentNeutron.from_endf(filename)
 
 
 @pytest.fixture(scope='module')
 def u236():
     """U236 ENDF data (contains Watt fission energy distribution)."""
-    filename = os.path.join(_ENDF_DATA, 'neutrons', 'n-092_U_236.endf')
+    endf_data = os.environ['OPENMC_ENDF_DATA']
+    filename = os.path.join(endf_data, 'neutrons', 'n-092_U_236.endf')
     return openmc.data.IncidentNeutron.from_endf(filename)
 
 
 @pytest.fixture(scope='module')
 def na22():
     """Na22 ENDF data (contains evaporation spectrum)."""
-    filename = os.path.join(_ENDF_DATA, 'neutrons', 'n-011_Na_022.endf')
+    endf_data = os.environ['OPENMC_ENDF_DATA']
+    filename = os.path.join(endf_data, 'neutrons', 'n-011_Na_022.endf')
     return openmc.data.IncidentNeutron.from_endf(filename)
 
 
 @pytest.fixture(scope='module')
 def na23():
     """Na23 ENDF data (contains MLBW resonance covariance with LCOMP=0)."""
-    filename = os.path.join(_ENDF_DATA, 'neutrons', 'n-011_Na_023.endf')
+    endf_data = os.environ['OPENMC_ENDF_DATA']
+    filename = os.path.join(endf_data, 'neutrons', 'n-011_Na_023.endf')
     return openmc.data.IncidentNeutron.from_endf(filename, covariance=True)
 
 
 @pytest.fixture(scope='module')
 def be9():
     """Be9 ENDF data (contains laboratory angle-energy distribution)."""
-    filename = os.path.join(_ENDF_DATA, 'neutrons', 'n-004_Be_009.endf')
+    endf_data = os.environ['OPENMC_ENDF_DATA']
+    filename = os.path.join(endf_data, 'neutrons', 'n-004_Be_009.endf')
     return openmc.data.IncidentNeutron.from_endf(filename)
 
 
 @pytest.fixture(scope='module')
 def h2():
-    endf_file = os.path.join(_ENDF_DATA, 'neutrons', 'n-001_H_002.endf')
+    endf_data = os.environ['OPENMC_ENDF_DATA']
+    endf_file = os.path.join(endf_data, 'neutrons', 'n-001_H_002.endf')
     return openmc.data.IncidentNeutron.from_njoy(
         endf_file, temperatures=_TEMPERATURES)
 
 
 @pytest.fixture(scope='module')
 def am244():
-    endf_file = os.path.join(_ENDF_DATA, 'neutrons', 'n-095_Am_244.endf')
+    endf_data = os.environ['OPENMC_ENDF_DATA']
+    endf_file = os.path.join(endf_data, 'neutrons', 'n-095_Am_244.endf')
     return openmc.data.IncidentNeutron.from_njoy(endf_file)
 
 
@@ -109,21 +119,24 @@ def am244():
 def ti50():
     """Ti50 ENDF data (contains Multi-level Breit-Wigner resonance range and
        resonance covariance with LCOMP=1)."""
-    filename = os.path.join(_ENDF_DATA, 'neutrons', 'n-022_Ti_050.endf')
+    endf_data = os.environ['OPENMC_ENDF_DATA']
+    filename = os.path.join(endf_data, 'neutrons', 'n-022_Ti_050.endf')
     return openmc.data.IncidentNeutron.from_endf(filename, covariance=True)
 
 
 @pytest.fixture(scope='module')
 def cf252():
     """Cf252 ENDF data (contains RM resonance covariance with LCOMP=0)."""
-    filename = os.path.join(_ENDF_DATA, 'neutrons', 'n-098_Cf_252.endf')
+    endf_data = os.environ['OPENMC_ENDF_DATA']
+    filename = os.path.join(endf_data, 'neutrons', 'n-098_Cf_252.endf')
     return openmc.data.IncidentNeutron.from_endf(filename, covariance=True)
 
 
 @pytest.fixture(scope='module')
 def th232():
     """Th232 ENDF data (contains RM resonance covariance with LCOMP=2)."""
-    filename = os.path.join(_ENDF_DATA, 'neutrons', 'n-090_Th_232.endf')
+    endf_data = os.environ['OPENMC_ENDF_DATA']
+    filename = os.path.join(endf_data, 'neutrons', 'n-090_Th_232.endf')
     return openmc.data.IncidentNeutron.from_endf(filename, covariance=True)
 
 
@@ -198,6 +211,7 @@ def test_fission(pu239):
     assert photon.particle == 'photon'
 
 
+@needs_njoy
 def test_derived_products(am244):
     fission = am244.reactions[18]
     total_neutron = fission.derived_products[0]
@@ -205,20 +219,22 @@ def test_derived_products(am244):
     assert total_neutron.yield_(6e6) == pytest.approx(4.2558)
 
 
-def test_heating(run_in_tmpdir, am244):
-    assert 318 in am244.reactions
-    assert 999 in am244.reactions
-    # compare values in 999 reaction
-    total_heating = am244.reactions[301].xs["294K"]
-    fission_heating = am244.reactions[318].xs["294K"]
-    expected_y = total_heating.y - fission_heating(total_heating.x)
-    assert am244.reactions[999].xs["294K"].y == pytest.approx(expected_y)
+def test_kerma(run_in_tmpdir, am244, h2):
+    # Make sure kerma w/ local photon is >= regular kerma
+    for nuc in (am244, h2):
+        assert 301 in nuc
+        assert 901 in nuc
+        for T in nuc.temperatures:
+            k, k_local = nuc[301].xs[T], nuc[901].xs[T]
+            assert np.all(k.x == k_local.x)
+            assert np.all(k_local.y >= k.y)
 
-    am244.export_to_hdf5("am244.h5")
-    read_in = openmc.data.IncidentNeutron.from_hdf5("am244.h5")
-    assert 318 in read_in.reactions
-    assert 999 in read_in.reactions
-    assert read_in.reactions[999].xs["294K"].y == pytest.approx(expected_y)
+    # Make sure 301/901 get exported/imported correctly
+    h2.export_to_hdf5("H2.h5")
+    read_in = openmc.data.IncidentNeutron.from_hdf5("H2.h5")
+    assert 301 in read_in
+    assert 901 in read_in
+    assert np.all(read_in[901].xs['300K'].y == h2[901].xs['300K'].y)
 
 
 def test_urr(pu239):
@@ -236,6 +252,7 @@ def test_urr(pu239):
     assert ptable.table.shape[0] == ptable.energy.size
 
 
+@needs_njoy
 def test_get_reaction_components(h2):
     assert h2.get_reaction_components(1) == [2, 16, 102]
     assert h2.get_reaction_components(101) == [102]
@@ -453,8 +470,10 @@ def test_laboratory(be9):
         assert np.all((-1. <= mu.x) & (mu.x <= 1.))
 
 
+@needs_njoy
 def test_correlated(tmpdir):
-    endf_file = os.path.join(_ENDF_DATA, 'neutrons', 'n-014_Si_030.endf')
+    endf_data = os.environ['OPENMC_ENDF_DATA']
+    endf_file = os.path.join(endf_data, 'neutrons', 'n-014_Si_030.endf')
     si30 = openmc.data.IncidentNeutron.from_njoy(endf_file, heatr=False)
 
     # Convert to HDF5 and read back
@@ -463,6 +482,7 @@ def test_correlated(tmpdir):
     si30_copy = openmc.data.IncidentNeutron.from_hdf5(filename)
 
 
+@needs_njoy
 def test_nbody(tmpdir, h2):
     # Convert to HDF5 and read back
     filename = str(tmpdir.join('h2.h5'))
@@ -477,8 +497,10 @@ def test_nbody(tmpdir, h2):
     assert nbody1.q_value == nbody2.q_value
 
 
+@needs_njoy
 def test_ace_convert(run_in_tmpdir):
-    filename = os.path.join(_ENDF_DATA, 'neutrons', 'n-001_H_001.endf')
+    endf_data = os.environ['OPENMC_ENDF_DATA']
+    filename = os.path.join(endf_data, 'neutrons', 'n-001_H_001.endf')
     ace_ascii = 'ace_ascii'
     ace_binary = 'ace_binary'
     openmc.data.njoy.make_ace(filename, acer=ace_ascii)

@@ -53,6 +53,9 @@ _dll.openmc_tally_get_scores.errcheck = _error_handler
 _dll.openmc_tally_get_type.argtypes = [c_int32, POINTER(c_int32)]
 _dll.openmc_tally_get_type.restype = c_int
 _dll.openmc_tally_get_type.errcheck = _error_handler
+_dll.openmc_tally_get_writable.argtypes = [c_int32, POINTER(c_bool)]
+_dll.openmc_tally_get_writable.restype = c_int
+_dll.openmc_tally_get_writable.errcheck = _error_handler
 _dll.openmc_tally_reset.argtypes = [c_int32]
 _dll.openmc_tally_reset.restype = c_int
 _dll.openmc_tally_reset.errcheck = _error_handler
@@ -81,6 +84,9 @@ _dll.openmc_tally_set_scores.errcheck = _error_handler
 _dll.openmc_tally_set_type.argtypes = [c_int32, c_char_p]
 _dll.openmc_tally_set_type.restype = c_int
 _dll.openmc_tally_set_type.errcheck = _error_handler
+_dll.openmc_tally_set_writable.argtypes = [c_int32, c_bool]
+_dll.openmc_tally_set_writable.restype = c_int
+_dll.openmc_tally_set_writable.errcheck = _error_handler
 _dll.tallies_size.restype = c_size_t
 
 
@@ -89,7 +95,7 @@ _SCORES = {
     -5: 'absorption', -6: 'fission', -7: 'nu-fission', -8: 'kappa-fission',
     -9: 'current', -10: 'events', -11: 'delayed-nu-fission',
     -12: 'prompt-nu-fission', -13: 'inverse-velocity', -14: 'fission-q-prompt',
-    -15: 'fission-q-recoverable', -16: 'decay-rate', -17: 'heating'
+    -15: 'fission-q-recoverable', -16: 'decay-rate'
 }
 _ESTIMATORS = {
     1: 'analog', 2: 'tracklength', 3: 'collision'
@@ -143,7 +149,7 @@ class Tally(_FortranObjectWithID):
 
     This class exposes a tally that is stored internally in the OpenMC
     library. To obtain a view of a tally with a given ID, use the
-    :data:`openmc.capi.tallies` mapping.
+    :data:`openmc.lib.tallies` mapping.
 
     Parameters
     ----------
@@ -343,6 +349,16 @@ class Tally(_FortranObjectWithID):
                 (sum_sq[nonzero]/n - mean[nonzero]**2)/(n - 1))
 
         return std_dev
+
+    @property
+    def writable(self):
+        writable = c_bool()
+        _dll.openmc_tally_get_writable(self._index, writable)
+        return writable.value
+
+    @writable.setter
+    def writable(self, writable):
+        _dll.openmc_tally_set_writable(self._index, writable)
 
     def reset(self):
         """Reset results and num_realizations of tally"""

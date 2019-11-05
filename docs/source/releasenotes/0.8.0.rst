@@ -65,17 +65,17 @@ Bug Fixes
 - 8467ae_: Better threshold for allowable lost particles
 - 493c6f_: Fix type of return argument for h5pget_driver_f
 
-.. _70daa7: https://github.com/mit-crpg/openmc/commit/70daa7
-.. _40b05f: https://github.com/mit-crpg/openmc/commit/40b05f
-.. _9586ed: https://github.com/mit-crpg/openmc/commit/9586ed
-.. _a855e8: https://github.com/mit-crpg/openmc/commit/a855e8
-.. _7294a1: https://github.com/mit-crpg/openmc/commit/7294a1
-.. _12f246: https://github.com/mit-crpg/openmc/commit/12f246
-.. _0227f4: https://github.com/mit-crpg/openmc/commit/0227f4
-.. _51deaa: https://github.com/mit-crpg/openmc/commit/51deaa
-.. _fed74b: https://github.com/mit-crpg/openmc/commit/fed74b
-.. _8467ae: https://github.com/mit-crpg/openmc/commit/8467ae
-.. _493c6f: https://github.com/mit-crpg/openmc/commit/493c6f
+.. _70daa7: https://github.com/openmc-dev/openmc/commit/70daa7
+.. _40b05f: https://github.com/openmc-dev/openmc/commit/40b05f
+.. _9586ed: https://github.com/openmc-dev/openmc/commit/9586ed
+.. _a855e8: https://github.com/openmc-dev/openmc/commit/a855e8
+.. _7294a1: https://github.com/openmc-dev/openmc/commit/7294a1
+.. _12f246: https://github.com/openmc-dev/openmc/commit/12f246
+.. _0227f4: https://github.com/openmc-dev/openmc/commit/0227f4
+.. _51deaa: https://github.com/openmc-dev/openmc/commit/51deaa
+.. _fed74b: https://github.com/openmc-dev/openmc/commit/fed74b
+.. _8467ae: https://github.com/openmc-dev/openmc/commit/8467ae
+.. _493c6f: https://github.com/openmc-dev/openmc/commit/493c6f
 
 ------------
 Contributors

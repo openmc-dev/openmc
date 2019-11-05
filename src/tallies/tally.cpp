@@ -111,7 +111,10 @@ score_str_to_int(std::string score_str)
     return SCORE_FISS_Q_RECOV;
 
   if (score_str == "heating")
-    return SCORE_HEATING;
+    return HEATING;
+
+  if (score_str == "heating-local")
+    return HEATING_LOCAL;
 
   if (score_str == "current")
     return SCORE_CURRENT;
@@ -1213,6 +1216,30 @@ openmc_tally_set_active(int32_t index, bool active)
     return OPENMC_E_OUT_OF_BOUNDS;
   }
   model::tallies[index]->active_ = active;
+
+  return 0;
+}
+
+extern "C" int
+openmc_tally_get_writable(int32_t index, bool* writable)
+{
+  if (index < 0 || index >= model::tallies.size()) {
+    set_errmsg("Index in tallies array is out of bounds.");
+    return OPENMC_E_OUT_OF_BOUNDS;
+  }
+  *writable = model::tallies[index]->writable();
+
+  return 0;
+}
+
+extern "C" int
+openmc_tally_set_writable(int32_t index, bool writable)
+{
+  if (index < 0 || index >= model::tallies.size()) {
+    set_errmsg("Index in tallies array is out of bounds.");
+    return OPENMC_E_OUT_OF_BOUNDS;
+  }
+  model::tallies[index]->set_writable(writable);
 
   return 0;
 }

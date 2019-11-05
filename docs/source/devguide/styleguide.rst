@@ -207,8 +207,8 @@ Documentation
 -------------
 
 Classes, structs, and functions are to be annotated for the `Doxygen
-<http://www.stack.nl/~dimitri/doxygen/>`_ documentation generation tool. Use the
-``\`` form of Doxygen commands, e.g., ``\brief`` instead of ``@brief``.
+<http://www.doxygen.nl/>`_ documentation generation tool. Use the ``\`` form of
+Doxygen commands, e.g., ``\brief`` instead of ``@brief``.
 
 ------
 Python
@@ -231,7 +231,7 @@ represent a filesystem path should work with both strings and Path_ objects.
 .. _C++ Core Guidelines: http://isocpp.github.io/CppCoreGuidelines/CppCoreGuidelines
 .. _PEP8: https://www.python.org/dev/peps/pep-0008/
 .. _numpydoc: https://numpydoc.readthedocs.io/en/latest/format.html
-.. _numpy: http://www.numpy.org/
+.. _numpy: https://numpy.org/
 .. _scipy: https://www.scipy.org/
 .. _matplotlib: https://matplotlib.org/
 .. _pandas: https://pandas.pydata.org/

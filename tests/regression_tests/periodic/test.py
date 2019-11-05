@@ -21,16 +21,16 @@ class PeriodicTest(PyAPITestHarness):
         materials.export_to_xml()
 
         # Define geometry
-        x_min = openmc.XPlane(1, x0=-5., boundary_type='periodic')
-        x_max = openmc.XPlane(2, x0=5., boundary_type='periodic')
+        x_min = openmc.XPlane(surface_id=1, x0=-5., boundary_type='periodic')
+        x_max = openmc.XPlane(surface_id=2, x0=5., boundary_type='periodic')
         x_max.periodic_surface = x_min
 
-        y_min = openmc.YPlane(3, y0=-5., boundary_type='periodic')
-        y_max = openmc.YPlane(4, y0=5., boundary_type='periodic')
+        y_min = openmc.YPlane(surface_id=3, y0=-5., boundary_type='periodic')
+        y_max = openmc.YPlane(surface_id=4, y0=5., boundary_type='periodic')
 
-        z_min = openmc.ZPlane(5, z0=-5., boundary_type='reflective')
-        z_max = openmc.ZPlane(6, z0=5., boundary_type='reflective')
-        z_cyl = openmc.ZCylinder(7, x0=-2.5, y0=2.5, r=2.0)
+        z_min = openmc.ZPlane(surface_id=5, z0=-5., boundary_type='reflective')
+        z_max = openmc.ZPlane(surface_id=6, z0=5., boundary_type='reflective')
+        z_cyl = openmc.ZCylinder(surface_id=7, x0=-2.5, y0=2.5, r=2.0)
 
         outside_cyl = openmc.Cell(1, fill=water, region=(
             +x_min & -x_max & +y_min & -y_max & +z_min & -z_max & +z_cyl))

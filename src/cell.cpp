@@ -1,8 +1,10 @@
 
 #include "openmc/cell.h"
 
+#include <algorithm>
 #include <cctype>
 #include <cmath>
+#include <iterator>
 #include <sstream>
 #include <set>
 #include <string>
@@ -438,35 +440,39 @@ CSGCell::CSGCell(pugi::xml_node cell_node)
     }
 
     auto rot {get_node_array<double>(cell_node, "rotation")};
-    if (rot.size() != 3) {
+    if (rot.size() != 3 && rot.size() != 9) {
       std::stringstream err_msg;
       err_msg << "Non-3D rotation vector applied to cell " << id_;
       fatal_error(err_msg);
     }
 
-    // Store the rotation angles.
-    rotation_.reserve(12);
-    rotation_.push_back(rot[0]);
-    rotation_.push_back(rot[1]);
-    rotation_.push_back(rot[2]);
-
     // Compute and store the rotation matrix.
-    auto phi = -rot[0] * PI / 180.0;
-    auto theta = -rot[1] * PI / 180.0;
-    auto psi = -rot[2] * PI / 180.0;
-    rotation_.push_back(std::cos(theta) * std::cos(psi));
-    rotation_.push_back(-std::cos(phi) * std::sin(psi)
-                        + std::sin(phi) * std::sin(theta) * std::cos(psi));
-    rotation_.push_back(std::sin(phi) * std::sin(psi)
-                        + std::cos(phi) * std::sin(theta) * std::cos(psi));
-    rotation_.push_back(std::cos(theta) * std::sin(psi));
-    rotation_.push_back(std::cos(phi) * std::cos(psi)
-                        + std::sin(phi) * std::sin(theta) * std::sin(psi));
-    rotation_.push_back(-std::sin(phi) * std::cos(psi)
-                        + std::cos(phi) * std::sin(theta) * std::sin(psi));
-    rotation_.push_back(-std::sin(theta));
-    rotation_.push_back(std::sin(phi) * std::cos(theta));
-    rotation_.push_back(std::cos(phi) * std::cos(theta));
+    rotation_.reserve(rot.size() == 9 ? 9 : 12);
+    if (rot.size() == 3) {
+      double phi = -rot[0] * PI / 180.0;
+      double theta = -rot[1] * PI / 180.0;
+      double psi = -rot[2] * PI / 180.0;
+      rotation_.push_back(std::cos(theta) * std::cos(psi));
+      rotation_.push_back(-std::cos(phi) * std::sin(psi)
+                          + std::sin(phi) * std::sin(theta) * std::cos(psi));
+      rotation_.push_back(std::sin(phi) * std::sin(psi)
+                          + std::cos(phi) * std::sin(theta) * std::cos(psi));
+      rotation_.push_back(std::cos(theta) * std::sin(psi));
+      rotation_.push_back(std::cos(phi) * std::cos(psi)
+                          + std::sin(phi) * std::sin(theta) * std::sin(psi));
+      rotation_.push_back(-std::sin(phi) * std::cos(psi)
+                          + std::cos(phi) * std::sin(theta) * std::sin(psi));
+      rotation_.push_back(-std::sin(theta));
+      rotation_.push_back(std::sin(phi) * std::cos(theta));
+      rotation_.push_back(std::cos(phi) * std::cos(theta));
+
+      // When user specifies angles, write them at end of vector
+      rotation_.push_back(rot[0]);
+      rotation_.push_back(rot[1]);
+      rotation_.push_back(rot[2]);
+    } else {
+      std::copy(rot.begin(), rot.end(), std::back_inserter(rotation_));
+    }
   }
 }
 
@@ -578,8 +584,12 @@ CSGCell::to_hdf5(hid_t cell_group) const
       write_dataset(group, "translation", translation_);
     }
     if (!rotation_.empty()) {
-      std::array<double, 3> rot {rotation_[0], rotation_[1], rotation_[2]};
-      write_dataset(group, "rotation", rot);
+      if (rotation_.size() == 12) {
+        std::array<double, 3> rot {rotation_[9], rotation_[10], rotation_[11]};
+        write_dataset(group, "rotation", rot);
+      } else {
+        write_dataset(group, "rotation", rotation_);
+      }
     }
 
   } else if (type_ == FILL_LATTICE) {
@@ -598,81 +608,89 @@ BoundingBox CSGCell::bounding_box_simple() const {
   return bbox;
 }
 
+void CSGCell::apply_demorgan(std::vector<int32_t>::iterator start,
+                             std::vector<int32_t>::iterator stop)
+{
+  while (start < stop) {
+    if (*start < OP_UNION) { *start *= -1; }
+    else if (*start == OP_UNION) { *start = OP_INTERSECTION; }
+    else if (*start == OP_INTERSECTION) { *start = OP_UNION; }
+    start++;
+  }
+}
 
-void CSGCell::apply_demorgan(std::vector<int32_t>& rpn) {
-  for (auto& token : rpn) {
-    if (token < OP_UNION) { token *= -1; }
-    else if (token == OP_UNION) { token = OP_INTERSECTION; }
-    else if (token == OP_INTERSECTION) { token = OP_UNION; }
+std::vector<int32_t>::iterator
+CSGCell::find_left_parenthesis(std::vector<int32_t>::iterator start,
+                               const std::vector<int32_t>& rpn) {
+  // start search at zero
+  int parenthesis_level = 0;
+  auto it = start;
+  while (it != rpn.begin()) {
+    // look at two tokens at a time
+    int32_t one = *it;
+    int32_t two = *(it - 1);
+
+    // decrement parenthesis level if there are two adjacent surfaces
+    if (one < OP_UNION && two < OP_UNION) {
+      parenthesis_level--;
+    // increment if there are two adjacent operators
+    } else if (one >= OP_UNION && two >= OP_UNION) {
+      parenthesis_level++;
+    }
+
+    // if the level gets to zero, return the position
+    if (parenthesis_level == 0) {
+      // move the iterator back one before leaving the loop
+      // so that all tokens in the parenthesis block are included
+      it--;
+      break;
+    }
+
+    // continue loop, one token at a time
+    it--;
+  }
+  return it;
+}
+
+void CSGCell::remove_complement_ops(std::vector<int32_t>& rpn) {
+  auto it = std::find(rpn.begin(), rpn.end(), OP_COMPLEMENT);
+  while (it != rpn.end()) {
+    // find the opening parenthesis (if any)
+    auto left = find_left_parenthesis(it, rpn);
+    std::vector<int32_t> tmp(left, it+1);
+
+    // apply DeMorgan's law to any surfaces/operators between these
+    // positions in the RPN
+    apply_demorgan(left, it);
+    // remove complement operator
+    rpn.erase(it);
+    // update iterator position
+    it = std::find(rpn.begin(), rpn.end(), OP_COMPLEMENT);
   }
 }
 
 BoundingBox CSGCell::bounding_box_complex(std::vector<int32_t> rpn) {
+  // remove complements by adjusting surface signs and operators
+  remove_complement_ops(rpn);
 
-  // if the last operator is a complement op, there is no
-  // sub-region that the complement connects to. This indicates
-  // that the entire region is a complement and we can apply
-  // De Morgan's laws immediately
-  if (rpn.back() == OP_COMPLEMENT) {
-      rpn.pop_back();
-      apply_demorgan(rpn);
-  }
+  std::vector<BoundingBox> stack(rpn.size());
+  int i_stack = -1;
 
-  // reverse the rpn to make popping easier
-  std::reverse(rpn.begin(), rpn.end());
-
-  BoundingBox current = model::surfaces[abs(rpn.back()) - 1]->bounding_box(rpn.back() > 0);
-  rpn.pop_back();
-
-  while (rpn.size()) {
-    // move through the rpn in twos
-    int32_t one = rpn.back(); rpn.pop_back();
-    int32_t two = rpn.back(); rpn.pop_back();
-
-    // the first token should always be a surface
-    Expects(one < OP_UNION);
-
-    if (two >= OP_UNION) {
-      if (two == OP_UNION) {
-        current |= model::surfaces[abs(one)-1]->bounding_box(one > 0);
-      } else if (two == OP_INTERSECTION) {
-        current &= model::surfaces[abs(one)-1]->bounding_box(one > 0);
-      }
+  for (auto& token : rpn) {
+    if (token == OP_UNION) {
+      stack[i_stack - 1] = stack[i_stack - 1] | stack[i_stack];
+      i_stack--;
+    } else if (token == OP_INTERSECTION) {
+      stack[i_stack - 1] = stack[i_stack - 1] & stack[i_stack];
+      i_stack--;
     } else {
-      // two surfaces in a row (left parenthesis),
-      // create sub-rpn for region in parenthesis
-      std::vector<int32_t> subrpn;
-      subrpn.push_back(one);
-      subrpn.push_back(two);
-      // add until last two tokens in the sub-rpn are operators
-      // (indicates a right parenthesis)
-      while (!((subrpn.back() >= OP_UNION) && (*(subrpn.rbegin() + 1) >= OP_UNION))) {
-        subrpn.push_back(rpn.back());
-        rpn.pop_back();
-      }
-
-      // handle complement case using De Morgan's laws
-      if (subrpn.back() == OP_COMPLEMENT) {
-        subrpn.pop_back();
-        apply_demorgan(subrpn);
-        subrpn.push_back(rpn.back());
-        rpn.pop_back();
-      }
-      // save the last operator, tells us how to combine this region
-      // with our current bounding box
-      int32_t op = subrpn.back(); subrpn.pop_back();
-      // get bounding box for the subrpn
-      BoundingBox sub_box = bounding_box_complex(subrpn);
-      // combine the sub-rpn bounding box with our current cell box
-      if (op == OP_UNION) {
-        current |= sub_box;
-      } else if (op == OP_INTERSECTION) {
-        current &= sub_box;
-      }
+      i_stack++;
+      stack[i_stack] = model::surfaces[abs(token) - 1]->bounding_box(token > 0);
     }
   }
 
-  return current;
+  Ensures(i_stack == 0);
+  return stack.front();
 }
 
 BoundingBox CSGCell::bounding_box() const {

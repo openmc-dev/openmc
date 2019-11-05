@@ -25,6 +25,7 @@ extern "C" const int BC_TRANSMIT;
 extern "C" const int BC_VACUUM;
 extern "C" const int BC_REFLECT;
 extern "C" const int BC_PERIODIC;
+extern "C" const int BC_WHITE;
 
 //==============================================================================
 // Global variables
@@ -114,6 +115,8 @@ public:
   //! \param[in] u Incident direction of the ray
   //! \return Outgoing direction of the ray
   virtual Direction reflect(Position r, Direction u) const;
+
+  virtual Direction diffuse_reflect(Position r, Direction u) const;
 
   //! Evaluate the equation describing the surface.
   //!

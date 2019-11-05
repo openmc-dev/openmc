@@ -55,7 +55,7 @@ def test_plane_from_points():
 
 
 def test_xplane():
-    s = openmc.XPlane(x0=3., boundary_type='reflective')
+    s = openmc.XPlane(3., 'reflective')
     assert s.x0 == 3.
     assert s.boundary_type == 'reflective'
 

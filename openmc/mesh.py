@@ -53,6 +53,12 @@ class MeshBase(IDManagerMixin, metaclass=ABCMeta):
         else:
             self._name = ''
 
+    def __repr__(self):
+        string = type(self).__name__ + '\n'
+        string += '{0: <16}{1}{2}\n'.format('\tID', '=\t', self._id)
+        string += '{0: <16}{1}{2}\n'.format('\tName', '=\t', self._name)
+        return string
+
     @classmethod
     def from_hdf5(cls, group):
         """Create mesh from HDF5 group
@@ -126,7 +132,10 @@ class RegularMesh(MeshBase):
 
     @property
     def n_dimension(self):
-        return len(self._dimension)
+        if self._dimension is not None:
+            return len(self._dimension)
+        else:
+            return None
 
     @property
     def lower_left(self):
@@ -187,11 +196,9 @@ class RegularMesh(MeshBase):
         self._width = width
 
     def __repr__(self):
-        string = 'RegularMesh\n'
-        string += '{0: <16}{1}{2}\n'.format('\tID', '=\t', self._id)
-        string += '{0: <16}{1}{2}\n'.format('\tName', '=\t', self._name)
-        string += '{0: <16}{1}{2}\n'.format('\tType', '=\t', self._type)
-        string += '{0: <16}{1}{2}\n'.format('\tBasis', '=\t', self._dimension)
+        string = super().__repr__()
+        string += '{0: <16}{1}{2}\n'.format('\tDimensions', '=\t', self.n_dimension)
+        string += '{0: <16}{1}{2}\n'.format('\tMesh Cells', '=\t', self._dimension)
         string += '{0: <16}{1}{2}\n'.format('\tWidth', '=\t', self._lower_left)
         string += '{0: <16}{1}{2}\n'.format('\tOrigin', '=\t', self._upper_right)
         string += '{0: <16}{1}{2}\n'.format('\tPixels', '=\t', self._width)
@@ -350,18 +357,14 @@ class RegularMesh(MeshBase):
         n_dim = len(self.dimension)
 
         # Build the cell which will contain the lattice
-        xplanes = [openmc.XPlane(x0=self.lower_left[0],
-                                 boundary_type=bc[0]),
-                   openmc.XPlane(x0=self.upper_right[0],
-                                 boundary_type=bc[1])]
+        xplanes = [openmc.XPlane(self.lower_left[0], bc[0]),
+                   openmc.XPlane(self.upper_right[0], bc[1])]
         if n_dim == 1:
-            yplanes = [openmc.YPlane(y0=-1e10, boundary_type='reflective'),
-                       openmc.YPlane(y0=1e10, boundary_type='reflective')]
+            yplanes = [openmc.YPlane(-1e10, 'reflective'),
+                       openmc.YPlane(1e10, 'reflective')]
         else:
-            yplanes = [openmc.YPlane(y0=self.lower_left[1],
-                                     boundary_type=bc[2]),
-                       openmc.YPlane(y0=self.upper_right[1],
-                                     boundary_type=bc[3])]
+            yplanes = [openmc.YPlane(self.lower_left[1], bc[2]),
+                       openmc.YPlane(self.upper_right[1], bc[3])]
 
         if n_dim <= 2:
             # Would prefer to have the z ranges be the max supported float, but
@@ -371,13 +374,11 @@ class RegularMesh(MeshBase):
             # inconsistency between what numpy uses as the max float and what
             # Fortran expects for a real(8), so this avoids code complication
             # and achieves the same goal.
-            zplanes = [openmc.ZPlane(z0=-1e10, boundary_type='reflective'),
-                       openmc.ZPlane(z0=1e10, boundary_type='reflective')]
+            zplanes = [openmc.ZPlane(-1e10, 'reflective'),
+                       openmc.ZPlane(1e10, 'reflective')]
         else:
-            zplanes = [openmc.ZPlane(z0=self.lower_left[2],
-                                     boundary_type=bc[4]),
-                       openmc.ZPlane(z0=self.upper_right[2],
-                                     boundary_type=bc[5])]
+            zplanes = [openmc.ZPlane(self.lower_left[2], bc[4]),
+                       openmc.ZPlane(self.upper_right[2], bc[5])]
         root_cell = openmc.Cell()
         root_cell.region = ((+xplanes[0] & -xplanes[1]) &
                             (+yplanes[0] & -yplanes[1]) &
@@ -527,6 +528,27 @@ class RectilinearMesh(MeshBase):
     def z_grid(self, grid):
         cv.check_type('mesh z_grid', grid, Iterable, Real)
         self._z_grid = grid
+
+    def __repr__(self):
+        fmt = '{0: <16}{1}{2}\n'
+        string = super().__repr__()
+        string += fmt.format('\tDimensions', '=\t', self.n_dimension)
+        x_grid_str = str(self._x_grid) if not self._x_grid else len(self._x_grid)
+        string += fmt.format('\tN X pnts:', '=\t', x_grid_str)
+        if self._x_grid:
+            string += fmt.format('\tX Min:', '=\t', self._x_grid[0])
+            string += fmt.format('\tX Max:', '=\t', self._x_grid[-1])
+        y_grid_str = str(self._y_grid) if not self._y_grid else len(self._y_grid)
+        string += fmt.format('\tN Y pnts:', '=\t', y_grid_str)
+        if self._y_grid:
+            string += fmt.format('\tY Min:', '=\t', self._y_grid[0])
+            string += fmt.format('\tY Max:', '=\t', self._y_grid[-1])
+        z_grid_str = str(self._z_grid) if not self._z_grid else len(self._z_grid)
+        string += fmt.format('\tN Z pnts:', '=\t', z_grid_str)
+        if self._z_grid:
+            string += fmt.format('\tZ Min:', '=\t', self._z_grid[0])
+            string += fmt.format('\tZ Max:', '=\t', self._z_grid[-1])
+        return string
 
     @classmethod
     def from_hdf5(cls, group):

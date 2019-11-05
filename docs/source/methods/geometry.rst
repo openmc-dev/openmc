@@ -617,6 +617,10 @@ condition has been applied, the particle is killed and any surface current
 tallies are scored to as needed. If a reflective boundary condition has been
 applied to the surface, surface current tallies are scored to and then the
 particle's direction is changed according to the procedure in :ref:`reflection`.
+Note that the white boundary condition can be considered as the special case of
+reflective boundary condition, where the same processing method will be applied to
+deal with the surface current tallies scoring, except for determining the
+changes of particle's direction according to the procedures in :ref:`white`.
 
 Next, we need to determine what cell is beyond the surface in the direction of
 travel of the particle so that we can evaluate cross sections based on its
@@ -892,8 +896,72 @@ Dxy + Eyz + Fxz + Gx + Hy + Jz + K = 0`. Thus, the gradient to the surface is
     \\ 2Cz + Ey + Fx + J \end{array} \right ).
 
 
-.. _constructive solid geometry: http://en.wikipedia.org/wiki/Constructive_solid_geometry
-.. _surfaces: http://en.wikipedia.org/wiki/Surface
+.. _white:
+
+-------------------------
+White Boundary Conditions
+-------------------------
+
+The `white boundary condition <https://doi.org/10.1016/j.anucene.2019.05.006>`_
+is usually applied in deterministic codes, where the particle will hit the
+surface and travel back with isotropic angular distribution. The change in
+particle's direction is sampled from a cosine distribution instead of uniform.
+Figure :num:`fig-cosine-dist` shows an example of cosine-distribution reflection
+on the arbitrary surface relative to the surface normal.
+
+.. _fig-cosine-dist:
+
+.. figure:: ../_images/cosine-dist.png
+   :align: center
+   :figclass: align-center
+
+   Cosine-distribution reflection on an arbitrary surface.
+
+The probability density function (pdf) for the reflected direction can be
+expressed as follows,
+
+.. math::
+    :label: white-reflection-pdf
+
+    f(\mu, \phi) d\mu d\phi = \frac{\mu}{\pi} d\mu d\phi = 2\mu d\mu \frac{d\phi}{2\pi}
+
+where :math:`\mu = \cos \theta` is the cosine of the polar angle between
+reflected direction and the normal to the surface; and :math:`\theta` is the
+azimuthal angle in :math:`[0,2\pi]`. We can separate the multivariate
+probability density into two separate univariate density functions, one for
+the cosine of the polar angle,
+
+.. math::
+    :label: white-reflection-cosine
+
+    f(\mu) = 2\mu
+
+and one for the azimuthal angle,
+
+.. math::
+    :label: white-reflection-uniform
+
+    f(\phi) = \frac{1}{2\pi}.
+
+Each of these density functions can be sampled by analytical inversion of the
+cumulative distribution distribution, resulting in the following sampling
+scheme:
+
+.. math::
+    :label: white-reflection-sqrt-prn
+
+    \mu = \sqrt{\xi_1} \\
+    \phi = 2\pi\xi_2
+
+where :math:`\xi_1` and :math:`\xi_2` are uniform random numbers on
+:math:`[0,1)`. With the sampled values of :math:`\mu` and :math:`\phi`, the
+final reflected direction vector can be computed via rotation of the surface
+normal using the equations from :ref:`transform-coordinates`. The white boundary
+condition can be applied to any kind of surface, as long as the normal to the
+surface is known as in :ref:`reflection`.
+
+.. _constructive solid geometry: https://en.wikipedia.org/wiki/Constructive_solid_geometry
+.. _surfaces: https://en.wikipedia.org/wiki/Surface
 .. _MCNP: http://mcnp.lanl.gov
 .. _Serpent: http://montecarlo.vtt.fi
 .. _Monte Carlo Performance benchmark: https://github.com/mit-crpg/benchmarks/tree/master/mc-performance/openmc

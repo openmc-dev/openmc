@@ -25,12 +25,12 @@ class AsymmetricLatticeTestHarness(PyAPITestHarness):
                               [water, water, water]]
 
         # Create bounding surfaces
-        min_x = openmc.XPlane(x0=-32.13, boundary_type='reflective')
-        max_x = openmc.XPlane(x0=+32.13, boundary_type='reflective')
-        min_y = openmc.YPlane(y0=-32.13, boundary_type='reflective')
-        max_y = openmc.YPlane(y0=+32.13, boundary_type='reflective')
-        min_z = openmc.ZPlane(z0=0, boundary_type='reflective')
-        max_z = openmc.ZPlane(z0=+32.13, boundary_type='reflective')
+        min_x = openmc.XPlane(-32.13, 'reflective')
+        max_x = openmc.XPlane(+32.13, 'reflective')
+        min_y = openmc.YPlane(-32.13, 'reflective')
+        max_y = openmc.YPlane(+32.13, 'reflective')
+        min_z = openmc.ZPlane(0, 'reflective')
+        max_z = openmc.ZPlane(+32.13, 'reflective')
 
         # Define root universe
         root_univ = openmc.Universe(universe_id=0, name='root universe')

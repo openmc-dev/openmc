@@ -19,7 +19,7 @@ build a Docker image with OpenMC installed. The image includes OpenMC with
 MPICH and parallel HDF5 in the ``/opt/openmc`` directory, and
 `Miniconda3 <https://conda.io/miniconda.html>`_ with all of the Python
 pre-requisites (NumPy, SciPy, Pandas, etc.) installed. The
-`NJOY2016 <http://www.njoy21.io/NJOY2016/>`_ codebase is installed in
+`NJOY2016 <https://www.njoy21.io/NJOY2016/>`_ codebase is installed in
 ``/opt/NJOY2016`` to support full functionality and testing of the
 ``openmc.data`` Python module. The publicly available nuclear data libraries
 necessary to run OpenMC's test suite -- including NNDC and WMP cross sections
@@ -54,4 +54,3 @@ Docker container where you have access to use OpenMC.
 .. _Docker container: https://www.docker.com/resources/what-container
 .. _options: https://docs.docker.com/engine/reference/commandline/run/
 .. _mounting volumes: https://docs.docker.com/storage/volumes/
-

@@ -1047,6 +1047,7 @@ free_memory_tally()
   {
     model::tally_derivs.clear();
   }
+  model::tally_deriv_map.clear();
 
   model::tally_filters.clear();
   model::filter_map.clear();

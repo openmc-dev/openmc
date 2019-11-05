@@ -132,8 +132,8 @@ find_cell_inner(Particle* p, const NeighborList* neighbor_list)
       //! Found a material cell which means this is the lowest coord level.
 
       // Find the distribcell instance number.
-      if (c.material_.size() > 1 || c.sqrtkT_.size() > 1) {
-        int offset = 0;
+      int offset = 0;
+      if (c.distribcell_index_ >= 0) {
         for (int i = 0; i < p->n_coord_; i++) {
           const auto& c_i {*model::cells[p->coord_[i].cell]};
           if (c_i.type_ == FILL_UNIVERSE) {
@@ -148,10 +148,8 @@ find_cell_inner(Particle* p, const NeighborList* neighbor_list)
             }
           }
         }
-        p->cell_instance_ = offset;
-      } else {
-        p->cell_instance_ = 0;
       }
+      p->cell_instance_ = offset;
 
       // Set the material and temperature.
       p->material_last_ = p->material_;

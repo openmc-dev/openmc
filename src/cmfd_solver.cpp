@@ -350,20 +350,14 @@ extern "C"
 int openmc_run_linsolver(const double* A_data, const double* b, double* x,
                          double tol)
 {
-  int result;
-
   switch (cmfd::ng) {
   case 1:
-    result = cmfd_linsolver_1g(A_data, b, x, tol);
-    break;
+    return cmfd_linsolver_1g(A_data, b, x, tol);
   case 2:
-    result = cmfd_linsolver_2g(A_data, b, x, tol);
-    break;
+    return cmfd_linsolver_2g(A_data, b, x, tol);
   default:
-    result = cmfd_linsolver_ng(A_data, b, x, tol);
-    break;
+    return cmfd_linsolver_ng(A_data, b, x, tol);
   }
-  return result;
 }
 
 void free_memory_cmfd()

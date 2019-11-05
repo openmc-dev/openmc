@@ -41,6 +41,8 @@ class TRISO(openmc.Cell):
         Name of the TRISO cell
     center : numpy.ndarray
         Cartesian coordinates of the center of the TRISO particle in cm
+    outer_radius : float
+        Outer radius of TRISO particle
     fill : openmc.Universe
         Universe that contains the TRISO layers
     region : openmc.Region
@@ -52,6 +54,10 @@ class TRISO(openmc.Cell):
         self._surface = openmc.Sphere(r=outer_radius)
         super().__init__(fill=fill, region=-self._surface)
         self.center = np.asarray(center)
+        self.outer_radius = outer_radius
+
+    def __deepcopy__(self):
+        return TRISO(outer_radius=self.outer_radius, fill=self.fill, center=self.center)
 
     @property
     def center(self):
@@ -827,10 +833,10 @@ def create_triso_lattice(trisos, lower_left, pitch, shape, background):
     triso_locations = {idx: [] for idx in indices}
     for t in trisos:
         for idx in t.classify(lattice):
-            if idx in sorted(triso_locations):
+            if idx in triso_locations:
                 # Create copy of TRISO particle with materials preserved and
                 # different cell/surface IDs
-                t_copy = copy.deepcopy(t)
+                t_copy = t.__deepcopy__()
                 t_copy.id = None
                 t_copy.fill = t.fill
                 t_copy._surface.id = None

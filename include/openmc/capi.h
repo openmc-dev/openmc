@@ -138,7 +138,7 @@ extern "C" {
                                               const int* indices, int n_elements,
                                               int dim, double spectral,
                                               const int* cmfd_indices,
-                                              const int* map, int n_threads);
+                                              const int* map, bool use_all_threads);
 
   //! Runs a Gauss Seidel linear solver to solve CMFD matrix equations
   //! linear solver

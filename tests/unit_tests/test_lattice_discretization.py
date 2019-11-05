@@ -23,7 +23,6 @@ def test_discretization_degenerate(rlat2):
     assert rlat_clone.get_universe((2, 1)).id !=\
          rlat_clone.get_universe((1, 2)).id
 
-
 def test_discretization_skip_universe(rlat2):
 
     rlat_clone = rlat2.clone()
@@ -33,7 +32,6 @@ def test_discretization_skip_universe(rlat2):
     assert rlat_clone.get_universe((0, 0)) == rlat_clone.get_universe((0, 1))
     assert rlat_clone.get_universe((0, 1)) == rlat_clone.get_universe((2, 1))
     assert rlat_clone.get_universe((0, 1)) == rlat_clone.get_universe((1, 2))
-
 
 def test_discretization_clone_only_some_materials(rlat2):
 
@@ -45,7 +43,6 @@ def test_discretization_clone_only_some_materials(rlat2):
          == next(reversed(rlat_clone.get_universe((1, 0)).cells.values())).fill
     assert next(iter(rlat_clone.get_universe((0, 0)).cells.values())).fill\
          != next(iter(rlat_clone.get_universe((1, 0)).cells.values())).fill
-
 
 def test_discretization_lns(rlat2):
 
@@ -59,7 +56,6 @@ def test_discretization_lns(rlat2):
 
     assert rlat_clone.get_universe((0, 2)) == \
          next(iter(rlat_clone.get_universe((2, 2)).cells.values())).fill
-
 
 def test_discretization_lns_using_names(rlat2):
 
@@ -81,7 +77,6 @@ def test_discretization_lns_using_names(rlat2):
     assert rlat_clone.get_universe((1, 2)) == rlat_clone.get_universe((0, 1))
     assert rlat_clone.get_universe((0, 0)) != rlat_clone.get_universe((0, 1))
 
-
 def test_discretization_lns_with_neighbor_list(rlat2):
 
     rlat_clone = rlat2.clone()
@@ -92,7 +87,6 @@ def test_discretization_lns_with_neighbor_list(rlat2):
 
     assert rlat_clone.get_universe((0, 1)) == rlat_clone.get_universe((0, 0))
     assert rlat_clone.get_universe((1, 1)) != rlat_clone.get_universe((0, 0))
-
 
 def test_discretization_lns_nested_lattices(rlat2):
 

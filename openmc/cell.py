@@ -418,11 +418,9 @@ class Cell(IDManagerMixin):
         clone_materials : bool
             Whether to create separate copies of the materials filling cells
             contained in this cell, or the material filling this cell.
-            Default is True.
         clone_regions : bool
             Whether to create separate copies of the regions bounding cells
             contained in this cell, and the region bounding this cell.
-            Default is True.
         memo : dict or None
             A nested dictionary of previously cloned objects. This parameter
             is used internally and should not be specified by the user.

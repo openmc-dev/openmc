@@ -485,10 +485,10 @@ class Universe(IDManagerMixin):
         ----------
         clone_materials : bool
             Whether to create separates copies of the materials filling cells
-            contained in this universe. Default is True.
+            contained in this universe.
         clone_regions : bool
             Whether to create separates copies of the regions bounding cells
-            contained in this universe. Default is True.
+            contained in this universe.
         memo : dict or None
             A nested dictionary of previously cloned objects. This parameter
             is used internally and should not be specified by the user.

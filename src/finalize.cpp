@@ -137,7 +137,7 @@ int openmc_reset()
 {
 
   UniverseCellCounter::instance()->clear();
-  LevelCountStorage::instance()->clear();
+  UniverseLevelCounter::instance()->clear();
 
   for (auto& t : model::tallies) {
     t->reset();

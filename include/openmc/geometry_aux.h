@@ -46,21 +46,21 @@ namespace openmc {
     auto get_count(int32_t univ);
   };
 
-  struct  LevelCountStorage {
+  struct  UniverseLevelCounter {
   private:
-    LevelCountStorage() {}
-    LevelCountStorage(LevelCountStorage& c) {}
-    LevelCountStorage(const LevelCountStorage& c) {}
+    UniverseLevelCounter() {}
+    UniverseLevelCounter(UniverseLevelCounter& c) {}
+    UniverseLevelCounter(const UniverseLevelCounter& c) {}
 
-    static LevelCountStorage* instance_;
+    static UniverseLevelCounter* instance_;
 
     std::map<int32_t, int> counts;
 
   public:
 
-    static LevelCountStorage* instance() {
+    static UniverseLevelCounter* instance() {
       if (instance_ == nullptr)
-        instance_ = new LevelCountStorage;
+        instance_ = new UniverseLevelCounter;
 
       return instance_;
     }

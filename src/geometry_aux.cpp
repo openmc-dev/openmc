@@ -103,18 +103,18 @@ auto UniverseCellCounter::get_count(int32_t univ) {
     return counts[univ];
 }
 
-void LevelCountStorage::clear() {
+void UniverseLevelCounter::clear() {
   if (instance_ != nullptr) {
     delete instance_;
     instance_ = nullptr;
     }
 }
 
-void LevelCountStorage::set_cell_count_for_univ(int32_t univ, int count) {
+void UniverseLevelCounter::set_cell_count_for_univ(int32_t univ, int count) {
   counts[univ] = count;
 }
 
-void LevelCountStorage::increment_count_for_univ(int32_t univ) {
+void UniverseLevelCounter::increment_count_for_univ(int32_t univ) {
   if (has_count(univ)) {
     counts[univ] += 1;
   } else {
@@ -122,11 +122,11 @@ void LevelCountStorage::increment_count_for_univ(int32_t univ) {
   }
 }
 
-bool LevelCountStorage::has_count(int32_t univ) {
+bool UniverseLevelCounter::has_count(int32_t univ) {
   return counts.count(univ);
 }
 
-void LevelCountStorage::absorb_b_into_a(int32_t a, int32_t b) {
+void UniverseLevelCounter::absorb_b_into_a(int32_t a, int32_t b) {
   if (has_count(a)) {
     counts[a] += counts[b];
   } else {
@@ -134,16 +134,16 @@ void LevelCountStorage::absorb_b_into_a(int32_t a, int32_t b) {
   }
 }
 
-void LevelCountStorage::set_count(int32_t univ, int count) {
+void UniverseLevelCounter::set_count(int32_t univ, int count) {
   counts[univ] = count;
 }
 
-int LevelCountStorage::get_count(int32_t univ) {
+int UniverseLevelCounter::get_count(int32_t univ) {
   return counts[univ];
 }
 
 UniverseCellCounter* UniverseCellCounter::instance_ = nullptr;
-LevelCountStorage* LevelCountStorage::instance_ = nullptr;
+UniverseLevelCounter* UniverseLevelCounter::instance_ = nullptr;
 
 //==============================================================================
 
@@ -626,7 +626,7 @@ distribcell_path(int32_t target_cell, int32_t map, int32_t target_offset)
 int
 maximum_levels(int32_t univ)
 {
-  LevelCountStorage* counter = LevelCountStorage::instance();
+  UniverseLevelCounter* counter = UniverseLevelCounter::instance();
 
   if (counter->has_count(univ)) {
     return counter->get_count(univ);

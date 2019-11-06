@@ -23,21 +23,22 @@
 
 namespace openmc {
 
-std::map<int32_t, std::map<int32_t, int32_t>> universe_cell_counts;
-std::map<int32_t, int32_t> universe_level_counts;
-
+namespace model {
+  std::map<int32_t, std::map<int32_t, int32_t>> universe_cell_counts;
+  std::map<int32_t, int32_t> universe_level_counts;
+} // namespace model
 
 void update_universe_cell_count(int32_t a, int32_t b) {
-  auto& universe_a_counts = universe_cell_counts[a];
-  const auto& universe_b_counts = universe_cell_counts[b];
+  auto& universe_a_counts = model::universe_cell_counts[a];
+  const auto& universe_b_counts = model::universe_cell_counts[b];
   for (auto it : universe_b_counts) {
     universe_a_counts[it.first] += it.second;
   }
 }
 
 void update_universe_level_count(int32_t a, int32_t b) {
-  auto& universe_a_count = universe_level_counts[a];
-  const auto& universe_b_count = universe_level_counts[b];
+  auto& universe_a_count = model::universe_level_counts[a];
+  const auto& universe_b_count = model::universe_level_counts[b];
   universe_a_count += universe_b_count;
 }
 
@@ -414,8 +415,8 @@ void
 count_cell_instances(int32_t univ_indx)
 {
 
-  if (universe_cell_counts.count(univ_indx)) {
-    std::map<int32_t, int> univ_counts = universe_cell_counts[univ_indx];
+  if (model::universe_cell_counts.count(univ_indx)) {
+    std::map<int32_t, int> univ_counts = model::universe_cell_counts[univ_indx];
     for(auto it : univ_counts) {
       Cell& c = *model::cells[it.first];
       c.n_instances_ += it.second;
@@ -424,7 +425,7 @@ count_cell_instances(int32_t univ_indx)
     for (int32_t cell_indx : model::universes[univ_indx]->cells_) {
       Cell& c = *model::cells[cell_indx];
       ++c.n_instances_;
-      universe_cell_counts[univ_indx][cell_indx] += 1;
+      model::universe_cell_counts[univ_indx][cell_indx] += 1;
 
       if (c.type_ == FILL_UNIVERSE) {
         // This cell contains another universe.  Recurse into that universe.
@@ -559,8 +560,8 @@ int
 maximum_levels(int32_t univ)
 {
 
-  if (universe_level_counts.count(univ)) {
-    return universe_level_counts[univ];
+  if (model::universe_level_counts.count(univ)) {
+    return model::universe_level_counts[univ];
   }
 
   int levels_below {0};
@@ -580,7 +581,7 @@ maximum_levels(int32_t univ)
   }
 
   ++levels_below;
-  universe_level_counts[univ] = levels_below;
+  model::universe_level_counts[univ] = levels_below;
   return levels_below;
 }
 

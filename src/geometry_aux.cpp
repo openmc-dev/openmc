@@ -24,23 +24,16 @@
 namespace openmc {
 
 void UniverseCellCounter::clear() {
-  if (instance_ != nullptr) {
-    delete instance_;
-    instance_ = nullptr;
-  }
+  instance_->counts_.clear();
 }
 
 void UniverseCellCounter::set_cell_count_for_univ(int32_t univ, int32_t cell, int count) {
     counts_[univ][cell] = count;
 }
 
-  void UniverseCellCounter::increment_count_for_univ(int32_t univ, int32_t cell) {
-    if (has_count(univ,cell)) {
-      counts_[univ][cell] += 1;
-    } else {
-      counts_[univ][cell] = 1;
-    }
-  }
+void UniverseCellCounter::increment_count_for_univ(int32_t univ, int32_t cell) {
+    counts_[univ][cell] += 1;
+}
 
 bool UniverseCellCounter::has_count(int32_t univ, int32_t cell) {
   return counts_.count(univ) && counts_[univ].count(cell);
@@ -52,14 +45,7 @@ bool UniverseCellCounter::has_count(int32_t univ) {
 
 void UniverseCellCounter::absorb_b_into_a(int32_t a, int32_t b) {
   std::map<int32_t, int> b_map = counts_[b];
-
-  for (auto it : b_map) {
-    if (has_count(a, it.first)) {
-      counts_[a][it.first] += it.second;
-    } else {
-      counts_[a][it.first] = it.second;
-      }
-  }
+  for (auto it : b_map) { counts_[a][it.first] += it.second; }
 }
 
 auto UniverseCellCounter::get_count(int32_t univ) {
@@ -67,10 +53,7 @@ auto UniverseCellCounter::get_count(int32_t univ) {
 }
 
 void UniverseLevelCounter::clear() {
-  if (instance_ != nullptr) {
-    delete instance_;
-    instance_ = nullptr;
-    }
+  instance_->counts_.clear();
 }
 
 void UniverseLevelCounter::set_cell_count_for_univ(int32_t univ, int count) {
@@ -78,11 +61,7 @@ void UniverseLevelCounter::set_cell_count_for_univ(int32_t univ, int count) {
 }
 
 void UniverseLevelCounter::increment_count_for_univ(int32_t univ) {
-  if (has_count(univ)) {
     counts_[univ] += 1;
-  } else {
-    counts_[univ] = 1;
-  }
 }
 
 bool UniverseLevelCounter::has_count(int32_t univ) {
@@ -90,11 +69,7 @@ bool UniverseLevelCounter::has_count(int32_t univ) {
 }
 
 void UniverseLevelCounter::absorb_b_into_a(int32_t a, int32_t b) {
-  if (has_count(a)) {
     counts_[a] += counts_[b];
-  } else {
-    counts_[a] = counts_[b];
-  }
 }
 
 void UniverseLevelCounter::set_count(int32_t univ, int count) {

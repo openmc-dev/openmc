@@ -11,9 +11,10 @@
 
 namespace openmc {
 
+namespace model {
   extern std::map<int32_t, std::map<int32_t, int32_t>> universe_cell_counts;
   extern std::map<int32_t, int32_t> universe_level_counts;
-
+} // namespace model
 
 void read_geometry_xml();
 

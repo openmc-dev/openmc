@@ -10,78 +10,10 @@
 #include <map>
 
 namespace openmc {
-  struct  UniverseCellCounter {
-  private:
-    UniverseCellCounter() {}
-    UniverseCellCounter(UniverseCellCounter& c) {}
-    UniverseCellCounter(const UniverseCellCounter& c) {}
 
-    static UniverseCellCounter* instance_;
+  extern std::map<int32_t, std::map<int32_t, int32_t>> universe_cell_counts;
+  extern std::map<int32_t, int32_t> universe_level_counts;
 
-  public:
-
-  // Methods
-    static UniverseCellCounter* instance() {
-      if (instance_ == nullptr)
-        instance_ = new UniverseCellCounter;
-
-      return instance_;
-    }
-
-    void clear();
-
-    void set_cell_count_for_univ(int32_t univ, int32_t cell, int count);
-
-    void increment_count_for_univ(int32_t univ, int32_t cell);
-
-    bool has_count(int32_t univ, int32_t cell);
-
-    bool has_count(int32_t univ);
-
-    void absorb_b_into_a(int32_t a, int32_t b);
-
-    auto get_count(int32_t univ);
-
-  // Members
-    std::map<int32_t, std::map<int32_t, int>> counts_;
-  };
-
-  struct  UniverseLevelCounter {
-  private:
-    UniverseLevelCounter() {}
-    UniverseLevelCounter(UniverseLevelCounter& c) {}
-    UniverseLevelCounter(const UniverseLevelCounter& c) {}
-
-    static UniverseLevelCounter* instance_;
-
-  public:
-
-  //Methods
-
-    static UniverseLevelCounter* instance() {
-      if (instance_ == nullptr)
-        instance_ = new UniverseLevelCounter;
-
-      return instance_;
-    }
-
-    void clear();
-
-    void set_cell_count_for_univ(int32_t univ, int count);
-
-    void increment_count_for_univ(int32_t univ);
-
-    bool has_count(int32_t univ);
-
-    void absorb_b_into_a(int32_t a, int32_t b);
-
-    void set_count(int32_t univ, int count);
-
-    int get_count(int32_t univ);
-
-  // Members
-    std::map<int32_t, int> counts_;
-  };
 
 void read_geometry_xml();
 

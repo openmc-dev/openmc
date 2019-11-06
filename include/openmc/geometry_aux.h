@@ -10,21 +10,21 @@
 #include <map>
 
 namespace openmc {
-  struct  CellCountStorage {
+  struct  UniverseCellCounter {
   private:
-    CellCountStorage() {}
-    CellCountStorage(CellCountStorage& c) {}
-    CellCountStorage(const CellCountStorage& c) {}
+    UniverseCellCounter() {}
+    UniverseCellCounter(UniverseCellCounter& c) {}
+    UniverseCellCounter(const UniverseCellCounter& c) {}
 
-    static CellCountStorage* instance_;
+    static UniverseCellCounter* instance_;
 
     std::map<int32_t, std::map<int32_t, int>> counts;
 
   public:
 
-    static CellCountStorage* instance() {
+    static UniverseCellCounter* instance() {
       if (instance_ == nullptr)
-        instance_ = new CellCountStorage;
+        instance_ = new UniverseCellCounter;
 
       return instance_;
     }

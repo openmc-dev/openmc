@@ -60,18 +60,18 @@ void read_geometry_xml()
   model::root_universe = find_root_universe();
 }
 
-void CellCountStorage::clear() {
+void UniverseCellCounter::clear() {
   if (instance_ != nullptr) {
     delete instance_;
     instance_ = nullptr;
   }
 }
 
-void CellCountStorage::set_cell_count_for_univ(int32_t univ, int32_t cell, int count) {
+void UniverseCellCounter::set_cell_count_for_univ(int32_t univ, int32_t cell, int count) {
     counts[univ][cell] = count;
 }
 
-  void CellCountStorage::increment_count_for_univ(int32_t univ, int32_t cell) {
+  void UniverseCellCounter::increment_count_for_univ(int32_t univ, int32_t cell) {
     if (has_count(univ,cell)) {
       counts[univ][cell] += 1;
     } else {
@@ -79,15 +79,15 @@ void CellCountStorage::set_cell_count_for_univ(int32_t univ, int32_t cell, int c
     }
   }
 
-bool CellCountStorage::has_count(int32_t univ, int32_t cell) {
+bool UniverseCellCounter::has_count(int32_t univ, int32_t cell) {
   return counts.count(univ) && counts[univ].count(cell);
 }
 
-bool CellCountStorage::has_count(int32_t univ) {
+bool UniverseCellCounter::has_count(int32_t univ) {
   return counts.count(univ);
 }
 
-void CellCountStorage::absorb_b_into_a(int32_t a, int32_t b) {
+void UniverseCellCounter::absorb_b_into_a(int32_t a, int32_t b) {
   std::map<int32_t, int> b_map = counts[b];
 
   for (auto it : b_map) {
@@ -99,7 +99,7 @@ void CellCountStorage::absorb_b_into_a(int32_t a, int32_t b) {
   }
 }
 
-auto CellCountStorage::get_count(int32_t univ) {
+auto UniverseCellCounter::get_count(int32_t univ) {
     return counts[univ];
 }
 
@@ -142,7 +142,7 @@ int LevelCountStorage::get_count(int32_t univ) {
   return counts[univ];
 }
 
-CellCountStorage* CellCountStorage::instance_ = nullptr;
+UniverseCellCounter* UniverseCellCounter::instance_ = nullptr;
 LevelCountStorage* LevelCountStorage::instance_ = nullptr;
 
 //==============================================================================
@@ -480,7 +480,7 @@ prepare_distribcell()
 void
 count_cell_instances(int32_t univ_indx)
 {
-  CellCountStorage* counter = CellCountStorage::instance();
+  UniverseCellCounter* counter = UniverseCellCounter::instance();
 
   if (counter->has_count(univ_indx)) {
     std::map<int32_t, int> univ_counts = counter->get_count(univ_indx);

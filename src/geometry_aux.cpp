@@ -23,65 +23,23 @@
 
 namespace openmc {
 
-void UniverseCellCounter::clear() {
-  instance_->counts_.clear();
+std::map<int32_t, std::map<int32_t, int32_t>> universe_cell_counts;
+std::map<int32_t, int32_t> universe_level_counts;
+
+
+void update_universe_cell_count(int32_t a, int32_t b) {
+  auto& universe_a_counts = universe_cell_counts[a];
+  const auto& universe_b_counts = universe_cell_counts[b];
+  for (auto it : universe_b_counts) {
+    universe_a_counts[it.first] += it.second;
+  }
 }
 
-void UniverseCellCounter::set_cell_count_for_univ(int32_t univ, int32_t cell, int count) {
-    counts_[univ][cell] = count;
+void update_universe_level_count(int32_t a, int32_t b) {
+  auto& universe_a_count = universe_level_counts[a];
+  const auto& universe_b_count = universe_level_counts[b];
+  universe_a_count += universe_b_count;
 }
-
-void UniverseCellCounter::increment_count_for_univ(int32_t univ, int32_t cell) {
-    counts_[univ][cell] += 1;
-}
-
-bool UniverseCellCounter::has_count(int32_t univ, int32_t cell) {
-  return counts_.count(univ) && counts_[univ].count(cell);
-}
-
-bool UniverseCellCounter::has_count(int32_t univ) {
-  return counts_.count(univ);
-}
-
-void UniverseCellCounter::absorb_b_into_a(int32_t a, int32_t b) {
-  std::map<int32_t, int> b_map = counts_[b];
-  for (auto it : b_map) { counts_[a][it.first] += it.second; }
-}
-
-auto UniverseCellCounter::get_count(int32_t univ) {
-    return counts_[univ];
-}
-
-void UniverseLevelCounter::clear() {
-  instance_->counts_.clear();
-}
-
-void UniverseLevelCounter::set_cell_count_for_univ(int32_t univ, int count) {
-  counts_[univ] = count;
-}
-
-void UniverseLevelCounter::increment_count_for_univ(int32_t univ) {
-    counts_[univ] += 1;
-}
-
-bool UniverseLevelCounter::has_count(int32_t univ) {
-  return counts_.count(univ);
-}
-
-void UniverseLevelCounter::absorb_b_into_a(int32_t a, int32_t b) {
-    counts_[a] += counts_[b];
-}
-
-void UniverseLevelCounter::set_count(int32_t univ, int count) {
-  counts_[univ] = count;
-}
-
-int UniverseLevelCounter::get_count(int32_t univ) {
-  return counts_[univ];
-}
-
-UniverseCellCounter* UniverseCellCounter::instance_ = nullptr;
-UniverseLevelCounter* UniverseLevelCounter::instance_ = nullptr;
 
 void read_geometry_xml()
 {
@@ -455,10 +413,9 @@ prepare_distribcell()
 void
 count_cell_instances(int32_t univ_indx)
 {
-  UniverseCellCounter* counter = UniverseCellCounter::instance();
 
-  if (counter->has_count(univ_indx)) {
-    std::map<int32_t, int> univ_counts = counter->get_count(univ_indx);
+  if (universe_cell_counts.count(univ_indx)) {
+    std::map<int32_t, int> univ_counts = universe_cell_counts[univ_indx];
     for(auto it : univ_counts) {
       Cell& c = *model::cells[it.first];
       c.n_instances_ += it.second;
@@ -467,18 +424,18 @@ count_cell_instances(int32_t univ_indx)
     for (int32_t cell_indx : model::universes[univ_indx]->cells_) {
       Cell& c = *model::cells[cell_indx];
       ++c.n_instances_;
-      counter->increment_count_for_univ(univ_indx, cell_indx);
+      universe_cell_counts[univ_indx][cell_indx] += 1;
 
       if (c.type_ == FILL_UNIVERSE) {
         // This cell contains another universe.  Recurse into that universe.
         count_cell_instances(c.fill_);
-        counter->absorb_b_into_a(univ_indx, c.fill_);
+        update_universe_cell_count(univ_indx, c.fill_);
       } else if (c.type_ == FILL_LATTICE) {
         // This cell contains a lattice.  Recurse into the lattice universes.
         Lattice& lat = *model::lattices[c.fill_];
         for (auto it = lat.begin(); it != lat.end(); ++it) {
           count_cell_instances(*it);
-          counter->absorb_b_into_a(univ_indx, *it);
+          update_universe_cell_count(univ_indx, *it);
         }
       }
     }
@@ -601,10 +558,9 @@ distribcell_path(int32_t target_cell, int32_t map, int32_t target_offset)
 int
 maximum_levels(int32_t univ)
 {
-  UniverseLevelCounter* counter = UniverseLevelCounter::instance();
 
-  if (counter->has_count(univ)) {
-    return counter->get_count(univ);
+  if (universe_level_counts.count(univ)) {
+    return universe_level_counts[univ];
   }
 
   int levels_below {0};
@@ -624,7 +580,7 @@ maximum_levels(int32_t univ)
   }
 
   ++levels_below;
-  counter->set_count(univ, levels_below);
+  universe_level_counts[univ] = levels_below;
   return levels_below;
 }
 

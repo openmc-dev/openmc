@@ -18,18 +18,15 @@ namespace openmc {
 
     static UniverseCellCounter* instance_;
 
-    std::map<int32_t, std::map<int32_t, int>> counts;
-
   public:
 
+  // Methods
     static UniverseCellCounter* instance() {
       if (instance_ == nullptr)
         instance_ = new UniverseCellCounter;
 
       return instance_;
     }
-
-
 
     void clear();
 
@@ -44,6 +41,9 @@ namespace openmc {
     void absorb_b_into_a(int32_t a, int32_t b);
 
     auto get_count(int32_t univ);
+
+  // Members
+    std::map<int32_t, std::map<int32_t, int>> counts_;
   };
 
   struct  UniverseLevelCounter {
@@ -54,9 +54,9 @@ namespace openmc {
 
     static UniverseLevelCounter* instance_;
 
-    std::map<int32_t, int> counts;
-
   public:
+
+  //Methods
 
     static UniverseLevelCounter* instance() {
       if (instance_ == nullptr)
@@ -78,6 +78,9 @@ namespace openmc {
     void set_count(int32_t univ, int count);
 
     int get_count(int32_t univ);
+
+  // Members
+    std::map<int32_t, int> counts_;
   };
 
 void read_geometry_xml();

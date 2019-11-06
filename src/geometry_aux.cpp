@@ -23,6 +23,91 @@
 
 namespace openmc {
 
+void UniverseCellCounter::clear() {
+  if (instance_ != nullptr) {
+    delete instance_;
+    instance_ = nullptr;
+  }
+}
+
+void UniverseCellCounter::set_cell_count_for_univ(int32_t univ, int32_t cell, int count) {
+    counts_[univ][cell] = count;
+}
+
+  void UniverseCellCounter::increment_count_for_univ(int32_t univ, int32_t cell) {
+    if (has_count(univ,cell)) {
+      counts_[univ][cell] += 1;
+    } else {
+      counts_[univ][cell] = 1;
+    }
+  }
+
+bool UniverseCellCounter::has_count(int32_t univ, int32_t cell) {
+  return counts_.count(univ) && counts_[univ].count(cell);
+}
+
+bool UniverseCellCounter::has_count(int32_t univ) {
+  return counts_.count(univ);
+}
+
+void UniverseCellCounter::absorb_b_into_a(int32_t a, int32_t b) {
+  std::map<int32_t, int> b_map = counts_[b];
+
+  for (auto it : b_map) {
+    if (has_count(a, it.first)) {
+      counts_[a][it.first] += it.second;
+    } else {
+      counts_[a][it.first] = it.second;
+      }
+  }
+}
+
+auto UniverseCellCounter::get_count(int32_t univ) {
+    return counts_[univ];
+}
+
+void UniverseLevelCounter::clear() {
+  if (instance_ != nullptr) {
+    delete instance_;
+    instance_ = nullptr;
+    }
+}
+
+void UniverseLevelCounter::set_cell_count_for_univ(int32_t univ, int count) {
+  counts_[univ] = count;
+}
+
+void UniverseLevelCounter::increment_count_for_univ(int32_t univ) {
+  if (has_count(univ)) {
+    counts_[univ] += 1;
+  } else {
+    counts_[univ] = 1;
+  }
+}
+
+bool UniverseLevelCounter::has_count(int32_t univ) {
+  return counts_.count(univ);
+}
+
+void UniverseLevelCounter::absorb_b_into_a(int32_t a, int32_t b) {
+  if (has_count(a)) {
+    counts_[a] += counts_[b];
+  } else {
+    counts_[a] = counts_[b];
+  }
+}
+
+void UniverseLevelCounter::set_count(int32_t univ, int count) {
+  counts_[univ] = count;
+}
+
+int UniverseLevelCounter::get_count(int32_t univ) {
+  return counts_[univ];
+}
+
+UniverseCellCounter* UniverseCellCounter::instance_ = nullptr;
+UniverseLevelCounter* UniverseLevelCounter::instance_ = nullptr;
+
 void read_geometry_xml()
 {
 #ifdef DAGMC
@@ -59,91 +144,6 @@ void read_geometry_xml()
   // Allocate universes, universe cell arrays, and assign base universe
   model::root_universe = find_root_universe();
 }
-
-void UniverseCellCounter::clear() {
-  if (instance_ != nullptr) {
-    delete instance_;
-    instance_ = nullptr;
-  }
-}
-
-void UniverseCellCounter::set_cell_count_for_univ(int32_t univ, int32_t cell, int count) {
-    counts[univ][cell] = count;
-}
-
-  void UniverseCellCounter::increment_count_for_univ(int32_t univ, int32_t cell) {
-    if (has_count(univ,cell)) {
-      counts[univ][cell] += 1;
-    } else {
-      counts[univ][cell] = 1;
-    }
-  }
-
-bool UniverseCellCounter::has_count(int32_t univ, int32_t cell) {
-  return counts.count(univ) && counts[univ].count(cell);
-}
-
-bool UniverseCellCounter::has_count(int32_t univ) {
-  return counts.count(univ);
-}
-
-void UniverseCellCounter::absorb_b_into_a(int32_t a, int32_t b) {
-  std::map<int32_t, int> b_map = counts[b];
-
-  for (auto it : b_map) {
-    if (has_count(a, it.first)) {
-      counts[a][it.first] += it.second;
-    } else {
-      counts[a][it.first] = it.second;
-      }
-  }
-}
-
-auto UniverseCellCounter::get_count(int32_t univ) {
-    return counts[univ];
-}
-
-void UniverseLevelCounter::clear() {
-  if (instance_ != nullptr) {
-    delete instance_;
-    instance_ = nullptr;
-    }
-}
-
-void UniverseLevelCounter::set_cell_count_for_univ(int32_t univ, int count) {
-  counts[univ] = count;
-}
-
-void UniverseLevelCounter::increment_count_for_univ(int32_t univ) {
-  if (has_count(univ)) {
-    counts[univ] += 1;
-  } else {
-    counts[univ] = 1;
-  }
-}
-
-bool UniverseLevelCounter::has_count(int32_t univ) {
-  return counts.count(univ);
-}
-
-void UniverseLevelCounter::absorb_b_into_a(int32_t a, int32_t b) {
-  if (has_count(a)) {
-    counts[a] += counts[b];
-  } else {
-    counts[a] = counts[b];
-  }
-}
-
-void UniverseLevelCounter::set_count(int32_t univ, int count) {
-  counts[univ] = count;
-}
-
-int UniverseLevelCounter::get_count(int32_t univ) {
-  return counts[univ];
-}
-
-UniverseCellCounter* UniverseCellCounter::instance_ = nullptr;
-UniverseLevelCounter* UniverseLevelCounter::instance_ = nullptr;
 
 //==============================================================================
 

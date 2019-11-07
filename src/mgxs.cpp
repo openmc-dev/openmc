@@ -548,8 +548,7 @@ Mgxs::sample_fission_energy(int gin, int& dg, int& gout)
   double nu_fission = xs_t->nu_fission(cache[tid].a, gin);
 
   // Find the probability of having a prompt neutron
-  double prob_prompt =
-       xs_t->prompt_nu_fission(cache[tid].a, gin);
+  double prob_prompt = xs_t->prompt_nu_fission(cache[tid].a, gin);
 
   // sample random numbers
   double xi_pd = prn() * nu_fission;
@@ -564,8 +563,7 @@ Mgxs::sample_fission_energy(int gin, int& dg, int& gout)
 
     // sample the outgoing energy group
     gout = 0;
-    double prob_gout =
-         xs_t->chi_prompt(cache[tid].a, gin, gout);
+    double prob_gout = xs_t->chi_prompt(cache[tid].a, gin, gout);
     while (prob_gout < xi_gout) {
       gout++;
       prob_gout += xs_t->chi_prompt(cache[tid].a, gin, gout);
@@ -575,11 +573,9 @@ Mgxs::sample_fission_energy(int gin, int& dg, int& gout)
     // the neutron is delayed
 
     // get the delayed group
-    dg = 0;
-    while (xi_pd >= prob_prompt) {
-      dg++;
-      prob_prompt +=
-           xs_t->delayed_nu_fission(cache[tid].a, dg, gin);
+    for (dg = 0; dg < num_delayed_groups; ++dg) {
+      prob_prompt += xs_t->delayed_nu_fission(cache[tid].a, dg, gin);
+      if (xi_pd < prob_prompt) break;
     }
 
     // adjust dg in case of round-off error
@@ -587,12 +583,10 @@ Mgxs::sample_fission_energy(int gin, int& dg, int& gout)
 
     // sample the outgoing energy group
     gout = 0;
-    double prob_gout =
-         xs_t->chi_delayed(cache[tid].a, dg, gin, gout);
+    double prob_gout = xs_t->chi_delayed(cache[tid].a, dg, gin, gout);
     while (prob_gout < xi_gout) {
       gout++;
-      prob_gout +=
-           xs_t->chi_delayed(cache[tid].a, dg, gin, gout);
+      prob_gout += xs_t->chi_delayed(cache[tid].a, dg, gin, gout);
     }
   }
 }

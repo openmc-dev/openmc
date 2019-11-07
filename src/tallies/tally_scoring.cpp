@@ -1720,7 +1720,7 @@ score_general_mg(const Particle* p, int i_tally, int start_index,
                 model::tally_filters[i_dg_filt].get())};
               // Tally each delayed group bin individually
               for (auto d_bin = 0; d_bin < filt.n_bins(); ++d_bin) {
-                auto d = filt.groups()[d_bin];
+                auto d = filt.groups()[d_bin] - 1;
                 score = p->wgt_absorb_ * flux;
                 if (i_nuclide >= 0) {
                   score *=
@@ -1802,7 +1802,7 @@ score_general_mg(const Particle* p, int i_tally, int start_index,
             model::tally_filters[i_dg_filt].get())};
           // Tally each delayed group bin individually
           for (auto d_bin = 0; d_bin < filt.n_bins(); ++d_bin) {
-            auto d = filt.groups()[d_bin];
+            auto d = filt.groups()[d_bin] - 1;
             if (i_nuclide >= 0) {
               score = flux * atom_density
                 * get_nuclide_xs(i_nuclide, MG_GET_XS_DELAYED_NU_FISSION,
@@ -1842,7 +1842,7 @@ score_general_mg(const Particle* p, int i_tally, int start_index,
                 model::tally_filters[i_dg_filt].get())};
               // Tally each delayed group bin individually
               for (auto d_bin = 0; d_bin < filt.n_bins(); ++d_bin) {
-                auto d = filt.groups()[d_bin];
+                auto d = filt.groups()[d_bin] - 1;
                 score = p->wgt_absorb_ * flux;
                 if (i_nuclide >= 0) {
                   score *=
@@ -1902,8 +1902,8 @@ score_general_mg(const Particle* p, int i_tally, int start_index,
           for (auto i = 0; i < p->n_bank_; ++i) {
             auto i_bank = simulation::fission_bank.size() - p->n_bank_ + i;
             const auto& bank = simulation::fission_bank[i_bank];
-            auto g = bank.delayed_group;
-            if (g != 0) {
+            auto g = bank.delayed_group - 1;
+            if (g != -1) {
               if (i_nuclide >= 0) {
                 score += simulation::keff * atom_density * bank.wgt * flux
                   * get_nuclide_xs(i_nuclide, MG_GET_XS_DECAY_RATE, p_g,
@@ -1923,7 +1923,7 @@ score_general_mg(const Particle* p, int i_tally, int start_index,
                 // Find the corresponding filter bin and then score
                 for (auto d_bin = 0; d_bin < filt.n_bins(); ++d_bin) {
                   auto d = filt.groups()[d_bin];
-                  if (d == g)
+                  if (d == g + 1)
                     score_fission_delayed_dg(i_tally, d_bin, score,
                       score_index);
                 }
@@ -1941,7 +1941,7 @@ score_general_mg(const Particle* p, int i_tally, int start_index,
             model::tally_filters[i_dg_filt].get())};
           // Tally each delayed group bin individually
           for (auto d_bin = 0; d_bin < filt.n_bins(); ++d_bin) {
-            auto d = filt.groups()[d_bin];
+            auto d = filt.groups()[d_bin] - 1;
             if (i_nuclide >= 0) {
               score += atom_density * flux
                 * get_nuclide_xs(i_nuclide, MG_GET_XS_DECAY_RATE,

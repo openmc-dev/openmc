@@ -45,8 +45,8 @@ struct MgxsInterface
   MgxsInterface(const std::string& path_cross_sections,
                 const std::vector<std::string> xs_to_read,
                 const std::vector<std::vector<double>> xs_temps);
-  void setNuclidesToRead(std::vector<std::string> arg_xs_to_read);
-  void setNuclideTemperaturesToRead(std::vector<std::vector<double>> xs_temps);
+  void set_nuclides_to_read(std::vector<std::string> arg_xs_to_read);
+  void set_nuclide_temperatures_to_read(std::vector<std::vector<double>> xs_temps);
 
   void init();
 
@@ -59,7 +59,7 @@ struct MgxsInterface
 
   // Reads just the header of the cross sections file, to find
   // min & max energies as well as the available XS
-  void readHeader(const std::string& path_cross_sections);
+  void read_header(const std::string& path_cross_sections);
 };
 
 namespace data {
@@ -69,14 +69,14 @@ namespace data {
 // Puts available XS in MGXS file to globals so that when
 // materials are read, the MGXS specified in a material can
 // be ensured to be present in the available data.
-void putMgxsHeaderDataToGlobals();
+void put_mgxs_header_data_to_globals();
 
 // Set which nuclides and temperatures are to be read on
 // mgInterface through global data
-void setMgInterfaceNuclidesAndTemps();
+void set_mg_interface_nuclides_and_temps();
 
 // After macro XS have been read, materials can be marked as fissionable
-void markFissionableMgxsMaterials();
+void mark_fissionable_mgxs_materials();
 
 //==============================================================================
 // Mgxs tracking/transport/tallying interface methods

@@ -288,7 +288,8 @@ Mgxs::Mgxs(hid_t xs_id, const std::vector<double>& temperature,
 
   // Load the more specific XsData information
   for (int t = 0; t < temps_to_read.size(); t++) {
-    xs[t] = XsData(fissionable, final_scatter_format, n_pol, n_azi);
+    xs[t] = XsData(fissionable, final_scatter_format, n_pol, n_azi,
+                   num_groups, num_delayed_groups);
     // Get the temperature as a string and then open the HDF5 group
     std::string temp_str = std::to_string(temps_to_read[t]) + "K";
     hid_t xsdata_grp = open_group(xs_id, temp_str.c_str());
@@ -332,7 +333,7 @@ Mgxs::Mgxs(const std::string& in_name, const std::vector<double>& mat_kTs,
   // Create the xs data for each temperature
   for (int t = 0; t < mat_kTs.size(); t++) {
     xs[t] = XsData(in_fissionable, in_scatter_format, in_polar.size(),
-      in_azimuthal.size());
+      in_azimuthal.size(), num_groups, num_delayed_groups);
 
     // Find the right temperature index to use
     double temp_desired = mat_kTs[t];

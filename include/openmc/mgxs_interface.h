@@ -20,6 +20,14 @@ struct MgxsInterface
   int num_energy_groups;
   int num_delayed_groups;
 
+  // List of available names in the HDF5 file
+  std::vector<std::string> xs_names;
+  std::vector<std::string> xs_to_read;
+  std::vector<std::vector<double>> xs_temps_to_read;
+
+  // Name of the HDF5 file which contains mgxs
+  std::string cross_sections_path;
+
   std::vector<Mgxs> nuclides_MG;
   std::vector<Mgxs> macro_xs;
 
@@ -27,12 +35,20 @@ struct MgxsInterface
   std::vector<double> energy_bin_avg;
   std::vector<double> rev_energy_bins;
 
+  // temperatues of each available nuclide
+  std::vector<std::vector<double>> nuc_temps;
+
   MgxsInterface() = default;
 
-  // Construct from path to cross sections file
-  MgxsInterface(const std::string& path_cross_sections);
+  // Construct from path to cross sections file, as well as a list
+  // of XS to read and the corresponding temperatures for each XS
+  MgxsInterface(const std::string& path_cross_sections,
+                const std::vector<std::string> xs_to_read,
+                const std::vector<std::vector<double>> xs_temps);
+  void setNuclidesToRead(std::vector<std::string> arg_xs_to_read);
+  void setNuclideTemperaturesToRead(std::vector<std::vector<double>> xs_temps);
 
-  void init(const std::string& path_cross_sections);
+  void init();
 
   void add_mgxs(hid_t file_id, const std::string& name,
          const std::vector<double>& temperature);
@@ -41,12 +57,26 @@ struct MgxsInterface
 
   std::vector<std::vector<double>> get_mat_kTs();
 
-  void read_mg_cross_sections_header();
+  // Reads just the header of the cross sections file, to find
+  // min & max energies as well as the available XS
+  void readHeader(const std::string& path_cross_sections);
 };
 
 namespace data {
   extern MgxsInterface mgInterface;
 }
+
+// Puts available XS in MGXS file to globals so that when
+// materials are read, the MGXS specified in a material can
+// be ensured to be present in the available data.
+void putMgxsHeaderDataToGlobals();
+
+// Set which nuclides and temperatures are to be read on
+// mgInterface through global data
+void setMgInterfaceNuclidesAndTemps();
+
+// After macro XS have been read, materials can be marked as fissionable
+void markFissionableMgxsMaterials();
 
 //==============================================================================
 // Mgxs tracking/transport/tallying interface methods

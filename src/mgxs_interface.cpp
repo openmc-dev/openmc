@@ -30,19 +30,19 @@ MgxsInterface::MgxsInterface(const std::string& path_cross_sections,
                              const std::vector<std::string> xs_to_read,
                              const std::vector<std::vector<double>> xs_temps)
 {
-  readHeader(path_cross_sections);
-  setNuclidesToRead(xs_to_read);
-  setNuclideTemperaturesToRead(xs_temps);
+  read_header(path_cross_sections);
+  set_nuclides_to_read(xs_to_read);
+  set_nuclide_temperatures_to_read(xs_temps);
   init();
 }
 
 // Should these perhaps unnecessary setters be lumped into one?
-void MgxsInterface::setNuclidesToRead(std::vector<std::string> arg_xs_to_read)
+void MgxsInterface::set_nuclides_to_read(std::vector<std::string> arg_xs_to_read)
 { 
   // Check to remove all duplicates
   xs_to_read = arg_xs_to_read;
 }
-void MgxsInterface::setNuclideTemperaturesToRead(std::vector<std::vector<double>> xs_temps)
+void MgxsInterface::set_nuclide_temperatures_to_read(std::vector<std::vector<double>> xs_temps)
 {
   xs_temps_to_read = xs_temps;
   if (xs_to_read.size() != xs_temps.size())
@@ -182,7 +182,7 @@ std::vector<std::vector<double>> MgxsInterface::get_mat_kTs()
 
 //==============================================================================
 
-void MgxsInterface::readHeader(const std::string& path_cross_sections)
+void MgxsInterface::read_header(const std::string& path_cross_sections)
 {
   // Save name of HDF5 file to be read to struct data
   cross_sections_path = path_cross_sections;
@@ -231,7 +231,7 @@ void MgxsInterface::readHeader(const std::string& path_cross_sections)
   file_close(file_id);
 }
 
-void putMgxsHeaderDataToGlobals()
+void put_mgxs_header_data_to_globals()
 {
   // Get the minimum and maximum energies
   int neutron = static_cast<int>(Particle::Type::neutron);
@@ -249,7 +249,7 @@ void putMgxsHeaderDataToGlobals()
   }
 }
 
-void setMgInterfaceNuclidesAndTemps()
+void set_mg_interface_nuclides_and_temps()
 {
   // Get temperatures from global data
   std::vector<std::vector<double>> these_nuc_temps(data::nuclide_map.size());
@@ -280,7 +280,7 @@ void setMgInterfaceNuclidesAndTemps()
   }
 }
 
-void markFissionableMgxsMaterials()
+void mark_fissionable_mgxs_materials()
 {
   // Loop over all files
   for (const auto& mat : model::materials) {

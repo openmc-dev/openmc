@@ -260,9 +260,9 @@ void read_input_xml()
       read_ce_cross_sections(nuc_temps, thermal_temps);
     } else {
       // Create material macroscopic data for MGXS
-      setMgInterfaceNuclidesAndTemps();
+      set_mg_interface_nuclides_and_temps();
       data::mgInterface.init();
-      markFissionableMgxsMaterials();
+      mark_fissionable_mgxs_materials();
     }
     simulation::time_read_xs.stop();
   }

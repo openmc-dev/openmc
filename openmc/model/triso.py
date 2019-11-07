@@ -41,8 +41,6 @@ class TRISO(openmc.Cell):
         Name of the TRISO cell
     center : numpy.ndarray
         Cartesian coordinates of the center of the TRISO particle in cm
-    outer_radius : float
-        Outer radius of TRISO particle
     fill : openmc.Universe
         Universe that contains the TRISO layers
     region : openmc.Region

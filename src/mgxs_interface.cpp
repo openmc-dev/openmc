@@ -26,29 +26,48 @@ namespace data {
   MgxsInterface mgInterface;
 }
 
-MgxsInterface::MgxsInterface(const std::string& path_cross_sections)
+MgxsInterface::MgxsInterface(const std::string& path_cross_sections,
+                             const std::vector<std::string> xs_to_read,
+                             const std::vector<std::vector<double>> xs_temps)
 {
-  init(path_cross_sections);
+  readHeader(path_cross_sections);
+  setNuclidesToRead(xs_to_read);
+  setNuclideTemperaturesToRead(xs_temps);
+  init();
 }
 
-void MgxsInterface::init(const std::string& path_cross_sections)
+// Should these perhaps unnecessary setters be lumped into one?
+void MgxsInterface::setNuclidesToRead(std::vector<std::string> arg_xs_to_read)
+{ 
+  // Check to remove all duplicates
+  xs_to_read = arg_xs_to_read;
+}
+void MgxsInterface::setNuclideTemperaturesToRead(std::vector<std::vector<double>> xs_temps)
 {
+  xs_temps_to_read = xs_temps;
+  if (xs_to_read.size() != xs_temps.size())
+    fatal_error("The list of macro XS temperatures to read does not "
+                "correspond in length to the number of XS names. ");
+}
+
+void MgxsInterface::init()
+{
+
+  // Check that at least some data was set to be read
+  if (xs_to_read.size() == 0)
+    warning("No MGXS nuclides were set to be read.");
+
   // Check if MGXS Library exists
-  if (!file_exists(path_cross_sections)) {
+  if (!file_exists(cross_sections_path)) {
     // Could not find MGXS Library file
-    fatal_error("Cross sections HDF5 file '" + path_cross_sections +
+    fatal_error("Cross sections HDF5 file '" + cross_sections_path +
       "' does not exist.");
   }
 
   write_message("Loading cross section data...", 5);
 
-  // Get temperatures
-  std::vector<std::vector<double>> nuc_temps(data::nuclide_map.size());
-  std::vector<std::vector<double>> dummy;
-  get_temperatures(nuc_temps, dummy);
-
   // Open file for reading
-  hid_t file_id = file_open(path_cross_sections, 'r');
+  hid_t file_id = file_open(cross_sections_path, 'r');
 
   // Read filetype
   std::string type;
@@ -68,32 +87,12 @@ void MgxsInterface::init(const std::string& path_cross_sections)
 
   // ==========================================================================
   // READ ALL MGXS CROSS SECTION TABLES
-
-  std::unordered_set<std::string> already_read;
-
-  // Build vector of nuclide names
-  std::vector<std::string> nuclide_names(data::nuclide_map.size());
-  for (const auto& kv : data::nuclide_map) {
-    nuclide_names[kv.second] = kv.first;
-  }
-
-  // Loop over all files
-  for (const auto& mat : model::materials) {
-    for (int i_nuc : mat->nuclide_) {
-      std::string& name = nuclide_names[i_nuc];
-
-      if (already_read.find(name) == already_read.end()) {
-        add_mgxs(file_id, name, nuc_temps[i_nuc]);
-        already_read.insert(name);
-      }
-
-      if (nuclides_MG[i_nuc].fissionable) {
-        mat->fissionable_ = true;
-      }
-    }
-  }
+  for (unsigned i_nuc=0; i_nuc<xs_to_read.size(); ++i_nuc)
+    add_mgxs(file_id, xs_to_read[i_nuc], xs_temps_to_read[i_nuc]);
 
   file_close(file_id);
+
+  create_macro_xs();
 }
 
 //==============================================================================
@@ -113,7 +112,7 @@ MgxsInterface::add_mgxs(hid_t file_id, const std::string& name,
                 + "provided MGXS Library");
   }
 
-  nuclides_MG.emplace_back(xs_grp, temperature, num_energy_groups,
+  nuclides_MG.emplace_back(xsgavin.keith.ridley@gmail.com_grp, temperature, num_energy_groups,
       num_delayed_groups);
   close_group(xs_grp);
 }
@@ -183,18 +182,21 @@ std::vector<std::vector<double>> MgxsInterface::get_mat_kTs()
 
 //==============================================================================
 
-void MgxsInterface::read_mg_cross_sections_header()
+void MgxsInterface::readHeader(const std::string& path_cross_sections)
 {
+  // Save name of HDF5 file to be read to struct data
+  cross_sections_path = path_cross_sections;
+
   // Check if MGXS Library exists
-  if (!file_exists(settings::path_cross_sections)) {
+  if (!file_exists(cross_sections_path)) {
     // Could not find MGXS Library file
-    fatal_error("Cross sections HDF5 file '" + settings::path_cross_sections +
+    fatal_error("Cross sections HDF5 file '" + cross_sections_path +
       "' does not exist.");
   }
   write_message("Reading cross sections HDF5 file...", 5);
 
   // Open file for reading
-  hid_t file_id = file_open(settings::path_cross_sections, 'r', true);
+  hid_t file_id = file_open(cross_sections_path, 'r', true);
 
   ensure_exists(file_id, "energy_groups", true);
   read_attribute(file_id, "energy_groups", num_energy_groups);
@@ -210,35 +212,84 @@ void MgxsInterface::read_mg_cross_sections_header()
 
   // Reverse energy bins
   std::copy(rev_energy_bins.crbegin(), rev_energy_bins.crend(),
-    std::back_inserter(data::mgInterface.energy_bins));
+    std::back_inserter(energy_bins));
 
   // Create average energies
-  for (int i = 0; i < data::mgInterface.energy_bins.size() - 1; ++i) {
-    data::mgInterface.energy_bin_avg.push_back(0.5*
-    (data::mgInterface.energy_bins[i] + data::mgInterface.energy_bins[i+1]));
+  for (int i = 0; i < energy_bins.size() - 1; ++i) {
+    energy_bin_avg.push_back(0.5*
+    (energy_bins[i] + energy_bins[i+1]));
   }
 
   // Add entries into libraries for MG data
-  auto names = group_names(file_id);
-  if (names.empty()) {
+  xs_names = group_names(file_id);
+  if (xs_names.empty()) {
     fatal_error("At least one MGXS data set must be present in mgxs "
       "library file!");
   }
 
-  for (auto& name : names) {
-    Library lib {};
-    lib.type_ = Library::Type::neutron;
-    lib.materials_.push_back(name);
-    data::libraries.push_back(lib);
-  }
+  // Close MGXS HDF5 file
+  file_close(file_id);
+}
 
+void putMgxsHeaderDataToGlobals()
+{
   // Get the minimum and maximum energies
   int neutron = static_cast<int>(Particle::Type::neutron);
   data::energy_min[neutron] = data::mgInterface.energy_bins.back();
   data::energy_max[neutron] = data::mgInterface.energy_bins.front();
 
-  // Close MGXS HDF5 file
-  file_close(file_id);
+  // Save available XS names to library list, so that when
+  // materials are read, the specified mgxs can be confirmed
+  // as present
+  for (auto& name : data::mgInterface.xs_names) {
+    Library lib {};
+    lib.type_ = Library::Type::neutron;
+    lib.materials_.push_back(name);
+    data::libraries.push_back(lib);
+  }
+}
+
+void setMgInterfaceNuclidesAndTemps()
+{
+  // Get temperatures from global data
+  std::vector<std::vector<double>> these_nuc_temps(data::nuclide_map.size());
+  std::vector<std::vector<double>> dummy;
+  get_temperatures(these_nuc_temps, dummy);
+
+  // Build vector of nuclide names which are to be read
+  std::vector<std::string> nuclide_names(data::nuclide_map.size());
+  for (const auto& kv : data::nuclide_map) {
+    nuclide_names[kv.second] = kv.first;
+  }
+
+  std::unordered_set<std::string> already_read;
+
+  // Loop over all files
+  for (const auto& mat : model::materials) {
+    for (int i_nuc : mat->nuclide_) {
+      std::string& name = nuclide_names[i_nuc];
+
+      if (already_read.find(name) == already_read.end()) {
+        data::mgInterface.xs_to_read.push_back(name);
+        data::mgInterface.xs_temps_to_read.push_back(these_nuc_temps[i_nuc]);
+        // DBG
+        std::cout << these_nuc_temps[i_nuc][0] << std::endl;
+        already_read.insert(name);
+      }
+    }
+  }
+}
+
+void markFissionableMgxsMaterials()
+{
+  // Loop over all files
+  for (const auto& mat : model::materials) {
+    for (int i_nuc : mat->nuclide_) {
+      if (data::mgInterface.nuclides_MG[i_nuc].fissionable) {
+        mat->fissionable_ = true;
+      }
+    }
+  }
 }
 
 //==============================================================================

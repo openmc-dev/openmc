@@ -24,11 +24,12 @@ namespace openmc {
 // XsData class methods
 //==============================================================================
 
-XsData::XsData(bool fissionable, int scatter_format, int n_pol, int n_azi)
+XsData::XsData(bool fissionable, int scatter_format, int n_pol, int n_azi,
+               size_t n_groups, size_t n_d_groups) :
+  n_g(n_groups),
+  n_dg(n_d_groups)
 {
   size_t n_ang = n_pol * n_azi;
-  size_t n_dg = data::mgInterface.num_delayed_groups;
-  size_t n_g = data::mgInterface.num_energy_groups;
 
   // check to make sure scatter format is OK before we allocate
   if (scatter_format != ANGLE_HISTOGRAM && scatter_format != ANGLE_TABULAR &&
@@ -127,9 +128,6 @@ XsData::fission_vector_beta_from_hdf5(hid_t xsdata_grp, size_t n_ang,
 {
   // Data is provided as nu-fission and chi with a beta for delayed info
 
-  size_t n_g = data::mgInterface.num_energy_groups;
-  size_t n_dg = data::mgInterface.num_delayed_groups;
-
   // Get chi
   xt::xtensor<double, 2> temp_chi({n_ang, n_g}, 0.);
   read_nd_vector(xsdata_grp, "chi", temp_chi, true);
@@ -182,9 +180,6 @@ XsData::fission_vector_no_beta_from_hdf5(hid_t xsdata_grp, size_t n_ang)
 {
   // Data is provided separately as prompt + delayed nu-fission and chi
 
-  size_t n_g = data::mgInterface.num_energy_groups;
-  size_t n_dg = data::mgInterface.num_delayed_groups;
-
   // Get chi-prompt
   xt::xtensor<double, 2> temp_chi_p({n_ang, n_g}, 0.);
   read_nd_vector(xsdata_grp, "chi-prompt", temp_chi_p, true);
@@ -218,8 +213,6 @@ XsData::fission_vector_no_delayed_from_hdf5(hid_t xsdata_grp, size_t n_ang)
   // No beta is provided and there is no prompt/delay distinction.
   // Therefore, the code only considers the data as prompt.
 
-  size_t n_g = data::mgInterface.num_energy_groups;
-
   // Get chi
   xt::xtensor<double, 2> temp_chi({n_ang, n_g}, 0.);
   read_nd_vector(xsdata_grp, "chi", temp_chi, true);
@@ -240,9 +233,6 @@ void
 XsData::fission_matrix_beta_from_hdf5(hid_t xsdata_grp, size_t n_ang, bool is_isotropic)
 {
   // Data is provided as nu-fission and chi with a beta for delayed info
-
-  size_t n_g = data::mgInterface.num_energy_groups;
-  size_t n_dg = data::mgInterface.num_delayed_groups;
 
   // Get nu-fission matrix
   xt::xtensor<double, 3> temp_matrix({n_ang, n_g, n_g}, 0.);
@@ -319,9 +309,6 @@ XsData::fission_matrix_no_beta_from_hdf5(hid_t xsdata_grp, size_t n_ang)
 {
   // Data is provided separately as prompt + delayed nu-fission and chi
 
-  size_t n_g = data::mgInterface.num_energy_groups;
-  size_t n_dg = data::mgInterface.num_delayed_groups;
-
   // Get the prompt nu-fission matrix
   xt::xtensor<double, 3> temp_matrix_p({n_ang, n_g, n_g}, 0.);
   read_nd_vector(xsdata_grp, "prompt-nu-fission", temp_matrix_p, true);
@@ -353,8 +340,6 @@ XsData::fission_matrix_no_delayed_from_hdf5(hid_t xsdata_grp, size_t n_ang)
   // No beta is provided and there is no prompt/delay distinction.
   // Therefore, the code only considers the data as prompt.
 
-  size_t n_g = data::mgInterface.num_energy_groups;
-
   // Get nu-fission matrix
   xt::xtensor<double, 3> temp_matrix({n_ang, n_g, n_g}, 0.);
   read_nd_vector(xsdata_grp, "nu-fission", temp_matrix, true);
@@ -381,7 +366,7 @@ XsData::fission_from_hdf5(hid_t xsdata_grp, size_t n_ang, bool is_isotropic)
   // as a nu-fission matrix or a set of chi and nu-fission vectors
   if (object_exists(xsdata_grp, "chi") ||
       object_exists(xsdata_grp, "chi-prompt")) {
-    if (data::mgInterface.num_delayed_groups == 0) {
+    if (n_dg == 0) {
       fission_vector_no_delayed_from_hdf5(xsdata_grp, n_ang);
     } else {
       if (object_exists(xsdata_grp, "beta")) {
@@ -391,7 +376,7 @@ XsData::fission_from_hdf5(hid_t xsdata_grp, size_t n_ang, bool is_isotropic)
       }
     }
   } else {
-    if (data::mgInterface.num_delayed_groups == 0) {
+    if (n_dg == 0) {
       fission_matrix_no_delayed_from_hdf5(xsdata_grp, n_ang);
     } else {
       if (object_exists(xsdata_grp, "beta")) {
@@ -403,7 +388,7 @@ XsData::fission_from_hdf5(hid_t xsdata_grp, size_t n_ang, bool is_isotropic)
   }
 
   // Combine prompt_nu_fission and delayed_nu_fission into nu_fission
-  if (data::mgInterface.num_delayed_groups == 0) {
+  if (n_dg == 0) {
     nu_fission = prompt_nu_fission;
   } else {
     nu_fission = prompt_nu_fission + xt::sum(delayed_nu_fission, {1});
@@ -422,7 +407,6 @@ XsData::scatter_from_hdf5(hid_t xsdata_grp, size_t n_ang,
   hid_t scatt_grp = open_group(xsdata_grp, "scatter_data");
 
   // Get the outgoing group boundary indices
-  size_t n_g = data::mgInterface.num_energy_groups;
   xt::xtensor<int, 2> gmin({n_ang, n_g}, 0.);
   read_nd_vector(scatt_grp, "g_min", gmin, true);
   xt::xtensor<int, 2> gmax({n_ang, n_g}, 0.);

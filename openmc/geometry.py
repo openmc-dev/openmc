@@ -279,7 +279,7 @@ class Geometry(object):
         if self.root_universe is not None:
             return self.root_universe.get_all_cells(memo)
         else:
-            return []
+            return OrderedDict()
 
     def get_all_universes(self):
         """Return all universes in the geometry.
@@ -308,7 +308,10 @@ class Geometry(object):
         """
         memo = set()
 
-        return self.root_universe.get_all_materials(memo)
+        if self.root_universe is not None:
+            return self.root_universe.get_all_materials(memo)
+        else:
+            return OrderedDict()
 
     def get_all_material_cells(self):
         """Return all cells filled by a material

@@ -332,7 +332,7 @@ class Lattice(IDManagerMixin, metaclass=ABCMeta):
 
         return nuclides
 
-    def get_all_cells(self):
+    def get_all_cells(self, memo=None):
         """Return all cells that are contained within the lattice
 
         Returns
@@ -344,14 +344,21 @@ class Lattice(IDManagerMixin, metaclass=ABCMeta):
         """
 
         cells = OrderedDict()
+
+        if memo and id(self) in memo:
+            return cells
+
+        if memo is not None:
+            memo.add(id(self))
+
         unique_universes = self.get_unique_universes()
 
         for universe_id, universe in unique_universes.items():
-            cells.update(universe.get_all_cells())
+            cells.update(universe.get_all_cells(memo))
 
         return cells
 
-    def get_all_materials(self):
+    def get_all_materials(self, memo=None):
         """Return all materials that are contained within the lattice
 
         Returns
@@ -365,9 +372,9 @@ class Lattice(IDManagerMixin, metaclass=ABCMeta):
         materials = OrderedDict()
 
         # Append all Cells in each Cell in the Universe to the dictionary
-        cells = self.get_all_cells()
+        cells = self.get_all_cells(memo)
         for cell_id, cell in cells.items():
-            materials.update(cell.get_all_materials())
+            materials.update(cell.get_all_materials(memo))
 
         return materials
 

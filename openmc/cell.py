@@ -350,7 +350,7 @@ class Cell(IDManagerMixin):
 
         return nuclides
 
-    def get_all_cells(self):
+    def get_all_cells(self, memo=None):
         """Return all cells that are contained within this one if it is filled with a
         universe or lattice
 
@@ -364,12 +364,18 @@ class Cell(IDManagerMixin):
 
         cells = OrderedDict()
 
+        if memo and id(self) in memo:
+            return cells
+
+        if memo is not None:
+            memo.add(id(self))
+
         if self.fill_type in ('universe', 'lattice'):
-            cells.update(self.fill.get_all_cells())
+            cells.update(self.fill.get_all_cells(memo))
 
         return cells
 
-    def get_all_materials(self):
+    def get_all_materials(self, memo=None):
         """Return all materials that are contained within the cell
 
         Returns
@@ -388,9 +394,9 @@ class Cell(IDManagerMixin):
                     materials[m.id] = m
         else:
             # Append all Cells in each Cell in the Universe to the dictionary
-            cells = self.get_all_cells()
+            cells = self.get_all_cells(memo)
             for cell in cells.values():
-                materials.update(cell.get_all_materials())
+                materials.update(cell.get_all_materials(memo))
 
         return materials
 

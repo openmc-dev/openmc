@@ -273,8 +273,11 @@ class Geometry(object):
             Dictionary mapping cell IDs to :class:`openmc.Cell` instances
 
         """
+
+        memo = set()
+
         if self.root_universe is not None:
-            return self.root_universe.get_all_cells()
+            return self.root_universe.get_all_cells(memo)
         else:
             return []
 
@@ -303,7 +306,9 @@ class Geometry(object):
             instances
 
         """
-        return self.root_universe.get_all_materials()
+        memo = set()
+
+        return self.root_universe.get_all_materials(memo)
 
     def get_all_material_cells(self):
         """Return all cells filled by a material

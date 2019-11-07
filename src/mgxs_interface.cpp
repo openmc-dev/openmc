@@ -112,7 +112,7 @@ MgxsInterface::add_mgxs(hid_t file_id, const std::string& name,
                 + "provided MGXS Library");
   }
 
-  nuclides_MG.emplace_back(xsgavin.keith.ridley@gmail.com_grp, temperature, num_energy_groups,
+  nuclides_MG.emplace_back(xs_grp, temperature, num_energy_groups,
       num_delayed_groups);
   close_group(xs_grp);
 }

@@ -22,8 +22,6 @@ namespace openmc {
 class XsData {
 
   private:
-    //! Number of energy and delayed neutron groups
-    size_t n_g, n_dg;
 
     //! \brief Reads scattering data from the HDF5 file
     void
@@ -63,6 +61,9 @@ class XsData {
     //  the HDF5 file when no delayed data is provided.
     void
     fission_matrix_no_delayed_from_hdf5(hid_t xsdata_grp, size_t n_ang);
+
+    //! Number of energy and delayed neutron groups
+    size_t n_g_, n_dg_;
 
   public:
 

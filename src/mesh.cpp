@@ -149,8 +149,10 @@ RegularMesh::RegularMesh(pugi::xml_node node)
         "the <lower_left> coordinates on a tally mesh.");
     }
 
-    // Set width and upper right coordinate
-    width_ = xt::eval((upper_right_ - lower_left_) / shape_);
+    // Set width
+    if (shape_.size() > 0) {
+      width_ = xt::eval((upper_right_ - lower_left_) / shape_);
+    }
   } else {
     fatal_error("Must specify either <upper_right> and <width> on a mesh.");
   }

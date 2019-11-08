@@ -31,19 +31,16 @@ MgxsInterface::MgxsInterface(const std::string& path_cross_sections,
                              const std::vector<std::vector<double>> xs_temps)
 {
   read_header(path_cross_sections);
-  set_nuclides_to_read(xs_to_read);
-  set_nuclide_temperatures_to_read(xs_temps);
+  set_nuclides_and_temperatures(xs_to_read, xs_temps);
   init();
 }
 
-// Should these perhaps unnecessary setters be lumped into one?
-void MgxsInterface::set_nuclides_to_read(std::vector<std::string> arg_xs_to_read)
+void MgxsInterface::set_nuclides_and_temperatures(
+    std::vector<std::string> arg_xs_to_read,
+    std::vector<std::vector<double>> xs_temps)
 { 
   // Check to remove all duplicates
   xs_to_read = arg_xs_to_read;
-}
-void MgxsInterface::set_nuclide_temperatures_to_read(std::vector<std::vector<double>> xs_temps)
-{
   xs_temps_to_read = xs_temps;
   if (xs_to_read.size() != xs_temps.size())
     fatal_error("The list of macro XS temperatures to read does not "
@@ -264,7 +261,7 @@ void set_mg_interface_nuclides_and_temps()
 
   std::unordered_set<std::string> already_read;
 
-  // Loop over all files
+  // Loop over materials to find xs and temperature to be read
   for (const auto& mat : model::materials) {
     for (int i_nuc : mat->nuclide_) {
       std::string& name = nuclide_names[i_nuc];
@@ -272,8 +269,6 @@ void set_mg_interface_nuclides_and_temps()
       if (already_read.find(name) == already_read.end()) {
         data::mgInterface.xs_to_read.push_back(name);
         data::mgInterface.xs_temps_to_read.push_back(these_nuc_temps[i_nuc]);
-        // DBG
-        std::cout << these_nuc_temps[i_nuc][0] << std::endl;
         already_read.insert(name);
       }
     }

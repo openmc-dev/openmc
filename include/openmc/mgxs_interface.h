@@ -45,8 +45,8 @@ struct MgxsInterface
   MgxsInterface(const std::string& path_cross_sections,
                 const std::vector<std::string> xs_to_read,
                 const std::vector<std::vector<double>> xs_temps);
-  void set_nuclides_to_read(std::vector<std::string> arg_xs_to_read);
-  void set_nuclide_temperatures_to_read(std::vector<std::vector<double>> xs_temps);
+  void set_nuclides_and_temperatures(std::vector<std::string> arg_xs_to_read,
+                                     std::vector<std::vector<double>> xs_temps);
 
   void init();
 

@@ -478,8 +478,8 @@ class Cell(IDManagerMixin):
             XML element to be added to
 
         memo : set or None
-            A set of object id's representing geometry entities already
-            written to the xml_element. This parameter is used internally
+            A set of object IDs representing geometry entities already
+            written to ``xml_element``. This parameter is used internally
             and should not be specified by users.
 
         Returns

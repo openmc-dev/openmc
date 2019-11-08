@@ -710,7 +710,7 @@ write_tallies()
               << data::nuclides[i_nuclide]->name_ << "\n";
           } else {
             tallies_out << std::string(indent+1, ' ')
-              << data::mgInterface.nuclides_MG[i_nuclide].name << "\n";
+              << data::mg.nuclides_[i_nuclide].name << "\n";
           }
         }
 

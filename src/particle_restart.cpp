@@ -52,7 +52,7 @@ void read_particle_restart(Particle& p, int& previous_run_mode)
   // Set energy group and average energy in multi-group mode
   if (!settings::run_CE) {
     p.g_ = p.E_;
-    p.E_ = data::mgInterface.energy_bin_avg[p.g_ - 1];
+    p.E_ = data::mg.energy_bin_avg_[p.g_ - 1];
   }
 
   // Set particle last attributes

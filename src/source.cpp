@@ -311,9 +311,9 @@ Particle::Bank sample_external_source()
 
   // If running in MG, convert site % E to group
   if (!settings::run_CE) {
-    site.E = lower_bound_index(data::mgInterface.rev_energy_bins.begin(),
-      data::mgInterface.rev_energy_bins.end(), site.E);
-    site.E = data::mgInterface.num_energy_groups - site.E;
+    site.E = lower_bound_index(data::mg.rev_energy_bins_.begin(),
+      data::mg.rev_energy_bins_.end(), site.E);
+    site.E = data::mg.num_energy_groups_ - site.E;
   }
 
   // Set the random number generator back to the tracking stream.

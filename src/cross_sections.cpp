@@ -155,7 +155,7 @@ void read_cross_sections_xml()
   if (settings::run_CE) {
     read_ce_cross_sections_xml();
   } else {
-    data::mgInterface.read_header(settings::path_cross_sections);
+    data::mg.read_header(settings::path_cross_sections);
     put_mgxs_header_data_to_globals();
   }
 

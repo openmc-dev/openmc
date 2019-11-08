@@ -24,22 +24,18 @@
 namespace openmc {
 
 namespace model {
-  std::map<int32_t, std::map<int32_t, int32_t>> universe_cell_counts;
-  std::map<int32_t, int32_t> universe_level_counts;
+  std::unordered_map<int32_t, std::unordered_map<int32_t, int32_t>> universe_cell_counts;
+  std::unordered_map<int32_t, int32_t> universe_level_counts;
 } // namespace model
 
+
+// adds the cell counts of universe b to universe a
 void update_universe_cell_count(int32_t a, int32_t b) {
   auto& universe_a_counts = model::universe_cell_counts[a];
   const auto& universe_b_counts = model::universe_cell_counts[b];
-  for (auto it : universe_b_counts) {
+  for (const auto& it : universe_b_counts) {
     universe_a_counts[it.first] += it.second;
   }
-}
-
-void update_universe_level_count(int32_t a, int32_t b) {
-  auto& universe_a_count = model::universe_level_counts[a];
-  const auto& universe_b_count = model::universe_level_counts[b];
-  universe_a_count += universe_b_count;
 }
 
 void read_geometry_xml()
@@ -415,11 +411,10 @@ void
 count_cell_instances(int32_t univ_indx)
 {
 
-  if (model::universe_cell_counts.count(univ_indx)) {
-    std::map<int32_t, int> univ_counts = model::universe_cell_counts[univ_indx];
-    for(auto it : univ_counts) {
-      Cell& c = *model::cells[it.first];
-      c.n_instances_ += it.second;
+  const auto univ_counts = model::universe_cell_counts.find(univ_indx);
+  if (univ_counts != model::universe_cell_counts.end()) {
+    for (const auto& it : univ_counts->second) {
+      model::cells[it.first]->n_instances_ += it.second;
     }
   } else {
     for (int32_t cell_indx : model::universes[univ_indx]->cells_) {
@@ -560,8 +555,9 @@ int
 maximum_levels(int32_t univ)
 {
 
-  if (model::universe_level_counts.count(univ)) {
-    return model::universe_level_counts[univ];
+  const auto level_count = model::universe_level_counts.find(univ);
+  if (level_count != model::universe_level_counts.end()) {
+    return level_count->second;
   }
 
   int levels_below {0};

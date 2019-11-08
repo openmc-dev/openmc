@@ -1296,7 +1296,7 @@ class HexLattice(Lattice):
             return g < self.num_rings and 0 <= idx[2] < self.num_axial
 
     def create_xml_subelement(self, xml_element, memo=None):
-        # If the element does contain the Lattice subelement, then return
+        # If this subelement has already been written, return
         if memo and id(self) in memo:
             return
         if memo is not None:

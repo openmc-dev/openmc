@@ -261,7 +261,7 @@ void read_input_xml()
     } else {
       // Create material macroscopic data for MGXS
       set_mg_interface_nuclides_and_temps();
-      data::mgInterface.init();
+      data::mg.init();
       mark_fissionable_mgxs_materials();
     }
     simulation::time_read_xs.stop();

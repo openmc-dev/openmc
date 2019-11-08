@@ -15,28 +15,8 @@ namespace openmc {
 // Global MGXS data container structure
 //==============================================================================
 
-struct MgxsInterface
-{
-  int num_energy_groups;
-  int num_delayed_groups;
-
-  // List of available names in the HDF5 file
-  std::vector<std::string> xs_names;
-  std::vector<std::string> xs_to_read;
-  std::vector<std::vector<double>> xs_temps_to_read;
-
-  // Name of the HDF5 file which contains mgxs
-  std::string cross_sections_path;
-
-  std::vector<Mgxs> nuclides_MG;
-  std::vector<Mgxs> macro_xs;
-
-  std::vector<double> energy_bins;
-  std::vector<double> energy_bin_avg;
-  std::vector<double> rev_energy_bins;
-
-  // temperatues of each available nuclide
-  std::vector<std::vector<double>> nuc_temps;
+struct MgxsInterface {
+public:
 
   MgxsInterface() = default;
 
@@ -45,25 +25,45 @@ struct MgxsInterface
   MgxsInterface(const std::string& path_cross_sections,
                 const std::vector<std::string> xs_to_read,
                 const std::vector<std::vector<double>> xs_temps);
-  void set_nuclides_and_temperatures(std::vector<std::string> arg_xs_to_read,
-                                     std::vector<std::vector<double>> xs_temps);
 
+  // Does things to construct after the nuclides and temperatures to
+  // read have been specified.
   void init();
 
+  // Set which nuclides and temperatures are to be read
+  void set_nuclides_and_temperatures(std::vector<std::string> xs_to_read,
+                                     std::vector<std::vector<double>> xs_temps);
+
+  // Add an Mgxs object to be managed
   void add_mgxs(hid_t file_id, const std::string& name,
          const std::vector<double>& temperature);
-
-  void create_macro_xs();
-
-  std::vector<std::vector<double>> get_mat_kTs();
 
   // Reads just the header of the cross sections file, to find
   // min & max energies as well as the available XS
   void read_header(const std::string& path_cross_sections);
+
+  // Calculate microscopic cross sections from nuclide macro XS
+  void create_macro_xs();
+
+  // Get the kT values which are used in the OpenMC model
+  std::vector<std::vector<double>> get_mat_kTs();
+
+  int num_energy_groups_;
+  int num_delayed_groups_;
+  std::vector<std::string> xs_names_; // available names in HDF5 file
+  std::vector<std::string> xs_to_read_; // XS which appear in materials
+  std::vector<std::vector<double>> xs_temps_to_read_; // temperatures used
+  std::string cross_sections_path_; // path to MGXS h5 file
+  std::vector<Mgxs> nuclides_;
+  std::vector<Mgxs> macro_xs_;
+  std::vector<double> energy_bins_;
+  std::vector<double> energy_bin_avg_;
+  std::vector<double> rev_energy_bins_;
+  std::vector<std::vector<double>> nuc_temps_; // all available temperatures
 };
 
 namespace data {
-  extern MgxsInterface mgInterface;
+  extern MgxsInterface mg;
 }
 
 // Puts available XS in MGXS file to globals so that when
@@ -72,7 +72,7 @@ namespace data {
 void put_mgxs_header_data_to_globals();
 
 // Set which nuclides and temperatures are to be read on
-// mgInterface through global data
+// mg through global data
 void set_mg_interface_nuclides_and_temps();
 
 // After macro XS have been read, materials can be marked as fissionable

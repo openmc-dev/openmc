@@ -87,10 +87,8 @@ class Geometry(object):
 
         """
         # Create XML representation
-        memo = set()
-
         root_element = ET.Element("geometry")
-        self.root_universe.create_xml_subelement(root_element, memo)
+        self.root_universe.create_xml_subelement(root_element, memo=set())
 
         # Sort the elements in the file
         root_element[:] = sorted(root_element, key=lambda x: (
@@ -273,11 +271,8 @@ class Geometry(object):
             Dictionary mapping cell IDs to :class:`openmc.Cell` instances
 
         """
-
-        memo = set()
-
         if self.root_universe is not None:
-            return self.root_universe.get_all_cells(memo)
+            return self.root_universe.get_all_cells(memo=set())
         else:
             return OrderedDict()
 
@@ -306,10 +301,8 @@ class Geometry(object):
             instances
 
         """
-        memo = set()
-
         if self.root_universe is not None:
-            return self.root_universe.get_all_materials(memo)
+            return self.root_universe.get_all_materials(memo=set())
         else:
             return OrderedDict()
 

@@ -15,7 +15,7 @@ namespace openmc {
 // Global MGXS data container structure
 //==============================================================================
 
-struct MgxsInterface {
+class MgxsInterface {
 public:
 
   MgxsInterface() = default;

@@ -364,11 +364,11 @@ class Cell(IDManagerMixin):
 
         cells = OrderedDict()
 
-        if memo and id(self) in memo:
+        if memo and self in memo:
             return cells
 
         if memo is not None:
-            memo.add(id(self))
+            memo.add(self)
 
         if self.fill_type in ('universe', 'lattice'):
             cells.update(self.fill.get_all_cells(memo))
@@ -523,10 +523,10 @@ class Cell(IDManagerMixin):
             # thus far.
             def create_surface_elements(node, element, memo=None):
                 if isinstance(node, Halfspace):
-                    if memo and id(node.surface) in memo:
+                    if memo and node.surface in memo:
                         return
                     if memo is not None:
-                        memo.add(id(node.surface))
+                        memo.add(node.surface)
                     xml_element.append(node.surface.to_xml_element())
 
                 elif isinstance(node, Complement):

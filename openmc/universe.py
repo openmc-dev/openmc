@@ -431,11 +431,11 @@ class Universe(IDManagerMixin):
 
         cells = OrderedDict()
 
-        if memo and id(self) in memo:
+        if memo and self in memo:
             return cells
 
         if memo is not None:
-            memo.add(id(self))
+            memo.add(self)
 
         # Add this Universe's cells to the dictionary
         cells.update(self._cells)
@@ -539,11 +539,12 @@ class Universe(IDManagerMixin):
         # Iterate over all Cells
         for cell_id, cell in self._cells.items():
 
-            # If the cell was not already written, write it
-            if memo and id(cell) in memo:
+            # If the cell was already written, move on
+            if memo and cell in memo:
                 continue
+
             if memo is not None:
-                memo.add(id(cell))
+                memo.add(cell)
 
             # Create XML subelement for this Cell
             cell_element = cell.create_xml_subelement(xml_element, memo)

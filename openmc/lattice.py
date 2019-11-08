@@ -342,14 +342,13 @@ class Lattice(IDManagerMixin, metaclass=ABCMeta):
             instances
 
         """
-
         cells = OrderedDict()
 
-        if memo and id(self) in memo:
+        if memo and self in memo:
             return cells
 
         if memo is not None:
-            memo.add(id(self))
+            memo.add(self)
 
         unique_universes = self.get_unique_universes()
 
@@ -779,10 +778,10 @@ class RectLattice(Lattice):
 
         """
         # If the element already contains the Lattice subelement, then return
-        if memo and id(self) in memo:
+        if memo and self in memo:
             return
         if memo is not None:
-            memo.add(id(self))
+            memo.add(self)
 
         lattice_subelement = ET.Element("lattice")
         lattice_subelement.set("id", str(self._id))
@@ -1297,10 +1296,10 @@ class HexLattice(Lattice):
 
     def create_xml_subelement(self, xml_element, memo=None):
         # If this subelement has already been written, return
-        if memo and id(self) in memo:
+        if memo and self in memo:
             return
         if memo is not None:
-            memo.add(id(self))
+            memo.add(self)
 
         lattice_subelement = ET.Element("hex_lattice")
         lattice_subelement.set("id", str(self._id))

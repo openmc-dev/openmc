@@ -143,6 +143,11 @@ class Mgxs {
     get_xs(int xstype, int gin, const int* gout, const double* mu,
       const int* dg);
 
+    inline double
+    get_xs(int xstype, int gin)
+    {return get_xs(xstype, gin, nullptr, nullptr, nullptr);}
+
+
     //! \brief Samples the fission neutron energy and if prompt or delayed.
     //!
     //! @param gin Incoming energy group.

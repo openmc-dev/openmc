@@ -361,7 +361,7 @@ score_fission_eout(const Particle* p, int i_tally, int i_score, int score_bin)
       if (settings::run_CE) {
         E_out = bank.E;
       } else {
-        E_out = data::energy_bin_avg[static_cast<int>(bank.E)];
+        E_out = data::mg.energy_bin_avg_[static_cast<int>(bank.E)];
       }
 
       // Set EnergyoutFilter bin index
@@ -1376,13 +1376,13 @@ score_general_mg(const Particle* p, int i_tally, int start_index,
 
   // To significantly reduce de-referencing, point matxs to the macroscopic
   // Mgxs for the material of interest
-  data::macro_xs[p->material_].set_angle_index(p_u);
+  data::mg.macro_xs_[p->material_].set_angle_index(p_u);
 
   // Do same for nucxs, point it to the microscopic nuclide data of interest
   if (i_nuclide >= 0) {
     // And since we haven't calculated this temperature index yet, do so now
-    data::nuclides_MG[i_nuclide].set_temperature_index(p->sqrtkT_);
-    data::nuclides_MG[i_nuclide].set_angle_index(p_u);
+    data::mg.nuclides_[i_nuclide].set_temperature_index(p->sqrtkT_);
+    data::mg.nuclides_[i_nuclide].set_angle_index(p_u);
   }
 
   for (auto i = 0; i < tally.scores_.size(); ++i) {
@@ -1869,7 +1869,7 @@ score_general_mg(const Particle* p, int i_tally, int start_index,
               // delayed-nu-fission xs to the absorption xs for all delayed
               // groups
               score = 0.;
-              for (auto d = 0; d < data::num_delayed_groups; ++d) {
+              for (auto d = 0; d < data::mg.num_delayed_groups_; ++d) {
                 if (i_nuclide >= 0) {
                   score += p->wgt_absorb_ * flux
                     * get_nuclide_xs(i_nuclide, MG_GET_XS_DECAY_RATE,
@@ -1960,7 +1960,7 @@ score_general_mg(const Particle* p, int i_tally, int start_index,
           continue;
         } else {
           score = 0.;
-          for (auto d = 0; d < data::num_delayed_groups; ++d) {
+          for (auto d = 0; d < data::mg.num_delayed_groups_; ++d) {
             if (i_nuclide >= 0) {
               score += atom_density * flux
                 * get_nuclide_xs(i_nuclide, MG_GET_XS_DECAY_RATE,

@@ -82,10 +82,6 @@ void mark_fissionable_mgxs_materials();
 // Mgxs tracking/transport/tallying interface methods
 //==============================================================================
 
-extern "C" void
-calculate_xs_c(int i_mat, int gin, double sqrtkT, Direction u,
-     double& total_xs, double& abs_xs, double& nu_fiss_xs);
-
 double
 get_nuclide_xs(int index, int xstype, int gin, const int* gout,
   const double* mu, const int* dg);
@@ -101,16 +97,6 @@ get_macro_xs(int index, int xstype, int gin, const int* gout,
 inline double
 get_macro_xs(int index, int xstype, int gin)
 {return get_macro_xs(index, xstype, gin, nullptr, nullptr, nullptr);}
-
-//==============================================================================
-// General Mgxs methods
-//==============================================================================
-
-extern "C" void
-get_name_c(int index, int name_len, char* name);
-
-extern "C" double
-get_awr_c(int index);
 
 } // namespace openmc
 #endif // OPENMC_MGXS_INTERFACE_H

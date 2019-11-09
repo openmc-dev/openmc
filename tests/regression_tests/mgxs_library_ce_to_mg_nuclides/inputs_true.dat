@@ -1,0 +1,251 @@
+<?xml version='1.0' encoding='utf-8'?>
+<geometry>
+  <cell id="1" material="1" name="Fuel" region="-1" universe="0" />
+  <cell id="2" material="2" name="Cladding" region="1 -2" universe="0" />
+  <cell id="3" material="3" name="Water" region="2 3 -4 5 -6" universe="0" />
+  <surface coeffs="0 0 0.39218" id="1" name="Fuel OR" type="z-cylinder" />
+  <surface coeffs="0 0 0.4572" id="2" name="Clad OR" type="z-cylinder" />
+  <surface boundary="reflective" coeffs="-0.63" id="3" name="left" type="x-plane" />
+  <surface boundary="reflective" coeffs="0.63" id="4" name="right" type="x-plane" />
+  <surface boundary="reflective" coeffs="-0.63" id="5" name="bottom" type="y-plane" />
+  <surface boundary="reflective" coeffs="0.63" id="6" name="top" type="y-plane" />
+</geometry>
+<?xml version='1.0' encoding='utf-8'?>
+<materials>
+  <material depletable="true" id="1" name="UO2 (2.4%)">
+    <density units="g/cm3" value="10.29769" />
+    <nuclide ao="4.4843e-06" name="U234" />
+    <nuclide ao="0.00055815" name="U235" />
+    <nuclide ao="0.022408" name="U238" />
+    <nuclide ao="0.045829" name="O16" />
+  </material>
+  <material id="2" name="Zircaloy">
+    <density units="g/cm3" value="6.55" />
+    <nuclide ao="0.021827" name="Zr90" />
+    <nuclide ao="0.00476" name="Zr91" />
+    <nuclide ao="0.0072758" name="Zr92" />
+    <nuclide ao="0.0073734" name="Zr94" />
+    <nuclide ao="0.0011879" name="Zr96" />
+  </material>
+  <material id="3" name="Hot borated water">
+    <density units="g/cm3" value="0.740582" />
+    <nuclide ao="0.049457" name="H1" />
+    <nuclide ao="0.024672" name="O16" />
+    <nuclide ao="8.0042e-06" name="B10" />
+    <nuclide ao="3.2218e-05" name="B11" />
+    <sab name="c_H_in_H2O" />
+  </material>
+</materials>
+<?xml version='1.0' encoding='utf-8'?>
+<settings>
+  <run_mode>eigenvalue</run_mode>
+  <particles>100</particles>
+  <batches>10</batches>
+  <inactive>5</inactive>
+  <source strength="1.0">
+    <space type="fission">
+      <parameters>-0.63 -0.63 -1 0.63 0.63 1</parameters>
+    </space>
+  </source>
+</settings>
+<?xml version='1.0' encoding='utf-8'?>
+<tallies>
+  <filter id="1" type="material">
+    <bins>1</bins>
+  </filter>
+  <filter id="2" type="energy">
+    <bins>0.0 0.625 20000000.0</bins>
+  </filter>
+  <filter id="7" type="energyout">
+    <bins>0.0 0.625 20000000.0</bins>
+  </filter>
+  <filter id="11" type="legendre">
+    <order>3</order>
+  </filter>
+  <filter id="15" type="material">
+    <bins>2</bins>
+  </filter>
+  <filter id="29" type="material">
+    <bins>3</bins>
+  </filter>
+  <tally id="1">
+    <filters>1 2</filters>
+    <nuclides>total</nuclides>
+    <scores>flux</scores>
+    <estimator>tracklength</estimator>
+  </tally>
+  <tally id="2">
+    <filters>1 2</filters>
+    <nuclides>U234 U235 U238 O16</nuclides>
+    <scores>total</scores>
+    <estimator>tracklength</estimator>
+  </tally>
+  <tally id="3">
+    <filters>1 2</filters>
+    <nuclides>total</nuclides>
+    <scores>flux</scores>
+    <estimator>tracklength</estimator>
+  </tally>
+  <tally id="4">
+    <filters>1 2</filters>
+    <nuclides>U234 U235 U238 O16</nuclides>
+    <scores>absorption</scores>
+    <estimator>tracklength</estimator>
+  </tally>
+  <tally id="5">
+    <filters>1 2</filters>
+    <nuclides>total</nuclides>
+    <scores>flux</scores>
+    <estimator>analog</estimator>
+  </tally>
+  <tally id="6">
+    <filters>1 2 7</filters>
+    <nuclides>U234 U235 U238 O16</nuclides>
+    <scores>nu-fission</scores>
+    <estimator>analog</estimator>
+  </tally>
+  <tally id="7">
+    <filters>1 2</filters>
+    <nuclides>total</nuclides>
+    <scores>flux</scores>
+    <estimator>analog</estimator>
+  </tally>
+  <tally id="8">
+    <filters>1 2 7 11</filters>
+    <nuclides>U234 U235 U238 O16</nuclides>
+    <scores>nu-scatter</scores>
+    <estimator>analog</estimator>
+  </tally>
+  <tally id="9">
+    <filters>1 2 7</filters>
+    <nuclides>U234 U235 U238 O16</nuclides>
+    <scores>nu-scatter</scores>
+    <estimator>analog</estimator>
+  </tally>
+  <tally id="10">
+    <filters>1 2 7</filters>
+    <nuclides>U234 U235 U238 O16</nuclides>
+    <scores>scatter</scores>
+    <estimator>analog</estimator>
+  </tally>
+  <tally id="11">
+    <filters>15 2</filters>
+    <nuclides>total</nuclides>
+    <scores>flux</scores>
+    <estimator>tracklength</estimator>
+  </tally>
+  <tally id="12">
+    <filters>15 2</filters>
+    <nuclides>Zr90 Zr91 Zr92 Zr94 Zr96</nuclides>
+    <scores>total</scores>
+    <estimator>tracklength</estimator>
+  </tally>
+  <tally id="13">
+    <filters>15 2</filters>
+    <nuclides>total</nuclides>
+    <scores>flux</scores>
+    <estimator>tracklength</estimator>
+  </tally>
+  <tally id="14">
+    <filters>15 2</filters>
+    <nuclides>Zr90 Zr91 Zr92 Zr94 Zr96</nuclides>
+    <scores>absorption</scores>
+    <estimator>tracklength</estimator>
+  </tally>
+  <tally id="15">
+    <filters>15 2</filters>
+    <nuclides>total</nuclides>
+    <scores>flux</scores>
+    <estimator>analog</estimator>
+  </tally>
+  <tally id="16">
+    <filters>15 2 7</filters>
+    <nuclides>Zr90 Zr91 Zr92 Zr94 Zr96</nuclides>
+    <scores>nu-fission</scores>
+    <estimator>analog</estimator>
+  </tally>
+  <tally id="17">
+    <filters>15 2</filters>
+    <nuclides>total</nuclides>
+    <scores>flux</scores>
+    <estimator>analog</estimator>
+  </tally>
+  <tally id="18">
+    <filters>15 2 7 11</filters>
+    <nuclides>Zr90 Zr91 Zr92 Zr94 Zr96</nuclides>
+    <scores>nu-scatter</scores>
+    <estimator>analog</estimator>
+  </tally>
+  <tally id="19">
+    <filters>15 2 7</filters>
+    <nuclides>Zr90 Zr91 Zr92 Zr94 Zr96</nuclides>
+    <scores>nu-scatter</scores>
+    <estimator>analog</estimator>
+  </tally>
+  <tally id="20">
+    <filters>15 2 7</filters>
+    <nuclides>Zr90 Zr91 Zr92 Zr94 Zr96</nuclides>
+    <scores>scatter</scores>
+    <estimator>analog</estimator>
+  </tally>
+  <tally id="21">
+    <filters>29 2</filters>
+    <nuclides>total</nuclides>
+    <scores>flux</scores>
+    <estimator>tracklength</estimator>
+  </tally>
+  <tally id="22">
+    <filters>29 2</filters>
+    <nuclides>H1 O16 B10 B11</nuclides>
+    <scores>total</scores>
+    <estimator>tracklength</estimator>
+  </tally>
+  <tally id="23">
+    <filters>29 2</filters>
+    <nuclides>total</nuclides>
+    <scores>flux</scores>
+    <estimator>tracklength</estimator>
+  </tally>
+  <tally id="24">
+    <filters>29 2</filters>
+    <nuclides>H1 O16 B10 B11</nuclides>
+    <scores>absorption</scores>
+    <estimator>tracklength</estimator>
+  </tally>
+  <tally id="25">
+    <filters>29 2</filters>
+    <nuclides>total</nuclides>
+    <scores>flux</scores>
+    <estimator>analog</estimator>
+  </tally>
+  <tally id="26">
+    <filters>29 2 7</filters>
+    <nuclides>H1 O16 B10 B11</nuclides>
+    <scores>nu-fission</scores>
+    <estimator>analog</estimator>
+  </tally>
+  <tally id="27">
+    <filters>29 2</filters>
+    <nuclides>total</nuclides>
+    <scores>flux</scores>
+    <estimator>analog</estimator>
+  </tally>
+  <tally id="28">
+    <filters>29 2 7 11</filters>
+    <nuclides>H1 O16 B10 B11</nuclides>
+    <scores>nu-scatter</scores>
+    <estimator>analog</estimator>
+  </tally>
+  <tally id="29">
+    <filters>29 2 7</filters>
+    <nuclides>H1 O16 B10 B11</nuclides>
+    <scores>nu-scatter</scores>
+    <estimator>analog</estimator>
+  </tally>
+  <tally id="30">
+    <filters>29 2 7</filters>
+    <nuclides>H1 O16 B10 B11</nuclides>
+    <scores>scatter</scores>
+    <estimator>analog</estimator>
+  </tally>
+</tallies>

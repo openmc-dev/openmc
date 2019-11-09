@@ -25,18 +25,6 @@
 namespace openmc {
 
 //==============================================================================
-// Global variables
-//==============================================================================
-
-namespace data {
-
-// Storage for the MGXS data
-std::vector<Mgxs> nuclides_MG;
-std::vector<Mgxs> macro_xs;
-
-} // namespace data
-
-//==============================================================================
 // Mgxs base-class methods
 //==============================================================================
 
@@ -53,8 +41,6 @@ Mgxs::init(const std::string& in_name, double in_awr,
   kTs = xt::adapt(in_kTs);
   fissionable = in_fissionable;
   scatter_format = in_scatter_format;
-  num_groups = data::num_energy_groups;
-  num_delayed_groups = data::num_delayed_groups;
   xs.resize(in_kTs.size());
   is_isotropic = in_is_isotropic;
   n_pol = in_polar.size();
@@ -284,7 +270,10 @@ Mgxs::metadata_from_hdf5(hid_t xs_id, const std::vector<double>& temperature,
 
 //==============================================================================
 
-Mgxs::Mgxs(hid_t xs_id, const std::vector<double>& temperature)
+Mgxs::Mgxs(hid_t xs_id, const std::vector<double>& temperature,
+    int num_group, int num_delay) :
+  num_groups(num_group),
+  num_delayed_groups(num_delay)
 {
   // Call generic data gathering routine (will populate the metadata)
   int order_data;
@@ -299,7 +288,8 @@ Mgxs::Mgxs(hid_t xs_id, const std::vector<double>& temperature)
 
   // Load the more specific XsData information
   for (int t = 0; t < temps_to_read.size(); t++) {
-    xs[t] = XsData(fissionable, final_scatter_format, n_pol, n_azi);
+    xs[t] = XsData(fissionable, final_scatter_format, n_pol, n_azi,
+                   num_groups, num_delayed_groups);
     // Get the temperature as a string and then open the HDF5 group
     std::string temp_str = std::to_string(temps_to_read[t]) + "K";
     hid_t xsdata_grp = open_group(xs_id, temp_str.c_str());
@@ -317,7 +307,10 @@ Mgxs::Mgxs(hid_t xs_id, const std::vector<double>& temperature)
 //==============================================================================
 
 Mgxs::Mgxs(const std::string& in_name, const std::vector<double>& mat_kTs,
-     const std::vector<Mgxs*>& micros, const std::vector<double>& atom_densities)
+     const std::vector<Mgxs*>& micros, const std::vector<double>& atom_densities,
+     int num_group, int num_delay) :
+  num_groups(num_group),
+  num_delayed_groups(num_delay)
 {
   // Get the minimum data needed to initialize:
   // Dont need awr, but lets just initialize it anyways
@@ -340,7 +333,7 @@ Mgxs::Mgxs(const std::string& in_name, const std::vector<double>& mat_kTs,
   // Create the xs data for each temperature
   for (int t = 0; t < mat_kTs.size(); t++) {
     xs[t] = XsData(in_fissionable, in_scatter_format, in_polar.size(),
-      in_azimuthal.size());
+      in_azimuthal.size(), num_groups, num_delayed_groups);
 
     // Find the right temperature index to use
     double temp_desired = mat_kTs[t];

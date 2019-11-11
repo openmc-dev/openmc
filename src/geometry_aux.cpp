@@ -23,6 +23,21 @@
 
 namespace openmc {
 
+namespace model {
+  std::unordered_map<int32_t, std::unordered_map<int32_t, int32_t>> universe_cell_counts;
+  std::unordered_map<int32_t, int32_t> universe_level_counts;
+} // namespace model
+
+
+// adds the cell counts of universe b to universe a
+void update_universe_cell_count(int32_t a, int32_t b) {
+  auto& universe_a_counts = model::universe_cell_counts[a];
+  const auto& universe_b_counts = model::universe_cell_counts[b];
+  for (const auto& it : universe_b_counts) {
+    universe_a_counts[it.first] += it.second;
+  }
+}
+
 void read_geometry_xml()
 {
 #ifdef DAGMC
@@ -395,19 +410,29 @@ prepare_distribcell()
 void
 count_cell_instances(int32_t univ_indx)
 {
-  for (int32_t cell_indx : model::universes[univ_indx]->cells_) {
-    Cell& c = *model::cells[cell_indx];
-    ++c.n_instances_;
 
-    if (c.type_ == FILL_UNIVERSE) {
-      // This cell contains another universe.  Recurse into that universe.
-      count_cell_instances(c.fill_);
+  const auto univ_counts = model::universe_cell_counts.find(univ_indx);
+  if (univ_counts != model::universe_cell_counts.end()) {
+    for (const auto& it : univ_counts->second) {
+      model::cells[it.first]->n_instances_ += it.second;
+    }
+  } else {
+    for (int32_t cell_indx : model::universes[univ_indx]->cells_) {
+      Cell& c = *model::cells[cell_indx];
+      ++c.n_instances_;
+      model::universe_cell_counts[univ_indx][cell_indx] += 1;
 
-    } else if (c.type_ == FILL_LATTICE) {
-      // This cell contains a lattice.  Recurse into the lattice universes.
-      Lattice& lat = *model::lattices[c.fill_];
-      for (auto it = lat.begin(); it != lat.end(); ++it) {
-        count_cell_instances(*it);
+      if (c.type_ == FILL_UNIVERSE) {
+        // This cell contains another universe.  Recurse into that universe.
+        count_cell_instances(c.fill_);
+        update_universe_cell_count(univ_indx, c.fill_);
+      } else if (c.type_ == FILL_LATTICE) {
+        // This cell contains a lattice.  Recurse into the lattice universes.
+        Lattice& lat = *model::lattices[c.fill_];
+        for (auto it = lat.begin(); it != lat.end(); ++it) {
+          count_cell_instances(*it);
+          update_universe_cell_count(univ_indx, *it);
+        }
       }
     }
   }
@@ -529,6 +554,12 @@ distribcell_path(int32_t target_cell, int32_t map, int32_t target_offset)
 int
 maximum_levels(int32_t univ)
 {
+
+  const auto level_count = model::universe_level_counts.find(univ);
+  if (level_count != model::universe_level_counts.end()) {
+    return level_count->second;
+  }
+
   int levels_below {0};
 
   for (int32_t cell_indx : model::universes[univ]->cells_) {
@@ -546,6 +577,7 @@ maximum_levels(int32_t univ)
   }
 
   ++levels_below;
+  model::universe_level_counts[univ] = levels_below;
   return levels_below;
 }
 

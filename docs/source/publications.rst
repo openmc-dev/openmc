@@ -142,6 +142,11 @@ Geometry and Visualization
 Miscellaneous
 -------------
 
+- Govatsa Acharya, "`Investigating the Application of Self-Actuated Passive
+  Shutdown System in a Small Lead-Cooled Reactor
+  <https://doi.org/10.13140/RG.2.2.26088.01281>`_," M.S. Thesis, KTH Royal
+  Institute of Technology (2019).
+
 - Shikhar Kumar, Benoit Forget, and Kord Smith, "Analysis of fission source
   convergence for a 3-D SMR core using functional expansion tallies," *Proc.
   M&C*, 937-947, Portland, Oregon, Aug. 25-29 (2019).

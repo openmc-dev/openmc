@@ -38,6 +38,24 @@ private:
 };
 
 //==============================================================================
+//! Distribution of points specified by spherical coordinates r,theta,phi
+//==============================================================================
+
+class SphericalIndependent : public SpatialDistribution {
+public:
+  explicit SphericalIndependent(pugi::xml_node node);
+
+  //! Sample a position from the distribution
+  //! \return Sampled position
+  Position sample() const;
+private:
+  UPtrDist r_; //!< Distribution of r coordinates
+  UPtrDist theta_; //!< Distribution of theta coordinates
+  UPtrDist phi_; //!< Distribution of phi coordinates
+  Position origin_; //!< Cartesian coordinates of the sphere center
+};
+
+//==============================================================================
 //! Uniform distribution of points over a box
 //==============================================================================
 

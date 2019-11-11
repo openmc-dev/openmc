@@ -70,7 +70,7 @@ constexpr double EXTSRC_REJECT_FRACTION {0.05};
 // MATH AND PHYSICAL CONSTANTS
 
 // Values here are from the Committee on Data for Science and Technology
-// (CODATA) 2014 recommendation (doi:10.1103/RevModPhys.88.035009).
+// (CODATA) 2018 recommendation (https://physics.nist.gov/cuu/Constants/).
 
 // TODO: cmath::M_PI has 3 more digits precision than the Fortran constant we
 // use so for now we will reuse the Fortran constant until we are OK with
@@ -80,16 +80,16 @@ const double SQRT_PI {std::sqrt(PI)};
 constexpr double INFTY {std::numeric_limits<double>::max()};
 
 // Physical constants
-constexpr double MASS_NEUTRON     {1.00866491588}; // mass of a neutron in amu
-constexpr double MASS_NEUTRON_EV  {939.5654133e6}; // mass of a neutron in eV/c^2
-constexpr double MASS_PROTON      {1.007276466879}; // mass of a proton in amu
-constexpr double MASS_ELECTRON_EV {0.5109989461e6}; // electron mass energy equivalent in eV/c^2
-constexpr double FINE_STRUCTURE   {137.035999139}; // inverse fine structure constant
-constexpr double PLANCK_C         {1.2398419739062977e4}; // Planck's constant times c in eV-Angstroms
-constexpr double AMU              {1.660539040e-27}; // 1 amu in kg
+constexpr double MASS_NEUTRON     {1.00866491595}; // mass of a neutron in amu
+constexpr double MASS_NEUTRON_EV  {939.56542052e6}; // mass of a neutron in eV/c^2
+constexpr double MASS_PROTON      {1.007276466621}; // mass of a proton in amu
+constexpr double MASS_ELECTRON_EV {0.51099895000e6}; // electron mass energy equivalent in eV/c^2
+constexpr double FINE_STRUCTURE   {137.035999084}; // inverse fine structure constant
+constexpr double PLANCK_C         {1.2398419839593942e4}; // Planck's constant times c in eV-Angstroms
+constexpr double AMU              {1.66053906660e-27}; // 1 amu in kg
 constexpr double C_LIGHT          {2.99792458e8}; // speed of light in m/s
-constexpr double N_AVOGADRO       {0.6022140857}; // Avogadro's number in 10^24/mol
-constexpr double K_BOLTZMANN      {8.6173303e-5}; // Boltzmann constant in eV/K
+constexpr double N_AVOGADRO       {0.602214076}; // Avogadro's number in 10^24/mol
+constexpr double K_BOLTZMANN      {8.617333262e-5}; // Boltzmann constant in eV/K
 
 // Electron subshell labels
 constexpr std::array<const char*, 39> SUBSHELLS =  {

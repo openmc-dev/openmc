@@ -79,6 +79,9 @@ void run_particle_restart()
   int previous_run_mode;
   read_particle_restart(p, previous_run_mode);
 
+  // write track if that was requested on command line
+  if (settings::write_all_tracks) p.write_track_ = true;
+
   // Set all tallies to 0 for now (just tracking errors)
   model::tallies.clear();
 

@@ -52,6 +52,73 @@ Position CartesianIndependent::sample() const
 }
 
 //==============================================================================
+// SphericalIndependent implementation
+//==============================================================================
+
+SphericalIndependent::SphericalIndependent(pugi::xml_node node)
+{
+  // Read distribution for r-coordinate
+  if (check_for_node(node, "r")) {
+    pugi::xml_node node_dist = node.child("r");
+    r_ = distribution_from_xml(node_dist);
+  } else {
+    // If no distribution was specified, default to a single point at r=0
+    double x[] {0.0};
+    double p[] {1.0};
+    r_ = std::make_unique<Discrete>(x, p, 1);
+  }
+
+  // Read distribution for theta-coordinate
+  if (check_for_node(node, "theta")) {
+    pugi::xml_node node_dist = node.child("theta");
+    theta_ = distribution_from_xml(node_dist);
+  } else {
+    // If no distribution was specified, default to a single point at theta=0
+    double x[] {0.0};
+    double p[] {1.0};
+    theta_ = std::make_unique<Discrete>(x, p, 1);
+  }
+
+  // Read distribution for phi-coordinate
+  if (check_for_node(node, "phi")) {
+    pugi::xml_node node_dist = node.child("phi");
+    phi_ = distribution_from_xml(node_dist);
+  } else {
+    // If no distribution was specified, default to a single point at phi=0
+    double x[] {0.0};
+    double p[] {1.0};
+    phi_ = std::make_unique<Discrete>(x, p, 1);
+  }
+
+  // Read sphere center coordinates
+  if (check_for_node(node, "origin")) {
+    auto origin = get_node_array<double>(node, "origin");
+    if (origin.size() == 3) {
+      origin_ = origin;
+    } else {
+      std::stringstream err_msg;
+      err_msg << "Origin for spherical source distribution must be length 3";
+      fatal_error(err_msg);
+    }
+  } else {
+    // If no coordinates were specified, default to (0, 0, 0)
+    origin_ = {0.0, 0.0, 0.0};
+  }
+
+}
+
+Position SphericalIndependent::sample() const
+{
+  double r = r_->sample();
+  double theta = theta_->sample();
+  double phi = phi_->sample();
+  double x = r*sin(theta)*cos(phi) + origin_.x;
+  double y =  r*sin(theta)*sin(phi) + origin_.y;
+  double z = r*cos(theta) + origin_.z;
+  return {x, y, z};
+}
+
+//==============================================================================
 // SpatialBox implementation
 //==============================================================================
 

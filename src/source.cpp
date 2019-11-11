@@ -86,6 +86,8 @@ SourceDistribution::SourceDistribution(pugi::xml_node node)
         type = get_node_value(node_space, "type", true, true);
       if (type == "cartesian") {
         space_ = UPtrSpace{new CartesianIndependent(node_space)};
+      } else if (type == "spherical") {
+        space_ = UPtrSpace{new SphericalIndependent(node_space)};
       } else if (type == "box") {
         space_ = UPtrSpace{new SpatialBox(node_space)};
       } else if (type == "fission") {

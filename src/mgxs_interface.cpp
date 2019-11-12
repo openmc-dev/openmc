@@ -298,12 +298,12 @@ get_nuclide_xs(int index, int xstype, int gin, const int* gout,
   int gout_c;
   const int* gout_c_p;
   if (gout != nullptr) {
-    gout_c = *gout - 1;
+    gout_c = *gout;
     gout_c_p = &gout_c;
   } else {
     gout_c_p = gout;
   }
-  return data::mg.nuclides_[index].get_xs(xstype, gin - 1, gout_c_p, mu, dg);
+  return data::mg.nuclides_[index].get_xs(xstype, gin, gout_c_p, mu, dg);
 }
 
 //==============================================================================
@@ -315,12 +315,12 @@ get_macro_xs(int index, int xstype, int gin, const int* gout,
   int gout_c;
   const int* gout_c_p;
   if (gout != nullptr) {
-    gout_c = *gout - 1;
+    gout_c = *gout;
     gout_c_p = &gout_c;
   } else {
     gout_c_p = gout;
   }
-  return data::mg.macro_xs_[index].get_xs(xstype, gin - 1, gout_c_p, mu, dg);
+  return data::mg.macro_xs_[index].get_xs(xstype, gin, gout_c_p, mu, dg);
 }
 
 } // namespace openmc

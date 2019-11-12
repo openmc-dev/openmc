@@ -78,25 +78,5 @@ void set_mg_interface_nuclides_and_temps();
 // After macro XS have been read, materials can be marked as fissionable
 void mark_fissionable_mgxs_materials();
 
-//==============================================================================
-// Mgxs tracking/transport/tallying interface methods
-//==============================================================================
-
-double
-get_nuclide_xs(int index, int xstype, int gin, const int* gout,
-  const double* mu, const int* dg);
-
-inline double
-get_nuclide_xs(int index, int xstype, int gin)
-{return get_nuclide_xs(index, xstype, gin, nullptr, nullptr, nullptr);}
-
-double
-get_macro_xs(int index, int xstype, int gin, const int* gout,
-  const double* mu, const int* dg);
-
-inline double
-get_macro_xs(int index, int xstype, int gin)
-{return get_macro_xs(index, xstype, gin, nullptr, nullptr, nullptr);}
-
 } // namespace openmc
 #endif // OPENMC_MGXS_INTERFACE_H

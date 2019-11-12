@@ -136,12 +136,14 @@ create_fission_sites(Particle* p, std::vector<Particle::Bank>& bank)
     site.u.y = std::sqrt(1. - mu * mu) * std::cos(phi);
     site.u.z = std::sqrt(1. - mu * mu) * std::sin(phi);
 
-    // Sample secondary energy distribution for the fission reaction and set
-    // the energy in the fission bank
+    // Sample secondary energy distribution for the fission reaction
     int dg;
     int gout;
     data::mg.macro_xs_[p->material_].sample_fission_energy(p->g_, dg, gout);
+    // Store the energy and delayed groups on the fission bank
     site.E = gout;
+    // We add 1 to the delayed_group bc in MG, -1 is prompt, but in the rest
+    // of the code, 0 is prompt.
     site.delayed_group = dg + 1;
 
     // Set the delayed group on the particle as well

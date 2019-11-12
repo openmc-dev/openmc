@@ -287,40 +287,4 @@ void mark_fissionable_mgxs_materials()
   }
 }
 
-//==============================================================================
-// Mgxs tracking/transport/tallying interface methods
-//==============================================================================
-
-double
-get_nuclide_xs(int index, int xstype, int gin, const int* gout,
-  const double* mu, const int* dg)
-{
-  int gout_c;
-  const int* gout_c_p;
-  if (gout != nullptr) {
-    gout_c = *gout;
-    gout_c_p = &gout_c;
-  } else {
-    gout_c_p = gout;
-  }
-  return data::mg.nuclides_[index].get_xs(xstype, gin, gout_c_p, mu, dg);
-}
-
-//==============================================================================
-
-double
-get_macro_xs(int index, int xstype, int gin, const int* gout,
-  const double* mu, const int* dg)
-{
-  int gout_c;
-  const int* gout_c_p;
-  if (gout != nullptr) {
-    gout_c = *gout;
-    gout_c_p = &gout_c;
-  } else {
-    gout_c_p = gout;
-  }
-  return data::mg.macro_xs_[index].get_xs(xstype, gin, gout_c_p, mu, dg);
-}
-
 } // namespace openmc

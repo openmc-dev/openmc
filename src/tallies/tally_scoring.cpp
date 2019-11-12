@@ -348,9 +348,9 @@ score_fission_eout(const Particle* p, int i_tally, int i_score, int score_bin)
       // determine outgoing energy group from fission bank
       auto g_out = static_cast<int>(bank.E);
 
-      // modify the value so that g_out = 1 corresponds to the highest energy
+      // modify the value so that g_out = 0 corresponds to the highest energy
       // bin
-      g_out = eo_filt.n_bins() - g_out;
+      g_out = eo_filt.n_bins() - g_out - 1;
 
       // change outgoing energy bin
       simulation::filter_matches[i_eout_filt].bins_[i_bin] = g_out;

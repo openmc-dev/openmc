@@ -123,7 +123,7 @@ Particle::from_source(const Bank* src)
   } else {
     g_ = static_cast<int>(src->E);
     g_last_ = static_cast<int>(src->E);
-    E_ = data::mg.energy_bin_avg_[g_ - 1];
+    E_ = data::mg.energy_bin_avg_[g_];
   }
   E_last_ = E_;
 }
@@ -203,7 +203,7 @@ Particle::transport()
         }
       } else {
         // Get the MG data
-        data::mg.macro_xs_[material_].calculate_xs(g_ - 1, sqrtkT_,
+        data::mg.macro_xs_[material_].calculate_xs(g_, sqrtkT_,
           this->u_local(), macro_xs_.total, macro_xs_.absorption,
           macro_xs_.nu_fission);
 

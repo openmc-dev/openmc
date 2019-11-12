@@ -11,6 +11,7 @@
 
 #include "openmc/constants.h"
 #include "openmc/hdf5_interface.h"
+#include "openmc/particle.h"
 #include "openmc/xsdata.h"
 
 
@@ -167,15 +168,9 @@ class Mgxs {
 
     //! \brief Calculates cross section quantities needed for tracking.
     //!
-    //! @param gin Incoming energy group.
-    //! @param sqrtkT Temperature of the material.
-    //! @param u Incoming particle direction.
-    //! @param total_xs Resultant total cross section.
-    //! @param abs_xs Resultant absorption cross section.
-    //! @param nu_fiss_xs Resultant nu-fission cross section.
+    //! @param p The particle whose attributes set which MGXS to get.
     void
-    calculate_xs(int gin, double sqrtkT, Direction u,
-         double& total_xs, double& abs_xs, double& nu_fiss_xs);
+    calculate_xs(Particle& p);
 
     //! \brief Sets the temperature index in cache given a temperature
     //!

@@ -600,8 +600,7 @@ Mgxs::sample_scatter(int gin, int& gout, double& mu, double& wgt)
 //==============================================================================
 
 void
-Mgxs::calculate_xs(int gin, double sqrtkT, Direction u,
-     double& total_xs, double& abs_xs, double& nu_fiss_xs)
+Mgxs::calculate_xs(Particle& p)
 {
   // Set our indices
 #ifdef _OPENMP
@@ -609,13 +608,13 @@ Mgxs::calculate_xs(int gin, double sqrtkT, Direction u,
 #else
   int tid = 0;
 #endif
-  set_temperature_index(sqrtkT);
-  set_angle_index(u);
+  set_temperature_index(p.sqrtkT_);
+  set_angle_index(p.u_local());
   XsData* xs_t = &xs[cache[tid].t];
-  total_xs = xs_t->total(cache[tid].a, gin);
-  abs_xs = xs_t->absorption(cache[tid].a, gin);
-
-  nu_fiss_xs = fissionable ? xs_t->nu_fission(cache[tid].a, gin) : 0.;
+  p.macro_xs_.total = xs_t->total(cache[tid].a, p.g_);
+  p.macro_xs_.absorption = xs_t->absorption(cache[tid].a, p.g_);
+  p.macro_xs_.nu_fission =
+    fissionable ? xs_t->nu_fission(cache[tid].a, p.g_) : 0.;
 }
 
 //==============================================================================

@@ -202,12 +202,12 @@ Particle::transport()
           model::materials[material_]->calculate_xs(*this);
         }
       } else {
-        // Get the MG data
-        data::mg.macro_xs_[material_].calculate_xs(g_, sqrtkT_,
-          this->u_local(), macro_xs_.total, macro_xs_.absorption,
-          macro_xs_.nu_fission);
+        // Get the MG data; unlike the CE case above, we have to re-calculate
+        // cross sections for every collision since the cross sections may
+        // be angle-dependent
+        data::mg.macro_xs_[material_].calculate_xs(*this);
 
-        // Finally, update the particle group since we know we are multi-group
+        // Update the particle's group while we know we are multi-group
         g_last_ = g_;
       }
     } else {

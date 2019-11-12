@@ -555,11 +555,10 @@ Mgxs::sample_fission_energy(int gin, int& dg, int& gout)
     dg = -1;
 
     // sample the outgoing energy group
-    gout = 0;
-    double prob_gout = xs_t->chi_prompt(cache[tid].a, gin, gout);
-    while (prob_gout < xi_gout) {
-      gout++;
+    double prob_gout = 0.;
+    for (gout = 0; gout < num_groups; ++gout) {
       prob_gout += xs_t->chi_prompt(cache[tid].a, gin, gout);
+      if (xi_gout < prob_gout) break;
     }
 
   } else {
@@ -575,11 +574,10 @@ Mgxs::sample_fission_energy(int gin, int& dg, int& gout)
     dg = std::min(dg, num_delayed_groups - 1);
 
     // sample the outgoing energy group
-    gout = 0;
-    double prob_gout = xs_t->chi_delayed(cache[tid].a, dg, gin, gout);
-    while (prob_gout < xi_gout) {
-      gout++;
+    double prob_gout = 0.;
+    for (gout = 0; gout < num_groups; ++gout) {
       prob_gout += xs_t->chi_delayed(cache[tid].a, dg, gin, gout);
+      if (xi_gout < prob_gout) break;
     }
   }
 }

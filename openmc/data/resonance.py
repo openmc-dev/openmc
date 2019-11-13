@@ -1121,6 +1121,7 @@ class Unresolved(ResonanceRange):
                     amux = values[2]
                     amun = values[3]
                     amuf = values[5]
+                    energies = []
                     for k in range(1, ne + 1):
                         E = values[6*k]
                         d = values[6*k + 1]
@@ -1128,10 +1129,10 @@ class Unresolved(ResonanceRange):
                         gn0 = values[6*k + 3]
                         gg = values[6*k + 4]
                         gf = values[6*k + 5]
+                        energies.append(E)
                         records.append([l, j, E, d, amux, amun, amuf, gx, gn0,
                                         gg, gf])
             parameters = pd.DataFrame.from_records(records, columns=columns)
-            energies = None
 
         urr = cls(target_spin, energy_min, energy_max, channel_radius,
                   scattering_radius)

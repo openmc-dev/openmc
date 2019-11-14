@@ -176,8 +176,8 @@ class MeshPlotter(tk.Frame):
 
             # Set combobox items
             if filterType in ['Energy', 'Energyout']:
-                combobox['values'] = ['{} to {}'.format(bin)
-                                      for bin in f.bins)]
+                combobox['values'] = ['{} to {}'.format(*ebin)
+                                      for ebin in f.bins]
             else:
                 combobox['values'] = [str(i) for i in f.bins]
 

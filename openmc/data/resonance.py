@@ -915,12 +915,10 @@ class Unresolved(ResonanceRange):
         Minimum energy of the unresolved resonance range in eV
     energy_max : float
         Maximum energy of the unresolved resonance range in eV
-    channel : dict
-        Dictionary whose keys are l-values and values are channel radii as a
-        function of energy
-    scattering : dict
-        Dictionary whose keys are l-values and values are scattering radii as a
-        function of energy
+    channel : openmc.data.Function1D
+        Channel radii as a function of energy
+    scattering : openmc.data.Function1D
+        Scattering radii as a function of energy
 
     Attributes
     ----------
@@ -928,12 +926,9 @@ class Unresolved(ResonanceRange):
         If True, file 3 contains partial cross sections to be added to the
         average unresolved cross sections calculated from parameters.
     atomic_weight_ratio : float
-        Atomic weight ratio of the target nuclide given as a function of
-        l-value. Note that this may be different than the value for the
-        evaluation as a whole.
-    channel_radius : dict
-        Dictionary whose keys are l-values and values are channel radii as a
-        function of energy
+        Atomic weight ratio of the target nuclide
+    channel_radius : openmc.data.Function1D
+        Channel radii as a function of energy
     energies : Iterable of float
         Energies at which parameters are tabulated
     energy_max : float
@@ -942,9 +937,8 @@ class Unresolved(ResonanceRange):
         Minimum energy of the unresolved resonance range in eV
     parameters : list of pandas.DataFrame
         Average resonance parameters at each energy
-    scattering_radius : dict
-        Dictionary whose keys are l-values and values are scattering radii as a
-        function of energy
+    scattering_radius : openmc.data.Function1D
+        Scattering radii as a function of energy
     target_spin : float
         Intrinsic spin, :math:`I`, of the target nuclide
 
@@ -994,9 +988,6 @@ class Unresolved(ResonanceRange):
                 ap = Polynomial((items[1],))
             add_to_background = (items[2] == 0)
 
-        channel_radius = {}
-        scattering_radius = {}
-
         if not fission_widths and formalism == 1:
             # Case A -- fission widths not given, all parameters are
             # energy-independent
@@ -1007,25 +998,6 @@ class Unresolved(ResonanceRange):
                 items, values = get_list_record(file_obj)
                 awri = items[0]
                 l = items[2]
-
-                # Calculate channel radius from ENDF-102 equation D.14
-                a = Polynomial((0.123 * (NEUTRON_MASS*awri)**(1./3.) + 0.08,))
-
-                # Construct scattering and channel radius
-                if nro == 0:
-                    scattering_radius[l] = ap
-                    if naps == 0:
-                        channel_radius[l] = a
-                    elif naps == 1:
-                        channel_radius[l] = ap
-                elif nro == 1:
-                    scattering_radius[l] = ape
-                    if naps == 0:
-                        channel_radius[l] = a
-                    elif naps == 1:
-                        channel_radius[l] = ape
-                    elif naps == 2:
-                        channel_radius[l] = ap
 
                 NJS = items[5]
                 for j in range(NJS):
@@ -1049,25 +1021,6 @@ class Unresolved(ResonanceRange):
                 items = get_cont_record(file_obj)
                 awri = items[0]
                 l = items[2]
-
-                # Calculate channel radius from ENDF-102 equation D.14
-                a = Polynomial((0.123 * (NEUTRON_MASS*awri)**(1./3.) + 0.08,))
-
-                # Construct scattering and channel radius
-                if nro == 0:
-                    scattering_radius[l] = ap
-                    if naps == 0:
-                        channel_radius[l] = a
-                    elif naps == 1:
-                        channel_radius[l] = ap
-                elif nro == 1:
-                    scattering_radius[l] = ape
-                    if naps == 0:
-                        channel_radius[l] = a
-                    elif naps == 1:
-                        channel_radius[l] = ape
-                    elif naps == 2:
-                        channel_radius[l] = ap
 
                 NJS = items[4]
                 for j in range(NJS):
@@ -1094,25 +1047,6 @@ class Unresolved(ResonanceRange):
                 awri = items[0]
                 l = items[2]
 
-                # Calculate channel radius from ENDF-102 equation D.14
-                a = Polynomial((0.123 * (NEUTRON_MASS*awri)**(1./3.) + 0.08,))
-
-                # Construct scattering and channel radius
-                if nro == 0:
-                    scattering_radius[l] = ap
-                    if naps == 0:
-                        channel_radius[l] = a
-                    elif naps == 1:
-                        channel_radius[l] = ap
-                elif nro == 1:
-                    scattering_radius[l] = ape
-                    if naps == 0:
-                        channel_radius[l] = a
-                    elif naps == 1:
-                        channel_radius[l] = ape
-                    elif naps == 2:
-                        channel_radius[l] = ap
-
                 NJS = items[4]
                 for j in range(NJS):
                     items, values = get_list_record(file_obj)
@@ -1133,6 +1067,25 @@ class Unresolved(ResonanceRange):
                         records.append([l, j, E, d, amux, amun, amuf, gx, gn0,
                                         gg, gf])
             parameters = pd.DataFrame.from_records(records, columns=columns)
+
+        # Calculate channel radius from ENDF-102 equation D.14
+        a = Polynomial((0.123 * (NEUTRON_MASS*awri)**(1./3.) + 0.08,))
+
+        # Determine scattering and channel radius
+        if nro == 0:
+            scattering_radius = ap
+            if naps == 0:
+                channel_radius = a
+            elif naps == 1:
+                channel_radius = ap
+        elif nro == 1:
+            scattering_radius = ape
+            if naps == 0:
+                channel_radius = a
+            elif naps == 1:
+                channel_radius = ape
+            elif naps == 2:
+                channel_radius = ap
 
         urr = cls(target_spin, energy_min, energy_max, channel_radius,
                   scattering_radius)

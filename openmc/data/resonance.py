@@ -998,7 +998,6 @@ class Unresolved(ResonanceRange):
                 items, values = get_list_record(file_obj)
                 awri = items[0]
                 l = items[2]
-
                 NJS = items[5]
                 for j in range(NJS):
                     d, j, amun, gn0, gg = values[6*j:6*j + 5]
@@ -1021,7 +1020,6 @@ class Unresolved(ResonanceRange):
                 items = get_cont_record(file_obj)
                 awri = items[0]
                 l = items[2]
-
                 NJS = items[4]
                 for j in range(NJS):
                     items, values = get_list_record(file_obj)
@@ -1046,7 +1044,6 @@ class Unresolved(ResonanceRange):
                 items = get_cont_record(file_obj)
                 awri = items[0]
                 l = items[2]
-
                 NJS = items[4]
                 for j in range(NJS):
                     items, values = get_list_record(file_obj)

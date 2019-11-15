@@ -1,5 +1,6 @@
 /***************************************************************************
-* Copyright (c) 2016, Johan Mabille, Sylvain Corlay and Wolf Vollprecht    *
+* Copyright (c) Johan Mabille, Sylvain Corlay and Wolf Vollprecht          *
+* Copyright (c) QuantStack                                                 *
 *                                                                          *
 * Distributed under the terms of the BSD 3-Clause License.                 *
 *                                                                          *
@@ -9,8 +10,11 @@
 #ifndef XTENSOR_STRIDED_VIEW_BASE_HPP
 #define XTENSOR_STRIDED_VIEW_BASE_HPP
 
+#include <type_traits>
+
 #include <xtl/xsequence.hpp>
 
+#include "xaccessible.hpp"
 #include "xtensor_forward.hpp"
 #include "xslice.hpp"
 #include "xstrides.hpp"
@@ -18,49 +22,126 @@
 
 namespace xt
 {
-    template <class CT, class S, layout_type L, class FST>
-    class xstrided_view_base
+    namespace detail
+    {
+        template <class CT, layout_type L>
+        class flat_expression_adaptor
+        {
+        public:
+
+            using xexpression_type = std::decay_t<CT>;
+            using shape_type = typename xexpression_type::shape_type;
+            using inner_strides_type = get_strides_t<shape_type>;
+            using index_type = inner_strides_type;
+            using size_type = typename xexpression_type::size_type;
+            using value_type = typename xexpression_type::value_type;
+            using const_reference = typename xexpression_type::const_reference;
+            using reference = std::conditional_t<std::is_const<std::remove_reference_t<CT>>::value,
+                                                 typename xexpression_type::const_reference,
+                                                 typename xexpression_type::reference>;
+
+            using iterator = decltype(std::declval<std::remove_reference_t<CT>>().template begin<L>());
+            using const_iterator = decltype(std::declval<std::decay_t<CT>>().template cbegin<L>());
+
+            explicit flat_expression_adaptor(CT* e);
+
+            template <class FST>
+            flat_expression_adaptor(CT* e, FST&& strides);
+
+            void update_pointer(CT* ptr) const
+            {
+                m_e = ptr;
+            }
+
+            size_type size() const;
+            reference operator[](size_type idx);
+            const_reference operator[](size_type idx) const;
+
+            iterator begin();
+            iterator end();
+            const_iterator begin() const;
+            const_iterator end() const;
+            const_iterator cbegin() const;
+            const_iterator cend() const;
+
+        private:
+
+            mutable CT* m_e;
+            inner_strides_type m_strides;
+            mutable index_type m_index;
+            size_type m_size;
+        };
+
+        template <class T>
+        struct is_flat_expression_adaptor : std::false_type
+        {
+        };
+
+        template <class CT, layout_type L>
+        struct is_flat_expression_adaptor<flat_expression_adaptor<CT, L>> : std::true_type
+        {
+        };
+
+        template <class E, class ST>
+        struct provides_data_interface
+            : xtl::conjunction<has_data_interface<std::decay_t<E>>, xtl::negation<is_flat_expression_adaptor<ST>>>
+        {
+        };
+    }
+
+    template <class D>
+    class xstrided_view_base : public xaccessible<D>
     {
     public:
 
-        using xexpression_type = std::decay_t<CT>;
-        static constexpr bool is_const = std::is_const<std::remove_reference_t<CT>>::value;
+        using base_type = xaccessible<D>;
+        using inner_types = xcontainer_inner_types<D>;
+        using xexpression_type = typename inner_types::xexpression_type;
+        using undecay_expression = typename inner_types::undecay_expression;
+        static constexpr bool is_const = std::is_const<std::remove_reference_t<undecay_expression>>::value;
 
         using value_type = typename xexpression_type::value_type;
-        using reference = std::conditional_t<is_const,
-                                             typename xexpression_type::const_reference,
-                                             typename xexpression_type::reference>;
-        using const_reference = typename xexpression_type::const_reference;
+        using reference = typename inner_types::reference;
+        using const_reference = typename inner_types::const_reference;
         using pointer = std::conditional_t<is_const,
                                            typename xexpression_type::const_pointer,
                                            typename xexpression_type::pointer>;
         using const_pointer = typename xexpression_type::const_pointer;
-        using size_type = typename xexpression_type::size_type;
+        using size_type = typename inner_types::size_type;
         using difference_type = typename xexpression_type::difference_type;
 
-        using inner_storage_type = FST;
+        using storage_getter = typename inner_types::storage_getter;
+        using inner_storage_type = typename inner_types::inner_storage_type;
         using storage_type = std::remove_reference_t<inner_storage_type>;
 
-        using shape_type = S;
-        using strides_type = shape_type;
-        using backstrides_type = shape_type;
+        using shape_type = typename inner_types::shape_type;
+        using strides_type = get_strides_t<shape_type>;
+        using backstrides_type = strides_type;
 
-        static constexpr layout_type static_layout = L;
-        static constexpr bool contiguous_layout = static_layout != layout_type::dynamic;
+        using inner_shape_type = shape_type;
+        using inner_strides_type = strides_type;
+        using inner_backstrides_type = backstrides_type;
 
-        template <class CTA>
-        xstrided_view_base(CTA&& e, S&& shape, S&& strides, std::size_t offset, layout_type layout) noexcept;
+        using undecay_shape = typename inner_types::undecay_shape;
 
-        template <class CTA, class FLS>
-        xstrided_view_base(CTA&& e, S&& shape, S&& strides, std::size_t offset,
-                           layout_type layout, FLS&& flatten_strides, layout_type flatten_layout) noexcept;
+        using simd_value_type = xt_simd::simd_type<value_type>;
+        using bool_load_type = typename xexpression_type::bool_load_type;
 
-        size_type size() const noexcept;
-        size_type dimension() const noexcept;
-        const shape_type& shape() const noexcept;
-        const strides_type& strides() const noexcept;
-        const backstrides_type& backstrides() const noexcept;
+        static constexpr layout_type static_layout = inner_types::layout;
+        static constexpr bool contiguous_layout = static_layout != layout_type::dynamic && xexpression_type::contiguous_layout;
+
+        template <class CTA, class SA>
+        xstrided_view_base(CTA&& e, SA&& shape, strides_type&& strides, size_type offset, layout_type layout) noexcept;
+
+        xstrided_view_base(xstrided_view_base&& rhs);
+
+        xstrided_view_base(const xstrided_view_base& rhs);
+
+        const inner_shape_type& shape() const noexcept;
+        const inner_strides_type& strides() const noexcept;
+        const inner_backstrides_type& backstrides() const noexcept;
         layout_type layout() const noexcept;
+        using base_type::shape;
 
         reference operator()();
         const_reference operator()() const;
@@ -72,28 +153,10 @@ namespace xt
         const_reference operator()(Args... args) const;
 
         template <class... Args>
-        reference at(Args... args);
-
-        template <class... Args>
-        const_reference at(Args... args) const;
-
-        template <class... Args>
         reference unchecked(Args... args);
 
         template <class... Args>
         const_reference unchecked(Args... args) const;
-
-        template <class OS>
-        disable_integral_t<OS, reference> operator[](const OS& index);
-        template <class I>
-        reference operator[](std::initializer_list<I> index);
-        reference operator[](size_type i);
-
-        template <class OS>
-        disable_integral_t<OS, const_reference> operator[](const OS& index) const;
-        template <class I>
-        const_reference operator[](std::initializer_list<I> index) const;
-        const_reference operator[](size_type i) const;
 
         template <class It>
         reference element(It first, It last);
@@ -104,11 +167,11 @@ namespace xt
         storage_type& storage() noexcept;
         const storage_type& storage() const noexcept;
 
-        template <class E = std::decay_t<CT>>
-        std::enable_if_t<has_data_interface<std::decay_t<E>>::value, value_type*>
+        template <class E = xexpression_type, class ST = storage_type>
+        std::enable_if_t<detail::provides_data_interface<E, ST>::value, pointer>
         data() noexcept;
-        template <class E = std::decay_t<CT>>
-        std::enable_if_t<has_data_interface<std::decay_t<E>>::value, const value_type*>
+        template <class E = xexpression_type, class ST = storage_type>
+        std::enable_if_t<detail::provides_data_interface<E, ST>::value, const_pointer>
         data() const noexcept;
         size_type data_offset() const noexcept;
 
@@ -119,16 +182,29 @@ namespace xt
         bool broadcast_shape(O& shape, bool reuse_cache = false) const;
 
         template <class O>
-        bool is_trivial_broadcast(const O& strides) const noexcept;
+        bool has_linear_assign(const O& strides) const noexcept;
+
+    protected:
+
+        using offset_type = typename strides_type::value_type;
+
+        template <class... Args>
+        offset_type compute_index(Args... args) const;
+
+        template <class... Args>
+        offset_type compute_unchecked_index(Args... args) const;
+
+        template <class It>
+        offset_type compute_element_index(It first, It last) const;
 
     private:
 
-        CT m_e;
+        undecay_expression m_e;
         inner_storage_type m_storage;
-        shape_type m_shape;
-        strides_type m_strides;
-        backstrides_type m_backstrides;
-        std::size_t m_offset;
+        inner_shape_type m_shape;
+        inner_strides_type m_strides;
+        inner_backstrides_type m_backstrides;
+        size_type m_offset;
         layout_type m_layout;
     };
 
@@ -139,114 +215,74 @@ namespace xt
     namespace detail
     {
         template <class CT>
-        class flat_expression_adaptor
+        struct inner_storage_getter
         {
-        public:
-
-            using xexpression_type = std::decay_t<CT>;
-            using shape_type = typename xexpression_type::shape_type;
-            using index_type = xindex_type_t<shape_type>;
-            using size_type = typename xexpression_type::size_type;
-            using value_type = typename xexpression_type::value_type;
-            using reference = typename xexpression_type::reference;
-            using const_reference = typename xexpression_type::const_reference;
-
-            using iterator = typename xexpression_type::iterator;
-            using const_iterator = typename xexpression_type::const_iterator;
-
-            flat_expression_adaptor(CT& e);
-
-            template <class FST>
-            flat_expression_adaptor(CT& e, FST&& strides, layout_type layout);
-
-            size_type size() const;
-            reference operator[](std::size_t idx);
-            const_reference operator[](std::size_t idx) const;
-
-            iterator begin();
-            iterator end();
-            const_iterator begin() const;
-            const_iterator end() const;
-            const_iterator cbegin() const;
-            const_iterator cend() const;
-
-        private:
-
-            CT& m_e;
-            shape_type m_strides;
-            mutable index_type m_index;
-            size_type m_size;
-            layout_type m_layout;
-        };
-
-        template <class CT, class T = void>
-        struct flat_storage_type;
-
-        template <class CT>
-        struct flat_storage_type<CT, typename std::enable_if_t<has_data_interface<std::decay_t<CT>>::value>>
-        {
-            // Note: we could also use the storage_type typedef.
-            // using type = std::conditional_t<
-            //    std::is_const<std::remove_reference_t<CT>>::value,
-            //    const typename std::decay_t<CT>::storage_type&,
-            //    typename std::decay_t<CT>::storage_type&>;
             using type = decltype(std::declval<CT>().storage());
+            using reference = std::add_lvalue_reference_t<CT>;
+
+            template <class E>
+            using rebind_t = inner_storage_getter<E>;
+
+            static decltype(auto) get_flat_storage(reference e)
+            {
+                return e.storage();
+            }
+
+            static auto get_offset(reference e)
+            {
+                return e.data_offset();
+            }
+
+            static decltype(auto) get_strides(reference e)
+            {
+                return e.strides();
+            }
         };
 
-        template <class CT>
-        struct flat_storage_type<CT, typename std::enable_if_t<!has_data_interface<std::decay_t<CT>>::value>>
+        template <class CT, layout_type L>
+        struct flat_adaptor_getter
         {
-            using type = flat_expression_adaptor<CT>;
+            using type = flat_expression_adaptor<std::remove_reference_t<CT>, L>;
+            using reference = std::add_lvalue_reference_t<CT>;
+
+            template <class E>
+            using rebind_t = flat_adaptor_getter<E, L>;
+
+            static type get_flat_storage(reference e)
+            {
+                // moved to addressof because ampersand on xview returns a closure pointer
+                return type(std::addressof(e));
+            }
+
+            static auto get_offset(reference)
+            {
+                return typename std::decay_t<CT>::size_type(0);
+            }
+
+            static auto get_strides(reference e)
+            {
+                dynamic_shape<std::ptrdiff_t> strides;
+                strides.resize(e.shape().size());
+                compute_strides(e.shape(), L, strides);
+                return strides;
+            }
         };
 
-        template <class CT>
-        using flat_storage_type_t = typename flat_storage_type<CT>::type;
+        template <class CT, layout_type L>
+        using flat_storage_getter = std::conditional_t<has_data_interface<std::decay_t<CT>>::value,
+                                                       inner_storage_getter<CT>,
+                                                       flat_adaptor_getter<CT, L>>;
 
-        // with data_interface
-        template <class E, std::enable_if_t<has_data_interface<std::decay_t<E>>::value>* = nullptr>
-        inline decltype(auto) get_flat_storage(E& e)
+        template <layout_type L, class E>
+        inline auto get_offset(E& e)
         {
-            return e.storage();
+            return flat_storage_getter<E, L>::get_offset(e);
         }
 
-        template <class E, std::enable_if_t<has_data_interface<std::decay_t<E>>::value>* = nullptr>
-        inline std::size_t get_offset(E&& e)
+        template <layout_type L, class E>
+        inline decltype(auto) get_strides(E& e)
         {
-            return e.data_offset();
-        }
-
-        template <class E, std::enable_if_t<has_data_interface<std::decay_t<E>>::value>* = nullptr>
-        inline decltype(auto) get_strides(E&& e)
-        {
-            return e.strides();
-        }
-
-        // without data_interface
-        template <class E, std::enable_if_t<!has_data_interface<std::decay_t<E>>::value>* = nullptr>
-        inline auto get_flat_storage(E& e) -> flat_expression_adaptor<E>
-        {
-            return flat_expression_adaptor<E>(e);
-        }
-
-        template <class E, class S>
-        inline auto get_flat_storage(E& e, S&& s, layout_type l) -> flat_expression_adaptor<E>
-        {
-            return flat_expression_adaptor<E>(e, std::forward<S>(s), l);
-        }
-
-        template <class E, std::enable_if_t<!has_data_interface<std::decay_t<E>>::value>* = nullptr>
-        inline std::size_t get_offset(E&& /*e*/)
-        {
-            return std::size_t(0);
-        }
-
-        template <class E, std::enable_if_t<!has_data_interface<std::decay_t<E>>::value>* = nullptr>
-        inline auto get_strides(E&& e)
-        {
-            dynamic_shape<std::size_t> strides;
-            strides.resize(e.shape().size());
-            compute_strides(e.shape(), XTENSOR_DEFAULT_LAYOUT, strides);
-            return strides;
+            return flat_storage_getter<E, L>::get_strides(e);
         }
     }
 
@@ -267,12 +303,13 @@ namespace xt
      * @param offset the offset of the first element in the underlying container
      * @param layout the layout of the view
      */
-    template <class CT, class S, layout_type L, class FST>
-    template <class CTA>
-    inline xstrided_view_base<CT, S, L, FST>::xstrided_view_base(CTA&& e, S&& shape, S&& strides, std::size_t offset, layout_type layout) noexcept
+    template <class D>
+    template <class CTA, class SA>
+    inline xstrided_view_base<D>::xstrided_view_base(CTA&& e, SA&& shape, strides_type&& strides, size_type offset, layout_type layout) noexcept
         : m_e(std::forward<CTA>(e)),
-          m_storage(detail::get_flat_storage<CT>(m_e)),
-          m_shape(std::move(shape)),
+          //m_storage(detail::get_flat_storage<undecay_expression>(m_e)),
+          m_storage(storage_getter::get_flat_storage(m_e)),
+          m_shape(std::forward<SA>(shape)),
           m_strides(std::move(strides)),
           m_offset(offset),
           m_layout(layout)
@@ -281,20 +318,47 @@ namespace xt
         adapt_strides(m_shape, m_strides, m_backstrides);
     }
 
-    template <class CT, class S, layout_type L, class FST>
-    template <class CTA, class FLS>
-    inline xstrided_view_base<CT, S, L, FST>::xstrided_view_base(CTA&& e, S&& shape, S&& strides,
-                                                                 std::size_t offset, layout_type layout,
-                                                                 FLS&& flatten_strides, layout_type flatten_layout) noexcept
-        : m_e(std::forward<CTA>(e)),
-          m_storage(detail::get_flat_storage<CT>(m_e, std::forward<FLS>(flatten_strides), flatten_layout)),
-          m_shape(std::move(shape)),
-          m_strides(std::move(strides)),
-          m_offset(offset),
-          m_layout(layout)
+    namespace detail
     {
-        m_backstrides = xtl::make_sequence<backstrides_type>(m_shape.size(), 0);
-        adapt_strides(m_shape, m_strides, m_backstrides);
+        template <class T, class S>
+        auto& copy_move_storage(T& expr, const S& /*storage*/)
+        {
+            return expr.storage();
+        }
+
+        template <class T, class E, layout_type L>
+        auto copy_move_storage(T& expr, const detail::flat_expression_adaptor<E, L>& storage)
+        {
+            detail::flat_expression_adaptor<E, L> new_storage = storage; // copy storage
+            new_storage.update_pointer(std::addressof(expr));
+            return new_storage;
+        }
+    }
+
+    template <class D>
+    inline xstrided_view_base<D>::xstrided_view_base(xstrided_view_base&& rhs)
+        : base_type(std::move(rhs)),
+          m_e(std::forward<undecay_expression>(rhs.m_e)),
+          m_storage(detail::copy_move_storage(m_e, rhs.m_storage)),
+          m_shape(std::move(rhs.m_shape)),
+          m_strides(std::move(rhs.m_strides)),
+          m_backstrides(std::move(rhs.m_backstrides)),
+          m_offset(std::move(rhs.m_offset)),
+          m_layout(std::move(rhs.m_layout))
+    {
+    }
+
+    template <class D>
+    inline xstrided_view_base<D>::xstrided_view_base(const xstrided_view_base& rhs)
+        : base_type(rhs),
+          m_e(rhs.m_e),
+          m_storage(detail::copy_move_storage(m_e, rhs.m_storage)),
+          m_shape(rhs.m_shape),
+          m_strides(rhs.m_strides),
+          m_backstrides(rhs.m_backstrides),
+          m_offset(rhs.m_offset),
+          m_layout(rhs.m_layout)
+    {
     }
     //@}
 
@@ -303,28 +367,10 @@ namespace xt
      */
     //@{
     /**
-     * Returns the size of the xtrided_view_base.
-     */
-    template <class CT, class S, layout_type L, class FST>
-    inline auto xstrided_view_base<CT, S, L, FST>::size() const noexcept -> size_type
-    {
-        return compute_size(shape());
-    }
-
-    /**
-     * Returns the number of dimensions of the xtrided_view_base.
-     */
-    template <class CT, class S, layout_type L, class FST>
-    inline auto xstrided_view_base<CT, S, L, FST>::dimension() const noexcept -> size_type
-    {
-        return m_shape.size();
-    }
-
-    /**
      * Returns the shape of the xtrided_view_base.
      */
-    template <class CT, class S, layout_type L, class FST>
-    inline auto xstrided_view_base<CT, S, L, FST>::shape() const noexcept -> const shape_type&
+    template <class D>
+    inline auto xstrided_view_base<D>::shape() const noexcept -> const inner_shape_type&
     {
         return m_shape;
     }
@@ -332,8 +378,8 @@ namespace xt
     /**
      * Returns the strides of the xtrided_view_base.
      */
-    template <class CT, class S, layout_type L, class FST>
-    inline auto xstrided_view_base<CT, S, L, FST>::strides() const noexcept -> const strides_type&
+    template <class D>
+    inline auto xstrided_view_base<D>::strides() const noexcept -> const inner_strides_type&
     {
         return m_strides;
     }
@@ -341,8 +387,8 @@ namespace xt
     /**
      * Returns the backstrides of the xtrided_view_base.
      */
-    template <class CT, class S, layout_type L, class FST>
-    inline auto xstrided_view_base<CT, S, L, FST>::backstrides() const noexcept -> const backstrides_type&
+    template <class D>
+    inline auto xstrided_view_base<D>::backstrides() const noexcept -> const inner_backstrides_type&
     {
         return m_backstrides;
     }
@@ -350,8 +396,8 @@ namespace xt
     /**
      * Returns the layout of the xtrided_view_base.
      */
-    template <class CT, class S, layout_type L, class FST>
-    inline auto xstrided_view_base<CT, S, L, FST>::layout() const noexcept -> layout_type
+    template <class D>
+    inline auto xstrided_view_base<D>::layout() const noexcept -> layout_type
     {
         return m_layout;
     }
@@ -361,17 +407,16 @@ namespace xt
      * @name Data
      */
     //@{
-
-    template <class CT, class S, layout_type L, class FST>
-    inline auto xstrided_view_base<CT, S, L, FST>::operator()() -> reference
+    template <class D>
+    inline auto xstrided_view_base<D>::operator()() -> reference
     {
-        return m_storage[m_offset];
+        return m_storage[static_cast<size_type>(m_offset)];
     }
 
-    template <class CT, class S, layout_type L, class FST>
-    inline auto xstrided_view_base<CT, S, L, FST>::operator()() const -> const_reference
+    template <class D>
+    inline auto xstrided_view_base<D>::operator()() const -> const_reference
     {
-        return m_storage[m_offset];
+        return m_storage[static_cast<size_type>(m_offset)];
     }
 
     /**
@@ -380,14 +425,13 @@ namespace xt
      * must be unsigned integers, the number of indices should be equal or greater than
      * the number of dimensions of the view.
      */
-    template <class CT, class S, layout_type L, class FST>
+    template <class D>
     template <class... Args>
-    inline auto xstrided_view_base<CT, S, L, FST>::operator()(Args... args) -> reference
+    inline auto xstrided_view_base<D>::operator()(Args... args) -> reference
     {
         XTENSOR_TRY(check_index(shape(), args...));
         XTENSOR_CHECK_DIMENSION(shape(), args...);
-        using offset_type = typename strides_type::value_type;
-        offset_type index = static_cast<offset_type>(m_offset) + xt::data_offset<offset_type>(strides(), static_cast<offset_type>(args)...);
+        offset_type index = compute_index(args...);
         return m_storage[static_cast<size_type>(index)];
     }
 
@@ -397,49 +441,14 @@ namespace xt
      * must be unsigned integers, the number of indices should be equal or greater than
      * the number of dimensions of the view.
      */
-    template <class CT, class S, layout_type L, class FST>
+    template <class D>
     template <class... Args>
-    inline auto xstrided_view_base<CT, S, L, FST>::operator()(Args... args) const -> const_reference
+    inline auto xstrided_view_base<D>::operator()(Args... args) const -> const_reference
     {
         XTENSOR_TRY(check_index(shape(), args...));
         XTENSOR_CHECK_DIMENSION(shape(), args...);
-        using offset_type = typename strides_type::value_type;
-        offset_type index = static_cast<offset_type>(m_offset) + xt::data_offset<offset_type>(strides(), static_cast<offset_type>(args)...);
+        offset_type index = compute_index(args...);
         return m_storage[static_cast<size_type>(index)];
-    }
-
-    /**
-     * Returns a reference to the element at the specified position in the view,
-     * after dimension and bounds checking.
-     * @param args a list of indices specifying the position in the view. Indices
-     * must be unsigned integers, the number of indices should be equal to the number of dimensions
-     * of the view.
-     * @exception std::out_of_range if the number of argument is greater than the number of dimensions
-     * or if indices are out of bounds.
-     */
-    template <class CT, class S, layout_type L, class FST>
-    template <class... Args>
-    inline auto xstrided_view_base<CT, S, L, FST>::at(Args... args) -> reference
-    {
-        check_access(shape(), static_cast<size_type>(args)...);
-        return this->operator()(args...);
-    }
-
-    /**
-     * Returns a constant reference to the element at the specified position in the view,
-     * after dimension and bounds checking.
-     * @param args a list of indices specifying the position in the view. Indices
-     * must be unsigned integers, the number of indices should be equal to the number of dimensions
-     * of the view.
-     * @exception std::out_of_range if the number of argument is greater than the number of dimensions
-     * or if indices are out of bounds.
-     */
-    template <class CT, class S, layout_type L, class FST>
-    template <class... Args>
-    inline auto xstrided_view_base<CT, S, L, FST>::at(Args... args) const -> const_reference
-    {
-        check_access(shape(), static_cast<size_type>(args)...);
-        return this->operator()(args...);
     }
 
     /**
@@ -450,7 +459,7 @@ namespace xt
      *
      * @warning This method is meant for performance, for expressions with a dynamic
      * number of dimensions (i.e. not known at compile time). Since it may have
-     * undefined behavior (see parameters), operator() should be prefered whenever
+     * undefined behavior (see parameters), operator() should be preferred whenever
      * it is possible.
      * @warning This method is NOT compatible with broadcasting, meaning the following
      * code has undefined behavior:
@@ -461,12 +470,11 @@ namespace xt
      * double res = fd.uncheked(0, 1);
      * \endcode
      */
-    template <class CT, class S, layout_type L, class FST>
+    template <class D>
     template <class... Args>
-    inline auto xstrided_view_base<CT, S, L, FST>::unchecked(Args... args) -> reference
+    inline auto xstrided_view_base<D>::unchecked(Args... args) -> reference
     {
-        using offset_type = typename strides_type::value_type;
-        offset_type index = static_cast<offset_type>(m_offset) + xt::unchecked_data_offset<offset_type>(strides(), static_cast<offset_type>(args)...);
+        offset_type index = compute_unchecked_index(args...);
         return m_storage[static_cast<size_type>(index)];
     }
 
@@ -478,7 +486,7 @@ namespace xt
      *
      * @warning This method is meant for performance, for expressions with a dynamic
      * number of dimensions (i.e. not known at compile time). Since it may have
-     * undefined behavior (see parameters), operator() should be prefered whenever
+     * undefined behavior (see parameters), operator() should be preferred whenever
      * it is possible.
      * @warning This method is NOT compatible with broadcasting, meaning the following
      * code has undefined behavior:
@@ -489,68 +497,12 @@ namespace xt
      * double res = fd.uncheked(0, 1);
      * \endcode
      */
-    template <class CT, class S, layout_type L, class FST>
+    template <class D>
     template <class... Args>
-    inline auto xstrided_view_base<CT, S, L, FST>::unchecked(Args... args) const -> const_reference
+    inline auto xstrided_view_base<D>::unchecked(Args... args) const -> const_reference
     {
-        size_type index = m_offset + xt::unchecked_data_offset<size_type>(strides(), static_cast<size_type>(args)...);
-        return m_storage[index];
-    }
-
-    /**
-     * Returns a reference to the element at the specified position in the view.
-     * @param index a sequence of indices specifying the position in the view. Indices
-     * must be unsigned integers, the number of indices in the list should be equal or greater
-     * than the number of dimensions of the view.
-     */
-    template <class CT, class S, layout_type L, class FST>
-    template <class OS>
-    inline auto xstrided_view_base<CT, S, L, FST>::operator[](const OS& index)
-        -> disable_integral_t<OS, reference>
-    {
-        return element(index.cbegin(), index.cend());
-    }
-
-    template <class CT, class S, layout_type L, class FST>
-    template <class I>
-    inline auto xstrided_view_base<CT, S, L, FST>::operator[](std::initializer_list<I> index)
-        -> reference
-    {
-        return element(index.begin(), index.end());
-    }
-
-    template <class CT, class S, layout_type L, class FST>
-    inline auto xstrided_view_base<CT, S, L, FST>::operator[](size_type i) -> reference
-    {
-        return operator()(i);
-    }
-
-    /**
-     * Returns a constant reference to the element at the specified position in the view.
-     * @param index a sequence of indices specifying the position in the view. Indices
-     * must be unsigned integers, the number of indices in the list should be equal or greater
-     * than the number of dimensions of the view.
-     */
-    template <class CT, class S, layout_type L, class FST>
-    template <class OS>
-    inline auto xstrided_view_base<CT, S, L, FST>::operator[](const OS& index) const
-        -> disable_integral_t<OS, const_reference>
-    {
-        return element(index.cbegin(), index.cend());
-    }
-
-    template <class CT, class S, layout_type L, class FST>
-    template <class I>
-    inline auto xstrided_view_base<CT, S, L, FST>::operator[](std::initializer_list<I> index) const
-        -> const_reference
-    {
-        return element(index.begin(), index.end());
-    }
-
-    template <class CT, class S, layout_type L, class FST>
-    inline auto xstrided_view_base<CT, S, L, FST>::operator[](size_type i) const -> const_reference
-    {
-        return operator()(i);
+        offset_type index = compute_unchecked_index(args...);
+        return m_storage[static_cast<size_type>(index)];
     }
 
     /**
@@ -560,12 +512,12 @@ namespace xt
      * The number of indices in the sequence should be equal to or greater than the the number
      * of dimensions of the view..
      */
-    template <class CT, class S, layout_type L, class FST>
+    template <class D>
     template <class It>
-    inline auto xstrided_view_base<CT, S, L, FST>::element(It first, It last) -> reference
+    inline auto xstrided_view_base<D>::element(It first, It last) -> reference
     {
         XTENSOR_TRY(check_element_index(shape(), first, last));
-        return m_storage[m_offset + element_offset<size_type>(strides(), first, last)];
+        return m_storage[static_cast<size_type>(compute_element_index(first, last))];
     }
 
     /**
@@ -575,19 +527,19 @@ namespace xt
      * The number of indices in the sequence should be equal to or greater than the the number
      * of dimensions of the view..
      */
-    template <class CT, class S, layout_type L, class FST>
+    template <class D>
     template <class It>
-    inline auto xstrided_view_base<CT, S, L, FST>::element(It first, It last) const -> const_reference
+    inline auto xstrided_view_base<D>::element(It first, It last) const -> const_reference
     {
         XTENSOR_TRY(check_element_index(shape(), first, last));
-        return m_storage[m_offset + element_offset<size_type>(strides(), first, last)];
+        return m_storage[static_cast<size_type>(compute_element_index(first, last))];
     }
 
     /**
      * Returns a reference to the buffer containing the elements of the view.
      */
-    template <class CT, class S, layout_type L, class FST>
-    inline auto xstrided_view_base<CT, S, L, FST>::storage() noexcept -> storage_type&
+    template <class D>
+    inline auto xstrided_view_base<D>::storage() noexcept -> storage_type&
     {
         return m_storage;
     }
@@ -595,8 +547,8 @@ namespace xt
     /**
      * Returns a constant reference to the buffer containing the elements of the view.
      */
-    template <class CT, class S, layout_type L, class FST>
-    inline auto xstrided_view_base<CT, S, L, FST>::storage() const noexcept -> const storage_type&
+    template <class D>
+    inline auto xstrided_view_base<D>::storage() const noexcept -> const storage_type&
     {
         return m_storage;
     }
@@ -605,10 +557,10 @@ namespace xt
      * Returns a pointer to the underlying array serving as element storage.
      * The first element of the view is at data() + data_offset().
      */
-    template <class CT, class S, layout_type L, class FST>
-    template <class E>
-    inline auto xstrided_view_base<CT, S, L, FST>::data() noexcept ->
-        std::enable_if_t<has_data_interface<std::decay_t<E>>::value, value_type*>
+    template <class D>
+    template <class E, class ST>
+    inline auto xstrided_view_base<D>::data() noexcept ->
+        std::enable_if_t<detail::provides_data_interface<E, ST>::value, pointer>
     {
         return m_e.data();
     }
@@ -617,10 +569,10 @@ namespace xt
      * Returns a constant pointer to the underlying array serving as element storage.
      * The first element of the view is at data() + data_offset().
      */
-    template <class CT, class S, layout_type L, class FST>
-    template <class E>
-    inline auto xstrided_view_base<CT, S, L, FST>::data() const noexcept ->
-        std::enable_if_t<has_data_interface<std::decay_t<E>>::value, const value_type*>
+    template <class D>
+    template <class E, class ST>
+    inline auto xstrided_view_base<D>::data() const noexcept ->
+        std::enable_if_t<detail::provides_data_interface<E, ST>::value, const_pointer>
     {
         return m_e.data();
     }
@@ -628,26 +580,26 @@ namespace xt
     /**
      * Returns the offset to the first element in the view.
      */
-    template <class CT, class S, layout_type L, class FST>
-    inline auto xstrided_view_base<CT, S, L, FST>::data_offset() const noexcept -> size_type
+    template <class D>
+    inline auto xstrided_view_base<D>::data_offset() const noexcept -> size_type
     {
         return m_offset;
     }
 
     /**
-     * Returns a reference to the underlying reference of the view.
+     * Returns a reference to the underlying expression of the view.
      */
-    template <class CT, class S, layout_type L, class FST>
-    inline auto xstrided_view_base<CT, S, L, FST>::expression() noexcept -> xexpression_type&
+    template <class D>
+    inline auto xstrided_view_base<D>::expression() noexcept -> xexpression_type&
     {
         return m_e;
     }
 
     /**
-     * Returns a constant reference to the underlying reference of the view.
+     * Returns a constant reference to the underlying expression of the view.
      */
-    template <class CT, class S, layout_type L, class FST>
-    inline auto xstrided_view_base<CT, S, L, FST>::expression() const noexcept -> const xexpression_type&
+    template <class D>
+    inline auto xstrided_view_base<D>::expression() const noexcept -> const xexpression_type&
     {
         return m_e;
     }
@@ -663,110 +615,312 @@ namespace xt
      * @param reuse_cache parameter for internal optimization
      * @return a boolean indicating whether the broadcasting is trivial
      */
-    template <class CT, class S, layout_type L, class FST>
+    template <class D>
     template <class O>
-    inline bool xstrided_view_base<CT, S, L, FST>::broadcast_shape(O& shape, bool) const
+    inline bool xstrided_view_base<D>::broadcast_shape(O& shape, bool) const
     {
         return xt::broadcast_shape(m_shape, shape);
     }
 
     /**
-     * Compares the specified strides with those of the view to see whether
-     * the broadcasting is trivial.
-     * @return a boolean indicating whether the broadcasting is trivial
+     * Checks whether the xstrided_view_base can be linearly assigned to an expression
+     * with the specified strides.
+     * @return a boolean indicating whether a linear assign is possible
      */
-    template <class CT, class S, layout_type L, class FST>
+    template <class D>
     template <class O>
-    inline bool xstrided_view_base<CT, S, L, FST>::is_trivial_broadcast(const O& str) const noexcept
+    inline bool xstrided_view_base<D>::has_linear_assign(const O& str) const noexcept
     {
-        return str.size() == strides().size() &&
+        return has_data_interface<xexpression_type>::value && str.size() == strides().size() &&
             std::equal(str.cbegin(), str.cend(), strides().begin());
     }
     //@}
+
+    template <class D>
+    template <class... Args>
+    inline auto xstrided_view_base<D>::compute_index(Args... args) const -> offset_type
+    {
+        return static_cast<offset_type>(m_offset) + xt::data_offset<offset_type>(strides(), static_cast<offset_type>(args)...);
+    }
+
+    template <class D>
+    template <class... Args>
+    inline auto xstrided_view_base<D>::compute_unchecked_index(Args... args) const -> offset_type
+    {
+        return static_cast<offset_type>(m_offset) + xt::unchecked_data_offset<offset_type>(strides(), static_cast<offset_type>(args)...);
+    }
+
+    template <class D>
+    template <class It>
+    inline auto xstrided_view_base<D>::compute_element_index(It first, It last) const -> offset_type
+    {
+        return static_cast<offset_type>(m_offset) + xt::element_offset<offset_type>(strides(), first, last);
+    }
 
     /******************************************
      * flat_expression_adaptor implementation *
      ******************************************/
 
-        namespace detail
+    namespace detail
     {
-        template <class CT>
-        inline flat_expression_adaptor<CT>::flat_expression_adaptor(CT& e)
+        template <class CT, layout_type L>
+        inline flat_expression_adaptor<CT, L>::flat_expression_adaptor(CT* e)
             : m_e(e)
         {
-            resize_container(m_index, m_e.dimension());
-            resize_container(m_strides, m_e.dimension());
-            m_size = compute_size(m_e.shape());
-            // Fallback to XTENSOR_DEFAULT_LAYOUT when the underlying layout is not
-            // row-major or column major.
-            m_layout = default_assignable_layout(m_e.layout());
-            compute_strides(m_e.shape(), m_layout, m_strides);
+            resize_container(m_index, m_e->dimension());
+            resize_container(m_strides, m_e->dimension());
+            m_size = compute_size(m_e->shape());
+            compute_strides(m_e->shape(), L, m_strides);
         }
 
-        template <class CT>
+        template <class CT, layout_type L>
         template <class FST>
-        inline flat_expression_adaptor<CT>::flat_expression_adaptor(CT& e, FST&& strides, layout_type layout)
-            : m_e(e), m_strides(xtl::forward_sequence<shape_type>(strides)), m_layout(layout)
+        inline flat_expression_adaptor<CT, L>::flat_expression_adaptor(CT* e, FST&& strides)
+            : m_e(e), m_strides(xtl::forward_sequence<inner_strides_type, FST>(strides))
         {
-            resize_container(m_index, m_e.dimension());
-            m_size = e.size();
+            resize_container(m_index, m_e->dimension());
+            m_size = m_e->size();
         }
 
-        template <class CT>
-        inline auto flat_expression_adaptor<CT>::size() const -> size_type
+        template <class CT, layout_type L>
+        inline auto flat_expression_adaptor<CT, L>::size() const -> size_type
         {
             return m_size;
         }
 
-        template <class CT>
-        inline auto flat_expression_adaptor<CT>::operator[](std::size_t idx) -> reference
+
+        template <class CT, layout_type L>
+        inline auto flat_expression_adaptor<CT, L>::operator[](size_type idx) -> reference
         {
-            m_index = detail::unravel_noexcept(idx, m_strides, m_layout);
-            return m_e.element(m_index.cbegin(), m_index.cend());
+            auto i = static_cast<typename index_type::value_type>(idx);
+            m_index = detail::unravel_noexcept(i, m_strides, L);
+            return m_e->element(m_index.cbegin(), m_index.cend());
         }
 
-        template <class CT>
-        inline auto flat_expression_adaptor<CT>::operator[](std::size_t idx) const -> const_reference
+        template <class CT, layout_type L>
+        inline auto flat_expression_adaptor<CT, L>::operator[](size_type idx) const -> const_reference
         {
-            m_index = detail::unravel_noexcept(idx, m_strides, m_layout);
-            return m_e.element(m_index.cbegin(), m_index.cend());
+            auto i = static_cast<typename index_type::value_type>(idx);
+            m_index = detail::unravel_noexcept(i, m_strides, L);
+            return m_e->element(m_index.cbegin(), m_index.cend());
         }
 
-        template <class CT>
-        inline auto flat_expression_adaptor<CT>::begin() -> iterator
+        template <class CT, layout_type L>
+        inline auto flat_expression_adaptor<CT, L>::begin() -> iterator
         {
-            return m_e.begin();
+            return m_e->template begin<L>();
         }
 
-        template <class CT>
-        inline auto flat_expression_adaptor<CT>::end() -> iterator
+        template <class CT, layout_type L>
+        inline auto flat_expression_adaptor<CT, L>::end() -> iterator
         {
-            return m_e.end();
+            return m_e->template end<L>();
         }
 
-        template <class CT>
-        inline auto flat_expression_adaptor<CT>::begin() const -> const_iterator
+        template <class CT, layout_type L>
+        inline auto flat_expression_adaptor<CT, L>::begin() const -> const_iterator
         {
-            return m_e.cbegin();
+            return m_e->template cbegin<L>();
         }
 
-        template <class CT>
-        inline auto flat_expression_adaptor<CT>::end() const -> const_iterator
+        template <class CT, layout_type L>
+        inline auto flat_expression_adaptor<CT, L>::end() const -> const_iterator
         {
-            return m_e.cend();
+            return m_e->template cend<L>();
         }
 
-        template <class CT>
-        inline auto flat_expression_adaptor<CT>::cbegin() const -> const_iterator
+        template <class CT, layout_type L>
+        inline auto flat_expression_adaptor<CT, L>::cbegin() const -> const_iterator
         {
-            return m_e.cbegin();
+            return m_e->template cbegin<L>();
         }
 
-        template <class CT>
-        inline auto flat_expression_adaptor<CT>::cend() const ->const_iterator
+        template <class CT, layout_type L>
+        inline auto flat_expression_adaptor<CT, L>::cend() const ->const_iterator
         {
-            return m_e.cend();
+            return m_e->template cend<L>();
         }
+    }
+
+    /**********************************
+     * Builder helpers implementation *
+     **********************************/
+
+    namespace detail
+    {
+        template <class S>
+        struct slice_getter_impl
+        {
+            const S& m_shape;
+            mutable std::size_t idx;
+            using array_type = std::array<std::ptrdiff_t, 3>;
+
+            explicit slice_getter_impl(const S& shape)
+                : m_shape(shape), idx(0)
+            {
+            }
+
+            template <class T>
+            array_type operator()(const T& /*t*/) const
+            {
+                return array_type{{0, 0, 0}};
+            }
+
+            template <class A, class B, class C>
+            array_type operator()(const xrange_adaptor<A, B, C>& range) const
+            {
+                auto sl = range.get(static_cast<std::size_t>(m_shape[idx]));
+                return array_type({sl(0), sl.size(), sl.step_size()});
+            }
+
+            template <class T>
+            array_type operator()(const xrange<T>& range) const
+            {
+                return array_type({ range(T(0)), range.size(), T(1) });
+            }
+
+            template <class T>
+            array_type operator()(const xstepped_range<T>& range) const
+            {
+                return array_type({ range(T(0)), range.size(), range.step_size(T(0)) });
+            }
+        };
+
+        template <class adj_strides_policy>
+        struct strided_view_args : adj_strides_policy
+        {
+            using base_type = adj_strides_policy;
+
+            template <class S, class ST, class V>
+            void fill_args(const S& shape, ST&& old_strides, std::size_t base_offset, layout_type layout, const V& slices)
+            {
+                // Compute dimension
+                std::size_t dimension = shape.size(), n_newaxis = 0, n_add_all = 0;
+                std::ptrdiff_t dimension_check = static_cast<std::ptrdiff_t>(shape.size());
+
+                bool has_ellipsis = false;
+                for (const auto& el : slices)
+                {
+                    if (xtl::get_if<xt::xnewaxis_tag>(&el) != nullptr)
+                    {
+                        ++dimension;
+                        ++n_newaxis;
+                    }
+                    else if (xtl::get_if<std::ptrdiff_t>(&el) != nullptr)
+                    {
+                        --dimension;
+                        --dimension_check;
+                    }
+                    else if (xtl::get_if<xt::xellipsis_tag>(&el) != nullptr)
+                    {
+                        if (has_ellipsis == true)
+                        {
+                            throw std::runtime_error("Ellipsis can only appear once.");
+                        }
+                        has_ellipsis = true;
+                    }
+                    else
+                    {
+                        --dimension_check;
+                    }
+                }
+
+                if (dimension_check < 0)
+                {
+                    throw std::runtime_error("Too many slices for view.");
+                }
+
+                if (has_ellipsis)
+                {
+                    // replace ellipsis with N * xt::all
+                    // remove -1 because of the ellipsis slize itself
+                    n_add_all = shape.size() - (slices.size() - 1 - n_newaxis);
+                }
+
+                // Compute strided view
+                new_offset = base_offset;
+                new_shape.resize(dimension);
+                new_strides.resize(dimension);
+                base_type::resize(dimension);
+
+                auto old_shape = shape;
+                using old_strides_value_type = typename std::decay_t<ST>::value_type;
+
+                std::ptrdiff_t axis_skip = 0;
+                std::size_t idx = 0, i = 0, i_ax = 0;
+
+                auto slice_getter = detail::slice_getter_impl<S>(shape);
+
+                for (; i < slices.size(); ++i)
+                {
+                    i_ax = static_cast<std::size_t>(static_cast<std::ptrdiff_t>(i) - axis_skip);
+                    auto ptr = xtl::get_if<std::ptrdiff_t>(&slices[i]);
+                    if (ptr != nullptr)
+                    {
+                        auto slice0 = static_cast<old_strides_value_type>(*ptr);
+                        new_offset += static_cast<std::size_t>(slice0 * old_strides[i_ax]);
+                    }
+                    else if (xtl::get_if<xt::xnewaxis_tag>(&slices[i]) != nullptr)
+                    {
+                        new_shape[idx] = 1;
+                        base_type::set_fake_slice(idx);
+                        ++axis_skip, ++idx;
+                    }
+                    else if (xtl::get_if<xt::xellipsis_tag>(&slices[i]) != nullptr)
+                    {
+                        for (std::size_t j = 0; j < n_add_all; ++j)
+                        {
+                            new_shape[idx] = old_shape[i_ax];
+                            new_strides[idx] = old_strides[i_ax];
+                            base_type::set_fake_slice(idx);
+                            ++idx, ++i_ax;
+                        }
+                        axis_skip = axis_skip - static_cast<std::ptrdiff_t>(n_add_all) + 1;
+                    }
+                    else if (xtl::get_if<xt::xall_tag>(&slices[i]) != nullptr)
+                    {
+                        new_shape[idx] = old_shape[i_ax];
+                        new_strides[idx] = old_strides[i_ax];
+                        base_type::set_fake_slice(idx);
+                        ++idx;
+                    }
+                    else if (base_type::fill_args(slices, i, idx,
+                                                  old_shape[i_ax],
+                                                  old_strides[i_ax],
+                                                  new_shape, new_strides))
+                    {
+                        ++idx;
+                    }
+                    else
+                    {
+                        slice_getter.idx = i_ax;
+                        auto info = xtl::visit(slice_getter, slices[i]);
+                        new_offset += static_cast<std::size_t>(info[0] * old_strides[i_ax]);
+                        new_shape[idx] = static_cast<std::size_t>(info[1]);
+                        new_strides[idx] = info[2] * old_strides[i_ax];
+                        base_type::set_fake_slice(idx);
+                        ++idx;
+                    }
+                }
+
+                i_ax = static_cast<std::size_t>(static_cast<std::ptrdiff_t>(i) - axis_skip);
+                for (; i_ax < old_shape.size(); ++i_ax, ++idx)
+                {
+                    new_shape[idx] = old_shape[i_ax];
+                    new_strides[idx] = old_strides[i_ax];
+                    base_type::set_fake_slice(idx);
+                }
+
+                new_layout = do_strides_match(new_shape, new_strides, layout, true) ? layout : layout_type::dynamic;
+            }
+
+            using shape_type = dynamic_shape<std::size_t>;
+            shape_type new_shape;
+            using strides_type = dynamic_shape<std::ptrdiff_t>;
+            strides_type new_strides;
+            std::size_t new_offset;
+            layout_type new_layout;
+        };
     }
 }
 

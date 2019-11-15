@@ -1,0 +1,4 @@
+gsl-lite==0.34.0
+pugixml==1.8
+xtensor==0.20.8
+xtl==0.6.5

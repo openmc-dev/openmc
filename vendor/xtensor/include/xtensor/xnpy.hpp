@@ -1,6 +1,7 @@
 /***************************************************************************
-* Copyright (c) 2016, Leon Merten Lohse, Johan Mabille, Sylvain Corlay and *
-*                     Wolf Vollprecht                                      *
+* Copyright (c) Johan Mabille, Sylvain Corlay and Wolf Vollprecht          *
+* Copyright Leon Merten Lohse
+* Copyright (c) QuantStack                                                 *
 *                                                                          *
 * Distributed under the terms of the BSD 3-Clause License.                 *
 *                                                                          *
@@ -103,6 +104,7 @@ namespace xt
             if (std::is_same<T, long double>::value) return 'f';
 
             if (std::is_same<T, char>::value) return 'i';
+            if (std::is_same<T, signed char>::value) return 'i';
             if (std::is_same<T, short>::value) return 'i';
             if (std::is_same<T, int>::value) return 'i';
             if (std::is_same<T, long>::value) return 'i';
@@ -124,13 +126,13 @@ namespace xt
         }
 
         template <class T>
-        constexpr inline char get_endianess()
+        constexpr char get_endianess()
         {
             return sizeof(T) <= sizeof(char) ? no_endian_char : host_endian_char;
         }
 
         template <class T>
-        std::string build_typestring()
+        inline std::string build_typestring()
         {
             std::stringstream ss;
             ss << get_endianess<T>() << map_type<T>() << sizeof(T);
@@ -316,8 +318,6 @@ namespace xt
                     dim_s = shape_s.substr(pos);
                 }
 
-                pop_char(dim_s, ',');
-
                 if (dim_s.length() == 0)
                 {
                     if (pos_next != std::string::npos)
@@ -481,14 +481,14 @@ namespace xt
                 // Allocate memory
                 m_word_size = std::size_t(atoi(&typestring[2]));
                 m_n_bytes = compute_size(shape) * m_word_size;
-                m_buffer = new char[m_n_bytes];
+                m_buffer = std::allocator<char>{}.allocate(m_n_bytes);
             }
 
             ~npy_file()
             {
                 if (m_buffer != nullptr)
                 {
-                    delete m_buffer;
+                    std::allocator<char>{}.deallocate(m_buffer, m_n_bytes);
                 }
             }
 
@@ -592,13 +592,13 @@ namespace xt
 
             std::vector<std::size_t> m_shape;
             bool m_fortran_order;
-            size_t m_word_size;
-            size_t m_n_bytes;
+            std::size_t m_word_size;
+            std::size_t m_n_bytes;
             std::string m_typestring;
             char* m_buffer;
         };
 
-        npy_file load_npy_file(std::istream& stream)
+        inline npy_file load_npy_file(std::istream& stream)
         {
             // check magic bytes an version number
             unsigned char v_major, v_minor;
@@ -633,7 +633,7 @@ namespace xt
         }
 
         template <class O, class E>
-        void dump_npy_stream(O& stream, const xexpression<E>& e)
+        inline void dump_npy_stream(O& stream, const xexpression<E>& e)
         {
             using value_type = typename E::value_type;
             const E& ex = e.derived_cast();
@@ -663,7 +663,7 @@ namespace xt
      * @param e the xexpression
      */
     template <typename E>
-    void dump_npy(const std::string& filename, const xexpression<E>& e)
+    inline void dump_npy(const std::string& filename, const xexpression<E>& e)
     {
         std::ofstream stream(filename, std::ofstream::binary);
         if (!stream)
@@ -672,6 +672,36 @@ namespace xt
         }
 
         detail::dump_npy_stream(stream, e);
+    }
+
+    /**
+     * Save xexpression to NumPy npy format in a string
+     *
+     * @param e the xexpression
+     */
+    template <typename E>
+    inline std::string dump_npy(const xexpression<E>& e)
+    {
+        std::stringstream stream;
+        detail::dump_npy_stream(stream, e);
+        return stream.str();
+    }
+
+    /**
+     * Loads a npy file (the numpy storage format)
+     *
+     * @param stream An input stream from which to load the file
+     * @tparam T select the type of the npy file (note: currently there is
+     *           no dynamic casting if types do not match)
+     * @tparam L select layout_type::column_major if you stored data in
+     *           Fortran format
+     * @return xarray with contents from npy file
+     */
+    template <typename T, layout_type L = layout_type::dynamic>
+    inline auto load_npy(std::istream& stream)
+    {
+        detail::npy_file file = detail::load_npy_file(stream);
+        return std::move(file).cast<T, L>();
     }
 
     /**
@@ -685,15 +715,14 @@ namespace xt
      * @return xarray with contents from npy file
      */
     template <typename T, layout_type L = layout_type::dynamic>
-    auto load_npy(const std::string& filename)
+    inline auto load_npy(const std::string& filename)
     {
         std::ifstream stream(filename, std::ifstream::binary);
         if (!stream)
         {
             throw std::runtime_error("io error: failed to open a file.");
         }
-        detail::npy_file file = detail::load_npy_file(stream);
-        return std::move(file).cast<T, L>();
+        return load_npy<T, L>(stream);
     }
 
 }  // namespace xt

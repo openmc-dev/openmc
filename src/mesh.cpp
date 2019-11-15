@@ -149,14 +149,16 @@ RegularMesh::RegularMesh(pugi::xml_node node)
         "the <lower_left> coordinates on a tally mesh.");
     }
 
-    // Set width and upper right coordinate
-    width_ = xt::eval((upper_right_ - lower_left_) / shape_);
+    // Set width
+    if (shape_.size() > 0) {
+      width_ = xt::eval((upper_right_ - lower_left_) / shape_);
+    }
   } else {
     fatal_error("Must specify either <upper_right> and <width> on a mesh.");
   }
 
-  // TODO: Change to zero when xtensor is updated
-  if (shape_.size() > 1) {
+  // Make sure lower_left and dimension match
+  if (shape_.size() > 0) {
     if (shape_.size() != lower_left_.size()) {
       fatal_error("Number of entries on <lower_left> must be the same "
         "as the number of entries on <dimension>.");

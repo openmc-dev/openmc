@@ -1,5 +1,6 @@
 /***************************************************************************
-* Copyright (c) 2016, Johan Mabille, Sylvain Corlay and Wolf Vollprecht    *
+* Copyright (c) Johan Mabille, Sylvain Corlay and Wolf Vollprecht          *
+* Copyright (c) QuantStack                                                 *
 *                                                                          *
 * Distributed under the terms of the BSD 3-Clause License.                 *
 *                                                                          *
@@ -9,6 +10,9 @@
 #ifndef XTENSOR_LAYOUT_HPP
 #define XTENSOR_LAYOUT_HPP
 
+// Do not include anything else here.
+// xlayout.hpp is included in xtensor_forward.hpp
+// and we don't want to bring other headers to it.
 #include "xtensor_config.hpp"
 
 namespace xt

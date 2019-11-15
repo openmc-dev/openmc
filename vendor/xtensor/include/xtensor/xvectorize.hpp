@@ -1,5 +1,6 @@
 /***************************************************************************
-* Copyright (c) 2016, Johan Mabille, Sylvain Corlay and Wolf Vollprecht    *
+* Copyright (c) Johan Mabille, Sylvain Corlay and Wolf Vollprecht          *
+* Copyright (c) QuantStack                                                 *
 *                                                                          *
 * Distributed under the terms of the BSD 3-Clause License.                 *
 *                                                                          *
@@ -28,7 +29,7 @@ namespace xt
     public:
 
         template <class... E>
-        using xfunction_type = xfunction<F, R, xclosure_t<E>...>;
+        using xfunction_type = xfunction<F, xclosure_t<E>...>;
 
         template <class Func, class = std::enable_if_t<!std::is_same<std::decay_t<Func>, xvectorizer>::value>>
         xvectorizer(Func&& f);

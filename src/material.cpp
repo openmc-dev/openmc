@@ -751,6 +751,7 @@ void Material::calculate_xs(Particle& p) const
 
 void Material::calculate_neutron_xs(Particle& p) const
 {
+	/*
   // Find energy index on energy grid
   int neutron = static_cast<int>(Particle::Type::neutron);
   int i_grid = std::log(p.E_/data::energy_min[neutron])/simulation::log_spacing;
@@ -760,9 +761,11 @@ void Material::calculate_neutron_xs(Particle& p) const
 
   // Initialize position in i_sab_nuclides
   int j = 0;
+  */
 
   // Add contribution from each nuclide in material
   for (int i = 0; i < nuclide_.size(); ++i) {
+	  /*
     // ======================================================================
     // CHECK FOR S(A,B) TABLE
 
@@ -792,18 +795,21 @@ void Material::calculate_neutron_xs(Particle& p) const
 
     // ======================================================================
     // CALCULATE MICROSCOPIC CROSS SECTION
+	*/
 
     // Determine microscopic cross sections for this nuclide
     int i_nuclide = nuclide_[i];
 
     // Calculate microscopic cross section for this nuclide
     const auto& micro {p.neutron_xs_[i_nuclide]};
+	/*
     if (p.E_ != micro.last_E
         || p.sqrtkT_ != micro.last_sqrtkT
         || i_sab != micro.index_sab
         || sab_frac != micro.sab_frac) {
       data::nuclides[i_nuclide]->calculate_xs(i_sab, i_grid, sab_frac, p);
     }
+	*/
 
     // ======================================================================
     // ADD TO MACROSCOPIC CROSS SECTION

@@ -16,7 +16,12 @@
 #include <stdexcept>
 #include <string>
 
+#ifdef __CLING__
+#include <nlohmann/json.hpp>
+#endif
+
 #include "xhash.hpp"
+#include "xtl_config.hpp"
 
 namespace xtl
 {
@@ -30,15 +35,136 @@ namespace xtl
         struct throwing_error;
     }
 
-
     /***********************
      * xbasic_fixed_string *
      ***********************/
 
+    enum storage_options
+    {
+        buffer = 1 << 0,
+        pointer = 1 << 1,
+        store_size = 1 << 2,
+        is_const = 1 << 3
+    };
+
+    template <class CT, std::size_t N = 55, int ST = buffer | store_size, template <std::size_t> class EP = string_policy::silent_error, class TR = std::char_traits<CT>>
+    class xbasic_fixed_string;
+
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
+    std::basic_ostream<CT, TR>& operator<<(std::basic_ostream<CT, TR>& os,
+                                           const xbasic_fixed_string<CT, N, ST, EP, TR>& str);
+
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
+    std::basic_istream<CT, TR>& operator>>(std::basic_istream<CT, TR>& is,
+                                           xbasic_fixed_string<CT, N, ST, EP, TR>& str);
+
+    template <class CT>
+    using xbasic_string_view = xbasic_fixed_string<const CT, 0, pointer | store_size | is_const>;
+
+    namespace detail
+    {
+        template <int selector>
+        struct select_storage;
+
+        template <class T, std::size_t N>
+        struct fixed_string_storage_impl
+        {
+            fixed_string_storage_impl() = default;
+
+            fixed_string_storage_impl(T ptr, std::size_t size)
+                : m_buffer(ptr), m_size(size)
+            {
+            }
+
+            T& buffer()
+            {
+                return m_buffer;
+            }
+
+            const T& buffer() const
+            {
+                return m_buffer;
+            }
+
+            std::size_t size() const
+            {
+                return m_size;
+            }
+
+            void set_size(std::size_t sz)
+            {
+                m_size = sz;
+                m_buffer[sz] = '\0';
+            }
+
+            void adjust_size(std::ptrdiff_t val)
+            {
+                m_size += std::size_t(val);
+                m_buffer[m_size] = '\0';
+            }
+
+            T m_buffer;
+            std::size_t m_size;
+        };
+
+        template <class T, std::size_t N>
+        struct fixed_string_external_storage_impl
+        {
+            fixed_string_external_storage_impl() = default;
+
+            fixed_string_external_storage_impl(T ptr, std::ptrdiff_t/*size*/)
+            {
+                m_buffer = ptr;
+            }
+
+            T& buffer()
+            {
+                return m_buffer;
+            }
+
+            const T& buffer() const
+            {
+                return m_buffer;
+            }
+
+            void set_size(std::size_t sz)
+            {
+                m_buffer[sz] = '\0';
+            }
+
+            void adjust_size(std::ptrdiff_t val)
+            {
+                m_buffer[size() + val] = '\0';
+            }
+
+            std::size_t size() const
+            {
+                return std::strlen(m_buffer);
+            }
+
+            T m_buffer;
+        };
+
+        template <>
+        struct select_storage<buffer | store_size>
+        {
+            template <class T, std::size_t N>
+            using type = fixed_string_storage_impl<T[N + 1], N>;
+        };
+
+        template <>
+        struct select_storage<buffer>
+        {
+            template <class T, std::size_t N>
+            using type = fixed_string_external_storage_impl<T[N + 1], N>;
+        };
+    }
+
     template <class CT,
-              std::size_t N = 55,
-              template <std::size_t> class EP = string_policy::silent_error,
-              class TR = std::char_traits<CT>>
+              std::size_t N,
+              int ST,
+              template <std::size_t> class EP,
+              class TR>
     class xbasic_fixed_string
     {
     public:
@@ -47,6 +173,9 @@ namespace xtl
         using value_type = CT;
         using size_type = std::size_t;
         using difference_type = std::ptrdiff_t;
+
+        using storage_type = typename detail::select_storage<ST>::template type<CT, N>;
+
         using reference = value_type&;
         using const_reference = const value_type&;
         using pointer = value_type*;
@@ -55,6 +184,7 @@ namespace xtl
         using const_iterator = const_pointer;
         using reverse_iterator = std::reverse_iterator<iterator>;
         using const_reverse_iterator = std::reverse_iterator<const_iterator>;
+
 
         static const size_type npos;
 
@@ -65,14 +195,15 @@ namespace xtl
         using error_policy = EP<N>;
 
         xbasic_fixed_string();
-        xbasic_fixed_string(size_type count, value_type ch);
-        xbasic_fixed_string(const self_type& other,
+
+        explicit xbasic_fixed_string(size_type count, value_type ch);
+        explicit xbasic_fixed_string(const self_type& other,
                             size_type pos,
                             size_type count = npos);
-        xbasic_fixed_string(const string_type& other);
-        xbasic_fixed_string(const string_type& other,
-                            size_type pos,
-                            size_type count = npos);
+        explicit xbasic_fixed_string(const string_type& other);
+        explicit xbasic_fixed_string(const string_type& other,
+                                     size_type pos,
+                                     size_type count = npos);
         xbasic_fixed_string(const_pointer s, size_type count);
         xbasic_fixed_string(const_pointer s);
         xbasic_fixed_string(initializer_type ilist);
@@ -266,12 +397,11 @@ namespace xtl
         void check_index(size_type pos, size_type size, const char* what) const;
         void check_index_strict(size_type pos, size_type size, const char* what) const;
 
-        value_type m_buffer[N + 1];
-        size_type m_size;
+        storage_type m_storage;
     };
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
-    const typename xbasic_fixed_string<CT, N, EP, TR>::size_type xbasic_fixed_string<CT, N, EP, TR>::npos
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
+    const typename xbasic_fixed_string<CT, N, ST, EP, TR>::size_type xbasic_fixed_string<CT, N, ST, EP, TR>::npos
         = std::basic_string<value_type, traits_type>::npos;
 
     template <std::size_t N>
@@ -290,232 +420,224 @@ namespace xtl
      * Concatenation operator *
      **************************/
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
-    xbasic_fixed_string<CT, N, EP, TR>
-    operator+(const xbasic_fixed_string<CT, N, EP, TR>& lhs,
-              const xbasic_fixed_string<CT, N, EP, TR>& rhs);
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
+    xbasic_fixed_string<CT, N, ST, EP, TR>
+    operator+(const xbasic_fixed_string<CT, N, ST, EP, TR>& lhs,
+              const xbasic_fixed_string<CT, N, ST, EP, TR>& rhs);
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
-    xbasic_fixed_string<CT, N, EP, TR>
-    operator+(const xbasic_fixed_string<CT, N, EP, TR>& lhs,
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
+    xbasic_fixed_string<CT, N, ST, EP, TR>
+    operator+(const xbasic_fixed_string<CT, N, ST, EP, TR>& lhs,
               const CT* rhs);
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
-    xbasic_fixed_string<CT, N, EP, TR>
-    operator+(const xbasic_fixed_string<CT, N, EP, TR>& lhs,
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
+    xbasic_fixed_string<CT, N, ST, EP, TR>
+    operator+(const xbasic_fixed_string<CT, N, ST, EP, TR>& lhs,
               CT rhs);
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
-    xbasic_fixed_string<CT, N, EP, TR>
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
+    xbasic_fixed_string<CT, N, ST, EP, TR>
     operator+(const CT* lhs,
-              const xbasic_fixed_string<CT, N, EP, TR>& rhs);
+              const xbasic_fixed_string<CT, N, ST, EP, TR>& rhs);
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
-    xbasic_fixed_string<CT, N, EP, TR>
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
+    xbasic_fixed_string<CT, N, ST, EP, TR>
     operator+(CT lhs,
-              const xbasic_fixed_string<CT, N, EP, TR>& rhs);
+              const xbasic_fixed_string<CT, N, ST, EP, TR>& rhs);
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
-    xbasic_fixed_string<CT, N, EP, TR>
-    operator+(const xbasic_fixed_string<CT, N, EP, TR>&& lhs,
-              const xbasic_fixed_string<CT, N, EP, TR>& rhs);
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
+    xbasic_fixed_string<CT, N, ST, EP, TR>
+    operator+(const xbasic_fixed_string<CT, N, ST, EP, TR>&& lhs,
+              const xbasic_fixed_string<CT, N, ST, EP, TR>& rhs);
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
-    xbasic_fixed_string<CT, N, EP, TR>
-    operator+(const xbasic_fixed_string<CT, N, EP, TR>& lhs,
-              const xbasic_fixed_string<CT, N, EP, TR>&& rhs);
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
+    xbasic_fixed_string<CT, N, ST, EP, TR>
+    operator+(const xbasic_fixed_string<CT, N, ST, EP, TR>& lhs,
+              const xbasic_fixed_string<CT, N, ST, EP, TR>&& rhs);
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
-    xbasic_fixed_string<CT, N, EP, TR>
-    operator+(const xbasic_fixed_string<CT, N, EP, TR>&& lhs,
-              const xbasic_fixed_string<CT, N, EP, TR>&& rhs);
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
+    xbasic_fixed_string<CT, N, ST, EP, TR>
+    operator+(const xbasic_fixed_string<CT, N, ST, EP, TR>&& lhs,
+              const xbasic_fixed_string<CT, N, ST, EP, TR>&& rhs);
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
-    xbasic_fixed_string<CT, N, EP, TR>
-    operator+(const xbasic_fixed_string<CT, N, EP, TR>&& lhs,
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
+    xbasic_fixed_string<CT, N, ST, EP, TR>
+    operator+(const xbasic_fixed_string<CT, N, ST, EP, TR>&& lhs,
               const CT* rhs);
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
-    xbasic_fixed_string<CT, N, EP, TR>
-    operator+(const xbasic_fixed_string<CT, N, EP, TR>&& lhs,
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
+    xbasic_fixed_string<CT, N, ST, EP, TR>
+    operator+(const xbasic_fixed_string<CT, N, ST, EP, TR>&& lhs,
               CT rhs);
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
-    xbasic_fixed_string<CT, N, EP, TR>
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
+    xbasic_fixed_string<CT, N, ST, EP, TR>
     operator+(const CT* lhs,
-              const xbasic_fixed_string<CT, N, EP, TR>&& rhs);
+              const xbasic_fixed_string<CT, N, ST, EP, TR>&& rhs);
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
-    xbasic_fixed_string<CT, N, EP, TR>
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
+    xbasic_fixed_string<CT, N, ST, EP, TR>
     operator+(CT lhs,
-              const xbasic_fixed_string<CT, N, EP, TR>&& rhs);
+              const xbasic_fixed_string<CT, N, ST, EP, TR>&& rhs);
 
     /************************
      * Comparison operators *
      ************************/
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
-    bool operator==(const xbasic_fixed_string<CT, N, EP, TR>& lhs,
-                    const xbasic_fixed_string<CT, N, EP, TR>& rhs) noexcept;
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
+    bool operator==(const xbasic_fixed_string<CT, N, ST, EP, TR>& lhs,
+                    const xbasic_fixed_string<CT, N, ST, EP, TR>& rhs) noexcept;
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
-    bool operator==(const xbasic_fixed_string<CT, N, EP, TR>& lhs,
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
+    bool operator==(const xbasic_fixed_string<CT, N, ST, EP, TR>& lhs,
                     const CT* rhs) noexcept;
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
     bool operator==(const CT* lhs,
-                    const xbasic_fixed_string<CT, N, EP, TR>& rhs) noexcept;
+                    const xbasic_fixed_string<CT, N, ST, EP, TR>& rhs) noexcept;
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
-    bool operator==(const xbasic_fixed_string<CT, N, EP, TR>& lhs,
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
+    bool operator==(const xbasic_fixed_string<CT, N, ST, EP, TR>& lhs,
                     const std::basic_string<CT, TR>& rhs) noexcept;
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
     bool operator==(const std::basic_string<CT, TR>& lhs,
-                    const xbasic_fixed_string<CT, N, EP, TR>& rhs) noexcept;
+                    const xbasic_fixed_string<CT, N, ST, EP, TR>& rhs) noexcept;
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
-    bool operator!=(const xbasic_fixed_string<CT, N, EP, TR>& lhs,
-                    const xbasic_fixed_string<CT, N, EP, TR>& rhs) noexcept;
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
+    bool operator!=(const xbasic_fixed_string<CT, N, ST, EP, TR>& lhs,
+                    const xbasic_fixed_string<CT, N, ST, EP, TR>& rhs) noexcept;
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
-    bool operator!=(const xbasic_fixed_string<CT, N, EP, TR>& lhs,
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
+    bool operator!=(const xbasic_fixed_string<CT, N, ST, EP, TR>& lhs,
                     const CT* rhs) noexcept;
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
     bool operator!=(const CT* lhs,
-                    const xbasic_fixed_string<CT, N, EP, TR>& rhs) noexcept;
+                    const xbasic_fixed_string<CT, N, ST, EP, TR>& rhs) noexcept;
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
-    bool operator!=(const xbasic_fixed_string<CT, N, EP, TR>& lhs,
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
+    bool operator!=(const xbasic_fixed_string<CT, N, ST, EP, TR>& lhs,
                     const std::basic_string<CT, TR>& rhs) noexcept;
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
     bool operator!=(const std::basic_string<CT, TR>& lhs,
-                    const xbasic_fixed_string<CT, N, EP, TR>& rhs) noexcept;
+                    const xbasic_fixed_string<CT, N, ST, EP, TR>& rhs) noexcept;
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
-    bool operator<(const xbasic_fixed_string<CT, N, EP, TR>& lhs,
-                   const xbasic_fixed_string<CT, N, EP, TR>& rhs) noexcept;
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
+    bool operator<(const xbasic_fixed_string<CT, N, ST, EP, TR>& lhs,
+                   const xbasic_fixed_string<CT, N, ST, EP, TR>& rhs) noexcept;
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
-    bool operator<(const xbasic_fixed_string<CT, N, EP, TR>& lhs,
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
+    bool operator<(const xbasic_fixed_string<CT, N, ST, EP, TR>& lhs,
                    const CT* rhs) noexcept;
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
     bool operator<(const CT* lhs,
-                   const xbasic_fixed_string<CT, N, EP, TR>& rhs) noexcept;
+                   const xbasic_fixed_string<CT, N, ST, EP, TR>& rhs) noexcept;
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
-    bool operator<(const xbasic_fixed_string<CT, N, EP, TR>& lhs,
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
+    bool operator<(const xbasic_fixed_string<CT, N, ST, EP, TR>& lhs,
                    const std::basic_string<CT, TR>& rhs) noexcept;
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
     bool operator<(const std::basic_string<CT, TR>& lhs,
-                   const xbasic_fixed_string<CT, N, EP, TR>& rhs) noexcept;
+                   const xbasic_fixed_string<CT, N, ST, EP, TR>& rhs) noexcept;
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
-    bool operator<=(const xbasic_fixed_string<CT, N, EP, TR>& lhs,
-                    const xbasic_fixed_string<CT, N, EP, TR>& rhs) noexcept;
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
+    bool operator<=(const xbasic_fixed_string<CT, N, ST, EP, TR>& lhs,
+                    const xbasic_fixed_string<CT, N, ST, EP, TR>& rhs) noexcept;
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
-    bool operator<=(const xbasic_fixed_string<CT, N, EP, TR>& lhs,
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
+    bool operator<=(const xbasic_fixed_string<CT, N, ST, EP, TR>& lhs,
                     const CT* rhs) noexcept;
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
     bool operator<=(const CT* lhs,
-                    const xbasic_fixed_string<CT, N, EP, TR>& rhs) noexcept;
+                    const xbasic_fixed_string<CT, N, ST, EP, TR>& rhs) noexcept;
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
-    bool operator<=(const xbasic_fixed_string<CT, N, EP, TR>& lhs,
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
+    bool operator<=(const xbasic_fixed_string<CT, N, ST, EP, TR>& lhs,
                     const std::basic_string<CT, TR>& rhs) noexcept;
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
     bool operator<=(const std::basic_string<CT, TR>& lhs,
-                    const xbasic_fixed_string<CT, N, EP, TR>& rhs) noexcept;
+                    const xbasic_fixed_string<CT, N, ST, EP, TR>& rhs) noexcept;
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
-    bool operator>(const xbasic_fixed_string<CT, N, EP, TR>& lhs,
-                   const xbasic_fixed_string<CT, N, EP, TR>& rhs) noexcept;
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
+    bool operator>(const xbasic_fixed_string<CT, N, ST, EP, TR>& lhs,
+                   const xbasic_fixed_string<CT, N, ST, EP, TR>& rhs) noexcept;
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
-    bool operator>(const xbasic_fixed_string<CT, N, EP, TR>& lhs,
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
+    bool operator>(const xbasic_fixed_string<CT, N, ST, EP, TR>& lhs,
                    const CT* rhs) noexcept;
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
     bool operator>(const CT* lhs,
-                   const xbasic_fixed_string<CT, N, EP, TR>& rhs) noexcept;
+                   const xbasic_fixed_string<CT, N, ST, EP, TR>& rhs) noexcept;
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
-    bool operator>(const xbasic_fixed_string<CT, N, EP, TR>& lhs,
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
+    bool operator>(const xbasic_fixed_string<CT, N, ST, EP, TR>& lhs,
                    const std::basic_string<CT, TR>& rhs) noexcept;
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
     bool operator>(const std::basic_string<CT, TR>& lhs,
-                   const xbasic_fixed_string<CT, N, EP, TR>& rhs) noexcept;
+                   const xbasic_fixed_string<CT, N, ST, EP, TR>& rhs) noexcept;
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
-    bool operator>=(const xbasic_fixed_string<CT, N, EP, TR>& lhs,
-                    const xbasic_fixed_string<CT, N, EP, TR>& rhs) noexcept;
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
+    bool operator>=(const xbasic_fixed_string<CT, N, ST, EP, TR>& lhs,
+                    const xbasic_fixed_string<CT, N, ST, EP, TR>& rhs) noexcept;
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
-    bool operator>=(const xbasic_fixed_string<CT, N, EP, TR>& lhs,
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
+    bool operator>=(const xbasic_fixed_string<CT, N, ST, EP, TR>& lhs,
                     const CT* rhs) noexcept;
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
     bool operator>=(const CT* lhs,
-                    const xbasic_fixed_string<CT, N, EP, TR>& rhs) noexcept;
+                    const xbasic_fixed_string<CT, N, ST, EP, TR>& rhs) noexcept;
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
-    bool operator>=(const xbasic_fixed_string<CT, N, EP, TR>& lhs,
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
+    bool operator>=(const xbasic_fixed_string<CT, N, ST, EP, TR>& lhs,
                     const std::basic_string<CT, TR>& rhs) noexcept;
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
     bool operator>=(const std::basic_string<CT, TR>& lhs,
-                    const xbasic_fixed_string<CT, N, EP, TR>& rhs) noexcept;
+                    const xbasic_fixed_string<CT, N, ST, EP, TR>& rhs) noexcept;
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
-    void swap(xbasic_fixed_string<CT, N, EP, TR>& lhs,
-              xbasic_fixed_string<CT, N, EP, TR>& rhs);
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
+    void swap(xbasic_fixed_string<CT, N, ST, EP, TR>& lhs,
+              xbasic_fixed_string<CT, N, ST, EP, TR>& rhs);
 
     /******************************
      * Input / output declaration *
      ******************************/
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
-    std::basic_ostream<CT, TR>& operator<<(std::basic_ostream<CT, TR>& os,
-                                           const xbasic_fixed_string<CT, N, EP, TR>& str);
-
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
-    std::basic_istream<CT, TR>& operator>>(std::basic_istream<CT, TR>& is,
-                                           xbasic_fixed_string<CT, N, EP, TR>& str);
-
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
     std::basic_istream<CT, TR>& getline(std::basic_istream<CT, TR>& input,
-                                        xbasic_fixed_string<CT, N, EP, TR>& str,
+                                        xbasic_fixed_string<CT, N, ST, EP, TR>& str,
                                         CT delim);
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
     std::basic_istream<CT, TR>& getline(std::basic_istream<CT, TR>&& input,
-                                        xbasic_fixed_string<CT, N, EP, TR>& str,
+                                        xbasic_fixed_string<CT, N, ST, EP, TR>& str,
                                         CT delim);
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
     std::basic_istream<CT, TR>& getline(std::basic_istream<CT, TR>& input,
-                                        xbasic_fixed_string<CT, N, EP, TR>& str);
+                                        xbasic_fixed_string<CT, N, ST, EP, TR>& str);
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
     std::basic_istream<CT, TR>& getline(std::basic_istream<CT, TR>&& input,
-                                        xbasic_fixed_string<CT, N, EP, TR>& str);
+                                        xbasic_fixed_string<CT, N, ST, EP, TR>& str);
 
 }  // namespace xtl
 
 namespace std
 {
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
-    struct hash<::xtl::xbasic_fixed_string<CT, N, EP, TR>>
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
+    struct hash<::xtl::xbasic_fixed_string<CT, N, ST, EP, TR>>
     {
-        using argument_type = ::xtl::xbasic_fixed_string<CT, N, EP, TR>;
+        using argument_type = ::xtl::xbasic_fixed_string<CT, N, ST, EP, TR>;
         using result_type = std::size_t;
         inline result_type operator()(const argument_type& arg) const
         {
@@ -554,7 +676,12 @@ namespace xtl
                 {
                     std::ostringstream oss;
                     oss << "Invalid size (" << size << ") for xbasic_fixed_string - maximal size: " << N;
+#if defined(XTL_NO_EXCEPTIONS)
+                    std::fprintf(stderr, "%s\n", oss.str().c_str());
+                    std::terminate();
+#else
                     throw std::length_error(oss.str());
+#endif
                 }
                 return size;
             }
@@ -574,76 +701,75 @@ namespace xtl
      * Constructors *
      ****************/
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
-    inline xbasic_fixed_string<CT, N, EP, TR>::xbasic_fixed_string()
-        : m_size(0)
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
+    inline xbasic_fixed_string<CT, N, ST, EP, TR>::xbasic_fixed_string()
+        : m_storage()
     {
-        update_null_termination();
     }
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
-    inline xbasic_fixed_string<CT, N, EP, TR>::xbasic_fixed_string(size_type count, value_type ch)
-        : m_size(0)
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
+    inline xbasic_fixed_string<CT, N, ST, EP, TR>::xbasic_fixed_string(size_type count, value_type ch)
+        : m_storage()
     {
         assign(count, ch);
     }
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
-    inline xbasic_fixed_string<CT, N, EP, TR>::xbasic_fixed_string(const self_type& other,
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
+    inline xbasic_fixed_string<CT, N, ST, EP, TR>::xbasic_fixed_string(const self_type& other,
                                                                    size_type pos,
                                                                    size_type count)
-        : m_size(0)
+        : m_storage()
     {
         assign(other, pos, count);
     }
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
-    inline xbasic_fixed_string<CT, N, EP, TR>::xbasic_fixed_string(const string_type& other)
-        : m_size(0)
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
+    inline xbasic_fixed_string<CT, N, ST, EP, TR>::xbasic_fixed_string(const string_type& other)
+        : m_storage()
     {
         assign(other);
     }
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
-    inline xbasic_fixed_string<CT, N, EP, TR>::xbasic_fixed_string(const string_type& other,
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
+    inline xbasic_fixed_string<CT, N, ST, EP, TR>::xbasic_fixed_string(const string_type& other,
                                                                    size_type pos,
                                                                    size_type count)
-        : m_size(0)
+        : m_storage()
     {
         assign(other, pos, count);
     }
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
-    inline xbasic_fixed_string<CT, N, EP, TR>::xbasic_fixed_string(const_pointer s, size_type count)
-        : m_size(0)
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
+    inline xbasic_fixed_string<CT, N, ST, EP, TR>::xbasic_fixed_string(const_pointer s, size_type count)
+        : m_storage()
     {
         assign(s, count);
     }
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
-    inline xbasic_fixed_string<CT, N, EP, TR>::xbasic_fixed_string(const_pointer s)
-        : m_size(0)
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
+    inline xbasic_fixed_string<CT, N, ST, EP, TR>::xbasic_fixed_string(const_pointer s)
+        : m_storage()
     {
         assign(s);
     }
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
-    inline xbasic_fixed_string<CT, N, EP, TR>::xbasic_fixed_string(initializer_type ilist)
-        : m_size(0)
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
+    inline xbasic_fixed_string<CT, N, ST, EP, TR>::xbasic_fixed_string(initializer_type ilist)
+        : m_storage()
     {
         assign(ilist);
     }
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
     template <class InputIt>
-    inline xbasic_fixed_string<CT, N, EP, TR>::xbasic_fixed_string(InputIt first, InputIt last)
-        : m_size(0)
+    inline xbasic_fixed_string<CT, N, ST, EP, TR>::xbasic_fixed_string(InputIt first, InputIt last)
+        : m_storage()
     {
         assign(first, last);
     }
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
-    inline xbasic_fixed_string<CT, N, EP, TR>::operator string_type() const
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
+    inline xbasic_fixed_string<CT, N, ST, EP, TR>::operator string_type() const
     {
         return string_type(data());
     }
@@ -652,116 +778,110 @@ namespace xtl
      * Assignment *
      **************/
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
-    inline auto xbasic_fixed_string<CT, N, EP, TR>::operator=(const_pointer s) -> self_type&
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
+    inline auto xbasic_fixed_string<CT, N, ST, EP, TR>::operator=(const_pointer s) -> self_type&
     {
         return assign(s);
     }
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
-    inline auto xbasic_fixed_string<CT, N, EP, TR>::operator=(value_type ch) -> self_type&
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
+    inline auto xbasic_fixed_string<CT, N, ST, EP, TR>::operator=(value_type ch) -> self_type&
     {
         return assign(size_type(1), ch);
     }
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
-    inline auto xbasic_fixed_string<CT, N, EP, TR>::operator=(initializer_type ilist) -> self_type&
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
+    inline auto xbasic_fixed_string<CT, N, ST, EP, TR>::operator=(initializer_type ilist) -> self_type&
     {
         return assign(ilist);
     }
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
-    inline auto xbasic_fixed_string<CT, N, EP, TR>::operator=(const string_type& str) -> self_type&
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
+    inline auto xbasic_fixed_string<CT, N, ST, EP, TR>::operator=(const string_type& str) -> self_type&
     {
         return assign(str);
     }
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
-    inline auto xbasic_fixed_string<CT, N, EP, TR>::assign(size_type count, value_type ch) -> self_type&
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
+    inline auto xbasic_fixed_string<CT, N, ST, EP, TR>::assign(size_type count, value_type ch) -> self_type&
     {
-        m_size = error_policy::check_size(count);
+        m_storage.set_size(error_policy::check_size(count));
         traits_type::assign(data(), count, ch);
-        update_null_termination();
         return *this;
     }
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
-    inline auto xbasic_fixed_string<CT, N, EP, TR>::assign(const self_type& other,
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
+    inline auto xbasic_fixed_string<CT, N, ST, EP, TR>::assign(const self_type& other,
                                                            size_type pos,
                                                            size_type count) -> self_type&
     {
         check_index_strict(pos, other.size(), "xbasic_fixed_string::assign");
         size_type copy_count = std::min(other.size() - pos, count);
-        m_size = error_policy::check_size(copy_count);
+        m_storage.set_size(error_policy::check_size(copy_count));
         traits_type::copy(data(), other.data() + pos, copy_count);
-        update_null_termination();
         return *this;
     }
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
-    inline auto xbasic_fixed_string<CT, N, EP, TR>::assign(const_pointer s, size_type count) -> self_type&
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
+    inline auto xbasic_fixed_string<CT, N, ST, EP, TR>::assign(const_pointer s, size_type count) -> self_type&
     {
-        m_size = error_policy::check_size(count);
+        m_storage.set_size(error_policy::check_size(count));
         traits_type::copy(data(), s, count);
-        update_null_termination();
         return *this;
     }
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
-    inline auto xbasic_fixed_string<CT, N, EP, TR>::assign(const_pointer s) -> self_type&
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
+    inline auto xbasic_fixed_string<CT, N, ST, EP, TR>::assign(const_pointer s) -> self_type&
     {
         std::size_t ssize = traits_type::length(s);
         return assign(s, ssize);
     }
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
-    inline auto xbasic_fixed_string<CT, N, EP, TR>::assign(initializer_type ilist) -> self_type&
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
+    inline auto xbasic_fixed_string<CT, N, ST, EP, TR>::assign(initializer_type ilist) -> self_type&
     {
         return assign(ilist.begin(), ilist.end());
     }
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
     template <class InputIt>
-    inline auto xbasic_fixed_string<CT, N, EP, TR>::assign(InputIt first, InputIt last) -> self_type&
+    inline auto xbasic_fixed_string<CT, N, ST, EP, TR>::assign(InputIt first, InputIt last) -> self_type&
     {
-        m_size = error_policy::check_size(static_cast<size_type>(std::distance(first, last)));
+        m_storage.set_size(error_policy::check_size(static_cast<size_type>(std::distance(first, last))));
         std::copy(first, last, data());
-        update_null_termination();
         return *this;
     }
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
-    inline auto xbasic_fixed_string<CT, N, EP, TR>::assign(const self_type& rhs) -> self_type&
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
+    inline auto xbasic_fixed_string<CT, N, ST, EP, TR>::assign(const self_type& rhs) -> self_type&
     {
         if (this != &rhs)
         {
-            m_size = rhs.size();
+            m_storage.set_size(rhs.size());
             traits_type::copy(data(), rhs.data(), rhs.size());
-            update_null_termination();
         }
         return *this;
     }
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
-    inline auto xbasic_fixed_string<CT, N, EP, TR>::assign(self_type&& rhs) -> self_type&
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
+    inline auto xbasic_fixed_string<CT, N, ST, EP, TR>::assign(self_type&& rhs) -> self_type&
     {
         if (this != &rhs)
         {
-            m_size = rhs.size();
+            m_storage.set_size(rhs.size());
             traits_type::copy(data(), rhs.data(), rhs.size());
-            update_null_termination();
         }
         return *this;
     }
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
-    inline auto xbasic_fixed_string<CT, N, EP, TR>::assign(const string_type& other) -> self_type&
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
+    inline auto xbasic_fixed_string<CT, N, ST, EP, TR>::assign(const string_type& other) -> self_type&
     {
         return assign(other.c_str());
     }
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
-    inline auto xbasic_fixed_string<CT, N, EP, TR>::assign(const string_type& other,
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
+    inline auto xbasic_fixed_string<CT, N, ST, EP, TR>::assign(const string_type& other,
                                                            size_type pos,
                                                            size_type count) -> self_type&
     {
@@ -772,145 +892,145 @@ namespace xtl
      * Element access *
      ******************/
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
-    inline auto xbasic_fixed_string<CT, N, EP, TR>::at(size_type pos) -> reference
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
+    inline auto xbasic_fixed_string<CT, N, ST, EP, TR>::at(size_type pos) -> reference
     {
         check_index(pos, size(), "basic_fixed_string::at");
         return this->operator[](pos);
     }
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
-    inline auto xbasic_fixed_string<CT, N, EP, TR>::at(size_type pos) const -> const_reference
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
+    inline auto xbasic_fixed_string<CT, N, ST, EP, TR>::at(size_type pos) const -> const_reference
     {
         check_index(pos, size(), "basic_fixed_string::at");
         return this->operator[](pos);
     }
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
-    inline auto xbasic_fixed_string<CT, N, EP, TR>::operator[](size_type pos) -> reference
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
+    inline auto xbasic_fixed_string<CT, N, ST, EP, TR>::operator[](size_type pos) -> reference
     {
         return data()[pos];
     }
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
-    inline auto xbasic_fixed_string<CT, N, EP, TR>::operator[](size_type pos) const -> const_reference
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
+    inline auto xbasic_fixed_string<CT, N, ST, EP, TR>::operator[](size_type pos) const -> const_reference
     {
         return data()[pos];
     }
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
-    inline auto xbasic_fixed_string<CT, N, EP, TR>::front() -> reference
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
+    inline auto xbasic_fixed_string<CT, N, ST, EP, TR>::front() -> reference
     {
         return this->operator[](0);
     }
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
-    inline auto xbasic_fixed_string<CT, N, EP, TR>::front() const -> const_reference
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
+    inline auto xbasic_fixed_string<CT, N, ST, EP, TR>::front() const -> const_reference
     {
         return this->operator[](0);
     }
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
-    inline auto xbasic_fixed_string<CT, N, EP, TR>::back() -> reference
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
+    inline auto xbasic_fixed_string<CT, N, ST, EP, TR>::back() -> reference
     {
         return this->operator[](size() - 1);
     }
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
-    inline auto xbasic_fixed_string<CT, N, EP, TR>::back() const -> const_reference
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
+    inline auto xbasic_fixed_string<CT, N, ST, EP, TR>::back() const -> const_reference
     {
         return this->operator[](size() - 1);
     }
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
-    inline auto xbasic_fixed_string<CT, N, EP, TR>::data() noexcept -> pointer
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
+    inline auto xbasic_fixed_string<CT, N, ST, EP, TR>::data() noexcept -> pointer
     {
-        return m_buffer;
+        return m_storage.buffer();
     }
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
-    inline auto xbasic_fixed_string<CT, N, EP, TR>::data() const noexcept -> const_pointer
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
+    inline auto xbasic_fixed_string<CT, N, ST, EP, TR>::data() const noexcept -> const_pointer
     {
-        return m_buffer;
+        return m_storage.buffer();
     }
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
-    inline auto xbasic_fixed_string<CT, N, EP, TR>::c_str() const noexcept -> const_pointer
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
+    inline auto xbasic_fixed_string<CT, N, ST, EP, TR>::c_str() const noexcept -> const_pointer
     {
-        return m_buffer;
+        return m_storage.buffer();
     }
 
     /*************
      * Iterators *
      *************/
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
-    inline auto xbasic_fixed_string<CT, N, EP, TR>::begin() noexcept -> iterator
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
+    inline auto xbasic_fixed_string<CT, N, ST, EP, TR>::begin() noexcept -> iterator
     {
         return data();
     }
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
-    inline auto xbasic_fixed_string<CT, N, EP, TR>::end() noexcept -> iterator
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
+    inline auto xbasic_fixed_string<CT, N, ST, EP, TR>::end() noexcept -> iterator
     {
         return data() + size();
     }
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
-    inline auto xbasic_fixed_string<CT, N, EP, TR>::begin() const noexcept -> const_iterator
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
+    inline auto xbasic_fixed_string<CT, N, ST, EP, TR>::begin() const noexcept -> const_iterator
     {
         return cbegin();
     }
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
-    inline auto xbasic_fixed_string<CT, N, EP, TR>::end() const noexcept -> const_iterator
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
+    inline auto xbasic_fixed_string<CT, N, ST, EP, TR>::end() const noexcept -> const_iterator
     {
         return cend();
     }
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
-    inline auto xbasic_fixed_string<CT, N, EP, TR>::cbegin() const noexcept -> const_iterator
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
+    inline auto xbasic_fixed_string<CT, N, ST, EP, TR>::cbegin() const noexcept -> const_iterator
     {
         return data();
     }
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
-    inline auto xbasic_fixed_string<CT, N, EP, TR>::cend() const noexcept -> const_iterator
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
+    inline auto xbasic_fixed_string<CT, N, ST, EP, TR>::cend() const noexcept -> const_iterator
     {
         return data() + size();
     }
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
-    inline auto xbasic_fixed_string<CT, N, EP, TR>::rbegin() noexcept -> reverse_iterator
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
+    inline auto xbasic_fixed_string<CT, N, ST, EP, TR>::rbegin() noexcept -> reverse_iterator
     {
         return reverse_iterator(end());
     }
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
-    inline auto xbasic_fixed_string<CT, N, EP, TR>::rend() noexcept -> reverse_iterator
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
+    inline auto xbasic_fixed_string<CT, N, ST, EP, TR>::rend() noexcept -> reverse_iterator
     {
         return reverse_iterator(begin());
     }
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
-    inline auto xbasic_fixed_string<CT, N, EP, TR>::rbegin() const noexcept -> const_reverse_iterator
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
+    inline auto xbasic_fixed_string<CT, N, ST, EP, TR>::rbegin() const noexcept -> const_reverse_iterator
     {
         return const_reverse_iterator(end());
     }
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
-    inline auto xbasic_fixed_string<CT, N, EP, TR>::rend() const noexcept -> const_reverse_iterator
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
+    inline auto xbasic_fixed_string<CT, N, ST, EP, TR>::rend() const noexcept -> const_reverse_iterator
     {
         return const_reverse_iterator(begin());
     }
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
-    inline auto xbasic_fixed_string<CT, N, EP, TR>::crbegin() const noexcept -> const_reverse_iterator
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
+    inline auto xbasic_fixed_string<CT, N, ST, EP, TR>::crbegin() const noexcept -> const_reverse_iterator
     {
         return const_reverse_iterator(end());
     }
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
-    inline auto xbasic_fixed_string<CT, N, EP, TR>::crend() const noexcept -> const_reverse_iterator
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
+    inline auto xbasic_fixed_string<CT, N, ST, EP, TR>::crend() const noexcept -> const_reverse_iterator
     {
         return const_reverse_iterator(begin());
     }
@@ -919,26 +1039,26 @@ namespace xtl
      * Capacity *
      ************/
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
-    inline bool xbasic_fixed_string<CT, N, EP, TR>::empty() const noexcept
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
+    inline bool xbasic_fixed_string<CT, N, ST, EP, TR>::empty() const noexcept
     {
         return size() == 0;
     }
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
-    inline auto xbasic_fixed_string<CT, N, EP, TR>::size() const noexcept -> size_type
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
+    inline auto xbasic_fixed_string<CT, N, ST, EP, TR>::size() const noexcept -> size_type
     {
-        return m_size;
+        return m_storage.size();
     }
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
-    inline auto xbasic_fixed_string<CT, N, EP, TR>::length() const noexcept -> size_type
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
+    inline auto xbasic_fixed_string<CT, N, ST, EP, TR>::length() const noexcept -> size_type
     {
-        return m_size;
+        return m_storage.size();
     }
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
-    inline auto xbasic_fixed_string<CT, N, EP, TR>::max_size() const noexcept -> size_type
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
+    inline auto xbasic_fixed_string<CT, N, ST, EP, TR>::max_size() const noexcept -> size_type
     {
         return N;
     }
@@ -947,37 +1067,34 @@ namespace xtl
      * Operations *
      **************/
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
-    inline void xbasic_fixed_string<CT, N, EP, TR>::clear() noexcept
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
+    inline void xbasic_fixed_string<CT, N, ST, EP, TR>::clear() noexcept
     {
-        m_size = 0;
-        update_null_termination();
+        m_storage.set_size(0);
     }
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
-    inline void xbasic_fixed_string<CT, N, EP, TR>::push_back(value_type ch)
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
+    inline void xbasic_fixed_string<CT, N, ST, EP, TR>::push_back(value_type ch)
     {
         error_policy::check_add(size(), size_type(1));
-        data()[m_size] = ch;
-        ++m_size;
-        update_null_termination();
+        data()[size()] = ch;
+        m_storage.adjust_size(+1);
     }
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
-    inline void xbasic_fixed_string<CT, N, EP, TR>::pop_back()
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
+    inline void xbasic_fixed_string<CT, N, ST, EP, TR>::pop_back()
     {
-        --m_size;
-        update_null_termination();
+        m_storage.adjust_size(-1);
     }
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
-    inline auto xbasic_fixed_string<CT, N, EP, TR>::substr(size_type pos, size_type count) const -> self_type
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
+    inline auto xbasic_fixed_string<CT, N, ST, EP, TR>::substr(size_type pos, size_type count) const -> self_type
     {
         return self_type(*this, pos, count);
     }
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
-    inline auto xbasic_fixed_string<CT, N, EP, TR>::copy(pointer dest, size_type count, size_type pos) const -> size_type
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
+    inline auto xbasic_fixed_string<CT, N, ST, EP, TR>::copy(pointer dest, size_type count, size_type pos) const -> size_type
     {
         check_index_strict(pos, size(), "xbasic_fixed_string::copy");
         size_type nb_copied = std::min(count, size() - pos);
@@ -985,26 +1102,25 @@ namespace xtl
         return nb_copied;
     }
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
-    inline void xbasic_fixed_string<CT, N, EP, TR>::resize(size_type count)
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
+    inline void xbasic_fixed_string<CT, N, ST, EP, TR>::resize(size_type count)
     {
-        resize(count, value_type());
+        resize(count, value_type(' '));  // need to initialize with some value != \0
     }
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
-    inline void xbasic_fixed_string<CT, N, EP, TR>::resize(size_type count, value_type ch)
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
+    inline void xbasic_fixed_string<CT, N, ST, EP, TR>::resize(size_type count, value_type ch)
     {
         size_type old_size = size();
-        m_size = error_policy::check_size(count);
-        if (old_size < m_size)
+        m_storage.set_size(error_policy::check_size(count));
+        if (old_size < size())
         {
-            traits_type::assign(data() + old_size, m_size - old_size, ch);
+            traits_type::assign(data() + old_size, size() - old_size, ch);
         }
-        update_null_termination();
     }
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
-    inline void xbasic_fixed_string<CT, N, EP, TR>::swap(self_type& rhs) noexcept
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
+    inline void xbasic_fixed_string<CT, N, ST, EP, TR>::swap(self_type& rhs) noexcept
     {
         self_type tmp(std::move(rhs));
         rhs = std::move(*this);
@@ -1015,72 +1131,70 @@ namespace xtl
      * insert *
      **********/
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
-    auto xbasic_fixed_string<CT, N, EP, TR>::insert(size_type index, size_type count, value_type ch) -> self_type&
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
+    auto xbasic_fixed_string<CT, N, ST, EP, TR>::insert(size_type index, size_type count, value_type ch) -> self_type&
     {
         check_index_strict(index, size(), "xbasic_fixed_string::insert");
-        size_type old_size = m_size;
-        m_size = error_policy::check_add(m_size, count);
+        size_type old_size = size();
+        m_storage.set_size(error_policy::check_add(size(), count));
         std::copy_backward(data() + index, data() + old_size, end());
         traits_type::assign(data() + index, count, ch);
-        update_null_termination();
         return *this;
     }
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
-    inline auto xbasic_fixed_string<CT, N, EP, TR>::insert(size_type index, const_pointer s) -> self_type&
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
+    inline auto xbasic_fixed_string<CT, N, ST, EP, TR>::insert(size_type index, const_pointer s) -> self_type&
     {
         return insert(index, s, traits_type::length(s));
     }
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
-    auto xbasic_fixed_string<CT, N, EP, TR>::insert(size_type index, const_pointer s, size_type count) -> self_type&
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
+    auto xbasic_fixed_string<CT, N, ST, EP, TR>::insert(size_type index, const_pointer s, size_type count) -> self_type&
     {
         check_index_strict(index, size(), "xbasic_fixed_string::insert");
-        size_type old_size = m_size;
-        m_size = error_policy::check_add(m_size, count);
+        size_type old_size = size();
+        m_storage.set_size(error_policy::check_add(size(), count));
         std::copy_backward(data() + index, data() + old_size, end());
         traits_type::copy(data() + index, s, count);
-        update_null_termination();
         return *this;
     }
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
-    inline auto xbasic_fixed_string<CT, N, EP, TR>::insert(size_type index, const self_type& str) -> self_type&
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
+    inline auto xbasic_fixed_string<CT, N, ST, EP, TR>::insert(size_type index, const self_type& str) -> self_type&
     {
         return insert(index, str.data(), str.size());
     }
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
-    inline auto xbasic_fixed_string<CT, N, EP, TR>::insert(size_type index, const self_type& str,
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
+    inline auto xbasic_fixed_string<CT, N, ST, EP, TR>::insert(size_type index, const self_type& str,
                                                            size_type index_str, size_type count) -> self_type&
     {
         check_index_strict(index_str, str.size(), "xbasic_fixed_string::insert");
         return insert(index, str.data() + index_str, std::min(count, str.size() - index_str));
     }
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
-    inline auto xbasic_fixed_string<CT, N, EP, TR>::insert(size_type index, const string_type& str) -> self_type&
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
+    inline auto xbasic_fixed_string<CT, N, ST, EP, TR>::insert(size_type index, const string_type& str) -> self_type&
     {
         return insert(index, str.c_str(), str.size());
     }
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
-    inline auto xbasic_fixed_string<CT, N, EP, TR>::insert(size_type index, const string_type& str,
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
+    inline auto xbasic_fixed_string<CT, N, ST, EP, TR>::insert(size_type index, const string_type& str,
                                                            size_type index_str, size_type count) -> self_type&
     {
         check_index_strict(index_str, str.size(), "xbasic_fixed_string::insert");
         return insert(index, str.c_str() + index_str, std::min(count, str.size() - index_str));
     }
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
-    inline auto xbasic_fixed_string<CT, N, EP, TR>::insert(const_iterator pos, value_type ch) -> iterator
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
+    inline auto xbasic_fixed_string<CT, N, ST, EP, TR>::insert(const_iterator pos, value_type ch) -> iterator
     {
         return insert(pos, size_type(1), ch);
     }
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
-    inline auto xbasic_fixed_string<CT, N, EP, TR>::insert(const_iterator pos, size_type count, value_type ch) -> iterator
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
+    inline auto xbasic_fixed_string<CT, N, ST, EP, TR>::insert(const_iterator pos, size_type count, value_type ch) -> iterator
     {
         if (cbegin() <= pos && pos < cend())
         {
@@ -1091,25 +1205,24 @@ namespace xtl
         return end();
     }
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
-    inline auto xbasic_fixed_string<CT, N, EP, TR>::insert(const_iterator pos, initializer_type ilist) -> iterator
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
+    inline auto xbasic_fixed_string<CT, N, ST, EP, TR>::insert(const_iterator pos, initializer_type ilist) -> iterator
     {
         return insert(pos, ilist.begin(), ilist.end());
     }
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
     template <class InputIt>
-    auto xbasic_fixed_string<CT, N, EP, TR>::insert(const_iterator pos, InputIt first, InputIt last) -> iterator
+    auto xbasic_fixed_string<CT, N, ST, EP, TR>::insert(const_iterator pos, InputIt first, InputIt last) -> iterator
     {
         if (cbegin() <= pos && pos < cend())
         {
             size_type index = static_cast<size_type>(pos - cbegin());
             size_type count = static_cast<size_type>(std::distance(first, last));
-            size_type old_size = m_size;
-            m_size = error_policy::check_add(m_size, count);
+            size_type old_size = size();
+            m_storage.set_size(error_policy::check_add(size(), count));
             std::copy_backward(data() + index, data() + old_size, end());
             std::copy(first, last, data() + index);
-            update_null_termination();
             return begin() + index;
         }
         return end();
@@ -1119,26 +1232,25 @@ namespace xtl
      * erase *
      *********/
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
-    auto xbasic_fixed_string<CT, N, EP, TR>::erase(size_type index, size_type count) -> self_type&
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
+    auto xbasic_fixed_string<CT, N, ST, EP, TR>::erase(size_type index, size_type count) -> self_type&
     {
         check_index_strict(index, size(), "xbasic_fixed_string::erase");
         size_type erase_count = std::min(count, size() - index);
         // cannot use traits_type::copy because of overlapping
-        std::copy(data() + index + erase_count, data() + m_size, data() + index);
-        m_size -= erase_count;
-        update_null_termination();
+        std::copy(data() + index + erase_count, data() + size(), data() + index);
+        m_storage.adjust_size(-static_cast<std::ptrdiff_t>(erase_count));
         return *this;
     }
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
-    inline auto xbasic_fixed_string<CT, N, EP, TR>::erase(const_iterator position) -> iterator
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
+    inline auto xbasic_fixed_string<CT, N, ST, EP, TR>::erase(const_iterator position) -> iterator
     {
         return erase(position, position + 1);
     }
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
-    auto xbasic_fixed_string<CT, N, EP, TR>::erase(const_iterator first, const_iterator last) -> iterator
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
+    auto xbasic_fixed_string<CT, N, ST, EP, TR>::erase(const_iterator first, const_iterator last) -> iterator
     {
         if (cbegin() <= first && first < cend())
         {
@@ -1146,8 +1258,7 @@ namespace xtl
             size_type erase_count = static_cast<size_type>(adapted_last - first);
             // cannot use traits_type::copy because of overlapping
             std::copy(adapted_last, cend(), iterator(first));
-            m_size -= erase_count;
-            update_null_termination();
+            m_storage.adjust_size(-static_cast<std::ptrdiff_t>(erase_count));
             return const_cast<iterator>(first);
         }
         return end();
@@ -1157,104 +1268,101 @@ namespace xtl
      * append *
      **********/
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
-    inline auto xbasic_fixed_string<CT, N, EP, TR>::append(size_type count, value_type ch) -> self_type&
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
+    inline auto xbasic_fixed_string<CT, N, ST, EP, TR>::append(size_type count, value_type ch) -> self_type&
     {
-        size_type old_size = m_size;
-        m_size = error_policy::check_add(size(), count);
+        size_type old_size = m_storage.size();
+        m_storage.set_size(error_policy::check_add(size(), count));
         traits_type::assign(data() + old_size, count, ch);
-        update_null_termination();
         return *this;
     }
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
-    inline auto xbasic_fixed_string<CT, N, EP, TR>::append(const self_type& str) -> self_type&
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
+    inline auto xbasic_fixed_string<CT, N, ST, EP, TR>::append(const self_type& str) -> self_type&
     {
         return append(str.data(), str.size());
     }
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
-    inline auto xbasic_fixed_string<CT, N, EP, TR>::append(const self_type& str,
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
+    inline auto xbasic_fixed_string<CT, N, ST, EP, TR>::append(const self_type& str,
                                                            size_type pos, size_type count) -> self_type&
     {
         check_index_strict(pos, str.size(), "xbasic_fixed_string::append");
         return append(str.data() + pos, std::min(count, str.size() - pos));
     }
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
-    inline auto xbasic_fixed_string<CT, N, EP, TR>::append(const string_type& str) -> self_type&
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
+    inline auto xbasic_fixed_string<CT, N, ST, EP, TR>::append(const string_type& str) -> self_type&
     {
         return append(str.c_str(), str.size());
     }
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
-    inline auto xbasic_fixed_string<CT, N, EP, TR>::append(const string_type& str,
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
+    inline auto xbasic_fixed_string<CT, N, ST, EP, TR>::append(const string_type& str,
                                                            size_type pos, size_type count) -> self_type&
     {
         check_index_strict(pos, str.size(), "xbasic_fixed_string::append");
         return append(str.c_str() + pos, std::min(count, str.size() - pos));
     }
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
-    inline auto xbasic_fixed_string<CT, N, EP, TR>::append(const_pointer s, size_type count) -> self_type&
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
+    inline auto xbasic_fixed_string<CT, N, ST, EP, TR>::append(const_pointer s, size_type count) -> self_type&
     {
-        size_type old_size = m_size;
-        m_size = error_policy::check_add(size(), count);
+        size_type old_size = m_storage.size();
+        m_storage.set_size(error_policy::check_add(size(), count));
         traits_type::copy(data() + old_size, s, count);
-        update_null_termination();
         return *this;
     }
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
-    inline auto xbasic_fixed_string<CT, N, EP, TR>::append(const_pointer s) -> self_type&
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
+    inline auto xbasic_fixed_string<CT, N, ST, EP, TR>::append(const_pointer s) -> self_type&
     {
         return append(s, traits_type::length(s));
     }
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
-    inline auto xbasic_fixed_string<CT, N, EP, TR>::append(initializer_type ilist) -> self_type&
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
+    inline auto xbasic_fixed_string<CT, N, ST, EP, TR>::append(initializer_type ilist) -> self_type&
     {
         return append(ilist.begin(), ilist.end());
     }
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
     template <class InputIt>
-    inline auto xbasic_fixed_string<CT, N, EP, TR>::append(InputIt first, InputIt last) -> self_type&
+    inline auto xbasic_fixed_string<CT, N, ST, EP, TR>::append(InputIt first, InputIt last) -> self_type&
     {
         size_type count = static_cast<size_type>(std::distance(first, last));
-        size_type old_size = m_size;
-        m_size = error_policy::check_add(size(), count);
+        size_type old_size = m_storage.size();
+        m_storage.set_size(error_policy::check_add(size(), count));
         std::copy(first, last, data() + old_size);
-        update_null_termination();
         return *this;
     }
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
-    inline auto xbasic_fixed_string<CT, N, EP, TR>::operator+=(const self_type& str) -> self_type&
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
+    inline auto xbasic_fixed_string<CT, N, ST, EP, TR>::operator+=(const self_type& str) -> self_type&
     {
         return append(str);
     }
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
-    inline auto xbasic_fixed_string<CT, N, EP, TR>::operator+=(const string_type& str) -> self_type&
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
+    inline auto xbasic_fixed_string<CT, N, ST, EP, TR>::operator+=(const string_type& str) -> self_type&
     {
         return append(str);
     }
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
-    inline auto xbasic_fixed_string<CT, N, EP, TR>::operator+=(value_type ch) -> self_type&
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
+    inline auto xbasic_fixed_string<CT, N, ST, EP, TR>::operator+=(value_type ch) -> self_type&
     {
         return append(size_type(1), ch);
     }
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
-    inline auto xbasic_fixed_string<CT, N, EP, TR>::operator+=(const_pointer s) -> self_type&
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
+    inline auto xbasic_fixed_string<CT, N, ST, EP, TR>::operator+=(const_pointer s) -> self_type&
     {
         return append(s);
     }
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
-    inline auto xbasic_fixed_string<CT, N, EP, TR>::operator+=(initializer_type ilist) -> self_type&
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
+    inline auto xbasic_fixed_string<CT, N, ST, EP, TR>::operator+=(initializer_type ilist) -> self_type&
     {
         return append(ilist);
     }
@@ -1263,21 +1371,21 @@ namespace xtl
      * compare *
      ***********/
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
-    inline int xbasic_fixed_string<CT, N, EP, TR>::compare(const self_type& str) const noexcept
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
+    inline int xbasic_fixed_string<CT, N, ST, EP, TR>::compare(const self_type& str) const noexcept
     {
         return compare_impl(data(), size(), str.data(), str.size());
     }
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
-    inline int xbasic_fixed_string<CT, N, EP, TR>::compare(size_type pos1, size_type count1, const self_type& str) const
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
+    inline int xbasic_fixed_string<CT, N, ST, EP, TR>::compare(size_type pos1, size_type count1, const self_type& str) const
     {
         check_index_strict(pos1, size(), "xbasic_fixed_string::compare");
         return compare_impl(data() + pos1, std::min(count1, size() - pos1), str.data(), str.size());
     }
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
-    inline int xbasic_fixed_string<CT, N, EP, TR>::compare(size_type pos1, size_type count1, const self_type& str,
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
+    inline int xbasic_fixed_string<CT, N, ST, EP, TR>::compare(size_type pos1, size_type count1, const self_type& str,
                                                            size_type pos2, size_type count2) const
     {
         check_index_strict(pos1, size(), "xbasic_fixed_string::compare");
@@ -1286,21 +1394,21 @@ namespace xtl
                             str.data() + pos2, std::min(count2, str.size() - pos2));
     }
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
-    inline int xbasic_fixed_string<CT, N, EP, TR>::compare(const string_type& str) const noexcept
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
+    inline int xbasic_fixed_string<CT, N, ST, EP, TR>::compare(const string_type& str) const noexcept
     {
         return compare_impl(data(), size(), str.data(), str.size());
     }
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
-    inline int xbasic_fixed_string<CT, N, EP, TR>::compare(size_type pos1, size_type count1, const string_type& str) const
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
+    inline int xbasic_fixed_string<CT, N, ST, EP, TR>::compare(size_type pos1, size_type count1, const string_type& str) const
     {
         check_index_strict(pos1, size(), "xbasic_fixed_string::compare");
         return compare_impl(data() + pos1, std::min(count1, size() - pos1), str.data(), str.size());
     }
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
-    inline int xbasic_fixed_string<CT, N, EP, TR>::compare(size_type pos1, size_type count1, const string_type& str,
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
+    inline int xbasic_fixed_string<CT, N, ST, EP, TR>::compare(size_type pos1, size_type count1, const string_type& str,
                                                            size_type pos2, size_type count2) const
     {
         check_index_strict(pos1, size(), "xbasic_fixed_string::compare");
@@ -1309,20 +1417,20 @@ namespace xtl
                             str.data() + pos2, std::min(count2, str.size() - pos2));
     }
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
-    inline int xbasic_fixed_string<CT, N, EP, TR>::compare(const_pointer s) const noexcept
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
+    inline int xbasic_fixed_string<CT, N, ST, EP, TR>::compare(const_pointer s) const noexcept
     {
         return compare_impl(data(), size(), s, traits_type::length(s));
     }
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
-    int xbasic_fixed_string<CT, N, EP, TR>::compare(size_type pos1, size_type count1, const_pointer s) const
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
+    int xbasic_fixed_string<CT, N, ST, EP, TR>::compare(size_type pos1, size_type count1, const_pointer s) const
     {
         return compare(pos1, count1, s, traits_type::length(s));
     }
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
-    int xbasic_fixed_string<CT, N, EP, TR>::compare(size_type pos1, size_type count1, const_pointer s, size_type count2) const
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
+    int xbasic_fixed_string<CT, N, ST, EP, TR>::compare(size_type pos1, size_type count1, const_pointer s, size_type count2) const
     {
         check_index_strict(pos1, size(), "xbasic_fixed_string::compare");
         return compare_impl(data() + pos1, std::min(count1, size() - pos1),
@@ -1333,50 +1441,50 @@ namespace xtl
      * replace *
      ***********/
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
-    inline auto xbasic_fixed_string<CT, N, EP, TR>::replace(size_type pos, size_type count, const self_type& str) -> self_type&
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
+    inline auto xbasic_fixed_string<CT, N, ST, EP, TR>::replace(size_type pos, size_type count, const self_type& str) -> self_type&
     {
         return replace(pos, count, str.data(), str.size());
     }
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
-    inline auto xbasic_fixed_string<CT, N, EP, TR>::replace(const_iterator first, const_iterator last,
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
+    inline auto xbasic_fixed_string<CT, N, ST, EP, TR>::replace(const_iterator first, const_iterator last,
                                                             const self_type& str) -> self_type&
     {
         return replace(first, last, str.data(), str.size());
     }
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
-    inline auto xbasic_fixed_string<CT, N, EP, TR>::replace(size_type pos1, size_type count1, const self_type& str,
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
+    inline auto xbasic_fixed_string<CT, N, ST, EP, TR>::replace(size_type pos1, size_type count1, const self_type& str,
                                                             size_type pos2, size_type count2) -> self_type&
     {
         check_index_strict(pos2, str.size(), "xbasic_fixed_string::replace");
         return replace(pos1, count1, str.data() + pos2, std::min(count2, str.size() - pos2));
     }
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
-    inline auto xbasic_fixed_string<CT, N, EP, TR>::replace(size_type pos, size_type count, const string_type& str) -> self_type&
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
+    inline auto xbasic_fixed_string<CT, N, ST, EP, TR>::replace(size_type pos, size_type count, const string_type& str) -> self_type&
     {
         return replace(pos, count, str.data(), str.size());
     }
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
-    inline auto xbasic_fixed_string<CT, N, EP, TR>::replace(const_iterator first, const_iterator last,
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
+    inline auto xbasic_fixed_string<CT, N, ST, EP, TR>::replace(const_iterator first, const_iterator last,
                                                             const string_type& str) -> self_type&
     {
         return replace(first, last, str.data(), str.size());
     }
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
-    inline auto xbasic_fixed_string<CT, N, EP, TR>::replace(size_type pos1, size_type count1, const string_type& str,
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
+    inline auto xbasic_fixed_string<CT, N, ST, EP, TR>::replace(size_type pos1, size_type count1, const string_type& str,
                                                             size_type pos2, size_type count2) -> self_type&
     {
         check_index_strict(pos2, str.size(), "xbasic_fixed_string::replace");
         return replace(pos1, count1, str.data() + pos2, std::min(count2, str.size() - pos2));
     }
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
-    auto xbasic_fixed_string<CT, N, EP, TR>::replace(size_type pos, size_type count,
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
+    auto xbasic_fixed_string<CT, N, ST, EP, TR>::replace(size_type pos, size_type count,
                                                      const_pointer cstr, size_type count2) -> self_type&
     {
         check_index_strict(pos, size(), "xbasic_fixed_string::replace");
@@ -1386,15 +1494,13 @@ namespace xtl
         {
             traits_type::copy(data() + pos, cstr, count2);
             std::copy(cbegin() + pos + erase_count, cend(), data() + pos + count2);
-            m_size = new_size;
-            update_null_termination();
+            m_storage.set_size(new_size);
         }
         else if (erase_count < count2)
         {
             std::copy_backward(cbegin() + pos + erase_count, cend(), data() + new_size);
             traits_type::copy(data() + pos, cstr, count2);
-            m_size = new_size;
-            update_null_termination();
+            m_storage.set_size(new_size);
         }
         else
         {
@@ -1403,8 +1509,8 @@ namespace xtl
         return *this;
     }
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
-    inline auto xbasic_fixed_string<CT, N, EP, TR>::replace(const_iterator first, const_iterator last,
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
+    inline auto xbasic_fixed_string<CT, N, ST, EP, TR>::replace(const_iterator first, const_iterator last,
                                                             const_pointer cstr, size_type count2) -> self_type&
     {
         if (cbegin() <= first && first < last && last <= cend())
@@ -1416,22 +1522,22 @@ namespace xtl
         return *this;
     }
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
-    inline auto xbasic_fixed_string<CT, N, EP, TR>::replace(size_type pos, size_type count,
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
+    inline auto xbasic_fixed_string<CT, N, ST, EP, TR>::replace(size_type pos, size_type count,
                                                             const_pointer cstr) -> self_type&
     {
         return replace(pos, count, cstr, traits_type::length(cstr));
     }
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
-    inline auto xbasic_fixed_string<CT, N, EP, TR>::replace(const_iterator first, const_iterator last,
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
+    inline auto xbasic_fixed_string<CT, N, ST, EP, TR>::replace(const_iterator first, const_iterator last,
                                                             const_pointer cstr) -> self_type&
     {
         return replace(first, last, cstr, traits_type::length(cstr));
     }
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
-    inline auto xbasic_fixed_string<CT, N, EP, TR>::replace(size_type pos, size_type count,
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
+    inline auto xbasic_fixed_string<CT, N, ST, EP, TR>::replace(size_type pos, size_type count,
                                                             size_type count2, value_type ch) -> self_type&
     {
         check_index_strict(pos, size(), "xbasic_fixed_string::replace");
@@ -1441,15 +1547,13 @@ namespace xtl
         {
             traits_type::assign(data() + pos, count2, ch);
             std::copy(cbegin() + pos + erase_count, cend(), data() + pos + count2);
-            m_size = new_size;
-            update_null_termination();
+            m_storage.set_size(new_size);
         }
         else if (erase_count < count2)
         {
             std::copy_backward(cbegin() + pos + erase_count, cend(), data() + new_size);
             traits_type::assign(data() + pos, count2, ch);
-            m_size = new_size;
-            update_null_termination();
+            m_storage.set_size(new_size);
         }
         else
         {
@@ -1458,8 +1562,8 @@ namespace xtl
         return *this;
     }
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
-    inline auto xbasic_fixed_string<CT, N, EP, TR>::replace(const_iterator first, const_iterator last,
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
+    inline auto xbasic_fixed_string<CT, N, ST, EP, TR>::replace(const_iterator first, const_iterator last,
                                                             size_type count2, value_type ch) -> self_type&
     {
         if (cbegin() <= first && first < last && last <= cend())
@@ -1471,16 +1575,16 @@ namespace xtl
         return *this;
     }
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
-    inline auto xbasic_fixed_string<CT, N, EP, TR>::replace(const_iterator first, const_iterator last,
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
+    inline auto xbasic_fixed_string<CT, N, ST, EP, TR>::replace(const_iterator first, const_iterator last,
                                                             initializer_type ilist) -> self_type&
     {
         return replace(first, last, ilist.begin(), ilist.end());
     }
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
     template <class InputIt>
-    inline auto xbasic_fixed_string<CT, N, EP, TR>::replace(const_iterator first, const_iterator last,
+    inline auto xbasic_fixed_string<CT, N, ST, EP, TR>::replace(const_iterator first, const_iterator last,
                                                             InputIt first2, InputIt last2) -> self_type&
     {
         if (cbegin() <= first && first < last && last <= cend())
@@ -1493,15 +1597,13 @@ namespace xtl
             {
                 std::copy(first2, last2, data() + pos);
                 std::copy(cbegin() + pos + erase_count, cend(), data() + pos + count2);
-                m_size = new_size;
-                update_null_termination();
+                m_storage.set_size(new_size);
             }
             else if (erase_count < count2)
             {
                 std::copy_backward(cbegin() + pos + erase_count, cend(), data() + new_size);
                 std::copy(first2, last2, data() + pos);
-                m_size = new_size;
-                update_null_termination();
+                m_storage.set_size(new_size);
             }
             else
             {
@@ -1515,20 +1617,20 @@ namespace xtl
      * find *
      ********/
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
-    inline auto xbasic_fixed_string<CT, N, EP, TR>::find(const self_type& str, size_type pos) const noexcept -> size_type
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
+    inline auto xbasic_fixed_string<CT, N, ST, EP, TR>::find(const self_type& str, size_type pos) const noexcept -> size_type
     {
         return find(str.data(), pos, str.size());
     }
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
-    inline auto xbasic_fixed_string<CT, N, EP, TR>::find(const string_type& str, size_type pos) const noexcept -> size_type
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
+    inline auto xbasic_fixed_string<CT, N, ST, EP, TR>::find(const string_type& str, size_type pos) const noexcept -> size_type
     {
         return find(str.data(), pos, str.size());
     }
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
-    auto xbasic_fixed_string<CT, N, EP, TR>::find(const_pointer s, size_type pos, size_type count) const -> size_type
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
+    auto xbasic_fixed_string<CT, N, ST, EP, TR>::find(const_pointer s, size_type pos, size_type count) const -> size_type
     {
         if (count == size_type(0) && pos <= size())
         {
@@ -1541,25 +1643,25 @@ namespace xtl
             const_pointer uptr, vptr;
             for (nm -= count - 1, vptr = data() + pos;
                  (uptr = traits_type::find(vptr, nm, *s)) != 0;
-                 nm -= uptr - vptr + 1, vptr = uptr + 1)
+                 nm -= size_type(uptr - vptr) + 1ul, vptr = uptr + 1ul)
             {
                 if (traits_type::compare(uptr, s, count) == 0)
                 {
-                    return (uptr - data());
+                    return size_type(uptr - data());
                 }
             }
         }
         return npos;
     }
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
-    inline auto xbasic_fixed_string<CT, N, EP, TR>::find(const_pointer s, size_type pos) const -> size_type
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
+    inline auto xbasic_fixed_string<CT, N, ST, EP, TR>::find(const_pointer s, size_type pos) const -> size_type
     {
         return find(s, pos, traits_type::length(s));
     }
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
-    inline auto xbasic_fixed_string<CT, N, EP, TR>::find(value_type ch, size_type pos) const -> size_type
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
+    inline auto xbasic_fixed_string<CT, N, ST, EP, TR>::find(value_type ch, size_type pos) const -> size_type
     {
         return find((const_pointer)(&ch), pos, size_type(1));
     }
@@ -1568,20 +1670,20 @@ namespace xtl
      * rfind *
      *********/
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
-    inline auto xbasic_fixed_string<CT, N, EP, TR>::rfind(const self_type& str, size_type pos) const noexcept -> size_type
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
+    inline auto xbasic_fixed_string<CT, N, ST, EP, TR>::rfind(const self_type& str, size_type pos) const noexcept -> size_type
     {
         return rfind(str.data(), pos, str.size());
     }
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
-    inline auto xbasic_fixed_string<CT, N, EP, TR>::rfind(const string_type& str, size_type pos) const noexcept -> size_type
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
+    inline auto xbasic_fixed_string<CT, N, ST, EP, TR>::rfind(const string_type& str, size_type pos) const noexcept -> size_type
     {
         return rfind(str.data(), pos, str.size());
     }
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
-    auto xbasic_fixed_string<CT, N, EP, TR>::rfind(const_pointer s, size_type pos, size_type count) const -> size_type
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
+    auto xbasic_fixed_string<CT, N, ST, EP, TR>::rfind(const_pointer s, size_type pos, size_type count) const -> size_type
     {
         if (count == 0)
         {
@@ -1595,7 +1697,7 @@ namespace xtl
             {
                 if (traits_type::eq(*uptr, *s) && traits_type::compare(uptr, s, count) == 0)
                 {
-                    return uptr - data();
+                    return size_type(uptr - data());
                 }
                 else if (uptr == data())
                 {
@@ -1606,14 +1708,14 @@ namespace xtl
         return npos;
     }
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
-    inline auto xbasic_fixed_string<CT, N, EP, TR>::rfind(const_pointer s, size_type pos) const -> size_type
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
+    inline auto xbasic_fixed_string<CT, N, ST, EP, TR>::rfind(const_pointer s, size_type pos) const -> size_type
     {
         return rfind(s, pos, traits_type::length(s));
     }
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
-    inline auto xbasic_fixed_string<CT, N, EP, TR>::rfind(value_type ch, size_type pos) const -> size_type
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
+    inline auto xbasic_fixed_string<CT, N, ST, EP, TR>::rfind(value_type ch, size_type pos) const -> size_type
     {
         return rfind((const_pointer)(&ch), pos, size_type(1));
     }
@@ -1622,20 +1724,20 @@ namespace xtl
      * find_first_of *
      *****************/
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
-    inline auto xbasic_fixed_string<CT, N, EP, TR>::find_first_of(const self_type& str, size_type pos) const noexcept -> size_type
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
+    inline auto xbasic_fixed_string<CT, N, ST, EP, TR>::find_first_of(const self_type& str, size_type pos) const noexcept -> size_type
     {
         return find_first_of(str.data(), pos, str.size());
     }
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
-    inline auto xbasic_fixed_string<CT, N, EP, TR>::find_first_of(const string_type& str, size_type pos) const noexcept -> size_type
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
+    inline auto xbasic_fixed_string<CT, N, ST, EP, TR>::find_first_of(const string_type& str, size_type pos) const noexcept -> size_type
     {
         return find_first_of(str.data(), pos, str.size());
     }
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
-    auto xbasic_fixed_string<CT, N, EP, TR>::find_first_of(const_pointer s, size_type pos, size_type count) const -> size_type
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
+    auto xbasic_fixed_string<CT, N, ST, EP, TR>::find_first_of(const_pointer s, size_type pos, size_type count) const -> size_type
     {
         if (size_type(0) < count && pos < size())
         {
@@ -1644,21 +1746,21 @@ namespace xtl
             {
                 if (traits_type::find(s, count, *uptr) != 0)
                 {
-                    return uptr - data();
+                    return size_type(uptr - data());
                 }
             }
         }
         return npos;
     }
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
-    inline auto xbasic_fixed_string<CT, N, EP, TR>::find_first_of(const_pointer s, size_type pos) const -> size_type
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
+    inline auto xbasic_fixed_string<CT, N, ST, EP, TR>::find_first_of(const_pointer s, size_type pos) const -> size_type
     {
         return find_first_of(s, pos, traits_type::length(s));
     }
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
-    inline auto xbasic_fixed_string<CT, N, EP, TR>::find_first_of(value_type ch, size_type pos) const -> size_type
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
+    inline auto xbasic_fixed_string<CT, N, ST, EP, TR>::find_first_of(value_type ch, size_type pos) const -> size_type
     {
         return find_first_of((const_pointer)(&ch), pos, size_type(1));
     }
@@ -1667,20 +1769,20 @@ namespace xtl
      * find_first_not_of *
      *********************/
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
-    inline auto xbasic_fixed_string<CT, N, EP, TR>::find_first_not_of(const self_type& str, size_type pos) const noexcept -> size_type
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
+    inline auto xbasic_fixed_string<CT, N, ST, EP, TR>::find_first_not_of(const self_type& str, size_type pos) const noexcept -> size_type
     {
         return find_first_not_of(str.data(), pos, str.size());
     }
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
-    inline auto xbasic_fixed_string<CT, N, EP, TR>::find_first_not_of(const string_type& str, size_type pos) const noexcept -> size_type
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
+    inline auto xbasic_fixed_string<CT, N, ST, EP, TR>::find_first_not_of(const string_type& str, size_type pos) const noexcept -> size_type
     {
         return find_first_not_of(str.data(), pos, str.size());
     }
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
-    auto xbasic_fixed_string<CT, N, EP, TR>::find_first_not_of(const_pointer s, size_type pos, size_type count) const -> size_type
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
+    auto xbasic_fixed_string<CT, N, ST, EP, TR>::find_first_not_of(const_pointer s, size_type pos, size_type count) const -> size_type
     {
         if (pos < size())
         {
@@ -1689,21 +1791,21 @@ namespace xtl
             {
                 if (traits_type::find(s, count, *uptr) == 0)
                 {
-                    return uptr - data();
+                    return size_type(uptr - data());
                 }
             }
         }
         return npos;
     }
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
-    inline auto xbasic_fixed_string<CT, N, EP, TR>::find_first_not_of(const_pointer s, size_type pos) const -> size_type
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
+    inline auto xbasic_fixed_string<CT, N, ST, EP, TR>::find_first_not_of(const_pointer s, size_type pos) const -> size_type
     {
         return find_first_not_of(s, pos, traits_type::length(s));
     }
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
-    inline auto xbasic_fixed_string<CT, N, EP, TR>::find_first_not_of(value_type ch, size_type pos) const -> size_type
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
+    inline auto xbasic_fixed_string<CT, N, ST, EP, TR>::find_first_not_of(value_type ch, size_type pos) const -> size_type
     {
         return find_first_not_of((const_pointer)(&ch), pos, size_type(1));
     }
@@ -1712,20 +1814,20 @@ namespace xtl
      * find_last_of *
      ****************/
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
-    inline auto xbasic_fixed_string<CT, N, EP, TR>::find_last_of(const self_type& str, size_type pos) const noexcept -> size_type
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
+    inline auto xbasic_fixed_string<CT, N, ST, EP, TR>::find_last_of(const self_type& str, size_type pos) const noexcept -> size_type
     {
         return find_last_of(str.data(), pos, str.size());
     }
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
-    inline auto xbasic_fixed_string<CT, N, EP, TR>::find_last_of(const string_type& str, size_type pos) const noexcept -> size_type
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
+    inline auto xbasic_fixed_string<CT, N, ST, EP, TR>::find_last_of(const string_type& str, size_type pos) const noexcept -> size_type
     {
         return find_last_of(str.data(), pos, str.size());
     }
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
-    auto xbasic_fixed_string<CT, N, EP, TR>::find_last_of(const_pointer s, size_type pos, size_type count) const -> size_type
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
+    auto xbasic_fixed_string<CT, N, ST, EP, TR>::find_last_of(const_pointer s, size_type pos, size_type count) const -> size_type
     {
         if (size_type(0) < count && size_type(0) < size())
         {
@@ -1734,7 +1836,7 @@ namespace xtl
             {
                 if (traits_type::find(s, count, *uptr) != 0)
                 {
-                    return uptr - data();
+                    return size_type(uptr - data());
                 }
                 else if (uptr == data())
                 {
@@ -1745,14 +1847,14 @@ namespace xtl
         return npos;
     }
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
-    inline auto xbasic_fixed_string<CT, N, EP, TR>::find_last_of(const_pointer s, size_type pos) const -> size_type
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
+    inline auto xbasic_fixed_string<CT, N, ST, EP, TR>::find_last_of(const_pointer s, size_type pos) const -> size_type
     {
         return find_last_of(s, pos, traits_type::length(s));
     }
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
-    inline auto xbasic_fixed_string<CT, N, EP, TR>::find_last_of(value_type ch, size_type pos) const -> size_type
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
+    inline auto xbasic_fixed_string<CT, N, ST, EP, TR>::find_last_of(value_type ch, size_type pos) const -> size_type
     {
         return find_last_of((const_pointer)(&ch), pos, size_type(1));
     }
@@ -1761,20 +1863,20 @@ namespace xtl
      * find_last_not_of *
      ********************/
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
-    inline auto xbasic_fixed_string<CT, N, EP, TR>::find_last_not_of(const self_type& str, size_type pos) const noexcept -> size_type
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
+    inline auto xbasic_fixed_string<CT, N, ST, EP, TR>::find_last_not_of(const self_type& str, size_type pos) const noexcept -> size_type
     {
         return find_last_not_of(str.data(), pos, str.size());
     }
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
-    inline auto xbasic_fixed_string<CT, N, EP, TR>::find_last_not_of(const string_type& str, size_type pos) const noexcept -> size_type
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
+    inline auto xbasic_fixed_string<CT, N, ST, EP, TR>::find_last_not_of(const string_type& str, size_type pos) const noexcept -> size_type
     {
         return find_last_not_of(str.data(), pos, str.size());
     }
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
-    auto xbasic_fixed_string<CT, N, EP, TR>::find_last_not_of(const_pointer s, size_type pos, size_type count) const -> size_type
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
+    auto xbasic_fixed_string<CT, N, ST, EP, TR>::find_last_not_of(const_pointer s, size_type pos, size_type count) const -> size_type
     {
         if (size_type(0) < size())
         {
@@ -1783,7 +1885,7 @@ namespace xtl
             {
                 if (traits_type::find(s, count, *uptr) == 0)
                 {
-                    return uptr - data();
+                    return size_type(uptr - data());
                 }
                 else if (uptr == data())
                 {
@@ -1794,14 +1896,14 @@ namespace xtl
         return npos;
     }
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
-    inline auto xbasic_fixed_string<CT, N, EP, TR>::find_last_not_of(const_pointer s, size_type pos) const -> size_type
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
+    inline auto xbasic_fixed_string<CT, N, ST, EP, TR>::find_last_not_of(const_pointer s, size_type pos) const -> size_type
     {
         return find_last_not_of(s, pos, traits_type::length(s));
     }
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
-    inline auto xbasic_fixed_string<CT, N, EP, TR>::find_last_not_of(value_type ch, size_type pos) const -> size_type
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
+    inline auto xbasic_fixed_string<CT, N, ST, EP, TR>::find_last_not_of(value_type ch, size_type pos) const -> size_type
     {
         return find_last_not_of((const_pointer)(&ch), pos, size_type(1));
     }
@@ -1810,8 +1912,8 @@ namespace xtl
      * Private methods *
      *******************/
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
-    int xbasic_fixed_string<CT, N, EP, TR>::compare_impl(const_pointer s1, size_type count1,
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
+    int xbasic_fixed_string<CT, N, ST, EP, TR>::compare_impl(const_pointer s1, size_type count1,
                                                          const_pointer s2, size_type count2) const noexcept
     {
         size_type rlen = std::min(count1, count2);
@@ -1826,23 +1928,28 @@ namespace xtl
         }
     }
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
-    inline void xbasic_fixed_string<CT, N, EP, TR>::update_null_termination() noexcept
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
+    inline void xbasic_fixed_string<CT, N, ST, EP, TR>::update_null_termination() noexcept
     {
         data()[size()] = '\0';
     }
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
-    void xbasic_fixed_string<CT, N, EP, TR>::check_index(size_type pos, size_type size, const char* what) const
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
+    void xbasic_fixed_string<CT, N, ST, EP, TR>::check_index(size_type pos, size_type size, const char* what) const
     {
         if (pos >= size)
         {
+#if defined(XTL_NO_EXCEPTIONS)
+            std::fprintf(stderr, "%s\n", what);
+            std::terminate();
+#else
             throw std::out_of_range(what);
+#endif
         }
     }
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
-    void xbasic_fixed_string<CT, N, EP, TR>::check_index_strict(size_type pos, size_type size, const char* what) const
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
+    void xbasic_fixed_string<CT, N, ST, EP, TR>::check_index_strict(size_type pos, size_type size, const char* what) const
     {
         check_index(pos, size + 1, what);
     }
@@ -1851,113 +1958,113 @@ namespace xtl
      * Concatenation operator *
      **************************/
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
-    inline xbasic_fixed_string<CT, N, EP, TR>
-    operator+(const xbasic_fixed_string<CT, N, EP, TR>& lhs,
-              const xbasic_fixed_string<CT, N, EP, TR>& rhs)
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
+    inline xbasic_fixed_string<CT, N, ST, EP, TR>
+    operator+(const xbasic_fixed_string<CT, N, ST, EP, TR>& lhs,
+              const xbasic_fixed_string<CT, N, ST, EP, TR>& rhs)
     {
-        xbasic_fixed_string<CT, N, EP, TR> res(lhs);
+        xbasic_fixed_string<CT, N, ST, EP, TR> res(lhs);
         return res += rhs;
     }
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
-    inline xbasic_fixed_string<CT, N, EP, TR>
-    operator+(const xbasic_fixed_string<CT, N, EP, TR>& lhs,
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
+    inline xbasic_fixed_string<CT, N, ST, EP, TR>
+    operator+(const xbasic_fixed_string<CT, N, ST, EP, TR>& lhs,
               const CT* rhs)
     {
-        xbasic_fixed_string<CT, N, EP, TR> res(lhs);
+        xbasic_fixed_string<CT, N, ST, EP, TR> res(lhs);
         return res += rhs;
     }
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
-    inline xbasic_fixed_string<CT, N, EP, TR>
-    operator+(const xbasic_fixed_string<CT, N, EP, TR>& lhs,
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
+    inline xbasic_fixed_string<CT, N, ST, EP, TR>
+    operator+(const xbasic_fixed_string<CT, N, ST, EP, TR>& lhs,
               CT rhs)
     {
-        xbasic_fixed_string<CT, N, EP, TR> res(lhs);
+        xbasic_fixed_string<CT, N, ST, EP, TR> res(lhs);
         return res += rhs;
     }
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
-    inline xbasic_fixed_string<CT, N, EP, TR>
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
+    inline xbasic_fixed_string<CT, N, ST, EP, TR>
     operator+(const CT* lhs,
-              const xbasic_fixed_string<CT, N, EP, TR>& rhs)
+              const xbasic_fixed_string<CT, N, ST, EP, TR>& rhs)
     {
-        xbasic_fixed_string<CT, N, EP, TR> res(lhs);
+        xbasic_fixed_string<CT, N, ST, EP, TR> res(lhs);
         return res += rhs;
     }
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
-    inline xbasic_fixed_string<CT, N, EP, TR>
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
+    inline xbasic_fixed_string<CT, N, ST, EP, TR>
     operator+(CT lhs,
-              const xbasic_fixed_string<CT, N, EP, TR>& rhs)
+              const xbasic_fixed_string<CT, N, ST, EP, TR>& rhs)
     {
-        using size_type = typename xbasic_fixed_string<CT, N, EP, TR>::size_type;
-        xbasic_fixed_string<CT, N, EP, TR> res(size_type(1), lhs);
+        using size_type = typename xbasic_fixed_string<CT, N, ST, EP, TR>::size_type;
+        xbasic_fixed_string<CT, N, ST, EP, TR> res(size_type(1), lhs);
         return res += rhs;
     }
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
-    inline xbasic_fixed_string<CT, N, EP, TR>
-    operator+(const xbasic_fixed_string<CT, N, EP, TR>&& lhs,
-              const xbasic_fixed_string<CT, N, EP, TR>& rhs)
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
+    inline xbasic_fixed_string<CT, N, ST, EP, TR>
+    operator+(const xbasic_fixed_string<CT, N, ST, EP, TR>&& lhs,
+              const xbasic_fixed_string<CT, N, ST, EP, TR>& rhs)
     {
-        xbasic_fixed_string<CT, N, EP, TR> res(std::move(lhs));
+        xbasic_fixed_string<CT, N, ST, EP, TR> res(std::move(lhs));
         return res += rhs;
     }
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
-    inline xbasic_fixed_string<CT, N, EP, TR>
-    operator+(const xbasic_fixed_string<CT, N, EP, TR>& lhs,
-              const xbasic_fixed_string<CT, N, EP, TR>&& rhs)
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
+    inline xbasic_fixed_string<CT, N, ST, EP, TR>
+    operator+(const xbasic_fixed_string<CT, N, ST, EP, TR>& lhs,
+              const xbasic_fixed_string<CT, N, ST, EP, TR>&& rhs)
     {
-        xbasic_fixed_string<CT, N, EP, TR> res(lhs);
+        xbasic_fixed_string<CT, N, ST, EP, TR> res(lhs);
         return res += std::move(rhs);
     }
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
-    inline xbasic_fixed_string<CT, N, EP, TR>
-    operator+(const xbasic_fixed_string<CT, N, EP, TR>&& lhs,
-              const xbasic_fixed_string<CT, N, EP, TR>&& rhs)
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
+    inline xbasic_fixed_string<CT, N, ST, EP, TR>
+    operator+(const xbasic_fixed_string<CT, N, ST, EP, TR>&& lhs,
+              const xbasic_fixed_string<CT, N, ST, EP, TR>&& rhs)
     {
-        xbasic_fixed_string<CT, N, EP, TR> res(std::move(lhs));
+        xbasic_fixed_string<CT, N, ST, EP, TR> res(std::move(lhs));
         return res += std::move(rhs);
     }
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
-    inline xbasic_fixed_string<CT, N, EP, TR>
-    operator+(const xbasic_fixed_string<CT, N, EP, TR>&& lhs,
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
+    inline xbasic_fixed_string<CT, N, ST, EP, TR>
+    operator+(const xbasic_fixed_string<CT, N, ST, EP, TR>&& lhs,
               const CT* rhs)
     {
-        xbasic_fixed_string<CT, N, EP, TR> res(std::move(lhs));
+        xbasic_fixed_string<CT, N, ST, EP, TR> res(std::move(lhs));
         return res += rhs;
     }
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
-    inline xbasic_fixed_string<CT, N, EP, TR>
-    operator+(const xbasic_fixed_string<CT, N, EP, TR>&& lhs,
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
+    inline xbasic_fixed_string<CT, N, ST, EP, TR>
+    operator+(const xbasic_fixed_string<CT, N, ST, EP, TR>&& lhs,
               CT rhs)
     {
-        xbasic_fixed_string<CT, N, EP, TR> res(std::move(lhs));
+        xbasic_fixed_string<CT, N, ST, EP, TR> res(std::move(lhs));
         return res += rhs;
     }
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
-    inline xbasic_fixed_string<CT, N, EP, TR>
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
+    inline xbasic_fixed_string<CT, N, ST, EP, TR>
     operator+(const CT* lhs,
-              const xbasic_fixed_string<CT, N, EP, TR>&& rhs)
+              const xbasic_fixed_string<CT, N, ST, EP, TR>&& rhs)
     {
-        xbasic_fixed_string<CT, N, EP, TR> res(lhs);
+        xbasic_fixed_string<CT, N, ST, EP, TR> res(lhs);
         return res += std::move(rhs);
     }
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
-    inline xbasic_fixed_string<CT, N, EP, TR>
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
+    inline xbasic_fixed_string<CT, N, ST, EP, TR>
     operator+(CT lhs,
-              const xbasic_fixed_string<CT, N, EP, TR>&& rhs)
+              const xbasic_fixed_string<CT, N, ST, EP, TR>&& rhs)
     {
-        using size_type = typename xbasic_fixed_string<CT, N, EP, TR>::size_type;
-        xbasic_fixed_string<CT, N, EP, TR> res(size_type(1), lhs);
+        using size_type = typename xbasic_fixed_string<CT, N, ST, EP, TR>::size_type;
+        xbasic_fixed_string<CT, N, ST, EP, TR> res(size_type(1), lhs);
         return res += std::move(rhs);
     }
 
@@ -1965,218 +2072,218 @@ namespace xtl
     * Comparison operators *
     ************************/
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
-    inline bool operator==(const xbasic_fixed_string<CT, N, EP, TR>& lhs,
-                           const xbasic_fixed_string<CT, N, EP, TR>& rhs) noexcept
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
+    inline bool operator==(const xbasic_fixed_string<CT, N, ST, EP, TR>& lhs,
+                           const xbasic_fixed_string<CT, N, ST, EP, TR>& rhs) noexcept
     {
         return lhs.compare(rhs) == 0;
     }
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
-    inline bool operator==(const xbasic_fixed_string<CT, N, EP, TR>& lhs,
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
+    inline bool operator==(const xbasic_fixed_string<CT, N, ST, EP, TR>& lhs,
                            const CT* rhs) noexcept
     {
         return lhs.compare(rhs) == 0;
     }
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
     inline bool operator==(const CT* lhs,
-                           const xbasic_fixed_string<CT, N, EP, TR>& rhs) noexcept
+                           const xbasic_fixed_string<CT, N, ST, EP, TR>& rhs) noexcept
     {
         return rhs == lhs;
     }
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
-    inline bool operator==(const xbasic_fixed_string<CT, N, EP, TR>& lhs,
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
+    inline bool operator==(const xbasic_fixed_string<CT, N, ST, EP, TR>& lhs,
                            const std::basic_string<CT, TR>& rhs) noexcept
     {
         return lhs == rhs.c_str();
     }
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
     inline bool operator==(const std::basic_string<CT, TR>& lhs,
-                           const xbasic_fixed_string<CT, N, EP, TR>& rhs) noexcept
+                           const xbasic_fixed_string<CT, N, ST, EP, TR>& rhs) noexcept
     {
         return lhs.c_str() == rhs;
     }
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
-    inline bool operator!=(const xbasic_fixed_string<CT, N, EP, TR>& lhs,
-                           const xbasic_fixed_string<CT, N, EP, TR>& rhs) noexcept
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
+    inline bool operator!=(const xbasic_fixed_string<CT, N, ST, EP, TR>& lhs,
+                           const xbasic_fixed_string<CT, N, ST, EP, TR>& rhs) noexcept
     {
         return lhs.compare(rhs) != 0;
     }
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
-    inline bool operator!=(const xbasic_fixed_string<CT, N, EP, TR>& lhs,
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
+    inline bool operator!=(const xbasic_fixed_string<CT, N, ST, EP, TR>& lhs,
                            const CT* rhs) noexcept
     {
         return lhs.compare(rhs) != 0;
     }
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
     inline bool operator!=(const CT* lhs,
-                           const xbasic_fixed_string<CT, N, EP, TR>& rhs) noexcept
+                           const xbasic_fixed_string<CT, N, ST, EP, TR>& rhs) noexcept
     {
         return rhs != lhs;
     }
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
-    inline bool operator!=(const xbasic_fixed_string<CT, N, EP, TR>& lhs,
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
+    inline bool operator!=(const xbasic_fixed_string<CT, N, ST, EP, TR>& lhs,
                            const std::basic_string<CT, TR>& rhs) noexcept
     {
         return lhs != rhs.c_str();
     }
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
     inline bool operator!=(const std::basic_string<CT, TR>& lhs,
-                           const xbasic_fixed_string<CT, N, EP, TR>& rhs) noexcept
+                           const xbasic_fixed_string<CT, N, ST, EP, TR>& rhs) noexcept
     {
         return lhs.c_str() != rhs;
     }
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
-    inline bool operator<(const xbasic_fixed_string<CT, N, EP, TR>& lhs,
-                          const xbasic_fixed_string<CT, N, EP, TR>& rhs) noexcept
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
+    inline bool operator<(const xbasic_fixed_string<CT, N, ST, EP, TR>& lhs,
+                          const xbasic_fixed_string<CT, N, ST, EP, TR>& rhs) noexcept
     {
         return lhs.compare(rhs) < 0;
     }
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
-    inline bool operator<(const xbasic_fixed_string<CT, N, EP, TR>& lhs,
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
+    inline bool operator<(const xbasic_fixed_string<CT, N, ST, EP, TR>& lhs,
                           const CT* rhs) noexcept
     {
         return lhs.compare(rhs) < 0;
     }
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
     inline bool operator<(const CT* lhs,
-                          const xbasic_fixed_string<CT, N, EP, TR>& rhs) noexcept
+                          const xbasic_fixed_string<CT, N, ST, EP, TR>& rhs) noexcept
     {
         return rhs > lhs;
     }
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
-    inline bool operator<(const xbasic_fixed_string<CT, N, EP, TR>& lhs,
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
+    inline bool operator<(const xbasic_fixed_string<CT, N, ST, EP, TR>& lhs,
                           const std::basic_string<CT, TR>& rhs) noexcept
     {
         return lhs < rhs.c_str();
     }
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
     inline bool operator<(const std::basic_string<CT, TR>& lhs,
-                          const xbasic_fixed_string<CT, N, EP, TR>& rhs) noexcept
+                          const xbasic_fixed_string<CT, N, ST, EP, TR>& rhs) noexcept
     {
         return lhs.c_str() < rhs;
     }
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
-    inline bool operator<=(const xbasic_fixed_string<CT, N, EP, TR>& lhs,
-                           const xbasic_fixed_string<CT, N, EP, TR>& rhs) noexcept
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
+    inline bool operator<=(const xbasic_fixed_string<CT, N, ST, EP, TR>& lhs,
+                           const xbasic_fixed_string<CT, N, ST, EP, TR>& rhs) noexcept
     {
         return lhs.compare(rhs) <= 0;
     }
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
-    inline bool operator<=(const xbasic_fixed_string<CT, N, EP, TR>& lhs,
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
+    inline bool operator<=(const xbasic_fixed_string<CT, N, ST, EP, TR>& lhs,
                            const CT* rhs) noexcept
     {
         return lhs.compare(rhs) <= 0;
     }
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
     inline bool operator<=(const CT* lhs,
-                           const xbasic_fixed_string<CT, N, EP, TR>& rhs) noexcept
+                           const xbasic_fixed_string<CT, N, ST, EP, TR>& rhs) noexcept
     {
         return rhs >= lhs;
     }
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
-    inline bool operator<=(const xbasic_fixed_string<CT, N, EP, TR>& lhs,
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
+    inline bool operator<=(const xbasic_fixed_string<CT, N, ST, EP, TR>& lhs,
                            const std::basic_string<CT, TR>& rhs) noexcept
     {
         return lhs <= rhs.c_str();
     }
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
     inline bool operator<=(const std::basic_string<CT, TR>& lhs,
-                           const xbasic_fixed_string<CT, N, EP, TR>& rhs) noexcept
+                           const xbasic_fixed_string<CT, N, ST, EP, TR>& rhs) noexcept
     {
         return lhs.c_str() <= rhs;
     }
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
-    inline bool operator>(const xbasic_fixed_string<CT, N, EP, TR>& lhs,
-                          const xbasic_fixed_string<CT, N, EP, TR>& rhs) noexcept
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
+    inline bool operator>(const xbasic_fixed_string<CT, N, ST, EP, TR>& lhs,
+                          const xbasic_fixed_string<CT, N, ST, EP, TR>& rhs) noexcept
     {
         return lhs.compare(rhs) > 0;
     }
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
-    inline bool operator>(const xbasic_fixed_string<CT, N, EP, TR>& lhs,
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
+    inline bool operator>(const xbasic_fixed_string<CT, N, ST, EP, TR>& lhs,
                           const CT* rhs) noexcept
     {
         return lhs.compare(rhs) > 0;
     }
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
     inline bool operator>(const CT* lhs,
-                          const xbasic_fixed_string<CT, N, EP, TR>& rhs) noexcept
+                          const xbasic_fixed_string<CT, N, ST, EP, TR>& rhs) noexcept
     {
         return rhs < lhs;
     }
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
-    inline bool operator>(const xbasic_fixed_string<CT, N, EP, TR>& lhs,
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
+    inline bool operator>(const xbasic_fixed_string<CT, N, ST, EP, TR>& lhs,
                           const std::basic_string<CT, TR>& rhs) noexcept
     {
         return lhs > rhs.c_str();
     }
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
     inline bool operator>(const std::basic_string<CT, TR>& lhs,
-                          const xbasic_fixed_string<CT, N, EP, TR>& rhs) noexcept
+                          const xbasic_fixed_string<CT, N, ST, EP, TR>& rhs) noexcept
     {
         return lhs.c_str() > rhs;
     }
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
-    inline bool operator>=(const xbasic_fixed_string<CT, N, EP, TR>& lhs,
-                           const xbasic_fixed_string<CT, N, EP, TR>& rhs) noexcept
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
+    inline bool operator>=(const xbasic_fixed_string<CT, N, ST, EP, TR>& lhs,
+                           const xbasic_fixed_string<CT, N, ST, EP, TR>& rhs) noexcept
     {
         return lhs.compare(rhs) >= 0;
     }
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
-    inline bool operator>=(const xbasic_fixed_string<CT, N, EP, TR>& lhs,
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
+    inline bool operator>=(const xbasic_fixed_string<CT, N, ST, EP, TR>& lhs,
                            const CT* rhs) noexcept
     {
         return lhs.compare(rhs) >= 0;
     }
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
     inline bool operator>=(const CT* lhs,
-                           const xbasic_fixed_string<CT, N, EP, TR>& rhs) noexcept
+                           const xbasic_fixed_string<CT, N, ST, EP, TR>& rhs) noexcept
     {
         return rhs <= lhs;
     }
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
-    inline bool operator>=(const xbasic_fixed_string<CT, N, EP, TR>& lhs,
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
+    inline bool operator>=(const xbasic_fixed_string<CT, N, ST, EP, TR>& lhs,
                            const std::basic_string<CT, TR>& rhs) noexcept
     {
         return lhs >= rhs.c_str();
     }
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
     inline bool operator>=(const std::basic_string<CT, TR>& lhs,
-                           const xbasic_fixed_string<CT, N, EP, TR>& rhs) noexcept
+                           const xbasic_fixed_string<CT, N, ST, EP, TR>& rhs) noexcept
     {
         return lhs.c_str() >= rhs;
     }
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
-    inline void swap(xbasic_fixed_string<CT, N, EP, TR>& lhs, xbasic_fixed_string<CT, N, EP, TR>& rhs)
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
+    inline void swap(xbasic_fixed_string<CT, N, ST, EP, TR>& lhs, xbasic_fixed_string<CT, N, ST, EP, TR>& rhs)
     {
         lhs.swap(rhs);
     }
@@ -2185,17 +2292,27 @@ namespace xtl
      * Input / output *
      ******************/
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
     inline std::basic_ostream<CT, TR>& operator<<(std::basic_ostream<CT, TR>& os,
-                                                  const xbasic_fixed_string<CT, N, EP, TR>& str)
+                                                  const xbasic_fixed_string<CT, N, ST, EP, TR>& str)
     {
         os << str.c_str();
         return os;
     }
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
+#ifdef __CLING__
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
+    nlohmann::json mime_bundle_repr(const xbasic_fixed_string<CT, N, ST, EP, TR>& str)
+    {
+        auto bundle = nlohmann::json::object();
+        bundle["text/plain"] = str.c_str();
+        return bundle;
+    }
+#endif
+
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
     inline std::basic_istream<CT, TR>& operator>>(std::basic_istream<CT, TR>& is,
-                                                  xbasic_fixed_string<CT, N, EP, TR>& str)
+                                                  xbasic_fixed_string<CT, N, ST, EP, TR>& str)
     {
         // Not optimal
         std::string tmp;
@@ -2204,9 +2321,9 @@ namespace xtl
         return is;
     }
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
     inline std::basic_istream<CT, TR>& getline(std::basic_istream<CT, TR>& input,
-                                               xbasic_fixed_string<CT, N, EP, TR>& str,
+                                               xbasic_fixed_string<CT, N, ST, EP, TR>& str,
                                                CT delim)
     {
         std::string tmp;
@@ -2215,9 +2332,9 @@ namespace xtl
         return ret;
     }
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
     inline std::basic_istream<CT, TR>& getline(std::basic_istream<CT, TR>&& input,
-                                               xbasic_fixed_string<CT, N, EP, TR>& str,
+                                               xbasic_fixed_string<CT, N, ST, EP, TR>& str,
                                                CT delim)
     {
         std::string tmp;
@@ -2226,9 +2343,9 @@ namespace xtl
         return ret;
     }
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
     inline std::basic_istream<CT, TR>& getline(std::basic_istream<CT, TR>& input,
-                                               xbasic_fixed_string<CT, N, EP, TR>& str)
+                                               xbasic_fixed_string<CT, N, ST, EP, TR>& str)
     {
         std::string tmp;
         auto& ret = std::getline(input, tmp);
@@ -2236,9 +2353,9 @@ namespace xtl
         return ret;
     }
 
-    template <class CT, std::size_t N, template <std::size_t> class EP, class TR>
+    template <class CT, std::size_t N, int ST, template <std::size_t> class EP, class TR>
     inline std::basic_istream<CT, TR>& getline(std::basic_istream<CT, TR>&& input,
-                                               xbasic_fixed_string<CT, N, EP, TR>& str)
+                                               xbasic_fixed_string<CT, N, ST, EP, TR>& str)
     {
         std::string tmp;
         auto& ret = std::getline(std::move(input), tmp);

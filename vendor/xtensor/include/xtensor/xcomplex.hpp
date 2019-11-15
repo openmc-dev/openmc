@@ -1,5 +1,6 @@
 /***************************************************************************
-* Copyright (c) 2016, Johan Mabille, Sylvain Corlay and Wolf Vollprecht    *
+* Copyright (c) Johan Mabille, Sylvain Corlay and Wolf Vollprecht          *
+* Copyright (c) QuantStack                                                 *
 *                                                                          *
 * Distributed under the terms of the BSD 3-Clause License.                 *
 *                                                                          *
@@ -20,7 +21,6 @@
 
 namespace xt
 {
-
     /******************************
      * real and imag declarations *
      ******************************/
@@ -61,7 +61,7 @@ namespace xt
             template <class E>
             static inline decltype(auto) real(E&& e) noexcept
             {
-                return e;
+                return std::forward<E>(e);
             }
 
             template <class E>
@@ -75,15 +75,15 @@ namespace xt
         struct complex_expression_helper
         {
             template <class E>
-            static inline auto real(E&& e) noexcept
+            static inline decltype(auto) real(E&& e) noexcept
             {
-                return detail::complex_helper<xtl::is_complex<typename std::decay_t<E>::value_type>::value>::real(e);
+                return detail::complex_helper<xtl::is_complex<typename std::decay_t<E>::value_type>::value>::real(std::forward<E>(e));
             }
 
             template <class E>
-            static inline auto imag(E&& e) noexcept
+            static inline decltype(auto) imag(E&& e) noexcept
             {
-                return detail::complex_helper<xtl::is_complex<typename std::decay_t<E>::value_type>::value>::imag(e);
+                return detail::complex_helper<xtl::is_complex<typename std::decay_t<E>::value_type>::value>::imag(std::forward<E>(e));
             }
         };
 
@@ -132,56 +132,70 @@ namespace xt
         return detail::complex_expression_helper<is_xexpression<std::decay_t<E>>::value>::imag(std::forward<E>(e));
     }
 
-#define UNARY_COMPLEX_FUNCTOR(NAME)                                 \
-    template <class T>                                              \
+#define UNARY_COMPLEX_FUNCTOR(NS, NAME)                             \
     struct NAME##_fun                                               \
     {                                                               \
-        using argument_type = T;                                    \
-        using result_type = decltype(std::NAME(std::declval<T>())); \
-        constexpr result_type operator()(const T& t) const          \
+        template <class T>                                          \
+        constexpr auto operator()(const T& t) const                 \
         {                                                           \
-            using std::NAME;                                        \
+            using NS::NAME;                                         \
+            return NAME(t);                                         \
+        }                                                           \
+                                                                    \
+        template <class B>                                          \
+        constexpr auto simd_apply(const B& t) const                 \
+        {                                                           \
+            using NS::NAME;                                         \
             return NAME(t);                                         \
         }                                                           \
     }
 
     namespace math
     {
-        UNARY_COMPLEX_FUNCTOR(norm);
-        UNARY_COMPLEX_FUNCTOR(arg);
-
         namespace detail
         {
-            // libc++ (OSX) conj is unfortunately broken and returns
-            // std::complex<T> instead of T.
             template <class T>
-            constexpr T conj(const T& c)
-            {
-                return c;
-            }
-
-            template <class T>
-            constexpr std::complex<T> conj(const std::complex<T>& c)
+            constexpr std::complex<T> conj_impl(const std::complex<T>& c)
             {
                 return std::complex<T>(c.real(), -c.imag());
             }
+
+#ifdef XTENSOR_USE_XSIMD
+            template <class X>
+            constexpr X conj_impl(const xsimd::simd_complex_batch<X>& z)
+            {
+                return xsimd::conj(z);
+            }
+
+            template <class T>
+            struct not_complex_batch
+                : xtl::negation<std::is_base_of<xsimd::simd_complex_batch<T>, T>>
+            {
+            };
+
+            // libc++ (OSX) conj is unfortunately broken and returns
+            // std::complex<T> instead of T.
+            // This function must be deactivated for complex batches,
+            // otherwise it will be a better match than the previous one.
+            template <class T, XTL_REQUIRES(not_complex_batch<T>)>
+            constexpr T conj_impl(const T& c)
+            {
+                return c;
+            }
+#else
+            // libc++ (OSX) conj is unfortunately broken and returns
+            // std::complex<T> instead of T.
+            template <class T>
+            constexpr T conj_impl(const T& c)
+            {
+                return c;
+            }
+#endif
         }
 
-        template <class T>
-        struct conj_fun
-        {
-            using argument_type = T;
-            using result_type = decltype(detail::conj(std::declval<T>()));
-            using simd_value_type = xsimd::simd_type<T>;
-            constexpr result_type operator()(const T& t) const
-            {
-                return detail::conj(t);
-            }
-            constexpr simd_value_type simd_apply(const simd_value_type& t) const
-            {
-                return detail::conj(t);
-            }
-        };
+        UNARY_COMPLEX_FUNCTOR(std, norm);
+        UNARY_COMPLEX_FUNCTOR(std, arg);
+        UNARY_COMPLEX_FUNCTOR(detail, conj_impl);
     }
 
 #undef UNARY_COMPLEX_FUNCTOR
@@ -194,10 +208,8 @@ namespace xt
     template <class E>
     inline auto conj(E&& e) noexcept
     {
-        using value_type = typename std::decay_t<E>::value_type;
-        using functor = math::conj_fun<value_type>;
-        using result_type = typename functor::result_type;
-        using type = xfunction<functor, result_type, const_xclosure_t<E>>;
+        using functor = math::conj_impl_fun;
+        using type = xfunction<functor, const_xclosure_t<E>>;
         return type(functor(), std::forward<E>(e));
     }
 
@@ -208,10 +220,8 @@ namespace xt
     template <class E>
     inline auto arg(E&& e) noexcept
     {
-        using value_type = typename std::decay_t<E>::value_type;
-        using functor = math::arg_fun<value_type>;
-        using result_type = typename functor::result_type;
-        using type = xfunction<functor, result_type, const_xclosure_t<E>>;
+        using functor = math::arg_fun;
+        using type = xfunction<functor, const_xclosure_t<E>>;
         return type(functor(), std::forward<E>(e));
     }
 
@@ -241,10 +251,8 @@ namespace xt
     template <class E>
     inline auto norm(E&& e) noexcept
     {
-        using value_type = typename std::decay_t<E>::value_type;
-        using functor = math::norm_fun<value_type>;
-        using result_type = typename functor::result_type;
-        using type = xfunction<functor, result_type, const_xclosure_t<E>>;
+        using functor = math::norm_fun;
+        using type = xfunction<functor, const_xclosure_t<E>>;
         return type(functor(), std::forward<E>(e));
     }
 }

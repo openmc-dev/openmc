@@ -1,5 +1,6 @@
 /***************************************************************************
-* Copyright (c) 2016, Johan Mabille, Sylvain Corlay and Wolf Vollprecht    *
+* Copyright (c) Johan Mabille, Sylvain Corlay and Wolf Vollprecht          *
+* Copyright (c) QuantStack                                                 *
 *                                                                          *
 * Distributed under the terms of the BSD 3-Clause License.                 *
 *                                                                          *
@@ -9,25 +10,42 @@
 #ifndef XTENSOR_FORWARD_HPP
 #define XTENSOR_FORWARD_HPP
 
+// This file contains forward declarations and
+// alias types to solve the problem of circular
+// includes. It should not contain anything else
+// and should not bring additional dependencies to
+// the files that include it. So:
+// - do NOT define classes of metafunctions here
+// - do NOT include other headers
+//
+// If you need to do so, something is probably
+// going wrong (either your change, or xtensor
+// needs to be refactored).
+
 #include <memory>
 #include <vector>
 
 #include <xtl/xoptional_sequence.hpp>
 
-#include "xexpression.hpp"
 #include "xlayout.hpp"
-#include "xshape.hpp"
-#include "xstorage.hpp"
 #include "xtensor_config.hpp"
-#include "xtensor_simd.hpp"
 
 namespace xt
 {
+    struct xtensor_expression_tag;
+    struct xoptional_expression_tag;
+
     template <class C>
     struct xcontainer_inner_types;
 
     template <class D>
     class xcontainer;
+
+    template <class T, class A>
+    class uvector;
+
+    template <class T, std::size_t N, class A, bool Init>
+    class svector;
 
     template <class EC,
               layout_type L = XTENSOR_DEFAULT_LAYOUT,
@@ -53,7 +71,7 @@ namespace xt
      * \endcode
      *
      * @tparam T The value type of the elements.
-     * @tparam L The layout_type of the xarray_container (default: row_major).
+     * @tparam L The layout_type of the xarray_container (default: XTENSOR_DEFAULT_LAYOUT).
      * @tparam A The allocator of the container holding the elements.
      * @tparam SA The allocator of the containers holding the shape and the strides.
      */
@@ -76,7 +94,7 @@ namespace xt
      * Alias template on xarray_container for handling missing values
      *
      * @tparam T The value type of the elements.
-     * @tparam L The layout_type of the container (default: row_major).
+     * @tparam L The layout_type of the container (default: XTENSOR_DEFAULT_LAYOUT).
      * @tparam A The allocator of the container holding the elements.
      * @tparam BA The allocator of the container holding the missing flags.
      * @tparam SA The allocator of the containers holding the shape and the strides.
@@ -108,7 +126,7 @@ namespace xt
      *
      * @tparam T The value type of the elements.
      * @tparam N The dimension of the tensor.
-     * @tparam L The layout_type of the tensor (default: row_major).
+     * @tparam L The layout_type of the tensor (default: XTENSOR_DEFAULT_LAYOUT).
      * @tparam A The allocator of the containers holding the elements.
      */
     template <class T,
@@ -120,6 +138,9 @@ namespace xt
     template <class EC, std::size_t N, layout_type L = XTENSOR_DEFAULT_LAYOUT, class Tag = xtensor_expression_tag>
     class xtensor_adaptor;
 
+    template <class EC, std::size_t N, layout_type L = XTENSOR_DEFAULT_LAYOUT, class Tag = xtensor_expression_tag>
+    class xtensor_view;
+
     template <std::size_t... N>
     class fixed_shape;
 
@@ -130,10 +151,10 @@ namespace xt
     template <std::size_t... N>
     using xshape = fixed_shape<N...>;
 
-    template <class ET, class S, layout_type L = XTENSOR_DEFAULT_LAYOUT, class Tag = xtensor_expression_tag>
+    template <class ET, class S, layout_type L = XTENSOR_DEFAULT_LAYOUT, bool Sharable = true, class Tag = xtensor_expression_tag>
     class xfixed_container;
 
-    template <class ET, class S, layout_type L = XTENSOR_DEFAULT_LAYOUT, class Tag = xtensor_expression_tag>
+    template <class ET, class S, layout_type L = XTENSOR_DEFAULT_LAYOUT, bool Sharable = true, class Tag = xtensor_expression_tag>
     class xfixed_adaptor;
 
     /**
@@ -153,13 +174,14 @@ namespace xt
      *
      * @tparam T The value type of the elements.
      * @tparam FSH A xshape template shape.
-     * @tparam L The layout_type of the tensor (default: row_major).
-     * @tparam A The allocator of the containers holding the elements.
+     * @tparam L The layout_type of the tensor (default: XTENSOR_DEFAULT_LAYOUT).
+     * @tparam Sharable Wether the tnesor can be used in shared expression.
      */
     template <class T,
               class FSH,
-              layout_type L = XTENSOR_DEFAULT_LAYOUT>
-    using xtensor_fixed = xfixed_container<T, FSH, L>;
+              layout_type L = XTENSOR_DEFAULT_LAYOUT,
+              bool Sharable = true>
+    using xtensor_fixed = xfixed_container<T, FSH, L, Sharable>;
 
     /**
      * @typedef xtensor_optional
@@ -167,7 +189,7 @@ namespace xt
      *
      * @tparam T The value type of the elements.
      * @tparam N The dimension of the tensor.
-     * @tparam L The layout_type of the container (default: row_major).
+     * @tparam L The layout_type of the container (default: XTENSOR_DEFAULT_LAYOUT).
      * @tparam A The allocator of the containers holding the elements.
      * @tparam BA The allocator of the container holding the missing flags.
      */
@@ -181,36 +203,8 @@ namespace xt
     template <class CT, class... S>
     class xview;
 
-    template <class F, class R, class... CT>
+    template <class F, class... CT>
     class xfunction;
-
-    namespace check_policy
-    {
-        struct none
-        {
-        };
-        struct full
-        {
-        };
-    }
-
-    namespace evaluation_strategy
-    {
-        struct base
-        {
-        };
-        struct immediate : base
-        {
-        };
-        struct lazy : base
-        {
-        };
-        /*
-        struct cached
-        {
-        };
-        */
-    }
 }
 
 #endif

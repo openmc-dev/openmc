@@ -180,7 +180,7 @@ PhotonInteraction::PhotonInteraction(hid_t group, int i_element)
   // Read Compton profiles
   read_dataset(rgroup, "J", profile_pdf_);
 
-  // Get Compton profile momentum grid. By deafult, an xtensor has a size of 1.
+  // Get Compton profile momentum grid
   if (data::compton_profile_pz.size() == 0) {
     read_dataset(rgroup, "pz", data::compton_profile_pz);
   }

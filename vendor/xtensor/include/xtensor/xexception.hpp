@@ -1,5 +1,6 @@
 /***************************************************************************
-* Copyright (c) 2016, Johan Mabille, Sylvain Corlay and Wolf Vollprecht    *
+* Copyright (c) Johan Mabille, Sylvain Corlay and Wolf Vollprecht          *
+* Copyright (c) QuantStack                                                 *
 *                                                                          *
 * Distributed under the terms of the BSD 3-Clause License.                 *
 *                                                                          *
@@ -34,9 +35,48 @@ namespace xt
     template <class S1, class S2>
     [[noreturn]] void throw_broadcast_error(const S1& lhs, const S2& rhs);
 
+    /*********************
+     * concatenate_error *
+     *********************/
+
+    class concatenate_error : public std::runtime_error
+    {
+    public:
+
+        explicit concatenate_error(const char* msg)
+            : std::runtime_error(msg)
+        {
+        }
+    };
+
+    template <class S1, class S2>
+    [[noreturn]] void throw_concatenate_error(const S1& lhs, const S2& rhs);
+
     /**********************************
      * broadcast_error implementation *
      **********************************/
+
+    namespace detail
+    {
+        template <class S1, class S2>
+        inline std::string shape_error_message(const S1& lhs, const S2& rhs)
+        {
+            std::ostringstream buf("Incompatible dimension of arrays:", std::ios_base::ate);
+
+            buf << "\n LHS shape = (";
+            using size_type1 = typename S1::value_type;
+            std::ostream_iterator<size_type1> iter1(buf, ", ");
+            std::copy(lhs.cbegin(), lhs.cend(), iter1);
+
+            buf << ")\n RHS shape = (";
+            using size_type2 = typename S2::value_type;
+            std::ostream_iterator<size_type2> iter2(buf, ", ");
+            std::copy(rhs.cbegin(), rhs.cend(), iter2);
+            buf << ")";
+
+            return buf.str();
+        }
+    }
 
 #ifdef NDEBUG
     // Do not inline this function
@@ -49,20 +89,28 @@ namespace xt
     template <class S1, class S2>
     [[noreturn]] void throw_broadcast_error(const S1& lhs, const S2& rhs)
     {
-        std::ostringstream buf("Incompatible dimension of arrays:", std::ios_base::ate);
+        std::string msg = detail::shape_error_message(lhs, rhs);
+        throw broadcast_error(msg.c_str());
+    }
+#endif
 
-        buf << "\n LHS shape = (";
-        using size_type1 = typename S1::value_type;
-        std::ostream_iterator<size_type1> iter1(buf, ", ");
-        std::copy(lhs.cbegin(), lhs.cend(), iter1);
+    /************************************
+     * concatenate_error implementation *
+     ************************************/
 
-        buf << ")\n RHS shape = (";
-        using size_type2 = typename S2::value_type;
-        std::ostream_iterator<size_type2> iter2(buf, ", ");
-        std::copy(rhs.cbegin(), rhs.cend(), iter2);
-        buf << ")";
-
-        throw broadcast_error(buf.str().c_str());
+#ifdef NDEBUG
+    // Do not inline this function
+    template <class S1, class S2>
+    [[noreturn]] void throw_concatenate_error(const S1&, const S2&)
+    {
+        throw concatenate_error("Incompatible dimension of arrays, compile in DEBUG for more info");
+    }
+#else
+    template <class S1, class S2>
+    [[noreturn]] void throw_concatenate_error(const S1& lhs, const S2& rhs)
+    {
+        std::string msg = detail::shape_error_message(lhs, rhs);
+        throw concatenate_error(msg.c_str());
     }
 #endif
 
@@ -97,8 +145,8 @@ namespace xt
         {
         }
 
-        template <class S, std::size_t dim, class... Args>
-        inline void check_index_impl(const S& shape, std::size_t arg, Args... args)
+        template <class S, std::size_t dim, class T, class... Args>
+        inline void check_index_impl(const S& shape, T arg, Args... args)
         {
             if (sizeof...(Args) + 1 > shape.size())
             {
@@ -106,7 +154,7 @@ namespace xt
             }
             else
             {
-                if (arg >= std::size_t(shape[dim]) && shape[dim] != 1)
+                if (std::size_t(arg) >= std::size_t(shape[dim]) && shape[dim] != 1)
                 {
                     throw std::out_of_range("index " + std::to_string(arg) + " is out of bounds for axis "
                         + std::to_string(dim) + " with size " + std::to_string(shape[dim]));
@@ -127,17 +175,33 @@ namespace xt
     inline void check_element_index(const S& shape, It first, It last)
     {
         using value_type = typename std::iterator_traits<It>::value_type;
-        auto dst = static_cast<typename S::size_type>(last - first);
+        using size_type = typename S::size_type;
+        auto dst = static_cast<size_type>(last - first);
         It efirst = last - static_cast<std::ptrdiff_t>((std::min)(shape.size(), dst));
         std::size_t axis = 0;
-        while (efirst != last)
+        
+        if(shape.empty())
         {
-            if (*efirst >= value_type(shape[axis]) && shape[axis] != 1)
+            if(first != last && *(--last) != value_type(0))
             {
-                throw std::out_of_range("index " + std::to_string(*efirst) + " is out of bounds for axis "
-                    + std::to_string(axis) + " with size " + std::to_string(shape[axis]));
+                throw std::out_of_range("index out of bound (empty array)");
             }
-            ++efirst, ++axis;
+            else
+            {
+                return;
+            }
+        }
+        else
+        {
+            while (efirst != last)
+            {
+                if (*efirst >= value_type(shape[axis]) && shape[axis] != 1)
+                {
+                    throw std::out_of_range("index " + std::to_string(*efirst) + " is out of bounds for axis "
+                        + std::to_string(axis) + " with size " + std::to_string(shape[axis]));
+                }
+                ++efirst, ++axis;
+            }
         }
     }
 

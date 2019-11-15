@@ -34,7 +34,7 @@ namespace xtl
             const char* data = static_cast<const char*>(buffer);
             for (; length != 0; --length)
             {
-                hash = (hash * 131) + *data++;
+                hash = (hash * 131) + static_cast<std::size_t>(*data++);
             }
             return hash;
         }
@@ -65,11 +65,11 @@ namespace xtl
             switch (length)
             {
             case 3:
-                hash ^= data[2] << 16;
+                hash ^= static_cast<std::size_t>(data[2] << 16);
             case 2:
-                hash ^= data[1] << 8;
+                hash ^= static_cast<std::size_t>(data[1] << 8);
             case 1:
-                hash ^= data[0];
+                hash ^= static_cast<std::size_t>(data[0]);
                 hash *= m;
             }
 
@@ -102,7 +102,7 @@ namespace xtl
                 static_cast<std::size_t>(0x5bd1e995UL);
             constexpr int r = 47;
             const char* data = static_cast<const char*>(buffer);
-            const char* end = data + (length & ~0x7);
+            const char* end = data + (length & std::size_t(~0x7));
             std::size_t hash = seed ^ (length * m);
             while (data != end)
             {

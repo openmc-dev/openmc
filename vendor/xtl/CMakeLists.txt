@@ -9,9 +9,11 @@
 cmake_minimum_required(VERSION 3.1)
 project(xtl)
 
+enable_testing()
+
 set(XTL_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/include)
 
-# Versionning
+# Versioning
 # ===========
 
 file(STRINGS "${XTL_INCLUDE_DIR}/xtl/xtl_config.hpp" xtl_version_defines
@@ -28,7 +30,7 @@ message(STATUS "xtl v${${PROJECT_NAME}_VERSION}")
 # Dependencies
 # ============
 
-#find_package(nlohmann_json)
+find_package(nlohmann_json QUIET)
 
 # Build
 # =====
@@ -40,13 +42,18 @@ set(XTL_HEADERS
     ${XTL_INCLUDE_DIR}/xtl/xclosure.hpp
     ${XTL_INCLUDE_DIR}/xtl/xcomplex.hpp
     ${XTL_INCLUDE_DIR}/xtl/xcomplex_sequence.hpp
+    ${XTL_INCLUDE_DIR}/xtl/xspan.hpp
+    ${XTL_INCLUDE_DIR}/xtl/xspan_impl.hpp
     ${XTL_INCLUDE_DIR}/xtl/xdynamic_bitset.hpp
     ${XTL_INCLUDE_DIR}/xtl/xfunctional.hpp
     ${XTL_INCLUDE_DIR}/xtl/xhash.hpp
     ${XTL_INCLUDE_DIR}/xtl/xhierarchy_generator.hpp
     ${XTL_INCLUDE_DIR}/xtl/xiterator_base.hpp
     ${XTL_INCLUDE_DIR}/xtl/xjson.hpp
+    ${XTL_INCLUDE_DIR}/xtl/xmasked_value_meta.hpp
+    ${XTL_INCLUDE_DIR}/xtl/xmasked_value.hpp
     ${XTL_INCLUDE_DIR}/xtl/xmeta_utils.hpp
+    ${XTL_INCLUDE_DIR}/xtl/xoptional_meta.hpp
     ${XTL_INCLUDE_DIR}/xtl/xoptional.hpp
     ${XTL_INCLUDE_DIR}/xtl/xoptional_sequence.hpp
     ${XTL_INCLUDE_DIR}/xtl/xproxy_wrapper.hpp
@@ -61,9 +68,13 @@ add_library(xtl INTERFACE)
 target_include_directories(xtl INTERFACE $<BUILD_INTERFACE:${XTL_INCLUDE_DIR}>
                                          $<INSTALL_INTERFACE:include>)
 
+# xtl requires C++14 support!
+target_compile_features(xtl INTERFACE cxx_std_14)
 
-OPTION(BUILD_TESTS "xtl test suite" OFF)
-OPTION(DOWNLOAD_GTEST "build gtest from downloaded sources" OFF)
+
+option(BUILD_TESTS "xtl test suite" OFF)
+option(DOWNLOAD_GTEST "build gtest from downloaded sources" OFF)
+option(XTL_DISABLE_EXCEPTIONS "Disable C++ exceptions" OFF)
 
 if(DOWNLOAD_GTEST OR GTEST_SRC_DIR)
     set(BUILD_TESTS ON)
@@ -111,3 +122,9 @@ install(FILES ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}Config.cmake
 install(EXPORT ${PROJECT_NAME}-targets
         FILE ${PROJECT_NAME}Targets.cmake
         DESTINATION ${XTL_CMAKECONFIG_INSTALL_DIR})
+
+configure_file(${PROJECT_NAME}.pc.in
+               "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}.pc"
+                @ONLY)
+install(FILES "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}.pc"
+        DESTINATION "${CMAKE_INSTALL_LIBDIR}/pkgconfig/")

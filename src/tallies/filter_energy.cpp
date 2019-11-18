@@ -61,9 +61,9 @@ const
 {
   if (p->g_ != F90_NONE && matches_transport_groups_) {
     if (estimator == ESTIMATOR_TRACKLENGTH) {
-      match.bins_.push_back(data::mg.num_energy_groups_ - p->g_);
+      match.bins_.push_back(data::mg.num_energy_groups_ - p->g_ - 1);
     } else {
-      match.bins_.push_back(data::mg.num_energy_groups_ - p->g_last_);
+      match.bins_.push_back(data::mg.num_energy_groups_ - p->g_last_ - 1);
     }
     match.weights_.push_back(1.0);
 
@@ -104,7 +104,7 @@ EnergyoutFilter::get_all_bins(const Particle* p, int estimator,
                               FilterMatch& match) const
 {
   if (p->g_ != F90_NONE && matches_transport_groups_) {
-    match.bins_.push_back(data::mg.num_energy_groups_ - p->g_);
+    match.bins_.push_back(data::mg.num_energy_groups_ - p->g_ - 1);
     match.weights_.push_back(1.0);
 
   } else {

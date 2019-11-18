@@ -171,14 +171,12 @@ ScattData::sample_energy(int gin, int& gout, int& i_gout)
 {
   // Sample the outgoing group
   double xi = prn();
-
+  double prob = 0.;
   i_gout = 0;
-  gout = gmin[gin];
-  double prob = energy[gin][i_gout];
-  while((prob < xi) && (gout < gmax[gin])) {
-    gout++;
-    i_gout++;
+  for (gout = gmin[gin]; gout < gmax[gin]; ++gout) {
     prob += energy[gin][i_gout];
+    if (xi < prob) break;
+    ++i_gout;
   }
 }
 
@@ -358,20 +356,18 @@ ScattDataLegendre::sample(int gin, int& gout, double& mu, double& wgt)
   // Now we can sample mu using the scattering kernel using rejection
   // sampling from a rectangular bounding box
   double M = max_val[gin][i_gout];
-  int samples = 0;
-
-  while(true) {
+  int samples;
+  for (samples = 0; samples < MAX_SAMPLE; ++samples) {
     mu = 2. * prn() - 1.;
     double f = calc_f(gin, gout, mu);
     if (f > 0.) {
       double u = prn() * M;
       if (u <= f) break;
     }
-    samples++;
-    if (samples > MAX_SAMPLE) {
-        fatal_error("Maximum number of Legendre expansion samples reached");
-    }
-  };
+  }
+  if (samples == MAX_SAMPLE) {
+    fatal_error("Maximum number of Legendre expansion samples reached!");
+  }
 
   // Update the weight to reflect neutron multiplicity
   wgt *= mult[gin][i_gout];

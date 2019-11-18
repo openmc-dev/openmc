@@ -123,7 +123,7 @@ Particle::from_source(const Bank* src)
   } else {
     g_ = static_cast<int>(src->E);
     g_last_ = static_cast<int>(src->E);
-    E_ = data::mg.energy_bin_avg_[g_ - 1];
+    E_ = data::mg.energy_bin_avg_[g_];
   }
   E_last_ = E_;
 }
@@ -202,12 +202,12 @@ Particle::transport()
           model::materials[material_]->calculate_xs(*this);
         }
       } else {
-        // Get the MG data
-        calculate_xs_c(material_, g_, sqrtkT_, this->u_local(),
-          macro_xs_.total, macro_xs_.absorption, macro_xs_.nu_fission);
+        // Get the MG data; unlike the CE case above, we have to re-calculate
+        // cross sections for every collision since the cross sections may
+        // be angle-dependent
+        data::mg.macro_xs_[material_].calculate_xs(*this);
 
-        // Finally, update the particle group while we have already checked
-        // for if multi-group
+        // Update the particle's group while we know we are multi-group
         g_last_ = g_;
       }
     } else {
@@ -428,7 +428,7 @@ Particle::cross_surface()
     }
     return;
 
-  } else if ((surf->bc_ == BC_REFLECT || surf->bc_ == BC_WHITE) 
+  } else if ((surf->bc_ == BC_REFLECT || surf->bc_ == BC_WHITE)
                                     && (settings::run_mode != RUN_MODE_PLOTTING)) {
     // =======================================================================
     // PARTICLE REFLECTS FROM SURFACE
@@ -458,11 +458,11 @@ Particle::cross_surface()
       score_surface_tally(this, model::active_meshsurf_tallies);
       this->r() = r;
     }
-     
+
     Direction u = (surf->bc_ == BC_REFLECT) ?
       surf->reflect(this->r(), this->u()) :
       surf->diffuse_reflect(this->r(), this->u());
-    
+
     // Make sure new particle direction is normalized
     this->u() = u / u.norm();
 

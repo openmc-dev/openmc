@@ -186,21 +186,16 @@ void process_calculate_xs_events(std::vector<Particle*>& queue)
   for (auto& p : queue) {
     // Calculate microscopic and macroscopic cross sections
     if (p->material_ != MATERIAL_VOID) {
-      if (settings::run_CE) {
+	  // Only works for CE, no MG support
+      //if (settings::run_CE) {
         // If the material is the same as the last material and the
         // temperature hasn't changed, we don't need to lookup cross
         // sections again.
         model::materials[p->material_]->calculate_xs(*p);
-      } else {
-        // Get the MG data
-        calculate_xs_c(p->material_, p->g_, p->sqrtkT_, p->u_local(),
-          p->macro_xs_.total, p->macro_xs_.absorption, p->macro_xs_.nu_fission);
-
-        // Finally, update the particle group while we have already checked
-        // for if multi-group
-        p->g_last_ = p->g_;
       }
-    } else {
+		//else {
+      //}
+     else {
       p->macro_xs_.total      = 0.0;
       p->macro_xs_.absorption = 0.0;
       p->macro_xs_.fission    = 0.0;

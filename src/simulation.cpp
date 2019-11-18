@@ -183,7 +183,8 @@ void process_calculate_xs_events(int * queue, int n)
   for (int i = 0; i < data::nuclides.size(); ++i) {
 	  // loop over particles
     for (int j = 0; j < n; j++) {
-		Particle * p = particles + queue[i];
+		//Particle * p = particles + queue[i];
+		Particle * p = particles + queue[j];
       if (p->material_ == MATERIAL_VOID) continue;
 
       // If material doesn't have this nuclide, skip it
@@ -370,6 +371,7 @@ void process_collision_events()
   //for (auto& p : collision_queue) {
   for (int i = 0; i < collision_queue_length; i++) {
 	  Particle * p = particles + collision_queue[i];
+	  std::cout << "Beginning collision of particle id " << collision_queue[i] << " with energy E = " << p->E_ << std::endl;
     // Score collision estimate of keff
     if (settings::run_mode == RUN_MODE_EIGENVALUE &&
         p->type_ == Particle::Type::neutron) {
@@ -383,6 +385,8 @@ void process_collision_events()
 
     if (!model::active_meshsurf_tallies.empty())
       score_surface_tally(p, model::active_meshsurf_tallies);
+	    
+	std::cout << "After surface tally of particle id " << collision_queue[i] << " with energy E = " << p->E_ << std::endl;
 
     // Clear surface component
     p->surface_ = 0;
@@ -392,6 +396,8 @@ void process_collision_events()
     } else {
       collision_mg(p);
     }
+
+	std::cout << "After collision() of particle id " << collision_queue[i] << " with energy E = " << p->E_ << std::endl;
 
     // Score collision estimator tallies -- this is done after a collision
     // has occurred rather than before because we need information on the
@@ -404,6 +410,7 @@ void process_collision_events()
         score_analog_tally_mg(p);
       }
     }
+	std::cout << "After analog tally of particle id " << collision_queue[i] << " with energy E = " << p->E_ << std::endl;
 
     // Reset banked weight during collision
     p->n_bank_ = 0;
@@ -449,10 +456,80 @@ void process_collision_events()
     if (p->alive_)
 	{
 		dispatch_xs_event(collision_queue[i]);
+	    std::cout << "Ended collision of particle id " << collision_queue[i] << " with energy E = " << p->E_ << std::endl;
+		assert(std::isfinite(p->E_) );
 	}
   }
 
   collision_queue_length = 0;
+}
+
+void check_energies(void)
+{
+	int * Q;
+	int n;
+
+
+	Q = calculate_fuel_xs_queue;
+	n = calculate_fuel_xs_queue_length;
+	for( int i = 0; i < n; i++ )
+	{
+		Particle * p = particles + Q[i];
+		Particle p_true = *p;
+		if( !std::isfinite(particles[Q[i]].E_ ) )
+		{
+			std::cout << "NAN energy particle found at index xs FUEL " << Q[i] << std::endl;
+			assert(0);
+		}
+	}
+	Q = calculate_nonfuel_xs_queue;
+	n = calculate_nonfuel_xs_queue_length ;
+	for( int i = 0; i < n; i++ )
+	{
+		Particle * p = particles + Q[i];
+		Particle p_true = *p;
+		if( !std::isfinite(particles[Q[i]].E_ ) )
+		{
+			std::cout << "NAN energy particle found at index xs Non fuel " << Q[i] << std::endl;
+			assert(0);
+		}
+	}
+	Q = advance_particle_queue;
+	n = advance_particle_queue_length     ;
+	for( int i = 0; i < n; i++ )
+	{
+		Particle * p = particles + Q[i];
+		Particle p_true = *p;
+		if( !std::isfinite(particles[Q[i]].E_ ) )
+		{
+			std::cout << "NAN energy particle found at index advance particle " << Q[i] << std::endl;
+			assert(0);
+		}
+	}
+	Q = surface_crossing_queue;
+	n = surface_crossing_queue_length     ;
+	for( int i = 0; i < n; i++ )
+	{
+		Particle * p = particles + Q[i];
+		Particle p_true = *p;
+		if( !std::isfinite(particles[Q[i]].E_ ) )
+		{
+			std::cout << "NAN energy particle found at index surface crossing " << Q[i] << std::endl;
+			assert(0);
+		}
+	}
+	Q = collision_queue;
+	n = collision_queue_length            ;
+	for( int i = 0; i < n; i++ )
+	{
+		Particle * p = particles + Q[i];
+		Particle p_true = *p;
+		if( !std::isfinite(particles[Q[i]].E_ ) )
+		{
+			std::cout << "NAN energy particle found at index collision " << Q[i] << std::endl;
+			assert(0);
+		}
+	}
 }
 
 void transport()
@@ -491,21 +568,35 @@ void transport()
 			std::cout << "Surface Crossings = " << surface_crossing_queue_length << std::endl;
 			std::cout << "Collisions = " << collision_queue_length << std::endl;
 			int max = std::max({calculate_fuel_xs_queue_length, calculate_nonfuel_xs_queue_length, advance_particle_queue_length, surface_crossing_queue_length, collision_queue_length});
+			check_energies();
 			if (max == 0) {
 				break;
 			} else if (max == calculate_fuel_xs_queue_length) {
-				//std::cout << "Performing Fuel XS Lookups..." << std::endl;
+				std::cout << "pre fuel XS check..." << std::endl;
+				//check_energies(calculate_fuel_xs_queue, calculate_fuel_xs_queue_length);
+				std::cout << "Performing Fuel XS Lookups..." << std::endl;
 				process_calculate_xs_events(calculate_fuel_xs_queue, calculate_fuel_xs_queue_length);
-				//std::cout << "Done." << std::endl;
 				calculate_fuel_xs_queue_length = 0;
 			} else if (max == calculate_nonfuel_xs_queue_length) {
+				std::cout << "pre non fuel XS check..." << std::endl;
+				//check_energies(calculate_nonfuel_xs_queue, calculate_nonfuel_xs_queue_length);
+				std::cout << "Performing Non Fuel XS Lookups..." << std::endl;
 				process_calculate_xs_events(calculate_nonfuel_xs_queue, calculate_nonfuel_xs_queue_length);
 				calculate_nonfuel_xs_queue_length = 0;
 			} else if (max == advance_particle_queue_length) {
+				std::cout << "pre advancing check..." << std::endl;
+				//check_energies(advance_particle_queue, advance_particle_queue_length);
+				std::cout << "Advancing Particles..." << std::endl;
 				process_advance_particle_events();
 			} else if (max == surface_crossing_queue_length) {
+				std::cout << "pre surface crossing check..." << std::endl;
+				//check_energies(surface_crossing_queue, surface_crossing_queue_length);
+				std::cout << "Surface Crossings..." << std::endl;
 				process_surface_crossing_events();
 			} else if (max == collision_queue_length) {
+				std::cout << "pre Colliding check..." << std::endl;
+				//check_energies(collision_queue, collision_queue_length);
+				std::cout << "Colliding..." << std::endl;
 				process_collision_events();
 			}
 		}

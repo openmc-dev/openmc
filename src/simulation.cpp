@@ -371,7 +371,7 @@ void process_collision_events()
   //for (auto& p : collision_queue) {
   for (int i = 0; i < collision_queue_length; i++) {
 	  Particle * p = particles + collision_queue[i];
-	  std::cout << "Beginning collision of particle id " << collision_queue[i] << " with energy E = " << p->E_ << std::endl;
+	  //std::cout << "Beginning collision of particle id " << collision_queue[i] << " with energy E = " << p->E_ << std::endl;
     // Score collision estimate of keff
     if (settings::run_mode == RUN_MODE_EIGENVALUE &&
         p->type_ == Particle::Type::neutron) {
@@ -386,7 +386,7 @@ void process_collision_events()
     if (!model::active_meshsurf_tallies.empty())
       score_surface_tally(p, model::active_meshsurf_tallies);
 	    
-	std::cout << "After surface tally of particle id " << collision_queue[i] << " with energy E = " << p->E_ << std::endl;
+	//std::cout << "After surface tally of particle id " << collision_queue[i] << " with energy E = " << p->E_ << std::endl;
 
     // Clear surface component
     p->surface_ = 0;
@@ -397,7 +397,7 @@ void process_collision_events()
       collision_mg(p);
     }
 
-	std::cout << "After collision() of particle id " << collision_queue[i] << " with energy E = " << p->E_ << std::endl;
+	//std::cout << "After collision() of particle id " << collision_queue[i] << " with energy E = " << p->E_ << std::endl;
 
     // Score collision estimator tallies -- this is done after a collision
     // has occurred rather than before because we need information on the
@@ -410,7 +410,7 @@ void process_collision_events()
         score_analog_tally_mg(p);
       }
     }
-	std::cout << "After analog tally of particle id " << collision_queue[i] << " with energy E = " << p->E_ << std::endl;
+	//std::cout << "After analog tally of particle id " << collision_queue[i] << " with energy E = " << p->E_ << std::endl;
 
     // Reset banked weight during collision
     p->n_bank_ = 0;
@@ -456,7 +456,7 @@ void process_collision_events()
     if (p->alive_)
 	{
 		dispatch_xs_event(collision_queue[i]);
-	    std::cout << "Ended collision of particle id " << collision_queue[i] << " with energy E = " << p->E_ << std::endl;
+	    //std::cout << "Ended collision of particle id " << collision_queue[i] << " with energy E = " << p->E_ << std::endl;
 		assert(std::isfinite(p->E_) );
 	}
   }
@@ -561,42 +561,46 @@ void transport()
 			dispatch_xs_event(i);
 		}
 
+		int event_kernel_executions = 0;
 		while (true) {
+			event_kernel_executions++;
+			/*
 			std::cout << "Fuel XS Lookups = " << calculate_fuel_xs_queue_length << std::endl;
 			std::cout << "Non Fuel XS Lookups = " << calculate_nonfuel_xs_queue_length << std::endl;
 			std::cout << "Advance Particles = " << advance_particle_queue_length << std::endl;
 			std::cout << "Surface Crossings = " << surface_crossing_queue_length << std::endl;
 			std::cout << "Collisions = " << collision_queue_length << std::endl;
+			*/
 			int max = std::max({calculate_fuel_xs_queue_length, calculate_nonfuel_xs_queue_length, advance_particle_queue_length, surface_crossing_queue_length, collision_queue_length});
 			check_energies();
 			if (max == 0) {
 				break;
 			} else if (max == calculate_fuel_xs_queue_length) {
-				std::cout << "pre fuel XS check..." << std::endl;
+				//std::cout << "pre fuel XS check..." << std::endl;
 				//check_energies(calculate_fuel_xs_queue, calculate_fuel_xs_queue_length);
-				std::cout << "Performing Fuel XS Lookups..." << std::endl;
+				//std::cout << "Performing Fuel XS Lookups..." << std::endl;
 				process_calculate_xs_events(calculate_fuel_xs_queue, calculate_fuel_xs_queue_length);
 				calculate_fuel_xs_queue_length = 0;
 			} else if (max == calculate_nonfuel_xs_queue_length) {
-				std::cout << "pre non fuel XS check..." << std::endl;
+				//std::cout << "pre non fuel XS check..." << std::endl;
 				//check_energies(calculate_nonfuel_xs_queue, calculate_nonfuel_xs_queue_length);
-				std::cout << "Performing Non Fuel XS Lookups..." << std::endl;
+			//	std::cout << "Performing Non Fuel XS Lookups..." << std::endl;
 				process_calculate_xs_events(calculate_nonfuel_xs_queue, calculate_nonfuel_xs_queue_length);
 				calculate_nonfuel_xs_queue_length = 0;
 			} else if (max == advance_particle_queue_length) {
-				std::cout << "pre advancing check..." << std::endl;
+				//std::cout << "pre advancing check..." << std::endl;
 				//check_energies(advance_particle_queue, advance_particle_queue_length);
-				std::cout << "Advancing Particles..." << std::endl;
+				//std::cout << "Advancing Particles..." << std::endl;
 				process_advance_particle_events();
 			} else if (max == surface_crossing_queue_length) {
-				std::cout << "pre surface crossing check..." << std::endl;
+				//std::cout << "pre surface crossing check..." << std::endl;
 				//check_energies(surface_crossing_queue, surface_crossing_queue_length);
-				std::cout << "Surface Crossings..." << std::endl;
+				//std::cout << "Surface Crossings..." << std::endl;
 				process_surface_crossing_events();
 			} else if (max == collision_queue_length) {
-				std::cout << "pre Colliding check..." << std::endl;
+				//std::cout << "pre Colliding check..." << std::endl;
 				//check_energies(collision_queue, collision_queue_length);
-				std::cout << "Colliding..." << std::endl;
+				//std::cout << "Colliding..." << std::endl;
 				process_collision_events();
 			}
 		}
@@ -615,6 +619,7 @@ void transport()
 		
 		// TODO: Do this only once per PI
 		free_event_queues();
+		std::cout << "Event kernels retired: " << event_kernel_executions << std::endl;
 	}
 }
 

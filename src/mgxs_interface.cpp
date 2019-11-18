@@ -38,7 +38,7 @@ MgxsInterface::MgxsInterface(const std::string& path_cross_sections,
 void MgxsInterface::set_nuclides_and_temperatures(
     std::vector<std::string> xs_to_read,
     std::vector<std::vector<double>> xs_temps)
-{ 
+{
   // Check to remove all duplicates
   xs_to_read_ = xs_to_read;
   xs_temps_to_read_ = xs_temps;
@@ -285,79 +285,6 @@ void mark_fissionable_mgxs_materials()
       }
     }
   }
-}
-
-//==============================================================================
-// Mgxs tracking/transport/tallying interface methods
-//==============================================================================
-
-void
-calculate_xs_c(int i_mat, int gin, double sqrtkT, Direction u,
-     double& total_xs, double& abs_xs, double& nu_fiss_xs)
-{
-  data::mg.macro_xs_[i_mat].calculate_xs(gin - 1, sqrtkT, u, total_xs, abs_xs,
-       nu_fiss_xs);
-}
-
-//==============================================================================
-
-double
-get_nuclide_xs(int index, int xstype, int gin, const int* gout,
-  const double* mu, const int* dg)
-{
-  int gout_c;
-  const int* gout_c_p;
-  if (gout != nullptr) {
-    gout_c = *gout - 1;
-    gout_c_p = &gout_c;
-  } else {
-    gout_c_p = gout;
-  }
-  return data::mg.nuclides_[index].get_xs(xstype, gin - 1, gout_c_p, mu, dg);
-}
-
-//==============================================================================
-
-double
-get_macro_xs(int index, int xstype, int gin, const int* gout,
-  const double* mu, const int* dg)
-{
-  int gout_c;
-  const int* gout_c_p;
-  if (gout != nullptr) {
-    gout_c = *gout - 1;
-    gout_c_p = &gout_c;
-  } else {
-    gout_c_p = gout;
-  }
-  return data::mg.macro_xs_[index].get_xs(xstype, gin - 1, gout_c_p, mu, dg);
-}
-
-//==============================================================================
-// General Mgxs methods
-//==============================================================================
-
-void
-get_name_c(int index, int name_len, char* name)
-{
-  // First blank out our input string
-  std::string str(name_len - 1, ' ');
-  std::strcpy(name, str.c_str());
-
-  // Now get the data and copy to the C-string
-  str = data::mg.nuclides_[index - 1].name;
-  std::strcpy(name, str.c_str());
-
-  // Finally, remove the null terminator
-  name[std::strlen(name)] = ' ';
-}
-
-//==============================================================================
-
-double
-get_awr_c(int index)
-{
-  return data::mg.nuclides_[index - 1].awr;
 }
 
 } // namespace openmc

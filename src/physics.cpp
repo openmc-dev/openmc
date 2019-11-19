@@ -175,6 +175,7 @@ create_fission_sites(Particle* p, int i_nuclide, const Reaction* rx,
 
   p->fission_ = true;
   for (int i = 0; i < nu; ++i) {
+	  /*
     // Create new bank site and get reference to last element
     bank.emplace_back();
     auto& site {bank.back()};
@@ -183,12 +184,22 @@ create_fission_sites(Particle* p, int i_nuclide, const Reaction* rx,
     site.r = p->r();
     site.particle = Particle::Type::neutron;
     site.wgt = 1. / weight;
+	*/
+	  int idx;
+	  #pragma omp atomic capture
+	  idx = shared_fission_bank_length++;
+	  Particle::Bank * site = shared_fission_bank + idx;
+	  site->r = p->r();
+	  site->particle = Particle::Type::neutron;
+	  site->wgt = 1. / weight;
 
     // Sample delayed group and angle/energy for fission reaction
-    sample_fission_neutron(i_nuclide, rx, p->E_, &site);
+    //sample_fission_neutron(i_nuclide, rx, p->E_, &site);
+    sample_fission_neutron(i_nuclide, rx, p->E_, site);
 
     // Set the delayed group on the particle as well
-    p->delayed_group_ = site.delayed_group;
+    //p->delayed_group_ = site.delayed_group;
+    p->delayed_group_ = site->delayed_group;
 
     // Increment the number of neutrons born delayed
     if (p->delayed_group_ > 0) {

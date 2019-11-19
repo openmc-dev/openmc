@@ -630,7 +630,7 @@ void transport()
 		free_event_queues();
 		std::cout << "Event kernels retired: " << event_kernel_executions << std::endl;
 	}
-	shared_fission_bank_length = 0;
+	//shared_fission_bank_length = 0;
 }
 
 } // namespace openmc
@@ -1075,6 +1075,7 @@ void finalize_generation()
 	  // We need to move all the stuff from the shared_fission_bank into the real one.
 		//std::vector<Particle::Bank> shared_fission_bank_vector(shared_fission_bank, shared_fission_bank + shared_fission_bank_length);
       //simulation::fission_bank = shared_fission_bank_vector;
+	  std::cout << "Fission bank length = " << shared_fission_bank_length << std::endl;
 	  for( int i = 0; i < shared_fission_bank_length; i++ )
 		  simulation::fission_bank.push_back(shared_fission_bank[i]);
 	  shared_fission_bank_length = 0;

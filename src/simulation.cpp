@@ -490,8 +490,6 @@ void check_energies(void)
 	n = calculate_fuel_xs_queue_length;
 	for( int i = 0; i < n; i++ )
 	{
-		Particle * p = particles + Q[i];
-		Particle p_true = *p;
 		if( !std::isfinite(particles[Q[i]].E_ ) )
 		{
 			std::cout << "NAN energy particle found at index xs FUEL " << Q[i] << std::endl;
@@ -502,8 +500,6 @@ void check_energies(void)
 	n = calculate_nonfuel_xs_queue_length ;
 	for( int i = 0; i < n; i++ )
 	{
-		Particle * p = particles + Q[i];
-		Particle p_true = *p;
 		if( !std::isfinite(particles[Q[i]].E_ ) )
 		{
 			std::cout << "NAN energy particle found at index xs Non fuel " << Q[i] << std::endl;
@@ -514,8 +510,6 @@ void check_energies(void)
 	n = advance_particle_queue_length     ;
 	for( int i = 0; i < n; i++ )
 	{
-		Particle * p = particles + Q[i];
-		Particle p_true = *p;
 		if( !std::isfinite(particles[Q[i]].E_ ) )
 		{
 			std::cout << "NAN energy particle found at index advance particle " << Q[i] << std::endl;
@@ -526,8 +520,6 @@ void check_energies(void)
 	n = surface_crossing_queue_length     ;
 	for( int i = 0; i < n; i++ )
 	{
-		Particle * p = particles + Q[i];
-		Particle p_true = *p;
 		if( !std::isfinite(particles[Q[i]].E_ ) )
 		{
 			std::cout << "NAN energy particle found at index surface crossing " << Q[i] << std::endl;
@@ -538,8 +530,6 @@ void check_energies(void)
 	n = collision_queue_length            ;
 	for( int i = 0; i < n; i++ )
 	{
-		Particle * p = particles + Q[i];
-		Particle p_true = *p;
 		if( !std::isfinite(particles[Q[i]].E_ ) )
 		{
 			std::cout << "NAN energy particle found at index collision " << Q[i] << std::endl;
@@ -676,14 +666,15 @@ int openmc_simulation_init()
   // Skip if simulation has already been initialized
   if (simulation::initialized) return 0;
 	
+
+  // Determine how much work each process should do
+  calculate_work();
+  
   // We assume that the number of fission sites will be at most
 	// 10x the number of neutrons run on this rank
 	int shared_fission_bank_size = 10 * simulation::work_per_rank;
 	// Initializes the shared fission bank
 	init_shared_fission_bank(shared_fission_bank_size);
-
-  // Determine how much work each process should do
-  calculate_work();
 
   // Allocate array for matching filter bins
   #pragma omp parallel
@@ -1082,9 +1073,11 @@ void finalize_generation()
     //join_bank_from_threads();
 	
 	  // We need to move all the stuff from the shared_fission_bank into the real one.
-		//std::vector<Particle::Bank> shared_fission_bank_vector(shared_fission_bank, shared_fission_bank_length);
-		std::vector<Particle::Bank> shared_fission_bank_vector(shared_fission_bank, shared_fission_bank + shared_fission_bank_length);
-      simulation::fission_bank = shared_fission_bank_vector;
+		//std::vector<Particle::Bank> shared_fission_bank_vector(shared_fission_bank, shared_fission_bank + shared_fission_bank_length);
+      //simulation::fission_bank = shared_fission_bank_vector;
+	  for( int i = 0; i < shared_fission_bank_length; i++ )
+		  simulation::fission_bank.push_back(shared_fission_bank[i]);
+	  shared_fission_bank_length = 0;
 #endif
 
     // Distribute fission bank across processors evenly

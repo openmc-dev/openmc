@@ -92,6 +92,22 @@ void free_event_queues(void)
 
 constexpr size_t MAX_PARTICLES_PER_THREAD {100};
 
+Particle::Bank * shared_fission_bank;
+int shared_fission_bank_length = 0;
+int shared_fission_bank_max;
+
+void init_shared_fission_bank(int max)
+{
+	shared_fission_bank_max = max;
+	shared_fission_bank = new Particle::Bank[max];
+}
+
+void free_shared_fission_bank(void)
+{
+	delete[] shared_fission_bank;
+	shared_fission_bank_length = 0;
+}
+
 // TODO: What is going on here?
 void revive_particle_from_secondary(Particle* p)
 {
@@ -536,6 +552,9 @@ void transport()
 {
 	int remaining_work = simulation::work_per_rank;
 	int source_offset = 0;
+
+
+
 	// Subiterations to complete sets of particles
 	while (remaining_work > 0) {
 
@@ -621,6 +640,7 @@ void transport()
 		free_event_queues();
 		std::cout << "Event kernels retired: " << event_kernel_executions << std::endl;
 	}
+	shared_fission_bank_length = 0;
 }
 
 } // namespace openmc
@@ -639,9 +659,11 @@ int openmc_run()
 
   int err = 0;
   int status = 0;
+
   while (status == 0 && err == 0) {
     err = openmc_next_batch(&status);
   }
+
 
   openmc_simulation_finalize();
   return err;
@@ -653,6 +675,12 @@ int openmc_simulation_init()
 
   // Skip if simulation has already been initialized
   if (simulation::initialized) return 0;
+	
+  // We assume that the number of fission sites will be at most
+	// 10x the number of neutrons run on this rank
+	int shared_fission_bank_size = 10 * simulation::work_per_rank;
+	// Initializes the shared fission bank
+	init_shared_fission_bank(shared_fission_bank_size);
 
   // Determine how much work each process should do
   calculate_work();
@@ -717,6 +745,8 @@ int openmc_simulation_finalize()
 
   // Skip if simulation was never run
   if (!simulation::initialized) return 0;
+  
+  free_shared_fission_bank();
 
   // Stop active batch timer and start finalization timer
   simulation::time_active.stop();
@@ -1049,7 +1079,12 @@ void finalize_generation()
   if (settings::run_mode == RUN_MODE_EIGENVALUE) {
 #ifdef _OPENMP
     // Join the fission bank from each thread into one global fission bank
-    join_bank_from_threads();
+    //join_bank_from_threads();
+	
+	  // We need to move all the stuff from the shared_fission_bank into the real one.
+		//std::vector<Particle::Bank> shared_fission_bank_vector(shared_fission_bank, shared_fission_bank_length);
+		std::vector<Particle::Bank> shared_fission_bank_vector(shared_fission_bank, shared_fission_bank + shared_fission_bank_length);
+      simulation::fission_bank = shared_fission_bank_vector;
 #endif
 
     // Distribute fission bank across processors evenly

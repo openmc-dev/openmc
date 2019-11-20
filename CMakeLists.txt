@@ -152,6 +152,7 @@ target_compile_definitions(gsl INTERFACE GSL_THROW_ON_CONTRACT_VIOLATION)
 # RPATH information
 #===============================================================================
 
+# Provide install directory variables as defined by GNU coding standards
 include(GNUInstallDirs)
 
 # This block of code ensures that dynamic libraries can be found via the RPATH

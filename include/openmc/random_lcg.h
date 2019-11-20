@@ -24,7 +24,8 @@ constexpr int64_t DEFAULT_SEED = 1;
 //! @return A random number between 0 and 1
 //==============================================================================
 
-extern "C" double prn();
+//extern "C" double prn();
+extern "C" double prn(uint64_t * seed);
 
 //==============================================================================
 //! Generate a random number which is 'n' times ahead from the current seed.
@@ -35,21 +36,22 @@ extern "C" double prn();
 //! @return A random number between 0 and 1
 //==============================================================================
 
-extern "C" double future_prn(int64_t n);
+//extern "C" double future_prn(int64_t n);
+extern "C" double future_prn(int64_t n, uint64_t seed);
 
 //==============================================================================
 //! Set the RNG seed to a unique value based on the ID of the particle.
 //! @param id The particle ID
 //==============================================================================
 
-extern "C" void set_particle_seed(int64_t id);
+extern "C" void set_particle_seed(int64_t id, uint64_t * prn_seed );
 
 //==============================================================================
 //! Advance the random number seed 'n' times from the current seed.
 //! @param n The number of RNG seeds to skip ahead by
 //==============================================================================
 
-extern "C" void advance_prn_seed(int64_t n);
+extern "C" void advance_prn_seed(int64_t n, uint64_t * seed);
 
 //==============================================================================
 //! Advance a random number seed 'n' times.
@@ -73,7 +75,7 @@ uint64_t future_seed(uint64_t n, uint64_t seed);
 //! `STREAM_TRACKING` and `STREAM_TALLIES` for this argument.
 //==============================================================================
 
-extern "C" void prn_set_stream(int n);
+//extern "C" void prn_set_stream(int n);
 
 //==============================================================================
 //                               API FUNCTIONS

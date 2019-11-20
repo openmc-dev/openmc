@@ -473,10 +473,14 @@ void initialize_history(Particle* p, int64_t index_source)
   // set identifier for particle
   p->id_ = simulation::work_index[mpi::rank] + index_source;
 
+  // TODO: Why doesn't this include the particle skip offset? 
+  // ANSWER: Stride is included in the set seed function, which actually forwards based
+  // on the master_seed. 
   // set random number seed
   int64_t particle_seed = (simulation::total_gen + overall_generation() - 1)
     * settings::n_particles + p->id_;
-  set_particle_seed(particle_seed);
+  //set_particle_seed(particle_seed);
+  set_particle_seed(particle_seed, p->prn_seeds);
 
   // set particle trace
   simulation::trace = false;

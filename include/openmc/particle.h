@@ -288,7 +288,7 @@ public:
   bool write_track_ {false};
 
   // Current PRNG state
-  uint64_t prn_seed[N_STREAMS];  // current seed
+  uint64_t prn_seeds[N_STREAMS]; // current seeds
   int      stream;               // current RNG stream
 };
 

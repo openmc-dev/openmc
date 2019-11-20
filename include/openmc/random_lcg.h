@@ -25,7 +25,7 @@ constexpr int64_t DEFAULT_SEED = 1;
 //==============================================================================
 
 //extern "C" double prn();
-extern "C" double prn(uint64_t * seed);
+extern "C" double prn(uint64_t * seeds, int stream);
 
 //==============================================================================
 //! Generate a random number which is 'n' times ahead from the current seed.
@@ -44,14 +44,14 @@ extern "C" double future_prn(int64_t n, uint64_t seed);
 //! @param id The particle ID
 //==============================================================================
 
-extern "C" void set_particle_seed(int64_t id, uint64_t * prn_seed );
+extern "C" void set_particle_seed(int64_t id, uint64_t * prn_seeds );
 
 //==============================================================================
 //! Advance the random number seed 'n' times from the current seed.
 //! @param n The number of RNG seeds to skip ahead by
 //==============================================================================
 
-extern "C" void advance_prn_seed(int64_t n, uint64_t * seed);
+extern "C" void advance_prn_seed(int64_t n, uint64_t * prn_seeds, int stream);
 
 //==============================================================================
 //! Advance a random number seed 'n' times.

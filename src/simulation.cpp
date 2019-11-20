@@ -1106,8 +1106,10 @@ void finalize_generation()
 
 void initialize_history(Particle* p, int64_t index_source)
 {
+	//assert(index_source - 1 >= 0 );
   // set defaults
-  p->from_source(&simulation::source_bank[index_source - 1]);
+  //p->from_source(&simulation::source_bank[index_source - 1]);
+  p->from_source(&simulation::source_bank[index_source]);
 
   // set identifier for particle
   p->id_ = simulation::work_index[mpi::rank] + index_source;

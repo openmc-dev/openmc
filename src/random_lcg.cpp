@@ -29,9 +29,9 @@ constexpr uint64_t prn_stride {152917LL};                // stride between
 constexpr double   prn_norm   {1.0 / prn_mod};           // 2^-63
 
 // Current PRNG state
-uint64_t prn_seed[N_STREAMS];  // current seed
-int      stream;               // current RNG stream
-#pragma omp threadprivate(prn_seed, stream)
+//uint64_t prn_seed[N_STREAMS];  // current seed
+//int      stream;               // current RNG stream
+//#pragma omp threadprivate(prn_seed, stream)
 
 
 //==============================================================================
@@ -39,15 +39,17 @@ int      stream;               // current RNG stream
 //==============================================================================
 
 extern "C" double
-prn()
+prn(uint64_t * prn_seed)
 {
   // This algorithm uses bit-masking to find the next integer(8) value to be
   // used to calculate the random number.
-  prn_seed[stream] = (prn_mult*prn_seed[stream] + prn_add) & prn_mask;
+  //prn_seed[stream] = (prn_mult*prn_seed[stream] + prn_add) & prn_mask;
+  *prn_seed = (prn_mult * (*prn_seed) + prn_add) & prn_mask;
 
   // Once the integer is calculated, we just need to divide by 2**m,
   // represented here as multiplying by a pre-calculated factor
-  return prn_seed[stream] * prn_norm;
+  //return prn_seed[stream] * prn_norm;
+  return (*prn_seed) * prn_norm;
 }
 
 //==============================================================================
@@ -55,9 +57,10 @@ prn()
 //==============================================================================
 
 extern "C" double
-future_prn(int64_t n)
+future_prn(int64_t n, uint64_t prn_seed)
 {
-  return future_seed(static_cast<uint64_t>(n), prn_seed[stream]) * prn_norm;
+  //return future_seed(static_cast<uint64_t>(n), prn_seed[stream]) * prn_norm;
+  return future_seed(static_cast<uint64_t>(n), *prn_seed) * prn_norm;
 }
 
 //==============================================================================
@@ -65,7 +68,8 @@ future_prn(int64_t n)
 //==============================================================================
 
 extern "C" void
-set_particle_seed(int64_t id)
+//set_particle_seed(int64_t id)
+set_particle_seed(int64_t id, uint64_t * prn_seed)
 {
   for (int i = 0; i < N_STREAMS; i++) {
     prn_seed[i] = future_seed(static_cast<uint64_t>(id) * prn_stride, seed + i);
@@ -77,9 +81,11 @@ set_particle_seed(int64_t id)
 //==============================================================================
 
 extern "C" void
-advance_prn_seed(int64_t n)
+//advance_prn_seed(int64_t n)
+advance_prn_seed(int64_t n, uint64_t * prn_seed)
 {
-  prn_seed[stream] = future_seed(static_cast<uint64_t>(n), prn_seed[stream]);
+  //prn_seed[stream] = future_seed(static_cast<uint64_t>(n), prn_seed[stream]);
+  *prn_seed = future_seed(static_cast<uint64_t>(n), *prn_seed);
 }
 
 //==============================================================================
@@ -125,11 +131,13 @@ future_seed(uint64_t n, uint64_t seed)
 // PRN_SET_STREAM
 //==============================================================================
 
+/*
 extern "C" void
 prn_set_stream(int i)
 {
   stream = i;  // Shift by one to move from Fortran to C indexing.
 }
+*/
 
 //==============================================================================
 //                               API FUNCTIONS
@@ -141,7 +149,7 @@ extern "C" void
 openmc_set_seed(int64_t new_seed)
 {
   seed = new_seed;
-  #pragma omp parallel
+  //#pragma omp parallel
   {
     for (int i = 0; i < N_STREAMS; i++) {
       prn_seed[i] = seed + i;

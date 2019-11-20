@@ -13,6 +13,7 @@
 
 #include "openmc/constants.h"
 #include "openmc/position.h"
+#include "openmc/random_lcg.h"
 
 namespace openmc {
 
@@ -285,6 +286,10 @@ public:
 
   // Track output
   bool write_track_ {false};
+
+  // Current PRNG state
+  uint64_t prn_seed[N_STREAMS];  // current seed
+  int      stream;               // current RNG stream
 };
 
 } // namespace openmc

@@ -64,8 +64,10 @@ public:
   //! \param[in] E_in Incident neutron energy in [eV]
   //! \param[out] E_out Outgoing neutron energy in [eV]
   //! \param[out] mu Outgoing scattering angle cosine
+  //! \param[inout] prn_seeds Pseudorandom seed array
+  //! \param[in] stream Pseudorandom stream index
   void sample(const NuclideMicroXS& micro_xs, double E_in,
-              double* E_out, double* mu);
+              double* E_out, double* mu, uint64_t * prn_seeds, int stream);
 private:
   struct Reaction {
     // Default constructor

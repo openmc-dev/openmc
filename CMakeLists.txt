@@ -152,6 +152,9 @@ target_compile_definitions(gsl INTERFACE GSL_THROW_ON_CONTRACT_VIOLATION)
 # RPATH information
 #===============================================================================
 
+# Provide install directory variables as defined by GNU coding standards
+include(GNUInstallDirs)
+
 # This block of code ensures that dynamic libraries can be found via the RPATH
 # whether the executable is the original one from the build directory or the
 # installed one in CMAKE_INSTALL_PREFIX. Ref:
@@ -164,16 +167,14 @@ set(CMAKE_SKIP_BUILD_RPATH  FALSE)
 # (but later on when installing)
 set(CMAKE_BUILD_WITH_INSTALL_RPATH FALSE)
 
-set(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib")
-
 # add the automatically determined parts of the RPATH
 # which point to directories outside the build tree to the install RPATH
 set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 
 # the RPATH to be used when installing, but only if it's not a system directory
-list(FIND CMAKE_PLATFORM_IMPLICIT_LINK_DIRECTORIES "${CMAKE_INSTALL_PREFIX}/lib" isSystemDir)
+list(FIND CMAKE_PLATFORM_IMPLICIT_LINK_DIRECTORIES "${CMAKE_INSTALL_FULL_LIBDIR}" isSystemDir)
 if("${isSystemDir}" STREQUAL "-1")
-  set(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib")
+  set(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_FULL_LIBDIR}")
 endif()
 
 #===============================================================================
@@ -360,7 +361,6 @@ add_custom_command(TARGET libopenmc POST_BUILD
 # Install executable, scripts, manpage, license
 #===============================================================================
 
-include(GNUInstallDirs)
 set(INSTALL_CONFIGDIR ${CMAKE_INSTALL_LIBDIR}/cmake/OpenMC)
 install(TARGETS openmc libopenmc pugixml faddeeva gsl
   EXPORT openmc-targets

@@ -285,7 +285,7 @@ void create_voxel(Plot pl);
 
 //! Create a randomly generated RGB color
 //! \return RGBColor with random value
-RGBColor random_color();
+RGBColor random_color(uint64_t * prn_seeds, int stream);
 
 
 } // namespace openmc

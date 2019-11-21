@@ -396,11 +396,15 @@ Plot::set_default_colors(pugi::xml_node plot_node)
     fatal_error(err_msg);
   }
 
+  // Initialize a random number stream
+  uint64_t prn_seed = 1;
+  int stream = 0;
+
   for (auto& c : colors_) {
-    c = random_color();
+    c = random_color(&prn_seed, stream);
     // make sure we don't interfere with some default colors
     while (c == RED || c == WHITE) {
-      c = random_color();
+      c = random_color(&prn_seed, stream);
     }
   }
 }
@@ -958,8 +962,8 @@ voxel_finalize(hid_t dspace, hid_t dset, hid_t memspace)
   H5Sclose(memspace);
 }
 
-RGBColor random_color() {
-  return {int(prn()*255), int(prn()*255), int(prn()*255)};
+RGBColor random_color(uint64_t * prn_seeds, int stream) {
+  return {int(prn(prn_seeds, stream)*255), int(prn(prn_seeds, stream)*255), int(prn(prn_seeds, stream)*255)};
 }
 
 extern "C" int openmc_id_map(const void* plot, int32_t* data_out)

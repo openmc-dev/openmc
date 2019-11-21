@@ -17,7 +17,7 @@ public:
   virtual ~SpatialDistribution() = default;
 
   //! Sample a position from the distribution
-  virtual Position sample() const = 0;
+  virtual Position sample(uint64_t * prn_seeds, int stream) const = 0;
 };
 
 //==============================================================================
@@ -30,7 +30,7 @@ public:
 
   //! Sample a position from the distribution
   //! \return Sampled position
-  Position sample() const;
+  Position sample(uint64_t * prn_seeds, int stream) const;
 private:
   UPtrDist x_; //!< Distribution of x coordinates
   UPtrDist y_; //!< Distribution of y coordinates
@@ -47,7 +47,7 @@ public:
 
   //! Sample a position from the distribution
   //! \return Sampled position
-  Position sample() const;
+  Position sample(uint64_t * prn_seeds, int stream) const;
 private:
   UPtrDist r_; //!< Distribution of r coordinates
   UPtrDist theta_; //!< Distribution of theta coordinates
@@ -65,7 +65,7 @@ public:
 
   //! Sample a position from the distribution
   //! \return Sampled position
-  Position sample() const;
+  Position sample(uint64_t * prn_seeds, int stream) const;
 
   // Properties
   bool only_fissionable() const { return only_fissionable_; }
@@ -87,7 +87,7 @@ public:
 
   //! Sample a position from the distribution
   //! \return Sampled position
-  Position sample() const;
+  Position sample(uint64_t * prn_seeds, int stream) const;
 private:
   Position r_; //!< Single position at which sites are generated
 };

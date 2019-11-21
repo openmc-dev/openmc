@@ -59,7 +59,7 @@ void sample_photon_product(int i_nuclide, const Particle* p, int* i_rx, int* i_p
 
 void absorption(Particle* p, int i_nuclide);
 
-void scatter(Particle*, int i_nuclide);
+void scatter(Particle* p, int i_nuclide);
 
 //! Treats the elastic scattering of a neutron with a target.
 void elastic_scatter(int i_nuclide, const Reaction& rx, double kT,
@@ -72,15 +72,17 @@ void sab_scatter(int i_nuclide, int i_sab, Particle* p);
 //! dependence of cross sections in treating resonance elastic scattering such
 //! as the DBRC and a new, accelerated scheme are also implemented here.
 Direction sample_target_velocity(const Nuclide* nuc, double E, Direction u,
-   Direction v_neut, double xs_eff, double kT);
+   Direction v_neut, double xs_eff, double kT, uint64_t * prn_seeds, int stream);
 
 //! samples a target velocity based on the free gas scattering formulation, used
 //! by most Monte Carlo codes, in which cross section is assumed to be constant
 //! in energy. Excellent documentation for this method can be found in
 //! FRA-TM-123.
-Direction sample_cxs_target_velocity(double awr, double E, Direction u, double kT);
+Direction sample_cxs_target_velocity(double awr, double E, Direction u, double kT,
+		uint64_t * prn_seeds, int stream);
 
-void sample_fission_neutron(int i_nuclide, const Reaction* rx, double E_in, Particle::Bank* site);
+void sample_fission_neutron(int i_nuclide, const Reaction* rx, double E_in, Particle::Bank* site,
+  uint64_t * prn_seeds, int stream);
 
 //! handles all reactions with a single secondary neutron (other than fission),
 //! i.e. level scattering, (n,np), (n,na), etc.

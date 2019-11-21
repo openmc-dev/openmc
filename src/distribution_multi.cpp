@@ -53,14 +53,14 @@ PolarAzimuthal::PolarAzimuthal(pugi::xml_node node)
   }
 }
 
-Direction PolarAzimuthal::sample() const
+Direction PolarAzimuthal::sample(uint64_t * prn_seeds, int stream) const
 {
   // Sample cosine of polar angle
-  double mu = mu_->sample();
+  double mu = mu_->sample(prn_seeds, stream);
   if (mu == 1.0) return u_ref_;
 
   // Sample azimuthal angle
-  double phi = phi_->sample();
+  double phi = phi_->sample(prn_seeds, stream);
 
   // If the reference direction is along the z-axis, rotate the aziumthal angle
   // to match spherical coordinate conventions.
@@ -74,10 +74,10 @@ Direction PolarAzimuthal::sample() const
 // Isotropic implementation
 //==============================================================================
 
-Direction Isotropic::sample() const
+Direction Isotropic::sample(uint64_t * prn_seeds, int stream) const
 {
-  double phi = 2.0*PI*prn();
-  double mu = 2.0*prn() - 1.0;
+  double phi = 2.0*PI*prn(prn_seeds, stream);
+  double mu = 2.0*prn(prn_seeds, stream) - 1.0;
   return {mu, std::sqrt(1.0 - mu*mu) * std::cos(phi),
       std::sqrt(1.0 - mu*mu) * std::sin(phi)};
 }
@@ -86,7 +86,7 @@ Direction Isotropic::sample() const
 // Monodirectional implementation
 //==============================================================================
 
-Direction Monodirectional::sample() const
+Direction Monodirectional::sample(uint64_t * prn_seeds, int stream) const
 {
   return u_ref_;
 }

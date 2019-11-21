@@ -21,7 +21,7 @@ namespace openmc {
 class Distribution {
 public:
   virtual ~Distribution() = default;
-  virtual double sample() const = 0;
+  virtual double sample(uint64_t * prn_seeds, int stream) const = 0;
 };
 
 //==============================================================================

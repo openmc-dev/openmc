@@ -10,7 +10,7 @@ namespace openmc {
 // Module constants.
 //==============================================================================
 
-extern "C" const int N_STREAMS;
+constexpr int N_STREAMS = 6;
 extern "C" const int STREAM_TRACKING;
 extern "C" const int STREAM_TALLIES;
 extern "C" const int STREAM_SOURCE;

@@ -895,8 +895,12 @@ HexLattice::get_indices(Position r, Direction u) const
       Position r_t = get_local_position(r, i_xyz);
       // calculate distance
       double d = r_t.x*r_t.x + r_t.y*r_t.y;
-      // check for coincidence
-      bool on_boundary = coincident(d, d_min);
+      // check for coincidence. Because the numerical error incurred
+      // in hex geometry is higher than other geometries, the relative
+      // coincidence is checked here so that coincidence is successfully
+      // detected on large hex lattice with particles far from the origin
+      // which have rounding errors larger than the FP_COINCIDENT thresdhold.
+      bool on_boundary = coincident(1.0, d_min/d);
       if (d < d_min || on_boundary) {
         // normalize r_t and find dot product
         r_t /= std::sqrt(d);

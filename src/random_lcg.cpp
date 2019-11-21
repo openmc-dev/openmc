@@ -141,7 +141,6 @@ prn_set_stream(int i)
 
 extern "C" int64_t openmc_get_seed() {return master_seed;}
 
-// TODO: The idea of this function no longer works -- we'll need to update it somehow
 extern "C" void
 openmc_set_seed(int64_t new_seed)
 {

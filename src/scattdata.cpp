@@ -167,10 +167,10 @@ ScattData::base_combine(size_t max_order,
 //==============================================================================
 
 void
-ScattData::sample_energy(int gin, int& gout, int& i_gout)
+ScattData::sample_energy(int gin, int& gout, int& i_gout, uint64_t * prn_seeds, int stream)
 {
   // Sample the outgoing group
-  double xi = prn();
+  double xi = prn(prn_seeds, stream);
   double prob = 0.;
   i_gout = 0;
   for (gout = gmin[gin]; gout < gmax[gin]; ++gout) {
@@ -347,21 +347,22 @@ ScattDataLegendre::calc_f(int gin, int gout, double mu)
 //==============================================================================
 
 void
-ScattDataLegendre::sample(int gin, int& gout, double& mu, double& wgt)
+ScattDataLegendre::sample(int gin, int& gout, double& mu, double& wgt,
+                          uint64_t * prn_seeds, int stream)
 {
   // Sample the outgoing energy using the base-class method
   int i_gout;
-  sample_energy(gin, gout, i_gout);
+  sample_energy(gin, gout, i_gout, prn_seeds, stream);
 
   // Now we can sample mu using the scattering kernel using rejection
   // sampling from a rectangular bounding box
   double M = max_val[gin][i_gout];
   int samples;
   for (samples = 0; samples < MAX_SAMPLE; ++samples) {
-    mu = 2. * prn() - 1.;
+    mu = 2. * prn(prn_seeds, stream) - 1.;
     double f = calc_f(gin, gout, mu);
     if (f > 0.) {
-      double u = prn() * M;
+      double u = prn(prn_seeds, stream) * M;
       if (u <= f) break;
     }
   }
@@ -535,14 +536,15 @@ ScattDataHistogram::calc_f(int gin, int gout, double mu)
 //==============================================================================
 
 void
-ScattDataHistogram::sample(int gin, int& gout, double& mu, double& wgt)
+ScattDataHistogram::sample(int gin, int& gout, double& mu, double& wgt,
+                           uint64_t * prn_seeds, int stream)
 {
   // Sample the outgoing energy using the base-class method
   int i_gout;
-  sample_energy(gin, gout, i_gout);
+  sample_energy(gin, gout, i_gout, prn_seeds, stream);
 
   // Determine the outgoing cosine bin
-  double xi = prn();
+  double xi = prn(prn_seeds, stream);
 
   int imu;
   if (xi < dist[gin][i_gout][0]) {
@@ -554,7 +556,7 @@ ScattDataHistogram::sample(int gin, int& gout, double& mu, double& wgt)
   }
 
   // Randomly select mu within the imu bin
-  mu = prn() * dmu + this->mu[imu];
+  mu = prn(prn_seeds, stream) * dmu + this->mu[imu];
 
   if (mu < -1.) {
     mu = -1.;
@@ -738,15 +740,16 @@ ScattDataTabular::calc_f(int gin, int gout, double mu)
 //==============================================================================
 
 void
-ScattDataTabular::sample(int gin, int& gout, double& mu, double& wgt)
+ScattDataTabular::sample(int gin, int& gout, double& mu, double& wgt,
+                         uint64_t * prn_seeds, int stream)
 {
   // Sample the outgoing energy using the base-class method
   int i_gout;
-  sample_energy(gin, gout, i_gout);
+  sample_energy(gin, gout, i_gout, prn_seeds, stream);
 
   // Determine the outgoing cosine bin
   int NP = this->mu.shape()[0];
-  double xi = prn();
+  double xi = prn(prn_seeds, stream);
 
   double c_k = dist[gin][i_gout][0];
   int k;

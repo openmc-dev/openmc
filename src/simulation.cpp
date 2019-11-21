@@ -82,11 +82,11 @@ void init_event_queues(void)
 
 void free_event_queues(void)
 {
-	free( calculate_fuel_xs_queue    );
-	free( calculate_nonfuel_xs_queue );
-	free( advance_particle_queue     );
-	free( surface_crossing_queue     );
-	free( collision_queue            );
+	delete calculate_fuel_xs_queue;
+	delete calculate_nonfuel_xs_queue;
+	delete advance_particle_queue;
+	delete surface_crossing_queue;
+	delete collision_queue;
 	delete[] particles;
 }
 

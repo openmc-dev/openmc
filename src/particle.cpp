@@ -461,7 +461,7 @@ Particle::cross_surface()
 
     Direction u = (surf->bc_ == BC_REFLECT) ?
       surf->reflect(this->r(), this->u()) :
-      surf->diffuse_reflect(this->r(), this->u());
+      surf->diffuse_reflect(this->r(), this->u(), prn_seeds, stream);
 
     // Make sure new particle direction is normalized
     this->u() = u / u.norm();

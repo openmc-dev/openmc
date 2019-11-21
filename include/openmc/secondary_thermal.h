@@ -31,7 +31,8 @@ public:
   //! \param[in] E_in Incoming energy in [eV]
   //! \param[out] E_out Outgoing energy in [eV]
   //! \param[out] mu Outgoing cosine with respect to current direction
-  void sample(double E_in, double& E_out, double& mu) const override;
+  void sample(double E_in, double& E_out, double& mu, uint64_t * prn_seeds,
+    int stream) const override;
 private:
   const CoherentElasticXS& xs_; //!< Coherent elastic scattering cross section
 };
@@ -51,7 +52,8 @@ public:
   //! \param[in] E_in Incoming energy in [eV]
   //! \param[out] E_out Outgoing energy in [eV]
   //! \param[out] mu Outgoing cosine with respect to current direction
-  void sample(double E_in, double& E_out, double& mu) const override;
+  void sample(double E_in, double& E_out, double& mu, uint64_t * prn_seeds,
+    int stream) const override;
 private:
   double debye_waller_;
 };
@@ -72,7 +74,8 @@ public:
   //! \param[in] E_in Incoming energy in [eV]
   //! \param[out] E_out Outgoing energy in [eV]
   //! \param[out] mu Outgoing cosine with respect to current direction
-  void sample(double E_in, double& E_out, double& mu) const override;
+  void sample(double E_in, double& E_out, double& mu, uint64_t * prn_seeds,
+    int stream) const override;
 private:
   const std::vector<double>& energy_; //!< Energies at which cosines are tabulated
   xt::xtensor<double, 2> mu_out_; //!< Cosines for each incident energy
@@ -94,7 +97,8 @@ public:
   //! \param[in] E_in Incoming energy in [eV]
   //! \param[out] E_out Outgoing energy in [eV]
   //! \param[out] mu Outgoing cosine with respect to current direction
-  void sample(double E_in, double& E_out, double& mu) const override;
+  void sample(double E_in, double& E_out, double& mu, uint64_t * prn_seeds,
+    int stream) const override;
 private:
   const std::vector<double>& energy_; //!< Incident energies
   xt::xtensor<double, 2> energy_out_; //!< Outgoing energies for each incident energy
@@ -117,7 +121,8 @@ public:
   //! \param[in] E_in Incoming energy in [eV]
   //! \param[out] E_out Outgoing energy in [eV]
   //! \param[out] mu Outgoing cosine with respect to current direction
-  void sample(double E_in, double& E_out, double& mu) const override;
+  void sample(double E_in, double& E_out, double& mu, uint64_t * prn_seeds,
+    int stream) const override;
 private:
   //! Secondary energy/angle distribution
   struct DistEnergySab {

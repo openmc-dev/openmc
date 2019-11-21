@@ -38,7 +38,8 @@ public:
   //! \param[in] E_in Incoming energy in [eV]
   //! \param[out] E_out Outgoing energy in [eV]
   //! \param[out] mu Outgoing cosine with respect to current direction
-  void sample(double E_in, double& E_out, double& mu) const override;
+  void sample(double E_in, double& E_out, double& mu, uint64_t * prn_seeds,
+		  int stream) const override;
 
   // energy property
   std::vector<double>& energy() { return energy_; }

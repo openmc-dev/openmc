@@ -154,9 +154,9 @@ def test_calc_zn_rad():
 
 def test_rotate_angle():
     uvw0 = np.array([1., 0., 0.])
-    phi = 0.
+    phi = [0.]
     mu = 0.
-    prn_seeds = np.array([1, 2, 3, 4, 5, 6], dtype=np.uint64)
+	prn_seeds = [1, 2, 3, 4, 5, 6]
     stream = 0
 
     # reference: mu of 0 pulls the vector the bottom, so:
@@ -176,6 +176,7 @@ def test_rotate_angle():
 
     # Now to test phi is None
     mu = 0.9
+	phi = []
 
     # When seed = 1, phi will be sampled as 1.9116495709698769
     # The resultant reference is from hand-calculations given the above
@@ -186,7 +187,7 @@ def test_rotate_angle():
 
 
 def test_maxwell_spectrum():
-    prn_seeds = np.array([1, 2, 3, 4, 5, 6], dtype=np.uint64)
+	prn_seeds = [1, 2, 3, 4, 5, 6]
     stream = 0
     T = 0.5
     ref_val = 0.6129982175261098
@@ -196,7 +197,7 @@ def test_maxwell_spectrum():
 
 
 def test_watt_spectrum():
-    prn_seeds = np.array([1, 2, 3, 4, 5, 6], dtype=np.uint64)
+	prn_seeds = [1, 2, 3, 4, 5, 6]
     stream = 0
     a = 0.5
     b = 0.75
@@ -207,7 +208,7 @@ def test_watt_spectrum():
 
 
 def test_normal_dist():
-    prn_seeds = np.array([1, 2, 3, 4, 5, 6], dtype=np.uint64)
+	prn_seeds = [1, 2, 3, 4, 5, 6]
     stream = 0
     a = 14.08
     b = 0.0
@@ -216,7 +217,7 @@ def test_normal_dist():
 
     assert ref_val == pytest.approx(test_val)
 
-    prn_seeds = np.array([1, 2, 3, 4, 5, 6], dtype=np.uint64)
+	prn_seeds = [1, 2, 3, 4, 5, 6]
     stream = 0
     a = 14.08
     b = 1.0

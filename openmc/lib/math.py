@@ -295,7 +295,7 @@ def normal_variate(mean_value, std_dev, prn_seeds, stream):
 	
     prn_seeds_arr = np.array(prn_seeds, dtype=np.uint64)
 
-    return _dll.normal_variate(mean_value, std_dev, prn_seeds, stream)
+    return _dll.normal_variate(mean_value, std_dev, prn_seeds_arr, stream)
 
 
 def broaden_wmp_polynomials(E, dopp, n):

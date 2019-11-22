@@ -154,7 +154,7 @@ def test_calc_zn_rad():
 
 def test_rotate_angle():
     uvw0 = np.array([1., 0., 0.])
-    phi = [0.]
+    phi = 0.
     mu = 0.
     prn_seeds = [1, 2, 3, 4, 5, 6]
     stream = 0
@@ -176,7 +176,7 @@ def test_rotate_angle():
 
     # Now to test phi is None
     mu = 0.9
-    phi = []
+    phi = None
 
     # When seed = 1, phi will be sampled as 1.9116495709698769
     # The resultant reference is from hand-calculations given the above

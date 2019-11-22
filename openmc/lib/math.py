@@ -26,7 +26,7 @@ _dll.calc_zn_rad.argtypes = [c_int, c_double, ndpointer(c_double)]
 
 _dll.rotate_angle_c.restype = None
 _dll.rotate_angle_c.argtypes = [ndpointer(c_double), c_double,
-                                ndpointer(c_double), ndpointer(c_uint64), c_int]
+                                POINTER(c_double), ndpointer(c_uint64), c_int]
 _dll.maxwell_spectrum.restype = c_double
 _dll.maxwell_spectrum.argtypes = [c_double, ndpointer(c_uint64), c_int]
 
@@ -210,12 +210,12 @@ def rotate_angle(uvw0, mu, phi, prn_seeds, stream ):
     """
 
     uvw0_arr = np.array(uvw0, dtype=np.float64)
-    phi_arr  = np.array(phi, dtype=np.float64)
-    if phi_arr.size == 0:
-        phi_arr = None
     prn_seeds_arr = np.array(prn_seeds, dtype=np.uint64)
+    if phi is None:
+        _dll.rotate_angle_c(uvw0_arr, mu, None, prn_seeds_arr, stream)
+    else:
+        _dll.rotate_angle_c(uvw0_arr, mu, c_double(phi), prn_seeds_arr, stream)
 
-    _dll.rotate_angle_c(uvw0_arr, mu, phi_arr, prn_seeds_arr, stream)
     uvw = uvw0_arr
 
     return uvw

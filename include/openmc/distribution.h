@@ -34,6 +34,8 @@ public:
   Discrete(const double* x, const double* p, int n);
 
   //! Sample a value from the distribution
+  //! \param prn_seeds Array of pseudorandom number seeds
+  //! \param stream Pseudorandom stream index
   //! \return Sampled value
   double sample(uint64_t * prn_seeds, int stream) const;
 
@@ -58,6 +60,8 @@ public:
   Uniform(double a, double b) : a_{a}, b_{b} {};
 
   //! Sample a value from the distribution
+  //! \param prn_seeds Array of pseudorandom number seeds
+  //! \param stream Pseudorandom stream index
   //! \return Sampled value
   double sample(uint64_t * prn_seeds, int stream) const;
 private:
@@ -75,6 +79,8 @@ public:
   Maxwell(double theta) : theta_{theta} { };
 
   //! Sample a value from the distribution
+  //! \param prn_seeds Array of pseudorandom number seeds
+  //! \param stream Pseudorandom stream index
   //! \return Sampled value
   double sample(uint64_t * prn_seeds, int stream) const;
 private:
@@ -91,6 +97,8 @@ public:
   Watt(double a, double b) : a_{a}, b_{b} { };
 
   //! Sample a value from the distribution
+  //! \param prn_seeds Array of pseudorandom number seeds
+  //! \param stream Pseudorandom stream index
   //! \return Sampled value
   double sample(uint64_t * prn_seeds, int stream) const;
 private:
@@ -108,6 +116,8 @@ public:
   Normal(double mean_value, double std_dev) : mean_value_{mean_value}, std_dev_{std_dev} { };
 
   //! Sample a value from the distribution
+  //! \param prn_seeds Array of pseudorandom number seeds
+  //! \param stream Pseudorandom stream index
   //! \return Sampled value
   double sample(uint64_t * prn_seeds, int stream) const;
 private:
@@ -126,6 +136,8 @@ public:
   Muir(double e0, double m_rat, double kt) : e0_{e0}, m_rat_{m_rat}, kt_{kt} { };
 
   //! Sample a value from the distribution
+  //! \param prn_seeds Array of pseudorandom number seeds
+  //! \param stream Pseudorandom stream index
   //! \return Sampled value
   double sample(uint64_t * prn_seeds, int stream) const;
 private:
@@ -148,6 +160,8 @@ public:
           const double* c=nullptr);
 
   //! Sample a value from the distribution
+  //! \param prn_seeds Array of pseudorandom number seeds
+  //! \param stream Pseudorandom stream index
   //! \return Sampled value
   double sample(uint64_t * prn_seeds, int stream) const;
 
@@ -178,6 +192,8 @@ public:
   Equiprobable(const double* x, int n) : x_{x, x+n} { };
 
   //! Sample a value from the distribution
+  //! \param prn_seeds Array of pseudorandom number seeds
+  //! \param stream Pseudorandom stream index
   //! \return Sampled value
   double sample(uint64_t * prn_seeds, int stream) const;
 private:

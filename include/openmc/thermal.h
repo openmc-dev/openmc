@@ -102,6 +102,8 @@ public:
   //! \param[out] i_temp corresponding temperature index
   //! \param[out] elastic Thermal elastic scattering cross section
   //! \param[out] inelastic Thermal inelastic scattering cross section
+  //! \param[inout] prn_seeds Array of pseudorandom seeds
+  //! \param[in] stream Pseudorandom stream index
   void calculate_xs(double E, double sqrtkT, int* i_temp, double* elastic,
                     double* inelastic, uint64_t * prn_seeds, int stream) const;
 

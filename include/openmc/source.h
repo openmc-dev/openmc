@@ -38,6 +38,8 @@ public:
   explicit SourceDistribution(pugi::xml_node node);
 
   //! Sample from the external source distribution
+  //! \param[inout] prn_seeds Array of pseudorandom seeds
+  //! \param[in] stream Pseudorandom stream index
   //! \return Sampled site
   Particle::Bank sample(uint64_t * prn_seed, int stream) const;
 
@@ -60,6 +62,7 @@ extern "C" void initialize_source();
 
 //! Sample a site from all external source distributions in proportion to their
 //! source strength
+//! \param[inout] prn_seeds Array of pseudorandom seeds
 //! \return Sampled source site
 Particle::Bank sample_external_source(uint64_t * prn_seeds);
 

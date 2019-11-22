@@ -23,6 +23,8 @@ public:
   virtual ~UnitSphereDistribution() = default;
 
   //! Sample a direction from the distribution
+  //! \param prn_seeds Array of pseudorandom number seeds
+  //! \param stream Pseudorandom stream index
   //! \return Direction sampled
   virtual Direction sample(uint64_t * prn_seeds, int stream) const = 0;
 
@@ -39,6 +41,8 @@ public:
   explicit PolarAzimuthal(pugi::xml_node node);
 
   //! Sample a direction from the distribution
+  //! \param prn_seeds Array of pseudorandom number seeds
+  //! \param stream Pseudorandom stream index
   //! \return Direction sampled
   Direction sample(uint64_t * prn_seeds, int stream) const;
 private:
@@ -55,6 +59,8 @@ public:
   Isotropic() { };
 
   //! Sample a direction from the distribution
+  //! \param prn_seeds Array of pseudorandom number seeds
+  //! \param stream Pseudorandom stream index
   //! \return Sampled direction
   Direction sample(uint64_t * prn_seeds, int stream) const;
 };
@@ -69,6 +75,8 @@ public:
   explicit Monodirectional(pugi::xml_node node) : UnitSphereDistribution{node} { };
 
   //! Sample a direction from the distribution
+  //! \param prn_seeds Array of pseudorandom number seeds
+  //! \param stream Pseudorandom stream index
   //! \return Sampled direction
   Direction sample(uint64_t * prn_seeds, int stream) const;
 };

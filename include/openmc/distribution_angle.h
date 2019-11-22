@@ -23,6 +23,8 @@ public:
 
   //! Sample an angle given an incident particle energy
   //! \param[in] E Particle energy in [eV]
+  //! \param[inout] prn_seeds Array of pseudorandom number seeds
+  //! \param[in] stream Pseudorandom stream index
   //! \return Cosine of the angle in the range [-1,1]
   double sample(double E, uint64_t * prn_seeds, int stream) const;
 

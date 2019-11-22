@@ -44,7 +44,7 @@ void sample_positron_reaction(Particle* p);
 //!
 //! \param[in] p Particle
 //! \return Index in the data::nuclides vector
-int sample_nuclide(const Particle* p);
+int sample_nuclide(Particle* p);
 
 //! Determine the average total, prompt, and delayed neutrons produced from
 //! fission and creates appropriate bank sites.
@@ -53,9 +53,9 @@ void create_fission_sites(Particle* p, int i_nuclide, const Reaction* rx,
 
 int sample_element(Particle* p);
 
-Reaction* sample_fission(int i_nuclide, const Particle* p);
+Reaction* sample_fission(int i_nuclide, Particle* p);
 
-void sample_photon_product(int i_nuclide, const Particle* p, int* i_rx, int* i_product);
+void sample_photon_product(int i_nuclide, Particle* p, int* i_rx, int* i_product);
 
 void absorption(Particle* p, int i_nuclide);
 

@@ -103,7 +103,7 @@ public:
   //! \param[out] elastic Thermal elastic scattering cross section
   //! \param[out] inelastic Thermal inelastic scattering cross section
   void calculate_xs(double E, double sqrtkT, int* i_temp, double* elastic,
-                    double* inelastic) const;
+                    double* inelastic, uint64_t * prn_seeds, int stream) const;
 
   //! Determine whether table applies to a particular nuclide
   //!

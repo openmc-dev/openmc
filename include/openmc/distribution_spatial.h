@@ -29,6 +29,8 @@ public:
   explicit CartesianIndependent(pugi::xml_node node);
 
   //! Sample a position from the distribution
+  //! \param prn_seeds Array of pseudorandom number seeds
+  //! \param stream Pseudorandom stream index
   //! \return Sampled position
   Position sample(uint64_t * prn_seeds, int stream) const;
 private:
@@ -46,6 +48,8 @@ public:
   explicit SphericalIndependent(pugi::xml_node node);
 
   //! Sample a position from the distribution
+  //! \param prn_seeds Array of pseudorandom number seeds
+  //! \param stream Pseudorandom stream index
   //! \return Sampled position
   Position sample(uint64_t * prn_seeds, int stream) const;
 private:
@@ -64,6 +68,8 @@ public:
   explicit SpatialBox(pugi::xml_node node, bool fission=false);
 
   //! Sample a position from the distribution
+  //! \param prn_seeds Array of pseudorandom number seeds
+  //! \param stream Pseudorandom stream index
   //! \return Sampled position
   Position sample(uint64_t * prn_seeds, int stream) const;
 
@@ -86,6 +92,8 @@ public:
   explicit SpatialPoint(pugi::xml_node node);
 
   //! Sample a position from the distribution
+  //! \param prn_seeds Array of pseudorandom number seeds
+  //! \param stream Pseudorandom stream index
   //! \return Sampled position
   Position sample(uint64_t * prn_seeds, int stream) const;
 private:

@@ -144,7 +144,7 @@ def calc_zn(n, rho, phi):
     rho : float
         Radial location in the unit disk
     phi : float
-		Theta (radians) location in the unit disk
+        Theta (radians) location in the unit disk
 
     Returns
     -------
@@ -195,8 +195,8 @@ def rotate_angle(uvw0, mu, phi, prn_seeds, stream ):
         Original direction cosine
     mu : float
         Polar angle cosine to rotate
-    phi : iterable of float
-        Azimuthal angle; if NULL, one will be sampled uniformly
+    phi : float
+        Azimuthal angle; if None, one will be sampled uniformly
     prn_seeds : iterable of int
         PRNG seed array
     stream : int

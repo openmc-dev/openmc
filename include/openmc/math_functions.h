@@ -206,8 +206,8 @@ extern "C" double normal_variate(double mean, double std_dev, uint64_t * prn_see
 //! @result The sampled outgoing energy
 //==============================================================================
 
-extern "C" double muir_spectrum(double e0, double m_rat, double kt, uint64_t * prn_seeds,
-  int stream);
+extern "C" double muir_spectrum(double e0, double m_rat, double kt,
+  uint64_t * prn_seeds, int stream);
 
 //==============================================================================
 //! Doppler broadens the windowed multipole curvefit.

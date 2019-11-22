@@ -26,19 +26,19 @@ _dll.calc_zn_rad.argtypes = [c_int, c_double, ndpointer(c_double)]
 
 _dll.rotate_angle_c.restype = None
 _dll.rotate_angle_c.argtypes = [ndpointer(c_double), c_double,
-                                POINTER(c_double), POINTER(c_uint64), c_int]
+                                POINTER(c_double), ndpointer(c_uint64), c_int]
 _dll.maxwell_spectrum.restype = c_double
-_dll.maxwell_spectrum.argtypes = [c_double, POINTER(c_uint64), c_int]
+_dll.maxwell_spectrum.argtypes = [c_double, ndpointer(c_uint64), c_int]
 
 _dll.watt_spectrum.restype = c_double
-_dll.watt_spectrum.argtypes = [c_double, c_double, POINTER(c_uint64), c_int]
+_dll.watt_spectrum.argtypes = [c_double, c_double, ndpointer(c_uint64), c_int]
 
 _dll.broaden_wmp_polynomials.restype = None
 _dll.broaden_wmp_polynomials.argtypes = [c_double, c_double, c_int,
                                          ndpointer(c_double)]
 
 _dll.normal_variate.restype = c_double
-_dll.normal_variate.argtypes = [c_double, c_double, POINTER(c_uint64), c_int]
+_dll.normal_variate.argtypes = [c_double, c_double, ndpointer(c_uint64), c_int]
 
 def t_percentile(p, df):
     """ Calculate the percentile of the Student's t distribution with a
@@ -215,7 +215,7 @@ def rotate_angle(uvw0, mu, phi, prn_seeds, stream ):
         phi_arr = None
     prn_seeds_arr = np.array(prn_seeds, dtype=np.uint64)
 
-    dll.rotate_angle_c(uvw0_arr, mu, phi_arr, prn_seeds_arr, stream)
+    _dll.rotate_angle_c(uvw0_arr, mu, phi_arr, prn_seeds_arr, stream)
     uvw = uvw0_arr
 
     return uvw

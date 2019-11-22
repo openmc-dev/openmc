@@ -398,7 +398,7 @@ void sample_positron_reaction(Particle* p)
   p->event_ = EVENT_ABSORB;
 }
 
-int sample_nuclide(const Particle* p)
+int sample_nuclide(Particle* p)
 {
   // Sample cumulative distribution function
   double cutoff = prn(p->prn_seeds, p->stream) * p->macro_xs_.total;
@@ -455,7 +455,7 @@ int sample_element(Particle* p)
   fatal_error("Did not sample any element during collision.");
 }
 
-Reaction* sample_fission(int i_nuclide, const Particle* p)
+Reaction* sample_fission(int i_nuclide, Particle* p)
 {
   // Get pointer to nuclide
   const auto& nuc {data::nuclides[i_nuclide]};
@@ -500,7 +500,7 @@ Reaction* sample_fission(int i_nuclide, const Particle* p)
   throw std::runtime_error{"No fission reaction was sampled for " + nuc->name_};
 }
 
-void sample_photon_product(int i_nuclide, const Particle* p, int* i_rx, int* i_product)
+void sample_photon_product(int i_nuclide, Particle* p, int* i_rx, int* i_product)
 {
   // Get grid index and interpolation factor and sample photon production cdf
   int i_temp = p->neutron_xs_[i_nuclide].index_temp;

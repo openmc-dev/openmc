@@ -37,7 +37,7 @@ extern "C" double prn(uint64_t * seeds, int stream);
 //==============================================================================
 
 //extern "C" double future_prn(int64_t n);
-extern "C" double future_prn(int64_t n, uint64_t seed);
+extern "C" double future_prn(int64_t n, uint64_t * prn_seeds, int stream);
 
 //==============================================================================
 //! Set the RNG seed to a unique value based on the ID of the particle.

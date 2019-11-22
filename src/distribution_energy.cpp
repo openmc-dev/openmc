@@ -25,7 +25,7 @@ DiscretePhoton::DiscretePhoton(hid_t group)
   read_attribute(group, "atomic_weight_ratio", A_);
 }
 
-double DiscretePhoton::sample(double E) const
+double DiscretePhoton::sample(double E, uint64_t * prn_seeds, int stream) const
 {
   if (primary_flag_ == 2) {
     return energy_ + A_/(A_+ 1)*E;
@@ -44,7 +44,7 @@ LevelInelastic::LevelInelastic(hid_t group)
   read_attribute(group, "mass_ratio", mass_ratio_);
 }
 
-double LevelInelastic::sample(double E) const
+double LevelInelastic::sample(double E, uint64_t * prn_seeds, int stream ) const
 {
   return mass_ratio_*(E - threshold_);
 }

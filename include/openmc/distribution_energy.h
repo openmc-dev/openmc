@@ -36,6 +36,8 @@ public:
 
   //! Sample energy distribution
   //! \param[in] E Incident particle energy in [eV]
+  //! \param[inout] prn_seeds Pseudorandom number genererator seed array
+  //! \param[in] stream Pseudorandom number genererator stream index
   //! \return Sampled energy in [eV]
   double sample(double E, uint64_t * prn_seeds, int stream) const;
 private:
@@ -55,6 +57,8 @@ public:
 
   //! Sample energy distribution
   //! \param[in] E Incident particle energy in [eV]
+  //! \param[inout] prn_seeds Pseudorandom number genererator seed array
+  //! \param[in] stream Pseudorandom number genererator stream index
   //! \return Sampled energy in [eV]
   double sample(double E, uint64_t * prn_seeds, int stream) const;
 private:
@@ -74,6 +78,8 @@ public:
 
   //! Sample energy distribution
   //! \param[in] E Incident particle energy in [eV]
+  //! \param[inout] prn_seeds Pseudorandom number genererator seed array
+  //! \param[in] stream Pseudorandom number genererator stream index
   //! \return Sampled energy in [eV]
   double sample(double E, uint64_t * prn_seeds, int stream) const;
 private:
@@ -103,6 +109,8 @@ public:
 
   //! Sample energy distribution
   //! \param[in] E Incident particle energy in [eV]
+  //! \param[inout] prn_seeds Pseudorandom number genererator seed array
+  //! \param[in] stream Pseudorandom number genererator stream index
   //! \return Sampled energy in [eV]
   double sample(double E, uint64_t * prn_seeds, int stream) const;
 private:
@@ -121,6 +129,8 @@ public:
 
   //! Sample energy distribution
   //! \param[in] E Incident particle energy in [eV]
+  //! \param[inout] prn_seeds Pseudorandom number genererator seed array
+  //! \param[in] stream Pseudorandom number genererator stream index
   //! \return Sampled energy in [eV]
   double sample(double E, uint64_t * prn_seeds, int stream) const;
 private:
@@ -139,6 +149,8 @@ public:
 
   //! Sample energy distribution
   //! \param[in] E Incident particle energy in [eV]
+  //! \param[inout] prn_seeds Pseudorandom number genererator seed array
+  //! \param[in] stream Pseudorandom number genererator stream index
   //! \return Sampled energy in [eV]
   double sample(double E, uint64_t * prn_seeds, int stream) const;
 private:

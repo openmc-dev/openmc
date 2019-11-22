@@ -7,7 +7,6 @@ namespace openmc {
 
 
 // Constants
-extern "C" const int N_STREAMS         {6};
 extern "C" const int STREAM_TRACKING   {0};
 extern "C" const int STREAM_TALLIES    {1};
 extern "C" const int STREAM_SOURCE     {2};

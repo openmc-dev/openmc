@@ -26,7 +26,7 @@ _dll.calc_zn_rad.argtypes = [c_int, c_double, ndpointer(c_double)]
 
 _dll.rotate_angle_c.restype = None
 _dll.rotate_angle_c.argtypes = [ndpointer(c_double), c_double,
-                                POINTER(c_double), ndpointer(c_uint64), c_int]
+                                ndpointer(c_double), ndpointer(c_uint64), c_int]
 _dll.maxwell_spectrum.restype = c_double
 _dll.maxwell_spectrum.argtypes = [c_double, ndpointer(c_uint64), c_int]
 
@@ -295,7 +295,7 @@ def normal_variate(mean_value, std_dev, prn_seeds, stream):
 	
     prn_seeds_arr = np.array(prn_seeds, dtype=np.uint64)
 
-    return _dll.normal_variate(mean_value, std_dev)
+    return _dll.normal_variate(mean_value, std_dev, prn_seeds, stream)
 
 
 def broaden_wmp_polynomials(E, dopp, n):

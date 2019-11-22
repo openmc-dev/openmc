@@ -14,6 +14,7 @@
 #include "openmc/geometry.h"
 #include "openmc/particle.h"
 #include "openmc/xml_interface.h"
+#include "openmc/random_lcg.h"
 
 namespace openmc {
 
@@ -27,6 +28,8 @@ namespace model {
 
 extern std::vector<Plot> plots; //!< Plot instance container
 extern std::unordered_map<int, int> plot_map; //!< map of plot ids to index
+extern uint64_t plotter_prn_seeds[N_STREAMS];
+extern int plotter_stream;
 
 } // namespace model
 
@@ -285,7 +288,7 @@ void create_voxel(Plot pl);
 
 //! Create a randomly generated RGB color
 //! \return RGBColor with random value
-RGBColor random_color(uint64_t * prn_seeds, int stream);
+RGBColor random_color(void);
 
 
 } // namespace openmc

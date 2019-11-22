@@ -156,11 +156,13 @@ def test_rotate_angle():
     uvw0 = np.array([1., 0., 0.])
     phi = 0.
     mu = 0.
+    prn_seeds = np.array([1, 2, 3, 4, 5, 6], dtype=np.uint64)
+    stream = 0
 
     # reference: mu of 0 pulls the vector the bottom, so:
     ref_uvw = np.array([0., 0., -1.])
 
-    test_uvw = openmc.lib.math.rotate_angle(uvw0, mu, phi)
+    test_uvw = openmc.lib.math.rotate_angle(uvw0, mu, phi, prn_seeds, stream)
 
     assert np.array_equal(ref_uvw, test_uvw)
 
@@ -168,59 +170,58 @@ def test_rotate_angle():
     mu = 1.
     ref_uvw = np.array([1., 0., 0.])
 
-    test_uvw = openmc.lib.math.rotate_angle(uvw0, mu, phi)
+    test_uvw = openmc.lib.math.rotate_angle(uvw0, mu, phi, prn_seeds, stream)
 
     assert np.array_equal(ref_uvw, test_uvw)
 
     # Now to test phi is None
     mu = 0.9
-    settings = openmc.lib.settings
-    settings.seed = 1
 
     # When seed = 1, phi will be sampled as 1.9116495709698769
     # The resultant reference is from hand-calculations given the above
     ref_uvw = [0.9, 0.410813051297112, 0.1457142302040]
-    test_uvw = openmc.lib.math.rotate_angle(uvw0, mu)
+    test_uvw = openmc.lib.math.rotate_angle(uvw0, mu, phi, prn_seeds, stream)
 
     assert np.allclose(ref_uvw, test_uvw)
 
 
 def test_maxwell_spectrum():
-    settings = openmc.lib.settings
-    settings.seed = 1
+    prn_seeds = np.array([1, 2, 3, 4, 5, 6], dtype=np.uint64)
+    stream = 0
     T = 0.5
     ref_val = 0.6129982175261098
-    test_val = openmc.lib.math.maxwell_spectrum(T)
+    test_val = openmc.lib.math.maxwell_spectrum(T, prn_seeds, stream)
 
     assert ref_val == test_val
 
 
 def test_watt_spectrum():
-    settings = openmc.lib.settings
-    settings.seed = 1
+    prn_seeds = np.array([1, 2, 3, 4, 5, 6], dtype=np.uint64)
+    stream = 0
     a = 0.5
     b = 0.75
     ref_val = 0.6247242713640233
-    test_val = openmc.lib.math.watt_spectrum(a, b)
+    test_val = openmc.lib.math.watt_spectrum(a, b, prn_seeds, stream)
 
     assert ref_val == test_val
 
 
 def test_normal_dist():
-    settings = openmc.lib.settings
-    settings.seed = 1
+    prn_seeds = np.array([1, 2, 3, 4, 5, 6], dtype=np.uint64)
+    stream = 0
     a = 14.08
     b = 0.0
     ref_val = 14.08
-    test_val = openmc.lib.math.normal_variate(a, b)
+    test_val = openmc.lib.math.normal_variate(a, b, prn_seeds, stream)
 
     assert ref_val == pytest.approx(test_val)
 
-    settings.seed = 1
+    prn_seeds = np.array([1, 2, 3, 4, 5, 6], dtype=np.uint64)
+    stream = 0
     a = 14.08
     b = 1.0
     ref_val = 16.436645416691427
-    test_val = openmc.lib.math.normal_variate(a, b)
+    test_val = openmc.lib.math.normal_variate(a, b, prn_seeds, stream)
 
     assert ref_val == pytest.approx(test_val)
 

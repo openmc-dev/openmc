@@ -27,12 +27,6 @@ constexpr uint64_t prn_stride {152917LL};                // stride between
                                                          //   particles
 constexpr double   prn_norm   {1.0 / prn_mod};           // 2^-63
 
-// Current PRNG state
-//uint64_t prn_seed[N_STREAMS];  // current seed
-//int      stream;               // current RNG stream
-//#pragma omp threadprivate(prn_seed, stream)
-
-
 //==============================================================================
 // PRN
 //==============================================================================
@@ -64,7 +58,6 @@ future_prn(int64_t n, uint64_t * prn_seeds, int stream)
 //==============================================================================
 
 extern "C" void
-//set_particle_seed(int64_t id)
 set_particle_seed(int64_t id, uint64_t * prn_seeds)
 {
   for (int i = 0; i < N_STREAMS; i++) {
@@ -77,7 +70,6 @@ set_particle_seed(int64_t id, uint64_t * prn_seeds)
 //==============================================================================
 
 extern "C" void
-//advance_prn_seed(int64_t n)
 advance_prn_seed(int64_t n, uint64_t * prn_seeds, int stream)
 {
   prn_seeds[stream] = future_seed(static_cast<uint64_t>(n), prn_seeds[stream]);
@@ -123,18 +115,6 @@ future_seed(uint64_t n, uint64_t seed)
 }
 
 //==============================================================================
-// PRN_SET_STREAM
-//==============================================================================
-
-/*
-extern "C" void
-prn_set_stream(int i)
-{
-  stream = i;  // Shift by one to move from Fortran to C indexing.
-}
-*/
-
-//==============================================================================
 //                               API FUNCTIONS
 //==============================================================================
 
@@ -144,15 +124,6 @@ extern "C" void
 openmc_set_seed(int64_t new_seed)
 {
   master_seed = new_seed;
-  /*
-  //#pragma omp parallel
-  {
-    for (int i = 0; i < N_STREAMS; i++) {
-      prn_seed[i] = seed + i;
-    }
-    prn_set_stream(STREAM_TRACKING);
-  }
-  */
 }
 
 } // namespace openmc

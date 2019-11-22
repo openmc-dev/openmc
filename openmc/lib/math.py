@@ -1,4 +1,4 @@
-from ctypes import (c_int, c_double, POINTER)
+from ctypes import (c_int, c_double, POINTER, c_uint64)
 
 import numpy as np
 from numpy.ctypeslib import ndpointer
@@ -26,9 +26,9 @@ _dll.calc_zn_rad.argtypes = [c_int, c_double, ndpointer(c_double)]
 
 _dll.rotate_angle_c.restype = None
 _dll.rotate_angle_c.argtypes = [ndpointer(c_double), c_double,
-                                POINTER(c_double)]
+                                POINTER(c_double), POINTER(c_uint64), c_int]
 _dll.maxwell_spectrum.restype = c_double
-_dll.maxwell_spectrum.argtypes = [c_double]
+_dll.maxwell_spectrum.argtypes = [c_double, POINTER(c_uint64), c_int]
 
 _dll.watt_spectrum.restype = c_double
 _dll.watt_spectrum.argtypes = [c_double, c_double]
@@ -38,7 +38,7 @@ _dll.broaden_wmp_polynomials.argtypes = [c_double, c_double, c_int,
                                          ndpointer(c_double)]
 
 _dll.normal_variate.restype = c_double
-_dll.normal_variate.argtypes = [c_double, c_double]
+_dll.normal_variate.argtypes = [c_double, c_double, POINTER(c_uint64), c_int]
 
 def t_percentile(p, df):
     """ Calculate the percentile of the Student's t distribution with a

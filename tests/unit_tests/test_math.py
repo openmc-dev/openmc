@@ -176,7 +176,7 @@ def test_rotate_angle():
 
     # Now to test phi is None
     mu = 0.9
-	phi = []
+    phi = []
 
     # When seed = 1, phi will be sampled as 1.9116495709698769
     # The resultant reference is from hand-calculations given the above

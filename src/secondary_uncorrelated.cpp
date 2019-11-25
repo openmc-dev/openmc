@@ -52,7 +52,8 @@ UncorrelatedAngleEnergy::UncorrelatedAngleEnergy(hid_t group)
 }
 
 void
-UncorrelatedAngleEnergy::sample(double E_in, double& E_out, double& mu, uint64_t * prn_seeds, int stream) const
+UncorrelatedAngleEnergy::sample(double E_in, double& E_out, double& mu,
+  uint64_t * prn_seeds, int stream) const
 {
   // Sample cosine of scattering angle
   if (fission_) {

@@ -62,7 +62,6 @@ AngleDistribution::AngleDistribution(hid_t group)
   }
 }
 
-//double AngleDistribution::sample(double E) const
 double AngleDistribution::sample(double E, uint64_t * prn_seeds, int stream) const
 {
   // Determine number of incoming energies

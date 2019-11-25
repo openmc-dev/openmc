@@ -123,7 +123,7 @@ void synchronize_bank()
   // fission bank for each processor.
 
   set_particle_seed(simulation::total_gen + overall_generation(), prn_seeds);
-  advance_prn_seed(start, prn_seeds, stream); // TODO: What is starting stream here? Tracking? It doesn't appear to be enforced anywhere?
+  advance_prn_seed(start, prn_seeds, stream);
 
   // Determine how many fission sites we need to sample from the source bank
   // and the probability for selecting a site.

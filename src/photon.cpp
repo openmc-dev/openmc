@@ -649,8 +649,8 @@ void PhotonInteraction::atomic_relaxation(const ElectronSubshell& shell, Particl
 {
   // If no transitions, assume fluorescent photon from captured free electron
   if (shell.n_transitions == 0) {
-    double mu = 2.0*prn(p.prn_seeds, p.stream) - 1.0;
-    double phi = 2.0*PI*prn(p.prn_seeds, p.stream);
+    double mu = 2.0*prn(p.prn_seeds_, p.stream_) - 1.0;
+    double phi = 2.0*PI*prn(p.prn_seeds_, p.stream_);
     Direction u;
     u.x = mu;
     u.y = std::sqrt(1.0 - mu*mu)*std::cos(phi);
@@ -661,7 +661,7 @@ void PhotonInteraction::atomic_relaxation(const ElectronSubshell& shell, Particl
   }
 
   // Sample transition
-  double rn = prn(p.prn_seeds, p.stream);
+  double rn = prn(p.prn_seeds_, p.stream_);
   double c = 0.0;
   int i_transition;
   for (i_transition = 0; i_transition < shell.n_transitions; ++i_transition) {
@@ -674,8 +674,8 @@ void PhotonInteraction::atomic_relaxation(const ElectronSubshell& shell, Particl
   int secondary = shell.transition_subshells(i_transition, 1);
 
   // Sample angle isotropically
-  double mu = 2.0*prn(p.prn_seeds, p.stream) - 1.0;
-  double phi = 2.0*PI*prn(p.prn_seeds, p.stream);
+  double mu = 2.0*prn(p.prn_seeds_, p.stream_) - 1.0;
+  double phi = 2.0*PI*prn(p.prn_seeds_, p.stream_);
   Direction u;
   u.x = mu;
   u.y = std::sqrt(1.0 - mu*mu)*std::cos(phi);

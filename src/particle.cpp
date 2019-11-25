@@ -157,9 +157,9 @@ Particle::transport()
   while (true) {
     // Set the random number stream
     if (type_ == Particle::Type::neutron) {
-      stream = STREAM_TRACKING;
+      stream_ = STREAM_TRACKING;
     } else {
-      stream = STREAM_PHOTON;
+      stream_ = STREAM_PHOTON;
     }
 
     // Store pre-collision particle properties
@@ -228,7 +228,7 @@ Particle::transport()
     } else if (macro_xs_.total == 0.0) {
       d_collision = INFINITY;
     } else {
-      d_collision = -std::log(prn(prn_seeds, stream)) / macro_xs_.total;
+      d_collision = -std::log(prn(prn_seeds_, stream_)) / macro_xs_.total;
     }
 
     // Select smaller of the two distances
@@ -461,7 +461,7 @@ Particle::cross_surface()
 
     Direction u = (surf->bc_ == BC_REFLECT) ?
       surf->reflect(this->r(), this->u()) :
-      surf->diffuse_reflect(this->r(), this->u(), prn_seeds, stream);
+      surf->diffuse_reflect(this->r(), this->u(), prn_seeds_, stream_);
 
     // Make sure new particle direction is normalized
     this->u() = u / u.norm();

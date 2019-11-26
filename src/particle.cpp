@@ -90,9 +90,11 @@ Particle::clear()
 void
 Particle::create_secondary(Direction u, double E, Type type)
 {
-  simulation::secondary_bank.emplace_back();
+  //simulation::secondary_bank.emplace_back();
+  secondary_bank_.emplace_back();
 
-  auto& bank {simulation::secondary_bank.back()};
+  //auto& bank {simulation::secondary_bank.back()};
+  auto& bank {secondary_bank_.back()};
   bank.particle = type;
   bank.wgt = wgt_;
   bank.r = this->r();
@@ -376,10 +378,13 @@ Particle::transport()
     // Check for secondary particles if this particle is dead
     if (!alive_) {
       // If no secondary particles, break out of event loop
-      if (simulation::secondary_bank.empty()) break;
+      //if (simulation::secondary_bank.empty()) break;
+      if (secondary_bank_.empty()) break;
 
-      this->from_source(&simulation::secondary_bank.back());
-      simulation::secondary_bank.pop_back();
+      //this->from_source(&simulation::secondary_bank.back());
+      this->from_source(&secondary_bank_.back());
+      //simulation::secondary_bank.pop_back();
+      secondary_bank_.pop_back();
       n_event = 0;
 
       // Enter new particle in particle track file

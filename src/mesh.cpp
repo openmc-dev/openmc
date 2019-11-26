@@ -2024,9 +2024,11 @@ void read_meshes(pugi::xml_node root)
       model::meshes.push_back(std::make_unique<RegularMesh>(node));
     } else if (mesh_type == "rectilinear") {
       model::meshes.push_back(std::make_unique<RectilinearMesh>(node));
+#ifdef DAGMC
     }
     else if (mesh_type == "unstructured") {
       model::meshes.push_back(std::make_unique<UnstructuredMesh>(node));
+#endif
     } else {
       fatal_error("Invalid mesh type: " + mesh_type);
     }

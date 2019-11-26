@@ -430,6 +430,7 @@ void process_collision_events()
 
     // Reset banked weight during collision
     p->n_bank_ = 0;
+    p->n_bank_second_ = 0;
     p->wgt_bank_ = 0.0;
     for (int& v : p->n_delayed_bank_) v = 0;
 
@@ -556,7 +557,7 @@ void transport()
 		// Initialize all histories
 		// TODO: Parallelize
 		for (int i = 0; i < n_particles; i++) {
-			initialize_history(particles + i, source_offset + i);
+			initialize_history(particles + i, source_offset + i + 1);
 		}
 
 		//std::cout << "Enqueing particles for XS Lookups..." << std::endl;
@@ -577,7 +578,7 @@ void transport()
 			std::cout << "Collisions = " << collision_queue_length << std::endl;
 			*/
 			int max = std::max({calculate_fuel_xs_queue_length, calculate_nonfuel_xs_queue_length, advance_particle_queue_length, surface_crossing_queue_length, collision_queue_length});
-			check_energies();
+			//check_energies();
 			if (max == 0) {
 				break;
 			} else if (max == calculate_fuel_xs_queue_length) {
@@ -1104,8 +1105,8 @@ void initialize_history(Particle* p, int64_t index_source)
 {
 	//assert(index_source - 1 >= 0 );
   // set defaults
-  //p->from_source(&simulation::source_bank[index_source - 1]);
-  p->from_source(&simulation::source_bank[index_source]);
+  p->from_source(&simulation::source_bank[index_source - 1]);
+  //p->from_source(&simulation::source_bank[index_source]);
 
   // set identifier for particle
   p->id_ = simulation::work_index[mpi::rank] + index_source;
@@ -1113,6 +1114,7 @@ void initialize_history(Particle* p, int64_t index_source)
   // set random number seed
   int64_t particle_seed = (simulation::total_gen + overall_generation() - 1)
     * settings::n_particles + p->id_;
+  //std::cout << "MPI rank " << mpi::rank << " is initializing particle " << index_source << " with ID/seed " << particle_seed << std::endl;
   set_particle_seed(particle_seed, p->prn_seeds_);
 
   // set particle trace

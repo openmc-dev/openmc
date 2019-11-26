@@ -52,7 +52,8 @@ UncorrelatedAngleEnergy::UncorrelatedAngleEnergy(hid_t group)
 }
 
 void
-UncorrelatedAngleEnergy::sample(double E_in, double& E_out, double& mu) const
+UncorrelatedAngleEnergy::sample(double E_in, double& E_out, double& mu,
+  uint64_t * prn_seeds, int stream) const
 {
   // Sample cosine of scattering angle
   if (fission_) {
@@ -61,14 +62,14 @@ UncorrelatedAngleEnergy::sample(double E_in, double& E_out, double& mu) const
     mu = 1.0;
     // <<<<<<<<<<<<<<<<<<<<<<<<<<<<<< REMOVE THIS <<<<<<<<<<<<<<<<<<<<<<<<<<<<<
   } else if (!angle_.empty()) {
-    mu = angle_.sample(E_in);
+    mu = angle_.sample(E_in, prn_seeds, stream);
   } else {
     // no angle distribution given => assume isotropic for all energies
-    mu = 2.0*prn() - 1.0;
+    mu = 2.0*prn(prn_seeds, stream) - 1.0;
   }
 
   // Sample outgoing energy
-  E_out = energy_->sample(E_in);
+  E_out = energy_->sample(E_in, prn_seeds, stream);
 }
 
 } // namespace openmc

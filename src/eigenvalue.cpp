@@ -114,12 +114,16 @@ void synchronize_bank()
     fatal_error("No fission sites banked on MPI rank " + std::to_string(mpi::rank));
   }
 
+  // Create pseudorandom number streams
+  uint64_t prn_seeds[N_STREAMS];     // seeds
+  int      stream = STREAM_TRACKING; // current RNG stream
+
   // Make sure all processors start at the same point for random sampling. Then
   // skip ahead in the sequence using the starting index in the 'global'
   // fission bank for each processor.
 
-  set_particle_seed(simulation::total_gen + overall_generation());
-  advance_prn_seed(start);
+  set_particle_seed(simulation::total_gen + overall_generation(), prn_seeds);
+  advance_prn_seed(start, prn_seeds, stream);
 
   // Determine how many fission sites we need to sample from the source bank
   // and the probability for selecting a site.
@@ -154,7 +158,7 @@ void synchronize_bank()
     }
 
     // Randomly sample sites needed
-    if (prn() < p_sample) {
+    if (prn(prn_seeds, stream) < p_sample) {
       temp_sites[index_temp] = site;
       ++index_temp;
     }

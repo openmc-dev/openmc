@@ -16,6 +16,10 @@ constexpr int STATUS_EXIT_NORMAL {0};
 constexpr int STATUS_EXIT_MAX_BATCH {1};
 constexpr int STATUS_EXIT_ON_TRIGGER {2};
 
+extern Particle::Bank * shared_fission_bank;
+extern int shared_fission_bank_length;
+extern int shared_fission_bank_max;
+
 //==============================================================================
 // Global variable declarations
 //==============================================================================
@@ -38,7 +42,9 @@ extern "C" int restart_batch;   //!< batch at which a restart job resumed
 extern "C" bool satisfy_triggers; //!< have tally triggers been satisfied?
 extern "C" int total_gen;        //!< total number of generations simulated
 extern double total_weight;  //!< Total source weight in a batch
-extern int64_t work_per_rank;         //!< number of particles per MPI rank
+extern int64_t thread_work_index;
+extern int64_t work_per_rank;       //!< number of particles per MPI rank
+extern int64_t work_per_thread;    //!< number of particles on a given tread
 
 extern const RegularMesh* entropy_mesh;
 extern const RegularMesh* ufs_mesh;
@@ -49,7 +55,8 @@ extern std::vector<int64_t> work_index;
 // Threadprivate variables
 extern "C" bool trace;     //!< flag to show debug information
 
-#pragma omp threadprivate(current_work, trace)
+
+#pragma omp threadprivate(current_work, work_per_thread, trace)
 
 } // namespace simulation
 

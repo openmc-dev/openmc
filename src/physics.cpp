@@ -79,6 +79,7 @@ void collision(Particle* p)
 
 void sample_neutron_reaction(Particle* p)
 {
+	//std::cout << "particle energy e = " << p->E_ << std::endl;
   // Sample a nuclide within the material
   int i_nuclide = sample_nuclide(p);
 
@@ -127,9 +128,12 @@ void sample_neutron_reaction(Particle* p)
   }
   if (!p->alive_) return;
 
+	//std::cout << "before scatter particle energy e = " << p->E_ << " with nuclide = " << i_nuclide <<  std::endl;
   // Sample a scattering reaction and determine the secondary energy of the
   // exiting neutron
   scatter(p, i_nuclide);
+	
+  //std::cout << "after scatter particle energy e = " << p->E_ << std::endl;
 
   // Advance URR seed stream 'N' times after energy changes
   if (p->E_ != p->E_last_) {
@@ -171,6 +175,7 @@ create_fission_sites(Particle* p, int i_nuclide, const Reaction* rx,
 
   p->fission_ = true;
   for (int i = 0; i < nu; ++i) {
+	  /*
     // Create new bank site and get reference to last element
     bank.emplace_back();
     auto& site {bank.back()};
@@ -179,12 +184,22 @@ create_fission_sites(Particle* p, int i_nuclide, const Reaction* rx,
     site.r = p->r();
     site.particle = Particle::Type::neutron;
     site.wgt = 1. / weight;
+	*/
+	  int idx;
+	  #pragma omp atomic capture
+	  idx = shared_fission_bank_length++;
+	  Particle::Bank * site = shared_fission_bank + idx;
+	  site->r = p->r();
+	  site->particle = Particle::Type::neutron;
+	  site->wgt = 1. / weight;
 
     // Sample delayed group and angle/energy for fission reaction
-    sample_fission_neutron(i_nuclide, rx, p->E_, &site, p->prn_seeds_, p->stream_);
+
+    sample_fission_neutron(i_nuclide, rx, p->E_, site, p->prn_seeds_, p->stream_);
 
     // Set the delayed group on the particle as well
-    p->delayed_group_ = site.delayed_group;
+    //p->delayed_group_ = site.delayed_group;
+    p->delayed_group_ = site->delayed_group;
 
     // Increment the number of neutrons born delayed
     if (p->delayed_group_ > 0) {
@@ -598,6 +613,7 @@ void scatter(Particle* p, int i_nuclide)
     // Determine temperature
     double kT = nuc->multipole_ ? p->sqrtkT_*p->sqrtkT_ : nuc->kTs_[i_temp];
 
+	//std::cout << "we are doing an elastic scatter" << std::endl;
     // Perform collision physics for elastic scattering
     elastic_scatter(i_nuclide, *nuc->reactions_[0], kT, p);
 
@@ -610,6 +626,7 @@ void scatter(Particle* p, int i_nuclide)
     // =======================================================================
     // S(A,B) SCATTERING
 
+	//std::cout << "we are doing an SAB scatter" << std::endl;
     sab_scatter(i_nuclide, micro.index_sab, p);
 
     p->event_mt_ = ELASTIC;
@@ -617,6 +634,7 @@ void scatter(Particle* p, int i_nuclide)
   }
 
   if (!sampled) {
+	//std::cout << "we are doing an Inelastic scatter" << std::endl;
     // =======================================================================
     // INELASTIC SCATTERING
 
@@ -643,7 +661,9 @@ void scatter(Particle* p, int i_nuclide)
 
     // Perform collision physics for inelastic scattering
     const auto& rx {nuc->reactions_[i]};
+	//std::cout << "Energy before Inelastic scatter = " << p->E_ << std::endl;
     inelastic_scatter(nuc.get(), rx.get(), p);
+	//std::cout << "Energy after Inelastic scatter = " << p->E_ << std::endl;
     p->event_mt_ = rx->mt_;
   }
 
@@ -1056,22 +1076,29 @@ void inelastic_scatter(const Nuclide* nuc, const Reaction* rx, Particle* p)
   // angle and outgoing energy from CM to LAB
   if (rx->scatter_in_cm_) {
     double E_cm = E;
+	//std::cout << "E_cm = " << E_cm << std::endl;
 
     // determine outgoing energy in lab
     double A = nuc->awr_;
+//	std::cout << "A = " << nuc->awr_ << std::endl;
     E = E_cm + (E_in + 2.0*mu*(A + 1.0) * std::sqrt(E_in*E_cm))
           / ((A + 1.0)*(A + 1.0));
+	// here's where it goes wrong
+	//std::cout << "E = " << E << std::endl;
 
     // determine outgoing angle in lab
     mu = mu*std::sqrt(E_cm/E) + 1.0/(A+1.0) * std::sqrt(E_in/E);
+//	std::cout << "mu = " << mu << std::endl;
   }
 
   // Because of floating-point roundoff, it may be possible for mu to be
   // outside of the range [-1,1). In these cases, we just set mu to exactly -1
   // or 1
   if (std::abs(mu) > 1.0) mu = std::copysign(1.0, mu);
+//	std::cout << "mu = " << mu << std::endl;
 
   // Set outgoing energy and scattering angle
+//	std::cout << "FINAL E = " << E << " mu = " << mu << std::endl;
   p->E_ = E;
   p->mu_ = mu;
 

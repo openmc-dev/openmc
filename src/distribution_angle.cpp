@@ -85,6 +85,7 @@ double AngleDistribution::sample(double E, uint64_t * prn_seeds, int stream) con
   // Sample between the ith and (i+1)th bin
   if (r > prn(prn_seeds, stream)) ++i;
 
+  //assert(i >= 0 );
   // Sample i-th distribution
   double mu = distribution_[i]->sample(prn_seeds, stream);
 

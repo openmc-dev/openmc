@@ -111,8 +111,10 @@ void free_shared_fission_bank(void)
 // TODO: What is going on here?
 void revive_particle_from_secondary(Particle* p)
 {
-  p->from_source(&simulation::secondary_bank.back());
-  simulation::secondary_bank.pop_back();
+  //p->from_source(&simulation::secondary_bank.back());
+  p->from_source(&p->secondary_bank_.back());
+  //simulation::secondary_bank.pop_back();
+  p->secondary_bank_.pop_back();
   // n_event = 0;
 
   // Enter new particle in particle track file
@@ -153,9 +155,9 @@ void process_calculate_xs_events(int * queue, int n)
     // Set the random number stream
 	// TODO: Move RNG seeds to particle storage
     if (p->type_ == Particle::Type::neutron) {
-      prn_set_stream(STREAM_TRACKING);
+		p->stream_ = STREAM_TRACKING;
     } else {
-      prn_set_stream(STREAM_PHOTON);
+		p->stream_ = STREAM_PHOTON;
     }
 
     // Store pre-collision particle properties
@@ -283,7 +285,7 @@ void process_advance_particle_events()
     } else if (p->macro_xs_.total == 0.0) {
       d_collision = INFINITY;
     } else {
-      d_collision = -std::log(prn()) / p->macro_xs_.total;
+      d_collision = -std::log(prn(p->prn_seeds_, p->stream_)) / p->macro_xs_.total;
     }
 
     // -------------- break here? -------------------
@@ -366,12 +368,10 @@ void process_surface_crossing_events()
       score_surface_tally(p, model::active_surface_tallies);
     }
 
-	// TODO: Add back in support for secondary particles
-	/*
-    if (!p->alive_ && !simulation::secondary_bank.empty()) {
+    //if (!p->alive_ && !simulation::secondary_bank.empty()) {
+    if (!p->alive_ && !p->secondary_bank_.empty()) {
       revive_particle_from_secondary(p);
     }
-	*/
 
     if (p->alive_)
 	{
@@ -462,12 +462,10 @@ void process_collision_events()
     // Score flux derivative accumulators for differential tallies.
     if (!model::active_tallies.empty()) score_collision_derivative(p);
 
-	// TODO: Add back in secondary particle support
-	/*
-    if (!p->alive_ && !simulation::secondary_bank.empty()) {
+    //if (!p->alive_ && !simulation::secondary_bank.empty()) {
+    if (!p->alive_ && !p->secondary_bank_.empty()) {
       revive_particle_from_secondary(p);
     }
-	*/
 
     if (p->alive_)
 	{
@@ -542,8 +540,6 @@ void transport()
 {
 	int remaining_work = simulation::work_per_rank;
 	int source_offset = 0;
-
-
 
 	// Subiterations to complete sets of particles
 	while (remaining_work > 0) {
@@ -628,7 +624,7 @@ void transport()
 		
 		// TODO: Do this only once per PI
 		free_event_queues();
-		std::cout << "Event kernels retired: " << event_kernel_executions << std::endl;
+		//std::cout << "Event kernels retired: " << event_kernel_executions << std::endl;
 	}
 	//shared_fission_bank_length = 0;
 }
@@ -687,11 +683,11 @@ int openmc_simulation_init()
   allocate_banks();
 
   // Allocate tally results arrays if they're not allocated yet
-	  std::cout << "Trying to Initialize Results..." << std::endl;
+	  //std::cout << "Trying to Initialize Results..." << std::endl;
   for (auto& t : model::tallies) {
     t->init_results();
   }
-	  std::cout << "Success in Initializing Results!" << std::endl;
+	  //std::cout << "Success in Initializing Results!" << std::endl;
 
   // Set up material nuclide index mapping
   for (auto& mat : model::materials) {
@@ -1075,7 +1071,7 @@ void finalize_generation()
 	  // We need to move all the stuff from the shared_fission_bank into the real one.
 		//std::vector<Particle::Bank> shared_fission_bank_vector(shared_fission_bank, shared_fission_bank + shared_fission_bank_length);
       //simulation::fission_bank = shared_fission_bank_vector;
-	  std::cout << "Fission bank length = " << shared_fission_bank_length << std::endl;
+	  //std::cout << "Fission bank length = " << shared_fission_bank_length << std::endl;
 	  for( int i = 0; i < shared_fission_bank_length; i++ )
 		  simulation::fission_bank.push_back(shared_fission_bank[i]);
 	  shared_fission_bank_length = 0;

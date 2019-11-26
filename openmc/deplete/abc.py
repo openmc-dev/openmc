@@ -815,11 +815,11 @@ class SIIntegrator(Integrator):
         reset_particles = False
         if step_index == 0 and hasattr(self.operator, "settings"):
             reset_particles = True
-            self.operator.settings.particles *= self.n_stages
+            self.operator.settings.particles *= self.n_steps
         inherited = super()._get_bos_data_from_operator(
             step_index, step_power, bos_conc)
         if reset_particles:
-            self.operator.settings.particles //= self.n_stages
+            self.operator.settings.particles //= self.n_steps
         return inherited
 
     def integrate(self):

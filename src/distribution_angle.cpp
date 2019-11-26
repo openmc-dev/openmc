@@ -62,7 +62,7 @@ AngleDistribution::AngleDistribution(hid_t group)
   }
 }
 
-double AngleDistribution::sample(double E) const
+double AngleDistribution::sample(double E, uint64_t * prn_seeds, int stream) const
 {
   // Determine number of incoming energies
   auto n = energy_.size();
@@ -83,11 +83,11 @@ double AngleDistribution::sample(double E) const
   }
 
   // Sample between the ith and (i+1)th bin
-  if (r > prn()) ++i;
+  if (r > prn(prn_seeds, stream)) ++i;
 
   //assert(i >= 0 );
   // Sample i-th distribution
-  double mu = distribution_[i]->sample();
+  double mu = distribution_[i]->sample(prn_seeds, stream);
 
   // Make sure mu is in range [-1,1] and return
   if (std::abs(mu) > 1.0) mu = std::copysign(1.0, mu);

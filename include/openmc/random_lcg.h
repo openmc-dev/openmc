@@ -10,7 +10,7 @@ namespace openmc {
 // Module constants.
 //==============================================================================
 
-extern "C" const int N_STREAMS;
+constexpr int N_STREAMS = 6;
 extern "C" const int STREAM_TRACKING;
 extern "C" const int STREAM_TALLIES;
 extern "C" const int STREAM_SOURCE;
@@ -21,10 +21,12 @@ constexpr int64_t DEFAULT_SEED = 1;
 
 //==============================================================================
 //! Generate a pseudo-random number using a linear congruential generator.
+//! @param prn_seeds Pseudorandom number seed array
+//! @param stream Pseudorandom number stream index
 //! @return A random number between 0 and 1
 //==============================================================================
 
-extern "C" double prn();
+extern "C" double prn(uint64_t * seeds, int stream);
 
 //==============================================================================
 //! Generate a random number which is 'n' times ahead from the current seed.
@@ -32,24 +34,29 @@ extern "C" double prn();
 //! The result of this function will be the same as the result from calling
 //! `prn()` 'n' times.
 //! @param n The number of RNG seeds to skip ahead by
+//! @param prn_seeds Pseudorandom number seed array
+//! @param stream Pseudorandom number stream index
 //! @return A random number between 0 and 1
 //==============================================================================
 
-extern "C" double future_prn(int64_t n);
+extern "C" double future_prn(int64_t n, uint64_t * prn_seeds, int stream);
 
 //==============================================================================
-//! Set the RNG seed to a unique value based on the ID of the particle.
+//! Set the RNG seeds to unique values based on the ID of the particle.
+//! @param prn_seeds Pseudorandom number seed array
 //! @param id The particle ID
 //==============================================================================
 
-extern "C" void set_particle_seed(int64_t id);
+extern "C" void set_particle_seed(int64_t id, uint64_t * prn_seeds );
 
 //==============================================================================
 //! Advance the random number seed 'n' times from the current seed.
+//! @param prn_seeds Pseudorandom number seed array
+//! @param stream Pseudorandom number stream index
 //! @param n The number of RNG seeds to skip ahead by
 //==============================================================================
 
-extern "C" void advance_prn_seed(int64_t n);
+extern "C" void advance_prn_seed(int64_t n, uint64_t * prn_seeds, int stream);
 
 //==============================================================================
 //! Advance a random number seed 'n' times.
@@ -62,18 +69,6 @@ extern "C" void advance_prn_seed(int64_t n);
 //==============================================================================
 
 uint64_t future_seed(uint64_t n, uint64_t seed);
-
-//==============================================================================
-//! Switch the RNG to a different stream of random numbers.
-//!
-//! If random numbers are needed in routines not used directly for tracking
-//! (e.g. physics), this allows the numbers to be generated without affecting
-//! reproducibility of the physics.
-//! @param n The RNG stream to switch to. Use the constants such as
-//! `STREAM_TRACKING` and `STREAM_TALLIES` for this argument.
-//==============================================================================
-
-extern "C" void prn_set_stream(int n);
 
 //==============================================================================
 //                               API FUNCTIONS

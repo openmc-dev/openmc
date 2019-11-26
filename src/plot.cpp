@@ -80,6 +80,8 @@ namespace model {
 
 std::vector<Plot> plots;
 std::unordered_map<int, int> plot_map;
+uint64_t plotter_prn_seeds[N_STREAMS] = {1, 2, 3, 4, 5, 6};
+int plotter_stream = STREAM_TRACKING;
 
 } // namespace model
 
@@ -958,8 +960,10 @@ voxel_finalize(hid_t dspace, hid_t dset, hid_t memspace)
   H5Sclose(memspace);
 }
 
-RGBColor random_color() {
-  return {int(prn()*255), int(prn()*255), int(prn()*255)};
+RGBColor random_color(void) {
+  return {int(prn(model::plotter_prn_seeds, model::plotter_stream)*255),
+          int(prn(model::plotter_prn_seeds, model::plotter_stream)*255),
+          int(prn(model::plotter_prn_seeds, model::plotter_stream)*255)};
 }
 
 extern "C" int openmc_id_map(const void* plot, int32_t* data_out)

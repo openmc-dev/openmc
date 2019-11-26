@@ -7,7 +7,6 @@ namespace openmc {
 
 
 // Constants
-extern "C" const int N_STREAMS         {6};
 extern "C" const int STREAM_TRACKING   {0};
 extern "C" const int STREAM_TALLIES    {1};
 extern "C" const int STREAM_SOURCE     {2};
@@ -16,7 +15,7 @@ extern "C" const int STREAM_VOLUME     {4};
 extern "C" const int STREAM_PHOTON     {5};
 
 // Starting seed
-int64_t seed {1};
+int64_t master_seed {1};
 
 // LCG parameters
 constexpr uint64_t prn_mult   {2806196910506780709LL};   // multiplication
@@ -28,26 +27,20 @@ constexpr uint64_t prn_stride {152917LL};                // stride between
                                                          //   particles
 constexpr double   prn_norm   {1.0 / prn_mod};           // 2^-63
 
-// Current PRNG state
-uint64_t prn_seed[N_STREAMS];  // current seed
-int      stream;               // current RNG stream
-#pragma omp threadprivate(prn_seed, stream)
-
-
 //==============================================================================
 // PRN
 //==============================================================================
 
 extern "C" double
-prn()
+prn(uint64_t * prn_seeds, int stream)
 {
   // This algorithm uses bit-masking to find the next integer(8) value to be
   // used to calculate the random number.
-  prn_seed[stream] = (prn_mult*prn_seed[stream] + prn_add) & prn_mask;
+  prn_seeds[stream] = (prn_mult*prn_seeds[stream] + prn_add) & prn_mask;
 
   // Once the integer is calculated, we just need to divide by 2**m,
   // represented here as multiplying by a pre-calculated factor
-  return prn_seed[stream] * prn_norm;
+  return prn_seeds[stream] * prn_norm;
 }
 
 //==============================================================================
@@ -55,9 +48,9 @@ prn()
 //==============================================================================
 
 extern "C" double
-future_prn(int64_t n)
+future_prn(int64_t n, uint64_t * prn_seeds, int stream)
 {
-  return future_seed(static_cast<uint64_t>(n), prn_seed[stream]) * prn_norm;
+  return future_seed(static_cast<uint64_t>(n), prn_seeds[stream]) * prn_norm;
 }
 
 //==============================================================================
@@ -65,10 +58,10 @@ future_prn(int64_t n)
 //==============================================================================
 
 extern "C" void
-set_particle_seed(int64_t id)
+set_particle_seed(int64_t id, uint64_t * prn_seeds)
 {
   for (int i = 0; i < N_STREAMS; i++) {
-    prn_seed[i] = future_seed(static_cast<uint64_t>(id) * prn_stride, seed + i);
+    prn_seeds[i] = future_seed(static_cast<uint64_t>(id) * prn_stride, master_seed + i);
   }
 }
 
@@ -77,9 +70,9 @@ set_particle_seed(int64_t id)
 //==============================================================================
 
 extern "C" void
-advance_prn_seed(int64_t n)
+advance_prn_seed(int64_t n, uint64_t * prn_seeds, int stream)
 {
-  prn_seed[stream] = future_seed(static_cast<uint64_t>(n), prn_seed[stream]);
+  prn_seeds[stream] = future_seed(static_cast<uint64_t>(n), prn_seeds[stream]);
 }
 
 //==============================================================================
@@ -122,32 +115,15 @@ future_seed(uint64_t n, uint64_t seed)
 }
 
 //==============================================================================
-// PRN_SET_STREAM
-//==============================================================================
-
-extern "C" void
-prn_set_stream(int i)
-{
-  stream = i;  // Shift by one to move from Fortran to C indexing.
-}
-
-//==============================================================================
 //                               API FUNCTIONS
 //==============================================================================
 
-extern "C" int64_t openmc_get_seed() {return seed;}
+extern "C" int64_t openmc_get_seed() {return master_seed;}
 
 extern "C" void
 openmc_set_seed(int64_t new_seed)
 {
-  seed = new_seed;
-  #pragma omp parallel
-  {
-    for (int i = 0; i < N_STREAMS; i++) {
-      prn_seed[i] = seed + i;
-    }
-    prn_set_stream(STREAM_TRACKING);
-  }
+  master_seed = new_seed;
 }
 
 } // namespace openmc

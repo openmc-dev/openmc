@@ -142,7 +142,7 @@ SourceDistribution::SourceDistribution(pugi::xml_node node)
 }
 
 
-Particle::Bank SourceDistribution::sample() const
+Particle::Bank SourceDistribution::sample(uint64_t * prn_seeds, int stream) const
 {
   Particle::Bank site;
 
@@ -158,7 +158,7 @@ Particle::Bank SourceDistribution::sample() const
     site.particle = particle_;
 
     // Sample spatial distribution
-    site.r = space_->sample();
+    site.r = space_->sample(prn_seeds, stream);
     double xyz[] {site.r.x, site.r.y, site.r.z};
 
     // Now search to see if location exists in geometry
@@ -200,7 +200,7 @@ Particle::Bank SourceDistribution::sample() const
   ++n_accept;
 
   // Sample angle
-  site.u = angle_->sample();
+  site.u = angle_->sample(prn_seeds, stream);
 
   // Check for monoenergetic source above maximum particle energy
   auto p = static_cast<int>(particle_);
@@ -218,7 +218,7 @@ Particle::Bank SourceDistribution::sample() const
 
   while (true) {
     // Sample energy spectrum
-    site.E = energy_->sample();
+    site.E = energy_->sample(prn_seeds, stream);
 
     // Resample if energy falls outside minimum or maximum particle energy
     if (site.E < data::energy_max[p] && site.E > data::energy_min[p]) break;
@@ -270,10 +270,11 @@ void initialize_source()
       // initialize random number seed
       int64_t id = simulation::total_gen*settings::n_particles +
         simulation::work_index[mpi::rank] + i + 1;
-      set_particle_seed(id);
+	  uint64_t prn_seeds[N_STREAMS];
+      set_particle_seed(id, prn_seeds);
 
       // sample external source distribution
-      simulation::source_bank[i] = sample_external_source();
+      simulation::source_bank[i] = sample_external_source(prn_seeds);
     }
   }
 
@@ -287,10 +288,10 @@ void initialize_source()
   }
 }
 
-Particle::Bank sample_external_source()
+Particle::Bank sample_external_source(uint64_t * prn_seeds)
 {
   // Set the random number generator to the source stream.
-  prn_set_stream(STREAM_SOURCE);
+  int stream = STREAM_SOURCE;
 
   // Determine total source strength
   double total_strength = 0.0;
@@ -300,7 +301,7 @@ Particle::Bank sample_external_source()
   // Sample from among multiple source distributions
   int i = 0;
   if (model::external_sources.size() > 1) {
-    double xi = prn()*total_strength;
+    double xi = prn(prn_seeds, stream)*total_strength;
     double c = 0.0;
     for (; i < model::external_sources.size(); ++i) {
       c += model::external_sources[i].strength();
@@ -309,7 +310,7 @@ Particle::Bank sample_external_source()
   }
 
   // Sample source site from i-th source distribution
-  Particle::Bank site {model::external_sources[i].sample()};
+  Particle::Bank site {model::external_sources[i].sample(prn_seeds, stream)};
 
   // If running in MG, convert site.E to group
   if (!settings::run_CE) {
@@ -317,9 +318,6 @@ Particle::Bank sample_external_source()
       data::mg.rev_energy_bins_.end(), site.E);
     site.E = data::mg.num_energy_groups_ - site.E - 1.;
   }
-
-  // Set the random number generator back to the tracking stream.
-  prn_set_stream(STREAM_TRACKING);
 
   return site;
 }
@@ -336,10 +334,11 @@ void fill_source_bank_fixedsource()
       // initialize random number seed
       int64_t id = (simulation::total_gen + overall_generation()) *
         settings::n_particles + simulation::work_index[mpi::rank] + i + 1;
-      set_particle_seed(id);
+	  uint64_t prn_seeds[N_STREAMS];
+      set_particle_seed(id, prn_seeds);
 
       // sample external source distribution
-      simulation::source_bank[i] = sample_external_source();
+      simulation::source_bank[i] = sample_external_source(prn_seeds);
     }
   }
 }

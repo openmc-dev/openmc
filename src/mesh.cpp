@@ -69,8 +69,6 @@ inline bool check_intersection_point(double x1, double x0, double y1,
 // Mesh implementation
 //==============================================================================
 
-Mesh::Mesh(pugi::xml_node node)
-{
 Mesh::Mesh(pugi::xml_node node) {
    // Copy mesh id
   if (check_for_node(node, "id")) {
@@ -800,7 +798,7 @@ RegularMesh::count_sites(const Particle::Bank* bank, int64_t length,
                          bool* outside) const
 {
   // Determine shape of array for counts
-  std::size_t m = num_bins();
+  std::size_t m = n_bins();
   std::vector<std::size_t> shape = {m};
 
   // Create array of zeros
@@ -850,28 +848,22 @@ RegularMesh::count_sites(const Particle::Bank* bank, int64_t length,
   return counts;
 }
 
-std::string RegularMesh::get_label_for_bin(int bin) const {
-  int ijk[n_dimension_];
-  get_indices_from_bin(bin, ijk);
+// std::string RegularMesh::get_label_for_bin(int bin) const {
+//   int ijk[n_dimension_];
+//   get_indices_from_bin(bin, ijk);
 
-  std::stringstream out;
-  out << "Mesh Index (" << ijk[0];
-  if (n_dimension_ > 1) out << ", " << ijk[1];
-  if (n_dimension_ > 2) out << ", " << ijk[2];
-  out << ")";
+//   std::stringstream out;
+//   out << "Mesh Index (" << ijk[0];
+//   if (n_dimension_ > 1) out << ", " << ijk[1];
+//   if (n_dimension_ > 2) out << ", " << ijk[2];
+//   out << ")";
 
-  return out.str();
-}
+//   return out.str();
+// }
 
-double RegularMesh::get_volume_frac(int bin) const {
-  return volume_frac_;
-}
-
-int RegularMesh::num_bins() const {
-  int n_bins = 1;
-  for (auto v : shape_) n_bins *= v;
-  return n_bins;
-}
+// double RegularMesh::get_volume_frac(int bin) const {
+//   return volume_frac_;
+// }
 
 //==============================================================================
 // RectilinearMesh implementation
@@ -1937,9 +1929,34 @@ UnstructuredMesh::point_in_tet(const moab::CartVect& r, moab::EntityHandle tet) 
 }
 
 int
+UnstructuredMesh::get_bin_from_indices(const int* ijk) const {
+  if (ijk[0] >= n_bins()) {
+    std::stringstream s;
+    s << "Invalid bin: " << ijk[0];
+    fatal_error(s);
+  }
+  int bin = ehs_[ijk[0]] - ehs_[0];
+  return bin;
+}
+
+void
+UnstructuredMesh::get_indices(Position r, int* ijk, bool* in_mesh) const {
+  int bin = get_bin(r);
+  ijk[0]= bin;
+  *in_mesh = bin != -1;
+}
+
+void UnstructuredMesh::get_indices_from_bin(int bin, int* ijk) const {
+  ijk[0] = bin;
+}
+
+std::pair<std::vector<double>, std::vector<double>>
+UnstructuredMesh::plot(Position plot_ll, Position plot_ur) const { return {}; }
+
+int
 UnstructuredMesh::get_bin_from_ent_handle(moab::EntityHandle eh) const {
   int bin = eh - ehs_[0];
-  if (bin >= num_bins()) {
+  if (bin >= n_bins()) {
     std::stringstream s;
     s << "Invalid bin: " << bin;
     fatal_error(s);
@@ -1949,7 +1966,7 @@ UnstructuredMesh::get_bin_from_ent_handle(moab::EntityHandle eh) const {
 
 moab::EntityHandle
 UnstructuredMesh::get_ent_handle_from_bin(int bin) const {
-  if (bin >= num_bins()) {
+  if (bin >= n_bins()) {
     std::stringstream s;
     s << "Invalid bin index: " << bin;
     fatal_error(s);
@@ -1957,19 +1974,31 @@ UnstructuredMesh::get_ent_handle_from_bin(int bin) const {
   return ehs_[bin];
 }
 
-double UnstructuredMesh::get_volume_frac(int bin) const {
-  if (bin == -1) { return 0.0; }
-  if (bin > ehs_.size() || bin < -1) {
-    std::stringstream msg;
-    msg << "Invalid bin " << bin << " for umesh with id " << id_;
-    fatal_error(msg);
-  }
-  moab::EntityHandle tet = get_ent_handle_from_bin(bin);
-  return tet_volume(tet);
+// double UnstructuredMesh::get_volume_frac(int bin) const {
+//   if (bin == -1) { return 0.0; }
+//   if (bin > ehs_.size() || bin < -1) {
+//     std::stringstream msg;
+//     msg << "Invalid bin " << bin << " for umesh with id " << id_;
+//     fatal_error(msg);
+//   }
+//   moab::EntityHandle tet = get_ent_handle_from_bin(bin);
+//   return tet_volume(tet);
+// }
+
+int UnstructuredMesh::n_bins() const {
+  return ehs_.size();
 }
 
-int UnstructuredMesh::num_bins() const {
-  return ehs_.size();
+int UnstructuredMesh::n_surface_bins() const {
+  // collect all triangles in the set of tets for this mesh
+  moab::Range tris;
+  moab::ErrorCode rval;
+  rval = mbi_->get_entities_by_type(0, moab::MBTRI, tris);
+  if (rval != moab::MB_SUCCESS) {
+    warning("Failed to get all triangles in the mesh instance");
+    return -1;
+  }
+  return 2 * tris.size();
 }
 
 #endif

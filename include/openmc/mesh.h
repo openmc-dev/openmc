@@ -37,62 +37,9 @@ extern std::unordered_map<int32_t, int32_t> mesh_map;
 
 } // namespace model
 
-class Mesh {
 
-public:
-  // Constructor
-  Mesh() {}; // empty constructor
-  Mesh(pugi::xml_node node);
-
-  //! Determine which bins were crossed by a particle
-  //
-  //! \param[in] p Particle to check
-  //! \param[out] bins Bins that were crossed
-  //! \param[out] lengths Fraction of tracklength in each bin
-  virtual void bins_crossed(const Particle* p, std::vector<int>& bins,
-                            std::vector<double>& lengths) const = 0;
-
-  //! Write mesh data to an HDF5 group
-  //
-  //! \param[in] group HDF5 group
-  virtual void to_hdf5(hid_t group) const = 0;
-
-  //! Determine which surface bins were crossed by a particle
-  //
-  //! \param[in] p Particle to check
-  //! \param[out] bins Surface bins that were crossed
-  virtual void
-  surface_bins_crossed(const Particle* p, std::vector<int>& bins) const = 0;
-
-  //! Get bin at a given position in space
-  //
-  //! \param[in] r Position to get bin for
-  //! \return Mesh bin
-  virtual int get_bin(Position r) const = 0;
-
-  virtual std::string get_label_for_bin(int bin) const = 0;
-
-  //! Count number of bank sites in each mesh bin / energy bin
-  //
-  //! \param[in] bank Array of bank sites
-  //! \param[out] Whether any bank sites are outside the mesh
-  //! \return Array indicating number of sites in each mesh/energy bin
-  virtual xt::xarray<double>
-  count_sites(const std::vector<Particle::Bank>& bank, bool* outside) const;
-
-  virtual double get_volume_frac(int bin = -1) const = 0;
-
-  virtual int num_bins() const = 0;
-
-  int id_ {-1};  //!< User-specified ID
-  int n_dimension_; //!< Number of dimensions
-};
-
-//==============================================================================
-//! Tessellation of n-dimensional Euclidean space by congruent squares or cubes
-//==============================================================================
-
-class RegularMesh : public Mesh {
+class Mesh
+{
 public:
   // Constructors and destructor
   Mesh() = default;
@@ -170,6 +117,60 @@ public:
   xt::xtensor<double, 1> lower_left_; //!< Lower-left coordinates of mesh
   xt::xtensor<double, 1> upper_right_; //!< Upper-right coordinates of mesh
 };
+
+// class Mesh {
+
+// public:
+//   // Constructors
+//   Mesh() = default;
+//   Mesh(pugi::xml_node node);
+
+//   // Destructor
+//   virtual ~Mesh() = default;
+
+//   //! Determine which bins were crossed by a particle
+//   //
+//   //! \param[in] p Particle to check
+//   //! \param[out] bins Bins that were crossed
+//   //! \param[out] lengths Fraction of tracklength in each bin
+//   virtual void bins_crossed(const Particle* p, std::vector<int>& bins,
+//                             std::vector<double>& lengths) const = 0;
+
+//   //! Write mesh data to an HDF5 group
+//   //
+//   //! \param[in] group HDF5 group
+//   virtual void to_hdf5(hid_t group) const = 0;
+
+//   //! Determine which surface bins were crossed by a particle
+//   //
+//   //! \param[in] p Particle to check
+//   //! \param[out] bins Surface bins that were crossed
+//   virtual void
+//   surface_bins_crossed(const Particle* p, std::vector<int>& bins) const = 0;
+
+//   //! Get bin at a given position in space
+//   //
+//   //! \param[in] r Position to get bin for
+//   //! \return Mesh bin
+//   virtual int get_bin(Position r) const = 0;
+
+//   virtual std::string get_label_for_bin(int bin) const = 0;
+
+//   //! Count number of bank sites in each mesh bin / energy bin
+//   //
+//   //! \param[in] bank Array of bank sites
+//   //! \param[out] Whether any bank sites are outside the mesh
+//   //! \return Array indicating number of sites in each mesh/energy bin
+//   virtual xt::xarray<double>
+//   count_sites(const std::vector<Particle::Bank>& bank, bool* outside) const;
+
+//   virtual double get_volume_frac(int bin = -1) const = 0;
+
+//   virtual int num_bins() const = 0;
+
+//   int id_ {-1};  //!< User-specified ID
+//   int n_dimension_; //!< Number of dimensions
+// };
 
 //==============================================================================
 //! Tessellation of n-dimensional Euclidean space by congruent squares or cubes
@@ -393,6 +394,15 @@ intersect_track(const moab::CartVect& start,
   //! \return MOAB EntityHandle of tet
   moab::EntityHandle get_ent_handle_from_bin(int bin) const;
 
+  int get_bin_from_indices(const int* ijk) const override;
+
+  void get_indices(Position r, int* ijk, bool* in_mesh) const override;
+
+  void get_indices_from_bin(int bin, int* ijk) const override;
+
+  std::pair<std::vector<double>, std::vector<double>>
+  plot(Position plot_ll, Position plot_ur) const override;
+
   //! Builds a KDTree for all tetrahedra in the mesh. All
   //! triangles representing 2D faces of the mesh are
   //! added to the tree as well.
@@ -420,9 +430,11 @@ public:
 
   std::string get_label_for_bin(int bin) const;
 
-  double get_volume_frac(int bin = -1) const;
+  // double get_volume_frac(int bin = -1) const;
 
-  int num_bins() const;
+  int n_bins() const override;
+
+  int n_surface_bins() const override;
 
   std::string filename_; //<! Path to unstructured mesh file
 

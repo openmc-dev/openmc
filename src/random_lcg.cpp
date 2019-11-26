@@ -1,6 +1,7 @@
 #include "openmc/random_lcg.h"
 
 #include <cmath>
+//#include <iostream>
 
 
 namespace openmc {
@@ -60,6 +61,7 @@ future_prn(int64_t n, uint64_t * prn_seeds, int stream)
 extern "C" void
 set_particle_seed(int64_t id, uint64_t * prn_seeds)
 {
+	//std::cout << "Master seed = " << master_seed << " id = " << id << std::endl;
   for (int i = 0; i < N_STREAMS; i++) {
     prn_seeds[i] = future_seed(static_cast<uint64_t>(id) * prn_stride, master_seed + i);
   }

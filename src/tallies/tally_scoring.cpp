@@ -1225,8 +1225,10 @@ score_general_ce(Particle* p, int i_tally, int start_index,
           // We need to substract the energy of the secondary particles since
           // they will be transported individually later
           for (auto i = 0; i < p->n_bank_second_; ++i) {
-            auto i_bank = simulation::secondary_bank.size() - p->n_bank_second_ + i;
-            const auto& bank = simulation::secondary_bank[i_bank];
+            //auto i_bank = simulation::secondary_bank.size() - p->n_bank_second_ + i;
+            auto i_bank = p->secondary_bank_.size() - p->n_bank_second_ + i;
+            //const auto& bank = simulation::secondary_bank[i_bank];
+            const auto& bank = p->secondary_bank_[i_bank];
             if (bank.particle == Particle::Type::photon ||
                 bank.particle == Particle::Type::neutron) {
               score -= bank.E;

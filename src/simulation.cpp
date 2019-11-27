@@ -1140,12 +1140,11 @@ void finalize_generation()
       //std::sort(simulation::fission_bank.begin(), simulation::fission_bank.end(), bank_site_comparator());
       //std::sort(simulation::fission_bank.begin(), simulation::fission_bank.end());
       std::stable_sort(simulation::fission_bank.begin(), simulation::fission_bank.end());
-	  /*
-	  std::cout << "Fission bank on rank << " << mpi::rank << " is of length " << simulation::fission_bank.size() << std::endl;
+	  std::cout << "Fission bank on rank " << mpi::rank << " is of length " << simulation::fission_bank.size() << std::endl;
 	  for (Particle::Bank p : simulation::fission_bank )
 	  {
 	   std::cout <<  "E = " << p.E << std::endl;
-	  }*/
+	  }
 
     // Distribute fission bank across processors evenly
     synchronize_bank();
@@ -1230,12 +1229,10 @@ void initialize_history(Particle* p, int64_t index_source)
     // Every particle starts with no accumulated flux derivative.
    if (!model::active_tallies.empty()) zero_flux_derivs();
 
-   /*
    std::cout << "Initialized particle " << particle_seed << " with E = " << p->E_ << " and Position {" <<
 	   p->r().x << ", " <<
 	   p->r().y << ", " <<
 	   p->r().z << "}" << std::endl;
-	   */
 }
 
 int overall_generation()

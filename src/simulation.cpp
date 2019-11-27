@@ -144,6 +144,8 @@ void dispatch_xs_event(int i)
 void process_calculate_xs_events(int * queue, int n)
 {
   // Save last_ members, find grid index
+  int lost_particles = 0;
+  #pragma omp parallel for reduction(+:lost_particles)
   for (int i = 0; i < n; i++) {
 	  Particle *p = particles + queue[i]; 
 	  //std::cout << "particle offset = " << queue[i] << std::endl;
@@ -168,7 +170,9 @@ void process_calculate_xs_events(int * queue, int n)
       if (!find_cell(p, false)) {
         p->mark_as_lost("Could not find the cell containing particle "
           + std::to_string(p->id_));
-        return;
+        //return;
+		lost_particles += 1;
+		continue;
       }
 
       // set birth cell attribute
@@ -191,6 +195,9 @@ void process_calculate_xs_events(int * queue, int n)
     //int neutron = static_cast<int>(Particle::Type::neutron);
     //p->macro_xs_.i_grid = std::log(p->E_/data::energy_min[neutron]) / simulation::log_spacing;
   }
+  if( lost_particles > 0 )
+	  exit(1);
+  #pragma omp parallel for
   for( int i = 0; i < n; i++ )
   {
 	  Particle * p = particles + queue[i];
@@ -210,11 +217,22 @@ void process_calculate_xs_events(int * queue, int n)
 		  p->macro_xs_.fission    = 0.0;
 		  p->macro_xs_.nu_fission = 0.0;
 	  }
+	  /*
 	  int idx;
 	  #pragma omp atomic capture
 	  idx = advance_particle_queue_length++;
 	  advance_particle_queue[idx] = queue[i];
+	  */
   }
+  int start = advance_particle_queue_length;
+  int end = start + n;
+  int j = 0;
+  for( int i = start; i < end; i++ )
+  {
+	  advance_particle_queue[i] = queue[j];
+	  j++;
+  }
+  advance_particle_queue_length += n;
 
   /*
   // Calculate nuclide micros
@@ -295,6 +313,7 @@ void process_calculate_xs_events(int * queue, int n)
 void process_advance_particle_events()
 {
   //for (auto& p : advance_particle_queue) {
+  #pragma omp parallel for
   for (int i = 0; i < advance_particle_queue_length; i++) {
 	  Particle * p = particles + advance_particle_queue[i];
     simulation::trace == (p->id_ == 0);
@@ -362,6 +381,7 @@ void process_advance_particle_events()
 void process_surface_crossing_events()
 {
   //for (auto& p : surface_crossing_queue) {
+  #pragma omp parallel for
   for (int i = 0; i < surface_crossing_queue_length; i++) {
 	  Particle * p = particles + surface_crossing_queue[i];
     // Set surface that particle is on and adjust coordinate levels
@@ -407,6 +427,7 @@ void process_surface_crossing_events()
 void process_collision_events()
 {
   //for (auto& p : collision_queue) {
+  #pragma omp parallel for
   for (int i = 0; i < collision_queue_length; i++) {
 	  Particle * p = particles + collision_queue[i];
 	  //std::cout << "Beginning collision of particle id " << collision_queue[i] << " with energy E = " << p->E_ << std::endl;
@@ -563,12 +584,19 @@ void transport()
 {
 	int remaining_work = simulation::work_per_rank;
 	int source_offset = 0;
+		
+	init_event_queues();
+
+	double time_fuel_xs = 0;
+	double time_nonfuel_xs = 0;
+	double time_advance = 0;
+	double time_collision = 0;
+	double time_surf = 0;
+	double stop, start;
 
 	// Subiterations to complete sets of particles
 	while (remaining_work > 0) {
 
-		// TODO: Do this only once per PI
-		init_event_queues();
 
 		// Figure out work for this subiteration
 		int n_particles = MAX_PARTICLES_IN_FLIGHT;
@@ -626,29 +654,44 @@ void transport()
 				//std::cout << "pre fuel XS check..." << std::endl;
 				//check_energies(calculate_fuel_xs_queue, calculate_fuel_xs_queue_length);
 				//std::cout << "Performing Fuel XS Lookups..." << std::endl;
+				start = omp_get_wtime();
 				process_calculate_xs_events(calculate_fuel_xs_queue, calculate_fuel_xs_queue_length);
+				stop = omp_get_wtime();
+				time_fuel_xs += (stop-start);
 				calculate_fuel_xs_queue_length = 0;
 			} else if (max == calculate_nonfuel_xs_queue_length) {
 				//std::cout << "pre non fuel XS check..." << std::endl;
 				//check_energies(calculate_nonfuel_xs_queue, calculate_nonfuel_xs_queue_length);
 			//	std::cout << "Performing Non Fuel XS Lookups..." << std::endl;
+				start = omp_get_wtime();
 				process_calculate_xs_events(calculate_nonfuel_xs_queue, calculate_nonfuel_xs_queue_length);
+				stop = omp_get_wtime();
+				time_nonfuel_xs += (stop-start);
 				calculate_nonfuel_xs_queue_length = 0;
 			} else if (max == advance_particle_queue_length) {
 				//std::cout << "pre advancing check..." << std::endl;
 				//check_energies(advance_particle_queue, advance_particle_queue_length);
 				//std::cout << "Advancing Particles..." << std::endl;
+				start = omp_get_wtime();
 				process_advance_particle_events();
+				stop = omp_get_wtime();
+				time_advance += (stop-start);
 			} else if (max == surface_crossing_queue_length) {
 				//std::cout << "pre surface crossing check..." << std::endl;
 				//check_energies(surface_crossing_queue, surface_crossing_queue_length);
 				//std::cout << "Surface Crossings..." << std::endl;
+				start = omp_get_wtime();
 				process_surface_crossing_events();
+				stop = omp_get_wtime();
+				time_surf += (stop-start);
 			} else if (max == collision_queue_length) {
 				//std::cout << "pre Colliding check..." << std::endl;
 				//check_energies(collision_queue, collision_queue_length);
 				//std::cout << "Colliding..." << std::endl;
+				start = omp_get_wtime();
 				process_collision_events();
+				stop = omp_get_wtime();
+				time_collision += (stop-start);
 			}
 		}
 
@@ -664,11 +707,18 @@ void transport()
 		collision_queue_length            = 0;
 		*/
 		
-		// TODO: Do this only once per PI
-		free_event_queues();
 		//std::cout << "Event kernels retired: " << event_kernel_executions << std::endl;
 	}
+	if( mpi::rank == 0 )
+	{
+		std::cout << "Fuel XS Time:     " << time_fuel_xs << std::endl;
+		std::cout << "Non Fuel XS Time: " << time_nonfuel_xs << std::endl;
+		std::cout << "Advance Time:     " << time_advance << std::endl;
+		std::cout << "Surface Time:     " << time_surf << std::endl;
+		std::cout << "Collision Time:   " << time_collision<< std::endl;
+	}
 	//shared_fission_bank_length = 0;
+	free_event_queues();
 }
 
 } // namespace openmc

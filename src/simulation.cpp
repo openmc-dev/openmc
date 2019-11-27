@@ -552,16 +552,20 @@ void transport()
 		// Initialize all histories
 		// TODO: Parallelize
 
+		/*
 		for( int p = 0; p < mpi::n_procs; p++)
 		{
 			MPI_Barrier(mpi::intracomm);
 			if( p == mpi::rank )
 			{
+			*/
 				for (int i = 0; i < n_particles; i++) {
 					initialize_history(particles + i, source_offset + i + 1);
 				}
+				/*
 			}
 		}
+		*/
 
 		//std::cout << "Enqueing particles for XS Lookups..." << std::endl;
 		// Add all particles to advance particle queue
@@ -1166,6 +1170,16 @@ void initialize_history(Particle* p, int64_t index_source)
 
     // Every particle starts with no accumulated flux derivative.
    if (!model::active_tallies.empty()) zero_flux_derivs();
+<<<<<<< HEAD
+=======
+
+   /*
+   std::cout << "Initialized particle " << particle_seed << " with E = " << p->E_ << " and Position {" <<
+	   p->r().x << ", " <<
+	   p->r().y << ", " <<
+	   p->r().z << "}" << std::endl;
+	   */
+>>>>>>> removed print statements
 }
 
 int overall_generation()

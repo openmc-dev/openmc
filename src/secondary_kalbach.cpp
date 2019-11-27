@@ -113,7 +113,7 @@ KalbachMann::KalbachMann(hid_t group)
   } // incoming energies
 }
 
-void KalbachMann::sample(double E_in, double& E_out, double& mu, uint64_t * prn_seeds, int stream) const
+void KalbachMann::sample(double E_in, double& E_out, double& mu, uint64_t* prn_seeds, int stream) const
 {
   // <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<< REMOVE THIS <<<<<<<<<<<<<<<<<<<<<<<<<<<<<
   // Before the secondary distribution refactor, an isotropic polar cosine was

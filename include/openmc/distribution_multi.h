@@ -26,7 +26,7 @@ public:
   //! \param prn_seeds Array of pseudorandom number seeds
   //! \param stream Pseudorandom stream index
   //! \return Direction sampled
-  virtual Direction sample(uint64_t * prn_seeds, int stream) const = 0;
+  virtual Direction sample(uint64_t* prn_seeds, int stream) const = 0;
 
   Direction u_ref_ {0.0, 0.0, 1.0};  //!< reference direction
 };
@@ -44,7 +44,7 @@ public:
   //! \param prn_seeds Array of pseudorandom number seeds
   //! \param stream Pseudorandom stream index
   //! \return Direction sampled
-  Direction sample(uint64_t * prn_seeds, int stream) const;
+  Direction sample(uint64_t* prn_seeds, int stream) const;
 private:
   UPtrDist mu_;  //!< Distribution of polar angle
   UPtrDist phi_; //!< Distribution of azimuthal angle
@@ -62,7 +62,7 @@ public:
   //! \param prn_seeds Array of pseudorandom number seeds
   //! \param stream Pseudorandom stream index
   //! \return Sampled direction
-  Direction sample(uint64_t * prn_seeds, int stream) const;
+  Direction sample(uint64_t* prn_seeds, int stream) const;
 };
 
 //==============================================================================
@@ -78,7 +78,7 @@ public:
   //! \param prn_seeds Array of pseudorandom number seeds
   //! \param stream Pseudorandom stream index
   //! \return Sampled direction
-  Direction sample(uint64_t * prn_seeds, int stream) const;
+  Direction sample(uint64_t* prn_seeds, int stream) const;
 };
 
 using UPtrAngle = std::unique_ptr<UnitSphereDistribution>;

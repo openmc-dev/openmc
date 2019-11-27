@@ -67,7 +67,7 @@ public:
   //! \param[inout] prn_seeds Pseudorandom seed array
   //! \param[in] stream Pseudorandom stream index
   void sample(const NuclideMicroXS& micro_xs, double E_in,
-              double* E_out, double* mu, uint64_t * prn_seeds, int stream);
+              double* E_out, double* mu, uint64_t* prn_seeds, int stream);
 private:
   struct Reaction {
     // Default constructor
@@ -105,7 +105,7 @@ public:
   //! \param[inout] prn_seeds Array of pseudorandom seeds
   //! \param[in] stream Pseudorandom stream index
   void calculate_xs(double E, double sqrtkT, int* i_temp, double* elastic,
-                    double* inelastic, uint64_t * prn_seeds, int stream) const;
+                    double* inelastic, uint64_t* prn_seeds, int stream) const;
 
   //! Determine whether table applies to a particular nuclide
   //!

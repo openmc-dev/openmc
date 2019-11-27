@@ -44,7 +44,7 @@ public:
   //! \param[out] mu Outgoing cosine with respect to current direction
   //! \param[inout] prn_seeds Pseudorandom array of stream seeds
   //! \param[in] stream Psuedorandom stream index
-  void sample(double E_in, double& E_out, double& mu, uint64_t * prn_seeds,
+  void sample(double E_in, double& E_out, double& mu, uint64_t* prn_seeds,
     int stream) const;
 
   Particle::Type particle_; //!< Particle type

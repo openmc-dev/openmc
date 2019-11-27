@@ -290,7 +290,7 @@ PhotonInteraction::PhotonInteraction(hid_t group, int i_element)
 }
 
 void PhotonInteraction::compton_scatter(double alpha, bool doppler,
-  double* alpha_out, double* mu, int* i_shell, uint64_t * prn_seeds, int stream) const
+  double* alpha_out, double* mu, int* i_shell, uint64_t* prn_seeds, int stream) const
 {
   double form_factor_xmax = 0.0;
   while (true) {
@@ -323,7 +323,7 @@ void PhotonInteraction::compton_scatter(double alpha, bool doppler,
 }
 
 void PhotonInteraction::compton_doppler(double alpha, double mu,
-  double* E_out, int* i_shell, uint64_t * prn_seeds, int stream) const
+  double* E_out, int* i_shell, uint64_t* prn_seeds, int stream) const
 {
   auto n = data::compton_profile_pz.size();
 
@@ -496,7 +496,7 @@ void PhotonInteraction::calculate_xs(Particle& p) const
   xs.last_E = p.E_;
 }
 
-double PhotonInteraction::rayleigh_scatter(double alpha, uint64_t * prn_seeds, int stream) const
+double PhotonInteraction::rayleigh_scatter(double alpha, uint64_t* prn_seeds, int stream) const
 {
   double mu;
   while (true) {
@@ -525,7 +525,7 @@ double PhotonInteraction::rayleigh_scatter(double alpha, uint64_t * prn_seeds, i
 }
 
 void PhotonInteraction::pair_production(double alpha, double* E_electron,
-  double* E_positron, double* mu_electron, double* mu_positron, uint64_t * prn_seeds,
+  double* E_positron, double* mu_electron, double* mu_positron, uint64_t* prn_seeds,
   int stream) const
 {
   constexpr double r[] {
@@ -711,7 +711,7 @@ void PhotonInteraction::atomic_relaxation(const ElectronSubshell& shell, Particl
 // Non-member functions
 //==============================================================================
 
-std::pair<double, double> klein_nishina(double alpha, uint64_t * prn_seeds, int stream)
+std::pair<double, double> klein_nishina(double alpha, uint64_t* prn_seeds, int stream)
 {
   double alpha_out, mu;
   double beta = 1.0 + 2.0*alpha;

@@ -142,7 +142,7 @@ SourceDistribution::SourceDistribution(pugi::xml_node node)
 }
 
 
-Particle::Bank SourceDistribution::sample(uint64_t * prn_seeds, int stream) const
+Particle::Bank SourceDistribution::sample(uint64_t* prn_seeds, int stream) const
 {
   Particle::Bank site;
 
@@ -288,7 +288,7 @@ void initialize_source()
   }
 }
 
-Particle::Bank sample_external_source(uint64_t * prn_seeds)
+Particle::Bank sample_external_source(uint64_t* prn_seeds)
 {
   // Set the random number generator to the source stream.
   int stream = STREAM_SOURCE;

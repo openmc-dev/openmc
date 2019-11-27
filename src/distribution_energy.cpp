@@ -25,7 +25,7 @@ DiscretePhoton::DiscretePhoton(hid_t group)
   read_attribute(group, "atomic_weight_ratio", A_);
 }
 
-double DiscretePhoton::sample(double E, uint64_t * prn_seeds, int stream) const
+double DiscretePhoton::sample(double E, uint64_t* prn_seeds, int stream) const
 {
   if (primary_flag_ == 2) {
     return energy_ + A_/(A_+ 1)*E;
@@ -44,7 +44,7 @@ LevelInelastic::LevelInelastic(hid_t group)
   read_attribute(group, "mass_ratio", mass_ratio_);
 }
 
-double LevelInelastic::sample(double E, uint64_t * prn_seeds, int stream ) const
+double LevelInelastic::sample(double E, uint64_t* prn_seeds, int stream ) const
 {
   return mass_ratio_*(E - threshold_);
 }
@@ -146,7 +146,7 @@ ContinuousTabular::ContinuousTabular(hid_t group)
   } // incoming energies
 }
 
-double ContinuousTabular::sample(double E, uint64_t * prn_seeds, int stream) const
+double ContinuousTabular::sample(double E, uint64_t* prn_seeds, int stream) const
 {
   // Read number of interpolation regions and incoming energies
   bool histogram_interp;
@@ -275,7 +275,7 @@ MaxwellEnergy::MaxwellEnergy(hid_t group)
   close_dataset(dset);
 }
 
-double MaxwellEnergy::sample(double E, uint64_t * prn_seeds, int stream) const
+double MaxwellEnergy::sample(double E, uint64_t* prn_seeds, int stream) const
 {
   // Get temperature corresponding to incoming energy
   double theta = theta_(E);
@@ -301,7 +301,7 @@ Evaporation::Evaporation(hid_t group)
   close_dataset(dset);
 }
 
-double Evaporation::sample(double E, uint64_t * prn_seeds, int stream) const
+double Evaporation::sample(double E, uint64_t* prn_seeds, int stream) const
 {
   // Get temperature corresponding to incoming energy
   double theta = theta_(E);
@@ -338,7 +338,7 @@ WattEnergy::WattEnergy(hid_t group)
   close_dataset(dset);
 }
 
-double WattEnergy::sample(double E, uint64_t * prn_seeds, int stream) const
+double WattEnergy::sample(double E, uint64_t* prn_seeds, int stream) const
 {
   // Determine Watt parameters at incident energy
   double a = a_(E);

@@ -167,7 +167,7 @@ ScattData::base_combine(size_t max_order,
 //==============================================================================
 
 void
-ScattData::sample_energy(int gin, int& gout, int& i_gout, uint64_t * prn_seeds, int stream)
+ScattData::sample_energy(int gin, int& gout, int& i_gout, uint64_t* prn_seeds, int stream)
 {
   // Sample the outgoing group
   double xi = prn(prn_seeds, stream);
@@ -348,7 +348,7 @@ ScattDataLegendre::calc_f(int gin, int gout, double mu)
 
 void
 ScattDataLegendre::sample(int gin, int& gout, double& mu, double& wgt,
-                          uint64_t * prn_seeds, int stream)
+                          uint64_t* prn_seeds, int stream)
 {
   // Sample the outgoing energy using the base-class method
   int i_gout;
@@ -537,7 +537,7 @@ ScattDataHistogram::calc_f(int gin, int gout, double mu)
 
 void
 ScattDataHistogram::sample(int gin, int& gout, double& mu, double& wgt,
-                           uint64_t * prn_seeds, int stream)
+                           uint64_t* prn_seeds, int stream)
 {
   // Sample the outgoing energy using the base-class method
   int i_gout;
@@ -741,7 +741,7 @@ ScattDataTabular::calc_f(int gin, int gout, double mu)
 
 void
 ScattDataTabular::sample(int gin, int& gout, double& mu, double& wgt,
-                         uint64_t * prn_seeds, int stream)
+                         uint64_t* prn_seeds, int stream)
 {
   // Sample the outgoing energy using the base-class method
   int i_gout;

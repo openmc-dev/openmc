@@ -151,7 +151,7 @@ ThermalScattering::ThermalScattering(hid_t group, const std::vector<double>& tem
 void
 ThermalScattering::calculate_xs(double E, double sqrtkT, int* i_temp,
                                 double* elastic, double* inelastic,
-                                uint64_t * prn_seeds, int stream) const
+                                uint64_t* prn_seeds, int stream) const
 {
   // Determine temperature for S(a,b) table
   double kT = sqrtkT*sqrtkT;
@@ -266,7 +266,7 @@ ThermalData::calculate_xs(double E, double* elastic, double* inelastic) const
 
 void
 ThermalData::sample(const NuclideMicroXS& micro_xs, double E,
-                    double* E_out, double* mu, uint64_t * prn_seeds, int stream)
+                    double* E_out, double* mu, uint64_t* prn_seeds, int stream)
 {
   // Determine whether inelastic or elastic scattering will occur
   if (prn(prn_seeds, stream) < micro_xs.thermal_elastic / micro_xs.thermal) {

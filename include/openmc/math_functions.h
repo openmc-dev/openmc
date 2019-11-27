@@ -134,10 +134,10 @@ extern "C" void calc_zn_rad(int n, double rho, double zn_rad[]);
 //==============================================================================
 
 extern "C" void rotate_angle_c(double uvw[3], double mu, const double* phi,
-  uint64_t * prn_seeds, int stream);
+  uint64_t* prn_seeds, int stream);
 
 Direction rotate_angle(Direction u, double mu, const double* phi,
-  uint64_t * prn_streams, int stream);
+  uint64_t* prn_streams, int stream);
 
 //==============================================================================
 //! Samples an energy from the Maxwell fission distribution based on a direct
@@ -153,7 +153,7 @@ Direction rotate_angle(Direction u, double mu, const double* phi,
 //! \return The sampled outgoing energy
 //==============================================================================
 
-extern "C" double maxwell_spectrum(double T, uint64_t * prn_seeds, int stream);
+extern "C" double maxwell_spectrum(double T, uint64_t* prn_seeds, int stream);
 
 //==============================================================================
 //! Samples an energy from a Watt energy-dependent fission distribution.
@@ -170,7 +170,7 @@ extern "C" double maxwell_spectrum(double T, uint64_t * prn_seeds, int stream);
 //! \return The sampled outgoing energy
 //==============================================================================
 
-extern "C" double watt_spectrum(double a, double b, uint64_t * prn_seeds, int stream);
+extern "C" double watt_spectrum(double a, double b, uint64_t* prn_seeds, int stream);
 
 //==============================================================================
 //! Samples an energy from the Gaussian energy-dependent fission distribution.
@@ -188,7 +188,7 @@ extern "C" double watt_spectrum(double a, double b, uint64_t * prn_seeds, int st
 //! @result The sampled outgoing energy
 //==============================================================================
 
-extern "C" double normal_variate(double mean, double std_dev, uint64_t * prn_seeds,
+extern "C" double normal_variate(double mean, double std_dev, uint64_t* prn_seeds,
   int stream);
 
 //==============================================================================
@@ -207,7 +207,7 @@ extern "C" double normal_variate(double mean, double std_dev, uint64_t * prn_see
 //==============================================================================
 
 extern "C" double muir_spectrum(double e0, double m_rat, double kt,
-  uint64_t * prn_seeds, int stream);
+  uint64_t* prn_seeds, int stream);
 
 //==============================================================================
 //! Doppler broadens the windowed multipole curvefit.

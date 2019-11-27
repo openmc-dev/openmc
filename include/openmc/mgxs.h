@@ -157,7 +157,7 @@ class Mgxs {
     //! @param prn_seeds Pseudorandom seed array.
     //! @param stream Pseudorandom stream index.
     void
-    sample_fission_energy(int gin, int& dg, int& gout, uint64_t * prn_seeds, int stream);
+    sample_fission_energy(int gin, int& dg, int& gout, uint64_t* prn_seeds, int stream);
 
     //! \brief Samples the outgoing energy and angle from a scatter event.
     //!
@@ -168,7 +168,7 @@ class Mgxs {
     //! @param prn_seeds Array of pseudorandom stream seeds
 	//! @param stream Pseudorandom stream index
     void
-    sample_scatter(int gin, int& gout, double& mu, double& wgt, uint64_t * prn_seeds,
+    sample_scatter(int gin, int& gout, double& mu, double& wgt, uint64_t* prn_seeds,
       int stream);
 
     //! \brief Calculates cross section quantities needed for tracking.

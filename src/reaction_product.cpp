@@ -77,7 +77,7 @@ ReactionProduct::ReactionProduct(hid_t group)
 }
 
 void ReactionProduct::sample(double E_in, double& E_out, double& mu,
-  uint64_t * prn_seeds, int stream) const
+  uint64_t* prn_seeds, int stream) const
 {
   auto n = applicability_.size();
   if (n > 1) {

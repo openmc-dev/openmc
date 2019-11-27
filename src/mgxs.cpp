@@ -529,7 +529,7 @@ Mgxs::get_xs(int xstype, int gin, const int* gout, const double* mu,
 //==============================================================================
 
 void
-Mgxs::sample_fission_energy(int gin, int& dg, int& gout, uint64_t * prn_seeds, int stream)
+Mgxs::sample_fission_energy(int gin, int& dg, int& gout, uint64_t* prn_seeds, int stream)
 {
   // This method assumes that the temperature and angle indices are set
 #ifdef _OPENMP
@@ -585,7 +585,7 @@ Mgxs::sample_fission_energy(int gin, int& dg, int& gout, uint64_t * prn_seeds, i
 //==============================================================================
 
 void
-Mgxs::sample_scatter(int gin, int& gout, double& mu, double& wgt, uint64_t * prn_seeds,
+Mgxs::sample_scatter(int gin, int& gout, double& mu, double& wgt, uint64_t* prn_seeds,
   int stream)
 {
   // This method assumes that the temperature and angle indices are set

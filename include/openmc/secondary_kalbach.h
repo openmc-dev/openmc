@@ -31,7 +31,7 @@ public:
   //! \param[out] mu Outgoing cosine with respect to current direction
   //! \param[inout] prn_seeds Pseudorandom stream seed array
   //! \param[in] stream Pseudorandom stream index
-  void sample(double E_in, double& E_out, double& mu, uint64_t * prn_seeds,
+  void sample(double E_in, double& E_out, double& mu, uint64_t* prn_seeds,
 		  int sample) const override;
 private:
   //! Outgoing energy/angle at a single incoming energy

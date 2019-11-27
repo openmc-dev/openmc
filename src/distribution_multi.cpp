@@ -53,7 +53,7 @@ PolarAzimuthal::PolarAzimuthal(pugi::xml_node node)
   }
 }
 
-Direction PolarAzimuthal::sample(uint64_t * prn_seeds, int stream) const
+Direction PolarAzimuthal::sample(uint64_t* prn_seeds, int stream) const
 {
   // Sample cosine of polar angle
   double mu = mu_->sample(prn_seeds, stream);
@@ -74,7 +74,7 @@ Direction PolarAzimuthal::sample(uint64_t * prn_seeds, int stream) const
 // Isotropic implementation
 //==============================================================================
 
-Direction Isotropic::sample(uint64_t * prn_seeds, int stream) const
+Direction Isotropic::sample(uint64_t* prn_seeds, int stream) const
 {
   double phi = 2.0*PI*prn(prn_seeds, stream);
   double mu = 2.0*prn(prn_seeds, stream) - 1.0;
@@ -86,7 +86,7 @@ Direction Isotropic::sample(uint64_t * prn_seeds, int stream) const
 // Monodirectional implementation
 //==============================================================================
 
-Direction Monodirectional::sample(uint64_t * prn_seeds, int stream) const
+Direction Monodirectional::sample(uint64_t* prn_seeds, int stream) const
 {
   return u_ref_;
 }

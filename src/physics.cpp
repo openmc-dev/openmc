@@ -750,7 +750,7 @@ void sab_scatter(int i_nuclide, int i_sab, Particle* p)
 }
 
 Direction sample_target_velocity(const Nuclide* nuc, double E, Direction u,
-  Direction v_neut, double xs_eff, double kT, uint64_t * prn_seeds, int stream)
+  Direction v_neut, double xs_eff, double kT, uint64_t* prn_seeds, int stream)
 {
   // check if nuclide is a resonant scatterer
   ResScatMethod sampling_method;
@@ -901,7 +901,7 @@ Direction sample_target_velocity(const Nuclide* nuc, double E, Direction u,
 }
 
 Direction
-sample_cxs_target_velocity(double awr, double E, Direction u, double kT, uint64_t * prn_seeds, int stream)
+sample_cxs_target_velocity(double awr, double E, Direction u, double kT, uint64_t* prn_seeds, int stream)
 {
   double beta_vn = std::sqrt(awr * E / kT);
   double alpha = 1.0/(1.0 + std::sqrt(PI)*beta_vn/2.0);
@@ -951,7 +951,7 @@ sample_cxs_target_velocity(double awr, double E, Direction u, double kT, uint64_
   return vt * rotate_angle(u, mu, nullptr, prn_seeds, stream);
 }
 
-void sample_fission_neutron(int i_nuclide, const Reaction* rx, double E_in, Particle::Bank* site, uint64_t * prn_seeds, int stream)
+void sample_fission_neutron(int i_nuclide, const Reaction* rx, double E_in, Particle::Bank* site, uint64_t* prn_seeds, int stream)
 {
   // Sample cosine of angle -- fission neutrons are always emitted
   // isotropically. Sometimes in ACE data, fission reactions actually have

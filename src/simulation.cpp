@@ -31,6 +31,7 @@
 
 #include <algorithm>
 #include <string>
+#include <chrono> 
 
 namespace openmc {
 
@@ -580,6 +581,20 @@ void check_energies(void)
 	}
 }
 
+double get_time()
+{
+	#ifdef _OPENMP
+	return omp_get_wtime();
+	#endif
+
+	#ifdef OPENMC_MPI
+	return MPI_Wtime();
+	#endif
+
+	unsigned long us_since_epoch = std::chrono::high_resolution_clock::now().time_since_epoch() / std::chrono::microseconds(1);
+	return (double) us_since_epoch / 1.0e6;
+}
+
 void transport()
 {
 	int remaining_work = simulation::work_per_rank;
@@ -654,43 +669,43 @@ void transport()
 				//std::cout << "pre fuel XS check..." << std::endl;
 				//check_energies(calculate_fuel_xs_queue, calculate_fuel_xs_queue_length);
 				//std::cout << "Performing Fuel XS Lookups..." << std::endl;
-				start = omp_get_wtime();
+				start = get_time();
 				process_calculate_xs_events(calculate_fuel_xs_queue, calculate_fuel_xs_queue_length);
-				stop = omp_get_wtime();
+				stop = get_time();
 				time_fuel_xs += (stop-start);
 				calculate_fuel_xs_queue_length = 0;
 			} else if (max == calculate_nonfuel_xs_queue_length) {
 				//std::cout << "pre non fuel XS check..." << std::endl;
 				//check_energies(calculate_nonfuel_xs_queue, calculate_nonfuel_xs_queue_length);
 			//	std::cout << "Performing Non Fuel XS Lookups..." << std::endl;
-				start = omp_get_wtime();
+				start = get_time();
 				process_calculate_xs_events(calculate_nonfuel_xs_queue, calculate_nonfuel_xs_queue_length);
-				stop = omp_get_wtime();
+				stop = get_time();
 				time_nonfuel_xs += (stop-start);
 				calculate_nonfuel_xs_queue_length = 0;
 			} else if (max == advance_particle_queue_length) {
 				//std::cout << "pre advancing check..." << std::endl;
 				//check_energies(advance_particle_queue, advance_particle_queue_length);
 				//std::cout << "Advancing Particles..." << std::endl;
-				start = omp_get_wtime();
+				start = get_time();
 				process_advance_particle_events();
-				stop = omp_get_wtime();
+				stop = get_time();
 				time_advance += (stop-start);
 			} else if (max == surface_crossing_queue_length) {
 				//std::cout << "pre surface crossing check..." << std::endl;
 				//check_energies(surface_crossing_queue, surface_crossing_queue_length);
 				//std::cout << "Surface Crossings..." << std::endl;
-				start = omp_get_wtime();
+				start = get_time();
 				process_surface_crossing_events();
-				stop = omp_get_wtime();
+				stop = get_time();
 				time_surf += (stop-start);
 			} else if (max == collision_queue_length) {
 				//std::cout << "pre Colliding check..." << std::endl;
 				//check_energies(collision_queue, collision_queue_length);
 				//std::cout << "Colliding..." << std::endl;
-				start = omp_get_wtime();
+				start = get_time();
 				process_collision_events();
-				stop = omp_get_wtime();
+				stop = get_time();
 				time_collision += (stop-start);
 			}
 		}

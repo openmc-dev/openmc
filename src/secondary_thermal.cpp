@@ -98,14 +98,31 @@ IncoherentElasticAEDiscrete::sample(double E_in, double& E_out, double& mu) cons
   // incoming energies.
 
   // Sample outgoing cosine bin
-  int k = prn() * mu_out_.shape()[1];
+  int n_mu = mu_out_.shape()[1];
+  int k = prn() * n_mu;
 
-  // Determine outgoing cosine corresponding to E_in[i] and E_in[i+1]
-  double mu_ik  = mu_out_(i, k);
-  double mu_i1k = mu_out_(i+1, k);
+  // Rather than use the sampled discrete mu directly, it is smeared over
+  // a bin of width 0.5*min(mu[k] - mu[k-1], mu[k+1] - mu[k]) centered on the
+  // discrete mu value itself.
 
-  // Cosine of angle between incoming and outgoing neutron
-  mu = (1 - f)*mu_ik + f*mu_i1k;
+  // Interpolate kth mu value between distributions at energies i and i+1
+  mu = mu_out_(i, k) + f*(mu_out_(i+1, k) - mu_out_(i, k));
+
+  // Inteprolate (k-1)th mu value between distributions at energies i and i+1.
+  // When k==0, pick a value that will smear the cosine out to a minimum of -1.
+  double mu_left = (k == 0) ?
+    -1.0 - (mu + 1.0) :
+    mu_out_(i, k-1) + f*(mu_out_(i+1, k-1) - mu_out_(i, k-1));
+
+  // Inteprolate (k+1)th mu value between distributions at energies i and i+1.
+  // When k is the last discrete value, pick a value that will smear the cosine
+  // out to a maximum of 1.
+  double mu_right = (k == n_mu - 1) ?
+    1.0 + (1.0 - mu) :
+    mu_out_(i, k+1) + f*(mu_out_(i+1, k+1) - mu_out_(i, k+1));
+
+  // Smear cosine
+  mu += std::min(mu - mu_left, mu_right - mu)*(prn() - 0.5);
 
   // Energy doesn't change in elastic scattering
   E_out = E_in;
@@ -296,31 +313,28 @@ IncoherentInelasticAE::sample(double E_in, double& E_out, double& mu) const
   std::size_t k = prn() * n_mu;
 
   // Rather than use the sampled discrete mu directly, it is smeared over
-  // a bin of width min(mu[k] - mu[k-1], mu[k+1] - mu[k]) centered on the
+  // a bin of width 0.5*min(mu[k] - mu[k-1], mu[k+1] - mu[k]) centered on the
   // discrete mu value itself.
   const auto& mu_l = distribution_[l].mu;
   f = (r1 - c_j)/(c_j1 - c_j);
 
-  // Determine (k-1)th mu value
-  double mu_left;
-  if (k == 0) {
-    mu_left = -1.0;
-  } else {
-    mu_left = mu_l(j, k-1) + f*(mu_l(j+1, k-1) - mu_l(j, k-1));
-  }
-
-  // Determine kth mu value
+  // Interpolate kth mu value between distributions at energies j and j+1
   mu = mu_l(j, k) + f*(mu_l(j+1, k) - mu_l(j, k));
 
-  // Determine (k+1)th mu value
-  double mu_right;
-  if (k == n_mu - 1) {
-    mu_right = 1.0;
-  } else {
-    mu_right = mu_l(j, k+1) + f*(mu_l(j+1, k+1) - mu_l(j, k+1));
-  }
+  // Inteprolate (k-1)th mu value between distributions at energies j and j+1.
+  // When k==0, pick a value that will smear the cosine out to a minimum of -1.
+  double mu_left = (k == 0) ?
+    mu_left = -1.0 - (mu + 1.0) :
+    mu_left = mu_l(j, k-1) + f*(mu_l(j+1, k-1) - mu_l(j, k-1));
 
-  // Smear angle
+  // Inteprolate (k+1)th mu value between distributions at energies j and j+1.
+  // When k is the last discrete value, pick a value that will smear the cosine
+  // out to a maximum of 1.
+  double mu_right = (k == n_mu - 1) ?
+    mu_right = 1.0 + (1.0 - mu) :
+    mu_right = mu_l(j, k+1) + f*(mu_l(j+1, k+1) - mu_l(j, k+1));
+
+  // Smear cosine
   mu += std::min(mu - mu_left, mu_right - mu)*(prn() - 0.5);
 }
 

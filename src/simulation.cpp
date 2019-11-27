@@ -220,6 +220,7 @@ void process_calculate_xs_events(int * queue, int n)
           // If particle energy is greater than the highest energy for the
           // S(a,b) table, then don't use the S(a,b) table
           //if (p->E_ > data::thermal_scatt[i_sab]->threshold()) i_sab = C_NONE;
+			std::cout << "S(alpha, beta) max energy = " << data::thermal_scatt[i_sab]->energy_max_ <<std::endl;
           if (p->E_ > data::thermal_scatt[i_sab]->energy_max_) i_sab = C_NONE;
         }
       }
@@ -584,7 +585,7 @@ void transport()
 			std::cout << "Surface Crossings = " << surface_crossing_queue_length << std::endl;
 			std::cout << "Collisions = " << collision_queue_length << std::endl;
 			*/
-			Particle * p = particles;
+			Particle * p = particles +  1;
 		   std::cout << "E = " << p->E_ << " and Position {" <<
 			   p->r().x << ", " <<
 			   p->r().y << ", " <<

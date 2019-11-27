@@ -1139,7 +1139,7 @@ void finalize_generation()
       // Sorts the fission bank so as to allow for reproducibility
       //std::sort(simulation::fission_bank.begin(), simulation::fission_bank.end(), bank_site_comparator());
       //std::sort(simulation::fission_bank.begin(), simulation::fission_bank.end());
-      //std::stable_sort(simulation::fission_bank.begin(), simulation::fission_bank.end());
+      std::stable_sort(simulation::fission_bank.begin(), simulation::fission_bank.end());
 	  /*
 	  std::cout << "Fission bank on rank << " << mpi::rank << " is of length " << simulation::fission_bank.size() << std::endl;
 	  for (Particle::Bank p : simulation::fission_bank )

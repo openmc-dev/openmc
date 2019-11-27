@@ -174,13 +174,14 @@ create_fission_sites(Particle* p, int i_nuclide, const Reaction* rx,
   p->fission_ = true;
   for (int i = 0; i < nu; ++i) {
     // Create new bank site and get reference to last element
-    bank.emplace_back();
-    auto& site {bank.back()};
-
-    // Bank source neutrons by copying the particle data
-    site.r = p->r();
-    site.particle = Particle::Type::neutron;
-    site.wgt = 1. / weight;
+    int idx;
+    #pragma omp atomic capture
+    idx = shared_fission_bank_length++;
+    Particle::Bank * site = shared_fission_bank + idx;
+    site->r = p->r();
+    site->particle = Particle::Type::neutron;
+    site->wgt = 1. / weight;
+    site->parent_id = p->id_;
 
     // Sample delayed group and angle/energy for fission reaction
     sample_fission_neutron(i_nuclide, rx, p->E_, &site, p->current_seed());

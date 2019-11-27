@@ -25,6 +25,10 @@
 #endif
 #include "xtensor/xview.hpp"
 
+#ifdef OPENMC_MPI
+#include <mpi.h>
+#endif
+
 #include <algorithm>
 #include <string>
 
@@ -547,8 +551,16 @@ void transport()
 		//std::cout << "Initializing particle histories..." << std::endl;
 		// Initialize all histories
 		// TODO: Parallelize
-		for (int i = 0; i < n_particles; i++) {
-			initialize_history(particles + i, source_offset + i + 1);
+
+		for( int p = 0; p < mpi::n_procs; p++)
+		{
+			MPI_Barrier(mpi::intracomm);
+			if( p == mpi::rank )
+			{
+				for (int i = 0; i < n_particles; i++) {
+					initialize_history(particles + i, source_offset + i + 1);
+				}
+			}
 		}
 
 		//std::cout << "Enqueing particles for XS Lookups..." << std::endl;
@@ -783,17 +795,9 @@ int openmc_next_batch(int* status)
     // ====================================================================
     // LOOP OVER PARTICLES
 
-    #pragma omp parallel for schedule(runtime)
-    for (int64_t i_work = 1; i_work <= simulation::work_per_rank; ++i_work) {
-      simulation::current_work = i_work;
+    simulation::current_work = 1;
 
-      // grab source particle from bank
-      Particle p;
-      initialize_history(&p, simulation::current_work);
-
-      // transport particle
-      p.transport();
-    }
+    transport();
 
     // Accumulate time for transport
     simulation::time_transport.stop();
@@ -1004,6 +1008,49 @@ void initialize_generation()
   }
 }
 
+/*
+struct bank_site_comparator
+{
+  inline bool operator() (const Particle::Bank & a, const Particle::Bank & b)
+  {
+    if( a.E < b.E )
+      return true;
+    else if( a.E > b.E )
+      return false;
+    else // Energy equal, compare by x-coord
+    {
+      if(a.r.x < b.r.x )
+        return true;
+      else if (a.r.x > b.r.x)
+        return false;
+      else // x-coord equal, compare by y-coord
+      {
+        if(a.r.x < b.r.x )
+          return true;
+        else if (a.r.x > b.r.x)
+          return false;
+        else // y-coord equal, compare by z-coord
+        {
+          if(a.r.y < b.r.y )
+            return true;
+          else if (a.r.y > b.r.y)
+            return false;
+          else // y-coord equal, compare by z-coord
+          {
+            if(a.r.z < b.r.z )
+              return true;
+            else if (a.r.z > b.r.z)
+              return false;
+            else // they are the same
+              return false;
+          }
+        }
+      }
+    }
+  }
+};
+*/
+
 void finalize_generation()
 {
   auto& gt = simulation::global_tallies;
@@ -1032,7 +1079,6 @@ void finalize_generation()
 
 
   if (settings::run_mode == RUN_MODE_EIGENVALUE) {
-    // Join the fission bank from each thread into one global fission bank
 	  // We need to move all the stuff from the shared_fission_bank into the real one.
 	  for( int i = 0; i < shared_fission_bank_length; i++ )
 		  simulation::fission_bank.push_back(shared_fission_bank[i]);
@@ -1097,6 +1143,29 @@ void initialize_history(Particle* p, int64_t index_source)
       }
     }
   }
+
+  // Display message if high verbosity or trace is on
+   if (settings::verbosity >= 9 || simulation::trace) {
+      write_message("Simulating Particle " + std::to_string(p->id_));
+   }
+
+    // // Initialize number of events to zero
+   // int n_event = 0;
+
+    // Add paricle's starting weight to count for normalizing tallies later
+   #pragma omp atomic
+   simulation::total_weight += p->wgt_;
+
+    // Force calculation of cross-sections by setting last energy to zero
+   if (settings::run_CE) {
+     for (auto& micro : p->neutron_xs_) micro.last_E = 0.0;
+   }
+
+    // Prepare to write out particle track.
+   if (p->write_track_) add_particle_track();
+
+    // Every particle starts with no accumulated flux derivative.
+   if (!model::active_tallies.empty()) zero_flux_derivs();
 }
 
 int overall_generation()

@@ -584,6 +584,11 @@ void transport()
 			std::cout << "Surface Crossings = " << surface_crossing_queue_length << std::endl;
 			std::cout << "Collisions = " << collision_queue_length << std::endl;
 			*/
+			Particle * p = particles;
+		   std::cout << "E = " << p->E_ << " and Position {" <<
+			   p->r().x << ", " <<
+			   p->r().y << ", " <<
+			   p->r().z << "}" << std::endl;
 			int max = std::max({calculate_fuel_xs_queue_length, calculate_nonfuel_xs_queue_length, advance_particle_queue_length, surface_crossing_queue_length, collision_queue_length});
 			//check_energies();
 			if (max == 0) {

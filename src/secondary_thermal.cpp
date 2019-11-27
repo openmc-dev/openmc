@@ -252,8 +252,8 @@ IncoherentInelasticAE::sample(double E_in, double& E_out, double& mu) const
   double f;
   get_energy_index(energy_, E_in, i, f);
 
-  // Sample between ith and [i+1]th bin
-  int l = f > prn() ? i + 1 : i;
+  // Pick closer energy based on interpolation factor
+  int l = f > 0.5 ? i + 1 : i;
 
   // Determine endpoints on grid i
   auto n = distribution_[i].e_out.size();
@@ -301,11 +301,12 @@ IncoherentInelasticAE::sample(double E_in, double& E_out, double& mu) const
           2.0*frac*(r1 - c_j))) - p_l_j) / frac;
   }
 
-  // Now interpolate between incident energy bins i and i + 1
-  if (l == i) {
-    E_out = E_1 + (E_out - E_i_1) * (E_J - E_1) / (E_i_J - E_i_1);
+  // Adjustment of outgoing energy
+  double E_l = energy_[l];
+  if (E_out < 0.5*E_l) {
+    E_out *= 2.0*E_in/E_l - 1.0;
   } else {
-    E_out = E_1 + (E_out - E_i1_1) * (E_J - E_1) / (E_i1_J - E_i1_1);
+    E_out += E_in - E_l;
   }
 
   // Sample outgoing cosine bin

@@ -46,7 +46,7 @@ CartesianIndependent::CartesianIndependent(pugi::xml_node node)
   }
 }
 
-Position CartesianIndependent::sample(uint64_t * prn_seeds, int stream) const
+Position CartesianIndependent::sample(uint64_t* prn_seeds, int stream) const
 {
   return {x_->sample(prn_seeds, stream), y_->sample(prn_seeds, stream), z_->sample(prn_seeds, stream)};
 }
@@ -107,7 +107,7 @@ SphericalIndependent::SphericalIndependent(pugi::xml_node node)
 
 }
 
-Position SphericalIndependent::sample(uint64_t * prn_seeds, int stream) const
+Position SphericalIndependent::sample(uint64_t* prn_seeds, int stream) const
 {
   double r = r_->sample(prn_seeds, stream);
   double theta = theta_->sample(prn_seeds, stream);
@@ -135,7 +135,7 @@ SpatialBox::SpatialBox(pugi::xml_node node, bool fission)
   upper_right_ = Position{params[3], params[4], params[5]};
 }
 
-Position SpatialBox::sample(uint64_t * prn_seeds, int stream) const
+Position SpatialBox::sample(uint64_t* prn_seeds, int stream) const
 {
   Position xi {prn(prn_seeds, stream), prn(prn_seeds, stream), prn(prn_seeds, stream)};
   return lower_left_ + xi*(upper_right_ - lower_left_);
@@ -157,7 +157,7 @@ SpatialPoint::SpatialPoint(pugi::xml_node node)
   r_ = Position{params.data()};
 }
 
-Position SpatialPoint::sample(uint64_t * prn_seeds, int stream) const
+Position SpatialPoint::sample(uint64_t* prn_seeds, int stream) const
 {
   return r_;
 }

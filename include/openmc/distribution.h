@@ -21,7 +21,7 @@ namespace openmc {
 class Distribution {
 public:
   virtual ~Distribution() = default;
-  virtual double sample(uint64_t * prn_seeds, int stream) const = 0;
+  virtual double sample(uint64_t* prn_seeds, int stream) const = 0;
 };
 
 //==============================================================================
@@ -37,7 +37,7 @@ public:
   //! \param prn_seeds Array of pseudorandom number seeds
   //! \param stream Pseudorandom stream index
   //! \return Sampled value
-  double sample(uint64_t * prn_seeds, int stream) const;
+  double sample(uint64_t* prn_seeds, int stream) const;
 
   // Properties
   const std::vector<double>& x() const { return x_; }
@@ -63,7 +63,7 @@ public:
   //! \param prn_seeds Array of pseudorandom number seeds
   //! \param stream Pseudorandom stream index
   //! \return Sampled value
-  double sample(uint64_t * prn_seeds, int stream) const;
+  double sample(uint64_t* prn_seeds, int stream) const;
 private:
   double a_; //!< Lower bound of distribution
   double b_; //!< Upper bound of distribution
@@ -82,7 +82,7 @@ public:
   //! \param prn_seeds Array of pseudorandom number seeds
   //! \param stream Pseudorandom stream index
   //! \return Sampled value
-  double sample(uint64_t * prn_seeds, int stream) const;
+  double sample(uint64_t* prn_seeds, int stream) const;
 private:
   double theta_; //!< Factor in exponential [eV]
 };
@@ -100,7 +100,7 @@ public:
   //! \param prn_seeds Array of pseudorandom number seeds
   //! \param stream Pseudorandom stream index
   //! \return Sampled value
-  double sample(uint64_t * prn_seeds, int stream) const;
+  double sample(uint64_t* prn_seeds, int stream) const;
 private:
   double a_; //!< Factor in exponential [eV]
   double b_; //!< Factor in square root [1/eV]
@@ -119,7 +119,7 @@ public:
   //! \param prn_seeds Array of pseudorandom number seeds
   //! \param stream Pseudorandom stream index
   //! \return Sampled value
-  double sample(uint64_t * prn_seeds, int stream) const;
+  double sample(uint64_t* prn_seeds, int stream) const;
 private:
   double mean_value_;    //!< middle of distribution [eV]
   double std_dev_; //!< standard deviation [eV]
@@ -139,7 +139,7 @@ public:
   //! \param prn_seeds Array of pseudorandom number seeds
   //! \param stream Pseudorandom stream index
   //! \return Sampled value
-  double sample(uint64_t * prn_seeds, int stream) const;
+  double sample(uint64_t* prn_seeds, int stream) const;
 private:
   // example DT fusion m_rat = 5 (D = 2 + T = 3)
   // ion temp = 20000 eV
@@ -163,7 +163,7 @@ public:
   //! \param prn_seeds Array of pseudorandom number seeds
   //! \param stream Pseudorandom stream index
   //! \return Sampled value
-  double sample(uint64_t * prn_seeds, int stream) const;
+  double sample(uint64_t* prn_seeds, int stream) const;
 
   // x property
   std::vector<double>& x() { return x_; }
@@ -195,7 +195,7 @@ public:
   //! \param prn_seeds Array of pseudorandom number seeds
   //! \param stream Pseudorandom stream index
   //! \return Sampled value
-  double sample(uint64_t * prn_seeds, int stream) const;
+  double sample(uint64_t* prn_seeds, int stream) const;
 private:
   std::vector<double> x_; //! Possible outcomes
 };

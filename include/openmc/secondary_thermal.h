@@ -33,7 +33,7 @@ public:
   //! \param[out] mu Outgoing cosine with respect to current direction
   //! \param[inout] prn_seeds Array of pseudorandom seeds
   //! \param[in] stream Pseudorandom stream index
-  void sample(double E_in, double& E_out, double& mu, uint64_t * prn_seeds,
+  void sample(double E_in, double& E_out, double& mu, uint64_t* prn_seeds,
     int stream) const override;
 private:
   const CoherentElasticXS& xs_; //!< Coherent elastic scattering cross section
@@ -56,7 +56,7 @@ public:
   //! \param[out] mu Outgoing cosine with respect to current direction
   //! \param[inout] prn_seeds Array of pseudorandom seeds
   //! \param[in] stream Pseudorandom stream index
-  void sample(double E_in, double& E_out, double& mu, uint64_t * prn_seeds,
+  void sample(double E_in, double& E_out, double& mu, uint64_t* prn_seeds,
     int stream) const override;
 private:
   double debye_waller_;
@@ -80,7 +80,7 @@ public:
   //! \param[out] mu Outgoing cosine with respect to current direction
   //! \param[inout] prn_seeds Array of pseudorandom seeds
   //! \param[in] stream Pseudorandom stream index
-  void sample(double E_in, double& E_out, double& mu, uint64_t * prn_seeds,
+  void sample(double E_in, double& E_out, double& mu, uint64_t* prn_seeds,
     int stream) const override;
 private:
   const std::vector<double>& energy_; //!< Energies at which cosines are tabulated
@@ -105,7 +105,7 @@ public:
   //! \param[out] mu Outgoing cosine with respect to current direction
   //! \param[inout] prn_seeds Array of pseudorandom seeds
   //! \param[in] stream Pseudorandom stream index
-  void sample(double E_in, double& E_out, double& mu, uint64_t * prn_seeds,
+  void sample(double E_in, double& E_out, double& mu, uint64_t* prn_seeds,
     int stream) const override;
 private:
   const std::vector<double>& energy_; //!< Incident energies
@@ -131,7 +131,7 @@ public:
   //! \param[out] mu Outgoing cosine with respect to current direction
   //! \param[inout] prn_seeds Array of pseudorandom seeds
   //! \param[in] stream Pseudorandom stream index
-  void sample(double E_in, double& E_out, double& mu, uint64_t * prn_seeds,
+  void sample(double E_in, double& E_out, double& mu, uint64_t* prn_seeds,
     int stream) const override;
 private:
   //! Secondary energy/angle distribution

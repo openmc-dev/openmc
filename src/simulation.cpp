@@ -561,16 +561,20 @@ void transport()
 		// Initialize all histories
 		// TODO: Parallelize
 
+		/*
 		for( int p = 0; p < mpi::n_procs; p++)
 		{
 			MPI_Barrier(mpi::intracomm);
 			if( p == mpi::rank )
 			{
+			*/
 				for (int i = 0; i < n_particles; i++) {
 					initialize_history(particles + i, source_offset + i + 1);
 				}
+				/*
 			}
 		}
+		*/
 
 		//std::cout << "Enqueing particles for XS Lookups..." << std::endl;
 		// Add all particles to advance particle queue
@@ -1127,7 +1131,7 @@ void finalize_generation()
 	  // We need to move all the stuff from the shared_fission_bank into the real one.
 		//std::vector<Particle::Bank> shared_fission_bank_vector(shared_fission_bank, shared_fission_bank + shared_fission_bank_length);
       //simulation::fission_bank = shared_fission_bank_vector;
-	  std::cout << "Fission bank length = " << shared_fission_bank_length << std::endl;
+	  //std::cout << "Fission bank length = " << shared_fission_bank_length << std::endl;
 	  for( int i = 0; i < shared_fission_bank_length; i++ )
 		  simulation::fission_bank.push_back(shared_fission_bank[i]);
 	  shared_fission_bank_length = 0;
@@ -1135,12 +1139,13 @@ void finalize_generation()
       // Sorts the fission bank so as to allow for reproducibility
       //std::sort(simulation::fission_bank.begin(), simulation::fission_bank.end(), bank_site_comparator());
       //std::sort(simulation::fission_bank.begin(), simulation::fission_bank.end());
-      std::stable_sort(simulation::fission_bank.begin(), simulation::fission_bank.end());
+      //std::stable_sort(simulation::fission_bank.begin(), simulation::fission_bank.end());
+	  /*
 	  std::cout << "Fission bank on rank << " << mpi::rank << " is of length " << simulation::fission_bank.size() << std::endl;
 	  for (Particle::Bank p : simulation::fission_bank )
 	  {
 	   std::cout <<  "E = " << p.E << std::endl;
-	  }
+	  }*/
 
     // Distribute fission bank across processors evenly
     synchronize_bank();
@@ -1225,10 +1230,12 @@ void initialize_history(Particle* p, int64_t index_source)
     // Every particle starts with no accumulated flux derivative.
    if (!model::active_tallies.empty()) zero_flux_derivs();
 
+   /*
    std::cout << "Initialized particle " << particle_seed << " with E = " << p->E_ << " and Position {" <<
 	   p->r().x << ", " <<
 	   p->r().y << ", " <<
 	   p->r().z << "}" << std::endl;
+	   */
 }
 
 int overall_generation()

@@ -1087,9 +1087,22 @@ void finalize_generation()
 	  for( int i = 0; i < shared_fission_bank_length; i++ )
 		  simulation::fission_bank.push_back(shared_fission_bank[i]);
 	  shared_fission_bank_length = 0;
+<<<<<<< HEAD
 
     //Sorts the fission bank so as to allow for reproducibility
     std::stable_sort(simulation::fission_bank.begin(), simulation::fission_bank.end());
+=======
+#endif
+      // Sorts the fission bank so as to allow for reproducibility
+      //std::sort(simulation::fission_bank.begin(), simulation::fission_bank.end(), bank_site_comparator());
+      //std::sort(simulation::fission_bank.begin(), simulation::fission_bank.end());
+      std::stable_sort(simulation::fission_bank.begin(), simulation::fission_bank.end());
+	  std::cout << "Fission bank on rank " << mpi::rank << " is of length " << simulation::fission_bank.size() << std::endl;
+	  for (Particle::Bank p : simulation::fission_bank )
+	  {
+	   std::cout <<  "E = " << p.E << std::endl;
+	  }
+>>>>>>> added some print statements
 
     // Distribute fission bank across processors evenly
     synchronize_bank();

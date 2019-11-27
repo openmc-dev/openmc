@@ -194,6 +194,7 @@ create_fission_sites(Particle* p, int i_nuclide, const Reaction* rx,
 	  site->r = p->r();
 	  site->particle = Particle::Type::neutron;
 	  site->wgt = 1. / weight;
+	  site->parent_id = p->id_;
 
     // Sample delayed group and angle/energy for fission reaction
 

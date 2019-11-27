@@ -255,22 +255,9 @@ IncoherentInelasticAE::sample(double E_in, double& E_out, double& mu) const
   // Pick closer energy based on interpolation factor
   int l = f > 0.5 ? i + 1 : i;
 
-  // Determine endpoints on grid i
-  auto n = distribution_[i].e_out.size();
-  double E_i_1 = distribution_[i].e_out[0];
-  double E_i_J = distribution_[i].e_out[n - 1];
-
-  // Determine endpoints on grid i + 1
-  n = distribution_[i + 1].e_out.size();
-  double E_i1_1 = distribution_[i + 1].e_out[0];
-  double E_i1_J = distribution_[i + 1].e_out[n - 1];
-
-  double E_1 = E_i_1 + f * (E_i1_1 - E_i_1);
-  double E_J = E_i_J + f * (E_i1_J - E_i_J);
-
   // Determine outgoing energy bin
   // (First reset n_energy_out to the right value)
-  n = distribution_[l].n_e_out;
+  auto n = distribution_[l].n_e_out;
   double r1 = prn();
   double c_j = distribution_[l].e_out_cdf[0];
   double c_j1;

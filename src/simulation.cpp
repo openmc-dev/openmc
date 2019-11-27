@@ -1170,16 +1170,6 @@ void initialize_history(Particle* p, int64_t index_source)
 
     // Every particle starts with no accumulated flux derivative.
    if (!model::active_tallies.empty()) zero_flux_derivs();
-<<<<<<< HEAD
-=======
-
-   /*
-   std::cout << "Initialized particle " << particle_seed << " with E = " << p->E_ << " and Position {" <<
-	   p->r().x << ", " <<
-	   p->r().y << ", " <<
-	   p->r().z << "}" << std::endl;
-	   */
->>>>>>> removed print statements
 }
 
 int overall_generation()

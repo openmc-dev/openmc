@@ -154,7 +154,6 @@ public:
     int delayed_group;
     Type particle;
 	int64_t parent_id;
-
 	bool operator < (const Bank & bank) const{ return (parent_id < bank.parent_id); }
   };
 

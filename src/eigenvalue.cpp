@@ -122,6 +122,7 @@ void synchronize_bank()
   // skip ahead in the sequence using the starting index in the 'global'
   // fission bank for each processor.
 
+  std::cout << "MPI rank " << mpi::rank << " start = " << start << std::endl;
   set_particle_seed(simulation::total_gen + overall_generation(), prn_seeds);
   advance_prn_seed(start, prn_seeds, stream);
 

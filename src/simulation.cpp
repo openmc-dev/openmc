@@ -188,10 +188,35 @@ void process_calculate_xs_events(int * queue, int n)
 
     // Find energy index on energy grid
     // TODO: Calculate this separately?
-    int neutron = static_cast<int>(Particle::Type::neutron);
-    p->macro_xs_.i_grid = std::log(p->E_/data::energy_min[neutron]) / simulation::log_spacing;
+    //int neutron = static_cast<int>(Particle::Type::neutron);
+    //p->macro_xs_.i_grid = std::log(p->E_/data::energy_min[neutron]) / simulation::log_spacing;
+  }
+  for( int i = 0; i < n; i++ )
+  {
+	  Particle * p = particles + queue[i];
+	  // Calculate microscopic and macroscopic cross sections
+	  if (p->material_ != MATERIAL_VOID) {
+		  if (settings::run_CE) {
+			  if (p->material_ != p->material_last_ || p->sqrtkT_ != p->sqrtkT_last_) {
+				  // If the material is the same as the last material and the
+				  // temperature hasn't changed, we don't need to lookup cross
+				  // sections again.
+				  model::materials[p->material_]->calculate_xs(*p);
+			  }
+		  } // else MG not supported
+	  } else {
+		  p->macro_xs_.total      = 0.0;
+		  p->macro_xs_.absorption = 0.0;
+		  p->macro_xs_.fission    = 0.0;
+		  p->macro_xs_.nu_fission = 0.0;
+	  }
+	  int idx;
+	  #pragma omp atomic capture
+	  idx = advance_particle_queue_length++;
+	  advance_particle_queue[idx] = queue[i];
   }
 
+  /*
   // Calculate nuclide micros
   for (int i = 0; i < data::nuclides.size(); ++i) {
 	  // loop over particles
@@ -264,6 +289,7 @@ void process_calculate_xs_events(int * queue, int n)
 	 idx = advance_particle_queue_length++;
     advance_particle_queue[idx] = queue[i];
   }
+	*/
 }
 
 void process_advance_particle_events()
@@ -585,11 +611,13 @@ void transport()
 			std::cout << "Surface Crossings = " << surface_crossing_queue_length << std::endl;
 			std::cout << "Collisions = " << collision_queue_length << std::endl;
 			*/
+			/*
 			Particle * p = particles +  1;
 		   std::cout << "E = " << p->E_ << " and Position {" <<
 			   p->r().x << ", " <<
 			   p->r().y << ", " <<
 			   p->r().z << "}" << std::endl;
+			   */
 			int max = std::max({calculate_fuel_xs_queue_length, calculate_nonfuel_xs_queue_length, advance_particle_queue_length, surface_crossing_queue_length, collision_queue_length});
 			//check_energies();
 			if (max == 0) {
@@ -1103,12 +1131,17 @@ void finalize_generation()
       //std::sort(simulation::fission_bank.begin(), simulation::fission_bank.end(), bank_site_comparator());
       //std::sort(simulation::fission_bank.begin(), simulation::fission_bank.end());
       std::stable_sort(simulation::fission_bank.begin(), simulation::fission_bank.end());
+	  /*
 	  std::cout << "Fission bank on rank " << mpi::rank << " is of length " << simulation::fission_bank.size() << std::endl;
 	  for (Particle::Bank p : simulation::fission_bank )
 	  {
 	   std::cout <<  "E = " << p.E << std::endl;
 	  }
+<<<<<<< HEAD
 >>>>>>> added some print statements
+=======
+	  */
+>>>>>>> finally reproducible. Change was to the XS lookups. Old way was doing something different I guess, so reverting to original code fixed it all
 
     // Distribute fission bank across processors evenly
     synchronize_bank();
@@ -1189,6 +1222,13 @@ void initialize_history(Particle* p, int64_t index_source)
 
     // Every particle starts with no accumulated flux derivative.
    if (!model::active_tallies.empty()) zero_flux_derivs();
+
+   /*
+   std::cout << "Initialized particle " << particle_seed << " with E = " << p->E_ << " and Position {" <<
+	   p->r().x << ", " <<
+	   p->r().y << ", " <<
+	   p->r().z << "}" << std::endl;
+	   */
 }
 
 int overall_generation()

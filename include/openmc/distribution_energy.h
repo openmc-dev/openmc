@@ -22,7 +22,7 @@ namespace openmc {
 
 class EnergyDistribution {
 public:
-  virtual double sample(double E, uint64_t * prn_seeds, int stream) const = 0;
+  virtual double sample(double E, uint64_t* prn_seeds, int stream) const = 0;
   virtual ~EnergyDistribution() = default;
 };
 
@@ -39,7 +39,7 @@ public:
   //! \param[inout] prn_seeds Pseudorandom number genererator seed array
   //! \param[in] stream Pseudorandom number genererator stream index
   //! \return Sampled energy in [eV]
-  double sample(double E, uint64_t * prn_seeds, int stream) const;
+  double sample(double E, uint64_t* prn_seeds, int stream) const;
 private:
   int primary_flag_; //!< Indicator of whether the photon is a primary or
                      //!< non-primary photon.
@@ -60,7 +60,7 @@ public:
   //! \param[inout] prn_seeds Pseudorandom number genererator seed array
   //! \param[in] stream Pseudorandom number genererator stream index
   //! \return Sampled energy in [eV]
-  double sample(double E, uint64_t * prn_seeds, int stream) const;
+  double sample(double E, uint64_t* prn_seeds, int stream) const;
 private:
   double threshold_; //!< Energy threshold in lab, (A + 1)/A * |Q|
   double mass_ratio_; //!< (A/(A+1))^2
@@ -81,7 +81,7 @@ public:
   //! \param[inout] prn_seeds Pseudorandom number genererator seed array
   //! \param[in] stream Pseudorandom number genererator stream index
   //! \return Sampled energy in [eV]
-  double sample(double E, uint64_t * prn_seeds, int stream) const;
+  double sample(double E, uint64_t* prn_seeds, int stream) const;
 private:
   //! Outgoing energy for a single incoming energy
   struct CTTable {
@@ -112,7 +112,7 @@ public:
   //! \param[inout] prn_seeds Pseudorandom number genererator seed array
   //! \param[in] stream Pseudorandom number genererator stream index
   //! \return Sampled energy in [eV]
-  double sample(double E, uint64_t * prn_seeds, int stream) const;
+  double sample(double E, uint64_t* prn_seeds, int stream) const;
 private:
   Tabulated1D theta_; //!< Incoming energy dependent parameter
   double u_; //!< Restriction energy
@@ -132,7 +132,7 @@ public:
   //! \param[inout] prn_seeds Pseudorandom number genererator seed array
   //! \param[in] stream Pseudorandom number genererator stream index
   //! \return Sampled energy in [eV]
-  double sample(double E, uint64_t * prn_seeds, int stream) const;
+  double sample(double E, uint64_t* prn_seeds, int stream) const;
 private:
   Tabulated1D theta_; //!< Incoming energy dependent parameter
   double u_; //!< Restriction energy
@@ -152,7 +152,7 @@ public:
   //! \param[inout] prn_seeds Pseudorandom number genererator seed array
   //! \param[in] stream Pseudorandom number genererator stream index
   //! \return Sampled energy in [eV]
-  double sample(double E, uint64_t * prn_seeds, int stream) const;
+  double sample(double E, uint64_t* prn_seeds, int stream) const;
 private:
   Tabulated1D a_; //!< Energy-dependent 'a' parameter
   Tabulated1D b_; //!< Energy-dependent 'b' parameter

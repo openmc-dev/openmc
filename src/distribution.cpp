@@ -35,7 +35,7 @@ Discrete::Discrete(const double* x, const double* p, int n)
   normalize();
 }
 
-double Discrete::sample(uint64_t * prn_seeds, int stream) const
+double Discrete::sample(uint64_t* prn_seeds, int stream) const
 {
   int n = x_.size();
   if (n > 1) {
@@ -74,7 +74,7 @@ Uniform::Uniform(pugi::xml_node node)
   b_ = params.at(1);
 }
 
-double Uniform::sample(uint64_t * prn_seeds, int stream) const
+double Uniform::sample(uint64_t* prn_seeds, int stream) const
 {
   return a_ + prn(prn_seeds, stream)*(b_ - a_);
 }
@@ -88,7 +88,7 @@ Maxwell::Maxwell(pugi::xml_node node)
   theta_ = std::stod(get_node_value(node, "parameters"));
 }
 
-double Maxwell::sample(uint64_t * prn_seeds, int stream) const
+double Maxwell::sample(uint64_t* prn_seeds, int stream) const
 {
   return maxwell_spectrum(theta_, prn_seeds, stream);
 }
@@ -108,7 +108,7 @@ Watt::Watt(pugi::xml_node node)
   b_ = params.at(1);
 }
 
-double Watt::sample(uint64_t * prn_seeds, int stream) const
+double Watt::sample(uint64_t* prn_seeds, int stream) const
 {
   return watt_spectrum(a_, b_, prn_seeds, stream);
 }
@@ -116,7 +116,7 @@ double Watt::sample(uint64_t * prn_seeds, int stream) const
 //==============================================================================
 // Normal implementation
 //==============================================================================
-Normal::Normal(pugi::xml_node node) 
+Normal::Normal(pugi::xml_node node)
 {
   auto params = get_node_array<double>(node,"parameters");
   if (params.size() != 2)
@@ -127,7 +127,7 @@ Normal::Normal(pugi::xml_node node)
   std_dev_ = params.at(1);
 }
 
-double Normal::sample(uint64_t * prn_seeds, int stream) const
+double Normal::sample(uint64_t* prn_seeds, int stream) const
 {
   return normal_variate(mean_value_, std_dev_, prn_seeds, stream);
 }
@@ -135,7 +135,7 @@ double Normal::sample(uint64_t * prn_seeds, int stream) const
 //==============================================================================
 // Muir implementation
 //==============================================================================
-Muir::Muir(pugi::xml_node node) 
+Muir::Muir(pugi::xml_node node)
 {
   auto params = get_node_array<double>(node,"parameters");
   if (params.size() != 3)
@@ -147,7 +147,7 @@ Muir::Muir(pugi::xml_node node)
   kt_ = params.at(2);
 }
 
-double Muir::sample(uint64_t * prn_seeds, int stream) const
+double Muir::sample(uint64_t* prn_seeds, int stream) const
 {
   return muir_spectrum(e0_, m_rat_, kt_, prn_seeds, stream);
 }
@@ -220,7 +220,7 @@ void Tabular::init(const double* x, const double* p, std::size_t n, const double
   }
 }
 
-double Tabular::sample(uint64_t * prn_seeds, int stream) const
+double Tabular::sample(uint64_t* prn_seeds, int stream) const
 {
   // Sample value of CDF
   double c = prn(prn_seeds, stream);
@@ -263,7 +263,7 @@ double Tabular::sample(uint64_t * prn_seeds, int stream) const
 // Equiprobable implementation
 //==============================================================================
 
-double Equiprobable::sample(uint64_t * prn_seeds, int stream) const
+double Equiprobable::sample(uint64_t* prn_seeds, int stream) const
 {
   std::size_t n = x_.size();
 

@@ -22,7 +22,7 @@ NBodyPhaseSpace::NBodyPhaseSpace(hid_t group)
 }
 
 void NBodyPhaseSpace::sample(double E_in, double& E_out, double& mu,
-  uint64_t * prn_seeds, int stream) const
+  uint64_t* prn_seeds, int stream) const
 {
   // By definition, the distribution of the angle is isotropic for an N-body
   // phase space distribution

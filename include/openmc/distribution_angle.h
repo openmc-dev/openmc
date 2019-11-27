@@ -26,7 +26,7 @@ public:
   //! \param[inout] prn_seeds Array of pseudorandom number seeds
   //! \param[in] stream Pseudorandom stream index
   //! \return Cosine of the angle in the range [-1,1]
-  double sample(double E, uint64_t * prn_seeds, int stream) const;
+  double sample(double E, uint64_t* prn_seeds, int stream) const;
 
   //! Determine whether angle distribution is empty
   //! \return Whether distribution is empty

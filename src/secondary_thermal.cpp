@@ -32,7 +32,7 @@ CoherentElasticAE::CoherentElasticAE(const CoherentElasticXS& xs)
 { }
 
 void
-CoherentElasticAE::sample(double E_in, double& E_out, double& mu, uint64_t * prn_seeds,
+CoherentElasticAE::sample(double E_in, double& E_out, double& mu, uint64_t* prn_seeds,
   int stream) const
 {
   // Get index and interpolation factor for elastic grid
@@ -67,7 +67,7 @@ IncoherentElasticAE::IncoherentElasticAE(hid_t group)
 
 void
 IncoherentElasticAE::sample(double E_in, double& E_out, double& mu,
-  uint64_t * prn_seeds, int stream) const
+  uint64_t* prn_seeds, int stream) const
 {
   // Sample angle by inverting the distribution in ENDF-102, Eq. 7.4
   double c = 2 * E_in * debye_waller_;
@@ -90,7 +90,7 @@ IncoherentElasticAEDiscrete::IncoherentElasticAEDiscrete(hid_t group,
 
 void
 IncoherentElasticAEDiscrete::sample(double E_in, double& E_out, double& mu,
-  uint64_t * prn_seeds, int stream) const
+  uint64_t* prn_seeds, int stream) const
 {
   // Get index and interpolation factor for elastic grid
   int i;
@@ -129,7 +129,7 @@ IncoherentInelasticAEDiscrete::IncoherentInelasticAEDiscrete(hid_t group,
 
 void
 IncoherentInelasticAEDiscrete::sample(double E_in, double& E_out, double& mu,
-  uint64_t * prn_seeds, int stream) const
+  uint64_t* prn_seeds, int stream) const
 {
   // Get index and interpolation factor for inelastic grid
   int i;
@@ -233,7 +233,7 @@ IncoherentInelasticAE::IncoherentInelasticAE(hid_t group)
 
 void
 IncoherentInelasticAE::sample(double E_in, double& E_out, double& mu,
-  uint64_t * prn_seeds, int stream) const
+  uint64_t* prn_seeds, int stream) const
 {
   // Get index and interpolation factor for inelastic grid
   int i;

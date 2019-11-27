@@ -41,7 +41,7 @@ public:
   //! \param[inout] prn_seeds Array of pseudorandom seeds
   //! \param[in] stream Pseudorandom stream index
   //! \return Sampled site
-  Particle::Bank sample(uint64_t * prn_seed, int stream) const;
+  Particle::Bank sample(uint64_t* prn_seed, int stream) const;
 
   // Properties
   double strength() const { return strength_; }
@@ -64,7 +64,7 @@ extern "C" void initialize_source();
 //! source strength
 //! \param[inout] prn_seeds Array of pseudorandom seeds
 //! \return Sampled source site
-Particle::Bank sample_external_source(uint64_t * prn_seeds);
+Particle::Bank sample_external_source(uint64_t* prn_seeds);
 
 //! Fill source bank at end of generation for fixed source simulations
 void fill_source_bank_fixedsource();

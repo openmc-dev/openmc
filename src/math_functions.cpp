@@ -630,7 +630,7 @@ void calc_zn_rad(int n, double rho, double zn_rad[]) {
 }
 
 
-void rotate_angle_c(double uvw[3], double mu, const double* phi, uint64_t * prn_seeds, int stream) {
+void rotate_angle_c(double uvw[3], double mu, const double* phi, uint64_t* prn_seeds, int stream) {
   Direction u = rotate_angle({uvw}, mu, phi, prn_seeds, stream);
   uvw[0] = u.x;
   uvw[1] = u.y;
@@ -638,7 +638,7 @@ void rotate_angle_c(double uvw[3], double mu, const double* phi, uint64_t * prn_
 }
 
 
-Direction rotate_angle(Direction u, double mu, const double* phi, uint64_t * prn_seeds, int stream)
+Direction rotate_angle(Direction u, double mu, const double* phi, uint64_t* prn_seeds, int stream)
 {
   // Sample azimuthal angle in [0,2pi) if none provided
   double phi_;
@@ -675,7 +675,7 @@ Direction rotate_angle(Direction u, double mu, const double* phi, uint64_t * prn
 }
 
 
-double maxwell_spectrum(double T, uint64_t * prn_seeds, int stream) {
+double maxwell_spectrum(double T, uint64_t* prn_seeds, int stream) {
   // Set the random numbers
   double r1 = prn(prn_seeds, stream);
   double r2 = prn(prn_seeds, stream);
@@ -691,7 +691,7 @@ double maxwell_spectrum(double T, uint64_t * prn_seeds, int stream) {
 }
 
 
-double normal_variate(double mean, double standard_deviation, uint64_t * prn_seeds, int stream) {
+double normal_variate(double mean, double standard_deviation, uint64_t* prn_seeds, int stream) {
   // perhaps there should be a limit to the number of resamples
   while ( true ) {
     double v1 = 2 * prn(prn_seeds, stream) - 1.;
@@ -707,7 +707,7 @@ double normal_variate(double mean, double standard_deviation, uint64_t * prn_see
   }
 }
 
-double muir_spectrum(double e0, double m_rat, double kt, uint64_t * prn_seeds, int stream) {
+double muir_spectrum(double e0, double m_rat, double kt, uint64_t* prn_seeds, int stream) {
   // note sigma here is a factor of 2 shy of equation
   // 8 in https://permalink.lanl.gov/object/tr?what=info:lanl-repo/lareport/LA-05411-MS
   double sigma = std::sqrt(2.*e0*kt/m_rat);
@@ -715,7 +715,7 @@ double muir_spectrum(double e0, double m_rat, double kt, uint64_t * prn_seeds, i
 }
 
 
-double watt_spectrum(double a, double b, uint64_t * prn_seeds, int stream) {
+double watt_spectrum(double a, double b, uint64_t* prn_seeds, int stream) {
   double w = maxwell_spectrum(a, prn_seeds, stream);
   double E_out = w + 0.25 * a * a * b + (2. * prn(prn_seeds, stream) - 1.) * std::sqrt(a * a * b * w);
 

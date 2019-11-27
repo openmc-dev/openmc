@@ -68,7 +68,7 @@ class ScattData {
     //! @param prn_seeds Array of pseudorandom stream seeds
 	//! @param stream Pseudorandom stream index
     virtual void
-    sample(int gin, int& gout, double& mu, double& wgt, uint64_t * prn_seeds,
+    sample(int gin, int& gout, double& mu, double& wgt, uint64_t* prn_seeds,
       int stream) = 0;
 
     //! \brief Initializes the ScattData object from a given scatter and
@@ -115,7 +115,7 @@ class ScattData {
     //! @param prn_seeds Array of pseudorandom stream seeds
 	//! @param stream Pseudorandom stream index
     void
-    sample_energy(int gin, int& gout, int& i_gout, uint64_t * prn_seeds, int stream);
+    sample_energy(int gin, int& gout, int& i_gout, uint64_t* prn_seeds, int stream);
 
     //! \brief Provides a cross section value given certain parameters
     //!
@@ -166,7 +166,7 @@ class ScattDataLegendre: public ScattData {
     calc_f(int gin, int gout, double mu);
 
     void
-    sample(int gin, int& gout, double& mu, double& wgt, uint64_t * prn_seeds, int stream);
+    sample(int gin, int& gout, double& mu, double& wgt, uint64_t* prn_seeds, int stream);
 
     size_t
     get_order() {return dist[0][0].size() - 1;};
@@ -202,7 +202,7 @@ class ScattDataHistogram: public ScattData {
     calc_f(int gin, int gout, double mu);
 
     void
-    sample(int gin, int& gout, double& mu, double& wgt, uint64_t * prn_seeds, int stream);
+    sample(int gin, int& gout, double& mu, double& wgt, uint64_t* prn_seeds, int stream);
 
     size_t
     get_order() {return dist[0][0].size();};
@@ -243,7 +243,7 @@ class ScattDataTabular: public ScattData {
     calc_f(int gin, int gout, double mu);
 
     void
-    sample(int gin, int& gout, double& mu, double& wgt, uint64_t * prn_seeds, int stream);
+    sample(int gin, int& gout, double& mu, double& wgt, uint64_t* prn_seeds, int stream);
 
     size_t
     get_order() {return dist[0][0].size();};

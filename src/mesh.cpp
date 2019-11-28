@@ -5,7 +5,6 @@
 #include <cmath>  // for ceil
 #include <memory> // for allocator
 #include <string>
-#include <sstream>
 
 #ifdef OPENMC_MPI
 #include "mpi.h"

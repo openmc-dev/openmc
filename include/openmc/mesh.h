@@ -118,60 +118,6 @@ public:
   xt::xtensor<double, 1> upper_right_; //!< Upper-right coordinates of mesh
 };
 
-// class Mesh {
-
-// public:
-//   // Constructors
-//   Mesh() = default;
-//   Mesh(pugi::xml_node node);
-
-//   // Destructor
-//   virtual ~Mesh() = default;
-
-//   //! Determine which bins were crossed by a particle
-//   //
-//   //! \param[in] p Particle to check
-//   //! \param[out] bins Bins that were crossed
-//   //! \param[out] lengths Fraction of tracklength in each bin
-//   virtual void bins_crossed(const Particle* p, std::vector<int>& bins,
-//                             std::vector<double>& lengths) const = 0;
-
-//   //! Write mesh data to an HDF5 group
-//   //
-//   //! \param[in] group HDF5 group
-//   virtual void to_hdf5(hid_t group) const = 0;
-
-//   //! Determine which surface bins were crossed by a particle
-//   //
-//   //! \param[in] p Particle to check
-//   //! \param[out] bins Surface bins that were crossed
-//   virtual void
-//   surface_bins_crossed(const Particle* p, std::vector<int>& bins) const = 0;
-
-//   //! Get bin at a given position in space
-//   //
-//   //! \param[in] r Position to get bin for
-//   //! \return Mesh bin
-//   virtual int get_bin(Position r) const = 0;
-
-//   virtual std::string get_label_for_bin(int bin) const = 0;
-
-//   //! Count number of bank sites in each mesh bin / energy bin
-//   //
-//   //! \param[in] bank Array of bank sites
-//   //! \param[out] Whether any bank sites are outside the mesh
-//   //! \return Array indicating number of sites in each mesh/energy bin
-//   virtual xt::xarray<double>
-//   count_sites(const std::vector<Particle::Bank>& bank, bool* outside) const;
-
-//   virtual double get_volume_frac(int bin = -1) const = 0;
-
-//   virtual int num_bins() const = 0;
-
-//   int id_ {-1};  //!< User-specified ID
-//   int n_dimension_; //!< Number of dimensions
-// };
-
 //==============================================================================
 //! Tessellation of n-dimensional Euclidean space by congruent squares or cubes
 //==============================================================================
@@ -227,21 +173,9 @@ public:
   xt::xtensor<double, 1> count_sites(const Particle::Bank* bank, int64_t length,
     bool* outside) const;
 
-  // Data members
-
-
-  //! Write mesh data to an HDF5 group
-  //
-  //! \param[in] group HDF5 group
-  // void to_hdf5(hid_t group) const;
-
-  // std::string get_label_for_bin(int bin) const;
-
-  //std::string get_label_for_bin(int bin) const;
-
-  //double get_volume_frac(int bin = -1) const;
-
   int num_bins() const;
+
+  // Data members
 
   double volume_frac_; //!< Volume fraction of each mesh element
   xt::xtensor<int, 1> shape_; //!< Number of mesh elements in each dimension
@@ -325,18 +259,6 @@ public:
 
 
 private:
-
-  // void
-  // intersect_track(const moab::CartVect& start,
-  //                 const moab::CartVect& dir,
-  //                 double track_len,
-  //                 std::vector<moab::EntityHandle>& tris,
-  //                 std::vector<double>& intersection_dists) const;
-  // void
-  // intersect_track(const moab::CartVect& start,
-  //                 const moab::CartVect& dir,
-  //                 double track_len,
-  //                 TriHits& hits) const;
 
 //! Finds all intersections with faces of the mesh.
 //
@@ -429,8 +351,6 @@ public:
   int get_bin(Position r) const;
 
   std::string get_label_for_bin(int bin) const;
-
-  // double get_volume_frac(int bin = -1) const;
 
   int n_bins() const override;
 

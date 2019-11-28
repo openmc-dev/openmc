@@ -5,7 +5,6 @@
 #include <cmath>  // for ceil
 #include <memory> // for allocator
 #include <string>
-#include <sstream>
 
 #ifdef OPENMC_MPI
 #include "mpi.h"
@@ -15,7 +14,6 @@
 #include "xtensor/xmath.hpp"
 #include "xtensor/xsort.hpp"
 #include "xtensor/xtensor.hpp"
-#include "xtensor/xarray.hpp"
 
 #include "openmc/capi.h"
 #include "openmc/constants.h"
@@ -848,23 +846,6 @@ RegularMesh::count_sites(const Particle::Bank* bank, int64_t length,
   return counts;
 }
 
-// std::string RegularMesh::get_label_for_bin(int bin) const {
-//   int ijk[n_dimension_];
-//   get_indices_from_bin(bin, ijk);
-
-//   std::stringstream out;
-//   out << "Mesh Index (" << ijk[0];
-//   if (n_dimension_ > 1) out << ", " << ijk[1];
-//   if (n_dimension_ > 2) out << ", " << ijk[2];
-//   out << ")";
-
-//   return out.str();
-// }
-
-// double RegularMesh::get_volume_frac(int bin) const {
-//   return volume_frac_;
-// }
-
 //==============================================================================
 // RectilinearMesh implementation
 //==============================================================================
@@ -1459,7 +1440,6 @@ openmc_mesh_get_dimension(int32_t index, int** dims, int* n)
     set_errmsg("Index in meshes array is out of bounds.");
     return OPENMC_E_OUT_OF_BOUNDS;
   }
-
   RegularMesh* mesh;
   if (int err = check_regular_mesh(index, &mesh)) return err;
   *dims = mesh->shape_.data();
@@ -1471,6 +1451,11 @@ openmc_mesh_get_dimension(int32_t index, int** dims, int* n)
 extern "C" int
 openmc_mesh_set_dimension(int32_t index, int n, const int* dims)
 {
+  if (index < 0 || index >= model::meshes.size()) {
+    set_errmsg("Index in meshes array is out of bounds.");
+    return OPENMC_E_OUT_OF_BOUNDS;
+  }
+
   RegularMesh* mesh;
   if (int err = check_regular_mesh(index, &mesh)) return err;
 
@@ -1607,9 +1592,6 @@ UnstructuredMesh::build_kdtree(const moab::Range& all_tets) {
 
   // create and build KD-tree
   kdtree_ = std::unique_ptr<moab::AdaptiveKDTree>(new moab::AdaptiveKDTree(mbi_.get()));
-
-  //const char settings[] = "MESHSET_FLAGS=0x1;TAG_NAME=0";
-  // moab::FileOptions fileopts(settings);
 
   // build the tree
   rval = kdtree_->build_tree(all_tets_and_tris, &kdtree_root_);
@@ -1974,17 +1956,6 @@ UnstructuredMesh::get_ent_handle_from_bin(int bin) const {
   return ehs_[bin];
 }
 
-// double UnstructuredMesh::get_volume_frac(int bin) const {
-//   if (bin == -1) { return 0.0; }
-//   if (bin > ehs_.size() || bin < -1) {
-//     std::stringstream msg;
-//     msg << "Invalid bin " << bin << " for umesh with id " << id_;
-//     fatal_error(msg);
-//   }
-//   moab::EntityHandle tet = get_ent_handle_from_bin(bin);
-//   return tet_volume(tet);
-// }
-
 int UnstructuredMesh::n_bins() const {
   return ehs_.size();
 }
@@ -2011,7 +1982,6 @@ int UnstructuredMesh::n_surface_bins() const {
 void read_meshes(pugi::xml_node root)
 {
   for (auto node : root.children("mesh")) {
-
     std::string mesh_type;
     if (check_for_node(node, "type")) {
       mesh_type = get_node_value(node, "type", true, true);

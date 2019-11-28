@@ -318,6 +318,7 @@ public:
   bool intersects(Position& r0, Position r1, int* ijk);
 
 
+
 private:
 
   //! Find all intersections with faces of the mesh.
@@ -410,59 +411,7 @@ private:
   std::pair<moab::Tag, moab::Tag>
   get_score_tags(std::string score) const;
 
-<<<<<<< HEAD
   // data members
-=======
-public:
-
-  std::pair<std::vector<double>, std::vector<double>>
-  plot(Position plot_ll, Position plot_ur) const override;
-
-  //! Determine which surface bins were crossed by a particle.
-  //
-  //! \param[in] p Particle to check
-  //! \param[out] bins Surface bins that were crossed
-  void surface_bins_crossed(const Particle* p, std::vector<int>& bins) const;
-
-  //! Write mesh data to an HDF5 group.
-  //
-  //! \param[in] group HDF5 group
-  void to_hdf5(hid_t group) const;
-
-  //! Get bin at a given position.
-  //
-  //! \param[in] r Position to get bin for
-  //! \return Mesh bin
-  int get_bin(Position r) const;
-
-  std::string get_label_for_bin(int bin) const;
-
-  int n_bins() const override;
-
-  int n_surface_bins() const override;
-
-  Position centroid(moab::EntityHandle tet) const;
-
-  std::string bin_label(int bin) const override;
-
-  //! Add a score to the mesh instance
-  void add_score(std::string score) const;
-
-  //! Set data for a score
-  void set_score_data(const std::string& score,
-                      std::vector<double> values,
-                      std::vector<double> std_dev) const;
-
-  //! Write the mesh with any current tally data
-  void write(std::string base_filename) const;
-  std::string filename_; //<! Path to unstructured mesh file
-
-  std::string get_label_for_bin(int bin) const;
-
-  double get_volume_frac(int bin = -1) const;
-
-private:
->>>>>>> Using a common count_sites implementation.
   moab::Range ehs_; //!< Range of tetrahedra EntityHandle's in the mesh
   moab::EntityHandle tetset_; //!< EntitySet containing all tetrahedra
   moab::EntityHandle kdtree_root_; //!< Root of the MOAB KDTree

@@ -605,8 +605,12 @@ class UnstructuredMesh(MeshBase):
         Unique identifier for the mesh
     name : str
         Name of the mesh
-    filename : str
+    mesh_file : str
         Name of the file containing the unstructured mesh
+    volumes : Iterable of float
+        Volumes of the unstructured mesh elements
+    total_volume : float
+        Volume of the unstructured mesh in total
     """
 
     def __init__(self, mesh_id=None, name='', filename=''):
@@ -626,6 +630,19 @@ class UnstructuredMesh(MeshBase):
         else:
             self.filename = ''
 
+    @property
+    def volumes(self):
+        return self._volumes
+
+    @volumes.setter
+    def volumes(self, volumes):
+        cv.check_type("Unstructured mesh volumes", volumes, Iterable, Real)
+        self._volumes = volumes
+
+    @property
+    def total_volume(self):
+        return np.sum(self.volumes)
+
     def __repr__(self):
         string = super().__repr__()
         string += '{0: <16}{1}{2}\n'.format('\tFilename', '=\t', self.filename)
@@ -636,7 +653,10 @@ class UnstructuredMesh(MeshBase):
         mesh_id = int(group.name.split('/')[-1].lstrip('mesh '))
 
         mesh = cls(mesh_id)
-        mesh = group['filename']
+        mesh.filename = group['filename'][()].decode()
+        mesh.volumes = group['volumes'][()]
+
+        return mesh
 
     def to_xml_element(self):
         """Return XML representation of the mesh

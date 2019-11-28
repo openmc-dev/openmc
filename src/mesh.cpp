@@ -1864,15 +1864,14 @@ UnstructuredMesh::to_hdf5(hid_t group) const
     hid_t mesh_group = create_group(group, "mesh " + std::to_string(id_));
 
     write_dataset(mesh_group, "type", "unstructured");
+    write_dataset(mesh_group, "filename", filename_);
+
     // write volume of each tet
     std::vector<double> tet_vols;
     for (const auto& eh : ehs_) {
       tet_vols.emplace_back(tet_volume(eh));
     }
     write_dataset(mesh_group, "volumes", tet_vols);
-    // and the total volume of the mesh
-    auto total_vol = std::accumulate(tet_vols.begin(), tet_vols.end(), 0.0);
-    write_dataset(mesh_group, "total_volume", total_vol);
 
     close_group(mesh_group);
 }

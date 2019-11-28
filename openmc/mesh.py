@@ -80,6 +80,8 @@ class MeshBase(IDManagerMixin, metaclass=ABCMeta):
             return RegularMesh.from_hdf5(group)
         elif mesh_type == 'rectilinear':
             return RectilinearMesh.from_hdf5(group)
+        elif mesh_type == 'unstructured':
+            return UnstructuredMesh.from_hdf5(group)
         else:
             raise ValueError('Unrecognized mesh type: "' + mesh_type + '"')
 
@@ -584,5 +586,73 @@ class RectilinearMesh(MeshBase):
 
         subelement = ET.SubElement(element, "z_grid")
         subelement.text = ' '.join(map(str, self.z_grid))
+
+        return element
+
+class UnstructuredMesh(MeshBase):
+    """An unstructured mesh, assumed to be three dimensionality
+
+    Parameters
+    ----------
+    mesh_id : int
+        Unique identifier for the mesh
+    name : str
+        Name of the mesh
+
+    Attributes
+    ----------
+    id : int
+        Unique identifier for the mesh
+    name : str
+        Name of the mesh
+    filename : str
+        Name of the file containing the unstructured mesh
+    """
+
+    def __init__(self, mesh_id=None, name='', filename=''):
+        super().__init__(mesh_id, name)
+        self._filename = filename
+
+    @property
+    def filename(self):
+        return self._filename
+
+    @filename.setter
+    def filename(self, filename):
+        if filename is not None:
+            cv.check_type('Unstructured Mesh filename: {}'.format(filename),
+                          filename, str)
+            self._filename = filename
+        else:
+            self.filename = ''
+
+    def __repr__(self):
+        string = super().__repr__()
+        string += '{0: <16}{1}{2}\n'.format('\tFilename', '=\t', self.filename)
+        return string
+
+    @classmethod
+    def from_hdf5(cls, group):
+        mesh_id = int(group.name.split('/')[-1].lstrip('mesh '))
+
+        mesh = cls(mesh_id)
+        mesh = group['filename']
+
+    def to_xml_element(self):
+        """Return XML representation of the mesh
+
+        Returns
+        -------
+        element : xml.etree.ElementTree.Element
+            XML element containing the mesh data
+
+        """
+
+        element = ET.Element("mesh")
+        element.set("id", str(self._id))
+        element.set("type", "unstructured")
+
+        subelement = ET.SubElement(element, "mesh_file")
+        subelement.text = self.filename
 
         return element

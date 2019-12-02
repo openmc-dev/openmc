@@ -157,10 +157,12 @@ void dispatch_xs_event(int i)
 
 void process_calculate_xs_events(QueueItem * queue, int n)
 {
-	// Sort queue by energy
-	std::sort(queue, queue+n, by_energy);
-	// Then, stable sort by material (so as to preserve energy ordering)
-	std::stable_sort(queue, queue+n, by_material);
+  // Sort queue by energy
+  std::sort(queue, queue+n, by_energy);
+
+  // Then, stable sort by material (so as to preserve energy ordering)
+  std::stable_sort(queue, queue+n, by_material);
+
   // Save last_ members, find grid index
   int lost_particles = 0;
   #pragma omp parallel for reduction(+:lost_particles)

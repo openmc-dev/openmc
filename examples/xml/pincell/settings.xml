@@ -5,7 +5,7 @@
   <run_mode>eigenvalue</run_mode>
   <batches>10</batches>
   <inactive>5</inactive>
-  <particles>100000</particles>
+  <particles>1000</particles>
 
   <!-- The starting source is a uniform distribution over the entire pin
        cell. Note that since this is effectively a 2D model, the z coordinates

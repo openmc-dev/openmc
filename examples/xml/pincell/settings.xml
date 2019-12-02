@@ -3,8 +3,8 @@
 
   <!-- Define how many particles to run and for how many batches -->
   <run_mode>eigenvalue</run_mode>
-  <batches>2</batches>
-  <inactive>1</inactive>
+  <batches>4</batches>
+  <inactive>2</inactive>
   <particles>100000</particles>
 
   <!-- The starting source is a uniform distribution over the entire pin

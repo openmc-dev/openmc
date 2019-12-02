@@ -1253,7 +1253,7 @@ void finalize_generation()
 
 
   if (settings::run_mode == RUN_MODE_EIGENVALUE) {
-#ifdef _OPENMP
+//#ifdef _OPENMP
     // Join the fission bank from each thread into one global fission bank
     //join_bank_from_threads();
 	
@@ -1264,7 +1264,7 @@ void finalize_generation()
 	  for( int i = 0; i < shared_fission_bank_length; i++ )
 		  simulation::fission_bank.push_back(shared_fission_bank[i]);
 	  shared_fission_bank_length = 0;
-#endif
+//#endif
       // Sorts the fission bank so as to allow for reproducibility
       //std::sort(simulation::fission_bank.begin(), simulation::fission_bank.end(), bank_site_comparator());
       //std::sort(simulation::fission_bank.begin(), simulation::fission_bank.end());

@@ -50,11 +50,19 @@ std::vector<Particle*> surface_crossing_queue;
 std::vector<Particle*> collision_queue;
 */
 
-int * calculate_fuel_xs_queue;
-int * calculate_nonfuel_xs_queue;
-int * advance_particle_queue;
-int * surface_crossing_queue;
-int * collision_queue;
+struct QueueItem{
+	int idx;      // particle index in event-based buffer
+	double E;     // particle energy
+	int material; // material that particle is in
+};
+bool by_energy   (QueueItem a, QueueItem b) { return (a.E        < b.E); }
+bool by_material (QueueItem a, QueueItem b) { return (a.material < b.material); }
+
+QueueItem * calculate_fuel_xs_queue;
+QueueItem * calculate_nonfuel_xs_queue;
+QueueItem * advance_particle_queue;
+QueueItem * surface_crossing_queue;
+QueueItem * collision_queue;
 Particle * particles;
 
 int calculate_fuel_xs_queue_length    = 0;
@@ -67,11 +75,11 @@ const int MAX_PARTICLES_IN_FLIGHT = 100000;
 
 void init_event_queues(int n_particles)
 {
-	calculate_fuel_xs_queue =    new int[n_particles];
-	calculate_nonfuel_xs_queue = new int[n_particles];
-	advance_particle_queue =     new int[n_particles];
-	surface_crossing_queue =     new int[n_particles];
-	collision_queue =            new int[n_particles];
+	calculate_fuel_xs_queue =    new QueueItem[n_particles];
+	calculate_nonfuel_xs_queue = new QueueItem[n_particles];
+	advance_particle_queue =     new QueueItem[n_particles];
+	surface_crossing_queue =     new QueueItem[n_particles];
+	collision_queue =            new QueueItem[n_particles];
 	particles =                  new Particle[n_particles];
 }
 
@@ -125,29 +133,39 @@ void dispatch_xs_event(int i)
 	#pragma omp atomic capture
 	idx = calculate_nonfuel_xs_queue_length++;
 	//std::cout << "Dispatching particle to non Fuel XS queue idx = " << idx << std::endl;
-    calculate_nonfuel_xs_queue[idx] = i;
+    calculate_nonfuel_xs_queue[idx].idx = i;
+    calculate_nonfuel_xs_queue[idx].E = p->E_;
+    calculate_nonfuel_xs_queue[idx].material = p->material_;
   } else {
     if (model::materials[p->material_]->fissionable_) {
 	#pragma omp atomic capture
 	idx = calculate_fuel_xs_queue_length++;
 	//std::cout << "Dispatching particle to Fuel XS queue idx = " << idx << std::endl;
-      calculate_fuel_xs_queue[idx] = i;
+      calculate_fuel_xs_queue[idx].idx = i;
+      calculate_fuel_xs_queue[idx].E = p->E_;
+      calculate_fuel_xs_queue[idx].material = p->material_;
     } else {
 	#pragma omp atomic capture
 	idx = calculate_nonfuel_xs_queue_length++;
 	//std::cout << "Dispatching particle to non Fuel XS queue idx = " << idx << std::endl;
-      calculate_nonfuel_xs_queue[idx] = i;
+      calculate_nonfuel_xs_queue[idx].idx = i;
+      calculate_nonfuel_xs_queue[idx].E = p->E_;
+      calculate_nonfuel_xs_queue[idx].material = p->material_;
     }
   }
 }
 
-void process_calculate_xs_events(int * queue, int n)
+void process_calculate_xs_events(QueueItem * queue, int n)
 {
+	// Sort queue by energy
+	std::sort(queue, queue+n, by_energy);
+	// Then, stable sort by material (so as to preserve energy ordering)
+	std::stable_sort(queue, queue+n, by_material);
   // Save last_ members, find grid index
   int lost_particles = 0;
   #pragma omp parallel for reduction(+:lost_particles)
   for (int i = 0; i < n; i++) {
-	  Particle *p = particles + queue[i]; 
+	  Particle *p = particles + queue[i].idx; 
 	  //std::cout << "particle offset = " << queue[i] << std::endl;
     // Set the random number stream
 	// TODO: Move RNG seeds to particle storage
@@ -200,7 +218,7 @@ void process_calculate_xs_events(int * queue, int n)
   #pragma omp parallel for
   for( int i = 0; i < n; i++ )
   {
-	  Particle * p = particles + queue[i];
+	  Particle * p = particles + queue[i].idx;
 	  // Calculate microscopic and macroscopic cross sections
 	  if (p->material_ != MATERIAL_VOID) {
 		  if (settings::run_CE) {
@@ -229,7 +247,9 @@ void process_calculate_xs_events(int * queue, int n)
   int j = 0;
   for( int i = start; i < end; i++ )
   {
-	  advance_particle_queue[i] = queue[j];
+	  advance_particle_queue[i].idx = queue[j].idx;
+	  advance_particle_queue[i].E = particles[queue[j].idx].E_;
+	  advance_particle_queue[i].material = particles[queue[j].idx].material_;
 	  j++;
   }
   advance_particle_queue_length += n;
@@ -315,7 +335,7 @@ void process_advance_particle_events()
   //for (auto& p : advance_particle_queue) {
   #pragma omp parallel for
   for (int i = 0; i < advance_particle_queue_length; i++) {
-	  Particle * p = particles + advance_particle_queue[i];
+	  Particle * p = particles + advance_particle_queue[i].idx;
     simulation::trace == (p->id_ == 0);
 
     // Sample a distance to collision
@@ -340,12 +360,16 @@ void process_advance_particle_events()
     if (p->boundary_.distance < d_collision) {
 		#pragma omp atomic capture
 		idx = surface_crossing_queue_length++;
-      surface_crossing_queue[idx] = advance_particle_queue[i];
+      surface_crossing_queue[idx].idx = advance_particle_queue[i].idx;
+      surface_crossing_queue[idx].E = p->E_;
+      surface_crossing_queue[idx].material = p->material_;
       distance = p->boundary_.distance;
     } else {
 		#pragma omp atomic capture
 		idx = collision_queue_length++;
-		collision_queue[idx] = advance_particle_queue[i];
+		collision_queue[idx].idx = advance_particle_queue[i].idx;
+		collision_queue[idx].E = p->E_;
+		collision_queue[idx].material = p->material_;
       distance = d_collision;
     }
 
@@ -383,7 +407,7 @@ void process_surface_crossing_events()
   //for (auto& p : surface_crossing_queue) {
   #pragma omp parallel for
   for (int i = 0; i < surface_crossing_queue_length; i++) {
-	  Particle * p = particles + surface_crossing_queue[i];
+	  Particle * p = particles + surface_crossing_queue[i].idx;
     // Set surface that particle is on and adjust coordinate levels
     p->surface_ = p->boundary_.surface_index;
     p->n_coord_ = p->boundary_.coord_level;
@@ -417,7 +441,7 @@ void process_surface_crossing_events()
 
     if (p->alive_)
 	{
-		dispatch_xs_event(surface_crossing_queue[i]);
+		dispatch_xs_event(surface_crossing_queue[i].idx);
 	}
   }
 
@@ -429,7 +453,7 @@ void process_collision_events()
   //for (auto& p : collision_queue) {
   #pragma omp parallel for
   for (int i = 0; i < collision_queue_length; i++) {
-	  Particle * p = particles + collision_queue[i];
+	  Particle * p = particles + collision_queue[i].idx;
 	  //std::cout << "Beginning collision of particle id " << collision_queue[i] << " with energy E = " << p->E_ << std::endl;
     // Score collision estimate of keff
     if (settings::run_mode == RUN_MODE_EIGENVALUE &&
@@ -513,7 +537,7 @@ void process_collision_events()
 
     if (p->alive_)
 	{
-		dispatch_xs_event(collision_queue[i]);
+		dispatch_xs_event(collision_queue[i].idx);
 	    //std::cout << "Ended collision of particle id " << collision_queue[i] << " with energy E = " << p->E_ << std::endl;
 		assert(std::isfinite(p->E_) );
 	}
@@ -522,6 +546,7 @@ void process_collision_events()
   collision_queue_length = 0;
 }
 
+/*
 void check_energies(void)
 {
 	int * Q;
@@ -579,6 +604,7 @@ void check_energies(void)
 		}
 	}
 }
+*/
 
 double get_time()
 {

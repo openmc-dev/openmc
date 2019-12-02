@@ -62,6 +62,8 @@ public:
   //----------------------------------------------------------------------------
   // Other methods.
 
+  void add_filter(Filter* filter) { set_filters({&filter, 1}); }
+
   void init_triggers(pugi::xml_node node);
 
   void init_results();

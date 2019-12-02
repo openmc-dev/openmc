@@ -63,11 +63,10 @@ int advance_particle_queue_length     = 0;
 int surface_crossing_queue_length     = 0;
 int collision_queue_length            = 0;
 
-const int MAX_PARTICLES_IN_FLIGHT = 100;
+const int MAX_PARTICLES_IN_FLIGHT = 100000;
 
-void init_event_queues(void)
+void init_event_queues(int n_particles)
 {
-	int n_particles = MAX_PARTICLES_IN_FLIGHT;
 	calculate_fuel_xs_queue =    new int[n_particles];
 	calculate_nonfuel_xs_queue = new int[n_particles];
 	advance_particle_queue =     new int[n_particles];
@@ -600,7 +599,10 @@ void transport()
 	int remaining_work = simulation::work_per_rank;
 	int source_offset = 0;
 		
-	init_event_queues();
+	int max_n_particles = MAX_PARTICLES_IN_FLIGHT;
+	if( max_n_particles > remaining_work)
+		max_n_particles = remaining_work;
+	init_event_queues(max_n_particles);
 
 	double time_fuel_xs = 0;
 	double time_nonfuel_xs = 0;

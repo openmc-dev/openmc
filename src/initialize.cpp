@@ -269,9 +269,6 @@ void read_input_xml()
 
   read_tallies_xml();
 
-  // Initialize distribcell_filters
-  prepare_distribcell();
-
   if (settings::run_mode == RUN_MODE_PLOTTING) {
     // Read plots.xml if it exists
     read_plots_xml();

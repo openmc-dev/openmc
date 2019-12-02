@@ -5,6 +5,7 @@
 #include "openmc/container_util.h"
 #include "openmc/eigenvalue.h"
 #include "openmc/error.h"
+#include "openmc/geometry_aux.h"
 #include "openmc/material.h"
 #include "openmc/message_passing.h"
 #include "openmc/nuclide.h"
@@ -56,6 +57,9 @@ int openmc_simulation_init()
 
   // Skip if simulation has already been initialized
   if (simulation::initialized) return 0;
+
+  // Initialize distribcell_filters
+  prepare_distribcell();
 
   // Determine how much work each process should do
   calculate_work();

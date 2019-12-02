@@ -320,6 +320,8 @@ find_root_universe()
 void
 prepare_distribcell()
 {
+  write_message("Preparing distributed cell instances...", 5);
+
   // Find all cells listed in a DistribcellFilter or CellInstanceFilter
   std::unordered_set<int32_t> distribcells;
   for (auto& filt : model::tally_filters) {
@@ -395,7 +397,7 @@ prepare_distribcell()
   for (int map = 0; map < target_univ_ids.size(); map++) {
     auto target_univ_id = target_univ_ids[map];
     for (const auto& univ : model::universes) {
-      int32_t offset {0};  // TODO: is this a bug?  It matches F90 implementation.
+      int32_t offset = 0;
       for (int32_t cell_indx : univ->cells_) {
         Cell& c = *model::cells[cell_indx];
 

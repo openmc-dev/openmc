@@ -51,8 +51,8 @@ public:
   //----------------------------------------------------------------------------
   // Constructors, destructors
 
-  //CellInstanceFilter() = default;
-  //CellInstanceFilter(gsl::span<CellInstance> instances);
+  CellInstanceFilter() = default;
+  CellInstanceFilter(gsl::span<CellInstance> instances);
   ~CellInstanceFilter() = default;
 
   //----------------------------------------------------------------------------

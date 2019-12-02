@@ -87,7 +87,7 @@ CellInstanceFilter::text_label(int bin) const
 {
   const auto& x = cell_instances_[bin];
   auto cell_id = model::cells[x.index_cell]->id_;
-  return "Cell " + std::to_string(cell_id) + ", CellInstance "
+  return "Cell " + std::to_string(cell_id) + ", Instance "
     + std::to_string(x.instance);
 }
 

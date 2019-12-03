@@ -270,7 +270,7 @@ void initialize_source()
       // initialize random number seed
       int64_t id = simulation::total_gen*settings::n_particles +
         simulation::work_index[mpi::rank] + i + 1;
-	  uint64_t prn_seeds[N_STREAMS];
+      uint64_t prn_seeds[N_STREAMS];
       set_particle_seed(id, prn_seeds);
 
       // sample external source distribution
@@ -334,7 +334,7 @@ void fill_source_bank_fixedsource()
       // initialize random number seed
       int64_t id = (simulation::total_gen + overall_generation()) *
         settings::n_particles + simulation::work_index[mpi::rank] + i + 1;
-	  uint64_t prn_seeds[N_STREAMS];
+      uint64_t prn_seeds[N_STREAMS];
       set_particle_seed(id, prn_seeds);
 
       // sample external source distribution

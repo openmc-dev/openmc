@@ -116,7 +116,7 @@ void synchronize_bank()
 
   // Create pseudorandom number streams
   uint64_t prn_seeds[N_STREAMS];     // seeds
-  int      stream = STREAM_TRACKING; // current RNG stream
+  int stream = STREAM_TRACKING; // current RNG stream
 
   // Make sure all processors start at the same point for random sampling. Then
   // skip ahead in the sequence using the starting index in the 'global'

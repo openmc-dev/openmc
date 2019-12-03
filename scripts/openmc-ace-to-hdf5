@@ -1,0 +1,205 @@
+#!/usr/bin/env python3
+
+import argparse
+import os
+import xml.etree.ElementTree as ET
+import warnings
+
+import openmc.data
+
+description = """
+This script can be used to create HDF5 nuclear data libraries used by
+OpenMC. There are four different ways you can specify ACE libraries that are to
+be converted:
+
+1. List each ACE library as a positional argument. This is very useful in
+   conjunction with the usual shell utilities (ls, find, etc.).
+2. Use the --xml option to specify a pre-v0.9 cross_sections.xml file.
+3. Use the --xsdir option to specify a MCNP xsdir file.
+4. Use the --xsdata option to specify a Serpent xsdata file.
+
+The script does not use any extra information from cross_sections.xml/ xsdir/
+xsdata files to determine whether the nuclide is metastable. Instead, the
+--metastable argument can be used to specify whether the ZAID naming convention
+follows the NNDC data convention (1000*Z + A + 300 + 100*m), or the MCNP data
+convention (essentially the same as NNDC, except that the first metastable state
+of Am242 is 95242 and the ground state is 95642).
+
+"""
+
+class CustomFormatter(argparse.ArgumentDefaultsHelpFormatter,
+                      argparse.RawDescriptionHelpFormatter):
+    pass
+
+parser = argparse.ArgumentParser(
+    description=description,
+    formatter_class=CustomFormatter
+)
+parser.add_argument('libraries', nargs='*',
+                    help='ACE libraries to convert to HDF5')
+parser.add_argument('-d', '--destination', default='.',
+                    help='Directory to create new library in')
+parser.add_argument('-m', '--metastable', choices=['mcnp', 'nndc'],
+                    default='nndc',
+                    help='How to interpret ZAIDs for metastable nuclides')
+parser.add_argument('--xml', help='Old-style cross_sections.xml that '
+                    'lists ACE libraries')
+parser.add_argument('--xsdir', help='MCNP xsdir file that lists '
+                    'ACE libraries')
+parser.add_argument('--xsdata', help='Serpent xsdata file that lists '
+                    'ACE libraries')
+parser.add_argument('--libver', choices=['earliest', 'latest'],
+                    default='earliest', help="Output HDF5 versioning. Use "
+                    "'earliest' for backwards compatibility or 'latest' for "
+                    "performance")
+args = parser.parse_args()
+
+if not os.path.isdir(args.destination):
+    os.mkdir(args.destination)
+
+# If the --xml argument was given, get the list of ACE libraries directory from
+# <ace_table> elements within the specified cross_sections.xml file
+ace_libraries = []
+if args.xml is not None:
+    tree = ET.parse(args.xml)
+    root = tree.getroot()
+    if root.find('directory') is not None:
+        directory = root.find('directory').text
+    else:
+        directory = os.path.dirname(args.xml)
+
+    for ace_table in root.findall('ace_table'):
+        path = os.path.join(directory, ace_table.attrib['path'])
+        if path not in ace_libraries:
+            ace_libraries.append(path)
+
+elif args.xsdir is not None:
+    # Find 'directory' section
+    lines = open(args.xsdir, 'r').readlines()
+    for index, line in enumerate(lines):
+        if line.strip().lower() == 'directory':
+            break
+    else:
+        raise IOError("Could not find 'directory' section in MCNP xsdir file")
+
+    # Handle continuation lines indicated by '+' at end of line
+    lines = lines[index + 1:]
+    continue_lines = [i for i, line in enumerate(lines)
+                      if line.strip().endswith('+')]
+    for i in reversed(continue_lines):
+        lines[i] += lines[i].strip()[:-1] + lines.pop(i + 1)
+
+    # Create list of ACE libraries
+    for line in lines:
+        words = line.split()
+        if len(words) < 3:
+            continue
+
+        path = os.path.join(os.path.dirname(args.xsdir), words[2])
+        if path not in ace_libraries:
+            ace_libraries.append(path)
+
+elif args.xsdata is not None:
+    with open(args.xsdata, 'r') as xsdata:
+        for line in xsdata:
+            words = line.split()
+            if len(words) >= 9:
+                path = os.path.join(os.path.dirname(args.xsdata), words[8])
+                if path not in ace_libraries:
+                    ace_libraries.append(path)
+
+else:
+    ace_libraries = args.libraries
+
+nuclides = {}
+library = openmc.data.DataLibrary()
+
+for filename in ace_libraries:
+    # Check that ACE library exists
+    if not os.path.exists(filename):
+        warnings.warn("ACE library '{}' does not exist.".format(filename))
+        continue
+
+    lib = openmc.data.ace.Library(filename)
+    for table in lib.tables:
+        name, xs = table.name.split('.')
+        if xs.endswith('c'):
+            # Continuous-energy neutron data
+            if name not in nuclides:
+                try:
+                    neutron = openmc.data.IncidentNeutron.from_ace(
+                        table, args.metastable)
+                except Exception as e:
+                    print('Failed to convert {}: {}'.format(table.name, e))
+                    continue
+
+                print('Converting {} (ACE) to {} (HDF5)'.format(table.name,
+                                                                neutron.name))
+
+                # Determine filename
+                outfile = os.path.join(args.destination,
+                                       neutron.name.replace('.', '_') + '.h5')
+                neutron.export_to_hdf5(outfile, 'w', libver=args.libver)
+
+                # Register with library
+                library.register_file(outfile)
+
+                # Add nuclide to list
+                nuclides[name] = outfile
+            else:
+                # Then we only need to append the data
+                try:
+                    neutron = \
+                        openmc.data.IncidentNeutron.from_hdf5(nuclides[name])
+                    print('Converting {} (ACE) to {} (HDF5)'
+                          .format(table.name, neutron.name))
+                    neutron.add_temperature_from_ace(table, args.metastable)
+                    neutron.export_to_hdf5(nuclides[name] + '_1', 'w',
+                                           libver=args.libver)
+                    os.rename(nuclides[name] + '_1', nuclides[name])
+                except Exception as e:
+                    print('Failed to convert {}: {}'.format(table.name, e))
+                    continue
+
+        elif xs.endswith('t'):
+            # Adjust name to be the new thermal scattering name
+            name = openmc.data.get_thermal_name(name)
+            # Thermal scattering data
+            if name not in nuclides:
+                try:
+                    thermal = openmc.data.ThermalScattering.from_ace(table)
+                except Exception as e:
+                    print('Failed to convert {}: {}'.format(table.name, e))
+                    continue
+                print('Converting {} (ACE) to {} (HDF5)'.format(table.name,
+                                                                thermal.name))
+
+                # Determine filename
+                outfile = os.path.join(args.destination,
+                                       thermal.name.replace('.', '_') + '.h5')
+                thermal.export_to_hdf5(outfile, 'w', libver=args.libver)
+
+                # Register with library
+                library.register_file(outfile)
+
+                # Add data to list
+                nuclides[name] = outfile
+
+            else:
+                # Then we only need to append the data
+                try:
+                    thermal = openmc.data.ThermalScattering.from_hdf5(
+                                                                 nuclides[name])
+                    print('Converting {} (ACE) to {} (HDF5)'
+                          .format(table.name,thermal.name))
+                    thermal.add_temperature_from_ace(table)
+                    thermal.export_to_hdf5(nuclides[name] + '_1', 'w',
+                                           libver=args.libver)
+                    os.rename(nuclides[name] + '_1', nuclides[name])
+                except Exception as e:
+                    print('Failed to convert {}: {}'.format(table.name, e))
+                    continue
+
+# Write cross_sections.xml
+libpath = os.path.join(args.destination, 'cross_sections.xml')
+library.export_to_xml(libpath)

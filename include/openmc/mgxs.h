@@ -166,7 +166,7 @@ class Mgxs {
     //! @param mu Sampled cosine of the change-in-angle.
     //! @param wgt Weight of the particle to be adjusted.
     //! @param prn_seeds Array of pseudorandom stream seeds
-	//! @param stream Pseudorandom stream index
+    //! @param stream Pseudorandom stream index
     void
     sample_scatter(int gin, int& gout, double& mu, double& wgt, uint64_t* prn_seeds,
       int stream);

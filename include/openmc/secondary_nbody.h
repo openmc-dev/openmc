@@ -27,7 +27,7 @@ public:
   //! \param[inout] prn_seeds Array of pseudorandom seeds
   //! \param[in] stream Pseudorandom stream index
   void sample(double E_in, double& E_out, double& mu, uint64_t* prn_seeds,
-  int stream) const override;
+    int stream) const override;
 private:
   int n_bodies_; //!< Number of particles distributed
   double mass_ratio_; //!< Total mass of particles [neutron mass]

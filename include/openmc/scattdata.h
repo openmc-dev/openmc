@@ -66,7 +66,7 @@ class ScattData {
     //! @param mu Sampled cosine of the change-in-angle.
     //! @param wgt Weight of the particle to be adjusted.
     //! @param prn_seeds Array of pseudorandom stream seeds
-	//! @param stream Pseudorandom stream index
+    //! @param stream Pseudorandom stream index
     virtual void
     sample(int gin, int& gout, double& mu, double& wgt, uint64_t* prn_seeds,
       int stream) = 0;
@@ -113,7 +113,7 @@ class ScattData {
     //! @param gout Sampled outgoing energy group.
     //! @param i_gout Sampled outgoing energy group index.
     //! @param prn_seeds Array of pseudorandom stream seeds
-	//! @param stream Pseudorandom stream index
+    //! @param stream Pseudorandom stream index
     void
     sample_energy(int gin, int& gout, int& i_gout, uint64_t* prn_seeds, int stream);
 

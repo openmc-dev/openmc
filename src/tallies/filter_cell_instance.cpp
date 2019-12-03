@@ -1,6 +1,7 @@
 #include "openmc/tallies/filter_cell_instance.h"
 
 #include <sstream>
+#include <string>
 
 #include "openmc/capi.h"
 #include "openmc/cell.h"
@@ -52,6 +53,12 @@ CellInstanceFilter::set_cell_instances(gsl::span<CellInstance> instances)
   for (auto& x : instances) {
     Expects(x.index_cell >= 0);
     Expects(x.index_cell < model::cells.size());
+    const auto& c {model::cells[x.index_cell]};
+    if (c->type_ != FILL_MATERIAL) {
+      throw std::invalid_argument{"Cell " + std::to_string(c->id_) + " is not "
+        "filled with a material. Only material cells can be used in a cell "
+        "instance filter."};
+    }
     cell_instances_.push_back(x);
     map_[x] = cell_instances_.size() - 1;
   }

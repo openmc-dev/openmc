@@ -58,9 +58,6 @@ int openmc_simulation_init()
   // Skip if simulation has already been initialized
   if (simulation::initialized) return 0;
 
-  // Initialize distribcell_filters
-  prepare_distribcell();
-
   // Determine how much work each process should do
   calculate_work();
 

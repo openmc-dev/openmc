@@ -329,17 +329,15 @@ prepare_distribcell()
     if (distrib_filt) {
       distribcells.insert(distrib_filt->cell());
     }
-
-    auto* ci_filt = dynamic_cast<CellInstanceFilter*>(filt.get());
-    if (ci_filt) {
-      for (const auto& i : ci_filt->cell_instances()) {
-        distribcells.insert(i.index_cell);
-      }
-    }
   }
 
-  // Find all cells with distributed materials or temperatures.  Make sure that
-  // the number of materials/temperatures matches the number of cell instances.
+  // By default, add material cells to the list of distributed cells
+  for (gsl::index i = 0; i < model::cells.size(); ++i) {
+    if (model::cells[i]->type_ == FILL_MATERIAL) distribcells.insert(i);
+  }
+
+  // Make sure that the number of materials/temperatures matches the number of
+  // cell instances.
   for (int i = 0; i < model::cells.size(); i++) {
     Cell& c {*model::cells[i]};
 
@@ -352,7 +350,6 @@ prepare_distribcell()
               "one or the number of instances.";
         fatal_error(err_msg);
       }
-      distribcells.insert(i);
     }
 
     if (c.sqrtkT_.size() > 1) {
@@ -364,20 +361,18 @@ prepare_distribcell()
           "one or the number of instances.";
         fatal_error(err_msg);
       }
-      distribcells.insert(i);
     }
   }
 
-  // Search through universes for distributed cells and assign each one a
+  // Search through universes for material cells and assign each one a
   // unique distribcell array index.
   int distribcell_index = 0;
   std::vector<int32_t> target_univ_ids;
   for (const auto& u : model::universes) {
-    for (auto cell_indx : u->cells_) {
-      if (distribcells.find(cell_indx) != distribcells.end()) {
-        model::cells[cell_indx]->distribcell_index_ = distribcell_index;
+    for (auto idx : u->cells_) {
+      if (distribcells.find(idx) != distribcells.end()) {
+        model::cells[idx]->distribcell_index_ = distribcell_index++;
         target_univ_ids.push_back(u->id_);
-        ++distribcell_index;
       }
     }
   }

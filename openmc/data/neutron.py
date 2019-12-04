@@ -118,7 +118,12 @@ class IncidentNeutron(EqualityMixin):
         if mt in self.reactions:
             return self.reactions[mt]
         else:
-            raise KeyError('No reaction with MT={}.'.format(mt))
+            # Try to create a redundant cross section
+            mts = self.get_reaction_components(mt)
+            if len(mts) > 0:
+                return self._get_redundant_reaction(mt, mts)
+            else:
+                raise KeyError('No reaction with MT={}.'.format(mt))
 
     def __repr__(self):
         return "<IncidentNeutron: {}>".format(self.name)
@@ -588,6 +593,9 @@ class IncidentNeutron(EqualityMixin):
 
         # If mass number hasn't been specified, make an educated guess
         zaid, xs = ace.name.split('.')
+        if not xs.endswith('c'):
+            raise TypeError(
+                "{} is not a continuous-energy neutron ACE table.".format(ace))
         name, element, Z, mass_number, metastable = \
             get_metadata(int(zaid), metastable_scheme)
 
@@ -871,7 +879,7 @@ class IncidentNeutron(EqualityMixin):
                     fission = data.reactions[18].xs[temp]
                     kerma_fission = get_file3_xs(ev, 318, E)
                     kerma.y = kerma.y - kerma_fission + (
-                        f.fragments(E) + f.betas(E)) * fission.y
+                        f.fragments(E) + f.betas(E)) * fission(E)
 
                 # For local KERMA, we first need to get the values from the
                 # HEATR run with photon energy deposited locally and put
@@ -884,7 +892,7 @@ class IncidentNeutron(EqualityMixin):
                     kerma_fission_local = get_file3_xs(ev_local, 318, E)
                     kerma_local = kerma_local - kerma_fission_local + (
                         f.fragments(E) + f.prompt_photons(E)
-                        + f.delayed_photons(E) + f.betas(E))*fission.y
+                        + f.delayed_photons(E) + f.betas(E))*fission(E)
 
                 heating_local.xs[temp] = Tabulated1D(E, kerma_local)
 
@@ -908,16 +916,17 @@ class IncidentNeutron(EqualityMixin):
             Redundant reaction
 
         """
-        # Get energy grid
-        strT = self.temperatures[0]
-        energy = self.energy[strT]
 
         rx = Reaction(mt)
-        xss = [self.reactions[mt_i].xs[strT] for mt_i in mts]
-        idx = min([xs._threshold_idx if hasattr(xs, '_threshold_idx')
-                   else 0 for xs in xss])
-        rx.xs[strT] = Tabulated1D(energy[idx:], Sum(xss)(energy[idx:]))
-        rx.xs[strT]._threshold_idx = idx
+        # Get energy grid
+        for strT in self.temperatures:
+            energy = self.energy[strT]
+            xss = [self.reactions[mt_i].xs[strT] for mt_i in mts]
+            idx = min([xs._threshold_idx if hasattr(xs, '_threshold_idx')
+                       else 0 for xs in xss])
+            rx.xs[strT] = Tabulated1D(energy[idx:], Sum(xss)(energy[idx:]))
+            rx.xs[strT]._threshold_idx = idx
+
         rx.redundant = True
 
         return rx

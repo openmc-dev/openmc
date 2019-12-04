@@ -121,11 +121,11 @@ For many regions, a bounding-box can be determined automatically::
 While a bounding box can be determined for regions involving half-spaces of
 spheres, cylinders, and axis-aligned planes, it generally cannot be determined
 if the region involves cones, non-axis-aligned planes, or other exotic
-second-order surfaces. For example, the :func:`openmc.get_hexagonal_prism`
+second-order surfaces. For example, the :func:`openmc.model.hexagonal_prism`
 function returns the interior region of a hexagonal prism; because it is bounded
 by a :class:`openmc.Plane`, trying to get its bounding box won't work::
 
-  >>> hex = openmc.get_hexagonal_prism()
+  >>> hex = openmc.model.hexagonal_prism()
   >>> hex.bounding_box
   (array([-0.8660254,       -inf,       -inf]),
    array([ 0.8660254,        inf,        inf]))
@@ -374,7 +374,7 @@ code would work::
   hexlat.universes = [outer_ring, middle_ring, inner_ring]
 
 If you need to create a hexagonal boundary (composed of six planar surfaces) for
-a hexagonal lattice, :func:`openmc.get_hexagonal_prism` can be used.
+a hexagonal lattice, :func:`openmc.model.hexagonal_prism` can be used.
 
 .. _usersguide_geom_export:
 
@@ -396,8 +396,15 @@ if needed, lattices, the last step is to create an instance of
    geom.root_universe = root_univ
    geom.export_to_xml()
 
-.. _constructive solid geometry: http://en.wikipedia.org/wiki/Constructive_solid_geometry
-.. _quadratic surfaces: http://en.wikipedia.org/wiki/Quadric
+Note that it's not strictly required to manually create a root universe. You can
+also pass a list of cells to the :class:`openmc.Geometry` constructor and it
+will handle creating the unverse::
+
+   geom = openmc.Geometry([cell1, cell2, cell3])
+   geom.export_to_xml()
+
+.. _constructive solid geometry: https://en.wikipedia.org/wiki/Constructive_solid_geometry
+.. _quadratic surfaces: https://en.wikipedia.org/wiki/Quadric
 
 --------------------------
 Using CAD-based Geometry

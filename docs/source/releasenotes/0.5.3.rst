@@ -40,8 +40,8 @@ Bug Fixes
 - c18a6e_: Check for valid secondary mode on S(a,b) tables.
 - 82c456_: Fix bug where last process could have zero particles.
 
-.. _2b1e8a: https://github.com/mit-crpg/openmc/commit/2b1e8a
-.. _5853d2: https://github.com/mit-crpg/openmc/commit/5853d2
-.. _e178c7: https://github.com/mit-crpg/openmc/commit/e178c7
-.. _c18a6e: https://github.com/mit-crpg/openmc/commit/c18a6e
-.. _82c456: https://github.com/mit-crpg/openmc/commit/82c456
+.. _2b1e8a: https://github.com/openmc-dev/openmc/commit/2b1e8a
+.. _5853d2: https://github.com/openmc-dev/openmc/commit/5853d2
+.. _e178c7: https://github.com/openmc-dev/openmc/commit/e178c7
+.. _c18a6e: https://github.com/openmc-dev/openmc/commit/c18a6e
+.. _82c456: https://github.com/openmc-dev/openmc/commit/82c456

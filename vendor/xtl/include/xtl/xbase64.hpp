@@ -51,8 +51,9 @@ namespace xtl
         std::string output;
         int val = 0;
         int valb = -6;
-        for (unsigned char c : input)
+        for (char sc : input)
         {
+            unsigned char c = static_cast<unsigned char>(sc);
             val = (val << 8) + c;
             valb += 8;
             while (valb >= 0)

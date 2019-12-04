@@ -549,7 +549,9 @@ class IncidentPhoton(EqualityMixin):
             ace = get_table(ace_or_filename)
 
         # Get atomic number based on name of ACE table
-        zaid = ace.name.split('.')[0]
+        zaid, xs = ace.name.split('.')
+        if not xs.endswith('p'):
+            raise TypeError("{} is not a photoatomic transport ACE table.".format(ace))
         Z = get_metadata(int(zaid))[2]
 
         # Read each reaction

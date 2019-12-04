@@ -13,9 +13,23 @@
 #include <type_traits>
 
 #include "xfunctional.hpp"
+#include "xtl_config.hpp"
 
 namespace xtl
 {
+    // TODO move to a xutils if we have one
+
+    // gcc 4.9 is affected by C++14 defect CGW 1558
+    // see http://open-std.org/JTC1/SC22/WG21/docs/cwg_defects.html#1558
+    template <class... T>
+    struct make_void
+    {
+        using type = void;
+    };
+
+    template <class... T>
+    using void_t = typename make_void<T...>::type;
+
     namespace mpl
     {
         /*************
@@ -360,44 +374,6 @@ namespace xtl
         template <class L>
         using pop_front_t = typename pop_front<L>::type;
 
-        /************
-         * pop_back *
-         ************/
-
-        namespace detail
-        {
-            template <class L>
-            struct pop_back_impl;
-
-            template <template <class...> class L, class T>
-            struct pop_back_impl<L<T>>
-            {
-                using type = L<>;
-            };
-
-            template <template <class...> class L, class T1, class T2>
-            struct pop_back_impl<L<T1, T2>>
-            {
-                using head = T1;
-                using type = L<head>;
-            };
-
-            template <template <class...> class L, class T, class... U>
-            struct pop_back_impl<L<T, U...>>
-            {
-                using head = T;
-                using type = L<head, typename pop_back_impl<L<U...>>::head>;
-            };
-        }
-
-        template <class L>
-        struct pop_back : detail::pop_back_impl<L>
-        {
-        };
-
-        template <class L>
-        using pop_back_t = typename pop_back<L>::type;
-
         /*************
          * transform *
          *************/
@@ -454,6 +430,97 @@ namespace xtl
 
         template <class S1, class S2>
         using merge_set_t = typename merge_set<S1, S2>::type;
+
+        /***********
+         * find_if *
+         ***********/
+
+        template <template <class> class Test, class L>
+        struct find_if;
+
+        namespace detail
+        {
+            template <template <class> class Test, std::size_t I, class... T>
+            struct find_if_impl;
+
+            template <template <class> class Test, std::size_t I>
+            struct find_if_impl<Test, I> : size_t_<I>
+            {
+            };
+
+            template <template <class> class Test, std::size_t I, class T0, class... T>
+            struct find_if_impl<Test, I, T0, T...> : std::conditional_t<Test<T0>::value,
+                                                                        size_t_<I>,
+                                                                        find_if_impl<Test, I + 1, T...>>
+            {
+            };
+        }
+
+        template <template <class> class Test, template <class...> class L, class... T>
+        struct find_if<Test, L<T...>> : detail::find_if_impl<Test, 0, T...>
+        {
+        };
+
+        /*********
+         * split *
+         *********/
+
+        namespace detail
+        {
+            template <std::size_t N, class L1, class L2>
+            struct transfer
+            {
+                using new_l1 = push_back_t<L1, front_t<L2>>;
+                using new_l2 = pop_front_t<L2>;
+                using new_transfer = transfer<N - 1, new_l1, new_l2>;
+                using first_type = typename new_transfer::first_type;
+                using second_type = typename new_transfer::second_type;
+            };
+
+            template <class L1, class L2>
+            struct transfer<0, L1, L2>
+            {
+                using first_type = L1;
+                using second_type = L2;
+            };
+
+            template <std::size_t N, class L>
+            struct split_impl
+            {
+                using tr_type = transfer<N, vector<>, L>;
+                using first_type = typename tr_type::first_type;
+                using second_type = typename tr_type::second_type;
+            };
+        }
+
+        template <std::size_t N, class L>
+        struct split : detail::split_impl<N, L>
+        {
+        };
+
+        /**********
+         * unique *
+         **********/
+
+        namespace detail
+        {
+            template <class L>
+            struct unique_impl;
+
+            template <template <class...> class L, class... T>
+            struct unique_impl<L<T...>>
+            {
+                using type = merge_set_t<L<>, L<T...>>;
+            };
+        }
+
+        template <class L>
+        struct unique : detail::unique_impl<L>
+        {
+        };
+
+        template <class L>
+        using unique_t = typename unique<L>::type;
 
         /*************
          * static_if *

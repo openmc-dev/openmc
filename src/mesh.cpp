@@ -150,13 +150,16 @@ RegularMesh::RegularMesh(pugi::xml_node node)
         "the <lower_left> coordinates on a tally mesh.");
     }
 
-    // Set width and upper right coordinate
-    width_ = xt::eval((upper_right_ - lower_left_) / shape_);
+    // Set width
+    if (shape_.size() > 0) {
+      width_ = xt::eval((upper_right_ - lower_left_) / shape_);
+    }
   } else {
     fatal_error("Must specify either <upper_right> and <width> on a mesh.");
   }
 
-  if (shape_.dimension() > 0) {
+  // Make sure lower_left and dimension match
+  if (shape_.size() > 0) {
     if (shape_.size() != lower_left_.size()) {
       fatal_error("Number of entries on <lower_left> must be the same "
         "as the number of entries on <dimension>.");
@@ -523,6 +526,14 @@ void RegularMesh::bins_crossed(const Particle* p, std::vector<int>& bins,
     if (!intersects(r0, r1, ijk0.data())) return;
   }
   r1 = r;
+
+  // The TINY_BIT offsets above mean that the preceding logic cannot always find
+  // the correct ijk0 and ijk1 indices. For tracks shorter than 2*TINY_BIT, just
+  // assume the track lies in only one mesh bin. These tracks are very short so
+  // any error caused by this assumption will be small.
+  if (total_distance < 2*TINY_BIT) {
+    for (int i = 0; i < n; ++i) ijk0[i] = ijk1[i];
+  }
 
   // ========================================================================
   // Find which mesh cells are traversed and the length of each traversal.
@@ -900,6 +911,14 @@ void RectilinearMesh::bins_crossed(const Particle* p, std::vector<int>& bins,
     if (!intersects(r0, r1, ijk0)) return;
   }
   r1 = r;
+
+  // The TINY_BIT offsets above mean that the preceding logic cannot always find
+  // the correct ijk0 and ijk1 indices. For tracks shorter than 2*TINY_BIT, just
+  // assume the track lies in only one mesh bin. These tracks are very short so
+  // any error caused by this assumption will be small.
+  if (total_distance < 2*TINY_BIT) {
+    for (int i = 0; i < 3; ++i) ijk0[i] = ijk1[i];
+  }
 
   // ========================================================================
   // Find which mesh cells are traversed and the length of each traversal.

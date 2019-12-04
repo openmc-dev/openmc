@@ -45,9 +45,9 @@ Bug Fixes
 - `95cfac`_: Fixed error in cell neighbor searches.
 - `83a803`_: Fixed bug related to probability tables.
 
-.. _b206a8: https://github.com/mit-crpg/openmc/commit/b206a8
-.. _800742: https://github.com/mit-crpg/openmc/commit/800742
-.. _a07c08: https://github.com/mit-crpg/openmc/commit/a07c08
-.. _a75283: https://github.com/mit-crpg/openmc/commit/a75283
-.. _95cfac: https://github.com/mit-crpg/openmc/commit/95cfac
-.. _83a803: https://github.com/mit-crpg/openmc/commit/83a803
+.. _b206a8: https://github.com/openmc-dev/openmc/commit/b206a8
+.. _800742: https://github.com/openmc-dev/openmc/commit/800742
+.. _a07c08: https://github.com/openmc-dev/openmc/commit/a07c08
+.. _a75283: https://github.com/openmc-dev/openmc/commit/a75283
+.. _95cfac: https://github.com/openmc-dev/openmc/commit/95cfac
+.. _83a803: https://github.com/openmc-dev/openmc/commit/83a803

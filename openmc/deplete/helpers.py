@@ -59,6 +59,7 @@ class DirectReactionRateHelper(ReactionRateHelper):
             ``"(n, gamma)"``, needed for the reaction rate tally.
         """
         self._rate_tally = Tally()
+        self._rate_tally.writable = False
         self._rate_tally.scores = scores
         self._rate_tally.filters = [MaterialFilter(materials)]
 
@@ -194,6 +195,7 @@ class EnergyScoreHelper(EnergyHelper):
 
         """
         self._tally = Tally()
+        self._tally.writable = False
         self._tally.scores = [self.score]
 
     def reset(self):
@@ -570,6 +572,7 @@ class AveragedFissionYieldHelper(TalliedFissionYieldHelper):
         func_filter = EnergyFunctionFilter()
         func_filter.set_data((0, self._upper_energy), (0, self._upper_energy))
         weighted_tally = Tally()
+        weighted_tally.writable = False
         weighted_tally.scores = ['fission']
         weighted_tally.filters = filters + [func_filter]
         self._weighted_tally = weighted_tally

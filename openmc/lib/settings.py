@@ -26,6 +26,7 @@ class _Settings(object):
     restart_run = _DLLGlobal(c_bool, 'restart_run')
     run_CE = _DLLGlobal(c_bool, 'run_CE')
     verbosity = _DLLGlobal(c_int, 'verbosity')
+    output_summary = _DLLGlobal(c_bool, 'output_summary')
 
     @property
     def run_mode(self):

@@ -25,18 +25,6 @@
 namespace openmc {
 
 //==============================================================================
-// Global variables
-//==============================================================================
-
-namespace data {
-
-// Storage for the MGXS data
-std::vector<Mgxs> nuclides_MG;
-std::vector<Mgxs> macro_xs;
-
-} // namespace data
-
-//==============================================================================
 // Mgxs base-class methods
 //==============================================================================
 
@@ -53,8 +41,6 @@ Mgxs::init(const std::string& in_name, double in_awr,
   kTs = xt::adapt(in_kTs);
   fissionable = in_fissionable;
   scatter_format = in_scatter_format;
-  num_groups = data::num_energy_groups;
-  num_delayed_groups = data::num_delayed_groups;
   xs.resize(in_kTs.size());
   is_isotropic = in_is_isotropic;
   n_pol = in_polar.size();
@@ -284,7 +270,10 @@ Mgxs::metadata_from_hdf5(hid_t xs_id, const std::vector<double>& temperature,
 
 //==============================================================================
 
-Mgxs::Mgxs(hid_t xs_id, const std::vector<double>& temperature)
+Mgxs::Mgxs(hid_t xs_id, const std::vector<double>& temperature,
+    int num_group, int num_delay) :
+  num_groups(num_group),
+  num_delayed_groups(num_delay)
 {
   // Call generic data gathering routine (will populate the metadata)
   int order_data;
@@ -299,7 +288,8 @@ Mgxs::Mgxs(hid_t xs_id, const std::vector<double>& temperature)
 
   // Load the more specific XsData information
   for (int t = 0; t < temps_to_read.size(); t++) {
-    xs[t] = XsData(fissionable, final_scatter_format, n_pol, n_azi);
+    xs[t] = XsData(fissionable, final_scatter_format, n_pol, n_azi,
+                   num_groups, num_delayed_groups);
     // Get the temperature as a string and then open the HDF5 group
     std::string temp_str = std::to_string(temps_to_read[t]) + "K";
     hid_t xsdata_grp = open_group(xs_id, temp_str.c_str());
@@ -317,7 +307,10 @@ Mgxs::Mgxs(hid_t xs_id, const std::vector<double>& temperature)
 //==============================================================================
 
 Mgxs::Mgxs(const std::string& in_name, const std::vector<double>& mat_kTs,
-     const std::vector<Mgxs*>& micros, const std::vector<double>& atom_densities)
+     const std::vector<Mgxs*>& micros, const std::vector<double>& atom_densities,
+     int num_group, int num_delay) :
+  num_groups(num_group),
+  num_delayed_groups(num_delay)
 {
   // Get the minimum data needed to initialize:
   // Dont need awr, but lets just initialize it anyways
@@ -340,7 +333,7 @@ Mgxs::Mgxs(const std::string& in_name, const std::vector<double>& mat_kTs,
   // Create the xs data for each temperature
   for (int t = 0; t < mat_kTs.size(); t++) {
     xs[t] = XsData(in_fissionable, in_scatter_format, in_polar.size(),
-      in_azimuthal.size());
+      in_azimuthal.size(), num_groups, num_delayed_groups);
 
     // Find the right temperature index to use
     double temp_desired = mat_kTs[t];
@@ -548,8 +541,7 @@ Mgxs::sample_fission_energy(int gin, int& dg, int& gout)
   double nu_fission = xs_t->nu_fission(cache[tid].a, gin);
 
   // Find the probability of having a prompt neutron
-  double prob_prompt =
-       xs_t->prompt_nu_fission(cache[tid].a, gin);
+  double prob_prompt = xs_t->prompt_nu_fission(cache[tid].a, gin);
 
   // sample random numbers
   double xi_pd = prn() * nu_fission;
@@ -563,36 +555,29 @@ Mgxs::sample_fission_energy(int gin, int& dg, int& gout)
     dg = -1;
 
     // sample the outgoing energy group
-    gout = 0;
-    double prob_gout =
-         xs_t->chi_prompt(cache[tid].a, gin, gout);
-    while (prob_gout < xi_gout) {
-      gout++;
+    double prob_gout = 0.;
+    for (gout = 0; gout < num_groups; ++gout) {
       prob_gout += xs_t->chi_prompt(cache[tid].a, gin, gout);
+      if (xi_gout < prob_gout) break;
     }
 
   } else {
     // the neutron is delayed
 
     // get the delayed group
-    dg = 0;
-    while (xi_pd >= prob_prompt) {
-      dg++;
-      prob_prompt +=
-           xs_t->delayed_nu_fission(cache[tid].a, dg, gin);
+    for (dg = 0; dg < num_delayed_groups; ++dg) {
+      prob_prompt += xs_t->delayed_nu_fission(cache[tid].a, dg, gin);
+      if (xi_pd < prob_prompt) break;
     }
 
     // adjust dg in case of round-off error
     dg = std::min(dg, num_delayed_groups - 1);
 
     // sample the outgoing energy group
-    gout = 0;
-    double prob_gout =
-         xs_t->chi_delayed(cache[tid].a, dg, gin, gout);
-    while (prob_gout < xi_gout) {
-      gout++;
-      prob_gout +=
-           xs_t->chi_delayed(cache[tid].a, dg, gin, gout);
+    double prob_gout = 0.;
+    for (gout = 0; gout < num_groups; ++gout) {
+      prob_gout += xs_t->chi_delayed(cache[tid].a, dg, gin, gout);
+      if (xi_gout < prob_gout) break;
     }
   }
 }
@@ -615,8 +600,7 @@ Mgxs::sample_scatter(int gin, int& gout, double& mu, double& wgt)
 //==============================================================================
 
 void
-Mgxs::calculate_xs(int gin, double sqrtkT, Direction u,
-     double& total_xs, double& abs_xs, double& nu_fiss_xs)
+Mgxs::calculate_xs(Particle& p)
 {
   // Set our indices
 #ifdef _OPENMP
@@ -624,13 +608,13 @@ Mgxs::calculate_xs(int gin, double sqrtkT, Direction u,
 #else
   int tid = 0;
 #endif
-  set_temperature_index(sqrtkT);
-  set_angle_index(u);
+  set_temperature_index(p.sqrtkT_);
+  set_angle_index(p.u_local());
   XsData* xs_t = &xs[cache[tid].t];
-  total_xs = xs_t->total(cache[tid].a, gin);
-  abs_xs = xs_t->absorption(cache[tid].a, gin);
-
-  nu_fiss_xs = fissionable ? xs_t->nu_fission(cache[tid].a, gin) : 0.;
+  p.macro_xs_.total = xs_t->total(cache[tid].a, p.g_);
+  p.macro_xs_.absorption = xs_t->absorption(cache[tid].a, p.g_);
+  p.macro_xs_.nu_fission =
+    fissionable ? xs_t->nu_fission(cache[tid].a, p.g_) : 0.;
 }
 
 //==============================================================================

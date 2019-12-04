@@ -88,7 +88,7 @@ class Geometry(object):
         """
         # Create XML representation
         root_element = ET.Element("geometry")
-        self.root_universe.create_xml_subelement(root_element)
+        self.root_universe.create_xml_subelement(root_element, memo=set())
 
         # Sort the elements in the file
         root_element[:] = sorted(root_element, key=lambda x: (
@@ -272,9 +272,9 @@ class Geometry(object):
 
         """
         if self.root_universe is not None:
-            return self.root_universe.get_all_cells()
+            return self.root_universe.get_all_cells(memo=set())
         else:
-            return []
+            return OrderedDict()
 
     def get_all_universes(self):
         """Return all universes in the geometry.
@@ -301,7 +301,10 @@ class Geometry(object):
             instances
 
         """
-        return self.root_universe.get_all_materials()
+        if self.root_universe is not None:
+            return self.root_universe.get_all_materials(memo=set())
+        else:
+            return OrderedDict()
 
     def get_all_material_cells(self):
         """Return all cells filled by a material

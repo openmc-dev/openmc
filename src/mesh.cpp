@@ -3,6 +3,7 @@
 #include <algorithm> // for copy, equal, min, min_element
 #include <cstddef> // for size_t
 #include <cmath>  // for ceil
+#include <memory> // for allocator
 #include <string>
 
 #ifdef OPENMC_MPI
@@ -803,9 +804,11 @@ RegularMesh::count_sites(const std::vector<Particle::Bank>& bank,
     cnt(mesh_bin) += site.wgt;
   }
 
-  // Create copy of count data
+  // Create copy of count data. Since ownership will be acquired by xtensor,
+  // std::allocator must be used to avoid Valgrind mismatched free() / delete
+  // warnings.
   int total = cnt.size();
-  double* cnt_reduced = new double[total];
+  double* cnt_reduced = std::allocator<double>{}.allocate(total);
 
 #ifdef OPENMC_MPI
   // collect values from all processors

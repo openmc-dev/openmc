@@ -483,12 +483,12 @@ Tally::create(int32_t id)
 void
 Tally::set_id(int32_t id)
 {
-  Expects(id >= -1);
+  Expects(id >= 0 || id == C_NONE);
 
   // Clear entry in tally map if an ID was already assigned before
-  if (id_ != -1) {
+  if (id_ != C_NONE) {
     model::tally_map.erase(id_);
-    id_ = -1;
+    id_ = C_NONE;
   }
 
   // Make sure no other tally has the same ID
@@ -497,7 +497,7 @@ Tally::set_id(int32_t id)
   }
 
   // If no ID specified, auto-assign next ID in sequence
-  if (id == -1) {
+  if (id == C_NONE) {
     id = 0;
     for (const auto& t : model::tallies) {
       id = std::max(id, t->id_);

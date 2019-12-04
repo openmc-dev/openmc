@@ -10,14 +10,14 @@ namespace openmc {
 // Module constants.
 //==============================================================================
 
-constexpr int N_STREAMS = 6;
-extern "C" const int STREAM_TRACKING;
-extern "C" const int STREAM_TALLIES;
-extern "C" const int STREAM_SOURCE;
-extern "C" const int STREAM_URR_PTABLE;
-extern "C" const int STREAM_VOLUME;
-extern "C" const int STREAM_PHOTON;
-constexpr int64_t DEFAULT_SEED = 1;
+constexpr int N_STREAMS         {6};
+constexpr int STREAM_TRACKING   {0};
+constexpr int STREAM_TALLIES    {1};
+constexpr int STREAM_SOURCE     {2};
+constexpr int STREAM_URR_PTABLE {3};
+constexpr int STREAM_VOLUME     {4};
+constexpr int STREAM_PHOTON     {5};
+constexpr int64_t DEFAULT_SEED  {1};
 
 //==============================================================================
 //! Generate a pseudo-random number using a linear congruential generator.
@@ -25,7 +25,7 @@ constexpr int64_t DEFAULT_SEED = 1;
 //! @return A random number between 0 and 1
 //==============================================================================
 
-extern "C" double prn(uint64_t* prn_seed);
+double prn(uint64_t* prn_seed);
 
 //==============================================================================
 //! Generate a random number which is 'n' times ahead from the current seed.
@@ -38,7 +38,7 @@ extern "C" double prn(uint64_t* prn_seed);
 //! @return A random number between 0 and 1
 //==============================================================================
 
-extern "C" double future_prn(int64_t n, uint64_t prn_seed);
+double future_prn(int64_t n, uint64_t prn_seed);
 
 //==============================================================================
 //! Set a RNG seed to a unique value based on a unique particle ID by striding
@@ -47,7 +47,7 @@ extern "C" double future_prn(int64_t n, uint64_t prn_seed);
 //! @param id The particle ID
 //==============================================================================
 
-extern "C" void init_seed(int64_t id, uint64_t* prn_seeds, int offset );
+void init_seed(int64_t id, uint64_t* prn_seeds, int offset );
 
 //==============================================================================
 //! Set the RNG seeds to unique values based on the ID of the particle. This
@@ -57,7 +57,7 @@ extern "C" void init_seed(int64_t id, uint64_t* prn_seeds, int offset );
 //! @param id The particle ID
 //==============================================================================
 
-extern "C" void init_particle_seeds(int64_t id, uint64_t* prn_seeds );
+void init_particle_seeds(int64_t id, uint64_t* prn_seeds );
 
 //==============================================================================
 //! Advance the random number seed 'n' times from the current seed. This
@@ -67,7 +67,7 @@ extern "C" void init_particle_seeds(int64_t id, uint64_t* prn_seeds );
 //! @param n The number of RNG seeds to skip ahead by
 //==============================================================================
 
-extern "C" void advance_prn_seed(int64_t n, uint64_t* prn_seed);
+void advance_prn_seed(int64_t n, uint64_t* prn_seed);
 
 //==============================================================================
 //! Advance a random number seed 'n' times.
@@ -89,7 +89,7 @@ uint64_t future_seed(uint64_t n, uint64_t prn_seed);
 //! Get OpenMC's master seed.
 //==============================================================================
 
-extern "C" int64_t openmc_get_seed();
+int64_t openmc_get_seed();
 
 //==============================================================================
 //! Set OpenMC's master seed.
@@ -97,7 +97,7 @@ extern "C" int64_t openmc_get_seed();
 //! one.
 //==============================================================================
 
-extern "C" void openmc_set_seed(int64_t new_seed);
+void openmc_set_seed(int64_t new_seed);
 
 } // namespace openmc
 #endif // OPENMC_RANDOM_LCG_H

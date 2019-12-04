@@ -512,7 +512,7 @@ void read_settings_xml()
     if (!m) fatal_error("Only regular meshes can be used as an entropy mesh");
     simulation::entropy_mesh = m;
 
-    if (m->shape_.dimension() == 0) {
+    if (m->shape_.size() == 0) {
       // If the user did not specify how many mesh cells are to be used in
       // each direction, we automatically determine an appropriate number of
       // cells

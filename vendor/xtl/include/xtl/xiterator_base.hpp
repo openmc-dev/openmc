@@ -49,22 +49,7 @@ namespace xtl
         {
             return !(lhs == rhs);
         }
-
-        inline friend bool operator<=(const derived_type& lhs, const derived_type& rhs)
-        {
-            return !(rhs < lhs);
-        }
-
-        inline friend bool operator>=(const derived_type& lhs, const derived_type& rhs)
-        {
-            return !(lhs < rhs);
-        }
-
-        inline friend bool operator>(const derived_type& lhs, const derived_type& rhs)
-        {
-            return rhs < lhs;
-        }
-    };
+   };
 
     template <class T>
     using xbidirectional_iterator_base2 = xbidirectional_iterator_base<typename T::iterator_type,
@@ -111,6 +96,22 @@ namespace xtl
             derived_type tmp(it);
             return tmp -= n;
         }
+
+        inline friend bool operator<=(const derived_type& lhs, const derived_type& rhs)
+        {
+            return !(rhs < lhs);
+        }
+
+        inline friend bool operator>=(const derived_type& lhs, const derived_type& rhs)
+        {
+            return !(lhs < rhs);
+        }
+
+        inline friend bool operator>(const derived_type& lhs, const derived_type& rhs)
+        {
+            return rhs < lhs;
+        }
+ 
     };
 
     template <class T>
@@ -119,6 +120,45 @@ namespace xtl
                                                                        typename T::difference_type,
                                                                        typename T::pointer,
                                                                        typename T::reference>;
+
+    /*******************************
+     * xrandom_access_iterator_ext *
+     *******************************/
+
+    // Extension for random access iterators defining operator[] and operator+ overloads
+    // accepting size_t arguments.
+    template <class I, class R>
+    class xrandom_access_iterator_ext
+    {
+    public:
+
+        using derived_type = I;
+        using reference = R;
+        using size_type = std::size_t;
+
+        inline reference operator[](size_type n) const
+        {
+            return *(*static_cast<const derived_type*>(this) + n);
+        }
+
+        inline friend derived_type operator+(const derived_type& it, size_type n)
+        {
+            derived_type tmp(it);
+            return tmp += n;
+        }
+
+        inline friend derived_type operator+(size_type n, const derived_type& it)
+        {
+            derived_type tmp(it);
+            return tmp += n;
+        }
+
+        inline friend derived_type operator-(const derived_type& it, size_type n)
+        {
+            derived_type tmp(it);
+            return tmp -= n;
+        }
+    };
 
     /*****************
      * xkey_iterator *
@@ -168,11 +208,6 @@ namespace xtl
         inline bool operator==(const self_type& rhs) const
         {
             return m_it == rhs.m_it;
-        }
-
-        inline bool operator<(const self_type& rhs) const
-        {
-            return m_it < rhs.m_it;
         }
 
     private:

@@ -827,13 +827,17 @@ def create_triso_lattice(trisos, lower_left, pitch, shape, background):
     triso_locations = {idx: [] for idx in indices}
     for t in trisos:
         for idx in t.classify(lattice):
-            if idx in sorted(triso_locations):
+            if idx in triso_locations:
                 # Create copy of TRISO particle with materials preserved and
                 # different cell/surface IDs
-                t_copy = copy.deepcopy(t)
+                t_copy = copy.copy(t)
                 t_copy.id = None
                 t_copy.fill = t.fill
-                t_copy._surface.id = None
+                t_copy._surface = openmc.Sphere(r=t._surface.r,
+                                                x0=t._surface.x0,
+                                                y0=t._surface.y0,
+                                                z0=t._surface.z0)
+                t_copy.region = -t_copy._surface
                 triso_locations[idx].append(t_copy)
             else:
                 warnings.warn('TRISO particle is partially or completely '

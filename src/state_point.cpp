@@ -165,54 +165,61 @@ openmc_statepoint_write(const char* filename, bool* write_source)
       write_attribute(tallies_group, "ids", tally_ids);
 
       // Write all tally information except results
-      for (const auto& tally_ptr : model::tallies) {
-        const auto& tally {*tally_ptr};
+      for (const auto& tally : model::tallies) {
         hid_t tally_group = create_group(tallies_group,
-          "tally " + std::to_string(tally.id_));
+          "tally " + std::to_string(tally->id_));
 
-        write_dataset(tally_group, "name",  tally.name_);
+        write_dataset(tally_group, "name",  tally->name_);
 
-        if (tally.estimator_ == ESTIMATOR_ANALOG) {
+        if (tally->writable_) {
+          write_attribute(tally_group, "internal", 0);
+        } else {
+          write_attribute(tally_group, "internal", 1);
+          close_group(tally_group);
+          continue;
+        }
+
+        if (tally->estimator_ == ESTIMATOR_ANALOG) {
           write_dataset(tally_group, "estimator", "analog");
-        } else if (tally.estimator_ == ESTIMATOR_TRACKLENGTH) {
+        } else if (tally->estimator_ == ESTIMATOR_TRACKLENGTH) {
           write_dataset(tally_group, "estimator", "tracklength");
-        } else if (tally.estimator_ == ESTIMATOR_COLLISION) {
+        } else if (tally->estimator_ == ESTIMATOR_COLLISION) {
           write_dataset(tally_group, "estimator", "collision");
         }
 
-        write_dataset(tally_group, "n_realizations", tally.n_realizations_);
+        write_dataset(tally_group, "n_realizations", tally->n_realizations_);
 
         // Write the ID of each filter attached to this tally
-        write_dataset(tally_group, "n_filters", tally.filters().size());
-        if (!tally.filters().empty()) {
+        write_dataset(tally_group, "n_filters", tally->filters().size());
+        if (!tally->filters().empty()) {
           std::vector<int32_t> filter_ids;
-          filter_ids.reserve(tally.filters().size());
-          for (auto i_filt : tally.filters())
+          filter_ids.reserve(tally->filters().size());
+          for (auto i_filt : tally->filters())
             filter_ids.push_back(model::tally_filters[i_filt]->id());
           write_dataset(tally_group, "filters", filter_ids);
         }
 
         // Write the nuclides this tally scores
         std::vector<std::string> nuclides;
-        for (auto i_nuclide : tally.nuclides_) {
+        for (auto i_nuclide : tally->nuclides_) {
           if (i_nuclide == -1) {
             nuclides.push_back("total");
           } else {
             if (settings::run_CE) {
               nuclides.push_back(data::nuclides[i_nuclide]->name_);
             } else {
-              nuclides.push_back(data::nuclides_MG[i_nuclide].name);
+              nuclides.push_back(data::mg.nuclides_[i_nuclide].name);
             }
           }
         }
         write_dataset(tally_group, "nuclides", nuclides);
 
-        if (tally.deriv_ != C_NONE) write_dataset(tally_group, "derivative",
-          model::tally_derivs[tally.deriv_].id);
+        if (tally->deriv_ != C_NONE) write_dataset(tally_group, "derivative",
+          model::tally_derivs[tally->deriv_].id);
 
         // Write the tally score bins
         std::vector<std::string> scores;
-        for (auto sc : tally.scores_) scores.push_back(reaction_name(sc));
+        for (auto sc : tally->scores_) scores.push_back(reaction_name(sc));
         write_dataset(tally_group, "n_score_bins", scores.size());
         write_dataset(tally_group, "score_bins", scores);
 
@@ -232,6 +239,7 @@ openmc_statepoint_write(const char* filename, bool* write_source)
 
         // Write all tally results
         for (const auto& tally : model::tallies) {
+          if (!tally->writable_) continue;
           // Write sum and sum_sq for each bin
           std::string name = "tally " + std::to_string(tally->id_);
           hid_t tally_group = open_group(tallies_group, name.c_str());
@@ -425,11 +433,21 @@ void load_state_point()
         // Read sum, sum_sq, and N for each bin
         std::string name = "tally " + std::to_string(tally->id_);
         hid_t tally_group = open_group(tallies_group, name.c_str());
-        auto& results = tally->results_;
-        read_tally_results(tally_group, results.shape()[0],
-          results.shape()[1], results.data());
-        read_dataset(tally_group, "n_realizations", tally->n_realizations_);
-        close_group(tally_group);
+
+        int internal=0;
+        if (attribute_exists(tally_group, "internal")) {
+          read_attribute(tally_group, "internal", internal);
+        }
+        if (internal) {
+          tally->writable_ = false;
+        } else {
+
+          auto& results = tally->results_;
+          read_tally_results(tally_group, results.shape()[0],
+            results.shape()[1], results.data());
+          read_dataset(tally_group, "n_realizations", tally->n_realizations_);
+          close_group(tally_group);
+        }
       }
 
       close_group(tallies_group);
@@ -697,6 +715,7 @@ void write_tally_results_nr(hid_t file_id)
   for (const auto& t : model::tallies) {
     // Skip any tallies that are not active
     if (!t->active_) continue;
+    if (!t->writable_) continue;
 
     if (mpi::master && !object_exists(file_id, "tallies_present")) {
       write_attribute(file_id, "tallies_present", 1);

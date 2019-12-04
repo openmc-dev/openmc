@@ -38,16 +38,16 @@ Bug Fixes
 - 2a95ef_: Prevent segmentation fault on "current" score without mesh filter
 - 93e482_: Check for negative values in probability tables
 
-.. _03e890: https://github.com/mit-crpg/openmc/commit/03e890
-.. _4439de: https://github.com/mit-crpg/openmc/commit/4439de
-.. _5808ed: https://github.com/mit-crpg/openmc/commit/5808ed
-.. _2e60c0: https://github.com/mit-crpg/openmc/commit/2e60c0
-.. _3e0870: https://github.com/mit-crpg/openmc/commit/3e0870
-.. _dc4776: https://github.com/mit-crpg/openmc/commit/dc4776
-.. _01178b: https://github.com/mit-crpg/openmc/commit/01178b
-.. _62ec43: https://github.com/mit-crpg/openmc/commit/62ec43
-.. _2a95ef: https://github.com/mit-crpg/openmc/commit/2a95ef
-.. _93e482: https://github.com/mit-crpg/openmc/commit/93e482
+.. _03e890: https://github.com/openmc-dev/openmc/commit/03e890
+.. _4439de: https://github.com/openmc-dev/openmc/commit/4439de
+.. _5808ed: https://github.com/openmc-dev/openmc/commit/5808ed
+.. _2e60c0: https://github.com/openmc-dev/openmc/commit/2e60c0
+.. _3e0870: https://github.com/openmc-dev/openmc/commit/3e0870
+.. _dc4776: https://github.com/openmc-dev/openmc/commit/dc4776
+.. _01178b: https://github.com/openmc-dev/openmc/commit/01178b
+.. _62ec43: https://github.com/openmc-dev/openmc/commit/62ec43
+.. _2a95ef: https://github.com/openmc-dev/openmc/commit/2a95ef
+.. _93e482: https://github.com/openmc-dev/openmc/commit/93e482
 
 ------------
 Contributors

@@ -62,15 +62,15 @@ Bug Fixes
 - 441fd4_: Fix bug in kappa-fission score
 - 7e5974_: Allow fixed source simulations from Python API
 
-.. _299322: https://github.com/mit-crpg/openmc/commit/299322
-.. _d74840: https://github.com/mit-crpg/openmc/commit/d74840
-.. _c29a81: https://github.com/mit-crpg/openmc/commit/c29a81
-.. _3edc23: https://github.com/mit-crpg/openmc/commit/3edc23
-.. _629e3b: https://github.com/mit-crpg/openmc/commit/629e3b
-.. _5dbe8b: https://github.com/mit-crpg/openmc/commit/5dbe8b
-.. _ff66f4: https://github.com/mit-crpg/openmc/commit/ff66f4
-.. _441fd4: https://github.com/mit-crpg/openmc/commit/441fd4
-.. _7e5974: https://github.com/mit-crpg/openmc/commit/7e5974
+.. _299322: https://github.com/openmc-dev/openmc/commit/299322
+.. _d74840: https://github.com/openmc-dev/openmc/commit/d74840
+.. _c29a81: https://github.com/openmc-dev/openmc/commit/c29a81
+.. _3edc23: https://github.com/openmc-dev/openmc/commit/3edc23
+.. _629e3b: https://github.com/openmc-dev/openmc/commit/629e3b
+.. _5dbe8b: https://github.com/openmc-dev/openmc/commit/5dbe8b
+.. _ff66f4: https://github.com/openmc-dev/openmc/commit/ff66f4
+.. _441fd4: https://github.com/openmc-dev/openmc/commit/441fd4
+.. _7e5974: https://github.com/openmc-dev/openmc/commit/7e5974
 
 ------------
 Contributors

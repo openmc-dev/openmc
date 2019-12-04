@@ -142,6 +142,11 @@ Geometry and Visualization
 Miscellaneous
 -------------
 
+- Govatsa Acharya, "`Investigating the Application of Self-Actuated Passive
+  Shutdown System in a Small Lead-Cooled Reactor
+  <https://doi.org/10.13140/RG.2.2.26088.01281>`_," M.S. Thesis, KTH Royal
+  Institute of Technology (2019).
+
 - Shikhar Kumar, Benoit Forget, and Kord Smith, "Analysis of fission source
   convergence for a 3-D SMR core using functional expansion tallies," *Proc.
   M&C*, 937-947, Portland, Oregon, Aug. 25-29 (2019).
@@ -366,7 +371,7 @@ Nuclear Data
 - Jonathan A. Walsh, Benoit Forget, Kord S. Smith, and Forrest B. Brown,
   "`Uncertainty in Fast Reactor-Relevant Critical Benchmark Simulations Due to
   Unresolved Resonance Structure
-  <https://www.kns.org/paper_file/paper/MC2017_2017_3/P197S03-09WalshJ.pdf>`_,"
+  <https://www.kns.org/files/int_paper/paper/MC2017_2017_3/P197S03-09WalshJ.pdf>`_,"
   *Proc. Int. Conf. Mathematics & Computational Methods Applied to Nuclear
   Science and Engineering*, Jeju, Korea, Apr. 16-20, 2017.
 
@@ -409,7 +414,7 @@ Parallelism
 
 - Paul K. Romano and Andrew R. Siegel, "`Limits on the efficiency of event-based
   algorithms for Monte Carlo neutron transport
-  <https://www.kns.org/paper_file/paper/MC2017_2017_2/P099S02-02RomanoP.pdf>`_,"
+  <https://www.kns.org/files/int_paper/paper/MC2017_2017_2/P099S02-02RomanoP.pdf>`_,"
   *Proc. Int. Conf. Mathematics & Computational Methods Applied to Nuclear
   Science and Engineering*, Jeju, Korea, Apr. 16-20, 2017.
 

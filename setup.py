@@ -69,7 +69,7 @@ kwargs = {
         'pandas', 'lxml', 'uncertainties'
     ],
     'extras_require': {
-        'test': ['pytest', 'pytest-cov'],
+        'test': ['pytest', 'pytest-cov', 'colorama'],
         'vtk': ['vtk'],
     },
 }

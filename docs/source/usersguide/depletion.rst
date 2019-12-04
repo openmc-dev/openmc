@@ -127,7 +127,9 @@ of the same material as a unique material definition with::
 For our example problem, this would deplete fuel on the outer region of the problem
 with different reaction rates than those in the center. Materials will be depleted
 corresponding to their local neutron spectra, and have unique compositions at each
-transport step.
+transport step.  The volume of the original ``fuel_3`` material must represent
+the volume of **all** the ``fuel_3`` in the problem. When creating the unique
+materials, this volume will be equally distributed across all material instances.
 
 
 .. note::

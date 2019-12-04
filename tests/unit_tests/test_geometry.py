@@ -280,3 +280,24 @@ def test_from_xml(run_in_tmpdir, mixed_lattice_model):
     ll, ur = geom.bounding_box
     assert ll == pytest.approx((-6.0, -6.0, -np.inf))
     assert ur == pytest.approx((6.0, 6.0, np.inf))
+
+
+def test_rotation_matrix():
+    """Test ability to set a rotation matrix directly"""
+    y = openmc.YPlane()
+    cyl1 = openmc.ZCylinder(r=1.0)
+    cyl2 = openmc.ZCylinder(r=2.0, boundary_type='vacuum')
+
+    # Create a universe and then reflect in the y-direction
+    c1 = openmc.Cell(region=-cyl1 & +y)
+    c2 = openmc.Cell(region=+cyl1 & +y)
+    c3 = openmc.Cell(region=-y)
+    univ = openmc.Universe(cells=[c1, c2, c3])
+    c = openmc.Cell(fill=univ, region=-cyl2)
+    c.rotation = [[1, 0, 0], [0, -1, 0], [0, 0, 1]]
+    assert np.all(c.rotation_matrix == c.rotation)
+    geom = openmc.Geometry([c])
+
+    assert geom.find((0.0, 0.5, 0.0))[-1] == c3
+    assert geom.find((0.0, -0.5, 0.0))[-1] == c1
+    assert geom.find((0.0, -1.5, 0.0))[-1] == c2

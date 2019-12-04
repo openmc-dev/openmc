@@ -345,7 +345,7 @@ read_dataset(hid_t obj_id, const char* name, Position& r, bool indep=false)
 }
 
 template <typename T, std::size_t N>
-void read_dataset_as_shape(hid_t obj_id, const char* name,
+inline void read_dataset_as_shape(hid_t obj_id, const char* name,
                            xt::xtensor<T, N>& arr, bool indep=false)
 {
   hid_t dset = open_dataset(obj_id, name);
@@ -367,7 +367,7 @@ void read_dataset_as_shape(hid_t obj_id, const char* name,
 
 
 template <typename T, std::size_t N>
-void read_nd_vector(hid_t obj_id, const char* name, xt::xtensor<T, N>& result,
+inline void read_nd_vector(hid_t obj_id, const char* name, xt::xtensor<T, N>& result,
      bool must_have=false)
 {
   if (object_exists(obj_id, name)) {

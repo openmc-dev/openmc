@@ -333,7 +333,7 @@ or sub-elements:
     velocity sampling) or "dbrc" (Doppler broadening rejection correction).
     Descriptions of each of these methods are documented here_.
 
-    .. _here: http://dx.doi.org/10.1016/j.anucene.2017.12.044
+    .. _here: https://doi.org/10.1016/j.anucene.2017.12.044
 
     *Default*: "rvs"
 
@@ -423,12 +423,16 @@ attributes/sub-elements:
 
     :type:
       The type of spatial distribution. Valid options are "box", "fission",
-      "point", and "cartesian". A "box" spatial distribution has coordinates
-      sampled uniformly in a parallelepiped. A "fission" spatial distribution
-      samples locations from a "box" distribution but only locations in
-      fissionable materials are accepted. A "point" spatial distribution has
-      coordinates specified by a triplet. An "cartesian" spatial distribution
-      specifies independent distributions of x-, y-, and z-coordinates.
+      "point", "cartesian", and "spherical". A "box" spatial distribution has 
+      coordinates sampled uniformly in a parallelepiped. A "fission" spatial
+      distribution samples locations from a "box" distribution but only 
+      locations in fissionable materials are accepted. A "point" spatial 
+      distribution has coordinates specified by a triplet. An "cartesian" 
+      spatial distribution specifies independent distributions of x-, y-, and
+      z-coordinates. A "spherical" spatial distribution specifies independent
+      distributions of r-, theta-, and phi-coordinates where theta is the angle
+      with respect to the z-axis, phi is the azimuthal angle, and the sphere is
+      centered on the coordinate (x0,y0,z0).
 
       *Default*: None
 
@@ -445,6 +449,9 @@ attributes/sub-elements:
 
       For an "cartesian" distribution, no parameters are specified. Instead,
       the ``x``, ``y``, and ``z`` elements must be specified.
+
+      For a "spherical" distribution, no parameters are specified. Instead,
+      the ``r``, ``theta``, ``phi``, and ``origin`` elements must be specified.
 
       *Default*: None
 
@@ -465,6 +472,28 @@ attributes/sub-elements:
       of z-coordinates. The necessary sub-elements/attributes are those of a
       univariate probability distribution (see the description in
       :ref:`univariate`).
+
+    :r:
+      For a "spherical" distribution, this element specifies the distribution
+      of r-coordinates. The necessary sub-elements/attributes are those of a
+      univariate probability distribution (see the description in
+      :ref:`univariate`).
+
+    :theta:
+      For a "spherical" distribution, this element specifies the distribution
+      of theta-coordinates. The necessary sub-elements/attributes are those of a
+      univariate probability distribution (see the description in
+      :ref:`univariate`).
+
+    :phi:
+      For a "spherical" distribution, this element specifies the distribution
+      of phi-coordinates. The necessary sub-elements/attributes are those of a
+      univariate probability distribution (see the description in
+      :ref:`univariate`).
+
+    :origin:
+      For a "spherical" distribution, this element specifies the coordinates of
+      the center of the sphere.
 
   :angle:
     An element specifying the angular distribution of source sites. This element

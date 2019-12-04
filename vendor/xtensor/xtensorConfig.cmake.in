@@ -1,5 +1,6 @@
 ############################################################################
-# Copyright (c) 2016, Johan Mabille and Sylvain Corlay                     #
+# Copyright (c) Johan Mabille, Sylvain Corlay and Wolf Vollprecht          #
+# Copyright (c) QuantStack
 #                                                                          #
 # Distributed under the terms of the BSD 3-Clause License.                 #
 #                                                                          #
@@ -14,6 +15,17 @@
 #   xtensor_LIBRARY - empty
 
 @PACKAGE_INIT@
+
+include(CMakeFindDependencyMacro)
+find_dependency(xtl @xtl_REQUIRED_VERSION@)
+
+if(XTENSOR_USE_XSIMD)
+    find_dependency(xsimd @xsimd_REQUIRED_VERSION@)
+endif()
+
+if(XTENSOR_USE_TBB)
+    find_dependency(TBB)
+endif()
 
 if(NOT TARGET @PROJECT_NAME@)
   include("${CMAKE_CURRENT_LIST_DIR}/@PROJECT_NAME@Targets.cmake")

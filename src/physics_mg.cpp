@@ -77,22 +77,14 @@ sample_reaction(Particle* p)
 void
 scatter(Particle* p)
 {
-  // Adjust indices for Fortran to C++ indexing
-  // TODO: Remove when no longer needed
-  int gin = p->g_last_ - 1;
-  int gout = p->g_ - 1;
-  int i_mat = p->material_;
-  data::macro_xs[i_mat].sample_scatter(gin, gout, p->mu_, p->wgt_);
-
-  // Adjust return value for fortran indexing
-  // TODO: Remove when no longer needed
-  p->g_ = gout + 1;
+  data::mg.macro_xs_[p->material_].sample_scatter(p->g_last_, p->g_, p->mu_,
+                                                  p->wgt_);
 
   // Rotate the angle
   p->u() = rotate_angle(p->u(), p->mu_, nullptr);
 
   // Update energy value for downstream compatability (in tallying)
-  p->E_ = data::energy_bin_avg[gout];
+  p->E_ = data::mg.energy_bin_avg_[p->g_];
 
   // Set event component
   p->event_ = EVENT_SCATTER;
@@ -144,12 +136,14 @@ create_fission_sites(Particle* p, std::vector<Particle::Bank>& bank)
     site.u.y = std::sqrt(1. - mu * mu) * std::cos(phi);
     site.u.z = std::sqrt(1. - mu * mu) * std::sin(phi);
 
-    // Sample secondary energy distribution for the fission reaction and set
-    // the energy in the fission bank
+    // Sample secondary energy distribution for the fission reaction
     int dg;
     int gout;
-    data::macro_xs[p->material_].sample_fission_energy(p->g_ - 1, dg, gout);
-    site.E = gout + 1;
+    data::mg.macro_xs_[p->material_].sample_fission_energy(p->g_, dg, gout);
+    // Store the energy and delayed groups on the fission bank
+    site.E = gout;
+    // We add 1 to the delayed_group bc in MG, -1 is prompt, but in the rest
+    // of the code, 0 is prompt.
     site.delayed_group = dg + 1;
 
     // Set the delayed group on the particle as well

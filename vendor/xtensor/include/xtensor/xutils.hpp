@@ -1,5 +1,6 @@
 /***************************************************************************
-* Copyright (c) 2016, Johan Mabille, Sylvain Corlay and Wolf Vollprecht    *
+* Copyright (c) Johan Mabille, Sylvain Corlay and Wolf Vollprecht          *
+* Copyright (c) QuantStack                                                 *
 *                                                                          *
 * Distributed under the terms of the BSD 3-Clause License.                 *
 *                                                                          *
@@ -22,9 +23,17 @@
 #include <vector>
 
 #include <xtl/xfunctional.hpp>
+#include <xtl/xsequence.hpp>
+#include <xtl/xmeta_utils.hpp>
 #include <xtl/xtype_traits.hpp>
 
 #include "xtensor_config.hpp"
+
+#if (_MSC_VER >= 1910)
+    #define NOEXCEPT(T)
+#else
+    #define NOEXCEPT(T) noexcept(T)
+#endif
 
 namespace xt
 {
@@ -35,17 +44,17 @@ namespace xt
     template <class T>
     struct remove_class;
 
-    template <class F, class... T>
-    void for_each(F&& f, std::tuple<T...>& t) noexcept(noexcept(std::declval<F>()));
+    /*template <class F, class... T>
+    void for_each(F&& f, std::tuple<T...>& t) noexcept(implementation_dependent);*/
 
-    template <class F, class R, class... T>
-    R accumulate(F&& f, R init, const std::tuple<T...>& t) noexcept(noexcept(std::declval<F>()));
+    /*template <class F, class R, class... T>
+    R accumulate(F&& f, R init, const std::tuple<T...>& t) noexcept(implementation_dependent);*/
 
     template <std::size_t I, class... Args>
     constexpr decltype(auto) argument(Args&&... args) noexcept;
 
     template <class R, class F, class... S>
-    R apply(std::size_t index, F&& func, const std::tuple<S...>& s) noexcept(noexcept(std::declval<F>()));
+    R apply(std::size_t index, F&& func, const std::tuple<S...>& s) NOEXCEPT(noexcept(func(std::get<0>(s))));
 
     template <class T, class S>
     void nested_copy(T&& iter, const S& s);
@@ -53,20 +62,25 @@ namespace xt
     template <class T, class S>
     void nested_copy(T&& iter, std::initializer_list<S> s);
 
-    template <class U>
-    struct initializer_dimension;
-
-    template <class R, class T>
-    constexpr R shape(T t);
-
-    template <class T, class S>
-    constexpr bool check_shape(T t, S first, S last);
-
     template <class C>
     bool resize_container(C& c, typename C::size_type size);
 
     template <class T, std::size_t N>
     bool resize_container(std::array<T, N>& a, typename std::array<T, N>::size_type size);
+
+    template <std::size_t... I>
+    class fixed_shape;
+
+    template <std::size_t... I>
+    bool resize_container(fixed_shape<I...>& a, std::size_t size);
+
+    template <class X, class C>
+    struct rebind_container;
+
+    template <class X, class C>
+    using rebind_container_t = typename rebind_container<X, C>::type;
+
+    std::size_t normalize_axis(std::size_t dim, std::ptrdiff_t axis);
 
     // gcc 4.9 is affected by C++14 defect CGW 1558
     // see http://open-std.org/JTC1/SC22/WG21/docs/cwg_defects.html#1558
@@ -79,8 +93,30 @@ namespace xt
     template <class... T>
     using void_t = typename make_void<T...>::type;
 
+    // This is used for non existent types (e.g. storage for some expressions
+    // like generators)
+    struct invalid_type
+    {
+    };
+
+    template <class... T>
+    struct make_invalid_type
+    {
+        using type = invalid_type;
+    };
+
     template <class T, class R>
     using disable_integral_t = std::enable_if_t<!std::is_integral<T>::value, R>;
+
+    /********************************
+     * meta identity implementation *
+     ********************************/
+
+    template <class T>
+    struct meta_identity
+    {
+        using type = T;
+    };
 
     /*******************************
      * remove_class implementation *
@@ -114,13 +150,14 @@ namespace xt
     {
         template <std::size_t I, class F, class... T>
         inline typename std::enable_if<I == sizeof...(T), void>::type
-        for_each_impl(F&& /*f*/, std::tuple<T...>& /*t*/) noexcept(noexcept(std::declval<F>()))
+        for_each_impl(F&& /*f*/, std::tuple<T...>& /*t*/) noexcept
         {
         }
 
         template <std::size_t I, class F, class... T>
         inline typename std::enable_if<I < sizeof...(T), void>::type
-        for_each_impl(F&& f, std::tuple<T...>& t) noexcept(noexcept(std::declval<F>()))
+        for_each_impl(F&& f, std::tuple<T...>& t)
+            noexcept(noexcept(f(std::get<I>(t))))
         {
             f(std::get<I>(t));
             for_each_impl<I + 1, F, T...>(std::forward<F>(f), t);
@@ -128,7 +165,8 @@ namespace xt
     }
 
     template <class F, class... T>
-    inline void for_each(F&& f, std::tuple<T...>& t) noexcept(noexcept(std::declval<F>()))
+    inline void for_each(F&& f, std::tuple<T...>& t)
+        noexcept(noexcept(detail::for_each_impl<0, F, T...>(std::forward<F>(f), t)))
     {
         detail::for_each_impl<0, F, T...>(std::forward<F>(f), t);
     }
@@ -137,13 +175,14 @@ namespace xt
     {
         template <std::size_t I, class F, class... T>
         inline typename std::enable_if<I == sizeof...(T), void>::type
-        for_each_impl(F&& /*f*/, const std::tuple<T...>& /*t*/) noexcept(noexcept(std::declval<F>()))
+        for_each_impl(F&& /*f*/, const std::tuple<T...>& /*t*/) noexcept
         {
         }
 
         template <std::size_t I, class F, class... T>
         inline typename std::enable_if<I < sizeof...(T), void>::type
-        for_each_impl(F&& f, const std::tuple<T...>& t) noexcept(noexcept(std::declval<F>()))
+        for_each_impl(F&& f, const std::tuple<T...>& t)
+            noexcept(noexcept(f(std::get<I>(t))))
         {
             f(std::get<I>(t));
             for_each_impl<I + 1, F, T...>(std::forward<F>(f), t);
@@ -151,7 +190,8 @@ namespace xt
     }
 
     template <class F, class... T>
-    inline void for_each(F&& f, const std::tuple<T...>& t) noexcept(noexcept(std::declval<F>()))
+    inline void for_each(F&& f, const std::tuple<T...>& t)
+        noexcept(noexcept(detail::for_each_impl<0, F, T...>(std::forward<F>(f), t)))
     {
         detail::for_each_impl<0, F, T...>(std::forward<F>(f), t);
     }
@@ -164,14 +204,15 @@ namespace xt
     {
         template <std::size_t I, class F, class R, class... T>
         inline std::enable_if_t<I == sizeof...(T), R>
-        accumulate_impl(F&& /*f*/, R init, const std::tuple<T...>& /*t*/) noexcept(noexcept(std::declval<F>()))
+        accumulate_impl(F&& /*f*/, R init, const std::tuple<T...>& /*t*/) noexcept
         {
             return init;
         }
 
         template <std::size_t I, class F, class R, class... T>
         inline std::enable_if_t<I < sizeof...(T), R>
-        accumulate_impl(F&& f, R init, const std::tuple<T...>& t) noexcept(noexcept(std::declval<F>()))
+        accumulate_impl(F&& f, R init, const std::tuple<T...>& t)
+            noexcept(noexcept(f(init, std::get<I>(t))))
         {
             R res = f(init, std::get<I>(t));
             return accumulate_impl<I + 1, F, R, T...>(std::forward<F>(f), res, t);
@@ -179,9 +220,10 @@ namespace xt
     }
 
     template <class F, class R, class... T>
-    inline R accumulate(F&& f, R init, const std::tuple<T...>& t) noexcept(noexcept(std::declval<F>()))
+    inline R accumulate(F&& f, R init, const std::tuple<T...>& t)
+        noexcept(noexcept(detail::accumulate_impl<0, F, R, T...>(std::forward<F>(f), init, t)))
     {
-        return detail::accumulate_impl<0, F, R, T...>(f, init, t);
+        return detail::accumulate_impl<0, F, R, T...>(std::forward<F>(f), init, t);
     }
 
     /***************************
@@ -225,13 +267,14 @@ namespace xt
     namespace detail
     {
         template <class R, class F, std::size_t I, class... S>
-        R apply_one(F&& func, const std::tuple<S...>& s) noexcept(noexcept(std::declval<F>()))
+        R apply_one(F&& func, const std::tuple<S...>& s) NOEXCEPT(noexcept(func(std::get<I>(s))))
         {
             return static_cast<R>(func(std::get<I>(s)));
         }
 
         template <class R, class F, std::size_t... I, class... S>
-        R apply(std::size_t index, F&& func, std::index_sequence<I...> /*seq*/, const std::tuple<S...>& s) noexcept(noexcept(std::declval<F>()))
+        R apply(std::size_t index, F&& func, std::index_sequence<I...> /*seq*/, const std::tuple<S...>& s)
+            NOEXCEPT(noexcept(func(std::get<0>(s))))
         {
             using FT = std::add_pointer_t<R(F&&, const std::tuple<S...>&)>;
             static const std::array<FT, sizeof...(I)> ar = {{&apply_one<R, F, I, S...>...}};
@@ -240,7 +283,7 @@ namespace xt
     }
 
     template <class R, class F, class... S>
-    inline R apply(std::size_t index, F&& func, const std::tuple<S...>& s) noexcept(noexcept(std::declval<F>()))
+    inline R apply(std::size_t index, F&& func, const std::tuple<S...>& s) NOEXCEPT(noexcept(func(std::get<0>(s))))
     {
         return detail::apply<R>(index, std::forward<F>(func), std::make_index_sequence<sizeof...(S)>(), s);
     }
@@ -283,118 +326,6 @@ namespace xt
         }
     }
 
-    /****************************************
-     * initializer_dimension implementation *
-     ****************************************/
-
-    namespace detail
-    {
-        template <class U>
-        struct initializer_depth_impl
-        {
-            static constexpr std::size_t value = 0;
-        };
-
-        template <class T>
-        struct initializer_depth_impl<std::initializer_list<T>>
-        {
-            static constexpr std::size_t value = 1 + initializer_depth_impl<T>::value;
-        };
-    }
-
-    template <class U>
-    struct initializer_dimension
-    {
-        static constexpr std::size_t value = detail::initializer_depth_impl<U>::value;
-    };
-
-    /************************************
-     * initializer_shape implementation *
-     ************************************/
-
-    namespace detail
-    {
-        template <std::size_t I>
-        struct initializer_shape_impl
-        {
-            template <class T>
-            static constexpr std::size_t value(T t)
-            {
-                return t.size() == 0 ? 0 : initializer_shape_impl<I - 1>::value(*t.begin());
-            }
-        };
-
-        template <>
-        struct initializer_shape_impl<0>
-        {
-            template <class T>
-            static constexpr std::size_t value(T t)
-            {
-                return t.size();
-            }
-        };
-
-        template <class R, class U, std::size_t... I>
-        constexpr R initializer_shape(U t, std::index_sequence<I...>)
-        {
-            using size_type = typename R::value_type;
-            return {size_type(initializer_shape_impl<I>::value(t))...};
-        }
-    }
-
-    template <class R, class T>
-    constexpr R shape(T t)
-    {
-        return detail::initializer_shape<R, decltype(t)>(t, std::make_index_sequence<initializer_dimension<decltype(t)>::value>());
-    }
-
-    /******************************
-     * check_shape implementation *
-     ******************************/
-
-    namespace detail
-    {
-        template <class T, class S>
-        struct predshape
-        {
-            constexpr predshape(S first, S last)
-                : m_first(first), m_last(last)
-            {
-            }
-
-            constexpr bool operator()(const T&) const
-            {
-                return m_first == m_last;
-            }
-
-            S m_first;
-            S m_last;
-        };
-
-        template <class T, class S>
-        struct predshape<std::initializer_list<T>, S>
-        {
-            constexpr predshape(S first, S last)
-                : m_first(first), m_last(last)
-            {
-            }
-
-            constexpr bool operator()(std::initializer_list<T> t) const
-            {
-                return *m_first == t.size() && std::all_of(t.begin(), t.end(), predshape<T, S>(m_first + 1, m_last));
-            }
-
-            S m_first;
-            S m_last;
-        };
-    }
-
-    template <class T, class S>
-    constexpr bool check_shape(T t, S first, S last)
-    {
-        return detail::predshape<decltype(t), S>(first, last)(t);
-    }
-
     /***********************************
      * resize_container implementation *
      ***********************************/
@@ -410,6 +341,88 @@ namespace xt
     inline bool resize_container(std::array<T, N>& /*a*/, typename std::array<T, N>::size_type size)
     {
         return size == N;
+    }
+
+    template <std::size_t... I>
+    inline bool resize_container(xt::fixed_shape<I...>&, std::size_t size)
+    {
+        return sizeof...(I) == size;
+    }
+
+    /*********************************
+     * normalize_axis implementation *
+     *********************************/
+
+    // scalar normalize axis
+    inline std::size_t normalize_axis(std::size_t dim, std::ptrdiff_t axis)
+    {
+        return axis < 0 ? static_cast<std::size_t>(static_cast<std::ptrdiff_t>(dim) + axis) : static_cast<std::size_t>(axis);
+    }
+
+    template <class E, class C>
+    inline std::enable_if_t<!std::is_integral<std::decay_t<C>>::value &&
+                     std::is_signed<typename std::decay_t<C>::value_type>::value,
+                     rebind_container_t<std::size_t, std::decay_t<C>>>
+    normalize_axis(E& expr, C&& axes)
+    {
+        rebind_container_t<std::size_t, std::decay_t<C>> res;
+        resize_container(res, axes.size());
+
+        for (std::size_t i = 0; i < axes.size(); ++i)
+        {
+            res[i] = normalize_axis(expr.dimension(), axes[i]);
+        }
+
+        XTENSOR_ASSERT(std::all_of(res.begin(), res.end(), [&expr](auto ax_el) { return ax_el < expr.dimension(); }));
+
+        return res;
+    }
+
+    template <class C, class E>
+    inline std::enable_if_t<!std::is_integral<std::decay_t<C>>::value && std::is_unsigned<typename std::decay_t<C>::value_type>::value, C&&>
+    normalize_axis(E& expr, C&& axes)
+    {
+        static_cast<void>(expr);
+        XTENSOR_ASSERT(std::all_of(axes.begin(), axes.end(), [&expr](auto ax_el) { return ax_el < expr.dimension(); }));
+        return std::forward<C>(axes);
+    }
+
+    template <class R, class E, class C>
+    inline auto forward_normalize(E& expr, C&& axes)
+        -> std::enable_if_t<std::is_signed<std::decay_t<decltype(*std::begin(axes))>>::value, R>
+    {
+        R res;
+        xt::resize_container(res, xtl::sequence_size(axes));
+        auto dim = expr.dimension();
+        std::transform(std::begin(axes), std::end(axes), std::begin(res), [&dim](auto ax_el) {
+            return normalize_axis(dim, ax_el);
+        });
+
+        XTENSOR_ASSERT(std::all_of(res.begin(), res.end(), [&expr](auto ax_el) { return ax_el < expr.dimension(); }));
+
+        return res;
+    }
+
+    template <class R, class E, class C>
+    inline auto forward_normalize(E& expr, C&& axes)
+        -> std::enable_if_t<!std::is_signed<std::decay_t<decltype(*std::begin(axes))>>::value && !std::is_same<R, std::decay_t<C>>::value, R>
+    {
+        static_cast<void>(expr);
+
+        R res;
+        xt::resize_container(res, xtl::sequence_size(axes));
+        std::copy(std::begin(axes), std::end(axes), std::begin(res));
+        XTENSOR_ASSERT(std::all_of(res.begin(), res.end(), [&expr](auto ax_el) { return ax_el < expr.dimension(); }));
+        return res;
+    }
+
+    template <class R, class E, class C>
+    inline auto forward_normalize(E& expr, C&& axes)
+        -> std::enable_if_t<!std::is_signed<std::decay_t<decltype(*std::begin(axes))>>::value && std::is_same<R, std::decay_t<C>>::value, R&&>
+    {
+        static_cast<void>(expr);
+        XTENSOR_ASSERT(std::all_of(std::begin(axes), std::end(axes), [&expr](auto ax_el) { return ax_el < expr.dimension(); }));
+        return std::move(axes);
     }
 
     /******************
@@ -430,6 +443,30 @@ namespace xt
 
     template <class T>
     using get_value_type_t = typename get_value_type<T>::type;
+
+    /**********************
+     * get implementation *
+     **********************/
+
+    // When subclassing from std::tuple not all compilers are able to correctly instantiate get
+    // See here: https://stackoverflow.com/a/37188019/2528668
+    template <std::size_t I, template <typename... Args> class T, typename ...Args>
+    decltype(auto) get(T<Args...>&& v)
+    {
+      return std::get<I>(static_cast<std::tuple<Args...>&&>(v));
+    }
+
+    template <std::size_t I, template <typename... Args> class T, typename ...Args>
+    decltype(auto) get(T<Args...>& v)
+    {
+      return std::get<I>(static_cast<std::tuple<Args...>&>(v));
+    }
+
+    template <std::size_t I, template <typename... Args> class T, typename ...Args>
+    decltype(auto) get(const T<Args...> & v)
+    {
+      return std::get<I>(static_cast<const std::tuple<Args...> &>(v));
+    }
 
     /***************************
      * apply_cv implementation *
@@ -534,24 +571,19 @@ namespace xt
         return N;
     }
 
-    /*****************************************
+    /*************************************
      * has_data_interface implementation *
-     *****************************************/
+     *************************************/
 
-    template <class T>
-    class has_data_interface
+    template <class E, class = void>
+    struct has_data_interface : std::false_type
     {
-        // the test function has one argument -- the return type of the function we're searching if it exists
-        template <class C>
-        static std::true_type test(decltype(std::declval<C>().data()));
+    };
 
-        template <class C>
-        static std::false_type test(...);
-
-    public:
-
-        // we try to call the test function with the return type and report the result
-        constexpr static bool value = decltype(test<T>(std::declval<const std::add_pointer_t<typename T::value_type>>()))::value == true;
+    template <class E>
+    struct has_data_interface<E, void_t<decltype(std::declval<E>().data())>>
+        : std::true_type
+    {
     };
 
     template <class E, class = void>
@@ -565,14 +597,15 @@ namespace xt
     {
     };
 
-    /******************
-     * enable_if_type *
-     ******************/
-
-    template <class T>
-    struct enable_if_type
+    template <class E, class = void>
+    struct has_iterator_interface : std::false_type
     {
-        using type = void;
+    };
+
+    template <class E>
+    struct has_iterator_interface<E, void_t<decltype(std::declval<E>().begin())>>
+        : std::true_type
+    {
     };
 
     /********************************************
@@ -625,326 +658,11 @@ namespace xt
     inline auto conditional_cast(U&& u)
     {
         return conditional_cast_functor<condition, T>()(std::forward<U>(u));
-    };
-
-    /************************************
-     * arithmetic type promotion traits *
-     ************************************/
-
-    /**
-     * @brief Traits class for the result type of mixed arithmetic expressions.
-     * For example, <tt>promote_type<unsigned char, unsigned char>::type</tt> tells
-     * the user that <tt>unsigned char + unsigned char => int</tt>.
-     */
-    template <class... T>
-    struct promote_type;
-
-    template <>
-    struct promote_type<>
-    {
-        using type = void;
-    };
-
-    template <class T>
-    struct promote_type<T>
-    {
-        using type = typename promote_type<T, T>::type;
-    };
-
-    template <class T0, class T1>
-    struct promote_type<T0, T1>
-    {
-        using type = decltype(std::declval<std::decay_t<T0>>() + std::declval<std::decay_t<T1>>());
-    };
-
-    template <class T0, class... REST>
-    struct promote_type<T0, REST...>
-    {
-        using type = decltype(std::declval<std::decay_t<T0>>() + std::declval<typename promote_type<REST...>::type>());
-    };
-
-    template <>
-    struct promote_type<bool>
-    {
-        using type = bool;
-    };
-
-    template <class T>
-    struct promote_type<bool, T>
-    {
-        using type = T;
-    };
-
-    template <class... REST>
-    struct promote_type<bool, REST...>
-    {
-        using type = typename promote_type<bool, typename promote_type<REST...>::type>::type;
-    };
-
-    /** 
-     * @brief Abbreviation of 'typename promote_type<T>::type'.
-     */
-    template <class... T>
-    using promote_type_t = typename promote_type<T...>::type;
-
-    /**
-     * @brief Traits class to find the biggest type of the same kind.
-     *
-     * For example, <tt>big_promote_type<unsigned char>::type</tt> is <tt>unsigned long long</tt>.
-     * The default implementation only supports built-in types and <tt>std::complex</tt>. All
-     * other types remain unchanged unless <tt>big_promote_type</tt> gets specialized for them.
-     */
-    template <class T>
-    struct big_promote_type
-    {
-    private:
-        
-        using V = std::decay_t<T>;
-        static constexpr bool is_arithmetic = std::is_arithmetic<V>::value;
-        static constexpr bool is_signed = std::is_signed<V>::value;
-        static constexpr bool is_integral = std::is_integral<V>::value;
-        static constexpr bool is_long_double = std::is_same<V, long double>::value;
-
-    public:
-
-        using type = std::conditional_t<is_arithmetic,
-                        std::conditional_t<is_integral,
-                            std::conditional_t<is_signed, long long, unsigned long long>,
-                            std::conditional_t<is_long_double, long double, double>
-                        >,
-                        V
-                     >;
-    };
-
-    template <class T>
-    struct big_promote_type<std::complex<T>>
-    {
-        using type = std::complex<typename big_promote_type<T>::type>;
-    };
-
-    /**
-     * @brief Abbreviation of 'typename big_promote_type<T>::type'.
-     */
-    template <class T>
-    using big_promote_type_t = typename big_promote_type<T>::type;
-
-    namespace traits_detail
-    {
-        using std::sqrt;
-
-        template <class T>
-        using real_promote_type_t = decltype(sqrt(std::declval<std::decay_t<T>>()));
     }
 
-    /**
-     * @brief Result type of algebraic expressions.
-     *
-     * For example, <tt>real_promote_type<int>::type</tt> tells the
-     * user that <tt>sqrt(int) => double</tt>.
-     */
-    template <class T>
-    struct real_promote_type
-    {
-        using type = traits_detail::real_promote_type_t<T>;
-    };
-
-    /**
-     * @brief Abbreviation of 'typename real_promote_type<T>::type'.
-     */
-    template <class T>
-    using real_promote_type_t = typename real_promote_type<T>::type;
-
-    /**
-     * @brief Traits class to replace 'bool' with 'uint8_t' and keep everything else.
-     *
-     * This is useful for scientific computing, where a boolean mask array is
-     * usually implemented as an array of bytes.
-     */
-    template <class T>
-    struct bool_promote_type
-    {
-        using type = typename std::conditional<std::is_same<T, bool>::value, uint8_t, T>::type;
-    };
-
-    /**
-     * @brief Abbreviation for typename bool_promote_type<T>::type
-     */
-    template <class T>
-    using bool_promote_type_t = typename bool_promote_type<T>::type;
-
-    /********************************************
-     * type inference for norm and squared norm *
-     ********************************************/
-
-    template <class T>
-    struct norm_type;
-
-    template <class T>
-    struct squared_norm_type;
-
-    namespace traits_detail
-    {
-
-        template <class T, bool scalar = std::is_arithmetic<T>::value>
-        struct norm_of_scalar_impl;
-
-        template <class T>
-        struct norm_of_scalar_impl<T, false>
-        {
-            static const bool value = false;
-            using norm_type = void*;
-            using squared_norm_type = void*;
-        };
-
-        template <class T>
-        struct norm_of_scalar_impl<T, true>
-        {
-            static const bool value = true;
-            using norm_type = promote_type_t<T>;
-            using squared_norm_type = promote_type_t<T>;
-        };
-
-        template <class T, bool integral = std::is_integral<T>::value,
-                  bool floating = std::is_floating_point<T>::value>
-        struct norm_of_array_elements_impl;
-
-        template <>
-        struct norm_of_array_elements_impl<void*, false, false>
-        {
-            using norm_type = void*;
-            using squared_norm_type = void*;
-        };
-
-        template <class T>
-        struct norm_of_array_elements_impl<T, false, false>
-        {
-            using norm_type = typename norm_type<T>::type;
-            using squared_norm_type = typename squared_norm_type<T>::type;
-        };
-
-        template <class T>
-        struct norm_of_array_elements_impl<T, true, false>
-        {
-            static_assert(!std::is_same<T, char>::value,
-                          "'char' is not a numeric type, use 'signed char' or 'unsigned char'.");
-
-            using norm_type = double;
-            using squared_norm_type = uint64_t;
-        };
-
-        template <class T>
-        struct norm_of_array_elements_impl<T, false, true>
-        {
-            using norm_type = double;
-            using squared_norm_type = double;
-        };
-
-        template <>
-        struct norm_of_array_elements_impl<long double, false, true>
-        {
-            using norm_type = long double;
-            using squared_norm_type = long double;
-        };
-
-        template <class ARRAY>
-        struct norm_of_vector_impl
-        {
-            static void* test(...);
-
-            template <class U>
-            static typename U::value_type test(U*, typename U::value_type* = 0);
-
-            using T = decltype(test(std::declval<ARRAY*>()));
-
-            static const bool value = !std::is_same<T, void*>::value;
-
-            using norm_type = typename norm_of_array_elements_impl<T>::norm_type;
-            using squared_norm_type = typename norm_of_array_elements_impl<T>::squared_norm_type;
-        };
-
-        template <class U>
-        struct norm_type_base
-        {
-            using T = std::decay_t<U>;
-
-            static_assert(!std::is_same<T, char>::value,
-                          "'char' is not a numeric type, use 'signed char' or 'unsigned char'.");
-
-            using norm_of_scalar = norm_of_scalar_impl<T>;
-            using norm_of_vector = norm_of_vector_impl<T>;
-
-            static const bool value = norm_of_scalar::value || norm_of_vector::value;
-
-            static_assert(value, "norm_type<T> are undefined for type U.");
-        };
-    }  // namespace traits_detail
-
-    /**
-     * @brief Traits class for the result type of the <tt>norm_l2()</tt> function.
-     *
-     * Member 'type' defines the result of <tt>norm_l2(t)</tt>, where <tt>t</tt>
-     * is of type @tparam T. It implements the following rules designed to
-     * minimize the potential for overflow:
-     *   - @tparam T is an arithmetic type: 'type' is the result type of <tt>abs(t)</tt>.
-     *   - @tparam T is a container of 'long double' elements: 'type' is <tt>long double</tt>.
-     *   - @tparam T is a container of another arithmetic type: 'type' is <tt>double</tt>.
-     *   - @tparam T is a container of some other type: 'type' is the element's norm type,
-     *
-     * Containers are recognized by having an embedded typedef 'value_type'.
-     * To change the behavior for a case not covered here, specialize the
-     * <tt>traits_detail::norm_type_base</tt> template.
-     */
-    template <class T>
-    struct norm_type
-        : public traits_detail::norm_type_base<T>
-    {
-        using base_type = traits_detail::norm_type_base<T>;
-
-        using type =
-            typename std::conditional<base_type::norm_of_vector::value,
-                                      typename base_type::norm_of_vector::norm_type,
-                                      typename base_type::norm_of_scalar::norm_type>::type;
-    };
-
-    /**
-     * Abbreviation of 'typename norm_type<T>::type'.
-     */
-    template <class T>
-    using norm_type_t = typename norm_type<T>::type;
-
-    /**
-     * @brief Traits class for the result type of the <tt>norm_sq()</tt> function.
-     *
-     * Member 'type' defines the result of <tt>norm_sq(t)</tt>, where <tt>t</tt>
-     * is of type @tparam T. It implements the following rules designed to
-     * minimize the potential for overflow:
-     *   - @tparam T is an arithmetic type: 'type' is the result type of <tt>t*t</tt>.
-     *   - @tparam T is a container of 'long double' elements: 'type' is <tt>long double</tt>.
-     *   - @tparam T is a container of another floating-point type: 'type' is <tt>double</tt>.
-     *   - @tparam T is a container of integer elements: 'type' is <tt>uint64_t</tt>.
-     *   - @tparam T is a container of some other type: 'type' is the element's squared norm type,
-     *
-     *  Containers are recognized by having an embedded typedef 'value_type'.
-     *  To change the behavior for a case not covered here, specialize the
-     *  <tt>traits_detail::norm_type_base</tt> template.
-     */
-    template <class T>
-    struct squared_norm_type
-        : public traits_detail::norm_type_base<T>
-    {
-        using base_type = traits_detail::norm_type_base<T>;
-
-        using type =
-            typename std::conditional<base_type::norm_of_vector::value,
-                                      typename base_type::norm_of_vector::squared_norm_type,
-                                      typename base_type::norm_of_scalar::squared_norm_type>::type;
-    };
-
-    /**
-     * Abbreviation of 'typename squared_norm_type<T>::type'.
-     */
-    template <class T>
-    using squared_norm_type_t = typename squared_norm_type<T>::type;
+    /**********************
+     * tracking allocator *
+     **********************/
 
     namespace alloc_tracking
     {
@@ -952,7 +670,7 @@ namespace xt
         {
             static bool enabled;
             return enabled;
-        };
+        }
 
         inline void enable()
         {
@@ -1025,6 +743,10 @@ namespace xt
       return !(a == b);
     }
 
+    /*****************
+     * has_assign_to *
+     *****************/
+
     template <class E1, class E2, class = void>
     struct has_assign_to : std::false_type
     {
@@ -1035,6 +757,69 @@ namespace xt
         : std::true_type
     {
     };
+
+    /********************
+     * rebind_container *
+     ********************/
+
+    template <class X, template <class, class> class C, class T, class A>
+    struct rebind_container<X, C<T, A>>
+    {
+        using allocator = typename A::template rebind<X>::other;
+        using type = C<X, allocator>;
+    };
+
+#if defined(__GNUC__) && __GNUC__ > 6 && !defined(__clang__) && __cplusplus >= 201703L
+    template <class X, class T, std::size_t N>
+    struct rebind_container<X, std::array<T, N>>
+    {
+        using type = std::array<X, N>;
+    };
+#else
+    template <class X, template <class, std::size_t> class C, class T, std::size_t N>
+    struct rebind_container<X, C<T, N>>
+    {
+        using type = C<X, N>;
+    };
+#endif
+
+    /********************
+     * get_strides_type *
+     ********************/
+
+    template <class S>
+    struct get_strides_type
+    {
+        using type = typename rebind_container<std::ptrdiff_t, S>::type;
+    };
+
+    template <std::size_t... I>
+    struct get_strides_type<fixed_shape<I...>>
+    {
+        // TODO we could compute the strides statically here.
+        //  But we'll need full constexpr support to have a
+        //  homogenous ``compute_strides`` method
+        using type = std::array<std::ptrdiff_t, sizeof...(I)>;
+    };
+
+    template <class C>
+    using get_strides_t = typename get_strides_type<C>::type;
+
+    /*******************
+     * inner_reference *
+     *******************/
+
+    template <class ST>
+    struct inner_reference
+    {
+        using storage_type = std::decay_t<ST>;
+        using type = std::conditional_t<std::is_const<std::remove_reference_t<ST>>::value,
+                                        typename storage_type::const_reference,
+                                        typename storage_type::reference>;
+    };
+
+    template <class ST>
+    using inner_reference_t = typename inner_reference<ST>::type;
 }
 
 #endif

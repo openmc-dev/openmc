@@ -108,11 +108,17 @@ def test_full(run_in_tmpdir):
     t_ref, k_ref = res_ref.get_eigenvalue()
     k_state = np.empty_like(k_ref)
 
+    n_tallies = np.empty(N + 1, dtype=int)
+
     # Get statepoint files for all BOS points and EOL
     for n in range(N + 1):
         statepoint = openmc.StatePoint("openmc_simulation_n{}.h5".format(n))
         k_n = statepoint.k_combined
         k_state[n] = [k_n.nominal_value, k_n.std_dev]
+        n_tallies[n] = len(statepoint.tallies)
     # Look for exact match pulling from statepoint and depletion_results
     assert np.all(k_state == k_test)
     assert np.allclose(k_test, k_ref)
+
+    # Check that no additional tallies are loaded from the files
+    assert np.all(n_tallies == 0)

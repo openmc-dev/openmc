@@ -5,6 +5,8 @@ from numpy.ctypeslib import ndpointer
 
 from . import _dll
 
+from random import randint
+
 
 _dll.t_percentile.restype = c_double
 _dll.t_percentile.argtypes = [c_double, c_int]
@@ -26,19 +28,19 @@ _dll.calc_zn_rad.argtypes = [c_int, c_double, ndpointer(c_double)]
 
 _dll.rotate_angle_c.restype = None
 _dll.rotate_angle_c.argtypes = [ndpointer(c_double), c_double,
-                                POINTER(c_double), ndpointer(c_uint64), c_int]
+                                POINTER(c_double), POINTER(c_uint64)]
 _dll.maxwell_spectrum.restype = c_double
-_dll.maxwell_spectrum.argtypes = [c_double, ndpointer(c_uint64), c_int]
+_dll.maxwell_spectrum.argtypes = [c_double, POINTER(c_uint64)]
 
 _dll.watt_spectrum.restype = c_double
-_dll.watt_spectrum.argtypes = [c_double, c_double, ndpointer(c_uint64), c_int]
+_dll.watt_spectrum.argtypes = [c_double, c_double, POINTER(c_uint64)]
 
 _dll.broaden_wmp_polynomials.restype = None
 _dll.broaden_wmp_polynomials.argtypes = [c_double, c_double, c_int,
                                          ndpointer(c_double)]
 
 _dll.normal_variate.restype = c_double
-_dll.normal_variate.argtypes = [c_double, c_double, ndpointer(c_uint64), c_int]
+_dll.normal_variate.argtypes = [c_double, c_double, POINTER(c_uint64)]
 
 def t_percentile(p, df):
     """ Calculate the percentile of the Student's t distribution with a
@@ -185,7 +187,7 @@ def calc_zn_rad(n, rho):
     return zn_rad
 
 
-def rotate_angle(uvw0, mu, phi, prn_seeds, stream ):
+def rotate_angle(uvw0, mu, phi, prn_seed=None):
     """ Rotates direction cosines through a polar angle whose cosine is
     mu and through an azimuthal angle sampled uniformly.
 
@@ -197,10 +199,8 @@ def rotate_angle(uvw0, mu, phi, prn_seeds, stream ):
         Polar angle cosine to rotate
     phi : float
         Azimuthal angle; if None, one will be sampled uniformly
-    prn_seeds : iterable of int
-        PRNG seed array
-    stream : int
-        PRNG stream index
+    prn_seed : int
+        PRNG seed; if None, one will be generated randomly
 
     Returns
     -------
@@ -209,19 +209,21 @@ def rotate_angle(uvw0, mu, phi, prn_seeds, stream ):
 
     """
 
+    if prn_seed is None:
+        prn_seed = randint(0,10000000)
+
     uvw0_arr = np.array(uvw0, dtype=np.float64)
-    prn_seeds_arr = np.array(prn_seeds, dtype=np.uint64)
     if phi is None:
-        _dll.rotate_angle_c(uvw0_arr, mu, None, prn_seeds_arr, stream)
+        _dll.rotate_angle_c(uvw0_arr, mu, None, c_uint64(prn_seed))
     else:
-        _dll.rotate_angle_c(uvw0_arr, mu, c_double(phi), prn_seeds_arr, stream)
+        _dll.rotate_angle_c(uvw0_arr, mu, c_double(phi), c_uint64(prn_seed))
 
     uvw = uvw0_arr
 
     return uvw
 
 
-def maxwell_spectrum(T, prn_seeds, stream):
+def maxwell_spectrum(T, prn_seed=None):
     """ Samples an energy from the Maxwell fission distribution based
     on a direct sampling scheme.
 
@@ -229,10 +231,8 @@ def maxwell_spectrum(T, prn_seeds, stream):
     ----------
     T : float
         Spectrum parameter
-    prn_seeds : iterable of int
-        PRNG seed array
-    stream : int
-        PRNG stream index
+    prn_seed : int
+        PRNG seed; if None, one will be generated randomly
 
     Returns
     -------
@@ -240,13 +240,14 @@ def maxwell_spectrum(T, prn_seeds, stream):
         Sampled outgoing energy
 
     """
+    
+    if prn_seed is None:
+        prn_seed = randint(0,10000000)
 	
-    prn_seeds_arr = np.array(prn_seeds, dtype=np.uint64)
-
-    return _dll.maxwell_spectrum(T, prn_seeds_arr, stream)
+    return _dll.maxwell_spectrum(T, c_uint64(prn_seed))
 
 
-def watt_spectrum(a, b, prn_seeds, stream):
+def watt_spectrum(a, b, prn_seed=None):
     """ Samples an energy from the Watt energy-dependent fission spectrum.
 
     Parameters
@@ -255,10 +256,8 @@ def watt_spectrum(a, b, prn_seeds, stream):
         Spectrum parameter a
     b : float
         Spectrum parameter b
-    prn_seeds : iterable of int
-        PRNG seed array
-    stream : int
-        PRNG stream index
+    prn_seed : int
+        PRNG seed; if None, one will be generated randomly
 
     Returns
     -------
@@ -266,13 +265,14 @@ def watt_spectrum(a, b, prn_seeds, stream):
         Sampled outgoing energy
 
     """
-	
-    prn_seeds_arr = np.array(prn_seeds, dtype=np.uint64)
+    
+    if prn_seed is None:
+        prn_seed = randint(0,10000000)
 
-    return _dll.watt_spectrum(a, b, prn_seeds_arr, stream)
+    return _dll.watt_spectrum(a, b, c_uint64(prn_seed))
 
 
-def normal_variate(mean_value, std_dev, prn_seeds, stream):
+def normal_variate(mean_value, std_dev, prn_seed=None):
     """ Samples an energy from the Normal distribution.
 
     Parameters
@@ -281,10 +281,8 @@ def normal_variate(mean_value, std_dev, prn_seeds, stream):
         Mean of the Normal distribution
     std_dev : float
         Standard deviation of the normal distribution
-    prn_seeds : iterable of int
-        PRNG seed array
-    stream : int
-        PRNG stream index
+    prn_seed : int
+        PRNG seed; if None, one will be generated randomly
 
     Returns
     -------
@@ -292,10 +290,11 @@ def normal_variate(mean_value, std_dev, prn_seeds, stream):
         Sampled outgoing normally distributed value
 
     """
-	
-    prn_seeds_arr = np.array(prn_seeds, dtype=np.uint64)
+    
+    if prn_seed is None:
+        prn_seed = randint(0,10000000)
 
-    return _dll.normal_variate(mean_value, std_dev, prn_seeds_arr, stream)
+    return _dll.normal_variate(mean_value, std_dev, c_uint64(prn_seed))
 
 
 def broaden_wmp_polynomials(E, dopp, n):

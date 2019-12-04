@@ -21,42 +21,53 @@ constexpr int64_t DEFAULT_SEED = 1;
 
 //==============================================================================
 //! Generate a pseudo-random number using a linear congruential generator.
-//! @param prn_seeds Pseudorandom number seed array
-//! @param stream Pseudorandom number stream index
+//! @param prn_seed Pseudorandom number seed pointer
 //! @return A random number between 0 and 1
 //==============================================================================
 
-extern "C" double prn(uint64_t* seeds, int stream);
+extern "C" double prn(uint64_t* prn_seed);
 
 //==============================================================================
 //! Generate a random number which is 'n' times ahead from the current seed.
 //!
 //! The result of this function will be the same as the result from calling
-//! `prn()` 'n' times.
+//! `prn()` 'n' times, though without the side effect of altering the RNG
+//! state.
 //! @param n The number of RNG seeds to skip ahead by
-//! @param prn_seeds Pseudorandom number seed array
-//! @param stream Pseudorandom number stream index
+//! @param prn_seed Pseudorandom number seed
 //! @return A random number between 0 and 1
 //==============================================================================
 
-extern "C" double future_prn(int64_t n, uint64_t* prn_seeds, int stream);
+extern "C" double future_prn(int64_t n, uint64_t prn_seed);
 
 //==============================================================================
-//! Set the RNG seeds to unique values based on the ID of the particle.
+//! Set a RNG seed to a unique value based on a unique particle ID by striding
+//! the seed.
 //! @param prn_seeds Pseudorandom number seed array
 //! @param id The particle ID
 //==============================================================================
 
-extern "C" void set_particle_seed(int64_t id, uint64_t* prn_seeds );
+extern "C" void init_seed(int64_t id, uint64_t* prn_seeds, int offset );
 
 //==============================================================================
-//! Advance the random number seed 'n' times from the current seed.
+//! Set the RNG seeds to unique values based on the ID of the particle. This
+//! function initializes the seeds for all RNG streams of the particle via
+//! striding.
 //! @param prn_seeds Pseudorandom number seed array
-//! @param stream Pseudorandom number stream index
+//! @param id The particle ID
+//==============================================================================
+
+extern "C" void init_particle_seeds(int64_t id, uint64_t* prn_seeds );
+
+//==============================================================================
+//! Advance the random number seed 'n' times from the current seed. This
+//! differs from the future_prn() function in that this function does alter
+//! the RNG state.
+//! @param prn_seed Pseudorandom number seed pointer
 //! @param n The number of RNG seeds to skip ahead by
 //==============================================================================
 
-extern "C" void advance_prn_seed(int64_t n, uint64_t* prn_seeds, int stream);
+extern "C" void advance_prn_seed(int64_t n, uint64_t* prn_seed);
 
 //==============================================================================
 //! Advance a random number seed 'n' times.
@@ -68,7 +79,7 @@ extern "C" void advance_prn_seed(int64_t n, uint64_t* prn_seeds, int stream);
 //! @param seed The starting to seed to advance from
 //==============================================================================
 
-uint64_t future_seed(uint64_t n, uint64_t seed);
+uint64_t future_seed(uint64_t n, uint64_t prn_seed);
 
 //==============================================================================
 //                               API FUNCTIONS

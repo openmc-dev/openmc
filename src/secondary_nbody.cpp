@@ -22,38 +22,38 @@ NBodyPhaseSpace::NBodyPhaseSpace(hid_t group)
 }
 
 void NBodyPhaseSpace::sample(double E_in, double& E_out, double& mu,
-  uint64_t* prn_seeds, int stream) const
+  uint64_t* prn_seed) const
 {
   // By definition, the distribution of the angle is isotropic for an N-body
   // phase space distribution
-  mu = 2.0*prn(prn_seeds, stream) - 1.0;
+  mu = 2.0*prn(prn_seed) - 1.0;
 
   // Determine E_max parameter
   double Ap = mass_ratio_;
   double E_max = (Ap - 1.0)/Ap * (A_/(A_ + 1.0)*E_in + Q_);
 
   // x is essentially a Maxwellian distribution
-  double x = maxwell_spectrum(1.0, prn_seeds, stream);
+  double x = maxwell_spectrum(1.0, prn_seed);
 
   double y;
   double r1, r2, r3, r4, r5, r6;
   switch (n_bodies_) {
   case 3:
-    y = maxwell_spectrum(1.0, prn_seeds, stream);
+    y = maxwell_spectrum(1.0, prn_seed);
     break;
   case 4:
-    r1 = prn(prn_seeds, stream);
-    r2 = prn(prn_seeds, stream);
-    r3 = prn(prn_seeds, stream);
+    r1 = prn(prn_seed);
+    r2 = prn(prn_seed);
+    r3 = prn(prn_seed);
     y = -std::log(r1*r2*r3);
     break;
   case 5:
-    r1 = prn(prn_seeds, stream);
-    r2 = prn(prn_seeds, stream);
-    r3 = prn(prn_seeds, stream);
-    r4 = prn(prn_seeds, stream);
-    r5 = prn(prn_seeds, stream);
-    r6 = prn(prn_seeds, stream);
+    r1 = prn(prn_seed);
+    r2 = prn(prn_seed);
+    r3 = prn(prn_seed);
+    r4 = prn(prn_seed);
+    r5 = prn(prn_seed);
+    r6 = prn(prn_seed);
     y = -std::log(r1*r2*r3*r4) - std::log(r5) * std::pow(std::cos(PI/2.0*r6), 2);
     break;
   default:

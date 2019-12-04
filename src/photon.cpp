@@ -290,12 +290,12 @@ PhotonInteraction::PhotonInteraction(hid_t group, int i_element)
 }
 
 void PhotonInteraction::compton_scatter(double alpha, bool doppler,
-  double* alpha_out, double* mu, int* i_shell, uint64_t* prn_seeds, int stream) const
+  double* alpha_out, double* mu, int* i_shell, uint64_t* prn_seed) const
 {
   double form_factor_xmax = 0.0;
   while (true) {
     // Sample Klein-Nishina distribution for trial energy and angle
-    std::tie(*alpha_out, *mu) = klein_nishina(alpha, prn_seeds, stream);
+    std::tie(*alpha_out, *mu) = klein_nishina(alpha, prn_seed);
 
     // Note that the parameter used here does not correspond exactly to the
     // momentum transfer q in ENDF-102 Eq. (27.2). Rather, this is the
@@ -309,10 +309,10 @@ void PhotonInteraction::compton_scatter(double alpha, bool doppler,
     }
 
     // Perform rejection on form factor
-    if (prn(prn_seeds, stream) < form_factor_x / form_factor_xmax) {
+    if (prn(prn_seed) < form_factor_x / form_factor_xmax) {
       if (doppler) {
         double E_out;
-        this->compton_doppler(alpha, *mu, &E_out, i_shell, prn_seeds, stream);
+        this->compton_doppler(alpha, *mu, &E_out, i_shell, prn_seed);
         *alpha_out = E_out/MASS_ELECTRON_EV;
       } else {
         *i_shell = -1;
@@ -323,14 +323,14 @@ void PhotonInteraction::compton_scatter(double alpha, bool doppler,
 }
 
 void PhotonInteraction::compton_doppler(double alpha, double mu,
-  double* E_out, int* i_shell, uint64_t* prn_seeds, int stream) const
+  double* E_out, int* i_shell, uint64_t* prn_seed) const
 {
   auto n = data::compton_profile_pz.size();
 
   int shell; // index for shell
   while (true) {
     // Sample electron shell
-    double rn = prn(prn_seeds, stream);
+    double rn = prn(prn_seed);
     double c = 0.0;
     for (shell = 0; shell < electron_pdf_.size(); ++shell) {
       c += electron_pdf_(shell);
@@ -377,7 +377,7 @@ void PhotonInteraction::compton_doppler(double alpha, double mu,
     }
 
     // Sample value on bounded cdf
-    c = prn(prn_seeds, stream)*c_max;
+    c = prn(prn_seed)*c_max;
 
     // Determine pz corresponding to sampled cdf value
     auto cdf_shell = xt::view(profile_cdf_, shell, xt::all());
@@ -418,7 +418,7 @@ void PhotonInteraction::compton_doppler(double alpha, double mu,
     if (E_out1 > 0.0) {
       if (E_out2 > 0.0) {
         // If both are positive, pick one at random
-        *E_out = prn(prn_seeds, stream) < 0.5 ? E_out1 : E_out2;
+        *E_out = prn(prn_seed) < 0.5 ? E_out1 : E_out2;
       } else {
         *E_out = E_out1;
       }
@@ -496,7 +496,7 @@ void PhotonInteraction::calculate_xs(Particle& p) const
   xs.last_E = p.E_;
 }
 
-double PhotonInteraction::rayleigh_scatter(double alpha, uint64_t* prn_seeds, int stream) const
+double PhotonInteraction::rayleigh_scatter(double alpha, uint64_t* prn_seed) const
 {
   double mu;
   while (true) {
@@ -507,7 +507,7 @@ double PhotonInteraction::rayleigh_scatter(double alpha, uint64_t* prn_seeds, in
     double F_max = coherent_int_form_factor_(x2_max);
 
     // Sample cumulative distribution
-    double F = prn(prn_seeds, stream)*F_max;
+    double F = prn(prn_seed)*F_max;
 
     // Determine x^2 corresponding to F
     const auto& x {coherent_int_form_factor_.x()};
@@ -519,14 +519,14 @@ double PhotonInteraction::rayleigh_scatter(double alpha, uint64_t* prn_seeds, in
     // Calculate mu
     mu = 1.0 - 2.0*x2/x2_max;
 
-    if (prn(prn_seeds, stream) < 0.5*(1.0 + mu*mu)) break;
+    if (prn(prn_seed) < 0.5*(1.0 + mu*mu)) break;
   }
   return mu;
 }
 
 void PhotonInteraction::pair_production(double alpha, double* E_electron,
-  double* E_positron, double* mu_electron, double* mu_positron, uint64_t* prn_seeds,
-  int stream) const
+  double* E_positron, double* mu_electron, double* mu_positron,
+  uint64_t* prn_seed) const
 {
   constexpr double r[] {
     122.81, 73.167, 69.228, 67.301, 64.696, 61.228,
@@ -593,12 +593,12 @@ void PhotonInteraction::pair_production(double alpha, double* E_electron,
   double u2 = phi2_max;
   double e;
   while (true) {
-    double rn = prn(prn_seeds, stream);
+    double rn = prn(prn_seed);
 
     // Sample the index i in (1, 2) using the point probabilities
     // p(1) = u_1/(u_1 + u_2) and p(2) = u_2/(u_1 + u_2)
     int i;
-    if (prn(prn_seeds, stream) < u1/(u1 + u2)) {
+    if (prn(prn_seed) < u1/(u1 + u2)) {
       i = 1;
 
       // Sample e from pi_1 using the inverse transform method
@@ -619,10 +619,10 @@ void PhotonInteraction::pair_production(double alpha, double* E_electron,
     t3 = b*b*(4.0 - 4.0*t2 - 3.0*std::log(1.0 + 1.0/(b*b)));
     if (i == 1) {
       double phi1 = 7.0/3.0 - t1 - 6.0*t2 - t3 + t4;
-      if (prn(prn_seeds, stream) <= phi1/phi1_max) break;
+      if (prn(prn_seed) <= phi1/phi1_max) break;
     } else {
       double phi2 = 11.0/6.0 - t1 - 3.0*t2 + 0.5*t3 + t4;
-      if (prn(prn_seeds, stream) <= phi2/phi2_max) break;
+      if (prn(prn_seed) <= phi2/phi2_max) break;
     }
   }
 
@@ -635,13 +635,13 @@ void PhotonInteraction::pair_production(double alpha, double* E_electron,
   // p(mu) = C/(1 - beta*mu)^2 using the inverse transform method.
   double beta = std::sqrt(*E_electron*(*E_electron + 2.0*MASS_ELECTRON_EV))
     / (*E_electron + MASS_ELECTRON_EV)  ;
-  double rn = 2.0*prn(prn_seeds, stream) - 1.0;
+  double rn = 2.0*prn(prn_seed) - 1.0;
   *mu_electron = (rn + beta)/(rn*beta + 1.0);
 
   // Sample the scattering angle of the positron
   beta = std::sqrt(*E_positron*(*E_positron + 2.0*MASS_ELECTRON_EV))
     / (*E_positron + MASS_ELECTRON_EV);
-  rn = 2.0*prn(prn_seeds, stream) - 1.0;
+  rn = 2.0*prn(prn_seed) - 1.0;
   *mu_positron = (rn + beta)/(rn*beta + 1.0);
 }
 
@@ -649,8 +649,8 @@ void PhotonInteraction::atomic_relaxation(const ElectronSubshell& shell, Particl
 {
   // If no transitions, assume fluorescent photon from captured free electron
   if (shell.n_transitions == 0) {
-    double mu = 2.0*prn(p.prn_seeds_, p.stream_) - 1.0;
-    double phi = 2.0*PI*prn(p.prn_seeds_, p.stream_);
+    double mu = 2.0*prn(p.prn_seeds_ + p.stream_) - 1.0;
+    double phi = 2.0*PI*prn(p.prn_seeds_ + p.stream_);
     Direction u;
     u.x = mu;
     u.y = std::sqrt(1.0 - mu*mu)*std::cos(phi);
@@ -661,7 +661,7 @@ void PhotonInteraction::atomic_relaxation(const ElectronSubshell& shell, Particl
   }
 
   // Sample transition
-  double rn = prn(p.prn_seeds_, p.stream_);
+  double rn = prn(p.prn_seeds_ + p.stream_);
   double c = 0.0;
   int i_transition;
   for (i_transition = 0; i_transition < shell.n_transitions; ++i_transition) {
@@ -674,8 +674,8 @@ void PhotonInteraction::atomic_relaxation(const ElectronSubshell& shell, Particl
   int secondary = shell.transition_subshells(i_transition, 1);
 
   // Sample angle isotropically
-  double mu = 2.0*prn(p.prn_seeds_, p.stream_) - 1.0;
-  double phi = 2.0*PI*prn(p.prn_seeds_, p.stream_);
+  double mu = 2.0*prn(p.prn_seeds_ + p.stream_) - 1.0;
+  double phi = 2.0*PI*prn(p.prn_seeds_ + p.stream_);
   Direction u;
   u.x = mu;
   u.y = std::sqrt(1.0 - mu*mu)*std::cos(phi);
@@ -711,7 +711,7 @@ void PhotonInteraction::atomic_relaxation(const ElectronSubshell& shell, Particl
 // Non-member functions
 //==============================================================================
 
-std::pair<double, double> klein_nishina(double alpha, uint64_t* prn_seeds, int stream)
+std::pair<double, double> klein_nishina(double alpha, uint64_t* prn_seed)
 {
   double alpha_out, mu;
   double beta = 1.0 + 2.0*alpha;
@@ -720,19 +720,19 @@ std::pair<double, double> klein_nishina(double alpha, uint64_t* prn_seeds, int s
     double t = beta/(beta + 8.0);
     double x;
     while (true) {
-      if (prn(prn_seeds, stream) < t) {
+      if (prn(prn_seed) < t) {
         // Left branch of flow chart
-        double r = 2.0*prn(prn_seeds, stream);
+        double r = 2.0*prn(prn_seed);
         x = 1.0 + alpha*r;
-        if (prn(prn_seeds, stream) < 4.0/x*(1.0 - 1.0/x)) {
+        if (prn(prn_seed) < 4.0/x*(1.0 - 1.0/x)) {
           mu = 1 - r;
           break;
         }
       } else {
         // Right branch of flow chart
-        x = beta/(1.0 + 2.0*alpha*prn(prn_seeds, stream));
+        x = beta/(1.0 + 2.0*alpha*prn(prn_seed));
         mu = 1.0 + (1.0 - x)/alpha;
-        if (prn(prn_seeds, stream) < 0.5*(mu*mu + 1.0/x)) break;
+        if (prn(prn_seed) < 0.5*(mu*mu + 1.0/x)) break;
       }
     }
     alpha_out = alpha/x;
@@ -740,24 +740,24 @@ std::pair<double, double> klein_nishina(double alpha, uint64_t* prn_seeds, int s
   } else {
     // Koblinger's direct method
     double gamma = 1.0 - std::pow(beta, -2);
-    double s = prn(prn_seeds, stream)*(4.0/alpha + 0.5*gamma +
+    double s = prn(prn_seed)*(4.0/alpha + 0.5*gamma +
       (1.0 - (1.0 + beta)/(alpha*alpha))*std::log(beta));
     if (s <= 2.0/alpha) {
       // For first term, x = 1 + 2ar
       // Therefore, a' = a/(1 + 2ar)
-      alpha_out = alpha/(1.0 + 2.0*alpha*prn(prn_seeds, stream));
+      alpha_out = alpha/(1.0 + 2.0*alpha*prn(prn_seed));
     } else if (s <= 4.0/alpha) {
       // For third term, x = beta/(1 + 2ar)
       // Therefore, a' = a(1 + 2ar)/beta
-      alpha_out = alpha*(1.0 + 2.0*alpha*prn(prn_seeds, stream))/beta;
+      alpha_out = alpha*(1.0 + 2.0*alpha*prn(prn_seed))/beta;
     } else if (s <= 4.0/alpha + 0.5*gamma) {
       // For fourth term, x = 1/sqrt(1 - gamma*r)
       // Therefore, a' = a*sqrt(1 - gamma*r)
-      alpha_out = alpha*std::sqrt(1.0 - gamma*prn(prn_seeds, stream));
+      alpha_out = alpha*std::sqrt(1.0 - gamma*prn(prn_seed));
     } else {
       // For third term, x = beta^r
       // Therefore, a' = a/beta^r
-      alpha_out = alpha/std::pow(beta, prn(prn_seeds, stream));
+      alpha_out = alpha/std::pow(beta, prn(prn_seed));
     }
 
     // Calculate cosine of scattering angle based on basic relation

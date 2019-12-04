@@ -125,16 +125,15 @@ std::vector<VolumeCalculation::Result> VolumeCalculation::execute() const
       std::vector<std::vector<int>> hits(n);
       Particle p;
 
-      uint64_t prn_seeds[N_STREAMS];
-      int stream = STREAM_VOLUME;
-
       // Sample locations and count hits
       #pragma omp for
       for (size_t i = i_start; i < i_end; i++) {
-        set_particle_seed(iterations * n_samples_ + i, prn_seeds);
+        uint64_t prn_seed;
+        int64_t id = iterations * n_samples_ + i;
+        init_seed(id, &prn_seed, STREAM_VOLUME);
 
         p.n_coord_ = 1;
-        Position xi {prn(prn_seeds, stream), prn(prn_seeds, stream), prn(prn_seeds, stream)};
+        Position xi {prn(&prn_seed), prn(&prn_seed), prn(&prn_seed)};
         p.r() = lower_left_ + xi*(upper_right_ - lower_left_);
         p.u() = {0.5, 0.5, 0.5};
 

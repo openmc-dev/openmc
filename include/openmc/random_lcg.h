@@ -89,7 +89,7 @@ uint64_t future_seed(uint64_t n, uint64_t prn_seed);
 //! Get OpenMC's master seed.
 //==============================================================================
 
-int64_t openmc_get_seed();
+extern "C" int64_t openmc_get_seed();
 
 //==============================================================================
 //! Set OpenMC's master seed.
@@ -97,7 +97,7 @@ int64_t openmc_get_seed();
 //! one.
 //==============================================================================
 
-void openmc_set_seed(int64_t new_seed);
+extern "C" void openmc_set_seed(int64_t new_seed);
 
 } // namespace openmc
 #endif // OPENMC_RANDOM_LCG_H

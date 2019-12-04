@@ -72,14 +72,14 @@ void sab_scatter(int i_nuclide, int i_sab, Particle* p);
 //! dependence of cross sections in treating resonance elastic scattering such
 //! as the DBRC and a new, accelerated scheme are also implemented here.
 Direction sample_target_velocity(const Nuclide* nuc, double E, Direction u,
-   Direction v_neut, double xs_eff, double kT, uint64_t* prn_seed);
+  Direction v_neut, double xs_eff, double kT, uint64_t* prn_seed);
 
 //! samples a target velocity based on the free gas scattering formulation, used
 //! by most Monte Carlo codes, in which cross section is assumed to be constant
 //! in energy. Excellent documentation for this method can be found in
 //! FRA-TM-123.
 Direction sample_cxs_target_velocity(double awr, double E, Direction u, double kT,
-		uint64_t* prn_seed);
+  uint64_t* prn_seed);
 
 void sample_fission_neutron(int i_nuclide, const Reaction* rx, double E_in,
   Particle::Bank* site, uint64_t* prn_seed);

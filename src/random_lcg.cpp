@@ -43,7 +43,7 @@ double future_prn(int64_t n, uint64_t prn_seed)
 }
 
 //==============================================================================
-// SET_SEED
+// INIT_SEED
 //==============================================================================
 
 void init_seed(int64_t id, uint64_t* prn_seed, int offset)
@@ -52,7 +52,7 @@ void init_seed(int64_t id, uint64_t* prn_seed, int offset)
 }
 
 //==============================================================================
-// SET_PARTICLE_SEEDS
+// INIT_PARTICLE_SEEDS
 //==============================================================================
 
 void init_particle_seeds(int64_t id, uint64_t* prn_seeds)

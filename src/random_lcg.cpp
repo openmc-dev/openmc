@@ -113,9 +113,9 @@ uint64_t future_seed(uint64_t n, uint64_t prn_seed)
 //                               API FUNCTIONS
 //==============================================================================
 
-int64_t openmc_get_seed() {return master_seed;}
+extern "C" int64_t openmc_get_seed() {return master_seed;}
 
-void openmc_set_seed(int64_t new_seed)
+extern "C" void openmc_set_seed(int64_t new_seed)
 {
   master_seed = new_seed;
 }

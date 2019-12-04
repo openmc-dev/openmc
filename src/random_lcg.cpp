@@ -32,15 +32,15 @@ constexpr double   prn_norm   {1.0 / prn_mod};           // 2^-63
 //==============================================================================
 
 extern "C" double
-prn(uint64_t* prn_seeds, int stream)
+prn(uint64_t* prn_seed)
 {
   // This algorithm uses bit-masking to find the next integer(8) value to be
   // used to calculate the random number.
-  prn_seeds[stream] = (prn_mult*prn_seeds[stream] + prn_add) & prn_mask;
+  *prn_seed = (prn_mult * (*prn_seed) + prn_add) & prn_mask;
 
   // Once the integer is calculated, we just need to divide by 2**m,
   // represented here as multiplying by a pre-calculated factor
-  return prn_seeds[stream] * prn_norm;
+  return (*prn_seed) * prn_norm;
 }
 
 //==============================================================================
@@ -48,17 +48,27 @@ prn(uint64_t* prn_seeds, int stream)
 //==============================================================================
 
 extern "C" double
-future_prn(int64_t n, uint64_t* prn_seeds, int stream)
+future_prn(int64_t n, uint64_t prn_seed)
 {
-  return future_seed(static_cast<uint64_t>(n), prn_seeds[stream]) * prn_norm;
+  return future_seed(static_cast<uint64_t>(n), prn_seed) * prn_norm;
 }
 
 //==============================================================================
-// SET_PARTICLE_SEED
+// SET_SEED
 //==============================================================================
 
 extern "C" void
-set_particle_seed(int64_t id, uint64_t* prn_seeds)
+init_seed(int64_t id, uint64_t* prn_seed, int offset)
+{
+  *prn_seed = future_seed(static_cast<uint64_t>(id) * prn_stride, master_seed + offset);
+}
+
+//==============================================================================
+// SET_PARTICLE_SEEDS
+//==============================================================================
+
+extern "C" void
+init_particle_seeds(int64_t id, uint64_t* prn_seeds)
 {
   for (int i = 0; i < N_STREAMS; i++) {
     prn_seeds[i] = future_seed(static_cast<uint64_t>(id) * prn_stride, master_seed + i);
@@ -70,9 +80,9 @@ set_particle_seed(int64_t id, uint64_t* prn_seeds)
 //==============================================================================
 
 extern "C" void
-advance_prn_seed(int64_t n, uint64_t* prn_seeds, int stream)
+advance_prn_seed(int64_t n, uint64_t* prn_seed)
 {
-  prn_seeds[stream] = future_seed(static_cast<uint64_t>(n), prn_seeds[stream]);
+  *prn_seed = future_seed(static_cast<uint64_t>(n), *prn_seed);
 }
 
 //==============================================================================
@@ -80,7 +90,7 @@ advance_prn_seed(int64_t n, uint64_t* prn_seeds, int stream)
 //==============================================================================
 
 uint64_t
-future_seed(uint64_t n, uint64_t seed)
+future_seed(uint64_t n, uint64_t prn_seed)
 {
   // Make sure nskip is less than 2^M.
   n &= prn_mask;
@@ -111,7 +121,7 @@ future_seed(uint64_t n, uint64_t seed)
   }
 
   // With G and C, we can now find the new seed.
-  return (g_new * seed + c_new) & prn_mask;
+  return (g_new * prn_seed + c_new) & prn_mask;
 }
 
 //==============================================================================

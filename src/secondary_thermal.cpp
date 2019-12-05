@@ -125,7 +125,7 @@ IncoherentElasticAEDiscrete::sample(double E_in, double& E_out, double& mu,
     mu_out_(i, k+1) + f*(mu_out_(i+1, k+1) - mu_out_(i, k+1));
 
   // Smear cosine
-  mu += std::min(mu - mu_left, mu_right - mu)*(prn() - 0.5);
+  mu += std::min(mu - mu_left, mu_right - mu)*(prn(prn_seed) - 0.5);
 
   // Energy doesn't change in elastic scattering
   E_out = E_in;

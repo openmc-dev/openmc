@@ -46,9 +46,9 @@ double future_prn(int64_t n, uint64_t prn_seed)
 // INIT_SEED
 //==============================================================================
 
-void init_seed(int64_t id, uint64_t* prn_seed, int offset)
+uint64_t init_seed(int64_t id, int offset)
 {
-  *prn_seed = future_seed(static_cast<uint64_t>(id) * prn_stride, master_seed + offset);
+  return future_seed(static_cast<uint64_t>(id) * prn_stride, master_seed + offset);
 }
 
 //==============================================================================

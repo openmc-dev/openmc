@@ -270,11 +270,10 @@ void initialize_source()
       // initialize random number seed
       int64_t id = simulation::total_gen*settings::n_particles +
         simulation::work_index[mpi::rank] + i + 1;
-      uint64_t prn_seed;
-      init_seed(id, &prn_seed, STREAM_SOURCE);
+      uint64_t seed = init_seed(id, STREAM_SOURCE);
 
       // sample external source distribution
-      simulation::source_bank[i] = sample_external_source(&prn_seed);
+      simulation::source_bank[i] = sample_external_source(&seed);
     }
   }
 
@@ -331,11 +330,10 @@ void fill_source_bank_fixedsource()
       // initialize random number seed
       int64_t id = (simulation::total_gen + overall_generation()) *
         settings::n_particles + simulation::work_index[mpi::rank] + i + 1;
-      uint64_t prn_seed;
-      init_seed(id, &prn_seed, STREAM_SOURCE);
+      uint64_t seed = init_seed(id, STREAM_SOURCE);
 
       // sample external source distribution
-      simulation::source_bank[i] = sample_external_source(&prn_seed);
+      simulation::source_bank[i] = sample_external_source(&seed);
     }
   }
 }

@@ -43,11 +43,13 @@ double future_prn(int64_t n, uint64_t prn_seed);
 //==============================================================================
 //! Set a RNG seed to a unique value based on a unique particle ID by striding
 //! the seed.
-//! @param prn_seeds Pseudorandom number seed array
 //! @param id The particle ID
+//! @param offset The offset from the master seed to be used (e.g., for creating
+//! different streams)
+//! @return The initialized seed value
 //==============================================================================
 
-void init_seed(int64_t id, uint64_t* prn_seeds, int offset );
+uint64_t init_seed(int64_t id, int offset);
 
 //==============================================================================
 //! Set the RNG seeds to unique values based on the ID of the particle. This
@@ -57,7 +59,7 @@ void init_seed(int64_t id, uint64_t* prn_seeds, int offset );
 //! @param id The particle ID
 //==============================================================================
 
-void init_particle_seeds(int64_t id, uint64_t* prn_seeds );
+void init_particle_seeds(int64_t id, uint64_t* prn_seeds);
 
 //==============================================================================
 //! Advance the random number seed 'n' times from the current seed. This

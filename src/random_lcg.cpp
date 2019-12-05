@@ -55,10 +55,10 @@ uint64_t init_seed(int64_t id, int offset)
 // INIT_PARTICLE_SEEDS
 //==============================================================================
 
-void init_particle_seeds(int64_t id, uint64_t* prn_seeds)
+void init_particle_seeds(int64_t id, uint64_t* seeds)
 {
   for (int i = 0; i < N_STREAMS; i++) {
-    prn_seeds[i] = future_seed(static_cast<uint64_t>(id) * prn_stride, master_seed + i);
+    seeds[i] = future_seed(static_cast<uint64_t>(id) * prn_stride, master_seed + i);
   }
 }
 

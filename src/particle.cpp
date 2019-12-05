@@ -27,13 +27,7 @@
 #include "openmc/tallies/tally_scoring.h"
 #include "openmc/track_output.h"
 
-// Explicit template instantiation definition
-template class std::vector<openmc::Particle>;
-
-
 namespace openmc {
-
-std::vector<Particle> particle_bank;
 
 //==============================================================================
 // LocalCoord implementation
@@ -140,15 +134,14 @@ void
 Particle::transport()
 {
   // Display message if high verbosity or trace is on
-  //if (settings::verbosity >= 9 || simulation::trace) {
-    // write_message("Simulating Particle " + std::to_string(id_));
-  //}
+  if (settings::verbosity >= 9 || simulation::trace) {
+     write_message("Simulating Particle " + std::to_string(id_));
+  }
 
   // Initialize number of events to zero
   int n_event = 0;
 
   // Add paricle's starting weight to count for normalizing tallies later
-  /*
   #pragma omp atomic
   simulation::total_weight += wgt_;
 
@@ -162,7 +155,6 @@ Particle::transport()
 
   // Every particle starts with no accumulated flux derivative.
   if (!model::active_tallies.empty()) zero_flux_derivs();
-  */
 
   while (true) {
     // Set the random number stream
@@ -238,7 +230,7 @@ Particle::transport()
     } else if (macro_xs_.total == 0.0) {
       d_collision = INFINITY;
     } else {
-      d_collision = -std::log(prn(prn_seeds_, stream_)) / macro_xs_.total;
+      d_collision = -std::log(prn(prn_seeds_ + stream_)) / macro_xs_.total;
     }
 
     // Select smaller of the two distances
@@ -474,7 +466,7 @@ Particle::cross_surface()
 
     Direction u = (surf->bc_ == BC_REFLECT) ?
       surf->reflect(this->r(), this->u()) :
-      surf->diffuse_reflect(this->r(), this->u(), prn_seeds_, stream_);
+      surf->diffuse_reflect(this->r(), this->u(), prn_seeds_ + stream_);
 
     // Make sure new particle direction is normalized
     this->u() = u / u.norm();

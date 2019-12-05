@@ -79,10 +79,10 @@ void
 scatter(Particle* p)
 {
   data::mg.macro_xs_[p->material_].sample_scatter(p->g_last_, p->g_, p->mu_,
-                                                  p->wgt_, p->prn_seeds_, p->stream_);
+                                                  p->wgt_, p->prn_seeds_ + p->stream_);
 
   // Rotate the angle
-  p->u() = rotate_angle(p->u(), p->mu_, nullptr, p->prn_seeds_, p->stream_);
+  p->u() = rotate_angle(p->u(), p->mu_, nullptr, p->prn_seeds_ + p->stream_);
 
   // Update energy value for downstream compatability (in tallying)
   p->E_ = data::mg.energy_bin_avg_[p->g_];
@@ -104,7 +104,7 @@ create_fission_sites(Particle* p, std::vector<Particle::Bank>& bank)
 
   // Sample the number of neutrons produced
   int nu = static_cast<int>(nu_t);
-  if (prn(p->prn_seeds_, p->stream_) <= (nu_t - int(nu_t))) {
+  if (prn(p->prn_seeds_ + p->stream_) <= (nu_t - int(nu_t))) {
     nu++;
   }
 
@@ -129,10 +129,10 @@ create_fission_sites(Particle* p, std::vector<Particle::Bank>& bank)
 
     // Sample the cosine of the angle, assuming fission neutrons are emitted
     // isotropically
-    double mu = 2.*prn(p->prn_seeds_, p->stream_) - 1.;
+    double mu = 2.*prn(p->prn_seeds_ + p->stream_) - 1.;
 
     // Sample the azimuthal angle uniformly in [0, 2.pi)
-    double phi = 2. * PI * prn(p->prn_seeds_, p->stream_ );
+    double phi = 2. * PI * prn(p->prn_seeds_ + p->stream_ );
     site.u.x = mu;
     site.u.y = std::sqrt(1. - mu * mu) * std::cos(phi);
     site.u.z = std::sqrt(1. - mu * mu) * std::sin(phi);
@@ -140,8 +140,8 @@ create_fission_sites(Particle* p, std::vector<Particle::Bank>& bank)
     // Sample secondary energy distribution for the fission reaction
     int dg;
     int gout;
-    data::mg.macro_xs_[p->material_].sample_fission_energy(p->g_, dg, gout, p->prn_seeds_,
-        p->stream_);
+    data::mg.macro_xs_[p->material_].sample_fission_energy(p->g_, dg, gout,
+      p->prn_seeds_ + p->stream_);
     // Store the energy and delayed groups on the fission bank
     site.E = gout;
     // We add 1 to the delayed_group bc in MG, -1 is prompt, but in the rest
@@ -181,7 +181,7 @@ absorption(Particle* p)
     global_tally_absorption += p->wgt_absorb_ * p->macro_xs_.nu_fission /
         p->macro_xs_.absorption;
   } else {
-    if (p->macro_xs_.absorption > prn(p->prn_seeds_, p->stream_) * p->macro_xs_.total) {
+    if (p->macro_xs_.absorption > prn(p->prn_seeds_ + p->stream_) * p->macro_xs_.total) {
       #pragma omp atomic
       global_tally_absorption += p->wgt_ * p->macro_xs_.nu_fission /
            p->macro_xs_.absorption;

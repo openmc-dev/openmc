@@ -42,10 +42,8 @@ public:
   //! \param[in] E_in Incoming energy in [eV]
   //! \param[out] E_out Outgoing energy in [eV]
   //! \param[out] mu Outgoing cosine with respect to current direction
-  //! \param[inout] prn_seeds Pseudorandom array of stream seeds
-  //! \param[in] stream Psuedorandom stream index
-  void sample(double E_in, double& E_out, double& mu, uint64_t * prn_seeds,
-    int stream) const;
+  //! \param[inout] prn_seed Pseudorandom seed pointer
+  void sample(double E_in, double& E_out, double& mu, uint64_t* prn_seed) const;
 
   Particle::Type particle_; //!< Particle type
   EmissionMode emission_mode_; //!< Emission mode

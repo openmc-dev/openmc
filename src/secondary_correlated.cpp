@@ -153,14 +153,14 @@ CorrelatedAngleEnergy::CorrelatedAngleEnergy(hid_t group)
 }
 
 void CorrelatedAngleEnergy::sample(double E_in, double& E_out, double& mu,
-  uint64_t * prn_seeds, int stream) const
+  uint64_t* prn_seed) const
 {
   // <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<< REMOVE THIS <<<<<<<<<<<<<<<<<<<<<<<<<<<<<
   // Before the secondary distribution refactor, an isotropic polar cosine was
   // always sampled but then overwritten with the polar cosine sampled from the
   // correlated distribution. To preserve the random number stream, we keep
   // this dummy sampling here but can remove it later (will change answers)
-  mu = 2.0*prn(prn_seeds, stream) - 1.0;
+  mu = 2.0*prn(prn_seed) - 1.0;
   // <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<< REMOVE THIS <<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
   // Find energy bin and calculate interpolation factor -- if the energy is
@@ -180,7 +180,7 @@ void CorrelatedAngleEnergy::sample(double E_in, double& E_out, double& mu,
   }
 
   // Sample between the ith and [i+1]th bin
-  int l = r > prn(prn_seeds, stream) ? i + 1 : i;
+  int l = r > prn(prn_seed) ? i + 1 : i;
 
   // Interpolation for energy E1 and EK
   int n_energy_out = distribution_[i].e_out.size();
@@ -199,7 +199,7 @@ void CorrelatedAngleEnergy::sample(double E_in, double& E_out, double& mu,
   // Determine outgoing energy bin
   n_energy_out = distribution_[l].e_out.size();
   n_discrete = distribution_[l].n_discrete;
-  double r1 = prn(prn_seeds, stream);
+  double r1 = prn(prn_seed);
   double c_k = distribution_[l].c[0];
   int k = 0;
   int end = n_energy_out - 2;
@@ -260,9 +260,9 @@ void CorrelatedAngleEnergy::sample(double E_in, double& E_out, double& mu,
 
   // Find correlated angular distribution for closest outgoing energy bin
   if (r1 - c_k < c_k1 - r1) {
-    mu = distribution_[l].angle[k]->sample(prn_seeds, stream);
+    mu = distribution_[l].angle[k]->sample(prn_seed);
   } else {
-    mu = distribution_[l].angle[k + 1]->sample(prn_seeds, stream);
+    mu = distribution_[l].angle[k + 1]->sample(prn_seed);
   }
 }
 

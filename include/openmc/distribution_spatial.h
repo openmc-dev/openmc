@@ -17,7 +17,7 @@ public:
   virtual ~SpatialDistribution() = default;
 
   //! Sample a position from the distribution
-  virtual Position sample(uint64_t * prn_seeds, int stream) const = 0;
+  virtual Position sample(uint64_t* prn_seed) const = 0;
 };
 
 //==============================================================================
@@ -29,10 +29,9 @@ public:
   explicit CartesianIndependent(pugi::xml_node node);
 
   //! Sample a position from the distribution
-  //! \param prn_seeds Array of pseudorandom number seeds
-  //! \param stream Pseudorandom stream index
+  //! \param prn_seed Pseudorandom number seed pointer
   //! \return Sampled position
-  Position sample(uint64_t * prn_seeds, int stream) const;
+  Position sample(uint64_t* prn_seed) const;
 private:
   UPtrDist x_; //!< Distribution of x coordinates
   UPtrDist y_; //!< Distribution of y coordinates
@@ -48,10 +47,9 @@ public:
   explicit SphericalIndependent(pugi::xml_node node);
 
   //! Sample a position from the distribution
-  //! \param prn_seeds Array of pseudorandom number seeds
-  //! \param stream Pseudorandom stream index
+  //! \param prn_seed Pseudorandom number seed pointer
   //! \return Sampled position
-  Position sample(uint64_t * prn_seeds, int stream) const;
+  Position sample(uint64_t* prn_seed) const;
 private:
   UPtrDist r_; //!< Distribution of r coordinates
   UPtrDist theta_; //!< Distribution of theta coordinates
@@ -68,10 +66,9 @@ public:
   explicit SpatialBox(pugi::xml_node node, bool fission=false);
 
   //! Sample a position from the distribution
-  //! \param prn_seeds Array of pseudorandom number seeds
-  //! \param stream Pseudorandom stream index
+  //! \param prn_seed Pseudorandom number seed pointer
   //! \return Sampled position
-  Position sample(uint64_t * prn_seeds, int stream) const;
+  Position sample(uint64_t* prn_seed) const;
 
   // Properties
   bool only_fissionable() const { return only_fissionable_; }
@@ -92,10 +89,9 @@ public:
   explicit SpatialPoint(pugi::xml_node node);
 
   //! Sample a position from the distribution
-  //! \param prn_seeds Array of pseudorandom number seeds
-  //! \param stream Pseudorandom stream index
+  //! \param prn_seed Pseudorandom number seed pointer
   //! \return Sampled position
-  Position sample(uint64_t * prn_seeds, int stream) const;
+  Position sample(uint64_t* prn_seed) const;
 private:
   Position r_; //!< Single position at which sites are generated
 };

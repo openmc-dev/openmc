@@ -151,7 +151,7 @@ ThermalScattering::ThermalScattering(hid_t group, const std::vector<double>& tem
 void
 ThermalScattering::calculate_xs(double E, double sqrtkT, int* i_temp,
                                 double* elastic, double* inelastic,
-                                uint64_t * prn_seeds, int stream) const
+                                uint64_t* prn_seed) const
 {
   // Determine temperature for S(a,b) table
   double kT = sqrtkT*sqrtkT;
@@ -173,7 +173,7 @@ ThermalScattering::calculate_xs(double E, double sqrtkT, int* i_temp,
 
     // Randomly sample between temperature i and i+1
     double f = (kT - kTs_[i]) / (kTs_[i+1] - kTs_[i]);
-    if (f > prn(prn_seeds, stream)) ++i;
+    if (f > prn(prn_seed)) ++i;
   }
 
   // Set temperature index
@@ -266,13 +266,13 @@ ThermalData::calculate_xs(double E, double* elastic, double* inelastic) const
 
 void
 ThermalData::sample(const NuclideMicroXS& micro_xs, double E,
-                    double* E_out, double* mu, uint64_t * prn_seeds, int stream)
+                    double* E_out, double* mu, uint64_t* prn_seed)
 {
   // Determine whether inelastic or elastic scattering will occur
-  if (prn(prn_seeds, stream) < micro_xs.thermal_elastic / micro_xs.thermal) {
-    elastic_.distribution->sample(E, *E_out, *mu, prn_seeds, stream);
+  if (prn(prn_seed) < micro_xs.thermal_elastic / micro_xs.thermal) {
+    elastic_.distribution->sample(E, *E_out, *mu, prn_seed);
   } else {
-    inelastic_.distribution->sample(E, *E_out, *mu, prn_seeds, stream);
+    inelastic_.distribution->sample(E, *E_out, *mu, prn_seed);
   }
 
   // Because of floating-point roundoff, it may be possible for mu to be

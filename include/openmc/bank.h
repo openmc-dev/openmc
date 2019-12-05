@@ -22,12 +22,13 @@ namespace simulation {
 
 extern std::vector<Particle::Bank> source_bank;
 extern std::vector<Particle::Bank> fission_bank;
-extern std::vector<Particle::Bank> secondary_bank;
+//extern std::vector<Particle::Bank> secondary_bank;
 #ifdef _OPENMP
 extern std::vector<Particle::Bank> master_fission_bank;
 #endif
 
-#pragma omp threadprivate(fission_bank, secondary_bank)
+//#pragma omp threadprivate(fission_bank, secondary_bank)
+#pragma omp threadprivate(fission_bank)
 
 } // namespace simulation
 

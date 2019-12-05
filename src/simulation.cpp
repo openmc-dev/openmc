@@ -25,8 +25,749 @@
 #endif
 #include "xtensor/xview.hpp"
 
+#ifdef OPENMC_MPI
+#include <mpi.h>
+#endif
+
 #include <algorithm>
 #include <string>
+#include <chrono> 
+
+
+namespace openmc {
+
+	/*
+extern std::vector<Particle*> calculate_fuel_xs_queue;
+extern std::vector<Particle*> calculate_nonfuel_xs_queue;
+extern std::vector<Particle*> advance_particle_queue;
+extern std::vector<Particle*> surface_crossing_queue;
+extern std::vector<Particle*> collision_queue;
+#pragma omp threadprivate(calculate_fuel_xs_queue, calculate_nonfuel_xs_queue, advance_particle_queue, surface_crossing_queue, collision_queue)
+
+std::vector<Particle*> calculate_fuel_xs_queue;
+std::vector<Particle*> calculate_nonfuel_xs_queue;
+std::vector<Particle*> advance_particle_queue;
+std::vector<Particle*> surface_crossing_queue;
+std::vector<Particle*> collision_queue;
+*/
+
+struct QueueItem{
+	int idx;      // particle index in event-based buffer
+	double E;     // particle energy
+	int material; // material that particle is in
+};
+bool by_energy   (QueueItem a, QueueItem b) { return (a.E        < b.E); }
+bool by_material (QueueItem a, QueueItem b) { return (a.material < b.material); }
+
+QueueItem * calculate_fuel_xs_queue;
+QueueItem * calculate_nonfuel_xs_queue;
+QueueItem * advance_particle_queue;
+QueueItem * surface_crossing_queue;
+QueueItem * collision_queue;
+Particle * particles;
+
+int calculate_fuel_xs_queue_length    = 0;
+int calculate_nonfuel_xs_queue_length = 0;
+int advance_particle_queue_length     = 0;
+int surface_crossing_queue_length     = 0;
+int collision_queue_length            = 0;
+
+const int MAX_PARTICLES_IN_FLIGHT = 100000;
+
+void init_event_queues(int n_particles)
+{
+	calculate_fuel_xs_queue =    new QueueItem[n_particles];
+	calculate_nonfuel_xs_queue = new QueueItem[n_particles];
+	advance_particle_queue =     new QueueItem[n_particles];
+	surface_crossing_queue =     new QueueItem[n_particles];
+	collision_queue =            new QueueItem[n_particles];
+	particles =                  new Particle[n_particles];
+}
+
+void free_event_queues(void)
+{
+	delete calculate_fuel_xs_queue;
+	delete calculate_nonfuel_xs_queue;
+	delete advance_particle_queue;
+	delete surface_crossing_queue;
+	delete collision_queue;
+	delete[] particles;
+}
+
+constexpr size_t MAX_PARTICLES_PER_THREAD {100};
+
+Particle::Bank * shared_fission_bank;
+int shared_fission_bank_length = 0;
+int shared_fission_bank_max;
+
+void init_shared_fission_bank(int max)
+{
+	shared_fission_bank_max = max;
+	shared_fission_bank = new Particle::Bank[max];
+}
+
+void free_shared_fission_bank(void)
+{
+	delete[] shared_fission_bank;
+	shared_fission_bank_length = 0;
+}
+
+// TODO: What is going on here?
+void revive_particle_from_secondary(Particle* p)
+{
+  //p->from_source(&simulation::secondary_bank.back());
+  p->from_source(&p->secondary_bank_.back());
+  //simulation::secondary_bank.pop_back();
+  p->secondary_bank_.pop_back();
+  // n_event = 0;
+
+  // Enter new particle in particle track file
+  if (p->write_track_) add_particle_track();
+}
+
+void dispatch_xs_event(int i)
+{
+	Particle * p = particles + i;
+	  int idx;
+  if (p->material_ == MATERIAL_VOID) {
+
+	#pragma omp atomic capture
+	idx = calculate_nonfuel_xs_queue_length++;
+	//std::cout << "Dispatching particle to non Fuel XS queue idx = " << idx << std::endl;
+    calculate_nonfuel_xs_queue[idx].idx = i;
+    calculate_nonfuel_xs_queue[idx].E = p->E_;
+    calculate_nonfuel_xs_queue[idx].material = p->material_;
+  } else {
+    if (model::materials[p->material_]->fissionable_) {
+	#pragma omp atomic capture
+	idx = calculate_fuel_xs_queue_length++;
+	//std::cout << "Dispatching particle to Fuel XS queue idx = " << idx << std::endl;
+      calculate_fuel_xs_queue[idx].idx = i;
+      calculate_fuel_xs_queue[idx].E = p->E_;
+      calculate_fuel_xs_queue[idx].material = p->material_;
+    } else {
+	#pragma omp atomic capture
+	idx = calculate_nonfuel_xs_queue_length++;
+	//std::cout << "Dispatching particle to non Fuel XS queue idx = " << idx << std::endl;
+      calculate_nonfuel_xs_queue[idx].idx = i;
+      calculate_nonfuel_xs_queue[idx].E = p->E_;
+      calculate_nonfuel_xs_queue[idx].material = p->material_;
+    }
+  }
+}
+
+void process_calculate_xs_events(QueueItem * queue, int n)
+{
+  // Sort queue by energy
+  std::sort(queue, queue+n, by_energy);
+
+  // Then, stable sort by material (so as to preserve energy ordering)
+  std::stable_sort(queue, queue+n, by_material);
+
+  // Save last_ members, find grid index
+  int lost_particles = 0;
+  #pragma omp parallel for reduction(+:lost_particles)
+  for (int i = 0; i < n; i++) {
+	  Particle *p = particles + queue[i].idx; 
+	  //std::cout << "particle offset = " << queue[i] << std::endl;
+    // Set the random number stream
+	// TODO: Move RNG seeds to particle storage
+    if (p->type_ == Particle::Type::neutron) {
+		p->stream_ = STREAM_TRACKING;
+    } else {
+		p->stream_ = STREAM_PHOTON;
+    }
+
+    // Store pre-collision particle properties
+    p->wgt_last_ = p->wgt_;
+    p->E_last_ = p->E_;
+    p->u_last_ = p->u();
+    p->r_last_ = p->r();
+
+    // If the cell hasn't been determined based on the particle's location,
+    // initiate a search for the current cell. This generally happens at the
+    // beginning of the history and again for any secondary particles
+    if (p->coord_[p->n_coord_ - 1].cell == C_NONE) {
+      if (!find_cell(p, false)) {
+        p->mark_as_lost("Could not find the cell containing particle "
+          + std::to_string(p->id_));
+        //return;
+		lost_particles += 1;
+		continue;
+      }
+
+      // set birth cell attribute
+      if (p->cell_born_ == C_NONE) p->cell_born_ = p->coord_[p->n_coord_ - 1].cell;
+    }
+
+    // Write particle track.
+    if (p->write_track_) write_particle_track(*p);
+
+    if (settings::check_overlaps) check_cell_overlap(p);
+
+    if (settings::run_CE) {
+      if (p->material_ == p->material_last_ && p->sqrtkT_ != p->sqrtkT_last_) {
+        // Remove particle from queue
+      }
+    }
+
+    // Find energy index on energy grid
+    // TODO: Calculate this separately?
+    //int neutron = static_cast<int>(Particle::Type::neutron);
+    //p->macro_xs_.i_grid = std::log(p->E_/data::energy_min[neutron]) / simulation::log_spacing;
+  }
+  if( lost_particles > 0 )
+	  exit(1);
+  #pragma omp parallel for
+  for( int i = 0; i < n; i++ )
+  {
+	  Particle * p = particles + queue[i].idx;
+	  // Calculate microscopic and macroscopic cross sections
+	  if (p->material_ != MATERIAL_VOID) {
+		  if (settings::run_CE) {
+			  if (p->material_ != p->material_last_ || p->sqrtkT_ != p->sqrtkT_last_) {
+				  // If the material is the same as the last material and the
+				  // temperature hasn't changed, we don't need to lookup cross
+				  // sections again.
+				  model::materials[p->material_]->calculate_xs(*p);
+			  }
+		  } // else MG not supported
+	  } else {
+		  p->macro_xs_.total      = 0.0;
+		  p->macro_xs_.absorption = 0.0;
+		  p->macro_xs_.fission    = 0.0;
+		  p->macro_xs_.nu_fission = 0.0;
+	  }
+	  /*
+	  int idx;
+	  #pragma omp atomic capture
+	  idx = advance_particle_queue_length++;
+	  advance_particle_queue[idx] = queue[i];
+	  */
+  }
+  int start = advance_particle_queue_length;
+  int end = start + n;
+  int j = 0;
+  for( int i = start; i < end; i++ )
+  {
+	  advance_particle_queue[i].idx = queue[j].idx;
+	  advance_particle_queue[i].E = particles[queue[j].idx].E_;
+	  advance_particle_queue[i].material = particles[queue[j].idx].material_;
+	  j++;
+  }
+  advance_particle_queue_length += n;
+
+  /*
+  // Calculate nuclide micros
+  for (int i = 0; i < data::nuclides.size(); ++i) {
+	  // loop over particles
+    for (int j = 0; j < n; j++) {
+		//Particle * p = particles + queue[i];
+		Particle * p = particles + queue[j];
+      if (p->material_ == MATERIAL_VOID) continue;
+
+      // If material doesn't have this nuclide, skip it
+      const auto& mat {model::materials[p->material_]};
+      if (mat->mat_nuclide_index_[i] == -1) continue;
+
+      // ======================================================================
+      // CHECK FOR S(A,B) TABLE
+
+      // Check if this nuclide matches one of the S(a,b) tables specified.
+      // This relies on thermal_tables_ being sorted by .index_nuclide
+      int i_sab = C_NONE;
+      double sab_frac = 0.0;
+      for (const auto& sab : mat->thermal_tables_) {
+        if (i == sab.index_nuclide) {
+          // Get index in sab_tables
+          i_sab = sab.index_table;
+          sab_frac = sab.fraction;
+
+          // If particle energy is greater than the highest energy for the
+          // S(a,b) table, then don't use the S(a,b) table
+          //if (p->E_ > data::thermal_scatt[i_sab]->threshold()) i_sab = C_NONE;
+			std::cout << "S(alpha, beta) max energy = " << data::thermal_scatt[i_sab]->energy_max_ <<std::endl;
+          if (p->E_ > data::thermal_scatt[i_sab]->energy_max_) i_sab = C_NONE;
+        }
+      }
+
+      // ======================================================================
+      // CALCULATE MICROSCOPIC CROSS SECTION
+
+      // Calculate microscopic cross section for this nuclide
+      const auto& micro {p->neutron_xs_[i]};
+      if (p->E_ != micro.last_E
+          || p->sqrtkT_ != micro.last_sqrtkT
+          || i_sab != micro.index_sab
+          || sab_frac != micro.sab_frac) {
+        data::nuclides[i]->calculate_xs(i_sab, p->macro_xs_.i_grid, sab_frac, *p);
+      }
+    }
+  }
+
+  for (int i = 0; i < n; i++) {
+	  Particle * p = particles + queue[i];
+    // Calculate microscopic and macroscopic cross sections
+    if (p->material_ != MATERIAL_VOID) {
+	  // Only works for CE, no MG support
+      //if (settings::run_CE) {
+        // If the material is the same as the last material and the
+        // temperature hasn't changed, we don't need to lookup cross
+        // sections again.
+        model::materials[p->material_]->calculate_xs(*p);
+      }
+		//else {
+      //}
+     else {
+      p->macro_xs_.total      = 0.0;
+      p->macro_xs_.absorption = 0.0;
+      p->macro_xs_.fission    = 0.0;
+      p->macro_xs_.nu_fission = 0.0;
+    }
+
+	 int idx;
+	 #pragma omp atomic capture
+	 idx = advance_particle_queue_length++;
+    advance_particle_queue[idx] = queue[i];
+  }
+	*/
+}
+
+void process_advance_particle_events()
+{
+  //for (auto& p : advance_particle_queue) {
+  #pragma omp parallel for
+  for (int i = 0; i < advance_particle_queue_length; i++) {
+	  Particle * p = particles + advance_particle_queue[i].idx;
+    simulation::trace == (p->id_ == 0);
+
+    // Sample a distance to collision
+    double d_collision;
+    if (p->type_ == Particle::Type::electron ||
+        p->type_ == Particle::Type::positron) {
+      d_collision = 0.0;
+    } else if (p->macro_xs_.total == 0.0) {
+      d_collision = INFINITY;
+    } else {
+      d_collision = -std::log(prn(p->prn_seeds_, p->stream_)) / p->macro_xs_.total;
+    }
+
+    // -------------- break here? -------------------
+
+    // Find the distance to the nearest boundary
+    p->boundary_ = distance_to_boundary(p);
+
+    // Select smaller of the two distances
+    double distance;
+	int idx;
+    if (p->boundary_.distance < d_collision) {
+		#pragma omp atomic capture
+		idx = surface_crossing_queue_length++;
+      surface_crossing_queue[idx].idx = advance_particle_queue[i].idx;
+      surface_crossing_queue[idx].E = p->E_;
+      surface_crossing_queue[idx].material = p->material_;
+      distance = p->boundary_.distance;
+    } else {
+		#pragma omp atomic capture
+		idx = collision_queue_length++;
+		collision_queue[idx].idx = advance_particle_queue[i].idx;
+		collision_queue[idx].E = p->E_;
+		collision_queue[idx].material = p->material_;
+      distance = d_collision;
+    }
+
+    // -------------- break here? -------------------
+
+    // Advance particle
+    for (int j = 0; j < p->n_coord_; ++j) {
+      p->coord_[j].r += distance * p->coord_[j].u;
+    }
+
+    // -------------- break here? -------------------
+
+    // Score track-length tallies
+    if (!model::active_tracklength_tallies.empty()) {
+      score_tracklength_tally(p, distance);
+    }
+
+    // Score track-length estimate of k-eff
+    if (settings::run_mode == RUN_MODE_EIGENVALUE &&
+        p->type_ == Particle::Type::neutron) {
+      global_tally_tracklength += p->wgt_ * distance * p->macro_xs_.nu_fission;
+    }
+
+    // Score flux derivative accumulators for differential tallies.
+    if (!model::active_tallies.empty()) {
+      score_track_derivative(p, distance);
+    }
+  }
+
+  advance_particle_queue_length = 0;
+}
+
+void process_surface_crossing_events()
+{
+  //for (auto& p : surface_crossing_queue) {
+  #pragma omp parallel for
+  for (int i = 0; i < surface_crossing_queue_length; i++) {
+	  Particle * p = particles + surface_crossing_queue[i].idx;
+    // Set surface that particle is on and adjust coordinate levels
+    p->surface_ = p->boundary_.surface_index;
+    p->n_coord_ = p->boundary_.coord_level;
+
+    // Saving previous cell data
+    for (int j = 0; j < p->n_coord_; ++j) {
+      p->cell_last_[j] = p->coord_[j].cell;
+    }
+    p->n_coord_last_ = p->n_coord_;
+
+    if (p->boundary_.lattice_translation[0] != 0 ||
+        p->boundary_.lattice_translation[1] != 0 ||
+        p->boundary_.lattice_translation[2] != 0) {
+      // Particle crosses lattice boundary
+      cross_lattice(p, p->boundary_);
+      p->event_ = EVENT_LATTICE;
+    } else {
+      // Particle crosses surface
+      p->cross_surface();
+      p->event_ = EVENT_SURFACE;
+    }
+    // Score cell to cell partial currents
+    if (!model::active_surface_tallies.empty()) {
+      score_surface_tally(p, model::active_surface_tallies);
+    }
+
+    //if (!p->alive_ && !simulation::secondary_bank.empty()) {
+    if (!p->alive_ && !p->secondary_bank_.empty()) {
+      revive_particle_from_secondary(p);
+    }
+
+    if (p->alive_)
+	{
+		dispatch_xs_event(surface_crossing_queue[i].idx);
+	}
+  }
+
+  surface_crossing_queue_length = 0;
+}
+
+void process_collision_events()
+{
+  //for (auto& p : collision_queue) {
+  #pragma omp parallel for
+  for (int i = 0; i < collision_queue_length; i++) {
+	  Particle * p = particles + collision_queue[i].idx;
+	  //std::cout << "Beginning collision of particle id " << collision_queue[i] << " with energy E = " << p->E_ << std::endl;
+    // Score collision estimate of keff
+    if (settings::run_mode == RUN_MODE_EIGENVALUE &&
+        p->type_ == Particle::Type::neutron) {
+      global_tally_collision += p->wgt_ * p->macro_xs_.nu_fission
+        / p->macro_xs_.total;
+    }
+
+    // Score surface current tallies -- this has to be done before the collision
+    // since the direction of the particle will change and we need to use the
+    // pre-collision direction to figure out what mesh surfaces were crossed
+
+    if (!model::active_meshsurf_tallies.empty())
+      score_surface_tally(p, model::active_meshsurf_tallies);
+	    
+	//std::cout << "After surface tally of particle id " << collision_queue[i] << " with energy E = " << p->E_ << std::endl;
+
+    // Clear surface component
+    p->surface_ = 0;
+
+    if (settings::run_CE) {
+      collision(p);
+    } else {
+      collision_mg(p);
+    }
+
+	//std::cout << "After collision() of particle id " << collision_queue[i] << " with energy E = " << p->E_ << std::endl;
+
+    // Score collision estimator tallies -- this is done after a collision
+    // has occurred rather than before because we need information on the
+    // outgoing energy for any tallies with an outgoing energy filter
+    if (!model::active_collision_tallies.empty()) score_collision_tally(p);
+    if (!model::active_analog_tallies.empty()) {
+      if (settings::run_CE) {
+        score_analog_tally_ce(p);
+      } else {
+        score_analog_tally_mg(p);
+      }
+    }
+	//std::cout << "After analog tally of particle id " << collision_queue[i] << " with energy E = " << p->E_ << std::endl;
+
+    // Reset banked weight during collision
+    p->n_bank_ = 0;
+    p->n_bank_second_ = 0;
+    p->wgt_bank_ = 0.0;
+    for (int& v : p->n_delayed_bank_) v = 0;
+
+    // Reset fission logical
+    p->fission_ = false;
+
+    // Save coordinates for tallying purposes
+    p->r_last_current_ = p->r();
+
+    // Set last material to none since cross sections will need to be
+    // re-evaluated
+    p->material_last_ = C_NONE;
+
+    // Set all directions to base level -- right now, after a collision, only
+    // the base level directions are changed
+    for (int j = 0; j < p->n_coord_ - 1; ++j) {
+      if (p->coord_[j + 1].rotated) {
+        // If next level is rotated, apply rotation matrix
+        const auto& m {model::cells[p->coord_[j].cell]->rotation_};
+        const auto& u {p->coord_[j].u};
+        p->coord_[j + 1].u.x = m[3]*u.x + m[4]*u.y + m[5]*u.z;
+        p->coord_[j + 1].u.y = m[6]*u.x + m[7]*u.y + m[8]*u.z;
+        p->coord_[j + 1].u.z = m[9]*u.x + m[10]*u.y + m[11]*u.z;
+      } else {
+        // Otherwise, copy this level's direction
+        p->coord_[j+1].u = p->coord_[j].u;
+      }
+    }
+
+    // Score flux derivative accumulators for differential tallies.
+    if (!model::active_tallies.empty()) score_collision_derivative(p);
+
+    //if (!p->alive_ && !simulation::secondary_bank.empty()) {
+    if (!p->alive_ && !p->secondary_bank_.empty()) {
+      revive_particle_from_secondary(p);
+    }
+
+    if (p->alive_)
+	{
+		dispatch_xs_event(collision_queue[i].idx);
+	    //std::cout << "Ended collision of particle id " << collision_queue[i] << " with energy E = " << p->E_ << std::endl;
+		assert(std::isfinite(p->E_) );
+	}
+  }
+
+  collision_queue_length = 0;
+}
+
+/*
+void check_energies(void)
+{
+	int * Q;
+	int n;
+
+
+	Q = calculate_fuel_xs_queue;
+	n = calculate_fuel_xs_queue_length;
+	for( int i = 0; i < n; i++ )
+	{
+		if( !std::isfinite(particles[Q[i]].E_ ) )
+		{
+			std::cout << "NAN energy particle found at index xs FUEL " << Q[i] << std::endl;
+			assert(0);
+		}
+	}
+	Q = calculate_nonfuel_xs_queue;
+	n = calculate_nonfuel_xs_queue_length ;
+	for( int i = 0; i < n; i++ )
+	{
+		if( !std::isfinite(particles[Q[i]].E_ ) )
+		{
+			std::cout << "NAN energy particle found at index xs Non fuel " << Q[i] << std::endl;
+			assert(0);
+		}
+	}
+	Q = advance_particle_queue;
+	n = advance_particle_queue_length     ;
+	for( int i = 0; i < n; i++ )
+	{
+		if( !std::isfinite(particles[Q[i]].E_ ) )
+		{
+			std::cout << "NAN energy particle found at index advance particle " << Q[i] << std::endl;
+			assert(0);
+		}
+	}
+	Q = surface_crossing_queue;
+	n = surface_crossing_queue_length     ;
+	for( int i = 0; i < n; i++ )
+	{
+		if( !std::isfinite(particles[Q[i]].E_ ) )
+		{
+			std::cout << "NAN energy particle found at index surface crossing " << Q[i] << std::endl;
+			assert(0);
+		}
+	}
+	Q = collision_queue;
+	n = collision_queue_length            ;
+	for( int i = 0; i < n; i++ )
+	{
+		if( !std::isfinite(particles[Q[i]].E_ ) )
+		{
+			std::cout << "NAN energy particle found at index collision " << Q[i] << std::endl;
+			assert(0);
+		}
+	}
+}
+*/
+
+double get_time()
+{
+	#ifdef _OPENMP
+	return omp_get_wtime();
+	#endif
+
+	#ifdef OPENMC_MPI
+	return MPI_Wtime();
+	#endif
+
+	unsigned long us_since_epoch = std::chrono::high_resolution_clock::now().time_since_epoch() / std::chrono::microseconds(1);
+	return (double) us_since_epoch / 1.0e6;
+}
+
+void transport()
+{
+	int remaining_work = simulation::work_per_rank;
+	int source_offset = 0;
+		
+	int max_n_particles = MAX_PARTICLES_IN_FLIGHT;
+	if( max_n_particles > remaining_work)
+		max_n_particles = remaining_work;
+	init_event_queues(max_n_particles);
+
+	double time_fuel_xs = 0;
+	double time_nonfuel_xs = 0;
+	double time_advance = 0;
+	double time_collision = 0;
+	double time_surf = 0;
+	double stop, start;
+
+	// Subiterations to complete sets of particles
+	while (remaining_work > 0) {
+
+
+		// Figure out work for this subiteration
+		int n_particles = MAX_PARTICLES_IN_FLIGHT;
+		if( n_particles > remaining_work)
+			n_particles = remaining_work;
+
+		//std::cout << "Initializing particle histories..." << std::endl;
+		// Initialize all histories
+		// TODO: Parallelize
+
+		/*
+		for( int p = 0; p < mpi::n_procs; p++)
+		{
+			MPI_Barrier(mpi::intracomm);
+			if( p == mpi::rank )
+			{
+			*/
+				for (int i = 0; i < n_particles; i++) {
+					initialize_history(particles + i, source_offset + i + 1);
+				}
+				/*
+			}
+		}
+		*/
+
+		//std::cout << "Enqueing particles for XS Lookups..." << std::endl;
+		// Add all particles to advance particle queue
+		// TODO: Parallelize
+		for (int i = 0; i < n_particles; i++) {
+			dispatch_xs_event(i);
+		}
+
+		int event_kernel_executions = 0;
+		while (true) {
+			event_kernel_executions++;
+			/*
+			std::cout << "Fuel XS Lookups = " << calculate_fuel_xs_queue_length << std::endl;
+			std::cout << "Non Fuel XS Lookups = " << calculate_nonfuel_xs_queue_length << std::endl;
+			std::cout << "Advance Particles = " << advance_particle_queue_length << std::endl;
+			std::cout << "Surface Crossings = " << surface_crossing_queue_length << std::endl;
+			std::cout << "Collisions = " << collision_queue_length << std::endl;
+			*/
+			/*
+			Particle * p = particles +  1;
+		   std::cout << "E = " << p->E_ << " and Position {" <<
+			   p->r().x << ", " <<
+			   p->r().y << ", " <<
+			   p->r().z << "}" << std::endl;
+			   */
+			int max = std::max({calculate_fuel_xs_queue_length, calculate_nonfuel_xs_queue_length, advance_particle_queue_length, surface_crossing_queue_length, collision_queue_length});
+			//check_energies();
+			if (max == 0) {
+				break;
+			} else if (max == calculate_fuel_xs_queue_length) {
+				//std::cout << "pre fuel XS check..." << std::endl;
+				//check_energies(calculate_fuel_xs_queue, calculate_fuel_xs_queue_length);
+				//std::cout << "Performing Fuel XS Lookups..." << std::endl;
+				start = get_time();
+				process_calculate_xs_events(calculate_fuel_xs_queue, calculate_fuel_xs_queue_length);
+				stop = get_time();
+				time_fuel_xs += (stop-start);
+				calculate_fuel_xs_queue_length = 0;
+			} else if (max == calculate_nonfuel_xs_queue_length) {
+				//std::cout << "pre non fuel XS check..." << std::endl;
+				//check_energies(calculate_nonfuel_xs_queue, calculate_nonfuel_xs_queue_length);
+			//	std::cout << "Performing Non Fuel XS Lookups..." << std::endl;
+				start = get_time();
+				process_calculate_xs_events(calculate_nonfuel_xs_queue, calculate_nonfuel_xs_queue_length);
+				stop = get_time();
+				time_nonfuel_xs += (stop-start);
+				calculate_nonfuel_xs_queue_length = 0;
+			} else if (max == advance_particle_queue_length) {
+				//std::cout << "pre advancing check..." << std::endl;
+				//check_energies(advance_particle_queue, advance_particle_queue_length);
+				//std::cout << "Advancing Particles..." << std::endl;
+				start = get_time();
+				process_advance_particle_events();
+				stop = get_time();
+				time_advance += (stop-start);
+			} else if (max == surface_crossing_queue_length) {
+				//std::cout << "pre surface crossing check..." << std::endl;
+				//check_energies(surface_crossing_queue, surface_crossing_queue_length);
+				//std::cout << "Surface Crossings..." << std::endl;
+				start = get_time();
+				process_surface_crossing_events();
+				stop = get_time();
+				time_surf += (stop-start);
+			} else if (max == collision_queue_length) {
+				//std::cout << "pre Colliding check..." << std::endl;
+				//check_energies(collision_queue, collision_queue_length);
+				//std::cout << "Colliding..." << std::endl;
+				start = get_time();
+				process_collision_events();
+				stop = get_time();
+				time_collision += (stop-start);
+			}
+		}
+
+		remaining_work -= n_particles;
+		source_offset += n_particles;
+
+		// Should all be zero
+		/*
+		calculate_fuel_xs_queue_length    = 0;
+		calculate_nonfuel_xs_queue_length = 0;
+		advance_particle_queue_length     = 0;
+		surface_crossing_queue_length     = 0;
+		collision_queue_length            = 0;
+		*/
+		
+		//std::cout << "Event kernels retired: " << event_kernel_executions << std::endl;
+	}
+	if( mpi::rank == 0 )
+	{
+		std::cout << "Fuel XS Time:     " << time_fuel_xs << std::endl;
+		std::cout << "Non Fuel XS Time: " << time_nonfuel_xs << std::endl;
+		std::cout << "Advance Time:     " << time_advance << std::endl;
+		std::cout << "Surface Time:     " << time_surf << std::endl;
+		std::cout << "Collision Time:   " << time_collision<< std::endl;
+	}
+	//shared_fission_bank_length = 0;
+	free_event_queues();
+}
+
+} // namespace openmc
 
 //==============================================================================
 // C API functions
@@ -71,6 +812,7 @@ int openmc_simulation_init()
   allocate_banks();
 
   // Allocate tally results arrays if they're not allocated yet
+
   for (auto& t : model::tallies) {
     t->init_results();
   }
@@ -185,20 +927,9 @@ int openmc_next_batch(int* status)
     // Start timer for transport
     simulation::time_transport.start();
 
-    // ====================================================================
-    // LOOP OVER PARTICLES
+	  simulation::current_work = 1;
 
-    #pragma omp parallel for schedule(runtime)
-    for (int64_t i_work = 1; i_work <= simulation::work_per_rank; ++i_work) {
-      simulation::current_work = i_work;
-
-      // grab source particle from bank
-      Particle p;
-      initialize_history(&p, simulation::current_work);
-
-      // transport particle
-      p.transport();
-    }
+    transport();
 
     // Accumulate time for transport
     simulation::time_transport.stop();
@@ -409,6 +1140,49 @@ void initialize_generation()
   }
 }
 
+/*
+struct bank_site_comparator
+{
+  inline bool operator() (const Particle::Bank & a, const Particle::Bank & b)
+  {
+    if( a.E < b.E )
+      return true;
+    else if( a.E > b.E )
+      return false;
+    else // Energy equal, compare by x-coord
+    {
+      if(a.r.x < b.r.x )
+        return true;
+      else if (a.r.x > b.r.x)
+        return false;
+      else // x-coord equal, compare by y-coord
+      {
+        if(a.r.x < b.r.x )
+          return true;
+        else if (a.r.x > b.r.x)
+          return false;
+        else // y-coord equal, compare by z-coord
+        {
+          if(a.r.y < b.r.y )
+            return true;
+          else if (a.r.y > b.r.y)
+            return false;
+          else // y-coord equal, compare by z-coord
+          {
+            if(a.r.z < b.r.z )
+              return true;
+            else if (a.r.z > b.r.z)
+              return false;
+            else // they are the same
+              return false;
+          }
+        }
+      }
+    }
+  }
+};
+*/
+
 void finalize_generation()
 {
   auto& gt = simulation::global_tallies;
@@ -436,11 +1210,14 @@ void finalize_generation()
   }
 
 
-  if (settings::run_mode == RUN_MODE_EIGENVALUE) {
-#ifdef _OPENMP
-    // Join the fission bank from each thread into one global fission bank
-    join_bank_from_threads();
-#endif
+  if (settings::run_mode == RUN_MODE_EIGENVALUE) {	
+	  // We need to move all the stuff from the shared_fission_bank into the real one.
+	  for( int i = 0; i < shared_fission_bank_length; i++ )
+		  simulation::fission_bank.push_back(shared_fission_bank[i]);
+	  shared_fission_bank_length = 0;
+    
+    // Sorts the fission bank so as to allow for reproducibility
+    std::stable_sort(simulation::fission_bank.begin(), simulation::fission_bank.end());
 
     // Distribute fission bank across processors evenly
     synchronize_bank();
@@ -498,6 +1275,37 @@ void initialize_history(Particle* p, int64_t index_source)
       }
     }
   }
+
+
+// Display message if high verbosity or trace is on
+   if (settings::verbosity >= 9 || simulation::trace) {
+      write_message("Simulating Particle " + std::to_string(p->id_));
+   }
+
+    // // Initialize number of events to zero
+   // int n_event = 0;
+
+    // Add paricle's starting weight to count for normalizing tallies later
+   #pragma omp atomic
+   simulation::total_weight += p->wgt_;
+
+    // Force calculation of cross-sections by setting last energy to zero
+   if (settings::run_CE) {
+     for (auto& micro : p->neutron_xs_) micro.last_E = 0.0;
+   }
+
+    // Prepare to write out particle track.
+   if (p->write_track_) add_particle_track();
+
+    // Every particle starts with no accumulated flux derivative.
+   if (!model::active_tallies.empty()) zero_flux_derivs();
+
+   /*
+   std::cout << "Initialized particle " << particle_seed << " with E = " << p->E_ << " and Position {" <<
+	   p->r().x << ", " <<
+	   p->r().y << ", " <<
+	   p->r().z << "}" << std::endl;
+	   */
 }
 
 int overall_generation()

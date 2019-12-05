@@ -2,32 +2,23 @@
 
 #include "openmc/bank.h"
 #include "openmc/capi.h"
-#include "openmc/cell.h"
 #include "openmc/container_util.h"
 #include "openmc/eigenvalue.h"
 #include "openmc/error.h"
-#include "openmc/geometry.h"
 #include "openmc/material.h"
 #include "openmc/message_passing.h"
-#include "openmc/mgxs_interface.h"
 #include "openmc/nuclide.h"
 #include "openmc/output.h"
 #include "openmc/particle.h"
 #include "openmc/photon.h"
-#include "openmc/physics.h"
- #include "openmc/physics_mg.h"
 #include "openmc/random_lcg.h"
 #include "openmc/settings.h"
 #include "openmc/source.h"
 #include "openmc/state_point.h"
-#include "openmc/thermal.h"
 #include "openmc/timer.h"
-#include "openmc/tallies/derivative.h"
 #include "openmc/tallies/filter.h"
 #include "openmc/tallies/tally.h"
-#include "openmc/tallies/tally_scoring.h"
 #include "openmc/tallies/trigger.h"
-#include "openmc/track_output.h"
 
 #ifdef _OPENMP
 #include <omp.h>
@@ -41,6 +32,7 @@
 #include <algorithm>
 #include <string>
 #include <chrono> 
+
 
 namespace openmc {
 
@@ -791,11 +783,9 @@ int openmc_run()
 
   int err = 0;
   int status = 0;
-
   while (status == 0 && err == 0) {
     err = openmc_next_batch(&status);
   }
-
 
   openmc_simulation_finalize();
   return err;
@@ -807,16 +797,9 @@ int openmc_simulation_init()
 
   // Skip if simulation has already been initialized
   if (simulation::initialized) return 0;
-	
 
   // Determine how much work each process should do
   calculate_work();
-  
-  // We assume that the number of fission sites will be at most
-	// 10x the number of neutrons run on this rank
-	int shared_fission_bank_size = 10 * simulation::work_per_rank;
-	// Initializes the shared fission bank
-	init_shared_fission_bank(shared_fission_bank_size);
 
   // Allocate array for matching filter bins
   #pragma omp parallel
@@ -829,11 +812,10 @@ int openmc_simulation_init()
   allocate_banks();
 
   // Allocate tally results arrays if they're not allocated yet
-	  //std::cout << "Trying to Initialize Results..." << std::endl;
+
   for (auto& t : model::tallies) {
     t->init_results();
   }
-	  //std::cout << "Success in Initializing Results!" << std::endl;
 
   // Set up material nuclide index mapping
   for (auto& mat : model::materials) {
@@ -878,8 +860,6 @@ int openmc_simulation_finalize()
 
   // Skip if simulation was never run
   if (!simulation::initialized) return 0;
-  
-  free_shared_fission_bank();
 
   // Stop active batch timer and start finalization timer
   simulation::time_active.stop();
@@ -947,29 +927,9 @@ int openmc_next_batch(int* status)
     // Start timer for transport
     simulation::time_transport.start();
 
-    // ====================================================================
-    // LOOP OVER PARTICLES
+	  simulation::current_work = 1;
 
-	simulation::current_work = 1;
-
-    //#pragma omp parallel
-    {
-      transport();
-    }
-
-	/*
-    #pragma omp parallel for schedule(runtime)
-    for (int64_t i_work = 1; i_work <= simulation::work_per_rank; ++i_work) {
-      simulation::current_work = i_work;
-
-      // grab source particle from bank
-      Particle p;
-      initialize_history(&p, simulation::current_work);
-
-      // transport particle
-      p.transport();
-    }
-	*/
+    transport();
 
     // Accumulate time for transport
     simulation::time_transport.stop();
@@ -1026,9 +986,7 @@ int restart_batch;
 bool satisfy_triggers {false};
 int total_gen {0};
 double total_weight;
-int64_t thread_work_index;
 int64_t work_per_rank;
-int64_t work_per_thread;
 
 const RegularMesh* entropy_mesh {nullptr};
 const RegularMesh* ufs_mesh {nullptr};
@@ -1252,30 +1210,14 @@ void finalize_generation()
   }
 
 
-  if (settings::run_mode == RUN_MODE_EIGENVALUE) {
-//#ifdef _OPENMP
-    // Join the fission bank from each thread into one global fission bank
-    //join_bank_from_threads();
-	
+  if (settings::run_mode == RUN_MODE_EIGENVALUE) {	
 	  // We need to move all the stuff from the shared_fission_bank into the real one.
-		//std::vector<Particle::Bank> shared_fission_bank_vector(shared_fission_bank, shared_fission_bank + shared_fission_bank_length);
-      //simulation::fission_bank = shared_fission_bank_vector;
-	  //std::cout << "Fission bank length = " << shared_fission_bank_length << std::endl;
 	  for( int i = 0; i < shared_fission_bank_length; i++ )
 		  simulation::fission_bank.push_back(shared_fission_bank[i]);
 	  shared_fission_bank_length = 0;
-//#endif
-      // Sorts the fission bank so as to allow for reproducibility
-      //std::sort(simulation::fission_bank.begin(), simulation::fission_bank.end(), bank_site_comparator());
-      //std::sort(simulation::fission_bank.begin(), simulation::fission_bank.end());
-      std::stable_sort(simulation::fission_bank.begin(), simulation::fission_bank.end());
-	  /*
-	  std::cout << "Fission bank on rank " << mpi::rank << " is of length " << simulation::fission_bank.size() << std::endl;
-	  for (Particle::Bank p : simulation::fission_bank )
-	  {
-	   std::cout <<  "E = " << p.E << std::endl;
-	  }
-	  */
+    
+    // Sorts the fission bank so as to allow for reproducibility
+    std::stable_sort(simulation::fission_bank.begin(), simulation::fission_bank.end());
 
     // Distribute fission bank across processors evenly
     synchronize_bank();
@@ -1302,10 +1244,8 @@ void finalize_generation()
 
 void initialize_history(Particle* p, int64_t index_source)
 {
-	//assert(index_source - 1 >= 0 );
   // set defaults
   p->from_source(&simulation::source_bank[index_source - 1]);
-  //p->from_source(&simulation::source_bank[index_source]);
 
   // set identifier for particle
   p->id_ = simulation::work_index[mpi::rank] + index_source;
@@ -1313,8 +1253,7 @@ void initialize_history(Particle* p, int64_t index_source)
   // set random number seed
   int64_t particle_seed = (simulation::total_gen + overall_generation() - 1)
     * settings::n_particles + p->id_;
-  //std::cout << "MPI rank " << mpi::rank << " is initializing particle " << index_source << " with ID/seed " << particle_seed << std::endl;
-  set_particle_seed(particle_seed, p->prn_seeds_);
+  init_particle_seeds(particle_seed, p->prn_seeds_);
 
   // set particle trace
   simulation::trace = false;
@@ -1336,6 +1275,7 @@ void initialize_history(Particle* p, int64_t index_source)
       }
     }
   }
+
 
 // Display message if high verbosity or trace is on
    if (settings::verbosity >= 9 || simulation::trace) {
@@ -1396,32 +1336,6 @@ void calculate_work()
     i_bank += work_i;
     simulation::work_index[i + 1] = i_bank;
   }
-	#ifdef _OPENMP
-   // Determine work per thread
-   int remainder_thread = simulation::work_per_rank % omp_get_max_threads();
-
-    #pragma omp parallel
-   {
-     simulation::work_per_thread = simulation::work_per_rank / omp_get_num_threads();
-     if (omp_get_thread_num() < remainder_thread) {
-       ++simulation::work_per_thread;
-     }
-   }
-
-    int64_t work_i = 0;
-   #pragma omp parallel for ordered
-   for (int i = 0; i < omp_get_num_threads(); ++i) {
-     #pragma omp ordered
-     {
-       simulation::thread_work_index = work_i;
-       work_i += simulation::work_per_thread;
-	   /*
-       std::cout << "Thread " << omp_get_thread_num() << ": " << simulation::work_per_thread
-         << std::endl;
-		 */
-     }
-   }
- #endif
 }
 
 #ifdef OPENMC_MPI

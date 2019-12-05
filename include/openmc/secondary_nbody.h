@@ -24,10 +24,9 @@ public:
   //! \param[in] E_in Incoming energy in [eV]
   //! \param[out] E_out Outgoing energy in [eV]
   //! \param[out] mu Outgoing cosine with respect to current direction
-  //! \param[inout] prn_seeds Array of pseudorandom seeds
-  //! \param[in] stream Pseudorandom stream index
-  void sample(double E_in, double& E_out, double& mu, uint64_t * prn_seeds,
-  int stream) const override;
+  //! \param[inout] prn_seed Pseudorandom seed pointer
+  void sample(double E_in, double& E_out, double& mu,
+    uint64_t* prn_seed) const override;
 private:
   int n_bodies_; //!< Number of particles distributed
   double mass_ratio_; //!< Total mass of particles [neutron mass]

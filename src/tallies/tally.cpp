@@ -804,7 +804,6 @@ Tally::init_triggers(pugi::xml_node node)
 void Tally::init_results()
 {
   int n_scores = scores_.size() * nuclides_.size();
-  //std::cout << "TRYING TO ALLOCATE n filter bins, n scores =  " << n_filter_bins_ << " " <<  n_scores << std::endl;
   results_ = xt::empty<double>({n_filter_bins_, n_scores, 3});
 }
 

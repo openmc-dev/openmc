@@ -77,25 +77,25 @@ ReactionProduct::ReactionProduct(hid_t group)
 }
 
 void ReactionProduct::sample(double E_in, double& E_out, double& mu,
-  uint64_t * prn_seeds, int stream) const
+  uint64_t* prn_seed) const
 {
   auto n = applicability_.size();
   if (n > 1) {
     double prob = 0.0;
-    double c = prn(prn_seeds, stream);
+    double c = prn(prn_seed);
     for (int i = 0; i < n; ++i) {
       // Determine probability that i-th energy distribution is sampled
       prob += applicability_[i](E_in);
 
       // If i-th distribution is sampled, sample energy from the distribution
       if (c <= prob) {
-        distribution_[i]->sample(E_in, E_out, mu, prn_seeds, stream);
+        distribution_[i]->sample(E_in, E_out, mu, prn_seed);
         break;
       }
     }
   } else {
     // If only one distribution is present, go ahead and sample it
-    distribution_[0]->sample(E_in, E_out, mu, prn_seeds, stream);
+    distribution_[0]->sample(E_in, E_out, mu, prn_seed);
   }
 }
 

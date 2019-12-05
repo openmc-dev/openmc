@@ -79,7 +79,6 @@ void collision(Particle* p)
 
 void sample_neutron_reaction(Particle* p)
 {
-	//std::cout << "particle energy e = " << p->E_ << std::endl;
   // Sample a nuclide within the material
   int i_nuclide = sample_nuclide(p);
 
@@ -130,18 +129,15 @@ void sample_neutron_reaction(Particle* p)
   }
   if (!p->alive_) return;
 
-	//std::cout << "before scatter particle energy e = " << p->E_ << " with nuclide = " << i_nuclide <<  std::endl;
   // Sample a scattering reaction and determine the secondary energy of the
   // exiting neutron
   scatter(p, i_nuclide);
-	
-  //std::cout << "after scatter particle energy e = " << p->E_ << std::endl;
 
   // Advance URR seed stream 'N' times after energy changes
   if (p->E_ != p->E_last_) {
-	p->stream_ = STREAM_URR_PTABLE;
-    advance_prn_seed(data::nuclides.size(), p->prn_seeds_, p->stream_);
-	p->stream_ = STREAM_TRACKING;
+    p->stream_ = STREAM_URR_PTABLE;
+    advance_prn_seed(data::nuclides.size(), p->prn_seeds_ + p->stream_);
+    p->stream_ = STREAM_TRACKING;
   }
 
   // Play russian roulette if survival biasing is turned on
@@ -165,7 +161,7 @@ create_fission_sites(Particle* p, int i_nuclide, const Reaction* rx,
 
   // Sample the number of neutrons produced
   int nu = static_cast<int>(nu_t);
-  if (prn(p->prn_seeds_, p->stream_) <= (nu_t - nu)) ++nu;
+  if (prn(p->prn_seeds_ + p->stream_) <= (nu_t - nu)) ++nu;
 
   // Begin banking the source neutrons
   // First, if our bank is full then don't continue
@@ -177,16 +173,7 @@ create_fission_sites(Particle* p, int i_nuclide, const Reaction* rx,
 
   p->fission_ = true;
   for (int i = 0; i < nu; ++i) {
-	  /*
     // Create new bank site and get reference to last element
-    bank.emplace_back();
-    auto& site {bank.back()};
-
-    // Bank source neutrons by copying the particle data
-    site.r = p->r();
-    site.particle = Particle::Type::neutron;
-    site.wgt = 1. / weight;
-	*/
 	  int idx;
 	  #pragma omp atomic capture
 	  idx = shared_fission_bank_length++;
@@ -197,12 +184,10 @@ create_fission_sites(Particle* p, int i_nuclide, const Reaction* rx,
 	  site->parent_id = p->id_;
 
     // Sample delayed group and angle/energy for fission reaction
-
-    sample_fission_neutron(i_nuclide, rx, p->E_, site, p->prn_seeds_, p->stream_);
+    sample_fission_neutron(i_nuclide, rx, p->E_, &site, p->prn_seeds_ + p->stream_);
 
     // Set the delayed group on the particle as well
-    //p->delayed_group_ = site.delayed_group;
-    p->delayed_group_ = site->delayed_group;
+    p->delayed_group_ = site.delayed_group;
 
     // Increment the number of neutrons born delayed
     if (p->delayed_group_ > 0) {
@@ -241,13 +226,13 @@ void sample_photon_reaction(Particle* p)
   // For tallying purposes, this routine might be called directly. In that
   // case, we need to sample a reaction via the cutoff variable
   double prob = 0.0;
-  double cutoff = prn(p->prn_seeds_, p->stream_) * micro.total;
+  double cutoff = prn(p->prn_seeds_ + p->stream_) * micro.total;
 
   // Coherent (Rayleigh) scattering
   prob += micro.coherent;
   if (prob > cutoff) {
-    double mu = element.rayleigh_scatter(alpha, p->prn_seeds_, p->stream_);
-    p->u() = rotate_angle(p->u(), mu, nullptr, p->prn_seeds_, p->stream_);
+    double mu = element.rayleigh_scatter(alpha, p->prn_seeds_ + p->stream_);
+    p->u() = rotate_angle(p->u(), mu, nullptr, p->prn_seeds_ + p->stream_);
     p->event_ = EVENT_SCATTER;
     p->event_mt_ = COHERENT;
     return;
@@ -258,7 +243,7 @@ void sample_photon_reaction(Particle* p)
   if (prob > cutoff) {
     double alpha_out, mu;
     int i_shell;
-    element.compton_scatter(alpha, true, &alpha_out, &mu, &i_shell, p->prn_seeds_, p->stream_);
+    element.compton_scatter(alpha, true, &alpha_out, &mu, &i_shell, p->prn_seeds_ + p->stream_);
 
     // Determine binding energy of shell. The binding energy is 0.0 if
     // doppler broadening is not used.
@@ -270,13 +255,13 @@ void sample_photon_reaction(Particle* p)
     }
 
     // Create Compton electron
-    double phi = 2.0*PI*prn(p->prn_seeds_, p->stream_);
+    double phi = 2.0*PI*prn(p->prn_seeds_ + p->stream_);
     double E_electron = (alpha - alpha_out)*MASS_ELECTRON_EV - e_b;
     int electron = static_cast<int>(Particle::Type::electron);
     if (E_electron >= settings::energy_cutoff[electron]) {
       double mu_electron = (alpha - alpha_out*mu)
         / std::sqrt(alpha*alpha + alpha_out*alpha_out - 2.0*alpha*alpha_out*mu);
-      Direction u = rotate_angle(p->u(), mu_electron, &phi, p->prn_seeds_, p->stream_);
+      Direction u = rotate_angle(p->u(), mu_electron, &phi, p->prn_seeds_ + p->stream_);
       p->create_secondary(u, E_electron, Particle::Type::electron);
     }
 
@@ -290,7 +275,7 @@ void sample_photon_reaction(Particle* p)
 
     phi += PI;
     p->E_ = alpha_out*MASS_ELECTRON_EV;
-    p->u() = rotate_angle(p->u(), mu, &phi, p->prn_seeds_, p->stream_);
+    p->u() = rotate_angle(p->u(), mu, &phi, p->prn_seeds_ + p->stream_);
     p->event_ = EVENT_SCATTER;
     p->event_mt_ = INCOHERENT;
     return;
@@ -322,8 +307,8 @@ void sample_photon_reaction(Particle* p)
         // model in Serpent 2" by Toni Kaltiaisenaho
         double mu;
         while (true) {
-          double r = prn(p->prn_seeds_, p->stream_);
-          if (4.0*(1.0 - r)*r >= prn(p->prn_seeds_, p->stream_)) {
+          double r = prn(p->prn_seeds_ + p->stream_);
+          if (4.0*(1.0 - r)*r >= prn(p->prn_seeds_ + p->stream_)) {
             double rel_vel = std::sqrt(E_electron * (E_electron +
               2.0*MASS_ELECTRON_EV)) / (E_electron + MASS_ELECTRON_EV);
             mu = (2.0*r + rel_vel - 1.0) / (2.0*rel_vel*r - rel_vel + 1.0);
@@ -331,7 +316,7 @@ void sample_photon_reaction(Particle* p)
           }
         }
 
-        double phi = 2.0*PI*prn(p->prn_seeds_, p->stream_);
+        double phi = 2.0*PI*prn(p->prn_seeds_ + p->stream_);
         Direction u;
         u.x = mu;
         u.y = std::sqrt(1.0 - mu*mu)*std::cos(phi);
@@ -359,14 +344,14 @@ void sample_photon_reaction(Particle* p)
     double E_electron, E_positron;
     double mu_electron, mu_positron;
     element.pair_production(alpha, &E_electron, &E_positron,
-      &mu_electron, &mu_positron, p->prn_seeds_, p->stream_);
+      &mu_electron, &mu_positron, p->prn_seeds_ + p->stream_);
 
     // Create secondary electron
-    Direction u = rotate_angle(p->u(), mu_electron, nullptr, p->prn_seeds_, p->stream_);
+    Direction u = rotate_angle(p->u(), mu_electron, nullptr, p->prn_seeds_ + p->stream_);
     p->create_secondary(u, E_electron, Particle::Type::electron);
 
     // Create secondary positron
-    u = rotate_angle(p->u(), mu_positron, nullptr, p->prn_seeds_, p->stream_);
+    u = rotate_angle(p->u(), mu_positron, nullptr, p->prn_seeds_ + p->stream_);
     p->create_secondary(u, E_positron, Particle::Type::positron);
 
     p->event_ = EVENT_ABSORB;
@@ -400,8 +385,8 @@ void sample_positron_reaction(Particle* p)
   }
 
   // Sample angle isotropically
-  double mu = 2.0*prn(p->prn_seeds_, p->stream_) - 1.0;
-  double phi = 2.0*PI*prn(p->prn_seeds_, p->stream_);
+  double mu = 2.0*prn(p->prn_seeds_ + p->stream_) - 1.0;
+  double phi = 2.0*PI*prn(p->prn_seeds_ + p->stream_);
   Direction u;
   u.x = mu;
   u.y = std::sqrt(1.0 - mu*mu)*std::cos(phi);
@@ -419,7 +404,7 @@ void sample_positron_reaction(Particle* p)
 int sample_nuclide(Particle* p)
 {
   // Sample cumulative distribution function
-  double cutoff = prn(p->prn_seeds_, p->stream_) * p->macro_xs_.total;
+  double cutoff = prn(p->prn_seeds_ + p->stream_) * p->macro_xs_.total;
 
   // Get pointers to nuclide/density arrays
   const auto& mat {model::materials[p->material_]};
@@ -444,7 +429,7 @@ int sample_nuclide(Particle* p)
 int sample_element(Particle* p)
 {
   // Sample cumulative distribution function
-  double cutoff = prn(p->prn_seeds_, p->stream_) * p->macro_xs_.total;
+  double cutoff = prn(p->prn_seeds_ + p->stream_) * p->macro_xs_.total;
 
   // Get pointers to elements, densities
   const auto& mat {model::materials[p->material_]};
@@ -497,7 +482,7 @@ Reaction* sample_fission(int i_nuclide, Particle* p)
   int i_temp = p->neutron_xs_[i_nuclide].index_temp;
   int i_grid = p->neutron_xs_[i_nuclide].index_grid;
   double f = p->neutron_xs_[i_nuclide].interp_factor;
-  double cutoff = prn(p->prn_seeds_, p->stream_) * p->neutron_xs_[i_nuclide].fission;
+  double cutoff = prn(p->prn_seeds_ + p->stream_) * p->neutron_xs_[i_nuclide].fission;
   double prob = 0.0;
 
   // Loop through each partial fission reaction type
@@ -524,7 +509,7 @@ void sample_photon_product(int i_nuclide, Particle* p, int* i_rx, int* i_product
   int i_temp = p->neutron_xs_[i_nuclide].index_temp;
   int i_grid = p->neutron_xs_[i_nuclide].index_grid;
   double f = p->neutron_xs_[i_nuclide].interp_factor;
-  double cutoff = prn(p->prn_seeds_, p->stream_) * p->neutron_xs_[i_nuclide].photon_prod;
+  double cutoff = prn(p->prn_seeds_ + p->stream_) * p->neutron_xs_[i_nuclide].photon_prod;
   double prob = 0.0;
 
   // Loop through each reaction type
@@ -572,7 +557,7 @@ void absorption(Particle* p, int i_nuclide)
   } else {
     // See if disappearance reaction happens
     if (p->neutron_xs_[i_nuclide].absorption >
-        prn(p->prn_seeds_, p->stream_) * p->neutron_xs_[i_nuclide].total) {
+        prn(p->prn_seeds_ + p->stream_) * p->neutron_xs_[i_nuclide].total) {
       // Score absorption estimate of keff
       if (settings::run_mode == RUN_MODE_EIGENVALUE) {
         global_tally_absorption += p->wgt_ * p->neutron_xs_[
@@ -600,7 +585,7 @@ void scatter(Particle* p, int i_nuclide)
 
   // For tallying purposes, this routine might be called directly. In that
   // case, we need to sample a reaction via the cutoff variable
-  double cutoff = prn(p->prn_seeds_, p->stream_) * (micro.total - micro.absorption);
+  double cutoff = prn(p->prn_seeds_ + p->stream_) * (micro.total - micro.absorption);
   bool sampled = false;
 
   // Calculate elastic cross section if it wasn't precalculated
@@ -616,7 +601,6 @@ void scatter(Particle* p, int i_nuclide)
     // Determine temperature
     double kT = nuc->multipole_ ? p->sqrtkT_*p->sqrtkT_ : nuc->kTs_[i_temp];
 
-	//std::cout << "we are doing an elastic scatter" << std::endl;
     // Perform collision physics for elastic scattering
     elastic_scatter(i_nuclide, *nuc->reactions_[0], kT, p);
 
@@ -629,7 +613,6 @@ void scatter(Particle* p, int i_nuclide)
     // =======================================================================
     // S(A,B) SCATTERING
 
-	//std::cout << "we are doing an SAB scatter" << std::endl;
     sab_scatter(i_nuclide, micro.index_sab, p);
 
     p->event_mt_ = ELASTIC;
@@ -637,7 +620,6 @@ void scatter(Particle* p, int i_nuclide)
   }
 
   if (!sampled) {
-	//std::cout << "we are doing an Inelastic scatter" << std::endl;
     // =======================================================================
     // INELASTIC SCATTERING
 
@@ -664,9 +646,7 @@ void scatter(Particle* p, int i_nuclide)
 
     // Perform collision physics for inelastic scattering
     const auto& rx {nuc->reactions_[i]};
-	//std::cout << "Energy before Inelastic scatter = " << p->E_ << std::endl;
     inelastic_scatter(nuc.get(), rx.get(), p);
-	//std::cout << "Energy after Inelastic scatter = " << p->E_ << std::endl;
     p->event_mt_ = rx->mt_;
   }
 
@@ -679,8 +659,8 @@ void scatter(Particle* p, int i_nuclide)
     int i_nuc_mat = mat->mat_nuclide_index_[i_nuclide];
     if (mat->p0_[i_nuc_mat]) {
       // Sample isotropic-in-lab outgoing direction
-      double mu = 2.0*prn(p->prn_seeds_, p->stream_) - 1.0;
-      double phi = 2.0*PI*prn(p->prn_seeds_, p->stream_);
+      double mu = 2.0*prn(p->prn_seeds_ + p->stream_) - 1.0;
+      double phi = 2.0*PI*prn(p->prn_seeds_ + p->stream_);
 
       // Change direction of particle
       p->u().x = mu;
@@ -707,7 +687,7 @@ void elastic_scatter(int i_nuclide, const Reaction& rx, double kT,
   Direction v_t {};
   if (!p->neutron_xs_[i_nuclide].use_ptable) {
     v_t = sample_target_velocity(nuc.get(), p->E_, p->u(), v_n,
-      p->neutron_xs_[i_nuclide].elastic, kT, p->prn_seeds_, p->stream_);
+      p->neutron_xs_[i_nuclide].elastic, kT, p->prn_seeds_ + p->stream_);
   }
 
   // Velocity of center-of-mass
@@ -725,9 +705,9 @@ void elastic_scatter(int i_nuclide, const Reaction& rx, double kT,
   auto& d = rx.products_[0].distribution_[0];
   auto d_ = dynamic_cast<UncorrelatedAngleEnergy*>(d.get());
   if (d_) {
-    mu_cm = d_->angle().sample(p->E_, p->prn_seeds_, p->stream_);
+    mu_cm = d_->angle().sample(p->E_, p->prn_seeds_ + p->stream_);
   } else {
-    mu_cm = 2.0*prn(p->prn_seeds_, p->stream_) - 1.0;
+    mu_cm = 2.0*prn(p->prn_seeds_ + p->stream_) - 1.0;
   }
 
   // Determine direction cosines in CM
@@ -736,7 +716,7 @@ void elastic_scatter(int i_nuclide, const Reaction& rx, double kT,
   // Rotate neutron velocity vector to new angle -- note that the speed of the
   // neutron in CM does not change in elastic scattering. However, the speed
   // will change when we convert back to LAB
-  v_n = vel * rotate_angle(u_cm, mu_cm, nullptr, p->prn_seeds_, p->stream_);
+  v_n = vel * rotate_angle(u_cm, mu_cm, nullptr, p->prn_seeds_ + p->stream_);
 
   // Transform back to LAB frame
   v_n += v_cm;
@@ -765,15 +745,15 @@ void sab_scatter(int i_nuclide, int i_sab, Particle* p)
 
   // Sample energy and angle
   double E_out;
-  data::thermal_scatt[i_sab]->data_[i_temp].sample(micro, p->E_, &E_out, &p->mu_, p->prn_seeds_, p->stream_);
+  data::thermal_scatt[i_sab]->data_[i_temp].sample(micro, p->E_, &E_out, &p->mu_, p->prn_seeds_ + p->stream_);
 
   // Set energy to outgoing, change direction of particle
   p->E_ = E_out;
-  p->u() = rotate_angle(p->u(), p->mu_, nullptr, p->prn_seeds_, p->stream_);
+  p->u() = rotate_angle(p->u(), p->mu_, nullptr, p->prn_seeds_ + p->stream_);
 }
 
 Direction sample_target_velocity(const Nuclide* nuc, double E, Direction u,
-  Direction v_neut, double xs_eff, double kT, uint64_t * prn_seeds, int stream)
+  Direction v_neut, double xs_eff, double kT, uint64_t* prn_seed)
 {
   // check if nuclide is a resonant scatterer
   ResScatMethod sampling_method;
@@ -805,7 +785,7 @@ Direction sample_target_velocity(const Nuclide* nuc, double E, Direction u,
   case ResScatMethod::cxs:
 
     // sample target velocity with the constant cross section (cxs) approx.
-    return sample_cxs_target_velocity(nuc->awr_, E, u, kT, prn_seeds, stream);
+    return sample_cxs_target_velocity(nuc->awr_, E, u, kT, prn_seed);
 
   case ResScatMethod::dbrc:
   case ResScatMethod::rvs: {
@@ -839,7 +819,7 @@ Direction sample_target_velocity(const Nuclide* nuc, double E, Direction u,
     if (i_E_up == i_E_low) {
       // Handle degenerate case -- if the upper/lower bounds occur for the same
       // index, then using cxs is probably a good approximation
-      return sample_cxs_target_velocity(nuc->awr_, E, u, kT, prn_seeds, stream);
+      return sample_cxs_target_velocity(nuc->awr_, E, u, kT, prn_seed);
     }
 
     if (sampling_method == ResScatMethod::dbrc) {
@@ -863,7 +843,7 @@ Direction sample_target_velocity(const Nuclide* nuc, double E, Direction u,
         Direction v_target;
         while (true) {
           // sample target velocity with the constant cross section (cxs) approx.
-          v_target = sample_cxs_target_velocity(nuc->awr_, E, u, kT, prn_seeds, stream);
+          v_target = sample_cxs_target_velocity(nuc->awr_, E, u, kT, prn_seed);
           Direction v_rel = v_neut - v_target;
           E_rel = v_rel.dot(v_rel);
           if (E_rel < E_up) break;
@@ -872,7 +852,7 @@ Direction sample_target_velocity(const Nuclide* nuc, double E, Direction u,
         // perform Doppler broadening rejection correction (dbrc)
         double xs_0K = nuc->elastic_xs_0K(E_rel);
         double R = xs_0K / xs_max;
-        if (prn(prn_seeds, stream) < R) return v_target;
+        if (prn(prn_seed) < R) return v_target;
       }
 
     } else if (sampling_method == ResScatMethod::rvs) {
@@ -892,10 +872,10 @@ Direction sample_target_velocity(const Nuclide* nuc, double E, Direction u,
 
       while (true) {
         // directly sample Maxwellian
-        double E_t = -kT * std::log(prn(prn_seeds, stream));
+        double E_t = -kT * std::log(prn(prn_seed));
 
         // sample a relative energy using the xs cdf
-        double cdf_rel = cdf_low + prn(prn_seeds, stream)*(cdf_up - cdf_low);
+        double cdf_rel = cdf_low + prn(prn_seed)*(cdf_up - cdf_low);
         int i_E_rel = lower_bound_index(&nuc->xs_cdf_[i_E_low-1],
           &nuc->xs_cdf_[i_E_up+1], cdf_rel);
         double E_rel = nuc->energy_0K_[i_E_low + i_E_rel];
@@ -913,7 +893,7 @@ Direction sample_target_velocity(const Nuclide* nuc, double E, Direction u,
         if (std::abs(mu) < 1.0) {
           // set and accept target velocity
           E_t /= nuc->awr_;
-          return std::sqrt(E_t) * rotate_angle(u, mu, nullptr, prn_seeds, stream);
+          return std::sqrt(E_t) * rotate_angle(u, mu, nullptr, prn_seed);
         }
       }
     }
@@ -924,7 +904,7 @@ Direction sample_target_velocity(const Nuclide* nuc, double E, Direction u,
 }
 
 Direction
-sample_cxs_target_velocity(double awr, double E, Direction u, double kT, uint64_t * prn_seeds, int stream)
+sample_cxs_target_velocity(double awr, double E, Direction u, double kT, uint64_t* prn_seed)
 {
   double beta_vn = std::sqrt(awr * E / kT);
   double alpha = 1.0/(1.0 + std::sqrt(PI)*beta_vn/2.0);
@@ -933,10 +913,10 @@ sample_cxs_target_velocity(double awr, double E, Direction u, double kT, uint64_
   double mu;
   while (true) {
     // Sample two random numbers
-    double r1 = prn(prn_seeds, stream);
-    double r2 = prn(prn_seeds, stream);
+    double r1 = prn(prn_seed);
+    double r2 = prn(prn_seed);
 
-    if (prn(prn_seeds, stream) < alpha) {
+    if (prn(prn_seed) < alpha) {
       // With probability alpha, we sample the distribution p(y) =
       // y*e^(-y). This can be done with sampling scheme C45 frmo the Monte
       // Carlo sampler
@@ -948,7 +928,7 @@ sample_cxs_target_velocity(double awr, double E, Direction u, double kT, uint64_
       // e^(-y^2). This can be done with sampling scheme C61 from the Monte
       // Carlo sampler
 
-      double c = std::cos(PI/2.0 * prn(prn_seeds, stream));
+      double c = std::cos(PI/2.0 * prn(prn_seed));
       beta_vt_sq = -std::log(r1) - std::log(r2)*c*c;
     }
 
@@ -956,14 +936,14 @@ sample_cxs_target_velocity(double awr, double E, Direction u, double kT, uint64_
     double beta_vt = std::sqrt(beta_vt_sq);
 
     // Sample cosine of angle between neutron and target velocity
-    mu = 2.0*prn(prn_seeds, stream) - 1.0;
+    mu = 2.0*prn(prn_seed) - 1.0;
 
     // Determine rejection probability
     double accept_prob = std::sqrt(beta_vn*beta_vn + beta_vt_sq -
       2*beta_vn*beta_vt*mu) / (beta_vn + beta_vt);
 
     // Perform rejection sampling on vt and mu
-    if (prn(prn_seeds, stream) < accept_prob) break;
+    if (prn(prn_seed) < accept_prob) break;
   }
 
   // Determine speed of target nucleus
@@ -971,19 +951,19 @@ sample_cxs_target_velocity(double awr, double E, Direction u, double kT, uint64_
 
   // Determine velocity vector of target nucleus based on neutron's velocity
   // and the sampled angle between them
-  return vt * rotate_angle(u, mu, nullptr, prn_seeds, stream);
+  return vt * rotate_angle(u, mu, nullptr, prn_seed);
 }
 
-void sample_fission_neutron(int i_nuclide, const Reaction* rx, double E_in, Particle::Bank* site, uint64_t * prn_seeds, int stream)
+void sample_fission_neutron(int i_nuclide, const Reaction* rx, double E_in, Particle::Bank* site, uint64_t* prn_seed)
 {
   // Sample cosine of angle -- fission neutrons are always emitted
   // isotropically. Sometimes in ACE data, fission reactions actually have
   // an angular distribution listed, but for those that do, it's simply just
   // a uniform distribution in mu
-  double mu = 2.0 * prn(prn_seeds, stream) - 1.0;
+  double mu = 2.0 * prn(prn_seed) - 1.0;
 
   // Sample azimuthal angle uniformly in [0,2*pi)
-  double phi = 2.0*PI*prn(prn_seeds, stream);
+  double phi = 2.0*PI*prn(prn_seed);
   site->u.x = mu;
   site->u.y = std::sqrt(1.0 - mu*mu) * std::cos(phi);
   site->u.z = std::sqrt(1.0 - mu*mu) * std::sin(phi);
@@ -994,12 +974,12 @@ void sample_fission_neutron(int i_nuclide, const Reaction* rx, double E_in, Part
   double nu_d = nuc->nu(E_in, Nuclide::EmissionMode::delayed);
   double beta = nu_d / nu_t;
 
-  if (prn(prn_seeds, stream) < beta) {
+  if (prn(prn_seed) < beta) {
     // ====================================================================
     // DELAYED NEUTRON SAMPLED
 
     // sampled delayed precursor group
-    double xi = prn(prn_seeds, stream)*nu_d;
+    double xi = prn(prn_seed)*nu_d;
     double prob = 0.0;
     int group;
     for (group = 1; group < nuc->n_precursor_; ++group) {
@@ -1023,7 +1003,7 @@ void sample_fission_neutron(int i_nuclide, const Reaction* rx, double E_in, Part
     while (true) {
       // sample from energy/angle distribution -- note that mu has already been
       // sampled above and doesn't need to be resampled
-      rx->products_[group].sample(E_in, site->E, mu, prn_seeds, stream);
+      rx->products_[group].sample(E_in, site->E, mu, prn_seed);
 
       // resample if energy is greater than maximum neutron energy
       constexpr int neutron = static_cast<int>(Particle::Type::neutron);
@@ -1048,7 +1028,7 @@ void sample_fission_neutron(int i_nuclide, const Reaction* rx, double E_in, Part
     // sample from prompt neutron energy distribution
     int n_sample = 0;
     while (true) {
-      rx->products_[0].sample(E_in, site->E, mu, prn_seeds, stream);
+      rx->products_[0].sample(E_in, site->E, mu, prn_seed);
 
       // resample if energy is greater than maximum neutron energy
       constexpr int neutron = static_cast<int>(Particle::Type::neutron);
@@ -1073,40 +1053,33 @@ void inelastic_scatter(const Nuclide* nuc, const Reaction* rx, Particle* p)
   // sample outgoing energy and scattering cosine
   double E;
   double mu;
-  rx->products_[0].sample(E_in, E, mu, p->prn_seeds_, p->stream_);
+  rx->products_[0].sample(E_in, E, mu, p->prn_seeds_ + p->stream_);
 
   // if scattering system is in center-of-mass, transfer cosine of scattering
   // angle and outgoing energy from CM to LAB
   if (rx->scatter_in_cm_) {
     double E_cm = E;
-	//std::cout << "E_cm = " << E_cm << std::endl;
 
     // determine outgoing energy in lab
     double A = nuc->awr_;
-//	std::cout << "A = " << nuc->awr_ << std::endl;
     E = E_cm + (E_in + 2.0*mu*(A + 1.0) * std::sqrt(E_in*E_cm))
           / ((A + 1.0)*(A + 1.0));
-	// here's where it goes wrong
-	//std::cout << "E = " << E << std::endl;
 
     // determine outgoing angle in lab
     mu = mu*std::sqrt(E_cm/E) + 1.0/(A+1.0) * std::sqrt(E_in/E);
-//	std::cout << "mu = " << mu << std::endl;
   }
 
   // Because of floating-point roundoff, it may be possible for mu to be
   // outside of the range [-1,1). In these cases, we just set mu to exactly -1
   // or 1
   if (std::abs(mu) > 1.0) mu = std::copysign(1.0, mu);
-//	std::cout << "mu = " << mu << std::endl;
 
   // Set outgoing energy and scattering angle
-//	std::cout << "FINAL E = " << E << " mu = " << mu << std::endl;
   p->E_ = E;
   p->mu_ = mu;
 
   // change direction of particle
-  p->u() = rotate_angle(p->u(), mu, nullptr, p->prn_seeds_, p->stream_);
+  p->u() = rotate_angle(p->u(), mu, nullptr, p->prn_seeds_ + p->stream_);
 
   // evaluate yield
   double yield = (*rx->products_[0].yield_)(E_in);
@@ -1127,7 +1100,7 @@ void sample_secondary_photons(Particle* p, int i_nuclide)
   double y_t = p->wgt_ * p->neutron_xs_[i_nuclide].photon_prod /
     p->neutron_xs_[i_nuclide].total;
   int y = static_cast<int>(y_t);
-  if (prn(p->prn_seeds_, p->stream_) <= y_t - y) ++y;
+  if (prn(p->prn_seeds_ + p->stream_) <= y_t - y) ++y;
 
   // Sample each secondary photon
   for (int i = 0; i < y; ++i) {
@@ -1140,10 +1113,10 @@ void sample_secondary_photons(Particle* p, int i_nuclide)
     auto& rx = data::nuclides[i_nuclide]->reactions_[i_rx];
     double E;
     double mu;
-    rx->products_[i_product].sample(p->E_, E, mu, p->prn_seeds_, p->stream_);
+    rx->products_[i_product].sample(p->E_, E, mu, p->prn_seeds_ + p->stream_);
 
     // Sample the new direction
-    Direction u = rotate_angle(p->u(), mu, nullptr, p->prn_seeds_, p->stream_);
+    Direction u = rotate_angle(p->u(), mu, nullptr, p->prn_seeds_ + p->stream_);
 
     // Create the secondary photon
     p->create_secondary(u, E, Particle::Type::photon);

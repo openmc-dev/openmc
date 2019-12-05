@@ -6,15 +6,6 @@
 
 namespace openmc {
 
-
-// Constants
-extern "C" const int STREAM_TRACKING   {0};
-extern "C" const int STREAM_TALLIES    {1};
-extern "C" const int STREAM_SOURCE     {2};
-extern "C" const int STREAM_URR_PTABLE {3};
-extern "C" const int STREAM_VOLUME     {4};
-extern "C" const int STREAM_PHOTON     {5};
-
 // Starting seed
 int64_t master_seed {1};
 
@@ -32,34 +23,40 @@ constexpr double   prn_norm   {1.0 / prn_mod};           // 2^-63
 // PRN
 //==============================================================================
 
-extern "C" double
-prn(uint64_t * prn_seeds, int stream)
+double prn(uint64_t* prn_seed)
 {
   // This algorithm uses bit-masking to find the next integer(8) value to be
   // used to calculate the random number.
-  prn_seeds[stream] = (prn_mult*prn_seeds[stream] + prn_add) & prn_mask;
+  *prn_seed = (prn_mult * (*prn_seed) + prn_add) & prn_mask;
 
   // Once the integer is calculated, we just need to divide by 2**m,
   // represented here as multiplying by a pre-calculated factor
-  return prn_seeds[stream] * prn_norm;
+  return (*prn_seed) * prn_norm;
 }
 
 //==============================================================================
 // FUTURE_PRN
 //==============================================================================
 
-extern "C" double
-future_prn(int64_t n, uint64_t * prn_seeds, int stream)
+double future_prn(int64_t n, uint64_t prn_seed)
 {
-  return future_seed(static_cast<uint64_t>(n), prn_seeds[stream]) * prn_norm;
+  return future_seed(static_cast<uint64_t>(n), prn_seed) * prn_norm;
 }
 
 //==============================================================================
-// SET_PARTICLE_SEED
+// INIT_SEED
 //==============================================================================
 
-extern "C" void
-set_particle_seed(int64_t id, uint64_t * prn_seeds)
+void init_seed(int64_t id, uint64_t* prn_seed, int offset)
+{
+  *prn_seed = future_seed(static_cast<uint64_t>(id) * prn_stride, master_seed + offset);
+}
+
+//==============================================================================
+// INIT_PARTICLE_SEEDS
+//==============================================================================
+
+void init_particle_seeds(int64_t id, uint64_t* prn_seeds)
 {
 	//std::cout << "Master seed = " << master_seed << " id = " << id << std::endl;
   for (int i = 0; i < N_STREAMS; i++) {
@@ -71,18 +68,16 @@ set_particle_seed(int64_t id, uint64_t * prn_seeds)
 // ADVANCE_PRN_SEED
 //==============================================================================
 
-extern "C" void
-advance_prn_seed(int64_t n, uint64_t * prn_seeds, int stream)
+void advance_prn_seed(int64_t n, uint64_t* prn_seed)
 {
-  prn_seeds[stream] = future_seed(static_cast<uint64_t>(n), prn_seeds[stream]);
+  *prn_seed = future_seed(static_cast<uint64_t>(n), *prn_seed);
 }
 
 //==============================================================================
 // FUTURE_SEED
 //==============================================================================
 
-uint64_t
-future_seed(uint64_t n, uint64_t seed)
+uint64_t future_seed(uint64_t n, uint64_t prn_seed)
 {
   // Make sure nskip is less than 2^M.
   n &= prn_mask;
@@ -113,7 +108,7 @@ future_seed(uint64_t n, uint64_t seed)
   }
 
   // With G and C, we can now find the new seed.
-  return (g_new * seed + c_new) & prn_mask;
+  return (g_new * prn_seed + c_new) & prn_mask;
 }
 
 //==============================================================================
@@ -122,8 +117,7 @@ future_seed(uint64_t n, uint64_t seed)
 
 extern "C" int64_t openmc_get_seed() {return master_seed;}
 
-extern "C" void
-openmc_set_seed(int64_t new_seed)
+extern "C" void openmc_set_seed(int64_t new_seed)
 {
   master_seed = new_seed;
 }

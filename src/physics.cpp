@@ -184,10 +184,10 @@ create_fission_sites(Particle* p, int i_nuclide, const Reaction* rx,
 	  site->parent_id = p->id_;
 
     // Sample delayed group and angle/energy for fission reaction
-    sample_fission_neutron(i_nuclide, rx, p->E_, &site, p->prn_seeds_ + p->stream_);
+    sample_fission_neutron(i_nuclide, rx, p->E_, site, p->prn_seeds_ + p->stream_);
 
     // Set the delayed group on the particle as well
-    p->delayed_group_ = site.delayed_group;
+    p->delayed_group_ = site->delayed_group;
 
     // Increment the number of neutrons born delayed
     if (p->delayed_group_ > 0) {

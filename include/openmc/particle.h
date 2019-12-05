@@ -131,6 +131,17 @@ struct MacroXS {
   double pair_production; //!< macroscopic pair production xs
 };
 
+//==============================================================================
+// Information about nearest boundary crossing
+//==============================================================================
+
+struct BoundaryInfo {
+  double distance {INFINITY};   //!< distance to nearest boundary
+  int surface_index {0}; //!< if boundary is surface, index in surfaces vector
+  int coord_level;   //!< coordinate level after crossing boundary
+  std::array<int, 3> lattice_translation {}; //!< which way lattice indices will change
+};
+
 //============================================================================
 //! State of a particle being transported through geometry
 //============================================================================
@@ -275,6 +286,7 @@ public:
 
   // Indices for various arrays
   int surface_ {0};             //!< index for surface particle is on
+  BoundaryInfo boundary_;
   int cell_born_ {-1};      //!< index for cell particle was born in
   int material_ {-1};       //!< index for current material
   int material_last_ {-1};  //!< index for last material

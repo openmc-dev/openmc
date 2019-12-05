@@ -16,6 +16,10 @@ constexpr int STATUS_EXIT_NORMAL {0};
 constexpr int STATUS_EXIT_MAX_BATCH {1};
 constexpr int STATUS_EXIT_ON_TRIGGER {2};
 
+extern Particle::Bank * shared_fission_bank;
+extern int shared_fission_bank_length;
+extern int shared_fission_bank_max;
+
 //==============================================================================
 // Global variable declarations
 //==============================================================================

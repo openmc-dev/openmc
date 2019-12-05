@@ -153,6 +153,8 @@ public:
     double wgt;
     int delayed_group;
     Type particle;
+	int64_t parent_id;
+	bool operator < (const Bank & bank) const{ return (parent_id < bank.parent_id); }
   };
 
   //==========================================================================
@@ -290,6 +292,9 @@ public:
   // Current PRNG state
   uint64_t prn_seeds_[N_STREAMS]; // current seeds
   int      stream_;               // current RNG stream
+  
+  // Secondary bank
+  std::vector<Particle::Bank> secondary_bank_;
 };
 
 } // namespace openmc

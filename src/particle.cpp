@@ -228,7 +228,7 @@ Particle::transport()
     } else if (macro_xs_.total == 0.0) {
       d_collision = INFINITY;
     } else {
-      d_collision = -std::log(prn(prn_seeds_ + stream_)) / macro_xs_.total;
+      d_collision = -std::log(prn(this->current_seed())) / macro_xs_.total;
     }
 
     // Select smaller of the two distances
@@ -461,7 +461,7 @@ Particle::cross_surface()
 
     Direction u = (surf->bc_ == BC_REFLECT) ?
       surf->reflect(this->r(), this->u()) :
-      surf->diffuse_reflect(this->r(), this->u(), prn_seeds_ + stream_);
+      surf->diffuse_reflect(this->r(), this->u(), this->current_seed());
 
     // Make sure new particle direction is normalized
     this->u() = u / u.norm();
@@ -677,5 +677,8 @@ Particle::write_restart() const
     file_close(file_id);
   } // #pragma omp critical
 }
+
+uint64_t* Particle::current_seed() {return prn_seeds_ + stream_;}
+const uint64_t* Particle::current_seed() const {return prn_seeds_ + stream_;}
 
 } // namespace openmc

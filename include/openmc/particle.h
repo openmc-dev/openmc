@@ -218,6 +218,10 @@ public:
   //! create a particle restart HDF5 file
   void write_restart() const;
 
+  //! Gets the pointer to the particle's current PRN seed
+  uint64_t* current_seed();
+  const uint64_t* current_seed() const;
+
   //==========================================================================
   // Data members
 

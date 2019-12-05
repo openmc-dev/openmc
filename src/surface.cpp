@@ -197,7 +197,7 @@ Surface::reflect(Position r, Direction u) const
 }
 
 Direction
-Surface::diffuse_reflect(Position r, Direction u, uint64_t* prn_seed) const
+Surface::diffuse_reflect(Position r, Direction u, uint64_t* seed) const
 {
   // Diffuse reflect direction according to the normal.
   // cosine distribution
@@ -208,10 +208,10 @@ Surface::diffuse_reflect(Position r, Direction u, uint64_t* prn_seed) const
 
   // sample from inverse function, u=sqrt(rand) since p(u)=2u, so F(u)=u^2
   const double mu = (projection>=0.0) ?
-                  -std::sqrt(prn(prn_seed)) : std::sqrt(prn(prn_seed));
+                  -std::sqrt(prn(seed)) : std::sqrt(prn(seed));
 
   // sample azimuthal distribution uniformly
-  u = rotate_angle(n, mu, nullptr, prn_seed);
+  u = rotate_angle(n, mu, nullptr, seed);
 
   // normalize the direction
   return u/u.norm();

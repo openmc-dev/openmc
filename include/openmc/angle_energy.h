@@ -15,7 +15,7 @@ namespace openmc {
 class AngleEnergy {
 public:
   virtual void sample(double E_in, double& E_out, double& mu,
-    uint64_t* prn_seed) const = 0;
+    uint64_t* seed) const = 0;
   virtual ~AngleEnergy() = default;
 };
 

@@ -154,9 +154,9 @@ class Mgxs {
     //! @param gin Incoming energy group.
     //! @param dg Sampled delayed group index.
     //! @param gout Sampled outgoing energy group.
-    //! @param prn_seed Pseudorandom seed pointer
+    //! @param seed Pseudorandom seed pointer
     void
-    sample_fission_energy(int gin, int& dg, int& gout, uint64_t* prn_seed);
+    sample_fission_energy(int gin, int& dg, int& gout, uint64_t* seed);
 
     //! \brief Samples the outgoing energy and angle from a scatter event.
     //!
@@ -164,9 +164,9 @@ class Mgxs {
     //! @param gout Sampled outgoing energy group.
     //! @param mu Sampled cosine of the change-in-angle.
     //! @param wgt Weight of the particle to be adjusted.
-    //! @param prn_seed Pseudorandom seed pointer.
+    //! @param seed Pseudorandom seed pointer.
     void
-    sample_scatter(int gin, int& gout, double& mu, double& wgt, uint64_t* prn_seed);
+    sample_scatter(int gin, int& gout, double& mu, double& wgt, uint64_t* seed);
 
     //! \brief Calculates cross section quantities needed for tracking.
     //!

@@ -38,9 +38,9 @@ public:
   explicit SourceDistribution(pugi::xml_node node);
 
   //! Sample from the external source distribution
-  //! \param[inout] prn_seed Pseudorandom seed pointer
+  //! \param[inout] seed Pseudorandom seed pointer
   //! \return Sampled site
-  Particle::Bank sample(uint64_t* prn_seed) const;
+  Particle::Bank sample(uint64_t* seed) const;
 
   // Properties
   double strength() const { return strength_; }
@@ -61,9 +61,9 @@ extern "C" void initialize_source();
 
 //! Sample a site from all external source distributions in proportion to their
 //! source strength
-//! \param[inout] prn_seed Pseudorandom seed pointer
+//! \param[inout] seed Pseudorandom seed pointer
 //! \return Sampled source site
-Particle::Bank sample_external_source(uint64_t* prn_seed);
+Particle::Bank sample_external_source(uint64_t* seed);
 
 //! Fill source bank at end of generation for fixed source simulations
 void fill_source_bank_fixedsource();

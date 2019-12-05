@@ -23,9 +23,9 @@ public:
 
   //! Sample an angle given an incident particle energy
   //! \param[in] E Particle energy in [eV]
-  //! \param[inout] prn_seed pseudorandom number seed pointer
+  //! \param[inout] seed pseudorandom number seed pointer
   //! \return Cosine of the angle in the range [-1,1]
-  double sample(double E, uint64_t* prn_seed) const;
+  double sample(double E, uint64_t* seed) const;
 
   //! Determine whether angle distribution is empty
   //! \return Whether distribution is empty

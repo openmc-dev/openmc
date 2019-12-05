@@ -23,9 +23,9 @@ public:
   virtual ~UnitSphereDistribution() = default;
 
   //! Sample a direction from the distribution
-  //! \param prn_seed Pseudorandom number seed pointer
+  //! \param seed Pseudorandom number seed pointer
   //! \return Direction sampled
-  virtual Direction sample(uint64_t* prn_seed) const = 0;
+  virtual Direction sample(uint64_t* seed) const = 0;
 
   Direction u_ref_ {0.0, 0.0, 1.0};  //!< reference direction
 };
@@ -40,9 +40,9 @@ public:
   explicit PolarAzimuthal(pugi::xml_node node);
 
   //! Sample a direction from the distribution
-  //! \param prn_seed Pseudorandom number seed pointer
+  //! \param seed Pseudorandom number seed pointer
   //! \return Direction sampled
-  Direction sample(uint64_t* prn_seed) const;
+  Direction sample(uint64_t* seed) const;
 private:
   UPtrDist mu_;  //!< Distribution of polar angle
   UPtrDist phi_; //!< Distribution of azimuthal angle
@@ -57,9 +57,9 @@ public:
   Isotropic() { };
 
   //! Sample a direction from the distribution
-  //! \param prn_seed Pseudorandom number seed pointer
+  //! \param seed Pseudorandom number seed pointer
   //! \return Sampled direction
-  Direction sample(uint64_t* prn_seed) const;
+  Direction sample(uint64_t* seed) const;
 };
 
 //==============================================================================
@@ -72,9 +72,9 @@ public:
   explicit Monodirectional(pugi::xml_node node) : UnitSphereDistribution{node} { };
 
   //! Sample a direction from the distribution
-  //! \param prn_seed Pseudorandom number seed pointer
+  //! \param seed Pseudorandom number seed pointer
   //! \return Sampled direction
-  Direction sample(uint64_t* prn_seed) const;
+  Direction sample(uint64_t* seed) const;
 };
 
 using UPtrAngle = std::unique_ptr<UnitSphereDistribution>;

@@ -98,7 +98,7 @@ void run_particle_restart()
     throw std::runtime_error{"Unexpected run mode: " +
       std::to_string(previous_run_mode)};
   }
-  init_particle_seeds(particle_seed, p.prn_seeds_);
+  init_particle_seeds(particle_seed, p.seeds_);
 
   // Transport neutron
   p.transport();

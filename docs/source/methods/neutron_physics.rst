@@ -358,9 +358,9 @@ secondary energy and angle sampling.
 For a reaction with secondary products, it is necessary to determine the
 outgoing angle and energy of the products. For any reaction other than elastic
 and level inelastic scattering, the outgoing energy must be determined based on
-tabulated or parameterized data. The `ENDF-6 Format`_ specifies a variety of
-ways that the secondary energy distribution can be represented. ENDF File 5
-contains uncorrelated energy distribution whereas ENDF File 6 contains
+tabulated or parameterized data. The `ENDF-6 Format <endf102>`_ specifies a
+variety of ways that the secondary energy distribution can be represented. ENDF
+File 5 contains uncorrelated energy distribution whereas ENDF File 6 contains
 correlated energy-angle distributions. The ACE format specifies its own
 representations based loosely on the formats given in ENDF-6. OpenMC's HDF5
 nuclear data files use a combination of ENDF and ACE distributions; in this
@@ -1357,23 +1357,29 @@ Calculating Integrated Cross Sections
 
 The first aspect of using |sab| tables is calculating cross sections to replace
 the data that would normally appear on the incident neutron data, which do not
-account for thermal binding effects. For incoherent elastic and inelastic
-scattering, the cross sections are stored as linearly interpolable functions on
-a specified energy grid. For coherent elastic data, the cross section can be
-expressed as
+account for thermal binding effects. For incoherent inelastic scattering, the
+cross section is stored as a linearly interpolable function on a specified
+energy grid. For coherent elastic data, the cross section can be expressed as
 
 .. math::
     :label: coherent-elastic-xs
 
-    \sigma(E) = \frac{\sigma_c}{E} \sum_{E_i < E} f_i e^{-4WE_i}
+    \sigma(E) = \frac{1}{E} \sum_{E_i < E} s_i
 
-where :math:`\sigma_c` is the effective bound coherent scattering cross section,
-:math:`W` is the effective Debye-Waller coefficient, :math:`E_i` are the
-energies of the Bragg edges, and :math:`f_i` are related to crystallographic
-structure factors. Since the functional form of the cross section is just 1/E
-and the proportionality constant changes only at Bragg edges, the
-proportionality constants are stored and then the cross section can be
-calculated analytically based on equation :eq:`coherent-elastic-xs`.
+where :math:`E_i` are the energies of the Bragg edges and :math:`s_i` are
+related to crystallographic structure factors. Since the functional form of the
+cross section is just 1/E and the proportionality constant changes only at Bragg
+edges, the proportionality constants are stored and then the cross section can
+be calculated analytically based on equation :eq:`coherent-elastic-xs`. For
+incoherent elastic data, the cross section can be expressed as
+
+.. math::
+    :label: incoherent-elastic-xs
+
+    \sigma(E) = \frac{\sigma_b}{2} \left( \frac{1 - e^{-4EW'}}{2EW'} \right)
+
+where :math:`\sigma_b` is the characteristic bound cross section and :math:`W'`
+is the Debye-Waller integral divided by the atomic mass.
 
 Outgoing Angle for Coherent Elastic Scattering
 ----------------------------------------------
@@ -1388,7 +1394,7 @@ scatter then neutron is given by
 .. math::
     :label: coherent-elastic-probability
 
-    \frac{f_i e^{-4WE_i}}{\sum_j f_j e^{-4WE_j}}.
+    \frac{s_i}{\sum_j s_j}.
 
 After a Bragg edge has been sampled, the cosine of the angle of scattering is
 given analytically by
@@ -1400,20 +1406,35 @@ given analytically by
 
 where :math:`E_i` is the energy of the Bragg edge that scattered the neutron.
 
+.. _incoherent elastic angle:
+
 Outgoing Angle for Incoherent Elastic Scattering
 ------------------------------------------------
 
-For incoherent elastic scattering, the probability distribution for the cosine
-of the angle of scattering is represent as a series of equally-likely discrete
+For incoherent elastic scattering, OpenMC has two methods for calculating the
+cosine of the angle of scattering. The first method uses the Debye-Waller
+integral, :math:`W'`, and the characteristic bound cross section as given
+directly in an ENDF-6 formatted file. In this case, the cosine of the angle of
+scattering can be sampled by inverting equation 7.4 from the `ENDF-6 Format
+Manual <endf102>`_:
+
+.. math::
+    :label: incoherent-elastic-mu-exact
+
+    \mu = \frac{1}{c} \log \left( 1 + \xi \left( e^{2c} - 1 \right) \right) - 1
+
+where :math:`\xi` is a random number sampled on unit interval and :math:`c =
+2EW'`. In the second method, the probability distribution for the cosine of the
+angle of scattering is represented as a series of equally-likely discrete
 cosines :math:`\mu_{i,j}` for each incoming energy :math:`E_i` on the thermal
 elastic energy grid. First the outgoing angle bin :math:`j` is sampled. Then, if
-the incoming energy of the neutron satisfies :math:`E_i < E < E_{i+1}` the final
-cosine is
+the incoming energy of the neutron satisfies :math:`E_i < E < E_{i+1}` the
+cosine of the angle of scattering is
 
 .. math::
     :label: incoherent-elastic-angle
 
-    \mu = \mu_{i,j} + f (\mu_{i+1,j} - \mu_{i,j})
+    \mu' = \mu_{i,j} + f (\mu_{i+1,j} - \mu_{i,j})
 
 where the interpolation factor is defined as
 
@@ -1421,6 +1442,30 @@ where the interpolation factor is defined as
     :label: sab-interpolation-factor
 
     f = \frac{E - E_i}{E_{i+1} - E_i}.
+
+To better represent the true, continuous nature of the cosine distribution, the
+sampled value of :math:`mu'` is then "smeared" based on the neighboring values.
+First, values of :math:`\mu` are calculated for outgoing angle bins :math:`j-1`
+and :math:`j+1`:
+
+.. math::
+    :label: incoherent-elastic-smear1
+
+    \mu_\text{left} = \mu_{i,j-1} + f (\mu_{i+1,j-1} - \mu_{i,j-1}) \\
+
+    \mu_\text{right} = \mu_{i,j+1} + f (\mu_{i+1,j+1} - \mu_{i,j+1}).
+
+Then, a final cosine is calculated as:
+
+.. math::
+    :label: incoherent-elastic-smear2
+
+    \mu = \mu' + \min (\mu - \mu_\text{left}, \mu + \mu_\text{right} ) \cdot
+    \left( \xi - \frac{1}{2} \right)
+
+where :math:`\xi` is again a random number sampled on the unit interval. Care
+must be taken to ensure that :math:`\mu` does not fall outside the interval
+:math:`[-1,1]`.
 
 Outgoing Energy and Angle for Inelastic Scattering
 --------------------------------------------------
@@ -1492,7 +1537,10 @@ which angular distribution data to use.  Like the linear-linear interpolation
 case in Law 61, the angular distribution closest to the sampled value of the
 cumulative distribution function for the outgoing energy is utilized.  The
 actual algorithm utilized to sample the outgoing angle is shown in equation
-:eq:`inelastic-angle`.
+:eq:`inelastic-angle`. As in the case of incoherent elastic scattering with
+discrete cosine bins, the sampled cosine is :ref:`smeared <incoherent elastic
+angle>` over neighboring angle bins to better approximate a continuous
+distribution.
 
 .. _probability_tables:
 
@@ -1660,7 +1708,7 @@ another.
 
 .. _PREPRO: http://www-nds.iaea.org/ndspub/endf/prepro/
 
-.. _ENDF-6 Format: https://www.oecd-nea.org/dbdata/data/manual-endf/endf102.pdf
+.. _endf102: https://www.oecd-nea.org/dbdata/data/manual-endf/endf102.pdf
 
 .. _Monte Carlo Sampler: https://laws.lanl.gov/vhosts/mcnp.lanl.gov/pdf_files/la-9721.pdf
 

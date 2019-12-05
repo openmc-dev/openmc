@@ -142,7 +142,7 @@ SourceDistribution::SourceDistribution(pugi::xml_node node)
 }
 
 
-Particle::Bank SourceDistribution::sample(uint64_t* prn_seed) const
+Particle::Bank SourceDistribution::sample(uint64_t* seed) const
 {
   Particle::Bank site;
 
@@ -158,7 +158,7 @@ Particle::Bank SourceDistribution::sample(uint64_t* prn_seed) const
     site.particle = particle_;
 
     // Sample spatial distribution
-    site.r = space_->sample(prn_seed);
+    site.r = space_->sample(seed);
     double xyz[] {site.r.x, site.r.y, site.r.z};
 
     // Now search to see if location exists in geometry
@@ -200,7 +200,7 @@ Particle::Bank SourceDistribution::sample(uint64_t* prn_seed) const
   ++n_accept;
 
   // Sample angle
-  site.u = angle_->sample(prn_seed);
+  site.u = angle_->sample(seed);
 
   // Check for monoenergetic source above maximum particle energy
   auto p = static_cast<int>(particle_);
@@ -218,7 +218,7 @@ Particle::Bank SourceDistribution::sample(uint64_t* prn_seed) const
 
   while (true) {
     // Sample energy spectrum
-    site.E = energy_->sample(prn_seed);
+    site.E = energy_->sample(seed);
 
     // Resample if energy falls outside minimum or maximum particle energy
     if (site.E < data::energy_max[p] && site.E > data::energy_min[p]) break;
@@ -287,7 +287,7 @@ void initialize_source()
   }
 }
 
-Particle::Bank sample_external_source(uint64_t* prn_seed)
+Particle::Bank sample_external_source(uint64_t* seed)
 {
   // Determine total source strength
   double total_strength = 0.0;
@@ -297,7 +297,7 @@ Particle::Bank sample_external_source(uint64_t* prn_seed)
   // Sample from among multiple source distributions
   int i = 0;
   if (model::external_sources.size() > 1) {
-    double xi = prn(prn_seed)*total_strength;
+    double xi = prn(seed)*total_strength;
     double c = 0.0;
     for (; i < model::external_sources.size(); ++i) {
       c += model::external_sources[i].strength();
@@ -306,7 +306,7 @@ Particle::Bank sample_external_source(uint64_t* prn_seed)
   }
 
   // Sample source site from i-th source distribution
-  Particle::Bank site {model::external_sources[i].sample(prn_seed)};
+  Particle::Bank site {model::external_sources[i].sample(seed)};
 
   // If running in MG, convert site.E to group
   if (!settings::run_CE) {

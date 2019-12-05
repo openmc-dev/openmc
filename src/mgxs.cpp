@@ -529,7 +529,7 @@ Mgxs::get_xs(int xstype, int gin, const int* gout, const double* mu,
 //==============================================================================
 
 void
-Mgxs::sample_fission_energy(int gin, int& dg, int& gout, uint64_t* prn_seed)
+Mgxs::sample_fission_energy(int gin, int& dg, int& gout, uint64_t* seed)
 {
   // This method assumes that the temperature and angle indices are set
 #ifdef _OPENMP
@@ -544,8 +544,8 @@ Mgxs::sample_fission_energy(int gin, int& dg, int& gout, uint64_t* prn_seed)
   double prob_prompt = xs_t->prompt_nu_fission(cache[tid].a, gin);
 
   // sample random numbers
-  double xi_pd = prn(prn_seed) * nu_fission;
-  double xi_gout = prn(prn_seed);
+  double xi_pd = prn(seed) * nu_fission;
+  double xi_gout = prn(seed);
 
   // Select whether the neutron is prompt or delayed
   if (xi_pd <= prob_prompt) {
@@ -585,7 +585,7 @@ Mgxs::sample_fission_energy(int gin, int& dg, int& gout, uint64_t* prn_seed)
 //==============================================================================
 
 void
-Mgxs::sample_scatter(int gin, int& gout, double& mu, double& wgt, uint64_t* prn_seed)
+Mgxs::sample_scatter(int gin, int& gout, double& mu, double& wgt, uint64_t* seed)
 {
   // This method assumes that the temperature and angle indices are set
   // Sample the data
@@ -594,7 +594,7 @@ Mgxs::sample_scatter(int gin, int& gout, double& mu, double& wgt, uint64_t* prn_
 #else
   int tid = 0;
 #endif
-  xs[cache[tid].t].scatter[cache[tid].a]->sample(gin, gout, mu, wgt, prn_seed);
+  xs[cache[tid].t].scatter[cache[tid].a]->sample(gin, gout, mu, wgt, seed);
 }
 
 //==============================================================================

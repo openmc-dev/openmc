@@ -22,7 +22,7 @@ namespace openmc {
 
 class EnergyDistribution {
 public:
-  virtual double sample(double E, uint64_t* prn_seed) const = 0;
+  virtual double sample(double E, uint64_t* seed) const = 0;
   virtual ~EnergyDistribution() = default;
 };
 
@@ -36,9 +36,9 @@ public:
 
   //! Sample energy distribution
   //! \param[in] E Incident particle energy in [eV]
-  //! \param[inout] prn_seed Pseudorandom number seed pointer
+  //! \param[inout] seed Pseudorandom number seed pointer
   //! \return Sampled energy in [eV]
-  double sample(double E, uint64_t* prn_seed) const;
+  double sample(double E, uint64_t* seed) const;
 private:
   int primary_flag_; //!< Indicator of whether the photon is a primary or
                      //!< non-primary photon.
@@ -56,9 +56,9 @@ public:
 
   //! Sample energy distribution
   //! \param[in] E Incident particle energy in [eV]
-  //! \param[inout] prn_seed Pseudorandom number seed pointer
+  //! \param[inout] seed Pseudorandom number seed pointer
   //! \return Sampled energy in [eV]
-  double sample(double E, uint64_t* prn_seed) const;
+  double sample(double E, uint64_t* seed) const;
 private:
   double threshold_; //!< Energy threshold in lab, (A + 1)/A * |Q|
   double mass_ratio_; //!< (A/(A+1))^2
@@ -76,9 +76,9 @@ public:
 
   //! Sample energy distribution
   //! \param[in] E Incident particle energy in [eV]
-  //! \param[inout] prn_seed Pseudorandom number seed pointer
+  //! \param[inout] seed Pseudorandom number seed pointer
   //! \return Sampled energy in [eV]
-  double sample(double E, uint64_t* prn_seed) const;
+  double sample(double E, uint64_t* seed) const;
 private:
   //! Outgoing energy for a single incoming energy
   struct CTTable {
@@ -106,9 +106,9 @@ public:
 
   //! Sample energy distribution
   //! \param[in] E Incident particle energy in [eV]
-  //! \param[inout] prn_seed Pseudorandom number seed pointer
+  //! \param[inout] seed Pseudorandom number seed pointer
   //! \return Sampled energy in [eV]
-  double sample(double E, uint64_t* prn_seed) const;
+  double sample(double E, uint64_t* seed) const;
 private:
   Tabulated1D theta_; //!< Incoming energy dependent parameter
   double u_; //!< Restriction energy
@@ -125,9 +125,9 @@ public:
 
   //! Sample energy distribution
   //! \param[in] E Incident particle energy in [eV]
-  //! \param[inout] prn_seed Pseudorandom number seed pointer
+  //! \param[inout] seed Pseudorandom number seed pointer
   //! \return Sampled energy in [eV]
-  double sample(double E, uint64_t* prn_seed) const;
+  double sample(double E, uint64_t* seed) const;
 private:
   Tabulated1D theta_; //!< Incoming energy dependent parameter
   double u_; //!< Restriction energy
@@ -144,9 +144,9 @@ public:
 
   //! Sample energy distribution
   //! \param[in] E Incident particle energy in [eV]
-  //! \param[inout] prn_seed Pseudorandom number seed pointer
+  //! \param[inout] seed Pseudorandom number seed pointer
   //! \return Sampled energy in [eV]
-  double sample(double E, uint64_t* prn_seed) const;
+  double sample(double E, uint64_t* seed) const;
 private:
   Tabulated1D a_; //!< Energy-dependent 'a' parameter
   Tabulated1D b_; //!< Energy-dependent 'b' parameter

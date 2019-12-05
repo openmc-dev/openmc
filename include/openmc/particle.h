@@ -292,8 +292,8 @@ public:
   bool write_track_ {false};
 
   // Current PRNG state
-  uint64_t prn_seeds_[N_STREAMS]; // current seeds
-  int      stream_;               // current RNG stream
+  uint64_t seeds_[N_STREAMS]; // current seeds
+  int      stream_;           // current RNG stream
 };
 
 } // namespace openmc

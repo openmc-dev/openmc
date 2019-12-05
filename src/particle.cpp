@@ -678,7 +678,7 @@ Particle::write_restart() const
   } // #pragma omp critical
 }
 
-uint64_t* Particle::current_seed() {return prn_seeds_ + stream_;}
-const uint64_t* Particle::current_seed() const {return prn_seeds_ + stream_;}
+uint64_t* Particle::current_seed() {return seeds_ + stream_;}
+const uint64_t* Particle::current_seed() const {return seeds_ + stream_;}
 
 } // namespace openmc

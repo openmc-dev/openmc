@@ -29,9 +29,9 @@ public:
   //! \param[in] E_in Incoming energy in [eV]
   //! \param[out] E_out Outgoing energy in [eV]
   //! \param[out] mu Outgoing cosine with respect to current direction
-  //! \param[inout] prn_seed Pseudorandom seed pointer
+  //! \param[inout] seed Pseudorandom seed pointer
   void sample(double E_in, double& E_out, double& mu,
-    uint64_t* prn_seed) const override;
+    uint64_t* seed) const override;
 private:
   //! Outgoing energy/angle at a single incoming energy
   struct KMTable {

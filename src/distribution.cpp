@@ -35,11 +35,11 @@ Discrete::Discrete(const double* x, const double* p, int n)
   normalize();
 }
 
-double Discrete::sample(uint64_t* prn_seed) const
+double Discrete::sample(uint64_t* seed) const
 {
   int n = x_.size();
   if (n > 1) {
-    double xi = prn(prn_seed);
+    double xi = prn(seed);
     double c = 0.0;
     for (int i = 0; i < n; ++i) {
       c += p_[i];
@@ -74,9 +74,9 @@ Uniform::Uniform(pugi::xml_node node)
   b_ = params.at(1);
 }
 
-double Uniform::sample(uint64_t* prn_seed) const
+double Uniform::sample(uint64_t* seed) const
 {
-  return a_ + prn(prn_seed)*(b_ - a_);
+  return a_ + prn(seed)*(b_ - a_);
 }
 
 //==============================================================================
@@ -88,9 +88,9 @@ Maxwell::Maxwell(pugi::xml_node node)
   theta_ = std::stod(get_node_value(node, "parameters"));
 }
 
-double Maxwell::sample(uint64_t* prn_seed) const
+double Maxwell::sample(uint64_t* seed) const
 {
-  return maxwell_spectrum(theta_, prn_seed);
+  return maxwell_spectrum(theta_, seed);
 }
 
 //==============================================================================
@@ -108,9 +108,9 @@ Watt::Watt(pugi::xml_node node)
   b_ = params.at(1);
 }
 
-double Watt::sample(uint64_t* prn_seed) const
+double Watt::sample(uint64_t* seed) const
 {
-  return watt_spectrum(a_, b_, prn_seed);
+  return watt_spectrum(a_, b_, seed);
 }
 
 //==============================================================================
@@ -127,9 +127,9 @@ Normal::Normal(pugi::xml_node node)
   std_dev_ = params.at(1);
 }
 
-double Normal::sample(uint64_t* prn_seed) const
+double Normal::sample(uint64_t* seed) const
 {
-  return normal_variate(mean_value_, std_dev_, prn_seed);
+  return normal_variate(mean_value_, std_dev_, seed);
 }
 
 //==============================================================================
@@ -147,9 +147,9 @@ Muir::Muir(pugi::xml_node node)
   kt_ = params.at(2);
 }
 
-double Muir::sample(uint64_t* prn_seed) const
+double Muir::sample(uint64_t* seed) const
 {
-  return muir_spectrum(e0_, m_rat_, kt_, prn_seed);
+  return muir_spectrum(e0_, m_rat_, kt_, seed);
 }
 
 //==============================================================================
@@ -220,10 +220,10 @@ void Tabular::init(const double* x, const double* p, std::size_t n, const double
   }
 }
 
-double Tabular::sample(uint64_t* prn_seed) const
+double Tabular::sample(uint64_t* seed) const
 {
   // Sample value of CDF
-  double c = prn(prn_seed);
+  double c = prn(seed);
 
   // Find first CDF bin which is above the sampled value
   double c_i = c_[0];
@@ -263,11 +263,11 @@ double Tabular::sample(uint64_t* prn_seed) const
 // Equiprobable implementation
 //==============================================================================
 
-double Equiprobable::sample(uint64_t* prn_seed) const
+double Equiprobable::sample(uint64_t* seed) const
 {
   std::size_t n = x_.size();
 
-  double r = prn(prn_seed);
+  double r = prn(seed);
   int i = std::floor((n - 1)*r);
 
   double xl = x_[i];

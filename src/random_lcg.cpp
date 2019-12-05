@@ -22,24 +22,24 @@ constexpr double   prn_norm   {1.0 / prn_mod};           // 2^-63
 // PRN
 //==============================================================================
 
-double prn(uint64_t* prn_seed)
+double prn(uint64_t* seed)
 {
   // This algorithm uses bit-masking to find the next integer(8) value to be
   // used to calculate the random number.
-  *prn_seed = (prn_mult * (*prn_seed) + prn_add) & prn_mask;
+  *seed = (prn_mult * (*seed) + prn_add) & prn_mask;
 
   // Once the integer is calculated, we just need to divide by 2**m,
   // represented here as multiplying by a pre-calculated factor
-  return (*prn_seed) * prn_norm;
+  return (*seed) * prn_norm;
 }
 
 //==============================================================================
 // FUTURE_PRN
 //==============================================================================
 
-double future_prn(int64_t n, uint64_t prn_seed)
+double future_prn(int64_t n, uint64_t seed)
 {
-  return future_seed(static_cast<uint64_t>(n), prn_seed) * prn_norm;
+  return future_seed(static_cast<uint64_t>(n), seed) * prn_norm;
 }
 
 //==============================================================================
@@ -66,16 +66,16 @@ void init_particle_seeds(int64_t id, uint64_t* prn_seeds)
 // ADVANCE_PRN_SEED
 //==============================================================================
 
-void advance_prn_seed(int64_t n, uint64_t* prn_seed)
+void advance_prn_seed(int64_t n, uint64_t* seed)
 {
-  *prn_seed = future_seed(static_cast<uint64_t>(n), *prn_seed);
+  *seed = future_seed(static_cast<uint64_t>(n), *seed);
 }
 
 //==============================================================================
 // FUTURE_SEED
 //==============================================================================
 
-uint64_t future_seed(uint64_t n, uint64_t prn_seed)
+uint64_t future_seed(uint64_t n, uint64_t seed)
 {
   // Make sure nskip is less than 2^M.
   n &= prn_mask;
@@ -106,7 +106,7 @@ uint64_t future_seed(uint64_t n, uint64_t prn_seed)
   }
 
   // With G and C, we can now find the new seed.
-  return (g_new * prn_seed + c_new) & prn_mask;
+  return (g_new * seed + c_new) & prn_mask;
 }
 
 //==============================================================================

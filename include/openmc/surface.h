@@ -117,7 +117,7 @@ public:
   virtual Direction reflect(Position r, Direction u) const;
 
   virtual Direction diffuse_reflect(Position r, Direction u,
-    uint64_t* prn_seed) const;
+    uint64_t* seed) const;
 
   //! Evaluate the equation describing the surface.
   //!

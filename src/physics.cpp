@@ -750,7 +750,7 @@ void sab_scatter(int i_nuclide, int i_sab, Particle* p)
 }
 
 Direction sample_target_velocity(const Nuclide* nuc, double E, Direction u,
-  Direction v_neut, double xs_eff, double kT, uint64_t* prn_seed)
+  Direction v_neut, double xs_eff, double kT, uint64_t* seed)
 {
   // check if nuclide is a resonant scatterer
   ResScatMethod sampling_method;
@@ -782,7 +782,7 @@ Direction sample_target_velocity(const Nuclide* nuc, double E, Direction u,
   case ResScatMethod::cxs:
 
     // sample target velocity with the constant cross section (cxs) approx.
-    return sample_cxs_target_velocity(nuc->awr_, E, u, kT, prn_seed);
+    return sample_cxs_target_velocity(nuc->awr_, E, u, kT, seed);
 
   case ResScatMethod::dbrc:
   case ResScatMethod::rvs: {
@@ -816,7 +816,7 @@ Direction sample_target_velocity(const Nuclide* nuc, double E, Direction u,
     if (i_E_up == i_E_low) {
       // Handle degenerate case -- if the upper/lower bounds occur for the same
       // index, then using cxs is probably a good approximation
-      return sample_cxs_target_velocity(nuc->awr_, E, u, kT, prn_seed);
+      return sample_cxs_target_velocity(nuc->awr_, E, u, kT, seed);
     }
 
     if (sampling_method == ResScatMethod::dbrc) {
@@ -840,7 +840,7 @@ Direction sample_target_velocity(const Nuclide* nuc, double E, Direction u,
         Direction v_target;
         while (true) {
           // sample target velocity with the constant cross section (cxs) approx.
-          v_target = sample_cxs_target_velocity(nuc->awr_, E, u, kT, prn_seed);
+          v_target = sample_cxs_target_velocity(nuc->awr_, E, u, kT, seed);
           Direction v_rel = v_neut - v_target;
           E_rel = v_rel.dot(v_rel);
           if (E_rel < E_up) break;
@@ -849,7 +849,7 @@ Direction sample_target_velocity(const Nuclide* nuc, double E, Direction u,
         // perform Doppler broadening rejection correction (dbrc)
         double xs_0K = nuc->elastic_xs_0K(E_rel);
         double R = xs_0K / xs_max;
-        if (prn(prn_seed) < R) return v_target;
+        if (prn(seed) < R) return v_target;
       }
 
     } else if (sampling_method == ResScatMethod::rvs) {
@@ -869,10 +869,10 @@ Direction sample_target_velocity(const Nuclide* nuc, double E, Direction u,
 
       while (true) {
         // directly sample Maxwellian
-        double E_t = -kT * std::log(prn(prn_seed));
+        double E_t = -kT * std::log(prn(seed));
 
         // sample a relative energy using the xs cdf
-        double cdf_rel = cdf_low + prn(prn_seed)*(cdf_up - cdf_low);
+        double cdf_rel = cdf_low + prn(seed)*(cdf_up - cdf_low);
         int i_E_rel = lower_bound_index(&nuc->xs_cdf_[i_E_low-1],
           &nuc->xs_cdf_[i_E_up+1], cdf_rel);
         double E_rel = nuc->energy_0K_[i_E_low + i_E_rel];
@@ -890,7 +890,7 @@ Direction sample_target_velocity(const Nuclide* nuc, double E, Direction u,
         if (std::abs(mu) < 1.0) {
           // set and accept target velocity
           E_t /= nuc->awr_;
-          return std::sqrt(E_t) * rotate_angle(u, mu, nullptr, prn_seed);
+          return std::sqrt(E_t) * rotate_angle(u, mu, nullptr, seed);
         }
       }
     }
@@ -901,7 +901,7 @@ Direction sample_target_velocity(const Nuclide* nuc, double E, Direction u,
 }
 
 Direction
-sample_cxs_target_velocity(double awr, double E, Direction u, double kT, uint64_t* prn_seed)
+sample_cxs_target_velocity(double awr, double E, Direction u, double kT, uint64_t* seed)
 {
   double beta_vn = std::sqrt(awr * E / kT);
   double alpha = 1.0/(1.0 + std::sqrt(PI)*beta_vn/2.0);
@@ -910,10 +910,10 @@ sample_cxs_target_velocity(double awr, double E, Direction u, double kT, uint64_
   double mu;
   while (true) {
     // Sample two random numbers
-    double r1 = prn(prn_seed);
-    double r2 = prn(prn_seed);
+    double r1 = prn(seed);
+    double r2 = prn(seed);
 
-    if (prn(prn_seed) < alpha) {
+    if (prn(seed) < alpha) {
       // With probability alpha, we sample the distribution p(y) =
       // y*e^(-y). This can be done with sampling scheme C45 frmo the Monte
       // Carlo sampler
@@ -925,7 +925,7 @@ sample_cxs_target_velocity(double awr, double E, Direction u, double kT, uint64_
       // e^(-y^2). This can be done with sampling scheme C61 from the Monte
       // Carlo sampler
 
-      double c = std::cos(PI/2.0 * prn(prn_seed));
+      double c = std::cos(PI/2.0 * prn(seed));
       beta_vt_sq = -std::log(r1) - std::log(r2)*c*c;
     }
 
@@ -933,14 +933,14 @@ sample_cxs_target_velocity(double awr, double E, Direction u, double kT, uint64_
     double beta_vt = std::sqrt(beta_vt_sq);
 
     // Sample cosine of angle between neutron and target velocity
-    mu = 2.0*prn(prn_seed) - 1.0;
+    mu = 2.0*prn(seed) - 1.0;
 
     // Determine rejection probability
     double accept_prob = std::sqrt(beta_vn*beta_vn + beta_vt_sq -
       2*beta_vn*beta_vt*mu) / (beta_vn + beta_vt);
 
     // Perform rejection sampling on vt and mu
-    if (prn(prn_seed) < accept_prob) break;
+    if (prn(seed) < accept_prob) break;
   }
 
   // Determine speed of target nucleus
@@ -948,19 +948,19 @@ sample_cxs_target_velocity(double awr, double E, Direction u, double kT, uint64_
 
   // Determine velocity vector of target nucleus based on neutron's velocity
   // and the sampled angle between them
-  return vt * rotate_angle(u, mu, nullptr, prn_seed);
+  return vt * rotate_angle(u, mu, nullptr, seed);
 }
 
-void sample_fission_neutron(int i_nuclide, const Reaction* rx, double E_in, Particle::Bank* site, uint64_t* prn_seed)
+void sample_fission_neutron(int i_nuclide, const Reaction* rx, double E_in, Particle::Bank* site, uint64_t* seed)
 {
   // Sample cosine of angle -- fission neutrons are always emitted
   // isotropically. Sometimes in ACE data, fission reactions actually have
   // an angular distribution listed, but for those that do, it's simply just
   // a uniform distribution in mu
-  double mu = 2.0 * prn(prn_seed) - 1.0;
+  double mu = 2.0 * prn(seed) - 1.0;
 
   // Sample azimuthal angle uniformly in [0,2*pi)
-  double phi = 2.0*PI*prn(prn_seed);
+  double phi = 2.0*PI*prn(seed);
   site->u.x = mu;
   site->u.y = std::sqrt(1.0 - mu*mu) * std::cos(phi);
   site->u.z = std::sqrt(1.0 - mu*mu) * std::sin(phi);
@@ -971,12 +971,12 @@ void sample_fission_neutron(int i_nuclide, const Reaction* rx, double E_in, Part
   double nu_d = nuc->nu(E_in, Nuclide::EmissionMode::delayed);
   double beta = nu_d / nu_t;
 
-  if (prn(prn_seed) < beta) {
+  if (prn(seed) < beta) {
     // ====================================================================
     // DELAYED NEUTRON SAMPLED
 
     // sampled delayed precursor group
-    double xi = prn(prn_seed)*nu_d;
+    double xi = prn(seed)*nu_d;
     double prob = 0.0;
     int group;
     for (group = 1; group < nuc->n_precursor_; ++group) {
@@ -1000,7 +1000,7 @@ void sample_fission_neutron(int i_nuclide, const Reaction* rx, double E_in, Part
     while (true) {
       // sample from energy/angle distribution -- note that mu has already been
       // sampled above and doesn't need to be resampled
-      rx->products_[group].sample(E_in, site->E, mu, prn_seed);
+      rx->products_[group].sample(E_in, site->E, mu, seed);
 
       // resample if energy is greater than maximum neutron energy
       constexpr int neutron = static_cast<int>(Particle::Type::neutron);
@@ -1025,7 +1025,7 @@ void sample_fission_neutron(int i_nuclide, const Reaction* rx, double E_in, Part
     // sample from prompt neutron energy distribution
     int n_sample = 0;
     while (true) {
-      rx->products_[0].sample(E_in, site->E, mu, prn_seed);
+      rx->products_[0].sample(E_in, site->E, mu, seed);
 
       // resample if energy is greater than maximum neutron energy
       constexpr int neutron = static_cast<int>(Particle::Type::neutron);

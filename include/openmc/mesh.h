@@ -448,8 +448,8 @@ public:
                     std::vector<int>& bins,
                     std::vector<double>& lengths) const;
 
-  void intersect_track(const libMesh::Point& start,
-                       const libMesh::Point& dir,
+  void intersect_track(libMesh::Point start,
+                       libMesh::Point dir,
                        double track_len,
                        UnstructuredMeshHits& hits) const;
 
@@ -461,6 +461,15 @@ public:
   get_bin_from_mesh_type(const libMesh::Elem* elem) const;
 
   int get_bin(Position r) const;
+
+  std::pair<double, libMesh::Elem*>
+  locate_boundary_element(const Position& r0,
+                          const Position& r1) const;
+
+  std::pair<double, libMesh::Elem*>
+  locate_boundary_element(const libMesh::Point& start,
+                          const libMesh::Point& end) const;
+
 
   // triangle intersection methods
   bool plucker_test(std::unique_ptr<const libMesh::Elem> tri,
@@ -476,11 +485,13 @@ public:
   double first(const libMesh::Node& a,
                const libMesh::Node& b) const;
 
+  bool intersects(Position& r0, Position r1, int* ijk) const;
 
 private:
   std::unique_ptr<libMesh::Mesh> m_;
   std::unique_ptr<libMesh::PointLocatorBase> point_locator_;
   libMesh::Elem* first_element_;
+  std::set<libMesh::Elem*> boundary_elements_;
 };
 #endif
 

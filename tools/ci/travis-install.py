@@ -53,7 +53,6 @@ def install(omp=False, mpi=False, phdf5=False, dagmc=False):
 
     # Build and install
     cmake_cmd.append('..')
-    print(' '.join(cmake_cmd))
     subprocess.check_call(cmake_cmd)
     subprocess.check_call(['make', '-j4'])
     subprocess.check_call(['sudo', 'make', 'install'])
@@ -63,7 +62,6 @@ def main():
     omp = (os.environ.get('OMP') == 'y')
     mpi = (os.environ.get('MPI') == 'y')
     phdf5 = (os.environ.get('PHDF5') == 'y')
-
     dagmc = (os.environ.get('DAGMC') == 'y')
 
     # Build and install

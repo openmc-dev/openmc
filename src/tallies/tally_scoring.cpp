@@ -259,7 +259,7 @@ double get_nuclide_neutron_heating(const Particle* p, const Nuclide& nuc,
 
   auto f = p->neutron_xs_[i_nuclide].interp_factor;
   return (1.0 - f) * xs.value[i_grid-xs.threshold]
-   + f * xs.value[i_grid-xs.threshold+1];
+    + f * xs.value[i_grid-xs.threshold+1];
 }
 
 //! Helper function to obtain neutron heating [eV]

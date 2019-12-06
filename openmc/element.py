@@ -3,7 +3,6 @@ import re
 import os
 from xml.etree import ElementTree as ET
 
-import openmc
 import openmc.checkvalue as cv
 from openmc.data import NATURAL_ABUNDANCE, atomic_mass
 

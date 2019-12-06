@@ -1,6 +1,6 @@
 def clean_indentation(element, level=0, spaces_per_level=2):
     """
-    copy and paste from http://effbot.org/zone/elementent-lib.htm#prettyprint
+    copy and paste from http://effbot.org/zone/element-lib.htm#prettyprint
     it basically walks your tree and adds spaces and newlines so the tree is
     printed in a nice way
     """

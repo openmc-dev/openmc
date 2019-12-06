@@ -90,7 +90,7 @@ def check_iterable_type(name, value, expected_type, min_depth=1, max_depth=1):
 
         # Get a string representation of the current index in case we raise an
         # exception.
-        form = '[' + '{:d}, '*(len(index)-1) + '{:d}]'
+        form = '[' + '{:d}, ' * (len(index)-1) + '{:d}]'
         ind_str = form.format(*index)
 
         # What is the current item we are looking at?
@@ -109,7 +109,7 @@ def check_iterable_type(name, value, expected_type, min_depth=1, max_depth=1):
             index[-1] += 1
 
         # If this item is not of the expected type, then it's either an error or
-        # another level of the tree that we need to pursue deeper.
+        # on a deeper level of the tree.
         else:
             if isinstance(current_item, Iterable):
                 # The tree goes deeper here, let's explore it.

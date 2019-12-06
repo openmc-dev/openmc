@@ -2372,6 +2372,37 @@ double LibMesh::volume(int bin) const { return m_->elem_ref(bin).volume(); }
 
 #endif // LIBMESH
 
+UnstructuredMeshBase::UnstructuredMeshBase(pugi::xml_node node) : Mesh(node) {
+    // check the mesh type
+  if (check_for_node(node, "type")) {
+    auto temp = get_node_value(node, "type", true, true);
+    if (temp != "unstructured") {
+      fatal_error("Invalid mesh type: " + temp);
+    }
+  }
+
+  // get the filename of the unstructured mesh to load
+  if (check_for_node(node, "mesh_file")) {
+    filename_ = get_node_value(node, "mesh_file");
+  }
+  else {
+    fatal_error("No filename supplied for unstructured mesh with ID: " +
+                std::to_string(id_));
+  }
+}
+
+#ifdef LIBMESH
+LibMesh::LibMesh(pugi::xml_node node) : UnstructuredMeshBase(node) {
+  libMesh::LibMeshInit init(0, NULL);
+
+  m_ = std::unique_ptr<libMesh::Mesh>(new libMesh::Mesh(init.comm(), 3));
+  m_->read(filename_);
+
+  point_locator_ = m_->sub_point_locator();
+  m_->find_neighbors();
+}
+#endif
+
 //==============================================================================
 // Non-member functions
 //==============================================================================

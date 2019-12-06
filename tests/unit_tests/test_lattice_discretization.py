@@ -50,12 +50,13 @@ def test_discretization_lns(rlat2):
     rlat_clone.discretize(strategy="lns")
 
     assert rlat_clone.get_universe((0, 2)) == rlat_clone.get_universe((2, 2))
-
-    rlat_clone = rlat2.clone()
-    rlat_clone.discretize(strategy="lns", rotate_universe_with_neighbors=True)
-
-    assert rlat_clone.get_universe((0, 2)) == \
-         next(iter(rlat_clone.get_universe((2, 2)).cells.values())).fill
+    assert rlat_clone.get_universe((0, 2)) != rlat_clone.get_universe((0, 0))
+    assert rlat_clone.get_universe((0, 2)) != rlat_clone.get_universe((0, 1))
+    assert rlat_clone.get_universe((0, 2)) != rlat_clone.get_universe((1, 0))
+    assert rlat_clone.get_universe((0, 2)) != rlat_clone.get_universe((1, 1))
+    assert rlat_clone.get_universe((0, 2)) != rlat_clone.get_universe((1, 2))
+    assert rlat_clone.get_universe((0, 2)) != rlat_clone.get_universe((2, 0))
+    assert rlat_clone.get_universe((0, 2)) != rlat_clone.get_universe((2, 1))
 
 def test_discretization_lns_using_names(rlat2):
 
@@ -125,17 +126,4 @@ def test_discretization_lns_nested_lattices(rlat2):
                  ).fill.get_universe((i, j)).name == \
                  next(iter(main_lattice.get_universe((2, 2)).cells.values(
                  ))).fill.get_universe((i, j)).name
-
-    # Test when rotating the sublattices with their neighbors
-    main_lattice_clone.discretize(strategy="lns",
-                                  rotate_universe_with_neighbors=True)
-
-    # Look inside inner lattices
-    for i in range(3):
-        for j in range(3):
-            assert next(iter(main_lattice_clone.get_universe((0, 2)
-                 ).cells.values())).fill.get_universe((i, j)).name == \
-                 next(iter(next(iter(main_lattice_clone.get_universe((2, 2)
-                 ).cells.values())).fill.cells.values())).fill.get_universe(
-                 (2-j, 2-i)).name
 

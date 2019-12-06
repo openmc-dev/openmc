@@ -765,12 +765,11 @@ class RectLattice(Lattice):
                     0 <= idx[2] < self.shape[2])
 
     def discretize(self, strategy="degenerate",
-                   rotate_universe_with_neighbors=False,
                    universes_to_ignore=[],
                    materials_to_clone=[],
                    lattice_neighbors=[], attribute="id"):
-        """Discretize the lattice with either a degenerate or a recursive local
-        neighbor symmetry strategy
+        """Discretize the lattice and its immediate sublattices with either a
+        degenerate or a local neighbor symmetry strategy
 
         'Degenerate' clones every universe in the lattice, thus making them all
         uniquely defined. This is typically required if depletion or thermal
@@ -778,20 +777,14 @@ class RectLattice(Lattice):
 
         'Local neighbor symmetry' groups universes with similar neighborhoods.
         These clusters of cells and materials provide increased convergence
-        speed to multi-group cross sections tallies. The recursion allows
-        the modelling of neighbor universes on multiple scales, for example
-        to discriminate between the baffle and the neighbor lattices of a
-        latttice in the outer ring of a light water reactor. The recursion is
-        only implemented for lattices exactly right below the starting lattice
-        (starting lattice contains universe contains cell contains the lattice)
+        speed to multi-group cross sections tallies. The user can specify
+        the main lattice's neighbors to discriminate between two sides of an
+        assembly. Note that each sublattice's neighbors are not considered.
 
         Parameters
         ----------
         strategy : str
             Which strategy to adopt when discretizing the lattice
-        rotate_universe_with_neighbors : bool
-            Whether lattice universes (especially sublattices) with rotated/
-            symmetric neighbor patterns should also be rotated/symmetrized.
         universes_to_ignore : Iterable of Universe
             Lattice universes that need not be discretized
         materials_to_clone : Iterable of Material
@@ -813,8 +806,6 @@ class RectLattice(Lattice):
                                       "for 1D and 3D lattices")
 
         cv.check_value('strategy', strategy, ('degenerate', 'lns'))
-        cv.check_type('rotate_universe_with_neighbors',
-                      rotate_universe_with_neighbors, bool)
         cv.check_type('universes_to_ignore', universes_to_ignore, Iterable,
                       openmc.Universe)
         cv.check_type('materials_to_clone', materials_to_clone, Iterable,
@@ -972,12 +963,6 @@ class RectLattice(Lattice):
                             # Save location of the pattern in the lattice
                             pattern_data['locations'].append((i, j))
 
-                            # Save the pattern rotation at this location
-                            pattern_data['rotations'].append(rot)
-
-                            # Save that the pattern was not transposed
-                            pattern_data['transpositions'].append(False)
-
                         # Rotate pattern
                         pattern = np.rot90(pattern)
 
@@ -991,12 +976,6 @@ class RectLattice(Lattice):
                             # Save location of the pattern in the lattice
                             pattern_data['locations'].append((i, j))
 
-                            # Save the pattern rotation at this location
-                            pattern_data['rotations'].append(rot)
-
-                            # Save that the pattern was transposed
-                            pattern_data['transpositions'].append(True)
-
                         # Rotate pattern
                         pattern = np.rot90(pattern)
 
@@ -1007,8 +986,6 @@ class RectLattice(Lattice):
                 if not found:
                     pattern_data = {}
                     pattern_data['locations'] = [(i, j)]
-                    pattern_data['rotations'] = [0]
-                    pattern_data['transpositions'] = [False]
                     if strategy == "lns":
                         patterns[tuple(map(tuple, pattern))] = pattern_data
                     elif strategy == "degenerate":
@@ -1029,23 +1006,11 @@ class RectLattice(Lattice):
                 sub_universe = sub_cell.fill
 
                 try:
-                    if strategy == "lns":
-                        sub_neighbors = [pattern[0][0], pattern[0][1],
-                         pattern[0][2], pattern[1][0], pattern[1][2],
-                         pattern[2][0], pattern[2][1], pattern[2][2]]
-                    elif strategy == "degenerate":
-                        sub_neighbors = []
-
-                    # Revert to regular LNS if neighbor rotations are not
-                    # present in the sub_universe (sub-lattice)
-                    if not rotate_universe_with_neighbors:
-                        sub_neighbors = []
 
                     sub_universe.discretize(strategy,
-                                            rotate_universe_with_neighbors,
                                             universes_to_ignore,
                                             materials_to_clone,
-                                            lattice_neighbors=sub_neighbors,
+                                            lattice_neighbors=[],
                                             attribute=attribute)
                 except AttributeError:
                     continue
@@ -1066,50 +1031,9 @@ class RectLattice(Lattice):
 
                             cell.fill = material_clone
 
-            # Build a symmetric universe for the transposed lattices
-            if rotate_universe_with_neighbors and\
-                 any(pattern_data['transpositions']):
-                sym_universe = new_universe.clone(clone_materials=False,
-                                                  clone_regions=False)
-                for cell_id, sub_cell in sym_universe.cells.items():
-                    sub_universe = sub_cell.fill
-
-                    try:
-                        sub_universe.universes = np.transpose(
-                             sub_universe.universes)
-                    except AttributeError:
-                        continue
-
-            # Rebuild lattice from pattern using rotation and symmetries
+            # Rebuild lattice from list of locations with this pattern
             for index, location in enumerate(pattern_data['locations']):
-
-                i = location[0]
-                j = location[1]
-
-                # Unrotated and untransposed case
-                if not rotate_universe_with_neighbors or\
-                     (pattern_data['rotations'][index] == 0 and
-                     not pattern_data['transpositions'][index]):
-                    self.universes[j][i] = new_universe
-
-                else:
-                    fill_universe = new_universe
-                    rotation_direction = -1
-
-                    # If pattern of neighbors has to be transposed
-                    if pattern_data['transpositions'][index]:
-                        rotation_direction = 1
-                        fill_universe = sym_universe
-
-                    # Create a container universe and cell for the rotation
-                    holder_universe = openmc.Universe(name=
-                                                      "LNS rotation universe")
-                    holder_cell = openmc.Cell(name="LNS rotation cell")
-                    holder_cell.fill = fill_universe
-                    holder_cell.rotation = (0, 0, 90 * rotation_direction *
-                                            pattern_data['rotations'][index])
-                    holder_universe.add_cell(holder_cell)
-                    self.universes[j][i] = holder_universe
+                self.universes[location[1]][location[0]] = new_universe
 
     def create_xml_subelement(self, xml_element):
 

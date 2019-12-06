@@ -630,22 +630,22 @@ void calc_zn_rad(int n, double rho, double zn_rad[]) {
 }
 
 
-void rotate_angle_c(double uvw[3], double mu, const double* phi) {
-  Direction u = rotate_angle({uvw}, mu, phi);
+void rotate_angle_c(double uvw[3], double mu, const double* phi, uint64_t* seed) {
+  Direction u = rotate_angle({uvw}, mu, phi, seed);
   uvw[0] = u.x;
   uvw[1] = u.y;
   uvw[2] = u.z;
 }
 
 
-Direction rotate_angle(Direction u, double mu, const double* phi)
+Direction rotate_angle(Direction u, double mu, const double* phi, uint64_t* seed)
 {
   // Sample azimuthal angle in [0,2pi) if none provided
   double phi_;
   if (phi != nullptr) {
     phi_ = (*phi);
   } else {
-    phi_ = 2.0*PI*prn();
+    phi_ = 2.0*PI*prn(seed);
   }
 
   // Precompute factors to save flops
@@ -675,11 +675,11 @@ Direction rotate_angle(Direction u, double mu, const double* phi)
 }
 
 
-double maxwell_spectrum(double T) {
+double maxwell_spectrum(double T, uint64_t* seed) {
   // Set the random numbers
-  double r1 = prn();
-  double r2 = prn();
-  double r3 = prn();
+  double r1 = prn(seed);
+  double r2 = prn(seed);
+  double r3 = prn(seed);
 
   // determine cosine of pi/2*r
   double c = std::cos(PI / 2. * r3);
@@ -691,33 +691,33 @@ double maxwell_spectrum(double T) {
 }
 
 
-double normal_variate(double mean, double standard_deviation) {
+double normal_variate(double mean, double standard_deviation, uint64_t* seed) {
   // perhaps there should be a limit to the number of resamples
   while ( true ) {
-    double v1 = 2 * prn() - 1.;
-    double v2 = 2 * prn() - 1.;
+    double v1 = 2 * prn(seed) - 1.;
+    double v2 = 2 * prn(seed) - 1.;
 
     double r = std::pow(v1, 2) + std::pow(v2, 2);
     double r2 = std::pow(r, 2);
     if (r2 < 1) {
       double z = std::sqrt(-2.0 * std::log(r2)/r2);
-      z *= (prn() <= 0.5) ? v1 : v2;
+      z *= (prn(seed) <= 0.5) ? v1 : v2;
       return mean + standard_deviation*z;
     }
   }
 }
 
-double muir_spectrum(double e0, double m_rat, double kt) {
+double muir_spectrum(double e0, double m_rat, double kt, uint64_t* seed) {
   // note sigma here is a factor of 2 shy of equation
   // 8 in https://permalink.lanl.gov/object/tr?what=info:lanl-repo/lareport/LA-05411-MS
   double sigma = std::sqrt(2.*e0*kt/m_rat);
-  return normal_variate(e0, sigma);
+  return normal_variate(e0, sigma, seed);
 }
 
 
-double watt_spectrum(double a, double b) {
-  double w = maxwell_spectrum(a);
-  double E_out = w + 0.25 * a * a * b + (2. * prn() - 1.) * std::sqrt(a * a * b * w);
+double watt_spectrum(double a, double b, uint64_t* seed) {
+  double w = maxwell_spectrum(a, seed);
+  double E_out = w + 0.25 * a * a * b + (2. * prn(seed) - 1.) * std::sqrt(a * a * b * w);
 
   return E_out;
 }

@@ -41,7 +41,7 @@ if download:
         while True:
             chunk = req.read(block_size)
             if not chunk:
-              break
+                break
             fh.write(chunk)
             downloaded += len(chunk)
             status = '{0:10}  [{1:3.2f}%]'.format(

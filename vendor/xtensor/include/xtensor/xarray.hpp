@@ -1,5 +1,6 @@
 /***************************************************************************
-* Copyright (c) 2016, Johan Mabille, Sylvain Corlay and Wolf Vollprecht    *
+* Copyright (c) Johan Mabille, Sylvain Corlay and Wolf Vollprecht          *
+* Copyright (c) QuantStack                                                 *
 *                                                                          *
 * Distributed under the terms of the BSD 3-Clause License.                 *
 *                                                                          *
@@ -26,13 +27,31 @@ namespace xt
      * xarray_container declaration *
      ********************************/
 
+    namespace extension
+    {
+        template <class EC, layout_type L, class SC, class Tag>
+        struct xarray_container_base;
+
+        template <class EC, layout_type L, class SC>
+        struct xarray_container_base<EC, L, SC, xtensor_expression_tag>
+        {
+            using type = xtensor_empty_base;
+        };
+
+        template <class EC, layout_type L, class SC, class Tag>
+        using xarray_container_base_t = typename xarray_container_base<EC, L, SC, Tag>::type;
+    }
+
     template <class EC, layout_type L, class SC, class Tag>
     struct xcontainer_inner_types<xarray_container<EC, L, SC, Tag>>
     {
         using storage_type = EC;
+        using reference = inner_reference_t<storage_type>;
+        using const_reference = typename storage_type::const_reference;
+        using size_type = typename storage_type::size_type;
         using shape_type = SC;
-        using strides_type = shape_type;
-        using backstrides_type = shape_type;
+        using strides_type = get_strides_t<shape_type>;
+        using backstrides_type = get_strides_t<shape_type>;
         using inner_shape_type = shape_type;
         using inner_strides_type = strides_type;
         using inner_backstrides_type = backstrides_type;
@@ -57,17 +76,19 @@ namespace xt
      * @tparam L The layout_type of the container.
      * @tparam SC The type of the containers holding the shape and the strides.
      * @tparam Tag The expression tag.
-     * @sa xarray
+     * @sa xarray, xstrided_container, xcontainer
      */
     template <class EC, layout_type L, class SC, class Tag>
     class xarray_container : public xstrided_container<xarray_container<EC, L, SC, Tag>>,
-                             public xcontainer_semantic<xarray_container<EC, L, SC, Tag>>
+                             public xcontainer_semantic<xarray_container<EC, L, SC, Tag>>,
+                             public extension::xarray_container_base_t<EC, L, SC, Tag>
     {
     public:
 
         using self_type = xarray_container<EC, L, SC, Tag>;
         using base_type = xstrided_container<self_type>;
         using semantic_base = xcontainer_semantic<self_type>;
+        using extension_base = extension::xarray_container_base_t<EC, L, SC, Tag>;
         using storage_type = typename base_type::storage_type;
         using allocator_type = typename base_type::allocator_type;
         using value_type = typename base_type::value_type;
@@ -80,6 +101,7 @@ namespace xt
         using strides_type = typename base_type::strides_type;
         using backstrides_type = typename base_type::backstrides_type;
         using inner_strides_type = typename base_type::inner_strides_type;
+        using inner_backstrides_type = typename base_type::inner_backstrides_type;
         using temporary_type = typename semantic_base::temporary_type;
         using expression_tag = Tag;
 
@@ -108,6 +130,11 @@ namespace xt
         xarray_container(xarray_container&&) = default;
         xarray_container& operator=(xarray_container&&) = default;
 
+        template <std::size_t N>
+        explicit xarray_container(xtensor_container<EC, N, L, Tag>&& rhs);
+        template <std::size_t N>
+        xarray_container& operator=(xtensor_container<EC, N, L, Tag>&& rhs);
+
         template <class E>
         xarray_container(const xexpression<E>& e);
 
@@ -128,13 +155,31 @@ namespace xt
      * xarray_adaptor declaration *
      ******************************/
 
+    namespace extension
+    {
+        template <class EC, layout_type L, class SC, class Tag>
+        struct xarray_adaptor_base;
+
+        template <class EC, layout_type L, class SC>
+        struct xarray_adaptor_base<EC, L, SC, xtensor_expression_tag>
+        {
+            using type = xtensor_empty_base;
+        };
+
+        template <class EC, layout_type L, class SC, class Tag>
+        using xarray_adaptor_base_t = typename xarray_adaptor_base<EC, L, SC, Tag>::type;
+    }
+
     template <class EC, layout_type L, class SC, class Tag>
     struct xcontainer_inner_types<xarray_adaptor<EC, L, SC, Tag>>
     {
         using storage_type = std::remove_reference_t<EC>;
+        using reference = inner_reference_t<storage_type>;
+        using const_reference = typename storage_type::const_reference;
+        using size_type = typename storage_type::size_type;
         using shape_type = SC;
-        using strides_type = shape_type;
-        using backstrides_type = shape_type;
+        using strides_type = get_strides_t<shape_type>;
+        using backstrides_type = get_strides_t<shape_type>;
         using inner_shape_type = shape_type;
         using inner_strides_type = strides_type;
         using inner_backstrides_type = backstrides_type;
@@ -162,10 +207,12 @@ namespace xt
      * @tparam L The layout_type of the adaptor.
      * @tparam SC The type of the containers holding the shape and the strides.
      * @tparam Tag The expression tag.
+     * @sa xstrided_container, xcontainer
      */
     template <class EC, layout_type L, class SC, class Tag>
     class xarray_adaptor : public xstrided_container<xarray_adaptor<EC, L, SC, Tag>>,
-                           public xcontainer_semantic<xarray_adaptor<EC, L, SC, Tag>>
+                           public xcontainer_semantic<xarray_adaptor<EC, L, SC, Tag>>,
+                           public extension::xarray_adaptor_base_t<EC, L, SC, Tag>
     {
     public:
 
@@ -174,6 +221,7 @@ namespace xt
         using self_type = xarray_adaptor<EC, L, SC, Tag>;
         using base_type = xstrided_container<self_type>;
         using semantic_base = xcontainer_semantic<self_type>;
+        using extension_base = extension::xarray_adaptor_base_t<EC, L, SC, Tag>;
         using storage_type = typename base_type::storage_type;
         using allocator_type = typename base_type::allocator_type;
         using shape_type = typename base_type::shape_type;
@@ -209,7 +257,6 @@ namespace xt
 
         storage_type& storage_impl() noexcept;
         const storage_type& storage_impl() const noexcept;
-
 
         friend class xcontainer<xarray_adaptor<EC, L, SC, Tag>>;
     };
@@ -386,8 +433,31 @@ namespace xt
     template <class S>
     inline xarray_container<EC, L, SC, Tag> xarray_container<EC, L, SC, Tag>::from_shape(S&& s)
     {
-        shape_type shape = xtl::forward_sequence<shape_type>(s);
+        shape_type shape = xtl::forward_sequence<shape_type, S>(s);
         return self_type(shape);
+    }
+
+    template <class EC, layout_type L, class SC, class Tag>
+    template <std::size_t N>
+    inline xarray_container<EC, L, SC, Tag>::xarray_container(xtensor_container<EC, N, L, Tag>&& rhs)
+        : base_type(inner_shape_type(rhs.shape().cbegin(), rhs.shape().cend()),
+                    inner_strides_type(rhs.strides().cbegin(), rhs.strides().cend()),
+                    inner_backstrides_type(rhs.backstrides().cbegin(), rhs.backstrides().cend()),
+                    std::move(rhs.layout())),
+          m_storage(std::move(rhs.storage()))
+    {
+    }
+
+    template <class EC, layout_type L, class SC, class Tag>
+    template <std::size_t N>
+    inline xarray_container<EC, L, SC, Tag>& xarray_container<EC, L, SC, Tag>::operator=(xtensor_container<EC, N, L, Tag>&& rhs)
+    {
+        this->shape_impl().assign(rhs.shape().cbegin(), rhs.shape().cend());
+        this->strides_impl().assign(rhs.strides().cbegin(), rhs.strides().cend());
+        this->backstrides_impl().assign(rhs.backstrides().cbegin(), rhs.backstrides().cend());
+        this->mutable_layout() = rhs.layout();
+        m_storage = std::move(rhs.storage());
+        return *this;
     }
 
     /**

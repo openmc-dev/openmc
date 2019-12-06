@@ -1,5 +1,6 @@
 /***************************************************************************
-* Copyright (c) 2016, Johan Mabille, Sylvain Corlay and Wolf Vollprecht    *
+* Copyright (c) Johan Mabille, Sylvain Corlay and Wolf Vollprecht          *
+* Copyright (c) QuantStack                                                 *
 *                                                                          *
 * Distributed under the terms of the BSD 3-Clause License.                 *
 *                                                                          *
@@ -9,7 +10,6 @@
 #ifndef XOPTIONAL_ASSEMBLY_HPP
 #define XOPTIONAL_ASSEMBLY_HPP
 
-#include "xconcepts.hpp"
 #include "xoptional.hpp"
 #include "xoptional_assembly_base.hpp"
 #include "xsemantic.hpp"
@@ -27,10 +27,10 @@ namespace xt
     template <class VE, class FE>
     struct xcontainer_inner_types<xoptional_assembly<VE, FE>>
     {
-        using value_expression = VE;
-        using value_storage_type = typename value_expression::storage_type&;
-        using flag_expression = FE;
-        using flag_storage_type = typename flag_expression::storage_type&;
+        using raw_value_expression = VE;
+        using value_storage_type = typename raw_value_expression::storage_type&;
+        using raw_flag_expression = FE;
+        using flag_storage_type = typename raw_flag_expression::storage_type&;
         using storage_type = xoptional_assembly_storage<value_storage_type, flag_storage_type>;
         using temporary_type = xoptional_assembly<VE, FE>;
     };
@@ -66,8 +66,12 @@ namespace xt
         using self_type = xoptional_assembly<VE, FE>;
         using base_type = xoptional_assembly_base<self_type>;
         using semantic_base = xcontainer_semantic<self_type>;
+        using raw_value_expression = typename base_type::raw_value_expression;
+        using raw_flag_expression = typename base_type::raw_flag_expression;
         using value_expression = typename base_type::value_expression;
         using flag_expression = typename base_type::flag_expression;
+        using const_value_expression = typename base_type::const_value_expression;
+        using const_flag_expression = typename base_type::const_flag_expression;
         using storage_type = typename base_type::storage_type;
         using value_type = typename base_type::value_type;
         using reference = typename base_type::reference;
@@ -88,7 +92,7 @@ namespace xt
         xoptional_assembly(const VE& ve);
         xoptional_assembly(VE&& ve);
 
-        template <class OVE, class OFE, XTENSOR_REQUIRE<is_xexpression<OVE>::value && is_xexpression<OFE>::value>>
+        template <class OVE, class OFE, typename = std::enable_if_t<is_xexpression<OVE>::value && is_xexpression<OFE>::value>>
         xoptional_assembly(OVE&& ove, OFE&& ofe);
 
         xoptional_assembly(const value_type& value);
@@ -120,14 +124,14 @@ namespace xt
         storage_type& storage_impl() noexcept;
         const storage_type& storage_impl() const noexcept;
 
-        value_expression& value_impl() noexcept;
-        const value_expression& value_impl() const noexcept;
+        value_expression value_impl() noexcept;
+        const_value_expression value_impl() const noexcept;
 
-        flag_expression& has_value_impl() noexcept;
-        const flag_expression& has_value_impl() const noexcept;
+        flag_expression has_value_impl() noexcept;
+        const_flag_expression has_value_impl() const noexcept;
 
-        value_expression m_value;
-        flag_expression m_has_value;
+        raw_value_expression m_value;
+        raw_flag_expression m_has_value;
         storage_type m_storage;
 
         friend class xoptional_assembly_base<xoptional_assembly<VE, FE>>;
@@ -143,16 +147,16 @@ namespace xt
     template <class VEC, class FEC>
     struct xcontainer_inner_types<xoptional_assembly_adaptor<VEC, FEC>>
     {
-        using value_expression = std::remove_reference_t<VEC>;
-        using value_storage_type = std::conditional_t<std::is_const<value_expression>::value,
-                                                      const typename value_expression::storage_type&,
-                                                      typename value_expression::storage_type&>;
-        using flag_expression = std::remove_reference_t<FEC>;
-        using flag_storage_type = std::conditional_t<std::is_const<flag_expression>::value,
-                                                     const typename flag_expression::storage_type&,
-                                                     typename flag_expression::storage_type&>;
+        using raw_value_expression = std::remove_reference_t<VEC>;
+        using value_storage_type = std::conditional_t<std::is_const<raw_value_expression>::value,
+                                                      const typename raw_value_expression::storage_type&,
+                                                      typename raw_value_expression::storage_type&>;
+        using raw_flag_expression = std::remove_reference_t<FEC>;
+        using flag_storage_type = std::conditional_t<std::is_const<raw_flag_expression>::value,
+                                                     const typename raw_flag_expression::storage_type&,
+                                                     typename raw_flag_expression::storage_type&>;
         using storage_type = xoptional_assembly_storage<value_storage_type, flag_storage_type>;
-        using temporary_type = xoptional_assembly<value_expression, flag_expression>;
+        using temporary_type = xoptional_assembly<raw_value_expression, raw_flag_expression>;
     };
 
     template <class VEC, class FEC>
@@ -188,6 +192,8 @@ namespace xt
         using storage_type = typename base_type::storage_type;
         using value_expression = typename base_type::value_expression;
         using flag_expression = typename base_type::flag_expression;
+        using const_value_expression = typename base_type::const_value_expression;
+        using const_flag_expression = typename base_type::const_flag_expression;
         using value_type = typename base_type::value_type;
         using reference = typename base_type::reference;
         using const_reference = typename base_type::const_reference;
@@ -219,11 +225,11 @@ namespace xt
         storage_type& storage_impl() noexcept;
         const storage_type& storage_impl() const noexcept;
 
-        value_expression& value_impl() noexcept;
-        const value_expression& value_impl() const noexcept;
+        value_expression value_impl() noexcept;
+        const_value_expression value_impl() const noexcept;
 
-        flag_expression& has_value_impl() noexcept;
-        const flag_expression& has_value_impl() const noexcept;
+        flag_expression has_value_impl() noexcept;
+        const_flag_expression has_value_impl() const noexcept;
 
         VEC m_value;
         FEC m_has_value;
@@ -450,7 +456,7 @@ namespace xt
     template <class S>
     inline xoptional_assembly<VE, FE> xoptional_assembly<VE, FE>::from_shape(S&& s)
     {
-        shape_type shape = xtl::forward_sequence<shape_type>(s);
+        shape_type shape = xtl::forward_sequence<shape_type, S>(s);
         return self_type(shape);
     }
 
@@ -523,25 +529,25 @@ namespace xt
     }
 
     template <class VE, class FE>
-    inline auto xoptional_assembly<VE, FE>::value_impl() noexcept -> value_expression&
+    inline auto xoptional_assembly<VE, FE>::value_impl() noexcept -> value_expression
     {
         return m_value;
     }
 
     template <class VE, class FE>
-    inline auto xoptional_assembly<VE, FE>::value_impl() const noexcept -> const value_expression&
+    inline auto xoptional_assembly<VE, FE>::value_impl() const noexcept -> const_value_expression
     {
         return m_value;
     }
 
     template <class VE, class FE>
-    inline auto xoptional_assembly<VE, FE>::has_value_impl() noexcept -> flag_expression&
+    inline auto xoptional_assembly<VE, FE>::has_value_impl() noexcept -> flag_expression
     {
         return m_has_value;
     }
 
     template <class VE, class FE>
-    inline auto xoptional_assembly<VE, FE>::has_value_impl() const noexcept -> const flag_expression&
+    inline auto xoptional_assembly<VE, FE>::has_value_impl() const noexcept -> const_flag_expression
     {
         return m_has_value;
     }
@@ -634,25 +640,25 @@ namespace xt
     }
 
     template <class VEC, class FEC>
-    inline auto xoptional_assembly_adaptor<VEC, FEC>::value_impl() noexcept -> value_expression&
+    inline auto xoptional_assembly_adaptor<VEC, FEC>::value_impl() noexcept -> value_expression
     {
         return m_value;
     }
 
     template <class VEC, class FEC>
-    inline auto xoptional_assembly_adaptor<VEC, FEC>::value_impl() const noexcept -> const value_expression&
+    inline auto xoptional_assembly_adaptor<VEC, FEC>::value_impl() const noexcept -> const_value_expression
     {
         return m_value;
     }
 
     template <class VEC, class FEC>
-    inline auto xoptional_assembly_adaptor<VEC, FEC>::has_value_impl() noexcept -> flag_expression&
+    inline auto xoptional_assembly_adaptor<VEC, FEC>::has_value_impl() noexcept -> flag_expression
     {
         return m_has_value;
     }
 
     template <class VEC, class FEC>
-    inline auto xoptional_assembly_adaptor<VEC, FEC>::has_value_impl() const noexcept -> const flag_expression&
+    inline auto xoptional_assembly_adaptor<VEC, FEC>::has_value_impl() const noexcept -> const_flag_expression
     {
         return m_has_value;
     }

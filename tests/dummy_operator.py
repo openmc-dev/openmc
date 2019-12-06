@@ -1,4 +1,5 @@
 from collections import namedtuple
+from unittest.mock import Mock
 
 import numpy as np
 import scipy.sparse as sp
@@ -133,6 +134,8 @@ class DummyOperator(TransportOperator):
         self.prev_res = previous_results
         self.chain = TestChain()
         self.output_dir = "."
+        self.settings = Mock()
+        self.settings.particles = 10
 
     def __call__(self, vec, power, print_out=False):
         """Evaluates F(y)

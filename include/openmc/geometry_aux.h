@@ -7,8 +7,14 @@
 #include <cstdint>
 #include <string>
 #include <vector>
+#include <unordered_map>
 
 namespace openmc {
+
+namespace model {
+  extern std::unordered_map<int32_t, std::unordered_map<int32_t, int32_t>> universe_cell_counts;
+  extern std::unordered_map<int32_t, int32_t> universe_level_counts;
+} // namespace model
 
 void read_geometry_xml();
 

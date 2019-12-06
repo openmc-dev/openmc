@@ -43,10 +43,10 @@ EnergyFilter::set_bins(gsl::span<const double> bins)
   // (after flipping for the different ordering of the library and tallying
   // systems).
   if (!settings::run_CE) {
-    if (n_bins_ == data::num_energy_groups) {
+    if (n_bins_ == data::mg.num_energy_groups_) {
       matches_transport_groups_ = true;
       for (gsl::index i = 0; i < n_bins_ + 1; ++i) {
-        if (data::rev_energy_bins[i] != bins_[i]) {
+        if (data::mg.rev_energy_bins_[i] != bins_[i]) {
           matches_transport_groups_ = false;
           break;
         }
@@ -61,9 +61,9 @@ const
 {
   if (p->g_ != F90_NONE && matches_transport_groups_) {
     if (estimator == ESTIMATOR_TRACKLENGTH) {
-      match.bins_.push_back(data::num_energy_groups - p->g_);
+      match.bins_.push_back(data::mg.num_energy_groups_ - p->g_ - 1);
     } else {
-      match.bins_.push_back(data::num_energy_groups - p->g_last_);
+      match.bins_.push_back(data::mg.num_energy_groups_ - p->g_last_ - 1);
     }
     match.weights_.push_back(1.0);
 
@@ -104,7 +104,7 @@ EnergyoutFilter::get_all_bins(const Particle* p, int estimator,
                               FilterMatch& match) const
 {
   if (p->g_ != F90_NONE && matches_transport_groups_) {
-    match.bins_.push_back(data::num_energy_groups - p->g_);
+    match.bins_.push_back(data::mg.num_energy_groups_ - p->g_ - 1);
     match.weights_.push_back(1.0);
 
   } else {

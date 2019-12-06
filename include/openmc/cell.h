@@ -179,10 +179,10 @@ public:
 
   //! \brief Rotational tranfsormation of the filled universe.
   //
-  //! The vector is empty if there is no rotation.  Otherwise, the first three
-  //! values are the rotation angles respectively about the x-, y-, and z-, axes
-  //! in degrees.  The next 9 values give the rotation matrix in row-major
-  //! order.
+  //! The vector is empty if there is no rotation. Otherwise, the first 9 values
+  //! give the rotation matrix in row-major order. When the user specifies
+  //! rotation angles about the x-, y- and z- axes in degrees, these values are
+  //! also present at the end of the vector, making it of length 12.
   std::vector<double> rotation_;
 
   std::vector<int32_t> offset_;  //!< Distribcell offset table

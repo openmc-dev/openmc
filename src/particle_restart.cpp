@@ -52,7 +52,7 @@ void read_particle_restart(Particle& p, int& previous_run_mode)
   // Set energy group and average energy in multi-group mode
   if (!settings::run_CE) {
     p.g_ = p.E_;
-    p.E_ = data::energy_bin_avg[p.g_ - 1];
+    p.E_ = data::mg.energy_bin_avg_[p.g_];
   }
 
   // Set particle last attributes
@@ -78,6 +78,9 @@ void run_particle_restart()
   // Read in the restart information
   int previous_run_mode;
   read_particle_restart(p, previous_run_mode);
+
+  // write track if that was requested on command line
+  if (settings::write_all_tracks) p.write_track_ = true;
 
   // Set all tallies to 0 for now (just tracking errors)
   model::tallies.clear();

@@ -86,6 +86,8 @@ SourceDistribution::SourceDistribution(pugi::xml_node node)
         type = get_node_value(node_space, "type", true, true);
       if (type == "cartesian") {
         space_ = UPtrSpace{new CartesianIndependent(node_space)};
+      } else if (type == "spherical") {
+        space_ = UPtrSpace{new SphericalIndependent(node_space)};
       } else if (type == "box") {
         space_ = UPtrSpace{new SpatialBox(node_space)};
       } else if (type == "fission") {
@@ -309,11 +311,11 @@ Particle::Bank sample_external_source()
   // Sample source site from i-th source distribution
   Particle::Bank site {model::external_sources[i].sample()};
 
-  // If running in MG, convert site % E to group
+  // If running in MG, convert site.E to group
   if (!settings::run_CE) {
-    site.E = lower_bound_index(data::rev_energy_bins.begin(),
-      data::rev_energy_bins.end(), site.E);
-    site.E = data::num_energy_groups - site.E;
+    site.E = lower_bound_index(data::mg.rev_energy_bins_.begin(),
+      data::mg.rev_energy_bins_.end(), site.E);
+    site.E = data::mg.num_energy_groups_ - site.E - 1.;
   }
 
   // Set the random number generator back to the tracking stream.

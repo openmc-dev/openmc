@@ -1163,7 +1163,7 @@ class HexLattice(Lattice):
             iz = 1
         else:
             z = point[2] - self.center[2]
-            iz = floor(z/self.pitch[1] + 0.5 * self.num_axial)
+            iz = floor(z/self.pitch[1] + 0.5*self.num_axial)
         if self._orientation == 'x':
             alpha = y - x*sqrt(3.)
             i1 = floor(-alpha/(sqrt(3.0) * self.pitch[0]))
@@ -1207,20 +1207,20 @@ class HexLattice(Lattice):
 
         """
         if self._orientation == 'x':
-            x = point[0] - (self.center[0] + self.pitch[0] * idx[0] +
-                            0.5 * self.pitch[0] * idx[1])
+            x = point[0] - (self.center[0] + self.pitch[0]*idx[0] +
+                            0.5*self.pitch[0]*idx[1])
             y = point[1] - (self.center[1] +
-                            sqrt(0.75) * self.pitch[0] * idx[1])
+                            sqrt(0.75)*self.pitch[0]*idx[1])
         else:
             x = point[0] - (self.center[0]
-                            + sqrt(0.75) * self.pitch[0] * idx[0])
+                            + sqrt(0.75)*self.pitch[0]*idx[0])
             y = point[1] - (self.center[1]
-                            + (0.5 * idx[0] + idx[1]) * self.pitch[0])
+                            + (0.5*idx[0] + idx[1])*self.pitch[0])
 
         if self._num_axial is None:
             z = point[2]
         else:
-            z = point[2] - (self.center[2] + (idx[2] + 0.5 - 0.5 * self.num_axial) *
+            z = point[2] - (self.center[2] + (idx[2] + 0.5 - 0.5*self.num_axial)*
                             self.pitch[1])
         return (x, y, z)
 

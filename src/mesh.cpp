@@ -2055,8 +2055,237 @@ LibMesh::LibMesh(pugi::xml_node node) : UnstructuredMeshBase(node) {
 
   point_locator_ = m_->sub_point_locator();
   m_->find_neighbors();
+
+  auto e = *m_->elements_begin();
+  first_element_ = e; // FIXME
 }
-#endif
+
+void
+LibMesh::bins_crossed(const Particle* p,
+                      std::vector<int>& bins,
+                      std::vector<double>& lengths) const
+{
+  // get element containing previous position
+  libMesh::Point start(p->r_last_.x, p->r_last_.y, p->r_last_.z);
+  libMesh::Point end(p->r().x, p->r().y, p->r().z);
+  libMesh::Point dir(p->u().x, p->u().y, p->r().z);
+  dir /= dir.norm();
+
+  double track_len = (end - start).norm();
+
+  UnstructuredMeshHits hits;
+  intersect_track(start, dir, track_len, hits);
+
+  bins.clear();
+  lengths.clear();
+
+  for (const auto& hit : hits) {
+    lengths.push_back(hit.first);
+  }
+}
+
+int
+LibMesh::get_bin(Position r) const
+{
+  libMesh::Point p(r.x, r.y, r.z);
+  auto e = (*point_locator_)(p);
+  if (!e) {
+    return -1;
+  } else {
+    return get_bin_from_mesh_type(e);
+  }
+}
+
+int
+LibMesh::get_bin_from_mesh_type(const libMesh::Elem* elem) const {
+  int bin =  elem->id() - first_element_->id();
+  if (bin >= n_bins()) {
+    std::stringstream s;
+    s << "Invalid bin: " << bin;
+    fatal_error(s);
+  }
+  return bin;
+}
+
+void
+LibMesh::intersect_track(const libMesh::Point& start,
+                         const libMesh::Point& dir,
+                         double track_len,
+                         UnstructuredMeshHits& hits) const
+{
+
+  auto e = (*point_locator_)(start);
+
+  if (!e) {
+    // partcile start location is outside of the mesh,
+    // need to check for intersection
+    std::cout << "Particle outside mesh" << std::endl;
+    // don't tally for this situation (for now)
+    return;
+  }
+
+  while (true) {
+    // find the triangle intersection
+    double dist = 0.0;
+    int side = -1;
+    for (int i = 0; i < e->n_sides(); i++) {
+      auto tri = e->side_ptr(i);
+      if (tri->type() != libMesh::ElemType::TRI3) { warning("Non-triangle element found"); }
+      double temp_dist = -1.0;
+      bool hit = plucker_test(e->side_ptr(i), start, dir, temp_dist);
+      if (hit and temp_dist > 1E-14) {
+        side = i;
+        dist = temp_dist;
+      }
+    }
+
+    // make sure we found a hit for the tet we're in
+    if (side == -1) {
+      warning("No hit found"); return;
+    } else {
+      // add hit to output
+      hits.push_back(std::pair<double, std::unique_ptr<const libMesh::Elem>>(std::min(track_len, dist), e));
+      track_len -= dist; // subtract from
+    }
+
+    if (track_len < 0.0) { break; }
+
+    // get tet on the other side
+    auto next_e = e->neighbor_ptr(side);
+    if (!next_e and e->on_boundary()) {
+      // will potentially need to find the next mesh intersection here
+      break;
+    }
+
+    // check that the hit is correct
+    if (!elements_share_face(e, next_e, side)) {
+      warning("Incorrect adjacent element found");
+      // this should maybe throw an error
+      break;
+    }
+
+    // update the element we're in
+    e = next_e;
+  }
+}
+
+bool
+LibMesh::elements_share_face(const libMesh::Elem* from,
+                             const libMesh::Elem* to,
+                             unsigned int side) const
+{
+  for (auto j : to->side_index_range()) {
+    if (from->side_ptr(side)->key() == to->side_ptr(j)->key()) {
+      return true;
+    }
+  }
+  return false;
+}
+
+double
+LibMesh::first(const libMesh::Node& a,
+               const libMesh::Node& b) const
+{
+  if(a(0) < b(0)) {
+    return true;
+  } else if(a(0) == b(0)) {
+    if(a(1) < b(1)) {
+      return true;
+    } else if(a(1) == b(1)) {
+      if(a(2) < b(2)) {
+	return true;
+      } else {
+        return false;
+      }
+    } else {
+      return false;
+    }
+  } else {
+    return false;
+  }
+}
+
+
+double
+LibMesh::plucker_edge_test(const libMesh::Node& vertexa,
+                           const libMesh::Node& vertexb,
+                           const libMesh::Point& ray,
+                           const libMesh::Point& ray_normal) const
+{
+  double pip;
+  const double near_zero = 10.0 * std::numeric_limits<double>::epsilon();
+
+  if(first(vertexa, vertexb)) {
+    const libMesh::Point edge = vertexb - vertexa;
+    const libMesh::Point edge_normal = edge.cross(vertexa);
+    pip = ray * edge_normal + ray_normal * edge;
+  } else {
+    const libMesh::Point edge = vertexa-vertexb;
+    const libMesh::Point edge_normal = edge.cross(vertexb);
+    pip = ray * edge_normal + ray_normal * edge;
+    pip = -pip;
+  }
+
+  if (near_zero > fabs(pip)) pip = 0.0;
+
+  return pip;
+}
+
+bool
+LibMesh::plucker_test(std::unique_ptr<const libMesh::Elem> tri,
+                      const libMesh::Point& start,
+                      const libMesh::Point& dir,
+                      double& dist) const
+{
+  const libMesh::Point raya = dir;
+  const libMesh::Point rayb = dir.cross(start);
+
+  // get triangle vertices
+  auto node0 = tri->node_ref(0);
+  auto node1 = tri->node_ref(1);
+  auto node2 = tri->node_ref(2);
+
+  double plucker_coord0 = plucker_edge_test(node0, node1, raya, rayb);
+  double plucker_coord1 = plucker_edge_test(node1, node2, raya, rayb);
+  if( (0.0<plucker_coord0 && 0.0>plucker_coord1) || (0.0>plucker_coord0 && 0.0<plucker_coord1) ) {
+    return false;
+  }
+
+  double plucker_coord2 = plucker_edge_test(node2, node0, raya, rayb);
+  if( (0.0<plucker_coord1 && 0.0>plucker_coord2) || (0.0>plucker_coord1 && 0.0<plucker_coord2) ||
+      (0.0<plucker_coord0 && 0.0>plucker_coord2) || (0.0>plucker_coord0 && 0.0<plucker_coord2) ) {
+    return false;
+  }
+
+  // check for coplanar case to avoid dividing by zero
+  if(0.0==plucker_coord0 && 0.0==plucker_coord1 && 0.0==plucker_coord2) {
+    return false;
+  }
+
+  // get the distance to intersection
+  const double inverse_sum = 1.0/(plucker_coord0+plucker_coord1+plucker_coord2);
+  assert(0.0 != inverse_sum);
+  const libMesh::Point intersection(plucker_coord0*inverse_sum*node2+
+                                    plucker_coord1*inverse_sum*node0+
+                                    plucker_coord2*inverse_sum*node1);
+
+  // To minimize numerical error, get index of largest magnitude direction.
+  int idx = 0;
+  double max_abs_dir = 0;
+  for(unsigned int i=0; i<3; ++i) {
+    if( fabs(dir(i)) > max_abs_dir ) {
+      idx = i;
+      max_abs_dir = fabs(dir(i));
+    }
+  }
+
+  dist = (intersection(idx)-start(idx))/dir(idx);
+
+  return true;
+}
+
+
+#endif // LIBMESH
 
 //==============================================================================
 // Non-member functions

@@ -73,7 +73,7 @@ public:
   //----------------------------------------------------------------------------
   // Major public data members.
 
-  int id_; //!< User-defined identifier
+  int id_ {C_NONE}; //!< User-defined identifier
 
   std::string name_; //!< User-defined name
 

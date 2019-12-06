@@ -9,6 +9,7 @@
 
 #include <gsl/gsl>
 
+#include "openmc/constants.h"
 #include "openmc/hdf5_interface.h"
 #include "openmc/particle.h"
 #include "pugixml.hpp"
@@ -118,7 +119,7 @@ public:
 protected:
   int n_bins_;
 private:
-  int32_t id_ {-1};
+  int32_t id_ {C_NONE};
   gsl::index index_;
 };
 

@@ -857,12 +857,12 @@ void Material::calculate_photon_xs(Particle& p) const
 
 void Material::set_id(int32_t id)
 {
-  Expects(id >= -1);
+  Expects(id >= 0 || id == C_NONE);
 
   // Clear entry in material map if an ID was already assigned before
-  if (id_ != -1) {
+  if (id_ != C_NONE) {
     model::material_map.erase(id_);
-    id_ = -1;
+    id_ = C_NONE;
   }
 
   // Make sure no other material has same ID
@@ -871,7 +871,7 @@ void Material::set_id(int32_t id)
   }
 
   // If no ID specified, auto-assign next ID in sequence
-  if (id == -1) {
+  if (id == C_NONE) {
     id = 0;
     for (const auto& m : model::materials) {
       id = std::max(id, m->id_);

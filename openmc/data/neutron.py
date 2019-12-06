@@ -118,7 +118,12 @@ class IncidentNeutron(EqualityMixin):
         if mt in self.reactions:
             return self.reactions[mt]
         else:
-            raise KeyError('No reaction with MT={}.'.format(mt))
+            # Try to create a redundant cross section
+            mts = self.get_reaction_components(mt)
+            if len(mts) > 0:
+                return self._get_redundant_reaction(mt, mts)
+            else:
+                raise KeyError('No reaction with MT={}.'.format(mt))
 
     def __repr__(self):
         return "<IncidentNeutron: {}>".format(self.name)
@@ -911,16 +916,17 @@ class IncidentNeutron(EqualityMixin):
             Redundant reaction
 
         """
-        # Get energy grid
-        strT = self.temperatures[0]
-        energy = self.energy[strT]
 
         rx = Reaction(mt)
-        xss = [self.reactions[mt_i].xs[strT] for mt_i in mts]
-        idx = min([xs._threshold_idx if hasattr(xs, '_threshold_idx')
-                   else 0 for xs in xss])
-        rx.xs[strT] = Tabulated1D(energy[idx:], Sum(xss)(energy[idx:]))
-        rx.xs[strT]._threshold_idx = idx
+        # Get energy grid
+        for strT in self.temperatures:
+            energy = self.energy[strT]
+            xss = [self.reactions[mt_i].xs[strT] for mt_i in mts]
+            idx = min([xs._threshold_idx if hasattr(xs, '_threshold_idx')
+                       else 0 for xs in xss])
+            rx.xs[strT] = Tabulated1D(energy[idx:], Sum(xss)(energy[idx:]))
+            rx.xs[strT]._threshold_idx = idx
+
         rx.redundant = True
 
         return rx

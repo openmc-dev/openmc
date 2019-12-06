@@ -348,6 +348,30 @@
                         <ref name="distribution"/>
                       </element>
                     </optional>
+                    <optional>
+                      <element name="r">
+                        <ref name="distribution"/>
+                      </element>
+                    </optional>
+                    <optional>
+                      <element name="theta">
+                        <ref name="distribution"/>
+                      </element>
+                    </optional>
+                    <optional>
+                      <element name="phi">
+                        <ref name="distribution"/>
+                      </element>
+                    </optional>
+                    <optional>
+                      <element name="origin">
+                        <list>
+                          <data type="double"/>
+                          <data type="double"/>
+                          <data type="double"/>
+                        </list>
+                      </element>
+                    </optional>
                   </interleave>
                 </element>
               </optional>

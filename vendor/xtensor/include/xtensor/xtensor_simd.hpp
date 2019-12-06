@@ -1,5 +1,6 @@
 /***************************************************************************
-* Copyright (c) 2016, Johan Mabille, Sylvain Corlay and Wolf Vollprecht    *
+* Copyright (c) Johan Mabille, Sylvain Corlay and Wolf Vollprecht          *
+* Copyright (c) QuantStack                                                 *
 *                                                                          *
 * Distributed under the terms of the BSD 3-Clause License.                 *
 *                                                                          *
@@ -10,16 +11,76 @@
 #define XTENSOR_SIMD_HPP
 
 #include <vector>
+#include <xtl/xdynamic_bitset.hpp>
 
-#include "xstorage.hpp"
+#include "xutils.hpp"
 
 #ifdef XTENSOR_USE_XSIMD
 
 #include <xsimd/xsimd.hpp>
 
+#if defined(_MSV_VER) && (_MSV_VER < 1910)
+template <class T, std::size_t N>
+inline xsimd::batch_bool<T, N> isnan(const xsimd::batch<T, N>& b)
+{
+    return xsimd::isnan(b);
+}
+#endif
+
+namespace xt_simd
+{
+    template <class T, std::size_t A>
+    using aligned_allocator = xsimd::aligned_allocator<T, A>;
+
+    using aligned_mode = xsimd::aligned_mode;
+    using unaligned_mode = xsimd::unaligned_mode;
+
+    template <class A>
+    using allocator_alignment = xsimd::allocator_alignment<A>;
+
+    template <class A>
+    using allocator_alignment_t = xsimd::allocator_alignment_t<A>;
+
+    template <class C>
+    using container_alignment = xsimd::container_alignment<C>;
+
+    template <class C>
+    using container_alignment_t = xsimd::container_alignment_t<C>;
+
+    template <class T>
+    using simd_traits = xsimd::simd_traits<T>;
+
+    template <class T>
+    using revert_simd_traits = xsimd::revert_simd_traits<T>;
+
+    template <class T>
+    using simd_type = xsimd::simd_type<T>;
+
+    template <class T>
+    using simd_bool_type = xsimd::simd_bool_type<T>;
+
+    template <class T>
+    using revert_simd_type = xsimd::revert_simd_type<T>;
+
+    using xsimd::set_simd;
+    using xsimd::load_simd;
+    using xsimd::store_simd;
+    using xsimd::select;
+    using xsimd::get_alignment_offset;
+
+    template <class T1, class T2>
+    using simd_return_type = xsimd::simd_return_type<T1, T2>;
+
+    template <class V>
+    using is_batch_bool = xsimd::is_batch_bool<V>;
+
+    template <class V>
+    using is_batch_complex = xsimd::is_batch_complex<V>;
+}
+
 #else  // XTENSOR_USE_XSIMD
 
-namespace xsimd
+namespace xt_simd
 {
     template <class T, std::size_t A>
     class aligned_allocator;
@@ -56,14 +117,14 @@ namespace xsimd
         using type = T;
         using bool_type = bool;
         using batch_bool = bool;
-        static constexpr size_t size = 1;
+        static constexpr std::size_t size = 1;
     };
 
     template <class T>
     struct revert_simd_traits
     {
         using type = T;
-        static constexpr size_t size = simd_traits<type>::size;
+        static constexpr std::size_t size = simd_traits<type>::size;
     };
 
     template <class T>
@@ -75,19 +136,19 @@ namespace xsimd
     template <class T>
     using revert_simd_type = typename revert_simd_traits<T>::type;
 
-    template <class T>
+    template <class T, class V>
     inline simd_type<T> set_simd(const T& value)
     {
         return value;
     }
 
-    template <class T>
+    template <class T, class V>
     inline simd_type<T> load_simd(const T* src, aligned_mode)
     {
         return *src;
     }
 
-    template <class T>
+    template <class T, class V>
     inline simd_type<T> load_simd(const T* src, unaligned_mode)
     {
         return *src;
@@ -119,14 +180,24 @@ namespace xsimd
 
     template <class T1, class T2>
     using simd_return_type = simd_type<T2>;
+
+    template <class V>
+    struct is_batch_bool : std::false_type
+    {
+    };
+
+    template <class V>
+    struct is_batch_complex : std::false_type
+    {
+    };
 }
 
 #endif  // XTENSOR_USE_XSIMD
 
 namespace xt
 {
-    using xsimd::aligned_mode;
-    using xsimd::unaligned_mode;
+    using xt_simd::aligned_mode;
+    using xt_simd::unaligned_mode;
 
     struct inner_aligned_mode
     {
@@ -137,7 +208,7 @@ namespace xt
         template <class A1, class A2>
         struct driven_align_mode_impl
         {
-            using type = std::conditional_t<std::is_same<A1, A2>::value, A1, ::xsimd::unaligned_mode>;
+            using type = std::conditional_t<std::is_same<A1, A2>::value, A1, ::xt_simd::unaligned_mode>;
         };
 
         template <class A>
@@ -155,6 +226,85 @@ namespace xt
 
     template <class A1, class A2>
     using driven_align_mode_t = typename detail::driven_align_mode_impl<A1, A2>::type;
+
+    namespace detail
+    {
+        template <class E, class T, class = void>
+        struct has_simd_interface_impl : std::false_type
+        {
+        };
+
+        template <class E, class T>
+        struct has_simd_interface_impl<E, T, void_t<decltype(std::declval<E>().template load_simd<aligned_mode, T>(typename E::size_type(0)))>>
+            : std::true_type
+        {
+        };
+    }
+
+    template <class E, class T = typename std::decay_t<E>::value_type>
+    struct has_simd_interface : detail::has_simd_interface_impl<E, T>
+    {
+    };
+
+    template <class T>
+    struct has_simd_type
+        : std::integral_constant<bool, !std::is_same<T, xt_simd::simd_type<T>>::value>
+    {
+    };
+
+    namespace detail
+    {
+        template <class F, class B, class = void>
+        struct has_simd_apply_impl : std::false_type {};
+
+        template <class F, class B>
+        struct has_simd_apply_impl<F, B, void_t<decltype(&F::template simd_apply<B>)>>
+            : std::true_type
+        {
+        };
+    }
+
+    template <class F, class B>
+    struct has_simd_apply : detail::has_simd_apply_impl<F, B>
+    {
+    };
+
+    template <class T>
+    using bool_load_type = std::conditional_t<std::is_same<T, bool>::value, uint8_t, T>;
+
+    template <class T>
+    struct forbid_simd : std::false_type
+    {
+    };
+
+    template <class A>
+    struct forbid_simd<std::vector<bool, A>> : std::true_type
+    {
+    };
+
+    template <class A>
+    struct forbid_simd<const std::vector<bool, A>> : std::true_type
+    {
+    };
+
+    template <class B, class A>
+    struct forbid_simd<xtl::xdynamic_bitset<B, A>> : std::true_type
+    {
+    };
+
+    template <class B, class A>
+    struct forbid_simd<const xtl::xdynamic_bitset<B, A>> : std::true_type
+    {
+    };
+
+    template <class C, class T1, class T2>
+    struct container_simd_return_type
+        : std::enable_if<!forbid_simd<C>::value, xt_simd::simd_return_type<T1, bool_load_type<T2>>>
+    {
+    };
+
+    template <class C, class T1, class T2>
+    using container_simd_return_type_t = typename container_simd_return_type<C, T1, T2>::type;
 }
 
 #endif

@@ -2,12 +2,14 @@
 #define OPENMC_VOLUME_CALC_H
 
 #include "openmc/position.h"
+#include "openmc/tallies/trigger.h"
 
 #include "pugixml.hpp"
 #include "xtensor/xtensor.hpp"
 
 #include <string>
 #include <vector>
+#include <gsl/gsl>
 
 namespace openmc {
 
@@ -16,6 +18,7 @@ namespace openmc {
 //==============================================================================
 
 class VolumeCalculation {
+
 public:
   // Aliases, types
   struct Result {
@@ -23,6 +26,7 @@ public:
     std::vector<int> nuclides; //!< Index of nuclides
     std::vector<double> atoms; //!< Number of atoms for each nuclide
     std::vector<double> uncertainty; //!< Uncertainty on number of atoms
+    int iterations; //!< Number of iterations needed to obtain the results
   }; // Results for a single domain
 
   // Constructors
@@ -44,7 +48,9 @@ public:
 
   // Data members
   int domain_type_; //!< Type of domain (cell, material, etc.)
-  int n_samples_; //!< Number of samples to use
+  size_t n_samples_; //!< Number of samples to use
+  double threshold_ {-1.0}; //!< Error threshold for domain volumes
+  TriggerMetric trigger_type_ {TriggerMetric::not_active}; //!< Trigger metric for the volume calculation
   Position lower_left_; //!< Lower-left position of bounding box
   Position upper_right_; //!< Upper-right position of bounding box
   std::vector<int> domain_ids_; //!< IDs of domains to find volumes of

@@ -368,7 +368,7 @@ void Material::normalize_density()
     // determine atomic weight ratio
     int i_nuc = nuclide_[i];
     double awr = settings::run_CE ?
-      data::nuclides[i_nuc]->awr_ : data::nuclides_MG[i_nuc].awr;
+      data::nuclides[i_nuc]->awr_ : data::mg.nuclides_[i_nuc].awr;
 
     // if given weight percent, convert all values so that they are divided
     // by awr. thus, when a sum is done over the values, it's actually
@@ -388,7 +388,7 @@ void Material::normalize_density()
     for (int i = 0; i < nuclide_.size(); ++i) {
       int i_nuc = nuclide_[i];
       double awr = settings::run_CE ?
-        data::nuclides[i_nuc]->awr_ : data::nuclides_MG[i_nuc].awr;
+        data::nuclides[i_nuc]->awr_ : data::mg.nuclides_[i_nuc].awr;
       sum_percent += atom_density_(i)*awr;
     }
     sum_percent = 1.0 / sum_percent;
@@ -726,7 +726,7 @@ void Material::init_bremsstrahlung()
 void Material::init_nuclide_index()
 {
   int n = settings::run_CE ?
-    data::nuclides.size() : data::nuclides_MG.size();
+    data::nuclides.size() : data::mg.nuclides_.size();
   mat_nuclide_index_.resize(n);
   std::fill(mat_nuclide_index_.begin(), mat_nuclide_index_.end(), C_NONE);
   for (int i = 0; i < nuclide_.size(); ++i) {
@@ -994,11 +994,11 @@ void Material::to_hdf5(hid_t group) const
   } else {
     for (int i = 0; i < nuclide_.size(); ++i) {
       int i_nuc = nuclide_[i];
-      if (data::nuclides_MG[i_nuc].awr != MACROSCOPIC_AWR) {
-        nuc_names.push_back(data::nuclides_MG[i_nuc].name);
+      if (data::mg.nuclides_[i_nuc].awr != MACROSCOPIC_AWR) {
+        nuc_names.push_back(data::mg.nuclides_[i_nuc].name);
         nuc_densities.push_back(atom_density_(i));
       } else {
-        macro_names.push_back(data::nuclides_MG[i_nuc].name);
+        macro_names.push_back(data::mg.nuclides_[i_nuc].name);
       }
     }
   }

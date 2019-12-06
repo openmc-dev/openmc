@@ -197,24 +197,24 @@ Surface::reflect(Position r, Direction u) const
 }
 
 Direction
-Surface::diffuse_reflect(Position r, Direction u) const
+Surface::diffuse_reflect(Position r, Direction u, uint64_t* seed) const
 {
   // Diffuse reflect direction according to the normal.
-  // cosine distribution 
-  
+  // cosine distribution
+
   Direction n = this->normal(r);
   n /= n.norm();
   const double projection = n.dot(u);
-  
-  // sample from inverse function, u=sqrt(rand) since p(u)=2u, so F(u)=u^2 
-  const double mu = (projection>=0.0) ? 
-                  -std::sqrt(prn()) : std::sqrt(prn());  
-  
-  // sample azimuthal distribution uniformly 
-  u = rotate_angle(n, mu, nullptr);
-  
-  // normalize the direction 
-  return u/u.norm();    
+
+  // sample from inverse function, u=sqrt(rand) since p(u)=2u, so F(u)=u^2
+  const double mu = (projection>=0.0) ?
+                  -std::sqrt(prn(seed)) : std::sqrt(prn(seed));
+
+  // sample azimuthal distribution uniformly
+  u = rotate_angle(n, mu, nullptr, seed);
+
+  // normalize the direction
+  return u/u.norm();
 }
 
 CSGSurface::CSGSurface() : Surface{} {};

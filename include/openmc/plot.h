@@ -14,6 +14,7 @@
 #include "openmc/geometry.h"
 #include "openmc/particle.h"
 #include "openmc/xml_interface.h"
+#include "openmc/random_lcg.h"
 
 namespace openmc {
 
@@ -27,6 +28,9 @@ namespace model {
 
 extern std::vector<Plot> plots; //!< Plot instance container
 extern std::unordered_map<int, int> plot_map; //!< map of plot ids to index
+
+extern uint64_t plotter_prn_seeds[N_STREAMS]; // Random number seeds used for plotter
+extern int plotter_stream; // Stream index used by the plotter
 
 } // namespace model
 

@@ -476,7 +476,7 @@ void initialize_history(Particle* p, int64_t index_source)
   // set random number seed
   int64_t particle_seed = (simulation::total_gen + overall_generation() - 1)
     * settings::n_particles + p->id_;
-  set_particle_seed(particle_seed);
+  init_particle_seeds(particle_seed, p->seeds_);
 
   // set particle trace
   simulation::trace = false;

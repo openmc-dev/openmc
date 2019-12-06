@@ -129,11 +129,14 @@ extern "C" void calc_zn_rad(int n, double rho, double zn_rad[]);
 //! \param mu     The cosine of angle in lab or CM
 //! \param phi    The azimuthal angle; will randomly chosen angle if a nullptr
 //!   is passed
+//! \param seed A pointer to the pseudorandom seed
 //==============================================================================
 
-extern "C" void rotate_angle_c(double uvw[3], double mu, const double* phi);
+extern "C" void rotate_angle_c(double uvw[3], double mu, const double* phi,
+  uint64_t* seed);
 
-Direction rotate_angle(Direction u, double mu, const double* phi);
+Direction rotate_angle(Direction u, double mu, const double* phi,
+  uint64_t* seed);
 
 //==============================================================================
 //! Samples an energy from the Maxwell fission distribution based on a direct
@@ -144,10 +147,11 @@ Direction rotate_angle(Direction u, double mu, const double* phi);
 //! rule C64 in the Monte Carlo Sampler LA-9721-MS.
 //!
 //! \param T The tabulated function of the incoming energy
+//! \param seed A pointer to the pseudorandom seed
 //! \return The sampled outgoing energy
 //==============================================================================
 
-extern "C" double maxwell_spectrum(double T);
+extern "C" double maxwell_spectrum(double T, uint64_t* seed);
 
 //==============================================================================
 //! Samples an energy from a Watt energy-dependent fission distribution.
@@ -159,10 +163,11 @@ extern "C" double maxwell_spectrum(double T);
 //!
 //! \param a Watt parameter a
 //! \param b Watt parameter b
+//! \param seed A pointer to the pseudorandom seed
 //! \return The sampled outgoing energy
 //==============================================================================
 
-extern "C" double watt_spectrum(double a, double b);
+extern "C" double watt_spectrum(double a, double b, uint64_t* seed);
 
 //==============================================================================
 //! Samples an energy from the Gaussian energy-dependent fission distribution.
@@ -175,10 +180,11 @@ extern "C" double watt_spectrum(double a, double b);
 //!
 //! @param mean mean of the Gaussian distribution
 //! @param std_dev standard deviation of the Gaussian distribution
+//! @param seed A pointer to the pseudorandom seed
 //! @result The sampled outgoing energy
 //==============================================================================
 
-extern "C" double normal_variate(double mean, double std_dev);
+extern "C" double normal_variate(double mean, double std_dev, uint64_t* seed);
 
 //==============================================================================
 //! Samples an energy from the Muir (Gaussian) energy-dependent distribution.
@@ -190,10 +196,12 @@ extern "C" double normal_variate(double mean, double std_dev);
 //! @param e0 peak neutron energy [eV]
 //! @param m_rat ratio of the fusion reactants to AMU
 //! @param kt the ion temperature of the reactants [eV]
+//! @param seed A pointer to the pseudorandom seed
 //! @result The sampled outgoing energy
 //==============================================================================
 
-extern "C" double muir_spectrum(double e0, double m_rat, double kt);
+extern "C" double muir_spectrum(double e0, double m_rat, double kt,
+  uint64_t* seed);
 
 //==============================================================================
 //! Doppler broadens the windowed multipole curvefit.

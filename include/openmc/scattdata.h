@@ -65,8 +65,9 @@ class ScattData {
     //! @param gout Sampled outgoing energy group.
     //! @param mu Sampled cosine of the change-in-angle.
     //! @param wgt Weight of the particle to be adjusted.
+    //! @param seed Pseudorandom number seed pointer
     virtual void
-    sample(int gin, int& gout, double& mu, double& wgt) = 0;
+    sample(int gin, int& gout, double& mu, double& wgt, uint64_t* seed) = 0;
 
     //! \brief Initializes the ScattData object from a given scatter and
     //!   multiplicity matrix.
@@ -109,8 +110,9 @@ class ScattData {
     //! @param gin Incoming energy group.
     //! @param gout Sampled outgoing energy group.
     //! @param i_gout Sampled outgoing energy group index.
+    //! @param seed Pseudorandom number seed pointer
     void
-    sample_energy(int gin, int& gout, int& i_gout);
+    sample_energy(int gin, int& gout, int& i_gout, uint64_t* seed);
 
     //! \brief Provides a cross section value given certain parameters
     //!
@@ -161,7 +163,7 @@ class ScattDataLegendre: public ScattData {
     calc_f(int gin, int gout, double mu);
 
     void
-    sample(int gin, int& gout, double& mu, double& wgt);
+    sample(int gin, int& gout, double& mu, double& wgt, uint64_t* seed);
 
     size_t
     get_order() {return dist[0][0].size() - 1;};
@@ -197,7 +199,7 @@ class ScattDataHistogram: public ScattData {
     calc_f(int gin, int gout, double mu);
 
     void
-    sample(int gin, int& gout, double& mu, double& wgt);
+    sample(int gin, int& gout, double& mu, double& wgt, uint64_t* seed);
 
     size_t
     get_order() {return dist[0][0].size();};
@@ -238,7 +240,7 @@ class ScattDataTabular: public ScattData {
     calc_f(int gin, int gout, double mu);
 
     void
-    sample(int gin, int& gout, double& mu, double& wgt);
+    sample(int gin, int& gout, double& mu, double& wgt, uint64_t* seed);
 
     size_t
     get_order() {return dist[0][0].size();};

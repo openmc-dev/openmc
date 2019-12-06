@@ -21,7 +21,7 @@ namespace openmc {
 class Distribution {
 public:
   virtual ~Distribution() = default;
-  virtual double sample() const = 0;
+  virtual double sample(uint64_t* seed) const = 0;
 };
 
 //==============================================================================
@@ -34,8 +34,9 @@ public:
   Discrete(const double* x, const double* p, int n);
 
   //! Sample a value from the distribution
+  //! \param seed Pseudorandom number seed pointer
   //! \return Sampled value
-  double sample() const;
+  double sample(uint64_t* seed) const;
 
   // Properties
   const std::vector<double>& x() const { return x_; }
@@ -58,8 +59,9 @@ public:
   Uniform(double a, double b) : a_{a}, b_{b} {};
 
   //! Sample a value from the distribution
+  //! \param seed Pseudorandom number seed pointer
   //! \return Sampled value
-  double sample() const;
+  double sample(uint64_t* seed) const;
 private:
   double a_; //!< Lower bound of distribution
   double b_; //!< Upper bound of distribution
@@ -75,8 +77,9 @@ public:
   Maxwell(double theta) : theta_{theta} { };
 
   //! Sample a value from the distribution
+  //! \param seed Pseudorandom number seed pointer
   //! \return Sampled value
-  double sample() const;
+  double sample(uint64_t* seed) const;
 private:
   double theta_; //!< Factor in exponential [eV]
 };
@@ -91,8 +94,9 @@ public:
   Watt(double a, double b) : a_{a}, b_{b} { };
 
   //! Sample a value from the distribution
+  //! \param seed Pseudorandom number seed pointer
   //! \return Sampled value
-  double sample() const;
+  double sample(uint64_t* seed) const;
 private:
   double a_; //!< Factor in exponential [eV]
   double b_; //!< Factor in square root [1/eV]
@@ -108,8 +112,9 @@ public:
   Normal(double mean_value, double std_dev) : mean_value_{mean_value}, std_dev_{std_dev} { };
 
   //! Sample a value from the distribution
+  //! \param seed Pseudorandom number seed pointer
   //! \return Sampled value
-  double sample() const;
+  double sample(uint64_t* seed) const;
 private:
   double mean_value_;    //!< middle of distribution [eV]
   double std_dev_; //!< standard deviation [eV]
@@ -126,8 +131,9 @@ public:
   Muir(double e0, double m_rat, double kt) : e0_{e0}, m_rat_{m_rat}, kt_{kt} { };
 
   //! Sample a value from the distribution
+  //! \param seed Pseudorandom number seed pointer
   //! \return Sampled value
-  double sample() const;
+  double sample(uint64_t* seed) const;
 private:
   // example DT fusion m_rat = 5 (D = 2 + T = 3)
   // ion temp = 20000 eV
@@ -148,8 +154,9 @@ public:
           const double* c=nullptr);
 
   //! Sample a value from the distribution
+  //! \param seed Pseudorandom number seed pointer
   //! \return Sampled value
-  double sample() const;
+  double sample(uint64_t* seed) const;
 
   // x property
   std::vector<double>& x() { return x_; }
@@ -178,8 +185,9 @@ public:
   Equiprobable(const double* x, int n) : x_{x, x+n} { };
 
   //! Sample a value from the distribution
+  //! \param seed Pseudorandom number seed pointer
   //! \return Sampled value
-  double sample() const;
+  double sample(uint64_t* seed) const;
 private:
   std::vector<double> x_; //! Possible outcomes
 };

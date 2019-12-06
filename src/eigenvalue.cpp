@@ -118,8 +118,9 @@ void synchronize_bank()
   // skip ahead in the sequence using the starting index in the 'global'
   // fission bank for each processor.
 
-  set_particle_seed(simulation::total_gen + overall_generation());
-  advance_prn_seed(start);
+  int64_t id = simulation::total_gen + overall_generation();
+  uint64_t seed = init_seed(id, STREAM_TRACKING);
+  advance_prn_seed(start, &seed);
 
   // Determine how many fission sites we need to sample from the source bank
   // and the probability for selecting a site.
@@ -154,7 +155,7 @@ void synchronize_bank()
     }
 
     // Randomly sample sites needed
-    if (prn() < p_sample) {
+    if (prn(&seed) < p_sample) {
       temp_sites[index_temp] = site;
       ++index_temp;
     }

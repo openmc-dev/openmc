@@ -174,53 +174,50 @@ def test_rotate_angle():
 
     # Now to test phi is None
     mu = 0.9
-    settings = openmc.lib.settings
-    settings.seed = 1
+    phi = None
+    prn_seed = 1
 
     # When seed = 1, phi will be sampled as 1.9116495709698769
     # The resultant reference is from hand-calculations given the above
     ref_uvw = [0.9, 0.410813051297112, 0.1457142302040]
-    test_uvw = openmc.lib.math.rotate_angle(uvw0, mu)
+    test_uvw = openmc.lib.math.rotate_angle(uvw0, mu, phi, prn_seed)
 
     assert np.allclose(ref_uvw, test_uvw)
 
 
 def test_maxwell_spectrum():
-    settings = openmc.lib.settings
-    settings.seed = 1
+    prn_seed = 1
     T = 0.5
     ref_val = 0.6129982175261098
-    test_val = openmc.lib.math.maxwell_spectrum(T)
+    test_val = openmc.lib.math.maxwell_spectrum(T, prn_seed)
 
     assert ref_val == test_val
 
 
 def test_watt_spectrum():
-    settings = openmc.lib.settings
-    settings.seed = 1
+    prn_seed = 1
     a = 0.5
     b = 0.75
     ref_val = 0.6247242713640233
-    test_val = openmc.lib.math.watt_spectrum(a, b)
+    test_val = openmc.lib.math.watt_spectrum(a, b, prn_seed)
 
     assert ref_val == test_val
 
 
 def test_normal_dist():
-    settings = openmc.lib.settings
-    settings.seed = 1
+    prn_seed = 1
     a = 14.08
     b = 0.0
     ref_val = 14.08
-    test_val = openmc.lib.math.normal_variate(a, b)
+    test_val = openmc.lib.math.normal_variate(a, b, prn_seed)
 
     assert ref_val == pytest.approx(test_val)
 
-    settings.seed = 1
+    prn_seed = 1
     a = 14.08
     b = 1.0
     ref_val = 16.436645416691427
-    test_val = openmc.lib.math.normal_variate(a, b)
+    test_val = openmc.lib.math.normal_variate(a, b, prn_seed)
 
     assert ref_val == pytest.approx(test_val)
 

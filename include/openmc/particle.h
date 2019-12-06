@@ -219,8 +219,8 @@ public:
   void write_restart() const;
 
   //! Gets the pointer to the particle's current PRN seed
-  uint64_t* current_seed();
-  const uint64_t* current_seed() const;
+  uint64_t* current_seed() {return seeds_ + stream_;}
+  const uint64_t* current_seed() const {return seeds_ + stream_;}
 
   //==========================================================================
   // Data members

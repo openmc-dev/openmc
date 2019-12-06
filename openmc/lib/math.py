@@ -5,7 +5,7 @@ from numpy.ctypeslib import ndpointer
 
 from . import _dll
 
-from random import randint
+from random import getrandbits
 
 
 _dll.t_percentile.restype = c_double
@@ -210,7 +210,7 @@ def rotate_angle(uvw0, mu, phi, prn_seed=None):
     """
 
     if prn_seed is None:
-        prn_seed = randint(0,10000000)
+        prn_seed = getrandbits(64)
 
     uvw0_arr = np.array(uvw0, dtype=np.float64)
     if phi is None:

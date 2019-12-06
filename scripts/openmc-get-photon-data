@@ -1,0 +1,106 @@
+#!/usr/bin/env python3
+
+"""
+Download ENDF/B-VII.1 ENDF data from NNDC for photo-atomic and atomic
+relaxation data and convert it to an HDF5 library for use with OpenMC.
+This data is used for photon transport in OpenMC.
+"""
+
+import os
+import sys
+import shutil
+import zipfile
+import argparse
+from io import BytesIO
+from urllib.request import urlopen
+
+import openmc.data
+
+
+class CustomFormatter(argparse.ArgumentDefaultsHelpFormatter,
+                      argparse.RawDescriptionHelpFormatter):
+    pass
+
+parser = argparse.ArgumentParser(
+    description=__doc__,
+    formatter_class=CustomFormatter
+)
+parser.add_argument('-c', '--cross-sections',
+                    help='cross_sections.xml file to append libraries to')
+args = parser.parse_args()
+
+base_url = 'http://www.nndc.bnl.gov/endf/b7.1/zips/'
+files = ['ENDF-B-VII.1-photoat.zip', 'ENDF-B-VII.1-atomic_relax.zip']
+block_size = 16384
+
+# ==============================================================================
+# DOWNLOAD FILES FROM NNDC SITE
+
+if not os.path.exists('photon_hdf5'):
+    os.mkdir('photon_hdf5')
+
+for f in files:
+    # Establish connection to URL
+    url = base_url + f
+    req = urlopen(url)
+
+    # Get file size from header
+    file_size = req.length
+    downloaded = 0
+
+    # Check if file already downloaded
+    if os.path.exists(f):
+        if os.path.getsize(f) == file_size:
+            print('Skipping ' + f)
+            continue
+        else:
+            overwrite = input('Overwrite {}? ([y]/n) '.format(f))
+            if overwrite.lower().startswith('n'):
+                continue
+
+    # Copy file to disk
+    print('Downloading {}... '.format(f), end='')
+    with open(f, 'wb') as fh:
+        while True:
+            chunk = req.read(block_size)
+            if not chunk: break
+            fh.write(chunk)
+            downloaded += len(chunk)
+            status = '{0:10}  [{1:3.2f}%]'.format(
+                downloaded, downloaded * 100. / file_size)
+            print(status + chr(8)*len(status), end='')
+        print('')
+
+# ==============================================================================
+# EXTRACT FILES
+
+for f in files:
+    print('Extracting {0}...'.format(f))
+    zipfile.ZipFile(f).extractall()
+
+# ==============================================================================
+# GENERATE HDF5 DATA LIBRARY
+
+# If previous cross_sections.xml was specified, load it in
+if args.cross_sections is not None:
+    lib_path = args.cross_sections
+    library = openmc.data.DataLibrary.from_xml(lib_path)
+else:
+    lib_path = os.path.join('photon_hdf5', 'cross_sections.xml')
+    library = openmc.data.DataLibrary()
+
+for z in range(1, 101):
+    element = openmc.data.ATOMIC_SYMBOL[z]
+    print('Generating HDF5 file for Z={} ({})...'.format(z, element))
+
+    # Generate instance of IncidentPhoton
+    photo_file = os.path.join('photoat', 'photoat-{:03}_{}_000.endf'.format(z, element))
+    atom_file = os.path.join('atomic_relax', 'atom-{:03}_{}_000.endf'.format(z, element))
+    f = openmc.data.IncidentPhoton.from_endf(photo_file, atom_file)
+
+    # Write HDF5 file and register it
+    hdf5_file = os.path.join('photon_hdf5', element + '.h5')
+    f.export_to_hdf5(hdf5_file, 'w')
+    library.register_file(hdf5_file)
+
+library.export_to_xml(lib_path)

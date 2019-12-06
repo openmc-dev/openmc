@@ -2,7 +2,7 @@ import numpy as np
 
 
 def linearize(x, f, tolerance=0.001):
-    """Returns a tabulated representation of a one-variable function
+    """Return a tabulated representation of a one-variable function
 
     Parameters
     ----------

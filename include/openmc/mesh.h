@@ -25,6 +25,8 @@
 #ifdef LIBMESH
 #include "libmesh/libmesh.h"
 #include "libmesh/mesh.h"
+#include "libmesh/point.h"
+#include "libmesh/elem.h"
 #endif
 
 namespace openmc {
@@ -436,13 +438,49 @@ private:
 #ifdef LIBMESH
 class LibMesh : public UnstructuredMeshBase {
 
+  typedef std::vector<std::pair<double, std::unique_ptr<const libMesh::Elem>>> UnstructuredMeshHits;
+
 public:
   // constructor
   LibMesh(pugi::xml_node node);
 
+  void bins_crossed(const Particle* p,
+                    std::vector<int>& bins,
+                    std::vector<double>& lengths) const;
+
+  void intersect_track(const libMesh::Point& start,
+                       const libMesh::Point& dir,
+                       double track_len,
+                       UnstructuredMeshHits& hits) const;
+
+  bool elements_share_face(const libMesh::Elem* from,
+                           const libMesh::Elem* to,
+                           unsigned int side) const;
+
+  int
+  get_bin_from_mesh_type(const libMesh::Elem* elem) const;
+
+  int get_bin(Position r) const;
+
+  // triangle intersection methods
+  bool plucker_test(std::unique_ptr<const libMesh::Elem> tri,
+                    const libMesh::Point& start,
+                    const libMesh::Point& dir,
+                    double& dist) const;
+
+  double plucker_edge_test(const libMesh::Node& vertexa,
+                           const libMesh::Node& vertexb,
+                           const libMesh::Point& ray,
+                           const libMesh::Point& ray_normal) const;
+
+  double first(const libMesh::Node& a,
+               const libMesh::Node& b) const;
+
+
 private:
   std::unique_ptr<libMesh::Mesh> m_;
   std::unique_ptr<libMesh::PointLocatorBase> point_locator_;
+  libMesh::Elem* first_element_;
 };
 #endif
 

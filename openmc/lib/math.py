@@ -210,7 +210,7 @@ def rotate_angle(uvw0, mu, phi, prn_seed=None):
     """
 
     if prn_seed is None:
-        prn_seed = getrandbits(64)
+        prn_seed = getrandbits(63)
 
     uvw0_arr = np.array(uvw0, dtype=np.float64)
     if phi is None:
@@ -242,7 +242,7 @@ def maxwell_spectrum(T, prn_seed=None):
     """
     
     if prn_seed is None:
-        prn_seed = randint(0,10000000)
+        prn_seed = getrandbits(63)
 	
     return _dll.maxwell_spectrum(T, c_uint64(prn_seed))
 
@@ -267,7 +267,7 @@ def watt_spectrum(a, b, prn_seed=None):
     """
     
     if prn_seed is None:
-        prn_seed = randint(0,10000000)
+        prn_seed = getrandbits(63)
 
     return _dll.watt_spectrum(a, b, c_uint64(prn_seed))
 
@@ -292,7 +292,7 @@ def normal_variate(mean_value, std_dev, prn_seed=None):
     """
     
     if prn_seed is None:
-        prn_seed = randint(0,10000000)
+        prn_seed = getrandbits(63)
 
     return _dll.normal_variate(mean_value, std_dev, c_uint64(prn_seed))
 

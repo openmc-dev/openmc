@@ -784,8 +784,9 @@ class RectLattice(Lattice):
         'Local neighbor symmetry' groups universes with similar neighborhoods.
         These clusters of cells and materials provide increased convergence
         speed to multi-group cross sections tallies. The user can specify
-        the main lattice's neighbors to discriminate between two sides of an
-        assembly. Note that each sublattice's neighbors are not considered.
+        the main lattice's neighbors to discriminate between two sides of a
+        lattice for example. Note that each sublattice's neighbors are not
+        considered, only their outer universe.
 
         Parameters
         ----------
@@ -1006,13 +1007,12 @@ class RectLattice(Lattice):
             new_universe = self.universes[first_pos[1]][first_pos[0]].clone(
                  clone_materials=False, clone_regions=False)
 
-            # Call LNS on the immediate sub lattices of this universe
+            # Discretize the immediate sub-lattices of this universe
             for sub_cell in new_universe.cells.values():
 
                 sub_universe = sub_cell.fill
 
                 try:
-
                     sub_universe.discretize(strategy,
                                             universes_to_ignore,
                                             materials_to_clone,

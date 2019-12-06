@@ -3,7 +3,7 @@ from collections import OrderedDict
 from collections.abc import Iterable
 from copy import deepcopy
 from math import sqrt, floor
-from numbers import Real, Integral
+from numbers import Real
 from xml.etree import ElementTree as ET
 
 import numpy as np
@@ -242,7 +242,7 @@ class Lattice(IDManagerMixin, metaclass=ABCMeta):
                         for i in range(r):
                             uarray[-1][-1].append(universe_ids[z, y, a])
                             a -= 1
-                            y +=1
+                            y += 1
 
                         # Climb up the top-left.
                         for i in range(r):
@@ -352,7 +352,7 @@ class Lattice(IDManagerMixin, metaclass=ABCMeta):
 
         unique_universes = self.get_unique_universes()
 
-        for universe_id, universe in unique_universes.items():
+        for universe in unique_universes.values():
             cells.update(universe.get_all_cells(memo))
 
         return cells
@@ -372,7 +372,7 @@ class Lattice(IDManagerMixin, metaclass=ABCMeta):
 
         # Append all Cells in each Cell in the Universe to the dictionary
         cells = self.get_all_cells(memo)
-        for cell_id, cell in cells.items():
+        for cell in cells.values():
             materials.update(cell.get_all_materials(memo))
 
         return materials
@@ -399,7 +399,7 @@ class Lattice(IDManagerMixin, metaclass=ABCMeta):
         all_universes.update(unique_universes)
 
         # Append all Universes containing each cell to the dictionary
-        for universe_id, universe in unique_universes.items():
+        for universe in unique_universes.values():
             all_universes.update(universe.get_all_universes())
 
         return all_universes
@@ -1163,7 +1163,7 @@ class HexLattice(Lattice):
             iz = 1
         else:
             z = point[2] - self.center[2]
-            iz = floor(z/self.pitch[1] + 0.5*self.num_axial)
+            iz = floor(z/self.pitch[1] + 0.5 * self.num_axial)
         if self._orientation == 'x':
             alpha = y - x*sqrt(3.)
             i1 = floor(-alpha/(sqrt(3.0) * self.pitch[0]))
@@ -1207,20 +1207,20 @@ class HexLattice(Lattice):
 
         """
         if self._orientation == 'x':
-            x = point[0] - (self.center[0] + self.pitch[0]*idx[0] +
-                            0.5*self.pitch[0]*idx[1])
+            x = point[0] - (self.center[0] + self.pitch[0] * idx[0] +
+                            0.5 * self.pitch[0] * idx[1])
             y = point[1] - (self.center[1] +
-                            sqrt(0.75)*self.pitch[0]*idx[1])
+                            sqrt(0.75) * self.pitch[0] * idx[1])
         else:
             x = point[0] - (self.center[0]
-                            + sqrt(0.75)*self.pitch[0]*idx[0])
+                            + sqrt(0.75) * self.pitch[0] * idx[0])
             y = point[1] - (self.center[1]
-                            + (0.5*idx[0] + idx[1])*self.pitch[0])
+                            + (0.5 * idx[0] + idx[1]) * self.pitch[0])
 
         if self._num_axial is None:
             z = point[2]
         else:
-            z = point[2] - (self.center[2] + (idx[2] + 0.5 - 0.5*self.num_axial)*
+            z = point[2] - (self.center[2] + (idx[2] + 0.5 - 0.5 * self.num_axial) *
                             self.pitch[1])
         return (x, y, z)
 

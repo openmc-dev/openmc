@@ -76,7 +76,7 @@ Particle::Particle()
 void
 Particle::clear()
 {
-  // reset any coordinate levels
+  // Reset any coordinate levels
   for (auto& level : coord_) level.reset();
   n_coord_ = 1;
 }
@@ -99,7 +99,7 @@ Particle::create_secondary(Direction u, double E, Type type)
 void
 Particle::from_source(const Bank* src)
 {
-  // reset some attributes
+  // Reset some attributes
   this->clear();
   alive_ = true;
   surface_ = 0;
@@ -108,7 +108,7 @@ Particle::from_source(const Bank* src)
   n_collision_ = 0;
   fission_ = false;
 
-  // copy attributes from source bank site
+  // Copy attributes from source bank site
   type_ = src->particle;
   wgt_ = src->wgt;
   wgt_last_ = src->wgt;
@@ -183,7 +183,7 @@ Particle::transport()
         return;
       }
 
-      // set birth cell attribute
+      // Set birth cell attribute
       if (cell_born_ == C_NONE) cell_born_ = coord_[n_coord_ - 1].cell;
     }
 

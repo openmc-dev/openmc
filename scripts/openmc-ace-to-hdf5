@@ -191,7 +191,7 @@ for filename in ace_libraries:
                     thermal = openmc.data.ThermalScattering.from_hdf5(
                                                                  nuclides[name])
                     print('Converting {} (ACE) to {} (HDF5)'
-                          .format(table.name,thermal.name))
+                          .format(table.name, thermal.name))
                     thermal.add_temperature_from_ace(table)
                     thermal.export_to_hdf5(nuclides[name] + '_1', 'w',
                                            libver=args.libver)

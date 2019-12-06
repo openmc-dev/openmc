@@ -467,7 +467,7 @@ class Plot(IDManagerMixin):
         Parameters
         ----------
         geometry : openmc.Geometry
-            The geometry the base the plot off of
+            The geometry to base the plot off of
         basis : {'xy', 'xz', 'yz'}
             The basis directions for the plot
         slice_coord : float

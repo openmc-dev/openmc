@@ -191,8 +191,8 @@ double ContinuousTabular::sample(double E) const
   double E_i1_1 = distribution_[i+1].e_out[n_discrete];
   double E_i1_K = distribution_[i+1].e_out[n_energy_out - 1];
 
-  double E_1 = E_i_1 + r*(E_i1_1 - E_i_1);
-  double E_K = E_i_K + r*(E_i1_K - E_i_K);
+  double E_1 = E_i_1 + r * (E_i1_1 - E_i_1);
+  double E_K = E_i_K + r * (E_i1_K - E_i_K);
 
   // Determine outgoing energy bin
   n_energy_out = distribution_[l].e_out.size();
@@ -317,7 +317,7 @@ double Evaporation::sample(double E) const
     if (x <= y) break;
   }
 
-  return x*theta;
+  return x * theta;
 }
 
 //==============================================================================

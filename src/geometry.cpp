@@ -492,5 +492,4 @@ extern "C" int openmc_global_bounding_box(double* llc, double* urc) {
   return 0;
 }
 
-
 } // namespace openmc

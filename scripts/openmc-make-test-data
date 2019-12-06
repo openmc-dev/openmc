@@ -18,8 +18,8 @@ import zipfile
 import openmc.data
 from openmc._utils import download
 
-base_ace = 'http://www.nndc.bnl.gov/endf/b7.1/aceFiles/'
-base_endf = 'http://www.nndc.bnl.gov/endf/b7.1/zips/'
+base_ace = 'https://www.nndc.bnl.gov/endf/b7.1/aceFiles/'
+base_endf = 'https://www.nndc.bnl.gov/endf/b7.1/zips/'
 base_wmp = 'https://github.com/mit-crpg/WMP_Library/releases/download/v1.1/'
 files = [
     (base_ace, 'ENDF-B-VII.1-neutron-293.6K.tar.gz', '9729a17eb62b75f285d8a7628ace1449'),

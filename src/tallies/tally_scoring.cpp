@@ -248,15 +248,18 @@ double get_nuclide_neutron_heating(const Particle* p, const Nuclide& nuc,
 {
   size_t mt = nuc.reaction_index_[rxn_index];
   if (mt == C_NONE) return 0.0;
+
   auto i_temp = p->neutron_xs_[i_nuclide].index_temp;
   if (i_temp < 0) return 0.0; // Can be true due to multipole
+
   const auto& rxn {*nuc.reactions_[mt]};
   const auto& xs {rxn.xs_[i_temp]};
   auto i_grid = p->neutron_xs_[i_nuclide].index_grid;
   if (i_grid < xs.threshold) return 0.0;
+
   auto f = p->neutron_xs_[i_nuclide].interp_factor;
   return (1.0 - f) * xs.value[i_grid-xs.threshold]
-    + f * xs.value[i_grid-xs.threshold+1];
+   + f * xs.value[i_grid-xs.threshold+1];
 }
 
 //! Helper function to obtain neutron heating [eV]
@@ -1316,7 +1319,7 @@ score_general_ce(Particle* p, int i_tally, int start_index,
       }
     }
 
-    // Add derivative information on score for differnetial tallies.
+    // Add derivative information on score for differential tallies.
     if (tally.deriv_ != C_NONE)
       apply_derivative_to_score(p, i_tally, i_nuclide, atom_density, score_bin,
         score);

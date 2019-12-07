@@ -6,6 +6,7 @@
 
 #include <array>
 #include <cstdint>
+#include <memory>
 #include <string>
 #include <unordered_set>
 #include <vector>
@@ -14,6 +15,10 @@
 
 #include "openmc/constants.h"
 
+#ifdef LIBMESH
+#include "libmesh/libmesh.h"
+#endif
+
 namespace openmc {
 
 //==============================================================================
@@ -21,6 +26,10 @@ namespace openmc {
 //==============================================================================
 
 namespace settings {
+
+#ifdef LIBMESH
+extern std::unique_ptr<libMesh::LibMeshInit> LMI;
+#endif
 
 // Boolean flags
 extern bool assume_separate;          //!< assume tallies are spatially separate?

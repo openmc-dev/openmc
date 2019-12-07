@@ -462,6 +462,10 @@ public:
 
   int get_bin(Position r) const;
 
+  int n_bins() const;
+
+  void get_indices(Position r, int* ijk, bool* in_mesh) const;
+
   std::pair<double, libMesh::Elem*>
   locate_boundary_element(const Position& r0,
                           const Position& r1) const;
@@ -485,7 +489,22 @@ public:
   double first(const libMesh::Node& a,
                const libMesh::Node& b) const;
 
+  int get_bin_from_indices(const int* ijk) const;
+
+  void get_indices_from_bin(int bin, int* ijk) const;
+
+
   bool intersects(Position& r0, Position r1, int* ijk) const;
+
+  int n_surface_bins() const;
+
+  void surface_bins_crossed(const Particle* p,
+                             std::vector<int>& bins) const;
+
+  std::pair<std::vector<double>, std::vector<double>> plot(Position plot_ll,
+                                                           Position plot_ur) const;
+
+  void to_hdf5(hid_t group) const;
 
 private:
   std::unique_ptr<libMesh::Mesh> m_;

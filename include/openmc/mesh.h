@@ -438,7 +438,7 @@ private:
 #ifdef LIBMESH
 class LibMesh : public UnstructuredMeshBase {
 
-  typedef std::vector<std::pair<double, std::unique_ptr<const libMesh::Elem>>> UnstructuredMeshHits;
+  typedef std::vector<std::pair<double, const libMesh::Elem*>> UnstructuredMeshHits;
 
 public:
   // constructor
@@ -466,11 +466,11 @@ public:
 
   void get_indices(Position r, int* ijk, bool* in_mesh) const;
 
-  std::pair<double, libMesh::Elem*>
+  std::pair<double, const libMesh::Elem*>
   locate_boundary_element(const Position& r0,
                           const Position& r1) const;
 
-  std::pair<double, libMesh::Elem*>
+  std::pair<double, const libMesh::Elem*>
   locate_boundary_element(const libMesh::Point& start,
                           const libMesh::Point& end) const;
 

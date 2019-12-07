@@ -3,6 +3,7 @@
 #include <cstddef>
 #include <cstdlib> // for getenv
 #include <cstring>
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -32,6 +33,10 @@
 #include "openmc/thermal.h"
 #include "openmc/timer.h"
 
+#ifdef LIBMESH
+#include "libmesh/libmesh.h"
+#endif
+
 
 int openmc_init(int argc, char* argv[], const void* intracomm)
 {
@@ -49,6 +54,11 @@ int openmc_init(int argc, char* argv[], const void* intracomm)
   // Initialize MPI for C++
   initialize_mpi(comm);
 #endif
+
+#ifdef LIBMESH
+  settings::LMI = std::unique_ptr<libMesh::LibMeshInit>(new libMesh::LibMeshInit(argc, argv));
+#endif
+
 
   // Parse command-line arguments
   int err = parse_command_line(argc, argv);

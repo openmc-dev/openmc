@@ -2048,12 +2048,16 @@ UnstructuredMeshBase::UnstructuredMeshBase(pugi::xml_node node) : Mesh(node) {
 
 #ifdef LIBMESH
 LibMesh::LibMesh(pugi::xml_node node) : UnstructuredMeshBase(node) {
-  libMesh::LibMeshInit init(0, NULL);
 
-  m_ = std::unique_ptr<libMesh::Mesh>(new libMesh::Mesh(init.comm(), 3));
+  // always 3 for unstructured meshes
+  n_dimension_ = 3;
+
+  m_ = std::unique_ptr<libMesh::Mesh>(new libMesh::Mesh(settings::LMI->comm(), 3));
   m_->read(filename_);
 
   point_locator_ = m_->sub_point_locator();
+  point_locator_->enable_out_of_mesh_mode();
+
   m_->find_neighbors();
 
   auto e = *m_->elements_begin();
@@ -2070,6 +2074,49 @@ LibMesh::LibMesh(pugi::xml_node node) : UnstructuredMeshBase(node) {
   }
 
 }
+
+void
+LibMesh::get_indices(Position r, int* ijk, bool* in_mesh) const {
+  int bin = get_bin(r);
+  *in_mesh = bin != -1;
+  ijk[0] = bin;
+  return;
+}
+
+int LibMesh::n_bins() const {
+  return m_->n_elem();
+}
+
+int LibMesh::n_surface_bins() const {
+  return 0;
+}
+
+void
+LibMesh::surface_bins_crossed(const Particle* p,
+                               std::vector<int>& bins) const
+{}
+
+std::pair<std::vector<double>, std::vector<double>>
+LibMesh::plot(Position plot_ll,
+              Position plot_ur) const { return {}; }
+
+
+int
+LibMesh::get_bin_from_indices(const int* ijk) const {
+  if (ijk[0] >= n_bins()) {
+    std::stringstream s;
+    s << "Invalid bin: " << ijk[0];
+    fatal_error(s);
+  }
+  int bin = first_element_->id() + ijk[0];
+  return bin;
+}
+
+void
+LibMesh::get_indices_from_bin(int bin, int* ijk) const {
+  ijk[0] = bin;
+}
+
 
 void
 LibMesh::bins_crossed(const Particle* p,
@@ -2305,6 +2352,22 @@ LibMesh::first(const libMesh::Node& a,
   }
 }
 
+void LibMesh::to_hdf5(hid_t group) const
+{
+  hid_t mesh_group = create_group(group, "mesh " + std::to_string(id_));
+
+  write_dataset(mesh_group, "type", "unstructured");
+  write_dataset(mesh_group, "filename", filename_);
+
+  // write volume of each tet
+  std::vector<double> tet_vols;
+  for (int i = 0; i < m_->n_elem(); i++) {
+    tet_vols.emplace_back(m_->elem_ref(i).volume());
+  }
+  write_dataset(mesh_group, "volumes", tet_vols);
+
+  close_group(mesh_group);
+}
 
 double
 LibMesh::plucker_edge_test(const libMesh::Node& vertexa,
@@ -2401,17 +2464,31 @@ void read_meshes(pugi::xml_node root)
       mesh_type = "regular";
     }
 
+    std::string mesh_lib;
+    if (check_for_node(node, "library")) {
+      mesh_lib = get_node_value(node, "library", true, true);
+    } else {
+      mesh_lib = "moab";
+    }
+
     // Read mesh and add to vector
     if (mesh_type == "regular") {
       model::meshes.push_back(std::make_unique<RegularMesh>(node));
     } else if (mesh_type == "rectilinear") {
       model::meshes.push_back(std::make_unique<RectilinearMesh>(node));
 #ifdef DAGMC
-    } else if (mesh_type == "unstructured") {
+    }
+    else if (mesh_type == "unstructured" && mesh_lib == "moab") {
       model::meshes.push_back(std::make_unique<UnstructuredMesh>(node));
 #else
     } else if (mesh_type == "unstructured") {
       fatal_error("Unstructured mesh support is disabled.");
+#endif
+#ifdef LIBMESH
+    }
+    else if (mesh_type == "unstructured" && mesh_lib == "libmesh") {
+      std::cout << "Making libmesh mesh" << std::endl;
+      model::meshes.push_back(std::make_unique<LibMesh>(node));
 #endif
     } else {
       fatal_error("Invalid mesh type: " + mesh_type);

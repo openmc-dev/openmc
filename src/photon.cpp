@@ -110,6 +110,11 @@ PhotonInteraction::PhotonInteraction(hid_t group, int i_element)
   std::vector<std::string> designators;
   read_attribute(rgroup, "designators", designators);
   auto n_shell = designators.size();
+  if (n_shell == 0) {
+    throw std::runtime_error{"Photoatomic data for " + name_ +
+      " does not have subshell data."};
+  }
+
   for (int i = 0; i < n_shell; ++i) {
     const auto& designator {designators[i]};
 

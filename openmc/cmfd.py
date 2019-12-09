@@ -64,7 +64,7 @@ class CMFDMesh(object):
         The lower-left corner of the structured mesh. If only two coordinates
         are given, it is assumed that the mesh is an x-y mesh.
     upper_right : Iterable of float
-        The upper-right corner of the structrued mesh. If only two coordinates
+        The upper-right corner of the structured mesh. If only two coordinates
         are given, it is assumed that the mesh is an x-y mesh.
     dimension : Iterable of int
         The number of mesh cells in each direction.
@@ -220,7 +220,7 @@ class CMFDRun(object):
         Indicate whether an effective downscatter cross section should be used
         when using 2-group CMFD.
     feedback : bool
-        Indicate or not the CMFD diffusion result is used to adjust the weight
+        Indicate whether or not the CMFD diffusion result is used to adjust the weight
         of fission source neutrons on the next OpenMC batch. Defaults to False.
     cmfd_ktol : float
         Tolerance on the eigenvalue when performing CMFD power iteration
@@ -694,7 +694,7 @@ class CMFDRun(object):
     def run(self, **kwargs):
         """Run OpenMC with coarse mesh finite difference acceleration
 
-        This method is called by user to run CMFD once instance variables of
+        This method is called by the user to run CMFD once instance variables of
         CMFDRun class are set
 
         Parameters

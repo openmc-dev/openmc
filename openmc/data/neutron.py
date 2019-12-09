@@ -85,7 +85,7 @@ class IncidentNeutron(EqualityMixin):
     resonance_covariance : openmc.data.ResonanceCovariance or None
         Covariance for resonance parameters
     temperatures : list of str
-        List of string representations the temperatures of the target nuclide
+        List of string representations of the temperatures of the target nuclide
         in the data set.  The temperatures are strings of the temperature,
         rounded to the nearest integer; e.g., '294K'
     kTs : Iterable of float
@@ -410,7 +410,7 @@ class IncidentNeutron(EqualityMixin):
         ----------
         path : str
             Path to write HDF5 file to
-        mode : {'r', r+', 'w', 'x', 'a'}
+        mode : {'r', 'r+', 'w', 'x', 'a'}
             Mode that is used to open the HDF5 file. This is the second argument
             to the :class:`h5py.File` constructor.
         libver : {'earliest', 'latest'}

@@ -26,10 +26,15 @@ class MeshPlotter(tk.Frame):
     def __init__(self, parent, filename):
         tk.Frame.__init__(self, parent)
 
-        self.labels = {'Cell': 'Cell:', 'Cellborn': 'Cell born:',
-                       'Surface': 'Surface:', 'Material': 'Material:',
-                       'Universe': 'Universe:', 'Energy': 'Energy in:',
-                       'Energyout': 'Energy out:'}
+        self.labels = {
+            'Cell': 'Cell:',
+            'Cellborn': 'Cell born:',
+            'Surface': 'Surface:',
+            'Material': 'Material:',
+            'Universe': 'Universe:',
+            'Energy': 'Energy in:',
+            'Energyout': 'Energy out:'
+        }
 
         self.filterBoxes = {}
 

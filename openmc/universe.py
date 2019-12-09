@@ -363,8 +363,7 @@ class Universe(IDManagerMixin):
             raise TypeError(msg)
 
         # If the Cell is in the Universe's list of Cells, delete it
-        if cell.id in self._cells:
-            del self._cells[cell.id]
+        self._cells.pop(cell.id, None)
 
     def clear_cells(self):
         """Remove all cells from the universe."""

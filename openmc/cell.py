@@ -2,7 +2,7 @@ from collections import OrderedDict
 from collections.abc import Iterable
 from copy import deepcopy
 from math import cos, sin, pi
-from numbers import Real, Integral
+from numbers import Real
 from xml.etree import ElementTree as ET
 import sys
 import warnings
@@ -442,7 +442,7 @@ class Cell(IDManagerMixin):
         if memo is None:
             memo = {}
 
-        # If no nemoize'd clone exists, instantiate one
+        # If no memoize'd clone exists, instantiate one
         if self not in memo:
             # Temporarily remove paths
             paths = self._paths

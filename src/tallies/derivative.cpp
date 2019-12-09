@@ -617,6 +617,7 @@ void score_collision_derivative(const Particle* p)
 {
   // A void material cannot be perturbed so it will not affect flux derivatives.
   if (p->material_ == MATERIAL_VOID) return;
+
   const Material& material {*model::materials[p->material_]};
 
   for (auto& deriv : model::tally_derivs) {

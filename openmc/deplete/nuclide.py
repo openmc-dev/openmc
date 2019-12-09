@@ -352,7 +352,7 @@ class FissionYieldDistribution(Mapping):
     Can be used as a dictionary mapping energies and products to fission
     yields::
 
-        >>> fydist = FissionYieldDistribution{
+        >>> fydist = FissionYieldDistribution(
         ...     {0.0253: {"Xe135": 0.021}})
         >>> fydist[0.0253]["Xe135"]
         0.021
@@ -477,7 +477,7 @@ class FissionYield(Mapping):
     Parameters
     ----------
     products : tuple of str
-        Products for this specific distribution
+        Sorted products for this specific distribution
     yields : numpy.ndarray
         Fission product yields for each product in ``products``
 
@@ -492,11 +492,11 @@ class FissionYield(Mapping):
     --------
     >>> import numpy
     >>> fy_vector = FissionYield(
-    ...     ("Xe135", "I129", "Sm149"),
-    ...     numpy.array((0.002, 0.001, 0.0003)))
+    ...     ("I129", "Sm149", "Xe135"),
+    ...     numpy.array((0.001, 0.0003, 0.002)))
     >>> fy_vector["Xe135"]
     0.002
-    >>> new = fy_vector.copy()
+    >>> new = FissionYield(fy_vector.products, fy_vector.yields.copy())
     >>> fy_vector *= 2
     >>> fy_vector["Xe135"]
     0.004
@@ -504,8 +504,8 @@ class FissionYield(Mapping):
     0.002
     >>> (new + fy_vector)["Sm149"]
     0.0009
-    >>> dict(new)
-    {"Xe135": 0.002, "I129": 0.001, "Sm149": 0.0003}
+    >>> dict(new) == {"Xe135": 0.002, "I129": 0.001, "Sm149": 0.0003}
+    True
     """
 
     def __init__(self, products, yields):

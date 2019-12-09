@@ -243,8 +243,7 @@ def update_materials(root):
     for material in root.findall('material'):
         for nuclide in material.findall('nuclide'):
             if 'name' in nuclide.attrib:
-                nucname = nuclide.attrib['name']
-                nucname = nucname.replace('-', '')
+                nucname = nuclide.attrib['name'].replace('-', '')
                 # If a nuclide name is in the ZAID notation (e.g., a number),
                 # convert it to the proper nuclide name.
                 if nucname.strip().isnumeric():

@@ -984,7 +984,7 @@ class ChiDelayed(MDGXS):
         is None unless the multi-group cross section has been computed.
     num_subdomains : int
         The number of subdomains is unity for 'material', 'cell' and 'universe'
-        domain types. When the  This is equal to the number of cell instances
+        domain types. This is equal to the number of cell instances
         for 'distribcell' domain types (it is equal to unity prior to loading
         tally data from a statepoint file).
     num_nuclides : int
@@ -1496,7 +1496,7 @@ class DelayedNuFissionXS(MDGXS):
         is None unless the multi-group cross section has been computed.
     num_subdomains : int
         The number of subdomains is unity for 'material', 'cell' and 'universe'
-        domain types. When the  This is equal to the number of cell instances
+        domain types. This is equal to the number of cell instances
         for 'distribcell' domain types (it is equal to unity prior to loading
         tally data from a statepoint file).
     num_nuclides : int
@@ -1632,7 +1632,7 @@ class Beta(MDGXS):
         is None unless the multi-group cross section has been computed.
     num_subdomains : int
         The number of subdomains is unity for 'material', 'cell' and 'universe'
-        domain types. When the  This is equal to the number of cell instances
+        domain types. This is equal to the number of cell instances
         for 'distribcell' domain types (it is equal to unity prior to loading
         tally data from a statepoint file).
     num_nuclides : int
@@ -1817,7 +1817,7 @@ class DecayRate(MDGXS):
         is None unless the multi-group cross section has been computed.
     num_subdomains : int
         The number of subdomains is unity for 'material', 'cell' and 'universe'
-        domain types. When the  This is equal to the number of cell instances
+        domain types. This is equal to the number of cell instances
         for 'distribcell' domain types (it is equal to unity prior to loading
         tally data from a statepoint file).
     num_nuclides : int
@@ -2585,7 +2585,7 @@ class DelayedNuFissionMatrixXS(MatrixMDGXS):
         is None unless the multi-group cross section has been computed.
     num_subdomains : int
         The number of subdomains is unity for 'material', 'cell' and 'universe'
-        domain types. When the  This is equal to the number of cell instances
+        domain types. This is equal to the number of cell instances
         for 'distribcell' domain types (it is equal to unity prior to loading
         tally data from a statepoint file).
     num_nuclides : int

@@ -17,7 +17,7 @@ class Product(EqualityMixin):
     Parameters
     ----------
     particle : str, optional
-        What particle the reaction product is. Defaults to 'neutron'.
+        The particle type of the reaction product. Defaults to 'neutron'.
 
     Attributes
     ----------

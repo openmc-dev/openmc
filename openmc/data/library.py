@@ -6,7 +6,6 @@ import h5py
 
 from openmc.mixin import EqualityMixin
 from openmc._xml import clean_indentation
-from openmc.checkvalue import check_type
 
 
 class DataLibrary(EqualityMixin):

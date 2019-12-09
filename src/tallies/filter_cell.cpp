@@ -12,7 +12,7 @@ namespace openmc {
 void
 CellFilter::from_xml(pugi::xml_node node)
 {
-  // Get cell IDs and convert into indices into the global cells vector
+  // Get cell IDs and convert to indices into the global cells vector
   auto cells = get_node_array<int32_t>(node, "bins");
   for (auto& c : cells) {
     auto search = model::cell_map.find(c);

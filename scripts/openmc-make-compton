@@ -40,7 +40,8 @@ if download:
     with open(filename, 'wb') as fh:
         while True:
             chunk = req.read(block_size)
-            if not chunk: break
+            if not chunk:
+                break
             fh.write(chunk)
             downloaded += len(chunk)
             status = '{0:10}  [{1:3.2f}%]'.format(

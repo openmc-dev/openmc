@@ -348,9 +348,9 @@ class PyAPITestHarness(TestHarness):
         compare = filecmp.cmp('inputs_test.dat', 'inputs_true.dat')
         if not compare:
             expected = open('inputs_true.dat', 'r').readlines()
-            actual = open('inputs_error.dat', 'r').readlines()
+            actual = open('inputs_test.dat', 'r').readlines()
             diff = unified_diff(expected, actual, 'inputs_true.dat',
-                                'inputs_error.dat')
+                                'inputs_test.dat')
             print('Input differences:')
             print(''.join(colorize(diff)))
             os.rename('inputs_test.dat', 'inputs_error.dat')

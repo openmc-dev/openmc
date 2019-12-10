@@ -28,7 +28,7 @@ namespace openmc {
 namespace settings {
 
 #ifdef LIBMESH
-extern std::unique_ptr<libMesh::LibMeshInit> LMI;
+extern libMesh::LibMeshInit* LMI;
 #endif
 
 // Boolean flags

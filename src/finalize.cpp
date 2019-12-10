@@ -142,6 +142,10 @@ int openmc_finalize()
   if (mpi::bank != MPI_DATATYPE_NULL) MPI_Type_free(&mpi::bank);
 #endif
 
+#ifdef LIBMESH
+  delete settings::LMI;
+#endif
+
   return 0;
 }
 

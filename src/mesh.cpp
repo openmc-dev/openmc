@@ -2280,8 +2280,15 @@ LibMesh::intersect_track(libMesh::Point start,
 
     // make sure we found a hit for the tet we're in
     if (side == -1) {
+      auto orig_e = e;
       start += dir * TINY_BIT; // nudge particle forward
       e = (*point_locator_)(start);
+      if (!e) {
+        if (!orig_e->on_boundary()) {
+          std::cout << "May have incorrectly truncated a track." << std::endl;
+        }
+        return;
+      }
       continue;
     } else {
       // add hit to output
@@ -2299,7 +2306,7 @@ LibMesh::intersect_track(libMesh::Point start,
 
     // if we exit the mesh, check for re-entry along
     // the track
-    if (!next_e and e->on_boundary()) {
+    if (!next_e) {
       auto result = locate_boundary_element(start + dir * TINY_BIT,
                                             start + dir * track_remaining);
       if (result.second) {

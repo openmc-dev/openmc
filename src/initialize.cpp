@@ -56,7 +56,7 @@ int openmc_init(int argc, char* argv[], const void* intracomm)
 #endif
 
 #ifdef LIBMESH
-  settings::LMI = std::unique_ptr<libMesh::LibMeshInit>(new libMesh::LibMeshInit(argc, argv));
+  settings::LMI = new libMesh::LibMeshInit(argc, argv);
 #endif
 
 

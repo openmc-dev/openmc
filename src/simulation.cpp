@@ -820,6 +820,7 @@ int openmc_simulation_init()
   allocate_banks();
 
   // Allocate tally results arrays if they're not allocated yet
+
   for (auto& t : model::tallies) {
     t->init_results();
   }
@@ -934,10 +935,7 @@ int openmc_next_batch(int* status)
     // Start timer for transport
     simulation::time_transport.start();
 
-    // ====================================================================
-    // LOOP OVER PARTICLES
-
-    simulation::current_work = 1;
+	  simulation::current_work = 1;
 
     transport();
 
@@ -1220,13 +1218,13 @@ void finalize_generation()
   }
 
 
-  if (settings::run_mode == RUN_MODE_EIGENVALUE) {
+  if (settings::run_mode == RUN_MODE_EIGENVALUE) {	
 	  // We need to move all the stuff from the shared_fission_bank into the real one.
 	  for( int i = 0; i < shared_fission_bank_length; i++ )
 		  simulation::fission_bank.push_back(shared_fission_bank[i]);
 	  shared_fission_bank_length = 0;
 
-    //Sorts the fission bank so as to allow for reproducibility
+    // Sorts the fission bank so as to allow for reproducibility
     std::stable_sort(simulation::fission_bank.begin(), simulation::fission_bank.end());
 
     // Distribute fission bank across processors evenly
@@ -1286,7 +1284,7 @@ void initialize_history(Particle* p, int64_t index_source)
     }
   }
 
-  // Display message if high verbosity or trace is on
+// Display message if high verbosity or trace is on
    if (settings::verbosity >= 9 || simulation::trace) {
       write_message("Simulating Particle " + std::to_string(p->id_));
    }

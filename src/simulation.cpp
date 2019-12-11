@@ -357,7 +357,7 @@ void process_advance_particle_events()
     } else if (p->macro_xs_.total == 0.0) {
       d_collision = INFINITY;
     } else {
-      d_collision = -std::log(prn(p->prn_seeds_ + p->stream_)) / p->macro_xs_.total;
+      d_collision = -std::log(prn(p->current_seed())) / p->macro_xs_.total;
     }
 
     // -------------- break here? -------------------

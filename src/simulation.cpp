@@ -63,6 +63,7 @@ struct QueueItem{
 	int idx;      // particle index in event-based buffer
 	double E;     // particle energy
 	int material; // material that particle is in
+  /*
   bool operator<(const QueueItem & rhs) const
   {
     if( material < rhs.material)
@@ -72,6 +73,7 @@ struct QueueItem{
     else
       return false;
   }
+  */
 };
 bool by_energy   (QueueItem a, QueueItem b) { return (a.E        < b.E); }
 bool by_material (QueueItem a, QueueItem b) { return (a.material < b.material); }
@@ -89,7 +91,7 @@ int advance_particle_queue_length     = 0;
 int surface_crossing_queue_length     = 0;
 int collision_queue_length            = 0;
 
-const int MAX_PARTICLES_IN_FLIGHT = 100000;
+const int MAX_PARTICLES_IN_FLIGHT = 10000;
 
 void init_event_queues(int n_particles)
 {
@@ -103,11 +105,11 @@ void init_event_queues(int n_particles)
 
 void free_event_queues(void)
 {
-	delete calculate_fuel_xs_queue;
-	delete calculate_nonfuel_xs_queue;
-	delete advance_particle_queue;
-	delete surface_crossing_queue;
-	delete collision_queue;
+	delete[] calculate_fuel_xs_queue;
+	delete[] calculate_nonfuel_xs_queue;
+	delete[] advance_particle_queue;
+	delete[] surface_crossing_queue;
+	delete[] collision_queue;
 	delete[] particles;
 }
 
@@ -176,11 +178,11 @@ void dispatch_xs_event(int i)
 void process_calculate_xs_events(QueueItem * queue, int n)
 {
   // Sort queue by energy
-  std::sort(queue, queue+n);
-  //std::sort(queue, queue+n, by_energy);
+  //std::sort(queue, queue+n);
+  std::sort(queue, queue+n, by_energy);
 
   // Then, stable sort by material (so as to preserve energy ordering)
-  //std::stable_sort(queue, queue+n, by_material);
+  std::stable_sort(queue, queue+n, by_material);
 
   // Save last_ members, find grid index
   int lost_particles = 0;
@@ -828,6 +830,7 @@ int openmc_simulation_init()
   // Allocate source bank, and for eigenvalue simulations also allocate the
   // fission bank
   allocate_banks();
+  init_shared_fission_bank(simulation::work_per_rank * 3);
 
   // Allocate tally results arrays if they're not allocated yet
 
@@ -916,6 +919,8 @@ int openmc_simulation_finalize()
     if (settings::verbosity >= 4) print_results();
   }
   if (settings::check_overlaps) print_overlap_check();
+
+  free_shared_fission_bank();
 
   // Reset flags
   simulation::need_depletion_rx = false;

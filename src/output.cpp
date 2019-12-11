@@ -71,6 +71,7 @@ void title()
 
   // Write version information
   std::cout <<
+    "         Branch    | Event-Based\n" <<
     "                   | The OpenMC Monte Carlo Code\n" <<
     "         Copyright | 2011-2019 MIT and OpenMC contributors\n" <<
     "           License | http://openmc.readthedocs.io/en/latest/license.html\n" <<

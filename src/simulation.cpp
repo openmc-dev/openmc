@@ -63,6 +63,15 @@ struct QueueItem{
 	int idx;      // particle index in event-based buffer
 	double E;     // particle energy
 	int material; // material that particle is in
+  bool operator<(const QueueItem & rhs) const
+  {
+    if( material < rhs.material)
+      return true;
+    else if( E < rhs.E )
+      return true;
+    else
+      return false;
+  }
 };
 bool by_energy   (QueueItem a, QueueItem b) { return (a.E        < b.E); }
 bool by_material (QueueItem a, QueueItem b) { return (a.material < b.material); }
@@ -167,10 +176,11 @@ void dispatch_xs_event(int i)
 void process_calculate_xs_events(QueueItem * queue, int n)
 {
   // Sort queue by energy
-  std::sort(queue, queue+n, by_energy);
+  std::sort(queue, queue+n);
+  //std::sort(queue, queue+n, by_energy);
 
   // Then, stable sort by material (so as to preserve energy ordering)
-  std::stable_sort(queue, queue+n, by_material);
+  //std::stable_sort(queue, queue+n, by_material);
 
   // Save last_ members, find grid index
   int lost_particles = 0;

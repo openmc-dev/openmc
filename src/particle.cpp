@@ -672,7 +672,7 @@ Particle::write_restart() const
     write_dataset(file_id, "id", id_);
     write_dataset(file_id, "type", static_cast<int>(type_));
 
-    int64_t i = simulation::current_work;
+    int64_t i = current_work_;
     write_dataset(file_id, "weight", simulation::source_bank[i-1].wgt);
     write_dataset(file_id, "energy", simulation::source_bank[i-1].E);
     write_dataset(file_id, "xyz", simulation::source_bank[i-1].r);

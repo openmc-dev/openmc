@@ -351,6 +351,7 @@ void calculate_average_keff()
   }
 }
 
+/*
 #ifdef _OPENMP
 void join_bank_from_threads()
 {
@@ -384,6 +385,7 @@ void join_bank_from_threads()
   }
 }
 #endif
+*/
 
 int openmc_get_keff(double* k_combined)
 {

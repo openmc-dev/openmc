@@ -311,6 +311,8 @@ public:
   
   // Secondary bank
   std::vector<Particle::Bank> secondary_bank_;
+
+  int64_t current_work_; // current work index
 };
 
 } // namespace openmc

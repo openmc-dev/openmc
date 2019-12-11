@@ -28,7 +28,6 @@ namespace simulation {
 
 extern "C" int current_batch;    //!< current batch
 extern "C" int current_gen;      //!< current fission generation
-extern "C" int64_t current_work; //!< index in source back of current particle
 extern "C" bool initialized;     //!< has simulation been initialized?
 extern "C" double keff;          //!< average k over batches
 extern "C" double keff_std;      //!< standard deviation of average k
@@ -53,7 +52,7 @@ extern std::vector<int64_t> work_index;
 // Threadprivate variables
 extern "C" bool trace;     //!< flag to show debug information
 
-#pragma omp threadprivate(current_work, trace)
+#pragma omp threadprivate(trace)
 
 } // namespace simulation
 

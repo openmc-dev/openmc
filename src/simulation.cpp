@@ -950,8 +950,6 @@ int openmc_next_batch(int* status)
     // Start timer for transport
     simulation::time_transport.start();
 
-	  simulation::current_work = 1;
-
     transport();
 
     // Accumulate time for transport
@@ -1032,25 +1030,7 @@ void allocate_banks()
   simulation::source_bank.resize(simulation::work_per_rank);
 
   if (settings::run_mode == RUN_MODE_EIGENVALUE) {
-#ifdef _OPENMP
-    // If OpenMP is being used, each thread needs its own private fission
-    // bank. Since the private fission banks need to be combined at the end of
-    // a generation, there is also a 'master_fission_bank' that is used to
-    // collect the sites from each thread.
-
-    #pragma omp parallel
-    {
-      if (omp_get_thread_num() == 0) {
-        simulation::fission_bank.reserve(3*simulation::work_per_rank);
-      } else {
-        int n_threads = omp_get_num_threads();
-        simulation::fission_bank.reserve(3*simulation::work_per_rank / n_threads);
-      }
-    }
-    simulation::master_fission_bank.reserve(3*simulation::work_per_rank);
-#else
     simulation::fission_bank.reserve(3*simulation::work_per_rank);
-#endif
   }
 }
 
@@ -1269,6 +1249,7 @@ void initialize_history(Particle* p, int64_t index_source)
 {
   // set defaults
   p->from_source(&simulation::source_bank[index_source - 1]);
+  p->current_work_ = index_source;
 
   // set identifier for particle
   p->id_ = simulation::work_index[mpi::rank] + index_source;

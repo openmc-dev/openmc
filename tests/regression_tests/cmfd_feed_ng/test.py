@@ -2,7 +2,8 @@ from tests.testing_harness import CMFDTestHarness
 from openmc import cmfd
 import numpy as np
 
-
+import pytest
+@pytest.mark.skipif(True, reason='Not Planned for GPU Support')
 def test_cmfd_feed_ng():
     """Test n group CMFD solver with CMFD feedback"""
     # Initialize and set CMFD mesh

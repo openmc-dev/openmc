@@ -1042,7 +1042,7 @@ setup_active_tallies()
 void
 free_memory_tally()
 {
-  #pragma omp parallel
+  //#pragma omp parallel
   {
     model::tally_derivs.clear();
   }

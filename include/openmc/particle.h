@@ -319,6 +319,8 @@ public:
   std::vector<double> flux_derivs_;  // Derivatives of the current particle's weight
 
   std::vector<FilterMatch> filter_matches_;
+
+  std::vector<std::vector<Position>> tracks_;
 };
 
 } // namespace openmc

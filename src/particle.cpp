@@ -152,7 +152,7 @@ Particle::transport()
   }
 
   // Prepare to write out particle track.
-  if (write_track_) add_particle_track();
+  if (write_track_) add_particle_track(*this);
 
   // Every particle starts with no accumulated flux derivative.
   if (!model::active_tallies.empty())
@@ -382,7 +382,7 @@ Particle::transport()
       n_event = 0;
 
       // Enter new particle in particle track file
-      if (write_track_) add_particle_track();
+      if (write_track_) add_particle_track(*this);
     }
   }
 

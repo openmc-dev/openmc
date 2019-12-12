@@ -141,7 +141,7 @@ void revive_particle_from_secondary(Particle* p)
   // n_event = 0;
 
   // Enter new particle in particle track file
-  if (p->write_track_) add_particle_track();
+  if (p->write_track_) add_particle_track(*p);
 }
 
 void dispatch_xs_event(int i)
@@ -1284,7 +1284,7 @@ void initialize_history(Particle* p, int64_t index_source)
   }
 
   // Prepare to write out particle track.
-  if (p->write_track_) add_particle_track();
+  if (p->write_track_) add_particle_track(*p);
 
   // Every particle starts with no accumulated flux derivative.
   if (!model::active_tallies.empty())

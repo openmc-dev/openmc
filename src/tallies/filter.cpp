@@ -38,10 +38,6 @@ namespace openmc {
 // Global variables
 //==============================================================================
 
-namespace simulation {
-  std::vector<FilterMatch> filter_matches;
-}
-
 namespace model {
   std::vector<std::unique_ptr<Filter>> tally_filters;
   std::unordered_map<int, int> filter_map;

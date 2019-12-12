@@ -14,8 +14,10 @@
 #include "openmc/constants.h"
 #include "openmc/position.h"
 #include "openmc/random_lcg.h"
+//#include "openmc/tallies/filter.h"
 
 namespace openmc {
+class FilterMatch;
 
 //==============================================================================
 // Constants
@@ -315,6 +317,8 @@ public:
   int64_t current_work_; // current work index
 
   std::vector<double> flux_derivs_;  // Derivatives of the current particle's weight
+
+  std::vector<FilterMatch> filter_matches_;
 };
 
 } // namespace openmc

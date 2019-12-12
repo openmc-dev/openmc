@@ -3,6 +3,7 @@
 
 #include "openmc/particle.h"
 #include "openmc/tallies/tally.h"
+#include "openmc/tallies/filter.h"
 
 namespace openmc {
 
@@ -22,12 +23,12 @@ class FilterBinIter
 public:
 
   //! Construct an iterator over bins that match a given particle's state.
-  FilterBinIter(const Tally& tally, const Particle* p);
+  FilterBinIter(const Tally& tally, const Particle* p, std::vector<FilterMatch> * particle_filter_matches);
 
   //! Construct an iterator over all filter bin combinations.
   //
   //! \param end if true, the returned iterator indicates the end of a loop.
-  FilterBinIter(const Tally& tally, bool end);
+  FilterBinIter(const Tally& tally, bool end, std::vector<FilterMatch> * particle_filter_matches);
 
   bool operator==(const FilterBinIter& other) const
   {return index_ == other.index_;}
@@ -39,6 +40,8 @@ public:
 
   int index_ {1};
   double weight_ {1.};
+  
+  std::vector<FilterMatch> & filter_matches_;
 
 private:
   void compute_index_weight();
@@ -73,7 +76,7 @@ void score_analog_tally_ce(Particle* p);
 //! Analog tallies are triggered at every collision, not every event.
 //
 //! \param p The particle being tracked
-void score_analog_tally_mg(const Particle* p);
+void score_analog_tally_mg(Particle* p);
 
 //! Score tallies using a tracklength estimate of the flux.
 //
@@ -89,7 +92,7 @@ void score_tracklength_tally(Particle* p, double distance);
 //
 //! \param p The particle being tracked
 //! \param tallies A vector of tallies to score to
-void score_surface_tally(const Particle* p, const std::vector<int>& tallies);
+void score_surface_tally(Particle* p, const std::vector<int>& tallies);
 
 } // namespace openmc
 

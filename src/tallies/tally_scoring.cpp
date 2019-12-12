@@ -26,13 +26,13 @@ namespace openmc {
 // FilterBinIter implementation
 //==============================================================================
 
-FilterBinIter::FilterBinIter(const Tally& tally, const Particle* p)
-  : tally_{tally}
+FilterBinIter::FilterBinIter(const Tally& tally, const Particle* p, std::vector<FilterMatch> * particle_filter_matches)
+  : tally_{tally}, filter_matches_{*particle_filter_matches}
 {
   // Find all valid bins in each relevant filter if they have not already been
   // found for this event.
   for (auto i_filt : tally_.filters()) {
-    auto& match {simulation::filter_matches[i_filt]};
+    auto& match {filter_matches_[i_filt]};
     if (!match.bins_present_) {
       match.bins_.clear();
       match.weights_.clear();
@@ -55,8 +55,8 @@ FilterBinIter::FilterBinIter(const Tally& tally, const Particle* p)
   this->compute_index_weight();
 }
 
-FilterBinIter::FilterBinIter(const Tally& tally, bool end)
-  : tally_{tally}
+FilterBinIter::FilterBinIter(const Tally& tally, bool end, std::vector<FilterMatch> * particle_filter_matches)
+  : tally_{tally}, filter_matches_{*particle_filter_matches}
 {
   // Handle the special case for an iterator that points to the end.
   if (end) {
@@ -65,7 +65,7 @@ FilterBinIter::FilterBinIter(const Tally& tally, bool end)
   }
 
   for (auto i_filt : tally_.filters()) {
-    auto& match {simulation::filter_matches[i_filt]};
+    auto& match {filter_matches_[i_filt]};
     if (!match.bins_present_) {
       match.bins_.clear();
       match.weights_.clear();
@@ -97,7 +97,7 @@ FilterBinIter::operator++()
   bool done_looping = true;
   for (int i = tally_.filters().size()-1; i >= 0; --i) {
     auto i_filt = tally_.filters(i);
-    auto& match {simulation::filter_matches[i_filt]};
+    auto& match {filter_matches_[i_filt]};
     if (match.i_bin_ < match.bins_.size()-1) {
       // The bin for this filter can be incremented.  Increment it and do not
       // touch any of the remaining filters.
@@ -130,7 +130,7 @@ FilterBinIter::compute_index_weight()
   weight_ = 1.;
   for (auto i = 0; i < tally_.filters().size(); ++i) {
     auto i_filt = tally_.filters(i);
-    auto& match {simulation::filter_matches[i_filt]};
+    auto& match {filter_matches_[i_filt]};
     auto i_bin = match.i_bin_;
     index_ += match.bins_[i_bin] * tally_.strides(i);
     weight_ *= match.weights_[i_bin];
@@ -144,12 +144,12 @@ FilterBinIter::compute_index_weight()
 //! Helper function used to increment tallies with a delayed group filter.
 
 void
-score_fission_delayed_dg(int i_tally, int d_bin, double score, int score_index)
+score_fission_delayed_dg(int i_tally, int d_bin, double score, int score_index, std::vector<FilterMatch> & filter_matches)
 {
   // Save the original delayed group bin
   auto& tally {*model::tallies[i_tally]};
   auto i_filt = tally.filters(tally.delayedgroup_filter_);
-  auto& dg_match {simulation::filter_matches[i_filt]};
+  auto& dg_match {filter_matches[i_filt]};
   auto i_bin = dg_match.i_bin_;
   auto original_bin = dg_match.bins_[i_bin];
   dg_match.bins_[i_bin] = d_bin;
@@ -158,7 +158,7 @@ score_fission_delayed_dg(int i_tally, int d_bin, double score, int score_index)
   auto filter_index = 0;
   for (auto i = 0; i < tally.filters().size(); ++i) {
     auto i_filt = tally.filters(i);
-    auto& match {simulation::filter_matches[i_filt]};
+    auto& match {filter_matches[i_filt]};
     auto i_bin = match.i_bin_;
     filter_index += match.bins_[i_bin] * tally.strides(i);
   }
@@ -314,12 +314,12 @@ double score_neutron_heating(const Particle* p, const Tally& tally, double flux,
 //! neutrons produced with different energies.
 
 void
-score_fission_eout(const Particle* p, int i_tally, int i_score, int score_bin)
+score_fission_eout(Particle* p, int i_tally, int i_score, int score_bin)
 {
   auto& tally {*model::tallies[i_tally]};
   auto i_eout_filt = tally.filters()[tally.energyout_filter_];
-  auto i_bin = simulation::filter_matches[i_eout_filt].i_bin_;
-  auto bin_energyout = simulation::filter_matches[i_eout_filt].bins_[i_bin];
+  auto i_bin = p->filter_matches_[i_eout_filt].i_bin_;
+  auto bin_energyout = p->filter_matches_[i_eout_filt].bins_[i_bin];
 
   const EnergyoutFilter& eo_filt
     {*dynamic_cast<EnergyoutFilter*>(model::tally_filters[i_eout_filt].get())};
@@ -356,7 +356,7 @@ score_fission_eout(const Particle* p, int i_tally, int i_score, int score_bin)
       g_out = eo_filt.n_bins() - g_out - 1;
 
       // change outgoing energy bin
-      simulation::filter_matches[i_eout_filt].bins_[i_bin] = g_out;
+      p->filter_matches_[i_eout_filt].bins_[i_bin] = g_out;
 
     } else {
 
@@ -373,7 +373,7 @@ score_fission_eout(const Particle* p, int i_tally, int i_score, int score_bin)
       } else {
         auto i_match = lower_bound_index(eo_filt.bins().begin(),
           eo_filt.bins().end(), E_out);
-        simulation::filter_matches[i_eout_filt].bins_[i_bin] = i_match;
+        p->filter_matches_[i_eout_filt].bins_[i_bin] = i_match;
       }
 
     }
@@ -387,7 +387,7 @@ score_fission_eout(const Particle* p, int i_tally, int i_score, int score_bin)
       int filter_index = 0;
       for (auto j = 0; j < tally.filters().size(); ++j) {
         auto i_filt = tally.filters(j);
-        auto& match {simulation::filter_matches[i_filt]};
+        auto& match {p->filter_matches_[i_filt]};
         auto i_bin = match.i_bin_;
         filter_index += match.bins_[i_bin] * tally.strides(j);
       }
@@ -415,13 +415,13 @@ score_fission_eout(const Particle* p, int i_tally, int i_score, int score_bin)
             double filter_weight = 1.;
             for (auto j = 0; j < tally.filters().size(); ++j) {
               auto i_filt = tally.filters(j);
-              auto& match {simulation::filter_matches[i_filt]};
+              auto& match {p->filter_matches_[i_filt]};
               auto i_bin = match.i_bin_;
               filter_weight *= match.weights_[i_bin];
             }
 
             score_fission_delayed_dg(i_tally, d_bin, score*filter_weight,
-              i_score);
+              i_score, p->filter_matches_);
           }
         }
 
@@ -433,7 +433,7 @@ score_fission_eout(const Particle* p, int i_tally, int i_score, int score_bin)
         double filter_weight = 1.;
         for (auto j = 0; j < tally.filters().size(); ++j) {
           auto i_filt = tally.filters(j);
-          auto& match {simulation::filter_matches[i_filt]};
+          auto& match {p->filter_matches_[i_filt]};
           auto i_bin = match.i_bin_;
           filter_index += match.bins_[i_bin] * tally.strides(j);
           filter_weight *= match.weights_[i_bin];
@@ -447,7 +447,7 @@ score_fission_eout(const Particle* p, int i_tally, int i_score, int score_bin)
   }
 
   // Reset outgoing energy bin and score index
-  simulation::filter_matches[i_eout_filt].bins_[i_bin] = bin_energyout;
+  p->filter_matches_[i_eout_filt].bins_[i_bin] = bin_energyout;
 }
 
 //! Update tally results for continuous-energy tallies with any estimator.
@@ -777,7 +777,7 @@ score_general_ce(Particle* p, int i_tally, int start_index,
                   * p->neutron_xs_[p->event_nuclide_].fission
                   / p->neutron_xs_[p->event_nuclide_].absorption * flux;
                 score_fission_delayed_dg(i_tally, d_bin, score,
-                  score_index);
+                  score_index, p->filter_matches_);
               }
               continue;
             } else {
@@ -811,7 +811,7 @@ score_general_ce(Particle* p, int i_tally, int start_index,
               auto d = filt.groups()[d_bin];
               score = simulation::keff * p->wgt_bank_ / p->n_bank_
                 * p->n_delayed_bank_[d-1] * flux;
-              score_fission_delayed_dg(i_tally, d_bin, score, score_index);
+              score_fission_delayed_dg(i_tally, d_bin, score, score_index, p->filter_matches_);
             }
             continue;
           } else {
@@ -836,7 +836,7 @@ score_general_ce(Particle* p, int i_tally, int start_index,
                 ->nu(E, ReactionProduct::EmissionMode::delayed, d);
               score = p->neutron_xs_[i_nuclide].fission * yield
                 * atom_density * flux;
-              score_fission_delayed_dg(i_tally, d_bin, score, score_index);
+              score_fission_delayed_dg(i_tally, d_bin, score, score_index, p->filter_matches_);
             }
             continue;
           } else {
@@ -866,7 +866,7 @@ score_general_ce(Particle* p, int i_tally, int start_index,
                   score = p->neutron_xs_[j_nuclide].fission * yield
                     * atom_density * flux;
                   score_fission_delayed_dg(i_tally, d_bin, score,
-                    score_index);
+                    score_index, p->filter_matches_);
                 }
               }
             }
@@ -917,7 +917,7 @@ score_general_ce(Particle* p, int i_tally, int start_index,
                   / p->neutron_xs_[p->event_nuclide_].absorption
                   * rate * flux;
                 score_fission_delayed_dg(i_tally, d_bin, score,
-                  score_index);
+                  score_index, p->filter_matches_);
               }
               continue;
             } else {
@@ -971,7 +971,7 @@ score_general_ce(Particle* p, int i_tally, int start_index,
                   auto d = filt.groups()[d_bin];
                   if (d == g)
                     score_fission_delayed_dg(i_tally, d_bin, score,
-                      score_index);
+                      score_index, p->filter_matches_);
                 }
                 score = 0.;
               }
@@ -996,7 +996,7 @@ score_general_ce(Particle* p, int i_tally, int start_index,
               auto rate = rxn.products_[d].decay_rate_;
               score = p->neutron_xs_[i_nuclide].fission * yield * flux
                 * atom_density * rate;
-              score_fission_delayed_dg(i_tally, d_bin, score, score_index);
+              score_fission_delayed_dg(i_tally, d_bin, score, score_index, p->filter_matches_);
             }
             continue;
           } else {
@@ -1037,7 +1037,7 @@ score_general_ce(Particle* p, int i_tally, int start_index,
                     score = p->neutron_xs_[j_nuclide].fission * yield
                       * flux * atom_density * rate;
                     score_fission_delayed_dg(i_tally, d_bin, score,
-                      score_index);
+                      score_index, p->filter_matches_);
                   }
                 }
               }
@@ -1338,7 +1338,7 @@ score_general_ce(Particle* p, int i_tally, int start_index,
 //! argument is really just used for filter weights.
 
 void
-score_general_mg(const Particle* p, int i_tally, int start_index,
+score_general_mg(Particle* p, int i_tally, int start_index,
   int filter_index, int i_nuclide, double atom_density, double flux)
 {
   auto& tally {*model::tallies[i_tally]};
@@ -1719,7 +1719,7 @@ score_general_mg(const Particle* p, int i_tally, int start_index,
                                            nullptr, nullptr, &d)
                     / abs_xs;
                 }
-                score_fission_delayed_dg(i_tally, d_bin, score, score_index);
+                score_fission_delayed_dg(i_tally, d_bin, score, score_index, p->filter_matches_);
               }
               continue;
             } else {
@@ -1760,7 +1760,7 @@ score_general_mg(const Particle* p, int i_tally, int start_index,
                 score *= atom_density * nuc_xs.get_xs(MG_GET_XS_FISSION, p_g)
                   / macro_xs.get_xs(MG_GET_XS_FISSION, p_g);
               }
-              score_fission_delayed_dg(i_tally, d_bin, score, score_index);
+              score_fission_delayed_dg(i_tally, d_bin, score, score_index, p->filter_matches_);
             }
             continue;
           } else {
@@ -1791,7 +1791,7 @@ score_general_mg(const Particle* p, int i_tally, int start_index,
               score = flux * macro_xs.get_xs(
                 MG_GET_XS_DELAYED_NU_FISSION, p_g, nullptr, nullptr, &d);
             }
-            score_fission_delayed_dg(i_tally, d_bin, score, score_index);
+            score_fission_delayed_dg(i_tally, d_bin, score, score_index, p->filter_matches_);
           }
           continue;
         } else {
@@ -1834,7 +1834,7 @@ score_general_mg(const Particle* p, int i_tally, int start_index,
                     * macro_xs.get_xs(MG_GET_XS_DELAYED_NU_FISSION, p_g,
                                       nullptr, nullptr, &d) / abs_xs;
                 }
-                score_fission_delayed_dg(i_tally, d_bin, score, score_index);
+                score_fission_delayed_dg(i_tally, d_bin, score, score_index, p->filter_matches_);
               }
               continue;
             } else {
@@ -1895,7 +1895,7 @@ score_general_mg(const Particle* p, int i_tally, int start_index,
                   auto dg = filt.groups()[d_bin];
                   if (dg == d + 1)
                     score_fission_delayed_dg(i_tally, d_bin, score,
-                                             score_index);
+                                             score_index, p->filter_matches_);
                 }
                 score = 0.;
               }
@@ -1925,7 +1925,7 @@ score_general_mg(const Particle* p, int i_tally, int start_index,
                 * macro_xs.get_xs(MG_GET_XS_DELAYED_NU_FISSION, p_g, nullptr,
                                   nullptr, &d);
             }
-            score_fission_delayed_dg(i_tally, d_bin, score, score_index);
+            score_fission_delayed_dg(i_tally, d_bin, score, score_index, p->filter_matches_);
           }
           continue;
         } else {
@@ -2041,8 +2041,8 @@ void score_analog_tally_ce(Particle* p)
     // Initialize an iterator over valid filter bin combinations.  If there are
     // no valid combinations, use a continue statement to ensure we skip the
     // assume_separate break below.
-    auto filter_iter = FilterBinIter(tally, p);
-    auto end = FilterBinIter(tally, true);
+    auto filter_iter = FilterBinIter(tally, p, &p->filter_matches_);
+    auto end = FilterBinIter(tally, true, &p->filter_matches_);
     if (filter_iter == end) continue;
 
     // Loop over filter bins.
@@ -2086,11 +2086,11 @@ void score_analog_tally_ce(Particle* p)
   }
 
   // Reset all the filter matches for the next tally event.
-  for (auto& match : simulation::filter_matches)
+  for (auto& match : p->filter_matches_)
     match.bins_present_ = false;
 }
 
-void score_analog_tally_mg(const Particle* p)
+void score_analog_tally_mg(Particle* p)
 {
   for (auto i_tally : model::active_analog_tallies) {
     const Tally& tally {*model::tallies[i_tally]};
@@ -2098,8 +2098,8 @@ void score_analog_tally_mg(const Particle* p)
     // Initialize an iterator over valid filter bin combinations.  If there are
     // no valid combinations, use a continue statement to ensure we skip the
     // assume_separate break below.
-    auto filter_iter = FilterBinIter(tally, p);
-    auto end = FilterBinIter(tally, true);
+    auto filter_iter = FilterBinIter(tally, p, &p->filter_matches_);
+    auto end = FilterBinIter(tally, true, &p->filter_matches_);
     if (filter_iter == end) continue;
 
     // Loop over filter bins.
@@ -2131,7 +2131,7 @@ void score_analog_tally_mg(const Particle* p)
   }
 
   // Reset all the filter matches for the next tally event.
-  for (auto& match : simulation::filter_matches)
+  for (auto& match : p->filter_matches_)
     match.bins_present_ = false;
 }
 
@@ -2147,8 +2147,8 @@ score_tracklength_tally(Particle* p, double distance)
     // Initialize an iterator over valid filter bin combinations.  If there are
     // no valid combinations, use a continue statement to ensure we skip the
     // assume_separate break below.
-    auto filter_iter = FilterBinIter(tally, p);
-    auto end = FilterBinIter(tally, true);
+    auto filter_iter = FilterBinIter(tally, p, &p->filter_matches_);
+    auto end = FilterBinIter(tally, true, &p->filter_matches_);
     if (filter_iter == end) continue;
 
     // Loop over filter bins.
@@ -2195,7 +2195,7 @@ score_tracklength_tally(Particle* p, double distance)
   }
 
   // Reset all the filter matches for the next tally event.
-  for (auto& match : simulation::filter_matches)
+  for (auto& match : p->filter_matches_)
     match.bins_present_ = false;
 }
 
@@ -2215,8 +2215,8 @@ void score_collision_tally(Particle* p)
     // Initialize an iterator over valid filter bin combinations.  If there are
     // no valid combinations, use a continue statement to ensure we skip the
     // assume_separate break below.
-    auto filter_iter = FilterBinIter(tally, p);
-    auto end = FilterBinIter(tally, true);
+    auto filter_iter = FilterBinIter(tally, p, &p->filter_matches_);
+    auto end = FilterBinIter(tally, true, &p->filter_matches_);
     if (filter_iter == end) continue;
 
     // Loop over filter bins.
@@ -2259,12 +2259,12 @@ void score_collision_tally(Particle* p)
   }
 
   // Reset all the filter matches for the next tally event.
-  for (auto& match : simulation::filter_matches)
+  for (auto& match : p->filter_matches_)
     match.bins_present_ = false;
 }
 
 void
-score_surface_tally(const Particle* p, const std::vector<int>& tallies)
+score_surface_tally(Particle* p, const std::vector<int>& tallies)
 {
   // No collision, so no weight change when survival biasing
   double flux = p->wgt_;
@@ -2275,8 +2275,8 @@ score_surface_tally(const Particle* p, const std::vector<int>& tallies)
     // Initialize an iterator over valid filter bin combinations.  If there are
     // no valid combinations, use a continue statement to ensure we skip the
     // assume_separate break below.
-    auto filter_iter = FilterBinIter(tally, p);
-    auto end = FilterBinIter(tally, true);
+    auto filter_iter = FilterBinIter(tally, p, &p->filter_matches_);
+    auto end = FilterBinIter(tally, true, &p->filter_matches_);
     if (filter_iter == end) continue;
 
     // Loop over filter bins.
@@ -2303,7 +2303,7 @@ score_surface_tally(const Particle* p, const std::vector<int>& tallies)
   }
 
   // Reset all the filter matches for the next tally event.
-  for (auto& match : simulation::filter_matches)
+  for (auto& match : p->filter_matches_)
     match.bins_present_ = false;
 }
 

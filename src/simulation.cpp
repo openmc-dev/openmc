@@ -1280,35 +1280,29 @@ void initialize_history(Particle* p, int64_t index_source)
     }
   }
 
-// Display message if high verbosity or trace is on
-   if (settings::verbosity >= 9 || simulation::trace) {
-      write_message("Simulating Particle " + std::to_string(p->id_));
-   }
+  // Display message if high verbosity or trace is on
+  if (settings::verbosity >= 9 || simulation::trace) {
+    write_message("Simulating Particle " + std::to_string(p->id_));
+  }
 
-    // // Initialize number of events to zero
-   // int n_event = 0;
+  // Add paricle's starting weight to count for normalizing tallies later
+  #pragma omp atomic
+  simulation::total_weight += p->wgt_;
 
-    // Add paricle's starting weight to count for normalizing tallies later
-   #pragma omp atomic
-   simulation::total_weight += p->wgt_;
+  // Force calculation of cross-sections by setting last energy to zero
+  if (settings::run_CE) {
+    for (auto& micro : p->neutron_xs_) micro.last_E = 0.0;
+  }
 
-    // Force calculation of cross-sections by setting last energy to zero
-   if (settings::run_CE) {
-     for (auto& micro : p->neutron_xs_) micro.last_E = 0.0;
-   }
+  // Prepare to write out particle track.
+  if (p->write_track_) add_particle_track();
 
-    // Prepare to write out particle track.
-   if (p->write_track_) add_particle_track();
-
-    // Every particle starts with no accumulated flux derivative.
-   if (!model::active_tallies.empty()) zero_flux_derivs();
-
-   /*
-   std::cout << "Initialized particle " << particle_seed << " with E = " << p->E_ << " and Position {" <<
-	   p->r().x << ", " <<
-	   p->r().y << ", " <<
-	   p->r().z << "}" << std::endl;
-	   */
+  // Every particle starts with no accumulated flux derivative.
+  if (!model::active_tallies.empty())
+  {
+    p->flux_derivs_.resize(model::tally_derivs.size(), 0.0);
+    std::fill(p->flux_derivs_.begin(), p->flux_derivs_.end(), 0.0);
+  }
 }
 
 int overall_generation()

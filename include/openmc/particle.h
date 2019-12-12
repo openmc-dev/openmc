@@ -313,6 +313,8 @@ public:
   std::vector<Particle::Bank> secondary_bank_;
 
   int64_t current_work_; // current work index
+
+  std::vector<double> flux_derivs_;  // Derivatives of the current particle's weight
 };
 
 } // namespace openmc

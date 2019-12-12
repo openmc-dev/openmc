@@ -109,6 +109,7 @@ Particle::from_source(const Bank* src)
   material_ = C_NONE;
   n_collision_ = 0;
   fission_ = false;
+  std::fill(flux_derivs_.begin(), flux_derivs_.end(), 0.0);
 
   // Copy attributes from source bank site
   type_ = src->particle;
@@ -154,7 +155,8 @@ Particle::transport()
   if (write_track_) add_particle_track();
 
   // Every particle starts with no accumulated flux derivative.
-  if (!model::active_tallies.empty()) zero_flux_derivs();
+  if (!model::active_tallies.empty())
+    flux_derivs_.resize(model::tally_derivs.size(), 0.0);
 
   while (true) {
     // Set the random number stream

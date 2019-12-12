@@ -49,7 +49,8 @@ get_shape(hid_t obj_id, hsize_t* dims)
   } else if (type == H5I_ATTR) {
     dspace = H5Aget_space(obj_id);
   } else {
-    throw std::runtime_error{"Expected dataset or attribute in call to get_shape."};
+    throw std::runtime_error{
+      "Expected dataset or attribute in call to get_shape."};
   }
   H5Sget_simple_extent_dims(dspace, dims, nullptr);
   H5Sclose(dspace);
@@ -74,7 +75,8 @@ std::vector<hsize_t> object_shape(hid_t obj_id)
   } else if (type == H5I_ATTR) {
     dspace = H5Aget_space(obj_id);
   } else {
-    throw std::runtime_error{"Expected dataset or attribute in call to object_shape."};
+    throw std::runtime_error{
+      "Expected dataset or attribute in call to object_shape."};
   }
   int n = H5Sget_simple_extent_ndims(dspace);
 
@@ -471,8 +473,8 @@ read_attr_string(hid_t obj_id, const char* name, size_t slen, char* buffer)
 
 
 void
-read_dataset(hid_t obj_id, const char* name, hid_t mem_type_id,
-             void* buffer, bool indep)
+read_dataset_lowlevel(hid_t obj_id, const char* name, hid_t mem_type_id,
+                      void* buffer, bool indep)
 {
   hid_t dset = obj_id;
   if (name) dset = open_dataset(obj_id, name);
@@ -520,26 +522,27 @@ void read_dataset(hid_t dset, xt::xarray<std::complex<double>>& arr, bool indep)
 void
 read_double(hid_t obj_id, const char* name, double* buffer, bool indep)
 {
-  read_dataset(obj_id, name, H5T_NATIVE_DOUBLE, buffer, indep);
+  read_dataset_lowlevel(obj_id, name, H5T_NATIVE_DOUBLE, buffer, indep);
 }
 
 
 void
 read_int(hid_t obj_id, const char* name, int* buffer, bool indep)
 {
-  read_dataset(obj_id, name, H5T_NATIVE_INT, buffer, indep);
+  read_dataset_lowlevel(obj_id, name, H5T_NATIVE_INT, buffer, indep);
 }
 
 
 void
 read_llong(hid_t obj_id, const char* name, long long* buffer, bool indep)
 {
-  read_dataset(obj_id, name, H5T_NATIVE_LLONG, buffer, indep);
+  read_dataset_lowlevel(obj_id, name, H5T_NATIVE_LLONG, buffer, indep);
 }
 
 
 void
-read_string(hid_t obj_id, const char* name, size_t slen, char* buffer, bool indep)
+read_string(hid_t obj_id, const char* name, size_t slen, char* buffer,
+            bool indep)
 {
   // Create datatype for a string
   hid_t datatype = H5Tcopy(H5T_C_S1);
@@ -548,7 +551,7 @@ read_string(hid_t obj_id, const char* name, size_t slen, char* buffer, bool inde
   H5Tset_strpad(datatype, H5T_STR_NULLPAD);
 
   // Read data into buffer
-  read_dataset(obj_id, name, datatype, buffer, indep);
+  read_dataset_lowlevel(obj_id, name, datatype, buffer, indep);
 
   // Free resources
   H5Tclose(datatype);
@@ -556,7 +559,8 @@ read_string(hid_t obj_id, const char* name, size_t slen, char* buffer, bool inde
 
 
 void
-read_complex(hid_t obj_id, const char* name, std::complex<double>* buffer, bool indep)
+read_complex(hid_t obj_id, const char* name, std::complex<double>* buffer,
+             bool indep)
 {
   // Create compound datatype for complex numbers
   struct complex_t {
@@ -569,7 +573,7 @@ read_complex(hid_t obj_id, const char* name, std::complex<double>* buffer, bool 
   H5Tinsert(complex_id, "i", HOFFSET(complex_t, im), H5T_NATIVE_DOUBLE);
 
   // Read data
-  read_dataset(obj_id, name, complex_id, buffer, indep);
+  read_dataset_lowlevel(obj_id, name, complex_id, buffer, indep);
 
   // Free resources
   H5Tclose(complex_id);
@@ -577,7 +581,8 @@ read_complex(hid_t obj_id, const char* name, std::complex<double>* buffer, bool 
 
 
 void
-read_tally_results(hid_t group_id, hsize_t n_filter, hsize_t n_score, double* results)
+read_tally_results(hid_t group_id, hsize_t n_filter, hsize_t n_score,
+                   double* results)
 {
   // Create dataspace for hyperslab in memory
   hsize_t dims[] {n_filter, n_score, 3};
@@ -654,8 +659,8 @@ write_attr_string(hid_t obj_id, const char* name, const char* buffer)
 
 
 void
-write_dataset(hid_t group_id, int ndim, const hsize_t* dims, const char* name,
-              hid_t mem_type_id, const void* buffer, bool indep)
+write_dataset_lowlevel(hid_t group_id, int ndim, const hsize_t* dims,
+  const char* name, hid_t mem_type_id, const void* buffer, bool indep)
 {
   // If array is given, create a simple dataspace. Otherwise, create a scalar
   // datascape.
@@ -696,7 +701,8 @@ void
 write_double(hid_t group_id, int ndim, const hsize_t* dims, const char* name,
              const double* buffer, bool indep)
 {
-  write_dataset(group_id, ndim, dims, name, H5T_NATIVE_DOUBLE, buffer, indep);
+  write_dataset_lowlevel(group_id, ndim, dims, name, H5T_NATIVE_DOUBLE, buffer,
+                         indep);
 }
 
 
@@ -704,7 +710,8 @@ void
 write_int(hid_t group_id, int ndim, const hsize_t* dims, const char* name,
           const int* buffer, bool indep)
 {
-  write_dataset(group_id, ndim, dims, name, H5T_NATIVE_INT, buffer, indep);
+  write_dataset_lowlevel(group_id, ndim, dims, name, H5T_NATIVE_INT, buffer,
+                         indep);
 }
 
 
@@ -712,7 +719,8 @@ void
 write_llong(hid_t group_id, int ndim, const hsize_t* dims, const char* name,
             const long long* buffer, bool indep)
 {
-  write_dataset(group_id, ndim, dims, name, H5T_NATIVE_LLONG, buffer, indep);
+  write_dataset_lowlevel(group_id, ndim, dims, name, H5T_NATIVE_LLONG, buffer,
+                         indep);
 }
 
 
@@ -725,7 +733,7 @@ write_string(hid_t group_id, int ndim, const hsize_t* dims, size_t slen,
     hid_t datatype = H5Tcopy(H5T_C_S1);
     H5Tset_size(datatype, slen);
 
-    write_dataset(group_id, ndim, dims, name, datatype, buffer, indep);
+    write_dataset_lowlevel(group_id, ndim, dims, name, datatype, buffer, indep);
 
     // Free resources
     H5Tclose(datatype);
@@ -734,14 +742,17 @@ write_string(hid_t group_id, int ndim, const hsize_t* dims, size_t slen,
 
 
 void
-write_string(hid_t group_id, const char* name, const std::string& buffer, bool indep)
+write_string(hid_t group_id, const char* name, const std::string& buffer,
+             bool indep)
 {
-  write_string(group_id, 0, nullptr, buffer.length(), name, buffer.c_str(), indep);
+  write_string(group_id, 0, nullptr, buffer.length(), name, buffer.c_str(),
+               indep);
 }
 
 
 void
-write_tally_results(hid_t group_id, hsize_t n_filter, hsize_t n_score, const double* results)
+write_tally_results(hid_t group_id, hsize_t n_filter, hsize_t n_score,
+                    const double* results)
 {
   // Set dimensions of sum/sum_sq hyperslab to store
   hsize_t count[] {n_filter, n_score, 2};

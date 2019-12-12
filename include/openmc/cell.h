@@ -2,12 +2,14 @@
 #define OPENMC_CELL_H
 
 #include <cstdint>
+#include <functional> // for hash
 #include <limits>
 #include <memory> // for unique_ptr
 #include <string>
 #include <unordered_map>
 #include <vector>
 
+#include <gsl/gsl>
 #include "hdf5.h"
 #include "pugixml.hpp"
 #include "dagmc.h"
@@ -287,8 +289,38 @@ private:
 };
 
 //==============================================================================
+//! Define an instance of a particular cell
+//==============================================================================
+
+struct CellInstance {
+  //! Check for equality
+  bool operator==(const CellInstance& other) const
+  { return index_cell == other.index_cell && instance == other.instance; }
+
+  gsl::index index_cell;
+  gsl::index instance;
+};
+} // namespace openmc
+
+namespace std {
+template<>
+struct hash<openmc::CellInstance> {
+  // Taken from https://stackoverflow.com/a/17017281
+  std::size_t operator()(const openmc::CellInstance& k) const
+  {
+    std::size_t res = 17;
+    res = 31 * res + std::hash<gsl::index>()(k.index_cell);
+    res = 31 * res + std::hash<gsl::index>()(k.instance);
+    return res;
+  }
+};
+} // namespace std
+
+//==============================================================================
 // Non-member functions
 //==============================================================================
+
+namespace openmc {
 
 void read_cells(pugi::xml_node node);
 

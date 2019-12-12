@@ -32,11 +32,6 @@ public:
 
 } // namespace openmc
 
-// Without an explicit instantiation of vector<FilterMatch>, the Intel compiler
-// will complain about the threadprivate directive on filter_matches. Note that
-// this has to happen *outside* of the openmc namespace
-extern template class std::vector<openmc::FilterMatch>;
-
 namespace openmc {
 
 //==============================================================================
@@ -126,13 +121,6 @@ private:
 //==============================================================================
 // Global variables
 //==============================================================================
-
-namespace simulation {
-
-extern std::vector<FilterMatch> filter_matches;
-#pragma omp threadprivate(filter_matches)
-
-} // namespace simulation
 
 namespace model {
   extern "C" int32_t n_filters;

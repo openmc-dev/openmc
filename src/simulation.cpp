@@ -821,12 +821,6 @@ int openmc_simulation_init()
   // Determine how much work each process should do
   calculate_work();
 
-  // Allocate array for matching filter bins
-  #pragma omp parallel
-  {
-    simulation::filter_matches.resize(model::tally_filters.size());
-  }
-
   // Allocate source bank, and for eigenvalue simulations also allocate the
   // fission bank
   allocate_banks();
@@ -900,11 +894,6 @@ int openmc_simulation_finalize()
 
   // Write tally results to tallies.out
   if (settings::output_tallies && mpi::master) write_tallies();
-
-  #pragma omp parallel
-  {
-    simulation::filter_matches.clear();
-  }
 
   // Deactivate all tallies
   for (auto& t : model::tallies) {
@@ -1303,6 +1292,9 @@ void initialize_history(Particle* p, int64_t index_source)
     p->flux_derivs_.resize(model::tally_derivs.size(), 0.0);
     std::fill(p->flux_derivs_.begin(), p->flux_derivs_.end(), 0.0);
   }
+  
+  // Allocate space for tally filter matches
+  p->filter_matches_.resize(model::tally_filters.size());
 }
 
 int overall_generation()

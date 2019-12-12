@@ -7,6 +7,7 @@
 #include <vector>
 
 #include "openmc/particle.h"
+#include "openmc/tallies/filter.h"
 
 
 namespace openmc {

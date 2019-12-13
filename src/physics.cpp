@@ -95,11 +95,13 @@ void sample_neutron_reaction(Particle* p)
   if (nuc->fissionable_) {
     Reaction* rx = sample_fission(i_nuclide, p);
     if (settings::run_mode == RUN_MODE_EIGENVALUE) {
-      create_fission_sites(p, i_nuclide, rx, simulation::fission_bank);
+      //create_fission_sites(p, i_nuclide, rx, simulation::fission_bank);
+      create_fission_sites(p, i_nuclide, rx, simulation::fission_bank, true);
     } else if (settings::run_mode == RUN_MODE_FIXEDSOURCE &&
       settings::create_fission_neutrons) {
       //create_fission_sites(p, i_nuclide, rx, simulation::secondary_bank);
-      create_fission_sites(p, i_nuclide, rx, p->secondary_bank_);
+      //create_fission_sites(p, i_nuclide, rx, p->secondary_bank_);
+      create_fission_sites(p, i_nuclide, rx, p->secondary_bank_, false);
 
       // Make sure particle population doesn't grow out of control for
       // subcritical multiplication problems.
@@ -149,7 +151,7 @@ void sample_neutron_reaction(Particle* p)
 
 void
 create_fission_sites(Particle* p, int i_nuclide, const Reaction* rx,
-  std::vector<Particle::Bank>& bank)
+  std::vector<Particle::Bank>& bank, bool use_fission_bank)
 {
   // If uniform fission source weighting is turned on, we increase or decrease
   // the expected number of fission sites produced
@@ -173,11 +175,21 @@ create_fission_sites(Particle* p, int i_nuclide, const Reaction* rx,
 
   p->fission_ = true;
   for (int i = 0; i < nu; ++i) {
-    // Create new bank site and get reference to last element
-    int idx;
-    #pragma omp atomic capture
-    idx = shared_fission_bank_length++;
-    Particle::Bank * site = shared_fission_bank + idx;
+    Particle::Bank * site;
+    if(use_fission_bank)
+    {
+      // Create new bank site and get reference to last element
+      int idx;
+      #pragma omp atomic capture
+      idx = shared_fission_bank_length++;
+      Particle::Bank * site = shared_fission_bank + idx;
+    }
+    else
+    {
+      // Create new bank site and get reference to last element
+      bank.emplace_back();
+      site = &bank.back();
+    }
     site->r = p->r();
     site->particle = Particle::Type::neutron;
     site->wgt = 1. / weight;

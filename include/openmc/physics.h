@@ -49,7 +49,7 @@ int sample_nuclide(Particle* p);
 //! Determine the average total, prompt, and delayed neutrons produced from
 //! fission and creates appropriate bank sites.
 void create_fission_sites(Particle* p, int i_nuclide, const Reaction* rx,
-  std::vector<Particle::Bank>& bank);
+  std::vector<Particle::Bank>& bank, bool use_fission_bank);
 
 int sample_element(Particle* p);
 

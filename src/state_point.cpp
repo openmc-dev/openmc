@@ -419,7 +419,7 @@ void load_state_point()
 #endif
     // Read global tally data
     read_dataset_lowlevel(file_id, "global_tallies", H5T_NATIVE_DOUBLE,
-      simulation::global_tallies.data(), false);
+      H5S_ALL, false, simulation::global_tallies.data());
 
     // Check if tally results are present
     bool present;

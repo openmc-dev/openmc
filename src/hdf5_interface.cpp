@@ -474,7 +474,7 @@ read_attr_string(hid_t obj_id, const char* name, size_t slen, char* buffer)
 
 void
 read_dataset_lowlevel(hid_t obj_id, const char* name, hid_t mem_type_id,
-                      void* buffer, bool indep)
+                      hid_t mem_space_id, bool indep, void* buffer)
 {
   hid_t dset = obj_id;
   if (name) dset = open_dataset(obj_id, name);
@@ -489,11 +489,11 @@ read_dataset_lowlevel(hid_t obj_id, const char* name, hid_t mem_type_id,
     H5Pset_dxpl_mpio(plist, data_xfer_mode);
 
     // Read data
-    H5Dread(dset, mem_type_id, H5S_ALL, H5S_ALL, plist, buffer);
+    H5Dread(dset, mem_type_id, mem_space_id, H5S_ALL, plist, buffer);
     H5Pclose(plist);
 #endif
   } else {
-    H5Dread(dset, mem_type_id, H5S_ALL, H5S_ALL, H5P_DEFAULT, buffer);
+    H5Dread(dset, mem_type_id, mem_space_id, H5S_ALL, H5P_DEFAULT, buffer);
   }
 
   if (name) H5Dclose(dset);
@@ -522,21 +522,22 @@ void read_dataset(hid_t dset, xt::xarray<std::complex<double>>& arr, bool indep)
 void
 read_double(hid_t obj_id, const char* name, double* buffer, bool indep)
 {
-  read_dataset_lowlevel(obj_id, name, H5T_NATIVE_DOUBLE, buffer, indep);
+  read_dataset_lowlevel(obj_id, name, H5T_NATIVE_DOUBLE, H5S_ALL, indep,
+                        buffer);
 }
 
 
 void
 read_int(hid_t obj_id, const char* name, int* buffer, bool indep)
 {
-  read_dataset_lowlevel(obj_id, name, H5T_NATIVE_INT, buffer, indep);
+  read_dataset_lowlevel(obj_id, name, H5T_NATIVE_INT, H5S_ALL, indep, buffer);
 }
 
 
 void
 read_llong(hid_t obj_id, const char* name, long long* buffer, bool indep)
 {
-  read_dataset_lowlevel(obj_id, name, H5T_NATIVE_LLONG, buffer, indep);
+  read_dataset_lowlevel(obj_id, name, H5T_NATIVE_LLONG, H5S_ALL, indep, buffer);
 }
 
 
@@ -551,7 +552,7 @@ read_string(hid_t obj_id, const char* name, size_t slen, char* buffer,
   H5Tset_strpad(datatype, H5T_STR_NULLPAD);
 
   // Read data into buffer
-  read_dataset_lowlevel(obj_id, name, datatype, buffer, indep);
+  read_dataset_lowlevel(obj_id, name, datatype, H5S_ALL, indep, buffer);
 
   // Free resources
   H5Tclose(datatype);
@@ -573,7 +574,7 @@ read_complex(hid_t obj_id, const char* name, std::complex<double>* buffer,
   H5Tinsert(complex_id, "i", HOFFSET(complex_t, im), H5T_NATIVE_DOUBLE);
 
   // Read data
-  read_dataset_lowlevel(obj_id, name, complex_id, buffer, indep);
+  read_dataset_lowlevel(obj_id, name, complex_id, H5S_ALL, indep, buffer);
 
   // Free resources
   H5Tclose(complex_id);
@@ -585,18 +586,18 @@ read_tally_results(hid_t group_id, hsize_t n_filter, hsize_t n_score,
                    double* results)
 {
   // Create dataspace for hyperslab in memory
-  hsize_t dims[] {n_filter, n_score, 3};
-  hsize_t start[] {0, 0, 1};
-  hsize_t count[] {n_filter, n_score, 2};
-  hid_t memspace = H5Screate_simple(3, dims, nullptr);
+  constexpr int ndim = 3;
+  hsize_t dims[ndim] {n_filter, n_score, 3};
+  hsize_t start[ndim] {0, 0, 1};
+  hsize_t count[ndim] {n_filter, n_score, 2};
+  hid_t memspace = H5Screate_simple(ndim, dims, nullptr);
   H5Sselect_hyperslab(memspace, H5S_SELECT_SET, start, nullptr, count, nullptr);
 
-  // Create and write dataset
-  hid_t dset = H5Dopen(group_id, "results", H5P_DEFAULT);
-  H5Dread(dset, H5T_NATIVE_DOUBLE, memspace, H5S_ALL, H5P_DEFAULT, results);
+  // Read the dataset
+  read_dataset_lowlevel(group_id, "results", H5T_NATIVE_DOUBLE, memspace,
+                        false, results);
 
   // Free resources
-  H5Dclose(dset);
   H5Sclose(memspace);
 }
 
@@ -660,7 +661,8 @@ write_attr_string(hid_t obj_id, const char* name, const char* buffer)
 
 void
 write_dataset_lowlevel(hid_t group_id, int ndim, const hsize_t* dims,
-  const char* name, hid_t mem_type_id, const void* buffer, bool indep)
+  const char* name, hid_t mem_type_id, hid_t mem_space_id, bool indep,
+  const void* buffer)
 {
   // If array is given, create a simple dataspace. Otherwise, create a scalar
   // datascape.
@@ -684,11 +686,11 @@ write_dataset_lowlevel(hid_t group_id, int ndim, const hsize_t* dims,
     H5Pset_dxpl_mpio(plist, data_xfer_mode);
 
     // Write data
-    H5Dwrite(dset, mem_type_id, H5S_ALL, H5S_ALL, plist, buffer);
+    H5Dwrite(dset, mem_type_id, mem_space_id, H5S_ALL, plist, buffer);
     H5Pclose(plist);
 #endif
   } else {
-    H5Dwrite(dset, mem_type_id, H5S_ALL, H5S_ALL, H5P_DEFAULT, buffer);
+    H5Dwrite(dset, mem_type_id, mem_space_id, H5S_ALL, H5P_DEFAULT, buffer);
   }
 
   // Free resources
@@ -701,8 +703,8 @@ void
 write_double(hid_t group_id, int ndim, const hsize_t* dims, const char* name,
              const double* buffer, bool indep)
 {
-  write_dataset_lowlevel(group_id, ndim, dims, name, H5T_NATIVE_DOUBLE, buffer,
-                         indep);
+  write_dataset_lowlevel(group_id, ndim, dims, name, H5T_NATIVE_DOUBLE, H5S_ALL,
+                         indep, buffer);
 }
 
 
@@ -710,8 +712,8 @@ void
 write_int(hid_t group_id, int ndim, const hsize_t* dims, const char* name,
           const int* buffer, bool indep)
 {
-  write_dataset_lowlevel(group_id, ndim, dims, name, H5T_NATIVE_INT, buffer,
-                         indep);
+  write_dataset_lowlevel(group_id, ndim, dims, name, H5T_NATIVE_INT, H5S_ALL,
+                         indep, buffer);
 }
 
 
@@ -719,8 +721,8 @@ void
 write_llong(hid_t group_id, int ndim, const hsize_t* dims, const char* name,
             const long long* buffer, bool indep)
 {
-  write_dataset_lowlevel(group_id, ndim, dims, name, H5T_NATIVE_LLONG, buffer,
-                         indep);
+  write_dataset_lowlevel(group_id, ndim, dims, name, H5T_NATIVE_LLONG, H5S_ALL,
+                         indep, buffer);
 }
 
 
@@ -733,7 +735,8 @@ write_string(hid_t group_id, int ndim, const hsize_t* dims, size_t slen,
     hid_t datatype = H5Tcopy(H5T_C_S1);
     H5Tset_size(datatype, slen);
 
-    write_dataset_lowlevel(group_id, ndim, dims, name, datatype, buffer, indep);
+    write_dataset_lowlevel(group_id, ndim, dims, name, datatype, H5S_ALL, indep,
+                           buffer);
 
     // Free resources
     H5Tclose(datatype);
@@ -755,24 +758,21 @@ write_tally_results(hid_t group_id, hsize_t n_filter, hsize_t n_score,
                     const double* results)
 {
   // Set dimensions of sum/sum_sq hyperslab to store
-  hsize_t count[] {n_filter, n_score, 2};
-  hid_t dspace = H5Screate_simple(3, count, nullptr);
+  constexpr int ndim = 3;
+  hsize_t count[ndim] {n_filter, n_score, 2};
 
   // Set dimensions of results array
-  hsize_t dims[] {n_filter, n_score, 3};
-  hsize_t start[] {0, 0, 1};
-  hid_t memspace = H5Screate_simple(3, dims, nullptr);
+  hsize_t dims[ndim] {n_filter, n_score, 3};
+  hsize_t start[ndim] {0, 0, 1};
+  hid_t memspace = H5Screate_simple(ndim, dims, nullptr);
   H5Sselect_hyperslab(memspace, H5S_SELECT_SET, start, nullptr, count, nullptr);
 
   // Create and write dataset
-  hid_t dset = H5Dcreate(group_id, "results", H5T_NATIVE_DOUBLE, dspace,
-                         H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-  H5Dwrite(dset, H5T_NATIVE_DOUBLE, memspace, H5S_ALL, H5P_DEFAULT, results);
+  write_dataset_lowlevel(group_id, ndim, count, "results", H5T_NATIVE_DOUBLE,
+                         memspace, false, results);
 
   // Free resources
-  H5Dclose(dset);
   H5Sclose(memspace);
-  H5Sclose(dspace);
 }
 
 

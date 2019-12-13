@@ -182,7 +182,7 @@ create_fission_sites(Particle* p, int i_nuclide, const Reaction* rx,
       int idx;
       #pragma omp atomic capture
       idx = shared_fission_bank_length++;
-      Particle::Bank * site = shared_fission_bank + idx;
+      site = shared_fission_bank + idx;
     }
     else
     {

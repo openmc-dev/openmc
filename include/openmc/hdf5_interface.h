@@ -32,10 +32,11 @@ void write_attr(hid_t obj_id, int ndim, const hsize_t* dims, const char* name,
   hid_t mem_type_id, const void* buffer);
 
 void read_dataset_lowlevel(hid_t obj_id, const char* name, hid_t mem_type_id,
-  void* buffer, bool indep);
+  hid_t mem_space_id, bool indep, void* buffer);
 
 void write_dataset_lowlevel(hid_t group_id, int ndim, const hsize_t* dims,
-  const char* name, hid_t mem_type_id, const void* buffer, bool indep);
+  const char* name, hid_t mem_type_id, hid_t mem_space_id, bool indep,
+  const void* buffer);
 
 bool using_mpio_device(hid_t obj_id);
 
@@ -235,7 +236,8 @@ template<typename T> inline
 std::enable_if_t<std::is_scalar<std::decay_t<T>>::value>
 read_dataset(hid_t obj_id, const char* name, T& buffer, bool indep=false)
 {
-  read_dataset_lowlevel(obj_id, name, H5TypeMap<T>::type_id, &buffer, indep);
+  read_dataset_lowlevel(obj_id, name, H5TypeMap<T>::type_id, H5S_ALL, indep,
+                        &buffer);
 }
 
 // overload for std::string
@@ -256,8 +258,8 @@ template<typename T, std::size_t N> inline void
 read_dataset(hid_t dset, const char* name, std::array<T, N>& buffer,
              bool indep=false)
 {
-  read_dataset_lowlevel(dset, name, H5TypeMap<T>::type_id, buffer.data(),
-                        indep);
+  read_dataset_lowlevel(dset, name, H5TypeMap<T>::type_id, H5S_ALL, indep,
+                        buffer.data());
 }
 
 // vector version
@@ -271,8 +273,8 @@ void read_dataset(hid_t dset, std::vector<T>& vec, bool indep=false)
   vec.resize(shape[0]);
 
   // Read data into vector
-  read_dataset_lowlevel(dset, nullptr, H5TypeMap<T>::type_id, vec.data(),
-                        indep);
+  read_dataset_lowlevel(dset, nullptr, H5TypeMap<T>::type_id, H5S_ALL, indep,
+                        vec.data());
 }
 
 template <typename T>
@@ -297,8 +299,8 @@ void read_dataset(hid_t dset, xt::xarray<T>& arr, bool indep=false)
   arr.resize(shape);
 
   // Read data from attribute
-  read_dataset_lowlevel(dset, nullptr, H5TypeMap<T>::type_id, arr.data(),
-                        indep);
+  read_dataset_lowlevel(dset, nullptr, H5TypeMap<T>::type_id, H5S_ALL, indep,
+                        arr.data());
 }
 
 template<>
@@ -367,8 +369,8 @@ inline void read_dataset_as_shape(hid_t obj_id, const char* name,
   std::vector<T> buffer(size);
 
   // Read data from attribute
-  read_dataset_lowlevel(dset, nullptr, H5TypeMap<T>::type_id, buffer.data(),
-                        indep);
+  read_dataset_lowlevel(dset, nullptr, H5TypeMap<T>::type_id, H5S_ALL, indep,
+                        buffer.data());
 
   // Adapt into xarray
   arr = xt::adapt(buffer, arr.shape());
@@ -443,7 +445,7 @@ std::enable_if_t<std::is_scalar<std::decay_t<T>>::value>
 write_dataset(hid_t obj_id, const char* name, T buffer)
 {
   write_dataset_lowlevel(obj_id, 0, nullptr, name, H5TypeMap<T>::type_id,
-                         &buffer, false);
+                         H5S_ALL, false, &buffer);
 }
 
 inline void
@@ -457,7 +459,7 @@ write_dataset(hid_t obj_id, const char* name, const std::array<T, N>& buffer)
 {
   hsize_t dims[] {N};
   write_dataset_lowlevel(obj_id, 1, dims, name, H5TypeMap<T>::type_id,
-                         buffer.data(), false);
+                         H5S_ALL, false, buffer.data());
 }
 
 inline void
@@ -492,7 +494,7 @@ write_dataset(hid_t obj_id, const char* name, const std::vector<T>& buffer)
 {
   hsize_t dims[] {buffer.size()};
   write_dataset_lowlevel(obj_id, 1, dims, name, H5TypeMap<T>::type_id,
-                         buffer.data(), false);
+                         H5S_ALL, false, buffer.data());
 }
 
 // Template for xarray, xtensor, etc.
@@ -503,7 +505,7 @@ write_dataset(hid_t obj_id, const char* name, const xt::xcontainer<D>& arr)
   auto s = arr.shape();
   std::vector<hsize_t> dims {s.cbegin(), s.cend()};
   write_dataset_lowlevel(obj_id, dims.size(), dims.data(), name,
-                         H5TypeMap<T>::type_id, arr.data(), false);
+                         H5TypeMap<T>::type_id, H5S_ALL, false, arr.data());
 }
 
 inline void

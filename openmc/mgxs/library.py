@@ -1167,6 +1167,16 @@ class Library(object):
                                     np.subtract(xsdata._total[i], np.sum(np.sum(
                                         xsdata._scatter_matrix[i][:, :, :, :, :],
                                         axis=4), axis=3))
+            # if only scatter matrices have been tallied, multiplicity cannot
+            # be accounted for
+            else:
+                msg = 'Scatter multiplicity (such as (n,xn) reactions) ' \
+                      'are ignored since multiplicity or nu-scatter matrices '\
+                      'were not tallied for '+xsdata_name
+                warn(msg, RuntimeWarning)
+                xsdata.set_scatter_matrix_mgxs(scatt_mgxs, xs_type=xs_type,
+                                               nuclide=[nuclide],
+                                               subdomain=subdomain)
 
         return xsdata
 

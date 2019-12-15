@@ -1420,6 +1420,8 @@ class Library(object):
           fixed source problem could be the target.
         - Fission and kappa-fission are not required as they are only
           needed to support tallies the user may wish to request.
+        - Scattering multiplicity should have been tallied, either using a
+        multiplicity or scatter and nu-scatter matrix tally.
 
         See also
         --------
@@ -1469,6 +1471,16 @@ class Library(object):
             warn('A "nu-scatter matrix", "consistent nu-scatter matrix", '
                  '"scatter matrix", or "consistent scatter matrix" MGXS '
                  'type is required.')
+
+        # Make sure there is some kind of a scattering multiplicity matrix data
+        if 'multiplicity matrix' not in self.mgxs_types and \
+            ('scatter matrix' not in self.mgxs_types or
+             'nu-scatter matrix' not in self.mgxs_types) and\
+            ('consistent scatter matrix' not in self.mgxs_types or
+             'consistent nu-scatter matrix' not in self.mgxs_types):
+            error_flag = True
+            warn('A "multiplicity matrix" or both a "scatter" and "nu-scatter" '
+                 'matrix MGXS type(s) is/are required.')
 
         # Ensure absorption is present
         if 'absorption' not in self.mgxs_types:

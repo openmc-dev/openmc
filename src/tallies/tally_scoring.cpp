@@ -331,8 +331,9 @@ score_fission_eout(Particle* p, int i_tally, int i_score, int score_bin)
 
   // loop over number of particles banked
   for (auto i = 0; i < p->n_bank_; ++i) {
-    auto i_bank = simulation::fission_bank.size() - p->n_bank_ + i;
-    const auto& bank = simulation::fission_bank[i_bank];
+    //auto i_bank = simulation::fission_bank.size() - p->n_bank_ + i; //TODO: This is breaking event-based right here
+    //const auto& bank = simulation::fission_bank[i_bank];
+    const auto& bank = p->nu_bank_[i];
 
     // get the delayed group
     auto g = bank.delayed_group;
@@ -952,9 +953,11 @@ score_general_ce(Particle* p, int i_tally, int start_index,
           // ones are delayed. If a delayed neutron is encountered, add its
           // contribution to the fission bank to the score.
           score = 0.;
+          // TODO: This breaks event-based
           for (auto i = 0; i < p->n_bank_; ++i) {
-            auto i_bank = simulation::fission_bank.size() - p->n_bank_ + i;
-            const auto& bank = simulation::fission_bank[i_bank];
+            //auto i_bank = simulation::fission_bank.size() - p->n_bank_ + i;
+            //const auto& bank = simulation::fission_bank[i_bank];
+            const auto& bank = p->nu_bank_[i];
             auto g = bank.delayed_group;
             if (g != 0) {
               const auto& nuc {*data::nuclides[p->event_nuclide_]};
@@ -1871,9 +1874,15 @@ score_general_mg(Particle* p, int i_tally, int start_index,
           // ones are delayed. If a delayed neutron is encountered, add its
           // contribution to the fission bank to the score.
           score = 0.;
+          // TODO: This breaks event-based
+          // Needs:
+          // delayed_group
+          // wgt
+          //
           for (auto i = 0; i < p->n_bank_; ++i) {
-            auto i_bank = simulation::fission_bank.size() - p->n_bank_ + i;
-            const auto& bank = simulation::fission_bank[i_bank];
+            //auto i_bank = simulation::fission_bank.size() - p->n_bank_ + i;
+            //const auto& bank = simulation::fission_bank[i_bank];
+            const auto& bank = p->nu_bank_[i];
             auto d = bank.delayed_group - 1;
             if (d != -1) {
               if (i_nuclide >= 0) {

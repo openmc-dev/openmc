@@ -169,6 +169,8 @@ create_fission_sites(Particle* p, int i_nuclide, const Reaction* rx,
   // First, if our bank is full then don't continue
   if (nu == 0) return;
 
+  assert( nu < 15 );
+
   // Initialize the counter of delayed neutrons encountered for each delayed
   // group.
   double nu_d[MAX_DELAYED_GROUPS] = {0.};

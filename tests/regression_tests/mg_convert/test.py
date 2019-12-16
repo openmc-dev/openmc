@@ -193,6 +193,8 @@ class MGXSTestHarness(PyAPITestHarness):
             self._cleanup()
 
 
+import pytest
+@pytest.mark.skip(reason="MG not planned for GPU support.")
 def test_mg_convert():
     harness = MGXSTestHarness('statepoint.10.h5')
     harness.main()

@@ -7,7 +7,6 @@ from openmc.examples import slab_mg
 
 from tests.testing_harness import PyAPITestHarness
 
-
 def create_library():
     # Instantiate the energy group data and file object
     groups = openmc.mgxs.EnergyGroups(group_edges=[0.0, 0.625, 20.0e6])
@@ -120,6 +119,8 @@ class MGXSTestHarness(PyAPITestHarness):
             os.remove(f)
 
 
+import pytest
+@pytest.mark.skip(reason="MG not planned for GPU support.")
 def test_mg_basic_delayed():
     create_library()
     model = slab_mg(num_regions=6, mat_names=['vec beta', 'vec no beta',

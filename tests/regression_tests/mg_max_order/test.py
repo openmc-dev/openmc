@@ -46,6 +46,8 @@ class MGXSTestHarness(PyAPITestHarness):
             os.remove(f)
 
 
+import pytest
+@pytest.mark.skip(reason="MG not planned for GPU support.")
 def test_mg_max_order():
     create_library()
     model = slab_mg()

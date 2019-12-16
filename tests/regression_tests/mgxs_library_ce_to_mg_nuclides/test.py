@@ -77,6 +77,8 @@ class MGXSTestHarness(PyAPITestHarness):
             os.remove(f)
 
 
+import pytest
+@pytest.mark.skip(reason="MG not planned for GPU support.")
 def test_mgxs_library_ce_to_mg():
     # Set the input set to use the pincell model
     model = pwr_pin_cell()

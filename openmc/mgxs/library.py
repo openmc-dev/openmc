@@ -999,6 +999,11 @@ class Library(object):
             xsdata.set_total_mgxs(mymgxs, xs_type=xs_type, nuclide=[nuclide],
                                   subdomain=subdomain)
 
+        elif 'transport' in self.mgxs_types and self.correction == 'P0':
+            mymgxs = self.get_mgxs(domain, 'transport')
+            xsdata.set_total_mgxs(mymgxs, xs_type=xs_type, nuclide=[nuclide],
+                                  subdomain=subdomain)
+
         elif 'total' in self.mgxs_types:
             mymgxs = self.get_mgxs(domain, 'total')
             xsdata.set_total_mgxs(mymgxs, xs_type=xs_type, nuclide=[nuclide],
@@ -1170,7 +1175,7 @@ class Library(object):
             # if only scatter matrices have been tallied, multiplicity cannot
             # be accounted for
             else:
-                msg = 'Scatter multiplicity (such as (n,xn) reactions) ' \
+                msg = 'Scatter multiplicity (such as (n,xn) reactions) '\
                       'are ignored since multiplicity or nu-scatter matrices '\
                       'were not tallied for ' + xsdata_name
                 warn(msg, RuntimeWarning)

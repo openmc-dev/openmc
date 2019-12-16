@@ -329,7 +329,7 @@ public:
 
   std::vector<std::vector<Position>> tracks_;
 
-  NuBank nu_bank_[10];
+  NuBank nu_bank_[15];
 };
 
 } // namespace openmc

@@ -1172,7 +1172,7 @@ class Library(object):
             else:
                 msg = 'Scatter multiplicity (such as (n,xn) reactions) ' \
                       'are ignored since multiplicity or nu-scatter matrices '\
-                      'were not tallied for '+xsdata_name
+                      'were not tallied for ' + xsdata_name
                 warn(msg, RuntimeWarning)
                 xsdata.set_scatter_matrix_mgxs(scatt_mgxs, xs_type=xs_type,
                                                nuclide=[nuclide],
@@ -1420,8 +1420,9 @@ class Library(object):
           fixed source problem could be the target.
         - Fission and kappa-fission are not required as they are only
           needed to support tallies the user may wish to request.
-        - Scattering multiplicity should have been tallied, either using a
-        multiplicity or scatter and nu-scatter matrix tally.
+        - Scattering multiplicity should have been tallied for increased model
+          accuracy, either using a multiplicity or scatter and nu-scatter matrix
+          tally.
 
         See also
         --------
@@ -1478,9 +1479,8 @@ class Library(object):
              'nu-scatter matrix' not in self.mgxs_types) and\
             ('consistent scatter matrix' not in self.mgxs_types or
              'consistent nu-scatter matrix' not in self.mgxs_types):
-            error_flag = True
             warn('A "multiplicity matrix" or both a "scatter" and "nu-scatter" '
-                 'matrix MGXS type(s) is/are required.')
+                 'matrix MGXS type(s) should be provided.')
 
         # Ensure absorption is present
         if 'absorption' not in self.mgxs_types:

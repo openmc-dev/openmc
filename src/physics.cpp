@@ -205,6 +205,14 @@ create_fission_sites(Particle* p, int i_nuclide, const Reaction* rx,
     if (p->delayed_group_ > 0) {
       nu_d[p->delayed_group_-1]++;
     }
+    
+    // Write fission particles to nuBank
+    if(use_fission_bank)
+    {
+      p->nu_bank_[i].wgt             = site->wgt;
+      p->nu_bank_[i].E               = site->E;
+      p->nu_bank_[i].delayed_group   = site->delayed_group;
+    }
   }
 
   // Store the total weight banked for analog fission tallies

@@ -169,6 +169,13 @@ public:
     int64_t parent_id;
     bool operator < (const Bank & bank) const{ return (parent_id < bank.parent_id); }
   };
+  
+  //! Saved ("banked") state of a particle, for nu-fission tallying
+  struct NuBank {
+    double E;
+    double wgt;
+    int delayed_group;
+  };
 
   //==========================================================================
   // Constructors
@@ -321,6 +328,8 @@ public:
   std::vector<FilterMatch> filter_matches_;
 
   std::vector<std::vector<Position>> tracks_;
+
+  NuBank nu_bank_[10];
 };
 
 } // namespace openmc

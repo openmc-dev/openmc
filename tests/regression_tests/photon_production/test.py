@@ -75,6 +75,10 @@ class SourceTestHarness(PyAPITestHarness):
             outstr = ''
             for i, tally_ind in enumerate(sp.tallies):
                 tally = sp.tallies[tally_ind]
+                print(tally)
+                print(tally.num_bins)
+                print(tally.shape)
+                print(tally.sum)
                 results = np.zeros((tally.sum.size * 2, ))
                 results[0::2] = tally.sum.ravel()
                 results[1::2] = tally.sum_sq.ravel()

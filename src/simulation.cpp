@@ -759,6 +759,15 @@ void transport()
 			}
 		}
 
+    // Finish particle track output.
+    for (int i = 0; i < n_particles; i++) {
+      Particle& p = particles[i];
+      if (p.write_track_) {
+        write_particle_track(p);
+        finalize_particle_track(p);
+      }
+    }
+
 		remaining_work -= n_particles;
 		source_offset += n_particles;
 

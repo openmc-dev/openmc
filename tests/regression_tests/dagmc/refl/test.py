@@ -35,6 +35,7 @@ class UWUWTest(PyAPITestHarness):
 
         model.tallies.export_to_xml()
 
+@pytest.mark.skip(reason="DAGMC not planned for GPU support.")
 def test_refl():
     harness = UWUWTest('statepoint.5.h5')
     harness.main()

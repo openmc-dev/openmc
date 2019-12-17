@@ -203,6 +203,11 @@ void process_calculate_xs_events(QueueItem * queue, int n)
     p->E_last_ = p->E_;
     p->u_last_ = p->u();
     p->r_last_ = p->r();
+    
+    // Reset event variables
+    p->event_ = EVENT_KILL;
+    p->event_nuclide_ = NUCLIDE_NONE;
+    p->event_mt_ = REACTION_NONE;
 
     // If the cell hasn't been determined based on the particle's location,
     // initiate a search for the current cell. This generally happens at the

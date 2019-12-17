@@ -1711,7 +1711,8 @@ UnstructuredMesh::bins_crossed(const Particle* p,
   // tally remaining portion of track after last hit if
   // the last segment of the track is in the mesh
   if (hits.back().first < track_len) {
-    tet = get_tet(last_r + u * (track_len + hits.back().first) / 2.0);
+    auto pos = (last_r + u * hits.back().first) + u * ((track_len - hits.back().first) / 2.0);
+    tet = get_tet(pos);
     if (tet) {
       bins.push_back(get_bin_from_ent_handle(tet));
       lengths.push_back((track_len - hits.back().first) / track_len);

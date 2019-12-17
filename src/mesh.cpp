@@ -2138,7 +2138,7 @@ LibMesh::bins_crossed(const Particle* p,
   lengths.clear();
 
   for (const auto& hit : hits) {
-    lengths.push_back(hit.first);
+    lengths.push_back(hit.first / track_len);
     bins.push_back(get_bin_from_mesh_type(hit.second));
   }
 }
@@ -2203,7 +2203,7 @@ LibMesh::locate_boundary_element(const libMesh::Point& start,
   // locate potential elements
   std::set<const libMesh::Elem*> candidate_elements;
   for (auto elem : boundary_elements_) {
-    // being conservative about search parameter
+    // being conservative about search parameter by adding element hmax
     if (elem->close_to_point(start, length + elem->hmax())) {
       candidate_elements.insert(elem);
     }
@@ -2214,7 +2214,7 @@ LibMesh::locate_boundary_element(const libMesh::Point& start,
   RayHit result = {INFTY, nullptr};
   for (auto elem : candidate_elements) {
     for (int i = 0; i < elem->n_sides(); i++) {
-      double temp_dist;
+      double temp_dist = 0;
       bool hit = plucker_test(elem->side_ptr(i), start, dir, temp_dist);
       if (hit && temp_dist > FP_COINCIDENT && temp_dist <= length) {
         // update if we find a closer intersection
@@ -2272,7 +2272,7 @@ LibMesh::intersect_track(libMesh::Point start,
       if (tri->type() != libMesh::ElemType::TRI3) { warning("Non-triangle element found"); }
       double temp_dist = -1.0;
       bool hit = plucker_test(e->side_ptr(i), start, dir, temp_dist);
-      if (hit and temp_dist > 1E-14) {
+      if (hit and temp_dist > FP_COINCIDENT) {
         side = i;
         dist = temp_dist;
       }
@@ -2293,9 +2293,9 @@ LibMesh::intersect_track(libMesh::Point start,
     } else {
       // add hit to output
       hits.push_back(std::pair<double, const libMesh::Elem*>(std::min(track_remaining, dist), e));
-      track_remaining -= dist; // subtract from
       // advance position along track
-      start += dir * dist;
+      start += dir * std::min(track_remaining, dist);
+      track_remaining -= dist; // subtract from
     }
 
     // if we've reached the end of the track, break
@@ -2307,7 +2307,7 @@ LibMesh::intersect_track(libMesh::Point start,
     // if we exit the mesh, check for re-entry along
     // the track
     if (!next_e) {
-      auto result = locate_boundary_element(start + dir * TINY_BIT,
+      auto result = locate_boundary_element(start,
                                             start + dir * track_remaining);
       if (result.second) {
         e = result.second;
@@ -2320,6 +2320,8 @@ LibMesh::intersect_track(libMesh::Point start,
         return;
       }
     }
+
+    if (track_remaining <= 0.0) { break; }
 
     // check that the hit is correct
     if (!elements_share_face(e, next_e, side)) {
@@ -2459,7 +2461,11 @@ LibMesh::plucker_test(std::unique_ptr<const libMesh::Elem> tri,
     }
   }
 
-  dist = (intersection(idx)-start(idx))/dir(idx);
+  // no negative distances
+  const double temp_dist = (intersection(idx) - start(idx)) / dir(idx);
+  if ( temp_dist < 0 ) { return false; }
+
+  dist = (intersection - start).norm();
 
   return true;
 }

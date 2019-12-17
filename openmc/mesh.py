@@ -654,7 +654,8 @@ class UnstructuredMesh(MeshBase):
 
         mesh = cls(mesh_id)
         mesh.filename = group['filename'][()].decode()
-        mesh.volumes = group['volumes'][()]
+        vol_data = group['volumes'][()]
+        mesh.volumes = np.reshape(vol_data, (vol_data.shape[0], 1))
 
         return mesh
 

@@ -44,6 +44,7 @@ class SourceTestHarness(PyAPITestHarness):
         settings.electron_treatment = 'ttb'
         settings.cutoff = {'energy_photon' : 1000.0}
         settings.source = source
+        settings.verbosity = 10
         settings.export_to_xml()
 
         surface_filter = openmc.SurfaceFilter(cyl)

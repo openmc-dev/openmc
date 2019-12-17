@@ -211,9 +211,9 @@ create_fission_sites(Particle* p, int i_nuclide, const Reaction* rx,
     // Write fission particles to nuBank
     if(use_fission_bank)
     {
-      p->nu_bank_[i].wgt             = site->wgt;
-      p->nu_bank_[i].E               = site->E;
-      p->nu_bank_[i].delayed_group   = site->delayed_group;
+      p->nu_bank_[nu-1-i].wgt             = site->wgt;
+      p->nu_bank_[nu-1-i].E               = site->E;
+      p->nu_bank_[nu-1-i].delayed_group   = site->delayed_group;
     }
   }
 

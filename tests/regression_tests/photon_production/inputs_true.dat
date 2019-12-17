@@ -34,6 +34,7 @@
   <cutoff>
     <energy_photon>1000.0</energy_photon>
   </cutoff>
+  <verbosity>10</verbosity>
 </settings>
 <?xml version='1.0' encoding='utf-8'?>
 <tallies>

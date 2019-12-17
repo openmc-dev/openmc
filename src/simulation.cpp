@@ -224,20 +224,11 @@ void process_calculate_xs_events(QueueItem * queue, int n)
     if (p->write_track_) write_particle_track(*p);
 
     if (settings::check_overlaps) check_cell_overlap(p);
-
-    if (settings::run_CE) {
-      if (p->material_ == p->material_last_ && p->sqrtkT_ != p->sqrtkT_last_) {
-        // Remove particle from queue
-      }
-    }
-
-    // Find energy index on energy grid
-    // TODO: Calculate this separately?
-    //int neutron = static_cast<int>(Particle::Type::neutron);
-    //p->macro_xs_.i_grid = std::log(p->E_/data::energy_min[neutron]) / simulation::log_spacing;
   }
+
   if( lost_particles > 0 )
 	  exit(1);
+
   #pragma omp parallel for
   for( int i = 0; i < n; i++ )
   {
@@ -258,13 +249,8 @@ void process_calculate_xs_events(QueueItem * queue, int n)
 		  p->macro_xs_.fission    = 0.0;
 		  p->macro_xs_.nu_fission = 0.0;
 	  }
-	  /*
-	  int idx;
-	  #pragma omp atomic capture
-	  idx = advance_particle_queue_length++;
-	  advance_particle_queue[idx] = queue[i];
-	  */
   }
+
   int start = advance_particle_queue_length;
   int end = start + n;
   int j = 0;
@@ -276,81 +262,6 @@ void process_calculate_xs_events(QueueItem * queue, int n)
 	  j++;
   }
   advance_particle_queue_length += n;
-
-  /*
-  // Calculate nuclide micros
-  for (int i = 0; i < data::nuclides.size(); ++i) {
-	  // loop over particles
-    for (int j = 0; j < n; j++) {
-		//Particle * p = particles + queue[i];
-		Particle * p = particles + queue[j];
-      if (p->material_ == MATERIAL_VOID) continue;
-
-      // If material doesn't have this nuclide, skip it
-      const auto& mat {model::materials[p->material_]};
-      if (mat->mat_nuclide_index_[i] == -1) continue;
-
-      // ======================================================================
-      // CHECK FOR S(A,B) TABLE
-
-      // Check if this nuclide matches one of the S(a,b) tables specified.
-      // This relies on thermal_tables_ being sorted by .index_nuclide
-      int i_sab = C_NONE;
-      double sab_frac = 0.0;
-      for (const auto& sab : mat->thermal_tables_) {
-        if (i == sab.index_nuclide) {
-          // Get index in sab_tables
-          i_sab = sab.index_table;
-          sab_frac = sab.fraction;
-
-          // If particle energy is greater than the highest energy for the
-          // S(a,b) table, then don't use the S(a,b) table
-          //if (p->E_ > data::thermal_scatt[i_sab]->threshold()) i_sab = C_NONE;
-			std::cout << "S(alpha, beta) max energy = " << data::thermal_scatt[i_sab]->energy_max_ <<std::endl;
-          if (p->E_ > data::thermal_scatt[i_sab]->energy_max_) i_sab = C_NONE;
-        }
-      }
-
-      // ======================================================================
-      // CALCULATE MICROSCOPIC CROSS SECTION
-
-      // Calculate microscopic cross section for this nuclide
-      const auto& micro {p->neutron_xs_[i]};
-      if (p->E_ != micro.last_E
-          || p->sqrtkT_ != micro.last_sqrtkT
-          || i_sab != micro.index_sab
-          || sab_frac != micro.sab_frac) {
-        data::nuclides[i]->calculate_xs(i_sab, p->macro_xs_.i_grid, sab_frac, *p);
-      }
-    }
-  }
-
-  for (int i = 0; i < n; i++) {
-	  Particle * p = particles + queue[i];
-    // Calculate microscopic and macroscopic cross sections
-    if (p->material_ != MATERIAL_VOID) {
-	  // Only works for CE, no MG support
-      //if (settings::run_CE) {
-        // If the material is the same as the last material and the
-        // temperature hasn't changed, we don't need to lookup cross
-        // sections again.
-        model::materials[p->material_]->calculate_xs(*p);
-      }
-		//else {
-      //}
-     else {
-      p->macro_xs_.total      = 0.0;
-      p->macro_xs_.absorption = 0.0;
-      p->macro_xs_.fission    = 0.0;
-      p->macro_xs_.nu_fission = 0.0;
-    }
-
-	 int idx;
-	 #pragma omp atomic capture
-	 idx = advance_particle_queue_length++;
-    advance_particle_queue[idx] = queue[i];
-  }
-	*/
 }
 
 void process_advance_particle_events()

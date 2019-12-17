@@ -63,17 +63,15 @@ struct QueueItem{
 	int idx;      // particle index in event-based buffer
 	double E;     // particle energy
 	int material; // material that particle is in
-  /*
   bool operator<(const QueueItem & rhs) const
   {
     if( material < rhs.material)
       return true;
-    else if( E < rhs.E )
+    else if( E < rhs.E && material == rhs.material )
       return true;
     else
       return false;
   }
-  */
 };
 bool by_energy   (QueueItem a, QueueItem b) { return (a.E        < b.E); }
 bool by_material (QueueItem a, QueueItem b) { return (a.material < b.material); }
@@ -146,28 +144,31 @@ void revive_particle_from_secondary(Particle* p)
 
 void dispatch_xs_event(int i)
 {
-	Particle * p = particles + i;
-	  int idx;
+  Particle * p = particles + i;
+  int idx;
   if (p->material_ == MATERIAL_VOID) {
-
-	#pragma omp atomic capture
-	idx = calculate_nonfuel_xs_queue_length++;
-	//std::cout << "Dispatching particle to non Fuel XS queue idx = " << idx << std::endl;
+    #pragma omp atomic capture
+    idx = calculate_nonfuel_xs_queue_length++;
+    //std::cout << "Dispatching particle to non Fuel XS queue idx = " << idx << std::endl;
     calculate_nonfuel_xs_queue[idx].idx = i;
     calculate_nonfuel_xs_queue[idx].E = p->E_;
     calculate_nonfuel_xs_queue[idx].material = p->material_;
-  } else {
+  }
+  else
+  {
     if (model::materials[p->material_]->fissionable_) {
-	#pragma omp atomic capture
-	idx = calculate_fuel_xs_queue_length++;
-	//std::cout << "Dispatching particle to Fuel XS queue idx = " << idx << std::endl;
+      #pragma omp atomic capture
+      idx = calculate_fuel_xs_queue_length++;
+      //std::cout << "Dispatching particle to Fuel XS queue idx = " << idx << std::endl;
       calculate_fuel_xs_queue[idx].idx = i;
       calculate_fuel_xs_queue[idx].E = p->E_;
       calculate_fuel_xs_queue[idx].material = p->material_;
-    } else {
-	#pragma omp atomic capture
-	idx = calculate_nonfuel_xs_queue_length++;
-	//std::cout << "Dispatching particle to non Fuel XS queue idx = " << idx << std::endl;
+    }
+    else
+    {
+      #pragma omp atomic capture
+      idx = calculate_nonfuel_xs_queue_length++;
+      //std::cout << "Dispatching particle to non Fuel XS queue idx = " << idx << std::endl;
       calculate_nonfuel_xs_queue[idx].idx = i;
       calculate_nonfuel_xs_queue[idx].E = p->E_;
       calculate_nonfuel_xs_queue[idx].material = p->material_;
@@ -178,11 +179,11 @@ void dispatch_xs_event(int i)
 void process_calculate_xs_events(QueueItem * queue, int n)
 {
   // Sort queue by energy
-  //std::sort(queue, queue+n);
-  std::sort(queue, queue+n, by_energy);
+  std::sort(queue, queue+n);
+  //std::sort(queue, queue+n, by_energy);
 
   // Then, stable sort by material (so as to preserve energy ordering)
-  std::stable_sort(queue, queue+n, by_material);
+  //std::stable_sort(queue, queue+n, by_material);
 
   // Save last_ members, find grid index
   int lost_particles = 0;

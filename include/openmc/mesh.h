@@ -24,9 +24,10 @@
 
 #ifdef LIBMESH
 #include "libmesh/libmesh.h"
+#include "libmesh/elem.h"
+#include "libmesh/equation_systems.h"
 #include "libmesh/mesh.h"
 #include "libmesh/point.h"
-#include "libmesh/elem.h"
 #endif
 
 namespace openmc {
@@ -509,6 +510,8 @@ public:
 private:
   std::unique_ptr<libMesh::Mesh> m_;
   std::unique_ptr<libMesh::PointLocatorBase> point_locator_;
+  std::unique_ptr<libMesh::EquationSystems> equation_systems_;
+  std::string eq_system_name_;
   libMesh::Elem* first_element_;
   std::set<libMesh::Elem*> boundary_elements_;
 };

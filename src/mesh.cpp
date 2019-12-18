@@ -5,6 +5,7 @@
 #include <cmath>  // for ceil
 #include <memory> // for allocator
 #include <string>
+#include <gsl/gsl>
 
 #ifdef OPENMC_MPI
 #include "mpi.h"
@@ -2060,7 +2061,10 @@ LibMesh::LibMesh(pugi::xml_node node) : UnstructuredMeshBase(node) {
 
   equation_systems_ =
     std::unique_ptr<libMesh::EquationSystems>(new libMesh::EquationSystems(*m_));
-  auto& eq_sys = equation_systems_->add_system(eq_system_name_);
+  libMesh::ExplicitSystem& eq_sys =
+    equation_systems_->add_system<libMesh::ExplicitSystem>(eq_system_name_);
+
+  sol_ = eq_sys.current_local_solution->clone();
 
   point_locator_ = m_->sub_point_locator();
   point_locator_->enable_out_of_mesh_mode();
@@ -2122,6 +2126,45 @@ LibMesh::get_bin_from_indices(const int* ijk) const {
 void
 LibMesh::get_indices_from_bin(int bin, int* ijk) const {
   ijk[0] = bin;
+}
+
+libMesh::Elem*
+LibMesh::get_element_from_bin(int bin) const {
+  m_->elem_ptr(bin);
+}
+
+void
+LibMesh::add_variable(const std::string& var_name) {
+  // check if this is a new varaible
+  if (!variable_map_.count(var_name)) {
+    auto& eqn_sys = equation_systems_->get_system(eq_system_name_);
+    auto var_num = eqn_sys.add_variable(var_name, libMesh::CONSTANT, libMesh::MONOMIAL);
+    variable_map_[var_name] = var_num;
+    equation_systems_->init();
+  }
+}
+
+void
+LibMesh::set_variable(const std::string& var_name, int bin, double value) {
+  // look up the variable
+  unsigned int var_num = variable_map_.at(var_name);
+  auto& eqn_sys = equation_systems_->get_system(eq_system_name_);
+  const libMesh::DofMap& dof_map = eqn_sys.get_dof_map();
+  auto e = m_->elem_ptr(bin);
+  std::vector<libMesh::dof_id_type> dof_indices;
+  dof_map.dof_indices(e, dof_indices, var_num);
+  Ensures(dof_indices.size() == 1);
+  (*sol_).set(dof_indices[0], value);
+}
+
+void LibMesh::write() const {
+  // update solution
+  auto& eqn_sys = equation_systems_->get_system(eq_system_name_);
+  *eqn_sys.solution = *sol_;
+
+  libMesh::ExodusII_IO exo(*m_);
+  std::set<std::string> systems_out = {eq_system_name_};
+  exo.write_discontinuous_exodusII("test.exo", *equation_systems_, &systems_out);
 }
 
 

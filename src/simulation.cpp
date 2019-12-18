@@ -42,6 +42,8 @@
 #include <string>
 #include <chrono> 
 
+#define DYNAMIC_SIZE 8
+
 namespace openmc {
 
 	/*
@@ -89,7 +91,7 @@ int advance_particle_queue_length     = 0;
 int surface_crossing_queue_length     = 0;
 int collision_queue_length            = 0;
 
-const int MAX_PARTICLES_IN_FLIGHT = 10000;
+const int MAX_PARTICLES_IN_FLIGHT = 1000000;
 
 void init_event_queues(int n_particles)
 {
@@ -187,7 +189,7 @@ void process_calculate_xs_events(QueueItem * queue, int n)
 
   // Save last_ members, find grid index
   int lost_particles = 0;
-  #pragma omp parallel for reduction(+:lost_particles)
+  #pragma omp parallel for reduction(+:lost_particles) schedule(dynamic,DYNAMIC_SIZE)
   for (int i = 0; i < n; i++) {
 	  Particle *p = particles + queue[i].idx; 
 	  //std::cout << "particle offset = " << queue[i] << std::endl;
@@ -235,7 +237,7 @@ void process_calculate_xs_events(QueueItem * queue, int n)
   if( lost_particles > 0 )
 	  exit(1);
 
-  #pragma omp parallel for
+  #pragma omp parallel for schedule(dynamic, DYNAMIC_SIZE)
   for( int i = 0; i < n; i++ )
   {
 	  Particle * p = particles + queue[i].idx;
@@ -273,7 +275,7 @@ void process_calculate_xs_events(QueueItem * queue, int n)
 void process_advance_particle_events()
 {
   //for (auto& p : advance_particle_queue) {
-  #pragma omp parallel for
+  #pragma omp parallel for schedule(dynamic, DYNAMIC_SIZE)
   for (int i = 0; i < advance_particle_queue_length; i++) {
 	  Particle * p = particles + advance_particle_queue[i].idx;
     simulation::trace == (p->id_ == 0);
@@ -345,7 +347,7 @@ void process_advance_particle_events()
 void process_surface_crossing_events()
 {
   //for (auto& p : surface_crossing_queue) {
-  #pragma omp parallel for
+  #pragma omp parallel for schedule(dynamic, DYNAMIC_SIZE)
   for (int i = 0; i < surface_crossing_queue_length; i++) {
 	  Particle * p = particles + surface_crossing_queue[i].idx;
     // Set surface that particle is on and adjust coordinate levels
@@ -391,7 +393,7 @@ void process_surface_crossing_events()
 void process_collision_events()
 {
   //for (auto& p : collision_queue) {
-  #pragma omp parallel for
+  #pragma omp parallel for schedule(dynamic,DYNAMIC_SIZE)
   for (int i = 0; i < collision_queue_length; i++) {
 	  Particle * p = particles + collision_queue[i].idx;
 	  //std::cout << "Beginning collision of particle id " << collision_queue[i] << " with energy E = " << p->E_ << std::endl;
@@ -595,6 +597,7 @@ void transport()
 			if( p == mpi::rank )
 			{
 			*/
+        #pragma omp parallel for schedule(dynamic, DYNAMIC_SIZE)
 				for (int i = 0; i < n_particles; i++) {
 					initialize_history(particles + i, source_offset + i + 1);
 				}
@@ -606,6 +609,7 @@ void transport()
 		//std::cout << "Enqueing particles for XS Lookups..." << std::endl;
 		// Add all particles to advance particle queue
 		// TODO: Parallelize
+     #pragma omp parallel for schedule(dynamic, DYNAMIC_SIZE)
 		for (int i = 0; i < n_particles; i++) {
 			dispatch_xs_event(i);
 		}
@@ -854,6 +858,7 @@ int openmc_next_batch(int* status)
 
   initialize_batch();
 
+
   // =======================================================================
   // LOOP OVER GENERATIONS
   for (current_gen = 1; current_gen <= settings::gen_per_batch; ++current_gen) {
@@ -871,7 +876,9 @@ int openmc_next_batch(int* status)
     finalize_generation();
   }
 
+
   finalize_batch();
+  
 
   // Check simulation ending criteria
   if (status) {

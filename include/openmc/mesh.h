@@ -26,6 +26,9 @@
 #include "libmesh/libmesh.h"
 #include "libmesh/elem.h"
 #include "libmesh/equation_systems.h"
+#include "libmesh/exodusII_io.h"
+#include "libmesh/explicit_system.h"
+#include "libmesh/dof_map.h"
 #include "libmesh/mesh.h"
 #include "libmesh/point.h"
 #endif
@@ -494,6 +497,7 @@ public:
 
   void get_indices_from_bin(int bin, int* ijk) const;
 
+  libMesh::Elem* get_element_from_bin(int bin) const;
 
   bool intersects(Position& r0, Position r1, int* ijk) const;
 
@@ -505,12 +509,20 @@ public:
   std::pair<std::vector<double>, std::vector<double>> plot(Position plot_ll,
                                                            Position plot_ur) const;
 
+  void add_variable(const std::string& var_name);
+
+  void set_variable(const std::string& var_name, int bin, double value);
+
+  void write() const;
+
   void to_hdf5(hid_t group) const;
 
 private:
   std::unique_ptr<libMesh::Mesh> m_;
   std::unique_ptr<libMesh::PointLocatorBase> point_locator_;
   std::unique_ptr<libMesh::EquationSystems> equation_systems_;
+  std::unique_ptr<libMesh::NumericVector<libMesh::Real>> sol_;
+  std::map<std::string, unsigned int> variable_map_;
   std::string eq_system_name_;
   libMesh::Elem* first_element_;
   std::set<libMesh::Elem*> boundary_elements_;

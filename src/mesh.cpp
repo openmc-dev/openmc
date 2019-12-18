@@ -2054,6 +2054,13 @@ LibMesh::LibMesh(pugi::xml_node node) : UnstructuredMeshBase(node) {
 
   m_ = std::unique_ptr<libMesh::Mesh>(new libMesh::Mesh(settings::LMI->comm(), 3));
   m_->read(filename_);
+  m_->prepare_for_use();
+
+  eq_system_name_ = "mesh_" + std::to_string(id_) + "_system";
+
+  equation_systems_ =
+    std::unique_ptr<libMesh::EquationSystems>(new libMesh::EquationSystems(*m_));
+  auto& eq_sys = equation_systems_->add_system(eq_system_name_);
 
   point_locator_ = m_->sub_point_locator();
   point_locator_->enable_out_of_mesh_mode();

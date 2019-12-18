@@ -53,7 +53,7 @@ def test_cmfd_restart():
     cmfd_run = cmfd.CMFDRun()
     cmfd_run.mesh = cmfd_mesh
     cmfd_run.tally_begin = 5
-    cmfd_run.feedback_begin = 5
+    cmfd_run.solver_begin = 5
     cmfd_run.feedback = True
     cmfd_run.gauss_seidel_tolerance = [1.e-15, 1.e-20]
     cmfd_run.run()
@@ -62,7 +62,7 @@ def test_cmfd_restart():
     cmfd_run2 = cmfd.CMFDRun()
     cmfd_run2.mesh = cmfd_mesh2
     cmfd_run2.tally_begin = 5
-    cmfd_run2.feedback_begin = 5
+    cmfd_run2.solver_begin = 5
     cmfd_run2.feedback = True
     cmfd_run2.gauss_seidel_tolerance = [1.e-15, 1.e-20]
 

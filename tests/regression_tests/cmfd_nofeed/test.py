@@ -15,7 +15,7 @@ def test_cmfd_nofeed():
     # Initialize and run CMFDRun object
     cmfd_run = cmfd.CMFDRun()
     cmfd_run.mesh = cmfd_mesh
-    cmfd_run.tally_begin = 5
+    cmfd_run.solver_begin = 5
     cmfd_run.display = {'dominance': True}
     cmfd_run.feedback = False
     cmfd_run.gauss_seidel_tolerance = [1.e-15, 1.e-20]

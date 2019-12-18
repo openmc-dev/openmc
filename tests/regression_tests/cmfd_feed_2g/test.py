@@ -17,7 +17,7 @@ def test_cmfd_feed_2g():
     cmfd_run = cmfd.CMFDRun()
     cmfd_run.mesh = cmfd_mesh
     cmfd_run.tally_begin = 5
-    cmfd_run.feedback_begin = 5
+    cmfd_run.solver_begin = 5
     cmfd_run.display = {'dominance': True}
     cmfd_run.feedback = True
     cmfd_run.downscatter = True

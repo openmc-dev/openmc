@@ -2064,8 +2064,6 @@ LibMesh::LibMesh(pugi::xml_node node) : UnstructuredMeshBase(node) {
   libMesh::ExplicitSystem& eq_sys =
     equation_systems_->add_system<libMesh::ExplicitSystem>(eq_system_name_);
 
-  sol_ = eq_sys.current_local_solution->clone();
-
   point_locator_ = m_->sub_point_locator();
   point_locator_->enable_out_of_mesh_mode();
 
@@ -2154,17 +2152,15 @@ LibMesh::set_variable(const std::string& var_name, int bin, double value) {
   std::vector<libMesh::dof_id_type> dof_indices;
   dof_map.dof_indices(e, dof_indices, var_num);
   Ensures(dof_indices.size() == 1);
-  (*sol_).set(dof_indices[0], value);
+  (*eqn_sys.solution).set(dof_indices[0], value);
 }
 
 void LibMesh::write() const {
-  // update solution
-  auto& eqn_sys = equation_systems_->get_system(eq_system_name_);
-  *eqn_sys.solution = *sol_;
-
   libMesh::ExodusII_IO exo(*m_);
   std::set<std::string> systems_out = {eq_system_name_};
-  exo.write_discontinuous_exodusII("test.exo", *equation_systems_, &systems_out);
+  std::stringstream output_filename;
+  output_filename << "umesh_" << id_ << ".exo";
+  exo.write_discontinuous_exodusII(output_filename.str(), *equation_systems_, &systems_out);
 }
 
 

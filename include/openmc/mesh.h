@@ -521,7 +521,6 @@ private:
   std::unique_ptr<libMesh::Mesh> m_;
   std::unique_ptr<libMesh::PointLocatorBase> point_locator_;
   std::unique_ptr<libMesh::EquationSystems> equation_systems_;
-  std::unique_ptr<libMesh::NumericVector<libMesh::Real>> sol_;
   std::map<std::string, unsigned int> variable_map_;
   std::string eq_system_name_;
   libMesh::Elem* first_element_;

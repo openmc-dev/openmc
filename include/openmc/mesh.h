@@ -513,7 +513,7 @@ public:
 
   void set_variable(const std::string& var_name, int bin, double value);
 
-  void write() const;
+  void write(const std::string& filename) const;
 
   void to_hdf5(hid_t group) const;
 

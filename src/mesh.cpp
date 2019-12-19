@@ -2155,12 +2155,10 @@ LibMesh::set_variable(const std::string& var_name, int bin, double value) {
   (*eqn_sys.solution).set(dof_indices[0], value);
 }
 
-void LibMesh::write() const {
+void LibMesh::write(const std::string& filename) const {
   libMesh::ExodusII_IO exo(*m_);
   std::set<std::string> systems_out = {eq_system_name_};
-  std::stringstream output_filename;
-  output_filename << "umesh_" << id_ << ".exo";
-  exo.write_discontinuous_exodusII(output_filename.str(), *equation_systems_, &systems_out);
+  exo.write_discontinuous_exodusII(filename, *equation_systems_, &systems_out);
 }
 
 

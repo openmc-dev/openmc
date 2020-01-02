@@ -65,14 +65,30 @@ struct QueueItem{
 	int idx;      // particle index in event-based buffer
 	double E;     // particle energy
 	int material; // material that particle is in
+  Particle::Type type;
   bool operator<(const QueueItem & rhs) const
   {
+    // First, compare by type
+    if( type < rhs.type )
+      return true;
+    if( type > rhs.type )
+      return false;
+
+    // At this point, we have the same particle types.
+    // Now, compare by material
+    
+    // TODO: Temporarily disabled as SMR problem has different material IDs for every pin
+    // Need to sort by material type instead...
+    /*
     if( material < rhs.material)
       return true;
-    else if( E < rhs.E && material == rhs.material )
-      return true;
-    else
+    if( material > rhs.material)
       return false;
+      */
+
+    // At this point, we have the same particle type, in the same material.
+    // Now, compare by energy
+    return (E < rhs.E);
   }
 };
 bool by_energy   (QueueItem a, QueueItem b) { return (a.E        < b.E); }
@@ -155,6 +171,7 @@ void dispatch_xs_event(int i)
     calculate_nonfuel_xs_queue[idx].idx = i;
     calculate_nonfuel_xs_queue[idx].E = p->E_;
     calculate_nonfuel_xs_queue[idx].material = p->material_;
+    calculate_nonfuel_xs_queue[idx].type = p->type_;
   }
   else
   {
@@ -165,6 +182,7 @@ void dispatch_xs_event(int i)
       calculate_fuel_xs_queue[idx].idx = i;
       calculate_fuel_xs_queue[idx].E = p->E_;
       calculate_fuel_xs_queue[idx].material = p->material_;
+      calculate_fuel_xs_queue[idx].type = p->type_;
     }
     else
     {
@@ -174,6 +192,7 @@ void dispatch_xs_event(int i)
       calculate_nonfuel_xs_queue[idx].idx = i;
       calculate_nonfuel_xs_queue[idx].E = p->E_;
       calculate_nonfuel_xs_queue[idx].material = p->material_;
+      calculate_nonfuel_xs_queue[idx].type = p->type_;
     }
   }
 }
@@ -267,6 +286,7 @@ void process_calculate_xs_events(QueueItem * queue, int n)
 	  advance_particle_queue[i].idx = queue[j].idx;
 	  advance_particle_queue[i].E = particles[queue[j].idx].E_;
 	  advance_particle_queue[i].material = particles[queue[j].idx].material_;
+	  advance_particle_queue[i].type = particles[queue[j].idx].type_;
 	  j++;
   }
   advance_particle_queue_length += n;
@@ -305,6 +325,7 @@ void process_advance_particle_events()
       surface_crossing_queue[idx].idx = advance_particle_queue[i].idx;
       surface_crossing_queue[idx].E = p->E_;
       surface_crossing_queue[idx].material = p->material_;
+      surface_crossing_queue[idx].type = p->type_;
       distance = p->boundary_.distance;
     } else {
 		#pragma omp atomic capture
@@ -312,6 +333,7 @@ void process_advance_particle_events()
 		collision_queue[idx].idx = advance_particle_queue[i].idx;
 		collision_queue[idx].E = p->E_;
 		collision_queue[idx].material = p->material_;
+		collision_queue[idx].type = p->type_;
       distance = d_collision;
     }
 
@@ -562,6 +584,17 @@ double get_time()
 
 void transport()
 {
+	double stop, start;
+  double time_init = 0;
+	double time_fuel_xs = 0;
+	double time_nonfuel_xs = 0;
+	double time_advance = 0;
+	double time_collision = 0;
+	double time_surf = 0;
+
+
+  start = get_time();
+
 	int remaining_work = simulation::work_per_rank;
 	int source_offset = 0;
 		
@@ -570,15 +603,12 @@ void transport()
 		max_n_particles = remaining_work;
 	init_event_queues(max_n_particles);
 
-	double time_fuel_xs = 0;
-	double time_nonfuel_xs = 0;
-	double time_advance = 0;
-	double time_collision = 0;
-	double time_surf = 0;
-	double stop, start;
+  stop = get_time();
+  time_init += stop - start;
 
 	// Subiterations to complete sets of particles
 	while (remaining_work > 0) {
+    start = get_time();
 
 
 		// Figure out work for this subiteration
@@ -613,17 +643,20 @@ void transport()
 		for (int i = 0; i < n_particles; i++) {
 			dispatch_xs_event(i);
 		}
+  
+    stop = get_time();
+    time_init += stop - start;
 
 		int event_kernel_executions = 0;
 		while (true) {
 			event_kernel_executions++;
-			/*
+      /*
 			std::cout << "Fuel XS Lookups = " << calculate_fuel_xs_queue_length << std::endl;
 			std::cout << "Non Fuel XS Lookups = " << calculate_nonfuel_xs_queue_length << std::endl;
 			std::cout << "Advance Particles = " << advance_particle_queue_length << std::endl;
 			std::cout << "Surface Crossings = " << surface_crossing_queue_length << std::endl;
 			std::cout << "Collisions = " << collision_queue_length << std::endl;
-			*/
+      */
 			/*
 			Particle * p = particles +  1;
 		   std::cout << "E = " << p->E_ << " and Position {" <<
@@ -701,15 +734,16 @@ void transport()
 		collision_queue_length            = 0;
 		*/
 		
-		//std::cout << "Event kernels retired: " << event_kernel_executions << std::endl;
+		std::cout << "Event kernels retired: " << event_kernel_executions << std::endl;
 	}
 	if( mpi::rank == 0 )
 	{
-		std::cout << "Fuel XS Time:     " << time_fuel_xs << std::endl;
-		std::cout << "Non Fuel XS Time: " << time_nonfuel_xs << std::endl;
-		std::cout << "Advance Time:     " << time_advance << std::endl;
-		std::cout << "Surface Time:     " << time_surf << std::endl;
-		std::cout << "Collision Time:   " << time_collision<< std::endl;
+		std::cout << "Particle Init Time: " << time_init << std::endl;
+		std::cout << "Fuel XS Time:       " << time_fuel_xs << std::endl;
+		std::cout << "Non Fuel XS Time:   " << time_nonfuel_xs << std::endl;
+		std::cout << "Advance Time:       " << time_advance << std::endl;
+		std::cout << "Surface Time:       " << time_surf << std::endl;
+		std::cout << "Collision Time:     " << time_collision<< std::endl;
 	}
 	//shared_fission_bank_length = 0;
 	free_event_queues();
@@ -867,6 +901,21 @@ int openmc_next_batch(int* status)
 
     // Start timer for transport
     simulation::time_transport.start();
+
+    // ====================================================================
+    // LOOP OVER PARTICLES
+
+    /*
+    #pragma omp parallel for schedule(runtime)
+    for (int64_t i_work = 1; i_work <= simulation::work_per_rank; ++i_work) {
+      // grab source particle from bank
+      Particle p;
+      initialize_history(&p, i_work);
+
+      // transport particle
+      p.transport();
+    }
+    */
 
     transport();
 

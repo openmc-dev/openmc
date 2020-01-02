@@ -72,7 +72,7 @@ void title()
   // Write version information
   std::cout <<
     "                   | The OpenMC Monte Carlo Code\n" <<
-    "         Copyright | 2011-2019 MIT and OpenMC contributors\n" <<
+    "         Copyright | 2011-2020 MIT and OpenMC contributors\n" <<
     "           License | http://openmc.readthedocs.io/en/latest/license.html\n" <<
     "           Version | " << VERSION_MAJOR << '.' << VERSION_MINOR << '.'
     << VERSION_RELEASE << (VERSION_DEV ? "-dev" : "") << '\n';

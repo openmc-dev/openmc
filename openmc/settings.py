@@ -61,6 +61,9 @@ class Settings(object):
         relative error used.
     log_grid_bins : int
         Number of bins for logarithmic energy grid search
+    material_cell_offsets : bool
+        Generate an "offset table" for material cells by default. These tables
+        are necessary when a particular instance of a cell needs to be tallied.
     max_order : None or int
         Maximum scattering order to apply globally when in multi-group mode.
     no_reduce : bool
@@ -216,6 +219,7 @@ class Settings(object):
             VolumeCalculation, 'volume calculations')
 
         self._create_fission_neutrons = None
+        self._material_cell_offsets = None
         self._log_grid_bins = None
 
         self._dagmc = False
@@ -351,6 +355,10 @@ class Settings(object):
     @property
     def create_fission_neutrons(self):
         return self._create_fission_neutrons
+
+    @property
+    def material_cell_offsets(self):
+        return self._material_cell_offsets
 
     @property
     def log_grid_bins(self):
@@ -683,6 +691,11 @@ class Settings(object):
                       create_fission_neutrons, bool)
         self._create_fission_neutrons = create_fission_neutrons
 
+    @material_cell_offsets.setter
+    def material_cell_offsets(self, value):
+        cv.check_type('material cell offsets', value, bool)
+        self._material_cell_offsets = value
+
     @log_grid_bins.setter
     def log_grid_bins(self, log_grid_bins):
         cv.check_type('log grid bins', log_grid_bins, Real)
@@ -917,6 +930,11 @@ class Settings(object):
             elem = ET.SubElement(root, "create_fission_neutrons")
             elem.text = str(self._create_fission_neutrons).lower()
 
+    def _create_material_cell_offsets_subelement(self, root):
+        if self._material_cell_offsets is not None:
+            elem = ET.SubElement(root, "material_cell_offsets")
+            elem.text = str(self._material_cell_offsets).lower()
+
     def _create_log_grid_bins_subelement(self, root):
         if self._log_grid_bins is not None:
             elem = ET.SubElement(root, "log_grid_bins")
@@ -1148,6 +1166,11 @@ class Settings(object):
         if text is not None:
             self.create_fission_neutrons = text in ('true', '1')
 
+    def _material_cell_offsets_from_xml_element(self, root):
+        text = get_text(root, 'material_cell_offsets')
+        if text is not None:
+            self.material_cell_offsets = text in ('true', '1')
+
     def _log_grid_bins_from_xml_element(self, root):
         text = get_text(root, 'log_grid_bins')
         if text is not None:
@@ -1202,6 +1225,7 @@ class Settings(object):
         self._create_resonance_scattering_subelement(root_element)
         self._create_volume_calcs_subelement(root_element)
         self._create_create_fission_neutrons_subelement(root_element)
+        self._create_material_cell_offsets_subelement(root_element)
         self._create_log_grid_bins_subelement(root_element)
         self._create_dagmc_subelement(root_element)
 
@@ -1267,6 +1291,7 @@ class Settings(object):
         settings._ufs_mesh_from_xml_element(root)
         settings._resonance_scattering_from_xml_element(root)
         settings._create_fission_neutrons_from_xml_element(root)
+        settings._material_cell_offsets_from_xml_element(root)
         settings._log_grid_bins_from_xml_element(root)
         settings._dagmc_from_xml_element(root)
 

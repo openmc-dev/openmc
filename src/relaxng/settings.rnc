@@ -33,6 +33,8 @@ element settings {
 
   element log_grid_bins { xsd:positiveInteger }? &
 
+  element material_cell_offsets { xsd:boolean }? &
+
   element max_order { xsd:nonNegativeInteger }? &
 
   element mesh {

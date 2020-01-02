@@ -31,6 +31,7 @@ extern "C" bool cmfd_run;             //!< is a CMFD run?
 extern "C" bool dagmc;                //!< indicator of DAGMC geometry
 extern "C" bool entropy_on;           //!< calculate Shannon entropy?
 extern bool legendre_to_tabular;      //!< convert Legendre distributions to tabular?
+extern bool material_cell_offsets;    //!< create material cells offsets?
 extern "C" bool output_summary;       //!< write summary.h5?
 extern bool output_tallies;           //!< write tallies.out?
 extern bool particle_restart_run;     //!< particle restart run?

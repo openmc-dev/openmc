@@ -39,7 +39,55 @@
               </attribute>
             </choice>
           </optional>
+          <optional>
+            <choice>
+              <element name="energy_neutron">
+                <data type="double"/>
+              </element>
+              <attribute name="energy_neutron">
+                <data type="double"/>
+              </attribute>
+            </choice>
+          </optional>
+          <optional>
+            <choice>
+              <element name="energy_photon">
+                <data type="double"/>
+              </element>
+              <attribute name="energy_photon">
+                <data type="double"/>
+              </attribute>
+            </choice>
+          </optional>
+          <optional>
+            <choice>
+              <element name="energy_electron">
+                <data type="double"/>
+              </element>
+              <attribute name="energy_electron">
+                <data type="double"/>
+              </attribute>
+            </choice>
+          </optional>
+          <optional>
+            <choice>
+              <element name="energy_positron">
+                <data type="double"/>
+              </element>
+              <attribute name="energy_positron">
+                <data type="double"/>
+              </attribute>
+            </choice>
+          </optional>
         </interleave>
+      </element>
+    </optional>
+    <optional>
+      <element name="electron_treatment">
+        <choice>
+          <value>led</value>
+          <value>ttb</value>
+        </choice>
       </element>
     </optional>
     <optional>
@@ -250,6 +298,11 @@
       </element>
     </optional>
     <optional>
+      <element name="photon_transport">
+        <data type="boolean"/>
+      </element>
+    </optional>
+    <optional>
       <element name="ptables">
         <data type="boolean"/>
       </element>
@@ -421,16 +474,6 @@
                 <element name="energy">
                   <ref name="distribution"/>
                 </element>
-              </optional>
-              <optional>
-                <choice>
-                  <element name="write_initial">
-                    <data type="boolean"/>
-                  </element>
-                  <attribute name="write_initial">
-                    <data type="boolean"/>
-                  </attribute>
-                </choice>
               </optional>
             </interleave>
           </start>
@@ -743,6 +786,11 @@
         </interleave>
       </element>
     </zeroOrMore>
+    <optional>
+      <element name="write_initial_source">
+        <data type="boolean"/>
+      </element>
+    </optional>
     <optional>
       <element name="resonance_scattering">
         <interleave>

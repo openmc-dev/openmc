@@ -332,8 +332,10 @@ prepare_distribcell()
   }
 
   // By default, add material cells to the list of distributed cells
-  for (gsl::index i = 0; i < model::cells.size(); ++i) {
-    if (model::cells[i]->type_ == FILL_MATERIAL) distribcells.insert(i);
+  if (settings::material_cell_offsets) {
+    for (gsl::index i = 0; i < model::cells.size(); ++i) {
+      if (model::cells[i]->type_ == FILL_MATERIAL) distribcells.insert(i);
+    }
   }
 
   // Make sure that the number of materials/temperatures matches the number of

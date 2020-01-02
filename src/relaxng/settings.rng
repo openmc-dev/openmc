@@ -157,6 +157,11 @@
       </element>
     </optional>
     <optional>
+      <element name="material_cell_offsets">
+        <data type="boolean"/>
+      </element>
+    </optional>
+    <optional>
       <element name="max_order">
         <data type="nonNegativeInteger"/>
       </element>

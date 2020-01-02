@@ -196,6 +196,18 @@ based on the recommended value in LA-UR-14-24530_.
 .. _LA-UR-14-24530: https://laws.lanl.gov/vhosts/mcnp.lanl.gov/pdf_files/la-ur-14-24530.pdf
 
 ---------------------------
+``<material_cell_offsets>``
+---------------------------
+
+By default, OpenMC will count the number of instances of each cell filled with a
+material and generate "offset tables" that are used for cell instance tallies.
+The ``<material_cell_offsets>`` element allows a user to override this default
+setting and turn off the generation of offset tables, if desired, by setting it
+to false.
+
+  *Default*: true
+
+---------------------------
 ``<max_order>`` Element
 ---------------------------
 
@@ -423,11 +435,11 @@ attributes/sub-elements:
 
     :type:
       The type of spatial distribution. Valid options are "box", "fission",
-      "point", "cartesian", and "spherical". A "box" spatial distribution has 
+      "point", "cartesian", and "spherical". A "box" spatial distribution has
       coordinates sampled uniformly in a parallelepiped. A "fission" spatial
-      distribution samples locations from a "box" distribution but only 
-      locations in fissionable materials are accepted. A "point" spatial 
-      distribution has coordinates specified by a triplet. An "cartesian" 
+      distribution samples locations from a "box" distribution but only
+      locations in fissionable materials are accepted. A "point" spatial
+      distribution has coordinates specified by a triplet. An "cartesian"
       spatial distribution specifies independent distributions of x-, y-, and
       z-coordinates. A "spherical" spatial distribution specifies independent
       distributions of r-, theta-, and phi-coordinates where theta is the angle

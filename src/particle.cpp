@@ -134,13 +134,14 @@ Particle::from_source(const Bank* src)
 void
 Particle::transport()
 {
+  // Initialize number of events to zero
+  int n_event = 0;
+
+  /*
   // Display message if high verbosity or trace is on
   if (settings::verbosity >= 9 || simulation::trace) {
      write_message("Simulating Particle " + std::to_string(id_));
   }
-
-  // Initialize number of events to zero
-  int n_event = 0;
 
   // Add paricle's starting weight to count for normalizing tallies later
   #pragma omp atomic
@@ -157,6 +158,8 @@ Particle::transport()
   // Every particle starts with no accumulated flux derivative.
   if (!model::active_tallies.empty())
     flux_derivs_.resize(model::tally_derivs.size(), 0.0);
+  
+    */
 
   while (true) {
     // Set the random number stream

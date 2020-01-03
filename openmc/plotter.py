@@ -562,14 +562,16 @@ def _calculate_cexs_elem_mat(this, types, temperature=294.,
     if isinstance(this, openmc.Material):
         for sab_name in this._sab:
             sab = openmc.data.ThermalScattering.from_hdf5(
-                library.get_by_material(sab_name)['path'])
+                library.get_by_material(sab_name, data_type='thermal')['path'])
             for nuc in sab.nuclides:
-                sabs[nuc] = library.get_by_material(sab_name)['path']
+                sabs[nuc] = library.get_by_material(sab_name,
+                        data_type='thermal')['path']
     else:
         if sab_name:
             sab = openmc.data.ThermalScattering.from_hdf5(sab_name)
             for nuc in sab.nuclides:
-                sabs[nuc] = library.get_by_material(sab_name)['path']
+                sabs[nuc] = library.get_by_material(sab_name,
+                        data_type='thermal')['path']
 
     # Now we can create the data sets to be plotted
     xs = {}

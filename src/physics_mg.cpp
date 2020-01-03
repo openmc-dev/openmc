@@ -31,7 +31,7 @@ collision_mg(Particle* p)
   sample_reaction(p);
 
   // Display information about collision
-  if ((settings::verbosity >= 10) || (simulation::trace)) {
+  if ((settings::verbosity >= 10) || (p->trace_)) {
     std::stringstream msg;
     msg << "    Energy Group = " << p->g_;
     write_message(msg, 1);

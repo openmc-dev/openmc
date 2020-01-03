@@ -221,6 +221,14 @@ public:
   //! \param src Source site data
   void from_source(const Bank* src);
 
+  void event_calculate_xs_I();
+  void event_calculate_xs_II();
+  void event_advance();
+  void event_cross_surface();
+  void event_collide();
+  void event_revive_from_secondary();
+  void event_death();
+  void transport_history_based();
   //! Transport a particle from birth to death
   void transport();
 
@@ -337,6 +345,10 @@ public:
   double tally_leakage_ {0.0};
 
   bool trace_;     //!< flag to show debug information
+
+  double collision_distance_; 
+
+  int n_event_;
 };
 
 } // namespace openmc

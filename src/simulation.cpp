@@ -962,7 +962,7 @@ namespace simulation {
 
 int current_batch;
 int current_gen;
-int64_t current_work;
+//int64_t current_work;
 bool initialized {false};
 double keff {1.0};
 double keff_std;

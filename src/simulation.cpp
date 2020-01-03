@@ -905,7 +905,6 @@ int openmc_next_batch(int* status)
     // ====================================================================
     // LOOP OVER PARTICLES
 
-    /*
     #pragma omp parallel for schedule(runtime)
     for (int64_t i_work = 1; i_work <= simulation::work_per_rank; ++i_work) {
       // grab source particle from bank
@@ -915,9 +914,8 @@ int openmc_next_batch(int* status)
       // transport particle
       p.transport();
     }
-    */
 
-    transport();
+    //transport();
 
     // Accumulate time for transport
     simulation::time_transport.stop();

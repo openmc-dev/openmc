@@ -298,7 +298,7 @@ void process_advance_particle_events()
   #pragma omp parallel for schedule(dynamic, DYNAMIC_SIZE)
   for (int i = 0; i < advance_particle_queue_length; i++) {
 	  Particle * p = particles + advance_particle_queue[i].idx;
-    simulation::trace == (p->id_ == 0);
+    p->trace_ == (p->id_ == 0);
 
     // Sample a distance to collision
     double d_collision;
@@ -987,9 +987,6 @@ const RegularMesh* ufs_mesh {nullptr};
 std::vector<double> k_generation;
 std::vector<int64_t> work_index;
 
-// Threadprivate variables
-bool trace;     //!< flag to show debug information
-
 } // namespace simulation
 
 //==============================================================================
@@ -1238,10 +1235,10 @@ void initialize_history(Particle* p, int64_t index_source)
   init_particle_seeds(particle_seed, p->seeds_);
 
   // set particle trace
-  simulation::trace = false;
+  p->trace_ = false;
   if (simulation::current_batch == settings::trace_batch &&
       simulation::current_gen == settings::trace_gen &&
-      p->id_ == settings::trace_particle) simulation::trace = true;
+      p->id_ == settings::trace_particle) p->trace_ = true;
 
   // Set particle track.
   p->write_track_ = false;
@@ -1259,7 +1256,7 @@ void initialize_history(Particle* p, int64_t index_source)
   }
 
   // Display message if high verbosity or trace is on
-  if (settings::verbosity >= 9 || simulation::trace) {
+  if (settings::verbosity >= 9 || p->trace_) {
     write_message("Simulating Particle " + std::to_string(p->id_));
   }
 

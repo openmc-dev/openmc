@@ -139,7 +139,7 @@ Particle::transport()
 
   /*
   // Display message if high verbosity or trace is on
-  if (settings::verbosity >= 9 || simulation::trace) {
+  if (settings::verbosity >= 9 || trace_) {
      write_message("Simulating Particle " + std::to_string(id_));
   }
 
@@ -416,7 +416,7 @@ Particle::cross_surface()
   int i_surface = std::abs(surface_);
   // TODO: off-by-one
   const auto& surf {model::surfaces[i_surface - 1].get()};
-  if (settings::verbosity >= 10 || simulation::trace) {
+  if (settings::verbosity >= 10 || trace_) {
     write_message("    Crossing surface " + std::to_string(surf->id_));
   }
 
@@ -443,7 +443,7 @@ Particle::cross_surface()
     tally_leakage_ += wgt_;
 
     // Display message
-    if (settings::verbosity >= 10 || simulation::trace) {
+    if (settings::verbosity >= 10 || trace_) {
       write_message("    Leaked out of surface " + std::to_string(surf->id_));
     }
     return;
@@ -507,7 +507,7 @@ Particle::cross_surface()
     r_last_current_ = this->r() + TINY_BIT*this->u();
 
     // Diagnostic message
-    if (settings::verbosity >= 10 || simulation::trace) {
+    if (settings::verbosity >= 10 || trace_) {
       write_message("    Reflected from surface " + std::to_string(surf->id_));
     }
     return;
@@ -561,7 +561,7 @@ Particle::cross_surface()
     r_last_current_ = this->r() + TINY_BIT*this->u();
 
     // Diagnostic message
-    if (settings::verbosity >= 10 || simulation::trace) {
+    if (settings::verbosity >= 10 || trace_) {
       write_message("    Hit periodic boundary on surface " +
         std::to_string(surf->id_));
     }

@@ -573,7 +573,7 @@ void absorption(Particle* p, int i_nuclide)
 
     // Score implicit absorption estimate of keff
     if (settings::run_mode == RUN_MODE_EIGENVALUE) {
-      global_tally_absorption += p->wgt_absorb_ * p->neutron_xs_[
+      p->tally_absorption_ += p->wgt_absorb_ * p->neutron_xs_[
         i_nuclide].nu_fission / p->neutron_xs_[i_nuclide].absorption;
     }
   } else {
@@ -582,7 +582,7 @@ void absorption(Particle* p, int i_nuclide)
         prn(p->current_seed()) * p->neutron_xs_[i_nuclide].total) {
       // Score absorption estimate of keff
       if (settings::run_mode == RUN_MODE_EIGENVALUE) {
-        global_tally_absorption += p->wgt_ * p->neutron_xs_[
+        p->tally_absorption_ += p->wgt_ * p->neutron_xs_[
           i_nuclide].nu_fission / p->neutron_xs_[i_nuclide].absorption;
       }
 

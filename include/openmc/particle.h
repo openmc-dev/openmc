@@ -330,6 +330,11 @@ public:
   std::vector<std::vector<Position>> tracks_;
 
   NuBank nu_bank_[15];
+
+  double tally_absorption_ {0.0};
+  double tally_collision_ {0.0};
+  double tally_tracklength_ {0.0};
+  double tally_leakage_ {0.0};
 };
 
 } // namespace openmc

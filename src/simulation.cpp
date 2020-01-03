@@ -354,7 +354,7 @@ void process_advance_particle_events()
     // Score track-length estimate of k-eff
     if (settings::run_mode == RUN_MODE_EIGENVALUE &&
         p->type_ == Particle::Type::neutron) {
-      global_tally_tracklength += p->wgt_ * distance * p->macro_xs_.nu_fission;
+      p->tally_tracklength_ += p->wgt_ * distance * p->macro_xs_.nu_fission;
     }
 
     // Score flux derivative accumulators for differential tallies.
@@ -422,7 +422,7 @@ void process_collision_events()
     // Score collision estimate of keff
     if (settings::run_mode == RUN_MODE_EIGENVALUE &&
         p->type_ == Particle::Type::neutron) {
-      global_tally_collision += p->wgt_ * p->macro_xs_.nu_fission
+      p->tally_collision_ += p->wgt_ * p->macro_xs_.nu_fission
         / p->macro_xs_.total;
     }
 
@@ -713,13 +713,17 @@ void transport()
 			}
 		}
 
-    // Finish particle track output.
+    // Finish particle track output and contribute to global tally variables
     for (int i = 0; i < n_particles; i++) {
       Particle& p = particles[i];
       if (p.write_track_) {
         write_particle_track(p);
         finalize_particle_track(p);
       }
+      global_tally_absorption +=  p.tally_absorption_;
+      global_tally_collision +=   p.tally_collision_;
+      global_tally_tracklength += p.tally_tracklength_;
+      global_tally_leakage +=     p.tally_leakage_;
     }
 
 		remaining_work -= n_particles;
@@ -904,7 +908,7 @@ int openmc_next_batch(int* status)
 
     // ====================================================================
     // LOOP OVER PARTICLES
-
+    /*
     #pragma omp parallel for schedule(runtime)
     for (int64_t i_work = 1; i_work <= simulation::work_per_rank; ++i_work) {
       // grab source particle from bank
@@ -914,8 +918,9 @@ int openmc_next_batch(int* status)
       // transport particle
       p.transport();
     }
+    */
 
-    //transport();
+    transport();
 
     // Accumulate time for transport
     simulation::time_transport.stop();
@@ -1217,6 +1222,12 @@ void initialize_history(Particle* p, int64_t index_source)
   // set defaults
   p->from_source(&simulation::source_bank[index_source - 1]);
   p->current_work_ = index_source;
+
+  // Initialize global tally variables
+  p->tally_absorption_ =  0.0;
+  p->tally_collision_ =   0.0;
+  p->tally_tracklength_ = 0.0;
+  p->tally_leakage_ =     0.0;
 
   // set identifier for particle
   p->id_ = simulation::work_index[mpi::rank] + index_source;

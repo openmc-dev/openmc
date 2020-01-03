@@ -254,7 +254,7 @@ Particle::transport()
     // Score track-length estimate of k-eff
     if (settings::run_mode == RUN_MODE_EIGENVALUE &&
         type_ == Particle::Type::neutron) {
-      global_tally_tracklength += wgt_ * distance * macro_xs_.nu_fission;
+        tally_tracklength_ += wgt_ * distance * macro_xs_.nu_fission;
     }
 
     // Score flux derivative accumulators for differential tallies.
@@ -298,7 +298,7 @@ Particle::transport()
       // Score collision estimate of keff
       if (settings::run_mode == RUN_MODE_EIGENVALUE &&
           type_ == Particle::Type::neutron) {
-        global_tally_collision += wgt_ * macro_xs_.nu_fission
+        tally_collision_ += wgt_ * macro_xs_.nu_fission
           / macro_xs_.total;
       }
 
@@ -398,6 +398,16 @@ Particle::transport()
     write_particle_track(*this);
     finalize_particle_track(*this);
   }
+
+  // Contribute tally reduction variables to global accumulator
+  #pragma omp atomic
+  global_tally_absorption += tally_absorption_;
+  #pragma omp atomic
+  global_tally_collision += tally_collision_;
+  #pragma omp atomic
+  global_tally_tracklength += tally_tracklength_;
+  #pragma omp atomic
+  global_tally_leakage += tally_leakage_;
 }
 
 void
@@ -430,7 +440,7 @@ Particle::cross_surface()
     }
 
     // Score to global leakage tally
-    global_tally_leakage += wgt_;
+    tally_leakage_ += wgt_;
 
     // Display message
     if (settings::verbosity >= 10 || simulation::trace) {

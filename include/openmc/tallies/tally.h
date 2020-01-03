@@ -167,8 +167,6 @@ extern double global_tally_absorption;
 extern double global_tally_collision;
 extern double global_tally_tracklength;
 extern double global_tally_leakage;
-#pragma omp threadprivate(global_tally_absorption, global_tally_collision, \
-  global_tally_tracklength, global_tally_leakage)
 
 //==============================================================================
 // Non-member functions

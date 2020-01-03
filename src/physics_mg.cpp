@@ -177,13 +177,11 @@ absorption(Particle* p)
     p->wgt_last_ = p->wgt_;
 
     // Score implicit absorpion estimate of keff
-    #pragma omp atomic
-    global_tally_absorption += p->wgt_absorb_ * p->macro_xs_.nu_fission /
+    p->tally_absorption_ += p->wgt_absorb_ * p->macro_xs_.nu_fission /
         p->macro_xs_.absorption;
   } else {
     if (p->macro_xs_.absorption > prn(p->current_seed()) * p->macro_xs_.total) {
-      #pragma omp atomic
-      global_tally_absorption += p->wgt_ * p->macro_xs_.nu_fission /
+      p->tally_absorption_ += p->wgt_ * p->macro_xs_.nu_fission /
            p->macro_xs_.absorption;
       p->alive_ = false;
       p->event_ = EVENT_ABSORB;

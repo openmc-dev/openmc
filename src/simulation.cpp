@@ -914,6 +914,7 @@ int openmc_next_batch(int* status)
 
     // ====================================================================
     // LOOP OVER PARTICLES
+    /*
     #pragma omp parallel for schedule(runtime)
     for (int64_t i_work = 1; i_work <= simulation::work_per_rank; ++i_work) {
       // grab source particle from bank
@@ -923,6 +924,7 @@ int openmc_next_batch(int* status)
       // transport particle
       p.transport();
     }
+    */
     /*
     #pragma omp parallel for schedule(runtime)
     for (int64_t i_work = 1; i_work <= simulation::work_per_rank; ++i_work) {
@@ -935,7 +937,7 @@ int openmc_next_batch(int* status)
     }
     */
 
-    //transport();
+    transport();
 
     // Accumulate time for transport
     simulation::time_transport.stop();
@@ -1175,27 +1177,20 @@ void finalize_generation()
   auto& gt = simulation::global_tallies;
 
   // Update global tallies with the omp private accumulation variables
-  #pragma omp parallel
-  {
-    #pragma omp critical(increment_global_tallies)
-    {
-      if (settings::run_mode == RUN_MODE_EIGENVALUE) {
-        gt(K_COLLISION, RESULT_VALUE) += global_tally_collision;
-        gt(K_ABSORPTION, RESULT_VALUE) += global_tally_absorption;
-        gt(K_TRACKLENGTH, RESULT_VALUE) += global_tally_tracklength;
-      }
-      gt(LEAKAGE, RESULT_VALUE) += global_tally_leakage;
-    }
-
-    // reset threadprivate tallies
-    if (settings::run_mode == RUN_MODE_EIGENVALUE) {
-      global_tally_collision = 0.0;
-      global_tally_absorption = 0.0;
-      global_tally_tracklength = 0.0;
-    }
-    global_tally_leakage = 0.0;
+  if (settings::run_mode == RUN_MODE_EIGENVALUE) {
+    gt(K_COLLISION, RESULT_VALUE) += global_tally_collision;
+    gt(K_ABSORPTION, RESULT_VALUE) += global_tally_absorption;
+    gt(K_TRACKLENGTH, RESULT_VALUE) += global_tally_tracklength;
   }
+  gt(LEAKAGE, RESULT_VALUE) += global_tally_leakage;
 
+  // reset tallies
+  if (settings::run_mode == RUN_MODE_EIGENVALUE) {
+    global_tally_collision = 0.0;
+    global_tally_absorption = 0.0;
+    global_tally_tracklength = 0.0;
+  }
+  global_tally_leakage = 0.0;
 
   if (settings::run_mode == RUN_MODE_EIGENVALUE) {	
 	  // We need to move all the stuff from the shared_fission_bank into the real one.

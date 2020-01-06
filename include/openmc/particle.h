@@ -344,11 +344,11 @@ public:
   double tally_tracklength_ {0.0};
   double tally_leakage_ {0.0};
 
-  bool trace_;     //!< flag to show debug information
+  bool trace_ {false};     //!< flag to show debug information
 
   double collision_distance_; 
 
-  int n_event_;
+  int n_event_ {0};
 };
 
 } // namespace openmc

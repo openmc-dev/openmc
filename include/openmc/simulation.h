@@ -49,10 +49,10 @@ extern const RegularMesh* ufs_mesh;
 extern std::vector<double> k_generation;
 extern std::vector<int64_t> work_index;
 
-// Threadprivate variables
-extern "C" bool trace;     //!< flag to show debug information
+//// Threadprivate variables
+//extern "C" bool trace;     //!< flag to show debug information
 
-#pragma omp threadprivate(trace)
+//#pragma omp threadprivate(trace)
 
 } // namespace simulation
 

@@ -214,6 +214,7 @@ void process_calculate_xs_events(QueueItem * queue, int n)
 	  //std::cout << "particle offset = " << queue[i] << std::endl;
     // Set the random number stream
 	// TODO: Move RNG seeds to particle storage
+  /*
     if (p->type_ == Particle::Type::neutron) {
 		p->stream_ = STREAM_TRACKING;
     } else {
@@ -251,6 +252,8 @@ void process_calculate_xs_events(QueueItem * queue, int n)
     if (p->write_track_) write_particle_track(*p);
 
     if (settings::check_overlaps) check_cell_overlap(p);
+    */
+    p->event_calculate_xs_I();
   }
 
   if( lost_particles > 0 )
@@ -260,6 +263,7 @@ void process_calculate_xs_events(QueueItem * queue, int n)
   for( int i = 0; i < n; i++ )
   {
 	  Particle * p = particles + queue[i].idx;
+    /*
 	  // Calculate microscopic and macroscopic cross sections
 	  if (p->material_ != MATERIAL_VOID) {
 		  if (settings::run_CE) {
@@ -276,6 +280,8 @@ void process_calculate_xs_events(QueueItem * queue, int n)
 		  p->macro_xs_.fission    = 0.0;
 		  p->macro_xs_.nu_fission = 0.0;
 	  }
+    */
+    p->event_calculate_xs_II();
   }
 
   int start = advance_particle_queue_length;
@@ -298,7 +304,7 @@ void process_advance_particle_events()
   #pragma omp parallel for schedule(dynamic, DYNAMIC_SIZE)
   for (int i = 0; i < advance_particle_queue_length; i++) {
 	  Particle * p = particles + advance_particle_queue[i].idx;
-    p->trace_ == (p->id_ == 0);
+    //p->trace_ == (p->id_ == 0);
 
     // Sample a distance to collision
     double d_collision;
@@ -908,7 +914,6 @@ int openmc_next_batch(int* status)
 
     // ====================================================================
     // LOOP OVER PARTICLES
-    /*
     #pragma omp parallel for schedule(runtime)
     for (int64_t i_work = 1; i_work <= simulation::work_per_rank; ++i_work) {
       // grab source particle from bank
@@ -918,7 +923,7 @@ int openmc_next_batch(int* status)
       // transport particle
       p.transport();
     }
-    */
+    /*
     #pragma omp parallel for schedule(runtime)
     for (int64_t i_work = 1; i_work <= simulation::work_per_rank; ++i_work) {
       // grab source particle from bank
@@ -928,6 +933,7 @@ int openmc_next_batch(int* status)
       // transport particle
       p.transport_history_based();
     }
+    */
 
     //transport();
 
@@ -1245,9 +1251,11 @@ void initialize_history(Particle* p, int64_t index_source)
 
   // set particle trace
   p->trace_ = false;
+  /*
   if (simulation::current_batch == settings::trace_batch &&
       simulation::current_gen == settings::trace_gen &&
       p->id_ == settings::trace_particle) p->trace_ = true;
+      */
 
   // Set particle track.
   p->write_track_ = false;

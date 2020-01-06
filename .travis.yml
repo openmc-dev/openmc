@@ -31,18 +31,20 @@ env:
     - NUMPY_EXPERIMENTAL_ARRAY_FUNCTION=0
 matrix:
   include:
-    - python: "3.5"
-      env: OMP=n MPI=n PHDF5=n
-    - python: "3.6"
-      env: OMP=n MPI=n PHDF5=n
-    - python: "3.7"
-      env: OMP=n MPI=n PHDF5=n
+    #    - python: "3.5"
+    #      env: OMP=n MPI=n PHDF5=n
+    #    - python: "3.6"
+    #      env: OMP=n MPI=n PHDF5=n
+    #    - python: "3.7"
+    #      env: OMP=n MPI=n PHDF5=n
     - python: "3.7"
       env: OMP=y MPI=n PHDF5=n
     - python: "3.7"
-      env: OMP=n MPI=y PHDF5=n
-    - python: "3.7"
       env: OMP=n MPI=y PHDF5=y
+    - python: "3.7"
+      env: OMP=y MPI=y PHDF5=y
+    #    - python: "3.7"
+    #      env: OMP=n MPI=y PHDF5=y
 notifications:
   webhooks: https://coveralls.io/webhook?repo_token=$COVERALLS_REPO_TOKEN
 install:

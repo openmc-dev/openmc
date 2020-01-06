@@ -306,6 +306,7 @@ void process_advance_particle_events()
 	  Particle * p = particles + advance_particle_queue[i].idx;
     //p->trace_ == (p->id_ == 0);
 
+    /*
     // Sample a distance to collision
     double d_collision;
     if (p->type_ == Particle::Type::electron ||
@@ -367,8 +368,29 @@ void process_advance_particle_events()
     if (!model::active_tallies.empty()) {
       score_track_derivative(p, distance);
     }
+  */
+    p->event_advance();
+    if( p->collision_distance_ > p->boundary_.distance ) 
+    {
+      int idx;
+      #pragma omp atomic capture
+      idx = surface_crossing_queue_length++;
+      surface_crossing_queue[idx].idx = advance_particle_queue[i].idx;
+      surface_crossing_queue[idx].E = p->E_;
+      surface_crossing_queue[idx].material = p->material_;
+      surface_crossing_queue[idx].type = p->type_;
+    }
+    else
+    {
+      int idx;
+      #pragma omp atomic capture
+      idx = collision_queue_length++;
+      collision_queue[idx].idx = advance_particle_queue[i].idx;
+      collision_queue[idx].E = p->E_;
+      collision_queue[idx].material = p->material_;
+      collision_queue[idx].type = p->type_;
+    }
   }
-
   advance_particle_queue_length = 0;
 }
 
@@ -378,6 +400,7 @@ void process_surface_crossing_events()
   #pragma omp parallel for schedule(dynamic, DYNAMIC_SIZE)
   for (int i = 0; i < surface_crossing_queue_length; i++) {
 	  Particle * p = particles + surface_crossing_queue[i].idx;
+    /*
     // Set surface that particle is on and adjust coordinate levels
     p->surface_ = p->boundary_.surface_index;
     p->n_coord_ = p->boundary_.coord_level;
@@ -408,11 +431,13 @@ void process_surface_crossing_events()
     if (!p->alive_ && !p->secondary_bank_.empty()) {
       revive_particle_from_secondary(p);
     }
+    */
+    p->event_cross_surface();
 
     if (p->alive_)
-	{
-		dispatch_xs_event(surface_crossing_queue[i].idx);
-	}
+    {
+      dispatch_xs_event(surface_crossing_queue[i].idx);
+    }
   }
 
   surface_crossing_queue_length = 0;
@@ -424,6 +449,7 @@ void process_collision_events()
   #pragma omp parallel for schedule(dynamic,DYNAMIC_SIZE)
   for (int i = 0; i < collision_queue_length; i++) {
 	  Particle * p = particles + collision_queue[i].idx;
+    /*
 	  //std::cout << "Beginning collision of particle id " << collision_queue[i] << " with energy E = " << p->E_ << std::endl;
     // Score collision estimate of keff
     if (settings::run_mode == RUN_MODE_EIGENVALUE &&
@@ -497,18 +523,24 @@ void process_collision_events()
 
     // Score flux derivative accumulators for differential tallies.
     if (!model::active_tallies.empty()) score_collision_derivative(p);
+    */
+    p->event_collide();
 
     //if (!p->alive_ && !simulation::secondary_bank.empty()) {
+    /*
     if (!p->alive_ && !p->secondary_bank_.empty()) {
       revive_particle_from_secondary(p);
     }
+    */
+
+    p->event_revive_from_secondary();
 
     if (p->alive_)
-	{
-		dispatch_xs_event(collision_queue[i].idx);
-	    //std::cout << "Ended collision of particle id " << collision_queue[i] << " with energy E = " << p->E_ << std::endl;
-		assert(std::isfinite(p->E_) );
-	}
+    {
+      dispatch_xs_event(collision_queue[i].idx);
+      //std::cout << "Ended collision of particle id " << collision_queue[i] << " with energy E = " << p->E_ << std::endl;
+      //assert(std::isfinite(p->E_) );
+    }
   }
 
   collision_queue_length = 0;

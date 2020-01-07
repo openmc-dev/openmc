@@ -38,7 +38,10 @@ class SourceTestHarness(PyAPITestHarness):
         spatial3 = openmc.stats.Point([1.2, -2.3, 0.781])
         spatial4 = openmc.stats.SphericalIndependent(r_dist, theta_dist,
                                                      phi_dist, 
-                                                     origin=(1.0, 1.0, 0.0))
+                                                     origin=(1., 1., 0.))
+        spatial5 = openmc.stats.CylindricalIndependent(r_dist, phi_dist, 
+                                                       z_dist,
+                                                       origin=(1., 1., 0.))
 
         mu_dist = openmc.stats.Discrete([-1., 0., 1.], [0.5, 0.25, 0.25])
         phi_dist = openmc.stats.Uniform(0., 6.28318530718)
@@ -57,12 +60,13 @@ class SourceTestHarness(PyAPITestHarness):
         source2 = openmc.Source(spatial2, angle2, energy2, strength=0.3)
         source3 = openmc.Source(spatial3, angle3, energy3, strength=0.1)
         source4 = openmc.Source(spatial4, angle3, energy3, strength=0.1)
+        source5 = openmc.Source(spatial5, angle3, energy3, strength=0.1)
 
         settings = openmc.Settings()
         settings.batches = 10
         settings.inactive = 5
         settings.particles = 1000
-        settings.source = [source1, source2, source3, source4]
+        settings.source = [source1, source2, source3, source4, source5]
         settings.export_to_xml()
 
 

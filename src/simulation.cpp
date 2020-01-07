@@ -147,19 +147,6 @@ void free_shared_fission_bank(void)
 	shared_fission_bank_length = 0;
 }
 
-// TODO: What is going on here?
-void revive_particle_from_secondary(Particle* p)
-{
-  //p->from_source(&simulation::secondary_bank.back());
-  p->from_source(&p->secondary_bank_.back());
-  //simulation::secondary_bank.pop_back();
-  p->secondary_bank_.pop_back();
-  // n_event = 0;
-
-  // Enter new particle in particle track file
-  if (p->write_track_) add_particle_track(*p);
-}
-
 void dispatch_xs_event(int i)
 {
   Particle * p = particles + i;
@@ -303,7 +290,34 @@ double get_time()
 	return (double) us_since_epoch / 1.0e6;
 }
 
-void transport()
+void transport_history_based_inner(Particle& p)
+{
+  while(true) {
+    p.event_calculate_xs_I();
+    p.event_calculate_xs_II();
+    p.event_advance();
+    if( p.collision_distance_ > p.boundary_.distance ) 
+      p.event_cross_surface();
+    else
+      p.event_collide();
+    p.event_revive_from_secondary();
+    if(!p.alive_)
+      break;
+  }
+  p.event_death();
+}
+
+void transport_history_based()
+{
+  #pragma omp parallel for schedule(runtime)
+  for (int64_t i_work = 1; i_work <= simulation::work_per_rank; ++i_work) {
+    Particle p;
+    initialize_history(&p, i_work);
+    transport_history_based_inner(p);
+  }
+}
+
+void transport_event_based()
 {
 	double stop, start;
   double time_init = 0;
@@ -401,15 +415,6 @@ void transport()
 
 		remaining_work -= n_particles;
 		source_offset += n_particles;
-
-		// Should all be zero
-		/*
-		calculate_fuel_xs_queue_length    = 0;
-		calculate_nonfuel_xs_queue_length = 0;
-		advance_particle_queue_length     = 0;
-		surface_crossing_queue_length     = 0;
-		collision_queue_length            = 0;
-		*/
 		
 		std::cout << "Event kernels retired: " << event_kernel_executions << std::endl;
 	}
@@ -422,7 +427,6 @@ void transport()
 		std::cout << "Surface Time:       " << time_surf << std::endl;
 		std::cout << "Collision Time:     " << time_collision<< std::endl;
 	}
-	//shared_fission_bank_length = 0;
 	free_event_queues();
 }
 
@@ -579,32 +583,9 @@ int openmc_next_batch(int* status)
     // Start timer for transport
     simulation::time_transport.start();
 
-    /*
-    // ====================================================================
-    // LOOP OVER PARTICLES
-    #pragma omp parallel for schedule(runtime)
-    for (int64_t i_work = 1; i_work <= simulation::work_per_rank; ++i_work) {
-      // grab source particle from bank
-      Particle p;
-      initialize_history(&p, i_work);
+    transport_history_based();
 
-      // transport particle
-      p.transport();
-    }
-    */
-    /*
-    #pragma omp parallel for schedule(runtime)
-    for (int64_t i_work = 1; i_work <= simulation::work_per_rank; ++i_work) {
-      // grab source particle from bank
-      Particle p;
-      initialize_history(&p, i_work);
-
-      // transport particle
-      p.transport_history_based();
-    }
-    */
-
-    transport();
+    //transport_event_based();
 
     // Accumulate time for transport
     simulation::time_transport.stop();
@@ -896,12 +877,15 @@ void initialize_history(Particle* p, int64_t index_source)
   // set defaults
   p->from_source(&simulation::source_bank[index_source - 1]);
   p->current_work_ = index_source;
+  /*
+  p->n_event_ = 0;
 
   // Initialize global tally variables
   p->tally_absorption_ =  0.0;
   p->tally_collision_ =   0.0;
   p->tally_tracklength_ = 0.0;
   p->tally_leakage_ =     0.0;
+  */
 
   // set identifier for particle
   p->id_ = simulation::work_index[mpi::rank] + index_source;

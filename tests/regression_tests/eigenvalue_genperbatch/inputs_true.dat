@@ -23,3 +23,9 @@
     </space>
   </source>
 </settings>
+<?xml version='1.0' encoding='utf-8'?>
+<tallies>
+  <tally id="1">
+    <scores>flux</scores>
+  </tally>
+</tallies>

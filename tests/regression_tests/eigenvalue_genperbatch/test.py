@@ -24,6 +24,10 @@ def model():
     space = openmc.stats.Box((-4.0, -4.0, -4.0), (4.0, 4.0, 4.))
     model.settings.source = openmc.Source(space=space)
 
+    t = openmc.Tally()
+    t.scores = ['flux']
+    model.tallies.append(t)
+
     return model
 
 

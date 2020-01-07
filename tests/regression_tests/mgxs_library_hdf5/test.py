@@ -73,8 +73,6 @@ class MGXSTestHarness(PyAPITestHarness):
             os.remove(f)
 
 
-import pytest
-@pytest.mark.skip(reason="MG not planned for GPU support.")
 def test_mgxs_library_hdf5():
     try:
         np.set_printoptions(formatter={'float_kind': '{:.8e}'.format})

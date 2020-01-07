@@ -82,8 +82,8 @@ class MGXSTestHarness(PyAPITestHarness):
             os.remove(f)
 
 
-import pytest
-@pytest.mark.skip(reason="MG not planned for GPU support.")
+#import pytest
+#@pytest.mark.skip(reason="MG not planned for GPU support.")
 def test_mg_basic():
     create_library()
     mat_names = ['base leg', 'base tab', 'base hist', 'base matrix',

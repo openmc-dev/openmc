@@ -48,11 +48,11 @@ sample_reaction(Particle* p)
 
   if (model::materials[p->material_]->fissionable_) {
     if (settings::run_mode == RUN_MODE_EIGENVALUE) {
-      create_fission_sites(p, simulation::fission_bank);
+      create_fission_sites(p, simulation::fission_bank, true);
     } else if ((settings::run_mode == RUN_MODE_FIXEDSOURCE) &&
                (settings::create_fission_neutrons)) {
       //create_fission_sites(p, simulation::secondary_bank);
-      create_fission_sites(p, p->secondary_bank_);
+      create_fission_sites(p, p->secondary_bank_, false);
     }
   }
 
@@ -92,7 +92,7 @@ scatter(Particle* p)
 }
 
 void
-create_fission_sites(Particle* p, std::vector<Particle::Bank>& bank)
+create_fission_sites(Particle* p, std::vector<Particle::Bank>& bank, bool use_fission_bank)
 {
   // If uniform fission source weighting is turned on, we increase or decrease
   // the expected number of fission sites produced
@@ -111,6 +111,8 @@ create_fission_sites(Particle* p, std::vector<Particle::Bank>& bank)
   // Begin banking the source neutrons
   // First, if our bank is full then don't continue
   if (nu == 0) return;
+  
+  assert( nu < 15 );
 
   // Initialize the counter of delayed neutrons encountered for each delayed
   // group.
@@ -119,13 +121,30 @@ create_fission_sites(Particle* p, std::vector<Particle::Bank>& bank)
   p->fission_ = true;
   for (int i = 0; i < nu; ++i) {
     // Create new bank site and get reference to last element
-    bank.emplace_back();
-    auto& site {bank.back()};
+    //bank.emplace_back();
+    //auto& site {bank.back()};
+    
+    Particle::Bank * site;
+    if(use_fission_bank)
+    {
+      // Create new bank site and get reference to last element
+      int idx;
+      #pragma omp atomic capture
+      idx = shared_fission_bank_length++;
+      site = shared_fission_bank + idx;
+    }
+    else
+    {
+      // Create new bank site and get reference to last element
+      bank.emplace_back();
+      site = &bank.back();
+    }
 
     // Bank source neutrons by copying the particle data
-    site.r = p->r();
-    site.particle = Particle::Type::neutron;
-    site.wgt = 1. / weight;
+    site->r = p->r();
+    site->particle = Particle::Type::neutron;
+    site->wgt = 1. / weight;
+    site->parent_id = p->id_;
 
     // Sample the cosine of the angle, assuming fission neutrons are emitted
     // isotropically
@@ -133,9 +152,9 @@ create_fission_sites(Particle* p, std::vector<Particle::Bank>& bank)
 
     // Sample the azimuthal angle uniformly in [0, 2.pi)
     double phi = 2. * PI * prn(p->current_seed() );
-    site.u.x = mu;
-    site.u.y = std::sqrt(1. - mu * mu) * std::cos(phi);
-    site.u.z = std::sqrt(1. - mu * mu) * std::sin(phi);
+    site->u.x = mu;
+    site->u.y = std::sqrt(1. - mu * mu) * std::cos(phi);
+    site->u.z = std::sqrt(1. - mu * mu) * std::sin(phi);
 
     // Sample secondary energy distribution for the fission reaction
     int dg;
@@ -143,10 +162,10 @@ create_fission_sites(Particle* p, std::vector<Particle::Bank>& bank)
     data::mg.macro_xs_[p->material_].sample_fission_energy(p->g_, dg, gout,
       p->current_seed());
     // Store the energy and delayed groups on the fission bank
-    site.E = gout;
+    site->E = gout;
     // We add 1 to the delayed_group bc in MG, -1 is prompt, but in the rest
     // of the code, 0 is prompt.
-    site.delayed_group = dg + 1;
+    site->delayed_group = dg + 1;
 
     // Set the delayed group on the particle as well
     p->delayed_group_ = dg + 1;
@@ -154,6 +173,14 @@ create_fission_sites(Particle* p, std::vector<Particle::Bank>& bank)
     // Increment the number of neutrons born delayed
     if (p->delayed_group_ > 0) {
       nu_d[dg]++;
+    }
+    
+    // Write fission particles to nuBank
+    if(use_fission_bank)
+    {
+      p->nu_bank_[nu-1-i].wgt             = site->wgt;
+      p->nu_bank_[nu-1-i].E               = site->E;
+      p->nu_bank_[nu-1-i].delayed_group   = site->delayed_group;
     }
   }
 

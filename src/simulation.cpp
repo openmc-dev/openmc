@@ -579,9 +579,9 @@ int openmc_next_batch(int* status)
     // Start timer for transport
     simulation::time_transport.start();
 
+    /*
     // ====================================================================
     // LOOP OVER PARTICLES
-    /*
     #pragma omp parallel for schedule(runtime)
     for (int64_t i_work = 1; i_work <= simulation::work_per_rank; ++i_work) {
       // grab source particle from bank
@@ -913,11 +913,9 @@ void initialize_history(Particle* p, int64_t index_source)
 
   // set particle trace
   p->trace_ = false;
-  /*
   if (simulation::current_batch == settings::trace_batch &&
       simulation::current_gen == settings::trace_gen &&
       p->id_ == settings::trace_particle) p->trace_ = true;
-      */
 
   // Set particle track.
   p->write_track_ = false;

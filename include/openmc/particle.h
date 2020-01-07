@@ -228,9 +228,6 @@ public:
   void event_collide();
   void event_revive_from_secondary();
   void event_death();
-  void transport_history_based();
-  //! Transport a particle from birth to death
-  void transport();
 
   //! Cross a surface and handle boundary conditions
   void cross_surface();

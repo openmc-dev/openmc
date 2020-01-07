@@ -11,6 +11,8 @@
 #include "openmc/settings.h"
 #include "openmc/simulation.h"
 #include "openmc/tallies/tally.h"
+#include "openmc/tallies/derivative.h"
+#include "openmc/track_output.h"
 
 #include <algorithm> // for copy
 #include <array>
@@ -100,8 +102,26 @@ void run_particle_restart()
   }
   init_particle_seeds(particle_seed, p.seeds_);
 
+  // Force calculation of cross-sections by setting last energy to zero
+  if (settings::run_CE) {
+    for (auto& micro : p.neutron_xs_) micro.last_E = 0.0;
+  }
+
+  // Prepare to write out particle track.
+  if (p.write_track_) add_particle_track(p);
+
+  // Every particle starts with no accumulated flux derivative.
+  if (!model::active_tallies.empty())
+  {
+    p.flux_derivs_.resize(model::tally_derivs.size(), 0.0);
+    std::fill(p.flux_derivs_.begin(), p.flux_derivs_.end(), 0.0);
+  }
+  
+  // Allocate space for tally filter matches
+  p.filter_matches_.resize(model::tally_filters.size());
+
   // Transport neutron
-  p.transport();
+  transport_history_based_inner(p);
 
   // Write output if particle made it
   print_particle(&p);

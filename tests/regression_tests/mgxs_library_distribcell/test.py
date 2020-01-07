@@ -64,8 +64,6 @@ class MGXSTestHarness(PyAPITestHarness):
         return outstr
 
 
-import pytest
-@pytest.mark.skip(reason="MG not planned for GPU support.")
 def test_mgxs_library_distribcell():
     model = pwr_assembly()
     harness = MGXSTestHarness('statepoint.10.h5', model)

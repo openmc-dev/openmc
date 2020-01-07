@@ -23,17 +23,21 @@ namespace openmc {
 // Constants
 //==============================================================================
 
-// TODO: Convert to enum
-constexpr int FILL_MATERIAL {1};
-constexpr int FILL_UNIVERSE {2};
-constexpr int FILL_LATTICE {3};
+enum CellFillType
+{
+  FILL_MATERIAL = 1,
+  FILL_UNIVERSE = 2,
+  FILL_LATTICE = 3
+};
 
-// TODO: Convert to enum
-constexpr int32_t OP_LEFT_PAREN   {std::numeric_limits<int32_t>::max()};
-constexpr int32_t OP_RIGHT_PAREN  {std::numeric_limits<int32_t>::max() - 1};
-constexpr int32_t OP_COMPLEMENT   {std::numeric_limits<int32_t>::max() - 2};
-constexpr int32_t OP_INTERSECTION {std::numeric_limits<int32_t>::max() - 3};
-constexpr int32_t OP_UNION        {std::numeric_limits<int32_t>::max() - 4};
+enum SurfaceOperation
+{
+  OP_LEFT_PAREN   = std::numeric_limits<int32_t>::max(),
+  OP_RIGHT_PAREN  = std::numeric_limits<int32_t>::max() - 1,
+  OP_COMPLEMENT   = std::numeric_limits<int32_t>::max() - 2,
+  OP_INTERSECTION = std::numeric_limits<int32_t>::max() - 3,
+  OP_UNION        = std::numeric_limits<int32_t>::max() - 4
+};
 
 //==============================================================================
 // Global variables

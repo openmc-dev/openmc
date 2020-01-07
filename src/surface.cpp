@@ -17,15 +17,6 @@
 namespace openmc {
 
 //==============================================================================
-// Module constant definitions
-//==============================================================================
-
-extern "C" const int BC_TRANSMIT {0};
-extern "C" const int BC_VACUUM {1};
-extern "C" const int BC_REFLECT {2};
-extern "C" const int BC_PERIODIC {3};
-extern "C" const int BC_WHITE {4};
-//==============================================================================
 // Global variables
 //==============================================================================
 

@@ -21,15 +21,19 @@ namespace openmc {
 //==============================================================================
 
 // Secondary energy mode for S(a,b) inelastic scattering
-// TODO: Convert to enum
-constexpr int SAB_SECONDARY_EQUAL  {0}; // Equally-likely outgoing energy bins
-constexpr int SAB_SECONDARY_SKEWED {1}; // Skewed outgoing energy bins
-constexpr int SAB_SECONDARY_CONT   {2}; // Continuous, linear-linear interpolation
+enum SabSecondaryMode
+{
+  SAB_SECONDARY_EQUAL , // Equally-likely outgoing energy bins
+  SAB_SECONDARY_SKEWED, // Skewed outgoing energy bins
+  SAB_SECONDARY_CONT    // Continuous, linear-linear interpolation
+};
 
 // Elastic mode for S(a,b) elastic scattering
-// TODO: Convert to enum
-constexpr int SAB_ELASTIC_INCOHERENT {3}; // Incoherent elastic scattering
-constexpr int SAB_ELASTIC_COHERENT   {4}; // Coherent elastic scattering (Bragg edges)
+enum SabElasticMode
+{
+  SAB_ELASTIC_INCOHERENT = 3, // Incoherent elastic scattering
+  SAB_ELASTIC_COHERENT   = 4  // Coherent elastic scattering (Bragg edges)
+};
 
 //==============================================================================
 // Global variables

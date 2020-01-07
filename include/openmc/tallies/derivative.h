@@ -76,10 +76,12 @@ extern std::unordered_map<int, int> tally_deriv_map;
 } // namespace model
 
 // Independent variables
-//TODO: convert to enum
-constexpr int DIFF_DENSITY {1};
-constexpr int DIFF_NUCLIDE_DENSITY {2};
-constexpr int DIFF_TEMPERATURE {3};
+enum IndependentVariableType
+{
+  DIFF_DENSITY = 1,
+  DIFF_NUCLIDE_DENSITY = 2,
+  DIFF_TEMPERATURE = 3
+};
 
 } // namespace openmc
 

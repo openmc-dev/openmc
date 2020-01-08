@@ -7,7 +7,7 @@ namespace openmc {
 // Non-member functions
 //==============================================================================
 
-void init_event_queues(int n_particles)
+void init_event_queues(int64_t n_particles)
 {
 	simulation::calculate_fuel_xs_queue =    new QueueItem[n_particles];
 	simulation::calculate_nonfuel_xs_queue = new QueueItem[n_particles];
@@ -27,10 +27,10 @@ void free_event_queues(void)
 	delete[] simulation::particles;
 }
 
-void dispatch_xs_event(int i)
+void dispatch_xs_event(int64_t i)
 {
   Particle * p = simulation::particles + i;
-  int idx;
+  int64_t idx;
   if (p->material_ == MATERIAL_VOID) {
     #pragma omp atomic capture
     idx = simulation::calculate_nonfuel_xs_queue_length++;
@@ -61,29 +61,29 @@ void dispatch_xs_event(int i)
   }
 }
 
-void process_calculate_xs_events(QueueItem * queue, int n)
+void process_calculate_xs_events(QueueItem * queue, int64_t n)
 {
   // Sort queue by energy
   std::sort(queue, queue+n);
 
   // Save last_ members, find grid index
   #pragma omp parallel for schedule(runtime)
-  for (int i = 0; i < n; i++) {
+  for (auto i = 0; i < n; i++) {
 	  Particle *p = simulation::particles + queue[i].idx; 
     p->event_calculate_xs_I();
   }
 
   #pragma omp parallel for schedule(runtime)
-  for( int i = 0; i < n; i++ )
+  for( auto i = 0; i < n; i++ )
   {
 	  Particle * p = simulation::particles + queue[i].idx;
     p->event_calculate_xs_II();
   }
 
-  int start = simulation::advance_particle_queue_length;
-  int end = start + n;
-  int j = 0;
-  for( int i = start; i < end; i++ )
+  int64_t start = simulation::advance_particle_queue_length;
+  int64_t end = start + n;
+  int64_t j = 0;
+  for( auto i = start; i < end; i++ )
   {
 	  simulation::advance_particle_queue[i].idx = queue[j].idx;
 	  simulation::advance_particle_queue[i].E = simulation::particles[queue[j].idx].E_;
@@ -97,12 +97,12 @@ void process_calculate_xs_events(QueueItem * queue, int n)
 void process_advance_particle_events()
 {
   #pragma omp parallel for schedule(runtime)
-  for (int i = 0; i < simulation::advance_particle_queue_length; i++) {
+  for (auto i = 0; i < simulation::advance_particle_queue_length; i++) {
 	  Particle * p = simulation::particles + simulation::advance_particle_queue[i].idx;
     p->event_advance();
     if( p->collision_distance_ > p->boundary_.distance ) 
     {
-      int idx;
+      int64_t idx;
       #pragma omp atomic capture
       idx = simulation::surface_crossing_queue_length++;
       simulation::surface_crossing_queue[idx].idx = simulation::advance_particle_queue[i].idx;
@@ -112,7 +112,7 @@ void process_advance_particle_events()
     }
     else
     {
-      int idx;
+      int64_t idx;
       #pragma omp atomic capture
       idx = simulation::collision_queue_length++;
       simulation::collision_queue[idx].idx = simulation::advance_particle_queue[i].idx;
@@ -127,7 +127,7 @@ void process_advance_particle_events()
 void process_surface_crossing_events()
 {
   #pragma omp parallel for schedule(runtime)
-  for (int i = 0; i < simulation::surface_crossing_queue_length; i++) {
+  for (auto i = 0; i < simulation::surface_crossing_queue_length; i++) {
 	  Particle * p = simulation::particles + simulation::surface_crossing_queue[i].idx;
     p->event_cross_surface();
     p->event_revive_from_secondary();
@@ -141,7 +141,7 @@ void process_surface_crossing_events()
 void process_collision_events()
 {
   #pragma omp parallel for schedule(runtime)
-  for (int i = 0; i < simulation::collision_queue_length; i++) {
+  for (auto i = 0; i < simulation::collision_queue_length; i++) {
 	  Particle * p = simulation::particles + simulation::collision_queue[i].idx;
     p->event_collide();
     p->event_revive_from_secondary();
@@ -167,13 +167,13 @@ QueueItem* collision_queue;
 
 Particle* particles;
 
-int calculate_fuel_xs_queue_length {0};
-int calculate_nonfuel_xs_queue_length {0};
-int advance_particle_queue_length {0};
-int surface_crossing_queue_length {0};
-int collision_queue_length {0};
+int64_t calculate_fuel_xs_queue_length {0};
+int64_t calculate_nonfuel_xs_queue_length {0};
+int64_t advance_particle_queue_length {0};
+int64_t surface_crossing_queue_length {0};
+int64_t collision_queue_length {0};
 
-int max_particles_in_flight {100000};
+int64_t max_particles_in_flight {100000};
 
 } // namespace simulation
 

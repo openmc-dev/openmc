@@ -14,7 +14,7 @@ namespace openmc {
 //==============================================================================
 
 struct QueueItem{
-  int idx;      // particle index in event-based buffer
+  int64_t idx;      // particle index in event-based buffer
   double E;     // particle energy
   int material; // material that particle is in
   Particle::Type type;
@@ -56,12 +56,12 @@ extern QueueItem * advance_particle_queue;
 extern QueueItem * surface_crossing_queue;
 extern QueueItem * collision_queue;
 extern Particle * particles;
-extern int calculate_fuel_xs_queue_length;
-extern int calculate_nonfuel_xs_queue_length;
-extern int advance_particle_queue_length;
-extern int surface_crossing_queue_length;
-extern int collision_queue_length;
-extern int max_particles_in_flight;
+extern int64_t calculate_fuel_xs_queue_length;
+extern int64_t calculate_nonfuel_xs_queue_length;
+extern int64_t advance_particle_queue_length;
+extern int64_t surface_crossing_queue_length;
+extern int64_t collision_queue_length;
+extern int64_t max_particles_in_flight;
 
 } // namespace simulation
 
@@ -69,10 +69,10 @@ extern int max_particles_in_flight;
 // Functions
 //==============================================================================
 
-void init_event_queues(int n_particles);
+void init_event_queues(int64_t n_particles);
 void free_event_queues(void);
-void dispatch_xs_event(int i);
-void process_calculate_xs_events(QueueItem * queue, int n);
+void dispatch_xs_event(int64_t i);
+void process_calculate_xs_events(QueueItem * queue, int64_t n);
 void process_advance_particle_events();
 void process_surface_crossing_events();
 void process_collision_events();

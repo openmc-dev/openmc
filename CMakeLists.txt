@@ -13,12 +13,13 @@ set(CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules)
 # Command line options
 #===============================================================================
 
-option(openmp   "Enable shared-memory parallelism with OpenMP"   ON)
-option(profile  "Compile with profiling flags"                   OFF)
-option(debug    "Compile with debug flags"                       OFF)
-option(optimize "Turn on all compiler optimization flags"        OFF)
-option(coverage "Compile with coverage analysis flags"           OFF)
-option(dagmc    "Enable support for DAGMC (CAD) geometry"        OFF)
+option(openmp      "Enable shared-memory parallelism with OpenMP"   ON)
+option(profile     "Compile with profiling flags"                   OFF)
+option(debug       "Compile with debug flags"                       OFF)
+option(optimize    "Turn on all compiler optimization flags"        OFF)
+option(coverage    "Compile with coverage analysis flags"           OFF)
+option(dagmc       "Enable support for DAGMC (CAD) geometry"        OFF)
+option(event-based "Enable event-based simulation mode"             OFF)
 
 #===============================================================================
 # MPI for distributed-memory parallelism
@@ -333,6 +334,10 @@ if(dagmc)
   target_compile_definitions(libopenmc PRIVATE DAGMC)
   target_link_libraries(libopenmc ${DAGMC_LIBRARIES})
   target_include_directories(libopenmc PRIVATE ${DAGMC_INCLUDE_DIRS})
+endif()
+
+if(event-based)
+  target_compile_definitions(libopenmc PRIVATE EVENT_BASED)
 endif()
 
 #===============================================================================

@@ -2209,6 +2209,21 @@ class Halfspace(Region):
         surfaces[self.surface.id] = self.surface
         return surfaces
 
+    def remove_redundant_surfaces(self, redundant_surfaces):
+        """Recursively remove all redundant surfaces referenced by this region
+
+        Parameters
+        ----------
+        redundant_surfaces : dict
+            Dictionary mapping redundant surface IDs to surface IDs for the 
+            :class:`openmc.Surface` instances that should replace them.
+
+        """
+
+        surf = redundant_surfaces.get(self.surface.id)
+        if surf is not None:
+            self.surface = surf
+
     def clone(self, memo=None):
         """Create a copy of this halfspace, with a cloned surface with a
         unique ID.

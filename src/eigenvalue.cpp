@@ -20,10 +20,6 @@
 #include "openmc/timer.h"
 #include "openmc/tallies/tally.h"
 
-#ifdef _OPENMP
-#include <omp.h>
-#endif
-
 #include <algorithm> // for min
 #include <array>
 #include <cmath> // for sqrt, abs, pow
@@ -350,42 +346,6 @@ void calculate_average_keff()
     }
   }
 }
-
-/*
-#ifdef _OPENMP
-void join_bank_from_threads()
-{
-  int n_threads = omp_get_max_threads();
-
-  #pragma omp parallel
-  {
-    // Copy thread fission bank sites to one shared copy
-    #pragma omp for ordered schedule(static)
-    for (int i = 0; i < n_threads; ++i) {
-      #pragma omp ordered
-      {
-        std::copy(
-          simulation::fission_bank.cbegin(),
-          simulation::fission_bank.cend(),
-          std::back_inserter(simulation::master_fission_bank)
-        );
-      }
-    }
-
-    // Make sure all threads have made it to this point
-    #pragma omp barrier
-
-    // Now copy the shared fission bank sites back to the master thread's copy.
-    if (omp_get_thread_num() == 0) {
-      simulation::fission_bank = simulation::master_fission_bank;
-      simulation::master_fission_bank.clear();
-    } else {
-      simulation::fission_bank.clear();
-    }
-  }
-}
-#endif
-*/
 
 int openmc_get_keff(double* k_combined)
 {

@@ -70,7 +70,7 @@ def main():
     event_based = (os.environ.get('EVENT_BASED') == 'y')
 
     # Build and install
-    install(omp, mpi, phdf5, dagmc, event-based)
+    install(omp, mpi, phdf5, dagmc, event_based)
 
 if __name__ == '__main__':
     main()

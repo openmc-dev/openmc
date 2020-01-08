@@ -177,16 +177,10 @@ void transport_event_based()
 		}
 
     // Finish particle track output and contribute to global tally variables
+    #pragma omp parallel for schedule(runtime)
     for (int i = 0; i < n_particles; i++) {
       Particle& p = simulation::particles[i];
-      if (p.write_track_) {
-        write_particle_track(p);
-        finalize_particle_track(p);
-      }
-      global_tally_absorption +=  p.tally_absorption_;
-      global_tally_collision +=   p.tally_collision_;
-      global_tally_tracklength += p.tally_tracklength_;
-      global_tally_leakage +=     p.tally_leakage_;
+      p.event_death();
     }
 
 		remaining_work -= n_particles;
@@ -554,49 +548,6 @@ void initialize_generation()
   }
 }
 
-/*
-struct bank_site_comparator
-{
-  inline bool operator() (const Particle::Bank & a, const Particle::Bank & b)
-  {
-    if( a.E < b.E )
-      return true;
-    else if( a.E > b.E )
-      return false;
-    else // Energy equal, compare by x-coord
-    {
-      if(a.r.x < b.r.x )
-        return true;
-      else if (a.r.x > b.r.x)
-        return false;
-      else // x-coord equal, compare by y-coord
-      {
-        if(a.r.x < b.r.x )
-          return true;
-        else if (a.r.x > b.r.x)
-          return false;
-        else // y-coord equal, compare by z-coord
-        {
-          if(a.r.y < b.r.y )
-            return true;
-          else if (a.r.y > b.r.y)
-            return false;
-          else // y-coord equal, compare by z-coord
-          {
-            if(a.r.z < b.r.z )
-              return true;
-            else if (a.r.z > b.r.z)
-              return false;
-            else // they are the same
-              return false;
-          }
-        }
-      }
-    }
-  }
-};
-*/
-
 void finalize_generation()
 {
   auto& gt = simulation::global_tallies;
@@ -654,15 +605,6 @@ void initialize_history(Particle* p, int64_t index_source)
   // set defaults
   p->from_source(&simulation::source_bank[index_source - 1]);
   p->current_work_ = index_source;
-  /*
-  p->n_event_ = 0;
-
-  // Initialize global tally variables
-  p->tally_absorption_ =  0.0;
-  p->tally_collision_ =   0.0;
-  p->tally_tracklength_ = 0.0;
-  p->tally_leakage_ =     0.0;
-  */
 
   // set identifier for particle
   p->id_ = simulation::work_index[mpi::rank] + index_source;

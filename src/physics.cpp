@@ -176,14 +176,22 @@ create_fission_sites(Particle* p, int i_nuclide, const Reaction* rx,
   double nu_d[MAX_DELAYED_GROUPS] = {0.};
 
   p->fission_ = true;
+  int skipped = 0;
   for (int i = 0; i < nu; ++i) {
     Particle::Bank * site;
     if(use_fission_bank)
     {
-      // Create new bank site and get reference to last element
       int idx;
       #pragma omp atomic capture
       idx = simulation::shared_fission_bank_length++;
+      if( idx >= simulation::shared_fission_bank_max )
+      {
+        warning("The shared fission bank is full. Additional fission sites created in this generation will not be banked.");
+        #pragma omp atomic
+        simulation::shared_fission_bank_length--;
+        skipped++;
+        break;
+      }
       site = simulation::shared_fission_bank + idx;
     }
     else
@@ -211,11 +219,23 @@ create_fission_sites(Particle* p, int i_nuclide, const Reaction* rx,
     // Write fission particles to nuBank
     if(use_fission_bank)
     {
-      p->nu_bank_[nu-1-i].wgt             = site->wgt;
-      p->nu_bank_[nu-1-i].E               = site->E;
-      p->nu_bank_[nu-1-i].delayed_group   = site->delayed_group;
+      p->nu_bank_[i].wgt             = site->wgt;
+      p->nu_bank_[i].E               = site->E;
+      p->nu_bank_[i].delayed_group   = site->delayed_group;
     }
   }
+  
+  // If shared fission bank was full, and no fissions could be added,
+  // set the particle fission flag to false.
+  if( nu == skipped )
+  {
+    p->fission_ = false;
+    return;
+  }
+
+  // If shared fission bank was full, but some fissions could be added,
+  // reduce nu accordingly
+  nu -= skipped;
 
   // Store the total weight banked for analog fission tallies
   p->n_bank_ = nu;

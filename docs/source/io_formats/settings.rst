@@ -96,6 +96,17 @@ When the DAGMC mode is enabled, the OpenMC geometry will be read from the file
 ``dagmc.h5m``. If a :ref:`geometry.xml <io_geometry>` file is present with
 ``dagmc`` set to ``true``, it will be ignored.
 
+----------------------------
+``<delayed_photon_scaling>``
+----------------------------
+
+Determines whether to scale the fission photon yield to account for delayed
+photon energy. The photon yields are scaled as (EGP + EGD)/EGP where EGP and EGD
+are the prompt and delayed photon components of energy release, respectively,
+from MF=1, MT=458 on an ENDF evaluation.
+
+  *Default*: true
+
 --------------------------------
 ``<electron_treatment>`` Element
 --------------------------------

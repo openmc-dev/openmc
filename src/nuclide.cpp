@@ -305,11 +305,13 @@ void Nuclide::create_derived(const Function1D* prompt_photons, const Function1D*
             // For fission, artificially increase the photon yield to account
             // for delayed photons
             double f = 1.0;
-            if (is_fission(rx->mt_)) {
-              if (prompt_photons && delayed_photons) {
-                double energy_prompt = (*prompt_photons)(E);
-                double energy_delayed = (*delayed_photons)(E);
-                f = (energy_prompt + energy_delayed)/(energy_prompt);
+            if (settings::delayed_photon_scaling) {
+              if (is_fission(rx->mt_)) {
+                if (prompt_photons && delayed_photons) {
+                  double energy_prompt = (*prompt_photons)(E);
+                  double energy_delayed = (*delayed_photons)(E);
+                  f = (energy_prompt + energy_delayed)/(energy_prompt);
+                }
               }
             }
 

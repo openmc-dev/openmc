@@ -391,6 +391,12 @@ Particle::event_death()
   global_tally_tracklength += tally_tracklength_;
   #pragma omp atomic
   global_tally_leakage += tally_leakage_;
+
+  // Reset particle tallies once accumulated
+  tally_absorption_  = 0.0;
+  tally_collision_   = 0.0;
+  tally_tracklength_ = 0.0;
+  tally_leakage_     = 0.0;
 }
 
 

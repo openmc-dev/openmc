@@ -16,7 +16,7 @@
 
 namespace openmc {
 
-extern "C" enum BoundaryConditionType
+enum BoundaryConditionType
 {
  BC_TRANSMIT,
  BC_VACUUM,

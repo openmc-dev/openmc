@@ -83,6 +83,11 @@
       </element>
     </optional>
     <optional>
+      <element name="delayed_photon_scaling">
+        <data type="boolean"/>
+      </element>
+    </optional>
+    <optional>
       <element name="electron_treatment">
         <choice>
           <value>led</value>

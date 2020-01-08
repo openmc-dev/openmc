@@ -40,6 +40,10 @@ class Settings(object):
         below which particle type will be killed.
     dagmc : bool
         Indicate that a CAD-based DAGMC geometry will be used.
+    delayed_photon_scaling : bool
+        Indicate whether to scale the fission photon yield by (EGP + EGD)/EGP
+        where EGP is the energy release of prompt photons and EGD is the energy
+        release of delayed photons.
     electron_treatment : {'led', 'ttb'}
         Whether to deposit all energy from electrons locally ('led') or create
         secondary bremsstrahlung photons ('ttb').
@@ -219,6 +223,7 @@ class Settings(object):
             VolumeCalculation, 'volume calculations')
 
         self._create_fission_neutrons = None
+        self._delayed_photon_scaling = None
         self._material_cell_offsets = None
         self._log_grid_bins = None
 
@@ -355,6 +360,10 @@ class Settings(object):
     @property
     def create_fission_neutrons(self):
         return self._create_fission_neutrons
+
+    @property
+    def delayed_photon_scaling(self):
+        return self._delayed_photon_scaling
 
     @property
     def material_cell_offsets(self):
@@ -691,6 +700,11 @@ class Settings(object):
                       create_fission_neutrons, bool)
         self._create_fission_neutrons = create_fission_neutrons
 
+    @delayed_photon_scaling.setter
+    def delayed_photon_scaling(self, value):
+        cv.check_type('delayed photon scaling', value, bool)
+        self._delayed_photon_scaling = value
+
     @material_cell_offsets.setter
     def material_cell_offsets(self, value):
         cv.check_type('material cell offsets', value, bool)
@@ -930,6 +944,11 @@ class Settings(object):
             elem = ET.SubElement(root, "create_fission_neutrons")
             elem.text = str(self._create_fission_neutrons).lower()
 
+    def _create_delayed_photon_scaling_subelement(self, root):
+        if self._delayed_photon_scaling is not None:
+            elem = ET.SubElement(root, "delayed_photon_scaling")
+            elem.text = str(self._delayed_photon_scaling).lower()
+
     def _create_material_cell_offsets_subelement(self, root):
         if self._material_cell_offsets is not None:
             elem = ET.SubElement(root, "material_cell_offsets")
@@ -1166,6 +1185,11 @@ class Settings(object):
         if text is not None:
             self.create_fission_neutrons = text in ('true', '1')
 
+    def _delayed_photon_scaling_from_xml_element(self, root):
+        text = get_text(root, 'delayed_photon_scaling')
+        if text is not None:
+            self.delayed_photon_scaling = text in ('true', '1')
+
     def _material_cell_offsets_from_xml_element(self, root):
         text = get_text(root, 'material_cell_offsets')
         if text is not None:
@@ -1225,6 +1249,7 @@ class Settings(object):
         self._create_resonance_scattering_subelement(root_element)
         self._create_volume_calcs_subelement(root_element)
         self._create_create_fission_neutrons_subelement(root_element)
+        self._create_delayed_photon_scaling_subelement(root_element)
         self._create_material_cell_offsets_subelement(root_element)
         self._create_log_grid_bins_subelement(root_element)
         self._create_dagmc_subelement(root_element)
@@ -1291,6 +1316,7 @@ class Settings(object):
         settings._ufs_mesh_from_xml_element(root)
         settings._resonance_scattering_from_xml_element(root)
         settings._create_fission_neutrons_from_xml_element(root)
+        settings._delayed_photon_scaling_from_xml_element(root)
         settings._material_cell_offsets_from_xml_element(root)
         settings._log_grid_bins_from_xml_element(root)
         settings._dagmc_from_xml_element(root)

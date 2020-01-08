@@ -334,7 +334,7 @@ public:
 
   std::vector<std::vector<Position>> tracks_;
 
-  NuBank nu_bank_[15];
+  std::vector<NuBank> nu_bank_;
 
   double tally_absorption_ {0.0};
   double tally_collision_ {0.0};

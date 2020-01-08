@@ -28,6 +28,7 @@
 #include "openmc/tallies/tally_scoring.h"
 #include "openmc/tallies/trigger.h"
 #include "openmc/track_output.h"
+#include "openmc/event.h"
 
 #ifdef _OPENMP
 #include <omp.h>
@@ -42,239 +43,7 @@
 #include <string>
 #include <chrono> 
 
-#define DYNAMIC_SIZE 8
-
 namespace openmc {
-
-	/*
-extern std::vector<Particle*> calculate_fuel_xs_queue;
-extern std::vector<Particle*> calculate_nonfuel_xs_queue;
-extern std::vector<Particle*> advance_particle_queue;
-extern std::vector<Particle*> surface_crossing_queue;
-extern std::vector<Particle*> collision_queue;
-#pragma omp threadprivate(calculate_fuel_xs_queue, calculate_nonfuel_xs_queue, advance_particle_queue, surface_crossing_queue, collision_queue)
-
-std::vector<Particle*> calculate_fuel_xs_queue;
-std::vector<Particle*> calculate_nonfuel_xs_queue;
-std::vector<Particle*> advance_particle_queue;
-std::vector<Particle*> surface_crossing_queue;
-std::vector<Particle*> collision_queue;
-*/
-
-struct QueueItem{
-	int idx;      // particle index in event-based buffer
-	double E;     // particle energy
-	int material; // material that particle is in
-  Particle::Type type;
-  bool operator<(const QueueItem & rhs) const
-  {
-    // First, compare by type
-    if( type < rhs.type )
-      return true;
-    if( type > rhs.type )
-      return false;
-
-    // At this point, we have the same particle types.
-    // Now, compare by material
-    
-    // TODO: Temporarily disabled as SMR problem has different material IDs for every pin
-    // Need to sort by material type instead...
-    /*
-    if( material < rhs.material)
-      return true;
-    if( material > rhs.material)
-      return false;
-      */
-
-    // At this point, we have the same particle type, in the same material.
-    // Now, compare by energy
-    return (E < rhs.E);
-  }
-};
-bool by_energy   (QueueItem a, QueueItem b) { return (a.E        < b.E); }
-bool by_material (QueueItem a, QueueItem b) { return (a.material < b.material); }
-
-QueueItem * calculate_fuel_xs_queue;
-QueueItem * calculate_nonfuel_xs_queue;
-QueueItem * advance_particle_queue;
-QueueItem * surface_crossing_queue;
-QueueItem * collision_queue;
-Particle * particles;
-
-int calculate_fuel_xs_queue_length    = 0;
-int calculate_nonfuel_xs_queue_length = 0;
-int advance_particle_queue_length     = 0;
-int surface_crossing_queue_length     = 0;
-int collision_queue_length            = 0;
-
-const int MAX_PARTICLES_IN_FLIGHT = 1000000;
-
-void init_event_queues(int n_particles)
-{
-	calculate_fuel_xs_queue =    new QueueItem[n_particles];
-	calculate_nonfuel_xs_queue = new QueueItem[n_particles];
-	advance_particle_queue =     new QueueItem[n_particles];
-	surface_crossing_queue =     new QueueItem[n_particles];
-	collision_queue =            new QueueItem[n_particles];
-	particles =                  new Particle[n_particles];
-}
-
-void free_event_queues(void)
-{
-	delete[] calculate_fuel_xs_queue;
-	delete[] calculate_nonfuel_xs_queue;
-	delete[] advance_particle_queue;
-	delete[] surface_crossing_queue;
-	delete[] collision_queue;
-	delete[] particles;
-}
-
-constexpr size_t MAX_PARTICLES_PER_THREAD {100};
-
-Particle::Bank * shared_fission_bank;
-int shared_fission_bank_length = 0;
-int shared_fission_bank_max;
-
-void init_shared_fission_bank(int max)
-{
-	shared_fission_bank_max = max;
-	shared_fission_bank = new Particle::Bank[max];
-}
-
-void free_shared_fission_bank(void)
-{
-	delete[] shared_fission_bank;
-	shared_fission_bank_length = 0;
-}
-
-void dispatch_xs_event(int i)
-{
-  Particle * p = particles + i;
-  int idx;
-  if (p->material_ == MATERIAL_VOID) {
-    #pragma omp atomic capture
-    idx = calculate_nonfuel_xs_queue_length++;
-    //std::cout << "Dispatching particle to non Fuel XS queue idx = " << idx << std::endl;
-    calculate_nonfuel_xs_queue[idx].idx = i;
-    calculate_nonfuel_xs_queue[idx].E = p->E_;
-    calculate_nonfuel_xs_queue[idx].material = p->material_;
-    calculate_nonfuel_xs_queue[idx].type = p->type_;
-  }
-  else
-  {
-    if (model::materials[p->material_]->fissionable_) {
-      #pragma omp atomic capture
-      idx = calculate_fuel_xs_queue_length++;
-      //std::cout << "Dispatching particle to Fuel XS queue idx = " << idx << std::endl;
-      calculate_fuel_xs_queue[idx].idx = i;
-      calculate_fuel_xs_queue[idx].E = p->E_;
-      calculate_fuel_xs_queue[idx].material = p->material_;
-      calculate_fuel_xs_queue[idx].type = p->type_;
-    }
-    else
-    {
-      #pragma omp atomic capture
-      idx = calculate_nonfuel_xs_queue_length++;
-      //std::cout << "Dispatching particle to non Fuel XS queue idx = " << idx << std::endl;
-      calculate_nonfuel_xs_queue[idx].idx = i;
-      calculate_nonfuel_xs_queue[idx].E = p->E_;
-      calculate_nonfuel_xs_queue[idx].material = p->material_;
-      calculate_nonfuel_xs_queue[idx].type = p->type_;
-    }
-  }
-}
-
-void process_calculate_xs_events(QueueItem * queue, int n)
-{
-  // Sort queue by energy
-  std::sort(queue, queue+n);
-
-  // Save last_ members, find grid index
-  #pragma omp parallel for schedule(dynamic,DYNAMIC_SIZE)
-  for (int i = 0; i < n; i++) {
-	  Particle *p = particles + queue[i].idx; 
-    p->event_calculate_xs_I();
-  }
-
-  #pragma omp parallel for schedule(dynamic, DYNAMIC_SIZE)
-  for( int i = 0; i < n; i++ )
-  {
-	  Particle * p = particles + queue[i].idx;
-    p->event_calculate_xs_II();
-  }
-
-  int start = advance_particle_queue_length;
-  int end = start + n;
-  int j = 0;
-  for( int i = start; i < end; i++ )
-  {
-	  advance_particle_queue[i].idx = queue[j].idx;
-	  advance_particle_queue[i].E = particles[queue[j].idx].E_;
-	  advance_particle_queue[i].material = particles[queue[j].idx].material_;
-	  advance_particle_queue[i].type = particles[queue[j].idx].type_;
-	  j++;
-  }
-  advance_particle_queue_length += n;
-}
-
-void process_advance_particle_events()
-{
-  #pragma omp parallel for schedule(dynamic, DYNAMIC_SIZE)
-  for (int i = 0; i < advance_particle_queue_length; i++) {
-	  Particle * p = particles + advance_particle_queue[i].idx;
-    p->event_advance();
-    if( p->collision_distance_ > p->boundary_.distance ) 
-    {
-      int idx;
-      #pragma omp atomic capture
-      idx = surface_crossing_queue_length++;
-      surface_crossing_queue[idx].idx = advance_particle_queue[i].idx;
-      surface_crossing_queue[idx].E = p->E_;
-      surface_crossing_queue[idx].material = p->material_;
-      surface_crossing_queue[idx].type = p->type_;
-    }
-    else
-    {
-      int idx;
-      #pragma omp atomic capture
-      idx = collision_queue_length++;
-      collision_queue[idx].idx = advance_particle_queue[i].idx;
-      collision_queue[idx].E = p->E_;
-      collision_queue[idx].material = p->material_;
-      collision_queue[idx].type = p->type_;
-    }
-  }
-  advance_particle_queue_length = 0;
-}
-
-void process_surface_crossing_events()
-{
-  #pragma omp parallel for schedule(dynamic, DYNAMIC_SIZE)
-  for (int i = 0; i < surface_crossing_queue_length; i++) {
-	  Particle * p = particles + surface_crossing_queue[i].idx;
-    p->event_cross_surface();
-    p->event_revive_from_secondary();
-    if (p->alive_)
-      dispatch_xs_event(surface_crossing_queue[i].idx);
-  }
-
-  surface_crossing_queue_length = 0;
-}
-
-void process_collision_events()
-{
-  #pragma omp parallel for schedule(dynamic,DYNAMIC_SIZE)
-  for (int i = 0; i < collision_queue_length; i++) {
-	  Particle * p = particles + collision_queue[i].idx;
-    p->event_collide();
-    p->event_revive_from_secondary();
-    if (p->alive_)
-      dispatch_xs_event(collision_queue[i].idx);
-  }
-
-  collision_queue_length = 0;
-}
-
 
 double get_time()
 {
@@ -290,7 +59,7 @@ double get_time()
 	return (double) us_since_epoch / 1.0e6;
 }
 
-void transport_history_based_inner(Particle& p)
+void transport_history_based_single_particle(Particle& p)
 {
   while(true) {
     p.event_calculate_xs_I();
@@ -313,7 +82,7 @@ void transport_history_based()
   for (int64_t i_work = 1; i_work <= simulation::work_per_rank; ++i_work) {
     Particle p;
     initialize_history(&p, i_work);
-    transport_history_based_inner(p);
+    transport_history_based_single_particle(p);
   }
 }
 
@@ -333,7 +102,7 @@ void transport_event_based()
 	int remaining_work = simulation::work_per_rank;
 	int source_offset = 0;
 		
-	int max_n_particles = MAX_PARTICLES_IN_FLIGHT;
+	int max_n_particles = simulation::max_particles_in_flight;
 	if( max_n_particles > remaining_work)
 		max_n_particles = remaining_work;
 	init_event_queues(max_n_particles);
@@ -346,17 +115,17 @@ void transport_event_based()
     start = get_time();
 
 		// Figure out work for this subiteration
-		int n_particles = MAX_PARTICLES_IN_FLIGHT;
+		int n_particles = simulation::max_particles_in_flight;
 		if( n_particles > remaining_work)
 			n_particles = remaining_work;
 
-    #pragma omp parallel for schedule(dynamic, DYNAMIC_SIZE)
+    #pragma omp parallel for schedule(runtime)
     for (int i = 0; i < n_particles; i++) {
-      initialize_history(particles + i, source_offset + i + 1);
+      initialize_history(simulation::particles + i, source_offset + i + 1);
     }
 
 		// Add all particles to advance particle queue
-     #pragma omp parallel for schedule(dynamic, DYNAMIC_SIZE)
+     #pragma omp parallel for schedule(runtime)
 		for (int i = 0; i < n_particles; i++) {
 			dispatch_xs_event(i);
 		}
@@ -367,32 +136,39 @@ void transport_event_based()
 		int event_kernel_executions = 0;
 		while (true) {
 			event_kernel_executions++;
-			int max = std::max({calculate_fuel_xs_queue_length, calculate_nonfuel_xs_queue_length, advance_particle_queue_length, surface_crossing_queue_length, collision_queue_length});
+			int max = std::max({
+          simulation::calculate_fuel_xs_queue_length,
+          simulation::calculate_nonfuel_xs_queue_length,
+          simulation::advance_particle_queue_length,
+          simulation::surface_crossing_queue_length,
+          simulation::collision_queue_length});
 			if (max == 0) {
 				break;
-			} else if (max == calculate_fuel_xs_queue_length) {
+			} else if (max == simulation::calculate_fuel_xs_queue_length) {
 				start = get_time();
-				process_calculate_xs_events(calculate_fuel_xs_queue, calculate_fuel_xs_queue_length);
+				process_calculate_xs_events(simulation::calculate_fuel_xs_queue,
+            simulation::calculate_fuel_xs_queue_length);
 				stop = get_time();
 				time_fuel_xs += (stop-start);
-				calculate_fuel_xs_queue_length = 0;
-			} else if (max == calculate_nonfuel_xs_queue_length) {
+        simulation::calculate_fuel_xs_queue_length = 0;
+			} else if (max == simulation::calculate_nonfuel_xs_queue_length) {
 				start = get_time();
-				process_calculate_xs_events(calculate_nonfuel_xs_queue, calculate_nonfuel_xs_queue_length);
+				process_calculate_xs_events(simulation::calculate_nonfuel_xs_queue,
+            simulation::calculate_nonfuel_xs_queue_length);
 				stop = get_time();
 				time_nonfuel_xs += (stop-start);
-				calculate_nonfuel_xs_queue_length = 0;
-			} else if (max == advance_particle_queue_length) {
+        simulation::calculate_nonfuel_xs_queue_length = 0;
+			} else if (max == simulation::advance_particle_queue_length) {
 				start = get_time();
 				process_advance_particle_events();
 				stop = get_time();
 				time_advance += (stop-start);
-			} else if (max == surface_crossing_queue_length) {
+			} else if (max == simulation::surface_crossing_queue_length) {
 				start = get_time();
 				process_surface_crossing_events();
 				stop = get_time();
 				time_surf += (stop-start);
-			} else if (max == collision_queue_length) {
+			} else if (max == simulation::collision_queue_length) {
 				start = get_time();
 				process_collision_events();
 				stop = get_time();
@@ -402,7 +178,7 @@ void transport_event_based()
 
     // Finish particle track output and contribute to global tally variables
     for (int i = 0; i < n_particles; i++) {
-      Particle& p = particles[i];
+      Particle& p = simulation::particles[i];
       if (p.write_track_) {
         write_particle_track(p);
         finalize_particle_track(p);
@@ -652,6 +428,7 @@ const RegularMesh* ufs_mesh {nullptr};
 std::vector<double> k_generation;
 std::vector<int64_t> work_index;
 
+
 } // namespace simulation
 
 //==============================================================================
@@ -842,9 +619,9 @@ void finalize_generation()
 
   if (settings::run_mode == RUN_MODE_EIGENVALUE) {	
 	  // We need to move all the stuff from the shared_fission_bank into the real one.
-	  for( int i = 0; i < shared_fission_bank_length; i++ )
-		  simulation::fission_bank.push_back(shared_fission_bank[i]);
-	  shared_fission_bank_length = 0;
+	  for( int i = 0; i < simulation::shared_fission_bank_length; i++ )
+		  simulation::fission_bank.push_back(simulation::shared_fission_bank[i]);
+	  simulation::shared_fission_bank_length = 0;
 
     // Sorts the fission bank so as to allow for reproducibility
     std::stable_sort(simulation::fission_bank.begin(), simulation::fission_bank.end());

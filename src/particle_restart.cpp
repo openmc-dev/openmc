@@ -121,7 +121,7 @@ void run_particle_restart()
   p.filter_matches_.resize(model::tally_filters.size());
 
   // Transport neutron
-  transport_history_based_inner(p);
+  transport_history_based_single_particle(p);
 
   // Write output if particle made it
   print_particle(&p);

@@ -16,10 +16,6 @@ constexpr int STATUS_EXIT_NORMAL {0};
 constexpr int STATUS_EXIT_MAX_BATCH {1};
 constexpr int STATUS_EXIT_ON_TRIGGER {2};
 
-extern Particle::Bank * shared_fission_bank;
-extern int shared_fission_bank_length;
-extern int shared_fission_bank_max;
-
 //==============================================================================
 // Global variable declarations
 //==============================================================================
@@ -49,11 +45,6 @@ extern const RegularMesh* ufs_mesh;
 extern std::vector<double> k_generation;
 extern std::vector<int64_t> work_index;
 
-//// Threadprivate variables
-//extern "C" bool trace;     //!< flag to show debug information
-
-//#pragma omp threadprivate(trace)
-
 } // namespace simulation
 
 //==============================================================================
@@ -74,7 +65,7 @@ void initialize_generation();
 
 void initialize_history(Particle* p, int64_t index_source);
 
-void transport_history_based_inner(Particle& p);
+void transport_history_based_single_particle(Particle& p);
 
 //! Finalize a batch
 //!

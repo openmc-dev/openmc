@@ -130,8 +130,8 @@ create_fission_sites(Particle* p, std::vector<Particle::Bank>& bank, bool use_fi
       // Create new bank site and get reference to last element
       int idx;
       #pragma omp atomic capture
-      idx = shared_fission_bank_length++;
-      site = shared_fission_bank + idx;
+      idx = simulation::shared_fission_bank_length++;
+      site = simulation::shared_fission_bank + idx;
     }
     else
     {

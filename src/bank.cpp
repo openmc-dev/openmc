@@ -18,10 +18,10 @@ namespace simulation {
 
 std::vector<Particle::Bank> source_bank;
 std::vector<Particle::Bank> fission_bank;
-//std::vector<Particle::Bank> secondary_bank;
-#ifdef _OPENMP
-std::vector<Particle::Bank> master_fission_bank;
-#endif
+
+Particle::Bank* shared_fission_bank;
+int shared_fission_bank_length {0};
+int shared_fission_bank_max;
 
 } // namespace simulation
 
@@ -32,13 +32,19 @@ std::vector<Particle::Bank> master_fission_bank;
 void free_memory_bank()
 {
   simulation::source_bank.clear();
-  #pragma omp parallel
-  {
-    simulation::fission_bank.clear();
-  }
-#ifdef _OPENMP
-  simulation::master_fission_bank.clear();
-#endif
+  simulation::fission_bank.clear();
+}
+
+void init_shared_fission_bank(int max)
+{
+  simulation::shared_fission_bank_max = max;
+  simulation::shared_fission_bank = new Particle::Bank[max];
+}
+
+void free_shared_fission_bank(void)
+{
+	delete[] simulation::shared_fission_bank;
+  simulation::shared_fission_bank_length = 0;
 }
 
 //==============================================================================

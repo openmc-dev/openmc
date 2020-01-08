@@ -14,6 +14,7 @@ extern template class std::vector<openmc::Particle::Bank>;
 
 namespace openmc {
 
+
 //==============================================================================
 // Global variables
 //==============================================================================
@@ -23,6 +24,10 @@ namespace simulation {
 extern std::vector<Particle::Bank> source_bank;
 extern std::vector<Particle::Bank> fission_bank;
 
+extern Particle::Bank* shared_fission_bank;
+extern int shared_fission_bank_length;
+extern int shared_fission_bank_max;
+
 } // namespace simulation
 
 //==============================================================================
@@ -30,6 +35,9 @@ extern std::vector<Particle::Bank> fission_bank;
 //==============================================================================
 
 void free_memory_bank();
+
+void init_shared_fission_bank(int max);
+void free_shared_fission_bank(void);
 
 } // namespace openmc
 

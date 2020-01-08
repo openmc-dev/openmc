@@ -39,6 +39,7 @@ void init_shared_fission_bank(int max)
 {
   simulation::shared_fission_bank_max = max;
   simulation::shared_fission_bank = new Particle::Bank[max];
+  simulation::shared_fission_bank_length = 0;
 }
 
 void free_shared_fission_bank(void)

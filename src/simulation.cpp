@@ -405,7 +405,6 @@ namespace simulation {
 
 int current_batch;
 int current_gen;
-//int64_t current_work;
 bool initialized {false};
 double keff {1.0};
 double keff_std;
@@ -574,7 +573,7 @@ void finalize_generation()
   global_tally_leakage = 0.0;
 
   if (settings::run_mode == RUN_MODE_EIGENVALUE) {	
-	  // We need to move all the stuff from the shared_fission_bank into the real one.
+    // Copy shared fission bank into regular bank for use in MPI synchronization
 	  for( int i = 0; i < simulation::shared_fission_bank_length; i++ )
 		  simulation::fission_bank.push_back(simulation::shared_fission_bank[i]);
 	  simulation::shared_fission_bank_length = 0;

@@ -101,11 +101,6 @@ void transport_event_based()
 
 	int remaining_work = simulation::work_per_rank;
 	int source_offset = 0;
-		
-	int max_n_particles = simulation::max_particles_in_flight;
-	if( max_n_particles > remaining_work)
-		max_n_particles = remaining_work;
-	init_event_queues(max_n_particles);
 
   stop = get_time();
   time_init += stop - start;
@@ -115,9 +110,7 @@ void transport_event_based()
     start = get_time();
 
 		// Figure out work for this subiteration
-		int n_particles = simulation::max_particles_in_flight;
-		if( n_particles > remaining_work)
-			n_particles = remaining_work;
+    int n_particles = std::min(remaining_work, simulation::max_particles_in_flight);
 
     #pragma omp parallel for schedule(runtime)
     for (int i = 0; i < n_particles; i++) {
@@ -238,9 +231,16 @@ int openmc_simulation_init()
   // fission bank
   allocate_banks();
   init_shared_fission_bank(simulation::work_per_rank * 3);
+	
+  // If doing an event-based simulatino, intialize the particle buffer
+  // and event queues
+  #ifdef EVENT_BASED
+  int event_buffer_length = std::min(simulation::work_per_rank,
+                                     simulation::max_particles_in_flight);
+	init_event_queues(event_buffer_length);
+  #endif
 
   // Allocate tally results arrays if they're not allocated yet
-
   for (auto& t : model::tallies) {
     t->init_results();
   }
@@ -323,6 +323,10 @@ int openmc_simulation_finalize()
   if (settings::check_overlaps) print_overlap_check();
 
   free_shared_fission_bank();
+	
+  #ifdef EVENT_BASED
+  free_event_queues();
+  #endif
 
   // Reset flags
   simulation::need_depletion_rx = false;
@@ -353,9 +357,11 @@ int openmc_next_batch(int* status)
     // Start timer for transport
     simulation::time_transport.start();
 
+    #ifdef EVENT_BASED
+    transport_event_based();
+    #else
     transport_history_based();
-
-    //transport_event_based();
+    #endif
 
     // Accumulate time for transport
     simulation::time_transport.stop();

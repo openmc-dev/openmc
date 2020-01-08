@@ -99,8 +99,8 @@ void transport_event_based()
 
   start = get_time();
 
-	int remaining_work = simulation::work_per_rank;
-	int source_offset = 0;
+	int64_t remaining_work = simulation::work_per_rank;
+	int64_t source_offset = 0;
 
   stop = get_time();
   time_init += stop - start;
@@ -110,16 +110,16 @@ void transport_event_based()
     start = get_time();
 
 		// Figure out work for this subiteration
-    int n_particles = std::min(remaining_work, simulation::max_particles_in_flight);
+    int64_t n_particles = std::min(remaining_work, simulation::max_particles_in_flight);
 
     #pragma omp parallel for schedule(runtime)
-    for (int i = 0; i < n_particles; i++) {
+    for (auto i = 0; i < n_particles; i++) {
       initialize_history(simulation::particles + i, source_offset + i + 1);
     }
 
 		// Add all particles to advance particle queue
      #pragma omp parallel for schedule(runtime)
-		for (int i = 0; i < n_particles; i++) {
+		for (auto i = 0; i < n_particles; i++) {
 			dispatch_xs_event(i);
 		}
   
@@ -129,7 +129,7 @@ void transport_event_based()
 		int event_kernel_executions = 0;
 		while (true) {
 			event_kernel_executions++;
-			int max = std::max({
+			int64_t max = std::max({
           simulation::calculate_fuel_xs_queue_length,
           simulation::calculate_nonfuel_xs_queue_length,
           simulation::advance_particle_queue_length,
@@ -171,7 +171,7 @@ void transport_event_based()
 
     // Finish particle track output and contribute to global tally variables
     #pragma omp parallel for schedule(runtime)
-    for (int i = 0; i < n_particles; i++) {
+    for (auto i = 0; i < n_particles; i++) {
       Particle& p = simulation::particles[i];
       p.event_death();
     }
@@ -190,7 +190,6 @@ void transport_event_based()
 		std::cout << "Surface Time:       " << time_surf << std::endl;
 		std::cout << "Collision Time:     " << time_collision<< std::endl;
 	}
-	free_event_queues();
 }
 
 } // namespace openmc
@@ -235,8 +234,8 @@ int openmc_simulation_init()
   // If doing an event-based simulatino, intialize the particle buffer
   // and event queues
   #ifdef EVENT_BASED
-  int event_buffer_length = std::min(simulation::work_per_rank,
-                                     simulation::max_particles_in_flight);
+  int64_t event_buffer_length = std::min(simulation::work_per_rank,
+                                         simulation::max_particles_in_flight);
 	init_event_queues(event_buffer_length);
   #endif
 

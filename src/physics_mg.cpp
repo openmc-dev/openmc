@@ -112,14 +112,17 @@ create_fission_sites(Particle* p, std::vector<Particle::Bank>& bank, bool use_fi
   // First, if our bank is full then don't continue
   if (nu == 0) return;
   
-  assert( nu < 15 );
 
   // Initialize the counter of delayed neutrons encountered for each delayed
   // group.
   double nu_d[MAX_DELAYED_GROUPS] = {0.};
+  
+  // Clear out particle's nu fission bank
+  p->nu_bank_.clear();
 
   p->fission_ = true;
   int skipped = 0;
+
   for (int i = 0; i < nu; ++i) {
     Particle::Bank * site;
     if(use_fission_bank)
@@ -182,9 +185,12 @@ create_fission_sites(Particle* p, std::vector<Particle::Bank>& bank, bool use_fi
     // Write fission particles to nuBank
     if(use_fission_bank)
     {
-      p->nu_bank_[i].wgt             = site->wgt;
-      p->nu_bank_[i].E               = site->E;
-      p->nu_bank_[i].delayed_group   = site->delayed_group;
+      Particle::NuBank* nu_bank_entry;
+      p->nu_bank_.emplace_back();
+      nu_bank_entry = &p->nu_bank_.back();
+      nu_bank_entry->wgt             = site->wgt;
+      nu_bank_entry->E               = site->E;
+      nu_bank_entry->delayed_group   = site->delayed_group;
     }
   }
   

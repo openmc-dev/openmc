@@ -331,8 +331,6 @@ score_fission_eout(Particle* p, int i_tally, int i_score, int score_bin)
 
   // loop over number of particles banked
   for (auto i = 0; i < p->n_bank_; ++i) {
-    //auto i_bank = simulation::fission_bank.size() - p->n_bank_ + i; //TODO: This is breaking event-based right here
-    //const auto& bank = simulation::fission_bank[i_bank];
     const auto& bank = p->nu_bank_[i];
 
     // get the delayed group

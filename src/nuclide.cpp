@@ -259,17 +259,24 @@ Nuclide::Nuclide(hid_t group, const std::vector<double>& temperature, int i_nucl
   }
 
   // Read fission energy release data if present
+  std::unique_ptr<Function1D> prompt_photons;
+  std::unique_ptr<Function1D> delayed_photons;
   if (object_exists(group, "fission_energy_release")) {
     hid_t fer_group = open_group(group, "fission_energy_release");
     fission_q_prompt_ = read_function(fer_group, "q_prompt");
     fission_q_recov_ = read_function(fer_group, "q_recoverable");
+
+    // We need prompt/delayed photon energy release for scaling fission photon
+    // production
+    prompt_photons = read_function(fer_group, "prompt_photons");
+    delayed_photons = read_function(fer_group, "delayed_photons");
     close_group(fer_group);
   }
 
-  this->create_derived();
+  this->create_derived(prompt_photons.get(), delayed_photons.get());
 }
 
-void Nuclide::create_derived()
+void Nuclide::create_derived(const Function1D* prompt_photons, const Function1D* delayed_photons)
 {
   for (const auto& grid : grid_) {
     // Allocate and initialize cross section
@@ -294,7 +301,19 @@ void Nuclide::create_derived()
           auto pprod = xt::view(xs_[t], xt::range(j, j+n), XS_PHOTON_PROD);
           for (int k = 0; k < n; ++k) {
             double E = grid_[t].energy[k+j];
-            pprod[k] += xs[k] * (*p.yield_)(E);
+
+            // For fission, artificially increase the photon yield to account
+            // for delayed photons
+            double f = 1.0;
+            if (is_fission(rx->mt_)) {
+              if (prompt_photons && delayed_photons) {
+                double energy_prompt = (*prompt_photons)(E);
+                double energy_delayed = (*delayed_photons)(E);
+                f = (energy_prompt + energy_delayed)/(energy_prompt);
+              }
+            }
+
+            pprod[k] += f * xs[k] * (*p.yield_)(E);
           }
         }
       }

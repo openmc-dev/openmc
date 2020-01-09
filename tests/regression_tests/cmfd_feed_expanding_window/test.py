@@ -15,7 +15,7 @@ def test_cmfd_feed_rolling_window():
     cmfd_run = cmfd.CMFDRun()
     cmfd_run.mesh = cmfd_mesh
     cmfd_run.tally_begin = 5
-    cmfd_run.feedback_begin = 10
+    cmfd_run.solver_begin = 10
     cmfd_run.feedback = True
     cmfd_run.gauss_seidel_tolerance = [1.e-15, 1.e-20]
     cmfd_run.window_type = 'expanding'

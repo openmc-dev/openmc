@@ -18,7 +18,7 @@ def test_data_library(tmpdir):
     assert f['type'] == 'neutron'
     assert 'U235' in f['materials']
 
-    f = lib.get_by_material('c_H_in_H2O')
+    f = lib.get_by_material('c_H_in_H2O', data_type='thermal')
     assert f['type'] == 'thermal'
     assert 'c_H_in_H2O' in f['materials']
 

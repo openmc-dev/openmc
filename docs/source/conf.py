@@ -72,7 +72,7 @@ master_doc = 'index'
 
 # General information about the project.
 project = 'OpenMC'
-copyright = '2011-2019, Massachusetts Institute of Technology and OpenMC contributors'
+copyright = '2011-2020, Massachusetts Institute of Technology and OpenMC contributors'
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the

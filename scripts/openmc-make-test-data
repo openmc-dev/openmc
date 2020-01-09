@@ -158,7 +158,7 @@ with tempfile.TemporaryDirectory() as tmpdir:
     print('Creating compressed archive...')
     test_tar = pwd / 'nndc_hdf5_test.tar.xz'
     with tarfile.open(str(test_tar), 'w:xz') as txz:
-        txz.add('nndc_hdf5')
+        txz.add(output_dir)
 
     # Change back to original directory
     os.chdir(str(pwd))

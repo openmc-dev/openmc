@@ -1568,6 +1568,18 @@ UnstructuredMesh::intersect_track(const moab::CartVect& start,
 
   // sorts by first component of std::pair by default
   std::sort(hits.begin(), hits.end());
+
+  for (const auto& hit  : hits) {
+
+  }
+
+  for (const auto& hit : hits) {
+    moab::CartVect hit_loc = start + dir * hit.first;
+    // std::cout << "Hit location: (" << hit_loc[0] << ", "
+    //           << hit_loc[1] << ", " << hit_loc[2] << ")" << std::endl;
+    // std::cout << "Distance: " << hit.first << std::endl;
+  }
+
 }
 
 void
@@ -1594,37 +1606,34 @@ UnstructuredMesh::bins_crossed(const Particle& p,
   bins.clear();
   lengths.clear();
 
-  // if there are no intersections the track may lie entirely
-  // within a single tet. If this is the case, apply entire
-  // score to that tet and return.
   if (hits.size() == 0) {
-    Position midpoint = last_r + u * (track_len * 0.5);
-    int bin = this->get_bin(midpoint);
-    if (bin != -1) {
-      bins.push_back(bin);
+    auto last_r_tet = get_tet(last_r + u * track_len * 0.5);
+    if (last_r_tet) {
+      bins.push_back(get_bin_from_ent_handle(last_r_tet));
       lengths.push_back(1.0);
     }
     return;
   }
 
-  // for each segment in the set of tracks, try to look up a tet
-  // at the midpoint of the segment
-  Position current = last_r;
   double last_dist = 0.0;
-  for (const auto& hit : hits) {
-    // get the segment length
-    double segment_length = hit - last_dist;
-    last_dist = hit;
-    // find the midpoint of this segment
-    Position midpoint = current + u * (segment_length * 0.5);
-    // try to find a tet for this position
-    int bin = this->get_bin(midpoint);
+  /// IMPLEMENTATION THREE
+  for (auto hit = hits.begin(); hit != hits.end(); hit++) {
 
-    // determine the start point for this segment
-    current = last_r + u * hit;
+    // mid point for this segment
+    double segment_length = hit->first - last_dist;
+    Position segment_midpoint = last_r + u * last_dist + u * segment_length / 2.0;
+    if (segment_length < 1E-08) { continue; }
 
-    if (bin == -1) {
-      continue;
+    last_dist = hit->first;
+
+    // try to get a tet at the midpoint of this segment
+    auto tet = get_tet(segment_midpoint);
+    if (tet) {
+      bins.push_back(get_bin_from_ent_handle(tet));
+      lengths.push_back((hit.first - last_dist) / track_len);
+    } else {
+      // if in the loop, we should always find a tet
+      warning("No tet found for location between trianle hits");
     }
 
     bins.push_back(bin);
@@ -1633,19 +1642,147 @@ UnstructuredMesh::bins_crossed(const Particle& p,
   }
 
   // tally remaining portion of track after last hit if
-  // the last segment of the track is in the mesh but doesn't
-  // reach the other side of the tet
-  if (hits.back() < track_len) {
-    Position segment_start = last_r + u * hits.back();
-    double segment_length = track_len - hits.back();
-    Position midpoint = segment_start + u * (segment_length * 0.5);
-    int bin = this->get_bin(midpoint);
-    if (bin != -1) {
-      bins.push_back(bin);
-      lengths.push_back(segment_length / track_len);
+  // the last segment of the track is in the mesh
+  if (hits.back().first < track_len) {
+    auto pos = (last_r + u * hits.back().first) + u * ((track_len - hits.back().first) / 2.0);
+    auto tet = get_tet(pos);
+    if (tet) {
+      bins.push_back(get_bin_from_ent_handle(tet));
+      lengths.push_back((track_len - hits.back().first) / track_len);
     }
   }
-};
+
+  return;
+}
+
+//   //// IMPLEMENTATION ONE
+//   if (hits.size() == 0) {
+//     moab::EntityHandle last_r_tet = get_tet(last_r + u * track_len * 0.5);
+//     if (last_r_tet) {
+//       bins.push_back(get_bin_from_ent_handle(last_r_tet));
+//       lengths.push_back(1.0);
+//     }
+//     return;
+//   }
+
+//   moab::EntityHandle tet = get_tet(last_r + u * hits.front().first / 2.0);
+//   double last_dist = 0.0;
+
+//   // make sure first point is inside a tet
+//   if (!tet) {
+//     last_dist = hits.front().first;
+//     hits.erase(hits.begin());
+//     tet = get_tet(last_r + u * (last_dist + hits.front().first) / 2.0);
+//   }
+
+//   if (!tet) { fatal_error("Should in in a tet now."); }
+
+//   // if there are no other hits, there is only one segment to tally
+//   if (hits.size() == 0 && tet) {
+//     bins.push_back(get_bin_from_ent_handle(tet));
+//     lengths.push_back(1.0);
+//     return;
+//   }
+
+//   // score all remaining segments
+// for (auto hit = hits.begin(); hit != hits.end(); hit++) {
+//     // score in this tet if one was found
+//     if (tet) {
+//       bins.push_back(get_bin_from_ent_handle(tet));
+//       lengths.push_back((hit->first - last_dist) / track_len);
+//     } else {
+//       // we may have exited the mesh, move forward
+
+//       last_dist = hit->first; // store last dist
+//       hit++; // advance iterator
+
+//       // try to find a tet for the mid point of the next segment
+//       tet = get_tet(last_r + u * (hit->first - last_dist) / 2.0);
+//       if (!tet) {
+//         // warning("Couldn't find re-entry location");
+//         if (hit != hits.end()) { warning("Possible missed segment"); }
+//         break;
+//       } else {
+//         bins.push_back(get_bin_from_ent_handle(tet));
+//         lengths.push_back((hit->first - last_dist) / track_len);
+//       }
+//     }
+//     last_dist = hit->first;
+
+//     // find next tet
+//     moab::Range adj_tets;
+//     rval = mbi_->get_adjacencies(&hit->second, 1, 3, false, adj_tets);
+//     if (rval != moab::MB_SUCCESS) {
+//       fatal_error("Failed to get triangle adjacencies from mesh " + filename_);
+//     }
+
+//     if (adj_tets.size() == 2) {
+//       tet = tet == adj_tets[0] ? adj_tets[1] : adj_tets[0];
+//     } else if (adj_tets.size() == 1) {
+//       tet = adj_tets[0];
+//     }
+//   }
+
+//   // tally remaining portion of track after last hit if
+//   // the last segment of the track is in the mesh
+//   if (hits.back().first < track_len) {
+//     auto pos = (last_r + u * hits.back().first) + u * ((track_len - hits.back().first) / 2.0);
+//     tet = get_tet(pos);
+//     if (tet) {
+//       bins.push_back(get_bin_from_ent_handle(tet));
+//       lengths.push_back((track_len - hits.back().first) / track_len);
+//     }
+//   }
+
+//   return;
+
+  /// IMPLEMENTATION TWO
+  // double prev_int_dist = 0.0;
+
+  // if (hits.size() == 0) {
+  //   moab::EntityHandle last_r_tet =get_tet((r0 + r1) * 0.5);
+  //   if (last_r_tet) {
+  //     bins.push_back(get_bin_from_ent_handle(last_r_tet));
+  //     lengths.push_back(1.0);
+  //   }
+  //   return;
+  // }
+
+  // moab::EntityHandle tet = get_tet(last_r + u * hits.front().first / 2.0);
+
+  // if (!tet) {
+  //   last_r = last_r + u * hits.front().first;
+  //   hits.erase(hits.begin());
+  // }
+
+  // for (const auto& hit : hits) {
+  //   tet = get_tet(last_r + u * (prev_int_dist +  hit.first) / 2.0 );
+  //   if (!tet) {
+  //     prev_int_dist = hit.first;
+  //     continue;
+  //   }
+  //   int bin = get_bin_from_ent_handle(tet);
+  //   double tally_val = (hit.first - prev_int_dist) / track_len);
+  //   if (tally_val < 0.0) {
+  //     fatal_error("Negative score applied to tally");
+  //   }
+
+  //   bins.push_back(bin);
+  //   lengths.push_back(tally_val);
+  //   prev_int_dist = hit.first;
+  // }
+
+  // // tally remaining portion of track (if any exists)
+  // if (hits.back().first < track_len) {
+  //   tet = get_tet(last_r + u * (track_len + hits.back().first) / 2.0);
+  //   if (tet) {
+  //     bins.push_back(get_bin_from_ent_handle(tet));
+  //     double tally_val = (track_len - hits.back().first) / track_len);
+  //     lengths.push_back(tally_val);
+  //   }
+  // }
+
+//};
 
 moab::EntityHandle
 UnstructuredMesh::get_tet(const Position& r) const
@@ -1743,8 +1880,8 @@ UnstructuredMesh::to_hdf5(hid_t group) const
 
     write_dataset(mesh_group, "type", "unstructured");
     write_dataset(mesh_group, "filename", filename_);
-
-    // write volume and centroid of each tet
+    write_dataset(mesh_group, "library", "moab");
+    // write volume of each tet
     std::vector<double> tet_vols;
     xt::xtensor<double, 2> centroids({ehs_.size(), 3});
     for (int i = 0; i < ehs_.size(); i++) {
@@ -1835,7 +1972,7 @@ UnstructuredMesh::get_ent_handle_from_bin(int bin) const {
   if (bin >= n_bins()) {
     fatal_error(fmt::format("Invalid bin index: ", bin));
   }
-  return ehs_[bin];
+  return ehs_[0] + bin;
 }
 
 int UnstructuredMesh::n_bins() const {
@@ -2064,24 +2201,36 @@ LibMesh::LibMesh(pugi::xml_node node) : UnstructuredMeshBase(node) {
   libMesh::ExplicitSystem& eq_sys =
     equation_systems_->add_system<libMesh::ExplicitSystem>(eq_system_name_);
 
+
+  m_->set_point_locator_close_to_point_tol(FP_COINCIDENT);
   point_locator_ = m_->sub_point_locator();
   point_locator_->enable_out_of_mesh_mode();
+  point_locator_->init();
 
   m_->find_neighbors();
 
   auto e = *m_->elements_begin();
   first_element_ = e; // FIXME
 
-    // determine boundary elements
+  bbox_ = {INFTY, -INFTY, INFTY, -INFTY, INFTY, -INFTY};
+
+  // determine boundary elements and create bounding box
   for (int i = 0; i < m_->n_elem(); i++) {
     auto e = m_->elem_ptr(i);
-    for (int j = 0; j < e->n_neighbors(); j++) {
-      if (!e->neighbor_ptr(j)) {
+
+    // update bounding box for each node
+    for (int j = 0; j < e->n_nodes(); j++) {
+      auto n = e->node_ref(j);
+      Position r(n(0), n(1), n(2));
+      bbox_.update(r);
+    }
+
+    for (int k = 0; k < e->n_neighbors(); k++) {
+      if (!e->neighbor_ptr(k)) {
         boundary_elements_.insert(e);
       }
     }
   }
-
 }
 
 void
@@ -2170,7 +2319,7 @@ LibMesh::bins_crossed(const Particle* p,
   // get element containing previous position
   libMesh::Point start(p->r_last_.x, p->r_last_.y, p->r_last_.z);
   libMesh::Point end(p->r().x, p->r().y, p->r().z);
-  libMesh::Point dir(p->u().x, p->u().y, p->r().z);
+  libMesh::Point dir(p->u().x, p->u().y, p->u().z);
   dir /= dir.norm();
 
   double track_len = (end - start).norm();
@@ -2190,8 +2339,34 @@ LibMesh::bins_crossed(const Particle* p,
 int
 LibMesh::get_bin(Position r) const
 {
+  if (!bbox_.contains(r)) { return -1; }
+
+
   libMesh::Point p(r.x, r.y, r.z);
   auto e = (*point_locator_)(p);
+
+  libMesh::Point dir(rand(), rand(), rand());
+  dir /= dir.norm();
+  if (e && !inside_tet(p, dir, e)) {
+    bool found = false;
+    for (int i = 0; i < e->n_neighbors(); i++) {
+      if (e->neighbor_ptr(i) && inside_tet(p, dir, e->neighbor_ptr(i))) {
+        e = e->neighbor_ptr(i);
+        found = true;
+        break;
+      }
+    }
+  }
+
+  //   if (!found) {
+  //   std::stringstream msg;
+  //   msg << "Incorrect tet found for location: "
+  //       << "(" << r.x << ", " << r.y << ", " << r.z;
+  //   warning(msg);
+  //   return -1;
+  //   }
+  // }
+
   if (!e) {
     return -1;
   } else {
@@ -2221,7 +2396,7 @@ bool LibMesh::intersects(Position& r0, Position r1, int* ijk) const {
   // if we don't get a hit, the track won't intersect with the mesh
   if (result.second) {
     ijk[0] = get_bin_from_mesh_type(result.second);
-    return false;
+    return true;
   }
 
   return false;
@@ -2240,6 +2415,10 @@ std::pair<double, const libMesh::Elem*>
 LibMesh::locate_boundary_element(const libMesh::Point& start,
                                  const libMesh::Point& end) const
 {
+  typedef std::pair<double, const libMesh::Elem*> RayHit;
+  RayHit result = {INFTY, nullptr};
+  if (start == end) { return result; }
+
   // attempt to locate an intersection with the mesh boundary
   libMesh::Point dir = (end - start).unit();
   double length = (end - start).norm();
@@ -2254,8 +2433,6 @@ LibMesh::locate_boundary_element(const libMesh::Point& start,
   }
 
   // find nearest hit along our direction
-  typedef std::pair<double, const libMesh::Elem*> RayHit;
-  RayHit result = {INFTY, nullptr};
   for (auto elem : candidate_elements) {
     for (int i = 0; i < elem->n_sides(); i++) {
       double temp_dist = 0;
@@ -2281,13 +2458,43 @@ LibMesh::get_bin_from_mesh_type(const libMesh::Elem* elem) const {
   return bin;
 }
 
+bool
+LibMesh::inside_tet(const libMesh::Point& r,
+                    const libMesh::Point& u,
+                    std::unique_ptr<libMesh::Elem> e) const
+{
+  return inside_tet(r, u, e.get());
+}
+
+
+bool
+LibMesh::inside_tet(const libMesh::Point& r,
+                    const libMesh::Point& u,
+                    const libMesh::Elem* e) const
+{
+  // fire rays at each triangle in the tet
+  int n_hits = 0;
+  for (int i = 0; i < e->n_sides(); i++) {
+    double temp;
+    if (plucker_test(e->side_ptr(i), r, u, temp)) { n_hits++; }
+  }
+
+  if (n_hits == 0) { return false; }
+
+  for (int i = 0; i < e->n_sides(); i++) {
+    double temp;
+    if (plucker_test(e->side_ptr(i), r, -u, temp)) { n_hits++; }
+  }
+
+  return n_hits >= 2;
+}
+
 void
 LibMesh::intersect_track(libMesh::Point start,
                          libMesh::Point dir,
                          double track_len,
                          UnstructuredMeshHits& hits) const
 {
-
   double track_remaining = track_len;
 
   auto e = (*point_locator_)(start);
@@ -2307,26 +2514,64 @@ LibMesh::intersect_track(libMesh::Point start,
     }
   }
 
+  if (!inside_tet(start, dir, e)) {
+    bool found = false;
+    // try to find a new tet adjacent to this one
+    for (int i = 0; i < e->n_neighbors(); i ++) {
+      if (e->neighbor_ptr(i) && inside_tet(start, dir, e->neighbor_ptr(i))) {
+        e = e->neighbor_ptr(i);
+        found = true;
+        break;
+      }
+    }
+
+    if (!found)
+    warning("Starting point is not inside the specified tet.");
+
+  }
+
+  auto last_e = e;
+
+  std::set<libMesh::Point> visited;
+
+  bool first = true;
+
   while (true) {
     // find the positive distance triangle intersection
-    double dist = 0.0;
+    double dist = -1.0;
     int side = -1;
+
     for (int i = 0; i < e->n_sides(); i++) {
       auto tri = e->side_ptr(i);
+      if (visited.count(e->side_ptr(i)->centroid())) {
+        continue;
+      }
       if (tri->type() != libMesh::ElemType::TRI3) { warning("Non-triangle element found"); }
       double temp_dist = -1.0;
       bool hit = plucker_test(e->side_ptr(i), start, dir, temp_dist);
-      if (hit and temp_dist > FP_COINCIDENT) {
+      // if (hit and temp_dist > FP_COINCIDENT) {
+      if (hit and temp_dist >= 0 and temp_dist > dist) {
         side = i;
         dist = temp_dist;
+        first = false;
       }
     }
 
     // make sure we found a hit for the tet we're in
+
+    // if we don't find a hit for this tet, we may
     if (side == -1) {
+
+      if (first) {
+        warning("Couldn't get hit on first iteration");
+        inside_tet(start, dir, e);
+        first = false;
+      }
       auto orig_e = e;
       start += dir * TINY_BIT; // nudge particle forward
+      last_e = e;
       e = (*point_locator_)(start);
+
       if (!e) {
         if (!orig_e->on_boundary()) {
           std::cout << "May have incorrectly truncated a track." << std::endl;
@@ -2337,6 +2582,7 @@ LibMesh::intersect_track(libMesh::Point start,
     } else {
       // add hit to output
       hits.push_back(std::pair<double, const libMesh::Elem*>(std::min(track_remaining, dist), e));
+      visited.insert(e->side_ptr(side)->centroid());
       // advance position along track
       start += dir * std::min(track_remaining, dist);
       track_remaining -= dist; // subtract from
@@ -2348,12 +2594,24 @@ LibMesh::intersect_track(libMesh::Point start,
     // get tet on the other side
     auto next_e = e->neighbor_ptr(side);
 
+    // // if our distance is zero,
+    // // check that we're not going back and forth
+    // if (dist == 0 && next_e == last_e) {
+    //   //        start += dir * TINY_BIT;
+    //     continue;
+    // }
+
+    if (next_e && !next_e->contains_point(start)) {
+      warning("Moving into tet that does not contain the current location.");
+    }
+
     // if we exit the mesh, check for re-entry along
     // the track
     if (!next_e) {
       auto result = locate_boundary_element(start,
                                             start + dir * track_remaining);
       if (result.second) {
+        last_e = e;
         e = result.second;
         track_remaining -= result.first;
         // advance position along track
@@ -2375,6 +2633,7 @@ LibMesh::intersect_track(libMesh::Point start,
     }
 
     // update the element we're in
+    last_e = e;
     e = next_e;
   }
 }
@@ -2421,6 +2680,7 @@ void LibMesh::to_hdf5(hid_t group) const
 
   write_dataset(mesh_group, "type", "unstructured");
   write_dataset(mesh_group, "filename", filename_);
+  write_dataset(mesh_group, "library", "libmesh");
 
   // write volume of each tet
   std::vector<double> tet_vols;
@@ -2457,6 +2717,19 @@ LibMesh::plucker_edge_test(const libMesh::Node& vertexa,
   return pip;
 }
 
+/* This test uses the same edge-ray computation for adjacent triangles so that
+   rays passing close to edges/nodes are handled consistently.
+
+   Reports intersection type for post processing of special cases. Optionally
+   screen by orientation and negative/nonnegative distance limits.
+
+   If screening by orientation, substantial pruning can occur. Indicate
+   desired orientation by passing 1 (forward), -1 (reverse), or 0 (no preference).
+   Note that triangle orientation is not always the same as surface
+   orientation due to non-manifold surfaces.
+
+   N. Platis and T. Theoharis, "Fast Ray-Tetrahedron Intersection using Plücker
+   Coordinates", Journal of Graphics Tools, Vol. 8, Part 4, Pages 37-48 (2003). */
 bool
 LibMesh::plucker_test(std::unique_ptr<const libMesh::Elem> tri,
                       const libMesh::Point& start,
@@ -2506,10 +2779,13 @@ LibMesh::plucker_test(std::unique_ptr<const libMesh::Elem> tri,
   }
 
   // no negative distances
-  const double temp_dist = (intersection(idx) - start(idx)) / dir(idx);
+  double temp_dist = (intersection(idx) - start(idx)) / dir(idx);
+  if ( fabs(temp_dist) < TINY_BIT ) { temp_dist = 0.0; }
   if ( temp_dist < 0 ) { return false; }
 
-  dist = (intersection - start).norm();
+  dist = temp_dist;
+
+  // dist = (intersection - start).norm();
 
   return true;
 }

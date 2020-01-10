@@ -446,32 +446,15 @@ class LibMesh : public UnstructuredMeshBase {
   typedef std::vector<std::pair<double, const libMesh::Elem*>> UnstructuredMeshHits;
 
 public:
-  // constructor
+  // Constructor
   LibMesh(pugi::xml_node node);
 
+  // Methods
+
+  // standard mesh functions
   void bins_crossed(const Particle* p,
                     std::vector<int>& bins,
                     std::vector<double>& lengths) const;
-
-  bool inside_tet(const libMesh::Point& r,
-                  const libMesh::Point& u,
-                  const libMesh::Elem* e) const;
-
-  bool inside_tet(const libMesh::Point& r,
-                  const libMesh::Point& u,
-                  std::unique_ptr<libMesh::Elem> e) const;
-
-  void intersect_track(libMesh::Point start,
-                       libMesh::Point dir,
-                       double track_len,
-                       UnstructuredMeshHits& hits) const;
-
-  bool elements_share_face(const libMesh::Elem* from,
-                           const libMesh::Elem* to,
-                           unsigned int side) const;
-
-  int
-  get_bin_from_mesh_type(const libMesh::Elem* elem) const;
 
   int get_bin(Position r) const;
 
@@ -479,16 +462,102 @@ public:
 
   void get_indices(Position r, int* ijk, bool* in_mesh) const;
 
+  int get_bin_from_indices(const int* ijk) const;
+
+  void get_indices_from_bin(int bin, int* ijk) const;
+
+  int n_surface_bins() const;
+
+  void surface_bins_crossed(const Particle* p,
+                             std::vector<int>& bins) const;
+
+  std::pair<std::vector<double>, std::vector<double>> plot(Position plot_ll,
+                                                           Position plot_ur) const;
+
+  bool intersects(Position& r0, Position r1, int* ijk) const;
+
+  void write(const std::string& filename) const;
+
+  void to_hdf5(hid_t group) const;
+
+  //! Add a variable to the libmesh mesh instance
+  void add_variable(const std::string& var_name);
+
+  //! Set the value of a bin for a variable on the libmesh mesh instance
+  void set_variable(const std::string& var_name, int bin, double value);
+
+private:
+
+  //! Translate a bin value to an element pointer
+  const libMesh::Elem* get_element_from_bin(int bin) const;
+
+  //! Translate an element pointer to a bin value
+  int get_bin_from_element(const libMesh::Elem* elem) const;
+
+  //! Checks whether if a point moving in a given direction
+  //! is inside the element
+  //
+  //! \param[in] r In: point to be checked
+  //! \param[in] u In: direction (this is arbitrary, any normalized direction will do)
+  //! \param[in] e In: libmesh element in question
+  //! \return whether or not the point is in the tet
+  bool inside_tet(const libMesh::Point& r,
+                  const libMesh::Point& u,
+                  const libMesh::Elem* e) const;
+
+  //! Checks whether if a point moving in a given direction
+  //! is inside the element
+  //
+  //! \param[in] r In: point to be checked
+  //! \param[in] u In: direction (this is arbitrary, any normalized direction will do)
+  //! \param[in] e In: libmesh element in question
+  //! \return whether or not the point is in the tet
+  bool inside_tet(const libMesh::Point& r,
+                  const libMesh::Point& u,
+                  std::unique_ptr<libMesh::Elem> e) const;
+
+  //! Returns all hit elements and distances on the mesh
+  //
+  //! \param[in] start In: starting location of the track
+  //! \param[in] dir In: normalized direction of the track
+  //! \param[in] track_len In: track length
+  //! \param[out] hits Out: set of elements and hits on the unstructured mesh
+  void intersect_track(libMesh::Point start,
+                       libMesh::Point dir,
+                       double track_len,
+                       UnstructuredMeshHits& hits) const;
+
+  //! Checks that the elements from and to share a face
+  //
+  //! \param[in] from In: starting element
+  //! \param[in] to In: next element
+  //! \param[in] side side crossed in the starting element
+  //! \return whether or not the elements share a face
+  bool elements_share_face(const libMesh::Elem* from,
+                           const libMesh::Elem* to,
+                           unsigned int side) const;
+
+  //! Searches for an intersection with the mesh between
+  //! r0 and r1
+  //
+  //! \param[in] r0 In: starting position of the track
+  //! \param[in] r1 In: ending position of the track
+  //! \return the distance to intersection and intersected element
   std::pair<double, const libMesh::Elem*>
   locate_boundary_element(const Position& r0,
                           const Position& r1) const;
 
+  //! Searches for an intersection with the mesh between
+  //! the start and end of a track
+  //
+  //! \param[in] start In: starting position of the track
+  //! \param[in] end In: ending position of the track
+  //! \return the distance to intersection and intersected element
   std::pair<double, const libMesh::Elem*>
   locate_boundary_element(const libMesh::Point& start,
                           const libMesh::Point& end) const;
 
-
-  // triangle intersection methods
+  // Internal triangle intersection methods
   bool plucker_test(std::unique_ptr<const libMesh::Elem> tri,
                     const libMesh::Point& start,
                     const libMesh::Point& dir,
@@ -502,39 +571,17 @@ public:
   double first(const libMesh::Node& a,
                const libMesh::Node& b) const;
 
-  int get_bin_from_indices(const int* ijk) const;
-
-  void get_indices_from_bin(int bin, int* ijk) const;
-
-  libMesh::Elem* get_element_from_bin(int bin) const;
-
-  bool intersects(Position& r0, Position r1, int* ijk) const;
-
-  int n_surface_bins() const;
-
-  void surface_bins_crossed(const Particle* p,
-                             std::vector<int>& bins) const;
-
-  std::pair<std::vector<double>, std::vector<double>> plot(Position plot_ll,
-                                                           Position plot_ur) const;
-
-  void add_variable(const std::string& var_name);
-
-  void set_variable(const std::string& var_name, int bin, double value);
-
-  void write(const std::string& filename) const;
-
-  void to_hdf5(hid_t group) const;
+  // Data members
 
 private:
-  std::unique_ptr<libMesh::Mesh> m_;
-  std::unique_ptr<libMesh::PointLocatorBase> point_locator_;
-  std::unique_ptr<libMesh::EquationSystems> equation_systems_;
-  std::map<std::string, unsigned int> variable_map_;
-  BoundingBox bbox_;
-  std::string eq_system_name_;
-  libMesh::Elem* first_element_;
-  std::set<libMesh::Elem*> boundary_elements_;
+  std::unique_ptr<libMesh::Mesh> m_; //!< pointer to the libmesh mesh instance
+  std::unique_ptr<libMesh::PointLocatorBase> point_locator_; //!< point locator for the mesh
+  std::unique_ptr<libMesh::EquationSystems> equation_systems_; //!< pointer to the equation systems of the mesh (for result output)
+  std::map<std::string, unsigned int> variable_map_; //!< mappint of variable names (scores) to their numbers on the mesh
+  BoundingBox bbox_; //!< bounding box of the mesh
+  std::string eq_system_name_; //!< name of the equation system holding OpenMC results
+  libMesh::Elem* first_element_; //!< pointer to the first element in the mesh (maybe should be a key?)
+  std::set<libMesh::Elem*> boundary_elements_; //<! all boundary elements in the mesh
 };
 #endif
 

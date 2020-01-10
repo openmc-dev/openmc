@@ -605,6 +605,8 @@ class UnstructuredMesh(MeshBase):
         Unique identifier for the mesh
     name : str
         Name of the mesh
+    size : int
+        Number of elements in the unstructured mesh
 
     Attributes
     ----------
@@ -614,6 +616,8 @@ class UnstructuredMesh(MeshBase):
         Name of the mesh
     filename : str
         Name of the file containing the unstructured mesh
+    mesh_lib : str
+        Library used for the unstructured mesh tally
     volumes : Iterable of float
         Volumes of the unstructured mesh elements
     total_volume : float
@@ -628,6 +632,7 @@ class UnstructuredMesh(MeshBase):
         self.filename = filename
         self._volumes = None
         self._centroids = None
+        self._mesh_lib = 'moab'
 
     @property
     def filename(self):
@@ -637,6 +642,24 @@ class UnstructuredMesh(MeshBase):
     def filename(self, filename):
         cv.check_type('Unstructured Mesh filename', filename, str)
         self._filename = filename
+
+    @property
+    def mesh_lib(self):
+        return self._mesh_lib
+
+    @mesh_lib.setter
+    def mesh_lib(self, mesh_lib):
+        cv.check_value('mesh_lib', mesh_lib, ('moab', 'libmesh'))
+        self._mesh_lib = mesh_lib
+
+    @property
+    def size(self):
+        return self._size
+
+    @size.setter
+    def size(self, size):
+        cv.check_type("Unstructured mesh size", size, Integral)
+        self._size = size
 
     @property
     def volumes(self):
@@ -670,7 +693,9 @@ class UnstructuredMesh(MeshBase):
 
     def __repr__(self):
         string = super().__repr__()
-        return string + '{: <16}=\t{}\n'.format('\tFilename', self.filename)
+        string += '{: <16}=\t{}\n'.format('\tFilename', self.filename)
+        string += '{0: <16}=\t{}\n'.format('\tMesh Library', self.mesh_lib)
+        return string
 
     def write_data_to_vtk(self, filename, datasets, volume_normalization=True):
         """Map data to the unstructured mesh element centroids
@@ -767,6 +792,8 @@ class UnstructuredMesh(MeshBase):
         centroids = group['centroids'][()]
         mesh.volumes = np.reshape(vol_data, (vol_data.shape[0],))
         mesh.centroids = np.reshape(centroids, (vol_data.shape[0], 3))
+        mesh.mesh_lib = group['library'][()].decode()
+        mesh.size = mesh.volumes.size
 
         return mesh
 
@@ -783,8 +810,8 @@ class UnstructuredMesh(MeshBase):
         element = ET.Element("mesh")
         element.set("id", str(self._id))
         element.set("type", "unstructured")
-
         subelement = ET.SubElement(element, "filename")
+        element.set("library", self._mesh_lib)
         subelement.text = self.filename
 
         return element

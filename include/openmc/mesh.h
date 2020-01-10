@@ -12,6 +12,7 @@
 #include "pugixml.hpp"
 #include "xtensor/xtensor.hpp"
 
+#include "openmc/bounding_box.h"
 #include "openmc/particle.h"
 #include "openmc/position.h"
 
@@ -452,6 +453,14 @@ public:
                     std::vector<int>& bins,
                     std::vector<double>& lengths) const;
 
+  bool inside_tet(const libMesh::Point& r,
+                  const libMesh::Point& u,
+                  const libMesh::Elem* e) const;
+
+  bool inside_tet(const libMesh::Point& r,
+                  const libMesh::Point& u,
+                  std::unique_ptr<libMesh::Elem> e) const;
+
   void intersect_track(libMesh::Point start,
                        libMesh::Point dir,
                        double track_len,
@@ -522,6 +531,7 @@ private:
   std::unique_ptr<libMesh::PointLocatorBase> point_locator_;
   std::unique_ptr<libMesh::EquationSystems> equation_systems_;
   std::map<std::string, unsigned int> variable_map_;
+  BoundingBox bbox_;
   std::string eq_system_name_;
   libMesh::Elem* first_element_;
   std::set<libMesh::Elem*> boundary_elements_;

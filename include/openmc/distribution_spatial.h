@@ -39,6 +39,26 @@ private:
 };
 
 //==============================================================================
+//! Distribution of points specified by cylindrical coordinates r,phi,z
+//==============================================================================
+
+class CylindricalIndependent : public SpatialDistribution {
+public:
+  explicit CylindricalIndependent(pugi::xml_node node);
+
+  //! Sample a position from the distribution
+  //! \param seed Pseudorandom number seed pointer
+  //! \return Sampled position
+  Position sample(uint64_t* seed) const;
+private:
+  UPtrDist r_; //!< Distribution of r coordinates
+  UPtrDist phi_; //!< Distribution of phi coordinates
+  UPtrDist z_; //!< Distribution of z coordinates
+  Position origin_; //!< Cartesian coordinates of the cylinder center
+};
+
+
+//==============================================================================
 //! Distribution of points specified by spherical coordinates r,theta,phi
 //==============================================================================
 

@@ -113,26 +113,14 @@ constexpr int NUCLIDE_NONE  {-1};
 // ============================================================================
 // CROSS SECTION RELATED CONSTANTS
 
-// Angular distribution type
-enum AngleDistributionType
-{
-  ANGLE_ISOTROPIC = 1,
-  ANGLE_32_EQUI = 2,
-  ANGLE_TABULAR = 3,
-  ANGLE_LEGENDRE = 4,
-  ANGLE_HISTOGRAM = 5,
-};
-
 // Temperature treatment method
-enum TemperatureInterpolationType
-{
- TEMPERATURE_NEAREST = 1,
- TEMPERATURE_INTERPOLATION = 2
+enum class TemperatureInterpolationType {
+ NEAREST = 1,
+ INTERPOLATION = 2
 };
 
 // Reaction types
-enum ReactionType
-{
+enum ReactionType {
   REACTION_NONE = 0,
   TOTAL_XS = 1,
   ELASTIC = 2,
@@ -260,33 +248,21 @@ enum ReactionType
   HEATING_LOCAL = 901
 };
 
-constexpr std::array<int, 6> DEPLETION_RX {N_GAMMA, N_P, N_A, N_2N, N_3N, N_4N};
+constexpr std::array<ReactionType, 6> DEPLETION_RX {
+  ReactionType::N_GAMMA,
+  ReactionType::N_P,
+  ReactionType::N_A,
+  ReactionType::N_2N,
+  ReactionType::N_3N,
+  ReactionType::N_4N};
 
-// Fission neutron emission (nu) type
-enum NeutronEmissionType
-{
-  NU_NONE      , // No nu values (non-fissionable)
-  NU_POLYNOMIAL, // Nu values given by polynomial
-  NU_TABULAR     // Nu values given by tabular distribution
-};
-
-// Library types
-enum LibraryType
-{
-  LIBRARY_NEUTRON = 1,
-  LIBRARY_THERMAL = 2,
-  LIBRARY_PHOTON = 3,
-  LIBRARY_MULTIGROUP = 4
-};
-
-enum ProbabilityTableParameter
-{
-  URR_CUM_PROB,
-  URR_TOTAL   ,
-  URR_ELASTIC ,
-  URR_FISSION ,
-  URR_N_GAMMA ,
-  URR_HEATING 
+enum class UnresolvProbTableParam {
+  CUM_PROB,
+  TOTAL,
+  ELASTIC,
+  FISSION,
+  N_GAMMA,
+  HEATING 
 };
 
 // Maximum number of partial fission reactions
@@ -299,21 +275,13 @@ enum class ResScatMethod {
   cxs // Constant cross section
 };
 
-enum ElectronTreatment
-{
-  ELECTRON_LED = 1, // Local Energy Deposition
-  ELECTRON_TTB = 2  // Thick Target Bremsstrahlung
+enum class ElectronTreatment {
+  LED, // Local Energy Deposition
+  TTB  // Thick Target Bremsstrahlung
 };
 
 // ============================================================================
 // MULTIGROUP RELATED
-
-// MGXS Table Types
-enum MgxsTableType
-{
-  MGXS_ISOTROPIC = 1, // Isotroically weighted data
-  MGXS_ANGLE = 2      // Data by angular bins
-};
 
 // Flag to denote this was a macroscopic data object
 constexpr double MACROSCOPIC_AWR {-2.};
@@ -322,116 +290,86 @@ constexpr double MACROSCOPIC_AWR {-2.};
 constexpr int DEFAULT_NMU {33};
 
 // Mgxs::get_xs enumerated types
-enum MgxsType
-{
-  MG_GET_XS_TOTAL             ,
-  MG_GET_XS_ABSORPTION        ,
-  MG_GET_XS_INVERSE_VELOCITY  ,
-  MG_GET_XS_DECAY_RATE        ,
-  MG_GET_XS_SCATTER           ,
-  MG_GET_XS_SCATTER_MULT      ,
-  MG_GET_XS_SCATTER_FMU_MULT  ,
-  MG_GET_XS_SCATTER_FMU       ,
-  MG_GET_XS_FISSION           ,
-  MG_GET_XS_KAPPA_FISSION     ,
-  MG_GET_XS_PROMPT_NU_FISSION ,
-  MG_GET_XS_DELAYED_NU_FISSION,
-  MG_GET_XS_NU_FISSION        ,
-  MG_GET_XS_CHI_PROMPT        ,
-  MG_GET_XS_CHI_DELAYED
+enum class MgxsType {
+  TOTAL,
+  ABSORPTION,
+  INVERSE_VELOCITY,
+  DECAY_RATE,
+  SCATTER,
+  SCATTER_MULT,
+  SCATTER_FMU_MULT,
+  SCATTER_FMU,
+  FISSION,
+  KAPPA_FISSION,
+  PROMPT_NU_FISSION,
+  DELAYED_NU_FISSION,
+  NU_FISSION,
+  CHI_PROMPT,
+  CHI_DELAYED
 };
 
 // ============================================================================
 // TALLY-RELATED CONSTANTS
 
-enum TallyResultEntry
-{
-  RESULT_VALUE ,
-  RESULT_SUM   ,
-  RESULT_SUM_SQ
+enum class TallyResult {
+  VALUE,
+  SUM,
+  SUM_SQ
 };
 
-enum TallyType
-{
-  TALLY_VOLUME          = 1,
-  TALLY_MESH_SURFACE    = 2,
-  TALLY_SURFACE         = 3
+enum class TallyType {
+  VOLUME,
+  MESH_SURFACE,
+  SURFACE
 };
 
-enum TallyEstimatorType
-{
-  ESTIMATOR_ANALOG      = 1,
-  ESTIMATOR_TRACKLENGTH = 2,
-  ESTIMATOR_COLLISION   = 3
+enum class TallyEstimator {
+  ANALOG,
+  TRACKLENGTH,
+  COLLISION
 };
 
-enum TallyEventType
-{
-  EVENT_SURFACE = -2,
-  EVENT_LATTICE = -1,
-  EVENT_KILL    = 0,
-  EVENT_SCATTER = 1,
-  EVENT_ABSORB  = 2
+enum class TallyEvent {
+  SURFACE,
+  LATTICE,
+  KILL,
+  SCATTER,
+  ABSORB 
 };
 
 // Tally score type -- if you change these, make sure you also update the
 // _SCORES dictionary in openmc/capi/tally.py
-enum TallyScoreType
-{
-  SCORE_FLUX               = -1, // flux
-  SCORE_TOTAL              = -2, // total reaction rate
-  SCORE_SCATTER            = -3, // scattering rate
-  SCORE_NU_SCATTER         = -4, // scattering production rate
-  SCORE_ABSORPTION         = -5, // absorption rate
-  SCORE_FISSION            = -6, // fission rate
-  SCORE_NU_FISSION         = -7, // neutron production rate
-  SCORE_KAPPA_FISSION      = -8, // fission energy production rate
-  SCORE_CURRENT            = -9, // current
-  SCORE_EVENTS             = -10, // number of events
+//
+// These are kept as a normal enum and made negative, since variables which
+// store one of these enum values usually also may be responsible for storing
+// MT numbers from the long enum above.
+enum TallyScore {
+  SCORE_FLUX = -1, // flux
+  SCORE_TOTAL = -2, // total reaction rate
+  SCORE_SCATTER = -3, // scattering rate
+  SCORE_NU_SCATTER = -4, // scattering production rate
+  SCORE_ABSORPTION = -5, // absorption rate
+  SCORE_FISSION = -6, // fission rate
+  SCORE_NU_FISSION = -7, // neutron production rate
+  SCORE_KAPPA_FISSION = -8, // fission energy production rate
+  SCORE_CURRENT = -9, // current
+  SCORE_EVENTS = -10, // number of events
   SCORE_DELAYED_NU_FISSION = -11, // delayed neutron production rate
-  SCORE_PROMPT_NU_FISSION  = -12, // prompt neutron production rate
-  SCORE_INVERSE_VELOCITY   = -13, // flux-weighted inverse velocity
-  SCORE_FISS_Q_PROMPT      = -14, // prompt fission Q-value
-  SCORE_FISS_Q_RECOV       = -15, // recoverable fission Q-value
-  SCORE_DECAY_RATE         = -16  // delayed neutron precursor decay rate
+  SCORE_PROMPT_NU_FISSION = -12, // prompt neutron production rate
+  SCORE_INVERSE_VELOCITY = -13, // flux-weighted inverse velocity
+  SCORE_FISS_Q_PROMPT = -14, // prompt fission Q-value
+  SCORE_FISS_Q_RECOV = -15, // recoverable fission Q-value
+  SCORE_DECAY_RATE = -16 // delayed neutron precursor decay rate
 };
 
 // Tally map bin finding
 constexpr int NO_BIN_FOUND {-1};
 
-// Tally filter and map types
-enum TallyFilterType
-{
-  FILTER_UNIVERSE       = 1,
-  FILTER_MATERIAL       = 2,
-  FILTER_CELL           = 3
-};
-
-// Mesh types
-constexpr int MESH_REGULAR {1};
-
-enum TallySurfaceCurrentDirection
-{
-  OUT_LEFT   = 1,  // x min
-  IN_LEFT    = 2,  // x min
-  OUT_RIGHT  = 3,  // x max
-  IN_RIGHT   = 4,  // x max
-  OUT_BACK   = 5,  // y min
-  IN_BACK    = 6,  // y min
-  OUT_FRONT  = 7,  // y max
-  IN_FRONT   = 8,  // y max
-  OUT_BOTTOM = 9,  // z min
-  IN_BOTTOM  = 10, // z min
-  OUT_TOP    = 11, // z max
-  IN_TOP     = 12  // z max
-};
-
 // Global tally parameters
 constexpr int N_GLOBAL_TALLIES {4};
-enum EigenvalueEstimateType
-{
-  K_COLLISION  , 
-  K_ABSORPTION , 
+enum class GlobalTally {
+  K_COLLISION, 
+  K_ABSORPTION, 
   K_TRACKLENGTH, 
   LEAKAGE       
 };
@@ -445,13 +383,13 @@ enum class Interpolation {
   histogram = 1, lin_lin = 2, lin_log = 3, log_lin = 4, log_log = 5
 };
 
-enum RunMode
-{
-  RUN_MODE_FIXEDSOURCE = 1,
-  RUN_MODE_EIGENVALUE  = 2,
-  RUN_MODE_PLOTTING    = 3,
-  RUN_MODE_PARTICLE    = 4,
-  RUN_MODE_VOLUME      = 5
+enum class RunMode {
+  UNSET, // default value, OpenMC throws error if left to this
+  FIXEDSOURCE,
+  EIGENVALUE,
+  PLOTTING,
+  PARTICLE,
+  VOLUME
 };
 
 // ============================================================================

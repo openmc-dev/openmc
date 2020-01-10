@@ -99,9 +99,9 @@ int openmc_simulation_init()
 
   // Display header
   if (mpi::master) {
-    if (settings::run_mode == RUN_MODE_FIXEDSOURCE) {
+    if (settings::run_mode == RunMode::FIXEDSOURCE) {
       header("FIXED SOURCE TRANSPORT SIMULATION", 3);
-    } else if (settings::run_mode == RUN_MODE_EIGENVALUE) {
+    } else if (settings::run_mode == RunMode::EIGENVALUE) {
       header("K EIGENVALUE SIMULATION", 3);
       if (settings::verbosity >= 7) print_columns();
     }
@@ -277,7 +277,7 @@ void allocate_banks()
   // Allocate source bank
   simulation::source_bank.resize(simulation::work_per_rank);
 
-  if (settings::run_mode == RUN_MODE_EIGENVALUE) {
+  if (settings::run_mode == RunMode::EIGENVALUE) {
 #ifdef _OPENMP
     // If OpenMP is being used, each thread needs its own private fission
     // bank. Since the private fission banks need to be combined at the end of
@@ -305,7 +305,7 @@ void initialize_batch()
   // Increment current batch
   ++simulation::current_batch;
 
-  if (settings::run_mode == RUN_MODE_FIXEDSOURCE) {
+  if (settings::run_mode == RunMode::FIXEDSOURCE) {
     int b = simulation::current_batch;
     write_message("Simulating batch " + std::to_string(b), 6);
   }
@@ -352,7 +352,7 @@ void finalize_batch()
     simulation::n_realizations = 0;
   }
 
-  if (settings::run_mode == RUN_MODE_EIGENVALUE) {
+  if (settings::run_mode == RunMode::EIGENVALUE) {
     // Write batch output
     if (mpi::master && settings::verbosity >= 7) print_batch_keff();
   }
@@ -396,7 +396,7 @@ void finalize_batch()
 
 void initialize_generation()
 {
-  if (settings::run_mode == RUN_MODE_EIGENVALUE) {
+  if (settings::run_mode == RunMode::EIGENVALUE) {
     // Clear out the fission bank
     simulation::fission_bank.clear();
 
@@ -405,7 +405,7 @@ void initialize_generation()
 
     // Store current value of tracklength k
     simulation::keff_generation = simulation::global_tallies(
-      K_TRACKLENGTH, RESULT_VALUE);
+      GlobalTally::K_TRACKLENGTH, TallyResult::VALUE);
   }
 }
 
@@ -418,16 +418,16 @@ void finalize_generation()
   {
     #pragma omp critical(increment_global_tallies)
     {
-      if (settings::run_mode == RUN_MODE_EIGENVALUE) {
-        gt(K_COLLISION, RESULT_VALUE) += global_tally_collision;
-        gt(K_ABSORPTION, RESULT_VALUE) += global_tally_absorption;
-        gt(K_TRACKLENGTH, RESULT_VALUE) += global_tally_tracklength;
+      if (settings::run_mode == RunMode::EIGENVALUE) {
+        gt(GlobalTally::K_COLLISION, TallyResult::VALUE) += global_tally_collision;
+        gt(GlobalTally::K_ABSORPTION, TallyResult::VALUE) += global_tally_absorption;
+        gt(GlobalTally::K_TRACKLENGTH, TallyResult::VALUE) += global_tally_tracklength;
       }
-      gt(LEAKAGE, RESULT_VALUE) += global_tally_leakage;
+      gt(GlobalTally::LEAKAGE, TallyResult::VALUE) += global_tally_leakage;
     }
 
     // reset threadprivate tallies
-    if (settings::run_mode == RUN_MODE_EIGENVALUE) {
+    if (settings::run_mode == RunMode::EIGENVALUE) {
       global_tally_collision = 0.0;
       global_tally_absorption = 0.0;
       global_tally_tracklength = 0.0;
@@ -436,7 +436,7 @@ void finalize_generation()
   }
 
 
-  if (settings::run_mode == RUN_MODE_EIGENVALUE) {
+  if (settings::run_mode == RunMode::EIGENVALUE) {
 #ifdef _OPENMP
     // Join the fission bank from each thread into one global fission bank
     join_bank_from_threads();
@@ -459,7 +459,7 @@ void finalize_generation()
       }
     }
 
-  } else if (settings::run_mode == RUN_MODE_FIXEDSOURCE) {
+  } else if (settings::run_mode == RunMode::FIXEDSOURCE) {
     // For fixed-source mode, we need to sample the external source
     fill_source_bank_fixedsource();
   }

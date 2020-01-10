@@ -19,7 +19,7 @@
 
 namespace openmc {
 
-void read_particle_restart(Particle& p, int& previous_run_mode)
+void read_particle_restart(Particle& p, RunMode& previous_run_mode)
 {
   // Write meessage
   write_message("Loading particle restart file " +
@@ -36,9 +36,9 @@ void read_particle_restart(Particle& p, int& previous_run_mode)
   std::string mode;
   read_dataset(file_id, "run_mode", mode);
   if (mode == "eigenvalue") {
-    previous_run_mode = RUN_MODE_EIGENVALUE;
+    previous_run_mode = RunMode::EIGENVALUE;
   } else if (mode == "fixed source") {
-    previous_run_mode = RUN_MODE_FIXEDSOURCE;
+    previous_run_mode = RunMode::FIXEDSOURCE;
   }
   read_dataset(file_id, "id", p.id_);
   int type;
@@ -76,7 +76,7 @@ void run_particle_restart()
   Particle p;
 
   // Read in the restart information
-  int previous_run_mode;
+  RunMode previous_run_mode;
   read_particle_restart(p, previous_run_mode);
 
   // write track if that was requested on command line
@@ -88,15 +88,15 @@ void run_particle_restart()
   // Compute random number seed
   int64_t particle_seed;
   switch (previous_run_mode) {
-  case RUN_MODE_EIGENVALUE:
+  case RunMode::EIGENVALUE:
     particle_seed = (simulation::total_gen + overall_generation() - 1)*settings::n_particles + p.id_;
     break;
-  case RUN_MODE_FIXEDSOURCE:
+  case RunMode::FIXEDSOURCE:
     particle_seed = p.id_;
     break;
   default:
     throw std::runtime_error{"Unexpected run mode: " +
-      std::to_string(previous_run_mode)};
+      std::to_string(static_cast<int>(previous_run_mode))};
   }
   init_particle_seeds(particle_seed, p.seeds_);
 

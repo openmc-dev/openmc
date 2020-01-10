@@ -38,7 +38,7 @@ DistribcellFilter::set_cell(int32_t cell)
 }
 
 void
-DistribcellFilter::get_all_bins(const Particle* p, int estimator,
+DistribcellFilter::get_all_bins(const Particle* p, TallyEstimator,
                                 FilterMatch& match) const
 {
   int offset = 0;

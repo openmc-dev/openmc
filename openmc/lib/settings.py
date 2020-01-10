@@ -5,11 +5,11 @@ from . import _dll
 from .core import _DLLGlobal
 from .error import _error_handler
 
-_RUN_MODES = {1: 'fixed source',
-              2: 'eigenvalue',
-              3: 'plot',
-              4: 'particle restart',
-              5: 'volume'}
+_RUN_MODES = {0: 'fixed source',
+              1: 'eigenvalue',
+              2: 'plot',
+              3: 'particle restart',
+              4: 'volume'}
 
 _dll.openmc_set_seed.argtypes = [c_int64]
 _dll.openmc_get_seed.restype = c_int64

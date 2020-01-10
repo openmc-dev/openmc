@@ -47,9 +47,9 @@ sample_reaction(Particle* p)
   // absorption (including fission)
 
   if (model::materials[p->material_]->fissionable_) {
-    if (settings::run_mode == RUN_MODE_EIGENVALUE) {
+    if (settings::run_mode == RunMode::EIGENVALUE) {
       create_fission_sites(p, simulation::fission_bank);
-    } else if ((settings::run_mode == RUN_MODE_FIXEDSOURCE) &&
+    } else if ((settings::run_mode == RunMode::FIXEDSOURCE) &&
                (settings::create_fission_neutrons)) {
       create_fission_sites(p, simulation::secondary_bank);
     }
@@ -87,7 +87,7 @@ scatter(Particle* p)
   p->E_ = data::mg.energy_bin_avg_[p->g_];
 
   // Set event component
-  p->event_ = EVENT_SCATTER;
+  p->event_ = TallyEvent::SCATTER;
 }
 
 void
@@ -185,7 +185,7 @@ absorption(Particle* p)
       global_tally_absorption += p->wgt_ * p->macro_xs_.nu_fission /
            p->macro_xs_.absorption;
       p->alive_ = false;
-      p->event_ = EVENT_ABSORB;
+      p->event_ = TallyEvent::ABSORB;
     }
 
   }

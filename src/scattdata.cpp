@@ -183,7 +183,7 @@ ScattData::sample_energy(int gin, int& gout, int& i_gout, uint64_t* seed)
 //==============================================================================
 
 double
-ScattData::get_xs(int xstype, int gin, const int* gout, const double* mu)
+ScattData::get_xs(MgxsType xstype, int gin, const int* gout, const double* mu)
 {
   // Set the outgoing group offset index as needed
   int i_gout = 0;
@@ -198,10 +198,10 @@ ScattData::get_xs(int xstype, int gin, const int* gout, const double* mu)
 
   double val = scattxs[gin];
   switch(xstype) {
-  case MG_GET_XS_SCATTER:
+  case MgxsType::SCATTER:
     if (gout != nullptr) val *= energy[gin][i_gout];
     break;
-  case MG_GET_XS_SCATTER_MULT:
+  case MgxsType::SCATTER_MULT:
     if (gout != nullptr) {
       val *= energy[gin][i_gout] / mult[gin][i_gout];
     } else {
@@ -209,7 +209,7 @@ ScattData::get_xs(int xstype, int gin, const int* gout, const double* mu)
                                 energy[gin].begin(), 0.0);
     }
     break;
-  case MG_GET_XS_SCATTER_FMU_MULT:
+  case MgxsType::SCATTER_FMU_MULT:
     if ((gout != nullptr) && (mu != nullptr)) {
       val *= energy[gin][i_gout] * calc_f(gin, *gout, *mu);
     } else {
@@ -218,7 +218,7 @@ ScattData::get_xs(int xstype, int gin, const int* gout, const double* mu)
       fatal_error("Invalid call to get_xs");
     }
     break;
-  case MG_GET_XS_SCATTER_FMU:
+  case MgxsType::SCATTER_FMU:
     if ((gout != nullptr) && (mu != nullptr)) {
       val *= energy[gin][i_gout] * calc_f(gin, *gout, *mu) / mult[gin][i_gout];
     } else {

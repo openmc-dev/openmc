@@ -87,6 +87,7 @@ Reaction::Reaction(hid_t group, const std::vector<int>& temperatures)
 
 std::string reaction_name(int mt)
 {
+  // Tally reactions
   if (mt == SCORE_FLUX) {
     return "flux";
   } else if (mt == SCORE_TOTAL) {
@@ -119,9 +120,10 @@ std::string reaction_name(int mt)
     return "fission-q-prompt";
   } else if (mt == SCORE_FISS_Q_RECOV) {
     return "fission-q-recoverable";
+  }
 
   // Normal ENDF-based reactions
-  } else if (mt == TOTAL_XS) {
+  else if (mt == TOTAL_XS) {
     return "(n,total)";
   } else if (mt == ELASTIC) {
     return "(n,elastic)";

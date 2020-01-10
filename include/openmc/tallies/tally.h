@@ -77,10 +77,10 @@ public:
 
   std::string name_; //!< User-defined name
 
-  int type_ {TALLY_VOLUME}; //!< e.g. volume, surface current
+  TallyType type_ {TallyType::VOLUME}; //!< e.g. volume, surface current
 
   //! Event type that contributes to this tally
-  int estimator_ {ESTIMATOR_TRACKLENGTH};
+  TallyEstimator estimator_ {TallyEstimator::TRACKLENGTH};
 
   //! Whether this tally is currently being updated
   bool active_ {false};

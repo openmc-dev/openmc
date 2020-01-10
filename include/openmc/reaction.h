@@ -44,7 +44,7 @@ public:
 // Non-member functions
 //==============================================================================
 
-std::string reaction_name(int mt);
+std::string reaction_name(int mt); // TallyScore or MT reactions
 
 } // namespace openmc
 

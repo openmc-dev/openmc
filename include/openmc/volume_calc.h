@@ -1,6 +1,7 @@
 #ifndef OPENMC_VOLUME_CALC_H
 #define OPENMC_VOLUME_CALC_H
 
+#include "openmc/constants.h"
 #include "openmc/position.h"
 #include "openmc/tallies/trigger.h"
 
@@ -46,8 +47,15 @@ public:
   //! \param[in] results   Vector of results for each domain
   void to_hdf5(const std::string& filename, const std::vector<Result>& results) const;
 
+  // Tally filter and map types
+  enum class TallyDomain {
+    UNIVERSE,
+    MATERIAL,
+    CELL
+  };
+
   // Data members
-  int domain_type_; //!< Type of domain (cell, material, etc.)
+  TallyDomain domain_type_; //!< Type of domain (cell, material, etc.)
   size_t n_samples_; //!< Number of samples to use
   double threshold_ {-1.0}; //!< Error threshold for domain volumes
   TriggerMetric trigger_type_ {TriggerMetric::not_active}; //!< Trigger metric for the volume calculation

@@ -1307,7 +1307,7 @@ void read_surfaces(pugi::xml_node node)
       break;
     }
   }
-  if (settings::run_mode != RUN_MODE_PLOTTING && !boundary_exists) {
+  if (settings::run_mode != RunMode::PLOTTING && !boundary_exists) {
     fatal_error("No boundary conditions were applied to any surfaces!");
   }
 }

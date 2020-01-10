@@ -149,8 +149,8 @@ apply_derivative_to_score(const Particle* p, int i_tally, int i_nuclide,
   case DIFF_DENSITY:
     switch (tally.estimator_) {
 
-    case ESTIMATOR_ANALOG:
-    case ESTIMATOR_COLLISION:
+    case TallyEstimator::ANALOG:
+    case TallyEstimator::COLLISION:
       switch (score_bin) {
 
       case SCORE_TOTAL:
@@ -189,7 +189,7 @@ apply_derivative_to_score(const Particle* p, int i_tally, int i_nuclide,
   case DIFF_NUCLIDE_DENSITY:
     switch (tally.estimator_) {
 
-    case ESTIMATOR_ANALOG:
+    case TallyEstimator::ANALOG:
       if (p->event_nuclide_ != deriv.diff_nuclide) {
         score *= flux_deriv;
         return;
@@ -217,7 +217,7 @@ apply_derivative_to_score(const Particle* p, int i_tally, int i_nuclide,
       }
       break;
 
-    case ESTIMATOR_COLLISION:
+    case TallyEstimator::COLLISION:
       switch (score_bin) {
 
       case SCORE_TOTAL:
@@ -315,7 +315,7 @@ apply_derivative_to_score(const Particle* p, int i_tally, int i_nuclide,
   case DIFF_TEMPERATURE:
     switch (tally.estimator_) {
 
-    case ESTIMATOR_ANALOG:
+    case TallyEstimator::ANALOG:
       {
         // Find the index of the event nuclide.
         int i;
@@ -401,7 +401,7 @@ apply_derivative_to_score(const Particle* p, int i_tally, int i_nuclide,
       }
       break;
 
-    case ESTIMATOR_COLLISION:
+    case TallyEstimator::COLLISION:
       if (i_nuclide != -1) {
         const auto& nuc {data::nuclides[i_nuclide]};
         if (!multipole_in_range(nuc.get(), p->E_last_)) {

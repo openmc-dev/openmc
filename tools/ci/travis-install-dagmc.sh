@@ -23,10 +23,11 @@ cmake ../moab -DENABLE_HDF5=ON -DBUILD_SHARED_LIBS=ON -DCMAKE_INSTALL_PREFIX=$MO
 make -j && make -j install
 cmake ../moab -DBUILD_SHARED_LIBS=OFF
 make -j install
-rm -rf $HOME/MOAB/moab
+rm -rf $HOME/MOAB/moab $HOME/MOAB/build
 export LD_LIBRARY_PATH=$MOAB_INSTALL_DIR/lib:$LD_LIBRARY_PATH
 
 # DAGMC Install
+cd $HOME
 mkdir DAGMC && cd DAGMC
 git clone -b $DAGMC_BRANCH $DAGMC_REPO
 mkdir build && cd build

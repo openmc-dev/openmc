@@ -521,6 +521,11 @@ class CellbornFilter(WithIDFilter):
 class CellInstanceFilter(Filter):
     """Bins tally events based on which cell instance a particle is in.
 
+    This filter is similar to :class:`DistribcellFilter` but allows one to
+    select particular instances to be tallied (instead of obtaining *all*
+    instances by default) and allows instances from different cells to be
+    specified in a single filter.
+
     Parameters
     ----------
     bins : iterable of 2-tuples or numpy.ndarray
@@ -538,6 +543,10 @@ class CellInstanceFilter(Filter):
         Unique identifier for the filter
     num_bins : Integral
         The number of filter bins
+
+    See Also
+    --------
+    DistribcellFilter
 
     """
     def __init__(self, bins, filter_id=None):
@@ -1260,6 +1269,11 @@ def _path_to_levels(path):
 class DistribcellFilter(Filter):
     """Bins tally event locations on instances of repeated cells.
 
+    This filter provides a separate score for each unique instance of a repeated
+    cell in a geometry. Note that only one cell can be specified in this filter.
+    The related :class:`CellInstanceFilter` allows one to obtain scores for
+    particular cell instances as well as instances from different cells.
+
     Parameters
     ----------
     cell : openmc.Cell or Integral
@@ -1279,6 +1293,10 @@ class DistribcellFilter(Filter):
     paths : list of str
         The paths traversed through the CSG tree to reach each distribcell
         instance (for 'distribcell' filters only)
+
+    See Also
+    --------
+    CellInstanceFilter
 
     """
 

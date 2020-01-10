@@ -300,27 +300,17 @@ struct CellInstance {
   gsl::index index_cell;
   gsl::index instance;
 };
-} // namespace openmc
 
-namespace std {
-template<>
-struct hash<openmc::CellInstance> {
-  // Taken from https://stackoverflow.com/a/17017281
-  std::size_t operator()(const openmc::CellInstance& k) const
+struct CellInstanceHash {
+  std::size_t operator()(const CellInstance& k) const
   {
-    std::size_t res = 17;
-    res = 31 * res + std::hash<gsl::index>()(k.index_cell);
-    res = 31 * res + std::hash<gsl::index>()(k.instance);
-    return res;
+    return 4096*k.index_cell + k.instance;
   }
 };
-} // namespace std
 
 //==============================================================================
 // Non-member functions
 //==============================================================================
-
-namespace openmc {
 
 void read_cells(pugi::xml_node node);
 

@@ -55,7 +55,7 @@ private:
   std::vector<CellInstance> cell_instances_;
 
   //! A map from cell/instance indices to filter bin indices.
-  std::unordered_map<CellInstance, gsl::index> map_;
+  std::unordered_map<CellInstance, gsl::index, CellInstanceHash> map_;
 };
 
 } // namespace openmc

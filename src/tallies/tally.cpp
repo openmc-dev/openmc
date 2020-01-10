@@ -831,11 +831,13 @@ void Tally::accumulate()
       total_source = 1.0;
     }
 
+    // Account for number of source particles in normalization
+    double norm = total_source / (settings::n_particles * settings::gen_per_batch);
+
     // Accumulate each result
     for (int i = 0; i < results_.shape()[0]; ++i) {
       for (int j = 0; j < results_.shape()[1]; ++j) {
-        double val = results_(i, j, RESULT_VALUE) /
-          simulation::total_weight * total_source;
+        double val = results_(i, j, RESULT_VALUE) * norm;
         results_(i, j, RESULT_VALUE) = 0.0;
         results_(i, j, RESULT_SUM) += val;
         results_(i, j, RESULT_SUM_SQ) += val*val;

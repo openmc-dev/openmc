@@ -98,10 +98,10 @@ _SCORES = {
     -15: 'fission-q-recoverable', -16: 'decay-rate'
 }
 _ESTIMATORS = {
-    1: 'analog', 2: 'tracklength', 3: 'collision'
+    0: 'analog', 1: 'tracklength', 2: 'collision'
 }
 _TALLY_TYPES = {
-    1: 'volume', 2: 'mesh-surface', 3: 'surface'
+    0: 'volume', 1: 'mesh-surface', 2: 'surface'
 }
 
 

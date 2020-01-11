@@ -575,7 +575,7 @@ private:
 
 private:
   std::unique_ptr<libMesh::Mesh> m_; //!< pointer to the libmesh mesh instance
-  std::unique_ptr<libMesh::PointLocatorBase> point_locator_; //!< point locator for the mesh
+  std::vector<std::unique_ptr<libMesh::PointLocatorBase>> point_locators_; //!< pointers to locators for each thread
   std::unique_ptr<libMesh::EquationSystems> equation_systems_; //!< pointer to the equation systems of the mesh (for result output)
   std::map<std::string, unsigned int> variable_map_; //!< mappint of variable names (scores) to their numbers on the mesh
   BoundingBox bbox_; //!< bounding box of the mesh

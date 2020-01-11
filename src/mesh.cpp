@@ -2069,9 +2069,13 @@ LibMesh::LibMesh(pugi::xml_node node) : UnstructuredMeshBase(node) {
     equation_systems_->add_system<libMesh::ExplicitSystem>(eq_system_name_);
 
   // setup the point locator
-  m_->set_point_locator_close_to_point_tol(FP_COINCIDENT);
-  point_locator_ = m_->sub_point_locator();
-  point_locator_->enable_out_of_mesh_mode();
+  int n_threads = omp_get_max_threads();
+  point_locators_ = std::vector<std::unique_ptr<libMesh::PointLocatorBase>>(n_threads);
+  for (int i = 0; i < n_threads; i++) {
+    point_locators_[i] = m_->sub_point_locator();
+    point_locators_[i]->set_find_element_tol(FP_COINCIDENT);
+    point_locators_[i]->enable_out_of_mesh_mode();
+  }
 
   // will need mesh neighbors to walk the mesh
   m_->find_neighbors();
@@ -2210,23 +2214,9 @@ LibMesh::get_bin(Position r) const
 
   // look-up a tet using the point locator
   libMesh::Point p(r.x, r.y, r.z);
-  auto e = (*point_locator_)(p);
 
-  // sometimes the tet isn't quite right,
-  // make sure this tet contains our point
-  // if not, check this tet's neighbors
-  libMesh::Point dir(rand(), rand(), rand());
-  dir /= dir.norm();
-  if (e && !inside_tet(p, dir, e)) {
-    bool found = false;
-    for (int i = 0; i < e->n_neighbors(); i++) {
-      if (e->neighbor_ptr(i) && inside_tet(p, dir, e->neighbor_ptr(i))) {
-        e = e->neighbor_ptr(i);
-        found = true;
-        break;
-      }
-    }
-  }
+  int thread = omp_get_thread_num();
+  auto e = (*point_locators_[thread])(p);
 
   if (!e) {
     return -1;
@@ -2361,7 +2351,8 @@ LibMesh::intersect_track(libMesh::Point start,
   double track_remaining = track_len;
 
   // attempt to locate a tet for the starting point
-  auto e = (*point_locator_)(start);
+  int thread = omp_get_thread_num();
+  auto e = (*point_locators_[thread])(start);
 
   // the point_locator seems off sometimes,
   // ensure the point is actually in the tet
@@ -2436,7 +2427,9 @@ LibMesh::intersect_track(libMesh::Point start,
       }
       auto orig_e = e;
       start += dir * TINY_BIT; // nudge particle forward
-      e = (*point_locator_)(start);
+
+      int thread = omp_get_thread_num();
+      e = (*point_locators_[thread])(start);
 
       if (!e) {
         if (!orig_e->on_boundary()) {

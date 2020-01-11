@@ -71,7 +71,7 @@ else()
 #===============================================================================
 if(libmesh)
   find_package(LIBMESH REQUIRED)
-  set(LIBMESH_LIBRARIES mesh_opt timpi_opt netcdf)
+  set(LIBMESH_LIBRARIES mesh_devel timpi_devel netcdf)
   set(LIBMESH_INCLUDE_DIRS "${LIBMESH}/../include/")
   link_directories(${LIBMESH})
 endif()

@@ -4,3 +4,6 @@
 [submodule "vendor/gsl-lite"]
 	path = vendor/gsl-lite
 	url = https://github.com/martinmoene/gsl-lite.git
+[submodule "vendor/xtensor"]
+	path = vendor/xtensor
+	url = https://github.com/xtensor-stack/xtensor.git

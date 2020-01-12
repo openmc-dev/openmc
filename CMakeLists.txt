@@ -113,12 +113,7 @@ endif()
 # pugixml library
 #===============================================================================
 
-add_library(pugixml vendor/pugixml/pugixml.cpp)
-target_include_directories(pugixml
-  PUBLIC
-    $<INSTALL_INTERFACE:include/pugixml>
-    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/vendor/pugixml>
-)
+add_subdirectory(vendor/pugixml)
 
 #===============================================================================
 # xtensor header-only library

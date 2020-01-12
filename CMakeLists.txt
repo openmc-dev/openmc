@@ -369,6 +369,6 @@ install(FILES man/man1/openmc.1 DESTINATION ${CMAKE_INSTALL_MANDIR}/man1)
 install(FILES LICENSE DESTINATION "${CMAKE_INSTALL_DOCDIR}" RENAME copyright)
 install(DIRECTORY include/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
 
-# Copy headers for vendored dependencies (note that xtensor/xtl are handled
+# Copy headers for vendored dependencies (note that all except faddeeva are handled
 # separately since they are managed by CMake)
 install(DIRECTORY vendor/faddeeva DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})

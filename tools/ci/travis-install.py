@@ -19,7 +19,7 @@ def which(program):
     return None
 
 
-def install(omp=False, mpi=False, phdf5=False, dagmc=False, event_based=False):
+def install(omp=False, mpi=False, phdf5=False, dagmc=False):
     # Create build directory and change to it
     shutil.rmtree('build', ignore_errors=True)
     os.mkdir('build')
@@ -47,9 +47,6 @@ def install(omp=False, mpi=False, phdf5=False, dagmc=False, event_based=False):
 
     if dagmc:
         cmake_cmd.append('-Ddagmc=ON')
-    
-    if event_based:
-        cmake_cmd.append('-Devent-based=ON')
 
     # Build in coverage mode for coverage testing
     cmake_cmd.append('-Dcoverage=on')
@@ -67,10 +64,9 @@ def main():
     mpi = (os.environ.get('MPI') == 'y')
     phdf5 = (os.environ.get('PHDF5') == 'y')
     dagmc = (os.environ.get('DAGMC') == 'y')
-    event_based = (os.environ.get('EVENT_BASED') == 'y')
 
     # Build and install
-    install(omp, mpi, phdf5, dagmc, event_based)
+    install(omp, mpi, phdf5, dagmc)
 
 if __name__ == '__main__':
     main()

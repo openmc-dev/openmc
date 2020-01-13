@@ -266,17 +266,23 @@ public:
 
 class UnstructuredMeshBase : public Mesh {
 public:
+  // constructors
+  UnstructuredMeshBase() {};
   UnstructuredMeshBase(pugi::xml_node node);
+  UnstructuredMeshBase(const std::string& filename);
+
   std::string filename_;
 };
 
 #ifdef DAGMC
 
-class UnstructuredMesh : public Mesh {
+class UnstructuredMesh : public UnstructuredMeshBase {
 
 public:
+
   UnstructuredMesh() = default;
   UnstructuredMesh(pugi::xml_node);
+  UnstructuredMesh(const std::string& filename);
   ~UnstructuredMesh() = default;
 
   void bins_crossed(const Particle& p,
@@ -447,8 +453,9 @@ class LibMesh : public UnstructuredMeshBase {
   typedef std::vector<std::pair<double, const libMesh::Elem*>> UnstructuredMeshHits;
 
 public:
-  // Constructor
+  // Constructors
   LibMesh(pugi::xml_node node);
+  LibMesh(const std::string& filename);
 
   // Methods
 
@@ -488,6 +495,10 @@ public:
   void set_variable(const std::string& var_name, int bin, double value);
 
 private:
+
+  //! Setup method for the mesh. Builds data structures,
+  //! element mapping, etc.
+  void initialize();
 
   //! Translate a bin value to an element pointer
   const libMesh::Elem* get_element_from_bin(int bin) const;

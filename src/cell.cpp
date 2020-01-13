@@ -8,7 +8,10 @@
 #include <sstream>
 #include <set>
 #include <string>
+
+
 #include <gsl/gsl>
+#include <fmt/format.h>
 
 #include "openmc/capi.h"
 #include "openmc/constants.h"
@@ -83,9 +86,8 @@ tokenize(const std::string region_spec) {
       i++;
 
     } else {
-      std::stringstream err_msg;
-      err_msg << "Region specification contains invalid character, \""
-              << region_spec[i] << "\"";
+      auto err_msg = fmt::format(
+        "Region specification contains invalid character, \"{}\"", region_spec[i]);
       fatal_error(err_msg);
     }
   }

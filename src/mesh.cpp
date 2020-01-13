@@ -1310,7 +1310,12 @@ extern "C" int openmc_add_unstrucutred_mesh(const char filename[],
     return OPENMC_E_INVALID_ARGUMENT;
   }
 
-  *mesh_id = model::meshes.back()->id_;
+  int id = 0;
+  for (const auto& m : model::meshes) { id = std::max(m->id_, id); }
+
+  id += 1;
+  model::meshes.back()->id_ = id;
+  *mesh_id = id;
 
   return 0;
 }

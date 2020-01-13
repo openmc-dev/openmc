@@ -110,6 +110,31 @@ message(STATUS "OpenMC Linker flags: ${ldflags}")
 endif()
 
 #===============================================================================
+# Update git submodules as needed
+#===============================================================================
+
+find_package(Git)
+if(GIT_FOUND AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/.git")
+  option(GIT_SUBMODULE "Check submodules during build" ON)
+  if(GIT_SUBMODULE)
+    message(STATUS "Submodule update")
+    execute_process(COMMAND ${GIT_EXECUTABLE} submodule update --init --recursive
+                    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+                    RESULT_VARIABLE GIT_SUBMOD_RESULT)
+    if(NOT GIT_SUBMOD_RESULT EQUAL 0)
+      message(FATAL_ERROR "git submodule update --init failed with \
+        ${GIT_SUBMOD_RESULT}, please checkout submodules")
+    endif()
+  endif()
+endif()
+
+# Check to see if submodules exist (by checking one)
+if(NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/vendor/pugixml/CMakeLists.txt")
+  message(FATAL_ERROR "The git submodules were not downloaded! GIT_SUBMODULE was \
+    turned off or failed. Please update submodules and try again.")
+endif()
+
+#===============================================================================
 # pugixml library
 #===============================================================================
 
@@ -304,13 +329,15 @@ if (MPI_ENABLED)
 endif()
 
 # Set git SHA1 hash as a compile definition
-execute_process(COMMAND git rev-parse HEAD
-                WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-                RESULT_VARIABLE GIT_SHA1_SUCCESS
-                OUTPUT_VARIABLE GIT_SHA1
-                ERROR_QUIET OUTPUT_STRIP_TRAILING_WHITESPACE)
-if(GIT_SHA1_SUCCESS EQUAL 0)
-  target_compile_definitions(libopenmc PRIVATE -DGIT_SHA1="${GIT_SHA1}")
+if(GIT_FOUND)
+  execute_process(COMMAND ${GIT_EXECUTABLE} rev-parse HEAD
+                  WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+                  RESULT_VARIABLE GIT_SHA1_SUCCESS
+                  OUTPUT_VARIABLE GIT_SHA1
+                  ERROR_QUIET OUTPUT_STRIP_TRAILING_WHITESPACE)
+  if(GIT_SHA1_SUCCESS EQUAL 0)
+    target_compile_definitions(libopenmc PRIVATE -DGIT_SHA1="${GIT_SHA1}")
+  endif()
 endif()
 
 # target_link_libraries treats any arguments starting with - but not -l as

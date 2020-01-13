@@ -14,9 +14,14 @@
 #include "openmc/constants.h"
 #include "openmc/position.h"
 #include "openmc/random_lcg.h"
-//#include "openmc/tallies/filter.h"
 
 namespace openmc {
+
+// The FilterMatch class is declared here to avoid circular definition, as it will
+// be defined later in filter.h. This issue arrises because the Particle object
+// defined in this file contains a data member (filter_match_), which is a vector
+// of type FilterMatch. Likewise, filter.h has a class that contains a Particle
+// member.
 class FilterMatch;
 
 //==============================================================================
@@ -328,14 +333,15 @@ public:
 
   int64_t current_work_; // current work index
 
-  std::vector<double> flux_derivs_;  // Derivatives of the current particle's weight
+  std::vector<double> flux_derivs_;  // derivatives of the current particle's weight
 
-  std::vector<FilterMatch> filter_matches_;
+  std::vector<FilterMatch> filter_matches_; // tally filter matches
 
-  std::vector<std::vector<Position>> tracks_;
+  std::vector<std::vector<Position>> tracks_; // tracks for outputting to file
 
-  std::vector<NuBank> nu_bank_;
+  std::vector<NuBank> nu_bank_; // bank of most recently fissioned particles
 
+  // Global tally accumulators
   double tally_absorption_ {0.0};
   double tally_collision_ {0.0};
   double tally_tracklength_ {0.0};
@@ -343,9 +349,9 @@ public:
 
   bool trace_ {false};     //!< flag to show debug information
 
-  double collision_distance_; 
+  double collision_distance_; // distance to particle's next closest collision
 
-  int n_event_ {0};
+  int n_event_ {0}; // number of events executed in this particle's history
 };
 
 } // namespace openmc

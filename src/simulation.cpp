@@ -28,7 +28,6 @@
 #include "openmc/tallies/tally_scoring.h"
 #include "openmc/tallies/trigger.h"
 #include "openmc/track_output.h"
-#include "openmc/event.h"
 
 #ifdef _OPENMP
 #include <omp.h>
@@ -44,20 +43,6 @@
 #include <chrono> 
 
 namespace openmc {
-
-double get_time()
-{
-	#ifdef _OPENMP
-	return omp_get_wtime();
-	#endif
-
-	#ifdef OPENMC_MPI
-	return MPI_Wtime();
-	#endif
-
-	unsigned long us_since_epoch = std::chrono::high_resolution_clock::now().time_since_epoch() / std::chrono::microseconds(1);
-	return (double) us_since_epoch / 1.0e6;
-}
 
 void transport_history_based_single_particle(Particle& p)
 {
@@ -84,112 +69,6 @@ void transport_history_based()
     initialize_history(&p, i_work);
     transport_history_based_single_particle(p);
   }
-}
-
-void transport_event_based()
-{
-	double stop, start;
-  double time_init = 0;
-	double time_fuel_xs = 0;
-	double time_nonfuel_xs = 0;
-	double time_advance = 0;
-	double time_collision = 0;
-	double time_surf = 0;
-
-
-  start = get_time();
-
-	int64_t remaining_work = simulation::work_per_rank;
-	int64_t source_offset = 0;
-
-  stop = get_time();
-  time_init += stop - start;
-
-	// Subiterations to complete sets of particles
-	while (remaining_work > 0) {
-    start = get_time();
-
-		// Figure out work for this subiteration
-    int64_t n_particles = std::min(remaining_work, simulation::max_particles_in_flight);
-
-    #pragma omp parallel for schedule(runtime)
-    for (auto i = 0; i < n_particles; i++) {
-      initialize_history(simulation::particles + i, source_offset + i + 1);
-    }
-
-		// Add all particles to advance particle queue
-     #pragma omp parallel for schedule(runtime)
-		for (auto i = 0; i < n_particles; i++) {
-			dispatch_xs_event(i);
-		}
-  
-    stop = get_time();
-    time_init += stop - start;
-
-		int event_kernel_executions = 0;
-		while (true) {
-			event_kernel_executions++;
-			int64_t max = std::max({
-          simulation::calculate_fuel_xs_queue_length,
-          simulation::calculate_nonfuel_xs_queue_length,
-          simulation::advance_particle_queue_length,
-          simulation::surface_crossing_queue_length,
-          simulation::collision_queue_length});
-			if (max == 0) {
-				break;
-			} else if (max == simulation::calculate_fuel_xs_queue_length) {
-				start = get_time();
-				process_calculate_xs_events(simulation::calculate_fuel_xs_queue,
-            simulation::calculate_fuel_xs_queue_length);
-				stop = get_time();
-				time_fuel_xs += (stop-start);
-        simulation::calculate_fuel_xs_queue_length = 0;
-			} else if (max == simulation::calculate_nonfuel_xs_queue_length) {
-				start = get_time();
-				process_calculate_xs_events(simulation::calculate_nonfuel_xs_queue,
-            simulation::calculate_nonfuel_xs_queue_length);
-				stop = get_time();
-				time_nonfuel_xs += (stop-start);
-        simulation::calculate_nonfuel_xs_queue_length = 0;
-			} else if (max == simulation::advance_particle_queue_length) {
-				start = get_time();
-				process_advance_particle_events();
-				stop = get_time();
-				time_advance += (stop-start);
-			} else if (max == simulation::surface_crossing_queue_length) {
-				start = get_time();
-				process_surface_crossing_events();
-				stop = get_time();
-				time_surf += (stop-start);
-			} else if (max == simulation::collision_queue_length) {
-				start = get_time();
-				process_collision_events();
-				stop = get_time();
-				time_collision += (stop-start);
-			}
-		}
-
-    // Finish particle track output and contribute to global tally variables
-    #pragma omp parallel for schedule(runtime)
-    for (auto i = 0; i < n_particles; i++) {
-      Particle& p = simulation::particles[i];
-      p.event_death();
-    }
-
-		remaining_work -= n_particles;
-		source_offset += n_particles;
-		
-		std::cout << "Event kernels retired: " << event_kernel_executions << std::endl;
-	}
-	if( mpi::rank == 0 )
-	{
-		std::cout << "Particle Init Time: " << time_init << std::endl;
-		std::cout << "Fuel XS Time:       " << time_fuel_xs << std::endl;
-		std::cout << "Non Fuel XS Time:   " << time_nonfuel_xs << std::endl;
-		std::cout << "Advance Time:       " << time_advance << std::endl;
-		std::cout << "Surface Time:       " << time_surf << std::endl;
-		std::cout << "Collision Time:     " << time_collision<< std::endl;
-	}
 }
 
 } // namespace openmc
@@ -230,14 +109,6 @@ int openmc_simulation_init()
   // fission bank
   allocate_banks();
   init_shared_fission_bank(simulation::work_per_rank * 3);
-	
-  // If doing an event-based simulatino, intialize the particle buffer
-  // and event queues
-  #ifdef EVENT_BASED
-  int64_t event_buffer_length = std::min(simulation::work_per_rank,
-                                         simulation::max_particles_in_flight);
-	init_event_queues(event_buffer_length);
-  #endif
 
   // Allocate tally results arrays if they're not allocated yet
   for (auto& t : model::tallies) {
@@ -322,10 +193,6 @@ int openmc_simulation_finalize()
   if (settings::check_overlaps) print_overlap_check();
 
   free_shared_fission_bank();
-	
-  #ifdef EVENT_BASED
-  free_event_queues();
-  #endif
 
   // Reset flags
   simulation::need_depletion_rx = false;
@@ -346,7 +213,6 @@ int openmc_next_batch(int* status)
 
   initialize_batch();
 
-
   // =======================================================================
   // LOOP OVER GENERATIONS
   for (current_gen = 1; current_gen <= settings::gen_per_batch; ++current_gen) {
@@ -356,11 +222,8 @@ int openmc_next_batch(int* status)
     // Start timer for transport
     simulation::time_transport.start();
 
-    #ifdef EVENT_BASED
-    transport_event_based();
-    #else
+    // Transport loop
     transport_history_based();
-    #endif
 
     // Accumulate time for transport
     simulation::time_transport.stop();
@@ -368,9 +231,7 @@ int openmc_next_batch(int* status)
     finalize_generation();
   }
 
-
   finalize_batch();
-  
 
   // Check simulation ending criteria
   if (status) {

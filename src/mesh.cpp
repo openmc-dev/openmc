@@ -28,6 +28,10 @@
 #include "openmc/tallies/filter.h"
 #include "openmc/xml_interface.h"
 
+#ifdef LIBMESH
+#include "libmesh/mesh_tools.h"
+#endif
+
 namespace openmc {
 
 //==============================================================================
@@ -2083,18 +2087,12 @@ LibMesh::LibMesh(pugi::xml_node node) : UnstructuredMeshBase(node) {
   first_element_ = *m_->elements_begin();
 
   // bounding box for the mesh
-  bbox_ = {INFTY, -INFTY, INFTY, -INFTY, INFTY, -INFTY};
+  bbox_ = libMesh::MeshTools::create_bounding_box(*m_);
+  bsphere_ = libMesh::MeshTools::bounding_sphere(*m_);
 
   // determine boundary elements and create bounding box
   for (int i = 0; i < m_->n_elem(); i++) {
     auto e = m_->elem_ptr(i);
-
-    // update bounding box for each node
-    for (int j = 0; j < e->n_nodes(); j++) {
-      auto n = e->node_ref(j);
-      Position r(n(0), n(1), n(2));
-      bbox_.update(r);
-    }
 
     for (int k = 0; k < e->n_neighbors(); k++) {
       if (!e->neighbor_ptr(k)) {
@@ -2210,11 +2208,12 @@ LibMesh::bins_crossed(const Particle* p,
 int
 LibMesh::get_bin(Position r) const
 {
-  if (!bbox_.contains(r)) { return -1; }
-
   // look-up a tet using the point locator
   libMesh::Point p(r.x, r.y, r.z);
 
+  // quick rejection check
+  //  if (bsphere_.above_surface(p) || !bbox_.contains_point(p)) { return -1; }
+  if (!bbox_.contains_point(p)) { return -1; }
   int thread = omp_get_thread_num();
   auto e = (*point_locators_[thread])(p);
 

@@ -24,6 +24,7 @@
 #endif
 
 #ifdef LIBMESH
+#include "libmesh/bounding_box.h"
 #include "libmesh/libmesh.h"
 #include "libmesh/elem.h"
 #include "libmesh/equation_systems.h"
@@ -32,6 +33,7 @@
 #include "libmesh/dof_map.h"
 #include "libmesh/mesh.h"
 #include "libmesh/point.h"
+#include "libmesh/sphere.h"
 #endif
 
 namespace openmc {
@@ -578,7 +580,8 @@ private:
   std::vector<std::unique_ptr<libMesh::PointLocatorBase>> point_locators_; //!< pointers to locators for each thread
   std::unique_ptr<libMesh::EquationSystems> equation_systems_; //!< pointer to the equation systems of the mesh (for result output)
   std::map<std::string, unsigned int> variable_map_; //!< mappint of variable names (scores) to their numbers on the mesh
-  BoundingBox bbox_; //!< bounding box of the mesh
+  libMesh::BoundingBox bbox_; //!< bounding box of the mesh
+  libMesh::Sphere bsphere_; //<! bounding sphere of the mesh
   std::string eq_system_name_; //!< name of the equation system holding OpenMC results
   libMesh::Elem* first_element_; //!< pointer to the first element in the mesh (maybe should be a key?)
   std::set<libMesh::Elem*> boundary_elements_; //<! all boundary elements in the mesh

@@ -36,7 +36,7 @@ scatter(Particle* p);
 //! \param bank The particle bank to populate
 //! \param use_fission_bank Indicates if shared global fission bank should be used
 void
-create_fission_sites(Particle* p, std::vector<Particle::Bank>& bank, bool use_fission_bank);
+create_fission_sites(Particle* p);
 
 //! \brief Handles an absorption event
 //! \param p Particle to operate on

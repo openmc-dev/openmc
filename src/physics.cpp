@@ -95,17 +95,13 @@ void sample_neutron_reaction(Particle* p)
   if (nuc->fissionable_) {
     Reaction* rx = sample_fission(i_nuclide, p);
     if (settings::run_mode == RUN_MODE_EIGENVALUE) {
-      //create_fission_sites(p, i_nuclide, rx, simulation::fission_bank);
-      create_fission_sites(p, i_nuclide, rx, simulation::fission_bank, true);
+      create_fission_sites(p, i_nuclide, rx);
     } else if (settings::run_mode == RUN_MODE_FIXEDSOURCE &&
       settings::create_fission_neutrons) {
-      //create_fission_sites(p, i_nuclide, rx, simulation::secondary_bank);
-      //create_fission_sites(p, i_nuclide, rx, p->secondary_bank_);
-      create_fission_sites(p, i_nuclide, rx, p->secondary_bank_, false);
+      create_fission_sites(p, i_nuclide, rx);
 
       // Make sure particle population doesn't grow out of control for
       // subcritical multiplication problems.
-      //if (simulation::secondary_bank.size() >= 10000) {
       if (p->secondary_bank_.size() >= 10000) {
         fatal_error("The secondary particle bank appears to be growing without "
         "bound. You are likely running a subcritical multiplication problem "
@@ -150,8 +146,7 @@ void sample_neutron_reaction(Particle* p)
 }
 
 void
-create_fission_sites(Particle* p, int i_nuclide, const Reaction* rx,
-  std::vector<Particle::Bank>& bank, bool use_fission_bank)
+create_fission_sites(Particle* p, int i_nuclide, const Reaction* rx)
 {
   // If uniform fission source weighting is turned on, we increase or decrease
   // the expected number of fission sites produced
@@ -179,6 +174,12 @@ create_fission_sites(Particle* p, int i_nuclide, const Reaction* rx,
   p->fission_ = true;
   int skipped = 0;
 
+  // Determine whether to place fission sites into the shared fission bank
+  // or the secondary particle bank.
+  bool use_fission_bank = false;
+  if (settings::run_mode == RUN_MODE_EIGENVALUE)
+    use_fission_bank = true;
+
   for (int i = 0; i < nu; ++i) {
     Particle::Bank * site;
     if(use_fission_bank)
@@ -188,9 +189,10 @@ create_fission_sites(Particle* p, int i_nuclide, const Reaction* rx,
       idx = simulation::shared_fission_bank_length++;
       if( idx >= simulation::shared_fission_bank_max )
       {
-        warning("The shared fission bank is full. Additional fission sites created in this generation will not be banked.");
-        #pragma omp atomic
-        simulation::shared_fission_bank_length--;
+        warning("The shared fission bank is full. Additional fission sites created "
+            "in this generation will not be banked.");
+        #pragma omp atomic write
+        simulation::shared_fission_bank_length = simulation::shared_fission_bank_max;
         skipped++;
         break;
       }
@@ -199,6 +201,7 @@ create_fission_sites(Particle* p, int i_nuclide, const Reaction* rx,
     else
     {
       // Create new bank site and get reference to last element
+      auto& bank = p->secondary_bank_;
       bank.emplace_back();
       site = &bank.back();
     }

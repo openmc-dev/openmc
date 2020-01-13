@@ -48,11 +48,10 @@ sample_reaction(Particle* p)
 
   if (model::materials[p->material_]->fissionable_) {
     if (settings::run_mode == RUN_MODE_EIGENVALUE) {
-      create_fission_sites(p, simulation::fission_bank, true);
+      create_fission_sites(p);
     } else if ((settings::run_mode == RUN_MODE_FIXEDSOURCE) &&
                (settings::create_fission_neutrons)) {
-      //create_fission_sites(p, simulation::secondary_bank);
-      create_fission_sites(p, p->secondary_bank_, false);
+      create_fission_sites(p);
     }
   }
 
@@ -92,7 +91,7 @@ scatter(Particle* p)
 }
 
 void
-create_fission_sites(Particle* p, std::vector<Particle::Bank>& bank, bool use_fission_bank)
+create_fission_sites(Particle* p)
 {
   // If uniform fission source weighting is turned on, we increase or decrease
   // the expected number of fission sites produced
@@ -122,6 +121,12 @@ create_fission_sites(Particle* p, std::vector<Particle::Bank>& bank, bool use_fi
 
   p->fission_ = true;
   int skipped = 0;
+  
+  // Determine whether to place fission sites into the shared fission bank
+  // or the secondary particle bank.
+  bool use_fission_bank = false;
+  if (settings::run_mode == RUN_MODE_EIGENVALUE)
+    use_fission_bank = true;
 
   for (int i = 0; i < nu; ++i) {
     Particle::Bank * site;
@@ -132,9 +137,10 @@ create_fission_sites(Particle* p, std::vector<Particle::Bank>& bank, bool use_fi
       idx = simulation::shared_fission_bank_length++;
       if( idx >= simulation::shared_fission_bank_max )
       {
-        warning("The shared fission bank is full. Additional fission sites created in this generation will not be banked.");
-        #pragma omp atomic
-        simulation::shared_fission_bank_length--;
+        warning("The shared fission bank is full. Additional fission sites created "
+            "in this generation will not be banked.");
+        #pragma omp atomic write
+        simulation::shared_fission_bank_length = simulation::shared_fission_bank_max;
         skipped++;
         break;
       }
@@ -143,6 +149,7 @@ create_fission_sites(Particle* p, std::vector<Particle::Bank>& bank, bool use_fi
     else
     {
       // Create new bank site and get reference to last element
+      auto& bank = p->secondary_bank_;
       bank.emplace_back();
       site = &bank.back();
     }

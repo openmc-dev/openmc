@@ -12,7 +12,6 @@
 #include "pugixml.hpp"
 #include "xtensor/xtensor.hpp"
 
-#include "openmc/bounding_box.h"
 #include "openmc/particle.h"
 #include "openmc/position.h"
 

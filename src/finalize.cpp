@@ -75,6 +75,7 @@ int openmc_finalize()
   settings::gen_per_batch = 1;
   settings::legendre_to_tabular = true;
   settings::legendre_to_tabular_points = -1;
+  settings::material_cell_offsets = true;
   settings::n_particles = -1;
   settings::output_summary = true;
   settings::output_tallies = true;

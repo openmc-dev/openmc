@@ -196,6 +196,18 @@ based on the recommended value in LA-UR-14-24530_.
 .. _LA-UR-14-24530: https://laws.lanl.gov/vhosts/mcnp.lanl.gov/pdf_files/la-ur-14-24530.pdf
 
 ---------------------------
+``<material_cell_offsets>``
+---------------------------
+
+By default, OpenMC will count the number of instances of each cell filled with a
+material and generate "offset tables" that are used for cell instance tallies.
+The ``<material_cell_offsets>`` element allows a user to override this default
+setting and turn off the generation of offset tables, if desired, by setting it
+to false.
+
+  *Default*: true
+
+---------------------------
 ``<max_order>`` Element
 ---------------------------
 
@@ -423,16 +435,16 @@ attributes/sub-elements:
 
     :type:
       The type of spatial distribution. Valid options are "box", "fission",
-      "point", "cartesian", "cylindrical", and "spherical". A "box" spatial 
-      distribution has coordinates sampled uniformly in a parallelepiped. A 
-      "fission" spatial distribution samples locations from a "box" 
-      distribution but only locations in fissionable materials are accepted. 
-      A "point" spatial distribution has coordinates specified by a triplet. 
-      A "cartesian" spatial distribution specifies independent distributions of 
+      "point", "cartesian", "cylindrical", and "spherical". A "box" spatial
+      distribution has coordinates sampled uniformly in a parallelepiped. A
+      "fission" spatial distribution samples locations from a "box"
+      distribution but only locations in fissionable materials are accepted.
+      A "point" spatial distribution has coordinates specified by a triplet.
+      A "cartesian" spatial distribution specifies independent distributions of
       x-, y-, and z-coordinates. A "cylindrical" spatial distribution specifies
       independent distributions of r-, phi-, and z-coordinates where phi is the
       azimuthal angle and the origin for the cylindrical coordinate system is
-      specified by origin. A "spherical" spatial distribution specifies 
+      specified by origin. A "spherical" spatial distribution specifies
       independent distributions of r-, theta-, and phi-coordinates where theta
       is the angle with respect to the z-axis, phi is the azimuthal angle, and
       the sphere is centered on the coordinate (x0,y0,z0).
@@ -452,7 +464,7 @@ attributes/sub-elements:
 
       For an "cartesian" distribution, no parameters are specified. Instead,
       the ``x``, ``y``, and ``z`` elements must be specified.
-      
+
       For a "cylindrical" distribution, no parameters are specified. Instead,
       the ``r``, ``phi``, ``z``, and ``origin`` elements must be specified.
 
@@ -474,15 +486,15 @@ attributes/sub-elements:
       :ref:`univariate`).
 
     :z:
-      For both "cartesian" and "cylindrical" distributions, this element 
-      specifies the distribution of z-coordinates. The necessary 
-      sub-elements/attributes are those of a univariate probability 
+      For both "cartesian" and "cylindrical" distributions, this element
+      specifies the distribution of z-coordinates. The necessary
+      sub-elements/attributes are those of a univariate probability
       distribution (see the description in :ref:`univariate`).
 
     :r:
       For "cylindrical" and "spherical" distributions, this element specifies
-      the distribution of r-coordinates (cylindrical radius and spherical 
-      radius, respectively). The necessary sub-elements/attributes are those 
+      the distribution of r-coordinates (cylindrical radius and spherical
+      radius, respectively). The necessary sub-elements/attributes are those
       of a univariate probability distribution (see the description in
       :ref:`univariate`).
 
@@ -493,13 +505,13 @@ attributes/sub-elements:
       :ref:`univariate`).
 
     :phi:
-      For "cylindrical" and "spherical" distributions, this element specifies 
-      the distribution of phi-coordinates. The necessary 
-      sub-elements/attributes are those of a univariate probability 
+      For "cylindrical" and "spherical" distributions, this element specifies
+      the distribution of phi-coordinates. The necessary
+      sub-elements/attributes are those of a univariate probability
       distribution (see the description in :ref:`univariate`).
 
     :origin:
-      For "cylindrical and "spherical" distributions, this element specifies 
+      For "cylindrical and "spherical" distributions, this element specifies
       the coordinates for the origin of the coordinate system.
 
   :angle:

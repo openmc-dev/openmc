@@ -2,12 +2,14 @@
 #define OPENMC_CELL_H
 
 #include <cstdint>
+#include <functional> // for hash
 #include <limits>
 #include <memory> // for unique_ptr
 #include <string>
 #include <unordered_map>
 #include <vector>
 
+#include <gsl/gsl>
 #include "hdf5.h"
 #include "pugixml.hpp"
 #include "dagmc.h"
@@ -284,6 +286,26 @@ private:
   //! `surfs_.back()`.  Otherwise, `partitions_[i]` gives cells sandwiched
   //! between `surfs_[i-1]` and `surfs_[i]`.
   std::vector<std::vector<int32_t>> partitions_;
+};
+
+//==============================================================================
+//! Define an instance of a particular cell
+//==============================================================================
+
+struct CellInstance {
+  //! Check for equality
+  bool operator==(const CellInstance& other) const
+  { return index_cell == other.index_cell && instance == other.instance; }
+
+  gsl::index index_cell;
+  gsl::index instance;
+};
+
+struct CellInstanceHash {
+  std::size_t operator()(const CellInstance& k) const
+  {
+    return 4096*k.index_cell + k.instance;
+  }
 };
 
 //==============================================================================

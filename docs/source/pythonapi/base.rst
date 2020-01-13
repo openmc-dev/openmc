@@ -107,6 +107,7 @@ Constructing Tallies
    openmc.CellFilter
    openmc.CellFromFilter
    openmc.CellbornFilter
+   openmc.CellInstanceFilter
    openmc.SurfaceFilter
    openmc.MeshFilter
    openmc.MeshSurfaceFilter

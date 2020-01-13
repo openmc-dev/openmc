@@ -258,8 +258,13 @@ Cell::set_temperature(double T, int32_t instance)
   }
 
   if (instance >= 0) {
+    // If temperature vector is not big enough, resize it first
+    if (sqrtkT_.size() != n_instances_) sqrtkT_.resize(n_instances_, sqrtkT_[0]);
+
+    // Set temperature for the corresponding instance
     sqrtkT_.at(instance) = std::sqrt(K_BOLTZMANN * T);
   } else {
+    // Set temperature for all instances
     for (auto& T_ : sqrtkT_) {
       T_ = std::sqrt(K_BOLTZMANN * T);
     }

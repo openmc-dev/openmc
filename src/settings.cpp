@@ -46,6 +46,7 @@ bool create_fission_neutrons {true};
 bool dagmc                   {false};
 bool entropy_on              {false};
 bool legendre_to_tabular     {true};
+bool material_cell_offsets   {true};
 bool output_summary          {true};
 bool output_tallies          {true};
 bool particle_restart_run    {false};
@@ -775,6 +776,11 @@ void read_settings_xml()
     if (check_for_node(root, "create_fission_neutrons")) {
       create_fission_neutrons = get_node_value_bool(root, "create_fission_neutrons");
     }
+  }
+
+  // Check whether material cell offsets should be generated
+  if (check_for_node(root, "material_cell_offsets")) {
+    material_cell_offsets = get_node_value_bool(root, "material_cell_offsets");
   }
 }
 

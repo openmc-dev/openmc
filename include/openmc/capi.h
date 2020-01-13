@@ -47,6 +47,7 @@ extern "C" {
   int openmc_get_mesh_index(int32_t id, int32_t* index);
   int openmc_get_n_batches(int* n_batches, bool get_max_batches);
   int openmc_get_nuclide_index(const char name[], int* index);
+  int openmc_add_unstructured_mesh(const char filename[], const char library[], int* id);
   int64_t openmc_get_seed();
   int openmc_get_tally_index(int32_t id, int32_t* index);
   void openmc_get_tally_next_id(int32_t* id);

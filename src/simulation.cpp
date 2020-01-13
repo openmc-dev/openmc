@@ -108,7 +108,6 @@ int openmc_simulation_init()
   // Allocate source bank, and for eigenvalue simulations also allocate the
   // fission bank
   allocate_banks();
-  init_shared_fission_bank(simulation::work_per_rank * 3);
 
   // Allocate tally results arrays if they're not allocated yet
   for (auto& t : model::tallies) {
@@ -191,8 +190,6 @@ int openmc_simulation_finalize()
     if (settings::verbosity >= 4) print_results();
   }
   if (settings::check_overlaps) print_overlap_check();
-
-  free_shared_fission_bank();
 
   // Reset flags
   simulation::need_depletion_rx = false;
@@ -302,6 +299,9 @@ void allocate_banks()
   if (settings::run_mode == RUN_MODE_EIGENVALUE) {
     simulation::fission_bank.reserve(3*simulation::work_per_rank);
   }
+  
+  // Allocate shared bank
+  init_shared_fission_bank(simulation::work_per_rank * 3);
 }
 
 void initialize_batch()

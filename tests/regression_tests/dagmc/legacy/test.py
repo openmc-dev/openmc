@@ -50,8 +50,6 @@ def model():
 
     return model
 
-import pytest
-@pytest.mark.skip(reason="DAGMC not planned for GPU support.")
 def test_dagmc(model):
     harness = PyAPITestHarness('statepoint.5.h5', model)
     harness.main()

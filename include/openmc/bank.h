@@ -37,7 +37,6 @@ extern int shared_fission_bank_max;
 void free_memory_bank();
 
 void init_shared_fission_bank(int max);
-void free_shared_fission_bank(void);
 
 } // namespace openmc
 

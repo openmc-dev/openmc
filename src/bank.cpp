@@ -33,18 +33,14 @@ void free_memory_bank()
 {
   simulation::source_bank.clear();
   simulation::fission_bank.clear();
+	delete[] simulation::shared_fission_bank;
+  simulation::shared_fission_bank_length = 0;
 }
 
 void init_shared_fission_bank(int max)
 {
   simulation::shared_fission_bank_max = max;
   simulation::shared_fission_bank = new Particle::Bank[max];
-  simulation::shared_fission_bank_length = 0;
-}
-
-void free_shared_fission_bank(void)
-{
-	delete[] simulation::shared_fission_bank;
   simulation::shared_fission_bank_length = 0;
 }
 

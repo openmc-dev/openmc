@@ -23,7 +23,7 @@ _FILTER_TYPES = (
     'universe', 'material', 'cell', 'cellborn', 'surface', 'mesh', 'energy',
     'energyout', 'mu', 'polar', 'azimuthal', 'distribcell', 'delayedgroup',
     'energyfunction', 'cellfrom', 'legendre', 'spatiallegendre',
-    'sphericalharmonics', 'zernike', 'zernikeradial', 'particle'
+    'sphericalharmonics', 'zernike', 'zernikeradial', 'particle', 'cellinstance'
 )
 
 _CURRENT_NAMES = (
@@ -266,7 +266,7 @@ class Filter(IDManagerMixin, metaclass=FilterMeta):
 
         # Merge unique filter bins
         merged_bins = np.concatenate((self.bins, other.bins))
-        merged_bins = np.unique(merged_bins)
+        merged_bins = np.unique(merged_bins, axis=0)
 
         # Create a new filter with these bins and a new auto-generated ID
         return type(self)(merged_bins)
@@ -518,6 +518,105 @@ class CellbornFilter(WithIDFilter):
     expected_type = Cell
 
 
+class CellInstanceFilter(Filter):
+    """Bins tally events based on which cell instance a particle is in.
+
+    This filter is similar to :class:`DistribcellFilter` but allows one to
+    select particular instances to be tallied (instead of obtaining *all*
+    instances by default) and allows instances from different cells to be
+    specified in a single filter.
+
+    Parameters
+    ----------
+    bins : iterable of 2-tuples or numpy.ndarray
+        The cell instances to tally, given as 2-tuples. For the first value in
+        the tuple, either openmc.Cell objects or their integral ID numbers can
+        be used.
+    filter_id : int
+        Unique identifier for the filter
+
+    Attributes
+    ----------
+    bins : numpy.ndarray
+        2D numpy array of cell IDs and instances
+    id : int
+        Unique identifier for the filter
+    num_bins : Integral
+        The number of filter bins
+
+    See Also
+    --------
+    DistribcellFilter
+
+    """
+    def __init__(self, bins, filter_id=None):
+        self.bins = bins
+        self.id = filter_id
+
+    @Filter.bins.setter
+    def bins(self, bins):
+        pairs = np.empty((len(bins), 2), dtype=int)
+        for i, (cell, instance) in enumerate(bins):
+            cv.check_type('cell', cell, (openmc.Cell, Integral))
+            cv.check_type('instance', instance, Integral)
+            pairs[i, 0] = cell if isinstance(cell, Integral) else cell.id
+            pairs[i, 1] = instance
+        self._bins = pairs
+
+    def get_pandas_dataframe(self, data_size, stride, **kwargs):
+        """Builds a Pandas DataFrame for the Filter's bins.
+
+        This method constructs a Pandas DataFrame object for the filter with
+        columns annotated by filter bin information. This is a helper method for
+        :meth:`Tally.get_pandas_dataframe`.
+
+        Parameters
+        ----------
+        data_size : int
+            The total number of bins in the tally corresponding to this filter
+        stride : int
+            Stride in memory for the filter
+
+        Returns
+        -------
+        pandas.DataFrame
+            A Pandas DataFrame with a multi-index column for the cell instance.
+            The number of rows in the DataFrame is the same as the total number
+            of bins in the corresponding tally, with the filter bin appropriately
+            tiled to map to the corresponding tally bins.
+
+        See also
+        --------
+        Tally.get_pandas_dataframe(), CrossFilter.get_pandas_dataframe()
+
+        """
+        # Repeat and tile bins as necessary to account for other filters.
+        bins = np.repeat(self.bins, stride, axis=0)
+        tile_factor = data_size // len(bins)
+        bins = np.tile(bins, (tile_factor, 1))
+
+        columns = pd.MultiIndex.from_product([[self.short_name.lower()],
+                                              ['cell', 'instance']])
+        return pd.DataFrame(bins, columns=columns)
+
+    def to_xml_element(self):
+        """Return XML Element representing the Filter.
+
+        Returns
+        -------
+        element : xml.etree.ElementTree.Element
+            XML element containing filter data
+
+        """
+        element = ET.Element('filter')
+        element.set('id', str(self.id))
+        element.set('type', self.short_name.lower())
+
+        subelement = ET.SubElement(element, 'bins')
+        subelement.text = ' '.join(str(i) for i in self.bins.ravel())
+        return element
+
+
 class SurfaceFilter(WithIDFilter):
     """Filters particles by surface crossing
 
@@ -564,11 +663,7 @@ class ParticleFilter(Filter):
         The number of filter bins
 
     """
-    @property
-    def bins(self):
-        return self._bins
-
-    @bins.setter
+    @Filter.bins.setter
     def bins(self, bins):
         bins = np.atleast_1d(bins)
         cv.check_iterable_type('filter bins', bins, str)
@@ -1174,6 +1269,11 @@ def _path_to_levels(path):
 class DistribcellFilter(Filter):
     """Bins tally event locations on instances of repeated cells.
 
+    This filter provides a separate score for each unique instance of a repeated
+    cell in a geometry. Note that only one cell can be specified in this filter.
+    The related :class:`CellInstanceFilter` allows one to obtain scores for
+    particular cell instances as well as instances from different cells.
+
     Parameters
     ----------
     cell : openmc.Cell or Integral
@@ -1193,6 +1293,10 @@ class DistribcellFilter(Filter):
     paths : list of str
         The paths traversed through the CSG tree to reach each distribcell
         instance (for 'distribcell' filters only)
+
+    See Also
+    --------
+    CellInstanceFilter
 
     """
 

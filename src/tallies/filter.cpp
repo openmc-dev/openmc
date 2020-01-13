@@ -12,6 +12,7 @@
 #include "openmc/tallies/filter_cell.h"
 #include "openmc/tallies/filter_cellborn.h"
 #include "openmc/tallies/filter_cellfrom.h"
+#include "openmc/tallies/filter_cell_instance.h"
 #include "openmc/tallies/filter_delayedgroup.h"
 #include "openmc/tallies/filter_distribcell.h"
 #include "openmc/tallies/filter_energyfunc.h"
@@ -100,6 +101,8 @@ Filter* Filter::create(const std::string& type, int32_t id)
     model::tally_filters.push_back(std::make_unique<CellbornFilter>());
   } else if (type == "cellfrom") {
     model::tally_filters.push_back(std::make_unique<CellFromFilter>());
+  } else if (type == "cellinstance") {
+    model::tally_filters.push_back(std::make_unique<CellInstanceFilter>());
   } else if (type == "distribcell") {
     model::tally_filters.push_back(std::make_unique<DistribcellFilter>());
   } else if (type == "delayedgroup") {

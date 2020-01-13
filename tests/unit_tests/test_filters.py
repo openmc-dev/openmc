@@ -22,6 +22,30 @@ def box_model():
     return model
 
 
+def test_cell_instance():
+    c1 = openmc.Cell()
+    c2 = openmc.Cell()
+    f = openmc.CellInstanceFilter([(c1, 0), (c1, 1), (c1, 2), (c2, 0), (c2, 1)])
+
+    # Make sure __repr__ works
+    repr(f)
+
+    # to_xml_element()
+    elem = f.to_xml_element()
+    assert elem.tag == 'filter'
+    assert elem.attrib['type'] == 'cellinstance'
+    bins = [int(x) for x in elem.find('bins').text.split()]
+    assert all(x == c1.id for x in bins[:6:2])
+    assert all(x == c2.id for x in bins[6::2])
+
+    # get_pandas_dataframe()
+    df = f.get_pandas_dataframe(f.num_bins, 1)
+    cells = df['cellinstance', 'cell']
+    instances = df['cellinstance', 'instance']
+    assert cells.apply(lambda x: x in (c1.id, c2.id)).all()
+    assert instances.apply(lambda x: x in (0, 1, 2)).all()
+
+
 def test_legendre():
     n = 5
     f = openmc.LegendreFilter(n)
@@ -69,7 +93,7 @@ def test_spherical_harmonics():
     f.cosine = 'particle'
     assert f.order == n
     assert f.bins[0] == 'Y0,0'
-    assert f.bins[-1] == 'Y{0},{0}'.format(n, n)
+    assert f.bins[-1] == 'Y{0},{0}'.format(n)
     assert len(f.bins) == (n + 1)**2
 
     # Make sure __repr__ works

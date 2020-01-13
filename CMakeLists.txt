@@ -352,7 +352,7 @@ add_custom_command(TARGET libopenmc POST_BUILD
 #===============================================================================
 
 set(INSTALL_CONFIGDIR ${CMAKE_INSTALL_LIBDIR}/cmake/OpenMC)
-install(TARGETS openmc libopenmc pugixml faddeeva gsl-lite
+install(TARGETS openmc libopenmc faddeeva
   EXPORT openmc-targets
   RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
   LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}

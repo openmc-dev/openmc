@@ -130,7 +130,7 @@ Particle::from_source(const Bank* src)
 }
 
 void
-Particle::event_calculate_xs_I()
+Particle::event_calculate_xs()
 {
     // Set the random number stream
     if (type_ == Particle::Type::neutron) {
@@ -168,11 +168,7 @@ Particle::event_calculate_xs_I()
     if (write_track_) write_particle_track(*this);
 
     if (settings::check_overlaps) check_cell_overlap(this);
-}
-
-void
-Particle::event_calculate_xs_II()
-{
+    
     // Calculate microscopic and macroscopic cross sections
     if (material_ != MATERIAL_VOID) {
       if (settings::run_CE) {

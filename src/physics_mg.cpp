@@ -109,7 +109,6 @@ create_fission_sites(Particle* p)
   // Begin banking the source neutrons
   // First, if our bank is full then don't continue
   if (nu == 0) return;
-  
 
   // Initialize the counter of delayed neutrons encountered for each delayed
   // group.
@@ -131,7 +130,7 @@ create_fission_sites(Particle* p)
     Particle::Bank* site;
     if(use_fission_bank)
     {
-      int idx;
+      int64_t idx;
       #pragma omp atomic capture
       idx = simulation::fission_bank_length++;
       if( idx >= simulation::fission_bank_max )

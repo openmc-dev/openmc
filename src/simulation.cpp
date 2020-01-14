@@ -394,7 +394,9 @@ void finalize_generation()
   global_tally_leakage = 0.0;
 
   if (settings::run_mode == RUN_MODE_EIGENVALUE) {	
-    // If using shared memory, sort the fission bank so as to allow for reproducibility
+    // If using shared memory, stable sort the fission bank (by parent IDs) 
+    // so as to allow for reproducibility regardless of which order particles
+    // are run in.
     #ifdef _OPENMP
     std::stable_sort(simulation::fission_bank,
         simulation::fission_bank + simulation::fission_bank_length);
@@ -558,7 +560,7 @@ void free_memory_simulation()
 
 void transport_history_based_single_particle(Particle& p)
 {
-  while(true) {
+  while (true) {
     p.event_calculate_xs();
     p.event_advance();
     if( p.collision_distance_ > p.boundary_.distance ) 

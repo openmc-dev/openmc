@@ -2,8 +2,8 @@
 #define OPENMC_TALLIES_TALLY_SCORING_H
 
 #include "openmc/particle.h"
-#include "openmc/tallies/tally.h"
 #include "openmc/tallies/filter.h"
+#include "openmc/tallies/tally.h"
 
 namespace openmc {
 
@@ -23,12 +23,14 @@ class FilterBinIter
 public:
 
   //! Construct an iterator over bins that match a given particle's state.
-  FilterBinIter(const Tally& tally, const Particle* p, std::vector<FilterMatch>* particle_filter_matches);
+  FilterBinIter(const Tally& tally, const Particle* p,
+      std::vector<FilterMatch>* particle_filter_matches);
 
   //! Construct an iterator over all filter bin combinations.
   //
   //! \param end if true, the returned iterator indicates the end of a loop.
-  FilterBinIter(const Tally& tally, bool end, std::vector<FilterMatch>* particle_filter_matches);
+  FilterBinIter(const Tally& tally, bool end,
+      std::vector<FilterMatch>* particle_filter_matches);
 
   bool operator==(const FilterBinIter& other) const
   {return index_ == other.index_;}

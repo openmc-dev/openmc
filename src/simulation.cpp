@@ -33,12 +33,7 @@
 
 #include <algorithm>
 #include <string>
-#include <chrono> 
 
-namespace openmc {
-
-
-} // namespace openmc
 
 //==============================================================================
 // C API functions
@@ -426,7 +421,6 @@ void finalize_generation()
     // For fixed-source mode, we need to sample the external source
     fill_source_bank_fixedsource();
   }
-    
 }
 
 void initialize_history(Particle* p, int64_t index_source)

@@ -1,12 +1,9 @@
 #include "openmc/bank.h"
-
 #include "openmc/capi.h"
 #include "openmc/error.h"
 
 #include <cstdint>
 
-// Explicit template instantiation definition
-//template class std::vector<openmc::Particle::Bank>;
 
 namespace openmc {
 

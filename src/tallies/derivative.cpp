@@ -115,8 +115,8 @@ apply_derivative_to_score(const Particle* p, int i_tally, int i_nuclide,
   // where (1/f * d_f/d_p) is the (logarithmic) flux derivative and p is the
   // perturbated variable.
 
-  const auto&   deriv      {model::tally_derivs[tally.deriv_]};
-  const double& flux_deriv {p->flux_derivs_[tally.deriv_]};
+  const auto& deriv = model::tally_derivs[tally.deriv_];
+  const auto& flux_deriv = p->flux_derivs_[tally.deriv_];
 
   // Handle special cases where we know that d_c/d_p must be zero.
   if (score_bin == SCORE_FLUX) {
@@ -569,9 +569,9 @@ score_track_derivative(Particle* p, double distance)
   if (p->material_ == MATERIAL_VOID) return;
   const Material& material {*model::materials[p->material_]};
   
-  for (int idx = 0; idx < model::tally_derivs.size(); idx++) {
-    const auto& deriv {model::tally_derivs[idx]};
-    double& flux_deriv = p->flux_derivs_[idx];
+  for (auto idx = 0; idx < model::tally_derivs.size(); idx++) {
+    const auto& deriv = model::tally_derivs[idx];
+    auto& flux_deriv = p->flux_derivs_[idx];
     if (deriv.diff_material != material.id_) continue;
 
     switch (deriv.variable) {
@@ -620,8 +620,8 @@ void score_collision_derivative(Particle* p)
 
   //for (auto& deriv : model::tally_derivs) {
   for (int idx = 0; idx < model::tally_derivs.size(); idx++) {
-    const auto&  deriv = model::tally_derivs[idx];
-    double& flux_deriv = p->flux_derivs_[idx];
+    const auto& deriv = model::tally_derivs[idx];
+    auto& flux_deriv = p->flux_derivs_[idx];
 
     if (deriv.diff_material != material.id_) continue;
 
@@ -680,11 +680,6 @@ void score_collision_derivative(Particle* p)
       break;
     }
   }
-}
-
-void zero_flux_derivs(std::vector<double> v)
-{
-  std::fill(v.begin(), v.end(), 0);
 }
 
 }// namespace openmc

@@ -226,8 +226,7 @@ public:
   //! \param src Source site data
   void from_source(const Bank* src);
 
-  void event_calculate_xs_I();
-  void event_calculate_xs_II();
+  void event_calculate_xs();
   void event_advance();
   void event_cross_surface();
   void event_collide();

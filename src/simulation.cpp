@@ -2,30 +2,23 @@
 
 #include "openmc/bank.h"
 #include "openmc/capi.h"
-//#include "openmc/cell.h"
 #include "openmc/container_util.h"
 #include "openmc/eigenvalue.h"
 #include "openmc/error.h"
-//#include "openmc/geometry.h"
 #include "openmc/material.h"
 #include "openmc/message_passing.h"
-//#include "openmc/mgxs_interface.h"
 #include "openmc/nuclide.h"
 #include "openmc/output.h"
 #include "openmc/particle.h"
 #include "openmc/photon.h"
-//#include "openmc/physics.h"
-//#include "openmc/physics_mg.h"
 #include "openmc/random_lcg.h"
 #include "openmc/settings.h"
 #include "openmc/source.h"
 #include "openmc/state_point.h"
-//#include "openmc/thermal.h"
 #include "openmc/timer.h"
 #include "openmc/tallies/derivative.h"
 #include "openmc/tallies/filter.h"
 #include "openmc/tallies/tally.h"
-//#include "openmc/tallies/tally_scoring.h"
 #include "openmc/tallies/trigger.h"
 #include "openmc/track_output.h"
 
@@ -47,8 +40,7 @@ namespace openmc {
 void transport_history_based_single_particle(Particle& p)
 {
   while(true) {
-    p.event_calculate_xs_I();
-    p.event_calculate_xs_II();
+    p.event_calculate_xs();
     p.event_advance();
     if( p.collision_distance_ > p.boundary_.distance ) 
       p.event_cross_surface();

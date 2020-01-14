@@ -16,11 +16,10 @@ namespace openmc {
 namespace simulation {
 
 extern std::vector<Particle::Bank> source_bank;
-extern std::vector<Particle::Bank> fission_bank;
 
-extern Particle::Bank* shared_fission_bank;
-extern int shared_fission_bank_length;
-extern int shared_fission_bank_max;
+extern Particle::Bank* fission_bank;
+extern int64_t fission_bank_length;
+extern int64_t fission_bank_max;
 
 } // namespace simulation
 
@@ -30,7 +29,7 @@ extern int shared_fission_bank_max;
 
 void free_memory_bank();
 
-void init_shared_fission_bank(int max);
+void init_fission_bank(int64_t max);
 
 } // namespace openmc
 

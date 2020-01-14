@@ -37,31 +37,6 @@
 
 namespace openmc {
 
-void transport_history_based_single_particle(Particle& p)
-{
-  while(true) {
-    p.event_calculate_xs();
-    p.event_advance();
-    if( p.collision_distance_ > p.boundary_.distance ) 
-      p.event_cross_surface();
-    else
-      p.event_collide();
-    p.event_revive_from_secondary();
-    if(!p.alive_)
-      break;
-  }
-  p.event_death();
-}
-
-void transport_history_based()
-{
-  #pragma omp parallel for schedule(runtime)
-  for (int64_t i_work = 1; i_work <= simulation::work_per_rank; ++i_work) {
-    Particle p;
-    initialize_history(&p, i_work);
-    transport_history_based_single_particle(p);
-  }
-}
 
 } // namespace openmc
 
@@ -588,6 +563,32 @@ void free_memory_simulation()
 {
   simulation::k_generation.clear();
   simulation::entropy.clear();
+}
+
+void transport_history_based_single_particle(Particle& p)
+{
+  while(true) {
+    p.event_calculate_xs();
+    p.event_advance();
+    if( p.collision_distance_ > p.boundary_.distance ) 
+      p.event_cross_surface();
+    else
+      p.event_collide();
+    p.event_revive_from_secondary();
+    if(!p.alive_)
+      break;
+  }
+  p.event_death();
+}
+
+void transport_history_based()
+{
+  #pragma omp parallel for schedule(runtime)
+  for (int64_t i_work = 1; i_work <= simulation::work_per_rank; ++i_work) {
+    Particle p;
+    initialize_history(&p, i_work);
+    transport_history_based_single_particle(p);
+  }
 }
 
 } // namespace openmc

@@ -23,12 +23,12 @@ class FilterBinIter
 public:
 
   //! Construct an iterator over bins that match a given particle's state.
-  FilterBinIter(const Tally& tally, const Particle* p, std::vector<FilterMatch> * particle_filter_matches);
+  FilterBinIter(const Tally& tally, const Particle* p, std::vector<FilterMatch>* particle_filter_matches);
 
   //! Construct an iterator over all filter bin combinations.
   //
   //! \param end if true, the returned iterator indicates the end of a loop.
-  FilterBinIter(const Tally& tally, bool end, std::vector<FilterMatch> * particle_filter_matches);
+  FilterBinIter(const Tally& tally, bool end, std::vector<FilterMatch>* particle_filter_matches);
 
   bool operator==(const FilterBinIter& other) const
   {return index_ == other.index_;}
@@ -41,7 +41,7 @@ public:
   int index_ {1};
   double weight_ {1.};
   
-  std::vector<FilterMatch> & filter_matches_;
+  std::vector<FilterMatch>& filter_matches_;
 
 private:
   void compute_index_weight();

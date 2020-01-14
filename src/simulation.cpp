@@ -2,30 +2,30 @@
 
 #include "openmc/bank.h"
 #include "openmc/capi.h"
-#include "openmc/cell.h"
+//#include "openmc/cell.h"
 #include "openmc/container_util.h"
 #include "openmc/eigenvalue.h"
 #include "openmc/error.h"
-#include "openmc/geometry.h"
+//#include "openmc/geometry.h"
 #include "openmc/material.h"
 #include "openmc/message_passing.h"
-#include "openmc/mgxs_interface.h"
+//#include "openmc/mgxs_interface.h"
 #include "openmc/nuclide.h"
 #include "openmc/output.h"
 #include "openmc/particle.h"
 #include "openmc/photon.h"
-#include "openmc/physics.h"
-#include "openmc/physics_mg.h"
+//#include "openmc/physics.h"
+//#include "openmc/physics_mg.h"
 #include "openmc/random_lcg.h"
 #include "openmc/settings.h"
 #include "openmc/source.h"
 #include "openmc/state_point.h"
-#include "openmc/thermal.h"
+//#include "openmc/thermal.h"
 #include "openmc/timer.h"
 #include "openmc/tallies/derivative.h"
 #include "openmc/tallies/filter.h"
 #include "openmc/tallies/tally.h"
-#include "openmc/tallies/tally_scoring.h"
+//#include "openmc/tallies/tally_scoring.h"
 #include "openmc/tallies/trigger.h"
 #include "openmc/track_output.h"
 
@@ -435,9 +435,9 @@ void finalize_generation()
 
   if (settings::run_mode == RUN_MODE_EIGENVALUE) {	
     // Copy shared fission bank into regular bank for use in MPI synchronization
-	  for( int i = 0; i < simulation::shared_fission_bank_length; i++ )
-		  simulation::fission_bank.push_back(simulation::shared_fission_bank[i]);
-	  simulation::shared_fission_bank_length = 0;
+    for( int i = 0; i < simulation::shared_fission_bank_length; i++ )
+      simulation::fission_bank.push_back(simulation::shared_fission_bank[i]);
+    simulation::shared_fission_bank_length = 0;
 
     // Sorts the fission bank so as to allow for reproducibility
     std::stable_sort(simulation::fission_bank.begin(), simulation::fission_bank.end());

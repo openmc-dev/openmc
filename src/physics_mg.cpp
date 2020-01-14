@@ -47,10 +47,9 @@ sample_reaction(Particle* p)
   // absorption (including fission)
 
   if (model::materials[p->material_]->fissionable_) {
-    if (settings::run_mode == RUN_MODE_EIGENVALUE) {
-      create_fission_sites(p);
-    } else if ((settings::run_mode == RUN_MODE_FIXEDSOURCE) &&
-               (settings::create_fission_neutrons)) {
+    if (settings::run_mode == RUN_MODE_EIGENVALUE  ||
+       (settings::run_mode == RUN_MODE_FIXEDSOURCE &&
+        settings::create_fission_neutrons)) {
       create_fission_sites(p);
     }
   }

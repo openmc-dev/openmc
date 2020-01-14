@@ -121,9 +121,9 @@ find_cell_inner(Particle* p, const NeighborList* neighbor_list)
   // Announce the cell that the particle is entering.
   if( p->trace_ )
   {
-  std::stringstream msg;
-  msg << "p->trace = " << p->trace_;
-  write_message(msg, 1);
+    std::stringstream msg;
+    msg << "p->trace = " << p->trace_;
+    write_message(msg, 1);
   }
   if (found && (settings::verbosity >= 10 || p->trace_)) {
     std::stringstream msg;

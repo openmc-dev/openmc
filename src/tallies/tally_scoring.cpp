@@ -26,7 +26,7 @@ namespace openmc {
 // FilterBinIter implementation
 //==============================================================================
 
-FilterBinIter::FilterBinIter(const Tally& tally, const Particle* p, std::vector<FilterMatch> * particle_filter_matches)
+FilterBinIter::FilterBinIter(const Tally& tally, const Particle* p, std::vector<FilterMatch>* particle_filter_matches)
   : tally_{tally}, filter_matches_{*particle_filter_matches}
 {
   // Find all valid bins in each relevant filter if they have not already been
@@ -55,7 +55,7 @@ FilterBinIter::FilterBinIter(const Tally& tally, const Particle* p, std::vector<
   this->compute_index_weight();
 }
 
-FilterBinIter::FilterBinIter(const Tally& tally, bool end, std::vector<FilterMatch> * particle_filter_matches)
+FilterBinIter::FilterBinIter(const Tally& tally, bool end, std::vector<FilterMatch>* particle_filter_matches)
   : tally_{tally}, filter_matches_{*particle_filter_matches}
 {
   // Handle the special case for an iterator that points to the end.
@@ -144,7 +144,7 @@ FilterBinIter::compute_index_weight()
 //! Helper function used to increment tallies with a delayed group filter.
 
 void
-score_fission_delayed_dg(int i_tally, int d_bin, double score, int score_index, std::vector<FilterMatch> & filter_matches)
+score_fission_delayed_dg(int i_tally, int d_bin, double score, int score_index, std::vector<FilterMatch>& filter_matches)
 {
   // Save the original delayed group bin
   auto& tally {*model::tallies[i_tally]};
@@ -951,10 +951,7 @@ score_general_ce(Particle* p, int i_tally, int start_index,
           // ones are delayed. If a delayed neutron is encountered, add its
           // contribution to the fission bank to the score.
           score = 0.;
-          // TODO: This breaks event-based
           for (auto i = 0; i < p->n_bank_; ++i) {
-            //auto i_bank = simulation::fission_bank.size() - p->n_bank_ + i;
-            //const auto& bank = simulation::fission_bank[i_bank];
             const auto& bank = p->nu_bank_[i];
             auto g = bank.delayed_group;
             if (g != 0) {
@@ -1226,9 +1223,7 @@ score_general_ce(Particle* p, int i_tally, int start_index,
           // We need to substract the energy of the secondary particles since
           // they will be transported individually later
           for (auto i = 0; i < p->n_bank_second_; ++i) {
-            //auto i_bank = simulation::secondary_bank.size() - p->n_bank_second_ + i;
             auto i_bank = p->secondary_bank_.size() - p->n_bank_second_ + i;
-            //const auto& bank = simulation::secondary_bank[i_bank];
             const auto& bank = p->secondary_bank_[i_bank];
             if (bank.particle == Particle::Type::photon ||
                 bank.particle == Particle::Type::neutron) {
@@ -1872,14 +1867,7 @@ score_general_mg(Particle* p, int i_tally, int start_index,
           // ones are delayed. If a delayed neutron is encountered, add its
           // contribution to the fission bank to the score.
           score = 0.;
-          // TODO: This breaks event-based
-          // Needs:
-          // delayed_group
-          // wgt
-          //
           for (auto i = 0; i < p->n_bank_; ++i) {
-            //auto i_bank = simulation::fission_bank.size() - p->n_bank_ + i;
-            //const auto& bank = simulation::fission_bank[i_bank];
             const auto& bank = p->nu_bank_[i];
             auto d = bank.delayed_group - 1;
             if (d != -1) {

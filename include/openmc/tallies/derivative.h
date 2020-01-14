@@ -53,9 +53,6 @@ void score_collision_derivative(Particle* p);
 //! \param distance The distance in [cm] traveled by the particle
 void score_track_derivative(Particle* p, double distance);
 
-//! Set the flux derivatives on differential tallies to zero.
-void zero_flux_derivs(std::vector<double> v);
-
 } // namespace openmc
 
 //==============================================================================

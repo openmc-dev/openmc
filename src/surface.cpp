@@ -296,7 +296,7 @@ Direction DAGSurface::reflect(Position r, Direction u, Particle* p) const
 {
   p->history_.reset_to_last_intersection();
   p->last_dir_ = Surface::reflect(r, u, p);
-  return p->last_dir;
+  return p->last_dir_;
 }
 
 void DAGSurface::to_hdf5(hid_t group_id) const {}

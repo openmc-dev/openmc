@@ -34,7 +34,7 @@ void free_memory_bank()
   simulation::source_bank.clear();
   simulation::fission_bank.clear();
   if( simulation::shared_fission_bank != nullptr )
-	  delete[] simulation::shared_fission_bank;
+    delete[] simulation::shared_fission_bank;
   simulation::shared_fission_bank = nullptr;
   simulation::shared_fission_bank_length = 0;
 }

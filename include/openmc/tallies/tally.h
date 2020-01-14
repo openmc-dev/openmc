@@ -158,11 +158,6 @@ namespace simulation {
   extern "C" int32_t n_realizations;
 }
 
-// It is possible to protect accumulate operations on global tallies by using an
-// atomic update. However, when multiple threads accumulate to the same global
-// tally, it can cause a higher cache miss rate due to invalidation. Thus, we
-// use threadprivate variables to accumulate global tallies and then reduce at
-// the end of a generation.
 extern double global_tally_absorption;
 extern double global_tally_collision;
 extern double global_tally_tracklength;

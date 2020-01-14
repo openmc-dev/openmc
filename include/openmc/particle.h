@@ -16,6 +16,7 @@
 #include "openmc/random_lcg.h"
 #include "openmc/tallies/filter_match.h"
 
+
 namespace openmc {
 
 //==============================================================================
@@ -220,6 +221,7 @@ public:
   //! \param src Source site data
   void from_source(const Bank* src);
 
+  // Coarse-grained particle events
   void event_calculate_xs();
   void event_advance();
   void event_cross_surface();
@@ -301,11 +303,13 @@ public:
                                             //!< sites banked
 
   // Indices for various arrays
-  int surface_ {0};             //!< index for surface particle is on
-  BoundaryInfo boundary_;
+  int surface_ {0};         //!< index for surface particle is on
   int cell_born_ {-1};      //!< index for cell particle was born in
   int material_ {-1};       //!< index for current material
   int material_last_ {-1};  //!< index for last material
+  
+  // Boundary information
+  BoundaryInfo boundary_;
 
   // Temperature of current cell
   double sqrtkT_ {-1.0};      //!< sqrt(k_Boltzmann * temperature) in eV
@@ -321,12 +325,12 @@ public:
   uint64_t seeds_[N_STREAMS]; // current seeds
   int      stream_;           // current RNG stream
   
-  // Secondary bank
+  // Secondary particle bank
   std::vector<Particle::Bank> secondary_bank_;
 
   int64_t current_work_; // current work index
 
-  std::vector<double> flux_derivs_;  // derivatives of the current particle's weight
+  std::vector<double> flux_derivs_;  // for derivatives for this particle
 
   std::vector<FilterMatch> filter_matches_; // tally filter matches
 

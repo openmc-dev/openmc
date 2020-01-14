@@ -52,7 +52,7 @@ void finalize_particle_track(Particle& p)
     write_attribute(file_id, "version", VERSION_TRACK);
     write_attribute(file_id, "n_particles", p.tracks_.size());
     write_attribute(file_id, "n_coords", n_coords);
-    for (int i = 1; i <= p.tracks_.size(); ++i) {
+    for (auto i = 1; i <= p.tracks_.size(); ++i) {
       const auto& t {p.tracks_[i-1]};
       size_t n = t.size();
       xt::xtensor<double, 2> data({n,3});

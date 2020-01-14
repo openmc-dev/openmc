@@ -184,7 +184,7 @@ create_fission_sites(Particle* p, int i_nuclide, const Reaction* rx)
     Particle::Bank* site;
     if(use_fission_bank)
     {
-      int idx;
+      int64_t idx;
       #pragma omp atomic capture
       idx = simulation::fission_bank_length++;
       if( idx >= simulation::fission_bank_max )

@@ -696,12 +696,12 @@ void elastic_scatter(int i_nuclide, const Reaction& rx, double kT,
   // Find speed of neutron in CM
   vel = v_n.norm();
 
-  // Sample scattering angle, checking if it is an ncorrelated angle-energy
-  // distribution
+  // Sample scattering angle, checking if angle distribution is present (assume
+  // isotropic otherwise)
   double mu_cm;
   auto& d = rx.products_[0].distribution_[0];
   auto d_ = dynamic_cast<UncorrelatedAngleEnergy*>(d.get());
-  if (d_) {
+  if (!d_->angle().empty()) {
     mu_cm = d_->angle().sample(p->E_, p->current_seed());
   } else {
     mu_cm = 2.0*prn(p->current_seed()) - 1.0;

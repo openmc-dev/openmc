@@ -1073,11 +1073,15 @@ class Reaction(EqualityMixin):
         if i_reaction < ace.nxs[5] + 1:
             # Check if angular distribution data exist
             loc = int(ace.xss[ace.jxs[8] + i_reaction])
-            if loc <= 0:
-                # Angular distribution is either given as part of a product
-                # angle-energy distribution or is not given at all (in which
-                # case isotropic scattering is assumed)
+            if loc < 0:
+                # Angular distribution is given as part of a product
+                # angle-energy distribution
                 angle_dist = None
+            elif loc == 0:
+                # Angular distribution is isotropic
+                energy = [0.0, grid[-1]]
+                mu = Uniform(-1., 1.)
+                angle_dist = AngleDistribution(energy, [mu, mu])
             else:
                 angle_dist = AngleDistribution.from_ace(ace, ace.jxs[9], loc)
 

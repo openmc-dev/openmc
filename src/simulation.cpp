@@ -462,7 +462,9 @@ void finalize_generation()
 
   } else if (settings::run_mode == RUN_MODE_FIXEDSOURCE) {
     // For fixed-source mode, we need to sample the external source
+    simulation::time_sample_source.start();
     fill_source_bank_fixedsource();
+    simulation::time_sample_source.stop();
   }
 }
 

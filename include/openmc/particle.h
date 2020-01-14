@@ -14,15 +14,9 @@
 #include "openmc/constants.h"
 #include "openmc/position.h"
 #include "openmc/random_lcg.h"
+#include "openmc/tallies/filter_match.h"
 
 namespace openmc {
-
-// The FilterMatch class is declared here to avoid circular definition, as it will
-// be defined later in filter.h. This issue arrises because the Particle object
-// defined in this file contains a data member (filter_match_), which is a vector
-// of type FilterMatch. Likewise, filter.h has a class that contains a Particle
-// member.
-class FilterMatch;
 
 //==============================================================================
 // Constants

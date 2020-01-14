@@ -12,25 +12,9 @@
 #include "openmc/constants.h"
 #include "openmc/hdf5_interface.h"
 #include "openmc/particle.h"
+#include "openmc/tallies/filter_match.h"
 #include "pugixml.hpp"
 
-
-namespace openmc {
-
-//==============================================================================
-//! Stores bins and weights for filtered tally events.
-//==============================================================================
-
-class FilterMatch
-{
-public:
-  std::vector<int> bins_;
-  std::vector<double> weights_;
-  int i_bin_;
-  bool bins_present_ {false};
-};
-
-} // namespace openmc
 
 namespace openmc {
 

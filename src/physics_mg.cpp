@@ -128,7 +128,7 @@ create_fission_sites(Particle* p)
     use_fission_bank = true;
 
   for (int i = 0; i < nu; ++i) {
-    Particle::Bank * site;
+    Particle::Bank* site;
     if(use_fission_bank)
     {
       int idx;

@@ -65,8 +65,6 @@ void initialize_generation();
 
 void initialize_history(Particle* p, int64_t index_source);
 
-void transport_history_based_single_particle(Particle& p);
-
 //! Finalize a batch
 //!
 //! Handles synchronization and accumulation of tallies, calculation of Shannon
@@ -85,6 +83,13 @@ void broadcast_results();
 #endif
 
 void free_memory_simulation();
+
+//! Simulate a single particle history (and all generated secondary particles,
+//!  if enabled), from birth to death
+void transport_history_based_single_particle(Particle& p);
+
+//! Simulate all particle histories using history-based parallelism
+void transport_history_based();
 
 } // namespace openmc
 

@@ -110,7 +110,7 @@ public:
 
   //! Find the oncoming boundary of this cell.
   virtual std::pair<double, int32_t>
-  distance(Position r, Direction u, int32_t on_surface) const = 0;
+  distance(Position r, Direction u, int32_t on_surface, Particle* p) const = 0;
 
   //! Write all information needed to reconstruct the cell to an HDF5 group.
   //! \param group_id An HDF5 group id.
@@ -201,7 +201,7 @@ public:
   contains(Position r, Direction u, int32_t on_surface) const;
 
   std::pair<double, int32_t>
-  distance(Position r, Direction u, int32_t on_surface) const;
+  distance(Position r, Direction u, int32_t on_surface, Particle* p) const;
 
   void to_hdf5(hid_t group_id) const;
 
@@ -245,7 +245,7 @@ public:
   bool contains(Position r, Direction u, int32_t on_surface) const;
 
   std::pair<double, int32_t>
-  distance(Position r, Direction u, int32_t on_surface) const;
+  distance(Position r, Direction u, int32_t on_surface, Particle* p) const;
 
   BoundingBox bounding_box() const;
 

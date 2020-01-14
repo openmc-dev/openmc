@@ -16,6 +16,10 @@
 #include "openmc/random_lcg.h"
 #include "openmc/tallies/filter_match.h"
 
+#ifdef DAGMC
+#include "DagMC.hpp"
+#endif
+
 
 namespace openmc {
 
@@ -349,6 +353,12 @@ public:
   double collision_distance_; // distance to particle's next closest collision
 
   int n_event_ {0}; // number of events executed in this particle's history
+
+  // DagMC state variables
+  #ifdef DAGMC
+  moab::DagMC::RayHistory history_;
+  Direction last_dir_;
+  #endif
 };
 
 } // namespace openmc

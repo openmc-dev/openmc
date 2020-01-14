@@ -367,7 +367,7 @@ void
 Particle::event_death()
 {
   #ifdef DAGMC
-  if (settings::dagmc) simulation::history.reset();
+  if (settings::dagmc) history_.reset();
   #endif
 
   // Finish particle track output.
@@ -464,7 +464,7 @@ Particle::cross_surface()
     }
 
     Direction u = (surf->bc_ == BC_REFLECT) ?
-      surf->reflect(this->r(), this->u()) :
+      surf->reflect(this->r(), this->u(), this) :
       surf->diffuse_reflect(this->r(), this->u(), this->current_seed());
 
     // Make sure new particle direction is normalized

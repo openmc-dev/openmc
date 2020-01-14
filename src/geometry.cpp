@@ -378,7 +378,7 @@ BoundaryInfo distance_to_boundary(Particle* p)
     Cell& c {*model::cells[coord.cell]};
 
     // Find the oncoming surface in this cell and the distance to it.
-    auto surface_distance = c.distance(r, u, p->surface_);
+    auto surface_distance = c.distance(r, u, p->surface_, p);
     d_surf = surface_distance.first;
     level_surf_cross = surface_distance.second;
 

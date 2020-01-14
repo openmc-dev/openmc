@@ -7,11 +7,6 @@
 #include "openmc/particle.h"
 #include "openmc/position.h"
 
-// Without an explicit instantiation of vector<Bank>, the Intel compiler
-// will complain about the threadprivate directive on filter_matches. Note that
-// this has to happen *outside* of the openmc namespace
-extern template class std::vector<openmc::Particle::Bank>;
-
 namespace openmc {
 
 

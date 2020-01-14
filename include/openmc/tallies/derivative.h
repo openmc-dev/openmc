@@ -62,10 +62,6 @@ void zero_flux_derivs(std::vector<double> v);
 // Global variables
 //==============================================================================
 
-// Explicit vector template specialization declaration of threadprivate variable    
-// outside of the openmc namespace for the picky Intel compiler.   
-extern template class std::vector<openmc::TallyDerivative>;
-
 namespace openmc {
 
 namespace model {

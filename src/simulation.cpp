@@ -417,7 +417,7 @@ void finalize_generation()
 {
   auto& gt = simulation::global_tallies;
 
-  // Update global tallies with the omp private accumulation variables
+  // Update global tallies with the accumulation variables
   if (settings::run_mode == RUN_MODE_EIGENVALUE) {
     gt(K_COLLISION, RESULT_VALUE) += global_tally_collision;
     gt(K_ABSORPTION, RESULT_VALUE) += global_tally_absorption;

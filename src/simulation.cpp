@@ -264,11 +264,9 @@ void allocate_banks()
   simulation::source_bank.resize(simulation::work_per_rank);
 
   if (settings::run_mode == RUN_MODE_EIGENVALUE) {
-    simulation::fission_bank.reserve(3*simulation::work_per_rank);
+    init_fission_bank(3*simulation::work_per_rank);
   }
   
-  // Allocate shared bank
-  init_shared_fission_bank(simulation::work_per_rank * 3);
 }
 
 void initialize_batch()
@@ -369,7 +367,7 @@ void initialize_generation()
 {
   if (settings::run_mode == RUN_MODE_EIGENVALUE) {
     // Clear out the fission bank
-    simulation::fission_bank.clear();
+    simulation::fission_bank_length = 0;
 
     // Count source sites if using uniform fission source weighting
     if (settings::ufs_on) ufs_count_sites();
@@ -401,13 +399,11 @@ void finalize_generation()
   global_tally_leakage = 0.0;
 
   if (settings::run_mode == RUN_MODE_EIGENVALUE) {	
-    // Copy shared fission bank into regular bank for use in MPI synchronization
-    for( int i = 0; i < simulation::shared_fission_bank_length; i++ )
-      simulation::fission_bank.push_back(simulation::shared_fission_bank[i]);
-    simulation::shared_fission_bank_length = 0;
-
-    // Sorts the fission bank so as to allow for reproducibility
-    std::stable_sort(simulation::fission_bank.begin(), simulation::fission_bank.end());
+    // If using shared memory, sort the fission bank so as to allow for reproducibility
+    #ifdef _OPENMP
+    std::stable_sort(simulation::fission_bank,
+        simulation::fission_bank + simulation::fission_bank_length);
+    #endif
 
     // Distribute fission bank across processors evenly
     synchronize_bank();
@@ -430,6 +426,7 @@ void finalize_generation()
     // For fixed-source mode, we need to sample the external source
     fill_source_bank_fixedsource();
   }
+    
 }
 
 void initialize_history(Particle* p, int64_t index_source)

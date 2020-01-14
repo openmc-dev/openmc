@@ -6,7 +6,7 @@
 #include <cstdint>
 
 // Explicit template instantiation definition
-template class std::vector<openmc::Particle::Bank>;
+//template class std::vector<openmc::Particle::Bank>;
 
 namespace openmc {
 
@@ -17,11 +17,10 @@ namespace openmc {
 namespace simulation {
 
 std::vector<Particle::Bank> source_bank;
-std::vector<Particle::Bank> fission_bank;
 
-Particle::Bank* shared_fission_bank {nullptr};
-int shared_fission_bank_length {0};
-int shared_fission_bank_max;
+Particle::Bank* fission_bank {nullptr};
+int64_t fission_bank_length {0};
+int64_t fission_bank_max;
 
 } // namespace simulation
 
@@ -32,18 +31,17 @@ int shared_fission_bank_max;
 void free_memory_bank()
 {
   simulation::source_bank.clear();
-  simulation::fission_bank.clear();
-  if( simulation::shared_fission_bank != nullptr )
-    delete[] simulation::shared_fission_bank;
-  simulation::shared_fission_bank = nullptr;
-  simulation::shared_fission_bank_length = 0;
+  if( simulation::fission_bank != nullptr )
+    delete[] simulation::fission_bank;
+  simulation::fission_bank = nullptr;
+  simulation::fission_bank_length = 0;
 }
 
-void init_shared_fission_bank(int max)
+void init_fission_bank(int64_t max)
 {
-  simulation::shared_fission_bank_max = max;
-  simulation::shared_fission_bank = new Particle::Bank[max];
-  simulation::shared_fission_bank_length = 0;
+  simulation::fission_bank_max = max;
+  simulation::fission_bank = new Particle::Bank[max];
+  simulation::fission_bank_length = 0;
 }
 
 //==============================================================================
@@ -64,12 +62,12 @@ extern "C" int openmc_source_bank(void** ptr, int64_t* n)
 
 extern "C" int openmc_fission_bank(void** ptr, int64_t* n)
 {
-  if (simulation::fission_bank.size() == 0) {
+  if (simulation::fission_bank_length == 0) {
     set_errmsg("Fission bank has not been allocated.");
     return OPENMC_E_ALLOCATE;
   } else {
-    *ptr = simulation::fission_bank.data();
-    *n = simulation::fission_bank.size();
+    *ptr = simulation::fission_bank;
+    *n =   simulation::fission_bank_length;
     return 0;
   }
 }

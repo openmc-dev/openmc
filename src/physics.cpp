@@ -186,17 +186,17 @@ create_fission_sites(Particle* p, int i_nuclide, const Reaction* rx)
     {
       int idx;
       #pragma omp atomic capture
-      idx = simulation::shared_fission_bank_length++;
-      if( idx >= simulation::shared_fission_bank_max )
+      idx = simulation::fission_bank_length++;
+      if( idx >= simulation::fission_bank_max )
       {
         warning("The shared fission bank is full. Additional fission sites created "
             "in this generation will not be banked.");
         #pragma omp atomic write
-        simulation::shared_fission_bank_length = simulation::shared_fission_bank_max;
+        simulation::fission_bank_length = simulation::fission_bank_max;
         skipped++;
         break;
       }
-      site = simulation::shared_fission_bank + idx;
+      site = simulation::fission_bank + idx;
     }
     else
     {

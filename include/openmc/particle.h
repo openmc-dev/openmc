@@ -171,7 +171,7 @@ public:
     int delayed_group;
     Type particle;
     int64_t parent_id;
-    bool operator < (const Bank & bank) const{ return (parent_id < bank.parent_id); }
+    bool operator<(const Bank& bank) const { return (parent_id < bank.parent_id); }
   };
   
   //! Saved ("banked") state of a particle, for nu-fission tallying

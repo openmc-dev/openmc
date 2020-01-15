@@ -182,13 +182,11 @@ create_fission_sites(Particle* p, int i_nuclide, const Reaction* rx)
 
   for (int i = 0; i < nu; ++i) {
     Particle::Bank* site;
-    if(use_fission_bank)
-    {
+    if (use_fission_bank) {
       int64_t idx;
       #pragma omp atomic capture
       idx = simulation::fission_bank_length++;
-      if( idx >= simulation::fission_bank_max )
-      {
+      if (idx >= simulation::fission_bank_max) {
         warning("The shared fission bank is full. Additional fission sites created "
             "in this generation will not be banked.");
         #pragma omp atomic write
@@ -222,8 +220,7 @@ create_fission_sites(Particle* p, int i_nuclide, const Reaction* rx)
     }
     
     // Write fission particles to nuBank
-    if(use_fission_bank)
-    {
+    if (use_fission_bank) {
       Particle::NuBank* nu_bank_entry;
       p->nu_bank_.emplace_back();
       nu_bank_entry = &p->nu_bank_.back();
@@ -235,8 +232,7 @@ create_fission_sites(Particle* p, int i_nuclide, const Reaction* rx)
   
   // If shared fission bank was full, and no fissions could be added,
   // set the particle fission flag to false.
-  if( nu == skipped )
-  {
+  if (nu == skipped) {
     p->fission_ = false;
     return;
   }

@@ -563,12 +563,13 @@ void transport_history_based_single_particle(Particle& p)
   while (true) {
     p.event_calculate_xs();
     p.event_advance();
-    if( p.collision_distance_ > p.boundary_.distance ) 
+    if (p.collision_distance_ > p.boundary_.distance) {
       p.event_cross_surface();
-    else
+    } else {
       p.event_collide();
+    }
     p.event_revive_from_secondary();
-    if(!p.alive_)
+    if (!p.alive_)
       break;
   }
   p.event_death();

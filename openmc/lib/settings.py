@@ -30,21 +30,11 @@ class _Settings(object):
 
     @property
     def run_mode(self):
-        i = c_int.in_dll(_dll, 'run_mode').value
-        try:
-            return _RUN_MODES[i]
-        except KeyError:
-            return None
+        raise Exception("Setting run_mode through python API is no longer supported.")
 
     @run_mode.setter
     def run_mode(self, mode):
-        current_idx = c_int.in_dll(_dll, 'run_mode')
-        for idx, mode_value in _RUN_MODES.items():
-            if mode_value == mode:
-                current_idx.value = idx
-                break
-        else:
-            raise ValueError('Invalid run mode: {}'.format(mode))
+        raise Exception("Setting run_mode through python API is no longer supported.")
 
     @property
     def path_statepoint(self):

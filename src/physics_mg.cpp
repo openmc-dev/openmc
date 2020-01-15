@@ -122,19 +122,15 @@ create_fission_sites(Particle* p)
   
   // Determine whether to place fission sites into the shared fission bank
   // or the secondary particle bank.
-  bool use_fission_bank = false;
-  if (settings::run_mode == RUN_MODE_EIGENVALUE)
-    use_fission_bank = true;
+  bool use_fission_bank = (settings::run_mode == RUN_MODE_EIGENVALUE)
 
   for (int i = 0; i < nu; ++i) {
     Particle::Bank* site;
-    if(use_fission_bank)
-    {
+    if (use_fission_bank) {
       int64_t idx;
       #pragma omp atomic capture
       idx = simulation::fission_bank_length++;
-      if( idx >= simulation::fission_bank_max )
-      {
+      if (idx >= simulation::fission_bank_max) {
         warning("The shared fission bank is full. Additional fission sites created "
             "in this generation will not be banked.");
         #pragma omp atomic write
@@ -143,9 +139,7 @@ create_fission_sites(Particle* p)
         break;
       }
       site = simulation::fission_bank + idx;
-    }
-    else
-    {
+    } else {
       // Create new bank site and get reference to last element
       auto& bank = p->secondary_bank_;
       bank.emplace_back();
@@ -188,21 +182,18 @@ create_fission_sites(Particle* p)
     }
     
     // Write fission particles to nuBank
-    if(use_fission_bank)
-    {
-      Particle::NuBank* nu_bank_entry;
+    if (use_fission_bank) {
       p->nu_bank_.emplace_back();
-      nu_bank_entry = &p->nu_bank_.back();
-      nu_bank_entry->wgt             = site->wgt;
-      nu_bank_entry->E               = site->E;
-      nu_bank_entry->delayed_group   = site->delayed_group;
+      Particle::NuBank* nu_bank_entry = &p->nu_bank_.back();
+      nu_bank_entry->wgt              = site->wgt;
+      nu_bank_entry->E                = site->E;
+      nu_bank_entry->delayed_group    = site->delayed_group;
     }
   }
   
   // If shared fission bank was full, and no fissions could be added,
   // set the particle fission flag to false.
-  if( nu == skipped )
-  {
+  if (nu == skipped) {
     p->fission_ = false;
     return;
   }

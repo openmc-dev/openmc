@@ -28,7 +28,7 @@ int64_t fission_bank_max;
 void free_memory_bank()
 {
   simulation::source_bank.clear();
-  if( simulation::fission_bank != nullptr )
+  if (simulation::fission_bank)
     delete[] simulation::fission_bank;
   simulation::fission_bank = nullptr;
   simulation::fission_bank_length = 0;

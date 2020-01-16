@@ -133,7 +133,7 @@ class Cell(_FortranObjectWithID):
         n = c_int32()
         _dll.openmc_cell_get_fill(self._index, fill_type, indices, n)
 
-        if fill_type.value == 1:
+        if fill_type.value == 0:
             if n.value > 1:
                 return [Material(index=i) for i in indices[:n.value]]
             else:

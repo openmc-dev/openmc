@@ -111,8 +111,7 @@ void run_particle_restart()
   if (p.write_track_) add_particle_track(p);
 
   // Every particle starts with no accumulated flux derivative.
-  if (!model::active_tallies.empty())
-  {
+  if (!model::active_tallies.empty()) {
     p.flux_derivs_.resize(model::tally_derivs.size(), 0.0);
     std::fill(p.flux_derivs_.begin(), p.flux_derivs_.end(), 0.0);
   }

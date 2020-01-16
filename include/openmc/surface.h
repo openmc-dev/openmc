@@ -17,17 +17,6 @@
 namespace openmc {
 
 //==============================================================================
-// Module constant declarations (defined in .cpp)
-//==============================================================================
-
-// TODO: Convert to enum
-extern "C" const int BC_TRANSMIT;
-extern "C" const int BC_VACUUM;
-extern "C" const int BC_REFLECT;
-extern "C" const int BC_PERIODIC;
-extern "C" const int BC_WHITE;
-
-//==============================================================================
 // Global variables
 //==============================================================================
 
@@ -93,8 +82,18 @@ struct BoundingBox
 class Surface
 {
 public:
+
+  // Types of available boundary conditions on a surface
+  enum class Bc {
+    TRANSMIT,
+    VACUUM,
+    REFLECT,
+    PERIODIC,
+    WHITE
+  };
+
   int id_;                    //!< Unique ID
-  int bc_;                    //!< Boundary condition
+  Bc bc_;                    //!< Boundary condition
   std::string name_;          //!< User-defined name
 
   explicit Surface(pugi::xml_node surf_node);

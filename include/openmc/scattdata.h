@@ -125,7 +125,7 @@ class ScattData {
     //!   use nullptr if irrelevant.
     //! @return Requested cross section value.
     double
-    get_xs(int xstype, int gin, const int* gout, const double* mu);
+    get_xs(MgxsType xstype, int gin, const int* gout, const double* mu);
 };
 
 //==============================================================================

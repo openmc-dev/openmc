@@ -31,8 +31,8 @@ get_tally_uncertainty(int i_tally, int score_index, int filter_index)
 {
   const auto& tally {model::tallies[i_tally]};
 
-  auto sum = tally->results_(filter_index, score_index, RESULT_SUM);
-  auto sum_sq = tally->results_(filter_index, score_index, RESULT_SUM_SQ);
+  auto sum = tally->results_(filter_index, score_index, TallyResult::SUM);
+  auto sum_sq = tally->results_(filter_index, score_index, TallyResult::SUM_SQ);
 
   int n = tally->n_realizations_;
   auto mean = sum / n;
@@ -111,7 +111,7 @@ check_tally_triggers(double& ratio, int& tally_id, int& score)
 double
 check_keff_trigger()
 {
-  if (settings::run_mode != RUN_MODE_EIGENVALUE) return 0.0;
+  if (settings::run_mode != RunMode::EIGENVALUE) return 0.0;
 
   double k_combined[2];
   openmc_get_keff(k_combined);

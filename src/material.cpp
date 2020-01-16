@@ -348,7 +348,7 @@ void Material::finalize()
   }
 
   // Generate material bremsstrahlung data for electrons and positrons
-  if (settings::photon_transport && settings::electron_treatment == ELECTRON_TTB) {
+  if (settings::photon_transport && settings::electron_treatment == ElectronTreatment::TTB) {
     this->init_bremsstrahlung();
   }
 

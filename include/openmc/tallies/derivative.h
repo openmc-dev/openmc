@@ -14,9 +14,17 @@
 
 namespace openmc {
 
+// Different independent variables
+enum class WithRespectTo {
+  DENSITY,
+  NUCLIDE_DENSITY,
+  TEMPERATURE
+};
+
 struct TallyDerivative {
+
+  WithRespectTo variable;  //!< Independent variable (like temperature)
   int id;  //!< User-defined identifier
-  int variable;  //!< Independent variable (like temperature)
   int diff_material;  //!< Material this derivative is applied to
   int diff_nuclide;  //!< Nuclide this material is applied to
   double flux_deriv;  //!< Derivative of the current particle's weight
@@ -74,12 +82,6 @@ extern std::vector<TallyDerivative> tally_derivs;
 #pragma omp threadprivate(tally_derivs)
 extern std::unordered_map<int, int> tally_deriv_map;
 } // namespace model
-
-// Independent variables
-//TODO: convert to enum
-constexpr int DIFF_DENSITY {1};
-constexpr int DIFF_NUCLIDE_DENSITY {2};
-constexpr int DIFF_TEMPERATURE {3};
 
 } // namespace openmc
 

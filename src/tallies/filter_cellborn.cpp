@@ -5,7 +5,7 @@
 namespace openmc {
 
 void
-CellbornFilter::get_all_bins(const Particle* p, int estimator,
+CellbornFilter::get_all_bins(const Particle* p, TallyEstimator estimator,
                              FilterMatch& match) const
 {
   auto search = map_.find(p->cell_born_);

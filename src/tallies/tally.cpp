@@ -908,7 +908,7 @@ void reduce_tally_results()
     auto& tally {model::tallies[i_tally]};
 
     // Get view of accumulated tally values
-    auto values_view = xt::view(tally->results_, xt::all(), xt::all(), TallyResult::VALUE);
+    auto values_view = xt::view(tally->results_, xt::all(), xt::all(), static_cast<int>(TallyResult::VALUE));
 
     // Make copy of tally values in contiguous array
     xt::xtensor<double, 2> values = values_view;
@@ -928,7 +928,7 @@ void reduce_tally_results()
 
   // Get view of global tally values
   auto& gt = simulation::global_tallies;
-  auto gt_values_view = xt::view(gt, xt::all(), TallyResult::VALUE);
+  auto gt_values_view = xt::view(gt, xt::all(), static_cast<int>(TallyResult::VALUE));
 
   // Make copy of values in contiguous array
   xt::xtensor<double, 1> gt_values = gt_values_view;

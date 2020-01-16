@@ -176,7 +176,7 @@ create_fission_sites(Particle* p, int i_nuclide, const Reaction* rx)
 
   // Determine whether to place fission sites into the shared fission bank
   // or the secondary particle bank.
-  bool use_fission_bank = (settings::run_mode == RUN_MODE_EIGENVALUE)
+  bool use_fission_bank = (settings::run_mode == RUN_MODE_EIGENVALUE);
 
   for (int i = 0; i < nu; ++i) {
     Particle::Bank* site;
@@ -592,7 +592,7 @@ void absorption(Particle* p, int i_nuclide)
 
     // Score implicit absorption estimate of keff
     if (settings::run_mode == RUN_MODE_EIGENVALUE) {
-      p->tally_absorption_ += p->wgt_absorb_ * p->neutron_xs_[
+      p->keff_tally_absorption_ += p->wgt_absorb_ * p->neutron_xs_[
         i_nuclide].nu_fission / p->neutron_xs_[i_nuclide].absorption;
     }
   } else {
@@ -601,7 +601,7 @@ void absorption(Particle* p, int i_nuclide)
         prn(p->current_seed()) * p->neutron_xs_[i_nuclide].total) {
       // Score absorption estimate of keff
       if (settings::run_mode == RUN_MODE_EIGENVALUE) {
-        p->tally_absorption_ += p->wgt_ * p->neutron_xs_[
+        p->keff_tally_absorption_ += p->wgt_ * p->neutron_xs_[
           i_nuclide].nu_fission / p->neutron_xs_[i_nuclide].absorption;
       }
 

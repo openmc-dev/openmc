@@ -55,7 +55,8 @@ FilterBinIter::FilterBinIter(const Tally& tally, Particle* p)
   this->compute_index_weight();
 }
 
-FilterBinIter::FilterBinIter(const Tally& tally, bool end, std::vector<FilterMatch>* particle_filter_matches)
+FilterBinIter::FilterBinIter(const Tally& tally, bool end,
+    std::vector<FilterMatch>* particle_filter_matches)
   : tally_{tally}, filter_matches_{*particle_filter_matches}
 {
   // Handle the special case for an iterator that points to the end.
@@ -144,7 +145,8 @@ FilterBinIter::compute_index_weight()
 //! Helper function used to increment tallies with a delayed group filter.
 
 void
-score_fission_delayed_dg(int i_tally, int d_bin, double score, int score_index, std::vector<FilterMatch>& filter_matches)
+score_fission_delayed_dg(int i_tally, int d_bin, double score, int score_index,
+    std::vector<FilterMatch>& filter_matches)
 {
   // Save the original delayed group bin
   auto& tally {*model::tallies[i_tally]};

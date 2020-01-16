@@ -176,9 +176,9 @@ public:
   
   //! Saved ("banked") state of a particle, for nu-fission tallying
   struct NuBank {
-    double E;
-    double wgt;
-    int delayed_group;
+    double E;  //!< particle energy
+    double wgt; //!< particle weight
+    int delayed_group; //!< particle delayed group
   };
 
   //==========================================================================
@@ -343,10 +343,10 @@ public:
   std::vector<NuBank> nu_bank_; // bank of most recently fissioned particles
 
   // Global tally accumulators
-  double tally_absorption_ {0.0};
-  double tally_collision_ {0.0};
-  double tally_tracklength_ {0.0};
-  double tally_leakage_ {0.0};
+  double keff_tally_absorption_ {0.0};
+  double keff_tally_collision_ {0.0};
+  double keff_tally_tracklength_ {0.0};
+  double keff_tally_leakage_ {0.0};
 
   bool trace_ {false};     //!< flag to show debug information
 

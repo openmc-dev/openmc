@@ -132,67 +132,67 @@ Particle::from_source(const Bank* src)
 void
 Particle::event_calculate_xs()
 {
-    // Set the random number stream
-    if (type_ == Particle::Type::neutron) {
-      stream_ = STREAM_TRACKING;
-    } else {
-      stream_ = STREAM_PHOTON;
+  // Set the random number stream
+  if (type_ == Particle::Type::neutron) {
+    stream_ = STREAM_TRACKING;
+  } else {
+    stream_ = STREAM_PHOTON;
+  }
+
+  // Store pre-collision particle properties
+  wgt_last_ = wgt_;
+  E_last_ = E_;
+  u_last_ = this->u();
+  r_last_ = this->r();
+
+  // Reset event variables
+  event_ = EVENT_KILL;
+  event_nuclide_ = NUCLIDE_NONE;
+  event_mt_ = REACTION_NONE;
+
+  // If the cell hasn't been determined based on the particle's location,
+  // initiate a search for the current cell. This generally happens at the
+  // beginning of the history and again for any secondary particles
+  if (coord_[n_coord_ - 1].cell == C_NONE) {
+    if (!find_cell(this, false)) {
+      this->mark_as_lost("Could not find the cell containing particle "
+        + std::to_string(id_));
+      return;
     }
 
-    // Store pre-collision particle properties
-    wgt_last_ = wgt_;
-    E_last_ = E_;
-    u_last_ = this->u();
-    r_last_ = this->r();
+    // Set birth cell attribute
+    if (cell_born_ == C_NONE) cell_born_ = coord_[n_coord_ - 1].cell;
+  }
 
-    // Reset event variables
-    event_ = EVENT_KILL;
-    event_nuclide_ = NUCLIDE_NONE;
-    event_mt_ = REACTION_NONE;
+  // Write particle track.
+  if (write_track_) write_particle_track(*this);
 
-    // If the cell hasn't been determined based on the particle's location,
-    // initiate a search for the current cell. This generally happens at the
-    // beginning of the history and again for any secondary particles
-    if (coord_[n_coord_ - 1].cell == C_NONE) {
-      if (!find_cell(this, false)) {
-        this->mark_as_lost("Could not find the cell containing particle "
-          + std::to_string(id_));
-        return;
-      }
-
-      // Set birth cell attribute
-      if (cell_born_ == C_NONE) cell_born_ = coord_[n_coord_ - 1].cell;
-    }
-
-    // Write particle track.
-    if (write_track_) write_particle_track(*this);
-
-    if (settings::check_overlaps) check_cell_overlap(this);
-    
-    // Calculate microscopic and macroscopic cross sections
-    if (material_ != MATERIAL_VOID) {
-      if (settings::run_CE) {
-        if (material_ != material_last_ || sqrtkT_ != sqrtkT_last_) {
-          // If the material is the same as the last material and the
-          // temperature hasn't changed, we don't need to lookup cross
-          // sections again.
-          model::materials[material_]->calculate_xs(*this);
-        }
-      } else {
-        // Get the MG data; unlike the CE case above, we have to re-calculate
-        // cross sections for every collision since the cross sections may
-        // be angle-dependent
-        data::mg.macro_xs_[material_].calculate_xs(*this);
-
-        // Update the particle's group while we know we are multi-group
-        g_last_ = g_;
+  if (settings::check_overlaps) check_cell_overlap(this);
+  
+  // Calculate microscopic and macroscopic cross sections
+  if (material_ != MATERIAL_VOID) {
+    if (settings::run_CE) {
+      if (material_ != material_last_ || sqrtkT_ != sqrtkT_last_) {
+        // If the material is the same as the last material and the
+        // temperature hasn't changed, we don't need to lookup cross
+        // sections again.
+        model::materials[material_]->calculate_xs(*this);
       }
     } else {
-      macro_xs_.total      = 0.0;
-      macro_xs_.absorption = 0.0;
-      macro_xs_.fission    = 0.0;
-      macro_xs_.nu_fission = 0.0;
+      // Get the MG data; unlike the CE case above, we have to re-calculate
+      // cross sections for every collision since the cross sections may
+      // be angle-dependent
+      data::mg.macro_xs_[material_].calculate_xs(*this);
+
+      // Update the particle's group while we know we are multi-group
+      g_last_ = g_;
     }
+  } else {
+    macro_xs_.total      = 0.0;
+    macro_xs_.absorption = 0.0;
+    macro_xs_.fission    = 0.0;
+    macro_xs_.nu_fission = 0.0;
+  }
 }
 
 void
@@ -227,7 +227,7 @@ Particle::event_advance()
   // Score track-length estimate of k-eff
   if (settings::run_mode == RUN_MODE_EIGENVALUE &&
       type_ == Particle::Type::neutron) {
-    tally_tracklength_ += wgt_ * distance * macro_xs_.nu_fission;
+    keff_tally_tracklength_ += wgt_ * distance * macro_xs_.nu_fission;
   }
 
   // Score flux derivative accumulators for differential tallies.
@@ -272,7 +272,7 @@ Particle::event_collide()
   // Score collision estimate of keff
   if (settings::run_mode == RUN_MODE_EIGENVALUE &&
       type_ == Particle::Type::neutron) {
-    tally_collision_ += wgt_ * macro_xs_.nu_fission
+    keff_tally_collision_ += wgt_ * macro_xs_.nu_fission
       / macro_xs_.total;
   }
 
@@ -378,19 +378,19 @@ Particle::event_death()
 
   // Contribute tally reduction variables to global accumulator
   #pragma omp atomic
-  global_tally_absorption += tally_absorption_;
+  global_tally_absorption += keff_tally_absorption_;
   #pragma omp atomic
-  global_tally_collision += tally_collision_;
+  global_tally_collision += keff_tally_collision_;
   #pragma omp atomic
-  global_tally_tracklength += tally_tracklength_;
+  global_tally_tracklength += keff_tally_tracklength_;
   #pragma omp atomic
-  global_tally_leakage += tally_leakage_;
+  global_tally_leakage += keff_tally_leakage_;
 
   // Reset particle tallies once accumulated
-  tally_absorption_  = 0.0;
-  tally_collision_   = 0.0;
-  tally_tracklength_ = 0.0;
-  tally_leakage_     = 0.0;
+  keff_tally_absorption_  = 0.0;
+  keff_tally_collision_   = 0.0;
+  keff_tally_tracklength_ = 0.0;
+  keff_tally_leakage_     = 0.0;
 }
 
 
@@ -424,7 +424,7 @@ Particle::cross_surface()
     }
 
     // Score to global leakage tally
-    tally_leakage_ += wgt_;
+    keff_tally_leakage_ += wgt_;
 
     // Display message
     if (settings::verbosity >= 10 || trace_) {

@@ -469,6 +469,11 @@ void initialize_history(Particle* p, int64_t index_source)
   #pragma omp atomic
   simulation::total_weight += p->wgt_;
 
+  initialize_history_partial(p);
+}
+
+void initialize_history_partial(Particle* p)
+{
   // Force calculation of cross-sections by setting last energy to zero
   if (settings::run_CE) {
     for (auto& micro : p->neutron_xs_) micro.last_E = 0.0;

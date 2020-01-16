@@ -138,7 +138,7 @@ void synchronize_bank()
   int64_t index_temp = 0;
   std::vector<Particle::Bank> temp_sites(3*simulation::work_per_rank);
 
-  for (uint64_t i = 0; i < simulation::fission_bank_length; i++ ) {
+  for (int64_t i = 0; i < simulation::fission_bank_length; i++ ) {
     const auto& site = simulation::fission_bank[i];
 
     // If there are less than n_particles particles banked, automatically add

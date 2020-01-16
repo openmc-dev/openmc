@@ -79,7 +79,7 @@ public:
   //! \param[out] match will contain the matching bins and corresponding
   //!   weights; note that there may be zero matching bins
   virtual void
-  get_all_bins(const Particle* p, int estimator, FilterMatch& match) const = 0;
+  get_all_bins(const Particle* p, TallyEstimator estimator, FilterMatch& match) const = 0;
 
   //! Writes data describing this filter to an HDF5 statepoint group.
   virtual void

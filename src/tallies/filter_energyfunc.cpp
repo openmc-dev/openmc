@@ -55,7 +55,7 @@ EnergyFunctionFilter::set_data(gsl::span<const double> energy,
 }
 
 void
-EnergyFunctionFilter::get_all_bins(const Particle* p, int estimator,
+EnergyFunctionFilter::get_all_bins(const Particle* p, TallyEstimator estimator,
                                    FilterMatch& match) const
 {
   if (p->E_last_ >= energy_.front() && p->E_last_ <= energy_.back()) {

@@ -207,7 +207,7 @@ PhotonInteraction::PhotonInteraction(hid_t group, int i_element)
   // Calculate total pair production
   pair_production_total_ = pair_production_nuclear_ + pair_production_electron_;
 
-  if (settings::electron_treatment == ELECTRON_TTB) {
+  if (settings::electron_treatment == ElectronTreatment::TTB) {
     // Read bremsstrahlung scaled DCS
     rgroup = open_group(group, "bremsstrahlung");
     read_dataset(rgroup, "dcs", dcs_);

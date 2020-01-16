@@ -127,7 +127,7 @@ find_cell_inner(Particle* p, const NeighborList* neighbor_list)
 
   if (found) {
     Cell& c {*model::cells[i_cell]};
-    if (c.type_ == FILL_MATERIAL) {
+    if (c.type_ == Fill::MATERIAL) {
       //=======================================================================
       //! Found a material cell which means this is the lowest coord level.
 
@@ -136,9 +136,9 @@ find_cell_inner(Particle* p, const NeighborList* neighbor_list)
       if (c.distribcell_index_ >= 0) {
         for (int i = 0; i < p->n_coord_; i++) {
           const auto& c_i {*model::cells[p->coord_[i].cell]};
-          if (c_i.type_ == FILL_UNIVERSE) {
+          if (c_i.type_ == Fill::UNIVERSE) {
             offset += c_i.offset_[c.distribcell_index_];
-          } else if (c_i.type_ == FILL_LATTICE) {
+          } else if (c_i.type_ == Fill::LATTICE) {
             auto& lat {*model::lattices[p->coord_[i+1].lattice]};
             int i_xyz[3] {p->coord_[i+1].lattice_x,
                           p->coord_[i+1].lattice_y,
@@ -167,7 +167,7 @@ find_cell_inner(Particle* p, const NeighborList* neighbor_list)
 
       return true;
 
-    } else if (c.type_ == FILL_UNIVERSE) {
+    } else if (c.type_ == Fill::UNIVERSE) {
       //========================================================================
       //! Found a lower universe, update this coord level then search the next.
 
@@ -191,7 +191,7 @@ find_cell_inner(Particle* p, const NeighborList* neighbor_list)
       ++p->n_coord_;
       return find_cell_inner(p, nullptr);
 
-    } else if (c.type_ == FILL_LATTICE) {
+    } else if (c.type_ == Fill::LATTICE) {
       //========================================================================
       //! Found a lower lattice, update this coord level then search the next.
 

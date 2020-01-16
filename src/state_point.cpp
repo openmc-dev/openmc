@@ -83,10 +83,10 @@ openmc_statepoint_write(const char* filename, bool* write_source)
     write_dataset(file_id, "energy_mode", settings::run_CE ?
       "continuous-energy" : "multi-group");
     switch (settings::run_mode) {
-    case RUN_MODE_FIXEDSOURCE:
+    case RunMode::FIXEDSOURCE:
       write_dataset(file_id, "run_mode", "fixed source");
       break;
-    case RUN_MODE_EIGENVALUE:
+    case RunMode::EIGENVALUE:
       write_dataset(file_id, "run_mode", "eigenvalue");
       break;
     }
@@ -101,7 +101,7 @@ openmc_statepoint_write(const char* filename, bool* write_source)
     write_attribute(file_id, "source_present", write_source_);
 
     // Write out information for eigenvalue run
-    if (settings::run_mode == RUN_MODE_EIGENVALUE)
+    if (settings::run_mode == RunMode::EIGENVALUE)
       write_eigenvalue_hdf5(file_id);
 
     hid_t tallies_group = create_group(file_id, "tallies");
@@ -116,13 +116,13 @@ openmc_statepoint_write(const char* filename, bool* write_source)
         hid_t deriv_group = create_group(derivs_group,
           "derivative " + std::to_string(deriv.id));
         write_dataset(deriv_group, "material", deriv.diff_material);
-        if (deriv.variable == DIFF_DENSITY) {
+        if (deriv.variable == WithRespectTo::DENSITY) {
           write_dataset(deriv_group, "independent variable", "density");
-        } else if (deriv.variable == DIFF_NUCLIDE_DENSITY) {
+        } else if (deriv.variable == WithRespectTo::NUCLIDE_DENSITY) {
           write_dataset(deriv_group, "independent variable", "nuclide_density");
           write_dataset(deriv_group, "nuclide",
             data::nuclides[deriv.diff_nuclide]->name_);
-        } else if (deriv.variable == DIFF_TEMPERATURE) {
+        } else if (deriv.variable == WithRespectTo::TEMPERATURE) {
           write_dataset(deriv_group, "independent variable", "temperature");
         } else {
           fatal_error("Independent variable for derivative "
@@ -179,11 +179,11 @@ openmc_statepoint_write(const char* filename, bool* write_source)
           continue;
         }
 
-        if (tally->estimator_ == ESTIMATOR_ANALOG) {
+        if (tally->estimator_ == TallyEstimator::ANALOG) {
           write_dataset(tally_group, "estimator", "analog");
-        } else if (tally->estimator_ == ESTIMATOR_TRACKLENGTH) {
+        } else if (tally->estimator_ == TallyEstimator::TRACKLENGTH) {
           write_dataset(tally_group, "estimator", "tracklength");
-        } else if (tally->estimator_ == ESTIMATOR_COLLISION) {
+        } else if (tally->estimator_ == TallyEstimator::COLLISION) {
           write_dataset(tally_group, "estimator", "collision");
         }
 
@@ -275,11 +275,11 @@ openmc_statepoint_write(const char* filename, bool* write_source)
     write_dataset(runtime_group, "simulation", time_inactive.elapsed()
       + time_active.elapsed());
     write_dataset(runtime_group, "transport", time_transport.elapsed());
-    if (settings::run_mode == RUN_MODE_EIGENVALUE) {
+    if (settings::run_mode == RunMode::EIGENVALUE) {
       write_dataset(runtime_group, "inactive batches", time_inactive.elapsed());
     }
     write_dataset(runtime_group, "active batches", time_active.elapsed());
-    if (settings::run_mode == RUN_MODE_EIGENVALUE) {
+    if (settings::run_mode == RunMode::EIGENVALUE) {
       write_dataset(runtime_group, "synchronizing fission bank", time_bank.elapsed());
       write_dataset(runtime_group, "sampling source sites", time_bank_sample.elapsed());
       write_dataset(runtime_group, "SEND-RECV source sites", time_bank_sendrecv.elapsed());
@@ -363,9 +363,9 @@ void load_state_point()
   // Read and overwrite run information except number of batches
   read_dataset(file_id, "run_mode", word);
   if (word == "fixed source") {
-    settings::run_mode = RUN_MODE_FIXEDSOURCE;
+    settings::run_mode = RunMode::FIXEDSOURCE;
   } else if (word == "eigenvalue") {
-    settings::run_mode = RUN_MODE_EIGENVALUE;
+    settings::run_mode = RunMode::EIGENVALUE;
   }
   read_attribute(file_id, "photon_transport", settings::photon_transport);
   read_dataset(file_id, "n_particles", settings::n_particles);
@@ -388,7 +388,7 @@ void load_state_point()
   }
 
   // Read information specific to eigenvalue run
-  if (settings::run_mode == RUN_MODE_EIGENVALUE) {
+  if (settings::run_mode == RunMode::EIGENVALUE) {
     read_dataset(file_id, "n_inactive", temp);
     read_eigenvalue_hdf5(file_id);
 
@@ -455,7 +455,7 @@ void load_state_point()
   }
 
   // Read source if in eigenvalue mode
-  if (settings::run_mode == RUN_MODE_EIGENVALUE) {
+  if (settings::run_mode == RunMode::EIGENVALUE) {
 
     // Check if source was written out separately
     if (!source_present) {
@@ -723,7 +723,7 @@ void write_tally_results_nr(hid_t file_id)
 
     // Get view of accumulated tally values
     auto values_view = xt::view(t->results_, xt::all(), xt::all(),
-      xt::range(RESULT_SUM, RESULT_SUM_SQ + 1));
+      xt::range(static_cast<int>(TallyResult::SUM), static_cast<int>(TallyResult::SUM_SQ) + 1));
 
     // Make copy of tally values in contiguous array
     xt::xtensor<double, 2> values = values_view;
@@ -750,7 +750,7 @@ void write_tally_results_nr(hid_t file_id)
       // Put in temporary tally result
       xt::xtensor<double, 3> results_copy = xt::zeros_like(t->results_);
       auto copy_view = xt::view(results_copy, xt::all(), xt::all(),
-        xt::range(RESULT_SUM, RESULT_SUM_SQ + 1));
+        xt::range(static_cast<int>(TallyResult::SUM), static_cast<int>(TallyResult::SUM_SQ) + 1));
       copy_view = values;
 
       // Write reduced tally results to file

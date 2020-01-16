@@ -50,11 +50,11 @@ PolarFilter::set_bins(gsl::span<double> bins)
 }
 
 void
-PolarFilter::get_all_bins(const Particle* p, int estimator, FilterMatch& match)
+PolarFilter::get_all_bins(const Particle* p, TallyEstimator estimator, FilterMatch& match)
 const
 {
   double theta;
-  if (estimator == ESTIMATOR_TRACKLENGTH) {
+  if (estimator == TallyEstimator::TRACKLENGTH) {
     theta = std::acos(p->u().z);
   } else {
     theta = std::acos(p->u_last_.z);

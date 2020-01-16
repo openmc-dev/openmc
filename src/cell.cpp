@@ -247,7 +247,7 @@ Cell::temperature(int32_t instance) const
 void
 Cell::set_temperature(double T, int32_t instance)
 {
-  if (settings::temperature_method == TEMPERATURE_INTERPOLATION) {
+  if (settings::temperature_method == TemperatureInterpolationType::INTERPOLATION) {
     if (T < data::temperature_min) {
       throw std::runtime_error{"Temperature is below minimum temperature at "
         "which data is available."};
@@ -565,7 +565,7 @@ CSGCell::to_hdf5(hid_t cell_group) const
   }
 
   // Write fill information.
-  if (type_ == FILL_MATERIAL) {
+  if (type_ == Fill::MATERIAL) {
     write_dataset(group, "fill_type", "material");
     std::vector<int32_t> mat_ids;
     for (auto i_mat : material_) {
@@ -586,7 +586,7 @@ CSGCell::to_hdf5(hid_t cell_group) const
       temps.push_back(sqrtkT_val * sqrtkT_val / K_BOLTZMANN);
     write_dataset(group, "temperature", temps);
 
-  } else if (type_ == FILL_UNIVERSE) {
+  } else if (type_ == Fill::UNIVERSE) {
     write_dataset(group, "fill_type", "universe");
     write_dataset(group, "fill", model::universes[fill_]->id_);
     if (translation_ != Position(0, 0, 0)) {
@@ -601,7 +601,7 @@ CSGCell::to_hdf5(hid_t cell_group) const
       }
     }
 
-  } else if (type_ == FILL_LATTICE) {
+  } else if (type_ == Fill::LATTICE) {
     write_dataset(group, "fill_type", "lattice");
     write_dataset(group, "lattice", model::lattices[fill_]->id_);
   }
@@ -1047,8 +1047,8 @@ openmc_cell_get_fill(int32_t index, int* type, int32_t** indices, int32_t* n)
 {
   if (index >= 0 && index < model::cells.size()) {
     Cell& c {*model::cells[index]};
-    *type = c.type_;
-    if (c.type_ == FILL_MATERIAL) {
+    *type = static_cast<int>(c.type_);
+    if (c.type_ == Fill::MATERIAL) {
       *indices = c.material_.data();
       *n = c.material_.size();
     } else {
@@ -1066,10 +1066,11 @@ extern "C" int
 openmc_cell_set_fill(int32_t index, int type, int32_t n,
                      const int32_t* indices)
 {
+  Fill filltype = static_cast<Fill>(type);
   if (index >= 0 && index < model::cells.size()) {
     Cell& c {*model::cells[index]};
-    if (type == FILL_MATERIAL) {
-      c.type_ = FILL_MATERIAL;
+    if (filltype == Fill::MATERIAL) {
+      c.type_ = Fill::MATERIAL;
       c.material_.clear();
       for (int i = 0; i < n; i++) {
         int i_mat = indices[i];
@@ -1083,10 +1084,10 @@ openmc_cell_set_fill(int32_t index, int type, int32_t n,
         }
       }
       c.material_.shrink_to_fit();
-    } else if (type == FILL_UNIVERSE) {
-      c.type_ = FILL_UNIVERSE;
+    } else if (filltype == Fill::UNIVERSE) {
+      c.type_ = Fill::UNIVERSE;
     } else {
-      c.type_ = FILL_LATTICE;
+      c.type_ = Fill::LATTICE;
     }
   } else {
     set_errmsg("Index in cells array is out of bounds.");

@@ -1218,48 +1218,42 @@ score_general_ce(Particle* p, int i_tally, int start_index,
       if (p->type_ == Particle::Type::neutron) {
         score = score_neutron_heating(p, tally, flux, HEATING,
             i_nuclide, atom_density);
+      } else if (tally.estimator_ == TallyEstimator::ANALOG) {
+        // The energy deposited is the difference between the pre-collision and
+        // post-collision energy...
+        score = E - p->E_;
+
+        // ...less the energy of any secondary particles since they will be
+        // transported individually later
+        const auto& bank = p->secondary_bank_;
+        for (auto it = bank.end() - p->n_bank_second_; it < bank.end(); ++it) {
+          score -= it->E;
+        }
+
+        score *= p->wgt_last_ * flux;
       } else if (p->type_ == Particle::Type::photon) {
-        if (tally.estimator_ == TallyEstimator::ANALOG) {
-          // Score direct energy deposition in the collision
-          score = E - p->E_;
-          // We need to substract the energy of the secondary particles since
-          // they will be transported individually later
-          for (auto i = 0; i < p->n_bank_second_; ++i) {
-            auto i_bank = p->secondary_bank_.size() - p->n_bank_second_ + i;
-            const auto& bank = p->secondary_bank_[i_bank];
-            if (bank.particle == Particle::Type::photon ||
-                bank.particle == Particle::Type::neutron) {
-              score -= bank.E;
-            } else if (bank.particle == Particle::Type::positron) {
-              // Annihilation of the positron will produce two new photons
-              score -= 2*MASS_ELECTRON_EV;
-            }
-          }
-          score *= p->wgt_last_ * flux;
+        // Calculate photon heating cross section on-the-fly
+        if (i_nuclide >= 0) {
+          // Find the element corresponding to the nuclide
+          auto name = data::nuclides[i_nuclide]->name_;
+          std::string element = to_element(name);
+          int i_element = data::element_map[element];
+          auto& heating {data::elements[i_element].heating_};
+          auto i_grid = p->photon_xs_[i_element].index_grid;
+          auto f = p->photon_xs_[i_element].interp_factor;
+          score = std::exp(heating(i_grid) + f * (heating(i_grid+1) -
+            heating(i_grid))) * atom_density * flux;
         } else {
-          // Calculate photon heating cross section on-the-fly
-          if (i_nuclide >= 0) {
-            // Find the element corresponding to the nuclide
-            auto name = data::nuclides[i_nuclide]->name_;
-            std::string element = to_element(name);
-            int i_element = data::element_map[element];
-            auto& heating {data::elements[i_element].heating_};
-            auto i_grid = p->photon_xs_[i_element].index_grid;
-            auto f = p->photon_xs_[i_element].interp_factor;
-            score = std::exp(heating(i_grid) + f * (heating(i_grid+1) -
-              heating(i_grid))) * atom_density * flux;
-          } else {
-            if (p->material_ != MATERIAL_VOID) {
-              const Material& material {*model::materials[p->material_]};
-              for (auto i = 0; i < material.nuclide_.size(); ++i) {
-                auto i_element = material.element_[i];
-                auto atom_density = material.atom_density_(i);
-                auto& heating {data::elements[i_element].heating_};
-                auto i_grid = p->photon_xs_[i_element].index_grid;
-                auto f = p->photon_xs_[i_element].interp_factor;
-                score += std::exp(heating(i_grid) + f * (heating(i_grid+1) -
-                  heating(i_grid))) * atom_density * flux;
-              }
+          if (p->material_ != MATERIAL_VOID) {
+            const Material& material {*model::materials[p->material_]};
+            for (auto i = 0; i < material.nuclide_.size(); ++i) {
+              auto i_element = material.element_[i];
+              auto atom_density = material.atom_density_(i);
+              auto& heating {data::elements[i_element].heating_};
+              auto i_grid = p->photon_xs_[i_element].index_grid;
+              auto f = p->photon_xs_[i_element].interp_factor;
+              score += std::exp(heating(i_grid) + f * (heating(i_grid+1) -
+                heating(i_grid))) * atom_density * flux;
             }
           }
         }

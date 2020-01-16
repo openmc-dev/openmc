@@ -110,15 +110,35 @@ message(STATUS "OpenMC Linker flags: ${ldflags}")
 endif()
 
 #===============================================================================
+# Update git submodules as needed
+#===============================================================================
+
+find_package(Git)
+if(GIT_FOUND AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/.git")
+  option(GIT_SUBMODULE "Check submodules during build" ON)
+  if(GIT_SUBMODULE)
+    message(STATUS "Submodule update")
+    execute_process(COMMAND ${GIT_EXECUTABLE} submodule update --init --recursive
+                    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+                    RESULT_VARIABLE GIT_SUBMOD_RESULT)
+    if(NOT GIT_SUBMOD_RESULT EQUAL 0)
+      message(FATAL_ERROR "git submodule update --init failed with \
+        ${GIT_SUBMOD_RESULT}, please checkout submodules")
+    endif()
+  endif()
+endif()
+
+# Check to see if submodules exist (by checking one)
+if(NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/vendor/pugixml/CMakeLists.txt")
+  message(FATAL_ERROR "The git submodules were not downloaded! GIT_SUBMODULE was \
+    turned off or failed. Please update submodules and try again.")
+endif()
+
+#===============================================================================
 # pugixml library
 #===============================================================================
 
-add_library(pugixml vendor/pugixml/pugixml.cpp)
-target_include_directories(pugixml
-  PUBLIC
-    $<INSTALL_INTERFACE:include/pugixml>
-    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/vendor/pugixml>
-)
+add_subdirectory(vendor/pugixml)
 
 #===============================================================================
 # xtensor header-only library
@@ -138,15 +158,10 @@ target_link_libraries(xtensor INTERFACE xtl)
 # GSL header-only library
 #===============================================================================
 
-add_library(gsl INTERFACE)
-target_include_directories(gsl
-  INTERFACE
-    $<INSTALL_INTERFACE:include/gsl/include>
-    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/vendor/gsl/include>
-)
+add_subdirectory(vendor/gsl-lite)
 
 # Make sure contract violations throw exceptions
-target_compile_definitions(gsl INTERFACE GSL_THROW_ON_CONTRACT_VIOLATION)
+target_compile_definitions(gsl-lite INTERFACE GSL_THROW_ON_CONTRACT_VIOLATION)
 
 #===============================================================================
 # RPATH information
@@ -315,19 +330,21 @@ if (MPI_ENABLED)
 endif()
 
 # Set git SHA1 hash as a compile definition
-execute_process(COMMAND git rev-parse HEAD
-                WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-                RESULT_VARIABLE GIT_SHA1_SUCCESS
-                OUTPUT_VARIABLE GIT_SHA1
-                ERROR_QUIET OUTPUT_STRIP_TRAILING_WHITESPACE)
-if(GIT_SHA1_SUCCESS EQUAL 0)
-  target_compile_definitions(libopenmc PRIVATE -DGIT_SHA1="${GIT_SHA1}")
+if(GIT_FOUND)
+  execute_process(COMMAND ${GIT_EXECUTABLE} rev-parse HEAD
+                  WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+                  RESULT_VARIABLE GIT_SHA1_SUCCESS
+                  OUTPUT_VARIABLE GIT_SHA1
+                  ERROR_QUIET OUTPUT_STRIP_TRAILING_WHITESPACE)
+  if(GIT_SHA1_SUCCESS EQUAL 0)
+    target_compile_definitions(libopenmc PRIVATE -DGIT_SHA1="${GIT_SHA1}")
+  endif()
 endif()
 
 # target_link_libraries treats any arguments starting with - but not -l as
 # linker flags. Thus, we can pass both linker flags and libraries together.
 target_link_libraries(libopenmc ${ldflags} ${HDF5_LIBRARIES} ${HDF5_HL_LIBRARIES}
-                      pugixml faddeeva xtensor gsl)
+                      pugixml faddeeva xtensor gsl-lite)
 
 if(dagmc)
   target_compile_definitions(libopenmc PRIVATE DAGMC)
@@ -363,7 +380,7 @@ add_custom_command(TARGET libopenmc POST_BUILD
 #===============================================================================
 
 set(INSTALL_CONFIGDIR ${CMAKE_INSTALL_LIBDIR}/cmake/OpenMC)
-install(TARGETS openmc libopenmc pugixml faddeeva gsl
+install(TARGETS openmc libopenmc faddeeva
   EXPORT openmc-targets
   RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
   LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
@@ -380,9 +397,6 @@ install(FILES man/man1/openmc.1 DESTINATION ${CMAKE_INSTALL_MANDIR}/man1)
 install(FILES LICENSE DESTINATION "${CMAKE_INSTALL_DOCDIR}" RENAME copyright)
 install(DIRECTORY include/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
 
-# Copy headers for vendored dependencies (note that xtensor/xtl are handled
+# Copy headers for vendored dependencies (note that all except faddeeva are handled
 # separately since they are managed by CMake)
-install(DIRECTORY vendor/pugixml DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
-  FILES_MATCHING PATTERN "*.hpp")
-install(DIRECTORY vendor/gsl DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
 install(DIRECTORY vendor/faddeeva DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})

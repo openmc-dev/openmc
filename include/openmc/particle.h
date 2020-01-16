@@ -171,6 +171,7 @@ public:
     int delayed_group;
     Type particle;
     int64_t parent_id;
+    int64_t progeny_id;
     bool operator<(const Bank& bank) const { return (parent_id < bank.parent_id); }
   };
   
@@ -359,6 +360,8 @@ public:
   moab::DagMC::RayHistory history_;
   Direction last_dir_;
   #endif
+
+  int64_t n_progeny_ {0}; // Number of progeny produced by this particle
 };
 
 } // namespace openmc

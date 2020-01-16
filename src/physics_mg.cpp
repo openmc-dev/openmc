@@ -151,6 +151,7 @@ create_fission_sites(Particle* p)
     site->particle = Particle::Type::neutron;
     site->wgt = 1. / weight;
     site->parent_id = p->id_;
+    site->progeny_id = p->n_progeny_++;
 
     // Sample the cosine of the angle, assuming fission neutrons are emitted
     // isotropically

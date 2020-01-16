@@ -398,8 +398,9 @@ void finalize_generation()
     // so as to allow for reproducibility regardless of which order particles
     // are run in.
     #ifdef _OPENMP
-    std::stable_sort(simulation::fission_bank,
-        simulation::fission_bank + simulation::fission_bank_length);
+    //std::stable_sort(simulation::fission_bank,
+    //    simulation::fission_bank + simulation::fission_bank_length);
+    sort_fission_bank();
     #endif
 
     // Distribute fission bank across processors evenly
@@ -433,6 +434,9 @@ void initialize_history(Particle* p, int64_t index_source)
 
   // set identifier for particle
   p->id_ = simulation::work_index[mpi::rank] + index_source;
+
+  // set progeny count to zero
+  p->n_progeny_ = 0;
 
   // set random number seed
   int64_t particle_seed = (simulation::total_gen + overall_generation() - 1)

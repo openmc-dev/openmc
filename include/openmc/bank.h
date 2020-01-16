@@ -20,12 +20,15 @@ extern std::vector<Particle::Bank> source_bank;
 extern Particle::Bank* fission_bank;
 extern int64_t fission_bank_length;
 extern int64_t fission_bank_max;
+extern std::vector<int64_t> progeny_per_particle;
 
 } // namespace simulation
 
 //==============================================================================
 // Non-member functions
 //==============================================================================
+
+void sort_fission_bank();
 
 void free_memory_bank();
 

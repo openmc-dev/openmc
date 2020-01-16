@@ -391,6 +391,10 @@ Particle::event_death()
   keff_tally_collision_   = 0.0;
   keff_tally_tracklength_ = 0.0;
   keff_tally_leakage_     = 0.0;
+
+  // Record the number of progeny created by this particle.
+  // This data will be used to efficiently sort the fission bank.
+  simulation::progeny_per_particle[id_-1] = n_progeny_;
 }
 
 

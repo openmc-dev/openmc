@@ -166,6 +166,9 @@ public:
   //! NOTE: This structure's MPI type is built in initialize_mpi() of 
   //! initialize.cpp. Any changes made to the struct here must also be
   //! made when building the Bank MPI type in initialize_mpi().
+  //! NOTE: This structure is also used on the python side, and is defined
+  //! in lib/core.py. Changes made to the type here must also be made to the
+  //! python defintion.
   struct Bank {
     Position r;
     Direction u;

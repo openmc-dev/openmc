@@ -88,7 +88,7 @@ void sort_fission_bank()
 
   // If there is not enough space, allocate a temporary vector and point to it
   if (simulation::fission_bank_length > simulation::fission_bank_max / 2) {
-    sorted_bank_holder = std::vector<Particle::Bank>(simulation::fission_bank_length);
+    sorted_bank_holder.resize(simulation::fission_bank_length);
     sorted_bank = sorted_bank_holder.data();
   } else { // otherwise, point sorted_bank to unused portion of the fission bank
     sorted_bank = &simulation::fission_bank[simulation::fission_bank_length];

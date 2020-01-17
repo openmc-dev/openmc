@@ -168,7 +168,7 @@ Particle::event_calculate_xs()
   if (write_track_) write_particle_track(*this);
 
   if (settings::check_overlaps) check_cell_overlap(this);
-  
+
   // Calculate microscopic and macroscopic cross sections
   if (material_ != MATERIAL_VOID) {
     if (settings::run_CE) {
@@ -394,7 +394,10 @@ Particle::event_death()
 
   // Record the number of progeny created by this particle.
   // This data will be used to efficiently sort the fission bank.
-  simulation::progeny_per_particle[id_-1] = n_progeny_;
+  int64_t offset = id_ - 1 - simulation::work_index[mpi::rank];
+  assert(offset >= 0);
+  assert(offset < simulation::work_per_rank);
+  simulation::progeny_per_particle[offset] = n_progeny_;
 }
 
 

@@ -2,6 +2,7 @@
 #include "openmc/capi.h"
 #include "openmc/error.h"
 #include "openmc/simulation.h"
+#include "openmc/message_passing.h"
 
 #include <cstdint>
 
@@ -74,7 +75,7 @@ void sort_fission_bank()
     tmp = simulation::progeny_per_particle[i];
     simulation::progeny_per_particle[i] = value;
   }
-  
+
   // TODO: C++17 introduces the exclusive_scan() function which could be
   // used to replace everything above this point in this function.
 
@@ -83,8 +84,9 @@ void sort_fission_bank()
 
   // Use parent and progeny indices to sort fission bank
   for (int64_t i = 0; i < simulation::fission_bank_length; i++) {
-    Particle::Bank& site = simulation::fission_bank[i];
-    int64_t idx = simulation::progeny_per_particle[site.parent_id-1] + site.progeny_id;
+    const auto& site = simulation::fission_bank[i];
+    int64_t offset = site.parent_id - 1 - simulation::work_index[mpi::rank];
+    int64_t idx = simulation::progeny_per_particle[offset] + site.progeny_id;
     sorted_bank[idx] = site;
   }
 

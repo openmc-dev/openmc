@@ -63,7 +63,7 @@ features and bug fixes. The general steps for contributing are as follows:
 
    .. code-block:: sh
 
-       git clone git@github.com:yourusername/openmc.git
+       git clone --recurse-submodules git@github.com:yourusername/openmc.git
        cd openmc
        git checkout -b newbranch develop
 

@@ -92,7 +92,7 @@ void title()
   // Write number of OpenMP threads
   std::cout << "    OpenMP Threads | " << omp_get_max_threads() << '\n';
 #endif
-  std::cout << '\n';
+  std::cout << std::endl;
 }
 
 //==============================================================================
@@ -126,7 +126,7 @@ header(const char* msg, int level) {
 
   // Print header based on verbosity level.
   if (settings::verbosity >= level)
-    std::cout << '\n' << out << "\n\n";
+    std::cout << '\n' << out << "\n" << std::endl;
 }
 
 //==============================================================================

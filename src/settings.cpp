@@ -44,6 +44,7 @@ bool cmfd_run                {false};
 bool confidence_intervals    {false};
 bool create_fission_neutrons {true};
 bool dagmc                   {false};
+bool delayed_photon_scaling  {true};
 bool entropy_on              {false};
 bool legendre_to_tabular     {true};
 bool material_cell_offsets   {true};
@@ -776,6 +777,11 @@ void read_settings_xml()
     if (check_for_node(root, "create_fission_neutrons")) {
       create_fission_neutrons = get_node_value_bool(root, "create_fission_neutrons");
     }
+  }
+
+  // Check whether to scale fission photon yields
+  if (check_for_node(root, "delayed_photon_scaling")) {
+    delayed_photon_scaling = get_node_value_bool(root, "delayed_photon_scaling");
   }
 
   // Check whether material cell offsets should be generated

@@ -395,8 +395,6 @@ Particle::event_death()
   // Record the number of progeny created by this particle.
   // This data will be used to efficiently sort the fission bank.
   int64_t offset = id_ - 1 - simulation::work_index[mpi::rank];
-  assert(offset >= 0);
-  assert(offset < simulation::work_per_rank);
   simulation::progeny_per_particle[offset] = n_progeny_;
 }
 

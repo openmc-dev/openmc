@@ -43,6 +43,7 @@ void free_memory_bank()
   simulation::source_bank.clear();
   simulation::fission_bank.reset();
   simulation::fission_bank_length = 0;
+  simulation::progeny_per_particle.clear();
 }
 
 void init_fission_bank(int64_t max)

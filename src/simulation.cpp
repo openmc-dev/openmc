@@ -397,9 +397,7 @@ void finalize_generation()
     // If using shared memory, stable sort the fission bank (by parent IDs) 
     // so as to allow for reproducibility regardless of which order particles
     // are run in.
-    //#ifdef _OPENMP
     sort_fission_bank();
-    //#endif
 
     // Distribute fission bank across processors evenly
     synchronize_bank();

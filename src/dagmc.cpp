@@ -356,7 +356,7 @@ void load_dagmc_geometry()
         fatal_error("Periodic boundary condition not supported in DAGMC.");
       } else {
         std::stringstream err_msg;
-        err_msg << "Unknown boundary condition \"" << s->bc_
+        err_msg << "Unknown boundary condition \"" << bc_value
                 << "\" specified on surface " << s->id_;
         fatal_error(err_msg);
       }

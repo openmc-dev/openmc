@@ -16,7 +16,13 @@ namespace simulation {
 
 std::vector<Particle::Bank> source_bank;
 
-Particle::Bank* fission_bank {nullptr};
+// The fission bank is allocated as a pointer, rather than a vector, as it will
+// be shared by all threads in the simulation. It will be allocated to a fixed
+// maximum capacity in the init_fission_bank() function. Then, Elements will be
+// added to it by performing atomic incrementing captures on the fission_bank_length
+// variable. A vector is not appropriate, as use of push_back() and size()
+// functions would cause undefined or unintended behavior.
+std::unique_ptr<Particle::Bank[]> fission_bank;
 int64_t fission_bank_length {0};
 int64_t fission_bank_max;
 
@@ -34,24 +40,30 @@ std::vector<int64_t> progeny_per_particle;
 void free_memory_bank()
 {
   simulation::source_bank.clear();
-  if (simulation::fission_bank)
-    delete[] simulation::fission_bank;
-  simulation::fission_bank = nullptr;
+  simulation::fission_bank.reset();
   simulation::fission_bank_length = 0;
 }
 
 void init_fission_bank(int64_t max)
 {
   simulation::fission_bank_max = max;
-  simulation::fission_bank = new Particle::Bank[max];
+  simulation::fission_bank = std::make_unique<Particle::Bank[]>(max);
   simulation::fission_bank_length = 0;
   simulation::progeny_per_particle.resize(simulation::work_per_rank);
 }
 
+// Performs an O(n) sort on the fission bank, by leveraging
+// the parent_id and progeny_id fields of banked particles. See the following
+// paper for more details:
+// "Reproducibility and Monte Carlo Eigenvalue Calculations," F.B. Brown and
+// T.M. Sutton, 1992 ANS Annual Meeting, Transactions of the American Nuclear
+// Society, Volume 65, Page 235.
 void sort_fission_bank()
 {
-  if( simulation::progeny_per_particle.size() == 0 )
+  // Ensure we don't read off the end of the array if we ran with 0 particles
+  if (simulation::progeny_per_particle.size() == 0) {
     return;
+  }
 
   // Perform exclusive scan summation to determine starting indices in fission
   // bank for each parent particle id
@@ -62,8 +74,11 @@ void sort_fission_bank()
     tmp = simulation::progeny_per_particle[i];
     simulation::progeny_per_particle[i] = value;
   }
+  
+  // TODO: C++17 introduces the exclusive_scan() function which could be
+  // used to replace everything above this point in this function.
 
-  // Create temporary scratch vector for permutation
+  // Create temporary scratch vector for permuting the fission bank
   std::vector<Particle::Bank> sorted_bank(simulation::fission_bank_length);
 
   // Use parent and progeny indices to sort fission bank
@@ -101,7 +116,7 @@ extern "C" int openmc_fission_bank(void** ptr, int64_t* n)
     set_errmsg("Fission bank has not been allocated.");
     return OPENMC_E_ALLOCATE;
   } else {
-    *ptr = simulation::fission_bank;
+    *ptr = simulation::fission_bank.get();
     *n =   simulation::fission_bank_length;
     return 0;
   }

@@ -506,7 +506,7 @@ void shannon_entropy()
   // Get source weight in each mesh bin
   bool sites_outside;
   xt::xtensor<double, 1> p = simulation::entropy_mesh->count_sites(
-    simulation::fission_bank, simulation::fission_bank_length,
+    simulation::fission_bank.get(), simulation::fission_bank_length,
     &sites_outside);
 
   // display warning message if there were sites outside entropy box

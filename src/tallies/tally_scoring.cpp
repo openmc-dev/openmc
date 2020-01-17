@@ -1267,6 +1267,10 @@ score_general_ce(Particle* p, int i_tally, int start_index,
       break;
 
     default:
+      // The default block is really only meant for redundant neutron reactions
+      // (e.g. 444, 901)
+      if (p->type_ != Particle::Type::neutron) continue;
+
       if (tally.estimator_ == ESTIMATOR_ANALOG) {
         // Any other score is assumed to be a MT number. Thus, we just need
         // to check if it matches the MT number of the event

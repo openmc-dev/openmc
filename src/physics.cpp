@@ -192,7 +192,7 @@ create_fission_sites(Particle* p, int i_nuclide, const Reaction* rx)
         skipped++;
         break;
       }
-      site = simulation::fission_bank + idx;
+      site = &simulation::fission_bank[idx];
     } else {
       // Create new bank site and get reference to last element
       auto& bank = p->secondary_bank_;

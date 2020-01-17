@@ -347,11 +347,11 @@ void load_dagmc_geometry()
       to_lower(bc_value);
 
       if (bc_value == "transmit" || bc_value == "transmission") {
-        s->bc_ = BC_TRANSMIT;
+        s->bc_ = Surface::Bc::TRANSMIT;
       } else if (bc_value == "vacuum") {
-        s->bc_ = BC_VACUUM;
+        s->bc_ = Surface::Bc::VACUUM;
       } else if (bc_value == "reflective" || bc_value == "reflect" || bc_value == "reflecting") {
-        s->bc_ = BC_REFLECT;
+        s->bc_ = Surface::Bc::REFLECT;
       } else if (bc_value == "periodic") {
         fatal_error("Periodic boundary condition not supported in DAGMC.");
       } else {
@@ -362,7 +362,7 @@ void load_dagmc_geometry()
       }
     } else {
       // if no condition is found, set to transmit
-      s->bc_ = BC_TRANSMIT;
+      s->bc_ = Surface::Bc::TRANSMIT;
     }
 
     // graveyard check
@@ -373,7 +373,7 @@ void load_dagmc_geometry()
     // if this surface belongs to the graveyard
     if (graveyard && parent_vols.find(graveyard) != parent_vols.end()) {
       // set BC to vacuum
-      s->bc_ = BC_VACUUM;
+      s->bc_ = Surface::Bc::VACUUM;
     }
 
     // add to global array and map

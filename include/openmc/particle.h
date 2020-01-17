@@ -163,6 +163,9 @@ public:
   };
 
   //! Saved ("banked") state of a particle
+  //! NOTE: This structure's MPI type is built in initialize_mpi() of 
+  //! initialize.cpp. Any changes made to the struct here must also be
+  //! made when building the Bank MPI type in initialize_mpi().
   struct Bank {
     Position r;
     Direction u;

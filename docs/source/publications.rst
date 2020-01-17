@@ -71,6 +71,10 @@ Coupling and Multi-physics
   Coupling of OpenMC and Nek5000 within the MOOSE Framework," *Proc. PHYSOR*,
   Cancun, Mexico, Apr. 22-26 (2018).
 
+- Sterling Harper, Kord Smith, and Benoit Forget, "Faster Monte Carlo
+  multiphysics using temperature derivatives," *Proc. PHYSOR*, Cancun, Mexico,
+  Apr. 22-26 (2018).
+
 - Jun Chen, Liangzhi Cao, Chuanqi Zhao, and Zhouyu Liu, "`Development of
   Subchannel Code SUBSC for high-fidelity multi-physics coupling application
   <https://doi.org/10.1016/j.egypro.2017.08.121>`_", *Energy Procedia*, **127**,

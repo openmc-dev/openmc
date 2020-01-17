@@ -29,6 +29,7 @@ extern bool confidence_intervals;     //!< use confidence intervals for results?
 extern bool create_fission_neutrons;  //!< create fission neutrons (fixed source)?
 extern "C" bool cmfd_run;             //!< is a CMFD run?
 extern "C" bool dagmc;                //!< indicator of DAGMC geometry
+extern bool delayed_photon_scaling;   //!< Scale fission photon yield to include delayed
 extern "C" bool entropy_on;           //!< calculate Shannon entropy?
 extern bool legendre_to_tabular;      //!< convert Legendre distributions to tabular?
 extern bool material_cell_offsets;    //!< create material cells offsets?

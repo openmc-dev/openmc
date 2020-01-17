@@ -101,7 +101,7 @@ void initialize_mpi(MPI_Comm intracomm)
 
   // Create bank datatype
   Particle::Bank b;
-  MPI_Aint disp[7];
+  MPI_Aint disp[8];
   MPI_Get_address(&b.r, &disp[0]);
   MPI_Get_address(&b.u, &disp[1]);
   MPI_Get_address(&b.E, &disp[2]);
@@ -109,11 +109,12 @@ void initialize_mpi(MPI_Comm intracomm)
   MPI_Get_address(&b.delayed_group, &disp[4]);
   MPI_Get_address(&b.particle, &disp[5]);
   MPI_Get_address(&b.parent_id, &disp[6]);
-  for (int i = 6; i >= 0; --i) disp[i] -= disp[0];
+  MPI_Get_address(&b.progeny_id, &disp[7]);
+  for (int i = 7; i >= 0; --i) disp[i] -= disp[0];
 
-  int blocks[] {3, 3, 1, 1, 1, 1, 1};
-  MPI_Datatype types[] {MPI_DOUBLE, MPI_DOUBLE, MPI_DOUBLE, MPI_DOUBLE, MPI_INT, MPI_INT, MPI_LONG};
-  MPI_Type_create_struct(7, blocks, disp, types, &mpi::bank);
+  int blocks[] {3, 3, 1, 1, 1, 1, 1, 1};
+  MPI_Datatype types[] {MPI_DOUBLE, MPI_DOUBLE, MPI_DOUBLE, MPI_DOUBLE, MPI_INT, MPI_INT, MPI_LONG, MPI_LONG};
+  MPI_Type_create_struct(8, blocks, disp, types, &mpi::bank);
   MPI_Type_commit(&mpi::bank);
 }
 #endif // OPENMC_MPI

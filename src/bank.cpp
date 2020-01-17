@@ -79,9 +79,20 @@ void sort_fission_bank()
 
   // TODO: C++17 introduces the exclusive_scan() function which could be
   // used to replace everything above this point in this function.
+  
+  // We need a scratch vector to make permutation of the fission bank into
+  // sorted order easy. Under normal usage conditions, the fission bank is
+  // over provisioned, so we can use that as scratch space.
+  Particle::Bank* sorted_bank;
+  std::vector<Particle::Bank> sorted_bank_holder;
 
-  // Create temporary scratch vector for permuting the fission bank
-  std::vector<Particle::Bank> sorted_bank(simulation::fission_bank_length);
+  // If there is not enough space, allocate a temporary vector and point to it
+  if (simulation::fission_bank_length > simulation::fission_bank_max / 2) {
+    sorted_bank_holder = std::vector<Particle::Bank>(simulation::fission_bank_length);
+    sorted_bank = sorted_bank_holder.data();
+  } else { // otherwise, point sorted_bank to unused portion of the fission bank
+    sorted_bank = &simulation::fission_bank[simulation::fission_bank_length];
+  }
 
   // Use parent and progeny indices to sort fission bank
   for (int64_t i = 0; i < simulation::fission_bank_length; i++) {
@@ -92,9 +103,8 @@ void sort_fission_bank()
   }
 
   // Copy sorted bank into the fission bank
-  for (int64_t i = 0; i < simulation::fission_bank_length; i++) {
-    simulation::fission_bank[i] = sorted_bank[i];
-  }
+  std::copy(sorted_bank, sorted_bank + simulation::fission_bank_length,
+      simulation::fission_bank.get());
 }
 
 //==============================================================================

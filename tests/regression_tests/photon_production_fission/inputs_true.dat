@@ -31,7 +31,7 @@
   <tally id="1">
     <filters>1</filters>
     <nuclides>U235 total</nuclides>
-    <scores>fission heating heating-local</scores>
+    <scores>fission heating-local</scores>
     <estimator>tracklength</estimator>
   </tally>
   <tally id="2">

@@ -25,7 +25,7 @@ def model():
     particle_filter = openmc.ParticleFilter(['neutron', 'photon'])
     tally_tracklength = openmc.Tally()
     tally_tracklength.filters = [particle_filter]
-    tally_tracklength.scores = ['fission', 'heating', 'heating-local']
+    tally_tracklength.scores = ['fission', 'heating-local']
     tally_tracklength.nuclides = ['U235', 'total']
     tally_tracklength.estimator = 'tracklength'
     tally_collision = openmc.Tally()
@@ -43,6 +43,6 @@ def model():
     return model
 
 
-def test_photon_production(model):
+def test_photon_production_fission(model):
     harness = PyAPITestHarness('statepoint.5.h5', model)
     harness.main()

@@ -158,16 +158,18 @@ score_fission_delayed_dg(int i_tally, int d_bin, double score, int score_index,
 
   // Determine the filter scoring index
   auto filter_index = 0;
+  double filter_weight = 1.;
   for (auto i = 0; i < tally.filters().size(); ++i) {
     auto i_filt = tally.filters(i);
     auto& match {filter_matches[i_filt]};
     auto i_bin = match.i_bin_;
     filter_index += match.bins_[i_bin] * tally.strides(i);
+    filter_weight *= match.weights_[i_bin];
   }
 
   // Update the tally result
   #pragma omp atomic
-  tally.results_(filter_index, score_index, TallyResult::VALUE) += score;
+  tally.results_(filter_index, score_index, TallyResult::VALUE) += score*filter_weight;
 
   // Reset the original delayed group bin
   dg_match.bins_[i_bin] = original_bin;
@@ -384,18 +386,19 @@ score_fission_eout(Particle* p, int i_tally, int i_score, int score_bin)
       || (score_bin == SCORE_PROMPT_NU_FISSION && g == 0)) {
 
       // Find the filter scoring index for this filter combination
-      //TODO: should this include a weight?
       int filter_index = 0;
+      double filter_weight = 1.0;
       for (auto j = 0; j < tally.filters().size(); ++j) {
         auto i_filt = tally.filters(j);
         auto& match {p->filter_matches_[i_filt]};
         auto i_bin = match.i_bin_;
         filter_index += match.bins_[i_bin] * tally.strides(j);
+        filter_weight *= match.weights_[i_bin];
       }
 
       // Update tally results
       #pragma omp atomic
-      tally.results_(filter_index, i_score, TallyResult::VALUE) += score;
+      tally.results_(filter_index, i_score, TallyResult::VALUE) += score*filter_weight;
 
     } else if (score_bin == SCORE_DELAYED_NU_FISSION && g != 0) {
 
@@ -1137,8 +1140,9 @@ score_general_ce(Particle* p, int i_tally, int start_index, int filter_index,
 
     case SCORE_EVENTS:
       // Simply count the number of scoring events
-      score = 1.;
-      break;
+      #pragma omp atomic
+      tally.results_(filter_index, score_index, TallyResult::VALUE) += 1.0;
+      continue;
 
 
     case ELASTIC:
@@ -1298,12 +1302,9 @@ score_general_ce(Particle* p, int i_tally, int start_index, int filter_index,
       apply_derivative_to_score(p, i_tally, i_nuclide, atom_density, score_bin,
         score);
 
-    // Apply filter weight
-    score *= filter_weight;
-
     // Update tally results
     #pragma omp atomic
-    tally.results_(filter_index, score_index, TallyResult::VALUE) += score;
+    tally.results_(filter_index, score_index, TallyResult::VALUE) += score*filter_weight;
   }
 }
 
@@ -1955,20 +1956,18 @@ score_general_mg(Particle* p, int i_tally, int start_index, int filter_index,
 
     case SCORE_EVENTS:
       // Simply count the number of scoring events
-      score = 1.;
-      break;
+      #pragma omp atomic
+      tally.results_(filter_index, score_index, TallyResult::VALUE) += 1.0;
+      continue;
 
 
     default:
       continue;
     }
 
-    // Apply filter weight
-    score *= filter_weight;
-
     // Update tally results
     #pragma omp atomic
-    tally.results_(filter_index, score_index, TallyResult::VALUE) += score;
+    tally.results_(filter_index, score_index, TallyResult::VALUE) += score*filter_weight;
   }
 }
 

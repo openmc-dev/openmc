@@ -458,8 +458,8 @@ score_fission_eout(Particle* p, int i_tally, int i_score, int score_bin)
 //! is not used for analog tallies.
 
 void
-score_general_ce(Particle* p, int i_tally, int start_index,
-  int filter_index, int i_nuclide, double atom_density, double flux)
+score_general_ce(Particle* p, int i_tally, int start_index, int filter_index,
+  double filter_weight, int i_nuclide, double atom_density, double flux)
 {
   Tally& tally {*model::tallies[i_tally]};
 
@@ -1230,7 +1230,7 @@ score_general_ce(Particle* p, int i_tally, int start_index,
           score -= it->E;
         }
 
-        score *= p->wgt_last_ * flux;
+        score *= p->wgt_last_;
       }
       break;
 
@@ -1298,6 +1298,9 @@ score_general_ce(Particle* p, int i_tally, int start_index,
       apply_derivative_to_score(p, i_tally, i_nuclide, atom_density, score_bin,
         score);
 
+    // Apply filter weight
+    score *= filter_weight;
+
     // Update tally results
     #pragma omp atomic
     tally.results_(filter_index, score_index, TallyResult::VALUE) += score;
@@ -1310,8 +1313,8 @@ score_general_ce(Particle* p, int i_tally, int start_index,
 //! argument is really just used for filter weights.
 
 void
-score_general_mg(Particle* p, int i_tally, int start_index,
-  int filter_index, int i_nuclide, double atom_density, double flux)
+score_general_mg(Particle* p, int i_tally, int start_index, int filter_index,
+  double filter_weight, int i_nuclide, double atom_density, double flux)
 {
   auto& tally {*model::tallies[i_tally]};
 
@@ -1960,6 +1963,9 @@ score_general_mg(Particle* p, int i_tally, int start_index,
       continue;
     }
 
+    // Apply filter weight
+    score *= filter_weight;
+
     // Update tally results
     #pragma omp atomic
     tally.results_(filter_index, score_index, TallyResult::VALUE) += score;
@@ -1970,7 +1976,7 @@ score_general_mg(Particle* p, int i_tally, int start_index,
 
 void
 score_all_nuclides(Particle* p, int i_tally, double flux,
-  int filter_index)
+  int filter_index, double filter_weight)
 {
   const Tally& tally {*model::tallies[i_tally]};
   const Material& material {*model::materials[p->material_]};
@@ -1983,10 +1989,10 @@ score_all_nuclides(Particle* p, int i_tally, double flux,
     //TODO: consider replacing this "if" with pointers or templates
     if (settings::run_CE) {
       score_general_ce(p, i_tally, i_nuclide*tally.scores_.size(), filter_index,
-        i_nuclide, atom_density, flux);
+        filter_weight, i_nuclide, atom_density, flux);
     } else {
       score_general_mg(p, i_tally, i_nuclide*tally.scores_.size(), filter_index,
-        i_nuclide, atom_density, flux);
+        filter_weight, i_nuclide, atom_density, flux);
     }
   }
 
@@ -1997,15 +2003,22 @@ score_all_nuclides(Particle* p, int i_tally, double flux,
   //TODO: consider replacing this "if" with pointers or templates
   if (settings::run_CE) {
     score_general_ce(p, i_tally, n_nuclides*tally.scores_.size(), filter_index,
-      i_nuclide, atom_density, flux);
+      filter_weight, i_nuclide, atom_density, flux);
   } else {
     score_general_mg(p, i_tally, n_nuclides*tally.scores_.size(), filter_index,
-      i_nuclide, atom_density, flux);
+      filter_weight, i_nuclide, atom_density, flux);
   }
 }
 
 void score_analog_tally_ce(Particle* p)
 {
+  // Since electrons/positrons are not transported, we assign a flux of zero.
+  // Note that the heating score does NOT use the flux and will be non-zero for
+  // electrons/positrons.
+  double flux =
+    (p->type_ == Particle::Type::neutron || p->type_ == Particle::Type::photon) ?
+    1.0 : 0.0;
+
   for (auto i_tally : model::active_analog_tallies) {
     const Tally& tally {*model::tallies[i_tally]};
 
@@ -2031,7 +2044,7 @@ void score_analog_tally_ce(Particle* p)
           // density argument for score_general is not used for analog tallies.
           if (i_nuclide == p->event_nuclide_ || i_nuclide == -1)
             score_general_ce(p, i_tally, i*tally.scores_.size(), filter_index,
-              i_nuclide, -1., filter_weight);
+              filter_weight, i_nuclide, -1.0, flux);
         }
 
       } else {
@@ -2040,12 +2053,12 @@ void score_analog_tally_ce(Particle* p)
         // bins correspond to nuclide indices.  First, tally the nuclide.
         auto i = p->event_nuclide_;
         score_general_ce(p, i_tally, i*tally.scores_.size(), filter_index,
-          -1, -1., filter_weight);
+          filter_weight, -1, -1.0, flux);
 
         // Now tally the total material.
         i = tally.nuclides_.size();
         score_general_ce(p, i_tally, i*tally.scores_.size(), filter_index,
-          -1, -1., filter_weight);
+          filter_weight, -1, -1.0, flux);
       }
     }
 
@@ -2090,7 +2103,7 @@ void score_analog_tally_mg(Particle* p)
         }
 
         score_general_mg(p, i_tally, i*tally.scores_.size(), filter_index,
-          i_nuclide, atom_density, filter_weight);
+          filter_weight, i_nuclide, atom_density, 1.0);
       }
     }
 
@@ -2130,7 +2143,8 @@ score_tracklength_tally(Particle* p, double distance)
       // Loop over nuclide bins.
       if (tally.all_nuclides_) {
         if (p->material_ != MATERIAL_VOID)
-          score_all_nuclides(p, i_tally, flux*filter_weight, filter_index);
+          score_all_nuclides(p, i_tally, flux*filter_weight, filter_index,
+            filter_weight);
 
       } else {
         for (auto i = 0; i < tally.nuclides_.size(); ++i) {
@@ -2148,10 +2162,10 @@ score_tracklength_tally(Particle* p, double distance)
           //TODO: consider replacing this "if" with pointers or templates
           if (settings::run_CE) {
             score_general_ce(p, i_tally, i*tally.scores_.size(), filter_index,
-              i_nuclide, atom_density, flux*filter_weight);
+              filter_weight, i_nuclide, atom_density, flux);
           } else {
             score_general_mg(p, i_tally, i*tally.scores_.size(), filter_index,
-              i_nuclide, atom_density, flux*filter_weight);
+              filter_weight, i_nuclide, atom_density, flux);
           }
         }
       }
@@ -2199,7 +2213,8 @@ void score_collision_tally(Particle* p)
 
       // Loop over nuclide bins.
       if (tally.all_nuclides_) {
-        score_all_nuclides(p, i_tally, flux*filter_weight, filter_index);
+        score_all_nuclides(p, i_tally, flux*filter_weight, filter_index,
+          filter_weight);
 
       } else {
         for (auto i = 0; i < tally.nuclides_.size(); ++i) {
@@ -2215,10 +2230,10 @@ void score_collision_tally(Particle* p)
           //TODO: consider replacing this "if" with pointers or templates
           if (settings::run_CE) {
             score_general_ce(p, i_tally, i*tally.scores_.size(), filter_index,
-              i_nuclide, atom_density, flux*filter_weight);
+              filter_weight, i_nuclide, atom_density, flux);
           } else {
             score_general_mg(p, i_tally, i*tally.scores_.size(), filter_index,
-              i_nuclide, atom_density, flux*filter_weight);
+              filter_weight, i_nuclide, atom_density, flux);
           }
         }
       }

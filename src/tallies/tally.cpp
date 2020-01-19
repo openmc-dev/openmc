@@ -244,15 +244,16 @@ score_str_to_int(std::string score_str)
 //==============================================================================
 
 Tally::Tally(int32_t id)
-  : index_{model::tallies.size()}
 {
+  index_ = model::tallies.size(); // Avoids warning about narrowing
   this->set_id(id);
   this->set_filters({});
 }
 
 Tally::Tally(pugi::xml_node node)
-  : index_{model::tallies.size()}
 {
+  index_ = model::tallies.size(); // Avoids warning about narrowing
+
   // Copy and set tally id
   if (!check_for_node(node, "id")) {
     throw std::runtime_error{"Must specify id for tally in tally XML file."};

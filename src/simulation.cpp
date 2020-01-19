@@ -5,6 +5,7 @@
 #include "openmc/container_util.h"
 #include "openmc/eigenvalue.h"
 #include "openmc/error.h"
+#include "openmc/event.h"
 #include "openmc/material.h"
 #include "openmc/message_passing.h"
 #include "openmc/nuclide.h"
@@ -70,6 +71,14 @@ int openmc_simulation_init()
   // Allocate source bank, and for eigenvalue simulations also allocate the
   // fission bank
   allocate_banks();
+
+  // If doing an event-based simulation, intialize the particle buffer
+  // and event queues
+  #ifdef EVENT_BASED
+  int64_t event_buffer_length = std::min(simulation::work_per_rank,
+      simulation::max_particles_in_flight);
+  init_event_queues(event_buffer_length);
+  #endif
 
   // Allocate tally results arrays if they're not allocated yet
   for (auto& t : model::tallies) {
@@ -182,7 +191,11 @@ int openmc_next_batch(int* status)
     simulation::time_transport.start();
 
     // Transport loop
+    #ifdef EVENT_BASED
+    transport_event_based();
+    #else
     transport_history_based();
+    #endif
 
     // Accumulate time for transport
     simulation::time_transport.stop();
@@ -587,6 +600,75 @@ void transport_history_based()
     Particle p;
     initialize_history(&p, i_work);
     transport_history_based_single_particle(p);
+  }
+}
+
+void transport_event_based()
+{
+  int64_t remaining_work = simulation::work_per_rank;
+  int64_t source_offset = 0;
+
+  // To cap the total amount of memory used to store particle object data, the
+  // number of particles in flight at any point in time can set. In the case
+  // that the maximum in flight particle count is lower than the total number
+  // of particles that need to be run this iteration, the event-based transport
+  // loop is executed using subierations until all particles have been completed.
+  while (remaining_work > 0) {
+    // Figure out # of particles to run for this subiteration
+    int64_t n_particles = std::min(remaining_work, simulation::max_particles_in_flight);
+
+    // Initialize all particle histories for this subiteration
+    #pragma omp parallel for schedule(runtime)
+    for (auto i = 0; i < n_particles; i++) {
+      initialize_history(&simulation::particles[i], source_offset + i + 1);
+    }
+
+    // Add all particles to the XS lookup queue
+    #pragma omp parallel for schedule(runtime)
+    for (auto i = 0; i < n_particles; i++) {
+      dispatch_xs_event(i);
+    }
+
+    int events_retired = 0;
+
+    // Event-based transport loop
+    while (true) {
+      // Determine which event kernel has the most particles in its queue
+      int64_t max = std::max({
+          simulation::calculate_fuel_xs_queue_length,
+          simulation::calculate_nonfuel_xs_queue_length,
+          simulation::advance_particle_queue_length,
+          simulation::surface_crossing_queue_length,
+          simulation::collision_queue_length});
+
+      if (max == 0) {
+        break;
+      } else if (max == simulation::calculate_fuel_xs_queue_length) {
+        process_calculate_xs_events(simulation::calculate_fuel_xs_queue.get(),
+            simulation::calculate_fuel_xs_queue_length);
+        simulation::calculate_fuel_xs_queue_length = 0;
+      } else if (max == simulation::calculate_nonfuel_xs_queue_length) {
+        process_calculate_xs_events(simulation::calculate_nonfuel_xs_queue.get(),
+            simulation::calculate_nonfuel_xs_queue_length);
+        simulation::calculate_nonfuel_xs_queue_length = 0;
+      } else if (max == simulation::advance_particle_queue_length) {
+        process_advance_particle_events();
+        simulation::advance_particle_queue_length = 0;
+      } else if (max == simulation::surface_crossing_queue_length) {
+        process_surface_crossing_events();
+        simulation::surface_crossing_queue_length = 0;
+      } else if (max == simulation::collision_queue_length) {
+        process_collision_events();
+        simulation::collision_queue_length = 0;
+      }
+
+      events_retired++;
+    }
+    
+    process_death_events(n_particles);
+
+    remaining_work -= n_particles;
+    source_offset += n_particles;
   }
 }
 

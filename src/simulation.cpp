@@ -621,11 +621,7 @@ void transport_event_based()
     int64_t n_particles = std::min(remaining_work, simulation::max_particles_in_flight);
 
     // Initialize all particle histories for this subiteration
-    #pragma omp parallel for schedule(runtime)
-    for (auto i = 0; i < n_particles; i++) {
-      initialize_history(&simulation::particles[i], source_offset + i + 1);
-      dispatch_xs_event(i);
-    }
+    process_init_events(n_particles, source_offset);
 
     int events_retired = 0;
 
@@ -663,6 +659,7 @@ void transport_event_based()
       events_retired++;
     }
     
+    // Execute death events for all particles
     process_death_events(n_particles);
 
     remaining_work -= n_particles;

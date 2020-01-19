@@ -363,15 +363,6 @@ Tally::Tally(pugi::xml_node node)
           break;
         }
       }
-    } else {
-      const auto& f = model::tally_filters[particle_filter_index].get();
-      auto pf = dynamic_cast<ParticleFilter*>(f);
-      for (auto p : pf->particles()) {
-        if (p == Particle::Type::electron ||
-            p == Particle::Type::positron) {
-          estimator_ = TallyEstimator::ANALOG;
-        }
-      }
     }
   } else {
     if (particle_filter_index >= 0) {

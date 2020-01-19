@@ -1218,7 +1218,7 @@ score_general_ce(Particle* p, int i_tally, int start_index,
       if (p->type_ == Particle::Type::neutron) {
         score = score_neutron_heating(p, tally, flux, HEATING,
             i_nuclide, atom_density);
-      } else if (tally.estimator_ == TallyEstimator::ANALOG) {
+      } else {
         // The energy deposited is the difference between the pre-collision and
         // post-collision energy...
         score = E - p->E_;
@@ -1231,32 +1231,6 @@ score_general_ce(Particle* p, int i_tally, int start_index,
         }
 
         score *= p->wgt_last_ * flux;
-      } else if (p->type_ == Particle::Type::photon) {
-        // Calculate photon heating cross section on-the-fly
-        if (i_nuclide >= 0) {
-          // Find the element corresponding to the nuclide
-          auto name = data::nuclides[i_nuclide]->name_;
-          std::string element = to_element(name);
-          int i_element = data::element_map[element];
-          auto& heating {data::elements[i_element].heating_};
-          auto i_grid = p->photon_xs_[i_element].index_grid;
-          auto f = p->photon_xs_[i_element].interp_factor;
-          score = std::exp(heating(i_grid) + f * (heating(i_grid+1) -
-            heating(i_grid))) * atom_density * flux;
-        } else {
-          if (p->material_ != MATERIAL_VOID) {
-            const Material& material {*model::materials[p->material_]};
-            for (auto i = 0; i < material.nuclide_.size(); ++i) {
-              auto i_element = material.element_[i];
-              auto atom_density = material.atom_density_(i);
-              auto& heating {data::elements[i_element].heating_};
-              auto i_grid = p->photon_xs_[i_element].index_grid;
-              auto f = p->photon_xs_[i_element].interp_factor;
-              score += std::exp(heating(i_grid) + f * (heating(i_grid+1) -
-                heating(i_grid))) * atom_density * flux;
-            }
-          }
-        }
       }
       break;
 
@@ -2199,11 +2173,13 @@ score_tracklength_tally(Particle* p, double distance)
 void score_collision_tally(Particle* p)
 {
   // Determine the collision estimate of the flux
-  double flux;
-  if (!settings::survival_biasing) {
-    flux = p->wgt_last_ / p->macro_xs_.total;
-  } else {
-    flux = (p->wgt_last_ + p->wgt_absorb_) / p->macro_xs_.total;
+  double flux = 0.0;
+  if (p->type_ == Particle::Type::neutron || p->type_ == Particle::Type::photon) {
+    if (!settings::survival_biasing) {
+      flux = p->wgt_last_ / p->macro_xs_.total;
+    } else {
+      flux = (p->wgt_last_ + p->wgt_absorb_) / p->macro_xs_.total;
+    }
   }
 
   for (auto i_tally : model::active_collision_tallies) {

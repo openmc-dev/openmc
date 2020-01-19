@@ -1,5 +1,7 @@
 #include "openmc/event.h"
 #include "openmc/material.h"
+#include "openmc/simulation.h"
+#include "openmc/timer.h"
 
 namespace openmc {
 
@@ -80,10 +82,23 @@ void dispatch_xs_event(int64_t i)
   }
 }
 
+void process_init_events(int64_t n_particles, int64_t source_offset)
+{
+  simulation::time_event_init.start();
+  #pragma omp parallel for schedule(runtime)
+  for (int64_t i = 0; i < n_particles; i++) {
+    initialize_history(&simulation::particles[i], source_offset + i + 1);
+    dispatch_xs_event(i);
+  }
+  simulation::time_event_init.stop();
+}
+
 void process_calculate_xs_events(QueueItem* queue, int64_t n)
 {
-  // Sort queue by energy
-  std::sort(queue, queue+n);
+  simulation::time_event_calculate_xs.start();
+
+  // TODO: Sort queue by particle type, material type, and energy
+  //std::sort(queue, queue+n);
 
   // Save last_ members, find grid index
   #pragma omp parallel for schedule(runtime)
@@ -93,10 +108,14 @@ void process_calculate_xs_events(QueueItem* queue, int64_t n)
     enqueue_particle(simulation::advance_particle_queue.get(),
         simulation::advance_particle_queue_length, p, queue[i].idx, true);
   }
+
+  simulation::time_event_calculate_xs.stop();
 }
 
 void process_advance_particle_events()
 {
+  simulation::time_event_advance_particle.start();
+
   #pragma omp parallel for schedule(runtime)
   for (int64_t i = 0; i < simulation::advance_particle_queue_length; i++) {
     int64_t buffer_idx = simulation::advance_particle_queue[i].idx;
@@ -110,10 +129,14 @@ void process_advance_particle_events()
           simulation::collision_queue_length, p, buffer_idx, true);
     }
   }
+
+  simulation::time_event_advance_particle.stop();
 }
 
 void process_surface_crossing_events()
 {
+  simulation::time_event_surface_crossing.start();
+
   #pragma omp parallel for schedule(runtime)
   for (int64_t i = 0; i < simulation::surface_crossing_queue_length; i++) {
     int64_t buffer_index = simulation::surface_crossing_queue[i].idx;
@@ -123,11 +146,14 @@ void process_surface_crossing_events()
     if (p->alive_)
       dispatch_xs_event(buffer_index);
   }
-
+  
+  simulation::time_event_surface_crossing.stop();
 }
 
 void process_collision_events()
 {
+  simulation::time_event_collision.start();
+
   #pragma omp parallel for schedule(runtime)
   for (int64_t i = 0; i < simulation::collision_queue_length; i++) {
     int64_t buffer_index = simulation::collision_queue[i].idx;
@@ -138,15 +164,18 @@ void process_collision_events()
       dispatch_xs_event(buffer_index);
   }
 
+  simulation::time_event_collision.stop();
 }
 
 void process_death_events(int64_t n_particles)
 {
+  simulation::time_event_death.start();
   #pragma omp parallel for schedule(runtime)
   for (int64_t i = 0; i < n_particles; i++) {
     Particle* p = &simulation::particles[i];
     p->event_death();
   }
+  simulation::time_event_death.stop();
 }
 
 } // namespace openmc

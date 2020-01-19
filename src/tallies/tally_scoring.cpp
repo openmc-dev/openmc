@@ -469,12 +469,9 @@ score_general_ce(Particle* p, int i_tally, int start_index, int filter_index,
   for (auto i = 0; i < tally.scores_.size(); ++i) {
     auto score_bin = tally.scores_[i];
     auto score_index = start_index + i;
-
-    double score;
+    double score = 0.0;
 
     switch (score_bin) {
-
-
     case SCORE_FLUX:
       if (tally.estimator_ == TallyEstimator::ANALOG) {
         // All events score to a flux bin. We actually use a collision estimator
@@ -514,7 +511,11 @@ score_general_ce(Particle* p, int i_tally, int start_index, int filter_index,
 
       } else {
         if (i_nuclide >= 0) {
-          score = p->neutron_xs_[i_nuclide].total * atom_density * flux;
+          if (p->type_ == Particle::Type::neutron) {
+            score = p->neutron_xs_[i_nuclide].total * atom_density * flux;
+          } else if (p->type_ == Particle::Type::photon) {
+            score = p->photon_xs_[i_nuclide].total * atom_density * flux;
+          }
         } else {
           score = p->macro_xs_.total * flux;
         }
@@ -1214,7 +1215,6 @@ score_general_ce(Particle* p, int i_tally, int start_index, int filter_index,
 
 
     case HEATING:
-      score = 0.;
       if (p->type_ == Particle::Type::neutron) {
         score = score_neutron_heating(p, tally, flux, HEATING,
             i_nuclide, atom_density);

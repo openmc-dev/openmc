@@ -7,6 +7,7 @@
 #include "openmc/cross_sections.h"
 #include "openmc/dagmc.h"
 #include "openmc/eigenvalue.h"
+#include "openmc/event.h"
 #include "openmc/geometry.h"
 #include "openmc/geometry_aux.h"
 #include "openmc/material.h"
@@ -47,6 +48,9 @@ void free_memory()
   free_memory_cmfd();
 #ifdef DAGMC
   free_memory_dagmc();
+#endif
+#ifdef EVENT_BASED
+  free_event_queues();
 #endif
 }
 

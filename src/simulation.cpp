@@ -621,11 +621,6 @@ void transport_event_based()
     #pragma omp parallel for schedule(runtime)
     for (auto i = 0; i < n_particles; i++) {
       initialize_history(&simulation::particles[i], source_offset + i + 1);
-    }
-
-    // Add all particles to the XS lookup queue
-    #pragma omp parallel for schedule(runtime)
-    for (auto i = 0; i < n_particles; i++) {
       dispatch_xs_event(i);
     }
 

@@ -20,7 +20,9 @@ class _Bank(Structure):
                 ('E', c_double),
                 ('wgt', c_double),
                 ('delayed_group', c_int),
-                ('particle', c_int)]
+                ('particle', c_int),
+                ('parent_id', c_int64),
+                ('progeny_id', c_int64)]
 
 
 # Define input type for numpy arrays that will be passed into C++ functions

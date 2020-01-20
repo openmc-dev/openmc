@@ -60,7 +60,7 @@ void collision(Particle* p)
   }
 
   // Display information about collision
-  if (settings::verbosity >= 10 || simulation::trace) {
+  if (settings::verbosity >= 10 || p->trace_) {
     std::stringstream msg;
     if (p->event_ == EVENT_KILL) {
       msg << "    Killed. Energy = " << p->E_ << " eV.";
@@ -95,14 +95,14 @@ void sample_neutron_reaction(Particle* p)
   if (nuc->fissionable_) {
     Reaction* rx = sample_fission(i_nuclide, p);
     if (settings::run_mode == RUN_MODE_EIGENVALUE) {
-      create_fission_sites(p, i_nuclide, rx, simulation::fission_bank);
+      create_fission_sites(p, i_nuclide, rx);
     } else if (settings::run_mode == RUN_MODE_FIXEDSOURCE &&
       settings::create_fission_neutrons) {
-      create_fission_sites(p, i_nuclide, rx, simulation::secondary_bank);
+      create_fission_sites(p, i_nuclide, rx);
 
       // Make sure particle population doesn't grow out of control for
       // subcritical multiplication problems.
-      if (simulation::secondary_bank.size() >= 10000) {
+      if (p->secondary_bank_.size() >= 10000) {
         fatal_error("The secondary particle bank appears to be growing without "
         "bound. You are likely running a subcritical multiplication problem "
         "with k-effective close to or greater than one.");
@@ -146,8 +146,7 @@ void sample_neutron_reaction(Particle* p)
 }
 
 void
-create_fission_sites(Particle* p, int i_nuclide, const Reaction* rx,
-  std::vector<Particle::Bank>& bank)
+create_fission_sites(Particle* p, int i_nuclide, const Reaction* rx)
 {
   // If uniform fission source weighting is turned on, we increase or decrease
   // the expected number of fission sites produced
@@ -169,28 +168,74 @@ create_fission_sites(Particle* p, int i_nuclide, const Reaction* rx,
   // group.
   double nu_d[MAX_DELAYED_GROUPS] = {0.};
 
-  p->fission_ = true;
-  for (int i = 0; i < nu; ++i) {
-    // Create new bank site and get reference to last element
-    bank.emplace_back();
-    auto& site {bank.back()};
+  // Clear out particle's nu fission bank
+  p->nu_bank_.clear();
 
-    // Bank source neutrons by copying the particle data
-    site.r = p->r();
-    site.particle = Particle::Type::neutron;
-    site.wgt = 1. / weight;
+  p->fission_ = true;
+  int skipped = 0;
+
+  // Determine whether to place fission sites into the shared fission bank
+  // or the secondary particle bank.
+  bool use_fission_bank = (settings::run_mode == RUN_MODE_EIGENVALUE);
+
+  for (int i = 0; i < nu; ++i) {
+    Particle::Bank* site;
+    if (use_fission_bank) {
+      int64_t idx;
+      #pragma omp atomic capture
+      idx = simulation::fission_bank_length++;
+      if (idx >= simulation::fission_bank_max) {
+        warning("The shared fission bank is full. Additional fission sites created "
+            "in this generation will not be banked.");
+        #pragma omp atomic write
+        simulation::fission_bank_length = simulation::fission_bank_max;
+        skipped++;
+        break;
+      }
+      site = &simulation::fission_bank[idx];
+    } else {
+      // Create new bank site and get reference to last element
+      auto& bank = p->secondary_bank_;
+      bank.emplace_back();
+      site = &bank.back();
+    }
+    site->r = p->r();
+    site->particle = Particle::Type::neutron;
+    site->wgt = 1. / weight;
+    site->parent_id = p->id_;
+    site->progeny_id = p->n_progeny_++;
 
     // Sample delayed group and angle/energy for fission reaction
-    sample_fission_neutron(i_nuclide, rx, p->E_, &site, p->current_seed());
+    sample_fission_neutron(i_nuclide, rx, p->E_, site, p->current_seed());
 
     // Set the delayed group on the particle as well
-    p->delayed_group_ = site.delayed_group;
+    p->delayed_group_ = site->delayed_group;
 
     // Increment the number of neutrons born delayed
     if (p->delayed_group_ > 0) {
       nu_d[p->delayed_group_-1]++;
     }
+    
+    // Write fission particles to nuBank
+    if (use_fission_bank) {
+      p->nu_bank_.emplace_back();
+      Particle::NuBank* nu_bank_entry = &p->nu_bank_.back();
+      nu_bank_entry->wgt              = site->wgt;
+      nu_bank_entry->E                = site->E;
+      nu_bank_entry->delayed_group    = site->delayed_group;
+    }
   }
+  
+  // If shared fission bank was full, and no fissions could be added,
+  // set the particle fission flag to false.
+  if (nu == skipped) {
+    p->fission_ = false;
+    return;
+  }
+
+  // If shared fission bank was full, but some fissions could be added,
+  // reduce nu accordingly
+  nu -= skipped;
 
   // Store the total weight banked for analog fission tallies
   p->n_bank_ = nu;
@@ -548,7 +593,7 @@ void absorption(Particle* p, int i_nuclide)
 
     // Score implicit absorption estimate of keff
     if (settings::run_mode == RUN_MODE_EIGENVALUE) {
-      global_tally_absorption += p->wgt_absorb_ * p->neutron_xs_[
+      p->keff_tally_absorption_ += p->wgt_absorb_ * p->neutron_xs_[
         i_nuclide].nu_fission / p->neutron_xs_[i_nuclide].absorption;
     }
   } else {
@@ -557,7 +602,7 @@ void absorption(Particle* p, int i_nuclide)
         prn(p->current_seed()) * p->neutron_xs_[i_nuclide].total) {
       // Score absorption estimate of keff
       if (settings::run_mode == RUN_MODE_EIGENVALUE) {
-        global_tally_absorption += p->wgt_ * p->neutron_xs_[
+        p->keff_tally_absorption_ += p->wgt_ * p->neutron_xs_[
           i_nuclide].nu_fission / p->neutron_xs_[i_nuclide].absorption;
       }
 

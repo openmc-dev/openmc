@@ -39,13 +39,6 @@ namespace openmc {
 
 const std::string DAGMC_FILENAME = "dagmc.h5m";
 
-namespace simulation {
-
-moab::DagMC::RayHistory history;
-Direction last_dir;
-
-}
-
 namespace model {
 
 moab::DagMC* DAG;

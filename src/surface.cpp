@@ -184,7 +184,7 @@ Surface::sense(Position r, Direction u) const
 }
 
 Direction
-Surface::reflect(Position r, Direction u) const
+Surface::reflect(Position r, Direction u, Particle* p) const
 {
   // Determine projection of direction onto normal and squared magnitude of
   // normal.
@@ -292,11 +292,11 @@ Direction DAGSurface::normal(Position r) const
   return dir;
 }
 
-Direction DAGSurface::reflect(Position r, Direction u) const
+Direction DAGSurface::reflect(Position r, Direction u, Particle* p) const
 {
-  simulation::history.reset_to_last_intersection();
-  simulation::last_dir = Surface::reflect(r, u);
-  return simulation::last_dir;
+  p->history_.reset_to_last_intersection();
+  p->last_dir_ = Surface::reflect(r, u, p);
+  return p->last_dir_;
 }
 
 void DAGSurface::to_hdf5(hid_t group_id) const {}

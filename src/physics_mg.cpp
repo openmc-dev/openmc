@@ -1,8 +1,8 @@
 #include "openmc/physics_mg.h"
 
 #include <stdexcept>
-#include <sstream>
 
+#include <fmt/format.h>
 #include "xtensor/xarray.hpp"
 
 #include "openmc/bank.h"
@@ -31,10 +31,8 @@ collision_mg(Particle* p)
   sample_reaction(p);
 
   // Display information about collision
-  if ((settings::verbosity >= 10) || (p->trace_)) {
-    std::stringstream msg;
-    msg << "    Energy Group = " << p->g_;
-    write_message(msg, 1);
+  if ((settings::verbosity >= 10) || p->trace_) {
+    write_message(fmt::format("    Energy Group = {}", p->g_), 1);
   }
 }
 
@@ -113,13 +111,13 @@ create_fission_sites(Particle* p)
   // Initialize the counter of delayed neutrons encountered for each delayed
   // group.
   double nu_d[MAX_DELAYED_GROUPS] = {0.};
-  
+
   // Clear out particle's nu fission bank
   p->nu_bank_.clear();
 
   p->fission_ = true;
   int skipped = 0;
-  
+
   // Determine whether to place fission sites into the shared fission bank
   // or the secondary particle bank.
   bool use_fission_bank = (settings::run_mode == RunMode::EIGENVALUE);
@@ -176,7 +174,7 @@ create_fission_sites(Particle* p)
     if (p->delayed_group_ > 0) {
       nu_d[dg]++;
     }
-    
+
     // Write fission particles to nuBank
     if (use_fission_bank) {
       p->nu_bank_.emplace_back();
@@ -186,7 +184,7 @@ create_fission_sites(Particle* p)
       nu_bank_entry->delayed_group    = site.delayed_group;
     }
   }
-  
+
   // If shared fission bank was full, and no fissions could be added,
   // set the particle fission flag to false.
   if (nu == skipped) {

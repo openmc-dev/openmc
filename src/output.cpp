@@ -12,6 +12,7 @@
 #include <utility> // for pair
 
 #include <fmt/format.h>
+#include <fmt/ostream.h>
 #ifdef _OPENMP
 #include <omp.h>
 #endif
@@ -184,10 +185,8 @@ extern "C" void print_particle(Particle* p)
         p->coord_[i].lattice_y, p->coord_[i].lattice_z);
     }
 
-    fmt::print("    r = ");
-    std::cout << p->coord_[i].r << '\n';
-    fmt::print("    u = ");
-    std::cout << p->coord_[i].u << '\n';
+    fmt::print("    r = {}\n", p->coord_[i].r);
+    fmt::print("    u = {}\n", p->coord_[i].u);
   }
 
   // Display miscellaneous info.
@@ -586,7 +585,6 @@ write_tallies()
   // Open the tallies.out file.
   std::ofstream tallies_out;
   tallies_out.open("tallies.out", std::ios::out | std::ios::trunc);
-  tallies_out << std::setprecision(6);
 
   // Loop over each tally.
   for (auto i_tally = 0; i_tally < model::tallies.size(); ++i_tally) {
@@ -595,10 +593,10 @@ write_tallies()
     // Write header block.
     std::string tally_header("TALLY " + std::to_string(tally.id_));
     if (!tally.name_.empty()) tally_header += ": " + tally.name_;
-    tallies_out << header(tally_header) << "\n\n";
+    fmt::print(tallies_out, "{}\n\n", header(tally_header));
 
     if (!tally.writable_) {
-      tallies_out << " Internal\n\n";
+      fmt::print(tallies_out, " Internal\n\n");
       continue;
     }
 
@@ -614,21 +612,20 @@ write_tallies()
       const auto& deriv {model::tally_derivs[tally.deriv_]};
       switch (deriv.variable) {
       case DerivativeVariable::DENSITY:
-        tallies_out << " Density derivative Material "
-          << std::to_string(deriv.diff_material) << "\n";
+        fmt::print(tallies_out, " Density derivative Material {}\n",
+          deriv.diff_material);
         break;
       case DerivativeVariable::NUCLIDE_DENSITY:
-        tallies_out << " Nuclide density derivative Material "
-          << std::to_string(deriv.diff_material) << "  Nuclide "
-          << data::nuclides[deriv.diff_nuclide]->name_ << "\n";
+        fmt::print(tallies_out, " Nuclide density derivative Material {} Nuclide {}\n",
+          deriv.diff_material, data::nuclides[deriv.diff_nuclide]->name_);
         break;
       case DerivativeVariable::TEMPERATURE:
-        tallies_out << " Temperature derivative Material "
-          << std::to_string(deriv.diff_material) << "\n";
+        fmt::print(tallies_out, " Temperature derivative Material {}\n",
+          deriv.diff_material);
         break;
       default:
-        fatal_error("Differential tally dependent variable for tally "
-          + std::to_string(tally.id_) + " not defined in output.cpp");
+        fatal_error(fmt::format("Differential tally dependent variable for "
+          "tally {} not defined in output.cpp", tally.id_));
       }
     }
 
@@ -651,8 +648,8 @@ write_tallies()
           auto i_filt = tally.filters(i);
           const auto& filt {*model::tally_filters[i_filt]};
           auto& match {filter_matches[i_filt]};
-          tallies_out << std::string(indent+1, ' ')
-            << filt.text_label(match.i_bin_) << "\n";
+          fmt::print(tallies_out, "{0:{1}}{2}\n", "", indent + 1,
+            filt.text_label(match.i_bin_));
         }
         indent += 2;
       }
@@ -662,14 +659,14 @@ write_tallies()
       for (auto i_nuclide : tally.nuclides_) {
         // Write label for this nuclide bin.
         if (i_nuclide == -1) {
-          tallies_out << std::string(indent+1, ' ') << "Total Material\n";
+          fmt::print(tallies_out, "{0:{1}}Total Material\n", "", indent + 1);
         } else {
           if (settings::run_CE) {
-            tallies_out << std::string(indent+1, ' ')
-              << data::nuclides[i_nuclide]->name_ << "\n";
+            fmt::print(tallies_out, "{0:{1}}{2}\n", "", indent + 1,
+              data::nuclides[i_nuclide]->name_);
           } else {
-            tallies_out << std::string(indent+1, ' ')
-              << data::mg.nuclides_[i_nuclide].name << "\n";
+            fmt::print(tallies_out, "{0:{1}}{2}\n", "", indent + 1,
+              data::mg.nuclides_[i_nuclide].name);
           }
         }
 
@@ -681,9 +678,8 @@ write_tallies()
           double mean, stdev;
           std::tie(mean, stdev) = mean_stdev(
             &tally.results_(filter_index, score_index, 0), tally.n_realizations_);
-          tallies_out << std::string(indent+1, ' ')  << std::left
-            << std::setw(36) << score_name << " " << mean << " +/- "
-            << t_value * stdev << "\n";
+          fmt::print(tallies_out, "{0:{1}}{2:<36} {3:.6} +/- {4:.6}\n",
+            "", indent + 1, score_name, mean, t_value * stdev);
           score_index += 1;
         }
         indent -= 2;

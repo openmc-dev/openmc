@@ -70,6 +70,16 @@ if(HDF5_IS_PARALLEL)
 endif()
 
 #===============================================================================
+# Enable interprocedural (link time) optimization if requested and supported
+#===============================================================================
+
+if (NOT (CMAKE_VERSION VERSION_LESS 3.9))
+  cmake_policy(SET CMP0069 NEW)
+  include(CheckIPOSupported)
+  check_ipo_supported(RESULT ipo_support_detected)
+endif()
+
+#===============================================================================
 # Set compile/link flags based on which compiler is being used
 #===============================================================================
 
@@ -109,6 +119,7 @@ message(STATUS "OpenMC C++ flags: ${cxxflags}")
 message(STATUS "OpenMC Linker flags: ${ldflags}")
 
 endif()
+
 
 #===============================================================================
 # Update git submodules as needed
@@ -204,6 +215,7 @@ target_include_directories(faddeeva
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/vendor/faddeeva>
 )
 target_compile_options(faddeeva PRIVATE ${cxxflags})
+
 
 #===============================================================================
 # libopenmc
@@ -313,6 +325,14 @@ endif()
 
 set_target_properties(libopenmc PROPERTIES
   OUTPUT_NAME openmc)
+  
+# Enable interprocedural (link time) optimization if requested and supported
+if(optimize)
+  if(ipo_support_detected)
+    set_property(TARGET libopenmc PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
+    message(STATUS "LTO enabled for libopenmc")
+  endif()
+endif()
 
 target_include_directories(libopenmc
   PUBLIC
@@ -364,6 +384,14 @@ endif()
 add_executable(openmc src/main.cpp)
 target_compile_options(openmc PRIVATE ${cxxflags})
 target_link_libraries(openmc libopenmc)
+
+# Enable interprocedural (link time) optimization if requested and supported
+if(optimize)
+  if(ipo_support_detected)
+    set_property(TARGET openmc PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
+    message(STATUS "LTO enabled for openmc executable")
+  endif()
+endif()
 
 # Ensure C++14 standard is used. Starting with CMake 3.8, another way this could
 # be done is using the cxx_std_14 compiler feature.

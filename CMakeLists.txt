@@ -73,6 +73,8 @@ endif()
 # Enable interprocedural (link time) optimization if requested and supported
 #===============================================================================
 
+set(ipo_support_detected FALSE)
+
 if (NOT (CMAKE_VERSION VERSION_LESS 3.9))
   cmake_policy(SET CMP0069 NEW)
   include(CheckIPOSupported)

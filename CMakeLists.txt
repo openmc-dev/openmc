@@ -225,7 +225,6 @@ target_include_directories(faddeeva
 )
 target_compile_options(faddeeva PRIVATE ${cxxflags})
 
-
 #===============================================================================
 # libopenmc
 #===============================================================================

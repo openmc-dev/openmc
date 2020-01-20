@@ -3,7 +3,7 @@
 
   <!-- Define how many particles to run and for how many batches -->
   <run_mode>eigenvalue</run_mode>
-  <batches>20</batches>
+  <batches>100</batches>
   <inactive>10</inactive>
   <particles>1000</particles>
 

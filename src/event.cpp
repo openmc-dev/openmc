@@ -97,7 +97,9 @@ void process_calculate_xs_events(QueueItem* queue, int64_t n)
 {
   simulation::time_event_calculate_xs.start();
 
-  // TODO: Sort queue by particle type, material type, and energy
+  // TODO: If using C++17, perform a parallel sort of the queue
+  // by particle type, material type, and then energy, in order to
+  // improve cache locality and reduce thread divergence on GPU.
   //std::sort(queue, queue+n);
 
   // Save last_ members, find grid index

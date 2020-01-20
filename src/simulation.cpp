@@ -275,7 +275,6 @@ void allocate_banks()
   if (settings::run_mode == RUN_MODE_EIGENVALUE) {
     init_fission_bank(3*simulation::work_per_rank);
   }
-  
 }
 
 void initialize_batch()
@@ -612,18 +611,16 @@ void transport_event_based()
   int64_t source_offset = 0;
 
   // To cap the total amount of memory used to store particle object data, the
-  // number of particles in flight at any point in time can set. In the case
+  // number of particles in flight at any point in time can bet set. In the case
   // that the maximum in flight particle count is lower than the total number
   // of particles that need to be run this iteration, the event-based transport
-  // loop is executed using subierations until all particles have been completed.
+  // loop is executed multiple times until all particles have been completed.
   while (remaining_work > 0) {
     // Figure out # of particles to run for this subiteration
     int64_t n_particles = std::min(remaining_work, simulation::max_particles_in_flight);
 
     // Initialize all particle histories for this subiteration
     process_init_events(n_particles, source_offset);
-
-    int events_retired = 0;
 
     // Event-based transport loop
     while (true) {
@@ -635,6 +632,7 @@ void transport_event_based()
           simulation::surface_crossing_queue_length,
           simulation::collision_queue_length});
 
+      // Execute event with the longest queue
       if (max == 0) {
         break;
       } else if (max == simulation::calculate_fuel_xs_queue_length) {
@@ -655,13 +653,12 @@ void transport_event_based()
         process_collision_events();
         simulation::collision_queue_length = 0;
       }
-
-      events_retired++;
     }
     
-    // Execute death events for all particles
+    // Execute death event for all particles
     process_death_events(n_particles);
 
+    // Adjust remaining work and source offset variables
     remaining_work -= n_particles;
     source_offset += n_particles;
   }

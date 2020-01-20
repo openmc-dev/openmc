@@ -3,6 +3,7 @@
 #include "openmc/simulation.h"
 #include "openmc/timer.h"
 
+
 namespace openmc {
 
 //==============================================================================
@@ -52,7 +53,8 @@ void free_event_queues(void)
   simulation::particles.reset();
 }
 
-void enqueue_particle(QueueItem* queue, int64_t& length, Particle* p, int64_t buffer_idx, bool use_atomic)
+void enqueue_particle(QueueItem* queue, int64_t& length, Particle* p,
+    int64_t buffer_idx, bool use_atomic)
 {
   int64_t idx;
   if (use_atomic) {
@@ -102,7 +104,6 @@ void process_calculate_xs_events(QueueItem* queue, int64_t n)
   // improve cache locality and reduce thread divergence on GPU.
   //std::sort(queue, queue+n);
 
-  // Save last_ members, find grid index
   #pragma omp parallel for schedule(runtime)
   for (int64_t i = 0; i < n; i++) {
     Particle* p = &simulation::particles[queue[i].idx]; 

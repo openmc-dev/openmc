@@ -81,6 +81,14 @@ if (NOT (CMAKE_VERSION VERSION_LESS 3.9))
   check_ipo_supported(RESULT ipo_support_detected)
 endif()
 
+if (ipo_support_detected)
+  message(STATUS "LTO/IPO support: enabled")
+endif()
+
+if (NOT (ipo_support_detected))
+  message(STATUS "LTO/IPO support: disabled")
+endif()
+
 #===============================================================================
 # Set compile/link flags based on which compiler is being used
 #===============================================================================
@@ -331,7 +339,6 @@ set_target_properties(libopenmc PROPERTIES
 if(optimize)
   if(ipo_support_detected)
     set_property(TARGET libopenmc PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
-    message(STATUS "LTO enabled for libopenmc")
   endif()
 endif()
 
@@ -390,7 +397,6 @@ target_link_libraries(openmc libopenmc)
 if(optimize)
   if(ipo_support_detected)
     set_property(TARGET openmc PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
-    message(STATUS "LTO enabled for openmc executable")
   endif()
 endif()
 

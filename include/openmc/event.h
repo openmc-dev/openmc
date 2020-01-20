@@ -4,8 +4,6 @@
 #include "openmc/particle.h"
 #include "openmc/tallies/filter.h"
 
-#include <vector>
-
 
 namespace openmc {
 
@@ -14,30 +12,30 @@ namespace openmc {
 //==============================================================================
 
 struct QueueItem{
-  int64_t idx;      // particle index in event-based buffer
-  double E;     // particle energy
-  int material; // material that particle is in
-  Particle::Type type;
+  int64_t idx;         // particle index in event-based buffer
+  double E;            // particle energy
+  int64_t material;    // material that particle is in
+  Particle::Type type; // particle type
   bool operator<(const QueueItem& rhs) const
   {
-    // First, compare by type
+    // First, compare by particle type
     if (type < rhs.type) {
       return true;
     } else if (type > rhs.type) {
       return false;
     }
 
-    // At this point, we have the same particle types.
-    // Now, compare by material
-
-    // TODO: Temporarily disabled as SMR problem has different material IDs for every pin
-    // Need to sort by material type instead...
-    /*
-       if( material < rhs.material)
-       return true;
-       if( material > rhs.material)
-       return false;
-       */
+    // If we have reached this point, we have the same particle types.
+    
+    // Next, compare by material:
+    // TODO: Currently, material IDs are not usually unique to material
+    // types. When unique material type IDs are available, we can alter the
+    // material field in this struct to contain the type ID, and then sort
+    // by that, as below:
+    //if( material < rhs.material)
+    //  return true;
+    //if( material > rhs.material)
+    //  return false;
 
     // At this point, we have the same particle type, in the same material.
     // Now, compare by energy
@@ -48,7 +46,7 @@ struct QueueItem{
 //==============================================================================
 // Global variable declarations
 //==============================================================================
-//
+
 namespace simulation {
 
 extern std::unique_ptr<QueueItem[]> calculate_fuel_xs_queue;

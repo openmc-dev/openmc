@@ -45,6 +45,7 @@ namespace openmc {
 //==============================================================================
 
 namespace model {
+  std::unordered_map<int, int> tally_map;
   std::vector<std::unique_ptr<Tally>> tallies;
   std::vector<int> active_tallies;
   std::vector<int> active_analog_tallies;
@@ -52,7 +53,6 @@ namespace model {
   std::vector<int> active_collision_tallies;
   std::vector<int> active_meshsurf_tallies;
   std::vector<int> active_surface_tallies;
-  std::unordered_map<int, int> tally_map;
 }
 
 namespace simulation {

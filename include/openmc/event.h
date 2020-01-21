@@ -91,6 +91,7 @@ extern std::unique_ptr<Particle[]>  particles;
 //==============================================================================
 
 //! Allocates space for the event queues and particle buffer
+//! \param n_particles The number of particles in the particle buffer
 void init_event_queues(int64_t n_particles);
 
 //! Frees the event queues and particle buffer

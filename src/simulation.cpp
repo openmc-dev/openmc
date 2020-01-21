@@ -101,9 +101,9 @@ int openmc_simulation_init()
 
   // Display header
   if (mpi::master) {
-    if (settings::run_mode == RUN_MODE_FIXEDSOURCE) {
+    if (settings::run_mode == RunMode::FIXED_SOURCE) {
       header("FIXED SOURCE TRANSPORT SIMULATION", 3);
-    } else if (settings::run_mode == RUN_MODE_EIGENVALUE) {
+    } else if (settings::run_mode == RunMode::EIGENVALUE) {
       header("K EIGENVALUE SIMULATION", 3);
       if (settings::verbosity >= 7) print_columns();
     }
@@ -259,7 +259,7 @@ void allocate_banks()
   // Allocate source bank
   simulation::source_bank.resize(simulation::work_per_rank);
 
-  if (settings::run_mode == RUN_MODE_EIGENVALUE) {
+  if (settings::run_mode == RunMode::EIGENVALUE) {
     init_fission_bank(3*simulation::work_per_rank);
   }
   
@@ -270,7 +270,7 @@ void initialize_batch()
   // Increment current batch
   ++simulation::current_batch;
 
-  if (settings::run_mode == RUN_MODE_FIXEDSOURCE) {
+  if (settings::run_mode == RunMode::FIXED_SOURCE) {
     int b = simulation::current_batch;
     write_message("Simulating batch " + std::to_string(b), 6);
   }
@@ -317,7 +317,7 @@ void finalize_batch()
     simulation::n_realizations = 0;
   }
 
-  if (settings::run_mode == RUN_MODE_EIGENVALUE) {
+  if (settings::run_mode == RunMode::EIGENVALUE) {
     // Write batch output
     if (mpi::master && settings::verbosity >= 7) print_batch_keff();
   }
@@ -361,7 +361,7 @@ void finalize_batch()
 
 void initialize_generation()
 {
-  if (settings::run_mode == RUN_MODE_EIGENVALUE) {
+  if (settings::run_mode == RunMode::EIGENVALUE) {
     // Clear out the fission bank
     simulation::fission_bank_length = 0;
 
@@ -370,7 +370,7 @@ void initialize_generation()
 
     // Store current value of tracklength k
     simulation::keff_generation = simulation::global_tallies(
-      K_TRACKLENGTH, RESULT_VALUE);
+      GlobalTally::K_TRACKLENGTH, TallyResult::VALUE);
   }
 }
 
@@ -379,22 +379,22 @@ void finalize_generation()
   auto& gt = simulation::global_tallies;
 
   // Update global tallies with the accumulation variables
-  if (settings::run_mode == RUN_MODE_EIGENVALUE) {
-    gt(K_COLLISION, RESULT_VALUE) += global_tally_collision;
-    gt(K_ABSORPTION, RESULT_VALUE) += global_tally_absorption;
-    gt(K_TRACKLENGTH, RESULT_VALUE) += global_tally_tracklength;
+  if (settings::run_mode == RunMode::EIGENVALUE) {
+    gt(GlobalTally::K_COLLISION, TallyResult::VALUE) += global_tally_collision;
+    gt(GlobalTally::K_ABSORPTION, TallyResult::VALUE) += global_tally_absorption;
+    gt(GlobalTally::K_TRACKLENGTH, TallyResult::VALUE) += global_tally_tracklength;
   }
-  gt(LEAKAGE, RESULT_VALUE) += global_tally_leakage;
+  gt(GlobalTally::LEAKAGE, TallyResult::VALUE) += global_tally_leakage;
 
   // reset tallies
-  if (settings::run_mode == RUN_MODE_EIGENVALUE) {
+  if (settings::run_mode == RunMode::EIGENVALUE) {
     global_tally_collision = 0.0;
     global_tally_absorption = 0.0;
     global_tally_tracklength = 0.0;
   }
   global_tally_leakage = 0.0;
 
-  if (settings::run_mode == RUN_MODE_EIGENVALUE) {	
+  if (settings::run_mode == RunMode::EIGENVALUE) {	
     // If using shared memory, stable sort the fission bank (by parent IDs) 
     // so as to allow for reproducibility regardless of which order particles
     // are run in.
@@ -417,7 +417,7 @@ void finalize_generation()
       }
     }
 
-  } else if (settings::run_mode == RUN_MODE_FIXEDSOURCE) {
+  } else if (settings::run_mode == RunMode::FIXED_SOURCE) {
     // For fixed-source mode, we need to sample the external source
     simulation::time_sample_source.start();
     fill_source_bank_fixedsource();

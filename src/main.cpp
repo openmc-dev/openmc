@@ -29,18 +29,18 @@ int main(int argc, char* argv[]) {
 
   // start problem based on mode
   switch (settings::run_mode) {
-    case RUN_MODE_FIXEDSOURCE:
-    case RUN_MODE_EIGENVALUE:
+    case RunMode::FIXED_SOURCE:
+    case RunMode::EIGENVALUE:
       err = openmc_run();
       break;
-    case RUN_MODE_PLOTTING:
+    case RunMode::PLOTTING:
       err = openmc_plot_geometry();
       break;
-    case RUN_MODE_PARTICLE:
+    case RunMode::PARTICLE:
       if (mpi::master) run_particle_restart();
       err = 0;
       break;
-    case RUN_MODE_VOLUME:
+    case RunMode::VOLUME:
       err = openmc_calculate_volumes();
       break;
   }

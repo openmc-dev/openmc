@@ -44,7 +44,7 @@ IdData::set_value(size_t y, size_t x, const Particle& p, int level) {
   if (p.material_ == MATERIAL_VOID) {
     data_(y,x,1) = MATERIAL_VOID;
     return;
-  } else if (c->type_ != FILL_UNIVERSE) {
+  } else if (c->type_ != Fill::UNIVERSE) {
     Material* m = model::materials[p.material_].get();
     data_(y,x,1) = m->id_;
   }
@@ -62,7 +62,7 @@ void
 PropertyData::set_value(size_t y, size_t x, const Particle& p, int level) {
   Cell* c = model::cells[p.coord_[level].cell].get();
   data_(y,x,0) = (p.sqrtkT_ * p.sqrtkT_) / K_BOLTZMANN;
-  if (c->type_ != FILL_UNIVERSE && p.material_ != MATERIAL_VOID) {
+  if (c->type_ != Fill::UNIVERSE && p.material_ != MATERIAL_VOID) {
     Material* m = model::materials[p.material_].get();
     data_(y,x,1) = m->density_gpcc_;
   }
@@ -678,7 +678,7 @@ void Plot::set_overlap_color(pugi::xml_node plot_node) {
 
   // make sure we allocate the vector for counting overlap checks if
   // they're going to be plotted
-  if (color_overlaps_ && settings::run_mode == RUN_MODE_PLOTTING) {
+  if (color_overlaps_ && settings::run_mode == RunMode::PLOTTING) {
     settings::check_overlaps = true;
     model::overlap_check_count.resize(model::cells.size(), 0);
   }

@@ -27,15 +27,15 @@ void sample_neutron_reaction(Particle* p);
 void sample_photon_reaction(Particle* p);
 
 //! Terminates the particle and either deposits all energy locally
-//! (electron_treatment = ELECTRON_LED) or creates secondary bremsstrahlung
+//! (electron_treatment = ElectronTreatment::LED) or creates secondary bremsstrahlung
 //! photons from electron deflections with charged particles (electron_treatment
-//! = ELECTRON_TTB).
+//! = ElectronTreatment::TTB).
 void sample_electron_reaction(Particle* p);
 
 //! Terminates the particle and either deposits all energy locally
-//! (electron_treatment = ELECTRON_LED) or creates secondary bremsstrahlung
+//! (electron_treatment = ElectronTreatment::LED) or creates secondary bremsstrahlung
 //! photons from electron deflections with charged particles (electron_treatment
-//! = ELECTRON_TTB). Two annihilation photons of energy MASS_ELECTRON_EV (0.511
+//! = ElectronTreatment::TTB). Two annihilation photons of energy MASS_ELECTRON_EV (0.511
 //! MeV) are created and travel in opposite directions.
 void sample_positron_reaction(Particle* p);
 

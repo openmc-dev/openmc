@@ -51,7 +51,7 @@ void calculate_generation_keff()
   const auto& gt = simulation::global_tallies;
 
   // Get keff for this generation by subtracting off the starting value
-  simulation::keff_generation = gt(K_TRACKLENGTH, RESULT_VALUE) - simulation::keff_generation;
+  simulation::keff_generation = gt(GlobalTally::K_TRACKLENGTH, TallyResult::VALUE) - simulation::keff_generation;
 
   double keff_reduced;
 #ifdef OPENMC_MPI
@@ -373,12 +373,12 @@ int openmc_get_keff(double* k_combined)
 
   std::array<double, 3> kv {};
   xt::xtensor<double, 2> cov = xt::zeros<double>({3, 3});
-  kv[0] = gt(K_COLLISION, RESULT_SUM) / n;
-  kv[1] = gt(K_ABSORPTION, RESULT_SUM) / n;
-  kv[2] = gt(K_TRACKLENGTH, RESULT_SUM) / n;
-  cov(0, 0) = (gt(K_COLLISION, RESULT_SUM_SQ) - n*kv[0]*kv[0]) / (n - 1);
-  cov(1, 1) = (gt(K_ABSORPTION, RESULT_SUM_SQ) - n*kv[1]*kv[1]) / (n - 1);
-  cov(2, 2) = (gt(K_TRACKLENGTH, RESULT_SUM_SQ) - n*kv[2]*kv[2]) / (n - 1);
+  kv[0] = gt(GlobalTally::K_COLLISION, TallyResult::SUM) / n;
+  kv[1] = gt(GlobalTally::K_ABSORPTION, TallyResult::SUM) / n;
+  kv[2] = gt(GlobalTally::K_TRACKLENGTH, TallyResult::SUM) / n;
+  cov(0, 0) = (gt(GlobalTally::K_COLLISION, TallyResult::SUM_SQ) - n*kv[0]*kv[0]) / (n - 1);
+  cov(1, 1) = (gt(GlobalTally::K_ABSORPTION, TallyResult::SUM_SQ) - n*kv[1]*kv[1]) / (n - 1);
+  cov(2, 2) = (gt(GlobalTally::K_TRACKLENGTH, TallyResult::SUM_SQ) - n*kv[2]*kv[2]) / (n - 1);
 
   // Calculate covariances based on sums with Bessel's correction
   cov(0, 1) = (simulation::k_col_abs - n * kv[0] * kv[1]) / (n - 1);

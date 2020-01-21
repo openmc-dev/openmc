@@ -45,11 +45,11 @@ VolumeCalculation::VolumeCalculation(pugi::xml_node node)
   // Read domain type (cell, material or universe)
   std::string domain_type = get_node_value(node, "domain_type");
   if (domain_type == "cell") {
-    domain_type_ = FILTER_CELL;
+    domain_type_ = TallyDomain::CELL;
   } else if (domain_type == "material") {
-    domain_type_ = FILTER_MATERIAL;
+    domain_type_ = TallyDomain::MATERIAL;
   } else if (domain_type == "universe") {
-    domain_type_ = FILTER_UNIVERSE;
+    domain_type_ = TallyDomain::UNIVERSE;
   } else {
     fatal_error(std::string("Unrecognized domain type for stochastic "
       "volume calculation: " + domain_type));
@@ -139,7 +139,7 @@ std::vector<VolumeCalculation::Result> VolumeCalculation::execute() const
         // If this location is not in the geometry at all, move on to next block
         if (!find_cell(&p, false)) continue;
 
-        if (domain_type_ == FILTER_MATERIAL) {
+        if (domain_type_ == TallyDomain::MATERIAL) {
           if (p.material_ != MATERIAL_VOID) {
             for (int i_domain = 0; i_domain < n; i_domain++) {
               if (model::materials[p.material_]->id_ == domain_ids_[i_domain]) {
@@ -148,7 +148,7 @@ std::vector<VolumeCalculation::Result> VolumeCalculation::execute() const
               }
             }
           }
-        } else if (domain_type_ == FILTER_CELL) {
+        } else if (domain_type_ == TallyDomain::CELL) {
           for (int level = 0; level < p.n_coord_; ++level) {
             for (int i_domain=0; i_domain < n; i_domain++) {
               if (model::cells[p.coord_[level].cell]->id_ == domain_ids_[i_domain]) {
@@ -157,7 +157,7 @@ std::vector<VolumeCalculation::Result> VolumeCalculation::execute() const
               }
             }
           }
-        } else if (domain_type_ == FILTER_UNIVERSE) {
+        } else if (domain_type_ == TallyDomain::UNIVERSE) {
           for (int level = 0; level < p.n_coord_; ++level) {
             for (int i_domain = 0; i_domain < n; ++i_domain) {
               if (model::universes[p.coord_[level].universe]->id_ == domain_ids_[i_domain]) {
@@ -382,13 +382,13 @@ void VolumeCalculation::to_hdf5(const std::string& filename,
     write_attribute(file_id, "iterations", 1);
   }
 
-  if (domain_type_ == FILTER_CELL) {
+  if (domain_type_ == TallyDomain::CELL) {
     write_attribute(file_id, "domain_type", "cell");
   }
-  else if (domain_type_ == FILTER_MATERIAL) {
+  else if (domain_type_ == TallyDomain::MATERIAL) {
     write_attribute(file_id, "domain_type", "material");
   }
-  else if (domain_type_ == FILTER_UNIVERSE) {
+  else if (domain_type_ == TallyDomain::UNIVERSE) {
     write_attribute(file_id, "domain_type", "universe");
   }
 
@@ -477,9 +477,9 @@ int openmc_calculate_volumes() {
 
     if (mpi::master) {
       std::string domain_type;
-      if (vol_calc.domain_type_ == FILTER_CELL) {
+      if (vol_calc.domain_type_ == VolumeCalculation::TallyDomain::CELL) {
         domain_type = "  Cell ";
-      } else if (vol_calc.domain_type_ == FILTER_MATERIAL) {
+      } else if (vol_calc.domain_type_ == VolumeCalculation::TallyDomain::MATERIAL) {
         domain_type = "  Material ";
       } else {
         domain_type = "  Universe ";

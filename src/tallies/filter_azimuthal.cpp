@@ -50,11 +50,11 @@ void AzimuthalFilter::set_bins(gsl::span<double> bins)
 }
 
 void
-AzimuthalFilter::get_all_bins(const Particle* p, int estimator,
+AzimuthalFilter::get_all_bins(const Particle* p, TallyEstimator estimator,
                               FilterMatch& match) const
 {
   double phi;
-  if (estimator == ESTIMATOR_TRACKLENGTH) {
+  if (estimator == TallyEstimator::TRACKLENGTH) {
     phi = std::atan2(p->u().y, p->u().x);
   } else {
     phi = std::atan2(p->u_last_.y, p->u_last_.x);

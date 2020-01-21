@@ -94,7 +94,7 @@ public:
   };
 
   int id_;                    //!< Unique ID
-  Bc bc_;                    //!< Boundary condition
+  BoundaryType bc_;                    //!< Boundary condition
   std::string name_;          //!< User-defined name
 
   explicit Surface(pugi::xml_node surf_node);

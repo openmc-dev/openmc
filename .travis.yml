@@ -46,7 +46,9 @@ matrix:
     - python: "3.7"
       env: OMP=y MPI=y PHDF5=y DAGMC=y
     - python: "3.7"
-      env: OMP=y MPI=y PHDF5=y EVENT=y
+      env: OMP=y MPI=n PHDF5=n EVENT=y
+    - python: "3.7"
+      env: OMP=n MPI=y PHDF5=n EVENT=y
 notifications:
   webhooks: https://coveralls.io/webhook?repo_token=$COVERALLS_REPO_TOKEN
 install:

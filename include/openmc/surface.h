@@ -11,6 +11,7 @@
 #include "pugixml.hpp"
 
 #include "openmc/constants.h"
+#include "openmc/particle.h"
 #include "openmc/position.h"
 #include "dagmc.h"
 
@@ -112,8 +113,9 @@ public:
   //! Determine the direction of a ray reflected from the surface.
   //! \param[in] r The point at which the ray is incident.
   //! \param[in] u Incident direction of the ray
+  //! \param[inout] p Pointer to the particle
   //! \return Outgoing direction of the ray
-  virtual Direction reflect(Position r, Direction u) const;
+  virtual Direction reflect(Position r, Direction u, Particle* p) const;
 
   virtual Direction diffuse_reflect(Position r, Direction u,
     uint64_t* seed) const;
@@ -170,7 +172,7 @@ public:
   double evaluate(Position r) const;
   double distance(Position r, Direction u, bool coincident) const;
   Direction normal(Position r) const;
-  Direction reflect(Position r, Direction u) const;
+  Direction reflect(Position r, Direction u, Particle* p) const;
 
   void to_hdf5(hid_t group_id) const;
 

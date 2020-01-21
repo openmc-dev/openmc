@@ -119,7 +119,7 @@ find_cell_inner(Particle* p, const NeighborList* neighbor_list)
   }
 
   // Announce the cell that the particle is entering.
-  if (found && (settings::verbosity >= 10 || simulation::trace)) {
+  if (found && (settings::verbosity >= 10 || p->trace_)) {
     std::stringstream msg;
     msg << "    Entering cell " << model::cells[i_cell]->id_;
     write_message(msg, 1);
@@ -297,7 +297,7 @@ cross_lattice(Particle* p, const BoundaryInfo& boundary)
   auto& coord {p->coord_[p->n_coord_ - 1]};
   auto& lat {*model::lattices[coord.lattice]};
 
-  if (settings::verbosity >= 10 || simulation::trace) {
+  if (settings::verbosity >= 10 || p->trace_) {
     std::stringstream msg;
     msg << "    Crossing lattice " << lat.id_ << ". Current position ("
         << coord.lattice_x << "," << coord.lattice_y << ","
@@ -370,7 +370,7 @@ BoundaryInfo distance_to_boundary(Particle* p)
     Cell& c {*model::cells[coord.cell]};
 
     // Find the oncoming surface in this cell and the distance to it.
-    auto surface_distance = c.distance(r, u, p->surface_);
+    auto surface_distance = c.distance(r, u, p->surface_, p);
     d_surf = surface_distance.first;
     level_surf_cross = surface_distance.second;
 

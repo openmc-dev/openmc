@@ -42,14 +42,6 @@ void calculate_generation_keff();
 //! generations. It also broadcasts the value from the master process.
 void calculate_average_keff();
 
-#ifdef _OPENMP
-//! Join threadprivate fission banks into a single fission bank
-//!
-//! Note that this operation is necessarily sequential to preserve the order of
-//! the bank when using varying numbers of threads.
-void join_bank_from_threads();
-#endif
-
 //! Calculates a minimum variance estimate of k-effective
 //!
 //! The minimum variance estimate is based on a linear combination of the

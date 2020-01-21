@@ -500,7 +500,7 @@ CSGCell::contains(Position r, Direction u, int32_t on_surface) const
 //==============================================================================
 
 std::pair<double, int32_t>
-CSGCell::distance(Position r, Direction u, int32_t on_surface) const
+CSGCell::distance(Position r, Direction u, int32_t on_surface, Particle* p) const
 {
   double min_dist {INFTY};
   int32_t i_surf {std::numeric_limits<int32_t>::max()};
@@ -786,13 +786,13 @@ CSGCell::contains_complex(Position r, Direction u, int32_t on_surface) const
 DAGCell::DAGCell() : Cell{} {};
 
 std::pair<double, int32_t>
-DAGCell::distance(Position r, Direction u, int32_t on_surface) const
+DAGCell::distance(Position r, Direction u, int32_t on_surface, Particle* p) const
 {
   // if we've changed direction or we're not on a surface,
   // reset the history and update last direction
-  if (u != simulation::last_dir || on_surface == 0) {
-    simulation::history.reset();
-    simulation::last_dir = u;
+  if (u != p->last_dir_ || on_surface == 0) {
+    p->history_.reset();
+    p->last_dir_ = u;
   }
 
   moab::ErrorCode rval;
@@ -801,7 +801,7 @@ DAGCell::distance(Position r, Direction u, int32_t on_surface) const
   double dist;
   double pnt[3] = {r.x, r.y, r.z};
   double dir[3] = {u.x, u.y, u.z};
-  rval = dagmc_ptr_->ray_fire(vol, pnt, dir, hit_surf, dist, &simulation::history);
+  rval = dagmc_ptr_->ray_fire(vol, pnt, dir, hit_surf, dist, &p->history_);
   MB_CHK_ERR_CONT(rval);
   int surf_idx;
   if (hit_surf != 0) {

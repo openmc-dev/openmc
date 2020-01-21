@@ -790,7 +790,7 @@ void RegularMesh::to_hdf5(hid_t group) const
 }
 
 xt::xtensor<double, 1>
-RegularMesh::count_sites(const std::vector<Particle::Bank>& bank,
+RegularMesh::count_sites(const Particle::Bank* bank, int64_t length,
   bool* outside) const
 {
   // Determine shape of array for counts
@@ -801,7 +801,9 @@ RegularMesh::count_sites(const std::vector<Particle::Bank>& bank,
   xt::xarray<double> cnt {shape, 0.0};
   bool outside_ = false;
 
-  for (const auto& site : bank) {
+  for (int64_t i = 0; i < length; i++) {
+    const auto& site = bank[i];
+
     // determine scoring bin for entropy mesh
     int mesh_bin = get_bin(site.r);
 

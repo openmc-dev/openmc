@@ -301,3 +301,50 @@ def test_rotation_matrix():
     assert geom.find((0.0, 0.5, 0.0))[-1] == c3
     assert geom.find((0.0, -0.5, 0.0))[-1] == c1
     assert geom.find((0.0, -1.5, 0.0))[-1] == c2
+
+def test_remove_redundant_surfaces():
+    """Test ability to remove redundant surfaces"""
+
+    m1 = openmc.Material()
+    m1.add_nuclide('U235', 1.0, 'wo')
+    m1.add_nuclide('O16', 2.0, 'wo')
+    m1.set_density('g/cm3', 10.0)
+
+    m2 = openmc.Material()
+    m2.add_element('Zr', 1.0)
+    m2.set_density('g/cm3', 2.0)
+
+    m3 = openmc.Material()
+    m3.add_nuclide('H1', 2.0)
+    m3.add_nuclide('O16', 1.0)
+    m3.set_density('g/cm3', 1.0)
+
+    def get_cyl_cell(r1, r2, z1, z2, fill):
+        """Create a finite height cylindrical cell with a fill"""
+
+        cyl2 = openmc.ZCylinder(r=r2)
+        zplane1 = openmc.ZPlane(z1)
+        zplane2 = openmc.ZPlane(z2)
+        if np.isclose(r1, 0):
+            region = -cyl2 & +zplane1 & -zplane2
+        else:
+            cyl1 = openmc.ZCylinder(r=r1)
+            region = +cyl1 & -cyl2 & +zplane1 & -zplane2
+        return openmc.Cell(region=region, fill=fill)
+
+    r1, r2, r3 = 1., 2., 3.
+    z1, z2 = -2., 2.
+    fuel = get_cyl_cell(0, r1, z1, z2, m1)
+    clad = get_cyl_cell(r1, r2, z1, z2, m2)
+    water = get_cyl_cell(r2, r3, z1, z2, m3)
+    root = openmc.Universe(cells=[fuel, clad, water])
+    geom = openmc.Geometry(root)
+    
+    # There should be 6 redundant surfaces in this geometry
+    n_redundant_surfs = len(geom.get_redundant_surfaces().keys())
+    assert n_redundant_surfs == 6
+    # Remove redundant surfaces
+    geom.remove_redundant_surfaces()
+    # There should be 0 remaining redundant surfaces
+    n_redundant_surfs = len(geom.get_redundant_surfaces().keys())
+    assert n_redundant_surfs == 0

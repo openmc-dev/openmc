@@ -9,9 +9,9 @@ namespace openmc {
 // Non-member functions
 //==============================================================================
 
-void add_particle_track();
-void write_particle_track(const Particle& p);
-void finalize_particle_track(const Particle& p);
+void add_particle_track(Particle& p);
+void write_particle_track(Particle& p);
+void finalize_particle_track(Particle& p);
 
 } // namespace openmc
 

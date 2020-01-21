@@ -283,6 +283,8 @@ openmc_statepoint_write(const char* filename, bool* write_source)
       write_dataset(runtime_group, "synchronizing fission bank", time_bank.elapsed());
       write_dataset(runtime_group, "sampling source sites", time_bank_sample.elapsed());
       write_dataset(runtime_group, "SEND-RECV source sites", time_bank_sendrecv.elapsed());
+    } else {
+      write_dataset(runtime_group, "sampling source sites", time_sample_source.elapsed());
     }
     write_dataset(runtime_group, "accumulating tallies", time_tallies.elapsed());
     write_dataset(runtime_group, "total", time_total.elapsed());

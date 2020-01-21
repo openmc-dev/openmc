@@ -45,8 +45,7 @@ class Region(metaclass=ABCMeta):
         return not self == other
 
     def get_surfaces(self, surfaces=None):
-        """
-        Recursively find all the surfaces referenced by a region and return them
+        """Recursively find all surfaces referenced by a region and return them
 
         Parameters
         ----------
@@ -64,6 +63,19 @@ class Region(metaclass=ABCMeta):
         for region in self:
             surfaces = region.get_surfaces(surfaces)
         return surfaces
+
+    def remove_redundant_surfaces(self, redundant_surfaces):
+        """Recursively remove all redundant surfaces referenced by this region
+
+        Parameters
+        ----------
+        redundant_surfaces : dict
+            Dictionary mapping redundant surface IDs to class:`openmc.Surface`
+            instances that should replace them.
+
+        """
+        for region in self:
+            region.remove_redundant_surfaces(redundant_surfaces)
 
     @staticmethod
     def from_expression(expression, surfaces):
@@ -597,8 +609,7 @@ class Complement(Region):
         return temp_region.bounding_box
 
     def get_surfaces(self, surfaces=None):
-        """
-        Recursively find and return all the surfaces referenced by the node
+        """Recursively find and return all the surfaces referenced by the node
 
         Parameters
         ----------
@@ -616,6 +627,19 @@ class Complement(Region):
         for region in self.node:
             surfaces = region.get_surfaces(surfaces)
         return surfaces
+
+    def remove_redundant_surfaces(self, redundant_surfaces):
+        """Recursively remove all redundant surfaces referenced by this region
+
+        Parameters
+        ----------
+        redundant_surfaces : dict
+            Dictionary mapping redundant surface IDs to class:`openmc.Surface`
+            instances that should replace them.
+
+        """
+        for region in self.node:
+            region.remove_redundant_surfaces(redundant_surfaces)
 
     def clone(self, memo=None):
         """Create a copy of this region - each of the surfaces in the

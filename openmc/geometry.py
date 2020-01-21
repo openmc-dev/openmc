@@ -77,15 +77,22 @@ class Geometry(object):
                 if universe.id in volume_calc.volumes:
                     universe.add_volume_information(volume_calc)
 
-    def export_to_xml(self, path='geometry.xml'):
+    def export_to_xml(self, path='geometry.xml', remove_surfs=False):
         """Export geometry to an XML file.
 
         Parameters
         ----------
         path : str
             Path to file to write. Defaults to 'geometry.xml'.
+        remove_surfs : bool
+            Whether or not to remove redundant surfaces from the geometry when
+            exporting
 
         """
+        # Find and remove redundant surfaces from the geometry
+        if remove_surfs:
+            self.remove_redundant_surfaces()
+
         # Create XML representation
         root_element = ET.Element("geometry")
         self.root_universe.create_xml_subelement(root_element, memo=set())
@@ -382,6 +389,26 @@ class Geometry(object):
             surfaces = cell.region.get_surfaces(surfaces)
         return surfaces
 
+    def get_redundant_surfaces(self):
+        """Return all of the topologically redundant surface ids
+
+        Returns
+        -------
+        dict
+            Dictionary whose keys are the ID of a redundant surface and whose
+            values are the topologically equivalent :class:`openmc.Surface`
+            that should replace it.
+
+        """
+        tally = defaultdict(list)
+        for surf in self.get_all_surfaces().values():
+            coeffs = tuple(surf._coefficients[k] for k in surf._coeff_keys)
+            key = (surf._type,) + coeffs
+            tally[key].append(surf)
+        return {replace.id: keep 
+                for keep, *redundant in tally.values()
+                for replace in redundant}
+
     def get_materials_by_name(self, name, case_sensitive=False, matching=False):
         """Return a list of materials with matching names.
 
@@ -578,6 +605,17 @@ class Geometry(object):
                 lattices.add(lattice)
 
         return sorted(lattices, key=lambda x: x.id)
+
+    def remove_redundant_surfaces(self):
+        """Remove redundant surfaces from the geometry"""
+
+        # Get redundant surfaces
+        redundant_surfaces = self.get_redundant_surfaces()
+
+        # Iterate through all cells contained in the geometry 
+        for cell in self.get_all_cells().values():
+            # Recursively remove redundant surfaces from regions
+            cell.region.remove_redundant_surfaces(redundant_surfaces)
 
     def determine_paths(self, instances_only=False):
         """Determine paths through CSG tree for cells and materials.

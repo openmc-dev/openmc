@@ -37,8 +37,8 @@ namespace openmc {
 
 namespace model {
 
-std::vector<std::unique_ptr<Material>> materials;
 std::unordered_map<int32_t, int32_t> material_map;
+std::vector<std::unique_ptr<Material>> materials;
 
 } // namespace model
 

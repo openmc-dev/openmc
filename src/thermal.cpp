@@ -76,7 +76,7 @@ ThermalScattering::ThermalScattering(hid_t group, const std::vector<double>& tem
   }
 
   switch (settings::temperature_method) {
-  case TEMPERATURE_NEAREST:
+  case TemperatureMethod::NEAREST:
     // Determine actual temperatures to read
     for (const auto& T : temperature) {
 
@@ -96,7 +96,7 @@ ThermalScattering::ThermalScattering(hid_t group, const std::vector<double>& tem
     }
     break;
 
-  case TEMPERATURE_INTERPOLATION:
+  case TemperatureMethod::INTERPOLATION:
     // If temperature interpolation or multipole is selected, get a list of
     // bounding temperatures for each actual temperature present in the model
     for (const auto& T : temperature) {
@@ -156,7 +156,7 @@ ThermalScattering::calculate_xs(double E, double sqrtkT, int* i_temp,
   // Determine temperature for S(a,b) table
   double kT = sqrtkT*sqrtkT;
   int i;
-  if (settings::temperature_method == TEMPERATURE_NEAREST) {
+  if (settings::temperature_method == TemperatureMethod::NEAREST) {
     // If using nearest temperature, do linear search on temperature
     for (i = 0; i < kTs_.size(); ++i) {
       if (std::abs(kTs_[i] - kT) < K_BOLTZMANN*settings::temperature_tolerance) {

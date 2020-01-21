@@ -74,7 +74,7 @@ int openmc_init(int argc, char* argv[], const void* intracomm)
   read_input_xml();
 
   // Check for particle restart run
-  if (settings::particle_restart_run) settings::run_mode = RUN_MODE_PARTICLE;
+  if (settings::particle_restart_run) settings::run_mode = RunMode::PARTICLE;
 
   // Stop initialization timer
   simulation::time_initialize.stop();
@@ -128,7 +128,7 @@ parse_command_line(int argc, char* argv[])
     std::string arg {argv[i]};
     if (arg[0] == '-') {
       if (arg == "-p" || arg == "--plot") {
-        settings::run_mode = RUN_MODE_PLOTTING;
+        settings::run_mode = RunMode::PLOTTING;
         settings::check_overlaps = true;
 
       } else if (arg == "-n" || arg == "--particles") {
@@ -190,7 +190,7 @@ parse_command_line(int argc, char* argv[])
       } else if (arg == "-g" || arg == "--geometry-debug") {
       settings::check_overlaps = true;
       } else if (arg == "-c" || arg == "--volume") {
-        settings::run_mode = RUN_MODE_VOLUME;
+        settings::run_mode = RunMode::VOLUME;
       } else if (arg == "-s" || arg == "--threads") {
         // Read number of threads
         i += 1;
@@ -255,7 +255,7 @@ void read_input_xml()
   double_2dvec thermal_temps(data::thermal_scatt_map.size());
   finalize_geometry(nuc_temps, thermal_temps);
 
-  if (settings::run_mode != RUN_MODE_PLOTTING) {
+  if (settings::run_mode != RunMode::PLOTTING) {
     simulation::time_read_xs.start();
     if (settings::run_CE) {
       // Read continuous-energy cross sections
@@ -274,7 +274,7 @@ void read_input_xml()
   // Initialize distribcell_filters
   prepare_distribcell();
 
-  if (settings::run_mode == RUN_MODE_PLOTTING) {
+  if (settings::run_mode == RunMode::PLOTTING) {
     // Read plots.xml if it exists
     read_plots_xml();
     if (mpi::master && settings::verbosity >= 5) print_plot();

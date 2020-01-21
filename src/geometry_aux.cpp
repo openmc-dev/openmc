@@ -88,10 +88,10 @@ adjust_indices()
       auto search_univ = model::universe_map.find(id);
       auto search_lat = model::lattice_map.find(id);
       if (search_univ != model::universe_map.end()) {
-        c->type_ = FILL_UNIVERSE;
+        c->type_ = Fill::UNIVERSE;
         c->fill_ = search_univ->second;
       } else if (search_lat != model::lattice_map.end()) {
-        c->type_ = FILL_LATTICE;
+        c->type_ = Fill::LATTICE;
         c->fill_ = search_lat->second;
       } else {
         std::stringstream err_msg;
@@ -100,7 +100,7 @@ adjust_indices()
         fatal_error(err_msg);
       }
     } else {
-      c->type_ = FILL_MATERIAL;
+      c->type_ = Fill::MATERIAL;
       for (auto& mat_id : c->material_) {
         if (mat_id != MATERIAL_VOID) {
           auto search = model::material_map.find(mat_id);
@@ -334,7 +334,7 @@ prepare_distribcell()
   // By default, add material cells to the list of distributed cells
   if (settings::material_cell_offsets) {
     for (gsl::index i = 0; i < model::cells.size(); ++i) {
-      if (model::cells[i]->type_ == FILL_MATERIAL) distribcells.insert(i);
+      if (model::cells[i]->type_ == Fill::MATERIAL) distribcells.insert(i);
     }
   }
 
@@ -382,7 +382,7 @@ prepare_distribcell()
   // Allocate the cell and lattice offset tables.
   int n_maps = target_univ_ids.size();
   for (auto& c : model::cells) {
-    if (c->type_ != FILL_MATERIAL) {
+    if (c->type_ != Fill::MATERIAL) {
       c->offset_.resize(n_maps, C_NONE);
     }
   }
@@ -398,12 +398,12 @@ prepare_distribcell()
       for (int32_t cell_indx : univ->cells_) {
         Cell& c = *model::cells[cell_indx];
 
-        if (c.type_ == FILL_UNIVERSE) {
+        if (c.type_ == Fill::UNIVERSE) {
           c.offset_[map] = offset;
           int32_t search_univ = c.fill_;
           offset += count_universe_instances(search_univ, target_univ_id);
 
-        } else if (c.type_ == FILL_LATTICE) {
+        } else if (c.type_ == Fill::LATTICE) {
           Lattice& lat = *model::lattices[c.fill_];
           offset = lat.fill_offset_table(offset, target_univ_id, map);
         }
@@ -429,11 +429,11 @@ count_cell_instances(int32_t univ_indx)
       ++c.n_instances_;
       model::universe_cell_counts[univ_indx][cell_indx] += 1;
 
-      if (c.type_ == FILL_UNIVERSE) {
+      if (c.type_ == Fill::UNIVERSE) {
         // This cell contains another universe.  Recurse into that universe.
         count_cell_instances(c.fill_);
         update_universe_cell_count(univ_indx, c.fill_);
-      } else if (c.type_ == FILL_LATTICE) {
+      } else if (c.type_ == Fill::LATTICE) {
         // This cell contains a lattice.  Recurse into the lattice universes.
         Lattice& lat = *model::lattices[c.fill_];
         for (auto it = lat.begin(); it != lat.end(); ++it) {
@@ -459,11 +459,11 @@ count_universe_instances(int32_t search_univ, int32_t target_univ_id)
   for (int32_t cell_indx : model::universes[search_univ]->cells_) {
     Cell& c = *model::cells[cell_indx];
 
-    if (c.type_ == FILL_UNIVERSE) {
+    if (c.type_ == Fill::UNIVERSE) {
       int32_t next_univ = c.fill_;
       count += count_universe_instances(next_univ, target_univ_id);
 
-    } else if (c.type_ == FILL_LATTICE) {
+    } else if (c.type_ == Fill::LATTICE) {
       Lattice& lat = *model::lattices[c.fill_];
       for (auto it = lat.begin(); it != lat.end(); ++it) {
         int32_t next_univ = *it;
@@ -504,9 +504,9 @@ distribcell_path_inner(int32_t target_cell, int32_t map, int32_t target_offset,
     Cell& c = *model::cells[*cell_it];
 
     // Material cells don't contain other cells so ignore them.
-    if (c.type_ != FILL_MATERIAL) {
+    if (c.type_ != Fill::MATERIAL) {
       int32_t temp_offset;
-      if (c.type_ == FILL_UNIVERSE) {
+      if (c.type_ == Fill::UNIVERSE) {
         temp_offset = offset + c.offset_[map];
       } else {
         Lattice& lat = *model::lattices[c.fill_];
@@ -524,7 +524,7 @@ distribcell_path_inner(int32_t target_cell, int32_t map, int32_t target_offset,
   Cell& c = *model::cells[*cell_it];
   path << "c" << c.id_ << "->";
 
-  if (c.type_ == FILL_UNIVERSE) {
+  if (c.type_ == Fill::UNIVERSE) {
     // Recurse into the fill cell.
     offset += c.offset_[map];
     path << distribcell_path_inner(target_cell, map, target_offset,
@@ -571,10 +571,10 @@ maximum_levels(int32_t univ)
 
   for (int32_t cell_indx : model::universes[univ]->cells_) {
     Cell& c = *model::cells[cell_indx];
-    if (c.type_ == FILL_UNIVERSE) {
+    if (c.type_ == Fill::UNIVERSE) {
       int32_t next_univ = c.fill_;
       levels_below = std::max(levels_below, maximum_levels(next_univ));
-    } else if (c.type_ == FILL_LATTICE) {
+    } else if (c.type_ == Fill::LATTICE) {
       Lattice& lat = *model::lattices[c.fill_];
       for (auto it = lat.begin(); it != lat.end(); ++it) {
         int32_t next_univ = *it;

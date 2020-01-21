@@ -380,11 +380,11 @@ void finalize_generation()
 
   // Update global tallies with the accumulation variables
   if (settings::run_mode == RunMode::EIGENVALUE) {
-    gt(K_COLLISION, RESULT_VALUE) += global_tally_collision;
-    gt(K_ABSORPTION, RESULT_VALUE) += global_tally_absorption;
-    gt(K_TRACKLENGTH, RESULT_VALUE) += global_tally_tracklength;
+    gt(GlobalTally::K_COLLISION, TallyResult::VALUE) += global_tally_collision;
+    gt(GlobalTally::K_ABSORPTION, TallyResult::VALUE) += global_tally_absorption;
+    gt(GlobalTally::K_TRACKLENGTH, TallyResult::VALUE) += global_tally_tracklength;
   }
-  gt(LEAKAGE, RESULT_VALUE) += global_tally_leakage;
+  gt(GlobalTally::LEAKAGE, TallyResult::VALUE) += global_tally_leakage;
 
   // reset tallies
   if (settings::run_mode == RunMode::EIGENVALUE) {

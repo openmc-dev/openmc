@@ -146,7 +146,7 @@ Particle::event_calculate_xs()
   r_last_ = this->r();
 
   // Reset event variables
-  event_ = EVENT_KILL;
+  event_ = TallyEvent::KILL;
   event_nuclide_ = NUCLIDE_NONE;
   event_mt_ = REACTION_NONE;
 
@@ -225,7 +225,7 @@ Particle::event_advance()
   }
 
   // Score track-length estimate of k-eff
-  if (settings::run_mode == RUN_MODE_EIGENVALUE &&
+  if (settings::run_mode == RunMode::EIGENVALUE &&
       type_ == Particle::Type::neutron) {
     keff_tally_tracklength_ += wgt_ * distance * macro_xs_.nu_fission;
   }
@@ -254,11 +254,11 @@ Particle::event_cross_surface()
       boundary_.lattice_translation[2] != 0) {
     // Particle crosses lattice boundary
     cross_lattice(this, boundary_);
-    event_ = EVENT_LATTICE;
+    event_ = TallyEvent::LATTICE;
   } else {
     // Particle crosses surface
     this->cross_surface();
-    event_ = EVENT_SURFACE;
+    event_ = TallyEvent::SURFACE;
   }
   // Score cell to cell partial currents
   if (!model::active_surface_tallies.empty()) {
@@ -270,7 +270,7 @@ void
 Particle::event_collide()
 {
   // Score collision estimate of keff
-  if (settings::run_mode == RUN_MODE_EIGENVALUE &&
+  if (settings::run_mode == RunMode::EIGENVALUE &&
       type_ == Particle::Type::neutron) {
     keff_tally_collision_ += wgt_ * macro_xs_.nu_fission
       / macro_xs_.total;
@@ -394,7 +394,7 @@ Particle::event_death()
 
   // Record the number of progeny created by this particle.
   // This data will be used to efficiently sort the fission bank.
-  if (settings::run_mode == RUN_MODE_EIGENVALUE) {
+  if (settings::run_mode == RunMode::EIGENVALUE) {
     int64_t offset = id_ - 1 - simulation::work_index[mpi::rank];
     simulation::progeny_per_particle[offset] = n_progeny_;
   }
@@ -439,8 +439,9 @@ Particle::cross_surface()
     }
     return;
 
-  } else if ((surf->bc_ == Surface::BoundaryType::REFLECT || surf->bc_ == Surface::Bc::WHITE)
-                                    && (settings::run_mode != RunMode::PLOTTING)) {
+  } else if ((surf->bc_ == Surface::BoundaryType::REFLECT ||
+              surf->bc_ == Surface::BoundaryType::WHITE)
+              && (settings::run_mode != RunMode::PLOTTING)) {
     // =======================================================================
     // PARTICLE REFLECTS FROM SURFACE
 

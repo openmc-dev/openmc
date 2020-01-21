@@ -41,10 +41,10 @@ TallyDerivative::TallyDerivative(pugi::xml_node node)
   std::string variable_str = get_node_value(node, "variable");
 
   if (variable_str == "density") {
-    variable = WithRespectTo::DENSITY;
+    variable = DerivativeVariable::DENSITY;
 
   } else if (variable_str == "nuclide_density") {
-    variable = WithRespectTo::NUCLIDE_DENSITY;
+    variable = DerivativeVariable::NUCLIDE_DENSITY;
 
     std::string nuclide_name = get_node_value(node, "nuclide");
     bool found = false;
@@ -62,7 +62,7 @@ TallyDerivative::TallyDerivative(pugi::xml_node node)
     }
 
   } else if (variable_str == "temperature") {
-    variable = WithRespectTo::TEMPERATURE;
+    variable = DerivativeVariable::TEMPERATURE;
 
   } else {
     std::stringstream out;
@@ -146,7 +146,7 @@ apply_derivative_to_score(const Particle* p, int i_tally, int i_nuclide,
   // d_c / d_rho = sigma_MT * const
   // (1 / c) * (d_c / d_rho) = 1 / rho
 
-  case WithRespectTo::DENSITY:
+  case DerivativeVariable::DENSITY:
     switch (tally.estimator_) {
 
     case TallyEstimator::ANALOG:
@@ -186,7 +186,7 @@ apply_derivative_to_score(const Particle* p, int i_tally, int i_nuclide,
   // (1 / c) * (d_c / d_N) = sigma_MT_i / Sigma_MT
   // where i is the perturbed nuclide.
 
-  case WithRespectTo::NUCLIDE_DENSITY:
+  case DerivativeVariable::NUCLIDE_DENSITY:
     switch (tally.estimator_) {
 
     case TallyEstimator::ANALOG:
@@ -312,7 +312,7 @@ apply_derivative_to_score(const Particle* p, int i_tally, int i_nuclide,
   // computed by multipole_deriv_eval.  It only works for the resolved
   // resonance range and requires multipole data.
 
-  case WithRespectTo::TEMPERATURE:
+  case DerivativeVariable::TEMPERATURE:
     switch (tally.estimator_) {
 
     case TallyEstimator::ANALOG:
@@ -578,7 +578,7 @@ score_track_derivative(const Particle* p, double distance)
 
     switch (deriv.variable) {
 
-    case WithRespectTo::DENSITY:
+    case DerivativeVariable::DENSITY:
       // phi is proportional to e^(-Sigma_tot * dist)
       // (1 / phi) * (d_phi / d_rho) = - (d_Sigma_tot / d_rho) * dist
       // (1 / phi) * (d_phi / d_rho) = - Sigma_tot / rho * dist
@@ -586,7 +586,7 @@ score_track_derivative(const Particle* p, double distance)
         / material.density_gpcc_;
       break;
 
-    case WithRespectTo::NUCLIDE_DENSITY:
+    case DerivativeVariable::NUCLIDE_DENSITY:
       // phi is proportional to e^(-Sigma_tot * dist)
       // (1 / phi) * (d_phi / d_N) = - (d_Sigma_tot / d_N) * dist
       // (1 / phi) * (d_phi / d_N) = - sigma_tot * dist
@@ -594,7 +594,7 @@ score_track_derivative(const Particle* p, double distance)
         * p->neutron_xs_[deriv.diff_nuclide].total;
       break;
 
-    case WithRespectTo::TEMPERATURE:
+    case DerivativeVariable::TEMPERATURE:
       for (auto i = 0; i < material.nuclide_.size(); ++i) {
         const auto& nuc {*data::nuclides[material.nuclide_[i]]};
         if (multipole_in_range(&nuc, p->E_last_)) {
@@ -625,14 +625,14 @@ void score_collision_derivative(const Particle* p)
 
     switch (deriv.variable) {
 
-    case WithRespectTo::DENSITY:
+    case DerivativeVariable::DENSITY:
       // phi is proportional to Sigma_s
       // (1 / phi) * (d_phi / d_rho) = (d_Sigma_s / d_rho) / Sigma_s
       // (1 / phi) * (d_phi / d_rho) = 1 / rho
       deriv.flux_deriv += 1. / material.density_gpcc_;
       break;
 
-    case WithRespectTo::NUCLIDE_DENSITY:
+    case DerivativeVariable::NUCLIDE_DENSITY:
       if (p->event_nuclide_ != deriv.diff_nuclide) continue;
       // Find the index in this material for the diff_nuclide.
       int i;
@@ -653,7 +653,7 @@ void score_collision_derivative(const Particle* p)
       deriv.flux_deriv += 1. / material.atom_density_(i);
       break;
 
-    case WithRespectTo::TEMPERATURE:
+    case DerivativeVariable::TEMPERATURE:
       // Loop over the material's nuclides until we find the event nuclide.
       for (auto i_nuc : material.nuclide_) {
         const auto& nuc {*data::nuclides[i_nuc]};

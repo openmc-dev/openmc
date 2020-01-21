@@ -94,7 +94,7 @@ std::vector<std::string> res_scat_nuclides;
 RunMode run_mode {RunMode::UNSET};
 std::unordered_set<int> sourcepoint_batch;
 std::unordered_set<int> statepoint_batch;
-TemperatureInterpolationType temperature_method {TemperatureInterpolationType::NEAREST};
+TemperatureMethod temperature_method {TemperatureInterpolationType::NEAREST};
 double temperature_tolerance {10.0};
 double temperature_default {293.6};
 std::array<double, 2> temperature_range {0.0, 0.0};
@@ -299,7 +299,7 @@ void read_settings_xml()
       if (temp_str == "eigenvalue") {
         run_mode = RunMode::EIGENVALUE;
       } else if (temp_str == "fixed source") {
-        run_mode = RunMode::FIXEDSOURCE;
+        run_mode = RunMode::FIXED_SOURCE;
       } else if (temp_str == "plot") {
         run_mode = RunMode::PLOTTING;
       } else if (temp_str == "particle restart") {
@@ -322,7 +322,7 @@ void read_settings_xml()
       } else {
         node_mode = root.child("fixed_source");
         if (node_mode) {
-          run_mode = RunMode::FIXEDSOURCE;
+          run_mode = RunMode::FIXED_SOURCE;
         } else {
           fatal_error("<eigenvalue> or <fixed_source> not specified.");
         }
@@ -330,7 +330,7 @@ void read_settings_xml()
     }
   }
 
-  if (run_mode == RunMode::EIGENVALUE || run_mode == RunMode::FIXEDSOURCE) {
+  if (run_mode == RunMode::EIGENVALUE || run_mode == RunMode::FIXED_SOURCE) {
     // Read run parameters
     get_run_parameters(node_mode);
 
@@ -732,9 +732,9 @@ void read_settings_xml()
   if (check_for_node(root, "temperature_method")) {
     auto temp = get_node_value(root, "temperature_method", true, true);
     if (temp == "nearest") {
-      temperature_method = TemperatureInterpolationType::NEAREST;
+      temperature_method = TemperatureMethod::NEAREST;
     } else if (temp == "interpolation") {
-      temperature_method = TemperatureInterpolationType::INTERPOLATION;
+      temperature_method = TemperatureMethod::INTERPOLATION;
     } else {
       fatal_error("Unknown temperature method: " + temp);
     }
@@ -773,7 +773,7 @@ void read_settings_xml()
   }
 
   // Check whether create fission sites
-  if (run_mode == RunMode::FIXEDSOURCE) {
+  if (run_mode == RunMode::FIXED_SOURCE) {
     if (check_for_node(root, "create_fission_neutrons")) {
       create_fission_neutrons = get_node_value_bool(root, "create_fission_neutrons");
     }

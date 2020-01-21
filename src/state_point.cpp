@@ -83,7 +83,7 @@ openmc_statepoint_write(const char* filename, bool* write_source)
     write_dataset(file_id, "energy_mode", settings::run_CE ?
       "continuous-energy" : "multi-group");
     switch (settings::run_mode) {
-    case RunMode::FIXEDSOURCE:
+    case RunMode::FIXED_SOURCE:
       write_dataset(file_id, "run_mode", "fixed source");
       break;
     case RunMode::EIGENVALUE:
@@ -116,13 +116,13 @@ openmc_statepoint_write(const char* filename, bool* write_source)
         hid_t deriv_group = create_group(derivs_group,
           "derivative " + std::to_string(deriv.id));
         write_dataset(deriv_group, "material", deriv.diff_material);
-        if (deriv.variable == WithRespectTo::DENSITY) {
+        if (deriv.variable == DerivativeVariable::DENSITY) {
           write_dataset(deriv_group, "independent variable", "density");
-        } else if (deriv.variable == WithRespectTo::NUCLIDE_DENSITY) {
+        } else if (deriv.variable == DerivativeVariable::NUCLIDE_DENSITY) {
           write_dataset(deriv_group, "independent variable", "nuclide_density");
           write_dataset(deriv_group, "nuclide",
             data::nuclides[deriv.diff_nuclide]->name_);
-        } else if (deriv.variable == WithRespectTo::TEMPERATURE) {
+        } else if (deriv.variable == DerivativeVariable::TEMPERATURE) {
           write_dataset(deriv_group, "independent variable", "temperature");
         } else {
           fatal_error("Independent variable for derivative "
@@ -363,7 +363,7 @@ void load_state_point()
   // Read and overwrite run information except number of batches
   read_dataset(file_id, "run_mode", word);
   if (word == "fixed source") {
-    settings::run_mode = RunMode::FIXEDSOURCE;
+    settings::run_mode = RunMode::FIXED_SOURCE;
   } else if (word == "eigenvalue") {
     settings::run_mode = RunMode::EIGENVALUE;
   }

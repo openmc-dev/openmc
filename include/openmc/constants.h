@@ -114,7 +114,7 @@ constexpr int NUCLIDE_NONE  {-1};
 // CROSS SECTION RELATED CONSTANTS
 
 // Temperature treatment method
-enum class TemperatureInterpolationType {
+enum class TemperatureMethod {
  NEAREST,
  INTERPOLATION
 };
@@ -250,7 +250,7 @@ enum ReactionType {
 
 constexpr std::array<int, 6> DEPLETION_RX {N_GAMMA, N_P, N_A, N_2N, N_3N, N_4N};
 
-enum class UnresolvProbTableParam {
+enum class URRTableParam {
   CUM_PROB,
   TOTAL,
   ELASTIC,
@@ -376,7 +376,7 @@ enum class Interpolation {
 
 enum class RunMode {
   UNSET, // default value, OpenMC throws error if left to this
-  FIXEDSOURCE,
+  FIXED_SOURCE,
   EIGENVALUE,
   PLOTTING,
   PARTICLE,

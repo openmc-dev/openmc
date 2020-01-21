@@ -132,18 +132,18 @@ Surface::Surface(pugi::xml_node surf_node)
     std::string surf_bc = get_node_value(surf_node, "boundary", true, true);
 
     if (surf_bc == "transmission" || surf_bc == "transmit" ||surf_bc.empty()) {
-      bc_ = Bc::TRANSMIT;
+      bc_ = BoundaryType::TRANSMIT;
 
     } else if (surf_bc == "vacuum") {
-      bc_ = Bc::VACUUM;
+      bc_ = BoundaryType::VACUUM;
 
     } else if (surf_bc == "reflective" || surf_bc == "reflect"
                || surf_bc == "reflecting") {
-      bc_ = Bc::REFLECT;
+      bc_ = BoundaryType::REFLECT;
     } else if (surf_bc == "white") {
-      bc_ = Bc::WHITE;
+      bc_ = BoundaryType::WHITE;
     } else if (surf_bc == "periodic") {
-      bc_ = Bc::PERIODIC;
+      bc_ = BoundaryType::PERIODIC;
     } else {
       std::stringstream err_msg;
       err_msg << "Unknown boundary condition \"" << surf_bc
@@ -152,7 +152,7 @@ Surface::Surface(pugi::xml_node surf_node)
     }
 
   } else {
-    bc_ = Bc::TRANSMIT;
+    bc_ = BoundaryType::TRANSMIT;
   }
 
 }
@@ -220,19 +220,19 @@ CSGSurface::to_hdf5(hid_t group_id) const
   hid_t surf_group = create_group(group_id, group_name);
 
   switch(bc_) {
-    case Bc::TRANSMIT :
+    case BoundaryType::TRANSMIT :
       write_string(surf_group, "boundary_type", "transmission", false);
       break;
-    case Bc::VACUUM :
+    case BoundaryType::VACUUM :
       write_string(surf_group, "boundary_type", "vacuum", false);
       break;
-    case Bc::REFLECT :
+    case BoundaryType::REFLECT :
       write_string(surf_group, "boundary_type", "reflective", false);
       break;
-    case Bc::WHITE :
+    case BoundaryType::WHITE :
       write_string(surf_group, "boundary_type", "white", false);
       break;
-    case Bc::PERIODIC :
+    case BoundaryType::PERIODIC :
       write_string(surf_group, "boundary_type", "periodic", false);
       break;
   }
@@ -1195,7 +1195,7 @@ void read_surfaces(pugi::xml_node node)
          zmin {INFTY}, zmax {-INFTY};
   int i_xmin, i_xmax, i_ymin, i_ymax, i_zmin, i_zmax;
   for (int i_surf = 0; i_surf < model::surfaces.size(); i_surf++) {
-    if (model::surfaces[i_surf]->bc_ == Surface::Bc::PERIODIC) {
+    if (model::surfaces[i_surf]->bc_ == Surface::BoundaryType::PERIODIC) {
       // Downcast to the PeriodicSurface type.
       Surface* surf_base = model::surfaces[i_surf].get();
       auto surf = dynamic_cast<PeriodicSurface*>(surf_base);
@@ -1240,7 +1240,7 @@ void read_surfaces(pugi::xml_node node)
 
   // Set i_periodic for periodic BC surfaces.
   for (int i_surf = 0; i_surf < model::surfaces.size(); i_surf++) {
-    if (model::surfaces[i_surf]->bc_ == Surface::Bc::PERIODIC) {
+    if (model::surfaces[i_surf]->bc_ == Surface::BoundaryType::PERIODIC) {
       // Downcast to the PeriodicSurface type.
       Surface* surf_base = model::surfaces[i_surf].get();
       auto surf = dynamic_cast<PeriodicSurface*>(surf_base);
@@ -1289,7 +1289,7 @@ void read_surfaces(pugi::xml_node node)
       }
 
       // Make sure the opposite surface is also periodic.
-      if (model::surfaces[surf->i_periodic_]->bc_ != Surface::Bc::PERIODIC) {
+      if (model::surfaces[surf->i_periodic_]->bc_ != Surface::BoundaryType::PERIODIC) {
         std::stringstream err_msg;
         err_msg << "Could not find matching surface for periodic boundary "
                    "condition on surface " << surf->id_;
@@ -1302,7 +1302,7 @@ void read_surfaces(pugi::xml_node node)
   // surface
   bool boundary_exists = false;
   for (const auto& surf : model::surfaces) {
-    if (surf->bc_ != Surface::Bc::TRANSMIT) {
+    if (surf->bc_ != Surface::BoundaryType::TRANSMIT) {
       boundary_exists = true;
       break;
     }

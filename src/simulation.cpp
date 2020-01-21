@@ -100,7 +100,7 @@ int openmc_simulation_init()
 
   // Display header
   if (mpi::master) {
-    if (settings::run_mode == RunMode::FIXEDSOURCE) {
+    if (settings::run_mode == RunMode::FIXED_SOURCE) {
       header("FIXED SOURCE TRANSPORT SIMULATION", 3);
     } else if (settings::run_mode == RunMode::EIGENVALUE) {
       header("K EIGENVALUE SIMULATION", 3);
@@ -306,7 +306,7 @@ void initialize_batch()
   // Increment current batch
   ++simulation::current_batch;
 
-  if (settings::run_mode == RunMode::FIXEDSOURCE) {
+  if (settings::run_mode == RunMode::FIXED_SOURCE) {
     int b = simulation::current_batch;
     write_message("Simulating batch " + std::to_string(b), 6);
   }
@@ -460,7 +460,7 @@ void finalize_generation()
       }
     }
 
-  } else if (settings::run_mode == RunMode::FIXEDSOURCE) {
+  } else if (settings::run_mode == RunMode::FIXED_SOURCE) {
     // For fixed-source mode, we need to sample the external source
     fill_source_bank_fixedsource();
   }

@@ -659,16 +659,16 @@ write_tallies()
     if (tally.deriv_ != C_NONE) {
       const auto& deriv {model::tally_derivs[tally.deriv_]};
       switch (deriv.variable) {
-      case WithRespectTo::DENSITY:
+      case DerivativeVariable::DENSITY:
         tallies_out << " Density derivative Material "
           << std::to_string(deriv.diff_material) << "\n";
         break;
-      case WithRespectTo::NUCLIDE_DENSITY:
+      case DerivativeVariable::NUCLIDE_DENSITY:
         tallies_out << " Nuclide density derivative Material "
           << std::to_string(deriv.diff_material) << "  Nuclide "
           << data::nuclides[deriv.diff_nuclide]->name_ << "\n";
         break;
-      case WithRespectTo::TEMPERATURE:
+      case DerivativeVariable::TEMPERATURE:
         tallies_out << " Temperature derivative Material "
           << std::to_string(deriv.diff_material) << "\n";
         break;

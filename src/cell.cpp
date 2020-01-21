@@ -247,7 +247,7 @@ Cell::temperature(int32_t instance) const
 void
 Cell::set_temperature(double T, int32_t instance)
 {
-  if (settings::temperature_method == TemperatureInterpolationType::INTERPOLATION) {
+  if (settings::temperature_method == TemperatureMethod::INTERPOLATION) {
     if (T < data::temperature_min) {
       throw std::runtime_error{"Temperature is below minimum temperature at "
         "which data is available."};

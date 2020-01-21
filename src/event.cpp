@@ -17,13 +17,14 @@ std::unique_ptr<QueueItem[]> calculate_nonfuel_xs_queue;
 std::unique_ptr<QueueItem[]> advance_particle_queue;
 std::unique_ptr<QueueItem[]> surface_crossing_queue;
 std::unique_ptr<QueueItem[]> collision_queue;
-std::unique_ptr<Particle[]>  particles;
 
 int64_t calculate_fuel_xs_queue_length {0};
 int64_t calculate_nonfuel_xs_queue_length {0};
 int64_t advance_particle_queue_length {0};
 int64_t surface_crossing_queue_length {0};
 int64_t collision_queue_length {0};
+
+std::unique_ptr<Particle[]>  particles;
 
 } // namespace simulation
 
@@ -64,16 +65,16 @@ void enqueue_particle(QueueItem* queue, int64_t& length, Particle* p,
   queue[idx].type = p->type_;
 }
 
-void dispatch_xs_event(int64_t i)
+void dispatch_xs_event(int64_t buffer_idx)
 {
-  Particle* p = &simulation::particles[i];
+  Particle* p = &simulation::particles[buffer_idx];
   if (p->material_ == MATERIAL_VOID ||
       !model::materials[p->material_]->fissionable_) {
     enqueue_particle(simulation::calculate_nonfuel_xs_queue.get(),
-        simulation::calculate_nonfuel_xs_queue_length, p, i);
+        simulation::calculate_nonfuel_xs_queue_length, p, buffer_idx);
   } else {
       enqueue_particle(simulation::calculate_fuel_xs_queue.get(),
-          simulation::calculate_fuel_xs_queue_length, p, i);
+          simulation::calculate_fuel_xs_queue_length, p, buffer_idx);
   }
 }
 
@@ -94,8 +95,11 @@ void process_calculate_xs_events(QueueItem* queue, int64_t n_particles)
 
   // TODO: If using C++17, perform a parallel sort of the queue
   // by particle type, material type, and then energy, in order to
-  // improve cache locality and reduce thread divergence on GPU.
-  //std::sort(queue, queue+n);
+  // improve cache locality and reduce thread divergence on GPU. Prior
+  // to C++17, std::sort is a serial only operation, which in this case
+  // makes it too slow to be practical for most test problems. 
+  //
+  // std::sort(std::execution::par_unseq, queue, queue+n);
 
   #pragma omp parallel for schedule(runtime)
   for (int64_t i = 0; i < n_particles; i++) {

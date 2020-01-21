@@ -61,14 +61,14 @@ def test_discretization_lns(rlat2):
 def test_discretization_lns_using_names(rlat2):
 
     rlat_clone = rlat2.clone()
-    rlat_clone.discretize(strategy="lns", attribute="name")
+    rlat_clone.discretize(strategy="lns", key=lambda univ: univ.name)
 
     assert rlat_clone.get_universe((0, 2)) == rlat_clone.get_universe((2, 2))
 
     rlat_clone = rlat2.clone()
     rlat_clone.get_universe((0, 1)).name="u1"
     rlat_clone.get_universe((1, 0)).name="u1"
-    rlat_clone.discretize(strategy="lns", attribute="name")
+    rlat_clone.discretize(strategy="lns", key=lambda univ: univ.name)
 
     assert rlat_clone.get_universe((0, 2)) == rlat_clone.get_universe((2, 0))
     assert rlat_clone.get_universe((2, 2)) == rlat_clone.get_universe((0, 0))
@@ -84,46 +84,8 @@ def test_discretization_lns_with_neighbor_list(rlat2):
     u1 = rlat_clone.get_universe((1, 0))
     u2 = rlat_clone.get_universe((0, 0))
     rlat_clone.discretize(strategy="lns",
-         lattice_neighbors=[u1.id,u1.id,u2.id,u1.id,u2.id,u2.id,u1.id,u2.id])
+         lattice_neighbors=[u1,u1,u2,u1,u2,u2,u1,u2])
 
     assert rlat_clone.get_universe((0, 1)) == rlat_clone.get_universe((0, 0))
     assert rlat_clone.get_universe((1, 1)) != rlat_clone.get_universe((0, 0))
-
-def test_discretization_lns_nested_lattices(rlat2):
-
-    # Name a universe in rlat2 to be able to compare
-    rlat2.get_universe((1, 2)).name = "universe"
-
-    # Create a lattice of lattices
-    main_lattice = openmc.RectLattice(name="main lattice")
-    u1 = openmc.Universe()
-    cell = openmc.Cell()
-    cell.fill=rlat2
-    u1.add_cell(cell)
-    u2 = u1.clone()
-    main_lattice.pitch = (20, 20)
-    main_lattice.universes = [[u1,u1,u1], [u2,u1,u2], [u1,u1,u2]]
-
-    main_lattice_clone = main_lattice.clone()
-    main_lattice.discretize(strategy="lns")
-
-    # Both involved a transposition from (2,0) neighbor pattern
-    assert main_lattice.get_universe((0, 0)) == \
-         main_lattice.get_universe((2, 2))
-
-    # Transposition creates a clone so the two universes cant match
-    assert main_lattice.get_universe((2, 0)) != \
-         main_lattice.get_universe((2, 2))
-
-    # Different neighbor pattern
-    assert main_lattice.get_universe((1, 1)) != \
-         main_lattice.get_universe((0, 0))
-
-    # Look inside inner lattices
-    for i in range(3):
-        for j in range(3):
-            assert next(iter(main_lattice.get_universe((0, 2)).cells.values())\
-                 ).fill.get_universe((i, j)).name == \
-                 next(iter(main_lattice.get_universe((2, 2)).cells.values(
-                 ))).fill.get_universe((i, j)).name
 

@@ -5,7 +5,6 @@
 //! \brief Event-based data structures and methods
 
 #include "openmc/particle.h"
-#include "openmc/tallies/filter.h"
 
 
 namespace openmc {
@@ -83,7 +82,7 @@ extern int64_t collision_queue_length;
 // Particle buffer. This is an allocated pointer rather than a vector as it
 // will be shared between threads, so most vector methods would result in
 // undefined or unintended behavior.
-extern std::vector<Particle[]>  particles;
+extern std::unique_ptr<Particle[]>  particles;
 
 } // namespace simulation
 

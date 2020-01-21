@@ -25,9 +25,9 @@ namespace openmc {
 // consistent locality improvements. 
 struct QueueItem{
   int64_t idx;         //!< particle index in event-based particle buffer
-  double E;            //!< particle energy
-  int64_t material;    //!< material that particle is in
   Particle::Type type; //!< particle type
+  int64_t material;    //!< material that particle is in
+  double E;            //!< particle energy
 
   // Comparator sorts by particle type, then by material type, then by energy
   bool operator<(const QueueItem& rhs) const

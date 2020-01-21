@@ -81,6 +81,8 @@ int32_t n_inactive {0};
 int32_t gen_per_batch {1};
 int64_t n_particles {-1};
 
+int64_t max_in_flight_particles {100000};
+
 int electron_treatment {ELECTRON_TTB};
 std::array<double, 4> energy_cutoff {0.0, 1000.0, 0.0, 0.0};
 int legendre_to_tabular_points {C_NONE};
@@ -126,6 +128,11 @@ void get_run_parameters(pugi::xml_node node_base)
   // Get number of particles if it wasn't specified as a command-line argument
   if (n_particles == -1) {
     n_particles = std::stoll(get_node_value(node_base, "particles"));
+  }
+  
+  // Get maximum number of in flight particles for event-based mode
+  if (check_for_node(node_base, "max_in_flight_particles")) {
+    max_in_flight_particles = std::stoll(get_node_value(node_base, "max_in_flight_particles"));
   }
 
   // Get number of basic batches

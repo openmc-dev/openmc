@@ -77,7 +77,7 @@ int openmc_simulation_init()
   // and event queues
   #ifdef EVENT_BASED
   int64_t event_buffer_length = std::min(simulation::work_per_rank,
-      simulation::max_particles_in_flight);
+      settings::max_in_flight_particles);
   init_event_queues(event_buffer_length);
   #endif
 
@@ -617,14 +617,14 @@ void transport_event_based()
   // loop is executed multiple times until all particles have been completed.
   while (remaining_work > 0) {
     // Figure out # of particles to run for this subiteration
-    int64_t n_particles = std::min(remaining_work, simulation::max_particles_in_flight);
+    int64_t n_particles = std::min(remaining_work, settings::max_in_flight_particles);
 
     // Initialize all particle histories for this subiteration
     process_init_events(n_particles, source_offset);
 
     // Event-based transport loop
     while (true) {
-      // Determine which event kernel has the most particles in its queue
+      // Determine which event kernel has the longest queue
       int64_t max = std::max({
           simulation::calculate_fuel_xs_queue_length,
           simulation::calculate_nonfuel_xs_queue_length,

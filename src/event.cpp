@@ -67,7 +67,6 @@ void enqueue_particle(QueueItem* queue, int64_t& length, Particle* p,
 void dispatch_xs_event(int64_t i)
 {
   Particle* p = &simulation::particles[i];
-  int64_t idx;
   if (p->material_ == MATERIAL_VOID ||
       !model::materials[p->material_]->fissionable_) {
     enqueue_particle(simulation::calculate_nonfuel_xs_queue.get(),

@@ -141,6 +141,7 @@ private:
 //==============================================================================
 
 namespace model {
+  extern std::unordered_map<int, int> tally_map;
   extern std::vector<std::unique_ptr<Tally>> tallies;
   extern std::vector<int> active_tallies;
   extern std::vector<int> active_analog_tallies;
@@ -148,8 +149,6 @@ namespace model {
   extern std::vector<int> active_collision_tallies;
   extern std::vector<int> active_meshsurf_tallies;
   extern std::vector<int> active_surface_tallies;
-
-  extern std::unordered_map<int, int> tally_map;
 }
 
 namespace simulation {

@@ -25,8 +25,6 @@ int64_t advance_particle_queue_length {0};
 int64_t surface_crossing_queue_length {0};
 int64_t collision_queue_length {0};
 
-int64_t max_particles_in_flight {100000};
-
 } // namespace simulation
 
 //==============================================================================
@@ -54,15 +52,11 @@ void free_event_queues(void)
 }
 
 void enqueue_particle(QueueItem* queue, int64_t& length, Particle* p,
-    int64_t buffer_idx, bool use_atomic)
+    int64_t buffer_idx)
 {
   int64_t idx;
-  if (use_atomic) {
-    #pragma omp atomic capture
-    idx = length++;
-  } else {
-    idx = length++;
-  }
+  #pragma omp atomic capture
+  idx = length++;
 
   queue[idx].idx = buffer_idx;
   queue[idx].E = p->E_;
@@ -77,10 +71,10 @@ void dispatch_xs_event(int64_t i)
   if (p->material_ == MATERIAL_VOID ||
       !model::materials[p->material_]->fissionable_) {
     enqueue_particle(simulation::calculate_nonfuel_xs_queue.get(),
-        simulation::calculate_nonfuel_xs_queue_length, p, i, true);
+        simulation::calculate_nonfuel_xs_queue_length, p, i);
   } else {
       enqueue_particle(simulation::calculate_fuel_xs_queue.get(),
-          simulation::calculate_fuel_xs_queue_length, p, i, true);
+          simulation::calculate_fuel_xs_queue_length, p, i);
   }
 }
 
@@ -95,7 +89,7 @@ void process_init_events(int64_t n_particles, int64_t source_offset)
   simulation::time_event_init.stop();
 }
 
-void process_calculate_xs_events(QueueItem* queue, int64_t n)
+void process_calculate_xs_events(QueueItem* queue, int64_t n_particles)
 {
   simulation::time_event_calculate_xs.start();
 
@@ -105,12 +99,18 @@ void process_calculate_xs_events(QueueItem* queue, int64_t n)
   //std::sort(queue, queue+n);
 
   #pragma omp parallel for schedule(runtime)
-  for (int64_t i = 0; i < n; i++) {
+  for (int64_t i = 0; i < n_particles; i++) {
     Particle* p = &simulation::particles[queue[i].idx]; 
     p->event_calculate_xs();
-    enqueue_particle(simulation::advance_particle_queue.get(),
-        simulation::advance_particle_queue_length, p, queue[i].idx, true);
+    
+    // After executing a calculate_xs event, particles will
+    // always require an advance event. Therefore, we don't need to use
+    // the protected enqueuing function.
+    int64_t offset = simulation::advance_particle_queue_length + i;
+    simulation::advance_particle_queue[offset] = queue[i];
   }
+
+  simulation::advance_particle_queue_length += n_particles;
 
   simulation::time_event_calculate_xs.stop();
 }
@@ -126,10 +126,10 @@ void process_advance_particle_events()
     p->event_advance();
     if (p->collision_distance_ > p->boundary_.distance) {
       enqueue_particle(simulation::surface_crossing_queue.get(),
-          simulation::surface_crossing_queue_length, p, buffer_idx, true);
+          simulation::surface_crossing_queue_length, p, buffer_idx);
     } else {
       enqueue_particle(simulation::collision_queue.get(),
-          simulation::collision_queue_length, p, buffer_idx, true);
+          simulation::collision_queue_length, p, buffer_idx);
     }
   }
 

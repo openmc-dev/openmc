@@ -67,6 +67,8 @@ extern "C" int32_t n_inactive;     //!< number of inactive batches
 extern "C" int32_t gen_per_batch;  //!< number of generations per batch
 extern "C" int64_t n_particles;    //!< number of particles per generation
 
+extern "C" int64_t max_in_flight_particles; //!< Max num. event-based particles in flight
+
 extern int electron_treatment;       //!< how to treat secondary electrons
 extern std::array<double, 4> energy_cutoff;  //!< Energy cutoff in [eV] for each particle type
 extern int legendre_to_tabular_points; //!< number of points to convert Legendres

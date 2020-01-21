@@ -474,6 +474,8 @@ void print_runtime()
     show_time("Time synchronizing fission bank", time_bank.elapsed(), 1);
     show_time("Sampling source sites", time_bank_sample.elapsed(), 2);
     show_time("SEND/RECV source sites", time_bank_sendrecv.elapsed(), 2);
+  } else {
+    show_time("Time sampling source", time_sample_source.elapsed(), 1);
   }
   show_time("Time accumulating tallies", time_tallies.elapsed(), 1);
   show_time("Total time for finalization", time_finalize.elapsed());
@@ -678,9 +680,14 @@ write_tallies()
       }
     }
 
+    // Initialize Filter Matches Object
+    std::vector<FilterMatch> filter_matches;
+    // Allocate space for tally filter matches
+    filter_matches.resize(model::tally_filters.size());
+
     // Loop over all filter bin combinations.
-    auto filter_iter = FilterBinIter(tally, false);
-    auto end = FilterBinIter(tally, true);
+    auto filter_iter = FilterBinIter(tally, false, &filter_matches);
+    auto end = FilterBinIter(tally, true, &filter_matches);
     for (; filter_iter != end; ++filter_iter) {
       auto filter_index = filter_iter.index_;
 
@@ -691,7 +698,7 @@ write_tallies()
         if (filter_index % tally.strides(i) == 0) {
           auto i_filt = tally.filters(i);
           const auto& filt {*model::tally_filters[i_filt]};
-          auto& match {simulation::filter_matches[i_filt]};
+          auto& match {filter_matches[i_filt]};
           tallies_out << std::string(indent+1, ' ')
             << filt.text_label(match.i_bin_) << "\n";
         }

@@ -12,30 +12,9 @@
 #include "openmc/constants.h"
 #include "openmc/hdf5_interface.h"
 #include "openmc/particle.h"
+#include "openmc/tallies/filter_match.h"
 #include "pugixml.hpp"
 
-
-namespace openmc {
-
-//==============================================================================
-//! Stores bins and weights for filtered tally events.
-//==============================================================================
-
-class FilterMatch
-{
-public:
-  std::vector<int> bins_;
-  std::vector<double> weights_;
-  int i_bin_;
-  bool bins_present_ {false};
-};
-
-} // namespace openmc
-
-// Without an explicit instantiation of vector<FilterMatch>, the Intel compiler
-// will complain about the threadprivate directive on filter_matches. Note that
-// this has to happen *outside* of the openmc namespace
-extern template class std::vector<openmc::FilterMatch>;
 
 namespace openmc {
 
@@ -126,13 +105,6 @@ private:
 //==============================================================================
 // Global variables
 //==============================================================================
-
-namespace simulation {
-
-extern std::vector<FilterMatch> filter_matches;
-#pragma omp threadprivate(filter_matches)
-
-} // namespace simulation
 
 namespace model {
   extern "C" int32_t n_filters;

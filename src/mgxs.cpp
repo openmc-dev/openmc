@@ -102,15 +102,15 @@ Mgxs::metadata_from_hdf5(hid_t xs_id, const std::vector<double>& temperature,
 
   // If only one temperature is available, lets just use nearest temperature
   // interpolation
-  if ((num_temps == 1) && (settings::temperature_method == TemperatureInterpolationType::INTERPOLATION)) {
+  if ((num_temps == 1) && (settings::temperature_method == TemperatureMethod::INTERPOLATION)) {
     warning("Cross sections for " + strtrim(name) + " are only available " +
             "at one temperature.  Reverting to the nearest temperature " +
             "method.");
-    settings::temperature_method = TemperatureInterpolationType::NEAREST;
+    settings::temperature_method = TemperatureMethod::NEAREST;
   }
 
   switch(settings::temperature_method) {
-    case TemperatureInterpolationType::NEAREST:
+    case TemperatureMethod::NEAREST:
       // Determine actual temperatures to read
       for (const auto& T : temperature) {
         auto i_closest = xt::argmin(xt::abs(available_temps - T))[0];
@@ -129,7 +129,7 @@ Mgxs::metadata_from_hdf5(hid_t xs_id, const std::vector<double>& temperature,
       }
       break;
 
-    case TemperatureInterpolationType::INTERPOLATION:
+    case TemperatureMethod::INTERPOLATION:
       for (int i = 0; i < temperature.size(); i++) {
         for (int j = 0; j < num_temps - 1; j++) {
           if ((available_temps[j] <= temperature[i]) &&
@@ -344,7 +344,7 @@ Mgxs::Mgxs(const std::string& in_name, const std::vector<double>& mat_kTs,
     std::vector<double> micro_t_interp(micros.size(), 0.);
     for (int m = 0; m < micros.size(); m++) {
       switch(settings::temperature_method) {
-      case TemperatureInterpolationType::NEAREST:
+      case TemperatureMethod::NEAREST:
         {
           micro_t[m] = xt::argmin(xt::abs(micros[m]->kTs - temp_desired))[0];
           auto temp_actual = micros[m]->kTs[micro_t[m]];
@@ -357,7 +357,7 @@ Mgxs::Mgxs(const std::string& in_name, const std::vector<double>& mat_kTs,
           }
         }
         break;
-      case TemperatureInterpolationType::INTERPOLATION:
+      case TemperatureMethod::INTERPOLATION:
         // Get a list of bounding temperatures for each actual temperature
         // present in the model
         for (int k = 0; k < micros[m]->kTs.shape()[0] - 1; k++) {
@@ -381,7 +381,7 @@ Mgxs::Mgxs(const std::string& in_name, const std::vector<double>& mat_kTs,
     // If we are doing nearest temperature interpolation, then we don't need
     // to do the 2nd temperature
     int num_interp_points = 2;
-    if (settings::temperature_method == TemperatureInterpolationType::NEAREST) num_interp_points = 1;
+    if (settings::temperature_method == TemperatureMethod::NEAREST) num_interp_points = 1;
     for (int interp_point = 0; interp_point < num_interp_points; interp_point++) {
       std::vector<double> interp(micros.size());
       std::vector<double> temp_indices(micros.size());

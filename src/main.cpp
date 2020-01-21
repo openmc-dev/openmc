@@ -29,7 +29,7 @@ int main(int argc, char* argv[]) {
 
   // start problem based on mode
   switch (settings::run_mode) {
-    case RunMode::FIXEDSOURCE:
+    case RunMode::FIXED_SOURCE:
     case RunMode::EIGENVALUE:
       err = openmc_run();
       break;

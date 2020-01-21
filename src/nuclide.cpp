@@ -69,12 +69,12 @@ Nuclide::Nuclide(hid_t group, const std::vector<double>& temperature, int i_nucl
   std::sort(temps_available.begin(), temps_available.end());
 
   // If only one temperature is available, revert to nearest temperature
-  if (temps_available.size() == 1 && settings::temperature_method == TemperatureInterpolationType::INTERPOLATION) {
+  if (temps_available.size() == 1 && settings::temperature_method == TemperatureMethod::INTERPOLATION) {
     if (mpi::master) {
       warning("Cross sections for " + name_ + " are only available at one "
         "temperature. Reverting to nearest temperature method.");
     }
-    settings::temperature_method = TemperatureInterpolationType::NEAREST;
+    settings::temperature_method = TemperatureMethod::NEAREST;
   }
 
   // Determine actual temperatures to read -- start by checking whether a
@@ -93,7 +93,7 @@ Nuclide::Nuclide(hid_t group, const std::vector<double>& temperature, int i_nucl
   }
 
   switch (settings::temperature_method) {
-  case TemperatureInterpolationType::NEAREST:
+  case TemperatureMethod::NEAREST:
     // Find nearest temperatures
     for (double T_desired : temperature) {
 
@@ -126,7 +126,7 @@ Nuclide::Nuclide(hid_t group, const std::vector<double>& temperature, int i_nucl
     }
     break;
 
-  case TemperatureInterpolationType::INTERPOLATION:
+  case TemperatureMethod::INTERPOLATION:
     // If temperature interpolation or multipole is selected, get a list of
     // bounding temperatures for each actual temperature present in the model
     for (double T_desired : temperature) {
@@ -581,7 +581,7 @@ void Nuclide::calculate_xs(int i_sab, int i_log_union, double sab_frac, Particle
     double f;
     int i_temp = -1;
     switch (settings::temperature_method) {
-    case TemperatureInterpolationType::NEAREST:
+    case TemperatureMethod::NEAREST:
       {
         double max_diff = INFTY;
         for (int t = 0; t < kTs_.size(); ++t) {
@@ -594,7 +594,7 @@ void Nuclide::calculate_xs(int i_sab, int i_log_union, double sab_frac, Particle
       }
       break;
 
-    case TemperatureInterpolationType::INTERPOLATION:
+    case TemperatureMethod::INTERPOLATION:
       // Find temperatures that bound the actual temperature
       for (i_temp = 0; i_temp < kTs_.size() - 1; ++i_temp) {
         if (kTs_[i_temp] <= kT && kT < kTs_[i_temp + 1]) break;
@@ -784,10 +784,10 @@ void Nuclide::calculate_urr_xs(int i_temp, Particle& p) const
   p.stream_ = STREAM_TRACKING;
 
   int i_low = 0;
-  while (urr.prob_(i_energy, UnresolvProbTableParam::CUM_PROB, i_low) <= r) {++i_low;};
+  while (urr.prob_(i_energy, URRTableParam::CUM_PROB, i_low) <= r) {++i_low;};
 
   int i_up = 0;
-  while (urr.prob_(i_energy + 1, UnresolvProbTableParam::CUM_PROB, i_up) <= r) {++i_up;};
+  while (urr.prob_(i_energy + 1, URRTableParam::CUM_PROB, i_up) <= r) {++i_up;};
 
   // Determine elastic, fission, and capture cross sections from the
   // probability table
@@ -800,46 +800,46 @@ void Nuclide::calculate_urr_xs(int i_temp, Particle& p) const
     f = (p.E_ - urr.energy_(i_energy)) /
          (urr.energy_(i_energy + 1) - urr.energy_(i_energy));
 
-    elastic = (1. - f) * urr.prob_(i_energy, UnresolvProbTableParam::ELASTIC, i_low) +
-         f * urr.prob_(i_energy + 1, UnresolvProbTableParam::ELASTIC, i_up);
-    fission = (1. - f) * urr.prob_(i_energy, UnresolvProbTableParam::FISSION, i_low) +
-         f * urr.prob_(i_energy + 1, UnresolvProbTableParam::FISSION, i_up);
-    capture = (1. - f) * urr.prob_(i_energy, UnresolvProbTableParam::N_GAMMA, i_low) +
-         f * urr.prob_(i_energy + 1, UnresolvProbTableParam::N_GAMMA, i_up);
+    elastic = (1. - f) * urr.prob_(i_energy, URRTableParam::ELASTIC, i_low) +
+         f * urr.prob_(i_energy + 1, URRTableParam::ELASTIC, i_up);
+    fission = (1. - f) * urr.prob_(i_energy, URRTableParam::FISSION, i_low) +
+         f * urr.prob_(i_energy + 1, URRTableParam::FISSION, i_up);
+    capture = (1. - f) * urr.prob_(i_energy, URRTableParam::N_GAMMA, i_low) +
+         f * urr.prob_(i_energy + 1, URRTableParam::N_GAMMA, i_up);
   } else if (urr.interp_ == Interpolation::log_log) {
     // Determine interpolation factor on the table
     f = std::log(p.E_ / urr.energy_(i_energy)) /
          std::log(urr.energy_(i_energy + 1) / urr.energy_(i_energy));
 
     // Calculate the elastic cross section/factor
-    if ((urr.prob_(i_energy, UnresolvProbTableParam::ELASTIC, i_low) > 0.) &&
-        (urr.prob_(i_energy + 1, UnresolvProbTableParam::ELASTIC, i_up) > 0.)) {
+    if ((urr.prob_(i_energy, URRTableParam::ELASTIC, i_low) > 0.) &&
+        (urr.prob_(i_energy + 1, URRTableParam::ELASTIC, i_up) > 0.)) {
       elastic =
            std::exp((1. - f) *
-                    std::log(urr.prob_(i_energy, UnresolvProbTableParam::ELASTIC, i_low)) +
-                    f * std::log(urr.prob_(i_energy + 1, UnresolvProbTableParam::ELASTIC, i_up)));
+                    std::log(urr.prob_(i_energy, URRTableParam::ELASTIC, i_low)) +
+                    f * std::log(urr.prob_(i_energy + 1, URRTableParam::ELASTIC, i_up)));
     } else {
       elastic = 0.;
     }
 
     // Calculate the fission cross section/factor
-    if ((urr.prob_(i_energy, UnresolvProbTableParam::FISSION, i_low) > 0.) &&
-        (urr.prob_(i_energy + 1, UnresolvProbTableParam::FISSION, i_up) > 0.)) {
+    if ((urr.prob_(i_energy, URRTableParam::FISSION, i_low) > 0.) &&
+        (urr.prob_(i_energy + 1, URRTableParam::FISSION, i_up) > 0.)) {
       fission =
            std::exp((1. - f) *
-                    std::log(urr.prob_(i_energy, UnresolvProbTableParam::FISSION, i_low)) +
-                    f * std::log(urr.prob_(i_energy + 1, UnresolvProbTableParam::FISSION, i_up)));
+                    std::log(urr.prob_(i_energy, URRTableParam::FISSION, i_low)) +
+                    f * std::log(urr.prob_(i_energy + 1, URRTableParam::FISSION, i_up)));
     } else {
       fission = 0.;
     }
 
     // Calculate the capture cross section/factor
-    if ((urr.prob_(i_energy, UnresolvProbTableParam::N_GAMMA, i_low) > 0.) &&
-        (urr.prob_(i_energy + 1, UnresolvProbTableParam::N_GAMMA, i_up) > 0.)) {
+    if ((urr.prob_(i_energy, URRTableParam::N_GAMMA, i_low) > 0.) &&
+        (urr.prob_(i_energy + 1, URRTableParam::N_GAMMA, i_up) > 0.)) {
       capture =
            std::exp((1. - f) *
-                    std::log(urr.prob_(i_energy, UnresolvProbTableParam::N_GAMMA, i_low)) +
-                    f * std::log(urr.prob_(i_energy + 1, UnresolvProbTableParam::N_GAMMA, i_up)));
+                    std::log(urr.prob_(i_energy, URRTableParam::N_GAMMA, i_low)) +
+                    f * std::log(urr.prob_(i_energy + 1, URRTableParam::N_GAMMA, i_up)));
     } else {
       capture = 0.;
     }

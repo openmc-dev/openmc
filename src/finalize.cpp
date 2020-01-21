@@ -96,7 +96,7 @@ int openmc_finalize()
   settings::source_write = true;
   settings::survival_biasing = false;
   settings::temperature_default = 293.6;
-  settings::temperature_method = TemperatureInterpolationType::NEAREST;
+  settings::temperature_method = TemperatureMethod::NEAREST;
   settings::temperature_multipole = false;
   settings::temperature_range = {0.0, 0.0};
   settings::temperature_tolerance = 10.0;

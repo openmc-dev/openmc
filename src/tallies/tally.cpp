@@ -407,8 +407,8 @@ Tally::Tally(pugi::xml_node node)
     }
 
     const auto& deriv = model::tally_derivs[deriv_];
-    if (deriv.variable == WithRespectTo::NUCLIDE_DENSITY
-      || deriv.variable == WithRespectTo::TEMPERATURE) {
+    if (deriv.variable == DerivativeVariable::NUCLIDE_DENSITY
+      || deriv.variable == DerivativeVariable::TEMPERATURE) {
       for (int i_nuc : nuclides_) {
         if (has_energyout && i_nuc == -1) {
           fatal_error("Error on tally " + std::to_string(id_)
@@ -823,7 +823,7 @@ void Tally::accumulate()
   if (mpi::master || !settings::reduce_tallies) {
     // Calculate total source strength for normalization
     double total_source = 0.0;
-    if (settings::run_mode == RunMode::FIXEDSOURCE) {
+    if (settings::run_mode == RunMode::FIXED_SOURCE) {
       for (const auto& s : model::external_sources) {
         total_source += s.strength();
       }

@@ -84,7 +84,7 @@ class Surface
 public:
 
   // Types of available boundary conditions on a surface
-  enum class Bc {
+  enum class BoundaryType {
     TRANSMIT,
     VACUUM,
     REFLECT,

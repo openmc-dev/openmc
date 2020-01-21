@@ -15,7 +15,7 @@
 namespace openmc {
 
 // Different independent variables
-enum class WithRespectTo {
+enum class DerivativeVariable {
   DENSITY,
   NUCLIDE_DENSITY,
   TEMPERATURE
@@ -23,7 +23,7 @@ enum class WithRespectTo {
 
 struct TallyDerivative {
 
-  WithRespectTo variable;  //!< Independent variable (like temperature)
+  DerivativeVariable variable;  //!< Independent variable (like temperature)
   int id;  //!< User-defined identifier
   int diff_material;  //!< Material this derivative is applied to
   int diff_nuclide;  //!< Nuclide this material is applied to

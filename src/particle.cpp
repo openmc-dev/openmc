@@ -400,7 +400,7 @@ Particle::cross_surface()
     write_message("    Crossing surface " + std::to_string(surf->id_));
   }
 
-  if (surf->bc_ == Surface::Bc::VACUUM && (settings::run_mode != RunMode::PLOTTING)) {
+  if (surf->bc_ == Surface::BoundaryType::VACUUM && (settings::run_mode != RunMode::PLOTTING)) {
     // =======================================================================
     // PARTICLE LEAKS OUT OF PROBLEM
 
@@ -428,7 +428,7 @@ Particle::cross_surface()
     }
     return;
 
-  } else if ((surf->bc_ == Surface::Bc::REFLECT || surf->bc_ == Surface::Bc::WHITE)
+  } else if ((surf->bc_ == Surface::BoundaryType::REFLECT || surf->bc_ == Surface::Bc::WHITE)
                                     && (settings::run_mode != RunMode::PLOTTING)) {
     // =======================================================================
     // PARTICLE REFLECTS FROM SURFACE
@@ -459,7 +459,7 @@ Particle::cross_surface()
       this->r() = r;
     }
 
-    Direction u = (surf->bc_ == Surface::Bc::REFLECT) ?
+    Direction u = (surf->bc_ == Surface::BoundaryType::REFLECT) ?
       surf->reflect(this->r(), this->u()) :
       surf->diffuse_reflect(this->r(), this->u(), this->current_seed());
 
@@ -492,7 +492,7 @@ Particle::cross_surface()
     }
     return;
 
-  } else if (surf->bc_ == Surface::Bc::PERIODIC && settings::run_mode != RunMode::PLOTTING) {
+  } else if (surf->bc_ == Surface::BoundaryType::PERIODIC && settings::run_mode != RunMode::PLOTTING) {
     // =======================================================================
     // PERIODIC BOUNDARY
 
@@ -654,7 +654,7 @@ Particle::write_restart() const
     write_dataset(file_id, "current_generation", simulation::current_gen);
     write_dataset(file_id, "n_particles", settings::n_particles);
     switch (settings::run_mode) {
-      case RunMode::FIXEDSOURCE:
+      case RunMode::FIXED_SOURCE:
         write_dataset(file_id, "run_mode", "fixed source");
         break;
       case RunMode::EIGENVALUE:

@@ -122,7 +122,7 @@ create_fission_sites(Particle* p)
   
   // Determine whether to place fission sites into the shared fission bank
   // or the secondary particle bank.
-  bool use_fission_bank = (settings::run_mode == RUN_MODE_EIGENVALUE);
+  bool use_fission_bank = (settings::run_mode == RunMode::EIGENVALUE);
 
   for (int i = 0; i < nu; ++i) {
     Particle::Bank* site;

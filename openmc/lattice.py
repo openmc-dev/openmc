@@ -790,7 +790,7 @@ class RectLattice(Lattice):
 
         Parameters
         ----------
-        strategy : str
+        strategy : {'degenerate', 'lns'}
             Which strategy to adopt when discretizing the lattice
         universes_to_ignore : Iterable of Universe
             Lattice universes that need not be discretized

@@ -79,10 +79,10 @@ public:
 
   std::string name_; //!< User-defined name
 
-  int type_ {TALLY_VOLUME}; //!< e.g. volume, surface current
+  TallyType type_ {TallyType::VOLUME}; //!< e.g. volume, surface current
 
   //! Event type that contributes to this tally
-  int estimator_ {ESTIMATOR_TRACKLENGTH};
+  TallyEstimator estimator_ {TallyEstimator::TRACKLENGTH};
 
   //! Whether this tally is currently being updated
   bool active_ {false};
@@ -98,10 +98,10 @@ public:
   //! True if this tally has a bin for every nuclide in the problem
   bool all_nuclides_ {false};
 
-  //! Results for each bin -- the first dimension of the array is for scores
-  //! (e.g. flux, total reaction rate, fission reaction rate, etc.) and the
-  //! second dimension of the array is for the combination of filters
-  //! (e.g. specific cell, specific energy group, etc.)
+  //! Results for each bin -- the first dimension of the array is for the
+  //! combination of filters (e.g. specific cell, specific energy group, etc.)
+  //! and the second dimension of the array is for scores (e.g. flux, total
+  //! reaction rate, fission reaction rate, etc.)
   xt::xtensor<double, 3> results_;
 
   //! True if this tally should be written to statepoint files
@@ -141,6 +141,7 @@ private:
 //==============================================================================
 
 namespace model {
+  extern std::unordered_map<int, int> tally_map;
   extern std::vector<std::unique_ptr<Tally>> tallies;
   extern std::vector<int> active_tallies;
   extern std::vector<int> active_analog_tallies;
@@ -148,8 +149,6 @@ namespace model {
   extern std::vector<int> active_collision_tallies;
   extern std::vector<int> active_meshsurf_tallies;
   extern std::vector<int> active_surface_tallies;
-
-  extern std::unordered_map<int, int> tally_map;
 }
 
 namespace simulation {

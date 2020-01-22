@@ -58,7 +58,7 @@ public:
   //! \param[out] match will contain the matching bins and corresponding
   //!   weights; note that there may be zero matching bins
   virtual void
-  get_all_bins(const Particle* p, int estimator, FilterMatch& match) const = 0;
+  get_all_bins(const Particle* p, TallyEstimator estimator, FilterMatch& match) const = 0;
 
   //! Writes data describing this filter to an HDF5 statepoint group.
   virtual void
@@ -108,8 +108,8 @@ private:
 
 namespace model {
   extern "C" int32_t n_filters;
-  extern std::vector<std::unique_ptr<Filter>> tally_filters;
   extern std::unordered_map<int, int> filter_map;
+  extern std::vector<std::unique_ptr<Filter>> tally_filters;
 }
 
 //==============================================================================

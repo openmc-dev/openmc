@@ -5,7 +5,7 @@
 namespace openmc {
 
 void
-CellFromFilter::get_all_bins(const Particle* p, int estimator,
+CellFromFilter::get_all_bins(const Particle* p, TallyEstimator estimator,
                              FilterMatch& match) const
 {
   for (int i = 0; i < p->n_coord_last_; i++) {

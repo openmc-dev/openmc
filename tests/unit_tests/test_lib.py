@@ -170,10 +170,6 @@ def test_settings(lib_init):
     assert settings.seed == 1
     settings.seed = 11
 
-    assert settings.run_mode == 'eigenvalue'
-    settings.run_mode = 'volume'
-    settings.run_mode = 'eigenvalue'
-
 
 def test_tally_mapping(lib_init):
     tallies = openmc.lib.tallies

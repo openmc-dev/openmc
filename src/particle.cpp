@@ -146,7 +146,7 @@ Particle::event_calculate_xs()
   r_last_ = this->r();
 
   // Reset event variables
-  event_ = EVENT_KILL;
+  event_ = TallyEvent::KILL;
   event_nuclide_ = NUCLIDE_NONE;
   event_mt_ = REACTION_NONE;
 
@@ -225,7 +225,7 @@ Particle::event_advance()
   }
 
   // Score track-length estimate of k-eff
-  if (settings::run_mode == RUN_MODE_EIGENVALUE &&
+  if (settings::run_mode == RunMode::EIGENVALUE &&
       type_ == Particle::Type::neutron) {
     keff_tally_tracklength_ += wgt_ * distance * macro_xs_.nu_fission;
   }
@@ -235,7 +235,7 @@ Particle::event_advance()
     score_track_derivative(this, distance);
   }
 }
-
+  
 void
 Particle::event_cross_surface()
 {
@@ -254,11 +254,11 @@ Particle::event_cross_surface()
       boundary_.lattice_translation[2] != 0) {
     // Particle crosses lattice boundary
     cross_lattice(this, boundary_);
-    event_ = EVENT_LATTICE;
+    event_ = TallyEvent::LATTICE;
   } else {
     // Particle crosses surface
     this->cross_surface();
-    event_ = EVENT_SURFACE;
+    event_ = TallyEvent::SURFACE;
   }
   // Score cell to cell partial currents
   if (!model::active_surface_tallies.empty()) {
@@ -270,7 +270,7 @@ void
 Particle::event_collide()
 {
   // Score collision estimate of keff
-  if (settings::run_mode == RUN_MODE_EIGENVALUE &&
+  if (settings::run_mode == RunMode::EIGENVALUE &&
       type_ == Particle::Type::neutron) {
     keff_tally_collision_ += wgt_ * macro_xs_.nu_fission
       / macro_xs_.total;
@@ -394,7 +394,7 @@ Particle::event_death()
 
   // Record the number of progeny created by this particle.
   // This data will be used to efficiently sort the fission bank.
-  if (settings::run_mode == RUN_MODE_EIGENVALUE) {
+  if (settings::run_mode == RunMode::EIGENVALUE) {
     int64_t offset = id_ - 1 - simulation::work_index[mpi::rank];
     simulation::progeny_per_particle[offset] = n_progeny_;
   }
@@ -411,7 +411,7 @@ Particle::cross_surface()
     write_message("    Crossing surface " + std::to_string(surf->id_));
   }
 
-  if (surf->bc_ == BC_VACUUM && (settings::run_mode != RUN_MODE_PLOTTING)) {
+  if (surf->bc_ == Surface::BoundaryType::VACUUM && (settings::run_mode != RunMode::PLOTTING)) {
     // =======================================================================
     // PARTICLE LEAKS OUT OF PROBLEM
 
@@ -439,8 +439,9 @@ Particle::cross_surface()
     }
     return;
 
-  } else if ((surf->bc_ == BC_REFLECT || surf->bc_ == BC_WHITE)
-                                    && (settings::run_mode != RUN_MODE_PLOTTING)) {
+  } else if ((surf->bc_ == Surface::BoundaryType::REFLECT ||
+              surf->bc_ == Surface::BoundaryType::WHITE)
+              && (settings::run_mode != RunMode::PLOTTING)) {
     // =======================================================================
     // PARTICLE REFLECTS FROM SURFACE
 
@@ -470,7 +471,7 @@ Particle::cross_surface()
       this->r() = r;
     }
 
-    Direction u = (surf->bc_ == BC_REFLECT) ?
+    Direction u = (surf->bc_ == Surface::BoundaryType::REFLECT) ?
       surf->reflect(this->r(), this->u(), this) :
       surf->diffuse_reflect(this->r(), this->u(), this->current_seed());
 
@@ -503,7 +504,7 @@ Particle::cross_surface()
     }
     return;
 
-  } else if (surf->bc_ == BC_PERIODIC && settings::run_mode != RUN_MODE_PLOTTING) {
+  } else if (surf->bc_ == Surface::BoundaryType::PERIODIC && settings::run_mode != RunMode::PLOTTING) {
     // =======================================================================
     // PERIODIC BOUNDARY
 
@@ -590,7 +591,7 @@ Particle::cross_surface()
   n_coord_ = 1;
   bool found = find_cell(this, false);
 
-  if (settings::run_mode != RUN_MODE_PLOTTING && (!found)) {
+  if (settings::run_mode != RunMode::PLOTTING && (!found)) {
     // If a cell is still not found, there are two possible causes: 1) there is
     // a void in the model, and 2) the particle hit a surface at a tangent. If
     // the particle is really traveling tangent to a surface, if we move it
@@ -639,7 +640,7 @@ void
 Particle::write_restart() const
 {
   // Dont write another restart file if in particle restart mode
-  if (settings::run_mode == RUN_MODE_PARTICLE) return;
+  if (settings::run_mode == RunMode::PARTICLE) return;
 
   // Set up file name
   std::stringstream filename;
@@ -665,13 +666,13 @@ Particle::write_restart() const
     write_dataset(file_id, "current_generation", simulation::current_gen);
     write_dataset(file_id, "n_particles", settings::n_particles);
     switch (settings::run_mode) {
-      case RUN_MODE_FIXEDSOURCE:
+      case RunMode::FIXED_SOURCE:
         write_dataset(file_id, "run_mode", "fixed source");
         break;
-      case RUN_MODE_EIGENVALUE:
+      case RunMode::EIGENVALUE:
         write_dataset(file_id, "run_mode", "eigenvalue");
         break;
-      case RUN_MODE_PARTICLE:
+      case RunMode::PARTICLE:
         write_dataset(file_id, "run_mode", "particle restart");
         break;
     }

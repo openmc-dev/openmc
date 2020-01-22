@@ -24,7 +24,7 @@ namespace openmc {
 // XsData class methods
 //==============================================================================
 
-XsData::XsData(bool fissionable, int scatter_format, int n_pol, int n_azi,
+XsData::XsData(bool fissionable, AngleDistributionType scatter_format, int n_pol, int n_azi,
                size_t n_groups, size_t n_d_groups) :
   n_g_(n_groups),
   n_dg_(n_d_groups)
@@ -32,8 +32,8 @@ XsData::XsData(bool fissionable, int scatter_format, int n_pol, int n_azi,
   size_t n_ang = n_pol * n_azi;
 
   // check to make sure scatter format is OK before we allocate
-  if (scatter_format != ANGLE_HISTOGRAM && scatter_format != ANGLE_TABULAR &&
-      scatter_format != ANGLE_LEGENDRE) {
+  if (scatter_format != AngleDistributionType::HISTOGRAM && scatter_format != AngleDistributionType::TABULAR &&
+      scatter_format != AngleDistributionType::LEGENDRE) {
     fatal_error("Invalid scatter_format!");
   }
   // allocate all [temperature][angle][in group] quantities
@@ -68,11 +68,11 @@ XsData::XsData(bool fissionable, int scatter_format, int n_pol, int n_azi,
 
 
   for (int a = 0; a < n_ang; a++) {
-    if (scatter_format == ANGLE_HISTOGRAM) {
+    if (scatter_format == AngleDistributionType::HISTOGRAM) {
       scatter.emplace_back(new ScattDataHistogram);
-    } else if (scatter_format == ANGLE_TABULAR) {
+    } else if (scatter_format == AngleDistributionType::TABULAR) {
       scatter.emplace_back(new ScattDataTabular);
-    } else if (scatter_format == ANGLE_LEGENDRE) {
+    } else if (scatter_format == AngleDistributionType::LEGENDRE) {
       scatter.emplace_back(new ScattDataLegendre);
     }
   }
@@ -81,8 +81,8 @@ XsData::XsData(bool fissionable, int scatter_format, int n_pol, int n_azi,
 //==============================================================================
 
 void
-XsData::from_hdf5(hid_t xsdata_grp, bool fissionable, int scatter_format,
-  int final_scatter_format, int order_data, bool is_isotropic, int n_pol, int n_azi)
+XsData::from_hdf5(hid_t xsdata_grp, bool fissionable, AngleDistributionType scatter_format,
+  AngleDistributionType final_scatter_format, int order_data, bool is_isotropic, int n_pol, int n_azi)
 {
   // Reconstruct the dimension information so it doesn't need to be passed
   size_t n_ang = n_pol * n_azi;
@@ -398,8 +398,8 @@ XsData::fission_from_hdf5(hid_t xsdata_grp, size_t n_ang, bool is_isotropic)
 //==============================================================================
 
 void
-XsData::scatter_from_hdf5(hid_t xsdata_grp, size_t n_ang,
-     int scatter_format, int final_scatter_format, int order_data)
+XsData::scatter_from_hdf5(hid_t xsdata_grp, size_t n_ang, AngleDistributionType scatter_format,
+    AngleDistributionType final_scatter_format, int order_data)
 {
   if (!object_exists(xsdata_grp, "scatter_data")) {
     fatal_error("Must provide scatter_data group!");
@@ -427,7 +427,7 @@ XsData::scatter_from_hdf5(hid_t xsdata_grp, size_t n_ang,
   // Compare the number of orders given with the max order of the problem;
   // strip off the superfluous orders if needed
   int order_dim;
-  if (scatter_format == ANGLE_LEGENDRE) {
+  if (scatter_format == AngleDistributionType::LEGENDRE) {
     order_dim = std::min(order_data - 1, settings::max_order) + 1;
   } else {
     order_dim = order_data;
@@ -480,8 +480,8 @@ XsData::scatter_from_hdf5(hid_t xsdata_grp, size_t n_ang,
   close_group(scatt_grp);
 
   // Finally, convert the Legendre data to tabular, if needed
-  if (scatter_format == ANGLE_LEGENDRE &&
-      final_scatter_format == ANGLE_TABULAR) {
+  if (scatter_format == AngleDistributionType::LEGENDRE &&
+      final_scatter_format == AngleDistributionType::TABULAR) {
     for (size_t a = 0; a < n_ang; a++) {
       ScattDataLegendre legendre_scatt;
       xt::xtensor<int, 1> in_gmin = xt::view(gmin, a, xt::all());

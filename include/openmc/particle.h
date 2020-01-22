@@ -300,7 +300,7 @@ public:
 
   // What event took place
   bool fission_ {false}; //!< did particle cause implicit fission
-  int event_;          //!< scatter, absorption
+  TallyEvent event_;          //!< scatter, absorption
   int event_nuclide_;  //!< index in nuclides array
   int event_mt_;       //!< reaction MT
   int delayed_group_ {0};  //!< delayed group

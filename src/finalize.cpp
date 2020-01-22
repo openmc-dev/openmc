@@ -73,8 +73,8 @@ int openmc_finalize()
   settings::check_overlaps = false;
   settings::confidence_intervals = false;
   settings::create_fission_neutrons = true;
+  settings::electron_treatment = ElectronTreatment::LED;
   settings::delayed_photon_scaling = true;
-  settings::electron_treatment = ELECTRON_LED;
   settings::energy_cutoff = {0.0, 1000.0, 0.0, 0.0};
   settings::entropy_on = false;
   settings::gen_per_batch = 1;
@@ -93,14 +93,14 @@ int openmc_finalize()
   settings::res_scat_energy_max = 1000.0;
   settings::restart_run = false;
   settings::run_CE = true;
-  settings::run_mode = -1;
+  settings::run_mode = RunMode::UNSET;
   settings::dagmc = false;
   settings::source_latest = false;
   settings::source_separate = false;
   settings::source_write = true;
   settings::survival_biasing = false;
   settings::temperature_default = 293.6;
-  settings::temperature_method = TEMPERATURE_NEAREST;
+  settings::temperature_method = TemperatureMethod::NEAREST;
   settings::temperature_multipole = false;
   settings::temperature_range = {0.0, 0.0};
   settings::temperature_tolerance = 10.0;

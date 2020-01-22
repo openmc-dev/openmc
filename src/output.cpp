@@ -474,11 +474,11 @@ void print_runtime()
   show_time("Collisions", time_event_collision.elapsed(), 2);
   show_time("Particle death", time_event_death.elapsed(), 2);
   #endif
-  if (settings::run_mode == RUN_MODE_EIGENVALUE) {
+  if (settings::run_mode == RunMode::EIGENVALUE) {
     show_time("Time in inactive batches", time_inactive.elapsed(), 1);
   }
   show_time("Time in active batches", time_active.elapsed(), 1);
-  if (settings::run_mode == RUN_MODE_EIGENVALUE) {
+  if (settings::run_mode == RunMode::EIGENVALUE) {
     show_time("Time synchronizing fission bank", time_bank.elapsed(), 1);
     show_time("Sampling source sites", time_bank_sample.elapsed(), 2);
     show_time("SEND/RECV source sites", time_bank_sendrecv.elapsed(), 2);
@@ -534,8 +534,8 @@ void print_runtime()
 std::pair<double, double>
 mean_stdev(const double* x, int n)
 {
-  double mean = x[RESULT_SUM] / n;
-  double stdev = n > 1 ? std::sqrt((x[RESULT_SUM_SQ]/n
+  double mean = x[static_cast<int>(TallyResult::SUM)] / n;
+  double stdev = n > 1 ? std::sqrt((x[static_cast<int>(TallyResult::SUM_SQ)]/n
     - mean*mean)/(n - 1)) : 0.0;
   return {mean, stdev};
 }
@@ -570,14 +570,14 @@ void print_results()
   const auto& gt = simulation::global_tallies;
   double mean, stdev;
   if (n > 1) {
-    if (settings::run_mode == RUN_MODE_EIGENVALUE) {
-      std::tie(mean, stdev) = mean_stdev(&gt(K_COLLISION, 0), n);
+    if (settings::run_mode == RunMode::EIGENVALUE) {
+      std::tie(mean, stdev) = mean_stdev(&gt(GlobalTally::K_COLLISION, 0), n);
       std::cout << " k-effective (Collision)     = "
         << mean << " +/- " << t_n1 * stdev << '\n';
-      std::tie(mean, stdev) = mean_stdev(&gt(K_TRACKLENGTH, 0), n);
+      std::tie(mean, stdev) = mean_stdev(&gt(GlobalTally::K_TRACKLENGTH, 0), n);
       std::cout << " k-effective (Track-length)  = "
         << mean << " +/- " << t_n1 * stdev << '\n';
-      std::tie(mean, stdev) = mean_stdev(&gt(K_ABSORPTION, 0), n);
+      std::tie(mean, stdev) = mean_stdev(&gt(GlobalTally::K_ABSORPTION, 0), n);
       std::cout << " k-effective (Absorption)    = "
         << mean << " +/- " << t_n1 * stdev << '\n';
       if (n > 3) {
@@ -587,23 +587,23 @@ void print_results()
           << k_combined[0] << " +/- " << t_n3 * k_combined[1] << '\n';
       }
     }
-    std::tie(mean, stdev) = mean_stdev(&gt(LEAKAGE, 0), n);
+    std::tie(mean, stdev) = mean_stdev(&gt(GlobalTally::LEAKAGE, 0), n);
     std::cout << " Leakage Fraction            = "
       << mean << " +/- " << t_n1 * stdev << '\n';
   } else {
     if (mpi::master) warning("Could not compute uncertainties -- only one "
       "active batch simulated!");
 
-    if (settings::run_mode == RUN_MODE_EIGENVALUE) {
+    if (settings::run_mode == RunMode::EIGENVALUE) {
       std::cout << " k-effective (Collision)    = "
-        << gt(K_COLLISION, RESULT_SUM) / n << '\n';
+        << gt(GlobalTally::K_COLLISION, TallyResult::SUM) / n << '\n';
       std::cout << " k-effective (Track-length) = "
-        << gt(K_TRACKLENGTH, RESULT_SUM) / n << '\n';
+        << gt(GlobalTally::K_TRACKLENGTH, TallyResult::SUM) / n << '\n';
       std::cout << " k-effective (Absorption)   = "
-        << gt(K_ABSORPTION, RESULT_SUM) / n << '\n';
+        << gt(GlobalTally::K_ABSORPTION, TallyResult::SUM) / n << '\n';
     }
     std::cout << " Leakage Fraction           = "
-      << gt(LEAKAGE, RESULT_SUM) / n << '\n';
+      << gt(GlobalTally::LEAKAGE, TallyResult::SUM) / n << '\n';
   }
   std::cout << '\n';
 
@@ -669,16 +669,16 @@ write_tallies()
     if (tally.deriv_ != C_NONE) {
       const auto& deriv {model::tally_derivs[tally.deriv_]};
       switch (deriv.variable) {
-      case DIFF_DENSITY:
+      case DerivativeVariable::DENSITY:
         tallies_out << " Density derivative Material "
           << std::to_string(deriv.diff_material) << "\n";
         break;
-      case DIFF_NUCLIDE_DENSITY:
+      case DerivativeVariable::NUCLIDE_DENSITY:
         tallies_out << " Nuclide density derivative Material "
           << std::to_string(deriv.diff_material) << "  Nuclide "
           << data::nuclides[deriv.diff_nuclide]->name_ << "\n";
         break;
-      case DIFF_TEMPERATURE:
+      case DerivativeVariable::TEMPERATURE:
         tallies_out << " Temperature derivative Material "
           << std::to_string(deriv.diff_material) << "\n";
         break;

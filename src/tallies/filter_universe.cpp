@@ -47,7 +47,7 @@ UniverseFilter::set_universes(gsl::span<int32_t> universes)
 }
 
 void
-UniverseFilter::get_all_bins(const Particle* p, int estimator,
+UniverseFilter::get_all_bins(const Particle* p, TallyEstimator estimator,
                              FilterMatch& match) const
 {
   for (int i = 0; i < p->n_coord_; i++) {

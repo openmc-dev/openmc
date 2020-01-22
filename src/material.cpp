@@ -37,8 +37,8 @@ namespace openmc {
 
 namespace model {
 
-std::vector<std::unique_ptr<Material>> materials;
 std::unordered_map<int32_t, int32_t> material_map;
+std::vector<std::unique_ptr<Material>> materials;
 
 } // namespace model
 
@@ -348,7 +348,7 @@ void Material::finalize()
   }
 
   // Generate material bremsstrahlung data for electrons and positrons
-  if (settings::photon_transport && settings::electron_treatment == ELECTRON_TTB) {
+  if (settings::photon_transport && settings::electron_treatment == ElectronTreatment::TTB) {
     this->init_bremsstrahlung();
   }
 

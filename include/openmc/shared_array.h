@@ -29,7 +29,6 @@ public:
   SharedArray(int64_t capacity) : capacity_(capacity)
   {
     data_ = std::make_unique<T[]>(capacity);
-    size_ = 0;
   }
   
   //==========================================================================
@@ -45,7 +44,7 @@ public:
 
   //! Increases the size of the SharedArray by one and returns an index to the
   //! last element of the array.
-  int64_t append()
+  int64_t thread_safe_append()
   {
     // Atomically capture the index we want to write to
     int64_t idx;
@@ -70,8 +69,12 @@ public:
   }
 
   int64_t size() {return size_;}
+  
+  int64_t resize(int64_t size) {size_ = size;}
 
   int64_t capacity() {return capacity_;}
+
+  T* data() {return data_.get();}
 
 }; 
 

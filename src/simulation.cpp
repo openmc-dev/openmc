@@ -626,32 +626,25 @@ void transport_event_based()
     while (true) {
       // Determine which event kernel has the longest queue
       int64_t max = std::max({
-        simulation::calculate_fuel_xs_queue_length,
-        simulation::calculate_nonfuel_xs_queue_length,
-        simulation::advance_particle_queue_length,
-        simulation::surface_crossing_queue_length,
-        simulation::collision_queue_length});
+        simulation::calculate_fuel_xs_queue.size(),
+        simulation::calculate_nonfuel_xs_queue.size(),
+        simulation::advance_particle_queue.size(),
+        simulation::surface_crossing_queue.size(),
+        simulation::collision_queue.size()});
 
       // Execute event with the longest queue
       if (max == 0) {
         break;
-      } else if (max == simulation::calculate_fuel_xs_queue_length) {
-        process_calculate_xs_events(simulation::calculate_fuel_xs_queue.get(),
-            simulation::calculate_fuel_xs_queue_length);
-        simulation::calculate_fuel_xs_queue_length = 0;
-      } else if (max == simulation::calculate_nonfuel_xs_queue_length) {
-        process_calculate_xs_events(simulation::calculate_nonfuel_xs_queue.get(),
-            simulation::calculate_nonfuel_xs_queue_length);
-        simulation::calculate_nonfuel_xs_queue_length = 0;
-      } else if (max == simulation::advance_particle_queue_length) {
+      } else if (max == simulation::calculate_fuel_xs_queue.size()) {
+        process_calculate_xs_events(simulation::calculate_fuel_xs_queue);
+      } else if (max == simulation::calculate_nonfuel_xs_queue.size()) {
+        process_calculate_xs_events(simulation::calculate_nonfuel_xs_queue);
+      } else if (max == simulation::advance_particle_queue.size()) {
         process_advance_particle_events();
-        simulation::advance_particle_queue_length = 0;
-      } else if (max == simulation::surface_crossing_queue_length) {
+      } else if (max == simulation::surface_crossing_queue.size()) {
         process_surface_crossing_events();
-        simulation::surface_crossing_queue_length = 0;
-      } else if (max == simulation::collision_queue_length) {
+      } else if (max == simulation::collision_queue.size()) {
         process_collision_events();
-        simulation::collision_queue_length = 0;
       }
     }
     

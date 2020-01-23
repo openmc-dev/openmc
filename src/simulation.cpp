@@ -626,11 +626,11 @@ void transport_event_based()
     while (true) {
       // Determine which event kernel has the longest queue
       int64_t max = std::max({
-          simulation::calculate_fuel_xs_queue_length,
-          simulation::calculate_nonfuel_xs_queue_length,
-          simulation::advance_particle_queue_length,
-          simulation::surface_crossing_queue_length,
-          simulation::collision_queue_length});
+        simulation::calculate_fuel_xs_queue_length,
+        simulation::calculate_nonfuel_xs_queue_length,
+        simulation::advance_particle_queue_length,
+        simulation::surface_crossing_queue_length,
+        simulation::collision_queue_length});
 
       // Execute event with the longest queue
       if (max == 0) {

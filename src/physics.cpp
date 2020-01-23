@@ -16,7 +16,6 @@
 #include "openmc/secondary_uncorrelated.h"
 #include "openmc/search.h"
 #include "openmc/settings.h"
-#include "openmc/shared_array.h"
 #include "openmc/simulation.h"
 #include "openmc/string_utils.h"
 #include "openmc/thermal.h"
@@ -182,14 +181,10 @@ create_fission_sites(Particle* p, int i_nuclide, const Reaction* rx)
   for (int i = 0; i < nu; ++i) {
     Particle::Bank* site;
     if (use_fission_bank) {
-      int64_t idx;
-      #pragma omp atomic capture
-      idx = simulation::fission_bank_length++;
-      if (idx >= simulation::fission_bank_max) {
+      int64_t idx = simulation::fission_bank.thread_safe_append();
+      if (idx == -1) {
         warning("The shared fission bank is full. Additional fission sites created "
             "in this generation will not be banked.");
-        #pragma omp atomic write
-        simulation::fission_bank_length = simulation::fission_bank_max;
         skipped++;
         break;
       }

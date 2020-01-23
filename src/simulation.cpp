@@ -375,7 +375,7 @@ void initialize_generation()
 {
   if (settings::run_mode == RunMode::EIGENVALUE) {
     // Clear out the fission bank
-    simulation::fission_bank_length = 0;
+    simulation::fission_bank.resize(0);
 
     // Count source sites if using uniform fission source weighting
     if (settings::ufs_on) ufs_count_sites();

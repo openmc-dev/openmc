@@ -4,6 +4,9 @@
 //! \file shared_array.h
 //! \brief Shared array data structure
 
+#include<memory>
+
+
 namespace openmc {
 
 //==============================================================================

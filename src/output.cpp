@@ -466,14 +466,14 @@ void print_runtime()
   show_time("Total time in simulation", time_inactive.elapsed() +
     time_active.elapsed());
   show_time("Time in transport only", time_transport.elapsed(), 1);
-  #ifdef EVENT_BASED
-  show_time("Particle initialization", time_event_init.elapsed(), 2);
-  show_time("XS lookups", time_event_calculate_xs.elapsed(), 2);
-  show_time("Advancing", time_event_advance_particle.elapsed(), 2);
-  show_time("Surface crossings", time_event_surface_crossing.elapsed(), 2);
-  show_time("Collisions", time_event_collision.elapsed(), 2);
-  show_time("Particle death", time_event_death.elapsed(), 2);
-  #endif
+  if (settings::event_based) {
+    show_time("Particle initialization", time_event_init.elapsed(), 2);
+    show_time("XS lookups", time_event_calculate_xs.elapsed(), 2);
+    show_time("Advancing", time_event_advance_particle.elapsed(), 2);
+    show_time("Surface crossings", time_event_surface_crossing.elapsed(), 2);
+    show_time("Collisions", time_event_collision.elapsed(), 2);
+    show_time("Particle death", time_event_death.elapsed(), 2);
+  }
   if (settings::run_mode == RunMode::EIGENVALUE) {
     show_time("Time in inactive batches", time_inactive.elapsed(), 1);
   }

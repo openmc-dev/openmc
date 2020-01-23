@@ -88,6 +88,16 @@
       </element>
     </optional>
     <optional>
+      <element name="event_based">
+        <data type="boolean"/>
+      </element>
+    </optional>
+    <optional>
+      <element name="max_in_flight_particles">
+        <data type="positiveInteger"/>
+      </element>
+    </optional>
+    <optional>
       <element name="electron_treatment">
         <choice>
           <value>led</value>

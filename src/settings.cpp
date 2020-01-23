@@ -67,6 +67,7 @@ bool ufs_on                  {false};
 bool urr_ptables_on          {true};
 bool write_all_tracks        {false};
 bool write_initial_source    {false};
+bool event_based;            {false};
 
 std::string path_cross_sections;
 std::string path_input;
@@ -790,6 +791,11 @@ void read_settings_xml()
   // Check whether to scale fission photon yields
   if (check_for_node(root, "delayed_photon_scaling")) {
     delayed_photon_scaling = get_node_value_bool(root, "delayed_photon_scaling");
+  }
+  
+  // Check whether to use event-based parallelism
+  if (check_for_node(root, "event_based")) {
+    event_based = get_node_value_bool(root, "event_based");
   }
 
   // Check whether material cell offsets should be generated

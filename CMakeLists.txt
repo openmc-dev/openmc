@@ -19,7 +19,6 @@ option(debug    "Compile with debug flags"                       OFF)
 option(optimize "Turn on all compiler optimization flags"        OFF)
 option(coverage "Compile with coverage analysis flags"           OFF)
 option(dagmc    "Enable support for DAGMC (CAD) geometry"        OFF)
-option(event    "Enable event-based transport mode"              OFF)
 
 #===============================================================================
 # MPI for distributed-memory parallelism
@@ -352,10 +351,6 @@ if(dagmc)
   target_compile_definitions(libopenmc PRIVATE DAGMC)
   target_link_libraries(libopenmc ${DAGMC_LIBRARIES})
   target_include_directories(libopenmc PRIVATE ${DAGMC_INCLUDE_DIRS})
-endif()
-
-if(event)
-  target_compile_definitions(libopenmc PRIVATE EVENT_BASED)
 endif()
 
 #===============================================================================

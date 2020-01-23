@@ -52,6 +52,7 @@ extern bool ufs_on;                   //!< uniform fission site method on?
 extern bool urr_ptables_on;           //!< use unresolved resonance prob. tables?
 extern bool write_all_tracks;         //!< write track files for every particle?
 extern bool write_initial_source;     //!< write out initial source file?
+extern bool event_based;              //!< use event-based mode (instead of history-based)
 
 // Paths to various files
 extern std::string path_cross_sections;   //!< path to cross_sections.xml

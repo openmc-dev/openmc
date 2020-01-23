@@ -132,7 +132,8 @@ void get_run_parameters(pugi::xml_node node_base)
   
   // Get maximum number of in flight particles for event-based mode
   if (check_for_node(node_base, "max_in_flight_particles")) {
-    max_in_flight_particles = std::stoll(get_node_value(node_base, "max_in_flight_particles"));
+    max_in_flight_particles = std::stoll(get_node_value(node_base,
+      "max_in_flight_particles"));
   }
 
   // Get number of basic batches

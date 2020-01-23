@@ -127,14 +127,10 @@ create_fission_sites(Particle* p)
   for (int i = 0; i < nu; ++i) {
     Particle::Bank* site;
     if (use_fission_bank) {
-      int64_t idx;
-      #pragma omp atomic capture
-      idx = simulation::fission_bank_length++;
-      if (idx >= simulation::fission_bank_max) {
+      int64_t idx = simulation::fission_bank.thread_safe_append();
+      if (idx == -1) {
         warning("The shared fission bank is full. Additional fission sites created "
             "in this generation will not be banked.");
-        #pragma omp atomic write
-        simulation::fission_bank_length = simulation::fission_bank_max;
         skipped++;
         break;
       }

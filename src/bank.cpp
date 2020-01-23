@@ -17,15 +17,11 @@ namespace simulation {
 
 std::vector<Particle::Bank> source_bank;
 
-// The fission bank is allocated as a pointer, rather than a vector, as it will
+// The fission bank is allocated as a SharedArray, rather than a vector, as it will
 // be shared by all threads in the simulation. It will be allocated to a fixed
 // maximum capacity in the init_fission_bank() function. Then, Elements will be
-// added to it by performing atomic incrementing captures on the fission_bank_length
-// variable. A vector is not appropriate, as use of push_back() and size()
-// functions would cause undefined or unintended behavior.
-std::unique_ptr<Particle::Bank[]> fission_bank;
-int64_t fission_bank_length {0};
-int64_t fission_bank_max;
+// added to it by using SharedArray's special thread_safe_append() function.
+SharedArray<Particle::Bank> fission_bank;
 
 // Each entry in this vector corresponds to the number of progeny produced
 // this generation for the particle located at that index. This vector is
@@ -41,16 +37,13 @@ std::vector<int64_t> progeny_per_particle;
 void free_memory_bank()
 {
   simulation::source_bank.clear();
-  simulation::fission_bank.reset();
-  simulation::fission_bank_length = 0;
+  simulation::fission_bank.clear();
   simulation::progeny_per_particle.clear();
 }
 
 void init_fission_bank(int64_t max)
 {
-  simulation::fission_bank_max = max;
-  simulation::fission_bank = std::make_unique<Particle::Bank[]>(max);
-  simulation::fission_bank_length = 0;
+  simulation::fission_bank.reserve(max);
   simulation::progeny_per_particle.resize(simulation::work_per_rank);
 }
 
@@ -87,15 +80,15 @@ void sort_fission_bank()
   std::vector<Particle::Bank> sorted_bank_holder;
 
   // If there is not enough space, allocate a temporary vector and point to it
-  if (simulation::fission_bank_length > simulation::fission_bank_max / 2) {
-    sorted_bank_holder.resize(simulation::fission_bank_length);
+  if (simulation::fission_bank.size() > simulation::fission_bank.capacity() / 2) {
+    sorted_bank_holder.resize(simulation::fission_bank.size());
     sorted_bank = sorted_bank_holder.data();
   } else { // otherwise, point sorted_bank to unused portion of the fission bank
-    sorted_bank = &simulation::fission_bank[simulation::fission_bank_length];
+    sorted_bank = &simulation::fission_bank[simulation::fission_bank.size()];
   }
 
   // Use parent and progeny indices to sort fission bank
-  for (int64_t i = 0; i < simulation::fission_bank_length; i++) {
+  for (int64_t i = 0; i < simulation::fission_bank.size(); i++) {
     const auto& site = simulation::fission_bank[i];
     int64_t offset = site.parent_id - 1 - simulation::work_index[mpi::rank];
     int64_t idx = simulation::progeny_per_particle[offset] + site.progeny_id;
@@ -103,8 +96,8 @@ void sort_fission_bank()
   }
 
   // Copy sorted bank into the fission bank
-  std::copy(sorted_bank, sorted_bank + simulation::fission_bank_length,
-      simulation::fission_bank.get());
+  std::copy(sorted_bank, sorted_bank + simulation::fission_bank.size(),
+      simulation::fission_bank.data());
 }
 
 //==============================================================================
@@ -125,12 +118,12 @@ extern "C" int openmc_source_bank(void** ptr, int64_t* n)
 
 extern "C" int openmc_fission_bank(void** ptr, int64_t* n)
 {
-  if (simulation::fission_bank_length == 0) {
+  if (simulation::fission_bank.size() == 0) {
     set_errmsg("Fission bank has not been allocated.");
     return OPENMC_E_ALLOCATE;
   } else {
-    *ptr = simulation::fission_bank.get();
-    *n =   simulation::fission_bank_length;
+    *ptr = simulation::fission_bank.data();
+    *n =   simulation::fission_bank.size();
     return 0;
   }
 }

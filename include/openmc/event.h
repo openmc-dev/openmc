@@ -5,6 +5,7 @@
 //! \brief Event-based data structures and methods
 
 #include "openmc/particle.h"
+#include "openmc/shared_array.h"
 
 
 namespace openmc {
@@ -49,23 +50,14 @@ namespace simulation {
 // coordinated with atomics. This means that normal vector methods (e.g.,
 // push_back(), size()) would cause undefined or unintended behavior. Rather,
 // adding particles to queues will be done via the enqueue_particle() function.
-extern std::unique_ptr<QueueItem[]> calculate_fuel_xs_queue;
-extern std::unique_ptr<QueueItem[]> calculate_nonfuel_xs_queue;
-extern std::unique_ptr<QueueItem[]> advance_particle_queue;
-extern std::unique_ptr<QueueItem[]> surface_crossing_queue;
-extern std::unique_ptr<QueueItem[]> collision_queue;
+extern SharedArray<QueueItem> calculate_fuel_xs_queue;
+extern SharedArray<QueueItem> calculate_nonfuel_xs_queue;
+extern SharedArray<QueueItem> advance_particle_queue;
+extern SharedArray<QueueItem> surface_crossing_queue;
+extern SharedArray<QueueItem> collision_queue;
 
-// Event queue lengths
-extern int64_t calculate_fuel_xs_queue_length;
-extern int64_t calculate_nonfuel_xs_queue_length;
-extern int64_t advance_particle_queue_length;
-extern int64_t surface_crossing_queue_length;
-extern int64_t collision_queue_length;
-
-// Particle buffer. This is an allocated pointer rather than a vector as it
-// will be shared between threads, so most vector methods would result in
-// undefined or unintended behavior.
-extern std::unique_ptr<Particle[]>  particles;
+// Particle buffer
+extern std::vector<Particle>  particles;
 
 } // namespace simulation
 
@@ -82,11 +74,9 @@ void free_event_queues(void);
 
 //! Atomically adds a particle to the specified queue
 //! \param queue The queue to append the particle to
-//! \param length A reference to the length variable for the queue
 //! \param p A pointer to the particle
 //! \param buffer_idx The particle's actual index in the particle buffer
-void enqueue_particle(QueueItem* queue, int64_t& length, const Particle* p,
-    int64_t buffer_idx);
+void enqueue_particle(SharedArray<QueueItem>& queue, const Particle* p, int64_t buffer_idx);
 
 //! Enqueues a particle based on if it is in fuel or a non-fuel material
 //! \param buffer_idx The particle's actual index in the particle buffer
@@ -98,9 +88,8 @@ void dispatch_xs_event(int64_t buffer_idx);
 void process_init_events(int64_t n_particles, int64_t source_offset);
 
 //! Executes the calculate XS event for all particles in this event's buffer
-//! \param queue The XS lookup queue to use
-//! \param n_particles The number of particles in this queue
-void process_calculate_xs_events(QueueItem* queue, int64_t n_particles);
+//! \param queue A reference to the desired XS lookup queue
+void process_calculate_xs_events(SharedArray<QueueItem>& queue);
 
 //! Executes the advance particle event for all particles in this event's buffer
 void process_advance_particle_events();

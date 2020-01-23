@@ -16,6 +16,7 @@
 #include "openmc/secondary_uncorrelated.h"
 #include "openmc/search.h"
 #include "openmc/settings.h"
+#include "openmc/shared_array.h"
 #include "openmc/simulation.h"
 #include "openmc/string_utils.h"
 #include "openmc/thermal.h"

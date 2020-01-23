@@ -28,30 +28,13 @@ struct QueueItem{
   int64_t material;    //!< material that particle is in
   double E;            //!< particle energy
 
-  // Comparator sorts by particle type, then by material type, then by energy
+  // Compare by particle type, then by material type, then by energy
+  // TODO: Currently, material IDs are not usually unique to material
+  // types. When unique material type IDs are available, we can alter the
+  // material field in this struct to contain the material type instead.
   bool operator<(const QueueItem& rhs) const
   {
-    // First, compare by particle type
-    if (type < rhs.type) {
-      return true;
-    } else if (type > rhs.type) {
-      return false;
-    }
-
-    // If we have reached this point, we have the same particle types.
-    
-    // Next, compare by material:
-    // TODO: Currently, material IDs are not usually unique to material
-    // types. When unique material type IDs are available, we can alter the
-    // material field in this struct to contain the material type instead.
-    if( material < rhs.material)
-      return true;
-    if( material > rhs.material)
-      return false;
-
-    // At this point, we have the same particle type, in the same material.
-    // Now, compare by energy.
-    return (E < rhs.E);
+    return std::tie(type, material, E) < std::tie(rhs.type, rhs.material, rhs.E);
   }
 };
 
@@ -102,7 +85,7 @@ void free_event_queues(void);
 //! \param length A reference to the length variable for the queue
 //! \param p A pointer to the particle
 //! \param buffer_idx The particle's actual index in the particle buffer
-void enqueue_particle(QueueItem* queue, int64_t& length, Particle* p,
+void enqueue_particle(QueueItem* queue, int64_t& length, const Particle* p,
     int64_t buffer_idx);
 
 //! Enqueues a particle based on if it is in fuel or a non-fuel material

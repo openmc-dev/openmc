@@ -52,7 +52,7 @@ void free_event_queues(void)
   simulation::particles.reset();
 }
 
-void enqueue_particle(QueueItem* queue, int64_t& length, Particle* p,
+void enqueue_particle(QueueItem* queue, int64_t& length, const Particle* p,
     int64_t buffer_idx)
 {
   int64_t idx;
@@ -73,8 +73,8 @@ void dispatch_xs_event(int64_t buffer_idx)
     enqueue_particle(simulation::calculate_nonfuel_xs_queue.get(),
         simulation::calculate_nonfuel_xs_queue_length, p, buffer_idx);
   } else {
-      enqueue_particle(simulation::calculate_fuel_xs_queue.get(),
-          simulation::calculate_fuel_xs_queue_length, p, buffer_idx);
+    enqueue_particle(simulation::calculate_fuel_xs_queue.get(),
+        simulation::calculate_fuel_xs_queue_length, p, buffer_idx);
   }
 }
 

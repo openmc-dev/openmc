@@ -132,8 +132,7 @@ class Cell(_FortranObjectWithID):
         indices = POINTER(c_int32)()
         n = c_int32()
         _dll.openmc_cell_get_fill(self._index, fill_type, indices, n)
-
-        if fill_type.value == 1:
+        if fill_type.value == 0:
             if n.value > 1:
                 return [Material(index=i) for i in indices[:n.value]]
             else:
@@ -148,13 +147,13 @@ class Cell(_FortranObjectWithID):
             n = len(fill)
             indices = (c_int32*n)(*(m._index if m is not None else -1
                                     for m in fill))
-            _dll.openmc_cell_set_fill(self._index, 1, n, indices)
+            _dll.openmc_cell_set_fill(self._index, 0, n, indices)
         elif isinstance(fill, Material):
             indices = (c_int32*1)(fill._index)
-            _dll.openmc_cell_set_fill(self._index, 1, 1, indices)
+            _dll.openmc_cell_set_fill(self._index, 0, 1, indices)
         elif fill is None:
             indices = (c_int32*1)(-1)
-            _dll.openmc_cell_set_fill(self._index, 1, 1, indices)
+            _dll.openmc_cell_set_fill(self._index, 0, 1, indices)
 
     def get_temperature(self, instance=None):
         """Get the temperature of a cell

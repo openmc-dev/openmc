@@ -25,10 +25,11 @@ namespace openmc {
 // Constants
 //==============================================================================
 
-// TODO: Convert to enum
-constexpr int FILL_MATERIAL {1};
-constexpr int FILL_UNIVERSE {2};
-constexpr int FILL_LATTICE {3};
+enum class Fill {
+  MATERIAL,
+  UNIVERSE,
+  LATTICE
+};
 
 // TODO: Convert to enum
 constexpr int32_t OP_LEFT_PAREN   {std::numeric_limits<int32_t>::max()};
@@ -149,7 +150,7 @@ public:
 
   int32_t id_;                //!< Unique ID
   std::string name_;          //!< User-defined name
-  int type_;                  //!< Material, universe, or lattice
+  Fill type_;                  //!< Material, universe, or lattice
   int32_t universe_;          //!< Universe # this cell is in
   int32_t fill_;              //!< Universe # filling this cell
   int32_t n_instances_{0};    //!< Number of instances of this cell

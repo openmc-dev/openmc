@@ -62,7 +62,7 @@ void collision(Particle* p)
   // Display information about collision
   if (settings::verbosity >= 10 || p->trace_) {
     std::stringstream msg;
-    if (p->event_ == EVENT_KILL) {
+    if (p->event_ == TallyEvent::KILL) {
       msg << "    Killed. Energy = " << p->E_ << " eV.";
     } else if (p->type_ == Particle::Type::neutron) {
       msg << "    " << reaction_name(p->event_mt_) << " with " <<
@@ -94,9 +94,9 @@ void sample_neutron_reaction(Particle* p)
 
   if (nuc->fissionable_) {
     Reaction* rx = sample_fission(i_nuclide, p);
-    if (settings::run_mode == RUN_MODE_EIGENVALUE) {
+    if (settings::run_mode == RunMode::EIGENVALUE) {
       create_fission_sites(p, i_nuclide, rx);
-    } else if (settings::run_mode == RUN_MODE_FIXEDSOURCE &&
+    } else if (settings::run_mode == RunMode::FIXED_SOURCE &&
       settings::create_fission_neutrons) {
       create_fission_sites(p, i_nuclide, rx);
 
@@ -176,7 +176,7 @@ create_fission_sites(Particle* p, int i_nuclide, const Reaction* rx)
 
   // Determine whether to place fission sites into the shared fission bank
   // or the secondary particle bank.
-  bool use_fission_bank = (settings::run_mode == RUN_MODE_EIGENVALUE);
+  bool use_fission_bank = (settings::run_mode == RunMode::EIGENVALUE);
 
   for (int i = 0; i < nu; ++i) {
     Particle::Bank* site;
@@ -275,7 +275,7 @@ void sample_photon_reaction(Particle* p)
   if (prob > cutoff) {
     double mu = element.rayleigh_scatter(alpha, p->current_seed());
     p->u() = rotate_angle(p->u(), mu, nullptr, p->current_seed());
-    p->event_ = EVENT_SCATTER;
+    p->event_ = TallyEvent::SCATTER;
     p->event_mt_ = COHERENT;
     return;
   }
@@ -318,7 +318,7 @@ void sample_photon_reaction(Particle* p)
     phi += PI;
     p->E_ = alpha_out*MASS_ELECTRON_EV;
     p->u() = rotate_angle(p->u(), mu, &phi, p->current_seed());
-    p->event_ = EVENT_SCATTER;
+    p->event_ = TallyEvent::SCATTER;
     p->event_mt_ = INCOHERENT;
     return;
   }
@@ -370,7 +370,7 @@ void sample_photon_reaction(Particle* p)
         // Allow electrons to fill orbital and produce auger electrons
         // and fluorescent photons
         element.atomic_relaxation(shell, *p);
-        p->event_ = EVENT_ABSORB;
+        p->event_ = TallyEvent::ABSORB;
         p->event_mt_ = 533 + shell.index_subshell;
         p->alive_ = false;
         p->E_ = 0.0;
@@ -396,7 +396,7 @@ void sample_photon_reaction(Particle* p)
     u = rotate_angle(p->u(), mu_positron, nullptr, p->current_seed());
     p->create_secondary(u, E_positron, Particle::Type::positron);
 
-    p->event_ = EVENT_ABSORB;
+    p->event_ = TallyEvent::ABSORB;
     p->event_mt_ = PAIR_PROD;
     p->alive_ = false;
     p->E_ = 0.0;
@@ -407,21 +407,21 @@ void sample_electron_reaction(Particle* p)
 {
   // TODO: create reaction types
 
-  if (settings::electron_treatment == ELECTRON_TTB) {
+  if (settings::electron_treatment == ElectronTreatment::TTB) {
     double E_lost;
     thick_target_bremsstrahlung(*p, &E_lost);
   }
 
   p->E_ = 0.0;
   p->alive_ = false;
-  p->event_ = EVENT_ABSORB;
+  p->event_ = TallyEvent::ABSORB;
 }
 
 void sample_positron_reaction(Particle* p)
 {
   // TODO: create reaction types
 
-  if (settings::electron_treatment == ELECTRON_TTB) {
+  if (settings::electron_treatment == ElectronTreatment::TTB) {
     double E_lost;
     thick_target_bremsstrahlung(*p, &E_lost);
   }
@@ -440,7 +440,7 @@ void sample_positron_reaction(Particle* p)
 
   p->E_ = 0.0;
   p->alive_ = false;
-  p->event_ = EVENT_ABSORB;
+  p->event_ = TallyEvent::ABSORB;
 }
 
 int sample_nuclide(Particle* p)
@@ -592,7 +592,7 @@ void absorption(Particle* p, int i_nuclide)
     p->wgt_last_ = p->wgt_;
 
     // Score implicit absorption estimate of keff
-    if (settings::run_mode == RUN_MODE_EIGENVALUE) {
+    if (settings::run_mode == RunMode::EIGENVALUE) {
       p->keff_tally_absorption_ += p->wgt_absorb_ * p->neutron_xs_[
         i_nuclide].nu_fission / p->neutron_xs_[i_nuclide].absorption;
     }
@@ -601,13 +601,13 @@ void absorption(Particle* p, int i_nuclide)
     if (p->neutron_xs_[i_nuclide].absorption >
         prn(p->current_seed()) * p->neutron_xs_[i_nuclide].total) {
       // Score absorption estimate of keff
-      if (settings::run_mode == RUN_MODE_EIGENVALUE) {
+      if (settings::run_mode == RunMode::EIGENVALUE) {
         p->keff_tally_absorption_ += p->wgt_ * p->neutron_xs_[
           i_nuclide].nu_fission / p->neutron_xs_[i_nuclide].absorption;
       }
 
       p->alive_ = false;
-      p->event_ = EVENT_ABSORB;
+      p->event_ = TallyEvent::ABSORB;
       p->event_mt_ = N_DISAPPEAR;
     }
   }
@@ -693,7 +693,7 @@ void scatter(Particle* p, int i_nuclide)
   }
 
   // Set event component
-  p->event_ = EVENT_SCATTER;
+  p->event_ = TallyEvent::SCATTER;
 
   // Sample new outgoing angle for isotropic-in-lab scattering
   const auto& mat {model::materials[p->material_]};

@@ -44,7 +44,7 @@ SphericalHarmonicsFilter::set_cosine(gsl::cstring_span cosine)
 }
 
 void
-SphericalHarmonicsFilter::get_all_bins(const Particle* p, int estimator,
+SphericalHarmonicsFilter::get_all_bins(const Particle* p, TallyEstimator estimator,
                                        FilterMatch& match) const
 {
   // Determine cosine term for scatter expansion if necessary

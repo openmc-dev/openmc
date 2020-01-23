@@ -10,10 +10,11 @@ def pytest_addoption(parser):
     parser.addoption('--mpi-np')
     parser.addoption('--update', action='store_true')
     parser.addoption('--build-inputs', action='store_true')
+    parser.addoption('--event', action='store_true')
 
 
 def pytest_configure(config):
-    opts = ['exe', 'mpi', 'mpiexec', 'mpi_np', 'update', 'build_inputs']
+    opts = ['exe', 'mpi', 'mpiexec', 'mpi_np', 'update', 'build_inputs', 'event']
     for opt in opts:
         if config.getoption(opt) is not None:
             regression_config[opt] = config.getoption(opt)

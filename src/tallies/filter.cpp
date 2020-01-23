@@ -40,8 +40,8 @@ namespace openmc {
 //==============================================================================
 
 namespace model {
-  std::vector<std::unique_ptr<Filter>> tally_filters;
   std::unordered_map<int, int> filter_map;
+  std::vector<std::unique_ptr<Filter>> tally_filters;
 }
 
 //==============================================================================

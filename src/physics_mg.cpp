@@ -47,8 +47,8 @@ sample_reaction(Particle* p)
   // absorption (including fission)
 
   if (model::materials[p->material_]->fissionable_) {
-    if (settings::run_mode == RUN_MODE_EIGENVALUE  ||
-       (settings::run_mode == RUN_MODE_FIXEDSOURCE &&
+    if (settings::run_mode == RunMode::EIGENVALUE  ||
+       (settings::run_mode == RunMode::FIXED_SOURCE &&
         settings::create_fission_neutrons)) {
       create_fission_sites(p);
     }
@@ -86,7 +86,7 @@ scatter(Particle* p)
   p->E_ = data::mg.energy_bin_avg_[p->g_];
 
   // Set event component
-  p->event_ = EVENT_SCATTER;
+  p->event_ = TallyEvent::SCATTER;
 }
 
 void
@@ -122,7 +122,7 @@ create_fission_sites(Particle* p)
   
   // Determine whether to place fission sites into the shared fission bank
   // or the secondary particle bank.
-  bool use_fission_bank = (settings::run_mode == RUN_MODE_EIGENVALUE);
+  bool use_fission_bank = (settings::run_mode == RunMode::EIGENVALUE);
 
   for (int i = 0; i < nu; ++i) {
     Particle::Bank* site;
@@ -230,7 +230,7 @@ absorption(Particle* p)
       p->keff_tally_absorption_ += p->wgt_ * p->macro_xs_.nu_fission /
            p->macro_xs_.absorption;
       p->alive_ = false;
-      p->event_ = EVENT_ABSORB;
+      p->event_ = TallyEvent::ABSORB;
     }
 
   }

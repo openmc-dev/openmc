@@ -39,7 +39,7 @@ class Mgxs {
   private:
 
     xt::xtensor<double, 1> kTs;   // temperature in eV (k * T)
-    int scatter_format; // flag for if this is legendre, histogram, or tabular
+    AngleDistributionType scatter_format; // flag for if this is legendre, histogram, or tabular
     int num_delayed_groups; // number of delayed neutron groups
     int num_groups;     // number of energy groups
     std::vector<XsData> xs; // Cross section data
@@ -64,7 +64,7 @@ class Mgxs {
     //! @param in_azimuthal Azimuthal angle grid.
     void
     init(const std::string& in_name, double in_awr, const std::vector<double>& in_kTs,
-         bool in_fissionable, int in_scatter_format, bool in_is_isotropic,
+         bool in_fissionable, AngleDistributionType in_scatter_format, bool in_is_isotropic,
          const std::vector<double>& in_polar, const std::vector<double>& in_azimuthal);
 
     //! \brief Initializes the Mgxs object metadata from the HDF5 file
@@ -141,11 +141,11 @@ class Mgxs {
     //! @param dg delayed group index; use nullptr if irrelevant.
     //! @return Requested cross section value.
     double
-    get_xs(int xstype, int gin, const int* gout, const double* mu,
+    get_xs(MgxsType xstype, int gin, const int* gout, const double* mu,
       const int* dg);
 
     inline double
-    get_xs(int xstype, int gin)
+    get_xs(MgxsType xstype, int gin)
     {return get_xs(xstype, gin, nullptr, nullptr, nullptr);}
 
 

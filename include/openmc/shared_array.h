@@ -17,18 +17,14 @@ private:
   //==========================================================================
   // Data members
   std::unique_ptr<T[]> data_;
-  int64_t size_;
-  int64_t capacity_;
+  int64_t size_ {0};
+  int64_t capacity_ {0};
 
 public: 
   //==========================================================================
   // Constructors
   
-  SharedArray()
-  {
-    capacity_ = 0;
-    size_ = 0;
-  }
+  SharedArray() = default;
   
   SharedArray(int64_t capacity) : capacity_(capacity)
   {
@@ -73,18 +69,9 @@ public:
     capacity_ = 0;
   }
 
-  int64_t size()
-  {
-    int size;
-    #pragma omp atomic read
-    size = size_;
-    return size;
-  }
+  int64_t size() {return size_;}
 
-  int64_t capacity()
-  {
-    return capacity_;
-  }
+  int64_t capacity() {return capacity_;}
 
 }; 
 

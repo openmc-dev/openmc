@@ -23,7 +23,9 @@ element settings {
   element energy_mode { ( "continuous-energy" | "ce" | "CE" | "multi-group" | "mg" | "MG" ) }? &
 
   element entropy_mesh { xsd:positiveInteger }? &
-
+  
+  element event_based { xsd:boolean }? &
+  
   element generations_per_batch { xsd:positiveInteger }? &
 
   element inactive { xsd:nonNegativeInteger }? &
@@ -36,6 +38,8 @@ element settings {
   element log_grid_bins { xsd:positiveInteger }? &
 
   element material_cell_offsets { xsd:boolean }? &
+  
+  element max_in_flight_particles { xsd:positiveInteger }? &
 
   element max_order { xsd:nonNegativeInteger }? &
 

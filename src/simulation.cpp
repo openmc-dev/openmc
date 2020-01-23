@@ -75,11 +75,11 @@ int openmc_simulation_init()
 
   // If doing an event-based simulation, intialize the particle buffer
   // and event queues
-  #ifdef EVENT_BASED
-  int64_t event_buffer_length = std::min(simulation::work_per_rank,
+  if (settings::event_based) {
+    int64_t event_buffer_length = std::min(simulation::work_per_rank,
       settings::max_in_flight_particles);
-  init_event_queues(event_buffer_length);
-  #endif
+    init_event_queues(event_buffer_length);
+  }
 
   // Allocate tally results arrays if they're not allocated yet
   for (auto& t : model::tallies) {
@@ -192,11 +192,11 @@ int openmc_next_batch(int* status)
     simulation::time_transport.start();
 
     // Transport loop
-    #ifdef EVENT_BASED
-    transport_event_based();
-    #else
-    transport_history_based();
-    #endif
+    if (settings::event_based) {
+      transport_event_based();
+    } else {
+      transport_history_based();
+    }
 
     // Accumulate time for transport
     simulation::time_transport.stop();

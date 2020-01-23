@@ -48,11 +48,11 @@ void free_memory()
   if (mpi::master) {
     free_memory_cmfd();
   }
+  if (settings::event_based) {
+    free_event_queues();
+  }
 #ifdef DAGMC
   free_memory_dagmc();
-#endif
-#ifdef EVENT_BASED
-  free_event_queues();
 #endif
 }
 

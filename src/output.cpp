@@ -327,6 +327,7 @@ void print_usage()
       "                         or a particle restart file\n"
       "  -s, --threads          Number of OpenMP threads\n"
       "  -t, --track            Write tracks for all particles\n"
+      "  -e, --event            Run using event-based parallelism\n"
       "  -v, --version          Show version information\n"
       "  -h, --help             Show this message\n";
   }

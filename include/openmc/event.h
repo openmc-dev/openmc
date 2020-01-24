@@ -45,11 +45,10 @@ struct QueueItem{
 
 namespace simulation {
 
-// Event queues. These are allocated pointer variables rather than vectors,
-// because they are shared between threads and writing to them must be
-// coordinated with atomics. This means that normal vector methods (e.g.,
-// push_back(), size()) would cause undefined or unintended behavior. Rather,
-// adding particles to queues will be done via the enqueue_particle() function.
+// Event queues. These use the special SharedArray type, rather than a normal
+// vector, as they will be shared between threads and may be appended to at the
+// same time. To facilitate this, the SharedArray thread_safe_append() method
+// is provided which controls the append operations using atomics.
 extern SharedArray<QueueItem> calculate_fuel_xs_queue;
 extern SharedArray<QueueItem> calculate_nonfuel_xs_queue;
 extern SharedArray<QueueItem> advance_particle_queue;

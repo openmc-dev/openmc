@@ -3,7 +3,6 @@
 #include "openmc/simulation.h"
 #include "openmc/timer.h"
 
-
 namespace openmc {
 
 //==============================================================================
@@ -89,7 +88,7 @@ void process_calculate_xs_events(SharedArray<QueueItem>& queue)
   // to C++17, std::sort is a serial only operation, which in this case
   // makes it too slow to be practical for most test problems. 
   //
-  // std::sort(std::execution::par_unseq, queue.data(), queue.data() + n);
+  // std::sort(std::execution::par_unseq, queue.data(), queue.data() + queue.size());
   
   int64_t offset = simulation::advance_particle_queue.size();;
 

@@ -66,9 +66,14 @@ class TestHarness(object):
             self._cleanup()
 
     def _run_openmc(self):
-        if config['mpi']:
+        if config['mpi'] and not config['event']:
             mpi_args = [config['mpiexec'], '-n', config['mpi_np']]
             openmc.run(openmc_exec=config['exe'], mpi_args=mpi_args)
+        elif config['mpi'] and config['event']:
+            mpi_args = [config['mpiexec'], '-n', config['mpi_np']]
+            openmc.run(openmc_exec=config['exe'], mpi_args=mpi_args, event_based=True)
+        elif config['event']:
+            openmc.run(openmc_exec=config['exe'], event_based=True)
         else:
             openmc.run(openmc_exec=config['exe'])
 

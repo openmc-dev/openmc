@@ -387,8 +387,8 @@ class Settings(object):
         return self._dagmc
     
     @property
-    def event(self):
-        return self._event
+    def event_based(self):
+        return self._event_based
     
     @property
     def max_in_flight_particles(self):

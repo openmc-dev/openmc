@@ -530,9 +530,11 @@ void RegularMesh::bins_crossed(const Particle* p, std::vector<int>& bins,
   // The TINY_BIT offsets above mean that the preceding logic cannot always find
   // the correct ijk0 and ijk1 indices. For tracks shorter than 2*TINY_BIT, just
   // assume the track lies in only one mesh bin. These tracks are very short so
-  // any error caused by this assumption will be small.
+  // any error caused by this assumption will be small. It is important that
+  // ijk0 values are used rather than ijk1 because the previous logic guarantees
+  // ijk0 is a valid mesh bin.
   if (total_distance < 2*TINY_BIT) {
-    for (int i = 0; i < n; ++i) ijk0[i] = ijk1[i];
+    for (int i = 0; i < n; ++i) ijk1[i] = ijk0[i];
   }
 
   // ========================================================================
@@ -917,9 +919,11 @@ void RectilinearMesh::bins_crossed(const Particle* p, std::vector<int>& bins,
   // The TINY_BIT offsets above mean that the preceding logic cannot always find
   // the correct ijk0 and ijk1 indices. For tracks shorter than 2*TINY_BIT, just
   // assume the track lies in only one mesh bin. These tracks are very short so
-  // any error caused by this assumption will be small.
+  // any error caused by this assumption will be small. It is important that
+  // ijk0 values are used rather than ijk1 because the previous logic guarantees
+  // ijk0 is a valid mesh bin.
   if (total_distance < 2*TINY_BIT) {
-    for (int i = 0; i < 3; ++i) ijk0[i] = ijk1[i];
+    for (int i = 0; i < 3; ++i) ijk1[i] = ijk0[i];
   }
 
   // ========================================================================

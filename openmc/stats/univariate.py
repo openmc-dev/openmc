@@ -448,7 +448,6 @@ class Normal(Univariate):
     @mean_value.setter
     def mean_value(self, mean_value):
         cv.check_type('Normal mean_value', mean_value, Real)
-        cv.check_greater_than('Normal mean_value', mean_value, 0.0)
         self._mean_value = mean_value
 
     @std_dev.setter

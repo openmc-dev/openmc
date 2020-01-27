@@ -64,42 +64,48 @@ extern std::vector<Particle>  particles;
 // Functions
 //==============================================================================
 
-//! Allocates space for the event queues and particle buffer
+//! Allocate space for the event queues and particle buffer
+//
 //! \param n_particles The number of particles in the particle buffer
 void init_event_queues(int64_t n_particles);
 
-//! Frees the event queues and particle buffer
+//! Free the event queues and particle buffer
 void free_event_queues(void);
 
-//! Atomically adds a particle to the specified queue
+//! Atomically add a particle to the specified queue
+//
 //! \param queue The queue to append the particle to
 //! \param p A pointer to the particle
 //! \param buffer_idx The particle's actual index in the particle buffer
 void enqueue_particle(SharedArray<EventQueueItem>& queue, const Particle* p, int64_t buffer_idx);
 
-//! Enqueues a particle based on if it is in fuel or a non-fuel material
+//! Enqueue a particle based on if it is in fuel or a non-fuel material
+//
 //! \param buffer_idx The particle's actual index in the particle buffer
 void dispatch_xs_event(int64_t buffer_idx);
 
-//! Executes the initialization event for all particles
+//! Execute the initialization event for all particles
+//
 //! \param n_particles The number of particles in the particle buffer
 //! \param source_offset The offset index in the source bank to use
 void process_init_events(int64_t n_particles, int64_t source_offset);
 
-//! Executes the calculate XS event for all particles in this event's buffer
+//! Execute the calculate XS event for all particles in this event's buffer
+//
 //! \param queue A reference to the desired XS lookup queue
 void process_calculate_xs_events(SharedArray<EventQueueItem>& queue);
 
-//! Executes the advance particle event for all particles in this event's buffer
+//! Execute the advance particle event for all particles in this event's buffer
 void process_advance_particle_events();
 
-//! Executes the surface crossing event for all particles in this event's buffer
+//! Execute the surface crossing event for all particles in this event's buffer
 void process_surface_crossing_events();
 
-//! Executes the collision event for all particles in this event's buffer
+//! Execute the collision event for all particles in this event's buffer
 void process_collision_events();
 
-//! Executes the death event for all particles
+//! Execute the death event for all particles
+//
 //! \param n_particles The number of particles in the particle buffer
 void process_death_events(int64_t n_particles);
 

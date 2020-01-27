@@ -39,7 +39,7 @@ element settings {
 
   element material_cell_offsets { xsd:boolean }? &
   
-  element max_in_flight_particles { xsd:positiveInteger }? &
+  element max_particles_in_flight { xsd:positiveInteger }? &
 
   element max_order { xsd:nonNegativeInteger }? &
 

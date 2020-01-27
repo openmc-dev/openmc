@@ -31,6 +31,7 @@ extern "C" bool cmfd_run;             //!< is a CMFD run?
 extern "C" bool dagmc;                //!< indicator of DAGMC geometry
 extern bool delayed_photon_scaling;   //!< Scale fission photon yield to include delayed
 extern "C" bool entropy_on;           //!< calculate Shannon entropy?
+extern bool event_based;              //!< use event-based mode (instead of history-based)
 extern bool legendre_to_tabular;      //!< convert Legendre distributions to tabular?
 extern bool material_cell_offsets;    //!< create material cells offsets?
 extern "C" bool output_summary;       //!< write summary.h5?
@@ -52,7 +53,6 @@ extern bool ufs_on;                   //!< uniform fission site method on?
 extern bool urr_ptables_on;           //!< use unresolved resonance prob. tables?
 extern bool write_all_tracks;         //!< write track files for every particle?
 extern bool write_initial_source;     //!< write out initial source file?
-extern bool event_based;              //!< use event-based mode (instead of history-based)
 
 // Paths to various files
 extern std::string path_cross_sections;   //!< path to cross_sections.xml
@@ -69,7 +69,7 @@ extern "C" int32_t gen_per_batch;  //!< number of generations per batch
 extern "C" int64_t n_particles;    //!< number of particles per generation
 
 
-extern "C" int64_t max_in_flight_particles; //!< Max num. event-based particles in flight
+extern int64_t max_particles_in_flight; //!< Max num. event-based particles in flight
 
 extern ElectronTreatment electron_treatment;       //!< how to treat secondary electrons
 extern std::array<double, 4> energy_cutoff;  //!< Energy cutoff in [eV] for each particle type

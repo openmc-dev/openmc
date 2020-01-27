@@ -18,7 +18,8 @@ import openmc.data
 import openmc.deplete
 from openmc._xml import clean_indentation
 from openmc.deplete.chain import _REACTIONS
-from openmc.deplete.nuclide import Nuclide, DecayTuple, ReactionTuple
+from openmc.deplete.nuclide import Nuclide, DecayTuple, ReactionTuple, \
+    FissionYieldDistribution
 from openmc._utils import download
 
 from casl_chain import CASL_CHAIN
@@ -56,36 +57,37 @@ def main():
     reactions = {}
     for f in neutron_files:
         evaluation = openmc.data.endf.Evaluation(f)
-        name = evaluation.gnd_name
-        if name in CASL_CHAIN:
-            reactions[name] = {}
+        nuc_name = evaluation.gnd_name
+        if nuc_name in CASL_CHAIN:
+            reactions[nuc_name] = {}
             for mf, mt, nc, mod in evaluation.reaction_list:
+                # Q value for each reaction is given in MF=3
                 if mf == 3:
                     file_obj = StringIO(evaluation.section[3, mt])
                     openmc.data.endf.get_head_record(file_obj)
                     q_value = openmc.data.endf.get_cont_record(file_obj)[1]
-                    reactions[name][mt] = q_value
+                    reactions[nuc_name][mt] = q_value
 
     # Determine what decay and FPY nuclides are available
     print('Processing decay sub-library files...')
     decay_data = {}
     for f in decay_files:
-        data = openmc.data.Decay(f)
-        name = data.nuclide['name']
-        if name in CASL_CHAIN:
-            decay_data[name] = data
+        decay_obj = openmc.data.Decay(f)
+        nuc_name = decay_obj.nuclide['name']
+        if nuc_name in CASL_CHAIN:
+            decay_data[nuc_name] = decay_obj
 
-    for name in CASL_CHAIN:
-        if name not in decay_data:
-            print('WARNING: {} has no decay data!'.format(name))
+    for nuc_name in CASL_CHAIN:
+        if nuc_name not in decay_data:
+            print('WARNING: {} has no decay data!'.format(nuc_name))
 
     print('Processing fission product yield sub-library files...')
     fpy_data = {}
     for f in fpy_files:
-        data = openmc.data.FissionProductYields(f)
-        name = data.nuclide['name']
+        fpy_obj = openmc.data.FissionProductYields(f)
+        name = fpy_obj.nuclide['name']
         if name in CASL_CHAIN:
-            fpy_data[name] = data
+            fpy_data[name] = fpy_obj
 
     print('Creating depletion_chain...')
     missing_daughter = []
@@ -108,14 +110,15 @@ def main():
                                        data.average_energies.values())
             sum_br = 0.0
             for i, mode in enumerate(data.modes):
-                type_ = ','.join(mode.modes)
+                decay_type = ','.join(mode.modes)
                 if mode.daughter in decay_data:
                     target = mode.daughter
                 else:
-                    print('missing {} {} {}'.format(parent, ','.join(mode.modes), mode.daughter))
+                    missing_daughter.append((parent, mode))
                     continue
 
-                # Write branching ratio, taking care to ensure sum is unity
+                # Write branching ratio, taking care to ensure sum is unity by
+                # slightly modifying last value if necessary
                 br = mode.branching_ratio.nominal_value
                 sum_br += br
                 if i == len(data.modes) - 1 and sum_br != 1.0:
@@ -123,10 +126,12 @@ def main():
                                    for m in data.modes[:-1])
 
                 # Append decay mode
-                nuclide.decay_modes.append(DecayTuple(type_, target, br))
+                nuclide.decay_modes.append(DecayTuple(decay_type, target, br))
 
+        # If nuclide has incident neutron data, we need to list what
+        # transmutation reactions are possible
         if parent in reactions:
-            reactions_available = set(reactions[parent].keys())
+            reactions_available = reactions[parent].keys()
             for name, mts, changes in _REACTIONS:
                 if mts & reactions_available:
                     delta_A, delta_Z = changes
@@ -141,7 +146,8 @@ def main():
                         missing_rx_product.append((parent, name, daughter))
                         daughter = 'Nothing'
 
-                    # Store Q value
+                    # Store Q value -- use sorted order so we get summation
+                    # reactions (e.g., MT=103) first
                     for mt in sorted(mts):
                         if mt in reactions[parent]:
                             q_value = reactions[parent][mt]
@@ -152,6 +158,7 @@ def main():
                     nuclide.reactions.append(ReactionTuple(
                         name, daughter, q_value, 1.0))
 
+            # Check for fission reactions
             if any(mt in reactions_available for mt in [18, 19, 20, 21, 38]):
                 if parent in fpy_data:
                     q_value = reactions[parent][18]
@@ -167,11 +174,12 @@ def main():
             fpy = fpy_data[parent]
 
             if fpy.energies is not None:
-                nuclide.yield_energies = fpy.energies
+                yield_energies = fpy.energies
             else:
-                nuclide.yield_energies = [0.0]
+                yield_energies = [0.0]
 
-            for E, table_yd, table_yc in zip(nuclide.yield_energies, fpy.independent, fpy.cumulative):
+            yield_data = {}
+            for E, table_yd, table_yc in zip(yield_energies, fpy.independent, fpy.cumulative):
                 yields = defaultdict(float)
                 for product in table_yd:
                     if product in decay_data:
@@ -189,7 +197,7 @@ def main():
                                 print('No cumulative fission yields found for {} in {}'.format(product, parent))
                             else:
                                 yields[product] += table_yc[product].nominal_value
-                        # -1 for stable + unstable
+                        # -1 for independent (stable + metastable)
                         elif ifpy == -1:
                             if product not in table_yd:
                                 print('No independent fission yields found for {} in {}'.format(product, parent))
@@ -200,8 +208,7 @@ def main():
                                     yields[product] += table_yc[product_meta].nominal_value
                         # 3 for special treatment with weight fractions
                         elif ifpy == 3:
-                            for tuple_i in CASL_CHAIN[product][3]:
-                                name_i, weight_i, ifpy_i = tuple_i
+                            for name_i, weight_i, ifpy_i in CASL_CHAIN[product][3]:
                                 if name_i not in table_yd:
                                     print('No fission yields found for {} in {}'.format(name_i, parent))
                                 else:
@@ -210,15 +217,15 @@ def main():
                                     elif ifpy_i == 2:
                                         yields[product] += weight_i * table_yc[name_i].nominal_value
 
-                nuclide.yield_data[E] = []
-                for k in sorted(yields, key=openmc.data.zam):
-                    nuclide.yield_data[E].append((k, yields[k]))
+                yield_data[E] = yields
+
+            nuclide.yield_data = FissionYieldDistribution(yield_data)
 
     # Display warnings
     if missing_daughter:
         print('The following decay modes have daughters with no decay data:')
-        for mode in missing_daughter:
-            print('  {}'.format(mode))
+        for parent, mode in missing_daughter:
+            print('  {} -> {} ({})'.format(parent, mode.daughter, ','.join(mode.modes)))
         print('')
 
     if missing_rx_product:

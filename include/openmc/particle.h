@@ -231,7 +231,6 @@ public:
   //! \param src Source site data
   void from_source(const Bank* src);
 
-<<<<<<< HEAD
   //! Transport a particle from birth to death
   void transport();
   
@@ -245,7 +244,6 @@ public:
   double sign(double aa, double bb);
   void copy_data(LocalCoord& to, LocalCoord from);
   
-=======
   // Coarse-grained particle events
   void event_calculate_xs();
   void event_advance();
@@ -254,7 +252,6 @@ public:
   void event_revive_from_secondary();
   void event_death();
 
->>>>>>> upstream/develop
   //! Cross a surface and handle boundary conditions
   void cross_surface();
 

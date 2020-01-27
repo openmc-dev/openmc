@@ -183,26 +183,9 @@ Particle::event_calculate_xs()
       // cross sections for every collision since the cross sections may
       // be angle-dependent
       data::mg.macro_xs_[material_].calculate_xs(*this);
-
-<<<<<<< HEAD
-    // Sample a distance to collision
-    double d_collision;
-    if (type_ == Particle::Type::electron ||
-        type_ == Particle::Type::positron) {
-      d_collision = 0.0;
-    } else if (macro_xs_.total == 0.0) {
-      d_collision = INFINITY;
-    } else {
-      d_collision = -std::log(prn()) / macro_xs_.total; 
       
-      // cvmt: continuous varying materials tracking  
-      if(model::materials[material_]->continuous_num_density_) 
-	      d_collision = sampling_cvmt(this, boundary.distance);
-      //
-=======
       // Update the particle's group while we know we are multi-group
       g_last_ = g_;
->>>>>>> upstream/develop
     }
   } else {
     macro_xs_.total      = 0.0;
@@ -226,6 +209,10 @@ Particle::event_advance()
     collision_distance_ = INFINITY;
   } else {
     collision_distance_ = -std::log(prn(this->current_seed())) / macro_xs_.total;
+    // cvmt: continuous varying materials tracking  
+    if(model::materials[material_]->continuous_num_density_) 
+	      collision_distance_ = sampling_cvmt(this, boundary_.distance);
+    //
   }
 
   // Select smaller of the two distances
@@ -725,11 +712,11 @@ Particle::sampling_cvmt(Particle* p, double d_boundary)
   
   PNC = std::exp(-optical_depth);
   
-  if(prn() <= PNC) { // no collision
+  if(prn(this->current_seed()) <= PNC) { // no collision
     d_collision = INFINITY;
   } else { // collision   
     // sample optical depth 
-    tau_hat = -std::log(1.0 - (1.0 - PNC) * prn());
+    tau_hat = -std::log(1.0 - (1.0 - PNC) * prn(this->current_seed()));
     // get the flight distance for sampled optical depth
     estimate_flight_distance(xs_t, d_boundary, tau_hat, d_collision);
     // move particle to the point of collision so we can make sure that

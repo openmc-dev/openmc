@@ -36,11 +36,14 @@ public:
   //==========================================================================
   // Constructors
 
-  //! Creates an empty SharedArray
+  //! Default constructor.
   SharedArray() = default;
 
-  //! Creates a SharedArray of desired capacity with zero size.
-  //! \param capacity The desired capacity to allocate for the array
+  //! Construct a zero size container with space to hold capacity number of
+  //! elements.
+  //
+  //! \param capacity The number of elements for the container to allocate
+  //! space for
   SharedArray(int64_t capacity) : capacity_(capacity)
   {
     data_ = std::make_unique<T[]>(capacity);
@@ -49,25 +52,28 @@ public:
   //==========================================================================
   // Methods and Accessors
 
-  //! Array accessor
+  //! Return a reference to the element at specified location i. No bounds
+  //! checking is performed.
   T& operator[](int64_t i) {return data_[i];}
 
-  //! Allocates space for the SharedArray
-  //! \param capacity The number of elements to allocate in the array.
+  //! Allocate space in the container for the specified number of elements.
+  //! reserve() does not change the size of the container.
+  //
+  //! \param capacity The number of elements to allocate in the container
   void reserve(int64_t capacity)
   {
     data_ = std::make_unique<T[]>(capacity);
     capacity_ = capacity;
   }
 
-  //! Increases the size of the SharedArray by one and returns an index to the
+  //! Increase the size of the SharedArray by one and returns an index to the
   //! last element of the array. Also tests to enforce that the append
   //! operation does not read off the end of the array. In the event that this
-  //! does happen, the size is set to be equal to the capacity, and -1 is 
-  //! returned.
+  //! does happen, set the size to be equal to the capacity and return -1.
+  //
   //! \return The last index in the array, which is safe to write to. In the
   //! event that this index would be greater than what was allocated for the
-  //! SharedArray, -1 is returned.
+  //! SharedArray, return -1.
   int64_t thread_safe_append()
   {
     // Atomically capture the index we want to write to
@@ -85,8 +91,8 @@ public:
     return idx;
   }
 
-  //! Frees any space that was allocated to the SharedArray and resets
-  //! size and capacity to zero.
+  //! Free any space that was allocated for the container. Set the
+  //! container's size and capacity to 0.
   void clear()
   {
     data_.reset();
@@ -94,22 +100,21 @@ public:
     capacity_ = 0;
   }
 
-  //! Size getter function
-  //! \return The current size of the SharedArray
+  //! Return the number of elements in the container
   int64_t size() {return size_;}
 
-  //! Sets the size of the SharedArray. This is useful in cases where
-  //! we want to write to the SharedArray in a non-thread safe manner
-  //! and need to update the internal size of the array after doing so.
-  //! \param size The new size for the array
+  //! Resize the container to contain a specified number of elements. This is
+  //! useful in cases where the container is written to in a non-thread safe manner,
+  //! where the internal size of the array needs to be manually updated.
+  //
+  //! \param size The new size of the container
   void resize(int64_t size) {size_ = size;}
 
-  //! Capacity getter functon
-  //! \return The maximum allocated capacity for the SharedArray
+  //! Return the number of elements that the container has currently allocated
+  //! space for.
   int64_t capacity() {return capacity_;}
 
-  //! This function exposes the pointer that the SharedArray is protecting.
-  //! \return The pointer to the data allocation
+  //! Return pointer to the underlying array serving as element storage.
   T* data() {return data_.get();}
 
 }; 

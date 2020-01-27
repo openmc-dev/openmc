@@ -13,7 +13,7 @@ namespace openmc {
 // Class declarations
 //==============================================================================
 
-// The SharedArray is an array that is capable of being appended to in an
+// This container is an array that is capable of being appended to in an
 // thread safe manner by use of atomics. It only provides protection for the
 // use cases currently present in OpenMC. Namely, it covers the scenario where
 // multiple threads are appending to an array, but no threads are reading from
@@ -59,14 +59,14 @@ public:
     capacity_ = capacity;
   }
 
-  //! Increase the size of the SharedArray by one and returns an index to the
+  //! Increase the size of the container by one and returns an index to the
   //! last element of the array. Also tests to enforce that the append
   //! operation does not read off the end of the array. In the event that this
   //! does happen, set the size to be equal to the capacity and return -1.
   //
   //! \return The last index in the array, which is safe to write to. In the
   //! event that this index would be greater than what was allocated for the
-  //! SharedArray, return -1.
+  //! container, return -1.
   int64_t thread_safe_append()
   {
     // Atomically capture the index we want to write to
@@ -115,9 +115,9 @@ private:
   //==========================================================================
   // Data members
 
-  std::unique_ptr<T[]> data_; //!< A pointer to hold the data
-  int64_t size_ {0}; //!< The current size of the SharedArray. 
-  int64_t capacity_ {0}; //!< The maximum capacity of the SharedArray.
+  std::unique_ptr<T[]> data_; //!< An RAII handle to the elements
+  int64_t size_ {0}; //!< The current number of elements 
+  int64_t capacity_ {0}; //!< The total space allocated for elements
 
 }; 
 

@@ -46,6 +46,7 @@ bool create_fission_neutrons {true};
 bool dagmc                   {false};
 bool delayed_photon_scaling  {true};
 bool entropy_on              {false};
+bool event_based             {false};
 bool legendre_to_tabular     {true};
 bool material_cell_offsets   {true};
 bool output_summary          {true};
@@ -67,7 +68,6 @@ bool ufs_on                  {false};
 bool urr_ptables_on          {true};
 bool write_all_tracks        {false};
 bool write_initial_source    {false};
-bool event_based             {false};
 
 std::string path_cross_sections;
 std::string path_input;

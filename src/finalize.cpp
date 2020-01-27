@@ -80,7 +80,9 @@ int openmc_finalize()
   settings::gen_per_batch = 1;
   settings::legendre_to_tabular = true;
   settings::legendre_to_tabular_points = -1;
+  settings::event_based = false;
   settings::material_cell_offsets = true;
+  settings::max_particles_in_flight = 100000;
   settings::n_particles = -1;
   settings::output_summary = true;
   settings::output_tallies = true;

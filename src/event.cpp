@@ -11,11 +11,11 @@ namespace openmc {
 
 namespace simulation {
 
-SharedArray<QueueItem> calculate_fuel_xs_queue;
-SharedArray<QueueItem> calculate_nonfuel_xs_queue;
-SharedArray<QueueItem> advance_particle_queue;
-SharedArray<QueueItem> surface_crossing_queue;
-SharedArray<QueueItem> collision_queue;
+SharedArray<EventQueueItem> calculate_fuel_xs_queue;
+SharedArray<EventQueueItem> calculate_nonfuel_xs_queue;
+SharedArray<EventQueueItem> advance_particle_queue;
+SharedArray<EventQueueItem> surface_crossing_queue;
+SharedArray<EventQueueItem> collision_queue;
 
 std::vector<Particle>  particles;
 
@@ -47,7 +47,7 @@ void free_event_queues(void)
   simulation::particles.clear();
 }
 
-void enqueue_particle(SharedArray<QueueItem>& queue, const Particle* p, int64_t buffer_idx)
+void enqueue_particle(SharedArray<EventQueueItem>& queue, const Particle* p, int64_t buffer_idx)
 {
   int64_t idx = queue.thread_safe_append();
 
@@ -78,7 +78,7 @@ void process_init_events(int64_t n_particles, int64_t source_offset)
   simulation::time_event_init.stop();
 }
 
-void process_calculate_xs_events(SharedArray<QueueItem>& queue)
+void process_calculate_xs_events(SharedArray<EventQueueItem>& queue)
 {
   simulation::time_event_calculate_xs.start();
 

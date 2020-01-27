@@ -71,7 +71,7 @@ class Settings(object):
     material_cell_offsets : bool
         Generate an "offset table" for material cells by default. These tables
         are necessary when a particular instance of a cell needs to be tallied.
-    max_in_flight_particles : int
+    max_particles_in_flight : int
         Number of neutrons to run concurrently when using event-based
         parallelism.
     max_order : None or int
@@ -236,7 +236,7 @@ class Settings(object):
         self._dagmc = False
 
         self._event_based = None
-        self._max_in_flight_particles = None
+        self._max_particles_in_flight = None
 
     @property
     def run_mode(self):
@@ -391,8 +391,8 @@ class Settings(object):
         return self._event_based
     
     @property
-    def max_in_flight_particles(self):
-        return self._max_in_flight_particles
+    def max_particles_in_flight(self):
+        return self._max_particles_in_flight
 
     @run_mode.setter
     def run_mode(self, run_mode):
@@ -727,11 +727,11 @@ class Settings(object):
         cv.check_type('event based', value, bool)
         self._event_based = value
     
-    @max_in_flight_particles.setter
-    def max_in_flight_particles(self, value):
-        cv.check_type('max in flight particles', value, Integral)
-        cv.check_greater_than('max in flight particles', value, 0)
-        self._max_in_flight_particles = value
+    @max_particles_in_flight.setter
+    def max_particles_in_flight(self, value):
+        cv.check_type('max particles in flight', value, Integral)
+        cv.check_greater_than('max particles in flight', value, 0)
+        self._max_particles_in_flight = value
 
     @material_cell_offsets.setter
     def material_cell_offsets(self, value):
@@ -982,10 +982,10 @@ class Settings(object):
             elem = ET.SubElement(root, "event_based")
             elem.text = str(self._event_based).lower()
     
-    def _create_max_in_flight_particles_subelement(self, root):
-        if self._max_in_flight_particles is not None:
-            elem = ET.SubElement(root, "max_in_flight_particles")
-            elem.text = str(self._max_in_flight_particles).lower()
+    def _create_max_particles_in_flight_subelement(self, root):
+        if self._max_particles_in_flight is not None:
+            elem = ET.SubElement(root, "max_particles_in_flight")
+            elem.text = str(self._max_particles_in_flight).lower()
 
     def _create_material_cell_offsets_subelement(self, root):
         if self._material_cell_offsets is not None:
@@ -1233,10 +1233,10 @@ class Settings(object):
         if text is not None:
             self.event_based = text in ('true', '1')
     
-    def _max_in_flight_particles_from_xml_element(self, root):
-        text = get_text(root, 'max_in_flight_particles')
+    def _max_particles_in_flight_from_xml_element(self, root):
+        text = get_text(root, 'max_particles_in_flight')
         if text is not None:
-            self.max_in_flight_particles = int(text)
+            self.max_particles_in_flight = int(text)
 
     def _material_cell_offsets_from_xml_element(self, root):
         text = get_text(root, 'material_cell_offsets')
@@ -1299,7 +1299,7 @@ class Settings(object):
         self._create_create_fission_neutrons_subelement(root_element)
         self._create_delayed_photon_scaling_subelement(root_element)
         self._create_event_based_subelement(root_element)
-        self._create_max_in_flight_particles_subelement(root_element)
+        self._create_max_particles_in_flight_subelement(root_element)
         self._create_material_cell_offsets_subelement(root_element)
         self._create_log_grid_bins_subelement(root_element)
         self._create_dagmc_subelement(root_element)
@@ -1368,7 +1368,7 @@ class Settings(object):
         settings._create_fission_neutrons_from_xml_element(root)
         settings._delayed_photon_scaling_from_xml_element(root)
         settings._event_based_from_xml_element(root)
-        settings._max_in_flight_particles_from_xml_element(root)
+        settings._max_particles_in_flight_from_xml_element(root)
         settings._material_cell_offsets_from_xml_element(root)
         settings._log_grid_bins_from_xml_element(root)
         settings._dagmc_from_xml_element(root)

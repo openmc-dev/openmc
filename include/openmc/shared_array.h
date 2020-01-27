@@ -4,7 +4,7 @@
 //! \file shared_array.h
 //! \brief Shared array data structure
 
-#include<memory>
+#include <memory>
 
 
 namespace openmc {
@@ -23,14 +23,6 @@ namespace openmc {
 // operations are protected.
 template <typename T> 
 class SharedArray { 
-
-private: 
-  //==========================================================================
-  // Data members
-
-  std::unique_ptr<T[]> data_; //!< A pointer to hold the data
-  int64_t size_ {0}; //!< The current size of the SharedArray. 
-  int64_t capacity_ {0}; //!< The maximum capacity of the SharedArray.
 
 public: 
   //==========================================================================
@@ -55,6 +47,7 @@ public:
   //! Return a reference to the element at specified location i. No bounds
   //! checking is performed.
   T& operator[](int64_t i) {return data_[i];}
+  const T& operator[](int64_t i) const { return data_[i]; }
 
   //! Allocate space in the container for the specified number of elements.
   //! reserve() does not change the size of the container.
@@ -116,6 +109,15 @@ public:
 
   //! Return pointer to the underlying array serving as element storage.
   T* data() {return data_.get();}
+  const T* data() const {return data_.get();}
+
+private: 
+  //==========================================================================
+  // Data members
+
+  std::unique_ptr<T[]> data_; //!< A pointer to hold the data
+  int64_t size_ {0}; //!< The current size of the SharedArray. 
+  int64_t capacity_ {0}; //!< The maximum capacity of the SharedArray.
 
 }; 
 

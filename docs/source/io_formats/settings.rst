@@ -142,7 +142,7 @@ materials in the problem and is specified using a :ref:`mesh_element`.
 ----------------------------
 
 Determines whether to use event-based parallelism instead of the default
-history based parallelism. 
+history-based parallelism. 
 
   *Default*: false
 
@@ -227,9 +227,9 @@ to false.
 
   *Default*: true
 
------------------------
-``<max_in_flight_particles>`` Element
------------------------
+----------------------------------------
+``<max_particles_in_flight>`` Element
+----------------------------------------
 
 This element indicates the number of neutrons to run in flight concurrently
 when using event-based parallelism. A higher value uses more memory, but

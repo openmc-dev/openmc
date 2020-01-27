@@ -93,7 +93,7 @@
       </element>
     </optional>
     <optional>
-      <element name="max_in_flight_particles">
+      <element name="max_particles_in_flight">
         <data type="positiveInteger"/>
       </element>
     </optional>

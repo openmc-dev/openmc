@@ -45,12 +45,12 @@ public:
   void calculate_xs(Particle& p) const;
 
   void compton_scatter(double alpha, bool doppler, double* alpha_out,
-    double* mu, int* i_shell) const;
+    double* mu, int* i_shell, uint64_t* seed) const;
 
-  double rayleigh_scatter(double alpha) const;
+  double rayleigh_scatter(double alpha, uint64_t* seed) const;
 
   void pair_production(double alpha, double* E_electron, double* E_positron,
-    double* mu_electron, double* mu_positron) const;
+    double* mu_electron, double* mu_positron, uint64_t* seed) const;
 
   void atomic_relaxation(const ElectronSubshell& shell, Particle& p) const;
 
@@ -96,14 +96,15 @@ public:
   xt::xtensor<double, 2> dcs_;
 
 private:
-  void compton_doppler(double alpha, double mu, double* E_out, int* i_shell) const;
+  void compton_doppler(double alpha, double mu, double* E_out, int* i_shell,
+                       uint64_t* seed) const;
 };
 
 //==============================================================================
 // Non-member functions
 //==============================================================================
 
-std::pair<double, double> klein_nishina(double alpha);
+std::pair<double, double> klein_nishina(double alpha, uint64_t* seed);
 
 void free_memory_photon();
 

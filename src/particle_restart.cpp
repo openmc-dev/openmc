@@ -10,7 +10,9 @@
 #include "openmc/random_lcg.h"
 #include "openmc/settings.h"
 #include "openmc/simulation.h"
+#include "openmc/tallies/derivative.h"
 #include "openmc/tallies/tally.h"
+#include "openmc/track_output.h"
 
 #include <algorithm> // for copy
 #include <array>
@@ -19,7 +21,7 @@
 
 namespace openmc {
 
-void read_particle_restart(Particle& p, int& previous_run_mode)
+void read_particle_restart(Particle& p, RunMode& previous_run_mode)
 {
   // Write meessage
   write_message("Loading particle restart file " +
@@ -36,9 +38,9 @@ void read_particle_restart(Particle& p, int& previous_run_mode)
   std::string mode;
   read_dataset(file_id, "run_mode", mode);
   if (mode == "eigenvalue") {
-    previous_run_mode = RUN_MODE_EIGENVALUE;
+    previous_run_mode = RunMode::EIGENVALUE;
   } else if (mode == "fixed source") {
-    previous_run_mode = RUN_MODE_FIXEDSOURCE;
+    previous_run_mode = RunMode::FIXED_SOURCE;
   }
   read_dataset(file_id, "id", p.id_);
   int type;
@@ -52,7 +54,7 @@ void read_particle_restart(Particle& p, int& previous_run_mode)
   // Set energy group and average energy in multi-group mode
   if (!settings::run_CE) {
     p.g_ = p.E_;
-    p.E_ = data::energy_bin_avg[p.g_ - 1];
+    p.E_ = data::mg.energy_bin_avg_[p.g_];
   }
 
   // Set particle last attributes
@@ -76,8 +78,11 @@ void run_particle_restart()
   Particle p;
 
   // Read in the restart information
-  int previous_run_mode;
+  RunMode previous_run_mode;
   read_particle_restart(p, previous_run_mode);
+
+  // write track if that was requested on command line
+  if (settings::write_all_tracks) p.write_track_ = true;
 
   // Set all tallies to 0 for now (just tracking errors)
   model::tallies.clear();
@@ -85,20 +90,37 @@ void run_particle_restart()
   // Compute random number seed
   int64_t particle_seed;
   switch (previous_run_mode) {
-  case RUN_MODE_EIGENVALUE:
+  case RunMode::EIGENVALUE:
     particle_seed = (simulation::total_gen + overall_generation() - 1)*settings::n_particles + p.id_;
     break;
-  case RUN_MODE_FIXEDSOURCE:
+  case RunMode::FIXED_SOURCE:
     particle_seed = p.id_;
     break;
   default:
     throw std::runtime_error{"Unexpected run mode: " +
-      std::to_string(previous_run_mode)};
+      std::to_string(static_cast<int>(previous_run_mode))};
   }
-  set_particle_seed(particle_seed);
+  init_particle_seeds(particle_seed, p.seeds_);
+
+  // Force calculation of cross-sections by setting last energy to zero
+  if (settings::run_CE) {
+    for (auto& micro : p.neutron_xs_) micro.last_E = 0.0;
+  }
+
+  // Prepare to write out particle track.
+  if (p.write_track_) add_particle_track(p);
+
+  // Every particle starts with no accumulated flux derivative.
+  if (!model::active_tallies.empty()) {
+    p.flux_derivs_.resize(model::tally_derivs.size(), 0.0);
+    std::fill(p.flux_derivs_.begin(), p.flux_derivs_.end(), 0.0);
+  }
+  
+  // Allocate space for tally filter matches
+  p.filter_matches_.resize(model::tally_filters.size());
 
   // Transport neutron
-  p.transport();
+  transport_history_based_single_particle(p);
 
   // Write output if particle made it
   print_particle(&p);

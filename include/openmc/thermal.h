@@ -17,21 +17,6 @@
 namespace openmc {
 
 //==============================================================================
-// Constants
-//==============================================================================
-
-// Secondary energy mode for S(a,b) inelastic scattering
-// TODO: Convert to enum
-constexpr int SAB_SECONDARY_EQUAL  {0}; // Equally-likely outgoing energy bins
-constexpr int SAB_SECONDARY_SKEWED {1}; // Skewed outgoing energy bins
-constexpr int SAB_SECONDARY_CONT   {2}; // Continuous, linear-linear interpolation
-
-// Elastic mode for S(a,b) elastic scattering
-// TODO: Convert to enum
-constexpr int SAB_ELASTIC_INCOHERENT {3}; // Incoherent elastic scattering
-constexpr int SAB_ELASTIC_COHERENT   {4}; // Coherent elastic scattering (Bragg edges)
-
-//==============================================================================
 // Global variables
 //==============================================================================
 
@@ -64,8 +49,9 @@ public:
   //! \param[in] E_in Incident neutron energy in [eV]
   //! \param[out] E_out Outgoing neutron energy in [eV]
   //! \param[out] mu Outgoing scattering angle cosine
+  //! \param[inout] seed Pseudorandom seed pointer
   void sample(const NuclideMicroXS& micro_xs, double E_in,
-              double* E_out, double* mu);
+              double* E_out, double* mu, uint64_t* seed);
 private:
   struct Reaction {
     // Default constructor
@@ -100,8 +86,9 @@ public:
   //! \param[out] i_temp corresponding temperature index
   //! \param[out] elastic Thermal elastic scattering cross section
   //! \param[out] inelastic Thermal inelastic scattering cross section
+  //! \param[inout] seed Pseudorandom seed pointer
   void calculate_xs(double E, double sqrtkT, int* i_temp, double* elastic,
-                    double* inelastic) const;
+                    double* inelastic, uint64_t* seed) const;
 
   //! Determine whether table applies to a particular nuclide
   //!

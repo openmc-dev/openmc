@@ -64,7 +64,7 @@ class CMFDMesh(object):
         The lower-left corner of the structured mesh. If only two coordinates
         are given, it is assumed that the mesh is an x-y mesh.
     upper_right : Iterable of float
-        The upper-right corner of the structrued mesh. If only two coordinates
+        The upper-right corner of the structured mesh. If only two coordinates
         are given, it is assumed that the mesh is an x-y mesh.
     dimension : Iterable of int
         The number of mesh cells in each direction.
@@ -196,13 +196,10 @@ class CMFDRun(object):
     ----------
     tally_begin : int
         Batch number at which CMFD tallies should begin accummulating
-    feedback_begin: int
-        Batch number at which CMFD feedback should be turned on
+    solver_begin: int
+        Batch number at which CMFD solver should start executing
     ref_d : list of floats
         List of reference diffusion coefficients to fix CMFD parameters to
-    dhat_reset : bool
-        Indicate whether :math:`\widehat{D}` nonlinear CMFD parameters should
-        be reset to zero before solving CMFD eigenproblem.
     display : dict
         Dictionary indicating which CMFD results to output. Note that CMFD
         k-effective will always be outputted. Acceptable keys are:
@@ -220,7 +217,7 @@ class CMFDRun(object):
         Indicate whether an effective downscatter cross section should be used
         when using 2-group CMFD.
     feedback : bool
-        Indicate or not the CMFD diffusion result is used to adjust the weight
+        Indicate whether or not the CMFD diffusion result is used to adjust the weight
         of fission source neutrons on the next OpenMC batch. Defaults to False.
     cmfd_ktol : float
         Tolerance on the eigenvalue when performing CMFD power iteration
@@ -298,6 +295,8 @@ class CMFDRun(object):
         Time for building CMFD matrices, in seconds
     time_cmfdsolve : float
         Time for solving CMFD matrix equations, in seconds
+    use_all_threads : bool
+        Whether to use all threads allocated to OpenMC for CMFD solver
     intracomm : mpi4py.MPI.Intracomm or None
         MPI intercommunicator for running MPI commands
 
@@ -310,9 +309,8 @@ class CMFDRun(object):
         """
         # Variables that users can modify
         self._tally_begin = 1
-        self._feedback_begin = 1
-        self._ref_d = []
-        self._dhat_reset = False
+        self._solver_begin = 1
+        self._ref_d = np.array([])
         self._display = {'balance': False, 'dominance': False,
                          'entropy': False, 'source': False}
         self._downscatter = False
@@ -332,6 +330,7 @@ class CMFDRun(object):
         self._window_type = 'none'
         self._window_size = 10
         self._intracomm = None
+        self._use_all_threads = False
 
         # External variables used during runtime but users cannot control
         self._set_reference_params = False
@@ -339,7 +338,6 @@ class CMFDRun(object):
         self._egrid = None
         self._albedo = None
         self._coremap = None
-        self._n_resets = 0
         self._mesh_id = None
         self._tally_ids = None
         self._energy_filters = None
@@ -418,16 +416,12 @@ class CMFDRun(object):
         return self._tally_begin
 
     @property
-    def feedback_begin(self):
-        return self._feedback_begin
+    def solver_begin(self):
+        return self._solver_begin
 
     @property
     def ref_d(self):
         return self._ref_d
-
-    @property
-    def dhat_reset(self):
-        return self._dhat_reset
 
     @property
     def display(self):
@@ -502,6 +496,10 @@ class CMFDRun(object):
         return self._indices
 
     @property
+    def use_all_threads(self):
+        return self._use_all_threads
+
+    @property
     def cmfd_src(self):
         return self._cmfd_src
 
@@ -531,22 +529,18 @@ class CMFDRun(object):
         check_greater_than('CMFD tally begin batch', begin, 0)
         self._tally_begin = begin
 
-    @feedback_begin.setter
-    def feedback_begin(self, begin):
+    @solver_begin.setter
+    def solver_begin(self, begin):
         check_type('CMFD feedback begin batch', begin, Integral)
         check_greater_than('CMFD feedback begin batch', begin, 0)
-        self._feedback_begin = begin
+        self._solver_begin = begin
+
 
     @ref_d.setter
     def ref_d(self, diff_params):
         check_type('Reference diffusion params', diff_params,
                    Iterable, Real)
         self._ref_d = np.array(diff_params)
-
-    @dhat_reset.setter
-    def dhat_reset(self, dhat_reset):
-        check_type('CMFD Dhat reset', dhat_reset, bool)
-        self._dhat_reset = dhat_reset
 
     @display.setter
     def display(self, display):
@@ -691,10 +685,15 @@ class CMFDRun(object):
         check_length('Gauss-Seidel tolerance', gauss_seidel_tolerance, 2)
         self._gauss_seidel_tolerance = gauss_seidel_tolerance
 
+    @use_all_threads.setter
+    def use_all_threads(self, use_all_threads):
+        check_type('CMFD use all threads', use_all_threads, bool)
+        self._use_all_threads = use_all_threads
+
     def run(self, **kwargs):
         """Run OpenMC with coarse mesh finite difference acceleration
 
-        This method is called by user to run CMFD once instance variables of
+        This method is called by the user to run CMFD once instance variables of
         CMFDRun class are set
 
         Parameters
@@ -762,22 +761,23 @@ class CMFDRun(object):
         calling :func:`openmc.lib.simulation_init`
 
         """
-        # Configure CMFD parameters and tallies
+        # Configure CMFD parameters
         self._configure_cmfd()
 
-        # Initialize all arrays used for CMFD solver
-        self._allocate_cmfd()
+        # Create tally objects
+        self._create_cmfd_tally()
 
-        # Compute and store array indices used to build cross section
-        # arrays
-        self._precompute_array_indices()
+        if openmc.lib.master():
+            # Compute and store array indices used to build cross section
+            # arrays
+            self._precompute_array_indices()
 
-        # Compute and store row and column indices used to build CMFD
-        # matrices
-        self._precompute_matrix_indices()
+            # Compute and store row and column indices used to build CMFD
+            # matrices
+            self._precompute_matrix_indices()
 
-        # Initialize all variables used for linear solver in C++
-        self._initialize_linsolver()
+            # Initialize all variables used for linear solver in C++
+            self._initialize_linsolver()
 
         # Initialize simulation
         openmc.lib.simulation_init()
@@ -801,13 +801,8 @@ class CMFDRun(object):
         # Run next batch
         status = openmc.lib.next_batch()
 
-        # Perform CMFD calculation if on
-        if self._cmfd_on:
-            self._execute_cmfd()
-
-            # Write CMFD output if CMFD on for current batch
-            if openmc.lib.master():
-                self._write_cmfd_output()
+        # Perform CMFD calculations
+        self._execute_cmfd()
 
         # Write CMFD data to statepoint
         if openmc.lib.is_statepoint_batch():
@@ -823,8 +818,9 @@ class CMFDRun(object):
         # Finalize simuation
         openmc.lib.simulation_finalize()
 
-        # Print out CMFD timing statistics
-        self._write_cmfd_timing_stats()
+        if openmc.lib.master():
+            # Print out CMFD timing statistics
+            self._write_cmfd_timing_stats()
 
     def statepoint_write(self, filename=None):
         """Write all simulation parameters to statepoint
@@ -865,7 +861,7 @@ class CMFDRun(object):
                     cmfd_group = f.create_group("cmfd")
                     cmfd_group.attrs['cmfd_on'] = self._cmfd_on
                     cmfd_group.attrs['feedback'] = self._feedback
-                    cmfd_group.attrs['feedback_begin'] = self._feedback_begin
+                    cmfd_group.attrs['solver_begin'] = self._solver_begin
                     cmfd_group.attrs['mesh_id'] = self._mesh_id
                     cmfd_group.attrs['tally_begin'] = self._tally_begin
                     cmfd_group.attrs['time_cmfd'] = self._time_cmfd
@@ -921,7 +917,7 @@ class CMFDRun(object):
 
         args = temp_loss.indptr, len(temp_loss.indptr), \
             temp_loss.indices, len(temp_loss.indices), n, \
-            self._spectral, self._indices, coremap
+            self._spectral, self._indices, coremap, self._use_all_threads
         return openmc.lib._dll.openmc_initialize_linsolver(*args)
 
     def _write_cmfd_output(self):
@@ -948,53 +944,33 @@ class CMFDRun(object):
 
     def _write_cmfd_timing_stats(self):
         """Write CMFD timing stats to buffer after finalizing simulation"""
-        if openmc.lib.master():
-            outstr = ("=====================>     "
-                      "CMFD TIMING STATISTICS     <====================\n\n"
-                      "   Time in CMFD                    =  {:.5E} seconds\n"
-                      "     Building matrices             =  {:.5E} seconds\n"
-                      "     Solving matrices              =  {:.5E} seconds\n")
-            print(outstr.format(self._time_cmfd, self._time_cmfdbuild,
-                                self._time_cmfdsolve))
-            sys.stdout.flush()
+        outstr = ("=====================>     "
+                  "CMFD TIMING STATISTICS     <====================\n\n"
+                  "   Time in CMFD                    =  {:.5e} seconds\n"
+                  "     Building matrices             =  {:.5e} seconds\n"
+                  "     Solving matrices              =  {:.5e} seconds\n")
+        print(outstr.format(self._time_cmfd, self._time_cmfdbuild,
+                            self._time_cmfdsolve))
+        sys.stdout.flush()
 
     def _configure_cmfd(self):
         """Initialize CMFD parameters and set CMFD input variables"""
         # Check if restarting simulation from statepoint file
         if not openmc.lib.settings.restart_run:
-            # Read in cmfd input defined in Python
-            self._read_cmfd_input()
-
-            # Set up CMFD coremap
-            self._set_coremap()
-
-            # Extract spatial and energy indices
-            nx, ny, nz, ng = self._indices
-
-            # Allocate parameters that need to stored for tally window
-            self._openmc_src_rate = np.zeros((nx, ny, nz, ng, 0))
-            self._flux_rate = np.zeros((nx, ny, nz, ng, 0))
-            self._total_rate = np.zeros((nx, ny, nz, ng, 0))
-            self._p1scatt_rate = np.zeros((nx, ny, nz, ng, 0))
-            self._scatt_rate = np.zeros((nx, ny, nz, ng, ng, 0))
-            self._nfiss_rate = np.zeros((nx, ny, nz, ng, ng, 0))
-            self._current_rate = np.zeros((nx, ny, nz, 12, ng, 0))
-
-            # Initialize timers
-            self._time_cmfd = 0.0
-            self._time_cmfdbuild = 0.0
-            self._time_cmfdsolve = 0.0
-
-            # Initialize parameters for CMFD tally windows
-            self._set_tally_window()
+            # Define all variables necessary for running CMFD
+            self._initialize_cmfd()
 
         else:
             # Reset CMFD parameters from statepoint file
             path_statepoint = openmc.lib.settings.path_statepoint
             self._reset_cmfd(path_statepoint)
 
-    def _read_cmfd_input(self):
-        """Sets values of additional instance variables based on user input"""
+    def _initialize_cmfd(self):
+        """Sets values of CMFD instance variables based on user input,
+           separating between variables that only exist on all processes
+           and those that only exist on the master process
+
+        """
         # Print message to user and flush output to stdout
         if openmc.lib.settings.verbosity >= 7 and openmc.lib.master():
             print(' Configuring CMFD parameters for simulation')
@@ -1024,34 +1000,55 @@ class CMFDRun(object):
             self._indices[3] = 1
             self._energy_filters = False
 
-        # Set global albedo
-        if self._mesh.albedo is not None:
-            self._albedo = np.array(self._mesh.albedo)
-        else:
-            self._albedo = np.array([1., 1., 1., 1., 1., 1.])
-
         # Get acceleration map, otherwise set all regions to be accelerated
         if self._mesh.map is not None:
             check_length('CMFD coremap', self._mesh.map,
                          np.product(self._indices[0:3]))
-            self._coremap = np.array(self._mesh.map)
+            if openmc.lib.master():
+                self._coremap = np.array(self._mesh.map)
         else:
-            self._coremap = np.ones((np.product(self._indices[0:3])),
-                                    dtype=int)
+            if openmc.lib.master():
+                self._coremap = np.ones((np.product(self._indices[0:3])),
+                                        dtype=int)
 
         # Check CMFD tallies accummulated before feedback turned on
-        if self._feedback and self._feedback_begin < self._tally_begin:
+        if self._feedback and self._solver_begin < self._tally_begin:
             raise ValueError('Tally begin must be less than or equal to '
-                             'feedback begin')
+                             'CMFD begin')
 
-        # Set number of batches where cmfd tallies should be reset
-        self._n_resets = len(self._reset)
+        # Initialize parameters for CMFD tally windows
+        self._set_tally_window()
 
-        # Create tally objects
-        self._create_cmfd_tally()
+        # Define all variables that will exist only on master process
+        if openmc.lib.master():
+            # Set global albedo
+            if self._mesh.albedo is not None:
+                self._albedo = np.array(self._mesh.albedo)
+            else:
+                self._albedo = np.array([1., 1., 1., 1., 1., 1.])
+
+            # Set up CMFD coremap
+            self._set_coremap()
+
+            # Extract spatial and energy indices
+            nx, ny, nz, ng = self._indices
+
+            # Allocate parameters that need to be stored for tally window
+            self._openmc_src_rate = np.zeros((nx, ny, nz, ng, 0))
+            self._flux_rate = np.zeros((nx, ny, nz, ng, 0))
+            self._total_rate = np.zeros((nx, ny, nz, ng, 0))
+            self._p1scatt_rate = np.zeros((nx, ny, nz, ng, 0))
+            self._scatt_rate = np.zeros((nx, ny, nz, ng, ng, 0))
+            self._nfiss_rate = np.zeros((nx, ny, nz, ng, ng, 0))
+            self._current_rate = np.zeros((nx, ny, nz, 12, ng, 0))
+
+            # Initialize timers
+            self._time_cmfd = 0.0
+            self._time_cmfdbuild = 0.0
+            self._time_cmfdsolve = 0.0
 
     def _reset_cmfd(self, filename):
-        """Reset all CMFD  parameters from statepoint
+        """Reset all CMFD parameters from statepoint
 
         Parameters
         ----------
@@ -1070,32 +1067,28 @@ class CMFDRun(object):
                     print(' Loading CMFD data from {}...'.format(filename))
                     sys.stdout.flush()
                 cmfd_group = f['cmfd']
+
+                # Define variables that exist on all processes
                 self._cmfd_on = cmfd_group.attrs['cmfd_on']
                 self._feedback = cmfd_group.attrs['feedback']
-                self._feedback_begin = cmfd_group.attrs['feedback_begin']
+                self._solver_begin = cmfd_group.attrs['solver_begin']
                 self._tally_begin = cmfd_group.attrs['tally_begin']
-                self._time_cmfd = cmfd_group.attrs['time_cmfd']
-                self._time_cmfdbuild = cmfd_group.attrs['time_cmfdbuild']
-                self._time_cmfdsolve = cmfd_group.attrs['time_cmfdsolve']
-                self._window_size = cmfd_group.attrs['window_size']
-                self._window_type = cmfd_group.attrs['window_type']
                 self._k_cmfd = list(cmfd_group['k_cmfd'])
                 self._dom = list(cmfd_group['dom'])
                 self._src_cmp = list(cmfd_group['src_cmp'])
                 self._balance = list(cmfd_group['balance'])
                 self._entropy = list(cmfd_group['entropy'])
                 self._reset = list(cmfd_group['reset'])
-                self._albedo = cmfd_group['albedo'][()]
-                self._coremap = cmfd_group['coremap'][()]
                 self._egrid = cmfd_group['egrid'][()]
                 self._indices = cmfd_group['indices'][()]
-                self._current_rate = cmfd_group['current_rate'][()]
-                self._flux_rate = cmfd_group['flux_rate'][()]
-                self._nfiss_rate = cmfd_group['nfiss_rate'][()]
-                self._openmc_src_rate = cmfd_group['openmc_src_rate'][()]
-                self._p1scatt_rate = cmfd_group['p1scatt_rate'][()]
-                self._scatt_rate = cmfd_group['scatt_rate'][()]
-                self._total_rate = cmfd_group['total_rate'][()]
+                default_egrid = np.array([_ENERGY_MIN_NEUTRON,
+                                          _ENERGY_MAX_NEUTRON])
+                self._energy_filters = not np.array_equal(self._egrid,
+                                                          default_egrid)
+                self._window_size = cmfd_group.attrs['window_size']
+                self._window_type = cmfd_group.attrs['window_type']
+                self._reset_every = (self._window_type == 'expanding' or
+                                     self._window_type == 'rolling')
 
                 # Overwrite CMFD mesh properties
                 cmfd_mesh_name = 'mesh ' + str(cmfd_group.attrs['mesh_id'])
@@ -1105,49 +1098,21 @@ class CMFDRun(object):
                 self._mesh.upper_right = cmfd_mesh['upper_right'][()]
                 self._mesh.width = cmfd_mesh['width'][()]
 
-                # Store tally ids from statepoint run
-                sp_tally_ids = list(cmfd_group['tally_ids'])
-
-        # Set CMFD variables not in statepoint file
-        default_egrid = np.array([_ENERGY_MIN_NEUTRON, _ENERGY_MAX_NEUTRON])
-        self._energy_filters = not np.array_equal(self._egrid, default_egrid)
-        self._n_resets = len(self._reset)
-        self._mat_dim = np.max(self._coremap) + 1
-        self._reset_every = (self._window_type == 'expanding' or
-                             self._window_type == 'rolling')
-
-        # Recreate CMFD tallies in memory
-        self._create_cmfd_tally()
-
-    def _allocate_cmfd(self):
-        """Allocates all numpy arrays and lists used in CMFD algorithm"""
-        # Extract spatial and energy indices
-        nx, ny, nz, ng = self._indices
-
-        # Allocate dimensions for each mesh cell
-        self._hxyz = np.zeros((nx, ny, nz, 3))
-        self._hxyz[:] = openmc.lib.meshes[self._mesh_id].width
-
-        # Allocate flux, cross sections and diffusion coefficient
-        self._flux = np.zeros((nx, ny, nz, ng))
-        self._totalxs = np.zeros((nx, ny, nz, ng))
-        self._p1scattxs = np.zeros((nx, ny, nz, ng))
-        self._scattxs = np.zeros((nx, ny, nz, ng, ng))  # Incoming, outgoing
-        self._nfissxs = np.zeros((nx, ny, nz, ng, ng))  # Incoming, outgoing
-        self._diffcof = np.zeros((nx, ny, nz, ng))
-
-        # Allocate dtilde and dhat
-        self._dtilde = np.zeros((nx, ny, nz, ng, 6))
-        self._dhat = np.zeros((nx, ny, nz, ng, 6))
-
-        # Set reference diffusion parameters
-        if self._ref_d:
-            self._set_reference_params = True
-            # Check length of reference diffusion parameters equal to number of
-            # energy groups
-            if len(self._ref_d) != self._indices[3]:
-                raise OpenMCError('Number of reference diffusion parameters '
-                                  'must equal number of CMFD energy groups')
+                # Define variables that exist only on master process
+                if openmc.lib.master():
+                    self._time_cmfd = cmfd_group.attrs['time_cmfd']
+                    self._time_cmfdbuild = cmfd_group.attrs['time_cmfdbuild']
+                    self._time_cmfdsolve = cmfd_group.attrs['time_cmfdsolve']
+                    self._albedo = cmfd_group['albedo'][()]
+                    self._coremap = cmfd_group['coremap'][()]
+                    self._current_rate = cmfd_group['current_rate'][()]
+                    self._flux_rate = cmfd_group['flux_rate'][()]
+                    self._nfiss_rate = cmfd_group['nfiss_rate'][()]
+                    self._openmc_src_rate = cmfd_group['openmc_src_rate'][()]
+                    self._p1scatt_rate = cmfd_group['p1scatt_rate'][()]
+                    self._scatt_rate = cmfd_group['scatt_rate'][()]
+                    self._total_rate = cmfd_group['total_rate'][()]
+                    self._mat_dim = np.max(self._coremap) + 1
 
     def _set_tally_window(self):
         """Sets parameters to handle different tally window options"""
@@ -1169,47 +1134,57 @@ class CMFDRun(object):
         # Add 1 as next_batch has not been called yet
         current_batch = openmc.lib.current_batch() + 1
 
-        # Check to activate CMFD diffusion and possible feedback
-        # Check to activate CMFD tallies
-        if self._tally_begin == current_batch:
+        # Check to activate CMFD solver and possible feedback
+        if self._solver_begin == current_batch:
             self._cmfd_on = True
 
         # Check to reset tallies
-        if ((self._n_resets > 0 and current_batch in self._reset)
+        if ((len(self._reset) > 0 and current_batch in self._reset)
                 or self._reset_every):
             self._cmfd_tally_reset()
 
     def _execute_cmfd(self):
         """Runs CMFD calculation on master node"""
-        # Run CMFD on single processor on master
         if openmc.lib.master():
             # Start CMFD timer
             time_start_cmfd = time.time()
 
-            # Create CMFD data from OpenMC tallies
-            self._set_up_cmfd()
+            if openmc.lib.current_batch() >= self._tally_begin:
+                # Calculate all cross sections based on tally window averages
+                self._compute_xs()
 
-            # Call solver
-            self._cmfd_solver_execute()
+        # Execute CMFD algorithm if CMFD on for current batch
+        if self._cmfd_on:
+            # Run CMFD on single processor on master
+            if openmc.lib.master():
+                # Create CMFD data based on OpenMC tallies
+                self._set_up_cmfd()
 
-            # Store k-effective
-            self._k_cmfd.append(self._keff)
+                # Call solver
+                self._cmfd_solver_execute()
 
-            # Check to perform adjoint on last batch
-            if (openmc.lib.current_batch() == openmc.lib.settings.batches
-                    and self._run_adjoint):
-                self._cmfd_solver_execute(adjoint=True)
+                # Store k-effective
+                self._k_cmfd.append(self._keff)
 
-            # Calculate fission source
-            self._calc_fission_source()
+                # Check to perform adjoint on last batch
+                if (openmc.lib.current_batch() == openmc.lib.settings.batches
+                        and self._run_adjoint):
+                    self._cmfd_solver_execute(adjoint=True)
 
-        # Calculate weight factors
-        self._cmfd_reweight(True)
+                # Calculate fission source
+                self._calc_fission_source()
+
+            # Calculate weight factors
+            self._cmfd_reweight()
 
         # Stop CMFD timer
         if openmc.lib.master():
             time_stop_cmfd = time.time()
             self._time_cmfd += time_stop_cmfd - time_start_cmfd
+            if self._cmfd_on:
+                # Write CMFD output if CMFD on for current batch
+                self._write_cmfd_output()
+
 
     def _cmfd_tally_reset(self):
         """Resets all CMFD tallies in memory"""
@@ -1228,9 +1203,6 @@ class CMFDRun(object):
         """Configures CMFD object for a CMFD eigenvalue calculation
 
         """
-        # Calculate all cross sections based on tally window averages
-        self._compute_xs()
-
         # Compute effective downscatter cross section
         if self._downscatter:
             self._compute_effective_downscatter()
@@ -1422,96 +1394,85 @@ class CMFDRun(object):
         self._src_cmp.append(np.sqrt(1.0 / self._norm
                              * np.sum((self._cmfd_src - self._openmc_src)**2)))
 
-    def _cmfd_reweight(self, new_weights):
-        """Performs weighting of particles in source bank
+    def _cmfd_reweight(self):
+        """Performs weighting of particles in source bank"""
+        # Get spatial dimensions and energy groups
+        nx, ny, nz, ng = self._indices
 
-        Parameters
-        ----------
-        new_weights : bool
-            Whether to reweight particles or not
+        # Count bank site in mesh and reverse due to egrid structured
+        outside = self._count_bank_sites()
 
-        """
-        # Compute new weight factors
-        if new_weights:
+        # Check and raise error if source sites exist outside of CMFD mesh
+        if openmc.lib.master() and outside:
+            raise OpenMCError('Source sites outside of the CMFD mesh')
 
-            # Get spatial dimensions and energy groups
-            nx, ny, nz, ng = self._indices
+        # Have master compute weight factors, ignore any zeros in
+        # sourcecounts or cmfd_src
+        if openmc.lib.master():
+            # Compute normalization factor
+            norm = np.sum(self._sourcecounts) / np.sum(self._cmfd_src)
 
-            # Count bank site in mesh and reverse due to egrid structured
-            outside = self._count_bank_sites()
+            # Define target reshape dimensions for sourcecounts. This
+            # defines how self._sourcecounts is ordered by dimension
+            target_shape = [nz, ny, nx, ng]
 
-            # Check and raise error if source sites exist outside of CMFD mesh
-            if openmc.lib.master() and outside:
-                raise OpenMCError('Source sites outside of the CMFD mesh')
+            # Reshape sourcecounts to target shape. Swap x and z axes so
+            # that the shape is now [nx, ny, nz, ng]
+            sourcecounts = np.swapaxes(
+                    self._sourcecounts.reshape(target_shape), 0, 2)
 
-            # Have master compute weight factors, ignore any zeros in
-            # sourcecounts or cmfd_src
-            if openmc.lib.master():
-                # Compute normalization factor
-                norm = np.sum(self._sourcecounts) / np.sum(self._cmfd_src)
+            # Flip index of energy dimension
+            sourcecounts = np.flip(sourcecounts, axis=3)
 
-                # Define target reshape dimensions for sourcecounts. This
-                # defines how self._sourcecounts is ordered by dimension
-                target_shape = [nz, ny, nx, ng]
+            # Compute weight factors
+            div_condition = np.logical_and(sourcecounts > 0,
+                                           self._cmfd_src > 0)
+            self._weightfactors = (np.divide(self._cmfd_src * norm,
+                                   sourcecounts, where=div_condition,
+                                   out=np.ones_like(self._cmfd_src),
+                                   dtype=np.float32))
 
-                # Reshape sourcecounts to target shape. Swap x and z axes so
-                # that the shape is now [nx, ny, nz, ng]
-                sourcecounts = np.swapaxes(
-                        self._sourcecounts.reshape(target_shape), 0, 2)
+        if not self._feedback:
+            return
 
-                # Flip index of energy dimension
-                sourcecounts = np.flip(sourcecounts, axis=3)
+        # Broadcast weight factors to all procs
+        if have_mpi:
+            self._weightfactors = self._intracomm.bcast(
+                                  self._weightfactors)
 
-                # Compute weight factors
-                div_condition = np.logical_and(sourcecounts > 0,
-                                               self._cmfd_src > 0)
-                self._weightfactors = (np.divide(self._cmfd_src * norm,
-                                       sourcecounts, where=div_condition,
-                                       out=np.ones_like(self._cmfd_src),
-                                       dtype=np.float32))
+        m = openmc.lib.meshes[self._mesh_id]
+        energy = self._egrid
+        ng = self._indices[3]
 
-            if (not self._feedback
-                    or openmc.lib.current_batch() < self._feedback_begin):
-                return
+        # Get locations and energies of all particles in source bank
+        source_xyz = openmc.lib.source_bank()['r']
+        source_energies = openmc.lib.source_bank()['E']
 
-            # Broadcast weight factors to all procs
-            if have_mpi:
-                self._weightfactors = self._intracomm.bcast(
-                                      self._weightfactors)
+        # Convert xyz location to the CMFD mesh index
+        mesh_ijk = np.floor((source_xyz - m.lower_left)/m.width).astype(int)
 
-            m = openmc.lib.meshes[self._mesh_id]
-            energy = self._egrid
-            ng = self._indices[3]
+        # Determine which energy bin each particle's energy belongs to
+        # Separate into cases bases on where source energies lies on egrid
+        energy_bins = np.zeros(len(source_energies), dtype=int)
+        idx = np.where(source_energies < energy[0])
+        energy_bins[idx] = ng - 1
+        idx = np.where(source_energies > energy[-1])
+        energy_bins[idx] = 0
+        idx = np.where((source_energies >= energy[0]) &
+                       (source_energies <= energy[-1]))
+        energy_bins[idx] = ng - np.digitize(source_energies[idx], energy)
 
-            # Get locations and energies of all particles in source bank
-            source_xyz = openmc.lib.source_bank()['r']
-            source_energies = openmc.lib.source_bank()['E']
+        # Determine weight factor of each particle based on its mesh index
+        # and energy bin and updates its weight
+        openmc.lib.source_bank()['wgt'] *= self._weightfactors[
+                mesh_ijk[:,0], mesh_ijk[:,1], mesh_ijk[:,2], energy_bins]
 
-            # Convert xyz location to the CMFD mesh index
-            mesh_ijk = np.floor((source_xyz-m.lower_left)/m.width).astype(int)
-
-            # Determine which energy bin each particle's energy belongs to
-            # Separate into cases bases on where source energies lies on egrid
-            energy_bins = np.zeros(len(source_energies), dtype=int)
-            idx = np.where(source_energies < energy[0])
-            energy_bins[idx] = ng - 1
-            idx = np.where(source_energies > energy[-1])
-            energy_bins[idx] = 0
-            idx = np.where((source_energies >= energy[0]) &
-                           (source_energies <= energy[-1]))
-            energy_bins[idx] = ng - np.digitize(source_energies, energy)
-
-            # Determine weight factor of each particle based on its mesh index
-            # and energy bin and updates its weight
-            openmc.lib.source_bank()['wgt'] *= self._weightfactors[
-                    mesh_ijk[:,0], mesh_ijk[:,1], mesh_ijk[:,2], energy_bins]
-
-            if openmc.lib.master() and np.any(source_energies < energy[0]):
-                print(' WARNING: Source pt below energy grid')
-                sys.stdout.flush()
-            if openmc.lib.master() and np.any(source_energies > energy[-1]):
-                print(' WARNING: Source pt above energy grid')
-                sys.stdout.flush()
+        if openmc.lib.master() and np.any(source_energies < energy[0]):
+            print(' WARNING: Source point below energy grid')
+            sys.stdout.flush()
+        if openmc.lib.master() and np.any(source_energies > energy[-1]):
+            print(' WARNING: Source point above energy grid')
+            sys.stdout.flush()
 
     def _count_bank_sites(self):
         """Determines the number of fission bank sites in each cell of a given
@@ -1556,7 +1517,7 @@ class CMFDRun(object):
         energy_bins[idx] = ng - 1
         idx = np.where((source_energies >= energy[0]) &
                        (source_energies <= energy[-1]))
-        energy_bins[idx] = np.digitize(source_energies, energy) - 1
+        energy_bins[idx] = np.digitize(source_energies[idx], energy) - 1
 
         # Determine all unique combinations of mesh bin and energy bin, and
         # count number of particles that belong to these combinations
@@ -1866,8 +1827,8 @@ class CMFDRun(object):
         if self._power_monitor and openmc.lib.master():
             str1 = ' {:d}:'.format(iter)
             str2 = 'k-eff: {:0.8f}'.format(k_n)
-            str3 = 'k-error:  {:.5E}'.format(kerr)
-            str4 = 'src-error:  {:.5E}'.format(serr)
+            str3 = 'k-error:  {:.5e}'.format(kerr)
+            str4 = 'src-error:  {:.5e}'.format(serr)
             str5 = '  {:d}'.format(innerits)
             print('{:8s}{:20s}{:25s}{:s}{:s}'.format(str1, str2, str3, str4,
                                                      str5))
@@ -1927,33 +1888,12 @@ class CMFDRun(object):
         # Get tallies in-memory
         tallies = openmc.lib.tallies
 
-        # Ravel coremap as 1d array similar to how tally data is arranged
-        coremap = np.ravel(self._coremap.swapaxes(0, 2))
-
         # Set conditional numpy array as boolean vector based on coremap
-        # Repeat each value for number of groups in problem
-        is_cmfd_accel = np.repeat(coremap != _CMFD_NOACCEL, ng)
+        is_accel = self._coremap != _CMFD_NOACCEL
 
         # Get flux from CMFD tally 0
         tally_id = self._tally_ids[0]
-        tally_results = tallies[tally_id].results[:,0,1]
-        flux = np.where(is_cmfd_accel, tally_results, 0.)
-
-        # Detect zero flux, abort if located
-        if np.any(flux[is_cmfd_accel] < _TINY_BIT):
-            # Get index of zero flux in flux array
-            idx = np.argmax(np.where(is_cmfd_accel, flux, 1) < _TINY_BIT)
-
-            # Convert scalar idx to index in flux matrix
-            mat_idx = np.unravel_index(idx, self._flux.shape)
-
-            # Throw error message (one-based indexing)
-            # Index of group is flipped
-            err_message = 'Detected zero flux without coremap overlay' + \
-                          ' at mesh: (' + \
-                          ', '.join(str(i+1) for i in mat_idx[:-1]) + \
-                          ') in group ' + str(ng-mat_idx[-1])
-            raise OpenMCError(err_message)
+        flux = tallies[tally_id].results[:,0,1]
 
         # Define target tally reshape dimensions. This defines how openmc
         # tallies are ordered by dimension
@@ -1971,7 +1911,23 @@ class CMFDRun(object):
         self._flux_rate = np.append(self._flux_rate, reshape_flux, axis=4)
 
         # Compute flux as aggregate of banked flux_rate over tally window
-        self._flux = np.sum(self._flux_rate, axis=4)
+        self._flux = np.where(is_accel[..., np.newaxis],
+                              np.sum(self._flux_rate, axis=4), 0.0)
+
+        # Detect zero flux, abort if located and cmfd is on
+        zero_flux = np.logical_and(self._flux < _TINY_BIT,
+                                   is_accel[..., np.newaxis])
+        if np.any(zero_flux) and self._cmfd_on:
+            # Get index of first zero flux in flux array
+            idx = np.argwhere(zero_flux)[0]
+
+            # Throw error message (one-based indexing)
+            # Index of group is flipped
+            err_message = 'Detected zero flux without coremap overlay' + \
+                          ' at mesh: (' + \
+                          ', '.join(str(i+1) for i in idx[:-1]) + \
+                          ') in group ' + str(ng-idx[-1])
+            raise OpenMCError(err_message)
 
         # Get total rr from CMFD tally 0
         totalrr = tallies[tally_id].results[:,1,1]
@@ -2072,10 +2028,7 @@ class CMFDRun(object):
 
         # Get surface currents from CMFD tally 2
         tally_id = self._tally_ids[2]
-        tally_results = tallies[tally_id].results[:,0,1]
-
-        # Filter tally results to include only accelerated regions
-        current = np.where(np.repeat(is_cmfd_accel, 12), tally_results, 0.)
+        current = tallies[tally_id].results[:,0,1]
 
         # Define target tally reshape dimensions for current
         target_tally_shape = [nz, ny, nx, 12, ng, 1]
@@ -2094,7 +2047,8 @@ class CMFDRun(object):
                                        axis=5)
 
         # Compute current as aggregate of banked current_rate over tally window
-        self._current = np.sum(self._current_rate, axis=5)
+        self._current = np.where(is_accel[..., np.newaxis, np.newaxis], 
+                                 np.sum(self._current_rate, axis=5), 0.0)
 
         # Get p1 scatter rr from CMFD tally 3
         tally_id = self._tally_ids[3]
@@ -2202,19 +2156,20 @@ class CMFDRun(object):
 
         # Compute scattering rr by broadcasting flux in outgoing energy and
         # summing over incoming energy
-        scattering = np.sum(self._scattxs * self._flux[:,:,:,:,np.newaxis],
+        scattering = np.sum(self._scattxs * self._flux[:,:,:,:, np.newaxis],
                             axis=3)
 
         # Compute fission rr by broadcasting flux in outgoing energy and
         # summing over incoming energy
-        fission = np.sum(self._nfissxs * self._flux[:,:,:,:,np.newaxis],
+        fission = np.sum(self._nfissxs * self._flux[:,:,:,:, np.newaxis],
                          axis=3)
 
         # Compute residual
         res = leakage + interactions - scattering - (1.0 / keff) * fission
 
         # Normalize res by flux and bank res
-        self._resnb = np.divide(res, self._flux, where=self._flux > 0)
+        self._resnb = np.divide(res, self._flux, where=self._flux > 0,
+                                out=np.zeros_like(self._flux))
 
         # Calculate RMS and record for this batch
         self._balance.append(np.sqrt(
@@ -2222,12 +2177,37 @@ class CMFDRun(object):
             (ng * num_accel)))
 
     def _precompute_array_indices(self):
-        """Computes the indices used to populate certain cross section arrays.
-        These indices are used in _compute_dtilde and _compute_dhat
+        """Initializes cross section arrays and computes the indices
+        used to populate dtilde and dhat
 
         """
         # Extract spatial indices
-        nx, ny, nz = self._indices[:3]
+        nx, ny, nz, ng = self._indices
+
+        # Allocate dimensions for each mesh cell
+        self._hxyz = np.zeros((nx, ny, nz, 3))
+        self._hxyz[:] = openmc.lib.meshes[self._mesh_id].width
+
+        # Allocate flux, cross sections and diffusion coefficient
+        self._flux = np.zeros((nx, ny, nz, ng))
+        self._totalxs = np.zeros((nx, ny, nz, ng))
+        self._p1scattxs = np.zeros((nx, ny, nz, ng))
+        self._scattxs = np.zeros((nx, ny, nz, ng, ng))  # Incoming, outgoing
+        self._nfissxs = np.zeros((nx, ny, nz, ng, ng))  # Incoming, outgoing
+        self._diffcof = np.zeros((nx, ny, nz, ng))
+
+        # Allocate dtilde and dhat
+        self._dtilde = np.zeros((nx, ny, nz, ng, 6))
+        self._dhat = np.zeros((nx, ny, nz, ng, 6))
+
+        # Set reference diffusion parameters
+        if self._ref_d.size > 0:
+            self._set_reference_params = True
+            # Check length of reference diffusion parameters equal to number of
+            # energy groups
+            if self._ref_d.size != self._indices[3]:
+                raise OpenMCError('Number of reference diffusion parameters '
+                                  'must equal number of CMFD energy groups')
 
         # Logical for determining whether region of interest is accelerated
         # region

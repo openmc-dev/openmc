@@ -42,7 +42,8 @@ public:
   //! \param[in] E_in Incoming energy in [eV]
   //! \param[out] E_out Outgoing energy in [eV]
   //! \param[out] mu Outgoing cosine with respect to current direction
-  void sample(double E_in, double& E_out, double& mu) const;
+  //! \param[inout] seed Pseudorandom seed pointer
+  void sample(double E_in, double& E_out, double& mu, uint64_t* seed) const;
 
   Particle::Type particle_; //!< Particle type
   EmissionMode emission_mode_; //!< Emission mode

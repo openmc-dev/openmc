@@ -76,7 +76,7 @@ Particle::Particle()
 void
 Particle::clear()
 {
-  // reset any coordinate levels
+  // Reset any coordinate levels
   for (auto& level : coord_) level.reset();
   n_coord_ = 1;
 }
@@ -84,9 +84,9 @@ Particle::clear()
 void
 Particle::create_secondary(Direction u, double E, Type type)
 {
-  simulation::secondary_bank.emplace_back();
+  secondary_bank_.emplace_back();
 
-  auto& bank {simulation::secondary_bank.back()};
+  auto& bank {secondary_bank_.back()};
   bank.particle = type;
   bank.wgt = wgt_;
   bank.r = this->r();
@@ -99,7 +99,7 @@ Particle::create_secondary(Direction u, double E, Type type)
 void
 Particle::from_source(const Bank* src)
 {
-  // reset some attributes
+  // Reset some attributes
   this->clear();
   alive_ = true;
   surface_ = 0;
@@ -107,8 +107,9 @@ Particle::from_source(const Bank* src)
   material_ = C_NONE;
   n_collision_ = 0;
   fission_ = false;
+  std::fill(flux_derivs_.begin(), flux_derivs_.end(), 0.0);
 
-  // copy attributes from source bank site
+  // Copy attributes from source bank site
   type_ = src->particle;
   wgt_ = src->wgt;
   wgt_last_ = src->wgt;
@@ -123,103 +124,67 @@ Particle::from_source(const Bank* src)
   } else {
     g_ = static_cast<int>(src->E);
     g_last_ = static_cast<int>(src->E);
-    E_ = data::energy_bin_avg[g_ - 1];
+    E_ = data::mg.energy_bin_avg_[g_];
   }
   E_last_ = E_;
 }
 
 void
-Particle::transport()
+Particle::event_calculate_xs()
 {
-  // Display message if high verbosity or trace is on
-  if (settings::verbosity >= 9 || simulation::trace) {
-     write_message("Simulating Particle " + std::to_string(id_));
+  // Set the random number stream
+  if (type_ == Particle::Type::neutron) {
+    stream_ = STREAM_TRACKING;
+  } else {
+    stream_ = STREAM_PHOTON;
   }
 
-  // Initialize number of events to zero
-  int n_event = 0;
+  // Store pre-collision particle properties
+  wgt_last_ = wgt_;
+  E_last_ = E_;
+  u_last_ = this->u();
+  r_last_ = this->r();
 
-  // Add paricle's starting weight to count for normalizing tallies later
-  #pragma omp atomic
-  simulation::total_weight += wgt_;
+  // Reset event variables
+  event_ = TallyEvent::KILL;
+  event_nuclide_ = NUCLIDE_NONE;
+  event_mt_ = REACTION_NONE;
 
-  // Force calculation of cross-sections by setting last energy to zero
-  if (settings::run_CE) {
-    for (auto& micro : neutron_xs_) micro.last_E = 0.0;
+  // If the cell hasn't been determined based on the particle's location,
+  // initiate a search for the current cell. This generally happens at the
+  // beginning of the history and again for any secondary particles
+  if (coord_[n_coord_ - 1].cell == C_NONE) {
+    if (!find_cell(this, false)) {
+      this->mark_as_lost("Could not find the cell containing particle "
+        + std::to_string(id_));
+      return;
+    }
+
+    // Set birth cell attribute
+    if (cell_born_ == C_NONE) cell_born_ = coord_[n_coord_ - 1].cell;
   }
 
-  // Prepare to write out particle track.
-  if (write_track_) add_particle_track();
+  // Write particle track.
+  if (write_track_) write_particle_track(*this);
 
-  // Every particle starts with no accumulated flux derivative.
-  if (!model::active_tallies.empty()) zero_flux_derivs();
+  if (settings::check_overlaps) check_cell_overlap(this);
 
-  while (true) {
-    // Set the random number stream
-    if (type_ == Particle::Type::neutron) {
-      prn_set_stream(STREAM_TRACKING);
-    } else {
-      prn_set_stream(STREAM_PHOTON);
-    }
-
-    // Store pre-collision particle properties
-    wgt_last_ = wgt_;
-    E_last_ = E_;
-    u_last_ = this->u();
-    r_last_ = this->r();
-
-    // Reset event variables
-    event_ = EVENT_KILL;
-    event_nuclide_ = NUCLIDE_NONE;
-    event_mt_ = REACTION_NONE;
-
-    // If the cell hasn't been determined based on the particle's location,
-    // initiate a search for the current cell. This generally happens at the
-    // beginning of the history and again for any secondary particles
-    if (coord_[n_coord_ - 1].cell == C_NONE) {
-      if (!find_cell(this, false)) {
-        this->mark_as_lost("Could not find the cell containing particle "
-          + std::to_string(id_));
-        return;
-      }
-
-      // set birth cell attribute
-      if (cell_born_ == C_NONE) cell_born_ = coord_[n_coord_ - 1].cell;
-    }
-
-    // Write particle track.
-    if (write_track_) write_particle_track(*this);
-
-    if (settings::check_overlaps) check_cell_overlap(this);
-
-    // Calculate microscopic and macroscopic cross sections
-    if (material_ != MATERIAL_VOID) {
-      if (settings::run_CE) {
-        if (material_ != material_last_ || sqrtkT_ != sqrtkT_last_) {
-          // If the material is the same as the last material and the
-          // temperature hasn't changed, we don't need to lookup cross
-          // sections again.
-          model::materials[material_]->calculate_xs(*this);
-        }
-      } else {
-        // Get the MG data
-        calculate_xs_c(material_, g_, sqrtkT_, this->u_local(),
-          macro_xs_.total, macro_xs_.absorption, macro_xs_.nu_fission);
-
-        // Finally, update the particle group while we have already checked
-        // for if multi-group
-        g_last_ = g_;
+  // Calculate microscopic and macroscopic cross sections
+  if (material_ != MATERIAL_VOID) {
+    if (settings::run_CE) {
+      if (material_ != material_last_ || sqrtkT_ != sqrtkT_last_) {
+        // If the material is the same as the last material and the
+        // temperature hasn't changed, we don't need to lookup cross
+        // sections again.
+        model::materials[material_]->calculate_xs(*this);
       }
     } else {
-      macro_xs_.total      = 0.0;
-      macro_xs_.absorption = 0.0;
-      macro_xs_.fission    = 0.0;
-      macro_xs_.nu_fission = 0.0;
-    }
+      // Get the MG data; unlike the CE case above, we have to re-calculate
+      // cross sections for every collision since the cross sections may
+      // be angle-dependent
+      data::mg.macro_xs_[material_].calculate_xs(*this);
 
-    // Find the distance to the nearest boundary
-    auto boundary = distance_to_boundary(this);
-
+<<<<<<< HEAD
     // Sample a distance to collision
     double d_collision;
     if (type_ == Particle::Type::electron ||
@@ -234,158 +199,192 @@ Particle::transport()
       if(model::materials[material_]->continuous_num_density_) 
 	      d_collision = sampling_cvmt(this, boundary.distance);
       //
+=======
+      // Update the particle's group while we know we are multi-group
+      g_last_ = g_;
+>>>>>>> upstream/develop
     }
+  } else {
+    macro_xs_.total      = 0.0;
+    macro_xs_.absorption = 0.0;
+    macro_xs_.fission    = 0.0;
+    macro_xs_.nu_fission = 0.0;
+  }
+}
 
-    // Select smaller of the two distances
-    double distance = std::min(boundary.distance, d_collision);
+void
+Particle::event_advance()
+{
+  // Find the distance to the nearest boundary
+  boundary_ = distance_to_boundary(this);
 
-    // Advance particle
-    for (int j = 0; j < n_coord_; ++j) {
-      coord_[j].r += distance * coord_[j].u;
-    }
+  // Sample a distance to collision
+  if (type_ == Particle::Type::electron ||
+      type_ == Particle::Type::positron) {
+    collision_distance_ = 0.0;
+  } else if (macro_xs_.total == 0.0) {
+    collision_distance_ = INFINITY;
+  } else {
+    collision_distance_ = -std::log(prn(this->current_seed())) / macro_xs_.total;
+  }
 
-    // Score track-length tallies
-    if (!model::active_tracklength_tallies.empty()) {
-      score_tracklength_tally(this, distance);
-    }
+  // Select smaller of the two distances
+  double distance = std::min(boundary_.distance, collision_distance_);
 
-    // Score track-length estimate of k-eff
-    if (settings::run_mode == RUN_MODE_EIGENVALUE &&
-        type_ == Particle::Type::neutron) {
-      global_tally_tracklength += wgt_ * distance * macro_xs_.nu_fission;
-    }
+  // Advance particle
+  for (int j = 0; j < n_coord_; ++j) {
+    coord_[j].r += distance * coord_[j].u;
+  }
 
-    // Score flux derivative accumulators for differential tallies.
-    if (!model::active_tallies.empty()) {
-      score_track_derivative(this, distance);
-    }
+  // Score track-length tallies
+  if (!model::active_tracklength_tallies.empty()) {
+    score_tracklength_tally(this, distance);
+  }
 
-    if (d_collision > boundary.distance) {
-      // ====================================================================
-      // PARTICLE CROSSES SURFACE
+  // Score track-length estimate of k-eff
+  if (settings::run_mode == RunMode::EIGENVALUE &&
+      type_ == Particle::Type::neutron) {
+    keff_tally_tracklength_ += wgt_ * distance * macro_xs_.nu_fission;
+  }
 
-      // Set surface that particle is on and adjust coordinate levels
-      surface_ = boundary.surface_index;
-      n_coord_ = boundary.coord_level;
+  // Score flux derivative accumulators for differential tallies.
+  if (!model::active_tallies.empty()) {
+    score_track_derivative(this, distance);
+  }
+}
+  
+void
+Particle::event_cross_surface()
+{
+  // Set surface that particle is on and adjust coordinate levels
+  surface_ = boundary_.surface_index;
+  n_coord_ = boundary_.coord_level;
 
-      // Saving previous cell data
-      for (int j = 0; j < n_coord_; ++j) {
-        cell_last_[j] = coord_[j].cell;
-      }
-      n_coord_last_ = n_coord_;
+  // Saving previous cell data
+  for (int j = 0; j < n_coord_; ++j) {
+    cell_last_[j] = coord_[j].cell;
+  }
+  n_coord_last_ = n_coord_;
 
-      if (boundary.lattice_translation[0] != 0 ||
-          boundary.lattice_translation[1] != 0 ||
-          boundary.lattice_translation[2] != 0) {
-        // Particle crosses lattice boundary
-        cross_lattice(this, boundary);
-        event_ = EVENT_LATTICE;
-      } else {
-        // Particle crosses surface
-        this->cross_surface();
-        event_ = EVENT_SURFACE;
-      }
-      // Score cell to cell partial currents
-      if (!model::active_surface_tallies.empty()) {
-        score_surface_tally(this, model::active_surface_tallies);
-      }
+  if (boundary_.lattice_translation[0] != 0 ||
+      boundary_.lattice_translation[1] != 0 ||
+      boundary_.lattice_translation[2] != 0) {
+    // Particle crosses lattice boundary
+    cross_lattice(this, boundary_);
+    event_ = TallyEvent::LATTICE;
+  } else {
+    // Particle crosses surface
+    this->cross_surface();
+    event_ = TallyEvent::SURFACE;
+  }
+  // Score cell to cell partial currents
+  if (!model::active_surface_tallies.empty()) {
+    score_surface_tally(this, model::active_surface_tallies);
+  }
+}
+
+void
+Particle::event_collide()
+{
+  // Score collision estimate of keff
+  if (settings::run_mode == RunMode::EIGENVALUE &&
+      type_ == Particle::Type::neutron) {
+    keff_tally_collision_ += wgt_ * macro_xs_.nu_fission
+      / macro_xs_.total;
+  }
+
+  // Score surface current tallies -- this has to be done before the collision
+  // since the direction of the particle will change and we need to use the
+  // pre-collision direction to figure out what mesh surfaces were crossed
+
+  if (!model::active_meshsurf_tallies.empty())
+    score_surface_tally(this, model::active_meshsurf_tallies);
+
+  // Clear surface component
+  surface_ = 0;
+
+  if (settings::run_CE) {
+    collision(this);
+  } else {
+    collision_mg(this);
+  }
+
+  // Score collision estimator tallies -- this is done after a collision
+  // has occurred rather than before because we need information on the
+  // outgoing energy for any tallies with an outgoing energy filter
+  if (!model::active_collision_tallies.empty()) score_collision_tally(this);
+  if (!model::active_analog_tallies.empty()) {
+    if (settings::run_CE) {
+      score_analog_tally_ce(this);
     } else {
-      // ====================================================================
-      // PARTICLE HAS COLLISION
-
-      // Score collision estimate of keff
-      if (settings::run_mode == RUN_MODE_EIGENVALUE &&
-          type_ == Particle::Type::neutron) {
-        global_tally_collision += wgt_ * macro_xs_.nu_fission
-          / macro_xs_.total;
-      }
-
-      // Score surface current tallies -- this has to be done before the collision
-      // since the direction of the particle will change and we need to use the
-      // pre-collision direction to figure out what mesh surfaces were crossed
-
-      if (!model::active_meshsurf_tallies.empty())
-        score_surface_tally(this, model::active_meshsurf_tallies);
-
-      // Clear surface component
-      surface_ = 0;
-
-      if (settings::run_CE) {
-        collision(this);
-      } else {
-        collision_mg(this);
-      }
-
-      // Score collision estimator tallies -- this is done after a collision
-      // has occurred rather than before because we need information on the
-      // outgoing energy for any tallies with an outgoing energy filter
-      if (!model::active_collision_tallies.empty()) score_collision_tally(this);
-      if (!model::active_analog_tallies.empty()) {
-        if (settings::run_CE) {
-          score_analog_tally_ce(this);
-        } else {
-          score_analog_tally_mg(this);
-        }
-      }
-
-      // Reset banked weight during collision
-      n_bank_ = 0;
-      n_bank_second_ = 0;
-      wgt_bank_ = 0.0;
-      for (int& v : n_delayed_bank_) v = 0;
-
-      // Reset fission logical
-      fission_ = false;
-
-      // Save coordinates for tallying purposes
-      r_last_current_ = this->r();
-
-      // Set last material to none since cross sections will need to be
-      // re-evaluated
-      material_last_ = C_NONE;
-
-      // Set all directions to base level -- right now, after a collision, only
-      // the base level directions are changed
-      for (int j = 0; j < n_coord_ - 1; ++j) {
-        if (coord_[j + 1].rotated) {
-          // If next level is rotated, apply rotation matrix
-          const auto& m {model::cells[coord_[j].cell]->rotation_};
-          const auto& u {coord_[j].u};
-          coord_[j + 1].u = u.rotate(m);
-        } else {
-          // Otherwise, copy this level's direction
-          coord_[j+1].u = coord_[j].u;
-        }
-      }
-
-      // Score flux derivative accumulators for differential tallies.
-      if (!model::active_tallies.empty()) score_collision_derivative(this);
-    }
-
-    // If particle has too many events, display warning and kill it
-    ++n_event;
-    if (n_event == MAX_EVENTS) {
-      warning("Particle " + std::to_string(id_) +
-        " underwent maximum number of events.");
-      alive_ = false;
-    }
-
-    // Check for secondary particles if this particle is dead
-    if (!alive_) {
-      // If no secondary particles, break out of event loop
-      if (simulation::secondary_bank.empty()) break;
-
-      this->from_source(&simulation::secondary_bank.back());
-      simulation::secondary_bank.pop_back();
-      n_event = 0;
-
-      // Enter new particle in particle track file
-      if (write_track_) add_particle_track();
+      score_analog_tally_mg(this);
     }
   }
 
+  // Reset banked weight during collision
+  n_bank_ = 0;
+  n_bank_second_ = 0;
+  wgt_bank_ = 0.0;
+  for (int& v : n_delayed_bank_) v = 0;
+
+  // Reset fission logical
+  fission_ = false;
+
+  // Save coordinates for tallying purposes
+  r_last_current_ = this->r();
+
+  // Set last material to none since cross sections will need to be
+  // re-evaluated
+  material_last_ = C_NONE;
+
+  // Set all directions to base level -- right now, after a collision, only
+  // the base level directions are changed
+  for (int j = 0; j < n_coord_ - 1; ++j) {
+    if (coord_[j + 1].rotated) {
+      // If next level is rotated, apply rotation matrix
+      const auto& m {model::cells[coord_[j].cell]->rotation_};
+      const auto& u {coord_[j].u};
+      coord_[j + 1].u = u.rotate(m);
+    } else {
+      // Otherwise, copy this level's direction
+      coord_[j+1].u = coord_[j].u;
+    }
+  }
+
+  // Score flux derivative accumulators for differential tallies.
+  if (!model::active_tallies.empty()) score_collision_derivative(this);
+}
+
+void
+Particle::event_revive_from_secondary()
+{
+  // If particle has too many events, display warning and kill it
+  ++n_event_;
+  if (n_event_ == MAX_EVENTS) {
+    warning("Particle " + std::to_string(id_) +
+      " underwent maximum number of events.");
+    alive_ = false;
+  }
+
+  // Check for secondary particles if this particle is dead
+  if (!alive_) {
+    // If no secondary particles, break out of event loop
+    if (secondary_bank_.empty()) return;
+
+    this->from_source(&secondary_bank_.back());
+    secondary_bank_.pop_back();
+    n_event_ = 0;
+
+    // Enter new particle in particle track file
+    if (write_track_) add_particle_track(*this);
+  }
+}
+
+void
+Particle::event_death()
+{
   #ifdef DAGMC
-  if (settings::dagmc) simulation::history.reset();
+  if (settings::dagmc) history_.reset();
   #endif
 
   // Finish particle track output.
@@ -393,7 +392,31 @@ Particle::transport()
     write_particle_track(*this);
     finalize_particle_track(*this);
   }
+
+  // Contribute tally reduction variables to global accumulator
+  #pragma omp atomic
+  global_tally_absorption += keff_tally_absorption_;
+  #pragma omp atomic
+  global_tally_collision += keff_tally_collision_;
+  #pragma omp atomic
+  global_tally_tracklength += keff_tally_tracklength_;
+  #pragma omp atomic
+  global_tally_leakage += keff_tally_leakage_;
+
+  // Reset particle tallies once accumulated
+  keff_tally_absorption_  = 0.0;
+  keff_tally_collision_   = 0.0;
+  keff_tally_tracklength_ = 0.0;
+  keff_tally_leakage_     = 0.0;
+
+  // Record the number of progeny created by this particle.
+  // This data will be used to efficiently sort the fission bank.
+  if (settings::run_mode == RunMode::EIGENVALUE) {
+    int64_t offset = id_ - 1 - simulation::work_index[mpi::rank];
+    simulation::progeny_per_particle[offset] = n_progeny_;
+  }
 }
+
 
 void
 Particle::cross_surface()
@@ -401,11 +424,11 @@ Particle::cross_surface()
   int i_surface = std::abs(surface_);
   // TODO: off-by-one
   const auto& surf {model::surfaces[i_surface - 1].get()};
-  if (settings::verbosity >= 10 || simulation::trace) {
+  if (settings::verbosity >= 10 || trace_) {
     write_message("    Crossing surface " + std::to_string(surf->id_));
   }
 
-  if (surf->bc_ == BC_VACUUM && (settings::run_mode != RUN_MODE_PLOTTING)) {
+  if (surf->bc_ == Surface::BoundaryType::VACUUM && (settings::run_mode != RunMode::PLOTTING)) {
     // =======================================================================
     // PARTICLE LEAKS OUT OF PROBLEM
 
@@ -425,16 +448,17 @@ Particle::cross_surface()
     }
 
     // Score to global leakage tally
-    global_tally_leakage += wgt_;
+    keff_tally_leakage_ += wgt_;
 
     // Display message
-    if (settings::verbosity >= 10 || simulation::trace) {
+    if (settings::verbosity >= 10 || trace_) {
       write_message("    Leaked out of surface " + std::to_string(surf->id_));
     }
     return;
 
-  } else if ((surf->bc_ == BC_REFLECT || surf->bc_ == BC_WHITE) 
-                                    && (settings::run_mode != RUN_MODE_PLOTTING)) {
+  } else if ((surf->bc_ == Surface::BoundaryType::REFLECT ||
+              surf->bc_ == Surface::BoundaryType::WHITE)
+              && (settings::run_mode != RunMode::PLOTTING)) {
     // =======================================================================
     // PARTICLE REFLECTS FROM SURFACE
 
@@ -463,11 +487,11 @@ Particle::cross_surface()
       score_surface_tally(this, model::active_meshsurf_tallies);
       this->r() = r;
     }
-     
-    Direction u = (surf->bc_ == BC_REFLECT) ?
-      surf->reflect(this->r(), this->u()) :
-      surf->diffuse_reflect(this->r(), this->u());
-    
+
+    Direction u = (surf->bc_ == Surface::BoundaryType::REFLECT) ?
+      surf->reflect(this->r(), this->u(), this) :
+      surf->diffuse_reflect(this->r(), this->u(), this->current_seed());
+
     // Make sure new particle direction is normalized
     this->u() = u / u.norm();
 
@@ -492,12 +516,12 @@ Particle::cross_surface()
     r_last_current_ = this->r() + TINY_BIT*this->u();
 
     // Diagnostic message
-    if (settings::verbosity >= 10 || simulation::trace) {
+    if (settings::verbosity >= 10 || trace_) {
       write_message("    Reflected from surface " + std::to_string(surf->id_));
     }
     return;
 
-  } else if (surf->bc_ == BC_PERIODIC && settings::run_mode != RUN_MODE_PLOTTING) {
+  } else if (surf->bc_ == Surface::BoundaryType::PERIODIC && settings::run_mode != RunMode::PLOTTING) {
     // =======================================================================
     // PERIODIC BOUNDARY
 
@@ -546,7 +570,7 @@ Particle::cross_surface()
     r_last_current_ = this->r() + TINY_BIT*this->u();
 
     // Diagnostic message
-    if (settings::verbosity >= 10 || simulation::trace) {
+    if (settings::verbosity >= 10 || trace_) {
       write_message("    Hit periodic boundary on surface " +
         std::to_string(surf->id_));
     }
@@ -584,7 +608,7 @@ Particle::cross_surface()
   n_coord_ = 1;
   bool found = find_cell(this, false);
 
-  if (settings::run_mode != RUN_MODE_PLOTTING && (!found)) {
+  if (settings::run_mode != RunMode::PLOTTING && (!found)) {
     // If a cell is still not found, there are two possible causes: 1) there is
     // a void in the model, and 2) the particle hit a surface at a tangent. If
     // the particle is really traveling tangent to a surface, if we move it
@@ -633,7 +657,7 @@ void
 Particle::write_restart() const
 {
   // Dont write another restart file if in particle restart mode
-  if (settings::run_mode == RUN_MODE_PARTICLE) return;
+  if (settings::run_mode == RunMode::PARTICLE) return;
 
   // Set up file name
   std::stringstream filename;
@@ -659,20 +683,20 @@ Particle::write_restart() const
     write_dataset(file_id, "current_generation", simulation::current_gen);
     write_dataset(file_id, "n_particles", settings::n_particles);
     switch (settings::run_mode) {
-      case RUN_MODE_FIXEDSOURCE:
+      case RunMode::FIXED_SOURCE:
         write_dataset(file_id, "run_mode", "fixed source");
         break;
-      case RUN_MODE_EIGENVALUE:
+      case RunMode::EIGENVALUE:
         write_dataset(file_id, "run_mode", "eigenvalue");
         break;
-      case RUN_MODE_PARTICLE:
+      case RunMode::PARTICLE:
         write_dataset(file_id, "run_mode", "particle restart");
         break;
     }
     write_dataset(file_id, "id", id_);
     write_dataset(file_id, "type", static_cast<int>(type_));
 
-    int64_t i = simulation::current_work;
+    int64_t i = current_work_;
     write_dataset(file_id, "weight", simulation::source_bank[i-1].wgt);
     write_dataset(file_id, "energy", simulation::source_bank[i-1].E);
     write_dataset(file_id, "xyz", simulation::source_bank[i-1].r);

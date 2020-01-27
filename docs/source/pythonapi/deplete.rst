@@ -1,10 +1,10 @@
 .. _pythonapi_deplete:
 
+.. module:: openmc.deplete
+
 ----------------------------------
 :mod:`openmc.deplete` -- Depletion
 ----------------------------------
-
-.. module:: openmc.deplete
 
 Primary API
 -----------
@@ -82,10 +82,10 @@ A minimal example for performing depletion would be:
 Internal Classes and Functions
 ------------------------------
 
-When running in parallel using `mpi4py <http://mpi4py.scipy.org>`_, the MPI
-intercommunicator used can be changed by modifying the following module
-variable. If it is not explicitly modified, it defaults to
-``mpi4py.MPI.COMM_WORLD``.
+When running in parallel using `mpi4py
+<https://mpi4py.readthedocs.io/en/stable/>`_, the MPI intercommunicator used can
+be changed by modifying the following module variable. If it is not explicitly
+modified, it defaults to ``mpi4py.MPI.COMM_WORLD``.
 
 .. data:: comm
 
@@ -126,8 +126,15 @@ data, such as number densities and reaction rates for each material.
    Results
    ResultsList
 
-The following functions are used to solve the depletion equations, with
-:func:`cram.CRAM48` being the default.
+The following class and functions are used to solve the depletion equations,
+with :func:`cram.CRAM48` being the default.
+
+.. autosummary::
+   :toctree: generated
+   :nosignatures:
+   :template: myintegrator.rst
+
+   cram.IPFCramSolver
 
 .. autosummary::
    :toctree: generated
@@ -161,7 +168,7 @@ Abstract Base Classes
 
 A good starting point for extending capabilities in :mod:`openmc.deplete` is
 to examine the following abstract base classes. Custom classes can
-inherit from :class:`abc.TransportOperator` to implement alternative 
+inherit from :class:`abc.TransportOperator` to implement alternative
 schemes for collecting reaction rates and other data from a transport code
 prior to depleting materials
 
@@ -185,8 +192,8 @@ OpenMC simulations back on to the :class:`abc.TransportOperator`
    abc.ReactionRateHelper
    abc.TalliedFissionYieldHelper
 
-Custom integrators can be developed by subclassing from the following abstract
-base classes:
+Custom integrators or depletion solvers can be developed by subclassing from
+the following abstract base classes:
 
 .. autosummary::
    :toctree: generated
@@ -195,3 +202,4 @@ base classes:
 
    abc.Integrator
    abc.SIIntegrator
+   abc.DepSystemSolver

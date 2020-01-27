@@ -44,11 +44,10 @@ def get_data(element, entry):
     value = element.find(entry)
     if value is not None:
         value = value.text.strip()
+    elif entry in element.attrib:
+        value = element.attrib[entry].strip()
     else:
-        if entry in element.attrib:
-            value = element.attrib[entry].strip()
-        else:
-            value = None
+        value = None
 
     return value
 

@@ -549,7 +549,9 @@ class IncidentPhoton(EqualityMixin):
             ace = get_table(ace_or_filename)
 
         # Get atomic number based on name of ACE table
-        zaid = ace.name.split('.')[0]
+        zaid, xs = ace.name.split('.')
+        if not xs.endswith('p'):
+            raise TypeError("{} is not a photoatomic transport ACE table.".format(ace))
         Z = get_metadata(int(zaid))[2]
 
         # Read each reaction
@@ -614,17 +616,23 @@ class IncidentPhoton(EqualityMixin):
                 rx = PhotonReaction(mt)
                 data.reactions[mt] = rx
 
-                # Store cross section
+                # Store cross section, determining threshold
                 xs = ace.xss[idx : idx+n_energy].copy()
                 nonzero = (xs != 0.0)
                 xs[nonzero] = np.exp(xs[nonzero])
-                rx.xs = Tabulated1D(energy, xs, [n_energy], [5])
+                threshold = np.where(xs > 0.0)[0][0]
+                rx.xs = Tabulated1D(energy[threshold:], xs[threshold:],
+                                    [n_energy - threshold], [5])
                 idx += n_energy
 
                 # Copy binding energy
                 shell = _SUBSHELLS[d]
                 e = data.atomic_relaxation.binding_energy[shell]
                 rx.subshell_binding_energy = e
+        else:
+            raise ValueError("ACE table {} does not have subshell data. Only "
+                             "newer ACE photoatomic libraries are supported "
+                             "(e.g., eprdata14).".format(ace.name))
 
         # Add bremsstrahlung DCS data
         data._add_bremsstrahlung()
@@ -786,7 +794,7 @@ class IncidentPhoton(EqualityMixin):
         ----------
         path : str
             Path to write HDF5 file to
-        mode : {'r', r+', 'w', 'x', 'a'}
+        mode : {'r', 'r+', 'w', 'x', 'a'}
             Mode that is used to open the HDF5 file. This is the second argument
             to the :class:`h5py.File` constructor.
         libver : {'earliest', 'latest'}
@@ -988,7 +996,11 @@ class IncidentPhoton(EqualityMixin):
             for mt, rx in self.reactions.items():
                 if mt >= 534 and mt <= 572:
                     shell = _REACTION_NAME[mt][1]
-                    e_f = self.atomic_relaxation.energy_fluorescence(shell)
+                    relax_data = self.atomic_relaxation
+                    if relax_data is not None:
+                        e_f = relax_data.energy_fluorescence(shell)
+                    else:
+                        e_f = 0.0
                     heating_xs += (energy - e_f) * rx.xs(energy)
 
         heat_rx = PhotonReaction(525)

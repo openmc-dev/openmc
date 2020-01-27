@@ -12,7 +12,7 @@ namespace openmc {
 void russian_roulette(Particle* p)
 {
   if (p->wgt_ < settings::weight_cutoff) {
-    if (prn() < p->wgt_ / settings::weight_survive) {
+    if (prn(p->current_seed()) < p->wgt_ / settings::weight_survive) {
       p->wgt_ = settings::weight_survive;
       p->wgt_last_ = p->wgt_;
     } else {

@@ -4,9 +4,8 @@ from numbers import Real, Integral
 import numpy as np
 
 import openmc.checkvalue as cv
-from openmc.stats import Tabular, Univariate, Discrete, Mixture
+from openmc.stats import Tabular, Univariate, Discrete
 from .angle_energy import AngleEnergy
-from .function import INTERPOLATION_SCHEME
 from .endf import get_tab2_record, get_tab1_record
 
 
@@ -122,7 +121,7 @@ class LaboratoryAngleEnergy(AngleEnergy):
         mu = []
         energy_out = []
         for i in range(ne):
-            params, tab2mu = get_tab2_record(file_obj)
+            params, _ = get_tab2_record(file_obj)
             energy[i] = params[1]
             n_mu = params[5]
             mu_i = np.zeros(n_mu)

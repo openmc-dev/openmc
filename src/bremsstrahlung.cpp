@@ -65,7 +65,7 @@ void thick_target_bremsstrahlung(Particle& p, double* E_lost)
   double y = std::exp(y_l + (y_r - y_l)*f);
 
   // Sample number of secondary bremsstrahlung photons
-  int n = y + prn();
+  int n = y + prn(p.current_seed());
 
   *E_lost = 0.0;
   if (n == 0) return;
@@ -73,7 +73,7 @@ void thick_target_bremsstrahlung(Particle& p, double* E_lost)
   // Sample index of the tabulated PDF in the energy grid, j or j+1
   double c_max;
   int i_e;
-  if (prn() <= f || j == 0) {
+  if (prn(p.current_seed()) <= f || j == 0) {
     i_e = j + 1;
 
     // Interpolate the maximum value of the CDF at the incoming particle
@@ -94,7 +94,7 @@ void thick_target_bremsstrahlung(Particle& p, double* E_lost)
   for (int i = 0; i < n; ++i) {
     // Generate a random number r and determine the index i for which
     // cdf(i) <= r*cdf,max <= cdf(i+1)
-    double c = prn()*c_max;
+    double c = prn(p.current_seed())*c_max;
     int i_w = lower_bound_index(&mat->cdf(i_e, 0), &mat->cdf(i_e, 0) + i_e, c);
 
     // Sample the photon energy

@@ -31,7 +31,7 @@ collision_mg(Particle* p)
   sample_reaction(p);
 
   // Display information about collision
-  if ((settings::verbosity >= 10) || (simulation::trace)) {
+  if ((settings::verbosity >= 10) || (p->trace_)) {
     std::stringstream msg;
     msg << "    Energy Group = " << p->g_;
     write_message(msg, 1);
@@ -47,11 +47,10 @@ sample_reaction(Particle* p)
   // absorption (including fission)
 
   if (model::materials[p->material_]->fissionable_) {
-    if (settings::run_mode == RUN_MODE_EIGENVALUE) {
-      create_fission_sites(p, simulation::fission_bank);
-    } else if ((settings::run_mode == RUN_MODE_FIXEDSOURCE) &&
-               (settings::create_fission_neutrons)) {
-      create_fission_sites(p, simulation::secondary_bank);
+    if (settings::run_mode == RunMode::EIGENVALUE  ||
+       (settings::run_mode == RunMode::FIXED_SOURCE &&
+        settings::create_fission_neutrons)) {
+      create_fission_sites(p);
     }
   }
 
@@ -77,29 +76,21 @@ sample_reaction(Particle* p)
 void
 scatter(Particle* p)
 {
-  // Adjust indices for Fortran to C++ indexing
-  // TODO: Remove when no longer needed
-  int gin = p->g_last_ - 1;
-  int gout = p->g_ - 1;
-  int i_mat = p->material_;
-  data::macro_xs[i_mat].sample_scatter(gin, gout, p->mu_, p->wgt_);
-
-  // Adjust return value for fortran indexing
-  // TODO: Remove when no longer needed
-  p->g_ = gout + 1;
+  data::mg.macro_xs_[p->material_].sample_scatter(p->g_last_, p->g_, p->mu_,
+                                                  p->wgt_, p->current_seed());
 
   // Rotate the angle
-  p->u() = rotate_angle(p->u(), p->mu_, nullptr);
+  p->u() = rotate_angle(p->u(), p->mu_, nullptr, p->current_seed());
 
   // Update energy value for downstream compatability (in tallying)
-  p->E_ = data::energy_bin_avg[gout];
+  p->E_ = data::mg.energy_bin_avg_[p->g_];
 
   // Set event component
-  p->event_ = EVENT_SCATTER;
+  p->event_ = TallyEvent::SCATTER;
 }
 
 void
-create_fission_sites(Particle* p, std::vector<Particle::Bank>& bank)
+create_fission_sites(Particle* p)
 {
   // If uniform fission source weighting is turned on, we increase or decrease
   // the expected number of fission sites produced
@@ -111,7 +102,7 @@ create_fission_sites(Particle* p, std::vector<Particle::Bank>& bank)
 
   // Sample the number of neutrons produced
   int nu = static_cast<int>(nu_t);
-  if (prn() <= (nu_t - int(nu_t))) {
+  if (prn(p->current_seed()) <= (nu_t - int(nu_t))) {
     nu++;
   }
 
@@ -122,35 +113,66 @@ create_fission_sites(Particle* p, std::vector<Particle::Bank>& bank)
   // Initialize the counter of delayed neutrons encountered for each delayed
   // group.
   double nu_d[MAX_DELAYED_GROUPS] = {0.};
+  
+  // Clear out particle's nu fission bank
+  p->nu_bank_.clear();
 
   p->fission_ = true;
+  int skipped = 0;
+  
+  // Determine whether to place fission sites into the shared fission bank
+  // or the secondary particle bank.
+  bool use_fission_bank = (settings::run_mode == RunMode::EIGENVALUE);
+
   for (int i = 0; i < nu; ++i) {
-    // Create new bank site and get reference to last element
-    bank.emplace_back();
-    auto& site {bank.back()};
+    Particle::Bank* site;
+    if (use_fission_bank) {
+      int64_t idx;
+      #pragma omp atomic capture
+      idx = simulation::fission_bank_length++;
+      if (idx >= simulation::fission_bank_max) {
+        warning("The shared fission bank is full. Additional fission sites created "
+            "in this generation will not be banked.");
+        #pragma omp atomic write
+        simulation::fission_bank_length = simulation::fission_bank_max;
+        skipped++;
+        break;
+      }
+      site = &simulation::fission_bank[idx];
+    } else {
+      // Create new bank site and get reference to last element
+      auto& bank = p->secondary_bank_;
+      bank.emplace_back();
+      site = &bank.back();
+    }
 
     // Bank source neutrons by copying the particle data
-    site.r = p->r();
-    site.particle = Particle::Type::neutron;
-    site.wgt = 1. / weight;
+    site->r = p->r();
+    site->particle = Particle::Type::neutron;
+    site->wgt = 1. / weight;
+    site->parent_id = p->id_;
+    site->progeny_id = p->n_progeny_++;
 
     // Sample the cosine of the angle, assuming fission neutrons are emitted
     // isotropically
-    double mu = 2.*prn() - 1.;
+    double mu = 2.*prn(p->current_seed()) - 1.;
 
     // Sample the azimuthal angle uniformly in [0, 2.pi)
-    double phi = 2. * PI * prn();
-    site.u.x = mu;
-    site.u.y = std::sqrt(1. - mu * mu) * std::cos(phi);
-    site.u.z = std::sqrt(1. - mu * mu) * std::sin(phi);
+    double phi = 2. * PI * prn(p->current_seed() );
+    site->u.x = mu;
+    site->u.y = std::sqrt(1. - mu * mu) * std::cos(phi);
+    site->u.z = std::sqrt(1. - mu * mu) * std::sin(phi);
 
-    // Sample secondary energy distribution for the fission reaction and set
-    // the energy in the fission bank
+    // Sample secondary energy distribution for the fission reaction
     int dg;
     int gout;
-    data::macro_xs[p->material_].sample_fission_energy(p->g_ - 1, dg, gout);
-    site.E = gout + 1;
-    site.delayed_group = dg + 1;
+    data::mg.macro_xs_[p->material_].sample_fission_energy(p->g_, dg, gout,
+      p->current_seed());
+    // Store the energy and delayed groups on the fission bank
+    site->E = gout;
+    // We add 1 to the delayed_group bc in MG, -1 is prompt, but in the rest
+    // of the code, 0 is prompt.
+    site->delayed_group = dg + 1;
 
     // Set the delayed group on the particle as well
     p->delayed_group_ = dg + 1;
@@ -159,7 +181,27 @@ create_fission_sites(Particle* p, std::vector<Particle::Bank>& bank)
     if (p->delayed_group_ > 0) {
       nu_d[dg]++;
     }
+    
+    // Write fission particles to nuBank
+    if (use_fission_bank) {
+      p->nu_bank_.emplace_back();
+      Particle::NuBank* nu_bank_entry = &p->nu_bank_.back();
+      nu_bank_entry->wgt              = site->wgt;
+      nu_bank_entry->E                = site->E;
+      nu_bank_entry->delayed_group    = site->delayed_group;
+    }
   }
+  
+  // If shared fission bank was full, and no fissions could be added,
+  // set the particle fission flag to false.
+  if (nu == skipped) {
+    p->fission_ = false;
+    return;
+  }
+
+  // If shared fission bank was full, but some fissions could be added,
+  // reduce nu accordingly
+  nu -= skipped;
 
   // Store the total weight banked for analog fission tallies
   p->n_bank_ = nu;
@@ -181,16 +223,14 @@ absorption(Particle* p)
     p->wgt_last_ = p->wgt_;
 
     // Score implicit absorpion estimate of keff
-    #pragma omp atomic
-    global_tally_absorption += p->wgt_absorb_ * p->macro_xs_.nu_fission /
+    p->keff_tally_absorption_ += p->wgt_absorb_ * p->macro_xs_.nu_fission /
         p->macro_xs_.absorption;
   } else {
-    if (p->macro_xs_.absorption > prn() * p->macro_xs_.total) {
-      #pragma omp atomic
-      global_tally_absorption += p->wgt_ * p->macro_xs_.nu_fission /
+    if (p->macro_xs_.absorption > prn(p->current_seed()) * p->macro_xs_.total) {
+      p->keff_tally_absorption_ += p->wgt_ * p->macro_xs_.nu_fission /
            p->macro_xs_.absorption;
       p->alive_ = false;
-      p->event_ = EVENT_ABSORB;
+      p->event_ = TallyEvent::ABSORB;
     }
 
   }

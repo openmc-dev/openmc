@@ -39,13 +39,6 @@ namespace openmc {
 
 const std::string DAGMC_FILENAME = "dagmc.h5m";
 
-namespace simulation {
-
-moab::DagMC::RayHistory history;
-Direction last_dir;
-
-}
-
 namespace model {
 
 moab::DagMC* DAG;
@@ -268,14 +261,12 @@ void load_dagmc_geometry()
     std::string cmp_str = mat_value;
     to_lower(cmp_str);
 
-    if (cmp_str.find("graveyard") != std::string::npos) {
+    if (cmp_str == "graveyard") {
       graveyard = vol_handle;
     }
 
     // material void checks
-    if (cmp_str.find("void") != std::string::npos   ||
-        cmp_str.find("vacuum") != std::string::npos ||
-        cmp_str.find("graveyard") != std::string::npos) {
+    if (cmp_str == "void" || cmp_str == "vacuum" || cmp_str == "graveyard") {
       c->material_.push_back(MATERIAL_VOID);
     } else {
       if (using_uwuw) {
@@ -349,22 +340,22 @@ void load_dagmc_geometry()
       to_lower(bc_value);
 
       if (bc_value == "transmit" || bc_value == "transmission") {
-        s->bc_ = BC_TRANSMIT;
+        s->bc_ = Surface::BoundaryType::TRANSMIT;
       } else if (bc_value == "vacuum") {
-        s->bc_ = BC_VACUUM;
+        s->bc_ = Surface::BoundaryType::VACUUM;
       } else if (bc_value == "reflective" || bc_value == "reflect" || bc_value == "reflecting") {
-        s->bc_ = BC_REFLECT;
+        s->bc_ = Surface::BoundaryType::REFLECT;
       } else if (bc_value == "periodic") {
         fatal_error("Periodic boundary condition not supported in DAGMC.");
       } else {
         std::stringstream err_msg;
-        err_msg << "Unknown boundary condition \"" << s->bc_
+        err_msg << "Unknown boundary condition \"" << bc_value
                 << "\" specified on surface " << s->id_;
         fatal_error(err_msg);
       }
     } else {
       // if no condition is found, set to transmit
-      s->bc_ = BC_TRANSMIT;
+      s->bc_ = Surface::BoundaryType::TRANSMIT;
     }
 
     // graveyard check
@@ -375,7 +366,7 @@ void load_dagmc_geometry()
     // if this surface belongs to the graveyard
     if (graveyard && parent_vols.find(graveyard) != parent_vols.end()) {
       // set BC to vacuum
-      s->bc_ = BC_VACUUM;
+      s->bc_ = Surface::BoundaryType::VACUUM;
     }
 
     // add to global array and map

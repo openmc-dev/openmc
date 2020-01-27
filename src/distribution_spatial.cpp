@@ -46,9 +46,142 @@ CartesianIndependent::CartesianIndependent(pugi::xml_node node)
   }
 }
 
-Position CartesianIndependent::sample() const
+Position CartesianIndependent::sample(uint64_t* seed) const
 {
-  return {x_->sample(), y_->sample(), z_->sample()};
+  return {x_->sample(seed), y_->sample(seed), z_->sample(seed)};
+}
+
+//==============================================================================
+// CylindricalIndependent implementation
+//==============================================================================
+
+CylindricalIndependent::CylindricalIndependent(pugi::xml_node node)
+{
+  // Read distribution for r-coordinate
+  if (check_for_node(node, "r")) {
+    pugi::xml_node node_dist = node.child("r");
+    r_ = distribution_from_xml(node_dist);
+  } else {
+    // If no distribution was specified, default to a single point at r=0
+    double x[] {0.0};
+    double p[] {1.0};
+    r_ = std::make_unique<Discrete>(x, p, 1);
+  }
+
+  // Read distribution for phi-coordinate
+  if (check_for_node(node, "phi")) {
+    pugi::xml_node node_dist = node.child("phi");
+    phi_ = distribution_from_xml(node_dist);
+  } else {
+    // If no distribution was specified, default to a single point at phi=0
+    double x[] {0.0};
+    double p[] {1.0};
+    phi_ = std::make_unique<Discrete>(x, p, 1);
+  }
+
+  // Read distribution for z-coordinate
+  if (check_for_node(node, "z")) {
+    pugi::xml_node node_dist = node.child("z");
+    z_ = distribution_from_xml(node_dist);
+  } else {
+    // If no distribution was specified, default to a single point at z=0
+    double x[] {0.0};
+    double p[] {1.0};
+    z_ = std::make_unique<Discrete>(x, p, 1);
+  }
+
+  // Read cylinder center coordinates
+  if (check_for_node(node, "origin")) {
+    auto origin = get_node_array<double>(node, "origin");
+    if (origin.size() == 3) {
+      origin_ = origin;
+    } else {
+      std::stringstream err_msg;
+      err_msg << "Origin for cylindrical source distribution must be length 3";
+      fatal_error(err_msg);
+    }
+  } else {
+    // If no coordinates were specified, default to (0, 0, 0)
+    origin_ = {0.0, 0.0, 0.0};
+  }
+
+}
+
+Position CylindricalIndependent::sample(uint64_t* seed) const
+{
+  double r = r_->sample(seed);
+  double phi = phi_->sample(seed);
+  double x = r*cos(phi) + origin_.x;
+  double y =  r*sin(phi) + origin_.y;
+  double z = z_->sample(seed) + origin_.z;
+  return {x, y, z};
+}
+
+//==============================================================================
+// SphericalIndependent implementation
+//==============================================================================
+
+SphericalIndependent::SphericalIndependent(pugi::xml_node node)
+{
+  // Read distribution for r-coordinate
+  if (check_for_node(node, "r")) {
+    pugi::xml_node node_dist = node.child("r");
+    r_ = distribution_from_xml(node_dist);
+  } else {
+    // If no distribution was specified, default to a single point at r=0
+    double x[] {0.0};
+    double p[] {1.0};
+    r_ = std::make_unique<Discrete>(x, p, 1);
+  }
+
+  // Read distribution for theta-coordinate
+  if (check_for_node(node, "theta")) {
+    pugi::xml_node node_dist = node.child("theta");
+    theta_ = distribution_from_xml(node_dist);
+  } else {
+    // If no distribution was specified, default to a single point at theta=0
+    double x[] {0.0};
+    double p[] {1.0};
+    theta_ = std::make_unique<Discrete>(x, p, 1);
+  }
+
+  // Read distribution for phi-coordinate
+  if (check_for_node(node, "phi")) {
+    pugi::xml_node node_dist = node.child("phi");
+    phi_ = distribution_from_xml(node_dist);
+  } else {
+    // If no distribution was specified, default to a single point at phi=0
+    double x[] {0.0};
+    double p[] {1.0};
+    phi_ = std::make_unique<Discrete>(x, p, 1);
+  }
+
+  // Read sphere center coordinates
+  if (check_for_node(node, "origin")) {
+    auto origin = get_node_array<double>(node, "origin");
+    if (origin.size() == 3) {
+      origin_ = origin;
+    } else {
+      std::stringstream err_msg;
+      err_msg << "Origin for spherical source distribution must be length 3";
+      fatal_error(err_msg);
+    }
+  } else {
+    // If no coordinates were specified, default to (0, 0, 0)
+    origin_ = {0.0, 0.0, 0.0};
+  }
+
+}
+
+Position SphericalIndependent::sample(uint64_t* seed) const
+{
+  double r = r_->sample(seed);
+  double theta = theta_->sample(seed);
+  double phi = phi_->sample(seed);
+  double x = r*sin(theta)*cos(phi) + origin_.x;
+  double y =  r*sin(theta)*sin(phi) + origin_.y;
+  double z = r*cos(theta) + origin_.z;
+  return {x, y, z};
 }
 
 //==============================================================================
@@ -68,9 +201,9 @@ SpatialBox::SpatialBox(pugi::xml_node node, bool fission)
   upper_right_ = Position{params[3], params[4], params[5]};
 }
 
-Position SpatialBox::sample() const
+Position SpatialBox::sample(uint64_t* seed) const
 {
-  Position xi {prn(), prn(), prn()};
+  Position xi {prn(seed), prn(seed), prn(seed)};
   return lower_left_ + xi*(upper_right_ - lower_left_);
 }
 
@@ -90,7 +223,7 @@ SpatialPoint::SpatialPoint(pugi::xml_node node)
   r_ = Position{params.data()};
 }
 
-Position SpatialPoint::sample() const
+Position SpatialPoint::sample(uint64_t* seed) const
 {
   return r_;
 }

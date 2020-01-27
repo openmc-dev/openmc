@@ -25,17 +25,6 @@ extern std::vector<int64_t> overlap_check_count;
 } // namespace model
 
 //==============================================================================
-// Information about nearest boundary crossing
-//==============================================================================
-
-struct BoundaryInfo {
-  double distance {INFINITY};   //!< distance to nearest boundary
-  int surface_index {0}; //!< if boundary is surface, index in surfaces vector
-  int coord_level;   //!< coordinate level after crossing boundary
-  std::array<int, 3> lattice_translation {}; //!< which way lattice indices will change
-};
-
-//==============================================================================
 //! Check two distances by coincidence tolerance
 //==============================================================================
 

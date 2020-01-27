@@ -72,7 +72,7 @@ void title()
   // Write version information
   std::cout <<
     "                   | The OpenMC Monte Carlo Code\n" <<
-    "         Copyright | 2011-2019 MIT and OpenMC contributors\n" <<
+    "         Copyright | 2011-2020 MIT and OpenMC contributors\n" <<
     "           License | http://openmc.readthedocs.io/en/latest/license.html\n" <<
     "           Version | " << VERSION_MAJOR << '.' << VERSION_MINOR << '.'
     << VERSION_RELEASE << (VERSION_DEV ? "-dev" : "") << '\n';
@@ -92,7 +92,7 @@ void title()
   // Write number of OpenMP threads
   std::cout << "    OpenMP Threads | " << omp_get_max_threads() << '\n';
 #endif
-  std::cout << '\n';
+  std::cout << std::endl;
 }
 
 //==============================================================================
@@ -126,7 +126,7 @@ header(const char* msg, int level) {
 
   // Print header based on verbosity level.
   if (settings::verbosity >= level)
-    std::cout << '\n' << out << "\n\n";
+    std::cout << '\n' << out << "\n" << std::endl;
 }
 
 //==============================================================================
@@ -466,14 +466,16 @@ void print_runtime()
   show_time("Total time in simulation", time_inactive.elapsed() +
     time_active.elapsed());
   show_time("Time in transport only", time_transport.elapsed(), 1);
-  if (settings::run_mode == RUN_MODE_EIGENVALUE) {
+  if (settings::run_mode == RunMode::EIGENVALUE) {
     show_time("Time in inactive batches", time_inactive.elapsed(), 1);
   }
   show_time("Time in active batches", time_active.elapsed(), 1);
-  if (settings::run_mode == RUN_MODE_EIGENVALUE) {
+  if (settings::run_mode == RunMode::EIGENVALUE) {
     show_time("Time synchronizing fission bank", time_bank.elapsed(), 1);
     show_time("Sampling source sites", time_bank_sample.elapsed(), 2);
     show_time("SEND/RECV source sites", time_bank_sendrecv.elapsed(), 2);
+  } else {
+    show_time("Time sampling source", time_sample_source.elapsed(), 1);
   }
   show_time("Time accumulating tallies", time_tallies.elapsed(), 1);
   show_time("Total time for finalization", time_finalize.elapsed());
@@ -524,8 +526,8 @@ void print_runtime()
 std::pair<double, double>
 mean_stdev(const double* x, int n)
 {
-  double mean = x[RESULT_SUM] / n;
-  double stdev = n > 1 ? std::sqrt((x[RESULT_SUM_SQ]/n
+  double mean = x[static_cast<int>(TallyResult::SUM)] / n;
+  double stdev = n > 1 ? std::sqrt((x[static_cast<int>(TallyResult::SUM_SQ)]/n
     - mean*mean)/(n - 1)) : 0.0;
   return {mean, stdev};
 }
@@ -560,14 +562,14 @@ void print_results()
   const auto& gt = simulation::global_tallies;
   double mean, stdev;
   if (n > 1) {
-    if (settings::run_mode == RUN_MODE_EIGENVALUE) {
-      std::tie(mean, stdev) = mean_stdev(&gt(K_COLLISION, 0), n);
+    if (settings::run_mode == RunMode::EIGENVALUE) {
+      std::tie(mean, stdev) = mean_stdev(&gt(GlobalTally::K_COLLISION, 0), n);
       std::cout << " k-effective (Collision)     = "
         << mean << " +/- " << t_n1 * stdev << '\n';
-      std::tie(mean, stdev) = mean_stdev(&gt(K_TRACKLENGTH, 0), n);
+      std::tie(mean, stdev) = mean_stdev(&gt(GlobalTally::K_TRACKLENGTH, 0), n);
       std::cout << " k-effective (Track-length)  = "
         << mean << " +/- " << t_n1 * stdev << '\n';
-      std::tie(mean, stdev) = mean_stdev(&gt(K_ABSORPTION, 0), n);
+      std::tie(mean, stdev) = mean_stdev(&gt(GlobalTally::K_ABSORPTION, 0), n);
       std::cout << " k-effective (Absorption)    = "
         << mean << " +/- " << t_n1 * stdev << '\n';
       if (n > 3) {
@@ -577,23 +579,23 @@ void print_results()
           << k_combined[0] << " +/- " << t_n3 * k_combined[1] << '\n';
       }
     }
-    std::tie(mean, stdev) = mean_stdev(&gt(LEAKAGE, 0), n);
+    std::tie(mean, stdev) = mean_stdev(&gt(GlobalTally::LEAKAGE, 0), n);
     std::cout << " Leakage Fraction            = "
       << mean << " +/- " << t_n1 * stdev << '\n';
   } else {
     if (mpi::master) warning("Could not compute uncertainties -- only one "
       "active batch simulated!");
 
-    if (settings::run_mode == RUN_MODE_EIGENVALUE) {
+    if (settings::run_mode == RunMode::EIGENVALUE) {
       std::cout << " k-effective (Collision)    = "
-        << gt(K_COLLISION, RESULT_SUM) / n << '\n';
+        << gt(GlobalTally::K_COLLISION, TallyResult::SUM) / n << '\n';
       std::cout << " k-effective (Track-length) = "
-        << gt(K_TRACKLENGTH, RESULT_SUM) / n << '\n';
+        << gt(GlobalTally::K_TRACKLENGTH, TallyResult::SUM) / n << '\n';
       std::cout << " k-effective (Absorption)   = "
-        << gt(K_ABSORPTION, RESULT_SUM) / n << '\n';
+        << gt(GlobalTally::K_ABSORPTION, TallyResult::SUM) / n << '\n';
     }
     std::cout << " Leakage Fraction           = "
-      << gt(LEAKAGE, RESULT_SUM) / n << '\n';
+      << gt(GlobalTally::LEAKAGE, TallyResult::SUM) / n << '\n';
   }
   std::cout << '\n';
 
@@ -638,6 +640,16 @@ write_tallies()
   for (auto i_tally = 0; i_tally < model::tallies.size(); ++i_tally) {
     const auto& tally {*model::tallies[i_tally]};
 
+    // Write header block.
+    std::string tally_header("TALLY " + std::to_string(tally.id_));
+    if (!tally.name_.empty()) tally_header += ": " + tally.name_;
+    tallies_out << header(tally_header) << "\n\n";
+
+    if (!tally.writable_) {
+      tallies_out << " Internal\n\n";
+      continue;
+    }
+
     // Calculate t-value for confidence intervals
     double t_value = 1;
     if (settings::confidence_intervals) {
@@ -645,26 +657,21 @@ write_tallies()
       t_value = t_percentile(1 - alpha*0.5, tally.n_realizations_ - 1);
     }
 
-    // Write header block.
-    std::string tally_header("TALLY " + std::to_string(tally.id_));
-    if (!tally.name_.empty()) tally_header += ": " + tally.name_;
-    tallies_out << header(tally_header) << "\n\n";
-
     // Write derivative information.
     if (tally.deriv_ != C_NONE) {
       const auto& deriv {model::tally_derivs[tally.deriv_]};
       switch (deriv.variable) {
-      case DIFF_DENSITY:
-        tallies_out << " Density derivative  Material "
+      case DerivativeVariable::DENSITY:
+        tallies_out << " Density derivative Material "
           << std::to_string(deriv.diff_material) << "\n";
         break;
-      case DIFF_NUCLIDE_DENSITY:
-        tallies_out << " Nuclide density derivative  Material "
+      case DerivativeVariable::NUCLIDE_DENSITY:
+        tallies_out << " Nuclide density derivative Material "
           << std::to_string(deriv.diff_material) << "  Nuclide "
           << data::nuclides[deriv.diff_nuclide]->name_ << "\n";
         break;
-      case DIFF_TEMPERATURE:
-        tallies_out << " Temperature derivative  Material "
+      case DerivativeVariable::TEMPERATURE:
+        tallies_out << " Temperature derivative Material "
           << std::to_string(deriv.diff_material) << "\n";
         break;
       default:
@@ -673,9 +680,14 @@ write_tallies()
       }
     }
 
+    // Initialize Filter Matches Object
+    std::vector<FilterMatch> filter_matches;
+    // Allocate space for tally filter matches
+    filter_matches.resize(model::tally_filters.size());
+
     // Loop over all filter bin combinations.
-    auto filter_iter = FilterBinIter(tally, false);
-    auto end = FilterBinIter(tally, true);
+    auto filter_iter = FilterBinIter(tally, false, &filter_matches);
+    auto end = FilterBinIter(tally, true, &filter_matches);
     for (; filter_iter != end; ++filter_iter) {
       auto filter_index = filter_iter.index_;
 
@@ -686,7 +698,7 @@ write_tallies()
         if (filter_index % tally.strides(i) == 0) {
           auto i_filt = tally.filters(i);
           const auto& filt {*model::tally_filters[i_filt]};
-          auto& match {simulation::filter_matches[i_filt]};
+          auto& match {filter_matches[i_filt]};
           tallies_out << std::string(indent+1, ' ')
             << filt.text_label(match.i_bin_) << "\n";
         }
@@ -705,7 +717,7 @@ write_tallies()
               << data::nuclides[i_nuclide]->name_ << "\n";
           } else {
             tallies_out << std::string(indent+1, ' ')
-              << data::nuclides_MG[i_nuclide].name << "\n";
+              << data::mg.nuclides_[i_nuclide].name << "\n";
           }
         }
 

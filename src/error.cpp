@@ -57,7 +57,7 @@ void output(const std::string& message, std::ostream& out, int indent)
   while (i_start < length) {
     if (length - i_start < line_len) {
       // Remainder of message will fit on line
-      out << message.substr(i_start) << '\n';
+      out << message.substr(i_start) << std::endl;
       break;
 
     } else {

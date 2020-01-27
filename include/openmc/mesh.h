@@ -161,7 +161,7 @@ public:
   //! \param[in] bank Array of bank sites
   //! \param[out] Whether any bank sites are outside the mesh
   //! \return Array indicating number of sites in each mesh/energy bin
-  xt::xtensor<double, 1> count_sites(const std::vector<Particle::Bank>& bank,
+  xt::xtensor<double, 1> count_sites(const Particle::Bank* bank, int64_t length,
     bool* outside) const;
 
   // Data members

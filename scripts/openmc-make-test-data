@@ -18,8 +18,8 @@ import zipfile
 import openmc.data
 from openmc._utils import download
 
-base_ace = 'http://www.nndc.bnl.gov/endf/b7.1/aceFiles/'
-base_endf = 'http://www.nndc.bnl.gov/endf/b7.1/zips/'
+base_ace = 'https://www.nndc.bnl.gov/endf/b7.1/aceFiles/'
+base_endf = 'https://www.nndc.bnl.gov/endf/b7.1/zips/'
 base_wmp = 'https://github.com/mit-crpg/WMP_Library/releases/download/v1.1/'
 files = [
     (base_ace, 'ENDF-B-VII.1-neutron-293.6K.tar.gz', '9729a17eb62b75f285d8a7628ace1449'),
@@ -158,7 +158,7 @@ with tempfile.TemporaryDirectory() as tmpdir:
     print('Creating compressed archive...')
     test_tar = pwd / 'nndc_hdf5_test.tar.xz'
     with tarfile.open(str(test_tar), 'w:xz') as txz:
-        txz.add('nndc_hdf5')
+        txz.add(output_dir)
 
     # Change back to original directory
     os.chdir(str(pwd))

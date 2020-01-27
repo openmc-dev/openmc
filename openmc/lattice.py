@@ -3,7 +3,7 @@ from collections import OrderedDict
 from collections.abc import Iterable
 from copy import deepcopy
 from math import sqrt, floor
-from numbers import Real, Integral
+from numbers import Real
 from xml.etree import ElementTree as ET
 
 import numpy as np
@@ -242,7 +242,7 @@ class Lattice(IDManagerMixin, metaclass=ABCMeta):
                         for i in range(r):
                             uarray[-1][-1].append(universe_ids[z, y, a])
                             a -= 1
-                            y +=1
+                            y += 1
 
                         # Climb up the top-left.
                         for i in range(r):
@@ -332,7 +332,7 @@ class Lattice(IDManagerMixin, metaclass=ABCMeta):
 
         return nuclides
 
-    def get_all_cells(self):
+    def get_all_cells(self, memo=None):
         """Return all cells that are contained within the lattice
 
         Returns
@@ -342,16 +342,22 @@ class Lattice(IDManagerMixin, metaclass=ABCMeta):
             instances
 
         """
-
         cells = OrderedDict()
+
+        if memo and self in memo:
+            return cells
+
+        if memo is not None:
+            memo.add(self)
+
         unique_universes = self.get_unique_universes()
 
-        for universe_id, universe in unique_universes.items():
-            cells.update(universe.get_all_cells())
+        for universe in unique_universes.values():
+            cells.update(universe.get_all_cells(memo))
 
         return cells
 
-    def get_all_materials(self):
+    def get_all_materials(self, memo=None):
         """Return all materials that are contained within the lattice
 
         Returns
@@ -365,9 +371,9 @@ class Lattice(IDManagerMixin, metaclass=ABCMeta):
         materials = OrderedDict()
 
         # Append all Cells in each Cell in the Universe to the dictionary
-        cells = self.get_all_cells()
-        for cell_id, cell in cells.items():
-            materials.update(cell.get_all_materials())
+        cells = self.get_all_cells(memo)
+        for cell in cells.values():
+            materials.update(cell.get_all_materials(memo))
 
         return materials
 
@@ -393,7 +399,7 @@ class Lattice(IDManagerMixin, metaclass=ABCMeta):
         all_universes.update(unique_universes)
 
         # Append all Universes containing each cell to the dictionary
-        for universe_id, universe in unique_universes.items():
+        for universe in unique_universes.values():
             all_universes.update(universe.get_all_universes())
 
         return all_universes
@@ -468,7 +474,7 @@ class Lattice(IDManagerMixin, metaclass=ABCMeta):
         if memo is None:
             memo = {}
 
-        # If no nemoize'd clone exists, instantiate one
+        # If no memoize'd clone exists, instantiate one
         if self not in memo:
             clone = deepcopy(self)
             clone.id = None
@@ -753,15 +759,29 @@ class RectLattice(Lattice):
                     0 <= idx[1] < self.shape[1] and
                     0 <= idx[2] < self.shape[2])
 
-    def create_xml_subelement(self, xml_element):
+    def create_xml_subelement(self, xml_element, memo=None):
+        """Add the lattice xml representation to an incoming xml element
 
-        # Determine if XML element already contains subelement for this Lattice
-        path = './lattice[@id=\'{0}\']'.format(self._id)
-        test = xml_element.find(path)
+        Parameters
+        ----------
+        xml_element : xml.etree.ElementTree.Element
+            XML element to be added to
 
-        # If the element does contain the Lattice subelement, then return
-        if test is not None:
+        memo : set or None
+            A set of object id's representing geometry entities already
+            written to the xml_element. This parameter is used internally
+            and should not be specified by users.
+
+        Returns
+        -------
+        None
+
+        """
+        # If the element already contains the Lattice subelement, then return
+        if memo and self in memo:
             return
+        if memo is not None:
+            memo.add(self)
 
         lattice_subelement = ET.Element("lattice")
         lattice_subelement.set("id", str(self._id))
@@ -777,7 +797,7 @@ class RectLattice(Lattice):
         if self._outer is not None:
             outer = ET.SubElement(lattice_subelement, "outer")
             outer.text = '{0}'.format(self._outer._id)
-            self._outer.create_xml_subelement(xml_element)
+            self._outer.create_xml_subelement(xml_element, memo)
 
         # Export Lattice cell dimensions
         dimension = ET.SubElement(lattice_subelement, "dimension")
@@ -801,7 +821,7 @@ class RectLattice(Lattice):
                         universe_ids += '{0} '.format(universe._id)
 
                         # Create XML subelement for this Universe
-                        universe.create_xml_subelement(xml_element)
+                        universe.create_xml_subelement(xml_element, memo)
 
                     # Add newline character when we reach end of row of cells
                     universe_ids += '\n'
@@ -819,7 +839,7 @@ class RectLattice(Lattice):
                     universe_ids += '{0} '.format(universe._id)
 
                     # Create XML subelement for this Universe
-                    universe.create_xml_subelement(xml_element)
+                    universe.create_xml_subelement(xml_element, memo)
 
                 # Add newline character when we reach end of row of cells
                 universe_ids += '\n'
@@ -1274,14 +1294,12 @@ class HexLattice(Lattice):
         else:
             return g < self.num_rings and 0 <= idx[2] < self.num_axial
 
-    def create_xml_subelement(self, xml_element):
-        # Determine if XML element already contains subelement for this Lattice
-        path = './hex_lattice[@id=\'{0}\']'.format(self._id)
-        test = xml_element.find(path)
-
-        # If the element does contain the Lattice subelement, then return
-        if test is not None:
+    def create_xml_subelement(self, xml_element, memo=None):
+        # If this subelement has already been written, return
+        if memo and self in memo:
             return
+        if memo is not None:
+            memo.add(self)
 
         lattice_subelement = ET.Element("hex_lattice")
         lattice_subelement.set("id", str(self._id))
@@ -1297,7 +1315,7 @@ class HexLattice(Lattice):
         if self._outer is not None:
             outer = ET.SubElement(lattice_subelement, "outer")
             outer.text = '{0}'.format(self._outer._id)
-            self._outer.create_xml_subelement(xml_element)
+            self._outer.create_xml_subelement(xml_element, memo)
 
         lattice_subelement.set("n_rings", str(self._num_rings))
         # If orientation is "x" export it to XML
@@ -1319,13 +1337,13 @@ class HexLattice(Lattice):
             for z in range(self._num_axial):
                 # Initialize the center universe.
                 universe = self._universes[z][-1][0]
-                universe.create_xml_subelement(xml_element)
+                universe.create_xml_subelement(xml_element, memo)
 
                 # Initialize the remaining universes.
                 for r in range(self._num_rings-1):
                     for theta in range(6*(self._num_rings - 1 - r)):
                         universe = self._universes[z][r][theta]
-                        universe.create_xml_subelement(xml_element)
+                        universe.create_xml_subelement(xml_element, memo)
 
                 # Get a string representation of the universe IDs.
                 slices.append(self._repr_axial_slice(self._universes[z]))
@@ -1337,13 +1355,13 @@ class HexLattice(Lattice):
         else:
             # Initialize the center universe.
             universe = self._universes[-1][0]
-            universe.create_xml_subelement(xml_element)
+            universe.create_xml_subelement(xml_element, memo)
 
             # Initialize the remaining universes.
             for r in range(self._num_rings - 1):
                 for theta in range(6*(self._num_rings - 1 - r)):
                     universe = self._universes[r][theta]
-                    universe.create_xml_subelement(xml_element)
+                    universe.create_xml_subelement(xml_element, memo)
 
             # Get a string representation of the universe IDs.
             universe_ids = self._repr_axial_slice(self._universes)

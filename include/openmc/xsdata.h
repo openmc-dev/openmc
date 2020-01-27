@@ -15,6 +15,15 @@
 
 namespace openmc {
 
+// Angular distribution type
+enum class AngleDistributionType {
+  ISOTROPIC,
+  EQUI_32,
+  TABULAR,
+  LEGENDRE,
+  HISTOGRAM
+};
+
 //==============================================================================
 // XSDATA contains the temperature-independent cross section data for an MGXS
 //==============================================================================
@@ -22,10 +31,11 @@ namespace openmc {
 class XsData {
 
   private:
+
     //! \brief Reads scattering data from the HDF5 file
     void
-    scatter_from_hdf5(hid_t xsdata_grp, size_t n_ang,
-     int scatter_format, int final_scatter_format, int order_data);
+    scatter_from_hdf5(hid_t xsdata_grp, size_t n_ang, AngleDistributionType scatter_format,
+        AngleDistributionType final_scatter_format, int order_data);
 
     //! \brief Reads fission data from the HDF5 file
     void
@@ -60,6 +70,9 @@ class XsData {
     //  the HDF5 file when no delayed data is provided.
     void
     fission_matrix_no_delayed_from_hdf5(hid_t xsdata_grp, size_t n_ang);
+
+    //! Number of energy and delayed neutron groups
+    size_t n_g_, n_dg_;
 
   public:
 
@@ -98,7 +111,10 @@ class XsData {
     //! @param scatter_format The scattering representation of the file.
     //! @param n_pol Number of polar angles.
     //! @param n_azi Number of azimuthal angles.
-    XsData(bool fissionable, int scatter_format, int n_pol, int n_azi);
+    //! @param n_groups Number of energy groups.
+    //! @param n_d_groups Number of delayed neutron groups.
+    XsData(bool fissionable, AngleDistributionType scatter_format, int n_pol,
+        int n_azi, size_t n_groups, size_t n_d_groups);
 
     //! \brief Loads the XsData object from the HDF5 file
     //!
@@ -114,8 +130,8 @@ class XsData {
     //! @param n_pol Number of polar angles.
     //! @param n_azi Number of azimuthal angles.
     void
-    from_hdf5(hid_t xsdata_grp, bool fissionable, int scatter_format,
-         int final_scatter_format, int order_data, bool is_isotropic, int n_pol,
+    from_hdf5(hid_t xsdata_grp, bool fissionable, AngleDistributionType scatter_format,
+         AngleDistributionType final_scatter_format, int order_data, bool is_isotropic, int n_pol,
          int n_azi);
 
     //! \brief Combines the microscopic data to a macroscopic object.

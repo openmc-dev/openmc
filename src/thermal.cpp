@@ -76,7 +76,7 @@ ThermalScattering::ThermalScattering(hid_t group, const std::vector<double>& tem
   }
 
   switch (settings::temperature_method) {
-  case TEMPERATURE_NEAREST:
+  case TemperatureMethod::NEAREST:
     // Determine actual temperatures to read
     for (const auto& T : temperature) {
 
@@ -96,7 +96,7 @@ ThermalScattering::ThermalScattering(hid_t group, const std::vector<double>& tem
     }
     break;
 
-  case TEMPERATURE_INTERPOLATION:
+  case TemperatureMethod::INTERPOLATION:
     // If temperature interpolation or multipole is selected, get a list of
     // bounding temperatures for each actual temperature present in the model
     for (const auto& T : temperature) {
@@ -150,12 +150,13 @@ ThermalScattering::ThermalScattering(hid_t group, const std::vector<double>& tem
 
 void
 ThermalScattering::calculate_xs(double E, double sqrtkT, int* i_temp,
-                                double* elastic, double* inelastic) const
+                                double* elastic, double* inelastic,
+                                uint64_t* seed) const
 {
   // Determine temperature for S(a,b) table
   double kT = sqrtkT*sqrtkT;
   int i;
-  if (settings::temperature_method == TEMPERATURE_NEAREST) {
+  if (settings::temperature_method == TemperatureMethod::NEAREST) {
     // If using nearest temperature, do linear search on temperature
     for (i = 0; i < kTs_.size(); ++i) {
       if (std::abs(kTs_[i] - kT) < K_BOLTZMANN*settings::temperature_tolerance) {
@@ -172,7 +173,7 @@ ThermalScattering::calculate_xs(double E, double sqrtkT, int* i_temp,
 
     // Randomly sample between temperature i and i+1
     double f = (kT - kTs_[i]) / (kTs_[i+1] - kTs_[i]);
-    if (f > prn()) ++i;
+    if (f > prn(seed)) ++i;
   }
 
   // Set temperature index
@@ -265,13 +266,13 @@ ThermalData::calculate_xs(double E, double* elastic, double* inelastic) const
 
 void
 ThermalData::sample(const NuclideMicroXS& micro_xs, double E,
-                    double* E_out, double* mu)
+                    double* E_out, double* mu, uint64_t* seed)
 {
   // Determine whether inelastic or elastic scattering will occur
-  if (prn() < micro_xs.thermal_elastic / micro_xs.thermal) {
-    elastic_.distribution->sample(E, *E_out, *mu);
+  if (prn(seed) < micro_xs.thermal_elastic / micro_xs.thermal) {
+    elastic_.distribution->sample(E, *E_out, *mu, seed);
   } else {
-    inelastic_.distribution->sample(E, *E_out, *mu);
+    inelastic_.distribution->sample(E, *E_out, *mu, seed);
   }
 
   // Because of floating-point roundoff, it may be possible for mu to be

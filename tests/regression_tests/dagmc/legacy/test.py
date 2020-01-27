@@ -8,7 +8,9 @@ pytestmark = pytest.mark.skipif(
     not openmc.lib._dagmc_enabled(),
     reason="DAGMC CAD geometry is not enabled.")
 
-def test_dagmc():
+@pytest.fixture
+def model():
+
     model = openmc.model.Model()
 
     # settings
@@ -31,7 +33,7 @@ def test_dagmc():
     model.tallies = [tally]
 
     # materials
-    u235 = openmc.Material(name="fuel")
+    u235 = openmc.Material(name="no-void fuel")
     u235.add_nuclide('U235', 1.0, 'ao')
     u235.set_density('g/cc', 11)
     u235.id = 40
@@ -46,4 +48,8 @@ def test_dagmc():
     mats = openmc.Materials([u235, water])
     model.materials = mats
 
-    model.export_to_xml()
+    return model
+
+def test_dagmc(model):
+    harness = PyAPITestHarness('statepoint.5.h5', model)
+    harness.main()

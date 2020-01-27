@@ -218,3 +218,27 @@ def test_from_xml(run_in_tmpdir):
     assert m2.density == 10.0
     assert m2.density_units == 'kg/m3'
     assert mats[2].density_units == 'sum'
+
+
+def test_mix_materials():
+    m1 = openmc.Material()
+    m1.add_nuclide('U235', 1.)
+    m1dens = 10.0
+    m1amm = m1.average_molar_mass
+    m1.set_density('g/cm3', m1dens)
+    m2 = openmc.Material()
+    m2.add_nuclide('Zr90', 1.)
+    m2dens = 2.0
+    m2amm = m2.average_molar_mass
+    m2.set_density('g/cm3', m2dens)
+    f0, f1 = 0.6, 0.4
+    dens3 = (f0*m1amm + f1*m2amm) / (f0*m1amm/m1dens + f1*m2amm/m2dens)
+    dens4 = 1. / (f0 / m1dens + f1 / m2dens)
+    dens5 = f0*m1dens + f1*m2dens
+    m3 = openmc.Material.mix_materials([m1, m2], [f0, f1], percent_type='ao')
+    m4 = openmc.Material.mix_materials([m1, m2], [f0, f1], percent_type='wo')
+    m5 = openmc.Material.mix_materials([m1, m2], [f0, f1], percent_type='vo')
+    assert m3.density == pytest.approx(dens3)
+    assert m4.density == pytest.approx(dens4)
+    assert m5.density == pytest.approx(dens5)
+

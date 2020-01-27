@@ -1,8 +1,10 @@
 
 #include "openmc/cell.h"
 
+#include <algorithm>
 #include <cctype>
 #include <cmath>
+#include <iterator>
 #include <sstream>
 #include <set>
 #include <string>
@@ -245,7 +247,7 @@ Cell::temperature(int32_t instance) const
 void
 Cell::set_temperature(double T, int32_t instance)
 {
-  if (settings::temperature_method == TEMPERATURE_INTERPOLATION) {
+  if (settings::temperature_method == TemperatureMethod::INTERPOLATION) {
     if (T < data::temperature_min) {
       throw std::runtime_error{"Temperature is below minimum temperature at "
         "which data is available."};
@@ -256,8 +258,13 @@ Cell::set_temperature(double T, int32_t instance)
   }
 
   if (instance >= 0) {
+    // If temperature vector is not big enough, resize it first
+    if (sqrtkT_.size() != n_instances_) sqrtkT_.resize(n_instances_, sqrtkT_[0]);
+
+    // Set temperature for the corresponding instance
     sqrtkT_.at(instance) = std::sqrt(K_BOLTZMANN * T);
   } else {
+    // Set temperature for all instances
     for (auto& T_ : sqrtkT_) {
       T_ = std::sqrt(K_BOLTZMANN * T);
     }
@@ -305,6 +312,10 @@ CSGCell::CSGCell(pugi::xml_node cell_node)
 
   if (fill_present) {
     fill_ = std::stoi(get_node_value(cell_node, "fill"));
+    if (fill_ == universe_) {
+      fatal_error("Cell " + std::to_string(id_) +
+        " is filled with the same universe that it is contained in.");
+    }
   } else {
     fill_ = C_NONE;
   }
@@ -438,35 +449,39 @@ CSGCell::CSGCell(pugi::xml_node cell_node)
     }
 
     auto rot {get_node_array<double>(cell_node, "rotation")};
-    if (rot.size() != 3) {
+    if (rot.size() != 3 && rot.size() != 9) {
       std::stringstream err_msg;
       err_msg << "Non-3D rotation vector applied to cell " << id_;
       fatal_error(err_msg);
     }
 
-    // Store the rotation angles.
-    rotation_.reserve(12);
-    rotation_.push_back(rot[0]);
-    rotation_.push_back(rot[1]);
-    rotation_.push_back(rot[2]);
-
     // Compute and store the rotation matrix.
-    auto phi = -rot[0] * PI / 180.0;
-    auto theta = -rot[1] * PI / 180.0;
-    auto psi = -rot[2] * PI / 180.0;
-    rotation_.push_back(std::cos(theta) * std::cos(psi));
-    rotation_.push_back(-std::cos(phi) * std::sin(psi)
-                        + std::sin(phi) * std::sin(theta) * std::cos(psi));
-    rotation_.push_back(std::sin(phi) * std::sin(psi)
-                        + std::cos(phi) * std::sin(theta) * std::cos(psi));
-    rotation_.push_back(std::cos(theta) * std::sin(psi));
-    rotation_.push_back(std::cos(phi) * std::cos(psi)
-                        + std::sin(phi) * std::sin(theta) * std::sin(psi));
-    rotation_.push_back(-std::sin(phi) * std::cos(psi)
-                        + std::cos(phi) * std::sin(theta) * std::sin(psi));
-    rotation_.push_back(-std::sin(theta));
-    rotation_.push_back(std::sin(phi) * std::cos(theta));
-    rotation_.push_back(std::cos(phi) * std::cos(theta));
+    rotation_.reserve(rot.size() == 9 ? 9 : 12);
+    if (rot.size() == 3) {
+      double phi = -rot[0] * PI / 180.0;
+      double theta = -rot[1] * PI / 180.0;
+      double psi = -rot[2] * PI / 180.0;
+      rotation_.push_back(std::cos(theta) * std::cos(psi));
+      rotation_.push_back(-std::cos(phi) * std::sin(psi)
+                          + std::sin(phi) * std::sin(theta) * std::cos(psi));
+      rotation_.push_back(std::sin(phi) * std::sin(psi)
+                          + std::cos(phi) * std::sin(theta) * std::cos(psi));
+      rotation_.push_back(std::cos(theta) * std::sin(psi));
+      rotation_.push_back(std::cos(phi) * std::cos(psi)
+                          + std::sin(phi) * std::sin(theta) * std::sin(psi));
+      rotation_.push_back(-std::sin(phi) * std::cos(psi)
+                          + std::cos(phi) * std::sin(theta) * std::sin(psi));
+      rotation_.push_back(-std::sin(theta));
+      rotation_.push_back(std::sin(phi) * std::cos(theta));
+      rotation_.push_back(std::cos(phi) * std::cos(theta));
+
+      // When user specifies angles, write them at end of vector
+      rotation_.push_back(rot[0]);
+      rotation_.push_back(rot[1]);
+      rotation_.push_back(rot[2]);
+    } else {
+      std::copy(rot.begin(), rot.end(), std::back_inserter(rotation_));
+    }
   }
 }
 
@@ -485,7 +500,7 @@ CSGCell::contains(Position r, Direction u, int32_t on_surface) const
 //==============================================================================
 
 std::pair<double, int32_t>
-CSGCell::distance(Position r, Direction u, int32_t on_surface) const
+CSGCell::distance(Position r, Direction u, int32_t on_surface, Particle* p) const
 {
   double min_dist {INFTY};
   int32_t i_surf {std::numeric_limits<int32_t>::max()};
@@ -550,7 +565,7 @@ CSGCell::to_hdf5(hid_t cell_group) const
   }
 
   // Write fill information.
-  if (type_ == FILL_MATERIAL) {
+  if (type_ == Fill::MATERIAL) {
     write_dataset(group, "fill_type", "material");
     std::vector<int32_t> mat_ids;
     for (auto i_mat : material_) {
@@ -571,18 +586,22 @@ CSGCell::to_hdf5(hid_t cell_group) const
       temps.push_back(sqrtkT_val * sqrtkT_val / K_BOLTZMANN);
     write_dataset(group, "temperature", temps);
 
-  } else if (type_ == FILL_UNIVERSE) {
+  } else if (type_ == Fill::UNIVERSE) {
     write_dataset(group, "fill_type", "universe");
     write_dataset(group, "fill", model::universes[fill_]->id_);
     if (translation_ != Position(0, 0, 0)) {
       write_dataset(group, "translation", translation_);
     }
     if (!rotation_.empty()) {
-      std::array<double, 3> rot {rotation_[0], rotation_[1], rotation_[2]};
-      write_dataset(group, "rotation", rot);
+      if (rotation_.size() == 12) {
+        std::array<double, 3> rot {rotation_[9], rotation_[10], rotation_[11]};
+        write_dataset(group, "rotation", rot);
+      } else {
+        write_dataset(group, "rotation", rotation_);
+      }
     }
 
-  } else if (type_ == FILL_LATTICE) {
+  } else if (type_ == Fill::LATTICE) {
     write_dataset(group, "fill_type", "lattice");
     write_dataset(group, "lattice", model::lattices[fill_]->id_);
   }
@@ -767,13 +786,13 @@ CSGCell::contains_complex(Position r, Direction u, int32_t on_surface) const
 DAGCell::DAGCell() : Cell{} {};
 
 std::pair<double, int32_t>
-DAGCell::distance(Position r, Direction u, int32_t on_surface) const
+DAGCell::distance(Position r, Direction u, int32_t on_surface, Particle* p) const
 {
   // if we've changed direction or we're not on a surface,
   // reset the history and update last direction
-  if (u != simulation::last_dir || on_surface == 0) {
-    simulation::history.reset();
-    simulation::last_dir = u;
+  if (u != p->last_dir_ || on_surface == 0) {
+    p->history_.reset();
+    p->last_dir_ = u;
   }
 
   moab::ErrorCode rval;
@@ -782,7 +801,7 @@ DAGCell::distance(Position r, Direction u, int32_t on_surface) const
   double dist;
   double pnt[3] = {r.x, r.y, r.z};
   double dir[3] = {u.x, u.y, u.z};
-  rval = dagmc_ptr_->ray_fire(vol, pnt, dir, hit_surf, dist, &simulation::history);
+  rval = dagmc_ptr_->ray_fire(vol, pnt, dir, hit_surf, dist, &p->history_);
   MB_CHK_ERR_CONT(rval);
   int surf_idx;
   if (hit_surf != 0) {
@@ -1028,8 +1047,8 @@ openmc_cell_get_fill(int32_t index, int* type, int32_t** indices, int32_t* n)
 {
   if (index >= 0 && index < model::cells.size()) {
     Cell& c {*model::cells[index]};
-    *type = c.type_;
-    if (c.type_ == FILL_MATERIAL) {
+    *type = static_cast<int>(c.type_);
+    if (c.type_ == Fill::MATERIAL) {
       *indices = c.material_.data();
       *n = c.material_.size();
     } else {
@@ -1047,10 +1066,11 @@ extern "C" int
 openmc_cell_set_fill(int32_t index, int type, int32_t n,
                      const int32_t* indices)
 {
+  Fill filltype = static_cast<Fill>(type);
   if (index >= 0 && index < model::cells.size()) {
     Cell& c {*model::cells[index]};
-    if (type == FILL_MATERIAL) {
-      c.type_ = FILL_MATERIAL;
+    if (filltype == Fill::MATERIAL) {
+      c.type_ = Fill::MATERIAL;
       c.material_.clear();
       for (int i = 0; i < n; i++) {
         int i_mat = indices[i];
@@ -1064,10 +1084,10 @@ openmc_cell_set_fill(int32_t index, int type, int32_t n,
         }
       }
       c.material_.shrink_to_fit();
-    } else if (type == FILL_UNIVERSE) {
-      c.type_ = FILL_UNIVERSE;
+    } else if (filltype == Fill::UNIVERSE) {
+      c.type_ = Fill::UNIVERSE;
     } else {
-      c.type_ = FILL_LATTICE;
+      c.type_ = Fill::LATTICE;
     }
   } else {
     set_errmsg("Index in cells array is out of bounds.");

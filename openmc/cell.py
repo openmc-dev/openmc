@@ -2,7 +2,7 @@ from collections import OrderedDict
 from collections.abc import Iterable
 from copy import deepcopy
 from math import cos, sin, pi
-from numbers import Real, Integral
+from numbers import Real
 from xml.etree import ElementTree as ET
 import sys
 import warnings
@@ -63,6 +63,10 @@ class Cell(IDManagerMixin):
            \sin\phi \sin\theta \sin\psi & -\sin\phi \cos\psi + \cos\phi
            \sin\theta \sin\psi \\ -\sin\theta & \sin\phi \cos\theta & \cos\phi
            \cos\theta \end{array} \right ]
+
+        A rotation matrix can also be specified directly by setting this
+        attribute to a nested list (or 2D numpy array) that specifies each
+        element of the matrix.
     rotation_matrix : numpy.ndarray
         The rotation matrix defined by the angles specified in the
         :attr:`Cell.rotation` property.
@@ -227,21 +231,24 @@ class Cell(IDManagerMixin):
 
     @rotation.setter
     def rotation(self, rotation):
-        cv.check_type('cell rotation', rotation, Iterable, Real)
         cv.check_length('cell rotation', rotation, 3)
         self._rotation = np.asarray(rotation)
 
         # Save rotation matrix -- the reason we do this instead of having it be
         # automatically calculated when the rotation_matrix property is accessed
         # is so that plotting on a rotated geometry can be done faster.
-        phi, theta, psi = self.rotation*(-pi/180.)
-        c3, s3 = cos(phi), sin(phi)
-        c2, s2 = cos(theta), sin(theta)
-        c1, s1 = cos(psi), sin(psi)
-        self._rotation_matrix = np.array([
-            [c1*c2, c1*s2*s3 - c3*s1, s1*s3 + c1*c3*s2],
-            [c2*s1, c1*c3 + s1*s2*s3, c3*s1*s2 - c1*s3],
-            [-s2, c2*s3, c2*c3]])
+        if self._rotation.ndim == 2:
+            # User specified rotation matrix directly
+            self._rotation_matrix = self._rotation
+        else:
+            phi, theta, psi = self.rotation*(-pi/180.)
+            c3, s3 = cos(phi), sin(phi)
+            c2, s2 = cos(theta), sin(theta)
+            c1, s1 = cos(psi), sin(psi)
+            self._rotation_matrix = np.array([
+                [c1*c2, c1*s2*s3 - c3*s1, s1*s3 + c1*c3*s2],
+                [c2*s1, c1*c3 + s1*s2*s3, c3*s1*s2 - c1*s3],
+                [-s2, c2*s3, c2*c3]])
 
     @translation.setter
     def translation(self, translation):
@@ -343,7 +350,7 @@ class Cell(IDManagerMixin):
 
         return nuclides
 
-    def get_all_cells(self):
+    def get_all_cells(self, memo=None):
         """Return all cells that are contained within this one if it is filled with a
         universe or lattice
 
@@ -357,12 +364,18 @@ class Cell(IDManagerMixin):
 
         cells = OrderedDict()
 
+        if memo and self in memo:
+            return cells
+
+        if memo is not None:
+            memo.add(self)
+
         if self.fill_type in ('universe', 'lattice'):
-            cells.update(self.fill.get_all_cells())
+            cells.update(self.fill.get_all_cells(memo))
 
         return cells
 
-    def get_all_materials(self):
+    def get_all_materials(self, memo=None):
         """Return all materials that are contained within the cell
 
         Returns
@@ -381,9 +394,9 @@ class Cell(IDManagerMixin):
                     materials[m.id] = m
         else:
             # Append all Cells in each Cell in the Universe to the dictionary
-            cells = self.get_all_cells()
+            cells = self.get_all_cells(memo)
             for cell in cells.values():
-                materials.update(cell.get_all_materials())
+                materials.update(cell.get_all_materials(memo))
 
         return materials
 
@@ -429,7 +442,7 @@ class Cell(IDManagerMixin):
         if memo is None:
             memo = {}
 
-        # If no nemoize'd clone exists, instantiate one
+        # If no memoize'd clone exists, instantiate one
         if self not in memo:
             # Temporarily remove paths
             paths = self._paths
@@ -456,7 +469,24 @@ class Cell(IDManagerMixin):
 
         return memo[self]
 
-    def create_xml_subelement(self, xml_element):
+    def create_xml_subelement(self, xml_element, memo=None):
+        """Add the cell's xml representation to an incoming xml element
+
+        Parameters
+        ----------
+        xml_element : xml.etree.ElementTree.Element
+            XML element to be added to
+
+        memo : set or None
+            A set of object IDs representing geometry entities already
+            written to ``xml_element``. This parameter is used internally
+            and should not be specified by users.
+
+        Returns
+        -------
+        None
+
+        """
         element = ET.Element("cell")
         element.set("id", str(self.id))
 
@@ -475,7 +505,7 @@ class Cell(IDManagerMixin):
 
         elif self.fill_type in ('universe', 'lattice'):
             element.set("fill", str(self.fill.id))
-            self.fill.create_xml_subelement(xml_element)
+            self.fill.create_xml_subelement(xml_element, memo)
 
         if self.region is not None:
             # Set the region attribute with the region specification
@@ -491,19 +521,22 @@ class Cell(IDManagerMixin):
             # tree. When it reaches a leaf (a Halfspace), it creates a <surface>
             # element for the corresponding surface if none has been created
             # thus far.
-            def create_surface_elements(node, element):
+            def create_surface_elements(node, element, memo=None):
                 if isinstance(node, Halfspace):
-                    path = "./surface[@id='{}']".format(node.surface.id)
-                    if xml_element.find(path) is None:
-                        xml_element.append(node.surface.to_xml_element())
+                    if memo and node.surface in memo:
+                        return
+                    if memo is not None:
+                        memo.add(node.surface)
+                    xml_element.append(node.surface.to_xml_element())
+
                 elif isinstance(node, Complement):
-                    create_surface_elements(node.node, element)
+                    create_surface_elements(node.node, element, memo)
                 else:
                     for subnode in node:
-                        create_surface_elements(subnode, element)
+                        create_surface_elements(subnode, element, memo)
 
             # Call the recursive function from the top node
-            create_surface_elements(self.region, xml_element)
+            create_surface_elements(self.region, xml_element, memo)
 
         if self.temperature is not None:
             if isinstance(self.temperature, Iterable):
@@ -516,7 +549,7 @@ class Cell(IDManagerMixin):
             element.set("translation", ' '.join(map(str, self.translation)))
 
         if self.rotation is not None:
-            element.set("rotation", ' '.join(map(str, self.rotation)))
+            element.set("rotation", ' '.join(map(str, self.rotation.ravel())))
 
         return element
 

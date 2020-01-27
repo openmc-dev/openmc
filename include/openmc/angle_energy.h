@@ -1,6 +1,8 @@
 #ifndef OPENMC_ANGLE_ENERGY_H
 #define OPENMC_ANGLE_ENERGY_H
 
+#include <cstdint>
+
 namespace openmc {
 
 //==============================================================================
@@ -12,7 +14,8 @@ namespace openmc {
 
 class AngleEnergy {
 public:
-  virtual void sample(double E_in, double& E_out, double& mu) const = 0;
+  virtual void sample(double E_in, double& E_out, double& mu,
+    uint64_t* seed) const = 0;
   virtual ~AngleEnergy() = default;
 };
 

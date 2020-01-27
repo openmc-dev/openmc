@@ -26,10 +26,15 @@ class MeshPlotter(tk.Frame):
     def __init__(self, parent, filename):
         tk.Frame.__init__(self, parent)
 
-        self.labels = {'Cell': 'Cell:', 'Cellborn': 'Cell born:',
-                       'Surface': 'Surface:', 'Material': 'Material:',
-                       'Universe': 'Universe:', 'Energy': 'Energy in:',
-                       'Energyout': 'Energy out:'}
+        self.labels = {
+            'Cell': 'Cell:',
+            'Cellborn': 'Cell born:',
+            'Surface': 'Surface:',
+            'Material': 'Material:',
+            'Universe': 'Universe:',
+            'Energy': 'Energy in:',
+            'Energyout': 'Energy out:'
+        }
 
         self.filterBoxes = {}
 
@@ -176,8 +181,8 @@ class MeshPlotter(tk.Frame):
 
             # Set combobox items
             if filterType in ['Energy', 'Energyout']:
-                combobox['values'] = ['{0} to {1}'.format(*f.bins[i:i+2])
-                                      for i in range(len(f.bins) - 1)]
+                combobox['values'] = ['{} to {}'.format(*ebin)
+                                      for ebin in f.bins]
             else:
                 combobox['values'] = [str(i) for i in f.bins]
 
@@ -210,7 +215,7 @@ class MeshPlotter(tk.Frame):
                 continue
             elif f.short_name in ['Energy', 'Energyout']:
                 index = self.filterBoxes[f.short_name].current()
-                ebin = (f.bins[index], f.bins[index + 1])
+                ebin = f.bins[index]
                 spec_list.append((type(f), (ebin,)))
             else:
                 index = self.filterBoxes[f.short_name].current()

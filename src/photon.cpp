@@ -110,6 +110,11 @@ PhotonInteraction::PhotonInteraction(hid_t group, int i_element)
   std::vector<std::string> designators;
   read_attribute(rgroup, "designators", designators);
   auto n_shell = designators.size();
+  if (n_shell == 0) {
+    throw std::runtime_error{"Photoatomic data for " + name_ +
+      " does not have subshell data."};
+  }
+
   for (int i = 0; i < n_shell; ++i) {
     const auto& designator {designators[i]};
 
@@ -180,9 +185,8 @@ PhotonInteraction::PhotonInteraction(hid_t group, int i_element)
   // Read Compton profiles
   read_dataset(rgroup, "J", profile_pdf_);
 
-  // Get Compton profile momentum grid. By deafult, an xtensor has a size of 1.
-  // TODO: Change to zero when xtensor is updated
-  if (data::compton_profile_pz.size() == 1) {
+  // Get Compton profile momentum grid
+  if (data::compton_profile_pz.size() == 0) {
     read_dataset(rgroup, "pz", data::compton_profile_pz);
   }
   close_group(rgroup);
@@ -203,7 +207,7 @@ PhotonInteraction::PhotonInteraction(hid_t group, int i_element)
   // Calculate total pair production
   pair_production_total_ = pair_production_nuclear_ + pair_production_electron_;
 
-  if (settings::electron_treatment == ELECTRON_TTB) {
+  if (settings::electron_treatment == ElectronTreatment::TTB) {
     // Read bremsstrahlung scaled DCS
     rgroup = open_group(group, "bremsstrahlung");
     read_dataset(rgroup, "dcs", dcs_);
@@ -213,8 +217,7 @@ PhotonInteraction::PhotonInteraction(hid_t group, int i_element)
     // Get energy grids used for bremsstrahlung DCS and for stopping powers
     xt::xtensor<double, 1> electron_energy;
     read_dataset(rgroup, "electron_energy", electron_energy);
-    // TODO: Change to zero when xtensor is updated
-    if (data::ttb_k_grid.size() == 1) {
+    if (data::ttb_k_grid.size() == 0) {
       read_dataset(rgroup, "photon_energy", data::ttb_k_grid);
     }
 
@@ -255,8 +258,7 @@ PhotonInteraction::PhotonInteraction(hid_t group, int i_element)
     }
 
     // Set incident particle energy grid
-    // TODO: Change to zero when xtensor is updated
-    if (data::ttb_e_grid.size() == 1) {
+    if (data::ttb_e_grid.size() == 0) {
       data::ttb_e_grid = electron_energy;
     }
 
@@ -293,12 +295,12 @@ PhotonInteraction::PhotonInteraction(hid_t group, int i_element)
 }
 
 void PhotonInteraction::compton_scatter(double alpha, bool doppler,
-  double* alpha_out, double* mu, int* i_shell) const
+  double* alpha_out, double* mu, int* i_shell, uint64_t* seed) const
 {
   double form_factor_xmax = 0.0;
   while (true) {
     // Sample Klein-Nishina distribution for trial energy and angle
-    std::tie(*alpha_out, *mu) = klein_nishina(alpha);
+    std::tie(*alpha_out, *mu) = klein_nishina(alpha, seed);
 
     // Note that the parameter used here does not correspond exactly to the
     // momentum transfer q in ENDF-102 Eq. (27.2). Rather, this is the
@@ -312,10 +314,10 @@ void PhotonInteraction::compton_scatter(double alpha, bool doppler,
     }
 
     // Perform rejection on form factor
-    if (prn() < form_factor_x / form_factor_xmax) {
+    if (prn(seed) < form_factor_x / form_factor_xmax) {
       if (doppler) {
         double E_out;
-        this->compton_doppler(alpha, *mu, &E_out, i_shell);
+        this->compton_doppler(alpha, *mu, &E_out, i_shell, seed);
         *alpha_out = E_out/MASS_ELECTRON_EV;
       } else {
         *i_shell = -1;
@@ -326,14 +328,14 @@ void PhotonInteraction::compton_scatter(double alpha, bool doppler,
 }
 
 void PhotonInteraction::compton_doppler(double alpha, double mu,
-  double* E_out, int* i_shell) const
+  double* E_out, int* i_shell, uint64_t* seed) const
 {
   auto n = data::compton_profile_pz.size();
 
   int shell; // index for shell
   while (true) {
     // Sample electron shell
-    double rn = prn();
+    double rn = prn(seed);
     double c = 0.0;
     for (shell = 0; shell < electron_pdf_.size(); ++shell) {
       c += electron_pdf_(shell);
@@ -380,7 +382,7 @@ void PhotonInteraction::compton_doppler(double alpha, double mu,
     }
 
     // Sample value on bounded cdf
-    c = prn()*c_max;
+    c = prn(seed)*c_max;
 
     // Determine pz corresponding to sampled cdf value
     auto cdf_shell = xt::view(profile_cdf_, shell, xt::all());
@@ -421,7 +423,7 @@ void PhotonInteraction::compton_doppler(double alpha, double mu,
     if (E_out1 > 0.0) {
       if (E_out2 > 0.0) {
         // If both are positive, pick one at random
-        *E_out = prn() < 0.5 ? E_out1 : E_out2;
+        *E_out = prn(seed) < 0.5 ? E_out1 : E_out2;
       } else {
         *E_out = E_out1;
       }
@@ -499,7 +501,7 @@ void PhotonInteraction::calculate_xs(Particle& p) const
   xs.last_E = p.E_;
 }
 
-double PhotonInteraction::rayleigh_scatter(double alpha) const
+double PhotonInteraction::rayleigh_scatter(double alpha, uint64_t* seed) const
 {
   double mu;
   while (true) {
@@ -510,7 +512,7 @@ double PhotonInteraction::rayleigh_scatter(double alpha) const
     double F_max = coherent_int_form_factor_(x2_max);
 
     // Sample cumulative distribution
-    double F = prn()*F_max;
+    double F = prn(seed)*F_max;
 
     // Determine x^2 corresponding to F
     const auto& x {coherent_int_form_factor_.x()};
@@ -522,13 +524,14 @@ double PhotonInteraction::rayleigh_scatter(double alpha) const
     // Calculate mu
     mu = 1.0 - 2.0*x2/x2_max;
 
-    if (prn() < 0.5*(1.0 + mu*mu)) break;
+    if (prn(seed) < 0.5*(1.0 + mu*mu)) break;
   }
   return mu;
 }
 
 void PhotonInteraction::pair_production(double alpha, double* E_electron,
-  double* E_positron, double* mu_electron, double* mu_positron) const
+  double* E_positron, double* mu_electron, double* mu_positron,
+  uint64_t* seed) const
 {
   constexpr double r[] {
     122.81, 73.167, 69.228, 67.301, 64.696, 61.228,
@@ -595,12 +598,12 @@ void PhotonInteraction::pair_production(double alpha, double* E_electron,
   double u2 = phi2_max;
   double e;
   while (true) {
-    double rn = prn();
+    double rn = prn(seed);
 
     // Sample the index i in (1, 2) using the point probabilities
     // p(1) = u_1/(u_1 + u_2) and p(2) = u_2/(u_1 + u_2)
     int i;
-    if (prn() < u1/(u1 + u2)) {
+    if (prn(seed) < u1/(u1 + u2)) {
       i = 1;
 
       // Sample e from pi_1 using the inverse transform method
@@ -621,10 +624,10 @@ void PhotonInteraction::pair_production(double alpha, double* E_electron,
     t3 = b*b*(4.0 - 4.0*t2 - 3.0*std::log(1.0 + 1.0/(b*b)));
     if (i == 1) {
       double phi1 = 7.0/3.0 - t1 - 6.0*t2 - t3 + t4;
-      if (prn() <= phi1/phi1_max) break;
+      if (prn(seed) <= phi1/phi1_max) break;
     } else {
       double phi2 = 11.0/6.0 - t1 - 3.0*t2 + 0.5*t3 + t4;
-      if (prn() <= phi2/phi2_max) break;
+      if (prn(seed) <= phi2/phi2_max) break;
     }
   }
 
@@ -637,13 +640,13 @@ void PhotonInteraction::pair_production(double alpha, double* E_electron,
   // p(mu) = C/(1 - beta*mu)^2 using the inverse transform method.
   double beta = std::sqrt(*E_electron*(*E_electron + 2.0*MASS_ELECTRON_EV))
     / (*E_electron + MASS_ELECTRON_EV)  ;
-  double rn = 2.0*prn() - 1.0;
+  double rn = 2.0*prn(seed) - 1.0;
   *mu_electron = (rn + beta)/(rn*beta + 1.0);
 
   // Sample the scattering angle of the positron
   beta = std::sqrt(*E_positron*(*E_positron + 2.0*MASS_ELECTRON_EV))
     / (*E_positron + MASS_ELECTRON_EV);
-  rn = 2.0*prn() - 1.0;
+  rn = 2.0*prn(seed) - 1.0;
   *mu_positron = (rn + beta)/(rn*beta + 1.0);
 }
 
@@ -651,8 +654,8 @@ void PhotonInteraction::atomic_relaxation(const ElectronSubshell& shell, Particl
 {
   // If no transitions, assume fluorescent photon from captured free electron
   if (shell.n_transitions == 0) {
-    double mu = 2.0*prn() - 1.0;
-    double phi = 2.0*PI*prn();
+    double mu = 2.0*prn(p.current_seed()) - 1.0;
+    double phi = 2.0*PI*prn(p.current_seed());
     Direction u;
     u.x = mu;
     u.y = std::sqrt(1.0 - mu*mu)*std::cos(phi);
@@ -663,7 +666,7 @@ void PhotonInteraction::atomic_relaxation(const ElectronSubshell& shell, Particl
   }
 
   // Sample transition
-  double rn = prn();
+  double rn = prn(p.current_seed());
   double c = 0.0;
   int i_transition;
   for (i_transition = 0; i_transition < shell.n_transitions; ++i_transition) {
@@ -676,8 +679,8 @@ void PhotonInteraction::atomic_relaxation(const ElectronSubshell& shell, Particl
   int secondary = shell.transition_subshells(i_transition, 1);
 
   // Sample angle isotropically
-  double mu = 2.0*prn() - 1.0;
-  double phi = 2.0*PI*prn();
+  double mu = 2.0*prn(p.current_seed()) - 1.0;
+  double phi = 2.0*PI*prn(p.current_seed());
   Direction u;
   u.x = mu;
   u.y = std::sqrt(1.0 - mu*mu)*std::cos(phi);
@@ -713,7 +716,7 @@ void PhotonInteraction::atomic_relaxation(const ElectronSubshell& shell, Particl
 // Non-member functions
 //==============================================================================
 
-std::pair<double, double> klein_nishina(double alpha)
+std::pair<double, double> klein_nishina(double alpha, uint64_t* seed)
 {
   double alpha_out, mu;
   double beta = 1.0 + 2.0*alpha;
@@ -722,19 +725,19 @@ std::pair<double, double> klein_nishina(double alpha)
     double t = beta/(beta + 8.0);
     double x;
     while (true) {
-      if (prn() < t) {
+      if (prn(seed) < t) {
         // Left branch of flow chart
-        double r = 2.0*prn();
+        double r = 2.0*prn(seed);
         x = 1.0 + alpha*r;
-        if (prn() < 4.0/x*(1.0 - 1.0/x)) {
+        if (prn(seed) < 4.0/x*(1.0 - 1.0/x)) {
           mu = 1 - r;
           break;
         }
       } else {
         // Right branch of flow chart
-        x = beta/(1.0 + 2.0*alpha*prn());
+        x = beta/(1.0 + 2.0*alpha*prn(seed));
         mu = 1.0 + (1.0 - x)/alpha;
-        if (prn() < 0.5*(mu*mu + 1.0/x)) break;
+        if (prn(seed) < 0.5*(mu*mu + 1.0/x)) break;
       }
     }
     alpha_out = alpha/x;
@@ -742,24 +745,24 @@ std::pair<double, double> klein_nishina(double alpha)
   } else {
     // Koblinger's direct method
     double gamma = 1.0 - std::pow(beta, -2);
-    double s = prn()*(4.0/alpha + 0.5*gamma +
+    double s = prn(seed)*(4.0/alpha + 0.5*gamma +
       (1.0 - (1.0 + beta)/(alpha*alpha))*std::log(beta));
     if (s <= 2.0/alpha) {
       // For first term, x = 1 + 2ar
       // Therefore, a' = a/(1 + 2ar)
-      alpha_out = alpha/(1.0 + 2.0*alpha*prn());
+      alpha_out = alpha/(1.0 + 2.0*alpha*prn(seed));
     } else if (s <= 4.0/alpha) {
       // For third term, x = beta/(1 + 2ar)
       // Therefore, a' = a(1 + 2ar)/beta
-      alpha_out = alpha*(1.0 + 2.0*alpha*prn())/beta;
+      alpha_out = alpha*(1.0 + 2.0*alpha*prn(seed))/beta;
     } else if (s <= 4.0/alpha + 0.5*gamma) {
       // For fourth term, x = 1/sqrt(1 - gamma*r)
       // Therefore, a' = a*sqrt(1 - gamma*r)
-      alpha_out = alpha*std::sqrt(1.0 - gamma*prn());
+      alpha_out = alpha*std::sqrt(1.0 - gamma*prn(seed));
     } else {
       // For third term, x = beta^r
       // Therefore, a' = a/beta^r
-      alpha_out = alpha/std::pow(beta, prn());
+      alpha_out = alpha/std::pow(beta, prn(seed));
     }
 
     // Calculate cosine of scattering angle based on basic relation

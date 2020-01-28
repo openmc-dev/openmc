@@ -29,10 +29,18 @@ struct EventQueueItem{
   int64_t material;    //!< material that particle is in
   double E;            //!< particle energy
 
-  // Compare by particle type, then by material type, then by energy
-  // TODO: Currently, material IDs are not usually unique to material
-  // types. When unique material type IDs are available, we can alter the
-  // material field in this struct to contain the material type instead.
+  // Constructors
+  EventQueueItem() = default;
+  EventQueueItem(const Particle& p, int64_t buffer_idx) :
+    idx(buffer_idx), type(p.type_), material(p.material_), E(p.E_) {}
+
+  // Compare by particle type, then by material type (4.5% fuel/7.0% fuel/cladding/etc),
+  // then by energy.
+  // TODO: Currently in OpenMC, the material ID corresponds not only to a general
+  // type, but also specific isotopic densities. Ideally we would
+  // like to be able to just sort by general material type, regardless of densities.
+  // A more general material type ID may be added in the future, in which case we
+  // can update the material field of this struct to contain the more general id.
   bool operator<(const EventQueueItem& rhs) const
   {
     return std::tie(type, material, E) < std::tie(rhs.type, rhs.material, rhs.E);

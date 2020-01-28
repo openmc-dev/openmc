@@ -1,6 +1,6 @@
 #include "openmc/output.h"
 
-#include <algorithm>  // for std::transform
+#include <algorithm>  // for transform, max
 #include <cstring>  // for strlen
 #include <ctime> // for time, localtime
 #include <iomanip>  // for setw, setprecision, put_time
@@ -527,8 +527,8 @@ std::pair<double, double>
 mean_stdev(const double* x, int n)
 {
   double mean = x[static_cast<int>(TallyResult::SUM)] / n;
-  double stdev = n > 1 ? std::sqrt((x[static_cast<int>(TallyResult::SUM_SQ)]/n
-    - mean*mean)/(n - 1)) : 0.0;
+  double stdev = n > 1 ? std::sqrt(std::max(0.0, (
+    x[static_cast<int>(TallyResult::SUM_SQ)]/n - mean*mean)/(n - 1))) : 0.0;
   return {mean, stdev};
 }
 

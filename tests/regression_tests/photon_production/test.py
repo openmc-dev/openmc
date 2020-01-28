@@ -42,13 +42,13 @@ def model():
     model.settings.source = source
 
     surface_filter = openmc.SurfaceFilter(cyl)
-    particle_filter = openmc.ParticleFilter('photon')
+    particle_filter = openmc.ParticleFilter(['neutron', 'photon', 'electron', 'positron'])
     current_tally = openmc.Tally()
     current_tally.filters = [surface_filter, particle_filter]
     current_tally.scores = ['current']
     tally_tracklength = openmc.Tally()
     tally_tracklength.filters = [particle_filter]
-    tally_tracklength.scores = ['total', 'heating']
+    tally_tracklength.scores = ['total']  # heating doesn't work with tracklength
     tally_tracklength.nuclides = ['Al27', 'total']
     tally_tracklength.estimator = 'tracklength'
     tally_collision = openmc.Tally()

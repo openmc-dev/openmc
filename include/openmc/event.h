@@ -80,13 +80,6 @@ void init_event_queues(int64_t n_particles);
 //! Free the event queues and particle buffer
 void free_event_queues(void);
 
-//! Atomically add a particle to the specified queue
-//
-//! \param queue The queue to append the particle to
-//! \param p A pointer to the particle
-//! \param buffer_idx The particle's actual index in the particle buffer
-void enqueue_particle(SharedArray<EventQueueItem>& queue, const Particle* p, int64_t buffer_idx);
-
 //! Enqueue a particle based on if it is in fuel or a non-fuel material
 //
 //! \param buffer_idx The particle's actual index in the particle buffer

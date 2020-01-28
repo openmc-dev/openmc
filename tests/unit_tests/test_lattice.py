@@ -278,6 +278,16 @@ def test_clone(rlat2, hlat2, hlat3):
     assert hlat_clone.center == hlat3.center
     assert hlat_clone.pitch == hlat3.pitch
 
+    rlat_clone = rlat2.clone(clone_materials=False)
+    assert rlat_clone.get_all_materials() == rlat2.get_all_materials()
+
+    rlat_clone = rlat2.clone(clone_materials=False, clone_regions=False)
+    for c1 in rlat_clone.cells:
+        for c2 in rlat2.cells:
+            if c1.fill == c2.fill:
+                print(c1.fill)
+                assert c1.region == c2.region
+
 
 def test_repr(rlat2, rlat3, hlat2, hlat3):
     repr(rlat2)

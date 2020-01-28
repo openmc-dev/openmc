@@ -7,6 +7,8 @@ from numbers import Real
 from xml.etree import ElementTree as ET
 
 import numpy as np
+import warnings
+import types
 
 import openmc.checkvalue as cv
 import openmc
@@ -454,12 +456,18 @@ class Lattice(IDManagerMixin, metaclass=ABCMeta):
                 return []
         return [(self, idx)] + u.find(p)
 
-    def clone(self, memo=None):
+    def clone(self, clone_materials=True, clone_regions=True, memo=None):
         """Create a copy of this lattice with a new unique ID, and clones
         all universes within this lattice.
 
         Parameters
         ----------
+        clone_materials : bool
+            Whether to create separate copies of the materials filling cells
+            contained in this lattice and its outer universe.
+        clone_regions : bool
+            Whether to create separate copies of the regions bounding cells
+            contained in this lattice and its outer universe.
         memo : dict or None
             A nested dictionary of previously cloned objects. This parameter
             is used internally and should not be specified by the user.
@@ -480,19 +488,23 @@ class Lattice(IDManagerMixin, metaclass=ABCMeta):
             clone.id = None
 
             if self.outer is not None:
-                clone.outer = self.outer.clone(memo)
+                clone.outer = self.outer.clone(clone_materials, clone_regions,
+                     memo)
 
             # Assign universe clones to the lattice clone
             for i in self.indices:
                 if isinstance(self, RectLattice):
-                    clone.universes[i] = self.universes[i].clone(memo)
+                    clone.universes[i] = self.universes[i].clone(
+                         clone_materials, clone_regions, memo)
                 else:
                     if self.ndim == 2:
                         clone.universes[i[0]][i[1]] = \
-                            self.universes[i[0]][i[1]].clone(memo)
+                            self.universes[i[0]][i[1]].clone(clone_materials,
+                                 clone_regions, memo)
                     else:
                         clone.universes[i[0]][i[1]][i[2]] = \
-                            self.universes[i[0]][i[1]][i[2]].clone(memo)
+                            self.universes[i[0]][i[1]][i[2]].clone(
+                            clone_materials, clone_regions, memo)
 
             # Memoize the clone
             memo[self] = clone
@@ -758,6 +770,245 @@ class RectLattice(Lattice):
             return (0 <= idx[0] < self.shape[0] and
                     0 <= idx[1] < self.shape[1] and
                     0 <= idx[2] < self.shape[2])
+
+    def discretize(self, strategy="degenerate",
+                   universes_to_ignore=[],
+                   materials_to_clone=[],
+                   lattice_neighbors=[], key=lambda univ: univ.id):
+        """Discretize the lattice with either a degenerate or a local neighbor
+        symmetry strategy
+
+        'Degenerate' clones every universe in the lattice, thus making them all
+        uniquely defined. This is typically required if depletion or thermal
+        hydraulics will make every universe's environment unique.
+
+        'Local neighbor symmetry' groups universes with similar neighborhoods.
+        These clusters of cells and materials provide increased convergence
+        speed to multi-group cross sections tallies. The user can specify
+        the lattice's neighbors to discriminate between two sides of a
+        lattice for example.
+
+        Parameters
+        ----------
+        strategy : {'degenerate', 'lns'}
+            Which strategy to adopt when discretizing the lattice
+        universes_to_ignore : Iterable of Universe
+            Lattice universes that need not be discretized
+        materials_to_clone : Iterable of Material
+            List of materials that should be cloned when discretizing
+        lattice_neighbors : Iterable of Universe
+            List of the lattice's neighbors. By default, if present, the
+            lattice outer universe will be used. The neighbors should be
+            ordered as follows [top left, top, top right, left, right,
+            bottom left, bottom, bottom right]
+        key : function
+            Function of argument a universe that is used to extract a
+            comparison key. This function will be called on each universe's
+            neighbors in the lattice to form a neighbor pattern. This pattern
+            is then used to identify unique neighbor symmetries.
+        """
+
+        # Check routine inputs
+        if self.ndim != 2:
+            raise NotImplementedError("LNS discretization is not implemented "
+                                      "for 1D and 3D lattices")
+
+        cv.check_value('strategy', strategy, ('degenerate', 'lns'))
+        cv.check_type('universes_to_ignore', universes_to_ignore, Iterable,
+                      openmc.Universe)
+        cv.check_type('materials_to_clone', materials_to_clone, Iterable,
+                      openmc.Material)
+        cv.check_type('lattice_neighbors', lattice_neighbors, Iterable,
+                      openmc.Universe)
+        cv.check_value('number of lattice_neighbors', len(lattice_neighbors),
+                       (0, 8))
+        cv.check_type('key', key, types.FunctionType)
+
+        # Use outer universe if neighbors are missing and outer is defined
+        if self.outer is not None and len(lattice_neighbors) == 0:
+            lattice_neighbors = [key(self.outer) for i in range(8)]
+        elif len(lattice_neighbors) == 8:
+            lattice_neighbors = [key(universe) for universe in
+                                 lattice_neighbors]
+
+        # Dictionary that will keep track of where each pattern appears, how
+        # it was rotated and/or symmetrized
+        patterns = {}
+
+        # Initialize pattern array
+        pattern = np.empty(shape=(3, 3), dtype=type(key(self.universes[0][0])))
+
+        # Define an auxiliary function that returns a universe's neighbors
+        # that are outside the lattice
+        def find_edge_neighbors(pattern, i, j):
+
+            # If no neighbors have been specified, start with an empty array
+            if len(lattice_neighbors) == 0:
+                return
+
+            # Left edge
+            if i == 0:
+                pattern[:, 0] = lattice_neighbors[3]
+                if j == 0:
+                    pattern[0, 0] = lattice_neighbors[0]
+                elif j == self.shape[1] - 1:
+                    pattern[2, 0] = lattice_neighbors[5]
+
+            # Bottom edge
+            if j == 0:
+                pattern[0, 1] = lattice_neighbors[1]
+                if i != 0:
+                    pattern[0, 0] = lattice_neighbors[1]
+                if i != self.shape[0] - 1:
+                    pattern[0, 2] = lattice_neighbors[1]
+
+            # Right edge
+            if i == self.shape[0] - 1:
+                pattern[:, 2] = lattice_neighbors[4]
+                if j == 0:
+                    pattern[0, 2] = lattice_neighbors[2]
+                elif j == self.shape[1] - 1:
+                    pattern[2, 2] = lattice_neighbors[7]
+
+            # Top edge
+            if j == self.shape[1] - 1:
+                pattern[2, 1] = lattice_neighbors[6]
+                if i != 0:
+                    pattern[2, 0] = lattice_neighbors[6]
+                if i != self.shape[0] - 1:
+                    pattern[2, 2] = lattice_neighbors[6]
+
+        # Define an auxiliary function that returns a universe's neighbors
+        # among the universes inside the lattice
+        def find_lattice_neighbors(pattern, i, j):
+
+            # Away from left edge
+            if i != 0:
+                if j > 0:
+                    pattern[0, 0] = key(self.universes[j-1][i-1])
+                pattern[1, 0] = key(self.universes[j][i-1])
+                if j < self.shape[1] - 1:
+                    pattern[2, 0] = key(self.universes[j+1][i-1])
+
+            # Away from bottom edge
+            if j != 0:
+                if i > 0:
+                    pattern[0, 0] = key(self.universes[j-1][i-1])
+                pattern[0, 1] = key(self.universes[j-1][i])
+                if i < self.shape[0] - 1:
+                    pattern[0, 2] = key(self.universes[j-1][i+1])
+
+            # Away from right edge
+            if i != self.shape[0] - 1:
+                if j > 0:
+                    pattern[0, 2] = key(self.universes[j-1][i+1])
+                pattern[1, 2] = key(self.universes[j][i+1])
+                if j < self.shape[1] - 1:
+                    pattern[2, 2] = key(self.universes[j+1][i+1])
+
+            # Away from top edge
+            if j != self.shape[1] - 1:
+                if i > 0:
+                    pattern[2, 0] = key(self.universes[j+1][i-1])
+                pattern[2, 1] = key(self.universes[j+1][i])
+                if i < self.shape[0] - 1:
+                    pattern[2, 2] = key(self.universes[j+1][i+1])
+
+        # Analyze lattice, find unique patterns in groups of universes
+        for j in range(self.shape[1]):
+            for i in range(self.shape[0]):
+
+                # Skip universes to ignore
+                if self.universes[j][i] in universes_to_ignore:
+                    continue
+
+                # Create a neighborhood pattern based on the universe's
+                # neighbors in the grid, and lattice's neighbors at the edges
+
+                # Degenerate discretization has all universes be different
+                if strategy == "degenerate":
+                    patterns[(i, j)] = {'locations': [(i, j)]}
+                    continue
+
+                # Find neighbors among lattice's neighbors at the edges
+                find_edge_neighbors(pattern, i, j)
+
+                # Find neighbors among the lattice's universes
+                find_lattice_neighbors(pattern, i, j)
+
+                pattern[1, 1] = key(self.universes[j][i])
+
+                # Look for pattern in dictionary of patterns found
+                found = False
+                for known_pattern, pattern_data in patterns.items():
+
+                    # Look at all rotations of pattern
+                    for rot in range(4):
+                        if not found and tuple(map(tuple, pattern)) ==\
+                             known_pattern:
+                            found = True
+
+                            # Save location of the pattern in the lattice
+                            pattern_data['locations'].append((i, j))
+
+                        # Rotate pattern
+                        pattern = np.rot90(pattern)
+
+                    # Look at transpose of pattern and its rotations
+                    pattern = np.transpose(pattern)
+                    for rot in range(4):
+                        if not found and tuple(map(tuple, pattern)) ==\
+                             known_pattern:
+                            found = True
+
+                            # Save location of the pattern in the lattice
+                            pattern_data['locations'].append((i, j))
+
+                        # Rotate pattern
+                        pattern = np.rot90(pattern)
+
+                    # Transpose pattern back for the next search
+                    pattern = np.transpose(pattern)
+
+                # Create new pattern and add to the patterns dictionary
+                if not found:
+                    patterns[tuple(map(tuple, pattern))] =\
+                         {'locations': [(i, j)]}
+
+        # Discretize lattice
+        for pattern, pattern_data in patterns.items():
+
+            first_pos = pattern_data['locations'][0]
+
+            # Create a clone of the universe, without cloning materials
+            new_universe = self.universes[first_pos[1]][first_pos[0]].clone(
+                 clone_materials=False, clone_regions=False)
+
+            # Replace only the materials in materials_to_clone
+            for material in materials_to_clone:
+                material_cloned = False
+
+                for cell in new_universe.get_all_cells().values():
+
+                    if cell.fill_type == 'material':
+                        if cell.fill.id == material.id:
+
+                            # Only a single clone of each material is necessary
+                            if not material_cloned:
+                                material_clone = material.clone()
+                                material_cloned = True
+
+                            cell.fill = material_clone
+                    elif cell.fill_type == 'distribmat':
+                        raise(ValueError, "Lattice discretization should not "
+                              "be used with distributed materials")
+                    elif len(cell.temperature) > 1 or len(cell.fill) > 1:
+                        raise(ValueError, "Lattice discretization should not "
+                              "be used with distributed cells")
+
+            # Rebuild lattice from list of locations with this pattern
+            for index, location in enumerate(pattern_data['locations']):
+                self.universes[location[1]][location[0]] = new_universe
 
     def create_xml_subelement(self, xml_element, memo=None):
         """Add the lattice xml representation to an incoming xml element

@@ -15,6 +15,7 @@ generates ACE-format cross sections.
 
 """
 
+from collections import OrderedDict
 import enum
 from pathlib import PurePath, Path
 import struct
@@ -533,7 +534,7 @@ def get_libraries_from_xsdir(path):
         if line.strip().lower() == 'directory':
             break
     else:
-        raise OSError("Could not find 'directory' section in MCNP xsdir file")
+        raise RuntimeError("Could not find 'directory' section in MCNP xsdir file")
 
     # Handle continuation lines indicated by '+' at end of line
     lines = lines[index + 1:]
@@ -542,8 +543,9 @@ def get_libraries_from_xsdir(path):
     for i in reversed(continue_lines):
         lines[i] += lines[i].strip()[:-1] + lines.pop(i + 1)
 
-    # Create list of ACE libraries
-    libraries = []
+    # Create list of ACE libraries -- we use an ordered dictionary while
+    # building to get O(1) membership checks while retaining insertion order
+    libraries = OrderedDict()
     for line in lines:
         words = line.split()
         if len(words) < 3:
@@ -551,9 +553,11 @@ def get_libraries_from_xsdir(path):
 
         lib = (xsdir.parent / words[2]).resolve()
         if lib not in libraries:
-            libraries.append(lib)
+            # Value in dictionary is not used, so we just assign None. Below a
+            # list is created from the keys alone
+            libraries[lib] = None
 
-    return libraries
+    return list(libraries.keys())
 
 
 def get_libraries_from_xsdata(path):
@@ -571,11 +575,13 @@ def get_libraries_from_xsdata(path):
     """
     xsdata = Path(path)
     with open(xsdata, 'r') as xsdata:
-        libraries = []
+        # As in get_libraries_from_xsdir, we use a dict for O(1) membership
+        # check while retaining insertion order
+        libraries = OrderedDict()
         for line in xsdata:
             words = line.split()
             if len(words) >= 9:
                 lib = (xsdata.parent / words[8]).resolve()
                 if lib not in libraries:
-                    libraries.append(lib)
-    return libraries
+                    libraries[lib] = None
+    return list(libraries.keys())

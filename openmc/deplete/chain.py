@@ -192,13 +192,18 @@ class Chain(object):
     def from_endf(cls, decay_files, fpy_files, neutron_files, progress=True):
         """Create a depletion chain from ENDF files.
 
+        String arguments in ``decay_files``, ``fpy_files``, and
+        ``neutron_files`` will be treated as file names to be read.
+        Alternatively, :class:`openmc.data.endf.Evaluation` instances
+        can be included in these arguments.
+
         Parameters
         ----------
-        decay_files : list of str
+        decay_files : list of str or openmc.data.endf.Evaluation
             List of ENDF decay sub-library files
-        fpy_files : list of str
+        fpy_files : list of str or openmc.data.endf.Evaluation
             List of ENDF neutron-induced fission product yield sub-library files
-        neutron_files : list of str
+        neutron_files : list of str or openmc.data.endf.Evaluation
             List of ENDF neutron reaction sub-library files
         progress : bool, optional
             Flag to print status messages during processing. Does not

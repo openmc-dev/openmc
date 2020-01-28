@@ -391,49 +391,6 @@ class AtomicRelaxation(EqualityMixin):
                  _SUBSHELLS, range(len(_SUBSHELLS)))
             group.create_dataset('transitions', data=df.values.astype(float))
 
-    def energy_fluorescence(self, shell):
-        """Compute expected energy of fluorescent photons for the shell
-
-        Parameters
-        ----------
-        shell : str
-            The subshell to compute
-
-        Returns
-        -------
-        float
-            Energy of fluorescent photons
-
-        """
-
-        if shell not in self.binding_energy:
-            raise KeyError('Invalid shell {}.'.format(shell))
-
-        if shell in self._e_fluorescence:
-            # Already computed
-            return self._e_fluorescence[shell]
-        e = 0.0
-        if shell not in self.transitions or self.transitions[shell].empty:
-            e = self.binding_energy[shell]
-        else:
-            df = self.transitions[shell]
-            for primary, secondary, energy, prob in df.itertuples(index=False):
-                e_row = 0.0
-                if secondary is None:
-                    # Fluorescent photon release in radiative transition
-                    e_row += energy
-                else:
-                    # Fill the hole left by auger electron
-                    e_row += self.energy_fluorescence(secondary)
-
-                # Fill the photoelectron hole
-                e_row += self.energy_fluorescence(primary)
-
-                # Expected fluorescent photon energy
-                e += e_row * prob
-
-        self._e_fluorescence[shell] = e
-        return e
 
 class IncidentPhoton(EqualityMixin):
     r"""Photon interaction data.

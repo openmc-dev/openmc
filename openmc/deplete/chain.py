@@ -189,23 +189,36 @@ class Chain(object):
         return len(self.nuclides)
 
     @classmethod
-    def from_endf(cls, decay_files, fpy_files, neutron_files):
+    def from_endf(cls, decay_files, fpy_files, neutron_files, progress=True):
         """Create a depletion chain from ENDF files.
+
+        String arguments in ``decay_files``, ``fpy_files``, and
+        ``neutron_files`` will be treated as file names to be read.
+        Alternatively, :class:`openmc.data.endf.Evaluation` instances
+        can be included in these arguments.
 
         Parameters
         ----------
-        decay_files : list of str
+        decay_files : list of str or openmc.data.endf.Evaluation
             List of ENDF decay sub-library files
-        fpy_files : list of str
+        fpy_files : list of str or openmc.data.endf.Evaluation
             List of ENDF neutron-induced fission product yield sub-library files
-        neutron_files : list of str
+        neutron_files : list of str or openmc.data.endf.Evaluation
             List of ENDF neutron reaction sub-library files
+        progress : bool, optional
+            Flag to print status messages during processing. Does not
+            effect warning messages
+
+        Returns
+        -------
+        Chain
 
         """
         chain = cls()
 
         # Create dictionary mapping target to filename
-        print('Processing neutron sub-library files...')
+        if progress:
+            print('Processing neutron sub-library files...')
         reactions = {}
         for f in neutron_files:
             evaluation = openmc.data.endf.Evaluation(f)
@@ -219,7 +232,8 @@ class Chain(object):
                     reactions[name][mt] = q_value
 
         # Determine what decay and FPY nuclides are available
-        print('Processing decay sub-library files...')
+        if progress:
+            print('Processing decay sub-library files...')
         decay_data = {}
         for f in decay_files:
             data = openmc.data.Decay(f)
@@ -228,13 +242,15 @@ class Chain(object):
                 continue
             decay_data[data.nuclide['name']] = data
 
-        print('Processing fission product yield sub-library files...')
+        if progress:
+            print('Processing fission product yield sub-library files...')
         fpy_data = {}
         for f in fpy_files:
             data = openmc.data.FissionProductYields(f)
             fpy_data[data.nuclide['name']] = data
 
-        print('Creating depletion_chain...')
+        if progress:
+            print('Creating depletion_chain...')
         missing_daughter = []
         missing_rx_product = []
         missing_fpy = []

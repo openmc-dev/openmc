@@ -59,15 +59,17 @@ public:
     capacity_ = capacity;
   }
 
-  //! Increase the size of the container by one and returns an index to the
-  //! last element of the array. Also tests to enforce that the append
-  //! operation does not read off the end of the array. In the event that this
-  //! does happen, set the size to be equal to the capacity and return -1.
+  //! Increase the size of the container by one and append value to the 
+  //! array. Returns an index to the element of the array written to. Also
+  //! tests to enforce that the append operation does not read off the end
+  //! of the array. In the event that this does happen, set the size to be
+  //! equal to the capacity and return -1.
   //
-  //! \return The last index in the array, which is safe to write to. In the
-  //! event that this index would be greater than what was allocated for the
-  //! container, return -1.
-  int64_t thread_safe_append()
+  //! \value The value of the element to append
+  //! \return The index in the array written to. In the event that this
+  //! index would be greater than what was allocated for the container,
+  //! return -1.
+  int64_t thread_safe_append(const T& value = {})
   {
     // Atomically capture the index we want to write to
     int64_t idx;
@@ -80,6 +82,9 @@ public:
       size_ = capacity_;
       return -1;
     }
+
+    // Copy element value to the array
+    data_[idx] = value;
 
     return idx;
   }

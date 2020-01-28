@@ -47,23 +47,13 @@ void free_event_queues(void)
   simulation::particles.clear();
 }
 
-void enqueue_particle(SharedArray<EventQueueItem>& queue, const Particle* p, int64_t buffer_idx)
-{
-  int64_t idx = queue.thread_safe_append();
-
-  queue[idx].idx = buffer_idx;
-  queue[idx].E = p->E_;
-  queue[idx].material = p->material_;
-  queue[idx].type = p->type_;
-}
-
 void dispatch_xs_event(int64_t buffer_idx)
 {
-  Particle* p = &simulation::particles[buffer_idx];
-  if (p->material_ == MATERIAL_VOID || !model::materials[p->material_]->fissionable_) {
-    enqueue_particle(simulation::calculate_nonfuel_xs_queue, p, buffer_idx);
+  Particle& p = simulation::particles[buffer_idx];
+  if (p.material_ == MATERIAL_VOID || !model::materials[p.material_]->fissionable_) {
+    simulation::calculate_nonfuel_xs_queue.thread_safe_append({p, buffer_idx});
   } else {
-    enqueue_particle(simulation::calculate_fuel_xs_queue, p, buffer_idx);
+    simulation::calculate_fuel_xs_queue.thread_safe_append({p, buffer_idx});
   }
 }
 
@@ -117,12 +107,12 @@ void process_advance_particle_events()
   #pragma omp parallel for schedule(runtime)
   for (int64_t i = 0; i < simulation::advance_particle_queue.size(); i++) {
     int64_t buffer_idx = simulation::advance_particle_queue[i].idx;
-    Particle* p = &simulation::particles[buffer_idx];
-    p->event_advance();
-    if (p->collision_distance_ > p->boundary_.distance) {
-      enqueue_particle(simulation::surface_crossing_queue, p, buffer_idx);
+    Particle& p = simulation::particles[buffer_idx];
+    p.event_advance();
+    if (p.collision_distance_ > p.boundary_.distance) {
+      simulation::surface_crossing_queue.thread_safe_append({p, buffer_idx});
     } else {
-      enqueue_particle(simulation::collision_queue, p, buffer_idx);
+      simulation::collision_queue.thread_safe_append({p, buffer_idx});
     }
   }
 
@@ -137,12 +127,12 @@ void process_surface_crossing_events()
 
   #pragma omp parallel for schedule(runtime)
   for (int64_t i = 0; i < simulation::surface_crossing_queue.size(); i++) {
-    int64_t buffer_index = simulation::surface_crossing_queue[i].idx;
-    Particle* p = &simulation::particles[buffer_index];
-    p->event_cross_surface();
-    p->event_revive_from_secondary();
-    if (p->alive_)
-      dispatch_xs_event(buffer_index);
+    int64_t buffer_idx = simulation::surface_crossing_queue[i].idx;
+    Particle& p = simulation::particles[buffer_idx];
+    p.event_cross_surface();
+    p.event_revive_from_secondary();
+    if (p.alive_)
+      dispatch_xs_event(buffer_idx);
   }
 
   simulation::surface_crossing_queue.resize(0);
@@ -156,12 +146,12 @@ void process_collision_events()
 
   #pragma omp parallel for schedule(runtime)
   for (int64_t i = 0; i < simulation::collision_queue.size(); i++) {
-    int64_t buffer_index = simulation::collision_queue[i].idx;
-    Particle* p = &simulation::particles[buffer_index];
-    p->event_collide();
-    p->event_revive_from_secondary();
-    if (p->alive_)
-      dispatch_xs_event(buffer_index);
+    int64_t buffer_idx = simulation::collision_queue[i].idx;
+    Particle& p = simulation::particles[buffer_idx];
+    p.event_collide();
+    p.event_revive_from_secondary();
+    if (p.alive_)
+      dispatch_xs_event(buffer_idx);
   }
 
   simulation::collision_queue.resize(0);
@@ -174,8 +164,8 @@ void process_death_events(int64_t n_particles)
   simulation::time_event_death.start();
   #pragma omp parallel for schedule(runtime)
   for (int64_t i = 0; i < n_particles; i++) {
-    Particle* p = &simulation::particles[i];
-    p->event_death();
+    Particle& p = simulation::particles[i];
+    p.event_death();
   }
   simulation::time_event_death.stop();
 }

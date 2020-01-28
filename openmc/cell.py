@@ -422,12 +422,18 @@ class Cell(IDManagerMixin):
 
         return universes
 
-    def clone(self, memo=None):
+    def clone(self, clone_materials=True, clone_regions=True,  memo=None):
         """Create a copy of this cell with a new unique ID, and clones
         the cell's region and fill.
 
         Parameters
         ----------
+        clone_materials : bool
+            Whether to create separate copies of the materials filling cells
+            contained in this cell, or the material filling this cell.
+        clone_regions : bool
+            Whether to create separate copies of the regions bounding cells
+            contained in this cell, and the region bounding this cell.
         memo : dict or None
             A nested dictionary of previously cloned objects. This parameter
             is used internally and should not be specified by the user.
@@ -456,13 +462,25 @@ class Cell(IDManagerMixin):
             self._paths = paths
 
             if self.region is not None:
-                clone.region = self.region.clone(memo)
+                if clone_regions:
+                    clone.region = self.region.clone(memo)
+                else:
+                    clone.region = self.region
             if self.fill is not None:
                 if self.fill_type == 'distribmat':
-                    clone.fill = [fill.clone(memo) if fill is not None else None
-                                  for fill in self.fill]
+                    if not clone_materials:
+                        clone.fill = self.fill
+                    else:
+                        clone.fill = [fill.clone(memo) if fill is not None else
+                                      None for fill in self.fill]
+                elif self.fill_type == 'material':
+                    if not clone_materials:
+                        clone.fill = self.fill
+                    else:
+                        clone.fill = self.fill.clone(memo)
                 else:
-                    clone.fill = self.fill.clone(memo)
+                    clone.fill = self.fill.clone(clone_materials,
+                         clone_regions, memo)
 
             # Memoize the clone
             memo[self] = clone

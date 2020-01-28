@@ -482,12 +482,18 @@ class Universe(IDManagerMixin):
 
         return universes
 
-    def clone(self, memo=None):
+    def clone(self, clone_materials=True, clone_regions=True, memo=None):
         """Create a copy of this universe with a new unique ID, and clones
         all cells within this universe.
 
         Parameters
         ----------
+        clone_materials : bool
+            Whether to create separates copies of the materials filling cells
+            contained in this universe.
+        clone_regions : bool
+            Whether to create separates copies of the regions bounding cells
+            contained in this universe.
         memo : dict or None
             A nested dictionary of previously cloned objects. This parameter
             is used internally and should not be specified by the user.
@@ -510,7 +516,8 @@ class Universe(IDManagerMixin):
             # Clone all cells for the universe clone
             clone._cells = OrderedDict()
             for cell in self._cells.values():
-                clone.add_cell(cell.clone(memo))
+                clone.add_cell(cell.clone(clone_materials, clone_regions,
+                     memo))
 
             # Memoize the clone
             memo[self] = clone

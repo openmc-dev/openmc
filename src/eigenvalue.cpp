@@ -83,7 +83,7 @@ void synchronize_bank()
 
 #ifdef OPENMC_MPI
   int64_t start = 0;
-  int64_t n_bank = simulation::fission_bank_length;
+  int64_t n_bank = simulation::fission_bank.size();
   MPI_Exscan(&n_bank, &start, 1, MPI_INT64_T, MPI_SUM, mpi::intracomm);
 
   // While we would expect the value of start on rank 0 to be 0, the MPI
@@ -91,13 +91,13 @@ void synchronize_bank()
   // significant
   if (mpi::rank == 0) start = 0;
 
-  int64_t finish = start + simulation::fission_bank_length;
+  int64_t finish = start + simulation::fission_bank.size();
   int64_t total = finish;
   MPI_Bcast(&total, 1, MPI_INT64_T, mpi::n_procs - 1, mpi::intracomm);
 
 #else
   int64_t start  = 0;
-  int64_t finish = simulation::fission_bank_length;
+  int64_t finish = simulation::fission_bank.size();
   int64_t total  = finish;
 #endif
 
@@ -106,7 +106,7 @@ void synchronize_bank()
   // extra logic to treat this circumstance, we really want to ensure the user
   // runs enough particles to avoid this in the first place.
 
-  if (simulation::fission_bank_length == 0) {
+  if (simulation::fission_bank.size() == 0) {
     fatal_error("No fission sites banked on MPI rank " + std::to_string(mpi::rank));
   }
 
@@ -138,7 +138,7 @@ void synchronize_bank()
   int64_t index_temp = 0;
   std::vector<Particle::Bank> temp_sites(3*simulation::work_per_rank);
 
-  for (int64_t i = 0; i < simulation::fission_bank_length; i++ ) {
+  for (int64_t i = 0; i < simulation::fission_bank.size(); i++ ) {
     const auto& site = simulation::fission_bank[i];
 
     // If there are less than n_particles particles banked, automatically add
@@ -195,7 +195,7 @@ void synchronize_bank()
       // fission bank
       sites_needed = settings::n_particles - finish;
       for (int i = 0; i < sites_needed; ++i) {
-        int i_bank = simulation::fission_bank_length - sites_needed + i;
+        int i_bank = simulation::fission_bank.size() - sites_needed + i;
         temp_sites[index_temp] = simulation::fission_bank[i_bank];
         ++index_temp;
       }
@@ -506,7 +506,7 @@ void shannon_entropy()
   // Get source weight in each mesh bin
   bool sites_outside;
   xt::xtensor<double, 1> p = simulation::entropy_mesh->count_sites(
-    simulation::fission_bank.get(), simulation::fission_bank_length,
+    simulation::fission_bank.data(), simulation::fission_bank.size(),
     &sites_outside);
 
   // display warning message if there were sites outside entropy box

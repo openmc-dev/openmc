@@ -223,6 +223,7 @@ list(APPEND libopenmc_SOURCES
   src/eigenvalue.cpp
   src/endf.cpp
   src/error.cpp
+  src/event.cpp
   src/initialize.cpp
   src/finalize.cpp
   src/geometry.cpp

@@ -53,6 +53,9 @@ class Settings(object):
         Mesh to be used to calculate Shannon entropy. If the mesh dimensions are
         not specified. OpenMC assigns a mesh such that 20 source sites per mesh
         cell are to be expected on average.
+    event_based : bool
+        Indicate whether to use event-based parallelism instead of the default
+        history-based parallelism.
     generations_per_batch : int
         Number of generations per batch
     inactive : int
@@ -68,6 +71,9 @@ class Settings(object):
     material_cell_offsets : bool
         Generate an "offset table" for material cells by default. These tables
         are necessary when a particular instance of a cell needs to be tallied.
+    max_particles_in_flight : int
+        Number of neutrons to run concurrently when using event-based
+        parallelism.
     max_order : None or int
         Maximum scattering order to apply globally when in multi-group mode.
     no_reduce : bool
@@ -229,6 +235,9 @@ class Settings(object):
 
         self._dagmc = False
 
+        self._event_based = None
+        self._max_particles_in_flight = None
+
     @property
     def run_mode(self):
         return self._run_mode
@@ -376,6 +385,14 @@ class Settings(object):
     @property
     def dagmc(self):
         return self._dagmc
+    
+    @property
+    def event_based(self):
+        return self._event_based
+    
+    @property
+    def max_particles_in_flight(self):
+        return self._max_particles_in_flight
 
     @run_mode.setter
     def run_mode(self, run_mode):
@@ -704,6 +721,17 @@ class Settings(object):
     def delayed_photon_scaling(self, value):
         cv.check_type('delayed photon scaling', value, bool)
         self._delayed_photon_scaling = value
+    
+    @event_based.setter
+    def event_based(self, value):
+        cv.check_type('event based', value, bool)
+        self._event_based = value
+    
+    @max_particles_in_flight.setter
+    def max_particles_in_flight(self, value):
+        cv.check_type('max particles in flight', value, Integral)
+        cv.check_greater_than('max particles in flight', value, 0)
+        self._max_particles_in_flight = value
 
     @material_cell_offsets.setter
     def material_cell_offsets(self, value):
@@ -948,6 +976,16 @@ class Settings(object):
         if self._delayed_photon_scaling is not None:
             elem = ET.SubElement(root, "delayed_photon_scaling")
             elem.text = str(self._delayed_photon_scaling).lower()
+    
+    def _create_event_based_subelement(self, root):
+        if self._event_based is not None:
+            elem = ET.SubElement(root, "event_based")
+            elem.text = str(self._event_based).lower()
+    
+    def _create_max_particles_in_flight_subelement(self, root):
+        if self._max_particles_in_flight is not None:
+            elem = ET.SubElement(root, "max_particles_in_flight")
+            elem.text = str(self._max_particles_in_flight).lower()
 
     def _create_material_cell_offsets_subelement(self, root):
         if self._material_cell_offsets is not None:
@@ -1189,6 +1227,16 @@ class Settings(object):
         text = get_text(root, 'delayed_photon_scaling')
         if text is not None:
             self.delayed_photon_scaling = text in ('true', '1')
+    
+    def _event_based_from_xml_element(self, root):
+        text = get_text(root, 'event_based')
+        if text is not None:
+            self.event_based = text in ('true', '1')
+    
+    def _max_particles_in_flight_from_xml_element(self, root):
+        text = get_text(root, 'max_particles_in_flight')
+        if text is not None:
+            self.max_particles_in_flight = int(text)
 
     def _material_cell_offsets_from_xml_element(self, root):
         text = get_text(root, 'material_cell_offsets')
@@ -1250,6 +1298,8 @@ class Settings(object):
         self._create_volume_calcs_subelement(root_element)
         self._create_create_fission_neutrons_subelement(root_element)
         self._create_delayed_photon_scaling_subelement(root_element)
+        self._create_event_based_subelement(root_element)
+        self._create_max_particles_in_flight_subelement(root_element)
         self._create_material_cell_offsets_subelement(root_element)
         self._create_log_grid_bins_subelement(root_element)
         self._create_dagmc_subelement(root_element)
@@ -1317,6 +1367,8 @@ class Settings(object):
         settings._resonance_scattering_from_xml_element(root)
         settings._create_fission_neutrons_from_xml_element(root)
         settings._delayed_photon_scaling_from_xml_element(root)
+        settings._event_based_from_xml_element(root)
+        settings._max_particles_in_flight_from_xml_element(root)
         settings._material_cell_offsets_from_xml_element(root)
         settings._log_grid_bins_from_xml_element(root)
         settings._dagmc_from_xml_element(root)

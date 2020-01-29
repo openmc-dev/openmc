@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <vector>
 
+#include "openmc/shared_array.h"
 #include "openmc/particle.h"
 #include "openmc/position.h"
 
@@ -17,9 +18,8 @@ namespace simulation {
 
 extern std::vector<Particle::Bank> source_bank;
 
-extern std::unique_ptr<Particle::Bank[]> fission_bank;
-extern int64_t fission_bank_length;
-extern int64_t fission_bank_max;
+extern SharedArray<Particle::Bank> fission_bank;
+
 extern std::vector<int64_t> progeny_per_particle;
 
 } // namespace simulation

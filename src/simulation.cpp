@@ -5,6 +5,7 @@
 #include "openmc/container_util.h"
 #include "openmc/eigenvalue.h"
 #include "openmc/error.h"
+#include "openmc/event.h"
 #include "openmc/geometry_aux.h"
 #include "openmc/material.h"
 #include "openmc/message_passing.h"
@@ -71,6 +72,14 @@ int openmc_simulation_init()
   // Allocate source bank, and for eigenvalue simulations also allocate the
   // fission bank
   allocate_banks();
+
+  // If doing an event-based simulation, intialize the particle buffer
+  // and event queues
+  if (settings::event_based) {
+    int64_t event_buffer_length = std::min(simulation::work_per_rank,
+      settings::max_particles_in_flight);
+    init_event_queues(event_buffer_length);
+  }
 
   // Allocate tally results arrays if they're not allocated yet
   for (auto& t : model::tallies) {
@@ -183,7 +192,11 @@ int openmc_next_batch(int* status)
     simulation::time_transport.start();
 
     // Transport loop
-    transport_history_based();
+    if (settings::event_based) {
+      transport_event_based();
+    } else {
+      transport_history_based();
+    }
 
     // Accumulate time for transport
     simulation::time_transport.stop();
@@ -262,7 +275,6 @@ void allocate_banks()
   if (settings::run_mode == RunMode::EIGENVALUE) {
     init_fission_bank(3*simulation::work_per_rank);
   }
-  
 }
 
 void initialize_batch()
@@ -363,7 +375,7 @@ void initialize_generation()
 {
   if (settings::run_mode == RunMode::EIGENVALUE) {
     // Clear out the fission bank
-    simulation::fission_bank_length = 0;
+    simulation::fission_bank.resize(0);
 
     // Count source sites if using uniform fission source weighting
     if (settings::ufs_on) ufs_count_sites();
@@ -590,6 +602,58 @@ void transport_history_based()
     Particle p;
     initialize_history(&p, i_work);
     transport_history_based_single_particle(p);
+  }
+}
+
+void transport_event_based()
+{
+  int64_t remaining_work = simulation::work_per_rank;
+  int64_t source_offset = 0;
+
+  // To cap the total amount of memory used to store particle object data, the
+  // number of particles in flight at any point in time can bet set. In the case
+  // that the maximum in flight particle count is lower than the total number
+  // of particles that need to be run this iteration, the event-based transport
+  // loop is executed multiple times until all particles have been completed.
+  while (remaining_work > 0) {
+    // Figure out # of particles to run for this subiteration
+    int64_t n_particles = std::min(remaining_work, settings::max_particles_in_flight);
+
+    // Initialize all particle histories for this subiteration
+    process_init_events(n_particles, source_offset);
+
+    // Event-based transport loop
+    while (true) {
+      // Determine which event kernel has the longest queue
+      int64_t max = std::max({
+        simulation::calculate_fuel_xs_queue.size(),
+        simulation::calculate_nonfuel_xs_queue.size(),
+        simulation::advance_particle_queue.size(),
+        simulation::surface_crossing_queue.size(),
+        simulation::collision_queue.size()});
+
+      // Execute event with the longest queue
+      if (max == 0) {
+        break;
+      } else if (max == simulation::calculate_fuel_xs_queue.size()) {
+        process_calculate_xs_events(simulation::calculate_fuel_xs_queue);
+      } else if (max == simulation::calculate_nonfuel_xs_queue.size()) {
+        process_calculate_xs_events(simulation::calculate_nonfuel_xs_queue);
+      } else if (max == simulation::advance_particle_queue.size()) {
+        process_advance_particle_events();
+      } else if (max == simulation::surface_crossing_queue.size()) {
+        process_surface_crossing_events();
+      } else if (max == simulation::collision_queue.size()) {
+        process_collision_events();
+      }
+    }
+    
+    // Execute death event for all particles
+    process_death_events(n_particles);
+
+    // Adjust remaining work and source offset variables
+    remaining_work -= n_particles;
+    source_offset += n_particles;
   }
 }
 

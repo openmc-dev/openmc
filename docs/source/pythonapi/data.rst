@@ -148,6 +148,7 @@ Classes
 
     ace.Library
     ace.Table
+    ace.TableType
 
 Functions
 +++++++++
@@ -158,6 +159,8 @@ Functions
     :template: myfunction.rst
 
     ace.ascii_to_binary
+    ace.get_libraries_from_xsdir
+    ace.get_libraries_from_xsdata
 
 ENDF Format
 -----------

@@ -517,3 +517,16 @@ def test_ace_convert(run_in_tmpdir):
         assert tab_a.temperature == pytest.approx(tab_b.temperature)
         assert np.all(tab_a.nxs == tab_b.nxs)
         assert np.all(tab_a.jxs == tab_b.jxs)
+        assert tab_a.zaid == tab_b.zaid
+        assert tab_a.data_type == tab_b.data_type
+
+
+def test_ace_table_types():
+    TT = openmc.data.ace.TableType
+    assert TT.from_suffix('c') == TT.NEUTRON_CONTINUOUS
+    assert TT.from_suffix('nc') == TT.NEUTRON_CONTINUOUS
+    assert TT.from_suffix('80c') == TT.NEUTRON_CONTINUOUS
+    assert TT.from_suffix('t') == TT.THERMAL_SCATTERING
+    assert TT.from_suffix('20t') == TT.THERMAL_SCATTERING
+    with pytest.raises(ValueError):
+        TT.from_suffix('z')

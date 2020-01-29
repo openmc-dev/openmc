@@ -179,37 +179,32 @@ create_fission_sites(Particle* p, int i_nuclide, const Reaction* rx)
   bool use_fission_bank = (settings::run_mode == RunMode::EIGENVALUE);
 
   for (int i = 0; i < nu; ++i) {
-    Particle::Bank* site;
+    // Initialize fission site object with particle data
+    Particle::Bank site;
+    site.r = p->r();
+    site.particle = Particle::Type::neutron;
+    site.wgt = 1. / weight;
+    site.parent_id = p->id_;
+    site.progeny_id = p->n_progeny_++;
+
+    // Sample delayed group and angle/energy for fission reaction
+    sample_fission_neutron(i_nuclide, rx, p->E_, &site, p->current_seed());
+    
+    // Store fission site in bank
     if (use_fission_bank) {
-      int64_t idx;
-      #pragma omp atomic capture
-      idx = simulation::fission_bank_length++;
-      if (idx >= simulation::fission_bank_max) {
+      int64_t idx = simulation::fission_bank.thread_safe_append(site);
+      if (idx == -1) {
         warning("The shared fission bank is full. Additional fission sites created "
             "in this generation will not be banked.");
-        #pragma omp atomic write
-        simulation::fission_bank_length = simulation::fission_bank_max;
         skipped++;
         break;
       }
-      site = &simulation::fission_bank[idx];
     } else {
-      // Create new bank site and get reference to last element
-      auto& bank = p->secondary_bank_;
-      bank.emplace_back();
-      site = &bank.back();
+      p->secondary_bank_.push_back(site);
     }
-    site->r = p->r();
-    site->particle = Particle::Type::neutron;
-    site->wgt = 1. / weight;
-    site->parent_id = p->id_;
-    site->progeny_id = p->n_progeny_++;
-
-    // Sample delayed group and angle/energy for fission reaction
-    sample_fission_neutron(i_nuclide, rx, p->E_, site, p->current_seed());
 
     // Set the delayed group on the particle as well
-    p->delayed_group_ = site->delayed_group;
+    p->delayed_group_ = site.delayed_group;
 
     // Increment the number of neutrons born delayed
     if (p->delayed_group_ > 0) {
@@ -220,9 +215,9 @@ create_fission_sites(Particle* p, int i_nuclide, const Reaction* rx)
     if (use_fission_bank) {
       p->nu_bank_.emplace_back();
       Particle::NuBank* nu_bank_entry = &p->nu_bank_.back();
-      nu_bank_entry->wgt              = site->wgt;
-      nu_bank_entry->E                = site->E;
-      nu_bank_entry->delayed_group    = site->delayed_group;
+      nu_bank_entry->wgt              = site.wgt;
+      nu_bank_entry->E                = site.E;
+      nu_bank_entry->delayed_group    = site.delayed_group;
     }
   }
   

@@ -33,6 +33,7 @@ working directory which may be different from
 flags:
 
 -c, --volume           Run in stochastic volume calculation mode
+-e, --event            Run using event-based parallelism
 -g, --geometry-debug   Run in geometry debugging mode, where cell overlaps are
                        checked for after each move of a particle
 -n, --particles N      Use *N* particles per generation or batch

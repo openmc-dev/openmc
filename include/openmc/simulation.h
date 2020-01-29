@@ -95,6 +95,9 @@ void transport_history_based_single_particle(Particle& p);
 //! Simulate all particle histories using history-based parallelism
 void transport_history_based();
 
+//! Simulate all particle histories using event-based parallelism
+void transport_event_based();
+
 } // namespace openmc
 
 #endif // OPENMC_SIMULATION_H

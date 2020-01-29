@@ -137,6 +137,15 @@ The ``<entropy_mesh>`` element indicates the ID of a mesh that is to be used for
 calculating Shannon entropy. The mesh should cover all possible fissionable
 materials in the problem and is specified using a :ref:`mesh_element`.
 
+----------------------------
+``<event_based>``
+----------------------------
+
+Determines whether to use event-based parallelism instead of the default
+history-based parallelism. 
+
+  *Default*: false
+
 -----------------------------------
 ``<generations_per_batch>`` Element
 -----------------------------------
@@ -217,6 +226,16 @@ setting and turn off the generation of offset tables, if desired, by setting it
 to false.
 
   *Default*: true
+
+----------------------------------------
+``<max_particles_in_flight>`` Element
+----------------------------------------
+
+This element indicates the number of neutrons to run in flight concurrently
+when using event-based parallelism. A higher value uses more memory, but
+may be more efficient computationally.
+
+  *Default*: 100000
 
 ---------------------------
 ``<max_order>`` Element

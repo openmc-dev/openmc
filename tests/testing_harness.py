@@ -68,9 +68,10 @@ class TestHarness(object):
     def _run_openmc(self):
         if config['mpi']:
             mpi_args = [config['mpiexec'], '-n', config['mpi_np']]
-            openmc.run(openmc_exec=config['exe'], mpi_args=mpi_args)
+            openmc.run(openmc_exec=config['exe'], mpi_args=mpi_args,
+              event_based=config['event'])
         else:
-            openmc.run(openmc_exec=config['exe'])
+            openmc.run(openmc_exec=config['exe'], event_based=config['event'])
 
     def _test_output_created(self):
         """Make sure statepoint.* and tallies.out have been created."""

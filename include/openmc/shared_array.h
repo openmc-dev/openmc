@@ -69,7 +69,7 @@ public:
   //! \return The index in the array written to. In the event that this
   //! index would be greater than what was allocated for the container,
   //! return -1.
-  int64_t thread_safe_append(const T& value = {})
+  int64_t thread_safe_append(const T& value)
   {
     // Atomically capture the index we want to write to
     int64_t idx;

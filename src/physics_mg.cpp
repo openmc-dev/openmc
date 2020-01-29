@@ -125,29 +125,13 @@ create_fission_sites(Particle* p)
   bool use_fission_bank = (settings::run_mode == RunMode::EIGENVALUE);
 
   for (int i = 0; i < nu; ++i) {
-    Particle::Bank* site;
-    if (use_fission_bank) {
-      int64_t idx = simulation::fission_bank.thread_safe_append();
-      if (idx == -1) {
-        warning("The shared fission bank is full. Additional fission sites created "
-            "in this generation will not be banked.");
-        skipped++;
-        break;
-      }
-      site = &simulation::fission_bank[idx];
-    } else {
-      // Create new bank site and get reference to last element
-      auto& bank = p->secondary_bank_;
-      bank.emplace_back();
-      site = &bank.back();
-    }
-
-    // Bank source neutrons by copying the particle data
-    site->r = p->r();
-    site->particle = Particle::Type::neutron;
-    site->wgt = 1. / weight;
-    site->parent_id = p->id_;
-    site->progeny_id = p->n_progeny_++;
+    // Initialize fission site object with particle data
+    Particle::Bank site;
+    site.r = p->r();
+    site.particle = Particle::Type::neutron;
+    site.wgt = 1. / weight;
+    site.parent_id = p->id_;
+    site.progeny_id = p->n_progeny_++;
 
     // Sample the cosine of the angle, assuming fission neutrons are emitted
     // isotropically
@@ -155,20 +139,35 @@ create_fission_sites(Particle* p)
 
     // Sample the azimuthal angle uniformly in [0, 2.pi)
     double phi = 2. * PI * prn(p->current_seed() );
-    site->u.x = mu;
-    site->u.y = std::sqrt(1. - mu * mu) * std::cos(phi);
-    site->u.z = std::sqrt(1. - mu * mu) * std::sin(phi);
+    site.u.x = mu;
+    site.u.y = std::sqrt(1. - mu * mu) * std::cos(phi);
+    site.u.z = std::sqrt(1. - mu * mu) * std::sin(phi);
 
     // Sample secondary energy distribution for the fission reaction
     int dg;
     int gout;
     data::mg.macro_xs_[p->material_].sample_fission_energy(p->g_, dg, gout,
       p->current_seed());
+
     // Store the energy and delayed groups on the fission bank
-    site->E = gout;
+    site.E = gout;
+
     // We add 1 to the delayed_group bc in MG, -1 is prompt, but in the rest
     // of the code, 0 is prompt.
-    site->delayed_group = dg + 1;
+    site.delayed_group = dg + 1;
+    
+    // Store fission site in bank
+    if (use_fission_bank) {
+      int64_t idx = simulation::fission_bank.thread_safe_append(site);
+      if (idx == -1) {
+        warning("The shared fission bank is full. Additional fission sites created "
+            "in this generation will not be banked.");
+        skipped++;
+        break;
+      }
+    } else {
+      p->secondary_bank_.push_back(site);
+    }
 
     // Set the delayed group on the particle as well
     p->delayed_group_ = dg + 1;
@@ -182,9 +181,9 @@ create_fission_sites(Particle* p)
     if (use_fission_bank) {
       p->nu_bank_.emplace_back();
       Particle::NuBank* nu_bank_entry = &p->nu_bank_.back();
-      nu_bank_entry->wgt              = site->wgt;
-      nu_bank_entry->E                = site->E;
-      nu_bank_entry->delayed_group    = site->delayed_group;
+      nu_bank_entry->wgt              = site.wgt;
+      nu_bank_entry->E                = site.E;
+      nu_bank_entry->delayed_group    = site.delayed_group;
     }
   }
   

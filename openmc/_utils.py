@@ -31,31 +31,32 @@ def download(url, checksum=None, as_browser=False, **kwargs):
         page = Request(url, headers={'User-Agent': 'Mozilla/5.0'})
     else:
         page = url
-    req = urlopen(page, **kwargs)
-    # Get file size from header
-    file_size = req.length
 
-    # Check if file already downloaded
-    basename = Path(urlparse(url).path).name
-    if os.path.exists(basename):
-        if os.path.getsize(basename) == file_size:
-            print('Skipping {}, already downloaded'.format(basename))
-            return basename
+    with urlopen(page, **kwargs) as response:
+        # Get file size from header
+        file_size = response.length
 
-    # Copy file to disk in chunks
-    print('Downloading {}... '.format(basename), end='')
-    downloaded = 0
-    with open(basename, 'wb') as fh:
-        while True:
-            chunk = req.read(_BLOCK_SIZE)
-            if not chunk:
-                break
-            fh.write(chunk)
-            downloaded += len(chunk)
-            status = '{:10}  [{:3.2f}%]'.format(
-                downloaded, downloaded * 100. / file_size)
-            print(status + '\b'*len(status), end='')
-        print('')
+        # Check if file already downloaded
+        basename = Path(urlparse(url).path).name
+        if os.path.exists(basename):
+            if os.path.getsize(basename) == file_size:
+                print('Skipping {}, already downloaded'.format(basename))
+                return basename
+
+        # Copy file to disk in chunks
+        print('Downloading {}... '.format(basename), end='')
+        downloaded = 0
+        with open(basename, 'wb') as fh:
+            while True:
+                chunk = response.read(_BLOCK_SIZE)
+                if not chunk:
+                    break
+                fh.write(chunk)
+                downloaded += len(chunk)
+                status = '{:10}  [{:3.2f}%]'.format(
+                    downloaded, downloaded * 100. / file_size)
+                print(status + '\b'*len(status), end='', flush=True)
+            print('')
 
     if checksum is not None:
         downloadsum = hashlib.md5(open(basename, 'rb').read()).hexdigest()

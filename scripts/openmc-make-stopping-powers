@@ -24,6 +24,7 @@ with h5py.File('stopping_powers.h5', 'w') as f:
     # Write energies
     f.create_dataset('energy', data=energies)
 
+    # Look over atomic number; ESTAR only goes up to Z=98 (Californium)
     for Z in range(1, 99):
         print('Processing {} data...'.format(ATOMIC_SYMBOL[Z]))
 
@@ -32,9 +33,11 @@ with h5py.File('stopping_powers.h5', 'w') as f:
         payload = urlencode(data).encode("utf-8")
 
         # Retrieve data from ESTAR site
-        r = urlopen(url=base_url, data=payload).read()
+        with urlopen(url=base_url, data=payload) as response:
+            r = response.read()
 
-        # Remove text and reformat data
+        # Remove text and reformat data -- omit first 12 and last 5 lines to get
+        # only data in table
         r = html.fromstring(r).xpath('//pre//text()')
         values = np.fromstring(' '.join(r[12:-5]), sep=' ').reshape((-1, 5)).T
 

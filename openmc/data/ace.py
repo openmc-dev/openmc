@@ -15,7 +15,9 @@ generates ACE-format cross sections.
 
 """
 
-from pathlib import PurePath
+from collections import OrderedDict
+import enum
+from pathlib import PurePath, Path
 import struct
 import sys
 
@@ -358,7 +360,7 @@ class Library(EqualityMixin):
                 atomic_weight_ratio = float(words[0])
                 temperature = float(words[1])
                 commentlines = int(words[3])
-                for i in range(commentlines):
+                for _ in range(commentlines):
                     lines.pop(0)
                     lines.append(ace_file.readline())
             else:
@@ -383,7 +385,7 @@ class Library(EqualityMixin):
 
             # verify that we are supposed to read this table in
             if (table_names is not None) and (name not in table_names):
-                for i in range(n_lines - 1):
+                for _ in range(n_lines - 1):
                     ace_file.readline()
                 lines = [ace_file.readline() for i in range(13)]
                 continue
@@ -423,6 +425,42 @@ class Library(EqualityMixin):
             lines = [ace_file.readline() for i in range(13)]
 
 
+class TableType(enum.Enum):
+    """Type of ACE data table."""
+    NEUTRON_CONTINUOUS = 'c'
+    NEUTRON_DISCRETE = 'd'
+    THERMAL_SCATTERING = 't'
+    DOSIMETRY = 'y'
+    PHOTOATOMIC = 'p'
+    PHOTONUCLEAR = 'u'
+    PROTON = 'h'
+    DEUTERON = 'o'
+    TRITON = 'r'
+    HELIUM3 = 's'
+    ALPHA = 'a'
+
+    @classmethod
+    def from_suffix(cls, suffix):
+        """Determine ACE table type from a suffix.
+
+        Parameters
+        ----------
+        suffix : str
+            Single letter ACE table designator, e.g., 'c'
+
+        Returns
+        -------
+        TableType
+            ACE table type
+
+        """
+        for member in cls:
+            if suffix.endswith(member.value):
+                return member
+        raise ValueError("Suffix '{}' has no corresponding ACE table type."
+                         .format(suffix))
+
+
 class Table(EqualityMixin):
     """ACE cross section table
 
@@ -445,6 +483,11 @@ class Table(EqualityMixin):
     xss : numpy.ndarray
         Raw data for the ACE table
 
+    Attributes
+    ----------
+    data_type : TableType
+        Type of the ACE data
+
     """
     def __init__(self, name, atomic_weight_ratio, temperature, pairs,
                  nxs, jxs, xss):
@@ -456,5 +499,89 @@ class Table(EqualityMixin):
         self.jxs = jxs
         self.xss = xss
 
+    @property
+    def zaid(self):
+        return self.name.split('.')[0]
+
+    @property
+    def data_type(self):
+        xs = self.name.split('.')[1]
+        return TableType.from_suffix(xs[-1])
+
     def __repr__(self):
         return "<ACE Table: {}>".format(self.name)
+
+
+def get_libraries_from_xsdir(path):
+    """Determine paths to ACE files from an MCNP xsdir file.
+
+    Parameters
+    ----------
+    path : str or path-like
+        Path to xsdir file
+
+    Returns
+    -------
+    list
+        List of paths to ACE libraries
+    """
+    xsdir = Path(path)
+
+    # Find 'directory' section
+    with open(path, 'r') as fh:
+        lines = fh.readlines()
+    for index, line in enumerate(lines):
+        if line.strip().lower() == 'directory':
+            break
+    else:
+        raise RuntimeError("Could not find 'directory' section in MCNP xsdir file")
+
+    # Handle continuation lines indicated by '+' at end of line
+    lines = lines[index + 1:]
+    continue_lines = [i for i, line in enumerate(lines)
+                      if line.strip().endswith('+')]
+    for i in reversed(continue_lines):
+        lines[i] += lines[i].strip()[:-1] + lines.pop(i + 1)
+
+    # Create list of ACE libraries -- we use an ordered dictionary while
+    # building to get O(1) membership checks while retaining insertion order
+    libraries = OrderedDict()
+    for line in lines:
+        words = line.split()
+        if len(words) < 3:
+            continue
+
+        lib = (xsdir.parent / words[2]).resolve()
+        if lib not in libraries:
+            # Value in dictionary is not used, so we just assign None. Below a
+            # list is created from the keys alone
+            libraries[lib] = None
+
+    return list(libraries.keys())
+
+
+def get_libraries_from_xsdata(path):
+    """Determine paths to ACE files from a Serpent xsdata file.
+
+    Parameters
+    ----------
+    path : str or path-like
+        Path to xsdata file
+
+    Returns
+    -------
+    list
+        List of paths to ACE libraries
+    """
+    xsdata = Path(path)
+    with open(xsdata, 'r') as xsdata:
+        # As in get_libraries_from_xsdir, we use a dict for O(1) membership
+        # check while retaining insertion order
+        libraries = OrderedDict()
+        for line in xsdata:
+            words = line.split()
+            if len(words) >= 9:
+                lib = (xsdata.parent / words[8]).resolve()
+                if lib not in libraries:
+                    libraries[lib] = None
+    return list(libraries.keys())

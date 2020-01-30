@@ -117,7 +117,7 @@ class Zernike(Polynomial):
             for m in range(-n,(n+1),2):
                 j = int((n * (n + 2) + m) / 2)
                 if m==0:
-                    norm_vec[j] = n + 1.0 
+                    norm_vec[j] = n + 1 
                 else:
                     norm_vec[j] = 2 * n + 2
         norm_vec /= (np.pi * radius**2)
@@ -140,4 +140,3 @@ class Zernike(Polynomial):
                     for theta_i in theta]
         else:
             return np.sum(self._norm_coef * lib.calc_zn(self.order, r/self.radius, theta))
-            

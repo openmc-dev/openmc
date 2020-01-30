@@ -75,7 +75,9 @@ class ZernikeRadial(Polynomial):
     def __call__(self, r):
         import openmc.lib as lib
         if isinstance(r, Iterable):
-            return [np.sum(self._norm_coef * lib.calc_zn_rad(self.order, r_i))
+            return [np.sum(self._norm_coef * lib.calc_zn_rad(self.order, r_i / self.radius))
                     for r_i in r]
         else:
-            return np.sum(self._norm_coef * lib.calc_zn_rad(self.order, r))
+            return np.sum(self._norm_coef * lib.calc_zn_rad(self.order, r / self.radius))
+
+

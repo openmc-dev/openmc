@@ -94,7 +94,7 @@ class Zernike(Polynomial):
     r : float
         Position to be evaluated, normalized on radius [0,1]
     theta : float 
-        Polar angular position to be evaluated, normalized on :math:`[0, 2*\pi]`
+        Azimuthal to be evaluated, normalized on :math:`[0, 2*\pi]`
         
     Attributes
     ----------
@@ -103,7 +103,7 @@ class Zernike(Polynomial):
     radius : float
         Domain of Zernike polynomials to be applied on. Default is 1.
     theta : float 
-        Polar angle of Zernike polynomial to be applied on. Default is 0.    
+        Azimuthal of Zernike polynomial to be applied on. Default is 0.    
     norm_coef : iterable of float
         The list of coefficients of each term in the polynomials after
         normailization.

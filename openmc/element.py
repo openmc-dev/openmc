@@ -187,8 +187,56 @@ class Element(str):
 
         # Modify mole fractions if enrichment provided
         # New treatment for arbitrary element
-        elif enrichment is not None and enrichment_target is None:
-            raise ValueError()
+        # Interpret required enrichment as weight %
+        elif enrichment is not None and enrichment_target is not None:
+
+            # Check if the target nuclide is present in the mixture
+            if enrichment_target not in abundances.keys():
+                msg = 'Could not find the the target nuclide {0} in natural '\
+                      'isotopic composition of element {1}. Following ' \
+                      'isotopes are available: {2} '\
+                      .format(enrichment_target, self, list(abundances.keys()))
+                raise ValueError(msg)
+
+            # Check if is a single isotope mixture
+            if len(abundances) == 1:
+                msg = 'Element {0} consist of single isotope. Thus it cannot '\
+                      'be enriched.'.format(self)
+                raise ValueError(msg)
+
+            # Convert the atomic abundances to weight fractions
+            # Compute the element atomic mass
+            element_am = 0.0
+            for nuclide in abundances.keys():
+                element_am += atomic_mass(nuclide) * abundances[nuclide]
+
+            # Convert the molar fractions to mass fractions
+            for nuclide in abundances.keys():
+                abundances[nuclide] *= atomic_mass(nuclide) / element_am
+
+            # Normalize the mass fractions to one
+            sum_abundances = sum(abundances.values())
+            for nuclide in abundances.keys():
+                abundances[nuclide] /= sum_abundances
+
+            # Get fraction of non-enriched isotopes in nat. composition
+            non_enriched = 1.0 - abundances[enrichment_target]
+            tail_fraction = 1.0 - enrichment / 100.0
+
+            # Enrich the mixture
+            for nuclide, fraction in abundances.items():
+                abundances[nuclide] = tail_fraction * fraction / non_enriched
+            abundances[enrichment_target] = enrichment / 100.0
+
+            # Convert back to atomic fractions
+            # Convert the mass fractions to mole fractions
+            for nuclide in abundances.keys():
+                abundances[nuclide] /= atomic_mass(nuclide)
+
+            # Normalize the mole fractions to one
+            sum_abundances = sum(abundances.values())
+            for nuclide in abundances.keys():
+                abundances[nuclide] /= sum_abundances
 
         # Compute the ratio of the nuclide atomic masses to the element
         # atomic mass

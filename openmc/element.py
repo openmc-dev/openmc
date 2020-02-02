@@ -35,7 +35,7 @@ class Element(str):
         return self
 
     def expand(self, percent, percent_type, enrichment=None,
-               cross_sections=None):
+               enrichment_target=None, cross_sections=None):
         """Expand natural element into its naturally-occurring isotopes.
 
         An optional cross_sections argument or the OPENMC_CROSS_SECTIONS
@@ -52,9 +52,12 @@ class Element(str):
         percent_type : {'ao', 'wo'}
             'ao' for atom percent and 'wo' for weight percent
         enrichment : float, optional
-            Enrichment for U235 in weight percent. For example, input 4.95 for
-            4.95 weight percent enriched U. Default is None
-            (natural composition).
+            Enrichment of an enrichment_taget nuclide in weight percent. If
+            enrichment_taget is not supplied then it is enrichment for U235 in
+            weight percent. For example, input 4.95 for 4.95 weight percent
+            enriched U. Default is None (natural composition).
+        enrichment_target: str, optional
+            Single nuclide name to enrich from a natural composition e.g. O16
         cross_sections : str, optional
             Location of cross_sections.xml file. Default is None.
 
@@ -71,8 +74,8 @@ class Element(str):
         `ORNL/CSD/TM-244 <https://doi.org/10.2172/5561567>`_ is used to
         calculate the weight fractions of U234, U235, U236, and U238. Namely,
         the weight fraction of U234 and U236 are taken to be 0.89% and 0.46%,
-        respectively, of the U235 weight fraction. The remainder of the isotopic
-        weight is assigned to U238.
+        respectively, of the U235 weight fraction. The remainder of the
+        isotopic weight is assigned to U238.
 
         """
 
@@ -110,8 +113,8 @@ class Element(str):
             mutual_nuclides = sorted(list(mutual_nuclides))
             absent_nuclides = sorted(list(absent_nuclides))
 
-            # If all natural nuclides are present in the library, expand element
-            # using all natural nuclides
+            # If all natural nuclides are present in the library,
+            # expand element using all natural nuclides
             if len(absent_nuclides) == 0:
                 for nuclide in mutual_nuclides:
                     abundances[nuclide] = NATURAL_ABUNDANCE[nuclide]
@@ -164,7 +167,8 @@ class Element(str):
                 abundances[nuclide] = NATURAL_ABUNDANCE[nuclide]
 
         # Modify mole fractions if enrichment provided
-        if enrichment is not None:
+        # Old treatment for Uranium
+        if enrichment is not None and enrichment_target is None:
 
             # Calculate the mass fractions of isotopes
             abundances['U234'] = 0.0089 * enrichment
@@ -180,6 +184,11 @@ class Element(str):
             sum_abundances = sum(abundances.values())
             for nuclide in abundances.keys():
                 abundances[nuclide] /= sum_abundances
+
+        # Modify mole fractions if enrichment provided
+        # New treatment for arbitrary element
+        elif enrichment is not None and enrichment_target is None:
+            raise ValueError()
 
         # Compute the ratio of the nuclide atomic masses to the element
         # atomic mass

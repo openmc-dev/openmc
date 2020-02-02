@@ -68,6 +68,22 @@ class Element(str):
             is a tuple consisting of a nuclide string, the atom/weight percent,
             and the string 'ao' or 'wo'.
 
+        Raises
+        ------
+        ValueError
+            No data is available for any of natural isotopes of the element
+
+        ValueError
+            If only some natural isotopes are avaiable in cross-sections data
+            library and element is not O, W or Ta
+
+        ValueError
+            Enrichment of isotope not present in natural composition of
+            the element is requested
+
+        ValueError
+            Enrichment is requested of the element composed of single isotope
+
         Notes
         -----
         When the `enrichment` argument is specified, a correlation from
@@ -76,6 +92,8 @@ class Element(str):
         the weight fraction of U234 and U236 are taken to be 0.89% and 0.46%,
         respectively, of the U235 weight fraction. The remainder of the
         isotopic weight is assigned to U238.
+
+        Function does not check if enrichment value is in a valid range <0;100>
 
         """
 
@@ -186,7 +204,7 @@ class Element(str):
                 abundances[nuclide] /= sum_abundances
 
         # Modify mole fractions if enrichment provided
-        # New treatment for arbitrary element
+        # New treatment for arbitrary element94.96165869352852
         # Interpret required enrichment as weight %
         elif enrichment is not None and enrichment_target is not None:
 

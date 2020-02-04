@@ -244,7 +244,10 @@ def _vectfit_xs(energy, ce_xs, mts, rtol=1e-3, atol=1e-5, orders=None,
                 print("VF iteration {}/{}".format(i_vf+1, n_vf_iter))
 
             # call vf
-            poles, residues, cf, f_fit, rms = vf.vectfit(f, s, poles, weight)
+            try:
+                poles, residues, cf, f_fit, rms = vf.vectfit(f, s, poles, weight)
+            except:
+                break
 
             # convert real pole to conjugate pairs
             n_real_poles = 0
@@ -538,7 +541,8 @@ def _vectfit_nuclide(endf_file, njoy_error=5e-4, vf_error=1e-3, vf_pieces=None,
 
 def _windowing(mp_data, rtol=1e-3, atol=1e-5, n_win=None, n_cf=None,
                spacing=None, log=False):
-    r"""Generate windowed multipole library from multipole data.
+    r"""Generate windowed multipole library from multipole data with specific
+        settings of window size, curve fit order, etc.
 
     Parameters
     ----------
@@ -607,7 +611,7 @@ def _windowing(mp_data, rtol=1e-3, atol=1e-5, n_win=None, n_cf=None,
         mp_poles[ip] = mp_poles[ip][indices]
         mp_residues[ip] = mp_residues[ip][:, indices]
 
-    # initialize an array to record if each pole is used or not
+    # initialize an array to record whether each pole is used or not
     poles_unused = [np.ones_like(p, dtype=int) for p in mp_poles]
 
     # optimize the windows: the goal is to find the least set of significant
@@ -637,6 +641,7 @@ def _windowing(mp_data, rtol=1e-3, atol=1e-5, n_win=None, n_cf=None,
         n_points = min(max(100, (e_end - e_start)*4), 10000)
         energy = np.logspace(np.log10(e_start), np.log10(e_end), n_points)
         energy_sqrt = np.sqrt(energy)
+
         # reference xs from multipole form
         xs_ref = vf.evaluate(energy_sqrt, poles, residues*1j) / energy
 
@@ -649,6 +654,7 @@ def _windowing(mp_data, rtol=1e-3, atol=1e-5, n_win=None, n_cf=None,
         while True:
             if log > DETAILED_LOGGING:
                 print("Trying poles {} to {}".format(lp, rp))
+
             # calculate the cross sections contributed by the windowed poles
             if rp > lp:
                 xs_wp = vf.evaluate(energy_sqrt, poles[lp:rp],
@@ -672,12 +678,12 @@ def _windowing(mp_data, rtol=1e-3, atol=1e-5, n_win=None, n_cf=None,
                         print("Accuracy satisfied.")
                     break
 
-            # we expect curvefit succeeds for the first window
+            # we expect pure curvefit will succeed for the first window
             # TODO: find the energy boundary below which no poles are allowed
             if iw == 0:
                 raise RuntimeError('Pure curvefit failed for the first window!')
 
-            # try to include one more (center nearest) pole
+            # try to include one more pole (next center nearest)
             if rp >= n_poles:
                 lp = lp - 1
             elif lp <= 0 or poles[rp] - incenter <= incenter - poles[lp-1]:
@@ -687,6 +693,7 @@ def _windowing(mp_data, rtol=1e-3, atol=1e-5, n_win=None, n_cf=None,
 
         # save data for this window
         win_data.append((i_piece, lp, rp, coefs))
+
         # mark the windowed poles as used poles
         poles_unused[i_piece][lp:rp] = 0
 
@@ -1060,11 +1067,11 @@ class WindowedMultipole(EqualityMixin):
         if not search:
             return _windowing(mp_data, log=log, **kwargs)
 
-        # search optimal WMP in a range of window size and CF order
+        # search optimal WMP from a range of window sizes and CF orders
         if log:
             print("Start searching ...")
         n_poles = sum([p.size for p in mp_data["poles"]])
-        n_win_min = max(5, n_poles//20)
+        n_win_min = max(5, n_poles // 20)
         n_win_max = 2000 if n_poles < 2000 else 8000
         best_wmp, best_metric = None, None
         for n_w in np.unique(np.linspace(n_win_min, n_win_max, 20, dtype=int)):
@@ -1078,11 +1085,11 @@ class WindowedMultipole(EqualityMixin):
                     wmp = _windowing(mp_data, log=log, **kwargs)
                 except:
                     continue
-                # wmp library metric:
-                # - performance (average # used poles per window and CF order)
-                # - memory (# windows)
-                metric = -(wmp.poles_per_window*10 + wmp.fit_order +
-                           0.01*wmp.n_windows)
+                # select wmp library with metric:
+                # - performance: average # used poles per window and CF order
+                # - memory: # windows
+                metric = -(wmp.poles_per_window * 10. + wmp.fit_order * 1. +
+                           wmp.n_windows * 0.01)
                 if best_wmp is None or metric > best_metric:
                     if log:
                         print("Best library by far.")
@@ -1091,9 +1098,9 @@ class WindowedMultipole(EqualityMixin):
 
         # return the best wmp library
         if log:
-            print("Best WMP library: {} poles, {} windows, {} used poles per "
-             "window, {} CF order".format(best_wmp.n_poles, best_wmp.n_windows,
-             best_wmp.poles_per_window, best_wmp.fit_order))
+            print("Final library: {} poles, {} windows, {} poles per window, "
+                  "{} CF order".format(best_wmp.n_poles, best_wmp.n_windows,
+                   best_wmp.poles_per_window, best_wmp.fit_order))
 
         return best_wmp
 

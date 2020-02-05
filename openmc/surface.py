@@ -1,5 +1,6 @@
 from abc import ABCMeta, abstractmethod
 from collections import OrderedDict
+from collections.abc import Iterable
 from copy import deepcopy
 from numbers import Real, Integral
 from xml.etree import ElementTree as ET
@@ -7,7 +8,7 @@ from warnings import warn
 
 import numpy as np
 
-from openmc.checkvalue import check_type, check_value
+from openmc.checkvalue import check_type, check_value, check_length
 from openmc.region import Region, Intersection, Union
 from openmc.mixin import IDManagerMixin
 
@@ -2080,11 +2081,59 @@ class Quadric(Surface):
         vx, vy, vz = vector
         a, b, c, d, e, f, g, h, j, k = (getattr(self, key) for key in
                                         self._coeff_keys)
-        k = (k + vx*vx + vy*vy + vz*vz + d*vx*vy + e*vy*vz + f*vx*vz
+        k = (k + a*vx*vx + b*vy*vy + c*vz*vz + d*vx*vy + e*vy*vz + f*vx*vz
              - g*vx - h*vy - j*vz)
         g = g - 2*a*vx - d*vy - f*vz
         h = h - 2*b*vy - d*vx - e*vz
         j = j - 2*c*vz - e*vy - f*vx
+        return type(self)(a=a, b=b, c=c, d=d, e=e, f=f, g=g, h=h, j=j, k=k)
+
+    def rotate(self, rotation, frame='lab'):
+        """Rotate surface by given Tait-Bryan angles
+
+        Parameters
+        ----------
+        rotation : iterable of float
+            Intrinsic Tait-Bryan angles in degrees used to rotate the surface
+
+        frame : str, one of 'lab' or 'body'
+
+        Returns
+        -------
+        openmc.Quadric
+            Rotated surface
+
+        """
+
+        check_type('cell rotation', rotation, Iterable, Real)
+        check_length('cell rotation', rotation, 3)
+
+        # Calculate rotation matrix Rmat from angles phi, theta, psi
+        phi, theta, psi = rotation*(-np.pi/180.)
+        c3, s3 = np.cos(phi), np.sin(phi)
+        c2, s2 = np.cos(theta), np.sin(theta)
+        c1, s1 = np.cos(psi), np.sin(psi)
+        Rmat = np.array([[c1*c2, c1*s2*s3 - c3*s1, s1*s3 + c1*c3*s2],
+                         [c2*s1, c1*c3 + s1*s2*s3, c3*s1*s2 - c1*s3],
+                         [-s2, c2*s3, c2*c3]])
+
+        # Retrieve current coefficients for this Quadric surface
+        a, b, c, d, e, f, g, h, j, k = (getattr(self, key) for key in
+                                        self._coeff_keys)
+
+        # Form quadratic and linear matrices from coefficients
+        Amat = np.array([[a, d/2, f/2], [d/2, b, e/2], [f/2, e/2, c]])
+        bvec = np.array([g, h, j])
+
+        # Compute new matrices based on the rotation
+        newA = np.matmul(Rmat, np.matmul(Amat, Rmat.T))
+        newb = np.dot(bvec.T, Rmat.T)
+
+        # Retrieve new coefficients for the rotated surface
+        a, b, c = np.diag(newA)
+        d, e, f = 2*newA[0, 1], 2*newA[1, 2], 2*newA[0, 2]
+        g, h, j = newb
+
         return type(self)(a=a, b=b, c=c, d=d, e=e, f=f, g=g, h=h, j=j, k=k)
 
 

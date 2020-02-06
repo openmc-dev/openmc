@@ -5,6 +5,7 @@ from copy import deepcopy
 from numbers import Real, Integral
 from xml.etree import ElementTree as ET
 from warnings import warn
+import math
 
 import numpy as np
 
@@ -477,6 +478,42 @@ class Plane(Surface):
         else:
             return type(self)(a=self.a, b=self.b, c=self.c, d=d)
 
+    def rotate(self, rotation, frame='lab'):
+        """Rotate surface by given Tait-Bryan angles
+
+        Parameters
+        ----------
+        rotation : iterable of float
+            Intrinsic Tait-Bryan angles in degrees used to rotate the surface
+
+        frame : str, one of 'lab' or 'body'
+
+        Returns
+        -------
+        openmc.Plane
+            Rotated surface
+
+        """
+
+        check_type('surface rotation', rotation, Iterable, Real)
+        check_length('surface rotation', rotation, 3)
+
+        # Calculate rotation matrix Rmat from angles phi, theta, psi
+        phi, theta, psi = rotation*(-np.pi/180.)
+        c3, s3 = np.cos(phi), np.sin(phi)
+        c2, s2 = np.cos(theta), np.sin(theta)
+        c1, s1 = np.cos(psi), np.sin(psi)
+        Rmat = np.array([[c1*c2, c1*s2*s3 - c3*s1, s1*s3 + c1*c3*s2],
+                         [c2*s1, c1*c3 + s1*s2*s3, c3*s1*s2 - c1*s3],
+                         [-s2, c2*s3, c2*c3]])
+        bvec = np.array([self.a, self.b, self.c])
+
+        # Compute new rotated coefficients a, b, c
+        a, b, c = np.dot(bvec.T, Rmat.T)
+
+        return type(self)(a=a, b=b, c=c, d=self.d)
+
+
     def to_xml_element(self):
         """Return XML representation of the surface
 
@@ -651,6 +688,42 @@ class XPlane(Plane):
         else:
             return type(self)(x0=self.x0 + vx)
 
+    def rotate(self, rotation, frame='lab'):
+        """Rotate surface by given Tait-Bryan angles
+
+        Parameters
+        ----------
+        rotation : iterable of float
+            Intrinsic Tait-Bryan angles in degrees used to rotate the surface
+
+        frame : str, one of 'lab' or 'body'
+
+        Returns
+        -------
+        openmc.Plane
+            Rotated surface
+
+        """
+
+        check_type('surface rotation', rotation, Iterable, Real)
+        check_length('surface rotation', rotation, 3)
+
+        # Calculate rotation matrix Rmat from angles phi, theta, psi
+        phi, theta, psi = rotation*(-np.pi/180.)
+        c3, s3 = np.cos(phi), np.sin(phi)
+        c2, s2 = np.cos(theta), np.sin(theta)
+        c1, s1 = np.cos(psi), np.sin(psi)
+        Rmat = np.array([[c1*c2, c1*s2*s3 - c3*s1, s1*s3 + c1*c3*s2],
+                         [c2*s1, c1*c3 + s1*s2*s3, c3*s1*s2 - c1*s3],
+                         [-s2, c2*s3, c2*c3]])
+        bvec = np.array([1., 0., 0.])
+
+        # Compute new rotated coefficients a, b, c
+        a, b, c = np.dot(bvec.T, Rmat.T)
+        d = self.x0
+
+        return Plane(a=a, b=b, c=c, d=d)
+
 
 class YPlane(Plane):
     """A plane perpendicular to the y axis of the form :math:`y - y_0 = 0`
@@ -775,6 +848,42 @@ class YPlane(Plane):
             return self
         else:
             return type(self)(y0=self.y0 + vy)
+
+    def rotate(self, rotation, frame='lab'):
+        """Rotate surface by given Tait-Bryan angles
+
+        Parameters
+        ----------
+        rotation : iterable of float
+            Intrinsic Tait-Bryan angles in degrees used to rotate the surface
+
+        frame : str, one of 'lab' or 'body'
+
+        Returns
+        -------
+        openmc.Plane
+            Rotated surface
+
+        """
+
+        check_type('surface rotation', rotation, Iterable, Real)
+        check_length('surface rotation', rotation, 3)
+
+        # Calculate rotation matrix Rmat from angles phi, theta, psi
+        phi, theta, psi = rotation*(-np.pi/180.)
+        c3, s3 = np.cos(phi), np.sin(phi)
+        c2, s2 = np.cos(theta), np.sin(theta)
+        c1, s1 = np.cos(psi), np.sin(psi)
+        Rmat = np.array([[c1*c2, c1*s2*s3 - c3*s1, s1*s3 + c1*c3*s2],
+                         [c2*s1, c1*c3 + s1*s2*s3, c3*s1*s2 - c1*s3],
+                         [-s2, c2*s3, c2*c3]])
+        bvec = np.array([0., 1., 0.])
+
+        # Compute new rotated coefficients a, b, c
+        a, b, c = np.dot(bvec.T, Rmat.T)
+        d = self.y0
+
+        return Plane(a=a, b=b, c=c, d=d)
 
 
 class ZPlane(Plane):
@@ -901,6 +1010,42 @@ class ZPlane(Plane):
         else:
             return type(self)(z0=self.z0 + vz)
 
+    def rotate(self, rotation, frame='lab'):
+        """Rotate surface by given Tait-Bryan angles
+
+        Parameters
+        ----------
+        rotation : iterable of float
+            Intrinsic Tait-Bryan angles in degrees used to rotate the surface
+
+        frame : str, one of 'lab' or 'body'
+
+        Returns
+        -------
+        openmc.Plane
+            Rotated surface
+
+        """
+
+        check_type('surface rotation', rotation, Iterable, Real)
+        check_length('surface rotation', rotation, 3)
+
+        # Calculate rotation matrix Rmat from angles phi, theta, psi
+        phi, theta, psi = rotation*(-np.pi/180.)
+        c3, s3 = np.cos(phi), np.sin(phi)
+        c2, s2 = np.cos(theta), np.sin(theta)
+        c1, s1 = np.cos(psi), np.sin(psi)
+        Rmat = np.array([[c1*c2, c1*s2*s3 - c3*s1, s1*s3 + c1*c3*s2],
+                         [c2*s1, c1*c3 + s1*s2*s3, c3*s1*s2 - c1*s3],
+                         [-s2, c2*s3, c2*c3]])
+        bvec = np.array([0., 0., 1.])
+
+        # Compute new rotated coefficients a, b, c
+        a, b, c = np.dot(bvec.T, Rmat.T)
+        d = self.z0
+
+        return Plane(a=a, b=b, c=c, d=d)
+
 
 class Cylinder(Surface):
     """A cylinder whose length is parallel to the x-, y-, or z-axis.
@@ -950,6 +1095,48 @@ class Cylinder(Surface):
     def r(self, r):
         check_type('r coefficient', r, Real)
         self._coefficients['r'] = r
+
+    @classmethod
+    def from_points(cls, p1, p2, r=1., **kwargs):
+        """Return a cylinder given points that define the axis and a radius.
+
+        Parameters
+        ----------
+        p1, p2 : 3-tuples
+            Points that pass through the plane
+        r : float, optional
+            Radius of the culinder. Defaults to 1.
+        kwargs : dict
+            Keyword arguments passed to the :class:`Quadric` constructor
+
+        Returns
+        -------
+        Quadric
+            Quadric that passes through the three points
+
+        """
+        # Convert to numpy arrays
+        p1 = np.asarray(p1)
+        p2 = np.asarray(p2)
+        x1, y1, z1 = p1
+        x2, y2, z2 = p2
+        dx, dy, dz = p2 - p1
+
+        # Set coefficients for Quadric surface that represents a cylinder of
+        # radius r whose axis is the line defined by p1 and p2
+        a = dy**2 + dz**2
+        b = dx**2 + dz**2
+        c = dx**2 + dy**2
+        d = -2*dx*dy
+        e = -2*dy*dz
+        f = -2*dx*dz
+        g = -2*((z2 - z1)*(x1*z2 - x2*z1) + (y2 - y1)*(x1*y2-x2*y1))
+        h = 2*((x2 - x1)*(x1*y2 - x2*y1) - (z2 - z1)*(y1*z2 - y2*z1))
+        j = 2*((x2 - x1)*(x1*z2 - x2*z1) + (y2 - y1)*(y1*z2 - y2*z1))
+        k = (y1*z2 - y2*z1)**2 + (x1*z2 - x2*z1)**2 + (x1*y2 - x2*y1)**2 \
+            - r**2*(dx**2 + dy**2 + dz**2)
+
+        return Quadric(a=a, b=b, c=c, d=d, e=e, f=f, g=g, h=h, j=j, k=k, **kwargs)
 
 
 class XCylinder(Cylinder):
@@ -1098,6 +1285,28 @@ class XCylinder(Cylinder):
             z0 = self.z0 + vz
             return type(self)(y0=y0, z0=z0, r=self.r)
 
+    def rotate(self, rotation, frame='lab'):
+        """Rotate surface by given Tait-Bryan angles
+
+        Parameters
+        ----------
+        rotation : iterable of float
+            Intrinsic Tait-Bryan angles in degrees used to rotate the surface
+
+        frame : str, one of 'lab' or 'body'
+
+        Returns
+        -------
+        openmc.Quadric
+            Rotated surface
+
+        """
+
+        q_cyl = Cylinder.from_points((0., self.y0, self.z0),
+                                     (1., self.y0, self.z0), r=self.r)
+
+        return q_cyl.rotate(rotation, frame=frame)
+
 
 class YCylinder(Cylinder):
     """An infinite cylinder whose length is parallel to the y-axis of the form
@@ -1245,6 +1454,28 @@ class YCylinder(Cylinder):
             z0 = self.z0 + vz
             return type(self)(x0=x0, z0=z0, r=self.r)
 
+    def rotate(self, rotation, frame='lab'):
+        """Rotate surface by given Tait-Bryan angles
+
+        Parameters
+        ----------
+        rotation : iterable of float
+            Intrinsic Tait-Bryan angles in degrees used to rotate the surface
+
+        frame : str, one of 'lab' or 'body'
+
+        Returns
+        -------
+        openmc.Quadric
+            Rotated surface
+
+        """
+
+        q_cyl = Cylinder.from_points((self.x0, 0., self.z0),
+                                     (self.x0, 1., self.z0), r=self.r)
+
+        return q_cyl.rotate(rotation, frame=frame)
+
 
 class ZCylinder(Cylinder):
     """An infinite cylinder whose length is parallel to the z-axis of the form
@@ -1391,6 +1622,28 @@ class ZCylinder(Cylinder):
             x0 = self.x0 + vx
             y0 = self.y0 + vy
             return type(self)(x0=x0, y0=y0, r=self.r)
+
+    def rotate(self, rotation, frame='lab'):
+        """Rotate surface by given Tait-Bryan angles
+
+        Parameters
+        ----------
+        rotation : iterable of float
+            Intrinsic Tait-Bryan angles in degrees used to rotate the surface
+
+        frame : str, one of 'lab' or 'body'
+
+        Returns
+        -------
+        openmc.Quadric
+            Rotated surface
+
+        """
+
+        q_cyl = Cylinder.from_points((self.x0, self.y0, 0.),
+                                     (self.x0, self.y0, 1.), r=self.r)
+
+        return q_cyl.rotate(rotation, frame=frame)
 
 
 class Sphere(Surface):
@@ -2105,8 +2358,8 @@ class Quadric(Surface):
 
         """
 
-        check_type('cell rotation', rotation, Iterable, Real)
-        check_length('cell rotation', rotation, 3)
+        check_type('surface rotation', rotation, Iterable, Real)
+        check_length('surface rotation', rotation, 3)
 
         # Calculate rotation matrix Rmat from angles phi, theta, psi
         phi, theta, psi = rotation*(-np.pi/180.)

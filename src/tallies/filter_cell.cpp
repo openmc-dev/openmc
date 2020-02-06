@@ -12,7 +12,7 @@ namespace openmc {
 void
 CellFilter::from_xml(pugi::xml_node node)
 {
-  // Get cell IDs and convert into indices into the global cells vector
+  // Get cell IDs and convert to indices into the global cells vector
   auto cells = get_node_array<int32_t>(node, "bins");
   for (auto& c : cells) {
     auto search = model::cell_map.find(c);
@@ -48,7 +48,7 @@ CellFilter::set_cells(gsl::span<int32_t> cells)
 }
 
 void
-CellFilter::get_all_bins(const Particle* p, int estimator,
+CellFilter::get_all_bins(const Particle* p, TallyEstimator estimator,
                          FilterMatch& match) const
 {
   for (int i = 0; i < p->n_coord_; i++) {

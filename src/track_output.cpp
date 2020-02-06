@@ -13,37 +13,27 @@
 #include <string>
 #include <vector>
 
-// Explicit vector template specialization of threadprivate variable outside of
-// the openmc namespace for the picky Intel compiler.
-template class std::vector<std::vector<openmc::Position>>;
-
 namespace openmc {
 
 //==============================================================================
 // Global variables
 //==============================================================================
 
-// Forward declaration needed in order to declare tracks as threadprivate
-extern std::vector<std::vector<Position>> tracks;
-#pragma omp threadprivate(tracks)
-
-std::vector<std::vector<Position>> tracks;
-
 //==============================================================================
 // Non-member functions
 //==============================================================================
 
-void add_particle_track()
+void add_particle_track(Particle& p)
 {
-  tracks.emplace_back();
+  p.tracks_.emplace_back();
 }
 
-void write_particle_track(const Particle& p)
+void write_particle_track(Particle& p)
 {
-  tracks.back().push_back(p.r());
+  p.tracks_.back().push_back(p.r());
 }
 
-void finalize_particle_track(const Particle& p)
+void finalize_particle_track(Particle& p)
 {
   std::stringstream filename;
   filename << settings::path_output << "track_" << simulation::current_batch
@@ -51,7 +41,7 @@ void finalize_particle_track(const Particle& p)
 
   // Determine number of coordinates for each particle
   std::vector<int> n_coords;
-  for (auto& coords : tracks) {
+  for (auto& coords : p.tracks_) {
     n_coords.push_back(coords.size());
   }
 
@@ -60,10 +50,10 @@ void finalize_particle_track(const Particle& p)
     hid_t file_id = file_open(filename.str().c_str(), 'w');
     write_attribute(file_id, "filetype", "track");
     write_attribute(file_id, "version", VERSION_TRACK);
-    write_attribute(file_id, "n_particles", tracks.size());
+    write_attribute(file_id, "n_particles", p.tracks_.size());
     write_attribute(file_id, "n_coords", n_coords);
-    for (int i = 1; i <= tracks.size(); ++i) {
-      const auto& t {tracks[i-1]};
+    for (auto i = 1; i <= p.tracks_.size(); ++i) {
+      const auto& t {p.tracks_[i-1]};
       size_t n = t.size();
       xt::xtensor<double, 2> data({n,3});
       for (int j = 0; j < n; ++j) {
@@ -78,7 +68,7 @@ void finalize_particle_track(const Particle& p)
   }
 
   // Clear particle tracks
-  tracks.clear();
+  p.tracks_.clear();
 }
 
 } // namespace openmc

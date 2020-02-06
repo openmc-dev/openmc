@@ -375,13 +375,18 @@ class StatePoint(object):
                 for tally_id in tally_ids:
                     group = tallies_group['tally {}'.format(tally_id)]
 
-                    # Read the number of realizations
-                    n_realizations = group['n_realizations'][()]
+                    # Check if tally is internal and therefore has no data
+                    if group.attrs.get("internal"):
+                        continue
 
                     # Create Tally object and assign basic properties
                     tally = openmc.Tally(tally_id)
                     tally._sp_filename = self._f.filename
                     tally.name = group['name'][()].decode() if 'name' in group else ''
+
+                    # Read the number of realizations
+                    n_realizations = group['n_realizations'][()]
+
                     tally.estimator = group['estimator'][()].decode()
                     tally.num_realizations = n_realizations
 

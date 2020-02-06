@@ -4,13 +4,9 @@
 #include <cstdint>
 #include <vector>
 
+#include "openmc/shared_array.h"
 #include "openmc/particle.h"
 #include "openmc/position.h"
-
-// Without an explicit instantiation of vector<Bank>, the Intel compiler
-// will complain about the threadprivate directive on filter_matches. Note that
-// this has to happen *outside* of the openmc namespace
-extern template class std::vector<openmc::Particle::Bank>;
 
 namespace openmc {
 
@@ -21,13 +17,10 @@ namespace openmc {
 namespace simulation {
 
 extern std::vector<Particle::Bank> source_bank;
-extern std::vector<Particle::Bank> fission_bank;
-extern std::vector<Particle::Bank> secondary_bank;
-#ifdef _OPENMP
-extern std::vector<Particle::Bank> master_fission_bank;
-#endif
 
-#pragma omp threadprivate(fission_bank, secondary_bank)
+extern SharedArray<Particle::Bank> fission_bank;
+
+extern std::vector<int64_t> progeny_per_particle;
 
 } // namespace simulation
 
@@ -35,7 +28,11 @@ extern std::vector<Particle::Bank> master_fission_bank;
 // Non-member functions
 //==============================================================================
 
+void sort_fission_bank();
+
 void free_memory_bank();
+
+void init_fission_bank(int64_t max);
 
 } // namespace openmc
 

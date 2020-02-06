@@ -9,6 +9,7 @@ from collections import defaultdict
 
 from numpy import dot, zeros, newaxis
 
+from . import comm
 from openmc.checkvalue import check_type, check_greater_than
 from openmc.lib import (
     Tally, MaterialFilter, EnergyFilter, EnergyFunctionFilter)
@@ -58,6 +59,7 @@ class DirectReactionRateHelper(ReactionRateHelper):
             ``"(n, gamma)"``, needed for the reaction rate tally.
         """
         self._rate_tally = Tally()
+        self._rate_tally.writable = False
         self._rate_tally.scores = scores
         self._rate_tally.filters = [MaterialFilter(materials)]
 
@@ -156,6 +158,57 @@ class ChainFissionHelper(EnergyHelper):
         """
         self._energy += dot(fission_rates, self._fission_q_vector)
 
+
+class EnergyScoreHelper(EnergyHelper):
+    """Class responsible for obtaining system energy via a tally score
+
+    Parameters
+    ----------
+    score : string
+        Valid score to use when obtaining system energy from OpenMC.
+        Defaults to "heating-local"
+
+    Attributes
+    ----------
+    nuclides : list of str
+        List of nuclides with reaction rates. Not needed, but provided
+        for a consistent API across other :class:`EnergyHelper`
+    energy : float
+        System energy [eV] computed from the tally. Will be zero for
+        all MPI processes that are not the "master" process to avoid
+        artificially increasing the tallied energy.
+    score : str
+        Score used to obtain system energy
+
+    """
+
+    def __init__(self, score="heating-local"):
+        super().__init__()
+        self.score = score
+        self._tally = None
+
+    def prepare(self, *args, **kwargs):
+        """Create a tally for system energy production
+
+        Input arguments are not used, as the only information needed
+        is :attr:`score`
+
+        """
+        self._tally = Tally()
+        self._tally.writable = False
+        self._tally.scores = [self.score]
+
+    def reset(self):
+        """Obtain system energy from tally
+
+        Only the master process, ``comm.rank == 0`` will
+        have a non-zero :attr:`energy` taken from the tally.
+        This avoids accidentally scaling the system power by
+        the number of MPI processes
+        """
+        super().reset()
+        if comm.rank == 0:
+            self._energy = self._tally.results[0, 0, 1]
 
 # ------------------------------------
 # Helper for collapsing fission yields
@@ -519,6 +572,7 @@ class AveragedFissionYieldHelper(TalliedFissionYieldHelper):
         func_filter = EnergyFunctionFilter()
         func_filter.set_data((0, self._upper_energy), (0, self._upper_energy))
         weighted_tally = Tally()
+        weighted_tally.writable = False
         weighted_tally.scores = ['fission']
         weighted_tally.filters = filters + [func_filter]
         self._weighted_tally = weighted_tally

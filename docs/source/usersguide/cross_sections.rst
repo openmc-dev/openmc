@@ -16,10 +16,10 @@ recommended to use one of the pregenerated libraries. Alternatively, if you have
 ACE format data that was produced with NJOY_, such as that distributed with
 MCNP_ or Serpent_, it can be converted to the HDF5 format using the :ref:`using
 the Python API <create_xs_library>`. Several sources provide openly available
-ACE data including the `ENDF/B`_, JEFF_, and TENDL_
-libraries. In addition to tabulated cross sections in the HDF5 files, OpenMC
-relies on :ref:`windowed multipole <windowed_multipole>` data to perform
-on-the-fly Doppler broadening.
+ACE data including the `ENDF/B`_, JEFF_, and TENDL_ libraries as well as the
+`LANL Nuclear Data Team <https://nucleardata.lanl.gov/>`_. In addition to
+tabulated cross sections in the HDF5 files, OpenMC relies on :ref:`windowed
+multipole <windowed_multipole>` data to perform on-the-fly Doppler broadening.
 
 In multi-group mode, OpenMC utilizes an HDF5-based library format which can be
 used to describe nuclide- or material-specific quantities.
@@ -30,11 +30,11 @@ Environment Variables
 
 When :ref:`scripts_openmc` is run, it will look for several environment
 variables that indicate where cross sections can be found. While the location of
-cross sections can also be indicated through the :class:`openmc.Materials` class
-(or in the :ref:`materials.xml <io_materials>` file), if you always use the same
-set of cross section data, it is often easier to just set an environment
-variable that will be picked up by default every time OpenMC is run. The
-following environment variables are used:
+cross sections can also be indicated through the
+:attr:`openmc.Materials.cross_setion` attribute (or in the :ref:`materials.xml
+<io_materials>` file), if you always use the same set of cross section data, it
+is often easier to just set an environment variable that will be picked up by
+default every time OpenMC is run. The following environment variables are used:
 
 :envvar:`OPENMC_CROSS_SECTIONS`
   Indicates the path to the :ref:`cross_sections.xml <io_cross_sections>`

@@ -9,32 +9,12 @@
 
 #include <gsl/gsl>
 
+#include "openmc/constants.h"
 #include "openmc/hdf5_interface.h"
 #include "openmc/particle.h"
+#include "openmc/tallies/filter_match.h"
 #include "pugixml.hpp"
 
-
-namespace openmc {
-
-//==============================================================================
-//! Stores bins and weights for filtered tally events.
-//==============================================================================
-
-class FilterMatch
-{
-public:
-  std::vector<int> bins_;
-  std::vector<double> weights_;
-  int i_bin_;
-  bool bins_present_ {false};
-};
-
-} // namespace openmc
-
-// Without an explicit instantiation of vector<FilterMatch>, the Intel compiler
-// will complain about the threadprivate directive on filter_matches. Note that
-// this has to happen *outside* of the openmc namespace
-extern template class std::vector<openmc::FilterMatch>;
 
 namespace openmc {
 
@@ -78,7 +58,7 @@ public:
   //! \param[out] match will contain the matching bins and corresponding
   //!   weights; note that there may be zero matching bins
   virtual void
-  get_all_bins(const Particle* p, int estimator, FilterMatch& match) const = 0;
+  get_all_bins(const Particle* p, TallyEstimator estimator, FilterMatch& match) const = 0;
 
   //! Writes data describing this filter to an HDF5 statepoint group.
   virtual void
@@ -118,7 +98,7 @@ public:
 protected:
   int n_bins_;
 private:
-  int32_t id_ {-1};
+  int32_t id_ {C_NONE};
   gsl::index index_;
 };
 
@@ -126,17 +106,10 @@ private:
 // Global variables
 //==============================================================================
 
-namespace simulation {
-
-extern std::vector<FilterMatch> filter_matches;
-#pragma omp threadprivate(filter_matches)
-
-} // namespace simulation
-
 namespace model {
   extern "C" int32_t n_filters;
-  extern std::vector<std::unique_ptr<Filter>> tally_filters;
   extern std::unordered_map<int, int> filter_map;
+  extern std::vector<std::unique_ptr<Filter>> tally_filters;
 }
 
 //==============================================================================

@@ -1,9 +1,18 @@
 #!/bin/bash
 set -ex
 
-# Run regression and unit tests
+# Argument List
+args=" "
+
+# Check for MPI
 if [[ $MPI == 'y' ]]; then
-    pytest --cov=openmc -v --mpi tests
-else
-    pytest --cov=openmc -v tests
+  args="${args} --mpi "
 fi
+  
+# Check for event-based
+if [[ $EVENT == 'y' ]]; then
+  args="${args} --event "
+fi
+
+# Run regression and unit tests
+pytest --cov=openmc -v $args tests

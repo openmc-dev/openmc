@@ -99,6 +99,28 @@ def test_get_all_universes():
     assert not (univs ^ {u1, u2})
 
 
+def test_clone():
+
+    c1 = openmc.Cell(cell_id=1)
+    c1.region = -openmc.ZCylinder(r=1.0)
+    c2 = openmc.Cell(cell_id=2)
+    c2.fill = openmc.Material()
+    c3 = openmc.Cell()
+    u1 = openmc.Universe(name='cool', cells=(c1, c2, c3))
+
+    u2 = u1.clone()
+    assert u2.name == u1.name
+    assert u2.cells != u1.cells
+    assert u2.get_all_materials() != u1.get_all_materials()
+
+    u2 = u1.clone(clone_materials=False)
+    assert u2.get_all_materials() == u1.get_all_materials()
+
+    u3 = u1.clone(clone_regions=False)
+    assert next(iter(u3.cells.values())).region ==\
+         next(iter(u1.cells.values())).region
+
+
 def test_create_xml(cell_with_lattice):
     cells = [openmc.Cell() for i in range(5)]
     u = openmc.Universe(cells=cells)

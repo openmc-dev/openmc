@@ -221,26 +221,11 @@ selected::
 
   settings.electron_treatment = 'led'
 
-.. warning::
-   Currently, collision stopping powers used in the TTB approximation come from
-   the `NIST ESTAR database`_, which provides data for each element calculated
-   using by default the material density at standard temperature and pressure.
-   In OpenMC, stopping powers for compounds are calculated from this elemental
-   data using Bragg's additivity rule. However, this is not a good
-   approximation --- the collision stopping power is a function of certain
-   quantities, such as the mean excitation energy and particularly the density
-   effect correction, that depend on material properties. Data for constituent
-   elements in a compound cannot simply be summed together, but rather these
-   quantities should be calculated for the material. This treatment will be
-   especially poor when the density of a material is different from the
-   densities used in the NIST data.
-
 .. note::
    Some features related to photon transport are not currently implemented,
    including:
 
      * Tallying photon energy deposition.
-     * Properly accounting for energy deposition in coupled n-p calculations.
      * Generating a photon source from a neutron calculation that can be used
        for a later fixed source photon calculation.
      * Photoneutron reactions.

@@ -41,10 +41,10 @@ TallyDerivative::TallyDerivative(pugi::xml_node node)
   std::string variable_str = get_node_value(node, "variable");
 
   if (variable_str == "density") {
-    variable = DIFF_DENSITY;
+    variable = DerivativeVariable::DENSITY;
 
   } else if (variable_str == "nuclide_density") {
-    variable = DIFF_NUCLIDE_DENSITY;
+    variable = DerivativeVariable::NUCLIDE_DENSITY;
 
     std::string nuclide_name = get_node_value(node, "nuclide");
     bool found = false;
@@ -62,7 +62,7 @@ TallyDerivative::TallyDerivative(pugi::xml_node node)
     }
 
   } else if (variable_str == "temperature") {
-    variable = DIFF_TEMPERATURE;
+    variable = DerivativeVariable::TEMPERATURE;
 
   } else {
     std::stringstream out;
@@ -81,13 +81,9 @@ TallyDerivative::TallyDerivative(pugi::xml_node node)
 void
 read_tally_derivatives(pugi::xml_node node)
 {
-  // Populate the derivatives array.  This must be done in parallel because
-  // the derivatives are threadprivate.
-  #pragma omp parallel
-  {
-    for (auto deriv_node : node.children("derivative"))
-      model::tally_derivs.emplace_back(deriv_node);
-  }
+  // Populate the derivatives array.
+  for (auto deriv_node : node.children("derivative"))
+    model::tally_derivs.emplace_back(deriv_node);
 
   // Fill the derivative map.
   for (auto i = 0; i < model::tally_derivs.size(); ++i) {
@@ -120,7 +116,7 @@ apply_derivative_to_score(const Particle* p, int i_tally, int i_nuclide,
   // perturbated variable.
 
   const auto& deriv {model::tally_derivs[tally.deriv_]};
-  auto flux_deriv = deriv.flux_deriv;
+  const auto flux_deriv = p->flux_derivs_[tally.deriv_];
 
   // Handle special cases where we know that d_c/d_p must be zero.
   if (score_bin == SCORE_FLUX) {
@@ -146,11 +142,11 @@ apply_derivative_to_score(const Particle* p, int i_tally, int i_nuclide,
   // d_c / d_rho = sigma_MT * const
   // (1 / c) * (d_c / d_rho) = 1 / rho
 
-  case DIFF_DENSITY:
+  case DerivativeVariable::DENSITY:
     switch (tally.estimator_) {
 
-    case ESTIMATOR_ANALOG:
-    case ESTIMATOR_COLLISION:
+    case TallyEstimator::ANALOG:
+    case TallyEstimator::COLLISION:
       switch (score_bin) {
 
       case SCORE_TOTAL:
@@ -186,10 +182,10 @@ apply_derivative_to_score(const Particle* p, int i_tally, int i_nuclide,
   // (1 / c) * (d_c / d_N) = sigma_MT_i / Sigma_MT
   // where i is the perturbed nuclide.
 
-  case DIFF_NUCLIDE_DENSITY:
+  case DerivativeVariable::NUCLIDE_DENSITY:
     switch (tally.estimator_) {
 
-    case ESTIMATOR_ANALOG:
+    case TallyEstimator::ANALOG:
       if (p->event_nuclide_ != deriv.diff_nuclide) {
         score *= flux_deriv;
         return;
@@ -217,7 +213,7 @@ apply_derivative_to_score(const Particle* p, int i_tally, int i_nuclide,
       }
       break;
 
-    case ESTIMATOR_COLLISION:
+    case TallyEstimator::COLLISION:
       switch (score_bin) {
 
       case SCORE_TOTAL:
@@ -312,10 +308,10 @@ apply_derivative_to_score(const Particle* p, int i_tally, int i_nuclide,
   // computed by multipole_deriv_eval.  It only works for the resolved
   // resonance range and requires multipole data.
 
-  case DIFF_TEMPERATURE:
+  case DerivativeVariable::TEMPERATURE:
     switch (tally.estimator_) {
 
-    case ESTIMATOR_ANALOG:
+    case TallyEstimator::ANALOG:
       {
         // Find the index of the event nuclide.
         int i;
@@ -401,7 +397,7 @@ apply_derivative_to_score(const Particle* p, int i_tally, int i_nuclide,
       }
       break;
 
-    case ESTIMATOR_COLLISION:
+    case TallyEstimator::COLLISION:
       if (i_nuclide != -1) {
         const auto& nuc {data::nuclides[i_nuclide]};
         if (!multipole_in_range(nuc.get(), p->E_last_)) {
@@ -567,34 +563,36 @@ apply_derivative_to_score(const Particle* p, int i_tally, int i_nuclide,
 }
 
 void
-score_track_derivative(const Particle* p, double distance)
+score_track_derivative(Particle* p, double distance)
 {
   // A void material cannot be perturbed so it will not affect flux derivatives.
   if (p->material_ == MATERIAL_VOID) return;
   const Material& material {*model::materials[p->material_]};
-
-  for (auto& deriv : model::tally_derivs) {
+  
+  for (auto idx = 0; idx < model::tally_derivs.size(); idx++) {
+    const auto& deriv = model::tally_derivs[idx];
+    auto& flux_deriv = p->flux_derivs_[idx];
     if (deriv.diff_material != material.id_) continue;
 
     switch (deriv.variable) {
 
-    case DIFF_DENSITY:
+    case DerivativeVariable::DENSITY:
       // phi is proportional to e^(-Sigma_tot * dist)
       // (1 / phi) * (d_phi / d_rho) = - (d_Sigma_tot / d_rho) * dist
       // (1 / phi) * (d_phi / d_rho) = - Sigma_tot / rho * dist
-      deriv.flux_deriv -= distance * p->macro_xs_.total
+      flux_deriv -= distance * p->macro_xs_.total
         / material.density_gpcc_;
       break;
 
-    case DIFF_NUCLIDE_DENSITY:
+    case DerivativeVariable::NUCLIDE_DENSITY:
       // phi is proportional to e^(-Sigma_tot * dist)
       // (1 / phi) * (d_phi / d_N) = - (d_Sigma_tot / d_N) * dist
       // (1 / phi) * (d_phi / d_N) = - sigma_tot * dist
-      deriv.flux_deriv -= distance
+      flux_deriv -= distance
         * p->neutron_xs_[deriv.diff_nuclide].total;
       break;
 
-    case DIFF_TEMPERATURE:
+    case DerivativeVariable::TEMPERATURE:
       for (auto i = 0; i < material.nuclide_.size(); ++i) {
         const auto& nuc {*data::nuclides[material.nuclide_[i]]};
         if (multipole_in_range(&nuc, p->E_last_)) {
@@ -604,7 +602,7 @@ score_track_derivative(const Particle* p, double distance)
           double dsig_s, dsig_a, dsig_f;
           std::tie(dsig_s, dsig_a, dsig_f)
             = nuc.multipole_->evaluate_deriv(p->E_, p->sqrtkT_);
-          deriv.flux_deriv -= distance * (dsig_s + dsig_a)
+          flux_deriv -= distance * (dsig_s + dsig_a)
             * material.atom_density_(i);
         }
       }
@@ -613,25 +611,29 @@ score_track_derivative(const Particle* p, double distance)
   }
 }
 
-void score_collision_derivative(const Particle* p)
+void score_collision_derivative(Particle* p)
 {
   // A void material cannot be perturbed so it will not affect flux derivatives.
   if (p->material_ == MATERIAL_VOID) return;
+
   const Material& material {*model::materials[p->material_]};
 
-  for (auto& deriv : model::tally_derivs) {
+  for (auto idx = 0; idx < model::tally_derivs.size(); idx++) {
+    const auto& deriv = model::tally_derivs[idx];
+    auto& flux_deriv = p->flux_derivs_[idx];
+
     if (deriv.diff_material != material.id_) continue;
 
     switch (deriv.variable) {
 
-    case DIFF_DENSITY:
+    case DerivativeVariable::DENSITY:
       // phi is proportional to Sigma_s
       // (1 / phi) * (d_phi / d_rho) = (d_Sigma_s / d_rho) / Sigma_s
       // (1 / phi) * (d_phi / d_rho) = 1 / rho
-      deriv.flux_deriv += 1. / material.density_gpcc_;
+      flux_deriv += 1. / material.density_gpcc_;
       break;
 
-    case DIFF_NUCLIDE_DENSITY:
+    case DerivativeVariable::NUCLIDE_DENSITY:
       if (p->event_nuclide_ != deriv.diff_nuclide) continue;
       // Find the index in this material for the diff_nuclide.
       int i;
@@ -649,10 +651,10 @@ void score_collision_derivative(const Particle* p)
       // (1 / phi) * (d_phi / d_N) = (d_Sigma_s / d_N) / Sigma_s
       // (1 / phi) * (d_phi / d_N) = sigma_s / Sigma_s
       // (1 / phi) * (d_phi / d_N) = 1 / N
-      deriv.flux_deriv += 1. / material.atom_density_(i);
+      flux_deriv += 1. / material.atom_density_(i);
       break;
 
-    case DIFF_TEMPERATURE:
+    case DerivativeVariable::TEMPERATURE:
       // Loop over the material's nuclides until we find the event nuclide.
       for (auto i_nuc : material.nuclide_) {
         const auto& nuc {*data::nuclides[i_nuc]};
@@ -664,7 +666,7 @@ void score_collision_derivative(const Particle* p)
           double dsig_s, dsig_a, dsig_f;
           std::tie(dsig_s, dsig_a, dsig_f)
             = nuc.multipole_->evaluate_deriv(p->E_last_, p->sqrtkT_);
-          deriv.flux_deriv += dsig_s / (micro_xs.total - micro_xs.absorption);
+          flux_deriv += dsig_s / (micro_xs.total - micro_xs.absorption);
           // Note that this is an approximation!  The real scattering cross
           // section is
           // Sigma_s(E'->E, u'->u) = Sigma_s(E') * P(E'->E, u'->u).
@@ -677,11 +679,6 @@ void score_collision_derivative(const Particle* p)
       break;
     }
   }
-}
-
-void zero_flux_derivs()
-{
-  for (auto& deriv : model::tally_derivs) deriv.flux_deriv = 0.;
 }
 
 }// namespace openmc

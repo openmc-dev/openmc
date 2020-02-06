@@ -51,11 +51,11 @@ element tallies {
       ( (element type { ( "cell" | "cellfrom" | "cellborn" | "material" |
           "universe" | "surface" | "distribcell" | "mesh" | "energy" |
           "energyout" | "mu" | "polar" | "azimuthal" | "delayedgroup" |
-          "energyfunction" | "meshsurface") } |
+          "energyfunction" | "meshsurface" | "cellinstance") } |
          attribute type { ( "cell" | "cellfrom" | "cellborn" | "material" |
           "universe" | "surface" | "distribcell" | "mesh" | "energy" |
           "energyout" | "mu" | "polar" | "azimuthal" | "delayedgroup" |
-          "energyfunction" | "meshsurface") }) &
+          "energyfunction" | "meshsurface" | "cellinstance") }) &
         (element bins { list { xsd:double+ } } |
           attribute bins { list { xsd:double+ } })
       ) |

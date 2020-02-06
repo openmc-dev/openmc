@@ -27,7 +27,7 @@ there are many substantial benefits to using the Python API, including:
 
 For those new to Python, there are many good tutorials available online. We
 recommend going through the modules from `Codecademy
-<https://www.codecademy.com/tracks/python>`_ and/or the `Scipy lectures
+<https://www.codecademy.com/learn/learn-python-3>`_ and/or the `Scipy lectures
 <https://scipy-lectures.github.io/>`_.
 
 The full API documentation serves to provide more information on a given module

@@ -20,7 +20,9 @@ class _Bank(Structure):
                 ('E', c_double),
                 ('wgt', c_double),
                 ('delayed_group', c_int),
-                ('particle', c_int)]
+                ('particle', c_int),
+                ('parent_id', c_int64),
+                ('progeny_id', c_int64)]
 
 
 # Define input type for numpy arrays that will be passed into C++ functions
@@ -47,7 +49,7 @@ _dll.openmc_get_keff.argtypes = [POINTER(c_double*2)]
 _dll.openmc_get_keff.restype = c_int
 _dll.openmc_get_keff.errcheck = _error_handler
 _init_linsolver_argtypes = [_array_1d_int, c_int, _array_1d_int, c_int, c_int,
-                            c_double, _array_1d_int, _array_1d_int]
+                            c_double, _array_1d_int, _array_1d_int, c_bool]
 _dll.openmc_initialize_linsolver.argtypes = _init_linsolver_argtypes
 _dll.openmc_initialize_linsolver.restype = None
 _dll.openmc_is_statepoint_batch.restype = c_bool

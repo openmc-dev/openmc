@@ -2,11 +2,6 @@
 What's New in 0.11.0
 ====================
 
-.. note::
-    These release notes are for a future release of OpenMC and are still subject
-    to change. The new features and bug fixes documented here reflect the
-    current status of the ``develop`` branch of OpenMC.
-
 .. currentmodule:: openmc
 
 -------
@@ -40,6 +35,7 @@ random, non-overlapping configuration of spheres within the region.
 New Features
 ------------
 
+- White boundary conditions can be applied to surfaces
 - Support for rectilinear meshes through :class:`openmc.RectilinearMesh`.
 - The :class:`Geometry`, :class:`Materials`, and :class:`Settings` classes now
   have a ``from_xml`` method that will build an instance from an existing XML
@@ -47,7 +43,8 @@ New Features
 - Predefined energy group structures can be found in
   :data:`openmc.mgxs.GROUP_STRUCTURES`.
 - New tally scores: ``H1-production``, ``H2-production``, ``H3-production``,
-  ``He3-production``, ``He4-production``, ``heating``, and ``damage-energy``
+  ``He3-production``, ``He4-production``, ``heating``, ``heating-local``, and
+  ``damage-energy``.
 - Switched to cell-based neighor lists (`PR 1140
   <https://github.com/openmc-dev/openmc/pull/1140>`_)
 - Two new probability distributions that can be used for source distributions:
@@ -88,6 +85,7 @@ Python API Changes
 Bug Fixes
 ---------
 
+- `Rotate azimuthal distributions correctly for source sampling <https://github.com/openmc-dev/openmc/pull/1363>`_
 - `Fix reading ASCII ACE tables in Python 3 <https://github.com/openmc-dev/openmc/pull/1176>`_
 - `Fix bug for distributed temperatures <https://github.com/openmc-dev/openmc/pull/1178>`_
 - `Fix bug for distance to boundary in complex cells <https://github.com/openmc-dev/openmc/pull/1172>`_
@@ -106,6 +104,7 @@ This release contains new contributions from the following people:
 - `Brody Bassett <https://github.com/brbass>`_
 - `Will Boyd <https://github.com/wbinventor>`_
 - `Andrew Davis <https://github.com/makeclean>`_
+- `Iurii Drobyshev <https://github.com/dryuri92>`_
 - `Guillaume Giudicelli <https://github.com/GiudGiud>`_
 - `Brittany Grayson <https://github.com/graybri3>`_
 - `Zhuoran Han <https://github.com/hanzhuoran>`_
@@ -123,9 +122,12 @@ This release contains new contributions from the following people:
 - `Isaac Meyer <https://github.com/icmeyer>`_
 - `April Novak <https://github.com/aprilnovak>`_
 - `Adam Nelson <https://github.com/nelsonag>`_
+- `Gavin Ridley <https://github.com/gridley>`_
 - `Jose Salcedo Perez <https://github.com/salcedop>`_
 - `Paul Romano <https://github.com/paulromano>`_
 - `Sam Shaner <https://github.com/samuelshaner>`_
 - `Jonathan Shimwell <https://github.com/Shimwell>`_
 - `Patrick Shriwise <https://github.com/pshriwise>`_
 - `John Tramm <https://github.com/jtramm>`_
+- `Jiankai Yu <https://github.com/rockfool>`_
+- `Xiaokang Zhang <https://github.com/zxkjack123>`_

@@ -7,15 +7,25 @@ element settings {
 
   element cutoff {
     (element weight { xsd:double } | attribute weight { xsd:double })? &
-    (element weight_avg { xsd:double } | attribute weight_avg { xsd:double })?
+    (element weight_avg { xsd:double } | attribute weight_avg { xsd:double })? &
+    (element energy_neutron { xsd:double } | attribute energy_neutron { xsd:double })? &
+    (element energy_photon { xsd:double } | attribute energy_photon { xsd:double })? &
+    (element energy_electron { xsd:double } | attribute energy_electron { xsd:double })? &
+    (element energy_positron { xsd:double } | attribute energy_positron { xsd:double })?
   }? &
+
+  element delayed_photon_scaling { xsd:boolean }? &
+
+  element electron_treatment { ( "led" | "ttb" ) }? &
 
   element energy_grid { ( "nuclide" | "log" | "logarithm" | "logarithmic" | "material-union" | "union" ) }? &
 
   element energy_mode { ( "continuous-energy" | "ce" | "CE" | "multi-group" | "mg" | "MG" ) }? &
 
   element entropy_mesh { xsd:positiveInteger }? &
-
+  
+  element event_based { xsd:boolean }? &
+  
   element generations_per_batch { xsd:positiveInteger }? &
 
   element inactive { xsd:nonNegativeInteger }? &
@@ -26,6 +36,10 @@ element settings {
   }? &
 
   element log_grid_bins { xsd:positiveInteger }? &
+
+  element material_cell_offsets { xsd:boolean }? &
+  
+  element max_particles_in_flight { xsd:positiveInteger }? &
 
   element max_order { xsd:nonNegativeInteger }? &
 
@@ -55,6 +69,8 @@ element settings {
 
   element particles { xsd:positiveInteger }? &
 
+  element photon_transport { xsd:boolean }? &
+
   element ptables { xsd:boolean }? &
 
   element dagmc { xsd:boolean }? &
@@ -75,7 +91,11 @@ element settings {
             attribute parameters { list { xsd:double+ } })? &
           element x { distribution }? &
           element y { distribution }? &
-          element z { distribution }?
+          element z { distribution }? &
+          element r { distribution }? &
+          element theta { distribution }? &
+          element phi { distribution }? &
+          element origin { list { xsd:double, xsd:double, xsd:double } }?
         }? &
         element angle {
           (element type { xsd:string } | attribute type { xsd:string }) &
@@ -84,8 +104,7 @@ element settings {
           element mu { distribution }? &
           element phi { distribution }?
         }? &
-        element energy { distribution }? &
-        (element write_initial { xsd:boolean } | attribute write_initial { xsd:boolean })?
+        element energy { distribution }?
       distribution =
         (element type { xsd:string { maxLength = "16" } } |
           attribute type { xsd:string { maxLength = "16" } }) &
@@ -160,6 +179,8 @@ element settings {
     (element upper_right { list { xsd:double+ } } |
       attribute upper_right { list { xsd:double+ } })
   }* &
+
+  element write_initial_source { xsd:boolean }? &
 
   element resonance_scattering {
     (element enable { xsd:boolean } | attribute enable { xsd:boolean })? &

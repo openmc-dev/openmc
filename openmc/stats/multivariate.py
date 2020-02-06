@@ -272,6 +272,10 @@ class Spatial(metaclass=ABCMeta):
         distribution = get_text(elem, 'type')
         if distribution == 'cartesian':
             return CartesianIndependent.from_xml_element(elem)
+        elif distribution == 'cylindrical':
+            return CylindricalIndependent.from_xml_element(elem)
+        elif distribution == 'spherical':
+            return SphericalIndependent.from_xml_element(elem)
         elif distribution == 'box' or distribution == 'fission':
             return Box.from_xml_element(elem)
         elif distribution == 'point':
@@ -281,7 +285,7 @@ class Spatial(metaclass=ABCMeta):
 class CartesianIndependent(Spatial):
     """Spatial distribution with independent x, y, and z distributions.
 
-    This distribution allows one to specify a coordinates whose x-, y-, and z-
+    This distribution allows one to specify coordinates whose x-, y-, and z-
     components are sampled independently from one another.
 
     Parameters
@@ -303,7 +307,6 @@ class CartesianIndependent(Spatial):
         Distribution of z-coordinates
 
     """
-
 
     def __init__(self, x, y, z):
         super().__init__()
@@ -373,6 +376,247 @@ class CartesianIndependent(Spatial):
         y = Univariate.from_xml_element(elem.find('y'))
         z = Univariate.from_xml_element(elem.find('z'))
         return cls(x, y, z)
+
+
+class SphericalIndependent(Spatial):
+    r"""Spatial distribution represented in spherical coordinates.
+
+    This distribution allows one to specify coordinates whose :math:`r`,
+    :math:`\theta`, and :math:`\phi` components are sampled independently from
+    one another and centered on the coordinates (x0, y0, z0).
+
+    Parameters
+    ----------
+    r : openmc.stats.Univariate
+        Distribution of r-coordinates in a reference frame specified by
+        the origin parameter
+    theta : openmc.stats.Univariate
+        Distribution of theta-coordinates (angle relative to the z-axis) in a
+        reference frame specified by the origin parameter
+    phi : openmc.stats.Univariate
+        Distribution of phi-coordinates (azimuthal angle) in a reference frame
+        specified by the origin parameter
+    origin: Iterable of float, optional
+        coordinates (x0, y0, z0) of the center of the spherical reference frame
+        for the source. Defaults to (0.0, 0.0, 0.0)
+
+    Attributes
+    ----------
+    r : openmc.stats.Univariate
+        Distribution of r-coordinates in the local reference frame
+    theta : openmc.stats.Univariate
+        Distribution of theta-coordinates (angle relative to the z-axis) in the
+        local reference frame
+    phi : openmc.stats.Univariate
+        Distribution of phi-coordinates (azimuthal angle) in the local
+        reference frame
+    origin: Iterable of float, optional
+        coordinates (x0, y0, z0) of the center of the spherical reference
+        frame. Defaults to (0.0, 0.0, 0.0)
+
+    """
+
+    def __init__(self, r, theta, phi, origin=(0.0, 0.0, 0.0)):
+        super().__init__()
+        self.r = r
+        self.theta = theta
+        self.phi = phi
+        self.origin = origin
+
+    @property
+    def r(self):
+        return self._r
+
+    @property
+    def theta(self):
+        return self._theta
+
+    @property
+    def phi(self):
+        return self._phi
+
+    @property
+    def origin(self):
+        return self._origin
+
+    @r.setter
+    def r(self, r):
+        cv.check_type('r coordinate', r, Univariate)
+        self._r = r
+
+    @theta.setter
+    def theta(self, theta):
+        cv.check_type('theta coordinate', theta, Univariate)
+        self._theta = theta
+
+    @phi.setter
+    def phi(self, phi):
+        cv.check_type('phi coordinate', phi, Univariate)
+        self._phi = phi
+
+    @origin.setter
+    def origin(self, origin):
+        cv.check_type('origin coordinates', origin, Iterable, Real)
+        origin = np.asarray(origin)
+        self._origin = origin
+
+    def to_xml_element(self):
+        """Return XML representation of the spatial distribution
+
+        Returns
+        -------
+        element : xml.etree.ElementTree.Element
+            XML element containing spatial distribution data
+
+        """
+        element = ET.Element('space')
+        element.set('type', 'spherical')
+        element.append(self.r.to_xml_element('r'))
+        element.append(self.theta.to_xml_element('theta'))
+        element.append(self.phi.to_xml_element('phi'))
+        element.set("origin", ' '.join(map(str, self.origin)))
+        return element
+
+    @classmethod
+    def from_xml_element(cls, elem):
+        """Generate spatial distribution from an XML element
+
+        Parameters
+        ----------
+        elem : xml.etree.ElementTree.Element
+            XML element
+
+        Returns
+        -------
+        openmc.stats.SphericalIndependent
+            Spatial distribution generated from XML element
+
+        """
+        r = Univariate.from_xml_element(elem.find('r'))
+        theta = Univariate.from_xml_element(elem.find('theta'))
+        phi = Univariate.from_xml_element(elem.find('phi'))
+        origin = [float(x) for x in elem.get('origin').split()]
+        return cls(r, theta, phi, origin=origin)
+
+class CylindricalIndependent(Spatial):
+    """Spatial distribution represented in cylindrical coordinates.
+
+    This distribution allows one to specify coordinates whose :math:`r`,
+    :math:`\phi`, and :math:`z` components are sampled independently from
+    one another and in a reference frame whose origin is specified by the
+    coordinates (x0, y0, z0).
+
+    Parameters
+    ----------
+    r : openmc.stats.Univariate
+        Distribution of r-coordinates in a reference frame specified by the
+        origin parameter
+    phi : openmc.stats.Univariate
+        Distribution of phi-coordinates (azimuthal angle) in a reference frame
+        specified by the origin parameter
+    z : openmc.stats.Univariate
+        Distribution of z-coordinates in a reference frame specified by the
+        origin parameter
+    origin: Iterable of float, optional
+        coordinates (x0, y0, z0) of the center of the cylindrical reference
+        frame. Defaults to (0.0, 0.0, 0.0)
+
+    Attributes
+    ----------
+    r : openmc.stats.Univariate
+        Distribution of r-coordinates in the local reference frame
+    phi : openmc.stats.Univariate
+        Distribution of phi-coordinates (azimuthal angle) in the local
+        reference frame
+    z : openmc.stats.Univariate
+        Distribution of z-coordinates in the local reference frame
+    origin: Iterable of float, optional
+        coordinates (x0, y0, z0) of the center of the cylindrical reference
+        frame. Defaults to (0.0, 0.0, 0.0)
+
+    """
+
+    def __init__(self, r, phi, z, origin=(0.0, 0.0, 0.0)):
+        super().__init__()
+        self.r = r
+        self.phi = phi
+        self.z = z
+        self.origin = origin
+
+    @property
+    def r(self):
+        return self._r
+
+    @property
+    def phi(self):
+        return self._phi
+
+    @property
+    def z(self):
+        return self._z
+
+    @property
+    def origin(self):
+        return self._origin
+
+    @r.setter
+    def r(self, r):
+        cv.check_type('r coordinate', r, Univariate)
+        self._r = r
+
+    @phi.setter
+    def phi(self, phi):
+        cv.check_type('phi coordinate', phi, Univariate)
+        self._phi = phi
+
+    @z.setter
+    def z(self, z):
+        cv.check_type('z coordinate', z, Univariate)
+        self._z = z
+
+    @origin.setter
+    def origin(self, origin):
+        cv.check_type('origin coordinates', origin, Iterable, Real)
+        origin = np.asarray(origin)
+        self._origin = origin
+
+    def to_xml_element(self):
+        """Return XML representation of the spatial distribution
+
+        Returns
+        -------
+        element : xml.etree.ElementTree.Element
+            XML element containing spatial distribution data
+
+        """
+        element = ET.Element('space')
+        element.set('type', 'cylindrical')
+        element.append(self.r.to_xml_element('r'))
+        element.append(self.phi.to_xml_element('phi'))
+        element.append(self.z.to_xml_element('z'))
+        element.set("origin", ' '.join(map(str, self.origin)))
+        return element
+
+    @classmethod
+    def from_xml_element(cls, elem):
+        """Generate spatial distribution from an XML element
+
+        Parameters
+        ----------
+        elem : xml.etree.ElementTree.Element
+            XML element
+
+        Returns
+        -------
+        openmc.stats.CylindricalIndependent
+            Spatial distribution generated from XML element
+
+        """
+        r = Univariate.from_xml_element(elem.find('r'))
+        phi = Univariate.from_xml_element(elem.find('phi'))
+        z = Univariate.from_xml_element(elem.find('z'))
+        origin = [float(x) for x in elem.get('origin').split()]
+        return cls(r, phi, z, origin=origin)
 
 
 class Box(Spatial):

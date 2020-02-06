@@ -39,7 +39,70 @@
               </attribute>
             </choice>
           </optional>
+          <optional>
+            <choice>
+              <element name="energy_neutron">
+                <data type="double"/>
+              </element>
+              <attribute name="energy_neutron">
+                <data type="double"/>
+              </attribute>
+            </choice>
+          </optional>
+          <optional>
+            <choice>
+              <element name="energy_photon">
+                <data type="double"/>
+              </element>
+              <attribute name="energy_photon">
+                <data type="double"/>
+              </attribute>
+            </choice>
+          </optional>
+          <optional>
+            <choice>
+              <element name="energy_electron">
+                <data type="double"/>
+              </element>
+              <attribute name="energy_electron">
+                <data type="double"/>
+              </attribute>
+            </choice>
+          </optional>
+          <optional>
+            <choice>
+              <element name="energy_positron">
+                <data type="double"/>
+              </element>
+              <attribute name="energy_positron">
+                <data type="double"/>
+              </attribute>
+            </choice>
+          </optional>
         </interleave>
+      </element>
+    </optional>
+    <optional>
+      <element name="delayed_photon_scaling">
+        <data type="boolean"/>
+      </element>
+    </optional>
+    <optional>
+      <element name="event_based">
+        <data type="boolean"/>
+      </element>
+    </optional>
+    <optional>
+      <element name="max_particles_in_flight">
+        <data type="positiveInteger"/>
+      </element>
+    </optional>
+    <optional>
+      <element name="electron_treatment">
+        <choice>
+          <value>led</value>
+          <value>ttb</value>
+        </choice>
       </element>
     </optional>
     <optional>
@@ -106,6 +169,11 @@
     <optional>
       <element name="log_grid_bins">
         <data type="positiveInteger"/>
+      </element>
+    </optional>
+    <optional>
+      <element name="material_cell_offsets">
+        <data type="boolean"/>
       </element>
     </optional>
     <optional>
@@ -250,6 +318,11 @@
       </element>
     </optional>
     <optional>
+      <element name="photon_transport">
+        <data type="boolean"/>
+      </element>
+    </optional>
+    <optional>
       <element name="ptables">
         <data type="boolean"/>
       </element>
@@ -348,6 +421,30 @@
                         <ref name="distribution"/>
                       </element>
                     </optional>
+                    <optional>
+                      <element name="r">
+                        <ref name="distribution"/>
+                      </element>
+                    </optional>
+                    <optional>
+                      <element name="theta">
+                        <ref name="distribution"/>
+                      </element>
+                    </optional>
+                    <optional>
+                      <element name="phi">
+                        <ref name="distribution"/>
+                      </element>
+                    </optional>
+                    <optional>
+                      <element name="origin">
+                        <list>
+                          <data type="double"/>
+                          <data type="double"/>
+                          <data type="double"/>
+                        </list>
+                      </element>
+                    </optional>
                   </interleave>
                 </element>
               </optional>
@@ -397,16 +494,6 @@
                 <element name="energy">
                   <ref name="distribution"/>
                 </element>
-              </optional>
-              <optional>
-                <choice>
-                  <element name="write_initial">
-                    <data type="boolean"/>
-                  </element>
-                  <attribute name="write_initial">
-                    <data type="boolean"/>
-                  </attribute>
-                </choice>
               </optional>
             </interleave>
           </start>
@@ -719,6 +806,11 @@
         </interleave>
       </element>
     </zeroOrMore>
+    <optional>
+      <element name="write_initial_source">
+        <data type="boolean"/>
+      </element>
+    </optional>
     <optional>
       <element name="resonance_scattering">
         <interleave>

@@ -3,6 +3,7 @@
 #include <algorithm> // for copy, equal, min, min_element
 #include <cstddef> // for size_t
 #include <cmath>  // for ceil
+#include <memory> // for allocator
 #include <string>
 
 #ifdef OPENMC_MPI
@@ -149,13 +150,16 @@ RegularMesh::RegularMesh(pugi::xml_node node)
         "the <lower_left> coordinates on a tally mesh.");
     }
 
-    // Set width and upper right coordinate
-    width_ = xt::eval((upper_right_ - lower_left_) / shape_);
+    // Set width
+    if (shape_.size() > 0) {
+      width_ = xt::eval((upper_right_ - lower_left_) / shape_);
+    }
   } else {
     fatal_error("Must specify either <upper_right> and <width> on a mesh.");
   }
 
-  if (shape_.dimension() > 0) {
+  // Make sure lower_left and dimension match
+  if (shape_.size() > 0) {
     if (shape_.size() != lower_left_.size()) {
       fatal_error("Number of entries on <lower_left> must be the same "
         "as the number of entries on <dimension>.");
@@ -523,6 +527,16 @@ void RegularMesh::bins_crossed(const Particle* p, std::vector<int>& bins,
   }
   r1 = r;
 
+  // The TINY_BIT offsets above mean that the preceding logic cannot always find
+  // the correct ijk0 and ijk1 indices. For tracks shorter than 2*TINY_BIT, just
+  // assume the track lies in only one mesh bin. These tracks are very short so
+  // any error caused by this assumption will be small. It is important that
+  // ijk0 values are used rather than ijk1 because the previous logic guarantees
+  // ijk0 is a valid mesh bin.
+  if (total_distance < 2*TINY_BIT) {
+    for (int i = 0; i < n; ++i) ijk1[i] = ijk0[i];
+  }
+
   // ========================================================================
   // Find which mesh cells are traversed and the length of each traversal.
 
@@ -778,7 +792,7 @@ void RegularMesh::to_hdf5(hid_t group) const
 }
 
 xt::xtensor<double, 1>
-RegularMesh::count_sites(const std::vector<Particle::Bank>& bank,
+RegularMesh::count_sites(const Particle::Bank* bank, int64_t length,
   bool* outside) const
 {
   // Determine shape of array for counts
@@ -789,7 +803,9 @@ RegularMesh::count_sites(const std::vector<Particle::Bank>& bank,
   xt::xarray<double> cnt {shape, 0.0};
   bool outside_ = false;
 
-  for (const auto& site : bank) {
+  for (int64_t i = 0; i < length; i++) {
+    const auto& site = bank[i];
+
     // determine scoring bin for entropy mesh
     int mesh_bin = get_bin(site.r);
 
@@ -803,9 +819,11 @@ RegularMesh::count_sites(const std::vector<Particle::Bank>& bank,
     cnt(mesh_bin) += site.wgt;
   }
 
-  // Create copy of count data
+  // Create copy of count data. Since ownership will be acquired by xtensor,
+  // std::allocator must be used to avoid Valgrind mismatched free() / delete
+  // warnings.
   int total = cnt.size();
-  double* cnt_reduced = new double[total];
+  double* cnt_reduced = std::allocator<double>{}.allocate(total);
 
 #ifdef OPENMC_MPI
   // collect values from all processors
@@ -897,6 +915,16 @@ void RectilinearMesh::bins_crossed(const Particle* p, std::vector<int>& bins,
     if (!intersects(r0, r1, ijk0)) return;
   }
   r1 = r;
+
+  // The TINY_BIT offsets above mean that the preceding logic cannot always find
+  // the correct ijk0 and ijk1 indices. For tracks shorter than 2*TINY_BIT, just
+  // assume the track lies in only one mesh bin. These tracks are very short so
+  // any error caused by this assumption will be small. It is important that
+  // ijk0 values are used rather than ijk1 because the previous logic guarantees
+  // ijk0 is a valid mesh bin.
+  if (total_distance < 2*TINY_BIT) {
+    for (int i = 0; i < 3; ++i) ijk1[i] = ijk0[i];
+  }
 
   // ========================================================================
   // Find which mesh cells are traversed and the length of each traversal.

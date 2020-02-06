@@ -152,14 +152,15 @@ CorrelatedAngleEnergy::CorrelatedAngleEnergy(hid_t group)
   } // incoming energies
 }
 
-void CorrelatedAngleEnergy::sample(double E_in, double& E_out, double& mu) const
+void CorrelatedAngleEnergy::sample(double E_in, double& E_out, double& mu,
+  uint64_t* seed) const
 {
   // <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<< REMOVE THIS <<<<<<<<<<<<<<<<<<<<<<<<<<<<<
   // Before the secondary distribution refactor, an isotropic polar cosine was
   // always sampled but then overwritten with the polar cosine sampled from the
   // correlated distribution. To preserve the random number stream, we keep
   // this dummy sampling here but can remove it later (will change answers)
-  mu = 2.0*prn() - 1.0;
+  mu = 2.0*prn(seed) - 1.0;
   // <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<< REMOVE THIS <<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
   // Find energy bin and calculate interpolation factor -- if the energy is
@@ -179,7 +180,7 @@ void CorrelatedAngleEnergy::sample(double E_in, double& E_out, double& mu) const
   }
 
   // Sample between the ith and [i+1]th bin
-  int l = r > prn() ? i + 1 : i;
+  int l = r > prn(seed) ? i + 1 : i;
 
   // Interpolation for energy E1 and EK
   int n_energy_out = distribution_[i].e_out.size();
@@ -198,7 +199,7 @@ void CorrelatedAngleEnergy::sample(double E_in, double& E_out, double& mu) const
   // Determine outgoing energy bin
   n_energy_out = distribution_[l].e_out.size();
   n_discrete = distribution_[l].n_discrete;
-  double r1 = prn();
+  double r1 = prn(seed);
   double c_k = distribution_[l].c[0];
   int k = 0;
   int end = n_energy_out - 2;
@@ -259,9 +260,9 @@ void CorrelatedAngleEnergy::sample(double E_in, double& E_out, double& mu) const
 
   // Find correlated angular distribution for closest outgoing energy bin
   if (r1 - c_k < c_k1 - r1) {
-    mu = distribution_[l].angle[k]->sample();
+    mu = distribution_[l].angle[k]->sample(seed);
   } else {
-    mu = distribution_[l].angle[k + 1]->sample();
+    mu = distribution_[l].angle[k + 1]->sample(seed);
   }
 }
 

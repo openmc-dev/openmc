@@ -1,4 +1,5 @@
-from collections import OrderedDict
+from collections import OrderedDict, defaultdict
+from collections.abc import Iterable
 from copy import deepcopy
 from numbers import Real, Integral
 from pathlib import Path
@@ -913,6 +914,98 @@ class Material(IDManagerMixin):
             subelement.text = ' '.join(self._isotropic)
 
         return element
+
+    @classmethod
+    def mix_materials(cls, materials, fracs, percent_type='ao', name=None):
+        """Mix materials together based on atom, weight, or volume fractions
+
+        Parameters
+        ----------
+        materials : Iterable of openmc.Material
+            Materials to combine
+        fracs : Iterable of float
+            Fractions of each material to be combined
+        percent_type : {'ao', 'wo', 'vo'}
+            Type of percentage, must be one of 'ao', 'wo', or 'vo', to signify atom
+            percent (molar percent), weight percent, or volume percent, 
+            optional. Defaults to 'ao'
+        name : str
+            The name for the new material, optional. Defaults to concatenated
+            names of input materials with percentages indicated inside
+            parentheses.
+
+        Returns
+        -------
+        openmc.Material
+            Mixture of the materials
+
+        """
+
+        cv.check_type('materials', materials, Iterable, Material)
+        cv.check_type('fracs', fracs, Iterable, Real)
+        cv.check_value('percent type', percent_type, {'ao', 'wo', 'vo'})
+
+        fracs = np.asarray(fracs)
+        void_frac = 1. - np.sum(fracs)
+
+        # Warn that fractions don't add to 1, set remainder to void, or raise
+        # an error if percent_type isn't 'vo'
+        if not np.isclose(void_frac, 0.):
+            if percent_type in ('ao', 'wo'):
+                msg = ('A non-zero void fraction is not acceptable for '
+                       'percent_type: {}'.format(percent_type))
+                raise ValueError(msg)
+            else:
+                msg = ('Warning: sum of fractions do not add to 1, void '
+                       'fraction set to {}'.format(void_frac))
+                warnings.warn(msg)
+
+        # Calculate appropriate weights which are how many cc's of each
+        # material are found in 1cc of the composite material
+        amms = np.asarray([mat.average_molar_mass for mat in materials])
+        mass_dens = np.asarray([mat.get_mass_density() for mat in materials])
+        if percent_type == 'ao':
+            wgts = fracs * amms / mass_dens
+            wgts /= np.sum(wgts)
+        elif percent_type == 'wo':
+            wgts = fracs / mass_dens
+            wgts /= np.sum(wgts)
+        elif percent_type == 'vo':
+            wgts = fracs
+
+        # If any of the involved materials contain S(a,b) tables raise an error
+        sab_names = set(sab[0] for mat in materials for sab in mat._sab)
+        if sab_names:
+            msg = ('Currently we do not support mixing materials containing '
+                   'S(a,b) tables')
+            raise NotImplementedError(msg)
+
+        # Add nuclide densities weighted by appropriate fractions
+        nuclides_per_cc = defaultdict(float)
+        mass_per_cc = defaultdict(float)
+        for mat, wgt in zip(materials, wgts):
+            for nuc, atoms_per_bcm in mat.get_nuclide_atom_densities().values():
+                nuc_per_cc = wgt*1.e24*atoms_per_bcm
+                nuclides_per_cc[nuc] += nuc_per_cc
+                mass_per_cc[nuc] += nuc_per_cc*openmc.data.atomic_mass(nuc) / \
+                                    openmc.data.AVOGADRO
+
+        # Create the new material with the desired name
+        if name is None:
+            name = '-'.join(['{}({})'.format(m.name, f) for m, f in
+                             zip(materials, fracs)])
+        new_mat = openmc.Material(name=name)
+
+        # Compute atom fractions of nuclides and add them to the new material  
+        tot_nuclides_per_cc = np.sum([dens for dens in nuclides_per_cc.values()])
+        for nuc, atom_dens in nuclides_per_cc.items():
+            new_mat.add_nuclide(nuc, atom_dens/tot_nuclides_per_cc, 'ao')
+
+        # Compute mass density for the new material and set it
+        new_density = np.sum([dens for dens in mass_per_cc.values()])
+        new_mat.set_density('g/cm3', new_density)
+
+        return new_mat
 
     @classmethod
     def from_xml_element(cls, elem):

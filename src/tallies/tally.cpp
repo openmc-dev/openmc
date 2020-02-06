@@ -45,6 +45,7 @@ namespace openmc {
 //==============================================================================
 
 namespace model {
+  std::unordered_map<int, int> tally_map;
   std::vector<std::unique_ptr<Tally>> tallies;
   std::vector<int> active_tallies;
   std::vector<int> active_analog_tallies;
@@ -52,7 +53,6 @@ namespace model {
   std::vector<int> active_collision_tallies;
   std::vector<int> active_meshsurf_tallies;
   std::vector<int> active_surface_tallies;
-  std::unordered_map<int, int> tally_map;
 }
 
 namespace simulation {
@@ -310,15 +310,15 @@ Tally::Tally(pugi::xml_node node)
     // Change the tally estimator if a filter demands it
     std::string filt_type = f->type();
     if (filt_type == "energyout" || filt_type == "legendre") {
-      estimator_ = ESTIMATOR_ANALOG;
+      estimator_ = TallyEstimator::ANALOG;
     } else if (filt_type == "sphericalharmonics") {
       auto sf = dynamic_cast<SphericalHarmonicsFilter*>(f);
       if (sf->cosine() == SphericalHarmonicsCosine::scatter) {
-        estimator_ = ESTIMATOR_ANALOG;
+        estimator_ = TallyEstimator::ANALOG;
       }
     } else if (filt_type == "spatiallegendre" || filt_type == "zernike"
       || filt_type == "zernikeradial") {
-      estimator_ = ESTIMATOR_COLLISION;
+      estimator_ = TallyEstimator::COLLISION;
     }
   }
 
@@ -363,15 +363,6 @@ Tally::Tally(pugi::xml_node node)
           break;
         }
       }
-    } else {
-      const auto& f = model::tally_filters[particle_filter_index].get();
-      auto pf = dynamic_cast<ParticleFilter*>(f);
-      for (auto p : pf->particles()) {
-        if (p == Particle::Type::electron ||
-            p == Particle::Type::positron) {
-          estimator_ = ESTIMATOR_ANALOG;
-        }
-      }
     }
   } else {
     if (particle_filter_index >= 0) {
@@ -402,13 +393,13 @@ Tally::Tally(pugi::xml_node node)
 
     // Only analog or collision estimators are supported for differential
     // tallies.
-    if (estimator_ == ESTIMATOR_TRACKLENGTH) {
-      estimator_ = ESTIMATOR_COLLISION;
+    if (estimator_ == TallyEstimator::TRACKLENGTH) {
+      estimator_ = TallyEstimator::COLLISION;
     }
 
     const auto& deriv = model::tally_derivs[deriv_];
-    if (deriv.variable == DIFF_NUCLIDE_DENSITY
-      || deriv.variable == DIFF_TEMPERATURE) {
+    if (deriv.variable == DerivativeVariable::NUCLIDE_DENSITY
+      || deriv.variable == DerivativeVariable::TEMPERATURE) {
       for (int i_nuc : nuclides_) {
         if (has_energyout && i_nuc == -1) {
           fatal_error("Error on tally " + std::to_string(id_)
@@ -437,29 +428,29 @@ Tally::Tally(pugi::xml_node node)
   if (check_for_node(node, "estimator")) {
     std::string est = get_node_value(node, "estimator");
     if (est == "analog") {
-      estimator_ = ESTIMATOR_ANALOG;
+      estimator_ = TallyEstimator::ANALOG;
     } else if (est == "tracklength" || est == "track-length"
       || est == "pathlength" || est == "path-length") {
-      // If the estimator was set to an analog estimator, this means the
-      // tally needs post-collision information
-      if (estimator_ == ESTIMATOR_ANALOG) {
+      // If the estimator was set to an analog/collision estimator, this means
+      // the tally needs post-collision information
+      if (estimator_ == TallyEstimator::ANALOG || estimator_ == TallyEstimator::COLLISION) {
         throw std::runtime_error{"Cannot use track-length estimator for tally "
           + std::to_string(id_)};
       }
 
       // Set estimator to track-length estimator
-      estimator_ = ESTIMATOR_TRACKLENGTH;
+      estimator_ = TallyEstimator::TRACKLENGTH;
 
     } else if (est == "collision") {
       // If the estimator was set to an analog estimator, this means the
       // tally needs post-collision information
-      if (estimator_ == ESTIMATOR_ANALOG) {
+      if (estimator_ == TallyEstimator::ANALOG) {
         throw std::runtime_error{"Cannot use collision estimator for tally " +
           std::to_string(id_)};
       }
 
       // Set estimator to collision estimator
-      estimator_ = ESTIMATOR_COLLISION;
+      estimator_ = TallyEstimator::COLLISION;
 
     } else {
       throw std::runtime_error{"Invalid estimator '" + est + "' on tally " +
@@ -483,12 +474,12 @@ Tally::create(int32_t id)
 void
 Tally::set_id(int32_t id)
 {
-  Expects(id >= -1);
+  Expects(id >= 0 || id == C_NONE);
 
   // Clear entry in tally map if an ID was already assigned before
-  if (id_ != -1) {
+  if (id_ != C_NONE) {
     model::tally_map.erase(id_);
-    id_ = -1;
+    id_ = C_NONE;
   }
 
   // Make sure no other tally has the same ID
@@ -497,7 +488,7 @@ Tally::set_id(int32_t id)
   }
 
   // If no ID specified, auto-assign next ID in sequence
-  if (id == -1) {
+  if (id == C_NONE) {
     id = 0;
     for (const auto& t : model::tallies) {
       id = std::max(id, t->id_);
@@ -615,20 +606,20 @@ Tally::set_scores(const std::vector<std::string>& scores)
 
     case SCORE_SCATTER:
       if (legendre_present)
-        estimator_ = ESTIMATOR_ANALOG;
+        estimator_ = TallyEstimator::ANALOG;
     case SCORE_NU_FISSION:
     case SCORE_DELAYED_NU_FISSION:
     case SCORE_PROMPT_NU_FISSION:
       if (energyout_present)
-        estimator_ = ESTIMATOR_ANALOG;
+        estimator_ = TallyEstimator::ANALOG;
       break;
 
     case SCORE_NU_SCATTER:
       if (settings::run_CE) {
-        estimator_ = ESTIMATOR_ANALOG;
+        estimator_ = TallyEstimator::ANALOG;
       } else {
         if (energyout_present || legendre_present)
-          estimator_ = ESTIMATOR_ANALOG;
+          estimator_ = TallyEstimator::ANALOG;
       }
       break;
 
@@ -647,12 +638,16 @@ Tally::set_scores(const std::vector<std::string>& scores)
         if (meshsurface_present)
           fatal_error("Cannot tally mesh surface currents in the same tally as "
             "normal surface currents");
-        type_ = TALLY_SURFACE;
+        type_ = TallyType::SURFACE;
       } else if (meshsurface_present) {
-        type_ = TALLY_MESH_SURFACE;
+        type_ = TallyType::MESH_SURFACE;
       } else {
         fatal_error("Cannot tally currents without surface type filters");
       }
+      break;
+
+    case HEATING:
+      if (settings::photon_transport) estimator_ = TallyEstimator::COLLISION;
       break;
     }
 
@@ -677,7 +672,7 @@ Tally::set_scores(const std::vector<std::string>& scores)
   }
 
   // Make sure current scores are not mixed in with volumetric scores.
-  if (type_ == TALLY_SURFACE || type_ == TALLY_MESH_SURFACE) {
+  if (type_ == TallyType::SURFACE || type_ == TallyType::MESH_SURFACE) {
     if (scores_.size() != 1)
       fatal_error("Cannot tally other scores in the same tally as surface "
         "currents");
@@ -810,8 +805,7 @@ void Tally::init_results()
 void Tally::reset()
 {
   n_realizations_ = 0;
-  // TODO: Change to zero when xtensor is updated
-  if (results_.size() != 1) {
+  if (results_.size() != 0) {
     xt::view(results_, xt::all()) = 0.0;
   }
 }
@@ -824,7 +818,7 @@ void Tally::accumulate()
   if (mpi::master || !settings::reduce_tallies) {
     // Calculate total source strength for normalization
     double total_source = 0.0;
-    if (settings::run_mode == RUN_MODE_FIXEDSOURCE) {
+    if (settings::run_mode == RunMode::FIXED_SOURCE) {
       for (const auto& s : model::external_sources) {
         total_source += s.strength();
       }
@@ -832,14 +826,16 @@ void Tally::accumulate()
       total_source = 1.0;
     }
 
+    // Account for number of source particles in normalization
+    double norm = total_source / (settings::n_particles * settings::gen_per_batch);
+
     // Accumulate each result
     for (int i = 0; i < results_.shape()[0]; ++i) {
       for (int j = 0; j < results_.shape()[1]; ++j) {
-        double val = results_(i, j, RESULT_VALUE) /
-          simulation::total_weight * total_source;
-        results_(i, j, RESULT_VALUE) = 0.0;
-        results_(i, j, RESULT_SUM) += val;
-        results_(i, j, RESULT_SUM_SQ) += val*val;
+        double val = results_(i, j, TallyResult::VALUE) * norm;
+        results_(i, j, TallyResult::VALUE) = 0.0;
+        results_(i, j, TallyResult::SUM) += val;
+        results_(i, j, TallyResult::SUM_SQ) += val*val;
       }
     }
   }
@@ -871,7 +867,7 @@ void read_tallies_xml()
   read_meshes(root);
 
   // We only need the mesh info for plotting
-  if (settings::run_mode == RUN_MODE_PLOTTING) return;
+  if (settings::run_mode == RunMode::PLOTTING) return;
 
   // Read data for tally derivatives
   read_tally_derivatives(root);
@@ -907,7 +903,7 @@ void reduce_tally_results()
     auto& tally {model::tallies[i_tally]};
 
     // Get view of accumulated tally values
-    auto values_view = xt::view(tally->results_, xt::all(), xt::all(), RESULT_VALUE);
+    auto values_view = xt::view(tally->results_, xt::all(), xt::all(), static_cast<int>(TallyResult::VALUE));
 
     // Make copy of tally values in contiguous array
     xt::xtensor<double, 2> values = values_view;
@@ -927,7 +923,7 @@ void reduce_tally_results()
 
   // Get view of global tally values
   auto& gt = simulation::global_tallies;
-  auto gt_values_view = xt::view(gt, xt::all(), RESULT_VALUE);
+  auto gt_values_view = xt::view(gt, xt::all(), static_cast<int>(TallyResult::VALUE));
 
   // Make copy of values in contiguous array
   xt::xtensor<double, 1> gt_values = gt_values_view;
@@ -968,12 +964,12 @@ accumulate_tallies()
   if (mpi::master || !settings::reduce_tallies) {
     auto& gt = simulation::global_tallies;
 
-    if (settings::run_mode == RUN_MODE_EIGENVALUE) {
+    if (settings::run_mode == RunMode::EIGENVALUE) {
       if (simulation::current_batch > settings::n_inactive) {
         // Accumulate products of different estimators of k
-        double k_col = gt(K_COLLISION, RESULT_VALUE) / simulation::total_weight;
-        double k_abs = gt(K_ABSORPTION, RESULT_VALUE) / simulation::total_weight;
-        double k_tra = gt(K_TRACKLENGTH, RESULT_VALUE) / simulation::total_weight;
+        double k_col = gt(GlobalTally::K_COLLISION, TallyResult::VALUE) / simulation::total_weight;
+        double k_abs = gt(GlobalTally::K_ABSORPTION, TallyResult::VALUE) / simulation::total_weight;
+        double k_tra = gt(GlobalTally::K_TRACKLENGTH, TallyResult::VALUE) / simulation::total_weight;
         simulation::k_col_abs += k_col * k_abs;
         simulation::k_col_tra += k_col * k_tra;
         simulation::k_abs_tra += k_abs * k_tra;
@@ -982,10 +978,10 @@ accumulate_tallies()
 
     // Accumulate results for global tallies
     for (int i = 0; i < N_GLOBAL_TALLIES; ++i) {
-      double val = gt(i, RESULT_VALUE)/simulation::total_weight;
-      gt(i, RESULT_VALUE) = 0.0;
-      gt(i, RESULT_SUM) += val;
-      gt(i, RESULT_SUM_SQ) += val*val;
+      double val = gt(i, TallyResult::VALUE)/simulation::total_weight;
+      gt(i, TallyResult::VALUE) = 0.0;
+      gt(i, TallyResult::SUM) += val;
+      gt(i, TallyResult::SUM_SQ) += val*val;
     }
   }
 
@@ -1013,24 +1009,24 @@ setup_active_tallies()
       model::active_tallies.push_back(i);
       switch (tally.type_) {
 
-      case TALLY_VOLUME:
+      case TallyType::VOLUME:
         switch (tally.estimator_) {
-          case ESTIMATOR_ANALOG:
+          case TallyEstimator::ANALOG:
             model::active_analog_tallies.push_back(i);
             break;
-          case ESTIMATOR_TRACKLENGTH:
+          case TallyEstimator::TRACKLENGTH:
             model::active_tracklength_tallies.push_back(i);
             break;
-          case ESTIMATOR_COLLISION:
+          case TallyEstimator::COLLISION:
             model::active_collision_tallies.push_back(i);
         }
         break;
 
-      case TALLY_MESH_SURFACE:
+      case TallyType::MESH_SURFACE:
         model::active_meshsurf_tallies.push_back(i);
         break;
 
-      case TALLY_SURFACE:
+      case TallyType::SURFACE:
         model::active_surface_tallies.push_back(i);
       }
 
@@ -1043,10 +1039,8 @@ setup_active_tallies()
 void
 free_memory_tally()
 {
-  #pragma omp parallel
-  {
-    model::tally_derivs.clear();
-  }
+  model::tally_derivs.clear();
+  model::tally_deriv_map.clear();
 
   model::tally_filters.clear();
   model::filter_map.clear();
@@ -1109,7 +1103,7 @@ openmc_tally_get_estimator(int32_t index, int* estimator)
     return OPENMC_E_OUT_OF_BOUNDS;
   }
 
-  *estimator = model::tallies[index]->estimator_;
+  *estimator = static_cast<int>(model::tallies[index]->estimator_);
   return 0;
 }
 
@@ -1125,11 +1119,11 @@ openmc_tally_set_estimator(int32_t index, const char* estimator)
 
   std::string est = estimator;
   if (est == "analog") {
-    t->estimator_ = ESTIMATOR_ANALOG;
+    t->estimator_ = TallyEstimator::ANALOG;
   } else if (est == "collision") {
-    t->estimator_ = ESTIMATOR_COLLISION;
+    t->estimator_ = TallyEstimator::COLLISION;
   } else if (est == "tracklength") {
-    t->estimator_ = ESTIMATOR_TRACKLENGTH;
+    t->estimator_ = TallyEstimator::TRACKLENGTH;
   } else {
     set_errmsg("Unknown tally estimator: " + est);
     return OPENMC_E_INVALID_ARGUMENT;
@@ -1168,7 +1162,7 @@ openmc_tally_get_type(int32_t index, int32_t* type)
     set_errmsg("Index in tallies array is out of bounds.");
     return OPENMC_E_OUT_OF_BOUNDS;
   }
-  *type = model::tallies[index]->type_;
+  *type = static_cast<int>(model::tallies[index]->type_);
 
   return 0;
 }
@@ -1181,11 +1175,11 @@ openmc_tally_set_type(int32_t index, const char* type)
     return OPENMC_E_OUT_OF_BOUNDS;
   }
   if (strcmp(type, "volume") == 0) {
-    model::tallies[index]->type_ = TALLY_VOLUME;
+    model::tallies[index]->type_ = TallyType::VOLUME;
   } else if (strcmp(type, "mesh-surface") == 0) {
-    model::tallies[index]->type_ = TALLY_MESH_SURFACE;
+    model::tallies[index]->type_ = TallyType::MESH_SURFACE;
   } else if (strcmp(type, "surface") == 0) {
-    model::tallies[index]->type_ = TALLY_SURFACE;
+    model::tallies[index]->type_ = TallyType::SURFACE;
   } else {
     std::stringstream errmsg;
     errmsg << "Unknown tally type: " << type;
@@ -1216,6 +1210,30 @@ openmc_tally_set_active(int32_t index, bool active)
     return OPENMC_E_OUT_OF_BOUNDS;
   }
   model::tallies[index]->active_ = active;
+
+  return 0;
+}
+
+extern "C" int
+openmc_tally_get_writable(int32_t index, bool* writable)
+{
+  if (index < 0 || index >= model::tallies.size()) {
+    set_errmsg("Index in tallies array is out of bounds.");
+    return OPENMC_E_OUT_OF_BOUNDS;
+  }
+  *writable = model::tallies[index]->writable();
+
+  return 0;
+}
+
+extern "C" int
+openmc_tally_set_writable(int32_t index, bool writable)
+{
+  if (index < 0 || index >= model::tallies.size()) {
+    set_errmsg("Index in tallies array is out of bounds.");
+    return OPENMC_E_OUT_OF_BOUNDS;
+  }
+  model::tallies[index]->set_writable(writable);
 
   return 0;
 }
@@ -1374,8 +1392,7 @@ openmc_tally_results(int32_t index, double** results, size_t* shape)
   }
 
   const auto& t {model::tallies[index]};
-  // TODO: Change to zero when xtensor is updated
-  if (t->results_.size() == 1) {
+  if (t->results_.size() == 0) {
     set_errmsg("Tally results have not been allocated yet.");
     return OPENMC_E_ALLOCATE;
   }

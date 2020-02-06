@@ -26,13 +26,13 @@ namespace openmc {
 // FilterBinIter implementation
 //==============================================================================
 
-FilterBinIter::FilterBinIter(const Tally& tally, const Particle* p)
-  : tally_{tally}
+FilterBinIter::FilterBinIter(const Tally& tally, Particle* p)
+  : tally_{tally}, filter_matches_{p->filter_matches_}
 {
   // Find all valid bins in each relevant filter if they have not already been
   // found for this event.
   for (auto i_filt : tally_.filters()) {
-    auto& match {simulation::filter_matches[i_filt]};
+    auto& match {filter_matches_[i_filt]};
     if (!match.bins_present_) {
       match.bins_.clear();
       match.weights_.clear();
@@ -55,8 +55,9 @@ FilterBinIter::FilterBinIter(const Tally& tally, const Particle* p)
   this->compute_index_weight();
 }
 
-FilterBinIter::FilterBinIter(const Tally& tally, bool end)
-  : tally_{tally}
+FilterBinIter::FilterBinIter(const Tally& tally, bool end,
+    std::vector<FilterMatch>* particle_filter_matches)
+  : tally_{tally}, filter_matches_{*particle_filter_matches}
 {
   // Handle the special case for an iterator that points to the end.
   if (end) {
@@ -65,7 +66,7 @@ FilterBinIter::FilterBinIter(const Tally& tally, bool end)
   }
 
   for (auto i_filt : tally_.filters()) {
-    auto& match {simulation::filter_matches[i_filt]};
+    auto& match {filter_matches_[i_filt]};
     if (!match.bins_present_) {
       match.bins_.clear();
       match.weights_.clear();
@@ -97,7 +98,7 @@ FilterBinIter::operator++()
   bool done_looping = true;
   for (int i = tally_.filters().size()-1; i >= 0; --i) {
     auto i_filt = tally_.filters(i);
-    auto& match {simulation::filter_matches[i_filt]};
+    auto& match {filter_matches_[i_filt]};
     if (match.i_bin_ < match.bins_.size()-1) {
       // The bin for this filter can be incremented.  Increment it and do not
       // touch any of the remaining filters.
@@ -130,7 +131,7 @@ FilterBinIter::compute_index_weight()
   weight_ = 1.;
   for (auto i = 0; i < tally_.filters().size(); ++i) {
     auto i_filt = tally_.filters(i);
-    auto& match {simulation::filter_matches[i_filt]};
+    auto& match {filter_matches_[i_filt]};
     auto i_bin = match.i_bin_;
     index_ += match.bins_[i_bin] * tally_.strides(i);
     weight_ *= match.weights_[i_bin];
@@ -144,28 +145,31 @@ FilterBinIter::compute_index_weight()
 //! Helper function used to increment tallies with a delayed group filter.
 
 void
-score_fission_delayed_dg(int i_tally, int d_bin, double score, int score_index)
+score_fission_delayed_dg(int i_tally, int d_bin, double score, int score_index,
+    std::vector<FilterMatch>& filter_matches)
 {
   // Save the original delayed group bin
   auto& tally {*model::tallies[i_tally]};
   auto i_filt = tally.filters(tally.delayedgroup_filter_);
-  auto& dg_match {simulation::filter_matches[i_filt]};
+  auto& dg_match {filter_matches[i_filt]};
   auto i_bin = dg_match.i_bin_;
   auto original_bin = dg_match.bins_[i_bin];
   dg_match.bins_[i_bin] = d_bin;
 
   // Determine the filter scoring index
   auto filter_index = 0;
+  double filter_weight = 1.;
   for (auto i = 0; i < tally.filters().size(); ++i) {
     auto i_filt = tally.filters(i);
-    auto& match {simulation::filter_matches[i_filt]};
+    auto& match {filter_matches[i_filt]};
     auto i_bin = match.i_bin_;
     filter_index += match.bins_[i_bin] * tally.strides(i);
+    filter_weight *= match.weights_[i_bin];
   }
 
   // Update the tally result
   #pragma omp atomic
-  tally.results_(filter_index, score_index, RESULT_VALUE) += score;
+  tally.results_(filter_index, score_index, TallyResult::VALUE) += score*filter_weight;
 
   // Reset the original delayed group bin
   dg_match.bins_[i_bin] = original_bin;
@@ -195,7 +199,7 @@ double get_nuc_fission_q(const Nuclide& nuc, const Particle* p, int score_bin)
 double score_fission_q(const Particle* p, int score_bin, const Tally& tally,
   double flux, int i_nuclide, double atom_density)
 {
-  if (tally.estimator_ == ESTIMATOR_ANALOG) {
+  if (tally.estimator_ == TallyEstimator::ANALOG) {
     const Nuclide& nuc {*data::nuclides[p->event_nuclide_]};
     if (settings::survival_biasing) {
       // No fission events occur if survival biasing is on -- need to
@@ -208,7 +212,7 @@ double score_fission_q(const Particle* p, int score_bin, const Tally& tally,
       }
     } else {
       // Skip any non-absorption events
-      if (p->event_ == EVENT_SCATTER) return 0.0;
+      if (p->event_ == TallyEvent::SCATTER) return 0.0;
       // All fission events will contribute, so again we can use particle's
       // weight entering the collision as the estimate for the fission
       // reaction rate
@@ -248,12 +252,15 @@ double get_nuclide_neutron_heating(const Particle* p, const Nuclide& nuc,
 {
   size_t mt = nuc.reaction_index_[rxn_index];
   if (mt == C_NONE) return 0.0;
+
   auto i_temp = p->neutron_xs_[i_nuclide].index_temp;
   if (i_temp < 0) return 0.0; // Can be true due to multipole
+
   const auto& rxn {*nuc.reactions_[mt]};
   const auto& xs {rxn.xs_[i_temp]};
   auto i_grid = p->neutron_xs_[i_nuclide].index_grid;
   if (i_grid < xs.threshold) return 0.0;
+
   auto f = p->neutron_xs_[i_nuclide].interp_factor;
   return (1.0 - f) * xs.value[i_grid-xs.threshold]
     + f * xs.value[i_grid-xs.threshold+1];
@@ -270,7 +277,7 @@ double score_neutron_heating(const Particle* p, const Tally& tally, double flux,
   if (i_nuclide >= 0) {
     const Nuclide& nuc {*data::nuclides[i_nuclide]};
     heating_xs = get_nuclide_neutron_heating(p, nuc, rxn_bin, i_nuclide);
-    if (tally.estimator_ == ESTIMATOR_ANALOG) {
+    if (tally.estimator_ == TallyEstimator::ANALOG) {
       heating_xs /= p->neutron_xs_[i_nuclide].total;
     } else {
       heating_xs *= atom_density;
@@ -285,13 +292,13 @@ double score_neutron_heating(const Particle* p, const Tally& tally, double flux,
         const Nuclide& nuc {*data::nuclides[j_nuclide]};
         heating_xs += atom_density * get_nuclide_neutron_heating(p, nuc, rxn_bin, j_nuclide);
       }
-      if (tally.estimator_ == ESTIMATOR_ANALOG) {
+      if (tally.estimator_ == TallyEstimator::ANALOG) {
         heating_xs /= p->macro_xs_.total;
       }
     }
   }
   score = heating_xs * flux;
-  if (tally.estimator_ == ESTIMATOR_ANALOG) {
+  if (tally.estimator_ == TallyEstimator::ANALOG) {
     // All events score to a heating tally bin. We actually use a
     // collision estimator in place of an analog one since there is no
     // reaction-wise heating cross section
@@ -311,12 +318,12 @@ double score_neutron_heating(const Particle* p, const Tally& tally, double flux,
 //! neutrons produced with different energies.
 
 void
-score_fission_eout(const Particle* p, int i_tally, int i_score, int score_bin)
+score_fission_eout(Particle* p, int i_tally, int i_score, int score_bin)
 {
   auto& tally {*model::tallies[i_tally]};
   auto i_eout_filt = tally.filters()[tally.energyout_filter_];
-  auto i_bin = simulation::filter_matches[i_eout_filt].i_bin_;
-  auto bin_energyout = simulation::filter_matches[i_eout_filt].bins_[i_bin];
+  auto i_bin = p->filter_matches_[i_eout_filt].i_bin_;
+  auto bin_energyout = p->filter_matches_[i_eout_filt].bins_[i_bin];
 
   const EnergyoutFilter& eo_filt
     {*dynamic_cast<EnergyoutFilter*>(model::tally_filters[i_eout_filt].get())};
@@ -328,8 +335,7 @@ score_fission_eout(const Particle* p, int i_tally, int i_score, int score_bin)
 
   // loop over number of particles banked
   for (auto i = 0; i < p->n_bank_; ++i) {
-    auto i_bank = simulation::fission_bank.size() - p->n_bank_ + i;
-    const auto& bank = simulation::fission_bank[i_bank];
+    const auto& bank = p->nu_bank_[i];
 
     // get the delayed group
     auto g = bank.delayed_group;
@@ -348,12 +354,12 @@ score_fission_eout(const Particle* p, int i_tally, int i_score, int score_bin)
       // determine outgoing energy group from fission bank
       auto g_out = static_cast<int>(bank.E);
 
-      // modify the value so that g_out = 1 corresponds to the highest energy
+      // modify the value so that g_out = 0 corresponds to the highest energy
       // bin
-      g_out = eo_filt.n_bins() - g_out;
+      g_out = eo_filt.n_bins() - g_out - 1;
 
       // change outgoing energy bin
-      simulation::filter_matches[i_eout_filt].bins_[i_bin] = g_out;
+      p->filter_matches_[i_eout_filt].bins_[i_bin] = g_out;
 
     } else {
 
@@ -361,7 +367,7 @@ score_fission_eout(const Particle* p, int i_tally, int i_score, int score_bin)
       if (settings::run_CE) {
         E_out = bank.E;
       } else {
-        E_out = data::energy_bin_avg[static_cast<int>(bank.E)];
+        E_out = data::mg.energy_bin_avg_[static_cast<int>(bank.E)];
       }
 
       // Set EnergyoutFilter bin index
@@ -370,7 +376,7 @@ score_fission_eout(const Particle* p, int i_tally, int i_score, int score_bin)
       } else {
         auto i_match = lower_bound_index(eo_filt.bins().begin(),
           eo_filt.bins().end(), E_out);
-        simulation::filter_matches[i_eout_filt].bins_[i_bin] = i_match;
+        p->filter_matches_[i_eout_filt].bins_[i_bin] = i_match;
       }
 
     }
@@ -380,18 +386,19 @@ score_fission_eout(const Particle* p, int i_tally, int i_score, int score_bin)
       || (score_bin == SCORE_PROMPT_NU_FISSION && g == 0)) {
 
       // Find the filter scoring index for this filter combination
-      //TODO: should this include a weight?
       int filter_index = 0;
+      double filter_weight = 1.0;
       for (auto j = 0; j < tally.filters().size(); ++j) {
         auto i_filt = tally.filters(j);
-        auto& match {simulation::filter_matches[i_filt]};
+        auto& match {p->filter_matches_[i_filt]};
         auto i_bin = match.i_bin_;
         filter_index += match.bins_[i_bin] * tally.strides(j);
+        filter_weight *= match.weights_[i_bin];
       }
 
       // Update tally results
       #pragma omp atomic
-      tally.results_(filter_index, i_score, RESULT_VALUE) += score;
+      tally.results_(filter_index, i_score, TallyResult::VALUE) += score*filter_weight;
 
     } else if (score_bin == SCORE_DELAYED_NU_FISSION && g != 0) {
 
@@ -412,13 +419,13 @@ score_fission_eout(const Particle* p, int i_tally, int i_score, int score_bin)
             double filter_weight = 1.;
             for (auto j = 0; j < tally.filters().size(); ++j) {
               auto i_filt = tally.filters(j);
-              auto& match {simulation::filter_matches[i_filt]};
+              auto& match {p->filter_matches_[i_filt]};
               auto i_bin = match.i_bin_;
               filter_weight *= match.weights_[i_bin];
             }
 
             score_fission_delayed_dg(i_tally, d_bin, score*filter_weight,
-              i_score);
+              i_score, p->filter_matches_);
           }
         }
 
@@ -430,7 +437,7 @@ score_fission_eout(const Particle* p, int i_tally, int i_score, int score_bin)
         double filter_weight = 1.;
         for (auto j = 0; j < tally.filters().size(); ++j) {
           auto i_filt = tally.filters(j);
-          auto& match {simulation::filter_matches[i_filt]};
+          auto& match {p->filter_matches_[i_filt]};
           auto i_bin = match.i_bin_;
           filter_index += match.bins_[i_bin] * tally.strides(j);
           filter_weight *= match.weights_[i_bin];
@@ -438,13 +445,13 @@ score_fission_eout(const Particle* p, int i_tally, int i_score, int score_bin)
 
         // Update tally results
         #pragma omp atomic
-        tally.results_(filter_index, i_score, RESULT_VALUE) += score*filter_weight;
+        tally.results_(filter_index, i_score, TallyResult::VALUE) += score*filter_weight;
       }
     }
   }
 
   // Reset outgoing energy bin and score index
-  simulation::filter_matches[i_eout_filt].bins_[i_bin] = bin_energyout;
+  p->filter_matches_[i_eout_filt].bins_[i_bin] = bin_energyout;
 }
 
 //! Update tally results for continuous-energy tallies with any estimator.
@@ -454,8 +461,8 @@ score_fission_eout(const Particle* p, int i_tally, int i_score, int score_bin)
 //! is not used for analog tallies.
 
 void
-score_general_ce(Particle* p, int i_tally, int start_index,
-  int filter_index, int i_nuclide, double atom_density, double flux)
+score_general_ce(Particle* p, int i_tally, int start_index, int filter_index,
+  double filter_weight, int i_nuclide, double atom_density, double flux)
 {
   Tally& tally {*model::tallies[i_tally]};
 
@@ -465,14 +472,11 @@ score_general_ce(Particle* p, int i_tally, int start_index,
   for (auto i = 0; i < tally.scores_.size(); ++i) {
     auto score_bin = tally.scores_[i];
     auto score_index = start_index + i;
-
-    double score;
+    double score = 0.0;
 
     switch (score_bin) {
-
-
     case SCORE_FLUX:
-      if (tally.estimator_ == ESTIMATOR_ANALOG) {
+      if (tally.estimator_ == TallyEstimator::ANALOG) {
         // All events score to a flux bin. We actually use a collision estimator
         // in place of an analog one since there is no way to count 'events'
         // exactly for the flux
@@ -497,7 +501,7 @@ score_general_ce(Particle* p, int i_tally, int start_index,
 
 
     case SCORE_TOTAL:
-      if (tally.estimator_ == ESTIMATOR_ANALOG) {
+      if (tally.estimator_ == TallyEstimator::ANALOG) {
         // All events will score to the total reaction rate. We can just use
         // use the weight of the particle entering the collision as the score
         if (settings::survival_biasing) {
@@ -510,7 +514,11 @@ score_general_ce(Particle* p, int i_tally, int start_index,
 
       } else {
         if (i_nuclide >= 0) {
-          score = p->neutron_xs_[i_nuclide].total * atom_density * flux;
+          if (p->type_ == Particle::Type::neutron) {
+            score = p->neutron_xs_[i_nuclide].total * atom_density * flux;
+          } else if (p->type_ == Particle::Type::photon) {
+            score = p->photon_xs_[i_nuclide].total * atom_density * flux;
+          }
         } else {
           score = p->macro_xs_.total * flux;
         }
@@ -519,7 +527,7 @@ score_general_ce(Particle* p, int i_tally, int start_index,
 
 
     case SCORE_INVERSE_VELOCITY:
-      if (tally.estimator_ == ESTIMATOR_ANALOG) {
+      if (tally.estimator_ == TallyEstimator::ANALOG) {
         // All events score to an inverse velocity bin. We actually use a
         // collision estimator in place of an analog one since there is no way
         // to count 'events' exactly for the inverse velocity
@@ -540,9 +548,9 @@ score_general_ce(Particle* p, int i_tally, int start_index,
 
 
     case SCORE_SCATTER:
-      if (tally.estimator_ == ESTIMATOR_ANALOG) {
+      if (tally.estimator_ == TallyEstimator::ANALOG) {
         // Skip any event where the particle didn't scatter
-        if (p->event_ != EVENT_SCATTER) continue;
+        if (p->event_ != TallyEvent::SCATTER) continue;
         // Since only scattering events make it here, again we can use the
         // weight entering the collision as the estimator for the reaction rate
         score = p->wgt_last_ * flux;
@@ -561,7 +569,7 @@ score_general_ce(Particle* p, int i_tally, int start_index,
     case SCORE_NU_SCATTER:
       // Only analog estimators are available.
       // Skip any event where the particle didn't scatter
-      if (p->event_ != EVENT_SCATTER) continue;
+      if (p->event_ != TallyEvent::SCATTER) continue;
       // For scattering production, we need to use the pre-collision weight
       // times the yield as the estimate for the number of neutrons exiting a
       // reaction with neutrons in the exit channel
@@ -581,14 +589,14 @@ score_general_ce(Particle* p, int i_tally, int start_index,
 
 
     case SCORE_ABSORPTION:
-      if (tally.estimator_ == ESTIMATOR_ANALOG) {
+      if (tally.estimator_ == TallyEstimator::ANALOG) {
         if (settings::survival_biasing) {
           // No absorption events actually occur if survival biasing is on --
           // just use weight absorbed in survival biasing
           score = p->wgt_absorb_ * flux;
         } else {
           // Skip any event where the particle wasn't absorbed
-          if (p->event_ == EVENT_SCATTER) continue;
+          if (p->event_ == TallyEvent::SCATTER) continue;
           // All fission and absorption events will contribute here, so we
           // can just use the particle's weight entering the collision
           score = p->wgt_last_ * flux;
@@ -606,7 +614,7 @@ score_general_ce(Particle* p, int i_tally, int start_index,
 
     case SCORE_FISSION:
       if (p->macro_xs_.absorption == 0) continue;
-      if (tally.estimator_ == ESTIMATOR_ANALOG) {
+      if (tally.estimator_ == TallyEstimator::ANALOG) {
         if (settings::survival_biasing) {
           // No fission events occur if survival biasing is on -- need to
           // calculate fraction of absorptions that would have resulted in
@@ -620,7 +628,7 @@ score_general_ce(Particle* p, int i_tally, int start_index,
           }
         } else {
           // Skip any non-absorption events
-          if (p->event_ == EVENT_SCATTER) continue;
+          if (p->event_ == TallyEvent::SCATTER) continue;
           // All fission events will contribute, so again we can use particle's
           // weight entering the collision as the estimate for the fission
           // reaction rate
@@ -640,7 +648,7 @@ score_general_ce(Particle* p, int i_tally, int start_index,
 
     case SCORE_NU_FISSION:
       if (p->macro_xs_.absorption == 0) continue;
-      if (tally.estimator_ == ESTIMATOR_ANALOG) {
+      if (tally.estimator_ == TallyEstimator::ANALOG) {
         if (settings::survival_biasing || p->fission_) {
           if (tally.energyout_filter_ != C_NONE) {
             // Fission has multiple outgoing neutrons so this helper function
@@ -683,7 +691,7 @@ score_general_ce(Particle* p, int i_tally, int start_index,
 
     case SCORE_PROMPT_NU_FISSION:
       if (p->macro_xs_.absorption == 0) continue;
-      if (tally.estimator_ == ESTIMATOR_ANALOG) {
+      if (tally.estimator_ == TallyEstimator::ANALOG) {
         if (settings::survival_biasing || p->fission_) {
           if (tally.energyout_filter_ != C_NONE) {
             // Fission has multiple outgoing neutrons so this helper function
@@ -745,7 +753,7 @@ score_general_ce(Particle* p, int i_tally, int start_index,
 
     case SCORE_DELAYED_NU_FISSION:
       if (p->macro_xs_.absorption == 0) continue;
-      if (tally.estimator_ == ESTIMATOR_ANALOG) {
+      if (tally.estimator_ == TallyEstimator::ANALOG) {
         if (settings::survival_biasing || p->fission_) {
           if (tally.energyout_filter_ != C_NONE) {
             // Fission has multiple outgoing neutrons so this helper function
@@ -774,7 +782,7 @@ score_general_ce(Particle* p, int i_tally, int start_index,
                   * p->neutron_xs_[p->event_nuclide_].fission
                   / p->neutron_xs_[p->event_nuclide_].absorption * flux;
                 score_fission_delayed_dg(i_tally, d_bin, score,
-                  score_index);
+                  score_index, p->filter_matches_);
               }
               continue;
             } else {
@@ -808,7 +816,7 @@ score_general_ce(Particle* p, int i_tally, int start_index,
               auto d = filt.groups()[d_bin];
               score = simulation::keff * p->wgt_bank_ / p->n_bank_
                 * p->n_delayed_bank_[d-1] * flux;
-              score_fission_delayed_dg(i_tally, d_bin, score, score_index);
+              score_fission_delayed_dg(i_tally, d_bin, score, score_index, p->filter_matches_);
             }
             continue;
           } else {
@@ -833,7 +841,7 @@ score_general_ce(Particle* p, int i_tally, int start_index,
                 ->nu(E, ReactionProduct::EmissionMode::delayed, d);
               score = p->neutron_xs_[i_nuclide].fission * yield
                 * atom_density * flux;
-              score_fission_delayed_dg(i_tally, d_bin, score, score_index);
+              score_fission_delayed_dg(i_tally, d_bin, score, score_index, p->filter_matches_);
             }
             continue;
           } else {
@@ -863,7 +871,7 @@ score_general_ce(Particle* p, int i_tally, int start_index,
                   score = p->neutron_xs_[j_nuclide].fission * yield
                     * atom_density * flux;
                   score_fission_delayed_dg(i_tally, d_bin, score,
-                    score_index);
+                    score_index, p->filter_matches_);
                 }
               }
             }
@@ -889,7 +897,7 @@ score_general_ce(Particle* p, int i_tally, int start_index,
 
     case SCORE_DECAY_RATE:
       if (p->macro_xs_.absorption == 0) continue;
-      if (tally.estimator_ == ESTIMATOR_ANALOG) {
+      if (tally.estimator_ == TallyEstimator::ANALOG) {
         if (settings::survival_biasing) {
           // No fission events occur if survival biasing is on -- need to
           // calculate fraction of absorptions that would have resulted in
@@ -914,7 +922,7 @@ score_general_ce(Particle* p, int i_tally, int start_index,
                   / p->neutron_xs_[p->event_nuclide_].absorption
                   * rate * flux;
                 score_fission_delayed_dg(i_tally, d_bin, score,
-                  score_index);
+                  score_index, p->filter_matches_);
               }
               continue;
             } else {
@@ -950,8 +958,7 @@ score_general_ce(Particle* p, int i_tally, int start_index,
           // contribution to the fission bank to the score.
           score = 0.;
           for (auto i = 0; i < p->n_bank_; ++i) {
-            auto i_bank = simulation::fission_bank.size() - p->n_bank_ + i;
-            const auto& bank = simulation::fission_bank[i_bank];
+            const auto& bank = p->nu_bank_[i];
             auto g = bank.delayed_group;
             if (g != 0) {
               const auto& nuc {*data::nuclides[p->event_nuclide_]};
@@ -968,7 +975,7 @@ score_general_ce(Particle* p, int i_tally, int start_index,
                   auto d = filt.groups()[d_bin];
                   if (d == g)
                     score_fission_delayed_dg(i_tally, d_bin, score,
-                      score_index);
+                      score_index, p->filter_matches_);
                 }
                 score = 0.;
               }
@@ -993,7 +1000,7 @@ score_general_ce(Particle* p, int i_tally, int start_index,
               auto rate = rxn.products_[d].decay_rate_;
               score = p->neutron_xs_[i_nuclide].fission * yield * flux
                 * atom_density * rate;
-              score_fission_delayed_dg(i_tally, d_bin, score, score_index);
+              score_fission_delayed_dg(i_tally, d_bin, score, score_index, p->filter_matches_);
             }
             continue;
           } else {
@@ -1034,7 +1041,7 @@ score_general_ce(Particle* p, int i_tally, int start_index,
                     score = p->neutron_xs_[j_nuclide].fission * yield
                       * flux * atom_density * rate;
                     score_fission_delayed_dg(i_tally, d_bin, score,
-                      score_index);
+                      score_index, p->filter_matches_);
                   }
                 }
               }
@@ -1076,7 +1083,7 @@ score_general_ce(Particle* p, int i_tally, int start_index,
       score = 0.;
       // Kappa-fission values are determined from the Q-value listed for the
       // fission cross section.
-      if (tally.estimator_ == ESTIMATOR_ANALOG) {
+      if (tally.estimator_ == TallyEstimator::ANALOG) {
         if (settings::survival_biasing) {
           // No fission events occur if survival biasing is on -- need to
           // calculate fraction of absorptions that would have resulted in
@@ -1091,7 +1098,7 @@ score_general_ce(Particle* p, int i_tally, int start_index,
           }
         } else {
           // Skip any non-absorption events
-          if (p->event_ == EVENT_SCATTER) continue;
+          if (p->event_ == TallyEvent::SCATTER) continue;
           // All fission events will contribute, so again we can use particle's
           // weight entering the collision as the estimate for the fission
           // reaction rate
@@ -1133,12 +1140,13 @@ score_general_ce(Particle* p, int i_tally, int start_index,
 
     case SCORE_EVENTS:
       // Simply count the number of scoring events
-      score = 1.;
-      break;
+      #pragma omp atomic
+      tally.results_(filter_index, score_index, TallyResult::VALUE) += 1.0;
+      continue;
 
 
     case ELASTIC:
-      if (tally.estimator_ == ESTIMATOR_ANALOG) {
+      if (tally.estimator_ == TallyEstimator::ANALOG) {
         // Check if event MT matches
         if (p->event_mt_ != ELASTIC) continue;
         score = p->wgt_last_ * flux;
@@ -1177,7 +1185,7 @@ score_general_ce(Particle* p, int i_tally, int start_index,
     case N_GAMMA:
     case N_P:
     case N_A:
-      if (tally.estimator_ == ESTIMATOR_ANALOG) {
+      if (tally.estimator_ == TallyEstimator::ANALOG) {
         // Check if the event MT matches
         if (p->event_mt_ != score_bin) continue;
         score = p->wgt_last_ * flux;
@@ -1211,60 +1219,33 @@ score_general_ce(Particle* p, int i_tally, int start_index,
 
 
     case HEATING:
-      score = 0.;
       if (p->type_ == Particle::Type::neutron) {
         score = score_neutron_heating(p, tally, flux, HEATING,
             i_nuclide, atom_density);
-      } else if (p->type_ == Particle::Type::photon) {
-        if (tally.estimator_ == ESTIMATOR_ANALOG) {
-          // Score direct energy deposition in the collision
-          score = E - p->E_;
-          // We need to substract the energy of the secondary particles since
-          // they will be transported individually later
-          for (auto i = 0; i < p->n_bank_second_; ++i) {
-            auto i_bank = simulation::secondary_bank.size() - p->n_bank_second_ + i;
-            const auto& bank = simulation::secondary_bank[i_bank];
-            if (bank.particle == Particle::Type::photon ||
-                bank.particle == Particle::Type::neutron) {
-              score -= bank.E;
-            } else if (bank.particle == Particle::Type::positron) {
-              // Annihilation of the positron will produce two new photons
-              score -= 2*MASS_ELECTRON_EV;
-            }
-          }
-          score *= p->wgt_last_ * flux;
-        } else {
-          // Calculate photon heating cross section on-the-fly
-          if (i_nuclide >= 0) {
-            // Find the element corresponding to the nuclide
-            auto name = data::nuclides[i_nuclide]->name_;
-            std::string element = to_element(name);
-            int i_element = data::element_map[element];
-            auto& heating {data::elements[i_element].heating_};
-            auto i_grid = p->photon_xs_[i_element].index_grid;
-            auto f = p->photon_xs_[i_element].interp_factor;
-            score = std::exp(heating(i_grid) + f * (heating(i_grid+1) -
-              heating(i_grid))) * atom_density * flux;
-          } else {
-            if (p->material_ != MATERIAL_VOID) {
-              const Material& material {*model::materials[p->material_]};
-              for (auto i = 0; i < material.nuclide_.size(); ++i) {
-                auto i_element = material.element_[i];
-                auto atom_density = material.atom_density_(i);
-                auto& heating {data::elements[i_element].heating_};
-                auto i_grid = p->photon_xs_[i_element].index_grid;
-                auto f = p->photon_xs_[i_element].interp_factor;
-                score += std::exp(heating(i_grid) + f * (heating(i_grid+1) -
-                  heating(i_grid))) * atom_density * flux;
-              }
-            }
-          }
+      } else {
+        // The energy deposited is the difference between the pre-collision and
+        // post-collision energy...
+        score = E - p->E_;
+
+        // ...less the energy of any secondary particles since they will be
+        // transported individually later
+        const auto& bank = p->secondary_bank_;
+        for (auto it = bank.end() - p->n_bank_second_; it < bank.end(); ++it) {
+          score -= it->E;
         }
+
+        score *= p->wgt_last_;
       }
       break;
 
     default:
-      if (tally.estimator_ == ESTIMATOR_ANALOG) {
+
+      // The default block is really only meant for redundant neutron reactions
+      // (e.g. 444, 901)
+      if (p->type_ != Particle::Type::neutron) continue;
+
+      if (tally.estimator_ == TallyEstimator::ANALOG) {
+
         // Any other score is assumed to be a MT number. Thus, we just need
         // to check if it matches the MT number of the event
         if (p->event_mt_ != score_bin) continue;
@@ -1316,14 +1297,14 @@ score_general_ce(Particle* p, int i_tally, int start_index,
       }
     }
 
-    // Add derivative information on score for differnetial tallies.
+    // Add derivative information on score for differential tallies.
     if (tally.deriv_ != C_NONE)
       apply_derivative_to_score(p, i_tally, i_nuclide, atom_density, score_bin,
         score);
 
     // Update tally results
     #pragma omp atomic
-    tally.results_(filter_index, score_index, RESULT_VALUE) += score;
+    tally.results_(filter_index, score_index, TallyResult::VALUE) += score*filter_weight;
   }
 }
 
@@ -1333,16 +1314,16 @@ score_general_ce(Particle* p, int i_tally, int start_index,
 //! argument is really just used for filter weights.
 
 void
-score_general_mg(const Particle* p, int i_tally, int start_index,
-  int filter_index, int i_nuclide, double atom_density, double flux)
+score_general_mg(Particle* p, int i_tally, int start_index, int filter_index,
+  double filter_weight, int i_nuclide, double atom_density, double flux)
 {
   auto& tally {*model::tallies[i_tally]};
 
   // Set the direction and group to use with get_xs
   Direction p_u;
   int p_g;
-  if (tally.estimator_ == ESTIMATOR_ANALOG
-    || tally.estimator_ == ESTIMATOR_COLLISION) {
+  if (tally.estimator_ == TallyEstimator::ANALOG
+    || tally.estimator_ == TallyEstimator::COLLISION) {
 
     if (settings::survival_biasing) {
 
@@ -1355,7 +1336,7 @@ score_general_mg(const Particle* p, int i_tally, int start_index,
         p_u = p->u_local();
         p_g = p->g_;
       }
-    } else if (p->event_ == EVENT_SCATTER) {
+    } else if (p->event_ == TallyEvent::SCATTER) {
 
       // Then the energy group has been changed by the scattering routine
       // meaning gin is now in p % last_g
@@ -1374,15 +1355,15 @@ score_general_mg(const Particle* p, int i_tally, int start_index,
     p_g = p->g_;
   }
 
-  // To significantly reduce de-referencing, point matxs to the macroscopic
-  // Mgxs for the material of interest
-  data::macro_xs[p->material_].set_angle_index(p_u);
+  // For shorthand, assign pointers to the material and nuclide xs set
+  auto& nuc_xs = data::mg.nuclides_[i_nuclide];
+  auto& macro_xs = data::mg.macro_xs_[p->material_];
 
-  // Do same for nucxs, point it to the microscopic nuclide data of interest
+  // Find the temperature and angle indices of interest
+  macro_xs.set_angle_index(p_u);
   if (i_nuclide >= 0) {
-    // And since we haven't calculated this temperature index yet, do so now
-    data::nuclides_MG[i_nuclide].set_temperature_index(p->sqrtkT_);
-    data::nuclides_MG[i_nuclide].set_angle_index(p_u);
+    nuc_xs.set_temperature_index(p->sqrtkT_);
+    nuc_xs.set_angle_index(p_u);
   }
 
   for (auto i = 0; i < tally.scores_.size(); ++i) {
@@ -1395,7 +1376,7 @@ score_general_mg(const Particle* p, int i_tally, int start_index,
 
 
     case SCORE_FLUX:
-      if (tally.estimator_ == ESTIMATOR_ANALOG) {
+      if (tally.estimator_ == TallyEstimator::ANALOG) {
         // All events score to a flux bin. We actually use a collision estimator
         // in place of an analog one since there is no way to count 'events'
         // exactly for the flux
@@ -1414,7 +1395,7 @@ score_general_mg(const Particle* p, int i_tally, int start_index,
 
 
     case SCORE_TOTAL:
-      if (tally.estimator_ == ESTIMATOR_ANALOG) {
+      if (tally.estimator_ == TallyEstimator::ANALOG) {
         // All events will score to the total reaction rate. We can just use
         // use the weight of the particle entering the collision as the score
         if (settings::survival_biasing) {
@@ -1426,14 +1407,12 @@ score_general_mg(const Particle* p, int i_tally, int start_index,
         }
         //TODO: should flux be multiplied in above instead of below?
         if (i_nuclide >= 0) {
-          score *= flux * atom_density
-            * get_nuclide_xs(i_nuclide, MG_GET_XS_TOTAL, p_g)
-            / get_macro_xs(p->material_, MG_GET_XS_TOTAL, p_g);
+          score *= flux * atom_density * nuc_xs.get_xs(MgxsType::TOTAL, p_g)
+            / macro_xs.get_xs(MgxsType::TOTAL, p_g);
         }
       } else {
         if (i_nuclide >= 0) {
-          score = get_nuclide_xs(i_nuclide, MG_GET_XS_TOTAL, p_g)
-            * atom_density * flux;
+          score = atom_density * flux * nuc_xs.get_xs(MgxsType::TOTAL, p_g);
         } else {
           score = p->macro_xs_.total * flux;
         }
@@ -1442,8 +1421,8 @@ score_general_mg(const Particle* p, int i_tally, int start_index,
 
 
     case SCORE_INVERSE_VELOCITY:
-      if (tally.estimator_ == ESTIMATOR_ANALOG
-        || tally.estimator_ == ESTIMATOR_COLLISION) {
+      if (tally.estimator_ == TallyEstimator::ANALOG
+        || tally.estimator_ == TallyEstimator::COLLISION) {
         // All events score to an inverse velocity bin. We actually use a
         // collision estimator in place of an analog one since there is no way
         // to count 'events' exactly for the inverse velocity
@@ -1455,56 +1434,51 @@ score_general_mg(const Particle* p, int i_tally, int start_index,
           score = p->wgt_last_;
         }
         if (i_nuclide >= 0) {
-          score *= flux
-            * get_nuclide_xs(i_nuclide, MG_GET_XS_INVERSE_VELOCITY, p_g)
-            / get_macro_xs(p->material_, MG_GET_XS_TOTAL, p_g);
+          score *= flux * nuc_xs.get_xs(MgxsType::INVERSE_VELOCITY, p_g)
+            / macro_xs.get_xs(MgxsType::TOTAL, p_g);
         } else {
-          score *= flux
-            * get_macro_xs(p->material_, MG_GET_XS_INVERSE_VELOCITY, p_g)
-            / get_macro_xs(p->material_, MG_GET_XS_TOTAL, p_g);
+          score *= flux * macro_xs.get_xs(MgxsType::INVERSE_VELOCITY, p_g)
+            / macro_xs.get_xs(MgxsType::TOTAL, p_g);
         }
       } else {
         if (i_nuclide >= 0) {
-          score = flux
-            * get_nuclide_xs(i_nuclide, MG_GET_XS_INVERSE_VELOCITY, p_g);
+          score = flux * nuc_xs.get_xs(MgxsType::INVERSE_VELOCITY, p_g);
         } else {
-          score = flux
-            * get_macro_xs(p->material_, MG_GET_XS_INVERSE_VELOCITY, p_g);
+          score = flux * macro_xs.get_xs(MgxsType::INVERSE_VELOCITY, p_g);
         }
       }
       break;
 
 
     case SCORE_SCATTER:
-      if (tally.estimator_ == ESTIMATOR_ANALOG) {
+      if (tally.estimator_ == TallyEstimator::ANALOG) {
         // Skip any event where the particle didn't scatter
-        if (p->event_ != EVENT_SCATTER) continue;
+        if (p->event_ != TallyEvent::SCATTER) continue;
         // Since only scattering events make it here, again we can use the
         // weight entering the collision as the estimator for the reaction rate
         score = p->wgt_last_ * flux;
         if (i_nuclide >= 0) {
-          score *= atom_density
-            * get_nuclide_xs(i_nuclide, MG_GET_XS_SCATTER_FMU_MULT,
-                             p->g_last_, &p->g_, &p->mu_, nullptr)
-            / get_macro_xs(p->material_, MG_GET_XS_SCATTER_FMU_MULT,
-                           p->g_last_, &p->g_, &p->mu_, nullptr);
+          score *= atom_density * nuc_xs.get_xs(
+              MgxsType::SCATTER_FMU_MULT, p->g_last_, &p->g_, &p->mu_, nullptr)
+            / macro_xs.get_xs(
+              MgxsType::SCATTER_FMU_MULT, p->g_last_, &p->g_, &p->mu_, nullptr);
         }
       } else {
         if (i_nuclide >= 0) {
-          score = atom_density * flux * get_nuclide_xs(
-            i_nuclide, MG_GET_XS_SCATTER_MULT, p_g, nullptr, &p->mu_, nullptr);
+          score = atom_density * flux * nuc_xs.get_xs(
+            MgxsType::SCATTER_MULT, p_g, nullptr, &p->mu_, nullptr);
         } else {
-          score = flux * get_macro_xs(
-            p->material_, MG_GET_XS_SCATTER_MULT, p_g, nullptr, &p->mu_, nullptr);
+          score = flux * macro_xs.get_xs(
+            MgxsType::SCATTER_MULT, p_g, nullptr, &p->mu_, nullptr);
         }
       }
       break;
 
 
     case SCORE_NU_SCATTER:
-      if (tally.estimator_ == ESTIMATOR_ANALOG) {
+      if (tally.estimator_ == TallyEstimator::ANALOG) {
         // Skip any event where the particle didn't scatter
-        if (p->event_ != EVENT_SCATTER) continue;
+        if (p->event_ != TallyEvent::SCATTER) continue;
         // For scattering production, we need to use the pre-collision weight
         // times the multiplicity as the estimate for the number of neutrons
         // exiting a reaction with neutrons in the exit channel
@@ -1514,44 +1488,42 @@ score_general_mg(const Particle* p, int i_tally, int start_index,
         // adjust the score by the actual probability for that nuclide.
         if (i_nuclide >= 0) {
           score *= atom_density
-            * get_nuclide_xs(i_nuclide, MG_GET_XS_SCATTER_FMU,
-                             p->g_last_, &p->g_, &p->mu_, nullptr)
-            / get_macro_xs(p->material_, MG_GET_XS_SCATTER_FMU,
-                           p->g_last_, &p->g_, &p->mu_, nullptr);
+            * nuc_xs.get_xs(MgxsType::SCATTER_FMU, p->g_last_, &p->g_,
+                            &p->mu_, nullptr)
+            / macro_xs.get_xs(MgxsType::SCATTER_FMU, p->g_last_, &p->g_,
+                              &p->mu_, nullptr);
         }
       } else {
         if (i_nuclide >= 0) {
-          score = atom_density * flux * get_nuclide_xs(
-            i_nuclide, MG_GET_XS_SCATTER, p_g);
+          score = atom_density * flux * nuc_xs.get_xs(MgxsType::SCATTER, p_g);
         } else {
-          score = flux * get_macro_xs(p->material_, MG_GET_XS_SCATTER, p_g);
+          score = flux * macro_xs.get_xs(MgxsType::SCATTER, p_g);
         }
       }
       break;
 
 
     case SCORE_ABSORPTION:
-      if (tally.estimator_ == ESTIMATOR_ANALOG) {
+      if (tally.estimator_ == TallyEstimator::ANALOG) {
         if (settings::survival_biasing) {
           // No absorption events actually occur if survival biasing is on --
           // just use weight absorbed in survival biasing
           score = p->wgt_absorb_ * flux;
         } else {
           // Skip any event where the particle wasn't absorbed
-          if (p->event_ == EVENT_SCATTER) continue;
+          if (p->event_ == TallyEvent::SCATTER) continue;
           // All fission and absorption events will contribute here, so we
           // can just use the particle's weight entering the collision
           score = p->wgt_last_ * flux;
         }
         if (i_nuclide >= 0) {
-          score *= atom_density
-            * get_nuclide_xs(i_nuclide, MG_GET_XS_ABSORPTION, p_g)
-            / get_macro_xs(p->material_, MG_GET_XS_ABSORPTION, p_g);
+          score *= atom_density * nuc_xs.get_xs(MgxsType::ABSORPTION, p_g)
+            / macro_xs.get_xs(MgxsType::ABSORPTION, p_g);
         }
       } else {
         if (i_nuclide >= 0) {
           score = atom_density * flux
-            * get_nuclide_xs(i_nuclide, MG_GET_XS_ABSORPTION, p_g);
+            * nuc_xs.get_xs(MgxsType::ABSORPTION, p_g);
         } else {
           score = p->macro_xs_.absorption * flux;
         }
@@ -1560,7 +1532,7 @@ score_general_mg(const Particle* p, int i_tally, int start_index,
 
 
     case SCORE_FISSION:
-      if (tally.estimator_ == ESTIMATOR_ANALOG) {
+      if (tally.estimator_ == TallyEstimator::ANALOG) {
         if (settings::survival_biasing) {
           // No fission events occur if survival biasing is on -- need to
           // calculate fraction of absorptions that would have resulted in
@@ -1568,34 +1540,31 @@ score_general_mg(const Particle* p, int i_tally, int start_index,
           score = p->wgt_absorb_ * flux;
         } else {
           // Skip any non-absorption events
-          if (p->event_ == EVENT_SCATTER) continue;
+          if (p->event_ == TallyEvent::SCATTER) continue;
           // All fission events will contribute, so again we can use particle's
           // weight entering the collision as the estimate for the fission
           // reaction rate
           score = p->wgt_last_ * flux;
         }
         if (i_nuclide >= 0) {
-          score *= atom_density
-            * get_nuclide_xs(i_nuclide, MG_GET_XS_FISSION, p_g)
-            / get_macro_xs(p->material_, MG_GET_XS_ABSORPTION, p_g);
+          score *= atom_density * nuc_xs.get_xs(MgxsType::FISSION, p_g)
+            / macro_xs.get_xs(MgxsType::ABSORPTION, p_g);
         } else {
-          score *=
-            get_macro_xs(p->material_, MG_GET_XS_FISSION, p_g)
-            / get_macro_xs(p->material_, MG_GET_XS_ABSORPTION, p_g);
+          score *= macro_xs.get_xs(MgxsType::FISSION, p_g)
+            / macro_xs.get_xs(MgxsType::ABSORPTION, p_g);
         }
       } else {
         if (i_nuclide >= 0) {
-          score = get_nuclide_xs(i_nuclide, MG_GET_XS_FISSION, p_g)
-            * atom_density * flux;
+          score = atom_density * flux * nuc_xs.get_xs(MgxsType::FISSION, p_g);
         } else {
-          score = get_macro_xs(p->material_, MG_GET_XS_FISSION, p_g) * flux;
+          score = flux * macro_xs.get_xs(MgxsType::FISSION, p_g);
         }
       }
       break;
 
 
     case SCORE_NU_FISSION:
-      if (tally.estimator_ == ESTIMATOR_ANALOG) {
+      if (tally.estimator_ == TallyEstimator::ANALOG) {
         if (settings::survival_biasing || p->fission_) {
           if (tally.energyout_filter_ != C_NONE) {
             // Fission has multiple outgoing neutrons so this helper function
@@ -1610,13 +1579,11 @@ score_general_mg(const Particle* p, int i_tally, int start_index,
           // nu-fission
           score = p->wgt_absorb_ * flux;
           if (i_nuclide >= 0) {
-            score *= atom_density
-              * get_nuclide_xs(i_nuclide, MG_GET_XS_NU_FISSION, p_g)
-              / get_macro_xs(p->material_, MG_GET_XS_ABSORPTION, p_g);
+            score *= atom_density * nuc_xs.get_xs(MgxsType::NU_FISSION, p_g)
+              / macro_xs.get_xs(MgxsType::ABSORPTION, p_g);
           } else {
-            score *=
-              get_macro_xs(p->material_, MG_GET_XS_NU_FISSION, p_g)
-              / get_macro_xs(p->material_, MG_GET_XS_ABSORPTION, p_g);
+            score *= macro_xs.get_xs(MgxsType::NU_FISSION, p_g)
+              / macro_xs.get_xs(MgxsType::ABSORPTION, p_g);
           }
         } else {
           // Skip any non-fission events
@@ -1628,24 +1595,23 @@ score_general_mg(const Particle* p, int i_tally, int start_index,
           // score.
           score = simulation::keff * p->wgt_bank_ * flux;
           if (i_nuclide >= 0) {
-            score *= atom_density
-              * get_nuclide_xs(i_nuclide, MG_GET_XS_FISSION, p_g)
-              / get_macro_xs(p->material_, MG_GET_XS_FISSION, p_g);
+            score *= atom_density * nuc_xs.get_xs(MgxsType::FISSION, p_g)
+              / macro_xs.get_xs(MgxsType::FISSION, p_g);
           }
         }
       } else {
         if (i_nuclide >= 0) {
-          score = get_nuclide_xs(i_nuclide, MG_GET_XS_NU_FISSION, p_g)
-            * atom_density * flux;
+          score = atom_density * flux
+            * nuc_xs.get_xs(MgxsType::NU_FISSION, p_g);
         } else {
-          score = get_macro_xs(p->material_, MG_GET_XS_NU_FISSION, p_g) * flux;
+          score = flux * macro_xs.get_xs(MgxsType::NU_FISSION, p_g);
         }
       }
       break;
 
 
     case SCORE_PROMPT_NU_FISSION:
-      if (tally.estimator_ == ESTIMATOR_ANALOG) {
+      if (tally.estimator_ == TallyEstimator::ANALOG) {
         if (settings::survival_biasing || p->fission_) {
           if (tally.energyout_filter_ != C_NONE) {
             // Fission has multiple outgoing neutrons so this helper function
@@ -1660,13 +1626,12 @@ score_general_mg(const Particle* p, int i_tally, int start_index,
           // prompt-nu-fission
           score = p->wgt_absorb_ * flux;
           if (i_nuclide >= 0) {
-            score *= atom_density
-              * get_nuclide_xs(i_nuclide, MG_GET_XS_PROMPT_NU_FISSION, p_g)
-              / get_macro_xs(p->material_, MG_GET_XS_ABSORPTION, p_g);
+            score *= atom_density *
+              nuc_xs.get_xs(MgxsType::PROMPT_NU_FISSION, p_g)
+              / macro_xs.get_xs(MgxsType::ABSORPTION, p_g);
           } else {
-            score *=
-              get_macro_xs(p->material_, MG_GET_XS_PROMPT_NU_FISSION, p_g)
-              / get_macro_xs(p->material_, MG_GET_XS_ABSORPTION, p_g);
+            score *= macro_xs.get_xs(MgxsType::PROMPT_NU_FISSION, p_g)
+              / macro_xs.get_xs(MgxsType::ABSORPTION, p_g);
           }
         } else {
           // Skip any non-fission events
@@ -1681,25 +1646,23 @@ score_general_mg(const Particle* p, int i_tally, int start_index,
           auto prompt_frac = 1. - n_delayed / static_cast<double>(p->n_bank_);
           score = simulation::keff * p->wgt_bank_ * prompt_frac * flux;
           if (i_nuclide >= 0) {
-            score *= atom_density
-              * get_nuclide_xs(i_nuclide, MG_GET_XS_FISSION, p_g)
-              / get_macro_xs(p->material_, MG_GET_XS_FISSION, p_g);
+            score *= atom_density * nuc_xs.get_xs(MgxsType::FISSION, p_g)
+              / macro_xs.get_xs(MgxsType::FISSION, p_g);
           }
         }
       } else {
         if (i_nuclide >= 0) {
-          score = get_nuclide_xs(i_nuclide, MG_GET_XS_PROMPT_NU_FISSION, p_g)
-            * atom_density * flux;
+          score = atom_density * flux *
+            nuc_xs.get_xs(MgxsType::PROMPT_NU_FISSION, p_g);
         } else {
-          score = get_macro_xs(p->material_, MG_GET_XS_PROMPT_NU_FISSION, p_g)
-            * flux;
+          score = flux * macro_xs.get_xs(MgxsType::PROMPT_NU_FISSION, p_g);
         }
       }
       break;
 
 
     case SCORE_DELAYED_NU_FISSION:
-      if (tally.estimator_ == ESTIMATOR_ANALOG) {
+      if (tally.estimator_ == TallyEstimator::ANALOG) {
         if (settings::survival_biasing || p->fission_) {
           if (tally.energyout_filter_ != C_NONE) {
             // Fission has multiple outgoing neutrons so this helper function
@@ -1712,7 +1675,8 @@ score_general_mg(const Particle* p, int i_tally, int start_index,
           // No fission events occur if survival biasing is on -- need to
           // calculate fraction of absorptions that would have resulted in
           // delayed-nu-fission
-          if (get_macro_xs(p->material_, MG_GET_XS_ABSORPTION, p_g) > 0) {
+          double abs_xs = macro_xs.get_xs(MgxsType::ABSORPTION, p_g);
+          if (abs_xs > 0.) {
             if (tally.delayedgroup_filter_ != C_NONE) {
               auto i_dg_filt = tally.filters()[tally.delayedgroup_filter_];
               const DelayedGroupFilter& filt
@@ -1720,21 +1684,18 @@ score_general_mg(const Particle* p, int i_tally, int start_index,
                 model::tally_filters[i_dg_filt].get())};
               // Tally each delayed group bin individually
               for (auto d_bin = 0; d_bin < filt.n_bins(); ++d_bin) {
-                auto d = filt.groups()[d_bin];
+                auto d = filt.groups()[d_bin] - 1;
                 score = p->wgt_absorb_ * flux;
                 if (i_nuclide >= 0) {
-                  score *=
-                    get_nuclide_xs(i_nuclide, MG_GET_XS_DELAYED_NU_FISSION,
-                      p_g, nullptr, nullptr, &d)
-                    / get_macro_xs(p->material_, MG_GET_XS_ABSORPTION, p_g);
+                  score *= nuc_xs.get_xs(MgxsType::DELAYED_NU_FISSION, p_g,
+                                         nullptr, nullptr, &d)
+                    / abs_xs;
                 } else {
-                  score *=
-                    get_macro_xs(p->material_, MG_GET_XS_DELAYED_NU_FISSION,
-                      p_g, nullptr, nullptr, &d)
-                    / get_macro_xs(p->material_, MG_GET_XS_ABSORPTION, p_g);
+                  score *= macro_xs.get_xs(MgxsType::DELAYED_NU_FISSION, p_g,
+                                           nullptr, nullptr, &d)
+                    / abs_xs;
                 }
-                score_fission_delayed_dg(i_tally, d_bin, score,
-                  score_index);
+                score_fission_delayed_dg(i_tally, d_bin, score, score_index, p->filter_matches_);
               }
               continue;
             } else {
@@ -1743,13 +1704,11 @@ score_general_mg(const Particle* p, int i_tally, int start_index,
               // delayed-nu-fission xs to the absorption xs
               score = p->wgt_absorb_ * flux;
               if (i_nuclide >= 0) {
-                score *=
-                  get_nuclide_xs(i_nuclide, MG_GET_XS_DELAYED_NU_FISSION, p_g)
-                  / get_macro_xs(p->material_, MG_GET_XS_ABSORPTION, p_g);
+                score *= nuc_xs.get_xs(MgxsType::DELAYED_NU_FISSION, p_g)
+                  / abs_xs;
               } else {
-                score *=
-                  get_macro_xs(p->material_, MG_GET_XS_DELAYED_NU_FISSION, p_g)
-                  / get_macro_xs(p->material_, MG_GET_XS_ABSORPTION, p_g);
+                score *= macro_xs.get_xs(MgxsType::DELAYED_NU_FISSION, p_g)
+                  / abs_xs;
               }
             }
           }
@@ -1774,11 +1733,10 @@ score_general_mg(const Particle* p, int i_tally, int start_index,
               score = simulation::keff * p->wgt_bank_ / p->n_bank_
                 * p->n_delayed_bank_[d-1] * flux;
               if (i_nuclide >= 0) {
-                score *= atom_density
-                  * get_nuclide_xs(i_nuclide, MG_GET_XS_FISSION, p_g)
-                  / get_macro_xs(p->material_, MG_GET_XS_FISSION, p_g);
+                score *= atom_density * nuc_xs.get_xs(MgxsType::FISSION, p_g)
+                  / macro_xs.get_xs(MgxsType::FISSION, p_g);
               }
-              score_fission_delayed_dg(i_tally, d_bin, score, score_index);
+              score_fission_delayed_dg(i_tally, d_bin, score, score_index, p->filter_matches_);
             }
             continue;
           } else {
@@ -1788,9 +1746,8 @@ score_general_mg(const Particle* p, int i_tally, int start_index,
             score = simulation::keff * p->wgt_bank_ / p->n_bank_ * n_delayed
               * flux;
             if (i_nuclide >= 0) {
-              score *= atom_density
-                * get_nuclide_xs(i_nuclide, MG_GET_XS_FISSION, p_g)
-                / get_macro_xs(p->material_, MG_GET_XS_FISSION, p_g);
+              score *= atom_density * nuc_xs.get_xs(MgxsType::FISSION, p_g)
+                / macro_xs.get_xs(MgxsType::FISSION, p_g);
             }
           }
         }
@@ -1802,26 +1759,23 @@ score_general_mg(const Particle* p, int i_tally, int start_index,
             model::tally_filters[i_dg_filt].get())};
           // Tally each delayed group bin individually
           for (auto d_bin = 0; d_bin < filt.n_bins(); ++d_bin) {
-            auto d = filt.groups()[d_bin];
+            auto d = filt.groups()[d_bin] - 1;
             if (i_nuclide >= 0) {
-              score = flux * atom_density
-                * get_nuclide_xs(i_nuclide, MG_GET_XS_DELAYED_NU_FISSION,
-                                 p_g, nullptr, nullptr, &d);
+              score = flux * atom_density * nuc_xs.get_xs(
+                MgxsType::DELAYED_NU_FISSION, p_g, nullptr, nullptr, &d);
             } else {
-              score = flux
-                * get_macro_xs(p->material_, MG_GET_XS_DELAYED_NU_FISSION,
-                               p_g, nullptr, nullptr, &d);
+              score = flux * macro_xs.get_xs(
+                MgxsType::DELAYED_NU_FISSION, p_g, nullptr, nullptr, &d);
             }
-            score_fission_delayed_dg(i_tally, d_bin, score, score_index);
+            score_fission_delayed_dg(i_tally, d_bin, score, score_index, p->filter_matches_);
           }
           continue;
         } else {
           if (i_nuclide >= 0) {
-            score = flux * atom_density
-              * get_nuclide_xs(i_nuclide, MG_GET_XS_DELAYED_NU_FISSION, p_g);
+            score = flux * atom_density *
+              nuc_xs.get_xs(MgxsType::DELAYED_NU_FISSION, p_g);
           } else {
-            score = flux
-              * get_macro_xs(p->material_, MG_GET_XS_DELAYED_NU_FISSION, p_g);
+            score = flux * macro_xs.get_xs(MgxsType::DELAYED_NU_FISSION, p_g);
           }
         }
       }
@@ -1829,12 +1783,13 @@ score_general_mg(const Particle* p, int i_tally, int start_index,
 
 
     case SCORE_DECAY_RATE:
-      if (tally.estimator_ == ESTIMATOR_ANALOG) {
+      if (tally.estimator_ == TallyEstimator::ANALOG) {
         if (settings::survival_biasing) {
           // No fission events occur if survival biasing is on -- need to
           // calculate fraction of absorptions that would have resulted in
           // delayed-nu-fission
-          if (get_macro_xs(p->material_, MG_GET_XS_ABSORPTION, p_g) > 0) {
+          double abs_xs = macro_xs.get_xs(MgxsType::ABSORPTION, p_g);
+          if (abs_xs > 0) {
             if (tally.delayedgroup_filter_ != C_NONE) {
               auto i_dg_filt = tally.filters()[tally.delayedgroup_filter_];
               const DelayedGroupFilter& filt
@@ -1842,25 +1797,20 @@ score_general_mg(const Particle* p, int i_tally, int start_index,
                 model::tally_filters[i_dg_filt].get())};
               // Tally each delayed group bin individually
               for (auto d_bin = 0; d_bin < filt.n_bins(); ++d_bin) {
-                auto d = filt.groups()[d_bin];
+                auto d = filt.groups()[d_bin] - 1;
                 score = p->wgt_absorb_ * flux;
                 if (i_nuclide >= 0) {
-                  score *=
-                    get_nuclide_xs(i_nuclide, MG_GET_XS_DECAY_RATE,
-                                   p_g, nullptr, nullptr, &d)
-                    * get_nuclide_xs(i_nuclide, MG_GET_XS_DELAYED_NU_FISSION,
-                                     p_g, nullptr, nullptr, &d)
-                    / get_macro_xs(p->material_, MG_GET_XS_ABSORPTION, p_g);
+                  score *= nuc_xs.get_xs(MgxsType::DECAY_RATE, p_g,
+                                         nullptr, nullptr, &d)
+                    * nuc_xs.get_xs(MgxsType::DELAYED_NU_FISSION, p_g,
+                                    nullptr, nullptr, &d) / abs_xs;
                 } else {
-                  score *=
-                    get_macro_xs(p->material_, MG_GET_XS_DECAY_RATE,
-                                 p_g, nullptr, nullptr, &d)
-                    * get_macro_xs(p->material_, MG_GET_XS_DELAYED_NU_FISSION,
-                                   p_g, nullptr, nullptr, &d)
-                    / get_macro_xs(p->material_, MG_GET_XS_ABSORPTION, p_g);
+                  score *= macro_xs.get_xs(MgxsType::DECAY_RATE, p_g, nullptr,
+                                           nullptr, &d)
+                    * macro_xs.get_xs(MgxsType::DELAYED_NU_FISSION, p_g,
+                                      nullptr, nullptr, &d) / abs_xs;
                 }
-                score_fission_delayed_dg(i_tally, d_bin, score,
-                  score_index);
+                score_fission_delayed_dg(i_tally, d_bin, score, score_index, p->filter_matches_);
               }
               continue;
             } else {
@@ -1869,21 +1819,19 @@ score_general_mg(const Particle* p, int i_tally, int start_index,
               // delayed-nu-fission xs to the absorption xs for all delayed
               // groups
               score = 0.;
-              for (auto d = 0; d < data::num_delayed_groups; ++d) {
+              for (auto d = 0; d < data::mg.num_delayed_groups_; ++d) {
                 if (i_nuclide >= 0) {
                   score += p->wgt_absorb_ * flux
-                    * get_nuclide_xs(i_nuclide, MG_GET_XS_DECAY_RATE,
-                                     p_g, nullptr, nullptr, &d)
-                    * get_nuclide_xs(i_nuclide, MG_GET_XS_DELAYED_NU_FISSION,
-                                     p_g, nullptr, nullptr, &d)
-                    / get_macro_xs(p->material_, MG_GET_XS_ABSORPTION, p_g);
+                    * nuc_xs.get_xs(MgxsType::DECAY_RATE, p_g, nullptr,
+                                    nullptr, &d)
+                    * nuc_xs.get_xs(MgxsType::DELAYED_NU_FISSION, p_g,
+                                    nullptr, nullptr, &d) / abs_xs;
                 } else {
                   score += p->wgt_absorb_ * flux
-                    * get_macro_xs(p->material_, MG_GET_XS_DECAY_RATE,
-                                   p_g, nullptr, nullptr, &d)
-                    * get_macro_xs(p->material_, MG_GET_XS_DELAYED_NU_FISSION,
-                                   p_g, nullptr, nullptr, &d)
-                    / get_macro_xs(p->material_, MG_GET_XS_ABSORPTION, p_g);
+                    * macro_xs.get_xs(MgxsType::DECAY_RATE, p_g, nullptr,
+                                      nullptr, &d)
+                    * macro_xs.get_xs(MgxsType::DELAYED_NU_FISSION, p_g,
+                                      nullptr, nullptr, &d) / abs_xs;
                 }
               }
             }
@@ -1900,20 +1848,17 @@ score_general_mg(const Particle* p, int i_tally, int start_index,
           // contribution to the fission bank to the score.
           score = 0.;
           for (auto i = 0; i < p->n_bank_; ++i) {
-            auto i_bank = simulation::fission_bank.size() - p->n_bank_ + i;
-            const auto& bank = simulation::fission_bank[i_bank];
-            auto g = bank.delayed_group;
-            if (g != 0) {
+            const auto& bank = p->nu_bank_[i];
+            auto d = bank.delayed_group - 1;
+            if (d != -1) {
               if (i_nuclide >= 0) {
                 score += simulation::keff * atom_density * bank.wgt * flux
-                  * get_nuclide_xs(i_nuclide, MG_GET_XS_DECAY_RATE, p_g,
-                                   nullptr, nullptr, &g)
-                  * get_nuclide_xs(i_nuclide, MG_GET_XS_FISSION, p_g)
-                  / get_macro_xs(p->material_, MG_GET_XS_FISSION, p_g);
+                  * nuc_xs.get_xs(MgxsType::DECAY_RATE, p_g, nullptr, nullptr, &d)
+                  * nuc_xs.get_xs(MgxsType::FISSION, p_g)
+                  / macro_xs.get_xs(MgxsType::FISSION, p_g);
               } else {
                 score += simulation::keff * bank.wgt * flux
-                  * get_macro_xs(p->material_, MG_GET_XS_DECAY_RATE, p_g,
-                                 nullptr, nullptr, &g);
+                  * macro_xs.get_xs(MgxsType::DECAY_RATE, p_g, nullptr, nullptr, &d);
               }
               if (tally.delayedgroup_filter_ != C_NONE) {
                 auto i_dg_filt = tally.filters()[tally.delayedgroup_filter_];
@@ -1922,10 +1867,10 @@ score_general_mg(const Particle* p, int i_tally, int start_index,
                   model::tally_filters[i_dg_filt].get())};
                 // Find the corresponding filter bin and then score
                 for (auto d_bin = 0; d_bin < filt.n_bins(); ++d_bin) {
-                  auto d = filt.groups()[d_bin];
-                  if (d == g)
+                  auto dg = filt.groups()[d_bin];
+                  if (dg == d + 1)
                     score_fission_delayed_dg(i_tally, d_bin, score,
-                      score_index);
+                                             score_index, p->filter_matches_);
                 }
                 score = 0.;
               }
@@ -1941,38 +1886,34 @@ score_general_mg(const Particle* p, int i_tally, int start_index,
             model::tally_filters[i_dg_filt].get())};
           // Tally each delayed group bin individually
           for (auto d_bin = 0; d_bin < filt.n_bins(); ++d_bin) {
-            auto d = filt.groups()[d_bin];
+            auto d = filt.groups()[d_bin] - 1;
             if (i_nuclide >= 0) {
               score += atom_density * flux
-                * get_nuclide_xs(i_nuclide, MG_GET_XS_DECAY_RATE,
-                                 p_g, nullptr, nullptr, &d)
-                * get_nuclide_xs(i_nuclide, MG_GET_XS_DELAYED_NU_FISSION,
-                                 p_g, nullptr, nullptr, &d);
+                * nuc_xs.get_xs(MgxsType::DECAY_RATE, p_g, nullptr,
+                                nullptr, &d)
+                * nuc_xs.get_xs(MgxsType::DELAYED_NU_FISSION, p_g, nullptr,
+                                nullptr, &d);
             } else {
               score += flux
-                * get_macro_xs(p->material_, MG_GET_XS_DECAY_RATE,
-                               p_g, nullptr, nullptr, &d)
-                * get_macro_xs(p->material_, MG_GET_XS_DELAYED_NU_FISSION,
-                               p_g, nullptr, nullptr, &d);
+                * macro_xs.get_xs(MgxsType::DECAY_RATE, p_g, nullptr,
+                                  nullptr, &d)
+                * macro_xs.get_xs(MgxsType::DELAYED_NU_FISSION, p_g, nullptr,
+                                  nullptr, &d);
             }
-            score_fission_delayed_dg(i_tally, d_bin, score, score_index);
+            score_fission_delayed_dg(i_tally, d_bin, score, score_index, p->filter_matches_);
           }
           continue;
         } else {
           score = 0.;
-          for (auto d = 0; d < data::num_delayed_groups; ++d) {
+          for (auto d = 0; d < data::mg.num_delayed_groups_; ++d) {
             if (i_nuclide >= 0) {
               score += atom_density * flux
-                * get_nuclide_xs(i_nuclide, MG_GET_XS_DECAY_RATE,
-                                 p_g, nullptr, nullptr, &d)
-                * get_nuclide_xs(i_nuclide, MG_GET_XS_DELAYED_NU_FISSION,
-                                 p_g, nullptr, nullptr, &d);
+                * nuc_xs.get_xs(MgxsType::DECAY_RATE, p_g, nullptr, nullptr, &d)
+                * nuc_xs.get_xs(MgxsType::DELAYED_NU_FISSION, p_g, nullptr, nullptr, &d);
             } else {
               score += flux
-                * get_macro_xs(p->material_, MG_GET_XS_DECAY_RATE,
-                               p_g, nullptr, nullptr, &d)
-                * get_macro_xs(p->material_, MG_GET_XS_DELAYED_NU_FISSION,
-                               p_g, nullptr, nullptr, &d);
+                * macro_xs.get_xs(MgxsType::DECAY_RATE, p_g, nullptr, nullptr, &d)
+                * macro_xs.get_xs(MgxsType::DELAYED_NU_FISSION, p_g, nullptr, nullptr, &d);
             }
           }
         }
@@ -1981,7 +1922,7 @@ score_general_mg(const Particle* p, int i_tally, int start_index,
 
 
     case SCORE_KAPPA_FISSION:
-      if (tally.estimator_ == ESTIMATOR_ANALOG) {
+      if (tally.estimator_ == TallyEstimator::ANALOG) {
         if (settings::survival_biasing) {
           // No fission events occur if survival biasing is on -- need to
           // calculate fraction of absorptions that would have resulted in
@@ -1989,7 +1930,7 @@ score_general_mg(const Particle* p, int i_tally, int start_index,
           score = p->wgt_absorb_ * flux;
         } else {
           // Skip any non-absorption events
-          if (p->event_ == EVENT_SCATTER) continue;
+          if (p->event_ == TallyEvent::SCATTER) continue;
           // All fission events will contribute, so again we can use particle's
           // weight entering the collision as the estimate for the fission
           // reaction rate
@@ -1997,29 +1938,27 @@ score_general_mg(const Particle* p, int i_tally, int start_index,
         }
         if (i_nuclide >= 0) {
           score *= atom_density
-            * get_nuclide_xs(i_nuclide, MG_GET_XS_KAPPA_FISSION, p_g)
-            / get_macro_xs(p->material_, MG_GET_XS_ABSORPTION, p_g);
+            * nuc_xs.get_xs(MgxsType::KAPPA_FISSION, p_g)
+            / macro_xs.get_xs(MgxsType::ABSORPTION, p_g);
         } else {
           score *=
-            get_macro_xs(p->material_, MG_GET_XS_KAPPA_FISSION, p_g)
-            / get_macro_xs(p->material_, MG_GET_XS_ABSORPTION, p_g);
+            macro_xs.get_xs(MgxsType::KAPPA_FISSION, p_g)
+            / macro_xs.get_xs(MgxsType::ABSORPTION, p_g);
         }
       } else {
         if (i_nuclide >= 0) {
-          score = get_nuclide_xs(i_nuclide, MG_GET_XS_KAPPA_FISSION, p_g)
-            * atom_density * flux;
+          score = atom_density * flux * nuc_xs.get_xs(MgxsType::KAPPA_FISSION, p_g);
         } else {
-          score = get_macro_xs(p->material_, MG_GET_XS_KAPPA_FISSION, p_g)
-            * flux;
+          score = flux * macro_xs.get_xs(MgxsType::KAPPA_FISSION, p_g);
         }
       }
       break;
 
-
     case SCORE_EVENTS:
       // Simply count the number of scoring events
-      score = 1.;
-      break;
+      #pragma omp atomic
+      tally.results_(filter_index, score_index, TallyResult::VALUE) += 1.0;
+      continue;
 
 
     default:
@@ -2028,7 +1967,7 @@ score_general_mg(const Particle* p, int i_tally, int start_index,
 
     // Update tally results
     #pragma omp atomic
-    tally.results_(filter_index, score_index, RESULT_VALUE) += score;
+    tally.results_(filter_index, score_index, TallyResult::VALUE) += score*filter_weight;
   }
 }
 
@@ -2036,7 +1975,7 @@ score_general_mg(const Particle* p, int i_tally, int start_index,
 
 void
 score_all_nuclides(Particle* p, int i_tally, double flux,
-  int filter_index)
+  int filter_index, double filter_weight)
 {
   const Tally& tally {*model::tallies[i_tally]};
   const Material& material {*model::materials[p->material_]};
@@ -2049,10 +1988,10 @@ score_all_nuclides(Particle* p, int i_tally, double flux,
     //TODO: consider replacing this "if" with pointers or templates
     if (settings::run_CE) {
       score_general_ce(p, i_tally, i_nuclide*tally.scores_.size(), filter_index,
-        i_nuclide, atom_density, flux);
+        filter_weight, i_nuclide, atom_density, flux);
     } else {
       score_general_mg(p, i_tally, i_nuclide*tally.scores_.size(), filter_index,
-        i_nuclide, atom_density, flux);
+        filter_weight, i_nuclide, atom_density, flux);
     }
   }
 
@@ -2063,15 +2002,22 @@ score_all_nuclides(Particle* p, int i_tally, double flux,
   //TODO: consider replacing this "if" with pointers or templates
   if (settings::run_CE) {
     score_general_ce(p, i_tally, n_nuclides*tally.scores_.size(), filter_index,
-      i_nuclide, atom_density, flux);
+      filter_weight, i_nuclide, atom_density, flux);
   } else {
     score_general_mg(p, i_tally, n_nuclides*tally.scores_.size(), filter_index,
-      i_nuclide, atom_density, flux);
+      filter_weight, i_nuclide, atom_density, flux);
   }
 }
 
 void score_analog_tally_ce(Particle* p)
 {
+  // Since electrons/positrons are not transported, we assign a flux of zero.
+  // Note that the heating score does NOT use the flux and will be non-zero for
+  // electrons/positrons.
+  double flux =
+    (p->type_ == Particle::Type::neutron || p->type_ == Particle::Type::photon) ?
+    1.0 : 0.0;
+
   for (auto i_tally : model::active_analog_tallies) {
     const Tally& tally {*model::tallies[i_tally]};
 
@@ -2079,7 +2025,7 @@ void score_analog_tally_ce(Particle* p)
     // no valid combinations, use a continue statement to ensure we skip the
     // assume_separate break below.
     auto filter_iter = FilterBinIter(tally, p);
-    auto end = FilterBinIter(tally, true);
+    auto end = FilterBinIter(tally, true, &p->filter_matches_);
     if (filter_iter == end) continue;
 
     // Loop over filter bins.
@@ -2097,7 +2043,7 @@ void score_analog_tally_ce(Particle* p)
           // density argument for score_general is not used for analog tallies.
           if (i_nuclide == p->event_nuclide_ || i_nuclide == -1)
             score_general_ce(p, i_tally, i*tally.scores_.size(), filter_index,
-              i_nuclide, -1., filter_weight);
+              filter_weight, i_nuclide, -1.0, flux);
         }
 
       } else {
@@ -2106,12 +2052,12 @@ void score_analog_tally_ce(Particle* p)
         // bins correspond to nuclide indices.  First, tally the nuclide.
         auto i = p->event_nuclide_;
         score_general_ce(p, i_tally, i*tally.scores_.size(), filter_index,
-          -1, -1., filter_weight);
+          filter_weight, -1, -1.0, flux);
 
         // Now tally the total material.
         i = tally.nuclides_.size();
         score_general_ce(p, i_tally, i*tally.scores_.size(), filter_index,
-          -1, -1., filter_weight);
+          filter_weight, -1, -1.0, flux);
       }
     }
 
@@ -2123,11 +2069,11 @@ void score_analog_tally_ce(Particle* p)
   }
 
   // Reset all the filter matches for the next tally event.
-  for (auto& match : simulation::filter_matches)
+  for (auto& match : p->filter_matches_)
     match.bins_present_ = false;
 }
 
-void score_analog_tally_mg(const Particle* p)
+void score_analog_tally_mg(Particle* p)
 {
   for (auto i_tally : model::active_analog_tallies) {
     const Tally& tally {*model::tallies[i_tally]};
@@ -2136,7 +2082,7 @@ void score_analog_tally_mg(const Particle* p)
     // no valid combinations, use a continue statement to ensure we skip the
     // assume_separate break below.
     auto filter_iter = FilterBinIter(tally, p);
-    auto end = FilterBinIter(tally, true);
+    auto end = FilterBinIter(tally, true, &p->filter_matches_);
     if (filter_iter == end) continue;
 
     // Loop over filter bins.
@@ -2156,7 +2102,7 @@ void score_analog_tally_mg(const Particle* p)
         }
 
         score_general_mg(p, i_tally, i*tally.scores_.size(), filter_index,
-          i_nuclide, atom_density, filter_weight);
+          filter_weight, i_nuclide, atom_density, 1.0);
       }
     }
 
@@ -2168,7 +2114,7 @@ void score_analog_tally_mg(const Particle* p)
   }
 
   // Reset all the filter matches for the next tally event.
-  for (auto& match : simulation::filter_matches)
+  for (auto& match : p->filter_matches_)
     match.bins_present_ = false;
 }
 
@@ -2185,7 +2131,7 @@ score_tracklength_tally(Particle* p, double distance)
     // no valid combinations, use a continue statement to ensure we skip the
     // assume_separate break below.
     auto filter_iter = FilterBinIter(tally, p);
-    auto end = FilterBinIter(tally, true);
+    auto end = FilterBinIter(tally, true, &p->filter_matches_);
     if (filter_iter == end) continue;
 
     // Loop over filter bins.
@@ -2196,7 +2142,8 @@ score_tracklength_tally(Particle* p, double distance)
       // Loop over nuclide bins.
       if (tally.all_nuclides_) {
         if (p->material_ != MATERIAL_VOID)
-          score_all_nuclides(p, i_tally, flux*filter_weight, filter_index);
+          score_all_nuclides(p, i_tally, flux*filter_weight, filter_index,
+            filter_weight);
 
       } else {
         for (auto i = 0; i < tally.nuclides_.size(); ++i) {
@@ -2214,10 +2161,10 @@ score_tracklength_tally(Particle* p, double distance)
           //TODO: consider replacing this "if" with pointers or templates
           if (settings::run_CE) {
             score_general_ce(p, i_tally, i*tally.scores_.size(), filter_index,
-              i_nuclide, atom_density, flux*filter_weight);
+              filter_weight, i_nuclide, atom_density, flux);
           } else {
             score_general_mg(p, i_tally, i*tally.scores_.size(), filter_index,
-              i_nuclide, atom_density, flux*filter_weight);
+              filter_weight, i_nuclide, atom_density, flux);
           }
         }
       }
@@ -2232,18 +2179,20 @@ score_tracklength_tally(Particle* p, double distance)
   }
 
   // Reset all the filter matches for the next tally event.
-  for (auto& match : simulation::filter_matches)
+  for (auto& match : p->filter_matches_)
     match.bins_present_ = false;
 }
 
 void score_collision_tally(Particle* p)
 {
   // Determine the collision estimate of the flux
-  double flux;
-  if (!settings::survival_biasing) {
-    flux = p->wgt_last_ / p->macro_xs_.total;
-  } else {
-    flux = (p->wgt_last_ + p->wgt_absorb_) / p->macro_xs_.total;
+  double flux = 0.0;
+  if (p->type_ == Particle::Type::neutron || p->type_ == Particle::Type::photon) {
+    if (!settings::survival_biasing) {
+      flux = p->wgt_last_ / p->macro_xs_.total;
+    } else {
+      flux = (p->wgt_last_ + p->wgt_absorb_) / p->macro_xs_.total;
+    }
   }
 
   for (auto i_tally : model::active_collision_tallies) {
@@ -2253,7 +2202,7 @@ void score_collision_tally(Particle* p)
     // no valid combinations, use a continue statement to ensure we skip the
     // assume_separate break below.
     auto filter_iter = FilterBinIter(tally, p);
-    auto end = FilterBinIter(tally, true);
+    auto end = FilterBinIter(tally, true, &p->filter_matches_);
     if (filter_iter == end) continue;
 
     // Loop over filter bins.
@@ -2263,7 +2212,8 @@ void score_collision_tally(Particle* p)
 
       // Loop over nuclide bins.
       if (tally.all_nuclides_) {
-        score_all_nuclides(p, i_tally, flux*filter_weight, filter_index);
+        score_all_nuclides(p, i_tally, flux*filter_weight, filter_index,
+          filter_weight);
 
       } else {
         for (auto i = 0; i < tally.nuclides_.size(); ++i) {
@@ -2279,10 +2229,10 @@ void score_collision_tally(Particle* p)
           //TODO: consider replacing this "if" with pointers or templates
           if (settings::run_CE) {
             score_general_ce(p, i_tally, i*tally.scores_.size(), filter_index,
-              i_nuclide, atom_density, flux*filter_weight);
+              filter_weight, i_nuclide, atom_density, flux);
           } else {
             score_general_mg(p, i_tally, i*tally.scores_.size(), filter_index,
-              i_nuclide, atom_density, flux*filter_weight);
+              filter_weight, i_nuclide, atom_density, flux);
           }
         }
       }
@@ -2296,12 +2246,12 @@ void score_collision_tally(Particle* p)
   }
 
   // Reset all the filter matches for the next tally event.
-  for (auto& match : simulation::filter_matches)
+  for (auto& match : p->filter_matches_)
     match.bins_present_ = false;
 }
 
 void
-score_surface_tally(const Particle* p, const std::vector<int>& tallies)
+score_surface_tally(Particle* p, const std::vector<int>& tallies)
 {
   // No collision, so no weight change when survival biasing
   double flux = p->wgt_;
@@ -2313,7 +2263,7 @@ score_surface_tally(const Particle* p, const std::vector<int>& tallies)
     // no valid combinations, use a continue statement to ensure we skip the
     // assume_separate break below.
     auto filter_iter = FilterBinIter(tally, p);
-    auto end = FilterBinIter(tally, true);
+    auto end = FilterBinIter(tally, true, &p->filter_matches_);
     if (filter_iter == end) continue;
 
     // Loop over filter bins.
@@ -2328,7 +2278,7 @@ score_surface_tally(const Particle* p, const std::vector<int>& tallies)
       for (auto score_index = 0; score_index < tally.scores_.size();
            ++score_index) {
         #pragma omp atomic
-        tally.results_(filter_index, score_index, RESULT_VALUE) += score;
+        tally.results_(filter_index, score_index, TallyResult::VALUE) += score;
       }
     }
 
@@ -2340,7 +2290,7 @@ score_surface_tally(const Particle* p, const std::vector<int>& tallies)
   }
 
   // Reset all the filter matches for the next tally event.
-  for (auto& match : simulation::filter_matches)
+  for (auto& match : p->filter_matches_)
     match.bins_present_ = false;
 }
 

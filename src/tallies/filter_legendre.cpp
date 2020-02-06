@@ -24,7 +24,7 @@ LegendreFilter::set_order(int order)
 }
 
 void
-LegendreFilter::get_all_bins(const Particle* p, int estimator,
+LegendreFilter::get_all_bins(const Particle* p, TallyEstimator estimator,
                              FilterMatch& match) const
 {
   std::vector<double> wgt(n_bins_);

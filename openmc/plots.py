@@ -173,7 +173,7 @@ class Plot(IDManagerMixin):
     OpenMC is capable of generating two-dimensional slice plots and
     three-dimensional voxel plots. Colors that are used in plots can be given as
     RGB tuples, e.g. (255, 255, 255) would be white, or by a string indicating a
-    valid `SVG color <https://www.w3.org/TR/SVG/types.html#ColorKeywords>`_.
+    valid `SVG color <https://www.w3.org/TR/SVG11/types.html#ColorKeywords>`_.
 
     Parameters
     ----------
@@ -467,7 +467,7 @@ class Plot(IDManagerMixin):
         Parameters
         ----------
         geometry : openmc.Geometry
-            The geometry the base the plot off of
+            The geometry to base the plot off of
         basis : {'xy', 'xz', 'yz'}
             The basis directions for the plot
         slice_coord : float

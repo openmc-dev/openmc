@@ -5,18 +5,8 @@
 
 namespace openmc {
 
-
-// Constants
-extern "C" const int N_STREAMS         {6};
-extern "C" const int STREAM_TRACKING   {0};
-extern "C" const int STREAM_TALLIES    {1};
-extern "C" const int STREAM_SOURCE     {2};
-extern "C" const int STREAM_URR_PTABLE {3};
-extern "C" const int STREAM_VOLUME     {4};
-extern "C" const int STREAM_PHOTON     {5};
-
 // Starting seed
-int64_t seed {1};
+int64_t master_seed {1};
 
 // LCG parameters
 constexpr uint64_t prn_mult   {2806196910506780709LL};   // multiplication
@@ -28,47 +18,47 @@ constexpr uint64_t prn_stride {152917LL};                // stride between
                                                          //   particles
 constexpr double   prn_norm   {1.0 / prn_mod};           // 2^-63
 
-// Current PRNG state
-uint64_t prn_seed[N_STREAMS];  // current seed
-int      stream;               // current RNG stream
-#pragma omp threadprivate(prn_seed, stream)
-
-
 //==============================================================================
 // PRN
 //==============================================================================
 
-extern "C" double
-prn()
+double prn(uint64_t* seed)
 {
   // This algorithm uses bit-masking to find the next integer(8) value to be
   // used to calculate the random number.
-  prn_seed[stream] = (prn_mult*prn_seed[stream] + prn_add) & prn_mask;
+  *seed = (prn_mult * (*seed) + prn_add) & prn_mask;
 
   // Once the integer is calculated, we just need to divide by 2**m,
   // represented here as multiplying by a pre-calculated factor
-  return prn_seed[stream] * prn_norm;
+  return (*seed) * prn_norm;
 }
 
 //==============================================================================
 // FUTURE_PRN
 //==============================================================================
 
-extern "C" double
-future_prn(int64_t n)
+double future_prn(int64_t n, uint64_t seed)
 {
-  return future_seed(static_cast<uint64_t>(n), prn_seed[stream]) * prn_norm;
+  return future_seed(static_cast<uint64_t>(n), seed) * prn_norm;
 }
 
 //==============================================================================
-// SET_PARTICLE_SEED
+// INIT_SEED
 //==============================================================================
 
-extern "C" void
-set_particle_seed(int64_t id)
+uint64_t init_seed(int64_t id, int offset)
+{
+  return future_seed(static_cast<uint64_t>(id) * prn_stride, master_seed + offset);
+}
+
+//==============================================================================
+// INIT_PARTICLE_SEEDS
+//==============================================================================
+
+void init_particle_seeds(int64_t id, uint64_t* seeds)
 {
   for (int i = 0; i < N_STREAMS; i++) {
-    prn_seed[i] = future_seed(static_cast<uint64_t>(id) * prn_stride, seed + i);
+    seeds[i] = future_seed(static_cast<uint64_t>(id) * prn_stride, master_seed + i);
   }
 }
 
@@ -76,18 +66,16 @@ set_particle_seed(int64_t id)
 // ADVANCE_PRN_SEED
 //==============================================================================
 
-extern "C" void
-advance_prn_seed(int64_t n)
+void advance_prn_seed(int64_t n, uint64_t* seed)
 {
-  prn_seed[stream] = future_seed(static_cast<uint64_t>(n), prn_seed[stream]);
+  *seed = future_seed(static_cast<uint64_t>(n), *seed);
 }
 
 //==============================================================================
 // FUTURE_SEED
 //==============================================================================
 
-uint64_t
-future_seed(uint64_t n, uint64_t seed)
+uint64_t future_seed(uint64_t n, uint64_t seed)
 {
   // Make sure nskip is less than 2^M.
   n &= prn_mask;
@@ -122,32 +110,14 @@ future_seed(uint64_t n, uint64_t seed)
 }
 
 //==============================================================================
-// PRN_SET_STREAM
-//==============================================================================
-
-extern "C" void
-prn_set_stream(int i)
-{
-  stream = i;  // Shift by one to move from Fortran to C indexing.
-}
-
-//==============================================================================
 //                               API FUNCTIONS
 //==============================================================================
 
-extern "C" int64_t openmc_get_seed() {return seed;}
+extern "C" int64_t openmc_get_seed() {return master_seed;}
 
-extern "C" void
-openmc_set_seed(int64_t new_seed)
+extern "C" void openmc_set_seed(int64_t new_seed)
 {
-  seed = new_seed;
-  #pragma omp parallel
-  {
-    for (int i = 0; i < N_STREAMS; i++) {
-      prn_seed[i] = seed + i;
-    }
-    prn_set_stream(STREAM_TRACKING);
-  }
+  master_seed = new_seed;
 }
 
 } // namespace openmc

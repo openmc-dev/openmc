@@ -12,7 +12,7 @@ PLOT_TYPES = ['total', 'scatter', 'elastic', 'inelastic', 'fission',
               'absorption', 'capture', 'nu-fission', 'nu-scatter', 'unity',
               'slowing-down power', 'damage']
 
-# Supported keywoards for multi-group cross section plotting
+# Supported keywords for multi-group cross section plotting
 PLOT_TYPES_MGXS = ['total', 'absorption', 'scatter', 'fission',
                    'kappa-fission', 'nu-fission', 'prompt-nu-fission',
                    'deleyed-nu-fission', 'chi', 'chi-prompt', 'chi-delayed',
@@ -245,7 +245,7 @@ def calculate_cexs(this, data_type, types, temperature=294., sab_name=None,
     ----------
     this : {str, openmc.Nuclide, openmc.Element, openmc.Material}
         Object to source data from
-    data_type : {'nuclide', 'element', material'}
+    data_type : {'nuclide', 'element', 'material'}
         Type of object to plot
     types : Iterable of values of PLOT_TYPES
         The type of cross sections to calculate
@@ -562,14 +562,16 @@ def _calculate_cexs_elem_mat(this, types, temperature=294.,
     if isinstance(this, openmc.Material):
         for sab_name in this._sab:
             sab = openmc.data.ThermalScattering.from_hdf5(
-                library.get_by_material(sab_name)['path'])
+                library.get_by_material(sab_name, data_type='thermal')['path'])
             for nuc in sab.nuclides:
-                sabs[nuc] = library.get_by_material(sab_name)['path']
+                sabs[nuc] = library.get_by_material(sab_name,
+                        data_type='thermal')['path']
     else:
         if sab_name:
             sab = openmc.data.ThermalScattering.from_hdf5(sab_name)
             for nuc in sab.nuclides:
-                sabs[nuc] = library.get_by_material(sab_name)['path']
+                sabs[nuc] = library.get_by_material(sab_name,
+                        data_type='thermal')['path']
 
     # Now we can create the data sets to be plotted
     xs = {}
@@ -619,7 +621,7 @@ def calculate_mgxs(this, data_type, types, orders=None, temperature=294.,
     ----------
     this : str or openmc.Material
         Object to source data from
-    data_type : {'nuclide', 'element', material', 'macroscopic'}
+    data_type : {'nuclide', 'element', 'material', 'macroscopic'}
         Type of object to plot
     types : Iterable of values of PLOT_TYPES_MGXS
         The type of cross sections to calculate

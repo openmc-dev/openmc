@@ -25,7 +25,7 @@ DiscretePhoton::DiscretePhoton(hid_t group)
   read_attribute(group, "atomic_weight_ratio", A_);
 }
 
-double DiscretePhoton::sample(double E) const
+double DiscretePhoton::sample(double E, uint64_t* seed) const
 {
   if (primary_flag_ == 2) {
     return energy_ + A_/(A_+ 1)*E;
@@ -44,7 +44,7 @@ LevelInelastic::LevelInelastic(hid_t group)
   read_attribute(group, "mass_ratio", mass_ratio_);
 }
 
-double LevelInelastic::sample(double E) const
+double LevelInelastic::sample(double E, uint64_t* seed) const
 {
   return mass_ratio_*(E - threshold_);
 }
@@ -146,7 +146,7 @@ ContinuousTabular::ContinuousTabular(hid_t group)
   } // incoming energies
 }
 
-double ContinuousTabular::sample(double E) const
+double ContinuousTabular::sample(double E, uint64_t* seed) const
 {
   // Read number of interpolation regions and incoming energies
   bool histogram_interp;
@@ -177,7 +177,7 @@ double ContinuousTabular::sample(double E) const
   if (histogram_interp) {
     l = i;
   } else {
-    l = r > prn() ? i + 1 : i;
+    l = r > prn(seed) ? i + 1 : i;
   }
 
   // Interpolation for energy E1 and EK
@@ -191,13 +191,13 @@ double ContinuousTabular::sample(double E) const
   double E_i1_1 = distribution_[i+1].e_out[n_discrete];
   double E_i1_K = distribution_[i+1].e_out[n_energy_out - 1];
 
-  double E_1 = E_i_1 + r*(E_i1_1 - E_i_1);
-  double E_K = E_i_K + r*(E_i1_K - E_i_K);
+  double E_1 = E_i_1 + r * (E_i1_1 - E_i_1);
+  double E_K = E_i_K + r * (E_i1_K - E_i_K);
 
   // Determine outgoing energy bin
   n_energy_out = distribution_[l].e_out.size();
   n_discrete = distribution_[l].n_discrete;
-  double r1 = prn();
+  double r1 = prn(seed);
   double c_k = distribution_[l].c[0];
   int k = 0;
   int end = n_energy_out - 2;
@@ -275,14 +275,14 @@ MaxwellEnergy::MaxwellEnergy(hid_t group)
   close_dataset(dset);
 }
 
-double MaxwellEnergy::sample(double E) const
+double MaxwellEnergy::sample(double E, uint64_t* seed) const
 {
   // Get temperature corresponding to incoming energy
   double theta = theta_(E);
 
   while (true) {
     // Sample maxwell fission spectrum
-    double E_out = maxwell_spectrum(theta);
+    double E_out = maxwell_spectrum(theta, seed);
 
     // Accept energy based on restriction energy
     if (E_out <= E - u_) return E_out;
@@ -301,7 +301,7 @@ Evaporation::Evaporation(hid_t group)
   close_dataset(dset);
 }
 
-double Evaporation::sample(double E) const
+double Evaporation::sample(double E, uint64_t* seed) const
 {
   // Get temperature corresponding to incoming energy
   double theta = theta_(E);
@@ -313,11 +313,11 @@ double Evaporation::sample(double E) const
   // density function
   double x;
   while (true) {
-    x = -std::log((1.0 - v*prn())*(1.0 - v*prn()));
+    x = -std::log((1.0 - v*prn(seed))*(1.0 - v*prn(seed)));
     if (x <= y) break;
   }
 
-  return x*theta;
+  return x * theta;
 }
 
 //==============================================================================
@@ -338,7 +338,7 @@ WattEnergy::WattEnergy(hid_t group)
   close_dataset(dset);
 }
 
-double WattEnergy::sample(double E) const
+double WattEnergy::sample(double E, uint64_t* seed) const
 {
   // Determine Watt parameters at incident energy
   double a = a_(E);
@@ -346,7 +346,7 @@ double WattEnergy::sample(double E) const
 
   while (true) {
     // Sample energy-dependent Watt fission spectrum
-    double E_out = watt_spectrum(a, b);
+    double E_out = watt_spectrum(a, b, seed);
 
     // Accept energy based on restriction energy
     if (E_out <= E - u_) return E_out;

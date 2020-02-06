@@ -109,6 +109,11 @@ The current version of the statepoint file format is 17.0.
 
 **/tallies/tally <uid>/**
 
+:Attributes:
+             - **internal** (*int*) -- Flag indicating the presence of tally
+               data (0) or absence of tally data (1). All user defined
+               tallies will have a value of 0 unless otherwise instructed.
+
 :Datasets: - **n_realizations** (*int*) -- Number of realizations.
            - **n_filters** (*int*) -- Number of filters used.
            - **filters** (*int[]*) -- User-defined unique IDs of the filters on

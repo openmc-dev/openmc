@@ -37,6 +37,8 @@ public:
 
   void set_active(bool active) { active_ = active; }
 
+  void set_writable(bool writable) { writable_ = writable; }
+
   void set_scores(pugi::xml_node node);
 
   void set_scores(const std::vector<std::string>& scores);
@@ -55,8 +57,12 @@ public:
 
   int32_t n_filter_bins() const {return n_filter_bins_;}
 
+  bool writable() const { return writable_;}
+
   //----------------------------------------------------------------------------
   // Other methods.
+
+  void add_filter(Filter* filter) { set_filters({&filter, 1}); }
 
   void init_triggers(pugi::xml_node node);
 
@@ -69,14 +75,14 @@ public:
   //----------------------------------------------------------------------------
   // Major public data members.
 
-  int id_; //!< User-defined identifier
+  int id_ {C_NONE}; //!< User-defined identifier
 
   std::string name_; //!< User-defined name
 
-  int type_ {TALLY_VOLUME}; //!< e.g. volume, surface current
+  TallyType type_ {TallyType::VOLUME}; //!< e.g. volume, surface current
 
   //! Event type that contributes to this tally
-  int estimator_ {ESTIMATOR_TRACKLENGTH};
+  TallyEstimator estimator_ {TallyEstimator::TRACKLENGTH};
 
   //! Whether this tally is currently being updated
   bool active_ {false};
@@ -92,11 +98,14 @@ public:
   //! True if this tally has a bin for every nuclide in the problem
   bool all_nuclides_ {false};
 
-  //! Results for each bin -- the first dimension of the array is for scores
-  //! (e.g. flux, total reaction rate, fission reaction rate, etc.) and the
-  //! second dimension of the array is for the combination of filters
-  //! (e.g. specific cell, specific energy group, etc.)
+  //! Results for each bin -- the first dimension of the array is for the
+  //! combination of filters (e.g. specific cell, specific energy group, etc.)
+  //! and the second dimension of the array is for scores (e.g. flux, total
+  //! reaction rate, fission reaction rate, etc.)
   xt::xtensor<double, 3> results_;
+
+  //! True if this tally should be written to statepoint files
+  bool writable_ {true};
 
   //----------------------------------------------------------------------------
   // Miscellaneous public members.
@@ -132,6 +141,7 @@ private:
 //==============================================================================
 
 namespace model {
+  extern std::unordered_map<int, int> tally_map;
   extern std::vector<std::unique_ptr<Tally>> tallies;
   extern std::vector<int> active_tallies;
   extern std::vector<int> active_analog_tallies;
@@ -139,8 +149,6 @@ namespace model {
   extern std::vector<int> active_collision_tallies;
   extern std::vector<int> active_meshsurf_tallies;
   extern std::vector<int> active_surface_tallies;
-
-  extern std::unordered_map<int, int> tally_map;
 }
 
 namespace simulation {
@@ -151,17 +159,10 @@ namespace simulation {
   extern "C" int32_t n_realizations;
 }
 
-// It is possible to protect accumulate operations on global tallies by using an
-// atomic update. However, when multiple threads accumulate to the same global
-// tally, it can cause a higher cache miss rate due to invalidation. Thus, we
-// use threadprivate variables to accumulate global tallies and then reduce at
-// the end of a generation.
 extern double global_tally_absorption;
 extern double global_tally_collision;
 extern double global_tally_tracklength;
 extern double global_tally_leakage;
-#pragma omp threadprivate(global_tally_absorption, global_tally_collision, \
-  global_tally_tracklength, global_tally_leakage)
 
 //==============================================================================
 // Non-member functions

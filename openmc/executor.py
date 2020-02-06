@@ -154,7 +154,7 @@ def calculate_volumes(threads=None, output=True, cwd='.',
 
 def run(particles=None, threads=None, geometry_debug=False,
         restart_file=None, tracks=False, output=True, cwd='.',
-        openmc_exec='openmc', mpi_args=None):
+        openmc_exec='openmc', mpi_args=None, event_based=False):
     """Run an OpenMC simulation.
 
     Parameters
@@ -182,6 +182,8 @@ def run(particles=None, threads=None, geometry_debug=False,
     mpi_args : list of str, optional
         MPI execute command and any additional MPI arguments to pass,
         e.g. ['mpiexec', '-n', '8'].
+    event_based : bool, optional
+        Turns on event-based parallelism, instead of default history-based
 
     Raises
     ------
@@ -199,6 +201,9 @@ def run(particles=None, threads=None, geometry_debug=False,
 
     if geometry_debug:
         args.append('-g')
+    
+    if event_based:
+        args.append('-e')
 
     if isinstance(restart_file, str):
         args += ['-r', restart_file]

@@ -1,5 +1,6 @@
 # Test configuration options for regression tests
 config = {
+    'event' : False,
     'exe': 'openmc',
     'mpi': False,
     'mpiexec': 'mpiexec',

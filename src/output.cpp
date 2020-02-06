@@ -1,6 +1,6 @@
 #include "openmc/output.h"
 
-#include <algorithm>  // for std::transform
+#include <algorithm>  // for transform, max
 #include <cstring>  // for strlen
 #include <ctime> // for time, localtime
 #include <iomanip>  // for setw, setprecision, put_time
@@ -327,6 +327,7 @@ void print_usage()
       "                         or a particle restart file\n"
       "  -s, --threads          Number of OpenMP threads\n"
       "  -t, --track            Write tracks for all particles\n"
+      "  -e, --event            Run using event-based parallelism\n"
       "  -v, --version          Show version information\n"
       "  -h, --help             Show this message\n";
   }
@@ -466,6 +467,14 @@ void print_runtime()
   show_time("Total time in simulation", time_inactive.elapsed() +
     time_active.elapsed());
   show_time("Time in transport only", time_transport.elapsed(), 1);
+  if (settings::event_based) {
+    show_time("Particle initialization", time_event_init.elapsed(), 2);
+    show_time("XS lookups", time_event_calculate_xs.elapsed(), 2);
+    show_time("Advancing", time_event_advance_particle.elapsed(), 2);
+    show_time("Surface crossings", time_event_surface_crossing.elapsed(), 2);
+    show_time("Collisions", time_event_collision.elapsed(), 2);
+    show_time("Particle death", time_event_death.elapsed(), 2);
+  }
   if (settings::run_mode == RunMode::EIGENVALUE) {
     show_time("Time in inactive batches", time_inactive.elapsed(), 1);
   }
@@ -527,8 +536,8 @@ std::pair<double, double>
 mean_stdev(const double* x, int n)
 {
   double mean = x[static_cast<int>(TallyResult::SUM)] / n;
-  double stdev = n > 1 ? std::sqrt((x[static_cast<int>(TallyResult::SUM_SQ)]/n
-    - mean*mean)/(n - 1)) : 0.0;
+  double stdev = n > 1 ? std::sqrt(std::max(0.0, (
+    x[static_cast<int>(TallyResult::SUM_SQ)]/n - mean*mean)/(n - 1))) : 0.0;
   return {mean, stdev};
 }
 

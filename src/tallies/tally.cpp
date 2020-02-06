@@ -363,15 +363,6 @@ Tally::Tally(pugi::xml_node node)
           break;
         }
       }
-    } else {
-      const auto& f = model::tally_filters[particle_filter_index].get();
-      auto pf = dynamic_cast<ParticleFilter*>(f);
-      for (auto p : pf->particles()) {
-        if (p == Particle::Type::electron ||
-            p == Particle::Type::positron) {
-          estimator_ = TallyEstimator::ANALOG;
-        }
-      }
     }
   } else {
     if (particle_filter_index >= 0) {
@@ -440,9 +431,9 @@ Tally::Tally(pugi::xml_node node)
       estimator_ = TallyEstimator::ANALOG;
     } else if (est == "tracklength" || est == "track-length"
       || est == "pathlength" || est == "path-length") {
-      // If the estimator was set to an analog estimator, this means the
-      // tally needs post-collision information
-      if (estimator_ == TallyEstimator::ANALOG) {
+      // If the estimator was set to an analog/collision estimator, this means
+      // the tally needs post-collision information
+      if (estimator_ == TallyEstimator::ANALOG || estimator_ == TallyEstimator::COLLISION) {
         throw std::runtime_error{"Cannot use track-length estimator for tally "
           + std::to_string(id_)};
       }
@@ -653,6 +644,10 @@ Tally::set_scores(const std::vector<std::string>& scores)
       } else {
         fatal_error("Cannot tally currents without surface type filters");
       }
+      break;
+
+    case HEATING:
+      if (settings::photon_transport) estimator_ = TallyEstimator::COLLISION;
       break;
     }
 

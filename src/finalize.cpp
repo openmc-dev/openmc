@@ -7,6 +7,7 @@
 #include "openmc/cross_sections.h"
 #include "openmc/dagmc.h"
 #include "openmc/eigenvalue.h"
+#include "openmc/event.h"
 #include "openmc/geometry.h"
 #include "openmc/geometry_aux.h"
 #include "openmc/material.h"
@@ -47,6 +48,9 @@ void free_memory()
   if (mpi::master) {
     free_memory_cmfd();
   }
+  if (settings::event_based) {
+    free_event_queues();
+  }
 #ifdef DAGMC
   free_memory_dagmc();
 #endif
@@ -76,7 +80,9 @@ int openmc_finalize()
   settings::gen_per_batch = 1;
   settings::legendre_to_tabular = true;
   settings::legendre_to_tabular_points = -1;
+  settings::event_based = false;
   settings::material_cell_offsets = true;
+  settings::max_particles_in_flight = 100000;
   settings::n_particles = -1;
   settings::output_summary = true;
   settings::output_tallies = true;

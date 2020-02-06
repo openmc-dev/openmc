@@ -46,6 +46,7 @@ bool create_fission_neutrons {true};
 bool dagmc                   {false};
 bool delayed_photon_scaling  {true};
 bool entropy_on              {false};
+bool event_based             {false};
 bool legendre_to_tabular     {true};
 bool material_cell_offsets   {true};
 bool output_summary          {true};
@@ -80,6 +81,8 @@ int32_t n_batches;
 int32_t n_inactive {0};
 int32_t gen_per_batch {1};
 int64_t n_particles {-1};
+
+int64_t max_particles_in_flight {100000};
 
 ElectronTreatment electron_treatment {ElectronTreatment::TTB};
 std::array<double, 4> energy_cutoff {0.0, 1000.0, 0.0, 0.0};
@@ -128,6 +131,12 @@ void get_run_parameters(pugi::xml_node node_base)
   // Get number of particles if it wasn't specified as a command-line argument
   if (n_particles == -1) {
     n_particles = std::stoll(get_node_value(node_base, "particles"));
+  }
+  
+  // Get maximum number of in flight particles for event-based mode
+  if (check_for_node(node_base, "max_particles_in_flight")) {
+    max_particles_in_flight = std::stoll(get_node_value(node_base,
+      "max_particles_in_flight"));
   }
 
   // Get number of basic batches
@@ -784,6 +793,11 @@ void read_settings_xml()
   // Check whether to scale fission photon yields
   if (check_for_node(root, "delayed_photon_scaling")) {
     delayed_photon_scaling = get_node_value_bool(root, "delayed_photon_scaling");
+  }
+  
+  // Check whether to use event-based parallelism
+  if (check_for_node(root, "event_based")) {
+    event_based = get_node_value_bool(root, "event_based");
   }
 
   // Check whether material cell offsets should be generated

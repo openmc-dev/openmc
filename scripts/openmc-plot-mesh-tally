@@ -21,10 +21,12 @@ import numpy as np
 
 from openmc import StatePoint, MeshFilter
 
+_COMBOBOX_SELECTED = '<<ComboboxSelected>>'
+
 
 class MeshPlotter(tk.Frame):
     def __init__(self, parent, filename):
-        tk.Frame.__init__(self, parent)
+        super().__init__(self, parent)
 
         self.labels = {
             'Cell': 'Cell:',
@@ -79,7 +81,7 @@ class MeshPlotter(tk.Frame):
                                    for i in self.meshTallies]
         self.tallyBox.current(0)
         self.tallyBox.grid(row=0, column=1, sticky=tk.W+tk.E)
-        self.tallyBox.bind('<<ComboboxSelected>>', self.update)
+        self.tallyBox.bind(_COMBOBOX_SELECTED, self.update)
 
         # Planar basis selection
         labelBasis = tk.Label(self.selectFrame, text='Basis:')
@@ -88,14 +90,14 @@ class MeshPlotter(tk.Frame):
         self.basisBox['values'] = ('xy', 'yz', 'xz')
         self.basisBox.current(0)
         self.basisBox.grid(row=1, column=1, sticky=tk.W+tk.E)
-        self.basisBox.bind('<<ComboboxSelected>>', self.update)
+        self.basisBox.bind(_COMBOBOX_SELECTED, self.update)
 
         # Axial level
         labelAxial = tk.Label(self.selectFrame, text='Axial level:')
         labelAxial.grid(row=2, column=0, sticky=tk.W)
         self.axialBox = ttk.Combobox(self.selectFrame, state='readonly')
         self.axialBox.grid(row=2, column=1, sticky=tk.W+tk.E)
-        self.axialBox.bind('<<ComboboxSelected>>', self.redraw)
+        self.axialBox.bind(_COMBOBOX_SELECTED, self.redraw)
 
         # Option for mean/uncertainty
         labelMean = tk.Label(self.selectFrame, text='Mean/Uncertainty:')
@@ -105,14 +107,14 @@ class MeshPlotter(tk.Frame):
                                   'Relative uncertainty')
         self.meanBox.current(0)
         self.meanBox.grid(row=3, column=1, sticky=tk.W+tk.E)
-        self.meanBox.bind('<<ComboboxSelected>>', self.update)
+        self.meanBox.bind(_COMBOBOX_SELECTED, self.update)
 
         # Scores
         labelScore = tk.Label(self.selectFrame, text='Score:')
         labelScore.grid(row=4, column=0, sticky=tk.W)
         self.scoreBox = ttk.Combobox(self.selectFrame, state='readonly')
         self.scoreBox.grid(row=4, column=1, sticky=tk.W+tk.E)
-        self.scoreBox.bind('<<ComboboxSelected>>', self.redraw)
+        self.scoreBox.bind(_COMBOBOX_SELECTED, self.redraw)
 
         # Filter label
         boldfont = font.Font(weight='bold')
@@ -121,10 +123,7 @@ class MeshPlotter(tk.Frame):
         labelFilters.grid(row=5, column=0, sticky=tk.W)
 
     def update(self, event=None):
-        if not event:
-            widget = None
-        else:
-            widget = event.widget
+        widget = event.widget if event else None
 
         tally_id = self.meshTallies[self.tallyBox.current()]
         selectedTally = self.datafile.tallies[tally_id]
@@ -188,7 +187,7 @@ class MeshPlotter(tk.Frame):
 
             combobox.current(0)
             combobox.grid(row=count+6, column=1, sticky=tk.W+tk.E)
-            combobox.bind('<<ComboboxSelected>>', self.redraw)
+            combobox.bind(_COMBOBOX_SELECTED, self.redraw)
 
         # If There are no filters, leave a 'None available' message
         if count == 0:

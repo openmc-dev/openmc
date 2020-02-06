@@ -22,9 +22,9 @@ from .function import Tabulated1D
 
 
 # Constants
-MASS_ELECTRON_EV = 0.5109989461e6 # Electron mass energy
-PLANCK_C = 1.2398419739062977e4 # Planck's constant times c in eV-Angstroms
-FINE_STRUCTURE = 137.035999139 # Inverse fine structure constant
+MASS_ELECTRON_EV = 0.5109989461e6  # Electron mass energy
+PLANCK_C = 1.2398419739062977e4  # Planck's constant times c in eV-Angstroms
+FINE_STRUCTURE = 137.035999139  # Inverse fine structure constant
 CM_PER_ANGSTROM = 1.0e-8
 # classical electron radius in cm
 R0 = CM_PER_ANGSTROM * PLANCK_C / (2.0 * pi * FINE_STRUCTURE * MASS_ELECTRON_EV)
@@ -33,7 +33,7 @@ R0 = CM_PER_ANGSTROM * PLANCK_C / (2.0 * pi * FINE_STRUCTURE * MASS_ELECTRON_EV)
 _SUBSHELLS = [None, 'K', 'L1', 'L2', 'L3', 'M1', 'M2', 'M3', 'M4', 'M5',
               'N1', 'N2', 'N3', 'N4', 'N5', 'N6', 'N7', 'O1', 'O2', 'O3',
               'O4', 'O5', 'O6', 'O7', 'O8', 'O9', 'P1', 'P2', 'P3', 'P4',
-              'P5', 'P6', 'P7', 'P8', 'P9', 'P10', 'P11','Q1', 'Q2', 'Q3']
+              'P5', 'P6', 'P7', 'P8', 'P9', 'P10', 'P11', 'Q1', 'Q2', 'Q3']
 
 _REACTION_NAME = {
     501: ('Total photon interaction', 'total'),
@@ -391,49 +391,6 @@ class AtomicRelaxation(EqualityMixin):
                  _SUBSHELLS, range(len(_SUBSHELLS)))
             group.create_dataset('transitions', data=df.values.astype(float))
 
-    def energy_fluorescence(self, shell):
-        """Compute expected energy of fluorescent photons for the shell
-
-        Parameters
-        ----------
-        shell : str
-            The subshell to compute
-
-        Returns
-        -------
-        float
-            Energy of fluorescent photons
-
-        """
-
-        if shell not in self.binding_energy:
-            raise KeyError('Invalid shell {}.'.format(shell))
-
-        if shell in self._e_fluorescence:
-            # Already computed
-            return self._e_fluorescence[shell]
-        e = 0.0
-        if shell not in self.transitions or self.transitions[shell].empty:
-            e = self.binding_energy[shell]
-        else:
-            df = self.transitions[shell]
-            for primary, secondary, energy, prob in df.itertuples(index=False):
-                e_row = 0.0
-                if secondary is None:
-                    # Fluorescent photon release in radiative transition
-                    e_row += energy
-                else:
-                    # Fill the hole left by auger electron
-                    e_row += self.energy_fluorescence(secondary)
-
-                # Fill the photoelectron hole
-                e_row += self.energy_fluorescence(primary)
-
-                # Expected fluorescent photon energy
-                e += e_row * prob
-
-        self._e_fluorescence[shell] = e
-        return e
 
 class IncidentPhoton(EqualityMixin):
     r"""Photon interaction data.
@@ -549,7 +506,9 @@ class IncidentPhoton(EqualityMixin):
             ace = get_table(ace_or_filename)
 
         # Get atomic number based on name of ACE table
-        zaid = ace.name.split('.')[0]
+        zaid, xs = ace.name.split('.')
+        if not xs.endswith('p'):
+            raise TypeError("{} is not a photoatomic transport ACE table.".format(ace))
         Z = get_metadata(int(zaid))[2]
 
         # Read each reaction
@@ -614,17 +573,23 @@ class IncidentPhoton(EqualityMixin):
                 rx = PhotonReaction(mt)
                 data.reactions[mt] = rx
 
-                # Store cross section
+                # Store cross section, determining threshold
                 xs = ace.xss[idx : idx+n_energy].copy()
                 nonzero = (xs != 0.0)
                 xs[nonzero] = np.exp(xs[nonzero])
-                rx.xs = Tabulated1D(energy, xs, [n_energy], [5])
+                threshold = np.where(xs > 0.0)[0][0]
+                rx.xs = Tabulated1D(energy[threshold:], xs[threshold:],
+                                    [n_energy - threshold], [5])
                 idx += n_energy
 
                 # Copy binding energy
                 shell = _SUBSHELLS[d]
                 e = data.atomic_relaxation.binding_energy[shell]
                 rx.subshell_binding_energy = e
+        else:
+            raise ValueError("ACE table {} does not have subshell data. Only "
+                             "newer ACE photoatomic libraries are supported "
+                             "(e.g., eprdata14).".format(ace.name))
 
         # Add bremsstrahlung DCS data
         data._add_bremsstrahlung()
@@ -690,9 +655,6 @@ class IncidentPhoton(EqualityMixin):
 
         # Add bremsstrahlung DCS data
         data._add_bremsstrahlung()
-
-        # Add heating cross sections
-        data._compute_heating()
 
         return data
 
@@ -786,7 +748,7 @@ class IncidentPhoton(EqualityMixin):
         ----------
         path : str
             Path to write HDF5 file to
-        mode : {'r', r+', 'w', 'x', 'a'}
+        mode : {'r', 'r+', 'w', 'x', 'a'}
             Mode that is used to open the HDF5 file. This is the second argument
             to the :class:`h5py.File` constructor.
         libver : {'earliest', 'latest'}
@@ -909,10 +871,10 @@ class IncidentPhoton(EqualityMixin):
 
                 for j in range(k):
                     # Cubic spline interpolation in log energy and linear DCS
-                    cs = CubicSpline(logx, y[:,j])
+                    cs = CubicSpline(logx, y[:, j])
 
                     # Get scaled DCS values (millibarns) on new energy grid
-                    dcs[:,j] = cs(log_energy)
+                    dcs[:, j] = cs(log_energy)
 
                 _BREMSSTRAHLUNG[i]['dcs'] = dcs
 
@@ -921,79 +883,6 @@ class IncidentPhoton(EqualityMixin):
         self.bremsstrahlung['photon_energy'] = _BREMSSTRAHLUNG['photon_energy']
         self.bremsstrahlung.update(_BREMSSTRAHLUNG[self.atomic_number])
 
-    def _compute_heating(self):
-        r"""Compute heating cross sections (KERMA)
-
-        Photon energy is deposited as energy loss in three reactions:
-        incoherent scattering, pair production and photoelectric effect.
-        The point-wise heating cross section is calculated as:
-
-        .. math::
-            \begin{aligned}
-            \sigma_{Hx}(E) &= (E - \overline{E}_x(E)) \cdot \sigma_x(E), x \in \left\{I, PP, PE \right\} \\
-            \overline{E}_I(E) &= \frac {\int E' \sigma_I (E,E',\mu) d\mu} {\int \sigma_I (E,E',\mu) d\mu} \\
-            \overline{E}_{PP} &= 2 m_e c^2 = 1.022 \times 10^6 eV \\
-            \overline{E}_{PE} &= E(\text{fluorescent photons})
-            \end{aligned}
-
-        The differential cross section representation for incoherent
-        scattering can be found in the theory manual.
-
-        """
-
-        # Determine a union energy grid
-        energy = np.array([])
-        for mt in (504, 515, 517, 522):
-            if mt in self:
-                energy = np.union1d(energy, self[mt].xs.x)
-
-        heating_xs = np.zeros_like(energy)
-
-        # Incoherent scattering
-        if 504 in self:
-            rx = self[504]
-
-            def dsigma_dmu(mu, E):
-                k = E / MASS_ELECTRON_EV
-                krat = 1.0 / (1.0 + k * (1.0 - mu))
-                x = E * sqrt(0.5 * (1.0 - mu)) / PLANCK_C
-                return pi * R0*R0 * krat*krat * (krat + 1/krat +
-                       mu*mu - 1.0) * rx.scattering_factor(x)
-
-            def eout_dsigma_dmu(mu, E):
-                Eout = E / (1.0 + E / MASS_ELECTRON_EV * (1.0 - mu))
-                return Eout * dsigma_dmu(mu, E)
-
-            def eout_average(E):
-                integral_sigma = quad(dsigma_dmu, -1.0, 1.0,
-                                      args=(E,), epsabs=0.0, epsrel=1e-3)[0]
-                integral_sigma_e = quad(eout_dsigma_dmu, -1.0, 1.0,
-                                        args=(E,), epsabs=0.0, epsrel=1e-3)[0]
-                return integral_sigma_e / integral_sigma
-
-            e_out = np.vectorize(eout_average)(energy)
-            heating_xs += (energy - e_out) * rx.xs(energy)
-
-        # Pair production, electron field
-        if 515 in self:
-            heating_xs += (energy - 2*MASS_ELECTRON_EV)*self[515].xs(energy)
-
-        # Pair production, nuclear field
-        if 517 in self:
-            heating_xs += (energy - 2*MASS_ELECTRON_EV)*self[517].xs(energy)
-
-        # Photoelectric effect
-        if 522 in self:
-            # Account for fluorescent photons
-            for mt, rx in self.reactions.items():
-                if mt >= 534 and mt <= 572:
-                    shell = _REACTION_NAME[mt][1]
-                    e_f = self.atomic_relaxation.energy_fluorescence(shell)
-                    heating_xs += (energy - e_f) * rx.xs(energy)
-
-        heat_rx = PhotonReaction(525)
-        heat_rx.xs = Tabulated1D(energy, heating_xs, [energy.size], [5])
-        self.reactions[525] = heat_rx
 
 class PhotonReaction(EqualityMixin):
     """Photon-induced reaction

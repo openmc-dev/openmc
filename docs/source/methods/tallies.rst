@@ -484,31 +484,31 @@ improve the estimate of the percentile.
 
    .. rubric:: References
 
-.. _following approximation: http://dx.doi.org/10.1080/03610918708812641
+.. _following approximation: https://doi.org/10.1080/03610918708812641
 
-.. _Bessel's correction: http://en.wikipedia.org/wiki/Bessel's_correction
+.. _Bessel's correction: https://en.wikipedia.org/wiki/Bessel's_correction
 
-.. _random variable: http://en.wikipedia.org/wiki/Random_variable
+.. _random variable: https://en.wikipedia.org/wiki/Random_variable
 
-.. _stochastic process: http://en.wikipedia.org/wiki/Stochastic_process
+.. _stochastic process: https://en.wikipedia.org/wiki/Stochastic_process
 
-.. _independent, identically-distributed random variables: http://en.wikipedia.org/wiki/Independent_and_identically_distributed_random_variables
+.. _independent, identically-distributed random variables: https://en.wikipedia.org/wiki/Independent_and_identically_distributed_random_variables
 
-.. _law of large numbers: http://en.wikipedia.org/wiki/Law_of_large_numbers
+.. _law of large numbers: https://en.wikipedia.org/wiki/Law_of_large_numbers
 
-.. _expected value: http://en.wikipedia.org/wiki/Expected_value
+.. _expected value: https://en.wikipedia.org/wiki/Expected_value
 
-.. _converges in probability: http://en.wikipedia.org/wiki/Convergence_of_random_variables#Convergence_in_probability
+.. _converges in probability: https://en.wikipedia.org/wiki/Convergence_of_random_variables#Convergence_in_probability
 
-.. _normal distribution: http://en.wikipedia.org/wiki/Normal_distribution
+.. _normal distribution: https://en.wikipedia.org/wiki/Normal_distribution
 
-.. _converges in distribution: http://en.wikipedia.org/wiki/Convergence_of_random_variables#Convergence_in_distribution
+.. _converges in distribution: https://en.wikipedia.org/wiki/Convergence_of_random_variables#Convergence_in_distribution
 
-.. _confidence intervals: http://en.wikipedia.org/wiki/Confidence_interval
+.. _confidence intervals: https://en.wikipedia.org/wiki/Confidence_interval
 
-.. _Student's t-distribution: http://en.wikipedia.org/wiki/Student%27s_t-distribution
+.. _Student's t-distribution: https://en.wikipedia.org/wiki/Student%27s_t-distribution
 
-.. _Cauchy distribution: http://en.wikipedia.org/wiki/Cauchy_distribution
+.. _Cauchy distribution: https://en.wikipedia.org/wiki/Cauchy_distribution
 
 .. _unpublished rational approximation: https://web.archive.org/web/20150926021742/http://home.online.no/~pjacklam/notes/invnorm/
 

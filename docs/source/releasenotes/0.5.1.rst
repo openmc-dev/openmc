@@ -36,8 +36,8 @@ Bug Fixes
 - 63bfd2_: Fix tracklength tallies with cell filter and universes.
 - 88daf7_: Fix analog tallies with survival biasing.
 
-.. _94103e: https://github.com/mit-crpg/openmc/commit/94103e
-.. _e77059: https://github.com/mit-crpg/openmc/commit/e77059
-.. _b0fe88: https://github.com/mit-crpg/openmc/commit/b0fe88
-.. _63bfd2: https://github.com/mit-crpg/openmc/commit/63bfd2
-.. _88daf7: https://github.com/mit-crpg/openmc/commit/88daf7
+.. _94103e: https://github.com/openmc-dev/openmc/commit/94103e
+.. _e77059: https://github.com/openmc-dev/openmc/commit/e77059
+.. _b0fe88: https://github.com/openmc-dev/openmc/commit/b0fe88
+.. _63bfd2: https://github.com/openmc-dev/openmc/commit/63bfd2
+.. _88daf7: https://github.com/openmc-dev/openmc/commit/88daf7

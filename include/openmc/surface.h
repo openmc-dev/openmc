@@ -11,20 +11,11 @@
 #include "pugixml.hpp"
 
 #include "openmc/constants.h"
+#include "openmc/particle.h"
 #include "openmc/position.h"
 #include "dagmc.h"
 
 namespace openmc {
-
-//==============================================================================
-// Module constant declarations (defined in .cpp)
-//==============================================================================
-
-// TODO: Convert to enum
-extern "C" const int BC_TRANSMIT;
-extern "C" const int BC_VACUUM;
-extern "C" const int BC_REFLECT;
-extern "C" const int BC_PERIODIC;
 
 //==============================================================================
 // Global variables
@@ -92,8 +83,18 @@ struct BoundingBox
 class Surface
 {
 public:
+
+  // Types of available boundary conditions on a surface
+  enum class BoundaryType {
+    TRANSMIT,
+    VACUUM,
+    REFLECT,
+    PERIODIC,
+    WHITE
+  };
+
   int id_;                    //!< Unique ID
-  int bc_;                    //!< Boundary condition
+  BoundaryType bc_;                    //!< Boundary condition
   std::string name_;          //!< User-defined name
 
   explicit Surface(pugi::xml_node surf_node);
@@ -112,8 +113,12 @@ public:
   //! Determine the direction of a ray reflected from the surface.
   //! \param[in] r The point at which the ray is incident.
   //! \param[in] u Incident direction of the ray
+  //! \param[inout] p Pointer to the particle
   //! \return Outgoing direction of the ray
-  virtual Direction reflect(Position r, Direction u) const;
+  virtual Direction reflect(Position r, Direction u, Particle* p) const;
+
+  virtual Direction diffuse_reflect(Position r, Direction u,
+    uint64_t* seed) const;
 
   //! Evaluate the equation describing the surface.
   //!
@@ -167,7 +172,7 @@ public:
   double evaluate(Position r) const;
   double distance(Position r, Direction u, bool coincident) const;
   Direction normal(Position r) const;
-  Direction reflect(Position r, Direction u) const;
+  Direction reflect(Position r, Direction u, Particle* p) const;
 
   void to_hdf5(hid_t group_id) const;
 

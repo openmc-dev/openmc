@@ -97,16 +97,17 @@ class Summary(object):
                 self._macroscopics = name.decode()
 
     def _read_geometry(self):
-        if "dagmc" in self._f['geometry'].attrs.keys():
-            return
 
-        # Read in and initialize the Materials and Geometry
+        # Read in and initialize the Materials
         self._read_materials()
-        self._read_surfaces()
-        cell_fills = self._read_cells()
-        self._read_universes()
-        self._read_lattices()
-        self._finalize_geometry(cell_fills)
+
+        # Read native geometry only
+        if "dagmc" not in self._f['geometry'].attrs.keys():
+            self._read_surfaces()
+            cell_fills = self._read_cells()
+            self._read_universes()
+            self._read_lattices()
+            self._finalize_geometry(cell_fills)
 
     def _read_materials(self):
         for group in self._f['materials'].values():
@@ -153,8 +154,9 @@ class Summary(object):
 
                 if 'rotation' in group:
                     rotation = group['rotation'][()]
-                    rotation = np.asarray(rotation, dtype=np.int)
-                    cell._rotation = rotation
+                    if rotation.size == 9:
+                        rotation.shape = (3, 3)
+                    cell.rotation = rotation
 
             elif fill_type == 'material':
                 cell.temperature = group['temperature'][()]

@@ -63,7 +63,6 @@ def main():
     omp = (os.environ.get('OMP') == 'y')
     mpi = (os.environ.get('MPI') == 'y')
     phdf5 = (os.environ.get('PHDF5') == 'y')
-
     dagmc = (os.environ.get('DAGMC') == 'y')
 
     # Build and install

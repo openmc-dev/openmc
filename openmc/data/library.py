@@ -6,7 +6,6 @@ import h5py
 
 from openmc.mixin import EqualityMixin
 from openmc._xml import clean_indentation
-from openmc.checkvalue import check_type
 
 
 class DataLibrary(EqualityMixin):
@@ -24,13 +23,16 @@ class DataLibrary(EqualityMixin):
     def __init__(self):
         self.libraries = []
 
-    def get_by_material(self, name):
+    def get_by_material(self, name, data_type='neutron'):
         """Return the library dictionary containing a given material.
 
         Parameters
         ----------
         name : str
             Name of material, e.g. 'Am241'
+        data_type : str
+            Name of data type, e.g. 'neutron', 'photon', 'wmp',
+            or 'thermal'
 
         Returns
         -------
@@ -40,7 +42,7 @@ class DataLibrary(EqualityMixin):
 
         """
         for library in self.libraries:
-            if name in library['materials']:
+            if name in library['materials'] and data_type in library['type']:
                 return library
         return None
 

@@ -83,10 +83,10 @@ openmc_statepoint_write(const char* filename, bool* write_source)
     write_dataset(file_id, "energy_mode", settings::run_CE ?
       "continuous-energy" : "multi-group");
     switch (settings::run_mode) {
-    case RUN_MODE_FIXEDSOURCE:
+    case RunMode::FIXED_SOURCE:
       write_dataset(file_id, "run_mode", "fixed source");
       break;
-    case RUN_MODE_EIGENVALUE:
+    case RunMode::EIGENVALUE:
       write_dataset(file_id, "run_mode", "eigenvalue");
       break;
     }
@@ -101,7 +101,7 @@ openmc_statepoint_write(const char* filename, bool* write_source)
     write_attribute(file_id, "source_present", write_source_);
 
     // Write out information for eigenvalue run
-    if (settings::run_mode == RUN_MODE_EIGENVALUE)
+    if (settings::run_mode == RunMode::EIGENVALUE)
       write_eigenvalue_hdf5(file_id);
 
     hid_t tallies_group = create_group(file_id, "tallies");
@@ -116,13 +116,13 @@ openmc_statepoint_write(const char* filename, bool* write_source)
         hid_t deriv_group = create_group(derivs_group,
           "derivative " + std::to_string(deriv.id));
         write_dataset(deriv_group, "material", deriv.diff_material);
-        if (deriv.variable == DIFF_DENSITY) {
+        if (deriv.variable == DerivativeVariable::DENSITY) {
           write_dataset(deriv_group, "independent variable", "density");
-        } else if (deriv.variable == DIFF_NUCLIDE_DENSITY) {
+        } else if (deriv.variable == DerivativeVariable::NUCLIDE_DENSITY) {
           write_dataset(deriv_group, "independent variable", "nuclide_density");
           write_dataset(deriv_group, "nuclide",
             data::nuclides[deriv.diff_nuclide]->name_);
-        } else if (deriv.variable == DIFF_TEMPERATURE) {
+        } else if (deriv.variable == DerivativeVariable::TEMPERATURE) {
           write_dataset(deriv_group, "independent variable", "temperature");
         } else {
           fatal_error("Independent variable for derivative "
@@ -165,54 +165,61 @@ openmc_statepoint_write(const char* filename, bool* write_source)
       write_attribute(tallies_group, "ids", tally_ids);
 
       // Write all tally information except results
-      for (const auto& tally_ptr : model::tallies) {
-        const auto& tally {*tally_ptr};
+      for (const auto& tally : model::tallies) {
         hid_t tally_group = create_group(tallies_group,
-          "tally " + std::to_string(tally.id_));
+          "tally " + std::to_string(tally->id_));
 
-        write_dataset(tally_group, "name",  tally.name_);
+        write_dataset(tally_group, "name",  tally->name_);
 
-        if (tally.estimator_ == ESTIMATOR_ANALOG) {
+        if (tally->writable_) {
+          write_attribute(tally_group, "internal", 0);
+        } else {
+          write_attribute(tally_group, "internal", 1);
+          close_group(tally_group);
+          continue;
+        }
+
+        if (tally->estimator_ == TallyEstimator::ANALOG) {
           write_dataset(tally_group, "estimator", "analog");
-        } else if (tally.estimator_ == ESTIMATOR_TRACKLENGTH) {
+        } else if (tally->estimator_ == TallyEstimator::TRACKLENGTH) {
           write_dataset(tally_group, "estimator", "tracklength");
-        } else if (tally.estimator_ == ESTIMATOR_COLLISION) {
+        } else if (tally->estimator_ == TallyEstimator::COLLISION) {
           write_dataset(tally_group, "estimator", "collision");
         }
 
-        write_dataset(tally_group, "n_realizations", tally.n_realizations_);
+        write_dataset(tally_group, "n_realizations", tally->n_realizations_);
 
         // Write the ID of each filter attached to this tally
-        write_dataset(tally_group, "n_filters", tally.filters().size());
-        if (!tally.filters().empty()) {
+        write_dataset(tally_group, "n_filters", tally->filters().size());
+        if (!tally->filters().empty()) {
           std::vector<int32_t> filter_ids;
-          filter_ids.reserve(tally.filters().size());
-          for (auto i_filt : tally.filters())
+          filter_ids.reserve(tally->filters().size());
+          for (auto i_filt : tally->filters())
             filter_ids.push_back(model::tally_filters[i_filt]->id());
           write_dataset(tally_group, "filters", filter_ids);
         }
 
         // Write the nuclides this tally scores
         std::vector<std::string> nuclides;
-        for (auto i_nuclide : tally.nuclides_) {
+        for (auto i_nuclide : tally->nuclides_) {
           if (i_nuclide == -1) {
             nuclides.push_back("total");
           } else {
             if (settings::run_CE) {
               nuclides.push_back(data::nuclides[i_nuclide]->name_);
             } else {
-              nuclides.push_back(data::nuclides_MG[i_nuclide].name);
+              nuclides.push_back(data::mg.nuclides_[i_nuclide].name);
             }
           }
         }
         write_dataset(tally_group, "nuclides", nuclides);
 
-        if (tally.deriv_ != C_NONE) write_dataset(tally_group, "derivative",
-          model::tally_derivs[tally.deriv_].id);
+        if (tally->deriv_ != C_NONE) write_dataset(tally_group, "derivative",
+          model::tally_derivs[tally->deriv_].id);
 
         // Write the tally score bins
         std::vector<std::string> scores;
-        for (auto sc : tally.scores_) scores.push_back(reaction_name(sc));
+        for (auto sc : tally->scores_) scores.push_back(reaction_name(sc));
         write_dataset(tally_group, "n_score_bins", scores.size());
         write_dataset(tally_group, "score_bins", scores);
 
@@ -232,6 +239,7 @@ openmc_statepoint_write(const char* filename, bool* write_source)
 
         // Write all tally results
         for (const auto& tally : model::tallies) {
+          if (!tally->writable_) continue;
           // Write sum and sum_sq for each bin
           std::string name = "tally " + std::to_string(tally->id_);
           hid_t tally_group = open_group(tallies_group, name.c_str());
@@ -267,14 +275,16 @@ openmc_statepoint_write(const char* filename, bool* write_source)
     write_dataset(runtime_group, "simulation", time_inactive.elapsed()
       + time_active.elapsed());
     write_dataset(runtime_group, "transport", time_transport.elapsed());
-    if (settings::run_mode == RUN_MODE_EIGENVALUE) {
+    if (settings::run_mode == RunMode::EIGENVALUE) {
       write_dataset(runtime_group, "inactive batches", time_inactive.elapsed());
     }
     write_dataset(runtime_group, "active batches", time_active.elapsed());
-    if (settings::run_mode == RUN_MODE_EIGENVALUE) {
+    if (settings::run_mode == RunMode::EIGENVALUE) {
       write_dataset(runtime_group, "synchronizing fission bank", time_bank.elapsed());
       write_dataset(runtime_group, "sampling source sites", time_bank_sample.elapsed());
       write_dataset(runtime_group, "SEND-RECV source sites", time_bank_sendrecv.elapsed());
+    } else {
+      write_dataset(runtime_group, "sampling source sites", time_sample_source.elapsed());
     }
     write_dataset(runtime_group, "accumulating tallies", time_tallies.elapsed());
     write_dataset(runtime_group, "total", time_total.elapsed());
@@ -355,9 +365,9 @@ void load_state_point()
   // Read and overwrite run information except number of batches
   read_dataset(file_id, "run_mode", word);
   if (word == "fixed source") {
-    settings::run_mode = RUN_MODE_FIXEDSOURCE;
+    settings::run_mode = RunMode::FIXED_SOURCE;
   } else if (word == "eigenvalue") {
-    settings::run_mode = RUN_MODE_EIGENVALUE;
+    settings::run_mode = RunMode::EIGENVALUE;
   }
   read_attribute(file_id, "photon_transport", settings::photon_transport);
   read_dataset(file_id, "n_particles", settings::n_particles);
@@ -380,7 +390,7 @@ void load_state_point()
   }
 
   // Read information specific to eigenvalue run
-  if (settings::run_mode == RUN_MODE_EIGENVALUE) {
+  if (settings::run_mode == RunMode::EIGENVALUE) {
     read_dataset(file_id, "n_inactive", temp);
     read_eigenvalue_hdf5(file_id);
 
@@ -425,11 +435,21 @@ void load_state_point()
         // Read sum, sum_sq, and N for each bin
         std::string name = "tally " + std::to_string(tally->id_);
         hid_t tally_group = open_group(tallies_group, name.c_str());
-        auto& results = tally->results_;
-        read_tally_results(tally_group, results.shape()[0],
-          results.shape()[1], results.data());
-        read_dataset(tally_group, "n_realizations", tally->n_realizations_);
-        close_group(tally_group);
+
+        int internal=0;
+        if (attribute_exists(tally_group, "internal")) {
+          read_attribute(tally_group, "internal", internal);
+        }
+        if (internal) {
+          tally->writable_ = false;
+        } else {
+
+          auto& results = tally->results_;
+          read_tally_results(tally_group, results.shape()[0],
+            results.shape()[1], results.data());
+          read_dataset(tally_group, "n_realizations", tally->n_realizations_);
+          close_group(tally_group);
+        }
       }
 
       close_group(tallies_group);
@@ -437,7 +457,7 @@ void load_state_point()
   }
 
   // Read source if in eigenvalue mode
-  if (settings::run_mode == RUN_MODE_EIGENVALUE) {
+  if (settings::run_mode == RunMode::EIGENVALUE) {
 
     // Check if source was written out separately
     if (!source_present) {
@@ -697,6 +717,7 @@ void write_tally_results_nr(hid_t file_id)
   for (const auto& t : model::tallies) {
     // Skip any tallies that are not active
     if (!t->active_) continue;
+    if (!t->writable_) continue;
 
     if (mpi::master && !object_exists(file_id, "tallies_present")) {
       write_attribute(file_id, "tallies_present", 1);
@@ -704,7 +725,7 @@ void write_tally_results_nr(hid_t file_id)
 
     // Get view of accumulated tally values
     auto values_view = xt::view(t->results_, xt::all(), xt::all(),
-      xt::range(RESULT_SUM, RESULT_SUM_SQ + 1));
+      xt::range(static_cast<int>(TallyResult::SUM), static_cast<int>(TallyResult::SUM_SQ) + 1));
 
     // Make copy of tally values in contiguous array
     xt::xtensor<double, 2> values = values_view;
@@ -731,7 +752,7 @@ void write_tally_results_nr(hid_t file_id)
       // Put in temporary tally result
       xt::xtensor<double, 3> results_copy = xt::zeros_like(t->results_);
       auto copy_view = xt::view(results_copy, xt::all(), xt::all(),
-        xt::range(RESULT_SUM, RESULT_SUM_SQ + 1));
+        xt::range(static_cast<int>(TallyResult::SUM), static_cast<int>(TallyResult::SUM_SQ) + 1));
       copy_view = values;
 
       // Write reduced tally results to file

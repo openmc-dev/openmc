@@ -8,7 +8,7 @@
 namespace openmc {
 
 void
-MeshSurfaceFilter::get_all_bins(const Particle* p, int estimator,
+MeshSurfaceFilter::get_all_bins(const Particle* p, TallyEstimator estimator,
                                 FilterMatch& match) const
 {
   model::meshes[mesh_]->surface_bins_crossed(p, match.bins_);
@@ -23,47 +23,47 @@ MeshSurfaceFilter::text_label(int bin) const
 
   // Get flattend mesh index and surface index.
   int i_mesh = bin / (4 * n_dim);
-  int i_surf = (bin % (4 * n_dim)) + 1;
+  MeshDir surf_dir = static_cast<MeshDir>(bin % (4 * n_dim));
 
   // Get mesh index part of label.
   std::string out = MeshFilter::text_label(i_mesh);
 
   // Get surface part of label.
-  switch (i_surf) {
-    case OUT_LEFT:
+  switch (surf_dir) {
+    case MeshDir::OUT_LEFT:
       out += " Outgoing, x-min";
       break;
-    case IN_LEFT:
+    case MeshDir::IN_LEFT:
       out += " Incoming, x-min";
       break;
-    case OUT_RIGHT:
+    case MeshDir::OUT_RIGHT:
       out += " Outgoing, x-max";
       break;
-    case IN_RIGHT:
+    case MeshDir::IN_RIGHT:
       out += " Incoming, x-max";
       break;
-    case OUT_BACK:
+    case MeshDir::OUT_BACK:
       out += " Outgoing, y-min";
       break;
-    case IN_BACK:
+    case MeshDir::IN_BACK:
       out += " Incoming, y-min";
       break;
-    case OUT_FRONT:
+    case MeshDir::OUT_FRONT:
       out += " Outgoing, y-max";
       break;
-    case IN_FRONT:
+    case MeshDir::IN_FRONT:
       out += " Incoming, y-max";
       break;
-    case OUT_BOTTOM:
+    case MeshDir::OUT_BOTTOM:
       out += " Outgoing, z-min";
       break;
-    case IN_BOTTOM:
+    case MeshDir::IN_BOTTOM:
       out += " Incoming, z-min";
       break;
-    case OUT_TOP:
+    case MeshDir::OUT_TOP:
       out += " Outgoing, z-max";
       break;
-    case IN_TOP:
+    case MeshDir::IN_TOP:
       out += " Incoming, z-max";
       break;
   }

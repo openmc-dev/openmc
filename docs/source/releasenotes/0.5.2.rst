@@ -41,15 +41,15 @@ Bug Fixes
 - ab0793_: Corrected PETSC_NULL references to their correct types.
 - 182ebd_: Use analog estimator with energyout filter.
 
-.. _7632f3: https://github.com/mit-crpg/openmc/commit/7632f3
-.. _f85ac4: https://github.com/mit-crpg/openmc/commit/f85ac4
-.. _49c36b: https://github.com/mit-crpg/openmc/commit/49c36b
-.. _5ccc78: https://github.com/mit-crpg/openmc/commit/5ccc78
-.. _b1f52f: https://github.com/mit-crpg/openmc/commit/b1f52f
-.. _eae7e5: https://github.com/mit-crpg/openmc/commit/eae7e5
-.. _10c1cc: https://github.com/mit-crpg/openmc/commit/10c1cc
-.. _afdb50: https://github.com/mit-crpg/openmc/commit/afdb50
-.. _a3c593: https://github.com/mit-crpg/openmc/commit/a3c593
-.. _3a66e3: https://github.com/mit-crpg/openmc/commit/3a66e3
-.. _ab0793: https://github.com/mit-crpg/openmc/commit/ab0793
-.. _182ebd: https://github.com/mit-crpg/openmc/commit/182ebd
+.. _7632f3: https://github.com/openmc-dev/openmc/commit/7632f3
+.. _f85ac4: https://github.com/openmc-dev/openmc/commit/f85ac4
+.. _49c36b: https://github.com/openmc-dev/openmc/commit/49c36b
+.. _5ccc78: https://github.com/openmc-dev/openmc/commit/5ccc78
+.. _b1f52f: https://github.com/openmc-dev/openmc/commit/b1f52f
+.. _eae7e5: https://github.com/openmc-dev/openmc/commit/eae7e5
+.. _10c1cc: https://github.com/openmc-dev/openmc/commit/10c1cc
+.. _afdb50: https://github.com/openmc-dev/openmc/commit/afdb50
+.. _a3c593: https://github.com/openmc-dev/openmc/commit/a3c593
+.. _3a66e3: https://github.com/openmc-dev/openmc/commit/3a66e3
+.. _ab0793: https://github.com/openmc-dev/openmc/commit/ab0793
+.. _182ebd: https://github.com/openmc-dev/openmc/commit/182ebd

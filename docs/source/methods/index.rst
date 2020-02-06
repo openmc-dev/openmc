@@ -18,3 +18,4 @@ Theory and Methodology
     eigenvalue
     parallelization
     cmfd
+    energy_deposition

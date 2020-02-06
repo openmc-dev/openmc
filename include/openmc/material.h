@@ -11,6 +11,7 @@
 #include "pugixml.hpp"
 #include "xtensor/xtensor.hpp"
 
+#include "openmc/constants.h"
 #include "openmc/bremsstrahlung.h"
 #include "openmc/particle.h"
 
@@ -24,8 +25,8 @@ class Material;
 
 namespace model {
 
-extern std::vector<std::unique_ptr<Material>> materials;
 extern std::unordered_map<int32_t, int32_t> material_map;
+extern std::vector<std::unique_ptr<Material>> materials;
 
 } // namespace model
 
@@ -132,7 +133,7 @@ public:
 
   //----------------------------------------------------------------------------
   // Data
-  int32_t id_; //!< Unique ID
+  int32_t id_ {C_NONE}; //!< Unique ID
   std::string name_; //!< Name of material
   std::vector<int> nuclide_; //!< Indices in nuclides vector
   std::vector<int> element_; //!< Indices in elements vector

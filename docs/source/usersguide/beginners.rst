@@ -141,13 +141,13 @@ and `Volume II`_. You may also find it helpful to review the following terms:
 - `Effective multiplication factor`_
 - `Flux`_
 
-.. _nuclear reactor: http://en.wikipedia.org/wiki/Nuclear_reactor
-.. _Monte Carlo: http://en.wikipedia.org/wiki/Monte_Carlo_method
-.. _fission: http://en.wikipedia.org/wiki/Nuclear_fission
-.. _deterministic: http://en.wikipedia.org/wiki/Deterministic_algorithm
-.. _neutron transport: http://en.wikipedia.org/wiki/Neutron_transport
-.. _discretization: http://en.wikipedia.org/wiki/Discretization
-.. _constructive solid geometry: http://en.wikipedia.org/wiki/Constructive_solid_geometry
+.. _nuclear reactor: https://en.wikipedia.org/wiki/Nuclear_reactor
+.. _Monte Carlo: https://en.wikipedia.org/wiki/Monte_Carlo_method
+.. _fission: https://en.wikipedia.org/wiki/Nuclear_fission
+.. _deterministic: https://en.wikipedia.org/wiki/Deterministic_algorithm
+.. _neutron transport: https://en.wikipedia.org/wiki/Neutron_transport
+.. _discretization: https://en.wikipedia.org/wiki/Discretization
+.. _constructive solid geometry: https://en.wikipedia.org/wiki/Constructive_solid_geometry
 .. _git: http://git-scm.com/
 .. _git tutorials: http://git-scm.com/documentation
 .. _Reactor Concepts Manual: http://www.tayloredge.com/periodic/trivia/ReactorConcepts.pdf
@@ -156,6 +156,6 @@ and `Volume II`_. You may also find it helpful to review the following terms:
 .. _OpenMC source code: https://github.com/openmc-dev/openmc
 .. _GitHub: https://github.com/
 .. _bug reports: https://github.com/openmc-dev/openmc/issues
-.. _Neutron cross section: http://en.wikipedia.org/wiki/Neutron_cross_section
+.. _Neutron cross section: https://en.wikipedia.org/wiki/Neutron_cross_section
 .. _Effective multiplication factor: https://en.wikipedia.org/wiki/Nuclear_chain_reaction#Effective_neutron_multiplication_factor
-.. _Flux: http://en.wikipedia.org/wiki/Neutron_flux
+.. _Flux: https://en.wikipedia.org/wiki/Neutron_flux

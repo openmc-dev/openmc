@@ -63,7 +63,7 @@ features and bug fixes. The general steps for contributing are as follows:
 
    .. code-block:: sh
 
-       git clone git@github.com:yourusername/openmc.git
+       git clone --recurse-submodules git@github.com:yourusername/openmc.git
        cd openmc
        git checkout -b newbranch develop
 
@@ -124,7 +124,7 @@ can interfere with virtual environments.
 .. _GitHub: https://github.com/
 .. _git flow: http://nvie.com/git-model
 .. _valgrind: http://valgrind.org/
-.. _style guide: http://openmc.readthedocs.io/en/latest/devguide/styleguide.html
+.. _style guide: https://docs.openmc.org/en/latest/devguide/styleguide.html
 .. _pull request: https://help.github.com/articles/using-pull-requests
 .. _openmc-dev/openmc: https://github.com/openmc-dev/openmc
 .. _paid plan: https://github.com/plans

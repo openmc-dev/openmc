@@ -10,7 +10,7 @@ from . import endf
 
 
 # For a given MAT number, give a name for the ACE table and a list of ZAID
-# identifiers
+# identifiers. This is based on Appendix C in the ENDF manual.
 ThermalTuple = namedtuple('ThermalTuple', ['name', 'zaids', 'nmix'])
 _THERMAL_DATA = {
     1: ThermalTuple('hh2o', [1001], 1),
@@ -23,30 +23,76 @@ _THERMAL_DATA = {
     11: ThermalTuple('dd2o', [1002], 1),
     12: ThermalTuple('parad', [1002], 1),
     13: ThermalTuple('orthod', [1002], 1),
+    14: ThermalTuple('dice', [1002], 1),
     26: ThermalTuple('be', [4009], 1),
     27: ThermalTuple('bebeo', [4009], 1),
-    31: ThermalTuple('graph', [6000, 6012, 6013], 1),
+    28: ThermalTuple('bebe2c', [4009], 1),
+    30: ThermalTuple('graph', [6000, 6012, 6013], 1),
+    31: ThermalTuple('grph10', [6000, 6012, 6013], 1),
+    32: ThermalTuple('grph30', [6000, 6012, 6013], 1),
     33: ThermalTuple('lch4', [1001], 1),
     34: ThermalTuple('sch4', [1001], 1),
+    35: ThermalTuple('sch4p2', [1001], 1),
     37: ThermalTuple('hch2', [1001], 1),
+    38: ThermalTuple('mesi00', [1001], 1),
     39: ThermalTuple('lucite', [1001], 1),
     40: ThermalTuple('benz', [1001, 6000, 6012], 2),
-    41: ThermalTuple('od2o', [8016, 8017, 8018], 1),
+    42: ThermalTuple('tol00', [1001], 1),
     43: ThermalTuple('sisic', [14028, 14029, 14030], 1),
     44: ThermalTuple('csic', [6000, 6012, 6013], 1),
+    45: ThermalTuple('ouo2', [8016, 8017, 8018], 1),
     46: ThermalTuple('obeo', [8016, 8017, 8018], 1),
     47: ThermalTuple('sio2-a', [8016, 8017, 8018, 14028, 14029, 14030], 3),
-    48: ThermalTuple('uuo2', [92238], 1),
+    48: ThermalTuple('osap00', [92238], 1),
     49: ThermalTuple('sio2-b', [8016, 8017, 8018, 14028, 14029, 14030], 3),
     50: ThermalTuple('oice', [8016, 8017, 8018], 1),
+    51: ThermalTuple('od2o', [8016, 8017, 8018], 1),
     52: ThermalTuple('mg24', [12024], 1),
     53: ThermalTuple('al27', [13027], 1),
     55: ThermalTuple('yyh2', [39089], 1),
     56: ThermalTuple('fe56', [26056], 1),
     58: ThermalTuple('zrzrh', [40000, 40090, 40091, 40092, 40094, 40096], 1),
-    59: ThermalTuple('cacah2', [20040, 20042, 20043, 20044, 20046, 20048], 1),
-    75: ThermalTuple('ouo2', [8016, 8017, 8018], 1),
+    59: ThermalTuple('si00', [14028], 1),
+    60: ThermalTuple('asap00', [13027], 1),
+    71: ThermalTuple('n-un', [7014, 7015], 1),
+    72: ThermalTuple('u-un', [92238], 1),
+    75: ThermalTuple('uuo2', [8016, 8017, 8018], 1),
 }
+
+
+def _get_thermal_data(ev, mat):
+    """Return appropriate ThermalTuple, accounting for bugs."""
+
+    # JEFF assigns MAT=59 to Ca in CaH2 (which is supposed to be silicon).
+    if ev.info['library'][0] == 'JEFF':
+        if ev.material == 59:
+            if 'CaH2' in ''.join(ev.info['description']):
+                zaids = [20040, 20042, 20043, 20044, 20046, 20048]
+                return ThermalTuple('cacah2', zaids, 1)
+
+    # Before ENDF/B-VIII.0, crystalline graphite was MAT=31
+    if ev.info['library'] != ('ENDF/B', 8, 0):
+        if ev.material == 31:
+            return _THERMAL_DATA[30]
+
+    # ENDF/B incorrectly assigns MAT numbers for UO2
+    #
+    # Material | ENDF Manual | VII.0 | VII.1 | VIII.0
+    # ---------|-------------|-------|-------|-------
+    # O in UO2 |     45      |  75   |  75   |   75
+    # U in UO2 |     75      |  76   |  48   |   48
+    if ev.info['library'][0] == 'ENDF/B':
+        if ev.material == 75:
+            return _THERMAL_DATA[45]
+        version = ev.info['library'][1:]
+        if version in ((7, 1), (8, 0)) and ev.material == 48:
+            return _THERMAL_DATA[75]
+        if version == (7, 0) and ev.material == 76:
+            return _THERMAL_DATA[75]
+
+    # If not a problematic material, use the dictionary as is
+    return _THERMAL_DATA[mat]
+
 
 _TEMPLATE_RECONR = """
 reconr / %%%%%%%%%%%%%%%%%%% Reconstruct XS for neutrons %%%%%%%%%%%%%%%%%%%%%%%
@@ -444,7 +490,8 @@ def make_ace_thermal(filename, filename_thermal, temperatures=None,
     mat_thermal = ev_thermal.material
     zsymam_thermal = ev_thermal.target['zsymam']
 
-    data = _THERMAL_DATA[mat_thermal]
+    # Determine name, isotopes based on MAT number
+    data = _get_thermal_data(ev_thermal, mat_thermal)
     zaids = ' '.join(str(zaid) for zaid in data.zaids[:3])
 
     # Determine name of library

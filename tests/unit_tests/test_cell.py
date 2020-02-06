@@ -54,6 +54,18 @@ def test_clone():
     assert c2.region != c.region
     assert c2.temperature == c.temperature
 
+    c3 = c.clone(clone_materials=False)
+    assert c3.id != c.id
+    assert c3.fill == c.fill
+    assert c3.region != c.region
+    assert c3.temperature == c.temperature
+
+    c4 = c.clone(clone_regions=False)
+    assert c4.id != c.id
+    assert c4.fill != c.fill
+    assert c4.region == c.region
+    assert c4.temperature == c.temperature
+
 
 def test_temperature(cell_with_lattice):
     # Make sure temperature propagates through universes

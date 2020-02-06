@@ -12,6 +12,7 @@
 #include "openmc/tallies/filter_cell.h"
 #include "openmc/tallies/filter_cellborn.h"
 #include "openmc/tallies/filter_cellfrom.h"
+#include "openmc/tallies/filter_cell_instance.h"
 #include "openmc/tallies/filter_delayedgroup.h"
 #include "openmc/tallies/filter_distribcell.h"
 #include "openmc/tallies/filter_energyfunc.h"
@@ -38,13 +39,9 @@ namespace openmc {
 // Global variables
 //==============================================================================
 
-namespace simulation {
-  std::vector<FilterMatch> filter_matches;
-}
-
 namespace model {
-  std::vector<std::unique_ptr<Filter>> tally_filters;
   std::unordered_map<int, int> filter_map;
+  std::vector<std::unique_ptr<Filter>> tally_filters;
 }
 
 //==============================================================================
@@ -100,6 +97,8 @@ Filter* Filter::create(const std::string& type, int32_t id)
     model::tally_filters.push_back(std::make_unique<CellbornFilter>());
   } else if (type == "cellfrom") {
     model::tally_filters.push_back(std::make_unique<CellFromFilter>());
+  } else if (type == "cellinstance") {
+    model::tally_filters.push_back(std::make_unique<CellInstanceFilter>());
   } else if (type == "distribcell") {
     model::tally_filters.push_back(std::make_unique<DistribcellFilter>());
   } else if (type == "delayedgroup") {
@@ -148,12 +147,12 @@ Filter* Filter::create(const std::string& type, int32_t id)
 
 void Filter::set_id(int32_t id)
 {
-  Expects(id >= -1);
+  Expects(id >= 0 || id == C_NONE);
 
   // Clear entry in filter map if an ID was already assigned before
-  if (id_ != -1) {
+  if (id_ != C_NONE) {
     model::filter_map.erase(id_);
-    id_ = -1;
+    id_ = C_NONE;
   }
 
   // Make sure no other filter has same ID
@@ -162,7 +161,7 @@ void Filter::set_id(int32_t id)
   }
 
   // If no ID specified, auto-assign next ID in sequence
-  if (id == -1) {
+  if (id == C_NONE) {
     id = 0;
     for (const auto& f : model::tally_filters) {
       id = std::max(id, f->id_);

@@ -1,0 +1,64 @@
+<?xml version='1.0' encoding='utf-8'?>
+<geometry>
+  <cell id="1" material="1" region="-1" universe="1" />
+  <cell id="2" material="2" region="1" universe="1" />
+  <cell id="3" material="1" region="-2" universe="2" />
+  <cell id="4" material="2" region="2" universe="2" />
+  <cell fill="3" id="5" region="3 -4 5 -6" universe="4" />
+  <lattice id="3">
+    <pitch>2 2</pitch>
+    <dimension>4 4</dimension>
+    <lower_left>-4 -4</lower_left>
+    <universes>
+1 2 2 2 
+2 1 2 2 
+2 2 1 2 
+2 2 2 1 </universes>
+  </lattice>
+  <surface coeffs="0.0 0.0 0.7" id="1" type="z-cylinder" />
+  <surface coeffs="0.0 0.0 0.5" id="2" type="z-cylinder" />
+  <surface boundary="reflective" coeffs="-4.0" id="3" name="minimum x" type="x-plane" />
+  <surface boundary="reflective" coeffs="4.0" id="4" name="maximum x" type="x-plane" />
+  <surface boundary="reflective" coeffs="-4.0" id="5" name="minimum y" type="y-plane" />
+  <surface boundary="reflective" coeffs="4.0" id="6" name="maximum y" type="y-plane" />
+</geometry>
+<?xml version='1.0' encoding='utf-8'?>
+<materials>
+  <material depletable="true" id="1">
+    <density units="g/cc" value="4.5" />
+    <nuclide ao="1.0" name="U235" />
+  </material>
+  <material id="2">
+    <density units="g/cc" value="1.0" />
+    <nuclide ao="1.0" name="H1" />
+  </material>
+</materials>
+<?xml version='1.0' encoding='utf-8'?>
+<settings>
+  <run_mode>eigenvalue</run_mode>
+  <particles>1000</particles>
+  <batches>5</batches>
+  <inactive>0</inactive>
+  <source strength="1.0">
+    <space type="point">
+      <parameters>0.0 0.0 0.0</parameters>
+    </space>
+  </source>
+</settings>
+<?xml version='1.0' encoding='utf-8'?>
+<tallies>
+  <filter id="1" type="cellinstance">
+    <bins>3 0 3 1 3 2 3 3 3 4 3 5 3 6 3 7 3 8 3 9 3 10 3 11 2 0 2 1 2 2 2 3</bins>
+  </filter>
+  <filter id="2" type="cellinstance">
+    <bins>2 3 2 2 2 1 2 0 3 11 3 10 3 9 3 8 3 7 3 6 3 5 3 4 3 3 3 2 3 1 3 0</bins>
+  </filter>
+  <tally id="1">
+    <filters>1</filters>
+    <scores>total</scores>
+  </tally>
+  <tally id="2">
+    <filters>2</filters>
+    <scores>total</scores>
+  </tally>
+</tallies>

@@ -42,13 +42,13 @@ Bug Fixes
 - d050c7_: Added Bessel's correction to make estimate of variance unbiased.
 - 2a5b9c_: Fixed regression in plotting.
 
-.. _a27f8f: https://github.com/mit-crpg/openmc/commit/a27f8f
-.. _afe121: https://github.com/mit-crpg/openmc/commit/afe121
-.. _e0968e: https://github.com/mit-crpg/openmc/commit/e0968e
-.. _298db8: https://github.com/mit-crpg/openmc/commit/298db8
-.. _2f3bbe: https://github.com/mit-crpg/openmc/commit/2f3bbe
-.. _671f30: https://github.com/mit-crpg/openmc/commit/671f30
-.. _b2c40e: https://github.com/mit-crpg/openmc/commit/b2c40e
-.. _5524fd: https://github.com/mit-crpg/openmc/commit/5524fd
-.. _d050c7: https://github.com/mit-crpg/openmc/commit/d050c7
-.. _2a5b9c: https://github.com/mit-crpg/openmc/commit/2a5b9c
+.. _a27f8f: https://github.com/openmc-dev/openmc/commit/a27f8f
+.. _afe121: https://github.com/openmc-dev/openmc/commit/afe121
+.. _e0968e: https://github.com/openmc-dev/openmc/commit/e0968e
+.. _298db8: https://github.com/openmc-dev/openmc/commit/298db8
+.. _2f3bbe: https://github.com/openmc-dev/openmc/commit/2f3bbe
+.. _671f30: https://github.com/openmc-dev/openmc/commit/671f30
+.. _b2c40e: https://github.com/openmc-dev/openmc/commit/b2c40e
+.. _5524fd: https://github.com/openmc-dev/openmc/commit/5524fd
+.. _d050c7: https://github.com/openmc-dev/openmc/commit/d050c7
+.. _2a5b9c: https://github.com/openmc-dev/openmc/commit/2a5b9c

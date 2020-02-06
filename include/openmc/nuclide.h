@@ -97,7 +97,7 @@ public:
   std::vector<int> index_inelastic_scatter_;
 
 private:
-  void create_derived();
+  void create_derived(const Function1D* prompt_photons, const Function1D* delayed_photons);
 
   static int XS_TOTAL;
   static int XS_ABSORPTION;

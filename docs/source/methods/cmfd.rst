@@ -538,7 +538,7 @@ Examples of CMFD simulations using OpenMC can be found in [HermanThesis]_.
    .. rubric:: References
 
 .. [BEAVRS] Nick Horelik, Bryan Herman. *Benchmark for Evaluation And Verification of Reactor
-            Simulations*. Massachusetts Institute of Technology, http://crpg.mit.edu/pub/beavrs
+            Simulations*. Massachusetts Institute of Technology, https://crpg.mit.edu/research/beavrs
             , 2013.
 
 .. [Gill] Daniel F. Gill. *Newton-Krylov methods for the solution of the k-eigenvalue problem in

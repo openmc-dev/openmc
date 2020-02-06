@@ -119,7 +119,7 @@ find_cell_inner(Particle* p, const NeighborList* neighbor_list)
   }
 
   // Announce the cell that the particle is entering.
-  if (found && (settings::verbosity >= 10 || simulation::trace)) {
+  if (found && (settings::verbosity >= 10 || p->trace_)) {
     std::stringstream msg;
     msg << "    Entering cell " << model::cells[i_cell]->id_;
     write_message(msg, 1);
@@ -127,18 +127,18 @@ find_cell_inner(Particle* p, const NeighborList* neighbor_list)
 
   if (found) {
     Cell& c {*model::cells[i_cell]};
-    if (c.type_ == FILL_MATERIAL) {
+    if (c.type_ == Fill::MATERIAL) {
       //=======================================================================
       //! Found a material cell which means this is the lowest coord level.
 
       // Find the distribcell instance number.
-      if (c.material_.size() > 1 || c.sqrtkT_.size() > 1) {
-        int offset = 0;
+      int offset = 0;
+      if (c.distribcell_index_ >= 0) {
         for (int i = 0; i < p->n_coord_; i++) {
           const auto& c_i {*model::cells[p->coord_[i].cell]};
-          if (c_i.type_ == FILL_UNIVERSE) {
+          if (c_i.type_ == Fill::UNIVERSE) {
             offset += c_i.offset_[c.distribcell_index_];
-          } else if (c_i.type_ == FILL_LATTICE) {
+          } else if (c_i.type_ == Fill::LATTICE) {
             auto& lat {*model::lattices[p->coord_[i+1].lattice]};
             int i_xyz[3] {p->coord_[i+1].lattice_x,
                           p->coord_[i+1].lattice_y,
@@ -148,10 +148,8 @@ find_cell_inner(Particle* p, const NeighborList* neighbor_list)
             }
           }
         }
-        p->cell_instance_ = offset;
-      } else {
-        p->cell_instance_ = 0;
       }
+      p->cell_instance_ = offset;
 
       // Set the material and temperature.
       p->material_last_ = p->material_;
@@ -169,7 +167,7 @@ find_cell_inner(Particle* p, const NeighborList* neighbor_list)
 
       return true;
 
-    } else if (c.type_ == FILL_UNIVERSE) {
+    } else if (c.type_ == Fill::UNIVERSE) {
       //========================================================================
       //! Found a lower universe, update this coord level then search the next.
 
@@ -193,7 +191,7 @@ find_cell_inner(Particle* p, const NeighborList* neighbor_list)
       ++p->n_coord_;
       return find_cell_inner(p, nullptr);
 
-    } else if (c.type_ == FILL_LATTICE) {
+    } else if (c.type_ == Fill::LATTICE) {
       //========================================================================
       //! Found a lower lattice, update this coord level then search the next.
 
@@ -299,7 +297,7 @@ cross_lattice(Particle* p, const BoundaryInfo& boundary)
   auto& coord {p->coord_[p->n_coord_ - 1]};
   auto& lat {*model::lattices[coord.lattice]};
 
-  if (settings::verbosity >= 10 || simulation::trace) {
+  if (settings::verbosity >= 10 || p->trace_) {
     std::stringstream msg;
     msg << "    Crossing lattice " << lat.id_ << ". Current position ("
         << coord.lattice_x << "," << coord.lattice_y << ","
@@ -372,7 +370,7 @@ BoundaryInfo distance_to_boundary(Particle* p)
     Cell& c {*model::cells[coord.cell]};
 
     // Find the oncoming surface in this cell and the distance to it.
-    auto surface_distance = c.distance(r, u, p->surface_);
+    auto surface_distance = c.distance(r, u, p->surface_, p);
     d_surf = surface_distance.first;
     level_surf_cross = surface_distance.second;
 
@@ -491,6 +489,5 @@ extern "C" int openmc_global_bounding_box(double* llc, double* urc) {
 
   return 0;
 }
-
 
 } // namespace openmc

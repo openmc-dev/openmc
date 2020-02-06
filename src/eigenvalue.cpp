@@ -20,10 +20,6 @@
 #include "openmc/timer.h"
 #include "openmc/tallies/tally.h"
 
-#ifdef _OPENMP
-#include <omp.h>
-#endif
-
 #include <algorithm> // for min
 #include <array>
 #include <cmath> // for sqrt, abs, pow
@@ -55,7 +51,7 @@ void calculate_generation_keff()
   const auto& gt = simulation::global_tallies;
 
   // Get keff for this generation by subtracting off the starting value
-  simulation::keff_generation = gt(K_TRACKLENGTH, RESULT_VALUE) - simulation::keff_generation;
+  simulation::keff_generation = gt(GlobalTally::K_TRACKLENGTH, TallyResult::VALUE) - simulation::keff_generation;
 
   double keff_reduced;
 #ifdef OPENMC_MPI
@@ -102,7 +98,7 @@ void synchronize_bank()
 #else
   int64_t start  = 0;
   int64_t finish = simulation::fission_bank.size();
-  int64_t total  = simulation::fission_bank.size();
+  int64_t total  = finish;
 #endif
 
   // If there are not that many particles per generation, it's possible that no
@@ -110,7 +106,7 @@ void synchronize_bank()
   // extra logic to treat this circumstance, we really want to ensure the user
   // runs enough particles to avoid this in the first place.
 
-  if (simulation::fission_bank.empty()) {
+  if (simulation::fission_bank.size() == 0) {
     fatal_error("No fission sites banked on MPI rank " + std::to_string(mpi::rank));
   }
 
@@ -118,8 +114,9 @@ void synchronize_bank()
   // skip ahead in the sequence using the starting index in the 'global'
   // fission bank for each processor.
 
-  set_particle_seed(simulation::total_gen + overall_generation());
-  advance_prn_seed(start);
+  int64_t id = simulation::total_gen + overall_generation();
+  uint64_t seed = init_seed(id, STREAM_TRACKING);
+  advance_prn_seed(start, &seed);
 
   // Determine how many fission sites we need to sample from the source bank
   // and the probability for selecting a site.
@@ -141,7 +138,9 @@ void synchronize_bank()
   int64_t index_temp = 0;
   std::vector<Particle::Bank> temp_sites(3*simulation::work_per_rank);
 
-  for (const auto& site : simulation::fission_bank) {
+  for (int64_t i = 0; i < simulation::fission_bank.size(); i++ ) {
+    const auto& site = simulation::fission_bank[i];
+
     // If there are less than n_particles particles banked, automatically add
     // int(n_particles/total) sites to temp_sites. For example, if you need
     // 1000 and 300 were banked, this would add 3 source sites per banked site
@@ -154,7 +153,7 @@ void synchronize_bank()
     }
 
     // Randomly sample sites needed
-    if (prn() < p_sample) {
+    if (prn(&seed) < p_sample) {
       temp_sites[index_temp] = site;
       ++index_temp;
     }
@@ -350,40 +349,6 @@ void calculate_average_keff()
   }
 }
 
-#ifdef _OPENMP
-void join_bank_from_threads()
-{
-  int n_threads = omp_get_max_threads();
-
-  #pragma omp parallel
-  {
-    // Copy thread fission bank sites to one shared copy
-    #pragma omp for ordered schedule(static)
-    for (int i = 0; i < n_threads; ++i) {
-      #pragma omp ordered
-      {
-        std::copy(
-          simulation::fission_bank.cbegin(),
-          simulation::fission_bank.cend(),
-          std::back_inserter(simulation::master_fission_bank)
-        );
-      }
-    }
-
-    // Make sure all threads have made it to this point
-    #pragma omp barrier
-
-    // Now copy the shared fission bank sites back to the master thread's copy.
-    if (omp_get_thread_num() == 0) {
-      simulation::fission_bank = simulation::master_fission_bank;
-      simulation::master_fission_bank.clear();
-    } else {
-      simulation::fission_bank.clear();
-    }
-  }
-}
-#endif
-
 int openmc_get_keff(double* k_combined)
 {
   k_combined[0] = 0.0;
@@ -408,12 +373,12 @@ int openmc_get_keff(double* k_combined)
 
   std::array<double, 3> kv {};
   xt::xtensor<double, 2> cov = xt::zeros<double>({3, 3});
-  kv[0] = gt(K_COLLISION, RESULT_SUM) / n;
-  kv[1] = gt(K_ABSORPTION, RESULT_SUM) / n;
-  kv[2] = gt(K_TRACKLENGTH, RESULT_SUM) / n;
-  cov(0, 0) = (gt(K_COLLISION, RESULT_SUM_SQ) - n*kv[0]*kv[0]) / (n - 1);
-  cov(1, 1) = (gt(K_ABSORPTION, RESULT_SUM_SQ) - n*kv[1]*kv[1]) / (n - 1);
-  cov(2, 2) = (gt(K_TRACKLENGTH, RESULT_SUM_SQ) - n*kv[2]*kv[2]) / (n - 1);
+  kv[0] = gt(GlobalTally::K_COLLISION, TallyResult::SUM) / n;
+  kv[1] = gt(GlobalTally::K_ABSORPTION, TallyResult::SUM) / n;
+  kv[2] = gt(GlobalTally::K_TRACKLENGTH, TallyResult::SUM) / n;
+  cov(0, 0) = (gt(GlobalTally::K_COLLISION, TallyResult::SUM_SQ) - n*kv[0]*kv[0]) / (n - 1);
+  cov(1, 1) = (gt(GlobalTally::K_ABSORPTION, TallyResult::SUM_SQ) - n*kv[1]*kv[1]) / (n - 1);
+  cov(2, 2) = (gt(GlobalTally::K_TRACKLENGTH, TallyResult::SUM_SQ) - n*kv[2]*kv[2]) / (n - 1);
 
   // Calculate covariances based on sums with Bessel's correction
   cov(0, 1) = (simulation::k_col_abs - n * kv[0] * kv[1]) / (n - 1);
@@ -541,7 +506,8 @@ void shannon_entropy()
   // Get source weight in each mesh bin
   bool sites_outside;
   xt::xtensor<double, 1> p = simulation::entropy_mesh->count_sites(
-    simulation::fission_bank, &sites_outside);
+    simulation::fission_bank.data(), simulation::fission_bank.size(),
+    &sites_outside);
 
   // display warning message if there were sites outside entropy box
   if (sites_outside) {
@@ -572,14 +538,15 @@ void ufs_count_sites()
     // distributed so that effectively the production of fission sites is not
     // biased
 
-    auto s = xt::view(simulation::source_frac, xt::all());
-    s = simulation::ufs_mesh->volume_frac_;
+    std::size_t n = simulation::ufs_mesh->n_bins();
+    double vol_frac = simulation::ufs_mesh->volume_frac_;
+    simulation::source_frac = xt::xtensor<double, 1>({n}, vol_frac);
 
   } else {
     // count number of source sites in each ufs mesh cell
     bool sites_outside;
     simulation::source_frac = simulation::ufs_mesh->count_sites(
-      simulation::source_bank, &sites_outside);
+      simulation::source_bank.data(), simulation::source_bank.size(), &sites_outside);
 
     // Check for sites outside of the mesh
     if (mpi::master && sites_outside) {

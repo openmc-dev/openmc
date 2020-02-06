@@ -14,14 +14,6 @@ extern "C" const bool dagmc_enabled;
 
 namespace openmc {
 
-namespace simulation {
-
-extern moab::DagMC::RayHistory history; //!< facet history for DagMC particles
-extern Direction last_dir; //!< last direction passed to DagMC's ray_fire
-#pragma omp threadprivate(history, last_dir)
-
-}
-
 namespace model {
   extern moab::DagMC* DAG;
 }

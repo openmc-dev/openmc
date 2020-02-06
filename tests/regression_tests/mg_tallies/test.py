@@ -5,7 +5,7 @@ import numpy as np
 import openmc
 from openmc.examples import slab_mg
 
-from tests.testing_harness import HashedPyAPITestHarness
+from tests.testing_harness import PyAPITestHarness
 
 
 def create_library():
@@ -49,7 +49,7 @@ def create_library():
     mg_cross_sections_file.export_to_hdf5('2g.h5')
 
 
-class MGXSTestHarness(HashedPyAPITestHarness):
+class MGXSTestHarness(PyAPITestHarness):
     def _cleanup(self):
         super()._cleanup()
         f = '2g.h5'
@@ -144,5 +144,5 @@ def test_mg_tallies():
                 t.nuclides = nuclides
             model.tallies.append(t)
 
-    harness = HashedPyAPITestHarness('statepoint.10.h5', model)
+    harness = MGXSTestHarness('statepoint.10.h5', model)
     harness.main()

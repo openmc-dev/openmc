@@ -986,7 +986,7 @@ class Library(object):
             xsdata.num_azimuthal = self.num_azimuthal
 
         if nuclide != 'total':
-            xsdata.atomic_weight_ratio = self._nuclides[nuclide][1]
+            xsdata.atomic_weight_ratio = self._nuclides[nuclide]
 
         if subdomain is None:
             subdomain = 'all'
@@ -996,6 +996,11 @@ class Library(object):
         # Now get xs data itself
         if 'nu-transport' in self.mgxs_types and self.correction == 'P0':
             mymgxs = self.get_mgxs(domain, 'nu-transport')
+            xsdata.set_total_mgxs(mymgxs, xs_type=xs_type, nuclide=[nuclide],
+                                  subdomain=subdomain)
+
+        elif 'transport' in self.mgxs_types and self.correction == 'P0':
+            mymgxs = self.get_mgxs(domain, 'transport')
             xsdata.set_total_mgxs(mymgxs, xs_type=xs_type, nuclide=[nuclide],
                                   subdomain=subdomain)
 
@@ -1167,6 +1172,16 @@ class Library(object):
                                     np.subtract(xsdata._total[i], np.sum(np.sum(
                                         xsdata._scatter_matrix[i][:, :, :, :, :],
                                         axis=4), axis=3))
+            # if only scatter matrices have been tallied, multiplicity cannot
+            # be accounted for
+            else:
+                msg = 'Scatter multiplicity (such as (n,xn) reactions) '\
+                      'are ignored since multiplicity or nu-scatter matrices '\
+                      'were not tallied for ' + xsdata_name
+                warn(msg, RuntimeWarning)
+                xsdata.set_scatter_matrix_mgxs(scatt_mgxs, xs_type=xs_type,
+                                               nuclide=[nuclide],
+                                               subdomain=subdomain)
 
         return xsdata
 
@@ -1410,6 +1425,9 @@ class Library(object):
           fixed source problem could be the target.
         - Fission and kappa-fission are not required as they are only
           needed to support tallies the user may wish to request.
+        - Scattering multiplicity should have been tallied for increased model
+          accuracy, either using a multiplicity or scatter and nu-scatter matrix
+          tally.
 
         See also
         --------
@@ -1459,6 +1477,15 @@ class Library(object):
             warn('A "nu-scatter matrix", "consistent nu-scatter matrix", '
                  '"scatter matrix", or "consistent scatter matrix" MGXS '
                  'type is required.')
+
+        # Make sure there is some kind of a scattering multiplicity matrix data
+        if 'multiplicity matrix' not in self.mgxs_types and \
+            ('scatter matrix' not in self.mgxs_types or
+             'nu-scatter matrix' not in self.mgxs_types) and\
+            ('consistent scatter matrix' not in self.mgxs_types or
+             'consistent nu-scatter matrix' not in self.mgxs_types):
+            warn('A "multiplicity matrix" or both a "scatter" and "nu-scatter" '
+                 'matrix MGXS type(s) should be provided.')
 
         # Ensure absorption is present
         if 'absorption' not in self.mgxs_types:

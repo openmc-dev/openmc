@@ -24,7 +24,6 @@ namespace simulation {
 
 extern "C" int current_batch;    //!< current batch
 extern "C" int current_gen;      //!< current fission generation
-extern "C" int64_t current_work; //!< index in source back of current particle
 extern "C" bool initialized;     //!< has simulation been initialized?
 extern "C" double keff;          //!< average k over batches
 extern "C" double keff_std;      //!< standard deviation of average k
@@ -46,11 +45,6 @@ extern const RegularMesh* ufs_mesh;
 extern std::vector<double> k_generation;
 extern std::vector<int64_t> work_index;
 
-// Threadprivate variables
-extern "C" bool trace;     //!< flag to show debug information
-
-#pragma omp threadprivate(current_work, trace)
-
 } // namespace simulation
 
 //==============================================================================
@@ -69,7 +63,11 @@ void initialize_batch();
 //! Initialize a fission generation
 void initialize_generation();
 
+//! Full initialization of a particle history
 void initialize_history(Particle* p, int64_t index_source);
+
+//! Helper function for initialize_history() that is called independently elsewhere
+void initialize_history_partial(Particle* p);
 
 //! Finalize a batch
 //!
@@ -89,6 +87,16 @@ void broadcast_results();
 #endif
 
 void free_memory_simulation();
+
+//! Simulate a single particle history (and all generated secondary particles,
+//!  if enabled), from birth to death
+void transport_history_based_single_particle(Particle& p);
+
+//! Simulate all particle histories using history-based parallelism
+void transport_history_based();
+
+//! Simulate all particle histories using event-based parallelism
+void transport_event_based();
 
 } // namespace openmc
 

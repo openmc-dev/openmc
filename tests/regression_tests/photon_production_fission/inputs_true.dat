@@ -1,0 +1,49 @@
+<?xml version='1.0' encoding='utf-8'?>
+<geometry>
+  <cell id="1" material="1" region="-1" universe="1" />
+  <surface boundary="reflective" coeffs="0.0 0.0 0.0 100.0" id="1" type="sphere" />
+</geometry>
+<?xml version='1.0' encoding='utf-8'?>
+<materials>
+  <material depletable="true" id="1">
+    <density units="g/cm3" value="10.0" />
+    <nuclide ao="1.0" name="U235" />
+  </material>
+</materials>
+<?xml version='1.0' encoding='utf-8'?>
+<settings>
+  <run_mode>eigenvalue</run_mode>
+  <particles>1000</particles>
+  <batches>5</batches>
+  <inactive>2</inactive>
+  <source strength="1.0">
+    <space type="point">
+      <parameters>0 0 0</parameters>
+    </space>
+  </source>
+  <photon_transport>true</photon_transport>
+</settings>
+<?xml version='1.0' encoding='utf-8'?>
+<tallies>
+  <filter id="1" type="particle">
+    <bins>neutron photon</bins>
+  </filter>
+  <tally id="1">
+    <filters>1</filters>
+    <nuclides>U235 total</nuclides>
+    <scores>fission heating-local</scores>
+    <estimator>tracklength</estimator>
+  </tally>
+  <tally id="2">
+    <filters>1</filters>
+    <nuclides>U235 total</nuclides>
+    <scores>fission heating heating-local</scores>
+    <estimator>collision</estimator>
+  </tally>
+  <tally id="3">
+    <filters>1</filters>
+    <nuclides>U235 total</nuclides>
+    <scores>fission heating heating-local</scores>
+    <estimator>analog</estimator>
+  </tally>
+</tallies>

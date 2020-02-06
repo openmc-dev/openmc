@@ -674,7 +674,7 @@ class Tally(IDManagerMixin):
         if equal_filters and equal_nuclides and equal_scores:
             return True
 
-        # Variables to indicate matching filter bins, nuclides and scores
+        # Variables to indicate filter bins, nuclides, and scores that can be merged
         merge_filters = self._can_merge_filters(other)
         merge_nuclides = self._can_merge_nuclides(other)
         merge_scores = self._can_merge_scores(other)

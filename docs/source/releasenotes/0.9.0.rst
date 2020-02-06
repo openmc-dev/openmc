@@ -111,25 +111,25 @@ Bug Fixes
 - 489540_: Check for void materials in tracklength tallies
 - f0214f_: Fixes/improvements to the ARES algorithm
 
-.. _c5df6c: https://github.com/mit-crpg/openmc/commit/c5df6c
-.. _1cfa39: https://github.com/mit-crpg/openmc/commit/1cfa39
-.. _335359: https://github.com/mit-crpg/openmc/commit/335359
-.. _17c678: https://github.com/mit-crpg/openmc/commit/17c678
-.. _23ec0b: https://github.com/mit-crpg/openmc/commit/23ec0b
-.. _7eefb7: https://github.com/mit-crpg/openmc/commit/7eefb7
-.. _7880d4: https://github.com/mit-crpg/openmc/commit/7880d4
-.. _ad2d9f: https://github.com/mit-crpg/openmc/commit/ad2d9f
-.. _59fdca: https://github.com/mit-crpg/openmc/commit/59fdca
-.. _9eff5b: https://github.com/mit-crpg/openmc/commit/9eff5b
-.. _7848a9: https://github.com/mit-crpg/openmc/commit/7848a9
-.. _f139ce: https://github.com/mit-crpg/openmc/commit/f139ce
-.. _b8ddfa: https://github.com/mit-crpg/openmc/commit/b8ddfa
-.. _ec3cfb: https://github.com/mit-crpg/openmc/commit/ec3cfb
-.. _5e9b06: https://github.com/mit-crpg/openmc/commit/5e9b06
-.. _c39990: https://github.com/mit-crpg/openmc/commit/c39990
-.. _c6b67e: https://github.com/mit-crpg/openmc/commit/c6b67e
-.. _489540: https://github.com/mit-crpg/openmc/commit/489540
-.. _f0214f: https://github.com/mit-crpg/openmc/commit/f0214f
+.. _c5df6c: https://github.com/openmc-dev/openmc/commit/c5df6c
+.. _1cfa39: https://github.com/openmc-dev/openmc/commit/1cfa39
+.. _335359: https://github.com/openmc-dev/openmc/commit/335359
+.. _17c678: https://github.com/openmc-dev/openmc/commit/17c678
+.. _23ec0b: https://github.com/openmc-dev/openmc/commit/23ec0b
+.. _7eefb7: https://github.com/openmc-dev/openmc/commit/7eefb7
+.. _7880d4: https://github.com/openmc-dev/openmc/commit/7880d4
+.. _ad2d9f: https://github.com/openmc-dev/openmc/commit/ad2d9f
+.. _59fdca: https://github.com/openmc-dev/openmc/commit/59fdca
+.. _9eff5b: https://github.com/openmc-dev/openmc/commit/9eff5b
+.. _7848a9: https://github.com/openmc-dev/openmc/commit/7848a9
+.. _f139ce: https://github.com/openmc-dev/openmc/commit/f139ce
+.. _b8ddfa: https://github.com/openmc-dev/openmc/commit/b8ddfa
+.. _ec3cfb: https://github.com/openmc-dev/openmc/commit/ec3cfb
+.. _5e9b06: https://github.com/openmc-dev/openmc/commit/5e9b06
+.. _c39990: https://github.com/openmc-dev/openmc/commit/c39990
+.. _c6b67e: https://github.com/openmc-dev/openmc/commit/c6b67e
+.. _489540: https://github.com/openmc-dev/openmc/commit/489540
+.. _f0214f: https://github.com/openmc-dev/openmc/commit/f0214f
 
 ------------
 Contributors

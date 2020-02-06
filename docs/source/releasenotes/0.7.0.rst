@@ -40,11 +40,11 @@ Bug Fixes
 - 6121d9_: Fix bugs related to particle track files
 - 2f0e89_: Fixes for nuclide specification in tallies
 
-.. _b5f712: https://github.com/mit-crpg/openmc/commit/b5f712
-.. _e6675b: https://github.com/mit-crpg/openmc/commit/e6675b
-.. _04e2c1: https://github.com/mit-crpg/openmc/commit/04e2c1
-.. _6121d9: https://github.com/mit-crpg/openmc/commit/6121d9
-.. _2f0e89: https://github.com/mit-crpg/openmc/commit/2f0e89
+.. _b5f712: https://github.com/openmc-dev/openmc/commit/b5f712
+.. _e6675b: https://github.com/openmc-dev/openmc/commit/e6675b
+.. _04e2c1: https://github.com/openmc-dev/openmc/commit/04e2c1
+.. _6121d9: https://github.com/openmc-dev/openmc/commit/6121d9
+.. _2f0e89: https://github.com/openmc-dev/openmc/commit/2f0e89
 
 ------------
 Contributors

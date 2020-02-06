@@ -1,16 +1,16 @@
 <?xml version='1.0' encoding='utf-8'?>
 <geometry>
-  <cell id="13" material="void" region="-9 10 -11" universe="9" />
-  <cell id="14" material="13" region="-9 11 -12" universe="9" />
-  <cell id="15" material="void" region="~(-9 10 -12)" universe="9" />
-  <surface boundary="vacuum" coeffs="0.0 0.0 1.0" id="9" type="x-cylinder" />
-  <surface boundary="vacuum" coeffs="-1.0" id="10" type="x-plane" />
-  <surface coeffs="1.0" id="11" type="x-plane" />
-  <surface boundary="vacuum" coeffs="1000000000.0" id="12" type="x-plane" />
+  <cell id="1" material="void" region="-1 2 -3" universe="1" />
+  <cell id="2" material="1" region="-1 3 -4" universe="1" />
+  <cell id="3" material="void" region="~(-1 2 -4)" universe="1" />
+  <surface boundary="vacuum" coeffs="0.0 0.0 1.0" id="1" type="x-cylinder" />
+  <surface boundary="vacuum" coeffs="-1.0" id="2" type="x-plane" />
+  <surface coeffs="1.0" id="3" type="x-plane" />
+  <surface boundary="vacuum" coeffs="1000000000.0" id="4" type="x-plane" />
 </geometry>
 <?xml version='1.0' encoding='utf-8'?>
 <materials>
-  <material id="13">
+  <material id="1">
     <density units="g/cm3" value="2.6989" />
     <nuclide ao="1.0" name="Al27" />
   </material>
@@ -38,10 +38,10 @@
 <?xml version='1.0' encoding='utf-8'?>
 <tallies>
   <filter id="1" type="surface">
-    <bins>9</bins>
+    <bins>1</bins>
   </filter>
   <filter id="2" type="particle">
-    <bins>photon</bins>
+    <bins>neutron photon electron positron</bins>
   </filter>
   <tally id="1">
     <filters>1 2</filters>
@@ -50,7 +50,7 @@
   <tally id="2">
     <filters>2</filters>
     <nuclides>Al27 total</nuclides>
-    <scores>total heating</scores>
+    <scores>total</scores>
     <estimator>tracklength</estimator>
   </tally>
   <tally id="3">

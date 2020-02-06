@@ -7,6 +7,9 @@ from collections import OrderedDict
 import numpy as np
 
 
+__all__ = ["ReactionRates"]
+
+
 class ReactionRates(np.ndarray):
     """Reaction rates resulting from a transport operator call
 
@@ -23,7 +26,7 @@ class ReactionRates(np.ndarray):
     reactions : list of str
         Transmutation reactions being tracked
     from_results : boolean
-        If the reaction rates are loaded from results, indexing dictionnaries
+        If the reaction rates are loaded from results, indexing dictionaries
         need to be kept the same.
 
     Attributes
@@ -63,7 +66,7 @@ class ReactionRates(np.ndarray):
             obj.index_rx = reactions
         # Else, assumes that reaction rates are ordered the same way as
         # the lists of local_mats, nuclides and reactions (or keys if these
-        # are dictionnaries)
+        # are dictionaries)
         else:
             obj.index_mat = {mat: i for i, mat in enumerate(local_mats)}
             obj.index_nuc = {nuc: i for i, nuc in enumerate(nuclides)}

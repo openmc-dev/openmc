@@ -44,7 +44,7 @@ IdData::set_value(size_t y, size_t x, const Particle& p, int level) {
   if (p.material_ == MATERIAL_VOID) {
     data_(y,x,1) = MATERIAL_VOID;
     return;
-  } else if (c->type_ != FILL_UNIVERSE) {
+  } else if (c->type_ != Fill::UNIVERSE) {
     Material* m = model::materials[p.material_].get();
     data_(y,x,1) = m->id_;
   }
@@ -62,7 +62,7 @@ void
 PropertyData::set_value(size_t y, size_t x, const Particle& p, int level) {
   Cell* c = model::cells[p.coord_[level].cell].get();
   data_(y,x,0) = (p.sqrtkT_ * p.sqrtkT_) / K_BOLTZMANN;
-  if (c->type_ != FILL_UNIVERSE && p.material_ != MATERIAL_VOID) {
+  if (c->type_ != Fill::UNIVERSE && p.material_ != MATERIAL_VOID) {
     Material* m = model::materials[p.material_].get();
     data_(y,x,1) = m->density_gpcc_;
   }
@@ -80,6 +80,7 @@ namespace model {
 
 std::vector<Plot> plots;
 std::unordered_map<int, int> plot_map;
+uint64_t plotter_seed = 1;
 
 } // namespace model
 
@@ -677,7 +678,7 @@ void Plot::set_overlap_color(pugi::xml_node plot_node) {
 
   // make sure we allocate the vector for counting overlap checks if
   // they're going to be plotted
-  if (color_overlaps_ && settings::run_mode == RUN_MODE_PLOTTING) {
+  if (color_overlaps_ && settings::run_mode == RunMode::PLOTTING) {
     settings::check_overlaps = true;
     model::overlap_check_count.resize(model::cells.size(), 0);
   }
@@ -908,11 +909,13 @@ void create_voxel(Plot pl)
     // generate ids using plotbase
     IdData ids = pltbase.get_map<IdData>();
 
-    // select only cell ID data and flip the y-axis
-    xt::xtensor<int32_t, 2> data1 = xt::flip(xt::view(ids.data_, xt::all(), xt::all(), 0), 0);
+    // select only cell/material ID data and flip the y-axis
+    int idx = pl.color_by_ == PlotColorBy::cells ? 0 : 1;
+    xt::xtensor<int32_t, 2> data_slice = xt::view(ids.data_, xt::all(), xt::all(), idx);
+    xt::xtensor<int32_t, 2> data_flipped = xt::flip(data_slice, 0);
 
     // Write to HDF5 dataset
-    voxel_write_slice(z, dspace, dset, memspace, &(data1(0,0)));
+    voxel_write_slice(z, dspace, dset, memspace, data_flipped.data());
   }
 
   voxel_finalize(dspace, dset, memspace);
@@ -956,8 +959,10 @@ voxel_finalize(hid_t dspace, hid_t dset, hid_t memspace)
   H5Sclose(memspace);
 }
 
-RGBColor random_color() {
-  return {int(prn()*255), int(prn()*255), int(prn()*255)};
+RGBColor random_color(void) {
+  return {int(prn(&model::plotter_seed)*255),
+          int(prn(&model::plotter_seed)*255),
+          int(prn(&model::plotter_seed)*255)};
 }
 
 extern "C" int openmc_id_map(const void* plot, int32_t* data_out)

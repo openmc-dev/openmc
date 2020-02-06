@@ -7,6 +7,7 @@
 #include "openmc/cross_sections.h"
 #include "openmc/dagmc.h"
 #include "openmc/eigenvalue.h"
+#include "openmc/event.h"
 #include "openmc/geometry.h"
 #include "openmc/geometry_aux.h"
 #include "openmc/material.h"
@@ -44,7 +45,12 @@ void free_memory()
   free_memory_mesh();
   free_memory_tally();
   free_memory_bank();
-  free_memory_cmfd();
+  if (mpi::master) {
+    free_memory_cmfd();
+  }
+  if (settings::event_based) {
+    free_event_queues();
+  }
 #ifdef DAGMC
   free_memory_dagmc();
 #endif
@@ -67,12 +73,16 @@ int openmc_finalize()
   settings::check_overlaps = false;
   settings::confidence_intervals = false;
   settings::create_fission_neutrons = true;
-  settings::electron_treatment = ELECTRON_LED;
+  settings::electron_treatment = ElectronTreatment::LED;
+  settings::delayed_photon_scaling = true;
   settings::energy_cutoff = {0.0, 1000.0, 0.0, 0.0};
   settings::entropy_on = false;
   settings::gen_per_batch = 1;
   settings::legendre_to_tabular = true;
   settings::legendre_to_tabular_points = -1;
+  settings::event_based = false;
+  settings::material_cell_offsets = true;
+  settings::max_particles_in_flight = 100000;
   settings::n_particles = -1;
   settings::output_summary = true;
   settings::output_tallies = true;
@@ -85,14 +95,14 @@ int openmc_finalize()
   settings::res_scat_energy_max = 1000.0;
   settings::restart_run = false;
   settings::run_CE = true;
-  settings::run_mode = -1;
+  settings::run_mode = RunMode::UNSET;
   settings::dagmc = false;
   settings::source_latest = false;
   settings::source_separate = false;
   settings::source_write = true;
   settings::survival_biasing = false;
   settings::temperature_default = 293.6;
-  settings::temperature_method = TEMPERATURE_NEAREST;
+  settings::temperature_method = TemperatureMethod::NEAREST;
   settings::temperature_multipole = false;
   settings::temperature_range = {0.0, 0.0};
   settings::temperature_tolerance = 10.0;
@@ -135,6 +145,10 @@ int openmc_finalize()
 
 int openmc_reset()
 {
+
+  model::universe_cell_counts.clear();
+  model::universe_level_counts.clear();
+
   for (auto& t : model::tallies) {
     t->reset();
   }

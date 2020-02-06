@@ -44,8 +44,11 @@ bool cmfd_run                {false};
 bool confidence_intervals    {false};
 bool create_fission_neutrons {true};
 bool dagmc                   {false};
+bool delayed_photon_scaling  {true};
 bool entropy_on              {false};
+bool event_based             {false};
 bool legendre_to_tabular     {true};
+bool material_cell_offsets   {true};
 bool output_summary          {true};
 bool output_tallies          {true};
 bool particle_restart_run    {false};
@@ -79,7 +82,9 @@ int32_t n_inactive {0};
 int32_t gen_per_batch {1};
 int64_t n_particles {-1};
 
-int electron_treatment {ELECTRON_TTB};
+int64_t max_particles_in_flight {100000};
+
+ElectronTreatment electron_treatment {ElectronTreatment::TTB};
 std::array<double, 4> energy_cutoff {0.0, 1000.0, 0.0, 0.0};
 int legendre_to_tabular_points {C_NONE};
 int max_order {0};
@@ -89,10 +94,10 @@ ResScatMethod res_scat_method {ResScatMethod::rvs};
 double res_scat_energy_min {0.01};
 double res_scat_energy_max {1000.0};
 std::vector<std::string> res_scat_nuclides;
-int run_mode {-1};
+RunMode run_mode {RunMode::UNSET};
 std::unordered_set<int> sourcepoint_batch;
 std::unordered_set<int> statepoint_batch;
-int temperature_method {TEMPERATURE_NEAREST};
+TemperatureMethod temperature_method {TemperatureMethod::NEAREST};
 double temperature_tolerance {10.0};
 double temperature_default {293.6};
 std::array<double, 2> temperature_range {0.0, 0.0};
@@ -125,6 +130,12 @@ void get_run_parameters(pugi::xml_node node_base)
   if (n_particles == -1) {
     n_particles = std::stoll(get_node_value(node_base, "particles"));
   }
+  
+  // Get maximum number of in flight particles for event-based mode
+  if (check_for_node(node_base, "max_particles_in_flight")) {
+    max_particles_in_flight = std::stoll(get_node_value(node_base,
+      "max_particles_in_flight"));
+  }
 
   // Get number of basic batches
   if (check_for_node(node_base, "batches")) {
@@ -133,7 +144,7 @@ void get_run_parameters(pugi::xml_node node_base)
   if (!trigger_on) n_max_batches = n_batches;
 
   // Get number of inactive batches
-  if (run_mode == RUN_MODE_EIGENVALUE) {
+  if (run_mode == RunMode::EIGENVALUE) {
     if (check_for_node(node_base, "inactive")) {
       n_inactive = std::stoi(get_node_value(node_base, "inactive"));
     }
@@ -183,7 +194,7 @@ void read_settings_xml()
   // Check if settings.xml exists
   std::string filename = path_input + "settings.xml";
   if (!file_exists(filename)) {
-    if (run_mode != RUN_MODE_PLOTTING) {
+    if (run_mode != RunMode::PLOTTING) {
       std::stringstream msg;
       msg << "Settings XML file '" << filename << "' does not exist! In order "
         "to run OpenMC, you first need a set of input files; at a minimum, this "
@@ -291,19 +302,19 @@ void read_settings_xml()
 
   // Check run mode if it hasn't been set from the command line
   xml_node node_mode;
-  if (run_mode == C_NONE) {
+  if (run_mode == RunMode::UNSET) {
     if (check_for_node(root, "run_mode")) {
       std::string temp_str = get_node_value(root, "run_mode", true, true);
       if (temp_str == "eigenvalue") {
-        run_mode = RUN_MODE_EIGENVALUE;
+        run_mode = RunMode::EIGENVALUE;
       } else if (temp_str == "fixed source") {
-        run_mode = RUN_MODE_FIXEDSOURCE;
+        run_mode = RunMode::FIXED_SOURCE;
       } else if (temp_str == "plot") {
-        run_mode = RUN_MODE_PLOTTING;
+        run_mode = RunMode::PLOTTING;
       } else if (temp_str == "particle restart") {
-        run_mode = RUN_MODE_PARTICLE;
+        run_mode = RunMode::PARTICLE;
       } else if (temp_str == "volume") {
-        run_mode = RUN_MODE_VOLUME;
+        run_mode = RunMode::VOLUME;
       } else {
         fatal_error("Unrecognized run mode: " + temp_str);
       }
@@ -316,11 +327,11 @@ void read_settings_xml()
       // Make sure that either eigenvalue or fixed source was specified
       node_mode = root.child("eigenvalue");
       if (node_mode) {
-        run_mode = RUN_MODE_EIGENVALUE;
+        run_mode = RunMode::EIGENVALUE;
       } else {
         node_mode = root.child("fixed_source");
         if (node_mode) {
-          run_mode = RUN_MODE_FIXEDSOURCE;
+          run_mode = RunMode::FIXED_SOURCE;
         } else {
           fatal_error("<eigenvalue> or <fixed_source> not specified.");
         }
@@ -328,7 +339,7 @@ void read_settings_xml()
     }
   }
 
-  if (run_mode == RUN_MODE_EIGENVALUE || run_mode == RUN_MODE_FIXEDSOURCE) {
+  if (run_mode == RunMode::EIGENVALUE || run_mode == RunMode::FIXED_SOURCE) {
     // Read run parameters
     get_run_parameters(node_mode);
 
@@ -352,9 +363,9 @@ void read_settings_xml()
   if (check_for_node(root, "electron_treatment")) {
     auto temp_str = get_node_value(root, "electron_treatment", true, true);
     if (temp_str == "led") {
-      electron_treatment = ELECTRON_LED;
+      electron_treatment = ElectronTreatment::LED;
     } else if (temp_str == "ttb") {
-      electron_treatment = ELECTRON_TTB;
+      electron_treatment = ElectronTreatment::TTB;
     } else {
       fatal_error("Unrecognized electron treatment: " + temp_str + ".");
     }
@@ -512,7 +523,7 @@ void read_settings_xml()
     if (!m) fatal_error("Only regular meshes can be used as an entropy mesh");
     simulation::entropy_mesh = m;
 
-    if (m->shape_.dimension() == 0) {
+    if (m->shape_.size() == 0) {
       // If the user did not specify how many mesh cells are to be used in
       // each direction, we automatically determine an appropriate number of
       // cells
@@ -730,9 +741,9 @@ void read_settings_xml()
   if (check_for_node(root, "temperature_method")) {
     auto temp = get_node_value(root, "temperature_method", true, true);
     if (temp == "nearest") {
-      temperature_method = TEMPERATURE_NEAREST;
+      temperature_method = TemperatureMethod::NEAREST;
     } else if (temp == "interpolation") {
-      temperature_method = TEMPERATURE_INTERPOLATION;
+      temperature_method = TemperatureMethod::INTERPOLATION;
     } else {
       fatal_error("Unknown temperature method: " + temp);
     }
@@ -771,10 +782,25 @@ void read_settings_xml()
   }
 
   // Check whether create fission sites
-  if (run_mode == RUN_MODE_FIXEDSOURCE) {
+  if (run_mode == RunMode::FIXED_SOURCE) {
     if (check_for_node(root, "create_fission_neutrons")) {
       create_fission_neutrons = get_node_value_bool(root, "create_fission_neutrons");
     }
+  }
+
+  // Check whether to scale fission photon yields
+  if (check_for_node(root, "delayed_photon_scaling")) {
+    delayed_photon_scaling = get_node_value_bool(root, "delayed_photon_scaling");
+  }
+  
+  // Check whether to use event-based parallelism
+  if (check_for_node(root, "event_based")) {
+    event_based = get_node_value_bool(root, "event_based");
+  }
+
+  // Check whether material cell offsets should be generated
+  if (check_for_node(root, "material_cell_offsets")) {
+    material_cell_offsets = get_node_value_bool(root, "material_cell_offsets");
   }
 }
 

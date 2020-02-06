@@ -131,7 +131,7 @@ void read_cross_sections_xml()
           "materials.xml or in the OPENMC_CROSS_SECTIONS"
           " environment variable. OpenMC needs such a file to identify "
           "where to find data libraries. Please consult the"
-          " user's guide at https://openmc.readthedocs.io for "
+          " user's guide at https://docs.openmc.org/ for "
           "information on how to set up data libraries.");
       }
       settings::path_cross_sections = envvar;
@@ -155,7 +155,8 @@ void read_cross_sections_xml()
   if (settings::run_CE) {
     read_ce_cross_sections_xml();
   } else {
-    read_mg_cross_sections_header();
+    data::mg.read_header(settings::path_cross_sections);
+    put_mgxs_header_data_to_globals();
   }
 
   // Establish mapping between (type, material) and index in libraries
@@ -323,7 +324,7 @@ read_ce_cross_sections(const std::vector<std::vector<double>>& nuc_temps,
   simulation::log_spacing = std::log(data::energy_max[neutron] /
     data::energy_min[neutron]) / settings::n_log_bins;
 
-  if (settings::photon_transport && settings::electron_treatment == ELECTRON_TTB) {
+  if (settings::photon_transport && settings::electron_treatment == ElectronTreatment::TTB) {
     // Determine if minimum/maximum energy for bremsstrahlung is greater/less
     // than the current minimum/maximum
     if (data::ttb_e_grid.size() >= 1) {

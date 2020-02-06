@@ -113,14 +113,14 @@ KalbachMann::KalbachMann(hid_t group)
   } // incoming energies
 }
 
-void KalbachMann::sample(double E_in, double& E_out, double& mu) const
+void KalbachMann::sample(double E_in, double& E_out, double& mu, uint64_t* seed) const
 {
   // <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<< REMOVE THIS <<<<<<<<<<<<<<<<<<<<<<<<<<<<<
   // Before the secondary distribution refactor, an isotropic polar cosine was
   // always sampled but then overwritten with the polar cosine sampled from the
   // correlated distribution. To preserve the random number stream, we keep
   // this dummy sampling here but can remove it later (will change answers)
-  mu = 2.0*prn() - 1.0;
+  mu = 2.0*prn(seed) - 1.0;
   // <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<< REMOVE THIS <<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
   // Find energy bin and calculate interpolation factor -- if the energy is
@@ -140,7 +140,7 @@ void KalbachMann::sample(double E_in, double& E_out, double& mu) const
   }
 
   // Sample between the ith and [i+1]th bin
-  int l = r > prn() ? i + 1 : i;
+  int l = r > prn(seed) ? i + 1 : i;
 
   // Interpolation for energy E1 and EK
   int n_energy_out = distribution_[i].e_out.size();
@@ -159,7 +159,7 @@ void KalbachMann::sample(double E_in, double& E_out, double& mu) const
   // Determine outgoing energy bin
   n_energy_out = distribution_[l].e_out.size();
   n_discrete = distribution_[l].n_discrete;
-  double r1 = prn();
+  double r1 = prn(seed);
   double c_k = distribution_[l].c[0];
   int k = 0;
   int end = n_energy_out - 2;
@@ -229,11 +229,11 @@ void KalbachMann::sample(double E_in, double& E_out, double& mu) const
   }
 
   // Sampled correlated angle from Kalbach-Mann parameters
-  if (prn() > km_r) {
-    double T = (2.0*prn() - 1.0) * std::sinh(km_a);
+  if (prn(seed) > km_r) {
+    double T = (2.0*prn(seed) - 1.0) * std::sinh(km_a);
     mu = std::log(T + std::sqrt(T*T + 1.0))/km_a;
   } else {
-    double r1 = prn();
+    double r1 = prn(seed);
     mu = std::log(r1*std::exp(km_a) + (1.0 - r1)*std::exp(-km_a))/km_a;
   }
 }

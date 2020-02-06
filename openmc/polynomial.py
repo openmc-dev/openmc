@@ -110,11 +110,11 @@ class Zernike(Polynomial):
     """
     def __init__(self, coef, radius=1):
         super().__init__(coef)
-        self._order = int(((np.sqrt(8 * len(self.coef) + 1)) -3) / 2)
+        self._order = int(((np.sqrt(8 * len(self.coef) + 1)) - 3) / 2)
         self.radius = radius
         norm_vec = np.ones((len(self.coef)))
         for n in range(self._order + 1):
-            for m in range(-n,(n+1),2):
+            for m in range(-n, n + 1, 2):
                 j = int((n * (n + 2) + m) / 2)
                 if m==0:
                     norm_vec[j] = n + 1 
@@ -130,13 +130,13 @@ class Zernike(Polynomial):
     def __call__(self, r, theta=0.0):
         import openmc.lib as lib
         if isinstance(r, Iterable) and isinstance(theta, Iterable):
-            return [[np.sum(self._norm_coef * lib.calc_zn(self.order, r_i/self.radius, theta_i))
+            return [[np.sum(self._norm_coef * lib.calc_zn(self.order, r_i / self.radius, theta_i))
                     for r_i in r] for theta_i in theta]
         elif isinstance(r, Iterable) and not isinstance(theta, Iterable):
-            return [np.sum(self._norm_coef * lib.calc_zn(self.order, r_i/self.radius, theta))
+            return [np.sum(self._norm_coef * lib.calc_zn(self.order, r_i / self.radius, theta))
                     for r_i in r]
         elif not isinstance(r, Iterable) and isinstance(theta, Iterable):
-            return [np.sum(self._norm_coef * lib.calc_zn(self.order, r/self.radius, theta_i))
+            return [np.sum(self._norm_coef * lib.calc_zn(self.order, r / self.radius, theta_i))
                     for theta_i in theta]
         else:
-            return np.sum(self._norm_coef * lib.calc_zn(self.order, r/self.radius, theta))
+            return np.sum(self._norm_coef * lib.calc_zn(self.order, r / self.radius, theta))

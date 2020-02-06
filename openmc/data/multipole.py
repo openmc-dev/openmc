@@ -233,7 +233,7 @@ def _vectfit_xs(energy, ce_xs, mts, rtol=1e-3, atol=1e-5, orders=None,
         if log:
             print("Order={}({}/{})".format(order, i, len(orders)))
         # initial guessed poles
-        poles = np.linspace(s[0], s[-1], order/2)
+        poles = np.linspace(s[0], s[-1], order//2)
         poles = poles + poles*0.01j
         poles = np.sort(np.append(poles, np.conj(poles)))
 
@@ -638,7 +638,7 @@ def _windowing(mp_data, rtol=1e-3, atol=1e-5, n_win=None, n_cf=None,
         n_poles = poles.size
 
         # energy points for fitting
-        n_points = min(max(100, (e_end - e_start)*4), 10000)
+        n_points = min(max(100, int((e_end - e_start)*4)), 10000)
         energy = np.logspace(np.log10(e_start), np.log10(e_end), n_points)
         energy_sqrt = np.sqrt(energy)
 
@@ -672,7 +672,8 @@ def _windowing(mp_data, rtol=1e-3, atol=1e-5, n_win=None, n_cf=None,
             if not np.any(np.isnan(abserr)):
                 re = relerr[abserr>atol]
                 if re.size == 0 or np.all(re <= rtol) or \
-                   (re.max() < 2*rtol and (re>rtol).sum() < 0.01*relerr.size):
+                   (re.max() <= 2*rtol and (re>rtol).sum() <= 0.01*relerr.size) or \
+                   (iw == 0 and np.all(relerr.mean(axis=1) <= rtol)):
                     # meet tolerances
                     if log > DETAILED_LOGGING:
                         print("Accuracy satisfied.")
@@ -1075,16 +1076,21 @@ class WindowedMultipole(EqualityMixin):
         n_win_max = 2000 if n_poles < 2000 else 8000
         best_wmp, best_metric = None, None
         for n_w in np.unique(np.linspace(n_win_min, n_win_max, 20, dtype=int)):
-            for n_cf in range(2, 11):
+            for n_cf in range(11, 2, -1):
                 if log:
                     print("Testing N_win={} N_cf={}".format(n_w, n_cf))
+
                 # update arguments dictionary
                 kwargs.update(n_win=n_w, n_cf=n_cf)
+
                 # windowing
                 try:
                     wmp = _windowing(mp_data, log=log, **kwargs)
-                except:
+                except Exception as e:
+                    if log:
+                        print('Failed to do windowing: ' + str(e))
                     continue
+
                 # select wmp library with metric:
                 # - performance: average # used poles per window and CF order
                 # - memory: # windows
@@ -1098,7 +1104,7 @@ class WindowedMultipole(EqualityMixin):
 
         # return the best wmp library
         if log:
-            print("Final library: {} poles, {} windows, {} poles per window, "
+            print("Final library: {} poles, {} windows, {:.2g} poles per window, "
                   "{} CF order".format(best_wmp.n_poles, best_wmp.n_windows,
                    best_wmp.poles_per_window, best_wmp.fit_order))
 

@@ -64,7 +64,7 @@ public:
   double sample(uint64_t* seed) const;
 
   double a() const { return a_; }
-  double b() const { return a_; }
+  double b() const { return b_; }
 private:
   double a_; //!< Lower bound of distribution
   double b_; //!< Upper bound of distribution

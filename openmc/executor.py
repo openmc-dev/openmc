@@ -1,6 +1,7 @@
 from collections.abc import Iterable
-import subprocess
 from numbers import Integral
+import re
+import subprocess
 
 import openmc
 
@@ -10,6 +11,10 @@ def _run(args, output, cwd):
     p = subprocess.Popen(args, cwd=cwd, stdout=subprocess.PIPE,
                          stderr=subprocess.STDOUT, universal_newlines=True)
 
+    # Compile a regex object to identify statepoint writes
+    sp_rxprog = re.compile(r'Creating state point (.+)\.\.\.')
+    last_statepoint = None
+
     # Capture and re-print OpenMC output in real-time
     lines = []
     while True:
@@ -17,6 +22,11 @@ def _run(args, output, cwd):
         line = p.stdout.readline()
         if not line and p.poll() is not None:
             break
+
+        # If a statepoint was written, capture its filename
+        sp_match = sp_rxprog.search(line)
+        if sp_match:
+            last_statepoint = sp_match.group(1)
 
         lines.append(line)
         if output:
@@ -27,6 +37,7 @@ def _run(args, output, cwd):
     if p.returncode != 0:
         raise subprocess.CalledProcessError(p.returncode, ' '.join(args),
                                             ''.join(lines))
+    return last_statepoint
 
 
 def plot_geometry(output=True, openmc_exec='openmc', cwd='.'):
@@ -184,6 +195,11 @@ def run(particles=None, threads=None, geometry_debug=False,
     event_based : bool, optional
         Turns on event-based parallelism, instead of default history-based
 
+    Returns
+    -------
+    str
+        Name of the last written statepoint file, or None
+
     Raises
     ------
     subprocess.CalledProcessError
@@ -213,4 +229,4 @@ def run(particles=None, threads=None, geometry_debug=False,
     if mpi_args is not None:
         args = mpi_args + args
 
-    _run(args, output, cwd)
+    return _run(args, output, cwd)

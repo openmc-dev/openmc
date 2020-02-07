@@ -41,7 +41,7 @@ class Model:
         Tallies information
     plots : openmc.Plots
         Plot information
-    statepoint : openmc.Statepoint
+    statepoint : str
         The last statepoint filename written when the model is run
 
     """

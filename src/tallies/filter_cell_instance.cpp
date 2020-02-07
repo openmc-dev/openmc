@@ -2,7 +2,7 @@
 
 #include <string>
 
-#include <fmt/format.h>
+#include <fmt/core.h>
 
 #include "openmc/capi.h"
 #include "openmc/cell.h"

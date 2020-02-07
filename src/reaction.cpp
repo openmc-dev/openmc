@@ -3,7 +3,7 @@
 #include <string>
 #include <utility> // for move
 
-#include <fmt/format.h>
+#include <fmt/core.h>
 
 #include "openmc/constants.h"
 #include "openmc/hdf5_interface.h"

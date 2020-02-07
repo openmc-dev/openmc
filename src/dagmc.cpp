@@ -15,7 +15,7 @@
 #include "uwuw.hpp"
 #include "dagmcmetadata.hpp"
 #endif
-#include <fmt/format.h>
+#include <fmt/core.h>
 
 #include <string>
 #include <sstream>

@@ -3,7 +3,7 @@
 #include <cmath>
 #include <utility> // for std::pair
 
-#include <fmt/format.h>
+#include <fmt/core.h>
 
 #include "openmc/capi.h"
 #include "openmc/constants.h"

@@ -1,6 +1,6 @@
 #include "openmc/xml_interface.h"
 
-#include <fmt/format.h>
+#include <fmt/core.h>
 
 #include "openmc/error.h"
 #include "openmc/string_utils.h"

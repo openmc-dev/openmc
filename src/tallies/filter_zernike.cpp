@@ -4,7 +4,7 @@
 #include <sstream>
 #include <utility>  // For pair
 
-#include <fmt/format.h>
+#include <fmt/core.h>
 #include <gsl/gsl>
 
 #include "openmc/capi.h"

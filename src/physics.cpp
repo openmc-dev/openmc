@@ -21,7 +21,7 @@
 #include "openmc/thermal.h"
 #include "openmc/tallies/tally.h"
 
-#include <fmt/format.h>
+#include <fmt/core.h>
 
 #include <algorithm> // for max, min, max_element
 #include <cmath> // for sqrt, exp, log, abs, copysign

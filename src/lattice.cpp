@@ -4,7 +4,7 @@
 #include <string>
 #include <vector>
 
-#include <fmt/format.h>
+#include <fmt/core.h>
 
 #include "openmc/cell.h"
 #include "openmc/error.h"

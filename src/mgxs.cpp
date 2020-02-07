@@ -9,7 +9,7 @@
 #include <omp.h>
 #endif
 
-#include <fmt/format.h>
+#include <fmt/core.h>
 #include "xtensor/xmath.hpp"
 #include "xtensor/xsort.hpp"
 #include "xtensor/xadapt.hpp"

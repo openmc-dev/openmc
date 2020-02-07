@@ -1,6 +1,6 @@
 #include "openmc/tallies/filter_surface.h"
 
-#include <fmt/format.h>
+#include <fmt/core.h>
 
 #include "openmc/error.h"
 #include "openmc/surface.h"

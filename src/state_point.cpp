@@ -5,7 +5,7 @@
 #include <string>
 #include <vector>
 
-#include <fmt/format.h>
+#include <fmt/core.h>
 #include "xtensor/xbuilder.hpp" // for empty_like
 #include "xtensor/xview.hpp"
 

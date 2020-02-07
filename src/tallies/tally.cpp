@@ -28,7 +28,7 @@
 #include "openmc/tallies/filter_surface.h"
 #include "openmc/xml_interface.h"
 
-#include <fmt/format.h>
+#include <fmt/core.h>
 #include "xtensor/xadapt.hpp"
 #include "xtensor/xbuilder.hpp" // for empty_like
 #include "xtensor/xview.hpp"

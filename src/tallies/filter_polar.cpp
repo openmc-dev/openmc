@@ -1,6 +1,6 @@
 #include "openmc/tallies/filter_polar.h"
 
-#include <fmt/format.h>
+#include <fmt/core.h>
 
 #include "openmc/constants.h"
 #include "openmc/error.h"

@@ -2,7 +2,7 @@
 
 #include <array>
 
-#include <fmt/format.h>
+#include <fmt/core.h>
 #include <fmt/ostream.h>
 
 #include "openmc/cell.h"

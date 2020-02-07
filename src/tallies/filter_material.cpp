@@ -1,6 +1,6 @@
 #include "openmc/tallies/filter_material.h"
 
-#include <fmt/format.h>
+#include <fmt/core.h>
 
 #include "openmc/capi.h"
 #include "openmc/material.h"

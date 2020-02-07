@@ -9,9 +9,8 @@
 #include <set>
 #include <string>
 
-#include <fmt/format.h>
+#include <fmt/core.h>
 #include <gsl/gsl>
-#include <fmt/format.h>
 
 #include "openmc/capi.h"
 #include "openmc/constants.h"

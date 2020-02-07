@@ -420,8 +420,8 @@ void load_state_point()
   if (mpi::master) {
 #endif
     // Read global tally data
-    read_dataset(file_id, "global_tallies", H5T_NATIVE_DOUBLE,
-      simulation::global_tallies.data(), false);
+    read_dataset_lowlevel(file_id, "global_tallies", H5T_NATIVE_DOUBLE,
+      H5S_ALL, false, simulation::global_tallies.data());
 
     // Check if tally results are present
     bool present;

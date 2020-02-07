@@ -4,7 +4,7 @@
 #include <sstream>
 #include <unordered_set>
 
-#include <fmt/format.h>
+#include <fmt/core.h>
 #include <pugixml.hpp>
 
 #include "openmc/cell.h"

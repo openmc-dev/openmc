@@ -7,7 +7,7 @@
 #include "openmc/tallies/tally.h"
 #include "openmc/xml_interface.h"
 
-#include <fmt/format.h>
+#include <fmt/core.h>
 
 template class std::vector<openmc::TallyDerivative>;
 

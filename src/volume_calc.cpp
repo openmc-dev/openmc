@@ -15,7 +15,7 @@
 #include "openmc/timer.h"
 #include "openmc/xml_interface.h"
 
-#include <fmt/format.h>
+#include <fmt/core.h>
 #ifdef _OPENMP
 #include <omp.h>
 #endif

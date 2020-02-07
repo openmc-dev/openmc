@@ -6,7 +6,7 @@
 #include "openmc/math_functions.h"
 #include "openmc/nuclide.h"
 
-#include <fmt/format.h>
+#include <fmt/core.h>
 
 #include <cmath>
 

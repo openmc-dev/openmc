@@ -4,7 +4,7 @@
 #include <cmath>
 #include <utility>
 
-#include <fmt/format.h>
+#include <fmt/core.h>
 
 #include "openmc/error.h"
 #include "openmc/dagmc.h"

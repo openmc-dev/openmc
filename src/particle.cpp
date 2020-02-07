@@ -3,7 +3,7 @@
 #include <algorithm> // copy, min
 #include <cmath>     // log, abs, copysign
 
-#include <fmt/format.h>
+#include <fmt/core.h>
 
 #include "openmc/bank.h"
 #include "openmc/capi.h"
@@ -236,7 +236,7 @@ Particle::event_advance()
     score_track_derivative(this, distance);
   }
 }
-  
+
 void
 Particle::event_cross_surface()
 {

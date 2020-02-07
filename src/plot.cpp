@@ -4,7 +4,7 @@
 #include <fstream>
 #include <sstream>
 
-#include <fmt/format.h>
+#include <fmt/core.h>
 #include <fmt/ostream.h>
 #include "xtensor/xview.hpp"
 

@@ -2,7 +2,7 @@
 
 #include <cmath>
 
-#include <fmt/format.h>
+#include <fmt/core.h>
 
 #include "openmc/constants.h"
 #include "openmc/error.h"

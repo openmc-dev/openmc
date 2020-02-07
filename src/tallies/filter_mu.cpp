@@ -1,6 +1,6 @@
 #include "openmc/tallies/filter_mu.h"
 
-#include <fmt/format.h>
+#include <fmt/core.h>
 
 #include "openmc/error.h"
 #include "openmc/search.h"

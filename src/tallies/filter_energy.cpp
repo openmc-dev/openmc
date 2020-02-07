@@ -1,6 +1,6 @@
 #include "openmc/tallies/filter_energy.h"
 
-#include <fmt/format.h>
+#include <fmt/core.h>
 
 #include "openmc/capi.h"
 #include "openmc/constants.h"  // For F90_NONE

@@ -1,6 +1,6 @@
 #include "openmc/tallies/filter_distribcell.h"
 
-#include <fmt/format.h>
+#include <fmt/core.h>
 
 #include "openmc/cell.h"
 #include "openmc/error.h"

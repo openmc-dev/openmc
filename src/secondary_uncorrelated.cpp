@@ -2,7 +2,7 @@
 
 #include <string>  // for string
 
-#include <fmt/format.h>
+#include <fmt/core.h>
 
 #include "openmc/error.h"
 #include "openmc/hdf5_interface.h"

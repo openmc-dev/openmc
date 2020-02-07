@@ -2,7 +2,7 @@
 
 #include <utility>  // For pair
 
-#include <fmt/format.h>
+#include <fmt/core.h>
 
 #include "openmc/capi.h"
 #include "openmc/error.h"

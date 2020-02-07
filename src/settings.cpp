@@ -4,7 +4,7 @@
 #include <limits> // for numeric_limits
 #include <string>
 
-#include <fmt/format.h>
+#include <fmt/core.h>
 #ifdef _OPENMP
 #include <omp.h>
 #endif

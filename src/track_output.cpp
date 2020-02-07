@@ -6,7 +6,7 @@
 #include "openmc/settings.h"
 #include "openmc/simulation.h"
 
-#include <fmt/format.h>
+#include <fmt/core.h>
 #include "xtensor/xtensor.hpp"
 
 #include <cstddef> // for size_t

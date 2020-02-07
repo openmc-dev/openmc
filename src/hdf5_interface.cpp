@@ -7,7 +7,7 @@
 
 #include "xtensor/xtensor.hpp"
 #include "xtensor/xarray.hpp"
-#include <fmt/format.h>
+#include <fmt/core.h>
 
 #include "hdf5.h"
 #include "hdf5_hl.h"

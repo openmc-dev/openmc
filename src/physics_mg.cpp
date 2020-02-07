@@ -2,7 +2,7 @@
 
 #include <stdexcept>
 
-#include <fmt/format.h>
+#include <fmt/core.h>
 #include "xtensor/xarray.hpp"
 
 #include "openmc/bank.h"
@@ -153,7 +153,7 @@ create_fission_sites(Particle* p)
     // We add 1 to the delayed_group bc in MG, -1 is prompt, but in the rest
     // of the code, 0 is prompt.
     site.delayed_group = dg + 1;
-    
+
     // Store fission site in bank
     if (use_fission_bank) {
       int64_t idx = simulation::fission_bank.thread_safe_append(site);

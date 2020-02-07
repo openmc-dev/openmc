@@ -11,7 +11,7 @@
 #include <unordered_map>
 #include <utility> // for pair
 
-#include <fmt/format.h>
+#include <fmt/core.h>
 #include <fmt/ostream.h>
 #ifdef _OPENMP
 #include <omp.h>

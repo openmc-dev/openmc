@@ -2,7 +2,7 @@
 
 #include <algorithm> // for move
 
-#include <fmt/format.h>
+#include <fmt/core.h>
 #include "xtensor/xadapt.hpp"
 
 #include "openmc/bank.h"

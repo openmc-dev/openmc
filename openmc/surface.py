@@ -1,5 +1,6 @@
 from abc import ABCMeta, abstractmethod
 from collections import OrderedDict
+from abc.collections import Iterable
 from copy import deepcopy
 from numbers import Real, Integral
 from xml.etree import ElementTree as ET
@@ -7,7 +8,7 @@ from warnings import warn
 
 import numpy as np
 
-from openmc.checkvalue import check_type, check_value
+from openmc.checkvalue import check_type, check_value, check_length
 from openmc.region import Region, Intersection, Union
 from openmc.mixin import IDManagerMixin
 
@@ -187,6 +188,17 @@ class Surface(IDManagerMixin, metaclass=ABCMeta):
     def translate(self, vector):
         pass
 
+    @classmethod
+    def get_subclasses(cls):
+        """Recursively find all subclasses of this class"""
+        return set(cls.__subclasses__()).union([s for c in cls.__subclasses__()
+                                                for s in get_subclasses(c)])
+
+    @classmethod
+    def get_subclass_map(cls):
+        """Generate mapping of class _type attributes to classes"""
+        return {c._type: c for c in cls.get_subclasses()}
+
     def to_xml_element(self):
         """Return XML representation of the surface
 
@@ -228,21 +240,7 @@ class Surface(IDManagerMixin, metaclass=ABCMeta):
 
         # Determine appropriate class
         surf_type = elem.get('type')
-        surface_classes = {
-            'plane': Plane,
-            'x-plane': XPlane,
-            'y-plane': YPlane,
-            'z-plane': ZPlane,
-            'x-cylinder': XCylinder,
-            'y-cylinder': YCylinder,
-            'z-cylinder': ZCylinder,
-            'sphere': Sphere,
-            'x-cone': XCone,
-            'y-cone': YCone,
-            'z-cone': ZCone,
-            'quadric': Quadric,
-        }
-        cls = surface_classes[surf_type]
+        cls = _SURFACE_CLASSES[surf_type]
 
         # Determine ID, boundary type, coefficients
         kwargs = {}
@@ -268,62 +266,215 @@ class Surface(IDManagerMixin, metaclass=ABCMeta):
             Instance of surface subclass
 
         """
+
         surface_id = int(group.name.split('/')[-1].lstrip('surface '))
         name = group['name'][()].decode() if 'name' in group else ''
         surf_type = group['type'][()].decode()
         bc = group['boundary_type'][()].decode()
         coeffs = group['coefficients'][...]
 
-        # Create the Surface based on its type
-        if surf_type == 'x-plane':
-            x0 = coeffs[0]
-            surface = XPlane(x0, bc, name, surface_id)
+        cls = _SURFACE_CLASSES[surf_type]
 
-        elif surf_type == 'y-plane':
-            y0 = coeffs[0]
-            surface = YPlane(y0, bc, name, surface_id)
-
-        elif surf_type == 'z-plane':
-            z0 = coeffs[0]
-            surface = ZPlane(z0, bc, name, surface_id)
-
-        elif surf_type == 'plane':
-            A, B, C, D = coeffs
-            surface = Plane(A, B, C, D, bc, name, surface_id)
-
-        elif surf_type == 'x-cylinder':
-            y0, z0, r = coeffs
-            surface = XCylinder(y0, z0, r, bc, name, surface_id)
-
-        elif surf_type == 'y-cylinder':
-            x0, z0, r = coeffs
-            surface = YCylinder(x0, z0, r, bc, name, surface_id)
-
-        elif surf_type == 'z-cylinder':
-            x0, y0, r = coeffs
-            surface = ZCylinder(x0, y0, r, bc, name, surface_id)
-
-        elif surf_type == 'sphere':
-            x0, y0, z0, r = coeffs
-            surface = Sphere(x0, y0, z0, r, bc, name, surface_id)
-
-        elif surf_type in ['x-cone', 'y-cone', 'z-cone']:
-            x0, y0, z0, r2 = coeffs
-            if surf_type == 'x-cone':
-                surface = XCone(x0, y0, z0, r2, bc, name, surface_id)
-            elif surf_type == 'y-cone':
-                surface = YCone(x0, y0, z0, r2, bc, name, surface_id)
-            elif surf_type == 'z-cone':
-                surface = ZCone(x0, y0, z0, r2, bc, name, surface_id)
-
-        elif surf_type == 'quadric':
-            a, b, c, d, e, f, g, h, j, k = coeffs
-            surface = Quadric(a, b, c, d, e, f, g, h, j, k, bc, name, surface_id)
-
-        return surface
+        return cls(*coeffs, bc, name, surface_id)
 
 
-class Plane(Surface):
+_SURFACE_CLASSES = Surface.get_subclass_map()
+
+
+class PlaneMeta(metaclass=ABCMeta):
+    """A Plane Meta class for all operations on order 1 surfaces"""
+
+    def __new__(cls, *args, **kwargs):
+            """Simplify this plane if possible to an XPlane, YPlane, or ZPlane"""
+        if cls is Plane:
+            (a,b,c,d,bt, name, surfidlen(args)
+            if np.all(np.isclose((self.b, self.c), 0., atol=atol)):
+                x0 = self.d / self.a
+                return XPlane(x0=x0, boundary_type=self.boundary_type,
+                              name=self.name, surface_id=self.id)
+
+            elif np.all(np.isclose((self.a, self.c), 0., atol=atol)):
+                y0 = self.d / self.b
+                return YPlane(y0=y0, boundary_type=self.boundary_type,
+                              name=self.name, surface_id=self.id)
+
+            elif np.all(np.isclose((self.a, self.b), 0., atol=atol)):
+                z0 = self.d / self.c
+                return ZPlane(z0=z0, boundary_type=self.boundary_type,
+                              name=self.name, surface_id=self.id)
+
+    def __init__(self):
+        pass
+
+    @property
+    def periodic_surface(self):
+        return self._periodic_surface
+
+    @periodic_surface.setter
+    def periodic_surface(self, periodic_surface):
+        check_type('periodic surface', periodic_surface, Plane)
+        self._periodic_surface = periodic_surface
+        periodic_surface._periodic_surface = self
+
+    @abstractmethod
+    def _get_base_coeffs(self):
+        pass
+
+    @abstractmethod
+    def _update_from_base_coeffs(self):
+        pass
+
+    def _neg_bounds(self):
+        return (np.array([-np.inf, -np.inf, -np.inf]),
+                np.array([np.inf, np.inf, np.inf]))
+
+    def _pos_bounds(self):
+        return (np.array([-np.inf, -np.inf, -np.inf]),
+                np.array([np.inf, np.inf, np.inf]))
+
+    def evaluate(self, point):
+        """Evaluate the surface equation at a given point.
+
+        Parameters
+        ----------
+        point : 3-tuple of float
+            The Cartesian coordinates, :math:`(x',y',z')`, at which the surface
+            equation should be evaluated.
+
+        Returns
+        -------
+        float
+            :math:`Ax' + By' + Cz' - D`
+
+        """
+
+        x, y, z = point
+        a, b, c, d = self._get_base_coeffs()
+        return a*x + b*y + c*z - d
+
+    def translate(self, vector, clone=False):
+        """Translate surface in given direction
+
+        Parameters
+        ----------
+        vector : iterable of float
+            Direction in which surface should be translated
+        clone : boolean
+            Whether or not to return a new instance of a Plane or to modify the
+            coefficients of this plane.
+
+        Returns
+        -------
+        openmc.Plane
+            Translated surface
+
+        """
+        vx, vy, vz = vector
+        a, b, c, d = self._get_base_coeffs()
+        d = d + a*vx + b*vy + c*vz
+
+        if clone:
+            surf = self.clone()
+        else:
+            surf = self
+
+        surf._update_from_base_coeffs(a, b, c, d)
+        return surf
+
+    def rotate(self, rotation, frame='lab', clone=False):
+        """Rotate surface by given Tait-Bryan angles
+
+        Parameters
+        ----------
+        rotation : iterable of float
+            Intrinsic Tait-Bryan angles in degrees used to rotate the surface
+        frame : str, one of 'lab' or 'body'
+        clone : boolean
+            Whether or not to return a new instance of a Plane or to modify the
+            coefficients of this plane.
+
+        Returns
+        -------
+        openmc.Plane or None
+            Rotated surface
+
+        """
+
+        check_type('surface rotation', rotation, Iterable, Real)
+        check_length('surface rotation', rotation, 3)
+
+        # Calculate rotation matrix Rmat from angles phi, theta, psi
+        phi, theta, psi = rotation*(-np.pi/180.)
+        c3, s3 = np.cos(phi), np.sin(phi)
+        c2, s2 = np.cos(theta), np.sin(theta)
+        c1, s1 = np.cos(psi), np.sin(psi)
+        Rmat = np.array([[c1*c2, c1*s2*s3 - c3*s1, s1*s3 + c1*c3*s2],
+                         [c2*s1, c1*c3 + s1*s2*s3, c3*s1*s2 - c1*s3],
+                         [-s2, c2*s3, c2*c3]])
+
+        a, b, c, d = self._get_base_coeffs()
+        bvec = np.array([a, b, c])
+
+        # Compute new rotated coefficients a, b, c
+        a, b, c = np.dot(bvec.T, Rmat.T)
+
+        if clone:
+            surf = self.clone()
+        else:
+            surf = self
+
+        surf._update_from_base_coeffs(a, b, c, d)
+        return surf
+
+    def bounding_box(self, side):
+        """Determine an axis-aligned bounding box.
+
+        An axis-aligned bounding box for surface half-spaces is represented by
+        its lower-left and upper-right coordinates. For the z-plane surface, the
+        half-spaces are unbounded in their x- and y- directions. To represent
+        infinity, numpy.inf is used.
+
+        Parameters
+        ----------
+        side : {'+', '-'}
+            Indicates the negative or positive half-space
+
+        Returns
+        -------
+        numpy.ndarray
+            Lower-left coordinates of the axis-aligned bounding box for the
+            desired half-space
+        numpy.ndarray
+            Upper-right coordinates of the axis-aligned bounding box for the
+            desired half-space
+
+        """
+
+        if side == '-':
+            return self._neg_bounds()
+        elif side == '+':
+            return self._pos_bounds()
+
+    def to_xml_element(self):
+        """Return XML representation of the surface
+
+        Returns
+        -------
+        element : xml.etree.ElementTree.Element
+            XML element containing source data
+
+        """
+        element = super().to_xml_element()
+
+        # Add periodic surface pair information
+        if self.boundary_type == 'periodic':
+            if self.periodic_surface is not None:
+                element.set("periodic_surface_id",
+                            str(self.periodic_surface.id))
+        return element
+
+
+class Plane(PlaneMeta, Surface):
     """An arbitrary plane of the form :math:`Ax + By + Cz = D`.
 
     Parameters
@@ -406,10 +557,6 @@ class Plane(Surface):
     def d(self):
         return self.coefficients['d']
 
-    @property
-    def periodic_surface(self):
-        return self._periodic_surface
-
     @a.setter
     def a(self, a):
         check_type('A coefficient', a, Real)
@@ -430,68 +577,15 @@ class Plane(Surface):
         check_type('D coefficient', d, Real)
         self._coefficients['d'] = d
 
-    @periodic_surface.setter
-    def periodic_surface(self, periodic_surface):
-        check_type('periodic surface', periodic_surface, Plane)
-        self._periodic_surface = periodic_surface
-        periodic_surface._periodic_surface = self
+    def _get_base_coeffs(self):
+        return (self.a, self.b, self.c, self.d)
 
-    def evaluate(self, point):
-        """Evaluate the surface equation at a given point.
-
-        Parameters
-        ----------
-        point : 3-tuple of float
-            The Cartesian coordinates, :math:`(x',y',z')`, at which the surface
-            equation should be evaluated.
-
-        Returns
-        -------
-        float
-            :math:`Ax' + By' + Cz' - D`
-
-        """
-
-        x, y, z = point
-        return self.a*x + self.b*y + self.c*z - self.d
-
-    def translate(self, vector):
-        """Translate surface in given direction
-
-        Parameters
-        ----------
-        vector : iterable of float
-            Direction in which surface should be translated
-
-        Returns
-        -------
-        openmc.Plane
-            Translated surface
-
-        """
-        vx, vy, vz = vector
-        d = self.d + self.a*vx + self.b*vy + self.c*vz
-        if d == self.d:
-            return self
-        else:
-            return type(self)(a=self.a, b=self.b, c=self.c, d=d)
-
-    def to_xml_element(self):
-        """Return XML representation of the surface
-
-        Returns
-        -------
-        element : xml.etree.ElementTree.Element
-            XML element containing source data
-
-        """
-        element = super().to_xml_element()
-
-        # Add periodic surface pair information
-        if self.boundary_type == 'periodic':
-            if self.periodic_surface is not None:
-                element.set("periodic_surface_id", str(self.periodic_surface.id))
-        return element
+    def _update_from_base_coeffs(self, coeffs):
+        a, b, c, d = coeffs
+        self.a = a
+        self.b = b
+        self.c = c
+        self.d = d
 
     @classmethod
     def from_points(cls, p1, p2, p3, **kwargs):
@@ -526,7 +620,7 @@ class Plane(Surface):
         return cls(a=a, b=b, c=c, d=d, **kwargs)
 
 
-class XPlane(Plane):
+class XPlane(PlaneMeta, Surface):
     """A plane perpendicular to the x axis of the form :math:`x - x_0 = 0`
 
     Parameters
@@ -582,76 +676,25 @@ class XPlane(Plane):
         check_type('x0 coefficient', x0, Real)
         self._coefficients['x0'] = x0
 
-    def bounding_box(self, side):
-        """Determine an axis-aligned bounding box.
+    def _get_base_coeffs(self):
+        return (1., 0., 0., self.x0)
 
-        An axis-aligned bounding box for surface half-spaces is represented by
-        its lower-left and upper-right coordinates. For the x-plane surface, the
-        half-spaces are unbounded in their y- and z- directions. To represent
-        infinity, numpy.inf is used.
+    def _update_from_base_coeffs(self, coeffs):
+        a, b, c, d = coeffs
+        self.x0 = d
 
-        Parameters
-        ----------
-        side : {'+', '-'}
-            Indicates the negative or positive half-space
+    def _neg_bounds(self):
+        """Return the lower and upper bounds of the negative half space"""
+        return (np.array([-np.inf, -np.inf, -np.inf]),
+                np.array([self.x0, np.inf, np.inf]))
 
-        Returns
-        -------
-        numpy.ndarray
-            Lower-left coordinates of the axis-aligned bounding box for the
-            desired half-space
-        numpy.ndarray
-            Upper-right coordinates of the axis-aligned bounding box for the
-            desired half-space
-
-        """
-
-        if side == '-':
-            return (np.array([-np.inf, -np.inf, -np.inf]),
-                    np.array([self.x0, np.inf, np.inf]))
-        elif side == '+':
-            return (np.array([self.x0, -np.inf, -np.inf]),
-                    np.array([np.inf, np.inf, np.inf]))
-
-    def evaluate(self, point):
-        """Evaluate the surface equation at a given point.
-
-        Parameters
-        ----------
-        point : 3-tuple of float
-            The Cartesian coordinates, :math:`(x',y',z')`, at which the surface
-            equation should be evaluated.
-
-        Returns
-        -------
-        float
-            :math:`x' - x_0`
-
-        """
-        return point[0] - self.x0
-
-    def translate(self, vector):
-        """Translate surface in given direction
-
-        Parameters
-        ----------
-        vector : iterable of float
-            Direction in which surface should be translated
-
-        Returns
-        -------
-        openmc.XPlane
-            Translated surface
-
-        """
-        vx = vector[0]
-        if vx == 0:
-            return self
-        else:
-            return type(self)(x0=self.x0 + vx)
+    def _pos_bounds(self):
+        """Return the lower and upper bounds of the positive half space"""
+        return (np.array([self.x0, -np.inf, -np.inf]),
+                np.array([np.inf, np.inf, np.inf]))
 
 
-class YPlane(Plane):
+class YPlane(PlaneMeta, Surface):
     """A plane perpendicular to the y axis of the form :math:`y - y_0 = 0`
 
     Parameters
@@ -707,76 +750,26 @@ class YPlane(Plane):
         check_type('y0 coefficient', y0, Real)
         self._coefficients['y0'] = y0
 
-    def bounding_box(self, side):
-        """Determine an axis-aligned bounding box.
+    def _get_base_coeffs(self):
+        """Return generalized coefficients for a plane"""
+        return (0., 1., 0., self.y0)
 
-        An axis-aligned bounding box for surface half-spaces is represented by
-        its lower-left and upper-right coordinates. For the y-plane surface, the
-        half-spaces are unbounded in their x- and z- directions. To represent
-        infinity, numpy.inf is used.
+    def _update_from_base_coeffs(self, coeffs):
+        a, b, c, d = coeffs
+        self.y0 = d
 
-        Parameters
-        ----------
-        side : {'+', '-'}
-            Indicates the negative or positive half-space
+    def _neg_bounds(self):
+        """Return the lower and upper bounds of the negative half space"""
+        return (np.array([-np.inf, -np.inf, -np.inf]),
+                np.array([np.inf, self.y0, np.inf]))
 
-        Returns
-        -------
-        numpy.ndarray
-            Lower-left coordinates of the axis-aligned bounding box for the
-            desired half-space
-        numpy.ndarray
-            Upper-right coordinates of the axis-aligned bounding box for the
-            desired half-space
-
-        """
-
-        if side == '-':
-            return (np.array([-np.inf, -np.inf, -np.inf]),
-                    np.array([np.inf, self.y0, np.inf]))
-        elif side == '+':
-            return (np.array([-np.inf, self.y0, -np.inf]),
-                    np.array([np.inf, np.inf, np.inf]))
-
-    def evaluate(self, point):
-        """Evaluate the surface equation at a given point.
-
-        Parameters
-        ----------
-        point : 3-tuple of float
-            The Cartesian coordinates, :math:`(x',y',z')`, at which the surface
-            equation should be evaluated.
-
-        Returns
-        -------
-        float
-            :math:`y' - y_0`
-
-        """
-        return point[1] - self.y0
-
-    def translate(self, vector):
-        """Translate surface in given direction
-
-        Parameters
-        ----------
-        vector : iterable of float
-            Direction in which surface should be translated
-
-        Returns
-        -------
-        openmc.YPlane
-            Translated surface
-
-        """
-        vy = vector[1]
-        if vy == 0.0:
-            return self
-        else:
-            return type(self)(y0=self.y0 + vy)
+    def _pos_bounds(self):
+        """Return the lower and upper bounds of the positive half space"""
+        return (np.array([-np.inf, self.y0, -np.inf]),
+                np.array([np.inf, np.inf, np.inf]))
 
 
-class ZPlane(Plane):
+class ZPlane(PlaneMeta, Surface):
     """A plane perpendicular to the z axis of the form :math:`z - z_0 = 0`
 
     Parameters
@@ -832,36 +825,166 @@ class ZPlane(Plane):
         check_type('z0 coefficient', z0, Real)
         self._coefficients['z0'] = z0
 
-    def bounding_box(self, side):
-        """Determine an axis-aligned bounding box.
+    def _get_base_coeffs(self):
+        """Return generalized coefficients for a plane"""
+        return (0., 0., 1., self.z0)
 
-        An axis-aligned bounding box for surface half-spaces is represented by
-        its lower-left and upper-right coordinates. For the z-plane surface, the
-        half-spaces are unbounded in their x- and y- directions. To represent
-        infinity, numpy.inf is used.
+    def _update_from_base_coeffs(self, coeffs):
+        a, b, c, d = coeffs
+        self.z0 = d
 
-        Parameters
-        ----------
-        side : {'+', '-'}
-            Indicates the negative or positive half-space
+    def _neg_bounds(self):
+        """Return the lower and upper bounds of the negative half space"""
+        return (np.array([-np.inf, -np.inf, -np.inf]),
+                np.array([np.inf, np.inf, self.z0]))
 
-        Returns
-        -------
-        numpy.ndarray
-            Lower-left coordinates of the axis-aligned bounding box for the
-            desired half-space
-        numpy.ndarray
-            Upper-right coordinates of the axis-aligned bounding box for the
-            desired half-space
+    def _pos_bounds(self):
+        """Return the lower and upper bounds of the positive half space"""
+        return (np.array([-np.inf, -np.inf, self.z0]),
+                np.array([np.inf, np.inf, np.inf]))
 
-        """
+class QuadricMeta(metaclass=ABCMeta):
+    """A surface of the form :math:`Ax^2 + By^2 + Cz^2 + Dxy + Eyz + Fxz + Gx + Hy +
+    Jz + K = 0`.
 
-        if side == '-':
-            return (np.array([-np.inf, -np.inf, -np.inf]),
-                    np.array([np.inf, np.inf, self.z0]))
-        elif side == '+':
-            return (np.array([-np.inf, -np.inf, self.z0]),
-                    np.array([np.inf, np.inf, np.inf]))
+    Parameters
+    ----------
+    a, b, c, d, e, f, g, h, j, k : float, optional
+        coefficients for the surface. All default to 0.
+    boundary_type : {'transmission, 'vacuum', 'reflective', 'periodic', 'white'}, optional
+        Boundary condition that defines the behavior for particles hitting the
+        surface. Defaults to transmissive boundary condition where particles
+        freely pass through the surface.
+    name : str, optional
+        Name of the surface. If not specified, the name will be the empty string.
+    surface_id : int, optional
+        Unique identifier for the surface. If not specified, an identifier will
+        automatically be assigned.
+
+    Attributes
+    ----------
+    a, b, c, d, e, f, g, h, j, k : float
+        coefficients for the surface
+    boundary_type : {'transmission, 'vacuum', 'reflective', 'periodic', 'white'}
+        Boundary condition that defines the behavior for particles hitting the
+        surface.
+    coefficients : dict
+        Dictionary of surface coefficients
+    id : int
+        Unique identifier for the surface
+    name : str
+        Name of the surface
+    type : str
+        Type of the surface
+
+    """
+
+    _type = 'quadric'
+    _coeff_keys = ('a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'j', 'k')
+
+    def __init__(self, a=0., b=0., c=0., d=0., e=0., f=0., g=0., h=0., j=0.,
+                 k=0., boundary_type='transmission', name='', surface_id=None):
+        super().__init__(surface_id, boundary_type, name=name)
+        self.a = a
+        self.b = b
+        self.c = c
+        self.d = d
+        self.e = e
+        self.f = f
+        self.g = g
+        self.h = h
+        self.j = j
+        self.k = k
+
+    @property
+    def a(self):
+        return self.coefficients['a']
+
+    @property
+    def b(self):
+        return self.coefficients['b']
+
+    @property
+    def c(self):
+        return self.coefficients['c']
+
+    @property
+    def d(self):
+        return self.coefficients['d']
+
+    @property
+    def e(self):
+        return self.coefficients['e']
+
+    @property
+    def f(self):
+        return self.coefficients['f']
+
+    @property
+    def g(self):
+        return self.coefficients['g']
+
+    @property
+    def h(self):
+        return self.coefficients['h']
+
+    @property
+    def j(self):
+        return self.coefficients['j']
+
+    @property
+    def k(self):
+        return self.coefficients['k']
+
+    @a.setter
+    def a(self, a):
+        check_type('a coefficient', a, Real)
+        self._coefficients['a'] = a
+
+    @b.setter
+    def b(self, b):
+        check_type('b coefficient', b, Real)
+        self._coefficients['b'] = b
+
+    @c.setter
+    def c(self, c):
+        check_type('c coefficient', c, Real)
+        self._coefficients['c'] = c
+
+    @d.setter
+    def d(self, d):
+        check_type('d coefficient', d, Real)
+        self._coefficients['d'] = d
+
+    @e.setter
+    def e(self, e):
+        check_type('e coefficient', e, Real)
+        self._coefficients['e'] = e
+
+    @f.setter
+    def f(self, f):
+        check_type('f coefficient', f, Real)
+        self._coefficients['f'] = f
+
+    @g.setter
+    def g(self, g):
+        check_type('g coefficient', g, Real)
+        self._coefficients['g'] = g
+
+    @h.setter
+    def h(self, h):
+        check_type('h coefficient', h, Real)
+        self._coefficients['h'] = h
+
+    @j.setter
+    def j(self, j):
+        check_type('j coefficient', j, Real)
+        self._coefficients['j'] = j
+
+    @k.setter
+    def k(self, k):
+        check_type('k coefficient', k, Real)
+        self._coefficients['k'] = k
 
     def evaluate(self, point):
         """Evaluate the surface equation at a given point.
@@ -875,10 +998,14 @@ class ZPlane(Plane):
         Returns
         -------
         float
-            :math:`z' - z_0`
+            :math:`Ax'^2 + By'^2 + Cz'^2 + Dx'y' + Ey'z' + Fx'z' + Gx' + Hy' +
+            Jz' + K = 0`
 
         """
-        return point[2] - self.z0
+        x, y, z = point
+        return x*(self.a*x + self.d*y + self.g) + \
+            y*(self.b*y + self.e*z + self.h) + \
+            z*(self.c*z + self.f*x + self.j) + self.k
 
     def translate(self, vector):
         """Translate surface in given direction
@@ -890,15 +1017,19 @@ class ZPlane(Plane):
 
         Returns
         -------
-        openmc.ZPlane
+        openmc.Quadric
             Translated surface
 
         """
-        vz = vector[2]
-        if vz == 0.0:
-            return self
-        else:
-            return type(self)(z0=self.z0 + vz)
+        vx, vy, vz = vector
+        a, b, c, d, e, f, g, h, j, k = (getattr(self, key) for key in
+                                        self._coeff_keys)
+        k = (k + vx*vx + vy*vy + vz*vz + d*vx*vy + e*vy*vz + f*vx*vz
+             - g*vx - h*vy - j*vz)
+        g = g - 2*a*vx - d*vy - f*vz
+        h = h - 2*b*vy - d*vx - e*vz
+        j = j - 2*c*vz - e*vy - f*vx
+        return type(self)(a=a, b=b, c=c, d=d, e=e, f=f, g=g, h=h, j=j, k=k)
 
 
 class Cylinder(Surface):

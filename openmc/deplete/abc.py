@@ -31,6 +31,9 @@ __all__ = [
     "Integrator", "SIIntegrator", "DepSystemSolver"]
 
 
+_SECONDS_PER_DAY = 24*60*60
+_SECONDS_PER_YEAR = 365.25*24*60*60
+
 OperatorResult = namedtuple('OperatorResult', ['k', 'rates'])
 OperatorResult.__doc__ = """\
 Result of applying transport operator
@@ -597,9 +600,11 @@ class Integrator(ABC):
     ----------
     operator : openmc.deplete.TransportOperator
         Operator to perform transport simulations
-    timesteps : iterable of float
-        Array of timesteps in units of [s]. Note that values are not
-        cumulative.
+    timesteps : iterable of float or iterable of tuple
+        Array of timesteps. Note that values are not cumulative. The units are
+        specified by the `timestep_units` argument when `timesteps` is an
+        iterable of float. Alternatively, units can be specified for each step
+        by passing an iterable of (value, unit) tuples.
     power : float or iterable of float, optional
         Power of the reactor in [W]. A single value indicates that
         the power is constant over all timesteps. An iterable
@@ -612,6 +617,11 @@ class Integrator(ABC):
         Power density of the reactor in [W/gHM]. It is multiplied by
         initial heavy metal inventory to get total power if ``power``
         is not speficied.
+    timestep_units : {'s', 'd', 'a', 'MWd/kg'}
+        Units for values specified in the `timesteps` argument. 's' means
+        seconds, 'd' means days, 'a' means years, and 'MWd/kg' indicates that
+        the values are given in burnup (MW-d of energy deposited per kilogram
+        of heavy metal).
 
     Attributes
     ----------
@@ -625,7 +635,8 @@ class Integrator(ABC):
         Power of the reactor in [W] for each interval in :attr:`timesteps`
     """
 
-    def __init__(self, operator, timesteps, power=None, power_density=None):
+    def __init__(self, operator, timesteps, power=None, power_density=None,
+                 timestep_units='s'):
         # Check number of stages previously used
         if operator.prev_res is not None:
             res = operator.prev_res[-1]
@@ -638,27 +649,51 @@ class Integrator(ABC):
                         self._num_stages))
         self.operator = operator
         self.chain = operator.chain
-        if not isinstance(timesteps, Iterable):
-            self.timesteps = [timesteps]
-        else:
-            self.timesteps = timesteps
+
+        # Determine power and normalize units to W
+        mass = operator.heavy_metal
         if power is None:
             if power_density is None:
                 raise ValueError("Either power or power density must be set")
             if not isinstance(power_density, Iterable):
-                power = power_density * operator.heavy_metal
+                power = power_density * mass
             else:
-                power = [p * operator.heavy_metal for p in power_density]
-
+                power = [p*mass for p in power_density]
         if not isinstance(power, Iterable):
             # Ensure that power is single value if that is the case
-            power = [power] * len(self.timesteps)
-        elif len(power) != len(self.timesteps):
+            power = [power] * len(timesteps)
+
+        if len(power) != len(timesteps):
             raise ValueError(
                 "Number of time steps != number of powers. {} vs {}".format(
-                    len(self.timesteps), len(power)))
+                    len(timesteps), len(power)))
 
-        self.power = power
+        # Get list of times / units
+        if isinstance(timesteps[0], Iterable):
+            times, units = zip(*timesteps)
+        else:
+            times = timesteps
+            units = [timestep_units] * len(timesteps)
+
+        # Determine number of seconds for each timestep
+        seconds = []
+        for time, unit, watts in zip(times, units, power):
+            if unit == 's':
+                seconds.append(time)
+            elif unit in ('d', 'day'):
+                seconds.append(time*_SECONDS_PER_DAY)
+            elif unit in ('a', 'yr', 'year'):
+                seconds.append(time*_SECONDS_PER_YEAR)
+            elif unit.lower() == 'mwd/kg':
+                watt_days_per_kg = 1e6*time
+                kilograms = 1e-3*mass
+                days = watt_days_per_kg * kilograms / watts
+                seconds.append(days*_SECONDS_PER_DAY)
+            else:
+                raise ValueError("Invalid timestep unit: {}".format(unit))
+
+        self.timesteps = asarray(seconds)
+        self.power = asarray(power)
 
     @abstractmethod
     def __call__(self, conc, rates, dt, power, i):
@@ -772,9 +807,11 @@ class SIIntegrator(Integrator):
     ----------
     operator : openmc.deplete.TransportOperator
         The operator object to simulate on.
-    timesteps : iterable of float
-        Array of timesteps in units of [s]. Note that values are not
-        cumulative.
+    timesteps : iterable of float or iterable of tuple
+        Array of timesteps. Note that values are not cumulative. The units are
+        specified by the `timestep_units` argument when `timesteps` is an
+        iterable of float. Alternatively, units can be specified for each step
+        by passing an iterable of (value, unit) tuples.
     power : float or iterable of float, optional
         Power of the reactor in [W]. A single value indicates that
         the power is constant over all timesteps. An iterable
@@ -787,6 +824,11 @@ class SIIntegrator(Integrator):
         Power density of the reactor in [W/gHM]. It is multiplied by
         initial heavy metal inventory to get total power if ``power``
         is not speficied.
+    timestep_units : {'s', 'd', 'a', 'MWd/kg'}
+        Units for values specified in the `timesteps` argument. 's' means
+        seconds, 'd' means days, 'a' means years, and 'MWd/kg' indicates that
+        the values are given in burnup (MW-d of energy deposited per kilogram
+        of heavy metal).
     n_steps : int, optional
         Number of stochastic iterations per depletion interval.
         Must be greater than zero. Default : 10
@@ -805,10 +847,10 @@ class SIIntegrator(Integrator):
         Number of stochastic iterations per depletion interval
     """
     def __init__(self, operator, timesteps, power=None, power_density=None,
-                 n_steps=10):
+                 timestep_units='s', n_steps=10):
         check_type("n_steps", n_steps, Integral)
         check_greater_than("n_steps", n_steps, 0)
-        super().__init__(operator, timesteps, power, power_density)
+        super().__init__(operator, timesteps, power, power_density, timestep_units)
         self.n_steps = n_steps
 
     def _get_bos_data_from_operator(self, step_index, step_power, bos_conc):

@@ -385,11 +385,11 @@ class Settings(object):
     @property
     def dagmc(self):
         return self._dagmc
-    
+
     @property
     def event_based(self):
         return self._event_based
-    
+
     @property
     def max_particles_in_flight(self):
         return self._max_particles_in_flight
@@ -721,12 +721,12 @@ class Settings(object):
     def delayed_photon_scaling(self, value):
         cv.check_type('delayed photon scaling', value, bool)
         self._delayed_photon_scaling = value
-    
+
     @event_based.setter
     def event_based(self, value):
         cv.check_type('event based', value, bool)
         self._event_based = value
-    
+
     @max_particles_in_flight.setter
     def max_particles_in_flight(self, value):
         cv.check_type('max particles in flight', value, Integral)
@@ -976,12 +976,12 @@ class Settings(object):
         if self._delayed_photon_scaling is not None:
             elem = ET.SubElement(root, "delayed_photon_scaling")
             elem.text = str(self._delayed_photon_scaling).lower()
-    
+
     def _create_event_based_subelement(self, root):
         if self._event_based is not None:
             elem = ET.SubElement(root, "event_based")
             elem.text = str(self._event_based).lower()
-    
+
     def _create_max_particles_in_flight_subelement(self, root):
         if self._max_particles_in_flight is not None:
             elem = ET.SubElement(root, "max_particles_in_flight")
@@ -1056,7 +1056,7 @@ class Settings(object):
                 if value is not None:
                     if key in ('summary', 'tallies'):
                         value = value in ('true', '1')
-                self.output[key] = value
+                    self.output[key] = value
 
     def _statepoint_from_xml_element(self, root):
         elem = root.find('state_point')
@@ -1227,12 +1227,12 @@ class Settings(object):
         text = get_text(root, 'delayed_photon_scaling')
         if text is not None:
             self.delayed_photon_scaling = text in ('true', '1')
-    
+
     def _event_based_from_xml_element(self, root):
         text = get_text(root, 'event_based')
         if text is not None:
             self.event_based = text in ('true', '1')
-    
+
     def _max_particles_in_flight_from_xml_element(self, root):
         text = get_text(root, 'max_particles_in_flight')
         if text is not None:

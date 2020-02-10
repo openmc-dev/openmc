@@ -1,6 +1,6 @@
 from abc import ABCMeta, abstractmethod
 from collections import OrderedDict
-from abc.collections import Iterable
+from collections.abc import Iterable
 from copy import deepcopy
 from numbers import Real, Integral
 from xml.etree import ElementTree as ET
@@ -283,28 +283,30 @@ _SURFACE_CLASSES = Surface.get_subclass_map()
 
 class PlaneMeta(metaclass=ABCMeta):
     """A Plane Meta class for all operations on order 1 surfaces"""
+#    def __new__(cls, *args, **kwargs):
+#       for key in cls._coeff_keys, kwargs.pop(key) to get arguments for class
+#        """Simplify this plane if possible to an XPlane, YPlane, or ZPlane"""
+#        pass
+#
+#        if cls is Plane:
+#            if np.all(np.isclose((self.b, self.c), 0., atol=atol)):
+#                x0 = self.d / self.a
+#                return XPlane(x0=x0, boundary_type=self.boundary_type,
+#                              name=self.name, surface_id=self.id)
+#
+#            elif np.all(np.isclose((self.a, self.c), 0., atol=atol)):
+#                y0 = self.d / self.b
+#                return YPlane(y0=y0, boundary_type=self.boundary_type,
+#                              name=self.name, surface_id=self.id)
+#
+#            elif np.all(np.isclose((self.a, self.b), 0., atol=atol)):
+#                z0 = self.d / self.c
+#                return ZPlane(z0=z0, boundary_type=self.boundary_type,
+#                              name=self.name, surface_id=self.id)
 
-    def __new__(cls, *args, **kwargs):
-            """Simplify this plane if possible to an XPlane, YPlane, or ZPlane"""
-        if cls is Plane:
-            (a,b,c,d,bt, name, surfidlen(args)
-            if np.all(np.isclose((self.b, self.c), 0., atol=atol)):
-                x0 = self.d / self.a
-                return XPlane(x0=x0, boundary_type=self.boundary_type,
-                              name=self.name, surface_id=self.id)
-
-            elif np.all(np.isclose((self.a, self.c), 0., atol=atol)):
-                y0 = self.d / self.b
-                return YPlane(y0=y0, boundary_type=self.boundary_type,
-                              name=self.name, surface_id=self.id)
-
-            elif np.all(np.isclose((self.a, self.b), 0., atol=atol)):
-                z0 = self.d / self.c
-                return ZPlane(z0=z0, boundary_type=self.boundary_type,
-                              name=self.name, surface_id=self.id)
-
-    def __init__(self):
-        pass
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self._periodic_surface = None
 
     @property
     def periodic_surface(self):
@@ -372,51 +374,6 @@ class PlaneMeta(metaclass=ABCMeta):
         vx, vy, vz = vector
         a, b, c, d = self._get_base_coeffs()
         d = d + a*vx + b*vy + c*vz
-
-        if clone:
-            surf = self.clone()
-        else:
-            surf = self
-
-        surf._update_from_base_coeffs(a, b, c, d)
-        return surf
-
-    def rotate(self, rotation, frame='lab', clone=False):
-        """Rotate surface by given Tait-Bryan angles
-
-        Parameters
-        ----------
-        rotation : iterable of float
-            Intrinsic Tait-Bryan angles in degrees used to rotate the surface
-        frame : str, one of 'lab' or 'body'
-        clone : boolean
-            Whether or not to return a new instance of a Plane or to modify the
-            coefficients of this plane.
-
-        Returns
-        -------
-        openmc.Plane or None
-            Rotated surface
-
-        """
-
-        check_type('surface rotation', rotation, Iterable, Real)
-        check_length('surface rotation', rotation, 3)
-
-        # Calculate rotation matrix Rmat from angles phi, theta, psi
-        phi, theta, psi = rotation*(-np.pi/180.)
-        c3, s3 = np.cos(phi), np.sin(phi)
-        c2, s2 = np.cos(theta), np.sin(theta)
-        c1, s1 = np.cos(psi), np.sin(psi)
-        Rmat = np.array([[c1*c2, c1*s2*s3 - c3*s1, s1*s3 + c1*c3*s2],
-                         [c2*s1, c1*c3 + s1*s2*s3, c3*s1*s2 - c1*s3],
-                         [-s2, c2*s3, c2*c3]])
-
-        a, b, c, d = self._get_base_coeffs()
-        bvec = np.array([a, b, c])
-
-        # Compute new rotated coefficients a, b, c
-        a, b, c = np.dot(bvec.T, Rmat.T)
 
         if clone:
             surf = self.clone()
@@ -527,15 +484,18 @@ class Plane(PlaneMeta, Surface):
     _type = 'plane'
     _coeff_keys = ('a', 'b', 'c', 'd')
 
-    def __init__(self, a=1., b=0., c=0., d=0., boundary_type='transmission',
-                 name='', surface_id=None, **kwargs):
-        super().__init__(surface_id, boundary_type, name=name)
-        self._periodic_surface = None
+    def __init__(self, a=1., b=0., c=0., d=0., **kwargs):
+        # work around until capital letter kwargs are deprecated
+        oldkwargs = deepcopy(kwargs)
+        for k in 'ABCD':
+            kwargs.pop(k, None)
+
+        super().__init__(**kwargs)
         self.a = a
         self.b = b
         self.c = c
         self.d = d
-        for k, v in kwargs.items():
+        for k, v in oldkwargs.items():
             if k in 'ABCD':
                 warn(_WARNING_UPPER.format(type(self).__name__, k.lower(), k),
                     FutureWarning)
@@ -662,9 +622,8 @@ class XPlane(PlaneMeta, Surface):
     _type = 'x-plane'
     _coeff_keys = ('x0',)
 
-    def __init__(self, x0=0., boundary_type='transmission',
-                 name='', surface_id=None):
-        super().__init__(surface_id=surface_id, boundary_type=boundary_type, name=name)
+    def __init__(self, x0=0., **kwargs):
+        super().__init__(**kwargs)
         self.x0 = x0
 
     @property
@@ -736,9 +695,8 @@ class YPlane(PlaneMeta, Surface):
     _type = 'y-plane'
     _coeff_keys = ('y0',)
 
-    def __init__(self, y0=0., boundary_type='transmission',
-                 name='', surface_id=None):
-        super().__init__(surface_id=surface_id, boundary_type=boundary_type, name=name)
+    def __init__(self, y0=0., **kwargs):
+        super().__init__(**kwargs)
         self.y0 = y0
 
     @property
@@ -811,9 +769,8 @@ class ZPlane(PlaneMeta, Surface):
     _type = 'z-plane'
     _coeff_keys = ('z0',)
 
-    def __init__(self, z0=0., boundary_type='transmission',
-                 name='', surface_id=None):
-        super().__init__(surface_id=surface_id, boundary_type=boundary_type, name=name)
+    def __init__(self, z0=0., **kwargs):
+        super().__init__(**kwargs)
         self.z0 = z0
 
     @property
@@ -843,148 +800,28 @@ class ZPlane(PlaneMeta, Surface):
         return (np.array([-np.inf, -np.inf, self.z0]),
                 np.array([np.inf, np.inf, np.inf]))
 
+
 class QuadricMeta(metaclass=ABCMeta):
-    """A surface of the form :math:`Ax^2 + By^2 + Cz^2 + Dxy + Eyz + Fxz + Gx + Hy +
-    Jz + K = 0`.
+    """A Meta class implementing common functionality for quadric surfaces"""
 
-    Parameters
-    ----------
-    a, b, c, d, e, f, g, h, j, k : float, optional
-        coefficients for the surface. All default to 0.
-    boundary_type : {'transmission, 'vacuum', 'reflective', 'periodic', 'white'}, optional
-        Boundary condition that defines the behavior for particles hitting the
-        surface. Defaults to transmissive boundary condition where particles
-        freely pass through the surface.
-    name : str, optional
-        Name of the surface. If not specified, the name will be the empty string.
-    surface_id : int, optional
-        Unique identifier for the surface. If not specified, an identifier will
-        automatically be assigned.
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
 
-    Attributes
-    ----------
-    a, b, c, d, e, f, g, h, j, k : float
-        coefficients for the surface
-    boundary_type : {'transmission, 'vacuum', 'reflective', 'periodic', 'white'}
-        Boundary condition that defines the behavior for particles hitting the
-        surface.
-    coefficients : dict
-        Dictionary of surface coefficients
-    id : int
-        Unique identifier for the surface
-    name : str
-        Name of the surface
-    type : str
-        Type of the surface
+    @abstractmethod
+    def _get_base_coeffs(self):
+        pass
 
-    """
+    @abstractmethod
+    def _update_from_base_coeffs(self):
+        pass
 
-    _type = 'quadric'
-    _coeff_keys = ('a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'j', 'k')
+    def _neg_bounds(self):
+        return (np.array([-np.inf, -np.inf, -np.inf]),
+                np.array([np.inf, np.inf, np.inf]))
 
-    def __init__(self, a=0., b=0., c=0., d=0., e=0., f=0., g=0., h=0., j=0.,
-                 k=0., boundary_type='transmission', name='', surface_id=None):
-        super().__init__(surface_id, boundary_type, name=name)
-        self.a = a
-        self.b = b
-        self.c = c
-        self.d = d
-        self.e = e
-        self.f = f
-        self.g = g
-        self.h = h
-        self.j = j
-        self.k = k
-
-    @property
-    def a(self):
-        return self.coefficients['a']
-
-    @property
-    def b(self):
-        return self.coefficients['b']
-
-    @property
-    def c(self):
-        return self.coefficients['c']
-
-    @property
-    def d(self):
-        return self.coefficients['d']
-
-    @property
-    def e(self):
-        return self.coefficients['e']
-
-    @property
-    def f(self):
-        return self.coefficients['f']
-
-    @property
-    def g(self):
-        return self.coefficients['g']
-
-    @property
-    def h(self):
-        return self.coefficients['h']
-
-    @property
-    def j(self):
-        return self.coefficients['j']
-
-    @property
-    def k(self):
-        return self.coefficients['k']
-
-    @a.setter
-    def a(self, a):
-        check_type('a coefficient', a, Real)
-        self._coefficients['a'] = a
-
-    @b.setter
-    def b(self, b):
-        check_type('b coefficient', b, Real)
-        self._coefficients['b'] = b
-
-    @c.setter
-    def c(self, c):
-        check_type('c coefficient', c, Real)
-        self._coefficients['c'] = c
-
-    @d.setter
-    def d(self, d):
-        check_type('d coefficient', d, Real)
-        self._coefficients['d'] = d
-
-    @e.setter
-    def e(self, e):
-        check_type('e coefficient', e, Real)
-        self._coefficients['e'] = e
-
-    @f.setter
-    def f(self, f):
-        check_type('f coefficient', f, Real)
-        self._coefficients['f'] = f
-
-    @g.setter
-    def g(self, g):
-        check_type('g coefficient', g, Real)
-        self._coefficients['g'] = g
-
-    @h.setter
-    def h(self, h):
-        check_type('h coefficient', h, Real)
-        self._coefficients['h'] = h
-
-    @j.setter
-    def j(self, j):
-        check_type('j coefficient', j, Real)
-        self._coefficients['j'] = j
-
-    @k.setter
-    def k(self, k):
-        check_type('k coefficient', k, Real)
-        self._coefficients['k'] = k
+    def _pos_bounds(self):
+        return (np.array([-np.inf, -np.inf, -np.inf]),
+                np.array([np.inf, np.inf, np.inf]))
 
     def evaluate(self, point):
         """Evaluate the surface equation at a given point.
@@ -1003,11 +840,10 @@ class QuadricMeta(metaclass=ABCMeta):
 
         """
         x, y, z = point
-        return x*(self.a*x + self.d*y + self.g) + \
-            y*(self.b*y + self.e*z + self.h) + \
-            z*(self.c*z + self.f*x + self.j) + self.k
+        a, b, c, d, e, f, g, h, j, k = self._get_base_coeffs()
+        return x*(a*x + d*y + g) + y*(b*y + e*z + h) + z*(c*z + f*x + j) + k
 
-    def translate(self, vector):
+    def translate(self, vector, clone=False):
         """Translate surface in given direction
 
         Parameters
@@ -1022,18 +858,23 @@ class QuadricMeta(metaclass=ABCMeta):
 
         """
         vx, vy, vz = vector
-        a, b, c, d, e, f, g, h, j, k = (getattr(self, key) for key in
-                                        self._coeff_keys)
+        a, b, c, d, e, f, g, h, j, k = self._get_base_coeffs()
         k = (k + vx*vx + vy*vy + vz*vz + d*vx*vy + e*vy*vz + f*vx*vz
              - g*vx - h*vy - j*vz)
         g = g - 2*a*vx - d*vy - f*vz
         h = h - 2*b*vy - d*vx - e*vz
         j = j - 2*c*vz - e*vy - f*vx
-        return type(self)(a=a, b=b, c=c, d=d, e=e, f=f, g=g, h=h, j=j, k=k)
+        if clone:
+            surf = self.clone()
+        else:
+            surf = self
+
+        surf._update_from_base_coeffs((a, b, c, d, e, f, g, h, j, k))
+        return surf
 
 
-class Cylinder(Surface):
-    """A cylinder whose length is parallel to the x-, y-, or z-axis.
+class Cylinder(QuadricMeta, Surface):
+    """A cylinder 
 
     Parameters
     ----------
@@ -1067,22 +908,90 @@ class Cylinder(Surface):
         Type of the surface
 
     """
-    def __init__(self, r=1., boundary_type='transmission',
-                 name='', surface_id=None):
-        super().__init__(surface_id, boundary_type, name=name)
+    _type = 'cylinder'
+    _coeff_keys = ('x0', 'y0', 'z0', 'r', 'u', 'v','w')
+    def __init__(self, x0=0., y0=0., z0=0. r=1., u=0., v=0., w=1., **kwargs):
+        super().__init__(**kwargs)
+        self.x0 = x0
+        self.y0 = y0
+        self.z0 = z0
         self.r = r
+        self.u = u
+        self.v = v
+        self.w = w
+
+    @property
+    def x0(self):
+        return self.coefficients['x0']
+
+    @property
+    def y0(self):
+        return self.coefficients['y0']
+
+    @property
+    def z0(self):
+        return self.coefficients['z0']
 
     @property
     def r(self):
         return self.coefficients['r']
+
+    @property
+    def u(self):
+        return self.coefficients['u']
+
+    @property
+    def v(self):
+        return self.coefficients['v']
+
+    @property
+    def w(self):
+        return self.coefficients['w']
+
+    @x0.setter
+    def x0(self, x0):
+        check_type('x0 coefficient', x0, Real)
+        self._coefficients['x0'] = x0
+
+    @y0.setter
+    def y0(self, y0):
+        check_type('y0 coefficient', y0, Real)
+        self._coefficients['y0'] = y0
+
+    @z0.setter
+    def z0(self, z0):
+        check_type('z0 coefficient', z0, Real)
+        self._coefficients['z0'] = z0
 
     @r.setter
     def r(self, r):
         check_type('r coefficient', r, Real)
         self._coefficients['r'] = r
 
+    @u.setter
+    def u(self, u):
+        check_type('u coefficient', u, Real)
+        self._coefficients['u'] = u
 
-class XCylinder(Cylinder):
+    @v.setter
+    def v(self, v):
+        check_type('v coefficient', v, Real)
+        self._coefficients['v'] = v
+
+    @w.setter
+    def w(self, w):
+        check_type('w coefficient', w, Real)
+        self._coefficients['w'] = w
+
+    def _get_base_coeffs(self):
+        """Return generalized coefficients for a cylinder"""
+        return (0., 0., 1., self.z0)
+
+    def _update_from_base_coeffs(self, coeffs):
+        a, b, c, d, e, f, g, h, j, k = coeffs
+
+
+class XCylinder(QuadricMeta, Surface):
     """An infinite cylinder whose length is parallel to the x-axis of the form
     :math:`(y - y_0)^2 + (z - z_0)^2 = r^2`.
 
@@ -1131,11 +1040,16 @@ class XCylinder(Cylinder):
     def __init__(self, y0=0., z0=0., r=1., boundary_type='transmission',
                  name='', surface_id=None, *, R=None):
         if R is not None:
-            warn(_WARNING_UPPER.format(type(self).__name__, 'r', 'R'), FutureWarning)
+            warn(_WARNING_UPPER.format(type(self).__name__, 'r', 'R'),
+                 FutureWarning)
             r = R
         super().__init__(r, boundary_type, name, surface_id)
         self.y0 = y0
         self.z0 = z0
+
+    @property
+    def x0(self):
+        return self.coefficients['x0']
 
     @property
     def y0(self):
@@ -1144,6 +1058,11 @@ class XCylinder(Cylinder):
     @property
     def z0(self):
         return self.coefficients['z0']
+
+    @x0.setter
+    def x0(self, x0):
+        check_type('x0 coefficient', x0, Real)
+        self._coefficients['x0'] = x0
 
     @y0.setter
     def y0(self, y0):
@@ -1154,6 +1073,7 @@ class XCylinder(Cylinder):
     def z0(self, z0):
         check_type('z0 coefficient', z0, Real)
         self._coefficients['z0'] = z0
+
 
     def bounding_box(self, side):
         """Determine an axis-aligned bounding box.

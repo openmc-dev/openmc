@@ -1103,9 +1103,9 @@ class Cylinder(QuadricMixin, Surface):
         d = -2*dx*dy
         e = -2*dy*dz
         f = -2*dx*dz
-        g = -2*((z1 - z0)*(x0*z1 - x1*z0) + (y1 - y0)*(x0*y1-x1*y0))
-        h = 2*((x1 - x0)*(x0*y1 - x1*y0) - (z1 - z0)*(y0*z1 - y1*z0))
-        j = 2*((x1 - x0)*(x0*z1 - x1*z0) + (y1 - y0)*(y0*z1 - y1*z0))
+        g = -2*(dz*(x0*z1 - x1*z0) + dy*(x0*y1-x1*y0))
+        h = 2*(dx*(x0*y1 - x1*y0) - dz*(y0*z1 - y1*z0))
+        j = 2*(dx*(x0*z1 - x1*z0) + dy*(y0*z1 - y1*z0))
         k = (y0*z1 - y1*z0)**2 + (x0*z1 - x1*z0)**2 + (x0*y1 - x1*y0)**2 \
             - r**2*(dx**2 + dy**2 + dz**2)
 
@@ -1132,42 +1132,26 @@ class Cylinder(QuadricMixin, Surface):
         Parameters
         ----------
         p1, p2 : 3-tuples
-            Points that pass through the plane
+            Points that pass through the plane, p1 will be used as (x0, y0, z0)
         r : float, optional
             Radius of the cylinder. Defaults to 1.
         kwargs : dict
-            Keyword arguments passed to the :class:`Quadric` constructor
+            Keyword arguments passed to the :class:`Cylinder` constructor
 
         Returns
         -------
         Cylinder
-            Cylinder that has an axis through the points p1 and p2
+            Cylinder that has an axis through the points p1 and p2, and a
+            radius r.
 
         """
         # Convert to numpy arrays
         p1 = np.asarray(p1)
         p2 = np.asarray(p2)
-        x1, y1, z1 = p1
-        x2, y2, z2 = p2
+        x0, y0, z0 = p1
         dx, dy, dz = p2 - p1
 
-        # Set coefficients for Quadric surface that represents a cylinder of
-        # radius r whose axis is the line defined by p1 and p2
-        a = dy**2 + dz**2
-        b = dx**2 + dz**2
-        c = dx**2 + dy**2
-        d = -2*dx*dy
-        e = -2*dy*dz
-        f = -2*dx*dz
-        g = -2*((z2 - z1)*(x1*z2 - x2*z1) + (y2 - y1)*(x1*y2-x2*y1))
-        h = 2*((x2 - x1)*(x1*y2 - x2*y1) - (z2 - z1)*(y1*z2 - y2*z1))
-        j = 2*((x2 - x1)*(x1*z2 - x2*z1) + (y2 - y1)*(y1*z2 - y2*z1))
-        k = (y1*z2 - y2*z1)**2 + (x1*z2 - x2*z1)**2 + (x1*y2 - x2*y1)**2 \
-            - r**2*(dx**2 + dy**2 + dz**2)
-
-        cyl = cls(x0=x1, y0=y1, z0=z1, r=r, **kwargs)
-        cyl._update_from_base_coeffs((a, b, c, d, e, f, g, h, j, k))
-        return cyl
+        return cls(x0=x0, y0=y0, z0=z0, r=r, dx=dx, dy=dy, dz=dz, **kwargs)
 
 
 class XCylinder(QuadricMixin, Surface):
@@ -1322,6 +1306,9 @@ class XCylinder(QuadricMixin, Surface):
                     np.array([np.inf, np.inf, np.inf]))
 
 
+Cylinder.register(XCylinder)
+
+
 class YCylinder(QuadricMixin, Surface):
     """An infinite cylinder whose length is parallel to the y-axis of the form
     :math:`(x - x_0)^2 + (z - z_0)^2 = r^2`.
@@ -1373,7 +1360,8 @@ class YCylinder(QuadricMixin, Surface):
     def __init__(self, x0=0., z0=0., r=1., **kwargs):
         R = kwargs.pop('R', None)
         if R is not None:
-            warn(_WARNING_UPPER.format(type(self).__name__, 'r', 'R'), FutureWarning)
+            warn(_WARNING_UPPER.format(type(self).__name__, 'r', 'R'),
+                 FutureWarning)
             r = R
         super().__init__(**kwargs)
         self.x0 = x0
@@ -1471,6 +1459,9 @@ class YCylinder(QuadricMixin, Surface):
         elif side == '+':
             return (np.array([-np.inf, -np.inf, -np.inf]),
                     np.array([np.inf, np.inf, np.inf]))
+
+
+Cylinder.register(YCylinder)
 
 
 class ZCylinder(QuadricMixin, Surface):
@@ -1625,6 +1616,9 @@ class ZCylinder(QuadricMixin, Surface):
                     np.array([np.inf, np.inf, np.inf]))
 
 
+Cylinder.register(ZCylinder)
+
+
 class Sphere(QuadricMixin, Surface):
     """A sphere of the form :math:`(x - x_0)^2 + (y - y_0)^2 + (z - z_0)^2 = r^2`.
 
@@ -1678,7 +1672,8 @@ class Sphere(QuadricMixin, Surface):
     def __init__(self, x0=0., y0=0., z0=0., r=1., **kwargs):
         R = kwargs.pop('R', None)
         if R is not None:
-            warn(_WARNING_UPPER.format(type(self).__name__, 'r', 'R'), FutureWarning)
+            warn(_WARNING_UPPER.format(type(self).__name__, 'r', 'R'),
+                 FutureWarning)
             r = R
         super().__init__(**kwargs)
         self.x0 = x0

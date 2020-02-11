@@ -190,23 +190,29 @@ def test_timesteps(integrator):
     day = 86400.0
     ref_timesteps = [1*day, 2*day, 5*day, 10*day]
 
-    # Case 1, timesteps in second
+    # Case 1, timesteps in seconds
     timesteps = ref_timesteps
     x = integrator(op, timesteps, power, timestep_units='s')
     assert np.allclose(x.timesteps, ref_timesteps)
 
-    # Case 2, timesteps in days
+    # Case 2, timesteps in minutes
+    minute = 60
+    timesteps = [t / minute for t in ref_timesteps]
+    x = integrator(op, timesteps, power, timestep_units='min')
+    assert np.allclose(x.timesteps, ref_timesteps)
+
+    # Case 3, timesteps in hours
+    hour = 60*60
+    timesteps = [t / hour for t in ref_timesteps]
+    x = integrator(op, timesteps, power, timestep_units='h')
+    assert np.allclose(x.timesteps, ref_timesteps)
+
+    # Case 4, timesteps in days
     timesteps = [t / day for t in ref_timesteps]
     x = integrator(op, timesteps, power, timestep_units='d')
     assert np.allclose(x.timesteps, ref_timesteps)
 
-    # Case 3, timesteps in years
-    year = 365.25*day
-    timesteps = [t / year for t in ref_timesteps]
-    x = integrator(op, timesteps, power, timestep_units='a')
-    assert np.allclose(x.timesteps, ref_timesteps)
-
-    # Case 4, timesteps in MWd/kg
+    # Case 5, timesteps in MWd/kg
     kilograms = op.heavy_metal / 1000.0
     days = [t/day for t in ref_timesteps]
     megawatts = power / 1000000.0
@@ -214,7 +220,7 @@ def test_timesteps(integrator):
     x = integrator(op, burnup, power, timestep_units='MWd/kg')
     assert np.allclose(x.timesteps, ref_timesteps)
 
-    # Case 5, mixed units
+    # Case 6, mixed units
     burnup_per_day = (1e-6*power) / kilograms
     timesteps = [(burnup_per_day, 'MWd/kg'), (2*day, 's'), (5, 'd'),
                  (10*burnup_per_day, 'MWd/kg')]

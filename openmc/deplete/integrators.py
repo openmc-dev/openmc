@@ -48,11 +48,11 @@ class PredictorIntegrator(Integrator):
         Power density of the reactor in [W/gHM]. It is multiplied by
         initial heavy metal inventory to get total power if ``power``
         is not speficied.
-    timestep_units : {'s', 'd', 'a', 'MWd/kg'}
+    timestep_units : {'s', 'min', 'h', 'd', 'MWd/kg'}
         Units for values specified in the `timesteps` argument. 's' means
-        seconds, 'd' means days, 'a' means years, and 'MWd/kg' indicates that
-        the values are given in burnup (MW-d of energy deposited per kilogram
-        of heavy metal).
+        seconds, 'min' means minutes, 'h' means hours, and 'MWd/kg' indicates
+        that the values are given in burnup (MW-d of energy deposited per
+        kilogram of heavy metal).
 
     Attributes
     ----------
@@ -137,11 +137,11 @@ class CECMIntegrator(Integrator):
         Power density of the reactor in [W/gHM]. It is multiplied by
         initial heavy metal inventory to get total power if ``power``
         is not speficied.
-    timestep_units : {'s', 'd', 'a', 'MWd/kg'}
+    timestep_units : {'s', 'min', 'h', 'd', 'MWd/kg'}
         Units for values specified in the `timesteps` argument. 's' means
-        seconds, 'd' means days, 'a' means years, and 'MWd/kg' indicates that
-        the values are given in burnup (MW-d of energy deposited per kilogram
-        of heavy metal).
+        seconds, 'min' means minutes, 'h' means hours, and 'MWd/kg' indicates
+        that the values are given in burnup (MW-d of energy deposited per
+        kilogram of heavy metal).
 
     Attributes
     ----------
@@ -234,11 +234,11 @@ class CF4Integrator(Integrator):
         Power density of the reactor in [W/gHM]. It is multiplied by
         initial heavy metal inventory to get total power if ``power``
         is not speficied.
-    timestep_units : {'s', 'd', 'a', 'MWd/kg'}
+    timestep_units : {'s', 'min', 'h', 'd', 'MWd/kg'}
         Units for values specified in the `timesteps` argument. 's' means
-        seconds, 'd' means days, 'a' means years, and 'MWd/kg' indicates that
-        the values are given in burnup (MW-d of energy deposited per kilogram
-        of heavy metal).
+        seconds, 'min' means minutes, 'h' means hours, and 'MWd/kg' indicates
+        that the values are given in burnup (MW-d of energy deposited per
+        kilogram of heavy metal).
 
     Attributes
     ----------
@@ -348,11 +348,11 @@ class CELIIntegrator(Integrator):
         Power density of the reactor in [W/gHM]. It is multiplied by
         initial heavy metal inventory to get total power if ``power``
         is not speficied.
-    timestep_units : {'s', 'd', 'a', 'MWd/kg'}
+    timestep_units : {'s', 'min', 'h', 'd', 'MWd/kg'}
         Units for values specified in the `timesteps` argument. 's' means
-        seconds, 'd' means days, 'a' means years, and 'MWd/kg' indicates that
-        the values are given in burnup (MW-d of energy deposited per kilogram
-        of heavy metal).
+        seconds, 'min' means minutes, 'h' means hours, and 'MWd/kg' indicates
+        that the values are given in burnup (MW-d of energy deposited per
+        kilogram of heavy metal).
 
     Attributes
     ----------
@@ -449,11 +449,11 @@ class EPCRK4Integrator(Integrator):
         Power density of the reactor in [W/gHM]. It is multiplied by
         initial heavy metal inventory to get total power if ``power``
         is not speficied.
-    timestep_units : {'s', 'd', 'a', 'MWd/kg'}
+    timestep_units : {'s', 'min', 'h', 'd', 'MWd/kg'}
         Units for values specified in the `timesteps` argument. 's' means
-        seconds, 'd' means days, 'a' means years, and 'MWd/kg' indicates that
-        the values are given in burnup (MW-d of energy deposited per kilogram
-        of heavy metal).
+        seconds, 'min' means minutes, 'h' means hours, and 'MWd/kg' indicates
+        that the values are given in burnup (MW-d of energy deposited per
+        kilogram of heavy metal).
 
     Attributes
     ----------
@@ -570,11 +570,11 @@ class LEQIIntegrator(Integrator):
         Power density of the reactor in [W/gHM]. It is multiplied by
         initial heavy metal inventory to get total power if ``power``
         is not speficied.
-    timestep_units : {'s', 'd', 'a', 'MWd/kg'}
+    timestep_units : {'s', 'min', 'h', 'd', 'MWd/kg'}
         Units for values specified in the `timesteps` argument. 's' means
-        seconds, 'd' means days, 'a' means years, and 'MWd/kg' indicates that
-        the values are given in burnup (MW-d of energy deposited per kilogram
-        of heavy metal).
+        seconds, 'min' means minutes, 'h' means hours, and 'MWd/kg' indicates
+        that the values are given in burnup (MW-d of energy deposited per
+        kilogram of heavy metal).
 
     Attributes
     ----------
@@ -688,11 +688,11 @@ class SICELIIntegrator(SIIntegrator):
         Power density of the reactor in [W/gHM]. It is multiplied by
         initial heavy metal inventory to get total power if ``power``
         is not speficied.
-    timestep_units : {'s', 'd', 'a', 'MWd/kg'}
+    timestep_units : {'s', 'min', 'h', 'd', 'MWd/kg'}
         Units for values specified in the `timesteps` argument. 's' means
-        seconds, 'd' means days, 'a' means years, and 'MWd/kg' indicates that
-        the values are given in burnup (MW-d of energy deposited per kilogram
-        of heavy metal).
+        seconds, 'min' means minutes, 'h' means hours, and 'MWd/kg' indicates
+        that the values are given in burnup (MW-d of energy deposited per
+        kilogram of heavy metal).
     n_steps : int, optional
         Number of stochastic iterations per depletion interval.
         Must be greater than zero. Default : 10
@@ -796,11 +796,11 @@ class SILEQIIntegrator(SIIntegrator):
         Power density of the reactor in [W/gHM]. It is multiplied by
         initial heavy metal inventory to get total power if ``power``
         is not speficied.
-    timestep_units : {'s', 'd', 'a', 'MWd/kg'}
+    timestep_units : {'s', 'min', 'h', 'd', 'MWd/kg'}
         Units for values specified in the `timesteps` argument. 's' means
-        seconds, 'd' means days, 'a' means years, and 'MWd/kg' indicates that
-        the values are given in burnup (MW-d of energy deposited per kilogram
-        of heavy metal).
+        seconds, 'min' means minutes, 'h' means hours, and 'MWd/kg' indicates
+        that the values are given in burnup (MW-d of energy deposited per
+        kilogram of heavy metal).
     n_steps : int, optional
         Number of stochastic iterations per depletion interval.
         Must be greater than zero. Default : 10

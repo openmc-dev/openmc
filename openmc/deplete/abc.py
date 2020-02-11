@@ -31,8 +31,9 @@ __all__ = [
     "Integrator", "SIIntegrator", "DepSystemSolver"]
 
 
+_SECONDS_PER_MINUTE = 60
+_SECONDS_PER_HOUR = 60*60
 _SECONDS_PER_DAY = 24*60*60
-_SECONDS_PER_YEAR = 365.25*24*60*60
 
 OperatorResult = namedtuple('OperatorResult', ['k', 'rates'])
 OperatorResult.__doc__ = """\
@@ -617,11 +618,11 @@ class Integrator(ABC):
         Power density of the reactor in [W/gHM]. It is multiplied by
         initial heavy metal inventory to get total power if ``power``
         is not speficied.
-    timestep_units : {'s', 'd', 'a', 'MWd/kg'}
+    timestep_units : {'s', 'min', 'h', 'd', 'MWd/kg'}
         Units for values specified in the `timesteps` argument. 's' means
-        seconds, 'd' means days, 'a' means years, and 'MWd/kg' indicates that
-        the values are given in burnup (MW-d of energy deposited per kilogram
-        of heavy metal).
+        seconds, 'min' means minutes, 'h' means hours, and 'MWd/kg' indicates
+        that the values are given in burnup (MW-d of energy deposited per
+        kilogram of heavy metal).
 
     Attributes
     ----------
@@ -678,19 +679,21 @@ class Integrator(ABC):
         # Determine number of seconds for each timestep
         seconds = []
         for time, unit, watts in zip(times, units, power):
-            if unit == 's':
+            if unit in ('s', 'sec'):
                 seconds.append(time)
+            elif unit in ('min', 'minute'):
+                seconds.append(time*_SECONDS_PER_MINUTE)
+            elif unit in ('h', 'hr', 'hour'):
+                seconds.append(time*_SECONDS_PER_HOUR)
             elif unit in ('d', 'day'):
                 seconds.append(time*_SECONDS_PER_DAY)
-            elif unit in ('a', 'yr', 'year'):
-                seconds.append(time*_SECONDS_PER_YEAR)
             elif unit.lower() == 'mwd/kg':
                 watt_days_per_kg = 1e6*time
                 kilograms = 1e-3*mass
                 days = watt_days_per_kg * kilograms / watts
                 seconds.append(days*_SECONDS_PER_DAY)
             else:
-                raise ValueError("Invalid timestep unit: {}".format(unit))
+                raise ValueError("Invalid timestep unit '{}'".format(unit))
 
         self.timesteps = asarray(seconds)
         self.power = asarray(power)
@@ -824,11 +827,11 @@ class SIIntegrator(Integrator):
         Power density of the reactor in [W/gHM]. It is multiplied by
         initial heavy metal inventory to get total power if ``power``
         is not speficied.
-    timestep_units : {'s', 'd', 'a', 'MWd/kg'}
+    timestep_units : {'s', 'min', 'h', 'd', 'MWd/kg'}
         Units for values specified in the `timesteps` argument. 's' means
-        seconds, 'd' means days, 'a' means years, and 'MWd/kg' indicates that
-        the values are given in burnup (MW-d of energy deposited per kilogram
-        of heavy metal).
+        seconds, 'min' means minutes, 'h' means hours, and 'MWd/kg' indicates
+        that the values are given in burnup (MW-d of energy deposited per
+        kilogram of heavy metal).
     n_steps : int, optional
         Number of stochastic iterations per depletion interval.
         Must be greater than zero. Default : 10

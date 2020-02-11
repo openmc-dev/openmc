@@ -54,6 +54,8 @@ class SourceTestHarness(PyAPITestHarness):
             outstr += 'tally {}:\n'.format(t.id)
             outstr += 'sum = {:12.6E}\n'.format(t.sum[0, 0, 0])
             outstr += 'sum_sq = {:12.6E}\n'.format(t.sum_sq[0, 0, 0])
+            outstr += 'max_lost = {:12.6E}\n'.format(sp.n_max_lost_particles)
+            outstr += 'rel_max_lost = {:12.6E}\n'.format(sp.relative_max_lost_particles)
 
             return outstr
 

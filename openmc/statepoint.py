@@ -77,6 +77,8 @@ class StatePoint(object):
         Number of batches
     n_inactive : int
         Number of inactive batches
+    n_max_lost_particles : int
+        Number of max lost particles
     n_particles : int
         Number of particles per generation
     n_realizations : int
@@ -311,6 +313,10 @@ class StatePoint(object):
             return self._f['n_inactive'][()]
         else:
             return None
+
+    @property
+    def n_max_lost_particles(self):
+        return self._f['n_max_lost_particles'][()]            
 
     @property
     def n_particles(self):

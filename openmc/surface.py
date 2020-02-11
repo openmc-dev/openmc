@@ -25,6 +25,8 @@ _WARNING_KWARGS = """
 will not accept positional parameters for superclass arguments.\
 """
 
+_SURFACE_CLASSES = {}
+
 
 class Surface(IDManagerMixin, metaclass=ABCMeta):
     """An implicit surface with an associated boundary condition.
@@ -275,7 +277,6 @@ class Surface(IDManagerMixin, metaclass=ABCMeta):
 
 class PlaneMixin(metaclass=ABCMeta):
     """A Plane Meta class for all operations on order 1 surfaces"""
-
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self._periodic_surface = None
@@ -880,7 +881,6 @@ Plane.register(ZPlane)
 
 class QuadricMixin(metaclass=ABCMeta):
     """A Mixin class implementing common functionality for quadric surfaces"""
-
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
@@ -1300,7 +1300,6 @@ class XCylinder(QuadricMixin, Surface):
         a = d = e = f = g = 0.
         b = c = 1.
         h, j, k = -2*y0, -2*z0, y0**2 + z0**2 - r**2 
-        print("to base", (a, b, c, d, e, f, g, h, j, k))
 
         return (a, b, c, d, e, f, g, h, j, k)
 
@@ -2668,17 +2667,18 @@ class Halfspace(Region):
         # Return translated surface
         return type(self)(memo[key], self.side)
 
-def get_subclasses(cls):
+
+def _get_subclasses(cls):
     """Recursively find all subclasses of this class"""
     return set(cls.__subclasses__()).union([s for c in cls.__subclasses__()
-                                            for s in get_subclasses(c)])
+                                            for s in _get_subclasses(c)])
 
 
-def get_subclass_map(cls):
+def _get_subclass_map(cls):
     """Generate mapping of class _type attributes to classes"""
-    return {c._type: c for c in get_subclasses(cls)}
+    return {c._type: c for c in _get_subclasses(cls)}
 
 
-_SURFACE_CLASSES = get_subclass_map(Surface)
+_SURFACE_CLASSES = _get_subclass_map(Surface)
 
 

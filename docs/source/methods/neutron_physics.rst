@@ -52,6 +52,162 @@ the formula usually used to calculate the distance to next collision is
 
     \ell = -\frac{\ln \xi}{\Sigma_t}
 
+This method only works in travellig neutron particles throuh materials with constant 
+number density in a discritized region. To deal with the neutron transport in continuously 
+varying materials, the CVMT method should be introduced.
+
+----------------------------------------------------
+Distance Sampling in CVMT Method 
+----------------------------------------------------
+
+CVMT (continously varying materials tracking) method was first introduced by Brown and Martin and 
+later combined with FETs by Brown et al with the intention of both transporting neutrons and 
+tallying quantities in a material with continuously varying properties.
+This method relies on the ability to integreate the total macroscopic criss section along with
+the oartucke flight path. The integral of the total macroscopic cross section along the particle 
+flight path is referred to as the optical depth and is defined as follows,
+
+.. math::
+    :label: macro-xs
+
+    \tau(s) = \int_0^1 \Sigma_t(T(s^'),N_i(s^')) ds^'
+
+where the macroscopic cross sections a function of temperature, and nuclide number densities, which 
+all vary along the neutron's flight path. And the :math:`s` will be used to denote a distance from 
+then current neutron position along the current flight direction. 
+It implies that the derivative of the optical depth with respect to the flight path spatial variable 
+is simply the macroscopic cross section in the following, 
+
+.. math::
+    :label: macro-xs-2
+
+    \frac{d\tau(s)}{ds} = frac{d}{ds} \int_0^S \Sigma_t(T(s^'),N_i(s^')) ds^' = \Sigma_t(T(s), N_i(s))
+
+Hence, the probability that a neutron travels along the flight path to a point without a collosion is 
+the expoenential of the negative optical depth as follows,
+
+.. math::
+     :label: prob-without-collision
+
+     P_{NC}(s) = exp{-\tau(s)}
+
+Multiplying the probability of no collision by the total macroscopic cross section givves the probability
+that an interaction will occur about that point given that an interaction has not yet occured. With the 
+definition in :ref:`macro-xs-2`, the probability of interaction about the point can be expressed as a 
+function of the optical depth and its derivative as follows,
+
+.. math:: 
+    :label: prob-with-collision
+   
+    P_{C}(s)ds = \Sigma_t(s) exp{-\tau(s)} ds = frac{d\tau(s)}{ds} exp{-\tau(s)} ds
+
+The probability density function (pdf) provided by Brown and Martin is modified slightly to directly 
+note that regions in the Monte Carlo simulation are finite. The modified pdf can be expressed in the 
+following,
+
+.. math::
+     :label: pdf-fs
+
+     f(s)ds = P_{NC}(s_b)\delta(s-s_b)ds+frac{d\tau(s)}{ds} exp{-\tau(s)} ds
+
+where the variable :math:`s_b` is the distance to the nearest geometric boundary along the flight path.
+Then the pdf can be integrated to get the cumulative density function (cdf), which is directly used to 
+sample the neutron flight distance.
+
+.. math::
+     :label: cdf-fs
+
+     F(s) = \int_0^s f(s)ds = P_{NC}(s_b)H(s-s_b)+\int_0^s frac{d\tau(s)}{ds} exp{-\tau(s)} ds
+
+If the total macroscopic cross section is constant in the given cell, the integral on the right hand of 
+:ref: `cdf-fs` can be evalulated analytically and the neutrorn flight distance can be directly sampled.
+Brown and Martin proposed a multistep sampling method for the case when :ref: `cdf-fs` contains a 
+spatially varying total macroscopic cross section. The first step is to sample a probablity mass 
+function defined by :math: `P_{NC}(s_b)` and :math: `1-P_{NC}(s_b)`. If no collision in the cell is 
+the outcome of the sampling , then then neutron is transported to the cell boundary. If a collision is 
+sampled, then a truncated exponential distribution is sampled to determine the neutron flight distance 
+in the cell. The truncated exponential distribution, which is simply a renormalized version of 
+:math: `prob-with-collision` is expressed as follows,
+
+.. math:: 
+     :label: gs-pdf
+     
+     g(s) = frac{1}{1-P_{NC}(s_b)} frac{d\tau}{ds} exp{-\tau(s)}  0\leq s \leq s_b
+
+To sample the pdf in :ref: `gs-pdf`, the cdf is first calcualted by integrating from :math: `0`
+to a point along the flight path :math: `s`.
+
+.. math::
+    :label: gs-cdf
+    
+    G(s) = \int_0^s g(s^') ds^' = \int_0^s frac{1}{1-P_{NC}(s_b)} frac{d\tau}{ds^'} exp{-\tau(s^')} ds^'
+
+In order to derive a useful expression from :ref: `gs-cdf`, a change of variables must be performed 
+such that the integration on the right hand side is performed over the optical depth :math: `\tau`, 
+instead of over the spatical variable along the neutron flight path. Note that in this transformation
+:math: `\tau(0)=0` and :math: `\hat{\tau}=\tau(s)`.
+
+.. math:: 
+    :label: gs-cdf-2
+    
+    G(s) = frac{1}{1-P_{NC}(s_b)} \int_0^{\hat{\tau}} exp{-\tau} d\tau
+
+The cdf can be sampled uniformly on the interval :math: `[0,1)` with a random variable :math: `\xi`.
+However, instead of inverting the cdf and sampling a flight distance, the cdf is inverted and an 
+optical depth :math: `\hat{\tau}` is sampled as follows,
+
+.. math::
+    :label: tau-hat
+
+    \hat{\tau} = -ln[1-(1-P_{NC}(s_b))\xi]
+
+A sampled optical deplth is not by itself very useful in the Monte Carlo simulation. It essentially 
+is clear at this point that the use of spatially varying total macroscopic cross sections requires
+that a nonlinear equation must solved. That is to say, the distance along the flight path that yields
+an optical depth equal to the sampled optical depth must be determined as the following constraint,
+
+.. math::
+    :label: tau-constraint
+     
+    \hat{\tau} = \int_0^s \Sigma (s) ds 
+
+Finally, the nonlinear equation will be solved by Newton's method. Consequently, the practicality of 
+CVMT method together with Newton's method is shown in Figure :num: `fig-cvmt-1`.
+
+.. _fig-cvmt-1:
+
+.. figure:: ../_images/proc_cvmt_1.png
+    :align: center
+    :figclass: align-center
+    
+    Sampling procedure of CVMT method and Newton's method.
+
+However, it is found that in the real code development, extending this method to three dimensions with 
+spatially varying temperatures and nuclides number densities is intractable since the temperature 
+dependence of the microscopic cross sections does not fit into a usable form considering the underlying
+spatially variation of the temperature field. Moreover, difference algorithms are applied to Doppler 
+broaden cross sections in thermal range, resolved resonance range and unresolved resonance range. 
+Therefore, the only tractable solution is to perform a numerical integral of the macroscopic total cross
+section to calculate the optical depth. However, the drawback is that multiple total cross section values
+must be sampled along the flight fistance to perform the optical depth computation. Certain clever 
+modification to CVMT method requires that the quadrature rule used to calculate the total optical depth
+must be composed of third-order or less shape functions in each interval. One of the most famous 
+quadrature rules is three-point Newton-Cotes quadrature formula, also called Simpson's rule of integration.
+
+The final practical procedure to sample the optical depth and the flight distance is displayed in Figure
+:num: `fig-cvmt-2` .
+
+.. _fig-cvmt-2:
+
+.. figure:: ../_images/proc_cvmt_2.png
+    :align: center
+    :figclass: align-center
+    
+    Sampling procedure of CVMT method and Simpson's integration.
+
+More information about CVMT method in OpenMC can be referred to `here <https://dspace.mit.edu/handle/1721.1/112381>`_.    
+
+
 ----------------------------------------------------
 :math:`(n,\gamma)` and Other Disappearance Reactions
 ----------------------------------------------------

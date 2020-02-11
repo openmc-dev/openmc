@@ -28,6 +28,7 @@
 #include "openmc/string_utils.h"
 #include "openmc/thermal.h"
 #include "openmc/xml_interface.h"
+#include "openmc/position.h"
 
 namespace openmc {
 
@@ -185,6 +186,58 @@ Material::Material(pugi::xml_node node)
         } else {
           densities.push_back(-std::stod(get_node_value(node_nuc, "wo")));
         }
+        
+        // cvmt: read and store polynomial represetation of nuclide densities
+        if(check_for_node(node_nuc, "poly_coeffs")){
+          continuous_num_density_ = true;
+          auto type = get_node_value(node_nuc, "poly_type");
+          auto coeffs = get_node_array<double>(node_nuc, "poly_coeffs");
+          auto n_coeffs = coeffs.size();
+          int order = {0}; 
+          std::vector<double> temp_vec;
+          PolyProperty temp_poly(n_coeffs - 1); 
+          temp_poly.set_type(type);
+          temp_poly.set_radius(coeffs[0]);
+          temp_poly.set_coeffs(coeffs.data()+1);
+          if(type == "zernike1d") {
+            order = 2 * (n_coeffs - 2);
+          } else if(type == "zernike") {
+            auto p = 1;
+            auto temp_int = 0;
+            while(p < n_coeffs) {
+              p += temp_int + 1;
+              temp_int += 1; 
+            }
+            if(p == n_coeffs) {
+              order = temp_int - 1;
+            } else {
+              fatal_error("Correct polynomial order could not be determined.");
+            }
+          }
+          temp_poly.set_order(order);
+          if(type == "zernike1d") {
+            auto ii = 1;
+            for(int p = 0; p <= order + 1; p = p + 2){
+              temp_vec.push_back(std::sqrt(p + 1));
+              ii += 1;
+            }
+          } else if(type == "zernike") {
+            auto ii = 1;
+            for(int p = 0; p <= order + 1; p = p + 1){
+              for(int q = -p; q <= p; q = q + 2) {
+                if(q == 0) {
+                  temp_vec.push_back(std::sqrt(p + 1.0));
+                } else {
+                  temp_vec.push_back(std::sqrt(2.0 * p + 2.0));
+                }
+                ii += 1;
+              }
+            }
+          }
+          temp_poly.set_norm(temp_vec.data());
+          poly_densities_.push_back(temp_poly);
+        }
+        // end cvmt materials reading  
       }
     }
   }
@@ -1436,4 +1489,92 @@ openmc_extend_materials(int32_t n, int32_t* index_start, int32_t* index_end)
 
 extern "C" size_t n_materials() { return model::materials.size(); }
 
+//
+// cvmt functions definition 
+double 
+PolyProperty::evaluate(Position r) 
+{
+  if (type_ == "zernike1d") { 
+    return evaluate_zernike1d(r);
+  } else if (type_ == "zernike") {
+    return evaluate_zernike(r);
+  }
+}
+
+double 
+PolyProperty::evaluate_zernike1d(Position r) 
+{
+  int c_index;
+  double rho, poly_val, property;
+  rho = std::sqrt(r.x * r.x + r.y * r.y) / coeffs_[0];
+  c_index = 2;
+  property = 0.0;
+  for (int i = 0; i <= order_; i = i + 2) {
+      calc_zn_rad(i, rho, &poly_val);
+      property += poly_val * coeffs_[c_index - 1];
+      c_index += 1;
+  }
+  return property;
+}
+
+double 
+PolyProperty::evaluate_zernike(Position r) 
+{
+  int k;
+  double rho, phi, property;
+  rho = sqrt(r.x * r.x + r.y * r.y) / coeffs_[0];
+  phi = std::atan2(r.y, r.x);
+  k = 2; 
+  calc_zn(order_, rho, phi, poly_results_.data());
+  property = 0.0;
+  for (int i = 0; i <= order_; i++) {
+    for (int j = 1; j <= i + 1; j++) {
+      property += poly_results_[k - 2] * coeffs_[k - 1];
+      k += 1;
+    }
+  }
+  if (property < -1.0E-8) {
+     fatal_error("A negative number density below -1E-8 was calculated.");
+  } else if (property < 0.0) {
+     warning("A negative number density between -1E-8 and 0 was calculated.");
+  }
+  return property;
+}
+
+PolyProperty::PolyProperty(int n_size)
+{
+  n_coeffs_ = n_size;
+  coeffs_.resize(n_coeffs_);
+  poly_results_.resize(n_coeffs_);
+  poly_norm_.resize(n_coeffs_);
+}
+
+PolyProperty::~PolyProperty()
+{
+    n_coeffs_ = 0;
+    coeffs_.resize(0);
+    poly_results_.resize(0);
+    poly_norm_.resize(0);
+}
+
+void PolyProperty::set_type(std::string type) {type_ = type;}
+
+void PolyProperty::set_order(int order) {order_ = order;}
+
+void PolyProperty::set_radius(double radius) {radius_ = radius;}
+
+void PolyProperty::set_coeffs(double coeffs[])
+{
+  for (int i = 0; i < n_coeffs_; i++) {
+    coeffs_[i] = coeffs[i];
+  }
+}
+
+void PolyProperty::set_norm(double norm[])
+{
+  for (int i = 0; i < n_coeffs_; i++) {
+    poly_norm_[i] = norm[i];
+  }
+}
+ 
 } // namespace openmc

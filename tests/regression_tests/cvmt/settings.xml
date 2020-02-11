@@ -1,0 +1,15 @@
+<?xml version="1.0"?>
+<settings>
+
+  <run_mode>eigenvalue</run_mode>
+  <batches>10</batches>
+  <inactive>5</inactive>
+  <particles>1000</particles>
+
+  <source>
+    <space type="box">
+      <parameters>-0.63 -0.63 -1e50  0.63  0.63  1e50</parameters>
+    </space>
+  </source>
+
+</settings>

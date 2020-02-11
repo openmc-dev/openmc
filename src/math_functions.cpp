@@ -893,4 +893,5 @@ std::complex<double> w_derivative(std::complex<double> z, int order)
   }
 }
 
+
 } // namespace openmc

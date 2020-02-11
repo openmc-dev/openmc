@@ -1,0 +1,16 @@
+<?xml version="1.0"?>
+<geometry>
+
+  <cell id="1" material="1" name="cell 1" region="-1" universe="0" />
+  <cell id="2" material="2" name="cell 2" region="1 -2" universe="0" />
+  <cell id="3" material="3" name="cell 3" region="2 -3" universe="0" />
+  <cell id="4" material="4" name="cell 4" region="3 11 -12 13 -14" universe="0" />
+  <surface coeffs="0 0 0.4096" id="1" name="Fuel OR" type="z-cylinder" />
+  <surface coeffs="0 0 0.418" id="2" name="Clad IR" type="z-cylinder" />
+  <surface coeffs="0 0 0.475" id="3" name="Clad OR" type="z-cylinder" />
+  <surface boundary="reflective" coeffs="-0.63" id="11" name="left" type="x-plane" />
+  <surface boundary="reflective" coeffs="0.63" id="12" name="right" type="x-plane" />
+  <surface boundary="reflective" coeffs="-0.63" id="13" name="back" type="y-plane" />
+  <surface boundary="reflective" coeffs="0.63" id="14" name="front" type="y-plane" />
+    
+</geometry>

@@ -34,6 +34,31 @@ extern std::vector<std::unique_ptr<Material>> materials;
 //! A substance with constituent nuclides and thermal scattering data
 //==============================================================================
 
+class PolyProperty{
+  private:
+  std::string type_;                       //! user readable type
+  int n_coeffs_;                           //! number of coeffs
+  int order_;                              //! the order of the expansion
+  double radius_;                          //! the radius of the expansion
+  std::vector<double> coeffs_;             //! coefficients for poly evaluation
+  std::vector<double> poly_norm_;          //! polynomial norm available to property for efficiency
+  public: 
+  std::vector<double> poly_results_;       //! variables used in evaluation property
+  double evaluate(Position r);             //! Evaluate function
+  double evaluate_zernike1d(Position r);
+  double evaluate_zernike(Position r); 
+  // construction function
+  PolyProperty(int n_size);
+  // destruction function
+  ~PolyProperty();
+  //setting functions
+  void set_order(int order);
+  void set_coeffs(double coeffs[]);
+  void set_type(std::string type);
+  void set_norm(double norm[]);
+  void set_radius(double radius);
+};
+
 class Material
 {
 public:
@@ -144,7 +169,11 @@ public:
   bool fissionable_ {false}; //!< Does this material contain fissionable nuclides
   bool depletable_ {false}; //!< Is the material depletable?
   std::vector<bool> p0_; //!< Indicate which nuclides are to be treated with iso-in-lab scattering
-
+  
+  // CVMT: variables data block
+  bool continuous_num_density_ {false};      //! cvmt flag: indicator the continuous materials number density
+  std::vector<PolyProperty> poly_densities_; //! store cvmt polynomial number density 
+  
   // To improve performance of tallying, we store an array (direct address
   // table) that indicates for each nuclide in data::nuclides the index of the
   // corresponding nuclide in the nuclide_ vector. If it is not present in the

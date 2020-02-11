@@ -18,6 +18,8 @@
   <run_mode>fixed source</run_mode>
   <particles>10000</particles>
   <batches>1</batches>
+  <max_lost_particles>5</max_lost_particles>
+  <rel_max_lost_particles>0.1</rel_max_lost_particles>
   <source particle="photon" strength="1.0">
     <space type="point">
       <parameters>0 0 0</parameters>

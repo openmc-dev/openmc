@@ -79,6 +79,8 @@ class StatePoint(object):
         Number of inactive batches
     n_max_lost_particles : int
         Number of max lost particles
+    relative_max_lost_particles : float
+        Number of max lost particles, relative to the total number of particles
     n_particles : int
         Number of particles per generation
     n_realizations : int
@@ -316,7 +318,11 @@ class StatePoint(object):
 
     @property
     def n_max_lost_particles(self):
-        return self._f['n_max_lost_particles'][()]            
+        return self._f['n_max_lost_particles'][()]  
+
+    @property
+    def relative_max_lost_particles(self):
+        return self._f['relative_max_lost_particles'][()]                    
 
     @property
     def n_particles(self):

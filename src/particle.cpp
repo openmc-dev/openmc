@@ -164,8 +164,6 @@ Particle::event_calculate_xs()
     if (cell_born_ == C_NONE) cell_born_ = coord_[n_coord_ - 1].cell;
   }
 
-  std::cout << "settings::n_max_lost_particles " << settings::n_max_lost_particles << std::endl;
-
   // Write particle track.
   if (write_track_) write_particle_track(*this);
 
@@ -630,12 +628,10 @@ Particle::mark_as_lost(const char* message)
   auto n = simulation::current_batch * settings::gen_per_batch *
     simulation::work_per_rank;
 
-   std::cout << simulation::n_lost_particles << "HELLLOOOOOOOOOOOO MS DOUBTFIRE" << std::endl;    
-
   // Abort the simulation if the maximum number of lost particles has been
   // reached
   if (simulation::n_lost_particles >= settings::n_max_lost_particles &&
-      simulation::n_lost_particles >= REL_MAX_LOST_PARTICLES*n) {
+      simulation::n_lost_particles >= settings::relative_max_lost_particles*n) {
     fatal_error("Maximum number of lost particles has been reached.");
   }
 }

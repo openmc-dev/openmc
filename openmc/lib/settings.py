@@ -23,6 +23,7 @@ class _Settings(object):
     generations_per_batch = _DLLGlobal(c_int32, 'gen_per_batch')
     inactive = _DLLGlobal(c_int32, 'n_inactive')
     max_lost_particles = _DLLGlobal(c_int32, 'n_max_lost_particles')
+    rel_max_lost_particles = _DLLGlobal(c_double, 'relative_max_lost_particles')
     particles = _DLLGlobal(c_int64, 'n_particles')
     restart_run = _DLLGlobal(c_bool, 'restart_run')
     run_CE = _DLLGlobal(c_bool, 'run_CE')

@@ -652,14 +652,13 @@ class Integrator(ABC):
         self.chain = operator.chain
 
         # Determine power and normalize units to W
-        mass = operator.heavy_metal
         if power is None:
             if power_density is None:
                 raise ValueError("Either power or power density must be set")
             if not isinstance(power_density, Iterable):
-                power = power_density * mass
+                power = power_density * operator.heavy_metal
             else:
-                power = [p*mass for p in power_density]
+                power = [p*operator.heavy_metal for p in power_density]
         if not isinstance(power, Iterable):
             # Ensure that power is single value if that is the case
             power = [power] * len(timesteps)
@@ -689,7 +688,7 @@ class Integrator(ABC):
                 seconds.append(time*_SECONDS_PER_DAY)
             elif unit.lower() == 'mwd/kg':
                 watt_days_per_kg = 1e6*time
-                kilograms = 1e-3*mass
+                kilograms = 1e-3*operator.heavy_metal
                 days = watt_days_per_kg * kilograms / watts
                 seconds.append(days*_SECONDS_PER_DAY)
             else:

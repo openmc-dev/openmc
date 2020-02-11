@@ -119,14 +119,14 @@ def test_results_save(run_in_tmpdir):
     np.testing.assert_array_equal(res[1].time, t2)
 
 
-@pytest.mark.parametrize("timesteps", (1, [1]))
-def test_bad_integrator_inputs(timesteps):
+def test_bad_integrator_inputs():
     """Test failure modes for Integrator inputs"""
 
     op = MagicMock()
     op.prev_res = None
     op.chain = None
     op.heavy_metal = 1.0
+    timesteps = [1]
 
     # No power nor power density given
     with pytest.raises(ValueError, match="Either power or power density"):

@@ -7,6 +7,7 @@ will be left unimplemented and testing will be done via regression.
 """
 
 import copy
+from random import uniform
 from unittest.mock import MagicMock
 
 import numpy as np
@@ -15,9 +16,22 @@ import pytest
 
 from openmc.deplete import (
     ReactionRates, Results, ResultsList, comm, OperatorResult,
-    PredictorIntegrator, SICELIIntegrator)
+    PredictorIntegrator, CECMIntegrator, CF4Integrator, CELIIntegrator,
+    EPCRK4Integrator, LEQIIntegrator, SICELIIntegrator, SILEQIIntegrator)
 
 from tests import dummy_operator
+
+
+INTEGRATORS = [
+    PredictorIntegrator,
+    CECMIntegrator,
+    CF4Integrator,
+    CELIIntegrator,
+    EPCRK4Integrator,
+    LEQIIntegrator,
+    SICELIIntegrator,
+    SILEQIIntegrator
+]
 
 
 def test_results_save(run_in_tmpdir):
@@ -159,3 +173,56 @@ def test_integrator(run_in_tmpdir, scheme):
     dep_time = res.get_depletion_time()
     assert dep_time.shape == (2, )
     assert all(dep_time > 0)
+
+
+@pytest.mark.parametrize("integrator", INTEGRATORS)
+def test_timesteps(integrator):
+    # Crate fake operator
+    op = MagicMock()
+    op.prev_res = None
+    op.chain = None
+
+    # Set heavy metal mass and power randomly
+    op.heavy_metal = uniform(0, 10000)
+    power = uniform(0, 1e6)
+
+    # Reference timesteps in seconds
+    day = 86400.0
+    ref_timesteps = [1*day, 2*day, 5*day, 10*day]
+
+    # Case 1, timesteps in second
+    timesteps = ref_timesteps
+    x = integrator(op, timesteps, power, timestep_units='s')
+    assert np.allclose(x.timesteps, ref_timesteps)
+
+    # Case 2, timesteps in days
+    timesteps = [t / day for t in ref_timesteps]
+    x = integrator(op, timesteps, power, timestep_units='d')
+    assert np.allclose(x.timesteps, ref_timesteps)
+
+    # Case 3, timesteps in years
+    year = 365.25*day
+    timesteps = [t / year for t in ref_timesteps]
+    x = integrator(op, timesteps, power, timestep_units='a')
+    assert np.allclose(x.timesteps, ref_timesteps)
+
+    # Case 4, timesteps in MWd/kg
+    kilograms = op.heavy_metal / 1000.0
+    days = [t/day for t in ref_timesteps]
+    megawatts = power / 1000000.0
+    burnup = [t * megawatts / kilograms for t in days]
+    x = integrator(op, burnup, power, timestep_units='MWd/kg')
+    assert np.allclose(x.timesteps, ref_timesteps)
+
+    # Case 5, mixed units
+    burnup_per_day = (1e-6*power) / kilograms
+    timesteps = [(burnup_per_day, 'MWd/kg'), (2*day, 's'), (5, 'd'),
+                 (10*burnup_per_day, 'MWd/kg')]
+    x = integrator(op, timesteps, power)
+    assert np.allclose(x.timesteps, ref_timesteps)
+
+    # Bad units should raise an exception
+    with pytest.raises(ValueError, match="unit"):
+        integrator(op, ref_timesteps, power, timestep_units='🐨')
+    with pytest.raises(ValueError, match="unit"):
+        integrator(op, [(800.0, 'gorillas')], power)

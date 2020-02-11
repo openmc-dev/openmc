@@ -381,7 +381,7 @@ class PlaneMeta(metaclass=ABCMeta):
         else:
             surf = self
 
-        surf._update_from_base_coeffs(a, b, c, d)
+        surf._update_from_base_coeffs((a, b, c, d))
         return surf
 
     def bounding_box(self, side):
@@ -944,7 +944,7 @@ class Cylinder(QuadricMeta, Surface):
     """
     _type = 'cylinder'
     _coeff_keys = ('x0', 'y0', 'z0', 'r', 'u', 'v','w')
-    def __init__(self, x0=0., y0=0., z0=0. r=1., u=0., v=0., w=1., **kwargs):
+    def __init__(self, x0=0., y0=0., z0=0., r=1., u=0., v=0., w=1., **kwargs):
         super().__init__(**kwargs)
         self.x0 = x0
         self.y0 = y0

@@ -20,6 +20,11 @@ _WARNING_UPPER = """\
 will not accept the capitalized version.\
 """
 
+_WARNING_KWARGS = """
+"{}(...) accepts keyword arguments only for '{}'. Future versions of OpenMC \
+will not accept positional parameters for superclass arguments.\
+"""
+
 
 class Surface(IDManagerMixin, metaclass=ABCMeta):
     """An implicit surface with an associated boundary condition.
@@ -336,7 +341,7 @@ class PlaneMixin(metaclass=ABCMeta):
         a, b, c, d = self._get_base_coeffs()
         return a*x + b*y + c*z - d
 
-    def translate(self, vector, clone=False):
+    def translate(self, vector, clone=True):
         """Translate surface in given direction
 
         Parameters
@@ -345,7 +350,7 @@ class PlaneMixin(metaclass=ABCMeta):
             Direction in which surface should be translated
         clone : boolean
             Whether or not to return a new instance of a Plane or to modify the
-            coefficients of this plane.
+            coefficients of this plane. Defaults to True
 
         Returns
         -------
@@ -466,11 +471,20 @@ class Plane(PlaneMixin, Surface):
     _type = 'plane'
     _coeff_keys = ('a', 'b', 'c', 'd')
 
-    def __init__(self, a=1., b=0., c=0., d=0., **kwargs):
+    def __init__(self, a=1., b=0., c=0., d=0., *args, **kwargs):
         # work around until capital letter kwargs are deprecated
         oldkwargs = deepcopy(kwargs)
+        # work around for accepting Surface kwargs as positional parameters 
+        # until they are deprecated
+        argsdict = {k: v for k, v in zip(('boundary_type', 'name',
+                                          'surface_id'), args)}
+        for k, v in argsdict.items():
+            warn(_WARNING_KWARGS.format(type(self).__name__, k), FutureWarning)
+
         for k in 'ABCD':
             kwargs.pop(k, None)
+
+        kwargs.update(argsdict)
 
         super().__init__(**kwargs)
         self.a = a
@@ -615,7 +629,15 @@ class XPlane(PlaneMixin, Surface):
     _type = 'x-plane'
     _coeff_keys = ('x0',)
 
-    def __init__(self, x0=0., **kwargs):
+    def __init__(self, x0=0., *args, **kwargs):
+        # work around for accepting Surface kwargs as positional parameters 
+        # until they are deprecated
+        argsdict = {k: v for k, v in zip(('boundary_type', 'name',
+                                          'surface_id'), args)}
+        for k, v in argsdict.items():
+            warn(_WARNING_KWARGS.format(type(self).__name__, k), FutureWarning)
+        kwargs.update(argsdict)
+
         super().__init__(**kwargs)
         self.x0 = x0
 
@@ -704,7 +726,15 @@ class YPlane(PlaneMixin, Surface):
     _type = 'y-plane'
     _coeff_keys = ('y0',)
 
-    def __init__(self, y0=0., **kwargs):
+    def __init__(self, y0=0., *args, **kwargs):
+        # work around for accepting Surface kwargs as positional parameters 
+        # until they are deprecated
+        argsdict = {k: v for k, v in zip(('boundary_type', 'name',
+                                          'surface_id'), args)}
+        for k, v in argsdict.items():
+            warn(_WARNING_KWARGS.format(type(self).__name__, k), FutureWarning)
+        kwargs.update(argsdict)
+
         super().__init__(**kwargs)
         self.y0 = y0
 
@@ -793,7 +823,15 @@ class ZPlane(PlaneMixin, Surface):
     _type = 'z-plane'
     _coeff_keys = ('z0',)
 
-    def __init__(self, z0=0., **kwargs):
+    def __init__(self, z0=0., *args, **kwargs):
+        # work around for accepting Surface kwargs as positional parameters 
+        # until they are deprecated
+        argsdict = {k: v for k, v in zip(('boundary_type', 'name',
+                                          'surface_id'), args)}
+        for k, v in argsdict.items():
+            warn(_WARNING_KWARGS.format(type(self).__name__, k), FutureWarning)
+        kwargs.update(argsdict)
+
         super().__init__(**kwargs)
         self.z0 = z0
 
@@ -900,7 +938,7 @@ class QuadricMixin(metaclass=ABCMeta):
         a, b, c, d, e, f, g, h, j, k = self._get_base_coeffs()
         return x*(a*x + d*y + g) + y*(b*y + e*z + h) + z*(c*z + f*x + j) + k
 
-    def translate(self, vector, clone=False):
+    def translate(self, vector, clone=True):
         """Translate surface in given direction
 
         Parameters
@@ -908,17 +946,18 @@ class QuadricMixin(metaclass=ABCMeta):
         vector : iterable of float
             Direction in which surface should be translated
         clone : bool
-            Whether to return a clone of the Surface or the Surface itself
+            Whether to return a clone of the Surface or the Surface itself.
+            Defaults to True
 
         Returns
         -------
-        openmc.QuadricMixin
+        openmc.Surface
             Translated surface
 
         """
         vx, vy, vz = vector
         a, b, c, d, e, f, g, h, j, k = self._get_base_coeffs()
-        k = (k + vx*vx + vy*vy + vz*vz + d*vx*vy + e*vy*vz + f*vx*vz
+        k = (k + a*vx**2 + b*vy**2 + c*vz**2 + d*vx*vy + e*vy*vz + f*vx*vz
              - g*vx - h*vy - j*vz)
         g = g - 2*a*vx - d*vy - f*vz
         h = h - 2*b*vy - d*vx - e*vz
@@ -1237,6 +1276,7 @@ class XCylinder(QuadricMixin, Surface):
         a = d = e = f = g = 0.
         b = c = 1.
         h, j, k = -2*y0, -2*z0, y0**2 + z0**2 - r**2 
+        print("to base", (a, b, c, d, e, f, g, h, j, k))
 
         return (a, b, c, d, e, f, g, h, j, k)
 
@@ -1563,7 +1603,7 @@ class ZCylinder(QuadricMixin, Surface):
 
         """
         a, b, c, d, e, f, g, h, j, k = coeffs
-        x0, y0 = -g / 2, -4 / 2
+        x0, y0 = -g / 2, -h / 2
         r = np.sqrt(x0**2 + y0**2 - k)
 
         for c, val in zip(self._coeff_keys, (x0, y0, r)):

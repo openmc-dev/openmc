@@ -31,6 +31,8 @@ class SourceTestHarness(PyAPITestHarness):
         settings = openmc.Settings()
         settings.particles = 10000
         settings.batches = 1
+        settings.max_lost_particles = 5
+        settings.rel_max_lost_particles = 0.1
         settings.photon_transport = True
         settings.electron_treatment = 'ttb'
         settings.cutoff = {'energy_photon' : 1000.0}

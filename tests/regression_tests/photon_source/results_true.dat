@@ -1,3 +1,5 @@
 tally 1:
 sum = 2.275713E+02
 sum_sq = 5.178870E+04
+max_lost = 5.000000E+00
+rel_max_lost = 1.000000E-01

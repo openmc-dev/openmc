@@ -272,10 +272,11 @@ class Surface(IDManagerMixin, metaclass=ABCMeta):
         surf_type = group['type'][()].decode()
         bc = group['boundary_type'][()].decode()
         coeffs = group['coefficients'][...]
+        kwargs = {'boundary_type': bc, 'name': name, 'surface_id': surface_id}
 
         cls = _SURFACE_CLASSES[surf_type]
 
-        return cls(*coeffs, bc, name, surface_id)
+        return cls(*coeffs, **kwargs)
 
 
 _SURFACE_CLASSES = Surface.get_subclass_map()
@@ -850,10 +851,12 @@ class QuadricMeta(metaclass=ABCMeta):
         ----------
         vector : iterable of float
             Direction in which surface should be translated
+        clone : bool
+            Whether to return a clone of the Surface or the Surface itself
 
         Returns
         -------
-        openmc.Quadric
+        openmc.QuadricMeta
             Translated surface
 
         """
@@ -864,12 +867,14 @@ class QuadricMeta(metaclass=ABCMeta):
         g = g - 2*a*vx - d*vy - f*vz
         h = h - 2*b*vy - d*vx - e*vz
         j = j - 2*c*vz - e*vy - f*vx
+
         if clone:
             surf = self.clone()
         else:
             surf = self
 
         surf._update_from_base_coeffs((a, b, c, d, e, f, g, h, j, k))
+
         return surf
 
 
@@ -878,8 +883,23 @@ class Cylinder(QuadricMeta, Surface):
 
     Parameters
     ----------
+    x0 : float, optional
+        x-coordinate for the origin of the Cylinder. Defaults to 0
+    y0 : float, optional
+        y-coordinate for the origin of the Cylinder. Defaults to 0
+    z0 : float, optional
+        z-coordinate for the origin of the Cylinder. Defaults to 0
     r : float, optional
         Radius of the cylinder. Defaults to 1.
+    u : float, optional
+        x-component of the vector representing the axis of the cylinder.
+        Defaults to 0.
+    v : float, optional
+        y-component of the vector representing the axis of the cylinder.
+        Defaults to 0.
+    w : float, optional
+        z-component of the vector representing the axis of the cylinder.
+        Defaults to 1.
     boundary_type : {'transmission, 'vacuum', 'reflective', 'white'}, optional
         Boundary condition that defines the behavior for particles hitting the
         surface. Defaults to transmissive boundary condition where particles
@@ -893,8 +913,20 @@ class Cylinder(QuadricMeta, Surface):
 
     Attributes
     ----------
+    x0 : float
+        x-coordinate for the origin of the Cylinder
+    y0 : float
+        y-coordinate for the origin of the Cylinder
+    z0 : float
+        z-coordinate for the origin of the Cylinder
     r : float
         Radius of the cylinder
+    u : float
+        x-component of the vector representing the axis of the cylinder
+    v : float
+        y-component of the vector representing the axis of the cylinder
+    w : float
+        z-component of the vector representing the axis of the cylinder
     boundary_type : {'transmission, 'vacuum', 'reflective', 'white'}
         Boundary condition that defines the behavior for particles hitting the
         surface.
@@ -998,11 +1030,11 @@ class XCylinder(QuadricMeta, Surface):
     Parameters
     ----------
     y0 : float, optional
-        y-coordinate of the center of the cylinder. Defaults to 0.
+        y-coordinate for the origin of the Cylinder. Defaults to 0
     z0 : float, optional
-        z-coordinate of the center of the cylinder. Defaults to 0.
+        z-coordinate for the origin of the Cylinder. Defaults to 0
     r : float, optional
-        Radius of the cylinder. Defaults to 0.
+        Radius of the cylinder. Defaults to 1.
     boundary_type : {'transmission, 'vacuum', 'reflective', 'white'}, optional
         Boundary condition that defines the behavior for particles hitting the
         surface. Defaults to transmissive boundary condition where particles
@@ -1017,9 +1049,11 @@ class XCylinder(QuadricMeta, Surface):
     Attributes
     ----------
     y0 : float
-        y-coordinate of the center of the cylinder
+        y-coordinate for the origin of the Cylinder
     z0 : float
-        z-coordinate of the center of the cylinder
+        z-coordinate for the origin of the Cylinder
+    r : float
+        Radius of the cylinder
     boundary_type : {'transmission, 'vacuum', 'reflective', 'white'}
         Boundary condition that defines the behavior for particles hitting the
         surface.
@@ -1037,15 +1071,16 @@ class XCylinder(QuadricMeta, Surface):
     _type = 'x-cylinder'
     _coeff_keys = ('y0', 'z0', 'r')
 
-    def __init__(self, y0=0., z0=0., r=1., boundary_type='transmission',
-                 name='', surface_id=None, *, R=None):
+    def __init__(self, y0=0., z0=0., r=1., **kwargs):
+        R = kwargs.pop('R', None)
         if R is not None:
             warn(_WARNING_UPPER.format(type(self).__name__, 'r', 'R'),
                  FutureWarning)
             r = R
-        super().__init__(r, boundary_type, name, surface_id)
+        super().__init__(**kwargs)
         self.y0 = y0
         self.z0 = z0
+        self.r = r
 
     @property
     def x0(self):
@@ -1074,6 +1109,12 @@ class XCylinder(QuadricMeta, Surface):
         check_type('z0 coefficient', z0, Real)
         self._coefficients['z0'] = z0
 
+    def _get_base_coeffs(self):
+        """Return generalized coefficients for a cylinder"""
+        return (0., 0., 1., self.z0)
+
+    def _update_from_base_coeffs(self, coeffs):
+        a, b, c, d, e, f, g, h, j, k = coeffs
 
     def bounding_box(self, side):
         """Determine an axis-aligned bounding box.
@@ -1107,58 +1148,17 @@ class XCylinder(QuadricMeta, Surface):
             return (np.array([-np.inf, -np.inf, -np.inf]),
                     np.array([np.inf, np.inf, np.inf]))
 
-    def evaluate(self, point):
-        """Evaluate the surface equation at a given point.
 
-        Parameters
-        ----------
-        point : 3-tuple of float
-            The Cartesian coordinates, :math:`(x',y',z')`, at which the surface
-            equation should be evaluated.
-
-        Returns
-        -------
-        float
-            :math:`(y' - y_0)^2 + (z' - z_0)^2 - r^2`
-
-        """
-        y = point[1] - self.y0
-        z = point[2] - self.z0
-        return y**2 + z**2 - self.r**2
-
-    def translate(self, vector):
-        """Translate surface in given direction
-
-        Parameters
-        ----------
-        vector : iterable of float
-            Direction in which surface should be translated
-
-        Returns
-        -------
-        openmc.XCylinder
-            Translated surface
-
-        """
-        vx, vy, vz = vector
-        if vy == 0.0 and vz == 0.0:
-            return self
-        else:
-            y0 = self.y0 + vy
-            z0 = self.z0 + vz
-            return type(self)(y0=y0, z0=z0, r=self.r)
-
-
-class YCylinder(Cylinder):
+class YCylinder(QuadricMeta):
     """An infinite cylinder whose length is parallel to the y-axis of the form
     :math:`(x - x_0)^2 + (z - z_0)^2 = r^2`.
 
     Parameters
     ----------
     x0 : float, optional
-        x-coordinate of the center of the cylinder. Defaults to 0.
+        x-coordinate for the origin of the Cylinder. Defaults to 0
     z0 : float, optional
-        z-coordinate of the center of the cylinder. Defaults to 0.
+        z-coordinate for the origin of the Cylinder. Defaults to 0
     r : float, optional
         Radius of the cylinder. Defaults to 1.
     boundary_type : {'transmission, 'vacuum', 'reflective', 'white'}, optional
@@ -1175,9 +1175,11 @@ class YCylinder(Cylinder):
     Attributes
     ----------
     x0 : float
-        x-coordinate of the center of the cylinder
+        x-coordinate for the origin of the Cylinder
     z0 : float
-        z-coordinate of the center of the cylinder
+        z-coordinate for the origin of the Cylinder
+    r : float
+        Radius of the cylinder
     boundary_type : {'transmission, 'vacuum', 'reflective', 'white'}
         Boundary condition that defines the behavior for particles hitting the
         surface.
@@ -1195,14 +1197,15 @@ class YCylinder(Cylinder):
     _type = 'y-cylinder'
     _coeff_keys = ('x0', 'z0', 'r')
 
-    def __init__(self, x0=0., z0=0., r=1., boundary_type='transmission',
-                 name='', surface_id=None, *, R=None):
+    def __init__(self, x0=0., z0=0., r=1., **kwargs):
+        R = kwargs.pop('R', None)
         if R is not None:
             warn(_WARNING_UPPER.format(type(self).__name__, 'r', 'R'), FutureWarning)
             r = R
-        super().__init__(r, boundary_type, name, surface_id)
+        super().__init__(**kwargs)
         self.x0 = x0
         self.z0 = z0
+        self.r = r
 
     @property
     def x0(self):
@@ -1221,6 +1224,13 @@ class YCylinder(Cylinder):
     def z0(self, z0):
         check_type('z0 coefficient', z0, Real)
         self._coefficients['z0'] = z0
+
+    def _get_base_coeffs(self):
+        """Return generalized coefficients for a cylinder"""
+        return (0., 0., 1., self.z0)
+
+    def _update_from_base_coeffs(self, coeffs):
+        a, b, c, d, e, f, g, h, j, k = coeffs
 
     def bounding_box(self, side):
         """Determine an axis-aligned bounding box.
@@ -1254,77 +1264,38 @@ class YCylinder(Cylinder):
             return (np.array([-np.inf, -np.inf, -np.inf]),
                     np.array([np.inf, np.inf, np.inf]))
 
-    def evaluate(self, point):
-        """Evaluate the surface equation at a given point.
 
-        Parameters
-        ----------
-        point : 3-tuple of float
-            The Cartesian coordinates, :math:`(x',y',z')`, at which the surface
-            equation should be evaluated.
-
-        Returns
-        -------
-        float
-            :math:`(x' - x_0)^2 + (z' - z_0)^2 - r^2`
-
-        """
-        x = point[0] - self.x0
-        z = point[2] - self.z0
-        return x**2 + z**2 - self.r**2
-
-    def translate(self, vector):
-        """Translate surface in given direction
-
-        Parameters
-        ----------
-        vector : iterable of float
-            Direction in which surface should be translated
-
-        Returns
-        -------
-        openmc.YCylinder
-            Translated surface
-
-        """
-        vx, vy, vz = vector
-        if vx == 0.0 and vz == 0.0:
-            return self
-        else:
-            x0 = self.x0 + vx
-            z0 = self.z0 + vz
-            return type(self)(x0=x0, z0=z0, r=self.r)
-
-
-class ZCylinder(Cylinder):
+class ZCylinder(QuadricMeta, Surface):
     """An infinite cylinder whose length is parallel to the z-axis of the form
     :math:`(x - x_0)^2 + (y - y_0)^2 = r^2`.
 
     Parameters
     ----------
-    surface_id : int, optional
-        Unique identifier for the surface. If not specified, an identifier will
-        automatically be assigned.
+    x0 : float, optional
+        x-coordinate for the origin of the Cylinder. Defaults to 0
+    y0 : float, optional
+        y-coordinate for the origin of the Cylinder. Defaults to 0
+    r : float, optional
+        Radius of the cylinder. Defaults to 1.
     boundary_type : {'transmission, 'vacuum', 'reflective', 'white'}, optional
         Boundary condition that defines the behavior for particles hitting the
         surface. Defaults to transmissive boundary condition where particles
         freely pass through the surface.
-    x0 : float, optional
-        x-coordinate of the center of the cylinder. Defaults to 0.
-    y0 : float, optional
-        y-coordinate of the center of the cylinder. Defaults to 0.
-    r : float, optional
-        Radius of the cylinder. Defaults to 1.
     name : str, optional
         Name of the cylinder. If not specified, the name will be the empty
         string.
+    surface_id : int, optional
+        Unique identifier for the surface. If not specified, an identifier will
+        automatically be assigned.
 
     Attributes
     ----------
     x0 : float
-        x-coordinate of the center of the cylinder
+        x-coordinate for the origin of the Cylinder
     y0 : float
-        y-coordinate of the center of the cylinder
+        y-coordinate for the origin of the Cylinder
+    r : float
+        Radius of the cylinder
     boundary_type : {'transmission, 'vacuum', 'reflective', 'white'}
         Boundary condition that defines the behavior for particles hitting the
         surface.
@@ -1342,14 +1313,15 @@ class ZCylinder(Cylinder):
     _type = 'z-cylinder'
     _coeff_keys = ('x0', 'y0', 'r')
 
-    def __init__(self, x0=0., y0=0., r=1., boundary_type='transmission',
-                 name='', surface_id=None, *, R=None):
+    def __init__(self, x0=0., y0=0., r=1., **kwargs):
+        R = kwargs.pop('R', None)
         if R is not None:
             warn(_WARNING_UPPER.format(type(self).__name__, 'r', 'R'), FutureWarning)
             r = R
-        super().__init__(r, boundary_type, name, surface_id)
+        super().__init__(**kwargs)
         self.x0 = x0
         self.y0 = y0
+        self.r = r
 
     @property
     def x0(self):
@@ -1368,6 +1340,13 @@ class ZCylinder(Cylinder):
     def y0(self, y0):
         check_type('y0 coefficient', y0, Real)
         self._coefficients['y0'] = y0
+
+    def _get_base_coeffs(self):
+        """Return generalized coefficients for a cylinder"""
+        return (0., 0., 1., self.z0)
+
+    def _update_from_base_coeffs(self, coeffs):
+        a, b, c, d, e, f, g, h, j, k = coeffs
 
     def bounding_box(self, side):
         """Determine an axis-aligned bounding box.
@@ -1401,49 +1380,8 @@ class ZCylinder(Cylinder):
             return (np.array([-np.inf, -np.inf, -np.inf]),
                     np.array([np.inf, np.inf, np.inf]))
 
-    def evaluate(self, point):
-        """Evaluate the surface equation at a given point.
 
-        Parameters
-        ----------
-        point : 3-tuple of float
-            The Cartesian coordinates, :math:`(x',y',z')`, at which the surface
-            equation should be evaluated.
-
-        Returns
-        -------
-        float
-            :math:`(x' - x_0)^2 + (y' - y_0)^2 - r^2`
-
-        """
-        x = point[0] - self.x0
-        y = point[1] - self.y0
-        return x**2 + y**2 - self.r**2
-
-    def translate(self, vector):
-        """Translate surface in given direction
-
-        Parameters
-        ----------
-        vector : iterable of float
-            Direction in which surface should be translated
-
-        Returns
-        -------
-        openmc.ZCylinder
-            Translated surface
-
-        """
-        vx, vy, vz = vector
-        if vx == 0.0 and vy == 0.0:
-            return self
-        else:
-            x0 = self.x0 + vx
-            y0 = self.y0 + vy
-            return type(self)(x0=x0, y0=y0, r=self.r)
-
-
-class Sphere(Surface):
+class Sphere(QuadricMeta, Surface):
     """A sphere of the form :math:`(x - x_0)^2 + (y - y_0)^2 + (z - z_0)^2 = r^2`.
 
     Parameters
@@ -1493,12 +1431,12 @@ class Sphere(Surface):
     _type = 'sphere'
     _coeff_keys = ('x0', 'y0', 'z0', 'r')
 
-    def __init__(self, x0=0., y0=0., z0=0., r=1., boundary_type='transmission',
-                 name='', surface_id=None, *, R=None):
+    def __init__(self, x0=0., y0=0., z0=0., r=1., **kwargs):
+        R = kwargs.pop('R', None)
         if R is not None:
             warn(_WARNING_UPPER.format(type(self).__name__, 'r', 'R'), FutureWarning)
             r = R
-        super().__init__(surface_id, boundary_type, name=name)
+        super().__init__(**kwargs)
         self.x0 = x0
         self.y0 = y0
         self.z0 = z0
@@ -1540,6 +1478,13 @@ class Sphere(Surface):
         check_type('r coefficient', r, Real)
         self._coefficients['r'] = r
 
+    def _get_base_coeffs(self):
+        """Return generalized coefficients for a cylinder"""
+        return (0., 0., 1., self.z0)
+
+    def _update_from_base_coeffs(self, coeffs):
+        a, b, c, d, e, f, g, h, j, k = coeffs
+
     def bounding_box(self, side):
         """Determine an axis-aligned bounding box.
 
@@ -1573,51 +1518,8 @@ class Sphere(Surface):
             return (np.array([-np.inf, -np.inf, -np.inf]),
                     np.array([np.inf, np.inf, np.inf]))
 
-    def evaluate(self, point):
-        """Evaluate the surface equation at a given point.
 
-        Parameters
-        ----------
-        point : 3-tuple of float
-            The Cartesian coordinates, :math:`(x',y',z')`, at which the surface
-            equation should be evaluated.
-
-        Returns
-        -------
-        float
-            :math:`(x' - x_0)^2 + (y' - y_0)^2 + (z' - z_0)^2 - r^2`
-
-        """
-        x = point[0] - self.x0
-        y = point[1] - self.y0
-        z = point[2] - self.z0
-        return x**2 + y**2 + z**2 - self.r**2
-
-    def translate(self, vector):
-        """Translate surface in given direction
-
-        Parameters
-        ----------
-        vector : iterable of float
-            Direction in which surface should be translated
-
-        Returns
-        -------
-        openmc.Sphere
-            Translated surface
-
-        """
-        vx, vy, vz = vector
-        if vx == 0.0 and vy == 0.0 and vz == 0.0:
-            return self
-        else:
-            x0 = self.x0 + vx
-            y0 = self.y0 + vy
-            z0 = self.z0 + vz
-            return type(self)(x0=x0, y0=y0, z0=z0, r=self.r)
-
-
-class Cone(Surface):
+class Cone(QuadricMeta, Surface):
     """A conical surface parallel to the x-, y-, or z-axis.
 
     Parameters
@@ -1630,6 +1532,15 @@ class Cone(Surface):
         z-coordinate of the apex. Defaults to 0.
     r2 : float, optional
         Parameter related to the aperature. Defaults to 1.
+    u : float, optional
+        x-component of the vector representing the axis of the cone.
+        Defaults to 0.
+    v : float, optional
+        y-component of the vector representing the axis of the cone.
+        Defaults to 0.
+    w : float, optional
+        z-component of the vector representing the axis of the cone.
+        Defaults to 1.
     surface_id : int, optional
         Unique identifier for the surface. If not specified, an identifier will
         automatically be assigned.
@@ -1650,6 +1561,12 @@ class Cone(Surface):
         z-coordinate of the apex
     r2 : float
         Parameter related to the aperature
+    u : float
+        x-component of the vector representing the axis of the cone.
+    v : float
+        y-component of the vector representing the axis of the cone.
+    w : float
+        z-component of the vector representing the axis of the cone.
     boundary_type : {'transmission, 'vacuum', 'reflective', 'white'}
         Boundary condition that defines the behavior for particles hitting the
         surface.
@@ -1664,18 +1581,23 @@ class Cone(Surface):
 
     """
 
-    _coeff_keys = ('x0', 'y0', 'z0', 'r2')
+    _type = 'cylinder'
+    _coeff_keys = ('x0', 'y0', 'z0', 'r2', 'u', 'v', 'w')
 
-    def __init__(self, x0=0., y0=0., z0=0., r2=1., boundary_type='transmission',
-                 name='', surface_id=None, *, R2=None):
+    def __init__(self, x0=0., y0=0., z0=0., r2=1., u=0., v=0., w=1., **kwargs):
+        R2 = kwargs.pop('R2', None)
         if R2 is not None:
-            warn(_WARNING_UPPER.format(type(self).__name__, 'r2', 'R2'), FutureWarning)
+            warn(_WARNING_UPPER.format(type(self).__name__, 'r2', 'R2'),
+                 FutureWarning)
             r2 = R2
-        super().__init__(surface_id, boundary_type, name=name)
+        super().__init__(**kwargs)
         self.x0 = x0
         self.y0 = y0
         self.z0 = z0
         self.r2 = r2
+        self.u = u
+        self.v = v
+        self.w = w
 
     @property
     def x0(self):
@@ -1692,6 +1614,18 @@ class Cone(Surface):
     @property
     def r2(self):
         return self.coefficients['r2']
+
+    @property
+    def u(self):
+        return self.coefficients['u']
+
+    @property
+    def v(self):
+        return self.coefficients['v']
+
+    @property
+    def w(self):
+        return self.coefficients['w']
 
     @x0.setter
     def x0(self, x0):
@@ -1713,31 +1647,30 @@ class Cone(Surface):
         check_type('r^2 coefficient', r2, Real)
         self._coefficients['r2'] = r2
 
-    def translate(self, vector):
-        """Translate surface in given direction
+    @u.setter
+    def u(self, u):
+        check_type('u coefficient', u, Real)
+        self._coefficients['u'] = u
 
-        Parameters
-        ----------
-        vector : iterable of float
-            Direction in which surface should be translated
+    @v.setter
+    def v(self, v):
+        check_type('v coefficient', v, Real)
+        self._coefficients['v'] = v
 
-        Returns
-        -------
-        openmc.Cone
-            Translated surface
+    @w.setter
+    def w(self, w):
+        check_type('w coefficient', w, Real)
+        self._coefficients['w'] = w
 
-        """
-        vx, vy, vz = vector
-        if vx == 0.0 and vy == 0.0 and vz == 0.0:
-            return self
-        else:
-            x0 = self.x0 + vx
-            y0 = self.y0 + vy
-            z0 = self.z0 + vz
-            return type(self)(x0=x0, y0=y0, z0=z0, r2=self.r2)
+    def _get_base_coeffs(self):
+        """Return generalized coefficients for a cylinder"""
+        return (0., 0., 1., self.z0)
+
+    def _update_from_base_coeffs(self, coeffs):
+        a, b, c, d, e, f, g, h, j, k = coeffs
 
 
-class XCone(Cone):
+class XCone(QuadricMeta, Surface):
     """A cone parallel to the x-axis of the form :math:`(y - y_0)^2 + (z - z_0)^2 =
     r^2 (x - x_0)^2`.
 
@@ -1786,29 +1719,65 @@ class XCone(Cone):
     """
 
     _type = 'x-cone'
+    _coeff_keys = ('x0', 'y0', 'z0', 'r2')
 
-    def evaluate(self, point):
-        """Evaluate the surface equation at a given point.
+    def __init__(self, x0=0., y0=0., z0=0., r2=1., **kwargs):
+        R2 = kwargs.pop('R2', None)
+        if R2 is not None:
+            warn(_WARNING_UPPER.format(type(self).__name__, 'r2', 'R2'),
+                 FutureWarning)
+            r2 = R2
+        super().__init__(**kwargs)
+        self.x0 = x0
+        self.y0 = y0
+        self.z0 = z0
+        self.r2 = r2
 
-        Parameters
-        ----------
-        point : 3-tuple of float
-            The Cartesian coordinates, :math:`(x',y',z')`, at which the surface
-            equation should be evaluated.
+    @property
+    def x0(self):
+        return self.coefficients['x0']
 
-        Returns
-        -------
-        float
-            :math:`(y' - y_0)^2 + (z' - z_0)^2 - r^2(x' - x_0)^2`
+    @property
+    def y0(self):
+        return self.coefficients['y0']
 
-        """
-        x = point[0] - self.x0
-        y = point[1] - self.y0
-        z = point[2] - self.z0
-        return y**2 + z**2 - self.r2*x**2
+    @property
+    def z0(self):
+        return self.coefficients['z0']
+
+    @property
+    def r2(self):
+        return self.coefficients['r2']
+
+    @x0.setter
+    def x0(self, x0):
+        check_type('x0 coefficient', x0, Real)
+        self._coefficients['x0'] = x0
+
+    @y0.setter
+    def y0(self, y0):
+        check_type('y0 coefficient', y0, Real)
+        self._coefficients['y0'] = y0
+
+    @z0.setter
+    def z0(self, z0):
+        check_type('z0 coefficient', z0, Real)
+        self._coefficients['z0'] = z0
+
+    @r2.setter
+    def r2(self, r2):
+        check_type('r^2 coefficient', r2, Real)
+        self._coefficients['r2'] = r2
+
+    def _get_base_coeffs(self):
+        """Return generalized coefficients for a cylinder"""
+        return (0., 0., 1., self.z0)
+
+    def _update_from_base_coeffs(self, coeffs):
+        a, b, c, d, e, f, g, h, j, k = coeffs
 
 
-class YCone(Cone):
+class YCone(QuadricMeta, Surface):
     """A cone parallel to the y-axis of the form :math:`(x - x_0)^2 + (z - z_0)^2 =
     r^2 (y - y_0)^2`.
 
@@ -1857,29 +1826,65 @@ class YCone(Cone):
     """
 
     _type = 'y-cone'
+    _coeff_keys = ('x0', 'y0', 'z0', 'r2')
 
-    def evaluate(self, point):
-        """Evaluate the surface equation at a given point.
+    def __init__(self, x0=0., y0=0., z0=0., r2=1., **kwargs):
+        R2 = kwargs.pop('R2', None)
+        if R2 is not None:
+            warn(_WARNING_UPPER.format(type(self).__name__, 'r2', 'R2'),
+                 FutureWarning)
+            r2 = R2
+        super().__init__(**kwargs)
+        self.x0 = x0
+        self.y0 = y0
+        self.z0 = z0
+        self.r2 = r2
 
-        Parameters
-        ----------
-        point : 3-tuple of float
-            The Cartesian coordinates, :math:`(x',y',z')`, at which the surface
-            equation should be evaluated.
+    @property
+    def x0(self):
+        return self.coefficients['x0']
 
-        Returns
-        -------
-        float
-            :math:`(x' - x_0)^2 + (z' - z_0)^2 - r^2(y' - y_0)^2`
+    @property
+    def y0(self):
+        return self.coefficients['y0']
 
-        """
-        x = point[0] - self.x0
-        y = point[1] - self.y0
-        z = point[2] - self.z0
-        return x**2 + z**2 - self.r2*y**2
+    @property
+    def z0(self):
+        return self.coefficients['z0']
+
+    @property
+    def r2(self):
+        return self.coefficients['r2']
+
+    @x0.setter
+    def x0(self, x0):
+        check_type('x0 coefficient', x0, Real)
+        self._coefficients['x0'] = x0
+
+    @y0.setter
+    def y0(self, y0):
+        check_type('y0 coefficient', y0, Real)
+        self._coefficients['y0'] = y0
+
+    @z0.setter
+    def z0(self, z0):
+        check_type('z0 coefficient', z0, Real)
+        self._coefficients['z0'] = z0
+
+    @r2.setter
+    def r2(self, r2):
+        check_type('r^2 coefficient', r2, Real)
+        self._coefficients['r2'] = r2
+
+    def _get_base_coeffs(self):
+        """Return generalized coefficients for a cylinder"""
+        return (0., 0., 1., self.z0)
+
+    def _update_from_base_coeffs(self, coeffs):
+        a, b, c, d, e, f, g, h, j, k = coeffs
 
 
-class ZCone(Cone):
+class ZCone(QuadricMeta, Surface):
     """A cone parallel to the x-axis of the form :math:`(x - x_0)^2 + (y - y_0)^2 =
     r^2 (z - z_0)^2`.
 
@@ -1928,29 +1933,65 @@ class ZCone(Cone):
     """
 
     _type = 'z-cone'
+    _coeff_keys = ('x0', 'y0', 'z0', 'r2')
 
-    def evaluate(self, point):
-        """Evaluate the surface equation at a given point.
+    def __init__(self, x0=0., y0=0., z0=0., r2=1., **kwargs):
+        R2 = kwargs.pop('R2', None)
+        if R2 is not None:
+            warn(_WARNING_UPPER.format(type(self).__name__, 'r2', 'R2'),
+                 FutureWarning)
+            r2 = R2
+        super().__init__(**kwargs)
+        self.x0 = x0
+        self.y0 = y0
+        self.z0 = z0
+        self.r2 = r2
 
-        Parameters
-        ----------
-        point : 3-tuple of float
-            The Cartesian coordinates, :math:`(x',y',z')`, at which the surface
-            equation should be evaluated.
+    @property
+    def x0(self):
+        return self.coefficients['x0']
 
-        Returns
-        -------
-        float
-            :math:`(x' - x_0)^2 + (y' - y_0)^2 - r^2(z' - z_0)^2`
+    @property
+    def y0(self):
+        return self.coefficients['y0']
 
-        """
-        x = point[0] - self.x0
-        y = point[1] - self.y0
-        z = point[2] - self.z0
-        return x**2 + y**2 - self.r2*z**2
+    @property
+    def z0(self):
+        return self.coefficients['z0']
+
+    @property
+    def r2(self):
+        return self.coefficients['r2']
+
+    @x0.setter
+    def x0(self, x0):
+        check_type('x0 coefficient', x0, Real)
+        self._coefficients['x0'] = x0
+
+    @y0.setter
+    def y0(self, y0):
+        check_type('y0 coefficient', y0, Real)
+        self._coefficients['y0'] = y0
+
+    @z0.setter
+    def z0(self, z0):
+        check_type('z0 coefficient', z0, Real)
+        self._coefficients['z0'] = z0
+
+    @r2.setter
+    def r2(self, r2):
+        check_type('r^2 coefficient', r2, Real)
+        self._coefficients['r2'] = r2
+
+    def _get_base_coeffs(self):
+        """Return generalized coefficients for a cylinder"""
+        return (0., 0., 1., self.z0)
+
+    def _update_from_base_coeffs(self, coeffs):
+        a, b, c, d, e, f, g, h, j, k = coeffs
 
 
-class Quadric(Surface):
+class Quadric(QuadricMeta, Surface):
     """A surface of the form :math:`Ax^2 + By^2 + Cz^2 + Dxy + Eyz + Fxz + Gx + Hy +
     Jz + K = 0`.
 
@@ -1990,8 +2031,8 @@ class Quadric(Surface):
     _coeff_keys = ('a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'j', 'k')
 
     def __init__(self, a=0., b=0., c=0., d=0., e=0., f=0., g=0., h=0., j=0.,
-                 k=0., boundary_type='transmission', name='', surface_id=None):
-        super().__init__(surface_id, boundary_type, name=name)
+                 k=0., **kwargs):
+        super().__init__(**kwargs)
         self.a = a
         self.b = b
         self.c = c
@@ -2092,51 +2133,6 @@ class Quadric(Surface):
     def k(self, k):
         check_type('k coefficient', k, Real)
         self._coefficients['k'] = k
-
-    def evaluate(self, point):
-        """Evaluate the surface equation at a given point.
-
-        Parameters
-        ----------
-        point : 3-tuple of float
-            The Cartesian coordinates, :math:`(x',y',z')`, at which the surface
-            equation should be evaluated.
-
-        Returns
-        -------
-        float
-            :math:`Ax'^2 + By'^2 + Cz'^2 + Dx'y' + Ey'z' + Fx'z' + Gx' + Hy' +
-            Jz' + K = 0`
-
-        """
-        x, y, z = point
-        return x*(self.a*x + self.d*y + self.g) + \
-            y*(self.b*y + self.e*z + self.h) + \
-            z*(self.c*z + self.f*x + self.j) + self.k
-
-    def translate(self, vector):
-        """Translate surface in given direction
-
-        Parameters
-        ----------
-        vector : iterable of float
-            Direction in which surface should be translated
-
-        Returns
-        -------
-        openmc.Quadric
-            Translated surface
-
-        """
-        vx, vy, vz = vector
-        a, b, c, d, e, f, g, h, j, k = (getattr(self, key) for key in
-                                        self._coeff_keys)
-        k = (k + vx*vx + vy*vy + vz*vz + d*vx*vy + e*vy*vz + f*vx*vz
-             - g*vx - h*vy - j*vz)
-        g = g - 2*a*vx - d*vy - f*vz
-        h = h - 2*b*vy - d*vx - e*vz
-        j = j - 2*c*vz - e*vy - f*vx
-        return type(self)(a=a, b=b, c=c, d=d, e=e, f=f, g=g, h=h, j=j, k=k)
 
 
 class Halfspace(Region):

@@ -293,7 +293,7 @@ void initialize_source()
     #endif
 
     // load the symbol
-    typedef Particle::Bank (*sample_t)();
+    typedef Particle::Bank (*sample_t)(uint64_t *seed);
 
     // reset errors
     dlerror();
@@ -315,10 +315,10 @@ void initialize_source()
       // initialize random number seed
       int64_t id = simulation::total_gen*settings::n_particles +
         simulation::work_index[mpi::rank] + i + 1;
-      set_particle_seed(id);
+      uint64_t seed = init_seed(id, STREAM_SOURCE);
 
       // sample external source distribution
-      simulation::source_bank[i] = sample_source();
+      simulation::source_bank[i] = sample_source(&seed);
     }
     // release the library
     dlclose(source_library);
@@ -405,7 +405,7 @@ void fill_source_bank_fixedsource()
     }
 
     // load the symbol
-    typedef Particle::Bank (*sample_t)();
+    typedef Particle::Bank (*sample_t)(uint64_t *seed);
 
     // reset errors
     dlerror();
@@ -427,10 +427,10 @@ void fill_source_bank_fixedsource()
       // initialize random number seed
       int64_t id = simulation::total_gen*settings::n_particles +
         simulation::work_index[mpi::rank] + i + 1;
-      set_particle_seed(id);
-
+      uint64_t seed = init_seed(id, STREAM_SOURCE);
+ 
       // sample external source distribution
-      simulation::source_bank[i] = sample_source();
+      simulation::source_bank[i] = sample_source(&seed);
     }
 
     // release the library

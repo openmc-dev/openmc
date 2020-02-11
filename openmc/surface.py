@@ -282,28 +282,8 @@ class Surface(IDManagerMixin, metaclass=ABCMeta):
 _SURFACE_CLASSES = Surface.get_subclass_map()
 
 
-class PlaneMeta(metaclass=ABCMeta):
+class PlaneMixin(metaclass=ABCMeta):
     """A Plane Meta class for all operations on order 1 surfaces"""
-#    def __new__(cls, *args, **kwargs):
-#       for key in cls._coeff_keys, kwargs.pop(key) to get arguments for class
-#        """Simplify this plane if possible to an XPlane, YPlane, or ZPlane"""
-#        pass
-#
-#        if cls is Plane:
-#            if np.all(np.isclose((self.b, self.c), 0., atol=atol)):
-#                x0 = self.d / self.a
-#                return XPlane(x0=x0, boundary_type=self.boundary_type,
-#                              name=self.name, surface_id=self.id)
-#
-#            elif np.all(np.isclose((self.a, self.c), 0., atol=atol)):
-#                y0 = self.d / self.b
-#                return YPlane(y0=y0, boundary_type=self.boundary_type,
-#                              name=self.name, surface_id=self.id)
-#
-#            elif np.all(np.isclose((self.a, self.b), 0., atol=atol)):
-#                z0 = self.d / self.c
-#                return ZPlane(z0=z0, boundary_type=self.boundary_type,
-#                              name=self.name, surface_id=self.id)
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -321,17 +301,32 @@ class PlaneMeta(metaclass=ABCMeta):
 
     @abstractmethod
     def _get_base_coeffs(self):
+        """Return coefficients a, b, c, d representing a general plane of the
+        form :math:`ax + by + cz = d`.
+
+        """
         pass
 
     @abstractmethod
-    def _update_from_base_coeffs(self):
+    def _update_from_base_coeffs(self, coeffs):
+        """Update the current plane from coefficients representing a general
+        plane of the form :math:`ax + by + cz = d`.
+
+        Parameters
+        ----------
+        coeffs : tuple
+            Tuple of general coefficients (a, b, c, d) representing the plane
+
+        """
         pass
 
     def _neg_bounds(self):
+        """Return the lower and upper bounds of the negative half space"""
         return (np.array([-np.inf, -np.inf, -np.inf]),
                 np.array([np.inf, np.inf, np.inf]))
 
     def _pos_bounds(self):
+        """Return the lower and upper bounds of the positive half space"""
         return (np.array([-np.inf, -np.inf, -np.inf]),
                 np.array([np.inf, np.inf, np.inf]))
 
@@ -432,7 +427,7 @@ class PlaneMeta(metaclass=ABCMeta):
         return element
 
 
-class Plane(PlaneMeta, Surface):
+class Plane(PlaneMixin, Surface):
     """An arbitrary plane of the form :math:`Ax + By + Cz = D`.
 
     Parameters
@@ -539,14 +534,25 @@ class Plane(PlaneMeta, Surface):
         self._coefficients['d'] = d
 
     def _get_base_coeffs(self):
+        """Return coefficients a, b, c, d representing a general plane of the
+        form :math:`ax + by + cz = d`.
+
+        """
         return (self.a, self.b, self.c, self.d)
 
     def _update_from_base_coeffs(self, coeffs):
-        a, b, c, d = coeffs
-        self.a = a
-        self.b = b
-        self.c = c
-        self.d = d
+        """Update the current plane from coefficients representing a general
+        plane of the form :math:`ax + by + cz = d`.
+
+        Parameters
+        ----------
+        coeffs : tuple
+            Tuple of general coefficients (a, b, c, d) representing the plane
+
+        """
+
+        for c, val in zip(self._coeff_keys, coeffs):
+            setattr(self, c, val)
 
     @classmethod
     def from_points(cls, p1, p2, p3, **kwargs):
@@ -581,7 +587,7 @@ class Plane(PlaneMeta, Surface):
         return cls(a=a, b=b, c=c, d=d, **kwargs)
 
 
-class XPlane(PlaneMeta, Surface):
+class XPlane(PlaneMixin, Surface):
     """A plane perpendicular to the x axis of the form :math:`x - x_0 = 0`
 
     Parameters
@@ -637,9 +643,22 @@ class XPlane(PlaneMeta, Surface):
         self._coefficients['x0'] = x0
 
     def _get_base_coeffs(self):
+        """Return coefficients a, b, c, d representing a general plane of the
+        form :math:`ax + by + cz = d`.
+
+        """
         return (1., 0., 0., self.x0)
 
     def _update_from_base_coeffs(self, coeffs):
+        """Update the current plane from coefficients representing a general
+        plane of the form :math:`ax + by + cz = d`.
+
+        Parameters
+        ----------
+        coeffs : tuple
+            Tuple of general coefficients (a, b, c, d) representing the plane
+
+        """
         a, b, c, d = coeffs
         self.x0 = d / a
 
@@ -654,7 +673,10 @@ class XPlane(PlaneMeta, Surface):
                 np.array([np.inf, np.inf, np.inf]))
 
 
-class YPlane(PlaneMeta, Surface):
+Plane.register(XPlane)
+
+
+class YPlane(PlaneMixin, Surface):
     """A plane perpendicular to the y axis of the form :math:`y - y_0 = 0`
 
     Parameters
@@ -710,10 +732,22 @@ class YPlane(PlaneMeta, Surface):
         self._coefficients['y0'] = y0
 
     def _get_base_coeffs(self):
-        """Return generalized coefficients for a plane"""
+        """Return coefficients a, b, c, d representing a general plane of the
+        form :math:`ax + by + cz = d`.
+
+        """
         return (0., 1., 0., self.y0)
 
     def _update_from_base_coeffs(self, coeffs):
+        """Update the current plane from coefficients representing a general
+        plane of the form :math:`ax + by + cz = d`.
+
+        Parameters
+        ----------
+        coeffs : tuple
+            Tuple of general coefficients (a, b, c, d) representing the plane
+
+        """
         a, b, c, d = coeffs
         self.y0 = d / b
 
@@ -728,23 +762,26 @@ class YPlane(PlaneMeta, Surface):
                 np.array([np.inf, np.inf, np.inf]))
 
 
-class ZPlane(PlaneMeta, Surface):
+Plane.register(YPlane)
+
+
+class ZPlane(PlaneMixin, Surface):
     """A plane perpendicular to the z axis of the form :math:`z - z_0 = 0`
 
     Parameters
     ----------
-    surface_id : int, optional
-        Unique identifier for the surface. If not specified, an identifier will
-        automatically be assigned.
+    z0 : float, optional
+        Location of the plane. Defaults to 0.
     boundary_type : {'transmission, 'vacuum', 'reflective', 'periodic', 'white'}, optional
         Boundary condition that defines the behavior for particles hitting the
         surface. Defaults to transmissive boundary condition where particles
         freely pass through the surface. Only axis-aligned periodicity is
         supported, i.e., x-planes can only be paired with x-planes.
-    z0 : float, optional
-        Location of the plane. Defaults to 0.
     name : str, optional
         Name of the plane. If not specified, the name will be the empty string.
+    surface_id : int, optional
+        Unique identifier for the surface. If not specified, an identifier will
+        automatically be assigned.
 
     Attributes
     ----------
@@ -784,10 +821,22 @@ class ZPlane(PlaneMeta, Surface):
         self._coefficients['z0'] = z0
 
     def _get_base_coeffs(self):
-        """Return generalized coefficients for a plane"""
+        """Return coefficients a, b, c, d, e, f, g, h, j, k representing a
+        general plane form :math:`ax + by + cz = d`.
+
+        """
         return (0., 0., 1., self.z0)
 
     def _update_from_base_coeffs(self, coeffs):
+        """Update the current plane from coefficients representing a general
+        plane of the form :math:`ax + by + cz = d`.
+
+        Parameters
+        ----------
+        coeffs : tuple
+            Tuple of general coefficients (a, b, c, d) representing the plane
+
+        """
         a, b, c, d = coeffs
         self.z0 = d / c
 
@@ -802,25 +851,46 @@ class ZPlane(PlaneMeta, Surface):
                 np.array([np.inf, np.inf, np.inf]))
 
 
-class QuadricMeta(metaclass=ABCMeta):
-    """A Meta class implementing common functionality for quadric surfaces"""
+Plane.register(ZPlane)
+
+
+class QuadricMixin(metaclass=ABCMeta):
+    """A Mixin class implementing common functionality for quadric surfaces"""
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
     @abstractmethod
     def _get_base_coeffs(self):
+        """Return coefficients a, b, c, d, e, f, g, h, j, k representing a
+        general quadric surface  of the form:
+        :math:`ax^2 + by^2 + cz^2 + dxy + eyz + fxz+ gx + hy + jz +k = 0`.
+
+        """
         pass
 
     @abstractmethod
-    def _update_from_base_coeffs(self):
+    def _update_from_base_coeffs(self, coeffs):
+        """Update the current surface from coefficients representing a general
+        quadric surface of the form:
+        :math:`ax^2 + by^2 + cz^2 + dxy + eyz + fxz+ gx + hy + jz +k = 0`.
+
+        Parameters
+        ----------
+        coeffs : tuple
+            Tuple of general coefficients (a, b, c, d, e, f, g, h, j, k)
+            representing the quadric surface
+
+        """
         pass
 
     def _neg_bounds(self):
+        """Return the lower and upper bounds of the negative half space"""
         return (np.array([-np.inf, -np.inf, -np.inf]),
                 np.array([np.inf, np.inf, np.inf]))
 
     def _pos_bounds(self):
+        """Return the lower and upper bounds of the positive half space"""
         return (np.array([-np.inf, -np.inf, -np.inf]),
                 np.array([np.inf, np.inf, np.inf]))
 
@@ -856,7 +926,7 @@ class QuadricMeta(metaclass=ABCMeta):
 
         Returns
         -------
-        openmc.QuadricMeta
+        openmc.QuadricMixin
             Translated surface
 
         """
@@ -878,7 +948,7 @@ class QuadricMeta(metaclass=ABCMeta):
         return surf
 
 
-class Cylinder(QuadricMeta, Surface):
+class Cylinder(QuadricMixin, Surface):
     """A cylinder with radius r, centered on the point (x0, y0, z0) with an
     axis specified by the line through points (x0, y0, z0) and (x0+u, y0+v,
     z0+w)
@@ -893,13 +963,13 @@ class Cylinder(QuadricMeta, Surface):
         z-coordinate for the origin of the Cylinder. Defaults to 0
     r : float, optional
         Radius of the cylinder. Defaults to 1.
-    u : float, optional
+    dx : float, optional
         x-component of the vector representing the axis of the cylinder.
         Defaults to 0.
-    v : float, optional
+    dy : float, optional
         y-component of the vector representing the axis of the cylinder.
         Defaults to 0.
-    w : float, optional
+    dz : float, optional
         z-component of the vector representing the axis of the cylinder.
         Defaults to 1.
     boundary_type : {'transmission, 'vacuum', 'reflective', 'white'}, optional
@@ -923,11 +993,11 @@ class Cylinder(QuadricMeta, Surface):
         z-coordinate for the origin of the Cylinder
     r : float
         Radius of the cylinder
-    u : float
+    dx : float
         x-component of the vector representing the axis of the cylinder
-    v : float
+    dy : float
         y-component of the vector representing the axis of the cylinder
-    w : float
+    dz : float
         z-component of the vector representing the axis of the cylinder
     boundary_type : {'transmission, 'vacuum', 'reflective', 'white'}
         Boundary condition that defines the behavior for particles hitting the
@@ -943,16 +1013,16 @@ class Cylinder(QuadricMeta, Surface):
 
     """
     _type = 'cylinder'
-    _coeff_keys = ('x0', 'y0', 'z0', 'r', 'u', 'v','w')
-    def __init__(self, x0=0., y0=0., z0=0., r=1., u=0., v=0., w=1., **kwargs):
+    _coeff_keys = ('x0', 'y0', 'z0', 'r', 'dx', 'dy','dz')
+    def __init__(self, x0=0., y0=0., z0=0., r=1., dx=0., dy=0., dz=1., **kwargs):
         super().__init__(**kwargs)
         self.x0 = x0
         self.y0 = y0
         self.z0 = z0
         self.r = r
-        self.u = u
-        self.v = v
-        self.w = w
+        self.dx = dx
+        self.dy = dy
+        self.dz = dz
 
     @property
     def x0(self):
@@ -971,16 +1041,16 @@ class Cylinder(QuadricMeta, Surface):
         return self.coefficients['r']
 
     @property
-    def u(self):
-        return self.coefficients['u']
+    def dx(self):
+        return self.coefficients['dx']
 
     @property
-    def v(self):
-        return self.coefficients['v']
+    def dy(self):
+        return self.coefficients['dy']
 
     @property
-    def w(self):
-        return self.coefficients['w']
+    def dz(self):
+        return self.coefficients['dz']
 
     @x0.setter
     def x0(self, x0):
@@ -1002,29 +1072,31 @@ class Cylinder(QuadricMeta, Surface):
         check_type('r coefficient', r, Real)
         self._coefficients['r'] = r
 
-    @u.setter
-    def u(self, u):
-        check_type('u coefficient', u, Real)
-        self._coefficients['u'] = u
+    @dx.setter
+    def dx(self, dx):
+        check_type('dx coefficient', dx, Real)
+        self._coefficients['dx'] = dx
 
-    @v.setter
-    def v(self, v):
-        check_type('v coefficient', v, Real)
-        self._coefficients['v'] = v
+    @dy.setter
+    def dy(self, dy):
+        check_type('dy coefficient', dy, Real)
+        self._coefficients['dy'] = dy
 
-    @w.setter
-    def w(self, w):
-        check_type('w coefficient', w, Real)
-        self._coefficients['w'] = w
+    @dz.setter
+    def dz(self, dz):
+        check_type('dz coefficient', dz, Real)
+        self._coefficients['dz'] = dz
 
     def _get_base_coeffs(self):
-        """Return generalized coefficients for a cylinder"""
-        x0, y0, z0 = self.x0, self.y0, self.z0
-        x1, y1, z1 = self.x0 + self.u, self.y0 + self.v, self.z0 + self.w
-        dx, dy, dz = x1 - x0, y1 - y0, z1 - z0
+        """Return coefficients a, b, c, d, e, f, g, h, j, k representing a
+        general quadric surface  of the form:
+        :math:`ax^2 + by^2 + cz^2 + dxy + eyz + fxz+ gx + hy + jz +k = 0`.
 
-        # Set coefficients for Quadric surface that represents a cylinder of
-        # radius r whose axis is the line defined by p1 and p2
+        """
+        x0, y0, z0, r = self.x0, self.y0, self.z0, self.r
+        dx, dy, dz = self.dx, self.dy, self.dz
+        x1, y1, z1 = x0 + dx, y0 + dy, z0 + dz
+
         a = dy**2 + dz**2
         b = dx**2 + dz**2
         c = dx**2 + dy**2
@@ -1040,6 +1112,17 @@ class Cylinder(QuadricMeta, Surface):
         return (a, b, c, d, e, f, g, h, j, k)
 
     def _update_from_base_coeffs(self, coeffs):
+        """Update the current surface from coefficients representing a general
+        quadric surface of the form:
+        :math:`ax^2 + by^2 + cz^2 + dxy + eyz + fxz+ gx + hy + jz +k = 0`.
+
+        Parameters
+        ----------
+        coeffs : tuple
+            Tuple of general coefficients (a, b, c, d, e, f, g, h, j, k)
+            representing the quadric surface
+
+        """
         a, b, c, d, e, f, g, h, j, k = coeffs
 
     @classmethod
@@ -1087,7 +1170,7 @@ class Cylinder(QuadricMeta, Surface):
         return cyl
 
 
-class XCylinder(QuadricMeta, Surface):
+class XCylinder(QuadricMixin, Surface):
     """An infinite cylinder whose length is parallel to the x-axis of the form
     :math:`(y - y_0)^2 + (z - z_0)^2 = r^2`.
 
@@ -1147,10 +1230,6 @@ class XCylinder(QuadricMeta, Surface):
         self.r = r
 
     @property
-    def x0(self):
-        return self.coefficients['x0']
-
-    @property
     def y0(self):
         return self.coefficients['y0']
 
@@ -1158,10 +1237,9 @@ class XCylinder(QuadricMeta, Surface):
     def z0(self):
         return self.coefficients['z0']
 
-    @x0.setter
-    def x0(self, x0):
-        check_type('x0 coefficient', x0, Real)
-        self._coefficients['x0'] = x0
+    @property
+    def r(self):
+        return self.coefficients['r']
 
     @y0.setter
     def y0(self, y0):
@@ -1173,12 +1251,43 @@ class XCylinder(QuadricMeta, Surface):
         check_type('z0 coefficient', z0, Real)
         self._coefficients['z0'] = z0
 
+    @r.setter
+    def r(self, r):
+        check_type('r coefficient', r, Real)
+        self._coefficients['r'] = r
+
     def _get_base_coeffs(self):
-        """Return generalized coefficients for a cylinder"""
-        return (0., 0., 1., self.z0)
+        """Return coefficients a, b, c, d, e, f, g, h, j, k representing a
+        general quadric surface  of the form:
+        :math:`ax^2 + by^2 + cz^2 + dxy + eyz + fxz+ gx + hy + jz +k = 0`.
+
+        """
+        y0, z0, r = self.y0, self.z0, self.r
+
+        a = d = e = f = g = 0.
+        b = c = 1.
+        h, j, k = -2*y0, -2*z0, y0**2 + z0**2 - r**2 
+
+        return (a, b, c, d, e, f, g, h, j, k)
 
     def _update_from_base_coeffs(self, coeffs):
+        """Update the current surface from coefficients representing a general
+        quadric surface of the form:
+        :math:`ax^2 + by^2 + cz^2 + dxy + eyz + fxz+ gx + hy + jz +k = 0`.
+
+        Parameters
+        ----------
+        coeffs : tuple
+            Tuple of general coefficients (a, b, c, d, e, f, g, h, j, k)
+            representing the quadric surface
+
+        """
         a, b, c, d, e, f, g, h, j, k = coeffs
+        y0, z0 = -h / 2, -j / 2
+        r = np.sqrt(y0**2 + z0**2 - k)
+
+        for c, val in zip(self._coeff_keys, (y0, z0, r)):
+            setattr(self, c, val)
 
     def bounding_box(self, side):
         """Determine an axis-aligned bounding box.
@@ -1213,7 +1322,7 @@ class XCylinder(QuadricMeta, Surface):
                     np.array([np.inf, np.inf, np.inf]))
 
 
-class YCylinder(QuadricMeta):
+class YCylinder(QuadricMixin, Surface):
     """An infinite cylinder whose length is parallel to the y-axis of the form
     :math:`(x - x_0)^2 + (z - z_0)^2 = r^2`.
 
@@ -1279,6 +1388,10 @@ class YCylinder(QuadricMeta):
     def z0(self):
         return self.coefficients['z0']
 
+    @property
+    def r(self):
+        return self.coefficients['r']
+
     @x0.setter
     def x0(self, x0):
         check_type('x0 coefficient', x0, Real)
@@ -1289,12 +1402,43 @@ class YCylinder(QuadricMeta):
         check_type('z0 coefficient', z0, Real)
         self._coefficients['z0'] = z0
 
+    @r.setter
+    def r(self, r):
+        check_type('r coefficient', r, Real)
+        self._coefficients['r'] = r
+
     def _get_base_coeffs(self):
-        """Return generalized coefficients for a cylinder"""
-        return (0., 0., 1., self.z0)
+        """Return coefficients a, b, c, d, e, f, g, h, j, k representing a
+        general quadric surface  of the form:
+        :math:`ax^2 + by^2 + cz^2 + dxy + eyz + fxz+ gx + hy + jz +k = 0`.
+
+        """
+        x0, z0, r = self.x0, self.z0, self.r
+
+        b = d = e = f = h = 0.
+        a = c = 1.
+        g, j, k = -2*x0, -2*z0, x0**2 + z0**2 - r**2 
+
+        return (a, b, c, d, e, f, g, h, j, k)
 
     def _update_from_base_coeffs(self, coeffs):
+        """Update the current surface from coefficients representing a general
+        quadric surface of the form:
+        :math:`ax^2 + by^2 + cz^2 + dxy + eyz + fxz+ gx + hy + jz +k = 0`.
+
+        Parameters
+        ----------
+        coeffs : tuple
+            Tuple of general coefficients (a, b, c, d, e, f, g, h, j, k)
+            representing the quadric surface
+
+        """
         a, b, c, d, e, f, g, h, j, k = coeffs
+        x0, z0 = -g / 2, -j / 2
+        r = np.sqrt(x0**2 + z0**2 - k)
+
+        for c, val in zip(self._coeff_keys, (x0, z0, r)):
+            setattr(self, c, val)
 
     def bounding_box(self, side):
         """Determine an axis-aligned bounding box.
@@ -1329,7 +1473,7 @@ class YCylinder(QuadricMeta):
                     np.array([np.inf, np.inf, np.inf]))
 
 
-class ZCylinder(QuadricMeta, Surface):
+class ZCylinder(QuadricMixin, Surface):
     """An infinite cylinder whose length is parallel to the z-axis of the form
     :math:`(x - x_0)^2 + (y - y_0)^2 = r^2`.
 
@@ -1380,7 +1524,8 @@ class ZCylinder(QuadricMeta, Surface):
     def __init__(self, x0=0., y0=0., r=1., **kwargs):
         R = kwargs.pop('R', None)
         if R is not None:
-            warn(_WARNING_UPPER.format(type(self).__name__, 'r', 'R'), FutureWarning)
+            warn(_WARNING_UPPER.format(type(self).__name__, 'r', 'R'),
+                 FutureWarning)
             r = R
         super().__init__(**kwargs)
         self.x0 = x0
@@ -1395,6 +1540,10 @@ class ZCylinder(QuadricMeta, Surface):
     def y0(self):
         return self.coefficients['y0']
 
+    @property
+    def r(self):
+        return self.coefficients['r']
+
     @x0.setter
     def x0(self, x0):
         check_type('x0 coefficient', x0, Real)
@@ -1405,12 +1554,43 @@ class ZCylinder(QuadricMeta, Surface):
         check_type('y0 coefficient', y0, Real)
         self._coefficients['y0'] = y0
 
+    @r.setter
+    def r(self, r):
+        check_type('r coefficient', r, Real)
+        self._coefficients['r'] = r
+
     def _get_base_coeffs(self):
-        """Return generalized coefficients for a cylinder"""
-        return (0., 0., 1., self.z0)
+        """Return coefficients a, b, c, d, e, f, g, h, j, k representing a
+        general quadric surface  of the form:
+        :math:`ax^2 + by^2 + cz^2 + dxy + eyz + fxz+ gx + hy + jz +k = 0`.
+
+        """
+        x0, y0, r = self.x0, self.y0, self.r
+
+        c = d = e = f = j = 0.
+        a = b = 1.
+        g, h, k = -2*x0, -2*y0, x0**2 + y0**2 - r**2
+
+        return (a, b, c, d, e, f, g, h, j, k)
 
     def _update_from_base_coeffs(self, coeffs):
+        """Update the current surface from coefficients representing a general
+        quadric surface of the form:
+        :math:`ax^2 + by^2 + cz^2 + dxy + eyz + fxz+ gx + hy + jz +k = 0`.
+
+        Parameters
+        ----------
+        coeffs : tuple
+            Tuple of general coefficients (a, b, c, d, e, f, g, h, j, k)
+            representing the quadric surface
+
+        """
         a, b, c, d, e, f, g, h, j, k = coeffs
+        x0, y0 = -g / 2, -4 / 2
+        r = np.sqrt(x0**2 + y0**2 - k)
+
+        for c, val in zip(self._coeff_keys, (x0, y0, r)):
+            setattr(self, c, val)
 
     def bounding_box(self, side):
         """Determine an axis-aligned bounding box.
@@ -1445,7 +1625,7 @@ class ZCylinder(QuadricMeta, Surface):
                     np.array([np.inf, np.inf, np.inf]))
 
 
-class Sphere(QuadricMeta, Surface):
+class Sphere(QuadricMixin, Surface):
     """A sphere of the form :math:`(x - x_0)^2 + (y - y_0)^2 + (z - z_0)^2 = r^2`.
 
     Parameters
@@ -1543,11 +1723,35 @@ class Sphere(QuadricMeta, Surface):
         self._coefficients['r'] = r
 
     def _get_base_coeffs(self):
-        """Return generalized coefficients for a cylinder"""
-        return (0., 0., 1., self.z0)
+        """Return coefficients a, b, c, d, e, f, g, h, j, k representing a
+        general quadric surface  of the form:
+        :math:`ax^2 + by^2 + cz^2 + dxy + eyz + fxz+ gx + hy + jz +k = 0`.
+
+        """
+        x0, y0, z0, r = self.x0, self.y0, self.z0, self.r
+        a = b = c = 1.
+        d = e = f = 0.
+        g, h, j = -2*x0, -2*y0, -2*z0
+        k = x0**2 + y0**2 + z0**2 - r**2
+        return (a, b, c, d, e, f, g, h, j, k)
 
     def _update_from_base_coeffs(self, coeffs):
+        """Update the current surface from coefficients representing a general
+        quadric surface of the form:
+        :math:`ax^2 + by^2 + cz^2 + dxy + eyz + fxz+ gx + hy + jz +k = 0`.
+
+        Parameters
+        ----------
+        coeffs : tuple
+            Tuple of general coefficients (a, b, c, d, e, f, g, h, j, k)
+            representing the quadric surface
+
+        """
         a, b, c, d, e, f, g, h, j, k = coeffs
+        x0, y0, z0 = -g / 2, -h / 2, -j / 2
+        r = np.sqrt(x0**2 + y0**2 + z0**2 - k)
+        for c, val in zip(self._coeff_keys, (x0, y0, z0, r)):
+            setattr(self, c, val)
 
     def bounding_box(self, side):
         """Determine an axis-aligned bounding box.
@@ -1583,7 +1787,7 @@ class Sphere(QuadricMeta, Surface):
                     np.array([np.inf, np.inf, np.inf]))
 
 
-class Cone(QuadricMeta, Surface):
+class Cone(QuadricMixin, Surface):
     """A conical surface parallel to the x-, y-, or z-axis.
 
     Parameters
@@ -1625,11 +1829,11 @@ class Cone(QuadricMeta, Surface):
         z-coordinate of the apex
     r2 : float
         Parameter related to the aperature
-    u : float
+    dx : float
         x-component of the vector representing the axis of the cone.
-    v : float
+    dy : float
         y-component of the vector representing the axis of the cone.
-    w : float
+    dz : float
         z-component of the vector representing the axis of the cone.
     boundary_type : {'transmission, 'vacuum', 'reflective', 'white'}
         Boundary condition that defines the behavior for particles hitting the
@@ -1646,9 +1850,9 @@ class Cone(QuadricMeta, Surface):
     """
 
     _type = 'cylinder'
-    _coeff_keys = ('x0', 'y0', 'z0', 'r2', 'u', 'v', 'w')
+    _coeff_keys = ('x0', 'y0', 'z0', 'r2', 'dx', 'dy', 'dz')
 
-    def __init__(self, x0=0., y0=0., z0=0., r2=1., u=0., v=0., w=1., **kwargs):
+    def __init__(self, x0=0., y0=0., z0=0., r2=1., dx=0., dy=0., dz=1., **kwargs):
         R2 = kwargs.pop('R2', None)
         if R2 is not None:
             warn(_WARNING_UPPER.format(type(self).__name__, 'r2', 'R2'),
@@ -1659,9 +1863,9 @@ class Cone(QuadricMeta, Surface):
         self.y0 = y0
         self.z0 = z0
         self.r2 = r2
-        self.u = u
-        self.v = v
-        self.w = w
+        self.dx = dx
+        self.dy = dy
+        self.dz = dz
 
     @property
     def x0(self):
@@ -1680,16 +1884,16 @@ class Cone(QuadricMeta, Surface):
         return self.coefficients['r2']
 
     @property
-    def u(self):
-        return self.coefficients['u']
+    def dx(self):
+        return self.coefficients['dx']
 
     @property
-    def v(self):
-        return self.coefficients['v']
+    def dy(self):
+        return self.coefficients['dy']
 
     @property
-    def w(self):
-        return self.coefficients['w']
+    def dz(self):
+        return self.coefficients['dz']
 
     @x0.setter
     def x0(self, x0):
@@ -1711,30 +1915,45 @@ class Cone(QuadricMeta, Surface):
         check_type('r^2 coefficient', r2, Real)
         self._coefficients['r2'] = r2
 
-    @u.setter
-    def u(self, u):
-        check_type('u coefficient', u, Real)
-        self._coefficients['u'] = u
+    @dx.setter
+    def dx(self, dx):
+        check_type('dx coefficient', dx, Real)
+        self._coefficients['dx'] = dx
 
-    @v.setter
-    def v(self, v):
-        check_type('v coefficient', v, Real)
-        self._coefficients['v'] = v
+    @dy.setter
+    def dy(self, dy):
+        check_type('dy coefficient', dy, Real)
+        self._coefficients['dy'] = dy
 
-    @w.setter
-    def w(self, w):
-        check_type('w coefficient', w, Real)
-        self._coefficients['w'] = w
+    @dz.setter
+    def dz(self, dz):
+        check_type('dz coefficient', dz, Real)
+        self._coefficients['dz'] = dz
 
     def _get_base_coeffs(self):
-        """Return generalized coefficients for a cylinder"""
+        """Return coefficients a, b, c, d, e, f, g, h, j, k representing a
+        general quadric surface  of the form:
+        :math:`ax^2 + by^2 + cz^2 + dxy + eyz + fxz+ gx + hy + jz +k = 0`.
+
+        """
         return (0., 0., 1., self.z0)
 
     def _update_from_base_coeffs(self, coeffs):
+        """Update the current surface from coefficients representing a general
+        quadric surface of the form:
+        :math:`ax^2 + by^2 + cz^2 + dxy + eyz + fxz+ gx + hy + jz +k = 0`.
+
+        Parameters
+        ----------
+        coeffs : tuple
+            Tuple of general coefficients (a, b, c, d, e, f, g, h, j, k)
+            representing the quadric surface
+
+        """
         a, b, c, d, e, f, g, h, j, k = coeffs
 
 
-class XCone(QuadricMeta, Surface):
+class XCone(QuadricMixin, Surface):
     """A cone parallel to the x-axis of the form :math:`(y - y_0)^2 + (z - z_0)^2 =
     r^2 (x - x_0)^2`.
 
@@ -1834,14 +2053,46 @@ class XCone(QuadricMeta, Surface):
         self._coefficients['r2'] = r2
 
     def _get_base_coeffs(self):
-        """Return generalized coefficients for a cylinder"""
-        return (0., 0., 1., self.z0)
+        """Return coefficients a, b, c, d, e, f, g, h, j, k representing a
+        general quadric surface  of the form:
+        :math:`ax^2 + by^2 + cz^2 + dxy + eyz + fxz+ gx + hy + jz +k = 0`.
+
+        """
+        x0, y0, z0, r2 = self.x0, self.y0, self.z0, self.r2
+
+        a = -r2
+        b = c = 1.
+        d = e = f = 0.
+        g, h, j = 2*x0*r2, -2*y0, -2*z0
+        k = y0**2 + z0**2 - r2*x0**2
+
+        return (a, b, c, d, e, f, g, h, j, k)
 
     def _update_from_base_coeffs(self, coeffs):
+        """Update the current surface from coefficients representing a general
+        quadric surface of the form:
+        :math:`ax^2 + by^2 + cz^2 + dxy + eyz + fxz+ gx + hy + jz +k = 0`.
+
+        Parameters
+        ----------
+        coeffs : tuple
+            Tuple of general coefficients (a, b, c, d, e, f, g, h, j, k)
+            representing the quadric surface
+
+        """
         a, b, c, d, e, f, g, h, j, k = coeffs
 
+        r2 = -a
+        x0, y0, z0 = g / (2*r2), -h / 2, -j / 2
 
-class YCone(QuadricMeta, Surface):
+        for c, val in zip(self._coeff_keys, (x0, y0, z0, r2)):
+            setattr(self, c, val)
+
+
+Cone.register(XCone)
+
+
+class YCone(QuadricMixin, Surface):
     """A cone parallel to the y-axis of the form :math:`(x - x_0)^2 + (z - z_0)^2 =
     r^2 (y - y_0)^2`.
 
@@ -1941,14 +2192,46 @@ class YCone(QuadricMeta, Surface):
         self._coefficients['r2'] = r2
 
     def _get_base_coeffs(self):
-        """Return generalized coefficients for a cylinder"""
-        return (0., 0., 1., self.z0)
+        """Return coefficients a, b, c, d, e, f, g, h, j, k representing a
+        general quadric surface  of the form:
+        :math:`ax^2 + by^2 + cz^2 + dxy + eyz + fxz+ gx + hy + jz +k = 0`.
+
+        """
+        x0, y0, z0, r2 = self.x0, self.y0, self.z0, self.r2
+
+        b = -r2
+        a = c = 1.
+        d = e = f = 0.
+        g, h, j = -2*x0, 2*y0*r2, -2*z0
+        k = x0**2 + z0**2 - r2*y0**2
+
+        return (a, b, c, d, e, f, g, h, j, k)
 
     def _update_from_base_coeffs(self, coeffs):
+        """Update the current surface from coefficients representing a general
+        quadric surface of the form:
+        :math:`ax^2 + by^2 + cz^2 + dxy + eyz + fxz+ gx + hy + jz +k = 0`.
+
+        Parameters
+        ----------
+        coeffs : tuple
+            Tuple of general coefficients (a, b, c, d, e, f, g, h, j, k)
+            representing the quadric surface
+
+        """
         a, b, c, d, e, f, g, h, j, k = coeffs
 
+        r2 = -b
+        x0, y0, z0 = -g / 2, h / (2*r2), -j / 2
 
-class ZCone(QuadricMeta, Surface):
+        for c, val in zip(self._coeff_keys, (x0, y0, z0, r2)):
+            setattr(self, c, val)
+
+
+Cone.register(YCone)
+
+
+class ZCone(QuadricMixin, Surface):
     """A cone parallel to the x-axis of the form :math:`(x - x_0)^2 + (y - y_0)^2 =
     r^2 (z - z_0)^2`.
 
@@ -2048,14 +2331,46 @@ class ZCone(QuadricMeta, Surface):
         self._coefficients['r2'] = r2
 
     def _get_base_coeffs(self):
-        """Return generalized coefficients for a cylinder"""
-        return (0., 0., 1., self.z0)
+        """Return coefficients a, b, c, d, e, f, g, h, j, k representing a
+        general quadric surface  of the form:
+        :math:`ax^2 + by^2 + cz^2 + dxy + eyz + fxz+ gx + hy + jz +k = 0`.
+
+        """
+        x0, y0, z0, r2 = self.x0, self.y0, self.z0, self.r2
+
+        c = -r2
+        a = b = 1.
+        d = e = f = 0.
+        g, h, j = -2*x0, -2*y0, 2*z0*r2
+        k = x0**2 + y0**2 - r2*z0**2
+
+        return (a, b, c, d, e, f, g, h, j, k)
 
     def _update_from_base_coeffs(self, coeffs):
+        """Update the current surface from coefficients representing a general
+        quadric surface of the form:
+        :math:`ax^2 + by^2 + cz^2 + dxy + eyz + fxz+ gx + hy + jz +k = 0`.
+
+        Parameters
+        ----------
+        coeffs : tuple
+            Tuple of general coefficients (a, b, c, d, e, f, g, h, j, k)
+            representing the quadric surface
+
+        """
         a, b, c, d, e, f, g, h, j, k = coeffs
 
+        r2 = -c
+        x0, y0, z0 = -g / 2, -h / 2, j / (2*r2)
 
-class Quadric(QuadricMeta, Surface):
+        for c, val in zip(self._coeff_keys, (x0, y0, z0, r2)):
+            setattr(self, c, val)
+
+
+Cone.register(ZCone)
+
+
+class Quadric(QuadricMixin, Surface):
     """A surface of the form :math:`Ax^2 + By^2 + Cz^2 + Dxy + Eyz + Fxz + Gx + Hy +
     Jz + K = 0`.
 
@@ -2096,17 +2411,11 @@ class Quadric(QuadricMeta, Surface):
 
     def __init__(self, a=0., b=0., c=0., d=0., e=0., f=0., g=0., h=0., j=0.,
                  k=0., **kwargs):
+
         super().__init__(**kwargs)
-        self.a = a
-        self.b = b
-        self.c = c
-        self.d = d
-        self.e = e
-        self.f = f
-        self.g = g
-        self.h = h
-        self.j = j
-        self.k = k
+
+        for c, val in zip(self._coeff_keys, (a, b, c, d, e, f, g, h, j, k)):
+            setattr(self, c, val)
 
     @property
     def a(self):
@@ -2197,6 +2506,29 @@ class Quadric(QuadricMeta, Surface):
     def k(self, k):
         check_type('k coefficient', k, Real)
         self._coefficients['k'] = k
+
+    def _get_base_coeffs(self):
+        """Return coefficients a, b, c, d, e, f, g, h, j, k representing a
+        general quadric surface  of the form:
+        :math:`ax^2 + by^2 + cz^2 + dxy + eyz + fxz+ gx + hy + jz +k = 0`.
+
+        """
+        return tuple(getattr(self, c) for c in self._coeff_keys)
+
+    def _update_from_base_coeffs(self, coeffs):
+        """Update the current surface from coefficients representing a general
+        quadric surface of the form:
+        :math:`ax^2 + by^2 + cz^2 + dxy + eyz + fxz+ gx + hy + jz +k = 0`.
+
+        Parameters
+        ----------
+        coeffs : tuple
+            Tuple of general coefficients (a, b, c, d, e, f, g, h, j, k)
+            representing the quadric surface
+
+        """
+        for c, val in zip(self._coeff_keys, coeffs):
+            setattr(self, c, val)
 
 
 class Halfspace(Region):

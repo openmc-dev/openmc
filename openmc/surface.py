@@ -188,17 +188,6 @@ class Surface(IDManagerMixin, metaclass=ABCMeta):
     def translate(self, vector):
         pass
 
-    @classmethod
-    def get_subclasses(cls):
-        """Recursively find all subclasses of this class"""
-        return set(cls.__subclasses__()).union([s for c in cls.__subclasses__()
-                                                for s in get_subclasses(c)])
-
-    @classmethod
-    def get_subclass_map(cls):
-        """Generate mapping of class _type attributes to classes"""
-        return {c._type: c for c in cls.get_subclasses()}
-
     def to_xml_element(self):
         """Return XML representation of the surface
 
@@ -277,9 +266,6 @@ class Surface(IDManagerMixin, metaclass=ABCMeta):
         cls = _SURFACE_CLASSES[surf_type]
 
         return cls(*coeffs, **kwargs)
-
-
-_SURFACE_CLASSES = Surface.get_subclass_map()
 
 
 class PlaneMixin(metaclass=ABCMeta):
@@ -1844,7 +1830,7 @@ class Cone(QuadricMixin, Surface):
 
     """
 
-    _type = 'cylinder'
+    _type = 'cone'
     _coeff_keys = ('x0', 'y0', 'z0', 'r2', 'dx', 'dy', 'dz')
 
     def __init__(self, x0=0., y0=0., z0=0., r2=1., dx=0., dy=0., dz=1., **kwargs):
@@ -2712,3 +2698,18 @@ class Halfspace(Region):
 
         # Return translated surface
         return type(self)(memo[key], self.side)
+
+def get_subclasses(cls):
+    """Recursively find all subclasses of this class"""
+    return set(cls.__subclasses__()).union([s for c in cls.__subclasses__()
+                                            for s in get_subclasses(c)])
+
+
+def get_subclass_map(cls):
+    """Generate mapping of class _type attributes to classes"""
+    return {c._type: c for c in get_subclasses(cls)}
+
+
+_SURFACE_CLASSES = get_subclass_map(Surface)
+
+

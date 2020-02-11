@@ -58,6 +58,8 @@ class Settings(object):
         history-based parallelism.
     generations_per_batch : int
         Number of generations per batch
+    max_lost_particles : int
+        Maximum number of lost particles       
     inactive : int
         Number of inactive batches
     keff_trigger : dict
@@ -176,6 +178,7 @@ class Settings(object):
         self._batches = None
         self._generations_per_batch = None
         self._inactive = None
+        self._max_lost_particles = None
         self._particles = None
         self._keff_trigger = None
 
@@ -253,6 +256,10 @@ class Settings(object):
     @property
     def inactive(self):
         return self._inactive
+
+    @property
+    def max_lost_particles(self):
+        return self._max_lost_particles        
 
     @property
     def particles(self):
@@ -416,6 +423,12 @@ class Settings(object):
         cv.check_type('inactive batches', inactive, Integral)
         cv.check_greater_than('inactive batches', inactive, 0, True)
         self._inactive = inactive
+
+    @max_lost_particles.setter
+    def max_lost_particles(self, max_lost_particles):
+        cv.check_type('max_lost_particles', max_lost_particles, Integral)
+        cv.check_greater_than('max_lost_particles', max_lost_particles, 0)
+        self._max_lost_particles = max_lost_particles        
 
     @particles.setter
     def particles(self, particles):
@@ -763,6 +776,11 @@ class Settings(object):
             element = ET.SubElement(root, "inactive")
             element.text = str(self._inactive)
 
+    def _create_max_lost_particles_subelement(self, root):
+        if self._max_lost_particles is not None:
+            element = ET.SubElement(root, "max_lost_particles")
+            element.text = str(self._max_lost_particles)            
+
     def _create_particles_subelement(self, root):
         if self._particles is not None:
             element = ET.SubElement(root, "particles")
@@ -1009,6 +1027,7 @@ class Settings(object):
             self._particles_from_xml_element(elem)
             self._batches_from_xml_element(elem)
             self._inactive_from_xml_element(elem)
+            self._max_lost_particles_from_xml_element(elem)
             self._generations_per_batch_from_xml_element(elem)
 
     def _run_mode_from_xml_element(self, root):
@@ -1030,6 +1049,11 @@ class Settings(object):
         text = get_text(root, 'inactive')
         if text is not None:
             self.inactive = int(text)
+
+    def _max_lost_particles_from_xml_element(self, root):
+        text = get_text(root, 'max_lost_particles')
+        if text is not None:
+            self.max_lost_particles = int(text)            
 
     def _generations_per_batch_from_xml_element(self, root):
         text = get_text(root, 'generations_per_batch')
@@ -1270,6 +1294,7 @@ class Settings(object):
         self._create_particles_subelement(root_element)
         self._create_batches_subelement(root_element)
         self._create_inactive_subelement(root_element)
+        self._create_max_lost_particles_subelement(root_element)
         self._create_generations_per_batch_subelement(root_element)
         self._create_keff_trigger_subelement(root_element)
         self._create_source_subelement(root_element)
@@ -1340,6 +1365,7 @@ class Settings(object):
         settings._particles_from_xml_element(root)
         settings._batches_from_xml_element(root)
         settings._inactive_from_xml_element(root)
+        settings._max_lost_particles_from_xml_element(root)
         settings._generations_per_batch_from_xml_element(root)
         settings._keff_trigger_from_xml_element(root)
         settings._source_from_xml_element(root)

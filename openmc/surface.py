@@ -641,7 +641,7 @@ class XPlane(PlaneMeta, Surface):
 
     def _update_from_base_coeffs(self, coeffs):
         a, b, c, d = coeffs
-        self.x0 = d
+        self.x0 = d / a
 
     def _neg_bounds(self):
         """Return the lower and upper bounds of the negative half space"""
@@ -715,7 +715,7 @@ class YPlane(PlaneMeta, Surface):
 
     def _update_from_base_coeffs(self, coeffs):
         a, b, c, d = coeffs
-        self.y0 = d
+        self.y0 = d / b
 
     def _neg_bounds(self):
         """Return the lower and upper bounds of the negative half space"""
@@ -789,7 +789,7 @@ class ZPlane(PlaneMeta, Surface):
 
     def _update_from_base_coeffs(self, coeffs):
         a, b, c, d = coeffs
-        self.z0 = d
+        self.z0 = d / c
 
     def _neg_bounds(self):
         """Return the lower and upper bounds of the negative half space"""
@@ -879,7 +879,9 @@ class QuadricMeta(metaclass=ABCMeta):
 
 
 class Cylinder(QuadricMeta, Surface):
-    """A cylinder 
+    """A cylinder with radius r, centered on the point (x0, y0, z0) with an
+    axis specified by the line through points (x0, y0, z0) and (x0+u, y0+v,
+    z0+w)
 
     Parameters
     ----------
@@ -1017,10 +1019,72 @@ class Cylinder(QuadricMeta, Surface):
 
     def _get_base_coeffs(self):
         """Return generalized coefficients for a cylinder"""
-        return (0., 0., 1., self.z0)
+        x0, y0, z0 = self.x0, self.y0, self.z0
+        x1, y1, z1 = self.x0 + self.u, self.y0 + self.v, self.z0 + self.w
+        dx, dy, dz = x1 - x0, y1 - y0, z1 - z0
+
+        # Set coefficients for Quadric surface that represents a cylinder of
+        # radius r whose axis is the line defined by p1 and p2
+        a = dy**2 + dz**2
+        b = dx**2 + dz**2
+        c = dx**2 + dy**2
+        d = -2*dx*dy
+        e = -2*dy*dz
+        f = -2*dx*dz
+        g = -2*((z1 - z0)*(x0*z1 - x1*z0) + (y1 - y0)*(x0*y1-x1*y0))
+        h = 2*((x1 - x0)*(x0*y1 - x1*y0) - (z1 - z0)*(y0*z1 - y1*z0))
+        j = 2*((x1 - x0)*(x0*z1 - x1*z0) + (y1 - y0)*(y0*z1 - y1*z0))
+        k = (y0*z1 - y1*z0)**2 + (x0*z1 - x1*z0)**2 + (x0*y1 - x1*y0)**2 \
+            - r**2*(dx**2 + dy**2 + dz**2)
+
+        return (a, b, c, d, e, f, g, h, j, k)
 
     def _update_from_base_coeffs(self, coeffs):
         a, b, c, d, e, f, g, h, j, k = coeffs
+
+    @classmethod
+    def from_points(cls, p1, p2, r=1., **kwargs):
+        """Return a cylinder given points that define the axis and a radius.
+
+        Parameters
+        ----------
+        p1, p2 : 3-tuples
+            Points that pass through the plane
+        r : float, optional
+            Radius of the cylinder. Defaults to 1.
+        kwargs : dict
+            Keyword arguments passed to the :class:`Quadric` constructor
+
+        Returns
+        -------
+        Cylinder
+            Cylinder that has an axis through the points p1 and p2
+
+        """
+        # Convert to numpy arrays
+        p1 = np.asarray(p1)
+        p2 = np.asarray(p2)
+        x1, y1, z1 = p1
+        x2, y2, z2 = p2
+        dx, dy, dz = p2 - p1
+
+        # Set coefficients for Quadric surface that represents a cylinder of
+        # radius r whose axis is the line defined by p1 and p2
+        a = dy**2 + dz**2
+        b = dx**2 + dz**2
+        c = dx**2 + dy**2
+        d = -2*dx*dy
+        e = -2*dy*dz
+        f = -2*dx*dz
+        g = -2*((z2 - z1)*(x1*z2 - x2*z1) + (y2 - y1)*(x1*y2-x2*y1))
+        h = 2*((x2 - x1)*(x1*y2 - x2*y1) - (z2 - z1)*(y1*z2 - y2*z1))
+        j = 2*((x2 - x1)*(x1*z2 - x2*z1) + (y2 - y1)*(y1*z2 - y2*z1))
+        k = (y1*z2 - y2*z1)**2 + (x1*z2 - x2*z1)**2 + (x1*y2 - x2*y1)**2 \
+            - r**2*(dx**2 + dy**2 + dz**2)
+
+        cyl = cls(x0=x1, y0=y1, z0=z1, r=r, **kwargs)
+        cyl._update_from_base_coeffs((a, b, c, d, e, f, g, h, j, k))
+        return cyl
 
 
 class XCylinder(QuadricMeta, Surface):

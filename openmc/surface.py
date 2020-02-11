@@ -487,10 +487,10 @@ class Plane(PlaneMixin, Surface):
         kwargs.update(argsdict)
 
         super().__init__(**kwargs)
-        self.a = a
-        self.b = b
-        self.c = c
-        self.d = d
+
+        for key, val in zip(self._coeff_keys, (a, b, c, d)):
+            setattr(self, key, val)
+
         for k, v in oldkwargs.items():
             if k in 'ABCD':
                 warn(_WARNING_UPPER.format(type(self).__name__, k.lower(), k),
@@ -551,8 +551,8 @@ class Plane(PlaneMixin, Surface):
 
         """
 
-        for c, val in zip(self._coeff_keys, coeffs):
-            setattr(self, c, val)
+        for key, val in zip(self._coeff_keys, coeffs):
+            setattr(self, key, val)
 
     @classmethod
     def from_points(cls, p1, p2, p3, **kwargs):
@@ -918,6 +918,34 @@ class QuadricMixin(metaclass=ABCMeta):
         return (np.array([-np.inf, -np.inf, -np.inf]),
                 np.array([np.inf, np.inf, np.inf]))
 
+    def bounding_box(self, side):
+        """Determine an axis-aligned bounding box.
+
+        An axis-aligned bounding box for surface half-spaces is represented by
+        its lower-left and upper-right coordinates. To represent infinity, 
+        numpy.inf is used.
+
+        Parameters
+        ----------
+        side : {'+', '-'}
+            Indicates the negative or positive half-space
+
+        Returns
+        -------
+        numpy.ndarray
+            Lower-left coordinates of the axis-aligned bounding box for the
+            desired half-space
+        numpy.ndarray
+            Upper-right coordinates of the axis-aligned bounding box for the
+            desired half-space
+
+        """
+
+        if side == '-':
+            return self._neg_bounds()
+        elif side == '+':
+            return self._pos_bounds()
+
     def evaluate(self, point):
         """Evaluate the surface equation at a given point.
 
@@ -1041,13 +1069,9 @@ class Cylinder(QuadricMixin, Surface):
     _coeff_keys = ('x0', 'y0', 'z0', 'r', 'dx', 'dy','dz')
     def __init__(self, x0=0., y0=0., z0=0., r=1., dx=0., dy=0., dz=1., **kwargs):
         super().__init__(**kwargs)
-        self.x0 = x0
-        self.y0 = y0
-        self.z0 = z0
-        self.r = r
-        self.dx = dx
-        self.dy = dy
-        self.dz = dz
+
+        for key, val in zip(self._coeff_keys, (x0, y0, z0, r, dx, dy, dz)):
+            setattr(self, key, val)
 
     @property
     def x0(self):
@@ -1234,9 +1258,9 @@ class XCylinder(QuadricMixin, Surface):
                  FutureWarning)
             r = R
         super().__init__(**kwargs)
-        self.y0 = y0
-        self.z0 = z0
-        self.r = r
+
+        for key, val in zip(self._coeff_keys, (y0, z0, r)):
+            setattr(self, key, val)
 
     @property
     def y0(self):
@@ -1296,40 +1320,18 @@ class XCylinder(QuadricMixin, Surface):
         y0, z0 = -h / 2, -j / 2
         r = np.sqrt(y0**2 + z0**2 - k)
 
-        for c, val in zip(self._coeff_keys, (y0, z0, r)):
-            setattr(self, c, val)
+        for key, val in zip(self._coeff_keys, (y0, z0, r)):
+            setattr(self, key, val)
 
-    def bounding_box(self, side):
-        """Determine an axis-aligned bounding box.
+    def _neg_bounds(self):
+        """Return the lower and upper bounds of the negative half space"""
+        return (np.array([-np.inf, self.y0 - self.r, self.z0 - self.r]),
+                np.array([np.inf, self.y0 + self.r, self.z0 + self.r]))
 
-        An axis-aligned bounding box for surface half-spaces is represented by
-        its lower-left and upper-right coordinates. For the x-cylinder surface,
-        the negative half-space is unbounded in the x- direction and the
-        positive half-space is unbounded in all directions. To represent
-        infinity, numpy.inf is used.
-
-        Parameters
-        ----------
-        side : {'+', '-'}
-            Indicates the negative or positive half-space
-
-        Returns
-        -------
-        numpy.ndarray
-            Lower-left coordinates of the axis-aligned bounding box for the
-            desired half-space
-        numpy.ndarray
-            Upper-right coordinates of the axis-aligned bounding box for the
-            desired half-space
-
-        """
-
-        if side == '-':
-            return (np.array([-np.inf, self.y0 - self.r, self.z0 - self.r]),
-                    np.array([np.inf, self.y0 + self.r, self.z0 + self.r]))
-        elif side == '+':
-            return (np.array([-np.inf, -np.inf, -np.inf]),
-                    np.array([np.inf, np.inf, np.inf]))
+    def _pos_bounds(self):
+        """Return the lower and upper bounds of the positive half space"""
+        return (np.array([-np.inf, -np.inf, -np.inf]),
+                np.array([np.inf, np.inf, np.inf]))
 
 
 Cylinder.register(XCylinder)
@@ -1390,9 +1392,9 @@ class YCylinder(QuadricMixin, Surface):
                  FutureWarning)
             r = R
         super().__init__(**kwargs)
-        self.x0 = x0
-        self.z0 = z0
-        self.r = r
+
+        for key, val in zip(self._coeff_keys, (x0, z0, r)):
+            setattr(self, key, val)
 
     @property
     def x0(self):
@@ -1451,40 +1453,18 @@ class YCylinder(QuadricMixin, Surface):
         x0, z0 = -g / 2, -j / 2
         r = np.sqrt(x0**2 + z0**2 - k)
 
-        for c, val in zip(self._coeff_keys, (x0, z0, r)):
-            setattr(self, c, val)
+        for key, val in zip(self._coeff_keys, (x0, z0, r)):
+            setattr(self, key, val)
 
-    def bounding_box(self, side):
-        """Determine an axis-aligned bounding box.
+    def _neg_bounds(self):
+        """Return the lower and upper bounds of the negative half space"""
+        return (np.array([self.x0 - self.r, -np.inf, self.z0 - self.r]),
+                np.array([self.x0 + self.r, np.inf, self.z0 + self.r]))
 
-        An axis-aligned bounding box for surface half-spaces is represented by
-        its lower-left and upper-right coordinates. For the y-cylinder surface,
-        the negative half-space is unbounded in the y- direction and the
-        positive half-space is unbounded in all directions. To represent
-        infinity, numpy.inf is used.
-
-        Parameters
-        ----------
-        side : {'+', '-'}
-            Indicates the negative or positive half-space
-
-        Returns
-        -------
-        numpy.ndarray
-            Lower-left coordinates of the axis-aligned bounding box for the
-            desired half-space
-        numpy.ndarray
-            Upper-right coordinates of the axis-aligned bounding box for the
-            desired half-space
-
-        """
-
-        if side == '-':
-            return (np.array([self.x0 - self.r, -np.inf, self.z0 - self.r]),
-                    np.array([self.x0 + self.r, np.inf, self.z0 + self.r]))
-        elif side == '+':
-            return (np.array([-np.inf, -np.inf, -np.inf]),
-                    np.array([np.inf, np.inf, np.inf]))
+    def _pos_bounds(self):
+        """Return the lower and upper bounds of the positive half space"""
+        return (np.array([-np.inf, -np.inf, -np.inf]),
+                np.array([np.inf, np.inf, np.inf]))
 
 
 Cylinder.register(YCylinder)
@@ -1545,9 +1525,9 @@ class ZCylinder(QuadricMixin, Surface):
                  FutureWarning)
             r = R
         super().__init__(**kwargs)
-        self.x0 = x0
-        self.y0 = y0
-        self.r = r
+
+        for key, val in zip(self._coeff_keys, (x0, y0, r)):
+            setattr(self, key, val)
 
     @property
     def x0(self):
@@ -1606,40 +1586,18 @@ class ZCylinder(QuadricMixin, Surface):
         x0, y0 = -g / 2, -h / 2
         r = np.sqrt(x0**2 + y0**2 - k)
 
-        for c, val in zip(self._coeff_keys, (x0, y0, r)):
-            setattr(self, c, val)
+        for key, val in zip(self._coeff_keys, (x0, y0, r)):
+            setattr(self, key, val)
 
-    def bounding_box(self, side):
-        """Determine an axis-aligned bounding box.
+    def _neg_bounds(self):
+        """Return the lower and upper bounds of the negative half space"""
+        return (np.array([self.x0 - self.r, self.y0 - self.r, -np.inf]),
+                np.array([self.x0 + self.r, self.y0 + self.r, np.inf]))
 
-        An axis-aligned bounding box for surface half-spaces is represented by
-        its lower-left and upper-right coordinates. For the z-cylinder surface,
-        the negative half-space is unbounded in the z- direction and the
-        positive half-space is unbounded in all directions. To represent
-        infinity, numpy.inf is used.
-
-        Parameters
-        ----------
-        side : {'+', '-'}
-            Indicates the negative or positive half-space
-
-        Returns
-        -------
-        numpy.ndarray
-            Lower-left coordinates of the axis-aligned bounding box for the
-            desired half-space
-        numpy.ndarray
-            Upper-right coordinates of the axis-aligned bounding box for the
-            desired half-space
-
-        """
-
-        if side == '-':
-            return (np.array([self.x0 - self.r, self.y0 - self.r, -np.inf]),
-                    np.array([self.x0 + self.r, self.y0 + self.r, np.inf]))
-        elif side == '+':
-            return (np.array([-np.inf, -np.inf, -np.inf]),
-                    np.array([np.inf, np.inf, np.inf]))
+    def _pos_bounds(self):
+        """Return the lower and upper bounds of the positive half space"""
+        return (np.array([-np.inf, -np.inf, -np.inf]),
+                np.array([np.inf, np.inf, np.inf]))
 
 
 Cylinder.register(ZCylinder)
@@ -1702,10 +1660,9 @@ class Sphere(QuadricMixin, Surface):
                  FutureWarning)
             r = R
         super().__init__(**kwargs)
-        self.x0 = x0
-        self.y0 = y0
-        self.z0 = z0
-        self.r = r
+
+        for key, val in zip(self._coeff_keys, (x0, y0, z0, r)):
+            setattr(self, key, val)
 
     @property
     def x0(self):
@@ -1771,41 +1728,20 @@ class Sphere(QuadricMixin, Surface):
         a, b, c, d, e, f, g, h, j, k = coeffs
         x0, y0, z0 = -g / 2, -h / 2, -j / 2
         r = np.sqrt(x0**2 + y0**2 + z0**2 - k)
-        for c, val in zip(self._coeff_keys, (x0, y0, z0, r)):
-            setattr(self, c, val)
+        for key, val in zip(self._coeff_keys, (x0, y0, z0, r)):
+            setattr(self, key, val)
 
-    def bounding_box(self, side):
-        """Determine an axis-aligned bounding box.
+    def _neg_bounds(self):
+        """Return the lower and upper bounds of the negative half space"""
+        return (np.array([self.x0 - self.r, self.y0 - self.r,
+                          self.z0 - self.r]),
+                np.array([self.x0 + self.r, self.y0 + self.r,
+                          self.z0 + self.r]))
 
-        An axis-aligned bounding box for surface half-spaces is represented by
-        its lower-left and upper-right coordinates. The positive half-space of a
-        sphere is unbounded in all directions. To represent infinity, numpy.inf
-        is used.
-
-        Parameters
-        ----------
-        side : {'+', '-'}
-            Indicates the negative or positive half-space
-
-        Returns
-        -------
-        numpy.ndarray
-            Lower-left coordinates of the axis-aligned bounding box for the
-            desired half-space
-        numpy.ndarray
-            Upper-right coordinates of the axis-aligned bounding box for the
-            desired half-space
-
-        """
-
-        if side == '-':
-            return (np.array([self.x0 - self.r, self.y0 - self.r,
-                              self.z0 - self.r]),
-                    np.array([self.x0 + self.r, self.y0 + self.r,
-                              self.z0 + self.r]))
-        elif side == '+':
-            return (np.array([-np.inf, -np.inf, -np.inf]),
-                    np.array([np.inf, np.inf, np.inf]))
+    def _pos_bounds(self):
+        """Return the lower and upper bounds of the positive half space"""
+        return (np.array([-np.inf, -np.inf, -np.inf]),
+                np.array([np.inf, np.inf, np.inf]))
 
 
 class Cone(QuadricMixin, Surface):
@@ -1880,13 +1816,9 @@ class Cone(QuadricMixin, Surface):
                  FutureWarning)
             r2 = R2
         super().__init__(**kwargs)
-        self.x0 = x0
-        self.y0 = y0
-        self.z0 = z0
-        self.r2 = r2
-        self.dx = dx
-        self.dy = dy
-        self.dz = dz
+
+        for key, val in zip(self._coeff_keys, (x0, y0, z0, r2, dx, dy, dz)):
+            setattr(self, key, val)
 
     @property
     def x0(self):
@@ -2032,10 +1964,9 @@ class XCone(QuadricMixin, Surface):
                  FutureWarning)
             r2 = R2
         super().__init__(**kwargs)
-        self.x0 = x0
-        self.y0 = y0
-        self.z0 = z0
-        self.r2 = r2
+
+        for key, val in zip(self._coeff_keys, (x0, y0, z0, r2)):
+            setattr(self, key, val)
 
     @property
     def x0(self):
@@ -2106,8 +2037,8 @@ class XCone(QuadricMixin, Surface):
         r2 = -a
         x0, y0, z0 = g / (2*r2), -h / 2, -j / 2
 
-        for c, val in zip(self._coeff_keys, (x0, y0, z0, r2)):
-            setattr(self, c, val)
+        for key, val in zip(self._coeff_keys, (x0, y0, z0, r2)):
+            setattr(self, key, val)
 
 
 Cone.register(XCone)
@@ -2171,10 +2102,9 @@ class YCone(QuadricMixin, Surface):
                  FutureWarning)
             r2 = R2
         super().__init__(**kwargs)
-        self.x0 = x0
-        self.y0 = y0
-        self.z0 = z0
-        self.r2 = r2
+
+        for key, val in zip(self._coeff_keys, (x0, y0, z0, r2)):
+            setattr(self, key, val)
 
     @property
     def x0(self):
@@ -2245,8 +2175,8 @@ class YCone(QuadricMixin, Surface):
         r2 = -b
         x0, y0, z0 = -g / 2, h / (2*r2), -j / 2
 
-        for c, val in zip(self._coeff_keys, (x0, y0, z0, r2)):
-            setattr(self, c, val)
+        for key, val in zip(self._coeff_keys, (x0, y0, z0, r2)):
+            setattr(self, key, val)
 
 
 Cone.register(YCone)
@@ -2310,10 +2240,9 @@ class ZCone(QuadricMixin, Surface):
                  FutureWarning)
             r2 = R2
         super().__init__(**kwargs)
-        self.x0 = x0
-        self.y0 = y0
-        self.z0 = z0
-        self.r2 = r2
+
+        for key, val in zip(self._coeff_keys, (x0, y0, z0, r2)):
+            setattr(self, key, val)
 
     @property
     def x0(self):
@@ -2384,8 +2313,8 @@ class ZCone(QuadricMixin, Surface):
         r2 = -c
         x0, y0, z0 = -g / 2, -h / 2, j / (2*r2)
 
-        for c, val in zip(self._coeff_keys, (x0, y0, z0, r2)):
-            setattr(self, c, val)
+        for key, val in zip(self._coeff_keys, (x0, y0, z0, r2)):
+            setattr(self, key, val)
 
 
 Cone.register(ZCone)
@@ -2435,8 +2364,8 @@ class Quadric(QuadricMixin, Surface):
 
         super().__init__(**kwargs)
 
-        for c, val in zip(self._coeff_keys, (a, b, c, d, e, f, g, h, j, k)):
-            setattr(self, c, val)
+        for key, val in zip(self._coeff_keys, (a, b, c, d, e, f, g, h, j, k)):
+            setattr(self, key, val)
 
     @property
     def a(self):
@@ -2548,8 +2477,8 @@ class Quadric(QuadricMixin, Surface):
             representing the quadric surface
 
         """
-        for c, val in zip(self._coeff_keys, coeffs):
-            setattr(self, c, val)
+        for key, val in zip(self._coeff_keys, coeffs):
+            setattr(self, key, val)
 
 
 class Halfspace(Region):

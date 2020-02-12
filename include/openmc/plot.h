@@ -11,6 +11,7 @@
 #include "openmc/position.h"
 #include "openmc/constants.h"
 #include "openmc/cell.h"
+#include "openmc/error.h"
 #include "openmc/geometry.h"
 #include "openmc/particle.h"
 #include "openmc/xml_interface.h"
@@ -154,10 +155,8 @@ T PlotBase::get_map() const {
     in_i = 1;
     out_i = 2;
     break;
-#ifdef __GNUC__
   default:
-    __builtin_unreachable();
-#endif
+    UNREACHABLE();
   }
 
   // set initial position

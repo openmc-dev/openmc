@@ -1,8 +1,8 @@
 #include "openmc/source.h"
 
 #include <algorithm> // for move
-#include <sstream> // for stringstream
 
+#include <fmt/core.h>
 #include "xtensor/xadapt.hpp"
 
 #include "openmc/bank.h"
@@ -68,9 +68,8 @@ SourceDistribution::SourceDistribution(pugi::xml_node node)
 
     // Check if source file exists
     if (!file_exists(settings::path_source)) {
-      std::stringstream msg;
-      msg << "Source file '" << settings::path_source <<  "' does not exist.";
-      fatal_error(msg);
+      fatal_error(fmt::format("Source file '{}' does not exist.",
+        settings::path_source));
     }
 
   } else {
@@ -97,9 +96,8 @@ SourceDistribution::SourceDistribution(pugi::xml_node node)
       } else if (type == "point") {
         space_ = UPtrSpace{new SpatialPoint(node_space)};
       } else {
-        std::stringstream msg;
-        msg << "Invalid spatial distribution for external source: " << type;
-        fatal_error(msg);
+        fatal_error(fmt::format(
+          "Invalid spatial distribution for external source: {}", type));
       }
 
     } else {
@@ -123,9 +121,8 @@ SourceDistribution::SourceDistribution(pugi::xml_node node)
       } else if (type == "mu-phi") {
         angle_ = UPtrAngle{new PolarAzimuthal(node_angle)};
       } else {
-        std::stringstream msg;
-        msg << "Invalid angular distribution for external source: " << type;
-        fatal_error(msg);
+        fatal_error(fmt::format(
+          "Invalid angular distribution for external source: {}", type));
       }
 
     } else {
@@ -244,9 +241,8 @@ void initialize_source()
     // Read the source from a binary file instead of sampling from some
     // assumed source distribution
 
-    std::stringstream msg;
-    msg << "Reading source file from " << settings::path_source << "...";
-    write_message(msg, 6);
+    write_message(fmt::format("Reading source file from {}...",
+      settings::path_source), 6);
 
     // Open the binary file
     hid_t file_id = file_open(settings::path_source, 'r', true);

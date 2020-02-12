@@ -2,12 +2,12 @@
 
 #include <array>
 #include <cstring>
-#include <sstream>
 #include <stdexcept>
 #include <string>
 
 #include "xtensor/xtensor.hpp"
 #include "xtensor/xarray.hpp"
+#include <fmt/core.h>
 
 #include "hdf5.h"
 #include "hdf5_hl.h"
@@ -105,9 +105,7 @@ create_group(hid_t parent_id, char const *name)
 {
   hid_t out = H5Gcreate(parent_id, name, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
   if (out < 0) {
-    std::stringstream err_msg;
-    err_msg << "Failed to create HDF5 group \"" << name << "\"";
-    fatal_error(err_msg);
+    fatal_error(fmt::format("Failed to create HDF5 group \"{}\"", name));
   }
   return out;
 }
@@ -161,17 +159,13 @@ ensure_exists(hid_t obj_id, const char* name, bool attribute)
 {
   if (attribute) {
     if (!attribute_exists(obj_id, name)) {
-      std::stringstream err_msg;
-      err_msg << "Attribute \"" << name << "\" does not exist in object "
-              << object_name(obj_id);
-      fatal_error(err_msg);
+      fatal_error(fmt::format("Attribute \"{}\" does not exist in object {}",
+        name, object_name(obj_id)));
     }
   } else {
     if (!object_exists(obj_id, name)) {
-      std::stringstream err_msg;
-      err_msg << "Object \"" << name << "\" does not exist in object "
-              << object_name(obj_id);
-      fatal_error(err_msg);
+      fatal_error(fmt::format("Object \"{}\" does not exist in object {}",
+        name, object_name(obj_id)));
     }
   }
 }
@@ -194,9 +188,7 @@ file_open(const char* filename, char mode, bool parallel)
       flags = (mode == 'x' ? H5F_ACC_EXCL : H5F_ACC_TRUNC);
       break;
     default:
-      std::stringstream err_msg;
-      err_msg <<  "Invalid file mode: " << mode;
-      fatal_error(err_msg);
+      fatal_error(fmt::format("Invalid file mode: ", mode));
   }
 
   hid_t plist = H5P_DEFAULT;
@@ -216,9 +208,8 @@ file_open(const char* filename, char mode, bool parallel)
     file_id = H5Fopen(filename, flags, plist);
   }
   if (file_id < 0) {
-    std::stringstream msg;
-    msg << "Failed to open HDF5 file with mode '" << mode << "': " << filename;
-    fatal_error(msg);
+    fatal_error(fmt::format(
+      "Failed to open HDF5 file with mode '{}': {}", mode, filename));
   }
 
 #ifdef PHDF5
@@ -394,9 +385,7 @@ object_exists(hid_t object_id, const char* name)
 {
   htri_t out = H5LTpath_valid(object_id, name, true);
   if (out < 0) {
-    std::stringstream err_msg;
-    err_msg << "Failed to check if object \"" << name << "\" exists.";
-    fatal_error(err_msg);
+    fatal_error(fmt::format("Failed to check if object \"{}\" exists.", name));
   }
   return (out > 0);
 }

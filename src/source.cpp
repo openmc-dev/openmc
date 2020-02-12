@@ -297,30 +297,7 @@ void initialize_source()
     // reset errors
     dlerror();
 
-    // get the function from the library
-    sample_t sample_source = (sample_t) dlsym(source_library, "sample_source");
-    const char *dlsym_error = dlerror();
-    
-    // check for any dlsym errors
-    if (dlsym_error) {
-      std::cout << dlsym_error << std::endl;
-      dlclose(source_library);
-      fatal_error("Couldn't open the sample_source symbol");
-    }
-
-    // Generation source sites from specified distribution in the
-    // library source 
-    for (int64_t i = 0; i < simulation::work_per_rank; ++i) {
-      // initialize random number seed
-      int64_t id = simulation::total_gen*settings::n_particles +
-        simulation::work_index[mpi::rank] + i + 1;
-      uint64_t seed = init_seed(id, STREAM_SOURCE);
-
-      // sample external source distribution
-      simulation::source_bank[i] = sample_source(seed);
-    }
-    // release the library
-    dlclose(source_library);
+    fill_source_bank_dlopen_source();
 
   } else {
     // Generation source sites from specified distribution in user input
@@ -381,6 +358,50 @@ void free_memory_source()
   model::external_sources.clear();
 }
 
+// fill the source bank from the external source
+void fill_source_bank_dlopen_source() 
+{
+  std::stringstream msg;
+
+  // Open the library
+  void* source_library = dlopen(settings::path_source_library.c_str(),RTLD_LAZY);
+  if(!source_library) {
+    std::stringstream msg("Couldn't open source library " + settings::path_source_library);
+    fatal_error(msg);
+  }
+
+  // load the symbol
+  typedef Particle::Bank (*sample_t)(uint64_t seed);
+
+  // reset errors
+  dlerror();
+
+  // get the function from the library
+  sample_t sample_source = (sample_t) dlsym(source_library, "sample_source");
+  const char *dlsym_error = dlerror();
+    
+  // check for any dlsym errors
+  if (dlsym_error) {
+    std::cout << dlsym_error << std::endl;
+    dlclose(source_library);
+    fatal_error("Couldn't open the sample_source symbol");
+  }
+
+  // Generation source sites from specified distribution in the
+  // library source 
+  for (int64_t i = 0; i < simulation::work_per_rank; ++i) {
+    // initialize random number seed
+    int64_t id = simulation::total_gen*settings::n_particles +
+      simulation::work_index[mpi::rank] + i + 1;
+     uint64_t seed = init_seed(id, STREAM_SOURCE);
+    // sample external source distribution
+    simulation::source_bank[i] = sample_source(seed);
+  }
+
+  // release the library
+  dlclose(source_library);
+}
+
 void fill_source_bank_fixedsource()
 {
   if (settings::path_source.empty() && settings::path_source_library.empty()) {
@@ -394,46 +415,7 @@ void fill_source_bank_fixedsource()
       simulation::source_bank[i] = sample_external_source(&seed);
     }
   } else if (settings::path_source.empty() && !settings::path_source.empty()) {
-     std::stringstream msg;
-
-    // Open the library
-    void* source_library = dlopen(settings::path_source_library.c_str(),RTLD_LAZY);
-    if(!source_library) {
-      std::stringstream msg("Couldn't open source library " + settings::path_source_library);
-      fatal_error(msg);
-    }
-
-    // load the symbol
-    typedef Particle::Bank (*sample_t)(uint64_t seed);
-
-    // reset errors
-    dlerror();
-
-    // get the function from the library
-    sample_t sample_source = (sample_t) dlsym(source_library, "sample_source");
-    const char *dlsym_error = dlerror();
-    
-    // check for any dlsym errors
-    if (dlsym_error) {
-      std::cout << dlsym_error << std::endl;
-      dlclose(source_library);
-      fatal_error("Couldn't open the sample_source symbol");
-    }
-
-    // Generation source sites from specified distribution in the
-    // library source 
-    for (int64_t i = 0; i < simulation::work_per_rank; ++i) {
-      // initialize random number seed
-      int64_t id = simulation::total_gen*settings::n_particles +
-        simulation::work_index[mpi::rank] + i + 1;
-      uint64_t seed = init_seed(id, STREAM_SOURCE);
- 
-      // sample external source distribution
-      simulation::source_bank[i] = sample_source(seed);
-    }
-
-    // release the library
-    dlclose(source_library);
+     fill_source_bank_dlopen_source();
   }
 }
 

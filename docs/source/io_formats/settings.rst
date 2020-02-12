@@ -658,7 +658,8 @@ and your source file(s).
    make
 
 You will now have a libsouce.so file in this directory, now point the library
-attribute of source to this file and you will be able to sample particles. 
+attribute of the source XML element to this file and you will be able to sample 
+particles. 
 
 .. _univariate:
 

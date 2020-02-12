@@ -284,7 +284,7 @@ void initialize_source()
     // Open the library
     void* source_library = dlopen(settings::path_source_library.c_str(),RTLD_LAZY);
     if(!source_library) {
-      std::stringstream msg("Couldnt open source library " + settings::path_source_library);
+      std::stringstream msg("Couldn't open source library " + settings::path_source_library);
       fatal_error(msg);
     }
     #else
@@ -306,7 +306,7 @@ void initialize_source()
     if (dlsym_error) {
       std::cout << dlsym_error << std::endl;
       dlclose(source_library);
-      fatal_error("Couldnt open the sample_source symbol");
+      fatal_error("Couldn't open the sample_source symbol");
     }
 
     // Generation source sites from specified distribution in the
@@ -400,7 +400,7 @@ void fill_source_bank_fixedsource()
     // Open the library
     void* source_library = dlopen(settings::path_source_library.c_str(),RTLD_LAZY);
     if(!source_library) {
-      std::stringstream msg("Couldnt open source library " + settings::path_source_library);
+      std::stringstream msg("Couldn't open source library " + settings::path_source_library);
       fatal_error(msg);
     }
 
@@ -418,7 +418,7 @@ void fill_source_bank_fixedsource()
     if (dlsym_error) {
       std::cout << dlsym_error << std::endl;
       dlclose(source_library);
-      fatal_error("Couldnt open the sample_source symbol");
+      fatal_error("Couldn't open the sample_source symbol");
     }
 
     // Generation source sites from specified distribution in the

@@ -665,7 +665,7 @@ class Integrator(ABC):
 
         if len(power) != len(timesteps):
             raise ValueError(
-                "Number of time steps != number of powers. {} vs {}".format(
+                "Number of time steps ({}) != number of powers ({})".format(
                     len(timesteps), len(power)))
 
         # Get list of times / units
@@ -678,6 +678,13 @@ class Integrator(ABC):
         # Determine number of seconds for each timestep
         seconds = []
         for time, unit, watts in zip(times, units, power):
+            # Make sure values passed make sense
+            check_type('timestep', time, Real)
+            check_greater_than('timestep', time, 0.0, True)
+            check_type('timestep units', unit, str)
+            check_type('power', watts, Real)
+            check_greater_than('power', watts, 0.0, True)
+
             if unit in ('s', 'sec'):
                 seconds.append(time)
             elif unit in ('min', 'minute'):

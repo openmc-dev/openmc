@@ -645,19 +645,17 @@ more complicated sources.
 	    
   .. note:: You should only use the openmc::prn() random number generator
 
-In order to build your external source you need the CMakeLists.txt file that
-was created during the OpenMC installation process (found in the share subdirectory)
-and your source file(s). 
+In order to build your external source you need the following CMakeLists.txt file
 
-.. code-block:: bash
+.. code-block:: cmake
 
-   cp $HOME/openmc/share/CMakeLists.txt.
-   mkdir bld
-   cd bld
-   cmake .. -DSOURCE_FILES=source_sampling.cpp
-   make
+   cmake_minimum_required(VERSION 3.3 FATAL_ERROR)
+   project(openmc_sources CXX) 
+   add_library(source SHARED source_ring.cpp)
+   find_package(OpenMC REQUIRED HINTS <path to openmc>)
+   target_link_libraries(source OpenMC::libopenmc)
 
-You will now have a libsouce.so file in this directory, now point the library
+You will now have a libsouce.so (or .dylib) file in this directory, now point the library
 attribute of the source XML element to this file and you will be able to sample 
 particles. 
 

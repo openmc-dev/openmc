@@ -207,7 +207,6 @@ endif()
 add_library(faddeeva STATIC vendor/faddeeva/Faddeeva.cc)
 target_include_directories(faddeeva
   PUBLIC
-    $<INSTALL_INTERFACE:include/faddeeva>
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/vendor/faddeeva>
 )
 target_compile_options(faddeeva PRIVATE ${cxxflags})
@@ -389,7 +388,7 @@ add_custom_command(TARGET libopenmc POST_BUILD
 #===============================================================================
 
 set(INSTALL_CONFIGDIR ${CMAKE_INSTALL_LIBDIR}/cmake/OpenMC)
-install(TARGETS openmc libopenmc faddeeva
+install(TARGETS openmc libopenmc faddeeva pugixml gsl-lite
   EXPORT openmc-targets
   RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
   LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}

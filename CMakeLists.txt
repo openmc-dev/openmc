@@ -207,7 +207,6 @@ endif()
 add_library(faddeeva STATIC vendor/faddeeva/Faddeeva.cc)
 target_include_directories(faddeeva
   PUBLIC
-    $<INSTALL_INTERFACE:include/faddeeva>
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/vendor/faddeeva>
 )
 target_compile_options(faddeeva PRIVATE ${cxxflags})
@@ -389,7 +388,7 @@ add_custom_command(TARGET libopenmc POST_BUILD
 #===============================================================================
 
 set(INSTALL_CONFIGDIR ${CMAKE_INSTALL_LIBDIR}/cmake/OpenMC)
-install(TARGETS openmc libopenmc faddeeva
+install(TARGETS openmc libopenmc faddeeva pugixml gsl-lite
   EXPORT openmc-targets
   RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
   LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
@@ -406,20 +405,3 @@ install(FILES man/man1/openmc.1 DESTINATION ${CMAKE_INSTALL_MANDIR}/man1)
 install(FILES LICENSE DESTINATION "${CMAKE_INSTALL_DOCDIR}" RENAME copyright)
 install(DIRECTORY include/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
 
-#=============================
-# write the dl_open Makefile
-#=============================
-file(WRITE ${CMAKE_BINARY_DIR}/CMakeLists.txt "
-cmake_minimum_required(VERSION 3.3 FATAL_ERROR)
-project(openmc_sources C CXX)
-add_library(source SHARED \$\{SOURCE_FILES\})")
-get_target_property(cxx_std openmc CXX_STANDARD)
-get_target_property(cxx_ext openmc CXX_EXTENSIONS)
-file(APPEND ${CMAKE_BINARY_DIR}/CMakeLists.txt "
-set_target_properties(source PROPERTIES CXX_STANDARD ${cxx_std} 
-    CXX_EXTENSIONS ${cxx_ext})
-target_include_directories(source PUBLIC ${PROJECT_SOURCE_DIR}/include 
-  ${PROJECT_SOURCE_DIR}/vendor/pugixml ${HDF5_INCLUDE_DIRS})
-target_link_libraries(source ${ldflags} ${HDF5_LIBRARIES} ${HDF5_HL_LIBRARIES})
-")
-install(FILES ${CMAKE_BINARY_DIR}/CMakeLists.txt DESTINATION share)

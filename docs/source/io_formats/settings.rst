@@ -618,7 +618,7 @@ and loaded at runtime. A simple example source is shown below.
    #include "openmc/particle.h"
 
    // you must have external C linkage here
-   extern "C" openmc::Particle::Bank sample_source() {
+   extern "C" openmc::Particle::Bank sample_source(const int64_t seed) {
      openmc::Particle::Bank particle;
       // wgt
       particle.particle = openmc::Particle::Type::neutron;

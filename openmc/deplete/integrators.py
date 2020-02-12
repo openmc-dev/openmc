@@ -52,7 +52,7 @@ class PredictorIntegrator(Integrator):
         Units for values specified in the `timesteps` argument. 's' means
         seconds, 'min' means minutes, 'h' means hours, and 'MWd/kg' indicates
         that the values are given in burnup (MW-d of energy deposited per
-        kilogram of heavy metal).
+        kilogram of initial heavy metal).
 
     Attributes
     ----------
@@ -141,7 +141,7 @@ class CECMIntegrator(Integrator):
         Units for values specified in the `timesteps` argument. 's' means
         seconds, 'min' means minutes, 'h' means hours, and 'MWd/kg' indicates
         that the values are given in burnup (MW-d of energy deposited per
-        kilogram of heavy metal).
+        kilogram of initial heavy metal).
 
     Attributes
     ----------
@@ -238,7 +238,7 @@ class CF4Integrator(Integrator):
         Units for values specified in the `timesteps` argument. 's' means
         seconds, 'min' means minutes, 'h' means hours, and 'MWd/kg' indicates
         that the values are given in burnup (MW-d of energy deposited per
-        kilogram of heavy metal).
+        kilogram of initial heavy metal).
 
     Attributes
     ----------
@@ -352,7 +352,7 @@ class CELIIntegrator(Integrator):
         Units for values specified in the `timesteps` argument. 's' means
         seconds, 'min' means minutes, 'h' means hours, and 'MWd/kg' indicates
         that the values are given in burnup (MW-d of energy deposited per
-        kilogram of heavy metal).
+        kilogram of initial heavy metal).
 
     Attributes
     ----------
@@ -453,7 +453,7 @@ class EPCRK4Integrator(Integrator):
         Units for values specified in the `timesteps` argument. 's' means
         seconds, 'min' means minutes, 'h' means hours, and 'MWd/kg' indicates
         that the values are given in burnup (MW-d of energy deposited per
-        kilogram of heavy metal).
+        kilogram of initial heavy metal).
 
     Attributes
     ----------
@@ -574,7 +574,7 @@ class LEQIIntegrator(Integrator):
         Units for values specified in the `timesteps` argument. 's' means
         seconds, 'min' means minutes, 'h' means hours, and 'MWd/kg' indicates
         that the values are given in burnup (MW-d of energy deposited per
-        kilogram of heavy metal).
+        kilogram of initial heavy metal).
 
     Attributes
     ----------
@@ -692,7 +692,7 @@ class SICELIIntegrator(SIIntegrator):
         Units for values specified in the `timesteps` argument. 's' means
         seconds, 'min' means minutes, 'h' means hours, and 'MWd/kg' indicates
         that the values are given in burnup (MW-d of energy deposited per
-        kilogram of heavy metal).
+        kilogram of initial heavy metal).
     n_steps : int, optional
         Number of stochastic iterations per depletion interval.
         Must be greater than zero. Default : 10
@@ -800,7 +800,7 @@ class SILEQIIntegrator(SIIntegrator):
         Units for values specified in the `timesteps` argument. 's' means
         seconds, 'min' means minutes, 'h' means hours, and 'MWd/kg' indicates
         that the values are given in burnup (MW-d of energy deposited per
-        kilogram of heavy metal).
+        kilogram of initial heavy metal).
     n_steps : int, optional
         Number of stochastic iterations per depletion interval.
         Must be greater than zero. Default : 10

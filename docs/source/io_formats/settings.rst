@@ -603,12 +603,12 @@ attributes/sub-elements:
 .. _custom_source:
 
 Custom Sources
-++++++++++++++++++++++++++++++++++++
+++++++++++++++
 
 It is often the case that one may wish to simulate a complex source distribution,
 which may include physics not present within OpenMC or to be phase space complex. It
-is possible to define complex source with an externally defined source function
-and loaded at runtime. A simple example source is shown below. 
+is possible to define a complex source with an externally defined source function
+that is loaded at runtime. A simple example source is shown below. 
 
 .. code-block:: c++
 
@@ -637,7 +637,7 @@ and loaded at runtime. A simple example source is shown below.
   }
 
 The above source, creates 14.08 MeV neutrons, with an istropic direction
-vector but distributed in a ring of radius three cm. This routine is
+vector but distributed in a ring with a 3 cm radius. This routine is
 not particular complex, but should serve as an example upon which to build
 more complicated sources. 
 

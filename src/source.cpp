@@ -275,7 +275,6 @@ void initialize_source()
     file_close(file_id);
   } else if ( settings::path_source_library != "" ) {
     // Get the source from a library object 
-
     std::stringstream msg;
     msg << "Sampling from library source " << settings::path_source << "...";
     write_message(msg, 6);

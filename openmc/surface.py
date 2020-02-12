@@ -1137,12 +1137,11 @@ class Cylinder(QuadricMixin, Surface):
     def _get_base_coeffs(self):
         """Return coefficients a, b, c, d, e, f, g, h, j, k representing a
         general quadric surface  of the form:
-        :math:`ax^2 + by^2 + cz^2 + dxy + eyz + fxz+ gx + hy + jz +k = 0`.
+        :math:`ax^2 + by^2 + cz^2 + dxy + eyz + fxz+ gx + hy + jz + k = 0`.
 
         """
         x0, y0, z0, r = self.x0, self.y0, self.z0, self.r
         dx, dy, dz = self.dx, self.dy, self.dz
-        x1, y1, z1 = x0 + dx, y0 + dy, z0 + dz
 
         a = dy**2 + dz**2
         b = dx**2 + dz**2
@@ -1150,18 +1149,19 @@ class Cylinder(QuadricMixin, Surface):
         d = -2*dx*dy
         e = -2*dy*dz
         f = -2*dx*dz
-        g = -2*(dz*(x0*z1 - x1*z0) + dy*(x0*y1-x1*y0))
-        h = 2*(dx*(x0*y1 - x1*y0) - dz*(y0*z1 - y1*z0))
-        j = 2*(dx*(x0*z1 - x1*z0) + dy*(y0*z1 - y1*z0))
-        k = (y0*z1 - y1*z0)**2 + (x0*z1 - x1*z0)**2 + (x0*y1 - x1*y0)**2 \
-            - r**2*(dx**2 + dy**2 + dz**2)
+        g = 2*(dx*(z0*dz + y0*dy) - x0*(dy**2 + dz**2))
+        h = 2*(dy*(z0*dz + x0*dx) - y0*(dx**2 + dz**2))
+        j = 2*(dz*(y0*dy + x0*dx) - z0*(dx**2 + dy**2))
+        k = x0**2*(dy**2 + dz**2) + y0**2*(dx**2 + dz**2) \
+            + z0**2*(dx**2 + dy**2) - 2*dy*dz*y0*z0 \
+            - 2*dx*dz*x0*z0 - 2*dx*dy*x0*y0 - r**2*(dx**2 + dy**2 + dz**2)
 
         return (a, b, c, d, e, f, g, h, j, k)
 
     def _update_from_base_coeffs(self, coeffs):
         """Update the current surface from coefficients representing a general
         quadric surface of the form:
-        :math:`ax^2 + by^2 + cz^2 + dxy + eyz + fxz+ gx + hy + jz +k = 0`.
+        :math:`ax^2 + by^2 + cz^2 + dxy + eyz + fxz+ gx + hy + jz + k = 0`.
 
         Parameters
         ----------
@@ -1170,6 +1170,10 @@ class Cylinder(QuadricMixin, Surface):
             representing the quadric surface
 
         """
+        pre_coeffs = self._get_base_coeffs
+        # infer transformation based on changes between two matrices
+        # perform same transformation on x0,y0,z0,dx,dy,dz if A matrix
+        # unchanged then it was a translation if not it was a rotation
         a, b, c, d, e, f, g, h, j, k = coeffs
 
     @classmethod

@@ -21,9 +21,10 @@
 #include "openmc/thermal.h"
 #include "openmc/tallies/tally.h"
 
+#include <fmt/core.h>
+
 #include <algorithm> // for max, min, max_element
 #include <cmath> // for sqrt, exp, log, abs, copysign
-#include <sstream>
 
 namespace openmc {
 
@@ -61,17 +62,19 @@ void collision(Particle* p)
 
   // Display information about collision
   if (settings::verbosity >= 10 || p->trace_) {
-    std::stringstream msg;
+    std::string msg;
     if (p->event_ == TallyEvent::KILL) {
-      msg << "    Killed. Energy = " << p->E_ << " eV.";
+      msg = fmt::format("    Killed. Energy = {} eV.", p->E_);
     } else if (p->type_ == Particle::Type::neutron) {
-      msg << "    " << reaction_name(p->event_mt_) << " with " <<
-        data::nuclides[p->event_nuclide_]->name_ << ". Energy = " << p->E_ << " eV.";
+      msg = fmt::format("    {} with {}. Energy = {} eV.",
+        reaction_name(p->event_mt_), data::nuclides[p->event_nuclide_]->name_,
+        p->E_);
     } else if (p->type_ == Particle::Type::photon) {
-      msg << "    " << reaction_name(p->event_mt_) << " with " <<
-        to_element(data::nuclides[p->event_nuclide_]->name_) << ". Energy = " << p->E_ << " eV.";
+      msg = fmt::format("    {} with {}. Energy = {} eV.",
+        reaction_name(p->event_mt_),
+        to_element(data::nuclides[p->event_nuclide_]->name_), p->E_);
     } else {
-      msg << "    Disappeared. Energy = " << p->E_ << " eV.";
+      msg = fmt::format("    Disappeared. Energy = {} eV.", p->E_);
     }
     write_message(msg, 1);
   }
@@ -189,7 +192,7 @@ create_fission_sites(Particle* p, int i_nuclide, const Reaction* rx)
 
     // Sample delayed group and angle/energy for fission reaction
     sample_fission_neutron(i_nuclide, rx, p->E_, &site, p->current_seed());
-    
+
     // Store fission site in bank
     if (use_fission_bank) {
       int64_t idx = simulation::fission_bank.thread_safe_append(site);
@@ -210,7 +213,7 @@ create_fission_sites(Particle* p, int i_nuclide, const Reaction* rx)
     if (p->delayed_group_ > 0) {
       nu_d[p->delayed_group_-1]++;
     }
-    
+
     // Write fission particles to nuBank
     if (use_fission_bank) {
       p->nu_bank_.emplace_back();
@@ -220,7 +223,7 @@ create_fission_sites(Particle* p, int i_nuclide, const Reaction* rx)
       nu_bank_entry->delayed_group    = site.delayed_group;
     }
   }
-  
+
   // If shared fission bank was full, and no fissions could be added,
   // set the particle fission flag to false.
   if (nu == skipped) {

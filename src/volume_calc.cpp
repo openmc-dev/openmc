@@ -15,6 +15,7 @@
 #include "openmc/timer.h"
 #include "openmc/xml_interface.h"
 
+#include <fmt/core.h>
 #ifdef _OPENMP
 #include <omp.h>
 #endif
@@ -23,7 +24,6 @@
 
 #include <algorithm> // for copy
 #include <cmath> // for pow, sqrt
-#include <sstream>
 #include <unordered_set>
 
 namespace openmc {
@@ -66,9 +66,8 @@ VolumeCalculation::VolumeCalculation(pugi::xml_node node)
 
     threshold_ = std::stod(get_node_value(threshold_node, "threshold"));
     if (threshold_ <= 0.0) {
-      std::stringstream msg;
-      msg << "Invalid error threshold " << threshold_ << " provided for a volume calculation.";
-      fatal_error(msg);
+      fatal_error(fmt::format("Invalid error threshold {} provided for a "
+        "volume calculation.", threshold_));
     }
 
     std::string tmp = get_node_value(threshold_node, "type");
@@ -79,9 +78,8 @@ VolumeCalculation::VolumeCalculation(pugi::xml_node node)
     } else if ( tmp == "rel_err") {
       trigger_type_ = TriggerMetric::relative_error;
     } else {
-      std::stringstream msg;
-      msg << "Invalid volume calculation trigger type '" << tmp << "' provided.";
-      fatal_error(msg);
+      fatal_error(fmt::format(
+        "Invalid volume calculation trigger type '{}' provided.", tmp));
     }
 
   }
@@ -394,8 +392,7 @@ void VolumeCalculation::to_hdf5(const std::string& filename,
 
   for (int i = 0; i < domain_ids_.size(); ++i)
   {
-    hid_t group_id = create_group(file_id, "domain_"
-      + std::to_string(domain_ids_[i]));
+    hid_t group_id = create_group(file_id, fmt::format("domain_{}", domain_ids_[i]));
 
     // Write volume for domain
     const auto& result {results[i]};
@@ -468,7 +465,7 @@ int openmc_calculate_volumes() {
 
   for (int i = 0; i < model::volume_calcs.size(); ++i) {
     if (mpi::master) {
-      write_message("Running volume calculation " + std::to_string(i+1) + "...", 4);
+      write_message(fmt::format("Running volume calculation {}...", i + 1), 4);
     }
 
     // Run volume calculation
@@ -487,15 +484,13 @@ int openmc_calculate_volumes() {
 
       // Display domain volumes
       for (int j = 0; j < vol_calc.domain_ids_.size(); j++) {
-        std::stringstream msg;
-        msg << domain_type << vol_calc.domain_ids_[j] << ": " <<
-          results[j].volume[0] << " +/- " << results[j].volume[1] << " cm^3";
-        write_message(msg, 4);
+        write_message(fmt::format("{}{}: {} +/- {} cm^3", domain_type,
+          vol_calc.domain_ids_[j], results[j].volume[0], results[j].volume[1]), 4);
       }
 
       // Write volumes to HDF5 file
-      std::string filename = settings::path_output + "volume_"
-        + std::to_string(i+1) + ".h5";
+      std::string filename = fmt::format("{}volume_{}.h5",
+        settings::path_output, i + 1);
       vol_calc.to_hdf5(filename, results);
     }
 
@@ -504,8 +499,7 @@ int openmc_calculate_volumes() {
   // Show elapsed time
   time_volume.stop();
   if (mpi::master) {
-    write_message("Elapsed time: " + std::to_string(time_volume.elapsed())
-      + " s", 6);
+    write_message(fmt::format("Elapsed time: {} s", time_volume.elapsed()), 6);
   }
 
   return 0;

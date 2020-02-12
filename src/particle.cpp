@@ -2,7 +2,8 @@
 
 #include <algorithm> // copy, min
 #include <cmath>     // log, abs, copysign
-#include <sstream>
+
+#include <fmt/core.h>
 
 #include "openmc/bank.h"
 #include "openmc/capi.h"
@@ -235,7 +236,7 @@ Particle::event_advance()
     score_track_derivative(this, distance);
   }
 }
-  
+
 void
 Particle::event_cross_surface()
 {
@@ -643,14 +644,13 @@ Particle::write_restart() const
   if (settings::run_mode == RunMode::PARTICLE) return;
 
   // Set up file name
-  std::stringstream filename;
-  filename << settings::path_output << "particle_" << simulation::current_batch
-    << '_' << id_ << ".h5";
+  auto filename = fmt::format("{}particle_{}_{}.h5", settings::path_output,
+    simulation::current_batch, id_);
 
   #pragma omp critical (WriteParticleRestart)
   {
     // Create file
-    hid_t file_id = file_open(filename.str(), 'w');
+    hid_t file_id = file_open(filename, 'w');
 
     // Write filetype and version info
     write_attribute(file_id, "filetype", "particle restart");

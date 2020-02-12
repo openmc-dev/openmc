@@ -680,7 +680,7 @@ class Integrator(ABC):
         for time, unit, watts in zip(times, units, power):
             # Make sure values passed make sense
             check_type('timestep', time, Real)
-            check_greater_than('timestep', time, 0.0, True)
+            check_greater_than('timestep', time, 0.0, False)
             check_type('timestep units', unit, str)
             check_type('power', watts, Real)
             check_greater_than('power', watts, 0.0, True)

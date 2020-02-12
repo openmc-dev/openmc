@@ -66,6 +66,7 @@ class Surface(IDManagerMixin, metaclass=ABCMeta):
 
     next_id = 1
     used_ids = set()
+    _atol = 1.e-12
 
     def __init__(self, surface_id=None, boundary_type='transmission', name=''):
         self.id = surface_id
@@ -184,6 +185,30 @@ class Surface(IDManagerMixin, metaclass=ABCMeta):
             memo[self] = clone
 
         return memo[self]
+
+    def is_equal(self, coeffs):
+        """Determine if this Surface is the same as another to within a certain
+        tolerance
+
+        Parameters
+        ----------
+        coeffs : tuple
+            Tuple of surface coefficients to compare to the current Surface
+            object
+
+        """
+        def normalize(coeffs):
+            """Normalize coefficients by first nonzero value"""
+            coeffs = np.asarray(coeffs)
+            nonzeros = ~np.isclose(coeffs, 0., rtol=0., atol=self._atol)
+            norm_factor = coeffs[nonzeros][0]
+            return tuple([c/norm_factor for c in coeffs])
+
+        # get normalized sets of coefficients
+        coeffs = normalize(coeffs)
+        bcoeffs = normalize(self._get_base_coeffs())
+
+        return np.all(np.isclose(bcoeffs, coeffs, rtol=0., atol=self._atol))
 
     @abstractmethod
     def evaluate(self, point):
@@ -480,10 +505,10 @@ class Plane(PlaneMixin, Surface):
         for k, v in argsdict.items():
             warn(_WARNING_KWARGS.format(type(self).__name__, k), FutureWarning)
 
+        kwargs.update(argsdict)
+
         for k in 'ABCD':
             kwargs.pop(k, None)
-
-        kwargs.update(argsdict)
 
         super().__init__(**kwargs)
 
@@ -493,7 +518,7 @@ class Plane(PlaneMixin, Surface):
         for k, v in oldkwargs.items():
             if k in 'ABCD':
                 warn(_WARNING_UPPER.format(type(self).__name__, k.lower(), k),
-                    FutureWarning)
+                     FutureWarning)
                 setattr(self, k.lower(), v)
 
     @property
@@ -916,6 +941,38 @@ class QuadricMixin(metaclass=ABCMeta):
         return (np.array([-np.inf, -np.inf, -np.inf]),
                 np.array([np.inf, np.inf, np.inf]))
 
+    def _A(self, coeffs=None):
+        """Helper function to generate the quadric matrix"""
+        if coeffs is None:
+            a, b, c, d, e, f, g, h, j, k = self._get_base_coeffs()
+        else:
+            a, b, c, d, e, f, g, h, j, k = coeffs
+
+        return np.asarray([[a, d/2, f/2], [d/2, b, e/2], [f/2, e/2, c]])
+
+    def _b(self, coeffs=None):
+        """Helper function to generate the linear coefficients"""
+        if coeffs is None:
+            a, b, c, d, e, f, g, h, j, k = self._get_base_coeffs()
+        else:
+            a, b, c, d, e, f, g, h, j, k = coeffs
+
+        return np.asarray([g, h, j])
+
+    def _c(self, coeffs=None):
+        """Helper function to generate the constant coefficient"""
+        if coeffs is None:
+            return self._get_base_coeffs()[-1]
+        return coeffs[-1]
+
+    def eigh(self, coeffs=None):
+        """Wrapper method for returning eigenvalues and eigenvectors of this
+        quadric surface which is used for transformations.
+
+        """
+        A = self._A(coeffs=coeffs)
+        return np.linalg.eigh(A)
+
     def bounding_box(self, side):
         """Determine an axis-aligned bounding box.
 
@@ -981,13 +1038,22 @@ class QuadricMixin(metaclass=ABCMeta):
             Translated surface
 
         """
-        vx, vy, vz = vector
+        vector = np.asarray(vector)
+        A = self._A()
+        bvec = self._b()
+        const = self._c()
+
         a, b, c, d, e, f, g, h, j, k = self._get_base_coeffs()
-        k = (k + a*vx**2 + b*vy**2 + c*vz**2 + d*vx*vy + e*vy*vz + f*vx*vz
-             - g*vx - h*vy - j*vz)
-        g = g - 2*a*vx - d*vy - f*vz
-        h = h - 2*b*vy - d*vx - e*vz
-        j = j - 2*c*vz - e*vy - f*vx
+        g, h, j = bvec - 2*(vector.T @ A)
+        k = const + vector.T @ A @ vector - bvec.T @ vector
+
+        #vx, vy, vz = vector
+        #a, b, c, d, e, f, g, h, j, k = self._get_base_coeffs()
+        #k = (k + a*vx**2 + b*vy**2 + c*vz**2 + d*vx*vy + e*vy*vz + f*vx*vz
+        #     - g*vx - h*vy - j*vz)
+        #g = g - 2*a*vx - d*vy - f*vz
+        #h = h - 2*b*vy - d*vx - e*vz
+        #j = j - 2*c*vz - e*vy - f*vx
 
         if clone:
             surf = self.clone()
@@ -1065,7 +1131,9 @@ class Cylinder(QuadricMixin, Surface):
     """
     _type = 'cylinder'
     _coeff_keys = ('x0', 'y0', 'z0', 'r', 'dx', 'dy','dz')
+
     def __init__(self, x0=0., y0=0., z0=0., r=1., dx=0., dy=0., dz=1., **kwargs):
+
         super().__init__(**kwargs)
 
         for key, val in zip(self._coeff_keys, (x0, y0, z0, r, dx, dy, dz)):
@@ -1170,11 +1238,29 @@ class Cylinder(QuadricMixin, Surface):
             representing the quadric surface
 
         """
-        pre_coeffs = self._get_base_coeffs
-        # infer transformation based on changes between two matrices
-        # perform same transformation on x0,y0,z0,dx,dy,dz if A matrix
-        # unchanged then it was a translation if not it was a rotation
-        a, b, c, d, e, f, g, h, j, k = coeffs
+        if self.is_equal(coeffs):
+            print("surfaces are identical")
+            return
+
+        if np.isclose(self.Amat(), self.Amat(coeffs), rtol=0., atol=self._atol):
+            # transformation was translation
+            vec = np.asarray([self.x0, self.y0, self.z0])
+            A = self.Amat()
+            bvec = self.bvec() + 2*np.dot(vec.T, A)
+
+        # get eigenvalues and eigenvectors of quadric matrix
+        w, v = self.eigh()
+        w, u = self.eigh(coeffs=coeffs)
+        Rmat = np.dot(u.T, v)
+        xyz0 = np.asarray([self.x0, self.y0, self.z0])
+        dxdydz0 = np.asarray([self.dx, self.dy, self.dz])
+        # principal axis for cylinder is first eigenvector which has 
+        # an eigenvalue of 0
+        x0, y0, z0 = np.dot(Rmat, xyz0)
+        dx, dy, dz = np.dot(Rmat, dxdydz0)
+        r = self.r
+        for key, val in zip(self._coeff_keys, (x0, y0, z0, r, dx, dy, dz)):
+            setattr(self, key, val)
 
     @classmethod
     def from_points(cls, p1, p2, r=1., **kwargs):

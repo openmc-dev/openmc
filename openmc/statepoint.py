@@ -310,11 +310,7 @@ class StatePoint(object):
         if self.run_mode == 'eigenvalue':
             return self._f['n_inactive'][()]
         else:
-            return None
-
-    @property
-    def relative_max_lost_particles(self):
-        return self._f['relative_max_lost_particles'][()]                    
+            return None                  
 
     @property
     def n_particles(self):

@@ -1239,7 +1239,6 @@ class Cylinder(QuadricMixin, Surface):
 
         """
         if self.is_equal(coeffs):
-            print("surfaces are identical")
             return
 
         if np.isclose(self.Amat(), self.Amat(coeffs), rtol=0., atol=self._atol):
@@ -1844,13 +1843,13 @@ class Cone(QuadricMixin, Surface):
         z-coordinate of the apex. Defaults to 0.
     r2 : float, optional
         Parameter related to the aperature. Defaults to 1.
-    u : float, optional
+    dx : float, optional
         x-component of the vector representing the axis of the cone.
         Defaults to 0.
-    v : float, optional
+    dy : float, optional
         y-component of the vector representing the axis of the cone.
         Defaults to 0.
-    w : float, optional
+    dz : float, optional
         z-component of the vector representing the axis of the cone.
         Defaults to 1.
     surface_id : int, optional
@@ -1976,7 +1975,23 @@ class Cone(QuadricMixin, Surface):
         :math:`ax^2 + by^2 + cz^2 + dxy + eyz + fxz+ gx + hy + jz +k = 0`.
 
         """
-        return (0., 0., 1., self.z0)
+        x0, y0, z0, r2 = self.x0, self.y0, self.z0, self.r2
+        dx, dy, dz = self.dx, self.dy, self.dz
+        cos2 = 1 / (1 + r2)
+        c1 = (dx**2 + dy**2 + dz**2)*cos2
+
+        a = dx**2 - c1
+        b = dy**2 - c1
+        c = dz**2 - c1
+        d = 2*dx*dy
+        e = 2*dy*dz
+        f = 2*dx*dz
+        g = -2*(dx**2*x0 + dx*dy*y0 + dx*dz*z0 - c1)
+        h = -2*(dy**2*y0 + dx*dy*x0 + dy*dz*z0 - c1)
+        j = -2*(dz**2*y0 + dx*dz*x0 + dy*dz*y0 - c1)
+        k = (dx*x0 + dy*y0 + dz*z0)**2 - c1*(x0**2 + y0**2 + z0**2)
+
+        return (a, b, c, d, e, f, g, h, j, k)
 
     def _update_from_base_coeffs(self, coeffs):
         """Update the current surface from coefficients representing a general

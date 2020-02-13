@@ -1,8 +1,7 @@
 from abc import ABCMeta, abstractmethod
 from collections import OrderedDict
-from collections.abc import Iterable
 from copy import deepcopy
-from numbers import Real, Integral
+from numbers import Real
 from xml.etree import ElementTree as ET
 from warnings import warn
 
@@ -186,29 +185,38 @@ class Surface(IDManagerMixin, metaclass=ABCMeta):
 
         return memo[self]
 
-    def is_equal(self, coeffs):
-        """Determine if this Surface is the same as another to within a certain
-        tolerance
+    def normalize(self, coeffs=None):
+        """Normalize coefficients by first nonzero value
+        Parameters
+        ----------
+        coeffs : tuple, optional
+            Tuple of surface coefficients to normalize. If none are supplied,
+            the coefficients from the current surface will be used.
+
+        Returns
+        -------
+        tuple of normalized coefficients
+
+        """
+        coeffs = np.asarray(coeffs)
+        nonzeros = ~np.isclose(coeffs, 0., rtol=0., atol=self._atol)
+        norm_factor = coeffs[nonzeros][0]
+        return tuple([c/norm_factor for c in coeffs])
+
+    def is_equal(self, other):
+        """Determine if this Surface is equivalent to another
 
         Parameters
         ----------
-        coeffs : tuple
-            Tuple of surface coefficients to compare to the current Surface
-            object
+        other : instance of openmc.Surface
+            Instance of openmc.Surface that should be compared to the current
+            surface
 
         """
-        def normalize(coeffs):
-            """Normalize coefficients by first nonzero value"""
-            coeffs = np.asarray(coeffs)
-            nonzeros = ~np.isclose(coeffs, 0., rtol=0., atol=self._atol)
-            norm_factor = coeffs[nonzeros][0]
-            return tuple([c/norm_factor for c in coeffs])
+        coeffs1 = normalize(self._get_base_coeffs())
+        coeffs2 = normalize(other._get_base_coeffs())
 
-        # get normalized sets of coefficients
-        coeffs = normalize(coeffs)
-        bcoeffs = normalize(self._get_base_coeffs())
-
-        return np.all(np.isclose(bcoeffs, coeffs, rtol=0., atol=self._atol))
+        return np.all(np.isclose(coeffs1, coeffs2, rtol=0., atol=self._atol))
 
     @abstractmethod
     def evaluate(self, point):
@@ -299,7 +307,7 @@ class Surface(IDManagerMixin, metaclass=ABCMeta):
 
 
 class PlaneMixin(metaclass=ABCMeta):
-    """A Plane Meta class for all operations on order 1 surfaces"""
+    """A Plane mixin class for all operations on order 1 surfaces"""
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self._periodic_surface = None
@@ -941,37 +949,47 @@ class QuadricMixin(metaclass=ABCMeta):
         return (np.array([-np.inf, -np.inf, -np.inf]),
                 np.array([np.inf, np.inf, np.inf]))
 
-    def _A(self, coeffs=None):
-        """Helper function to generate the quadric matrix"""
+    def get_Abc(self, coeffs=None):
+        """Compute matrix, vector, and scalar coefficients for this surface or
+        for a specified set of coefficients.
+
+        Parameters
+        ----------
+        coeffs : tuple, optional
+            Tuple of coefficients from which to compute the quadric elements.
+            If none are supplied the coefficients of this surface will be used.
+        """
         if coeffs is None:
             a, b, c, d, e, f, g, h, j, k = self._get_base_coeffs()
         else:
             a, b, c, d, e, f, g, h, j, k = coeffs
 
-        return np.asarray([[a, d/2, f/2], [d/2, b, e/2], [f/2, e/2, c]])
+        A = np.asarray([[a, d/2, f/2], [d/2, b, e/2], [f/2, e/2, c]])
+        bvec = np.asarray([g, h, j])
 
-    def _b(self, coeffs=None):
-        """Helper function to generate the linear coefficients"""
-        if coeffs is None:
-            a, b, c, d, e, f, g, h, j, k = self._get_base_coeffs()
-        else:
-            a, b, c, d, e, f, g, h, j, k = coeffs
-
-        return np.asarray([g, h, j])
-
-    def _c(self, coeffs=None):
-        """Helper function to generate the constant coefficient"""
-        if coeffs is None:
-            return self._get_base_coeffs()[-1]
-        return coeffs[-1]
+        return A, bvec, k
 
     def eigh(self, coeffs=None):
         """Wrapper method for returning eigenvalues and eigenvectors of this
         quadric surface which is used for transformations.
 
+        Parameters
+        ----------
+        coeffs : tuple, optional
+            Tuple of coefficients from which to compute the quadric elements.
+            If none are supplied the coefficients of this surface will be used.
+
+        Returns
+        -------
+        w, v : tuple of numpy arrays with shapes (3,) and (3,3) respectively
+            Returns the eigenvalues and eigenvectors of the quadric matrix A
+            that represents the supplied coefficients. The vector w contains
+            the eigenvalues in ascending order and the matrix v contains the
+            eigenvectors such that v[:,i] is the eigenvector corresponding to
+            the eigenvalue w[i].
+
         """
-        A = self._A(coeffs=coeffs)
-        return np.linalg.eigh(A)
+        return np.linalg.eigh(self.get_Abc(coeffs=coeffs)[0])
 
     def bounding_box(self, side):
         """Determine an axis-aligned bounding box.
@@ -1017,9 +1035,9 @@ class QuadricMixin(metaclass=ABCMeta):
             Jz' + K = 0`
 
         """
-        x, y, z = point
-        a, b, c, d, e, f, g, h, j, k = self._get_base_coeffs()
-        return x*(a*x + d*y + g) + y*(b*y + e*z + h) + z*(c*z + f*x + j) + k
+        x = np.asarray(point)
+        A, b, c = self.get_Abc()
+        return np.matmul(x.T, np.matmul(A, x)) + np.matmul(b.T, x) + c
 
     def translate(self, vector, clone=True):
         """Translate surface in given direction
@@ -1039,21 +1057,12 @@ class QuadricMixin(metaclass=ABCMeta):
 
         """
         vector = np.asarray(vector)
-        A = self._A()
-        bvec = self._b()
-        const = self._c()
+        A, bvec, cnst = self.get_Abc()
 
-        a, b, c, d, e, f, g, h, j, k = self._get_base_coeffs()
-        g, h, j = bvec - 2*(vector.T @ A)
-        k = const + vector.T @ A @ vector - bvec.T @ vector
-
-        #vx, vy, vz = vector
-        #a, b, c, d, e, f, g, h, j, k = self._get_base_coeffs()
-        #k = (k + a*vx**2 + b*vy**2 + c*vz**2 + d*vx*vy + e*vy*vz + f*vx*vz
-        #     - g*vx - h*vy - j*vz)
-        #g = g - 2*a*vx - d*vy - f*vz
-        #h = h - 2*b*vy - d*vx - e*vz
-        #j = j - 2*c*vz - e*vy - f*vx
+        a, b, c, d, e, f = self._get_base_coeffs()[0:6]
+        g, h, j = bvec - 2*np.matmul(vector.T, A)
+        k = cnst + np.matmul(vector.T, np.matmul(A, vector)) \
+            - np.matmul(bvec.T, vector)
 
         if clone:
             surf = self.clone()
@@ -1210,19 +1219,19 @@ class Cylinder(QuadricMixin, Surface):
         """
         x0, y0, z0, r = self.x0, self.y0, self.z0, self.r
         dx, dy, dz = self.dx, self.dy, self.dz
+        dx2, dy2, dz2 = dx**2, dy**2, dz**2
 
-        a = dy**2 + dz**2
-        b = dx**2 + dz**2
-        c = dx**2 + dy**2
+        a = dy2 + dz2
+        b = dx2 + dz2
+        c = dx2 + dy2
         d = -2*dx*dy
         e = -2*dy*dz
         f = -2*dx*dz
-        g = 2*(dx*(z0*dz + y0*dy) - x0*(dy**2 + dz**2))
-        h = 2*(dy*(z0*dz + x0*dx) - y0*(dx**2 + dz**2))
-        j = 2*(dz*(y0*dy + x0*dx) - z0*(dx**2 + dy**2))
-        k = x0**2*(dy**2 + dz**2) + y0**2*(dx**2 + dz**2) \
-            + z0**2*(dx**2 + dy**2) - 2*dy*dz*y0*z0 \
-            - 2*dx*dz*x0*z0 - 2*dx*dy*x0*y0 - r**2*(dx**2 + dy**2 + dz**2)
+        g = 2*(dx*(z0*dz + y0*dy) - x0*(dy2 + dz2))
+        h = 2*(dy*(z0*dz + x0*dx) - y0*(dx2 + dz2))
+        j = 2*(dz*(y0*dy + x0*dx) - z0*(dx2 + dy2))
+        k = x0**2*(dy2 + dz2) + y0**2*(dx2 + dz2) + z0**2*(dx2 + dy2) \
+            + e*y0*z0 + f*x0*z0 + d*x0*y0 - r**2*(dx2 + dy2 + dz2)
 
         return (a, b, c, d, e, f, g, h, j, k)
 
@@ -1238,28 +1247,38 @@ class Cylinder(QuadricMixin, Surface):
             representing the quadric surface
 
         """
-        if self.is_equal(coeffs):
-            return
+        raise NotImplementedError('_update_from_base_coeffs for {} is '
+                                  'undefined'.format(self.__cls__.__name__))
 
-        if np.isclose(self.Amat(), self.Amat(coeffs), rtol=0., atol=self._atol):
-            # transformation was translation
-            vec = np.asarray([self.x0, self.y0, self.z0])
-            A = self.Amat()
-            bvec = self.bvec() + 2*np.dot(vec.T, A)
+    def translate(self, vector, clone=True):
+        """Translate surface in given direction
 
-        # get eigenvalues and eigenvectors of quadric matrix
-        w, v = self.eigh()
-        w, u = self.eigh(coeffs=coeffs)
-        Rmat = np.dot(u.T, v)
-        xyz0 = np.asarray([self.x0, self.y0, self.z0])
-        dxdydz0 = np.asarray([self.dx, self.dy, self.dz])
-        # principal axis for cylinder is first eigenvector which has 
-        # an eigenvalue of 0
-        x0, y0, z0 = np.dot(Rmat, xyz0)
-        dx, dy, dz = np.dot(Rmat, dxdydz0)
-        r = self.r
-        for key, val in zip(self._coeff_keys, (x0, y0, z0, r, dx, dy, dz)):
-            setattr(self, key, val)
+        Parameters
+        ----------
+        vector : iterable of float
+            Direction in which surface should be translated
+        clone : bool
+            Whether to return a clone of the Surface or the Surface itself.
+            Defaults to True
+
+        Returns
+        -------
+        openmc.Surface
+            Translated surface
+
+        """
+
+        if clone:
+            surf = self.clone()
+        else:
+            surf = self
+
+        surf.x0 += vector[0]
+        surf.y0 += vector[1]
+        surf.z0 += vector[2]
+
+        return surf
+
 
     @classmethod
     def from_points(cls, p1, p2, r=1., **kwargs):
@@ -1797,6 +1816,7 @@ class Sphere(QuadricMixin, Surface):
         d = e = f = 0.
         g, h, j = -2*x0, -2*y0, -2*z0
         k = x0**2 + y0**2 + z0**2 - r**2
+
         return (a, b, c, d, e, f, g, h, j, k)
 
     def _update_from_base_coeffs(self, coeffs):
@@ -1814,6 +1834,7 @@ class Sphere(QuadricMixin, Surface):
         a, b, c, d, e, f, g, h, j, k = coeffs
         x0, y0, z0 = -g / 2, -h / 2, -j / 2
         r = np.sqrt(x0**2 + y0**2 + z0**2 - k)
+
         for key, val in zip(self._coeff_keys, (x0, y0, z0, r)):
             setattr(self, key, val)
 
@@ -2005,7 +2026,37 @@ class Cone(QuadricMixin, Surface):
             representing the quadric surface
 
         """
-        a, b, c, d, e, f, g, h, j, k = coeffs
+        raise NotImplementedError('_update_from_base_coeffs for {} is '
+                                  'undefined'.format(self.__cls__.__name__))
+
+    def translate(self, vector, clone=True):
+        """Translate surface in given direction
+
+        Parameters
+        ----------
+        vector : iterable of float
+            Direction in which surface should be translated
+        clone : bool
+            Whether to return a clone of the Surface or the Surface itself.
+            Defaults to True
+
+        Returns
+        -------
+        openmc.Surface
+            Translated surface
+
+        """
+
+        if clone:
+            surf = self.clone()
+        else:
+            surf = self
+
+        surf.x0 += vector[0]
+        surf.y0 += vector[1]
+        surf.z0 += vector[2]
+
+        return surf
 
 
 class XCone(QuadricMixin, Surface):

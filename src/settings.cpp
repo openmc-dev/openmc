@@ -80,7 +80,7 @@ std::string path_statepoint;
 int32_t n_batches;
 int32_t n_inactive {0};
 int32_t max_lost_particles {10};
-double relative_max_lost_particles {1.0e-6};
+double rel_max_lost_particles {1.0e-6};
 int32_t gen_per_batch {1};
 int64_t n_particles {-1};
 
@@ -152,7 +152,7 @@ void get_run_parameters(pugi::xml_node node_base)
 
   // Get relative number of lost particles
   if (check_for_node(node_base, "rel_max_lost_particles")) {
-    relative_max_lost_particles = std::stod(get_node_value(node_base, "rel_max_lost_particles"));
+    rel_max_lost_particles = std::stod(get_node_value(node_base, "rel_max_lost_particles"));
   }    
 
   // Get number of inactive batches
@@ -364,7 +364,7 @@ void read_settings_xml()
       fatal_error("Number of particles must be greater than zero.");
     } else if (max_lost_particles <= 0) {
       fatal_error("Number of max lost particles must be greater than zero.");
-    } else if (relative_max_lost_particles <= 0.0 || relative_max_lost_particles >= 1.0) {
+    } else if (rel_max_lost_particles <= 0.0 || rel_max_lost_particles >= 1.0) {
       fatal_error("Relative max lost particles must be between zero and one.");
     }       
   }

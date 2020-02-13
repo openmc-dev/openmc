@@ -7,7 +7,7 @@ from warnings import warn
 
 import numpy as np
 
-from openmc.checkvalue import check_type, check_value, check_length
+from openmc.checkvalue import check_type, check_value
 from openmc.region import Region, Intersection, Union
 from openmc.mixin import IDManagerMixin
 
@@ -330,29 +330,6 @@ class PlaneMixin(metaclass=ABCMeta):
         """
         pass
 
-    @abstractmethod
-    def _update_from_base_coeffs(self, coeffs):
-        """Update the current plane from coefficients representing a general
-        plane of the form :math:`ax + by + cz = d`.
-
-        Parameters
-        ----------
-        coeffs : tuple
-            Tuple of general coefficients (a, b, c, d) representing the plane
-
-        """
-        pass
-
-    def _neg_bounds(self):
-        """Return the lower and upper bounds of the negative half space"""
-        return (np.array([-np.inf, -np.inf, -np.inf]),
-                np.array([np.inf, np.inf, np.inf]))
-
-    def _pos_bounds(self):
-        """Return the lower and upper bounds of the positive half space"""
-        return (np.array([-np.inf, -np.inf, -np.inf]),
-                np.array([np.inf, np.inf, np.inf]))
-
     def evaluate(self, point):
         """Evaluate the surface equation at a given point.
 
@@ -373,6 +350,7 @@ class PlaneMixin(metaclass=ABCMeta):
         a, b, c, d = self._get_base_coeffs()
         return a*x + b*y + c*z - d
 
+    @abstractmethod
     def translate(self, vector, clone=True):
         """Translate surface in given direction
 
@@ -390,46 +368,7 @@ class PlaneMixin(metaclass=ABCMeta):
             Translated surface
 
         """
-        vx, vy, vz = vector
-        a, b, c, d = self._get_base_coeffs()
-        d = d + a*vx + b*vy + c*vz
-
-        if clone:
-            surf = self.clone()
-        else:
-            surf = self
-
-        surf._update_from_base_coeffs((a, b, c, d))
-        return surf
-
-    def bounding_box(self, side):
-        """Determine an axis-aligned bounding box.
-
-        An axis-aligned bounding box for surface half-spaces is represented by
-        its lower-left and upper-right coordinates. For the z-plane surface, the
-        half-spaces are unbounded in their x- and y- directions. To represent
-        infinity, numpy.inf is used.
-
-        Parameters
-        ----------
-        side : {'+', '-'}
-            Indicates the negative or positive half-space
-
-        Returns
-        -------
-        numpy.ndarray
-            Lower-left coordinates of the axis-aligned bounding box for the
-            desired half-space
-        numpy.ndarray
-            Upper-right coordinates of the axis-aligned bounding box for the
-            desired half-space
-
-        """
-
-        if side == '-':
-            return self._neg_bounds()
-        elif side == '+':
-            return self._pos_bounds()
+        pass
 
     def to_xml_element(self):
         """Return XML representation of the surface
@@ -566,25 +505,18 @@ class Plane(PlaneMixin, Surface):
         self._coefficients['d'] = d
 
     def _get_base_coeffs(self):
-        """Return coefficients a, b, c, d representing a general plane of the
-        form :math:`ax + by + cz = d`.
-
-        """
         return (self.a, self.b, self.c, self.d)
 
-    def _update_from_base_coeffs(self, coeffs):
-        """Update the current plane from coefficients representing a general
-        plane of the form :math:`ax + by + cz = d`.
-
-        Parameters
-        ----------
-        coeffs : tuple
-            Tuple of general coefficients (a, b, c, d) representing the plane
-
-        """
-
-        for key, val in zip(self._coeff_keys, coeffs):
-            setattr(self, key, val)
+    def translate(self, vector, clone=True):
+        vx, vy, vz = vector
+        a, b, c, d = self._get_base_coeffs()
+        d = d + a*vx + b*vy + c*vz
+        if clone:
+            surf = self.clone()
+        else:
+            surf = self
+        surf.d = d
+        return surf
 
     @classmethod
     def from_points(cls, p1, p2, p3, **kwargs):
@@ -683,34 +615,26 @@ class XPlane(PlaneMixin, Surface):
         self._coefficients['x0'] = x0
 
     def _get_base_coeffs(self):
-        """Return coefficients a, b, c, d representing a general plane of the
-        form :math:`ax + by + cz = d`.
-
-        """
         return (1., 0., 0., self.x0)
 
-    def _update_from_base_coeffs(self, coeffs):
-        """Update the current plane from coefficients representing a general
-        plane of the form :math:`ax + by + cz = d`.
+    def bounding_box(self, side):
+        if side == '-':
+            return (np.array([-np.inf, -np.inf, -np.inf]),
+                    np.array([self.x0, np.inf, np.inf]))
+        elif side == '+':
+            return (np.array([self.x0, -np.inf, -np.inf]),
+                    np.array([np.inf, np.inf, np.inf]))
 
-        Parameters
-        ----------
-        coeffs : tuple
-            Tuple of general coefficients (a, b, c, d) representing the plane
+    def evaluate(self, point):
+        return point[0] - self.x0
 
-        """
-        a, b, c, d = coeffs
-        self.x0 = d / a
-
-    def _neg_bounds(self):
-        """Return the lower and upper bounds of the negative half space"""
-        return (np.array([-np.inf, -np.inf, -np.inf]),
-                np.array([self.x0, np.inf, np.inf]))
-
-    def _pos_bounds(self):
-        """Return the lower and upper bounds of the positive half space"""
-        return (np.array([self.x0, -np.inf, -np.inf]),
-                np.array([np.inf, np.inf, np.inf]))
+    def translate(self, vector, clone=True):
+        if clone:
+            surf = self.clone()
+        else:
+            surf = self
+        surf.x0 += vector[0]
+        return surf
 
 
 Plane.register(XPlane)
@@ -780,34 +704,26 @@ class YPlane(PlaneMixin, Surface):
         self._coefficients['y0'] = y0
 
     def _get_base_coeffs(self):
-        """Return coefficients a, b, c, d representing a general plane of the
-        form :math:`ax + by + cz = d`.
-
-        """
         return (0., 1., 0., self.y0)
 
-    def _update_from_base_coeffs(self, coeffs):
-        """Update the current plane from coefficients representing a general
-        plane of the form :math:`ax + by + cz = d`.
+    def bounding_box(self, side):
+        if side == '-':
+            return (np.array([-np.inf, -np.inf, -np.inf]),
+                    np.array([np.inf, self.y0, np.inf]))
+        elif side == '+':
+            return (np.array([-np.inf, self.y0, -np.inf]),
+                    np.array([np.inf, np.inf, np.inf]))
 
-        Parameters
-        ----------
-        coeffs : tuple
-            Tuple of general coefficients (a, b, c, d) representing the plane
+    def evaluate(self, point):
+        return point[1] - self.y0
 
-        """
-        a, b, c, d = coeffs
-        self.y0 = d / b
-
-    def _neg_bounds(self):
-        """Return the lower and upper bounds of the negative half space"""
-        return (np.array([-np.inf, -np.inf, -np.inf]),
-                np.array([np.inf, self.y0, np.inf]))
-
-    def _pos_bounds(self):
-        """Return the lower and upper bounds of the positive half space"""
-        return (np.array([-np.inf, self.y0, -np.inf]),
-                np.array([np.inf, np.inf, np.inf]))
+    def translate(self, vector, clone=True):
+        if clone:
+            surf = self.clone()
+        else:
+            surf = self
+        surf.y0 += vector[1]
+        return surf
 
 
 Plane.register(YPlane)
@@ -877,34 +793,26 @@ class ZPlane(PlaneMixin, Surface):
         self._coefficients['z0'] = z0
 
     def _get_base_coeffs(self):
-        """Return coefficients a, b, c, d, e, f, g, h, j, k representing a
-        general plane form :math:`ax + by + cz = d`.
-
-        """
         return (0., 0., 1., self.z0)
 
-    def _update_from_base_coeffs(self, coeffs):
-        """Update the current plane from coefficients representing a general
-        plane of the form :math:`ax + by + cz = d`.
+    def bounding_box(self, side):
+        if side == '-':
+            return (np.array([-np.inf, -np.inf, -np.inf]),
+                    np.array([np.inf, np.inf, self.z0]))
+        elif side == '+':
+            return (np.array([-np.inf, -np.inf, self.z0]),
+                    np.array([np.inf, np.inf, np.inf]))
 
-        Parameters
-        ----------
-        coeffs : tuple
-            Tuple of general coefficients (a, b, c, d) representing the plane
+    def evaluate(self, point):
+        return point[2] - self.z0
 
-        """
-        a, b, c, d = coeffs
-        self.z0 = d / c
-
-    def _neg_bounds(self):
-        """Return the lower and upper bounds of the negative half space"""
-        return (np.array([-np.inf, -np.inf, -np.inf]),
-                np.array([np.inf, np.inf, self.z0]))
-
-    def _pos_bounds(self):
-        """Return the lower and upper bounds of the positive half space"""
-        return (np.array([-np.inf, -np.inf, self.z0]),
-                np.array([np.inf, np.inf, np.inf]))
+    def translate(self, vector, clone=True):
+        if clone:
+            surf = self.clone()
+        else:
+            surf = self
+        surf.z0 += vector[2]
+        return surf
 
 
 Plane.register(ZPlane)
@@ -923,31 +831,6 @@ class QuadricMixin(metaclass=ABCMeta):
 
         """
         pass
-
-    @abstractmethod
-    def _update_from_base_coeffs(self, coeffs):
-        """Update the current surface from coefficients representing a general
-        quadric surface of the form:
-        :math:`ax^2 + by^2 + cz^2 + dxy + eyz + fxz+ gx + hy + jz +k = 0`.
-
-        Parameters
-        ----------
-        coeffs : tuple
-            Tuple of general coefficients (a, b, c, d, e, f, g, h, j, k)
-            representing the quadric surface
-
-        """
-        pass
-
-    def _neg_bounds(self):
-        """Return the lower and upper bounds of the negative half space"""
-        return (np.array([-np.inf, -np.inf, -np.inf]),
-                np.array([np.inf, np.inf, np.inf]))
-
-    def _pos_bounds(self):
-        """Return the lower and upper bounds of the positive half space"""
-        return (np.array([-np.inf, -np.inf, -np.inf]),
-                np.array([np.inf, np.inf, np.inf]))
 
     def get_Abc(self, coeffs=None):
         """Compute matrix, vector, and scalar coefficients for this surface or
@@ -991,34 +874,6 @@ class QuadricMixin(metaclass=ABCMeta):
         """
         return np.linalg.eigh(self.get_Abc(coeffs=coeffs)[0])
 
-    def bounding_box(self, side):
-        """Determine an axis-aligned bounding box.
-
-        An axis-aligned bounding box for surface half-spaces is represented by
-        its lower-left and upper-right coordinates. To represent infinity, 
-        numpy.inf is used.
-
-        Parameters
-        ----------
-        side : {'+', '-'}
-            Indicates the negative or positive half-space
-
-        Returns
-        -------
-        numpy.ndarray
-            Lower-left coordinates of the axis-aligned bounding box for the
-            desired half-space
-        numpy.ndarray
-            Upper-right coordinates of the axis-aligned bounding box for the
-            desired half-space
-
-        """
-
-        if side == '-':
-            return self._neg_bounds()
-        elif side == '+':
-            return self._pos_bounds()
-
     def evaluate(self, point):
         """Evaluate the surface equation at a given point.
 
@@ -1039,6 +894,7 @@ class QuadricMixin(metaclass=ABCMeta):
         A, b, c = self.get_Abc()
         return np.matmul(x.T, np.matmul(A, x)) + np.matmul(b.T, x) + c
 
+    @abstractmethod
     def translate(self, vector, clone=True):
         """Translate surface in given direction
 
@@ -1056,22 +912,7 @@ class QuadricMixin(metaclass=ABCMeta):
             Translated surface
 
         """
-        vector = np.asarray(vector)
-        A, bvec, cnst = self.get_Abc()
-
-        a, b, c, d, e, f = self._get_base_coeffs()[0:6]
-        g, h, j = bvec - 2*np.matmul(vector.T, A)
-        k = cnst + np.matmul(vector.T, np.matmul(A, vector)) \
-            - np.matmul(bvec.T, vector)
-
-        if clone:
-            surf = self.clone()
-        else:
-            surf = self
-
-        surf._update_from_base_coeffs((a, b, c, d, e, f, g, h, j, k))
-
-        return surf
+        pass
 
 
 class Cylinder(QuadricMixin, Surface):
@@ -1212,11 +1053,6 @@ class Cylinder(QuadricMixin, Surface):
         self._coefficients['dz'] = dz
 
     def _get_base_coeffs(self):
-        """Return coefficients a, b, c, d, e, f, g, h, j, k representing a
-        general quadric surface  of the form:
-        :math:`ax^2 + by^2 + cz^2 + dxy + eyz + fxz+ gx + hy + jz + k = 0`.
-
-        """
         x0, y0, z0, r = self.x0, self.y0, self.z0, self.r
         dx, dy, dz = self.dx, self.dy, self.dz
         dx2, dy2, dz2 = dx**2, dy**2, dz**2
@@ -1235,39 +1071,7 @@ class Cylinder(QuadricMixin, Surface):
 
         return (a, b, c, d, e, f, g, h, j, k)
 
-    def _update_from_base_coeffs(self, coeffs):
-        """Update the current surface from coefficients representing a general
-        quadric surface of the form:
-        :math:`ax^2 + by^2 + cz^2 + dxy + eyz + fxz+ gx + hy + jz + k = 0`.
-
-        Parameters
-        ----------
-        coeffs : tuple
-            Tuple of general coefficients (a, b, c, d, e, f, g, h, j, k)
-            representing the quadric surface
-
-        """
-        raise NotImplementedError('_update_from_base_coeffs for {} is '
-                                  'undefined'.format(self.__cls__.__name__))
-
     def translate(self, vector, clone=True):
-        """Translate surface in given direction
-
-        Parameters
-        ----------
-        vector : iterable of float
-            Direction in which surface should be translated
-        clone : bool
-            Whether to return a clone of the Surface or the Surface itself.
-            Defaults to True
-
-        Returns
-        -------
-        openmc.Surface
-            Translated surface
-
-        """
-
         if clone:
             surf = self.clone()
         else:
@@ -1278,7 +1082,6 @@ class Cylinder(QuadricMixin, Surface):
         surf.z0 += vector[2]
 
         return surf
-
 
     @classmethod
     def from_points(cls, p1, p2, r=1., **kwargs):
@@ -1396,11 +1199,6 @@ class XCylinder(QuadricMixin, Surface):
         self._coefficients['r'] = r
 
     def _get_base_coeffs(self):
-        """Return coefficients a, b, c, d, e, f, g, h, j, k representing a
-        general quadric surface  of the form:
-        :math:`ax^2 + by^2 + cz^2 + dxy + eyz + fxz+ gx + hy + jz +k = 0`.
-
-        """
         y0, z0, r = self.y0, self.z0, self.r
 
         a = d = e = f = g = 0.
@@ -1409,34 +1207,27 @@ class XCylinder(QuadricMixin, Surface):
 
         return (a, b, c, d, e, f, g, h, j, k)
 
-    def _update_from_base_coeffs(self, coeffs):
-        """Update the current surface from coefficients representing a general
-        quadric surface of the form:
-        :math:`ax^2 + by^2 + cz^2 + dxy + eyz + fxz+ gx + hy + jz +k = 0`.
+    def bounding_box(self, side):
+        if side == '-':
+            return (np.array([-np.inf, self.y0 - self.r, self.z0 - self.r]),
+                    np.array([np.inf, self.y0 + self.r, self.z0 + self.r]))
+        elif side == '+':
+            return (np.array([-np.inf, -np.inf, -np.inf]),
+                    np.array([np.inf, np.inf, np.inf]))
 
-        Parameters
-        ----------
-        coeffs : tuple
-            Tuple of general coefficients (a, b, c, d, e, f, g, h, j, k)
-            representing the quadric surface
+    def evaluate(self, point):
+        y = point[1] - self.y0
+        z = point[2] - self.z0
+        return y**2 + z**2 - self.r**2
 
-        """
-        a, b, c, d, e, f, g, h, j, k = coeffs
-        y0, z0 = -h / 2, -j / 2
-        r = np.sqrt(y0**2 + z0**2 - k)
-
-        for key, val in zip(self._coeff_keys, (y0, z0, r)):
-            setattr(self, key, val)
-
-    def _neg_bounds(self):
-        """Return the lower and upper bounds of the negative half space"""
-        return (np.array([-np.inf, self.y0 - self.r, self.z0 - self.r]),
-                np.array([np.inf, self.y0 + self.r, self.z0 + self.r]))
-
-    def _pos_bounds(self):
-        """Return the lower and upper bounds of the positive half space"""
-        return (np.array([-np.inf, -np.inf, -np.inf]),
-                np.array([np.inf, np.inf, np.inf]))
+    def translate(self, vector, clone=True):
+        if clone:
+            surf = self.clone()
+        else:
+            surf = self
+        surf.y0 += vector[1]
+        surf.z0 += vector[2]
+        return surf
 
 
 Cylinder.register(XCylinder)
@@ -1529,11 +1320,6 @@ class YCylinder(QuadricMixin, Surface):
         self._coefficients['r'] = r
 
     def _get_base_coeffs(self):
-        """Return coefficients a, b, c, d, e, f, g, h, j, k representing a
-        general quadric surface  of the form:
-        :math:`ax^2 + by^2 + cz^2 + dxy + eyz + fxz+ gx + hy + jz +k = 0`.
-
-        """
         x0, z0, r = self.x0, self.z0, self.r
 
         b = d = e = f = h = 0.
@@ -1542,34 +1328,27 @@ class YCylinder(QuadricMixin, Surface):
 
         return (a, b, c, d, e, f, g, h, j, k)
 
-    def _update_from_base_coeffs(self, coeffs):
-        """Update the current surface from coefficients representing a general
-        quadric surface of the form:
-        :math:`ax^2 + by^2 + cz^2 + dxy + eyz + fxz+ gx + hy + jz +k = 0`.
+    def bounding_box(self, side):
+        if side == '-':
+            return (np.array([self.x0 - self.r, -np.inf, self.z0 - self.r]),
+                    np.array([self.x0 + self.r, np.inf, self.z0 + self.r]))
+        elif side == '+':
+            return (np.array([-np.inf, -np.inf, -np.inf]),
+                    np.array([np.inf, np.inf, np.inf]))
 
-        Parameters
-        ----------
-        coeffs : tuple
-            Tuple of general coefficients (a, b, c, d, e, f, g, h, j, k)
-            representing the quadric surface
+    def evaluate(self, point):
+        x = point[0] - self.x0
+        z = point[2] - self.z0
+        return x**2 + z**2 - self.r**2
 
-        """
-        a, b, c, d, e, f, g, h, j, k = coeffs
-        x0, z0 = -g / 2, -j / 2
-        r = np.sqrt(x0**2 + z0**2 - k)
-
-        for key, val in zip(self._coeff_keys, (x0, z0, r)):
-            setattr(self, key, val)
-
-    def _neg_bounds(self):
-        """Return the lower and upper bounds of the negative half space"""
-        return (np.array([self.x0 - self.r, -np.inf, self.z0 - self.r]),
-                np.array([self.x0 + self.r, np.inf, self.z0 + self.r]))
-
-    def _pos_bounds(self):
-        """Return the lower and upper bounds of the positive half space"""
-        return (np.array([-np.inf, -np.inf, -np.inf]),
-                np.array([np.inf, np.inf, np.inf]))
+    def translate(self, vector, clone=True):
+        if clone:
+            surf = self.clone()
+        else:
+            surf = self
+        surf.x0 += vector[0]
+        surf.z0 += vector[2]
+        return surf
 
 
 Cylinder.register(YCylinder)
@@ -1662,11 +1441,6 @@ class ZCylinder(QuadricMixin, Surface):
         self._coefficients['r'] = r
 
     def _get_base_coeffs(self):
-        """Return coefficients a, b, c, d, e, f, g, h, j, k representing a
-        general quadric surface  of the form:
-        :math:`ax^2 + by^2 + cz^2 + dxy + eyz + fxz+ gx + hy + jz +k = 0`.
-
-        """
         x0, y0, r = self.x0, self.y0, self.r
 
         c = d = e = f = j = 0.
@@ -1675,34 +1449,27 @@ class ZCylinder(QuadricMixin, Surface):
 
         return (a, b, c, d, e, f, g, h, j, k)
 
-    def _update_from_base_coeffs(self, coeffs):
-        """Update the current surface from coefficients representing a general
-        quadric surface of the form:
-        :math:`ax^2 + by^2 + cz^2 + dxy + eyz + fxz+ gx + hy + jz +k = 0`.
+    def bounding_box(self, side):
+        if side == '-':
+            return (np.array([self.x0 - self.r, self.y0 - self.r, -np.inf]),
+                    np.array([self.x0 + self.r, self.y0 + self.r, np.inf]))
+        elif side == '+':
+            return (np.array([-np.inf, -np.inf, -np.inf]),
+                    np.array([np.inf, np.inf, np.inf]))
 
-        Parameters
-        ----------
-        coeffs : tuple
-            Tuple of general coefficients (a, b, c, d, e, f, g, h, j, k)
-            representing the quadric surface
+    def evaluate(self, point):
+        x = point[0] - self.x0
+        y = point[1] - self.y0
+        return x**2 + y**2 - self.r**2
 
-        """
-        a, b, c, d, e, f, g, h, j, k = coeffs
-        x0, y0 = -g / 2, -h / 2
-        r = np.sqrt(x0**2 + y0**2 - k)
-
-        for key, val in zip(self._coeff_keys, (x0, y0, r)):
-            setattr(self, key, val)
-
-    def _neg_bounds(self):
-        """Return the lower and upper bounds of the negative half space"""
-        return (np.array([self.x0 - self.r, self.y0 - self.r, -np.inf]),
-                np.array([self.x0 + self.r, self.y0 + self.r, np.inf]))
-
-    def _pos_bounds(self):
-        """Return the lower and upper bounds of the positive half space"""
-        return (np.array([-np.inf, -np.inf, -np.inf]),
-                np.array([np.inf, np.inf, np.inf]))
+    def translate(self, vector, clone=True):
+        if clone:
+            surf = self.clone()
+        else:
+            surf = self
+        surf.x0 += vector[0]
+        surf.y0 += vector[1]
+        return surf
 
 
 Cylinder.register(ZCylinder)
@@ -1806,11 +1573,6 @@ class Sphere(QuadricMixin, Surface):
         self._coefficients['r'] = r
 
     def _get_base_coeffs(self):
-        """Return coefficients a, b, c, d, e, f, g, h, j, k representing a
-        general quadric surface  of the form:
-        :math:`ax^2 + by^2 + cz^2 + dxy + eyz + fxz+ gx + hy + jz +k = 0`.
-
-        """
         x0, y0, z0, r = self.x0, self.y0, self.z0, self.r
         a = b = c = 1.
         d = e = f = 0.
@@ -1819,36 +1581,31 @@ class Sphere(QuadricMixin, Surface):
 
         return (a, b, c, d, e, f, g, h, j, k)
 
-    def _update_from_base_coeffs(self, coeffs):
-        """Update the current surface from coefficients representing a general
-        quadric surface of the form:
-        :math:`ax^2 + by^2 + cz^2 + dxy + eyz + fxz+ gx + hy + jz +k = 0`.
+    def bounding_box(self, side):
+        if side == '-':
+            return (np.array([self.x0 - self.r, self.y0 - self.r,
+                              self.z0 - self.r]),
+                    np.array([self.x0 + self.r, self.y0 + self.r,
+                              self.z0 + self.r]))
+        elif side == '+':
+            return (np.array([-np.inf, -np.inf, -np.inf]),
+                    np.array([np.inf, np.inf, np.inf]))
 
-        Parameters
-        ----------
-        coeffs : tuple
-            Tuple of general coefficients (a, b, c, d, e, f, g, h, j, k)
-            representing the quadric surface
+    def evaluate(self, point):
+        x = point[0] - self.x0
+        y = point[1] - self.y0
+        z = point[2] - self.z0
+        return x**2 + y**2 + z**2 - self.r**2
 
-        """
-        a, b, c, d, e, f, g, h, j, k = coeffs
-        x0, y0, z0 = -g / 2, -h / 2, -j / 2
-        r = np.sqrt(x0**2 + y0**2 + z0**2 - k)
-
-        for key, val in zip(self._coeff_keys, (x0, y0, z0, r)):
-            setattr(self, key, val)
-
-    def _neg_bounds(self):
-        """Return the lower and upper bounds of the negative half space"""
-        return (np.array([self.x0 - self.r, self.y0 - self.r,
-                          self.z0 - self.r]),
-                np.array([self.x0 + self.r, self.y0 + self.r,
-                          self.z0 + self.r]))
-
-    def _pos_bounds(self):
-        """Return the lower and upper bounds of the positive half space"""
-        return (np.array([-np.inf, -np.inf, -np.inf]),
-                np.array([np.inf, np.inf, np.inf]))
+    def translate(self, vector, clone=True):
+        if clone:
+            surf = self.clone()
+        else:
+            surf = self
+        surf.x0 += vector[0]
+        surf.y0 += vector[1]
+        surf.z0 += vector[2]
+        return surf
 
 
 class Cone(QuadricMixin, Surface):
@@ -1991,11 +1748,6 @@ class Cone(QuadricMixin, Surface):
         self._coefficients['dz'] = dz
 
     def _get_base_coeffs(self):
-        """Return coefficients a, b, c, d, e, f, g, h, j, k representing a
-        general quadric surface  of the form:
-        :math:`ax^2 + by^2 + cz^2 + dxy + eyz + fxz+ gx + hy + jz +k = 0`.
-
-        """
         x0, y0, z0, r2 = self.x0, self.y0, self.z0, self.r2
         dx, dy, dz = self.dx, self.dy, self.dz
         cos2 = 1 / (1 + r2)
@@ -2014,48 +1766,14 @@ class Cone(QuadricMixin, Surface):
 
         return (a, b, c, d, e, f, g, h, j, k)
 
-    def _update_from_base_coeffs(self, coeffs):
-        """Update the current surface from coefficients representing a general
-        quadric surface of the form:
-        :math:`ax^2 + by^2 + cz^2 + dxy + eyz + fxz+ gx + hy + jz +k = 0`.
-
-        Parameters
-        ----------
-        coeffs : tuple
-            Tuple of general coefficients (a, b, c, d, e, f, g, h, j, k)
-            representing the quadric surface
-
-        """
-        raise NotImplementedError('_update_from_base_coeffs for {} is '
-                                  'undefined'.format(self.__cls__.__name__))
-
     def translate(self, vector, clone=True):
-        """Translate surface in given direction
-
-        Parameters
-        ----------
-        vector : iterable of float
-            Direction in which surface should be translated
-        clone : bool
-            Whether to return a clone of the Surface or the Surface itself.
-            Defaults to True
-
-        Returns
-        -------
-        openmc.Surface
-            Translated surface
-
-        """
-
         if clone:
             surf = self.clone()
         else:
             surf = self
-
         surf.x0 += vector[0]
         surf.y0 += vector[1]
         surf.z0 += vector[2]
-
         return surf
 
 
@@ -2158,11 +1876,6 @@ class XCone(QuadricMixin, Surface):
         self._coefficients['r2'] = r2
 
     def _get_base_coeffs(self):
-        """Return coefficients a, b, c, d, e, f, g, h, j, k representing a
-        general quadric surface  of the form:
-        :math:`ax^2 + by^2 + cz^2 + dxy + eyz + fxz+ gx + hy + jz +k = 0`.
-
-        """
         x0, y0, z0, r2 = self.x0, self.y0, self.z0, self.r2
 
         a = -r2
@@ -2173,25 +1886,21 @@ class XCone(QuadricMixin, Surface):
 
         return (a, b, c, d, e, f, g, h, j, k)
 
-    def _update_from_base_coeffs(self, coeffs):
-        """Update the current surface from coefficients representing a general
-        quadric surface of the form:
-        :math:`ax^2 + by^2 + cz^2 + dxy + eyz + fxz+ gx + hy + jz +k = 0`.
+    def evaluate(self, point):
+        x = point[0] - self.x0
+        y = point[1] - self.y0
+        z = point[2] - self.z0
+        return y**2 + z**2 - self.r2*x**2
 
-        Parameters
-        ----------
-        coeffs : tuple
-            Tuple of general coefficients (a, b, c, d, e, f, g, h, j, k)
-            representing the quadric surface
-
-        """
-        a, b, c, d, e, f, g, h, j, k = coeffs
-
-        r2 = -a
-        x0, y0, z0 = g / (2*r2), -h / 2, -j / 2
-
-        for key, val in zip(self._coeff_keys, (x0, y0, z0, r2)):
-            setattr(self, key, val)
+    def translate(self, vector, clone=True):
+        if clone:
+            surf = self.clone()
+        else:
+            surf = self
+        surf.x0 += vector[0]
+        surf.y0 += vector[1]
+        surf.z0 += vector[2]
+        return surf
 
 
 Cone.register(XCone)
@@ -2296,11 +2005,6 @@ class YCone(QuadricMixin, Surface):
         self._coefficients['r2'] = r2
 
     def _get_base_coeffs(self):
-        """Return coefficients a, b, c, d, e, f, g, h, j, k representing a
-        general quadric surface  of the form:
-        :math:`ax^2 + by^2 + cz^2 + dxy + eyz + fxz+ gx + hy + jz +k = 0`.
-
-        """
         x0, y0, z0, r2 = self.x0, self.y0, self.z0, self.r2
 
         b = -r2
@@ -2311,25 +2015,21 @@ class YCone(QuadricMixin, Surface):
 
         return (a, b, c, d, e, f, g, h, j, k)
 
-    def _update_from_base_coeffs(self, coeffs):
-        """Update the current surface from coefficients representing a general
-        quadric surface of the form:
-        :math:`ax^2 + by^2 + cz^2 + dxy + eyz + fxz+ gx + hy + jz +k = 0`.
+    def evaluate(self, point):
+        x = point[0] - self.x0
+        y = point[1] - self.y0
+        z = point[2] - self.z0
+        return x**2 + z**2 - self.r2*y**2
 
-        Parameters
-        ----------
-        coeffs : tuple
-            Tuple of general coefficients (a, b, c, d, e, f, g, h, j, k)
-            representing the quadric surface
-
-        """
-        a, b, c, d, e, f, g, h, j, k = coeffs
-
-        r2 = -b
-        x0, y0, z0 = -g / 2, h / (2*r2), -j / 2
-
-        for key, val in zip(self._coeff_keys, (x0, y0, z0, r2)):
-            setattr(self, key, val)
+    def translate(self, vector, clone=True):
+        if clone:
+            surf = self.clone()
+        else:
+            surf = self
+        surf.x0 += vector[0]
+        surf.y0 += vector[1]
+        surf.z0 += vector[2]
+        return surf
 
 
 Cone.register(YCone)
@@ -2434,11 +2134,6 @@ class ZCone(QuadricMixin, Surface):
         self._coefficients['r2'] = r2
 
     def _get_base_coeffs(self):
-        """Return coefficients a, b, c, d, e, f, g, h, j, k representing a
-        general quadric surface  of the form:
-        :math:`ax^2 + by^2 + cz^2 + dxy + eyz + fxz+ gx + hy + jz +k = 0`.
-
-        """
         x0, y0, z0, r2 = self.x0, self.y0, self.z0, self.r2
 
         c = -r2
@@ -2449,25 +2144,21 @@ class ZCone(QuadricMixin, Surface):
 
         return (a, b, c, d, e, f, g, h, j, k)
 
-    def _update_from_base_coeffs(self, coeffs):
-        """Update the current surface from coefficients representing a general
-        quadric surface of the form:
-        :math:`ax^2 + by^2 + cz^2 + dxy + eyz + fxz+ gx + hy + jz +k = 0`.
+    def evaluate(self, point):
+        x = point[0] - self.x0
+        y = point[1] - self.y0
+        z = point[2] - self.z0
+        return x**2 + y**2 - self.r2*z**2
 
-        Parameters
-        ----------
-        coeffs : tuple
-            Tuple of general coefficients (a, b, c, d, e, f, g, h, j, k)
-            representing the quadric surface
-
-        """
-        a, b, c, d, e, f, g, h, j, k = coeffs
-
-        r2 = -c
-        x0, y0, z0 = -g / 2, -h / 2, j / (2*r2)
-
-        for key, val in zip(self._coeff_keys, (x0, y0, z0, r2)):
-            setattr(self, key, val)
+    def translate(self, vector, clone=True):
+        if clone:
+            surf = self.clone()
+        else:
+            surf = self
+        surf.x0 += vector[0]
+        surf.y0 += vector[1]
+        surf.z0 += vector[2]
+        return surf
 
 
 Cone.register(ZCone)
@@ -2611,27 +2302,25 @@ class Quadric(QuadricMixin, Surface):
         self._coefficients['k'] = k
 
     def _get_base_coeffs(self):
-        """Return coefficients a, b, c, d, e, f, g, h, j, k representing a
-        general quadric surface  of the form:
-        :math:`ax^2 + by^2 + cz^2 + dxy + eyz + fxz+ gx + hy + jz +k = 0`.
-
-        """
         return tuple(getattr(self, c) for c in self._coeff_keys)
 
-    def _update_from_base_coeffs(self, coeffs):
-        """Update the current surface from coefficients representing a general
-        quadric surface of the form:
-        :math:`ax^2 + by^2 + cz^2 + dxy + eyz + fxz+ gx + hy + jz +k = 0`.
+    def translate(self, vector, clone=True):
+        vector = np.asarray(vector)
+        A, bvec, cnst = self.get_Abc()
 
-        Parameters
-        ----------
-        coeffs : tuple
-            Tuple of general coefficients (a, b, c, d, e, f, g, h, j, k)
-            representing the quadric surface
+        g, h, j = bvec - 2*np.matmul(vector.T, A)
+        k = cnst + np.matmul(vector.T, np.matmul(A, vector)) \
+            - np.matmul(bvec.T, vector)
 
-        """
-        for key, val in zip(self._coeff_keys, coeffs):
-            setattr(self, key, val)
+        if clone:
+            surf = self.clone()
+        else:
+            surf = self
+
+        for key, val in zip(('g', 'h', 'j', 'k'), (g, h, j, k)):
+            setattr(surf, key, val)
+
+        return surf
 
 
 class Halfspace(Region):

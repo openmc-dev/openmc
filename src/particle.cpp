@@ -630,7 +630,7 @@ Particle::mark_as_lost(const char* message)
 
   // Abort the simulation if the maximum number of lost particles has been
   // reached
-  if (simulation::n_lost_particles >= settings::n_max_lost_particles &&
+  if (simulation::n_lost_particles >= settings::max_lost_particles &&
       simulation::n_lost_particles >= settings::relative_max_lost_particles*n) {
     fatal_error("Maximum number of lost particles has been reached.");
   }

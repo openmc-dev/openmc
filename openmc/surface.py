@@ -190,14 +190,17 @@ class Surface(IDManagerMixin, metaclass=ABCMeta):
         Parameters
         ----------
         coeffs : tuple, optional
-            Tuple of surface coefficients to normalize. If none are supplied,
-            the coefficients from the current surface will be used.
+            Tuple of surface coefficients to normalize. Defaults to None. If no
+            coefficients are supplied then the coefficients will be taken from
+            the current Surface.
 
         Returns
         -------
         tuple of normalized coefficients
 
         """
+        if coeffs is None:
+            coeffs = self._get_base_coeffs()
         coeffs = np.asarray(coeffs)
         nonzeros = ~np.isclose(coeffs, 0., rtol=0., atol=self._atol)
         norm_factor = coeffs[nonzeros][0]
@@ -213,8 +216,8 @@ class Surface(IDManagerMixin, metaclass=ABCMeta):
             surface
 
         """
-        coeffs1 = normalize(self._get_base_coeffs())
-        coeffs2 = normalize(other._get_base_coeffs())
+        coeffs1 = self.normalize(self._get_base_coeffs())
+        coeffs2 = self.normalize(other._get_base_coeffs())
 
         return np.all(np.isclose(coeffs1, coeffs2, rtol=0., atol=self._atol))
 
@@ -351,16 +354,16 @@ class PlaneMixin(metaclass=ABCMeta):
         return a*x + b*y + c*z - d
 
     @abstractmethod
-    def translate(self, vector, clone=True):
+    def translate(self, vector, inplace=False):
         """Translate surface in given direction
 
         Parameters
         ----------
         vector : iterable of float
             Direction in which surface should be translated
-        clone : boolean
+        inplace : boolean
             Whether or not to return a new instance of a Plane or to modify the
-            coefficients of this plane. Defaults to True
+            coefficients of this plane. Defaults to False
 
         Returns
         -------
@@ -447,8 +450,7 @@ class Plane(PlaneMixin, Surface):
         oldkwargs = deepcopy(kwargs)
         # work around for accepting Surface kwargs as positional parameters 
         # until they are deprecated
-        argsdict = {k: v for k, v in zip(('boundary_type', 'name',
-                                          'surface_id'), args)}
+        argsdict = dict(zip(('boundary_type', 'name', 'surface_id'), args))
         for k, v in argsdict.items():
             warn(_WARNING_KWARGS.format(type(self).__name__, k), FutureWarning)
 
@@ -507,14 +509,14 @@ class Plane(PlaneMixin, Surface):
     def _get_base_coeffs(self):
         return (self.a, self.b, self.c, self.d)
 
-    def translate(self, vector, clone=True):
+    def translate(self, vector, inplace=False):
         vx, vy, vz = vector
         a, b, c, d = self._get_base_coeffs()
         d = d + a*vx + b*vy + c*vz
-        if clone:
-            surf = self.clone()
-        else:
+        if inplace:
             surf = self
+        else:
+            surf = self.clone()
         surf.d = d
         return surf
 
@@ -628,11 +630,11 @@ class XPlane(PlaneMixin, Surface):
     def evaluate(self, point):
         return point[0] - self.x0
 
-    def translate(self, vector, clone=True):
-        if clone:
-            surf = self.clone()
-        else:
+    def translate(self, vector, inplace=False):
+        if inplace:
             surf = self
+        else:
+            surf = self.clone()
         surf.x0 += vector[0]
         return surf
 
@@ -717,11 +719,11 @@ class YPlane(PlaneMixin, Surface):
     def evaluate(self, point):
         return point[1] - self.y0
 
-    def translate(self, vector, clone=True):
-        if clone:
-            surf = self.clone()
-        else:
+    def translate(self, vector, inplace=False):
+        if inplace:
             surf = self
+        else:
+            surf = self.clone()
         surf.y0 += vector[1]
         return surf
 
@@ -806,11 +808,11 @@ class ZPlane(PlaneMixin, Surface):
     def evaluate(self, point):
         return point[2] - self.z0
 
-    def translate(self, vector, clone=True):
-        if clone:
-            surf = self.clone()
-        else:
+    def translate(self, vector, inplace=False):
+        if inplace:
             surf = self
+        else:
+            surf = self.clone()
         surf.z0 += vector[2]
         return surf
 
@@ -895,16 +897,16 @@ class QuadricMixin(metaclass=ABCMeta):
         return np.matmul(x.T, np.matmul(A, x)) + np.matmul(b.T, x) + c
 
     @abstractmethod
-    def translate(self, vector, clone=True):
+    def translate(self, vector, inplace=False):
         """Translate surface in given direction
 
         Parameters
         ----------
         vector : iterable of float
             Direction in which surface should be translated
-        clone : bool
+        inplace : boolean
             Whether to return a clone of the Surface or the Surface itself.
-            Defaults to True
+            Defaults to False
 
         Returns
         -------
@@ -1055,7 +1057,7 @@ class Cylinder(QuadricMixin, Surface):
     def _get_base_coeffs(self):
         x0, y0, z0, r = self.x0, self.y0, self.z0, self.r
         dx, dy, dz = self.dx, self.dy, self.dz
-        dx2, dy2, dz2 = dx**2, dy**2, dz**2
+        dx2, dy2, dz2 = dx*dx, dy*dy, dz*dz
 
         a = dy2 + dz2
         b = dx2 + dz2
@@ -1066,16 +1068,16 @@ class Cylinder(QuadricMixin, Surface):
         g = 2*(dx*(z0*dz + y0*dy) - x0*(dy2 + dz2))
         h = 2*(dy*(z0*dz + x0*dx) - y0*(dx2 + dz2))
         j = 2*(dz*(y0*dy + x0*dx) - z0*(dx2 + dy2))
-        k = x0**2*(dy2 + dz2) + y0**2*(dx2 + dz2) + z0**2*(dx2 + dy2) \
-            + e*y0*z0 + f*x0*z0 + d*x0*y0 - r**2*(dx2 + dy2 + dz2)
+        k = x0*x0*(dy2 + dz2) + y0*y0*(dx2 + dz2) + z0*z0*(dx2 + dy2) \
+            + e*y0*z0 + f*x0*z0 + d*x0*y0 - r*r*(dx2 + dy2 + dz2)
 
         return (a, b, c, d, e, f, g, h, j, k)
 
-    def translate(self, vector, clone=True):
-        if clone:
-            surf = self.clone()
-        else:
+    def translate(self, vector, inplace=False):
+        if inplace:
             surf = self
+        else:
+            surf = self.clone()
 
         surf.x0 += vector[0]
         surf.y0 += vector[1]
@@ -1203,7 +1205,7 @@ class XCylinder(QuadricMixin, Surface):
 
         a = d = e = f = g = 0.
         b = c = 1.
-        h, j, k = -2*y0, -2*z0, y0**2 + z0**2 - r**2 
+        h, j, k = -2*y0, -2*z0, y0*y0 + z0*z0 - r*r
 
         return (a, b, c, d, e, f, g, h, j, k)
 
@@ -1218,13 +1220,13 @@ class XCylinder(QuadricMixin, Surface):
     def evaluate(self, point):
         y = point[1] - self.y0
         z = point[2] - self.z0
-        return y**2 + z**2 - self.r**2
+        return y*y + z*z - self.r**2
 
-    def translate(self, vector, clone=True):
-        if clone:
-            surf = self.clone()
-        else:
+    def translate(self, vector, inplace=False):
+        if inplace:
             surf = self
+        else:
+            surf = self.clone()
         surf.y0 += vector[1]
         surf.z0 += vector[2]
         return surf
@@ -1324,7 +1326,7 @@ class YCylinder(QuadricMixin, Surface):
 
         b = d = e = f = h = 0.
         a = c = 1.
-        g, j, k = -2*x0, -2*z0, x0**2 + z0**2 - r**2 
+        g, j, k = -2*x0, -2*z0, x0*x0 + z0*z0 - r*r
 
         return (a, b, c, d, e, f, g, h, j, k)
 
@@ -1339,13 +1341,13 @@ class YCylinder(QuadricMixin, Surface):
     def evaluate(self, point):
         x = point[0] - self.x0
         z = point[2] - self.z0
-        return x**2 + z**2 - self.r**2
+        return x*x + z*z - self.r**2
 
-    def translate(self, vector, clone=True):
-        if clone:
-            surf = self.clone()
-        else:
+    def translate(self, vector, inplace=False):
+        if inplace:
             surf = self
+        else:
+            surf = self.clone()
         surf.x0 += vector[0]
         surf.z0 += vector[2]
         return surf
@@ -1445,7 +1447,7 @@ class ZCylinder(QuadricMixin, Surface):
 
         c = d = e = f = j = 0.
         a = b = 1.
-        g, h, k = -2*x0, -2*y0, x0**2 + y0**2 - r**2
+        g, h, k = -2*x0, -2*y0, x0*x0 + y0*y0 - r*r
 
         return (a, b, c, d, e, f, g, h, j, k)
 
@@ -1460,13 +1462,13 @@ class ZCylinder(QuadricMixin, Surface):
     def evaluate(self, point):
         x = point[0] - self.x0
         y = point[1] - self.y0
-        return x**2 + y**2 - self.r**2
+        return x*x + y*y - self.r**2
 
-    def translate(self, vector, clone=True):
-        if clone:
-            surf = self.clone()
-        else:
+    def translate(self, vector, inplace=False):
+        if inplace:
             surf = self
+        else:
+            surf = self.clone()
         surf.x0 += vector[0]
         surf.y0 += vector[1]
         return surf
@@ -1577,7 +1579,7 @@ class Sphere(QuadricMixin, Surface):
         a = b = c = 1.
         d = e = f = 0.
         g, h, j = -2*x0, -2*y0, -2*z0
-        k = x0**2 + y0**2 + z0**2 - r**2
+        k = x0*x0 + y0*y0 + z0*z0 - r*r
 
         return (a, b, c, d, e, f, g, h, j, k)
 
@@ -1595,13 +1597,13 @@ class Sphere(QuadricMixin, Surface):
         x = point[0] - self.x0
         y = point[1] - self.y0
         z = point[2] - self.z0
-        return x**2 + y**2 + z**2 - self.r**2
+        return x*x + y*y + z*z - self.r**2
 
-    def translate(self, vector, clone=True):
-        if clone:
-            surf = self.clone()
-        else:
+    def translate(self, vector, inplace=False):
+        if inplace:
             surf = self
+        else:
+            surf = self.clone()
         surf.x0 += vector[0]
         surf.y0 += vector[1]
         surf.z0 += vector[2]
@@ -1751,26 +1753,26 @@ class Cone(QuadricMixin, Surface):
         x0, y0, z0, r2 = self.x0, self.y0, self.z0, self.r2
         dx, dy, dz = self.dx, self.dy, self.dz
         cos2 = 1 / (1 + r2)
-        c1 = (dx**2 + dy**2 + dz**2)*cos2
+        c1 = (dx*dx + dy*dy + dz*dz)*cos2
 
-        a = dx**2 - c1
-        b = dy**2 - c1
-        c = dz**2 - c1
+        a = dx*dx - c1
+        b = dy*dy - c1
+        c = dz*dz - c1
         d = 2*dx*dy
         e = 2*dy*dz
         f = 2*dx*dz
-        g = -2*(dx**2*x0 + dx*dy*y0 + dx*dz*z0 - c1)
-        h = -2*(dy**2*y0 + dx*dy*x0 + dy*dz*z0 - c1)
-        j = -2*(dz**2*y0 + dx*dz*x0 + dy*dz*y0 - c1)
-        k = (dx*x0 + dy*y0 + dz*z0)**2 - c1*(x0**2 + y0**2 + z0**2)
+        g = -2*(dx*dx*x0 + dx*dy*y0 + dx*dz*z0 - c1)
+        h = -2*(dy*dy*y0 + dx*dy*x0 + dy*dz*z0 - c1)
+        j = -2*(dz*dz*y0 + dx*dz*x0 + dy*dz*y0 - c1)
+        k = (dx*x0 + dy*y0 + dz*z0)**2 - c1*(x0*x0 + y0*y0 + z0*z0)
 
         return (a, b, c, d, e, f, g, h, j, k)
 
-    def translate(self, vector, clone=True):
-        if clone:
-            surf = self.clone()
-        else:
+    def translate(self, vector, inplace=False):
+        if inplace:
             surf = self
+        else:
+            surf = self.clone()
         surf.x0 += vector[0]
         surf.y0 += vector[1]
         surf.z0 += vector[2]
@@ -1882,7 +1884,7 @@ class XCone(QuadricMixin, Surface):
         b = c = 1.
         d = e = f = 0.
         g, h, j = 2*x0*r2, -2*y0, -2*z0
-        k = y0**2 + z0**2 - r2*x0**2
+        k = y0*y0 + z0*z0 - r2*x0*x0
 
         return (a, b, c, d, e, f, g, h, j, k)
 
@@ -1890,13 +1892,13 @@ class XCone(QuadricMixin, Surface):
         x = point[0] - self.x0
         y = point[1] - self.y0
         z = point[2] - self.z0
-        return y**2 + z**2 - self.r2*x**2
+        return y*y + z*z - self.r2*x*x
 
-    def translate(self, vector, clone=True):
-        if clone:
-            surf = self.clone()
-        else:
+    def translate(self, vector, inplace=False):
+        if inplace:
             surf = self
+        else:
+            surf = self.clone()
         surf.x0 += vector[0]
         surf.y0 += vector[1]
         surf.z0 += vector[2]
@@ -2011,7 +2013,7 @@ class YCone(QuadricMixin, Surface):
         a = c = 1.
         d = e = f = 0.
         g, h, j = -2*x0, 2*y0*r2, -2*z0
-        k = x0**2 + z0**2 - r2*y0**2
+        k = x0*x0 + z0*z0 - r2*y0*y0
 
         return (a, b, c, d, e, f, g, h, j, k)
 
@@ -2019,13 +2021,13 @@ class YCone(QuadricMixin, Surface):
         x = point[0] - self.x0
         y = point[1] - self.y0
         z = point[2] - self.z0
-        return x**2 + z**2 - self.r2*y**2
+        return x*x + z*z - self.r2*y*y
 
-    def translate(self, vector, clone=True):
-        if clone:
-            surf = self.clone()
-        else:
+    def translate(self, vector, inplace=False):
+        if inplace:
             surf = self
+        else:
+            surf = self.clone()
         surf.x0 += vector[0]
         surf.y0 += vector[1]
         surf.z0 += vector[2]
@@ -2140,7 +2142,7 @@ class ZCone(QuadricMixin, Surface):
         a = b = 1.
         d = e = f = 0.
         g, h, j = -2*x0, -2*y0, 2*z0*r2
-        k = x0**2 + y0**2 - r2*z0**2
+        k = x0*x0 + y0*y0 - r2*z0*z0
 
         return (a, b, c, d, e, f, g, h, j, k)
 
@@ -2148,13 +2150,13 @@ class ZCone(QuadricMixin, Surface):
         x = point[0] - self.x0
         y = point[1] - self.y0
         z = point[2] - self.z0
-        return x**2 + y**2 - self.r2*z**2
+        return x*x + y*y - self.r2*z*z
 
-    def translate(self, vector, clone=True):
-        if clone:
-            surf = self.clone()
-        else:
+    def translate(self, vector, inplace=False):
+        if inplace:
             surf = self
+        else:
+            surf = self.clone()
         surf.x0 += vector[0]
         surf.y0 += vector[1]
         surf.z0 += vector[2]
@@ -2304,7 +2306,7 @@ class Quadric(QuadricMixin, Surface):
     def _get_base_coeffs(self):
         return tuple(getattr(self, c) for c in self._coeff_keys)
 
-    def translate(self, vector, clone=True):
+    def translate(self, vector, inplace=False):
         vector = np.asarray(vector)
         A, bvec, cnst = self.get_Abc()
 
@@ -2312,10 +2314,10 @@ class Quadric(QuadricMixin, Surface):
         k = cnst + np.matmul(vector.T, np.matmul(A, vector)) \
             - np.matmul(bvec.T, vector)
 
-        if clone:
-            surf = self.clone()
-        else:
+        if inplace:
             surf = self
+        else:
+            surf = self.clone()
 
         for key, val in zip(('g', 'h', 'j', 'k'), (g, h, j, k)):
             setattr(surf, key, val)
@@ -2511,17 +2513,6 @@ class Halfspace(Region):
         return type(self)(memo[key], self.side)
 
 
-def _get_subclasses(cls):
-    """Recursively find all subclasses of this class"""
-    return set(cls.__subclasses__()).union([s for c in cls.__subclasses__()
-                                            for s in _get_subclasses(c)])
-
-
-def _get_subclass_map(cls):
-    """Generate mapping of class _type attributes to classes"""
-    return {c._type: c for c in _get_subclasses(cls)}
-
-
-_SURFACE_CLASSES = _get_subclass_map(Surface)
+_SURFACE_CLASSES = {cls._type: cls for cls in Surface.__subclasses__()}
 
 

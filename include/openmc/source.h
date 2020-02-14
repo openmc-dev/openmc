@@ -59,10 +59,6 @@ private:
 //! Initialize source bank from file/distribution
 extern "C" void initialize_source();
 
-// as yet uncreated function to sample a source from a shared object
-// 
-// extern "C" Particle::Bank sample_source();
-
 //! Sample a site from all external source distributions in proportion to their
 //! source strength
 //! \param[inout] seed Pseudorandom seed pointer
@@ -73,7 +69,7 @@ Particle::Bank sample_external_source(uint64_t* seed);
 void fill_source_bank_fixedsource();
 
 //! Fill source bank at the end of a generation for dlopen based source simulation
-void fill_source_bank_dlopen_source();
+void fill_source_bank_custom_source();
 
 void free_memory_source();
 

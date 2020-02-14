@@ -4,6 +4,9 @@
 #include <sstream>
 #include <utility>  // For pair
 
+#include <fmt/core.h>
+#include <gsl/gsl>
+
 #include "openmc/capi.h"
 #include "openmc/error.h"
 #include "openmc/math_functions.h"
@@ -58,17 +61,16 @@ ZernikeFilter::to_statepoint(hid_t filter_group) const
 std::string
 ZernikeFilter::text_label(int bin) const
 {
-  std::stringstream out;
+  Expects(bin >= 0 && bin < n_bins_);
   for (int n = 0; n < order_+1; n++) {
     int last = (n + 1) * (n + 2) / 2;
     if (bin < last) {
       int first = last - (n + 1);
       int m = -n + (bin - first) * 2;
-      out << "Zernike expansion, Z" << n << "," << m;
-      break;
+      return fmt::format("Zernike expansion, Z{},{}", n, m);
     }
   }
-  return out.str();
+  UNREACHABLE();
 }
 
 void

@@ -1,8 +1,10 @@
 import hashlib
+import sys
 
 import openmc
 import openmc.mgxs
 from openmc.examples import pwr_assembly
+import pytest
 
 from tests.testing_harness import PyAPITestHarness
 
@@ -64,6 +66,8 @@ class MGXSTestHarness(PyAPITestHarness):
         return outstr
 
 
+@pytest.mark.xfail(sys.version_info < (3, 6),
+                   reason="Pandas 1.0 API changed and requires Python 3.6+")
 def test_mgxs_library_distribcell():
     model = pwr_assembly()
     harness = MGXSTestHarness('statepoint.10.h5', model)

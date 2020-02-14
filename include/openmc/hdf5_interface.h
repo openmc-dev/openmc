@@ -26,13 +26,18 @@ namespace openmc {
 //==============================================================================
 
 void read_attr(hid_t obj_id, const char* name, hid_t mem_type_id,
-               void* buffer);
+  void* buffer);
+
 void write_attr(hid_t obj_id, int ndim, const hsize_t* dims, const char* name,
-                hid_t mem_type_id, const void* buffer);
-void read_dataset(hid_t obj_id, const char* name, hid_t mem_type_id,
-                  void* buffer, bool indep);
-void write_dataset(hid_t group_id, int ndim, const hsize_t* dims, const char* name,
-                   hid_t mem_type_id, const void* buffer, bool indep);
+  hid_t mem_type_id, const void* buffer);
+
+void read_dataset_lowlevel(hid_t obj_id, const char* name, hid_t mem_type_id,
+  hid_t mem_space_id, bool indep, void* buffer);
+
+void write_dataset_lowlevel(hid_t group_id, int ndim, const hsize_t* dims,
+  const char* name, hid_t mem_type_id, hid_t mem_space_id, bool indep,
+  const void* buffer);
+
 bool using_mpio_device(hid_t obj_id);
 
 //==============================================================================
@@ -86,34 +91,32 @@ extern "C" {
   void read_attr_string(hid_t obj_id, const char* name, size_t slen,
                         char* buffer);
   void read_complex(hid_t obj_id, const char* name,
-                             std::complex<double>* buffer, bool indep);
-  void read_double(hid_t obj_id, const char* name, double* buffer,
-                            bool indep);
-  void read_int(hid_t obj_id, const char* name, int* buffer,
-                         bool indep);
+                    std::complex<double>* buffer, bool indep);
+  void read_double(hid_t obj_id, const char* name, double* buffer, bool indep);
+  void read_int(hid_t obj_id, const char* name, int* buffer, bool indep);
   void read_llong(hid_t obj_id, const char* name, long long* buffer,
-                           bool indep);
-  void read_string(hid_t obj_id, const char* name, size_t slen,
-                            char* buffer, bool indep);
+                  bool indep);
+  void read_string(hid_t obj_id, const char* name, size_t slen, char* buffer,
+                   bool indep);
 
 
-  void read_tally_results(hid_t group_id, hsize_t n_filter,
-                                   hsize_t n_score, double* results);
+  void read_tally_results(hid_t group_id, hsize_t n_filter, hsize_t n_score,
+                          double* results);
   void write_attr_double(hid_t obj_id, int ndim, const hsize_t* dims,
-                                  const char* name, const double* buffer);
+                         const char* name, const double* buffer);
   void write_attr_int(hid_t obj_id, int ndim, const hsize_t* dims,
-                               const char* name, const int* buffer);
+                      const char* name, const int* buffer);
   void write_attr_string(hid_t obj_id, const char* name, const char* buffer);
   void write_double(hid_t group_id, int ndim, const hsize_t* dims,
-                             const char* name, const double* buffer, bool indep);
+                    const char* name, const double* buffer, bool indep);
   void write_int(hid_t group_id, int ndim, const hsize_t* dims,
-                          const char* name, const int* buffer, bool indep);
+                 const char* name, const int* buffer, bool indep);
   void write_llong(hid_t group_id, int ndim, const hsize_t* dims,
-                            const char* name, const long long* buffer, bool indep);
+                   const char* name, const long long* buffer, bool indep);
   void write_string(hid_t group_id, int ndim, const hsize_t* dims, size_t slen,
-                             const char* name, char const* buffer, bool indep);
+                    const char* name, char const* buffer, bool indep);
   void write_tally_results(hid_t group_id, hsize_t n_filter, hsize_t n_score,
-                                    const double* results);
+                           const double* results);
 } // extern "C"
 
 //==============================================================================
@@ -233,7 +236,8 @@ template<typename T> inline
 std::enable_if_t<std::is_scalar<std::decay_t<T>>::value>
 read_dataset(hid_t obj_id, const char* name, T& buffer, bool indep=false)
 {
-  read_dataset(obj_id, name, H5TypeMap<T>::type_id, &buffer, indep);
+  read_dataset_lowlevel(obj_id, name, H5TypeMap<T>::type_id, H5S_ALL, indep,
+                        &buffer);
 }
 
 // overload for std::string
@@ -251,9 +255,11 @@ read_dataset(hid_t obj_id, const char* name, std::string& str, bool indep=false)
 
 // array version
 template<typename T, std::size_t N> inline void
-read_dataset(hid_t dset, const char* name, std::array<T, N>& buffer, bool indep=false)
+read_dataset(hid_t dset, const char* name, std::array<T, N>& buffer,
+             bool indep=false)
 {
-  read_dataset(dset, name, H5TypeMap<T>::type_id, buffer.data(), indep);
+  read_dataset_lowlevel(dset, name, H5TypeMap<T>::type_id, H5S_ALL, indep,
+                        buffer.data());
 }
 
 // vector version
@@ -267,11 +273,13 @@ void read_dataset(hid_t dset, std::vector<T>& vec, bool indep=false)
   vec.resize(shape[0]);
 
   // Read data into vector
-  read_dataset(dset, nullptr, H5TypeMap<T>::type_id, vec.data(), indep);
+  read_dataset_lowlevel(dset, nullptr, H5TypeMap<T>::type_id, H5S_ALL, indep,
+                        vec.data());
 }
 
 template <typename T>
-void read_dataset(hid_t obj_id, const char* name, std::vector<T>& vec, bool indep=false)
+void read_dataset(hid_t obj_id, const char* name, std::vector<T>& vec,
+                  bool indep=false)
 {
   hid_t dset = open_dataset(obj_id, name);
   read_dataset(dset, vec, indep);
@@ -291,14 +299,17 @@ void read_dataset(hid_t dset, xt::xarray<T>& arr, bool indep=false)
   arr.resize(shape);
 
   // Read data from attribute
-  read_dataset(dset, nullptr, H5TypeMap<T>::type_id, arr.data(), indep);
+  read_dataset_lowlevel(dset, nullptr, H5TypeMap<T>::type_id, H5S_ALL, indep,
+                        arr.data());
 }
 
 template<>
-void read_dataset(hid_t dset, xt::xarray<std::complex<double>>& arr, bool indep);
+void read_dataset(hid_t dset, xt::xarray<std::complex<double>>& arr,
+                  bool indep);
 
 template <typename T>
-void read_dataset(hid_t obj_id, const char* name, xt::xarray<T>& arr, bool indep=false)
+void read_dataset(hid_t obj_id, const char* name, xt::xarray<T>& arr,
+                  bool indep=false)
 {
   // Open dataset and read array
   hid_t dset = open_dataset(obj_id, name);
@@ -308,7 +319,8 @@ void read_dataset(hid_t obj_id, const char* name, xt::xarray<T>& arr, bool indep
 
 
 template <typename T, std::size_t N>
-void read_dataset(hid_t obj_id, const char* name, xt::xtensor<T, N>& arr, bool indep=false)
+void read_dataset(hid_t obj_id, const char* name, xt::xtensor<T, N>& arr,
+                  bool indep=false)
 {
   // Open dataset and read array
   hid_t dset = open_dataset(obj_id, name);
@@ -346,7 +358,7 @@ read_dataset(hid_t obj_id, const char* name, Position& r, bool indep=false)
 
 template <typename T, std::size_t N>
 inline void read_dataset_as_shape(hid_t obj_id, const char* name,
-                           xt::xtensor<T, N>& arr, bool indep=false)
+                                  xt::xtensor<T, N>& arr, bool indep=false)
 {
   hid_t dset = open_dataset(obj_id, name);
 
@@ -357,7 +369,8 @@ inline void read_dataset_as_shape(hid_t obj_id, const char* name,
   std::vector<T> buffer(size);
 
   // Read data from attribute
-  read_dataset(dset, nullptr, H5TypeMap<T>::type_id, buffer.data(), indep);
+  read_dataset_lowlevel(dset, nullptr, H5TypeMap<T>::type_id, H5S_ALL, indep,
+                        buffer.data());
 
   // Adapt into xarray
   arr = xt::adapt(buffer, arr.shape());
@@ -367,8 +380,8 @@ inline void read_dataset_as_shape(hid_t obj_id, const char* name,
 
 
 template <typename T, std::size_t N>
-inline void read_nd_vector(hid_t obj_id, const char* name, xt::xtensor<T, N>& result,
-     bool must_have=false)
+inline void read_nd_vector(hid_t obj_id, const char* name,
+                           xt::xtensor<T, N>& result, bool must_have=false)
 {
   if (object_exists(obj_id, name)) {
     read_dataset_as_shape(obj_id, name, result, true);
@@ -431,7 +444,8 @@ template<typename T> inline
 std::enable_if_t<std::is_scalar<std::decay_t<T>>::value>
 write_dataset(hid_t obj_id, const char* name, T buffer)
 {
-  write_dataset(obj_id, 0, nullptr, name, H5TypeMap<T>::type_id, &buffer, false);
+  write_dataset_lowlevel(obj_id, 0, nullptr, name, H5TypeMap<T>::type_id,
+                         H5S_ALL, false, &buffer);
 }
 
 inline void
@@ -444,11 +458,13 @@ template<typename T, std::size_t N> inline void
 write_dataset(hid_t obj_id, const char* name, const std::array<T, N>& buffer)
 {
   hsize_t dims[] {N};
-  write_dataset(obj_id, 1, dims, name, H5TypeMap<T>::type_id, buffer.data(), false);
+  write_dataset_lowlevel(obj_id, 1, dims, name, H5TypeMap<T>::type_id,
+                         H5S_ALL, false, buffer.data());
 }
 
 inline void
-write_dataset(hid_t obj_id, const char* name, const std::vector<std::string>& buffer)
+write_dataset(hid_t obj_id, const char* name,
+              const std::vector<std::string>& buffer)
 {
   auto n {buffer.size()};
   hsize_t dims[] {n};
@@ -477,7 +493,8 @@ template<typename T> inline void
 write_dataset(hid_t obj_id, const char* name, const std::vector<T>& buffer)
 {
   hsize_t dims[] {buffer.size()};
-  write_dataset(obj_id, 1, dims, name, H5TypeMap<T>::type_id, buffer.data(), false);
+  write_dataset_lowlevel(obj_id, 1, dims, name, H5TypeMap<T>::type_id,
+                         H5S_ALL, false, buffer.data());
 }
 
 // Template for xarray, xtensor, etc.
@@ -487,8 +504,8 @@ write_dataset(hid_t obj_id, const char* name, const xt::xcontainer<D>& arr)
   using T = typename D::value_type;
   auto s = arr.shape();
   std::vector<hsize_t> dims {s.cbegin(), s.cend()};
-  write_dataset(obj_id, dims.size(), dims.data(), name, H5TypeMap<T>::type_id,
-                arr.data(), false);
+  write_dataset_lowlevel(obj_id, dims.size(), dims.data(), name,
+                         H5TypeMap<T>::type_id, H5S_ALL, false, arr.data());
 }
 
 inline void

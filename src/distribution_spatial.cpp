@@ -96,9 +96,7 @@ CylindricalIndependent::CylindricalIndependent(pugi::xml_node node)
     if (origin.size() == 3) {
       origin_ = origin;
     } else {
-      std::stringstream err_msg;
-      err_msg << "Origin for cylindrical source distribution must be length 3";
-      fatal_error(err_msg);
+      fatal_error("Origin for cylindrical source distribution must be length 3");
     }
   } else {
     // If no coordinates were specified, default to (0, 0, 0)
@@ -162,9 +160,7 @@ SphericalIndependent::SphericalIndependent(pugi::xml_node node)
     if (origin.size() == 3) {
       origin_ = origin;
     } else {
-      std::stringstream err_msg;
-      err_msg << "Origin for spherical source distribution must be length 3";
-      fatal_error(err_msg);
+      fatal_error("Origin for spherical source distribution must be length 3");
     }
   } else {
     // If no coordinates were specified, default to (0, 0, 0)

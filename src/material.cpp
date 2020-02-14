@@ -47,8 +47,9 @@ std::vector<std::unique_ptr<Material>> materials;
 //==============================================================================
 
 Material::Material(pugi::xml_node node)
-  : index_{model::materials.size()}
 {
+  index_ = model::materials.size(); // Avoids warning about narrowing
+
   if (check_for_node(node, "id")) {
     this->set_id(std::stoi(get_node_value(node, "id")));
   } else {

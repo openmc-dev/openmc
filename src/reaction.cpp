@@ -3,6 +3,8 @@
 #include <string>
 #include <utility> // for move
 
+#include <fmt/core.h>
+
 #include "openmc/constants.h"
 #include "openmc/hdf5_interface.h"
 #include "openmc/endf.h"
@@ -35,8 +37,7 @@ Reaction::Reaction(hid_t group, const std::vector<int>& temperatures)
   // Read cross section and threshold_idx data
   for (auto t : temperatures) {
     // Get group corresponding to temperature
-    std::string temp_str {std::to_string(t) + "K"};
-    hid_t temp_group = open_group(group, temp_str.c_str());
+    hid_t temp_group = open_group(group, fmt::format("{}K", t).c_str());
     hid_t dset = open_dataset(temp_group, "xs");
 
     // Get threshold index
@@ -178,7 +179,7 @@ std::string reaction_name(int mt)
   } else if (mt == N_NPA) {
     return "(n,npa)";
   } else if (N_N1 <= mt && mt <= N_N40) {
-    return "(n,n" + std::to_string(mt-50) + ")";
+    return fmt::format("(n,n{})", mt - 50);
   } else if (mt == N_NC) {
     return "(n,nc)";
   } else if (mt == N_DISAPPEAR) {
@@ -244,33 +245,31 @@ std::string reaction_name(int mt)
   } else if (mt == PHOTOELECTRIC) {
     return "photoelectric";
   } else if (534 <= mt && mt <= 572) {
-    std::stringstream name;
-    name << "photoelectric, " << SUBSHELLS[mt - 534] << " subshell";
-    return name.str();
+    return fmt::format("photoelectric, {} subshell", SUBSHELLS[mt - 534]);
   } else if (600 <= mt && mt <= 648) {
-    return "(n,p" + std::to_string(mt-600) + ")";
+    return fmt::format("(n,p{})", mt - 600);
   } else if (mt == 649) {
     return "(n,pc)";
   } else if (650 <= mt && mt <= 698) {
-    return "(n,d" + std::to_string(mt-650) + ")";
+    return fmt::format("(n,d{})", mt - 650);
   } else if (mt == 699) {
     return "(n,dc)";
   } else if (700 <= mt && mt <= 748) {
-    return "(n,t" + std::to_string(mt-700) + ")";
+    return fmt::format("(n,t{})", mt - 700);
   } else if (mt == 749) {
     return "(n,tc)";
   } else if (750 <= mt && mt <= 798) {
-    return "(n,3He" + std::to_string(mt-750) + ")";
+    return fmt::format("(n,3He{})", mt - 750);
   } else if (mt == 799) {
     return "(n,3Hec)";
   } else if (800 <= mt && mt <= 848) {
-    return "(n,a" + std::to_string(mt-800) + ")";
+    return fmt::format("(n,a{})", mt - 800);
   } else if (mt == 849) {
     return "(n,ac)";
   } else if (mt == HEATING_LOCAL) {
     return "heating-local";
   } else {
-    return "MT=" + std::to_string(mt);
+    return fmt::format("MT={}", mt);
   }
 }
 

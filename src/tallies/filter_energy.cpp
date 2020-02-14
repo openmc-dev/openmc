@@ -1,5 +1,7 @@
 #include "openmc/tallies/filter_energy.h"
 
+#include <fmt/core.h>
+
 #include "openmc/capi.h"
 #include "openmc/constants.h"  // For F90_NONE
 #include "openmc/mgxs_interface.h"
@@ -90,9 +92,7 @@ EnergyFilter::to_statepoint(hid_t filter_group) const
 std::string
 EnergyFilter::text_label(int bin) const
 {
-  std::stringstream out;
-  out << "Incoming Energy [" << bins_[bin] << ", " << bins_[bin+1] << ")";
-  return out.str();
+  return fmt::format("Incoming Energy [{}, {})", bins_[bin], bins_[bin+1]);
 }
 
 //==============================================================================
@@ -119,9 +119,7 @@ EnergyoutFilter::get_all_bins(const Particle* p, TallyEstimator estimator,
 std::string
 EnergyoutFilter::text_label(int bin) const
 {
-  std::stringstream out;
-  out << "Outgoing Energy [" << bins_[bin] << ", " << bins_[bin+1] << ")";
-  return out.str();
+  return fmt::format("Outgoing Energy [{}, {})", bins_[bin], bins_[bin+1]);
 }
 
 //==============================================================================

@@ -353,7 +353,6 @@ class PlaneMixin(metaclass=ABCMeta):
         a, b, c, d = self._get_base_coeffs()
         return a*x + b*y + c*z - d
 
-    @abstractmethod
     def translate(self, vector, inplace=False):
         """Translate surface in given direction
 
@@ -371,7 +370,18 @@ class PlaneMixin(metaclass=ABCMeta):
             Translated surface
 
         """
-        pass
+        vx, vy, vz = vector
+        a, b, c, d = self._get_base_coeffs()
+        d = d + a*vx + b*vy + c*vz
+
+        if inplace:
+            surf = self
+        else:
+            surf = self.clone()
+
+        setattr(surf, self._coeff_keys[-1], d)
+
+        return surf
 
     def to_xml_element(self):
         """Return XML representation of the surface
@@ -509,17 +519,6 @@ class Plane(PlaneMixin, Surface):
     def _get_base_coeffs(self):
         return (self.a, self.b, self.c, self.d)
 
-    def translate(self, vector, inplace=False):
-        vx, vy, vz = vector
-        a, b, c, d = self._get_base_coeffs()
-        d = d + a*vx + b*vy + c*vz
-        if inplace:
-            surf = self
-        else:
-            surf = self.clone()
-        surf.d = d
-        return surf
-
     @classmethod
     def from_points(cls, p1, p2, p3, **kwargs):
         """Return a plane given three points that pass through it.
@@ -630,14 +629,6 @@ class XPlane(PlaneMixin, Surface):
     def evaluate(self, point):
         return point[0] - self.x0
 
-    def translate(self, vector, inplace=False):
-        if inplace:
-            surf = self
-        else:
-            surf = self.clone()
-        surf.x0 += vector[0]
-        return surf
-
 
 Plane.register(XPlane)
 
@@ -718,14 +709,6 @@ class YPlane(PlaneMixin, Surface):
 
     def evaluate(self, point):
         return point[1] - self.y0
-
-    def translate(self, vector, inplace=False):
-        if inplace:
-            surf = self
-        else:
-            surf = self.clone()
-        surf.y0 += vector[1]
-        return surf
 
 
 Plane.register(YPlane)
@@ -808,14 +791,6 @@ class ZPlane(PlaneMixin, Surface):
     def evaluate(self, point):
         return point[2] - self.z0
 
-    def translate(self, vector, inplace=False):
-        if inplace:
-            surf = self
-        else:
-            surf = self.clone()
-        surf.z0 += vector[2]
-        return surf
-
 
 Plane.register(ZPlane)
 
@@ -896,7 +871,6 @@ class QuadricMixin(metaclass=ABCMeta):
         A, b, c = self.get_Abc()
         return np.matmul(x.T, np.matmul(A, x)) + np.matmul(b.T, x) + c
 
-    @abstractmethod
     def translate(self, vector, inplace=False):
         """Translate surface in given direction
 
@@ -914,7 +888,29 @@ class QuadricMixin(metaclass=ABCMeta):
             Translated surface
 
         """
-        pass
+        vector = np.asarray(vector)
+
+        if inplace:
+            surf = self
+        else:
+            surf = self.clone()
+
+        if set(('x0', 'y0', 'z0')).intersection(set(surf._coeff_keys)):
+            for vi, xi in zip(vector, ('x0', 'y0', 'z0')):
+                val = getattr(surf, xi, None)
+                if val is not None:
+                    setattr(surf, xi, val + vi)
+        else:
+            A, bvec, cnst = self.get_Abc()
+
+            g, h, j = bvec - 2*np.matmul(vector.T, A)
+            k = cnst + np.matmul(vector.T, np.matmul(A, vector)) \
+                - np.matmul(bvec.T, vector)
+
+            for key, val in zip(('g', 'h', 'j', 'k'), (g, h, j, k)):
+                setattr(surf, key, val)
+
+        return surf
 
 
 class Cylinder(QuadricMixin, Surface):
@@ -1073,18 +1069,6 @@ class Cylinder(QuadricMixin, Surface):
 
         return (a, b, c, d, e, f, g, h, j, k)
 
-    def translate(self, vector, inplace=False):
-        if inplace:
-            surf = self
-        else:
-            surf = self.clone()
-
-        surf.x0 += vector[0]
-        surf.y0 += vector[1]
-        surf.z0 += vector[2]
-
-        return surf
-
     @classmethod
     def from_points(cls, p1, p2, r=1., **kwargs):
         """Return a cylinder given points that define the axis and a radius.
@@ -1222,15 +1206,6 @@ class XCylinder(QuadricMixin, Surface):
         z = point[2] - self.z0
         return y*y + z*z - self.r**2
 
-    def translate(self, vector, inplace=False):
-        if inplace:
-            surf = self
-        else:
-            surf = self.clone()
-        surf.y0 += vector[1]
-        surf.z0 += vector[2]
-        return surf
-
 
 Cylinder.register(XCylinder)
 
@@ -1343,15 +1318,6 @@ class YCylinder(QuadricMixin, Surface):
         z = point[2] - self.z0
         return x*x + z*z - self.r**2
 
-    def translate(self, vector, inplace=False):
-        if inplace:
-            surf = self
-        else:
-            surf = self.clone()
-        surf.x0 += vector[0]
-        surf.z0 += vector[2]
-        return surf
-
 
 Cylinder.register(YCylinder)
 
@@ -1463,15 +1429,6 @@ class ZCylinder(QuadricMixin, Surface):
         x = point[0] - self.x0
         y = point[1] - self.y0
         return x*x + y*y - self.r**2
-
-    def translate(self, vector, inplace=False):
-        if inplace:
-            surf = self
-        else:
-            surf = self.clone()
-        surf.x0 += vector[0]
-        surf.y0 += vector[1]
-        return surf
 
 
 Cylinder.register(ZCylinder)
@@ -1598,16 +1555,6 @@ class Sphere(QuadricMixin, Surface):
         y = point[1] - self.y0
         z = point[2] - self.z0
         return x*x + y*y + z*z - self.r**2
-
-    def translate(self, vector, inplace=False):
-        if inplace:
-            surf = self
-        else:
-            surf = self.clone()
-        surf.x0 += vector[0]
-        surf.y0 += vector[1]
-        surf.z0 += vector[2]
-        return surf
 
 
 class Cone(QuadricMixin, Surface):
@@ -1768,16 +1715,6 @@ class Cone(QuadricMixin, Surface):
 
         return (a, b, c, d, e, f, g, h, j, k)
 
-    def translate(self, vector, inplace=False):
-        if inplace:
-            surf = self
-        else:
-            surf = self.clone()
-        surf.x0 += vector[0]
-        surf.y0 += vector[1]
-        surf.z0 += vector[2]
-        return surf
-
 
 class XCone(QuadricMixin, Surface):
     """A cone parallel to the x-axis of the form :math:`(y - y_0)^2 + (z - z_0)^2 =
@@ -1893,16 +1830,6 @@ class XCone(QuadricMixin, Surface):
         y = point[1] - self.y0
         z = point[2] - self.z0
         return y*y + z*z - self.r2*x*x
-
-    def translate(self, vector, inplace=False):
-        if inplace:
-            surf = self
-        else:
-            surf = self.clone()
-        surf.x0 += vector[0]
-        surf.y0 += vector[1]
-        surf.z0 += vector[2]
-        return surf
 
 
 Cone.register(XCone)
@@ -2023,16 +1950,6 @@ class YCone(QuadricMixin, Surface):
         z = point[2] - self.z0
         return x*x + z*z - self.r2*y*y
 
-    def translate(self, vector, inplace=False):
-        if inplace:
-            surf = self
-        else:
-            surf = self.clone()
-        surf.x0 += vector[0]
-        surf.y0 += vector[1]
-        surf.z0 += vector[2]
-        return surf
-
 
 Cone.register(YCone)
 
@@ -2151,16 +2068,6 @@ class ZCone(QuadricMixin, Surface):
         y = point[1] - self.y0
         z = point[2] - self.z0
         return x*x + y*y - self.r2*z*z
-
-    def translate(self, vector, inplace=False):
-        if inplace:
-            surf = self
-        else:
-            surf = self.clone()
-        surf.x0 += vector[0]
-        surf.y0 += vector[1]
-        surf.z0 += vector[2]
-        return surf
 
 
 Cone.register(ZCone)
@@ -2305,24 +2212,6 @@ class Quadric(QuadricMixin, Surface):
 
     def _get_base_coeffs(self):
         return tuple(getattr(self, c) for c in self._coeff_keys)
-
-    def translate(self, vector, inplace=False):
-        vector = np.asarray(vector)
-        A, bvec, cnst = self.get_Abc()
-
-        g, h, j = bvec - 2*np.matmul(vector.T, A)
-        k = cnst + np.matmul(vector.T, np.matmul(A, vector)) \
-            - np.matmul(bvec.T, vector)
-
-        if inplace:
-            surf = self
-        else:
-            surf = self.clone()
-
-        for key, val in zip(('g', 'h', 'j', 'k'), (g, h, j, k)):
-            setattr(surf, key, val)
-
-        return surf
 
 
 class Halfspace(Region):

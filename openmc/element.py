@@ -54,8 +54,8 @@ class Element(str):
             'ao' for atom percent and 'wo' for weight percent
         enrichment : float, optional
             Enrichment of an enrichment_taget nuclide in percent (ao or wo).
-            If enrichment_taget is not supplied then it is enrichment for U235 in
-            weight percent. For example, input 4.95 for 4.95 weight percent
+            If enrichment_taget is not supplied then it is enrichment for U235
+            in weight percent. For example, input 4.95 for 4.95 weight percent
             enriched U. Default is None (natural composition).
         enrichment_target: str, optional
             Single nuclide name to enrich from a natural composition e.g. O16
@@ -86,8 +86,8 @@ class Element(str):
             of the element is requested
 
         ValueError
-            Enrichment is requested of the element composed of more or less
-            then 2 isotopes.
+            Enrichment is requested of the element that is not composed of
+            two isotopes.
 
         Notes
         -----
@@ -101,6 +101,8 @@ class Element(str):
         Function does not check if enrichment value is in a valid range <0;100>
 
         """
+        # Check input
+        cv.check_value('enrichment_type', enrichment_type, {'ao', 'wo'})
 
         # Get the nuclides present in nature
         natural_nuclides = set()
@@ -193,6 +195,12 @@ class Element(str):
         # Old treatment for Uranium
         if enrichment is not None and enrichment_target is None:
 
+            # Check that the element is Uranium
+            if self.name != 'U':
+                msg = 'Enrichment procedure for Uranium was requested, '\
+                      'but the isotope is {0} not U'.format(self)
+                raise ValueError(msg)
+
             # Calculate the mass fractions of isotopes
             abundances['U234'] = 0.0089 * enrichment
             abundances['U235'] = enrichment
@@ -209,8 +217,8 @@ class Element(str):
                 abundances[nuclide] /= sum_abundances
 
         # Modify mole fractions if enrichment provided
-        # New treatment for arbitrary element94.96165869352852
-        # Interpret required enrichment as weight %
+        # New treatment for arbitrary element
+        # Interpret required enrichment as weight
         elif enrichment is not None and enrichment_target is not None:
 
             # Check if is a single isotope mixture

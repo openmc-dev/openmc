@@ -4,6 +4,7 @@ import os
 from xml.etree import ElementTree as ET
 
 import openmc.checkvalue as cv
+from numbers import Real
 from openmc.data import NATURAL_ABUNDANCE, atomic_mass
 
 
@@ -57,6 +58,7 @@ class Element(str):
             If enrichment_taget is not supplied then it is enrichment for U235
             in weight percent. For example, input 4.95 for 4.95 weight percent
             enriched U. Default is None (natural composition).
+            Value must be in <0;100>
         enrichment_target: str, optional
             Single nuclide name to enrich from a natural composition e.g. O16
         enrichment_type: {'ao', 'wo'}, optional
@@ -89,6 +91,16 @@ class Element(str):
             Enrichment is requested of the element that is not composed of
             two isotopes.
 
+        ValueError
+            If `enrichment_type` is not 'ao' or 'wo'
+
+        ValueError
+            If `enrichment` is outside <0;100> range
+
+        ValueError
+            If enrichment procedure for Uranium is used when element is not
+            Uranium.
+
         Notes
         -----
         When the `enrichment` argument is specified, a correlation from
@@ -98,11 +110,19 @@ class Element(str):
         respectively, of the U235 weight fraction. The remainder of the
         isotopic weight is assigned to U238.
 
-        Function does not check if enrichment value is in a valid range <0;100>
+        When the `enrichment` argument is specified with `enrichment_target` a
+        general enrichment procedure is used. It will raise exception unless
+        element is composed of excatly 2 isotopes. `enrichment` is interpreted
+        as percent. By default it is atomic. Can be controlled by variable
+        `enrichment_type`.
 
         """
         # Check input
         cv.check_value('enrichment_type', enrichment_type, {'ao', 'wo'})
+
+        if enrichment is not None:
+            cv.check_less_than('enrichment', enrichment, 100.0, equality=True)
+            cv.check_greater_than('enrichment', enrichment, 0., equality=True)
 
         # Get the nuclides present in nature
         natural_nuclides = set()

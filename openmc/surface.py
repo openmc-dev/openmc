@@ -379,7 +379,7 @@ class PlaneMixin(metaclass=ABCMeta):
         else:
             surf = self.clone()
 
-        setattr(surf, self._coeff_keys[-1], d)
+        setattr(surf, surf._coeff_keys[-1], d)
 
         return surf
 
@@ -410,9 +410,9 @@ class Plane(PlaneMixin, Surface):
     a : float, optional
         The 'A' parameter for the plane. Defaults to 1.
     b : float, optional
-        The 'B' parameter for the plane. Defaults to 0.
+        The 'B' parameter for the plane. Defaults to 1.
     c : float, optional
-        The 'C' parameter for the plane. Defaults to 0.
+        The 'C' parameter for the plane. Defaults to 1.
     d : float, optional
         The 'D' parameter for the plane. Defaults to 0.
     boundary_type : {'transmission, 'vacuum', 'reflective', 'white'}, optional
@@ -455,30 +455,82 @@ class Plane(PlaneMixin, Surface):
     _type = 'plane'
     _coeff_keys = ('a', 'b', 'c', 'd')
 
-    def __init__(self, a=1., b=0., c=0., d=0., *args, **kwargs):
-        # work around until capital letter kwargs are deprecated
-        oldkwargs = deepcopy(kwargs)
-        # work around for accepting Surface kwargs as positional parameters 
-        # until they are deprecated
-        argsdict = dict(zip(('boundary_type', 'name', 'surface_id'), args))
-        for k, v in argsdict.items():
-            warn(_WARNING_KWARGS.format(type(self).__name__, k), FutureWarning)
+    def __new__(cls, *args, **kwargs):
+        # Intercept Plane creation to return a simpler form if warranted
+        new_cls, kwargs = cls._process_args(*args, **kwargs)
+        obj = super().__new__(new_cls)
+        if new_cls is not cls:
+            obj.__init__(**kwargs)
+        return obj
 
-        kwargs.update(argsdict)
-
-        for k in 'ABCD':
-            kwargs.pop(k, None)
-
+    def __init__(self, a=1., b=1., c=1., d=0., *args, **kwargs):
         super().__init__(**kwargs)
 
         for key, val in zip(self._coeff_keys, (a, b, c, d)):
             setattr(self, key, val)
 
-        for k, v in oldkwargs.items():
-            if k in 'ABCD':
-                warn(_WARNING_UPPER.format(type(self).__name__, k.lower(), k),
+    @classmethod
+    def _process_args(cls, *args, **kwargs):
+        """ Process arguments to Plane class to determine which type of Plane
+        should be instantiated.
+
+        Returns
+        -------
+        tuple : tuple of type and dict
+            Returns a tuple where the first element is the class (XPlane,
+            YPlane, ZPlane, or Plane) that should be instantiated. The second
+            element is the dictionary of keyword arguments that should be
+            passed to that object's constructor.
+
+        """
+        # *args should ultimately be limited to a, b, c, d as specified in
+        # __init__, but to preserve the API it is allowed to accept Surface
+        # parameters for now, but will raise warnings if this is done.
+        argtup = ('a', 'b', 'c', 'd', 'boundary_type', 'name', 'surface_id')
+        kwargs.update(dict(zip(argtup, args)))
+
+        # Warn if capital letter arguments are passed
+        for k in 'ABCD':
+            val = kwargs.pop(k, None)
+            if val is not None:
+                warn(_WARNING_UPPER.format(cls.__name__, k.lower(), k),
                      FutureWarning)
-                setattr(self, k.lower(), v)
+                kwargs[k.lower()] = val
+
+        # Warn if Surface parameters are passed by position, not by keyword
+        for k in ('boundary_type', 'name', 'surface_id'):
+            val = kwargs.get(k, None)
+            if val is not None:
+                warn(_WARNING_KWARGS.format(cls.__name__, k),
+                     FutureWarning)
+
+        # Determine if a simpler version of a Plane should be returned and
+        # modify kwargs accordingly
+        a = kwargs.get('a', 1.)
+        b = kwargs.get('b', 1.)
+        c = kwargs.get('c', 1.)
+
+        # If two of a, b, or c are zero, a simpler version should be returned
+        if np.sum(np.isclose((a, b, c), 0., rtol=0., atol=cls._atol)) >= 2:
+            a = kwargs.pop('a', 1.)
+            b = kwargs.pop('b', 1.)
+            c = kwargs.pop('c', 1.)
+            d = kwargs.pop('d', 0.)
+            # Return XPlane class and kwargs
+            if ~np.isclose(a, 0.0, rtol=0., atol=cls._atol):
+                kwargs['x0'] = d/a
+                return XPlane, kwargs
+            # Return YPlane class and kwargs
+            elif ~np.isclose(b, 0.0, rtol=0., atol=cls._atol):
+                kwargs['y0'] = d/b
+                return YPlane, kwargs
+            # Return ZPlane class and kwargs
+            elif ~np.isclose(c, 0.0, rtol=0., atol=cls._atol):
+                kwargs['z0'] = d/c
+                return ZPlane, kwargs
+        else:
+            # Return Plane class and kwargs
+            return cls, kwargs
 
     @property
     def a(self):
@@ -597,8 +649,7 @@ class XPlane(PlaneMixin, Surface):
     def __init__(self, x0=0., *args, **kwargs):
         # work around for accepting Surface kwargs as positional parameters 
         # until they are deprecated
-        argsdict = {k: v for k, v in zip(('boundary_type', 'name',
-                                          'surface_id'), args)}
+        argsdict = dict(zip(('boundary_type', 'name', 'surface_id'), args))
         for k, v in argsdict.items():
             warn(_WARNING_KWARGS.format(type(self).__name__, k), FutureWarning)
         kwargs.update(argsdict)

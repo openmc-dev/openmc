@@ -107,6 +107,125 @@ StructuredMesh::bin_label(int bin) const {
   }
 }
 
+//==============================================================================
+// Untructured Mesh implementation
+//==============================================================================
+
+UnstructuredMeshBase::UnstructuredMeshBase(pugi::xml_node node) : Mesh(node) {
+  // check the mesh type
+  if (check_for_node(node, "type")) {
+    auto temp = get_node_value(node, "type", true, true);
+    if (temp != "unstructured") {
+      fatal_error("Invalid mesh type: " + temp);
+    }
+  }
+
+  // get the filename of the unstructured mesh to load
+  if (check_for_node(node, "mesh_file")) {
+    filename_ = get_node_value(node, "mesh_file");
+  }
+  else {
+    fatal_error("No filename supplied for unstructured mesh with ID: " +
+                std::to_string(id_));
+  }
+}
+
+std::string
+UnstructuredMeshBase::bin_label(int bin) const {
+  std::stringstream out;
+  out << "Mesh Index (" << bin << ")";
+  return out.str();
+};
+
+//==============================================================================
+// RegularMesh implementation
+//==============================================================================
+
+RegularMesh::RegularMesh(pugi::xml_node node)
+  : StructuredMesh {node}
+{
+  // Determine number of dimensions for mesh
+  if (check_for_node(node, "dimension")) {
+    shape_ = get_node_xarray<int>(node, "dimension");
+    int n = n_dimension_ = shape_.size();
+    if (n != 1 && n != 2 && n != 3) {
+      fatal_error("Mesh must be one, two, or three dimensions.");
+    }
+
+    // Check that dimensions are all greater than zero
+    if (xt::any(shape_ <= 0)) {
+      fatal_error("All entries on the <dimension> element for a tally "
+        "mesh must be positive.");
+    }
+  }
+
+  // Check for lower-left coordinates
+  if (check_for_node(node, "lower_left")) {
+    // Read mesh lower-left corner location
+    lower_left_ = get_node_xarray<double>(node, "lower_left");
+  } else {
+    fatal_error("Must specify <lower_left> on a mesh.");
+  }
+
+  if (check_for_node(node, "width")) {
+    // Make sure both upper-right or width were specified
+    if (check_for_node(node, "upper_right")) {
+      fatal_error("Cannot specify both <upper_right> and <width> on a mesh.");
+    }
+
+    width_ = get_node_xarray<double>(node, "width");
+
+    // Check to ensure width has same dimensions
+    auto n = width_.size();
+    if (n != lower_left_.size()) {
+      fatal_error("Number of entries on <width> must be the same as "
+        "the number of entries on <lower_left>.");
+    }
+
+    // Check for negative widths
+    if (xt::any(width_ < 0.0)) {
+      fatal_error("Cannot have a negative <width> on a tally mesh.");
+    }
+
+    // Set width and upper right coordinate
+    upper_right_ = xt::eval(lower_left_ + shape_ * width_);
+
+  } else if (check_for_node(node, "upper_right")) {
+    upper_right_ = get_node_xarray<double>(node, "upper_right");
+
+    // Check to ensure width has same dimensions
+    auto n = upper_right_.size();
+    if (n != lower_left_.size()) {
+      fatal_error("Number of entries on <upper_right> must be the "
+        "same as the number of entries on <lower_left>.");
+    }
+
+    // Check that upper-right is above lower-left
+    if (xt::any(upper_right_ < lower_left_)) {
+      fatal_error("The <upper_right> coordinates must be greater than "
+        "the <lower_left> coordinates on a tally mesh.");
+    }
+
+    // Set width
+    if (shape_.size() > 0) {
+      width_ = xt::eval((upper_right_ - lower_left_) / shape_);
+    }
+  } else {
+    fatal_error("Must specify either <upper_right> and <width> on a mesh.");
+  }
+
+  // Make sure lower_left and dimension match
+  if (shape_.size() > 0) {
+    if (shape_.size() != lower_left_.size()) {
+      fatal_error("Number of entries on <lower_left> must be the same "
+        "as the number of entries on <dimension>.");
+    }
+
+    // Set volume fraction
+    volume_frac_ = 1.0/xt::prod(shape_)();
+  }
+}
+
 void StructuredMesh::get_indices(Position r, int* ijk, bool* in_mesh) const
 {
   *in_mesh = true;
@@ -1478,28 +1597,6 @@ openmc_rectilinear_mesh_set_grid(int32_t index, const double* grid_x,
 
 #ifdef DAGMC
 
-<<<<<<< HEAD
-UnstructuredMesh::UnstructuredMesh(pugi::xml_node node) : Mesh(node)
-{
-  // unstructured always assumed to be 3D
-  n_dimension_ = 3;
-
-  // check the mesh type
-  if (check_for_node(node, "type")) {
-    auto temp = get_node_value(node, "type", true, true);
-    if (temp != "unstructured") {
-      fatal_error("Invalid mesh type: " + temp);
-    }
-  }
-
-  // get the filename of the unstructured mesh to load
-  if (check_for_node(node, "filename")) {
-    filename_ = get_node_value(node, "filename");
-  } else {
-    fatal_error("No filename supplied for unstructured mesh with ID: " +
-                std::to_string(id_));
-  }
-=======
 UnstructuredMesh::UnstructuredMesh(pugi::xml_node node) : UnstructuredMeshBase(node) {
   initialize();
 }
@@ -1508,7 +1605,6 @@ UnstructuredMesh::UnstructuredMesh(const std::string& filename) {
   filename_ = filename;
   initialize();
 }
->>>>>>> Updating unstructured mesh constructors to take a filename (template). Exposing unstructured mesh addition via CAPI.
 
 void UnstructuredMesh::initialize() {
   // create MOAB instance
@@ -2069,29 +2165,10 @@ UnstructuredMesh::count_sites(const std::vector<Particle::Bank>& bank,
 double UnstructuredMesh::get_volume_frac(int bin = -1) const {
 
   return 0.0;
-
 }
 
 #endif
 
-UnstructuredMeshBase::UnstructuredMeshBase(pugi::xml_node node) : Mesh(node) {
-    // check the mesh type
-  if (check_for_node(node, "type")) {
-    auto temp = get_node_value(node, "type", true, true);
-    if (temp != "unstructured") {
-      fatal_error("Invalid mesh type: " + temp);
-    }
-  }
-
-  // get the filename of the unstructured mesh to load
-  if (check_for_node(node, "mesh_file")) {
-    filename_ = get_node_value(node, "mesh_file");
-  }
-  else {
-    fatal_error("No filename supplied for unstructured mesh with ID: " +
-                std::to_string(id_));
-  }
-}
 
 #ifdef LIBMESH
 LibMesh::LibMesh(pugi::xml_node node) : UnstructuredMeshBase(node) {
@@ -2123,7 +2200,7 @@ void LibMesh::initialize() {
   point_locators_ = std::vector<std::unique_ptr<libMesh::PointLocatorBase>>(n_threads);
   for (int i = 0; i < n_threads; i++) {
     point_locators_[i] = m_->sub_point_locator();
-    point_locators_[i]->set_find_element_tol(FP_COINCIDENT);
+    point_locators_[i]->set_contains_point_tol(FP_COINCIDENT);
     point_locators_[i]->enable_out_of_mesh_mode();
   }
 

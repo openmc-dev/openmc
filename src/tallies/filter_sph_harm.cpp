@@ -2,6 +2,9 @@
 
 #include <utility>  // For pair
 
+#include <fmt/core.h>
+#include <gsl/gsl>
+
 #include "openmc/capi.h"
 #include "openmc/error.h"
 #include "openmc/math_functions.h"
@@ -36,10 +39,8 @@ SphericalHarmonicsFilter::set_cosine(gsl::cstring_span cosine)
   } else if (cosine == "particle") {
     cosine_ = SphericalHarmonicsCosine::particle;
   } else {
-    std::stringstream err_msg;
-    err_msg << "Unrecognized cosine type, \"" << cosine
-            << "\" in spherical harmonics filter";
-    throw std::invalid_argument{err_msg.str()};
+    throw std::invalid_argument{fmt::format("Unrecognized cosine type, \"{}\" "
+      "in spherical harmonics filter", gsl::to_string(cosine))};
   }
 }
 
@@ -88,15 +89,14 @@ SphericalHarmonicsFilter::to_statepoint(hid_t filter_group) const
 std::string
 SphericalHarmonicsFilter::text_label(int bin) const
 {
-  std::stringstream out;
+  Expects(bin >= 0 && bin < n_bins_);
   for (int n = 0; n < order_ + 1; n++) {
     if (bin < (n + 1) * (n + 1)) {
       int m = (bin - n*n) - n;
-      out << "Spherical harmonic expansion, Y" << n << "," << m;
-      break;
+      return fmt::format("Spherical harmonic expansion, Y{},{}", n, m);
     }
   }
-  return out.str();
+  UNREACHABLE();
 }
 
 //==============================================================================

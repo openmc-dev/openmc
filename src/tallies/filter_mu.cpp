@@ -1,6 +1,6 @@
 #include "openmc/tallies/filter_mu.h"
 
-#include <sstream>
+#include <fmt/core.h>
 
 #include "openmc/error.h"
 #include "openmc/search.h"
@@ -69,9 +69,7 @@ MuFilter::to_statepoint(hid_t filter_group) const
 std::string
 MuFilter::text_label(int bin) const
 {
-  std::stringstream out;
-  out << "Change-in-Angle [" << bins_[bin] << ", " << bins_[bin+1] << ")";
-  return out.str();
+  return fmt::format("Change-in-Angle [{}, {})", bins_[bin], bins_[bin+1]);
 }
 
 } // namespace openmc

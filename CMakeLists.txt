@@ -141,6 +141,13 @@ endif()
 add_subdirectory(vendor/pugixml)
 
 #===============================================================================
+# {fmt} library
+#===============================================================================
+
+set(FMT_INSTALL ON CACHE BOOL "Generate the install target.")
+add_subdirectory(vendor/fmt)
+
+#===============================================================================
 # xtensor header-only library
 #===============================================================================
 
@@ -161,7 +168,8 @@ target_link_libraries(xtensor INTERFACE xtl)
 add_subdirectory(vendor/gsl-lite)
 
 # Make sure contract violations throw exceptions
-target_compile_definitions(gsl-lite INTERFACE GSL_THROW_ON_CONTRACT_VIOLATION)
+target_compile_definitions(gsl-lite-v1 INTERFACE GSL_THROW_ON_CONTRACT_VIOLATION)
+target_compile_definitions(gsl-lite-v1 INTERFACE gsl_CONFIG_ALLOWS_NONSTRICT_SPAN_COMPARISON=1)
 
 #===============================================================================
 # RPATH information
@@ -345,7 +353,7 @@ endif()
 # target_link_libraries treats any arguments starting with - but not -l as
 # linker flags. Thus, we can pass both linker flags and libraries together.
 target_link_libraries(libopenmc ${ldflags} ${HDF5_LIBRARIES} ${HDF5_HL_LIBRARIES}
-                      pugixml faddeeva xtensor gsl-lite)
+                      pugixml faddeeva xtensor gsl-lite-v1 fmt::fmt)
 
 if(dagmc)
   target_compile_definitions(libopenmc PRIVATE DAGMC)

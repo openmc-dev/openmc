@@ -1,10 +1,9 @@
 #include "openmc/xml_interface.h"
 
-#include <algorithm>  // for transform
-#include <sstream>
+#include <fmt/core.h>
 
 #include "openmc/error.h"
-
+#include "openmc/string_utils.h"
 
 namespace openmc {
 
@@ -19,17 +18,13 @@ get_node_value(pugi::xml_node node, const char* name, bool lowercase,
   } else if (node.child(name)) {
     value_char = node.child_value(name);
   } else {
-    std::stringstream err_msg;
-    err_msg << "Node \"" << name << "\" is not a member of the \""
-            << node.name() << "\" XML node";
-    fatal_error(err_msg);
+    fatal_error(fmt::format(
+      "Node \"{}\" is not a member of the \"{}\" XML node", name, node.name()));
   }
   std::string value {value_char};
 
   // Convert to lower-case if needed
-  if (lowercase) {
-    std::transform(value.begin(), value.end(), value.begin(), ::tolower);
-  }
+  if (lowercase) to_lower(value);
 
   // Strip leading/trailing whitespace if needed
   if (strip) {
@@ -48,10 +43,8 @@ get_node_value_bool(pugi::xml_node node, const char* name)
   } else if (node.child(name)) {
     return node.child(name).text().as_bool();
   } else {
-    std::stringstream err_msg;
-    err_msg << "Node \"" << name << "\" is not a member of the \""
-            << node.name() << "\" XML node";
-    fatal_error(err_msg);
+    fatal_error(fmt::format(
+      "Node \"{}\" is not a member of the \"{}\" XML node", name, node.name()));
   }
   return false;
 }

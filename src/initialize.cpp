@@ -3,13 +3,13 @@
 #include <cstddef>
 #include <cstdlib> // for getenv
 #include <cstring>
-#include <sstream>
 #include <string>
 #include <vector>
 
 #ifdef _OPENMP
 #include <omp.h>
 #endif
+#include <fmt/core.h>
 
 #include "openmc/capi.h"
 #include "openmc/constants.h"
@@ -134,7 +134,7 @@ parse_command_line(int argc, char* argv[])
       } else if (arg == "-n" || arg == "--particles") {
         i += 1;
         settings::n_particles = std::stoll(argv[i]);
-      
+
       } else if (arg == "-e" || arg == "--event") {
         settings::event_based = true;
 
@@ -155,9 +155,8 @@ parse_command_line(int argc, char* argv[])
           settings::path_particle_restart = argv[i];
           settings::particle_restart_run = true;
         } else {
-          std::stringstream msg;
-          msg << "Unrecognized file after restart flag: " << filetype << ".";
-          strcpy(openmc_err_msg, msg.str().c_str());
+          auto msg = fmt::format("Unrecognized file after restart flag: {}.", filetype);
+          strcpy(openmc_err_msg, msg.c_str());
           return OPENMC_E_INVALID_ARGUMENT;
         }
 
@@ -224,7 +223,7 @@ parse_command_line(int argc, char* argv[])
         settings::write_all_tracks = true;
 
       } else {
-        std::cerr << "Unknown option: " << argv[i] << '\n';
+        fmt::print(stderr, "Unknown option: {}\n", argv[i]);
         print_usage();
         return OPENMC_E_UNASSIGNED;
       }

@@ -58,6 +58,3 @@ script:
 after_success:
   - cpp-coveralls -i src -i include --exclude-pattern "/usr/*" --dump cpp_cov.json
   - coveralls --merge=cpp_cov.json
-os:
-  - linux
-  - osx

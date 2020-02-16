@@ -616,6 +616,7 @@ class UnstructuredMesh(MeshBase):
     def __init__(self, mesh_id=None, name='', filename=''):
         super().__init__(mesh_id, name)
         self._filename = filename
+        self._volumes = []
 
     @property
     def filename(self):

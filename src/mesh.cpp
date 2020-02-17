@@ -85,7 +85,7 @@ Mesh::Mesh(pugi::xml_node node) {
 //==============================================================================
 
 RegularMesh::RegularMesh(pugi::xml_node node)
-  : Mesh {node}
+  : StructuredMesh {node}
 {
   // Determine number of dimensions for mesh
   if (check_for_node(node, "dimension")) {
@@ -851,7 +851,7 @@ RegularMesh::count_sites(const Particle::Bank* bank, int64_t length,
 //==============================================================================
 
 RectilinearMesh::RectilinearMesh(pugi::xml_node node)
-  : Mesh {node}
+  : StructuredMesh {node}
 {
   n_dimension_ = 3;
 
@@ -1535,7 +1535,7 @@ UnstructuredMesh::UnstructuredMesh(pugi::xml_node node) : Mesh(node) {
   }
 
   // create MOAB instance
-  mbi_ = std::shared_ptr<moab::Interface>(new moab::Core());
+  mbi_ = std::unique_ptr<moab::Interface>(new moab::Core());
   // create meshset to load mesh into
   moab::ErrorCode rval = mbi_->create_meshset(moab::MESHSET_SET, meshset_);
   if (rval != moab::MB_SUCCESS) {
@@ -1855,7 +1855,6 @@ UnstructuredMesh::compute_barycentric_data(const moab::Range& all_tets) {
     a = a.transpose().inverse();
     baryc_data_.at(get_bin_from_ent_handle(tet)) = a;
   }
-
 }
 
 // TODO: write this function
@@ -1911,25 +1910,24 @@ UnstructuredMesh::point_in_tet(const moab::CartVect& r, moab::EntityHandle tet) 
 }
 
 int
-UnstructuredMesh::get_bin_from_indices(const int* ijk) const {
-  if (ijk[0] >= n_bins()) {
+UnstructuredMesh::get_bin_from_index(int idx) const {
+  if (idx >= n_bins()) {
     std::stringstream s;
-    s << "Invalid bin: " << ijk[0];
+    s << "Invalid bin index: " << idx;
     fatal_error(s);
   }
-  int bin = ehs_[ijk[0]] - ehs_[0];
+  return ehs_[idx] - ehs_[0];
+}
+
+int
+UnstructuredMesh::get_index(Position r, bool* in_mesh) const {
+  int bin = get_bin(r);
+  *in_mesh = bin != -1;
   return bin;
 }
 
-void
-UnstructuredMesh::get_indices(Position r, int* ijk, bool* in_mesh) const {
-  int bin = get_bin(r);
-  ijk[0]= bin;
-  *in_mesh = bin != -1;
-}
-
-void UnstructuredMesh::get_indices_from_bin(int bin, int* ijk) const {
-  ijk[0] = bin;
+int UnstructuredMesh::get_index_from_bin(int bin) const {
+  return bin;
 }
 
 std::pair<std::vector<double>, std::vector<double>>
@@ -1971,6 +1969,42 @@ int UnstructuredMesh::n_surface_bins() const {
   }
   return 2 * tris.size();
 }
+
+Position
+UnstructuredMesh::centroid(moab::EntityHandle tet) const {
+  moab::ErrorCode rval;
+
+  // look up the tet connectivity
+  std::vector<moab::EntityHandle> conn;
+  rval = mbi_->get_connectivity(&tet, 1, conn);
+  if (rval != moab::MB_SUCCESS) {
+    warning("Failed to get connectivity of a mesh element.");
+    return {};
+  }
+
+  // get the coordinates
+  std::vector<moab::CartVect> coords(conn.size());
+  rval = mbi_->get_coords(&conn.front(), conn.size(), coords[0].array());
+  if (rval != moab::MB_SUCCESS) {
+    warning("Failed to get the coordinates of a mesh element.");
+    return {};
+  }
+
+  // compute the centroid of the elements
+  moab::CartVect centroid(0.0);
+  for(const auto& coord : coords) {
+    centroid += coord;
+  }
+  centroid /= double(coords.size());
+
+  return {centroid[0], centroid[1], centroid[2]};
+}
+
+std::string
+UnstructuredMesh::bin_label(int bin) const {
+  std::stringstream out;
+  out << "Mesh Index (" << bin << ")";
+};
 
 #endif
 

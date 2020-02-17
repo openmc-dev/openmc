@@ -80,6 +80,8 @@ std::string path_statepoint;
 
 int32_t n_batches;
 int32_t n_inactive {0};
+int32_t max_lost_particles {10};
+double rel_max_lost_particles {1.0e-6};
 int32_t gen_per_batch {1};
 int64_t n_particles {-1};
 
@@ -143,6 +145,16 @@ void get_run_parameters(pugi::xml_node node_base)
     n_batches = std::stoi(get_node_value(node_base, "batches"));
   }
   if (!trigger_on) n_max_batches = n_batches;
+
+  // Get max number of lost particles
+  if (check_for_node(node_base, "max_lost_particles")) {
+    max_lost_particles = std::stoi(get_node_value(node_base, "max_lost_particles"));
+  }  
+
+  // Get relative number of lost particles
+  if (check_for_node(node_base, "rel_max_lost_particles")) {
+    rel_max_lost_particles = std::stod(get_node_value(node_base, "rel_max_lost_particles"));
+  }    
 
   // Get number of inactive batches
   if (run_mode == RunMode::EIGENVALUE) {
@@ -344,14 +356,18 @@ void read_settings_xml()
     // Read run parameters
     get_run_parameters(node_mode);
 
-    // Check number of active batches, inactive batches, and particles
+    // Check number of active batches, inactive batches, max lost particles and particles
     if (n_batches <= n_inactive) {
       fatal_error("Number of active batches must be greater than zero.");
     } else if (n_inactive < 0) {
       fatal_error("Number of inactive batches must be non-negative.");
     } else if (n_particles <= 0) {
       fatal_error("Number of particles must be greater than zero.");
-    }
+    } else if (max_lost_particles <= 0) {
+      fatal_error("Number of max lost particles must be greater than zero.");
+    } else if (rel_max_lost_particles <= 0.0 || rel_max_lost_particles >= 1.0) {
+      fatal_error("Relative max lost particles must be between zero and one.");
+    }       
   }
 
   // Copy random number seed if specified

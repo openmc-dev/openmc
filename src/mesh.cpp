@@ -1535,7 +1535,7 @@ UnstructuredMesh::UnstructuredMesh(pugi::xml_node node) : Mesh(node) {
   }
 
   // create MOAB instance
-  mbi_ = std::unique_ptr<moab::Interface>(new moab::Core());
+  mbi_ = std::shared_ptr<moab::Interface>(new moab::Core());
   // create meshset to load mesh into
   moab::ErrorCode rval = mbi_->create_meshset(moab::MESHSET_SET, meshset_);
   if (rval != moab::MB_SUCCESS) {
@@ -2004,6 +2004,7 @@ std::string
 UnstructuredMesh::bin_label(int bin) const {
   std::stringstream out;
   out << "Mesh Index (" << bin << ")";
+  return out.str();
 };
 
 #endif

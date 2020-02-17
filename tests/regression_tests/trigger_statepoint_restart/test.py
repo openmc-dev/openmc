@@ -56,20 +56,24 @@ class TriggerStatepointRestartTestHarness(PyAPITestHarness):
         super().__init__(statepoint, model)
         self._restart_sp = None
         self._final_sp = None
+        # store the statepoint filename pattern separately to sp_name so we can reuse it
+        self._sp_pattern = self._sp_name
 
     def _test_output_created(self):
         """Make sure statepoint files have been created."""
-        spfiles = glob.glob(self._sp_name)
+        spfiles = glob.glob(self._sp_pattern)
         assert len(spfiles) == 2, \
             'Two statepoint files should have been created'
-        if self._final_sp:
-            # Second restart run
-            assert spfiles[1] == self._final_sp, \
-                'Final statepoint names were different'
-        else:
+        if not self._final_sp:
             # First non-restart run
             self._restart_sp = spfiles[0]
             self._final_sp = spfiles[1]
+        else:
+            # Second restart run
+            assert spfiles[1] == self._final_sp, \
+                'Final statepoint names were different'
+        # Use the final_sp as the sp_name for the 'standard' results tests
+        self._sp_name = self._final_sp
 
     def execute_test(self):
         """
@@ -101,15 +105,15 @@ class TriggerStatepointRestartTestHarness(PyAPITestHarness):
             with openmc.StatePoint(self._model.statepoint) as sp:
                  sp_batchno_2 = sp.current_batch
             assert sp_batchno_2 > 10
+            assert sp_batchno_1 == sp_batchno_2, \
+                'Different final batch number after restart'
+            assert str(k_combined_1) == str(k_combined_2), \
+                'Different final k_combined after restart'
             self._write_inputs(self._get_inputs())
             self._compare_inputs()
             self._test_output_created()
             self._write_results(self._get_results())
             self._compare_results()
-            assert str(k_combined_1) == str(k_combined_2), \
-                'Different final k_combined after restart'
-            assert sp_batchno_1 == sp_batchno_2, \
-                'Different final batch number after restart'
         finally:
             self._cleanup()
 

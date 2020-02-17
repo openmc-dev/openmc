@@ -69,6 +69,43 @@ public:
   //! \return Mesh bin
   virtual int get_bin(Position r) const = 0;
 
+  //! Get the number of mesh cells.
+  virtual int n_bins() const = 0;
+
+  //! Get the number of mesh cell surfaces.
+  virtual int n_surface_bins() const = 0;
+
+  //! Write mesh data to an HDF5 group
+  //
+  //! \param[in] group HDF5 group
+  virtual void to_hdf5(hid_t group) const = 0;
+
+  //! Find the mesh lines that intersect an axis-aligned slice plot
+  //
+  //! \param[in] plot_ll The lower-left coordinates of the slice plot.
+  //! \param[in] plot_ur The upper-right coordinates of the slice plot.
+  //! \return A pair of vectors indicating where the mesh lines lie along each
+  //!   of the plot's axes.  For example an xy-slice plot will get back a vector
+  //!   of x-coordinates and another of y-coordinates.  These vectors may be
+  //!   empty for low-dimensional meshes.
+  virtual std::pair<std::vector<double>, std::vector<double>>
+  plot(Position plot_ll, Position plot_ur) const = 0;
+
+  //! Get a label for the mesh bin
+  virtual std::string bin_label(int bin) const = 0;
+
+  // Data members
+  int id_ {-1};  //!< User-specified ID
+  int n_dimension_; //!< Number of dimensions
+};
+
+class StructuredMesh : public Mesh
+{
+public:
+  StructuredMesh() = default;
+  StructuredMesh(pugi::xml_node node) : Mesh {node} {};
+  virtual ~StructuredMesh() = default;
+
   //! Get bin given mesh indices
   //
   //! \param[in] Array of mesh indices
@@ -88,32 +125,21 @@ public:
   //! \param[out] ijk Mesh indices
   virtual void get_indices_from_bin(int bin, int* ijk) const = 0;
 
-  //! Get the number of mesh cells.
-  virtual int n_bins() const = 0;
+  //! Get a label for the mesh bin
+  std::string bin_label(int bin) const override {
+    std::vector<int> ijk(n_dimension_);
+    get_indices_from_bin(bin, ijk.data());
 
-  //! Get the number of mesh cell surfaces.
-  virtual int n_surface_bins() const = 0;
-
-  //! Find the mesh lines that intersect an axis-aligned slice plot
-  //
-  //! \param[in] plot_ll The lower-left coordinates of the slice plot.
-  //! \param[in] plot_ur The upper-right coordinates of the slice plot.
-  //! \return A pair of vectors indicating where the mesh lines lie along each
-  //!   of the plot's axes.  For example an xy-slice plot will get back a vector
-  //!   of x-coordinates and another of y-coordinates.  These vectors may be
-  //!   empty for low-dimensional meshes.
-  virtual std::pair<std::vector<double>, std::vector<double>>
-  plot(Position plot_ll, Position plot_ur) const = 0;
-
-  //! Write mesh data to an HDF5 group
-  //
-  //! \param[in] group HDF5 group
-  virtual void to_hdf5(hid_t group) const = 0;
+    if (n_dim > 2) {
+      return fmt::format("Mesh Index ({}, {}, {})", ijk[0], ijk[1], ijk[2]);
+    } else if (n_dim > 1) {
+      return fmt::format("Mesh Index ({}, {})", ijk[0], ijk[1]);
+    } else {
+      return fmt::format("Mesh Index ({})", ijk[0]) ;
+    }
+  }
 
   // Data members
-
-  int id_ {-1};  //!< User-specified ID
-  int n_dimension_; //!< Number of dimensions
   xt::xtensor<double, 1> lower_left_; //!< Lower-left coordinates of mesh
   xt::xtensor<double, 1> upper_right_; //!< Upper-right coordinates of mesh
 };
@@ -122,7 +148,7 @@ public:
 //! Tessellation of n-dimensional Euclidean space by congruent squares or cubes
 //==============================================================================
 
-class RegularMesh : public Mesh
+class RegularMesh : public StructuredMesh
 {
 public:
   // Constructors
@@ -188,7 +214,7 @@ private:
 };
 
 
-class RectilinearMesh : public Mesh
+class RectilinearMesh : public StructuredMesh
 {
 public:
   // Constructors
@@ -245,6 +271,7 @@ class UnstructuredMesh : public Mesh {
 public:
   UnstructuredMesh() { };
   UnstructuredMesh(pugi::xml_node);
+  ~UnstructuredMesh() = default;
 
   //! Determine which bins were crossed by a particle.
   //
@@ -316,14 +343,11 @@ intersect_track(const moab::CartVect& start,
   //! \return MOAB EntityHandle of tet
   moab::EntityHandle get_ent_handle_from_bin(int bin) const;
 
-  int get_bin_from_indices(const int* ijk) const override;
+  int get_bin_from_index(int idx) const;
 
-  void get_indices(Position r, int* ijk, bool* in_mesh) const override;
+  int get_index(Position r, bool* in_mesh) const;
 
-  void get_indices_from_bin(int bin, int* ijk) const override;
-
-  std::pair<std::vector<double>, std::vector<double>>
-  plot(Position plot_ll, Position plot_ur) const override;
+  int get_index_from_bin(int bin) const;
 
   //! Builds a KDTree for all tetrahedra in the mesh. All
   //! triangles representing 2D faces of the mesh are
@@ -333,6 +357,10 @@ intersect_track(const moab::CartVect& start,
   void build_kdtree(const moab::Range& all_tets);
 
 public:
+
+  std::pair<std::vector<double>, std::vector<double>>
+  plot(Position plot_ll, Position plot_ur) const override;
+
   //! Determine which surface bins were crossed by a particle.
   //
   //! \param[in] p Particle to check
@@ -355,6 +383,10 @@ public:
   int n_bins() const override;
 
   int n_surface_bins() const override;
+
+  Position centroid(moab::EntityHandle tet) const;
+
+  std::string bin_label(int bin) const override;
 
   std::string filename_; //<! Path to unstructured mesh file
 

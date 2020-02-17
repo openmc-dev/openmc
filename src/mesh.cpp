@@ -14,6 +14,7 @@
 #include "xtensor/xmath.hpp"
 #include "xtensor/xsort.hpp"
 #include "xtensor/xtensor.hpp"
+#include  "xtensor/xview.hpp"
 
 #include "openmc/capi.h"
 #include "openmc/constants.h"
@@ -1868,10 +1869,15 @@ UnstructuredMesh::to_hdf5(hid_t group) const
 
     // write volume of each tet
     std::vector<double> tet_vols;
-    for (const auto& eh : ehs_) {
+    xt::xtensor<double, 2> centroids({n_bins(), 3});
+    for (int i = 0; i < ehs_.size(); i++) {
+      const auto& eh = ehs_[i];
       tet_vols.emplace_back(tet_volume(eh));
+      Position c = centroid(eh);
+      xt::view(centroids, i, xt::all()) = xt::xarray<double>({c.x, c.y, c.z});
     }
     write_dataset(mesh_group, "volumes", tet_vols);
+    write_dataset(mesh_group, "centroids", centroids);
 
     close_group(mesh_group);
 }

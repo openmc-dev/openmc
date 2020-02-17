@@ -831,6 +831,31 @@ void Tally::accumulate()
       }
     }
   }
+
+#ifdef DAGMC
+  for (auto filter_idx : filters_) {
+    auto& filter = model::tally_filters[filter_idx];
+    if (filter->type() == "mesh") {
+      auto mesh_filter = dynamic_cast<MeshFilter*>(filter.get());
+      auto& mesh = model::meshes[mesh_filter->mesh()];
+      auto umesh = dynamic_cast<UnstructuredMesh*>(mesh.get());
+      if (umesh) {
+        for (auto score : scores_) {
+          umesh->add_score(std::to_string(score));
+          for (int i = 0; i < results_.shape()[0]; i ++) {
+            umesh->set_score(std::to_string(score),
+                             i,
+                             results_(i, 0, RESULT_SUM),
+                             results_(i, 0, RESULT_SUM_SQ));
+          }
+        }
+        std::stringstream output_filename;
+        output_filename << "tally_" << id_ << "umesh";
+        umesh->write(output_filename.str());
+      }
+    }
+  }
+#endif
 }
 
 //==============================================================================

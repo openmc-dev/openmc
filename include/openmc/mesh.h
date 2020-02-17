@@ -356,6 +356,9 @@ intersect_track(const moab::CartVect& start,
   //! \param[in] all_tets MOAB Range of tetrahedra for the tree
   void build_kdtree(const moab::Range& all_tets);
 
+  std::pair<moab::Tag, moab::Tag>
+  get_score_tags(std::string score) const;
+
 public:
 
   std::pair<std::vector<double>, std::vector<double>>
@@ -388,6 +391,22 @@ public:
 
   std::string bin_label(int bin) const override;
 
+  //! Get the tags for a score from the mesh instance
+  moab::ErrorCode get_score_tags(std::string score,
+                                 moab::Tag& val_tag,
+                                 moab::Tag& err_tag) const;
+
+  //! Add a score to the mesh instance
+  void add_score(std::string score) const;
+
+  //! Set data for a score
+  void set_score(const std::string& score,
+                 int bin,
+                 double val,
+                 double err) const;
+
+  //! Write the mesh with any current tally data
+  void write(std::string base_filename) const;
   std::string filename_; //<! Path to unstructured mesh file
 
 private:

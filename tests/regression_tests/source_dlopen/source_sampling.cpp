@@ -5,7 +5,7 @@
 
 // you must have external C linkage here otherwise 
 // dlopen will not find the file
-extern "C" openmc::Particle::Bank sample_source() {
+extern "C" openmc::Particle::Bank sample_source(uint64_t *seed) {
     openmc::Particle::Bank particle;
     // wgt
     particle.particle = openmc::Particle::Type::neutron;
@@ -16,7 +16,7 @@ extern "C" openmc::Particle::Bank sample_source() {
     particle.r.y = 0.;
     particle.r.z = 0.;
     // angle
-    particle.u = {1.,0,0};
+    particle.u = {1.0, 0.0, 0.0};
     particle.E = 14.08e6;
     particle.delayed_group = 0;
     return particle;    

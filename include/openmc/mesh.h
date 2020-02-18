@@ -126,18 +126,7 @@ public:
   virtual void get_indices_from_bin(int bin, int* ijk) const = 0;
 
   //! Get a label for the mesh bin
-  std::string bin_label(int bin) const override {
-    std::vector<int> ijk(n_dimension_);
-    get_indices_from_bin(bin, ijk.data());
-
-    if (n_dim > 2) {
-      return fmt::format("Mesh Index ({}, {}, {})", ijk[0], ijk[1], ijk[2]);
-    } else if (n_dim > 1) {
-      return fmt::format("Mesh Index ({}, {})", ijk[0], ijk[1]);
-    } else {
-      return fmt::format("Mesh Index ({})", ijk[0]) ;
-    }
-  }
+  std::string bin_label(int bin) const override;
 
   // Data members
   xt::xtensor<double, 1> lower_left_; //!< Lower-left coordinates of mesh
@@ -398,8 +387,8 @@ public:
 
   //! Set data for a score
   void set_score_data(const std::string& score,
-                      xt::xtensor<double, 1> values,
-                      xt::xtensor<double, 1> sum_sq) const;
+                      xt::xarray<double> values,
+                      xt::xarray<double> sum_sq) const;
 
   //! Write the mesh with any current tally data
   void write(std::string base_filename) const;

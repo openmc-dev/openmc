@@ -1419,11 +1419,22 @@ extern "C" int openmc_add_unstrucutred_mesh(const char filename[],
                                             const char library[],
                                             int* mesh_id)
 {
+  bool valid_lib = false;
+#ifdef DAGMC
   if (library == "moab") {
     model::meshes.push_back(std::move(std::make_unique<UnstructuredMesh>(filename)));
-  } else if (library == "libmesh") {
+    valid_lib = true;
+  }
+#endif
+
+#ifdef LIBMESH
+  if (library == "libmesh") {
     model::meshes.push_back(std::move(std::make_unique<LibMesh>(filename)));
-  } else {
+    valid_lib = true;
+  }
+#endif
+
+  if (!valid_lib) {
     set_errmsg("Mesh library " + std::string(library) + \
                "is not supported by this build of OpenMC");
     return OPENMC_E_INVALID_ARGUMENT;

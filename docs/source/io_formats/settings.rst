@@ -142,7 +142,7 @@ materials in the problem and is specified using a :ref:`mesh_element`.
 ----------------------------
 
 Determines whether to use event-based parallelism instead of the default
-history-based parallelism. 
+history-based parallelism.
 
   *Default*: false
 
@@ -467,7 +467,7 @@ attributes/sub-elements:
     more documentation on how to build sources can be found in :ref:`custom_source`
 
     *Deafult*: None
-     
+
   :space:
     An element specifying the spatial distribution of source sites. This element
     has the following attributes:
@@ -605,59 +605,60 @@ attributes/sub-elements:
 Custom Sources
 ++++++++++++++
 
-It is often the case that one may wish to simulate a complex source distribution,
-which may include physics not present within OpenMC or to be phase space complex. It
-is possible to define a complex source with an externally defined source function
-that is loaded at runtime. A simple example source is shown below. 
+It is often the case that one may wish to simulate a complex source
+distribution, which may include physics not present within OpenMC or to be phase
+space complex. It is possible to define a complex source with an externally
+defined source function that is loaded at runtime. A simple example source is
+shown below.
 
 .. code-block:: c++
 
-   #include <iostream>
    #include "openmc/random_lcg.h"
    #include "openmc/source.h"
    #include "openmc/particle.h"
 
    // you must have external C linkage here
-   extern "C" openmc::Particle::Bank sample_source(const int64_t seed) {
+   extern "C" openmc::Particle::Bank sample_source(uint64_t* seed) {
      openmc::Particle::Bank particle;
-      // wgt
-      particle.particle = openmc::Particle::Type::neutron;
-      particle.wgt = 1.0;
-      // position 
-      double angle = 2.*M_PI*openmc::prn();
-      double radius = 3.0;
-      particle.r.x = radius*std::cos(angle);
-      particle.r.y = radius*std::sin(angle);
-      particle.r.z = 0.;
-      // angle
-      particle.u = {1.,0,0};
-      particle.E = 14.08e6;
-      particle.delayed_group = 0;
-      return particle;    
+     // weight
+     particle.particle = openmc::Particle::Type::neutron;
+     particle.wgt = 1.0;
+     // position
+     double angle = 2.0 * M_PI * openmc::prn(seed);
+     double radius = 3.0;
+     particle.r.x = radius * std::cos(angle);
+     particle.r.y = radius * std::sin(angle);
+     particle.r.z = 0.0;
+     // angle
+     particle.u = {1.0, 0.0, 0.0};
+     particle.E = 14.08e6;
+     particle.delayed_group = 0;
+     return particle;
   }
 
 The above source, creates 14.08 MeV neutrons, with an istropic direction
 vector but distributed in a ring with a 3 cm radius. This routine is
-not particular complex, but should serve as an example upon which to build
-more complicated sources. 
+not particularly complex, but should serve as an example upon which to build
+more complicated sources.
 
-  .. note:: The function signature must be declared to be extern.
-	    
+  .. note:: The function signature must be declared to be extern "C".
+
   .. note:: You should only use the openmc::prn() random number generator
 
-In order to build your external source you need the following CMakeLists.txt file
+In order to build your external source you need the following CMakeLists.txt
+file
 
 .. code-block:: cmake
 
    cmake_minimum_required(VERSION 3.3 FATAL_ERROR)
-   project(openmc_sources CXX) 
+   project(openmc_sources CXX)
    add_library(source SHARED source_ring.cpp)
    find_package(OpenMC REQUIRED HINTS <path to openmc>)
    target_link_libraries(source OpenMC::libopenmc)
 
-You will now have a libsouce.so (or .dylib) file in this directory, now point the library
-attribute of the source XML element to this file and you will be able to sample 
-particles. 
+You will now have a libsource.so (or .dylib) file in this directory, now point
+the library attribute of the source XML element to this file and you will be
+able to sample particles.
 
 .. _univariate:
 

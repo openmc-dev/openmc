@@ -8,8 +8,7 @@
 
   <!-- Starting source -->
   <source>
-    <!--<library>./source_sample.so</library> -->
-    <library>./source_ring.so</library> 
+    <library>build/libsource.so</library>
   </source>
 
 </settings>

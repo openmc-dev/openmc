@@ -2013,58 +2013,50 @@ UnstructuredMesh::bin_label(int bin) const {
   return out.str();
 };
 
-moab::ErrorCode
-UnstructuredMesh::get_score_tags(std::string score,
-                                 moab::Tag& val_tag,
-                                 moab::Tag& err_tag) const {
+std::pair<moab::Tag, moab::Tag>
+UnstructuredMesh::get_score_tags(std::string score) const {
   moab::ErrorCode rval;
   // add a tag to the mesh
   // all scores are treated as a single value
   // with an uncertainty
-  moab::Tag score_val;
+  moab::Tag value_tag;
 
   double default_val = 0.0;
-  rval = mbi_->tag_get_handle(score.c_str(),
+  auto val_string = score + "_value";
+  rval = mbi_->tag_get_handle(val_string.c_str(),
                               1,
                               moab::MB_TYPE_DOUBLE,
-                              score_val,
+                              value_tag,
                               moab::MB_TAG_DENSE|moab::MB_TAG_CREAT,
                               &default_val);
   if (rval != moab::MB_SUCCESS) {
     std::stringstream msg;
     msg << "Could not create or retrieve the value tag for the score " << score
         << " on unstructured mesh " << id_;
-    warning(msg);
-    return rval;
+    fatal_error(msg);
   }
 
-  moab::Tag score_err;
-  rval = mbi_->tag_get_handle(score.c_str(),
+  moab::Tag error_tag;
+  std::string err_string = score + "_error";
+  rval = mbi_->tag_get_handle(err_string.c_str(),
                               1,
                               moab::MB_TYPE_DOUBLE,
-                              score_err,
+                              error_tag,
                               moab::MB_TAG_DENSE|moab::MB_TAG_CREAT,
                               &default_val);
-
   if (rval != moab::MB_SUCCESS) {
     std::stringstream msg;
     msg << "Could not create or retrieve the error tag for the score " << score
         << " on unstructured mesh " << id_;
-    warning(msg);
-    return rval;
+    fatal_error(msg);
   }
-  return moab::MB_SUCCESS;
+
+  return {value_tag, error_tag};
 }
 
 void
 UnstructuredMesh::add_score(std::string score) const {
-  moab::Tag score_val, score_err;
-  moab::ErrorCode rval = get_score_tags(score, score_val, score_err);
-  if (rval != moab::MB_SUCCESS) {
-    std::stringstream msg;
-    msg << "Failed to add score '" << score << "' to unstructured mesh" << id_;
-    fatal_error(msg);
-  }
+  auto score_tags = get_score_tags(score);
 }
 
 void
@@ -2072,27 +2064,22 @@ UnstructuredMesh::set_score(const std::string& score,
                             int bin,
                             double val,
                             double err) const {
-  moab::Tag score_val, score_err;
-  moab::ErrorCode rval = get_score_tags(score, score_val, score_err);
-  if (rval != moab::MB_SUCCESS) {
-    std::stringstream msg;
-    msg << "Failed to get tags for the score '" << score << "' on "
-        << "unstructured mesh " << id_;
-    warning(msg);
-  }
+  auto score_tags = get_score_tags(score);
 
   moab::EntityHandle eh = get_ent_handle_from_bin(bin);
+  moab::ErrorCode rval;
 
   // set the score value
-  rval = mbi_->tag_set_data(score_val, &eh, 1, &val);
+  rval = mbi_->tag_set_data(score_tags.first, &eh, 1, &val);
   if (rval != moab::MB_SUCCESS) {
     std::stringstream msg;
     msg << "Failed to set the tally value for score '" << score << "' "
         << " on unstructured mesh " << id_;
     warning(msg);
   }
+
   // set the error value
-  rval = mbi_->tag_set_data(score_err, &eh, 1, &err);
+  rval = mbi_->tag_set_data(score_tags.second, &eh, 1, &err);
   if (rval != moab::MB_SUCCESS) {
     std::stringstream msg;
     msg << "Failed to set the tally value for score '" << score << "' "

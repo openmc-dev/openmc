@@ -843,10 +843,9 @@ void Tally::accumulate()
         for (auto score : scores_) {
           umesh->add_score(std::to_string(score));
           for (int i = 0; i < results_.shape()[0]; i++) {
-            umesh->set_score(std::to_string(score),
-                             i,
-                             results_(i, 0, RESULT_SUM),
-                             results_(i, 0, RESULT_SUM_SQ));
+            umesh->set_score_data(std::to_string(score),
+                                  xt::view(results_, xt::all(), 0, RESULT_SUM),
+                                  xt::view(results_, xt::all(), 0, RESULT_SUM_SQ));
           }
         }
         std::stringstream output_filename;

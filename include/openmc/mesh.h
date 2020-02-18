@@ -397,18 +397,17 @@ public:
   void add_score(std::string score) const;
 
   //! Set data for a score
-  void set_score(const std::string& score,
-                 int bin,
-                 double val,
-                 double err) const;
+  void set_score_data(const std::string& score,
+                      xt::xtensor<double, 1> values,
+                      xt::xtensor<double, 1> sum_sq) const;
 
   //! Write the mesh with any current tally data
   void write(std::string base_filename) const;
   std::string filename_; //<! Path to unstructured mesh file
 
 private:
-  moab::Range ehs_; //!< Range of tetrahedra EntityHandles in the mesh
-  moab::EntityHandle meshset_; //!< Meshset containing all Tets/Tris
+  moab::Range ehs_; //!< Range of tetrahedra EntityHandle's in the mesh
+  moab::EntityHandle meshset_; //!< EntitySet containing all Tets/Tris
   moab::EntityHandle kdtree_root_; //!< Root of the MOAB KDTree
   std::shared_ptr<moab::Interface> mbi_; //!< MOAB instance
   std::unique_ptr<moab::AdaptiveKDTree> kdtree_; //!< MOAB KDTree instance

@@ -2060,17 +2060,14 @@ UnstructuredMesh::add_score(std::string score) const {
 }
 
 void
-UnstructuredMesh::set_score(const std::string& score,
-                            int bin,
-                            double val,
-                            double err) const {
+UnstructuredMesh::set_score_data(const std::string& score,
+                                 xt::xtensor<double, 1> values,
+                                 xt::xtensor<double, 1> sum_sq) const {
   auto score_tags = get_score_tags(score);
 
-  moab::EntityHandle eh = get_ent_handle_from_bin(bin);
   moab::ErrorCode rval;
-
   // set the score value
-  rval = mbi_->tag_set_data(score_tags.first, &eh, 1, &val);
+  rval = mbi_->tag_set_data(score_tags.first, ehs_, &values);
   if (rval != moab::MB_SUCCESS) {
     std::stringstream msg;
     msg << "Failed to set the tally value for score '" << score << "' "
@@ -2079,7 +2076,7 @@ UnstructuredMesh::set_score(const std::string& score,
   }
 
   // set the error value
-  rval = mbi_->tag_set_data(score_tags.second, &eh, 1, &err);
+  rval = mbi_->tag_set_data(score_tags.second, ehs_, &sum_sq);
   if (rval != moab::MB_SUCCESS) {
     std::stringstream msg;
     msg << "Failed to set the tally value for score '" << score << "' "

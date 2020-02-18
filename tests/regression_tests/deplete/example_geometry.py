@@ -188,6 +188,7 @@ def segment_pin(n_rings, n_wedges, r_fuel, r_gap, r_clad):
 
     fuel_wedges = [openmc.Plane(a=math.cos(theta[i]), b=math.sin(theta[i]))
                    for i in range(n_wedges)]
+    print(fuel_wedges)
 
     gap_ring = openmc.ZCylinder(x0=0, y0=0, r=r_gap)
     clad_ring = openmc.ZCylinder(x0=0, y0=0, r=r_clad)

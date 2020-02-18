@@ -3,6 +3,7 @@
 #include <algorithm> // for copy, equal, min, min_element
 #include <cstddef> // for size_t
 #include <cmath>  // for ceil
+#include <fmt/core.h> // for fmt
 #include <memory> // for allocator
 #include <string>
 
@@ -82,6 +83,24 @@ Mesh::Mesh(pugi::xml_node node) {
 }
 
 //==============================================================================
+// Structured Mesh implementation
+//==============================================================================
+
+std::string
+StructuredMesh::bin_label(int bin) const {
+  std::vector<int> ijk(n_dimension_);
+  get_indices_from_bin(bin, ijk.data());
+
+  if (n_dimension_ > 2) {
+    return fmt::format("Mesh Index ({}, {}, {})", ijk[0], ijk[1], ijk[2]);
+  } else if (n_dimension_ > 1) {
+    return fmt::format("Mesh Index ({}, {})", ijk[0], ijk[1]);
+  } else {
+    return fmt::format("Mesh Index ({})", ijk[0]) ;
+  }
+}
+
+//==============================================================================
 // RegularMesh implementation
 //==============================================================================
 
@@ -131,7 +150,7 @@ RegularMesh::RegularMesh(pugi::xml_node node)
       fatal_error("Cannot have a negative <width> on a tally mesh.");
     }
 
-    // Set width and upper right coordinate
+    // Setwidth and upper right coordinate
     upper_right_ = xt::eval(lower_left_ + shape_ * width_);
 
   } else if (check_for_node(node, "upper_right")) {
@@ -1869,13 +1888,14 @@ UnstructuredMesh::to_hdf5(hid_t group) const
 
     // write volume of each tet
     std::vector<double> tet_vols;
-    xt::xtensor<double, 2> centroids({n_bins(), 3});
+    xt::xtensor<double, 2> centroids({ehs_.size(), 3});
     for (int i = 0; i < ehs_.size(); i++) {
       const auto& eh = ehs_[i];
       tet_vols.emplace_back(tet_volume(eh));
       Position c = centroid(eh);
       xt::view(centroids, i, xt::all()) = xt::xarray<double>({c.x, c.y, c.z});
     }
+
     write_dataset(mesh_group, "volumes", tet_vols);
     write_dataset(mesh_group, "centroids", centroids);
 
@@ -2061,8 +2081,8 @@ UnstructuredMesh::add_score(std::string score) const {
 
 void
 UnstructuredMesh::set_score_data(const std::string& score,
-                                 xt::xtensor<double, 1> values,
-                                 xt::xtensor<double, 1> sum_sq) const {
+                                 xt::xarray<double> values,
+                                 xt::xarray<double> sum_sq) const {
   auto score_tags = get_score_tags(score);
 
   moab::ErrorCode rval;

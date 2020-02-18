@@ -356,6 +356,8 @@ intersect_track(const moab::CartVect& start,
   //! \param[in] all_tets MOAB Range of tetrahedra for the tree
   void build_kdtree(const moab::Range& all_tets);
 
+  //! Get the tags for a score from the mesh instance
+  //! or create them if they are not there
   std::pair<moab::Tag, moab::Tag>
   get_score_tags(std::string score) const;
 
@@ -390,11 +392,6 @@ public:
   Position centroid(moab::EntityHandle tet) const;
 
   std::string bin_label(int bin) const override;
-
-  //! Get the tags for a score from the mesh instance
-  moab::ErrorCode get_score_tags(std::string score,
-                                 moab::Tag& val_tag,
-                                 moab::Tag& err_tag) const;
 
   //! Add a score to the mesh instance
   void add_score(std::string score) const;

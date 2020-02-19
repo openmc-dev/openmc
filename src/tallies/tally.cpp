@@ -842,10 +842,14 @@ void Tally::accumulate()
       if (umesh) {
         for (auto score : scores_) {
           umesh->add_score(std::to_string(score));
+          auto values = xt::view(results_, xt::all(), 0, TallyResult::VALUE);
+          auto sum_sq = xt::view(results_, xt::all(), 0, TallyResult::SUM_SQ);
+          std::vector<double> vals_vec(values.begin(), values.end());
+          std::vector<double> sum_sq_vec(sum_sq.begin(), sum_sq.end());
           for (int i = 0; i < results_.shape()[0]; i++) {
             umesh->set_score_data(std::to_string(score),
-                                  xt::view(results_, xt::all(), 0, TallyResult::VALUE),
-                                  xt::view(results_, xt::all(), 0, TallyResult::SUM_SQ));
+                                  vals_vec,
+                                  sum_sq_vec);
           }
         }
         std::stringstream output_filename;

@@ -2081,13 +2081,13 @@ UnstructuredMesh::add_score(std::string score) const {
 
 void
 UnstructuredMesh::set_score_data(const std::string& score,
-                                 xt::xarray<double> values,
-                                 xt::xarray<double> sum_sq) const {
+                                 std::vector<double> values,
+                                 std::vector<double> sum_sq) const {
   auto score_tags = get_score_tags(score);
 
   moab::ErrorCode rval;
   // set the score value
-  rval = mbi_->tag_set_data(score_tags.first, ehs_, &values);
+  rval = mbi_->tag_set_data(score_tags.first, ehs_, &values.front());
   if (rval != moab::MB_SUCCESS) {
     std::stringstream msg;
     msg << "Failed to set the tally value for score '" << score << "' "
@@ -2096,7 +2096,7 @@ UnstructuredMesh::set_score_data(const std::string& score,
   }
 
   // set the error value
-  rval = mbi_->tag_set_data(score_tags.second, ehs_, &sum_sq);
+  rval = mbi_->tag_set_data(score_tags.second, ehs_, &sum_sq.front());
   if (rval != moab::MB_SUCCESS) {
     std::stringstream msg;
     msg << "Failed to set the tally value for score '" << score << "' "

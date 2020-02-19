@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='utf-8'?>
 <geometry>
-  <cell id="13" material="1" region="-9" universe="9" />
-  <surface boundary="vacuum" coeffs="0.0 0.0 0.0 100" id="9" type="sphere" />
+  <cell id="1" material="1" region="-1" universe="1" />
+  <surface boundary="vacuum" coeffs="0.0 0.0 0.0 100" id="1" type="sphere" />
 </geometry>
 <?xml version='1.0' encoding='utf-8'?>
 <materials>
@@ -19,5 +19,5 @@
   <particles>1000</particles>
   <batches>10</batches>
   <inactive>0</inactive>
-  <source library="./libsource.so" strength="1.0" />
+  <source library="build/libsource.so" strength="1.0" />
 </settings>

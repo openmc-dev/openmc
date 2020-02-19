@@ -19,7 +19,7 @@ _WARNING_UPPER = """\
 will not accept the capitalized version.\
 """
 
-_WARNING_KWARGS = """
+_WARNING_KWARGS = """\
 "{}(...) accepts keyword arguments only for '{}'. Future versions of OpenMC \
 will not accept positional parameters for superclass arguments.\
 """
@@ -220,7 +220,7 @@ class Surface(IDManagerMixin, metaclass=ABCMeta):
         coeffs1 = self.normalize(self._get_base_coeffs())
         coeffs2 = self.normalize(other._get_base_coeffs())
 
-        return np.all(np.isclose(coeffs1, coeffs2, rtol=0., atol=self._atol))
+        return np.allclose(coeffs1, coeffs2, rtol=0., atol=self._atol)
 
     @abstractmethod
     def _get_base_coeffs(self):
@@ -630,10 +630,10 @@ class XPlane(PlaneMixin, Surface):
     _coeff_keys = ('x0',)
 
     def __init__(self, x0=0., *args, **kwargs):
-        # work around for accepting Surface kwargs as positional parameters 
+        # work around for accepting Surface kwargs as positional parameters
         # until they are deprecated
         argsdict = dict(zip(('boundary_type', 'name', 'surface_id'), args))
-        for k, v in argsdict.items():
+        for k in argsdict:
             warn(_WARNING_KWARGS.format(type(self).__name__, k), FutureWarning)
         kwargs.update(argsdict)
 
@@ -710,10 +710,10 @@ class YPlane(PlaneMixin, Surface):
     _coeff_keys = ('y0',)
 
     def __init__(self, y0=0., *args, **kwargs):
-        # work around for accepting Surface kwargs as positional parameters 
+        # work around for accepting Surface kwargs as positional parameters
         # until they are deprecated
         argsdict = dict(zip(('boundary_type', 'name', 'surface_id'), args))
-        for k in argsdict.keys():
+        for k in argsdict:
             warn(_WARNING_KWARGS.format(type(self).__name__, k), FutureWarning)
         kwargs.update(argsdict)
 
@@ -790,10 +790,10 @@ class ZPlane(PlaneMixin, Surface):
     _coeff_keys = ('z0',)
 
     def __init__(self, z0=0., *args, **kwargs):
-        # work around for accepting Surface kwargs as positional parameters 
+        # work around for accepting Surface kwargs as positional parameters
         # until they are deprecated
         argsdict = dict(zip(('boundary_type', 'name', 'surface_id'), args))
-        for k in argsdict.keys():
+        for k in argsdict:
             warn(_WARNING_KWARGS.format(type(self).__name__, k), FutureWarning)
         kwargs.update(argsdict)
 
@@ -852,8 +852,8 @@ class QuadricMixin(metaclass=ABCMeta):
         else:
             a, b, c, d, e, f, g, h, j, k = coeffs
 
-        A = np.asarray([[a, d/2, f/2], [d/2, b, e/2], [f/2, e/2, c]])
-        bvec = np.asarray([g, h, j])
+        A = np.array([[a, d/2, f/2], [d/2, b, e/2], [f/2, e/2, c]])
+        bvec = np.array([g, h, j])
 
         return A, bvec, k
 
@@ -1003,7 +1003,7 @@ class Cylinder(QuadricMixin, Surface):
 
     """
     _type = 'cylinder'
-    _coeff_keys = ('x0', 'y0', 'z0', 'r', 'dx', 'dy','dz')
+    _coeff_keys = ('x0', 'y0', 'z0', 'r', 'dx', 'dy', 'dz')
 
     def __init__(self, x0=0., y0=0., z0=0., r=1., dx=0., dy=0., dz=1., **kwargs):
         raise NotImplementedError('There is no C++ implementation for general '

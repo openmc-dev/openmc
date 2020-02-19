@@ -1,4 +1,6 @@
+from collections import defaultdict
 import glob
+from itertools import product
 import os
 
 import openmc
@@ -13,6 +15,23 @@ pytestmark = pytest.mark.skipif(
     reason="Mesh library is not available.")
 
 class UnstructuredMeshTest(PyAPITestHarness):
+
+    def __init__(self, statepoint_name, **kwargs):
+        super().__init__(statepoint_name)
+
+        # defaults
+        self.estimator = "collision" # tally estimator type
+        self.external_geom = False # geometry size matches mesh
+        self.mesh_has_holes = False # holes in the mesh
+        self.holes = ()
+        self.mesh_filename = "test_mesh_tets.h5m" # mesh file to use
+
+        # set parameters for the test
+        self.estimator = kwargs.get('estimator', self.estimator)
+        self.external_geom = kwargs.get('external_geom', self.external_geom)
+        self.holes = kwargs.get('holes', self.holes)
+        if self.holes:
+            self.mesh_filename = "test_mesh_tets_w_holes.h5m"
 
     def _build_inputs(self):
         ### Materials ###
@@ -74,10 +93,10 @@ class UnstructuredMeshTest(PyAPITestHarness):
                              +clad_min_z & -clad_max_z)
         clad_cell.fill = zirc_mat
 
-#        if external_geom:
-  #          bounds = (15, 15, 15)
- #       else:
-        bounds = (10, 10, 10)
+        if self.external_geom:
+            bounds = (15, 15, 15)
+        else:
+            bounds = (10, 10, 10)
 
         water_min_x = openmc.XPlane(x0=-bounds[0],
                                     name="minimum x",
@@ -128,24 +147,23 @@ class UnstructuredMeshTest(PyAPITestHarness):
         coarse_filter = openmc.MeshFilter(mesh=coarse_mesh)
 
         uscd_mesh = openmc.UnstructuredMesh()
-        uscd_mesh.filename = 'test_mesh_tets.h5m'
+        uscd_mesh.filename = self.mesh_filename
         uscd_mesh.mesh_lib = 'moab'
         uscd_filter = openmc.MeshFilter(mesh=uscd_mesh)
 
         # create tallies
         tallies = openmc.Tallies()
-        estimator = "tracklength"
 
         coarse_mesh_tally = openmc.Tally(name="coarse mesh tally")
         coarse_mesh_tally.filters = [coarse_filter]
         coarse_mesh_tally.scores = ['flux']
-        coarse_mesh_tally.estimator = estimator
+        coarse_mesh_tally.estimator = self.estimator
         tallies.append(coarse_mesh_tally)
 
         uscd_tally = openmc.Tally(name="unstructured mesh tally")
         uscd_tally.filters = [uscd_filter]
         uscd_tally.scores = ['flux']
-        uscd_tally.estimator = estimator
+        uscd_tally.estimator = self.estimator
         tallies.append(uscd_tally)
 
         tallies.export_to_xml()
@@ -160,7 +178,7 @@ class UnstructuredMeshTest(PyAPITestHarness):
         r = openmc.stats.Uniform(a=0.0, b=0.0)
         theta = openmc.stats.Discrete(x=[0.0], p=[1.0])
         phi = openmc.stats.Discrete(x=[0.0], p=[1.0])
-        origin = (1.0, 1.0, 1.0)
+        origin = (0.0, 0.0, 0.0)
 
         space = openmc.stats.SphericalIndependent(r=r,
                                                   theta=theta,
@@ -177,9 +195,10 @@ class UnstructuredMeshTest(PyAPITestHarness):
 
         settings.export_to_xml()
 
-    def _compare_results(self):
-        super()._compare_results()
+    def _compare_inputs(self):
+        pass
 
+    def _compare_results(self):
         with openmc.StatePoint(self._sp_name) as sp:
             # loop over the tallies
             regular_data = None
@@ -193,6 +212,9 @@ class UnstructuredMeshTest(PyAPITestHarness):
 
                     if isinstance(flt.mesh, openmc.RegularMesh):
                         regular_data, regular_std_dev = self.get_mesh_tally_data(tally)
+                        if self.holes:
+                            regular_data = np.delete(regular_data, holes)
+                            regular_std_dev = np.delete(regular_std_dev, holes)
                     else:
                         unstructured_data, unstructured_std_dev = self.get_mesh_tally_data(tally, True)
 
@@ -212,7 +234,7 @@ class UnstructuredMeshTest(PyAPITestHarness):
 
                 print("Results equal to within {} decimal places.\n".format(decimals))
 
-            assert decimals >= 6
+            assert decimals >= 10
 
     @staticmethod
     def get_mesh_tally_data(tally, structured=False):
@@ -236,6 +258,14 @@ class UnstructuredMeshTest(PyAPITestHarness):
                 os.remove(f)
 
 
-def test_uwuw():
-    harness = UnstructuredMeshTest('statepoint.10.h5')
+hole_indexes = (333, 90, 777)
+param_values = (('collision', 'tracklength'), (True, False), (hole_indexes, ()))
+test_cases = []
+for estimator, holes, ext_geom in product(*param_values):
+    test_cases.append({'estimator' : estimator,
+                       'holes' : holes,
+                       'external_geom' : ext_geom})
+@pytest.mark.parametrize("opts", test_cases)
+def test_unstructured_mesh(opts):
+    harness = UnstructuredMeshTest('statepoint.10.h5', kwargs=opts)
     harness.main()

@@ -187,6 +187,7 @@ class Surface(IDManagerMixin, metaclass=ABCMeta):
 
     def normalize(self, coeffs=None):
         """Normalize coefficients by first nonzero value
+
         Parameters
         ----------
         coeffs : tuple, optional
@@ -222,12 +223,47 @@ class Surface(IDManagerMixin, metaclass=ABCMeta):
         return np.all(np.isclose(coeffs1, coeffs2, rtol=0., atol=self._atol))
 
     @abstractmethod
-    def evaluate(self, point):
-        pass
+    def _get_base_coeffs(self):
+        """Return polynomial coefficients representing the implicit surface
+        equation.
+
+        """
 
     @abstractmethod
-    def translate(self, vector):
-        pass
+    def evaluate(self, point):
+        """Evaluate the surface equation at a given point.
+
+        Parameters
+        ----------
+        point : 3-tuple of float
+            The Cartesian coordinates, :math:`(x',y',z')`, at which the surface
+            equation should be evaluated.
+
+        Returns
+        -------
+        float
+            Evaluation of the surface polynomial at point :math:`(x',y',z')`
+
+        """
+
+    @abstractmethod
+    def translate(self, vector, inplace=False):
+        """Translate surface in given direction
+
+        Parameters
+        ----------
+        vector : iterable of float
+            Direction in which surface should be translated
+        inplace : boolean
+            Whether or not to return a new instance of this Surface or to
+            modify the coefficients of this Surface. Defaults to False
+
+        Returns
+        -------
+        instance of openmc.Surface
+            Translated surface
+
+        """
 
     def to_xml_element(self):
         """Return XML representation of the surface
@@ -325,13 +361,11 @@ class PlaneMixin(metaclass=ABCMeta):
         self._periodic_surface = periodic_surface
         periodic_surface._periodic_surface = self
 
-    @abstractmethod
     def _get_base_coeffs(self):
         """Return coefficients a, b, c, d representing a general plane of the
         form :math:`ax + by + cz = d`.
 
         """
-        pass
 
     def evaluate(self, point):
         """Evaluate the surface equation at a given point.
@@ -374,10 +408,7 @@ class PlaneMixin(metaclass=ABCMeta):
         a, b, c, d = self._get_base_coeffs()
         d = d + a*vx + b*vy + c*vz
 
-        if inplace:
-            surf = self
-        else:
-            surf = self.clone()
+        surf = self if inplace else self.clone()
 
         setattr(surf, surf._coeff_keys[-1], d)
 
@@ -798,17 +829,13 @@ Plane.register(ZPlane)
 
 class QuadricMixin(metaclass=ABCMeta):
     """A Mixin class implementing common functionality for quadric surfaces"""
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
 
-    @abstractmethod
     def _get_base_coeffs(self):
         """Return coefficients a, b, c, d, e, f, g, h, j, k representing a
         general quadric surface  of the form:
         :math:`ax^2 + by^2 + cz^2 + dxy + eyz + fxz+ gx + hy + jz +k = 0`.
 
         """
-        pass
 
     def get_Abc(self, coeffs=None):
         """Compute matrix, vector, and scalar coefficients for this surface or
@@ -891,10 +918,7 @@ class QuadricMixin(metaclass=ABCMeta):
         """
         vector = np.asarray(vector)
 
-        if inplace:
-            surf = self
-        else:
-            surf = self.clone()
+        surf = self if inplace else self.clone()
 
         if set(('x0', 'y0', 'z0')).intersection(set(surf._coeff_keys)):
             for vi, xi in zip(vector, ('x0', 'y0', 'z0')):
@@ -916,8 +940,8 @@ class QuadricMixin(metaclass=ABCMeta):
 
 class Cylinder(QuadricMixin, Surface):
     """A cylinder with radius r, centered on the point (x0, y0, z0) with an
-    axis specified by the line through points (x0, y0, z0) and (x0+u, y0+v,
-    z0+w)
+    axis specified by the line through points (x0, y0, z0) and (x0+dx, y0+dy,
+    z0+dz)
 
     Parameters
     ----------
@@ -982,6 +1006,10 @@ class Cylinder(QuadricMixin, Surface):
     _coeff_keys = ('x0', 'y0', 'z0', 'r', 'dx', 'dy','dz')
 
     def __init__(self, x0=0., y0=0., z0=0., r=1., dx=0., dy=0., dz=1., **kwargs):
+        raise NotImplementedError('There is no C++ implementation for general '
+                                  'Cylinders yet, please use '
+                                  'openmc.model.funcs.cylinder_from_points to '
+                                  'return a Quadric instance instead for now')
 
         super().__init__(**kwargs)
 
@@ -1020,55 +1048,90 @@ class Cylinder(QuadricMixin, Surface):
     def x0(self, x0):
         check_type('x0 coefficient', x0, Real)
         self._coefficients['x0'] = x0
+        self._out_of_date = True
 
     @y0.setter
     def y0(self, y0):
         check_type('y0 coefficient', y0, Real)
         self._coefficients['y0'] = y0
+        self._out_of_date = True
 
     @z0.setter
     def z0(self, z0):
         check_type('z0 coefficient', z0, Real)
         self._coefficients['z0'] = z0
+        self._out_of_date = True
 
     @r.setter
     def r(self, r):
         check_type('r coefficient', r, Real)
         self._coefficients['r'] = r
+        self._out_of_date = True
 
     @dx.setter
     def dx(self, dx):
         check_type('dx coefficient', dx, Real)
         self._coefficients['dx'] = dx
+        self._out_of_date = True
 
     @dy.setter
     def dy(self, dy):
         check_type('dy coefficient', dy, Real)
         self._coefficients['dy'] = dy
+        self._out_of_date = True
 
     @dz.setter
     def dz(self, dz):
         check_type('dz coefficient', dz, Real)
         self._coefficients['dz'] = dz
+        self._out_of_date = True
+
+    def _set_base_coeffs(self, coeffs):
+        """Set quadric coefficients for quick access
+
+        Parameters
+        ----------
+        coeffs : tuple
+            Tuple of Quadric coefficients (a, b, c, d, e, f, g, h, j, k)
+        """
+
+        for k, c in zip(Quadric._coeff_keys, coeffs):
+            setattr(self, '_' + k, c)
+        self._out_of_date = False
 
     def _get_base_coeffs(self):
-        x0, y0, z0, r = self.x0, self.y0, self.z0, self.r
-        dx, dy, dz = self.dx, self.dy, self.dz
-        dx2, dy2, dz2 = dx*dx, dy*dy, dz*dz
+        if self._out_of_date:
+            # Get x, y, z coordinates of two points
+            x1, y1, z1 = self.x0, self.y0, self.z0
+            x2, y2, z2 = x1 + self.dx, y1 + self.dy, z1 + self.dz
+            r = self.r 
 
-        a = dy2 + dz2
-        b = dx2 + dz2
-        c = dx2 + dy2
-        d = -2*dx*dy
-        e = -2*dy*dz
-        f = -2*dx*dz
-        g = 2*(dx*(z0*dz + y0*dy) - x0*(dy2 + dz2))
-        h = 2*(dy*(z0*dz + x0*dx) - y0*(dx2 + dz2))
-        j = 2*(dz*(y0*dy + x0*dx) - z0*(dx2 + dy2))
-        k = x0*x0*(dy2 + dz2) + y0*y0*(dx2 + dz2) + z0*z0*(dx2 + dy2) \
-            + e*y0*z0 + f*x0*z0 + d*x0*y0 - r*r*(dx2 + dy2 + dz2)
+            # Define intermediate terms
+            dx = x2 - x1
+            dy = y2 - y1
+            dz = z2 - z1
+            cx = y1*z2 - y2*z1
+            cy = x2*z1 - x1*z2
+            cz = x1*y2 - x2*y1
 
-        return (a, b, c, d, e, f, g, h, j, k)
+            # Given p=(x,y,z), p1=(x1, y1, z1), p2=(x2, y2, z2), the equation
+            # for the cylinder can be derived as
+            # r = |(p - p1) ⨯ (p - p2)| / |p2 - p1|.
+            # Expanding out all terms and grouping according to what Quadric
+            # expects gives the following coefficients.
+            a = dy*dy + dz*dz
+            b = dx*dx + dz*dz
+            c = dx*dx + dy*dy
+            d = -2*dx*dy
+            e = -2*dy*dz
+            f = -2*dx*dz
+            g = 2*(cy*dz - cz*dy)
+            h = 2*(cz*dx - cx*dz)
+            j = 2*(cx*dy - cy*dx)
+            k = cx*cx + cy*cy + cz*cz - (dx*dx + dy*dy + dz*dz)*r*r
+            self._set_base_coeffs((a, b, c, d, e, f, g, h, j, k))
+
+        return tuple(getattr(self, '_' + k) for k in Quadric._coeff_keys)
 
     @classmethod
     def from_points(cls, p1, p2, r=1., **kwargs):
@@ -1090,6 +1153,10 @@ class Cylinder(QuadricMixin, Surface):
             radius r.
 
         """
+        raise NotImplementedError('There is no C++ implementation for general '
+                                  'Cylinders yet, please use '
+                                  'openmc.model.funcs.cylinder_from_points to '
+                                  'return a Quadric instance instead for now')
         # Convert to numpy arrays
         p1 = np.asarray(p1)
         p2 = np.asarray(p2)
@@ -1624,6 +1691,9 @@ class Cone(QuadricMixin, Surface):
     _coeff_keys = ('x0', 'y0', 'z0', 'r2', 'dx', 'dy', 'dz')
 
     def __init__(self, x0=0., y0=0., z0=0., r2=1., dx=0., dy=0., dz=1., **kwargs):
+        raise NotImplementedError('There is no C++ implementation for general '
+                                  'Cones yet, this functionality should be '
+                                  'added soon.')
         R2 = kwargs.pop('R2', None)
         if R2 is not None:
             warn(_WARNING_UPPER.format(type(self).__name__, 'r2', 'R2'),
@@ -1666,55 +1736,92 @@ class Cone(QuadricMixin, Surface):
     def x0(self, x0):
         check_type('x0 coefficient', x0, Real)
         self._coefficients['x0'] = x0
+        self._out_of_date = True
 
     @y0.setter
     def y0(self, y0):
         check_type('y0 coefficient', y0, Real)
         self._coefficients['y0'] = y0
+        self._out_of_date = True
 
     @z0.setter
     def z0(self, z0):
         check_type('z0 coefficient', z0, Real)
         self._coefficients['z0'] = z0
+        self._out_of_date = True
 
     @r2.setter
     def r2(self, r2):
         check_type('r^2 coefficient', r2, Real)
         self._coefficients['r2'] = r2
+        self._out_of_date = True
 
     @dx.setter
     def dx(self, dx):
         check_type('dx coefficient', dx, Real)
         self._coefficients['dx'] = dx
+        self._out_of_date = True
 
     @dy.setter
     def dy(self, dy):
         check_type('dy coefficient', dy, Real)
         self._coefficients['dy'] = dy
+        self._out_of_date = True
 
     @dz.setter
     def dz(self, dz):
         check_type('dz coefficient', dz, Real)
         self._coefficients['dz'] = dz
+        self._out_of_date = True
+
+    def _set_base_coeffs(self, coeffs):
+        """Set quadric coefficients for quick access
+
+        Parameters
+        ----------
+        coeffs : tuple
+            Tuple of Quadric coefficients (a, b, c, d, e, f, g, h, j, k)
+        """
+
+        for k, c in zip(Quadric._coeff_keys, coeffs):
+            setattr(self, '_' + k, c)
+        self._out_of_date = False
 
     def _get_base_coeffs(self):
-        x0, y0, z0, r2 = self.x0, self.y0, self.z0, self.r2
-        dx, dy, dz = self.dx, self.dy, self.dz
-        cos2 = 1 / (1 + r2)
-        c1 = (dx*dx + dy*dy + dz*dz)*cos2
+        # The equation for a general cone with vertex at point p = (x0, y0, z0)
+        # and axis specified by the unit vector d = (dx, dy, dz) and opening
+        # half angle theta can be described by the equation
+        #
+        # (d*(r - p))^2 - (r - p)*(r - p)cos^2(theta) = 0
+        #
+        # where * is the dot product and the vector r is the evaulation point
+        # r = (x, y, z)
+        #
+        # The argument r2 for cones is actually tan^2(theta) so that
+        # cos^2(theta) = 1 / (1 + r2)
 
-        a = dx*dx - c1
-        b = dy*dy - c1
-        c = dz*dz - c1
-        d = 2*dx*dy
-        e = 2*dy*dz
-        f = 2*dx*dz
-        g = -2*(dx*dx*x0 + dx*dy*y0 + dx*dz*z0 - c1)
-        h = -2*(dy*dy*y0 + dx*dy*x0 + dy*dz*z0 - c1)
-        j = -2*(dz*dz*y0 + dx*dz*x0 + dy*dz*y0 - c1)
-        k = (dx*x0 + dy*y0 + dz*z0)**2 - c1*(x0*x0 + y0*y0 + z0*z0)
+        if self._out_of_date:
+            x0, y0, z0, r2 = self.x0, self.y0, self.z0, self.r2
+            dx, dy, dz = self.dx, self.dy, self.dz
+            dnorm = dx*dx + dy*dy + dz*dz
+            dx /= dnorm
+            dy /= dnorm
+            dz /= dnorm
+            cos2 = 1 / (1 + r2)
 
-        return (a, b, c, d, e, f, g, h, j, k)
+            a = dx*dx - cos2
+            b = dy*dy - cos2
+            c = dz*dz - cos2
+            d = 2*dx*dy
+            e = 2*dy*dz
+            f = 2*dx*dz
+            g = -2*(dx*dx*x0 + dx*dy*y0 + dx*dz*z0 - cos2)
+            h = -2*(dy*dy*y0 + dx*dy*x0 + dy*dz*z0 - cos2)
+            j = -2*(dz*dz*y0 + dx*dz*x0 + dy*dz*y0 - cos2)
+            k = (dx*x0 + dy*y0 + dz*z0)**2 - cos2*(x0*x0 + y0*y0 + z0*z0)
+            self._set_base_coeffs((a, b, c, d, e, f, g, h, j, k))
+
+        return tuple(getattr(self, '_' + k) for k in Quadric._coeff_keys)
 
 
 class XCone(QuadricMixin, Surface):
@@ -2404,5 +2511,3 @@ class Halfspace(Region):
 
 
 _SURFACE_CLASSES = {cls._type: cls for cls in Surface.__subclasses__()}
-
-

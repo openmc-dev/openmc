@@ -139,12 +139,12 @@ class UnstructuredMeshTest(PyAPITestHarness):
         ### Tallies ###
 
         # create meshes
-        coarse_mesh = openmc.RegularMesh()
-        coarse_mesh.dimension = (10, 10, 10)
-        coarse_mesh.lower_left = (-10.0, -10.0, -10.0)
-        coarse_mesh.upper_right = (10.0, 10.0, 10.0)
+        regular_mesh = openmc.RegularMesh()
+        regular_mesh.dimension = (10, 10, 10)
+        regular_mesh.lower_left = (-10.0, -10.0, -10.0)
+        regular_mesh.upper_right = (10.0, 10.0, 10.0)
 
-        coarse_filter = openmc.MeshFilter(mesh=coarse_mesh)
+        regular_mesh_filter = openmc.MeshFilter(mesh=regular_mesh)
 
         uscd_mesh = openmc.UnstructuredMesh()
         uscd_mesh.filename = self.mesh_filename
@@ -154,11 +154,11 @@ class UnstructuredMeshTest(PyAPITestHarness):
         # create tallies
         tallies = openmc.Tallies()
 
-        coarse_mesh_tally = openmc.Tally(name="coarse mesh tally")
-        coarse_mesh_tally.filters = [coarse_filter]
-        coarse_mesh_tally.scores = ['flux']
-        coarse_mesh_tally.estimator = self.estimator
-        tallies.append(coarse_mesh_tally)
+        regular_mesh_tally = openmc.Tally(name="regular mesh tally")
+        regular_mesh_tally.filters = [regular_mesh_filter]
+        regular_mesh_tally.scores = ['flux']
+        regular_mesh_tally.estimator = self.estimator
+        tallies.append(regular_mesh_tally)
 
         uscd_tally = openmc.Tally(name="unstructured mesh tally")
         uscd_tally.filters = [uscd_filter]

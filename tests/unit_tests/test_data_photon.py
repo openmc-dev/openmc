@@ -144,3 +144,11 @@ def test_export_to_hdf5(tmpdir, element):
            element2.bremsstrahlung['electron_energy']).all()
     # Export to hdf5 again
     element2.export_to_hdf5(filename, 'w')
+
+def test_photodat_only(tmpdir):
+    endf_data = os.environ['OPENMC_ENDF_DATA']
+    filename = str(tmpdir.join('tmp.h5'))
+    p_file = 'photoat-{:03}_{}_000.endf'.format(1, 'H')
+    p_path = os.path.join(endf_data, 'photoat', p_file)
+    data=openmc.data.IncidentPhoton.from_endf(p_path)
+    data.export_to_hdf5(filename, 'w')

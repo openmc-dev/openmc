@@ -5,22 +5,27 @@ import glob
 
 from tests.testing_harness import PyAPITestHarness
 
+def __write_cmake_file(openmc_dir, build_dir):
+    cmake_string = "cmake_minimum_required(VERSION 3.3 FATAL_ERROR)\n" +
+                   "project(openmc_sources CXX)\n" +
+                   "add_library(source SHARED source_ring.cpp)\n" +
+                   "find_package(OpenMC REQUIRED HINTS {})\n" +
+                   "target_link_libraries(source OpenMC::libopenmc)"
+
+    f = open('CMakeLists.txt','w')
+    f.write(cmake_string.format(openmc_dir))
+    f.close()
+
+    return
+
 # compile the external source
 def compile_source():
-    # first one should be CMakelists in share/ 
-    files = glob.glob('../../../*/CMakeLists.txt')    
-    assert len(files) != 0
+
+    openmc_home_dir = os.environ['OPENMC_INSTALL_DIR']
+    __write_cmake_file(openmc_home_dir,'build')
 
     # copy the cmakefile
-    status = os.system('rm -rf build')
-    assert os.WEXITSTATUS(status) == 0
-    status = os.system('mkdir build ; cd build ; cp ../'+files[0]+' .')
-    assert os.WEXITSTATUS(status) == 0
-    status = os.system('cd build ; cmake -DSOURCE_FILES=../source_sampling.cpp ; make')
-    assert os.WEXITSTATUS(status) == 0
-    status = os.system('cp build/libsource.so .')
-    assert os.WEXITSTATUS(status) == 0
-    status = os.system('rm -rf build')
+    status = os.system('sh clear_and_build.sh')
     assert os.WEXITSTATUS(status) == 0
 
     return 0
@@ -56,7 +61,7 @@ class SourceTestHarness(PyAPITestHarness):
 
         #source
         source = openmc.Source()
-        source.library = './libsource.so'
+        source.library = 'build/libsource.so'
         sett.source = source
 
         # run

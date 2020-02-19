@@ -387,8 +387,8 @@ public:
 
   //! Set data for a score
   void set_score_data(const std::string& score,
-                      xt::xarray<double> values,
-                      xt::xarray<double> sum_sq) const;
+                      std::vector<double> values,
+                      std::vector<double> sum_sq) const;
 
   //! Write the mesh with any current tally data
   void write(std::string base_filename) const;

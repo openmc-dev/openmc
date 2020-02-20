@@ -148,6 +148,6 @@ def test_export_to_hdf5(tmpdir, element):
 
 def test_photodat_only(run_in_tmpdir):
     endf_dir = Path(os.environ['OPENMC_ENDF_DATA'])
-    photoatomic_file = endf_dir / 'photoat/photoat-001_H_000.endf'
-    data=openmc.data.IncidentPhoton.from_endf(photoatomic_file)
+    photoatomic_file = endf_dir / 'photoat' / 'photoat-001_H_000.endf'
+    data = openmc.data.IncidentPhoton.from_endf(photoatomic_file)
     data.export_to_hdf5('tmp.h5', 'w')

@@ -9,6 +9,11 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 # Set module path
 set(CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules)
 
+# Allow user to specify <project>_ROOT variables
+if (NOT (CMAKE_VERSION VERSION_LESS 3.12))
+  cmake_policy(SET CMP0074 NEW)
+endif()
+
 #===============================================================================
 # Command line options
 #===============================================================================
@@ -35,17 +40,17 @@ endif()
 #===============================================================================
 if(dagmc)
   find_package(DAGMC REQUIRED)
-  link_directories(${DAGMC_LIBRARY_DIRS})
+  add_library(dagmc-imported INTERFACE IMPORTED)
+  target_link_directories(dagmc-imported INTERFACE ${DAGMC_LIBRARY_DIRS})
+  target_link_libraries(dagmc-imported INTERFACE ${DAGMC_LIBRARIES})
+  target_include_directories(dagmc-imported INTERFACE ${DAGMC_INCLUDE_DIRS})
+else()
+  set(DAGMC_FOUND false)
 endif()
 
 #===============================================================================
 # HDF5 for binary output
 #===============================================================================
-
-# Allow user to specify HDF5_ROOT
-if (NOT (CMAKE_VERSION VERSION_LESS 3.12))
-  cmake_policy(SET CMP0074 NEW)
-endif()
 
 # Unfortunately FindHDF5.cmake will always prefer a serial HDF5 installation
 # over a parallel installation if both appear on the user's PATH. To get around
@@ -357,8 +362,7 @@ target_link_libraries(libopenmc ${ldflags} ${HDF5_LIBRARIES} ${HDF5_HL_LIBRARIES
 
 if(dagmc)
   target_compile_definitions(libopenmc PRIVATE DAGMC)
-  target_link_libraries(libopenmc ${DAGMC_LIBRARIES})
-  target_include_directories(libopenmc PRIVATE ${DAGMC_INCLUDE_DIRS})
+  target_link_libraries(libopenmc dagmc-imported)
 endif()
 
 #===============================================================================
@@ -388,6 +392,8 @@ add_custom_command(TARGET libopenmc POST_BUILD
 # Install executable, scripts, manpage, license
 #===============================================================================
 
+configure_file(cmake/OpenMCConfig.cmake.in "${CMAKE_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/OpenMCConfig.cmake" @ONLY)
+
 set(INSTALL_CONFIGDIR ${CMAKE_INSTALL_LIBDIR}/cmake/OpenMC)
 install(TARGETS openmc libopenmc faddeeva
   EXPORT openmc-targets
@@ -401,7 +407,7 @@ install(EXPORT openmc-targets
   DESTINATION ${INSTALL_CONFIGDIR})
 
 install(DIRECTORY src/relaxng DESTINATION ${CMAKE_INSTALL_DATADIR}/openmc)
-install(FILES cmake/OpenMCConfig.cmake DESTINATION ${INSTALL_CONFIGDIR})
+install(FILES "${CMAKE_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/OpenMCConfig.cmake" DESTINATION ${INSTALL_CONFIGDIR})
 install(FILES man/man1/openmc.1 DESTINATION ${CMAKE_INSTALL_MANDIR}/man1)
 install(FILES LICENSE DESTINATION "${CMAKE_INSTALL_DOCDIR}" RENAME copyright)
 install(DIRECTORY include/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})

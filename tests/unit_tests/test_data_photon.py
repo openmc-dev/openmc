@@ -2,6 +2,7 @@
 
 from collections.abc import Mapping, Callable
 import os
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
@@ -145,10 +146,8 @@ def test_export_to_hdf5(tmpdir, element):
     # Export to hdf5 again
     element2.export_to_hdf5(filename, 'w')
 
-def test_photodat_only(tmpdir):
-    endf_data = os.environ['OPENMC_ENDF_DATA']
-    filename = str(tmpdir.join('tmp.h5'))
-    p_file = 'photoat-{:03}_{}_000.endf'.format(1, 'H')
-    p_path = os.path.join(endf_data, 'photoat', p_file)
-    data=openmc.data.IncidentPhoton.from_endf(p_path)
-    data.export_to_hdf5(filename, 'w')
+def test_photodat_only(run_in_tmpdir):
+    endf_dir = Path(os.environ['OPENMC_ENDF_DATA'])
+    photoatomic_file = endf_dir / 'photoat/photoat-001_H_000.endf'
+    data=openmc.data.IncidentPhoton.from_endf(photoatomic_file)
+    data.export_to_hdf5('tmp.h5', 'w')

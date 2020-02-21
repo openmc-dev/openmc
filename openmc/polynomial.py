@@ -1,3 +1,4 @@
+import math
 import numpy as np
 import openmc
 from collections.abc import Iterable
@@ -47,8 +48,6 @@ class ZernikeRadial(Polynomial):
         A list of coefficients of each term in radial only Zernike polynomials
     radius : float
         Domain of Zernike polynomials to be applied on. Default is 1.
-    r : float
-        Position to be evaluated, normalized on radius [0,1]
 
     Attributes
     ----------
@@ -65,7 +64,7 @@ class ZernikeRadial(Polynomial):
         super().__init__(coef)
         self._order = 2 * (len(self.coef) - 1)
         self.radius = radius
-        norm_vec = (2 * np.arange(len(self.coef)) + 1) / (np.pi * radius**2)
+        norm_vec = (2 * np.arange(len(self.coef)) + 1) / (math.pi * radius**2)
         self._norm_coef = norm_vec * self.coef
 
     @property
@@ -82,19 +81,16 @@ class ZernikeRadial(Polynomial):
 
 
 class Zernike(Polynomial):
-    """Create Zernike polynomials given coefficients and domain.
-    The Zernike polynomials are defined as in
-    :class:`ZernikeFilter`.
+    r"""Create Zernike polynomials given coefficients and domain.
+    
+    The azimuthal Zernike polynomials are defined as in :class:`ZernikeFilter`.
+    
     Parameters
     ----------
     coef : Iterable of float
         A list of coefficients of each term in radial only Zernike polynomials
     radius : float
         Domain of Zernike polynomials to be applied on. Default is 1.
-    r : float
-        Position to be evaluated, normalized on radius [0,1]
-    theta : float 
-        Azimuthal to be evaluated, normalized on :math:`[0, 2*\pi]`
         
     Attributes
     ----------
@@ -110,17 +106,20 @@ class Zernike(Polynomial):
     """
     def __init__(self, coef, radius=1):
         super().__init__(coef)
-        self._order = int(((np.sqrt(8 * len(self.coef) + 1)) - 3) / 2)
+        r"""Solve order from number of coefficients
+        N = (order + 1)(order + 2) / 2
+        """
+        self._order = int((math.sqrt(8 * len(self.coef) + 1) - 3) / 2)
         self.radius = radius
-        norm_vec = np.ones((len(self.coef)))
+        norm_vec = np.ones(len(self.coef))
         for n in range(self._order + 1):
             for m in range(-n, n + 1, 2):
-                j = int((n * (n + 2) + m) / 2)
-                if m==0:
+                j = int((n*(n + 2) + m)/2)
+                if m == 0:
                     norm_vec[j] = n + 1 
                 else:
-                    norm_vec[j] = 2 * n + 2
-        norm_vec /= (np.pi * radius**2)
+                    norm_vec[j] = 2*n + 2
+        norm_vec /= (math.pi * radius**2)
         self._norm_coef = norm_vec * self.coef
 
     @property

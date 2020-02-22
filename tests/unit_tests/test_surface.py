@@ -37,6 +37,18 @@ def test_plane():
     st = s.translate((1.0, 0.0, 0.0))
     assert (st.a, st.b, st.c, st.d) == (s.a, s.b, s.c, 4)
 
+    # rotate method
+    yp = openmc.YPlane(np.abs(s.d)/np.sqrt(s.a**2 + s.b**2 + s.c**2))
+    phi = np.rad2deg(np.arctan2(1, 2))
+    theta = 0.
+    psi = np.rad2deg(np.arctan2(1, np.sqrt(5)))
+    sr = s.rotate((psi, theta, phi))
+    assert yp.normalize() == pytest.approx(sr.normalize())
+    # test rotation ordering
+    phi = np.rad2deg(np.arctan2(1, np.sqrt(2)))
+    sr = s.rotate((0., -45., phi), order='xyz')
+    assert yp.normalize() == pytest.approx(sr.normalize())
+
     # Make sure repr works
     repr(s)
 
@@ -81,6 +93,14 @@ def test_xplane():
     st = s.translate((1.0, 0.0, 0.0))
     assert st.x0 == s.x0 + 1
 
+    # rotate method
+    # make sure rotating around x axis does nothing to coefficients
+    sr = s.rotate((37.4, 0., 0.))
+    assert s._get_base_coeffs() == pytest.approx(sr._get_base_coeffs())
+    # rotating around z by 90 deg then x by -90 deg should give negative z-plane
+    sr = s.rotate((-90., 0., 90))
+    assert (0., 0., -1., 3.) == pytest.approx(sr._get_base_coeffs())
+
     # Make sure repr works
     repr(s)
 
@@ -109,6 +129,17 @@ def test_yplane():
     # translate method
     st = s.translate((0.0, 1.0, 0.0))
     assert st.y0 == s.y0 + 1
+
+    # rotate method
+    # make sure rotating around y axis does nothing to coefficients
+    sr = s.rotate((0., -12.4, 0.), order='yxz')
+    assert s._get_base_coeffs() == pytest.approx(sr._get_base_coeffs())
+    # rotating around z by 90 deg then x by -90 deg should give negative z-plane
+    #sr = s.rotate((-90., 0., 90))
+    #assert (0., 0., -1., 3.) == pytest.approx(sr._get_base_coeffs())
+
+    # Make sure repr works
+    repr(s)
 
 
 def test_zplane():

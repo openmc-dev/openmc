@@ -1,5 +1,6 @@
 from abc import ABCMeta, abstractmethod
 from collections import OrderedDict
+from collections.abc import Iterable
 from copy import deepcopy
 from numbers import Real
 from xml.etree import ElementTree as ET
@@ -8,7 +9,7 @@ import math
 
 import numpy as np
 
-from openmc.checkvalue import check_type, check_value
+from openmc.checkvalue import check_type, check_value, check_length
 from openmc.region import Region, Intersection, Union
 from openmc.mixin import IDManagerMixin, IDWarning
 
@@ -24,6 +25,62 @@ _WARNING_KWARGS = """\
 "{}(...) accepts keyword arguments only for '{}'. Future versions of OpenMC \
 will not accept positional parameters for superclass arguments.\
 """
+
+
+def get_rotation_matrix(rotation, order='xyz'):
+    """Generate a 3x3 rotation matrix from input angles
+
+    Parameters
+    ----------
+    rotation : 3-tuple of float
+        A 3-tuple of angles (psi, theta, phi) in degrees where the first 
+        element is the rotation about the x-axis in the fixed laboratory frame,
+        the second element is the rotation about the y-axis in the fixed
+        laboratory frame, and the third element is the rotation about the
+        z-axis in the fixed laboratory frame. The rotations are active
+        rotations.
+    order : str, optinoal
+        A string of 'x', 'y', and 'z' in some order specifying which rotation
+        to perform first, second, and third. Defaults to 'zyx' which means, the
+        rotation by angle phi about z will be applied first, followed by theta
+        about y and then psi about x.
+
+    """
+    check_type('surface rotation', rotation, Iterable, Real)
+    check_length('surface rotation', rotation, 3)
+
+    # Calculate rotation matrix from angles psi, theta, phi, and the order
+    # of the desired rotations - order= 'xyz' applies the rotation matrix 
+    # R = Rz(phi) @ Ry(theta) @ Rx(psi) to a vector from the left
+    # order is the extrinsic order (actual multiplication of matrices). This
+    # means that the associated intrinsic rotation swaps the order of 
+    # multiplication i.e. an explicit Rz(psi) @ Ry(theta) @ Rx(phi) is known
+    # as an x-y-z rotation and its associated intrinsic rotation is referred
+    # to as a z-y'x'' rotation.
+    #
+    # Default order produces the same active rotation as the cell.rotation
+    # method except that method introduces a minus sign to all the angles after
+    # they are read in which is bad
+    phi, theta, psi = np.array(rotation)*(np.pi/180.)
+    cx, sx = np.cos(phi), np.sin(phi)
+    cy, sy = np.cos(theta), np.sin(theta)
+    cz, sz = np.cos(psi), np.sin(psi)
+    Rx = np.array([[1., 0., 0.], [0., cx, -sx], [0., sx, cx]])
+    Ry = np.array([[cy, 0., sy], [0., 1., 0.], [-sy, 0., cy]])
+    Rz = np.array([[cz, -sz, 0.], [sz, cz, 0.], [0., 0., 1.]])
+    angledct = {'x': Rx, 'y': Ry, 'z': Rz}
+    R1, R2, R3 = tuple(angledct[i] for i in order)
+    return R3 @ R2 @ R1
+
+
+def get_rotation_matrix_2(rotation):
+    phi, theta, psi = np.array(rotation)*(np.pi/180.)
+    c3, s3 = np.cos(phi), np.sin(phi)
+    c2, s2 = np.cos(theta), np.sin(theta)
+    c1, s1 = np.cos(psi), np.sin(psi)
+    return np.array([[c1*c2, c1*s2*s3 - c3*s1, s1*s3 + c1*c3*s2],
+                     [c2*s1, c1*c3 + s1*s2*s3, c3*s1*s2 - c1*s3],
+                     [-s2, c2*s3, c2*c3]])
 
 
 class Surface(IDManagerMixin, metaclass=ABCMeta):
@@ -266,6 +323,28 @@ class Surface(IDManagerMixin, metaclass=ABCMeta):
 
         """
 
+    @abstractmethod
+    def rotate(self, rotation, pivot=(0., 0., 0.), order='zyx', inplace=False):
+        """Rotate surface by given Tait-Bryan angles
+
+        Parameters
+        ----------
+        rotation : iterable of float
+            Intrinsic Tait-Bryan angles in degrees used to rotate the surface
+        pivot : iterable of float, optional
+            (x, y, z) coordinates for the point to rotate about. Defaults to
+            (0., 0., 0.)
+        inplace : boolean
+            Whether or not to return a new instance of Surface or to modify the
+            coefficients of this Surface in place. Defaults to False.
+
+        Returns
+        -------
+        openmc.Surface
+            Rotated surface
+
+        """
+
     def to_xml_element(self):
         """Return XML representation of the surface
 
@@ -414,6 +493,33 @@ class PlaneMixin(metaclass=ABCMeta):
                     ur = np.array([v if not np.isnan(v) else np.inf for v in vals])
 
         return (ll, ur)
+=======
+        a, b, c = self._get_base_coeffs()[0:3]
+        return np.array((a, b, c)) / np.sqrt(a*a + b*b + c*c)
+
+    def bounding_box(self, side):
+        # Compute the bounding box based on the normal vector to the plane
+        nhat = self._get_normal()
+        lb = np.array([-np.inf, -np.inf, -np.inf])
+        ub = np.array([np.inf, np.inf, np.inf])
+        # If the plane is axis aligned, find the proper bounding box
+        if np.any(np.isclose(np.abs(nhat), 1., rtol=0., atol=self._atol)):
+            sign = np.dot(np.array([1., 1., 1.]), nhat)
+            a, b, c, d = self._get_base_coeffs()
+            vals = tuple(d/i if round(i) != 0 else np.nan for i in (a, b, c))
+            if side == '-':
+                if sign > 0:
+                    ub = np.array([v if ~np.isnan(v) else np.inf for v in vals])
+                else:
+                    lb = np.array([v if ~np.isnan(v) else -np.inf for v in vals])
+            elif side == '+':
+                if sign > 0:
+                    lb = np.array([v if ~np.isnan(v) else -np.inf for v in vals])
+                else:
+                    ub = np.array([v if ~np.isnan(v) else np.inf for v in vals])
+
+        return (lb, ub)
+>>>>>>> Implementing Surface Rotations
 
     def evaluate(self, point):
         """Evaluate the surface equation at a given point.
@@ -452,15 +558,54 @@ class PlaneMixin(metaclass=ABCMeta):
             Translated surface
 
         """
-        vx, vy, vz = vector
+        if np.allclose(vector, 0., rtol=0., atol=self._atol):
+            return self
+
         a, b, c, d = self._get_base_coeffs()
-        d = d + a*vx + b*vy + c*vz
+        d = d + np.array([a, b, c]) @ np.array(vector)
 
         surf = self if inplace else self.clone()
 
         setattr(surf, surf._coeff_keys[-1], d)
 
         return surf
+
+    def rotate(self, rotation, pivot=(0., 0., 0.), order='zyx', inplace=False):
+        """Rotate surface by given Tait-Bryan angles
+
+        Parameters
+        ----------
+        rotation : iterable of float
+            Intrinsic Tait-Bryan angles in degrees used to rotate the surface
+        pivot : iterable of float, optional
+            (x, y, z) coordinates for the point to rotate about. Defaults to
+            (0., 0., 0.)
+        inplace : boolean
+            Whether or not to return a new instance of a Plane or to modify the
+            coefficients of this plane in place. Defaults to False.
+
+        Returns
+        -------
+        openmc.Plane
+            Rotated surface
+
+        """
+
+        pivot = np.asarray(pivot)
+        surf = self.translate(-pivot, inplace=inplace)
+
+        Rmat = get_rotation_matrix(rotation, order=order)
+        a, b, c, d = surf._get_base_coeffs()
+        # Compute new rotated coefficients a, b, c
+        a, b, c = Rmat @ np.array([a, b, c])
+
+        kwargs = {'boundary_type': surf.boundary_type, 'name': surf.name}
+        if inplace:
+            kwargs['sufrace_id'] = surf.id
+
+        surf = Plane(a=a, b=b, c=c, d=d, **kwargs)
+
+        return surf.translate(pivot, inplace=inplace)
 
     def to_xml_element(self):
         """Return XML representation of the surface
@@ -976,6 +1121,8 @@ class QuadricMixin(metaclass=ABCMeta):
 
         """
         vector = np.asarray(vector)
+        if np.allclose(vector, 0., rtol=0., atol=self._atol):
+            return self
 
         surf = self if inplace else self.clone()
 
@@ -998,6 +1145,72 @@ class QuadricMixin(metaclass=ABCMeta):
                 setattr(surf, key, val)
 
         return surf
+
+    def rotate(self, rotation, pivot=(0., 0., 0.), order='zyx', inplace=False):
+        """Rotate surface by given Tait-Bryan angles
+
+        Parameters
+        ----------
+        rotation : iterable of float
+            Intrinsic Tait-Bryan angles in degrees used to rotate the surface
+        pivot : iterable of float, optional
+            (x, y, z) coordinates for the point to rotate about. Defaults to
+            (0., 0., 0.)
+        inplace : boolean
+            Whether or not to return a new instance of this Surface or to modify the
+            coefficients of this Surface in place. Defaults to False.
+
+        Returns
+        -------
+        openmc.Surface
+            Rotated surface
+
+        """
+
+        pivot = np.asarray(pivot)
+        surf = self.translate(-pivot, inplace=inplace)
+        Rmat = get_rotation_matrix(rotation, order=order)
+
+        kwargs = {'boundary_type': self.boundary_type, 'name': self.name}
+        if inplace:
+            kwargs['sufrace_id'] = self.id
+
+        # Handle rotations for classes with well defined origins and axes
+        attrdct = {}
+        if any((isinstance(surf, cls) for cls in (Cylinder, Sphere, Cone))):
+            if isinstance(surf, Sphere):
+                surf = surf if inplace else surf.clone()
+            else:
+                # Get generic form of Surface
+                surf = _VIRTUAL_BASES[surf._type](**kwargs)
+                # get the axis and origin of this Surface
+                axis = np.array([surf.dx, surf.dy, surf.dz])
+                # Effectively clone all attributes that arent in axis or origin
+                attrdct.update({k: getattr(surf, k) for k in surf._coeff_keys})
+                # update axis attributes from rotation
+                attrdct.update(dict(zip(('dx', 'dy', 'dz'), Rmat @ axis)))
+            # update origin attributes from rotation
+            origin = np.array([surf.x0, surf.y0, surf.z0])
+            attrdct.update(dict(zip(('x0', 'y0', 'z0'), Rmat @ origin)))
+
+        # Handle rotations for general Quadric types
+        elif isinstance(surf, Quadric):
+            surf = surf if inplace  else surf.clone()
+
+            A, bvec, k = surf.get_Abc()
+            Arot = Rmat @ A @ Rmat.T
+
+            a, b, c = np.diagonal(Arot)
+            d, e, f = 2*Arot[0, 1], 2*Arot[1, 2], 2*Arot[0, 2]
+            g, h, j = Rmat @ bvec
+            attrdct.update(dict(zip(surf._coeff_keys,
+                                    (a, b, c, d, e, f, g, h, j, k))))
+
+        # Set all rotated attributes
+        for key, val in attrdct.items():
+            setattr(surf, key, val)
+
+        return surf.translate(pivot, inplace=inplace)
 
 
 class Cylinder(QuadricMixin, Surface):
@@ -2627,3 +2840,10 @@ class Halfspace(Region):
         return type(self)(memo[key], self.side)
 
 _SURFACE_CLASSES = {cls._type: cls for cls in Surface.__subclasses__()}
+_VIRTUAL_BASES = {'{}plane'.format(s): Plane for s in ('x-', 'y-', 'z-', '')}
+_VIRTUAL_BASES.update({'{}cylinder'.format(s): Cylinder
+                       for s in ('x-', 'y-', 'z-','')})
+_VIRTUAL_BASES.update({'{}cone'.format(s): Cone
+                       for s in ('x-', 'y-', 'z-', '')})
+_VIRTUAL_BASES['sphere'] = Sphere
+_VIRTUAL_BASES['quadric'] = Quadric

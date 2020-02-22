@@ -24,6 +24,8 @@ _WARNING_KWARGS = """\
 will not accept positional parameters for superclass arguments.\
 """
 
+_SURFACE_CLASSES = {}
+
 
 class Surface(IDManagerMixin, metaclass=ABCMeta):
     """An implicit surface with an associated boundary condition.
@@ -76,6 +78,10 @@ class Surface(IDManagerMixin, metaclass=ABCMeta):
         # Key      - coefficient name
         # Value    - coefficient value
         self._coefficients = {}
+
+    def __init_subclass__(cls, **kwargs):
+        super().__init_subclass__(**kwargs)
+        _SURFACE_CLASSES[cls._type] = cls
 
     def __neg__(self):
         return Halfspace(self, '-')
@@ -361,6 +367,36 @@ class PlaneMixin(metaclass=ABCMeta):
         self._periodic_surface = periodic_surface
         periodic_surface._periodic_surface = self
 
+    def _get_base_coeffs(self):
+        return (self.a, self.b, self.c, self.d)
+
+    def _get_normal(self):
+        a, b, c = self._get_base_coeffs()[0:3]
+        return np.array((a, b, c)) / np.sqrt(a*a + b*b + c*c)
+
+    def bounding_box(self, side):
+        # Compute the bounding box based on the normal vector to the plane
+        nhat = self._get_normal()
+        lb = np.array([-np.inf, -np.inf, -np.inf])
+        ub = np.array([np.inf, np.inf, np.inf])
+        # If the plane is axis aligned, find the proper bounding box
+        if np.any(np.isclose(np.abs(nhat), 1., rtol=0., atol=self._atol)):
+            sign = np.dot(np.array([1., 1., 1.]), nhat)
+            a, b, c, d = self._get_base_coeffs()
+            vals = tuple(d/i if round(i) != 0 else np.nan for i in (a, b, c))
+            if side == '-':
+                if sign > 0:
+                    ub = np.array([v if ~np.isnan(v) else np.inf for v in vals])
+                else:
+                    lb = np.array([v if ~np.isnan(v) else -np.inf for v in vals])
+            elif side == '+':
+                if sign > 0:
+                    lb = np.array([v if ~np.isnan(v) else -np.inf for v in vals])
+                else:
+                    ub = np.array([v if ~np.isnan(v) else np.inf for v in vals])
+
+        return (lb, ub)
+
     def evaluate(self, point):
         """Evaluate the surface equation at a given point.
 
@@ -509,6 +545,12 @@ class Plane(PlaneMixin, Surface):
                      FutureWarning)
                 setattr(self, k.lower(), val)
 
+    @classmethod
+    def __subclasshook__(cls, c):
+        if cls is Plane and c in (XPlane, YPlane, ZPlane):
+            return True
+        return NotImplemented
+
     @property
     def a(self):
         return self.coefficients['a']
@@ -544,9 +586,6 @@ class Plane(PlaneMixin, Surface):
     def d(self, d):
         check_type('D coefficient', d, Real)
         self._coefficients['d'] = d
-
-    def _get_base_coeffs(self):
-        return (self.a, self.b, self.c, self.d)
 
     @classmethod
     def from_points(cls, p1, p2, p3, **kwargs):
@@ -638,27 +677,29 @@ class XPlane(PlaneMixin, Surface):
     def x0(self):
         return self.coefficients['x0']
 
+    @property
+    def a(self):
+        return 1.
+
+    @property
+    def b(self):
+        return 0.
+
+    @property
+    def c(self):
+        return 0.
+
+    @property
+    def d(self):
+        return self.x0
+
     @x0.setter
     def x0(self, x0):
         check_type('x0 coefficient', x0, Real)
         self._coefficients['x0'] = x0
 
-    def _get_base_coeffs(self):
-        return (1., 0., 0., self.x0)
-
-    def bounding_box(self, side):
-        if side == '-':
-            return (np.array([-np.inf, -np.inf, -np.inf]),
-                    np.array([self.x0, np.inf, np.inf]))
-        elif side == '+':
-            return (np.array([self.x0, -np.inf, -np.inf]),
-                    np.array([np.inf, np.inf, np.inf]))
-
     def evaluate(self, point):
         return point[0] - self.x0
-
-
-Plane.register(XPlane)
 
 
 class YPlane(PlaneMixin, Surface):
@@ -718,27 +759,29 @@ class YPlane(PlaneMixin, Surface):
     def y0(self):
         return self.coefficients['y0']
 
+    @property
+    def a(self):
+        return 0.
+
+    @property
+    def b(self):
+        return 1.
+
+    @property
+    def c(self):
+        return 0.
+
+    @property
+    def d(self):
+        return self.y0
+
     @y0.setter
     def y0(self, y0):
         check_type('y0 coefficient', y0, Real)
         self._coefficients['y0'] = y0
 
-    def _get_base_coeffs(self):
-        return (0., 1., 0., self.y0)
-
-    def bounding_box(self, side):
-        if side == '-':
-            return (np.array([-np.inf, -np.inf, -np.inf]),
-                    np.array([np.inf, self.y0, np.inf]))
-        elif side == '+':
-            return (np.array([-np.inf, self.y0, -np.inf]),
-                    np.array([np.inf, np.inf, np.inf]))
-
     def evaluate(self, point):
         return point[1] - self.y0
-
-
-Plane.register(YPlane)
 
 
 class ZPlane(PlaneMixin, Surface):
@@ -798,27 +841,29 @@ class ZPlane(PlaneMixin, Surface):
     def z0(self):
         return self.coefficients['z0']
 
+    @property
+    def a(self):
+        return 0.
+
+    @property
+    def b(self):
+        return 0.
+
+    @property
+    def c(self):
+        return 1.
+
+    @property
+    def d(self):
+        return self.z0
+
     @z0.setter
     def z0(self, z0):
         check_type('z0 coefficient', z0, Real)
         self._coefficients['z0'] = z0
 
-    def _get_base_coeffs(self):
-        return (0., 0., 1., self.z0)
-
-    def bounding_box(self, side):
-        if side == '-':
-            return (np.array([-np.inf, -np.inf, -np.inf]),
-                    np.array([np.inf, np.inf, self.z0]))
-        elif side == '+':
-            return (np.array([-np.inf, -np.inf, self.z0]),
-                    np.array([np.inf, np.inf, np.inf]))
-
     def evaluate(self, point):
         return point[2] - self.z0
-
-
-Plane.register(ZPlane)
 
 
 class QuadricMixin(metaclass=ABCMeta):
@@ -884,7 +929,7 @@ class QuadricMixin(metaclass=ABCMeta):
         """
         x = np.asarray(point)
         A, b, c = self.get_Abc()
-        return np.matmul(x.T, np.matmul(A, x)) + np.matmul(b.T, x) + c
+        return x.T @ A @ x + b.T @ x + c
 
     def translate(self, vector, inplace=False):
         """Translate surface in given direction
@@ -907,17 +952,20 @@ class QuadricMixin(metaclass=ABCMeta):
 
         surf = self if inplace else self.clone()
 
-        if set(('x0', 'y0', 'z0')).intersection(set(surf._coeff_keys)):
+        if any((isinstance(self, cls) for cls in (Cylinder, Sphere, Cone))):
             for vi, xi in zip(vector, ('x0', 'y0', 'z0')):
-                val = getattr(surf, xi, None)
-                if val is not None:
+                val = getattr(surf, xi)
+                try:
                     setattr(surf, xi, val + vi)
-        else:
+                except AttributeError:
+                    # That attribute is read only i.e x0 for XCylinder
+                    pass
+
+        elif isinstance(self, Quadric):
             A, bvec, cnst = self.get_Abc()
 
-            g, h, j = bvec - 2*np.matmul(vector.T, A)
-            k = cnst + np.matmul(vector.T, np.matmul(A, vector)) \
-                - np.matmul(bvec.T, vector)
+            g, h, j = bvec - 2*vector.T @ A
+            k = cnst + vector.T @ A @ vector - bvec.T @ vector
 
             for key, val in zip(('g', 'h', 'j', 'k'), (g, h, j, k)):
                 setattr(surf, key, val)
@@ -993,15 +1041,16 @@ class Cylinder(QuadricMixin, Surface):
     _coeff_keys = ('x0', 'y0', 'z0', 'r', 'dx', 'dy', 'dz')
 
     def __init__(self, x0=0., y0=0., z0=0., r=1., dx=0., dy=0., dz=1., **kwargs):
-        raise NotImplementedError('There is no C++ implementation for general '
-                                  'Cylinders yet, please use '
-                                  'openmc.model.funcs.cylinder_from_points to '
-                                  'return a Quadric instance instead for now')
-
         super().__init__(**kwargs)
 
         for key, val in zip(self._coeff_keys, (x0, y0, z0, r, dx, dy, dz)):
             setattr(self, key, val)
+
+    @classmethod
+    def __subclasshook__(cls, c):
+        if cls is Cylinder and c in (XCylinder, YCylinder, ZCylinder):
+            return True
+        return NotImplemented
 
     @property
     def x0(self):
@@ -1118,10 +1167,6 @@ class Cylinder(QuadricMixin, Surface):
             radius r.
 
         """
-        raise NotImplementedError('There is no C++ implementation for general '
-                                  'Cylinders yet, please use '
-                                  'openmc.model.funcs.cylinder_from_points to '
-                                  'return a Quadric instance instead for now')
         # Convert to numpy arrays
         p1 = np.asarray(p1)
         p2 = np.asarray(p2)
@@ -1129,6 +1174,30 @@ class Cylinder(QuadricMixin, Surface):
         dx, dy, dz = p2 - p1
 
         return cls(x0=x0, y0=y0, z0=z0, r=r, dx=dx, dy=dy, dz=dz, **kwargs)
+
+    def to_xml_element(self):
+        """Return XML representation of the surface
+
+        Returns
+        -------
+        element : xml.etree.ElementTree.Element
+            XML element containing source data
+
+        """
+        # This method overrides Surface.to_xml_element to generate a Quadric
+        # since the C++ layer doesn't support Cylinders right now
+        element = ET.Element("surface")
+        element.set("id", str(self._id))
+
+        if len(self._name) > 0:
+            element.set("name", str(self._name))
+
+        element.set("type", 'quadric')
+        if self.boundary_type != 'transmission':
+            element.set("boundary", self.boundary_type)
+        element.set("coeffs", ' '.join([str(c) for c in self._get_base_coeffs()]))
+
+        return element
 
 
 class XCylinder(QuadricMixin, Surface):
@@ -1202,6 +1271,22 @@ class XCylinder(QuadricMixin, Surface):
     def r(self):
         return self.coefficients['r']
 
+    @property
+    def x0(self):
+        return 0.
+
+    @property
+    def dx(self):
+        return 1.
+
+    @property
+    def dy(self):
+        return 0.
+
+    @property
+    def dz(self):
+        return 0.
+
     @y0.setter
     def y0(self, y0):
         check_type('y0 coefficient', y0, Real)
@@ -1238,9 +1323,6 @@ class XCylinder(QuadricMixin, Surface):
         y = point[1] - self.y0
         z = point[2] - self.z0
         return y*y + z*z - self.r**2
-
-
-Cylinder.register(XCylinder)
 
 
 class YCylinder(QuadricMixin, Surface):
@@ -1314,6 +1396,22 @@ class YCylinder(QuadricMixin, Surface):
     def r(self):
         return self.coefficients['r']
 
+    @property
+    def y0(self):
+        return 0.
+
+    @property
+    def dx(self):
+        return 0.
+
+    @property
+    def dy(self):
+        return 1.
+
+    @property
+    def dz(self):
+        return 0.
+
     @x0.setter
     def x0(self, x0):
         check_type('x0 coefficient', x0, Real)
@@ -1350,9 +1448,6 @@ class YCylinder(QuadricMixin, Surface):
         x = point[0] - self.x0
         z = point[2] - self.z0
         return x*x + z*z - self.r**2
-
-
-Cylinder.register(YCylinder)
 
 
 class ZCylinder(QuadricMixin, Surface):
@@ -1426,6 +1521,22 @@ class ZCylinder(QuadricMixin, Surface):
     def r(self):
         return self.coefficients['r']
 
+    @property
+    def z0(self):
+        return 0.
+
+    @property
+    def dx(self):
+        return 0.
+
+    @property
+    def dy(self):
+        return 0.
+
+    @property
+    def dz(self):
+        return 1.
+
     @x0.setter
     def x0(self, x0):
         check_type('x0 coefficient', x0, Real)
@@ -1462,9 +1573,6 @@ class ZCylinder(QuadricMixin, Surface):
         x = point[0] - self.x0
         y = point[1] - self.y0
         return x*x + y*y - self.r**2
-
-
-Cylinder.register(ZCylinder)
 
 
 class Sphere(QuadricMixin, Surface):
@@ -1656,9 +1764,6 @@ class Cone(QuadricMixin, Surface):
     _coeff_keys = ('x0', 'y0', 'z0', 'r2', 'dx', 'dy', 'dz')
 
     def __init__(self, x0=0., y0=0., z0=0., r2=1., dx=0., dy=0., dz=1., **kwargs):
-        raise NotImplementedError('There is no C++ implementation for general '
-                                  'Cones yet, this functionality should be '
-                                  'added soon.')
         R2 = kwargs.pop('R2', None)
         if R2 is not None:
             warn(_WARNING_UPPER.format(type(self).__name__, 'r2', 'R2'),
@@ -1668,6 +1773,12 @@ class Cone(QuadricMixin, Surface):
 
         for key, val in zip(self._coeff_keys, (x0, y0, z0, r2, dx, dy, dz)):
             setattr(self, key, val)
+
+    @classmethod
+    def __subclasshook__(cls, c):
+        if cls is Cone and c in (XCone, YCone, ZCone):
+            return True
+        return NotImplemented
 
     @property
     def x0(self):
@@ -1761,10 +1872,34 @@ class Cone(QuadricMixin, Surface):
         f = 2*dx*dz
         g = -2*(dx*dx*x0 + dx*dy*y0 + dx*dz*z0 - cos2)
         h = -2*(dy*dy*y0 + dx*dy*x0 + dy*dz*z0 - cos2)
-        j = -2*(dz*dz*y0 + dx*dz*x0 + dy*dz*y0 - cos2)
+        j = -2*(dz*dz*z0 + dx*dz*x0 + dy*dz*y0 - cos2)
         k = (dx*x0 + dy*y0 + dz*z0)**2 - cos2*(x0*x0 + y0*y0 + z0*z0)
 
         return (a, b, c, d, e, f, g, h, j, k)
+
+    def to_xml_element(self):
+        """Return XML representation of the surface
+
+        Returns
+        -------
+        element : xml.etree.ElementTree.Element
+            XML element containing source data
+
+        """
+        # This method overrides Surface.to_xml_element to generate a Quadric
+        # since the C++ layer doesn't support Cylinders right now
+        element = ET.Element("surface")
+        element.set("id", str(self._id))
+
+        if len(self._name) > 0:
+            element.set("name", str(self._name))
+
+        element.set("type", 'quadric')
+        if self.boundary_type != 'transmission':
+            element.set("boundary", self.boundary_type)
+        element.set("coeffs", ' '.join([str(c) for c in self._get_base_coeffs()]))
+
+        return element
 
 
 class XCone(QuadricMixin, Surface):
@@ -1845,6 +1980,18 @@ class XCone(QuadricMixin, Surface):
     def r2(self):
         return self.coefficients['r2']
 
+    @property
+    def dx(self):
+        return 1.
+
+    @property
+    def dy(self):
+        return 0.
+
+    @property
+    def dz(self):
+        return 0.
+
     @x0.setter
     def x0(self, x0):
         check_type('x0 coefficient', x0, Real)
@@ -1881,9 +2028,6 @@ class XCone(QuadricMixin, Surface):
         y = point[1] - self.y0
         z = point[2] - self.z0
         return y*y + z*z - self.r2*x*x
-
-
-Cone.register(XCone)
 
 
 class YCone(QuadricMixin, Surface):
@@ -1964,6 +2108,18 @@ class YCone(QuadricMixin, Surface):
     def r2(self):
         return self.coefficients['r2']
 
+    @property
+    def dx(self):
+        return 0.
+
+    @property
+    def dy(self):
+        return 1.
+
+    @property
+    def dz(self):
+        return 0.
+
     @x0.setter
     def x0(self, x0):
         check_type('x0 coefficient', x0, Real)
@@ -2000,9 +2156,6 @@ class YCone(QuadricMixin, Surface):
         y = point[1] - self.y0
         z = point[2] - self.z0
         return x*x + z*z - self.r2*y*y
-
-
-Cone.register(YCone)
 
 
 class ZCone(QuadricMixin, Surface):
@@ -2083,6 +2236,18 @@ class ZCone(QuadricMixin, Surface):
     def r2(self):
         return self.coefficients['r2']
 
+    @property
+    def dx(self):
+        return 0.
+
+    @property
+    def dy(self):
+        return 0.
+
+    @property
+    def dz(self):
+        return 1.
+
     @x0.setter
     def x0(self, x0):
         check_type('x0 coefficient', x0, Real)
@@ -2119,9 +2284,6 @@ class ZCone(QuadricMixin, Surface):
         y = point[1] - self.y0
         z = point[2] - self.z0
         return x*x + y*y - self.r2*z*z
-
-
-Cone.register(ZCone)
 
 
 class Quadric(QuadricMixin, Surface):
@@ -2451,6 +2613,3 @@ class Halfspace(Region):
 
         # Return translated surface
         return type(self)(memo[key], self.side)
-
-
-_SURFACE_CLASSES = {cls._type: cls for cls in Surface.__subclasses__()}

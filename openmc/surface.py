@@ -79,10 +79,6 @@ class Surface(IDManagerMixin, metaclass=ABCMeta):
         # Value    - coefficient value
         self._coefficients = {}
 
-    def __init_subclass__(cls, **kwargs):
-        super().__init_subclass__(**kwargs)
-        _SURFACE_CLASSES[cls._type] = cls
-
     def __neg__(self):
         return Halfspace(self, '-')
 
@@ -2613,3 +2609,5 @@ class Halfspace(Region):
 
         # Return translated surface
         return type(self)(memo[key], self.side)
+
+_SURFACE_CLASSES = {cls._type: cls for cls in Surface.__subclasses__()}

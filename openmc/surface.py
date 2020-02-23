@@ -24,8 +24,6 @@ _WARNING_KWARGS = """\
 will not accept positional parameters for superclass arguments.\
 """
 
-_SURFACE_CLASSES = {}
-
 
 class Surface(IDManagerMixin, metaclass=ABCMeta):
     """An implicit surface with an associated boundary condition.

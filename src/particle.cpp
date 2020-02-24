@@ -1,7 +1,7 @@
 #include "openmc/particle.h"
 
 #include <algorithm> // copy, min
-#include <cmath>     // log, abs, copysign
+#include <cmath>     // log, abs
 
 #include <fmt/core.h>
 
@@ -539,7 +539,7 @@ Particle::cross_surface()
     // TODO: off-by-one
     surface_ = rotational ?
       surf_p->i_periodic_ + 1 :
-      std::copysign(surf_p->i_periodic_ + 1, surface_);
+      ((surface_ > 0) ? surf_p->i_periodic_ + 1 : -(surf_p->i_periodic_ + 1));
 
     // Figure out what cell particle is in now
     n_coord_ = 1;

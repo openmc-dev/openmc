@@ -400,7 +400,8 @@ class PlaneMixin(metaclass=ABCMeta):
         if np.any(np.isclose(np.abs(nhat), 1., rtol=0., atol=self._atol)):
             sign = nhat.sum()
             a, b, c, d = self._get_base_coeffs()
-            vals = [d/val if round(val) != 0 else np.nan for val in (a, b, c)]
+            vals = [d/val if not np.isclose(val, 0., rtol=0., atol=self._atol) 
+                    else np.nan for val in (a, b, c)]
             if side == '-':
                 if sign > 0:
                     ur = np.array([v if not np.isnan(v) else np.inf for v in vals])

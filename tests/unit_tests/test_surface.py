@@ -370,23 +370,26 @@ def test_cylinder_from_points_axis():
     # (x - 3)^2 + (y - 4)^2 = 2^2
     # x^2 + y^2 - 6x - 8y + 21 = 0
     s = openmc.model.cylinder_from_points((3., 4., 0.), (3., 4., 1.), 2.)
-    assert (s.a, s.b, s.c) == pytest.approx((1., 1., 0.))
-    assert (s.d, s.e, s.f) == pytest.approx((0., 0., 0.))
-    assert (s.g, s.h, s.j) == pytest.approx((-6., -8., 0.))
-    assert s.k == pytest.approx(21.)
+    a, b, c, d, e, f, g, h, j, k = s._get_base_coeffs()
+    assert (a, b, c) == pytest.approx((1., 1., 0.))
+    assert (d, e, f) == pytest.approx((0., 0., 0.))
+    assert (g, h, j) == pytest.approx((-6., -8., 0.))
+    assert k == pytest.approx(21.)
 
     # (y + 7)^2 + (z - 1)^2 = 3^2
     # y^2 + z^2 + 14y - 2z + 41 = 0
     s = openmc.model.cylinder_from_points((0., -7, 1.), (1., -7., 1.), 3.)
-    assert (s.a, s.b, s.c) == pytest.approx((0., 1., 1.))
-    assert (s.d, s.e, s.f) == pytest.approx((0., 0., 0.))
-    assert (s.g, s.h, s.j) == pytest.approx((0., 14., -2.))
-    assert s.k == 41.
+    a, b, c, d, e, f, g, h, j, k = s._get_base_coeffs()
+    assert (a, b, c) == pytest.approx((0., 1., 1.))
+    assert (d, e, f) == pytest.approx((0., 0., 0.))
+    assert (g, h, j) == pytest.approx((0., 14., -2.))
+    assert k == 41.
 
     # (x - 2)^2 + (z - 5)^2 = 4^2
     # x^2 + z^2 - 4x - 10z + 13 = 0
     s = openmc.model.cylinder_from_points((2., 0., 5.), (2., 1., 5.), 4.)
-    assert (s.a, s.b, s.c) == pytest.approx((1., 0., 1.))
-    assert (s.d, s.e, s.f) == pytest.approx((0., 0., 0.))
-    assert (s.g, s.h, s.j) == pytest.approx((-4., 0., -10.))
-    assert s.k == pytest.approx(13.)
+    a, b, c, d, e, f, g, h, j, k = s._get_base_coeffs()
+    assert (a, b, c) == pytest.approx((1., 0., 1.))
+    assert (d, e, f) == pytest.approx((0., 0., 0.))
+    assert (g, h, j) == pytest.approx((-4., 0., -10.))
+    assert k == pytest.approx(13.)

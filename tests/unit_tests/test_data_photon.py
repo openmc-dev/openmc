@@ -2,6 +2,7 @@
 
 from collections.abc import Mapping, Callable
 import os
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
@@ -144,3 +145,9 @@ def test_export_to_hdf5(tmpdir, element):
            element2.bremsstrahlung['electron_energy']).all()
     # Export to hdf5 again
     element2.export_to_hdf5(filename, 'w')
+
+def test_photodat_only(run_in_tmpdir):
+    endf_dir = Path(os.environ['OPENMC_ENDF_DATA'])
+    photoatomic_file = endf_dir / 'photoat' / 'photoat-001_H_000.endf'
+    data = openmc.data.IncidentPhoton.from_endf(photoatomic_file)
+    data.export_to_hdf5('tmp.h5', 'w')

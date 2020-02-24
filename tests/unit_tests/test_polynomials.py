@@ -94,3 +94,32 @@ def test_zernike():
     raw_zn1 = lib.calc_zn(zn_azimuthal.order, rho, theta[0])
     
     raw_zn2 = lib.calc_zn(zn_azimuthal.order, rho, theta[1])
+
+    ref_vals = [np.sum(norm_coeff * raw_zn1), np.sum(norm_coeff * raw_zn2)]
+
+    test_vals = zn_azimuthal(rho * zn_azimuthal.radius, [j for j in theta])
+    
+    assert np.allclose(ref_vals, test_vals)    
+    
+    rho = [0.2, 0.5]
+    
+    theta = np.radians([30, 60]) 
+    #Reference solution from running the C API for calc_zn
+    raw_zn1 = lib.calc_zn(zn_azimuthal.order, rho[0], theta[0])
+    
+    raw_zn2 = lib.calc_zn(zn_azimuthal.order, rho[1], theta[0])
+    
+    raw_zn3 = lib.calc_zn(zn_azimuthal.order, rho[0], theta[1])
+    
+    raw_zn4 = lib.calc_zn(zn_azimuthal.order, rho[1], theta[1])
+
+    ref_vals = [np.sum(norm_coeff * raw_zn1), np.sum(norm_coeff * raw_zn2),
+                np.sum(norm_coeff * raw_zn3), np.sum(norm_coeff * raw_zn4)]
+
+    test_vals = zn_azimuthal([i * zn_azimuthal.radius for i in rho], [j for j in theta])
+    
+    test_vals = np.ravel(test_vals)    
+    
+    assert np.allclose(ref_vals, test_vals)    
+    
+

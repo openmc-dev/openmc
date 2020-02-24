@@ -2,6 +2,7 @@ from functools import partial
 from random import uniform, seed
 
 import numpy as np
+import math
 import openmc
 import pytest
 
@@ -134,6 +135,63 @@ def test_zplane():
     # translate method
     st = s.translate((0.0, 0.0, 1.0))
     assert st.z0 == s.z0 + 1
+
+    # Make sure repr works
+    repr(s)
+
+
+def test_cylinder():
+    x0, y0, z0, r = 2, 3, 4, 2
+    dx, dy, dz = 1, -1, 1
+    s = openmc.Cylinder(x0=x0, y0=y0, z0=z0, dx=dx, dy=dy, dz=dz, r=r)
+    assert s.x0 == 2
+    assert s.y0 == 3
+    assert s.z0 == 4
+    assert s.dx == 1
+    assert s.dy == -1
+    assert s.dz == 1
+    assert s.r == 2
+
+    # Check bounding box
+    assert_infinite_bb(s)
+
+    # evaluate method
+    # |(p - p1) ⨯ (p - p2)|^2 / |p2 - p1|^2 - r^2
+    # point inside
+    p = s._origin + 5*s._axis
+    p1 = s._origin
+    p2 = p1 + s._axis
+    c1 = np.linalg.norm(np.cross(p - p1, p - p2)) / np.linalg.norm(p2 - p1)
+    val = c1*c1 - s.r*s.r
+    assert s.evaluate(p) < 0
+    assert s.evaluate(p) == pytest.approx(val)
+    # point outside
+    p = np.array((4., 0., 2.5))
+    p1 = s._origin
+    p2 = p1 + s._axis
+    c1 = np.linalg.norm(np.cross(p - p1, p - p2)) / np.linalg.norm(p2 - p1)
+    val = c1*c1 - s.r*s.r
+    assert s.evaluate(p) > 0
+    assert s.evaluate(p) == pytest.approx(val)
+    # point on cylinder
+    perp = np.array((1, -2, 1))*(1 / s._axis)
+    p = s._origin + s.r*perp / np.linalg.norm(perp)
+    p1 = s._origin
+    p2 = p1 + s._axis
+    c1 = np.linalg.norm(np.cross(p - p1, p - p2)) / np.linalg.norm(p2 - p1)
+    val = c1*c1 - s.r*s.r
+    assert 0 == pytest.approx(s.evaluate(p))
+    assert val == pytest.approx(s.evaluate(p))
+
+    # translate method
+    st = s.translate((1.0, 1.0, 1.0))
+    assert st.x0 == s.x0 + 1
+    assert st.y0 == s.y0 + 1
+    assert st.z0 == s.z0 + 1
+    assert st.dx == s.dx
+    assert st.dy == s.dy
+    assert st.dz == s.dz
+    assert st.r == s.r
 
     # Make sure repr works
     repr(s)
@@ -278,6 +336,69 @@ def cone_common(apex, r2, cls):
     assert st.x0 == s.x0 + 1
     assert st.y0 == s.y0 + 1
     assert st.z0 == s.z0 + 1
+    assert st.r2 == s.r2
+
+    # Make sure repr works
+    repr(s)
+
+
+def test_cone():
+    x0, y0, z0, r2 = 2, 3, 4, 4
+    dx, dy, dz = 1, -1, 1
+    s = openmc.Cone(x0=x0, y0=y0, z0=z0, dx=dx, dy=dy, dz=dz, r2=r2)
+    assert s.x0 == 2
+    assert s.y0 == 3
+    assert s.z0 == 4
+    assert s.dx == 1
+    assert s.dy == -1
+    assert s.dz == 1
+    assert s.r2 == 4
+
+    # Check bounding box
+    assert_infinite_bb(s)
+
+    # evaluate method
+    # cos^2(theta) * ((p - p1))**2 - (d @ (p - p1))^2 
+    # The argument r2 for cones is actually tan^2(theta) so that
+    # cos^2(theta) = 1 / (1 + r2)
+    #
+    # This makes the evaluation equation shown below where p is the evaluation
+    # point (x, y, z) p1 is the apex (origin) of the cone and r2 is related to
+    # the aperature of the cone as described above
+    # (p - p1) @ (p - p1) / (1 + r2) - (d @ (p - p1))^2
+    # point inside
+    p1 = s._origin
+    d = s._axis
+    p = p1 + 5*d
+    val = np.sum((p - p1)**2) / (1 + s.r2) - np.sum((d @ (p - p1))**2)
+    assert s.evaluate(p) < 0
+    assert s.evaluate(p) == pytest.approx(val)
+    # point outside
+    p1 = s._origin
+    d = s._axis
+    perp = np.array((1, -2, 1))*(1 / d)
+    p = p1 + 3.2*perp
+    val = np.sum((p - p1)**2) / (1 + s.r2) - np.sum((d @ (p - p1))**2)
+    assert s.evaluate(p) > 0
+    assert s.evaluate(p) == pytest.approx(val)
+    # point on cone
+    p1 = s._origin
+    d = s._axis
+    perp = np.array((1, -2, 1))*(1 / d)
+    perp /= np.linalg.norm(perp)
+    p = p1 + 3.2*d + 3.2*math.sqrt(s.r2)*perp
+    val = np.sum((p - p1)**2) / (1 + s.r2) - np.sum((d @ (p - p1))**2)
+    assert 0 == pytest.approx(s.evaluate(p))
+    assert val == pytest.approx(s.evaluate(p))
+
+    # translate method
+    st = s.translate((1.0, 1.0, 1.0))
+    assert st.x0 == s.x0 + 1
+    assert st.y0 == s.y0 + 1
+    assert st.z0 == s.z0 + 1
+    assert st.dx == s.dx
+    assert st.dy == s.dy
+    assert st.dz == s.dz
     assert st.r2 == s.r2
 
     # Make sure repr works

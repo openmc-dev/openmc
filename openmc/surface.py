@@ -887,6 +887,15 @@ class ZPlane(PlaneMixin, Surface):
 class QuadricMixin(metaclass=ABCMeta):
     """A Mixin class implementing common functionality for quadric surfaces"""
 
+    @property
+    def _origin(self):
+        return np.array((self.x0, self.y0, self.z0))
+
+    @property
+    def _axis(self):
+        axis = np.array((self.dx, self.dy, self.dz))
+        return axis / np.linalg.norm(axis)
+
     def get_Abc(self, coeffs=None):
         """Compute matrix, vector, and scalar coefficients for this surface or
         for a specified set of coefficients.
@@ -1135,8 +1144,8 @@ class Cylinder(QuadricMixin, Surface):
 
     def _get_base_coeffs(self):
         # Get x, y, z coordinates of two points
-        x1, y1, z1 = self.x0, self.y0, self.z0
-        x2, y2, z2 = x1 + self.dx, y1 + self.dy, z1 + self.dz
+        x1, y1, z1 = self._origin
+        x2, y2, z2 = self._origin + self._axis
         r = self.r 
 
         # Define intermediate terms
@@ -1868,24 +1877,21 @@ class Cone(QuadricMixin, Surface):
         # The argument r2 for cones is actually tan^2(theta) so that
         # cos^2(theta) = 1 / (1 + r2)
 
-        x0, y0, z0, r2 = self.x0, self.y0, self.z0, self.r2
-        dx, dy, dz = self.dx, self.dy, self.dz
-        dnorm = dx*dx + dy*dy + dz*dz
-        dx /= dnorm
-        dy /= dnorm
-        dz /= dnorm
-        cos2 = 1 / (1 + r2)
+        x0, y0, z0 = self._origin
+        dx, dy, dz = self._axis
+        cos2 = 1 / (1 + self.r2)
 
-        a = dx*dx - cos2
-        b = dy*dy - cos2
-        c = dz*dz - cos2
-        d = 2*dx*dy
-        e = 2*dy*dz
-        f = 2*dx*dz
-        g = -2*(dx*dx*x0 + dx*dy*y0 + dx*dz*z0 - cos2)
-        h = -2*(dy*dy*y0 + dx*dy*x0 + dy*dz*z0 - cos2)
-        j = -2*(dz*dz*z0 + dx*dz*x0 + dy*dz*y0 - cos2)
-        k = (dx*x0 + dy*y0 + dz*z0)**2 - cos2*(x0*x0 + y0*y0 + z0*z0)
+        a = cos2 - dx*dx
+        b = cos2 - dy*dy
+        c = cos2 - dz*dz
+        d = -2*dx*dy
+        e = -2*dy*dz
+        f = -2*dx*dz
+        g = 2*(dx*(dy*y0 + dz*z0) - a*x0)
+        h = 2*(dy*(dx*x0 + dz*z0) - b*y0)
+        j = 2*(dz*(dx*x0 + dy*y0) - c*z0)
+        k = a*x0*x0 + b*y0*y0 + c*z0*z0 - 2*(dx*dy*x0*y0 + dy*dz*y0*z0 +
+                                             dx*dz*x0*z0)
 
         return (a, b, c, d, e, f, g, h, j, k)
 

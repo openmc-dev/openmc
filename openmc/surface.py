@@ -366,7 +366,7 @@ class PlaneMixin(metaclass=ABCMeta):
 
     def _get_normal(self):
         a, b, c = self._get_base_coeffs()[0:3]
-        return np.array((a, b, c)) / np.sqrt(a*a + b*b + c*c)
+        return np.array((a, b, c)) / math.sqrt(a*a + b*b + c*c)
 
     def bounding_box(self, side):
         # Compute the bounding box based on the normal vector to the plane
@@ -375,12 +375,12 @@ class PlaneMixin(metaclass=ABCMeta):
         ub = np.array([np.inf, np.inf, np.inf])
         # If the plane is axis aligned, find the proper bounding box
         if np.any(np.isclose(np.abs(nhat), 1., rtol=0., atol=self._atol)):
-            sign = np.dot(np.array([1., 1., 1.]), nhat)
+            sign = nhat.sum()
             a, b, c, d = self._get_base_coeffs()
-            vals = tuple(d/i if round(i) != 0 else np.nan for i in (a, b, c))
+            vals = [d/val if round(val) != 0 else np.nan for val in (a, b, c)]
             if side == '-':
                 if sign > 0:
-                    ub = np.array([v if ~np.isnan(v) else np.inf for v in vals])
+                    ub = np.array([v if not np.isnan(v) else np.inf for v in vals])
                 else:
                     lb = np.array([v if ~np.isnan(v) else -np.inf for v in vals])
             elif side == '+':
@@ -946,7 +946,7 @@ class QuadricMixin(metaclass=ABCMeta):
 
         surf = self if inplace else self.clone()
 
-        if any((isinstance(self, cls) for cls in (Cylinder, Sphere, Cone))):
+        if hasattr(self, 'x0'):
             for vi, xi in zip(vector, ('x0', 'y0', 'z0')):
                 val = getattr(surf, xi)
                 try:
@@ -955,7 +955,7 @@ class QuadricMixin(metaclass=ABCMeta):
                     # That attribute is read only i.e x0 for XCylinder
                     pass
 
-        elif isinstance(self, Quadric):
+        else:
             A, bvec, cnst = self.get_Abc()
 
             g, h, j = bvec - 2*vector.T @ A

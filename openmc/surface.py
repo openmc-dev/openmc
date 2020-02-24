@@ -3,13 +3,14 @@ from collections import OrderedDict
 from copy import deepcopy
 from numbers import Real
 from xml.etree import ElementTree as ET
-from warnings import warn
+from warnings import warn, catch_warnings, simplefilter
+import math
 
 import numpy as np
 
 from openmc.checkvalue import check_type, check_value
 from openmc.region import Region, Intersection, Union
-from openmc.mixin import IDManagerMixin
+from openmc.mixin import IDManagerMixin, IDWarning
 
 
 _BOUNDARY_TYPES = ['transmission', 'vacuum', 'reflective', 'periodic', 'white']
@@ -369,10 +370,32 @@ class PlaneMixin(metaclass=ABCMeta):
         return np.array((a, b, c)) / math.sqrt(a*a + b*b + c*c)
 
     def bounding_box(self, side):
+        """Determine an axis-aligned bounding box.
+
+        An axis-aligned bounding box for Plane half-spaces is represented by
+        its lower-left and upper-right coordinates. If the half-space is
+        unbounded in a particular direction, numpy.inf is used to represent
+        infinity.
+
+        Parameters
+        ----------
+        side : {'+', '-'}
+            Indicates the negative or positive half-space
+
+        Returns
+        -------
+        numpy.ndarray
+            Lower-left coordinates of the axis-aligned bounding box for the
+            desired half-space
+        numpy.ndarray
+            Upper-right coordinates of the axis-aligned bounding box for the
+            desired half-space
+
+        """
         # Compute the bounding box based on the normal vector to the plane
         nhat = self._get_normal()
-        lb = np.array([-np.inf, -np.inf, -np.inf])
-        ub = np.array([np.inf, np.inf, np.inf])
+        ll = np.array([-np.inf, -np.inf, -np.inf])
+        ur = np.array([np.inf, np.inf, np.inf])
         # If the plane is axis aligned, find the proper bounding box
         if np.any(np.isclose(np.abs(nhat), 1., rtol=0., atol=self._atol)):
             sign = nhat.sum()
@@ -380,16 +403,16 @@ class PlaneMixin(metaclass=ABCMeta):
             vals = [d/val if round(val) != 0 else np.nan for val in (a, b, c)]
             if side == '-':
                 if sign > 0:
-                    ub = np.array([v if not np.isnan(v) else np.inf for v in vals])
+                    ur = np.array([v if not np.isnan(v) else np.inf for v in vals])
                 else:
-                    lb = np.array([v if ~np.isnan(v) else -np.inf for v in vals])
+                    ll = np.array([v if not np.isnan(v) else -np.inf for v in vals])
             elif side == '+':
                 if sign > 0:
-                    lb = np.array([v if ~np.isnan(v) else -np.inf for v in vals])
+                    ll = np.array([v if not np.isnan(v) else -np.inf for v in vals])
                 else:
-                    ub = np.array([v if ~np.isnan(v) else np.inf for v in vals])
+                    ur = np.array([v if not np.isnan(v) else np.inf for v in vals])
 
-        return (lb, ub)
+        return (ll, ur)
 
     def evaluate(self, point):
         """Evaluate the surface equation at a given point.
@@ -1180,18 +1203,12 @@ class Cylinder(QuadricMixin, Surface):
         """
         # This method overrides Surface.to_xml_element to generate a Quadric
         # since the C++ layer doesn't support Cylinders right now
-        element = ET.Element("surface")
-        element.set("id", str(self._id))
-
-        if len(self._name) > 0:
-            element.set("name", str(self._name))
-
-        element.set("type", 'quadric')
-        if self.boundary_type != 'transmission':
-            element.set("boundary", self.boundary_type)
-        element.set("coeffs", ' '.join([str(c) for c in self._get_base_coeffs()]))
-
-        return element
+        with catch_warnings():
+            simplefilter('ignore', IDWarning)
+            kwargs = {'boundary_type': self.boundary_type, 'name': self.name,
+                      'surface_id': self.id} 
+            quad_rep = Quadric(*self._get_base_coeffs(), **kwargs)
+        return quad_rep.to_xml_element()
 
 
 class XCylinder(QuadricMixin, Surface):
@@ -1881,19 +1898,13 @@ class Cone(QuadricMixin, Surface):
 
         """
         # This method overrides Surface.to_xml_element to generate a Quadric
-        # since the C++ layer doesn't support Cylinders right now
-        element = ET.Element("surface")
-        element.set("id", str(self._id))
-
-        if len(self._name) > 0:
-            element.set("name", str(self._name))
-
-        element.set("type", 'quadric')
-        if self.boundary_type != 'transmission':
-            element.set("boundary", self.boundary_type)
-        element.set("coeffs", ' '.join([str(c) for c in self._get_base_coeffs()]))
-
-        return element
+        # since the C++ layer doesn't support Cones right now
+        with catch_warnings():
+            simplefilter('ignore', IDWarning)
+            kwargs = {'boundary_type': self.boundary_type, 'name': self.name,
+                      'surface_id': self.id} 
+            quad_rep = Quadric(*self._get_base_coeffs(), **kwargs)
+        return quad_rep.to_xml_element()
 
 
 class XCone(QuadricMixin, Surface):

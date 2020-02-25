@@ -505,7 +505,7 @@ class Material(IDManagerMixin):
         Parameters
         ----------
         element : str
-            Element to add, e.g., 'Zr'
+            Element to add, e.g., 'Zr' or 'Zirconium'
         percent : float
             Atom or weight percent
         percent_type : {'ao', 'wo'}, optional
@@ -517,9 +517,23 @@ class Material(IDManagerMixin):
             (natural composition).
 
         """
+        
         cv.check_type('nuclide', element, str)
         cv.check_type('percent', percent, Real)
         cv.check_value('percent type', percent_type, {'ao', 'wo'})
+
+        # Make sure element name is just that
+        if not element.isalpha():
+            raise ValueError("Element name should be given by the "
+                             "element's symbol or name, e.g., 'Zr', 'zirconium'")
+
+        # Allow for element identifier to be given as a symbol or name
+        if len(element)>2:
+            el = element.lower()
+            element = openmc.data.ELEMENT_SYMBOL.get(el,"empty")
+            if element == "empty":
+                msg = 'Element name "{}" not recognised'.format(el)
+                raise ValueError(msg)
 
         if self._macroscopic is not None:
             msg = 'Unable to add an Element to Material ID="{}" as a ' \
@@ -550,11 +564,6 @@ class Material(IDManagerMixin):
                       'composition manually for enrichments over 5%.'.\
                       format(enrichment, self._id)
                 warnings.warn(msg)
-
-        # Make sure element name is just that
-        if not element.isalpha():
-            raise ValueError("Element name should be given by the "
-                             "element's symbol, e.g., 'Zr'")
 
         # Add naturally-occuring isotopes
         element = openmc.Element(element)

@@ -40,6 +40,12 @@ of an element, you specify the element itself. For example,
 
    mat.add_element('C', 1.0)
 
+This method can also accept element names, insensitive to case, such as
+
+::
+
+  mat.add_element('aluminium', 1.0)
+   
 Internally, OpenMC stores data on the atomic masses and natural abundances of
 all known isotopes and then uses this data to determine what isotopes should be
 added to the material. When the material is later exported to XML for use by the

@@ -34,6 +34,22 @@ def test_elements():
     with pytest.raises(ValueError):
         m.add_element('Pu', 1.0, enrichment=3.0)
 
+def test_elements_by_name():
+    """Test adding elements by name"""
+    m = openmc.Material()
+    m.add_element('woLfrAm',1.0)
+    with pytest.raises(ValueError):
+        m.add_element('uranum',1.0)
+    m.add_element('uRaNiUm',1.0)
+    m.add_element('Aluminium',1.0)
+    a = openmc.Material()
+    b = openmc.Material()
+    c = openmc.Material()
+    a.add_element('sulfur',1.0)
+    b.add_element('SulPhUR',1.0)
+    c.add_element('S',1.0)
+    assert a._nuclides == b._nuclides
+    assert b._nuclides == c._nuclides
 
 def test_density():
     m = openmc.Material()

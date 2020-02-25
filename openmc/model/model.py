@@ -41,6 +41,8 @@ class Model(object):
         Tallies information
     plots : openmc.Plots
         Plot information
+    statepoint : str
+        The last statepoint filename written when the model is run
 
     """
 
@@ -51,6 +53,7 @@ class Model(object):
         self.settings = openmc.Settings()
         self.tallies = openmc.Tallies()
         self.plots = openmc.Plots()
+        self.statepoint = None
 
         if geometry is not None:
             self.geometry = geometry
@@ -197,7 +200,8 @@ class Model(object):
             self.plots.export_to_xml(d)
 
     def run(self, **kwargs):
-        """Creates the XML files, runs OpenMC, and returns k-effective
+        """Creates the XML files, runs OpenMC, and returns k-effective.
+        The last statepoint filename is available in model.statepoint
 
         Parameters
         ----------
@@ -210,14 +214,13 @@ class Model(object):
             Combined estimator of k-effective from the statepoint
 
         """
+
         self.export_to_xml()
 
-        openmc.run(**kwargs)
+        self.statepoint = openmc.run(**kwargs)
 
-        n = self.settings.batches
-        if self.settings.statepoint is not None:
-            if 'batches' in self.settings.statepoint:
-                n = self.settings.statepoint['batches'][-1]
-
-        with openmc.StatePoint('statepoint.{}.h5'.format(n)) as sp:
-            return sp.k_combined
+        keff = None
+        if self.statepoint:
+            with openmc.StatePoint(self.statepoint) as sp:
+                keff = sp.k_combined
+        return keff

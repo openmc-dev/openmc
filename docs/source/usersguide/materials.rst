@@ -40,7 +40,7 @@ of an element, you specify the element itself. For example,
 
    mat.add_element('C', 1.0)
 
-This method can also accept element names, insensitive to character, such as
+This method can also accept element names, insensitive to case, such as
 
 ::
 

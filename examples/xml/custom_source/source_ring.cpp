@@ -1,4 +1,5 @@
-#include <iostream>
+#include <cmath> // for M_PI
+
 #include "openmc/random_lcg.h"
 #include "openmc/source.h"
 #include "openmc/particle.h"

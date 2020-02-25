@@ -157,31 +157,19 @@ def test_cylinder():
 
     # evaluate method
     # |(p - p1) ⨯ (p - p2)|^2 / |p2 - p1|^2 - r^2
-    # point inside
-    p = s._origin + 5*s._axis
     p1 = s._origin
     p2 = p1 + s._axis
-    c1 = np.linalg.norm(np.cross(p - p1, p - p2)) / np.linalg.norm(p2 - p1)
-    val = c1*c1 - s.r*s.r
-    assert s.evaluate(p) < 0
-    assert s.evaluate(p) == pytest.approx(val)
-    # point outside
-    p = np.array((4., 0., 2.5))
-    p1 = s._origin
-    p2 = p1 + s._axis
-    c1 = np.linalg.norm(np.cross(p - p1, p - p2)) / np.linalg.norm(p2 - p1)
-    val = c1*c1 - s.r*s.r
-    assert s.evaluate(p) > 0
-    assert s.evaluate(p) == pytest.approx(val)
-    # point on cylinder
     perp = np.array((1, -2, 1))*(1 / s._axis)
-    p = s._origin + s.r*perp / np.linalg.norm(perp)
-    p1 = s._origin
-    p2 = p1 + s._axis
-    c1 = np.linalg.norm(np.cross(p - p1, p - p2)) / np.linalg.norm(p2 - p1)
-    val = c1*c1 - s.r*s.r
-    assert 0 == pytest.approx(s.evaluate(p))
-    assert val == pytest.approx(s.evaluate(p))
+    divisor = np.linalg.norm(p2 - p1)
+    pin = p1 + 5*s._axis # point inside cylinder
+    pout = np.array((4., 0., 2.5)) # point outside the cylinder
+    pon = p1 + s.r*perp / np.linalg.norm(perp) # point on cylinder
+    for p, fn in zip((pin, pout, pon), (np.less, np.greater, np.isclose)):
+        c1 = np.linalg.norm(np.cross(p - p1, p - p2)) / divisor
+        val = c1*c1 - s.r*s.r
+        p_eval = s.evaluate(p)
+        assert fn(p_eval, 0.)
+        assert p_eval == pytest.approx(val)
 
     # translate method
     st = s.translate((1.0, 1.0, 1.0))
@@ -369,27 +357,16 @@ def test_cone():
     # point inside
     p1 = s._origin
     d = s._axis
-    p = p1 + 5*d
-    val = np.sum((p - p1)**2) / (1 + s.r2) - np.sum((d @ (p - p1))**2)
-    assert s.evaluate(p) < 0
-    assert s.evaluate(p) == pytest.approx(val)
-    # point outside
-    p1 = s._origin
-    d = s._axis
-    perp = np.array((1, -2, 1))*(1 / d)
-    p = p1 + 3.2*perp
-    val = np.sum((p - p1)**2) / (1 + s.r2) - np.sum((d @ (p - p1))**2)
-    assert s.evaluate(p) > 0
-    assert s.evaluate(p) == pytest.approx(val)
-    # point on cone
-    p1 = s._origin
-    d = s._axis
     perp = np.array((1, -2, 1))*(1 / d)
     perp /= np.linalg.norm(perp)
-    p = p1 + 3.2*d + 3.2*math.sqrt(s.r2)*perp
-    val = np.sum((p - p1)**2) / (1 + s.r2) - np.sum((d @ (p - p1))**2)
-    assert 0 == pytest.approx(s.evaluate(p))
-    assert val == pytest.approx(s.evaluate(p))
+    pin = p1 + 5*d # point inside cone
+    pout = p1 + 3.2*perp # point outside cone
+    pon = p1 + 3.2*d + 3.2*math.sqrt(s.r2)*perp # point on cone
+    for p, fn in zip((pin, pout, pon), (np.less, np.greater, np.isclose)):
+        val = np.sum((p - p1)**2) / (1 + s.r2) - np.sum((d @ (p - p1))**2)
+        p_eval = s.evaluate(p)
+        assert fn(p_eval, 0.)
+        assert p_eval == pytest.approx(val)
 
     # translate method
     st = s.translate((1.0, 1.0, 1.0))
@@ -460,7 +437,7 @@ def test_cylinder_from_points():
         p1 = np.array([xi(), xi(), xi()])
         p2 = np.array([xi(), xi(), xi()])
         r = uniform(1.0, 100.0)
-        s = openmc.model.cylinder_from_points(p1, p2, r)
+        s = openmc.Cylinder.from_points(p1, p2, r)
 
         # Points p1 and p2 need to be inside cylinder
         assert p1 in -s
@@ -490,7 +467,7 @@ def test_cylinder_from_points_axis():
 
     # (x - 3)^2 + (y - 4)^2 = 2^2
     # x^2 + y^2 - 6x - 8y + 21 = 0
-    s = openmc.model.cylinder_from_points((3., 4., 0.), (3., 4., 1.), 2.)
+    s = openmc.Cylinder.from_points((3., 4., 0.), (3., 4., 1.), 2.)
     a, b, c, d, e, f, g, h, j, k = s._get_base_coeffs()
     assert (a, b, c) == pytest.approx((1., 1., 0.))
     assert (d, e, f) == pytest.approx((0., 0., 0.))
@@ -499,7 +476,7 @@ def test_cylinder_from_points_axis():
 
     # (y + 7)^2 + (z - 1)^2 = 3^2
     # y^2 + z^2 + 14y - 2z + 41 = 0
-    s = openmc.model.cylinder_from_points((0., -7, 1.), (1., -7., 1.), 3.)
+    s = openmc.Cylinder.from_points((0., -7, 1.), (1., -7., 1.), 3.)
     a, b, c, d, e, f, g, h, j, k = s._get_base_coeffs()
     assert (a, b, c) == pytest.approx((0., 1., 1.))
     assert (d, e, f) == pytest.approx((0., 0., 0.))
@@ -508,7 +485,7 @@ def test_cylinder_from_points_axis():
 
     # (x - 2)^2 + (z - 5)^2 = 4^2
     # x^2 + z^2 - 4x - 10z + 13 = 0
-    s = openmc.model.cylinder_from_points((2., 0., 5.), (2., 1., 5.), 4.)
+    s = openmc.Cylinder.from_points((2., 0., 5.), (2., 1., 5.), 4.)
     a, b, c, d, e, f, g, h, j, k = s._get_base_coeffs()
     assert (a, b, c) == pytest.approx((1., 0., 1.))
     assert (d, e, f) == pytest.approx((0., 0., 0.))

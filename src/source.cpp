@@ -1,6 +1,14 @@
 #include "openmc/source.h"
 
+#if defined (__unix__) || (defined (__APPLE__) && defined (__MACH__))
+#define HAS_DYNAMIC_LINKING
+#endif
+
 #include <algorithm> // for move
+
+#ifdef HAS_DYNAMIC_LINKING
+#include <dlfcn.h> // for dlopen, dlsym, dlclose, dlerror
+#endif
 
 #include <fmt/core.h>
 #include "xtensor/xadapt.hpp"
@@ -71,7 +79,12 @@ SourceDistribution::SourceDistribution(pugi::xml_node node)
       fatal_error(fmt::format("Source file '{}' does not exist.",
         settings::path_source));
     }
-
+  } else if (check_for_node(node, "library")) {
+    settings::path_source_library = get_node_value(node, "library", false, true);
+    if (!file_exists(settings::path_source_library)) {
+      fatal_error(fmt::format("Source library '{}' does not exist.",
+        settings::path_source_library));
+    }
   } else {
 
     // Spatial distribution for external source
@@ -237,7 +250,7 @@ void initialize_source()
 {
   write_message("Initializing source particles...", 5);
 
-  if (settings::path_source != "") {
+  if (!settings::path_source.empty()) {
     // Read the source from a binary file instead of sampling from some
     // assumed source distribution
 
@@ -261,6 +274,27 @@ void initialize_source()
 
     // Close file
     file_close(file_id);
+  } else if (!settings::path_source_library.empty()) {
+
+  #ifdef HAS_DYNAMIC_LINKING
+    // Get the source from a library object
+    write_message(fmt::format("Sampling from library source {}...",
+      settings::path_source), 6);
+
+    // Open the library
+    auto source_library = dlopen(settings::path_source_library.c_str(), RTLD_LAZY);
+    if (!source_library) {
+      fatal_error("Couldn't open source library " + settings::path_source_library);
+    }
+
+    // reset errors
+    dlerror();
+
+    fill_source_bank_custom_source();
+  #else
+    fatal_error("Custom source libraries have not yet been implemented for "
+      "non-POSIX systems");
+  #endif
 
   } else {
     // Generation source sites from specified distribution in user input
@@ -321,10 +355,50 @@ void free_memory_source()
   model::external_sources.clear();
 }
 
+// fill the source bank from the external source
+void fill_source_bank_custom_source()
+{
+#ifdef HAS_DYNAMIC_LINKING
+  // Open the library
+  auto source_library = dlopen(settings::path_source_library.c_str(), RTLD_LAZY);
+  if (!source_library) {
+    fatal_error("Couldn't open source library " + settings::path_source_library);
+  }
+
+  // reset errors
+  dlerror();
+
+  // get the function from the library
+  using sample_t = Particle::Bank (*)(uint64_t* seed);
+  auto sample_source = reinterpret_cast<sample_t>(dlsym(source_library, "sample_source"));
+
+  // check for any dlsym errors
+  auto dlsym_error = dlerror();
+  if (dlsym_error) {
+    dlclose(source_library);
+    fatal_error(fmt::format("Couldn't open the sample_source symbol: {}", dlsym_error));
+  }
+
+  // Generation source sites from specified distribution in the
+  // library source
+  for (int64_t i = 0; i < simulation::work_per_rank; ++i) {
+    // initialize random number seed
+    int64_t id = (simulation::total_gen + overall_generation()) *
+      settings::n_particles + simulation::work_index[mpi::rank] + i + 1;
+     uint64_t seed = init_seed(id, STREAM_SOURCE);
+
+    // sample external source distribution
+    simulation::source_bank[i] = sample_source(&seed);
+  }
+
+  // release the library
+  dlclose(source_library);
+#endif
+}
+
 void fill_source_bank_fixedsource()
 {
-  if (settings::path_source.empty()) {
-    #pragma omp parallel for
+  if (settings::path_source.empty() && settings::path_source_library.empty()) {
     for (int64_t i = 0; i < simulation::work_per_rank; ++i) {
       // initialize random number seed
       int64_t id = (simulation::total_gen + overall_generation()) *
@@ -334,6 +408,8 @@ void fill_source_bank_fixedsource()
       // sample external source distribution
       simulation::source_bank[i] = sample_external_source(&seed);
     }
+  } else if (settings::path_source.empty() && !settings::path_source_library.empty()) {
+     fill_source_bank_custom_source();
   }
 }
 

@@ -366,7 +366,7 @@ class PlaneMixin(metaclass=ABCMeta):
         return (self.a, self.b, self.c, self.d)
 
     def _get_normal(self):
-        a, b, c = self._get_base_coeffs()[0:3]
+        a, b, c = self._get_base_coeffs()[:3]
         return np.array((a, b, c)) / math.sqrt(a*a + b*b + c*c)
 
     def bounding_box(self, side):

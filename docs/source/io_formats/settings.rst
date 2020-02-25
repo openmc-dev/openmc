@@ -460,13 +460,13 @@ attributes/sub-elements:
     *Default*: None
 
   :library:
-    If this attribute is given, it indicates that the source is to be instanciated
-    from an externally compiled source function. This source can be as complex as
-    is required to define the source for your problem. The only requirement that
-    is made upon this source, is that there is a function called sample_source()
-    more documentation on how to build sources can be found in :ref:`custom_source`
+    If this attribute is given, it indicates that the source is to be
+    instantiated from an externally compiled source function. This source can be
+    as complex as is required to define the source for your problem. The only
+    requirement is that there is a function called ``sample_source()``. More
+    documentation on how to build sources can be found in :ref:`custom_source`.
 
-    *Deafult*: None
+    *Default*: None
 
   :space:
     An element specifying the spatial distribution of source sites. This element
@@ -645,8 +645,8 @@ more complicated sources.
 
   .. note:: You should only use the openmc::prn() random number generator
 
-In order to build your external source you need the following CMakeLists.txt
-file
+In order to build your external source, you will need to link it against the
+OpenMC shared library. This can be done by writing a CMakeLists.txt file:
 
 .. code-block:: cmake
 
@@ -656,9 +656,10 @@ file
    find_package(OpenMC REQUIRED HINTS <path to openmc>)
    target_link_libraries(source OpenMC::libopenmc)
 
-You will now have a libsource.so (or .dylib) file in this directory, now point
-the library attribute of the source XML element to this file and you will be
-able to sample particles.
+After running ``cmake`` and ``make``, you will have a libsource.so (or .dylib)
+file in your build directory. Setting the :attr:`openmc.Source.library`
+attribute to the path of this shared library will indicate that it should be
+used for sampling source particles at runtime.
 
 .. _univariate:
 

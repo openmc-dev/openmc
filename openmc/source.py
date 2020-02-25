@@ -8,20 +8,22 @@ from openmc.stats.multivariate import UnitSphere, Spatial
 import openmc.checkvalue as cv
 
 
-class Source(object):
+class Source:
     """Distribution of phase space coordinates for source sites.
 
     Parameters
     ----------
-    space : openmc.stats.Spatial, optional
+    space : openmc.stats.Spatial
         Spatial distribution of source sites
-    angle : openmc.stats.UnitSphere, optional
+    angle : openmc.stats.UnitSphere
         Angular distribution of source sites
-    energy : openmc.stats.Univariate, optional
+    energy : openmc.stats.Univariate
         Energy distribution of source sites
-    filename : str, optional
+    filename : str
         Source file from which sites should be sampled
-    strength : Real
+    library : str
+        Path to a custom source library
+    strength : float
         Strength of the source
     particle : {'neutron', 'photon'}
         Source particle type
@@ -36,7 +38,9 @@ class Source(object):
         Energy distribution of source sites
     file : str or None
         Source file from which sites should be sampled
-    strength : Real
+    library : str or None
+        Path to a custom source library
+    strength : float
         Strength of the source
     particle : {'neutron', 'photon'}
         Source particle type

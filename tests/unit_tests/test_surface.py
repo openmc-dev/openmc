@@ -39,10 +39,9 @@ def test_plane():
 
     # rotate method
     yp = openmc.YPlane(np.abs(s.d)/np.sqrt(s.a**2 + s.b**2 + s.c**2))
-    phi = np.rad2deg(np.arctan2(1, 2))
-    theta = 0.
-    psi = np.rad2deg(np.arctan2(1, np.sqrt(5)))
-    sr = s.rotate((psi, theta, phi))
+    psi = np.rad2deg(np.arctan2(1, 2))
+    phi = np.rad2deg(np.arctan2(1, np.sqrt(5)))
+    sr = s.rotate((phi, 0., psi), order='zyx')
     assert yp.normalize() == pytest.approx(sr.normalize())
     # test rotation ordering
     phi = np.rad2deg(np.arctan2(1, np.sqrt(2)))
@@ -98,7 +97,7 @@ def test_xplane():
     sr = s.rotate((37.4, 0., 0.))
     assert s._get_base_coeffs() == pytest.approx(sr._get_base_coeffs())
     # rotating around z by 90 deg then x by -90 deg should give negative z-plane
-    sr = s.rotate((-90., 0., 90))
+    sr = s.rotate((-90., 0., 90), order='zyx')
     assert (0., 0., -1., 3.) == pytest.approx(sr._get_base_coeffs())
 
     # Make sure repr works
@@ -134,9 +133,9 @@ def test_yplane():
     # make sure rotating around y axis does nothing to coefficients
     sr = s.rotate((0., -12.4, 0.), order='yxz')
     assert s._get_base_coeffs() == pytest.approx(sr._get_base_coeffs())
-    # rotating around z by 90 deg then x by -90 deg should give negative z-plane
-    #sr = s.rotate((-90., 0., 90))
-    #assert (0., 0., -1., 3.) == pytest.approx(sr._get_base_coeffs())
+    # rotate around x by -90 deg and y by 90 deg should give negative x-plane
+    sr = s.rotate((-90, 90, 0.))
+    assert (-1, 0., 0., 3.) == pytest.approx(sr._get_base_coeffs())
 
     # Make sure repr works
     repr(s)
@@ -166,6 +165,14 @@ def test_zplane():
     # translate method
     st = s.translate((0.0, 0.0, 1.0))
     assert st.z0 == s.z0 + 1
+
+    # rotate method
+    # make sure rotating around z axis does nothing to coefficients
+    sr = s.rotate((0., 0., 123), order='zxy')
+    assert s._get_base_coeffs() == pytest.approx(sr._get_base_coeffs())
+    # rotate around x by -90 deg and y by 90 deg should give negative x-plane
+    sr = s.rotate((-90, 0., 90.))
+    assert (-1., 0., 0., 3.) == pytest.approx(sr._get_base_coeffs())
 
     # Make sure repr works
     repr(s)
@@ -211,6 +218,12 @@ def test_cylinder():
     assert st.dy == s.dy
     assert st.dz == s.dz
     assert st.r == s.r
+
+    # rotate method
+    sr = s.rotate((90, 90, 90))
+    R = np.array([[0, 0, 1], [0, 1, 0], [-1, 0, 0]])
+    assert sr._origin == pytest.approx(R @ s._origin)
+    assert sr._axis == pytest.approx(R @ s._axis)
 
     # Make sure repr works
     repr(s)

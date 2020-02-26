@@ -537,7 +537,7 @@ class PlaneMixin(metaclass=ABCMeta):
         rotation = np.asarray(rotation)
 
         # Allow rotaiton matrix to be passed in directly, otherwise build it
-        if np.rank(rotation) == 2:
+        if rotation.ndim == 2:
             check_type('surface rotation', rotation, Iterable, Real)
             check_length('surface rotation', rotation.ravel(), 9)
             Rmat = rotation
@@ -1104,7 +1104,7 @@ class QuadricMixin(metaclass=ABCMeta):
         rotation = np.asarray(rotation)
 
         # Allow rotaiton matrix to be passed in directly, otherwise build it
-        if np.rank(rotation) == 2:
+        if rotation.ndim == 2:
             check_type('surface rotation', rotation, Iterable, Real)
             check_length('surface rotation', rotation.ravel(), 9)
             Rmat = rotation

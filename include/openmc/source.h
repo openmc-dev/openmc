@@ -68,6 +68,9 @@ Particle::Bank sample_external_source(uint64_t* seed);
 //! Fill source bank at end of generation for fixed source simulations
 void fill_source_bank_fixedsource();
 
+//! Fill source bank at the end of a generation for dlopen based source simulation
+void fill_source_bank_custom_source();
+
 void free_memory_source();
 
 } // namespace openmc

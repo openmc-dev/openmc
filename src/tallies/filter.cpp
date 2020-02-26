@@ -57,8 +57,10 @@ extern "C" size_t tally_filters_size()
 // Filter implementation
 //==============================================================================
 
-Filter::Filter() : index_{model::tally_filters.size()}
-{ }
+Filter::Filter()
+{
+  index_ = model::tally_filters.size(); // Avoids warning about narrowing
+}
 
 Filter::~Filter()
 {

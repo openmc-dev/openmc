@@ -1,5 +1,7 @@
 #include "openmc/tallies/filter_distribcell.h"
 
+#include <fmt/core.h>
+
 #include "openmc/cell.h"
 #include "openmc/error.h"
 #include "openmc/geometry_aux.h" // For distribcell_path
@@ -19,10 +21,8 @@ DistribcellFilter::from_xml(pugi::xml_node node)
   // Find index in global cells vector corresponding to cell ID
   auto search = model::cell_map.find(cells[0]);
   if (search == model::cell_map.end()) {
-    std::stringstream err_msg;
-    err_msg << "Could not find cell " << cell_
-            << " specified on tally filter.";
-    throw std::runtime_error{err_msg.str()};
+    throw std::runtime_error{fmt::format(
+      "Could not find cell {} specified on tally filter.", cell_)};
   }
 
   this->set_cell(search->second);

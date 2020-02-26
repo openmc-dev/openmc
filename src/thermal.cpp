@@ -2,8 +2,8 @@
 
 #include <algorithm> // for sort, move, min, max, find
 #include <cmath>     // for round, sqrt, abs
-#include <sstream>   // for stringstream
 
+#include <fmt/core.h>
 #include "xtensor/xarray.hpp"
 #include "xtensor/xbuilder.hpp"
 #include "xtensor/xmath.hpp"
@@ -88,10 +88,8 @@ ThermalScattering::ThermalScattering(hid_t group, const std::vector<double>& tem
           temps_to_read.push_back(std::round(temp_actual));
         }
       } else {
-        std::stringstream msg;
-        msg << "Nuclear data library does not contain cross sections for "
-          << name_ << " at or near " << std::round(T) << " K.";
-        fatal_error(msg);
+        fatal_error(fmt::format("Nuclear data library does not contain cross "
+          "sections for {} at or near {} K.", name_, std::round(T)));
       }
     }
     break;
@@ -115,10 +113,8 @@ ThermalScattering::ThermalScattering(hid_t group, const std::vector<double>& tem
         }
       }
       if (!found) {
-        std::stringstream msg;
-        msg << "Nuclear data library does not contain cross sections for "
-          << name_ << " at temperatures that bound " << std::round(T) << " K.";
-        fatal_error(msg);
+        fatal_error(fmt::format("Nuclear data library does not contain cross "
+          "sections for {} at temperatures that bound {} K.", name_, std::round(T)));
       }
     }
   }
@@ -132,7 +128,7 @@ ThermalScattering::ThermalScattering(hid_t group, const std::vector<double>& tem
 
   for (auto T : temps_to_read) {
     // Get temperature as a string
-    std::string temp_str = std::to_string(T) + "K";
+    std::string temp_str = fmt::format("{}K", T);
 
     // Read exact temperature value
     double kT;

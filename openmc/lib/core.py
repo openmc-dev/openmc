@@ -336,9 +336,23 @@ def source_bank():
     n = c_int64()
     _dll.openmc_source_bank(ptr, n)
 
-    # Convert to numpy array with appropriate datatype
-    bank_dtype = np.dtype(_Bank)
-    return as_array(ptr, (n.value,)).view(bank_dtype)
+    try:
+        # Convert to numpy array with appropriate datatype
+        bank_dtype = np.dtype(_Bank)
+        return as_array(ptr, (n.value,)).view(bank_dtype)
+
+    except ValueError as err:
+        # If a known numpy error was raised (github.com/numpy/numpy/issues
+        # /14214), re-raise with a more helpful error message.
+        if len(err.args) == 0:
+            raise err
+        if err.args[0].startswith('invalid shape in fixed-type tuple'):
+            raise ValueError('The source bank is too large to access via '
+                'openmc.lib with this version of numpy.  Use a different '
+                'version of numpy or reduce the bank size (fewer particles '
+                'per MPI process) so that it is smaller than 2 GB.') from err
+        else:
+            raise err
 
 
 def statepoint_write(filename=None, write_source=True):

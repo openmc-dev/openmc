@@ -1,7 +1,9 @@
 #include "openmc/geometry.h"
 
 #include <array>
-#include <sstream>
+
+#include <fmt/core.h>
+#include <fmt/ostream.h>
 
 #include "openmc/cell.h"
 #include "openmc/constants.h"
@@ -47,11 +49,9 @@ bool check_cell_overlap(Particle* p, bool error)
       if (c.contains(p->coord_[j].r, p->coord_[j].u, p->surface_)) {
         if (index_cell != p->coord_[j].cell) {
           if (error) {
-            std::stringstream err_msg;
-            err_msg << "Overlapping cells detected: " << c.id_ << ", "
-                    << model::cells[p->coord_[j].cell]->id_ << " on universe "
-                    << univ.id_;
-            fatal_error(err_msg);
+            fatal_error(fmt::format(
+              "Overlapping cells detected: {}, {} on universe {}",
+              c.id_, model::cells[p->coord_[j].cell]->id_, univ.id_));
           }
           return true;
         }
@@ -120,8 +120,7 @@ find_cell_inner(Particle* p, const NeighborList* neighbor_list)
 
   // Announce the cell that the particle is entering.
   if (found && (settings::verbosity >= 10 || p->trace_)) {
-    std::stringstream msg;
-    msg << "    Entering cell " << model::cells[i_cell]->id_;
+    auto msg = fmt::format("    Entering cell {}", model::cells[i_cell]->id_);
     write_message(msg, 1);
   }
 
@@ -229,11 +228,8 @@ find_cell_inner(Particle* p, const NeighborList* neighbor_list)
         if (lat.outer_ != NO_OUTER_UNIVERSE) {
           coord.universe = lat.outer_;
         } else {
-          std::stringstream err_msg;
-          err_msg << "Particle " << p->id_ << " is outside lattice "
-                  << lat.id_ << " but the lattice has no defined outer "
-                  "universe.";
-          warning(err_msg);
+          warning(fmt::format("Particle {} is outside lattice {} but the "
+            "lattice has no defined outer universe.", p->id_, lat.id_));
           return false;
         }
       }
@@ -298,11 +294,9 @@ cross_lattice(Particle* p, const BoundaryInfo& boundary)
   auto& lat {*model::lattices[coord.lattice]};
 
   if (settings::verbosity >= 10 || p->trace_) {
-    std::stringstream msg;
-    msg << "    Crossing lattice " << lat.id_ << ". Current position ("
-        << coord.lattice_x << "," << coord.lattice_y << ","
-        << coord.lattice_z << "). r=" << p->r();
-    write_message(msg, 1);
+    write_message(fmt::format(
+      "    Crossing lattice {}. Current position ({},{},{}). r={}",
+      lat.id_, coord.lattice_x, coord.lattice_y, coord.lattice_z, p->r()), 1);
   }
 
   // Set the lattice indices.
@@ -326,10 +320,8 @@ cross_lattice(Particle* p, const BoundaryInfo& boundary)
     p->n_coord_ = 1;
     bool found = find_cell(p, 0);
     if (!found && p->alive_) {
-      std::stringstream err_msg;
-      err_msg << "Could not locate particle " << p->id_
-              << " after crossing a lattice boundary";
-      p->mark_as_lost(err_msg);
+      p->mark_as_lost(fmt::format("Could not locate particle {} after "
+        "crossing a lattice boundary", p->id_));
     }
 
   } else {
@@ -343,10 +335,8 @@ cross_lattice(Particle* p, const BoundaryInfo& boundary)
       p->n_coord_ = 1;
       bool found = find_cell(p, 0);
       if (!found && p->alive_) {
-        std::stringstream err_msg;
-        err_msg << "Could not locate particle " << p->id_
-                << " after crossing a lattice boundary";
-        p->mark_as_lost(err_msg);
+        p->mark_as_lost(fmt::format("Could not locate particle {} after "
+          "crossing a lattice boundary", p->id_));
       }
     }
   }
@@ -400,10 +390,8 @@ BoundaryInfo distance_to_boundary(Particle* p)
       level_lat_trans = lattice_distance.second;
 
       if (d_lat < 0) {
-        std::stringstream err_msg;
-        err_msg << "Particle " << p->id_
-                << " had a negative distance to a lattice boundary";
-        p->mark_as_lost(err_msg);
+        p->mark_as_lost(fmt::format(
+          "Particle {} had a negative distance to a lattice boundary", p->id_));
       }
     }
 
@@ -462,10 +450,7 @@ openmc_find_cell(const double* xyz, int32_t* index, int32_t* instance)
   p.u() = {0.0, 0.0, 1.0};
 
   if (!find_cell(&p, false)) {
-    std::stringstream msg;
-    msg << "Could not find cell at position (" << p.r().x << ", " << p.r().y
-      << ", " << p.r().z << ").";
-    set_errmsg(msg);
+    set_errmsg(fmt::format("Could not find cell at position {}.", p.r()));
     return OPENMC_E_GEOMETRY;
   }
 

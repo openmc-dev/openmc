@@ -31,9 +31,11 @@ class PredictorIntegrator(Integrator):
     ----------
     operator : openmc.deplete.TransportOperator
         Operator to perform transport simulations
-    timesteps : iterable of float
-        Array of timesteps in units of [s]. Note that values are not
-        cumulative.
+    timesteps : iterable of float or iterable of tuple
+        Array of timesteps. Note that values are not cumulative. The units are
+        specified by the `timestep_units` argument when `timesteps` is an
+        iterable of float. Alternatively, units can be specified for each step
+        by passing an iterable of (value, unit) tuples.
     power : float or iterable of float, optional
         Power of the reactor in [W]. A single value indicates that
         the power is constant over all timesteps. An iterable
@@ -46,6 +48,11 @@ class PredictorIntegrator(Integrator):
         Power density of the reactor in [W/gHM]. It is multiplied by
         initial heavy metal inventory to get total power if ``power``
         is not speficied.
+    timestep_units : {'s', 'min', 'h', 'd', 'MWd/kg'}
+        Units for values specified in the `timesteps` argument. 's' means
+        seconds, 'min' means minutes, 'h' means hours, and 'MWd/kg' indicates
+        that the values are given in burnup (MW-d of energy deposited per
+        kilogram of initial heavy metal).
 
     Attributes
     ----------
@@ -113,9 +120,11 @@ class CECMIntegrator(Integrator):
     ----------
     operator : openmc.deplete.TransportOperator
         Operator to perform transport simulations
-    timesteps : iterable of float
-        Array of timesteps in units of [s]. Note that values are not
-        cumulative.
+    timesteps : iterable of float or iterable of tuple
+        Array of timesteps. Note that values are not cumulative. The units are
+        specified by the `timestep_units` argument when `timesteps` is an
+        iterable of float. Alternatively, units can be specified for each step
+        by passing an iterable of (value, unit) tuples.
     power : float or iterable of float, optional
         Power of the reactor in [W]. A single value indicates that
         the power is constant over all timesteps. An iterable
@@ -128,6 +137,11 @@ class CECMIntegrator(Integrator):
         Power density of the reactor in [W/gHM]. It is multiplied by
         initial heavy metal inventory to get total power if ``power``
         is not speficied.
+    timestep_units : {'s', 'min', 'h', 'd', 'MWd/kg'}
+        Units for values specified in the `timesteps` argument. 's' means
+        seconds, 'min' means minutes, 'h' means hours, and 'MWd/kg' indicates
+        that the values are given in burnup (MW-d of energy deposited per
+        kilogram of initial heavy metal).
 
     Attributes
     ----------
@@ -203,9 +217,11 @@ class CF4Integrator(Integrator):
     ----------
     operator : openmc.deplete.TransportOperator
         Operator to perform transport simulations
-    timesteps : iterable of float
-        Array of timesteps in units of [s]. Note that values are not
-        cumulative.
+    timesteps : iterable of float or iterable of tuple
+        Array of timesteps. Note that values are not cumulative. The units are
+        specified by the `timestep_units` argument when `timesteps` is an
+        iterable of float. Alternatively, units can be specified for each step
+        by passing an iterable of (value, unit) tuples.
     power : float or iterable of float, optional
         Power of the reactor in [W]. A single value indicates that
         the power is constant over all timesteps. An iterable
@@ -218,6 +234,11 @@ class CF4Integrator(Integrator):
         Power density of the reactor in [W/gHM]. It is multiplied by
         initial heavy metal inventory to get total power if ``power``
         is not speficied.
+    timestep_units : {'s', 'min', 'h', 'd', 'MWd/kg'}
+        Units for values specified in the `timesteps` argument. 's' means
+        seconds, 'min' means minutes, 'h' means hours, and 'MWd/kg' indicates
+        that the values are given in burnup (MW-d of energy deposited per
+        kilogram of initial heavy metal).
 
     Attributes
     ----------
@@ -310,9 +331,11 @@ class CELIIntegrator(Integrator):
     ----------
     operator : openmc.deplete.TransportOperator
         Operator to perform transport simulations
-    timesteps : iterable of float
-        Array of timesteps in units of [s]. Note that values are not
-        cumulative.
+    timesteps : iterable of float or iterable of tuple
+        Array of timesteps. Note that values are not cumulative. The units are
+        specified by the `timestep_units` argument when `timesteps` is an
+        iterable of float. Alternatively, units can be specified for each step
+        by passing an iterable of (value, unit) tuples.
     power : float or iterable of float, optional
         Power of the reactor in [W]. A single value indicates that
         the power is constant over all timesteps. An iterable
@@ -325,6 +348,11 @@ class CELIIntegrator(Integrator):
         Power density of the reactor in [W/gHM]. It is multiplied by
         initial heavy metal inventory to get total power if ``power``
         is not speficied.
+    timestep_units : {'s', 'min', 'h', 'd', 'MWd/kg'}
+        Units for values specified in the `timesteps` argument. 's' means
+        seconds, 'min' means minutes, 'h' means hours, and 'MWd/kg' indicates
+        that the values are given in burnup (MW-d of energy deposited per
+        kilogram of initial heavy metal).
 
     Attributes
     ----------
@@ -404,9 +432,11 @@ class EPCRK4Integrator(Integrator):
     ----------
     operator : openmc.deplete.TransportOperator
         Operator to perform transport simulations
-    timesteps : iterable of float
-        Array of timesteps in units of [s]. Note that values are not
-        cumulative.
+    timesteps : iterable of float or iterable of tuple
+        Array of timesteps. Note that values are not cumulative. The units are
+        specified by the `timestep_units` argument when `timesteps` is an
+        iterable of float. Alternatively, units can be specified for each step
+        by passing an iterable of (value, unit) tuples.
     power : float or iterable of float, optional
         Power of the reactor in [W]. A single value indicates that
         the power is constant over all timesteps. An iterable
@@ -419,6 +449,11 @@ class EPCRK4Integrator(Integrator):
         Power density of the reactor in [W/gHM]. It is multiplied by
         initial heavy metal inventory to get total power if ``power``
         is not speficied.
+    timestep_units : {'s', 'min', 'h', 'd', 'MWd/kg'}
+        Units for values specified in the `timesteps` argument. 's' means
+        seconds, 'min' means minutes, 'h' means hours, and 'MWd/kg' indicates
+        that the values are given in burnup (MW-d of energy deposited per
+        kilogram of initial heavy metal).
 
     Attributes
     ----------
@@ -518,9 +553,11 @@ class LEQIIntegrator(Integrator):
     ----------
     operator : openmc.deplete.TransportOperator
         Operator to perform transport simulations
-    timesteps : iterable of float
-        Array of timesteps in units of [s]. Note that values are not
-        cumulative.
+    timesteps : iterable of float or iterable of tuple
+        Array of timesteps. Note that values are not cumulative. The units are
+        specified by the `timestep_units` argument when `timesteps` is an
+        iterable of float. Alternatively, units can be specified for each step
+        by passing an iterable of (value, unit) tuples.
     power : float or iterable of float, optional
         Power of the reactor in [W]. A single value indicates that
         the power is constant over all timesteps. An iterable
@@ -533,6 +570,11 @@ class LEQIIntegrator(Integrator):
         Power density of the reactor in [W/gHM]. It is multiplied by
         initial heavy metal inventory to get total power if ``power``
         is not speficied.
+    timestep_units : {'s', 'min', 'h', 'd', 'MWd/kg'}
+        Units for values specified in the `timesteps` argument. 's' means
+        seconds, 'min' means minutes, 'h' means hours, and 'MWd/kg' indicates
+        that the values are given in burnup (MW-d of energy deposited per
+        kilogram of initial heavy metal).
 
     Attributes
     ----------
@@ -629,9 +671,11 @@ class SICELIIntegrator(SIIntegrator):
     ----------
     operator : openmc.deplete.TransportOperator
         The operator object to simulate on.
-    timesteps : iterable of float
-        Array of timesteps in units of [s]. Note that values are not
-        cumulative.
+    timesteps : iterable of float or iterable of tuple
+        Array of timesteps. Note that values are not cumulative. The units are
+        specified by the `timestep_units` argument when `timesteps` is an
+        iterable of float. Alternatively, units can be specified for each step
+        by passing an iterable of (value, unit) tuples.
     power : float or iterable of float, optional
         Power of the reactor in [W]. A single value indicates that
         the power is constant over all timesteps. An iterable
@@ -644,6 +688,11 @@ class SICELIIntegrator(SIIntegrator):
         Power density of the reactor in [W/gHM]. It is multiplied by
         initial heavy metal inventory to get total power if ``power``
         is not speficied.
+    timestep_units : {'s', 'min', 'h', 'd', 'MWd/kg'}
+        Units for values specified in the `timesteps` argument. 's' means
+        seconds, 'min' means minutes, 'h' means hours, and 'MWd/kg' indicates
+        that the values are given in burnup (MW-d of energy deposited per
+        kilogram of initial heavy metal).
     n_steps : int, optional
         Number of stochastic iterations per depletion interval.
         Must be greater than zero. Default : 10
@@ -730,9 +779,11 @@ class SILEQIIntegrator(SIIntegrator):
     ----------
     operator : openmc.deplete.TransportOperator
         The operator object to simulate on.
-    timesteps : iterable of float
-        Array of timesteps in units of [s]. Note that values are not
-        cumulative.
+    timesteps : iterable of float or iterable of tuple
+        Array of timesteps. Note that values are not cumulative. The units are
+        specified by the `timestep_units` argument when `timesteps` is an
+        iterable of float. Alternatively, units can be specified for each step
+        by passing an iterable of (value, unit) tuples.
     power : float or iterable of float, optional
         Power of the reactor in [W]. A single value indicates that
         the power is constant over all timesteps. An iterable
@@ -745,6 +796,11 @@ class SILEQIIntegrator(SIIntegrator):
         Power density of the reactor in [W/gHM]. It is multiplied by
         initial heavy metal inventory to get total power if ``power``
         is not speficied.
+    timestep_units : {'s', 'min', 'h', 'd', 'MWd/kg'}
+        Units for values specified in the `timesteps` argument. 's' means
+        seconds, 'min' means minutes, 'h' means hours, and 'MWd/kg' indicates
+        that the values are given in burnup (MW-d of energy deposited per
+        kilogram of initial heavy metal).
     n_steps : int, optional
         Number of stochastic iterations per depletion interval.
         Must be greater than zero. Default : 10

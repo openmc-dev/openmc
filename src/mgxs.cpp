@@ -9,6 +9,7 @@
 #include <omp.h>
 #endif
 
+#include <fmt/core.h>
 #include "xtensor/xmath.hpp"
 #include "xtensor/xsort.hpp"
 #include "xtensor/xadapt.hpp"
@@ -121,10 +122,9 @@ Mgxs::metadata_from_hdf5(hid_t xs_id, const std::vector<double>& temperature,
             temps_to_read.push_back(std::round(temp_actual));
           }
         } else {
-          std::stringstream msg;
-          msg << "MGXS library does not contain cross sections for "
-            << in_name << " at or near " << std::round(T) << " K.";
-          fatal_error(msg);
+          fatal_error(fmt::format(
+            "MGXS library does not contain cross sections for {} at or near {} K.",
+            in_name, std::round(T)));
         }
       }
       break;
@@ -350,10 +350,9 @@ Mgxs::Mgxs(const std::string& in_name, const std::vector<double>& mat_kTs,
           auto temp_actual = micros[m]->kTs[micro_t[m]];
 
           if (std::abs(temp_actual - temp_desired) >= K_BOLTZMANN * settings::temperature_tolerance) {
-            std::stringstream msg;
-            msg << "MGXS Library does not contain cross section for " << name
-              << " at or near " << std::round(temp_desired / K_BOLTZMANN) << "K.";
-            fatal_error(msg);
+            fatal_error(fmt::format(
+              "MGXS Library does not contain cross section for {} at or near {} K.",
+              name, std::round(temp_desired / K_BOLTZMANN)));
           }
         }
         break;

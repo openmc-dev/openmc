@@ -533,6 +533,7 @@ class FissionYield(Mapping):
         return zip(self.products, self.yields)
 
     def __add__(self, other):
+        """Add one set of fission yields to this set, return new yields"""
         if not isinstance(other, FissionYield):
             return NotImplemented
         new = FissionYield(self.products, self.yields.copy())
@@ -550,12 +551,14 @@ class FissionYield(Mapping):
         return self + other
 
     def __imul__(self, scalar):
+        """Scale these fission yields by a real scalar"""
         if not isinstance(scalar, Real):
             return NotImplemented
         self.yields *= scalar
         return self
 
     def __mul__(self, scalar):
+        """Return a new set of yields scaled by a real scalar"""
         if not isinstance(scalar, Real):
             return NotImplemented
         new = FissionYield(self.products, self.yields.copy())
@@ -568,3 +571,8 @@ class FissionYield(Mapping):
     def __repr__(self):
         return "<{} containing {} products and yields>".format(
             self.__class__.__name__, len(self))
+
+    # Avoid greedy numpy operations like np.float64 * fission_yield
+    # converting this to an array on the fly. Force __rmul__ and
+    # __radd__. See issue #1492
+    __array_ufunc__ = None

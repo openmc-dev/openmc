@@ -10,6 +10,7 @@ from warnings import warn
 # pp. 293-306 (2013). The "representative isotopic abundance" values from
 # column 9 are used except where an interval is given, in which case the
 # "best measurement" is used.
+# Note that the abundances are given as atomic fractions!
 NATURAL_ABUNDANCE = {
     'H1': 0.99984426, 'H2': 0.00015574, 'He3': 0.000002,
     'He4': 0.999998, 'Li6': 0.07589, 'Li7': 0.92411,

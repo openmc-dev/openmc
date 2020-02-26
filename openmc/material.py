@@ -529,7 +529,7 @@ class Material(IDManagerMixin):
         Notes
         -----
         General enrichment procedure is allowed only for elements composed of
-        two isotopes. If `enrichment_target` is given withou `enrichment`
+        two isotopes. If `enrichment_target` is given without `enrichment`
         natural composition is added to the material.
 
         """

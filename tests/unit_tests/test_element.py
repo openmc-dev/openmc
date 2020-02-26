@@ -7,7 +7,7 @@ from openmc.data import NATURAL_ABUNDANCE, atomic_mass
 TOL = 1e-9
 
 
-def test_expand_no_ernichment():
+def test_expand_no_enrichment():
     """ Expand Li in natural compositions"""
     lithium = openmc.element.Element('Li')
 
@@ -15,7 +15,7 @@ def test_expand_no_ernichment():
     for isotope in lithium.expand(100.0, 'ao'):
         assert isotope[1] == pt.approx(NATURAL_ABUNDANCE[isotope[0]] * 100.0, rel=TOL)
 
-    # Verify the expanction into WEIGHT fraction against natural composition
+    # Verify the expansion into WEIGHT fraction against natural composition
     natural = {'Li6': NATURAL_ABUNDANCE['Li6'] * atomic_mass('Li6'),
                'Li7': NATURAL_ABUNDANCE['Li7'] * atomic_mass('Li7')}
     li_am = sum(natural.values())
@@ -41,7 +41,7 @@ def test_expand_enrichment():
 
 
 def test_expand_exceptions():
-    """ Test that correct exceptions are raiused for invalid input """
+    """ Test that correct exceptions are raised for invalid input """
 
     # 1 Isotope Element
     with pt.raises(ValueError):
@@ -71,5 +71,9 @@ def test_expand_exceptions():
     # Invalid Enrichment Type Entry
     with pt.raises(ValueError):
         element = openmc.element.Element('Li')
-        fail = element.expand(70.0, 'ao', 4.0, 'Li7','Grand Moff Tarkin')
+        fail = element.expand(70.0, 'ao', 4.0, 'Li7', 'Grand Moff Tarkin')
 
+    # Trying to enrich Uranium
+    with pt.raises(ValueError):
+        element = openmc.element.Element('U')
+        fail = element.expand(70.0, 'ao', 4.0, 'U235', 'wo')

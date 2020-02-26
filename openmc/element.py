@@ -78,25 +78,19 @@ class Element(str):
         ------
         ValueError
             No data is available for any of natural isotopes of the element
-
         ValueError
             If only some natural isotopes are avaiable in cross-sections data
             library and element is not O, W or Ta
-
         ValueError
             Enrichment of isotope which is not present in natural composition
             of the element is requested
-
         ValueError
             Enrichment is requested of the element that is not composed of
             two isotopes.
-
         ValueError
             If `enrichment_type` is not 'ao' or 'wo'
-
         ValueError
             If `enrichment` is outside <0;100> range
-
         ValueError
             If enrichment procedure for Uranium is used when element is not
             Uranium.
@@ -112,7 +106,7 @@ class Element(str):
 
         When the `enrichment` argument is specified with `enrichment_target` a
         general enrichment procedure is used. It will raise exception unless
-        element is composed of excatly 2 isotopes. `enrichment` is interpreted
+        element is composed of exactly 2 isotopes. `enrichment` is interpreted
         as percent. By default it is atomic. Can be controlled by variable
         `enrichment_type`.
 
@@ -241,11 +235,21 @@ class Element(str):
         # Interpret required enrichment as weight
         elif enrichment is not None and enrichment_target is not None:
 
-            # Check if is a single isotope mixture
+            # Provide more informative error message for U235
+            if enrichment_target == 'U235':
+                msg = "There is a special procedure for enrichment of U235 "\
+                      "in U. To invoke it do not specify neither "\
+                      "'enrichment_target' nor 'enrichment_type'. Provide "\
+                      "only enrichment as 'wo%'. See User Guide for more "\
+                      "details"
+                raise ValueError(msg)
+
+            # Check if it is two-isotope mixture
             if len(abundances) != 2:
-                msg = 'Element {0} does not consist of 2 isotopes. Thus it '\
-                      'cannot be enriched with in-build procedure. Please '\
-                      'enter isotopic abundances manually. '.format(self)
+                msg = 'Element {0} does not consist of 2 naturally-occurring '\
+                      'isotopes. Therefore it cannot be enriched with the '\
+                      'in-build procedure. Please enter isotopic abundances '\
+                      'manually.'.format(self)
                 raise ValueError(msg)
 
             # Check if the target nuclide is present in the mixture

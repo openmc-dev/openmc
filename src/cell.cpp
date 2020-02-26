@@ -377,7 +377,7 @@ CSGCell::CSGCell(pugi::xml_node cell_node)
         throw std::runtime_error{"Invalid surface ID " + std::to_string(abs(r))
           + " specified in region for cell " + std::to_string(id_) + "."};
       }
-      r = copysign(it->second + 1, r);
+      r = (r > 0) ? it->second + 1 : -(it->second + 1);
     }
   }
 
@@ -536,8 +536,8 @@ CSGCell::to_hdf5(hid_t cell_group) const
         region_spec << " |";
       } else {
         // Note the off-by-one indexing
-        region_spec << " "
-             << copysign(model::surfaces[abs(token)-1]->id_, token);
+        auto surf_id = model::surfaces[abs(token)-1]->id_;
+        region_spec << " " << ((token > 0) ? surf_id : -surf_id);
       }
     }
     write_string(group, "region", region_spec.str(), false);

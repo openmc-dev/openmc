@@ -38,13 +38,13 @@ def test_plane():
     assert (st.a, st.b, st.c, st.d) == (s.a, s.b, s.c, 4)
 
     # rotate method
-    yp = openmc.YPlane(np.abs(s.d)/np.sqrt(s.a**2 + s.b**2 + s.c**2))
-    psi = np.rad2deg(np.arctan2(1, 2))
-    phi = np.rad2deg(np.arctan2(1, np.sqrt(5)))
+    yp = openmc.YPlane(abs(s.d)/math.sqrt(s.a**2 + s.b**2 + s.c**2))
+    psi = math.degrees(np.arctan2(1, 2))
+    phi = math.degrees(np.arctan2(1, np.sqrt(5)))
     sr = s.rotate((phi, 0., psi), order='zyx')
     assert yp.normalize() == pytest.approx(sr.normalize())
     # test rotation ordering
-    phi = np.rad2deg(np.arctan2(1, np.sqrt(2)))
+    phi = math.degrees(np.arctan2(1, np.sqrt(2)))
     sr = s.rotate((0., -45., phi), order='xyz')
     assert yp.normalize() == pytest.approx(sr.normalize())
 

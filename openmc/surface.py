@@ -51,15 +51,17 @@ def get_rotation_matrix(rotation, order='xyz'):
     check_type('surface rotation', rotation, Iterable, Real)
     check_length('surface rotation', rotation, 3)
 
-    phi, theta, psi = np.array(rotation)*(np.pi/180.)
-    cx, sx = np.cos(phi), np.sin(phi)
-    cy, sy = np.cos(theta), np.sin(theta)
-    cz, sz = np.cos(psi), np.sin(psi)
-    R = {}
-    R['x'] = np.array([[1., 0., 0.], [0., cx, -sx], [0., sx, cx]])
-    R['y'] = np.array([[cy, 0., sy], [0., 1., 0.], [-sy, 0., cy]])
-    R['z'] = np.array([[cz, -sz, 0.], [sz, cz, 0.], [0., 0., 1.]])
-    R1, R2, R3 = tuple(R[xi] for xi in order)
+    phi, theta, psi = np.array(rotation)*(math.pi/180.)
+    cx, sx = math.cos(phi), math.sin(phi)
+    cy, sy = math.cos(theta), math.sin(theta)
+    cz, sz = math.cos(psi), math.sin(psi)
+    R = {
+        'x': np.array([[1., 0., 0.], [0., cx, -sx], [0., sx, cx]]),
+        'y': np.array([[cy, 0., sy], [0., 1., 0.], [-sy, 0., cy]]),
+        'z': np.array([[cz, -sz, 0.], [sz, cz, 0.], [0., 0., 1.]]),
+    }
+
+    R1, R2, R3 = (R[xi] for xi in order)
     return R3 @ R2 @ R1
 
 
@@ -522,7 +524,7 @@ class PlaneMixin(metaclass=ABCMeta):
             return self
 
         a, b, c, d = self._get_base_coeffs()
-        d = d + np.array([a, b, c]) @ np.array(vector)
+        d = d + np.dot([a, b, c], vector)
 
         surf = self if inplace else self.clone()
 
@@ -532,12 +534,22 @@ class PlaneMixin(metaclass=ABCMeta):
 
     def rotate(self, rotation, pivot=(0., 0., 0.), order='xyz', inplace=False):
         pivot = np.asarray(pivot)
+        rotation = np.asarray(rotation)
+
+        # Allow rotaiton matrix to be passed in directly, otherwise build it
+        if np.rank(rotation) == 2:
+            check_type('surface rotation', rotation, Iterable, Real)
+            check_length('surface rotation', rotation.ravel(), 9)
+            Rmat = rotation
+        else:
+            Rmat = get_rotation_matrix(rotation, order=order)
+
+        # Translate surface to pivot
         surf = self.translate(-pivot, inplace=inplace)
 
-        Rmat = get_rotation_matrix(rotation, order=order)
         a, b, c, d = surf._get_base_coeffs()
         # Compute new rotated coefficients a, b, c
-        a, b, c = Rmat @ np.array([a, b, c])
+        a, b, c = Rmat @ [a, b, c]
 
         kwargs = {'boundary_type': surf.boundary_type, 'name': surf.name}
         if inplace:
@@ -1089,14 +1101,22 @@ class QuadricMixin(metaclass=ABCMeta):
     def rotate(self, rotation, pivot=(0., 0., 0.), order='xyz', inplace=False):
         # Get pivot and rotation matrix 
         pivot = np.asarray(pivot)
-        Rmat = get_rotation_matrix(rotation, order=order)
+        rotation = np.asarray(rotation)
+
+        # Allow rotaiton matrix to be passed in directly, otherwise build it
+        if np.rank(rotation) == 2:
+            check_type('surface rotation', rotation, Iterable, Real)
+            check_length('surface rotation', rotation.ravel(), 9)
+            Rmat = rotation
+        else:
+            Rmat = get_rotation_matrix(rotation, order=order)
 
         # Translate surface to the pivot point
         tsurf = self.translate(-pivot, inplace=inplace)
 
         # If the surface is already generalized just clone it
         if type(tsurf) is tsurf._virtual_base:
-            surf = tsurf if inplace  else tsurf.clone()
+            surf = tsurf if inplace else tsurf.clone()
         else:
             base_cls = type(tsurf)._virtual_base
             # Copy necessary surface attributes to new kwargs dictionary

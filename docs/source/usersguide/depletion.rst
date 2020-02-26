@@ -33,12 +33,11 @@ material compositions over time. Each method appears as a different class.
 For example, :class:`openmc.deplete.CECMIntegrator` runs a depletion calculation
 using the CE/CM algorithm (deplete over a timestep using the middle-of-step
 reaction rates). An instance of :class:`openmc.deplete.Operator` is passed to
-one of these functions along with the power level and timesteps::
+one of these functions along with the timesteps and power level::
 
-    power = 1200.0e6
-    days = 24*60*60
-    timesteps = [10.0*days, 10.0*days, 10.0*days]
-    openmc.deplete.CECMIntegrator(op, power, timesteps).integrate()
+    power = 1200.0e6  # watts
+    timesteps = [10.0, 10.0, 10.0]  # days
+    openmc.deplete.CECMIntegrator(op, timesteps, power, timestep_units='d').integrate()
 
 The coupled transport-depletion problem is executed, and once it is done a
 ``depletion_results.h5`` file is written. The results can be analyzed using the
@@ -67,7 +66,7 @@ the energy deposited during a transport calculation will be lower than expected.
 This causes the reaction rates to be over-adjusted to hit the user-specific power,
 or power density, leading to an over-depletion of burnable materials.
 
-There are some remedies. First, the fission Q values can be directly set in a 
+There are some remedies. First, the fission Q values can be directly set in a
 variety of ways. This requires knowing what the total fission energy release should
 be, including indirect components. Some examples are provided below::
 
@@ -99,11 +98,11 @@ Local Spectra and Repeated Materials
 ------------------------------------
 
 It is not uncommon to explicitly create a single burnable material across many locations.
-From a pure transport perspective, there is nothing wrong with creating a single 
+From a pure transport perspective, there is nothing wrong with creating a single
 3.5 wt.% enriched fuel ``fuel_3``, and placing that fuel in every fuel pin in an assembly
 or even full core problem. This certainly expedites the model making process, but can pose
-issues with depletion. 
-Under this setup, :mod:`openmc.deplete` will deplete a single ``fuel_3`` material using 
+issues with depletion.
+Under this setup, :mod:`openmc.deplete` will deplete a single ``fuel_3`` material using
 a single set of reaction rates, and produce a single new composition for the next time
 step. This can be problematic if the same ``fuel_3`` is used in very different regions
 of the problem.

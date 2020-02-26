@@ -1,6 +1,6 @@
 #include "openmc/tallies/filter_surface.h"
 
-#include <sstream>
+#include <fmt/core.h>
 
 #include "openmc/error.h"
 #include "openmc/surface.h"
@@ -17,10 +17,8 @@ SurfaceFilter::from_xml(pugi::xml_node node)
   for (auto& s : surfaces) {
     auto search = model::surface_map.find(s);
     if (search == model::surface_map.end()) {
-      std::stringstream err_msg;
-      err_msg << "Could not find surface " << s
-              << " specified on tally filter.";
-      throw std::runtime_error{err_msg.str()};
+      throw std::runtime_error{fmt::format(
+        "Could not find surface {} specified on tally filter.", s)};
     }
 
     s = search->second;
@@ -75,7 +73,7 @@ SurfaceFilter::to_statepoint(hid_t filter_group) const
 std::string
 SurfaceFilter::text_label(int bin) const
 {
-  return "Surface " + std::to_string(model::surfaces[surfaces_[bin]]->id_);
+  return fmt::format("Surface {}", model::surfaces[surfaces_[bin]]->id_);
 }
 
 } // namespace openmc

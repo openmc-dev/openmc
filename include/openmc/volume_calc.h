@@ -7,6 +7,7 @@
 #include "pugixml.hpp"
 #include "xtensor/xtensor.hpp"
 
+#include <array>
 #include <string>
 #include <vector>
 #include <gsl/gsl>

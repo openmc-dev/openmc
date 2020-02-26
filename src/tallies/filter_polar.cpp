@@ -1,6 +1,6 @@
 #include "openmc/tallies/filter_polar.h"
 
-#include <sstream>
+#include <fmt/core.h>
 
 #include "openmc/constants.h"
 #include "openmc/error.h"
@@ -77,9 +77,7 @@ PolarFilter::to_statepoint(hid_t filter_group) const
 std::string
 PolarFilter::text_label(int bin) const
 {
-  std::stringstream out;
-  out << "Polar Angle [" << bins_[bin] << ", " << bins_[bin+1] << ")";
-  return out.str();
+  return fmt::format("Polar Angle [{}, {})", bins_[bin], bins_[bin+1]);
 }
 
 } // namespace openmc

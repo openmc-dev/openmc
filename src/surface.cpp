@@ -2,8 +2,9 @@
 
 #include <array>
 #include <cmath>
-#include <sstream>
 #include <utility>
+
+#include <fmt/core.h>
 
 #include "openmc/error.h"
 #include "openmc/dagmc.h"
@@ -35,10 +36,8 @@ void read_coeffs(pugi::xml_node surf_node, int surf_id, double &c1)
   std::string coeffs = get_node_value(surf_node, "coeffs");
   int n_words = word_count(coeffs);
   if (n_words != 1) {
-    std::stringstream err_msg;
-    err_msg << "Surface " << surf_id << " expects 1 coeff but was given "
-            << n_words;
-    fatal_error(err_msg);
+    fatal_error(fmt::format("Surface {} expects 1 coeff but was given {}",
+      surf_id, n_words));
   }
 
   // Parse the coefficients.
@@ -55,10 +54,8 @@ void read_coeffs(pugi::xml_node surf_node, int surf_id, double &c1, double &c2,
   std::string coeffs = get_node_value(surf_node, "coeffs");
   int n_words = word_count(coeffs);
   if (n_words != 3) {
-    std::stringstream err_msg;
-    err_msg << "Surface " << surf_id << " expects 3 coeffs but was given "
-            << n_words;
-    fatal_error(err_msg);
+    fatal_error(fmt::format("Surface {} expects 3 coeffs but was given {}",
+      surf_id, n_words));
   }
 
   // Parse the coefficients.
@@ -75,10 +72,8 @@ void read_coeffs(pugi::xml_node surf_node, int surf_id, double &c1, double &c2,
   std::string coeffs = get_node_value(surf_node, "coeffs");
   int n_words = word_count(coeffs);
   if (n_words != 4) {
-    std::stringstream err_msg;
-    err_msg << "Surface " << surf_id << " expects 4 coeffs but was given "
-            << n_words;
-    fatal_error(err_msg);
+    fatal_error(fmt::format("Surface {} expects 4 coeffs but was given ",
+      surf_id, n_words));
   }
 
   // Parse the coefficients.
@@ -96,10 +91,8 @@ void read_coeffs(pugi::xml_node surf_node, int surf_id, double &c1, double &c2,
   std::string coeffs = get_node_value(surf_node, "coeffs");
   int n_words = word_count(coeffs);
   if (n_words != 10) {
-    std::stringstream err_msg;
-    err_msg << "Surface " << surf_id << " expects 10 coeffs but was given "
-            << n_words;
-    fatal_error(err_msg);
+    fatal_error(fmt::format("Surface {} expects 10 coeffs but was given {}",
+      surf_id, n_words));
   }
 
   // Parse the coefficients.
@@ -145,10 +138,8 @@ Surface::Surface(pugi::xml_node surf_node)
     } else if (surf_bc == "periodic") {
       bc_ = BoundaryType::PERIODIC;
     } else {
-      std::stringstream err_msg;
-      err_msg << "Unknown boundary condition \"" << surf_bc
-              << "\" specified on surface " << id_;
-      fatal_error(err_msg);
+      fatal_error(fmt::format("Unknown boundary condition \"{}\" specified "
+        "on surface {}", surf_bc, id_));
     }
 
   } else {
@@ -1170,9 +1161,7 @@ void read_surfaces(pugi::xml_node node)
         model::surfaces.push_back(std::make_unique<SurfaceQuadric>(surf_node));
 
       } else {
-        std::stringstream err_msg;
-        err_msg << "Invalid surface type, \"" << surf_type << "\"";
-        fatal_error(err_msg);
+        fatal_error(fmt::format("Invalid surface type, \"{}\"", surf_type));
       }
     }
   }
@@ -1184,9 +1173,8 @@ void read_surfaces(pugi::xml_node node)
     if (in_map == model::surface_map.end()) {
       model::surface_map[id] = i_surf;
     } else {
-      std::stringstream err_msg;
-      err_msg << "Two or more surfaces use the same unique ID: " << id;
-      fatal_error(err_msg);
+      fatal_error(fmt::format(
+        "Two or more surfaces use the same unique ID: {}", id));
     }
   }
 
@@ -1202,11 +1190,9 @@ void read_surfaces(pugi::xml_node node)
 
       // Make sure this surface inherits from PeriodicSurface.
       if (!surf) {
-        std::stringstream err_msg;
-        err_msg << "Periodic boundary condition not supported for surface "
-                << surf_base->id_
-                << ". Periodic BCs are only supported for planar surfaces.";
-        fatal_error(err_msg);
+        fatal_error(fmt::format(
+          "Periodic boundary condition not supported for surface {}. Periodic "
+          "BCs are only supported for planar surfaces.", surf_base->id_));
       }
 
       // See if this surface makes part of the global bounding box.
@@ -1278,10 +1264,8 @@ void read_surfaces(pugi::xml_node node)
         // This is a SurfacePlane.  We won't try to find it's partner if the
         // user didn't specify one.
         if (surf->i_periodic_ == C_NONE) {
-          std::stringstream err_msg;
-          err_msg << "No matching periodic surface specified for periodic "
-                     "boundary condition on surface " << surf->id_;
-          fatal_error(err_msg);
+          fatal_error(fmt::format("No matching periodic surface specified for "
+            "periodic boundary condition on surface {}", surf->id_));
         } else {
           // Convert the surface id to an index.
           surf->i_periodic_ = model::surface_map[surf->i_periodic_];
@@ -1290,10 +1274,8 @@ void read_surfaces(pugi::xml_node node)
 
       // Make sure the opposite surface is also periodic.
       if (model::surfaces[surf->i_periodic_]->bc_ != Surface::BoundaryType::PERIODIC) {
-        std::stringstream err_msg;
-        err_msg << "Could not find matching surface for periodic boundary "
-                   "condition on surface " << surf->id_;
-        fatal_error(err_msg);
+        fatal_error(fmt::format("Could not find matching surface for periodic "
+          "boundary condition on surface {}", surf->id_));
       }
     }
   }

@@ -1,7 +1,8 @@
 #include "openmc/tallies/filter_azimuthal.h"
 
 #include <cmath>
-#include <sstream>
+
+#include <fmt/core.h>
 
 #include "openmc/constants.h"
 #include "openmc/error.h"
@@ -77,9 +78,7 @@ AzimuthalFilter::to_statepoint(hid_t filter_group) const
 std::string
 AzimuthalFilter::text_label(int bin) const
 {
-  std::stringstream out;
-  out << "Azimuthal Angle [" << bins_[bin] << ", " << bins_[bin+1] << ")";
-  return out.str();
+  return fmt::format("Azimuthal Angle [{}, {})", bins_[bin], bins_[bin+1]);
 }
 
 } // namespace openmc

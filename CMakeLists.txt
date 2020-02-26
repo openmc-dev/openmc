@@ -170,6 +170,8 @@ target_link_libraries(xtensor INTERFACE xtl)
 # GSL header-only library
 #===============================================================================
 
+set(GSL_LITE_OPT_INSTALL_COMPAT_HEADER ON CACHE BOOL
+  "Install MS-GSL compatibility header <gsl/gsl>")
 add_subdirectory(vendor/gsl-lite)
 
 # Make sure contract violations throw exceptions

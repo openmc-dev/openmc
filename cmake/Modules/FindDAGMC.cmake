@@ -12,7 +12,9 @@ find_path(DAGMC_CMAKE_CONFIG NAMES DAGMCConfig.cmake
           PATHS ENV LD_LIBRARY_PATH
           PATH_SUFFIXES lib Lib cmake lib/cmake
           NO_DEFAULT_PATH)
-
-message(STATUS "Found DAGMC in ${DAGMC_CMAKE_CONFIG}")
-
-include(${DAGMC_CMAKE_CONFIG}/DAGMCConfig.cmake)
+if(DAGMC_CMAKE_CONFIG)
+  message(STATUS "Found DAGMC in ${DAGMC_CMAKE_CONFIG}")
+  include(${DAGMC_CMAKE_CONFIG}/DAGMCConfig.cmake)
+else()
+  message(WARNING "Cound not find DAGMC")
+endif()

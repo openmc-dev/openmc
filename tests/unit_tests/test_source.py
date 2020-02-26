@@ -34,3 +34,11 @@ def test_source_file():
     elem = src.to_xml_element()
     assert 'strength' in elem.attrib
     assert 'file' in elem.attrib
+
+def test_source_dlopen():
+    library = './libsource.so'
+    src = openmc.Source(library=library)
+    assert src.library == library
+
+    elem = src.to_xml_element()
+    assert 'library' in elem.attrib

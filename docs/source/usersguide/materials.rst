@@ -57,13 +57,13 @@ and are determined through a correlation based on measured data.
 
 It is also possible to perform enrichment of any element that is composed
 of two naturally-occurring isotopes (e.g. Li, B) in terms of atomic percent.
-To invoke it, provide additional arguments `enrichment_target` to
+To invoke this, provide the additional argument `enrichment_target` to
 :meth:`Material.add_element`. For example the following would enrich B10
 to 30ao%::
 
    mat.add_element('B', 1.0, enrichment=30.0, enrichment_target='B10')
 
-In order to enrich an isotope in terms of mass percent (wo%). Provide extra
+In order to enrich an isotope in terms of mass percent (wo%), provide the extra
 argument `enrichment_type`. For example the following would enrich Li6 to 15wo%::
 
    mat.add_element('Li', 1.0, enrichment=15.0, enrichment_target='Li6',

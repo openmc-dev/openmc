@@ -238,9 +238,9 @@ class Element(str):
             # Provide more informative error message for U235
             if enrichment_target == 'U235':
                 msg = "There is a special procedure for enrichment of U235 "\
-                      "in U. To invoke it do not specify neither "\
-                      "'enrichment_target' nor 'enrichment_type'. Provide "\
-                      "only enrichment as 'wo%'. See User Guide for more "\
+                      "in U. To invoke it, the arguments 'enrichment_taget'"\
+                      "and 'enrichment_type' should be omitted. Provide "\
+                      "only 'enrichment' as 'wo%'. See User Guide for more "\
                       "details"
                 raise ValueError(msg)
 

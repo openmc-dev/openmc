@@ -224,6 +224,9 @@ def test_cylinder():
     R = np.array([[0, 0, 1], [0, 1, 0], [-1, 0, 0]])
     assert sr._origin == pytest.approx(R @ s._origin)
     assert sr._axis == pytest.approx(R @ s._axis)
+    # test passing in rotation matrix
+    sr2 = s.rotate(R)
+    assert sr2.is_equal(sr)
 
     # Make sure repr works
     repr(s)
@@ -252,6 +255,15 @@ def test_xcylinder():
     assert st.y0 == s.y0 + 1
     assert st.z0 == s.z0 + 1
     assert st.r == s.r
+
+    # rotate method
+    sr = s.rotate((90, 90, 90))
+    R = np.array([[0, 0, 1], [0, 1, 0], [-1, 0, 0]])
+    assert sr._origin == pytest.approx(R @ s._origin)
+    assert sr._axis == pytest.approx(R @ s._axis)
+    # test passing in rotation matrix
+    sr2 = s.rotate(R)
+    assert sr2._get_base_coeffs() == pytest.approx(sr._get_base_coeffs())
 
     # Make sure repr works
     repr(s)
@@ -290,6 +302,18 @@ def test_ycylinder():
     assert st.z0 == s.z0 + 1
     assert st.r == s.r
 
+    # rotate method
+    sr = s.rotate((90, 90, 90))
+    R = np.array([[0, 0, 1], [0, 1, 0], [-1, 0, 0]])
+    assert sr._origin == pytest.approx(R @ s._origin)
+    assert sr._axis == pytest.approx(R @ s._axis)
+    # test passing in rotation matrix
+    sr2 = s.rotate(R)
+    assert sr2._get_base_coeffs() == pytest.approx(sr._get_base_coeffs())
+
+    # Make sure repr works
+    repr(s)
+
 
 def test_zcylinder():
     x, y, r = 3, 5, 2
@@ -314,6 +338,15 @@ def test_zcylinder():
     assert st.x0 == s.x0 + 1
     assert st.y0 == s.y0 + 1
     assert st.r == s.r
+
+    # rotate method
+    sr = s.rotate((90, 90, 90))
+    R = np.array([[0, 0, 1], [0, 1, 0], [-1, 0, 0]])
+    assert sr._origin == pytest.approx(R @ s._origin)
+    assert sr._axis == pytest.approx(R @ s._axis)
+    # test passing in rotation matrix
+    sr2 = s.rotate(R)
+    assert sr2._get_base_coeffs() == pytest.approx(sr._get_base_coeffs())
 
     # Make sure repr works
     repr(s)
@@ -345,6 +378,15 @@ def test_sphere():
     assert st.z0 == s.z0 + 1
     assert st.r == s.r
 
+    # rotate method
+    pivot = np.array([1, -2, 3])
+    sr = s.rotate((90, 90, 90), pivot=pivot)
+    R = np.array([[0, 0, 1], [0, 1, 0], [-1, 0, 0]])
+    assert sr._origin == pytest.approx((R @ (s._origin - pivot)) + pivot)
+    # test passing in rotation matrix
+    sr2 = s.rotate(R, pivot=pivot)
+    assert sr2._get_base_coeffs() == pytest.approx(sr._get_base_coeffs())
+
     # Make sure repr works
     repr(s)
 
@@ -369,6 +411,15 @@ def cone_common(apex, r2, cls):
     assert st.y0 == s.y0 + 1
     assert st.z0 == s.z0 + 1
     assert st.r2 == s.r2
+
+    # rotate method
+    sr = s.rotate((90, 90, 90))
+    R = np.array([[0, 0, 1], [0, 1, 0], [-1, 0, 0]])
+    assert sr._origin == pytest.approx(R @ s._origin)
+    assert sr._axis == pytest.approx(R @ s._axis)
+    # test passing in rotation matrix
+    sr2 = s.rotate(R)
+    assert sr2._get_base_coeffs() == pytest.approx(sr._get_base_coeffs())
 
     # Make sure repr works
     repr(s)
@@ -422,6 +473,15 @@ def test_cone():
     assert st.dz == s.dz
     assert st.r2 == s.r2
 
+    # rotate method
+    sr = s.rotate((90, 90, 90))
+    R = np.array([[0, 0, 1], [0, 1, 0], [-1, 0, 0]])
+    assert sr._origin == pytest.approx(R @ s._origin)
+    assert sr._axis == pytest.approx(R @ s._axis)
+    # test passing in rotation matrix
+    sr2 = s.rotate(R)
+    assert sr2._get_base_coeffs() == pytest.approx(sr._get_base_coeffs())
+
     # Make sure repr works
     repr(s)
 
@@ -453,6 +513,7 @@ def test_quadric():
     assert s.b == coeffs['b']
     assert s.c == coeffs['c']
     assert s.k == coeffs['k']
+    assert openmc.Sphere(r=10).is_equal(s)
 
     # All other coeffs should be zero
     for coeff in ('d', 'e', 'f', 'g', 'h', 'j'):

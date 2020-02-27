@@ -530,8 +530,9 @@ class Material(IDManagerMixin):
         # Allow for element identifier to be given as a symbol or name
         if len(element)>2:
             el = element.lower()
-            element = openmc.data.ELEMENT_SYMBOL.get(el,"empty")
-            if element == "empty":
+            if el in openmc.data.ELEMENT_SYMBOL:
+                element = openmc.data.ELEMENT_SYMBOL[el]
+            else:
                 msg = 'Element name "{}" not recognised'.format(el)
                 raise ValueError(msg)
 

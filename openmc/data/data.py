@@ -4,6 +4,7 @@ import os
 import re
 from warnings import warn
 
+
 # Isotopic abundances from Meija J, Coplen T B, et al, "Isotopic compositions
 # of the elements 2013 (IUPAC Technical Report)", Pure. Appl. Chem. 88 (3),
 # pp. 293-306 (2013). The "representative isotopic abundance" values from

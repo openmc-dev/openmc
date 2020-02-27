@@ -39,13 +39,13 @@ def get_rotation_matrix(rotation, order='xyz'):
         laboratory frame, and the third element is the rotation about the
         z-axis in the fixed laboratory frame. The rotations are active
         rotations.
-    order : str, optinoal
+    order : str, optional
         A string of 'x', 'y', and 'z' in some order specifying which rotation
         to perform first, second, and third. Defaults to 'xyz' which means, the
-        rotation by angle phi about x will be applied first, followed by theta
-        about y and then phi about z. This corresponds to an x-y-z extrinsic
-        rotation as well as a z-y'-x'' intrinsic rotation using Tait-Bryan
-        angles :math:`(\phi, \theta, \psi)`.
+        rotation by angle :math:`\phi` about x will be applied first, followed
+        by :math:`\theta` about y and then :math:`\psi` about z. This
+        corresponds to an x-y-z extrinsic rotation as well as a z-y'-x''
+        intrinsic rotation using Tait-Bryan angles :math:`(\phi, \theta, \psi)`.
 
     """
     check_type('surface rotation', rotation, Iterable, Real)
@@ -307,22 +307,29 @@ class Surface(IDManagerMixin, metaclass=ABCMeta):
 
     @abstractmethod
     def rotate(self, rotation, pivot=(0., 0., 0.), order='xyz', inplace=False):
-        r"""Rotate surface by given Tait-Bryan angles
+        r"""Rotate surface by angles provided or by applying matrix directly.
 
         Parameters
         ----------
-        rotation : iterable of float
-            Intrinsic Tait-Bryan angles in degrees used to rotate the surface
+        rotation : 3-tuple of float, or 3x3 iterable
+            A 3-tuple of angles :math:`(\phi, \theta, \psi)` in degrees where
+            the first element is the rotation about the x-axis in the fixed
+            laboratory frame, the second element is the rotation about the
+            y-axis in the fixed laboratory frame, and the third element is the
+            rotation about the z-axis in the fixed laboratory frame. The
+            rotations are active rotations. Additionally a 3x3 rotation matrix
+            can be specified directly either as a nested iterable or array.
         pivot : iterable of float, optional
             (x, y, z) coordinates for the point to rotate about. Defaults to
             (0., 0., 0.)
         order : str, optional
             A string of 'x', 'y', and 'z' in some order specifying which
             rotation to perform first, second, and third. Defaults to 'xyz'
-            which means, the rotation by angle phi about x will be applied
-            first, followed by theta about y and then phi about z. This
-            corresponds to an x-y-z extrinsic rotation as well as a z-y'-x''
-            intrinsic rotation using Tait-Bryan angles :math:`(\phi, \theta, \psi)`.
+            which means, the rotation by angle :math:`\phi` about x will be
+            applied first, followed by :math:`\theta` about y and then
+            :math:`\psi` about z. This corresponds to an x-y-z extrinsic
+            rotation as well as a z-y'-x'' intrinsic rotation using Tait-Bryan
+            angles :math:`(\phi, \theta, \psi)`.
         inplace : boolean
             Whether or not to return a new instance of Surface or to modify the
             coefficients of this Surface in place. Defaults to False.
@@ -1290,6 +1297,19 @@ class Cylinder(QuadricMixin, Surface):
     def dz(self, dz):
         check_type('dz coefficient', dz, Real)
         self._coefficients['dz'] = dz
+
+    def bounding_box(self, side):
+        if side == '-':
+            r = self.r
+            ll = [xi - r if np.isclose(dxi, 0., rtol=0., atol=self._atol)
+                  else -np.inf for xi, dxi in zip(self._origin, self._axis)]
+            ur = [xi + r if np.isclose(dxi, 0., rtol=0., atol=self._atol)
+                  else np.inf for xi, dxi in zip(self._origin, self._axis)]
+            return (np.array(ll), np.array(ur))
+
+        elif side == '+':
+            return (np.array([-np.inf, -np.inf, -np.inf]),
+                    np.array([np.inf, np.inf, np.inf]))
 
     def _get_base_coeffs(self):
         # Get x, y, z coordinates of two points
@@ -2772,8 +2792,58 @@ class Halfspace(Region):
         if key not in memo:
             memo[key] = self.surface.translate(vector)
 
-        # Return translated surface
+        # Return translated half-space
         return type(self)(memo[key], self.side)
+
+    def rotate(self, rotation, pivot=(0., 0., 0.), order='xyz', inplace=False,
+               memo=None):
+        r"""Rotate surface by angles provided or by applying matrix directly.
+
+        Parameters
+        ----------
+        rotation : 3-tuple of float, or 3x3 iterable
+            A 3-tuple of angles :math:`(\phi, \theta, \psi)` in degrees where
+            the first element is the rotation about the x-axis in the fixed
+            laboratory frame, the second element is the rotation about the
+            y-axis in the fixed laboratory frame, and the third element is the
+            rotation about the z-axis in the fixed laboratory frame. The
+            rotations are active rotations. Additionally a 3x3 rotation matrix
+            can be specified directly either as a nested iterable or array.
+        pivot : iterable of float, optional
+            (x, y, z) coordinates for the point to rotate about. Defaults to
+            (0., 0., 0.)
+        order : str, optional
+            A string of 'x', 'y', and 'z' in some order specifying which
+            rotation to perform first, second, and third. Defaults to 'xyz'
+            which means, the rotation by angle :math:`\phi` about x will be
+            applied first, followed by :math:`\theta` about y and then
+            :math:`\psi` about z. This corresponds to an x-y-z extrinsic
+            rotation as well as a z-y'-x'' intrinsic rotation using Tait-Bryan
+            angles :math:`(\phi, \theta, \psi)`.
+        inplace : boolean
+            Whether or not to return a new instance of Surface or to modify the
+            coefficients of this Surface in place. Defaults to False.
+        memo : dict or None
+            Dictionary used for memoization
+
+        Returns
+        -------
+        openmc.Halfspace
+            Translated half-space
+
+        """
+        if memo is None:
+            memo = {}
+
+        # If rotated surface not in memo, add it
+        key = (self.surface, tuple(rotation), tuple(pivot), order, inplace)
+        if key not in memo:
+            memo[key] = self.surface.rotate(rotation, pivot=pivot, order=order,
+                                            inplace=inplace)
+
+        # Return rotated half-space
+        return type(self)(memo[key], self.side)
+
 
 _SURFACE_CLASSES = {cls._type: cls for cls in Surface.__subclasses__()}
 

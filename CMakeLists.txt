@@ -42,8 +42,9 @@ if(dagmc)
   find_package(DAGMC REQUIRED)
   add_library(dagmc-imported INTERFACE IMPORTED)
   link_directories(${DAGMC_LIBRARY_DIRS})
-  target_link_libraries(dagmc-imported INTERFACE ${DAGMC_LIBRARIES})
-  target_include_directories(dagmc-imported INTERFACE ${DAGMC_INCLUDE_DIRS})
+  set_target_properties(dagmc-imported PROPERTIES
+    INTERFACE_LINK_LIBRARIES "${DAGMC_LIBRARIES}"
+    INTERFACE_INCLUDE_DIRECTORIES "${DAGMC_INCLUDE_DIRS}")
 else()
   set(DAGMC_FOUND false)
 endif()

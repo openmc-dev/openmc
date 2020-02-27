@@ -533,6 +533,15 @@ def test_quadric():
     assert (st.g, st.h, st.j) == (-2, -2, -2)
     assert st.k == s.k + 3
 
+    # rotate method
+    x0, y0, z0, r2 = 2, 3, 4, 4
+    dx, dy, dz = 1, -1, 1
+    s = openmc.Cone(x0=x0, y0=y0, z0=z0, dx=dx, dy=dy, dz=dz, r2=r2)
+    q = openmc.Quadric(*s._get_base_coeffs())
+    qr = q.rotate((45, 60, 30))
+    sr = s.rotate((45, 60, 30))
+    assert qr.is_equal(sr)
+
 
 def test_cylinder_from_points():
     seed(1)  # Make random numbers reproducible

@@ -528,7 +528,7 @@ class Material(IDManagerMixin):
                              "element's symbol or name, e.g., 'Zr', 'zirconium'")
 
         # Allow for element identifier to be given as a symbol or name
-        if len(element)>2:
+        if len(element) > 2:
             el = element.lower()
             element = openmc.data.ELEMENT_SYMBOL.get(el)
             if element is None:

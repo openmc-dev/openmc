@@ -541,9 +541,9 @@ class PlaneMixin(metaclass=ABCMeta):
 
     def rotate(self, rotation, pivot=(0., 0., 0.), order='xyz', inplace=False):
         pivot = np.asarray(pivot)
-        rotation = np.asarray(rotation)
+        rotation = np.asarray(rotation, dtype=float)
 
-        # Allow rotaiton matrix to be passed in directly, otherwise build it
+        # Allow rotation matrix to be passed in directly, otherwise build it
         if rotation.ndim == 2:
             check_type('surface rotation', rotation, Iterable, Real)
             check_length('surface rotation', rotation.ravel(), 9)
@@ -1108,7 +1108,7 @@ class QuadricMixin(metaclass=ABCMeta):
     def rotate(self, rotation, pivot=(0., 0., 0.), order='xyz', inplace=False):
         # Get pivot and rotation matrix 
         pivot = np.asarray(pivot)
-        rotation = np.asarray(rotation)
+        rotation = np.asarray(rotation, dtype=float)
 
         # Allow rotaiton matrix to be passed in directly, otherwise build it
         if rotation.ndim == 2:

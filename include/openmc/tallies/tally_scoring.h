@@ -39,18 +39,15 @@ public:
 
   FilterBinIter& operator++();
 
+  int index_ {1};
+  double weight_ {1.};
+  
+  std::vector<FilterMatch>& filter_matches_;
+
 private:
   void compute_index_weight();
 
-  // Data members
   const Tally& tally_;
-
-public:
-
-  int index_ {1};
-  double weight_ {1.};
-
-  std::vector<FilterMatch>& filter_matches_;
 };
 
 //==============================================================================

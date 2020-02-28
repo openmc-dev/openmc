@@ -42,8 +42,9 @@ if(dagmc)
   find_package(DAGMC REQUIRED)
   add_library(dagmc-imported INTERFACE IMPORTED)
   link_directories(${DAGMC_LIBRARY_DIRS})
-  target_link_libraries(dagmc-imported INTERFACE ${DAGMC_LIBRARIES})
-  target_include_directories(dagmc-imported INTERFACE ${DAGMC_INCLUDE_DIRS})
+  set_target_properties(dagmc-imported PROPERTIES
+    INTERFACE_LINK_LIBRARIES "${DAGMC_LIBRARIES}"
+    INTERFACE_INCLUDE_DIRECTORIES "${DAGMC_INCLUDE_DIRS}")
 else()
   set(DAGMC_FOUND false)
 endif()
@@ -170,6 +171,8 @@ target_link_libraries(xtensor INTERFACE xtl)
 # GSL header-only library
 #===============================================================================
 
+set(GSL_LITE_OPT_INSTALL_COMPAT_HEADER ON CACHE BOOL
+  "Install MS-GSL compatibility header <gsl/gsl>")
 add_subdirectory(vendor/gsl-lite)
 
 # Make sure contract violations throw exceptions

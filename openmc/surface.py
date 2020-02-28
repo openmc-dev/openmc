@@ -1,5 +1,6 @@
 from abc import ABCMeta, abstractmethod
 from collections import OrderedDict
+from collections.abc import Iterable
 from copy import deepcopy
 from numbers import Real
 from xml.etree import ElementTree as ET
@@ -8,7 +9,7 @@ import math
 
 import numpy as np
 
-from openmc.checkvalue import check_type, check_value
+from openmc.checkvalue import check_type, check_value, check_length
 from openmc.region import Region, Intersection, Union
 from openmc.mixin import IDManagerMixin, IDWarning
 
@@ -24,6 +25,53 @@ _WARNING_KWARGS = """\
 "{}(...) accepts keyword arguments only for '{}'. Future versions of OpenMC \
 will not accept positional parameters for superclass arguments.\
 """
+
+
+def _future_kwargs_warning_helper(cls, *args, **kwargs):
+    # Warn if Surface parameters are passed by position, not by keyword
+    argsdict = dict(zip(('boundary_type', 'name', 'surface_id'), args))
+    for k in argsdict:
+        warn(_WARNING_KWARGS.format(cls.__name__, k), FutureWarning)
+    kwargs.update(argsdict)
+    return kwargs
+
+
+def get_rotation_matrix(rotation, order='xyz'):
+    r"""Generate a 3x3 rotation matrix from input angles
+
+    Parameters
+    ----------
+    rotation : 3-tuple of float
+        A 3-tuple of angles :math:`(\phi, \theta, \psi)` in degrees where the
+        first element is the rotation about the x-axis in the fixed laboratory
+        frame, the second element is the rotation about the y-axis in the fixed
+        laboratory frame, and the third element is the rotation about the
+        z-axis in the fixed laboratory frame. The rotations are active
+        rotations.
+    order : str, optional
+        A string of 'x', 'y', and 'z' in some order specifying which rotation
+        to perform first, second, and third. Defaults to 'xyz' which means, the
+        rotation by angle :math:`\phi` about x will be applied first, followed
+        by :math:`\theta` about y and then :math:`\psi` about z. This
+        corresponds to an x-y-z extrinsic rotation as well as a z-y'-x''
+        intrinsic rotation using Tait-Bryan angles :math:`(\phi, \theta, \psi)`.
+
+    """
+    check_type('surface rotation', rotation, Iterable, Real)
+    check_length('surface rotation', rotation, 3)
+
+    phi, theta, psi = np.array(rotation)*(math.pi/180.)
+    cx, sx = math.cos(phi), math.sin(phi)
+    cy, sy = math.cos(theta), math.sin(theta)
+    cz, sz = math.cos(psi), math.sin(psi)
+    R = {
+        'x': np.array([[1., 0., 0.], [0., cx, -sx], [0., sx, cx]]),
+        'y': np.array([[cy, 0., sy], [0., 1., 0.], [-sy, 0., cy]]),
+        'z': np.array([[cz, -sz, 0.], [sz, cz, 0.], [0., 0., 1.]]),
+    }
+
+    R1, R2, R3 = (R[xi] for xi in order)
+    return R3 @ R2 @ R1
 
 
 class Surface(IDManagerMixin, metaclass=ABCMeta):
@@ -266,6 +314,42 @@ class Surface(IDManagerMixin, metaclass=ABCMeta):
 
         """
 
+    @abstractmethod
+    def rotate(self, rotation, pivot=(0., 0., 0.), order='xyz', inplace=False):
+        r"""Rotate surface by angles provided or by applying matrix directly.
+
+        Parameters
+        ----------
+        rotation : 3-tuple of float, or 3x3 iterable
+            A 3-tuple of angles :math:`(\phi, \theta, \psi)` in degrees where
+            the first element is the rotation about the x-axis in the fixed
+            laboratory frame, the second element is the rotation about the
+            y-axis in the fixed laboratory frame, and the third element is the
+            rotation about the z-axis in the fixed laboratory frame. The
+            rotations are active rotations. Additionally a 3x3 rotation matrix
+            can be specified directly either as a nested iterable or array.
+        pivot : iterable of float, optional
+            (x, y, z) coordinates for the point to rotate about. Defaults to
+            (0., 0., 0.)
+        order : str, optional
+            A string of 'x', 'y', and 'z' in some order specifying which
+            rotation to perform first, second, and third. Defaults to 'xyz'
+            which means, the rotation by angle :math:`\phi` about x will be
+            applied first, followed by :math:`\theta` about y and then
+            :math:`\psi` about z. This corresponds to an x-y-z extrinsic
+            rotation as well as a z-y'-x'' intrinsic rotation using Tait-Bryan
+            angles :math:`(\phi, \theta, \psi)`.
+        inplace : boolean
+            Whether or not to return a new instance of Surface or to modify the
+            coefficients of this Surface in place. Defaults to False.
+
+        Returns
+        -------
+        openmc.Surface
+            Rotated surface
+
+        """
+
     def to_xml_element(self):
         """Return XML representation of the surface
 
@@ -452,15 +536,43 @@ class PlaneMixin(metaclass=ABCMeta):
             Translated surface
 
         """
-        vx, vy, vz = vector
+        if np.allclose(vector, 0., rtol=0., atol=self._atol):
+            return self
+
         a, b, c, d = self._get_base_coeffs()
-        d = d + a*vx + b*vy + c*vz
+        d = d + np.dot([a, b, c], vector)
 
         surf = self if inplace else self.clone()
 
         setattr(surf, surf._coeff_keys[-1], d)
 
         return surf
+
+    def rotate(self, rotation, pivot=(0., 0., 0.), order='xyz', inplace=False):
+        pivot = np.asarray(pivot)
+        rotation = np.asarray(rotation, dtype=float)
+
+        # Allow rotation matrix to be passed in directly, otherwise build it
+        if rotation.ndim == 2:
+            check_length('surface rotation', rotation.ravel(), 9)
+            Rmat = rotation
+        else:
+            Rmat = get_rotation_matrix(rotation, order=order)
+
+        # Translate surface to pivot
+        surf = self.translate(-pivot, inplace=inplace)
+
+        a, b, c, d = surf._get_base_coeffs()
+        # Compute new rotated coefficients a, b, c
+        a, b, c = Rmat @ [a, b, c]
+
+        kwargs = {'boundary_type': surf.boundary_type, 'name': surf.name}
+        if inplace:
+            kwargs['surface_id'] = surf.id
+
+        surf = Plane(a=a, b=b, c=c, d=d, **kwargs)
+
+        return surf.translate(pivot, inplace=inplace)
 
     def to_xml_element(self):
         """Return XML representation of the surface
@@ -538,30 +650,23 @@ class Plane(PlaneMixin, Surface):
         # *args should ultimately be limited to a, b, c, d as specified in
         # __init__, but to preserve the API it is allowed to accept Surface
         # parameters for now, but will raise warnings if this is done.
-        argtup = ('a', 'b', 'c', 'd', 'boundary_type', 'name', 'surface_id')
-        kwargs.update(dict(zip(argtup, args)))
-
-        # Warn if Surface parameters are passed by position, not by keyword
-        superkwargs = {}
-        for k in ('boundary_type', 'name', 'surface_id'):
-            val = kwargs.get(k, None)
-            if val is not None:
-                superkwargs[k] = val
-                warn(_WARNING_KWARGS.format(type(self), k),
-                     FutureWarning)
-
-        super().__init__(**superkwargs)
-
-        for key, val in zip(self._coeff_keys, (a, b, c, d)):
-            setattr(self, key, val)
-
+        kwargs = _future_kwargs_warning_helper(type(self), *args, **kwargs)
         # Warn if capital letter arguments are passed
+        capdict = {}
         for k in 'ABCD':
             val = kwargs.pop(k, None)
             if val is not None:
                 warn(_WARNING_UPPER.format(type(self), k.lower(), k),
                      FutureWarning)
-                setattr(self, k.lower(), val)
+                capdict[k.lower()] = val
+
+        super().__init__(**kwargs)
+
+        for key, val in zip(self._coeff_keys, (a, b, c, d)):
+            setattr(self, key, val)
+
+        for key, val in capdict.items():
+            setattr(self, key, val)
 
     @classmethod
     def __subclasshook__(cls, c):
@@ -683,11 +788,7 @@ class XPlane(PlaneMixin, Surface):
     def __init__(self, x0=0., *args, **kwargs):
         # work around for accepting Surface kwargs as positional parameters
         # until they are deprecated
-        argsdict = dict(zip(('boundary_type', 'name', 'surface_id'), args))
-        for k in argsdict:
-            warn(_WARNING_KWARGS.format(type(self).__name__, k), FutureWarning)
-        kwargs.update(argsdict)
-
+        kwargs = _future_kwargs_warning_helper(type(self), *args, **kwargs)
         super().__init__(**kwargs)
         self.x0 = x0
 
@@ -765,11 +866,7 @@ class YPlane(PlaneMixin, Surface):
     def __init__(self, y0=0., *args, **kwargs):
         # work around for accepting Surface kwargs as positional parameters
         # until they are deprecated
-        argsdict = dict(zip(('boundary_type', 'name', 'surface_id'), args))
-        for k in argsdict:
-            warn(_WARNING_KWARGS.format(type(self).__name__, k), FutureWarning)
-        kwargs.update(argsdict)
-
+        kwargs = _future_kwargs_warning_helper(type(self), *args, **kwargs)
         super().__init__(**kwargs)
         self.y0 = y0
 
@@ -847,11 +944,7 @@ class ZPlane(PlaneMixin, Surface):
     def __init__(self, z0=0., *args, **kwargs):
         # work around for accepting Surface kwargs as positional parameters
         # until they are deprecated
-        argsdict = dict(zip(('boundary_type', 'name', 'surface_id'), args))
-        for k in argsdict:
-            warn(_WARNING_KWARGS.format(type(self).__name__, k), FutureWarning)
-        kwargs.update(argsdict)
-
+        kwargs = _future_kwargs_warning_helper(type(self), *args, **kwargs)
         super().__init__(**kwargs)
         self.z0 = z0
 
@@ -976,6 +1069,8 @@ class QuadricMixin(metaclass=ABCMeta):
 
         """
         vector = np.asarray(vector)
+        if np.allclose(vector, 0., rtol=0., atol=self._atol):
+            return self
 
         surf = self if inplace else self.clone()
 
@@ -998,6 +1093,55 @@ class QuadricMixin(metaclass=ABCMeta):
                 setattr(surf, key, val)
 
         return surf
+
+    def rotate(self, rotation, pivot=(0., 0., 0.), order='xyz', inplace=False):
+        # Get pivot and rotation matrix 
+        pivot = np.asarray(pivot)
+        rotation = np.asarray(rotation, dtype=float)
+
+        # Allow rotaiton matrix to be passed in directly, otherwise build it
+        if rotation.ndim == 2:
+            check_length('surface rotation', rotation.ravel(), 9)
+            Rmat = rotation
+        else:
+            Rmat = get_rotation_matrix(rotation, order=order)
+
+        # Translate surface to the pivot point
+        tsurf = self.translate(-pivot, inplace=inplace)
+
+        # If the surface is already generalized just clone it
+        if type(tsurf) is tsurf._virtual_base:
+            surf = tsurf if inplace else tsurf.clone()
+        else:
+            base_cls = type(tsurf)._virtual_base
+            # Copy necessary surface attributes to new kwargs dictionary
+            kwargs = {'boundary_type': tsurf.boundary_type, 'name': tsurf.name}
+            if inplace:
+                kwargs['surface_id'] = tsurf.id
+            kwargs.update({k: getattr(tsurf, k) for k in base_cls._coeff_keys})
+            # Create new instance of the virtual base class
+            surf = base_cls(**kwargs)
+
+        # Perform rotations on axis, origin, or quadric coefficients
+        if hasattr(surf, 'dx'):
+            for key, val in zip(('dx', 'dy', 'dz'), Rmat @ tsurf._axis):
+                setattr(surf, key, val)
+        if hasattr(surf, 'x0'):
+            for key, val in zip(('x0', 'y0', 'z0'), Rmat @ tsurf._origin):
+                setattr(surf, key, val)
+        else:
+            A, bvec, k = surf.get_Abc()
+            Arot = Rmat @ A @ Rmat.T
+
+            a, b, c = np.diagonal(Arot)
+            d, e, f = 2*Arot[0, 1], 2*Arot[1, 2], 2*Arot[0, 2]
+            g, h, j = Rmat @ bvec
+
+            for key, val in zip(surf._coeff_keys, (a, b, c, d, e, f, g, h, j, k)):
+                setattr(surf, key, val)
+
+        # translate back to the original frame and return the surface
+        return surf.translate(pivot, inplace=inplace)
 
 
 class Cylinder(QuadricMixin, Surface):
@@ -1067,7 +1211,9 @@ class Cylinder(QuadricMixin, Surface):
     _type = 'cylinder'
     _coeff_keys = ('x0', 'y0', 'z0', 'r', 'dx', 'dy', 'dz')
 
-    def __init__(self, x0=0., y0=0., z0=0., r=1., dx=0., dy=0., dz=1., **kwargs):
+    def __init__(self, x0=0., y0=0., z0=0., r=1., dx=0., dy=0., dz=1., *args,
+                 **kwargs):
+        kwargs = _future_kwargs_warning_helper(type(self), *args, **kwargs)
         super().__init__(**kwargs)
 
         for key, val in zip(self._coeff_keys, (x0, y0, z0, r, dx, dy, dz)):
@@ -1141,6 +1287,19 @@ class Cylinder(QuadricMixin, Surface):
     def dz(self, dz):
         check_type('dz coefficient', dz, Real)
         self._coefficients['dz'] = dz
+
+    def bounding_box(self, side):
+        if side == '-':
+            r = self.r
+            ll = [xi - r if np.isclose(dxi, 0., rtol=0., atol=self._atol)
+                  else -np.inf for xi, dxi in zip(self._origin, self._axis)]
+            ur = [xi + r if np.isclose(dxi, 0., rtol=0., atol=self._atol)
+                  else np.inf for xi, dxi in zip(self._origin, self._axis)]
+            return (np.array(ll), np.array(ur))
+
+        elif side == '+':
+            return (np.array([-np.inf, -np.inf, -np.inf]),
+                    np.array([np.inf, np.inf, np.inf]))
 
     def _get_base_coeffs(self):
         # Get x, y, z coordinates of two points
@@ -1269,12 +1428,13 @@ class XCylinder(QuadricMixin, Surface):
     _type = 'x-cylinder'
     _coeff_keys = ('y0', 'z0', 'r')
 
-    def __init__(self, y0=0., z0=0., r=1., **kwargs):
+    def __init__(self, y0=0., z0=0., r=1., *args, **kwargs):
         R = kwargs.pop('R', None)
         if R is not None:
             warn(_WARNING_UPPER.format(type(self).__name__, 'r', 'R'),
                  FutureWarning)
             r = R
+        kwargs = _future_kwargs_warning_helper(type(self), *args, **kwargs)
         super().__init__(**kwargs)
 
         for key, val in zip(self._coeff_keys, (y0, z0, r)):
@@ -1394,12 +1554,13 @@ class YCylinder(QuadricMixin, Surface):
     _type = 'y-cylinder'
     _coeff_keys = ('x0', 'z0', 'r')
 
-    def __init__(self, x0=0., z0=0., r=1., **kwargs):
+    def __init__(self, x0=0., z0=0., r=1., *args, **kwargs):
         R = kwargs.pop('R', None)
         if R is not None:
             warn(_WARNING_UPPER.format(type(self).__name__, 'r', 'R'),
                  FutureWarning)
             r = R
+        kwargs = _future_kwargs_warning_helper(type(self), *args, **kwargs)
         super().__init__(**kwargs)
 
         for key, val in zip(self._coeff_keys, (x0, z0, r)):
@@ -1519,12 +1680,13 @@ class ZCylinder(QuadricMixin, Surface):
     _type = 'z-cylinder'
     _coeff_keys = ('x0', 'y0', 'r')
 
-    def __init__(self, x0=0., y0=0., r=1., **kwargs):
+    def __init__(self, x0=0., y0=0., r=1., *args, **kwargs):
         R = kwargs.pop('R', None)
         if R is not None:
             warn(_WARNING_UPPER.format(type(self).__name__, 'r', 'R'),
                  FutureWarning)
             r = R
+        kwargs = _future_kwargs_warning_helper(type(self), *args, **kwargs)
         super().__init__(**kwargs)
 
         for key, val in zip(self._coeff_keys, (x0, y0, r)):
@@ -1646,12 +1808,13 @@ class Sphere(QuadricMixin, Surface):
     _type = 'sphere'
     _coeff_keys = ('x0', 'y0', 'z0', 'r')
 
-    def __init__(self, x0=0., y0=0., z0=0., r=1., **kwargs):
+    def __init__(self, x0=0., y0=0., z0=0., r=1., *args, **kwargs):
         R = kwargs.pop('R', None)
         if R is not None:
             warn(_WARNING_UPPER.format(type(self).__name__, 'r', 'R'),
                  FutureWarning)
             r = R
+        kwargs = _future_kwargs_warning_helper(type(self), *args, **kwargs)
         super().__init__(**kwargs)
 
         for key, val in zip(self._coeff_keys, (x0, y0, z0, r)):
@@ -1784,12 +1947,14 @@ class Cone(QuadricMixin, Surface):
     _type = 'cone'
     _coeff_keys = ('x0', 'y0', 'z0', 'r2', 'dx', 'dy', 'dz')
 
-    def __init__(self, x0=0., y0=0., z0=0., r2=1., dx=0., dy=0., dz=1., **kwargs):
+    def __init__(self, x0=0., y0=0., z0=0., r2=1., dx=0., dy=0., dz=1., *args,
+                 **kwargs):
         R2 = kwargs.pop('R2', None)
         if R2 is not None:
             warn(_WARNING_UPPER.format(type(self).__name__, 'r2', 'R2'),
                  FutureWarning)
             r2 = R2
+        kwargs = _future_kwargs_warning_helper(type(self), *args, **kwargs)
         super().__init__(**kwargs)
 
         for key, val in zip(self._coeff_keys, (x0, y0, z0, r2, dx, dy, dz)):
@@ -1965,12 +2130,13 @@ class XCone(QuadricMixin, Surface):
     _type = 'x-cone'
     _coeff_keys = ('x0', 'y0', 'z0', 'r2')
 
-    def __init__(self, x0=0., y0=0., z0=0., r2=1., **kwargs):
+    def __init__(self, x0=0., y0=0., z0=0., r2=1., *args, **kwargs):
         R2 = kwargs.pop('R2', None)
         if R2 is not None:
             warn(_WARNING_UPPER.format(type(self).__name__, 'r2', 'R2'),
                  FutureWarning)
             r2 = R2
+        kwargs = _future_kwargs_warning_helper(type(self), *args, **kwargs)
         super().__init__(**kwargs)
 
         for key, val in zip(self._coeff_keys, (x0, y0, z0, r2)):
@@ -2093,12 +2259,13 @@ class YCone(QuadricMixin, Surface):
     _type = 'y-cone'
     _coeff_keys = ('x0', 'y0', 'z0', 'r2')
 
-    def __init__(self, x0=0., y0=0., z0=0., r2=1., **kwargs):
+    def __init__(self, x0=0., y0=0., z0=0., r2=1., *args, **kwargs):
         R2 = kwargs.pop('R2', None)
         if R2 is not None:
             warn(_WARNING_UPPER.format(type(self).__name__, 'r2', 'R2'),
                  FutureWarning)
             r2 = R2
+        kwargs = _future_kwargs_warning_helper(type(self), *args, **kwargs)
         super().__init__(**kwargs)
 
         for key, val in zip(self._coeff_keys, (x0, y0, z0, r2)):
@@ -2221,12 +2388,13 @@ class ZCone(QuadricMixin, Surface):
     _type = 'z-cone'
     _coeff_keys = ('x0', 'y0', 'z0', 'r2')
 
-    def __init__(self, x0=0., y0=0., z0=0., r2=1., **kwargs):
+    def __init__(self, x0=0., y0=0., z0=0., r2=1., *args, **kwargs):
         R2 = kwargs.pop('R2', None)
         if R2 is not None:
             warn(_WARNING_UPPER.format(type(self).__name__, 'r2', 'R2'),
                  FutureWarning)
             r2 = R2
+        kwargs = _future_kwargs_warning_helper(type(self), *args, **kwargs)
         super().__init__(**kwargs)
 
         for key, val in zip(self._coeff_keys, (x0, y0, z0, r2)):
@@ -2338,8 +2506,8 @@ class Quadric(QuadricMixin, Surface):
     _coeff_keys = ('a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'j', 'k')
 
     def __init__(self, a=0., b=0., c=0., d=0., e=0., f=0., g=0., h=0., j=0.,
-                 k=0., **kwargs):
-
+                 k=0., *args, **kwargs):
+        kwargs = _future_kwargs_warning_helper(type(self), *args, **kwargs)
         super().__init__(**kwargs)
 
         for key, val in zip(self._coeff_keys, (a, b, c, d, e, f, g, h, j, k)):
@@ -2623,7 +2791,74 @@ class Halfspace(Region):
         if key not in memo:
             memo[key] = self.surface.translate(vector)
 
-        # Return translated surface
+        # Return translated half-space
         return type(self)(memo[key], self.side)
 
+    def rotate(self, rotation, pivot=(0., 0., 0.), order='xyz', inplace=False,
+               memo=None):
+        r"""Rotate surface by angles provided or by applying matrix directly.
+
+        Parameters
+        ----------
+        rotation : 3-tuple of float, or 3x3 iterable
+            A 3-tuple of angles :math:`(\phi, \theta, \psi)` in degrees where
+            the first element is the rotation about the x-axis in the fixed
+            laboratory frame, the second element is the rotation about the
+            y-axis in the fixed laboratory frame, and the third element is the
+            rotation about the z-axis in the fixed laboratory frame. The
+            rotations are active rotations. Additionally a 3x3 rotation matrix
+            can be specified directly either as a nested iterable or array.
+        pivot : iterable of float, optional
+            (x, y, z) coordinates for the point to rotate about. Defaults to
+            (0., 0., 0.)
+        order : str, optional
+            A string of 'x', 'y', and 'z' in some order specifying which
+            rotation to perform first, second, and third. Defaults to 'xyz'
+            which means, the rotation by angle :math:`\phi` about x will be
+            applied first, followed by :math:`\theta` about y and then
+            :math:`\psi` about z. This corresponds to an x-y-z extrinsic
+            rotation as well as a z-y'-x'' intrinsic rotation using Tait-Bryan
+            angles :math:`(\phi, \theta, \psi)`.
+        inplace : boolean
+            Whether or not to return a new instance of Surface or to modify the
+            coefficients of this Surface in place. Defaults to False.
+        memo : dict or None
+            Dictionary used for memoization
+
+        Returns
+        -------
+        openmc.Halfspace
+            Translated half-space
+
+        """
+        if memo is None:
+            memo = {}
+
+        # If rotated surface not in memo, add it
+        key = (self.surface, tuple(rotation), tuple(pivot), order, inplace)
+        if key not in memo:
+            memo[key] = self.surface.rotate(rotation, pivot=pivot, order=order,
+                                            inplace=inplace)
+
+        # Return rotated half-space
+        return type(self)(memo[key], self.side)
+
+
 _SURFACE_CLASSES = {cls._type: cls for cls in Surface.__subclasses__()}
+
+
+# Set virtual base classes for "casting" up the heirarchy
+Plane._virtual_base = Plane
+XPlane._virtual_base = Plane
+YPlane._virtual_base = Plane
+ZPlane._virtual_base = Plane
+Cylinder._virtual_base = Cylinder
+XCylinder._virtual_base = Cylinder
+YCylinder._virtual_base = Cylinder
+ZCylinder._virtual_base = Cylinder
+Cone._virtual_base = Cone
+XCone._virtual_base = Cone
+YCone._virtual_base = Cone
+ZCone._virtual_base = Cone
+Sphere._virtual_base = Sphere
+Quadric._virtual_base = Quadric

@@ -2,10 +2,10 @@
 
 #include <algorithm>
 #include <cstdint> // for int64_t
-#include <iomanip> // for setfill, setw
 #include <string>
 #include <vector>
 
+#include <fmt/core.h>
 #include "xtensor/xbuilder.hpp" // for empty_like
 #include "xtensor/xview.hpp"
 
@@ -41,10 +41,8 @@ openmc_statepoint_write(const char* filename, bool* write_source)
     int w = std::to_string(settings::n_max_batches).size();
 
     // Set filename for state point
-    std::stringstream ss;
-    ss << settings::path_output << "statepoint." << std::setfill('0')
-      << std::setw(w) << simulation::current_batch << ".h5";
-    filename_ = ss.str();
+    filename_ = fmt::format("{0}statepoint.{1:0{2}}.h5",
+      settings::path_output, simulation::current_batch, w);
   }
 
   // Determine whether or not to write the source bank
@@ -420,8 +418,8 @@ void load_state_point()
   if (mpi::master) {
 #endif
     // Read global tally data
-    read_dataset(file_id, "global_tallies", H5T_NATIVE_DOUBLE,
-      simulation::global_tallies.data(), false);
+    read_dataset_lowlevel(file_id, "global_tallies", H5T_NATIVE_DOUBLE,
+      H5S_ALL, false, simulation::global_tallies.data());
 
     // Check if tally results are present
     bool present;
@@ -523,10 +521,8 @@ write_source_point(const char* filename)
     // Determine width for zero padding
     int w = std::to_string(settings::n_max_batches).size();
 
-    std::stringstream s;
-    s << settings::path_output << "source." << std::setfill('0')
-      << std::setw(w) << simulation::current_batch << ".h5";
-    filename_ = s.str();
+    filename_ = fmt::format("{0}source.{1:0{2}}.h5",
+      settings::path_output, simulation::current_batch, w);
   }
 
   hid_t file_id;

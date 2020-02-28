@@ -373,52 +373,7 @@ def get_hexagonal_prism(*args, **kwargs):
     return hexagonal_prism(*args, **kwargs)
 
 
-def cylinder_from_points(p1, p2, r, **kwargs):
-    """Return cylinder defined by two points passing through its center.
-
-    Parameters
-    ----------
-    p1, p2 : 3-tuples
-        Coordinates of two points that pass through the center of the cylinder
-    r : float
-        Radius of the cylinder
-    kwargs : dict
-        Keyword arguments passed to the :class:`openmc.Quadric` constructor
-
-    Returns
-    -------
-    openmc.Quadric
-        Quadric surface representing the cylinder.
-
-    """
-    # Get x, y, z coordinates of two points
-    x1, y1, z1 = p1
-    x2, y2, z2 = p2
-
-    # Define intermediate terms
-    dx = x2 - x1
-    dy = y2 - y1
-    dz = z2 - z1
-    cx = y1*z2 - y2*z1
-    cy = x2*z1 - x1*z2
-    cz = x1*y2 - x2*y1
-
-    # Given p=(x,y,z), p1=(x1, y1, z1), p2=(x2, y2, z2), the equation for the
-    # cylinder can be derived as r = |(p - p1) ⨯ (p - p2)| / |p2 - p1|.
-    # Expanding out all terms and grouping according to what Quadric expects
-    # gives the following coefficients.
-    kwargs['a'] = dy*dy + dz*dz
-    kwargs['b'] = dx*dx + dz*dz
-    kwargs['c'] = dx*dx + dy*dy
-    kwargs['d'] = -2*dx*dy
-    kwargs['e'] = -2*dy*dz
-    kwargs['f'] = -2*dx*dz
-    kwargs['g'] = 2*(cy*dz - cz*dy)
-    kwargs['h'] = 2*(cz*dx - cx*dz)
-    kwargs['j'] = 2*(cx*dy - cy*dx)
-    kwargs['k'] = cx*cx + cy*cy + cz*cz - (dx*dx + dy*dy + dz*dz)*r*r
-
-    return Quadric(**kwargs)
+cylinder_from_points = Cylinder.from_points
 
 
 def subdivide(surfaces):

@@ -1,8 +1,9 @@
 #include "openmc/particle.h"
 
 #include <algorithm> // copy, min
-#include <cmath>     // log, abs, copysign
-#include <sstream>
+#include <cmath>     // log, abs
+
+#include <fmt/core.h>
 
 #include "openmc/bank.h"
 #include "openmc/capi.h"
@@ -235,7 +236,7 @@ Particle::event_advance()
     score_track_derivative(this, distance);
   }
 }
-  
+
 void
 Particle::event_cross_surface()
 {
@@ -538,7 +539,7 @@ Particle::cross_surface()
     // TODO: off-by-one
     surface_ = rotational ?
       surf_p->i_periodic_ + 1 :
-      std::copysign(surf_p->i_periodic_ + 1, surface_);
+      ((surface_ > 0) ? surf_p->i_periodic_ + 1 : -(surf_p->i_periodic_ + 1));
 
     // Figure out what cell particle is in now
     n_coord_ = 1;
@@ -630,8 +631,8 @@ Particle::mark_as_lost(const char* message)
 
   // Abort the simulation if the maximum number of lost particles has been
   // reached
-  if (simulation::n_lost_particles >= MAX_LOST_PARTICLES &&
-      simulation::n_lost_particles >= REL_MAX_LOST_PARTICLES*n) {
+  if (simulation::n_lost_particles >= settings::max_lost_particles &&
+      simulation::n_lost_particles >= settings::rel_max_lost_particles*n) {
     fatal_error("Maximum number of lost particles has been reached.");
   }
 }
@@ -643,14 +644,13 @@ Particle::write_restart() const
   if (settings::run_mode == RunMode::PARTICLE) return;
 
   // Set up file name
-  std::stringstream filename;
-  filename << settings::path_output << "particle_" << simulation::current_batch
-    << '_' << id_ << ".h5";
+  auto filename = fmt::format("{}particle_{}_{}.h5", settings::path_output,
+    simulation::current_batch, id_);
 
   #pragma omp critical (WriteParticleRestart)
   {
     // Create file
-    hid_t file_id = file_open(filename.str(), 'w');
+    hid_t file_id = file_open(filename, 'w');
 
     // Write filetype and version info
     write_attribute(file_id, "filetype", "particle restart");

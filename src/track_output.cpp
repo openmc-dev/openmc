@@ -6,10 +6,10 @@
 #include "openmc/settings.h"
 #include "openmc/simulation.h"
 
+#include <fmt/core.h>
 #include "xtensor/xtensor.hpp"
 
 #include <cstddef> // for size_t
-#include <sstream>
 #include <string>
 #include <vector>
 
@@ -35,9 +35,9 @@ void write_particle_track(Particle& p)
 
 void finalize_particle_track(Particle& p)
 {
-  std::stringstream filename;
-  filename << settings::path_output << "track_" << simulation::current_batch
-    << '_' << simulation::current_gen << '_' << p.id_ << ".h5";
+  std::string filename = fmt::format("{}track_{}_{}_{}.h5",
+    settings::path_output, simulation::current_batch, simulation::current_gen,
+    p.id_);
 
   // Determine number of coordinates for each particle
   std::vector<int> n_coords;
@@ -47,7 +47,7 @@ void finalize_particle_track(Particle& p)
 
   #pragma omp critical (FinalizeParticleTrack)
   {
-    hid_t file_id = file_open(filename.str().c_str(), 'w');
+    hid_t file_id = file_open(filename, 'w');
     write_attribute(file_id, "filetype", "track");
     write_attribute(file_id, "version", VERSION_TRACK);
     write_attribute(file_id, "n_particles", p.tracks_.size());
@@ -61,7 +61,7 @@ void finalize_particle_track(Particle& p)
         data(j, 1) = t[j].y;
         data(j, 2) = t[j].z;
       }
-      std::string name = "coordinates_" + std::to_string(i);
+      std::string name = fmt::format("coordinates_{}", i);
       write_dataset(file_id, name.c_str(), data);
     }
     file_close(file_id);

@@ -10,3 +10,6 @@
 [submodule "vendor/xtl"]
 	path = vendor/xtl
 	url = https://github.com/xtensor-stack/xtl.git
+[submodule "vendor/fmt"]
+	path = vendor/fmt
+	url = https://github.com/fmtlib/fmt.git

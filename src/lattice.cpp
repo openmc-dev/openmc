@@ -1,8 +1,10 @@
 #include "openmc/lattice.h"
 
 #include <cmath>
-#include <sstream>
+#include <string>
 #include <vector>
+
+#include <fmt/core.h>
 
 #include "openmc/cell.h"
 #include "openmc/error.h"
@@ -71,10 +73,8 @@ Lattice::adjust_indices()
     if (search != model::universe_map.end()) {
       *it = search->second;
     } else {
-      std::stringstream err_msg;
-      err_msg << "Invalid universe number " << uid << " specified on "
-           "lattice " << id_;
-      fatal_error(err_msg);
+      fatal_error(fmt::format(
+        "Invalid universe number {} specified on lattice {}", uid, id_));
     }
   }
 
@@ -84,10 +84,8 @@ Lattice::adjust_indices()
     if (search != model::universe_map.end()) {
       outer_ = search->second;
     } else {
-      std::stringstream err_msg;
-      err_msg << "Invalid universe number " << outer_ << " specified on "
-           "lattice " << id_;
-      fatal_error(err_msg);
+      fatal_error(fmt::format(
+        "Invalid universe number {} specified on lattice {}", outer_, id_));
     }
   }
 }
@@ -184,12 +182,9 @@ RectLattice::RectLattice(pugi::xml_node lat_node)
   std::string univ_str {get_node_value(lat_node, "universes")};
   std::vector<std::string> univ_words {split(univ_str)};
   if (univ_words.size() != nx*ny*nz) {
-    std::stringstream err_msg;
-    err_msg << "Expected " << nx*ny*nz
-            << " universes for a rectangular lattice of size "
-            << nx << "x" << ny << "x" << nz << " but " << univ_words.size()
-            << " were specified.";
-    fatal_error(err_msg);
+    fatal_error(fmt::format(
+      "Expected {} universes for a rectangular lattice of size {}x{]x{} but {} "
+      "were specified.", nx*ny*nz,  nx, ny, nz, univ_words.size()));
   }
 
   // Parse the universes.
@@ -487,12 +482,10 @@ HexLattice::HexLattice(pugi::xml_node lat_node)
   std::string univ_str {get_node_value(lat_node, "universes")};
   std::vector<std::string> univ_words {split(univ_str)};
   if (univ_words.size() != n_univ) {
-    std::stringstream err_msg;
-    err_msg << "Expected " << n_univ
-            << " universes for a hexagonal lattice with " << n_rings_
-            << " rings and " << n_axial_ << " axial levels" << " but "
-            << univ_words.size() << " were specified.";
-    fatal_error(err_msg);
+    fatal_error(fmt::format(
+      "Expected {} universes for a hexagonal lattice with {} rings and {} "
+      "axial levels but {} were specified.", n_univ, n_rings_, n_axial_,
+      univ_words.size()));
   }
 
   // Parse the universes.
@@ -1069,9 +1062,8 @@ void read_lattices(pugi::xml_node node)
     if (in_map == model::lattice_map.end()) {
       model::lattice_map[id] = i_lat;
     } else {
-      std::stringstream err_msg;
-      err_msg << "Two or more lattices use the same unique ID: " << id;
-      fatal_error(err_msg);
+      fatal_error(fmt::format(
+        "Two or more lattices use the same unique ID: {}", id));
     }
   }
 }

@@ -310,7 +310,7 @@ class StatePoint(object):
         if self.run_mode == 'eigenvalue':
             return self._f['n_inactive'][()]
         else:
-            return None
+            return None                  
 
     @property
     def n_particles(self):

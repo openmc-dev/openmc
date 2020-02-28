@@ -1,8 +1,9 @@
 #include "openmc/tallies/trigger.h"
 
 #include <cmath>
-#include <sstream>
 #include <utility> // for std::pair
+
+#include <fmt/core.h>
 
 #include "openmc/capi.h"
 #include "openmc/constants.h"
@@ -170,13 +171,14 @@ check_triggers()
 
   // At least one trigger is unsatisfied.  Let the user know which one.
   simulation::satisfy_triggers = false;
-  std::stringstream msg;
-  msg << "Triggers unsatisfied, max unc./thresh. is ";
+  std::string msg;
   if (keff_ratio >= tally_ratio) {
-    msg << keff_ratio << " for eigenvalue";
+    msg = fmt::format("Triggers unsatisfied, max unc./thresh. is {} for "
+      "eigenvalue", keff_ratio);
   } else {
-    msg << tally_ratio << " for " << reaction_name(score) << " in tally "
-        << tally_id;
+    msg = fmt::format(
+      "Triggers unsatisfied, max unc./thresh. is {} for {} in tally {}",
+      tally_ratio, reaction_name(score), tally_id);
   }
   write_message(msg, 7);
 
@@ -189,10 +191,10 @@ check_triggers()
     auto n_pred_batches = static_cast<int>(n_active * max_ratio * max_ratio)
       + settings::n_inactive + 1;
 
-    std::stringstream msg;
-    msg << "The estimated number of batches is " << n_pred_batches;
+    std::string msg = fmt::format("The estimated number of batches is {}",
+      n_pred_batches);
     if (n_pred_batches > settings::n_max_batches) {
-      msg << " --- greater than max batches";
+      msg.append(" --- greater than max batches");
       warning(msg);
     } else {
       write_message(msg, 7);

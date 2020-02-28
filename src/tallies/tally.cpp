@@ -28,6 +28,7 @@
 #include "openmc/tallies/filter_surface.h"
 #include "openmc/xml_interface.h"
 
+#include <fmt/core.h>
 #include "xtensor/xadapt.hpp"
 #include "xtensor/xbuilder.hpp" // for empty_like
 #include "xtensor/xview.hpp"
@@ -35,7 +36,6 @@
 #include <algorithm> // for max
 #include <array>
 #include <cstddef> // for size_t
-#include <sstream>
 #include <string>
 
 namespace openmc {
@@ -244,15 +244,16 @@ score_str_to_int(std::string score_str)
 //==============================================================================
 
 Tally::Tally(int32_t id)
-  : index_{model::tallies.size()}
 {
+  index_ = model::tallies.size(); // Avoids warning about narrowing
   this->set_id(id);
   this->set_filters({});
 }
 
 Tally::Tally(pugi::xml_node node)
-  : index_{model::tallies.size()}
 {
+  index_ = model::tallies.size(); // Avoids warning about narrowing
+
   // Copy and set tally id
   if (!check_for_node(node, "id")) {
     throw std::runtime_error{"Must specify id for tally in tally XML file."};
@@ -286,8 +287,8 @@ Tally::Tally(pugi::xml_node node)
     // Determine if filter ID is valid
     auto it = model::filter_map.find(filter_id);
     if (it == model::filter_map.end()) {
-      throw std::runtime_error{"Could not find filter " + std::to_string(filter_id)
-        + " specified on tally " + std::to_string(id_)};
+      throw std::runtime_error{fmt::format(
+        "Could not find filter {} specified on tally {}", filter_id, id_)};
     }
 
     // Store the index of the filter
@@ -333,8 +334,7 @@ Tally::Tally(pugi::xml_node node)
   this->set_scores(node);
 
   if (!check_for_node(node, "scores")) {
-    fatal_error("No scores specified on tally " + std::to_string(id_)
-      + ".");
+    fatal_error(fmt::format("No scores specified on tally {}.", id_));
   }
 
   // Check if tally is compatible with particle type
@@ -370,9 +370,9 @@ Tally::Tally(pugi::xml_node node)
       auto pf = dynamic_cast<ParticleFilter*>(f);
       for (auto p : pf->particles()) {
         if (p != Particle::Type::neutron) {
-          warning("Particle filter other than NEUTRON used with photon "
-            "transport turned off. All tallies for particle type " +
-            std::to_string(static_cast<int>(p)) + " will have no scores");
+          warning(fmt::format("Particle filter other than NEUTRON used with "
+            "photon transport turned off. All tallies for particle type {}"
+            " will have no scores", static_cast<int>(p)));
         }
       }
     }
@@ -385,8 +385,8 @@ Tally::Tally(pugi::xml_node node)
     // Find the derivative with the given id, and store it's index.
     auto it = model::tally_deriv_map.find(deriv_id);
     if (it == model::tally_deriv_map.end()) {
-      fatal_error("Could not find derivative " + std::to_string(deriv_id)
-        + " specified on tally " + std::to_string(id_));
+      fatal_error(fmt::format(
+        "Could not find derivative {} specified on tally {}", deriv_id, id_));
     }
 
     deriv_ = it->second;
@@ -402,11 +402,10 @@ Tally::Tally(pugi::xml_node node)
       || deriv.variable == DerivativeVariable::TEMPERATURE) {
       for (int i_nuc : nuclides_) {
         if (has_energyout && i_nuc == -1) {
-          fatal_error("Error on tally " + std::to_string(id_)
-            + ": Cannot use a 'nuclide_density' or 'temperature' "
-            "derivative on a tally with an outgoing energy filter and "
-            "'total' nuclide rate. Instead, tally each nuclide in the "
-            "material individually.");
+          fatal_error(fmt::format("Error on tally {}: Cannot use a "
+            "'nuclide_density' or 'temperature' derivative on a tally with an "
+            "outgoing energy filter and 'total' nuclide rate. Instead, tally "
+            "each nuclide in the material individually.", id_));
           // Note that diff tallies with these characteristics would work
           // correctly if no tally events occur in the perturbed material
           // (e.g. pertrubing moderator but only tallying fuel), but this
@@ -431,11 +430,11 @@ Tally::Tally(pugi::xml_node node)
       estimator_ = TallyEstimator::ANALOG;
     } else if (est == "tracklength" || est == "track-length"
       || est == "pathlength" || est == "path-length") {
-      // If the estimator was set to an analog/collision estimator, this means
-      // the tally needs post-collision information
+      // If the estimator was set to an analog estimator, this means the
+      // tally needs post-collision information
       if (estimator_ == TallyEstimator::ANALOG || estimator_ == TallyEstimator::COLLISION) {
-        throw std::runtime_error{"Cannot use track-length estimator for tally "
-          + std::to_string(id_)};
+        throw std::runtime_error{fmt::format("Cannot use track-length "
+          "estimator for tally {}", id_)};
       }
 
       // Set estimator to track-length estimator
@@ -445,16 +444,16 @@ Tally::Tally(pugi::xml_node node)
       // If the estimator was set to an analog estimator, this means the
       // tally needs post-collision information
       if (estimator_ == TallyEstimator::ANALOG) {
-        throw std::runtime_error{"Cannot use collision estimator for tally " +
-          std::to_string(id_)};
+        throw std::runtime_error{fmt::format("Cannot use collision estimator "
+          "for tally ", id_)};
       }
 
       // Set estimator to collision estimator
       estimator_ = TallyEstimator::COLLISION;
 
     } else {
-      throw std::runtime_error{"Invalid estimator '" + est + "' on tally " +
-        std::to_string(id_)};
+      throw std::runtime_error{fmt::format(
+        "Invalid estimator '{}' on tally {}", est, id_)};
     }
   }
 }
@@ -484,7 +483,7 @@ Tally::set_id(int32_t id)
 
   // Make sure no other tally has the same ID
   if (model::tally_map.find(id) != model::tally_map.end()) {
-    throw std::runtime_error{"Two tallies have the same ID: " + std::to_string(id)};
+    throw std::runtime_error{fmt::format("Two tallies have the same ID: {}", id)};
   }
 
   // If no ID specified, auto-assign next ID in sequence
@@ -541,7 +540,7 @@ void
 Tally::set_scores(pugi::xml_node node)
 {
   if (!check_for_node(node, "scores"))
-    fatal_error("No scores specified on tally " + std::to_string(id_));
+    fatal_error(fmt::format("No scores specified on tally {}", id_));
 
   auto scores = get_node_array<std::string>(node, "scores");
   set_scores(scores);
@@ -658,8 +657,9 @@ Tally::set_scores(const std::vector<std::string>& scores)
   for (auto it1 = scores_.begin(); it1 != scores_.end(); ++it1) {
     for (auto it2 = it1 + 1; it2 != scores_.end(); ++it2) {
       if (*it1 == *it2)
-        fatal_error("Duplicate score of type \"" + reaction_name(*it1)
-          + "\" found in tally " + std::to_string(id_));
+        fatal_error(fmt::format(
+          "Duplicate score of type \"{}\" found in tally {}",
+          reaction_name(*it1), id_));
     }
   }
 
@@ -719,9 +719,8 @@ Tally::set_nuclides(const std::vector<std::string>& nuclides)
     } else {
       auto search = data::nuclide_map.find(nuc);
       if (search == data::nuclide_map.end())
-        fatal_error("Could not find the nuclide " + nuc
-          + " specified in tally " + std::to_string(id_)
-          + " in any material");
+        fatal_error(fmt::format("Could not find the nuclide {} specified in "
+          "tally {} in any material", nuc, id_));
       nuclides_.push_back(search->second);
     }
   }
@@ -742,15 +741,12 @@ Tally::init_triggers(pugi::xml_node node)
       } else if (type_str == "rel_err") {
         metric = TriggerMetric::relative_error;
       } else {
-        std::stringstream msg;
-        msg << "Unknown trigger type \"" << type_str << "\" in tally "  << id_;
-        fatal_error(msg);
+        fatal_error(fmt::format("Unknown trigger type \"{}\" in tally {}",
+          type_str, id_));
       }
     } else {
-      std::stringstream msg;
-      msg << "Must specify trigger type for tally " << id_
-          << " in tally XML file";
-      fatal_error(msg);
+      fatal_error(fmt::format(
+        "Must specify trigger type for tally {} in tally XML file", id_));
     }
 
     // Read the trigger threshold.
@@ -758,10 +754,8 @@ Tally::init_triggers(pugi::xml_node node)
     if (check_for_node(trigger_node, "threshold")) {
       threshold = std::stod(get_node_value(trigger_node, "threshold"));
     } else {
-      std::stringstream msg;
-      msg << "Must specify trigger threshold for tally " << id_
-          << " in tally XML file";
-      fatal_error(msg);
+      fatal_error(fmt::format(
+        "Must specify trigger threshold for tally {} in tally XML file", id_));
     }
 
     // Read the trigger scores.
@@ -785,10 +779,8 @@ Tally::init_triggers(pugi::xml_node node)
           if (reaction_name(this->scores_[i_score]) == score_str) break;
         }
         if (i_score == this->scores_.size()) {
-          std::stringstream msg;
-          msg << "Could not find the score \"" << score_str << "\" in tally "
-              << id_ << " but it was listed in a trigger on that tally";
-          fatal_error(msg);
+          fatal_error(fmt::format("Could not find the score \"{}\" in tally "
+            "{} but it was listed in a trigger on that tally", score_str, id_));
         }
         triggers_.push_back({metric, threshold, i_score});
       }
@@ -1077,7 +1069,7 @@ openmc_get_tally_index(int32_t id, int32_t* index)
 {
   auto it = model::tally_map.find(id);
   if (it == model::tally_map.end()) {
-    set_errmsg("No tally exists with ID=" + std::to_string(id) + ".");
+    set_errmsg(fmt::format("No tally exists with ID={}.", id));
     return OPENMC_E_INVALID_ID;
   }
 
@@ -1181,9 +1173,7 @@ openmc_tally_set_type(int32_t index, const char* type)
   } else if (strcmp(type, "surface") == 0) {
     model::tallies[index]->type_ = TallyType::SURFACE;
   } else {
-    std::stringstream errmsg;
-    errmsg << "Unknown tally type: " << type;
-    set_errmsg(errmsg);
+    set_errmsg(fmt::format("Unknown tally type: {}", type));
     return OPENMC_E_INVALID_ARGUMENT;
   }
 

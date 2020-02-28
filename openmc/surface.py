@@ -27,6 +27,15 @@ will not accept positional parameters for superclass arguments.\
 """
 
 
+def _future_kwargs_warning_helper(cls, *args, **kwargs):
+    # Warn if Surface parameters are passed by position, not by keyword
+    argsdict = dict(zip(('boundary_type', 'name', 'surface_id'), args))
+    for k in argsdict:
+        warn(_WARNING_KWARGS.format(cls.__name__, k), FutureWarning)
+    kwargs.update(argsdict)
+    return kwargs
+
+
 def get_rotation_matrix(rotation, order='xyz'):
     r"""Generate a 3x3 rotation matrix from input angles
 
@@ -545,7 +554,6 @@ class PlaneMixin(metaclass=ABCMeta):
 
         # Allow rotation matrix to be passed in directly, otherwise build it
         if rotation.ndim == 2:
-            check_type('surface rotation', rotation, Iterable, Real)
             check_length('surface rotation', rotation.ravel(), 9)
             Rmat = rotation
         else:
@@ -642,30 +650,23 @@ class Plane(PlaneMixin, Surface):
         # *args should ultimately be limited to a, b, c, d as specified in
         # __init__, but to preserve the API it is allowed to accept Surface
         # parameters for now, but will raise warnings if this is done.
-        argtup = ('a', 'b', 'c', 'd', 'boundary_type', 'name', 'surface_id')
-        kwargs.update(dict(zip(argtup, args)))
-
-        # Warn if Surface parameters are passed by position, not by keyword
-        superkwargs = {}
-        for k in ('boundary_type', 'name', 'surface_id'):
-            val = kwargs.get(k, None)
-            if val is not None:
-                superkwargs[k] = val
-                warn(_WARNING_KWARGS.format(type(self), k),
-                     FutureWarning)
-
-        super().__init__(**superkwargs)
-
-        for key, val in zip(self._coeff_keys, (a, b, c, d)):
-            setattr(self, key, val)
-
+        kwargs = _future_kwargs_warning_helper(type(self), *args, **kwargs)
         # Warn if capital letter arguments are passed
+        capdict = {}
         for k in 'ABCD':
             val = kwargs.pop(k, None)
             if val is not None:
                 warn(_WARNING_UPPER.format(type(self), k.lower(), k),
                      FutureWarning)
-                setattr(self, k.lower(), val)
+                capdict[k.lower()] = val
+
+        super().__init__(**kwargs)
+
+        for key, val in zip(self._coeff_keys, (a, b, c, d)):
+            setattr(self, key, val)
+
+        for key, val in capdict.items():
+            setattr(self, key, val)
 
     @classmethod
     def __subclasshook__(cls, c):
@@ -787,11 +788,7 @@ class XPlane(PlaneMixin, Surface):
     def __init__(self, x0=0., *args, **kwargs):
         # work around for accepting Surface kwargs as positional parameters
         # until they are deprecated
-        argsdict = dict(zip(('boundary_type', 'name', 'surface_id'), args))
-        for k in argsdict:
-            warn(_WARNING_KWARGS.format(type(self).__name__, k), FutureWarning)
-        kwargs.update(argsdict)
-
+        kwargs = _future_kwargs_warning_helper(type(self), *args, **kwargs)
         super().__init__(**kwargs)
         self.x0 = x0
 
@@ -869,11 +866,7 @@ class YPlane(PlaneMixin, Surface):
     def __init__(self, y0=0., *args, **kwargs):
         # work around for accepting Surface kwargs as positional parameters
         # until they are deprecated
-        argsdict = dict(zip(('boundary_type', 'name', 'surface_id'), args))
-        for k in argsdict:
-            warn(_WARNING_KWARGS.format(type(self).__name__, k), FutureWarning)
-        kwargs.update(argsdict)
-
+        kwargs = _future_kwargs_warning_helper(type(self), *args, **kwargs)
         super().__init__(**kwargs)
         self.y0 = y0
 
@@ -951,11 +944,7 @@ class ZPlane(PlaneMixin, Surface):
     def __init__(self, z0=0., *args, **kwargs):
         # work around for accepting Surface kwargs as positional parameters
         # until they are deprecated
-        argsdict = dict(zip(('boundary_type', 'name', 'surface_id'), args))
-        for k in argsdict:
-            warn(_WARNING_KWARGS.format(type(self).__name__, k), FutureWarning)
-        kwargs.update(argsdict)
-
+        kwargs = _future_kwargs_warning_helper(type(self), *args, **kwargs)
         super().__init__(**kwargs)
         self.z0 = z0
 
@@ -1112,7 +1101,6 @@ class QuadricMixin(metaclass=ABCMeta):
 
         # Allow rotaiton matrix to be passed in directly, otherwise build it
         if rotation.ndim == 2:
-            check_type('surface rotation', rotation, Iterable, Real)
             check_length('surface rotation', rotation.ravel(), 9)
             Rmat = rotation
         else:
@@ -1223,7 +1211,9 @@ class Cylinder(QuadricMixin, Surface):
     _type = 'cylinder'
     _coeff_keys = ('x0', 'y0', 'z0', 'r', 'dx', 'dy', 'dz')
 
-    def __init__(self, x0=0., y0=0., z0=0., r=1., dx=0., dy=0., dz=1., **kwargs):
+    def __init__(self, x0=0., y0=0., z0=0., r=1., dx=0., dy=0., dz=1., *args,
+                 **kwargs):
+        kwargs = _future_kwargs_warning_helper(type(self), *args, **kwargs)
         super().__init__(**kwargs)
 
         for key, val in zip(self._coeff_keys, (x0, y0, z0, r, dx, dy, dz)):
@@ -1438,12 +1428,13 @@ class XCylinder(QuadricMixin, Surface):
     _type = 'x-cylinder'
     _coeff_keys = ('y0', 'z0', 'r')
 
-    def __init__(self, y0=0., z0=0., r=1., **kwargs):
+    def __init__(self, y0=0., z0=0., r=1., *args, **kwargs):
         R = kwargs.pop('R', None)
         if R is not None:
             warn(_WARNING_UPPER.format(type(self).__name__, 'r', 'R'),
                  FutureWarning)
             r = R
+        kwargs = _future_kwargs_warning_helper(type(self), *args, **kwargs)
         super().__init__(**kwargs)
 
         for key, val in zip(self._coeff_keys, (y0, z0, r)):
@@ -1563,12 +1554,13 @@ class YCylinder(QuadricMixin, Surface):
     _type = 'y-cylinder'
     _coeff_keys = ('x0', 'z0', 'r')
 
-    def __init__(self, x0=0., z0=0., r=1., **kwargs):
+    def __init__(self, x0=0., z0=0., r=1., *args, **kwargs):
         R = kwargs.pop('R', None)
         if R is not None:
             warn(_WARNING_UPPER.format(type(self).__name__, 'r', 'R'),
                  FutureWarning)
             r = R
+        kwargs = _future_kwargs_warning_helper(type(self), *args, **kwargs)
         super().__init__(**kwargs)
 
         for key, val in zip(self._coeff_keys, (x0, z0, r)):
@@ -1688,12 +1680,13 @@ class ZCylinder(QuadricMixin, Surface):
     _type = 'z-cylinder'
     _coeff_keys = ('x0', 'y0', 'r')
 
-    def __init__(self, x0=0., y0=0., r=1., **kwargs):
+    def __init__(self, x0=0., y0=0., r=1., *args, **kwargs):
         R = kwargs.pop('R', None)
         if R is not None:
             warn(_WARNING_UPPER.format(type(self).__name__, 'r', 'R'),
                  FutureWarning)
             r = R
+        kwargs = _future_kwargs_warning_helper(type(self), *args, **kwargs)
         super().__init__(**kwargs)
 
         for key, val in zip(self._coeff_keys, (x0, y0, r)):
@@ -1815,12 +1808,13 @@ class Sphere(QuadricMixin, Surface):
     _type = 'sphere'
     _coeff_keys = ('x0', 'y0', 'z0', 'r')
 
-    def __init__(self, x0=0., y0=0., z0=0., r=1., **kwargs):
+    def __init__(self, x0=0., y0=0., z0=0., r=1., *args, **kwargs):
         R = kwargs.pop('R', None)
         if R is not None:
             warn(_WARNING_UPPER.format(type(self).__name__, 'r', 'R'),
                  FutureWarning)
             r = R
+        kwargs = _future_kwargs_warning_helper(type(self), *args, **kwargs)
         super().__init__(**kwargs)
 
         for key, val in zip(self._coeff_keys, (x0, y0, z0, r)):
@@ -1953,12 +1947,14 @@ class Cone(QuadricMixin, Surface):
     _type = 'cone'
     _coeff_keys = ('x0', 'y0', 'z0', 'r2', 'dx', 'dy', 'dz')
 
-    def __init__(self, x0=0., y0=0., z0=0., r2=1., dx=0., dy=0., dz=1., **kwargs):
+    def __init__(self, x0=0., y0=0., z0=0., r2=1., dx=0., dy=0., dz=1., *args,
+                 **kwargs):
         R2 = kwargs.pop('R2', None)
         if R2 is not None:
             warn(_WARNING_UPPER.format(type(self).__name__, 'r2', 'R2'),
                  FutureWarning)
             r2 = R2
+        kwargs = _future_kwargs_warning_helper(type(self), *args, **kwargs)
         super().__init__(**kwargs)
 
         for key, val in zip(self._coeff_keys, (x0, y0, z0, r2, dx, dy, dz)):
@@ -2134,12 +2130,13 @@ class XCone(QuadricMixin, Surface):
     _type = 'x-cone'
     _coeff_keys = ('x0', 'y0', 'z0', 'r2')
 
-    def __init__(self, x0=0., y0=0., z0=0., r2=1., **kwargs):
+    def __init__(self, x0=0., y0=0., z0=0., r2=1., *args, **kwargs):
         R2 = kwargs.pop('R2', None)
         if R2 is not None:
             warn(_WARNING_UPPER.format(type(self).__name__, 'r2', 'R2'),
                  FutureWarning)
             r2 = R2
+        kwargs = _future_kwargs_warning_helper(type(self), *args, **kwargs)
         super().__init__(**kwargs)
 
         for key, val in zip(self._coeff_keys, (x0, y0, z0, r2)):
@@ -2262,12 +2259,13 @@ class YCone(QuadricMixin, Surface):
     _type = 'y-cone'
     _coeff_keys = ('x0', 'y0', 'z0', 'r2')
 
-    def __init__(self, x0=0., y0=0., z0=0., r2=1., **kwargs):
+    def __init__(self, x0=0., y0=0., z0=0., r2=1., *args, **kwargs):
         R2 = kwargs.pop('R2', None)
         if R2 is not None:
             warn(_WARNING_UPPER.format(type(self).__name__, 'r2', 'R2'),
                  FutureWarning)
             r2 = R2
+        kwargs = _future_kwargs_warning_helper(type(self), *args, **kwargs)
         super().__init__(**kwargs)
 
         for key, val in zip(self._coeff_keys, (x0, y0, z0, r2)):
@@ -2390,12 +2388,13 @@ class ZCone(QuadricMixin, Surface):
     _type = 'z-cone'
     _coeff_keys = ('x0', 'y0', 'z0', 'r2')
 
-    def __init__(self, x0=0., y0=0., z0=0., r2=1., **kwargs):
+    def __init__(self, x0=0., y0=0., z0=0., r2=1., *args, **kwargs):
         R2 = kwargs.pop('R2', None)
         if R2 is not None:
             warn(_WARNING_UPPER.format(type(self).__name__, 'r2', 'R2'),
                  FutureWarning)
             r2 = R2
+        kwargs = _future_kwargs_warning_helper(type(self), *args, **kwargs)
         super().__init__(**kwargs)
 
         for key, val in zip(self._coeff_keys, (x0, y0, z0, r2)):
@@ -2507,8 +2506,8 @@ class Quadric(QuadricMixin, Surface):
     _coeff_keys = ('a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'j', 'k')
 
     def __init__(self, a=0., b=0., c=0., d=0., e=0., f=0., g=0., h=0., j=0.,
-                 k=0., **kwargs):
-
+                 k=0., *args, **kwargs):
+        kwargs = _future_kwargs_warning_helper(type(self), *args, **kwargs)
         super().__init__(**kwargs)
 
         for key, val in zip(self._coeff_keys, (a, b, c, d, e, f, g, h, j, k)):

@@ -43,6 +43,8 @@ int main(int argc, char* argv[]) {
     case RunMode::VOLUME:
       err = openmc_calculate_volumes();
       break;
+    default:
+      break;
   }
   if (err) fatal_error(openmc_err_msg);
 

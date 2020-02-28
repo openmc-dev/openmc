@@ -24,6 +24,7 @@
 #include "openmc/simulation.h"
 #include "openmc/tallies/derivative.h"
 #include "openmc/tallies/filter.h"
+#include "openmc/tallies/filter_mesh.h"
 #include "openmc/tallies/tally.h"
 #include "openmc/timer.h"
 
@@ -163,6 +164,10 @@ openmc_statepoint_write(const char* filename, bool* write_source)
       for (const auto& tally : model::tallies)
         tally_ids.push_back(tally->id_);
       write_attribute(tallies_group, "ids", tally_ids);
+
+#ifdef DAGMC
+        write_unstructured_mesh_results();
+#endif
 
       // Write all tally information except results
       for (const auto& tally : model::tallies) {
@@ -676,6 +681,49 @@ void read_source_bank(hid_t group_id)
   H5Dclose(dset);
   H5Tclose(banktype);
 }
+
+#ifdef DAGMC
+void write_unstructured_mesh_results() {
+  for (auto& tally : model::tallies) {
+    for (auto filter_idx : tally->filters()) {
+      auto& filter = model::tally_filters[filter_idx];
+      if (filter->type() == "mesh") {
+        auto mesh_filter = dynamic_cast<MeshFilter*>(filter.get());
+        auto& mesh = model::meshes[mesh_filter->mesh()];
+        auto umesh = dynamic_cast<UnstructuredMesh*>(mesh.get());
+        if (umesh) {
+          for (auto score : tally->scores_) {
+            // get values for this score and create vectors for marking
+            // up the mesh
+            auto values = xt::view(tally->results_, xt::all(), 0, static_cast<int>(TallyResult::SUM));
+            auto sum_sq = xt::view(tally->results_, xt::all(), 0, TallyResult::SUM_SQ);
+            std::vector<double> vals_vec, sum_sq_vec;
+            for (int i = 0; i < tally->results_.shape()[0]; i++) {
+              vals_vec.push_back(tally->results_(i, 0, TallyResult::SUM) / tally->n_realizations_);
+              sum_sq_vec.push_back(tally->results_(i, 0, TallyResult::SUM_SQ) - std::pow(vals_vec[i], 2)/ tally->n_realizations_);
+            }
+
+            // set the score data on the mesh
+            umesh->set_score_data(std::to_string(score),
+                                  vals_vec,
+                                  sum_sq_vec);
+          }
+
+          // Determine width for zero padding
+          int w = std::to_string(settings::n_max_batches).size();
+
+          std::string umesh_filename = fmt::format("{0}tally_{1}.{2:0{3}}",
+                                                   settings::path_output,
+                                                   tally->id_,
+                                                   simulation::current_batch,
+                                                   w);
+          umesh->write(umesh_filename);
+        }
+      }
+    }
+  }
+}
+#endif
 
 void write_tally_results_nr(hid_t file_id)
 {

@@ -1710,7 +1710,7 @@ UnstructuredMesh::bins_crossed(const Particle* p,
       lengths.push_back((hit.first - last_dist) / track_len);
     } else {
       // if in the loop, we should always find a tet
-      fatal_error("No tet found for location between trianle hits");
+      warning("No tet found for location between trianle hits");
     }
     last_dist = hit.first;
 
@@ -2057,7 +2057,7 @@ UnstructuredMesh::get_score_tags(std::string score) const {
   }
 
   moab::Tag error_tag;
-  std::string err_string = score + "_error";
+  std::string err_string = score + "_std_dev";
   rval = mbi_->tag_get_handle(err_string.c_str(),
                               1,
                               moab::MB_TYPE_DOUBLE,
@@ -2082,8 +2082,16 @@ UnstructuredMesh::add_score(std::string score) const {
 void
 UnstructuredMesh::set_score_data(const std::string& score,
                                  std::vector<double> values,
-                                 std::vector<double> sum_sq) const {
+                                 std::vector<double> std_dev) const {
   auto score_tags = get_score_tags(score);
+
+  // normalize tally values by element volume
+  for (int i = 0; i < ehs_.size(); i++) {
+    auto eh = get_ent_handle_from_bin(i);
+    double volume = tet_volume(eh);
+    values[i] /= volume;
+    std_dev[i] /= volume;
+  }
 
   moab::ErrorCode rval;
   // set the score value
@@ -2096,7 +2104,7 @@ UnstructuredMesh::set_score_data(const std::string& score,
   }
 
   // set the error value
-  rval = mbi_->tag_set_data(score_tags.second, ehs_, &sum_sq.front());
+  rval = mbi_->tag_set_data(score_tags.second, ehs_, &std_dev.front());
   if (rval != moab::MB_SUCCESS) {
     std::stringstream msg;
     msg << "Failed to set the tally value for score '" << score << "' "

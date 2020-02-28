@@ -388,7 +388,7 @@ public:
   //! Set data for a score
   void set_score_data(const std::string& score,
                       std::vector<double> values,
-                      std::vector<double> sum_sq) const;
+                      std::vector<double> std_dev) const;
 
   //! Write the mesh with any current tally data
   void write(std::string base_filename) const;

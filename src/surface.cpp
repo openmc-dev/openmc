@@ -143,6 +143,10 @@ Surface::Surface(pugi::xml_node surf_node)
     }
   }
 
+  if (check_for_node(surf_node, "surf_src")) {
+    surf_src_ = get_node_value_bool(surf_node, "surf_src");
+  }
+
 }
 
 bool

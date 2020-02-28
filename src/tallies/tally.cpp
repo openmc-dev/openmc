@@ -841,16 +841,20 @@ void Tally::accumulate()
       auto umesh = dynamic_cast<UnstructuredMesh*>(mesh.get());
       if (umesh) {
         for (auto score : scores_) {
-          umesh->add_score(std::to_string(score));
-          auto values = xt::view(results_, xt::all(), 0, TallyResult::VALUE);
+          // get values for this score and create vectors for marking
+          // up the mesh
+          auto values = xt::view(results_, xt::all(), 0, static_cast<int>(TallyResult::SUM));
           auto sum_sq = xt::view(results_, xt::all(), 0, TallyResult::SUM_SQ);
-          std::vector<double> vals_vec(values.begin(), values.end());
-          std::vector<double> sum_sq_vec(sum_sq.begin(), sum_sq.end());
+          std::vector<double> vals_vec, sum_sq_vec;
           for (int i = 0; i < results_.shape()[0]; i++) {
-            umesh->set_score_data(std::to_string(score),
-                                  vals_vec,
-                                  sum_sq_vec);
+            vals_vec.push_back(results_(i, 0, TallyResult::SUM) / n_realizations_);
+            sum_sq_vec.push_back(results_(i, 0, TallyResult::SUM_SQ) - std::pow(vals_vec[i], 2)/ n_realizations_);
           }
+
+          // set the score data on the mesh
+          umesh->set_score_data(std::to_string(score),
+                                vals_vec,
+                                sum_sq_vec);
         }
         std::stringstream output_filename;
         output_filename << "tally_" << id_ << "_umesh";

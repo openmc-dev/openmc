@@ -77,3 +77,8 @@ def test_expand_exceptions():
     with pt.raises(ValueError):
         element = openmc.element.Element('U')
         fail = element.expand(70.0, 'ao', 4.0, 'U235', 'wo')
+
+    # Trying to enrich Uranium with wrong enrichment_target
+    with pt.raises(ValueError):
+        element = openmc.element.Element('U')
+        fail = element.expand(70.0, 'ao', 4.0, enrichment_type='ao')

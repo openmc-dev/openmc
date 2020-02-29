@@ -36,7 +36,7 @@ class Element(str):
         return self
 
     def expand(self, percent, percent_type, enrichment=None,
-               enrichment_target=None, enrichment_type='ao',
+               enrichment_target=None, enrichment_type=None,
                cross_sections=None):
         """Expand natural element into its naturally-occurring isotopes.
 
@@ -88,12 +88,10 @@ class Element(str):
             Enrichment is requested of the element that is not composed of
             two isotopes.
         ValueError
-            If `enrichment_type` is not 'ao' or 'wo'
-        ValueError
-            If `enrichment` is outside <0;100> range
-        ValueError
             If enrichment procedure for Uranium is used when element is not
             Uranium.
+        ValueError
+            Uranium enrichment is requested with enrichment_type=='ao'
 
         Notes
         -----
@@ -112,7 +110,8 @@ class Element(str):
 
         """
         # Check input
-        cv.check_value('enrichment_type', enrichment_type, {'ao', 'wo'})
+        if enrichment_type is not None:
+            cv.check_value('enrichment_type', enrichment_type, {'ao', 'wo'})
 
         if enrichment is not None:
             cv.check_less_than('enrichment', enrichment, 100.0, equality=True)
@@ -215,6 +214,12 @@ class Element(str):
                       'but the isotope is {0} not U'.format(self)
                 raise ValueError(msg)
 
+            # Check that enrichment_type is not 'ao'
+            if enrichment_type == 'ao':
+                msg = 'Enrichment procedure for Uranium requires that '\
+                      'enrichment value is provided as wo%.'
+                raise ValueError(msg)
+
             # Calculate the mass fractions of isotopes
             abundances['U234'] = 0.0089 * enrichment
             abundances['U235'] = enrichment
@@ -232,7 +237,6 @@ class Element(str):
 
         # Modify mole fractions if enrichment provided
         # New treatment for arbitrary element
-        # Interpret required enrichment as weight
         elif enrichment is not None and enrichment_target is not None:
 
             # Provide more informative error message for U235

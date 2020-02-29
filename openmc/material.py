@@ -500,7 +500,7 @@ class Material(IDManagerMixin):
             self._macroscopic = None
 
     def add_element(self, element, percent, percent_type='ao', enrichment=None,
-                    enrichment_target=None, enrichment_type='ao'):
+                    enrichment_target=None, enrichment_type=None):
         """Add a natural element to the material
 
         Parameters

@@ -4,6 +4,7 @@ from copy import deepcopy
 from math import cos, sin, pi
 from numbers import Real
 from xml.etree import ElementTree as ET
+from uncertainties import UFloat
 import sys
 import warnings
 
@@ -134,6 +135,7 @@ class Cell(IDManagerMixin):
             string += '\t{0: <15}=\t{1}\n'.format('Temperature',
                                                   self.temperature)
         string += '{: <16}=\t{}\n'.format('\tTranslation', self.translation)
+        string += '{: <16}=\t{}\n'.format('\tVolume', self.volume)
 
         return string
 
@@ -285,8 +287,17 @@ class Cell(IDManagerMixin):
     @volume.setter
     def volume(self, volume):
         if volume is not None:
-            cv.check_type('cell volume', volume, Real)
+            try:
+                cv.check_type('cell volume', volume, Real)
+            except TypeError:
+                cv.check_type('cell volume', volume, UFloat)
+            cv.check_greater_than('cell volume', volume, 0.0)
         self._volume = volume
+
+        # Forget now invalid info about atoms content
+        # (sice volume has just changed)
+        if self._atoms is not None:
+            self._atoms = None
 
     def add_volume_information(self, volume_calc):
         """Add volume information to a cell.

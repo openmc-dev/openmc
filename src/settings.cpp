@@ -60,6 +60,7 @@ bool run_CE                  {true};
 bool source_latest           {false};
 bool source_separate         {false};
 bool source_write            {true};
+bool surface_source          {false};
 bool survival_biasing        {false};
 bool temperature_multipole   {false};
 bool trigger_on              {false};
@@ -620,6 +621,11 @@ void read_settings_xml()
     // statepoint file and write it out at statepoints intervals
     source_separate = false;
     sourcepoint_batch = statepoint_batch;
+  }
+
+  // Check if the user has specified to write surface source.
+  if (check_for_node(root, "surface_source")) {
+    surface_source = get_node_value_bool(root, "surface_source");
   }
 
   // If source is not seperate and is to be written out in the statepoint file,

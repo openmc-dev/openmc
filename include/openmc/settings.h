@@ -45,6 +45,7 @@ extern "C" bool run_CE;               //!< run with continuous-energy data?
 extern bool source_latest;            //!< write latest source at each batch?
 extern bool source_separate;          //!< write source to separate file?
 extern bool source_write;             //!< write source in HDF5 files?
+extern bool surface_source;           //!< write surface source file?
 extern bool survival_biasing;         //!< use survival biasing?
 extern bool temperature_multipole;    //!< use multipole data?
 extern "C" bool trigger_on;           //!< tally triggers enabled?

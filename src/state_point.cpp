@@ -692,19 +692,17 @@ void write_unstructured_mesh_results() {
         auto& mesh = model::meshes[mesh_filter->mesh()];
         auto umesh = dynamic_cast<UnstructuredMesh*>(mesh.get());
         if (umesh) {
-          for (auto score : tally->scores_) {
+          for (int i = 0; i < tally->scores_.size(); i++) {
             // get values for this score and create vectors for marking
             // up the mesh
-            auto values = xt::view(tally->results_, xt::all(), 0, static_cast<int>(TallyResult::SUM));
-            auto sum_sq = xt::view(tally->results_, xt::all(), 0, TallyResult::SUM_SQ);
             std::vector<double> vals_vec, sum_sq_vec;
-            for (int i = 0; i < tally->results_.shape()[0]; i++) {
-              vals_vec.push_back(tally->results_(i, 0, TallyResult::SUM) / tally->n_realizations_);
-              sum_sq_vec.push_back(tally->results_(i, 0, TallyResult::SUM_SQ) - std::pow(vals_vec[i], 2)/ tally->n_realizations_);
+            for (int j = 0; j < tally->results_.shape()[0]; j++) {
+              vals_vec.push_back(tally->results_(j, i, TallyResult::SUM) / tally->n_realizations_);
+              sum_sq_vec.push_back(tally->results_(j , i, TallyResult::SUM_SQ) - std::pow(vals_vec[i], 2)/ tally->n_realizations_);
             }
 
             // set the score data on the mesh
-            umesh->set_score_data(std::to_string(score),
+            umesh->set_score_data(std::to_string(tally->scores_[i]),
                                   vals_vec,
                                   sum_sq_vec);
           }

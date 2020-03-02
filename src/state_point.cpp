@@ -717,6 +717,7 @@ void write_unstructured_mesh_results() {
                                                    tally->id_,
                                                    simulation::current_batch,
                                                    w);
+
           umesh->write(umesh_filename);
         }
       }

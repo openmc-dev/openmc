@@ -1583,6 +1583,17 @@ UnstructuredMesh::UnstructuredMesh(pugi::xml_node node) : Mesh(node) {
     warning("Non-tetrahedral elements found in unstructured mesh: " + filename_);
   }
 
+  // make an entity set for all tetrahedra (used later in output)
+  rval = mbi_->create_meshset(moab::MESHSET_SET, tet_set_);
+  if (rval != moab::MB_SUCCESS) {
+    fatal_error("Failed to create an entity set for the tetrahedral elements");
+  }
+
+  rval = mbi_->add_entities(tet_set_, ehs_);
+  if (rval != moab::MB_SUCCESS) {
+    fatal_error("Failed to add tetrahedra to an entity set.");
+  }
+
   compute_barycentric_data(ehs_);
   build_kdtree(ehs_);
 }
@@ -2118,8 +2129,12 @@ UnstructuredMesh::write(std::string base_filename) const {
   // add extension to the base name
   base_filename += ".h5m";
 
+  // write the tetrahedral elements of the mesh only
+  // to avoid clutter from zero-value data on other
+  // elements during visualization
+
   moab::ErrorCode rval;
-  rval = mbi_->write_mesh(base_filename.c_str());
+  rval = mbi_->write_mesh(base_filename.c_str(), &tet_set_, 1);
   if (rval != moab::MB_SUCCESS) {
     std::stringstream msg;
     msg << "Failed to write unstructured mesh " << id_;

@@ -185,6 +185,35 @@ class Cell(IDManagerMixin):
         return self._volume
 
     @property
+    def atoms(self):
+        if self._atoms is None:
+            if self._volume is None:
+                msg = 'Cannot calculate atoms content becouse no volume '\
+                      'is set. Use Cell.volume to provide it or perform '\
+                      'stochastic volume calculation.'
+                raise ValueError(msg)
+
+            elif self._fill is None:
+                msg = 'Cell is filled with void. It contains no atoms.'
+                raise ValueError(msg)
+
+            elif isinstance(self._fill, (openmc.Universe, openmc.Lattice)):
+                msg = 'Universe and Lattice cells can contain multiple '\
+                      'materials. Atoms content must be calculated with '\
+                      'stochastic volume calculation'
+                raise ValueError(msg)
+
+            elif isinstance(self._fill, openmc.Material):
+                # Get atomic Densities
+                self._atoms = self._fill.get_nuclide_atom_densities()
+
+                # Convert to total number of atoms
+                for key, nuclide in self._atoms.items():
+                    self._atoms[key] = (nuclide[0], nuclide[1] * self._volume)
+
+        return self._atoms
+
+    @property
     def paths(self):
         if self._paths is None:
             raise ValueError('Cell instance paths have not been determined. '
@@ -287,14 +316,11 @@ class Cell(IDManagerMixin):
     @volume.setter
     def volume(self, volume):
         if volume is not None:
-            try:
-                cv.check_type('cell volume', volume, Real)
-            except TypeError:
-                cv.check_type('cell volume', volume, UFloat)
+            cv.check_type('cell volume', volume, (Real, UFloat))
             cv.check_greater_than('cell volume', volume, 0.0)
         self._volume = volume
 
-        # Forget now invalid info about atoms content
+        # Info about atoms content can now be invalid
         # (sice volume has just changed)
         if self._atoms is not None:
             self._atoms = None

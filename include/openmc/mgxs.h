@@ -40,8 +40,8 @@ class Mgxs {
 
     xt::xtensor<double, 1> kTs;   // temperature in eV (k * T)
     AngleDistributionType scatter_format; // flag for if this is legendre, histogram, or tabular
-    int num_delayed_groups; // number of delayed neutron groups
     int num_groups;     // number of energy groups
+    int num_delayed_groups; // number of delayed neutron groups
     std::vector<XsData> xs; // Cross section data
     // MGXS Incoming Flux Angular grid information
     bool is_isotropic; // used to skip search for angle indices if isotropic

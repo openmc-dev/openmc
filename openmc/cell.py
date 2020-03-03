@@ -135,7 +135,10 @@ class Cell(IDManagerMixin):
             string += '\t{0: <15}=\t{1}\n'.format('Temperature',
                                                   self.temperature)
         string += '{: <16}=\t{}\n'.format('\tTranslation', self.translation)
-        string += '{: <16}=\t{}\n'.format('\tVolume', self.volume)
+
+        # Print Volume only when its set to avoid breaking regression
+        if self._volume is not None:
+            string += '{: <16}=\t{}\n'.format('\tVolume', self.volume)
 
         return string
 
@@ -188,28 +191,33 @@ class Cell(IDManagerMixin):
     def atoms(self):
         if self._atoms is None:
             if self._volume is None:
-                msg = 'Cannot calculate atoms content becouse no volume '\
-                      'is set. Use Cell.volume to provide it or perform '\
-                      'stochastic volume calculation.'
+                msg = ('Cannot calculate atoms content becouse no volume '
+                       'is set. Use Cell.volume to provide it or perform '
+                       'stochastic volume calculation.')
                 raise ValueError(msg)
 
-            elif self._fill is None:
-                msg = 'Cell is filled with void. It contains no atoms.'
+            elif self.fill_type == 'void':
+                msg = ('Cell is filled with void. It contains no atoms. '
+                       'Material must be set to calculate atoms content.')
                 raise ValueError(msg)
 
-            elif isinstance(self._fill, (openmc.Universe, openmc.Lattice)):
-                msg = 'Universe and Lattice cells can contain multiple '\
-                      'materials. Atoms content must be calculated with '\
-                      'stochastic volume calculation'
+            elif self.fill_type != 'material':
+                msg = ('Universe, Lattice and Distributed Material cells can '
+                       'contain multiple materials. Atoms content must be '
+                       'calculated with stochastic volume calculation')
                 raise ValueError(msg)
 
-            elif isinstance(self._fill, openmc.Material):
+            elif self.fill_type == 'material':
                 # Get atomic Densities
                 self._atoms = self._fill.get_nuclide_atom_densities()
 
                 # Convert to total number of atoms
                 for key, nuclide in self._atoms.items():
-                    self._atoms[key] = (nuclide[0], nuclide[1] * self._volume)
+                    atom_num = nuclide[1] * self._volume * 1.0E+24
+                    self._atoms[key] = (nuclide[0], atom_num)
+            else:
+                msg = 'Unrecognised fill_type:{}'.format(self.fill_type)
+                raise ValueError(msg)
 
         return self._atoms
 
@@ -254,11 +262,15 @@ class Cell(IDManagerMixin):
 
             elif not isinstance(fill, (openmc.Material, openmc.Lattice,
                                        openmc.Universe)):
-                msg = 'Unable to set Cell ID="{0}" to use a non-Material or ' \
-                      'Universe fill "{1}"'.format(self._id, fill)
+                msg = ('Unable to set Cell ID="{0}" to use a non-Material or '
+                       'Universe fill "{1}"'.format(self._id, fill))
                 raise ValueError(msg)
 
         self._fill = fill
+
+        # Info about atoms content can now be invalid
+        # (sice fill has just changed)
+        self._atoms = None
 
     @rotation.setter
     def rotation(self, rotation):
@@ -317,13 +329,19 @@ class Cell(IDManagerMixin):
     def volume(self, volume):
         if volume is not None:
             cv.check_type('cell volume', volume, (Real, UFloat))
-            cv.check_greater_than('cell volume', volume, 0.0)
+
+            # Note that ufloat(0.0, 0.1) >= 0.0 is False
+            # we need special treatment for UFloat input
+            val = volume
+            if isinstance(val, UFloat):
+                val = volume.nominal_value
+            cv.check_greater_than('cell volume', val, 0.0)
+
         self._volume = volume
 
         # Info about atoms content can now be invalid
         # (sice volume has just changed)
-        if self._atoms is not None:
-            self._atoms = None
+        self._atoms = None
 
     def add_volume_information(self, volume_calc):
         """Add volume information to a cell.

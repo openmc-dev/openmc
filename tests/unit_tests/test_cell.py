@@ -1,10 +1,16 @@
 import xml.etree. ElementTree as ET
 
 import numpy as np
+import uncertainties as u
 import openmc
 import pytest
 
+
 from tests.unit_tests import assert_unbounded
+from openmc.data import atomic_mass, AVOGADRO
+
+# Relative tolerance for float comparison
+TOL = 1e-9
 
 
 def test_contains():
@@ -27,6 +33,14 @@ def test_repr(cell_with_lattice):
 
     # Empty cell
     c = openmc.Cell()
+    repr(c)
+
+    # Empty cell with Volume
+    c.volume = 3.0
+    repr(c)
+
+    # Empty cell with Uncertain Volume
+    c.volume = u.ufloat(3.0, 0.2)
     repr(c)
 
 
@@ -112,6 +126,92 @@ def test_get_nuclides(uo2):
     assert nucs == ['U235', 'O16']
 
 
+def test_volume_setting():
+    c = openmc.Cell()
+
+    # Test ordinary volume and uncertain volume
+    c.volume = 3
+    c.volume = u.ufloat(3, 0.7)
+
+    # Test errors for -ve and 0 volume
+    with pytest.raises(ValueError):
+        c.volume = 0.0
+    with pytest.raises(ValueError):
+        c.volume = -1.0
+    with pytest.raises(ValueError):
+        c.volume = u.ufloat(0.0, 0.1)
+    with pytest.raises(ValueError):
+        c.volume = u.ufloat(-0.05, 0.1)
+
+
+def test_atoms_of_material_cell(uo2, water):
+    """ Test if correct number of atoms is returned.
+    Also check if Cell.atoms still works after volume/material was changed
+    """
+    c = openmc.Cell(fill=uo2)
+    c.volume = 2.0
+    expected_nucs = ['U235', 'O16']
+
+    # Precalculate the expected number of atoms
+    molarMass = ((atomic_mass('U235') + 2 * atomic_mass('O16'))/3)
+    expected_atoms = list()
+    expected_atoms.append(1/3 * uo2.density/molarMass * AVOGADRO * 2.0)  # U235
+    expected_atoms.append(2/3 * uo2.density/molarMass * AVOGADRO * 2.0)  # O16
+
+    tuples = list(c.atoms.values())
+    for nuc, atom_num, t in zip(expected_nucs, expected_atoms, tuples):
+        assert nuc == t[0]
+        assert atom_num == t[1]
+
+    # Change volume and check if OK
+    c.volume = 3.0
+    expected_atoms = list()
+    expected_atoms.append(1/3 * uo2.density/molarMass * AVOGADRO * 3.0)  # U235
+    expected_atoms.append(2/3 * uo2.density/molarMass * AVOGADRO * 3.0)  # O16
+
+    tuples = list(c.atoms.values())
+    for nuc, atom_num, t in zip(expected_nucs, expected_atoms, tuples):
+        assert nuc == t[0]
+        assert atom_num == pytest.approx(t[1], rel=TOL)
+
+    # Change material and check if OK
+    c.fill = water
+    expected_nucs = ['H1', 'O16']
+    molarMass = ((2 * atomic_mass('H1') + atomic_mass('O16'))/3)
+    expected_atoms = list()
+    expected_atoms.append(2/3 * water.density/molarMass * AVOGADRO * 3.0)  # H1
+    expected_atoms.append(1/3 * water.density/molarMass * AVOGADRO * 3.0)  # O16
+
+    tuples = list(c.atoms.values())
+    for nuc, atom_num, t in zip(expected_nucs, expected_atoms, tuples):
+        assert nuc == t[0]
+        assert atom_num == pytest.approx(t[1], rel=TOL)
+
+
+def test_atoms_errors(cell_with_lattice):
+    cells, mats, univ, lattice = cell_with_lattice
+
+    # Distributed Material
+    with pytest.raises(ValueError):
+        cells[0].volume = 2
+        cells[0].atoms
+
+    # Material Cell with no Volume
+    with pytest.raises(ValueError):
+        cells[1].atoms
+
+    # Cell with lattice
+    with pytest.raises(ValueError):
+        cells[2].volume = 3
+        cells[2].atoms
+
+    # Cell with volume but with Void fill
+    with pytest.raises(ValueError):
+        cells[1].volume = 2
+        cells[1].fill = None
+        cells[1].atoms
+
+
 def test_nuclide_densities(uo2):
     c = openmc.Cell(fill=uo2)
     expected_nucs = ['U235', 'O16']
@@ -119,7 +219,7 @@ def test_nuclide_densities(uo2):
     tuples = list(c.get_nuclide_densities().values())
     for nuc, density, t in zip(expected_nucs, expected_density, tuples):
         assert nuc == t[0]
-        assert density == t[1]
+        assert density == pytest.approx(t[1], rel=TOL)
 
     # Empty cell
     c = openmc.Cell()

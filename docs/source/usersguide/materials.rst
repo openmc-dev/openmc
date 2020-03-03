@@ -156,8 +156,7 @@ material with 3% plutonium oxide by weight could be created using the following:
 
 ::
 
-   mox = openmc.Material()
-   mox.mix_materials([uo2, puo2], [0.97, 0.03], 'wo')
+   mox = openmc.Material.mix_materials([uo2, puo2], [0.97, 0.03], 'wo')
 
 It should be noted that if mixing fractions are specifed as atomic or weight 
 fractions, the sum of the given fractions should be one. If volume fractions

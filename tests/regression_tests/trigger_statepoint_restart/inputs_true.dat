@@ -25,6 +25,7 @@
     <max_batches>1000</max_batches>
     <batch_interval>1</batch_interval>
   </trigger>
+  <verbosity>1</verbosity>
 </settings>
 <?xml version='1.0' encoding='utf-8'?>
 <tallies>

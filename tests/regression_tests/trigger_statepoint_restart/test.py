@@ -33,6 +33,7 @@ def model():
     settings.trigger_max_batches = 1000
     settings.trigger_batch_interval = 1
     settings.trigger_active = True
+    settings.verbosity = 1 # to test that this works even with no output
  
     # Tallies
     tallies = openmc.Tallies()
@@ -88,6 +89,7 @@ class TriggerStatepointRestartTestHarness(PyAPITestHarness):
             # First non-restart run
             k_combined_1 = self._model.run(**args)
             sp_batchno_1 = 0
+            assert self._model.statepoint
             with openmc.StatePoint(self._model.statepoint) as sp:
                  sp_batchno_1 = sp.current_batch
             assert sp_batchno_1 > 10
@@ -102,6 +104,7 @@ class TriggerStatepointRestartTestHarness(PyAPITestHarness):
             args['restart_file'] = restart_spfile[0]
             k_combined_2 = self._model.run(**args)
             sp_batchno_2 = 0
+            assert self._model.statepoint
             with openmc.StatePoint(self._model.statepoint) as sp:
                  sp_batchno_2 = sp.current_batch
             assert sp_batchno_2 > 10

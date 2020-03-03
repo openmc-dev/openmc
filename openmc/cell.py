@@ -86,7 +86,12 @@ class Cell(IDManagerMixin):
     volume : float
         Volume of the cell in cm^3. This can either be set manually or
         calculated in a stochastic volume calculation and added via the
-        :meth:`Cell.add_volume_information` method.
+        :meth:`Cell.add_volume_information` method. For 'distribmat' cells
+        it is a total volume of all instances.
+    atoms : dict
+        Mapping of nuclides to total number of atoms for each nuclide present
+        in the cell, or all its instances for 'sdistribmat' fill. For example,
+        {'U235': 1.0e22, 'U238': 5.0e22, ...}.
 
     """
 
@@ -189,6 +194,21 @@ class Cell(IDManagerMixin):
 
     @property
     def atoms(self):
+        """ Get total number of atoms of each nuclide in the cell
+
+        Returns
+        -------
+        atoms: collections.OrderedDict
+            Dictionary which keys are nuclides and values the number of atoms.
+            For example, {'H1':1.0e22, 'O16':0.5e22, ...}
+
+        Raises
+        ------
+        ValueError
+            If total volume of the cell is not set
+        ValueError
+            If cell is filled with Universe, Lattice or Void
+        """
         if self._atoms is None:
             if self._volume is None:
                 msg = ('Cannot calculate atoms content becouse no volume '
@@ -201,10 +221,10 @@ class Cell(IDManagerMixin):
                        'Material must be set to calculate atoms content.')
                 raise ValueError(msg)
 
-            elif self.fill_type != 'material':
-                msg = ('Universe, Lattice and Distributed Material cells can '
-                       'contain multiple materials. Atoms content must be '
-                       'calculated with stochastic volume calculation')
+            elif self.fill_type in ['lattice', 'universe']:
+                msg = ('Universe and Lattice cells can contain multiple '
+                       'materials in diffrent proportions. Atoms content must '
+                       'be calculated with stochastic volume calculation')
                 raise ValueError(msg)
 
             elif self.fill_type == 'material':
@@ -213,8 +233,23 @@ class Cell(IDManagerMixin):
 
                 # Convert to total number of atoms
                 for key, nuclide in self._atoms.items():
-                    atom_num = nuclide[1] * self._volume * 1.0E+24
-                    self._atoms[key] = (nuclide[0], atom_num)
+                    atom = nuclide[1] * self._volume * 1.0e+24
+                    self._atoms[key] = atom
+
+            elif self.fill_type == 'distribmat':
+                # Assumes that volume is total volume of all instances
+                # Also assumes that all instances have the same volume
+                partial_volume = self.volume / len(self.fill)
+                self._atoms = OrderedDict()
+                for mat in self.fill:
+                    for key, nuclide in mat.get_nuclide_atom_densities().items():
+                        # To account for overlap of nuclides between distribmat
+                        # we need to append new atoms # to any existing value
+                        # hence it is necessary to ask for default.
+                        atom = self._atoms.setdefault(key, 0)
+                        atom += nuclide[1] * partial_volume * 1.0e+24
+                        self._atoms[key] = atom
+
             else:
                 msg = 'Unrecognised fill_type:{}'.format(self.fill_type)
                 raise ValueError(msg)

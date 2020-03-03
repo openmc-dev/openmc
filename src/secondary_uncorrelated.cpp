@@ -1,7 +1,8 @@
 #include "openmc/secondary_uncorrelated.h"
 
-#include <sstream> // for stringstream
 #include <string>  // for string
+
+#include <fmt/core.h>
 
 #include "openmc/error.h"
 #include "openmc/hdf5_interface.h"
@@ -42,9 +43,7 @@ UncorrelatedAngleEnergy::UncorrelatedAngleEnergy(hid_t group)
     } else if (type == "watt") {
       energy_ = UPtrEDist{new WattEnergy{energy_group}};
     } else {
-      std::stringstream msg;
-      msg << "Energy distribution type '" << type << "' not implemented.";
-      warning(msg);
+      warning(fmt::format("Energy distribution type '{}' not implemented.", type));
     }
     close_group(energy_group);
   }

@@ -1,7 +1,8 @@
 #include "openmc/tallies/filter_cell_instance.h"
 
-#include <sstream>
 #include <string>
+
+#include <fmt/core.h>
 
 #include "openmc/capi.h"
 #include "openmc/cell.h"
@@ -29,10 +30,8 @@ CellInstanceFilter::from_xml(pugi::xml_node node)
     gsl::index instance = cells[2*i + 1];
     auto search = model::cell_map.find(cell_id);
     if (search == model::cell_map.end()) {
-      std::stringstream err_msg;
-      err_msg << "Could not find cell " << cell_id
-              << " specified on tally filter.";
-      throw std::runtime_error{err_msg.str()};
+      throw std::runtime_error{fmt::format(
+        "Could not find cell {} specified on tally filter.", cell_id)};
     }
     gsl::index index = search->second;
     instances.push_back({index, instance});
@@ -55,9 +54,9 @@ CellInstanceFilter::set_cell_instances(gsl::span<CellInstance> instances)
     Expects(x.index_cell < model::cells.size());
     const auto& c {model::cells[x.index_cell]};
     if (c->type_ != Fill::MATERIAL) {
-      throw std::invalid_argument{"Cell " + std::to_string(c->id_) + " is not "
-        "filled with a material. Only material cells can be used in a cell "
-        "instance filter."};
+      throw std::invalid_argument{fmt::format(
+        "Cell {} is not filled with a material. Only material cells can be "
+        "used in a cell instance filter.", c->id_)};
     }
     cell_instances_.push_back(x);
     map_[x] = cell_instances_.size() - 1;

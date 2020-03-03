@@ -4,7 +4,8 @@
 #include <sstream>
 #include <unordered_set>
 
-#include "pugixml.hpp"
+#include <fmt/core.h>
+#include <pugixml.hpp>
 
 #include "openmc/cell.h"
 #include "openmc/constants.h"
@@ -94,10 +95,8 @@ adjust_indices()
         c->type_ = Fill::LATTICE;
         c->fill_ = search_lat->second;
       } else {
-        std::stringstream err_msg;
-        err_msg << "Specified fill " << id << " on cell " << c->id_
-                << " is neither a universe nor a lattice.";
-        fatal_error(err_msg);
+        fatal_error(fmt::format("Specified fill {} on cell {} is neither a "
+          "universe nor a lattice.", id, c->id_));
       }
     } else {
       c->type_ = Fill::MATERIAL;
@@ -105,10 +104,9 @@ adjust_indices()
         if (mat_id != MATERIAL_VOID) {
           auto search = model::material_map.find(mat_id);
           if (search == model::material_map.end()) {
-            std::stringstream err_msg;
-            err_msg << "Could not find material " << mat_id
-                    << " specified on cell " << c->id_;
-            fatal_error(err_msg);
+            fatal_error(fmt::format(
+              "Could not find material {} specified on cell {}",
+              mat_id, c->id_));
           }
           // Change from ID to index
           mat_id = search->second;
@@ -123,10 +121,8 @@ adjust_indices()
     if (search != model::universe_map.end()) {
       c->universe_ = search->second;
     } else {
-      std::stringstream err_msg;
-      err_msg << "Could not find universe " << c->universe_
-              << " specified on cell " << c->id_;
-      fatal_error(err_msg);
+      fatal_error(fmt::format("Could not find universe {} specified on cell {}",
+        c->universe_, c->id_));
     }
   }
 
@@ -345,23 +341,21 @@ prepare_distribcell()
 
     if (c.material_.size() > 1) {
       if (c.material_.size() != c.n_instances_) {
-        std::stringstream err_msg;
-        err_msg <<  "Cell " << c.id_ <<  " was specified with "
-              << c.material_.size() << " materials but has " << c.n_instances_
-              << " distributed instances. The number of materials must equal "
-              "one or the number of instances.";
-        fatal_error(err_msg);
+        fatal_error(fmt::format(
+          "Cell {} was specified with {} materials but has {} distributed "
+          "instances. The number of materials must equal one or the number "
+          "of instances.", c.id_, c.material_.size(), c.n_instances_
+        ));
       }
     }
 
     if (c.sqrtkT_.size() > 1) {
       if (c.sqrtkT_.size() != c.n_instances_) {
-        std::stringstream err_msg;
-        err_msg <<  "Cell " << c.id_ <<  " was specified with "
-          << c.sqrtkT_.size() << " temperatures but has " << c.n_instances_
-          << " distributed instances. The number of temperatures must equal "
-          "one or the number of instances.";
-        fatal_error(err_msg);
+        fatal_error(fmt::format(
+          "Cell {} was specified with {} temperatures but has {} distributed "
+          "instances. The number of temperatures must equal one or the number "
+          "of instances.", c.id_, c.sqrtkT_.size(), c.n_instances_
+        ));
       }
     }
   }

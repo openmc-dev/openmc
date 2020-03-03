@@ -40,6 +40,13 @@ def test_union(reset):
     assert (6, 0, 0) not in regt
     assert (8, 0, 0) in regt
 
+    # rotate method
+    regr = region.rotate((0., 90., 0.))
+    assert (-4, 0, 0) not in regr
+    assert (0, 0, 6) in regr
+    assert (0, 0, -6) in regr
+    assert (0, 0, 3) not in regr
+
 
 def test_intersection(reset):
     s1 = openmc.XPlane(x0=5, surface_id=1)
@@ -73,6 +80,13 @@ def test_intersection(reset):
     assert (6, 0, 0) in regt
     assert (8, 0, 0) not in regt
 
+    # rotate method
+    regr = region.rotate((0., 90., 0.))
+    assert (-4, 0, 0) in regr
+    assert (0, 0, 6) not in regr
+    assert (0, 0, -6) not in regr
+    assert (0, 0, 3) in regr
+
 
 def test_complement(reset):
     zcyl = openmc.ZCylinder(r=1., surface_id=1)
@@ -105,6 +119,14 @@ def test_complement(reset):
     ll, ur = inside_t.bounding_box
     assert ll == pytest.approx((0., 0., -4.))
     assert ur == pytest.approx((2., 2., 6.))
+
+    # rotate method
+    inside_r = inside.rotate((90., 0., 0.))
+    ll, ur = inside_r.bounding_box
+    assert (.5, 2, 0) in inside_r
+    assert (0, 0, 6) not in inside_r
+    assert ll == pytest.approx((-1., -5., -1.))
+    assert ur == pytest.approx((1., 5., 1.))
 
 
 def test_get_surfaces():

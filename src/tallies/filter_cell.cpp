@@ -1,6 +1,6 @@
 #include "openmc/tallies/filter_cell.h"
 
-#include <sstream>
+#include <fmt/core.h>
 
 #include "openmc/capi.h"
 #include "openmc/cell.h"
@@ -17,10 +17,8 @@ CellFilter::from_xml(pugi::xml_node node)
   for (auto& c : cells) {
     auto search = model::cell_map.find(c);
     if (search == model::cell_map.end()) {
-      std::stringstream err_msg;
-      err_msg << "Could not find cell " << c
-              << " specified on tally filter.";
-      throw std::runtime_error{err_msg.str()};
+      throw std::runtime_error{fmt::format(
+        "Could not find cell {} specified on tally filter.", c)};
     }
     c = search->second;
   }
@@ -72,7 +70,7 @@ CellFilter::to_statepoint(hid_t filter_group) const
 std::string
 CellFilter::text_label(int bin) const
 {
-  return "Cell " + std::to_string(model::cells[cells_[bin]]->id_);
+  return fmt::format("Cell {}", model::cells[cells_[bin]]->id_);
 }
 
 //==============================================================================

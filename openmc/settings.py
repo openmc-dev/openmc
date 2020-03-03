@@ -58,6 +58,10 @@ class Settings(object):
         history-based parallelism.
     generations_per_batch : int
         Number of generations per batch
+    max_lost_particles : int
+        Maximum number of lost particles       
+    rel_max_lost_particles : int
+        Maximum number of lost particles, relative to the total number of particles      
     inactive : int
         Number of inactive batches
     keff_trigger : dict
@@ -176,6 +180,8 @@ class Settings(object):
         self._batches = None
         self._generations_per_batch = None
         self._inactive = None
+        self._max_lost_particles = None
+        self._rel_max_lost_particles = None
         self._particles = None
         self._keff_trigger = None
 
@@ -253,6 +259,14 @@ class Settings(object):
     @property
     def inactive(self):
         return self._inactive
+
+    @property
+    def max_lost_particles(self):
+        return self._max_lost_particles        
+
+    @property
+    def rel_max_lost_particles(self):
+        return self._rel_max_lost_particles         
 
     @property
     def particles(self):
@@ -385,11 +399,11 @@ class Settings(object):
     @property
     def dagmc(self):
         return self._dagmc
-    
+
     @property
     def event_based(self):
         return self._event_based
-    
+
     @property
     def max_particles_in_flight(self):
         return self._max_particles_in_flight
@@ -416,6 +430,19 @@ class Settings(object):
         cv.check_type('inactive batches', inactive, Integral)
         cv.check_greater_than('inactive batches', inactive, 0, True)
         self._inactive = inactive
+
+    @max_lost_particles.setter
+    def max_lost_particles(self, max_lost_particles):
+        cv.check_type('max_lost_particles', max_lost_particles, Integral)
+        cv.check_greater_than('max_lost_particles', max_lost_particles, 0)
+        self._max_lost_particles = max_lost_particles        
+
+    @rel_max_lost_particles.setter
+    def rel_max_lost_particles(self, rel_max_lost_particles):
+        cv.check_type('rel_max_lost_particles', rel_max_lost_particles, Real)
+        cv.check_greater_than('rel_max_lost_particles', rel_max_lost_particles, 0)
+        cv.check_less_than('rel_max_lost_particles', rel_max_lost_particles, 1)
+        self._rel_max_lost_particles = rel_max_lost_particles          
 
     @particles.setter
     def particles(self, particles):
@@ -721,12 +748,12 @@ class Settings(object):
     def delayed_photon_scaling(self, value):
         cv.check_type('delayed photon scaling', value, bool)
         self._delayed_photon_scaling = value
-    
+
     @event_based.setter
     def event_based(self, value):
         cv.check_type('event based', value, bool)
         self._event_based = value
-    
+
     @max_particles_in_flight.setter
     def max_particles_in_flight(self, value):
         cv.check_type('max particles in flight', value, Integral)
@@ -762,6 +789,16 @@ class Settings(object):
         if self._inactive is not None:
             element = ET.SubElement(root, "inactive")
             element.text = str(self._inactive)
+
+    def _create_max_lost_particles_subelement(self, root):
+        if self._max_lost_particles is not None:
+            element = ET.SubElement(root, "max_lost_particles")
+            element.text = str(self._max_lost_particles)    
+
+    def _create_rel_max_lost_particles_subelement(self, root):
+        if self._rel_max_lost_particles is not None:
+            element = ET.SubElement(root, "rel_max_lost_particles")
+            element.text = str(self._rel_max_lost_particles)                     
 
     def _create_particles_subelement(self, root):
         if self._particles is not None:
@@ -976,12 +1013,12 @@ class Settings(object):
         if self._delayed_photon_scaling is not None:
             elem = ET.SubElement(root, "delayed_photon_scaling")
             elem.text = str(self._delayed_photon_scaling).lower()
-    
+
     def _create_event_based_subelement(self, root):
         if self._event_based is not None:
             elem = ET.SubElement(root, "event_based")
             elem.text = str(self._event_based).lower()
-    
+
     def _create_max_particles_in_flight_subelement(self, root):
         if self._max_particles_in_flight is not None:
             elem = ET.SubElement(root, "max_particles_in_flight")
@@ -1009,6 +1046,8 @@ class Settings(object):
             self._particles_from_xml_element(elem)
             self._batches_from_xml_element(elem)
             self._inactive_from_xml_element(elem)
+            self._max_lost_particles_from_xml_element(elem)
+            self._rel_max_lost_particles_from_xml_element(elem)
             self._generations_per_batch_from_xml_element(elem)
 
     def _run_mode_from_xml_element(self, root):
@@ -1030,6 +1069,16 @@ class Settings(object):
         text = get_text(root, 'inactive')
         if text is not None:
             self.inactive = int(text)
+
+    def _max_lost_particles_from_xml_element(self, root):
+        text = get_text(root, 'max_lost_particles')
+        if text is not None:
+            self.max_lost_particles = int(text)     
+
+    def _rel_max_lost_particles_from_xml_element(self, root):
+        text = get_text(root, 'rel_max_lost_particles')
+        if text is not None:
+            self.rel_max_lost_particles = float(text)                       
 
     def _generations_per_batch_from_xml_element(self, root):
         text = get_text(root, 'generations_per_batch')
@@ -1056,7 +1105,7 @@ class Settings(object):
                 if value is not None:
                     if key in ('summary', 'tallies'):
                         value = value in ('true', '1')
-                self.output[key] = value
+                    self.output[key] = value
 
     def _statepoint_from_xml_element(self, root):
         elem = root.find('state_point')
@@ -1227,12 +1276,12 @@ class Settings(object):
         text = get_text(root, 'delayed_photon_scaling')
         if text is not None:
             self.delayed_photon_scaling = text in ('true', '1')
-    
+
     def _event_based_from_xml_element(self, root):
         text = get_text(root, 'event_based')
         if text is not None:
             self.event_based = text in ('true', '1')
-    
+
     def _max_particles_in_flight_from_xml_element(self, root):
         text = get_text(root, 'max_particles_in_flight')
         if text is not None:
@@ -1270,6 +1319,8 @@ class Settings(object):
         self._create_particles_subelement(root_element)
         self._create_batches_subelement(root_element)
         self._create_inactive_subelement(root_element)
+        self._create_max_lost_particles_subelement(root_element)
+        self._create_rel_max_lost_particles_subelement(root_element)
         self._create_generations_per_batch_subelement(root_element)
         self._create_keff_trigger_subelement(root_element)
         self._create_source_subelement(root_element)
@@ -1340,6 +1391,8 @@ class Settings(object):
         settings._particles_from_xml_element(root)
         settings._batches_from_xml_element(root)
         settings._inactive_from_xml_element(root)
+        settings._max_lost_particles_from_xml_element(root)
+        settings._rel_max_lost_particles_from_xml_element(root)
         settings._generations_per_batch_from_xml_element(root)
         settings._keff_trigger_from_xml_element(root)
         settings._source_from_xml_element(root)

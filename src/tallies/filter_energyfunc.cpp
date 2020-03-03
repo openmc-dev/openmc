@@ -1,8 +1,6 @@
 #include "openmc/tallies/filter_energyfunc.h"
 
-#include <iomanip>  // for setprecision
-#include <ios>  // for scientific
-#include <sstream>
+#include <fmt/core.h>
 
 #include "openmc/error.h"
 #include "openmc/search.h"
@@ -82,12 +80,9 @@ EnergyFunctionFilter::to_statepoint(hid_t filter_group) const
 std::string
 EnergyFunctionFilter::text_label(int bin) const
 {
-  std::stringstream out;
-  out << std::scientific << std::setprecision(1)
-      << "Energy Function f"
-      << "([ " << energy_.front() << ", ..., " << energy_.back() << "]) = "
-      << "[" << y_.front() << ", ..., " << y_.back() << "]";
-  return out.str();
+  return fmt::format(
+    "Energy Function f([{:.1e}, ..., {:.1e}]) = [{:.1e}, ..., {:.1e}]",
+    energy_.front(), energy_.back(), y_.front(), y_.back());
 }
 
 //==============================================================================

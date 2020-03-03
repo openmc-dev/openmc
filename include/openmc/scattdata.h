@@ -43,8 +43,8 @@ class ScattData {
     double_2dvec energy;            // Normalized p0 matrix for sampling Eout
     double_2dvec mult;              // nu-scatter multiplication (nu-scatt/scatt)
     double_3dvec dist;              // Angular distribution
-    xt::xtensor<double, 1> gmin;    // minimum outgoing group
-    xt::xtensor<double, 1> gmax;    // maximum outgoing group
+    xt::xtensor<int, 1> gmin;    // minimum outgoing group
+    xt::xtensor<int, 1> gmax;    // maximum outgoing group
     xt::xtensor<double, 1> scattxs; // Isotropic Sigma_{s,g_{in}}
 
     //! \brief Calculates the value of normalized f(mu).

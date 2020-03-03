@@ -784,8 +784,9 @@ class IncidentPhoton(EqualityMixin):
                 sub_group = shell_group.create_group(key)
 
                 # Write atomic relaxation
-                if key in self.atomic_relaxation.subshells:
-                    self.atomic_relaxation.to_hdf5(sub_group, key)
+                if self.atomic_relaxation is not None:
+                    if key in self.atomic_relaxation.subshells:
+                        self.atomic_relaxation.to_hdf5(sub_group, key)
             else:
                 continue
 

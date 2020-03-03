@@ -1,5 +1,6 @@
 from collections.abc import Iterable
 from pathlib import Path
+import time
 
 import openmc
 from openmc.checkvalue import check_type, check_value
@@ -175,7 +176,7 @@ class Model(object):
             will be created.
 
         """
-        # Create directory if
+        # Create directory if required
         d = Path(directory)
         if not d.is_dir():
             d.mkdir(parents=True)
@@ -201,7 +202,7 @@ class Model(object):
 
     def run(self, **kwargs):
         """Creates the XML files, runs OpenMC, and returns k-effective.
-        The last statepoint filename is available in model.statepoint
+        The last statepoint Path is available in model.statepoint
 
         Parameters
         ----------
@@ -211,14 +212,32 @@ class Model(object):
         Returns
         -------
         uncertainties.UFloat
-            Combined estimator of k-effective from the statepoint
+            Combined estimator of k-effective from the last statepoint
+            (None if no statepoint was written)
 
         """
 
         self.export_to_xml()
 
-        self.statepoint = openmc.run(**kwargs)
+        # Setting tstart here ensures we don't pick up any old statepoint
+        # files that might preexist in the output directory
+        tstart = time.time()
+        self.statepoint = None
 
+        openmc.run(**kwargs)
+
+        # Get output directory and last statepoint written by this run
+        if self.settings.output and 'path' in self.settings.output:
+            output_dir = Path(self.settings.output['path'])
+        else:
+            output_dir = Path.cwd()
+        for sp in output_dir.glob('statepoint.*.h5'):
+            mtime = sp.stat().st_mtime
+            if mtime >= tstart:  # >= allows for poor clock resolution
+                tstart = mtime
+                self.statepoint = sp
+
+        # Open the last statepoint to get the final k-effective
         keff = None
         if self.statepoint:
             with openmc.StatePoint(self.statepoint) as sp:

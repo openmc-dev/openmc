@@ -413,13 +413,21 @@ Particle::cross_surface()
     write_message(1, "    Crossing surface {}", surf->id_);
   }
 
+  if (surf->surf_src_) {
+    Particle::Bank site;
+    site.r = this->r();
+    site.u = this->u();
+    site.E = this->E_;
+    site.wgt = this->wgt_;
+    site.delayed_group = this->delayed_group_;
+    site.particle = this->type_;
+    // site.parent_id = this->id_;
+    // site.progeny_id = this->n_progeny_;
+  }
+
   // Handle any applicable boundary conditions.
   if (surf->bc_ && settings::run_mode != RunMode::PLOTTING) {
     surf->bc_->handle_particle(*this, *surf);
-
-    if (surf->surf_src_) {
-      write_message("    Source banking on surface " + std::to_string(surf->id_));
-    }
     return;
   }
 

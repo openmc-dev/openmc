@@ -187,8 +187,7 @@ class Mgxs {
     set_angle_index(Direction u);
 
     //! \brief Provide const access to list of XsData held by this
-    std::vector<XsData> const&
-    get_xsdata() const { return xs; }
+    const std::vector<XsData>& get_xsdata() const { return xs; }
 };
 
 } // namespace openmc

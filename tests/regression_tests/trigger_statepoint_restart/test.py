@@ -86,31 +86,35 @@ class TriggerStatepointRestartTestHarness(PyAPITestHarness):
             args = {'openmc_exec': config['exe'], 'event_based': config['event']}
             if config['mpi']:
                 args['mpi_args'] = [config['mpiexec'], '-n', config['mpi_np']]
+
             # First non-restart run
-            k_combined_1 = self._model.run(**args)
+            spfile = self._model.run(**args)
             sp_batchno_1 = 0
-            assert self._model.statepoint
-            with openmc.StatePoint(self._model.statepoint) as sp:
+            assert sp_file
+            with openmc.StatePoint(spfile) as sp:
                  sp_batchno_1 = sp.current_batch
+                 k_combined_1 = sp.k_combined
             assert sp_batchno_1 > 10
             self._write_inputs(self._get_inputs())
             self._compare_inputs()
             self._test_output_created()
             self._write_results(self._get_results())
             self._compare_results()
+
             # Second restart run
             restart_spfile = glob.glob(os.path.join(os.getcwd(), self._restart_sp))
             assert len(restart_spfile) == 1
             args['restart_file'] = restart_spfile[0]
-            k_combined_2 = self._model.run(**args)
+            spfile = self._model.run(**args)
             sp_batchno_2 = 0
-            assert self._model.statepoint
-            with openmc.StatePoint(self._model.statepoint) as sp:
+            assert spfile
+            with openmc.StatePoint(spfile) as sp:
                  sp_batchno_2 = sp.current_batch
+                 k_combined_2 = sp.k_combined
             assert sp_batchno_2 > 10
             assert sp_batchno_1 == sp_batchno_2, \
                 'Different final batch number after restart'
-            assert str(k_combined_1) == str(k_combined_2), \
+            assert k_combined_1 == k_combined_2, \
                 'Different final k_combined after restart'
             self._write_inputs(self._get_inputs())
             self._compare_inputs()

@@ -380,14 +380,13 @@ void load_state_point()
   // Read batch number to restart at
   read_dataset(file_id, "current_batch", simulation::restart_batch);
 
-  // Check for source in statepoint if needed
-  bool source_present;
-  read_attribute(file_id, "source_present", source_present);
-
   if (simulation::restart_batch > settings::n_batches) {
     fatal_error("The number batches specified in settings.xml is fewer "
       " than the number of batches in the given statepoint file.");
   }
+
+  // Logical flag for source present in statepoint file
+  bool source_present;
 
   // Read information specific to eigenvalue run
   if (settings::run_mode == RunMode::EIGENVALUE) {
@@ -396,6 +395,13 @@ void load_state_point()
 
     // Take maximum of statepoint n_inactive and input n_inactive
     settings::n_inactive = std::max(settings::n_inactive, temp);
+
+    // Check to make sure source bank is present
+    read_attribute(file_id, "source_present", source_present);
+    if (settings::path_sourcepoint == settings::path_statepoint &&
+	    !source_present) {
+	  fatal_error("Source bank must be contained in statepoint restart file");
+    }
   }
 
   // Read number of realizations for global tallies
@@ -405,12 +411,6 @@ void load_state_point()
   // of active cycle or inactive cycle
   restart_set_keff();
   simulation::current_batch = simulation::restart_batch;
-
-  // Check to make sure source bank is present
-  if (settings::path_sourcepoint == settings::path_statepoint &&
-      !source_present) {
-    fatal_error("Source bank must be contained in statepoint restart file");
-  }
 
   // Read tallies to master. If we are using Parallel HDF5, all processes
   // need to be included in the HDF5 calls.

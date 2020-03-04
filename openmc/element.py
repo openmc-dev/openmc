@@ -62,7 +62,7 @@ class Element(str):
             Single nuclide name to enrich from a natural composition (e.g., 'O16')
         enrichment_type: {'ao', 'wo'}, optional
             'ao' for enrichment as atom percent and 'wo' for weight percent.
-            Default is 'ao'
+            Default is: 'ao' for two-isotope enrichment; 'wo' for U enrichment
         cross_sections : str, optional
             Location of cross_sections.xml file. Default is None.
 
@@ -103,7 +103,7 @@ class Element(str):
         When the `enrichment` argument is specified with `enrichment_target`, a
         general enrichment procedure is used for elements composed of exactly
         two naturally-occurring isotopes. `enrichment` is interpreted as atom
-        percent by default but can be controlled by the `enrichment_type` 
+        percent by default but can be controlled by the `enrichment_type`
         argument.
 
         """

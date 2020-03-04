@@ -522,7 +522,7 @@ class Material(IDManagerMixin):
             Single nuclide name to enrich from a natural composition (e.g., 'O16')
         enrichment_type: {'ao', 'wo'}, optional
             'ao' for enrichment as atom percent and 'wo' for weight percent.
-            Default is 'ao'
+            Default is: 'ao' for two-isotope enrichment; 'wo' for U enrichment
 
         Notes
         -----

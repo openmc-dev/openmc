@@ -3,9 +3,6 @@ from pytest import approx, raises
 
 from openmc.data import NATURAL_ABUNDANCE, atomic_mass
 
-# Relative tolerance for float comparison
-TOL = 1e-9
-
 
 def test_expand_no_enrichment():
     """ Expand Li in natural compositions"""
@@ -13,7 +10,7 @@ def test_expand_no_enrichment():
 
     # Verify the expansion into ATOMIC fraction against natural composition
     for isotope in lithium.expand(100.0, 'ao'):
-        assert isotope[1] == approx(NATURAL_ABUNDANCE[isotope[0]] * 100.0, rel=TOL)
+        assert isotope[1] == approx(NATURAL_ABUNDANCE[isotope[0]] * 100.0)
 
     # Verify the expansion into WEIGHT fraction against natural composition
     natural = {'Li6': NATURAL_ABUNDANCE['Li6'] * atomic_mass('Li6'),
@@ -23,7 +20,7 @@ def test_expand_no_enrichment():
         natural[key] /= li_am
 
     for isotope in lithium.expand(100.0, 'wo'):
-        assert isotope[1] == approx(natural[isotope[0]] * 100.0, rel=TOL)
+        assert isotope[1] == approx(natural[isotope[0]] * 100.0)
 
 
 def test_expand_enrichment():
@@ -33,11 +30,11 @@ def test_expand_enrichment():
     # Verify the enrichment by atoms
     ref = {'Li6': 75.0, 'Li7': 25.0}
     for isotope in lithium.expand(100.0, 'ao', 25.0, 'Li7', 'ao'):
-        assert isotope[1] == approx(ref[isotope[0]], rel=TOL)
+        assert isotope[1] == approx(ref[isotope[0]])
 
     # Verify the enrichment by weight
     for isotope in lithium.expand(100.0, 'wo', 25.0, 'Li7', 'wo'):
-        assert isotope[1] == approx(ref[isotope[0]], rel=TOL)
+        assert isotope[1] == approx(ref[isotope[0]])
 
 
 def test_expand_exceptions():

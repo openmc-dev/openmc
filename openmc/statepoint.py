@@ -21,7 +21,7 @@ class StatePoint:
 
     Parameters
     ----------
-    filename : str
+    filepath : str or Path
         Path to file to load
     autolink : bool, optional
         Whether to automatically link in metadata from a summary.h5 file and
@@ -115,7 +115,8 @@ class StatePoint:
 
     """
 
-    def __init__(self, filename, autolink=True):
+    def __init__(self, filepath, autolink=True):
+        filename = str(filepath)  # in case it's a Path
         self._f = h5py.File(filename, 'r')
         self._meshes = {}
         self._filters = {}

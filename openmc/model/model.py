@@ -42,8 +42,6 @@ class Model(object):
         Tallies information
     plots : openmc.Plots
         Plot information
-    statepoint : str
-        The last statepoint filename written when the model is run
 
     """
 
@@ -211,8 +209,8 @@ class Model(object):
 
         Returns
         -------
-        uncertainties.UFloat
-            Combined estimator of k-effective from the last statepoint
+        Path
+            the name of the last statepoint written by this run
             (None if no statepoint was written)
 
         """
@@ -222,11 +220,11 @@ class Model(object):
         # Setting tstart here ensures we don't pick up any old statepoint
         # files that might preexist in the output directory
         tstart = time.time()
-        self.statepoint = None
+        last_statepoint = None
 
         openmc.run(**kwargs)
 
-        # Get output directory and last statepoint written by this run
+        # Get output directory and return the last statepoint written by this run
         if self.settings.output and 'path' in self.settings.output:
             output_dir = Path(self.settings.output['path'])
         else:
@@ -235,11 +233,5 @@ class Model(object):
             mtime = sp.stat().st_mtime
             if mtime >= tstart:  # >= allows for poor clock resolution
                 tstart = mtime
-                self.statepoint = sp
-
-        # Open the last statepoint to get the final k-effective
-        keff = None
-        if self.statepoint:
-            with openmc.StatePoint(self.statepoint) as sp:
-                keff = sp.k_combined
-        return keff
+                last_statepoint = sp
+        return last_statepoint

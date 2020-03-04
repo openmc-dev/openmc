@@ -185,6 +185,9 @@ class Mgxs {
     //! @param u Incoming particle direction.
     void
     set_angle_index(Direction u);
+
+    //! \brief Provide const access to list of XsData held by this
+    const std::vector<XsData>& get_xsdata() const { return xs; }
 };
 
 } // namespace openmc

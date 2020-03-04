@@ -518,10 +518,8 @@ class Material(IDManagerMixin):
             in weight percent. For example, input 4.95 for 4.95 weight percent
             enriched U.
             Default is None (natural composition).
-            Value must be in <0;100> for general nuclide
-            Value must be in <0;100./1.008) for Uranium
         enrichment_target: str, optional
-            Single nuclide name to enrich from a natural composition e.g. O16
+            Single nuclide name to enrich from a natural composition (e.g., 'O16')
         enrichment_type: {'ao', 'wo'}, optional
             'ao' for enrichment as atom percent and 'wo' for weight percent.
             Default is 'ao'

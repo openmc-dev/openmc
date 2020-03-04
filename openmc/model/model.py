@@ -240,6 +240,6 @@ class Model(object):
         # Open the last statepoint to get the final k-effective
         keff = None
         if self.statepoint:
-            with openmc.StatePoint(self.statepoint) as sp:
+            with openmc.StatePoint(str(self.statepoint)) as sp:
                 keff = sp.k_combined
         return keff

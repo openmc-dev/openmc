@@ -158,10 +158,10 @@ material with 3% plutonium oxide by weight could be created using the following:
 
    mox = openmc.Material.mix_materials([uo2, puo2], [0.97, 0.03], 'wo')
 
-It should be noted that if mixing fractions are specifed as atomic or weight 
-fractions, the sum of the given fractions should be one. If volume fractions
-are provided and the sum fractions is less than one, the remaining fraction is
-set as void material. 
+It should be noted that, if mixing fractions are specifed as atomic or weight 
+fractions, the supplied fractions should sum to one. If the fractions are specified
+as volume fractions, and the sum of the fractions is less than one, then the remaining 
+fraction is set as void material. 
 
 .. warning:: Materials with :math:`S(\alpha,\beta)` thermal scattering data
              cannot be used in :meth:`Material.mix_materials`. However, thermal

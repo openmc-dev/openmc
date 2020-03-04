@@ -1,6 +1,5 @@
 from collections.abc import Iterable
 from numbers import Integral
-import re
 import subprocess
 
 import openmc

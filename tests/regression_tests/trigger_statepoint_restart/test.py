@@ -90,7 +90,7 @@ class TriggerStatepointRestartTestHarness(PyAPITestHarness):
             # First non-restart run
             spfile = self._model.run(**args)
             sp_batchno_1 = 0
-            assert sp_file
+            assert spfile
             with openmc.StatePoint(spfile) as sp:
                  sp_batchno_1 = sp.current_batch
                  k_combined_1 = sp.k_combined
@@ -114,7 +114,8 @@ class TriggerStatepointRestartTestHarness(PyAPITestHarness):
             assert sp_batchno_2 > 10
             assert sp_batchno_1 == sp_batchno_2, \
                 'Different final batch number after restart'
-            assert k_combined_1 == k_combined_2, \
+            # need str() here as uncertainties.ufloat instances are always different
+            assert str(k_combined_1) == str(k_combined_2), \
                 'Different final k_combined after restart'
             self._write_inputs(self._get_inputs())
             self._compare_inputs()

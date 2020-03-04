@@ -149,8 +149,8 @@ In OpenMC it is possible to mix any number of materials to create a new material
 with the correct nuclide composition and density. The 
 :meth:`Material.mix_materials` method takes a list of materials and
 a list of their mixing fractions. Mixing fractions can be provided as atomic 
-fractions, weight fractions or volume fractions. The fraction type
-is specifed by adding 'ao', 'wo' or 'vo' respectively as the third argument. 
+fractions, weight fractions, or volume fractions. The fraction type
+can be specified by passing 'ao', 'wo', or 'vo' as the third argument, respectively. 
 For example, assuming the required materials have already been defined, a MOX 
 material with 3% plutonium oxide by weight could be created using the following:
 

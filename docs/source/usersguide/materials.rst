@@ -56,7 +56,7 @@ In addition to U235 and U238, concentrations of U234 and U236 will be present
 and are determined through a correlation based on measured data.
 
 It is also possible to perform enrichment of any element that is composed
-of two naturally-occurring isotopes (e.g. Li, B) in terms of atomic percent.
+of two naturally-occurring isotopes (e.g., Li or B) in terms of atomic percent.
 To invoke this, provide the additional argument `enrichment_target` to
 :meth:`Material.add_element`. For example the following would enrich B10
 to 30ao%::

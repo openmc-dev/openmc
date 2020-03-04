@@ -58,9 +58,8 @@ class Element(str):
             If enrichment_taget is not supplied then it is enrichment for U235
             in weight percent. For example, input 4.95 for 4.95 weight percent
             enriched U. Default is None (natural composition).
-            Value must be in <0;100>
         enrichment_target: str, optional
-            Single nuclide name to enrich from a natural composition e.g. O16
+            Single nuclide name to enrich from a natural composition (e.g., 'O16')
         enrichment_type: {'ao', 'wo'}, optional
             'ao' for enrichment as atom percent and 'wo' for weight percent.
             Default is 'ao'
@@ -79,14 +78,13 @@ class Element(str):
         ValueError
             No data is available for any of natural isotopes of the element
         ValueError
-            If only some natural isotopes are avaiable in cross-sections data
-            library and element is not O, W or Ta
+            If only some natural isotopes are available in the cross-section data
+            library and the element is not O, W, or Ta
         ValueError
-            Enrichment of isotope which is not present in natural composition
-            of the element is requested
+            If a non-naturally-occurring isotope is requested
         ValueError
-            Enrichment is requested of the element that is not composed of
-            two isotopes.
+            If enrichment is requested of an element with more than two
+            naturally-occurring isotopes.
         ValueError
             If enrichment procedure for Uranium is used when element is not
             Uranium.
@@ -102,11 +100,11 @@ class Element(str):
         respectively, of the U235 weight fraction. The remainder of the
         isotopic weight is assigned to U238.
 
-        When the `enrichment` argument is specified with `enrichment_target` a
-        general enrichment procedure is used. It will raise exception unless
-        element is composed of exactly 2 isotopes. `enrichment` is interpreted
-        as percent. By default it is atomic. Can be controlled by variable
-        `enrichment_type`.
+        When the `enrichment` argument is specified with `enrichment_target`, a
+        general enrichment procedure is used for elements composed of exactly
+        two naturally-occurring isotopes. `enrichment` is interpreted as atom
+        percent by default but can be controlled by the `enrichment_type` 
+        argument.
 
         """
         # Check input
@@ -210,14 +208,14 @@ class Element(str):
 
             # Check that the element is Uranium
             if self.name != 'U':
-                msg = 'Enrichment procedure for Uranium was requested, '\
-                      'but the isotope is {0} not U'.format(self)
+                msg = ('Enrichment procedure for Uranium was requested, '
+                       'but the isotope is {} not U'.format(self))
                 raise ValueError(msg)
 
             # Check that enrichment_type is not 'ao'
             if enrichment_type == 'ao':
-                msg = 'Enrichment procedure for Uranium requires that '\
-                      'enrichment value is provided as wo%.'
+                msg = ('Enrichment procedure for Uranium requires that '
+                       'enrichment value is provided as wo%.')
                 raise ValueError(msg)
 
             # Calculate the mass fractions of isotopes
@@ -241,49 +239,43 @@ class Element(str):
 
             # Provide more informative error message for U235
             if enrichment_target == 'U235':
-                msg = "There is a special procedure for enrichment of U235 "\
-                      "in U. To invoke it, the arguments 'enrichment_taget'"\
-                      "and 'enrichment_type' should be omitted. Provide "\
-                      "only 'enrichment' as 'wo%'. See User Guide for more "\
-                      "details"
+                msg = ("There is a special procedure for enrichment of U235 "
+                       "in U. To invoke it, the arguments 'enrichment_target'"
+                       "and 'enrichment_type' should be omitted. Provide "
+                       "a value only for 'enrichment' in weight percent.")
                 raise ValueError(msg)
 
             # Check if it is two-isotope mixture
             if len(abundances) != 2:
-                msg = 'Element {0} does not consist of 2 naturally-occurring '\
-                      'isotopes. Therefore it cannot be enriched with the '\
-                      'in-build procedure. Please enter isotopic abundances '\
-                      'manually.'.format(self)
+                msg = ('Element {} does not consist of two naturally-occurring '
+                       'isotopes. Please enter isotopic abundances manually.'
+                       .format(self))
                 raise ValueError(msg)
 
             # Check if the target nuclide is present in the mixture
-            if enrichment_target not in abundances.keys():
-                msg = 'Could not find the the target nuclide {0} in natural '\
-                      'isotopic composition of element {1}. Following ' \
-                      'isotopes are available: {2} '\
-                      .format(enrichment_target, self, list(abundances.keys()))
+            if enrichment_target not in abundances:
+                msg = ('The target nuclide {} is not one of the naturally-occurring '
+                       'isotopes ({})'.format(enrichment_target, list(abundances)))
                 raise ValueError(msg)
 
             # If weight percent enrichment is requested convert to mass fractions
             if enrichment_type == 'wo':
                 # Convert the atomic abundances to weight fractions
                 # Compute the element atomic mass
-                element_am = 0.0
-                for nuclide in abundances.keys():
-                    element_am += atomic_mass(nuclide) * abundances[nuclide]
+                element_am = sum(atomic_mass(nuc)*abundances[nuc] for nuc in abundances)
 
                 # Convert Molar Fractions to mass fractions
-                for nuclide in abundances.keys():
+                for nuclide in abundances:
                     abundances[nuclide] *= atomic_mass(nuclide) / element_am
 
-                # Normalise to one
+                # Normalize to one
                 sum_abundances = sum(abundances.values())
-                for nuclide in abundances.keys():
+                for nuclide in abundances:
                     abundances[nuclide] /= sum_abundances
 
             # Enrich the mixture
             # The procedure is more generic that it needs to be. It allows
-            # to enrich mixtures of more then 2 isotopes, keeping the rations
+            # to enrich mixtures of more then 2 isotopes, keeping the ratios
             # of non-enriched nuclides the same as in natural composition
 
             # Get fraction of non-enriched isotopes in nat. composition
@@ -300,12 +292,12 @@ class Element(str):
             # Convert back to atomic fractions if requested
             if enrichment_type == 'wo':
                 # Convert the mass fractions to mole fractions
-                for nuclide in abundances.keys():
+                for nuclide in abundances:
                     abundances[nuclide] /= atomic_mass(nuclide)
 
                 # Normalize the mole fractions to one
                 sum_abundances = sum(abundances.values())
-                for nuclide in abundances.keys():
+                for nuclide in abundances:
                     abundances[nuclide] /= sum_abundances
 
         # Compute the ratio of the nuclide atomic masses to the element

@@ -52,7 +52,6 @@ class Model(object):
         self.settings = openmc.Settings()
         self.tallies = openmc.Tallies()
         self.plots = openmc.Plots()
-        self.statepoint = None
 
         if geometry is not None:
             self.geometry = geometry

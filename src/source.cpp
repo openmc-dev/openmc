@@ -396,21 +396,4 @@ void fill_source_bank_custom_source()
 #endif
 }
 
-void fill_source_bank_fixedsource()
-{
-  if (settings::path_source.empty() && settings::path_source_library.empty()) {
-    for (int64_t i = 0; i < simulation::work_per_rank; ++i) {
-      // initialize random number seed
-      int64_t id = (simulation::total_gen + overall_generation()) *
-        settings::n_particles + simulation::work_index[mpi::rank] + i + 1;
-      uint64_t seed = init_seed(id, STREAM_SOURCE);
-
-      // sample external source distribution
-      simulation::source_bank[i] = sample_external_source(&seed);
-    }
-  } else if (settings::path_source.empty() && !settings::path_source_library.empty()) {
-     fill_source_bank_custom_source();
-  }
-}
-
 } // namespace openmc

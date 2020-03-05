@@ -441,8 +441,6 @@ void print_runtime()
     show_time("Time synchronizing fission bank", time_bank.elapsed(), 1);
     show_time("Sampling source sites", time_bank_sample.elapsed(), 2);
     show_time("SEND/RECV source sites", time_bank_sendrecv.elapsed(), 2);
-  } else {
-    show_time("Time sampling source", time_sample_source.elapsed(), 1);
   }
   show_time("Time accumulating tallies", time_tallies.elapsed(), 1);
   show_time("Total time for finalization", time_finalize.elapsed());

@@ -387,6 +387,7 @@ void load_state_point()
 
   // Logical flag for source present in statepoint file
   bool source_present;
+  read_attribute(file_id, "source_present", source_present);
 
   // Read information specific to eigenvalue run
   if (settings::run_mode == RunMode::EIGENVALUE) {
@@ -397,7 +398,6 @@ void load_state_point()
     settings::n_inactive = std::max(settings::n_inactive, temp);
 
     // Check to make sure source bank is present
-    read_attribute(file_id, "source_present", source_present);
     if (settings::path_sourcepoint == settings::path_statepoint &&
 	    !source_present) {
 	  fatal_error("Source bank must be contained in statepoint restart file");
@@ -409,7 +409,11 @@ void load_state_point()
 
   // Set k_sum, keff, and current_batch based on whether restart file is part
   // of active cycle or inactive cycle
-  restart_set_keff();
+  if (settings::run_mode == RunMode::EIGENVALUE) {
+    restart_set_keff();
+  }
+
+  // Set current batch number
   simulation::current_batch = simulation::restart_batch;
 
   // Read tallies to master. If we are using Parallel HDF5, all processes

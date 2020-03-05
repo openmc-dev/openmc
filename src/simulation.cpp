@@ -69,9 +69,10 @@ int openmc_simulation_init()
   // Determine how much work each process should do
   calculate_work();
 
-  // Allocate source bank, and for eigenvalue simulations also allocate the
-  // fission bank
-  allocate_banks();
+  // Allocate source and fission banks for eigenvalue simulations
+  if (settings::run_mode == RunMode::EIGENVALUE) {
+    allocate_banks();
+  }
 
   // If doing an event-based simulation, intialize the particle buffer
   // and event queues
@@ -105,7 +106,10 @@ int openmc_simulation_init()
     load_state_point();
     write_message("Resuming simulation...", 6);
   } else {
-    initialize_source();
+	//Only initialize primary source bank for eigenvalue simulations
+	if (settings::run_mode == RunMode::EIGENVALUE) {
+	  initialize_source();
+	}
   }
 
   // Display header
@@ -271,10 +275,8 @@ void allocate_banks()
 {
   // Allocate source bank
   simulation::source_bank.resize(simulation::work_per_rank);
-
-  if (settings::run_mode == RunMode::EIGENVALUE) {
-    init_fission_bank(3*simulation::work_per_rank);
-  }
+  // Allocate fission bank
+  init_fission_bank(3*simulation::work_per_rank);
 }
 
 void initialize_batch()
@@ -350,7 +352,7 @@ void finalize_batch()
       && !settings::cmfd_run) {
     if (contains(settings::sourcepoint_batch, simulation::current_batch)
         && settings::source_write && !settings::source_separate) {
-      bool b = true;
+      bool b = (settings::run_mode == RunMode::EIGENVALUE) ? true : false;
       openmc_statepoint_write(nullptr, &b);
     } else {
       bool b = false;
@@ -358,16 +360,18 @@ void finalize_batch()
     }
   }
 
-  // Write out a separate source point if it's been specified for this batch
-  if (contains(settings::sourcepoint_batch, simulation::current_batch)
-      && settings::source_write && settings::source_separate) {
-    write_source_point(nullptr);
-  }
+  if (settings::run_mode == RunMode::EIGENVALUE) {
+    // Write out a separate source point if it's been specified for this batch
+    if (contains(settings::sourcepoint_batch, simulation::current_batch)
+        && settings::source_write && settings::source_separate) {
+      write_source_point(nullptr);
+    }
 
-  // Write a continously-overwritten source point if requested.
-  if (settings::source_latest) {
-    auto filename = settings::path_output + "source.h5";
-    write_source_point(filename.c_str());
+    // Write a continously-overwritten source point if requested.
+    if (settings::source_latest) {
+      auto filename = settings::path_output + "source.h5";
+      write_source_point(filename.c_str());
+    }
   }
 }
 
@@ -429,18 +433,24 @@ void finalize_generation()
       }
     }
 
-  } else if (settings::run_mode == RunMode::FIXED_SOURCE) {
-    // For fixed-source mode, we need to sample the external source
-    simulation::time_sample_source.start();
-    fill_source_bank_fixedsource();
-    simulation::time_sample_source.stop();
   }
 }
 
 void initialize_history(Particle* p, int64_t index_source)
 {
   // set defaults
-  p->from_source(&simulation::source_bank[index_source - 1]);
+  if(settings::run_mode == RunMode::FIXED_SOURCE) {
+	// initialize random number seed
+	int64_t id = (simulation::total_gen + overall_generation() - 1)*settings::n_particles +
+	  simulation::work_index[mpi::rank] + index_source;
+	uint64_t seed = init_seed(id, STREAM_SOURCE);
+	// sample external source distribution then set
+	Particle::Bank site = sample_external_source(&seed);
+	p->from_source(&site);
+  } else if (settings::run_mode == RunMode::EIGENVALUE) {
+	// set defaults for eigenvalue simulations from primary bank
+    p->from_source(&simulation::source_bank[index_source - 1]);
+  }
   p->current_work_ = index_source;
 
   // set identifier for particle

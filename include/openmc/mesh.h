@@ -219,6 +219,10 @@ public:
 
   double negative_grid_boundary(int* ijk, int i) const override;
 
+  std::string bin_label(int bin) const override;
+
+  int n_surface_bins() const override;
+
   std::pair<std::vector<double>, std::vector<double>>
   plot(Position plot_ll, Position plot_ur) const override;
 

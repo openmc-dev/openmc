@@ -165,7 +165,6 @@ endif()
 add_subdirectory(vendor/xtl)
 set(xtl_DIR ${CMAKE_CURRENT_BINARY_DIR}/vendor/xtl)
 add_subdirectory(vendor/xtensor)
-target_link_libraries(xtensor INTERFACE xtl)
 
 #===============================================================================
 # GSL header-only library

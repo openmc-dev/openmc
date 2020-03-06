@@ -23,6 +23,7 @@
 #include "openmc/hdf5_interface.h"
 #include "openmc/message_passing.h"
 #include "openmc/search.h"
+#include "openmc/settings.h"
 #include "openmc/tallies/filter.h"
 #include "openmc/xml_interface.h"
 
@@ -2127,14 +2128,16 @@ UnstructuredMesh::set_score_data(const std::string& score,
 void
 UnstructuredMesh::write(std::string base_filename) const {
   // add extension to the base name
-  base_filename += ".h5m";
+  auto filename = base_filename + ".h5m";
+  write_message("Writing unstructured mesh " + filename + "...", 5);
+  filename = settings::path_output + filename;
 
   // write the tetrahedral elements of the mesh only
   // to avoid clutter from zero-value data on other
   // elements during visualization
 
   moab::ErrorCode rval;
-  rval = mbi_->write_mesh(base_filename.c_str(), &tet_set_, 1);
+  rval = mbi_->write_mesh(filename.c_str(), &tet_set_, 1);
   if (rval != moab::MB_SUCCESS) {
     std::stringstream msg;
     msg << "Failed to write unstructured mesh " << id_;

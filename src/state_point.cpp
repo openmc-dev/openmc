@@ -684,6 +684,7 @@ void read_source_bank(hid_t group_id)
 
 #ifdef DAGMC
 void write_unstructured_mesh_results() {
+
   for (auto& tally : model::tallies) {
     for (auto filter_idx : tally->filters()) {
       auto& filter = model::tally_filters[filter_idx];
@@ -692,13 +693,26 @@ void write_unstructured_mesh_results() {
         auto& mesh = model::meshes[mesh_filter->mesh()];
         auto umesh = dynamic_cast<UnstructuredMesh*>(mesh.get());
         if (umesh) {
+
+          // if this tally has more than one filter, print
+          // warning and skip writing the mesh
+          if (tally->filters().size() > 1) {
+            warning(fmt::format("Skipping unstructured mesh writing for tally "
+                                "{0}. More than one filter is present on the tally.",
+                                tally->id_));
+          }
+
+          int n_realizations = tally->n_realizations_;
+          // write each score for this tally to the mesh
           for (int i = 0; i < tally->scores_.size(); i++) {
-            // get values for this score and create vectors for marking
-            // up the mesh
+
             std::vector<double> vals_vec, sum_sq_vec;
             for (int j = 0; j < tally->results_.shape()[0]; j++) {
-              vals_vec.push_back(tally->results_(j, i, TallyResult::SUM) / tally->n_realizations_);
-              sum_sq_vec.push_back(tally->results_(j , i, TallyResult::SUM_SQ) - std::pow(vals_vec[i], 2)/ tally->n_realizations_);
+              double mean = tally->results_(j, i, TallyResult::SUM) / n_realizations;
+              double sum_sq = tally->results_(j , i, TallyResult::SUM_SQ);
+              sum_sq_vec.push_back(sum_sq / n_realizations -
+                                   std::pow(mean, 2) / (n_realizations - 1));
+              vals_vec.push_back(mean);
             }
 
             // set the score data on the mesh
@@ -709,14 +723,12 @@ void write_unstructured_mesh_results() {
 
           // Determine width for zero padding
           int w = std::to_string(settings::n_max_batches).size();
-
-          std::string umesh_filename = fmt::format("{0}tally_{1}.{2:0{3}}",
-                                                   settings::path_output,
-                                                   tally->id_,
-                                                   simulation::current_batch,
-                                                   w);
-
-          umesh->write(umesh_filename);
+          std::string filename = fmt::format("tally_{0}.{1:0{2}}",
+                                             tally->id_,
+                                             simulation::current_batch,
+                                             w);
+          // Write message
+          umesh->write(filename);
         }
       }
     }

@@ -716,11 +716,18 @@ void write_unstructured_mesh_results() {
                 mean_vec.push_back(mean);
               }
 
-              // set the score data on the mesh
-              auto score_str = fmt::format("score_{0}_nuc_{1}",
-                                           tally->scores_[i_score],
-                                           tally->nuclides_[i_nuc]);
-              umesh->set_score_data(score_str,
+              // generate a name for the value
+              std::string nuclide_name = "total";
+              if (tally->nuclides_[i_nuc] > -1) {
+                nuclide_name = data::nuclides[tally->nuclides_[i_nuc]]->name_;
+              }
+
+              std::string score_name = tally->score_strs_[i_score];
+
+              auto score_str = fmt::format("{0}_{1}",
+                                           score_name,
+                                           nuclide_name);
+               umesh->set_score_data(score_str,
                                     mean_vec,
                                     std_dev_vec);
               mean_vec.clear();

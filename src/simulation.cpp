@@ -112,6 +112,12 @@ int openmc_simulation_init()
 	}
   }
 
+  // If fixed source and using custom source library then need to load
+  if (settings::run_mode == RunMode::FIXED_SOURCE &&
+        !settings::path_source_library.empty()) {
+	load_custom_source_library();
+  }
+
   // Display header
   if (mpi::master) {
     if (settings::run_mode == RunMode::FIXED_SOURCE) {
@@ -156,6 +162,12 @@ int openmc_simulation_finalize()
   // Deactivate all tallies
   for (auto& t : model::tallies) {
     t->active_ = false;
+  }
+
+  // If fixed source and using custom source library then need to close
+  if (settings::run_mode == RunMode::FIXED_SOURCE &&
+      !settings::path_source_library.empty()) {
+  	close_custom_source_library();
   }
 
   // Stop timers and show timing statistics
@@ -444,8 +456,13 @@ void initialize_history(Particle* p, int64_t index_source)
 	int64_t id = (simulation::total_gen + overall_generation() - 1)*settings::n_particles +
 	  simulation::work_index[mpi::rank] + index_source;
 	uint64_t seed = init_seed(id, STREAM_SOURCE);
-	// sample external source distribution then set
-	Particle::Bank site = sample_external_source(&seed);
+	// sample from external source distribution or custom library then set
+	Particle::Bank site;
+	if (!settings::path_source_library.empty()) {
+	  site = sample_custom_source_library(&seed);
+	} else {
+	  site = sample_external_source(&seed);
+	}
 	p->from_source(&site);
   } else if (settings::run_mode == RunMode::EIGENVALUE) {
 	// set defaults for eigenvalue simulations from primary bank

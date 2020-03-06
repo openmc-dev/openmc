@@ -38,6 +38,10 @@ namespace openmc {
 
 namespace model {
 
+typedef Particle::Bank (*sample_t)(uint64_t  &seed);
+sample_t sample_source;
+void* source_library;
+
 std::vector<SourceDistribution> external_sources;
 
 }
@@ -276,25 +280,10 @@ void initialize_source()
     file_close(file_id);
   } else if (!settings::path_source_library.empty()) {
 
-  #ifdef HAS_DYNAMIC_LINKING
-    // Get the source from a library object
     write_message(fmt::format("Sampling from library source {}...",
       settings::path_source), 6);
 
-    // Open the library
-    auto source_library = dlopen(settings::path_source_library.c_str(), RTLD_LAZY);
-    if (!source_library) {
-      fatal_error("Couldn't open source library " + settings::path_source_library);
-    }
-
-    // reset errors
-    dlerror();
-
     fill_source_bank_custom_source();
-  #else
-    fatal_error("Custom source libraries have not yet been implemented for "
-      "non-POSIX systems");
-  #endif
 
   } else {
     // Generation source sites from specified distribution in user input
@@ -355,13 +344,14 @@ void free_memory_source()
   model::external_sources.clear();
 }
 
-// fill the source bank from the external source
-void fill_source_bank_custom_source()
+//Load custom source library
+void load_custom_source_library()
 {
 #ifdef HAS_DYNAMIC_LINKING
+
   // Open the library
-  auto source_library = dlopen(settings::path_source_library.c_str(), RTLD_LAZY);
-  if (!source_library) {
+  model::source_library = dlopen(settings::path_source_library.c_str(), RTLD_LAZY);
+  if (!model::source_library) {
     fatal_error("Couldn't open source library " + settings::path_source_library);
   }
 
@@ -369,15 +359,41 @@ void fill_source_bank_custom_source()
   dlerror();
 
   // get the function from the library
-  using sample_t = Particle::Bank (*)(uint64_t* seed);
-  auto sample_source = reinterpret_cast<sample_t>(dlsym(source_library, "sample_source"));
+  //using sample_t = Particle::Bank (*)(uint64_t* seed);
+  model::sample_source = reinterpret_cast<model::sample_t>(dlsym(model::source_library, "sample_source"));
 
   // check for any dlsym errors
   auto dlsym_error = dlerror();
   if (dlsym_error) {
-    dlclose(source_library);
+    dlclose(model::source_library);
     fatal_error(fmt::format("Couldn't open the sample_source symbol: {}", dlsym_error));
   }
+
+#else
+  fatal_error("Custom source libraries have not yet been implemented for "
+    "non-POSIX systems");
+#endif
+
+}
+
+//Release custom source library
+void close_custom_source_library()
+{
+  dlclose(model::source_library);
+}
+
+//Sample source particle from custom library
+Particle::Bank sample_custom_source_library(uint64_t* seed)
+{
+  Particle::Bank site = model::sample_source(*seed);
+  return site;
+}
+
+// fill the source bank from the external source
+void fill_source_bank_custom_source()
+{
+  // Load the custom library
+  load_custom_source_library();
 
   // Generation source sites from specified distribution in the
   // library source
@@ -387,13 +403,12 @@ void fill_source_bank_custom_source()
       settings::n_particles + simulation::work_index[mpi::rank] + i + 1;
      uint64_t seed = init_seed(id, STREAM_SOURCE);
 
-    // sample external source distribution
-    simulation::source_bank[i] = sample_source(&seed);
+    // sample custom library source
+    simulation::source_bank[i] = sample_custom_source_library(&seed);
   }
 
   // release the library
-  dlclose(source_library);
-#endif
+  close_custom_source_library();
 }
 
 } // namespace openmc

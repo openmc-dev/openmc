@@ -704,21 +704,28 @@ void write_unstructured_mesh_results() {
 
           int n_realizations = tally->n_realizations_;
           // write each score for this tally to the mesh
-          for (int i = 0; i < tally->scores_.size(); i++) {
+          for (int i_score = 0; i_score < tally->scores_.size(); i_score++) {
+            for (int i_nuc = 0; i_nuc < tally->nuclides_.size(); i_nuc++) {
+              std::vector<double> mean_vec, std_dev_vec;
+              int nuc_score_idx = i_score + i_nuc * tally->scores_.size();
+              for (int j = 0; j < tally->results_.shape()[0]; j++) {
+                double mean = tally->results_(j, nuc_score_idx, TallyResult::SUM) / n_realizations;
+                double sum_sq = tally->results_(j , nuc_score_idx, TallyResult::SUM_SQ);
+                std_dev_vec.push_back(sum_sq / n_realizations -
+                                      std::pow(mean, 2) / (n_realizations - 1));
+                mean_vec.push_back(mean);
+              }
 
-            std::vector<double> vals_vec, sum_sq_vec;
-            for (int j = 0; j < tally->results_.shape()[0]; j++) {
-              double mean = tally->results_(j, i, TallyResult::SUM) / n_realizations;
-              double sum_sq = tally->results_(j , i, TallyResult::SUM_SQ);
-              sum_sq_vec.push_back(sum_sq / n_realizations -
-                                   std::pow(mean, 2) / (n_realizations - 1));
-              vals_vec.push_back(mean);
+              // set the score data on the mesh
+              auto score_str = fmt::format("score_{0}_nuc_{1}",
+                                           tally->scores_[i_score],
+                                           tally->nuclides_[i_nuc]);
+              umesh->set_score_data(score_str,
+                                    mean_vec,
+                                    std_dev_vec);
+              mean_vec.clear();
+              std_dev_vec.clear();
             }
-
-            // set the score data on the mesh
-            umesh->set_score_data(std::to_string(tally->scores_[i]),
-                                  vals_vec,
-                                  sum_sq_vec);
           }
 
           // Determine width for zero padding
@@ -727,6 +734,7 @@ void write_unstructured_mesh_results() {
                                              tally->id_,
                                              simulation::current_batch,
                                              w);
+
           // Write message
           umesh->write(filename);
         }

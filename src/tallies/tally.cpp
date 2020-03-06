@@ -650,6 +650,7 @@ Tally::set_scores(const std::vector<std::string>& scores)
       break;
     }
 
+    score_strs_.push_back(score_str);
     scores_.push_back(score);
   }
 

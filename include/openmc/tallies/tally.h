@@ -92,6 +92,8 @@ public:
 
   std::vector<int> scores_; //!< Filter integrands (e.g. flux, fission)
 
+  std::vector<std::string> score_strs_; //!< Score names
+
   //! Index of each nuclide to be tallied.  -1 indicates total material.
   std::vector<int> nuclides_ {-1};
 

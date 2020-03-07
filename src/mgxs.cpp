@@ -383,9 +383,9 @@ Mgxs::Mgxs(const std::string& in_name, const std::vector<double>& mat_kTs,
     // If we are doing nearest temperature interpolation, then we don't need
     // to do the 2nd temperature
     int num_interp_points = 2;
+    if (settings::temperature_method == TemperatureMethod::NEAREST) num_interp_points = 1;
     std::vector<double> interp(micros.size());
     std::vector<int> temp_indices(micros.size());
-    if (settings::temperature_method == TemperatureMethod::NEAREST) num_interp_points = 1;
     for (int interp_point = 0; interp_point < num_interp_points; interp_point++) {
       for (int m = 0; m < micros.size(); m++) {
         interp[m] = (1. - micro_t_interp[m]) * atom_densities[m];

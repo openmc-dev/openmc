@@ -700,6 +700,7 @@ void write_unstructured_mesh_results() {
             warning(fmt::format("Skipping unstructured mesh writing for tally "
                                 "{0}. More than one filter is present on the tally.",
                                 tally->id_));
+            break;
           }
 
           int n_realizations = tally->n_realizations_;

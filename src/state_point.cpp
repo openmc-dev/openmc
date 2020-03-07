@@ -722,7 +722,7 @@ void write_unstructured_mesh_results() {
                 nuclide_name = data::nuclides[tally->nuclides_[i_nuc]]->name_;
               }
 
-              std::string score_name = tally->score_strs_[i_score];
+              std::string score_name = tally->score_name(i_score);
 
               auto score_str = fmt::format("{0}_{1}",
                                            score_name,

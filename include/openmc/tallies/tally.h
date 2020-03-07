@@ -72,6 +72,8 @@ public:
 
   void accumulate();
 
+  std::string score_name(int i) const;
+
   //----------------------------------------------------------------------------
   // Major public data members.
 
@@ -91,8 +93,6 @@ public:
   int n_realizations_ {0};
 
   std::vector<int> scores_; //!< Filter integrands (e.g. flux, fission)
-
-  std::vector<std::string> score_strs_; //!< Score names
 
   //! Index of each nuclide to be tallied.  -1 indicates total material.
   std::vector<int> nuclides_ {-1};

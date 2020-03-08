@@ -1190,15 +1190,17 @@ class Materials(cv.CheckedList):
                 element = ET.Element('cross_sections')
                 element.text = str(self._cross_sections)
                 clean_indentation(element, level=1)
-                out = ET.tostring(element, encoding='utf-8').strip()
-                fh.write('  ' + str(out, encoding='utf-8') + '\n')
+                element.tail = element.tail.strip(' ')
+                fh.write('  ')
+                ET.ElementTree(element).write(fh, encoding='unicode')
 
             # Write the <material> elements.
             for material in sorted(self, key=lambda x: x.id):
                 element = material.to_xml_element(self.cross_sections)
                 clean_indentation(element, level=1)
-                out = ET.tostring(element, encoding='utf-8').strip()
-                fh.write('  ' + str(out, encoding='utf-8') + '\n')
+                element.tail = element.tail.strip(' ')
+                fh.write('  ')
+                ET.ElementTree(element).write(fh, encoding='unicode')
 
             # Write the closing tag for the root element.
             fh.write('</materials>\n')

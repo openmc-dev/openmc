@@ -18,7 +18,7 @@ def download(url, checksum=None, as_browser=False, output_path=None, **kwargs):
         MD5 checksum to check against
     as_browser : bool
         Change User-Agent header to appear as a browser
-    output_path : pathlib.Path
+    output_path : str or Path
         Specifies a location to save the downloaded file
     kwargs : dict
         Keyword arguments passed to :func:urllib.request.urlopen
@@ -36,7 +36,7 @@ def download(url, checksum=None, as_browser=False, output_path=None, **kwargs):
 
     if output_path is not None:
         cwd = Path.cwd()
-        output_path.mkdir(parents=True, exist_ok=True) 
+        Path(output_path).mkdir(parents=True, exist_ok=True) 
         os.chdir(output_path)
 
     with urlopen(page, **kwargs) as response:

@@ -7,7 +7,7 @@ from urllib.request import urlopen, Request
 _BLOCK_SIZE = 16384
 
 
-def download(url, checksum=None, as_browser=False, **kwargs):
+def download(url, checksum=None, as_browser=False, output_path=None, **kwargs):
     """Download file from a URL
 
     Parameters
@@ -18,6 +18,8 @@ def download(url, checksum=None, as_browser=False, **kwargs):
         MD5 checksum to check against
     as_browser : bool
         Change User-Agent header to appear as a browser
+    output_path : pathlib.Path
+        Specifies a location to save the downloaded file
     kwargs : dict
         Keyword arguments passed to :func:urllib.request.urlopen
 
@@ -31,6 +33,11 @@ def download(url, checksum=None, as_browser=False, **kwargs):
         page = Request(url, headers={'User-Agent': 'Mozilla/5.0'})
     else:
         page = url
+
+    if output_path is not None:
+        cwd = Path.cwd()
+        output_path.mkdir(parents=True, exist_ok=True) 
+        os.chdir(output_path)
 
     with urlopen(page, **kwargs) as response:
         # Get file size from header
@@ -66,5 +73,8 @@ def download(url, checksum=None, as_browser=False, **kwargs):
                           "re-run the script. Otherwise, please contact "
                           "OpenMC developers by emailing "
                           "openmc-users@googlegroups.com.".format(basename))
+
+    if output_path is not None:
+        os.chdir(cwd)
 
     return basename

@@ -1178,26 +1178,30 @@ class Materials(cv.CheckedList):
             p /= 'materials.xml'
 
         # Open the file in write mode.
-        with open(str(p), 'wb') as fh:
+        with open(str(p), 'w', encoding='utf-8',
+                  errors='xmlcharrefreplace') as fh:
+
             # Write the header and the opening tag for the root element.
-            fh.write(b"<?xml version='1.0' encoding='utf-8'?>\n")
-            fh.write(b'<materials>\n')
+            fh.write("<?xml version='1.0' encoding='utf-8'?>\n")
+            fh.write('<materials>\n')
 
             # Write the <cross_sections> element.
             if self._cross_sections is not None:
                 element = ET.Element('cross_sections')
                 element.text = str(self._cross_sections)
                 clean_indentation(element, level=1)
-                fh.write(b'  ' + ET.tostring(element).strip() + b'\n')
+                out = ET.tostring(element, encoding='utf-8').strip()
+                fh.write('  ' + str(out, encoding='utf-8') + '\n')
 
             # Write the <material> elements.
             for material in sorted(self, key=lambda x: x.id):
                 element = material.to_xml_element(self.cross_sections)
                 clean_indentation(element, level=1)
-                fh.write(b'  ' + ET.tostring(element).strip() + b'\n')
+                out = ET.tostring(element, encoding='utf-8').strip()
+                fh.write('  ' + str(out, encoding='utf-8') + '\n')
 
             # Write the closing tag for the root element.
-            fh.write(b'</materials>\n')
+            fh.write('</materials>\n')
 
     @classmethod
     def from_xml(cls, path='materials.xml'):

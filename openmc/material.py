@@ -1163,15 +1163,6 @@ class Materials(cv.CheckedList):
         for material in self:
             material.make_isotropic_in_lab()
 
-    def _create_material_subelements(self, root_element):
-        for material in sorted(self, key=lambda x: x.id):
-            root_element.append(material.to_xml_element(self.cross_sections))
-
-    def _create_cross_sections_subelement(self, root_element):
-        if self._cross_sections is not None:
-            element = ET.SubElement(root_element, "cross_sections")
-            element.text = str(self._cross_sections)
-
     def export_to_xml(self, path='materials.xml'):
         """Export material collection to an XML file.
 
@@ -1181,22 +1172,32 @@ class Materials(cv.CheckedList):
             Path to file to write. Defaults to 'materials.xml'.
 
         """
-
-        root_element = ET.Element("materials")
-        self._create_cross_sections_subelement(root_element)
-        self._create_material_subelements(root_element)
-
-        # Clean the indentation in the file to be user-readable
-        clean_indentation(root_element)
-
         # Check if path is a directory
         p = Path(path)
         if p.is_dir():
             p /= 'materials.xml'
 
-        # Write the XML Tree to the materials.xml file
-        tree = ET.ElementTree(root_element)
-        tree.write(str(p), xml_declaration=True, encoding='utf-8')
+        # Open the file in write mode.
+        with open(str(p), 'wb') as fh:
+            # Write the header and the opening tag for the root element.
+            fh.write(b"<?xml version='1.0' encoding='utf-8'?>\n")
+            fh.write(b'<materials>\n')
+
+            # Write the <cross_sections> element.
+            if self._cross_sections is not None:
+                element = ET.Element('cross_sections')
+                element.text = str(self._cross_sections)
+                clean_indentation(element, level=1)
+                fh.write(b'  ' + ET.tostring(element).strip() + b'\n')
+
+            # Write the <material> elements.
+            for material in sorted(self, key=lambda x: x.id):
+                element = material.to_xml_element(self.cross_sections)
+                clean_indentation(element, level=1)
+                fh.write(b'  ' + ET.tostring(element).strip() + b'\n')
+
+            # Write the closing tag for the root element.
+            fh.write(b'</materials>\n')
 
     @classmethod
     def from_xml(cls, path='materials.xml'):

@@ -276,17 +276,17 @@ public:
 
 private:
 
-//! Finds all intersections with faces of the mesh.
-//
-//! \param[in] start Staring location
-//! \param[in] dir Normalized particle direction
-//! \param[in] length of particle track
-//! \param[out] Mesh intersections
-void
-intersect_track(const moab::CartVect& start,
-                const moab::CartVect& dir,
-                double track_len,
-                UnstructuredMeshHits& hits) const;
+  //! Finds all intersections with faces of the mesh.
+  //
+  //! \param[in] start Staring location
+  //! \param[in] dir Normalized particle direction
+  //! \param[in] length of particle track
+  //! \param[out] Mesh intersections
+  void
+  intersect_track(const moab::CartVect& start,
+                  const moab::CartVect& dir,
+                  double track_len,
+                  UnstructuredMeshHits& hits) const;
 
   //! Calculates the volume for a given tetrahedron handle.
   //
@@ -395,9 +395,10 @@ public:
   std::string filename_; //<! Path to unstructured mesh file
 
 private:
+
   moab::Range ehs_; //!< Range of tetrahedra EntityHandle's in the mesh
-  moab::EntityHandle meshset_; //!< EntitySet containing all Tets/Tris
-  moab::EntityHandle tet_set_;
+  moab::EntityHandle meshset_; //!< EntitySet containing all elements
+  moab::EntityHandle tet_set_; //! < EntitySet containing all tetrahedra
   moab::EntityHandle kdtree_root_; //!< Root of the MOAB KDTree
   std::shared_ptr<moab::Interface> mbi_; //!< MOAB instance
   std::unique_ptr<moab::AdaptiveKDTree> kdtree_; //!< MOAB KDTree instance

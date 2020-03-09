@@ -1752,53 +1752,6 @@ UnstructuredMesh::bins_crossed(const Particle* p,
   }
 
   return;
-
-  /// IMPLEMENTATION TWO
-  // double prev_int_dist = 0.0;
-
-  // if (hits.size() == 0) {
-  //   moab::EntityHandle last_r_tet =get_tet((r0 + r1) * 0.5);
-  //   if (last_r_tet) {
-  //     bins.push_back(get_bin_from_ent_handle(last_r_tet));
-  //     lengths.push_back(1.0);
-  //   }
-  //   return;
-  // }
-
-  // moab::EntityHandle tet = get_tet(last_r + u * hits.front().first / 2.0);
-
-  // if (!tet) {
-  //   last_r = last_r + u * hits.front().first;
-  //   hits.erase(hits.begin());
-  // }
-
-  // for (const auto& hit : hits) {
-  //   tet = get_tet(last_r + u * (prev_int_dist +  hit.first) / 2.0 );
-  //   if (!tet) {
-  //     prev_int_dist = hit.first;
-  //     continue;
-  //   }
-  //   int bin = get_bin_from_ent_handle(tet);
-  //   double tally_val = (hit.first - prev_int_dist) / track_len);
-  //   if (tally_val < 0.0) {
-  //     fatal_error("Negative score applied to tally");
-  //   }
-
-  //   bins.push_back(bin);
-  //   lengths.push_back(tally_val);
-  //   prev_int_dist = hit.first;
-  // }
-
-  // // tally remaining portion of track (if any exists)
-  // if (hits.back().first < track_len) {
-  //   tet = get_tet(last_r + u * (track_len + hits.back().first) / 2.0);
-  //   if (tet) {
-  //     bins.push_back(get_bin_from_ent_handle(tet));
-  //     double tally_val = (track_len - hits.back().first) / track_len);
-  //     lengths.push_back(tally_val);
-  //   }
-  // }
-
 };
 
 moab::EntityHandle
@@ -1941,8 +1894,10 @@ UnstructuredMesh::point_in_tet(const moab::CartVect& r, moab::EntityHandle tet) 
 
   moab::CartVect bary_coords = a_inv * (r - p_zero);
 
-  bool in_tet = (bary_coords[0] >= 0 && bary_coords[1] >= 0 && bary_coords[2] >= 0 &&
-                 bary_coords[0] + bary_coords[1] + bary_coords[2] <= 1.);
+  bool in_tet = (bary_coords[0] >= 0.0 &&
+                 bary_coords[1] >= 0.0 &&
+                 bary_coords[2] >= 0.0 &&
+                 bary_coords[0] + bary_coords[1] + bary_coords[2] <= 1.0);
 
   return in_tet;
 }

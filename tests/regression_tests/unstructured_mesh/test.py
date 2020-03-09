@@ -252,7 +252,7 @@ class UnstructuredMeshTest(PyAPITestHarness):
     def _cleanup(self):
         super()._cleanup()
 
-        output = glob.glob('*umesh.h5m')
+        output = glob.glob('tally*.h5m')
         for f in output:
             if os.path.exists(f):
                 os.remove(f)

@@ -2102,7 +2102,6 @@ UnstructuredMesh::write(std::string base_filename) const {
 
 #endif
 
-
 //==============================================================================
 // Non-member functions
 //==============================================================================
@@ -2126,6 +2125,9 @@ void read_meshes(pugi::xml_node root)
     }
     else if (mesh_type == "unstructured") {
       model::meshes.push_back(std::make_unique<UnstructuredMesh>(node));
+#else
+    else if (mesh_type == "unstructured") {
+      fatal_error("Unstructured mesh support is disabled.");
 #endif
     } else {
       fatal_error("Invalid mesh type: " + mesh_type);

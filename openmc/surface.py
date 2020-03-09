@@ -32,22 +32,28 @@ class SurfaceCoefficient:
 
     Parameters
     -----------
-    symbol : str
-        Name of the coefficient
+    value : float or str
+        Value of the coefficient (float) or the name of the coefficient that
+        it is equivalent to (str).
 
     """
-    def __init__(self, symbol):
-        self.symbol = symbol
+    def __init__(self, value):
+        self.value = value
 
     def __get__(self, instance, owner=None):
         if instance is None:
             return self
         else:
-            return instance._coefficients[self.symbol]
+            if isinstance(self.value, str):
+                return instance._coefficients[self.value]
+            else:
+                return self.value
 
     def __set__(self, instance, value):
-        check_type('{} coefficient'.format(self.symbol), value, Real)
-        instance._coefficients[self.symbol] = value
+        if isinstance(self.value, Real):
+            raise AttributeError('This coefficient is read-only')
+        check_type('{} coefficient'.format(self.value), value, Real)
+        instance._coefficients[self.value] = value
 
 
 def _future_kwargs_warning_helper(cls, *args, **kwargs):
@@ -785,22 +791,10 @@ class XPlane(PlaneMixin, Surface):
         self.x0 = x0
 
     x0 = SurfaceCoefficient('x0')
-
-    @property
-    def a(self):
-        return 1.
-
-    @property
-    def b(self):
-        return 0.
-
-    @property
-    def c(self):
-        return 0.
-
-    @property
-    def d(self):
-        return self.x0
+    a = SurfaceCoefficient(1.)
+    b = SurfaceCoefficient(0.)
+    c = SurfaceCoefficient(0.)
+    d = x0
 
     def evaluate(self, point):
         return point[0] - self.x0
@@ -856,22 +850,10 @@ class YPlane(PlaneMixin, Surface):
         self.y0 = y0
 
     y0 = SurfaceCoefficient('y0')
-
-    @property
-    def a(self):
-        return 0.
-
-    @property
-    def b(self):
-        return 1.
-
-    @property
-    def c(self):
-        return 0.
-
-    @property
-    def d(self):
-        return self.y0
+    a = SurfaceCoefficient(0.)
+    b = SurfaceCoefficient(1.)
+    c = SurfaceCoefficient(0.)
+    d = y0
 
     def evaluate(self, point):
         return point[1] - self.y0
@@ -927,22 +909,10 @@ class ZPlane(PlaneMixin, Surface):
         self.z0 = z0
 
     z0 = SurfaceCoefficient('z0')
-
-    @property
-    def a(self):
-        return 0.
-
-    @property
-    def b(self):
-        return 0.
-
-    @property
-    def c(self):
-        return 1.
-
-    @property
-    def d(self):
-        return self.z0
+    a = SurfaceCoefficient(0.)
+    b = SurfaceCoefficient(0.)
+    c = SurfaceCoefficient(1.)
+    d = z0
 
     def evaluate(self, point):
         return point[2] - self.z0
@@ -1356,25 +1326,13 @@ class XCylinder(QuadricMixin, Surface):
         for key, val in zip(self._coeff_keys, (y0, z0, r)):
             setattr(self, key, val)
 
+    x0 = SurfaceCoefficient(0.)
     y0 = SurfaceCoefficient('y0')
     z0 = SurfaceCoefficient('z0')
     r = SurfaceCoefficient('r')
-
-    @property
-    def x0(self):
-        return 0.
-
-    @property
-    def dx(self):
-        return 1.
-
-    @property
-    def dy(self):
-        return 0.
-
-    @property
-    def dz(self):
-        return 0.
+    dx = SurfaceCoefficient(1.)
+    dy = SurfaceCoefficient(0.)
+    dz = SurfaceCoefficient(0.)
 
     def _get_base_coeffs(self):
         y0, z0, r = self.y0, self.z0, self.r
@@ -1460,24 +1418,12 @@ class YCylinder(QuadricMixin, Surface):
             setattr(self, key, val)
 
     x0 = SurfaceCoefficient('x0')
+    y0 = SurfaceCoefficient(0.)
     z0 = SurfaceCoefficient('z0')
     r = SurfaceCoefficient('r')
-
-    @property
-    def y0(self):
-        return 0.
-
-    @property
-    def dx(self):
-        return 0.
-
-    @property
-    def dy(self):
-        return 1.
-
-    @property
-    def dz(self):
-        return 0.
+    dx = SurfaceCoefficient(0.)
+    dy = SurfaceCoefficient(1.)
+    dz = SurfaceCoefficient(0.)
 
     def _get_base_coeffs(self):
         x0, z0, r = self.x0, self.z0, self.r
@@ -1564,23 +1510,11 @@ class ZCylinder(QuadricMixin, Surface):
 
     x0 = SurfaceCoefficient('x0')
     y0 = SurfaceCoefficient('y0')
+    z0 = SurfaceCoefficient(0.)
     r = SurfaceCoefficient('r')
-
-    @property
-    def z0(self):
-        return 0.
-
-    @property
-    def dx(self):
-        return 0.
-
-    @property
-    def dy(self):
-        return 0.
-
-    @property
-    def dz(self):
-        return 1.
+    dx = SurfaceCoefficient(0.)
+    dy = SurfaceCoefficient(0.)
+    dz = SurfaceCoefficient(1.)
 
     def _get_base_coeffs(self):
         x0, y0, r = self.x0, self.y0, self.r
@@ -1907,18 +1841,9 @@ class XCone(QuadricMixin, Surface):
     y0 = SurfaceCoefficient('y0')
     z0 = SurfaceCoefficient('z0')
     r2 = SurfaceCoefficient('r2')
-
-    @property
-    def dx(self):
-        return 1.
-
-    @property
-    def dy(self):
-        return 0.
-
-    @property
-    def dz(self):
-        return 0.
+    dx = SurfaceCoefficient(1.)
+    dy = SurfaceCoefficient(0.)
+    dz = SurfaceCoefficient(0.)
 
     def _get_base_coeffs(self):
         x0, y0, z0, r2 = self.x0, self.y0, self.z0, self.r2
@@ -2005,18 +1930,9 @@ class YCone(QuadricMixin, Surface):
     y0 = SurfaceCoefficient('y0')
     z0 = SurfaceCoefficient('z0')
     r2 = SurfaceCoefficient('r2')
-
-    @property
-    def dx(self):
-        return 0.
-
-    @property
-    def dy(self):
-        return 1.
-
-    @property
-    def dz(self):
-        return 0.
+    dx = SurfaceCoefficient(0.)
+    dy = SurfaceCoefficient(1.)
+    dz = SurfaceCoefficient(0.)
 
     def _get_base_coeffs(self):
         x0, y0, z0, r2 = self.x0, self.y0, self.z0, self.r2
@@ -2103,18 +2019,9 @@ class ZCone(QuadricMixin, Surface):
     y0 = SurfaceCoefficient('y0')
     z0 = SurfaceCoefficient('z0')
     r2 = SurfaceCoefficient('r2')
-
-    @property
-    def dx(self):
-        return 0.
-
-    @property
-    def dy(self):
-        return 0.
-
-    @property
-    def dz(self):
-        return 1.
+    dx = SurfaceCoefficient(0.)
+    dy = SurfaceCoefficient(0.)
+    dz = SurfaceCoefficient(1.)
 
     def _get_base_coeffs(self):
         x0, y0, z0, r2 = self.x0, self.y0, self.z0, self.r2

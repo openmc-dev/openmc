@@ -128,6 +128,13 @@ Particle::from_source(const Bank* src)
     E_ = data::mg.energy_bin_avg_[g_];
   }
   E_last_ = E_;
+
+  // Saved copy of primary source attributes
+  primary_source_.r = src->r;
+  primary_source_.u = src->u;
+  primary_source_.E = E_last_;
+  primary_source_.wgt = wgt_;
+
 }
 
 void
@@ -681,11 +688,10 @@ Particle::write_restart() const
     write_dataset(file_id, "id", id_);
     write_dataset(file_id, "type", static_cast<int>(type_));
 
-    int64_t i = current_work_;
-    write_dataset(file_id, "weight", simulation::source_bank[i-1].wgt);
-    write_dataset(file_id, "energy", simulation::source_bank[i-1].E);
-    write_dataset(file_id, "xyz", simulation::source_bank[i-1].r);
-    write_dataset(file_id, "uvw", simulation::source_bank[i-1].u);
+    write_dataset(file_id, "weight", primary_source_.wgt);
+    write_dataset(file_id, "energy", primary_source_.E);
+    write_dataset(file_id, "xyz", primary_source_.r);
+    write_dataset(file_id, "uvw", primary_source_.u);
 
     // Close file
     file_close(file_id);

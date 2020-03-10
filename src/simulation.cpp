@@ -108,7 +108,7 @@ int openmc_simulation_init()
   } else {
     //Only initialize primary source bank for eigenvalue simulations
     if (settings::run_mode == RunMode::EIGENVALUE) {
-	  initialize_source();
+      initialize_source();
     }
   }
 
@@ -167,7 +167,7 @@ int openmc_simulation_finalize()
   // If fixed source and using custom source library then need to close
   if (settings::run_mode == RunMode::FIXED_SOURCE &&
       !settings::path_source_library.empty()) {
-  	close_custom_source_library();
+    close_custom_source_library();
   }
 
   // Stop timers and show timing statistics
@@ -452,20 +452,20 @@ void initialize_history(Particle* p, int64_t index_source)
 {
   // set defaults
   if(settings::run_mode == RunMode::FIXED_SOURCE) {
-	// initialize random number seed
-	int64_t id = (simulation::total_gen + overall_generation() - 1)*settings::n_particles +
-	  simulation::work_index[mpi::rank] + index_source;
-	uint64_t seed = init_seed(id, STREAM_SOURCE);
-	// sample from external source distribution or custom library then set
-	Particle::Bank site;
-	if (!settings::path_source_library.empty()) {
-	  site = sample_custom_source_library(&seed);
-	} else {
-	  site = sample_external_source(&seed);
-	}
-	p->from_source(&site);
+    // initialize random number seed
+    int64_t id = (simulation::total_gen + overall_generation() - 1)*settings::n_particles +
+      simulation::work_index[mpi::rank] + index_source;
+    uint64_t seed = init_seed(id, STREAM_SOURCE);
+    // sample from external source distribution or custom library then set
+    Particle::Bank site;
+    if (!settings::path_source_library.empty()) {
+      site = sample_custom_source_library(&seed);
+    } else {
+      site = sample_external_source(&seed);
+    }
+    p->from_source(&site);
   } else if (settings::run_mode == RunMode::EIGENVALUE) {
-	// set defaults for eigenvalue simulations from primary bank
+    // set defaults for eigenvalue simulations from primary bank
     p->from_source(&simulation::source_bank[index_source - 1]);
   }
   p->current_work_ = index_source;

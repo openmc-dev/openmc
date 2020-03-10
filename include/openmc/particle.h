@@ -186,7 +186,7 @@ public:
     Position r;
     Direction u;
     double E;
-	double wgt;
+    double wgt;
   };
 
 

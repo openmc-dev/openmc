@@ -183,10 +183,10 @@ public:
 
   //! Saved ("banked") state of primary source particle, for particle restart
   struct RestartBank {
-	    Position r;
-	    Direction u;
-	    double E;
-	    double wgt;
+    Position r;
+    Direction u;
+    double E;
+	double wgt;
   };
 
 

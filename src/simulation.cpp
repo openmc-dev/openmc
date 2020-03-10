@@ -106,16 +106,16 @@ int openmc_simulation_init()
     load_state_point();
     write_message("Resuming simulation...", 6);
   } else {
-	//Only initialize primary source bank for eigenvalue simulations
-	if (settings::run_mode == RunMode::EIGENVALUE) {
+    //Only initialize primary source bank for eigenvalue simulations
+    if (settings::run_mode == RunMode::EIGENVALUE) {
 	  initialize_source();
-	}
+    }
   }
 
   // If fixed source and using custom source library then need to load
   if (settings::run_mode == RunMode::FIXED_SOURCE &&
-        !settings::path_source_library.empty()) {
-	load_custom_source_library();
+      !settings::path_source_library.empty()) {
+    load_custom_source_library();
   }
 
   // Display header

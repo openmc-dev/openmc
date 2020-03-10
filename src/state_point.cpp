@@ -399,8 +399,8 @@ void load_state_point()
 
     // Check to make sure source bank is present
     if (settings::path_sourcepoint == settings::path_statepoint &&
-	    !source_present) {
-	  fatal_error("Source bank must be contained in statepoint restart file");
+        !source_present) {
+      fatal_error("Source bank must be contained in statepoint restart file");
     }
   }
 

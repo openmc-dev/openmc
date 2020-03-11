@@ -29,11 +29,34 @@ def test_elements():
     m = openmc.Material()
     m.add_element('Zr', 1.0)
     m.add_element('U', 1.0, enrichment=4.5)
+    m.add_element('Li', 1.0, enrichment=60.0, enrichment_target='Li7')
+    m.add_element('H', 1.0, enrichment=50.0, enrichment_target='H2',
+                  enrichment_type='wo')
     with pytest.raises(ValueError):
         m.add_element('U', 1.0, enrichment=100.0)
     with pytest.raises(ValueError):
         m.add_element('Pu', 1.0, enrichment=3.0)
+    with pytest.raises(ValueError):
+        m.add_element('U', 1.0, enrichment=70.0, enrichment_target='U235')
+    with pytest.raises(ValueError):
+        m.add_element('He', 1.0, enrichment=17.0, enrichment_target='He6')
 
+def test_elements_by_name():
+    """Test adding elements by name"""
+    m = openmc.Material()
+    m.add_element('woLfrAm', 1.0)
+    with pytest.raises(ValueError):
+        m.add_element('uranum', 1.0)
+    m.add_element('uRaNiUm', 1.0)
+    m.add_element('Aluminium', 1.0)
+    a = openmc.Material()
+    b = openmc.Material()
+    c = openmc.Material()
+    a.add_element('sulfur', 1.0)
+    b.add_element('SulPhUR', 1.0)
+    c.add_element('S', 1.0)
+    assert a._nuclides == b._nuclides
+    assert b._nuclides == c._nuclides
 
 def test_density():
     m = openmc.Material()

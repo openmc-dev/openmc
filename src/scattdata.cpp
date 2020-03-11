@@ -227,6 +227,8 @@ ScattData::get_xs(MgxsType xstype, int gin, const int* gout, const double* mu)
       fatal_error("Invalid call to get_xs");
     }
     break;
+  default:
+    break;
   }
   return val;
 }

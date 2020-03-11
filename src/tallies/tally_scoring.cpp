@@ -27,7 +27,7 @@ namespace openmc {
 //==============================================================================
 
 FilterBinIter::FilterBinIter(const Tally& tally, Particle* p)
-  : tally_{tally}, filter_matches_{p->filter_matches_}
+  : filter_matches_{p->filter_matches_}, tally_{tally}
 {
   // Find all valid bins in each relevant filter if they have not already been
   // found for this event.
@@ -57,7 +57,7 @@ FilterBinIter::FilterBinIter(const Tally& tally, Particle* p)
 
 FilterBinIter::FilterBinIter(const Tally& tally, bool end,
     std::vector<FilterMatch>* particle_filter_matches)
-  : tally_{tally}, filter_matches_{*particle_filter_matches}
+  : filter_matches_{*particle_filter_matches}, tally_{tally}
 {
   // Handle the special case for an iterator that points to the end.
   if (end) {

@@ -93,11 +93,12 @@ Lattice::adjust_indices()
 //==============================================================================
 
 int32_t
-Lattice::fill_offset_table(int32_t offset, int32_t target_univ_id, int map)
+Lattice::fill_offset_table(int32_t offset, int32_t target_univ_id, int map,
+  std::unordered_map<int32_t, int32_t>& univ_count_memo)
 {
   for (LatticeIter it = begin(); it != end(); ++it) {
     offsets_[map * universes_.size() + it.indx_] = offset;
-    offset += count_universe_instances(*it, target_univ_id);
+    offset += count_universe_instances(*it, target_univ_id, univ_count_memo);
   }
   return offset;
 }

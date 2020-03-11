@@ -8,7 +8,7 @@ import numpy as np
 
 from openmc.mixin import EqualityMixin
 import openmc.checkvalue as cv
-from . import HDF5_VERSION
+from . import HDF5_VERSION, HDF5_VERSION_MAJOR
 from .ace import Table, get_metadata, get_table
 from .data import ATOMIC_SYMBOL
 from .endf import Evaluation, get_head_record, get_tab1_record, get_list_record
@@ -88,7 +88,7 @@ class ProtonReaction(EqualityMixin):
 
     #  A little redundant
     def to_hdf5(self, group, energy):
-        """Write photon reaction to an HDF5 group
+        """Write proton reaction to an HDF5 group
 
         Parameters
         ----------
@@ -97,7 +97,6 @@ class ProtonReaction(EqualityMixin):
 
         """
 
-
         group.attrs['mt'] = self.mt
         if self.mt in _REACTION_NAME:
             group.attrs['label'] = np.string_(_REACTION_NAME[self.mt])
@@ -105,9 +104,34 @@ class ProtonReaction(EqualityMixin):
             group.attrs['label'] = np.string_(self.mt)
 
         group.create_dataset('xs', data=self.xs(energy))
-        
 
+    @classmethod
+    def from_hdf5(cls, group, energy):
+        """Generate proton reaction from an HDF5 group
 
+        Parameters
+        ----------
+        group : h5py.Group
+            HDF5 group to read from
+        energy : dict
+            Array of energies at which cross sections are tabulated at.
+
+        Returns
+        -------
+        openmc.data.PhotonReaction
+            Reaction data
+
+        """
+
+        mt = group.attrs['mt']
+        rx = cls(mt)
+
+        # Read cross section
+        xs = group['xs'][()]
+        tabulated_xs = Tabulated1D(energy, xs)
+        rx.xs = tabulated_xs
+
+        return rx
 
 class IncidentProton(EqualityMixin):
     """Photon interaction data.
@@ -138,6 +162,7 @@ class IncidentProton(EqualityMixin):
         self.atomic_number = atomic_number
         self.mass_number = mass_number
         self.reactions = OrderedDict()
+        self.energy = []
 
     def __contains__(self, mt):
         return mt in self.reactions
@@ -222,9 +247,14 @@ class IncidentProton(EqualityMixin):
             if mf == 3:
                 data.reactions[mt] = ProtonReaction.from_endf(ev, mt)
 
-        return data
+        # Determine union energy grid
+        union_grid = np.array([])
+        for rx in data:
+            union_grid = np.union1d(union_grid, rx.xs.x)
 
-    
+        data.energy = union_grid
+        
+        return data
 
     def export_to_hdf5(self, path, mode='a', libver='earliest'):
         """Export incident photon data to an HDF5 file.
@@ -258,17 +288,70 @@ class IncidentProton(EqualityMixin):
         group.create_dataset('energy', data=union_grid)
 
         # Write cross sections
+        rxs_group = group.create_group('reactions')
         for mt, rx in self.reactions.items():
-            key = _REACTION_NAME[mt][1]
+            key = _REACTION_NAME[mt]
             # Only elastic cross section for now
             if mt == 2:
-                sub_group = group.create_group(key)
+                rx_group = rxs_group.create_group('reaction_{:03}'.format(rx.mt))
             else:
                 continue
-
-            rx.to_hdf5(sub_group, union_grid)
+             
+            rx.to_hdf5(rx_group, union_grid)
         
         f.close()
+
+    @classmethod
+    def from_hdf5(cls, group_or_filename):
+        """Generate proton interaction data from HDF5 group
+
+        Parameters
+        ----------
+        group_or_filename : h5py.Group or str
+            HDF5 group containing interaction data. If given as a string, it is
+            assumed to be the filename for the HDF5 file, and the first group is
+            used to read from.
+
+        Returns
+        -------
+        openmc.data.IncidentProton
+            Proton interaction data
+
+        """
+        if isinstance(group_or_filename, h5py.Group):
+            group = group_or_filename
+        else:
+            h5file = h5py.File(str(group_or_filename), 'r')
+
+            # Make sure version matches
+            if 'version' in h5file.attrs:
+                major, minor = h5file.attrs['version']
+                # For now all versions of HDF5 data can be read
+            else:
+                raise IOError(
+                    'HDF5 data does not indicate a version. Your installation of '
+                    'the OpenMC Python API expects version {}.x data.'
+                    .format(HDF5_VERSION_MAJOR))
+
+            group = list(h5file.values())[0]
+
+        name = group.name[1:]
+        atomic_number = group.attrs['Z']
+        mass_number = group.attrs['A']
+
+        data = cls(name, atomic_number, mass_number)
+
+        # Read energy grid
+        data.energy = group['energy'][()]
+
+        # Read reaction data
+        rxs_group = group['reactions']
+        for name, obj in sorted(rxs_group.items()):
+            if name.startswith('reaction_'):
+                rx = ProtonReaction.from_hdf5(obj, data.energy)
+                data.reactions[rx.mt] = rx
+
+        return data
 
 
 

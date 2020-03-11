@@ -2,6 +2,7 @@ from collections import OrderedDict
 from collections.abc import Mapping, Callable
 from io import StringIO
 from numbers import Integral, Real
+from warnings import warn
 
 import h5py
 import numpy as np
@@ -10,12 +11,13 @@ from openmc.mixin import EqualityMixin
 import openmc.checkvalue as cv
 from . import HDF5_VERSION, HDF5_VERSION_MAJOR
 from .ace import Table, get_metadata, get_table
-from .data import ATOMIC_SYMBOL
+from .data import ATOMIC_SYMBOL, EV_PER_MEV
 from .endf import Evaluation, get_head_record, get_tab1_record, get_list_record
 from .function import Tabulated1D
 
-_REACTION_NAME = {2: '(p,elastic)', 4: '(p,level)', 5: '(p,misc)', 11: '(p,2nd)', 
-                  16: '(p,2n)', 17: '(p,3n)', 18: '(p,fission)', 22: '(p,na)', 
+_REACTION_NAME = {2: '(p,elastic)', 3: '(p,non-elastic)', 4: '(p,level)', 
+                  5: '(p,misc)', 11: '(p,2nd)', 16: '(p,2n)', 17: '(p,3n)', 
+                  18: '(p,fission)', 22: '(p,na)', 
                   24: '(p,2na)', 25: '(p,3na)', 28: '(p,np)', 29: '(p,n2a)',
                   30: '(p,2n2a)', 32: '(p,nd)', 33: '(p,nt)', 34: '(p,nHe-3)',
                   35: '(p,nd2a)', 36: '(p,nt2a)', 37: '(p,4n)', 41: '(p,2np)', 
@@ -104,6 +106,62 @@ class ProtonReaction(EqualityMixin):
             group.attrs['label'] = np.string_(self.mt)
 
         group.create_dataset('xs', data=self.xs(energy))
+
+    @classmethod
+    def from_ace(cls, ace, i_reaction):
+        # Get nuclide energy grid
+        n_grid = ace.nxs[3]
+        grid = ace.xss[ace.jxs[1]:ace.jxs[1] + n_grid]*EV_PER_MEV
+
+        if i_reaction > 0:
+            mt = int(ace.xss[ace.jxs[3] + i_reaction - 1])
+            rx = cls(mt)
+
+            # ==================================================================
+            # CROSS SECTION
+
+            # Get locator for cross-section data
+            loc = int(ace.xss[ace.jxs[6] + i_reaction - 1])
+
+            # Determine starting index on energy grid
+            threshold_idx = int(ace.xss[ace.jxs[7] + loc - 1]) - 1
+
+            # Determine number of energies in reaction
+            n_energy = int(ace.xss[ace.jxs[7] + loc])
+            energy = grid[threshold_idx:threshold_idx + n_energy]
+
+            # Read reaction cross section
+            xs = ace.xss[ace.jxs[7] + loc + 1:ace.jxs[7] + loc + 1 + n_energy]
+
+            # Fix negatives -- known issue for Y89 in JEFF 3.2
+            if np.any(xs < 0.0):
+                warn("Negative cross sections found for MT={} in {}. Setting "
+                     "to zero.".format(rx.mt, ace.name))
+                xs[xs < 0.0] = 0.0
+
+            tabulated_xs = Tabulated1D(energy, xs)
+            tabulated_xs._threshold_idx = threshold_idx
+            rx.xs = tabulated_xs
+        
+        else:
+            # Elastic scattering
+            mt = 2
+            rx = cls(mt)
+
+            # Get elastic cross section values
+            elastic_xs = ace.xss[ace.jxs[1] + 3*n_grid:ace.jxs[1] + 4*n_grid]
+
+            # Fix negatives -- known issue for Ti46,49,50 in JEFF 3.2
+            if np.any(elastic_xs < 0.0):
+                warn("Negative elastic scattering cross section found for {}. "
+                     "Setting to zero.".format(ace.name))
+                elastic_xs[elastic_xs < 0.0] = 0.0
+
+            tabulated_xs = Tabulated1D(grid, elastic_xs)
+            tabulated_xs._threshold_idx = 0
+            rx.xs = tabulated_xs
+
+        return rx
 
     @classmethod
     def from_hdf5(cls, group, energy):
@@ -254,6 +312,64 @@ class IncidentProton(EqualityMixin):
 
         data.energy = union_grid
         
+        return data
+    
+    @classmethod
+    def from_ace(cls, ace_or_filename, metastable_scheme='nndc'):
+        """Generate incident proton continuous-energy data from an ACE table
+
+        Parameters
+        ----------
+        ace_or_filename : openmc.data.ace.Table or str
+            ACE table to read from. If the value is a string, it is assumed to
+            be the filename for the ACE file.
+        metastable_scheme : {'nndc', 'mcnp'}
+            Determine how ZAID identifiers are to be interpreted in the case of
+            a metastable nuclide. Because the normal ZAID (=1000*Z + A) does not
+            encode metastable information, different conventions are used among
+            different libraries. In MCNP libraries, the convention is to add 400
+            for a metastable nuclide except for Am242m, for which 95242 is
+            metastable and 95642 (or 1095242 in newer libraries) is the ground
+            state. For NNDC libraries, ZAID is given as 1000*Z + A + 100*m.
+
+        Returns
+        -------
+        openmc.data.IncidentProton
+            Incident proton continuous-energy data
+
+        """
+
+        # First obtain the data for the first provided ACE table/file
+        if isinstance(ace_or_filename, Table):
+            ace = ace_or_filename
+        else:
+            ace = get_table(ace_or_filename)
+
+        # If mass number hasn't been specified, make an educated guess
+        zaid, xs = ace.name.split('.')
+        if not xs.endswith('h'):
+            raise TypeError(
+                "{} is not a continuous-energy proton ACE table.".format(ace))
+        name, element, Z, mass_number, metastable = \
+            get_metadata(int(zaid), metastable_scheme)
+        
+        # Assign temperature to the running list
+        kTs = [ace.temperature*EV_PER_MEV]
+
+        data = cls(name, Z, mass_number)
+
+        # Read energy grid
+        n_energy = ace.nxs[3]
+        i = ace.jxs[1]
+        energy = ace.xss[i : i + n_energy]*EV_PER_MEV
+        data.energy = energy
+
+        # Read each reaction
+        n_reaction = ace.nxs[4] + 1
+        for i in range(n_reaction):
+            rx = ProtonReaction.from_ace(ace, i)
+            data.reactions[rx.mt] = rx
+
         return data
 
     def export_to_hdf5(self, path, mode='a', libver='earliest'):

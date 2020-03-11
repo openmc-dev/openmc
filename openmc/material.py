@@ -499,34 +499,62 @@ class Material(IDManagerMixin):
         if macroscopic == self._macroscopic:
             self._macroscopic = None
 
-    def add_element(self, element, percent, percent_type='ao', enrichment=None):
+    def add_element(self, element, percent, percent_type='ao', enrichment=None,
+                    enrichment_target=None, enrichment_type=None):
         """Add a natural element to the material
 
         Parameters
         ----------
         element : str
-            Element to add, e.g., 'Zr'
+            Element to add, e.g., 'Zr' or 'Zirconium'
         percent : float
             Atom or weight percent
         percent_type : {'ao', 'wo'}, optional
             'ao' for atom percent and 'wo' for weight percent. Defaults to atom
             percent.
         enrichment : float, optional
-            Enrichment for U235 in weight percent. For example, input 4.95 for
-            4.95 weight percent enriched U. Default is None
-            (natural composition).
+            Enrichment of an enrichment_taget nuclide in percent (ao or wo).
+            If enrichment_taget is not supplied then it is enrichment for U235
+            in weight percent. For example, input 4.95 for 4.95 weight percent
+            enriched U.
+            Default is None (natural composition).
+        enrichment_target: str, optional
+            Single nuclide name to enrich from a natural composition (e.g., 'O16')
+        enrichment_type: {'ao', 'wo'}, optional
+            'ao' for enrichment as atom percent and 'wo' for weight percent.
+            Default is: 'ao' for two-isotope enrichment; 'wo' for U enrichment
+
+        Notes
+        -----
+        General enrichment procedure is allowed only for elements composed of
+        two isotopes. If `enrichment_target` is given without `enrichment`
+        natural composition is added to the material.
 
         """
+        
         cv.check_type('nuclide', element, str)
         cv.check_type('percent', percent, Real)
         cv.check_value('percent type', percent_type, {'ao', 'wo'})
+
+        # Make sure element name is just that
+        if not element.isalpha():
+            raise ValueError("Element name should be given by the "
+                             "element's symbol or name, e.g., 'Zr', 'zirconium'")
+
+        # Allow for element identifier to be given as a symbol or name
+        if len(element) > 2:
+            el = element.lower()
+            element = openmc.data.ELEMENT_SYMBOL.get(el)
+            if element is None:
+                msg = 'Element name "{}" not recognised'.format(el)
+                raise ValueError(msg)
 
         if self._macroscopic is not None:
             msg = 'Unable to add an Element to Material ID="{}" as a ' \
                   'macroscopic data-set has already been added'.format(self._id)
             raise ValueError(msg)
 
-        if enrichment is not None:
+        if enrichment is not None and enrichment_target is None:
             if not isinstance(enrichment, Real):
                 msg = 'Unable to add an Element to Material ID="{}" with a ' \
                       'non-floating point enrichment value "{}"'\
@@ -551,14 +579,13 @@ class Material(IDManagerMixin):
                       format(enrichment, self._id)
                 warnings.warn(msg)
 
-        # Make sure element name is just that
-        if not element.isalpha():
-            raise ValueError("Element name should be given by the "
-                             "element's symbol, e.g., 'Zr'")
-
         # Add naturally-occuring isotopes
         element = openmc.Element(element)
-        for nuclide in element.expand(percent, percent_type, enrichment):
+        for nuclide in element.expand(percent,
+                                      percent_type,
+                                      enrichment,
+                                      enrichment_target,
+                                      enrichment_type):
             self.add_nuclide(*nuclide)
 
     def add_s_alpha_beta(self, name, fraction=1.0):
@@ -927,7 +954,7 @@ class Material(IDManagerMixin):
             Fractions of each material to be combined
         percent_type : {'ao', 'wo', 'vo'}
             Type of percentage, must be one of 'ao', 'wo', or 'vo', to signify atom
-            percent (molar percent), weight percent, or volume percent, 
+            percent (molar percent), weight percent, or volume percent,
             optional. Defaults to 'ao'
         name : str
             The name for the new material, optional. Defaults to concatenated
@@ -996,7 +1023,7 @@ class Material(IDManagerMixin):
                              zip(materials, fracs)])
         new_mat = openmc.Material(name=name)
 
-        # Compute atom fractions of nuclides and add them to the new material  
+        # Compute atom fractions of nuclides and add them to the new material
         tot_nuclides_per_cc = np.sum([dens for dens in nuclides_per_cc.values()])
         for nuc, atom_dens in nuclides_per_cc.items():
             new_mat.add_nuclide(nuc, atom_dens/tot_nuclides_per_cc, 'ao')

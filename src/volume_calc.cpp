@@ -295,6 +295,8 @@ std::vector<VolumeCalculation::Result> VolumeCalculation::execute() const
             case TriggerMetric::variance:
               val = result.volume[1] * result.volume[1];
               break;
+            default:
+              break;
           }
           // update max if entry is valid
           if (val > 0.0) { trigger_val = std::max(trigger_val, val); }
@@ -373,6 +375,8 @@ void VolumeCalculation::to_hdf5(const std::string& filename,
         break;
       case TriggerMetric::relative_error:
         trigger_str = "rel_err";
+        break;
+      default:
         break;
     }
     write_attribute(file_id, "trigger_type", trigger_str);

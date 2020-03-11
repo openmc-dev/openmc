@@ -675,6 +675,8 @@ Particle::write_restart() const
       case RunMode::PARTICLE:
         write_dataset(file_id, "run_mode", "particle restart");
         break;
+      default:
+        break;
     }
     write_dataset(file_id, "id", id_);
     write_dataset(file_id, "type", static_cast<int>(type_));

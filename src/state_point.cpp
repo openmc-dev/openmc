@@ -87,6 +87,8 @@ openmc_statepoint_write(const char* filename, bool* write_source)
     case RunMode::EIGENVALUE:
       write_dataset(file_id, "run_mode", "eigenvalue");
       break;
+    default:
+      break;
     }
     write_attribute(file_id, "photon_transport", settings::photon_transport);
     write_dataset(file_id, "n_particles", settings::n_particles);

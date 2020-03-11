@@ -10,6 +10,7 @@ from warnings import warn
 # pp. 293-306 (2013). The "representative isotopic abundance" values from
 # column 9 are used except where an interval is given, in which case the
 # "best measurement" is used.
+# Note that the abundances are given as atomic fractions!
 NATURAL_ABUNDANCE = {
     'H1': 0.99984426, 'H2': 0.00015574, 'He3': 0.000002,
     'He4': 0.999998, 'Li6': 0.07589, 'Li7': 0.92411,
@@ -109,6 +110,49 @@ NATURAL_ABUNDANCE = {
     'Pa231': 1.0, 'U234': 0.000054, 'U235': 0.007204,
     'U238': 0.992742
 }
+
+# Dictionary to give element symbols from IUPAC names
+# (and some common mispellings)
+ELEMENT_SYMBOL = {'neutron': 'n', 'hydrogen': 'H', 'helium': 'He',
+                 'lithium': 'Li', 'beryllium': 'Be', 'boron': 'B',
+                 'carbon': 'C', 'nitrogen': 'N', 'oxygen': 'O', 'fluorine': 'F',
+                 'neon': 'Ne', 'sodium': 'Na', 'magnesium': 'Mg',
+                 'aluminium': 'Al', 'aluminum': 'Al', 'silicon': 'Si',
+                 'phosphorus': 'P', 'sulfur': 'S', 'sulphur': 'S',
+                 'chlorine': 'Cl', 'argon': 'Ar', 'potassium': 'K',
+                 'calcium': 'Ca', 'scandium': 'Sc', 'titanium': 'Ti',
+                 'vanadium': 'V', 'chromium': 'Cr', 'manganese': 'Mn',
+                 'iron': 'Fe', 'cobalt': 'Co', 'nickel': 'Ni', 'copper': 'Cu',
+                 'zinc': 'Zn', 'gallium': 'Ga', 'germanium': 'Ge',
+                 'arsenic': 'As', 'selenium': 'Se', 'bromine': 'Br',
+                 'krypton': 'Kr', 'rubidium': 'Rb', 'strontium': 'Sr',
+                 'yttrium': 'Y', 'zirconium': 'Zr', 'niobium': 'Nb',
+                 'molybdenum': 'Mo', 'technetium': 'Tc', 'ruthenium': 'Ru',
+                 'rhodium': 'Rh', 'palladium': 'Pd', 'silver': 'Ag',
+                 'cadmium': 'Cd', 'indium': 'In', 'tin': 'Sn', 'antimony': 'Sb',
+                 'tellurium': 'Te', 'iodine': 'I', 'xenon': 'Xe',
+                 'caesium': 'Cs', 'cesium': 'Cs', 'barium': 'Ba',
+                 'lanthanum': 'La', 'cerium': 'Ce', 'praseodymium': 'Pr',
+                 'neodymium': 'Nd', 'promethium': 'Pm', 'samarium': 'Sm',
+                 'europium': 'Eu', 'gadolinium': 'Gd', 'terbium': 'Tb',
+                 'dysprosium': 'Dy', 'holmium': 'Ho', 'erbium': 'Er',
+                 'thulium': 'Tm', 'ytterbium': 'Yb', 'lutetium': 'Lu',
+                 'hafnium': 'Hf', 'tantalum': 'Ta', 'tungsten': 'W',
+                 'wolfram': 'W', 'rhenium': 'Re', 'osmium': 'Os',
+                 'iridium': 'Ir', 'platinum': 'Pt', 'gold': 'Au',
+                 'mercury': 'Hg', 'thallium': 'Tl', 'lead': 'Pb',
+                 'bismuth': 'Bi', 'polonium': 'Po', 'astatine': 'At',
+                 'radon': 'Rn', 'francium': 'Fr', 'radium': 'Ra',
+                 'actinium': 'Ac', 'thorium': 'Th', 'protactinium': 'Pa',
+                 'uranium': 'U', 'neptunium': 'Np', 'plutonium': 'Pu',
+                 'americium': 'Am', 'curium': 'Cm', 'berkelium': 'Bk',
+                 'californium': 'Cf', 'einsteinium': 'Es', 'fermium': 'Fm',
+                 'mendelevium': 'Md', 'nobelium': 'No', 'lawrencium': 'Lr',
+                 'rutherfordium': 'Rf', 'dubnium': 'Db', 'seaborgium': 'Sg',
+                 'bohrium': 'Bh', 'hassium': 'Hs', 'meitnerium': 'Mt',
+                 'darmstadtium': 'Ds', 'roentgenium': 'Rg', 'copernicium': 'Cn',
+                 'nihonium': 'Nh', 'flerovium': 'Fl', 'moscovium': 'Mc',
+                 'livermorium': 'Lv', 'tennessine': 'Ts', 'oganesson': 'Og'}
 
 ATOMIC_SYMBOL = {0: 'n', 1: 'H', 2: 'He', 3: 'Li', 4: 'Be', 5: 'B', 6: 'C',
                  7: 'N', 8: 'O', 9: 'F', 10: 'Ne', 11: 'Na', 12: 'Mg', 13: 'Al',

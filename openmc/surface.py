@@ -27,6 +27,35 @@ will not accept positional parameters for superclass arguments.\
 """
 
 
+class SurfaceCoefficient:
+    """Descriptor class for surface coefficients.
+
+    Parameters
+    -----------
+    value : float or str
+        Value of the coefficient (float) or the name of the coefficient that
+        it is equivalent to (str).
+
+    """
+    def __init__(self, value):
+        self.value = value
+
+    def __get__(self, instance, owner=None):
+        if instance is None:
+            return self
+        else:
+            if isinstance(self.value, str):
+                return instance._coefficients[self.value]
+            else:
+                return self.value
+
+    def __set__(self, instance, value):
+        if isinstance(self.value, Real):
+            raise AttributeError('This coefficient is read-only')
+        check_type('{} coefficient'.format(self.value), value, Real)
+        instance._coefficients[self.value] = value
+
+
 def _future_kwargs_warning_helper(cls, *args, **kwargs):
     # Warn if Surface parameters are passed by position, not by keyword
     argsdict = dict(zip(('boundary_type', 'name', 'surface_id'), args))
@@ -484,7 +513,7 @@ class PlaneMixin(metaclass=ABCMeta):
         if np.any(np.isclose(np.abs(nhat), 1., rtol=0., atol=self._atol)):
             sign = nhat.sum()
             a, b, c, d = self._get_base_coeffs()
-            vals = [d/val if not np.isclose(val, 0., rtol=0., atol=self._atol) 
+            vals = [d/val if not np.isclose(val, 0., rtol=0., atol=self._atol)
                     else np.nan for val in (a, b, c)]
             if side == '-':
                 if sign > 0:
@@ -674,41 +703,10 @@ class Plane(PlaneMixin, Surface):
             return True
         return NotImplemented
 
-    @property
-    def a(self):
-        return self.coefficients['a']
-
-    @property
-    def b(self):
-        return self.coefficients['b']
-
-    @property
-    def c(self):
-        return self.coefficients['c']
-
-    @property
-    def d(self):
-        return self.coefficients['d']
-
-    @a.setter
-    def a(self, a):
-        check_type('A coefficient', a, Real)
-        self._coefficients['a'] = a
-
-    @b.setter
-    def b(self, b):
-        check_type('B coefficient', b, Real)
-        self._coefficients['b'] = b
-
-    @c.setter
-    def c(self, c):
-        check_type('C coefficient', c, Real)
-        self._coefficients['c'] = c
-
-    @d.setter
-    def d(self, d):
-        check_type('D coefficient', d, Real)
-        self._coefficients['d'] = d
+    a = SurfaceCoefficient('a')
+    b = SurfaceCoefficient('b')
+    c = SurfaceCoefficient('c')
+    d = SurfaceCoefficient('d')
 
     @classmethod
     def from_points(cls, p1, p2, p3, **kwargs):
@@ -792,30 +790,11 @@ class XPlane(PlaneMixin, Surface):
         super().__init__(**kwargs)
         self.x0 = x0
 
-    @property
-    def x0(self):
-        return self.coefficients['x0']
-
-    @property
-    def a(self):
-        return 1.
-
-    @property
-    def b(self):
-        return 0.
-
-    @property
-    def c(self):
-        return 0.
-
-    @property
-    def d(self):
-        return self.x0
-
-    @x0.setter
-    def x0(self, x0):
-        check_type('x0 coefficient', x0, Real)
-        self._coefficients['x0'] = x0
+    x0 = SurfaceCoefficient('x0')
+    a = SurfaceCoefficient(1.)
+    b = SurfaceCoefficient(0.)
+    c = SurfaceCoefficient(0.)
+    d = x0
 
     def evaluate(self, point):
         return point[0] - self.x0
@@ -870,30 +849,11 @@ class YPlane(PlaneMixin, Surface):
         super().__init__(**kwargs)
         self.y0 = y0
 
-    @property
-    def y0(self):
-        return self.coefficients['y0']
-
-    @property
-    def a(self):
-        return 0.
-
-    @property
-    def b(self):
-        return 1.
-
-    @property
-    def c(self):
-        return 0.
-
-    @property
-    def d(self):
-        return self.y0
-
-    @y0.setter
-    def y0(self, y0):
-        check_type('y0 coefficient', y0, Real)
-        self._coefficients['y0'] = y0
+    y0 = SurfaceCoefficient('y0')
+    a = SurfaceCoefficient(0.)
+    b = SurfaceCoefficient(1.)
+    c = SurfaceCoefficient(0.)
+    d = y0
 
     def evaluate(self, point):
         return point[1] - self.y0
@@ -948,30 +908,11 @@ class ZPlane(PlaneMixin, Surface):
         super().__init__(**kwargs)
         self.z0 = z0
 
-    @property
-    def z0(self):
-        return self.coefficients['z0']
-
-    @property
-    def a(self):
-        return 0.
-
-    @property
-    def b(self):
-        return 0.
-
-    @property
-    def c(self):
-        return 1.
-
-    @property
-    def d(self):
-        return self.z0
-
-    @z0.setter
-    def z0(self, z0):
-        check_type('z0 coefficient', z0, Real)
-        self._coefficients['z0'] = z0
+    z0 = SurfaceCoefficient('z0')
+    a = SurfaceCoefficient(0.)
+    b = SurfaceCoefficient(0.)
+    c = SurfaceCoefficient(1.)
+    d = z0
 
     def evaluate(self, point):
         return point[2] - self.z0
@@ -1095,7 +1036,7 @@ class QuadricMixin(metaclass=ABCMeta):
         return surf
 
     def rotate(self, rotation, pivot=(0., 0., 0.), order='xyz', inplace=False):
-        # Get pivot and rotation matrix 
+        # Get pivot and rotation matrix
         pivot = np.asarray(pivot)
         rotation = np.asarray(rotation, dtype=float)
 
@@ -1225,68 +1166,13 @@ class Cylinder(QuadricMixin, Surface):
             return True
         return NotImplemented
 
-    @property
-    def x0(self):
-        return self.coefficients['x0']
-
-    @property
-    def y0(self):
-        return self.coefficients['y0']
-
-    @property
-    def z0(self):
-        return self.coefficients['z0']
-
-    @property
-    def r(self):
-        return self.coefficients['r']
-
-    @property
-    def dx(self):
-        return self.coefficients['dx']
-
-    @property
-    def dy(self):
-        return self.coefficients['dy']
-
-    @property
-    def dz(self):
-        return self.coefficients['dz']
-
-    @x0.setter
-    def x0(self, x0):
-        check_type('x0 coefficient', x0, Real)
-        self._coefficients['x0'] = x0
-
-    @y0.setter
-    def y0(self, y0):
-        check_type('y0 coefficient', y0, Real)
-        self._coefficients['y0'] = y0
-
-    @z0.setter
-    def z0(self, z0):
-        check_type('z0 coefficient', z0, Real)
-        self._coefficients['z0'] = z0
-
-    @r.setter
-    def r(self, r):
-        check_type('r coefficient', r, Real)
-        self._coefficients['r'] = r
-
-    @dx.setter
-    def dx(self, dx):
-        check_type('dx coefficient', dx, Real)
-        self._coefficients['dx'] = dx
-
-    @dy.setter
-    def dy(self, dy):
-        check_type('dy coefficient', dy, Real)
-        self._coefficients['dy'] = dy
-
-    @dz.setter
-    def dz(self, dz):
-        check_type('dz coefficient', dz, Real)
-        self._coefficients['dz'] = dz
+    x0 = SurfaceCoefficient('x0')
+    y0 = SurfaceCoefficient('y0')
+    z0 = SurfaceCoefficient('z0')
+    r = SurfaceCoefficient('r')
+    dx = SurfaceCoefficient('dx')
+    dy = SurfaceCoefficient('dy')
+    dz = SurfaceCoefficient('dz')
 
     def bounding_box(self, side):
         if side == '-':
@@ -1305,7 +1191,7 @@ class Cylinder(QuadricMixin, Surface):
         # Get x, y, z coordinates of two points
         x1, y1, z1 = self._origin
         x2, y2, z2 = self._origin + self._axis
-        r = self.r 
+        r = self.r
 
         # Define intermediate terms
         dx = x2 - x1
@@ -1375,7 +1261,7 @@ class Cylinder(QuadricMixin, Surface):
         with catch_warnings():
             simplefilter('ignore', IDWarning)
             kwargs = {'boundary_type': self.boundary_type, 'name': self.name,
-                      'surface_id': self.id} 
+                      'surface_id': self.id}
             quad_rep = Quadric(*self._get_base_coeffs(), **kwargs)
         return quad_rep.to_xml_element()
 
@@ -1440,48 +1326,13 @@ class XCylinder(QuadricMixin, Surface):
         for key, val in zip(self._coeff_keys, (y0, z0, r)):
             setattr(self, key, val)
 
-    @property
-    def y0(self):
-        return self.coefficients['y0']
-
-    @property
-    def z0(self):
-        return self.coefficients['z0']
-
-    @property
-    def r(self):
-        return self.coefficients['r']
-
-    @property
-    def x0(self):
-        return 0.
-
-    @property
-    def dx(self):
-        return 1.
-
-    @property
-    def dy(self):
-        return 0.
-
-    @property
-    def dz(self):
-        return 0.
-
-    @y0.setter
-    def y0(self, y0):
-        check_type('y0 coefficient', y0, Real)
-        self._coefficients['y0'] = y0
-
-    @z0.setter
-    def z0(self, z0):
-        check_type('z0 coefficient', z0, Real)
-        self._coefficients['z0'] = z0
-
-    @r.setter
-    def r(self, r):
-        check_type('r coefficient', r, Real)
-        self._coefficients['r'] = r
+    x0 = SurfaceCoefficient(0.)
+    y0 = SurfaceCoefficient('y0')
+    z0 = SurfaceCoefficient('z0')
+    r = SurfaceCoefficient('r')
+    dx = SurfaceCoefficient(1.)
+    dy = SurfaceCoefficient(0.)
+    dz = SurfaceCoefficient(0.)
 
     def _get_base_coeffs(self):
         y0, z0, r = self.y0, self.z0, self.r
@@ -1566,48 +1417,13 @@ class YCylinder(QuadricMixin, Surface):
         for key, val in zip(self._coeff_keys, (x0, z0, r)):
             setattr(self, key, val)
 
-    @property
-    def x0(self):
-        return self.coefficients['x0']
-
-    @property
-    def z0(self):
-        return self.coefficients['z0']
-
-    @property
-    def r(self):
-        return self.coefficients['r']
-
-    @property
-    def y0(self):
-        return 0.
-
-    @property
-    def dx(self):
-        return 0.
-
-    @property
-    def dy(self):
-        return 1.
-
-    @property
-    def dz(self):
-        return 0.
-
-    @x0.setter
-    def x0(self, x0):
-        check_type('x0 coefficient', x0, Real)
-        self._coefficients['x0'] = x0
-
-    @z0.setter
-    def z0(self, z0):
-        check_type('z0 coefficient', z0, Real)
-        self._coefficients['z0'] = z0
-
-    @r.setter
-    def r(self, r):
-        check_type('r coefficient', r, Real)
-        self._coefficients['r'] = r
+    x0 = SurfaceCoefficient('x0')
+    y0 = SurfaceCoefficient(0.)
+    z0 = SurfaceCoefficient('z0')
+    r = SurfaceCoefficient('r')
+    dx = SurfaceCoefficient(0.)
+    dy = SurfaceCoefficient(1.)
+    dz = SurfaceCoefficient(0.)
 
     def _get_base_coeffs(self):
         x0, z0, r = self.x0, self.z0, self.r
@@ -1692,48 +1508,13 @@ class ZCylinder(QuadricMixin, Surface):
         for key, val in zip(self._coeff_keys, (x0, y0, r)):
             setattr(self, key, val)
 
-    @property
-    def x0(self):
-        return self.coefficients['x0']
-
-    @property
-    def y0(self):
-        return self.coefficients['y0']
-
-    @property
-    def r(self):
-        return self.coefficients['r']
-
-    @property
-    def z0(self):
-        return 0.
-
-    @property
-    def dx(self):
-        return 0.
-
-    @property
-    def dy(self):
-        return 0.
-
-    @property
-    def dz(self):
-        return 1.
-
-    @x0.setter
-    def x0(self, x0):
-        check_type('x0 coefficient', x0, Real)
-        self._coefficients['x0'] = x0
-
-    @y0.setter
-    def y0(self, y0):
-        check_type('y0 coefficient', y0, Real)
-        self._coefficients['y0'] = y0
-
-    @r.setter
-    def r(self, r):
-        check_type('r coefficient', r, Real)
-        self._coefficients['r'] = r
+    x0 = SurfaceCoefficient('x0')
+    y0 = SurfaceCoefficient('y0')
+    z0 = SurfaceCoefficient(0.)
+    r = SurfaceCoefficient('r')
+    dx = SurfaceCoefficient(0.)
+    dy = SurfaceCoefficient(0.)
+    dz = SurfaceCoefficient(1.)
 
     def _get_base_coeffs(self):
         x0, y0, r = self.x0, self.y0, self.r
@@ -1820,41 +1601,10 @@ class Sphere(QuadricMixin, Surface):
         for key, val in zip(self._coeff_keys, (x0, y0, z0, r)):
             setattr(self, key, val)
 
-    @property
-    def x0(self):
-        return self.coefficients['x0']
-
-    @property
-    def y0(self):
-        return self.coefficients['y0']
-
-    @property
-    def z0(self):
-        return self.coefficients['z0']
-
-    @property
-    def r(self):
-        return self.coefficients['r']
-
-    @x0.setter
-    def x0(self, x0):
-        check_type('x0 coefficient', x0, Real)
-        self._coefficients['x0'] = x0
-
-    @y0.setter
-    def y0(self, y0):
-        check_type('y0 coefficient', y0, Real)
-        self._coefficients['y0'] = y0
-
-    @z0.setter
-    def z0(self, z0):
-        check_type('z0 coefficient', z0, Real)
-        self._coefficients['z0'] = z0
-
-    @r.setter
-    def r(self, r):
-        check_type('r coefficient', r, Real)
-        self._coefficients['r'] = r
+    x0 = SurfaceCoefficient('x0')
+    y0 = SurfaceCoefficient('y0')
+    z0 = SurfaceCoefficient('z0')
+    r = SurfaceCoefficient('r')
 
     def _get_base_coeffs(self):
         x0, y0, z0, r = self.x0, self.y0, self.z0, self.r
@@ -1966,68 +1716,13 @@ class Cone(QuadricMixin, Surface):
             return True
         return NotImplemented
 
-    @property
-    def x0(self):
-        return self.coefficients['x0']
-
-    @property
-    def y0(self):
-        return self.coefficients['y0']
-
-    @property
-    def z0(self):
-        return self.coefficients['z0']
-
-    @property
-    def r2(self):
-        return self.coefficients['r2']
-
-    @property
-    def dx(self):
-        return self.coefficients['dx']
-
-    @property
-    def dy(self):
-        return self.coefficients['dy']
-
-    @property
-    def dz(self):
-        return self.coefficients['dz']
-
-    @x0.setter
-    def x0(self, x0):
-        check_type('x0 coefficient', x0, Real)
-        self._coefficients['x0'] = x0
-
-    @y0.setter
-    def y0(self, y0):
-        check_type('y0 coefficient', y0, Real)
-        self._coefficients['y0'] = y0
-
-    @z0.setter
-    def z0(self, z0):
-        check_type('z0 coefficient', z0, Real)
-        self._coefficients['z0'] = z0
-
-    @r2.setter
-    def r2(self, r2):
-        check_type('r^2 coefficient', r2, Real)
-        self._coefficients['r2'] = r2
-
-    @dx.setter
-    def dx(self, dx):
-        check_type('dx coefficient', dx, Real)
-        self._coefficients['dx'] = dx
-
-    @dy.setter
-    def dy(self, dy):
-        check_type('dy coefficient', dy, Real)
-        self._coefficients['dy'] = dy
-
-    @dz.setter
-    def dz(self, dz):
-        check_type('dz coefficient', dz, Real)
-        self._coefficients['dz'] = dz
+    x0 = SurfaceCoefficient('x0')
+    y0 = SurfaceCoefficient('y0')
+    z0 = SurfaceCoefficient('z0')
+    r2 = SurfaceCoefficient('r2')
+    dx = SurfaceCoefficient('dx')
+    dy = SurfaceCoefficient('dy')
+    dz = SurfaceCoefficient('dz')
 
     def _get_base_coeffs(self):
         # The equation for a general cone with vertex at point p = (x0, y0, z0)
@@ -2074,7 +1769,7 @@ class Cone(QuadricMixin, Surface):
         with catch_warnings():
             simplefilter('ignore', IDWarning)
             kwargs = {'boundary_type': self.boundary_type, 'name': self.name,
-                      'surface_id': self.id} 
+                      'surface_id': self.id}
             quad_rep = Quadric(*self._get_base_coeffs(), **kwargs)
         return quad_rep.to_xml_element()
 
@@ -2142,53 +1837,13 @@ class XCone(QuadricMixin, Surface):
         for key, val in zip(self._coeff_keys, (x0, y0, z0, r2)):
             setattr(self, key, val)
 
-    @property
-    def x0(self):
-        return self.coefficients['x0']
-
-    @property
-    def y0(self):
-        return self.coefficients['y0']
-
-    @property
-    def z0(self):
-        return self.coefficients['z0']
-
-    @property
-    def r2(self):
-        return self.coefficients['r2']
-
-    @property
-    def dx(self):
-        return 1.
-
-    @property
-    def dy(self):
-        return 0.
-
-    @property
-    def dz(self):
-        return 0.
-
-    @x0.setter
-    def x0(self, x0):
-        check_type('x0 coefficient', x0, Real)
-        self._coefficients['x0'] = x0
-
-    @y0.setter
-    def y0(self, y0):
-        check_type('y0 coefficient', y0, Real)
-        self._coefficients['y0'] = y0
-
-    @z0.setter
-    def z0(self, z0):
-        check_type('z0 coefficient', z0, Real)
-        self._coefficients['z0'] = z0
-
-    @r2.setter
-    def r2(self, r2):
-        check_type('r^2 coefficient', r2, Real)
-        self._coefficients['r2'] = r2
+    x0 = SurfaceCoefficient('x0')
+    y0 = SurfaceCoefficient('y0')
+    z0 = SurfaceCoefficient('z0')
+    r2 = SurfaceCoefficient('r2')
+    dx = SurfaceCoefficient(1.)
+    dy = SurfaceCoefficient(0.)
+    dz = SurfaceCoefficient(0.)
 
     def _get_base_coeffs(self):
         x0, y0, z0, r2 = self.x0, self.y0, self.z0, self.r2
@@ -2271,53 +1926,13 @@ class YCone(QuadricMixin, Surface):
         for key, val in zip(self._coeff_keys, (x0, y0, z0, r2)):
             setattr(self, key, val)
 
-    @property
-    def x0(self):
-        return self.coefficients['x0']
-
-    @property
-    def y0(self):
-        return self.coefficients['y0']
-
-    @property
-    def z0(self):
-        return self.coefficients['z0']
-
-    @property
-    def r2(self):
-        return self.coefficients['r2']
-
-    @property
-    def dx(self):
-        return 0.
-
-    @property
-    def dy(self):
-        return 1.
-
-    @property
-    def dz(self):
-        return 0.
-
-    @x0.setter
-    def x0(self, x0):
-        check_type('x0 coefficient', x0, Real)
-        self._coefficients['x0'] = x0
-
-    @y0.setter
-    def y0(self, y0):
-        check_type('y0 coefficient', y0, Real)
-        self._coefficients['y0'] = y0
-
-    @z0.setter
-    def z0(self, z0):
-        check_type('z0 coefficient', z0, Real)
-        self._coefficients['z0'] = z0
-
-    @r2.setter
-    def r2(self, r2):
-        check_type('r^2 coefficient', r2, Real)
-        self._coefficients['r2'] = r2
+    x0 = SurfaceCoefficient('x0')
+    y0 = SurfaceCoefficient('y0')
+    z0 = SurfaceCoefficient('z0')
+    r2 = SurfaceCoefficient('r2')
+    dx = SurfaceCoefficient(0.)
+    dy = SurfaceCoefficient(1.)
+    dz = SurfaceCoefficient(0.)
 
     def _get_base_coeffs(self):
         x0, y0, z0, r2 = self.x0, self.y0, self.z0, self.r2
@@ -2400,53 +2015,13 @@ class ZCone(QuadricMixin, Surface):
         for key, val in zip(self._coeff_keys, (x0, y0, z0, r2)):
             setattr(self, key, val)
 
-    @property
-    def x0(self):
-        return self.coefficients['x0']
-
-    @property
-    def y0(self):
-        return self.coefficients['y0']
-
-    @property
-    def z0(self):
-        return self.coefficients['z0']
-
-    @property
-    def r2(self):
-        return self.coefficients['r2']
-
-    @property
-    def dx(self):
-        return 0.
-
-    @property
-    def dy(self):
-        return 0.
-
-    @property
-    def dz(self):
-        return 1.
-
-    @x0.setter
-    def x0(self, x0):
-        check_type('x0 coefficient', x0, Real)
-        self._coefficients['x0'] = x0
-
-    @y0.setter
-    def y0(self, y0):
-        check_type('y0 coefficient', y0, Real)
-        self._coefficients['y0'] = y0
-
-    @z0.setter
-    def z0(self, z0):
-        check_type('z0 coefficient', z0, Real)
-        self._coefficients['z0'] = z0
-
-    @r2.setter
-    def r2(self, r2):
-        check_type('r^2 coefficient', r2, Real)
-        self._coefficients['r2'] = r2
+    x0 = SurfaceCoefficient('x0')
+    y0 = SurfaceCoefficient('y0')
+    z0 = SurfaceCoefficient('z0')
+    r2 = SurfaceCoefficient('r2')
+    dx = SurfaceCoefficient(0.)
+    dy = SurfaceCoefficient(0.)
+    dz = SurfaceCoefficient(1.)
 
     def _get_base_coeffs(self):
         x0, y0, z0, r2 = self.x0, self.y0, self.z0, self.r2
@@ -2513,95 +2088,16 @@ class Quadric(QuadricMixin, Surface):
         for key, val in zip(self._coeff_keys, (a, b, c, d, e, f, g, h, j, k)):
             setattr(self, key, val)
 
-    @property
-    def a(self):
-        return self.coefficients['a']
-
-    @property
-    def b(self):
-        return self.coefficients['b']
-
-    @property
-    def c(self):
-        return self.coefficients['c']
-
-    @property
-    def d(self):
-        return self.coefficients['d']
-
-    @property
-    def e(self):
-        return self.coefficients['e']
-
-    @property
-    def f(self):
-        return self.coefficients['f']
-
-    @property
-    def g(self):
-        return self.coefficients['g']
-
-    @property
-    def h(self):
-        return self.coefficients['h']
-
-    @property
-    def j(self):
-        return self.coefficients['j']
-
-    @property
-    def k(self):
-        return self.coefficients['k']
-
-    @a.setter
-    def a(self, a):
-        check_type('a coefficient', a, Real)
-        self._coefficients['a'] = a
-
-    @b.setter
-    def b(self, b):
-        check_type('b coefficient', b, Real)
-        self._coefficients['b'] = b
-
-    @c.setter
-    def c(self, c):
-        check_type('c coefficient', c, Real)
-        self._coefficients['c'] = c
-
-    @d.setter
-    def d(self, d):
-        check_type('d coefficient', d, Real)
-        self._coefficients['d'] = d
-
-    @e.setter
-    def e(self, e):
-        check_type('e coefficient', e, Real)
-        self._coefficients['e'] = e
-
-    @f.setter
-    def f(self, f):
-        check_type('f coefficient', f, Real)
-        self._coefficients['f'] = f
-
-    @g.setter
-    def g(self, g):
-        check_type('g coefficient', g, Real)
-        self._coefficients['g'] = g
-
-    @h.setter
-    def h(self, h):
-        check_type('h coefficient', h, Real)
-        self._coefficients['h'] = h
-
-    @j.setter
-    def j(self, j):
-        check_type('j coefficient', j, Real)
-        self._coefficients['j'] = j
-
-    @k.setter
-    def k(self, k):
-        check_type('k coefficient', k, Real)
-        self._coefficients['k'] = k
+    a = SurfaceCoefficient('a')
+    b = SurfaceCoefficient('b')
+    c = SurfaceCoefficient('c')
+    d = SurfaceCoefficient('d')
+    e = SurfaceCoefficient('e')
+    f = SurfaceCoefficient('f')
+    g = SurfaceCoefficient('g')
+    h = SurfaceCoefficient('h')
+    j = SurfaceCoefficient('j')
+    k = SurfaceCoefficient('k')
 
     def _get_base_coeffs(self):
         return tuple(getattr(self, c) for c in self._coeff_keys)
@@ -2734,7 +2230,7 @@ class Halfspace(Region):
         Parameters
         ----------
         redundant_surfaces : dict
-            Dictionary mapping redundant surface IDs to surface IDs for the 
+            Dictionary mapping redundant surface IDs to surface IDs for the
             :class:`openmc.Surface` instances that should replace them.
 
         """

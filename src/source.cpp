@@ -349,7 +349,6 @@ void free_memory_source()
   model::external_sources.clear();
 }
 
-//Load custom source library
 void load_custom_source_library()
 {
 #ifdef HAS_DYNAMIC_LINKING
@@ -378,22 +377,18 @@ void load_custom_source_library()
   fatal_error("Custom source libraries have not yet been implemented for "
     "non-POSIX systems");
 #endif
-
 }
 
-//Release custom source library
 void close_custom_source_library()
 {
   dlclose(custom_source_library);
 }
 
-//Sample source particle from custom library
 Particle::Bank sample_custom_source_library(uint64_t* seed)
 {
   return custom_source_function(*seed);
 }
 
-// fill the source bank from the external source
 void fill_source_bank_custom_source()
 {
   // Load the custom library

@@ -39,8 +39,8 @@ namespace openmc {
 namespace model {
 
 typedef Particle::Bank (*sample_t)(uint64_t  &seed);
-sample_t sample_source;
-void* source_library;
+sample_t custom_source_function;
+void* custom_source_library;
 
 std::vector<SourceDistribution> external_sources;
 

@@ -71,7 +71,7 @@ Particle::Bank sample_custom_source_library(uint64_t* seed);
 //! Load custom source library
 void load_custom_source_library();
 
-//Release custom source library
+//! Release custom source library
 void close_custom_source_library();
 
 //! Fill source bank at the end of a generation for dlopen based source simulation

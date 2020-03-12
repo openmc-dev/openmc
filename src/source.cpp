@@ -38,13 +38,18 @@ namespace openmc {
 
 namespace model {
 
+std::vector<SourceDistribution> external_sources;
+
+}
+
+namespace {
+
 typedef Particle::Bank (*sample_t)(uint64_t  &seed);
 sample_t custom_source_function;
 void* custom_source_library;
 
-std::vector<SourceDistribution> external_sources;
-
 }
+
 
 //==============================================================================
 // SourceDistribution implementation
@@ -350,8 +355,8 @@ void load_custom_source_library()
 #ifdef HAS_DYNAMIC_LINKING
 
   // Open the library
-  model::source_library = dlopen(settings::path_source_library.c_str(), RTLD_LAZY);
-  if (!model::source_library) {
+  custom_source_library = dlopen(settings::path_source_library.c_str(), RTLD_LAZY);
+  if (!custom_source_library) {
     fatal_error("Couldn't open source library " + settings::path_source_library);
   }
 
@@ -360,12 +365,12 @@ void load_custom_source_library()
 
   // get the function from the library
   //using sample_t = Particle::Bank (*)(uint64_t* seed);
-  model::sample_source = reinterpret_cast<model::sample_t>(dlsym(model::source_library, "sample_source"));
+  custom_source_function = reinterpret_cast<sample_t>(dlsym(custom_source_library, "sample_source"));
 
   // check for any dlsym errors
   auto dlsym_error = dlerror();
   if (dlsym_error) {
-    dlclose(model::source_library);
+    dlclose(custom_source_library);
     fatal_error(fmt::format("Couldn't open the sample_source symbol: {}", dlsym_error));
   }
 
@@ -379,13 +384,13 @@ void load_custom_source_library()
 //Release custom source library
 void close_custom_source_library()
 {
-  dlclose(model::source_library);
+  dlclose(custom_source_library);
 }
 
 //Sample source particle from custom library
 Particle::Bank sample_custom_source_library(uint64_t* seed)
 {
-  return model::sample_source(*seed);
+  return custom_source_function(*seed);
 }
 
 // fill the source bank from the external source

@@ -114,7 +114,6 @@ ScattData::base_combine(size_t max_order,
   // Combine mult_numer and mult_denom into the combined multiplicity matrix
   xt::xtensor<double, 2> this_mult({groups, groups}, 1.);
   // TODO: Need to check this too
-  xt::xtensor<double, 2> this_mult({groups, groups}, 1.);
   for (int gin = 0; gin < groups; gin++) {
     for (int gout = 0; gout < groups; gout++) {
       if (std::abs(mult_denom(gin, gout)) > 0.0) {

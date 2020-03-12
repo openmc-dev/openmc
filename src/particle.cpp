@@ -134,7 +134,6 @@ Particle::from_source(const Bank* src)
   primary_source_.u = src->u;
   primary_source_.E = E_last_;
   primary_source_.wgt = wgt_;
-
 }
 
 void

@@ -106,7 +106,7 @@ int openmc_simulation_init()
     load_state_point();
     write_message("Resuming simulation...", 6);
   } else {
-    //Only initialize primary source bank for eigenvalue simulations
+    // Only initialize primary source bank for eigenvalue simulations
     if (settings::run_mode == RunMode::EIGENVALUE) {
       initialize_source();
     }

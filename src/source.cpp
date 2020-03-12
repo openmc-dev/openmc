@@ -44,7 +44,7 @@ std::vector<SourceDistribution> external_sources;
 
 namespace {
 
-typedef Particle::Bank (*sample_t)(uint64_t  &seed);
+using sample_t = Particle::Bank (*)(uint64_t* seed);
 sample_t custom_source_function;
 void* custom_source_library;
 
@@ -315,6 +315,11 @@ void initialize_source()
 
 Particle::Bank sample_external_source(uint64_t* seed)
 {
+  // return values from custom source if using
+  if (!settings::path_source_library.empty()) {
+    return sample_custom_source_library(seed);
+  }
+
   // Determine total source strength
   double total_strength = 0.0;
   for (auto& s : model::external_sources)
@@ -363,7 +368,7 @@ void load_custom_source_library()
   dlerror();
 
   // get the function from the library
-  //using sample_t = Particle::Bank (*)(uint64_t* seed);
+  using sample_t = Particle::Bank (*)(uint64_t* seed);
   custom_source_function = reinterpret_cast<sample_t>(dlsym(custom_source_library, "sample_source"));
 
   // check for any dlsym errors
@@ -386,7 +391,7 @@ void close_custom_source_library()
 
 Particle::Bank sample_custom_source_library(uint64_t* seed)
 {
-  return custom_source_function(*seed);
+  return custom_source_function(seed);
 }
 
 void fill_source_bank_custom_source()

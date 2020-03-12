@@ -451,7 +451,7 @@ void finalize_generation()
 void initialize_history(Particle* p, int64_t index_source)
 {
   // set defaults
-  if(settings::run_mode == RunMode::FIXED_SOURCE) {
+  if (settings::run_mode == RunMode::FIXED_SOURCE) {
     // initialize random number seed
     int64_t id = (simulation::total_gen + overall_generation() - 1)*settings::n_particles +
       simulation::work_index[mpi::rank] + index_source;

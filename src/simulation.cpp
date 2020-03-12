@@ -364,7 +364,7 @@ void finalize_batch()
       && !settings::cmfd_run) {
     if (contains(settings::sourcepoint_batch, simulation::current_batch)
         && settings::source_write && !settings::source_separate) {
-      bool b = (settings::run_mode == RunMode::EIGENVALUE) ? true : false;
+      bool b = (settings::run_mode == RunMode::EIGENVALUE);
       openmc_statepoint_write(nullptr, &b);
     } else {
       bool b = false;

@@ -1177,7 +1177,9 @@ class Materials(cv.CheckedList):
         if p.is_dir():
             p /= 'materials.xml'
 
-        # Open the file in write mode.
+        # Write materials to the file one-at-a-time.  This significantly reduces
+        # memory demand over allocating a complete ElementTree and writing it in
+        # one go.
         with open(str(p), 'w', encoding='utf-8',
                   errors='xmlcharrefreplace') as fh:
 

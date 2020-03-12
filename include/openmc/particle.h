@@ -181,15 +181,6 @@ public:
     int delayed_group; //!< particle delayed group
   };
 
-  //! Saved ("banked") state of primary source particle, for particle restart
-  struct RestartBank {
-    Position r;
-    Direction u;
-    double E;
-    double wgt;
-  };
-
-
   //==========================================================================
   // Constructors
 
@@ -371,7 +362,6 @@ public:
 
   int64_t n_progeny_ {0}; // Number of progeny produced by this particle
 
-  RestartBank primary_source_; // primary source particle data
 };
 
 } // namespace openmc

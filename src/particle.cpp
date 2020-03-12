@@ -21,6 +21,7 @@
 #include "openmc/physics_mg.h"
 #include "openmc/random_lcg.h"
 #include "openmc/settings.h"
+#include "openmc/source.h"
 #include "openmc/surface.h"
 #include "openmc/simulation.h"
 #include "openmc/tallies/derivative.h"
@@ -128,12 +129,6 @@ Particle::from_source(const Bank* src)
     E_ = data::mg.energy_bin_avg_[g_];
   }
   E_last_ = E_;
-
-  // Saved copy of primary source attributes
-  primary_source_.r = src->r;
-  primary_source_.u = src->u;
-  primary_source_.E = E_last_;
-  primary_source_.wgt = wgt_;
 }
 
 void
@@ -687,10 +682,30 @@ Particle::write_restart() const
     write_dataset(file_id, "id", id_);
     write_dataset(file_id, "type", static_cast<int>(type_));
 
-    write_dataset(file_id, "weight", primary_source_.wgt);
-    write_dataset(file_id, "energy", primary_source_.E);
-    write_dataset(file_id, "xyz", primary_source_.r);
-    write_dataset(file_id, "uvw", primary_source_.u);
+    int64_t i = current_work_;
+    if (settings::run_mode == RunMode::EIGENVALUE) {
+      //take source data from primary bank for eigenvalue simulation
+      write_dataset(file_id, "weight", simulation::source_bank[i-1].wgt);
+      write_dataset(file_id, "energy", simulation::source_bank[i-1].E);
+      write_dataset(file_id, "xyz", simulation::source_bank[i-1].r);
+      write_dataset(file_id, "uvw", simulation::source_bank[i-1].u);
+    } else if (settings::run_mode == RunMode::FIXED_SOURCE) {
+      // re-sample using rng random number seed used to generate source particle
+      int64_t id = (simulation::total_gen + overall_generation() - 1)*settings::n_particles +
+        simulation::work_index[mpi::rank] + i;
+      uint64_t seed = init_seed(id, STREAM_SOURCE);
+      // re-sample source site
+      Particle::Bank site;
+      if (!settings::path_source_library.empty()) {
+        site = sample_custom_source_library(&seed);
+      } else {
+        site = sample_external_source(&seed);
+      }
+      write_dataset(file_id, "weight", site.wgt);
+      write_dataset(file_id, "energy", site.E);
+      write_dataset(file_id, "xyz", site.r);
+      write_dataset(file_id, "uvw", site.u);
+    }
 
     // Close file
     file_close(file_id);

@@ -68,7 +68,10 @@ Particle::Bank sample_external_source(uint64_t* seed);
 //! Sample a site from custom source library
 Particle::Bank sample_custom_source_library(uint64_t* seed);
 
+//Load custom source library
 void load_custom_source_library();
+
+//Release custom source library
 void close_custom_source_library();
 
 //! Fill source bank at the end of a generation for dlopen based source simulation

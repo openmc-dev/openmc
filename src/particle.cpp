@@ -695,12 +695,7 @@ Particle::write_restart() const
         simulation::work_index[mpi::rank] + i;
       uint64_t seed = init_seed(id, STREAM_SOURCE);
       // re-sample source site
-      Particle::Bank site;
-      if (!settings::path_source_library.empty()) {
-        site = sample_custom_source_library(&seed);
-      } else {
-        site = sample_external_source(&seed);
-      }
+      auto site = sample_external_source(&seed);
       write_dataset(file_id, "weight", site.wgt);
       write_dataset(file_id, "energy", site.E);
       write_dataset(file_id, "xyz", site.r);

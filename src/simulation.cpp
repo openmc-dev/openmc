@@ -457,12 +457,7 @@ void initialize_history(Particle* p, int64_t index_source)
       simulation::work_index[mpi::rank] + index_source;
     uint64_t seed = init_seed(id, STREAM_SOURCE);
     // sample from external source distribution or custom library then set
-    Particle::Bank site;
-    if (!settings::path_source_library.empty()) {
-      site = sample_custom_source_library(&seed);
-    } else {
-      site = sample_external_source(&seed);
-    }
+    auto site = sample_external_source(&seed);
     p->from_source(&site);
   } else if (settings::run_mode == RunMode::EIGENVALUE) {
     // set defaults for eigenvalue simulations from primary bank

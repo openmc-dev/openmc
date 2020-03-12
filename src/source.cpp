@@ -385,8 +385,7 @@ void close_custom_source_library()
 //Sample source particle from custom library
 Particle::Bank sample_custom_source_library(uint64_t* seed)
 {
-  Particle::Bank site = model::sample_source(*seed);
-  return site;
+  return model::sample_source(*seed);
 }
 
 // fill the source bank from the external source

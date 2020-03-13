@@ -1,20 +1,12 @@
+from math import log10
+
 import numpy as np
 
 import openmc
 import openmc.mgxs
 
 ###############################################################################
-#                      Simulation Input File Parameters
-###############################################################################
-
-# OpenMC simulation parameters
-batches = 100
-inactive = 10
-particles = 1000
-
-###############################################################################
-#                 Exporting to OpenMC mgxs.h5 file
-###############################################################################
+# Create multigroup data
 
 # Instantiate the energy group data
 groups = openmc.mgxs.EnergyGroups(group_edges=[
@@ -69,107 +61,90 @@ mg_cross_sections_file = openmc.MGXSLibrary(groups)
 mg_cross_sections_file.add_xsdatas([uo2_xsdata, h2o_xsdata])
 mg_cross_sections_file.export_to_hdf5()
 
-
 ###############################################################################
-#                 Exporting to OpenMC materials.xml file
-###############################################################################
+# Create materials for the problem
 
 # Instantiate some Macroscopic Data
 uo2_data = openmc.Macroscopic('UO2')
 h2o_data = openmc.Macroscopic('LWTR')
 
 # Instantiate some Materials and register the appropriate Macroscopic objects
-uo2 = openmc.Material(material_id=1, name='UO2 fuel')
+uo2 = openmc.Material(name='UO2 fuel')
 uo2.set_density('macro', 1.0)
 uo2.add_macroscopic(uo2_data)
 
-water = openmc.Material(material_id=2, name='Water')
+water = openmc.Material(name='Water')
 water.set_density('macro', 1.0)
 water.add_macroscopic(h2o_data)
 
 # Instantiate a Materials collection and export to XML
 materials_file = openmc.Materials([uo2, water])
-materials_file.cross_sections = "./mgxs.h5"
+materials_file.cross_sections = "mgxs.h5"
 materials_file.export_to_xml()
 
-
 ###############################################################################
-#                 Exporting to OpenMC geometry.xml file
-###############################################################################
+# Define problem geometry
 
-# Instantiate ZCylinder surfaces
-fuel_or = openmc.ZCylinder(surface_id=1, x0=0, y0=0, r=0.54, name='Fuel OR')
-left = openmc.XPlane(surface_id=4, x0=-0.63, name='left')
-right = openmc.XPlane(surface_id=5, x0=0.63, name='right')
-bottom = openmc.YPlane(surface_id=6, y0=-0.63, name='bottom')
-top = openmc.YPlane(surface_id=7, y0=0.63, name='top')
+# Create a surface for the fuel outer radius
+fuel_or = openmc.ZCylinder(r=0.54, name='Fuel OR')
 
-left.boundary_type = 'reflective'
-right.boundary_type = 'reflective'
-top.boundary_type = 'reflective'
-bottom.boundary_type = 'reflective'
+# Create a region represented as the inside of a rectangular prism
+pitch = 1.26
+box = openmc.rectangular_prism(pitch, pitch, boundary_type='reflective')
 
 # Instantiate Cells
-fuel = openmc.Cell(cell_id=1, name='cell 1')
-moderator = openmc.Cell(cell_id=2, name='cell 2')
+fuel = openmc.Cell(fill=uo2, region=-fuel_or, name='fuel')
+moderator = openmc.Cell(fill=water, region=+fuel_or & box, name='moderator')
 
-# Use surface half-spaces to define regions
-fuel.region = -fuel_or
-moderator.region = +fuel_or & +left & -right & +bottom & -top
-
-# Register Materials with Cells
-fuel.fill = uo2
-moderator.fill = water
-
-# Instantiate Universe
-root = openmc.Universe(universe_id=0, name='root universe')
-
-# Register Cells with Universe
-root.add_cells([fuel, moderator])
-
-# Instantiate a Geometry, register the root Universe, and export to XML
-geometry = openmc.Geometry(root)
+# Create a geometry with the two cells and export to XML
+geometry = openmc.Geometry([fuel, moderator])
 geometry.export_to_xml()
 
-
 ###############################################################################
-#                   Exporting to OpenMC settings.xml file
-###############################################################################
+# Define problem settings
 
 # Instantiate a Settings object, set all runtime parameters, and export to XML
-settings_file = openmc.Settings()
-settings_file.energy_mode = "multi-group"
-settings_file.batches = batches
-settings_file.inactive = inactive
-settings_file.particles = particles
+settings = openmc.Settings()
+settings.energy_mode = "multi-group"
+settings.batches = 100
+settings.inactive = 10
+settings.particles = 1000
 
 # Create an initial uniform spatial source distribution over fissionable zones
-bounds = [-0.63, -0.63, -1, 0.63, 0.63, 1]
-uniform_dist = openmc.stats.Box(bounds[:3], bounds[3:])
-settings_file.source = openmc.source.Source(space=uniform_dist)
-
-settings_file.export_to_xml()
+lower_left = (-pitch/2, -pitch/2, -1)
+upper_right = (pitch/2, pitch/2, 1)
+uniform_dist = openmc.stats.Box(lower_left, upper_right, only_fissionable=True)
+settings.source = openmc.source.Source(space=uniform_dist)
+settings.export_to_xml()
 
 ###############################################################################
-#                   Exporting to OpenMC tallies.xml file
-###############################################################################
+# Define tallies
 
-# Instantiate a tally mesh
-mesh = openmc.RegularMesh(mesh_id=1)
-mesh.dimension = [100, 100, 1]
-mesh.lower_left = [-0.63, -0.63, -1.e50]
-mesh.upper_right = [0.63, 0.63, 1.e50]
+# Create a mesh that will be used for tallying
+mesh = openmc.RegularMesh()
+mesh.dimension = (100, 100)
+mesh.lower_left = (-pitch/2, -pitch/2)
+mesh.upper_right = (pitch/2, pitch/2)
 
-# Instantiate some tally Filters
-energy_filter = openmc.EnergyFilter([1e-5, 0.0635, 10.0, 1.0e2, 1.0e3, 0.5e6,
-                                     1.0e6, 20.0e6])
+# Create a mesh filter that can be used in a tally
 mesh_filter = openmc.MeshFilter(mesh)
 
-# Instantiate the Tally
-tally = openmc.Tally(tally_id=1, name='tally 1')
-tally.filters = [energy_filter, mesh_filter]
-tally.scores = ['flux', 'fission', 'nu-fission']
+# Now use the mesh filter in a tally and indicate what scores are desired
+mesh_tally = openmc.Tally(name="Mesh tally")
+mesh_tally.filters = [mesh_filter]
+mesh_tally.scores = ['flux', 'fission', 'nu-fission']
 
-# Instantiate a Tallies collection, register all Tallies, and export to XML
-tallies_file = openmc.Tallies([tally])
-tallies_file.export_to_xml()
+# Let's also create a tally to get the flux energy spectrum. We start by
+# creating an energy filter
+e_min, e_max = 1e-5, 20.0e6
+groups = 500
+energies = np.logspace(log10(e_min), log10(e_max), groups + 1)
+energy_filter = openmc.EnergyFilter(energies)
+
+spectrum_tally = openmc.Tally(name="Flux spectrum")
+spectrum_tally.filters = [energy_filter]
+spectrum_tally.scores = ['flux']
+
+# Instantiate a Tallies collection and export to XML
+tallies = openmc.Tallies([mesh_tally, spectrum_tally])
+tallies.export_to_xml()

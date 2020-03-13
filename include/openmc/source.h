@@ -65,8 +65,14 @@ extern "C" void initialize_source();
 //! \return Sampled source site
 Particle::Bank sample_external_source(uint64_t* seed);
 
-//! Fill source bank at end of generation for fixed source simulations
-void fill_source_bank_fixedsource();
+//! Sample a site from custom source library
+Particle::Bank sample_custom_source_library(uint64_t* seed);
+
+//! Load custom source library
+void load_custom_source_library();
+
+//! Release custom source library
+void close_custom_source_library();
 
 //! Fill source bank at the end of a generation for dlopen based source simulation
 void fill_source_bank_custom_source();

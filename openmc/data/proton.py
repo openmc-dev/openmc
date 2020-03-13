@@ -42,6 +42,7 @@ class ProtonReaction(EqualityMixin):
     def __init__(self, mt):
         self.mt = mt
         self._xs = None
+        self._redundant = False
 
     def __repr__(self):
         if self.mt in _REACTION_NAME:
@@ -54,10 +55,19 @@ class ProtonReaction(EqualityMixin):
     def xs(self):
         return self._xs
 
+    @property
+    def redundant(self):
+        return self._redundant
+
     @xs.setter
     def xs(self, xs):
         cv.check_type('reaction cross section', xs, Callable)
         self._xs = xs
+
+    @redundant.setter
+    def redundant(self, redundant):
+        cv.check_type('redundant', redundant, (bool, np.bool_))
+        self._redundant = redundant
 
     @classmethod
     def from_endf(cls, ev, mt):
@@ -88,7 +98,6 @@ class ProtonReaction(EqualityMixin):
         
         return rx
 
-    #  A little redundant
     def to_hdf5(self, group, energy):
         """Write proton reaction to an HDF5 group
 
@@ -100,12 +109,16 @@ class ProtonReaction(EqualityMixin):
         """
 
         group.attrs['mt'] = self.mt
+        group.attrs['redundant'] = 1 if self.redundant else 0
+
         if self.mt in _REACTION_NAME:
             group.attrs['label'] = np.string_(_REACTION_NAME[self.mt])
         else:
             group.attrs['label'] = np.string_(self.mt)
 
-        group.create_dataset('xs', data=self.xs(energy))
+        dset = group.create_dataset('xs', data=self.xs(energy))
+        threshold_idx = getattr(self.xs, '_threshold_idx', 0)
+        dset.attrs['threshold_idx'] = threshold_idx
 
     @classmethod
     def from_ace(cls, ace, i_reaction):
@@ -353,9 +366,6 @@ class IncidentProton(EqualityMixin):
         name, element, Z, mass_number, metastable = \
             get_metadata(int(zaid), metastable_scheme)
         
-        # Assign temperature to the running list
-        kTs = [ace.temperature*EV_PER_MEV]
-
         data = cls(name, Z, mass_number)
 
         # Read energy grid
@@ -363,6 +373,27 @@ class IncidentProton(EqualityMixin):
         i = ace.jxs[1]
         energy = ace.xss[i : i + n_energy]*EV_PER_MEV
         data.energy = energy
+
+        total_xs = ace.xss[i + n_energy : i + 2*n_energy]
+        absorption_xs = ace.xss[i + 2*n_energy : i + 3*n_energy]
+        heating_number = ace.xss[i + 4*n_energy : i + 5*n_energy]*EV_PER_MEV
+
+        # Create redundant reactions (total, absorption, and heating)
+        total = ProtonReaction(1)
+        total.xs = Tabulated1D(energy, total_xs)
+        total.redundant = True
+        data.reactions[1] = total
+
+        if np.count_nonzero(absorption_xs) > 0:
+            absorption = ProtonReaction(101)
+            absorption.xs = Tabulated1D(energy, absorption_xs)
+            absorption.redundant = True
+            data.reactions[101] = absorption
+
+        heating = ProtonReaction(301)
+        heating.xs = Tabulated1D(energy, heating_number*total_xs)
+        heating.redundant = True
+        data.reactions[301] = heating
 
         # Read each reaction
         n_reaction = ace.nxs[4] + 1
@@ -406,14 +437,9 @@ class IncidentProton(EqualityMixin):
         # Write cross sections
         rxs_group = group.create_group('reactions')
         for mt, rx in self.reactions.items():
-            key = _REACTION_NAME[mt]
-            # Only elastic cross section for now
-            if mt == 2:
+            if not rx.redundant:
                 rx_group = rxs_group.create_group('reaction_{:03}'.format(rx.mt))
-            else:
-                continue
-             
-            rx.to_hdf5(rx_group, union_grid)
+                rx.to_hdf5(rx_group, union_grid)
         
         f.close()
 

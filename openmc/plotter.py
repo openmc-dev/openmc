@@ -66,7 +66,8 @@ _MAX_E = 20.e6
 def plot_xs(this, types, divisor_types=None, temperature=294., data_type=None,
             axis=None, sab_name=None, ce_cross_sections=None,
             mg_cross_sections=None, enrichment=None, plot_CE=True, orders=None,
-            divisor_orders=None, **kwargs):
+            divisor_orders=None, e_lims=None, y_lims=None, axis_type=None, 
+            **kwargs):
     """Creates a figure of continuous-energy cross sections for this item.
 
     Parameters
@@ -111,6 +112,17 @@ def plot_xs(this, types, divisor_types=None, temperature=294., data_type=None,
         multi-group data.
     divisor_orders : Iterable of Integral, optional
         Same as orders, but for divisor_types
+    particle_type : {'neutron','proton'}, optional
+        Type of particle data library to be plotted. If not specified, a  
+        default value of neutron is used.     
+    e_lims : tuple, optional
+        Energy axis limits in format (E_MIN, E_MAX). Energy is in eV.
+    y_lims : tuple, optional
+        Y axis limits in format (Y_MIN, Y_MAX).
+    axis_type : {'semilogx','semilogy','loglog','linear'}, optional 
+        Defines the axis scaling. The semilog options plot the referenced axis
+        on a log scale with the other linear, loglog plots both axes on a log
+        scale and linear plots both axes on a linear scale.
     **kwargs
         All keyword arguments are passed to
         :func:`matplotlib.pyplot.figure`.
@@ -194,12 +206,24 @@ def plot_xs(this, types, divisor_types=None, temperature=294., data_type=None,
     else:
         fig = None
         ax = axis
-    # Set to loglog or semilogx depending on if we are plotting a data
-    # type which we expect to vary linearly
-    if set(types).issubset(PLOT_TYPES_LINEAR):
+    # Set the axis scaling
+    if axis_type is None:
+        if set(types).issubset(PLOT_TYPES_LINEAR):
+            axis_type = "semilogx"
+        else:
+            axis_type = 'loglog'
+    
+    if axis_type == 'semilogx':
         plot_func = ax.semilogx
-    else:
+    elif axis_type == 'semilogy':
+        plot_func = ax.semilogy
+    elif axis_type == 'loglog':
         plot_func = ax.loglog
+    elif axis_type == 'linear':
+        plot_func = ax.plot
+    else:
+        raise ValueError(axis_type + ' is not a supported plotting function.')
+
 
     # Plot the data
     for i in range(len(data)):
@@ -209,9 +233,13 @@ def plot_xs(this, types, divisor_types=None, temperature=294., data_type=None,
 
     ax.set_xlabel('Energy [eV]')
     if plot_CE:
-        ax.set_xlim(_MIN_E, _MAX_E)
+        if e_lims is None:
+            e_lims = (_MIN_E, _MAX_E)
+        ax.set_xlim(e_lims[0], e_lims[1])
     else:
         ax.set_xlim(E[-1], E[0])
+    if y_lims is not None:
+        ax.set_ylim(y_lims[0], y_lims[1])
     if divisor_types:
         if data_type == 'nuclide':
             ylabel = 'Nuclidic Microscopic Data'

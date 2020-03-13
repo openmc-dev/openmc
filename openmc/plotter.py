@@ -496,7 +496,10 @@ def _calculate_cexs_nuclide(this, types, particle_type, temperature=294.,
                                 # reactions like MT=4
                                 funcs.append(nuc[mt].xs[nucT])
                     else:
-                        funcs.append(nuc[mt].xs[nucT])
+                        if particle_type == 'neutron':
+                            funcs.append(nuc[mt].xs[nucT])
+                        elif particle_type == 'proton':
+                            funcs.append(nuc[mt].xs)
                 elif mt == UNITY_MT:
                     funcs.append(lambda x: 1.)
                 elif mt == XI_MT:

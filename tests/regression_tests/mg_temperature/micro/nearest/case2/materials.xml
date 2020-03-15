@@ -1,0 +1,12 @@
+<?xml version='1.0' encoding='utf-8'?>
+<materials>
+  <cross_sections>../../../micro_2g.h5</cross_sections>
+  <material depletable="true" id="1" name="test material">
+    <density units="sum" />
+    <nuclide ao="1" name="H" />
+    <nuclide ao="1" name="O" />
+    <nuclide ao="1" name="Zr" />
+    <nuclide ao="1" name="U235" />
+    <nuclide ao="1" name="U238" />
+  </material>
+</materials>

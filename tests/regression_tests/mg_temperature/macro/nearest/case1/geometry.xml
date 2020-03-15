@@ -1,0 +1,8 @@
+<?xml version='1.0' encoding='utf-8'?>
+<geometry>
+  <cell id="1" material="1" name="cell" region="21 -22 23 -24" temperature="300.0" universe="6" />
+  <surface boundary="reflective" coeffs="-11.1" id="21" type="x-plane" />
+  <surface boundary="reflective" coeffs="11.1" id="22" type="x-plane" />
+  <surface boundary="reflective" coeffs="-11.1" id="23" type="y-plane" />
+  <surface boundary="reflective" coeffs="11.1" id="24" type="y-plane" />
+</geometry>

@@ -141,7 +141,7 @@ class Cell(IDManagerMixin):
                                                   self.temperature)
         string += '{: <16}=\t{}\n'.format('\tTranslation', self.translation)
 
-        # Print Volume only when its set to avoid breaking regression
+        # Print volume only when it is set to avoid breaking regression
         if self._volume is not None:
             string += '{: <16}=\t{}\n'.format('\tVolume', self.volume)
 
@@ -199,8 +199,8 @@ class Cell(IDManagerMixin):
         Returns
         -------
         atoms: collections.OrderedDict
-            Dictionary which keys are nuclides and values the number of atoms.
-            For example, {'H1':1.0e22, 'O16':0.5e22, ...}
+            Dictionary in which keys are nuclides and values the number of
+            atoms. For example, {'H1':1.0e22, 'O16':0.5e22, ...}
 
         Raises
         ------
@@ -211,24 +211,24 @@ class Cell(IDManagerMixin):
         """
         if self._atoms is None:
             if self._volume is None:
-                msg = ('Cannot calculate atoms content becouse no volume '
+                msg = ('Cannot calculate atom content becouse no volume '
                        'is set. Use Cell.volume to provide it or perform '
-                       'stochastic volume calculation.')
+                       'a stochastic volume calculation.')
                 raise ValueError(msg)
 
             elif self.fill_type == 'void':
                 msg = ('Cell is filled with void. It contains no atoms. '
-                       'Material must be set to calculate atoms content.')
+                       'Material must be set to calculate atom content.')
                 raise ValueError(msg)
 
             elif self.fill_type in ['lattice', 'universe']:
                 msg = ('Universe and Lattice cells can contain multiple '
-                       'materials in diffrent proportions. Atoms content must '
+                       'materials in diffrent proportions. Atom content must '
                        'be calculated with stochastic volume calculation')
                 raise ValueError(msg)
 
             elif self.fill_type == 'material':
-                # Get atomic Densities
+                # Get atomic densities
                 self._atoms = self._fill.get_nuclide_atom_densities()
 
                 # Convert to total number of atoms
@@ -303,8 +303,8 @@ class Cell(IDManagerMixin):
 
         self._fill = fill
 
-        # Info about atoms content can now be invalid
-        # (sice fill has just changed)
+        # Info about atom content can now be invalid
+        # (since fill has just changed)
         self._atoms = None
 
     @rotation.setter
@@ -366,7 +366,7 @@ class Cell(IDManagerMixin):
             cv.check_type('cell volume', volume, (Real, UFloat))
 
             # Note that ufloat(0.0, 0.1) >= 0.0 is False
-            # we need special treatment for UFloat input
+            # We need special treatment for UFloat input
             val = volume
             if isinstance(val, UFloat):
                 val = volume.nominal_value
@@ -374,7 +374,7 @@ class Cell(IDManagerMixin):
 
         self._volume = volume
 
-        # Info about atoms content can now be invalid
+        # Info about atom content can now be invalid
         # (sice volume has just changed)
         self._atoms = None
 

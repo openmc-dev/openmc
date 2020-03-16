@@ -276,7 +276,6 @@ def build_inf_model(xsnames, xslibname, temperature, tempmethod='nearest'):
     batches = 15
     inactive = 5
     particles = 5000
-
     # Instantiate a Settings object
     settings_file = openmc.Settings()
     settings_file.batches = batches

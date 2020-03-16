@@ -3,6 +3,8 @@ from collections.abc import Mapping, Callable
 from io import StringIO
 from numbers import Integral, Real
 from warnings import warn
+import os
+import tempfile
 
 import h5py
 import numpy as np
@@ -10,10 +12,11 @@ import numpy as np
 from openmc.mixin import EqualityMixin
 import openmc.checkvalue as cv
 from . import HDF5_VERSION, HDF5_VERSION_MAJOR
-from .ace import Table, get_metadata, get_table
+from .ace import Table, get_metadata, get_table, Library
 from .data import ATOMIC_SYMBOL, EV_PER_MEV
 from .endf import Evaluation, get_head_record, get_tab1_record, get_list_record
 from .function import Tabulated1D
+from .njoy import make_ace
 
 _REACTION_NAME = {2: '(p,elastic)', 3: '(p,non-elastic)', 4: '(p,level)', 
                   5: '(p,misc)', 11: '(p,2nd)', 16: '(p,2n)', 17: '(p,3n)', 
@@ -495,5 +498,45 @@ class IncidentProton(EqualityMixin):
 
         return data
 
+    @classmethod
+    def from_njoy(cls, filename, temperatures=None, evaluation=None, **kwargs):
+        """Generate incident proton data by running NJOY.
 
+        Parameters
+        ----------
+        filename : str
+            Path to ENDF file
+        temperatures : iterable of float
+            Temperatures in Kelvin to produce data at. If omitted, data is
+            produced at room temperature (293.6 K)
+        evaluation : openmc.data.endf.Evaluation, optional
+            If the ENDF file contains multiple material evaluations, this
+            argument indicates which evaluation to use.
+        **kwargs
+            Keyword arguments passed to :func:`openmc.data.njoy.make_ace`
+
+        Returns
+        -------
+        data : openmc.data.IncidentProton
+            Incident proton continuous-energy data
+
+        """
+        with tempfile.TemporaryDirectory() as tmpdir:
+            # Run NJOY to create an ACE library
+            kwargs.setdefault("output_dir", tmpdir)
+            for key in ("acer", "pendf", "heatr", "broadr", "gaspr", "purr"):
+                kwargs.setdefault(key, os.path.join(kwargs["output_dir"], key))
+            kwargs['evaluation'] = evaluation
+            kwargs['pendf'] = False
+            kwargs['broadr'] = False
+            kwargs['heatr'] = False
+            kwargs['gaspr'] = False
+            kwargs['purr'] = False
+            make_ace(filename, [0.0], **kwargs)
+
+            # Create instance from ACE tables within library
+            lib = Library(kwargs['acer'])
+            data = cls.from_ace(lib.tables[0])
+        
+        return data
 

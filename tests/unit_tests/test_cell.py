@@ -35,11 +35,11 @@ def test_repr(cell_with_lattice):
     c = openmc.Cell()
     repr(c)
 
-    # Empty cell with Volume
+    # Empty cell with volume
     c.volume = 3.0
     repr(c)
 
-    # Empty cell with Uncertain Volume
+    # Empty cell with uncertain volume
     c.volume = u.ufloat(3.0, 0.2)
     repr(c)
 
@@ -214,7 +214,7 @@ def test_atoms_distribmat_cell(uo2, water):
 def test_atoms_errors(cell_with_lattice):
     cells, mats, univ, lattice = cell_with_lattice
 
-    # Material Cell with no Volume
+    # Material Cell with no volume
     with pytest.raises(ValueError):
         cells[1].atoms
 
@@ -223,7 +223,7 @@ def test_atoms_errors(cell_with_lattice):
         cells[2].volume = 3
         cells[2].atoms
 
-    # Cell with volume but with Void fill
+    # Cell with volume but with void fill
     with pytest.raises(ValueError):
         cells[1].volume = 2
         cells[1].fill = None

@@ -443,8 +443,8 @@ named ``dagmc.h5m``) when initializing a simulation. If a `geometry.xml
 Calculating Atoms Content
 -------------------------
 
-If the total volume occupied by all instances of a cell in a geometry is known
-by a user, it is possible to assign it to a cell without a stochastic volume
+If the total volume occupied by all instances of a cell in the geometry is known
+by the user, it is possible to assign this volume to a cell without performing a stochastic volume
 calculation::
 
   from uncertainties import ufloat
@@ -456,9 +456,9 @@ calculation::
   # Set volume if it is known with some uncertainty
   cell.volume = ufloat(17.0, 0.1)
 
-Once a volume is set and a cell is filled with a material or distributed
-materials. It is possible to use :func:`~openmc.Cell.atoms` method to obtain
-a dictionary that maps nuclides to a total number of atoms in all instances
+Once a volume is set, and a cell is filled with a material or distributed
+materials, it is possible to use the :func:`~openmc.Cell.atoms` method to obtain
+a dictionary of nuclides and their total number of atoms in all instances
 of a cell (e.g. ``{'H1':1.0e22, 'O16':0.5e22, ...}``)::
 
   cell = openmc.Cell(fill = u02)

@@ -46,10 +46,10 @@ class ProtonReaction(EqualityMixin):
 
     def __repr__(self):
         if self.mt in _REACTION_NAME:
-            return "<Photon Reaction: MT={} {}>".format(
-                self.mt, _REACTION_NAME[self.mt][0])
+            return "<Proton Reaction: MT={} {}>".format(
+                self.mt, _REACTION_NAME[self.mt])
         else:
-            return "<Photon Reaction: MT={}>".format(self.mt)
+            return "<Proton Reaction: MT={}>".format(self.mt)
 
     @property
     def xs(self):
@@ -223,7 +223,7 @@ class IncidentProton(EqualityMixin):
     atomic_number : int
         Number of protons in the target nucleus
     reactions : collections.OrderedDict
-        Contains the cross sections for each photon reaction. The keys are MT
+        Contains the cross sections for each proton reaction. The keys are MT
         values and the values are instances of :class:`ProtonReaction`.
 
     """
@@ -317,13 +317,6 @@ class IncidentProton(EqualityMixin):
         for mf, mt, nc, mod in ev.reaction_list:
             if mf == 3:
                 data.reactions[mt] = ProtonReaction.from_endf(ev, mt)
-
-        # Determine union energy grid
-        union_grid = np.array([])
-        for rx in data:
-            union_grid = np.union1d(union_grid, rx.xs.x)
-
-        data.energy = union_grid
         
         return data
     
@@ -404,7 +397,7 @@ class IncidentProton(EqualityMixin):
         return data
 
     def export_to_hdf5(self, path, mode='a', libver='earliest'):
-        """Export incident photon data to an HDF5 file.
+        """Export incident proton data to an HDF5 file.
 
         Parameters
         ----------

@@ -2083,7 +2083,7 @@ UnstructuredMesh::set_score_data(const std::string& score,
 void
 UnstructuredMesh::write(std::string base_filename) const {
   // add extension to the base name
-  auto filename = base_filename + ".h5m";
+  auto filename = base_filename + ".vtk";
   write_message("Writing unstructured mesh " + filename + "...", 5);
   filename = settings::path_output + filename;
 

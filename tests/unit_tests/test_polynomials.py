@@ -52,7 +52,7 @@ def test_zernike():
     assert zn_azimuthal.order == 2
     assert zn_azimuthal.radius == 1
 
-    coeff = np.asarray([1.5, -3.6, 9.7e-1, -6.8e-1, 0.11, 0.33e2, 0.002, 13.75, \
+    coeff = np.asarray([1.5, -3.6, 9.7e-1, -6.8e-1, 0.11, 0.33e2, 0.002, 13.75, 
                         3.1, -7.3, 7.8e-1, -1.1e-1, 2.56, 5.25e3, 0.123])
     zn_azimuthal = openmc.Zernike(coeff, 0.392)
     assert zn_azimuthal.order == 4

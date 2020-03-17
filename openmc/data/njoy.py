@@ -422,7 +422,7 @@ def make_ace(filename, temperatures=None, acer=True, xsdir=None,
         with ace.open('w') as ace_file, xsdir.open('w') as xsdir_file:
             for temperature in temperatures:
                 # Get contents of ACE file
-                text = open(output_dir / fname.format("ace", temperature), 'r').read()
+                text = (output_dir / fname.format("ace", temperature)).read_text()
 
                 # If the target is metastable, make sure that ZAID in the ACE
                 # file reflects this by adding 400
@@ -435,8 +435,8 @@ def make_ace(filename, temperatures=None, acer=True, xsdir=None,
                 ace_file.write(text)
 
                 # Concatenate into destination xsdir file
-                text = open(output_dir / fname.format("xsdir", temperature), 'r').read()
-                xsdir_file.write(text)
+                xsdir_in = output_dir / fname.format("xsdir", temperature)
+                xsdir_file.write(xsdir_in.read_text())
 
 
 def make_ace_thermal(filename, filename_thermal, temperatures=None,
@@ -585,13 +585,13 @@ def make_ace_thermal(filename, filename_thermal, temperatures=None,
     commands += 'stop\n'
     run(commands, tapein, tapeout, **kwargs)
 
-    ace_out = (output_dir / ace)
-    xsdir = (ace.parent / "xsdir") if xsdir is None else xsdir
-    with open(ace_out, 'w') as ace_file, open(xsdir, 'w') as xsdir_file:
+    ace_out = output_dir / ace
+    xsdir = (ace.parent / "xsdir") if xsdir is None else Path(xsdir)
+    with ace_out.open('w') as ace_file, xsdir.open('w') as xsdir_file:
         # Concatenate ACE and xsdir files together
         for temperature in temperatures:
-            text = open(output_dir / fname.format(ace, temperature), 'r').read()
-            ace_file.write(text)
+            ace_in = output_dir / fname.format(ace, temperature)
+            ace_file.write(ace_in.read_text())
 
-            text = open(output_dir / fname.format(xsdir, temperature), 'r').read()
-            xsdir_file.write(text)
+            xsdir_in = output_dir / fname.format(xsdir, temperature)
+            xsdir_file.write(xsdir_in.read_text())

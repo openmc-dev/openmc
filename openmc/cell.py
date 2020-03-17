@@ -87,10 +87,10 @@ class Cell(IDManagerMixin):
         Volume of the cell in cm^3. This can either be set manually or
         calculated in a stochastic volume calculation and added via the
         :meth:`Cell.add_volume_information` method. For 'distribmat' cells
-        it is a total volume of all instances.
+        it is the total volume of all instances.
     atoms : dict
-        Mapping of nuclides to total number of atoms for each nuclide present
-        in the cell, or all its instances for 'sdistribmat' fill. For example,
+        Mapping of nuclides to the total number of atoms for each nuclide present
+        in the cell, or in all of its instances for a 'distribmat' fill. For example,
         {'U235': 1.0e22, 'U238': 5.0e22, ...}.
 
     """

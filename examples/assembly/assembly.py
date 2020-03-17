@@ -58,7 +58,7 @@ def fuel_pin():
 
 
 def guide_tube_pin():
-    """Returns a control rode guide tube pin universe"""
+    """Returns a control rod guide tube universe."""
 
     gt_inner_cell = openmc.Cell(fill=hot_water, region=-fuel_or)
     gt_clad_cell = openmc.Cell(fill=clad, region=+fuel_or & -clad_or)
@@ -105,7 +105,7 @@ def assembly_model():
     # Create a cell filled with the lattice
     main_cell = openmc.Cell(fill=assembly, region=outer_boundary)
 
-    # Finally, create geometry by giving a list of cells filling the root
+    # Finally, create geometry by providing a list of cells that fill the root
     # universe
     model.geometry = openmc.Geometry([main_cell])
 

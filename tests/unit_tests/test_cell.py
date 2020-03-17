@@ -9,9 +9,6 @@ import pytest
 from tests.unit_tests import assert_unbounded
 from openmc.data import atomic_mass, AVOGADRO
 
-# Relative tolerance for float comparison
-TOL = 1e-9
-
 
 def test_contains():
     # Cell with specified region
@@ -172,7 +169,7 @@ def test_atoms_material_cell(uo2, water):
     tuples = list(c.atoms.items())
     for nuc, atom_num, t in zip(expected_nucs, expected_atoms, tuples):
         assert nuc == t[0]
-        assert atom_num == pytest.approx(t[1], rel=TOL)
+        assert atom_num == pytest.approx(t[1])
 
     # Change material and check if OK
     c.fill = water
@@ -185,7 +182,7 @@ def test_atoms_material_cell(uo2, water):
     tuples = list(c.atoms.items())
     for nuc, atom_num, t in zip(expected_nucs, expected_atoms, tuples):
         assert nuc == t[0]
-        assert atom_num == pytest.approx(t[1], rel=TOL)
+        assert atom_num == pytest.approx(t[1])
 
 
 def test_atoms_distribmat_cell(uo2, water):
@@ -208,7 +205,7 @@ def test_atoms_distribmat_cell(uo2, water):
     tuples = list(c.atoms.items())
     for nuc, atom_num, t in zip(expected_nucs, expected_atoms, tuples):
         assert nuc == t[0]
-        assert atom_num == pytest.approx(t[1], rel=TOL)
+        assert atom_num == pytest.approx(t[1])
 
 
 def test_atoms_errors(cell_with_lattice):
@@ -237,7 +234,7 @@ def test_nuclide_densities(uo2):
     tuples = list(c.get_nuclide_densities().values())
     for nuc, density, t in zip(expected_nucs, expected_density, tuples):
         assert nuc == t[0]
-        assert density == pytest.approx(t[1], rel=TOL)
+        assert density == pytest.approx(t[1])
 
     # Empty cell
     c = openmc.Cell()

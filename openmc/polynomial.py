@@ -106,9 +106,8 @@ class Zernike(Polynomial):
     """
     def __init__(self, coef, radius=1):
         super().__init__(coef)
-        r"""Solve order from number of coefficients
-        N = (order + 1)(order + 2) / 2
-        """
+        # Solve order from number of coefficients
+        # N = (order + 1)(order + 2) / 2
         self._order = int((math.sqrt(8 * len(self.coef) + 1) - 3) / 2)
         self.radius = radius
         norm_vec = np.ones(len(self.coef))

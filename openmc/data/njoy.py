@@ -411,8 +411,8 @@ def make_ace(filename, temperatures=None, acer=True, xsdir=None,
             commands += _TEMPLATE_ACER.format(**locals())
 
             # Indicate tapes to save for each ACER run
-            tapeout[nace] = fname.format("ace", temperature)
-            tapeout[ndir] = fname.format("xsdir", temperature)
+            tapeout[nace] = output_dir / fname.format("ace", temperature)
+            tapeout[ndir] = output_dir / fname.format("xsdir", temperature)
     commands += 'stop\n'
     run(commands, tapein, tapeout, **kwargs)
 
@@ -422,7 +422,7 @@ def make_ace(filename, temperatures=None, acer=True, xsdir=None,
         with ace.open('w') as ace_file, xsdir.open('w') as xsdir_file:
             for temperature in temperatures:
                 # Get contents of ACE file
-                text = open(fname.format("ace", temperature), 'r').read()
+                text = open(output_dir / fname.format("ace", temperature), 'r').read()
 
                 # If the target is metastable, make sure that ZAID in the ACE
                 # file reflects this by adding 400
@@ -435,18 +435,13 @@ def make_ace(filename, temperatures=None, acer=True, xsdir=None,
                 ace_file.write(text)
 
                 # Concatenate into destination xsdir file
-                text = open(fname.format("xsdir", temperature), 'r').read()
+                text = open(output_dir / fname.format("xsdir", temperature), 'r').read()
                 xsdir_file.write(text)
-
-        # Remove ACE/xsdir files for each temperature
-        for temperature in temperatures:
-            os.remove(fname.format("ace", temperature))
-            os.remove(fname.format("xsdir", temperature))
 
 
 def make_ace_thermal(filename, filename_thermal, temperatures=None,
-                     ace='ace', xsdir='xsdir', error=0.001, iwt=2,
-                     evaluation=None, evaluation_thermal=None, **kwargs):
+                     ace='ace', xsdir=None, output_dir=None, error=0.001,
+                     iwt=2, evaluation=None, evaluation_thermal=None, **kwargs):
     """Generate thermal scattering ACE file from ENDF files
 
     Parameters
@@ -461,7 +456,12 @@ def make_ace_thermal(filename, filename_thermal, temperatures=None,
     ace : str, optional
         Path of ACE file to write
     xsdir : str, optional
-        Path of xsdir file to write
+        Path of xsdir file to write. Defaults to ``"xsdir"`` in the same
+        directory as ``ace``
+    output_dir : str, optional
+        Directory to write ace and xsdir files. If not provided, then write
+        output files to current directory. If given, must be a path to a
+        directory.
     error : float, optional
         Fractional error tolerance for NJOY processing
     iwt : int
@@ -481,6 +481,13 @@ def make_ace_thermal(filename, filename_thermal, temperatures=None,
         If the NJOY process returns with a non-zero status
 
     """
+    if output_dir is None:
+        output_dir = Path()
+    else:
+        output_dir = Path(output_dir)
+        if not output_dir.is_dir():
+            raise IOError("{} is not a directory".format(output_dir))
+
     ev = evaluation if evaluation is not None else endf.Evaluation(filename)
     mat = ev.material
     zsymam = ev.target['zsymam']
@@ -573,21 +580,18 @@ def make_ace_thermal(filename, filename_thermal, temperatures=None,
         commands += _THERMAL_TEMPLATE_ACER.format(**locals())
 
         # Indicate tapes to save for each ACER run
-        tapeout[nace] = fname.format(ace, temperature)
-        tapeout[ndir] = fname.format(xsdir, temperature)
+        tapeout[nace] = output_dir / fname.format(ace, temperature)
+        tapeout[ndir] = output_dir / fname.format(xsdir, temperature)
     commands += 'stop\n'
     run(commands, tapein, tapeout, **kwargs)
 
-    with open(ace, 'w') as ace_file, open(xsdir, 'w') as xsdir_file:
+    ace_out = (output_dir / ace)
+    xsdir = (ace.parent / "xsdir") if xsdir is None else xsdir
+    with open(ace_out, 'w') as ace_file, open(xsdir, 'w') as xsdir_file:
         # Concatenate ACE and xsdir files together
         for temperature in temperatures:
-            text = open(fname.format(ace, temperature), 'r').read()
+            text = open(output_dir / fname.format(ace, temperature), 'r').read()
             ace_file.write(text)
 
-            text = open(fname.format(xsdir, temperature), 'r').read()
+            text = open(output_dir / fname.format(xsdir, temperature), 'r').read()
             xsdir_file.write(text)
-
-    # Remove ACE/xsdir files for each temperature
-    for temperature in temperatures:
-        os.remove(fname.format(ace, temperature))
-        os.remove(fname.format(xsdir, temperature))

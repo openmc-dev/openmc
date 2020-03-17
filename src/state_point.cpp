@@ -311,7 +311,8 @@ openmc_statepoint_write(const char* filename, bool* write_source)
   // Write the source bank if desired
   if (write_source_) {
     if (mpi::master || parallel) file_id = file_open(filename_, 'a', true);
-    write_source_bank(file_id);
+    // write_source_bank(file_id);
+    write_surf_src_bank(file_id);
     if (mpi::master || parallel) file_close(file_id);
   }
 

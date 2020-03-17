@@ -611,12 +611,16 @@ class UnstructuredMesh(MeshBase):
         Volumes of the unstructured mesh elements
     total_volume : float
         Volume of the unstructured mesh in total
+    centroids : Iterable of tuple
+        An iterable of element centroid coordinates, e.g. [(0.0, 0.0, 0.0),
+        (1.0, 1.0, 1.0), ...]
     """
 
     def __init__(self, mesh_id=None, name='', filename=''):
         super().__init__(mesh_id, name)
         self._filename = filename
         self._volumes = []
+        self._centroids = []
 
     @property
     def filename(self):
@@ -644,6 +648,15 @@ class UnstructuredMesh(MeshBase):
     def total_volume(self):
         return np.sum(self.volumes)
 
+    @property
+    def centroids(self):
+        return self._centroids
+
+    @centroids.setter
+    def centroids(self, centroids):
+        cv.check_type("Unstructured mesh centroids", centroids, Iterable, Iterable)
+        self._centroids = centroids
+
     def __repr__(self):
         string = super().__repr__()
         string += '{0: <16}{1}{2}\n'.format('\tFilename', '=\t', self.filename)
@@ -656,7 +669,9 @@ class UnstructuredMesh(MeshBase):
         mesh = cls(mesh_id)
         mesh.filename = group['filename'][()].decode()
         vol_data = group['volumes'][()]
+        centroids = group['centroids'][()]
         mesh.volumes = np.reshape(vol_data, (vol_data.shape[0], 1))
+        mesh.centroids = np.reshape(centroids, (vol_data.shape[0], 3))
 
         return mesh
 

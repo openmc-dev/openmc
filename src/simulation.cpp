@@ -378,6 +378,12 @@ void finalize_batch()
       write_source_point(filename.c_str());
     }
   }
+
+  // Write out surface source if requested.
+  if (settings::surface_source) {
+    auto filename = settings::path_output + "surface_source.h5";
+    write_surf_src_point(filename.c_str());  //!!
+  }
 }
 
 void initialize_generation()

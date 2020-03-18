@@ -20,6 +20,7 @@ General Usage
     pandas-dataframes
     tally-arithmetic
     expansion-filters
+    expansion-filters-zernike
     search
     nuclear-data
     nuclear-data-resonance-covariance

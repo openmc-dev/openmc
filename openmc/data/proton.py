@@ -1,5 +1,5 @@
 from collections import OrderedDict
-from collections.abc import Mapping, Callable
+from collections.abc import Callable
 from io import StringIO
 from numbers import Integral, Real
 from warnings import warn
@@ -18,21 +18,21 @@ from .endf import Evaluation, get_head_record, get_tab1_record, get_list_record
 from .function import Tabulated1D
 from .njoy import make_ace
 
-_REACTION_NAME = {2: '(p,elastic)', 3: '(p,non-elastic)', 4: '(p,level)', 
-                  5: '(p,misc)', 11: '(p,2nd)', 16: '(p,2n)', 17: '(p,3n)', 
-                  18: '(p,fission)', 22: '(p,na)', 
-                  24: '(p,2na)', 25: '(p,3na)', 28: '(p,np)', 29: '(p,n2a)',
-                  30: '(p,2n2a)', 32: '(p,nd)', 33: '(p,nt)', 34: '(p,nHe-3)',
-                  35: '(p,nd2a)', 36: '(p,nt2a)', 37: '(p,4n)', 41: '(p,2np)', 
-                  42: '(p,3np)', 44: '(p,n2p)', 45: '(p,npa)', 91: '(p,nc)', 
+_REACTION_NAME = {1: '(p,total)', 2: '(p,elastic)', 3: '(p,non-elastic)', 
+                  4: '(p,level)', 5: '(p,misc)', 11: '(p,2nd)', 16: '(p,2n)', 
+                  17: '(p,3n)', 18: '(p,fission)', 22: '(p,na)', 24: '(p,2na)', 
+                  25: '(p,3na)', 28: '(p,np)', 29: '(p,n2a)', 30: '(p,2n2a)', 
+                  32: '(p,nd)', 33: '(p,nt)', 34: '(p,nHe-3)', 35: '(p,nd2a)', 
+                  36: '(p,nt2a)', 37: '(p,4n)', 41: '(p,2np)', 42: '(p,3np)', 
+                  44: '(p,n2p)', 45: '(p,npa)', 91: '(p,nc)', 101: '(p,disapr)',
                   102: '(p,gamma)', 103: '(p,p)', 104: '(p,d)', 105: '(p,t)', 
                   106: '(p,3He)', 107: '(p,a)', 108: '(p,2a)', 109: '(p,3a)', 
                   111: '(p,2p)', 112: '(p,pa)', 113: '(p,t2a)', 114: '(p,d2a)', 
-                  115: '(p,pd)', 116: '(p,pt)', 117: '(p,da)',  203: '(p,Xp)',
-                 204: '(p,Xd)', 205: '(p,Xt)', 206: '(p,X3He)', 207: '(p,Xa)',
-                 301: 'heating', 444: 'damage-energy', 699: '(p,dc)', 749: '(p,tc)', 
-                 799: '(p,3Hec)', 849: '(p,ac)', 891: '(p,2nc)', 
-                 901: 'heating-local'}
+                  115: '(p,pd)', 116: '(p,pt)', 117: '(p,da)',  203: '(p,Xp)', 
+                  204: '(p,Xd)', 205: '(p,Xt)', 206: '(p,X3He)', 207: '(p,Xa)',  
+                  301: 'heating', 444: 'damage-energy', 699: '(p,dc)', 
+                  749: '(p,tc)', 799: '(p,3Hec)', 849: '(p,ac)', 891: '(p,2nc)', 
+                  901: 'heating-local'}
 _REACTION_NAME.update({i: '(p,n{})'.format(i - 50) for i in range(50, 91)})
 _REACTION_NAME.update({i: '(p,d{})'.format(i - 650) for i in range(650, 699)})
 _REACTION_NAME.update({i: '(p,t{})'.format(i - 700) for i in range(700, 749)})
@@ -218,25 +218,51 @@ class IncidentProton(EqualityMixin):
 
     Parameters
     ----------
+    name : str
+        Name of the nuclide using the GND naming convention
     atomic_number : int
         Number of protons in the target nucleus
+    atomic_number : int
+        Number of protons in the target nucleus
+    mass_number : int
+        Number of nucleons in the target nucleus
+    metastable : int
+        Metastable state of the target nucleus. A value of zero indicates ground
+        state.
+    atomic_weight_ratio : float
+        Atomic weight ratio of the target nuclide.
 
     Attributes
     ----------
     atomic_number : int
         Number of protons in the target nucleus
+    atomic_symbol : str
+        Atomic symbol of the nuclide, e.g., 'Zr'
+    atomic_weight_ratio : float
+        Atomic weight ratio of the target nuclide.
+    mass_number : int
+        Number of nucleons in the target nucleus
+    metastable : int
+        Metastable state of the target nucleus. A value of zero indicates ground
+        state.
+    name : str
+        Name of the nuclide using the GND naming convention
     reactions : collections.OrderedDict
-        Contains the cross sections for each proton reaction. The keys are MT
-        values and the values are instances of :class:`ProtonReaction`.
+        Contains the cross sections, secondary angle and energy distributions,
+        and other associated data for each reaction. The keys are the MT values
+        and the values are Reaction objects.
 
     """
 
-    def __init__(self, name, atomic_number, mass_number):
+    def __init__(self, name, atomic_number, mass_number, metastable,
+                 atomic_weight_ratio):
         self.name = name
         self.atomic_number = atomic_number
         self.mass_number = mass_number
         self.reactions = OrderedDict()
         self.energy = []
+        self.metastable = metastable
+        self.atomic_weight_ratio = atomic_weight_ratio
 
     def __contains__(self, mt):
         return mt in self.reactions
@@ -265,6 +291,17 @@ class IncidentProton(EqualityMixin):
     def mass_number(self):
         return self._mass_number
 
+    @property
+    def metastable(self):
+        return self._metastable
+
+    @property
+    def atomic_weight_ratio(self):
+        return self._atomic_weight_ratio
+    
+    @property
+    def atomic_symbol(self):
+        return ATOMIC_SYMBOL[self.atomic_number]
 
     @name.setter
     def name(self, name):
@@ -283,6 +320,17 @@ class IncidentProton(EqualityMixin):
         cv.check_greater_than('mass number', mass_number, 0, True)
         self._mass_number = mass_number
 
+    @metastable.setter
+    def metastable(self, metastable):
+        cv.check_type('metastable', metastable, Integral)
+        cv.check_greater_than('metastable', metastable, 0, True)
+        self._metastable = metastable
+    
+    @atomic_weight_ratio.setter
+    def atomic_weight_ratio(self, atomic_weight_ratio):
+        cv.check_type('atomic weight ratio', atomic_weight_ratio, Real)
+        cv.check_greater_than('atomic weight ratio', atomic_weight_ratio, 0.0)
+        self._atomic_weight_ratio = atomic_weight_ratio
 
     @classmethod
     def from_endf(cls, ev_or_filename):
@@ -310,11 +358,14 @@ class IncidentProton(EqualityMixin):
 
         atomic_number = ev.target['atomic_number']
         mass_number = ev.target['mass_number']
+        metastable = ev.target['isomeric_state']
+        atomic_weight_ratio = ev.target['mass']
 
         element = ATOMIC_SYMBOL[atomic_number]
         name = '{}{}'.format(element, mass_number)
 
-        data = cls(name, atomic_number, mass_number)
+        data = cls(name, atomic_number, mass_number, metastable, 
+                   atomic_weight_ratio)
 
         # Read each reaction
         for mf, mt, nc, mod in ev.reaction_list:
@@ -362,7 +413,7 @@ class IncidentProton(EqualityMixin):
         name, element, Z, mass_number, metastable = \
             get_metadata(int(zaid), metastable_scheme)
         
-        data = cls(name, Z, mass_number)
+        data = cls(name, Z, mass_number, metastable, ace.atomic_weight_ratio)
 
         # Read energy grid
         n_energy = ace.nxs[3]
@@ -423,6 +474,8 @@ class IncidentProton(EqualityMixin):
         group = f.create_group(self.name)
         group.attrs['Z'] = self.atomic_number
         group.attrs['A'] = self.mass_number
+        group.attrs['metastable'] = self.metastable
+        group.attrs['atomic_weight_ratio'] = self.atomic_weight_ratio
 
         # Determine union energy grid
         union_grid = np.array([])
@@ -476,8 +529,11 @@ class IncidentProton(EqualityMixin):
         name = group.name[1:]
         atomic_number = group.attrs['Z']
         mass_number = group.attrs['A']
+        metastable = group.attrs['metastable']
+        atomic_weight_ratio = group.attrs['atomic_weight_ratio']
 
-        data = cls(name, atomic_number, mass_number)
+        data = cls(name, atomic_number, mass_number, metastable, 
+                   atomic_weight_ratio)
 
         # Read energy grid
         data.energy = group['energy'][()]
@@ -492,16 +548,13 @@ class IncidentProton(EqualityMixin):
         return data
 
     @classmethod
-    def from_njoy(cls, filename, temperatures=None, evaluation=None, **kwargs):
+    def from_njoy(cls, filename, evaluation=None, **kwargs):
         """Generate incident proton data by running NJOY.
 
         Parameters
         ----------
         filename : str
             Path to ENDF file
-        temperatures : iterable of float
-            Temperatures in Kelvin to produce data at. If omitted, data is
-            produced at room temperature (293.6 K)
         evaluation : openmc.data.endf.Evaluation, optional
             If the ENDF file contains multiple material evaluations, this
             argument indicates which evaluation to use.

@@ -590,7 +590,7 @@ class RectilinearMesh(MeshBase):
         return element
 
 class UnstructuredMesh(MeshBase):
-    """An unstructured mesh, assumed to be three dimensionality
+    """A 3D unstructured mesh
 
     Parameters
     ----------

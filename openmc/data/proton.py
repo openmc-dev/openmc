@@ -371,7 +371,8 @@ class IncidentProton(EqualityMixin):
         for mf, mt, nc, mod in ev.reaction_list:
             if mf == 3:
                 data.reactions[mt] = ProtonReaction.from_endf(ev, mt)
-        
+
+        data._evaluation = ev        
         return data
     
     @classmethod
@@ -465,6 +466,12 @@ class IncidentProton(EqualityMixin):
             that are less backwards compatible but have performance benefits.
 
         """
+
+        # If data come from ENDF, don't allow exporting to HDF5
+        if hasattr(self, '_evaluation'):
+            raise NotImplementedError('Cannot export incident neutron data that '
+                                      'originated from an ENDF file.')
+
         # Open file and write version
         f = h5py.File(str(path), mode, libver=libver)
         f.attrs['filetype'] = np.string_('data_proton')

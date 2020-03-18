@@ -171,16 +171,17 @@ Shannon Entropy
 To assess convergence of the source distribution, the scalar Shannon entropy
 metric is often used in Monte Carlo codes. OpenMC also allows you to calculate
 Shannon entropy at each generation over a specified mesh, created using the
-:class:`openmc.Mesh` class. After instantiating a :class:`Mesh`, you need to
-specify the lower-left coordinates of the mesh (:attr:`Mesh.lower_left`), the
-number of mesh cells in each direction (:attr:`Mesh.dimension`) and either the
-upper-right coordinates of the mesh (:attr:`Mesh.upper_right`) or the width of
-each mesh cell (:attr:`Mesh.width`). Once you have a mesh, simply assign it to
-the :attr:`Settings.entropy_mesh` attribute.
+:class:`openmc.RegularMesh` class. After instantiating a :class:`RegularMesh`,
+you need to specify the lower-left coordinates of the mesh
+(:attr:`RegularMesh.lower_left`), the number of mesh cells in each direction
+(:attr:`RegularMesh.dimension`) and either the upper-right coordinates of the
+mesh (:attr:`RegularMesh.upper_right`) or the width of each mesh cell
+(:attr:`RegularMesh.width`). Once you have a mesh, simply assign it to the
+:attr:`Settings.entropy_mesh` attribute.
 
 ::
 
-   entropy_mesh = openmc.Mesh()
+   entropy_mesh = openmc.RegularMesh()
    entropy_mesh.lower_left = (-50, -50, -25)
    entropy_mesh.upper_right = (50, 50, 25)
    entropy_mesh.dimension = (8, 8, 8)
@@ -193,7 +194,7 @@ property::
 
   geom = openmc.Geometry()
   ...
-  m = openmc.Mesh()
+  m = openmc.RegularMesh()
   m.lower_left, m.upper_right = geom.bounding_box
   m.dimension = (8, 8, 8)
 

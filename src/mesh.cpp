@@ -1722,7 +1722,7 @@ UnstructuredMesh::bins_crossed(const Particle* p,
       lengths.push_back((hit.first - last_dist) / track_len);
     } else {
       // if in the loop, we should always find a tet
-      warning("No tet found for location between trianle hits");
+      warning("No tet found for location between triangle hits");
     }
     last_dist = hit.first;
 

@@ -7,7 +7,7 @@ from collections.abc import Iterable
 import openmc.checkvalue as cv
 
 
-class Trigger(object):
+class Trigger:
     """A criterion for when to finish a simulation based on tally uncertainties.
 
     Parameters

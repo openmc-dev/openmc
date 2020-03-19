@@ -7,7 +7,7 @@ from collections import OrderedDict
 import numpy as np
 
 
-class AtomNumber(object):
+class AtomNumber:
     """Stores local material compositions (atoms of each nuclide).
 
     Parameters

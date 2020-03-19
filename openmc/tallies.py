@@ -128,28 +128,18 @@ class Tally(IDManagerMixin):
         self._results_read = False
 
     def __repr__(self):
-        string = 'Tally\n'
-        string += '{: <16}=\t{}\n'.format('\tID', self.id)
-        string += '{: <16}=\t{}\n'.format('\tName', self.name)
-
+        parts = ['Tally']
+        parts.append('{: <16}=\t{}'.format('\tID', self.id))
+        parts.append('{: <16}=\t{}'.format('\tName', self.name))
         if self.derivative is not None:
-            string += '{: <16}=\t{}\n'.format('\tDerivative ID',
-                                              str(self.derivative.id))
-
+            parts.append('{: <16}=\t{}'.format('\tDerivative ID', self.derivative.id))
         filters = ', '.join(type(f).__name__ for f in self.filters)
-        string += '{: <16}=\t{}\n'.format('\tFilters', filters)
-
-        string += '{: <16}=\t'.format('\tNuclides')
-
-        for nuclide in self.nuclides:
-            string += str(nuclide) + ' '
-
-        string += '\n'
-
-        string += '{: <16}=\t{}\n'.format('\tScores', self.scores)
-        string += '{: <16}=\t{}\n'.format('\tEstimator', self.estimator)
-
-        return string
+        parts.append('{: <16}=\t{}'.format('\tFilters', filters))
+        nuclides = ' '.join(str(nuclide) for nuclide in self.nuclides)
+        parts.append('{: <16}=\t'.format('\tNuclides', nuclides))
+        parts.append('{: <16}=\t{}\n'.format('\tScores', self.scores))
+        parts.append('{: <16}=\t{}\n'.format('\tEstimator', self.estimator))
+        return '\n'.join(parts)
 
     @property
     def name(self):

@@ -74,7 +74,7 @@ SCHEMES = {
 }
 
 
-class TestChain(object):
+class TestChain:
     """Empty chain to assist with unit testing depletion routines
 
     Only really provides the form_matrix function, but acts like

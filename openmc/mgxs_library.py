@@ -34,7 +34,7 @@ _FILETYPE_MGXS_LIBRARY = 'mgxs'
 _VERSION_MGXS_LIBRARY = 1
 
 
-class XSdata(object):
+class XSdata:
     """A multi-group cross section data set providing all the
     multi-group data necessary for a multi-group OpenMC calculation.
 
@@ -2284,7 +2284,7 @@ class XSdata(object):
         return data
 
 
-class MGXSLibrary(object):
+class MGXSLibrary:
     """Multi-Group Cross Sections file used for an OpenMC simulation.
     Corresponds directly to the MG version of the cross_sections.xml input
     file.

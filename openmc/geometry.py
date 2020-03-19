@@ -11,7 +11,7 @@ import openmc._xml as xml
 from openmc.checkvalue import check_type
 
 
-class Geometry(object):
+class Geometry:
     """Geometry representing a collection of surfaces, cells, and universes.
 
     Parameters
@@ -406,7 +406,7 @@ class Geometry(object):
             coeffs = tuple(surf._coefficients[k] for k in surf._coeff_keys)
             key = (surf._type,) + coeffs
             tally[key].append(surf)
-        return {replace.id: keep 
+        return {replace.id: keep
                 for keep, *redundant in tally.values()
                 for replace in redundant}
 
@@ -613,7 +613,7 @@ class Geometry(object):
         # Get redundant surfaces
         redundant_surfaces = self.get_redundant_surfaces()
 
-        # Iterate through all cells contained in the geometry 
+        # Iterate through all cells contained in the geometry
         for cell in self.get_all_cells().values():
             # Recursively remove redundant surfaces from regions
             cell.region.remove_redundant_surfaces(redundant_surfaces)

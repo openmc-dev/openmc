@@ -12,11 +12,10 @@ from tests.regression_tests import config
 def model():
 
     # Materials
-    materials = openmc.Materials()
     mat = openmc.Material()
     mat.set_density('g/cm3', 4.5)
     mat.add_nuclide('U235', 1.0)
-    materials.append(mat)
+    materials = openmc.Materials([mat])
 
     # Geometry
     sph = openmc.Sphere(r=10.0, boundary_type='vacuum')

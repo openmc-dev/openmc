@@ -598,6 +598,8 @@ class UnstructuredMesh(MeshBase):
         Unique identifier for the mesh
     name : str
         Name of the mesh
+    filename : str
+        Location of the unstructured mesh file
 
     Attributes
     ----------
@@ -681,7 +683,7 @@ class UnstructuredMesh(MeshBase):
         Returns
         -------
         element : xml.etree.ElementTree.Element
-            XML element containing the mesh data
+            XML element containing mesh data
 
         """
 

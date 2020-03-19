@@ -12,11 +12,10 @@ from tests.regression_tests import config
 def model():
 
     # Materials
-    materials = openmc.Materials()
     mat = openmc.Material()
     mat.set_density('g/cm3', 4.5)
     mat.add_nuclide('U235', 1.0)
-    materials.append(mat)
+    materials = openmc.Materials([mat])
 
     # Geometry
     sph = openmc.Sphere(r=10.0, boundary_type='vacuum')
@@ -36,21 +35,17 @@ def model():
     settings.verbosity = 1 # to test that this works even with no output
  
     # Tallies
-    tallies = openmc.Tallies()
     t = openmc.Tally()
     t.scores = ['flux']
-    tallies.append(t)
+    tallies = openmc.Tallies([t])
  
-    # Plots (none)
-    plots = openmc.Plots()
-
     # Put it all together
     model = openmc.model.Model(materials=materials,
                                geometry=geometry,
                                settings=settings,
-                               tallies=tallies,
-                               plots=plots)
+                               tallies=tallies)
     return model
+
 
 class TriggerStatepointRestartTestHarness(PyAPITestHarness):
     def __init__(self, statepoint, model=None):
@@ -124,6 +119,7 @@ class TriggerStatepointRestartTestHarness(PyAPITestHarness):
             self._compare_results()
         finally:
             self._cleanup()
+
 
 def test_trigger_statepoint_restart(model):
     # Assuming we converge within 1000 batches, the statepoint filename

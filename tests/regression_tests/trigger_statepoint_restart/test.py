@@ -124,6 +124,7 @@ class TriggerStatepointRestartTestHarness(PyAPITestHarness):
         finally:
             self._cleanup()
 
+
 def test_trigger_statepoint_restart(model):
     # Assuming we converge within 1000 batches, the statepoint filename
     # should include the batch number padded by at least one '0'.

@@ -813,10 +813,9 @@ class Settings:
     def _create_keff_trigger_subelement(self, root):
         if self._keff_trigger is not None:
             element = ET.SubElement(root, "keff_trigger")
-
-            for key in self._keff_trigger:
+            for key, value in sorted(self._keff_trigger.items()):
                 subelement = ET.SubElement(element, key)
-                subelement.text = str(self._keff_trigger[key]).lower()
+                subelement.text = str(value).lower()
 
     def _create_energy_mode_subelement(self, root):
         if self._energy_mode is not None:
@@ -839,8 +838,7 @@ class Settings:
     def _create_output_subelement(self, root):
         if self._output is not None:
             element = ET.SubElement(root, "output")
-
-            for key, value in self._output.items():
+            for key, value in sorted(self._output.items()):
                 subelement = ET.SubElement(element, key)
                 if key in ('summary', 'tallies'):
                     subelement.text = str(value).lower()

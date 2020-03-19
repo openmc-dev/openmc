@@ -17,8 +17,8 @@
   <batches>10</batches>
   <inactive>5</inactive>
   <keff_trigger>
+    <threshold>0.004</threshold>
     <type>std_dev</type>
-    <threshold>0.002</threshold>
   </keff_trigger>
   <trigger>
     <active>true</active>

@@ -46,6 +46,7 @@ def model():
                                tallies=tallies)
     return model
 
+
 class TriggerStatepointRestartTestHarness(PyAPITestHarness):
     def __init__(self, statepoint, model=None):
         super().__init__(statepoint, model)

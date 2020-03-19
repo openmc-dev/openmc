@@ -66,8 +66,8 @@ class CrossScore:
         return not self == other
 
     def __repr__(self):
-        string = '({0} {1} {2})'.format(self.left_score,
-                                        self.binary_op, self.right_score)
+        string = '({} {} {})'.format(self.left_score, self.binary_op,
+                                     self.right_score)
         return string
 
     @property
@@ -239,13 +239,10 @@ class CrossFilter:
 
     """
 
-    def __init__(self, left_filter=None, right_filter=None, binary_op=None):
-
+    def __init__(self, left_filter, right_filter, binary_op=None):
         left_type = left_filter.type
         right_type = right_filter.type
-        self._type = '({0} {1} {2})'.format(left_type, binary_op, right_type)
-
-        self._bins = {}
+        self._type = '({} {} {})'.format(left_type, binary_op, right_type)
 
         self._left_filter = None
         self._right_filter = None
@@ -253,10 +250,8 @@ class CrossFilter:
 
         if left_filter is not None:
             self.left_filter = left_filter
-            self._bins['left'] = left_filter.bins
         if right_filter is not None:
             self.right_filter = right_filter
-            self._bins['right'] = right_filter.bins
         if binary_op is not None:
             self.binary_op = binary_op
 
@@ -270,17 +265,18 @@ class CrossFilter:
         return not self == other
 
     def __repr__(self):
-
-        string = 'CrossFilter\n'
-        filter_type = '({0} {1} {2})'.format(self.left_filter.type,
-                                             self.binary_op,
-                                             self.right_filter.type)
-        filter_bins = '({0} {1} {2})'.format(self.left_filter.bins,
-                                             self.binary_op,
-                                             self.right_filter.bins)
-        string += '{0: <16}{1}{2}\n'.format('\tType', '=\t', filter_type)
-        string += '{0: <16}{1}{2}\n'.format('\tBins', '=\t', filter_bins)
-        return string
+        filter_type = '({} {} {})'.format(self.left_filter.type,
+                                          self.binary_op,
+                                          self.right_filter.type)
+        filter_bins = '({} {} {})'.format(self.left_filter.bins,
+                                          self.binary_op,
+                                          self.right_filter.bins)
+        parts = [
+            'CrossFilter',
+            '{: <16}=\t{}'.format('\tType', filter_type),
+            '{: <16}=\t{}'.format('\tBins', filter_bins)
+        ]
+        return '\n'.join(parts)
 
     @property
     def left_filter(self):
@@ -300,7 +296,7 @@ class CrossFilter:
 
     @property
     def bins(self):
-        return self._bins['left'], self._bins['right']
+        return self._left_filter.bins, self._right_filter.bins
 
     @property
     def num_bins(self):
@@ -312,7 +308,7 @@ class CrossFilter:
     @type.setter
     def type(self, filter_type):
         if filter_type not in _FILTER_TYPES:
-            msg = 'Unable to set CrossFilter type to "{0}" since it ' \
+            msg = 'Unable to set CrossFilter type to "{}" since it ' \
                   'is not one of the supported types'.format(filter_type)
             raise ValueError(msg)
 
@@ -323,14 +319,12 @@ class CrossFilter:
         cv.check_type('left_filter', left_filter,
                       (openmc.Filter, CrossFilter, AggregateFilter))
         self._left_filter = left_filter
-        self._bins['left'] = left_filter.bins
 
     @right_filter.setter
     def right_filter(self, right_filter):
         cv.check_type('right_filter', right_filter,
                       (openmc.Filter, CrossFilter, AggregateFilter))
         self._right_filter = right_filter
-        self._bins['right'] = right_filter.bins
 
     @binary_op.setter
     def binary_op(self, binary_op):
@@ -462,7 +456,7 @@ class AggregateScore:
 
     def __repr__(self):
         string = ', '.join(map(str, self.scores))
-        string = '{0}({1})'.format(self.aggregate_op, string)
+        string = '{}({})'.format(self.aggregate_op, string)
         return string
 
     @property
@@ -536,7 +530,7 @@ class AggregateNuclide:
     def __repr__(self):
 
         # Append each nuclide in the aggregate to the string
-        string = '{0}('.format(self.aggregate_op)
+        string = '{}('.format(self.aggregate_op)
         names = [nuclide.name if isinstance(nuclide, openmc.Nuclide)
                  else str(nuclide) for nuclide in self.nuclides]
         string += ', '.join(map(str, names)) + ')'
@@ -601,17 +595,16 @@ class AggregateFilter:
 
     """
 
-    def __init__(self, aggregate_filter=None, bins=None, aggregate_op=None):
+    def __init__(self, aggregate_filter, bins=None, aggregate_op=None):
 
-        self._type = '{0}({1})'.format(aggregate_op,
-                                       aggregate_filter.short_name.lower())
+        self._type = '{}({})'.format(aggregate_op,
+                                     aggregate_filter.short_name.lower())
         self._bins = None
 
         self._aggregate_filter = None
         self._aggregate_op = None
 
-        if aggregate_filter is not None:
-            self.aggregate_filter = aggregate_filter
+        self.aggregate_filter = aggregate_filter
         if bins is not None:
             self.bins = bins
         if aggregate_op is not None:
@@ -642,10 +635,12 @@ class AggregateFilter:
         return not self > other
 
     def __repr__(self):
-        string = 'AggregateFilter\n'
-        string += '{0: <16}{1}{2}\n'.format('\tType', '=\t', self.type)
-        string += '{0: <16}{1}{2}\n'.format('\tBins', '=\t', self.bins)
-        return string
+        parts = [
+            'AggregateFilter',
+            '{: <16}=\t{}'.format('\tType', self.type),
+            '{: <16}=\t{}'.format('\tBins', self.bins)
+        ]
+        return '\n'.join(parts)
 
     @property
     def aggregate_filter(self):
@@ -670,7 +665,7 @@ class AggregateFilter:
     @type.setter
     def type(self, filter_type):
         if filter_type not in _FILTER_TYPES:
-            msg = 'Unable to set AggregateFilter type to "{0}" since it ' \
+            msg = 'Unable to set AggregateFilter type to "{}" since it ' \
                   'is not one of the supported types'.format(filter_type)
             raise ValueError(msg)
 
@@ -723,7 +718,7 @@ class AggregateFilter:
 
         if filter_bin not in self.bins:
             msg = 'Unable to get the bin index for AggregateFilter since ' \
-                  '"{0}" is not one of the bins'.format(filter_bin)
+                  '"{}" is not one of the bins'.format(filter_bin)
             raise ValueError(msg)
         else:
             return self.bins.index(filter_bin)
@@ -801,12 +796,7 @@ class AggregateFilter:
             return False
 
         # None of the bins in this filter should match in the other filter
-        for bin in self.bins:
-            if bin in other.bins:
-                return False
-
-        # If all conditional checks passed then filters are mergeable
-        return True
+        return not any(b in other.bins for b in self.bins)
 
     def merge(self, other):
         """Merge this aggregatefilter with another.
@@ -824,8 +814,8 @@ class AggregateFilter:
         """
 
         if not self.can_merge(other):
-            msg = 'Unable to merge "{0}" with "{1}" ' \
-                  'filters'.format(self.type, other.type)
+            msg = 'Unable to merge "{}" with "{}" filters'.format(
+                self.type, other.type)
             raise ValueError(msg)
 
         # Create deep copy of filter to return as merged filter

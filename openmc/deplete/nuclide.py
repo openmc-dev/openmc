@@ -406,9 +406,7 @@ class FissionYieldDistribution(Mapping):
         for g_index, energy in enumerate(energies):
             prod_map = fission_yields[energy]
             for prod_ix, product in enumerate(ordered_prod):
-                yield_val = prod_map.get(product)
-                yield_matrix[g_index, prod_ix] = (
-                    0.0 if yield_val is None else yield_val)
+                yield_matrix[g_index, prod_ix] = prod_map.get(product, 0.0)
         self.energies = tuple(energies)
         self.products = tuple(ordered_prod)
         self.yield_matrix = yield_matrix
@@ -444,7 +442,7 @@ class FissionYieldDistribution(Mapping):
         FissionYieldDistribution
         """
         all_yields = {}
-        for elem_index, yield_elem in enumerate(element.iter("fission_yields")):
+        for yield_elem in element.iter("fission_yields"):
             energy = float(yield_elem.get("energy"))
             products = yield_elem.find("products").text.split()
             yields = map(float, yield_elem.find("data").text.split())

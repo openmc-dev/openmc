@@ -166,6 +166,7 @@ openmc_statepoint_write(const char* filename, bool* write_source)
       write_attribute(tallies_group, "ids", tally_ids);
 
 #ifdef DAGMC
+      // write unstructured mesh tallies to VTK if possible
         write_unstructured_mesh_results();
 #endif
 

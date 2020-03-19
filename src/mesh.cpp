@@ -1817,13 +1817,13 @@ UnstructuredMesh::get_bin(Position r) const {
 }
 
 void
-UnstructuredMesh::compute_barycentric_data(const moab::Range& all_tets) {
+UnstructuredMesh::compute_barycentric_data(const moab::Range& tets) {
   moab::ErrorCode rval;
 
   baryc_data_.clear();
-  baryc_data_.resize(all_tets.size());
+  baryc_data_.resize(tets.size());
 
-  for (auto& tet : all_tets) {
+  for (auto& tet : tets) {
     std::vector<moab::EntityHandle> verts;
     rval = mbi_->get_connectivity(&tet, 1, verts);
     if (rval != moab::MB_SUCCESS) {
@@ -1912,7 +1912,8 @@ UnstructuredMesh::get_bin_from_index(int idx) const {
 }
 
 int
-UnstructuredMesh::get_index(Position r, bool* in_mesh) const {
+UnstructuredMesh::get_index(const Position& r,
+                            bool* in_mesh) const {
   int bin = get_bin(r);
   *in_mesh = bin != -1;
   return bin;

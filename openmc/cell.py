@@ -88,7 +88,7 @@ class Cell(IDManagerMixin):
         calculated in a stochastic volume calculation and added via the
         :meth:`Cell.add_volume_information` method. For 'distribmat' cells
         it is the total volume of all instances.
-    atoms : dict
+    atoms : collections.OrderedDict
         Mapping of nuclides to the total number of atoms for each nuclide present
         in the cell, or in all of its instances for a 'distribmat' fill. For example,
         {'U235': 1.0e22, 'U238': 5.0e22, ...}.
@@ -199,7 +199,7 @@ class Cell(IDManagerMixin):
         Returns
         -------
         atoms: collections.OrderedDict
-            Dictionary in which keys are nuclides and values the number of
+            Dictionary in which keys are nuclides and values are the number of
             atoms. For example, {'H1':1.0e22, 'O16':0.5e22, ...}
 
         Raises
@@ -224,7 +224,7 @@ class Cell(IDManagerMixin):
             elif self.fill_type in ['lattice', 'universe']:
                 msg = ('Universe and Lattice cells can contain multiple '
                        'materials in diffrent proportions. Atom content must '
-                       'be calculated with stochastic volume calculation')
+                       'be calculated with stochastic volume calculation.')
                 raise ValueError(msg)
 
             elif self.fill_type == 'material':
@@ -244,14 +244,14 @@ class Cell(IDManagerMixin):
                 for mat in self.fill:
                     for key, nuclide in mat.get_nuclide_atom_densities().items():
                         # To account for overlap of nuclides between distribmat
-                        # we need to append new atoms # to any existing value
+                        # we need to append new atoms to any existing value
                         # hence it is necessary to ask for default.
                         atom = self._atoms.setdefault(key, 0)
                         atom += nuclide[1] * partial_volume * 1.0e+24
                         self._atoms[key] = atom
 
             else:
-                msg = 'Unrecognised fill_type:{}'.format(self.fill_type)
+                msg = 'Unrecognised fill_type: {}'.format(self.fill_type)
                 raise ValueError(msg)
 
         return self._atoms

@@ -130,13 +130,13 @@ def test_volume_setting():
     c.volume = 3
     c.volume = u.ufloat(3, 0.7)
 
-    # Test errors for -ve and 0 volume
-    with pytest.raises(ValueError):
-        c.volume = 0.0
+    # Allow volume to be set to 0.0
+    c.volume = 0.0
+    c.volume = u.ufloat(0.0, 0.1)
+
+    # Test errors for -ve volume
     with pytest.raises(ValueError):
         c.volume = -1.0
-    with pytest.raises(ValueError):
-        c.volume = u.ufloat(0.0, 0.1)
     with pytest.raises(ValueError):
         c.volume = u.ufloat(-0.05, 0.1)
 

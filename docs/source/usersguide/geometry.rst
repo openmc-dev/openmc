@@ -188,8 +188,8 @@ the :class:`openmc.Cell` class::
 
 In this example, an instance of :class:`openmc.Material` is assigned to the
 :attr:`Cell.fill` attribute. One can also fill a cell with a :ref:`universe
-<usersguide_universes>` or :ref:`lattice <usersguide_lattices>`. If you provide
-no fill to a cell, it will be filled with void on export to XML.
+<usersguide_universes>` or :ref:`lattice <usersguide_lattices>`. If no fill 
+is provided to a cell, it will be filled with void by default.
 
 The classes :class:`Halfspace`, :class:`Intersection`, :class:`Union`, and
 :class:`Complement` and all instances of :class:`openmc.Region` and can be

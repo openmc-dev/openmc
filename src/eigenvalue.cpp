@@ -537,9 +537,11 @@ void ufs_count_sites()
     // On the first generation, just assume that the source is already evenly
     // distributed so that effectively the production of fission sites is not
     // biased
+
     std::size_t n = simulation::ufs_mesh->n_bins();
     double vol_frac = simulation::ufs_mesh->volume_frac_;
     simulation::source_frac = xt::xtensor<double, 1>({n}, vol_frac);
+
   } else {
     // count number of source sites in each ufs mesh cell
     bool sites_outside;

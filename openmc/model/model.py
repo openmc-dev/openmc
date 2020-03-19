@@ -5,7 +5,7 @@ import openmc
 from openmc.checkvalue import check_type, check_value
 
 
-class Model(object):
+class Model:
     """Model container.
 
     This class can be used to store instances of :class:`openmc.Geometry`,

@@ -17,7 +17,7 @@ _TALLY_ARITHMETIC_OPS = ['+', '-', '*', '/', '^']
 _TALLY_AGGREGATE_OPS = ['sum', 'avg']
 
 
-class CrossScore(object):
+class CrossScore:
     """A special-purpose tally score used to encapsulate all combinations of two
     tally's scores as an outer product for tally arithmetic.
 
@@ -101,7 +101,7 @@ class CrossScore(object):
         self._binary_op = binary_op
 
 
-class CrossNuclide(object):
+class CrossNuclide:
     """A special-purpose nuclide used to encapsulate all combinations of two
     tally's nuclides as an outer product for tally arithmetic.
 
@@ -206,7 +206,7 @@ class CrossNuclide(object):
         self._binary_op = binary_op
 
 
-class CrossFilter(object):
+class CrossFilter:
     """A special-purpose filter used to encapsulate all combinations of two
     tally's filter bins as an outer product for tally arithmetic.
 
@@ -418,7 +418,8 @@ class CrossFilter(object):
 
         return df
 
-class AggregateScore(object):
+
+class AggregateScore:
     """A special-purpose tally score used to encapsulate an aggregate of a
     subset or all of tally's scores for tally aggregation.
 
@@ -491,7 +492,7 @@ class AggregateScore(object):
         self._aggregate_op = aggregate_op
 
 
-class AggregateNuclide(object):
+class AggregateNuclide:
     """A special-purpose tally nuclide used to encapsulate an aggregate of a
     subset or all of tally's nuclides for tally aggregation.
 
@@ -570,7 +571,7 @@ class AggregateNuclide(object):
         self._aggregate_op = aggregate_op
 
 
-class AggregateFilter(object):
+class AggregateFilter:
     """A special-purpose tally filter used to encapsulate an aggregate of a
     subset or all of a tally filter's bins for tally aggregation.
 

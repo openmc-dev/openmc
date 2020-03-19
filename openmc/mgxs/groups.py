@@ -8,7 +8,7 @@ import numpy as np
 import openmc.checkvalue as cv
 
 
-class EnergyGroups(object):
+class EnergyGroups:
     """An energy groups structure used for multi-group cross-sections.
 
     Parameters

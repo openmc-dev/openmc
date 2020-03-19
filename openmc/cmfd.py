@@ -55,7 +55,7 @@ _CURRENTS = {
 }
 
 
-class CMFDMesh(object):
+class CMFDMesh:
     """A structured Cartesian mesh used for CMFD acceleration.
 
     Attributes
@@ -189,7 +189,7 @@ class CMFDMesh(object):
         self._map = meshmap
 
 
-class CMFDRun(object):
+class CMFDRun:
     r"""Class for running CMFD acceleration through the C API.
 
     Attributes
@@ -2047,7 +2047,7 @@ class CMFDRun(object):
                                        axis=5)
 
         # Compute current as aggregate of banked current_rate over tally window
-        self._current = np.where(is_accel[..., np.newaxis, np.newaxis], 
+        self._current = np.where(is_accel[..., np.newaxis, np.newaxis],
                                  np.sum(self._current_rate, axis=5), 0.0)
 
         # Get p1 scatter rr from CMFD tally 3

@@ -30,7 +30,7 @@ def colorize(diff):
             yield line
 
 
-class TestHarness(object):
+class TestHarness:
     """General class for running OpenMC regression tests."""
 
     def __init__(self, statepoint_name):

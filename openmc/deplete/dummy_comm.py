@@ -1,6 +1,7 @@
 import sys
 
-class DummyCommunicator(object):
+
+class DummyCommunicator:
     rank = 0
     size = 1
 

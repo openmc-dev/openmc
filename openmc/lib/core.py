@@ -400,7 +400,7 @@ def run_in_memory(**kwargs):
         finalize()
 
 
-class _DLLGlobal(object):
+class _DLLGlobal:
     """Data descriptor that exposes global variables from libopenmc."""
     def __init__(self, ctype, name):
         self.ctype = ctype
@@ -413,7 +413,7 @@ class _DLLGlobal(object):
         self.ctype.in_dll(_dll, self.name).value = value
 
 
-class _FortranObject(object):
+class _FortranObject:
     def __repr__(self):
         return "{}[{}]".format(type(self).__name__, self._index)
 

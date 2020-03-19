@@ -13,7 +13,7 @@ try:
 except ImportError:
     import xml.etree.ElementTree as ET
 
-from numpy import empty
+from numpy import empty, searchsorted
 
 from openmc.checkvalue import check_type
 
@@ -467,6 +467,36 @@ class FissionYieldDistribution(Mapping):
             data_elem = ET.SubElement(yield_element, "data")
             data_elem.text = " ".join(map(str, yield_obj.yields))
 
+    def restrict_products(self, possible_products):
+        """Return a new distribution with select products
+
+        Parameters
+        ----------
+        possible_products : iterable of str
+            Candidate pool of fission products. Existing products
+            not contained here will not exist in the new instance
+
+        Returns
+        -------
+        FissionYieldDistribution or None
+            A value of None indicates no values in
+            ``possible_products`` exist in :attr:`products`
+
+        """
+
+        overlap = set(self.products).intersection(possible_products)
+        if not overlap:
+            return None
+
+        products = sorted(overlap)
+        indices = searchsorted(self.products, products)
+
+        # coerce back to dictionary to pass back to __init__
+        new_yields = {}
+        for ene, yields in zip(self.energies, self.yield_matrix.copy()):
+            new_yields[ene] = dict(zip(products, yields[indices]))
+
+        return type(self)(new_yields)
 
 
 class FissionYield(Mapping):

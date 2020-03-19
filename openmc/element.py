@@ -40,7 +40,7 @@ class Element(str):
                cross_sections=None):
         """Expand natural element into its naturally-occurring isotopes.
 
-        An optional cross_sections argument or the OPENMC_CROSS_SECTIONS
+        An optional cross_sections argument or the :envvar:`OPENMC_CROSS_SECTIONS`
         environment variable is used to specify a cross_sections.xml file.
         If the cross_sections.xml file is found, the element is expanded only
         into the isotopes/nuclides present in cross_sections.xml. If no
@@ -132,7 +132,6 @@ class Element(str):
         # If a cross_sections library is present, check natural nuclides
         # against the nuclides in the library
         if cross_sections is not None:
-
             library_nuclides = set()
             tree = ET.parse(cross_sections)
             root = tree.getroot()
@@ -174,14 +173,12 @@ class Element(str):
             # our knowledge of the common cross section libraries
             # (ENDF, JEFF, and JENDL)
             else:
-
                 # Add the mutual isotopes
                 for nuclide in mutual_nuclides:
                     abundances[nuclide] = NATURAL_ABUNDANCE[nuclide]
 
                 # Adjust the abundances for the absent nuclides
                 for nuclide in absent_nuclides:
-
                     if nuclide in ['O17', 'O18'] and 'O16' in mutual_nuclides:
                         abundances['O16'] += NATURAL_ABUNDANCE[nuclide]
                     elif nuclide == 'Ta180' and 'Ta181' in mutual_nuclides:

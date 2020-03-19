@@ -12,7 +12,3 @@ ax.imshow(flux, origin='lower', extent=(-5.0, 5.0, -5.0, 5.0))
 ax.set_xlabel('x [cm]')
 ax.set_ylabel('y [cm]')
 plt.show()
-
-# If all worked well, you should see a ring "imprint" as well as a higher flux
-# to the right side (since the custom source has all particles moving in the
-# positive x direction)

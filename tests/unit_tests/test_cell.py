@@ -150,7 +150,7 @@ def test_atoms_material_cell(uo2, water):
     expected_nucs = ['U235', 'O16']
 
     # Precalculate the expected number of atoms
-    M = ((atomic_mass('U235') + 2 * atomic_mass('O16'))/3)
+    M = (atomic_mass('U235') + 2 * atomic_mass('O16')) / 3
     expected_atoms = list()
     expected_atoms.append(1/3 * uo2.density/M * AVOGADRO * 2.0)  # U235
     expected_atoms.append(2/3 * uo2.density/M * AVOGADRO * 2.0)  # O16
@@ -174,7 +174,7 @@ def test_atoms_material_cell(uo2, water):
     # Change material and check if OK
     c.fill = water
     expected_nucs = ['H1', 'O16']
-    M = ((2 * atomic_mass('H1') + atomic_mass('O16'))/3)
+    M = (2 * atomic_mass('H1') + atomic_mass('O16')) / 3
     expected_atoms = list()
     expected_atoms.append(2/3 * water.density/M * AVOGADRO * 3.0)  # H1
     expected_atoms.append(1/3 * water.density/M * AVOGADRO * 3.0)  # O16
@@ -194,8 +194,8 @@ def test_atoms_distribmat_cell(uo2, water):
 
     # Calculate the expected number of atoms
     expected_nucs = ['U235', 'O16', 'H1']
-    M_uo2 = ((atomic_mass('U235') + 2 * atomic_mass('O16'))/3)
-    M_water = ((2 * atomic_mass('H1') + atomic_mass('O16'))/3)
+    M_uo2 = (atomic_mass('U235') + 2 * atomic_mass('O16')) / 3
+    M_water = (2 * atomic_mass('H1') + atomic_mass('O16')) / 3
     expected_atoms = list()
     expected_atoms.append(1/3 * uo2.density/M_uo2 * AVOGADRO * 3.0)  # U235
     expected_atoms.append(2/3 * uo2.density/M_uo2 * AVOGADRO * 3.0 +

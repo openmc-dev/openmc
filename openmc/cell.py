@@ -89,9 +89,9 @@ class Cell(IDManagerMixin):
         :meth:`Cell.add_volume_information` method. For 'distribmat' cells
         it is the total volume of all instances.
     atoms : collections.OrderedDict
-        Mapping of nuclides to the total number of atoms for each nuclide present
-        in the cell, or in all of its instances for a 'distribmat' fill. For example,
-        {'U235': 1.0e22, 'U238': 5.0e22, ...}.
+        Mapping of nuclides to the total number of atoms for each nuclide
+        present in the cell, or in all of its instances for a 'distribmat'
+        fill. For example, {'U235': 1.0e22, 'U238': 5.0e22, ...}.
 
     """
 
@@ -140,10 +140,7 @@ class Cell(IDManagerMixin):
             string += '\t{0: <15}=\t{1}\n'.format('Temperature',
                                                   self.temperature)
         string += '{: <16}=\t{}\n'.format('\tTranslation', self.translation)
-
-        # Print volume only when it is set to avoid breaking regression
-        if self._volume is not None:
-            string += '{: <16}=\t{}\n'.format('\tVolume', self.volume)
+        string += '{: <16}=\t{}\n'.format('\tVolume', self.volume)
 
         return string
 
@@ -364,13 +361,7 @@ class Cell(IDManagerMixin):
     def volume(self, volume):
         if volume is not None:
             cv.check_type('cell volume', volume, (Real, UFloat))
-
-            # Note that ufloat(0.0, 0.1) >= 0.0 is False
-            # We need special treatment for UFloat input
-            val = volume
-            if isinstance(val, UFloat):
-                val = volume.nominal_value
-            cv.check_greater_than('cell volume', val, 0.0)
+            cv.check_greater_than('cell volume', volume, 0.0, equality=True)
 
         self._volume = volume
 

@@ -385,11 +385,6 @@ public:
   //! \return Mesh bin
   int get_bin(Position r) const;
 
-  //! Return a string represntation of the mesh bin
-  //
-  //! \param[in] Mesh bin to generate a label for
-  std::string get_label_for_bin(int bin) const;
-
   int n_bins() const override;
 
   int n_surface_bins() const override;
@@ -400,6 +395,9 @@ public:
   // \returns The centroid of the element
   Position centroid(moab::EntityHandle tet) const;
 
+  //! Return a string represntation of the mesh bin
+  //
+  //! \param[in] bin Mesh bin to generate a label for
   std::string bin_label(int bin) const override;
 
   //! Add a score to the mesh instance
@@ -412,6 +410,7 @@ public:
 
   //! Write the mesh with any current tally data
   void write(std::string base_filename) const;
+
   std::string filename_; //<! Path to unstructured mesh file
 
 private:
@@ -419,7 +418,7 @@ private:
   moab::EntityHandle meshset_; //!< EntitySet containing all elements
   moab::EntityHandle tet_set_; //! < EntitySet containing all tetrahedra
   moab::EntityHandle kdtree_root_; //!< Root of the MOAB KDTree
-  std::shared_ptr<moab::Interface> mbi_; //!< MOAB instance
+  std::unique_ptr<moab::Interface> mbi_; //!< MOAB instance
   std::unique_ptr<moab::AdaptiveKDTree> kdtree_; //!< MOAB KDTree instance
   std::vector<moab::Matrix3> baryc_data_; //!< Barycentric data for tetrahedra
 };

@@ -15,7 +15,7 @@
 #include "xtensor/xmath.hpp"
 #include "xtensor/xsort.hpp"
 #include "xtensor/xtensor.hpp"
-#include  "xtensor/xview.hpp"
+#include "xtensor/xview.hpp"
 
 #include "openmc/capi.h"
 #include "openmc/constants.h"
@@ -70,8 +70,9 @@ inline bool check_intersection_point(double x1, double x0, double y1,
 // Mesh implementation
 //==============================================================================
 
-Mesh::Mesh(pugi::xml_node node) {
-   // Copy mesh id
+Mesh::Mesh(pugi::xml_node node)
+{
+  // Copy mesh id
   if (check_for_node(node, "id")) {
     id_ = std::stoi(get_node_value(node, "id"));
 
@@ -151,7 +152,7 @@ RegularMesh::RegularMesh(pugi::xml_node node)
       fatal_error("Cannot have a negative <width> on a tally mesh.");
     }
 
-    // Setwidth and upper right coordinate
+    // Set width and upper right coordinate
     upper_right_ = xt::eval(lower_left_ + shape_ * width_);
 
   } else if (check_for_node(node, "upper_right")) {
@@ -812,8 +813,8 @@ void RegularMesh::to_hdf5(hid_t group) const
 }
 
 xt::xtensor<double, 1>
-
-RegularMesh::count_sites(const Particle::Bank* bank, int64_t length,
+RegularMesh::count_sites(const Particle::Bank* bank,
+                         int64_t length,
                          bool* outside) const
 {
   // Determine shape of array for counts
@@ -1211,9 +1212,7 @@ void RectilinearMesh::get_indices_from_bin(int bin, int* ijk) const
 
 int RectilinearMesh::n_bins() const
 {
-  int n_bins = 1;
-  for (auto dim : shape_) n_bins *= dim;
-  return n_bins;
+  return xt::prod(shape_)();
 }
 
 int RectilinearMesh::n_surface_bins() const
@@ -1537,7 +1536,11 @@ openmc_mesh_set_params(int32_t index, int n, const double* ll, const double* ur,
 
 #ifdef DAGMC
 
-UnstructuredMesh::UnstructuredMesh(pugi::xml_node node) : Mesh(node) {
+UnstructuredMesh::UnstructuredMesh(pugi::xml_node node) : Mesh(node)
+{
+  // unstructured always assumed to be 3D
+  n_dimension_ = 3;
+
   // check the mesh type
   if (check_for_node(node, "type")) {
     auto temp = get_node_value(node, "type", true, true);
@@ -1556,7 +1559,7 @@ UnstructuredMesh::UnstructuredMesh(pugi::xml_node node) : Mesh(node) {
   }
 
   // create MOAB instance
-  mbi_ = std::shared_ptr<moab::Interface>(new moab::Core());
+  mbi_ = std::unique_ptr<moab::Interface>(new moab::Core());
   // create meshset to load mesh into
   moab::ErrorCode rval = mbi_->create_meshset(moab::MESHSET_SET, meshset_);
   if (rval != moab::MB_SUCCESS) {
@@ -1568,23 +1571,19 @@ UnstructuredMesh::UnstructuredMesh(pugi::xml_node node) : Mesh(node) {
     fatal_error("Failed to load the unstructured mesh file: " + filename_);
   }
 
-  // always 3 for unstructured meshes
-  n_dimension_ = 3;
-
-  moab::Range all_tets;
-  rval = mbi_->get_entities_by_dimension(meshset_, n_dimension_, all_tets);
+  // set member range of tetrahedral entities
+  rval = mbi_->get_entities_by_dimension(meshset_, n_dimension_, ehs_);
   if (rval != moab::MB_SUCCESS) {
     fatal_error("Failed to get all tetrahedral elements");
   }
 
-  ehs_.clear();
-  ehs_ = all_tets;
-
-  if (!all_tets.all_of_type(moab::MBTET)) {
-    warning("Non-tetrahedral elements found in unstructured mesh: " + filename_);
+  if (!ehs_.all_of_type(moab::MBTET)) {
+    warning("Non-tetrahedral elements found in unstructured "
+            "mesh file: " + filename_);
   }
 
-  // make an entity set for all tetrahedra (used later in output)
+  // make an entity set for all tetrahedra
+  // this is used for convenience later in output
   rval = mbi_->create_meshset(moab::MESHSET_SET, tet_set_);
   if (rval != moab::MB_SUCCESS) {
     fatal_error("Failed to create an entity set for the tetrahedral elements");
@@ -1595,17 +1594,18 @@ UnstructuredMesh::UnstructuredMesh(pugi::xml_node node) : Mesh(node) {
     fatal_error("Failed to add tetrahedra to an entity set.");
   }
 
+  // build acceleration data structures
   compute_barycentric_data(ehs_);
   build_kdtree(ehs_);
 }
 
 void
-UnstructuredMesh::build_kdtree(const moab::Range& all_tets) {
-
+UnstructuredMesh::build_kdtree(const moab::Range& all_tets)
+{
   moab::Range all_tris;
-  int triangle_dim = 2;
+  int adj_dim = 2;
   moab::ErrorCode rval = mbi_->get_adjacencies(all_tets,
-                                               triangle_dim,
+                                               adj_dim,
                                                true,
                                                all_tris,
                                                moab::Interface::UNION);
@@ -1614,7 +1614,8 @@ UnstructuredMesh::build_kdtree(const moab::Range& all_tets) {
   }
 
   if (!all_tris.all_of_type(moab::MBTRI)) {
-    warning("Non-triangle elements found in tet adjacencies in unstructured mesh: " + filename_);
+    warning("Non-triangle elements found in tet adjacencies in "
+            "unstructured mesh file: " + filename_);
   }
 
   // combine into one range
@@ -1622,13 +1623,14 @@ UnstructuredMesh::build_kdtree(const moab::Range& all_tets) {
   all_tets_and_tris.merge(all_tets);
   all_tets_and_tris.merge(all_tris);
 
-  // create and build KD-tree
+  // create a kd-tree instance
   kdtree_ = std::unique_ptr<moab::AdaptiveKDTree>(new moab::AdaptiveKDTree(mbi_.get()));
 
   // build the tree
   rval = kdtree_->build_tree(all_tets_and_tris, &kdtree_root_);
   if (rval != moab::MB_SUCCESS) {
-    fatal_error("Failed to construct KDTree for the unstructured mesh " + filename_);
+    fatal_error("Failed to construct KDTree for the "
+                "unstructured mesh file: " + filename_);
   }
 }
 
@@ -1640,9 +1642,10 @@ UnstructuredMesh::intersect_track(const moab::CartVect& start,
   moab::ErrorCode rval;
   std::vector<moab::EntityHandle> tris;
   std::vector<double> intersection_dists;
-
+  // get all intersections with triangles in the tet mesh
+  // (distances are relative to the start point, not the previous intersection)
   rval = kdtree_->ray_intersect_triangles(kdtree_root_,
-                                          1E-06,
+                                          FP_COINCIDENT,
                                           dir.array(),
                                           start.array(),
                                           tris,
@@ -1650,10 +1653,10 @@ UnstructuredMesh::intersect_track(const moab::CartVect& start,
                                           0,
                                           track_len);
   if (rval != moab::MB_SUCCESS) {
-    fatal_error("Failed to compute intersections on umesh: " + filename_);
+    fatal_error("Failed to compute intersections on unstructured mesh: " + filename_);
   }
 
-  // sort the tris and intersections by distance
+  // sort the hit triangles and intersections by distance
   hits.clear();
   for (int i = 0; i < tris.size(); i++) {
     hits.push_back(std::pair<double, moab::EntityHandle>(intersection_dists[i], tris[i]));
@@ -1687,7 +1690,9 @@ UnstructuredMesh::bins_crossed(const Particle* p,
   bins.clear();
   lengths.clear();
 
-  //// IMPLEMENTATION ONE
+  // if there are no intersections the track may lie entirely
+  // within a single tet. If this is the case, apply entire
+  // score to that tet and return.
   if (hits.size() == 0) {
     moab::EntityHandle last_r_tet = get_tet(last_r + u * track_len * 0.5);
     if (last_r_tet) {
@@ -1697,26 +1702,30 @@ UnstructuredMesh::bins_crossed(const Particle* p,
     return;
   }
 
+  // attempt to find the containing tet for the first track segment
   moab::EntityHandle tet = get_tet(last_r + u * hits.front().first / 2.0);
   double last_dist = 0.0;
 
-  // make sure first point is inside a tet
+  // make sure first segment is inside a tet. If it is not, we may be starting
+  // outside of the mesh and our first intersection is an entry point into the
+  // mesh - update hits and find a containing tet accordingly
   if (!tet) {
     last_dist = hits.front().first;
     hits.erase(hits.begin());
     tet = get_tet(last_r + u * (last_dist + hits.front().first) / 2.0);
   }
 
-  // if there are no other hits, there is only one segment to tally
+  // if there are no other hits at this point, apply the score for whatever
+  // distance lies in this tet and return
   if (hits.size() == 0 && tet) {
     bins.push_back(get_bin_from_ent_handle(tet));
-    lengths.push_back(1.0);
+    lengths.push_back((track_len - last_dist) / track_len);
     return;
   }
 
   // score all remaining segments
   for (const auto& hit : hits) {
-    // score in this tet if one was found
+    // apply score in this tet if one was found
     if (tet) {
       bins.push_back(get_bin_from_ent_handle(tet));
       lengths.push_back((hit.first - last_dist) / track_len);
@@ -1724,43 +1733,53 @@ UnstructuredMesh::bins_crossed(const Particle* p,
       // if in the loop, we should always find a tet
       warning("No tet found for location between triangle hits");
     }
+
+    // update the last distance
     last_dist = hit.first;
 
-    // find next tet
+    // find next tet using the mesh adjacencies
     moab::Range adj_tets;
     rval = mbi_->get_adjacencies(&hit.second, 1, 3, false, adj_tets);
     if (rval != moab::MB_SUCCESS) {
       fatal_error("Failed to get triangle adjacencies from mesh " + filename_);
     }
 
+    // if the triangle crossed is adjacent to two triangles
+    // update to the tet we're not currently scoring in
     if (adj_tets.size() == 2) {
       tet = tet == adj_tets[0] ? adj_tets[1] : adj_tets[0];
     } else if (adj_tets.size() == 1) {
       tet = adj_tets[0];
     }
-  }
+  } // end hit loop
 
   // tally remaining portion of track after last hit if
-  // the last segment of the track is in the mesh
+  // the last segment of the track is in the mesh but doesn't
+  // reach the other side of the tet
   if (hits.back().first < track_len) {
+    // use position at the midpoint of the current intersection
+    // and the end of the track to check for a containing tet
     auto pos = (last_r + u * hits.back().first) + u * ((track_len - hits.back().first) / 2.0);
     tet = get_tet(pos);
+    // apply the remainder of the score if a tet is found,
+    // otherwise we'll assume we've left the mesh
     if (tet) {
       bins.push_back(get_bin_from_ent_handle(tet));
       lengths.push_back((track_len - hits.back().first) / track_len);
     }
   }
-
-  return;
 };
 
 moab::EntityHandle
-UnstructuredMesh::get_tet(const Position& r) const {
+UnstructuredMesh::get_tet(const Position& r) const
+{
   moab::CartVect pos(r.x, r.y, r.z);
+  // find the leaf of the kd-tree for this position
   moab::AdaptiveKDTreeIter kdtree_iter;
   moab::ErrorCode rval = kdtree_->point_search(pos.array(), kdtree_iter);
   if (rval != moab::MB_SUCCESS) { return 0; }
 
+  // retrieve the tet elements of this leaf
   moab::EntityHandle leaf = kdtree_iter.handle();
   moab::Range tets;
   rval = mbi_->get_entities_by_dimension(leaf, 3, tets, false);
@@ -1768,11 +1787,14 @@ UnstructuredMesh::get_tet(const Position& r) const {
     warning("MOAB error finding tets.");
   }
 
+  // loop over the tets in this leaf, returning the containing tet if found
   for (const auto& tet : tets) {
       if (point_in_tet(pos, tet)) {
         return tet;
     }
   }
+
+  // if no tet is found, return an invalid handle
   return 0;
 }
 
@@ -1792,18 +1814,9 @@ double UnstructuredMesh::tet_volume(moab::EntityHandle tet) const {
  return 1.0 / 6.0 * (((p[1] - p[0]) * (p[2] - p[0])) % (p[3] - p[0]));
 }
 
-//! Determine which surface bins were crossed by a particle
-//
-//! \param[in] p Particle to check
-//! \param[out] bins Surface bins that were crossed
 void UnstructuredMesh::surface_bins_crossed(const Particle* p, std::vector<int>& bins) const {
+  // TODO: Implement triangle crossings here
   return;
-}
-
-std::string UnstructuredMesh::get_label_for_bin(int bin) const {
-  std::stringstream out;
-  out << "MOAB EntityHandle: " << get_ent_handle_from_bin(bin);
-  return out.str();
 }
 
 int
@@ -1823,6 +1836,8 @@ UnstructuredMesh::compute_barycentric_data(const moab::Range& tets) {
   baryc_data_.clear();
   baryc_data_.resize(tets.size());
 
+  // compute the barycentric data for each tet element
+  // and store it as a 3x3 matrix
   for (auto& tet : tets) {
     std::vector<moab::EntityHandle> verts;
     rval = mbi_->get_connectivity(&tet, 1, verts);
@@ -1837,6 +1852,8 @@ UnstructuredMesh::compute_barycentric_data(const moab::Range& tets) {
     }
 
     moab::Matrix3 a(p[1] - p[0], p[2] - p[0], p[3] - p[0], true);
+
+    // invert now to avoid this cost later
     a = a.transpose().inverse();
     baryc_data_.at(get_bin_from_ent_handle(tet)) = a;
   }
@@ -1850,7 +1867,7 @@ UnstructuredMesh::to_hdf5(hid_t group) const
     write_dataset(mesh_group, "type", "unstructured");
     write_dataset(mesh_group, "filename", filename_);
 
-    // write volume of each tet
+    // write volume and centroid of each tet
     std::vector<double> tet_vols;
     xt::xtensor<double, 2> centroids({ehs_.size(), 3});
     for (int i = 0; i < ehs_.size(); i++) {
@@ -1879,11 +1896,14 @@ UnstructuredMesh::point_in_tet(const moab::CartVect& r, moab::EntityHandle tet) 
     return false;
   }
 
+  // first vertex is used as a reference point for the barycentric data -
+  // retrieve its coordinates
   moab::EntityHandle v_zero = verts[0];
   moab::CartVect p_zero;
   rval = mbi_->get_coords(&v_zero, 1, p_zero.array());
   if (rval != moab::MB_SUCCESS) {
-    warning("Failed to get coordinates of a vertex in umesh: " + filename_);
+    warning("Failed to get coordinates of a vertex in "
+            "unstructured mesh: " + filename_);
     return false;
   }
 
@@ -1893,12 +1913,10 @@ UnstructuredMesh::point_in_tet(const moab::CartVect& r, moab::EntityHandle tet) 
 
   moab::CartVect bary_coords = a_inv * (r - p_zero);
 
-  bool in_tet = (bary_coords[0] >= 0.0 &&
-                 bary_coords[1] >= 0.0 &&
-                 bary_coords[2] >= 0.0 &&
-                 bary_coords[0] + bary_coords[1] + bary_coords[2] <= 1.0);
-
-  return in_tet;
+  return (bary_coords[0] >= 0.0 &&
+          bary_coords[1] >= 0.0 &&
+          bary_coords[2] >= 0.0 &&
+          bary_coords[0] + bary_coords[1] + bary_coords[2] <= 1.0);
 }
 
 int
@@ -1924,7 +1942,10 @@ int UnstructuredMesh::get_index_from_bin(int bin) const {
 }
 
 std::pair<std::vector<double>, std::vector<double>>
-UnstructuredMesh::plot(Position plot_ll, Position plot_ur) const { return {}; }
+UnstructuredMesh::plot(Position plot_ll, Position plot_ur) const {
+  // TODO: Implement mesh lines
+  return {};
+}
 
 int
 UnstructuredMesh::get_bin_from_ent_handle(moab::EntityHandle eh) const {
@@ -1983,7 +2004,7 @@ UnstructuredMesh::centroid(moab::EntityHandle tet) const {
     return {};
   }
 
-  // compute the centroid of the elements
+  // compute the centroid of the element vertices
   moab::CartVect centroid(0.0);
   for(const auto& coord : coords) {
     centroid += coord;
@@ -2008,6 +2029,7 @@ UnstructuredMesh::get_score_tags(std::string score) const {
   // with an uncertainty
   moab::Tag value_tag;
 
+  // create the value tag if not present and get handle
   double default_val = 0.0;
   auto val_string = score + "_value";
   rval = mbi_->tag_get_handle(val_string.c_str(),
@@ -2023,6 +2045,7 @@ UnstructuredMesh::get_score_tags(std::string score) const {
     fatal_error(msg);
   }
 
+  // create the std dev tag if not present and get handle
   moab::Tag error_tag;
   std::string err_string = score + "_std_dev";
   rval = mbi_->tag_get_handle(err_string.c_str(),
@@ -2038,6 +2061,7 @@ UnstructuredMesh::get_score_tags(std::string score) const {
     fatal_error(msg);
   }
 
+  // return the populated tag handles
   return {value_tag, error_tag};
 }
 
@@ -2090,7 +2114,6 @@ UnstructuredMesh::write(std::string base_filename) const {
   // write the tetrahedral elements of the mesh only
   // to avoid clutter from zero-value data on other
   // elements during visualization
-
   moab::ErrorCode rval;
   rval = mbi_->write_mesh(filename.c_str(), &tet_set_, 1);
   if (rval != moab::MB_SUCCESS) {

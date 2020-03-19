@@ -185,8 +185,10 @@ the :class:`openmc.Cell` class::
 
 In this example, an instance of :class:`openmc.Material` is assigned to the
 :attr:`Cell.fill` attribute. One can also fill a cell with a :ref:`universe
-<usersguide_universes>` or :ref:`lattice <usersguide_lattices>`. If no fill 
-is provided to a cell, it will be filled with void by default::
+<usersguide_universes>` or :ref:`lattice <usersguide_lattices>`. If you provide
+no fill to a cell or assign a value of `None`, it will be treated as a "void"
+cell with no material within. Particles are allowed to stream through the cell but
+will undergo no collisions::
 
   # This cell will be filled with void on export to XML
   gap = openmc.Cell(region=pellet_gap)

@@ -179,7 +179,6 @@ public:
   //! \return Whether the line segment connecting r0 and r1 intersects mesh
   bool intersects(Position& r0, Position r1, int* ijk) const;
 
-
   //! Count number of bank sites in each mesh bin / energy bin
   //
   //! \param[in] bank Array of bank sites
@@ -187,8 +186,6 @@ public:
   //! \return Array indicating number of sites in each mesh/energy bin
   xt::xtensor<double, 1> count_sites(const Particle::Bank* bank, int64_t length,
     bool* outside) const;
-
-  int num_bins() const;
 
   // Data members
 
@@ -258,19 +255,19 @@ class UnstructuredMesh : public Mesh {
   typedef std::vector<std::pair<double, moab::EntityHandle>> UnstructuredMeshHits;
 
 public:
-  UnstructuredMesh() { };
+  UnstructuredMesh() = default;
   UnstructuredMesh(pugi::xml_node);
   ~UnstructuredMesh() = default;
 
-  //! Determine which bins were crossed by a particle.
-  //
-  //! \param[in] p Particle to check
-  //! \param[out] bins Bins that were crossed
-  //! \param[out] lengths Fraction of tracklength in each bin
   void bins_crossed(const Particle* p, std::vector<int>& bins,
-                    std::vector<double>& lengths) const;
+                    std::vector<double>& lengths) const override;
 
-
+  //! Check where a line segment intersects the mesh and if it intersects at all
+  //
+  //! \param[in,out] r0 In: starting position, out: intersection point
+  //! \param[in] r1 Ending position
+  //! \param[out] ijk Indices of the mesh bin containing the intersection point
+  //! \return Whether the line segment connecting r0 and r1 intersects mesh
   bool intersects(Position& r0, Position r1, int* ijk);
 
 
@@ -280,7 +277,7 @@ private:
   //
   //! \param[in] start Staring location
   //! \param[in] dir Normalized particle direction
-  //! \param[in] length of particle track
+  //! \param[in] track_len length of particle track
   //! \param[out] Mesh intersections
   void
   intersect_track(const moab::CartVect& start,
@@ -300,7 +297,7 @@ private:
   //! \return MOAB EntityHandle of tet
   moab::EntityHandle get_tet(const Position& r) const;
 
-  //! Version of get_tet taking Position.
+  //! Returns the containing tet given a position
   inline moab::EntityHandle get_tet(const moab::CartVect& r) const {
       return get_tet(Position(r[0], r[1], r[2]));
   };
@@ -311,13 +308,14 @@ private:
   //! \param[in] r Position to check
   //! \param[in] MOAB terahedron to check
   //! \return True if r is inside, False if r is outside
-  bool point_in_tet(const moab::CartVect& r, moab::EntityHandle tet) const;
+  bool point_in_tet(const moab::CartVect& r,
+                    moab::EntityHandle tet) const;
 
   //! Compute barycentric coordinate data for all tetrahedra
   //! in the mesh.
   //
-  //! \param[in] all_tets MOAB Range of tetrahedral elements
-  void compute_barycentric_data(const moab::Range& all_tets);
+  //! \param[in] tets MOAB Range of tetrahedral elements
+  void compute_barycentric_data(const moab::Range& tets);
 
   //! Translates a MOAB EntityHandle its corresponding bin.
   //
@@ -332,10 +330,22 @@ private:
   //! \return MOAB EntityHandle of tet
   moab::EntityHandle get_ent_handle_from_bin(int bin) const;
 
+  //! Get the bin for a given mesh cell index
+  //
+  //! \param[in] idx Index of the mesh cell.
+  //! \return Mesh bin
   int get_bin_from_index(int idx) const;
 
-  int get_index(Position r, bool* in_mesh) const;
+  //! Get the mesh cell index for a given position
+  //
+  //! \param[in] r Position to get index for
+  //! \param[in,out] in_mesh Whether position is in the mesh
+  int get_index(const Position& r, bool* in_mesh) const;
 
+  //! Get the mesh cell index from a bin
+  //
+  //! \param[in] bin Bin to get the index for
+  //! \return Index of the bin
   int get_index_from_bin(int bin) const;
 
   //! Builds a KDTree for all tetrahedra in the mesh. All
@@ -347,6 +357,9 @@ private:
 
   //! Get the tags for a score from the mesh instance
   //! or create them if they are not there
+  //
+  //! \param[in] score Name of the score
+  //! \returns The MOAB value and error tag handles, respectively
   std::pair<moab::Tag, moab::Tag>
   get_score_tags(std::string score) const;
 
@@ -372,12 +385,19 @@ public:
   //! \return Mesh bin
   int get_bin(Position r) const;
 
+  //! Return a string represntation of the mesh bin
+  //
+  //! \param[in] Mesh bin to generate a label for
   std::string get_label_for_bin(int bin) const;
 
   int n_bins() const override;
 
   int n_surface_bins() const override;
 
+  //! Retrieve a centroid for the mesh cell
+  //
+  // \param[in] tet MOAB EntityHandle of the tetrahedron
+  // \returns The centroid of the element
   Position centroid(moab::EntityHandle tet) const;
 
   std::string bin_label(int bin) const override;
@@ -395,7 +415,6 @@ public:
   std::string filename_; //<! Path to unstructured mesh file
 
 private:
-
   moab::Range ehs_; //!< Range of tetrahedra EntityHandle's in the mesh
   moab::EntityHandle meshset_; //!< EntitySet containing all elements
   moab::EntityHandle tet_set_; //! < EntitySet containing all tetrahedra

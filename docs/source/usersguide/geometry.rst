@@ -444,8 +444,8 @@ Calculating Atoms Content
 -------------------------
 
 If the total volume occupied by all instances of a cell in the geometry is known
-by the user, it is possible to assign this volume to a cell without performing a stochastic volume
-calculation::
+by the user, it is possible to assign this volume to a cell without performing a
+:ref:`stochastic volume <usersguide_volume>` calculation::
 
   from uncertainties import ufloat
 

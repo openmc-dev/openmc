@@ -1,7 +1,7 @@
 import xml.etree. ElementTree as ET
 
 import numpy as np
-import uncertainties as u
+from uncertainties import ufloat
 import openmc
 import pytest
 
@@ -37,7 +37,7 @@ def test_repr(cell_with_lattice):
     repr(c)
 
     # Empty cell with uncertain volume
-    c.volume = u.ufloat(3.0, 0.2)
+    c.volume = ufloat(3.0, 0.2)
     repr(c)
 
 
@@ -128,17 +128,17 @@ def test_volume_setting():
 
     # Test ordinary volume and uncertain volume
     c.volume = 3
-    c.volume = u.ufloat(3, 0.7)
+    c.volume = ufloat(3, 0.7)
 
     # Allow volume to be set to 0.0
     c.volume = 0.0
-    c.volume = u.ufloat(0.0, 0.1)
+    c.volume = ufloat(0.0, 0.1)
 
-    # Test errors for -ve volume
+    # Test errors for negative volume
     with pytest.raises(ValueError):
         c.volume = -1.0
     with pytest.raises(ValueError):
-        c.volume = u.ufloat(-0.05, 0.1)
+        c.volume = ufloat(-0.05, 0.1)
 
 
 def test_atoms_material_cell(uo2, water):
@@ -151,22 +151,24 @@ def test_atoms_material_cell(uo2, water):
 
     # Precalculate the expected number of atoms
     M = (atomic_mass('U235') + 2 * atomic_mass('O16')) / 3
-    expected_atoms = list()
-    expected_atoms.append(1/3 * uo2.density/M * AVOGADRO * 2.0)  # U235
-    expected_atoms.append(2/3 * uo2.density/M * AVOGADRO * 2.0)  # O16
+    expected_atoms = [
+        1/3 * uo2.density/M * AVOGADRO * 2.0,  # U235
+        2/3 * uo2.density/M * AVOGADRO * 2.0   # O16
+    ]
 
-    tuples = list(c.atoms.items())
+    tuples = c.atoms.items()
     for nuc, atom_num, t in zip(expected_nucs, expected_atoms, tuples):
         assert nuc == t[0]
         assert atom_num == t[1]
 
     # Change volume and check if OK
     c.volume = 3.0
-    expected_atoms = list()
-    expected_atoms.append(1/3 * uo2.density/M * AVOGADRO * 3.0)  # U235
-    expected_atoms.append(2/3 * uo2.density/M * AVOGADRO * 3.0)  # O16
+    expected_atoms = [
+        1/3 * uo2.density/M * AVOGADRO * 3.0,  # U235
+        2/3 * uo2.density/M * AVOGADRO * 3.0   # O16
+    ]
 
-    tuples = list(c.atoms.items())
+    tuples = c.atoms.items()
     for nuc, atom_num, t in zip(expected_nucs, expected_atoms, tuples):
         assert nuc == t[0]
         assert atom_num == pytest.approx(t[1])
@@ -175,11 +177,12 @@ def test_atoms_material_cell(uo2, water):
     c.fill = water
     expected_nucs = ['H1', 'O16']
     M = (2 * atomic_mass('H1') + atomic_mass('O16')) / 3
-    expected_atoms = list()
-    expected_atoms.append(2/3 * water.density/M * AVOGADRO * 3.0)  # H1
-    expected_atoms.append(1/3 * water.density/M * AVOGADRO * 3.0)  # O16
+    expected_atoms = [
+        2/3 * water.density/M * AVOGADRO * 3.0,  # H1
+        1/3 * water.density/M * AVOGADRO * 3.0   # O16
+    ]
 
-    tuples = list(c.atoms.items())
+    tuples = c.atoms.items()
     for nuc, atom_num, t in zip(expected_nucs, expected_atoms, tuples):
         assert nuc == t[0]
         assert atom_num == pytest.approx(t[1])
@@ -196,13 +199,14 @@ def test_atoms_distribmat_cell(uo2, water):
     expected_nucs = ['U235', 'O16', 'H1']
     M_uo2 = (atomic_mass('U235') + 2 * atomic_mass('O16')) / 3
     M_water = (2 * atomic_mass('H1') + atomic_mass('O16')) / 3
-    expected_atoms = list()
-    expected_atoms.append(1/3 * uo2.density/M_uo2 * AVOGADRO * 3.0)  # U235
-    expected_atoms.append(2/3 * uo2.density/M_uo2 * AVOGADRO * 3.0 +
-                          1/3 * water.density/M_water * AVOGADRO * 3.0)  # O16
-    expected_atoms.append(2/3 * water.density/M_water * AVOGADRO * 3.0)  # H1
+    expected_atoms = [
+        1/3 * uo2.density/M_uo2 * AVOGADRO * 3.0,        # U235
+        (2/3 * uo2.density/M_uo2 * AVOGADRO * 3.0 +
+         1/3 * water.density/M_water * AVOGADRO * 3.0),  # O16
+        2/3 * water.density/M_water * AVOGADRO * 3.0     # H1
+    ]
 
-    tuples = list(c.atoms.items())
+    tuples = c.atoms.items()
     for nuc, atom_num, t in zip(expected_nucs, expected_atoms, tuples):
         assert nuc == t[0]
         assert atom_num == pytest.approx(t[1])
@@ -216,14 +220,14 @@ def test_atoms_errors(cell_with_lattice):
         cells[1].atoms
 
     # Cell with lattice
+    cells[2].volume = 3
     with pytest.raises(ValueError):
-        cells[2].volume = 3
         cells[2].atoms
 
     # Cell with volume but with void fill
+    cells[1].volume = 2
+    cells[1].fill = None
     with pytest.raises(ValueError):
-        cells[1].volume = 2
-        cells[1].fill = None
         cells[1].atoms
 
 

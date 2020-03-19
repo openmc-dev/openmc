@@ -40,15 +40,11 @@ def model():
     t.scores = ['flux']
     tallies = openmc.Tallies([t])
  
-    # Plots (none)
-    plots = openmc.Plots()
-
     # Put it all together
     model = openmc.model.Model(materials=materials,
                                geometry=geometry,
                                settings=settings,
-                               tallies=tallies,
-                               plots=plots)
+                               tallies=tallies)
     return model
 
 class TriggerStatepointRestartTestHarness(PyAPITestHarness):

@@ -191,21 +191,6 @@ class Cell(IDManagerMixin):
 
     @property
     def atoms(self):
-        """ Get total number of atoms of each nuclide in the cell
-
-        Returns
-        -------
-        atoms: collections.OrderedDict
-            Dictionary in which keys are nuclides and values are the number of
-            atoms. For example, {'H1':1.0e22, 'O16':0.5e22, ...}
-
-        Raises
-        ------
-        ValueError
-            If total volume of the cell is not set
-        ValueError
-            If cell is filled with Universe, Lattice or Void
-        """
         if self._atoms is None:
             if self._volume is None:
                 msg = ('Cannot calculate atom content becouse no volume '

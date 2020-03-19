@@ -183,13 +183,13 @@ the :class:`openmc.Cell` class::
   fuel.fill = uo2
   fuel.region = pellet
 
-  # This cell will be filled with void on export to XML
-  gap = openmc.Cell(region=pellet_gap)
-
 In this example, an instance of :class:`openmc.Material` is assigned to the
 :attr:`Cell.fill` attribute. One can also fill a cell with a :ref:`universe
 <usersguide_universes>` or :ref:`lattice <usersguide_lattices>`. If no fill 
-is provided to a cell, it will be filled with void by default.
+is provided to a cell, it will be filled with void by default::
+
+  # This cell will be filled with void on export to XML
+  gap = openmc.Cell(region=pellet_gap)
 
 The classes :class:`Halfspace`, :class:`Intersection`, :class:`Union`, and
 :class:`Complement` and all instances of :class:`openmc.Region` and can be
@@ -459,7 +459,7 @@ calculation::
 Once a volume is set, and a cell is filled with a material or distributed
 materials, it is possible to use the :func:`~openmc.Cell.atoms` method to obtain
 a dictionary of nuclides and their total number of atoms in all instances
-of a cell (e.g. ``{'H1':1.0e22, 'O16':0.5e22, ...}``)::
+of a cell (e.g. ``{'H1': 1.0e22, 'O16': 0.5e22, ...}``)::
 
   cell = openmc.Cell(fill = u02)
   cell.volume = 17.0

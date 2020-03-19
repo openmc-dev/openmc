@@ -129,16 +129,12 @@ score_int_to_str(int score_int) {
 
   if (score_int == N_2N)
     return "(n,2n)";
-
   if (score_int == N_3N)
     return "(n,3n)";
-
   if (score_int == N_4N)
     return "(n,4n)";
-
   if (score_int == N_2ND)
     return "(n,2nd)";
-
   if (score_int == N_2NA)
     return "(n,na)";
   if (score_int == N_N3A)

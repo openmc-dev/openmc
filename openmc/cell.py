@@ -233,7 +233,7 @@ class Cell(IDManagerMixin):
                         self._atoms[key] = atom
 
             else:
-                msg = 'Unrecognised fill_type: {}'.format(self.fill_type)
+                msg = 'Unrecognized fill_type: {}'.format(self.fill_type)
                 raise ValueError(msg)
 
         return self._atoms

@@ -28,7 +28,9 @@ def model():
     settings.batches = 10
     settings.inactive = 5
     settings.particles = 200
-    settings.keff_trigger = {'type': 'std_dev', 'threshold': 0.002}
+    # Choose a sufficiently low threshold to trigger after more than 10 batches.
+    # 0.004 seems to take 13 batches.
+    settings.keff_trigger = {'type': 'std_dev', 'threshold': 0.004}
     settings.trigger_max_batches = 1000
     settings.trigger_batch_interval = 1
     settings.trigger_active = True
@@ -85,11 +87,13 @@ class TriggerStatepointRestartTestHarness(PyAPITestHarness):
             # First non-restart run
             spfile = self._model.run(**args)
             sp_batchno_1 = 0
+            print('Last sp file: %s' % spfile)
             assert spfile
             with openmc.StatePoint(spfile) as sp:
                  sp_batchno_1 = sp.current_batch
                  k_combined_1 = sp.k_combined
             assert sp_batchno_1 > 10
+            print('Last batch no = %d' % sp_batchno_1)
             self._write_inputs(self._get_inputs())
             self._compare_inputs()
             self._test_output_created()

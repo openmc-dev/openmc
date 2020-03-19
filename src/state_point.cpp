@@ -167,7 +167,7 @@ openmc_statepoint_write(const char* filename, bool* write_source)
 
 #ifdef DAGMC
       // write unstructured mesh tallies to VTK if possible
-        write_unstructured_mesh_results();
+      write_unstructured_mesh_results();
 #endif
 
       // Write all tally information except results
@@ -690,11 +690,11 @@ void write_unstructured_mesh_results() {
     for (auto filter_idx : tally->filters()) {
       auto& filter = model::tally_filters[filter_idx];
       if (filter->type() == "mesh") {
+        // check if the filter uses an unstructured mesh
         auto mesh_filter = dynamic_cast<MeshFilter*>(filter.get());
-        auto& mesh = model::meshes[mesh_filter->mesh()];
-        auto umesh = dynamic_cast<UnstructuredMesh*>(mesh.get());
+        auto mesh_idx = mesh_filter->mesh();
+        auto umesh = dynamic_cast<UnstructuredMesh*>(model::meshes[mesh_idx].get());
         if (umesh) {
-
           // if this tally has more than one filter, print
           // warning and skip writing the mesh
           if (tally->filters().size() > 1) {
@@ -705,21 +705,26 @@ void write_unstructured_mesh_results() {
           }
 
           int n_realizations = tally->n_realizations_;
-          // write each score for this tally to the mesh
+
+          // write each score/nuclide combination for this tally
           for (int i_score = 0; i_score < tally->scores_.size(); i_score++) {
             for (int i_nuc = 0; i_nuc < tally->nuclides_.size(); i_nuc++) {
-              std::vector<double> mean_vec, std_dev_vec;
+
+              // index for this nuclide and score
               int nuc_score_idx = i_score + i_nuc * tally->scores_.size();
+
+              // construct result vectors
+              std::vector<double> mean_vec, std_dev_vec;
               for (int j = 0; j < tally->results_.shape()[0]; j++) {
                 double mean = tally->results_(j, nuc_score_idx, TallyResult::SUM) / n_realizations;
                 double sum_sq = tally->results_(j , nuc_score_idx, TallyResult::SUM_SQ);
-                std_dev_vec.push_back(sum_sq / n_realizations -
-                                      std::pow(mean, 2) / (n_realizations - 1));
+                double std_dev = sum_sq / n_realizations - std::pow(mean, 2) / (n_realizations - 1);
+                std_dev_vec.push_back(std_dev);
                 mean_vec.push_back(mean);
               }
 
               // generate a name for the value
-              std::string nuclide_name = "total";
+              std::string nuclide_name = "total"; // start with total by default
               if (tally->nuclides_[i_nuc] > -1) {
                 nuclide_name = data::nuclides[tally->nuclides_[i_nuc]]->name_;
               }
@@ -729,22 +734,20 @@ void write_unstructured_mesh_results() {
               auto score_str = fmt::format("{0}_{1}",
                                            score_name,
                                            nuclide_name);
-               umesh->set_score_data(score_str,
+              umesh->set_score_data(score_str,
                                     mean_vec,
                                     std_dev_vec);
-              mean_vec.clear();
-              std_dev_vec.clear();
             }
           }
 
-          // Determine width for zero padding
+          // Generate a file name based on the tally id
+          // and the current batch number
           int w = std::to_string(settings::n_max_batches).size();
           std::string filename = fmt::format("tally_{0}.{1:0{2}}",
                                              tally->id_,
                                              simulation::current_batch,
                                              w);
-
-          // Write message
+          // Write the unstructured mesh and data to file
           umesh->write(filename);
         }
       }

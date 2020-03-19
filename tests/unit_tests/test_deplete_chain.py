@@ -6,7 +6,6 @@ from pathlib import Path
 from itertools import product
 
 import numpy as np
-from openmc.data import zam, ATOMIC_SYMBOL
 from openmc.deplete import comm, Chain, reaction_rates, nuclide, cram
 import pytest
 
@@ -405,7 +404,8 @@ def test_fission_yield_attribute(simple_chain):
     dummy_conc = [[1, 2]] * (len(empty_chain.fission_yields) + 1)
     with pytest.raises(
             ValueError, match="fission yield.*not equal.*compositions"):
-       cram.deplete(empty_chain, dummy_conc, None, 0.5)
+        cram.deplete(empty_chain, dummy_conc, None, 0.5)
+
 
 def test_validate(simple_chain):
     """Test the validate method"""
@@ -457,3 +457,95 @@ def test_validate_inputs():
 
     with pytest.raises(ValueError, match="tolerance"):
         c.validate(tolerance=-1)
+
+
+@pytest.fixture
+def gnd_simple_chain():
+    chainfile = Path(__file__).parents[1] / "chain_simple.xml"
+    return Chain.from_xml(chainfile)
+
+
+def test_reduce(gnd_simple_chain):
+    ref_U5 = gnd_simple_chain["U235"]
+    ref_iodine = gnd_simple_chain["I135"]
+    ref_U5_yields = ref_U5.yield_data
+
+    no_depth = gnd_simple_chain.reduce(["U235", "I135"], 0)
+    # We should get a chain just containing U235 and I135
+    assert len(no_depth) == 2
+    assert set(no_depth.reactions) == set(gnd_simple_chain.reactions)
+
+    u5_round0 = no_depth["U235"]
+    assert u5_round0.n_decay_modes == ref_U5.n_decay_modes
+    for newmode, refmode in zip(u5_round0.decay_modes, ref_U5.decay_modes):
+        assert newmode.target is None
+        assert newmode.type == refmode.type, newmode
+        assert newmode.branching_ratio == refmode.branching_ratio, newmode
+
+    assert u5_round0.n_reaction_paths == ref_U5.n_reaction_paths
+    for newrxn, refrxn in zip(u5_round0.reactions, ref_U5.reactions):
+        assert newrxn.target is None, newrxn
+        assert newrxn.type == refrxn.type, newrxn
+        assert newrxn.Q == refrxn.Q, newrxn
+        assert newrxn.branching_ratio == refrxn.branching_ratio, newrxn
+
+    assert u5_round0.yield_data is not None
+    assert u5_round0.yield_data.products == ("I135", )
+    assert u5_round0.yield_data.yield_matrix == (
+            ref_U5_yields.yield_matrix[:, ref_U5_yields.products.index("I135")]
+    )
+
+    bareI5 = no_depth["I135"]
+    assert bareI5.n_decay_modes == ref_iodine.n_decay_modes
+    for newmode, refmode in zip(bareI5.decay_modes, ref_iodine.decay_modes):
+        assert newmode.target is None
+        assert newmode.type == refmode.type, newmode
+        assert newmode.branching_ratio == refmode.branching_ratio, newmode
+
+    assert bareI5.n_reaction_paths == ref_iodine.n_reaction_paths
+    for newrxn, refrxn in zip(bareI5.reactions, ref_iodine.reactions):
+        assert newrxn.target is None, newrxn
+        assert newrxn.type == refrxn.type, newrxn
+        assert newrxn.Q == refrxn.Q, newrxn
+        assert newrxn.branching_ratio == refrxn.branching_ratio, newrxn
+
+    follow_u5 = gnd_simple_chain.reduce(["U235"], 1)
+    u5_round1 = follow_u5["U235"]
+    assert u5_round1.decay_modes == ref_U5.decay_modes
+    assert u5_round1.reactions == ref_U5.reactions
+    assert u5_round1.yield_data is not None
+    assert (
+        u5_round1.yield_data.yield_matrix == ref_U5_yields.yield_matrix
+    ).all()
+
+    # Per the chain_simple.xml
+    # I135 -> Xe135 -> Cs135
+    # I135 -> Xe136
+    # No limit on depth
+    iodine_chain = gnd_simple_chain.reduce(["I135"])
+    truncated_iodine = gnd_simple_chain.reduce(["I135"], 1)
+    assert len(iodine_chain) == 4
+    assert len(truncated_iodine) == 3
+    assert set(iodine_chain.nuclide_dict) == {
+        "I135", "Xe135", "Xe136", "Cs135"}
+    assert set(truncated_iodine.nuclide_dict) == {"I135", "Xe135", "Xe136"}
+    assert iodine_chain.reactions == ["(n,gamma)"]
+    assert iodine_chain["I135"].decay_modes == ref_iodine.decay_modes
+    assert iodine_chain["I135"].reactions == ref_iodine.reactions
+    for mode in truncated_iodine["Xe135"].decay_modes:
+        assert mode.target is None
+
+    # Test that no FissionYieldDistribution is made if there are no
+    # fission products
+    u5_noyields = gnd_simple_chain.reduce(["U235"], 0)["U235"]
+    assert u5_noyields.yield_data is None
+
+    # Check early termination if the eventual full chain
+    # is specified by using the iodine isotopes
+    new_iodine = gnd_simple_chain.reduce(set(iodine_chain.nuclide_dict))
+    assert set(iodine_chain.nuclide_dict) == set(new_iodine.nuclide_dict)
+
+    # Failure if some requested isotopes not in chain
+
+    with pytest.raises(IndexError, match=".*not found.*Xx999"):
+        gnd_simple_chain.reduce(["U235", "Xx999"])

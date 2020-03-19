@@ -182,11 +182,11 @@ class CMFDMesh:
         self._albedo = albedo
 
     @map.setter
-    def map(self, meshmap):
-        check_type('CMFD mesh map', meshmap, Iterable, Integral)
-        for m in meshmap:
+    def map(self, mesh_map):
+        check_type('CMFD mesh map', mesh_map, Iterable, Integral)
+        for m in mesh_map:
             check_value('CMFD mesh map', m, [0, 1])
-        self._map = meshmap
+        self._map = mesh_map
 
 
 class CMFDRun:
@@ -534,7 +534,6 @@ class CMFDRun:
         check_type('CMFD feedback begin batch', begin, Integral)
         check_greater_than('CMFD feedback begin batch', begin, 0)
         self._solver_begin = begin
-
 
     @ref_d.setter
     def ref_d(self, diff_params):
@@ -896,9 +895,8 @@ class CMFDRun:
                     cmfd_group.create_dataset('total_rate',
                                               data=self._total_rate)
                 elif openmc.settings.verbosity >= 5:
-                    print('  CMFD data not written to statepoint file'
-                          'as it already exists in {}'.format(filename))
-                    sys.stdout.flush()
+                    print('  CMFD data not written to statepoint file as it '
+                          'already exists in {}'.format(filename), flush=True)
 
     def _initialize_linsolver(self):
         # Determine number of rows in CMFD matrix
@@ -1184,7 +1182,6 @@ class CMFDRun:
             if self._cmfd_on:
                 # Write CMFD output if CMFD on for current batch
                 self._write_cmfd_output()
-
 
     def _cmfd_tally_reset(self):
         """Resets all CMFD tallies in memory"""
@@ -1753,7 +1750,7 @@ class CMFDRun:
 
             # Compute new flux with C++ solver
             innerits = openmc.lib._dll.openmc_run_linsolver(loss.data, s_o,
-                                                             phi_n, toli)
+                                                            phi_n, toli)
 
             # Compute new source vector
             s_n = prod.dot(phi_n)
@@ -1785,7 +1782,7 @@ class CMFDRun:
             # Update tolerance for inner iterations
             toli = max(atoli, rtoli*norm_n)
 
-    def _check_convergence(self, s_n, s_o, k_n, k_o, iter, innerits):
+    def _check_convergence(self, s_n, s_o, k_n, k_o, iteration, innerits):
         """Checks the convergence of the CMFD problem
 
         Parameters
@@ -1798,9 +1795,9 @@ class CMFDRun:
             K-effective  from current iteration
         k_o : float
             K-effective from previous iteration
-        iter: int
+        iteration : int
             Iteration number
-        innerits: int
+        innerits : int
             Number of iterations required for convergence in inner GS loop
 
         Returns
@@ -1825,14 +1822,13 @@ class CMFDRun:
 
         # Print out to user
         if self._power_monitor and openmc.lib.master():
-            str1 = ' {:d}:'.format(iter)
-            str2 = 'k-eff: {:0.8f}'.format(k_n)
-            str3 = 'k-error:  {:.5e}'.format(kerr)
-            str4 = 'src-error:  {:.5e}'.format(serr)
-            str5 = '  {:d}'.format(innerits)
-            print('{:8s}{:20s}{:25s}{:s}{:s}'.format(str1, str2, str3, str4,
-                                                     str5))
-            sys.stdout.flush()
+            print('{:8s}{:20s}{:25s}{:s}{:s}'.format(
+                ' {:d}:'.format(iteration),
+                'k-eff: {:0.8f}'.format(k_n),
+                'k-error:  {:.5e}'.format(kerr),
+                'src-error:  {:.5e}'.format(serr),
+                '  {:d}'.format(innerits)
+            ), flush=True)
 
         return iconv, serr
 
@@ -1850,7 +1846,7 @@ class CMFDRun:
         # Define coremap as cumulative sum over accelerated regions,
         # otherwise set value to _CMFD_NOACCEL
         self._coremap = np.where(self._coremap == 0, _CMFD_NOACCEL,
-                                 np.cumsum(self._coremap)-1)
+                                 np.cumsum(self._coremap) - 1)
 
         # Reshape coremap to three dimensional array
         # Indices of coremap in user input switched in x and z axes
@@ -1929,19 +1925,19 @@ class CMFDRun:
                           ') in group ' + str(ng-idx[-1])
             raise OpenMCError(err_message)
 
-        # Get total rr from CMFD tally 0
+        # Get total reaction rate (rr) from CMFD tally 0
         totalrr = tallies[tally_id].results[:,1,1]
 
-        # Reshape totalrr array to target shape. Swap x and z axes so that
-        # shape is now [nx, ny, nz, ng, 1]
+        # Reshape total reaction rate array to target shape. Swap x and z axes
+        # so that shape is now [nx, ny, nz, ng, 1]
         reshape_totalrr = np.swapaxes(totalrr.reshape(target_tally_shape),
                                       0, 2)
 
-        # Total rr is flipped in energy axis as tally results are given in
-        # reverse order of energy group
+        # Total reaction rate is flipped in energy axis as tally results are
+        # given in reverse order of energy group
         reshape_totalrr = np.flip(reshape_totalrr, axis=3)
 
-        # Bank total rr to total_rate
+        # Bank total reaction rate to total_rate
         self._total_rate = np.append(self._total_rate, reshape_totalrr,
                                      axis=4)
 

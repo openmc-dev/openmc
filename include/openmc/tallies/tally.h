@@ -72,7 +72,8 @@ public:
 
   void accumulate();
 
-  std::string score_name(int i) const;
+  //! A string representing the i-th score on this tally
+  std::string score_name(int score_idx) const;
 
   //----------------------------------------------------------------------------
   // Major public data members.

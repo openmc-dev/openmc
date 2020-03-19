@@ -12,9 +12,13 @@ from tests.testing_harness import PyAPITestHarness
 
 pytestmark = pytest.mark.skipif(
     not openmc.lib._dagmc_enabled(),
-    reason="Mesh library is not available.")
+    reason="Mesh library is not enabled.")
+
+TETS_PER_VOXEL = 12
+
 
 class UnstructuredMeshTest(PyAPITestHarness):
+
 
     def __init__(self, statepoint_name, **kwargs):
         super().__init__(statepoint_name)
@@ -187,7 +191,7 @@ class UnstructuredMeshTest(PyAPITestHarness):
 
         angle = openmc.stats.Monodirectional((-1.0, 0.0, 0.0))
 
-        energy = openmc.stats.Discrete(x=[15.0E6], p=[1.0])
+        energy = openmc.stats.Discrete(x=[15.e+06], p=[1.0])
 
         source = openmc.Source(space=space, energy=energy, angle=angle)
 
@@ -200,21 +204,18 @@ class UnstructuredMeshTest(PyAPITestHarness):
 
     def _compare_results(self):
         with openmc.StatePoint(self._sp_name) as sp:
-            # loop over the tallies
-            regular_data = None
-            regular_std_dev = None
-            unstructured_data = None
-            unstructured_std_dev = None
+
+            # loop over the tallies and get data
             for tally in sp.tallies.values():
                 # find the regular and unstructured meshes
                 if tally.contains_filter(openmc.MeshFilter):
                     flt = tally.find_filter(openmc.MeshFilter)
 
                     if isinstance(flt.mesh, openmc.RegularMesh):
-                        regular_data, regular_std_dev = self.get_mesh_tally_data(tally)
+                        reg_mesh_data, reg_mesh_std_dev = self.get_mesh_tally_data(tally)
                         if self.holes:
-                            regular_data = np.delete(regular_data, holes)
-                            regular_std_dev = np.delete(regular_std_dev, holes)
+                            reg_mesh_data = np.delete(reg_mesh_data, holes)
+                            reg_mesh_std_dev = np.delete(reg_mesh_std_dev, holes)
                     else:
                         unstructured_data, unstructured_std_dev = self.get_mesh_tally_data(tally, True)
 
@@ -223,7 +224,7 @@ class UnstructuredMeshTest(PyAPITestHarness):
             while True:
                 try:
                     np.testing.assert_array_almost_equal(unstructured_data,
-                                                         regular_data,
+                                                         reg_mesh_data,
                                                          decimals)
                 except AssertionError as ae:
                     print(ae)
@@ -232,13 +233,12 @@ class UnstructuredMeshTest(PyAPITestHarness):
                 # increment decimals
                 decimals += 1
 
-                print("Results equal to within {} decimal places.\n".format(decimals))
-
+            # we expect these results to be the same to within at least ten
+            # decimal places
             assert decimals >= 10
 
     @staticmethod
     def get_mesh_tally_data(tally, structured=False):
-        TETS_PER_VOXEL = 12
         data = tally.get_reshaped_data(value='mean')
         std_dev = tally.get_reshaped_data(value='std_dev')
         if structured:
@@ -251,20 +251,19 @@ class UnstructuredMeshTest(PyAPITestHarness):
 
     def _cleanup(self):
         super()._cleanup()
-
-        output = glob.glob('tally*.h5m')
+        output = glob.glob('tally*.vtk')
         for f in output:
             if os.path.exists(f):
                 os.remove(f)
 
-
-hole_indexes = (333, 90, 777)
-param_values = (('collision', 'tracklength'), (True, False), (hole_indexes, ()))
+param_values = ( ('collision', 'tracklength'), # estimators
+                 (True, False), # geometry outside of the mesh
+                 ( (333, 90, 77), tuple() ) ) # location of holes in the mesh
 test_cases = []
 for estimator, holes, ext_geom in product(*param_values):
     test_cases.append({'estimator' : estimator,
-                       'holes' : holes,
-                       'external_geom' : ext_geom})
+                       'external_geom' : ext_geom,
+                       'holes' : holes})
 @pytest.mark.parametrize("opts", test_cases)
 def test_unstructured_mesh(opts):
     harness = UnstructuredMeshTest('statepoint.10.h5', kwargs=opts)

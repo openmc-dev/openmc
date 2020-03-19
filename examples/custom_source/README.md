@@ -11,4 +11,9 @@ library, you can run:
 
 After this, you can build the model by running `python build_xml.py`. In the XML
 files that are created, you should see a reference to build/libsource.so, the
-custom source library that was built by CMake.
+custom source library that was built by CMake. The model is also set up with a
+mesh tally of the flux, so once you run `openmc`, you will get a statepoint file
+with the tally results in it. Running `python show_flux.py` will pull in the
+results from the statepoint file and display them. If all worked well, you
+should see a ring "imprint" as well as a higher flux to the right side (since
+the custom source has all particles moving in the positive x direction).

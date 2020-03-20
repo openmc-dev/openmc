@@ -81,10 +81,10 @@ public:
   //! \return Sampled position
   Position sample(uint64_t* seed) const;
 
-  auto r() const { return r_.get(); }
-  auto theta() const { return theta_.get(); }
-  auto phi() const { return phi_.get(); }
-  auto origin () const { return origin_; }
+  Distribution* r() const { return r_.get(); }
+  Distribution* theta() const { return theta_.get(); }
+  Distribution* phi() const { return phi_.get(); }
+  Position origin () const { return origin_; }
 private:
   UPtrDist r_; //!< Distribution of r coordinates
   UPtrDist theta_; //!< Distribution of theta coordinates

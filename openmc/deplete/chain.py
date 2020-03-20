@@ -500,7 +500,7 @@ class Chain(object):
                 # Gain
                 for _, target, branching_ratio in nuc.decay_modes:
                     # Allow for total annihilation for debug purposes
-                    if target != 'Nothing':
+                    if target is not None:
                         branch_val = branching_ratio * decay_constant
 
                         if branch_val != 0.0:
@@ -525,17 +525,16 @@ class Chain(object):
                             matrix[i, i] -= path_rate
 
                     # Gain term; allow for total annihilation for debug purposes
-                    if target != 'Nothing':
-                        if r_type != 'fission':
-                            if path_rate != 0.0:
-                                k = self.nuclide_dict[target]
-                                matrix[k, i] += path_rate * br
-                        else:
-                            for product, y in fission_yields[nuc.name].items():
-                                yield_val = y * path_rate
-                                if yield_val != 0.0:
-                                    k = self.nuclide_dict[product]
-                                    matrix[k, i] += yield_val
+                    if r_type != 'fission':
+                        if target is not None and path_rate != 0.0:
+                            k = self.nuclide_dict[target]
+                            matrix[k, i] += path_rate * br
+                    else:
+                        for product, y in fission_yields[nuc.name].items():
+                            yield_val = y * path_rate
+                            if yield_val != 0.0:
+                                k = self.nuclide_dict[product]
+                                matrix[k, i] += yield_val
 
                 # Clear set of reactions
                 reactions.clear()

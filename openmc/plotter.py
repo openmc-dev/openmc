@@ -62,7 +62,7 @@ PLOT_TYPES_LINEAR = {'nu-fission / fission', 'nu-scatter / scatter',
 _MIN_E = 1.e-5
 _MAX_E = 20.e6
 _MIN_E_PROTON = 1.e2
-_MAX_E_PROTON = 20.e8
+_MAX_E_PROTON = 2.e9
 
 
 

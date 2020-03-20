@@ -30,8 +30,10 @@ Parameters
 ----------
 type : str
     Type of the decay mode, e.g., 'beta-'
-target : str
-    Nuclide resulting from decay
+target : str or None
+    Nuclide resulting from decay. A value of ``None`` implies the
+    target does not exist in the currently configured depletion
+    chain
 branching_ratio : float
     Branching ratio of the decay mode
 
@@ -53,8 +55,11 @@ Parameters
 ----------
 type : str
     Type of the reaction, e.g., 'fission'
-target : str
-    nuclide resulting from reaction
+target : str or None
+    Nuclide resulting from reaction. A value of ``None``
+    implies either no single target, e.g. from fission,
+    or that the target nuclide is not considered
+    in the current depletion chain
 Q : float
     Q value of the reaction in [eV]
 branching_ratio : float
@@ -179,6 +184,8 @@ class Nuclide(object):
         for decay_elem in element.iter('decay'):
             d_type = decay_elem.get('type')
             target = decay_elem.get('target')
+            if target is not None and target.lower() == "nothing":
+                target = None
             branching_ratio = float(decay_elem.get('branching_ratio'))
             nuc.decay_modes.append(DecayTuple(d_type, target, branching_ratio))
 
@@ -192,6 +199,8 @@ class Nuclide(object):
             # just set null values
             if r_type != 'fission':
                 target = reaction_elem.get('target')
+                if target is not None and target.lower() == "nothing":
+                    target = None
             else:
                 target = None
                 if fission_q is not None:
@@ -226,7 +235,7 @@ class Nuclide(object):
             for mode, daughter, br in self.decay_modes:
                 mode_elem = ET.SubElement(elem, 'decay')
                 mode_elem.set('type', mode)
-                mode_elem.set('target', daughter)
+                mode_elem.set('target', daughter or "Nothing")
                 mode_elem.set('branching_ratio', str(br))
 
         elem.set('reactions', str(len(self.reactions)))
@@ -234,7 +243,7 @@ class Nuclide(object):
             rx_elem = ET.SubElement(elem, 'reaction')
             rx_elem.set('type', rx)
             rx_elem.set('Q', str(Q))
-            if rx != 'fission':
+            if rx != 'fission' or daughter is not None:
                 rx_elem.set('target', daughter)
             if br != 1.0:
                 rx_elem.set('branching_ratio', str(br))
@@ -459,6 +468,7 @@ class FissionYieldDistribution(Mapping):
             product_elem.text = " ".join(map(str, yield_obj.products))
             data_elem = ET.SubElement(yield_element, "data")
             data_elem.text = " ".join(map(str, yield_obj.yields))
+
 
 
 class FissionYield(Mapping):

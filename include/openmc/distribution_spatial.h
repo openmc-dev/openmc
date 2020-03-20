@@ -56,10 +56,10 @@ public:
   //! \return Sampled position
   Position sample(uint64_t* seed) const;
   
-  auto r() const { return r_.get(); }
-  auto phi() const { return phi_.get(); }
-  auto z() const { return z_.get(); }
-  auto origin() const { return origin_; }
+  Distribution* r() const { return r_.get(); }
+  Distribution* phi() const { return phi_.get(); }
+  Distribution* z() const { return z_.get(); }
+  Position origin() const { return origin_; }
 private:
   UPtrDist r_; //!< Distribution of r coordinates
   UPtrDist phi_; //!< Distribution of phi coordinates

@@ -130,7 +130,7 @@ public:
   //! \return Sampled position
   Position sample(uint64_t* seed) const;
 
-  auto r() const { return r_; }
+  Position r() const { return r_; }
 private:
   Position r_; //!< Single position at which sites are generated
 };

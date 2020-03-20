@@ -45,8 +45,8 @@ public:
   Direction sample(uint64_t* seed) const;
 
   // Observing pointers
-  auto mu() const { return mu_.get(); }
-  auto phi() const { return phi_.get(); }
+  Distribution* mu() const { return mu_.get(); }
+  Distribution* phi() const { return phi_.get(); }
 
 private:
   UPtrDist mu_;  //!< Distribution of polar angle

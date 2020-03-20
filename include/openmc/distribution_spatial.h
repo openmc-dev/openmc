@@ -34,9 +34,9 @@ public:
   Position sample(uint64_t* seed) const;
 
   // Observer pointers
-  auto x() const { return x_.get(); }
-  auto y() const { return x_.get(); }
-  auto z() const { return x_.get(); }
+  Distribution* x() const { return x_.get(); }
+  Distribution* y() const { return x_.get(); }
+  Distribution* z() const { return x_.get(); }
 private:
   UPtrDist x_; //!< Distribution of x coordinates
   UPtrDist y_; //!< Distribution of y coordinates

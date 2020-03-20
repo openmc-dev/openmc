@@ -47,9 +47,9 @@ public:
   double strength() const { return strength_; }
 
   // Make observing pointers available
-  auto space() const { return space_.get(); }
-  auto angle() const { return angle_.get(); }
-  auto energy() const { return energy_.get(); }
+  SpatialDistribution* space() const { return space_.get(); }
+  UnitSphereDistribution* angle() const { return angle_.get(); }
+  Distribution* energy() const { return energy_.get(); }
 
 private:
   Particle::Type particle_ {Particle::Type::neutron}; //!< Type of particle emitted

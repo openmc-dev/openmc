@@ -19,11 +19,23 @@ def test_get_atoms(res):
     """Tests evaluating single nuclide concentration."""
     t, n = res.get_atoms("1", "Xe135")
 
-    t_ref = [0.0, 1296000.0, 2592000.0, 3888000.0]
-    n_ref = [6.67473282e+08, 3.76986925e+14, 3.68587383e+14, 3.91338675e+14]
+    t_ref = np.array([0.0, 1296000.0, 2592000.0, 3888000.0])
+    n_ref = np.array(
+        [6.67473282e+08, 3.76986925e+14, 3.68587383e+14, 3.91338675e+14])
 
     np.testing.assert_allclose(t, t_ref)
     np.testing.assert_allclose(n, n_ref)
+
+    # Check alternate units
+    volume = res[0].volume["1"]
+
+    t_days, n_cm3 = res.get_atoms("1", "Xe135", nuc_units="atoms/cm^3", time_units="d")
+
+    assert t_days == pytest.approx(t_ref / (60 * 60 * 24))
+    assert n_cm3 == pytest.approx(n_ref / volume)
+
+    _t, n_bcm = res.get_atoms("1", "Xe135", nuc_units="atoms/b/cm")
+    assert n_bcm == pytest.approx(n_cm3 * 1e-24)
 
 
 def test_get_reaction_rate(res):

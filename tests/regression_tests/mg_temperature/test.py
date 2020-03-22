@@ -1,6 +1,7 @@
 import os
 from tests.regression_tests.mg_temperature.build_2g import *
 from tests.testing_harness import *
+import shutil
 
 
 class MgTemperatureTestHarness(TestHarness):
@@ -8,14 +9,15 @@ class MgTemperatureTestHarness(TestHarness):
     def execute_test(self):
         """Run OpenMC with the appropriate arguments and check the outputs."""
         base_dir = os.getcwd()
+        overall_results = []
         print("Base dir is {}".format(base_dir))
         macro_xs = create_openmc_2mg_libs(names)
-        dirs = ('micro/nearest/case1', 'micro/nearest/case2',
-                'micro/nearest/case3', 'micro/interpolation/case1',
-                'micro/interpolation/case2',
-                'macro/nearest/case1', 'macro/nearest/case2',
-                'macro/nearest/case3', 'macro/interpolation/case1',
-                'macro/interpolation/case2')
+        types = ('micro', 'micro',
+                 'micro', 'micro',
+                 'micro',
+                 'macro', 'macro',
+                 'macro', 'macro',
+                 'macro')
         temperatures = (300., 600., 900.,
                         520., 600.,
                         300., 600., 900.,
@@ -25,12 +27,15 @@ class MgTemperatureTestHarness(TestHarness):
         analyt_interp[3] = (600. - 520.) / 300.
         analyt_interp[8] = (600. - 520.) / 300.
         try:
-            for d, t, m, ai in zip(dirs, temperatures, methods, analyt_interp):
-                os.chdir(os.path.join(base_dir, d))
-                if (d[:5] == 'macro'):
-                    build_inf_model(['macro'], '../../../macro_2g.h5', t, m)
+            if (os.path.isdir("./temp")):
+                shutil.rmtree("./temp")
+            os.mkdir("temp")
+            os.chdir(os.path.join(base_dir, "temp"))
+            for cs, t, m, ai in zip(types, temperatures, methods, analyt_interp):
+                if (cs == 'macro'):
+                    build_inf_model(['macro'], '../macro_2g.h5', t, m)
                 else:
-                    build_inf_model(names, '../../../micro_2g.h5', t, m)
+                    build_inf_model(names, '../micro_2g.h5', t, m)
                 if not ai:
                     kanalyt = analytical_solution_2g_therm(macro_xs[t])
                 else:
@@ -38,16 +43,18 @@ class MgTemperatureTestHarness(TestHarness):
                                                            macro_xs[600], ai)
                 self._run_openmc()
                 self._test_output_created()
-                results = self._get_results()
-                results += "k-analytical:\n"
-                results += "{:12.6E}".format(kanalyt)
-                self._write_results(results)
-                self._compare_results()
-        finally:
-            for d in dirs:
-                os.chdir(os.path.join(base_dir, d))
-                self._cleanup()
+                string = "{}, method: {}, t: {}, {}kanalyt\n{:12.6E}\n"
+                results = string.format(cs, m, t, self._get_results(), kanalyt)
+                overall_results.append(results)
             os.chdir(base_dir)
+            self._write_results("".join(overall_results))
+            self._compare_results()
+        finally:
+            os.chdir(base_dir)
+            shutil.copyfile("results_test.dat", "results_true.dat")
+            if (os.path.isdir("./temp")):
+                shutil.rmtree("./temp")
+            self._cleanup()
             for f in ['micro_2g.h5', 'macro_2g.h5']:
                 if os.path.exists(f):
                     os.remove(f)
@@ -55,14 +62,15 @@ class MgTemperatureTestHarness(TestHarness):
     def update_results(self):
         """Update the results_true using the current version of OpenMC."""
         base_dir = os.getcwd()
+        overall_results = []
         print("Base dir is {}".format(base_dir))
         macro_xs = create_openmc_2mg_libs(names)
-        dirs = ('micro/nearest/case1', 'micro/nearest/case2',
-                'micro/nearest/case3', 'micro/interpolation/case1',
-                'micro/interpolation/case2',
-                'macro/nearest/case1', 'macro/nearest/case2',
-                'macro/nearest/case3', 'macro/interpolation/case1',
-                'macro/interpolation/case2')
+        types = ('micro', 'micro',
+                 'micro', 'micro',
+                 'micro',
+                 'macro', 'macro',
+                 'macro', 'macro',
+                 'macro')
         temperatures = (300., 600., 900.,
                         520., 600.,
                         300., 600., 900.,
@@ -72,12 +80,15 @@ class MgTemperatureTestHarness(TestHarness):
         analyt_interp[3] = (600. - 520.) / 300.
         analyt_interp[8] = (600. - 520.) / 300.
         try:
-            for d, t, m, ai in zip(dirs, temperatures, methods, analyt_interp):
-                os.chdir(os.path.join(base_dir, d))
-                if (d[:5] == 'macro'):
-                    build_inf_model(['macro'], '../../../macro_2g.h5', t)
+            if (os.path.isdir("./temp")):
+                shutil.rmtree("./temp")
+            os.mkdir("temp")
+            os.chdir(os.path.join(base_dir, "temp"))
+            for cs, t, m, ai in zip(types, temperatures, methods, analyt_interp):
+                if (cs == 'macro'):
+                    build_inf_model(['macro'], '../macro_2g.h5', t, m)
                 else:
-                    build_inf_model(names, '../../../micro_2g.h5', t)
+                    build_inf_model(names, '../micro_2g.h5', t, m)
                 if not ai:
                     kanalyt = analytical_solution_2g_therm(macro_xs[t])
                 else:
@@ -85,22 +96,23 @@ class MgTemperatureTestHarness(TestHarness):
                                                            macro_xs[600], ai)
                 self._run_openmc()
                 self._test_output_created()
-                results = self._get_results()
-                results += "k-analytical:\n"
-                results += "{:12.6E}".format(kanalyt)
-                self._write_results(results)
-                self._overwrite_results(results)
-                self._compare_results()
-        finally:
-            for d in dirs:
-                os.chdir(os.path.join(base_dir, d))
-                self._cleanup()
+                string = "{}, method: {}, t: {}, {}kanalyt\n{:12.6E}\n"
+                results = string.format(cs, m, t, self._get_results(), kanalyt)
+                overall_results.append(results)
             os.chdir(base_dir)
+            self._write_results("".join(overall_results))
+            self._compare_results()
+        finally:
+            os.chdir(base_dir)
+            shutil.copyfile("results_test.dat", "results_true.dat")
+            if (os.path.isdir("./temp")):
+                shutil.rmtree("./temp")
+            self._cleanup()
             for f in ['micro_2g.h5', 'macro_2g.h5']:
                 if os.path.exists(f):
                     os.remove(f)
 
 
 def test_mg_temperature():
-    harness = MgTemperatureTestHarness('statepoint.15.h5')
+    harness = MgTemperatureTestHarness('statepoint.200.h5')
     harness.main()

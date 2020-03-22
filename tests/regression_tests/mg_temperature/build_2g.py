@@ -5,7 +5,7 @@ names = ['H', 'O', 'Zr', 'U235', 'U238']
 
 
 def build_openmc_xs_lib(name, groups, temperatures, xsdict, micro=True):
-    """Build an Openm XSdata based on dictonary values"""
+    """Build an Openm XSdata based on dictionary values"""
     xsdata = openmc.XSdata(name, groups, temperatures=temperatures)
     xsdata.order = 0
     for tt in temperatures:
@@ -34,15 +34,15 @@ def create_micro_xs_dict():
     xs_micro[300]['absorption']['U238'] = np.array([0.0056, 0.0094])
     # nu-scatter matrix
     xs_micro[300]['scatter']['H'] = np.array([[[0.0910, 0.01469],
-                                               [2.1545E-8, 0.3316]]])
+                                               [0.0, 0.3316]]])
     xs_micro[300]['scatter']['O'] = np.array([[[0.0814, 3.3235E-4],
-                                               [1.4152E-8, 0.0960]]])
+                                               [0.0, 0.0960]]])
     xs_micro[300]['scatter']['Zr'] = np.array([[[0.0311, 2.6373E-5],
-                                                [6.1273E-8, 0.0315]]])
+                                                [0.0, 0.0315]]])
     xs_micro[300]['scatter']['U235'] = np.array([[[0.0311, 2.6373E-5],
-                                                  [6.1273E-8, 0.0315]]])
+                                                  [0.0, 0.0315]]])
     xs_micro[300]['scatter']['U238'] = np.array([[[0.0551, 2.2341E-5],
-                                                  [8.7247E-8, 0.0526]]])
+                                                  [0.0, 0.0526]]])
     # nu-fission
     xs_micro[300]['nu-fission']['U235'] = np.array([0.0059, 0.2160])
     xs_micro[300]['nu-fission']['U238'] = np.array([0.0019, 1.4627E-7])
@@ -71,15 +71,15 @@ def create_micro_xs_dict():
     xs_micro[600]['absorption']['U238'] = np.array([0.0058, 0.0079])
     # nu-scatter matrix
     xs_micro[600]['scatter']['H'] = np.array([[[0.0910, 0.0138],
-                                               [8.9e-08, 0.3316]]])
+                                               [0.0, 0.3316]]])
     xs_micro[600]['scatter']['O'] = np.array([[[0.0814, 3.5367E-4],
-                                               [3.4404E-8, 0.0959]]])
+                                               [0.0, 0.0959]]])
     xs_micro[600]['scatter']['Zr'] = np.array([[[0.0311, 3.2293E-5],
-                                                [8.3859E-8, 0.0314]]])
+                                                [0.0, 0.0314]]])
     xs_micro[600]['scatter']['U235'] = np.array([[[0.0022, 1.9763E-6],
                                                   [9.1634E-8, 0.0039]]])
     xs_micro[600]['scatter']['U238'] = np.array([[[0.0556, 2.8803E-5],
-                                                  [1.1967E-8, 0.0536]]])
+                                                  [0.0, 0.0536]]])
     # nu-fission
     xs_micro[600]['nu-fission']['U235'] = np.array([0.0059, 0.1767])
     xs_micro[600]['nu-fission']['U238'] = np.array([0.0019, 1.2405E-7])
@@ -114,15 +114,15 @@ def create_micro_xs_dict():
     xs_micro[900]['total']['U238'] = np.array([0.0707, 0.0613])
     # nu-scatter matrix
     xs_micro[900]['scatter']['H'] = np.array([[[0.0913, 0.0147],
-                                               [8.9e-08, 0.4020]]])
+                                               [0.0, 0.4020]]])
     xs_micro[900]['scatter']['O'] = np.array([[[0.0812, 4.0413E-4],
-                                               [6.8186E-8, 0.0965]]])
+                                               [0.0, 0.0965]]])
     xs_micro[900]['scatter']['Zr'] = np.array([[[0.0311, 3.6735E-5],
-                                                [1.3439E-8, 0.0314]]])
+                                                [0.0, 0.0314]]])
     xs_micro[900]['scatter']['U235'] = np.array([[[0.0022, 2.9034E-6],
                                                   [1.3117E-8, 0.0039]]])
     xs_micro[900]['scatter']['U238'] = np.array([[[0.0560, 3.7619E-5],
-                                                  [1.4553E-8, 0.0538]]])
+                                                  [0.0, 0.0538]]])
     # nu-fission
     xs_micro[900]['nu-fission']['U235'] = np.array([0.0059, 0.1545])
     xs_micro[900]['nu-fission']['U238'] = np.array([0.0019, 1.1017E-7])
@@ -159,6 +159,9 @@ def create_macro_dict(xs_micro):
             xs_macro[t][r] = {}
             for n, v in d2.items():
                 temp.append(d2[n])
+    # The name 'macro' is needed to store data at the same level
+    # of a xs_macro dictionary as for xs_micro and use it in
+    # function build_openmc_xs_lib
             xs_macro[t][r]['macro'] = sum(temp)
     return xs_macro
 
@@ -194,20 +197,21 @@ def create_openmc_2mg_libs(names):
 
 def analytical_solution_2g_therm(xsmin, xsmax=None, wgt=1.0):
     """ Calculate eigenvalue based on analytical solution for eq Lf = (1/k)Qf
-        in two group for infinity dilution media in assumption of group
-        boundary in thernmal spectra < 1.e+3 Ev
-        Parametres:
-        ----------
-        xsmin : dict
-            - macro cross-sections dictonary with minimum range temperature
-        xsmax : dict
-            - macro cross-sections dictonary with maximum range temperature
-              by default: None not used for standalone temperature
-        wgt : double
-            - weight for interpolation by default 1.0
-        Returns:
-        ---------
-        keff : np.double - analytical eigenvalue of critical eq matrix
+    in two group for infinity dilution media in assumption of group
+    boundary in thermal spectra < 1.e+3 Ev
+    Parameters:
+    ----------
+    xsmin : dict
+        macro cross-sections dictionary with minimum range temperature
+    xsmax : dict
+        macro cross-sections dictionary with maximum range temperature
+        by default: None not used for standalone temperature
+    wgt : float
+        weight for interpolation by default 1.0
+    Returns:
+    -------
+    keff : np.float64
+       analytical eigenvalue of critical eq matrix
     """
     if xsmax is None:
         sa = xsmin['absorption']['macro']
@@ -223,20 +227,21 @@ def analytical_solution_2g_therm(xsmin, xsmax=None, wgt=1.0):
     L = np.array([sa[0] + ss12, 0.0, -ss12, sa[1]]).reshape(2, 2)
     Q = np.array([nsf[0], nsf[1], 0.0, 0.0]).reshape(2, 2)
     arr = np.linalg.inv(L).dot(Q)
-    return np.linalg.eigvals(arr)[1]
+    return np.amax(np.linalg.eigvals(arr))
 
 
 def build_inf_model(xsnames, xslibname, temperature, tempmethod='nearest'):
     """ Building an infinite medium for openmc multi-group testing
-        Parametres:
-        ----------
-        xsnames : list of str()
-            - list with xs names
-        xslibname:
-            - name of hdf5 file with cross-section library
-        temperature : float
-            - value of a current temperature in K
-        tempmethod : str {'nearest', 'interpolstion'} by default 'nearest'
+    Parameters:
+    ----------
+    xsnames : list of str()
+        list with xs names
+    xslibname:
+        name of hdf5 file with cross-section library
+    temperature : float
+        value of a current temperature in K
+    tempmethod : {'nearest', 'interpolation'}
+        by default 'nearest'
     """
     inf_medium = openmc.Material(name='test material', material_id=1)
     inf_medium.set_density("sum")
@@ -273,9 +278,10 @@ def build_inf_model(xsnames, xslibname, temperature, tempmethod='nearest'):
     openmc_geometry.export_to_xml()
 
     # OpenMC simulation parameters
-    batches = 15
+    batches = 200
     inactive = 5
     particles = 5000
+
     # Instantiate a Settings object
     settings_file = openmc.Settings()
     settings_file.batches = batches

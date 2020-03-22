@@ -1,4 +1,4 @@
-from collections import OrderedDict, defaultdict
+from collections import OrderedDict, defaultdict, namedtuple
 from collections.abc import Iterable
 from copy import deepcopy
 from numbers import Real, Integral
@@ -18,6 +18,9 @@ from .mixin import IDManagerMixin
 # Units for density supported by OpenMC
 DENSITY_UNITS = ['g/cm3', 'g/cc', 'kg/m3', 'atom/b-cm', 'atom/cm3', 'sum',
                  'macro']
+
+
+NuclideTuple = namedtuple('NuclideTuple', ['name', 'percent', 'percent_type'])
 
 
 class Material(IDManagerMixin):
@@ -74,7 +77,9 @@ class Material(IDManagerMixin):
         instance. This property is initialized by calling the
         :meth:`Geometry.determine_paths` method.
     num_instances : int
-        The number of instances of this material throughout the geometry.
+        The number of instances of this material throughout the geometry. This
+        property is initialized by calling the :meth:`Geometry.determine_paths`
+        method.
     fissionable_mass : float
         Mass of fissionable nuclides in the material in [g]. Requires that the
         :attr:`volume` attribute is set.
@@ -107,12 +112,6 @@ class Material(IDManagerMixin):
 
         # If specified, a list of table names
         self._sab = []
-
-        # If true, the material will be initialized as distributed
-        self._convert_to_distrib_comps = False
-
-        # If specified, this file will be used instead of composition values
-        self._distrib_otf_file = None
 
     def __repr__(self):
         string = 'Material\n'
@@ -182,14 +181,6 @@ class Material(IDManagerMixin):
     @property
     def isotropic(self):
         return self._isotropic
-
-    @property
-    def convert_to_distrib_comps(self):
-        return self._convert_to_distrib_comps
-
-    @property
-    def distrib_otf_file(self):
-        return self._distrib_otf_file
 
     @property
     def average_molar_mass(self):
@@ -330,9 +321,11 @@ class Material(IDManagerMixin):
                 self._volume = volume_calc.volumes[self.id].n
                 self._atoms = volume_calc.atoms[self.id]
             else:
-                raise ValueError('No volume information found for this material.')
+                raise ValueError('No volume information found for material ID={}.'
+                    .format(self.id))
         else:
-            raise ValueError('No volume information found for this material.')
+            raise ValueError('No volume information found for material ID={}.'
+                .format(self.id))
 
     def set_density(self, units, density=None):
         """Set the density of the material
@@ -366,27 +359,6 @@ class Material(IDManagerMixin):
                           density, Real)
             self._density = density
 
-    @distrib_otf_file.setter
-    def distrib_otf_file(self, filename):
-        # TODO: remove this when distributed materials are merged
-        warnings.warn('This feature is not yet implemented in a release '
-                      'version of openmc')
-
-        if not isinstance(filename, str) and filename is not None:
-            msg = 'Unable to add OTF material file to Material ID="{}" with a ' \
-                  'non-string name "{}"'.format(self._id, filename)
-            raise ValueError(msg)
-
-        self._distrib_otf_file = filename
-
-    @convert_to_distrib_comps.setter
-    def convert_to_distrib_comps(self):
-        # TODO: remove this when distributed materials are merged
-        warnings.warn('This feature is not yet implemented in a release '
-                      'version of openmc')
-
-        self._convert_to_distrib_comps = True
-
     def add_nuclide(self, nuclide, percent, percent_type='ao'):
         """Add a nuclide to the material
 
@@ -419,7 +391,7 @@ class Material(IDManagerMixin):
             if Z >= 89:
                 self.depletable = True
 
-        self._nuclides.append((nuclide, percent, percent_type))
+        self._nuclides.append(NuclideTuple(nuclide, percent, percent_type))
 
     def remove_nuclide(self, nuclide):
         """Remove a nuclide from the material
@@ -434,7 +406,7 @@ class Material(IDManagerMixin):
 
         # If the Material contains the Nuclide, delete it
         for nuc in self._nuclides:
-            if nuclide == nuc[0]:
+            if nuclide == nuc.name:
                 self._nuclides.remove(nuc)
                 break
 
@@ -531,7 +503,7 @@ class Material(IDManagerMixin):
         natural composition is added to the material.
 
         """
-        
+
         cv.check_type('nuclide', element, str)
         cv.check_type('percent', percent, Real)
         cv.check_value('percent type', percent_type, {'ao', 'wo'})
@@ -626,7 +598,7 @@ class Material(IDManagerMixin):
         self._sab.append((new_name, fraction))
 
     def make_isotropic_in_lab(self):
-        self.isotropic = [x[0] for x in self._nuclides]
+        self.isotropic = [x.name for x in self._nuclides]
 
     def get_nuclides(self):
         """Returns all nuclides in the material
@@ -637,7 +609,7 @@ class Material(IDManagerMixin):
             List of nuclide names
 
         """
-        return [x[0] for x in self._nuclides]
+        return [x.name for x in self._nuclides]
 
     def get_nuclide_densities(self):
         """Returns all nuclides in the material and their densities
@@ -650,6 +622,7 @@ class Material(IDManagerMixin):
 
         """
 
+        # keep ordered dictionary for testing purposes
         nuclides = OrderedDict()
 
         for nuclide, density, density_type in self._nuclides:
@@ -817,15 +790,14 @@ class Material(IDManagerMixin):
 
         return memo[self]
 
-    def _get_nuclide_xml(self, nuclide, distrib=False):
+    def _get_nuclide_xml(self, nuclide):
         xml_element = ET.Element("nuclide")
         xml_element.set("name", nuclide[0])
 
-        if not distrib:
-            if nuclide[2] == 'ao':
-                xml_element.set("ao", str(nuclide[1]))
-            else:
-                xml_element.set("wo", str(nuclide[1]))
+        if nuclide[2] == 'ao':
+            xml_element.set("ao", str(nuclide[1]))
+        else:
+            xml_element.set("wo", str(nuclide[1]))
 
         return xml_element
 
@@ -835,10 +807,10 @@ class Material(IDManagerMixin):
 
         return xml_element
 
-    def _get_nuclides_xml(self, nuclides, distrib=False):
+    def _get_nuclides_xml(self, nuclides):
         xml_elements = []
         for nuclide in nuclides:
-            xml_elements.append(self._get_nuclide_xml(nuclide, distrib))
+            xml_elements.append(self._get_nuclide_xml(nuclide))
         return xml_elements
 
     def to_xml_element(self, cross_sections=None):
@@ -883,51 +855,15 @@ class Material(IDManagerMixin):
             raise ValueError('Density has not been set for material {}!'
                              .format(self.id))
 
-        if not self._convert_to_distrib_comps:
-            if self._macroscopic is None:
-                # Create nuclide XML subelements
-                subelements = self._get_nuclides_xml(self._nuclides)
-                for subelement in subelements:
-                    element.append(subelement)
-            else:
-                # Create macroscopic XML subelements
-                subelement = self._get_macroscopic_xml(self._macroscopic)
+        if self._macroscopic is None:
+            # Create nuclide XML subelements
+            subelements = self._get_nuclides_xml(self._nuclides)
+            for subelement in subelements:
                 element.append(subelement)
-
         else:
-            subelement = ET.SubElement(element, "compositions")
-
-            comps = []
-            allnucs = self._nuclides
-            dist_per_type = allnucs[0][2]
-            for nuc in allnucs:
-                if nuc[2] != dist_per_type:
-                    msg = 'All nuclides and elements in a distributed ' \
-                          'material must have the same type, either ao or wo'
-                    raise ValueError(msg)
-                comps.append(nuc[1])
-
-            if self._distrib_otf_file is None:
-                # Create values and units subelements
-                subsubelement = ET.SubElement(subelement, "values")
-                subsubelement.text = ' '.join([str(c) for c in comps])
-                subsubelement = ET.SubElement(subelement, "units")
-                subsubelement.text = dist_per_type
-            else:
-                # Specify the materials file
-                subsubelement = ET.SubElement(subelement, "otf_file_path")
-                subsubelement.text = self._distrib_otf_file
-
-            if self._macroscopic is None:
-                # Create nuclide XML subelements
-                subelements = self._get_nuclides_xml(self._nuclides,
-                                                     distrib=True)
-                for subelement_nuc in subelements:
-                    subelement.append(subelement_nuc)
-            else:
-                # Create macroscopic XML subelements
-                subsubelement = self._get_macroscopic_xml(self._macroscopic)
-                subelement.append(subsubelement)
+            # Create macroscopic XML subelements
+            subelement = self._get_macroscopic_xml(self._macroscopic)
+            element.append(subelement)
 
         if self._sab:
             for sab in self._sab:

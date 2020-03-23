@@ -29,12 +29,12 @@ def test_get_atoms(res):
     # Check alternate units
     volume = res[0].volume["1"]
 
-    t_days, n_cm3 = res.get_atoms("1", "Xe135", nuc_units="atoms/cm^3", time_units="d")
+    t_days, n_cm3 = res.get_atoms("1", "Xe135", nuc_units="atom/cm3", time_units="d")
 
     assert t_days == pytest.approx(t_ref / (60 * 60 * 24))
     assert n_cm3 == pytest.approx(n_ref / volume)
 
-    _t, n_bcm = res.get_atoms("1", "Xe135", nuc_units="atoms/b/cm")
+    _t, n_bcm = res.get_atoms("1", "Xe135", nuc_units="atom/b-cm")
     assert n_bcm == pytest.approx(n_cm3 * 1e-24)
 
 

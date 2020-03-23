@@ -1,9 +1,10 @@
-from collections import OrderedDict, defaultdict
+from collections import OrderedDict, defaultdict, Counter
 from collections.abc import Iterable
 from copy import deepcopy
 from numbers import Real, Integral
 from pathlib import Path
 import warnings
+import re
 from xml.etree import ElementTree as ET
 
 import numpy as np
@@ -587,6 +588,99 @@ class Material(IDManagerMixin):
                                       enrichment_target,
                                       enrichment_type):
             self.add_nuclide(*nuclide)
+
+    def add_elements_from_formula(self, formula, percent_type='ao', enrichment=None,
+                                  enrichment_target=None, enrichment_type=None):
+        """Add a elements from a chemical formula to the material.
+
+        Parameters
+        ----------
+        formula : str
+            Formula to add, e.g., 'C2O', 'C6H12O6', or (NH4)2SO4.
+            Note this is case sensitive, elements must start with an uppercase
+            character. Any numbers will be converted to integers (rounded down).
+        percent : float
+            Atom or weight percent
+        percent_type : {'ao', 'wo'}, optional
+            'ao' for atom percent and 'wo' for weight percent. Defaults to atom
+            percent.
+        enrichment : float, optional
+            Enrichment of an enrichment_taget nuclide in percent (ao or wo).
+            If enrichment_taget is not supplied then it is enrichment for U235
+            in weight percent. For example, input 4.95 for 4.95 weight percent
+            enriched U.
+            Default is None (natural composition).
+        enrichment_target: str, optional
+            Single nuclide name to enrich from a natural composition (e.g., 'O16')
+        enrichment_type: {'ao', 'wo'}, optional
+            'ao' for enrichment as atom percent and 'wo' for weight percent.
+            Default is: 'ao' for two-isotope enrichment; 'wo' for U enrichment
+
+        Notes
+        -----
+        General enrichment procedure is allowed only for elements composed of
+        two isotopes. If `enrichment_target` is given without `enrichment`
+        natural composition is added to the material.
+
+        """
+        cv.check_type('formula', formula, str)
+
+        # Tokenizes the formula and check validity of tokens
+        tokens = re.findall(r"([A-Z][a-z]*)(\d*)|(\()|(\))(\d*)", formula)
+        for row in tokens:
+            for token in row:
+                if token.isalpha():
+                    if token not in list(openmc.data.ATOMIC_NUMBER.keys())[1:]:
+                        msg = 'Formula entry {} not an element symbol.' \
+                              .format(token)
+                        raise ValueError(msg)
+                elif token not in ['(', ')', ''] and not token.isdigit():
+                        msg = 'Formula must be made from a sequence of ' \
+                              'element symbols, integers, and backets. ' \
+                              '{} is not an allowable entry.'.format(token)
+                        raise ValueError(msg)
+
+        # Checks that the number of opening and closing brackets are equal
+        if formula.count('(') != formula.count(')'):
+            msg = 'Number of opening and closing brackets is not equal ' \
+                  'in the input formula {}.'.format(formula)
+            raise ValueError(msg)
+
+        # Checks that every part of the original formula has been tokenized
+        for row in tokens:
+            for token in row:
+                formula = formula.replace(token, '', 1)
+        if len(formula) != 0:
+            msg = 'Part of formula was not successfully parsed as an ' \
+                  'element symbol, bracket or integer. {} was not parsed.' \
+                  .format(formula)
+            raise ValueError(msg)
+
+        # Works through the tokens building a stack
+        mat_stack = [Counter()]
+        for symbol, multi1, opening_bracket, closing_bracket, multi2 in tokens:
+            if symbol:
+                mat_stack[-1][symbol] += int(multi1 or 1)
+            if opening_bracket:
+                mat_stack.append(Counter())
+            if closing_bracket:
+                stack_top = mat_stack.pop()
+                for i in stack_top:
+                    mat_stack[-1][i] += int(multi2 or 1) * stack_top[i]
+
+        # Normalizing percentages
+        percents = mat_stack[0].values()
+        norm_percents = [float(i) / sum(percents) for i in percents]
+        elements = mat_stack[0].keys()
+
+        # Adds each element and percent to the material
+        for element, percent in zip(elements, norm_percents):
+            if enrichment_target is not None and element == re.sub(r'\d+$', '', enrichment_target):
+                self.add_element(element, percent, percent_type, enrichment,
+                                 enrichment_target, enrichment_type)
+            else:
+                self.add_element(element, percent, percent_type)
+
 
     def add_s_alpha_beta(self, name, fraction=1.0):
         r"""Add an :math:`S(\alpha,\beta)` table to the material

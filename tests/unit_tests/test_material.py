@@ -58,6 +58,61 @@ def test_elements_by_name():
     assert a._nuclides == b._nuclides
     assert b._nuclides == c._nuclides
 
+def test_adding_elements_by_formula():
+    """Test adding elements from a formula"""
+    # testing the correct nuclides are added to the Material
+    m = openmc.Material()
+    m.add_elements_from_formula('Li4SiO4')
+    ref_dens = {'Li6': 0.033728, 'Li7': 0.410715,
+                'Si28': 0.102477, 'Si29': 0.0052035, 'Si30': 0.0034301,
+                'O16': 0.443386, 'O17': 0.000168}
+    nuc_dens = m.get_nuclide_atom_densities()
+    for nuclide in ref_dens:
+        assert nuc_dens[nuclide][1] == pytest.approx(ref_dens[nuclide], 1e-2)
+
+    # testing the correct nuclides are added to the Material when enriched
+    m = openmc.Material()
+    m.add_elements_from_formula('Li4SiO4',
+                                enrichment=60.,
+                                enrichment_target='Li6')
+    ref_dens = {'Li6': 0.2666, 'Li7': 0.1777,
+                'Si28': 0.102477, 'Si29': 0.0052035, 'Si30': 0.0034301,
+                'O16': 0.443386, 'O17': 0.000168}
+    nuc_dens = m.get_nuclide_atom_densities()
+    for nuclide in ref_dens:
+        assert nuc_dens[nuclide][1] == pytest.approx(ref_dens[nuclide], 1e-2)
+
+    # testing the use of brackets
+    m = openmc.Material()
+    m.add_elements_from_formula('Mg2(NO3)2')
+    ref_dens = {'Mg24': 0.157902, 'Mg25': 0.02004, 'Mg26': 0.022058,
+                'N14': 0.199267, 'N15': 0.000732,
+                'O16': 0.599772, 'O17': 0.000227}
+    nuc_dens = m.get_nuclide_atom_densities()
+    for nuclide in ref_dens:
+        assert nuc_dens[nuclide][1] == pytest.approx(ref_dens[nuclide], 1e-2)
+
+    # testing lowercase elements results in a value error
+    m = openmc.Material()
+    with pytest.raises(ValueError):
+        m.add_elements_from_formula('li4SiO4')
+
+    # testing lowercase elements results in a value error
+    m = openmc.Material()
+    with pytest.raises(ValueError):
+        m.add_elements_from_formula('Li4Sio4')
+
+    # testing incorrect character in formula results in a value error
+    m = openmc.Material()
+    with pytest.raises(ValueError):
+        m.add_elements_from_formula('Li4$SiO4')
+
+    # testing unequal opening and closing brackets
+    m = openmc.Material()
+    with pytest.raises(ValueError):
+        m.add_elements_from_formula('Fe(H2O)4(OH)2)')
+
+
 def test_density():
     m = openmc.Material()
     for unit in ['g/cm3', 'g/cc', 'kg/m3', 'atom/b-cm', 'atom/cm3']:

@@ -599,8 +599,6 @@ class Material(IDManagerMixin):
             Formula to add, e.g., 'C2O', 'C6H12O6', or (NH4)2SO4.
             Note this is case sensitive, elements must start with an uppercase
             character. Any numbers will be converted to integers (rounded down).
-        percent : float
-            Atom or weight percent
         percent_type : {'ao', 'wo'}, optional
             'ao' for atom percent and 'wo' for weight percent. Defaults to atom
             percent.

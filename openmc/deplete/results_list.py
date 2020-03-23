@@ -59,9 +59,9 @@ class ResultsList(list):
             Nuclide name to evaluate
         nuc_units : {"atoms", "atom/b-cm", "atom/cm3"}, optional
             Units for the returned concentration. Default is ``"atoms"``
-        time_units : {"s", "d"}, optional
+        time_units : {"s", "min", "h", "d"}, optional
             Units for the returned time array. Default is ``"s"`` to
-            return the value in seconds
+            return the value in seconds.
 
         Returns
         -------
@@ -71,7 +71,7 @@ class ResultsList(list):
             Concentration of specified nuclide in units of ``nuc_units``
 
         """
-        check_value("time_units", time_units, {"s", "d"})
+        check_value("time_units", time_units, {"s", "d", "min", "h"})
         check_value("nuc_units", nuc_units,
                     {"atoms", "atom/b-cm", "atom/cm3"})
 
@@ -86,6 +86,10 @@ class ResultsList(list):
         # Unit conversions
         if time_units == "d":
             time /= (60 * 60 * 24)
+        elif time_units == "h":
+            time /= (60 * 60)
+        elif time_units == "min":
+            time /= 60
 
         if nuc_units != "atoms":
             # Divide by volume to get density

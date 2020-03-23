@@ -34,8 +34,12 @@ def test_get_atoms(res):
     assert t_days == pytest.approx(t_ref / (60 * 60 * 24))
     assert n_cm3 == pytest.approx(n_ref / volume)
 
-    _t, n_bcm = res.get_atoms("1", "Xe135", nuc_units="atom/b-cm")
+    t_min, n_bcm = res.get_atoms("1", "Xe135", nuc_units="atom/b-cm", time_units="min")
     assert n_bcm == pytest.approx(n_cm3 * 1e-24)
+    assert t_min == pytest.approx(t_ref / 60)
+
+    t_hour, _n = res.get_atoms("1", "Xe135", time_units="h")
+    assert t_hour == pytest.approx(t_ref / (60 * 60))
 
 
 def test_get_reaction_rate(res):

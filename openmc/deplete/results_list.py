@@ -57,7 +57,7 @@ class ResultsList(list):
             Material name to evaluate
         nuc : str
             Nuclide name to evaluate
-        nuc_units : {"atoms", "atoms/b/cm", "atoms/cm^3"}, optional
+        nuc_units : {"atoms", "atom/b-cm", "atom/cm3"}, optional
             Units for the returned concentration. Default is ``"atoms"``
         time_units : {"s", "d"}, optional
             Units for the returned time array. Default is ``"s"`` to
@@ -73,7 +73,7 @@ class ResultsList(list):
         """
         check_value("time_units", time_units, {"s", "d"})
         check_value("nuc_units", nuc_units,
-                    {"atoms", "atoms/b/cm", "atoms/cm^3"})
+                    {"atoms", "atom/b-cm", "atom/cm3"})
 
         time = np.empty_like(self, dtype=float)
         concentration = np.empty_like(self, dtype=float)
@@ -90,7 +90,7 @@ class ResultsList(list):
         if nuc_units != "atoms":
             # Divide by volume to get density
             concentration /= self[0].volume[mat]
-            if nuc_units == "atoms/b/cm":
+            if nuc_units == "atom/b-cm":
                 # 1 barn = 1e-24 cm^2
                 concentration *= 1e-24
 

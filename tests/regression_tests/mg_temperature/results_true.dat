@@ -1,0 +1,40 @@
+micro, method: nearest, t: 300.0, k-combined:
+1.439920E+00 4.801994E-04
+kanalyt
+1.440410E+00
+micro, method: nearest, t: 600.0, k-combined:
+1.410482E+00 4.811844E-04
+kanalyt
+1.410164E+00
+micro, method: nearest, t: 900.0, k-combined:
+1.408198E+00 4.885882E-04
+kanalyt
+1.407830E+00
+micro, method: interpolation, t: 520.0, k-combined:
+1.418780E+00 5.222658E-04
+kanalyt
+1.418514E+00
+micro, method: interpolation, t: 600.0, k-combined:
+1.410482E+00 4.811844E-04
+kanalyt
+1.410164E+00
+macro, method: nearest, t: 300.0, k-combined:
+1.439920E+00 4.801994E-04
+kanalyt
+1.440410E+00
+macro, method: nearest, t: 600.0, k-combined:
+1.410482E+00 4.811844E-04
+kanalyt
+1.410164E+00
+macro, method: nearest, t: 900.0, k-combined:
+1.408198E+00 4.885882E-04
+kanalyt
+1.407830E+00
+macro, method: interpolation, t: 520.0, k-combined:
+1.418780E+00 5.222658E-04
+kanalyt
+1.418514E+00
+macro, method: interpolation, t: 600, k-combined:
+1.410482E+00 4.811844E-04
+kanalyt
+1.410164E+00

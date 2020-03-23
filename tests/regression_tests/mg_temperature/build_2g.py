@@ -159,9 +159,9 @@ def create_macro_dict(xs_micro):
             xs_macro[t][r] = {}
             for n, v in d2.items():
                 temp.append(d2[n])
-    # The name 'macro' is needed to store data at the same level
-    # of a xs_macro dictionary as for xs_micro and use it in
-    # function build_openmc_xs_lib
+            # The name 'macro' is needed to store data at the same level
+            # of a xs_macro dictionary as for xs_micro and use it in
+            # function build_openmc_xs_lib
             xs_macro[t][r]['macro'] = sum(temp)
     return xs_macro
 

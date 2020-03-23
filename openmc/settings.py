@@ -1,4 +1,5 @@
 from collections.abc import Iterable, MutableSequence, Mapping
+from enum import Enum
 from pathlib import Path
 from numbers import Real, Integral
 import warnings
@@ -11,7 +12,15 @@ from openmc._xml import clean_indentation, get_text
 import openmc.checkvalue as cv
 from openmc import VolumeCalculation, Source, RegularMesh
 
-_RUN_MODES = ['eigenvalue', 'fixed source', 'plot', 'volume', 'particle restart']
+
+class RunMode(Enum):
+    EIGENVALUE = 'eigenvalue'
+    FIXED_SOURCE = 'fixed source'
+    PLOT = 'plot'
+    VOLUME = 'volume'
+    PARTICLE_RESTART = 'particle restart'
+
+
 _RES_SCAT_METHODS = ['dbrc', 'rvs']
 
 
@@ -174,9 +183,7 @@ class Settings:
     """
 
     def __init__(self):
-
-        # Run mode subelement (default is 'eigenvalue')
-        self._run_mode = 'eigenvalue'
+        self._run_mode = RunMode.EIGENVALUE
         self._batches = None
         self._generations_per_batch = None
         self._inactive = None
@@ -246,7 +253,7 @@ class Settings:
 
     @property
     def run_mode(self):
-        return self._run_mode
+        return self._run_mode.value
 
     @property
     def batches(self):
@@ -410,8 +417,10 @@ class Settings:
 
     @run_mode.setter
     def run_mode(self, run_mode):
-        cv.check_value('run mode', run_mode, _RUN_MODES)
-        self._run_mode = run_mode
+        cv.check_value('run mode', run_mode, {x.value for x in RunMode})
+        for mode in RunMode:
+            if mode.value == run_mode:
+                self._run_mode = mode
 
     @batches.setter
     def batches(self, batches):
@@ -769,7 +778,7 @@ class Settings:
 
     def _create_run_mode_subelement(self, root):
         elem = ET.SubElement(root, "run_mode")
-        elem.text = self._run_mode
+        elem.text = self._run_mode.value
 
     def _create_batches_subelement(self, root):
         if self._batches is not None:

@@ -10,7 +10,6 @@ class MgTemperatureTestHarness(TestHarness):
         """Run OpenMC with the appropriate arguments and check the outputs."""
         base_dir = os.getcwd()
         overall_results = []
-        print("Base dir is {}".format(base_dir))
         macro_xs = create_openmc_2mg_libs(names)
         types = ('micro', 'micro',
                  'micro', 'micro',
@@ -63,7 +62,6 @@ class MgTemperatureTestHarness(TestHarness):
         """Update the results_true using the current version of OpenMC."""
         base_dir = os.getcwd()
         overall_results = []
-        print("Base dir is {}".format(base_dir))
         macro_xs = create_openmc_2mg_libs(names)
         types = ('micro', 'micro',
                  'micro', 'micro',

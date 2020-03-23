@@ -4,7 +4,7 @@ from collections.abc import Iterable
 import numpy as np
 
 
-def check_type(name, value, expected_type, expected_iter_type=None):
+def check_type(name, value, expected_type, expected_iter_type=None, *, none_ok=False):
     """Ensure that an object is of an expected type. Optionally, if the object is
     iterable, check that each element is of a particular type.
 
@@ -19,8 +19,12 @@ def check_type(name, value, expected_type, expected_iter_type=None):
     expected_iter_type : type or Iterable of type or None, optional
         Expected type of each element in value, assuming it is iterable. If
         None, no check will be performed.
+    none_ok : bool
+        Whether None is allowed as a value
 
     """
+    if none_ok and value is None:
+        return
 
     if not isinstance(value, expected_type):
         if isinstance(expected_type, Iterable):

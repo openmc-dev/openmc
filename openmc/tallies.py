@@ -197,40 +197,40 @@ class Tally(IDManagerMixin):
     def with_summary(self):
         return self._with_summary
 
+    def _read_results(self):
+        if self._results_read:
+            return
+
+        # Open the HDF5 statepoint file
+        with h5py.File(self._sp_filename, 'r') as f:
+            # Extract Tally data from the file
+            data = f['tallies/tally {}/results'.format(self.id)]
+            sum_ = data[:, :, 0]
+            sum_sq = data[:, :, 1]
+
+            # Reshape the results arrays
+            sum_ = np.reshape(sum_, self.shape)
+            sum_sq = np.reshape(sum_sq, self.shape)
+
+            # Set the data for this Tally
+            self._sum = sum_
+            self._sum_sq = sum_sq
+
+            # Convert NumPy arrays to SciPy sparse LIL matrices
+            if self.sparse:
+                self._sum = sps.lil_matrix(self._sum.flatten(), self._sum.shape)
+                self._sum_sq = sps.lil_matrix(self._sum_sq.flatten(), self._sum_sq.shape)
+
+        # Indicate that Tally results have been read
+        self._results_read = True
+
     @property
     def sum(self):
         if not self._sp_filename or self.derived:
             return None
 
-        if not self._results_read:
-            # Open the HDF5 statepoint file
-            f = h5py.File(self._sp_filename, 'r')
-
-            # Extract Tally data from the file
-            data = f['tallies/tally {0}/results'.format(self.id)]
-            sum = data[:, :, 0]
-            sum_sq = data[:, :, 1]
-
-            # Reshape the results arrays
-            sum = np.reshape(sum, self.shape)
-            sum_sq = np.reshape(sum_sq, self.shape)
-
-            # Set the data for this Tally
-            self._sum = sum
-            self._sum_sq = sum_sq
-
-            # Convert NumPy arrays to SciPy sparse LIL matrices
-            if self.sparse:
-                self._sum = sps.lil_matrix(self._sum.flatten(),
-                                           self._sum.shape)
-                self._sum_sq = sps.lil_matrix(self._sum_sq.flatten(),
-                                              self._sum_sq.shape)
-
-            # Indicate that Tally results have been read
-            self._results_read = True
-
-            # Close the HDF5 statepoint file
-            f.close()
+        # Make sure results have been read
+        self._read_results()
 
         if self.sparse:
             return np.reshape(self._sum.toarray(), self.shape)
@@ -242,9 +242,8 @@ class Tally(IDManagerMixin):
         if not self._sp_filename or self.derived:
             return None
 
-        if not self._results_read:
-            # Force reading of sum and sum_sq
-            self.sum
+        # Make sure results have been read
+        self._read_results()
 
         if self.sparse:
             return np.reshape(self._sum_sq.toarray(), self.shape)
@@ -322,16 +321,13 @@ class Tally(IDManagerMixin):
 
     @name.setter
     def name(self, name):
-        if name is not None:
-            cv.check_type('tally name', name, str)
-            self._name = name
-        else:
-            self._name = ''
+        cv.check_type('tally name', name, str, none_ok=True)
+        self._name = name
 
     @derivative.setter
     def derivative(self, deriv):
-        if deriv is not None:
-            cv.check_type('tally derivative', deriv, openmc.TallyDerivative)
+        cv.check_type('tally derivative', deriv, openmc.TallyDerivative,
+                      none_ok=True)
         self._derivative = deriv
 
     @filters.setter
@@ -339,12 +335,14 @@ class Tally(IDManagerMixin):
         cv.check_type('tally filters', filters, MutableSequence)
 
         # If the filter is already in the Tally, raise an error
-        for i, f in enumerate(filters[:-1]):
-            if f in filters[i+1:]:
-                msg = 'Unable to add a duplicate filter "{0}" to Tally ID="{1}" ' \
+        visited_filters = set()
+        for f in filters:
+            if f in visited_filters:
+                msg = 'Unable to add a duplicate filter "{}" to Tally ID="{}" ' \
                       'since duplicate filters are not supported in the OpenMC ' \
                       'Python API'.format(f, self.id)
                 raise ValueError(msg)
+            visited_filters.add(f)
 
         self._filters = cv.CheckedList(_FILTER_CLASSES, 'tally filters', filters)
 
@@ -353,12 +351,14 @@ class Tally(IDManagerMixin):
         cv.check_type('tally nuclides', nuclides, MutableSequence)
 
         # If the nuclide is already in the Tally, raise an error
-        for i, nuclide in enumerate(nuclides[:-1]):
-            if nuclide in nuclides[i+1:]:
-                msg = 'Unable to add a duplicate nuclide "{0}" to Tally ID="{1}" ' \
+        visited_nuclides = set()
+        for nuc in nuclides:
+            if nuc in visited_nuclides:
+                msg = 'Unable to add a duplicate nuclide "{}" to Tally ID="{}" ' \
                       'since duplicate nuclides are not supported in the OpenMC ' \
                       'Python API'.format(nuclide, self.id)
                 raise ValueError(msg)
+            visited_nuclides.add(nuc)
 
         self._nuclides = cv.CheckedList(_NUCLIDE_CLASSES, 'tally nuclides',
                                         nuclides)
@@ -367,13 +367,15 @@ class Tally(IDManagerMixin):
     def scores(self, scores):
         cv.check_type('tally scores', scores, MutableSequence)
 
+        visited_scores = set()
         for i, score in enumerate(scores):
             # If the score is already in the Tally, raise an error
-            if score in scores[i+1:]:
-                msg = 'Unable to add a duplicate score "{0}" to Tally ID="{1}" ' \
+            if score in visited_scores:
+                msg = 'Unable to add a duplicate score "{}" to Tally ID="{}" ' \
                       'since duplicate scores are not supported in the OpenMC ' \
                       'Python API'.format(score, self.id)
                 raise ValueError(msg)
+            visited_scores.add(score)
 
             # If score is a string, strip whitespace
             if isinstance(score, str):
@@ -467,9 +469,9 @@ class Tally(IDManagerMixin):
         """
 
         if score not in self.scores:
-            msg = 'Unable to remove score "{0}" from Tally ID="{1}" since ' \
+            msg = 'Unable to remove score "{}" from Tally ID="{}" since ' \
                   'the Tally does not contain this score'.format(score, self.id)
-            ValueError(msg)
+            raise ValueError(msg)
 
         self._scores.remove(score)
 
@@ -484,9 +486,9 @@ class Tally(IDManagerMixin):
         """
 
         if old_filter not in self.filters:
-            msg = 'Unable to remove filter "{0}" from Tally ID="{1}" since the ' \
+            msg = 'Unable to remove filter "{}" from Tally ID="{}" since the ' \
                   'Tally does not contain this filter'.format(old_filter, self.id)
-            ValueError(msg)
+            raise ValueError(msg)
 
         self._filters.remove(old_filter)
 
@@ -501,9 +503,9 @@ class Tally(IDManagerMixin):
         """
 
         if nuclide not in self.nuclides:
-            msg = 'Unable to remove nuclide "{0}" from Tally ID="{1}" since the ' \
+            msg = 'Unable to remove nuclide "{}" from Tally ID="{}" since the ' \
                   'Tally does not contain this nuclide'.format(nuclide, self.id)
-            ValueError(msg)
+            raise ValueError(msg)
 
         self._nuclides.remove(nuclide)
 
@@ -529,33 +531,20 @@ class Tally(IDManagerMixin):
         # Return False if only one tally has a delayed group filter
         tally1_dg = self.contains_filter(openmc.DelayedGroupFilter)
         tally2_dg = other.contains_filter(openmc.DelayedGroupFilter)
-        if sum([tally1_dg, tally2_dg]) == 1:
+        if tally1_dg != tally2_dg:
             return False
 
         # Look to see if all filters are the same, or one or more can be merged
         for filter1 in self.filters:
-            merge_filters = False
-            mergeable_filter = False
+            mergeable = False
 
             for filter2 in other.filters:
-
-                # If filters match, they are mergeable
-                if filter1 == filter2:
-                    mergeable_filter = True
+                if filter1 == filter2 or filter1.can_merge(filter2):
+                    mergeable = True
                     break
-
-                # If filters are first mergeable filters encountered
-                elif filter1.can_merge(filter2) and not merge_filters:
-                    merge_filters = True
-                    mergeable_filter = True
-                    break
-
-                # If filters are the second mergeable filters encountered
-                elif filter1.can_merge(filter2) and merge_filters:
-                    return False
 
             # If no mergeable filter was found, the tallies are not mergeable
-            if not mergeable_filter:
+            if not mergeable:
                 return False
 
         # Tally filters are mergeable if all conditional checks passed
@@ -661,24 +650,22 @@ class Tally(IDManagerMixin):
         equality = [equal_filters, equal_nuclides, equal_scores]
 
         # If all filters, nuclides and scores match then tallies are mergeable
-        if equal_filters and equal_nuclides and equal_scores:
+        if all(equality):
             return True
 
         # Variables to indicate filter bins, nuclides, and scores that can be merged
-        merge_filters = self._can_merge_filters(other)
-        merge_nuclides = self._can_merge_nuclides(other)
-        merge_scores = self._can_merge_scores(other)
-        mergeability = [merge_filters, merge_nuclides, merge_scores]
+        can_merge_filters = self._can_merge_filters(other)
+        can_merge_nuclides = self._can_merge_nuclides(other)
+        can_merge_scores = self._can_merge_scores(other)
+        mergeability = [can_merge_filters, can_merge_nuclides, can_merge_scores]
 
         if not all(mergeability):
             return False
 
-        # If the tally results have been read from the statepoint, we can only
-        # at least two of filters, nuclides and scores must match
-        elif self._results_read and sum(equality) < 2:
-            return False
+        # If the tally results have been read from the statepoint, at least two
+        # of filters, nuclides and scores must match
         else:
-            return True
+            return not self._results_read or sum(equality) >= 2
 
     def merge(self, other):
         """Merge another tally with this one
@@ -699,8 +686,8 @@ class Tally(IDManagerMixin):
         """
 
         if not self.can_merge(other):
-            msg = 'Unable to merge tally ID="{0}" with ' \
-                   '"{1}"'.format(other.id, self.id)
+            msg = 'Unable to merge tally ID="{}" with "{}"'.format(
+                other.id, self.id)
             raise ValueError(msg)
 
         # Create deep copy of tally to return as merged tally
@@ -856,14 +843,14 @@ class Tally(IDManagerMixin):
 
         # Scores
         if len(self.scores) == 0:
-            msg = 'Unable to get XML for Tally ID="{0}" since it does not ' \
+            msg = 'Unable to get XML for Tally ID="{}" since it does not ' \
                   'contain any scores'.format(self.id)
             raise ValueError(msg)
 
         else:
             scores = ''
             for score in self.scores:
-                scores += '{0} '.format(score)
+                scores += '{} '.format(score)
 
             subelement = ET.SubElement(element, "scores")
             subelement.text = scores.rstrip(' ')
@@ -899,16 +886,10 @@ class Tally(IDManagerMixin):
             otherwise false
 
         """
-
-        filter_found = False
-
-        # Look through all of this Tally's Filters for the type requested
         for test_filter in self.filters:
             if type(test_filter) is filter_type:
-                filter_found = True
-                break
-
-        return filter_found
+                return True
+        return False
 
     def find_filter(self, filter_type):
         """Return a filter in the tally that matches a specified type
@@ -931,28 +912,21 @@ class Tally(IDManagerMixin):
 
         """
 
-        filter_found = None
-
         # Look through all of this Tally's Filters for the type requested
         for test_filter in self.filters:
             if type(test_filter) is filter_type:
-                filter_found = test_filter
-                break
+                return test_filter
 
             # Also check to see if the desired filter is wrapped up in an
             # aggregate
             elif isinstance(test_filter, openmc.AggregateFilter):
                 if isinstance(test_filter.aggregate_filter, filter_type):
-                    filter_found = test_filter
-                    break
+                    return test_filter
 
         # If we did not find the Filter, throw an Exception
-        if filter_found is None:
-            msg = 'Unable to find filter type "{0}" in ' \
-                  'Tally ID="{1}"'.format(filter_type, self.id)
-            raise ValueError(msg)
-
-        return filter_found
+        msg = 'Unable to find filter type "{}" in Tally ID="{}"'.format(
+            filter_type, self.id)
+        raise ValueError(msg)
 
     def get_nuclide_index(self, nuclide):
         """Returns the index in the Tally's results array for a Nuclide bin
@@ -974,30 +948,21 @@ class Tally(IDManagerMixin):
             in the Tally.
 
         """
-
-        nuclide_index = -1
-
         # Look for the user-requested nuclide in all of the Tally's Nuclides
         for i, test_nuclide in enumerate(self.nuclides):
-
             # If the Summary was linked, then values are Nuclide objects
             if isinstance(test_nuclide, openmc.Nuclide):
                 if test_nuclide.name == nuclide:
-                    nuclide_index = i
-                    break
+                    return i
 
             # If the Summary has not been linked, then values are ZAIDs
             else:
                 if test_nuclide == nuclide:
-                    nuclide_index = i
-                    break
+                    return i
 
-        if nuclide_index == -1:
-            msg = 'Unable to get the nuclide index for Tally since "{0}" ' \
-                  'is not one of the nuclides'.format(nuclide)
-            raise KeyError(msg)
-        else:
-            return nuclide_index
+        msg = ('Unable to get the nuclide index for Tally since "{}" '
+               'is not one of the nuclides'.format(nuclide))
+        raise KeyError(msg)
 
     def get_score_index(self, score):
         """Returns the index in the Tally's results array for a score bin
@@ -1024,7 +989,7 @@ class Tally(IDManagerMixin):
             score_index = self.scores.index(score)
 
         except ValueError:
-            msg = 'Unable to get the score index for Tally since "{0}" ' \
+            msg = 'Unable to get the score index for Tally since "{}" ' \
                   'is not one of the scores'.format(score)
             raise ValueError(msg)
 
@@ -1066,48 +1031,44 @@ class Tally(IDManagerMixin):
         cv.check_type('filters', filters, Iterable, openmc.FilterMeta)
         cv.check_type('filter_bins', filter_bins, Iterable, tuple)
 
-        # Determine the score indices from any of the requested scores
-        if filters:
-            # Initialize empty list of indices for each bin in each Filter
-            filter_indices = []
-
-            # Loop over all of the Tally's Filters
-            for i, self_filter in enumerate(self.filters):
-                # If a user-requested Filter, get the user-requested bins
-                for j, test_filter in enumerate(filters):
-                    if type(self_filter) is test_filter:
-                        bins = filter_bins[j]
-                        break
-                else:
-                    # If not a user-requested Filter, get all bins
-                    if isinstance(self_filter, openmc.DistribcellFilter):
-                        # Create list of cell instance IDs for distribcell Filters
-                        bins = list(range(self_filter.num_bins))
-
-                    elif isinstance(self_filter, openmc.EnergyFunctionFilter):
-                        # EnergyFunctionFilters don't have bins so just add a None
-                        bins = [None]
-
-                    else:
-                        # Create list of IDs for bins for all other filter types
-                        bins = self_filter.bins
-
-                # Add indices for each bin in this Filter to the list
-                indices = np.array([self_filter.get_bin_index(b) for b in bins])
-                filter_indices.append(indices)
-
-                # Account for stride in each of the previous filters
-                for indices in filter_indices[:i]:
-                    indices *= self_filter.num_bins
-
-            # Apply outer product sum between all filter bin indices
-            filter_indices = list(map(sum, product(*filter_indices)))
-
         # If user did not specify any specific Filters, use them all
-        else:
-            filter_indices = np.arange(self.num_filter_bins)
+        if not filters:
+            return np.arange(self.num_filter_bins)
 
-        return filter_indices
+        # Initialize empty list of indices for each bin in each Filter
+        filter_indices = []
+
+        # Loop over all of the Tally's Filters
+        for i, self_filter in enumerate(self.filters):
+            # If a user-requested Filter, get the user-requested bins
+            for j, test_filter in enumerate(filters):
+                if type(self_filter) is test_filter:
+                    bins = filter_bins[j]
+                    break
+            else:
+                # If not a user-requested Filter, get all bins
+                if isinstance(self_filter, openmc.DistribcellFilter):
+                    # Create list of cell instance IDs for distribcell Filters
+                    bins = list(range(self_filter.num_bins))
+
+                elif isinstance(self_filter, openmc.EnergyFunctionFilter):
+                    # EnergyFunctionFilters don't have bins so just add a None
+                    bins = [None]
+
+                else:
+                    # Create list of IDs for bins for all other filter types
+                    bins = self_filter.bins
+
+            # Add indices for each bin in this Filter to the list
+            indices = np.array([self_filter.get_bin_index(b) for b in bins])
+            filter_indices.append(indices)
+
+            # Account for stride in each of the previous filters
+            for indices in filter_indices[:i]:
+                indices *= self_filter.num_bins
+
+        # Apply outer product sum between all filter bin indices
+        return list(map(sum, product(*filter_indices)))
 
     def get_nuclide_indices(self, nuclides):
         """Get indices into the nuclide axis of this tally's data arrays.
@@ -1131,16 +1092,14 @@ class Tally(IDManagerMixin):
 
         cv.check_iterable_type('nuclides', nuclides, str)
 
-        # Determine the score indices from any of the requested scores
-        if nuclides:
-            nuclide_indices = np.zeros(len(nuclides), dtype=int)
-            for i, nuclide in enumerate(nuclides):
-                nuclide_indices[i] = self.get_nuclide_index(nuclide)
-
         # If user did not specify any specific Nuclides, use them all
-        else:
-            nuclide_indices = np.arange(self.num_nuclides)
+        if not nuclides:
+            return np.arange(self.num_nuclides)
 
+        # Determine the score indices from any of the requested scores
+        nuclide_indices = np.zeros(len(nuclides), dtype=int)
+        for i, nuclide in enumerate(nuclides):
+            nuclide_indices[i] = self.get_nuclide_index(nuclide)
         return nuclide_indices
 
     def get_score_indices(self, scores):
@@ -1152,7 +1111,7 @@ class Tally(IDManagerMixin):
 
         Parameters
         ----------
-        scores : list of str
+        scores : list of str or openmc.CrossScore
             A list of one or more score strings
             (e.g., ['absorption', 'nu-fission']; default is [])
 
@@ -1165,8 +1124,8 @@ class Tally(IDManagerMixin):
 
         for score in scores:
             if not isinstance(score, (str, openmc.CrossScore)):
-                msg = 'Unable to get score indices for score "{0}" in Tally ' \
-                      'ID="{1}" since it is not a string or CrossScore'\
+                msg = 'Unable to get score indices for score "{}" in Tally ' \
+                      'ID="{}" since it is not a string or CrossScore'\
                       .format(score, self.id)
                 raise ValueError(msg)
 
@@ -1239,7 +1198,7 @@ class Tally(IDManagerMixin):
            (value == 'rel_err' and self.mean is None) or \
            (value == 'sum' and self.sum is None) or \
            (value == 'sum_sq' and self.sum_sq is None):
-            msg = 'The Tally ID="{0}" has no data to return'.format(self.id)
+            msg = 'The Tally ID="{}" has no data to return'.format(self.id)
             raise ValueError(msg)
 
         # Get filter, nuclide and score indices
@@ -1262,8 +1221,8 @@ class Tally(IDManagerMixin):
         elif value == 'sum_sq':
             data = self.sum_sq[indices]
         else:
-            msg = 'Unable to return results from Tally ID="{0}" since the ' \
-                  'the requested value "{1}" is not \'mean\', \'std_dev\', ' \
+            msg = 'Unable to return results from Tally ID="{}" since the ' \
+                  'the requested value "{}" is not \'mean\', \'std_dev\', ' \
                   '\'rel_err\', \'sum\', or \'sum_sq\''.format(self.id, value)
             raise LookupError(msg)
 
@@ -1315,7 +1274,7 @@ class Tally(IDManagerMixin):
 
         # Ensure that the tally has data
         if self.mean is None or self.std_dev is None:
-            msg = 'The Tally ID="{0}" has no data to return'.format(self.id)
+            msg = 'The Tally ID="{}" has no data to return'.format(self.id)
             raise KeyError(msg)
 
         # Initialize a pandas dataframe for the tally data
@@ -1342,7 +1301,7 @@ class Tally(IDManagerMixin):
                     nuclides.append(nuclide.name)
                 elif isinstance(nuclide, openmc.AggregateNuclide):
                     nuclides.append(nuclide.name)
-                    column_name = '{0}(nuclide)'.format(nuclide.aggregate_op)
+                    column_name = '{}(nuclide)'.format(nuclide.aggregate_op)
                 else:
                     nuclides.append(nuclide)
 
@@ -1361,7 +1320,7 @@ class Tally(IDManagerMixin):
                     scores.append(str(score))
                 elif isinstance(score, openmc.AggregateScore):
                     scores.append(score.name)
-                    column_name = '{0}(score)'.format(score.aggregate_op)
+                    column_name = '{}(score)'.format(score.aggregate_op)
 
             tile_factor = data_size / len(self.scores)
             df[column_name] = np.tile(scores, int(tile_factor))
@@ -1530,7 +1489,7 @@ class Tally(IDManagerMixin):
 
         # Check that results have been read
         if not other.derived and other.sum is None:
-            msg = 'Unable to use tally arithmetic with Tally ID="{0}" ' \
+            msg = 'Unable to use tally arithmetic with Tally ID="{}" ' \
                   'since it does not contain any results.'.format(other.id)
             raise ValueError(msg)
 
@@ -1544,7 +1503,7 @@ class Tally(IDManagerMixin):
 
         # Construct a combined derived name from the two tally operands
         if self.name != '' and other.name != '':
-            new_name = '({0} {1} {2})'.format(self.name, binary_op, other.name)
+            new_name = '({} {} {})'.format(self.name, binary_op, other.name)
             new_tally.name = new_name
 
         # Query the mean and std dev so the tally data is read in from file
@@ -1840,11 +1799,11 @@ class Tally(IDManagerMixin):
         if filter1 == filter2:
             return
         elif filter1 not in self.filters:
-            msg = 'Unable to swap "{0}" filter1 in Tally ID="{1}" since it ' \
+            msg = 'Unable to swap "{}" filter1 in Tally ID="{}" since it ' \
                   'does not contain such a filter'.format(filter1.type, self.id)
             raise ValueError(msg)
         elif filter2 not in self.filters:
-            msg = 'Unable to swap "{0}" filter2 in Tally ID="{1}" since it ' \
+            msg = 'Unable to swap "{}" filter2 in Tally ID="{}" since it ' \
                   'does not contain such a filter'.format(filter2.type, self.id)
             raise ValueError(msg)
 
@@ -1922,7 +1881,7 @@ class Tally(IDManagerMixin):
 
         # Check that results have been read
         if not self.derived and self.sum is None:
-            msg = 'Unable to use tally arithmetic with Tally ID="{0}" ' \
+            msg = 'Unable to use tally arithmetic with Tally ID="{}" ' \
                   'since it does not contain any results.'.format(self.id)
             raise ValueError(msg)
 
@@ -1934,12 +1893,12 @@ class Tally(IDManagerMixin):
             msg = 'Unable to swap a nuclide with itself'
             raise ValueError(msg)
         elif nuclide1 not in self.nuclides:
-            msg = 'Unable to swap nuclide1 "{0}" in Tally ID="{1}" since it ' \
+            msg = 'Unable to swap nuclide1 "{}" in Tally ID="{}" since it ' \
                   'does not contain such a nuclide'\
                   .format(nuclide1.name, self.id)
             raise ValueError(msg)
         elif nuclide2 not in self.nuclides:
-            msg = 'Unable to swap "{0}" nuclide2 in Tally ID="{1}" since it ' \
+            msg = 'Unable to swap "{}" nuclide2 in Tally ID="{}" since it ' \
                   'does not contain such a nuclide'\
                   .format(nuclide2.name, self.id)
             raise ValueError(msg)
@@ -1989,17 +1948,17 @@ class Tally(IDManagerMixin):
 
         # Check that results have been read
         if not self.derived and self.sum is None:
-            msg = 'Unable to use tally arithmetic with Tally ID="{0}" ' \
+            msg = 'Unable to use tally arithmetic with Tally ID="{}" ' \
                   'since it does not contain any results.'.format(self.id)
             raise ValueError(msg)
 
         # Check that the scores are valid
         if not isinstance(score1, (str, openmc.CrossScore)):
-            msg = 'Unable to swap score1 "{0}" in Tally ID="{1}" since it is ' \
+            msg = 'Unable to swap score1 "{}" in Tally ID="{}" since it is ' \
                   'not a string or CrossScore'.format(score1, self.id)
             raise ValueError(msg)
         elif not isinstance(score2, (str, openmc.CrossScore)):
-            msg = 'Unable to swap score2 "{0}" in Tally ID="{1}" since it is ' \
+            msg = 'Unable to swap score2 "{}" in Tally ID="{}" since it is ' \
                   'not a string or CrossScore'.format(score2, self.id)
             raise ValueError(msg)
 
@@ -2008,11 +1967,11 @@ class Tally(IDManagerMixin):
             msg = 'Unable to swap a score with itself'
             raise ValueError(msg)
         elif score1 not in self.scores:
-            msg = 'Unable to swap score1 "{0}" in Tally ID="{1}" since it ' \
+            msg = 'Unable to swap score1 "{}" in Tally ID="{}" since it ' \
                   'does not contain such a score'.format(score1, self.id)
             raise ValueError(msg)
         elif score2 not in self.scores:
-            msg = 'Unable to swap score2 "{0}" in Tally ID="{1}" since it ' \
+            msg = 'Unable to swap score2 "{}" in Tally ID="{}" since it ' \
                   'does not contain such a score'.format(score2, self.id)
             raise ValueError(msg)
 
@@ -2073,7 +2032,7 @@ class Tally(IDManagerMixin):
 
         # Check that results have been read
         if not self.derived and self.sum is None:
-            msg = 'Unable to use tally arithmetic with Tally ID="{0}" ' \
+            msg = 'Unable to use tally arithmetic with Tally ID="{}" ' \
                   'since it does not contain any results.'.format(self.id)
             raise ValueError(msg)
 
@@ -2103,7 +2062,7 @@ class Tally(IDManagerMixin):
             new_tally.sparse = self.sparse
 
         else:
-            msg = 'Unable to add "{0}" to Tally ID="{1}"'.format(other, self.id)
+            msg = 'Unable to add "{}" to Tally ID="{}"'.format(other, self.id)
             raise ValueError(msg)
 
         return new_tally
@@ -2145,7 +2104,7 @@ class Tally(IDManagerMixin):
 
         # Check that results have been read
         if not self.derived and self.sum is None:
-            msg = 'Unable to use tally arithmetic with Tally ID="{0}" ' \
+            msg = 'Unable to use tally arithmetic with Tally ID="{}" ' \
                   'since it does not contain any results.'.format(self.id)
             raise ValueError(msg)
 
@@ -2174,8 +2133,7 @@ class Tally(IDManagerMixin):
             new_tally.sparse = self.sparse
 
         else:
-            msg = 'Unable to subtract "{0}" from Tally ' \
-                  'ID="{1}"'.format(other, self.id)
+            msg = 'Unable to subtract "{}" from Tally ID="{}"'.format(other, self.id)
             raise ValueError(msg)
 
         return new_tally
@@ -2217,7 +2175,7 @@ class Tally(IDManagerMixin):
 
         # Check that results have been read
         if not self.derived and self.sum is None:
-            msg = 'Unable to use tally arithmetic with Tally ID="{0}" ' \
+            msg = 'Unable to use tally arithmetic with Tally ID="{}" ' \
                   'since it does not contain any results.'.format(self.id)
             raise ValueError(msg)
 
@@ -2246,8 +2204,7 @@ class Tally(IDManagerMixin):
             new_tally.sparse = self.sparse
 
         else:
-            msg = 'Unable to multiply Tally ID="{0}" ' \
-                  'by "{1}"'.format(self.id, other)
+            msg = 'Unable to multiply Tally ID="{}" by "{}"'.format(self.id, other)
             raise ValueError(msg)
 
         return new_tally
@@ -2289,7 +2246,7 @@ class Tally(IDManagerMixin):
 
         # Check that results have been read
         if not self.derived and self.sum is None:
-            msg = 'Unable to use tally arithmetic with Tally ID="{0}" ' \
+            msg = 'Unable to use tally arithmetic with Tally ID="{}" ' \
                   'since it does not contain any results.'.format(self.id)
             raise ValueError(msg)
 
@@ -2318,8 +2275,7 @@ class Tally(IDManagerMixin):
             new_tally.sparse = self.sparse
 
         else:
-            msg = 'Unable to divide Tally ID="{0}" ' \
-                  'by "{1}"'.format(self.id, other)
+            msg = 'Unable to divide Tally ID="{}" by "{}"'.format(self.id, other)
             raise ValueError(msg)
 
         return new_tally
@@ -2364,7 +2320,7 @@ class Tally(IDManagerMixin):
 
         # Check that results have been read
         if not self.derived and self.sum is None:
-            msg = 'Unable to use tally arithmetic with Tally ID="{0}" ' \
+            msg = 'Unable to use tally arithmetic with Tally ID="{}" ' \
                   'since it does not contain any results.'.format(self.id)
             raise ValueError(msg)
 
@@ -2394,8 +2350,7 @@ class Tally(IDManagerMixin):
             new_tally.sparse = self.sparse
 
         else:
-            msg = 'Unable to raise Tally ID="{0}" to ' \
-                  'power "{1}"'.format(self.id, power)
+            msg = 'Unable to raise Tally ID="{}" to power "{}"'.format(self.id, power)
             raise ValueError(msg)
 
         return new_tally
@@ -2551,7 +2506,7 @@ class Tally(IDManagerMixin):
 
         # Ensure that the tally has data
         if not self.derived and self.sum is None:
-            msg = 'Unable to use tally arithmetic with Tally ID="{0}" ' \
+            msg = 'Unable to use tally arithmetic with Tally ID="{}" ' \
                   'since it does not contain any results.'.format(self.id)
             raise ValueError(msg)
 
@@ -2984,8 +2939,8 @@ class Tally(IDManagerMixin):
         cv.check_type('filter_position', filter_position, Integral)
 
         if new_filter in self.filters:
-            msg = 'Unable to diagonalize Tally ID="{0}" which already ' \
-                  'contains a "{1}" filter'.format(self.id, type(new_filter))
+            msg = 'Unable to diagonalize Tally ID="{}" which already ' \
+                  'contains a "{}" filter'.format(self.id, type(new_filter))
             raise ValueError(msg)
 
         # Add the new filter to a copy of this Tally
@@ -3063,7 +3018,7 @@ class Tallies(cv.CheckedList):
 
         """
         if not isinstance(tally, Tally):
-            msg = 'Unable to add a non-Tally "{0}" to the ' \
+            msg = 'Unable to add a non-Tally "{}" to the ' \
                   'Tallies instance'.format(tally)
             raise TypeError(msg)
 

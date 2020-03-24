@@ -603,11 +603,10 @@ class Material(IDManagerMixin):
             'ao' for atom percent and 'wo' for weight percent. Defaults to atom
             percent.
         enrichment : float, optional
-            Enrichment of an enrichment_taget nuclide in percent (ao or wo).
-            If enrichment_taget is not supplied then it is enrichment for U235
+            Enrichment of an enrichment_target nuclide in percent (ao or wo).
+            If enrichment_target is not supplied then it is enrichment for U235
             in weight percent. For example, input 4.95 for 4.95 weight percent
-            enriched U.
-            Default is None (natural composition).
+            enriched U. Default is None (natural composition).
         enrichment_target: str, optional
             Single nuclide name to enrich from a natural composition (e.g., 'O16')
         enrichment_type: {'ao', 'wo'}, optional
@@ -628,7 +627,7 @@ class Material(IDManagerMixin):
         for row in tokens:
             for token in row:
                 if token.isalpha():
-                    if token not in list(openmc.data.ATOMIC_NUMBER.keys())[1:]:
+                    if token == "n" or token not in openmc.data.ATOMIC_NUMBER:
                         msg = 'Formula entry {} not an element symbol.' \
                               .format(token)
                         raise ValueError(msg)
@@ -663,8 +662,8 @@ class Material(IDManagerMixin):
                 mat_stack.append(Counter())
             if closing_bracket:
                 stack_top = mat_stack.pop()
-                for i in stack_top:
-                    mat_stack[-1][i] += int(multi2 or 1) * stack_top[i]
+                for symbol, value in stack_top.items():
+                    mat_stack[-1][symbol] += int(multi2 or 1) * value
 
         # Normalizing percentages
         percents = mat_stack[0].values()
@@ -678,8 +677,6 @@ class Material(IDManagerMixin):
                                  enrichment_target, enrichment_type)
             else:
                 self.add_element(element, percent, percent_type)
-
-
     def add_s_alpha_beta(self, name, fraction=1.0):
         r"""Add an :math:`S(\alpha,\beta)` table to the material
 

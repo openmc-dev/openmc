@@ -598,7 +598,7 @@ class Material(IDManagerMixin):
         formula : str
             Formula to add, e.g., 'C2O', 'C6H12O6', or (NH4)2SO4.
             Note this is case sensitive, elements must start with an uppercase
-            character. Any numbers will be converted to integers (rounded down).
+            character. Multiplier numbers must be integers.
         percent_type : {'ao', 'wo'}, optional
             'ao' for atom percent and 'wo' for weight percent. Defaults to atom
             percent.
@@ -621,6 +621,11 @@ class Material(IDManagerMixin):
 
         """
         cv.check_type('formula', formula, str)
+
+        if '.' in formula:
+            msg = 'Non-integer multiplier values are not accepted. The ' \
+                  'input formula {} contains a "." character.'.format(formula)
+            raise ValueError(msg)
 
         # Tokenizes the formula and check validity of tokens
         tokens = re.findall(r"([A-Z][a-z]*)(\d*)|(\()|(\))(\d*)", formula)

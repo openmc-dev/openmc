@@ -671,6 +671,16 @@ class ParticleFilter(Filter):
         The number of filter bins
 
     """
+    def __eq__(self, other):
+        if type(self) is not type(other):
+            return False
+        elif len(self.bins) != len(other.bins):
+            return False
+        else:
+            return np.all(self.bins == other.bins)
+
+    __hash__ = Filter.__hash__
+
     @Filter.bins.setter
     def bins(self, bins):
         bins = np.atleast_1d(bins)
@@ -1686,10 +1696,8 @@ class EnergyFunctionFilter(Filter):
             return False
         elif not all(self.energy == other.energy):
             return False
-        elif not all(self.y == other.y):
-            return False
         else:
-            return True
+            return all(self.y == other.y)
 
     def __gt__(self, other):
         if type(self) is not type(other):

@@ -3,7 +3,7 @@ import openmc.model
 import openmc.stats
 import openmc.examples
 import pytest
-
+from collections import defaultdict
 
 def test_attributes(uo2):
     assert uo2.name == 'UO2'
@@ -60,9 +60,23 @@ def test_elements_by_name():
 
 def test_adding_elements_by_formula():
     """Test adding elements from a formula"""
-    # testing the correct nuclides are added to the Material
+    # testing the correct nuclides and elements are added to a material
     m = openmc.Material()
     m.add_elements_from_formula('Li4SiO4')
+    # checking the ratio of elements is 4:1:4 for Li:Si:O
+    elem = defaultdict(float)
+    for nuclide, adens in m.get_nuclide_atom_densities().values():
+        if nuclide.startswith("Li"):
+            elem["Li"] += adens
+        if nuclide.startswith("Si"):
+            elem["Si"] += adens
+        if nuclide.startswith("O"):
+            elem["O"] += adens
+    total_number_of_atoms = 9
+    assert elem["Li"] == pytest.approx(4./total_number_of_atoms)
+    assert elem["Si"] == pytest.approx(1./total_number_of_atoms)
+    assert elem["O"] == pytest.approx(4/total_number_of_atoms)
+    # testing the correct nuclides are added to the Material
     ref_dens = {'Li6': 0.033728, 'Li7': 0.410715,
                 'Si28': 0.102477, 'Si29': 0.0052035, 'Si30': 0.0034301,
                 'O16': 0.443386, 'O17': 0.000168}
@@ -85,6 +99,22 @@ def test_adding_elements_by_formula():
     # testing the use of brackets
     m = openmc.Material()
     m.add_elements_from_formula('Mg2(NO3)2')
+
+    # checking the ratio of elements is 2:2:6 for Mg:N:O
+    elem = defaultdict(float)
+    for nuclide, adens in m.get_nuclide_atom_densities().values():
+        if nuclide.startswith("Mg"):
+            elem["Mg"] += adens
+        if nuclide.startswith("N"):
+            elem["N"] += adens
+        if nuclide.startswith("O"):
+            elem["O"] += adens
+    total_number_of_atoms = 10
+    assert elem["Mg"] == pytest.approx(2./total_number_of_atoms)
+    assert elem["N"] == pytest.approx(2./total_number_of_atoms)
+    assert elem["O"] == pytest.approx(6/total_number_of_atoms)
+
+    # testing the correct nuclides are added when brackets are used
     ref_dens = {'Mg24': 0.157902, 'Mg25': 0.02004, 'Mg26': 0.022058,
                 'N14': 0.199267, 'N15': 0.000732,
                 'O16': 0.599772, 'O17': 0.000227}

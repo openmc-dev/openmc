@@ -2,7 +2,7 @@ import h5py
 import numpy as np
 
 from .results import Results, _VERSION_RESULTS
-from openmc.checkvalue import check_filetype_version
+from openmc.checkvalue import check_filetype_version, check_value
 
 
 __all__ = ["ResultsList"]
@@ -40,7 +40,7 @@ class ResultsList(list):
                 new.append(Results.from_hdf5(fh, i))
         return new
 
-    def get_atoms(self, mat, nuc):
+    def get_atoms(self, mat, nuc, nuc_units="atoms", time_units="s"):
         """Get number of nuclides over time from a single material
 
         .. note::
@@ -57,15 +57,24 @@ class ResultsList(list):
             Material name to evaluate
         nuc : str
             Nuclide name to evaluate
+        nuc_units : {"atoms", "atom/b-cm", "atom/cm3"}, optional
+            Units for the returned concentration. Default is ``"atoms"``
+        time_units : {"s", "min", "h", "d"}, optional
+            Units for the returned time array. Default is ``"s"`` to
+            return the value in seconds.
 
         Returns
         -------
         time : numpy.ndarray
-            Array of times in [s]
+            Array of times in units of ``time_units``
         concentration : numpy.ndarray
-            Total number of atoms for specified nuclide
+            Concentration of specified nuclide in units of ``nuc_units``
 
         """
+        check_value("time_units", time_units, {"s", "d", "min", "h"})
+        check_value("nuc_units", nuc_units,
+                    {"atoms", "atom/b-cm", "atom/cm3"})
+
         time = np.empty_like(self, dtype=float)
         concentration = np.empty_like(self, dtype=float)
 
@@ -73,6 +82,21 @@ class ResultsList(list):
         for i, result in enumerate(self):
             time[i] = result.time[0]
             concentration[i] = result[0, mat, nuc]
+
+        # Unit conversions
+        if time_units == "d":
+            time /= (60 * 60 * 24)
+        elif time_units == "h":
+            time /= (60 * 60)
+        elif time_units == "min":
+            time /= 60
+
+        if nuc_units != "atoms":
+            # Divide by volume to get density
+            concentration /= self[0].volume[mat]
+            if nuc_units == "atom/b-cm":
+                # 1 barn = 1e-24 cm^2
+                concentration *= 1e-24
 
         return time, concentration
 

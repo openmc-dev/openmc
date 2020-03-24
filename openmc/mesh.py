@@ -107,8 +107,8 @@ class RegularMesh(MeshBase):
     n_dimension : int
         Number of mesh dimensions.
     lower_left : Iterable of float
-        The lower-left corner of the structured mesh. If only two coordinate are
-        given, it is assumed that the mesh is an x-y mesh.
+        The lower-left corner of the structured mesh. If only two coordinate
+        are given, it is assumed that the mesh is an x-y mesh.
     upper_right : Iterable of float
         The upper-right corner of the structrued mesh. If only two coordinate
         are given, it is assumed that the mesh is an x-y mesh.
@@ -589,6 +589,7 @@ class RectilinearMesh(MeshBase):
 
         return element
 
+
 class UnstructuredMesh(MeshBase):
     """A 3D unstructured mesh
 
@@ -656,7 +657,8 @@ class UnstructuredMesh(MeshBase):
 
     @centroids.setter
     def centroids(self, centroids):
-        cv.check_type("Unstructured mesh centroids", centroids, Iterable, Iterable)
+        cv.check_type("Unstructured mesh centroids", centroids,
+                      Iterable, Iterable)
         self._centroids = centroids
 
     def __repr__(self):

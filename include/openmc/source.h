@@ -43,7 +43,14 @@ public:
   Particle::Bank sample(uint64_t* seed) const;
 
   // Properties
+  Particle::Type particle_type() const { return particle_; }
   double strength() const { return strength_; }
+
+  // Make observing pointers available
+  SpatialDistribution* space() const { return space_.get(); }
+  UnitSphereDistribution* angle() const { return angle_.get(); }
+  Distribution* energy() const { return energy_.get(); }
+
 private:
   Particle::Type particle_ {Particle::Type::neutron}; //!< Type of particle emitted
   double strength_ {1.0}; //!< Source strength

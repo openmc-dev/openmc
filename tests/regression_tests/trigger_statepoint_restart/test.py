@@ -59,7 +59,7 @@ class TriggerStatepointRestartTestHarness(PyAPITestHarness):
 
     def _test_output_created(self):
         """Make sure statepoint files have been created."""
-        spfiles = glob.glob(self._sp_pattern)
+        spfiles = sorted(glob.glob(self._sp_pattern))
         assert len(spfiles) == 2, \
             'Two statepoint files should have been created'
         if not self._final_sp:

@@ -92,6 +92,11 @@ def test_adding_elements_by_formula():
     for nuclide in ref_dens:
         assert nuc_dens[nuclide][1] == pytest.approx(ref_dens[nuclide], 1e-2)
 
+    # testing non integer multiplier results in a value error
+    m = openmc.Material()
+    with pytest.raises(ValueError):
+        m.add_elements_from_formula('Li4.2SiO4')
+
     # testing lowercase elements results in a value error
     m = openmc.Material()
     with pytest.raises(ValueError):

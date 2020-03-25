@@ -9,13 +9,13 @@
 #ifdef OPENMC_MPI
 #include "mpi.h"
 #endif
+#include <fmt/core.h> // for fmt
 #include "xtensor/xbuilder.hpp"
 #include "xtensor/xeval.hpp"
 #include "xtensor/xmath.hpp"
 #include "xtensor/xsort.hpp"
 #include "xtensor/xtensor.hpp"
 #include "xtensor/xview.hpp"
-#include <fmt/core.h> // for fmt
 
 #include "openmc/capi.h"
 #include "openmc/constants.h"

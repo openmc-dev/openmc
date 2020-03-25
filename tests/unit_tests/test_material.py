@@ -1,9 +1,12 @@
+from collections import defaultdict
+
+import pytest
+
 import openmc
+import openmc.examples
 import openmc.model
 import openmc.stats
-import openmc.examples
-import pytest
-from collections import defaultdict
+
 
 def test_attributes(uo2):
     assert uo2.name == 'UO2'

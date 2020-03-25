@@ -1,4 +1,3 @@
-from collections import defaultdict
 import glob
 from itertools import product
 import os
@@ -18,8 +17,6 @@ TETS_PER_VOXEL = 12
 
 
 class UnstructuredMeshTest(PyAPITestHarness):
-
-
     def __init__(self, statepoint_name, **kwargs):
         super().__init__(statepoint_name)
 
@@ -47,11 +44,7 @@ class UnstructuredMeshTest(PyAPITestHarness):
         materials.append(fuel_mat)
 
         zirc_mat = openmc.Material(name="zircaloy")
-        zirc_mat.add_nuclide("Zr90", 0.5145)
-        zirc_mat.add_nuclide("Zr91", 0.1122)
-        zirc_mat.add_nuclide("Zr92", 0.1715)
-        zirc_mat.add_nuclide("Zr94", 0.1738)
-        zirc_mat.add_nuclide("Zr96", 0.028)
+        zirc_mat.add_element("Zr", 1.0)
         zirc_mat.set_density("g/cc", 5.77)
         materials.append(zirc_mat)
 
@@ -64,14 +57,14 @@ class UnstructuredMeshTest(PyAPITestHarness):
         materials.export_to_xml()
 
         ### Geometry ###
-        fuel_min_x = openmc.XPlane(x0=-5.0, name="minimum x")
-        fuel_max_x = openmc.XPlane(x0=5.0, name="maximum x")
+        fuel_min_x = openmc.XPlane(-5.0, name="minimum x")
+        fuel_max_x = openmc.XPlane(5.0, name="maximum x")
 
-        fuel_min_y = openmc.YPlane(y0=-5.0, name="minimum y")
-        fuel_max_y = openmc.YPlane(y0=5.0, name="maximum y")
+        fuel_min_y = openmc.YPlane(-5.0, name="minimum y")
+        fuel_max_y = openmc.YPlane(5.0, name="maximum y")
 
-        fuel_min_z = openmc.ZPlane(z0=-5.0, name="minimum z")
-        fuel_max_z = openmc.ZPlane(z0=5.0, name="maximum z")
+        fuel_min_z = openmc.ZPlane(-5.0, name="minimum z")
+        fuel_max_z = openmc.ZPlane(5.0, name="maximum z")
 
         fuel_cell = openmc.Cell(name="fuel")
         fuel_cell.region = +fuel_min_x & -fuel_max_x & \
@@ -79,21 +72,21 @@ class UnstructuredMeshTest(PyAPITestHarness):
             +fuel_min_z & -fuel_max_z
         fuel_cell.fill = fuel_mat
 
-        clad_min_x = openmc.XPlane(x0=-6.0, name="minimum x")
-        clad_max_x = openmc.XPlane(x0=6.0, name="maximum x")
+        clad_min_x = openmc.XPlane(-6.0, name="minimum x")
+        clad_max_x = openmc.XPlane(6.0, name="maximum x")
 
-        clad_min_y = openmc.YPlane(y0=-6.0, name="minimum y")
-        clad_max_y = openmc.YPlane(y0=6.0, name="maximum y")
+        clad_min_y = openmc.YPlane(-6.0, name="minimum y")
+        clad_max_y = openmc.YPlane(6.0, name="maximum y")
 
-        clad_min_z = openmc.ZPlane(z0=-6.0, name="minimum z")
-        clad_max_z = openmc.ZPlane(z0=6.0, name="maximum z")
+        clad_min_z = openmc.ZPlane(-6.0, name="minimum z")
+        clad_max_z = openmc.ZPlane(6.0, name="maximum z")
 
         clad_cell = openmc.Cell(name="clad")
-        clad_cell.region = (-fuel_min_x | +fuel_max_x | \
-                            -fuel_min_y | +fuel_max_y | \
+        clad_cell.region = (-fuel_min_x | +fuel_max_x |
+                            -fuel_min_y | +fuel_max_y |
                             -fuel_min_z | +fuel_max_z) & \
-                            (+clad_min_x & -clad_max_x & \
-                             +clad_min_y & -clad_max_y & \
+                            (+clad_min_x & -clad_max_x &
+                             +clad_min_y & -clad_max_y &
                              +clad_min_z & -clad_max_z)
         clad_cell.fill = zirc_mat
 
@@ -124,19 +117,16 @@ class UnstructuredMeshTest(PyAPITestHarness):
                                     boundary_type='vacuum')
 
         water_cell = openmc.Cell(name="water")
-        water_cell.region = (-clad_min_x | +clad_max_x | \
-                             -clad_min_y | +clad_max_y | \
+        water_cell.region = (-clad_min_x | +clad_max_x |
+                             -clad_min_y | +clad_max_y |
                              -clad_min_z | +clad_max_z) & \
-                             (+water_min_x & -water_max_x & \
-                              +water_min_y & -water_max_y & \
+                             (+water_min_x & -water_max_x &
+                              +water_min_y & -water_max_y &
                               +water_min_z & -water_max_z)
         water_cell.fill = water_mat
 
         # create a containing universe
-        root_univ = openmc.Universe()
-        root_univ.add_cells([fuel_cell, clad_cell, water_cell])
-
-        geom = openmc.Geometry(root=root_univ)
+        geom = openmc.Geometry([fuel_cell, clad_cell, water_cell])
 
         geom.export_to_xml()
 
@@ -256,14 +246,17 @@ class UnstructuredMeshTest(PyAPITestHarness):
             if os.path.exists(f):
                 os.remove(f)
 
-param_values = ( ('collision', 'tracklength'), # estimators
-                 (True, False), # geometry outside of the mesh
-                 ( (333, 90, 77), tuple() ) ) # location of holes in the mesh
+
+param_values = (['collision', 'tracklength'], # estimators
+                [True, False], # geometry outside of the mesh
+                [(333, 90, 77), (,)]) # location of holes in the mesh
 test_cases = []
 for estimator, holes, ext_geom in product(*param_values):
     test_cases.append({'estimator' : estimator,
                        'external_geom' : ext_geom,
                        'holes' : holes})
+
+
 @pytest.mark.parametrize("opts", test_cases)
 def test_unstructured_mesh(opts):
     harness = UnstructuredMeshTest('statepoint.10.h5', kwargs=opts)

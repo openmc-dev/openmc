@@ -99,8 +99,7 @@ public:
   int n_dimension_; //!< Number of dimensions
 };
 
-class StructuredMesh : public Mesh
-{
+class StructuredMesh : public Mesh {
 public:
   StructuredMesh() = default;
   StructuredMesh(pugi::xml_node node) : Mesh {node} {};
@@ -252,7 +251,7 @@ private:
 
 class UnstructuredMesh : public Mesh {
 
-  typedef std::vector<std::pair<double, moab::EntityHandle>> UnstructuredMeshHits;
+  using UnstructuredMeshHits = std::vector<std::pair<double, moab::EntityHandle>>;
 
 public:
   UnstructuredMesh() = default;
@@ -273,7 +272,7 @@ public:
 
 private:
 
-  //! Finds all intersections with faces of the mesh.
+  //! Find all intersections with faces of the mesh.
   //
   //! \param[in] start Staring location
   //! \param[in] dir Normalized particle direction
@@ -285,7 +284,7 @@ private:
                   double track_len,
                   UnstructuredMeshHits& hits) const;
 
-  //! Calculates the volume for a given tetrahedron handle.
+  //! Calculate the volume for a given tetrahedron handle.
   //
   // \param[in] tet MOAB EntityHandle of the tetrahedron
   double tet_volume(moab::EntityHandle tet) const;
@@ -297,12 +296,12 @@ private:
   //! \return MOAB EntityHandle of tet
   moab::EntityHandle get_tet(const Position& r) const;
 
-  //! Returns the containing tet given a position
-  inline moab::EntityHandle get_tet(const moab::CartVect& r) const {
+  //! Return the containing tet given a position
+  moab::EntityHandle get_tet(const moab::CartVect& r) const {
       return get_tet(Position(r[0], r[1], r[2]));
   };
 
-  //! Check for point containment within a tet, uses
+  //! Check for point containment within a tet; uses
   //! pre-computed barycentric data.
   //
   //! \param[in] r Position to check
@@ -317,13 +316,13 @@ private:
   //! \param[in] tets MOAB Range of tetrahedral elements
   void compute_barycentric_data(const moab::Range& tets);
 
-  //! Translates a MOAB EntityHandle its corresponding bin.
+  //! Translate a MOAB EntityHandle to its corresponding bin.
   //
   //! \param[in] eh MOAB EntityHandle to translate
   //! \return Mesh bin
   int get_bin_from_ent_handle(moab::EntityHandle eh) const;
 
-  //! Translates a bin to its corresponding MOAB EntityHandle
+  //! Translate a bin to its corresponding MOAB EntityHandle
   //! for the tetrahedron representing that bin.
   //
   //! \param[in] bin Bin value to translate
@@ -348,7 +347,7 @@ private:
   //! \return Index of the bin
   int get_index_from_bin(int bin) const;
 
-  //! Builds a KDTree for all tetrahedra in the mesh. All
+  //! Build a KDTree for all tetrahedra in the mesh. All
   //! triangles representing 2D faces of the mesh are
   //! added to the tree as well.
   //
@@ -359,7 +358,7 @@ private:
   //! or create them if they are not there
   //
   //! \param[in] score Name of the score
-  //! \returns The MOAB value and error tag handles, respectively
+  //! \return The MOAB value and error tag handles, respectively
   std::pair<moab::Tag, moab::Tag>
   get_score_tags(std::string score) const;
 
@@ -392,7 +391,7 @@ public:
   //! Retrieve a centroid for the mesh cell
   //
   // \param[in] tet MOAB EntityHandle of the tetrahedron
-  // \returns The centroid of the element
+  // \return The centroid of the element
   Position centroid(moab::EntityHandle tet) const;
 
   //! Return a string represntation of the mesh bin

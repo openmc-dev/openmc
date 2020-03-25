@@ -58,7 +58,8 @@ def test_elements_by_name():
     assert a._nuclides == b._nuclides
     assert b._nuclides == c._nuclides
 
-def test_adding_elements_by_formula():
+
+def test_add_elements_by_formula():
     """Test adding elements from a formula"""
     # testing the correct nuclides and elements are added to a material
     m = openmc.Material()
@@ -354,4 +355,3 @@ def test_mix_materials():
     assert m3.density == pytest.approx(dens3)
     assert m4.density == pytest.approx(dens4)
     assert m5.density == pytest.approx(dens5)
-

@@ -689,64 +689,71 @@ void write_unstructured_mesh_results() {
   for (auto& tally : model::tallies) {
     for (auto filter_idx : tally->filters()) {
       auto& filter = model::tally_filters[filter_idx];
-      if (filter->type() == "mesh") {
-        // check if the filter uses an unstructured mesh
-        auto mesh_filter = dynamic_cast<MeshFilter*>(filter.get());
-        auto mesh_idx = mesh_filter->mesh();
-        auto umesh = dynamic_cast<UnstructuredMesh*>(model::meshes[mesh_idx].get());
-        if (umesh) {
-          // if this tally has more than one filter, print
-          // warning and skip writing the mesh
-          if (tally->filters().size() > 1) {
-            warning(fmt::format("Skipping unstructured mesh writing for tally "
-                                "{}. More than one filter is present on the tally.",
-                                tally->id_));
-            break;
-          }
+      if (filter->type() != "mesh") continue;
 
-          int n_realizations = tally->n_realizations_;
+      // check if the filter uses an unstructured mesh
+      auto mesh_filter = dynamic_cast<MeshFilter*>(filter.get());
+      auto mesh_idx = mesh_filter->mesh();
+      auto umesh = dynamic_cast<UnstructuredMesh*>(model::meshes[mesh_idx].get());
 
-          // write each score/nuclide combination for this tally
-          for (int i_score = 0; i_score < tally->scores_.size(); i_score++) {
-            for (int i_nuc = 0; i_nuc < tally->nuclides_.size(); i_nuc++) {
+      if (!umesh) continue;
 
-              // index for this nuclide and score
-              int nuc_score_idx = i_score + i_nuc*tally->scores_.size();
+      // if this tally has more than one filter, print
+      // warning and skip writing the mesh
+      if (tally->filters().size() > 1) {
+        warning(fmt::format("Skipping unstructured mesh writing for tally "
+                            "{0}. More than one filter is present on the tally.",
+                            tally->id_));
+        break;
+      }
 
-              // construct result vectors
-              std::vector<double> mean_vec, std_dev_vec;
-              for (int j = 0; j < tally->results_.shape()[0]; j++) {
-                double mean = tally->results_(j, nuc_score_idx, TallyResult::SUM) / n_realizations;
-                double sum_sq = tally->results_(j , nuc_score_idx, TallyResult::SUM_SQ);
-                double std_dev = sum_sq / n_realizations - std::pow(mean, 2) / (n_realizations - 1);
-                std_dev_vec.push_back(std_dev);
-                mean_vec.push_back(mean);
-              }
+      int n_realizations = tally->n_realizations_;
 
-              // generate a name for the value
-              std::string nuclide_name = "total"; // start with total by default
-              if (tally->nuclides_[i_nuc] > -1) {
-                nuclide_name = data::nuclides[tally->nuclides_[i_nuc]]->name_;
-              }
+      // write each score/nuclide combination for this tally
+      for (int i_score = 0; i_score < tally->scores_.size(); i_score++) {
+        for (int i_nuc = 0; i_nuc < tally->nuclides_.size(); i_nuc++) {
 
-              std::string score_name = tally->score_name(i_score);
+          // index for this nuclide and score
+          int nuc_score_idx = i_score + i_nuc * tally->scores_.size();
 
-              auto score_str = fmt::format("{}_{}", score_name, nuclide_name);
-              umesh->set_score_data(score_str, mean_vec, std_dev_vec);
+          // construct result vectors
+          std::vector<double> mean_vec, std_dev_vec;
+          for (int j = 0; j < tally->results_.shape()[0]; j++) {
+            // mean
+            double mean = tally->results_(j, nuc_score_idx, TallyResult::SUM) / n_realizations;
+            mean_vec.push_back(mean);
+            // std. dev.
+            double sum_sq = tally->results_(j , nuc_score_idx, TallyResult::SUM_SQ);
+            if (n_realizations > 1) {
+              double std_dev = sum_sq / n_realizations - (mean* mean);
+              std_dev = std::sqrt(std_dev / (n_realizations - 1));
+              std_dev_vec.push_back(std_dev);
+            } else {
+              std_dev_vec.push_back(0.0);
             }
           }
 
-          // Generate a file name based on the tally id
-          // and the current batch number
-          int w = std::to_string(settings::n_max_batches).size();
-          std::string filename = fmt::format("tally_{0}.{1:0{2}}",
-                                             tally->id_,
-                                             simulation::current_batch,
-                                             w);
-          // Write the unstructured mesh and data to file
-          umesh->write(filename);
+          // generate a name for the value
+          std::string nuclide_name = "total"; // start with total by default
+          if (tally->nuclides_[i_nuc] > -1) {
+            nuclide_name = data::nuclides[tally->nuclides_[i_nuc]]->name_;
+          }
+
+          std::string score_name = tally->score_name(i_score);
+          auto score_str = fmt::format("{}_{}", score_name, nuclide_name);
+          umesh->set_score_data(score_str, mean_vec, std_dev_vec);
         }
       }
+
+      // Generate a file name based on the tally id
+      // and the current batch number
+      int w = std::to_string(settings::n_max_batches).size();
+      std::string filename = fmt::format("tally_{0}.{1:0{2}}",
+                                         tally->id_,
+                                         simulation::current_batch,
+                                         w);
+      // Write the unstructured mesh and data to file
+      umesh->write(filename);
     }
   }
 }

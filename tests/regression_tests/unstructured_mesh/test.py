@@ -17,22 +17,23 @@ TETS_PER_VOXEL = 12
 
 
 class UnstructuredMeshTest(PyAPITestHarness):
-    def __init__(self, statepoint_name, **kwargs):
+
+    def __init__(self,
+                 statepoint_name,
+                 estimator='collision',
+                 external_geom=False,
+                 holes=None):
+
         super().__init__(statepoint_name)
 
-        # defaults
-        self.estimator = "collision" # tally estimator type
-        self.external_geom = False # geometry size matches mesh
-        self.mesh_has_holes = False # holes in the mesh
-        self.holes = ()
-        self.mesh_filename = "test_mesh_tets.h5m" # mesh file to use
-
-        # set parameters for the test
-        self.estimator = kwargs.get('estimator', self.estimator)
-        self.external_geom = kwargs.get('external_geom', self.external_geom)
-        self.holes = kwargs.get('holes', self.holes)
+        self.estimator = estimator # tally estimator type
+        self.external_geom = external_geom # geometry size matches mesh
+        self.holes = holes # holes in the test mesh
         if self.holes:
             self.mesh_filename = "test_mesh_tets_w_holes.h5m"
+        else:
+            self.mesh_filename = "test_mesh_tets.h5m" # mesh file to use
+        print(self.estimator, self.external_geom, self.holes, self.mesh_filename)
 
     def _build_inputs(self):
         ### Materials ###
@@ -140,8 +141,7 @@ class UnstructuredMeshTest(PyAPITestHarness):
 
         regular_mesh_filter = openmc.MeshFilter(mesh=regular_mesh)
 
-        uscd_mesh = openmc.UnstructuredMesh()
-        uscd_mesh.filename = self.mesh_filename
+        uscd_mesh = openmc.UnstructuredMesh(self.mesh_filename)
         uscd_mesh.mesh_lib = 'moab'
         uscd_filter = openmc.MeshFilter(mesh=uscd_mesh)
 
@@ -194,7 +194,6 @@ class UnstructuredMeshTest(PyAPITestHarness):
 
     def _compare_results(self):
         with openmc.StatePoint(self._sp_name) as sp:
-
             # loop over the tallies and get data
             for tally in sp.tallies.values():
                 # find the regular and unstructured meshes
@@ -204,8 +203,8 @@ class UnstructuredMeshTest(PyAPITestHarness):
                     if isinstance(flt.mesh, openmc.RegularMesh):
                         reg_mesh_data, reg_mesh_std_dev = self.get_mesh_tally_data(tally)
                         if self.holes:
-                            reg_mesh_data = np.delete(reg_mesh_data, holes)
-                            reg_mesh_std_dev = np.delete(reg_mesh_std_dev, holes)
+                            reg_mesh_data = np.delete(reg_mesh_data, self.holes)
+                            reg_mesh_std_dev = np.delete(reg_mesh_std_dev, self.holes)
                     else:
                         unstructured_data, unstructured_std_dev = self.get_mesh_tally_data(tally, True)
 
@@ -218,7 +217,6 @@ class UnstructuredMeshTest(PyAPITestHarness):
                                                          decimals)
                 except AssertionError as ae:
                     print(ae)
-                    print()
                     break
                 # increment decimals
                 decimals += 1
@@ -251,7 +249,7 @@ param_values = (['collision', 'tracklength'], # estimators
                 [True, False], # geometry outside of the mesh
                 [(333, 90, 77), (,)]) # location of holes in the mesh
 test_cases = []
-for estimator, holes, ext_geom in product(*param_values):
+for estimator, ext_geom, holes in product(*param_values):
     test_cases.append({'estimator' : estimator,
                        'external_geom' : ext_geom,
                        'holes' : holes})
@@ -259,5 +257,5 @@ for estimator, holes, ext_geom in product(*param_values):
 
 @pytest.mark.parametrize("opts", test_cases)
 def test_unstructured_mesh(opts):
-    harness = UnstructuredMeshTest('statepoint.10.h5', kwargs=opts)
+    harness = UnstructuredMeshTest('statepoint.10.h5', **opts)
     harness.main()

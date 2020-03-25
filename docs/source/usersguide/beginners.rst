@@ -60,7 +60,7 @@ Now let's look at the pros and cons of Monte Carlo methods:
 
 - **Pro**: No mesh generation is required to build geometry. By using
   `constructive solid geometry`_, it's possible to build complex
-  xmodels with curved surfaces.
+  models with curved surfaces.
 
 - **Pro**: Monte Carlo methods can be used with either continuous-energy or
   multi-group cross sections.

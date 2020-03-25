@@ -11,8 +11,8 @@ def test_attributes(uo2):
     assert uo2.depletable
 
 
-def test_nuclides(uo2):
-    """Test adding/removing nuclides."""
+def test_add_nuclide():
+    """Test adding nuclides."""
     m = openmc.Material()
     m.add_nuclide('U235', 1.0)
     with pytest.raises(TypeError):
@@ -21,7 +21,18 @@ def test_nuclides(uo2):
         m.add_nuclide(1.0, 'H1')
     with pytest.raises(ValueError):
         m.add_nuclide('H1', 1.0, 'oa')
-    m.remove_nuclide('U235')
+
+
+def test_remove_nuclide():
+    """Test removing nuclides."""
+    m = openmc.Material()
+    for nuc, percent in [('H1', 1.0), ('H2', 1.0), ('H1', 2.0), ('H2', 2.0)]:
+        m.add_nuclide(nuc, percent)
+    m.remove_nuclide('H1')
+    assert len(m.nuclides) == 2
+    assert all(nuc.name == 'H2' for nuc in m.nuclides)
+    assert m.nuclides[0].percent == 1.0
+    assert m.nuclides[1].percent == 2.0
 
 
 def test_elements():

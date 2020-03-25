@@ -74,8 +74,11 @@ if(HDF5_IS_PARALLEL)
   message(STATUS "Using parallel HDF5")
 endif()
 
-if(${HDF5_VERSION} VERSION_LESS "1.12.0") 
-  list(APPEND cxxflags -DHDF5_LEGACY)
+# Version 1.12 of HDF5 deprecates the H5Oget_info_by_idx() interface.
+# Thus, we give these flags to allow usage of the old interface in newer
+# versions of HDF5.
+if(${HDF5_VERSION} VERSION_GREATER_EQUAL "1.12.0") 
+  list(APPEND cxxflags -DH5Oget_info_by_idx_vers=1 -DH5O_info_t_vers=1)
 endif()
 
 #===============================================================================

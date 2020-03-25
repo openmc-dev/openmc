@@ -19,7 +19,7 @@ def check_type(name, value, expected_type, expected_iter_type=None, *, none_ok=F
     expected_iter_type : type or Iterable of type or None, optional
         Expected type of each element in value, assuming it is iterable. If
         None, no check will be performed.
-    none_ok : bool
+    none_ok : bool, optional
         Whether None is allowed as a value
 
     """

@@ -3,7 +3,6 @@
 #include <algorithm> // for copy, equal, min, min_element
 #include <cstddef> // for size_t
 #include <cmath>  // for ceil
-#include <fmt/core.h> // for fmt
 #include <memory> // for allocator
 #include <string>
 
@@ -16,6 +15,7 @@
 #include "xtensor/xsort.hpp"
 #include "xtensor/xtensor.hpp"
 #include "xtensor/xview.hpp"
+#include <fmt/core.h> // for fmt
 
 #include "openmc/capi.h"
 #include "openmc/constants.h"
@@ -1456,10 +1456,6 @@ openmc_mesh_set_id(int32_t index, int32_t id)
 extern "C" int
 openmc_mesh_get_dimension(int32_t index, int** dims, int* n)
 {
-  if (index < 0 || index >= model::meshes.size()) {
-    set_errmsg("Index in meshes array is out of bounds.");
-    return OPENMC_E_OUT_OF_BOUNDS;
-  }
   RegularMesh* mesh;
   if (int err = check_regular_mesh(index, &mesh)) return err;
   *dims = mesh->shape_.data();
@@ -1471,11 +1467,6 @@ openmc_mesh_get_dimension(int32_t index, int** dims, int* n)
 extern "C" int
 openmc_mesh_set_dimension(int32_t index, int n, const int* dims)
 {
-  if (index < 0 || index >= model::meshes.size()) {
-    set_errmsg("Index in meshes array is out of bounds.");
-    return OPENMC_E_OUT_OF_BOUNDS;
-  }
-
   RegularMesh* mesh;
   if (int err = check_regular_mesh(index, &mesh)) return err;
 
@@ -1559,19 +1550,14 @@ UnstructuredMesh::UnstructuredMesh(pugi::xml_node node) : Mesh(node)
 
   // create MOAB instance
   mbi_ = std::make_unique<moab::Core>();
-  // create meshset to load mesh into
-  moab::ErrorCode rval = mbi_->create_meshset(moab::MESHSET_SET, meshset_);
-  if (rval != moab::MB_SUCCESS) {
-    fatal_error("Failed to create fileset for umesh: " + filename_);
-  }
   // load unstructured mesh file
-  rval = mbi_->load_file(filename_.c_str(), &meshset_);
+  moab::ErrorCode rval = mbi_->load_file(filename_.c_str());
   if (rval != moab::MB_SUCCESS) {
     fatal_error("Failed to load the unstructured mesh file: " + filename_);
   }
 
   // set member range of tetrahedral entities
-  rval = mbi_->get_entities_by_dimension(meshset_, n_dimension_, ehs_);
+  rval = mbi_->get_entities_by_dimension(0, n_dimension_, ehs_);
   if (rval != moab::MB_SUCCESS) {
     fatal_error("Failed to get all tetrahedral elements");
   }
@@ -1583,12 +1569,12 @@ UnstructuredMesh::UnstructuredMesh(pugi::xml_node node) : Mesh(node)
 
   // make an entity set for all tetrahedra
   // this is used for convenience later in output
-  rval = mbi_->create_meshset(moab::MESHSET_SET, tet_set_);
+  rval = mbi_->create_meshset(moab::MESHSET_SET, tetset_);
   if (rval != moab::MB_SUCCESS) {
     fatal_error("Failed to create an entity set for the tetrahedral elements");
   }
 
-  rval = mbi_->add_entities(tet_set_, ehs_);
+  rval = mbi_->add_entities(tetset_, ehs_);
   if (rval != moab::MB_SUCCESS) {
     fatal_error("Failed to add tetrahedra to an entity set.");
   }
@@ -1672,7 +1658,7 @@ UnstructuredMesh::bins_crossed(const Particle* p,
   moab::ErrorCode rval;
   Position last_r{p->r_last_};
   Position r{p->r()};
-  Position u{p->u()};
+  Direction u{p->u()};
   u /= u.norm();
   moab::CartVect r0(last_r.x, last_r.y, last_r.z);
   moab::CartVect r1(r.x, r.y, r.z);
@@ -1680,8 +1666,8 @@ UnstructuredMesh::bins_crossed(const Particle* p,
 
   double track_len = (r1 - r0).length();
 
-  r0 += TINY_BIT*dir;
-  r1 -= TINY_BIT*dir;
+  r0 += TINY_BIT * dir;
+  r1 -= TINY_BIT * dir;
 
   UnstructuredMeshHits hits;
   intersect_track(r0, dir, track_len, hits);
@@ -1729,7 +1715,6 @@ UnstructuredMesh::bins_crossed(const Particle* p,
       bins.push_back(get_bin_from_ent_handle(tet));
       lengths.push_back((hit.first - last_dist) / track_len);
     } else {
-      // if in the loop, we should always find a tet
       warning("No tet found for location between triangle hits");
     }
 
@@ -1805,7 +1790,7 @@ double UnstructuredMesh::tet_volume(moab::EntityHandle tet) const {
  }
 
  moab::CartVect p[4];
- rval = mbi_->get_coords(&(conn[0]), (int)conn.size(), p[0].array());
+ rval = mbi_->get_coords(conn.data(), conn.size(), p[0].array());
  if (rval != moab::MB_SUCCESS) {
    fatal_error("Failed to get tet coords");
  }
@@ -1815,7 +1800,7 @@ double UnstructuredMesh::tet_volume(moab::EntityHandle tet) const {
 
 void UnstructuredMesh::surface_bins_crossed(const Particle* p, std::vector<int>& bins) const {
   // TODO: Implement triangle crossings here
-  return;
+  throw std::runtime_error{"Unstructured mesh surface tallies are not implemented."};
 }
 
 int
@@ -1845,7 +1830,7 @@ UnstructuredMesh::compute_barycentric_data(const moab::Range& tets) {
     }
 
     moab::CartVect p[4];
-    rval = mbi_->get_coords(&(verts[0]), (int)verts.size(), p[0].array());
+    rval = mbi_->get_coords(verts.data(), verts.size(), p[0].array());
     if (rval != moab::MB_SUCCESS) {
       fatal_error("Failed to get coordinates of a tet in umesh: " + filename_);
     }
@@ -2045,9 +2030,8 @@ UnstructuredMesh::get_score_tags(std::string score) const {
                               moab::MB_TAG_DENSE|moab::MB_TAG_CREAT,
                               &default_val);
   if (rval != moab::MB_SUCCESS) {
-    std::stringstream msg;
-    msg << "Could not create or retrieve the error tag for the score " << score
-        << " on unstructured mesh " << id_;
+    auto msg = fmt::format("Could not create or retrieve the error tag for the score {}"
+                           " on unstructured mesh {}", score, id_);
     fatal_error(msg);
   }
 
@@ -2078,18 +2062,16 @@ UnstructuredMesh::set_score_data(const std::string& score,
   // set the score value
   rval = mbi_->tag_set_data(score_tags.first, ehs_, values.data());
   if (rval != moab::MB_SUCCESS) {
-    std::stringstream msg;
-    msg << "Failed to set the tally value for score '" << score << "' "
-        << " on unstructured mesh " << id_;
+    auto msg = fmt::format("Failed to set the tally value for score '{}' "
+                           "on unstructured mesh {}", score, id_);
     warning(msg);
   }
 
   // set the error value
   rval = mbi_->tag_set_data(score_tags.second, ehs_, std_dev.data());
   if (rval != moab::MB_SUCCESS) {
-    std::stringstream msg;
-    msg << "Failed to set the tally value for score '" << score << "' "
-        << " on unstructured mesh " << id_;
+    auto msg = fmt::format("Failed to set the tally error for score '{}' "
+                           "on unstructured mesh {}", score, id_);
     warning(msg);
   }
 }
@@ -2105,10 +2087,9 @@ UnstructuredMesh::write(std::string base_filename) const {
   // to avoid clutter from zero-value data on other
   // elements during visualization
   moab::ErrorCode rval;
-  rval = mbi_->write_mesh(filename.c_str(), &tet_set_, 1);
+  rval = mbi_->write_mesh(filename.c_str(), &tetset_, 1);
   if (rval != moab::MB_SUCCESS) {
-    std::stringstream msg;
-    msg << "Failed to write unstructured mesh " << id_;
+    auto msg = fmt::format("Failed to write unstructured mesh {}", id_);
     warning(msg);
   }
 }

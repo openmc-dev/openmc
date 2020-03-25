@@ -619,7 +619,7 @@ class UnstructuredMesh(MeshBase):
         (1.0, 1.0, 1.0), ...]
     """
 
-    def __init__(self, mesh_id=None, name='', filename=''):
+    def __init__(self, filename, mesh_id=None, name=''):
         super().__init__(mesh_id, name)
         self._filename = filename
         self._volumes = []
@@ -631,11 +631,9 @@ class UnstructuredMesh(MeshBase):
 
     @filename.setter
     def filename(self, filename):
-        if filename is not None:
-            cv.check_type('Unstructured Mesh filename', filename, str)
-            self._filename = filename
-        else:
-            self.filename = ''
+        cv.check_type('Unstructured Mesh filename: {}'.format(filename),
+                      filename, str)
+        self._filename = filename
 
     @property
     def volumes(self):
@@ -667,9 +665,9 @@ class UnstructuredMesh(MeshBase):
     @classmethod
     def from_hdf5(cls, group):
         mesh_id = int(group.name.split('/')[-1].lstrip('mesh '))
+        filename = group['filename'][()].decode()
 
-        mesh = cls(mesh_id)
-        mesh.filename = group['filename'][()].decode()
+        mesh = cls(filename, mesh_id=mesh_id)
         vol_data = group['volumes'][()]
         centroids = group['centroids'][()]
         mesh.volumes = np.reshape(vol_data, (vol_data.shape[0],))
@@ -695,3 +693,24 @@ class UnstructuredMesh(MeshBase):
         subelement.text = self.filename
 
         return element
+
+    @classmethod
+    def from_xml_element(cls, elem):
+        """Generate unstructured mesh object from XML element
+
+        Parameters
+        ----------
+        elem : xml.etree.ElementTree.Element
+            XML element
+
+        Returns
+        -------
+        openmc.UnstructuredMesh
+            UnstructuredMesh generated from an XML element
+        """
+        mesh_id = int(get_text(elem, 'id'))
+        filename = get_text(elem, 'mesh_file')
+
+        mesh = cls(filename, mesh_id)
+
+        return mesh

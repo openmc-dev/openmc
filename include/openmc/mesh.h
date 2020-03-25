@@ -258,17 +258,9 @@ public:
   UnstructuredMesh(pugi::xml_node);
   ~UnstructuredMesh() = default;
 
-  void bins_crossed(const Particle* p, std::vector<int>& bins,
+  void bins_crossed(const Particle* p,
+                    std::vector<int>& bins,
                     std::vector<double>& lengths) const override;
-
-  //! Check where a line segment intersects the mesh and if it intersects at all
-  //
-  //! \param[in,out] r0 In: starting position, out: intersection point
-  //! \param[in] r1 Ending position
-  //! \param[out] ijk Indices of the mesh bin containing the intersection point
-  //! \return Whether the line segment connecting r0 and r1 intersects mesh
-  bool intersects(Position& r0, Position r1, int* ijk);
-
 
 private:
 
@@ -410,12 +402,11 @@ public:
   //! Write the mesh with any current tally data
   void write(std::string base_filename) const;
 
-  std::string filename_; //<! Path to unstructured mesh file
+  std::string filename_; //!< Path to unstructured mesh file
 
 private:
   moab::Range ehs_; //!< Range of tetrahedra EntityHandle's in the mesh
-  moab::EntityHandle meshset_; //!< EntitySet containing all elements
-  moab::EntityHandle tet_set_; //! < EntitySet containing all tetrahedra
+  moab::EntityHandle tetset_; //!< EntitySet containing all tetrahedra
   moab::EntityHandle kdtree_root_; //!< Root of the MOAB KDTree
   std::unique_ptr<moab::Interface> mbi_; //!< MOAB instance
   std::unique_ptr<moab::AdaptiveKDTree> kdtree_; //!< MOAB KDTree instance

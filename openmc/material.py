@@ -402,10 +402,9 @@ class Material(IDManagerMixin):
         cv.check_type('nuclide', nuclide, str)
 
         # If the Material contains the Nuclide, delete it
-        for nuc in self._nuclides:
+        for nuc in reversed(self.nuclides):
             if nuclide == nuc.name:
-                self._nuclides.remove(nuc)
-                break
+                self.nuclides.remove(nuc)
 
     def add_macroscopic(self, macroscopic):
         """Add a macroscopic to the material.  This will also set the

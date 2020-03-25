@@ -906,7 +906,7 @@ class Chain(object):
 
     def _follow(self, isotopes, level):
         """Return all isotopes present up to depth level"""
-        found = set(isotopes)
+        found = isotopes.copy()
         remaining = set(self.nuclide_dict)
         if not found.issubset(remaining):
             raise IndexError(
@@ -916,7 +916,7 @@ class Chain(object):
         if level == 0:
             return found
 
-        remaining.difference_update(found)
+        remaining -= found
 
         depth = 0
         next_iso = set()
@@ -952,8 +952,8 @@ class Chain(object):
 
             # Prepare for next dig
             depth += 1
-            isotopes.update(next_iso)
-            remaining.difference_update(next_iso)
+            isotopes |= next_iso
+            remaining -= next_iso
             next_iso.clear()
 
         # Process isotope that would have started next depth

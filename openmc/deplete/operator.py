@@ -113,12 +113,13 @@ class Operator(TransportOperator):
         ``fission_yield_mode``. Will be passed directly on to the
         helper. Passing a value of None will use the defaults for
         the associated helper.
-    reduce_chain : bool or int, optional
-        If ``True`` or an integer, create a reduced depletion chain by
-        following transmuation paths for isotopes in burnable materials.
-        A value of ``True`` implies to follow all paths to completion,
-        while a non-negative integer indicates the depth. See
-        :meth:`openmc.deplete.Chain.reduce`
+    reduce_chain : bool, optional
+        If True, use :meth:`openmc.deplete.Chain.reduce` to reduce the
+        depletion chain up to ``reduce_chain_level``. Default is False.
+    reduce_chain_level : int, optional
+        Depth of the search when reducing the depletion chain. Only used
+        if ``reduce_chain`` evaluates to true. The default value of
+        ``None`` implies no limit on the depth.
 
     Attributes
     ----------
@@ -165,7 +166,7 @@ class Operator(TransportOperator):
                  diff_burnable_mats=False, energy_mode="fission-q",
                  fission_q=None, dilute_initial=1.0e3,
                  fission_yield_mode="constant", fission_yield_opts=None,
-                 reduce_chain=False):
+                 reduce_chain=False, reduce_chain_level=None):
         if fission_yield_mode not in self._fission_helpers:
             raise KeyError(
                 "fission_yield_mode must be one of {}, not {}".format(
@@ -187,15 +188,14 @@ class Operator(TransportOperator):
         self.diff_burnable_mats = diff_burnable_mats
 
         # Reduce the chain before we create more materials
-        if reduce_chain is not False:
+        if reduce_chain:
             all_isotopes = set()
             for material in geometry.get_all_materials().values():
                 if not material.depletable:
                     continue
                 for name, _dens_percent, _dens_type in material.nuclides:
                     all_isotopes.add(name)
-            level = None if reduce_chain is True else reduce_chain
-            self.chain = self.chain.reduce(all_isotopes, level)
+            self.chain = self.chain.reduce(all_isotopes, reduce_chain_level)
 
         # Differentiate burnable materials with multiple instances
         if self.diff_burnable_mats:

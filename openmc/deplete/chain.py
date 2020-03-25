@@ -10,7 +10,7 @@ import math
 import re
 from collections import OrderedDict, defaultdict
 from collections.abc import Mapping, Iterable
-from numbers import Real
+from numbers import Real, Integral
 from warnings import warn
 
 from openmc.checkvalue import check_type, check_greater_than
@@ -500,7 +500,7 @@ class Chain:
                 # Gain
                 for _, target, branching_ratio in nuc.decay_modes:
                     # Allow for total annihilation for debug purposes
-                    if target != 'Nothing':
+                    if target is not None:
                         branch_val = branching_ratio * decay_constant
 
                         if branch_val != 0.0:
@@ -525,17 +525,16 @@ class Chain:
                             matrix[i, i] -= path_rate
 
                     # Gain term; allow for total annihilation for debug purposes
-                    if target != 'Nothing':
-                        if r_type != 'fission':
-                            if path_rate != 0.0:
-                                k = self.nuclide_dict[target]
-                                matrix[k, i] += path_rate * br
-                        else:
-                            for product, y in fission_yields[nuc.name].items():
-                                yield_val = y * path_rate
-                                if yield_val != 0.0:
-                                    k = self.nuclide_dict[product]
-                                    matrix[k, i] += yield_val
+                    if r_type != 'fission':
+                        if target is not None and path_rate != 0.0:
+                            k = self.nuclide_dict[target]
+                            matrix[k, i] += path_rate * br
+                    else:
+                        for product, y in fission_yields[nuc.name].items():
+                            yield_val = y * path_rate
+                            if yield_val != 0.0:
+                                k = self.nuclide_dict[product]
+                                matrix[k, i] += yield_val
 
                 # Clear set of reactions
                 reactions.clear()
@@ -821,3 +820,168 @@ class Chain:
                 return stat
             valid = valid and stat
         return valid
+
+    def reduce(self, initial_isotopes, level=None):
+        """Reduce the size of the chain by following transmutation paths
+
+        As an example, consider a simple chain with the following
+        isotopes and transmutation paths::
+
+            U235 (n,gamma) U236
+                 (n,fission) (Xe135, I135, Cs135)
+            I135 (beta decay) Xe135 (beta decay) Cs135
+            Xe135 (n,gamma) Xe136
+
+        Calling ``chain.reduce(["I135"])`` will produce a depletion
+        chain that contains only isotopes that would originate from
+        I135: I135, Xe135, Cs135, and Xe136. U235 and U236 will not
+        be included, but multiple isotopes can be used to start
+        the search.
+
+        The ``level`` value controls the depth of the search.
+        ``chain.reduce(["U235"], level=1)`` would return a chain
+        with all isotopes except Xe136, since it is two transmutations
+        removed from U235 in this case.
+
+        While targets will not be included in the new chain, the
+        total destruction rate and decay rate of included isotopes
+        will be preserved.
+
+        Parameters
+        ----------
+        initial_isotopes : iterable of str
+            Start the search based on the contents of these isotopes
+        level : int, optional
+            Depth of transmuation path to follow. Must be greater than
+            or equal to zero. A value of zero returns a chain with
+            ``initial_isotopes``. The default value of None implies
+            that all isotopes that appear in the transmutation paths
+            of the initial isotopes and their progeny should be
+            explored
+
+        Returns
+        -------
+        Chain
+            Depletion chain containing isotopes that would appear
+            after following up to ``level`` reactions and decay paths
+
+        """
+        check_type("initial_isotopes", initial_isotopes, Iterable, str)
+        if level is None:
+            level = math.inf
+        else:
+            check_type("level", level, Integral)
+            check_greater_than("level", level, 0, equality=True)
+
+        all_isotopes = self._follow(set(initial_isotopes), level)
+
+        # Avoid re-sorting for fission yields
+        name_sort = sorted(all_isotopes)
+
+        nuclides = []
+        nuclide_dict = {}
+        reactions = set()
+
+        for idx, iso in enumerate(sorted(all_isotopes, key=openmc.data.zam)):
+            previous = self[iso]
+            new_nuclide = Nuclide(previous.name)
+            new_nuclide.half_life = previous.half_life
+            new_nuclide.decay_energy = new_nuclide.decay_energy
+
+            new_decay = []
+            for mode in previous.decay_modes:
+                if mode.target in all_isotopes:
+                    new_decay.append(mode)
+                else:
+                    new_decay.append(DecayTuple(
+                        mode.type, None, mode.branching_ratio))
+            new_nuclide.decay_modes = new_decay
+
+            new_reactions = []
+            for rxn in previous.reactions:
+                if rxn.target in all_isotopes:
+                    new_reactions.append(rxn)
+                    reactions.add(rxn.type)
+                elif rxn.type == "fission":
+                    new_yields = new_nuclide.yield_data = (
+                        previous.yield_data.restrict_products(name_sort))
+                    if new_yields is not None:
+                        new_reactions.append(rxn)
+                        reactions.add("fission")
+                # Maintain total destruction rates but set no target
+                else:
+                    new_reactions.append(ReactionTuple(
+                        rxn.type, None, rxn.Q, rxn.branching_ratio))
+                    reactions.add(rxn.type)
+
+            new_nuclide.reactions = new_reactions
+
+            nuclides.append(new_nuclide)
+            nuclide_dict[iso] = idx
+
+        new_chain = type(self)()
+        new_chain.nuclides = nuclides
+        new_chain.nuclide_dict = nuclide_dict
+
+        # Doesn't appear that the ordering matters for the reactions,
+        # just the contents
+        new_chain.reactions = sorted(reactions)
+
+        return new_chain
+
+    def _follow(self, isotopes, level):
+        """Return all isotopes present up to depth level"""
+        found = isotopes.copy()
+        remaining = set(self.nuclide_dict)
+        if not found.issubset(remaining):
+            raise IndexError(
+                "The following isotopes were not found in the chain: "
+                "{}".format(", ".join(found - remaining)))
+
+        if level == 0:
+            return found
+
+        remaining -= found
+
+        depth = 0
+        next_iso = set()
+
+        while depth < level and remaining:
+            # Exhaust all isotopes at this level
+            while isotopes:
+                iso = isotopes.pop()
+                found.add(iso)
+                nuclide = self[iso]
+
+                # Follow all transmutation paths for this nuclide
+                for rxn in nuclide.reactions + nuclide.decay_modes:
+                    if rxn.type == "fission" or rxn.target is None:
+                        continue
+                    # Skip if we've already come across this isotope
+                    elif (rxn.target in next_iso
+                          or rxn.target in found or rxn.target in isotopes):
+                        continue
+                    next_iso.add(rxn.target)
+
+                if nuclide.yield_data is not None:
+                    for product in nuclide.yield_data.products:
+                        if (product in next_iso
+                                or product in found or product in isotopes):
+                            continue
+                        next_iso.add(product)
+
+            if not next_iso:
+                # No additional isotopes to process, nor to update the
+                # current set of discovered isotopes
+                return found
+
+            # Prepare for next dig
+            depth += 1
+            isotopes |= next_iso
+            remaining -= next_iso
+            next_iso.clear()
+
+        # Process isotope that would have started next depth
+        found.update(isotopes)
+
+        return found

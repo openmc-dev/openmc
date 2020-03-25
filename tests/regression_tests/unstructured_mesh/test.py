@@ -33,7 +33,6 @@ class UnstructuredMeshTest(PyAPITestHarness):
             self.mesh_filename = "test_mesh_tets_w_holes.h5m"
         else:
             self.mesh_filename = "test_mesh_tets.h5m" # mesh file to use
-        print(self.estimator, self.external_geom, self.holes, self.mesh_filename)
 
     def _build_inputs(self):
         ### Materials ###
@@ -208,22 +207,12 @@ class UnstructuredMeshTest(PyAPITestHarness):
                     else:
                         unstructured_data, unstructured_std_dev = self.get_mesh_tally_data(tally, True)
 
-            # successively check how many decimals the results are equal to
-            decimals = 1
-            while True:
-                try:
-                    np.testing.assert_array_almost_equal(unstructured_data,
-                                                         reg_mesh_data,
-                                                         decimals)
-                except AssertionError as ae:
-                    print(ae)
-                    break
-                # increment decimals
-                decimals += 1
-
             # we expect these results to be the same to within at least ten
             # decimal places
-            assert decimals >= 10
+            decimals = 10
+            np.testing.assert_array_almost_equal(unstructured_data,
+                                                 reg_mesh_data,
+                                                 decimals)
 
     @staticmethod
     def get_mesh_tally_data(tally, structured=False):
@@ -247,7 +236,7 @@ class UnstructuredMeshTest(PyAPITestHarness):
 
 param_values = (['collision', 'tracklength'], # estimators
                 [True, False], # geometry outside of the mesh
-                [(333, 90, 77), (,)]) # location of holes in the mesh
+                [(333, 90, 77), None]) # location of holes in the mesh
 test_cases = []
 for estimator, ext_geom, holes in product(*param_values):
     test_cases.append({'estimator' : estimator,

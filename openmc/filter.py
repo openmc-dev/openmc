@@ -119,9 +119,6 @@ class Filter(IDManagerMixin, metaclass=FilterMeta):
         else:
             return np.allclose(self.bins, other.bins)
 
-    def __ne__(self, other):
-        return not self == other
-
     def __gt__(self, other):
         if type(self) is not type(other):
             if self.short_name in _FILTER_TYPES and \

@@ -21,9 +21,6 @@ class EqualityMixin:
 
         return True
 
-    def __ne__(self, other):
-        return not self.__eq__(other)
-
 
 class IDWarning(UserWarning):
     pass

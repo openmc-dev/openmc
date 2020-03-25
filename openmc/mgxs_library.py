@@ -57,7 +57,7 @@ class XSdata:
         Name of the mgxs data set.
     energy_groups : openmc.mgxs.EnergyGroups
         Energy group structure
-    representation : {'isotropic', REPRESENTATION_ANGLE}, optional
+    representation : {'isotropic', 'angle'}, optional
         Method used in generating the MGXS (isotropic or angle-dependent flux
         weighting). Defaults to 'isotropic'
     temperatures : Iterable of float
@@ -88,7 +88,7 @@ class XSdata:
         Either the Legendre order, number of bins, or number of points used to
         describe the angular distribution associated with each group-to-group
         transfer probability.
-    representation : {'isotropic', REPRESENTATION_ANGLE}
+    representation : {'isotropic', 'angle'}
         Method used in generating the MGXS (isotropic or angle-dependent flux
         weighting).
     num_azimuthal : int

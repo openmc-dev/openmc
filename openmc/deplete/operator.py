@@ -10,13 +10,10 @@ densities is all done in-memory instead of through the filesystem.
 import sys
 import copy
 from collections import OrderedDict
-from itertools import chain
 import os
-import time
 import xml.etree.ElementTree as ET
 from warnings import warn
 
-import h5py
 import numpy as np
 from uncertainties import ufloat
 

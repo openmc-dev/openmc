@@ -43,18 +43,10 @@ class CrossScore:
 
     """
 
-    def __init__(self, left_score=None, right_score=None, binary_op=None):
-
-        self._left_score = None
-        self._right_score = None
-        self._binary_op = None
-
-        if left_score is not None:
-            self.left_score = left_score
-        if right_score is not None:
-            self.right_score = right_score
-        if binary_op is not None:
-            self.binary_op = binary_op
+    def __init__(self, left_score, right_score, binary_op):
+        self.left_score = left_score
+        self.right_score = right_score
+        self.binary_op = binary_op
 
     def __hash__(self):
         return hash(repr(self))
@@ -62,13 +54,9 @@ class CrossScore:
     def __eq__(self, other):
         return str(other) == str(self)
 
-    def __ne__(self, other):
-        return not self == other
-
     def __repr__(self):
-        string = '({} {} {})'.format(self.left_score, self.binary_op,
-                                     self.right_score)
-        return string
+        return '({} {} {})'.format(self.left_score, self.binary_op,
+                                   self.right_score)
 
     @property
     def left_score(self):
@@ -127,27 +115,16 @@ class CrossNuclide:
 
     """
 
-    def __init__(self, left_nuclide=None, right_nuclide=None, binary_op=None):
-
-        self._left_nuclide = None
-        self._right_nuclide = None
-        self._binary_op = None
-
-        if left_nuclide is not None:
-            self.left_nuclide = left_nuclide
-        if right_nuclide is not None:
-            self.right_nuclide = right_nuclide
-        if binary_op is not None:
-            self.binary_op = binary_op
+    def __init__(self, left_nuclide, right_nuclide, binary_op):
+        self.left_nuclide = left_nuclide
+        self.right_nuclide = right_nuclide
+        self.binary_op = binary_op
 
     def __hash__(self):
         return hash(repr(self))
 
     def __eq__(self, other):
         return str(other) == str(self)
-
-    def __ne__(self, other):
-        return not self == other
 
     def __repr__(self):
         return self.name
@@ -239,21 +216,10 @@ class CrossFilter:
 
     """
 
-    def __init__(self, left_filter, right_filter, binary_op=None):
-        left_type = left_filter.type
-        right_type = right_filter.type
-        self._type = '({} {} {})'.format(left_type, binary_op, right_type)
-
-        self._left_filter = None
-        self._right_filter = None
-        self._binary_op = None
-
-        if left_filter is not None:
-            self.left_filter = left_filter
-        if right_filter is not None:
-            self.right_filter = right_filter
-        if binary_op is not None:
-            self.binary_op = binary_op
+    def __init__(self, left_filter, right_filter, binary_op):
+        self.left_filter = left_filter
+        self.right_filter = right_filter
+        self.binary_op = binary_op
 
     def __hash__(self):
         return hash((self.left_filter, self.right_filter))
@@ -261,19 +227,13 @@ class CrossFilter:
     def __eq__(self, other):
         return str(other) == str(self)
 
-    def __ne__(self, other):
-        return not self == other
-
     def __repr__(self):
-        filter_type = '({} {} {})'.format(self.left_filter.type,
-                                          self.binary_op,
-                                          self.right_filter.type)
         filter_bins = '({} {} {})'.format(self.left_filter.bins,
                                           self.binary_op,
                                           self.right_filter.bins)
         parts = [
             'CrossFilter',
-            '{: <16}=\t{}'.format('\tType', filter_type),
+            '{: <16}=\t{}'.format('\tType', self.type),
             '{: <16}=\t{}'.format('\tBins', filter_bins)
         ]
         return '\n'.join(parts)
@@ -292,7 +252,9 @@ class CrossFilter:
 
     @property
     def type(self):
-        return self._type
+        left_type = self.left_filter.type
+        right_type = self.right_filter.type
+        return '({} {} {})'.format(left_type, self.binary_op, right_type)
 
     @property
     def bins(self):
@@ -304,15 +266,6 @@ class CrossFilter:
             return self.left_filter.num_bins * self.right_filter.num_bins
         else:
             return 0
-
-    @type.setter
-    def type(self, filter_type):
-        if filter_type not in _FILTER_TYPES:
-            msg = 'Unable to set CrossFilter type to "{}" since it ' \
-                  'is not one of the supported types'.format(filter_type)
-            raise ValueError(msg)
-
-        self._type = filter_type
 
     @left_filter.setter
     def left_filter(self, left_filter):
@@ -451,9 +404,6 @@ class AggregateScore:
     def __eq__(self, other):
         return str(other) == str(self)
 
-    def __ne__(self, other):
-        return not self == other
-
     def __repr__(self):
         string = ', '.join(map(str, self.scores))
         string = '{}({})'.format(self.aggregate_op, string)
@@ -523,9 +473,6 @@ class AggregateNuclide:
 
     def __eq__(self, other):
         return str(other) == str(self)
-
-    def __ne__(self, other):
-        return not self == other
 
     def __repr__(self):
 
@@ -615,9 +562,6 @@ class AggregateFilter:
 
     def __eq__(self, other):
         return str(other) == str(self)
-
-    def __ne__(self, other):
-        return not self == other
 
     def __gt__(self, other):
         if self.type != other.type:

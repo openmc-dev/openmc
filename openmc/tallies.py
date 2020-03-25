@@ -1097,7 +1097,7 @@ class Tally(IDManagerMixin):
             return np.arange(self.num_nuclides)
 
         # Determine the score indices from any of the requested scores
-        nuclide_indices = np.zeros(len(nuclides), dtype=int)
+        nuclide_indices = np.zeros_like(nuclides, dtype=int)
         for i, nuclide in enumerate(nuclides):
             nuclide_indices[i] = self.get_nuclide_index(nuclide)
         return nuclide_indices

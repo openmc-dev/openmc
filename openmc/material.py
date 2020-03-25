@@ -794,10 +794,10 @@ class Material(IDManagerMixin):
         xml_element = ET.Element("nuclide")
         xml_element.set("name", nuclide[0])
 
-        if nuclide[2] == 'ao':
-            xml_element.set("ao", str(nuclide[1]))
+        if nuclide.percent_type == 'ao':
+            xml_element.set("ao", str(nuclide.percent))
         else:
-            xml_element.set("wo", str(nuclide[1]))
+            xml_element.set("wo", str(nuclide.percent))
 
         return xml_element
 

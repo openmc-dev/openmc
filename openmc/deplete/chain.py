@@ -822,7 +822,30 @@ class Chain(object):
         return valid
 
     def reduce(self, initial_isotopes, level=None):
-        """Reduce the size of the chain by follwing transmutation paths
+        """Reduce the size of the chain by following transmutation paths
+
+        As an example, consider a simple chain with the following
+        isotopes and transmutation paths::
+
+            U235 (n,gamma) U236
+                 (n,fission) (Xe135, I135, Cs135)
+            I135 (beta decay) Xe135 (beta decay) Cs135
+            Xe135 (n,gamma) Xe136
+
+        Calling ``chain.reduce(["I135"])`` will produce a depletion
+        chain that contains only isotopes that would originate from
+        I135: I135, Xe135, Cs135, and Xe136. U235 and U236 will not
+        be included, but multiple isotopes can be used to start
+        the search.
+
+        The ``level`` value controls the depth of the search.
+        ``chain.reduce(["U235"], level=1)`` would return a chain
+        with all isotopes except Xe136, since it is two transmutations
+        removed from U235 in this case.
+
+        While targets will not be included in the new chain, the
+        total destruction rate and decay rate of included isotopes
+        will be preserved.
 
         Parameters
         ----------
@@ -839,6 +862,8 @@ class Chain(object):
         Returns
         -------
         Chain
+            Depletion chain containing isotopes that would appear
+            after following up to ``level`` reactions and decay paths
 
         """
         check_type("initial_isotopes", initial_isotopes, Iterable, str)

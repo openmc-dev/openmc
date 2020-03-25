@@ -129,17 +129,17 @@ class Tally(IDManagerMixin):
 
     def __repr__(self):
         parts = ['Tally']
-        parts.append('{: <16}=\t{}'.format('\tID', self.id))
-        parts.append('{: <16}=\t{}'.format('\tName', self.name))
+        parts.append('{: <15}=\t{}'.format('ID', self.id))
+        parts.append('{: <15}=\t{}'.format('Name', self.name))
         if self.derivative is not None:
-            parts.append('{: <16}=\t{}'.format('\tDerivative ID', self.derivative.id))
+            parts.append('{: <15}=\t{}'.format('Derivative ID', self.derivative.id))
         filters = ', '.join(type(f).__name__ for f in self.filters)
-        parts.append('{: <16}=\t{}'.format('\tFilters', filters))
+        parts.append('{: <15}=\t{}'.format('Filters', filters))
         nuclides = ' '.join(str(nuclide) for nuclide in self.nuclides)
-        parts.append('{: <16}=\t'.format('\tNuclides', nuclides))
-        parts.append('{: <16}=\t{}\n'.format('\tScores', self.scores))
-        parts.append('{: <16}=\t{}\n'.format('\tEstimator', self.estimator))
-        return '\n'.join(parts)
+        parts.append('{: <15}=\t{}'.format('Nuclides', nuclides))
+        parts.append('{: <15}=\t{}'.format('Scores', self.scores))
+        parts.append('{: <15}=\t{}'.format('Estimator', self.estimator))
+        return '\n\t'.join(parts)
 
     @property
     def name(self):

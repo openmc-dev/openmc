@@ -58,9 +58,10 @@ class Material(IDManagerMixin):
         applies in the case of a multi-group calculation.
     depletable : bool
         Indicate whether the material is depletable.
-    nuclides : list of tuple
-        List in which each item is a 3-tuple consisting of a nuclide string, the
-        percent density, and the percent type ('ao' or 'wo').
+    nuclides : list of namedtuple
+        List in which each item is a namedtuple consisting of a nuclide string,
+        the percent density, and the percent type ('ao' or 'wo'). The namedtuple
+        has field names ``name``, ``percent``, and ``percent_type``.
     isotropic : list of str
         Nuclides for which elastic scattering should be treated as though it
         were isotropic in the laboratory system.

@@ -74,6 +74,10 @@ if(HDF5_IS_PARALLEL)
   message(STATUS "Using parallel HDF5")
 endif()
 
+if(${HDF5_VERSION} VERSION_LESS "1.12.0") 
+  list(APPEND cxxflags -DHDF5_LEGACY)
+endif()
+
 #===============================================================================
 # Set compile/link flags based on which compiler is being used
 #===============================================================================

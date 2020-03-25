@@ -632,8 +632,7 @@ class UnstructuredMesh(MeshBase):
     @filename.setter
     def filename(self, filename):
         if filename is not None:
-            cv.check_type('Unstructured Mesh filename: {}'.format(filename),
-                          filename, str)
+            cv.check_type('Unstructured Mesh filename', filename, str)
             self._filename = filename
         else:
             self.filename = ''
@@ -663,8 +662,7 @@ class UnstructuredMesh(MeshBase):
 
     def __repr__(self):
         string = super().__repr__()
-        string += '{0: <16}{1}{2}\n'.format('\tFilename', '=\t', self.filename)
-        return string
+        return string + '{: <16}=\t{}\n'.format('\tFilename', self.filename)
 
     @classmethod
     def from_hdf5(cls, group):
@@ -674,7 +672,7 @@ class UnstructuredMesh(MeshBase):
         mesh.filename = group['filename'][()].decode()
         vol_data = group['volumes'][()]
         centroids = group['centroids'][()]
-        mesh.volumes = np.reshape(vol_data, (vol_data.shape[0], 1))
+        mesh.volumes = np.reshape(vol_data, (vol_data.shape[0],))
         mesh.centroids = np.reshape(centroids, (vol_data.shape[0], 3))
 
         return mesh

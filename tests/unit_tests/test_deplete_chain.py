@@ -479,18 +479,18 @@ def test_reduce(gnd_simple_chain):
     assert u5_round0.n_decay_modes == ref_U5.n_decay_modes
     for newmode, refmode in zip(u5_round0.decay_modes, ref_U5.decay_modes):
         assert newmode.target is None
-        assert newmode.type == refmode.type, newmode
-        assert newmode.branching_ratio == refmode.branching_ratio, newmode
+        assert newmode.type == refmode.type
+        assert newmode.branching_ratio == refmode.branching_ratio
 
     assert u5_round0.n_reaction_paths == ref_U5.n_reaction_paths
     for newrxn, refrxn in zip(u5_round0.reactions, ref_U5.reactions):
-        assert newrxn.target is None, newrxn
-        assert newrxn.type == refrxn.type, newrxn
-        assert newrxn.Q == refrxn.Q, newrxn
-        assert newrxn.branching_ratio == refrxn.branching_ratio, newrxn
+        assert newrxn.target is None
+        assert newrxn.type == refrxn.type
+        assert newrxn.Q == refrxn.Q
+        assert newrxn.branching_ratio == refrxn.branching_ratio
 
     assert u5_round0.yield_data is not None
-    assert u5_round0.yield_data.products == ("I135", )
+    assert u5_round0.yield_data.products == ("I135",)
     assert u5_round0.yield_data.yield_matrix == (
             ref_U5_yields.yield_matrix[:, ref_U5_yields.products.index("I135")]
     )
@@ -499,15 +499,15 @@ def test_reduce(gnd_simple_chain):
     assert bareI5.n_decay_modes == ref_iodine.n_decay_modes
     for newmode, refmode in zip(bareI5.decay_modes, ref_iodine.decay_modes):
         assert newmode.target is None
-        assert newmode.type == refmode.type, newmode
-        assert newmode.branching_ratio == refmode.branching_ratio, newmode
+        assert newmode.type == refmode.type
+        assert newmode.branching_ratio == refmode.branching_ratio
 
     assert bareI5.n_reaction_paths == ref_iodine.n_reaction_paths
     for newrxn, refrxn in zip(bareI5.reactions, ref_iodine.reactions):
-        assert newrxn.target is None, newrxn
-        assert newrxn.type == refrxn.type, newrxn
-        assert newrxn.Q == refrxn.Q, newrxn
-        assert newrxn.branching_ratio == refrxn.branching_ratio, newrxn
+        assert newrxn.target is None
+        assert newrxn.type == refrxn.type
+        assert newrxn.Q == refrxn.Q
+        assert newrxn.branching_ratio == refrxn.branching_ratio
 
     follow_u5 = gnd_simple_chain.reduce(["U235"], 1)
     u5_round1 = follow_u5["U235"]

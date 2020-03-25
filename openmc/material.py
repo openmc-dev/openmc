@@ -184,21 +184,17 @@ class Material(IDManagerMixin):
 
     @property
     def average_molar_mass(self):
-
-        # Get a list of all the nuclides, with elements expanded
-        nuclide_densities = self.get_nuclide_densities()
-
         # Using the sum of specified atomic or weight amounts as a basis, sum
         # the mass and moles of the material
         mass = 0.
         moles = 0.
-        for nuc, vals in nuclide_densities.items():
-            if vals[2] == 'ao':
-                mass += vals[1] * openmc.data.atomic_mass(nuc)
-                moles += vals[1]
+        for nuc in self.nuclides:
+            if nuc.percent_type == 'ao':
+                mass += nuc.percent * openmc.data.atomic_mass(nuc.name)
+                moles += nuc.percent
             else:
-                moles += vals[1] / openmc.data.atomic_mass(nuc)
-                mass += vals[1]
+                moles += nuc.percent / openmc.data.atomic_mass(nuc.name)
+                mass += nuc.percent
 
         # Compute and return the molar mass
         return mass / moles
@@ -625,8 +621,8 @@ class Material(IDManagerMixin):
         # keep ordered dictionary for testing purposes
         nuclides = OrderedDict()
 
-        for nuclide, density, density_type in self._nuclides:
-            nuclides[nuclide] = (nuclide, density, density_type)
+        for nuclide in self._nuclides:
+            nuclides[nuclide.name] = nuclide
 
         return nuclides
 
@@ -641,9 +637,6 @@ class Material(IDManagerMixin):
             (nuclide, density in atom/b-cm)
 
         """
-
-        # Expand elements in to nuclides
-        nuclides = self.get_nuclide_densities()
 
         sum_density = False
         if self.density_units == 'sum':
@@ -661,16 +654,15 @@ class Material(IDManagerMixin):
             density = 1.E-24 * self.density
 
         # For ease of processing split out nuc, nuc_density,
-        # and nuc_density_type in to separate arrays
+        # and nuc_density_type into separate arrays
         nucs = []
         nuc_densities = []
         nuc_density_types = []
 
-        for nuclide in nuclides.items():
-            nuc, nuc_density, nuc_density_type = nuclide[1]
-            nucs.append(nuc)
-            nuc_densities.append(nuc_density)
-            nuc_density_types.append(nuc_density_type)
+        for nuclide in self.nuclides:
+            nucs.append(nuclide.name)
+            nuc_densities.append(nuclide.percent)
+            nuc_density_types.append(nuclide.percent_type)
 
         nucs = np.array(nucs)
         nuc_densities = np.array(nuc_densities)
@@ -792,7 +784,7 @@ class Material(IDManagerMixin):
 
     def _get_nuclide_xml(self, nuclide):
         xml_element = ET.Element("nuclide")
-        xml_element.set("name", nuclide[0])
+        xml_element.set("name", nuclide.name)
 
         if nuclide.percent_type == 'ao':
             xml_element.set("ao", str(nuclide.percent))

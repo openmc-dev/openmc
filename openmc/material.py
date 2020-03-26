@@ -722,6 +722,18 @@ class Material(IDManagerMixin):
     def make_isotropic_in_lab(self):
         self.isotropic = [x[0] for x in self._nuclides]
 
+    def get_elements(self):
+        """Returns all elements in the material
+
+        Returns
+        -------
+        elements : list of str
+            List of element names
+
+        """
+
+        return list({re.split(r'(\d+)', i)[0] for i in self.get_nuclides()})
+
     def get_nuclides(self):
         """Returns all nuclides in the material
 

@@ -655,7 +655,7 @@ class UnstructuredMesh(MeshBase):
     @centroids.setter
     def centroids(self, centroids):
         cv.check_type("Unstructured mesh centroids", centroids,
-                      Iterable, Iterable)
+                      Iterable, Real)
         self._centroids = centroids
 
     def __repr__(self):

@@ -209,7 +209,7 @@ class UnstructuredMeshTest(PyAPITestHarness):
 
             # we expect these results to be the same to within at least ten
             # decimal places
-            decimals = 8
+            decimals = 10 if self.estimator == 'collision' else 8
             np.testing.assert_array_almost_equal(unstructured_data,
                                                  reg_mesh_data,
                                                  decimals)

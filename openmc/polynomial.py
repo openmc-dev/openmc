@@ -29,7 +29,7 @@ def legendre_from_expcoef(coef, domain=(-1, 1)):
     return np.polynomial.Legendre(c, domain)
 
 
-class Polynomial(object):
+class Polynomial:
     """Abstract Polynomial Class for creating polynomials.
     """
     def __init__(self, coef):
@@ -82,24 +82,24 @@ class ZernikeRadial(Polynomial):
 
 class Zernike(Polynomial):
     r"""Create Zernike polynomials given coefficients and domain.
-    
+
     The azimuthal Zernike polynomials are defined as in :class:`ZernikeFilter`.
-    
+
     Parameters
     ----------
     coef : Iterable of float
         A list of coefficients of each term in radial only Zernike polynomials
     radius : float
         Domain of Zernike polynomials to be applied on. Default is 1.
-        
+
     Attributes
     ----------
     order : int
         The maximum (even) order of Zernike polynomials.
     radius : float
         Domain of Zernike polynomials to be applied on. Default is 1.
-    theta : float 
-        Azimuthal of Zernike polynomial to be applied on. Default is 0.    
+    theta : float
+        Azimuthal of Zernike polynomial to be applied on. Default is 0.
     norm_coef : iterable of float
         The list of coefficients of each term in the polynomials after
         normailization.
@@ -115,7 +115,7 @@ class Zernike(Polynomial):
             for m in range(-n, n + 1, 2):
                 j = int((n*(n + 2) + m)/2)
                 if m == 0:
-                    norm_vec[j] = n + 1 
+                    norm_vec[j] = n + 1
                 else:
                     norm_vec[j] = 2*n + 2
         norm_vec /= (math.pi * radius**2)

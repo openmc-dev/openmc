@@ -75,7 +75,7 @@ except AttributeError:
     pass
 
 
-class Nuclide(object):
+class Nuclide:
     """Decay modes, reactions, and fission yields for a single nuclide.
 
     Parameters

@@ -298,12 +298,12 @@ def generate_geometry(n_rings, n_wedges):
     lattice.outer = all_water_u
 
     # Bound universe
-    x_low = openmc.XPlane(-pitch*n_pin/2, 'reflective')
-    x_high = openmc.XPlane(pitch*n_pin/2, 'reflective')
-    y_low = openmc.YPlane(-pitch*n_pin/2, 'reflective')
-    y_high = openmc.YPlane(pitch*n_pin/2, 'reflective')
-    z_low = openmc.ZPlane(-10, 'reflective')
-    z_high = openmc.ZPlane(10, 'reflective')
+    x_low = openmc.XPlane(-pitch*n_pin/2, boundary_type='reflective')
+    x_high = openmc.XPlane(pitch*n_pin/2, boundary_type='reflective')
+    y_low = openmc.YPlane(-pitch*n_pin/2, boundary_type='reflective')
+    y_high = openmc.YPlane(pitch*n_pin/2, boundary_type='reflective')
+    z_low = openmc.ZPlane(-10, boundary_type='reflective')
+    z_high = openmc.ZPlane(10, boundary_type='reflective')
 
     # Compute bounding box
     lower_left = [-pitch*n_pin/2, -pitch*n_pin/2, -10]

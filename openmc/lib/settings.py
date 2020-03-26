@@ -15,7 +15,7 @@ _dll.openmc_set_seed.argtypes = [c_int64]
 _dll.openmc_get_seed.restype = c_int64
 
 
-class _Settings(object):
+class _Settings:
     # Attributes that are accessed through a descriptor
     batches = _DLLGlobal(c_int32, 'n_batches')
     cmfd_run = _DLLGlobal(c_bool, 'cmfd_run')

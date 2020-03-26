@@ -20,11 +20,12 @@ class UnstructuredMeshTest(PyAPITestHarness):
 
     def __init__(self,
                  statepoint_name,
+                 inputs_true,
                  estimator='collision',
                  external_geom=False,
                  holes=None):
 
-        super().__init__(statepoint_name)
+        super().__init__(statepoint_name, inputs_true=inputs_true)
 
         self.estimator = estimator # tally estimator type
         self.external_geom = external_geom # geometry size matches mesh
@@ -188,9 +189,6 @@ class UnstructuredMeshTest(PyAPITestHarness):
 
         settings.export_to_xml()
 
-    def _compare_inputs(self):
-        pass
-
     def _compare_results(self):
         with openmc.StatePoint(self._sp_name) as sp:
             # loop over the tallies and get data
@@ -238,10 +236,12 @@ param_values = (['collision', 'tracklength'], # estimators
                 [True, False], # geometry outside of the mesh
                 [(333, 90, 77), None]) # location of holes in the mesh
 test_cases = []
-for estimator, ext_geom, holes in product(*param_values):
+for i, (estimator, ext_geom, holes) in enumerate(product(*param_values)):
     test_cases.append({'estimator' : estimator,
                        'external_geom' : ext_geom,
-                       'holes' : holes})
+                       'holes' : holes,
+                       'inputs_true' : 'inputs_true{}.dat'.format(i)})
+inputs = ['inputs_true{}.dat'.format(i) for i, opts in enumerate(test_cases)]
 
 
 @pytest.mark.parametrize("opts", test_cases)

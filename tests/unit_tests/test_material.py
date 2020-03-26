@@ -230,7 +230,7 @@ def test_get_elements():
 
     # test addition of a single element
     m.add_element('Li', 0.2)
-    assert 'Li' in m.get_elements()
+    assert m.get_elements() == ["Li"]
 
     # test that adding the same element
     m.add_element('Li', 0.3)
@@ -246,7 +246,7 @@ def test_get_elements():
     # test removal of nuclides
     m.remove_nuclide('O16')
     m.remove_nuclide('O17')
-    assert m.get_elements() == ["Si", "Li"]
+    assert m.get_elements() == ["Li", "Si"]
 
 
 def test_get_nuclide_densities(uo2):

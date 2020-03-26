@@ -1623,10 +1623,11 @@ void
 UnstructuredMesh::intersect_track(const moab::CartVect& start,
                                   const moab::CartVect& dir,
                                   double track_len,
-                                  UnstructuredMeshHits& hits) const {
+                                  std::vector<double>& hits) const {
+  hits.clear();
+
   moab::ErrorCode rval;
   std::vector<moab::EntityHandle> tris;
-  std::vector<double> intersection_dists;
   // get all intersections with triangles in the tet mesh
   // (distances are relative to the start point, not the previous intersection)
   rval = kdtree_->ray_intersect_triangles(kdtree_root_,
@@ -1634,18 +1635,15 @@ UnstructuredMesh::intersect_track(const moab::CartVect& start,
                                           dir.array(),
                                           start.array(),
                                           tris,
-                                          intersection_dists,
+                                          hits,
                                           0,
                                           track_len);
   if (rval != moab::MB_SUCCESS) {
     fatal_error("Failed to compute intersections on unstructured mesh: " + filename_);
   }
 
-  // sort the hit triangles and intersections by distance
-  hits.clear();
-  for (int i = 0; i < tris.size(); i++) {
-    hits.push_back(std::pair<double, moab::EntityHandle>(intersection_dists[i], tris[i]));
-  }
+  // remove duplicate intersection distances
+  std::unique(hits.begin(), hits.end());
 
   // sorts by first component of std::pair by default
   std::sort(hits.begin(), hits.end());
@@ -1655,6 +1653,7 @@ void
 UnstructuredMesh::bins_crossed(const Particle* p,
                                std::vector<int>& bins,
                                std::vector<double>& lengths) const {
+
   moab::ErrorCode rval;
   Position last_r{p->r_last_};
   Position r{p->r()};
@@ -1669,12 +1668,15 @@ UnstructuredMesh::bins_crossed(const Particle* p,
   r0 -= TINY_BIT * dir;
   r1 += TINY_BIT * dir;
 
-  UnstructuredMeshHits hits;
+  std::vector<double> hits;
   intersect_track(r0, dir, track_len, hits);
 
   bins.clear();
   lengths.clear();
 
+  // if there are no intersections the track may lie entirely
+  // within a single tet. If this is the case, apply entire
+  // score to that tet and return.
   if (hits.size() == 0) {
     Position midpoint = last_r + u * (track_len * 0.5);
     int bin = this->get_bin(midpoint);
@@ -1691,25 +1693,31 @@ UnstructuredMesh::bins_crossed(const Particle* p,
   double last_dist = 0.0;
   for (const auto& hit : hits) {
     // get the segment length
-    double segment_length = hit.first - last_dist;
-    last_dist = hit.first;
-    // determine the start point for this segment
-    current = last_r + u * hit.first;
+    double segment_length = hit - last_dist;
+    last_dist = hit;
     // find the midpoint of this segment
     Position midpoint = current + u * (segment_length * 0.5);
     // try to find a tet for this position
     int bin = this->get_bin(midpoint);
 
-    if (bin == -1) { continue; }
+    // determine the start point for this segment
+    current = last_r + u * hit;
+
+    if (bin == -1) {
+      continue;
+    }
 
     bins.push_back(bin);
     lengths.push_back(segment_length / track_len);
+
   }
 
-  // check end of the track to see if that section lies in a tet
-  if (hits.back().first < track_len) {
-    Position segment_start = last_r + u * hits.back().first;
-    double segment_length = track_len - hits.back().first;
+  // tally remaining portion of track after last hit if
+  // the last segment of the track is in the mesh but doesn't
+  // reach the other side of the tet
+  if (hits.back() < track_len) {
+    Position segment_start = last_r + u * hits.back();
+    double segment_length = track_len - hits.back();
     Position midpoint = segment_start + u * (segment_length * 0.5);
     int bin = this->get_bin(midpoint);
     if (bin != -1) {
@@ -1717,87 +1725,6 @@ UnstructuredMesh::bins_crossed(const Particle* p,
       lengths.push_back(segment_length / track_len);
     }
   }
-
-  return;
-
-  // // if there are no intersections the track may lie entirely
-  // // within a single tet. If this is the case, apply entire
-  // // score to that tet and return.
-  // if (hits.size() == 0) {
-  //   moab::EntityHandle last_r_tet = get_tet(last_r + u * track_len * 0.5);
-  //   if (last_r_tet) {
-  //     bins.push_back(get_bin_from_ent_handle(last_r_tet));
-  //     lengths.push_back(1.0);
-  //   }
-  //   return;
-  // }
-
-  // // attempt to find the containing tet for the first track segment
-  // moab::EntityHandle tet = get_tet(last_r + u * hits.front().first / 2.0);
-  // double last_dist = 0.0;
-
-  // // make sure first segment is inside a tet. If it is not, we may be starting
-  // // outside of the mesh and our first intersection is an entry point into the
-  // // mesh - update hits and find a containing tet accordingly
-  // if (!tet) {
-  //   last_dist = hits.front().first;
-  //   hits.erase(hits.begin());
-  //   tet = get_tet(last_r + u * (last_dist + hits.front().first) / 2.0);
-  // }
-
-  // // if there are no other hits at this point, apply the score for whatever
-  // // distance lies in this tet and return
-  // if (hits.size() == 0 && tet) {
-  //   bins.push_back(get_bin_from_ent_handle(tet));
-  //   lengths.push_back(1.0);
-  //   lengths.push_back((track_len - last_dist) / track_len);
-  //   return;
-  // }
-
-  // // score all remaining segments
-  // for (const auto& hit : hits) {
-  //   // apply score in this tet if one was found
-  //   if (tet) {
-  //     bins.push_back(get_bin_from_ent_handle(tet));
-  //     lengths.push_back((hit.first - last_dist) / track_len);
-  //   } else {
-  //     warning("No tet found for location between triangle hits");
-  //   }
-
-  //   // update the last distance
-  //   last_dist = hit.first;
-
-  //   // find next tet using the mesh adjacencies
-  //   moab::Range adj_tets;
-  //   rval = mbi_->get_adjacencies(&hit.second, 1, 3, false, adj_tets);
-  //   if (rval != moab::MB_SUCCESS) {
-  //     fatal_error("Failed to get triangle adjacencies from mesh " + filename_);
-  //   }
-
-  //   // if the triangle crossed is adjacent to two triangles
-  //   // update to the tet we're not currently scoring in
-  //   if (adj_tets.size() == 2) {
-  //     tet = tet == adj_tets[0] ? adj_tets[1] : adj_tets[0];
-  //   } else if (adj_tets.size() == 1) {
-  //     tet = adj_tets[0];
-  //   }
-  // } // end hit loop
-
-  // // tally remaining portion of track after last hit if
-  // // the last segment of the track is in the mesh but doesn't
-  // // reach the other side of the tet
-  // if (hits.back().first < track_len) {
-  //   // use position at the midpoint of the current intersection
-  //   // and the end of the track to check for a containing tet
-  //   auto pos = (last_r + u * hits.back().first) + u * ((track_len - hits.back().first) / 2.0);
-  //   tet = get_tet(pos);
-  //   // apply the remainder of the score if a tet is found,
-  //   // otherwise we'll assume we've left the mesh
-  //   if (tet) {
-  //     bins.push_back(get_bin_from_ent_handle(tet));
-  //     lengths.push_back((track_len - hits.back().first) / track_len);
-  //   }
-  // }
 };
 
 moab::EntityHandle

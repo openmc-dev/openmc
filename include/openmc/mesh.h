@@ -251,8 +251,6 @@ private:
 
 class UnstructuredMesh : public Mesh {
 
-  using UnstructuredMeshHits = std::vector<std::pair<double, moab::EntityHandle>>;
-
 public:
   UnstructuredMesh() = default;
   UnstructuredMesh(pugi::xml_node);
@@ -274,7 +272,7 @@ private:
   intersect_track(const moab::CartVect& start,
                   const moab::CartVect& dir,
                   double track_len,
-                  UnstructuredMeshHits& hits) const;
+                  std::vector<double>& hits) const;
 
   //! Calculate the volume for a given tetrahedron handle.
   //

@@ -209,7 +209,7 @@ class UnstructuredMeshTest(PyAPITestHarness):
 
             # we expect these results to be the same to within at least ten
             # decimal places
-            decimals = 10
+            decimals = 8
             np.testing.assert_array_almost_equal(unstructured_data,
                                                  reg_mesh_data,
                                                  decimals)

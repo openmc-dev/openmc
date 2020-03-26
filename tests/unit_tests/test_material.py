@@ -235,7 +235,6 @@ def test_get_elements():
     # test that adding the same element
     m.add_element('Li', 0.3)
     assert m.get_elements() == ["Li"]
-    assert 'Li' in m.get_elements()
 
     # test adding another element
     m.add_element('Si', 0.3)
@@ -243,12 +242,10 @@ def test_get_elements():
 
     # test adding a third element
     m.add_element('O', 0.4)
-    assert len(m.get_elements()) == 3
     assert m.get_elements() == ["Li", "O", "Si"]
     # test removal of nuclides
     m.remove_nuclide('O16')
     m.remove_nuclide('O17')
-    assert 'O' not in m.get_elements()
     assert m.get_elements() == ["Si", "Li"]
 
 

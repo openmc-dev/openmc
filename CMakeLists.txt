@@ -71,9 +71,6 @@ else()
 #===============================================================================
 if(libmesh)
   find_package(LIBMESH REQUIRED)
-  set(LIBMESH_LIBRARIES mesh_devel timpi_devel netcdf)
-  set(LIBMESH_INCLUDE_DIRS "${LIBMESH}/../include/")
-  link_directories(${LIBMESH})
 endif()
 
 #===============================================================================
@@ -377,6 +374,7 @@ target_include_directories(libopenmc
     $<INSTALL_INTERFACE:include>
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
     ${HDF5_INCLUDE_DIRS}
+    ${LIBMESH_INCLUDE_DIRECTORIES}
 )
 
 # Set compile flags
@@ -415,9 +413,7 @@ if(dagmc)
 endif()
 
 if(libmesh)
-  target_compile_definitions(libopenmc PRIVATE LIBMESH)
   target_link_libraries(libopenmc ${LIBMESH_LIBRARIES})
-  target_include_directories(libopenmc PRIVATE ${LIBMESH_INCLUDE_DIRS})
 endif()
 
 #===============================================================================

@@ -732,7 +732,7 @@ class Material(IDManagerMixin):
 
         """
 
-        return list({re.split(r'(\d+)', i)[0] for i in self.get_nuclides()})
+        return sorted({re.split(r'(\d+)', i)[0] for i in self.get_nuclides()})
 
     def get_nuclides(self):
         """Returns all nuclides in the material

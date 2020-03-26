@@ -1,4 +1,5 @@
 from collections.abc import Iterable, MutableSequence, Mapping
+from enum import Enum
 from pathlib import Path
 from numbers import Real, Integral
 import warnings
@@ -11,11 +12,19 @@ from openmc._xml import clean_indentation, get_text
 import openmc.checkvalue as cv
 from openmc import VolumeCalculation, Source, RegularMesh
 
-_RUN_MODES = ['eigenvalue', 'fixed source', 'plot', 'volume', 'particle restart']
+
+class RunMode(Enum):
+    EIGENVALUE = 'eigenvalue'
+    FIXED_SOURCE = 'fixed source'
+    PLOT = 'plot'
+    VOLUME = 'volume'
+    PARTICLE_RESTART = 'particle restart'
+
+
 _RES_SCAT_METHODS = ['dbrc', 'rvs']
 
 
-class Settings(object):
+class Settings:
     """Settings used for an OpenMC simulation.
 
     Attributes
@@ -59,9 +68,9 @@ class Settings(object):
     generations_per_batch : int
         Number of generations per batch
     max_lost_particles : int
-        Maximum number of lost particles       
+        Maximum number of lost particles
     rel_max_lost_particles : int
-        Maximum number of lost particles, relative to the total number of particles      
+        Maximum number of lost particles, relative to the total number of particles
     inactive : int
         Number of inactive batches
     keff_trigger : dict
@@ -174,9 +183,7 @@ class Settings(object):
     """
 
     def __init__(self):
-
-        # Run mode subelement (default is 'eigenvalue')
-        self._run_mode = 'eigenvalue'
+        self._run_mode = RunMode.EIGENVALUE
         self._batches = None
         self._generations_per_batch = None
         self._inactive = None
@@ -246,7 +253,7 @@ class Settings(object):
 
     @property
     def run_mode(self):
-        return self._run_mode
+        return self._run_mode.value
 
     @property
     def batches(self):
@@ -262,11 +269,11 @@ class Settings(object):
 
     @property
     def max_lost_particles(self):
-        return self._max_lost_particles        
+        return self._max_lost_particles
 
     @property
     def rel_max_lost_particles(self):
-        return self._rel_max_lost_particles         
+        return self._rel_max_lost_particles
 
     @property
     def particles(self):
@@ -410,8 +417,10 @@ class Settings(object):
 
     @run_mode.setter
     def run_mode(self, run_mode):
-        cv.check_value('run mode', run_mode, _RUN_MODES)
-        self._run_mode = run_mode
+        cv.check_value('run mode', run_mode, {x.value for x in RunMode})
+        for mode in RunMode:
+            if mode.value == run_mode:
+                self._run_mode = mode
 
     @batches.setter
     def batches(self, batches):
@@ -435,14 +444,14 @@ class Settings(object):
     def max_lost_particles(self, max_lost_particles):
         cv.check_type('max_lost_particles', max_lost_particles, Integral)
         cv.check_greater_than('max_lost_particles', max_lost_particles, 0)
-        self._max_lost_particles = max_lost_particles        
+        self._max_lost_particles = max_lost_particles
 
     @rel_max_lost_particles.setter
     def rel_max_lost_particles(self, rel_max_lost_particles):
         cv.check_type('rel_max_lost_particles', rel_max_lost_particles, Real)
         cv.check_greater_than('rel_max_lost_particles', rel_max_lost_particles, 0)
         cv.check_less_than('rel_max_lost_particles', rel_max_lost_particles, 1)
-        self._rel_max_lost_particles = rel_max_lost_particles          
+        self._rel_max_lost_particles = rel_max_lost_particles
 
     @particles.setter
     def particles(self, particles):
@@ -769,7 +778,7 @@ class Settings(object):
 
     def _create_run_mode_subelement(self, root):
         elem = ET.SubElement(root, "run_mode")
-        elem.text = self._run_mode
+        elem.text = self._run_mode.value
 
     def _create_batches_subelement(self, root):
         if self._batches is not None:
@@ -789,12 +798,12 @@ class Settings(object):
     def _create_max_lost_particles_subelement(self, root):
         if self._max_lost_particles is not None:
             element = ET.SubElement(root, "max_lost_particles")
-            element.text = str(self._max_lost_particles)    
+            element.text = str(self._max_lost_particles)
 
     def _create_rel_max_lost_particles_subelement(self, root):
         if self._rel_max_lost_particles is not None:
             element = ET.SubElement(root, "rel_max_lost_particles")
-            element.text = str(self._rel_max_lost_particles)                     
+            element.text = str(self._rel_max_lost_particles)
 
     def _create_particles_subelement(self, root):
         if self._particles is not None:
@@ -1069,12 +1078,12 @@ class Settings(object):
     def _max_lost_particles_from_xml_element(self, root):
         text = get_text(root, 'max_lost_particles')
         if text is not None:
-            self.max_lost_particles = int(text)     
+            self.max_lost_particles = int(text)
 
     def _rel_max_lost_particles_from_xml_element(self, root):
         text = get_text(root, 'rel_max_lost_particles')
         if text is not None:
-            self.rel_max_lost_particles = float(text)                       
+            self.rel_max_lost_particles = float(text)
 
     def _generations_per_batch_from_xml_element(self, root):
         text = get_text(root, 'generations_per_batch')

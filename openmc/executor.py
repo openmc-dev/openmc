@@ -3,7 +3,6 @@ import subprocess
 from numbers import Integral
 
 import openmc
-from openmc import VolumeCalculation
 
 
 def _run(args, output, cwd):
@@ -201,7 +200,7 @@ def run(particles=None, threads=None, geometry_debug=False,
 
     if geometry_debug:
         args.append('-g')
-    
+
     if event_based:
         args.append('-e')
 

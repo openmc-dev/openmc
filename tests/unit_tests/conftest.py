@@ -108,11 +108,11 @@ def mixed_lattice_model(uo2, water):
         [empty_univ, u]
     ]
 
-    xmin = openmc.XPlane(-d, 'periodic')
-    xmax = openmc.XPlane(d, 'periodic')
+    xmin = openmc.XPlane(-d, boundary_type='periodic')
+    xmax = openmc.XPlane(d, boundary_type='periodic')
     xmin.periodic_surface = xmax
-    ymin = openmc.YPlane(-d, 'periodic')
-    ymax = openmc.YPlane(d, 'periodic')
+    ymin = openmc.YPlane(-d, boundary_type='periodic')
+    ymax = openmc.YPlane(d, boundary_type='periodic')
     main_cell = openmc.Cell(fill=rect_lattice,
                             region=+xmin & -xmax & +ymin & -ymax)
 

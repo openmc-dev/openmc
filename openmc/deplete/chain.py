@@ -141,7 +141,7 @@ _SECONDARY_PARTICLES = {
 }
 
 
-class Chain(object):
+class Chain:
     """Full representation of a depletion chain.
 
     A depletion chain can be created by using the :meth:`from_endf` method which

@@ -19,7 +19,7 @@ _VERSION_RESULTS = (1, 0)
 __all__ = ["Results"]
 
 
-class Results(object):
+class Results:
     """Output of a depletion run
 
     Attributes

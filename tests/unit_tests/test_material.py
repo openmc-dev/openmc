@@ -234,6 +234,32 @@ def test_isotropic():
     assert m2.isotropic == ['H1']
 
 
+def test_get_elements():
+    # test that zero elements exist on creation
+    m = openmc.Material()
+    assert len(m.get_elements()) == 0
+
+    # test addition of a single element
+    m.add_element('Li', 0.2)
+    assert m.get_elements() == ["Li"]
+
+    # test that adding the same element
+    m.add_element('Li', 0.3)
+    assert m.get_elements() == ["Li"]
+
+    # test adding another element
+    m.add_element('Si', 0.3)
+    assert m.get_elements() == ["Li", "Si"]
+
+    # test adding a third element
+    m.add_element('O', 0.4)
+    assert m.get_elements() == ["Li", "O", "Si"]
+    # test removal of nuclides
+    m.remove_nuclide('O16')
+    m.remove_nuclide('O17')
+    assert m.get_elements() == ["Li", "Si"]
+
+
 def test_get_nuclide_densities(uo2):
     nucs = uo2.get_nuclide_densities()
     for nuc, density, density_type in nucs.values():

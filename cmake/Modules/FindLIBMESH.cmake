@@ -7,15 +7,14 @@
 #  LIBMESH_LIBRARIES - Link these to use LIBMESH
 #  LIBMESH_DEFINITIONS - Compiler switches required for using LIBMESH
 
-find_path(LIBMESH NAMES libmesh_opt.so
+find_path(LIBMESH_PC NAMES libmesh-opt.pc
           HINTS ${LIBMESH_ROOT} $ENV{LIBMESH_ROOT}
           PATHS ENV LD_LIBRARY_PATH
-          PATH_SUFFIXES lib Lib
+          PATH_SUFFIXES lib/pkgconfig pkgconfig
           NO_DEFAULT_PATH)
 
-if(DEFINED LIBMESH)
-  set(LIBMESH_FOUND TRUE)
-endif()
+include(FindPkgConfig)
+set(ENV{PKG_CONFIG_PATH} "$ENV{PKG_CONFIG_PATH}:${LIBMESH_PC}")
+pkg_check_modules(LIBMESH REQUIRED libmesh IMPORTED_TARGET)
 
-
-message(STATUS "Found LIBMESH in ${LIBMESH}")
+message(STATUS "Found LIBMESH in ${LIBMESH_PC}")

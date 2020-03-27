@@ -19,7 +19,7 @@ _VERSION_RESULTS = (1, 0)
 __all__ = ["Results"]
 
 
-class Results(object):
+class Results:
     """Output of a depletion run
 
     Attributes
@@ -36,7 +36,7 @@ class Results(object):
         Number of nuclides.
     rates : list of ReactionRates
         The reaction rates for each substep.
-    volume : OrderedDict of int to float
+    volume : OrderedDict of str to float
         Dictionary mapping mat id to volume.
     mat_to_ind : OrderedDict of str to int
         A dictionary mapping mat ID as string to index.

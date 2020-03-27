@@ -7,7 +7,7 @@ from collections.abc import Iterable
 import openmc.checkvalue as cv
 
 
-class Trigger(object):
+class Trigger:
     """A criterion for when to finish a simulation based on tally uncertainties.
 
     Parameters
@@ -37,9 +37,6 @@ class Trigger(object):
 
     def __eq__(self, other):
         return str(self) == str(other)
-
-    def __ne__(self, other):
-        return not self == other
 
     def __repr__(self):
         string = 'Trigger\n'

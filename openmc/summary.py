@@ -12,7 +12,7 @@ from openmc.region import Region
 _VERSION_SUMMARY = 6
 
 
-class Summary(object):
+class Summary:
     """Summary of geometry, materials, and tallies used in a simulation.
 
     Attributes

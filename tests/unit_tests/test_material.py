@@ -1,8 +1,11 @@
+from collections import defaultdict
+
+import pytest
+
 import openmc
+import openmc.examples
 import openmc.model
 import openmc.stats
-import openmc.examples
-import pytest
 
 
 def test_attributes(uo2):
@@ -11,8 +14,8 @@ def test_attributes(uo2):
     assert uo2.depletable
 
 
-def test_nuclides(uo2):
-    """Test adding/removing nuclides."""
+def test_add_nuclide():
+    """Test adding nuclides."""
     m = openmc.Material()
     m.add_nuclide('U235', 1.0)
     with pytest.raises(TypeError):
@@ -21,7 +24,18 @@ def test_nuclides(uo2):
         m.add_nuclide(1.0, 'H1')
     with pytest.raises(ValueError):
         m.add_nuclide('H1', 1.0, 'oa')
-    m.remove_nuclide('U235')
+
+
+def test_remove_nuclide():
+    """Test removing nuclides."""
+    m = openmc.Material()
+    for nuc, percent in [('H1', 1.0), ('H2', 1.0), ('H1', 2.0), ('H2', 2.0)]:
+        m.add_nuclide(nuc, percent)
+    m.remove_nuclide('H1')
+    assert len(m.nuclides) == 2
+    assert all(nuc.name == 'H2' for nuc in m.nuclides)
+    assert m.nuclides[0].percent == 1.0
+    assert m.nuclides[1].percent == 2.0
 
 
 def test_elements():
@@ -57,6 +71,97 @@ def test_elements_by_name():
     c.add_element('S', 1.0)
     assert a._nuclides == b._nuclides
     assert b._nuclides == c._nuclides
+
+
+def test_add_elements_by_formula():
+    """Test adding elements from a formula"""
+    # testing the correct nuclides and elements are added to a material
+    m = openmc.Material()
+    m.add_elements_from_formula('Li4SiO4')
+    # checking the ratio of elements is 4:1:4 for Li:Si:O
+    elem = defaultdict(float)
+    for nuclide, adens in m.get_nuclide_atom_densities().values():
+        if nuclide.startswith("Li"):
+            elem["Li"] += adens
+        if nuclide.startswith("Si"):
+            elem["Si"] += adens
+        if nuclide.startswith("O"):
+            elem["O"] += adens
+    total_number_of_atoms = 9
+    assert elem["Li"] == pytest.approx(4./total_number_of_atoms)
+    assert elem["Si"] == pytest.approx(1./total_number_of_atoms)
+    assert elem["O"] == pytest.approx(4/total_number_of_atoms)
+    # testing the correct nuclides are added to the Material
+    ref_dens = {'Li6': 0.033728, 'Li7': 0.410715,
+                'Si28': 0.102477, 'Si29': 0.0052035, 'Si30': 0.0034301,
+                'O16': 0.443386, 'O17': 0.000168}
+    nuc_dens = m.get_nuclide_atom_densities()
+    for nuclide in ref_dens:
+        assert nuc_dens[nuclide][1] == pytest.approx(ref_dens[nuclide], 1e-2)
+
+    # testing the correct nuclides are added to the Material when enriched
+    m = openmc.Material()
+    m.add_elements_from_formula('Li4SiO4',
+                                enrichment=60.,
+                                enrichment_target='Li6')
+    ref_dens = {'Li6': 0.2666, 'Li7': 0.1777,
+                'Si28': 0.102477, 'Si29': 0.0052035, 'Si30': 0.0034301,
+                'O16': 0.443386, 'O17': 0.000168}
+    nuc_dens = m.get_nuclide_atom_densities()
+    for nuclide in ref_dens:
+        assert nuc_dens[nuclide][1] == pytest.approx(ref_dens[nuclide], 1e-2)
+
+    # testing the use of brackets
+    m = openmc.Material()
+    m.add_elements_from_formula('Mg2(NO3)2')
+
+    # checking the ratio of elements is 2:2:6 for Mg:N:O
+    elem = defaultdict(float)
+    for nuclide, adens in m.get_nuclide_atom_densities().values():
+        if nuclide.startswith("Mg"):
+            elem["Mg"] += adens
+        if nuclide.startswith("N"):
+            elem["N"] += adens
+        if nuclide.startswith("O"):
+            elem["O"] += adens
+    total_number_of_atoms = 10
+    assert elem["Mg"] == pytest.approx(2./total_number_of_atoms)
+    assert elem["N"] == pytest.approx(2./total_number_of_atoms)
+    assert elem["O"] == pytest.approx(6/total_number_of_atoms)
+
+    # testing the correct nuclides are added when brackets are used
+    ref_dens = {'Mg24': 0.157902, 'Mg25': 0.02004, 'Mg26': 0.022058,
+                'N14': 0.199267, 'N15': 0.000732,
+                'O16': 0.599772, 'O17': 0.000227}
+    nuc_dens = m.get_nuclide_atom_densities()
+    for nuclide in ref_dens:
+        assert nuc_dens[nuclide][1] == pytest.approx(ref_dens[nuclide], 1e-2)
+
+    # testing non integer multiplier results in a value error
+    m = openmc.Material()
+    with pytest.raises(ValueError):
+        m.add_elements_from_formula('Li4.2SiO4')
+
+    # testing lowercase elements results in a value error
+    m = openmc.Material()
+    with pytest.raises(ValueError):
+        m.add_elements_from_formula('li4SiO4')
+
+    # testing lowercase elements results in a value error
+    m = openmc.Material()
+    with pytest.raises(ValueError):
+        m.add_elements_from_formula('Li4Sio4')
+
+    # testing incorrect character in formula results in a value error
+    m = openmc.Material()
+    with pytest.raises(ValueError):
+        m.add_elements_from_formula('Li4$SiO4')
+
+    # testing unequal opening and closing brackets
+    m = openmc.Material()
+    with pytest.raises(ValueError):
+        m.add_elements_from_formula('Fe(H2O)4(OH)2)')
+
 
 def test_density():
     m = openmc.Material()
@@ -127,6 +232,32 @@ def test_isotropic():
     mats.make_isotropic_in_lab()
     assert m1.isotropic == ['U235', 'O16']
     assert m2.isotropic == ['H1']
+
+
+def test_get_elements():
+    # test that zero elements exist on creation
+    m = openmc.Material()
+    assert len(m.get_elements()) == 0
+
+    # test addition of a single element
+    m.add_element('Li', 0.2)
+    assert m.get_elements() == ["Li"]
+
+    # test that adding the same element
+    m.add_element('Li', 0.3)
+    assert m.get_elements() == ["Li"]
+
+    # test adding another element
+    m.add_element('Si', 0.3)
+    assert m.get_elements() == ["Li", "Si"]
+
+    # test adding a third element
+    m.add_element('O', 0.4)
+    assert m.get_elements() == ["Li", "O", "Si"]
+    # test removal of nuclides
+    m.remove_nuclide('O16')
+    m.remove_nuclide('O17')
+    assert m.get_elements() == ["Li", "Si"]
 
 
 def test_get_nuclide_densities(uo2):
@@ -264,4 +395,3 @@ def test_mix_materials():
     assert m3.density == pytest.approx(dens3)
     assert m4.density == pytest.approx(dens4)
     assert m5.density == pytest.approx(dens5)
-

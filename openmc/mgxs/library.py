@@ -15,7 +15,7 @@ import openmc.checkvalue as cv
 from openmc.tallies import ESTIMATOR_TYPES
 
 
-class Library(object):
+class Library:
     """A multi-energy-group and multi-delayed-group cross section library for
     some energy group structure.
 

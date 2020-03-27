@@ -4,7 +4,8 @@ import openmc.checkvalue as cv
 
 _VERSION_PARTICLE_RESTART = 2
 
-class Particle(object):
+
+class Particle:
     """Information used to restart a specific particle that caused a simulation to
     fail.
 

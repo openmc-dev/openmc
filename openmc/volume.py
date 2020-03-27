@@ -15,7 +15,7 @@ import openmc.checkvalue as cv
 _VERSION_VOLUME = 1
 
 
-class VolumeCalculation(object):
+class VolumeCalculation:
     """Stochastic volume calculation specifications and results.
 
     Parameters

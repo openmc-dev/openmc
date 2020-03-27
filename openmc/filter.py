@@ -36,13 +36,16 @@ _PARTICLES = {'neutron', 'photon', 'electron', 'positron'}
 
 
 class FilterMeta(ABCMeta):
+    """Metaclass for filters that ensures class names are appropriate."""
+
     def __new__(cls, name, bases, namespace, **kwargs):
         # Check the class name.
-        if not name.endswith('Filter'):
+        required_suffix = 'Filter'
+        if not name.endswith(required_suffix):
             raise ValueError("All filter class names must end with 'Filter'")
 
         # Create a 'short_name' attribute that removes the 'Filter' suffix.
-        namespace['short_name'] = name[:-6]
+        namespace['short_name'] = name[:-len(required_suffix)]
 
         # Subclass methods can sort of inherit the docstring of parent class
         # methods.  If a function is defined without a docstring, most (all?)
@@ -51,7 +54,7 @@ class FilterMeta(ABCMeta):
         # use that docstring.  However, Sphinx does not have that functionality.
         # This chunk of code handles this docstring inheritance manually so that
         # the autodocumentation will pick it up.
-        if name != 'Filter':
+        if name != required_suffix:
             # Look for newly-defined functions that were also in Filter.
             for func_name in namespace:
                 if func_name in Filter.__dict__:
@@ -70,6 +73,12 @@ class FilterMeta(ABCMeta):
 
         # Make the class.
         return super().__new__(cls, name, bases, namespace, **kwargs)
+
+
+def _repeat_and_tile(bins, repeat_factor, data_size):
+    filter_bins = np.repeat(bins, repeat_factor)
+    tile_factor = data_size // len(filter_bins)
+    return np.tile(filter_bins, tile_factor)
 
 
 class Filter(IDManagerMixin, metaclass=FilterMeta):
@@ -109,9 +118,6 @@ class Filter(IDManagerMixin, metaclass=FilterMeta):
             return False
         else:
             return np.allclose(self.bins, other.bins)
-
-    def __ne__(self, other):
-        return not self == other
 
     def __gt__(self, other):
         if type(self) is not type(other):
@@ -292,8 +298,8 @@ class Filter(IDManagerMixin, metaclass=FilterMeta):
         if type(self) is not type(other):
             return False
 
-        for bin in other.bins:
-            if bin not in self.bins:
+        for b in other.bins:
+            if b not in self.bins:
                 return False
 
         return True
@@ -389,8 +395,7 @@ class WithIDFilter(Filter):
         # Extract ID values
         bins = np.array([b if isinstance(b, Integral) else b.id
                          for b in bins])
-        self.bins = bins
-        self.id = filter_id
+        super().__init__(bins, filter_id)
 
     def check_bins(self, bins):
         # Check the bin values.
@@ -663,6 +668,16 @@ class ParticleFilter(Filter):
         The number of filter bins
 
     """
+    def __eq__(self, other):
+        if type(self) is not type(other):
+            return False
+        elif len(self.bins) != len(other.bins):
+            return False
+        else:
+            return np.all(self.bins == other.bins)
+
+    __hash__ = Filter.__hash__
+
     @Filter.bins.setter
     def bins(self, bins):
         bins = np.atleast_1d(bins)
@@ -804,28 +819,16 @@ class MeshFilter(Filter):
             ny = nz = 1
 
         # Generate multi-index sub-column for x-axis
-        filter_bins = np.arange(1, nx + 1)
-        repeat_factor = stride
-        filter_bins = np.repeat(filter_bins, repeat_factor)
-        tile_factor = data_size // len(filter_bins)
-        filter_bins = np.tile(filter_bins, tile_factor)
-        filter_dict[(mesh_key, 'x')] = filter_bins
+        filter_dict[mesh_key, 'x'] = _repeat_and_tile(
+            np.arange(1, nx + 1), stride, data_size)
 
         # Generate multi-index sub-column for y-axis
-        filter_bins = np.arange(1, ny + 1)
-        repeat_factor = nx * stride
-        filter_bins = np.repeat(filter_bins, repeat_factor)
-        tile_factor = data_size // len(filter_bins)
-        filter_bins = np.tile(filter_bins, tile_factor)
-        filter_dict[(mesh_key, 'y')] = filter_bins
+        filter_dict[mesh_key, 'y'] = _repeat_and_tile(
+            np.arange(1, ny + 1), nx * stride, data_size)
 
         # Generate multi-index sub-column for z-axis
-        filter_bins = np.arange(1, nz + 1)
-        repeat_factor = nx * ny * stride
-        filter_bins = np.repeat(filter_bins, repeat_factor)
-        tile_factor = data_size // len(filter_bins)
-        filter_bins = np.tile(filter_bins, tile_factor)
-        filter_dict[(mesh_key, 'z')] = filter_bins
+        filter_dict[mesh_key, 'z'] = _repeat_and_tile(
+            np.arange(1, nz + 1), nx * ny * stride, data_size)
 
         # Initialize a Pandas DataFrame from the mesh dictionary
         df = pd.concat([df, pd.DataFrame(filter_dict)])
@@ -933,37 +936,22 @@ class MeshSurfaceFilter(MeshFilter):
             ny = nz = 1
 
         # Generate multi-index sub-column for x-axis
-        filter_bins = np.arange(1, nx + 1)
-        repeat_factor = n_surfs * stride
-        filter_bins = np.repeat(filter_bins, repeat_factor)
-        tile_factor = data_size // len(filter_bins)
-        filter_bins = np.tile(filter_bins, tile_factor)
-        filter_dict[(mesh_key, 'x')] = filter_bins
+        filter_dict[mesh_key, 'x'] = _repeat_and_tile(
+            np.arange(1, nx + 1), n_surfs * stride, data_size)
 
         # Generate multi-index sub-column for y-axis
         if len(self.mesh.dimension) > 1:
-            filter_bins = np.arange(1, ny + 1)
-            repeat_factor = n_surfs * nx * stride
-            filter_bins = np.repeat(filter_bins, repeat_factor)
-            tile_factor = data_size // len(filter_bins)
-            filter_bins = np.tile(filter_bins, tile_factor)
-            filter_dict[(mesh_key, 'y')] = filter_bins
+            filter_dict[mesh_key, 'y'] = _repeat_and_tile(
+                np.arange(1, ny + 1), n_surfs * nx * stride, data_size)
 
         # Generate multi-index sub-column for z-axis
         if len(self.mesh.dimension) > 2:
-            filter_bins = np.arange(1, nz + 1)
-            repeat_factor = n_surfs * nx * ny * stride
-            filter_bins = np.repeat(filter_bins, repeat_factor)
-            tile_factor = data_size // len(filter_bins)
-            filter_bins = np.tile(filter_bins, tile_factor)
-            filter_dict[(mesh_key, 'z')] = filter_bins
+            filter_dict[mesh_key, 'z'] = _repeat_and_tile(
+                np.arange(1, nz + 1), n_surfs * nx * ny * stride, data_size)
 
         # Generate multi-index sub-column for surface
-        repeat_factor = stride
-        filter_bins = np.repeat(_CURRENT_NAMES[:n_surfs], repeat_factor)
-        tile_factor = data_size // len(filter_bins)
-        filter_bins = np.tile(filter_bins, tile_factor)
-        filter_dict[(mesh_key, 'surf')] = filter_bins
+        filter_dict[mesh_key, 'surf'] = _repeat_and_tile(
+            _CURRENT_NAMES[:n_surfs], stride, data_size)
 
         # Initialize a Pandas DataFrame from the mesh dictionary
         return pd.concat([df, pd.DataFrame(filter_dict)])
@@ -1386,8 +1374,8 @@ class DistribcellFilter(Filter):
         Returns
         -------
         pandas.DataFrame
-            A Pandas DataFrame with columns describing distributed cells.  The
-            for will be either:
+            A Pandas DataFrame with columns describing distributed cells. The
+            dataframe will have either:
 
             1. a single column with the cell instance IDs (without summary info)
             2. separate columns for the cell IDs, universe IDs, and lattice IDs
@@ -1479,10 +1467,8 @@ class DistribcellFilter(Filter):
 
                 # Tile the Multi-index columns
                 for level_key, level_bins in level_dict.items():
-                    level_bins = np.repeat(level_bins, stride)
-                    tile_factor = data_size // len(level_bins)
-                    level_bins = np.tile(level_bins, tile_factor)
-                    level_dict[level_key] = level_bins
+                    level_dict[level_key] = _repeat_and_tile(
+                        level_bins, stride, data_size)
 
                 # Initialize a Pandas DataFrame from the level dictionary
                 if level_df is None:
@@ -1494,10 +1480,8 @@ class DistribcellFilter(Filter):
         # Create DataFrame column for distribcell instance IDs
         # NOTE: This is performed regardless of whether the user
         # requests Summary geometric information
-        filter_bins = np.arange(self.num_bins)
-        filter_bins = np.repeat(filter_bins, stride)
-        tile_factor = data_size // len(filter_bins)
-        filter_bins = np.tile(filter_bins, tile_factor)
+        filter_bins = _repeat_and_tile(
+            np.arange(self.num_bins), stride, data_size)
         df = pd.DataFrame({self.short_name.lower() : filter_bins})
 
         # Concatenate with DataFrame of distribcell instance IDs
@@ -1709,10 +1693,8 @@ class EnergyFunctionFilter(Filter):
             return False
         elif not all(self.energy == other.energy):
             return False
-        elif not all(self.y == other.y):
-            return False
         else:
-            return True
+            return all(self.y == other.y)
 
     def __gt__(self, other):
         if type(self) is not type(other):
@@ -1905,9 +1887,7 @@ class EnergyFunctionFilter(Filter):
         # hex characters) of the digest are probably sufficient.
         out = out[:14]
 
-        filter_bins = np.repeat(out, stride)
-        tile_factor = data_size // len(filter_bins)
-        filter_bins = np.tile(filter_bins, tile_factor)
+        filter_bins = _repeat_and_tile(out, stride, data_size)
         df = pd.concat([df, pd.DataFrame(
             {self.short_name.lower(): filter_bins})])
 

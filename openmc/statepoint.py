@@ -14,7 +14,7 @@ import openmc.checkvalue as cv
 _VERSION_STATEPOINT = 17
 
 
-class StatePoint(object):
+class StatePoint:
     """State information on a simulation at a certain point in time (at the end
     of a given batch). Statepoints can be used to analyze tally results as well
     as restart a simulation.
@@ -311,7 +311,7 @@ class StatePoint(object):
         if self.run_mode == 'eigenvalue':
             return self._f['n_inactive'][()]
         else:
-            return None                  
+            return None
 
     @property
     def n_particles(self):

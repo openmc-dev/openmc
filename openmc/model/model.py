@@ -216,8 +216,8 @@ class Model:
 
         self.export_to_xml()
 
-        # Setting tstart here ensures we don't pick up any old statepoint
-        # files that might preexist in the output directory
+        # Setting tstart here ensures we don't pick up any pre-existing statepoint
+        # files in the output directory
         tstart = time.time()
         last_statepoint = None
 

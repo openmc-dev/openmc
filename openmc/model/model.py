@@ -198,18 +198,18 @@ class Model:
             self.plots.export_to_xml(d)
 
     def run(self, **kwargs):
-        """Creates the XML files, runs OpenMC, and returns k-effective.
-        The last statepoint Path is available in model.statepoint
+        """Creates the XML files, runs OpenMC, and returns the path to the last
+        statepoint file generated.
 
         Parameters
         ----------
         **kwargs
-            All keyword arguments are passed to :func:`openmc.run`
+            Keyword arguments passed to :func:`openmc.run`
 
         Returns
         -------
         Path
-            the name of the last statepoint written by this run
+            Path to the last statepoint written by this run
             (None if no statepoint was written)
 
         """

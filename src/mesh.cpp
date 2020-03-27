@@ -30,6 +30,7 @@
 
 #ifdef LIBMESH
 #include "libmesh/mesh_tools.h"
+#include "libmesh/numeric_vector.h"
 #endif
 
 namespace openmc {
@@ -1411,9 +1412,9 @@ openmc_extend_meshes(int32_t n, const char* type, int32_t* index_start,
 }
 
 //! Adds a new unstructured mesh to OpenMC
-extern "C" int openmc_add_unstrucutred_mesh(const char filename[],
+extern "C" int openmc_add_unstructured_mesh(const char filename[],
                                             const char library[],
-                                            int* mesh_id)
+                                            int* id)
 {
   bool valid_lib = false;
 #ifdef DAGMC
@@ -1436,12 +1437,12 @@ extern "C" int openmc_add_unstrucutred_mesh(const char filename[],
     return OPENMC_E_INVALID_ARGUMENT;
   }
 
-  int id = 0;
-  for (const auto& m : model::meshes) { id = std::max(m->id_, id); }
+  int mesh_id = 0;
+  for (const auto& m : model::meshes) { mesh_id = std::max(m->id_, mesh_id); }
 
-  id += 1;
-  model::meshes.back()->id_ = id;
-  *mesh_id = id;
+  mesh_id += 1;
+  model::meshes.back()->id_ = mesh_id;
+  *id = mesh_id;
 
   return 0;
 }
@@ -2273,7 +2274,7 @@ LibMesh::get_indices_from_bin(int bin, int* ijk) const {
 
 const libMesh::Elem*
 LibMesh::get_element_from_bin(int bin) const {
-  m_->elem_ptr(bin);
+  return m_->elem_ptr(bin);
 }
 
 void
@@ -2297,7 +2298,7 @@ LibMesh::set_variable(const std::string& var_name, int bin, double value) {
   std::vector<libMesh::dof_id_type> dof_indices;
   dof_map.dof_indices(e, dof_indices, var_num);
   Ensures(dof_indices.size() == 1);
-  (*eqn_sys.solution).set(dof_indices[0], value);
+  eqn_sys.solution->set(dof_indices[0], value);
 }
 
 void LibMesh::write(const std::string& filename) const {
@@ -2327,7 +2328,7 @@ LibMesh::bins_crossed(const Particle* p,
   lengths.clear();
 
   for (const auto& hit : hits) {
-    lengths.push_back(hit->first / track_len);
+    lengths.push_back(hit.first / track_len);
     bins.push_back(get_bin_from_element(hit.second));
   }
 }

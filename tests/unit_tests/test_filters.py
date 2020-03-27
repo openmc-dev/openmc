@@ -173,10 +173,10 @@ def test_first_moment(run_in_tmpdir, box_model):
     for t in box_model.tallies:
         t.estimator = 'analog'
 
-    box_model.run()
+    sp_name = box_model.run()
 
     # Check that first moment matches the score from the plain tally
-    with openmc.StatePoint('statepoint.10.h5') as sp:
+    with openmc.StatePoint(sp_name) as sp:
         # Get scores from tally without expansion filters
         flux, scatter = sp.tallies[plain_tally.id].mean.ravel()
 

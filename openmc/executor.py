@@ -1,6 +1,6 @@
 from collections.abc import Iterable
-import subprocess
 from numbers import Integral
+import subprocess
 
 import openmc
 

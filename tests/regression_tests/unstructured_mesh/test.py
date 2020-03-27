@@ -22,7 +22,7 @@ class UnstructuredMeshTest(PyAPITestHarness):
                  statepoint_name,
                  model,
                  inputs_true,
-                 holes=None):
+                 holes):
 
         super().__init__(statepoint_name, model=model, inputs_true=inputs_true)
 
@@ -83,8 +83,8 @@ for i, (estimator, ext_geom, holes) in enumerate(product(*param_values)):
                        'inputs_true' : 'inputs_true{}.dat'.format(i)})
 
 
-@pytest.mark.parametrize("opts", test_cases)
-def test_unstructured_mesh(opts):
+@pytest.mark.parametrize("test_opts", test_cases)
+def test_unstructured_mesh(test_opts):
 
     ### Materials ###
     materials = openmc.Materials()
@@ -141,7 +141,7 @@ def test_unstructured_mesh(opts):
                          +clad_min_z & -clad_max_z)
     clad_cell.fill = zirc_mat
 
-    if opts['external_geom']:
+    if test_opts['external_geom']:
         bounds = (15, 15, 15)
     else:
         bounds = (10, 10, 10)
@@ -189,7 +189,7 @@ def test_unstructured_mesh(opts):
 
     regular_mesh_filter = openmc.MeshFilter(mesh=regular_mesh)
 
-    if opts['holes']:
+    if test_opts['holes']:
         mesh_filename = "test_mesh_tets_w_holes.h5m"
     else:
         mesh_filename = "test_mesh_tets.h5m"
@@ -204,13 +204,13 @@ def test_unstructured_mesh(opts):
     regular_mesh_tally = openmc.Tally(name="regular mesh tally")
     regular_mesh_tally.filters = [regular_mesh_filter]
     regular_mesh_tally.scores = ['flux']
-    regular_mesh_tally.estimator = opts['estimator']
+    regular_mesh_tally.estimator = test_opts['estimator']
     tallies.append(regular_mesh_tally)
 
     uscd_tally = openmc.Tally(name="unstructured mesh tally")
     uscd_tally.filters = [uscd_filter]
     uscd_tally.scores = ['flux']
-    uscd_tally.estimator = opts['estimator']
+    uscd_tally.estimator = test_opts['estimator']
     tallies.append(uscd_tally)
 
     ### Settings ###
@@ -241,6 +241,6 @@ def test_unstructured_mesh(opts):
 
     harness = UnstructuredMeshTest('statepoint.10.h5',
                                    model,
-                                   opts['inputs_true'],
-                                   holes=opts['holes'])
+                                   test_opts['inputs_true'],
+                                   test_opts['holes'])
     harness.main()

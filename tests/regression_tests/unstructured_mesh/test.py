@@ -241,7 +241,6 @@ for i, (estimator, ext_geom, holes) in enumerate(product(*param_values)):
                        'external_geom' : ext_geom,
                        'holes' : holes,
                        'inputs_true' : 'inputs_true{}.dat'.format(i)})
-inputs = ['inputs_true{}.dat'.format(i) for i, opts in enumerate(test_cases)]
 
 
 @pytest.mark.parametrize("opts", test_cases)

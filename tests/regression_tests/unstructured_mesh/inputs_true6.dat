@@ -1,34 +1,34 @@
 <?xml version='1.0' encoding='utf-8'?>
 <geometry>
-  <cell id="43" material="31" name="fuel" region="126 -127 128 -129 130 -131" universe="15" />
-  <cell id="44" material="32" name="clad" region="(-126 | 127 | -128 | 129 | -130 | 131) (132 -133 134 -135 136 -137)" universe="15" />
-  <cell id="45" material="33" name="water" region="(-132 | 133 | -134 | 135 | -136 | 137) (138 -139 140 -141 142 -143)" universe="15" />
-  <surface coeffs="-5.0" id="126" name="minimum x" type="x-plane" />
-  <surface coeffs="5.0" id="127" name="maximum x" type="x-plane" />
-  <surface coeffs="-5.0" id="128" name="minimum y" type="y-plane" />
-  <surface coeffs="5.0" id="129" name="maximum y" type="y-plane" />
-  <surface coeffs="-5.0" id="130" name="minimum z" type="z-plane" />
-  <surface coeffs="5.0" id="131" name="maximum z" type="z-plane" />
-  <surface coeffs="-6.0" id="132" name="minimum x" type="x-plane" />
-  <surface coeffs="6.0" id="133" name="maximum x" type="x-plane" />
-  <surface coeffs="-6.0" id="134" name="minimum y" type="y-plane" />
-  <surface coeffs="6.0" id="135" name="maximum y" type="y-plane" />
-  <surface coeffs="-6.0" id="136" name="minimum z" type="z-plane" />
-  <surface coeffs="6.0" id="137" name="maximum z" type="z-plane" />
-  <surface boundary="vacuum" coeffs="-10" id="138" name="minimum x" type="x-plane" />
-  <surface boundary="vacuum" coeffs="10" id="139" name="maximum x" type="x-plane" />
-  <surface boundary="vacuum" coeffs="-10" id="140" name="minimum y" type="y-plane" />
-  <surface boundary="vacuum" coeffs="10" id="141" name="maximum y" type="y-plane" />
-  <surface boundary="vacuum" coeffs="-10" id="142" name="minimum z" type="z-plane" />
-  <surface boundary="vacuum" coeffs="10" id="143" name="maximum z" type="z-plane" />
+  <cell id="19" material="19" name="fuel" region="109 -110 111 -112 113 -114" universe="7" />
+  <cell id="20" material="20" name="clad" region="(-109 | 110 | -111 | 112 | -113 | 114) (115 -116 117 -118 119 -120)" universe="7" />
+  <cell id="21" material="21" name="water" region="(-115 | 116 | -117 | 118 | -119 | 120) (121 -122 123 -124 125 -126)" universe="7" />
+  <surface coeffs="-5.0" id="109" name="minimum x" type="x-plane" />
+  <surface coeffs="5.0" id="110" name="maximum x" type="x-plane" />
+  <surface coeffs="-5.0" id="111" name="minimum y" type="y-plane" />
+  <surface coeffs="5.0" id="112" name="maximum y" type="y-plane" />
+  <surface coeffs="-5.0" id="113" name="minimum z" type="z-plane" />
+  <surface coeffs="5.0" id="114" name="maximum z" type="z-plane" />
+  <surface coeffs="-6.0" id="115" name="minimum x" type="x-plane" />
+  <surface coeffs="6.0" id="116" name="maximum x" type="x-plane" />
+  <surface coeffs="-6.0" id="117" name="minimum y" type="y-plane" />
+  <surface coeffs="6.0" id="118" name="maximum y" type="y-plane" />
+  <surface coeffs="-6.0" id="119" name="minimum z" type="z-plane" />
+  <surface coeffs="6.0" id="120" name="maximum z" type="z-plane" />
+  <surface boundary="vacuum" coeffs="-10" id="121" name="minimum x" type="x-plane" />
+  <surface boundary="vacuum" coeffs="10" id="122" name="maximum x" type="x-plane" />
+  <surface boundary="vacuum" coeffs="-10" id="123" name="minimum y" type="y-plane" />
+  <surface boundary="vacuum" coeffs="10" id="124" name="maximum y" type="y-plane" />
+  <surface boundary="vacuum" coeffs="-10" id="125" name="minimum z" type="z-plane" />
+  <surface boundary="vacuum" coeffs="10" id="126" name="maximum z" type="z-plane" />
 </geometry>
 <?xml version='1.0' encoding='utf-8'?>
 <materials>
-  <material depletable="true" id="31" name="fuel">
+  <material depletable="true" id="19" name="fuel">
     <density units="g/cc" value="4.5" />
     <nuclide ao="1.0" name="U235" />
   </material>
-  <material id="32" name="zircaloy">
+  <material id="20" name="zircaloy">
     <density units="g/cc" value="5.77" />
     <nuclide ao="0.5145" name="Zr90" />
     <nuclide ao="0.1122" name="Zr91" />
@@ -36,7 +36,7 @@
     <nuclide ao="0.1738" name="Zr94" />
     <nuclide ao="0.028" name="Zr96" />
   </material>
-  <material id="33" name="water">
+  <material id="21" name="water">
     <density units="atom/b-cm" value="0.07416" />
     <nuclide ao="2.0" name="H1" />
     <nuclide ao="1.0" name="O16" />

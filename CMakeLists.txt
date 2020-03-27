@@ -123,6 +123,11 @@ if(openmp)
   endif()
 endif()
 
+if (libmesh)
+  list(APPEND cxxflags ${LIBMESH_CFLAGS})
+  list(APPEND ldflags ${LIBMESH_CFLAGS})
+endif()
+
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
 list(APPEND cxxflags -O2)
@@ -374,7 +379,7 @@ target_include_directories(libopenmc
     $<INSTALL_INTERFACE:include>
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
     ${HDF5_INCLUDE_DIRS}
-    ${LIBMESH_INCLUDE_DIRECTORIES}
+    ${LIBMESH_INCLUDE_DIRS}
 )
 
 # Set compile flags
@@ -388,6 +393,9 @@ if (HDF5_IS_PARALLEL)
 endif()
 if (MPI_ENABLED)
   target_compile_definitions(libopenmc PUBLIC -DOPENMC_MPI)
+endif()
+if (libmesh)
+  target_compile_definitions(libopenmc PUBLIC -DLIBMESH)
 endif()
 
 # Set git SHA1 hash as a compile definition

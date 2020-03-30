@@ -143,7 +143,7 @@ int openmc_finalize()
 #endif
 
 #ifdef LIBMESH
-std::unique_ptr<libMesh::LibMeshInit> LMI;
+  settings::LMI.release();
 #endif
 
   return 0;

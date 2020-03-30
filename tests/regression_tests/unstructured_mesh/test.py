@@ -18,14 +18,9 @@ TETS_PER_VOXEL = 12
 
 class UnstructuredMeshTest(PyAPITestHarness):
 
-    def __init__(self,
-                 statepoint_name,
-                 model,
-                 inputs_true,
-                 holes):
+    def __init__(self, statepoint_name, model, inputs_true, holes):
 
-        super().__init__(statepoint_name, model=model, inputs_true=inputs_true)
-
+        super().__init__(statepoint_name, model, inputs_true)
         self.holes = holes # holes in the test mesh
 
     def _compare_results(self):
@@ -223,12 +218,8 @@ def test_unstructured_mesh(test_opts):
     r = openmc.stats.Uniform(a=0.0, b=0.0)
     theta = openmc.stats.Discrete(x=[0.0], p=[1.0])
     phi = openmc.stats.Discrete(x=[0.0], p=[1.0])
-    origin = (0.0, 0.0, 0.0)
 
-    space = openmc.stats.SphericalIndependent(r=r,
-                                              theta=theta,
-                                              phi=phi,
-                                              origin=origin)
+    space = openmc.stats.SphericalIndependent(r, theta, phi)
     angle = openmc.stats.Monodirectional((-1.0, 0.0, 0.0))
     energy = openmc.stats.Discrete(x=[15.e+06], p=[1.0])
     source = openmc.Source(space=space, energy=energy, angle=angle)

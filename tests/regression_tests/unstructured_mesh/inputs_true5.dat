@@ -71,7 +71,7 @@
     <upper_right>10.0 10.0 10.0</upper_right>
   </mesh>
   <mesh id="12" type="unstructured">
-    <mesh_file>test_mesh_tets.h5m</mesh_file>
+    <filename>test_mesh_tets.h5m</filename>
   </mesh>
   <filter id="11" type="mesh">
     <bins>11</bins>

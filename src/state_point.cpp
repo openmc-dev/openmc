@@ -702,7 +702,7 @@ void write_unstructured_mesh_results() {
       // warning and skip writing the mesh
       if (tally->filters().size() > 1) {
         warning(fmt::format("Skipping unstructured mesh writing for tally "
-                            "{0}. More than one filter is present on the tally.",
+                            "{}. More than one filter is present on the tally.",
                             tally->id_));
         break;
       }
@@ -714,7 +714,7 @@ void write_unstructured_mesh_results() {
         for (int i_nuc = 0; i_nuc < tally->nuclides_.size(); i_nuc++) {
 
           // index for this nuclide and score
-          int nuc_score_idx = i_score + i_nuc * tally->scores_.size();
+          int nuc_score_idx = i_score + i_nuc*tally->scores_.size();
 
           // construct result vectors
           std::vector<double> mean_vec, std_dev_vec;
@@ -725,7 +725,7 @@ void write_unstructured_mesh_results() {
             // std. dev.
             double sum_sq = tally->results_(j , nuc_score_idx, TallyResult::SUM_SQ);
             if (n_realizations > 1) {
-              double std_dev = sum_sq / n_realizations - (mean* mean);
+              double std_dev = sum_sq/n_realizations - mean*mean;
               std_dev = std::sqrt(std_dev / (n_realizations - 1));
               std_dev_vec.push_back(std_dev);
             } else {

@@ -1541,8 +1541,8 @@ UnstructuredMesh::UnstructuredMesh(pugi::xml_node node) : Mesh(node)
   }
 
   // get the filename of the unstructured mesh to load
-  if (check_for_node(node, "mesh_file")) {
-    filename_ = get_node_value(node, "mesh_file");
+  if (check_for_node(node, "filename")) {
+    filename_ = get_node_value(node, "filename");
   } else {
     fatal_error("No filename supplied for unstructured mesh with ID: " +
                 std::to_string(id_));
@@ -1652,7 +1652,8 @@ UnstructuredMesh::intersect_track(const moab::CartVect& start,
 void
 UnstructuredMesh::bins_crossed(const Particle* p,
                                std::vector<int>& bins,
-                               std::vector<double>& lengths) const {
+                               std::vector<double>& lengths) const
+{
 
   moab::ErrorCode rval;
   Position last_r{p->r_last_};
@@ -1855,9 +1856,8 @@ UnstructuredMesh::point_in_tet(const moab::CartVect& r, moab::EntityHandle tet) 
 
   // first vertex is used as a reference point for the barycentric data -
   // retrieve its coordinates
-  moab::EntityHandle v_zero = verts[0];
   moab::CartVect p_zero;
-  rval = mbi_->get_coords(&v_zero, 1, p_zero.array());
+  rval = mbi_->get_coords(verts.data(), 1, p_zero.array());
   if (rval != moab::MB_SUCCESS) {
     warning("Failed to get coordinates of a vertex in "
             "unstructured mesh: " + filename_);
@@ -1956,7 +1956,7 @@ UnstructuredMesh::centroid(moab::EntityHandle tet) const {
   }
 
   // compute the centroid of the element vertices
-  moab::CartVect centroid(0.0);
+  moab::CartVect centroid(0.0, 0.0, 0.0);
   for(const auto& coord : coords) {
     centroid += coord;
   }

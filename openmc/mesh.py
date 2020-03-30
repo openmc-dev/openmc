@@ -595,12 +595,12 @@ class UnstructuredMesh(MeshBase):
 
     Parameters
     ----------
+    filename : str
+        Location of the unstructured mesh file
     mesh_id : int
         Unique identifier for the mesh
     name : str
         Name of the mesh
-    filename : str
-        Location of the unstructured mesh file
 
     Attributes
     ----------
@@ -608,7 +608,7 @@ class UnstructuredMesh(MeshBase):
         Unique identifier for the mesh
     name : str
         Name of the mesh
-    mesh_file : str
+    filename : str
         Name of the file containing the unstructured mesh
     volumes : Iterable of float
         Volumes of the unstructured mesh elements
@@ -621,7 +621,7 @@ class UnstructuredMesh(MeshBase):
 
     def __init__(self, filename, mesh_id=None, name=''):
         super().__init__(mesh_id, name)
-        self._filename = filename
+        self.filename = filename
         self._volumes = []
         self._centroids = []
 
@@ -631,8 +631,7 @@ class UnstructuredMesh(MeshBase):
 
     @filename.setter
     def filename(self, filename):
-        cv.check_type('Unstructured Mesh filename: {}'.format(filename),
-                      filename, str)
+        cv.check_type('Unstructured Mesh filename', filename, str)
         self._filename = filename
 
     @property
@@ -689,7 +688,7 @@ class UnstructuredMesh(MeshBase):
         element.set("id", str(self._id))
         element.set("type", "unstructured")
 
-        subelement = ET.SubElement(element, "mesh_file")
+        subelement = ET.SubElement(element, "filename")
         subelement.text = self.filename
 
         return element
@@ -709,7 +708,7 @@ class UnstructuredMesh(MeshBase):
             UnstructuredMesh generated from an XML element
         """
         mesh_id = int(get_text(elem, 'id'))
-        filename = get_text(elem, 'mesh_file')
+        filename = get_text(elem, 'filename')
 
         mesh = cls(filename, mesh_id)
 

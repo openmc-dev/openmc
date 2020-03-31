@@ -21,6 +21,7 @@
 #endif
 
 #define NEUTRON_XS_SIZE 300 // Depleted SMR registers at 296
+#define PHOTON_XS_SIZE 2 // This appears to be the min required to pass the regression tests.
 
 namespace openmc {
 
@@ -258,9 +259,15 @@ public:
   // Data members
 
   // Cross section caches
+
+  // TODO: neutron_xs_ can eventually be converted to an allocated array, with size fixed at runtime
   //std::vector<NuclideMicroXS> neutron_xs_; //!< Microscopic neutron cross sections
   NuclideMicroXS neutron_xs_[NEUTRON_XS_SIZE]; //!< Microscopic neutron cross sections
-  std::vector<ElementMicroXS> photon_xs_; //!< Microscopic photon cross sections
+  
+  // TODO: photon_xs_ can eventually be converted to an allocated array, with size fixed at runtime
+  //std::vector<ElementMicroXS> photon_xs_; //!< Microscopic photon cross sections
+  ElementMicroXS photon_xs_[PHOTON_XS_SIZE]; //!< Microscopic photon cross sections
+
   MacroXS macro_xs_; //!< Macroscopic cross sections
 
   int64_t id_;  //!< Unique ID

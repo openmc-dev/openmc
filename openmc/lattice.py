@@ -7,7 +7,6 @@ from numbers import Real
 from xml.etree import ElementTree as ET
 
 import numpy as np
-import warnings
 import types
 
 import openmc.checkvalue as cv

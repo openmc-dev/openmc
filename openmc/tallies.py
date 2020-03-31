@@ -1,12 +1,10 @@
 from collections.abc import Iterable, MutableSequence
 import copy
-import re
 from functools import partial, reduce
 from itertools import product
 from numbers import Integral, Real
 import operator
 from pathlib import Path
-import warnings
 from xml.etree import ElementTree as ET
 
 import numpy as np

@@ -1,10 +1,6 @@
 from collections.abc import Callable
 from copy import deepcopy
 from io import StringIO
-import sys
-
-import h5py
-import numpy as np
 
 from .data import EV_PER_MEV
 from .endf import get_cont_record, get_list_record, get_tab1_record, Evaluation

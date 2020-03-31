@@ -1,4 +1,4 @@
-from numbers import Integral, Real
+from numbers import Real
 from math import exp, erf, pi, sqrt
 
 import h5py

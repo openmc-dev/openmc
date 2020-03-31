@@ -17,9 +17,8 @@ generates ACE-format cross sections.
 
 from collections import OrderedDict
 import enum
-from pathlib import PurePath, Path
+from pathlib import Path
 import struct
-import sys
 
 import numpy as np
 

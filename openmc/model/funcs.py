@@ -6,8 +6,8 @@ from warnings import warn
 from operator import attrgetter
 
 from openmc import (
-    XPlane, YPlane, Plane, ZCylinder, Quadric, Cylinder, XCylinder,
-    YCylinder, Material, Universe, Cell)
+    XPlane, YPlane, Plane, ZCylinder, Cylinder, XCylinder,
+    YCylinder, Universe, Cell)
 from openmc.checkvalue import (
     check_type, check_value, check_length, check_less_than,
     check_iterable_type)

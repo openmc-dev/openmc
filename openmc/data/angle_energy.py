@@ -1,5 +1,4 @@
 from abc import ABCMeta, abstractmethod
-from io import StringIO
 
 import openmc.data
 from openmc.mixin import EqualityMixin

@@ -1,5 +1,4 @@
 from collections.abc import Iterable
-import re
 import warnings
 
 import numpy as np

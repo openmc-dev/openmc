@@ -1,7 +1,6 @@
 from collections.abc import Iterable
 from numbers import Real
 import copy
-import sys
 
 import numpy as np
 

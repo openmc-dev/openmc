@@ -1,7 +1,7 @@
 from collections import OrderedDict, defaultdict, namedtuple, Counter
 from collections.abc import Iterable
 from copy import deepcopy
-from numbers import Real, Integral
+from numbers import Real
 from pathlib import Path
 import warnings
 import re

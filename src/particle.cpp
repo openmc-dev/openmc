@@ -71,8 +71,11 @@ Particle::Particle()
   }
 
   // Create microscopic cross section caches
-  neutron_xs_.resize(data::nuclides.size());
+  //neutron_xs_.resize(data::nuclides.size());
+  //std::cout << "neutron_xs size = " << data::nuclides.size() << std::endl;
+  assert(NEUTRON_XS_SIZE >= data::nuclides.size());
   photon_xs_.resize(data::elements.size());
+  //std::cout << "photon_xs size = " << data::elements.size() << std::endl;
 }
 
 void

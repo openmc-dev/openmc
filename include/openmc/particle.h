@@ -20,6 +20,7 @@
 #include "DagMC.hpp"
 #endif
 
+#define NEUTRON_XS_SIZE 300 // Depleted SMR registers at 296
 
 namespace openmc {
 
@@ -78,7 +79,7 @@ struct NuclideMicroXS {
 
   // Cross sections for depletion reactions (note that these are not stored in
   // macroscopic cache)
-  double reaction[DEPLETION_RX.size()];
+  double reaction[DEPLETION_RX_SIZE];
 
   // Indicies and factors needed to compute cross sections from the data tables
   int index_grid;        //!< Index on nuclide energy grid
@@ -257,7 +258,8 @@ public:
   // Data members
 
   // Cross section caches
-  std::vector<NuclideMicroXS> neutron_xs_; //!< Microscopic neutron cross sections
+  //std::vector<NuclideMicroXS> neutron_xs_; //!< Microscopic neutron cross sections
+  NuclideMicroXS neutron_xs_[NEUTRON_XS_SIZE]; //!< Microscopic neutron cross sections
   std::vector<ElementMicroXS> photon_xs_; //!< Microscopic photon cross sections
   MacroXS macro_xs_; //!< Macroscopic cross sections
 

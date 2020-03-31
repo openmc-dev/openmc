@@ -248,7 +248,8 @@ enum ReactionType {
   HEATING_LOCAL = 901
 };
 
-constexpr std::array<int, 6> DEPLETION_RX {N_GAMMA, N_P, N_A, N_2N, N_3N, N_4N};
+#define DEPLETION_RX_SIZE 6
+constexpr std::array<int, DEPLETION_RX_SIZE> DEPLETION_RX {N_GAMMA, N_P, N_A, N_2N, N_3N, N_4N};
 
 enum class URRTableParam {
   CUM_PROB,

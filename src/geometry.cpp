@@ -257,7 +257,8 @@ find_cell(Particle* p, bool use_neighbor_lists)
   }
 
   // Reset all the deeper coordinate levels.
-  for (int i = p->n_coord_; i < p->coord_.size(); i++) {
+  //for (int i = p->n_coord_; i < p->coord_.size(); i++) {
+  for (int i = p->n_coord_; i < COORD_SIZE; i++) {
     p->coord_[i].reset();
   }
 

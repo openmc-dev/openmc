@@ -20,8 +20,9 @@
 #include "DagMC.hpp"
 #endif
 
-#define NEUTRON_XS_SIZE 300 // Depleted SMR registers at 296
+#define NEUTRON_XS_SIZE 300 // Depleted SMR uses 296
 #define PHOTON_XS_SIZE 2 // This appears to be the min required to pass the regression tests.
+#define COORD_SIZE 6 // Depleted SMR uses 6
 
 namespace openmc {
 
@@ -275,11 +276,16 @@ public:
 
   int n_coord_ {1};              //!< number of current coordinate levels
   int cell_instance_;            //!< offset for distributed properties
-  std::vector<LocalCoord> coord_; //!< coordinates for all levels
+
+  // TODO: coord_ can eventually be converted to an allocated array, with size fixed at runtime
+  //std::vector<LocalCoord> coord_; //!< coordinates for all levels
+  LocalCoord coord_[COORD_SIZE]; //!< coordinates for all levels
 
   // Particle coordinates before crossing a surface
   int n_coord_last_ {1};      //!< number of current coordinates
-  std::vector<int> cell_last_;  //!< coordinates for all levels
+  // TODO: cell_last__ can eventually be converted to an allocated array, with size fixed at runtime
+  //std::vector<int> cell_last_;  //!< coordinates for all levels
+  int cell_last_[COORD_SIZE];  //!< coordinates for all levels
 
   // Energy data
   double E_;       //!< post-collision energy in eV

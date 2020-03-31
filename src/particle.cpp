@@ -62,8 +62,10 @@ LocalCoord::reset()
 Particle::Particle()
 {
   // Create and clear coordinate levels
-  coord_.resize(model::n_coord_levels);
-  cell_last_.resize(model::n_coord_levels);
+  //coord_.resize(model::n_coord_levels);
+  //std::cout << "coord_ size = " << model::n_coord_levels << std::endl;
+  assert(COORD_SIZE >= model::n_coord_levels);
+  //cell_last_.resize(model::n_coord_levels);
   clear();
 
   for (int& n : n_delayed_bank_) {

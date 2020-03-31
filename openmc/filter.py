@@ -764,7 +764,10 @@ class MeshFilter(Filter):
     def mesh(self, mesh):
         cv.check_type('filter mesh', mesh, openmc.MeshBase)
         self._mesh = mesh
-        self.bins = list(mesh.indices)
+        if isinstance(mesh, openmc.UnstructuredMesh):
+            self.bins = list(range(len(mesh.volumes)))
+        else:
+            self.bins = list(mesh.indices)
 
     def can_merge(self, other):
         # Mesh filters cannot have more than one bin

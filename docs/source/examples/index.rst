@@ -23,7 +23,6 @@ General Usage
     search
     nuclear-data
     nuclear-data-resonance-covariance
-    cad-geom
     pincell-depletion
 
 --------
@@ -36,6 +35,7 @@ Geometry
     hexagonal
     triso
     candu
+    cad-geom
 
 ------------------------------------
 Multi-Group Cross Section Generation
@@ -60,3 +60,13 @@ Multi-Group Mode
     mg-mode-part-i
     mg-mode-part-ii
     mg-mode-part-iii
+
+-----------------
+Unstructured Mesh
+-----------------
+
+.. toctree::
+   :maxdepth: 1
+
+   unstructured-mesh-part-i
+   unstructured-mesh-part-ii

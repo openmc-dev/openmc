@@ -9,11 +9,13 @@
 #ifdef OPENMC_MPI
 #include "mpi.h"
 #endif
+#include <fmt/core.h> // for fmt
 #include "xtensor/xbuilder.hpp"
 #include "xtensor/xeval.hpp"
 #include "xtensor/xmath.hpp"
 #include "xtensor/xsort.hpp"
 #include "xtensor/xtensor.hpp"
+#include "xtensor/xview.hpp"
 
 #include "openmc/capi.h"
 #include "openmc/constants.h"
@@ -21,6 +23,7 @@
 #include "openmc/hdf5_interface.h"
 #include "openmc/message_passing.h"
 #include "openmc/search.h"
+#include "openmc/settings.h"
 #include "openmc/tallies/filter.h"
 #include "openmc/xml_interface.h"
 
@@ -82,11 +85,29 @@ Mesh::Mesh(pugi::xml_node node)
 }
 
 //==============================================================================
+// Structured Mesh implementation
+//==============================================================================
+
+std::string
+StructuredMesh::bin_label(int bin) const {
+  std::vector<int> ijk(n_dimension_);
+  get_indices_from_bin(bin, ijk.data());
+
+  if (n_dimension_ > 2) {
+    return fmt::format("Mesh Index ({}, {}, {})", ijk[0], ijk[1], ijk[2]);
+  } else if (n_dimension_ > 1) {
+    return fmt::format("Mesh Index ({}, {})", ijk[0], ijk[1]);
+  } else {
+    return fmt::format("Mesh Index ({})", ijk[0]) ;
+  }
+}
+
+//==============================================================================
 // RegularMesh implementation
 //==============================================================================
 
 RegularMesh::RegularMesh(pugi::xml_node node)
-  : Mesh {node}
+  : StructuredMesh {node}
 {
   // Determine number of dimensions for mesh
   if (check_for_node(node, "dimension")) {
@@ -792,11 +813,12 @@ void RegularMesh::to_hdf5(hid_t group) const
 }
 
 xt::xtensor<double, 1>
-RegularMesh::count_sites(const Particle::Bank* bank, int64_t length,
-  bool* outside) const
+RegularMesh::count_sites(const Particle::Bank* bank,
+                         int64_t length,
+                         bool* outside) const
 {
   // Determine shape of array for counts
-  std::size_t m = xt::prod(shape_)();
+  std::size_t m = this->n_bins();
   std::vector<std::size_t> shape = {m};
 
   // Create array of zeros
@@ -851,7 +873,7 @@ RegularMesh::count_sites(const Particle::Bank* bank, int64_t length,
 //==============================================================================
 
 RectilinearMesh::RectilinearMesh(pugi::xml_node node)
-  : Mesh {node}
+  : StructuredMesh {node}
 {
   n_dimension_ = 3;
 
@@ -1190,9 +1212,7 @@ void RectilinearMesh::get_indices_from_bin(int bin, int* ijk) const
 
 int RectilinearMesh::n_bins() const
 {
-  int n_bins = 1;
-  for (auto dim : shape_) n_bins *= dim;
-  return n_bins;
+  return xt::prod(shape_)();
 }
 
 int RectilinearMesh::n_surface_bins() const
@@ -1383,6 +1403,10 @@ check_regular_mesh(int32_t index, RegularMesh** mesh)
 // C API functions
 //==============================================================================
 
+RegularMesh* get_regular_mesh(int32_t index) {
+  return dynamic_cast<RegularMesh*>(model::meshes[index].get());
+}
+
 //! Extend the meshes array by n elements
 extern "C" int
 openmc_extend_meshes(int32_t n, int32_t* index_start, int32_t* index_end)
@@ -1450,7 +1474,6 @@ openmc_mesh_set_dimension(int32_t index, int n, const int* dims)
   std::vector<std::size_t> shape = {static_cast<std::size_t>(n)};
   mesh->shape_ = xt::adapt(dims, n, xt::no_ownership(), shape);
   mesh->n_dimension_ = mesh->shape_.size();
-
   return 0;
 }
 
@@ -1502,6 +1525,550 @@ openmc_mesh_set_params(int32_t index, int n, const double* ll, const double* ur,
   return 0;
 }
 
+#ifdef DAGMC
+
+UnstructuredMesh::UnstructuredMesh(pugi::xml_node node) : Mesh(node)
+{
+  // unstructured always assumed to be 3D
+  n_dimension_ = 3;
+
+  // check the mesh type
+  if (check_for_node(node, "type")) {
+    auto temp = get_node_value(node, "type", true, true);
+    if (temp != "unstructured") {
+      fatal_error("Invalid mesh type: " + temp);
+    }
+  }
+
+  // get the filename of the unstructured mesh to load
+  if (check_for_node(node, "filename")) {
+    filename_ = get_node_value(node, "filename");
+  } else {
+    fatal_error("No filename supplied for unstructured mesh with ID: " +
+                std::to_string(id_));
+  }
+
+  // create MOAB instance
+  mbi_ = std::make_unique<moab::Core>();
+  // load unstructured mesh file
+  moab::ErrorCode rval = mbi_->load_file(filename_.c_str());
+  if (rval != moab::MB_SUCCESS) {
+    fatal_error("Failed to load the unstructured mesh file: " + filename_);
+  }
+
+  // set member range of tetrahedral entities
+  rval = mbi_->get_entities_by_dimension(0, n_dimension_, ehs_);
+  if (rval != moab::MB_SUCCESS) {
+    fatal_error("Failed to get all tetrahedral elements");
+  }
+
+  if (!ehs_.all_of_type(moab::MBTET)) {
+    warning("Non-tetrahedral elements found in unstructured "
+            "mesh file: " + filename_);
+  }
+
+  // make an entity set for all tetrahedra
+  // this is used for convenience later in output
+  rval = mbi_->create_meshset(moab::MESHSET_SET, tetset_);
+  if (rval != moab::MB_SUCCESS) {
+    fatal_error("Failed to create an entity set for the tetrahedral elements");
+  }
+
+  rval = mbi_->add_entities(tetset_, ehs_);
+  if (rval != moab::MB_SUCCESS) {
+    fatal_error("Failed to add tetrahedra to an entity set.");
+  }
+
+  // build acceleration data structures
+  compute_barycentric_data(ehs_);
+  build_kdtree(ehs_);
+}
+
+void
+UnstructuredMesh::build_kdtree(const moab::Range& all_tets)
+{
+  moab::Range all_tris;
+  int adj_dim = 2;
+  moab::ErrorCode rval = mbi_->get_adjacencies(all_tets,
+                                               adj_dim,
+                                               true,
+                                               all_tris,
+                                               moab::Interface::UNION);
+  if (rval != moab::MB_SUCCESS) {
+    fatal_error("Failed to get adjacent triangles for tets");
+  }
+
+  if (!all_tris.all_of_type(moab::MBTRI)) {
+    warning("Non-triangle elements found in tet adjacencies in "
+            "unstructured mesh file: " + filename_);
+  }
+
+  // combine into one range
+  moab::Range all_tets_and_tris;
+  all_tets_and_tris.merge(all_tets);
+  all_tets_and_tris.merge(all_tris);
+
+  // create a kd-tree instance
+  kdtree_ = std::make_unique<moab::AdaptiveKDTree>(mbi_.get());
+
+  // build the tree
+  rval = kdtree_->build_tree(all_tets_and_tris, &kdtree_root_);
+  if (rval != moab::MB_SUCCESS) {
+    fatal_error("Failed to construct KDTree for the "
+                "unstructured mesh file: " + filename_);
+  }
+}
+
+void
+UnstructuredMesh::intersect_track(const moab::CartVect& start,
+                                  const moab::CartVect& dir,
+                                  double track_len,
+                                  std::vector<double>& hits) const {
+  hits.clear();
+
+  moab::ErrorCode rval;
+  std::vector<moab::EntityHandle> tris;
+  // get all intersections with triangles in the tet mesh
+  // (distances are relative to the start point, not the previous intersection)
+  rval = kdtree_->ray_intersect_triangles(kdtree_root_,
+                                          FP_COINCIDENT,
+                                          dir.array(),
+                                          start.array(),
+                                          tris,
+                                          hits,
+                                          0,
+                                          track_len);
+  if (rval != moab::MB_SUCCESS) {
+    fatal_error("Failed to compute intersections on unstructured mesh: " + filename_);
+  }
+
+  // remove duplicate intersection distances
+  std::unique(hits.begin(), hits.end());
+
+  // sorts by first component of std::pair by default
+  std::sort(hits.begin(), hits.end());
+}
+
+void
+UnstructuredMesh::bins_crossed(const Particle* p,
+                               std::vector<int>& bins,
+                               std::vector<double>& lengths) const
+{
+
+  moab::ErrorCode rval;
+  Position last_r{p->r_last_};
+  Position r{p->r()};
+  Direction u{p->u()};
+  u /= u.norm();
+  moab::CartVect r0(last_r.x, last_r.y, last_r.z);
+  moab::CartVect r1(r.x, r.y, r.z);
+  moab::CartVect dir(u.x, u.y, u.z);
+
+  double track_len = (r1 - r0).length();
+
+  r0 -= TINY_BIT * dir;
+  r1 += TINY_BIT * dir;
+
+  std::vector<double> hits;
+  intersect_track(r0, dir, track_len, hits);
+
+  bins.clear();
+  lengths.clear();
+
+  // if there are no intersections the track may lie entirely
+  // within a single tet. If this is the case, apply entire
+  // score to that tet and return.
+  if (hits.size() == 0) {
+    Position midpoint = last_r + u * (track_len * 0.5);
+    int bin = this->get_bin(midpoint);
+    if (bin != -1) {
+      bins.push_back(bin);
+      lengths.push_back(1.0);
+    }
+    return;
+  }
+
+  // for each segment in the set of tracks, try to look up a tet
+  // at the midpoint of the segment
+  Position current = last_r;
+  double last_dist = 0.0;
+  for (const auto& hit : hits) {
+    // get the segment length
+    double segment_length = hit - last_dist;
+    last_dist = hit;
+    // find the midpoint of this segment
+    Position midpoint = current + u * (segment_length * 0.5);
+    // try to find a tet for this position
+    int bin = this->get_bin(midpoint);
+
+    // determine the start point for this segment
+    current = last_r + u * hit;
+
+    if (bin == -1) {
+      continue;
+    }
+
+    bins.push_back(bin);
+    lengths.push_back(segment_length / track_len);
+
+  }
+
+  // tally remaining portion of track after last hit if
+  // the last segment of the track is in the mesh but doesn't
+  // reach the other side of the tet
+  if (hits.back() < track_len) {
+    Position segment_start = last_r + u * hits.back();
+    double segment_length = track_len - hits.back();
+    Position midpoint = segment_start + u * (segment_length * 0.5);
+    int bin = this->get_bin(midpoint);
+    if (bin != -1) {
+      bins.push_back(bin);
+      lengths.push_back(segment_length / track_len);
+    }
+  }
+};
+
+moab::EntityHandle
+UnstructuredMesh::get_tet(const Position& r) const
+{
+  moab::CartVect pos(r.x, r.y, r.z);
+  // find the leaf of the kd-tree for this position
+  moab::AdaptiveKDTreeIter kdtree_iter;
+  moab::ErrorCode rval = kdtree_->point_search(pos.array(), kdtree_iter);
+  if (rval != moab::MB_SUCCESS) { return 0; }
+
+  // retrieve the tet elements of this leaf
+  moab::EntityHandle leaf = kdtree_iter.handle();
+  moab::Range tets;
+  rval = mbi_->get_entities_by_dimension(leaf, 3, tets, false);
+  if (rval != moab::MB_SUCCESS) {
+    warning("MOAB error finding tets.");
+  }
+
+  // loop over the tets in this leaf, returning the containing tet if found
+  for (const auto& tet : tets) {
+    if (point_in_tet(pos, tet)) {
+      return tet;
+    }
+  }
+
+  // if no tet is found, return an invalid handle
+  return 0;
+}
+
+double UnstructuredMesh::tet_volume(moab::EntityHandle tet) const {
+ std::vector<moab::EntityHandle> conn;
+ moab::ErrorCode rval = mbi_->get_connectivity(&tet, 1, conn);
+ if (rval != moab::MB_SUCCESS) {
+   fatal_error("Failed to get tet connectivity");
+ }
+
+ moab::CartVect p[4];
+ rval = mbi_->get_coords(conn.data(), conn.size(), p[0].array());
+ if (rval != moab::MB_SUCCESS) {
+   fatal_error("Failed to get tet coords");
+ }
+
+ return 1.0 / 6.0 * (((p[1] - p[0]) * (p[2] - p[0])) % (p[3] - p[0]));
+}
+
+void UnstructuredMesh::surface_bins_crossed(const Particle* p, std::vector<int>& bins) const {
+  // TODO: Implement triangle crossings here
+  throw std::runtime_error{"Unstructured mesh surface tallies are not implemented."};
+}
+
+int
+UnstructuredMesh::get_bin(Position r) const {
+  moab::EntityHandle tet = get_tet(r);
+  if (tet == 0) {
+    return -1;
+  } else {
+    return get_bin_from_ent_handle(tet);
+  }
+}
+
+void
+UnstructuredMesh::compute_barycentric_data(const moab::Range& tets) {
+  moab::ErrorCode rval;
+
+  baryc_data_.clear();
+  baryc_data_.resize(tets.size());
+
+  // compute the barycentric data for each tet element
+  // and store it as a 3x3 matrix
+  for (auto& tet : tets) {
+    std::vector<moab::EntityHandle> verts;
+    rval = mbi_->get_connectivity(&tet, 1, verts);
+    if (rval != moab::MB_SUCCESS) {
+      fatal_error("Failed to get connectivity of tet on umesh: " + filename_);
+    }
+
+    moab::CartVect p[4];
+    rval = mbi_->get_coords(verts.data(), verts.size(), p[0].array());
+    if (rval != moab::MB_SUCCESS) {
+      fatal_error("Failed to get coordinates of a tet in umesh: " + filename_);
+    }
+
+    moab::Matrix3 a(p[1] - p[0], p[2] - p[0], p[3] - p[0], true);
+
+    // invert now to avoid this cost later
+    a = a.transpose().inverse();
+    baryc_data_.at(get_bin_from_ent_handle(tet)) = a;
+  }
+}
+
+void
+UnstructuredMesh::to_hdf5(hid_t group) const
+{
+    hid_t mesh_group = create_group(group, fmt::format("mesh {}", id_));
+
+    write_dataset(mesh_group, "type", "unstructured");
+    write_dataset(mesh_group, "filename", filename_);
+
+    // write volume and centroid of each tet
+    std::vector<double> tet_vols;
+    xt::xtensor<double, 2> centroids({ehs_.size(), 3});
+    for (int i = 0; i < ehs_.size(); i++) {
+      const auto& eh = ehs_[i];
+      tet_vols.emplace_back(this->tet_volume(eh));
+      Position c = this->centroid(eh);
+      xt::view(centroids, i, xt::all()) = xt::xarray<double>({c.x, c.y, c.z});
+    }
+
+    write_dataset(mesh_group, "volumes", tet_vols);
+    write_dataset(mesh_group, "centroids", centroids);
+
+    close_group(mesh_group);
+}
+
+bool
+UnstructuredMesh::point_in_tet(const moab::CartVect& r, moab::EntityHandle tet) const {
+
+  moab::ErrorCode rval;
+
+  // get tet vertices
+  std::vector<moab::EntityHandle> verts;
+  rval = mbi_->get_connectivity(&tet, 1, verts);
+  if (rval != moab::MB_SUCCESS) {
+    warning("Failed to get vertices of tet in umesh: " + filename_);
+    return false;
+  }
+
+  // first vertex is used as a reference point for the barycentric data -
+  // retrieve its coordinates
+  moab::CartVect p_zero;
+  rval = mbi_->get_coords(verts.data(), 1, p_zero.array());
+  if (rval != moab::MB_SUCCESS) {
+    warning("Failed to get coordinates of a vertex in "
+            "unstructured mesh: " + filename_);
+    return false;
+  }
+
+  // look up barycentric data
+  int idx = get_bin_from_ent_handle(tet);
+  const moab::Matrix3& a_inv = baryc_data_[idx];
+
+  moab::CartVect bary_coords = a_inv * (r - p_zero);
+
+  return (bary_coords[0] >= 0.0 &&
+          bary_coords[1] >= 0.0 &&
+          bary_coords[2] >= 0.0 &&
+          bary_coords[0] + bary_coords[1] + bary_coords[2] <= 1.0);
+}
+
+int
+UnstructuredMesh::get_bin_from_index(int idx) const {
+  if (idx >= n_bins()) {
+    fatal_error(fmt::format("Invalid bin index: {}", idx));
+  }
+  return ehs_[idx] - ehs_[0];
+}
+
+int
+UnstructuredMesh::get_index(const Position& r,
+                            bool* in_mesh) const {
+  int bin = get_bin(r);
+  *in_mesh = bin != -1;
+  return bin;
+}
+
+int UnstructuredMesh::get_index_from_bin(int bin) const {
+  return bin;
+}
+
+std::pair<std::vector<double>, std::vector<double>>
+UnstructuredMesh::plot(Position plot_ll, Position plot_ur) const {
+  // TODO: Implement mesh lines
+  return {};
+}
+
+int
+UnstructuredMesh::get_bin_from_ent_handle(moab::EntityHandle eh) const {
+  int bin = eh - ehs_[0];
+  if (bin >= n_bins()) {
+    fatal_error(fmt::format("Invalid bin: {}", bin));
+  }
+  return bin;
+}
+
+moab::EntityHandle
+UnstructuredMesh::get_ent_handle_from_bin(int bin) const {
+  if (bin >= n_bins()) {
+    fatal_error(fmt::format("Invalid bin index: ", bin));
+  }
+  return ehs_[bin];
+}
+
+int UnstructuredMesh::n_bins() const {
+  return ehs_.size();
+}
+
+int UnstructuredMesh::n_surface_bins() const {
+  // collect all triangles in the set of tets for this mesh
+  moab::Range tris;
+  moab::ErrorCode rval;
+  rval = mbi_->get_entities_by_type(0, moab::MBTRI, tris);
+  if (rval != moab::MB_SUCCESS) {
+    warning("Failed to get all triangles in the mesh instance");
+    return -1;
+  }
+  return 2 * tris.size();
+}
+
+Position
+UnstructuredMesh::centroid(moab::EntityHandle tet) const {
+  moab::ErrorCode rval;
+
+  // look up the tet connectivity
+  std::vector<moab::EntityHandle> conn;
+  rval = mbi_->get_connectivity(&tet, 1, conn);
+  if (rval != moab::MB_SUCCESS) {
+    warning("Failed to get connectivity of a mesh element.");
+    return {};
+  }
+
+  // get the coordinates
+  std::vector<moab::CartVect> coords(conn.size());
+  rval = mbi_->get_coords(conn.data(), conn.size(), coords[0].array());
+  if (rval != moab::MB_SUCCESS) {
+    warning("Failed to get the coordinates of a mesh element.");
+    return {};
+  }
+
+  // compute the centroid of the element vertices
+  moab::CartVect centroid(0.0, 0.0, 0.0);
+  for(const auto& coord : coords) {
+    centroid += coord;
+  }
+  centroid /= double(coords.size());
+
+  return {centroid[0], centroid[1], centroid[2]};
+}
+
+std::string
+UnstructuredMesh::bin_label(int bin) const {
+  return fmt::format("Mesh Index ({})", bin);
+};
+
+std::pair<moab::Tag, moab::Tag>
+UnstructuredMesh::get_score_tags(std::string score) const {
+  moab::ErrorCode rval;
+  // add a tag to the mesh
+  // all scores are treated as a single value
+  // with an uncertainty
+  moab::Tag value_tag;
+
+  // create the value tag if not present and get handle
+  double default_val = 0.0;
+  auto val_string = score + "_mean";
+  rval = mbi_->tag_get_handle(val_string.c_str(),
+                              1,
+                              moab::MB_TYPE_DOUBLE,
+                              value_tag,
+                              moab::MB_TAG_DENSE|moab::MB_TAG_CREAT,
+                              &default_val);
+  if (rval != moab::MB_SUCCESS) {
+    auto msg = fmt::format("Could not create or retrieve the value tag for the score {}"
+                           " on unstructured mesh {}", score, id_);
+    fatal_error(msg);
+  }
+
+  // create the std dev tag if not present and get handle
+  moab::Tag error_tag;
+  std::string err_string = score + "_std_dev";
+  rval = mbi_->tag_get_handle(err_string.c_str(),
+                              1,
+                              moab::MB_TYPE_DOUBLE,
+                              error_tag,
+                              moab::MB_TAG_DENSE|moab::MB_TAG_CREAT,
+                              &default_val);
+  if (rval != moab::MB_SUCCESS) {
+    auto msg = fmt::format("Could not create or retrieve the error tag for the score {}"
+                           " on unstructured mesh {}", score, id_);
+    fatal_error(msg);
+  }
+
+  // return the populated tag handles
+  return {value_tag, error_tag};
+}
+
+void
+UnstructuredMesh::add_score(std::string score) const {
+  auto score_tags = this->get_score_tags(score);
+}
+
+void
+UnstructuredMesh::set_score_data(const std::string& score,
+                                 std::vector<double> values,
+                                 std::vector<double> std_dev) const {
+  auto score_tags = this->get_score_tags(score);
+
+  // normalize tally values by element volume
+  for (int i = 0; i < ehs_.size(); i++) {
+    auto eh = this->get_ent_handle_from_bin(i);
+    double volume = this->tet_volume(eh);
+    values[i] /= volume;
+    std_dev[i] /= volume;
+  }
+
+  moab::ErrorCode rval;
+  // set the score value
+  rval = mbi_->tag_set_data(score_tags.first, ehs_, values.data());
+  if (rval != moab::MB_SUCCESS) {
+    auto msg = fmt::format("Failed to set the tally value for score '{}' "
+                           "on unstructured mesh {}", score, id_);
+    warning(msg);
+  }
+
+  // set the error value
+  rval = mbi_->tag_set_data(score_tags.second, ehs_, std_dev.data());
+  if (rval != moab::MB_SUCCESS) {
+    auto msg = fmt::format("Failed to set the tally error for score '{}' "
+                           "on unstructured mesh {}", score, id_);
+    warning(msg);
+  }
+}
+
+void
+UnstructuredMesh::write(std::string base_filename) const {
+  // add extension to the base name
+  auto filename = base_filename + ".vtk";
+  write_message("Writing unstructured mesh " + filename + "...", 5);
+  filename = settings::path_output + filename;
+
+  // write the tetrahedral elements of the mesh only
+  // to avoid clutter from zero-value data on other
+  // elements during visualization
+  moab::ErrorCode rval;
+  rval = mbi_->write_mesh(filename.c_str(), &tetset_, 1);
+  if (rval != moab::MB_SUCCESS) {
+    auto msg = fmt::format("Failed to write unstructured mesh {}", id_);
+    warning(msg);
+  }
+}
+
+#endif
+
 //==============================================================================
 // Non-member functions
 //==============================================================================
@@ -1521,6 +2088,13 @@ void read_meshes(pugi::xml_node root)
       model::meshes.push_back(std::make_unique<RegularMesh>(node));
     } else if (mesh_type == "rectilinear") {
       model::meshes.push_back(std::make_unique<RectilinearMesh>(node));
+#ifdef DAGMC
+    } else if (mesh_type == "unstructured") {
+      model::meshes.push_back(std::make_unique<UnstructuredMesh>(node));
+#else
+    } else if (mesh_type == "unstructured") {
+      fatal_error("Unstructured mesh support is disabled.");
+#endif
     } else {
       fatal_error("Invalid mesh type: " + mesh_type);
     }

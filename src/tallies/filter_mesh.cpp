@@ -55,18 +55,7 @@ std::string
 MeshFilter::text_label(int bin) const
 {
   auto& mesh = *model::meshes[mesh_];
-  int n_dim = mesh.n_dimension_;
-
-  std::vector<int> ijk(n_dim);
-  mesh.get_indices_from_bin(bin, ijk.data());
-
-  if (n_dim > 2) {
-    return fmt::format("Mesh Index ({}, {}, {})", ijk[0], ijk[1], ijk[2]);
-  } else if (n_dim > 1) {
-    return fmt::format("Mesh Index ({}, {})", ijk[0], ijk[1]);
-  } else {
-    return fmt::format("Mesh Index ({})", ijk[0]) ;
-  }
+  return mesh.bin_label(bin);
 }
 
 void

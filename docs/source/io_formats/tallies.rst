@@ -123,8 +123,8 @@ to the scored values. The ``filter`` element has the following
 attributes/sub-elements:
 
   :type:
-    The type of the filter. Accepted options are "cell", "cellfrom", 
-    "cellborn", "surface", "material", "universe", "energy", "energyout", "mu", 
+    The type of the filter. Accepted options are "cell", "cellfrom",
+    "cellborn", "surface", "material", "universe", "energy", "energyout", "mu",
     "polar", "azimuthal", "mesh", "distribcell", "delayedgroup",
     "energyfunction", and "particle".
 
@@ -154,27 +154,27 @@ For each filter type, the following table describes what the ``bins`` attribute
 should be set to:
 
 :cell:
-  A list of unique IDs for cells in which the tally should be 
+  A list of unique IDs for cells in which the tally should be
   accumulated.
 
 :surface:
-  This filter allows the tally to be scored when crossing a surface. A list of 
-  surface IDs should be given. By default, net currents are tallied, and to 
-  tally a partial current from one cell to another, this should be used in 
+  This filter allows the tally to be scored when crossing a surface. A list of
+  surface IDs should be given. By default, net currents are tallied, and to
+  tally a partial current from one cell to another, this should be used in
   combination with a cell or cell_from filter that defines the other cell.
   This filter should not be used in combination with a meshfilter.
 
 :cellfrom:
-  This filter allows the tally to be scored when crossing a surface and the 
-  particle came from a specified cell. A list of cell IDs should be 
+  This filter allows the tally to be scored when crossing a surface and the
+  particle came from a specified cell. A list of cell IDs should be
   given.
-  To tally a partial current from a cell to another, this filter should be 
+  To tally a partial current from a cell to another, this filter should be
   used in combination with a cell filter, to define the other cell.
   This filter should not be used in combination with a meshfilter.
 
 :cellborn:
   This filter allows the tally to be scored to only when particles were
-  originally born in a specified cell. A list of cell IDs should be 
+  originally born in a specified cell. A list of cell IDs should be
   given.
 
 :material:
@@ -276,7 +276,7 @@ should be set to:
       <filter type="azimuthal" bins="2" />
 
 :mesh:
-  The unique ID of a structured mesh to be tallied over.
+  The unique ID of a mesh to be tallied over.
 
 :distribcell:
   The single cell which should be tallied uniquely for all instances.
@@ -307,12 +307,13 @@ should be set to:
 ``<mesh>`` Element
 ------------------
 
-If a structured mesh is desired as a filter for a tally, it must be specified in
-a separate element with the tag name ``<mesh>``. This element has the following
+If a mesh is desired as a filter for a tally, it must be specified in a separate
+element with the tag name ``<mesh>``. This element has the following
 attributes/sub-elements:
 
   :type:
-    The type of structured mesh. This can be either "regular" or "rectilinear".
+    The type of mesh. This can be either "regular", "rectilinear", or
+    "unstructured".
 
   :dimension:
     The number of mesh cells in each direction. (For regular mesh only.)
@@ -336,6 +337,10 @@ attributes/sub-elements:
 
   :z_grid:
     The mesh divisions along the z-axis. (For rectilinear mesh only.)
+
+  :mesh_file:
+    The name of the mesh file to be loaded at runtime. (For unstructured mesh
+    only.)
 
   .. note::
       One of ``<upper_right>`` or ``<width>`` must be specified, but not both

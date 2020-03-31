@@ -1,4 +1,3 @@
-import sys
 from numbers import Integral
 from xml.etree import ElementTree as ET
 

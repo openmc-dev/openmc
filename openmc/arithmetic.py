@@ -1,4 +1,3 @@
-import sys
 import copy
 from collections.abc import Iterable
 

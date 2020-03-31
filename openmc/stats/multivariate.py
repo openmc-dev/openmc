@@ -2,7 +2,6 @@ from abc import ABCMeta, abstractmethod
 from collections.abc import Iterable
 from math import pi
 from numbers import Real
-import sys
 from xml.etree import ElementTree as ET
 
 import numpy as np

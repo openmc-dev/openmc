@@ -15,7 +15,6 @@ from collections.abc import Iterable, Mapping
 from numbers import Real, Integral
 import sys
 import time
-from ctypes import c_int
 import warnings
 
 import numpy as np

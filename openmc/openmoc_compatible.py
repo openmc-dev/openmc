@@ -1,6 +1,3 @@
-import copy
-import operator
-
 import numpy as np
 
 import openmoc

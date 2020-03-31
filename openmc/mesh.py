@@ -2,7 +2,6 @@ from abc import ABCMeta
 from collections.abc import Iterable
 from numbers import Real, Integral
 from xml.etree import ElementTree as ET
-import sys
 import warnings
 
 import numpy as np
@@ -10,7 +9,7 @@ import numpy as np
 import openmc.checkvalue as cv
 import openmc
 from openmc._xml import get_text
-from openmc.mixin import EqualityMixin, IDManagerMixin
+from openmc.mixin import IDManagerMixin
 
 
 class MeshBase(IDManagerMixin, metaclass=ABCMeta):

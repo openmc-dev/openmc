@@ -1,13 +1,11 @@
-from collections import namedtuple
 from collections.abc import Iterable
 from io import StringIO
 from math import log
-from numbers import Real
 import re
 from warnings import warn
 
 import numpy as np
-from uncertainties import ufloat, unumpy, UFloat
+from uncertainties import ufloat, UFloat
 
 import openmc.checkvalue as cv
 from openmc.mixin import EqualityMixin

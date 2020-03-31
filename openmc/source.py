@@ -1,5 +1,4 @@
 from numbers import Real
-import sys
 from xml.etree import ElementTree as ET
 
 from openmc._xml import get_text

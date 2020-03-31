@@ -4,8 +4,6 @@ from copy import deepcopy
 from pathlib import Path
 from xml.etree import ElementTree as ET
 
-import numpy as np
-
 import openmc
 import openmc._xml as xml
 from openmc.checkvalue import check_type

@@ -1,9 +1,8 @@
 from collections import OrderedDict
 from collections.abc import Iterable
 from copy import copy, deepcopy
-from numbers import Integral, Real
+from numbers import Real
 import random
-import sys
 
 import numpy as np
 

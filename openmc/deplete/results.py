@@ -5,7 +5,6 @@ Contains results generation and saving capabilities.
 
 from collections import OrderedDict
 import copy
-from warnings import warn
 
 import numpy as np
 import h5py

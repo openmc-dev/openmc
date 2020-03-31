@@ -2,8 +2,6 @@ from collections.abc import Iterable, Mapping
 from numbers import Real, Integral
 from pathlib import Path
 import subprocess
-import sys
-import warnings
 from xml.etree import ElementTree as ET
 
 import numpy as np

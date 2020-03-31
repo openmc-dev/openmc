@@ -5,15 +5,13 @@ from math import cos, sin, pi
 from numbers import Real
 from xml.etree import ElementTree as ET
 from uncertainties import UFloat
-import sys
-import warnings
 
 import numpy as np
 
 import openmc
 import openmc.checkvalue as cv
 from openmc.surface import Halfspace
-from openmc.region import Region, Intersection, Complement
+from openmc.region import Region, Complement
 from openmc._xml import get_text
 from .mixin import IDManagerMixin
 

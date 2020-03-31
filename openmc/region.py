@@ -1,6 +1,6 @@
 from abc import ABCMeta, abstractmethod
 from collections import OrderedDict
-from collections.abc import Iterable, MutableSequence
+from collections.abc import MutableSequence
 from copy import deepcopy
 
 import numpy as np

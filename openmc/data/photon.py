@@ -3,14 +3,13 @@ from collections.abc import Mapping, Callable
 from copy import deepcopy
 from io import StringIO
 from numbers import Integral, Real
-from math import pi, sqrt
+from math import pi
 import os
 
 import h5py
 import numpy as np
 import pandas as pd
 from scipy.interpolate import CubicSpline
-from scipy.integrate import quad
 
 from openmc.mixin import EqualityMixin
 import openmc.checkvalue as cv

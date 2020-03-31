@@ -8,18 +8,12 @@ http://www-nds.iaea.org/ndspub/documents/endf/endf102/endf102.pdf
 """
 import io
 import re
-import os
-from math import pi
 from pathlib import PurePath
-from collections import OrderedDict
-from collections.abc import Iterable
 
 import numpy as np
-from numpy.polynomial.polynomial import Polynomial
 
-from .data import ATOMIC_SYMBOL, gnd_name
-from .function import Tabulated1D, INTERPOLATION_SCHEME
-from openmc.stats.univariate import Uniform, Tabular, Legendre
+from .data import gnd_name
+from .function import Tabulated1D
 try:
     from ._endf import float_endf
     _CYTHON = True

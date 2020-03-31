@@ -23,6 +23,7 @@
 #define NEUTRON_XS_SIZE 300 // Depleted SMR uses 296
 #define PHOTON_XS_SIZE 2 // This appears to be the min required to pass the regression tests.
 #define COORD_SIZE 6 // Depleted SMR uses 6
+#define SECONDARY_BANK_SIZE 200 // 100 not enough to pass regression tests, but 200 works. TODO: narrow this down.
 
 namespace openmc {
 
@@ -345,7 +346,11 @@ public:
   int      stream_;           // current RNG stream
   
   // Secondary particle bank
-  std::vector<Particle::Bank> secondary_bank_;
+  // This one is necessarilly going to be large/wasteful, unless we add in shared
+  // secondary bank among threads or something along those lines
+  //std::vector<Particle::Bank> secondary_bank_;
+  Particle::Bank secondary_bank_[SECONDARY_BANK_SIZE];
+  uint64_t secondary_bank_length_ {0};
 
   int64_t current_work_; // current work index
 

@@ -528,6 +528,9 @@ void initialize_history_partial(Particle* p)
   
   // Allocate space for tally filter matches
   p->filter_matches_.resize(model::tally_filters.size());
+
+  // Set secondary bank to 0 length
+  p->secondary_bank_length_ = 0;
 }
 
 int overall_generation()

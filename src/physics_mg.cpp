@@ -164,7 +164,9 @@ create_fission_sites(Particle* p)
         break;
       }
     } else {
-      p->secondary_bank_.push_back(site);
+      //p->secondary_bank_.push_back(site);
+      assert(p->secondary_bank_length_ < SECONDARY_BANK_SIZE);
+      p->secondary_bank_[p->secondary_bank_length_++] = site;
     }
 
     // Set the delayed group on the particle as well

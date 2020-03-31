@@ -1229,9 +1229,11 @@ score_general_ce(Particle* p, int i_tally, int start_index, int filter_index,
 
         // ...less the energy of any secondary particles since they will be
         // transported individually later
-        const auto& bank = p->secondary_bank_;
-        for (auto it = bank.end() - p->n_bank_second_; it < bank.end(); ++it) {
-          score -= it->E;
+        //const auto& bank = p->secondary_bank_;
+        //for (auto it = bank.end() - p->n_bank_second_; it < bank.end(); ++it) {
+        for (auto it = p->secondary_bank_length_ - p->n_bank_second_; it < p->secondary_bank_length_; it++) {
+          //score -= it->E;
+          score -= p->secondary_bank_[it].E;
         }
 
         score *= p->wgt_last_;

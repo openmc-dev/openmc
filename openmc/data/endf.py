@@ -397,8 +397,10 @@ class Evaluation:
     def __init__(self, filename_or_obj):
         if isinstance(filename_or_obj, (str, PurePath)):
             fh = open(str(filename_or_obj), 'r')
+            need_to_close = True
         else:
             fh = filename_or_obj
+            need_to_close = False
         self.section = {}
         self.info = {}
         self.target = {}
@@ -445,6 +447,9 @@ class Evaluation:
                 else:
                     section_data += line
             self.section[MF, MT] = section_data
+
+        if need_to_close:
+            fh.close()
 
         self._read_header()
 

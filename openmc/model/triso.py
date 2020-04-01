@@ -2,7 +2,7 @@ import copy
 import warnings
 import itertools
 import random
-from abc import ABCMeta, abstractproperty, abstractmethod
+from abc import ABC, abstractproperty, abstractmethod
 from collections import Counter, defaultdict
 from collections.abc import Iterable
 from heapq import heappush, heappop
@@ -100,7 +100,7 @@ class TRISO(openmc.Cell):
                 k_min:k_max+1, j_min:j_max+1, i_min:i_max+1]))
 
 
-class _Container(metaclass=ABCMeta):
+class _Container(ABC):
     """Container in which to pack spheres.
 
     Parameters

@@ -1,4 +1,4 @@
-from abc import ABCMeta, abstractmethod
+from abc import ABC, abstractmethod
 from collections import OrderedDict
 from collections.abc import Iterable
 from copy import deepcopy
@@ -103,7 +103,7 @@ def get_rotation_matrix(rotation, order='xyz'):
     return R3 @ R2 @ R1
 
 
-class Surface(IDManagerMixin, metaclass=ABCMeta):
+class Surface(IDManagerMixin, ABC):
     """An implicit surface with an associated boundary condition.
 
     An implicit surface is defined as the set of zeros of a function of the
@@ -459,7 +459,7 @@ class Surface(IDManagerMixin, metaclass=ABCMeta):
         return cls(*coeffs, **kwargs)
 
 
-class PlaneMixin(metaclass=ABCMeta):
+class PlaneMixin:
     """A Plane mixin class for all operations on order 1 surfaces"""
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -918,7 +918,7 @@ class ZPlane(PlaneMixin, Surface):
         return point[2] - self.z0
 
 
-class QuadricMixin(metaclass=ABCMeta):
+class QuadricMixin:
     """A Mixin class implementing common functionality for quadric surfaces"""
 
     @property

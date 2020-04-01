@@ -863,11 +863,12 @@ class Library:
         if not os.path.exists(directory):
             os.makedirs(directory)
 
-        full_filename = os.path.join(directory, filename + '.pkl')
+        full_filename = os.path.join(directory, '{}.pkl'.format(filename))
         full_filename = full_filename.replace(' ', '-')
 
         # Load and return pickled Library object
-        pickle.dump(self, open(full_filename, 'wb'))
+        with open(full_filename, 'wb') as f:
+            pickle.dump(self, f)
 
     @staticmethod
     def load_from_file(filename='mgxs', directory='mgxs'):
@@ -902,7 +903,8 @@ class Library:
         full_filename = full_filename.replace(' ', '-')
 
         # Load and return pickled Library object
-        return pickle.load(open(full_filename, 'rb'))
+        with open(full_filename, 'rb') as f:
+            return pickle.load(f)
 
     def get_xsdata(self, domain, xsdata_name, nuclide='total', xs_type='macro',
                    subdomain=None):

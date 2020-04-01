@@ -159,8 +159,6 @@ public:
     neutron, photon, electron, positron
   };
 
-  int64_t icross = 0;
-
   //! Saved ("banked") state of a particle
   //! NOTE: This structure's MPI type is built in initialize_mpi() of
   //! initialize.cpp. Any changes made to the struct here must also be

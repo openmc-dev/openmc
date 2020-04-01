@@ -50,14 +50,9 @@ class TallyDerivative(EqualityMixin, IDManagerMixin):
         string = 'Tally Derivative\n'
         string += '{: <16}=\t{}\n'.format('\tID', self.id)
         string += '{: <16}=\t{}\n'.format('\tVariable', self.variable)
-
-        if self.variable == 'density':
-            string += '{: <16}=\t{}\n'.format('\tMaterial', self.material)
-        elif self.variable == 'nuclide_density':
-            string += '{: <16}=\t{}\n'.format('\tMaterial', self.material)
+        string += '{: <16}=\t{}\n'.format('\tMaterial', self.material)
+        if self.variable == 'nuclide_density':
             string += '{: <16}=\t{}\n'.format('\tNuclide', self.nuclide)
-        elif self.variable == 'temperature':
-            string += '{: <16}=\t{}\n'.format('\tMaterial', self.material)
 
         return string
 

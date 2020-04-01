@@ -522,8 +522,11 @@ void initialize_history_partial(Particle* p)
   // Every particle starts with no accumulated flux derivative.
   if (!model::active_tallies.empty())
   {
-    p->flux_derivs_.resize(model::tally_derivs.size(), 0.0);
-    std::fill(p->flux_derivs_.begin(), p->flux_derivs_.end(), 0.0);
+    std::cout << "flux_derivs_ size = " << model::tally_derivs.size() << std::endl;
+    //p->flux_derivs_.resize(model::tally_derivs.size(), 0.0);
+    //std::fill(p->flux_derivs_.begin(), p->flux_derivs_.end(), 0.0);
+    assert(FLUX_DERIVS_SIZE >= model::tally_derivs.size());
+    std::fill(p->flux_derivs_, p->flux_derivs_ + FLUX_DERIVS_SIZE, 0.0);
   }
   
   // Allocate space for tally filter matches

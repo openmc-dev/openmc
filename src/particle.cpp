@@ -117,7 +117,8 @@ Particle::from_source(const Bank* src)
   material_ = C_NONE;
   n_collision_ = 0;
   fission_ = false;
-  std::fill(flux_derivs_.begin(), flux_derivs_.end(), 0.0);
+  //std::fill(flux_derivs_.begin(), flux_derivs_.end(), 0.0);
+  std::fill(flux_derivs_, flux_derivs_ + FLUX_DERIVS_SIZE, 0.0);
 
   // Copy attributes from source bank site
   type_ = src->particle;

@@ -24,6 +24,7 @@
 #define PHOTON_XS_SIZE 2 // This appears to be the min required to pass the regression tests.
 #define COORD_SIZE 6 // Depleted SMR uses 6
 #define SECONDARY_BANK_SIZE 200 // 100 not enough to pass regression tests, but 200 works. TODO: narrow this down.
+#define FLUX_DERIVS_SIZE 5 // This is the min required to pass regression tests (diff_tally is limiter)
 
 namespace openmc {
 
@@ -354,7 +355,9 @@ public:
 
   int64_t current_work_; // current work index
 
-  std::vector<double> flux_derivs_;  // for derivatives for this particle
+  // TODO: flux_derivs can eventually be converted to an allocated array, with size fixed at runtime
+  //std::vector<double> flux_derivs_;  // for derivatives for this particle
+  double flux_derivs_[FLUX_DERIVS_SIZE];  // for derivatives for this particle
 
   std::vector<FilterMatch> filter_matches_; // tally filter matches
 

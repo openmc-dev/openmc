@@ -14,6 +14,11 @@ from openmc.checkvalue import (
 import openmc.data
 
 
+ZERO_CELSIUS_TO_KELVIN = 273.15
+ZERO_FAHRENHEIT_TO_KELVIN = 459.67
+PSI_TO_MPA = 0.006895
+
+
 def borated_water(boron_ppm, temperature=293., pressure=0.1013, temp_unit='K',
                   press_unit='MPa', density=None, **kwargs):
     """Return a Material with the composition of boron dissolved in water.
@@ -53,14 +58,14 @@ def borated_water(boron_ppm, temperature=293., pressure=0.1013, temp_unit='K',
     if temp_unit == 'K':
         T = temperature
     elif temp_unit == 'C':
-        T = temperature + 273.15
+        T = temperature + ZERO_CELSIUS_TO_KELVIN
     elif temp_unit == 'F':
-        T = (temperature + 459.67) * 5.0 / 9.0
+        T = (temperature + ZERO_FAHRENHEIT_TO_KELVIN) * (5/9)
     check_value('pressure unit', press_unit, ('MPa', 'psi'))
     if press_unit == 'MPa':
         P = pressure
     elif press_unit == 'psi':
-        P = pressure * 0.006895
+        P = pressure * PSI_TO_MPA
 
     # Set the density of water, either from an explicitly given density or from
     # temperature and pressure.
@@ -440,7 +445,7 @@ def pin(surfaces, items, subdivisions=None, divide_vols=True,
         items
     """
     if "cells" in kwargs:
-        raise SyntaxError(
+        raise ValueError(
             "Cells will be set by this function, not from input arguments.")
     check_type("items",  items, Iterable)
     check_length("surfaces", surfaces, len(items) - 1, len(items) - 1)

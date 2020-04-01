@@ -25,6 +25,7 @@
 #define COORD_SIZE 6 // Depleted SMR uses 6
 #define SECONDARY_BANK_SIZE 200 // 100 not enough to pass regression tests, but 200 works. TODO: narrow this down.
 #define FLUX_DERIVS_SIZE 5 // This is the min required to pass regression tests (diff_tally is limiter)
+#define FILTER_MATCHES_SIZE 14 // tallies regression test is the limiter here. More realistic tests only need 2. This can be set at runtime init though.
 
 namespace openmc {
 
@@ -359,7 +360,9 @@ public:
   //std::vector<double> flux_derivs_;  // for derivatives for this particle
   double flux_derivs_[FLUX_DERIVS_SIZE];  // for derivatives for this particle
 
-  std::vector<FilterMatch> filter_matches_; // tally filter matches
+  // TODO: filter_matches_ can eventually be converted to an allocated array, with size fixed at runtime
+  //std::vector<FilterMatch> filter_matches_; // tally filter matches
+  FilterMatch filter_matches_[FILTER_MATCHES_SIZE]; // tally filter matches
 
   std::vector<std::vector<Position>> tracks_; // tracks for outputting to file
 

@@ -56,8 +56,9 @@ FilterBinIter::FilterBinIter(const Tally& tally, Particle* p)
 }
 
 FilterBinIter::FilterBinIter(const Tally& tally, bool end,
-    std::vector<FilterMatch>* particle_filter_matches)
-  : filter_matches_{*particle_filter_matches}, tally_{tally}
+    //std::vector<FilterMatch>* particle_filter_matches)
+    FilterMatch* particle_filter_matches)
+  : filter_matches_{particle_filter_matches}, tally_{tally}
 {
   // Handle the special case for an iterator that points to the end.
   if (end) {
@@ -146,7 +147,8 @@ FilterBinIter::compute_index_weight()
 
 void
 score_fission_delayed_dg(int i_tally, int d_bin, double score, int score_index,
-    std::vector<FilterMatch>& filter_matches)
+    //std::vector<FilterMatch>& filter_matches)
+    FilterMatch* filter_matches)
 {
   // Save the original delayed group bin
   auto& tally {*model::tallies[i_tally]};
@@ -2027,7 +2029,8 @@ void score_analog_tally_ce(Particle* p)
     // no valid combinations, use a continue statement to ensure we skip the
     // assume_separate break below.
     auto filter_iter = FilterBinIter(tally, p);
-    auto end = FilterBinIter(tally, true, &p->filter_matches_);
+    //auto end = FilterBinIter(tally, true, &p->filter_matches_);
+    auto end = FilterBinIter(tally, true, p->filter_matches_);
     if (filter_iter == end) continue;
 
     // Loop over filter bins.
@@ -2084,7 +2087,8 @@ void score_analog_tally_mg(Particle* p)
     // no valid combinations, use a continue statement to ensure we skip the
     // assume_separate break below.
     auto filter_iter = FilterBinIter(tally, p);
-    auto end = FilterBinIter(tally, true, &p->filter_matches_);
+    //auto end = FilterBinIter(tally, true, &p->filter_matches_);
+    auto end = FilterBinIter(tally, true, p->filter_matches_);
     if (filter_iter == end) continue;
 
     // Loop over filter bins.
@@ -2133,7 +2137,8 @@ score_tracklength_tally(Particle* p, double distance)
     // no valid combinations, use a continue statement to ensure we skip the
     // assume_separate break below.
     auto filter_iter = FilterBinIter(tally, p);
-    auto end = FilterBinIter(tally, true, &p->filter_matches_);
+    //auto end = FilterBinIter(tally, true, &p->filter_matches_);
+    auto end = FilterBinIter(tally, true, p->filter_matches_);
     if (filter_iter == end) continue;
 
     // Loop over filter bins.
@@ -2204,7 +2209,8 @@ void score_collision_tally(Particle* p)
     // no valid combinations, use a continue statement to ensure we skip the
     // assume_separate break below.
     auto filter_iter = FilterBinIter(tally, p);
-    auto end = FilterBinIter(tally, true, &p->filter_matches_);
+    //auto end = FilterBinIter(tally, true, &p->filter_matches_);
+    auto end = FilterBinIter(tally, true, p->filter_matches_);
     if (filter_iter == end) continue;
 
     // Loop over filter bins.
@@ -2265,7 +2271,8 @@ score_surface_tally(Particle* p, const std::vector<int>& tallies)
     // no valid combinations, use a continue statement to ensure we skip the
     // assume_separate break below.
     auto filter_iter = FilterBinIter(tally, p);
-    auto end = FilterBinIter(tally, true, &p->filter_matches_);
+    //auto end = FilterBinIter(tally, true, &p->filter_matches_);
+    auto end = FilterBinIter(tally, true, p->filter_matches_);
     if (filter_iter == end) continue;
 
     // Loop over filter bins.

@@ -530,7 +530,10 @@ void initialize_history_partial(Particle* p)
   }
   
   // Allocate space for tally filter matches
-  p->filter_matches_.resize(model::tally_filters.size());
+  //p->filter_matches_.resize(model::tally_filters.size());
+  //if(model::tally_filters.size() > FILTER_MATCHES_SIZE)
+  //  std::cout << "filter_matches size = " << model::tally_filters.size() << std::endl;
+  assert(model::tally_filters.size() <= FILTER_MATCHES_SIZE);
 
   // Set secondary bank to 0 length
   p->secondary_bank_length_ = 0;

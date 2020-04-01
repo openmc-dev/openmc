@@ -86,6 +86,7 @@ extern "C" {
   int openmc_id_map(const void* slice, int32_t* data_out);
   int openmc_property_map(const void* slice, double* data_out);
   int openmc_reset();
+  int openmc_reset_timers();
   int openmc_run();
   void openmc_set_seed(int64_t new_seed);
   int openmc_simulation_finalize();

@@ -47,7 +47,7 @@ class MDGXS(MGXS):
     name : str, optional
         Name of the multi-group cross section. Used as a label to identify
         tallies in OpenMC 'tallies.xml' file.
-    delayed_groups : list of int
+    delayed_groups : list of int, optional
         Delayed groups to filter out the xs
     num_polar : Integral, optional
         Number of equi-width polar angle bins for angle discretization;
@@ -70,7 +70,7 @@ class MDGXS(MGXS):
         Domain type for spatial homogenization
     energy_groups : openmc.mgxs.EnergyGroups
         Energy group structure for energy condensation
-    delayed_groups : list of int
+    delayed_groups : list of int, optional
         Delayed groups to filter out the xs
     num_polar : Integral
         Number of equi-width polar angle bins for angle discretization
@@ -246,7 +246,7 @@ class MDGXS(MGXS):
         name : str, optional
             Name of the multi-group cross section. Used as a label to identify
             tallies in OpenMC 'tallies.xml' file. Defaults to the empty string.
-        delayed_groups : list of int
+        delayed_groups : list of int, optional
             Delayed groups to filter out the xs
         num_polar : Integral, optional
             Number of equi-width polar angle bins for angle discretization;
@@ -1316,10 +1316,10 @@ class ChiDelayed(MDGXS):
 
                 # Sum out all nuclides
                 nuclides = self.get_nuclides()
-                delayed_nu_fission_in = delayed_nu_fission_in.summation\
-                                        (nuclides=nuclides)
-                delayed_nu_fission_out = delayed_nu_fission_out.summation\
-                                         (nuclides=nuclides)
+                delayed_nu_fission_in = delayed_nu_fission_in.summation(
+                    nuclides=nuclides)
+                delayed_nu_fission_out = delayed_nu_fission_out.summation(
+                    nuclides=nuclides)
 
                 # Remove coarse energy filter to keep it out of tally arithmetic
                 energy_filter = delayed_nu_fission_in.find_filter(
@@ -2169,6 +2169,8 @@ class MatrixMDGXS(MDGXS):
 
         # Eliminate the trivial score dimension
         xs = np.squeeze(xs, axis=len(xs.shape) - 1)
+
+        # Eliminate NaNs which may have been produced by dividing by density
         xs = np.nan_to_num(xs)
 
         if in_groups == 'all':

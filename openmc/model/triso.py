@@ -21,6 +21,11 @@ MAX_PF_RSP = 0.38
 MAX_PF_CRP = 0.64
 
 
+def _volume_sphere(r):
+    """Return volume of a sphere of radius r"""
+    return 4/3 * pi * r**3
+
+
 class TRISO(openmc.Cell):
     """Tristructural-isotopic (TRISO) micro fuel particle
 
@@ -696,7 +701,7 @@ class _SphericalShell(_Container):
 
     @property
     def volume(self):
-        return 4/3*pi*(self.radius**3 - self.inner_radius**3)
+        return _volume_sphere(self.radius) - _volume_sphere(self.inner_radius)
 
     @radius.setter
     def radius(self, radius):
@@ -1073,8 +1078,8 @@ def _close_random_pack(domain, spheres, contraction_rate):
 
         """
 
-        inner_pf = 4/3*pi*(inner_diameter/2)**3*num_spheres/domain.volume
-        outer_pf = 4/3*pi*(outer_diameter/2)**3*num_spheres/domain.volume
+        inner_pf = _volume_sphere(inner_diameter/2)*num_spheres / domain.volume
+        outer_pf = _volume_sphere(outer_diameter/2)*num_spheres / domain.volume
 
         j = floor(-log10(outer_pf - inner_pf))
         return (outer_diameter - 0.5**j * contraction_rate *
@@ -1289,7 +1294,7 @@ def pack_spheres(radius, region, pf=None, num_spheres=None, initial_pf=0.3,
                          'sphere, and spherical shell.'.format(region))
 
     # Determine the packing fraction/number of spheres
-    volume = 4/3*pi*radius**3
+    volume = _volume_sphere(radius)
     if pf is None and num_spheres is None:
         raise ValueError('`pf` or `num_spheres` must be specified.')
     elif pf is None:

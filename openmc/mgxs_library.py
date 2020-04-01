@@ -10,6 +10,7 @@ from scipy.special import eval_legendre
 
 import openmc
 import openmc.mgxs
+from openmc.mgxs import SCATTER_TABULAR, SCATTER_LEGENDRE, SCATTER_HISTOGRAM
 from openmc.checkvalue import check_type, check_value, check_greater_than, \
     check_iterable_type, check_less_than, check_filetype_version
 
@@ -24,9 +25,6 @@ _REPRESENTATIONS = [
 ]
 
 # Supported scattering angular distribution representations
-SCATTER_TABULAR = 'tabular'
-SCATTER_LEGENDRE = 'legendre'
-SCATTER_HISTOGRAM = 'histogram'
 _SCATTER_TYPES = [
     SCATTER_TABULAR,
     SCATTER_LEGENDRE,

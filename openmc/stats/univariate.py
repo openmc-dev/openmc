@@ -1,4 +1,4 @@
-from abc import ABCMeta, abstractmethod
+from abc import ABC, abstractmethod
 from collections.abc import Iterable
 from numbers import Real
 from xml.etree import ElementTree as ET
@@ -14,7 +14,7 @@ _INTERPOLATION_SCHEMES = ['histogram', 'linear-linear', 'linear-log',
                           'log-linear', 'log-log']
 
 
-class Univariate(EqualityMixin, metaclass=ABCMeta):
+class Univariate(EqualityMixin, ABC):
     """Probability distribution of a single random variable.
 
     The Univariate class is an abstract class that can be derived to implement a

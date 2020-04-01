@@ -1,4 +1,4 @@
-from abc import ABCMeta, abstractmethod
+from abc import ABC, abstractmethod
 from collections.abc import Iterable, Callable
 from functools import reduce
 from itertools import zip_longest
@@ -56,7 +56,7 @@ def sum_functions(funcs):
         return Polynomial(coeffs)
 
 
-class Function1D(EqualityMixin, metaclass=ABCMeta):
+class Function1D(EqualityMixin, ABC):
     """A function of one independent variable with HDF5 support."""
     @abstractmethod
     def __call__(self): pass

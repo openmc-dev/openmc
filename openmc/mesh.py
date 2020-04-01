@@ -1,4 +1,4 @@
-from abc import ABCMeta
+from abc import ABC
 from collections.abc import Iterable
 from numbers import Real, Integral
 from xml.etree import ElementTree as ET
@@ -13,7 +13,7 @@ from openmc.mixin import IDManagerMixin
 from openmc.surface import _BOUNDARY_TYPES
 
 
-class MeshBase(IDManagerMixin, metaclass=ABCMeta):
+class MeshBase(IDManagerMixin, ABC):
     """A mesh that partitions geometry for tallying purposes.
 
     Parameters

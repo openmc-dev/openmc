@@ -1,4 +1,4 @@
-from abc import ABCMeta, abstractmethod
+from abc import ABC, abstractmethod
 from collections.abc import Iterable
 from numbers import Integral, Real
 from warnings import warn
@@ -13,7 +13,7 @@ from .data import EV_PER_MEV
 from .endf import get_tab1_record, get_tab2_record
 
 
-class EnergyDistribution(EqualityMixin, metaclass=ABCMeta):
+class EnergyDistribution(EqualityMixin, ABC):
     """Abstract superclass for all energy distributions."""
     def __init__(self):
         pass

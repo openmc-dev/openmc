@@ -1,4 +1,4 @@
-from abc import ABCMeta, abstractmethod
+from abc import ABC, abstractmethod
 from collections.abc import Iterable
 from math import pi
 from numbers import Real
@@ -11,7 +11,7 @@ from openmc._xml import get_text
 from openmc.stats.univariate import Univariate, Uniform
 
 
-class UnitSphere(metaclass=ABCMeta):
+class UnitSphere(ABC):
     """Distribution of points on the unit sphere.
 
     This abstract class is used for angular distributions, since a direction is
@@ -251,7 +251,7 @@ class Monodirectional(UnitSphere):
         return monodirectional
 
 
-class Spatial(metaclass=ABCMeta):
+class Spatial(ABC):
     """Distribution of locations in three-dimensional Euclidean space.
 
     Classes derived from this abstract class can be used for spatial

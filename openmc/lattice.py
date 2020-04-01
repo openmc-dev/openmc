@@ -1,4 +1,4 @@
-from abc import ABCMeta
+from abc import ABC
 from collections import OrderedDict
 from collections.abc import Iterable
 from copy import deepcopy
@@ -15,7 +15,7 @@ from openmc._xml import get_text
 from openmc.mixin import IDManagerMixin
 
 
-class Lattice(IDManagerMixin, metaclass=ABCMeta):
+class Lattice(IDManagerMixin, ABC):
     """A repeating structure wherein each element is a universe.
 
     Parameters

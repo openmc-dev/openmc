@@ -3,7 +3,6 @@ from numbers import Integral
 import warnings
 import os
 import copy
-from abc import ABCMeta
 
 import numpy as np
 import h5py
@@ -128,7 +127,7 @@ def _df_column_convert_to_bin(df, current_name, new_name, values_to_bin,
     df.rename(columns={current_name: new_name}, inplace=True)
 
 
-class MGXS(metaclass=ABCMeta):
+class MGXS:
     """An abstract multi-group cross section for some energy group structure
     within some spatial domain.
 

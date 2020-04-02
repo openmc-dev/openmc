@@ -84,8 +84,11 @@ SpatialLegendreFilter::get_all_bins(const Particle* p, TallyEstimator estimator,
     std::vector<double> wgt(order_ + 1);
     calc_pn_c(order_, x_norm, wgt.data());
     for (int i = 0; i < order_ + 1; i++) {
-      match.bins_.push_back(i);
-      match.weights_.push_back(wgt[i]);
+      //match.bins_.push_back(i);
+      //match.weights_.push_back(wgt[i]);
+      match.bins_[match.bins_weights_length_] = i;
+      match.weights_[match.bins_weights_length_] = wgt[i];
+      match.bins_weights_length_++;
     }
   }
 }

@@ -63,8 +63,11 @@ AzimuthalFilter::get_all_bins(const Particle* p, TallyEstimator estimator,
 
   if (phi >= bins_.front() && phi <= bins_.back()) {
     auto bin = lower_bound_index(bins_.begin(), bins_.end(), phi);
-    match.bins_.push_back(bin);
-    match.weights_.push_back(1.0);
+    //match.bins_.push_back(bin);
+    //match.weights_.push_back(1.0);
+    match.bins_[match.bins_weights_length_] = bin;
+    match.weights_[match.bins_weights_length_] = 1.0;
+    match.bins_weights_length_++;
   }
 }
 

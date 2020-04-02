@@ -50,8 +50,11 @@ MaterialFilter::get_all_bins(const Particle* p, TallyEstimator estimator,
 {
   auto search = map_.find(p->material_);
   if (search != map_.end()) {
-    match.bins_.push_back(search->second);
-    match.weights_.push_back(1.0);
+    //match.bins_.push_back(search->second);
+    //match.weights_.push_back(1.0);
+    match.bins_[match.bins_weights_length_] = search->second;
+    match.weights_[match.bins_weights_length_] = 1.0;
+    match.bins_weights_length_++;
   }
 }
 

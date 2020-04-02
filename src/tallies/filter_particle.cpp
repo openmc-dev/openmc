@@ -45,8 +45,11 @@ ParticleFilter::get_all_bins(const Particle* p, TallyEstimator estimator,
 {
   for (auto i = 0; i < particles_.size(); i++) {
     if (particles_[i] == p->type_) {
-      match.bins_.push_back(i);
-      match.weights_.push_back(1.0);
+      //match.bins_.push_back(i);
+      //match.weights_.push_back(1.0);
+      match.bins_[match.bins_weights_length_] = i;
+      match.weights_[match.bins_weights_length_] = 1.0;
+      match.bins_weights_length_++;
     }
   }
 }

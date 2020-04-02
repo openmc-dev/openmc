@@ -11,8 +11,14 @@ void
 MeshSurfaceFilter::get_all_bins(const Particle* p, TallyEstimator estimator,
                                 FilterMatch& match) const
 {
-  model::meshes[mesh_]->surface_bins_crossed(p, match.bins_);
-  for (auto b : match.bins_) match.weights_.push_back(1.0);
+  int starting_length = match.bins_weights_length_;
+  //model::meshes[mesh_]->surface_bins_crossed(p, match.bins_);
+  model::meshes[mesh_]->surface_bins_crossed(p, match);
+  int ending_length = match.bins_weights_length_;
+  //for (auto b : match.bins_) match.weights_.push_back(1.0);
+    //match.weights_.push_back(1.0);
+  for (int i = starting_length; i < ending_length; i++)
+    match.weights_[i] = 1.0;
 }
 
 std::string

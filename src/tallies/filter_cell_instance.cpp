@@ -73,9 +73,11 @@ CellInstanceFilter::get_all_bins(const Particle* p, TallyEstimator estimator,
   gsl::index instance = p->cell_instance_;
   auto search = map_.find({index_cell, instance});
   if (search != map_.end()) {
-    int index_bin = search->second;
-    match.bins_.push_back(index_bin);
-    match.weights_.push_back(1.0);
+    //match.bins_.push_back(search->second);
+    //match.weights_.push_back(1.0);
+    match.bins_[match.bins_weights_length_] = search->second;
+    match.weights_[match.bins_weights_length_] = 1.0;
+    match.bins_weights_length_++;
   }
 }
 

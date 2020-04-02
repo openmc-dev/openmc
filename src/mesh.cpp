@@ -508,8 +508,9 @@ bool RegularMesh::intersects_3d(Position& r0, Position r1, int* ijk) const
   return min_dist < INFTY;
 }
 
-void RegularMesh::bins_crossed(const Particle* p, std::vector<int>& bins,
-                               std::vector<double>& lengths) const
+//void RegularMesh::bins_crossed(const Particle* p, std::vector<int>& bins,
+//                               std::vector<double>& lengths) const
+void RegularMesh::bins_crossed(const Particle* p, FilterMatch& match) const
 {
   // ========================================================================
   // Determine where the track intersects the mesh and if it intersects at all.
@@ -566,8 +567,11 @@ void RegularMesh::bins_crossed(const Particle* p, std::vector<int>& bins,
       // The track ends in this cell.  Use the particle end location rather
       // than the mesh surface and stop iterating.
       double distance = (r1 - r0).norm();
-      bins.push_back(get_bin_from_indices(ijk0.data()));
-      lengths.push_back(distance / total_distance);
+      //bins.push_back(get_bin_from_indices(ijk0.data()));
+      //lengths.push_back(distance / total_distance);
+      match.bins_[match.bins_weights_length_]    = get_bin_from_indices(ijk0.data());
+      match.weights_[match.bins_weights_length_] = distance/total_distance;
+      match.bins_weights_length_++;
       break;
     }
 
@@ -588,8 +592,11 @@ void RegularMesh::bins_crossed(const Particle* p, std::vector<int>& bins,
     // Pick the closest mesh surface and append this traversal to the output.
     auto j = std::min_element(d.begin(), d.end()) - d.begin();
     double distance = d[j];
-    bins.push_back(get_bin_from_indices(ijk0.data()));
-    lengths.push_back(distance / total_distance);
+    //bins.push_back(get_bin_from_indices(ijk0.data()));
+    //lengths.push_back(distance / total_distance);
+    match.bins_[match.bins_weights_length_]    = get_bin_from_indices(ijk0.data());
+    match.weights_[match.bins_weights_length_] = distance/total_distance;
+    match.bins_weights_length_++;
 
     // Translate to the oncoming mesh surface.
     r0 += distance * u;
@@ -614,8 +621,9 @@ void RegularMesh::bins_crossed(const Particle* p, std::vector<int>& bins,
   }
 }
 
-void RegularMesh::surface_bins_crossed(const Particle* p,
-                                       std::vector<int>& bins) const
+//void RegularMesh::surface_bins_crossed(const Particle* p,
+//                                       std::vector<int>& bins) const
+void RegularMesh::surface_bins_crossed(const Particle* p, FilterMatch& match) const
 {
   // ========================================================================
   // Determine if the track intersects the tally mesh.
@@ -698,7 +706,8 @@ void RegularMesh::surface_bins_crossed(const Particle* p,
             int i_mesh = get_bin_from_indices(ijk0.data());
             int i_bin = 4*n*i_mesh + i_surf - 1;
 
-            bins.push_back(i_bin);
+            //bins.push_back(i_bin);
+            match.bins_[match.bins_weights_length_++] = i_bin;
           }
 
           // Advance position
@@ -719,7 +728,8 @@ void RegularMesh::surface_bins_crossed(const Particle* p,
             int i_mesh = get_bin_from_indices(ijk0.data());
             int i_bin = 4*n*i_mesh + i_surf - 1;
 
-            bins.push_back(i_bin);
+            //bins.push_back(i_bin);
+            match.bins_[match.bins_weights_length_++] = i_bin;
           }
 
         } else {
@@ -731,7 +741,8 @@ void RegularMesh::surface_bins_crossed(const Particle* p,
             int i_mesh = get_bin_from_indices(ijk0.data());
             int i_bin = 4*n*i_mesh + i_surf - 1;
 
-            bins.push_back(i_bin);
+            //bins.push_back(i_bin);
+            match.bins_[match.bins_weights_length_++] = i_bin;
           }
 
           // Advance position
@@ -752,7 +763,8 @@ void RegularMesh::surface_bins_crossed(const Particle* p,
             int i_mesh = get_bin_from_indices(ijk0.data());
             int i_bin = 4*n*i_mesh + i_surf - 1;
 
-            bins.push_back(i_bin);
+            //bins.push_back(i_bin);
+            match.bins_[match.bins_weights_length_++] = i_bin;
           }
         }
       }
@@ -899,8 +911,9 @@ RectilinearMesh::RectilinearMesh(pugi::xml_node node)
   upper_right_ = {grid_[0].back(), grid_[1].back(), grid_[2].back()};
 }
 
-void RectilinearMesh::bins_crossed(const Particle* p, std::vector<int>& bins,
-                                   std::vector<double>& lengths) const
+//void RectilinearMesh::bins_crossed(const Particle* p, std::vector<int>& bins,
+//                                   std::vector<double>& lengths) const
+void RectilinearMesh::bins_crossed(const Particle* p, FilterMatch& match) const
 {
   // ========================================================================
   // Determine where the track intersects the mesh and if it intersects at all.
@@ -956,8 +969,11 @@ void RectilinearMesh::bins_crossed(const Particle* p, std::vector<int>& bins,
       // The track ends in this cell.  Use the particle end location rather
       // than the mesh surface and stop iterating.
       double distance = (r1 - r0).norm();
-      bins.push_back(get_bin_from_indices(ijk0));
-      lengths.push_back(distance / total_distance);
+      //bins.push_back(get_bin_from_indices(ijk0));
+      //lengths.push_back(distance / total_distance);
+      match.bins_[match.bins_weights_length_]    = get_bin_from_indices(ijk0);
+      match.weights_[match.bins_weights_length_] = distance/total_distance;
+      match.bins_weights_length_++;
       break;
     }
 
@@ -978,8 +994,11 @@ void RectilinearMesh::bins_crossed(const Particle* p, std::vector<int>& bins,
     // Pick the closest mesh surface and append this traversal to the output.
     auto j = std::min_element(d, d+3) - d;
     double distance = d[j];
-    bins.push_back(get_bin_from_indices(ijk0));
-    lengths.push_back(distance / total_distance);
+    //bins.push_back(get_bin_from_indices(ijk0));
+    //lengths.push_back(distance / total_distance);
+      match.bins_[match.bins_weights_length_]    = get_bin_from_indices(ijk0);
+      match.weights_[match.bins_weights_length_] = distance/total_distance;
+      match.bins_weights_length_++;
 
     // Translate to the oncoming mesh surface.
     r0 += distance * u;
@@ -1004,8 +1023,9 @@ void RectilinearMesh::bins_crossed(const Particle* p, std::vector<int>& bins,
   }
 }
 
-void RectilinearMesh::surface_bins_crossed(const Particle* p,
-                                           std::vector<int>& bins) const
+//void RectilinearMesh::surface_bins_crossed(const Particle* p,
+//                                           std::vector<int>& bins) const
+void RectilinearMesh::surface_bins_crossed(const Particle* p, FilterMatch& match) const
 {
   // ========================================================================
   // Determine if the track intersects the tally mesh.
@@ -1051,7 +1071,8 @@ void RectilinearMesh::surface_bins_crossed(const Particle* p,
     // Add the incoming current bin.
     int i_mesh = get_bin_from_indices(ijk0);
     int i_bin = 4*3*i_mesh + i_surf - 1;
-    bins.push_back(i_bin);
+    //bins.push_back(i_bin);
+    match.bins_[match.bins_weights_length_++] = i_bin;
   }
 
   // If the ending coordinates do not lie in the mesh, compute the coords and
@@ -1083,7 +1104,8 @@ void RectilinearMesh::surface_bins_crossed(const Particle* p,
     // Add the outgoing current bin.
     int i_mesh = get_bin_from_indices(ijk1);
     int i_bin = 4*3*i_mesh + i_surf - 1;
-    bins.push_back(i_bin);
+    //bins.push_back(i_bin);
+    match.bins_[match.bins_weights_length_++] = i_bin;
   }
 
   // ========================================================================
@@ -1133,7 +1155,8 @@ void RectilinearMesh::surface_bins_crossed(const Particle* p,
           int i_surf = 4*i + 3;
           int i_mesh = get_bin_from_indices(ijk0);
           int i_bin = 4*3*i_mesh + i_surf - 1;
-          bins.push_back(i_bin);
+          //bins.push_back(i_bin);
+          match.bins_[match.bins_weights_length_++] = i_bin;
 
           // Advance position
           ++ijk0[i];
@@ -1143,7 +1166,8 @@ void RectilinearMesh::surface_bins_crossed(const Particle* p,
           i_surf = 4*i + 2;
           i_mesh = get_bin_from_indices(ijk0);
           i_bin = 4*3*i_mesh + i_surf - 1;
-          bins.push_back(i_bin);
+          //bins.push_back(i_bin);
+          match.bins_[match.bins_weights_length_++] = i_bin;
 
         } else {
           // The particle is moving in the negative i direction
@@ -1152,7 +1176,8 @@ void RectilinearMesh::surface_bins_crossed(const Particle* p,
           int i_surf = 4*i + 1;
           int i_mesh = get_bin_from_indices(ijk0);
           int i_bin = 4*3*i_mesh + i_surf - 1;
-          bins.push_back(i_bin);
+          //bins.push_back(i_bin);
+          match.bins_[match.bins_weights_length_++] = i_bin;
 
           // Advance position
           --ijk0[i];
@@ -1162,7 +1187,8 @@ void RectilinearMesh::surface_bins_crossed(const Particle* p,
           i_surf = 4*i + 4;
           i_mesh = get_bin_from_indices(ijk0);
           i_bin = 4*3*i_mesh + i_surf - 1;
-          bins.push_back(i_bin);
+          //bins.push_back(i_bin);
+          match.bins_[match.bins_weights_length_++] = i_bin;
         }
       }
     }
@@ -1649,10 +1675,11 @@ UnstructuredMesh::intersect_track(const moab::CartVect& start,
   std::sort(hits.begin(), hits.end());
 }
 
-void
-UnstructuredMesh::bins_crossed(const Particle* p,
-                               std::vector<int>& bins,
-                               std::vector<double>& lengths) const
+//void
+//UnstructuredMesh::bins_crossed(const Particle* p,
+//                               std::vector<int>& bins,
+//                               std::vector<double>& lengths) const
+void UnstructuredMesh::bins_crossed(const Particle* p, FilterMatch& match) const
 {
 
   moab::ErrorCode rval;
@@ -1682,8 +1709,11 @@ UnstructuredMesh::bins_crossed(const Particle* p,
     Position midpoint = last_r + u * (track_len * 0.5);
     int bin = this->get_bin(midpoint);
     if (bin != -1) {
-      bins.push_back(bin);
-      lengths.push_back(1.0);
+      //bins.push_back(bin);
+      //lengths.push_back(1.0);
+      match.bins_[match.bins_weights_length_]    = bin
+      match.weights_[match.bins_weights_length_] = 1.0
+      match.bins_weights_length_++;
     }
     return;
   }
@@ -1708,8 +1738,11 @@ UnstructuredMesh::bins_crossed(const Particle* p,
       continue;
     }
 
-    bins.push_back(bin);
-    lengths.push_back(segment_length / track_len);
+    //bins.push_back(bin);
+    //lengths.push_back(segment_length / track_len);
+      match.bins_[match.bins_weights_length_]    = bin
+      match.weights_[match.bins_weights_length_] = segment_length / track_len;
+      match.bins_weights_length_++;
 
   }
 
@@ -1722,8 +1755,11 @@ UnstructuredMesh::bins_crossed(const Particle* p,
     Position midpoint = segment_start + u * (segment_length * 0.5);
     int bin = this->get_bin(midpoint);
     if (bin != -1) {
-      bins.push_back(bin);
-      lengths.push_back(segment_length / track_len);
+      //bins.push_back(bin);
+      //lengths.push_back(segment_length / track_len);
+      match.bins_[match.bins_weights_length_]    = bin
+      match.weights_[match.bins_weights_length_] = segment_length / track_len;
+      match.bins_weights_length_++;
     }
   }
 };
@@ -1772,7 +1808,8 @@ double UnstructuredMesh::tet_volume(moab::EntityHandle tet) const {
  return 1.0 / 6.0 * (((p[1] - p[0]) * (p[2] - p[0])) % (p[3] - p[0]));
 }
 
-void UnstructuredMesh::surface_bins_crossed(const Particle* p, std::vector<int>& bins) const {
+//void UnstructuredMesh::surface_bins_crossed(const Particle* p, std::vector<int>& bins) const {
+void UnstructuredMesh::surface_bins_crossed(const Particle* p, FilterMatch& match) const {
   // TODO: Implement triangle crossings here
   throw std::runtime_error{"Unstructured mesh surface tallies are not implemented."};
 }

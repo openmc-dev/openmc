@@ -31,6 +31,9 @@ public:
   FilterBinIter(const Tally& tally, bool end,
       //std::vector<FilterMatch>* particle_filter_matches);
       FilterMatch* particle_filter_matches);
+  
+  FilterBinIter(const Tally& tally, bool end,
+      std::vector<BigFilterMatch>* particle_filter_matches);
 
   bool operator==(const FilterBinIter& other) const
   {return index_ == other.index_;}
@@ -45,6 +48,9 @@ public:
   
   //std::vector<FilterMatch>& filter_matches_;
   FilterMatch* filter_matches_;
+  std::vector<BigFilterMatch>* big_filter_matches_;
+
+  bool is_big_ {false};
 
 private:
   void compute_index_weight();

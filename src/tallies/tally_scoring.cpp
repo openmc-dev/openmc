@@ -34,15 +34,17 @@ FilterBinIter::FilterBinIter(const Tally& tally, Particle* p)
   for (auto i_filt : tally_.filters()) {
     auto& match {filter_matches_[i_filt]};
     if (!match.bins_present_) {
-      match.bins_.clear();
-      match.weights_.clear();
+      //match.bins_.clear();
+      //match.weights_.clear();
+      match.bins_weights_length_ = 0;
       model::tally_filters[i_filt]->get_all_bins(p, tally_.estimator_, match);
       match.bins_present_ = true;
     }
 
     // If there are no valid bins for this filter, then there are no valid
     // filter bin combinations so all iterators are end iterators.
-    if (match.bins_.size() == 0) {
+    //if (match.bins_.size() == 0) {
+    if (match.bins_weights_length_ == 0) {
       index_ = -1;
       return;
     }
@@ -69,16 +71,67 @@ FilterBinIter::FilterBinIter(const Tally& tally, bool end,
   for (auto i_filt : tally_.filters()) {
     auto& match {filter_matches_[i_filt]};
     if (!match.bins_present_) {
+      //match.bins_.clear();
+      //match.weights_.clear();
+      match.bins_weights_length_ = 0;
+      for (auto i = 0; i < model::tally_filters[i_filt]->n_bins(); ++i) {
+        //if(match.bins_weights_length_ >= FILTERMATCH_BINS_WEIGHTS_SIZE)
+        //  std::cout << "Loop size = " << model::tally_filters[i_filt]->n_bins() << std::endl;
+        assert(match.bins_weights_length_ < FILTERMATCH_BINS_WEIGHTS_SIZE);
+        //match.bins_.push_back(i);
+        match.bins_[match.bins_weights_length_] = i;
+        //match.weights_.push_back(1.0);
+        match.weights_[match.bins_weights_length_] = 1.0;
+        match.bins_weights_length_++;
+      }
+      match.bins_present_ = true;
+    }
+
+    //if (match.bins_.size() == 0) {
+    if (match.bins_weights_length_ == 0) {
+      index_ = -1;
+      return;
+    }
+
+    match.i_bin_ = 0;
+  }
+
+  // Compute the initial index and weight.
+  this->compute_index_weight();
+}
+
+FilterBinIter::FilterBinIter(const Tally& tally, bool end,
+    std::vector<BigFilterMatch>* particle_filter_matches)
+  : big_filter_matches_{particle_filter_matches}, tally_{tally}
+{
+  is_big_ = true;
+  // Handle the special case for an iterator that points to the end.
+  if (end) {
+    index_ = -1;
+    return;
+  }
+
+  for (auto i_filt : tally_.filters()) {
+    auto& match {(*big_filter_matches_)[i_filt]};
+    if (!match.bins_present_) {
       match.bins_.clear();
       match.weights_.clear();
+      //match.bins_weights_length_ = 0;
       for (auto i = 0; i < model::tally_filters[i_filt]->n_bins(); ++i) {
+        //if(match.bins_weights_length_ >= FILTERMATCH_BINS_WEIGHTS_SIZE)
+        //  std::cout << "Loop size = " << model::tally_filters[i_filt]->n_bins() << std::endl;
+        //assert(match.bins_weights_length_ < FILTERMATCH_BINS_WEIGHTS_SIZE);
         match.bins_.push_back(i);
+        //match.bins_[match.bins_weights_length_] = i;
         match.weights_.push_back(1.0);
+        //match.weights_[match.bins_weights_length_] = 1.0;
+        //match.bins_weights_length_++;
       }
       match.bins_present_ = true;
     }
 
     if (match.bins_.size() == 0) {
+    //if (match.bins_weights_length_ == 0) {
       index_ = -1;
       return;
     }
@@ -93,33 +146,69 @@ FilterBinIter::FilterBinIter(const Tally& tally, bool end,
 FilterBinIter&
 FilterBinIter::operator++()
 {
-  // Find the next valid combination of filter bins.  To do this, we search
-  // backwards through the filters until we find the first filter whose bins
-  // can be incremented.
-  bool done_looping = true;
-  for (int i = tally_.filters().size()-1; i >= 0; --i) {
-    auto i_filt = tally_.filters(i);
-    auto& match {filter_matches_[i_filt]};
-    if (match.i_bin_ < match.bins_.size()-1) {
-      // The bin for this filter can be incremented.  Increment it and do not
-      // touch any of the remaining filters.
-      ++match.i_bin_;
-      done_looping = false;
-      break;
+  if( is_big_ )
+  {
+    // Find the next valid combination of filter bins.  To do this, we search
+    // backwards through the filters until we find the first filter whose bins
+    // can be incremented.
+    bool done_looping = true;
+    for (int i = tally_.filters().size()-1; i >= 0; --i) {
+      auto i_filt = tally_.filters(i);
+      auto& match {(*big_filter_matches_)[i_filt]};
+      if (match.i_bin_ < match.bins_.size()-1) {
+      //if (match.i_bin_ < match.bins_weights_length_-1) {
+        // The bin for this filter can be incremented.  Increment it and do not
+        // touch any of the remaining filters.
+        ++match.i_bin_;
+        done_looping = false;
+        break;
+      } else {
+        // This bin cannot be incremented so reset it and continue to the next
+        // filter.
+        match.i_bin_ = 0;
+      }
+    }
+
+    if (done_looping) {
+      // We have visited every valid combination.  All done!
+      index_ = -1;
     } else {
-      // This bin cannot be incremented so reset it and continue to the next
-      // filter.
-      match.i_bin_ = 0;
+      // The loop found a new valid combination.  Compute the corresponding
+      // index and weight.
+      compute_index_weight();
     }
   }
+  else
+  {
+    // Find the next valid combination of filter bins.  To do this, we search
+    // backwards through the filters until we find the first filter whose bins
+    // can be incremented.
+    bool done_looping = true;
+    for (int i = tally_.filters().size()-1; i >= 0; --i) {
+      auto i_filt = tally_.filters(i);
+      auto& match {filter_matches_[i_filt]};
+      //if (match.i_bin_ < match.bins_.size()-1) {
+      if (match.i_bin_ < match.bins_weights_length_-1) {
+        // The bin for this filter can be incremented.  Increment it and do not
+        // touch any of the remaining filters.
+        ++match.i_bin_;
+        done_looping = false;
+        break;
+      } else {
+        // This bin cannot be incremented so reset it and continue to the next
+        // filter.
+        match.i_bin_ = 0;
+      }
+    }
 
-  if (done_looping) {
-    // We have visited every valid combination.  All done!
-    index_ = -1;
-  } else {
-    // The loop found a new valid combination.  Compute the corresponding
-    // index and weight.
-    compute_index_weight();
+    if (done_looping) {
+      // We have visited every valid combination.  All done!
+      index_ = -1;
+    } else {
+      // The loop found a new valid combination.  Compute the corresponding
+      // index and weight.
+      compute_index_weight();
+    }
   }
 
   return *this;

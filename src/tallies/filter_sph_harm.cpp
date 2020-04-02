@@ -67,8 +67,11 @@ SphericalHarmonicsFilter::get_all_bins(const Particle* p, TallyEstimator estimat
 
     // Append the matching (bin,weight) for each moment
     for (int i = 0; i < num_nm; i++) {
-      match.weights_.push_back(wgt[n] * rn[j]);
-      match.bins_.push_back(j);
+      //match.weights_.push_back(wgt[n] * rn[j]);
+      //match.bins_.push_back(j);
+      match.bins_[match.bins_weights_length_] =wgt[n] * rn[j] ;
+      match.weights_[match.bins_weights_length_] = j;
+      match.bins_weights_length_++;
       ++j;
     }
   }

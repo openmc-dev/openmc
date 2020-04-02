@@ -13,8 +13,23 @@ namespace openmc {
 class FilterMatch
 {
 public:
+  //std::vector<int> bins_;
+  int bins_[FILTERMATCH_BINS_WEIGHTS_SIZE];
+  //std::vector<double> weights_;
+  double weights_[FILTERMATCH_BINS_WEIGHTS_SIZE];
+  int bins_weights_length_ {0};
+  int i_bin_;
+  bool bins_present_ {false};
+};
+
+class BigFilterMatch
+{
+public:
   std::vector<int> bins_;
+  //int bins_[FILTERMATCH_BINS_WEIGHTS_SIZE];
   std::vector<double> weights_;
+  //double weights_[FILTERMATCH_BINS_WEIGHTS_SIZE];
+  //int bins_weights_length_ {0};
   int i_bin_;
   bool bins_present_ {false};
 };

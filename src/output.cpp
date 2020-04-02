@@ -628,16 +628,17 @@ write_tallies()
     }
 
     // Initialize Filter Matches Object
-    //std::vector<FilterMatch> filter_matches;
-    FilterMatch filter_matches[FILTER_MATCHES_SIZE];
+    std::vector<BigFilterMatch> filter_matches;
     // Allocate space for tally filter matches
-    //filter_matches.resize(model::tally_filters.size());
+    filter_matches.resize(model::tally_filters.size());
+
+    //FilterMatch filter_matches[FILTER_MATCHES_SIZE];
 
     // Loop over all filter bin combinations.
-    auto filter_iter = FilterBinIter(tally, false, filter_matches);
-    //auto filter_iter = FilterBinIter(tally, false, &filter_matches);
-    //auto end = FilterBinIter(tally, true, &filter_matches);
-    auto end = FilterBinIter(tally, true, filter_matches);
+    //auto filter_iter = FilterBinIter(tally, false, filter_matches.data());
+    auto filter_iter = FilterBinIter(tally, false, &filter_matches);
+    auto end = FilterBinIter(tally, true, &filter_matches);
+    //auto end = FilterBinIter(tally, true, filter_matches.data());
     for (; filter_iter != end; ++filter_iter) {
       auto filter_index = filter_iter.index_;
 

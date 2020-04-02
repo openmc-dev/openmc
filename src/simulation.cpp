@@ -679,8 +679,12 @@ void transport_event_based()
       }
     }
     
+    simulation::device_particles = (Particle*) malloc(n_particles* sizeof(Particle));
+    memcpy(simulation::device_particles, simulation::particles.data(), n_particles * sizeof(Particle));
     // Execute death event for all particles
     process_death_events(n_particles);
+    memcpy(simulation::particles.data(),simulation::device_particles, n_particles * sizeof(Particle));
+    free(simulation::device_particles);
 
     // Adjust remaining work and source offset variables
     remaining_work -= n_particles;

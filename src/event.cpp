@@ -18,6 +18,7 @@ SharedArray<EventQueueItem> surface_crossing_queue;
 SharedArray<EventQueueItem> collision_queue;
 
 std::vector<Particle>  particles;
+Particle*  device_particles;
 
 } // namespace simulation
 
@@ -164,7 +165,7 @@ void process_death_events(int64_t n_particles)
   simulation::time_event_death.start();
   #pragma omp parallel for schedule(runtime)
   for (int64_t i = 0; i < n_particles; i++) {
-    Particle& p = simulation::particles[i];
+    Particle& p = simulation::device_particles[i];
     p.event_death();
   }
   simulation::time_event_death.stop();

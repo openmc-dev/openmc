@@ -217,14 +217,29 @@ FilterBinIter::operator++()
 void
 FilterBinIter::compute_index_weight()
 {
-  index_ = 0;
-  weight_ = 1.;
-  for (auto i = 0; i < tally_.filters().size(); ++i) {
-    auto i_filt = tally_.filters(i);
-    auto& match {filter_matches_[i_filt]};
-    auto i_bin = match.i_bin_;
-    index_ += match.bins_[i_bin] * tally_.strides(i);
-    weight_ *= match.weights_[i_bin];
+  if( is_big_)
+  {
+    index_ = 0;
+    weight_ = 1.;
+    for (auto i = 0; i < tally_.filters().size(); ++i) {
+      auto i_filt = tally_.filters(i);
+      auto& match {(*big_filter_matches_)[i_filt]};
+      auto i_bin = match.i_bin_;
+      index_ += match.bins_[i_bin] * tally_.strides(i);
+      weight_ *= match.weights_[i_bin];
+    }
+  }
+  else
+  {
+    index_ = 0;
+    weight_ = 1.;
+    for (auto i = 0; i < tally_.filters().size(); ++i) {
+      auto i_filt = tally_.filters(i);
+      auto& match {filter_matches_[i_filt]};
+      auto i_bin = match.i_bin_;
+      index_ += match.bins_[i_bin] * tally_.strides(i);
+      weight_ *= match.weights_[i_bin];
+    }
   }
 }
 

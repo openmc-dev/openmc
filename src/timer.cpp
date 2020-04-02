@@ -87,4 +87,26 @@ void reset_timers()
   simulation::time_event_death.reset();
 }
 
+void restart_timers()
+{
+  simulation::time_active.restart();
+  simulation::time_bank.restart();
+  simulation::time_bank_sample.restart();
+  simulation::time_bank_sendrecv.restart();
+  simulation::time_finalize.restart();
+  simulation::time_inactive.restart();
+  simulation::time_initialize.restart();
+  simulation::time_read_xs.restart();
+  simulation::time_sample_source.restart();
+  simulation::time_tallies.restart();
+  simulation::time_total.restart();
+  simulation::time_transport.restart();
+  simulation::time_event_init.restart();
+  simulation::time_event_calculate_xs.restart();
+  simulation::time_event_advance_particle.restart();
+  simulation::time_event_surface_crossing.restart();
+  simulation::time_event_collision.restart();
+  simulation::time_event_death.restart();
+}
+
 } // namespace openmc

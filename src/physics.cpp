@@ -173,7 +173,7 @@ create_fission_sites(Particle* p, int i_nuclide, const Reaction* rx)
   double nu_d[MAX_DELAYED_GROUPS] = {0.};
 
   // Clear out particle's nu fission bank
-  p->nu_bank_.clear();
+  //p->nu_bank_.clear();
 
   p->fission_ = true;
   int skipped = 0;
@@ -219,8 +219,10 @@ create_fission_sites(Particle* p, int i_nuclide, const Reaction* rx)
 
     // Write fission particles to nuBank
     if (use_fission_bank) {
-      p->nu_bank_.emplace_back();
-      Particle::NuBank* nu_bank_entry = &p->nu_bank_.back();
+      //p->nu_bank_.emplace_back();
+      //Particle::NuBank* nu_bank_entry = &p->nu_bank_.back();
+      assert(i < NU_BANK_SIZE);
+      Particle::NuBank* nu_bank_entry = &p->nu_bank_[i];
       nu_bank_entry->wgt              = site.wgt;
       nu_bank_entry->E                = site.E;
       nu_bank_entry->delayed_group    = site.delayed_group;

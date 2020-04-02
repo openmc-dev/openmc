@@ -26,6 +26,7 @@
 #define SECONDARY_BANK_SIZE 200 // 100 not enough to pass regression tests, but 200 works. TODO: narrow this down.
 #define FLUX_DERIVS_SIZE 5 // This is the min required to pass regression tests (diff_tally is limiter)
 #define FILTER_MATCHES_SIZE 14 // tallies regression test is the limiter here. More realistic tests only need 2. This can be set at runtime init though.
+#define NU_BANK_SIZE 16 // infinite_cell regression test
 
 namespace openmc {
 
@@ -366,7 +367,8 @@ public:
 
   std::vector<std::vector<Position>> tracks_; // tracks for outputting to file
 
-  std::vector<NuBank> nu_bank_; // bank of most recently fissioned particles
+  //std::vector<NuBank> nu_bank_; // bank of most recently fissioned particles
+  NuBank nu_bank_[NU_BANK_SIZE]; // bank of most recently fissioned particles
 
   // Global tally accumulators
   double keff_tally_absorption_ {0.0};

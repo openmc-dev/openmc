@@ -411,6 +411,11 @@ Particle::event_death()
     int64_t offset = id_ - 1 - simulation::work_index[mpi::rank];
     simulation::progeny_per_particle[offset] = n_progeny_;
   }
+
+  //if( nu_bank_.capacity() > NU_BANK_SIZE )
+  //  std::cout << "Nu Bank size = " << nu_bank_.capacity() << std::endl;
+  //assert( nu_bank_.capacity() <= NU_BANK_SIZE );
+
 }
 
 

@@ -1699,8 +1699,9 @@ void UnstructuredMesh::bins_crossed(const Particle* p, FilterMatch& match) const
   std::vector<double> hits;
   intersect_track(r0, dir, track_len, hits);
 
-  bins.clear();
-  lengths.clear();
+  //bins.clear();
+  //lengths.clear();
+  match.bins_weights_length = 0;
 
   // if there are no intersections the track may lie entirely
   // within a single tet. If this is the case, apply entire
@@ -1711,8 +1712,8 @@ void UnstructuredMesh::bins_crossed(const Particle* p, FilterMatch& match) const
     if (bin != -1) {
       //bins.push_back(bin);
       //lengths.push_back(1.0);
-      match.bins_[match.bins_weights_length_]    = bin
-      match.weights_[match.bins_weights_length_] = 1.0
+      match.bins_[match.bins_weights_length_]    = bin;
+      match.weights_[match.bins_weights_length_] = 1.0;
       match.bins_weights_length_++;
     }
     return;
@@ -1740,7 +1741,7 @@ void UnstructuredMesh::bins_crossed(const Particle* p, FilterMatch& match) const
 
     //bins.push_back(bin);
     //lengths.push_back(segment_length / track_len);
-      match.bins_[match.bins_weights_length_]    = bin
+      match.bins_[match.bins_weights_length_]    = bin;
       match.weights_[match.bins_weights_length_] = segment_length / track_len;
       match.bins_weights_length_++;
 
@@ -1757,7 +1758,7 @@ void UnstructuredMesh::bins_crossed(const Particle* p, FilterMatch& match) const
     if (bin != -1) {
       //bins.push_back(bin);
       //lengths.push_back(segment_length / track_len);
-      match.bins_[match.bins_weights_length_]    = bin
+      match.bins_[match.bins_weights_length_]    = bin;
       match.weights_[match.bins_weights_length_] = segment_length / track_len;
       match.bins_weights_length_++;
     }

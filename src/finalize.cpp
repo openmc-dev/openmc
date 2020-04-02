@@ -171,6 +171,12 @@ int openmc_reset_timers()
   return 0;
 }
 
+int openmc_restart_timers()
+{
+  restart_timers();
+  return 0;
+}
+
 int openmc_hard_reset()
 {
   // Reset all tallies and timers

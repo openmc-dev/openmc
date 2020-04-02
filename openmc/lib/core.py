@@ -65,6 +65,8 @@ _dll.openmc_reset.restype = c_int
 _dll.openmc_reset.errcheck = _error_handler
 _dll.openmc_reset_timers.restype = c_int
 _dll.openmc_reset_timers.errcheck = _error_handler
+_dll.openmc_restart_timers.restype = c_int
+_dll.openmc_restart_timers.errcheck = _error_handler
 _run_linsolver_argtypes = [_array_1d_dble, _array_1d_dble, _array_1d_dble,
                            c_double]
 _dll.openmc_run_linsolver.argtypes = _run_linsolver_argtypes
@@ -308,6 +310,7 @@ def reset():
     """Reset tallies and timers."""
     _dll.openmc_reset()
     _dll.openmc_reset_timers()
+    _dll.openmc_restart_timers()
 
 
 def run():

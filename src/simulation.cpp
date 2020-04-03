@@ -80,6 +80,7 @@ int openmc_simulation_init()
     int64_t event_buffer_length = std::min(simulation::work_per_rank,
       settings::max_particles_in_flight);
     init_event_queues(event_buffer_length);
+    simulation::device_particles = (Particle*) malloc(event_buffer_length* sizeof(Particle));
   }
 
   // Allocate tally results arrays if they're not allocated yet
@@ -178,6 +179,8 @@ int openmc_simulation_finalize()
     if (settings::verbosity >= 4) print_results();
   }
   if (settings::check_overlaps) print_overlap_check();
+   
+  free(simulation::device_particles);
 
   // Reset flags
   simulation::need_depletion_rx = false;
@@ -679,12 +682,20 @@ void transport_event_based()
       }
     }
     
-    simulation::device_particles = (Particle*) malloc(n_particles* sizeof(Particle));
+    /*
+    double a = (double) (n_particles * sizeof(Particle)) / 1024.0 / 1024.0;
+    std::cout << "Particle size = " << sizeof(Particle) << " bytes" << std::endl;
+    std::cout << "Copying " << a << " MB of data to device..." << std::endl;
     memcpy(simulation::device_particles, simulation::particles.data(), n_particles * sizeof(Particle));
+    */
+
     // Execute death event for all particles
     process_death_events(n_particles);
+
+    /*
     memcpy(simulation::particles.data(),simulation::device_particles, n_particles * sizeof(Particle));
-    free(simulation::device_particles);
+    std::cout << "Copying " << a << " MB of data to host..." << std::endl;
+    */
 
     // Adjust remaining work and source offset variables
     remaining_work -= n_particles;

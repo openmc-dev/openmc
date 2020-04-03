@@ -94,6 +94,8 @@ if(openmp)
   if(OPENMP_FOUND)
     list(APPEND cxxflags ${OpenMP_CXX_FLAGS})
     list(APPEND ldflags ${OpenMP_CXX_FLAGS})
+    #list(APPEND cxxflags -fiopenmp -fopenmp-targets=spir64 -fexceptions)
+    #list(APPEND ldflags -fiopenmp -fopenmp-targets=spir64 -fexceptions)
   endif()
 endif()
 

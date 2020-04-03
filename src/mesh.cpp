@@ -1701,7 +1701,7 @@ void UnstructuredMesh::bins_crossed(const Particle* p, FilterMatch& match) const
 
   //bins.clear();
   //lengths.clear();
-  match.bins_weights_length = 0;
+  match.bins_weights_length_ = 0;
 
   // if there are no intersections the track may lie entirely
   // within a single tet. If this is the case, apply entire

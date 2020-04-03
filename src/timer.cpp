@@ -89,24 +89,7 @@ void reset_timers()
 
 void restart_timers()
 {
-  simulation::time_active.start();
-  simulation::time_bank.start();
-  simulation::time_bank_sample.start();
-  simulation::time_bank_sendrecv.start();
-  simulation::time_finalize.start();
-  simulation::time_inactive.start();
-  simulation::time_initialize.start();
-  simulation::time_read_xs.start();
-  simulation::time_sample_source.start();
-  simulation::time_tallies.start();
   simulation::time_total.start();
-  simulation::time_transport.start();
-  simulation::time_event_init.start();
-  simulation::time_event_calculate_xs.start();
-  simulation::time_event_advance_particle.start();
-  simulation::time_event_surface_crossing.start();
-  simulation::time_event_collision.start();
-  simulation::time_event_death.start();
 }
 
 } // namespace openmc

@@ -307,8 +307,12 @@ def plot_geometry():
 
 
 def reset():
-    """Reset tallies and timers."""
+    """Reset tallies but keep timers."""
     _dll.openmc_reset()
+
+
+def reset_timers():
+    """Reset timers and restart for next batch."""
     _dll.openmc_reset_timers()
     _dll.openmc_restart_timers()
 

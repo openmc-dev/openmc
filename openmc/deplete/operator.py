@@ -274,6 +274,7 @@ class Operator(TransportOperator):
         # Run OpenMC
         openmc.lib.reset()
         openmc.lib.run()
+        openmc.lib.reset_timers()
 
         # Extract results
         op_result = self._unpack_tallies_and_normalize(power)

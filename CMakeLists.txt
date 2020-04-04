@@ -395,7 +395,7 @@ if (MPI_ENABLED)
   target_compile_definitions(libopenmc PUBLIC -DOPENMC_MPI)
 endif()
 if (libmesh)
-  target_compile_definitions(libopenmc PUBLIC -DLIBMESH)
+  target_compile_definitions(libopenmc PRIVATE LIBMESH)
 endif()
 
 # Set git SHA1 hash as a compile definition

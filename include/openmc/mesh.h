@@ -282,6 +282,16 @@ public:
 
   std::string bin_label(int bin) const override;
 
+  //! Add a variable to the libmesh mesh instance
+  virtual void add_score(const std::string& var_name) = 0;
+
+  //! Set the value of a bin for a variable on the libmesh mesh instance
+  virtual void set_score_data(const std::string& var_name,
+                              std::vector<double> values,
+                              std::vector<double> std_dev) const = 0;
+
+  virtual void write(std::string filename) const = 0;
+
   std::string filename_;
 };
 
@@ -495,15 +505,17 @@ public:
 
   bool intersects(Position& r0, Position r1, int* ijk) const;
 
-  void write(const std::string& filename) const;
+  void write(std::string filename) const override;
 
   void to_hdf5(hid_t group) const;
 
   //! Add a variable to the libmesh mesh instance
-  void add_variable(const std::string& var_name);
+  void add_score(const std::string& var_name) override;
 
   //! Set the value of a bin for a variable on the libmesh mesh instance
-  void set_variable(const std::string& var_name, int bin, double value);
+  void set_score_data(const std::string& var_name,
+                      std::vector<double> values,
+                      std::vector<double> std_dev) const override;
 
 private:
 

@@ -2277,30 +2277,60 @@ LibMesh::get_element_from_bin(int bin) const {
 }
 
 void
-LibMesh::add_variable(const std::string& var_name) {
+LibMesh::add_score(const std::string& var_name) {
   // check if this is a new varaible
-  if (!variable_map_.count(var_name)) {
+  std::string value_name = var_name + "_value";
+  if (!variable_map_.count(value_name)) {
     auto& eqn_sys = equation_systems_->get_system(eq_system_name_);
-    auto var_num = eqn_sys.add_variable(var_name, libMesh::CONSTANT, libMesh::MONOMIAL);
-    variable_map_[var_name] = var_num;
+    auto var_num = eqn_sys.add_variable(value_name, libMesh::CONSTANT, libMesh::MONOMIAL);
+    variable_map_[value_name] = var_num;
+    equation_systems_->init();
+  }
+
+  std::string std_dev_name = var_name + "_std_dev";
+  // check if this is a new varaible
+  if (!variable_map_.count(std_dev_name)) {
+    auto& eqn_sys = equation_systems_->get_system(eq_system_name_);
+    auto var_num = eqn_sys.add_variable(std_dev_name, libMesh::CONSTANT, libMesh::MONOMIAL);
+    variable_map_[std_dev_name] = var_num;
     equation_systems_->init();
   }
 }
 
 void
-LibMesh::set_variable(const std::string& var_name, int bin, double value) {
-  // look up the variable
-  unsigned int var_num = variable_map_.at(var_name);
-  auto& eqn_sys = equation_systems_->get_system(eq_system_name_);
-  const libMesh::DofMap& dof_map = eqn_sys.get_dof_map();
-  auto e = m_->elem_ptr(bin);
-  std::vector<libMesh::dof_id_type> dof_indices;
-  dof_map.dof_indices(e, dof_indices, var_num);
-  Ensures(dof_indices.size() == 1);
-  eqn_sys.solution->set(dof_indices[0], value);
+LibMesh::set_score_data(const std::string& var_name,
+                      std::vector<double> values,
+                      std::vector<double> std_dev) const
+{
+    auto& eqn_sys = equation_systems_->get_system(eq_system_name_);
+    const libMesh::DofMap& dof_map = eqn_sys.get_dof_map();
+
+    // look up the value variable
+    std::string value_name = var_name + "_value";
+    unsigned int value_num = variable_map_.at(value_name);
+    // look up the std dev variable
+    std::string std_dev_name = var_name + "_std_dev";
+    unsigned int std_dev_num = variable_map_.at(std_dev_name);
+
+  for (int bin = 0; bin < this->n_bins(); bin++) {
+    auto e = m_->elem_ptr(bin);
+
+    // set value
+    std::vector<libMesh::dof_id_type> value_dof_indices;
+    dof_map.dof_indices(e, value_dof_indices, value_num);
+    Ensures(value_dof_indices.size() == 1);
+    eqn_sys.solution->set(value_dof_indices[0], values[bin]);
+
+    // set std dev
+    std::vector<libMesh::dof_id_type> std_dev_dof_indices;
+    dof_map.dof_indices(e, std_dev_dof_indices, std_dev_num);
+    Ensures(std_dev_dof_indices.size() == 1);
+    eqn_sys.solution->set(std_dev_dof_indices[0], std_dev[bin]);
+
+  }
 }
 
-void LibMesh::write(const std::string& filename) const {
+void LibMesh::write(std::string filename) const {
   libMesh::ExodusII_IO exo(*m_);
   std::set<std::string> systems_out = {eq_system_name_};
   exo.write_discontinuous_exodusII(filename, *equation_systems_, &systems_out);

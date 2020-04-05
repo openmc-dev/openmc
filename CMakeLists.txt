@@ -379,7 +379,6 @@ target_include_directories(libopenmc
     $<INSTALL_INTERFACE:include>
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
     ${HDF5_INCLUDE_DIRS}
-    ${LIBMESH_INCLUDE_DIRS}
 )
 
 # Set compile flags
@@ -421,7 +420,7 @@ if(dagmc)
 endif()
 
 if(libmesh)
-  target_link_libraries(libopenmc ${LIBMESH_LIBRARIES})
+  target_link_libraries(libopenmc PkgConfig::LIBMESH)
 endif()
 
 #===============================================================================

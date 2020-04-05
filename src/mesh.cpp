@@ -2079,8 +2079,8 @@ UnstructuredMesh::get_score_tags(std::string score) const {
 }
 
 void
-UnstructuredMesh::add_score(std::string score) const {
-  auto score_tags = this->get_score_tags(score);
+UnstructuredMesh::add_score(const std::string& score) {
+  auto score_tags = get_score_tags(score);
 }
 
 void UnstructuredMesh::remove_score(std::string score) const {

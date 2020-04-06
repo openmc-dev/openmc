@@ -2,16 +2,16 @@ import copy
 from numbers import Real, Integral
 import os
 
-import numpy as np
 import h5py
-from scipy.interpolate import interp1d
+import numpy as np
 from scipy.integrate import simps
+from scipy.interpolate import interp1d
 from scipy.special import eval_legendre
 
 import openmc
 import openmc.mgxs
 from openmc.mgxs import SCATTER_TABULAR, SCATTER_LEGENDRE, SCATTER_HISTOGRAM
-from openmc.checkvalue import check_type, check_value, check_greater_than, \
+from .checkvalue import check_type, check_value, check_greater_than, \
     check_iterable_type, check_less_than, check_filetype_version
 
 ROOM_TEMPERATURE_KELVIN = 294.0

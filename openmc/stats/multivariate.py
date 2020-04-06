@@ -7,8 +7,8 @@ from xml.etree import ElementTree as ET
 import numpy as np
 
 import openmc.checkvalue as cv
-from openmc._xml import get_text
-from openmc.stats.univariate import Univariate, Uniform
+from .._xml import get_text
+from .univariate import Univariate, Uniform
 
 
 class UnitSphere(ABC):

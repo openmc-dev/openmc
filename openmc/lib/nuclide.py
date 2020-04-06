@@ -2,7 +2,7 @@ from collections.abc import Mapping
 from ctypes import c_int, c_char_p, POINTER, c_size_t
 from weakref import WeakValueDictionary
 
-from openmc.exceptions import DataError, AllocationError
+from ..exceptions import DataError, AllocationError
 from . import _dll
 from .core import _FortranObject
 from .error import _error_handler

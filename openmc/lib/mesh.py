@@ -4,7 +4,7 @@ from weakref import WeakValueDictionary
 
 from numpy.ctypeslib import as_array
 
-from openmc.exceptions import AllocationError, InvalidIDError
+from ..exceptions import AllocationError, InvalidIDError
 from . import _dll
 from .core import _FortranObjectWithID
 from .error import _error_handler

@@ -6,7 +6,7 @@ from weakref import WeakValueDictionary
 
 import numpy as np
 
-from openmc.exceptions import AllocationError, InvalidIDError
+from ..exceptions import AllocationError, InvalidIDError
 from . import _dll
 from .core import _FortranObjectWithID
 from .error import _error_handler

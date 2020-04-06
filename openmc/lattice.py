@@ -4,15 +4,15 @@ from collections.abc import Iterable
 from copy import deepcopy
 from math import sqrt, floor
 from numbers import Real
+import types
 from xml.etree import ElementTree as ET
 
 import numpy as np
-import types
 
-import openmc.checkvalue as cv
 import openmc
-from openmc._xml import get_text
-from openmc.mixin import IDManagerMixin
+import openmc.checkvalue as cv
+from ._xml import get_text
+from .mixin import IDManagerMixin
 
 
 class Lattice(IDManagerMixin, ABC):

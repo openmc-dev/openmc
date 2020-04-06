@@ -1,5 +1,5 @@
-from numbers import Integral, Real
 from itertools import chain
+from numbers import Integral, Real
 import string
 
 import numpy as np

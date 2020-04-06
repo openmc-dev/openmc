@@ -8,8 +8,8 @@ import numpy as np
 
 import openmc
 import openmc.checkvalue as cv
-from openmc.plots import _SVG_COLORS
-from openmc.mixin import IDManagerMixin
+from .mixin import IDManagerMixin
+from .plots import _SVG_COLORS
 
 
 class Universe(IDManagerMixin):

@@ -1,6 +1,6 @@
 from collections import OrderedDict
-import re
 import os
+import re
 from xml.etree import ElementTree as ET
 
 import openmc.checkvalue as cv

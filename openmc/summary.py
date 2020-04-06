@@ -1,12 +1,12 @@
 from collections.abc import Iterable
 import warnings
 
-import numpy as np
 import h5py
+import numpy as np
 
 import openmc
 import openmc.checkvalue as cv
-from openmc.region import Region
+from .region import Region
 
 _VERSION_SUMMARY = 6
 

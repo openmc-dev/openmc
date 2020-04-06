@@ -1,11 +1,11 @@
 from datetime import datetime
+import glob
 import re
 import os
 import warnings
-import glob
 
-import numpy as np
 import h5py
+import numpy as np
 from uncertainties import ufloat
 
 import openmc

@@ -2,7 +2,7 @@ from numbers import Integral
 from xml.etree import ElementTree as ET
 
 import openmc.checkvalue as cv
-from openmc.mixin import EqualityMixin, IDManagerMixin
+from .mixin import EqualityMixin, IDManagerMixin
 
 
 class TallyDerivative(EqualityMixin, IDManagerMixin):

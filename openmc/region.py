@@ -5,7 +5,7 @@ from copy import deepcopy
 
 import numpy as np
 
-from openmc.checkvalue import check_type
+from .checkvalue import check_type
 
 
 class Region(ABC):

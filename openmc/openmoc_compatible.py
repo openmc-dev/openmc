@@ -1,6 +1,6 @@
 import numpy as np
-
 import openmoc
+
 import openmc
 import openmc.checkvalue as cv
 

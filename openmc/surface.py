@@ -2,16 +2,16 @@ from abc import ABC, abstractmethod
 from collections import OrderedDict
 from collections.abc import Iterable
 from copy import deepcopy
+import math
 from numbers import Real
 from xml.etree import ElementTree as ET
 from warnings import warn, catch_warnings, simplefilter
-import math
 
 import numpy as np
 
-from openmc.checkvalue import check_type, check_value, check_length
-from openmc.region import Region, Intersection, Union
-from openmc.mixin import IDManagerMixin, IDWarning
+from .checkvalue import check_type, check_value, check_length
+from .mixin import IDManagerMixin, IDWarning
+from .region import Region, Intersection, Union
 
 
 _BOUNDARY_TYPES = ['transmission', 'vacuum', 'reflective', 'periodic', 'white']

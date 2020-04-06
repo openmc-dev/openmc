@@ -8,8 +8,8 @@ import numpy as np
 
 import openmc
 import openmc.checkvalue as cv
-from openmc._xml import clean_indentation
-from openmc.mixin import IDManagerMixin
+from ._xml import clean_indentation
+from .mixin import IDManagerMixin
 
 
 _BASES = ['xy', 'xz', 'yz']

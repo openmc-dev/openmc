@@ -1,23 +1,25 @@
 from collections import OrderedDict
+import copy
 import itertools
 from numbers import Integral
 import os
-import copy
 
 import numpy as np
 
 import openmc
-from openmc.mgxs import MGXS
-from openmc.mgxs.mgxs import _DOMAIN_TO_FILTER
 import openmc.checkvalue as cv
+from openmc.mgxs import MGXS
+from .mgxs import _DOMAIN_TO_FILTER
 
 
 # Supported cross section types
-MDGXS_TYPES = ['delayed-nu-fission',
-               'chi-delayed',
-               'beta',
-               'decay-rate',
-               'delayed-nu-fission matrix']
+MDGXS_TYPES = (
+    'delayed-nu-fission',
+    'chi-delayed',
+    'beta',
+    'decay-rate',
+    'delayed-nu-fission matrix'
+)
 
 # Maximum number of delayed groups, from src/constants.F90
 MAX_DELAYED_GROUPS = 8

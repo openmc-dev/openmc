@@ -1,16 +1,16 @@
 from collections import OrderedDict
-from numbers import Integral
-import warnings
-import os
 import copy
+from numbers import Integral
+import os
+import warnings
 
-import numpy as np
 import h5py
+import numpy as np
 
 import openmc
 import openmc.checkvalue as cv
-from openmc.tallies import ESTIMATOR_TYPES
-from openmc.mgxs import EnergyGroups
+from ..tallies import ESTIMATOR_TYPES
+from . import EnergyGroups
 
 
 # Supported cross section types

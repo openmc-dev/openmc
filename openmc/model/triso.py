@@ -1,20 +1,20 @@
-import copy
-import warnings
-import itertools
-import random
 from abc import ABC, abstractproperty, abstractmethod
 from collections import Counter, defaultdict
 from collections.abc import Iterable
+import copy
 from heapq import heappush, heappop
+import itertools
 from math import pi, sin, cos, floor, log10, sqrt
 from numbers import Real
+import random
 from random import uniform, gauss
+import warnings
 
 import numpy as np
 import scipy.spatial
 
 import openmc
-from openmc.checkvalue import check_type
+from ..checkvalue import check_type
 
 
 MAX_PF_RSP = 0.38  # maximum packing fraction for random sequential packing

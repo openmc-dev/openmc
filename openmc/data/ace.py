@@ -22,8 +22,8 @@ import struct
 
 import numpy as np
 
-from openmc.mixin import EqualityMixin
 import openmc.checkvalue as cv
+from openmc.mixin import EqualityMixin
 from .data import ATOMIC_SYMBOL, gnd_name, EV_PER_MEV, K_BOLTZMANN
 from .endf import ENDF_FLOAT_RE
 

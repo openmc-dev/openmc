@@ -5,12 +5,12 @@ from warnings import warn
 
 import numpy as np
 
-from .function import Tabulated1D, INTERPOLATION_SCHEME
-from openmc.stats.univariate import Univariate, Tabular, Discrete, Mixture
 import openmc.checkvalue as cv
 from openmc.mixin import EqualityMixin
+from openmc.stats.univariate import Univariate, Tabular, Discrete, Mixture
 from .data import EV_PER_MEV
 from .endf import get_tab1_record, get_tab2_record
+from .function import Tabulated1D, INTERPOLATION_SCHEME
 
 
 class EnergyDistribution(EqualityMixin, ABC):

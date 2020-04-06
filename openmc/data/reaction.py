@@ -1,8 +1,8 @@
 from collections.abc import Iterable, Callable, MutableMapping
 from copy import deepcopy
+from io import StringIO
 from numbers import Real
 from warnings import warn
-from io import StringIO
 
 import numpy as np
 

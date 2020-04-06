@@ -4,10 +4,10 @@ from math import exp, erf, pi, sqrt
 import h5py
 import numpy as np
 
-from . import WMP_VERSION, WMP_VERSION_MAJOR
-from .data import K_BOLTZMANN
 import openmc.checkvalue as cv
 from openmc.mixin import EqualityMixin
+from . import WMP_VERSION, WMP_VERSION_MAJOR
+from .data import K_BOLTZMANN
 
 
 # Constants that determine which value to access

@@ -1,9 +1,9 @@
-import os
-import copy
-import pickle
-from numbers import Integral
 from collections import OrderedDict
 from collections.abc import Iterable
+import copy
+from numbers import Integral
+import os
+import pickle
 from warnings import warn
 
 import numpy as np
@@ -11,7 +11,7 @@ import numpy as np
 import openmc
 import openmc.mgxs
 import openmc.checkvalue as cv
-from openmc.tallies import ESTIMATOR_TYPES
+from ..tallies import ESTIMATOR_TYPES
 
 
 class Library:

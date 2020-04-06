@@ -4,16 +4,16 @@ from copy import deepcopy
 from math import cos, sin, pi
 from numbers import Real
 from xml.etree import ElementTree as ET
-from uncertainties import UFloat
 
 import numpy as np
+from uncertainties import UFloat
 
 import openmc
 import openmc.checkvalue as cv
-from openmc.surface import Halfspace
-from openmc.region import Region, Complement
-from openmc._xml import get_text
+from ._xml import get_text
 from .mixin import IDManagerMixin
+from .region import Region, Complement
+from .surface import Halfspace
 
 
 class Cell(IDManagerMixin):

@@ -1,8 +1,7 @@
-import sys
-
 from contextlib import contextmanager
 from ctypes import (c_bool, c_int, c_int32, c_int64, c_double, c_char_p,
                     c_char, POINTER, Structure, c_void_p, create_string_buffer)
+import sys
 
 import numpy as np
 from numpy.ctypeslib import as_array

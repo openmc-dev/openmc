@@ -1,9 +1,9 @@
+from collections.abc import Iterable
 from numbers import Real
 from xml.etree import ElementTree as ET
-from collections.abc import Iterable
 
 import openmc.checkvalue as cv
-from openmc.mixin import EqualityMixin
+from .mixin import EqualityMixin
 
 
 class Trigger(EqualityMixin):

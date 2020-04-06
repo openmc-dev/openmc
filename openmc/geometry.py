@@ -6,7 +6,7 @@ from xml.etree import ElementTree as ET
 
 import openmc
 import openmc._xml as xml
-from openmc.checkvalue import check_type
+from .checkvalue import check_type
 
 
 class Geometry:

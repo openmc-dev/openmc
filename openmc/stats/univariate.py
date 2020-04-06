@@ -6,8 +6,8 @@ from xml.etree import ElementTree as ET
 import numpy as np
 
 import openmc.checkvalue as cv
-from openmc._xml import get_text
-from openmc.mixin import EqualityMixin
+from .._xml import get_text
+from ..mixin import EqualityMixin
 
 
 _INTERPOLATION_SCHEMES = [

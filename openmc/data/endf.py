@@ -7,8 +7,8 @@ http://www-nds.iaea.org/ndspub/documents/endf/endf102/endf102.pdf
 
 """
 import io
-import re
 from pathlib import PurePath
+import re
 
 import numpy as np
 

@@ -5,6 +5,7 @@ import numpy as np
 from numpy.polynomial import Polynomial
 import pandas as pd
 
+import openmc.checkvalue as cv
 from .data import NEUTRON_MASS
 from .endf import get_head_record, get_cont_record, get_tab1_record, get_list_record
 try:
@@ -13,7 +14,6 @@ try:
     _reconstruct = True
 except ImportError:
     _reconstruct = False
-import openmc.checkvalue as cv
 
 
 class Resonances:

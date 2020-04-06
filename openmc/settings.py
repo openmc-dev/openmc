@@ -4,9 +4,9 @@ from pathlib import Path
 from numbers import Real, Integral
 from xml.etree import ElementTree as ET
 
-from openmc._xml import clean_indentation, get_text
 import openmc.checkvalue as cv
-from openmc import VolumeCalculation, Source, RegularMesh
+from . import VolumeCalculation, Source, RegularMesh
+from ._xml import clean_indentation, get_text
 
 
 class RunMode(Enum):

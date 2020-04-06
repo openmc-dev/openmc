@@ -1,14 +1,14 @@
 from collections.abc import Iterable
+from functools import partial
 from math import sqrt
 from numbers import Real
-from functools import partial
-from warnings import warn
 from operator import attrgetter
+from warnings import warn
 
 from openmc import (
     XPlane, YPlane, Plane, ZCylinder, Cylinder, XCylinder,
     YCylinder, Universe, Cell)
-from openmc.checkvalue import (
+from ..checkvalue import (
     check_type, check_value, check_length, check_less_than,
     check_iterable_type)
 import openmc.data

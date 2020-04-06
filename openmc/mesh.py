@@ -1,16 +1,16 @@
 from abc import ABC
 from collections.abc import Iterable
 from numbers import Real, Integral
-from xml.etree import ElementTree as ET
 import warnings
+from xml.etree import ElementTree as ET
 
 import numpy as np
 
 import openmc.checkvalue as cv
 import openmc
-from openmc._xml import get_text
-from openmc.mixin import IDManagerMixin
-from openmc.surface import _BOUNDARY_TYPES
+from ._xml import get_text
+from .mixin import IDManagerMixin
+from .surface import _BOUNDARY_TYPES
 
 
 class MeshBase(IDManagerMixin, ABC):

@@ -6,8 +6,8 @@ Contains results generation and saving capabilities.
 from collections import OrderedDict
 import copy
 
-import numpy as np
 import h5py
+import numpy as np
 
 from . import comm, have_mpi, MPI
 from .reaction_rates import ReactionRates

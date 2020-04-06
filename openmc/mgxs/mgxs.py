@@ -14,7 +14,7 @@ from openmc.mgxs import EnergyGroups
 
 
 # Supported cross section types
-MGXS_TYPES = [
+MGXS_TYPES = (
     'total',
     'transport',
     'nu-transport',
@@ -37,16 +37,16 @@ MGXS_TYPES = [
     'inverse-velocity',
     'prompt-nu-fission',
     'prompt-nu-fission matrix'
-]
+)
 
 # Supported domain types
-DOMAIN_TYPES = [
+DOMAIN_TYPES = (
     'cell',
     'distribcell',
     'universe',
     'material',
     'mesh'
-]
+)
 
 # Filter types corresponding to each domain
 _DOMAIN_TO_FILTER = {

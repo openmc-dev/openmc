@@ -772,25 +772,30 @@ void read_source_bank(hid_t group_id, std::vector<Particle::Bank>& sites, bool d
 
 #ifdef LIBMESH
 void write_unstructured_mesh_results() {
-  std::cout << "Checking for unstructured meshes to write..." << std::endl;
+
+
   for (auto& tally : model::tallies) {
 
     std::vector<std::string> tally_scores;
     for (auto filter_idx : tally->filters()) {
       auto& filter = model::tally_filters[filter_idx];
-      if (filter->type() == "mesh") {
-        auto mesh_filter = dynamic_cast<MeshFilter*>(filter.get());
-        auto& mesh = model::meshes[mesh_filter->mesh()];
-        auto umesh = dynamic_cast<UnstructuredMeshBase*>(mesh.get());
-        if (umesh) {
-          for (int i = 0; i < tally->scores_.size(); i++) {
-            // get values for this score and create vectors for marking
-            // up the mesh
-            std::vector<double> vals_vec, sum_sq_vec;
-            for (int j = 0; j < tally->results_.shape()[0]; j++) {
-              vals_vec.push_back(tally->results_(j, i, TallyResult::SUM) / tally->n_realizations_);
-              sum_sq_vec.push_back(tally->results_(j , i, TallyResult::SUM_SQ) - std::pow(vals_vec[i], 2)/ tally->n_realizations_);
-            }
+      if (filter->type() != "mesh") continue;
+
+      // check if the filter uses an unstructured mesh
+      auto mesh_filter = dynamic_cast<MeshFilter*>(filter.get());
+      auto mesh_idx = mesh_filter->mesh();
+      auto umesh = dynamic_cast<UnstructuredMesh*>(model::meshes[mesh_idx].get());
+
+      if (!umesh) continue;
+
+      // if this tally has more than one filter, print
+      // warning and skip writing the mesh
+      if (tally->filters().size() > 1) {
+        warning(fmt::format("Skipping unstructured mesh writing for tally "
+                            "{}. More than one filter is present on the tally.",
+                            tally->id_));
+        break;
+      }
 
       int n_realizations = tally->n_realizations_;
 

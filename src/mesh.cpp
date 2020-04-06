@@ -1715,14 +1715,6 @@ UnstructuredMesh::intersect_track(const moab::CartVect& start,
   // sorts by first component of std::pair by default
   std::sort(hits.begin(), hits.end());
 
-  for (const auto& hit  : hits) {
-
-  }
-
-  for (const auto& hit : hits) {
-    moab::CartVect hit_loc = start + dir * hit.first;
-  }
-
 }
 
 void
@@ -1749,50 +1741,58 @@ UnstructuredMesh::bins_crossed(const Particle& p,
   bins.clear();
   lengths.clear();
 
-  // track could be entirely contained by a tet
+  // if there are no intersections the track may lie entirely
+  // within a single tet. If this is the case, apply entire
+  // score to that tet and return.
   if (hits.size() == 0) {
-    auto last_r_tet = get_tet(last_r + u * track_len * 0.5);
-    if (last_r_tet) {
-      bins.push_back(get_bin_from_ent_handle(last_r_tet));
+    Position midpoint = last_r + u * (track_len * 0.5);
+    int bin = this->get_bin(midpoint);
+    if (bin != -1) {
+      bins.push_back(bin);
       lengths.push_back(1.0);
     }
     return;
   }
 
+  // for each segment in the set of tracks, try to look up a tet
+  // at the midpoint of the segment
+  Position current = last_r;
   double last_dist = 0.0;
-  for (auto hit = hits.begin(); hit != hits.end(); hit++) {
+  for (const auto& hit : hits) {
+    // get the segment length
+    double segment_length = hit - last_dist;
+    last_dist = hit;
+    // find the midpoint of this segment
+    Position midpoint = current + u * (segment_length * 0.5);
+    // try to find a tet for this position
+    int bin = this->get_bin(midpoint);
 
-    // mid point for this segment
-    double segment_length = hit->first - last_dist;
-    Position segment_midpoint = last_r + u * last_dist + u * segment_length / 2.0;
+    // determine the start point for this segment
+    current = last_r + u * hit;
 
-    last_dist = hit->first;
-
-    // try to get a tet at the midpoint of this segment
-    auto tet = get_tet(segment_midpoint);
-    if (tet) {
-      bins.push_back(get_bin_from_ent_handle(tet));
-      lengths.push_back((hit->first - last_dist) / track_len);
-    } else {
-      // if in the loop, we should always find a tet
-      warning("No tet found for location between trianle hits");
+    if (bin == -1) {
+      continue;
     }
+
+    bins.push_back(bin);
+    lengths.push_back(segment_length / track_len);
 
   }
 
   // tally remaining portion of track after last hit if
-  // the last segment of the track is in the mesh
-  if (hits.back().first < track_len) {
-    auto pos = (last_r + u * hits.back().first) + u * ((track_len - hits.back().first) / 2.0);
-    auto tet = get_tet(pos);
-    if (tet) {
-      bins.push_back(get_bin_from_ent_handle(tet));
-      lengths.push_back((track_len - hits.back().first) / track_len);
+  // the last segment of the track is in the mesh but doesn't
+  // reach the other side of the tet
+  if (hits.back() < track_len) {
+    Position segment_start = last_r + u * hits.back();
+    double segment_length = track_len - hits.back();
+    Position midpoint = segment_start + u * (segment_length * 0.5);
+    int bin = this->get_bin(midpoint);
+    if (bin != -1) {
+      bins.push_back(bin);
+      lengths.push_back(segment_length / track_len);
     }
   }
-
-  return;
-}
+};
 
 moab::EntityHandle
 UnstructuredMesh::get_tet(const Position& r) const
@@ -2114,7 +2114,7 @@ void UnstructuredMesh::remove_score(std::string score) const {
 void
 UnstructuredMesh::set_score_data(const std::string& score,
                                  std::vector<double> values,
-                                 std::vector<double> std_dev) const {
+                                 std::vector<double> std_dev) {
   auto score_tags = this->get_score_tags(score);
 
   // normalize tally values by element volume
@@ -2168,12 +2168,10 @@ UnstructuredMesh::count_sites(const std::vector<Particle::Bank>& bank,
   }
 
 double UnstructuredMesh::get_volume_frac(int bin = -1) const {
-
   return 0.0;
 }
 
 #endif
-
 
 #ifdef LIBMESH
 LibMesh::LibMesh(pugi::xml_node node) : UnstructuredMeshBase(node) {
@@ -2300,7 +2298,7 @@ LibMesh::add_score(const std::string& var_name) {
 void
 LibMesh::set_score_data(const std::string& var_name,
                       std::vector<double> values,
-                      std::vector<double> std_dev) const
+                      std::vector<double> std_dev)
 {
     auto& eqn_sys = equation_systems_->get_system(eq_system_name_);
     const libMesh::DofMap& dof_map = eqn_sys.get_dof_map();

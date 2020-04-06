@@ -4,6 +4,7 @@ from copy import deepcopy
 from math import cos, sin, pi
 from numbers import Real
 from xml.etree import ElementTree as ET
+from uncertainties import UFloat
 import sys
 import warnings
 
@@ -85,7 +86,12 @@ class Cell(IDManagerMixin):
     volume : float
         Volume of the cell in cm^3. This can either be set manually or
         calculated in a stochastic volume calculation and added via the
-        :meth:`Cell.add_volume_information` method.
+        :meth:`Cell.add_volume_information` method. For 'distribmat' cells
+        it is the total volume of all instances.
+    atoms : collections.OrderedDict
+        Mapping of nuclides to the total number of atoms for each nuclide
+        present in the cell, or in all of its instances for a 'distribmat'
+        fill. For example, {'U235': 1.0e22, 'U238': 5.0e22, ...}.
 
     """
 
@@ -134,6 +140,7 @@ class Cell(IDManagerMixin):
             string += '\t{0: <15}=\t{1}\n'.format('Temperature',
                                                   self.temperature)
         string += '{: <16}=\t{}\n'.format('\tTranslation', self.translation)
+        string += '{: <16}=\t{}\n'.format('\tVolume', self.volume)
 
         return string
 
@@ -183,6 +190,55 @@ class Cell(IDManagerMixin):
         return self._volume
 
     @property
+    def atoms(self):
+        if self._atoms is None:
+            if self._volume is None:
+                msg = ('Cannot calculate atom content becouse no volume '
+                       'is set. Use Cell.volume to provide it or perform '
+                       'a stochastic volume calculation.')
+                raise ValueError(msg)
+
+            elif self.fill_type == 'void':
+                msg = ('Cell is filled with void. It contains no atoms. '
+                       'Material must be set to calculate atom content.')
+                raise ValueError(msg)
+
+            elif self.fill_type in ['lattice', 'universe']:
+                msg = ('Universe and Lattice cells can contain multiple '
+                       'materials in diffrent proportions. Atom content must '
+                       'be calculated with stochastic volume calculation.')
+                raise ValueError(msg)
+
+            elif self.fill_type == 'material':
+                # Get atomic densities
+                self._atoms = self._fill.get_nuclide_atom_densities()
+
+                # Convert to total number of atoms
+                for key, nuclide in self._atoms.items():
+                    atom = nuclide[1] * self._volume * 1.0e+24
+                    self._atoms[key] = atom
+
+            elif self.fill_type == 'distribmat':
+                # Assumes that volume is total volume of all instances
+                # Also assumes that all instances have the same volume
+                partial_volume = self.volume / len(self.fill)
+                self._atoms = OrderedDict()
+                for mat in self.fill:
+                    for key, nuclide in mat.get_nuclide_atom_densities().items():
+                        # To account for overlap of nuclides between distribmat
+                        # we need to append new atoms to any existing value
+                        # hence it is necessary to ask for default.
+                        atom = self._atoms.setdefault(key, 0)
+                        atom += nuclide[1] * partial_volume * 1.0e+24
+                        self._atoms[key] = atom
+
+            else:
+                msg = 'Unrecognized fill_type: {}'.format(self.fill_type)
+                raise ValueError(msg)
+
+        return self._atoms
+
+    @property
     def paths(self):
         if self._paths is None:
             raise ValueError('Cell instance paths have not been determined. '
@@ -223,11 +279,15 @@ class Cell(IDManagerMixin):
 
             elif not isinstance(fill, (openmc.Material, openmc.Lattice,
                                        openmc.Universe)):
-                msg = 'Unable to set Cell ID="{0}" to use a non-Material or ' \
-                      'Universe fill "{1}"'.format(self._id, fill)
+                msg = ('Unable to set Cell ID="{0}" to use a non-Material or '
+                       'Universe fill "{1}"'.format(self._id, fill))
                 raise ValueError(msg)
 
         self._fill = fill
+
+        # Info about atom content can now be invalid
+        # (since fill has just changed)
+        self._atoms = None
 
     @rotation.setter
     def rotation(self, rotation):
@@ -285,8 +345,14 @@ class Cell(IDManagerMixin):
     @volume.setter
     def volume(self, volume):
         if volume is not None:
-            cv.check_type('cell volume', volume, Real)
+            cv.check_type('cell volume', volume, (Real, UFloat))
+            cv.check_greater_than('cell volume', volume, 0.0, equality=True)
+
         self._volume = volume
+
+        # Info about atom content can now be invalid
+        # (sice volume has just changed)
+        self._atoms = None
 
     def add_volume_information(self, volume_calc):
         """Add volume information to a cell.

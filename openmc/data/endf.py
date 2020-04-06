@@ -370,7 +370,7 @@ def get_evaluations(filename):
     return evaluations
 
 
-class Evaluation(object):
+class Evaluation:
     """ENDF material evaluation with multiple files/sections
 
     Parameters
@@ -528,7 +528,7 @@ class Evaluation(object):
                         self.target['isomeric_state'])
 
 
-class Tabulated2D(object):
+class Tabulated2D:
     """Metadata for a two-dimensional function.
 
     This is a dummy class that is not really used other than to store the

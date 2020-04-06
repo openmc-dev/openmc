@@ -185,7 +185,13 @@ the :class:`openmc.Cell` class::
 
 In this example, an instance of :class:`openmc.Material` is assigned to the
 :attr:`Cell.fill` attribute. One can also fill a cell with a :ref:`universe
-<usersguide_universes>` or :ref:`lattice <usersguide_lattices>`.
+<usersguide_universes>` or :ref:`lattice <usersguide_lattices>`. If you provide
+no fill to a cell or assign a value of `None`, it will be treated as a "void"
+cell with no material within. Particles are allowed to stream through the cell but
+will undergo no collisions::
+
+  # This cell will be filled with void on export to XML
+  gap = openmc.Cell(region=pellet_gap)
 
 The classes :class:`Halfspace`, :class:`Intersection`, :class:`Union`, and
 :class:`Complement` and all instances of :class:`openmc.Region` and can be
@@ -434,3 +440,30 @@ named ``dagmc.h5m``) when initializing a simulation. If a `geometry.xml
   <https://svalinn.github.io/DAGMC/usersguide/tools.html#make-watertight>`_. Future
   implementations of DAGMC geometry will support small volume overlaps and
   un-merged surfaces.
+
+-------------------------
+Calculating Atoms Content
+-------------------------
+
+If the total volume occupied by all instances of a cell in the geometry is known
+by the user, it is possible to assign this volume to a cell without performing a
+:ref:`stochastic volume <usersguide_volume>` calculation::
+
+  from uncertainties import ufloat
+
+  # Set known total volume in [cc]
+  cell = openmc.Cell()
+  cell.volume = 17.0
+
+  # Set volume if it is known with some uncertainty
+  cell.volume = ufloat(17.0, 0.1)
+
+Once a volume is set, and a cell is filled with a material or distributed
+materials, it is possible to use the :func:`~openmc.Cell.atoms` method to obtain
+a dictionary of nuclides and their total number of atoms in all instances
+of a cell (e.g. ``{'H1': 1.0e22, 'O16': 0.5e22, ...}``)::
+
+  cell = openmc.Cell(fill = u02)
+  cell.volume = 17.0
+
+  O16_atoms = cell.atoms['O16']

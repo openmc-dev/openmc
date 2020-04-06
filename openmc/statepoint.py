@@ -14,14 +14,14 @@ import openmc.checkvalue as cv
 _VERSION_STATEPOINT = 17
 
 
-class StatePoint(object):
+class StatePoint:
     """State information on a simulation at a certain point in time (at the end
     of a given batch). Statepoints can be used to analyze tally results as well
     as restart a simulation.
 
     Parameters
     ----------
-    filename : str
+    filepath : str or Path
         Path to file to load
     autolink : bool, optional
         Whether to automatically link in metadata from a summary.h5 file and
@@ -115,7 +115,8 @@ class StatePoint(object):
 
     """
 
-    def __init__(self, filename, autolink=True):
+    def __init__(self, filepath, autolink=True):
+        filename = str(filepath)  # in case it's a Path
         self._f = h5py.File(filename, 'r')
         self._meshes = {}
         self._filters = {}
@@ -310,7 +311,7 @@ class StatePoint(object):
         if self.run_mode == 'eigenvalue':
             return self._f['n_inactive'][()]
         else:
-            return None                  
+            return None
 
     @property
     def n_particles(self):

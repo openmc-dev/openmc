@@ -32,6 +32,11 @@ public:
   //! \param seed Pseudorandom number seed pointer
   //! \return Sampled position
   Position sample(uint64_t* seed) const;
+
+  // Observer pointers
+  Distribution* x() const { return x_.get(); }
+  Distribution* y() const { return x_.get(); }
+  Distribution* z() const { return x_.get(); }
 private:
   UPtrDist x_; //!< Distribution of x coordinates
   UPtrDist y_; //!< Distribution of y coordinates
@@ -50,6 +55,11 @@ public:
   //! \param seed Pseudorandom number seed pointer
   //! \return Sampled position
   Position sample(uint64_t* seed) const;
+  
+  Distribution* r() const { return r_.get(); }
+  Distribution* phi() const { return phi_.get(); }
+  Distribution* z() const { return z_.get(); }
+  Position origin() const { return origin_; }
 private:
   UPtrDist r_; //!< Distribution of r coordinates
   UPtrDist phi_; //!< Distribution of phi coordinates
@@ -70,6 +80,11 @@ public:
   //! \param seed Pseudorandom number seed pointer
   //! \return Sampled position
   Position sample(uint64_t* seed) const;
+
+  Distribution* r() const { return r_.get(); }
+  Distribution* theta() const { return theta_.get(); }
+  Distribution* phi() const { return phi_.get(); }
+  Position origin () const { return origin_; }
 private:
   UPtrDist r_; //!< Distribution of r coordinates
   UPtrDist theta_; //!< Distribution of theta coordinates
@@ -92,6 +107,8 @@ public:
 
   // Properties
   bool only_fissionable() const { return only_fissionable_; }
+  Position lower_left() const { return lower_left_; }
+  Position upper_right() const { return upper_right_; }
 private:
   Position lower_left_; //!< Lower-left coordinates of box
   Position upper_right_; //!< Upper-right coordinates of box
@@ -112,6 +129,8 @@ public:
   //! \param seed Pseudorandom number seed pointer
   //! \return Sampled position
   Position sample(uint64_t* seed) const;
+
+  Position r() const { return r_; }
 private:
   Position r_; //!< Single position at which sites are generated
 };

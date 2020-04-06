@@ -4,7 +4,7 @@ from collections.abc import Iterable
 import numpy as np
 
 
-def check_type(name, value, expected_type, expected_iter_type=None):
+def check_type(name, value, expected_type, expected_iter_type=None, *, none_ok=False):
     """Ensure that an object is of an expected type. Optionally, if the object is
     iterable, check that each element is of a particular type.
 
@@ -19,39 +19,44 @@ def check_type(name, value, expected_type, expected_iter_type=None):
     expected_iter_type : type or Iterable of type or None, optional
         Expected type of each element in value, assuming it is iterable. If
         None, no check will be performed.
+    none_ok : bool, optional
+        Whether None is allowed as a value
 
     """
+    if none_ok and value is None:
+        return
 
     if not isinstance(value, expected_type):
         if isinstance(expected_type, Iterable):
-            msg = 'Unable to set "{0}" to "{1}" which is not one of the ' \
-                  'following types: "{2}"'.format(name, value, ', '.join(
+            msg = 'Unable to set "{}" to "{}" which is not one of the ' \
+                  'following types: "{}"'.format(name, value, ', '.join(
                       [t.__name__ for t in expected_type]))
         else:
-            msg = 'Unable to set "{0}" to "{1}" which is not of type "{2}"'.format(
+            msg = 'Unable to set "{}" to "{}" which is not of type "{}"'.format(
                 name, value, expected_type.__name__)
         raise TypeError(msg)
 
     if expected_iter_type:
         if isinstance(value, np.ndarray):
             if not issubclass(value.dtype.type, expected_iter_type):
-                msg = 'Unable to set "{0}" to "{1}" since each item must be ' \
-                      'of type "{2}"'.format(name, value,
-                                             expected_iter_type.__name__)
+                msg = 'Unable to set "{}" to "{}" since each item must be ' \
+                      'of type "{}"'.format(name, value,
+                                            expected_iter_type.__name__)
+                raise TypeError(msg)
             else:
                 return
 
         for item in value:
             if not isinstance(item, expected_iter_type):
                 if isinstance(expected_iter_type, Iterable):
-                    msg = 'Unable to set "{0}" to "{1}" since each item must be ' \
-                          'one of the following types: "{2}"'.format(
+                    msg = 'Unable to set "{}" to "{}" since each item must be ' \
+                          'one of the following types: "{}"'.format(
                               name, value, ', '.join([t.__name__ for t in
                                                       expected_iter_type]))
                 else:
-                    msg = 'Unable to set "{0}" to "{1}" since each item must be ' \
-                          'of type "{2}"'.format(name, value,
-                                                 expected_iter_type.__name__)
+                    msg = 'Unable to set "{}" to "{}" since each item must be ' \
+                          'of type "{}"'.format(name, value,
+                                                expected_iter_type.__name__)
                 raise TypeError(msg)
 
 
@@ -150,18 +155,18 @@ def check_length(name, value, length_min, length_max=None):
     """
 
     if length_max is None:
-        if len(value) != length_min:
-            msg = 'Unable to set "{0}" to "{1}" since it must be of ' \
-                  'length "{2}"'.format(name, value, length_min)
+        if len(value) < length_min:
+            msg = 'Unable to set "{}" to "{}" since it must be at least of ' \
+                  'length "{}"'.format(name, value, length_min)
             raise ValueError(msg)
     elif not length_min <= len(value) <= length_max:
         if length_min == length_max:
-            msg = 'Unable to set "{0}" to "{1}" since it must be of ' \
-                  'length "{2}"'.format(name, value, length_min)
+            msg = 'Unable to set "{}" to "{}" since it must be of ' \
+                  'length "{}"'.format(name, value, length_min)
         else:
-            msg = 'Unable to set "{0}" to "{1}" since it must have length ' \
-                  'between "{2}" and "{3}"'.format(name, value, length_min,
-                                                   length_max)
+            msg = 'Unable to set "{}" to "{}" since it must have length ' \
+                  'between "{}" and "{}"'.format(name, value, length_min,
+                                                 length_max)
         raise ValueError(msg)
 
 
@@ -183,6 +188,7 @@ def check_value(name, value, accepted_values):
         msg = 'Unable to set "{0}" to "{1}" since it is not in "{2}"'.format(
             name, value, accepted_values)
         raise ValueError(msg)
+
 
 def check_less_than(name, value, maximum, equality=False):
     """Ensure that an object's value is less than a given value.
@@ -210,6 +216,7 @@ def check_less_than(name, value, maximum, equality=False):
             msg = 'Unable to set "{0}" to "{1}" since it is greater than ' \
                   'or equal to "{2}"'.format(name, value, maximum)
             raise ValueError(msg)
+
 
 def check_greater_than(name, value, minimum, equality=False):
     """Ensure that an object's value is greater than a given value.
@@ -265,13 +272,13 @@ def check_filetype_version(obj, expected_type, expected_version):
         if this_version[0] != expected_version:
             raise IOError('{} file has a version of {} which is not '
                           'consistent with the version expected by OpenMC, {}'
-                          .format(this_filetype, 
-                              '.'.join(str(v) for v in this_version),
-                              expected_version))
+                          .format(this_filetype,
+                                  '.'.join(str(v) for v in this_version),
+                                  expected_version))
     except AttributeError:
-        raise IOError('Could not read {} file. This most likely means the {} '
+        raise IOError('Could not read {} file. This most likely means the '
                       'file was produced by a different version of OpenMC than '
-                      'the one you are using.'.format(expected_type))
+                      'the one you are using.'.format(obj.filename))
 
 
 class CheckedList(list):
@@ -288,12 +295,13 @@ class CheckedList(list):
 
     """
 
-    def __init__(self, expected_type, name, items=[]):
+    def __init__(self, expected_type, name, items=None):
         super().__init__()
         self.expected_type = expected_type
         self.name = name
-        for item in items:
-            self.append(item)
+        if items is not None:
+            for item in items:
+                self.append(item)
 
     def __add__(self, other):
         new_instance = copy.copy(self)

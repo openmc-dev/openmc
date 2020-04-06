@@ -6,7 +6,7 @@ import numpy as np
 import openmc.checkvalue as cv
 
 
-class EqualityMixin(object):
+class EqualityMixin:
     """A Class which provides generic __eq__ and __ne__ functionality which
     can easily be inherited by downstream classes.
     """
@@ -21,15 +21,12 @@ class EqualityMixin(object):
 
         return True
 
-    def __ne__(self, other):
-        return not self.__eq__(other)
-
 
 class IDWarning(UserWarning):
     pass
 
 
-class IDManagerMixin(object):
+class IDManagerMixin:
     """A Class which automatically manages unique IDs.
 
     This mixin gives any subclass the ability to assign unique IDs through an

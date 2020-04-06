@@ -30,7 +30,7 @@ def colorize(diff):
             yield line
 
 
-class TestHarness(object):
+class TestHarness:
     """General class for running OpenMC regression tests."""
 
     def __init__(self, statepoint_name):
@@ -276,7 +276,7 @@ class ParticleRestartTestHarness(TestHarness):
 
 
 class PyAPITestHarness(TestHarness):
-    def __init__(self, statepoint_name, model=None):
+    def __init__(self, statepoint_name, model=None, inputs_true=None):
         super().__init__(statepoint_name)
         if model is None:
             self._model = pwr_core()
@@ -284,6 +284,7 @@ class PyAPITestHarness(TestHarness):
             self._model = model
         self._model.plots = []
 
+        self.inputs_true = "inputs_true.dat" if not inputs_true else inputs_true
 
     def main(self):
         """Accept commandline arguments and either run or update tests."""
@@ -342,15 +343,15 @@ class PyAPITestHarness(TestHarness):
 
     def _overwrite_inputs(self):
         """Overwrite inputs_true.dat with inputs_test.dat"""
-        shutil.copyfile('inputs_test.dat', 'inputs_true.dat')
+        shutil.copyfile('inputs_test.dat', self.inputs_true)
 
     def _compare_inputs(self):
         """Make sure the current inputs agree with the _true standard."""
-        compare = filecmp.cmp('inputs_test.dat', 'inputs_true.dat')
+        compare = filecmp.cmp('inputs_test.dat', self.inputs_true)
         if not compare:
-            expected = open('inputs_true.dat', 'r').readlines()
+            expected = open(self.inputs_true, 'r').readlines()
             actual = open('inputs_test.dat', 'r').readlines()
-            diff = unified_diff(expected, actual, 'inputs_true.dat',
+            diff = unified_diff(expected, actual, self.inputs_true,
                                 'inputs_test.dat')
             print('Input differences:')
             print(''.join(colorize(diff)))

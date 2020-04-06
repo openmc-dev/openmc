@@ -190,7 +190,7 @@ class TransportOperator(ABC):
 
         Returns
         -------
-        volume : list of float
+        volume : dict of str to float
             Volumes corresponding to materials in burn_list
         nuc_list : list of str
             A list of all nuclide names. Used for sorting the simulation.

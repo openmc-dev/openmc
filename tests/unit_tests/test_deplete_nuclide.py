@@ -176,6 +176,21 @@ def test_fission_yield_distribution():
     with pytest.raises(TypeError):
         orig_yields *= similar
 
+    # Test restriction of fission products
+    strict_restrict = yield_dist.restrict_products(["Xe135", "Sm149"])
+    with_extras = yield_dist.restrict_products(
+        ["Xe135", "Sm149", "H1", "U235"])
+
+    assert strict_restrict.products == ("Sm149", "Xe135")
+    assert strict_restrict.energies == yield_dist.energies
+    assert with_extras.products == ("Sm149", "Xe135")
+    assert with_extras.energies == yield_dist.energies
+    for ene, new_yields in strict_restrict.items():
+        for product in strict_restrict.products:
+            assert new_yields[product] == yield_dist[ene][product]
+            assert with_extras[ene][product] == yield_dist[ene][product]
+
+    assert yield_dist.restrict_products(["U235"]) is None
 
 def test_validate():
 

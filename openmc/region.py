@@ -41,9 +41,6 @@ class Region(metaclass=ABCMeta):
         else:
             return str(self) == str(other)
 
-    def __ne__(self, other):
-        return not self == other
-
     def get_surfaces(self, surfaces=None):
         """Recursively find all surfaces referenced by a region and return them
 

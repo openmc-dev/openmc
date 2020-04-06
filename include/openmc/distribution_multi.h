@@ -43,6 +43,11 @@ public:
   //! \param seed Pseudorandom number seed pointer
   //! \return Direction sampled
   Direction sample(uint64_t* seed) const;
+
+  // Observing pointers
+  Distribution* mu() const { return mu_.get(); }
+  Distribution* phi() const { return phi_.get(); }
+
 private:
   UPtrDist mu_;  //!< Distribution of polar angle
   UPtrDist phi_; //!< Distribution of azimuthal angle

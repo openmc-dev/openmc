@@ -833,6 +833,14 @@ void Tally::accumulate()
   }
 }
 
+std::string
+Tally::score_name(int score_idx) const {
+  if (score_idx < 0 || score_idx >= scores_.size()) {
+    fatal_error("Index in scores array is out of bounds.");
+  }
+  return reaction_name(scores_[score_idx]);
+}
+
 //==============================================================================
 // Non-member functions
 //==============================================================================

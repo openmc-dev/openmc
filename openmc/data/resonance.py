@@ -17,7 +17,7 @@ except ImportError:
 import openmc.checkvalue as cv
 
 
-class Resonances(object):
+class Resonances:
     """Resolved and unresolved resonance data
 
     Parameters
@@ -119,7 +119,7 @@ class Resonances(object):
         return cls(ranges)
 
 
-class ResonanceRange(object):
+class ResonanceRange:
     """Resolved resonance range
 
     Parameters
@@ -867,7 +867,7 @@ class RMatrixLimited(ResonanceRange):
         return rml
 
 
-class ParticlePair(object):
+class ParticlePair:
     def __init__(self, first, second, q_value, penetrability,
                  shift, mt):
         self.first = first
@@ -878,7 +878,7 @@ class ParticlePair(object):
         self.mt = mt
 
 
-class SpinGroup(object):
+class SpinGroup:
     """Resonance spin group
 
     Attributes

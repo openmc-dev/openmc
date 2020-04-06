@@ -80,6 +80,8 @@ class MeshBase(IDManagerMixin, metaclass=ABCMeta):
             return RegularMesh.from_hdf5(group)
         elif mesh_type == 'rectilinear':
             return RectilinearMesh.from_hdf5(group)
+        elif mesh_type == 'unstructured':
+            return UnstructuredMesh.from_hdf5(group)
         else:
             raise ValueError('Unrecognized mesh type: "' + mesh_type + '"')
 
@@ -105,8 +107,8 @@ class RegularMesh(MeshBase):
     n_dimension : int
         Number of mesh dimensions.
     lower_left : Iterable of float
-        The lower-left corner of the structured mesh. If only two coordinate are
-        given, it is assumed that the mesh is an x-y mesh.
+        The lower-left corner of the structured mesh. If only two coordinate
+        are given, it is assumed that the mesh is an x-y mesh.
     upper_right : Iterable of float
         The upper-right corner of the structrued mesh. If only two coordinate
         are given, it is assumed that the mesh is an x-y mesh.
@@ -586,3 +588,128 @@ class RectilinearMesh(MeshBase):
         subelement.text = ' '.join(map(str, self.z_grid))
 
         return element
+
+
+class UnstructuredMesh(MeshBase):
+    """A 3D unstructured mesh
+
+    Parameters
+    ----------
+    filename : str
+        Location of the unstructured mesh file
+    mesh_id : int
+        Unique identifier for the mesh
+    name : str
+        Name of the mesh
+
+    Attributes
+    ----------
+    id : int
+        Unique identifier for the mesh
+    name : str
+        Name of the mesh
+    filename : str
+        Name of the file containing the unstructured mesh
+    volumes : Iterable of float
+        Volumes of the unstructured mesh elements
+    total_volume : float
+        Volume of the unstructured mesh in total
+    centroids : Iterable of tuple
+        An iterable of element centroid coordinates, e.g. [(0.0, 0.0, 0.0),
+        (1.0, 1.0, 1.0), ...]
+    """
+
+    def __init__(self, filename, mesh_id=None, name=''):
+        super().__init__(mesh_id, name)
+        self.filename = filename
+        self._volumes = []
+        self._centroids = []
+
+    @property
+    def filename(self):
+        return self._filename
+
+    @filename.setter
+    def filename(self, filename):
+        cv.check_type('Unstructured Mesh filename', filename, str)
+        self._filename = filename
+
+    @property
+    def volumes(self):
+        return self._volumes
+
+    @volumes.setter
+    def volumes(self, volumes):
+        cv.check_type("Unstructured mesh volumes", volumes, Iterable, Real)
+        self._volumes = volumes
+
+    @property
+    def total_volume(self):
+        return np.sum(self.volumes)
+
+    @property
+    def centroids(self):
+        return self._centroids
+
+    @centroids.setter
+    def centroids(self, centroids):
+        cv.check_type("Unstructured mesh centroids", centroids,
+                      Iterable, Real)
+        self._centroids = centroids
+
+    def __repr__(self):
+        string = super().__repr__()
+        return string + '{: <16}=\t{}\n'.format('\tFilename', self.filename)
+
+    @classmethod
+    def from_hdf5(cls, group):
+        mesh_id = int(group.name.split('/')[-1].lstrip('mesh '))
+        filename = group['filename'][()].decode()
+
+        mesh = cls(filename, mesh_id=mesh_id)
+        vol_data = group['volumes'][()]
+        centroids = group['centroids'][()]
+        mesh.volumes = np.reshape(vol_data, (vol_data.shape[0],))
+        mesh.centroids = np.reshape(centroids, (vol_data.shape[0], 3))
+
+        return mesh
+
+    def to_xml_element(self):
+        """Return XML representation of the mesh
+
+        Returns
+        -------
+        element : xml.etree.ElementTree.Element
+            XML element containing mesh data
+
+        """
+
+        element = ET.Element("mesh")
+        element.set("id", str(self._id))
+        element.set("type", "unstructured")
+
+        subelement = ET.SubElement(element, "filename")
+        subelement.text = self.filename
+
+        return element
+
+    @classmethod
+    def from_xml_element(cls, elem):
+        """Generate unstructured mesh object from XML element
+
+        Parameters
+        ----------
+        elem : xml.etree.ElementTree.Element
+            XML element
+
+        Returns
+        -------
+        openmc.UnstructuredMesh
+            UnstructuredMesh generated from an XML element
+        """
+        mesh_id = int(get_text(elem, 'id'))
+        filename = get_text(elem, 'filename')
+
+        mesh = cls(filename, mesh_id)
+
+        return mesh

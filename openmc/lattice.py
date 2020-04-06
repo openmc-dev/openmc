@@ -101,187 +101,13 @@ class Lattice(IDManagerMixin, metaclass=ABCMeta):
             Instance of lattice subclass
 
         """
-        lattice_id = int(group.name.split('/')[-1].lstrip('lattice '))
-        name = group['name'][()].decode() if 'name' in group else ''
         lattice_type = group['type'][()].decode()
-
         if lattice_type == 'rectangular':
-            dimension = group['dimension'][...]
-            lower_left = group['lower_left'][...]
-            pitch = group['pitch'][...]
-            outer = group['outer'][()]
-            universe_ids = group['universes'][...]
-
-            # Create the Lattice
-            lattice = openmc.RectLattice(lattice_id, name)
-            lattice.lower_left = lower_left
-            lattice.pitch = pitch
-
-            # If the Universe specified outer the Lattice is not void
-            if outer >= 0:
-                lattice.outer = universes[outer]
-
-            # Build array of Universe pointers for the Lattice
-            uarray = np.empty(universe_ids.shape, dtype=openmc.Universe)
-
-            for z in range(universe_ids.shape[0]):
-                for y in range(universe_ids.shape[1]):
-                    for x in range(universe_ids.shape[2]):
-                        uarray[z, y, x] = universes[universe_ids[z, y, x]]
-
-            # Use 2D NumPy array to store lattice universes for 2D lattices
-            if len(dimension) == 2:
-                uarray = np.squeeze(uarray)
-                uarray = np.atleast_2d(uarray)
-
-            # Set the universes for the lattice
-            lattice.universes = uarray
-
+            return openmc.RectLattice.from_hdf5(group, universes)
         elif lattice_type == 'hexagonal':
-            n_rings = group['n_rings'][()]
-            n_axial = group['n_axial'][()]
-            center = group['center'][()]
-            pitch = group['pitch'][()]
-            outer = group['outer'][()]
-            if 'orientation' in group:
-                orientation = group['orientation'][()].decode()
-            else:
-                orientation = "y"
-
-            universe_ids = group['universes'][()]
-
-            # Create the Lattice
-            lattice = openmc.HexLattice(lattice_id, name)
-            lattice.center = center
-            lattice.pitch = pitch
-            lattice.orientation = orientation
-            # If the Universe specified outer the Lattice is not void
-            if outer >= 0:
-                lattice.outer = universes[outer]
-            if orientation == "y":
-                # Build array of Universe pointers for the Lattice.  Note that
-                # we need to convert between the HDF5's square array of
-                # (x, alpha, z) to the Python API's format of a ragged nested
-                # list of (z, ring, theta).
-                uarray = []
-                for z in range(n_axial):
-                    # Add a list for this axial level.
-                    uarray.append([])
-                    x = n_rings - 1
-                    a = 2*n_rings - 2
-                    for r in range(n_rings - 1, 0, -1):
-                        # Add a list for this ring.
-                        uarray[-1].append([])
-
-                        # Climb down the top-right.
-                        for i in range(r):
-                            uarray[-1][-1].append(universe_ids[z, a, x])
-                            x += 1
-                            a -= 1
-
-                        # Climb down the right.
-                        for i in range(r):
-                            uarray[-1][-1].append(universe_ids[z, a, x])
-                            a -= 1
-
-                        # Climb down the bottom-right.
-                        for i in range(r):
-                            uarray[-1][-1].append(universe_ids[z, a, x])
-                            x -= 1
-
-                        # Climb up the bottom-left.
-                        for i in range(r):
-                            uarray[-1][-1].append(universe_ids[z, a, x])
-                            x -= 1
-                            a += 1
-
-                        # Climb up the left.
-                        for i in range(r):
-                            uarray[-1][-1].append(universe_ids[z, a, x])
-                            a += 1
-
-                        # Climb up the top-left.
-                        for i in range(r):
-                            uarray[-1][-1].append(universe_ids[z, a, x])
-                            x += 1
-
-                        # Move down to the next ring.
-                        a -= 1
-
-                        # Convert the ids into Universe objects.
-                        uarray[-1][-1] = [universes[u_id]
-                                          for u_id in uarray[-1][-1]]
-
-                    # Handle the degenerate center ring separately.
-                    u_id = universe_ids[z, a, x]
-                    uarray[-1].append([universes[u_id]])
-            else:
-                # Build array of Universe pointers for the Lattice.  Note that
-                # we need to convert between the HDF5's square array of
-                # (alpha, y, z) to the Python API's format of a ragged nested
-                # list of (z, ring, theta).
-                uarray = []
-                for z in range(n_axial):
-                    # Add a list for this axial level.
-                    uarray.append([])
-                    a = 2*n_rings - 2
-                    y = n_rings - 1
-                    for r in range(n_rings - 1, 0, -1):
-                        # Add a list for this ring.
-                        uarray[-1].append([])
-
-                        # Climb down the bottom-right.
-                        for i in range(r):
-                            uarray[-1][-1].append(universe_ids[z, y, a])
-                            y -= 1
-
-                        # Climb across the bottom.
-                        for i in range(r):
-                            uarray[-1][-1].append(universe_ids[z, y, a])
-                            a -= 1
-
-                        # Climb up the bottom-left.
-                        for i in range(r):
-                            uarray[-1][-1].append(universe_ids[z, y, a])
-                            a -= 1
-                            y += 1
-
-                        # Climb up the top-left.
-                        for i in range(r):
-                            uarray[-1][-1].append(universe_ids[z, y, a])
-                            y += 1
-
-                        # Climb across the top.
-                        for i in range(r):
-                            uarray[-1][-1].append(universe_ids[z, y, a])
-                            a += 1
-
-                        # Climb down the top-right.
-                        for i in range(r):
-                            uarray[-1][-1].append(universe_ids[z, y, a])
-                            a += 1
-                            y -= 1
-
-                        # Move down to the next ring.
-                        a -= 1
-
-                        # Convert the ids into Universe objects.
-                        uarray[-1][-1] = [universes[u_id]
-                                          for u_id in uarray[-1][-1]]
-
-                    # Handle the degenerate center ring separately.
-                    u_id = universe_ids[z, y, a]
-                    uarray[-1].append([universes[u_id]])
-
-            # Add the universes to the lattice.
-            if len(pitch) == 2:
-                # Lattice is 3D
-                lattice.universes = uarray
-            else:
-                # Lattice is 2D; extract the only axial level
-                lattice.universes = uarray[0]
-
-        return lattice
+            return openmc.HexLattice.from_hdf5(group, universes)
+        else:
+            raise ValueError('Unkown lattice type: {}'.format(lattice_type))
 
     def get_unique_universes(self):
         """Determine all unique universes in the lattice
@@ -579,29 +405,22 @@ class RectLattice(Lattice):
 
     def __repr__(self):
         string = 'RectLattice\n'
-        string += '{0: <16}{1}{2}\n'.format('\tID', '=\t', self._id)
-        string += '{0: <16}{1}{2}\n'.format('\tName', '=\t', self._name)
-        string += '{0: <16}{1}{2}\n'.format('\tShape', '=\t',
-                                            self.shape)
-        string += '{0: <16}{1}{2}\n'.format('\tLower Left', '=\t',
-                                            self._lower_left)
-        string += '{0: <16}{1}{2}\n'.format('\tPitch', '=\t', self._pitch)
+        string += '{: <16}=\t{}\n'.format('\tID', self._id)
+        string += '{: <16}=\t{}\n'.format('\tName', self._name)
+        string += '{: <16}=\t{}\n'.format('\tShape', self.shape)
+        string += '{: <16}=\t{}\n'.format('\tLower Left', self._lower_left)
+        string += '{: <16}=\t{}\n'.format('\tPitch', self._pitch)
+        string += '{: <16}=\t{}\n'.format(
+            '\tOuter', self._outer._id if self._outer is not None else None)
 
-        if self._outer is not None:
-            string += '{0: <16}{1}{2}\n'.format('\tOuter', '=\t',
-                                                self._outer._id)
-        else:
-            string += '{0: <16}{1}{2}\n'.format('\tOuter', '=\t',
-                                                self._outer)
+        string += '{: <16}\n'.format('\tUniverses')
 
-        string += '{0: <16}\n'.format('\tUniverses')
-
-        # Lattice nested Universe IDs - column major for Fortran
+        # Lattice nested Universe IDs
         for i, universe in enumerate(np.ravel(self._universes)):
-            string += '{0} '.format(universe._id)
+            string += '{} '.format(universe._id)
 
             # Add a newline character every time we reach end of row of cells
-            if (i+1) % self.shape[0] == 0:
+            if (i + 1) % self.shape[0] == 0:
                 string += '\n'
 
         string = string.rstrip('\n')
@@ -1141,6 +960,59 @@ class RectLattice(Lattice):
         lat.universes = uarray
         return lat
 
+    @classmethod
+    def from_hdf5(cls, group, universes):
+        """Create rectangular lattice from HDF5 group
+
+        Parameters
+        ----------
+        group : h5py.Group
+            Group in HDF5 file
+        universes : dict
+            Dictionary mapping universe IDs to instances of
+            :class:`openmc.Universe`.
+
+        Returns
+        -------
+        openmc.RectLattice
+            Rectangular lattice
+
+        """
+        dimension = group['dimension'][...]
+        lower_left = group['lower_left'][...]
+        pitch = group['pitch'][...]
+        outer = group['outer'][()]
+        universe_ids = group['universes'][...]
+
+        # Create the Lattice
+        lattice_id = int(group.name.split('/')[-1].lstrip('lattice '))
+        name = group['name'][()].decode() if 'name' in group else ''
+        lattice = cls(lattice_id, name)
+        lattice.lower_left = lower_left
+        lattice.pitch = pitch
+
+        # If the Universe specified outer the Lattice is not void
+        if outer >= 0:
+            lattice.outer = universes[outer]
+
+        # Build array of Universe pointers for the Lattice
+        uarray = np.empty(universe_ids.shape, dtype=openmc.Universe)
+
+        for z in range(universe_ids.shape[0]):
+            for y in range(universe_ids.shape[1]):
+                for x in range(universe_ids.shape[2]):
+                    uarray[z, y, x] = universes[universe_ids[z, y, x]]
+
+        # Use 2D NumPy array to store lattice universes for 2D lattices
+        if len(dimension) == 2:
+            uarray = np.squeeze(uarray)
+            uarray = np.atleast_2d(uarray)
+
+        # Set the universes for the lattice
+        lattice.universes = uarray
+
+        return lattice
+
 
 class HexLattice(Lattice):
     r"""A lattice consisting of hexagonal prisms.
@@ -1458,20 +1330,16 @@ class HexLattice(Lattice):
 
         """
         if self._orientation == 'x':
-            x = point[0] - (self.center[0] + self.pitch[0]*idx[0] +
-                            0.5*self.pitch[0]*idx[1])
-            y = point[1] - (self.center[1] +
-                            sqrt(0.75)*self.pitch[0]*idx[1])
+            x = point[0] - (self.center[0] + (idx[0] + 0.5*idx[1])*self.pitch[0])
+            y = point[1] - (self.center[1] + sqrt(0.75)*self.pitch[0]*idx[1])
         else:
-            x = point[0] - (self.center[0]
-                            + sqrt(0.75)*self.pitch[0]*idx[0])
-            y = point[1] - (self.center[1]
-                            + (0.5*idx[0] + idx[1])*self.pitch[0])
+            x = point[0] - (self.center[0] + sqrt(0.75)*self.pitch[0]*idx[0])
+            y = point[1] - (self.center[1] + (0.5*idx[0] + idx[1])*self.pitch[0])
 
         if self._num_axial is None:
             z = point[2]
         else:
-            z = point[2] - (self.center[2] + (idx[2] + 0.5 - 0.5*self.num_axial)*
+            z = point[2] - (self.center[2] + (idx[2] + 0.5 - 0.5*self.num_axial) *
                             self.pitch[1])
         return (x, y, z)
 
@@ -2168,3 +2036,167 @@ class HexLattice(Lattice):
             return HexLattice._show_indices_x(num_rings)
         else:
             return HexLattice._show_indices_y(num_rings)
+
+    @classmethod
+    def from_hdf5(cls, group, universes):
+        """Create rectangular lattice from HDF5 group
+
+        Parameters
+        ----------
+        group : h5py.Group
+            Group in HDF5 file
+        universes : dict
+            Dictionary mapping universe IDs to instances of
+            :class:`openmc.Universe`.
+
+        Returns
+        -------
+        openmc.RectLattice
+            Rectangular lattice
+
+        """
+        n_rings = group['n_rings'][()]
+        n_axial = group['n_axial'][()]
+        center = group['center'][()]
+        pitch = group['pitch'][()]
+        outer = group['outer'][()]
+        if 'orientation' in group:
+            orientation = group['orientation'][()].decode()
+        else:
+            orientation = "y"
+        universe_ids = group['universes'][()]
+
+        # Create the Lattice
+        lattice_id = int(group.name.split('/')[-1].lstrip('lattice '))
+        name = group['name'][()].decode() if 'name' in group else ''
+        lattice = openmc.HexLattice(lattice_id, name)
+        lattice.center = center
+        lattice.pitch = pitch
+        lattice.orientation = orientation
+        # If the Universe specified outer the Lattice is not void
+        if outer >= 0:
+            lattice.outer = universes[outer]
+        if orientation == "y":
+            # Build array of Universe pointers for the Lattice.  Note that
+            # we need to convert between the HDF5's square array of
+            # (x, alpha, z) to the Python API's format of a ragged nested
+            # list of (z, ring, theta).
+            uarray = []
+            for z in range(n_axial):
+                # Add a list for this axial level.
+                uarray.append([])
+                x = n_rings - 1
+                a = 2*n_rings - 2
+                for r in range(n_rings - 1, 0, -1):
+                    # Add a list for this ring.
+                    uarray[-1].append([])
+
+                    # Climb down the top-right.
+                    for i in range(r):
+                        uarray[-1][-1].append(universe_ids[z, a, x])
+                        x += 1
+                        a -= 1
+
+                    # Climb down the right.
+                    for i in range(r):
+                        uarray[-1][-1].append(universe_ids[z, a, x])
+                        a -= 1
+
+                    # Climb down the bottom-right.
+                    for i in range(r):
+                        uarray[-1][-1].append(universe_ids[z, a, x])
+                        x -= 1
+
+                    # Climb up the bottom-left.
+                    for i in range(r):
+                        uarray[-1][-1].append(universe_ids[z, a, x])
+                        x -= 1
+                        a += 1
+
+                    # Climb up the left.
+                    for i in range(r):
+                        uarray[-1][-1].append(universe_ids[z, a, x])
+                        a += 1
+
+                    # Climb up the top-left.
+                    for i in range(r):
+                        uarray[-1][-1].append(universe_ids[z, a, x])
+                        x += 1
+
+                    # Move down to the next ring.
+                    a -= 1
+
+                    # Convert the ids into Universe objects.
+                    uarray[-1][-1] = [universes[u_id]
+                                        for u_id in uarray[-1][-1]]
+
+                # Handle the degenerate center ring separately.
+                u_id = universe_ids[z, a, x]
+                uarray[-1].append([universes[u_id]])
+        else:
+            # Build array of Universe pointers for the Lattice.  Note that
+            # we need to convert between the HDF5's square array of
+            # (alpha, y, z) to the Python API's format of a ragged nested
+            # list of (z, ring, theta).
+            uarray = []
+            for z in range(n_axial):
+                # Add a list for this axial level.
+                uarray.append([])
+                a = 2*n_rings - 2
+                y = n_rings - 1
+                for r in range(n_rings - 1, 0, -1):
+                    # Add a list for this ring.
+                    uarray[-1].append([])
+
+                    # Climb down the bottom-right.
+                    for i in range(r):
+                        uarray[-1][-1].append(universe_ids[z, y, a])
+                        y -= 1
+
+                    # Climb across the bottom.
+                    for i in range(r):
+                        uarray[-1][-1].append(universe_ids[z, y, a])
+                        a -= 1
+
+                    # Climb up the bottom-left.
+                    for i in range(r):
+                        uarray[-1][-1].append(universe_ids[z, y, a])
+                        a -= 1
+                        y += 1
+
+                    # Climb up the top-left.
+                    for i in range(r):
+                        uarray[-1][-1].append(universe_ids[z, y, a])
+                        y += 1
+
+                    # Climb across the top.
+                    for i in range(r):
+                        uarray[-1][-1].append(universe_ids[z, y, a])
+                        a += 1
+
+                    # Climb down the top-right.
+                    for i in range(r):
+                        uarray[-1][-1].append(universe_ids[z, y, a])
+                        a += 1
+                        y -= 1
+
+                    # Move down to the next ring.
+                    a -= 1
+
+                    # Convert the ids into Universe objects.
+                    uarray[-1][-1] = [universes[u_id]
+                                        for u_id in uarray[-1][-1]]
+
+                # Handle the degenerate center ring separately.
+                u_id = universe_ids[z, y, a]
+                uarray[-1].append([universes[u_id]])
+
+        # Add the universes to the lattice.
+        if len(pitch) == 2:
+            # Lattice is 3D
+            lattice.universes = uarray
+        else:
+            # Lattice is 2D; extract the only axial level
+            lattice.universes = uarray[0]
+
+        return lattice

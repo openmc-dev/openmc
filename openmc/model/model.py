@@ -1,11 +1,12 @@
 from collections.abc import Iterable
 from pathlib import Path
+import time
 
 import openmc
 from openmc.checkvalue import check_type, check_value
 
 
-class Model(object):
+class Model:
     """Model container.
 
     This class can be used to store instances of :class:`openmc.Geometry`,
@@ -172,7 +173,7 @@ class Model(object):
             will be created.
 
         """
-        # Create directory if
+        # Create directory if required
         d = Path(directory)
         if not d.is_dir():
             d.mkdir(parents=True)
@@ -197,27 +198,39 @@ class Model(object):
             self.plots.export_to_xml(d)
 
     def run(self, **kwargs):
-        """Creates the XML files, runs OpenMC, and returns k-effective
+        """Creates the XML files, runs OpenMC, and returns the path to the last
+        statepoint file generated.
 
         Parameters
         ----------
         **kwargs
-            All keyword arguments are passed to :func:`openmc.run`
+            Keyword arguments passed to :func:`openmc.run`
 
         Returns
         -------
-        uncertainties.UFloat
-            Combined estimator of k-effective from the statepoint
+        Path
+            Path to the last statepoint written by this run
+            (None if no statepoint was written)
 
         """
+
         self.export_to_xml()
+
+        # Setting tstart here ensures we don't pick up any pre-existing statepoint
+        # files in the output directory
+        tstart = time.time()
+        last_statepoint = None
 
         openmc.run(**kwargs)
 
-        n = self.settings.batches
-        if self.settings.statepoint is not None:
-            if 'batches' in self.settings.statepoint:
-                n = self.settings.statepoint['batches'][-1]
-
-        with openmc.StatePoint('statepoint.{}.h5'.format(n)) as sp:
-            return sp.k_combined
+        # Get output directory and return the last statepoint written by this run
+        if self.settings.output and 'path' in self.settings.output:
+            output_dir = Path(self.settings.output['path'])
+        else:
+            output_dir = Path.cwd()
+        for sp in output_dir.glob('statepoint.*.h5'):
+            mtime = sp.stat().st_mtime
+            if mtime >= tstart:  # >= allows for poor clock resolution
+                tstart = mtime
+                last_statepoint = sp
+        return last_statepoint

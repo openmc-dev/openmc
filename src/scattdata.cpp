@@ -65,7 +65,10 @@ ScattData::base_combine(size_t max_order,
   xt::xtensor<double, 3> this_matrix({groups, groups, max_order}, 0.);
   xt::xtensor<double, 2> mult_numer({groups, groups}, 0.);
   xt::xtensor<double, 2> mult_denom({groups, groups}, 0.);
-
+  // TODO: Need to review this:
+  if (this->scattxs.size() > 0) {
+    this_matrix = this->get_matrix(max_order);
+  }
   // Build the dense scattering and multiplicity matrices
   // Get the multiplicity_matrix
   // To combine from nuclidic data we need to use the final relationship
@@ -110,7 +113,18 @@ ScattData::base_combine(size_t max_order,
 
   // Combine mult_numer and mult_denom into the combined multiplicity matrix
   xt::xtensor<double, 2> this_mult({groups, groups}, 1.);
-  this_mult = xt::nan_to_num(mult_numer / mult_denom);
+  // TODO: Need to check this too
+  for (int gin = 0; gin < groups; gin++) {
+    for (int gout = 0; gout < groups; gout++) {
+      if (std::abs(mult_denom(gin, gout)) > 0.0) {
+	   this_mult(gin, gout) = mult_numer(gin, gout) / mult_denom(gin, gout);
+      } else {
+	   if (mult_numer(gin, gout) == 0.0) {
+	     this_mult(gin, gout) = 1.0;
+	   }
+      }
+    }
+  }
 
   // We have the data, now we need to convert to a jagged array and then use
   // the initialize function to store it on the object.

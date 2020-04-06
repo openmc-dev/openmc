@@ -41,9 +41,9 @@ Plotting in 2D
 --------------
 
 The :ref:`IPython notebook example <notebook_post_processing>` also demonstrates
-how to plot a mesh tally in two dimensions using the Python API. One can also
-use the :ref:`scripts_plot` script which provides an interactive GUI to explore
-and plot mesh tallies for any scores and filter bins.
+how to plot a structured mesh tally in two dimensions using the Python API. One
+can also use the :ref:`scripts_plot` script which provides an interactive GUI to
+explore and plot structured mesh tallies for any scores and filter bins.
 
 .. image:: ../_images/plotmeshtally.png
    :width: 400px

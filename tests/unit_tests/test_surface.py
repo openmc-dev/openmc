@@ -67,7 +67,7 @@ def test_plane_from_points():
 
 
 def test_xplane():
-    s = openmc.XPlane(3., 'reflective')
+    s = openmc.XPlane(3., boundary_type='reflective')
     assert s.x0 == 3.
     assert s.boundary_type == 'reflective'
 
@@ -441,7 +441,7 @@ def test_cone():
     assert_infinite_bb(s)
 
     # evaluate method
-    # cos^2(theta) * ((p - p1))**2 - (d @ (p - p1))^2 
+    # cos^2(theta) * ((p - p1))**2 - (d @ (p - p1))^2
     # The argument r2 for cones is actually tan^2(theta) so that
     # cos^2(theta) = 1 / (1 + r2)
     #

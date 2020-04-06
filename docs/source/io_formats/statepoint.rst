@@ -77,6 +77,10 @@ The current version of the statepoint file format is 17.0.
              of mesh.
            - **width** (*double[]*) -- Width of each mesh cell in each
              dimension.
+           - **Unstructured Mesh Only:**
+              - **volumes** (*double[]*) -- Volume of each mesh cell.
+              - **centroids** (*double[]*) -- Location of the mesh cell
+                centroids.
 
 **/tallies/filters/**
 

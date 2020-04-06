@@ -90,8 +90,7 @@ class Summary:
     def _read_macroscopics(self):
         if 'macroscopics/names' in self._f:
             names = self._f['macroscopics/names'][()]
-            for name in names:
-                self._macroscopics.append(name.decode())
+            self._macroscopics = [name.decode() for name in names]
 
     def _read_geometry(self):
         with warnings.catch_warnings():

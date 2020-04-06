@@ -17,8 +17,8 @@ import openmc
 from openmc.checkvalue import check_type
 
 
-MAX_PF_RSP = 0.38
-MAX_PF_CRP = 0.64
+MAX_PF_RSP = 0.38  # maximum packing fraction for random sequential packing
+MAX_PF_CRP = 0.64  # maximum packing fraction for close random packing
 
 
 def _volume_sphere(r):

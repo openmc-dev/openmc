@@ -288,7 +288,7 @@ public:
   //! Set the value of a bin for a variable on the libmesh mesh instance
   virtual void set_score_data(const std::string& var_name,
                               std::vector<double> values,
-                              std::vector<double> std_dev) const = 0;
+                              std::vector<double> std_dev) = 0;
 
   virtual void write(std::string filename) const = 0;
 
@@ -346,7 +346,12 @@ public:
   std::string bin_label(int bin) const override;
 
   //! Add a score to the mesh instance
-  void add_score(std::string score) const;
+  void add_score(const std::string& score);
+
+  //! Set the value of a bin for a variable on the libmesh mesh instance
+  void set_score_data(const std::string& var_name,
+                      std::vector<double> values,
+                      std::vector<double> std_dev) override;
 
   //! Remove a score from the mesh instance
   void remove_score(std::string score) const;
@@ -363,9 +368,9 @@ public:
 
   bool intersects(Position& r0, Position r1, int* ijk);
 
-
-
 private:
+
+  void initialize();
 
   //! Find all intersections with faces of the mesh.
   //
@@ -515,7 +520,7 @@ public:
   //! Set the value of a bin for a variable on the libmesh mesh instance
   void set_score_data(const std::string& var_name,
                       std::vector<double> values,
-                      std::vector<double> std_dev) const override;
+                      std::vector<double> std_dev) override;
 
 private:
 

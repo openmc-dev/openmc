@@ -58,7 +58,24 @@ int openmc_init(int argc, char* argv[], const void* intracomm)
 
   // Parse command-line arguments
   int err = parse_command_line(argc, argv);
-  //if (err) return err;
+  if (err) return err;
+
+#ifdef LIBMESH
+
+#ifdef _OPENMP
+  int n_threads = omp_get_max_threads();
+#else
+  int n_threads = 1;
+#endif
+
+  // initialize libmesh
+#ifdef OPENMC_MPI
+  if (!settings::LMI) settings::LMI = std::make_unique<libMesh::LibMeshInit>(argc, argv, mpi::intracomm, n_threads);
+#else
+  if (!settings::LMI) settings::LMI = std::make_unique<libMesh::LibMeshInit>(argc, argv, n_threads);
+#endif
+
+#endif
 
   // Start total and initialization timer
   simulation::time_total.start();
@@ -70,10 +87,6 @@ int openmc_init(int argc, char* argv[], const void* intracomm)
   if (!envvar) {
     omp_set_schedule(omp_sched_static, 0);
   }
-#endif
-
-#ifdef LIBMESH
-  if (!settings::LMI) settings::LMI = std::make_unique<libMesh::LibMeshInit>(argc, argv);
 #endif
 
 

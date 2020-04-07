@@ -15,6 +15,12 @@ if(@LIBMESH_FOUND@)
   pkg_check_modules(LIBMESH REQUIRED libmesh IMPORTED_TARGET)
 endif()
 
+if(@LIBMESH_FOUND@)
+  include(FindPkgConfig)
+  set(ENV{PKG_CONFIG_PATH} "$ENV{PKG_CONFIG_PATH}:@LIBMESH_PC@")
+  pkg_check_modules(LIBMESH REQUIRED libmesh IMPORTED_TARGET)
+endif()
+
 if(NOT TARGET OpenMC::libopenmc)
   include("${OpenMC_CMAKE_DIR}/OpenMCTargets.cmake")
 endif()

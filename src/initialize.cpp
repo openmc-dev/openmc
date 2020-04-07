@@ -78,6 +78,7 @@ int openmc_init(int argc, char* argv[], const void* intracomm)
 
   // Stop initialization timer
   simulation::time_initialize.stop();
+  simulation::time_total.stop();
 
   return 0;
 }

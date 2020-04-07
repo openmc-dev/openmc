@@ -2,18 +2,17 @@ from collections import OrderedDict
 from collections.abc import Mapping, Callable
 from copy import deepcopy
 from io import StringIO
+from math import pi
 from numbers import Integral, Real
-from math import pi, sqrt
 import os
 
 import h5py
 import numpy as np
 import pandas as pd
 from scipy.interpolate import CubicSpline
-from scipy.integrate import quad
 
-from openmc.mixin import EqualityMixin
 import openmc.checkvalue as cv
+from openmc.mixin import EqualityMixin
 from . import HDF5_VERSION
 from .ace import Table, get_metadata, get_table
 from .data import ATOMIC_SYMBOL, EV_PER_MEV

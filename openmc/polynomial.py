@@ -1,7 +1,7 @@
-import math
-import numpy as np
-import openmc
 from collections.abc import Iterable
+import math
+
+import numpy as np
 
 
 def legendre_from_expcoef(coef, domain=(-1, 1)):

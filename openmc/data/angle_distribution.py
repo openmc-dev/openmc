@@ -179,11 +179,12 @@ class AngleDistribution(EqualityMixin):
         for i in range(n_energies):
             if lc[i] > 0:
                 # Equiprobable 32 bin distribution
+                n_bins = 32
                 idx = location_dist + abs(lc[i]) - 1
-                cos = ace.xss[idx:idx + 33]
-                pdf = np.zeros(33)
-                pdf[:32] = 1.0/(32.0*np.diff(cos))
-                cdf = np.linspace(0.0, 1.0, 33)
+                cos = ace.xss[idx:idx + n_bins + 1]
+                pdf = np.zeros(n_bins + 1)
+                pdf[:n_bins] = 1.0/(n_bins*np.diff(cos))
+                cdf = np.linspace(0.0, 1.0, n_bins + 1)
 
                 mu_i = Tabular(cos, pdf, 'histogram', ignore_negative=True)
                 mu_i.c = cdf
@@ -192,6 +193,7 @@ class AngleDistribution(EqualityMixin):
                 idx = location_dist + abs(lc[i]) - 1
                 intt = int(ace.xss[idx])
                 n_points = int(ace.xss[idx + 1])
+                # Data is given as rows of (values, PDF, CDF)
                 data = ace.xss[idx + 2:idx + 2 + 3*n_points]
                 data.shape = (3, n_points)
 

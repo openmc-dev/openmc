@@ -1,12 +1,10 @@
-import copy
-import operator
-
 import numpy as np
-
 import openmoc
+
 import openmc
 import openmc.checkvalue as cv
 
+# TODO: Get rid of global state by using memoization on functions below
 
 # A dictionary of all OpenMC Materials created
 # Keys   - Material IDs
@@ -408,12 +406,12 @@ def get_openmc_region(openmoc_region):
         side = '-' if openmoc_region.getHalfspace() == -1 else '+'
         openmc_region = openmc.Halfspace(surface, side)
     elif openmoc_region.getRegionType() == openmoc.INTERSECTION:
-        openmc_region = openmc.Intersection()
+        openmc_region = openmc.Intersection([])
         for openmoc_node in openmoc_region.getNodes():
             openmc_node = get_openmc_region(openmoc_node)
             openmc_region.append(openmc_node)
     elif openmoc_region.getRegionType() == openmoc.UNION:
-        openmc_region = openmc.Union()
+        openmc_region = openmc.Union([])
         for openmoc_node in openmoc_region.getNodes():
             openmc_node = get_openmc_region(openmoc_node)
             openmc_region.append(openmc_node)
@@ -452,10 +450,10 @@ def get_openmc_cell(openmoc_cell):
     name = openmoc_cell.getName()
     openmc_cell = openmc.Cell(cell_id, name)
 
-    if (openmoc_cell.getType() == openmoc.MATERIAL):
+    if openmoc_cell.getType() == openmoc.MATERIAL:
         fill = openmoc_cell.getFillMaterial()
         openmc_cell.fill = get_openmc_material(fill)
-    elif (openmoc_cell.getType() == openmoc.FILL):
+    elif openmoc_cell.getType() == openmoc.FILL:
         fill = openmoc_cell.getFillUniverse()
         if fill.getType() == openmoc.LATTICE:
             fill = openmoc.castUniverseToLattice(fill)
@@ -464,9 +462,11 @@ def get_openmc_cell(openmoc_cell):
             openmc_cell.fill = get_openmc_universe(fill)
 
     if openmoc_cell.isRotated():
+        # get rotation for each of 3 axes
         rotation = openmoc_cell.retrieveRotation(3)
         openmc_cell.rotation = rotation
     if openmoc_cell.isTranslated():
+        # get translation for each of 3 axes
         translation = openmoc_cell.retrieveTranslation(3)
         openmc_cell.translation = translation
 

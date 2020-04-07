@@ -1,10 +1,10 @@
 from collections import OrderedDict, defaultdict, namedtuple, Counter
 from collections.abc import Iterable
 from copy import deepcopy
-from numbers import Real, Integral
+from numbers import Real
 from pathlib import Path
-import warnings
 import re
+import warnings
 from xml.etree import ElementTree as ET
 
 import numpy as np
@@ -12,13 +12,13 @@ import numpy as np
 import openmc
 import openmc.data
 import openmc.checkvalue as cv
-from openmc._xml import clean_indentation
+from ._xml import clean_indentation
 from .mixin import IDManagerMixin
 
 
 # Units for density supported by OpenMC
-DENSITY_UNITS = ['g/cm3', 'g/cc', 'kg/m3', 'atom/b-cm', 'atom/cm3', 'sum',
-                 'macro']
+DENSITY_UNITS = ('g/cm3', 'g/cc', 'kg/m3', 'atom/b-cm', 'atom/cm3', 'sum',
+                 'macro')
 
 
 NuclideTuple = namedtuple('NuclideTuple', ['name', 'percent', 'percent_type'])

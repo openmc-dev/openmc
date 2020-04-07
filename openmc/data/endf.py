@@ -7,19 +7,13 @@ http://www-nds.iaea.org/ndspub/documents/endf/endf102/endf102.pdf
 
 """
 import io
-import re
-import os
-from math import pi
 from pathlib import PurePath
-from collections import OrderedDict
-from collections.abc import Iterable
+import re
 
 import numpy as np
-from numpy.polynomial.polynomial import Polynomial
 
-from .data import ATOMIC_SYMBOL, gnd_name
-from .function import Tabulated1D, INTERPOLATION_SCHEME
-from openmc.stats.univariate import Uniform, Tabular, Legendre
+from .data import gnd_name
+from .function import Tabulated1D
 try:
     from ._endf import float_endf
     _CYTHON = True
@@ -397,8 +391,10 @@ class Evaluation:
     def __init__(self, filename_or_obj):
         if isinstance(filename_or_obj, (str, PurePath)):
             fh = open(str(filename_or_obj), 'r')
+            need_to_close = True
         else:
             fh = filename_or_obj
+            need_to_close = False
         self.section = {}
         self.info = {}
         self.target = {}
@@ -445,6 +441,9 @@ class Evaluation:
                 else:
                     section_data += line
             self.section[MF, MT] = section_data
+
+        if need_to_close:
+            fh.close()
 
         self._read_header()
 

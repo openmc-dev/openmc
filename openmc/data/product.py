@@ -1,7 +1,5 @@
 from collections.abc import Iterable
-from io import StringIO
 from numbers import Real
-import sys
 
 import numpy as np
 

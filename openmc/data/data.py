@@ -177,8 +177,26 @@ ATOMIC_SYMBOL = {0: 'n', 1: 'H', 2: 'He', 3: 'Li', 4: 'Be', 5: 'B', 6: 'C',
                  118: 'Og'}
 ATOMIC_NUMBER = {value: key for key, value in ATOMIC_SYMBOL.items()}
 
+# Values here are from the Committee on Data for Science and Technology
+# (CODATA) 2014 recommendation (doi:10.1103/RevModPhys.88.035009).
+
+# The value of the Boltzman constant in units of eV / K
+K_BOLTZMANN = 8.6173303e-5
+
+# Unit conversions
+EV_PER_MEV = 1.0e6
+JOULE_PER_EV = 1.6021766208e-19
+
+# Avogadro's constant
+AVOGADRO = 6.022140857e23
+
+# Neutron mass in units of amu
+NEUTRON_MASS = 1.00866491588
+
+# Used in atomic_mass function as a cache
 _ATOMIC_MASS = {}
 
+# Regex for GND nuclide names (used in zam function)
 _GND_NAME_RE = re.compile(r'([A-Zn][a-z]*)(\d+)((?:_[em]\d+)?)')
 
 
@@ -290,12 +308,14 @@ def water_density(temperature, pressure=0.1013):
     # but they only use 3 digits for their conversion to K.)
     if pressure > 100.0:
         warn("Results are not valid for pressures above 100 MPa.")
-    if pressure < 0.0:
-        warn("Results are not valid for pressures below zero.")
+    elif pressure < 0.0:
+        raise ValueError("Pressure must be positive.")
     if temperature < 273:
         warn("Results are not valid for temperatures below 273.15 K.")
-    if temperature > 623.15:
+    elif temperature > 623.15:
         warn("Results are not valid for temperatures above 623.15 K.")
+    elif temperature <= 0.0:
+        raise ValueError('Temperature must be positive.')
 
     # IAPWS region 4 parameters
     n4 = [0.11670521452767e4, -0.72421316703206e6, -0.17073846940092e2,
@@ -410,20 +430,3 @@ def zam(name):
 
     metastable = int(state[2:]) if state else 0
     return (ATOMIC_NUMBER[symbol], int(A), metastable)
-
-
-# Values here are from the Committee on Data for Science and Technology
-# (CODATA) 2014 recommendation (doi:10.1103/RevModPhys.88.035009).
-
-# The value of the Boltzman constant in units of eV / K
-K_BOLTZMANN = 8.6173303e-5
-
-# Unit conversions
-EV_PER_MEV = 1.0e6
-JOULE_PER_EV = 1.6021766208e-19
-
-# Avogadro's constant
-AVOGADRO = 6.022140857e23
-
-# Neutron mass in units of amu
-NEUTRON_MASS = 1.00866491588

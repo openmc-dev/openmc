@@ -1,11 +1,10 @@
 from numbers import Real
-import sys
 from xml.etree import ElementTree as ET
 
-from openmc._xml import get_text
-from openmc.stats.univariate import Univariate
-from openmc.stats.multivariate import UnitSphere, Spatial
 import openmc.checkvalue as cv
+from openmc.stats.multivariate import UnitSphere, Spatial
+from openmc.stats.univariate import Univariate
+from ._xml import get_text
 
 
 class Source:

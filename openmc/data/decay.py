@@ -1,13 +1,11 @@
-from collections import namedtuple
 from collections.abc import Iterable
 from io import StringIO
 from math import log
-from numbers import Real
 import re
 from warnings import warn
 
 import numpy as np
-from uncertainties import ufloat, unumpy, UFloat
+from uncertainties import ufloat, UFloat
 
 import openmc.checkvalue as cv
 from openmc.mixin import EqualityMixin
@@ -142,12 +140,12 @@ class FissionProductYields(EqualityMixin):
             'isomeric_state': ev.target['isomeric_state']
         }
 
-        # Read independent yields
+        # Read independent yields (MF=8, MT=454)
         if (8, 454) in ev.section:
             file_obj = StringIO(ev.section[8, 454])
             self.energies, self.independent = get_yields(file_obj)
 
-        # Read cumulative yields
+        # Read cumulative yields (MF=8, MT=459)
         if (8, 459) in ev.section:
             file_obj = StringIO(ev.section[8, 459])
             energies, self.cumulative = get_yields(file_obj)
@@ -372,6 +370,7 @@ class Decay(EqualityMixin):
 
             items, values = get_list_record(file_obj)
             spin = items[0]
+            # ENDF-102 specifies that unknown spin should be reported as -77.777
             if spin == -77.777:
                 self.nuclide['spin'] = None
             else:

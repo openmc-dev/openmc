@@ -1,14 +1,11 @@
-import sys
-
 from contextlib import contextmanager
-from ctypes import (CDLL, c_bool, c_int, c_int32, c_int64, c_double, c_char_p,
+from ctypes import (c_bool, c_int, c_int32, c_int64, c_double, c_char_p,
                     c_char, POINTER, Structure, c_void_p, create_string_buffer)
-from warnings import warn
+import sys
 
 import numpy as np
 from numpy.ctypeslib import as_array
 
-from openmc.exceptions import AllocationError
 from . import _dll
 from .error import _error_handler
 import openmc.lib

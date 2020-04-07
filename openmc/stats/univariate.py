@@ -1,30 +1,31 @@
-from abc import ABCMeta, abstractmethod
+from abc import ABC, abstractmethod
 from collections.abc import Iterable
 from numbers import Real
-import sys
 from xml.etree import ElementTree as ET
 
 import numpy as np
 
 import openmc.checkvalue as cv
-from openmc._xml import get_text
-from openmc.mixin import EqualityMixin
+from .._xml import get_text
+from ..mixin import EqualityMixin
 
 
-_INTERPOLATION_SCHEMES = ['histogram', 'linear-linear', 'linear-log',
-                          'log-linear', 'log-log']
+_INTERPOLATION_SCHEMES = [
+    'histogram',
+    'linear-linear',
+    'linear-log',
+    'log-linear',
+    'log-log'
+]
 
 
-class Univariate(EqualityMixin, metaclass=ABCMeta):
+class Univariate(EqualityMixin, ABC):
     """Probability distribution of a single random variable.
 
     The Univariate class is an abstract class that can be derived to implement a
     specific probability distribution.
 
     """
-    def __init__(self):
-        pass
-
     @abstractmethod
     def to_xml_element(self, element_name):
         return ''
@@ -81,7 +82,6 @@ class Discrete(Univariate):
     """
 
     def __init__(self, x, p):
-        super().__init__()
         self.x = x
         self.p = p
 
@@ -175,7 +175,6 @@ class Uniform(Univariate):
     """
 
     def __init__(self, a=0.0, b=1.0):
-        super().__init__()
         self.a = a
         self.b = b
 
@@ -264,7 +263,6 @@ class Maxwell(Univariate):
     """
 
     def __init__(self, theta):
-        super().__init__()
         self.theta = theta
 
     def __len__(self):
@@ -342,7 +340,6 @@ class Watt(Univariate):
     """
 
     def __init__(self, a=0.988e6, b=2.249e-6):
-        super().__init__()
         self.a = a
         self.b = b
 
@@ -430,7 +427,6 @@ class Normal(Univariate):
     """
 
     def __init__(self, mean_value, std_dev):
-        super().__init__()
         self.mean_value = mean_value
         self.std_dev = std_dev
 
@@ -525,7 +521,6 @@ class Muir(Univariate):
     """
 
     def __init__(self, e0=14.08e6, m_rat = 5., kt = 20000.):
-        super().__init__()
         self.e0 = e0
         self.m_rat = m_rat
         self.kt = kt
@@ -634,7 +629,6 @@ class Tabular(Univariate):
 
     def __init__(self, x, p, interpolation='linear-linear',
                  ignore_negative=False):
-        super().__init__()
         self._ignore_negative = ignore_negative
         self.x = x
         self.p = p
@@ -788,7 +782,6 @@ class Mixture(Univariate):
     """
 
     def __init__(self, probability, distribution):
-        super().__init__()
         self.probability = probability
         self.distribution = distribution
 

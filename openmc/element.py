@@ -1,10 +1,9 @@
 from collections import OrderedDict
-import re
 import os
+import re
 from xml.etree import ElementTree as ET
 
 import openmc.checkvalue as cv
-from numbers import Real
 from openmc.data import NATURAL_ABUNDANCE, atomic_mass
 
 

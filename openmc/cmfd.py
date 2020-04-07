@@ -10,22 +10,21 @@ References
 
 """
 
-from contextlib import contextmanager
 from collections.abc import Iterable, Mapping
+from contextlib import contextmanager
 from numbers import Real, Integral
 import sys
 import time
-from ctypes import c_int
 import warnings
 
+import h5py
 import numpy as np
 from scipy import sparse
-import h5py
 
 import openmc.lib
-from openmc.checkvalue import (check_type, check_length, check_value,
-                               check_greater_than, check_less_than)
-from openmc.exceptions import OpenMCError
+from .checkvalue import (check_type, check_length, check_value,
+                         check_greater_than, check_less_than)
+from .exceptions import OpenMCError
 
 # See if mpi4py module can be imported, define have_mpi global variable
 try:

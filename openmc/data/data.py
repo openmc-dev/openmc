@@ -196,6 +196,9 @@ NEUTRON_MASS = 1.00866491588
 # Used in atomic_mass function as a cache
 _ATOMIC_MASS = {}
 
+# Regex for GND nuclide names (used in zam function)
+_GND_NAME_RE = re.compile(r'([A-Zn][a-z]*)(\d+)((?:_[em]\d+)?)')
+
 
 def atomic_mass(isotope):
     """Return atomic mass of isotope in atomic mass units.
@@ -399,9 +402,6 @@ def gnd_name(Z, A, m=0):
         return '{}{}_m{}'.format(ATOMIC_SYMBOL[Z], A, m)
     else:
         return '{}{}'.format(ATOMIC_SYMBOL[Z], A)
-
-
-_GND_NAME_RE = re.compile(r'([A-Zn][a-z]*)(\d+)((?:_[em]\d+)?)')
 
 
 def zam(name):

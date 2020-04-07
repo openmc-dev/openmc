@@ -123,11 +123,6 @@ if(openmp)
   endif()
 endif()
 
-if (libmesh)
-  list(APPEND cxxflags ${LIBMESH_CFLAGS})
-  list(APPEND ldflags ${LIBMESH_CFLAGS})
-endif()
-
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
 list(APPEND cxxflags -O2)

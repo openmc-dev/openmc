@@ -167,7 +167,7 @@ openmc_statepoint_write(const char* filename, bool* write_source)
         tally_ids.push_back(tally->id_);
       write_attribute(tallies_group, "ids", tally_ids);
 
-#ifdef DAGMC
+#if defined(LIBMESH) || defined(DAGMC)
       // write unstructured mesh tallies to VTK if possible
       write_unstructured_mesh_results();
 #endif
@@ -770,7 +770,7 @@ void read_source_bank(hid_t group_id, std::vector<Particle::Bank>& sites, bool d
   H5Tclose(banktype);
 }
 
-#ifdef LIBMESH
+#if defined(LIBMESH) || defined(DAGMC)
 void write_unstructured_mesh_results() {
 
 
@@ -784,7 +784,7 @@ void write_unstructured_mesh_results() {
       // check if the filter uses an unstructured mesh
       auto mesh_filter = dynamic_cast<MeshFilter*>(filter.get());
       auto mesh_idx = mesh_filter->mesh();
-      auto umesh = dynamic_cast<UnstructuredMesh*>(model::meshes[mesh_idx].get());
+      auto umesh = dynamic_cast<UnstructuredMeshBase*>(model::meshes[mesh_idx].get());
 
       if (!umesh) continue;
 

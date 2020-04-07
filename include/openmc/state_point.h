@@ -19,7 +19,7 @@ void read_source_bank(hid_t group_id, std::vector<Particle::Bank>& sites, bool d
 void write_tally_results_nr(hid_t file_id);
 void restart_set_keff();
 
-#ifdef LIBMESH
+#if defined(LIBMESH) || defined(DAGMC)
 void write_unstructured_mesh_results();
 #endif
 

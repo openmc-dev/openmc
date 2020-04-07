@@ -8,6 +8,8 @@
 
 #include "openmc/openmp_interface.h"
 
+#define NEIGHBOR_SIZE 4
+
 namespace openmc {
 
 //==============================================================================

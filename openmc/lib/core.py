@@ -307,7 +307,7 @@ def plot_geometry():
 
 
 def reset():
-    """Reset tallies but keep timers."""
+    """Reset tally results"""
     _dll.openmc_reset()
 
 

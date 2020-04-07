@@ -1,24 +1,29 @@
-import copy
-import warnings
-import itertools
-import random
-from abc import ABCMeta, abstractproperty, abstractmethod
+from abc import ABC, abstractproperty, abstractmethod
 from collections import Counter, defaultdict
 from collections.abc import Iterable
+import copy
 from heapq import heappush, heappop
+import itertools
 from math import pi, sin, cos, floor, log10, sqrt
 from numbers import Real
+import random
 from random import uniform, gauss
+import warnings
 
 import numpy as np
 import scipy.spatial
 
 import openmc
-from openmc.checkvalue import check_type
+from ..checkvalue import check_type
 
 
-MAX_PF_RSP = 0.38
-MAX_PF_CRP = 0.64
+MAX_PF_RSP = 0.38  # maximum packing fraction for random sequential packing
+MAX_PF_CRP = 0.64  # maximum packing fraction for close random packing
+
+
+def _volume_sphere(r):
+    """Return volume of a sphere of radius r"""
+    return 4/3 * pi * r**3
 
 
 class TRISO(openmc.Cell):
@@ -95,7 +100,7 @@ class TRISO(openmc.Cell):
                 k_min:k_max+1, j_min:j_max+1, i_min:i_max+1]))
 
 
-class _Container(metaclass=ABCMeta):
+class _Container(ABC):
     """Container in which to pack spheres.
 
     Parameters
@@ -696,7 +701,7 @@ class _SphericalShell(_Container):
 
     @property
     def volume(self):
-        return 4/3*pi*(self.radius**3 - self.inner_radius**3)
+        return _volume_sphere(self.radius) - _volume_sphere(self.inner_radius)
 
     @radius.setter
     def radius(self, radius):
@@ -1073,8 +1078,8 @@ def _close_random_pack(domain, spheres, contraction_rate):
 
         """
 
-        inner_pf = 4/3*pi*(inner_diameter/2)**3*num_spheres/domain.volume
-        outer_pf = 4/3*pi*(outer_diameter/2)**3*num_spheres/domain.volume
+        inner_pf = _volume_sphere(inner_diameter/2)*num_spheres / domain.volume
+        outer_pf = _volume_sphere(outer_diameter/2)*num_spheres / domain.volume
 
         j = floor(-log10(outer_pf - inner_pf))
         return (outer_diameter - 0.5**j * contraction_rate *
@@ -1289,7 +1294,7 @@ def pack_spheres(radius, region, pf=None, num_spheres=None, initial_pf=0.3,
                          'sphere, and spherical shell.'.format(region))
 
     # Determine the packing fraction/number of spheres
-    volume = 4/3*pi*radius**3
+    volume = _volume_sphere(radius)
     if pf is None and num_spheres is None:
         raise ValueError('`pf` or `num_spheres` must be specified.')
     elif pf is None:

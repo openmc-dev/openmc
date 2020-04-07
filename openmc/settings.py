@@ -2,15 +2,11 @@ from collections.abc import Iterable, MutableSequence, Mapping
 from enum import Enum
 from pathlib import Path
 from numbers import Real, Integral
-import warnings
 from xml.etree import ElementTree as ET
-import sys
 
-import numpy as np
-
-from openmc._xml import clean_indentation, get_text
 import openmc.checkvalue as cv
-from openmc import VolumeCalculation, Source, RegularMesh
+from . import VolumeCalculation, Source, RegularMesh
+from ._xml import clean_indentation, get_text
 
 
 class RunMode(Enum):

@@ -1,9 +1,7 @@
-from ctypes import (c_int, c_int32, c_int64, c_double, c_char_p, c_bool,
-                    POINTER)
+from ctypes import c_int, c_int32, c_int64, c_double, c_char_p, c_bool
 
 from . import _dll
 from .core import _DLLGlobal
-from .error import _error_handler
 
 _RUN_MODES = {1: 'fixed source',
               2: 'eigenvalue',

@@ -1,22 +1,20 @@
 from collections.abc import Iterable, MutableSequence
 import copy
-import re
 from functools import partial, reduce
 from itertools import product
 from numbers import Integral, Real
 import operator
 from pathlib import Path
-import warnings
 from xml.etree import ElementTree as ET
 
+import h5py
 import numpy as np
 import pandas as pd
 import scipy.sparse as sps
-import h5py
 
 import openmc
 import openmc.checkvalue as cv
-from openmc._xml import clean_indentation
+from ._xml import clean_indentation
 from .mixin import IDManagerMixin
 
 

@@ -1,65 +1,80 @@
 from collections import OrderedDict
-from numbers import Integral
-import warnings
-import os
 import copy
-from abc import ABCMeta
+from numbers import Integral
+import os
+import warnings
 
-import numpy as np
 import h5py
+import numpy as np
 
 import openmc
 import openmc.checkvalue as cv
-from openmc.tallies import ESTIMATOR_TYPES
-from openmc.mgxs import EnergyGroups
+from ..tallies import ESTIMATOR_TYPES
+from . import EnergyGroups
 
 
 # Supported cross section types
-MGXS_TYPES = ['total',
-              'transport',
-              'nu-transport',
-              'absorption',
-              'capture',
-              'fission',
-              'nu-fission',
-              'kappa-fission',
-              'scatter',
-              'nu-scatter',
-              'scatter matrix',
-              'nu-scatter matrix',
-              'multiplicity matrix',
-              'nu-fission matrix',
-              'scatter probability matrix',
-              'consistent scatter matrix',
-              'consistent nu-scatter matrix',
-              'chi',
-              'chi-prompt',
-              'inverse-velocity',
-              'prompt-nu-fission',
-              'prompt-nu-fission matrix']
+MGXS_TYPES = (
+    'total',
+    'transport',
+    'nu-transport',
+    'absorption',
+    'capture',
+    'fission',
+    'nu-fission',
+    'kappa-fission',
+    'scatter',
+    'nu-scatter',
+    'scatter matrix',
+    'nu-scatter matrix',
+    'multiplicity matrix',
+    'nu-fission matrix',
+    'scatter probability matrix',
+    'consistent scatter matrix',
+    'consistent nu-scatter matrix',
+    'chi',
+    'chi-prompt',
+    'inverse-velocity',
+    'prompt-nu-fission',
+    'prompt-nu-fission matrix'
+)
 
 # Supported domain types
-DOMAIN_TYPES = ['cell',
-                'distribcell',
-                'universe',
-                'material',
-                'mesh']
+DOMAIN_TYPES = (
+    'cell',
+    'distribcell',
+    'universe',
+    'material',
+    'mesh'
+)
 
 # Filter types corresponding to each domain
-_DOMAIN_TO_FILTER = {'cell': openmc.CellFilter,
-                     'distribcell': openmc.DistribcellFilter,
-                     'universe': openmc.UniverseFilter,
-                     'material': openmc.MaterialFilter,
-                     'mesh': openmc.MeshFilter}
+_DOMAIN_TO_FILTER = {
+    'cell': openmc.CellFilter,
+    'distribcell': openmc.DistribcellFilter,
+    'universe': openmc.UniverseFilter,
+    'material': openmc.MaterialFilter,
+    'mesh': openmc.MeshFilter
+}
 
 # Supported domain classes
-_DOMAINS = (openmc.Cell,
-            openmc.Universe,
-            openmc.Material,
-            openmc.RegularMesh)
+_DOMAINS = (
+    openmc.Cell,
+    openmc.Universe,
+    openmc.Material,
+    openmc.RegularMesh
+)
 
-# Supported ScatterMatrixXS angular distribution types
-MU_TREATMENTS = ('legendre', 'histogram')
+# Supported ScatterMatrixXS angular distribution types. Note that 'histogram' is
+# defined here and used in mgxs_library.py, but it is not used for the current
+# module
+SCATTER_TABULAR = 'tabular'
+SCATTER_LEGENDRE = 'legendre'
+SCATTER_HISTOGRAM = 'histogram'
+MU_TREATMENTS = (
+    SCATTER_LEGENDRE,
+    SCATTER_HISTOGRAM
+)
 
 # Maximum Legendre order supported by OpenMC
 _MAX_LEGENDRE = 10
@@ -112,7 +127,7 @@ def _df_column_convert_to_bin(df, current_name, new_name, values_to_bin,
     df.rename(columns={current_name: new_name}, inplace=True)
 
 
-class MGXS(metaclass=ABCMeta):
+class MGXS:
     """An abstract multi-group cross section for some energy group structure
     within some spatial domain.
 
@@ -245,37 +260,36 @@ class MGXS(metaclass=ABCMeta):
     def __deepcopy__(self, memo):
         existing = memo.get(id(self))
 
-        # If this is the first time we have tried to copy this object, copy it
-        if existing is None:
-            clone = type(self).__new__(type(self))
-            clone._name = self.name
-            clone._rxn_type = self.rxn_type
-            clone._by_nuclide = self.by_nuclide
-            clone._nuclides = copy.deepcopy(self._nuclides, memo)
-            clone._domain = self.domain
-            clone._domain_type = self.domain_type
-            clone._energy_groups = copy.deepcopy(self.energy_groups, memo)
-            clone._num_polar = self._num_polar
-            clone._num_azimuthal = self._num_azimuthal
-            clone._tally_trigger = copy.deepcopy(self.tally_trigger, memo)
-            clone._rxn_rate_tally = copy.deepcopy(self._rxn_rate_tally, memo)
-            clone._xs_tally = copy.deepcopy(self._xs_tally, memo)
-            clone._sparse = self.sparse
-            clone._loaded_sp = self._loaded_sp
-            clone._derived = self.derived
-            clone._hdf5_key = self._hdf5_key
-
-            clone._tallies = OrderedDict()
-            for tally_type, tally in self.tallies.items():
-                clone.tallies[tally_type] = copy.deepcopy(tally, memo)
-
-            memo[id(self)] = clone
-
-            return clone
-
         # If this object has been copied before, return the first copy made
-        else:
+        if existing is not None:
             return existing
+
+        # If this is the first time we have tried to copy this object, copy it
+        clone = type(self).__new__(type(self))
+        clone._name = self.name
+        clone._rxn_type = self.rxn_type
+        clone._by_nuclide = self.by_nuclide
+        clone._nuclides = copy.deepcopy(self._nuclides, memo)
+        clone._domain = self.domain
+        clone._domain_type = self.domain_type
+        clone._energy_groups = copy.deepcopy(self.energy_groups, memo)
+        clone._num_polar = self._num_polar
+        clone._num_azimuthal = self._num_azimuthal
+        clone._tally_trigger = copy.deepcopy(self.tally_trigger, memo)
+        clone._rxn_rate_tally = copy.deepcopy(self._rxn_rate_tally, memo)
+        clone._xs_tally = copy.deepcopy(self._xs_tally, memo)
+        clone._sparse = self.sparse
+        clone._loaded_sp = self._loaded_sp
+        clone._derived = self.derived
+        clone._hdf5_key = self._hdf5_key
+
+        clone._tallies = OrderedDict()
+        for tally_type, tally in self.tallies.items():
+            clone.tallies[tally_type] = copy.deepcopy(tally, memo)
+
+        memo[id(self)] = clone
+
+        return clone
 
     def _add_angle_filters(self, filters):
         """Add the azimuthal and polar bins to the MGXS filters if needed.
@@ -2170,6 +2184,7 @@ class MatrixMGXS(MGXS):
         if not isinstance(in_groups, str):
             cv.check_iterable_type('groups', in_groups, Integral)
             filters.append(openmc.EnergyFilter)
+            energy_bins = []
             for group in in_groups:
                 energy_bins.append((self.energy_groups.get_group_bounds(group),))
             filter_bins.append(tuple(energy_bins))
@@ -3725,7 +3740,7 @@ class ScatterMatrixXS(MatrixMGXS):
                          num_polar, num_azimuthal)
         self._formulation = 'simple'
         self._correction = 'P0'
-        self._scatter_format = 'legendre'
+        self._scatter_format = SCATTER_LEGENDRE
         self._legendre_order = 0
         self._histogram_bins = 16
         self._estimator = 'analog'
@@ -3748,12 +3763,12 @@ class ScatterMatrixXS(MatrixMGXS):
         process
         """
         if self.num_polar > 1 or self.num_azimuthal > 1:
-            if self.scatter_format == 'histogram':
+            if self.scatter_format == SCATTER_HISTOGRAM:
                 return (0, 1, 3, 4, 5)
             else:
                 return (0, 1, 3, 4)
         else:
-            if self.scatter_format == 'histogram':
+            if self.scatter_format == SCATTER_HISTOGRAM:
                 return (1, 2, 3)
             else:
                 return (1, 2)
@@ -3857,13 +3872,13 @@ class ScatterMatrixXS(MatrixMGXS):
             energy = openmc.EnergyFilter(group_edges)
             energyout = openmc.EnergyoutFilter(group_edges)
 
-            if self.scatter_format == 'legendre':
+            if self.scatter_format == SCATTER_LEGENDRE:
                 if self.correction == 'P0' and self.legendre_order == 0:
                     angle_filter = openmc.LegendreFilter(order=1)
                 else:
                     angle_filter = \
                         openmc.LegendreFilter(order=self.legendre_order)
-            elif self.scatter_format == 'histogram':
+            elif self.scatter_format == SCATTER_HISTOGRAM:
                 bins = np.linspace(-1., 1., num=self.histogram_bins + 1,
                                    endpoint=True)
                 angle_filter = openmc.MuFilter(bins)
@@ -3878,9 +3893,9 @@ class ScatterMatrixXS(MatrixMGXS):
             filters = [[energy], [energy]]
 
             # Group-to-group scattering probability matrix
-            if self.scatter_format == 'legendre':
+            if self.scatter_format == SCATTER_LEGENDRE:
                 angle_filter = openmc.LegendreFilter(order=self.legendre_order)
-            elif self.scatter_format == 'histogram':
+            elif self.scatter_format == SCATTER_HISTOGRAM:
                 bins = np.linspace(-1., 1., num=self.histogram_bins + 1,
                                    endpoint=True)
                 angle_filter = openmc.MuFilter(bins)
@@ -3903,7 +3918,7 @@ class ScatterMatrixXS(MatrixMGXS):
         if self._rxn_rate_tally is None:
 
             if self.formulation == 'simple':
-                if self.scatter_format == 'legendre':
+                if self.scatter_format == SCATTER_LEGENDRE:
                     # If using P0 correction subtract P1 scatter from the diag.
                     if self.correction == 'P0' and self.legendre_order == 0:
                         scatter_p0 = self.tallies[self.rxn_type].get_slice(
@@ -3937,7 +3952,7 @@ class ScatterMatrixXS(MatrixMGXS):
                     # Otherwise, extract scattering moment reaction rate Tally
                     else:
                         self._rxn_rate_tally = self.tallies[self.rxn_type]
-                elif self.scatter_format == 'histogram':
+                elif self.scatter_format == SCATTER_HISTOGRAM:
                     # Extract scattering rate distribution tally
                     self._rxn_rate_tally = self.tallies[self.rxn_type]
 
@@ -3967,14 +3982,14 @@ class ScatterMatrixXS(MatrixMGXS):
                 tally_key = 'scatter matrix'
 
                 # Compute normalization factor summed across outgoing energies
-                if self.scatter_format == 'legendre':
+                if self.scatter_format == SCATTER_LEGENDRE:
                     norm = self.tallies[tally_key].get_slice(
                         scores=['scatter'],
                         filters=[openmc.LegendreFilter],
                         filter_bins=[('P0',)], squeeze=True)
 
                 # Compute normalization factor summed across outgoing mu bins
-                elif self.scatter_format == 'histogram':
+                elif self.scatter_format == SCATTER_HISTOGRAM:
                     norm = self.tallies[tally_key].get_slice(
                         scores=['scatter'])
                     norm = norm.summation(
@@ -3994,14 +4009,14 @@ class ScatterMatrixXS(MatrixMGXS):
                 if self.nu:
                     numer = self.tallies['nu-scatter']
                     # Get the denominator
-                    if self.scatter_format == 'legendre':
+                    if self.scatter_format == SCATTER_LEGENDRE:
                         denom = self.tallies[tally_key].get_slice(
                             scores=['scatter'],
                             filters=[openmc.LegendreFilter],
                             filter_bins=[('P0',)], squeeze=True)
 
                     # Compute normalization factor summed across mu bins
-                    elif self.scatter_format == 'histogram':
+                    elif self.scatter_format == SCATTER_HISTOGRAM:
                         denom = self.tallies[tally_key].get_slice(
                             scores=['scatter'])
 
@@ -4048,7 +4063,7 @@ class ScatterMatrixXS(MatrixMGXS):
                 self._compute_xs()
 
                 # Force the angle filter to be the last filter
-                if self.scatter_format == 'histogram':
+                if self.scatter_format == SCATTER_HISTOGRAM:
                     angle_filter = self._xs_tally.find_filter(openmc.MuFilter)
                 else:
                     angle_filter = \
@@ -4105,13 +4120,13 @@ class ScatterMatrixXS(MatrixMGXS):
     def correction(self, correction):
         cv.check_value('correction', correction, ('P0', None))
 
-        if self.scatter_format == 'legendre':
+        if self.scatter_format == SCATTER_LEGENDRE:
             if correction == 'P0' and self.legendre_order > 0:
                 msg = 'The P0 correction will be ignored since the ' \
                       'scattering order {} is greater than '\
                       'zero'.format(self.legendre_order)
                 warnings.warn(msg)
-        elif self.scatter_format == 'histogram':
+        elif self.scatter_format == SCATTER_HISTOGRAM:
             msg = 'The P0 correction will be ignored since the ' \
                   'scatter format is set to histogram'
             warnings.warn(msg)
@@ -4131,14 +4146,14 @@ class ScatterMatrixXS(MatrixMGXS):
         cv.check_less_than('legendre_order', legendre_order, _MAX_LEGENDRE,
                            equality=True)
 
-        if self.scatter_format == 'legendre':
+        if self.scatter_format == SCATTER_LEGENDRE:
             if self.correction == 'P0' and legendre_order > 0:
                 msg = 'The P0 correction will be ignored since the ' \
                       'scattering order {} is greater than '\
                       'zero'.format(self.legendre_order)
                 warnings.warn(msg, RuntimeWarning)
                 self.correction = None
-        elif self.scatter_format == 'histogram':
+        elif self.scatter_format == SCATTER_HISTOGRAM:
             msg = 'The legendre order will be ignored since the ' \
                   'scatter format is set to histogram'
             warnings.warn(msg)
@@ -4226,7 +4241,7 @@ class ScatterMatrixXS(MatrixMGXS):
         slice_xs._xs_tally = None
 
         # Slice the Legendre order if needed
-        if legendre_order != 'same' and self.scatter_format == 'legendre':
+        if legendre_order != 'same' and self.scatter_format == SCATTER_LEGENDRE:
             cv.check_type('legendre_order', legendre_order, Integral)
             cv.check_less_than('legendre_order', legendre_order,
                                self.legendre_order, equality=True)
@@ -4363,7 +4378,7 @@ class ScatterMatrixXS(MatrixMGXS):
                 filter_bins.append((self.energy_groups.get_group_bounds(group),))
 
         # Construct CrossScore for requested scattering moment
-        if self.scatter_format == 'legendre':
+        if self.scatter_format == SCATTER_LEGENDRE:
             if moment != 'all':
                 cv.check_type('moment', moment, Integral)
                 cv.check_greater_than('moment', moment, 0, equality=True)
@@ -4508,7 +4523,7 @@ class ScatterMatrixXS(MatrixMGXS):
                                           paths=paths)
 
         # If the matrix is P0, remove the legendre column
-        if self.scatter_format == 'legendre' and self.legendre_order == 0:
+        if self.scatter_format == SCATTER_LEGENDRE and self.legendre_order == 0:
             df = df.drop(axis=1, labels=['legendre'])
 
         return df
@@ -4560,7 +4575,7 @@ class ScatterMatrixXS(MatrixMGXS):
 
         cv.check_value('xs_type', xs_type, ['macro', 'micro'])
 
-        if self.correction != 'P0' and self.scatter_format == 'legendre':
+        if self.correction != 'P0' and self.scatter_format == SCATTER_LEGENDRE:
             rxn_type = '{0} (P{1})'.format(self.rxn_type, moment)
         else:
             rxn_type = self.rxn_type
@@ -4648,7 +4663,7 @@ class ScatterMatrixXS(MatrixMGXS):
                     return to_print
 
                 # Set the number of histogram bins
-                if self.scatter_format == 'histogram':
+                if self.scatter_format == SCATTER_HISTOGRAM:
                     num_mu_bins = self.histogram_bins
                 else:
                     num_mu_bins = 0

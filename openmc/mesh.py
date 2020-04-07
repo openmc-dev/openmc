@@ -1,19 +1,19 @@
-from abc import ABCMeta
+from abc import ABC
 from collections.abc import Iterable
 from numbers import Real, Integral
-from xml.etree import ElementTree as ET
-import sys
 import warnings
+from xml.etree import ElementTree as ET
 
 import numpy as np
 
 import openmc.checkvalue as cv
 import openmc
-from openmc._xml import get_text
-from openmc.mixin import EqualityMixin, IDManagerMixin
+from ._xml import get_text
+from .mixin import IDManagerMixin
+from .surface import _BOUNDARY_TYPES
 
 
-class MeshBase(IDManagerMixin, metaclass=ABCMeta):
+class MeshBase(IDManagerMixin, ABC):
     """A mesh that partitions geometry for tallying purposes.
 
     Parameters
@@ -323,7 +323,7 @@ class RegularMesh(MeshBase):
 
         return mesh
 
-    def build_cells(self, bc=['reflective'] * 6):
+    def build_cells(self, bc=None):
         """Generates a lattice of universes with the same dimensionality
         as the mesh object.  The individual cells/universes produced
         will not have material definitions applied and so downstream code
@@ -331,12 +331,13 @@ class RegularMesh(MeshBase):
 
         Parameters
         ----------
-        bc : iterable of {'reflective', 'periodic', 'transmission', or 'vacuum'}
+        bc : iterable of {'reflective', 'periodic', 'transmission', 'vacuum', or 'white'}
             Boundary conditions for each of the four faces of a rectangle
-            (if aplying to a 2D mesh) or six faces of a parallelepiped
+            (if applying to a 2D mesh) or six faces of a parallelepiped
             (if applying to a 3D mesh) provided in the following order:
             [x min, x max, y min, y max, z min, z max].  2-D cells do not
-            contain the z min and z max entries.
+            contain the z min and z max entries. Defaults to 'reflective' for
+            all faces.
 
         Returns
         -------
@@ -350,11 +351,12 @@ class RegularMesh(MeshBase):
             geometry.
 
         """
-
-        cv.check_length('bc', bc, length_min=4, length_max=6)
+        if bc is None:
+            bc = ['reflective'] * 6
+        if len(bc) not in (4, 6):
+            raise ValueError('Boundary condition must be of length 4 or 6')
         for entry in bc:
-            cv.check_value('bc', entry, ['transmission', 'vacuum',
-                                         'reflective', 'periodic'])
+            cv.check_value('bc', entry, _BOUNDARY_TYPES)
 
         n_dim = len(self.dimension)
 
@@ -391,7 +393,7 @@ class RegularMesh(MeshBase):
         # We will concurrently build cells to assign to these universes
         cells = []
         universes = []
-        for index in self.indices:
+        for _ in self.indices:
             cells.append(openmc.Cell())
             universes.append(openmc.Universe())
             universes[-1].add_cell(cells[-1])

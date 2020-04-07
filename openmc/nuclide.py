@@ -1,7 +1,5 @@
 import warnings
 
-import openmc.checkvalue as cv
-
 
 class Nuclide(str):
     """A nuclide that can be used in a material.

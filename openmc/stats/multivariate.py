@@ -1,18 +1,17 @@
-from abc import ABCMeta, abstractmethod
+from abc import ABC, abstractmethod
 from collections.abc import Iterable
 from math import pi
 from numbers import Real
-import sys
 from xml.etree import ElementTree as ET
 
 import numpy as np
 
 import openmc.checkvalue as cv
-from openmc._xml import get_text
-from openmc.stats.univariate import Univariate, Uniform
+from .._xml import get_text
+from .univariate import Univariate, Uniform
 
 
-class UnitSphere(metaclass=ABCMeta):
+class UnitSphere(ABC):
     """Distribution of points on the unit sphere.
 
     This abstract class is used for angular distributions, since a direction is
@@ -86,7 +85,7 @@ class PolarAzimuthal(UnitSphere):
 
     """
 
-    def __init__(self, mu=None, phi=None, reference_uvw=[0., 0., 1.]):
+    def __init__(self, mu=None, phi=None, reference_uvw=(0., 0., 1.)):
         super().__init__(reference_uvw)
         if mu is not None:
             self.mu = mu
@@ -158,9 +157,7 @@ class PolarAzimuthal(UnitSphere):
 
 
 class Isotropic(UnitSphere):
-    """Isotropic angular distribution.
-
-    """
+    """Isotropic angular distribution."""
 
     def __init__(self):
         super().__init__()
@@ -252,16 +249,13 @@ class Monodirectional(UnitSphere):
         return monodirectional
 
 
-class Spatial(metaclass=ABCMeta):
+class Spatial(ABC):
     """Distribution of locations in three-dimensional Euclidean space.
 
     Classes derived from this abstract class can be used for spatial
     distributions of source sites.
 
     """
-    def __init__(self):
-        pass
-
     @abstractmethod
     def to_xml_element(self):
         return ''
@@ -309,7 +303,6 @@ class CartesianIndependent(Spatial):
     """
 
     def __init__(self, x, y, z):
-        super().__init__()
         self.x = x
         self.y = y
         self.z = z
@@ -417,7 +410,6 @@ class SphericalIndependent(Spatial):
     """
 
     def __init__(self, r, theta, phi, origin=(0.0, 0.0, 0.0)):
-        super().__init__()
         self.r = r
         self.theta = theta
         self.phi = phi
@@ -537,7 +529,6 @@ class CylindricalIndependent(Spatial):
     """
 
     def __init__(self, r, phi, z, origin=(0.0, 0.0, 0.0)):
-        super().__init__()
         self.r = r
         self.phi = phi
         self.z = z
@@ -646,7 +637,6 @@ class Box(Spatial):
 
 
     def __init__(self, lower_left, upper_right, only_fissionable=False):
-        super().__init__()
         self.lower_left = lower_left
         self.upper_right = upper_right
         self.only_fissionable = only_fissionable
@@ -740,7 +730,6 @@ class Point(Spatial):
     """
 
     def __init__(self, xyz=(0., 0., 0.)):
-        super().__init__()
         self.xyz = xyz
 
     @property

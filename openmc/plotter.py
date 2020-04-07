@@ -1,5 +1,5 @@
-from numbers import Integral, Real
 from itertools import chain
+from numbers import Integral, Real
 import string
 
 import numpy as np
@@ -29,30 +29,37 @@ XI_MT = -2
 
 # MTs to combine to generate associated plot_types
 _INELASTIC = [mt for mt in openmc.data.SUM_RULES[3] if mt != 27]
-PLOT_TYPES_MT = {'total': openmc.data.SUM_RULES[1],
-                 'scatter': [2] + _INELASTIC,
-                 'elastic': [2],
-                 'inelastic': _INELASTIC,
-                 'fission': [18],
-                 'absorption': [27], 'capture': [101],
-                 'nu-fission': [18],
-                 'nu-scatter': [2] + _INELASTIC,
-                 'unity': [UNITY_MT],
-                 'slowing-down power': [2] + _INELASTIC + [XI_MT],
-                 'damage': [444]}
+PLOT_TYPES_MT = {
+    'total': openmc.data.SUM_RULES[1],
+    'scatter': [2] + _INELASTIC,
+    'elastic': [2],
+    'inelastic': _INELASTIC,
+    'fission': [18],
+    'absorption': [27],
+    'capture': [101],
+    'nu-fission': [18],
+    'nu-scatter': [2] + _INELASTIC,
+    'unity': [UNITY_MT],
+    'slowing-down power': [2] + _INELASTIC + [XI_MT],
+    'damage': [444]
+}
 # Operations to use when combining MTs the first np.add is used in reference
 # to zero
-PLOT_TYPES_OP = {'total': (np.add,),
-                 'scatter': (np.add,) * (len(PLOT_TYPES_MT['scatter']) - 1),
-                 'elastic': (),
-                 'inelastic': (np.add,) * (len(PLOT_TYPES_MT['inelastic']) - 1),
-                 'fission': (), 'absorption': (),
-                 'capture': (), 'nu-fission': (),
-                 'nu-scatter': (np.add,) * (len(PLOT_TYPES_MT['nu-scatter']) - 1),
-                 'unity': (),
-                 'slowing-down power':
-                    (np.add,) * (len(PLOT_TYPES_MT['slowing-down power']) - 2) + (np.multiply,),
-                 'damage': ()}
+PLOT_TYPES_OP = {
+    'total': (np.add,),
+    'scatter': (np.add,) * (len(PLOT_TYPES_MT['scatter']) - 1),
+    'elastic': (),
+    'inelastic': (np.add,) * (len(PLOT_TYPES_MT['inelastic']) - 1),
+    'fission': (),
+    'absorption': (),
+    'capture': (),
+    'nu-fission': (),
+    'nu-scatter': (np.add,) * (len(PLOT_TYPES_MT['nu-scatter']) - 1),
+    'unity': (),
+    'slowing-down power': \
+        (np.add,) * (len(PLOT_TYPES_MT['slowing-down power']) - 2) + (np.multiply,),
+    'damage': ()
+}
 
 # Types of plots to plot linearly in y
 PLOT_TYPES_LINEAR = {'nu-fission / fission', 'nu-scatter / scatter',
@@ -189,8 +196,7 @@ def plot_xs(this, types, divisor_types=None, temperature=294., data_type=None,
 
     # Generate the plot
     if axis is None:
-        fig = plt.figure(**kwargs)
-        ax = fig.add_subplot(111)
+        fig, ax = plt.subplots()
     else:
         fig = None
         ax = axis
@@ -287,7 +293,7 @@ def calculate_cexs(this, data_type, types, temperature=294., sab_name=None,
         energy_grid, xs = _calculate_cexs_nuclide(nuc, types, temperature,
                                                   sab_name, cross_sections)
         # Convert xs (Iterable of Callable) to a grid of cross section values
-        # calculated on @ the points in energy_grid for consistency with the
+        # calculated on the points in energy_grid for consistency with the
         # element and material functions.
         data = np.zeros((len(types), len(energy_grid)))
         for line in range(len(types)):
@@ -397,8 +403,8 @@ def _calculate_cexs_nuclide(this, types, temperature=294., sab_name=None,
             grid = nuc.energy[nucT]
             sab_Emax = 0.
             sab_funcs = []
-            if sab.elastic_xs:
-                elastic = sab.elastic_xs[sabT]
+            if sab.elastic is not None:
+                elastic = sab.elastic.xs[sabT]
                 if isinstance(elastic, openmc.data.CoherentElastic):
                     grid = np.union1d(grid, elastic.bragg_edges)
                     if elastic.bragg_edges[-1] > sab_Emax:
@@ -408,8 +414,8 @@ def _calculate_cexs_nuclide(this, types, temperature=294., sab_name=None,
                     if elastic.x[-1] > sab_Emax:
                         sab_Emax = elastic.x[-1]
                 sab_funcs.append(elastic)
-            if sab.inelastic_xs:
-                inelastic = sab.inelastic_xs[sabT]
+            if sab.inelastic is not None:
+                inelastic = sab.inelastic.xs[sabT]
                 grid = np.union1d(grid, inelastic.x)
                 if inelastic.x[-1] > sab_Emax:
                         sab_Emax = inelastic.x[-1]

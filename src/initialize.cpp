@@ -58,7 +58,7 @@ int openmc_init(int argc, char* argv[], const void* intracomm)
 
   // Parse command-line arguments
   int err = parse_command_line(argc, argv);
-  if (err) return err;
+  //if (err) return err;
 
   // Start total and initialization timer
   simulation::time_total.start();
@@ -73,7 +73,7 @@ int openmc_init(int argc, char* argv[], const void* intracomm)
 #endif
 
 #ifdef LIBMESH
-  settings::LMI = std::make_unique<libMesh::LibMeshInit>(argc, argv);
+  if (!settings::LMI) settings::LMI = std::make_unique<libMesh::LibMeshInit>(argc, argv);
 #endif
 
 

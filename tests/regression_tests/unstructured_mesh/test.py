@@ -190,7 +190,7 @@ def test_unstructured_mesh(test_opts):
         mesh_filename = "test_mesh_tets.h5m"
 
     uscd_mesh = openmc.UnstructuredMesh(mesh_filename)
-    uscd_mesh.mesh_lib = 'moab'
+    uscd_mesh.library = 'moab'
     uscd_filter = openmc.MeshFilter(mesh=uscd_mesh)
 
     # create tallies

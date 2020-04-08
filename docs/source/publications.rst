@@ -146,6 +146,17 @@ Geometry and Visualization
 Miscellaneous
 -------------
 
+- Ned Xoubi, Sharif Abu Darda,  Abdelfattah Y. Soliman, and Tareq Abulfaraj,
+  "`An investigative study of enrichment reduction impact on the neutron flux in
+  the in-core flux-trap facility of MTR research reactors
+  <https://doi.org/10.1016/j.net.2019.08.008>`_", Nucl. Eng. Technol., **52**,
+  469-476 (2020).
+
+- J. Rolando Granada, J. Ignacio Marquez Damian, and Christian Helman, "`Studies
+  on Reflector Materials for Cold Neutrons
+  <https://doi.org/10.1051/epjconf/202023104002>`_, *Eur. Phys. J. Web Conf.*,
+  **231**, 04002 (2020).
+
 - Govatsa Acharya, "`Investigating the Application of Self-Actuated Passive
   Shutdown System in a Small Lead-Cooled Reactor
   <https://doi.org/10.13140/RG.2.2.26088.01281>`_," M.S. Thesis, KTH Royal
@@ -241,7 +252,7 @@ Multigroup Cross Section Generation
 - William Boyd, Adam Nelson, Paul K. Romano, Samuel Shaner, Benoit Forget, and
   Kord Smith, "`Multigroup Cross-Section Generation with the OpenMC Monte Carlo
   Particle Transport Code <https://doi.org/10.1080/00295450.2019.1571828>`_,"
-  *Nucl. Technol.* (2019).
+  *Nucl. Technol.*, **205**, 928-944 (2019).
 
 - William Boyd, Benoit Forget, and Kord Smith, "`A single-step framework to
   generate spatially self-shielded multi-group cross sections from Monte Carlo
@@ -507,6 +518,21 @@ Parallelism
 ---------
 Depletion
 ---------
+
+- Binhang Zhang, XianBao Yuan, Yonghong Zhang, Haibo Tang, and Liangzhi Cao,
+  "`Development of a versatile depletion code AMAC
+  <https://doi.org/10.1016/j.anucene.2020.107446>`_", *Ann. Nucl. Energy*,
+  **143**, 107446 (2020).
+
+- Zelong Zhao, Yongwei Yang, and Qingyu Gao, "`Development and verification of
+  code IMPC-Depletion for nuclide depletion calculation
+  <https://doi.org/10.1016/j.nucengdes.2020.110616>`_", *Nucl. Eng. Des.*,
+  **363**, 110616 (2020).
+
+- Kun Zhuang, Ting Li, Qian Zhang, Qinghua He, and Tengfei Zhang, "`Extended
+  development of a Monte Carlo code OpenMC for fuel cycle simulation of molten
+  salt reactor <https://doi.org/10.1016/j.pnucene.2019.103115>`_", *Prog. Nucl.
+  Energy*, **118**, 103115 (2020).
 
 - Jose L. Salcedo-Perez, Benoit Forget, Kord Smith, and Paul Romano, "Hybrid
   tallies to improve performance in depletion Monte Carlo simulations," *Proc.

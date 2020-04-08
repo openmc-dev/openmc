@@ -284,6 +284,11 @@ public:
 
   std::string bin_label(int bin) const override;
 
+  //! Write mesh data to an HDF5 group.
+  //
+  //! \param[in] group HDF5 group
+  void to_hdf5(hid_t group) const;
+
   //! Add a variable to the mesh instance
   virtual void add_score(const std::string& var_name) = 0;
 
@@ -296,20 +301,24 @@ public:
 
   virtual Position centroid(int bin) const = 0;
 
+  virtual double volume(int bin) const = 0;
+
+  virtual std::string library() const = 0;
+
   // Data members
-  std::string filename_;
+  std::string filename_; //!< Path to unstructured mesh file
 };
 
 #ifdef DAGMC
 
-class UnstructuredMesh : public UnstructuredMeshBase {
+class MOABUnstructuredMesh : public UnstructuredMeshBase {
 
 public:
 
-  UnstructuredMesh() = default;
-  UnstructuredMesh(pugi::xml_node);
-  UnstructuredMesh(const std::string& filename);
-  ~UnstructuredMesh() = default;
+  MOABUnstructuredMesh() = default;
+  MOABUnstructuredMesh(pugi::xml_node);
+  MOABUnstructuredMesh(const std::string& filename);
+  ~MOABUnstructuredMesh() = default;
 
   void bins_crossed(const Particle& p,
                     std::vector<int>& bins,
@@ -324,16 +333,13 @@ public:
   //! \param[out] bins Surface bins that were crossed
   void surface_bins_crossed(const Particle& p, std::vector<int>& bins) const;
 
-  //! Write mesh data to an HDF5 group.
-  //
-  //! \param[in] group HDF5 group
-  void to_hdf5(hid_t group) const;
-
   //! Get bin at a given position.
   //
   //! \param[in] r Position to get bin for
   //! \return Mesh bin
   int get_bin(Position r) const;
+
+  std::string library() const override;
 
   int n_bins() const override;
 
@@ -341,9 +347,11 @@ public:
 
   //! Retrieve a centroid for the mesh cell
   //
-  // \param[in] tet MOAB EntityHandle of the tetrahedron
+  // \param[in] bin Bin to return the volume for
   // \return The centroid of the element
   Position centroid(int bin) const override;
+
+  double volume(int bin) const override;
 
   //! Add a score to the mesh instance
   void add_score(const std::string& score);
@@ -363,8 +371,6 @@ public:
 
   //! Write the mesh with any current tally data
   void write(std::string base_filename) const;
-
-  std::string filename_; //!< Path to unstructured mesh file
 
   bool intersects(Position& r0, Position r1, int* ijk);
 
@@ -492,6 +498,8 @@ public:
 
   int get_bin(Position r) const override;
 
+  std::string library() const override;
+
   int n_bins() const override;
 
   int n_surface_bins() const override;
@@ -504,8 +512,6 @@ public:
 
   void write(std::string filename) const override;
 
-  void to_hdf5(hid_t group) const override;
-
   //! Add a variable to the libmesh mesh instance
   void add_score(const std::string& var_name) override;
 
@@ -513,6 +519,10 @@ public:
   void set_score_data(const std::string& var_name,
                       std::vector<double> values,
                       std::vector<double> std_dev) override;
+
+  Position centroid(int bin) const override;
+
+  double volume(int bin) const override;
 
 private:
 
@@ -550,8 +560,6 @@ private:
 
   double first(const libMesh::Node& a,
                const libMesh::Node& b) const;
-
-  Position centroid(int bin) const override;
 
   // Data members
 

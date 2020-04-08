@@ -70,7 +70,7 @@
     <lower_left>-10.0 -10.0 -10.0</lower_left>
     <upper_right>10.0 10.0 10.0</upper_right>
   </mesh>
-  <mesh id="10" type="unstructured">
+  <mesh id="10" library="moab" type="unstructured">
     <filename>test_mesh_tets_w_holes.h5m</filename>
   </mesh>
   <filter id="9" type="mesh">

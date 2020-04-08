@@ -133,9 +133,7 @@ UnstructuredMeshBase::UnstructuredMeshBase(pugi::xml_node node) : Mesh(node) {
 
 std::string
 UnstructuredMeshBase::bin_label(int bin) const {
-  std::stringstream out;
-  out << "Mesh Index (" << bin << ")";
-  return out.str();
+  return fmt::format("Mesh Index ({})", bin);
 };
 
 //==============================================================================
@@ -1053,19 +1051,6 @@ RegularMesh::count_sites(const Particle::Bank* bank,
   xt::xarray<double> counts = arr;
 
   return counts;
-}
-
-std::string RegularMesh::bin_label(int bin) const {
-  int ijk[n_dimension_];
-  get_indices_from_bin(bin, ijk);
-
-  std::stringstream out;
-  out << "Mesh Index (" << ijk[0];
-  if (n_dimension_ > 1) out << ", " << ijk[1];
-  if (n_dimension_ > 2) out << ", " << ijk[2];
-  out << ")";
-
-  return out.str();
 }
 
 //==============================================================================
@@ -2032,11 +2017,6 @@ UnstructuredMesh::centroid(int bin) const {
 
   return {centroid[0], centroid[1], centroid[2]};
 }
-
-std::string
-UnstructuredMesh::bin_label(int bin) const {
-  return fmt::format("Mesh Index ({})", bin);
-};
 
 std::pair<moab::Tag, moab::Tag>
 UnstructuredMesh::get_score_tags(std::string score) const {

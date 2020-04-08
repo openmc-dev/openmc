@@ -47,6 +47,7 @@
 
 int openmc_run()
 {
+  openmc::simulation::time_total.start();
   openmc_simulation_init();
 
   int err = 0;
@@ -56,6 +57,7 @@ int openmc_run()
   }
 
   openmc_simulation_finalize();
+  openmc::simulation::time_total.stop();
   return err;
 }
 
@@ -422,8 +424,8 @@ void finalize_generation()
   }
   global_tally_leakage = 0.0;
 
-  if (settings::run_mode == RunMode::EIGENVALUE) {	
-    // If using shared memory, stable sort the fission bank (by parent IDs) 
+  if (settings::run_mode == RunMode::EIGENVALUE) {
+    // If using shared memory, stable sort the fission bank (by parent IDs)
     // so as to allow for reproducibility regardless of which order particles
     // are run in.
     sort_fission_bank();
@@ -525,7 +527,7 @@ void initialize_history_partial(Particle* p)
     p->flux_derivs_.resize(model::tally_derivs.size(), 0.0);
     std::fill(p->flux_derivs_.begin(), p->flux_derivs_.end(), 0.0);
   }
-  
+
   // Allocate space for tally filter matches
   p->filter_matches_.resize(model::tally_filters.size());
 }
@@ -669,7 +671,7 @@ void transport_event_based()
         process_collision_events();
       }
     }
-    
+
     // Execute death event for all particles
     process_death_events(n_particles);
 

@@ -182,16 +182,15 @@ def init(args=None, intracomm=None):
     """
     if args is not None:
         args = ['openmc'] + list(args)
-        argc = len(args)
-
-        # Create the argv array. Note that it is actually expected to be of
-        # length argc + 1 with the final item being a null pointer.
-        argv = (POINTER(c_char) * (argc + 1))()
-        for i, arg in enumerate(args):
-            argv[i] = create_string_buffer(arg.encode())
     else:
-        argc = 0
-        argv = None
+        args = ['openmc']
+
+    argc = len(args)
+    # Create the argv array. Note that it is actually expected to be of
+    # length argc + 1 with the final item being a null pointer.
+    argv = (POINTER(c_char) * (argc + 1))()
+    for i, arg in enumerate(args):
+        argv[i] = create_string_buffer(arg.encode())
 
     if intracomm is not None:
         # If an mpi4py communicator was passed, convert it to void* to be passed

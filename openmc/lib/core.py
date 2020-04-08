@@ -185,11 +185,10 @@ def init(args=None, intracomm=None):
     """
     if args is not None:
         args = ['openmc'] + list(args)
-        argc = len(args)
     else:
         args = ['openmc']
-        argc = 1
 
+    argc = len(args)
     # Create the argv array. Note that it is actually expected to be of
     # length argc + 1 with the final item being a null pointer.
     argv = (POINTER(c_char) * (argc + 1))()

@@ -87,9 +87,4 @@ void reset_timers()
   simulation::time_event_death.reset();
 }
 
-void restart_timers()
-{
-  simulation::time_total.start();
-}
-
 } // namespace openmc

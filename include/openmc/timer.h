@@ -69,8 +69,6 @@ private:
 
 void reset_timers();
 
-void restart_timers();
-
 } // namespace openmc
 
 #endif // OPENMC_TIMER_H

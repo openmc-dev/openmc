@@ -2002,8 +2002,10 @@ int UnstructuredMesh::n_surface_bins() const {
 }
 
 Position
-UnstructuredMesh::centroid(moab::EntityHandle tet) const {
+UnstructuredMesh::centroid(int bin) const {
   moab::ErrorCode rval;
+
+  auto tet = this->get_ent_handle_from_bin(bin);
 
   // look up the tet connectivity
   std::vector<moab::EntityHandle> conn;
@@ -2183,6 +2185,13 @@ LibMesh::LibMesh(const std::string& filename) {
   initialize();
 }
 
+Position
+LibMesh::centroid(int bin) const {
+  auto elem = this->get_element_from_bin(bin);
+  auto centroid = elem->centroid();
+  return {centroid(0), centroid(1), centroid(2)};
+}
+
 void LibMesh::initialize() {
     // always 3 for unstructured meshes
   n_dimension_ = 3;
@@ -2227,47 +2236,26 @@ void LibMesh::initialize() {
   }
 }
 
-void
-LibMesh::get_indices(Position r, int* ijk, bool* in_mesh) const {
-  int bin = get_bin(r);
-  *in_mesh = bin != -1;
-  ijk[0] = bin;
-  return;
-}
-
 int LibMesh::n_bins() const {
   return m_->n_elem();
 }
 
 int LibMesh::n_surface_bins() const {
-  return 0;
+  // TODO: Return number of faces in the mesh here
+  throw std::runtime_error{"Unstructured mesh surface tallies are not implemented."};
 }
 
 void
 LibMesh::surface_bins_crossed(const Particle* p,
                                std::vector<int>& bins) const
-{}
+{
+  // TODO: Implement triangle crossings here
+  throw std::runtime_error{"Unstructured mesh surface tallies are not implemented."};
+}
 
 std::pair<std::vector<double>, std::vector<double>>
 LibMesh::plot(Position plot_ll,
               Position plot_ur) const { return {}; }
-
-
-int
-LibMesh::get_bin_from_indices(const int* ijk) const {
-  if (ijk[0] >= n_bins()) {
-    std::stringstream s;
-    s << "Invalid bin: " << ijk[0];
-    fatal_error(s);
-  }
-  int bin = first_element_->id() + ijk[0];
-  return bin;
-}
-
-void
-LibMesh::get_indices_from_bin(int bin, int* ijk) const {
-  ijk[0] = bin;
-}
 
 const libMesh::Elem*
 LibMesh::get_element_from_bin(int bin) const {
@@ -2339,24 +2327,8 @@ LibMesh::bins_crossed(const Particle* p,
                       std::vector<int>& bins,
                       std::vector<double>& lengths) const
 {
-  // get element containing previous position
-  libMesh::Point start(p->r_last_.x, p->r_last_.y, p->r_last_.z);
-  libMesh::Point end(p->r().x, p->r().y, p->r().z);
-  libMesh::Point dir(p->u().x, p->u().y, p->u().z);
-  dir /= dir.norm();
-
-  double track_len = (end - start).norm();
-
-  UnstructuredMeshHits hits;
-  intersect_track(start, dir, track_len, hits);
-
-  bins.clear();
-  lengths.clear();
-
-  for (const auto& hit : hits) {
-    lengths.push_back(hit.first / track_len);
-    bins.push_back(get_bin_from_element(hit.second));
-  }
+  // TODO: Implement triangle crossings here
+  throw std::runtime_error{"LibMesh tracklength tallies are not implemented."};
 }
 
 int
@@ -2376,79 +2348,6 @@ LibMesh::get_bin(Position r) const
   } else {
     return get_bin_from_element(e);
   }
-}
-
-bool LibMesh::intersects(Position& r0, Position r1, int* ijk) const {
-
-  // first try to locate an element
-  // for the start or end point
-  int bin {-1};
-  bin = get_bin(r0);
-  if (bin != -1) {
-    ijk[0] = bin;
-    return true;
-  }
-
-  bin = get_bin(r1);
-  if (bin != -1) {
-    ijk[0] = bin;
-    return true;
-  }
-
-  // check for an intersection with one of the boundary faces
-  auto result = locate_boundary_element(r0, r1);
-  // if we don't get a hit, the track won't intersect with the mesh
-  if (result.second) {
-    ijk[0] = get_bin_from_element(result.second);
-    return true;
-  }
-
-  return false;
-}
-
-std::pair<double, const libMesh::Elem*>
-LibMesh::locate_boundary_element(const Position& r0,
-                                 const Position& r1) const {
-  libMesh::Point a(r0.x, r0.y, r0.z);
-  libMesh::Point b(r1.x, r1.y, r1.z);
-
-  return locate_boundary_element(a, b);
-}
-
-std::pair<double, const libMesh::Elem*>
-LibMesh::locate_boundary_element(const libMesh::Point& start,
-                                 const libMesh::Point& end) const
-{
-  typedef std::pair<double, const libMesh::Elem*> RayHit;
-  RayHit result = {INFTY, nullptr};
-  if (start == end) { return result; }
-
-  // attempt to locate an intersection with the mesh boundary
-  libMesh::Point dir = (end - start).unit();
-  double length = (end - start).norm();
-
-  // locate potential elements
-  std::set<const libMesh::Elem*> candidate_elements;
-  for (auto elem : boundary_elements_) {
-    // being conservative about search parameter by adding element hmax
-    if (elem->close_to_point(start, length + elem->hmax())) {
-      candidate_elements.insert(elem);
-    }
-  }
-
-  // find nearest hit along our direction
-  for (auto elem : candidate_elements) {
-    for (int i = 0; i < elem->n_sides(); i++) {
-      double temp_dist = 0;
-      bool hit = plucker_test(elem->side_ptr(i), start, dir, temp_dist);
-      if (hit && temp_dist > FP_COINCIDENT && temp_dist <= length) {
-        // update if we find a closer intersection
-        if (temp_dist < result.first) { result = {temp_dist, elem}; }
-      }
-    }
-  }
-
-  return result;
 }
 
 int
@@ -2476,213 +2375,7 @@ LibMesh::inside_tet(const libMesh::Point& r,
                     const libMesh::Point& u,
                     const libMesh::Elem* e) const
 {
-  // fire rays at each triangle in the tet
-  int n_hits = 0;
-  for (int i = 0; i < e->n_sides(); i++) {
-    double temp;
-    if (plucker_test(e->side_ptr(i), r, u, temp)) { n_hits++; }
-  }
-
-  if (n_hits == 0) { return false; }
-
-  for (int i = 0; i < e->n_sides(); i++) {
-    double temp;
-    if (plucker_test(e->side_ptr(i), r, -u, temp)) { n_hits++; }
-  }
-
-  // should get at least 2 hits if the
-  // location is inside or on a tet boundary
-  return n_hits >= 2;
-}
-
-void
-LibMesh::intersect_track(libMesh::Point start,
-                         libMesh::Point dir,
-                         double track_len,
-                         UnstructuredMeshHits& hits) const
-{
-  double track_remaining = track_len;
-
-  // attempt to locate a tet for the starting point
-  int thread = omp_get_thread_num();
-  auto e = (*point_locators_[thread])(start);
-
-  // the point_locator seems off sometimes,
-  // ensure the point is actually in the tet
-  // and check the neighbors as well
-  if (e && !inside_tet(start, dir, e)) {
-    bool found = false;
-    // try to find a new tet adjacent to this one
-    for (int i = 0; i < e->n_neighbors(); i ++) {
-      if (e->neighbor_ptr(i) && inside_tet(start, dir, e->neighbor_ptr(i))) {
-        e = e->neighbor_ptr(i);
-        found = true;
-        break;
-      }
-    }
-
-    if (!found) {
-      warning("Starting point is not inside the specified tet.");
-    }
-  }
-
-  // if the point locator fails, look for mesh
-  // entry along the track
-  if (!e) {
-    auto result = locate_boundary_element(start, start + track_len * dir);
-    if (result.second) {
-      // if an intersection is found, update the remaining track length
-      // and set the element
-      e = result.second;
-      track_remaining -= result.first;
-      // advance position along track
-      start += dir * result.first;
-    } else {
-      // if there was no intersection, we're done
-      return;
-    }
-  }
-
-  std::set<libMesh::dof_id_type> visited;
-
-  bool first = true;
-
-  while (true) {
-    // find the positive distance triangle intersection
-    double dist = -1.0;
-    int side = -1;
-
-    for (int i = 0; i < e->n_sides(); i++) {
-      auto tri = e->side_ptr(i);
-      if (visited.count(e->key(i))) {
-        continue;
-      }
-      if (tri->type() != libMesh::ElemType::TRI3) { warning("Non-triangle element found"); }
-      double temp_dist = -1.0;
-      bool hit = plucker_test(e->side_ptr(i), start, dir, temp_dist);
-      // if (hit and temp_dist > FP_COINCIDENT) {
-      if (hit and temp_dist >= 0 and temp_dist > dist) {
-        side = i;
-        dist = temp_dist;
-        first = false;
-      }
-    }
-
-    // make sure we found a hit for the tet we're in
-
-    // if we don't find a hit for this tet, we may
-    if (side == -1) {
-
-      if (first) {
-        warning("Couldn't get hit on first iteration");
-        inside_tet(start, dir, e);
-        first = false;
-      }
-      auto orig_e = e;
-      start += dir * TINY_BIT; // nudge particle forward
-
-      int thread = omp_get_thread_num();
-      e = (*point_locators_[thread])(start);
-
-      if (!e) {
-        if (!orig_e->on_boundary()) {
-          std::cout << "May have incorrectly truncated a track." << std::endl;
-        }
-        return;
-      }
-      continue;
-    } else {
-      // add hit to output
-      hits.push_back(std::pair<double, const libMesh::Elem*>(std::min(track_remaining, dist), e));
-      // add this side's centroid to the visited list
-      visited.insert(e->key(side));
-      // advance position along track
-      start += dir * std::min(track_remaining, dist);
-      // subtract from remaining track length
-      track_remaining -= dist;
-    }
-
-    // if we've reached the end of the track, break
-    if (track_remaining <= 0.0) { break; }
-
-    // get tet on the other side
-    auto next_e = e->neighbor_ptr(side);
-
-    // check to make sure this tet contains our current location
-    if (next_e && !next_e->contains_point(start)) {
-      warning("Moving into tet that does not contain the current location.");
-    }
-
-    // if there is no next element, we may have exited the mesh
-    // and will re-enter elsewhere
-    if (!next_e) {
-      auto result = locate_boundary_element(start,
-                                            start + dir * track_remaining);
-      if (result.second) {
-        // advance position along track
-        // to re-entry point
-        start += dir * result.first;
-        // remove this distance from the remaining track length
-        track_remaining -= result.first;
-        // update
-        e = result.second;
-        continue;
-      } else {
-        // if no next intersection with the mesh, we're done
-        return;
-      }
-    }
-
-    // if the mesh entry point is too far away
-    // break
-    if (track_remaining <= 0.0) { break; }
-
-    // check that the hit is correct
-    if (!elements_share_face(e, next_e, side)) {
-      // this should maybe throw an error?
-      warning("Incorrect adjacent element found");
-      break;
-    }
-
-    // update to the element along the track
-    e = next_e;
-  }
-}
-
-bool
-LibMesh::elements_share_face(const libMesh::Elem* from,
-                             const libMesh::Elem* to,
-                             unsigned int side) const
-{
-  for (auto j : to->side_index_range()) {
-    if (from->key(side) == to->key(j)) {
-      return true;
-    }
-  }
-  return false;
-}
-
-double
-LibMesh::first(const libMesh::Node& a,
-               const libMesh::Node& b) const
-{
-  if(a(0) < b(0)) {
-    return true;
-  } else if(a(0) == b(0)) {
-    if(a(1) < b(1)) {
-      return true;
-    } else if(a(1) == b(1)) {
-      if(a(2) < b(2)) {
-	return true;
-      } else {
-        return false;
-      }
-    } else {
-      return false;
-    }
-  } else {
-    return false;
-  }
+  return e->contains_point(r, FP_COINCIDENT);
 }
 
 void LibMesh::to_hdf5(hid_t group) const
@@ -2702,105 +2395,6 @@ void LibMesh::to_hdf5(hid_t group) const
 
   close_group(mesh_group);
 }
-
-double
-LibMesh::plucker_edge_test(const libMesh::Node& vertexa,
-                           const libMesh::Node& vertexb,
-                           const libMesh::Point& ray,
-                           const libMesh::Point& ray_normal) const
-{
-  double pip;
-  const double near_zero = 10.0 * std::numeric_limits<double>::epsilon();
-
-  if(first(vertexa, vertexb)) {
-    const libMesh::Point edge = vertexb - vertexa;
-    const libMesh::Point edge_normal = edge.cross(vertexa);
-    pip = ray * edge_normal + ray_normal * edge;
-  } else {
-    const libMesh::Point edge = vertexa-vertexb;
-    const libMesh::Point edge_normal = edge.cross(vertexb);
-    pip = ray * edge_normal + ray_normal * edge;
-    pip = -pip;
-  }
-
-  if (near_zero > fabs(pip)) pip = 0.0;
-
-  return pip;
-}
-
-/* This test uses the same edge-ray computation for adjacent triangles so that
-   rays passing close to edges/nodes are handled consistently.
-
-   Reports intersection type for post processing of special cases. Optionally
-   screen by orientation and negative/nonnegative distance limits.
-
-   If screening by orientation, substantial pruning can occur. Indicate
-   desired orientation by passing 1 (forward), -1 (reverse), or 0 (no preference).
-   Note that triangle orientation is not always the same as surface
-   orientation due to non-manifold surfaces.
-
-   N. Platis and T. Theoharis, "Fast Ray-Tetrahedron Intersection using Plücker
-   Coordinates", Journal of Graphics Tools, Vol. 8, Part 4, Pages 37-48 (2003). */
-bool
-LibMesh::plucker_test(std::unique_ptr<const libMesh::Elem> tri,
-                      const libMesh::Point& start,
-                      const libMesh::Point& dir,
-                      double& dist) const
-{
-  const libMesh::Point raya = dir;
-  const libMesh::Point rayb = dir.cross(start);
-
-  // get triangle vertices
-  auto node0 = tri->node_ref(0);
-  auto node1 = tri->node_ref(1);
-  auto node2 = tri->node_ref(2);
-
-  double plucker_coord0 = plucker_edge_test(node0, node1, raya, rayb);
-  double plucker_coord1 = plucker_edge_test(node1, node2, raya, rayb);
-  if( (0.0<plucker_coord0 && 0.0>plucker_coord1) || (0.0>plucker_coord0 && 0.0<plucker_coord1) ) {
-    return false;
-  }
-
-  double plucker_coord2 = plucker_edge_test(node2, node0, raya, rayb);
-  if( (0.0<plucker_coord1 && 0.0>plucker_coord2) || (0.0>plucker_coord1 && 0.0<plucker_coord2) ||
-      (0.0<plucker_coord0 && 0.0>plucker_coord2) || (0.0>plucker_coord0 && 0.0<plucker_coord2) ) {
-    return false;
-  }
-
-  // check for coplanar case to avoid dividing by zero
-  if(0.0==plucker_coord0 && 0.0==plucker_coord1 && 0.0==plucker_coord2) {
-    return false;
-  }
-
-  // get the distance to intersection
-  const double inverse_sum = 1.0/(plucker_coord0+plucker_coord1+plucker_coord2);
-  assert(0.0 != inverse_sum);
-  const libMesh::Point intersection(plucker_coord0*inverse_sum*node2+
-                                    plucker_coord1*inverse_sum*node0+
-                                    plucker_coord2*inverse_sum*node1);
-
-  // To minimize numerical error, get index of largest magnitude direction.
-  int idx = 0;
-  double max_abs_dir = 0;
-  for(unsigned int i=0; i<3; ++i) {
-    if( fabs(dir(i)) > max_abs_dir ) {
-      idx = i;
-      max_abs_dir = fabs(dir(i));
-    }
-  }
-
-  // no negative distances
-  double temp_dist = (intersection(idx) - start(idx)) / dir(idx);
-  if ( fabs(temp_dist) < TINY_BIT ) { temp_dist = 0.0; }
-  if ( temp_dist < 0 ) { return false; }
-
-  dist = temp_dist;
-
-  // dist = (intersection - start).norm();
-
-  return true;
-}
-
 
 #endif // LIBMESH
 

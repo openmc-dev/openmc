@@ -292,6 +292,9 @@ public:
 
   virtual void write(std::string filename) const = 0;
 
+  virtual Position centroid(int bin) const = 0;
+
+
   std::string filename_;
 };
 
@@ -338,7 +341,7 @@ public:
   //
   // \param[in] tet MOAB EntityHandle of the tetrahedron
   // \return The centroid of the element
-  Position centroid(moab::EntityHandle tet) const;
+  Position centroid(int bin) const override;
 
   //! Return a string represntation of the mesh bin
   //
@@ -488,31 +491,23 @@ public:
   // standard mesh functions
   void bins_crossed(const Particle* p,
                     std::vector<int>& bins,
-                    std::vector<double>& lengths) const;
+                    std::vector<double>& lengths) const override;
 
-  int get_bin(Position r) const;
+  int get_bin(Position r) const override;
 
-  int n_bins() const;
+  int n_bins() const override;
 
-  void get_indices(Position r, int* ijk, bool* in_mesh) const;
-
-  int get_bin_from_indices(const int* ijk) const;
-
-  void get_indices_from_bin(int bin, int* ijk) const;
-
-  int n_surface_bins() const;
+  int n_surface_bins() const override;
 
   void surface_bins_crossed(const Particle* p,
-                             std::vector<int>& bins) const;
+                             std::vector<int>& bins) const override;
 
   std::pair<std::vector<double>, std::vector<double>> plot(Position plot_ll,
-                                                           Position plot_ur) const;
-
-  bool intersects(Position& r0, Position r1, int* ijk) const;
+                                                           Position plot_ur) const override;
 
   void write(std::string filename) const override;
 
-  void to_hdf5(hid_t group) const;
+  void to_hdf5(hid_t group) const override;
 
   //! Add a variable to the libmesh mesh instance
   void add_score(const std::string& var_name) override;
@@ -534,7 +529,7 @@ private:
   //! Translate an element pointer to a bin value
   int get_bin_from_element(const libMesh::Elem* elem) const;
 
-  //! Checks whether if a point moving in a given direction
+  //! Check whether if a point moving in a given direction
   //! is inside the element
   //
   //! \param[in] r In: point to be checked
@@ -545,7 +540,7 @@ private:
                   const libMesh::Point& u,
                   const libMesh::Elem* e) const;
 
-  //! Checks whether if a point moving in a given direction
+  //! Check if a point moving in a given direction
   //! is inside the element
   //
   //! \param[in] r In: point to be checked
@@ -556,60 +551,10 @@ private:
                   const libMesh::Point& u,
                   std::unique_ptr<libMesh::Elem> e) const;
 
-  //! Returns all hit elements and distances on the mesh
-  //
-  //! \param[in] start In: starting location of the track
-  //! \param[in] dir In: normalized direction of the track
-  //! \param[in] track_len In: track length
-  //! \param[out] hits Out: set of elements and hits on the unstructured mesh
-  void intersect_track(libMesh::Point start,
-                       libMesh::Point dir,
-                       double track_len,
-                       UnstructuredMeshHits& hits) const;
-
-  //! Checks that the elements from and to share a face
-  //
-  //! \param[in] from In: starting element
-  //! \param[in] to In: next element
-  //! \param[in] side side crossed in the starting element
-  //! \return whether or not the elements share a face
-  bool elements_share_face(const libMesh::Elem* from,
-                           const libMesh::Elem* to,
-                           unsigned int side) const;
-
-  //! Searches for an intersection with the mesh between
-  //! r0 and r1
-  //
-  //! \param[in] r0 In: starting position of the track
-  //! \param[in] r1 In: ending position of the track
-  //! \return the distance to intersection and intersected element
-  std::pair<double, const libMesh::Elem*>
-  locate_boundary_element(const Position& r0,
-                          const Position& r1) const;
-
-  //! Searches for an intersection with the mesh between
-  //! the start and end of a track
-  //
-  //! \param[in] start In: starting position of the track
-  //! \param[in] end In: ending position of the track
-  //! \return the distance to intersection and intersected element
-  std::pair<double, const libMesh::Elem*>
-  locate_boundary_element(const libMesh::Point& start,
-                          const libMesh::Point& end) const;
-
-  // Internal triangle intersection methods
-  bool plucker_test(std::unique_ptr<const libMesh::Elem> tri,
-                    const libMesh::Point& start,
-                    const libMesh::Point& dir,
-                    double& dist) const;
-
-  double plucker_edge_test(const libMesh::Node& vertexa,
-                           const libMesh::Node& vertexb,
-                           const libMesh::Point& ray,
-                           const libMesh::Point& ray_normal) const;
-
   double first(const libMesh::Node& a,
                const libMesh::Node& b) const;
+
+  Position centroid(int bin) const override;
 
   // Data members
 

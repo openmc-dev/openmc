@@ -113,6 +113,8 @@ StructuredMesh::bin_label(int bin) const {
 //==============================================================================
 
 UnstructuredMesh::UnstructuredMesh(pugi::xml_node node) : Mesh(node) {
+  n_dimension_ = 3;
+
   // check the mesh type
   if (check_for_node(node, "type")) {
     auto temp = get_node_value(node, "type", true, true);
@@ -122,8 +124,8 @@ UnstructuredMesh::UnstructuredMesh(pugi::xml_node node) : Mesh(node) {
   }
 
   // get the filename of the unstructured mesh to load
-  if (check_for_node(node, "mesh_file")) {
-    filename_ = get_node_value(node, "mesh_file");
+  if (check_for_node(node, "filename")) {
+    filename_ = get_node_value(node, "filename");
   }
   else {
     fatal_error("No filename supplied for unstructured mesh with ID: " +
@@ -2384,11 +2386,10 @@ void read_meshes(pugi::xml_node root)
       mesh_type = "regular";
     }
 
+    // determine the mesh library to use
     std::string mesh_lib;
     if (check_for_node(node, "library")) {
       mesh_lib = get_node_value(node, "library", true, true);
-    } else {
-      mesh_lib = "moab";
     }
 
     // Read mesh and add to vector
@@ -2397,19 +2398,15 @@ void read_meshes(pugi::xml_node root)
     } else if (mesh_type == "rectilinear") {
       model::meshes.push_back(std::make_unique<RectilinearMesh>(node));
 #ifdef DAGMC
-    }
-    else if (mesh_type == "unstructured" && mesh_lib == "moab") {
+    } else if (mesh_type == "unstructured" && mesh_lib == "moab") {
       model::meshes.push_back(std::make_unique<MOABUnstructuredMesh>(node));
-#else
-    } else if (mesh_type == "unstructured") {
-      fatal_error("Unstructured mesh support is disabled.");
 #endif
 #ifdef LIBMESH
-    }
-    else if (mesh_type == "unstructured" && mesh_lib == "libmesh") {
-      std::cout << "Making libmesh mesh" << std::endl;
+    } else if (mesh_type == "unstructured" && mesh_lib == "libmesh") {
       model::meshes.push_back(std::make_unique<LibMesh>(node));
 #endif
+    } else if (mesh_type == "unstructured") {
+      fatal_error("Unstructured mesh support is not enabled or the mesh library is invalid.");
     } else {
       fatal_error("Invalid mesh type: " + mesh_type);
     }

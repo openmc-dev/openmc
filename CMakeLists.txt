@@ -364,7 +364,7 @@ target_link_libraries(libopenmc ${ldflags} ${HDF5_LIBRARIES} ${HDF5_HL_LIBRARIES
 
 if(dagmc)
   target_compile_definitions(libopenmc PRIVATE DAGMC)
-  target_link_libraries(libopenmc dagmc-shared pyne_dagmc-shared uwuw-shared)
+  target_link_libraries(libopenmc dagmc-shared uwuw-shared)
 endif()
 
 #===============================================================================

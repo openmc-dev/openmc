@@ -108,6 +108,9 @@ public:
   plot(Position plot_ll, Position plot_ur) const = 0;
 
   //! Get a label for the mesh bin
+  //! Return a string representation of the mesh bin
+  //
+  //! \param[in] bin Mesh bin to generate a label for
   virtual std::string bin_label(int bin) const = 0;
 
   // Data members
@@ -219,8 +222,6 @@ public:
 
   double negative_grid_boundary(int* ijk, int i) const override;
 
-  std::string bin_label(int bin) const override;
-
   int n_surface_bins() const override;
 
   std::pair<std::vector<double>, std::vector<double>>
@@ -274,6 +275,7 @@ public:
 };
 
 class UnstructuredMeshBase : public Mesh {
+
 public:
   // constructors
   UnstructuredMeshBase() {};
@@ -282,10 +284,10 @@ public:
 
   std::string bin_label(int bin) const override;
 
-  //! Add a variable to the libmesh mesh instance
+  //! Add a variable to the mesh instance
   virtual void add_score(const std::string& var_name) = 0;
 
-  //! Set the value of a bin for a variable on the libmesh mesh instance
+  //! Set the value of a bin for a variable on the mesh instance
   virtual void set_score_data(const std::string& var_name,
                               std::vector<double> values,
                               std::vector<double> std_dev) = 0;
@@ -294,7 +296,7 @@ public:
 
   virtual Position centroid(int bin) const = 0;
 
-
+  // Data members
   std::string filename_;
 };
 
@@ -342,11 +344,6 @@ public:
   // \param[in] tet MOAB EntityHandle of the tetrahedron
   // \return The centroid of the element
   Position centroid(int bin) const override;
-
-  //! Return a string represntation of the mesh bin
-  //
-  //! \param[in] bin Mesh bin to generate a label for
-  std::string bin_label(int bin) const override;
 
   //! Add a score to the mesh instance
   void add_score(const std::string& score);

@@ -39,14 +39,7 @@ endif()
 # DAGMC Geometry Support - need DAGMC/MOAB
 #===============================================================================
 if(dagmc)
-  find_package(DAGMC REQUIRED)
-  add_library(dagmc-imported INTERFACE IMPORTED)
-  link_directories(${DAGMC_LIBRARY_DIRS})
-  set_target_properties(dagmc-imported PROPERTIES
-    INTERFACE_LINK_LIBRARIES "${DAGMC_LIBRARIES}"
-    INTERFACE_INCLUDE_DIRECTORIES "${DAGMC_INCLUDE_DIRS}")
-else()
-  set(DAGMC_FOUND false)
+  find_package(DAGMC REQUIRED PATH_SUFFIXES lib/cmake)
 endif()
 
 #===============================================================================
@@ -371,7 +364,7 @@ target_link_libraries(libopenmc ${ldflags} ${HDF5_LIBRARIES} ${HDF5_HL_LIBRARIES
 
 if(dagmc)
   target_compile_definitions(libopenmc PRIVATE DAGMC)
-  target_link_libraries(libopenmc dagmc-imported)
+  target_link_libraries(libopenmc dagmc-shared uwuw-shared)
 endif()
 
 #===============================================================================

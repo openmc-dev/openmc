@@ -632,7 +632,7 @@ class UnstructuredMesh(MeshBase):
         self.filename = filename
         self._volumes = None
         self._centroids = None
-        self._mesh_lib = 'moab'
+        self._library = 'moab'
 
     @property
     def filename(self):
@@ -644,13 +644,13 @@ class UnstructuredMesh(MeshBase):
         self._filename = filename
 
     @property
-    def mesh_lib(self):
+    def library(self):
         return self._mesh_lib
 
-    @mesh_lib.setter
-    def mesh_lib(self, mesh_lib):
+    @library.setter
+    def library(self, mesh_lib):
         cv.check_value('mesh_lib', mesh_lib, ('moab', 'libmesh'))
-        self._mesh_lib = mesh_lib
+        self._library = mesh_lib
 
     @property
     def size(self):
@@ -811,7 +811,7 @@ class UnstructuredMesh(MeshBase):
         element.set("id", str(self._id))
         element.set("type", "unstructured")
         subelement = ET.SubElement(element, "filename")
-        element.set("library", self._mesh_lib)
+        element.set("library", self._library)
         subelement.text = self.filename
 
         return element

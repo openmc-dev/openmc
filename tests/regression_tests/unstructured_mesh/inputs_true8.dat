@@ -82,11 +82,11 @@
   <tally id="9" name="regular mesh tally">
     <filters>9</filters>
     <scores>flux</scores>
-    <estimator>tracklength</estimator>
+    <estimator>collision</estimator>
   </tally>
   <tally id="10" name="unstructured mesh tally">
     <filters>10</filters>
     <scores>flux</scores>
-    <estimator>tracklength</estimator>
+    <estimator>collision</estimator>
   </tally>
 </tallies>

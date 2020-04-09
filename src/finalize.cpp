@@ -192,5 +192,4 @@ int openmc_hard_reset()
   // Reset the random number generator state
   openmc::openmc_set_seed(DEFAULT_SEED);
   return 0;
-
 }

@@ -184,7 +184,7 @@ def test_unstructured_mesh(test_opts):
 
     ### Tallies ###
 
-    # create meshes
+    # create meshes and mesh filters
     regular_mesh = openmc.RegularMesh()
     regular_mesh.dimension = (10, 10, 10)
     regular_mesh.lower_left = (-10.0, -10.0, -10.0)
@@ -197,8 +197,7 @@ def test_unstructured_mesh(test_opts):
     else:
         mesh_filename = "test_mesh_tets.exo"
 
-    uscd_mesh = openmc.UnstructuredMesh(mesh_filename)
-    uscd_mesh.library = test_opts['library']
+    uscd_mesh = openmc.UnstructuredMesh(mesh_filename, test_opts['library'])
     uscd_filter = openmc.MeshFilter(mesh=uscd_mesh)
 
     # create tallies

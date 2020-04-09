@@ -9,10 +9,6 @@ import numpy as np
 import pytest
 from tests.testing_harness import PyAPITestHarness
 
-pytestmark = pytest.mark.skipif(
-    not openmc.lib._dagmc_enabled(),
-    reason="Mesh library is not enabled.")
-
 TETS_PER_VOXEL = 12
 
 
@@ -83,6 +79,15 @@ for i, (lib, estimator, ext_geom, holes) in enumerate(product(*param_values)):
 
 @pytest.mark.parametrize("test_opts", test_cases)
 def test_unstructured_mesh(test_opts):
+
+    openmc.reset_auto_ids()
+
+    # skip the test if the library is not enabled
+    if test_opts['library'] == 'moab' and not openmc.lib._dagmc_enabled():
+        pytest.skip("DAGMC (and MOAB) mesh not enbaled in this build.")
+
+    if test_opts['library'] == 'libmesh' and not openmc.lib._libmesh_enabled():
+        pytest.skip("LibMesh is not enabled in this build.")
 
     # skip the tracklength test for libmesh
     if test_opts['library'] == 'libmesh' and \

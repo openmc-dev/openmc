@@ -45,6 +45,9 @@ def _dagmc_enabled():
 def _coord_levels():
     return c_int.in_dll(_dll, "n_coord_levels").value
 
+def _libmesh_enabled():
+    return c_bool.in_dll(_dll, "libmesh_enabled").value
+
 from .error import *
 from .core import *
 from .nuclide import *

@@ -41,6 +41,8 @@ namespace openmc {
 // Global variables
 //==============================================================================
 
+extern "C" const bool libmesh_enabled;
+
 class Mesh;
 
 namespace model {
@@ -277,17 +279,12 @@ public:
 class UnstructuredMesh : public Mesh {
 
 public:
-  // constructors
+  // Constructors
   UnstructuredMesh() {};
   UnstructuredMesh(pugi::xml_node node);
   UnstructuredMesh(const std::string& filename);
 
-  std::string bin_label(int bin) const override;
-
-  //! Write mesh data to an HDF5 group.
-  //
-  //! \param[in] group HDF5 group
-  void to_hdf5(hid_t group) const;
+  // Methods
 
   //! Add a variable to the mesh instance
   virtual void add_score(const std::string& var_name) = 0;
@@ -297,13 +294,30 @@ public:
                               std::vector<double> values,
                               std::vector<double> std_dev) = 0;
 
+  //! Write the unstructured mesh to file
+  //
+  //
+  //! \param[in] filename Name of the file to write
   virtual void write(std::string filename) const = 0;
 
+  //! Retrieve a centroid for the mesh cell
+  //
+  //! \param[in] bin Bin to return the centroid for
+  //! \return The centroid of the bin
   virtual Position centroid(int bin) const = 0;
 
+  //! Get the volume of a mesh bin
+  //
+  //! \param[in] bin Bin to return the volume for
+  //! \return The volume of the bin
   virtual double volume(int bin) const = 0;
 
+  //! Get the library used for this unstructured mesh
   virtual std::string library() const = 0;
+
+  std::string bin_label(int bin) const override;
+
+  void to_hdf5(hid_t group) const override;
 
   // Data members
   std::string filename_; //!< Path to unstructured mesh file
@@ -331,27 +345,18 @@ public:
   //
   //! \param[in] p Particle to check
   //! \param[out] bins Surface bins that were crossed
-  void surface_bins_crossed(const Particle& p, std::vector<int>& bins) const;
+  void surface_bins_crossed(const Particle* p, std::vector<int>& bins) const;
 
-  //! Get bin at a given position.
-  //
-  //! \param[in] r Position to get bin for
-  //! \return Mesh bin
   int get_bin(Position r) const;
-
-  std::string library() const override;
 
   int n_bins() const override;
 
   int n_surface_bins() const override;
 
-  //! Retrieve a centroid for the mesh cell
-  //
-  // \param[in] bin Bin to return the volume for
-  // \return The centroid of the element
-  Position centroid(int bin) const override;
+  std::pair<std::vector<double>, std::vector<double>>
+  plot(Position plot_ll, Position plot_ur) const override;
 
-  double volume(int bin) const override;
+  std::string library() const override;
 
   //! Add a score to the mesh instance
   void add_score(const std::string& score);
@@ -372,7 +377,9 @@ public:
   //! Write the mesh with any current tally data
   void write(std::string base_filename) const;
 
-  bool intersects(Position& r0, Position r1, int* ijk);
+  Position centroid(int bin) const override;
+
+  double volume(int bin) const override;
 
 private:
 
@@ -468,7 +475,7 @@ private:
   std::pair<moab::Tag, moab::Tag>
   get_score_tags(std::string score) const;
 
-  // data members
+  // Data members
   moab::Range ehs_; //!< Range of tetrahedra EntityHandle's in the mesh
   moab::EntityHandle tetset_; //!< EntitySet containing all tetrahedra
   moab::EntityHandle kdtree_root_; //!< Root of the MOAB KDTree
@@ -490,39 +497,34 @@ public:
   LibMesh(const std::string& filename);
 
   // Methods
-
-  // standard mesh functions
   void bins_crossed(const Particle* p,
                     std::vector<int>& bins,
                     std::vector<double>& lengths) const override;
 
-  int get_bin(Position r) const override;
+  void surface_bins_crossed(const Particle* p, std::vector<int>& bins) const override;
 
-  std::string library() const override;
+  int get_bin(Position r) const override;
 
   int n_bins() const override;
 
   int n_surface_bins() const override;
 
-  void surface_bins_crossed(const Particle* p,
-                             std::vector<int>& bins) const override;
-
   std::pair<std::vector<double>, std::vector<double>> plot(Position plot_ll,
                                                            Position plot_ur) const override;
 
-  void write(std::string filename) const override;
-
-  //! Add a variable to the libmesh mesh instance
   void add_score(const std::string& var_name) override;
 
-  //! Set the value of a bin for a variable on the libmesh mesh instance
   void set_score_data(const std::string& var_name,
                       std::vector<double> values,
                       std::vector<double> std_dev) override;
 
+  void write(std::string filename) const override;
+
   Position centroid(int bin) const override;
 
   double volume(int bin) const override;
+
+  std::string library() const override;
 
 private:
 
@@ -536,43 +538,14 @@ private:
   //! Translate an element pointer to a bin value
   int get_bin_from_element(const libMesh::Elem* elem) const;
 
-  //! Check whether if a point moving in a given direction
-  //! is inside the element
-  //
-  //! \param[in] r In: point to be checked
-  //! \param[in] u In: direction (this is arbitrary, any normalized direction will do)
-  //! \param[in] e In: libmesh element in question
-  //! \return whether or not the point is in the tet
-  bool inside_tet(const libMesh::Point& r,
-                  const libMesh::Point& u,
-                  const libMesh::Elem* e) const;
-
-  //! Check if a point moving in a given direction
-  //! is inside the element
-  //
-  //! \param[in] r In: point to be checked
-  //! \param[in] u In: direction (this is arbitrary, any normalized direction will do)
-  //! \param[in] e In: libmesh element in question
-  //! \return whether or not the point is in the tet
-  bool inside_tet(const libMesh::Point& r,
-                  const libMesh::Point& u,
-                  std::unique_ptr<libMesh::Elem> e) const;
-
-  double first(const libMesh::Node& a,
-               const libMesh::Node& b) const;
-
   // Data members
-
-private:
   std::unique_ptr<libMesh::Mesh> m_; //!< pointer to the libmesh mesh instance
   std::vector<std::unique_ptr<libMesh::PointLocatorBase>> point_locators_; //!< pointers to locators for each thread
   std::unique_ptr<libMesh::EquationSystems> equation_systems_; //!< pointer to the equation systems of the mesh (for result output)
   std::map<std::string, unsigned int> variable_map_; //!< mapping of variable names (scores) to their numbers on the mesh
   libMesh::BoundingBox bbox_; //!< bounding box of the mesh
-  libMesh::Sphere bsphere_; //<! bounding sphere of the mesh
   std::string eq_system_name_; //!< name of the equation system holding OpenMC results
   libMesh::Elem* first_element_; //!< pointer to the first element in the mesh (maybe should be a key?)
-  std::set<libMesh::Elem*> boundary_elements_; //<! all boundary elements in the mesh
 };
 #endif
 

@@ -62,17 +62,20 @@ class UnstructuredMeshTest(PyAPITestHarness):
     def _cleanup(self):
         super()._cleanup()
         output = glob.glob('tally*.vtk')
+        output += glob.glob('tally*.e')
         for f in output:
             if os.path.exists(f):
                 os.remove(f)
 
 
-param_values = (['collision', 'tracklength'], # estimators
+param_values = (['libmesh', 'moab'], # mesh libraries
+                ['collision', 'tracklength'], # estimators
                 [True, False], # geometry outside of the mesh
                 [(333, 90, 77), None]) # location of holes in the mesh
 test_cases = []
-for i, (estimator, ext_geom, holes) in enumerate(product(*param_values)):
-    test_cases.append({'estimator' : estimator,
+for i, (lib, estimator, ext_geom, holes) in enumerate(product(*param_values)):
+    test_cases.append({'library' : lib,
+                       'estimator' : estimator,
                        'external_geom' : ext_geom,
                        'holes' : holes,
                        'inputs_true' : 'inputs_true{}.dat'.format(i)})
@@ -80,6 +83,11 @@ for i, (estimator, ext_geom, holes) in enumerate(product(*param_values)):
 
 @pytest.mark.parametrize("test_opts", test_cases)
 def test_unstructured_mesh(test_opts):
+
+    # skip the tracklength test for libmesh
+    if test_opts['library'] == 'libmesh' and \
+       test_opts['estimator'] == 'tracklength':
+       pytest.skip("Tracklength tallies are not supported using libmesh.")
 
     ### Materials ###
     materials = openmc.Materials()
@@ -185,12 +193,12 @@ def test_unstructured_mesh(test_opts):
     regular_mesh_filter = openmc.MeshFilter(mesh=regular_mesh)
 
     if test_opts['holes']:
-        mesh_filename = "test_mesh_tets_w_holes.h5m"
+        mesh_filename = "test_mesh_tets_w_holes.exo"
     else:
-        mesh_filename = "test_mesh_tets.h5m"
+        mesh_filename = "test_mesh_tets.exo"
 
     uscd_mesh = openmc.UnstructuredMesh(mesh_filename)
-    uscd_mesh.library = 'moab'
+    uscd_mesh.library = test_opts['library']
     uscd_filter = openmc.MeshFilter(mesh=uscd_mesh)
 
     # create tallies

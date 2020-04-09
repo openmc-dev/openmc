@@ -1,34 +1,34 @@
 <?xml version='1.0' encoding='utf-8'?>
 <geometry>
-  <cell id="16" material="16" name="fuel" region="91 -92 93 -94 95 -96" universe="6" />
-  <cell id="17" material="17" name="clad" region="(-91 | 92 | -93 | 94 | -95 | 96) (97 -98 99 -100 101 -102)" universe="6" />
-  <cell id="18" material="18" name="water" region="(-97 | 98 | -99 | 100 | -101 | 102) (103 -104 105 -106 107 -108)" universe="6" />
-  <surface coeffs="-5.0" id="91" name="minimum x" type="x-plane" />
-  <surface coeffs="5.0" id="92" name="maximum x" type="x-plane" />
-  <surface coeffs="-5.0" id="93" name="minimum y" type="y-plane" />
-  <surface coeffs="5.0" id="94" name="maximum y" type="y-plane" />
-  <surface coeffs="-5.0" id="95" name="minimum z" type="z-plane" />
-  <surface coeffs="5.0" id="96" name="maximum z" type="z-plane" />
-  <surface coeffs="-6.0" id="97" name="minimum x" type="x-plane" />
-  <surface coeffs="6.0" id="98" name="maximum x" type="x-plane" />
-  <surface coeffs="-6.0" id="99" name="minimum y" type="y-plane" />
-  <surface coeffs="6.0" id="100" name="maximum y" type="y-plane" />
-  <surface coeffs="-6.0" id="101" name="minimum z" type="z-plane" />
-  <surface coeffs="6.0" id="102" name="maximum z" type="z-plane" />
-  <surface boundary="vacuum" coeffs="-15" id="103" name="minimum x" type="x-plane" />
-  <surface boundary="vacuum" coeffs="15" id="104" name="maximum x" type="x-plane" />
-  <surface boundary="vacuum" coeffs="-15" id="105" name="minimum y" type="y-plane" />
-  <surface boundary="vacuum" coeffs="15" id="106" name="maximum y" type="y-plane" />
-  <surface boundary="vacuum" coeffs="-15" id="107" name="minimum z" type="z-plane" />
-  <surface boundary="vacuum" coeffs="15" id="108" name="maximum z" type="z-plane" />
+  <cell id="1" material="1" name="fuel" region="1 -2 3 -4 5 -6" universe="1" />
+  <cell id="2" material="2" name="clad" region="(-1 | 2 | -3 | 4 | -5 | 6) (7 -8 9 -10 11 -12)" universe="1" />
+  <cell id="3" material="3" name="water" region="(-7 | 8 | -9 | 10 | -11 | 12) (13 -14 15 -16 17 -18)" universe="1" />
+  <surface coeffs="-5.0" id="1" name="minimum x" type="x-plane" />
+  <surface coeffs="5.0" id="2" name="maximum x" type="x-plane" />
+  <surface coeffs="-5.0" id="3" name="minimum y" type="y-plane" />
+  <surface coeffs="5.0" id="4" name="maximum y" type="y-plane" />
+  <surface coeffs="-5.0" id="5" name="minimum z" type="z-plane" />
+  <surface coeffs="5.0" id="6" name="maximum z" type="z-plane" />
+  <surface coeffs="-6.0" id="7" name="minimum x" type="x-plane" />
+  <surface coeffs="6.0" id="8" name="maximum x" type="x-plane" />
+  <surface coeffs="-6.0" id="9" name="minimum y" type="y-plane" />
+  <surface coeffs="6.0" id="10" name="maximum y" type="y-plane" />
+  <surface coeffs="-6.0" id="11" name="minimum z" type="z-plane" />
+  <surface coeffs="6.0" id="12" name="maximum z" type="z-plane" />
+  <surface boundary="vacuum" coeffs="-15" id="13" name="minimum x" type="x-plane" />
+  <surface boundary="vacuum" coeffs="15" id="14" name="maximum x" type="x-plane" />
+  <surface boundary="vacuum" coeffs="-15" id="15" name="minimum y" type="y-plane" />
+  <surface boundary="vacuum" coeffs="15" id="16" name="maximum y" type="y-plane" />
+  <surface boundary="vacuum" coeffs="-15" id="17" name="minimum z" type="z-plane" />
+  <surface boundary="vacuum" coeffs="15" id="18" name="maximum z" type="z-plane" />
 </geometry>
 <?xml version='1.0' encoding='utf-8'?>
 <materials>
-  <material depletable="true" id="16" name="fuel">
+  <material depletable="true" id="1" name="fuel">
     <density units="g/cc" value="4.5" />
     <nuclide ao="1.0" name="U235" />
   </material>
-  <material id="17" name="zircaloy">
+  <material id="2" name="zircaloy">
     <density units="g/cc" value="5.77" />
     <nuclide ao="0.5145" name="Zr90" />
     <nuclide ao="0.1122" name="Zr91" />
@@ -36,7 +36,7 @@
     <nuclide ao="0.1738" name="Zr94" />
     <nuclide ao="0.028" name="Zr96" />
   </material>
-  <material id="18" name="water">
+  <material id="3" name="water">
     <density units="atom/b-cm" value="0.07416" />
     <nuclide ao="2.0" name="H1" />
     <nuclide ao="1.0" name="O16" />
@@ -65,27 +65,27 @@
 </settings>
 <?xml version='1.0' encoding='utf-8'?>
 <tallies>
-  <mesh id="11">
+  <mesh id="1">
     <dimension>10 10 10</dimension>
     <lower_left>-10.0 -10.0 -10.0</lower_left>
     <upper_right>10.0 10.0 10.0</upper_right>
   </mesh>
-  <mesh id="12" library="moab" type="unstructured">
+  <mesh id="2" library="moab" type="unstructured">
     <filename>test_mesh_tets.exo</filename>
   </mesh>
-  <filter id="11" type="mesh">
-    <bins>11</bins>
+  <filter id="1" type="mesh">
+    <bins>1</bins>
   </filter>
-  <filter id="12" type="mesh">
-    <bins>12</bins>
+  <filter id="2" type="mesh">
+    <bins>2</bins>
   </filter>
-  <tally id="11" name="regular mesh tally">
-    <filters>11</filters>
+  <tally id="1" name="regular mesh tally">
+    <filters>1</filters>
     <scores>flux</scores>
     <estimator>collision</estimator>
   </tally>
-  <tally id="12" name="unstructured mesh tally">
-    <filters>12</filters>
+  <tally id="2" name="unstructured mesh tally">
+    <filters>2</filters>
     <scores>flux</scores>
     <estimator>collision</estimator>
   </tally>

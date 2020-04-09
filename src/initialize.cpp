@@ -55,7 +55,6 @@ int openmc_init(int argc, char* argv[], const void* intracomm)
   initialize_mpi(comm);
 #endif
 
-
   // Parse command-line arguments
   int err = parse_command_line(argc, argv);
   if (err) return err;
@@ -88,7 +87,6 @@ int openmc_init(int argc, char* argv[], const void* intracomm)
     omp_set_schedule(omp_sched_static, 0);
   }
 #endif
-
 
   // Initialize random number generator -- if the user specifies a seed, it
   // will be re-initialized later

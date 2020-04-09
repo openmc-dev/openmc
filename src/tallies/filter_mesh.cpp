@@ -45,10 +45,6 @@ const
   }
 
   double total = std::accumulate(match.weights_.begin(), match.weights_.end(), 0.0);
-  // if ( fabs(1.0 - total) > FP_PRECISION) {
-  //   std::cout << "Total weight for score < 1.0 (" << total << ")" << std::endl;
-  // }
-
 }
 
 void

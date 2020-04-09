@@ -19,12 +19,12 @@
 #include "openmc/position.h"
 #include "openmc/surface.h"
 
-#define MATERIAL_SIZE 1
-#define REGION_SIZE 9
-#define SQRTKT_SIZE 1
-#define RPN_SIZE 5
-#define ROTATION_SIZE 1
-#define OFFSET_SIZE 1
+#define MATERIAL_SIZE 9 // CMFD NG
+#define SQRTKT_SIZE 9 // CMFD NG
+#define REGION_SIZE 32 // complex cell
+#define RPN_SIZE 24 // complex cell
+#define ROTATION_SIZE 12
+#define OFFSET_SIZE 35
 
 namespace openmc {
 

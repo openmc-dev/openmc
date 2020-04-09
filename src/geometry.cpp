@@ -73,8 +73,10 @@ find_cell_inner(Particle* p, const NeighborList* neighbor_list)
   bool found = false;
   int32_t i_cell;
   if (neighbor_list) {
-    for (auto it = neighbor_list->cbegin(); it != neighbor_list->cend(); ++it) {
-      i_cell = *it;
+    //for (auto it = neighbor_list->cbegin(); it != neighbor_list->cend(); ++it) {
+    for (int64_t i = 0; i < neighbor_list->get_length(); i++) {
+      //i_cell = *it;
+      i_cell = neighbor_list->list_[i];
 
       // Make sure the search cell is in the same universe.
       int i_universe = p->coord_[p->n_coord_-1].universe;

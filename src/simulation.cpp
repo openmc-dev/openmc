@@ -166,6 +166,12 @@ int openmc_simulation_init()
   std::cout << "Max rpn length in a cell = " << rpn_max << std::endl;
   std::cout << "Max rotation length in a cell = " << rotation_max << std::endl;
   std::cout << "Max offset length in a cell = " << offset_max << std::endl;
+  assert( material_max <= MATERIAL_SIZE );
+  assert( sqrtkT_max <= SQRTKT_SIZE );
+  assert( region_max <= REGION_SIZE );
+  assert( rpn_max <= RPN_SIZE );
+  assert( rotation_max <= ROTATION_SIZE );
+  assert( offset_max <= OFFSET_SIZE );
 
   // Set flag indicating initialization is done
   simulation::initialized = true;
@@ -209,9 +215,7 @@ int openmc_simulation_finalize()
     if( offset > offset_max )
       offset_max = offset;
     
-    int num_neighbors = 0;
-    for (auto it = neighbors.cbegin(); it != neighbors.cend(); ++it)
-      num_neighbors++;
+    int num_neighbors = neighbors.get_length();
     if( num_neighbors > neighbor_max)
       neighbor_max = num_neighbors;
   }

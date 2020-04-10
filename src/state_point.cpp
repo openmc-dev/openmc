@@ -799,6 +799,20 @@ void write_unstructured_mesh_results() {
 
       int n_realizations = tally->n_realizations_;
 
+      for (int i_score = 0; i_score < tally->scores_.size(); i_score++) {
+        for (int i_nuc = 0; i_nuc < tally->nuclides_.size(); i_nuc++) {
+          // generate a name for the value
+          std::string nuclide_name = "total"; // start with total by default
+          if (tally->nuclides_[i_nuc] > -1) {
+            nuclide_name = data::nuclides[tally->nuclides_[i_nuc]]->name_;
+          }
+
+          std::string score_name = tally->score_name(i_score);
+          auto score_str = fmt::format("{}_{}", score_name, nuclide_name);
+          umesh->add_score(score_str);
+        }
+      }
+
       // write each score/nuclide combination for this tally
       for (int i_score = 0; i_score < tally->scores_.size(); i_score++) {
         for (int i_nuc = 0; i_nuc < tally->nuclides_.size(); i_nuc++) {
@@ -828,10 +842,10 @@ void write_unstructured_mesh_results() {
           if (tally->nuclides_[i_nuc] > -1) {
             nuclide_name = data::nuclides[tally->nuclides_[i_nuc]]->name_;
           }
-
           std::string score_name = tally->score_name(i_score);
           auto score_str = fmt::format("{}_{}", score_name, nuclide_name);
           tally_scores.push_back(score_str);
+          // set the data for this score
           umesh->set_score_data(score_str, mean_vec, std_dev_vec);
         }
       }

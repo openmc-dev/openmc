@@ -68,10 +68,6 @@ int openmc_finalize()
   // Reset timers
   reset_timers();
 
-#ifdef LIBMESH
-  settings::LMI.reset();
-#endif
-
   // Reset global variables
   settings::assume_separate = false;
   settings::check_overlaps = false;
@@ -140,6 +136,10 @@ int openmc_finalize()
 
   // Deallocate arrays
   free_memory();
+
+#ifdef LIBMESH
+  settings::LMI.reset();
+#endif
 
   // Free all MPI types
 #ifdef OPENMC_MPI

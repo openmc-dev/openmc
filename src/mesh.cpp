@@ -2238,12 +2238,11 @@ LibMesh::surface_bins_crossed(const Particle* p,
 void
 LibMesh::add_score(const std::string& var_name) {
   // check if this is a new varaible
-  std::string value_name = var_name + "_value";
+  std::string value_name = var_name + "_mean";
   if (!variable_map_.count(value_name)) {
     auto& eqn_sys = equation_systems_->get_system(eq_system_name_);
     auto var_num = eqn_sys.add_variable(value_name, libMesh::CONSTANT, libMesh::MONOMIAL);
     variable_map_[value_name] = var_num;
-    equation_systems_->init();
   }
 
   std::string std_dev_name = var_name + "_std_dev";
@@ -2252,7 +2251,6 @@ LibMesh::add_score(const std::string& var_name) {
     auto& eqn_sys = equation_systems_->get_system(eq_system_name_);
     auto var_num = eqn_sys.add_variable(std_dev_name, libMesh::CONSTANT, libMesh::MONOMIAL);
     variable_map_[std_dev_name] = var_num;
-    equation_systems_->init();
   }
 }
 
@@ -2261,15 +2259,18 @@ LibMesh::set_score_data(const std::string& var_name,
                       std::vector<double> values,
                       std::vector<double> std_dev)
 {
-    auto& eqn_sys = equation_systems_->get_system(eq_system_name_);
-    const libMesh::DofMap& dof_map = eqn_sys.get_dof_map();
+  auto& eqn_sys = equation_systems_->get_system(eq_system_name_);
 
-    // look up the value variable
-    std::string value_name = var_name + "_value";
-    unsigned int value_num = variable_map_.at(value_name);
-    // look up the std dev variable
-    std::string std_dev_name = var_name + "_std_dev";
-    unsigned int std_dev_num = variable_map_.at(std_dev_name);
+  if (!eqn_sys.is_initialized()) { equation_systems_->init(); }
+
+  const libMesh::DofMap& dof_map = eqn_sys.get_dof_map();
+
+  // look up the value variable
+  std::string value_name = var_name + "_mean";
+  unsigned int value_num = variable_map_.at(value_name);
+  // look up the std dev variable
+  std::string std_dev_name = var_name + "_std_dev";
+  unsigned int std_dev_num = variable_map_.at(std_dev_name);
 
   for (int bin = 0; bin < this->n_bins(); bin++) {
     auto e = m_->elem_ptr(bin);
@@ -2290,6 +2291,7 @@ LibMesh::set_score_data(const std::string& var_name,
 }
 
 void LibMesh::write(std::string filename) const {
+  std::cout << "Writing file : " << filename + ".e" << std::endl;
   libMesh::ExodusII_IO exo(*m_);
   std::set<std::string> systems_out = {eq_system_name_};
   exo.write_discontinuous_exodusII(filename + ".e", *equation_systems_, &systems_out);

@@ -19,12 +19,23 @@
 #include "openmc/position.h"
 #include "openmc/surface.h"
 
+// Regression tests
+/*
 #define MATERIAL_SIZE 9 // CMFD NG
 #define SQRTKT_SIZE 9 // CMFD NG
 #define REGION_SIZE 32 // complex cell
 #define RPN_SIZE 24 // complex cell
 #define ROTATION_SIZE 12
 #define OFFSET_SIZE 35
+*/
+
+// SMR
+#define MATERIAL_SIZE 31680 // CMFD NG
+#define SQRTKT_SIZE 31680 // CMFD NG
+#define REGION_SIZE 32 // complex cell
+#define RPN_SIZE 24 // complex cell
+#define ROTATION_SIZE 12
+#define OFFSET_SIZE 280
 
 namespace openmc {
 

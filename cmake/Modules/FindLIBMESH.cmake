@@ -1,11 +1,5 @@
-# Try to find LIBMESH
-#
-# Once done this will define
-#
-#  LIBMESH_FOUND - system has LIBMESH
-#  LIBMESH_INCLUDE_DIRS - the LIBMESH include directory
-#  LIBMESH_LIBRARIES - Link these to use LIBMESH
-#  LIBMESH_DEFINITIONS - Compiler switches required for using LIBMESH
+# Finds the libMesh installation using CMake's PkgConfig
+# module and creates a libmesh imported target
 
 find_path(LIBMESH_PC NAMES libmesh-opt.pc
           HINTS ${LIBMESH_ROOT} $ENV{LIBMESH_ROOT}
@@ -16,5 +10,6 @@ find_path(LIBMESH_PC NAMES libmesh-opt.pc
 include(FindPkgConfig)
 set(ENV{PKG_CONFIG_PATH} "$ENV{PKG_CONFIG_PATH}:${LIBMESH_PC}")
 pkg_check_modules(LIBMESH REQUIRED libmesh IMPORTED_TARGET)
+pkg_check_modules(LIBMESH_DEVEL REQUIRED libmesh-devel IMPORTED_TARGET)
 
 message(STATUS "Found LIBMESH in ${LIBMESH_PC}")

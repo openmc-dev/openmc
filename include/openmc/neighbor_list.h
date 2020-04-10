@@ -42,6 +42,27 @@ public:
 
     // Copy element value to the array
     list_[idx] = new_elem;
+
+    #pragma omp atomic write
+    status_[idx] = 1;
+
+    // This method has the issue that if some other thread comes in and updates first, length_
+    // may be pointing to this functions index, even though it hasn't been written yet.
+    /*
+    #pragma omp atomic update
+    length_++;
+    */
+
+    // This method has the issue that if some other thread comes in and updates first, length_
+    // may be pointing to one too few. That's ok though, wouldn't result in seg faults, just
+    // unnecessary lookups. However, the issue would arise where some other thread was first,
+    // but then didn't finish, and this thread now sets length to somewhere past what has been approved...
+    /*
+    #pragma omp atomic write
+    length_ = idx;
+    */
+
+    // Could also maintain an array of "ready" variables?
   }
 
   int64_t get_length() const
@@ -52,11 +73,24 @@ public:
     assert(idx < NEIGHBOR_SIZE);
     return idx;
   }
-  
-  int32_t list_[NEIGHBOR_SIZE];
+
+  int32_t read_element(int64_t idx) const
+  {
+    int32_t is_ready;
+    #pragma omp atomic read
+    is_ready = status_[idx];
+    if( is_ready )
+      return list_[idx];
+    else
+      return -1;
+  }
 
 private:
+  int32_t list_[NEIGHBOR_SIZE];
+  int32_t status_[NEIGHBOR_SIZE] = {0};
   int64_t length_ {0};
+  //OpenMPMutex mutex_;
+  //std::mutex mutex_;
 };
 
 } // namespace openmc

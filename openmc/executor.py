@@ -184,6 +184,8 @@ def run(particles=None, threads=None, geometry_debug=False,
     event_based : bool, optional
         Turns on event-based parallelism, instead of default history-based
 
+        .. versionadded:: 0.12
+
     Raises
     ------
     subprocess.CalledProcessError

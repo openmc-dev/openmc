@@ -59,9 +59,13 @@ class Element(str):
             enriched U. Default is None (natural composition).
         enrichment_target: str, optional
             Single nuclide name to enrich from a natural composition (e.g., 'O16')
+
+            .. versionadded:: 0.12
         enrichment_type: {'ao', 'wo'}, optional
             'ao' for enrichment as atom percent and 'wo' for weight percent.
             Default is: 'ao' for two-isotope enrichment; 'wo' for U enrichment
+
+            .. versionadded:: 0.12
         cross_sections : str, optional
             Location of cross_sections.xml file. Default is None.
 

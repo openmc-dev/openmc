@@ -64,6 +64,8 @@ class Region(ABC):
     def remove_redundant_surfaces(self, redundant_surfaces):
         """Recursively remove all redundant surfaces referenced by this region
 
+        .. versionadded:: 0.12
+
         Parameters
         ----------
         redundant_surfaces : dict
@@ -271,6 +273,8 @@ class Region(ABC):
     def rotate(self, rotation, pivot=(0., 0., 0.), order='xyz', inplace=False,
                memo=None):
         r"""Rotate surface by angles provided or by applying matrix directly.
+
+        .. versionadded:: 0.12
 
         Parameters
         ----------
@@ -586,6 +590,8 @@ class Complement(Region):
 
     def remove_redundant_surfaces(self, redundant_surfaces):
         """Recursively remove all redundant surfaces referenced by this region
+
+        .. versionadded:: 0.12
 
         Parameters
         ----------

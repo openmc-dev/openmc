@@ -489,9 +489,13 @@ class Material(IDManagerMixin):
             Default is None (natural composition).
         enrichment_target: str, optional
             Single nuclide name to enrich from a natural composition (e.g., 'O16')
+
+            .. versionadded:: 0.12
         enrichment_type: {'ao', 'wo'}, optional
             'ao' for enrichment as atom percent and 'wo' for weight percent.
             Default is: 'ao' for two-isotope enrichment; 'wo' for U enrichment
+
+            .. versionadded:: 0.12
 
         Notes
         -----
@@ -560,6 +564,8 @@ class Material(IDManagerMixin):
     def add_elements_from_formula(self, formula, percent_type='ao', enrichment=None,
                                   enrichment_target=None, enrichment_type=None):
         """Add a elements from a chemical formula to the material.
+
+        .. versionadded:: 0.12
 
         Parameters
         ----------
@@ -693,6 +699,8 @@ class Material(IDManagerMixin):
 
     def get_elements(self):
         """Returns all elements in the material
+
+        .. versionadded:: 0.12
 
         Returns
         -------
@@ -980,6 +988,8 @@ class Material(IDManagerMixin):
     @classmethod
     def mix_materials(cls, materials, fracs, percent_type='ao', name=None):
         """Mix materials together based on atom, weight, or volume fractions
+
+        .. versionadded:: 0.12
 
         Parameters
         ----------

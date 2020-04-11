@@ -86,6 +86,8 @@ class Geometry:
             Whether or not to remove redundant surfaces from the geometry when
             exporting
 
+            .. versionadded:: 0.12
+
         """
         # Find and remove redundant surfaces from the geometry
         if remove_surfs:
@@ -389,7 +391,9 @@ class Geometry:
         return surfaces
 
     def get_redundant_surfaces(self):
-        """Return all of the topologically redundant surface ids
+        """Return all of the topologically redundant surface IDs
+
+        .. versionadded:: 0.12
 
         Returns
         -------

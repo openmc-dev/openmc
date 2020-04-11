@@ -54,6 +54,8 @@ class PredictorIntegrator(Integrator):
         that the values are given in burnup (MW-d of energy deposited per
         kilogram of initial heavy metal).
 
+        .. versionadded:: 0.12
+
     Attributes
     ----------
     operator : openmc.deplete.TransportOperator
@@ -142,6 +144,8 @@ class CECMIntegrator(Integrator):
         seconds, 'min' means minutes, 'h' means hours, and 'MWd/kg' indicates
         that the values are given in burnup (MW-d of energy deposited per
         kilogram of initial heavy metal).
+
+        .. versionadded:: 0.12
 
     Attributes
     ----------
@@ -239,6 +243,8 @@ class CF4Integrator(Integrator):
         seconds, 'min' means minutes, 'h' means hours, and 'MWd/kg' indicates
         that the values are given in burnup (MW-d of energy deposited per
         kilogram of initial heavy metal).
+
+        .. versionadded:: 0.12
 
     Attributes
     ----------
@@ -354,6 +360,8 @@ class CELIIntegrator(Integrator):
         that the values are given in burnup (MW-d of energy deposited per
         kilogram of initial heavy metal).
 
+        .. versionadded:: 0.12
+
     Attributes
     ----------
     operator : openmc.deplete.TransportOperator
@@ -454,6 +462,8 @@ class EPCRK4Integrator(Integrator):
         seconds, 'min' means minutes, 'h' means hours, and 'MWd/kg' indicates
         that the values are given in burnup (MW-d of energy deposited per
         kilogram of initial heavy metal).
+
+        .. versionadded:: 0.12
 
     Attributes
     ----------
@@ -576,6 +586,8 @@ class LEQIIntegrator(Integrator):
         that the values are given in burnup (MW-d of energy deposited per
         kilogram of initial heavy metal).
 
+        .. versionadded:: 0.12
+
     Attributes
     ----------
     operator : openmc.deplete.TransportOperator
@@ -693,6 +705,8 @@ class SICELIIntegrator(SIIntegrator):
         seconds, 'min' means minutes, 'h' means hours, and 'MWd/kg' indicates
         that the values are given in burnup (MW-d of energy deposited per
         kilogram of initial heavy metal).
+
+        .. versionadded:: 0.12
     n_steps : int, optional
         Number of stochastic iterations per depletion interval.
         Must be greater than zero. Default : 10
@@ -801,6 +815,8 @@ class SILEQIIntegrator(SIIntegrator):
         seconds, 'min' means minutes, 'h' means hours, and 'MWd/kg' indicates
         that the values are given in burnup (MW-d of energy deposited per
         kilogram of initial heavy metal).
+
+        .. versionadded:: 0.12
     n_steps : int, optional
         Number of stochastic iterations per depletion interval.
         Must be greater than zero. Default : 10

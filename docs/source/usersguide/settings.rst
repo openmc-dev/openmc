@@ -110,13 +110,24 @@ The spatial distribution can be set equal to a sub-class of
 :class:`openmc.stats.Spatial`; common choices are :class:`openmc.stats.Point` or
 :class:`openmc.stats.Box`. To independently specify distributions in the
 :math:`x`, :math:`y`, and :math:`z` coordinates, you can use
-:class:`openmc.stats.CartesianIndependent`.
+:class:`openmc.stats.CartesianIndependent`. To independently specify
+distributions using spherical or cylindrical coordinates, you can use
+:class:`openmc.stats.SphericalIndependent` or
+:class:`openmc.stats.CylindricalIndependent`, respectively.
 
 The angular distribution can be set equal to a sub-class of
 :class:`openmc.stats.UnitSphere` such as :class:`openmc.stats.Isotropic`,
-:class:`openmc.stats.Monodirectional`, or
-:class:`openmc.stats.PolarAzimuthal`. By default, if no angular distribution is
-specified, an isotropic angular distribution is used.
+:class:`openmc.stats.Monodirectional`, or :class:`openmc.stats.PolarAzimuthal`.
+By default, if no angular distribution is specified, an isotropic angular
+distribution is used. As an example of a non-trivial angular distribution, the
+following code would create a conical distribution with an aperture of 30
+degrees pointed in the positive x direction::
+
+  from math import pi, cos
+  aperture = 30.0
+  mu = openmc.stats.Uniform(cos(aperture/2), 1.0)
+  phi = openmc.stats.Uniform(0.0, 2*pi)
+  angle = openmc.stats.PolarAzimuthal(mu, phi, reference_uvw=(1., 0., 0.))
 
 The energy distribution can be set equal to any univariate probability
 distribution. This could be a probability mass function

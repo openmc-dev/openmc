@@ -164,6 +164,66 @@ following would generate a photon source::
 For a full list of all classes related to statistical distributions, see
 :ref:`pythonapi_stats`.
 
+.. _custom_source:
+
+Custom Sources
+--------------
+
+It is often the case that one may wish to simulate a complex source distribution
+that is not possible to represent with the classes described above. For these
+situations, it is possible to define a complex source with an externally defined
+source function that is loaded at runtime. A simple example source is shown
+below.
+
+.. code-block:: c++
+
+   #include "openmc/random_lcg.h"
+   #include "openmc/source.h"
+   #include "openmc/particle.h"
+
+   // you must have external C linkage here
+   extern "C" openmc::Particle::Bank sample_source(uint64_t* seed) {
+     openmc::Particle::Bank particle;
+     // weight
+     particle.particle = openmc::Particle::Type::neutron;
+     particle.wgt = 1.0;
+     // position
+     double angle = 2.0 * M_PI * openmc::prn(seed);
+     double radius = 3.0;
+     particle.r.x = radius * std::cos(angle);
+     particle.r.y = radius * std::sin(angle);
+     particle.r.z = 0.0;
+     // angle
+     particle.u = {1.0, 0.0, 0.0};
+     particle.E = 14.08e6;
+     particle.delayed_group = 0;
+     return particle;
+  }
+
+The above source creates monodirectional 14.08 MeV neutrons that are distributed
+in a ring with a 3 cm radius. This routine is not particularly complex, but
+should serve as an example upon which to build more complicated sources.
+
+  .. note:: The function signature must be declared ``extern "C"``.
+
+  .. note:: You should only use the openmc::prn() random number generator
+
+In order to build your external source, you will need to link it against the
+OpenMC shared library. This can be done by writing a CMakeLists.txt file:
+
+.. code-block:: cmake
+
+   cmake_minimum_required(VERSION 3.3 FATAL_ERROR)
+   project(openmc_sources CXX)
+   add_library(source SHARED source_ring.cpp)
+   find_package(OpenMC REQUIRED HINTS <path to openmc>)
+   target_link_libraries(source OpenMC::libopenmc)
+
+After running ``cmake`` and ``make``, you will have a libsource.so (or .dylib)
+file in your build directory. Setting the :attr:`openmc.Source.library`
+attribute to the path of this shared library will indicate that it should be
+used for sampling source particles at runtime.
+
 ---------------
 Shannon Entropy
 ---------------

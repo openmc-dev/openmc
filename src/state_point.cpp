@@ -676,15 +676,16 @@ write_surf_src_bank(hid_t group_id)
 
   if (mpi::master) {
     // Create dataset big enough to hold all source sites
-    hsize_t dims[] {static_cast<hsize_t>(settings::n_particles)};
+    hsize_t dims[] {static_cast<hsize_t>(settings::n_particles)*2};  // 2 being hard-coded number of surfaces.
     hid_t dspace = H5Screate_simple(1, dims, nullptr);
     hid_t dset = H5Dcreate(group_id, "source_bank", banktype, dspace,
                            H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
 
     for (int i = 0; i < mpi::n_procs; ++i) {
+
       // Create memory space
       hsize_t count[] {static_cast<hsize_t>(simulation::work_index[i+1] -
-        simulation::work_index[i])};
+        simulation::work_index[i])*2};  // 2 being hard-coded number of surfaces.
       hid_t memspace = H5Screate_simple(1, count, nullptr);
 
       // Select hyperslab for this dataspace

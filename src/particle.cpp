@@ -413,7 +413,7 @@ Particle::cross_surface()
     write_message(1, "    Crossing surface {}", surf->id_);
   }
 
-  if (surf->surf_src_) {
+  if (surf->surf_src_ && simulation::current_batch == settings::n_batches) {
     Particle::Bank site;
     site.r = this->r();
     site.u = this->u();

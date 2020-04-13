@@ -380,7 +380,7 @@ void finalize_batch()
   }
 
   // Write out surface source if requested.
-  if (settings::surface_source) {
+  if (settings::surface_source && simulation::current_batch == settings::n_batches) {
     auto filename = settings::path_output + "surface_source.h5";
     write_surf_src_point(filename.c_str());  //!!
   }

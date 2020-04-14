@@ -309,6 +309,8 @@ The following tables show all valid scores:
     |                      |NJOY's HEATR module.                               |
     +----------------------+---------------------------------------------------+
 
+.. _usersguide_tally_normalization:
+
 ------------------------------
 Normalization of Tally Results
 ------------------------------

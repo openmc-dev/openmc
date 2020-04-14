@@ -18,7 +18,7 @@ namespace simulation {
 
 extern std::vector<Particle::Bank> source_bank;
 
-extern std::vector<Particle::Bank> surf_src_bank;
+extern SharedArray<Particle::Bank> surf_src_bank;
 
 extern SharedArray<Particle::Bank> fission_bank;
 
@@ -33,6 +33,8 @@ extern std::vector<int64_t> progeny_per_particle;
 void sort_fission_bank();
 
 void free_memory_bank();
+
+void init_surf_src_bank(int64_t max);
 
 void init_fission_bank(int64_t max);
 

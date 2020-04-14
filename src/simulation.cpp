@@ -287,7 +287,7 @@ void allocate_banks()
   // Allocate fission bank
   init_fission_bank(3*simulation::work_per_rank);
 
-  simulation::surf_src_bank.resize(simulation::work_per_rank);
+  init_surf_src_bank(10*simulation::work_per_rank);  // TODO: capacity enough?
 }
 
 void initialize_batch()

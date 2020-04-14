@@ -423,7 +423,7 @@ Particle::cross_surface()
     site.particle = this->type_;
     // site.parent_id = this->id_;
     // site.progeny_id = this->n_progeny_;
-    simulation::surf_src_bank.push_back(site);
+    int64_t idx = simulation::surf_src_bank.thread_safe_append(site);
   }
 
   // Handle any applicable boundary conditions.

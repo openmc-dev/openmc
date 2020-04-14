@@ -232,9 +232,9 @@ class Nuclide:
             elem.set('half_life', str(self.half_life))
             elem.set('decay_modes', str(len(self.decay_modes)))
             elem.set('decay_energy', str(self.decay_energy))
-            for mode, daughter, br in self.decay_modes:
+            for mode_type, daughter, br in self.decay_modes:
                 mode_elem = ET.SubElement(elem, 'decay')
-                mode_elem.set('type', mode)
+                mode_elem.set('type', mode_type)
                 mode_elem.set('target', daughter or "Nothing")
                 mode_elem.set('branching_ratio', str(br))
 

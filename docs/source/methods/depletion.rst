@@ -204,7 +204,7 @@ complicated by the fact that the branching ratio may depend on the incident
 neutron energy causing capture.
 
 OpenMC does not currently allow energy-dependent capture branching ratios.
-However, the depletion chain file does allows a transmutation reaction to be
+However, the depletion chain file does allow a transmutation reaction to be
 listed multiple times with different branching ratios resulting in different
 products. Spectrum-averaged capture branching ratios have been computed in LWR
 and SFR spectra and are available at https://openmc.org/depletion-chains.
@@ -225,6 +225,9 @@ of FPY:
 3. Compute the average energy at which fission events occur and use an effective
    FPY by linearly interpolating between FPY provided at neighboring energies.
 
+The method can be selected through the ``fission_yield_mode`` argument to the
+:class:`openmc.deplete.Operator` constructor.
+
 Power Normalization
 -------------------
 
@@ -240,3 +243,6 @@ user to choose one of two methods for estimating the heating rate, including:
    other codes that use fixed Q values), or
 2. Using the ``heating`` or ``heating-local`` scores to obtain an nuclide- and
    energy-dependent estimate of the true heating rate.
+
+The method for normalization can be chosen through the ``energy_mode`` argument
+to the :class:`openmc.deplete.Operator` class.

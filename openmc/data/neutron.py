@@ -20,7 +20,7 @@ from .function import Tabulated1D, Sum, ResonancesWithBackground
 from .grid import linearize, thin
 from .njoy import make_ace
 from .product import Product
-from .reaction import Reaction, _get_photon_products_ace
+from .reaction import Reaction, _get_photon_products_ace, FISSION_MTS
 from . import resonance as res
 from . import resonance_covariance as res_cov
 from .urr import ProbabilityTables
@@ -543,7 +543,7 @@ class IncidentNeutron(EqualityMixin):
                 data.reactions[rx.mt] = rx
 
                 # Read total nu data if available
-                if rx.mt in (18, 19, 20, 21, 38) and 'total_nu' in group:
+                if rx.mt in FISSION_MTS and 'total_nu' in group:
                     tgroup = group['total_nu']
                     rx.derived_products.append(Product.from_hdf5(tgroup))
 

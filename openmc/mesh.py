@@ -595,6 +595,8 @@ class RectilinearMesh(MeshBase):
 class UnstructuredMesh(MeshBase):
     """A 3D unstructured mesh
 
+    .. versionadded:: 0.12
+
     Parameters
     ----------
     filename : str

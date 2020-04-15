@@ -45,8 +45,6 @@ class VolumeCalculation:
         Lower-left coordinates of bounding box used to sample points
     upper_right : Iterable of float
         Upper-right coordinates of bounding box used to sample points
-    threshold : float
-        Threshold for the maximum standard deviation of volume in the calculation
     atoms : dict
         Dictionary mapping unique IDs of domains to a mapping of nuclides to
         total number of atoms for each nuclide present in the domain. For
@@ -58,10 +56,16 @@ class VolumeCalculation:
         Dictionary mapping unique IDs of domains to estimated volumes in cm^3.
     threshold : float
         Threshold for the maxmimum standard deviation of volumes.
+
+        .. versionadded:: 0.12
     trigger_type : {'variance', 'std_dev', 'rel_err'}
         Value type used to halt volume calculation
+
+        .. versionadded:: 0.12
     iterations : int
         Number of iterations over samples (for calculations with a trigger).
+
+        .. versionadded:: 0.12
 
     """
     def __init__(self, domains, samples, lower_left=None, upper_right=None):
@@ -224,6 +228,8 @@ class VolumeCalculation:
 
     def set_trigger(self, threshold, trigger_type):
         """Set a trigger on the voulme calculation
+
+        .. versionadded:: 0.12
 
         Parameters
         ----------

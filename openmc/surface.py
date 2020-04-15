@@ -68,6 +68,8 @@ def _future_kwargs_warning_helper(cls, *args, **kwargs):
 def get_rotation_matrix(rotation, order='xyz'):
     r"""Generate a 3x3 rotation matrix from input angles
 
+    .. versionadded:: 0.12
+
     Parameters
     ----------
     rotation : 3-tuple of float
@@ -266,6 +268,8 @@ class Surface(IDManagerMixin, ABC):
     def normalize(self, coeffs=None):
         """Normalize coefficients by first nonzero value
 
+        .. versionadded:: 0.12
+
         Parameters
         ----------
         coeffs : tuple, optional
@@ -346,6 +350,8 @@ class Surface(IDManagerMixin, ABC):
     @abstractmethod
     def rotate(self, rotation, pivot=(0., 0., 0.), order='xyz', inplace=False):
         r"""Rotate surface by angles provided or by applying matrix directly.
+
+        .. versionadded:: 0.12
 
         Parameters
         ----------
@@ -1222,6 +1228,8 @@ class Cylinder(QuadricMixin, Surface):
     @classmethod
     def from_points(cls, p1, p2, r=1., **kwargs):
         """Return a cylinder given points that define the axis and a radius.
+
+        .. versionadded:: 0.12
 
         Parameters
         ----------
@@ -2293,6 +2301,8 @@ class Halfspace(Region):
     def rotate(self, rotation, pivot=(0., 0., 0.), order='xyz', inplace=False,
                memo=None):
         r"""Rotate surface by angles provided or by applying matrix directly.
+
+        .. versionadded:: 0.12
 
         Parameters
         ----------

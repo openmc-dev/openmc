@@ -31,8 +31,9 @@ class DataLibrary(EqualityMixin):
         name : str
             Name of material, e.g. 'Am241'
         data_type : str
-            Name of data type, e.g. 'neutron', 'photon', 'wmp',
-            or 'thermal'
+            Name of data type, e.g. 'neutron', 'photon', 'wmp', or 'thermal'
+
+            .. versionadded:: 0.12
 
         Returns
         -------

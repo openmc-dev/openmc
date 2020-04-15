@@ -113,10 +113,14 @@ class Operator(TransportOperator):
     reduce_chain : bool, optional
         If True, use :meth:`openmc.deplete.Chain.reduce` to reduce the
         depletion chain up to ``reduce_chain_level``. Default is False.
+
+        .. versionadded:: 0.12
     reduce_chain_level : int, optional
         Depth of the search when reducing the depletion chain. Only used
         if ``reduce_chain`` evaluates to true. The default value of
         ``None`` implies no limit on the depth.
+
+        .. versionadded:: 0.12
 
     Attributes
     ----------

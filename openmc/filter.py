@@ -530,6 +530,8 @@ class CellInstanceFilter(Filter):
     instances by default) and allows instances from different cells to be
     specified in a single filter.
 
+    .. versionadded:: 0.12
+
     Parameters
     ----------
     bins : iterable of 2-tuples or numpy.ndarray

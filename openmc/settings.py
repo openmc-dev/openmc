@@ -49,6 +49,8 @@ class Settings:
         Indicate whether to scale the fission photon yield by (EGP + EGD)/EGP
         where EGP is the energy release of prompt photons and EGD is the energy
         release of delayed photons.
+
+        .. versionadded:: 0.12
     electron_treatment : {'led', 'ttb'}
         Whether to deposit all energy from electrons locally ('led') or create
         secondary bremsstrahlung photons ('ttb').
@@ -61,12 +63,18 @@ class Settings:
     event_based : bool
         Indicate whether to use event-based parallelism instead of the default
         history-based parallelism.
+
+        .. versionadded:: 0.12
     generations_per_batch : int
         Number of generations per batch
     max_lost_particles : int
         Maximum number of lost particles
+
+        .. versionadded:: 0.12
     rel_max_lost_particles : int
         Maximum number of lost particles, relative to the total number of particles
+
+        .. versionadded:: 0.12
     inactive : int
         Number of inactive batches
     keff_trigger : dict
@@ -80,9 +88,13 @@ class Settings:
     material_cell_offsets : bool
         Generate an "offset table" for material cells by default. These tables
         are necessary when a particular instance of a cell needs to be tallied.
+
+        .. versionadded:: 0.12
     max_particles_in_flight : int
         Number of neutrons to run concurrently when using event-based
         parallelism.
+
+        .. versionadded:: 0.12
     max_order : None or int
         Maximum scattering order to apply globally when in multi-group mode.
     no_reduce : bool

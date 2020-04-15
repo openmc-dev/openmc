@@ -316,7 +316,7 @@ class Chain:
                         nuclide.reactions.append(ReactionTuple(
                             name, daughter, q_value, 1.0))
 
-                if any(mt in reactions_available for mt in [18, 19, 20, 21, 38]):
+                if any(mt in reactions_available for mt in openmc.data.FISSION_MTS):
                     if parent in fpy_data:
                         q_value = reactions[parent][18]
                         nuclide.reactions.append(

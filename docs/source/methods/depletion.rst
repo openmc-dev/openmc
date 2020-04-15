@@ -5,9 +5,9 @@ Depletion
 =========
 
 When materials in a system are subject to irradiation over a long period of
-time, nuclides within the material will transmute due to nuclear reactions,
-producing other nuclides which may be radioactive. The time-dependent process by
-which nuclides transmute and decay is known as *depletion* or *burnup*. To
+time, nuclides within the material will transmute due to nuclear reactions as
+well as spontaneous radioactive decay. The time-dependent process by which
+nuclides transmute under irradiation is known as *depletion* or *burnup*. To
 accurately analyze nuclear systems, it is often necessary to predict how the
 composition of materials will change since this change results in a
 corresponding change in the solution of the transport equation. The equation

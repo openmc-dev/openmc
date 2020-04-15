@@ -378,6 +378,8 @@ class SphericalIndependent(Spatial):
     :math:`\theta`, and :math:`\phi` components are sampled independently from
     one another and centered on the coordinates (x0, y0, z0).
 
+    .. versionadded: 0.12
+
     Parameters
     ----------
     r : openmc.stats.Univariate
@@ -497,6 +499,8 @@ class CylindricalIndependent(Spatial):
     :math:`\phi`, and :math:`z` components are sampled independently from
     one another and in a reference frame whose origin is specified by the
     coordinates (x0, y0, z0).
+
+    .. versionadded:: 0.12
 
     Parameters
     ----------

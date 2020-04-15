@@ -22,6 +22,8 @@ class Source:
         Source file from which sites should be sampled
     library : str
         Path to a custom source library
+
+        .. versionadded:: 0.12
     strength : float
         Strength of the source
     particle : {'neutron', 'photon'}

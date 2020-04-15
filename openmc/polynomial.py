@@ -42,6 +42,8 @@ class ZernikeRadial(Polynomial):
     The radial only Zernike polynomials are defined as in
     :class:`ZernikeRadialFilter`.
 
+    .. versionadded:: 0.12
+
     Parameters
     ----------
     coef : Iterable of float
@@ -84,6 +86,8 @@ class Zernike(Polynomial):
     r"""Create Zernike polynomials given coefficients and domain.
 
     The azimuthal Zernike polynomials are defined as in :class:`ZernikeFilter`.
+
+    .. versionadded:: 0.12
 
     Parameters
     ----------

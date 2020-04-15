@@ -113,6 +113,19 @@ Boolean operators ``&`` (intersection), ``|`` (union), and ``~`` (complement)::
   >>> type(northern_hemisphere)
   <class 'openmc.region.Intersection'>
 
+The ``&`` operator can be thought of as a logical AND, the ``|`` operator as a
+logical OR, and the ``~`` operator as a logical NOT. Thus, if you wanted to
+create a region that consists of the space for which :math:`-4 < z < -3` or
+:math:`3 < z < 4`, a union could be used::
+
+  >>> region_bottom = +openmc.ZPlane(-4) & -openmc.ZPlane(-3)
+  >>> region_top = +openmc.ZPlane(3) & -openmc.ZPlane(4)
+  >>> combined_region = region_bottom | region_top
+
+Half-spaces and the objects resulting from taking the intersection, union,
+and/or complement or half-spaces are all considered *regions* that can be
+assigned to :ref:`cells <usersguide_cells>`.
+
 For many regions, a bounding-box can be determined automatically::
 
   >>> northern_hemisphere.bounding_box

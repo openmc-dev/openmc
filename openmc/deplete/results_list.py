@@ -44,7 +44,6 @@ class ResultsList(list):
         """Get number of nuclides over time from a single material
 
         .. note::
-
             Initial values for some isotopes that do not appear in
             initial concentrations may be non-zero, depending on the
             value of :class:`openmc.deplete.Operator` ``dilute_initial``.
@@ -59,9 +58,13 @@ class ResultsList(list):
             Nuclide name to evaluate
         nuc_units : {"atoms", "atom/b-cm", "atom/cm3"}, optional
             Units for the returned concentration. Default is ``"atoms"``
+
+            .. versionadded:: 0.12
         time_units : {"s", "min", "h", "d"}, optional
             Units for the returned time array. Default is ``"s"`` to
             return the value in seconds.
+
+            .. versionadded:: 0.12
 
         Returns
         -------

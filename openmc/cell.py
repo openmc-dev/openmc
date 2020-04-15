@@ -91,6 +91,8 @@ class Cell(IDManagerMixin):
         present in the cell, or in all of its instances for a 'distribmat'
         fill. For example, {'U235': 1.0e22, 'U238': 5.0e22, ...}.
 
+        .. versionadded:: 0.12
+
     """
 
     next_id = 1
@@ -654,7 +656,7 @@ class Cell(IDManagerMixin):
 
         Returns
         -------
-        Cell
+        openmc.Cell
             Cell instance
 
         """

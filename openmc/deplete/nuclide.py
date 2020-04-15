@@ -470,6 +470,8 @@ class FissionYieldDistribution(Mapping):
     def restrict_products(self, possible_products):
         """Return a new distribution with select products
 
+        .. versionadded:: 0.12
+
         Parameters
         ----------
         possible_products : iterable of str

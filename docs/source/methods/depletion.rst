@@ -132,9 +132,10 @@ more matrix exponentials. OpenMC uses the Chebyshev rational approximation
 method (CRAM), which was introduced in a series of papers by Pusa (`1
 <https://doi.org/10.13182/NSE09-14>`_, `2
 <https://doi.org/10.13182/NSE10-81>`_), to evaluate matrix exponentials. In
-particular, OpenMC utilizes an `incomplete partial fraction <cram_ipf>`_ (IPF)
-form of CRAM that provides a good balance of numerical stability and efficiency.
-In this representation the matrix exponential is approximated as
+particular, OpenMC utilizes an `incomplete partial fraction
+<https://doi.org/10.13182/NSE15-26>`_ (IPF) form of CRAM that provides a good
+balance of numerical stability and efficiency. In this representation the matrix
+exponential is approximated as
 
 .. math::
 
@@ -147,8 +148,8 @@ where :math:`k` is the order of the approximation and :math:`\alpha_0`,
 have been tabulated for orders up to :math:`k=48`. Rather than computing the
 full approximation and then multiplying it by a vector, the following algorithm
 is used to incrementally apply the terms within the product (note that the
-original description of the algorithm presented by `Pusa <cram_ipf>`_ contains a
-typo):
+original description of the algorithm presented by `Pusa
+<https://doi.org/10.13182/NSE15-26>`_ contains a typo):
 
 1. :math:`\mathbf{n} \gets \mathbf{n_0}`
 2. For :math:`\ell = 1, 2, \dots, k/2`
@@ -161,8 +162,6 @@ typo):
 The :math:`k`\ th order approximation for CRAM requires solving :math:`k/2`
 sparse linear systems. OpenMC relies on functionality from
 :mod:`scipy.sparse.linalg` for solving the linear systems.
-
-.. _cram_ipf: https://doi.org/10.13182/NSE15-26
 
 -------------------
 Data Considerations

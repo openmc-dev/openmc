@@ -348,13 +348,15 @@ factor that can be applied to other tallies:
     f = \frac{P}{H'} = \frac{[\text{J}/\text{s}]}{[\text{J}/\text{source}]} =
     \left [ \frac{\text{source}}{\text{s}} \right ].
 
-With this normalization factor, we can then get the flux in typical units:
+Multiplying by the normalization factor and dividing by volume, we can then get
+the flux in typical units:
 
 .. math::
 
-    \phi' = \frac{\phi}{fV} = \frac{[\text{particle-cm}/\text{source}]}
-    {[\text{source}/\text{s}][\text{cm}^3]} = \left [
-    \frac{\text{particle}}{\text{cm}^2\cdot\text{s}} \right ]
+    \phi' = \frac{f\phi}{V} =
+    \frac{[\text{source}/\text{s}][\text{particle-cm}/\text{source}]}
+    {[\text{cm}^3]} = \left [\frac{\text{particle}}{\text{cm}^2\cdot\text{s}}
+    \right ]
 
 There are several slight variations on this procedure:
 

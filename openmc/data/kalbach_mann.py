@@ -245,6 +245,7 @@ class KalbachMann(AngleEnergy):
                 eout_i = Mixture([p_discrete, 1. - p_discrete],
                                  [eout_discrete, eout_continuous])
 
+            # Precompound factor and slope are on rows 3 and 4, respectively
             km_r = Tabulated1D(data[0, j:j+n], data[3, j:j+n])
             km_a = Tabulated1D(data[0, j:j+n], data[4, j:j+n])
 

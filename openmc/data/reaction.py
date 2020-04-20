@@ -64,6 +64,8 @@ REACTION_NAME.update({i: '(n,3He{})'.format(i - 750) for i in range(750, 799)})
 REACTION_NAME.update({i: '(n,a{})'.format(i - 800) for i in range(800, 849)})
 REACTION_NAME.update({i: '(n,2n{})'.format(i - 875) for i in range(875, 891)})
 
+FISSION_MTS = (18, 19, 20, 21, 38)
+
 
 def _get_products(ev, mt):
     """Generate products from MF=6 in an ENDF evaluation
@@ -492,7 +494,7 @@ def _get_activation_products(ev, rx):
 
     # Determine if file 9/10 are present
     present = {9: False, 10: False}
-    for i in range(n_states):
+    for _ in range(n_states):
         if decay_sublib:
             items = get_cont_record(file_obj)
         else:
@@ -1021,7 +1023,7 @@ class Reaction(EqualityMixin):
                     neutron.yield_ = yield_
                     rx.products.append(neutron)
                 else:
-                    assert mt in (18, 19, 20, 21, 38)
+                    assert mt in FISSION_MTS
                     rx.products, rx.derived_products = _get_fission_products_ace(ace)
 
                     for p in rx.products:
@@ -1126,13 +1128,13 @@ class Reaction(EqualityMixin):
 
         # Get fission product yields (nu) as well as delayed neutron energy
         # distributions
-        if mt in (18, 19, 20, 21, 38):
+        if mt in FISSION_MTS:
             rx.products, rx.derived_products = _get_fission_products_endf(ev)
 
         if (6, mt) in ev.section:
             # Product angle-energy distribution
             for product in _get_products(ev, mt):
-                if mt in (18, 19, 20, 21, 38) and product.particle == 'neutron':
+                if mt in FISSION_MTS and product.particle == 'neutron':
                     rx.products[0].applicability = product.applicability
                     rx.products[0].distribution = product.distribution
                 else:
@@ -1177,7 +1179,7 @@ class Reaction(EqualityMixin):
                 for dist in neutron.distribution:
                     dist.angle = AngleDistribution.from_endf(ev, mt)
 
-            if mt in (18, 19, 20, 21, 38) and (5, mt) in ev.section:
+            if mt in FISSION_MTS and (5, mt) in ev.section:
                 # For fission reactions,
                 rx.products[0].applicability = neutron.applicability
                 rx.products[0].distribution = neutron.distribution

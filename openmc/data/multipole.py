@@ -5,7 +5,8 @@ import h5py
 import numpy as np
 
 import openmc.checkvalue as cv
-from openmc.mixin import EqualityMixin
+from ..exceptions import DataError
+from ..mixin import EqualityMixin
 from . import WMP_VERSION, WMP_VERSION_MAJOR
 from .data import K_BOLTZMANN
 
@@ -332,19 +333,21 @@ class WindowedMultipole(EqualityMixin):
 
         if isinstance(group_or_filename, h5py.Group):
             group = group_or_filename
+            need_to_close = False
         else:
             h5file = h5py.File(str(group_or_filename), 'r')
+            need_to_close = True
 
             # Make sure version matches
             if 'version' in h5file.attrs:
                 major, minor = h5file.attrs['version']
                 if major != WMP_VERSION_MAJOR:
-                    raise IOError(
+                    raise DataError(
                         'WMP data format uses version {}. {} whereas your '
                         'installation of the OpenMC Python API expects version '
                         '{}.x.'.format(major, minor, WMP_VERSION_MAJOR))
             else:
-                raise IOError(
+                raise DataError(
                     'WMP data does not indicate a version. Your installation of '
                     'the OpenMC Python API expects version {}.x data.'
                     .format(WMP_VERSION_MAJOR))
@@ -381,6 +384,10 @@ class WindowedMultipole(EqualityMixin):
         if out.fit_order < 2:
             raise ValueError("Windowed multipole is only supported for "
                              "curvefits with 3 or more terms.")
+
+        # If HDF5 file was opened here, make sure it gets closed
+        if need_to_close:
+            h5file.close()
 
         return out
 
@@ -505,7 +512,7 @@ class WindowedMultipole(EqualityMixin):
         ----------
         path : str
             Path to write HDF5 file to
-        mode : {'r', r+', 'w', 'x', 'a'}
+        mode : {'r+', 'w', 'x', 'a'}
             Mode that is used to open the HDF5 file. This is the second argument
             to the :class:`h5py.File` constructor.
         libver : {'earliest', 'latest'}

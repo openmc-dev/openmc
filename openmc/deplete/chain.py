@@ -95,9 +95,11 @@ def replace_missing(product, decay_data):
     # Iterate until we find an existing nuclide
     while product not in decay_data:
         if Z > 98:
+            # Assume alpha decay occurs for Z=99 and above
             Z -= 2
             A -= 4
         else:
+            # Otherwise assume a beta- or beta+
             if beta_minus:
                 Z += 1
             else:
@@ -314,7 +316,7 @@ class Chain:
                         nuclide.reactions.append(ReactionTuple(
                             name, daughter, q_value, 1.0))
 
-                if any(mt in reactions_available for mt in [18, 19, 20, 21, 38]):
+                if any(mt in reactions_available for mt in openmc.data.FISSION_MTS):
                     if parent in fpy_data:
                         q_value = reactions[parent][18]
                         nuclide.reactions.append(
@@ -334,10 +336,10 @@ class Chain:
                     yield_energies = [0.0]
 
                 yield_data = {}
-                for E, table in zip(yield_energies, fpy.independent):
+                for E, yield_table in zip(yield_energies, fpy.independent):
                     yield_replace = 0.0
                     yields = defaultdict(float)
-                    for product, y in table.items():
+                    for product, y in yield_table.items():
                         # Handle fission products that have no decay data
                         if product not in decay_data:
                             daughter = replace_missing(product, decay_data)
@@ -735,26 +737,27 @@ class Chain:
             rxn_Q = parent.reactions[rxn_index[0]].Q
 
             # Remove existing reactions
-
             for ix in reversed(rxn_index):
                 parent.reactions.pop(ix)
 
+            # Add new reactions
             all_meta = True
-
-            for tgt, br in new_ratios.items():
-                all_meta = all_meta and ("_m" in tgt)
+            for target, br in new_ratios.items():
+                all_meta = all_meta and ("_m" in target)
                 parent.reactions.append(ReactionTuple(
-                    reaction, tgt, rxn_Q, br))
+                    reaction, target, rxn_Q, br))
 
+            # If branching ratios don't add to unity, add reaction to ground
+            # with remainder of branching ratio
             if all_meta and sums[parent_name] != 1.0:
                 ground_br = 1.0 - sums[parent_name]
-                ground_tgt = grounds.get(parent_name)
-                if ground_tgt is None:
+                ground_target = grounds.get(parent_name)
+                if ground_target is None:
                     pz, pa, pm = zam(parent_name)
-                    ground_tgt = gnd_name(pz, pa + 1, 0)
-                new_ratios[ground_tgt] = ground_br
+                    ground_target = gnd_name(pz, pa + 1, 0)
+                new_ratios[ground_target] = ground_br
                 parent.reactions.append(ReactionTuple(
-                    reaction, ground_tgt, rxn_Q, ground_br))
+                    reaction, ground_target, rxn_Q, ground_br))
 
     @property
     def fission_yields(self):

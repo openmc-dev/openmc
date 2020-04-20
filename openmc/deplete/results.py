@@ -12,7 +12,7 @@ import numpy as np
 from . import comm, have_mpi, MPI
 from .reaction_rates import ReactionRates
 
-_VERSION_RESULTS = (1, 0)
+VERSION_RESULTS = (1, 0)
 
 
 __all__ = ["Results"]
@@ -174,8 +174,8 @@ class Results:
         """
         new = Results()
         new.volume = {lm: self.volume[lm] for lm in local_materials}
-        new.mat_to_ind = dict(zip(
-            local_materials, range(len(local_materials))))
+        new.mat_to_ind = {mat: idx for (idx, mat) in enumerate(local_materials)}
+
         # Direct transfer
         direct_attrs = ("time", "k", "power", "nuc_to_ind",
                         "mat_to_hdf5_ind", "proc_time")
@@ -228,7 +228,7 @@ class Results:
 
         # Store concentration mat and nuclide dictionaries (along with volumes)
 
-        handle.attrs['version'] = np.array(_VERSION_RESULTS)
+        handle.attrs['version'] = np.array(VERSION_RESULTS)
         handle.attrs['filetype'] = np.string_('depletion results')
 
         mat_list = sorted(self.mat_to_hdf5_ind, key=int)

@@ -9,9 +9,10 @@
 
 #include "openmc/openmp_interface.h"
 
-#define NEIGHBOR_SIZE 15
+//#define NEIGHBOR_SIZE 15
+#define NEIGHBOR_SIZE 100
 
-namespace openmc {
+namespace openmc{
 
 //==============================================================================
 //! A threadsafe, dynamic container for listing neighboring cells.
@@ -65,7 +66,7 @@ public:
     int64_t idx;
     #pragma omp atomic read
     idx = length_;
-    assert(idx < NEIGHBOR_SIZE);
+    assert(idx <= NEIGHBOR_SIZE);
     return idx;
   }
   

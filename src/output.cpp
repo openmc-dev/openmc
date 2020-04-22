@@ -191,6 +191,7 @@ extern "C" void print_particle(Particle* p)
 
   // Display miscellaneous info.
   if (p->surface_ != 0) {
+    // Surfaces identifiers are >= 1, but indices are >= 0 so we need -1
     const Surface& surf {*model::surfaces[std::abs(p->surface_)-1]};
     fmt::print("  Surface = {}\n", (p->surface_ > 0) ? surf.id_ : -surf.id_);
   }
@@ -280,7 +281,7 @@ print_overlap_check()
 
     std::vector<int32_t> sparse_cell_ids;
     for (int i = 0; i < model::cells.size(); i++) {
-      fmt::print(" {:8}{:17}\n", model::cells[i]->id_, model::overlap_check_count[i]);
+      fmt::print(" {:8} {:17}\n", model::cells[i]->id_, model::overlap_check_count[i]);
       if (model::overlap_check_count[i] < 10) {
         sparse_cell_ids.push_back(model::cells[i]->id_);
       }
@@ -352,43 +353,19 @@ void print_columns()
 
 void print_generation()
 {
-  // Determine overall generation and number of active generations
-  int i = overall_generation() - 1;
+  // Determine overall generation index and number of active generations
+  int idx = overall_generation() - 1;
   int n = simulation::current_batch > settings::n_inactive ?
     settings::gen_per_batch*simulation::n_realizations + simulation::current_gen : 0;
 
-  // write out information batch and option independent output
+  // write out batch/generation and generation k-effective
   auto batch_and_gen = std::to_string(simulation::current_batch) + "/" +
     std::to_string(simulation::current_gen);
-  fmt::print("  {:>9}   {:8.5f}", batch_and_gen, simulation::k_generation[i]);
+  fmt::print("  {:>9}   {:8.5f}", batch_and_gen, simulation::k_generation[idx]);
 
   // write out entropy info
   if (settings::entropy_on) {
-    fmt::print("   {:8.5f}", simulation::entropy[i]);
-  }
-
-  if (n > 1) {
-    fmt::print("   {:8.5f} +/-{:8.5f}", simulation::keff, simulation::keff_std);
-  }
-  std::cout << std::endl;
-}
-
-//==============================================================================
-
-void print_batch_keff()
-{
-  // Determine overall generation and number of active generations
-  int i = simulation::current_batch*settings::gen_per_batch - 1;
-  int n = simulation::n_realizations*settings::gen_per_batch;
-
-  // write out information batch and option independent output
-  auto batch_and_gen = std::to_string(simulation::current_batch) + "/" +
-    std::to_string(settings::gen_per_batch);
-  fmt::print("  {:>9}   {:8.5f}", batch_and_gen, simulation::k_generation[i]);
-
-  // write out entropy info
-  if (settings::entropy_on) {
-    fmt::print("   {:8.5f}", simulation::entropy[i]);
+    fmt::print("   {:8.5f}", simulation::entropy[idx]);
   }
 
   if (n > 1) {

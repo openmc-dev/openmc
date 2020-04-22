@@ -46,10 +46,6 @@ void print_columns();
 //! Display information about a generation of neutrons
 void print_generation();
 
-//! \brief Display last batch's tallied value of the neutron multiplication
-//! factor as well as the average value if we're in active batches
-void print_batch_keff();
-
 //! Display time elapsed for various stages of a run
 void print_runtime();
 

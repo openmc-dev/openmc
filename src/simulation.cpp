@@ -141,7 +141,8 @@ int openmc_simulation_init()
   for( int i = 0; i < model::cells.size(); i++ )
   {
     Cell& c = *model::cells[i].get();
-    int material = c.material_.size();
+    //int material = c.material_.size();
+    int material = c.material_length_;
     int region = c.region_.size();
     int sqrtkT =   c.sqrtkT_.size();
     int rpn = c.rpn_.size();
@@ -194,7 +195,8 @@ int openmc_simulation_finalize()
   for( int i = 0; i < model::cells.size(); i++ )
   {
     Cell& c = *model::cells[i].get();
-    int material = c.material_.size();
+    //int material = c.material_.size();
+    int material = c.material_length_;
     int region = c.region_.size();
     int sqrtkT =   c.sqrtkT_.size();
     int rpn = c.rpn_.size();

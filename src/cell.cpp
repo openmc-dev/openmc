@@ -319,12 +319,16 @@ CSGCell::CSGCell(pugi::xml_node cell_node)
     std::vector<std::string> mats
          {get_node_array<std::string>(cell_node, "material", true)};
     if (mats.size() > 0) {
-      material_.reserve(mats.size());
+      //material_.reserve(mats.size());
       for (std::string mat : mats) {
         if (mat.compare("void") == 0) {
-          material_.push_back(MATERIAL_VOID);
+          //material_.push_back(MATERIAL_VOID);
+          assert(material_length_ < MATERIAL_SIZE );
+          material_[material_length_++] = MATERIAL_VOID;
         } else {
-          material_.push_back(std::stoi(mat));
+          //material_.push_back(std::stoi(mat));
+          assert(material_length_ < MATERIAL_SIZE );
+          material_[material_length_++] = std::stoi(mat);
         }
       }
     } else {
@@ -339,7 +343,8 @@ CSGCell::CSGCell(pugi::xml_node cell_node)
     sqrtkT_.shrink_to_fit();
 
     // Make sure this is a material-filled cell.
-    if (material_.size() == 0) {
+    //if (material_.size() == 0) {
+    if (material_length_ == 0) {
       fatal_error(fmt::format(
         "Cell {} was specified with a temperature but no material. Temperature"
         "specification is only valid for cells filled with a material.", id_));
@@ -547,7 +552,9 @@ CSGCell::to_hdf5(hid_t cell_group) const
   if (type_ == Fill::MATERIAL) {
     write_dataset(group, "fill_type", "material");
     std::vector<int32_t> mat_ids;
-    for (auto i_mat : material_) {
+    //for (auto i_mat : material_) {
+    for (auto i = 0; i < material_length_; i++) {
+      auto i_mat = material_[i];
       if (i_mat != MATERIAL_VOID) {
         mat_ids.push_back(model::materials[i_mat]->id_);
       } else {
@@ -1026,8 +1033,10 @@ openmc_cell_get_fill(int32_t index, int* type, int32_t** indices, int32_t* n)
     Cell& c {*model::cells[index]};
     *type = static_cast<int>(c.type_);
     if (c.type_ == Fill::MATERIAL) {
-      *indices = c.material_.data();
-      *n = c.material_.size();
+      //*indices = c.material_.data();
+      *indices = c.material_;
+      //*n = c.material_.size();
+      *n = c.material_length_;
     } else {
       *indices = &c.fill_;
       *n = 1;
@@ -1048,19 +1057,24 @@ openmc_cell_set_fill(int32_t index, int type, int32_t n,
     Cell& c {*model::cells[index]};
     if (filltype == Fill::MATERIAL) {
       c.type_ = Fill::MATERIAL;
-      c.material_.clear();
+      //c.material_.clear();
+      c.material_length_ = 0;
       for (int i = 0; i < n; i++) {
         int i_mat = indices[i];
         if (i_mat == MATERIAL_VOID) {
-          c.material_.push_back(MATERIAL_VOID);
+          //c.material_.push_back(MATERIAL_VOID);
+          assert(c.material_length_ < MATERIAL_SIZE );
+          c.material_[c.material_length_++] = MATERIAL_VOID;
         } else if (i_mat >= 0 && i_mat < model::materials.size()) {
-          c.material_.push_back(i_mat);
+          //c.material_.push_back(i_mat);
+          assert(c.material_length_ < MATERIAL_SIZE );
+          c.material_[c.material_length_++] = i_mat;
         } else {
           set_errmsg("Index in materials array is out of bounds.");
           return OPENMC_E_OUT_OF_BOUNDS;
         }
       }
-      c.material_.shrink_to_fit();
+      //c.material_.shrink_to_fit();
     } else if (filltype == Fill::UNIVERSE) {
       c.type_ = Fill::UNIVERSE;
     } else {

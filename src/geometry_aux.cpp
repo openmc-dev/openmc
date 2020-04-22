@@ -100,7 +100,9 @@ adjust_indices()
       }
     } else {
       c->type_ = Fill::MATERIAL;
-      for (auto& mat_id : c->material_) {
+      //for (auto& mat_id : c->material_) {
+      for (auto i = 0; i < c->material_length_; i++) {
+        auto& mat_id = c->material_[i];
         if (mat_id != MATERIAL_VOID) {
           auto search = model::material_map.find(mat_id);
           if (search == model::material_map.end()) {
@@ -173,11 +175,15 @@ assign_temperatures()
 {
   for (auto& c : model::cells) {
     // Ignore non-material cells and cells with defined temperature.
-    if (c->material_.size() == 0) continue;
+    //if (c->material_.size() == 0) continue;
+    if (c->material_length_ == 0) continue;
     if (c->sqrtkT_.size() > 0) continue;
 
-    c->sqrtkT_.reserve(c->material_.size());
-    for (auto i_mat : c->material_) {
+    //c->sqrtkT_.reserve(c->material_.size());
+    c->sqrtkT_.reserve(c->material_length_);
+    //for (auto i_mat : c->material_) {
+    for (auto i = 0; i < c->material_length_; i++) {
+      auto i_mat = c->material_[i];
       if (i_mat == MATERIAL_VOID) {
         // Set void region to 0K.
         c->sqrtkT_.push_back(0);
@@ -207,7 +213,8 @@ get_temperatures(std::vector<std::vector<double>>& nuc_temps,
     // Skip non-material cells.
     if (cell->fill_ != C_NONE) continue;
 
-    for (int j = 0; j < cell->material_.size(); ++j) {
+    //for (int j = 0; j < cell->material_.size(); ++j) {
+    for (int j = 0; j < cell->material_length_; ++j) {
       // Skip void materials
       int i_material = cell->material_[j];
       if (i_material == MATERIAL_VOID) continue;
@@ -217,7 +224,8 @@ get_temperatures(std::vector<std::vector<double>>& nuc_temps,
       if (cell->sqrtkT_.size() == 1) {
         double sqrtkT = cell->sqrtkT_[0];
         cell_temps.push_back(sqrtkT*sqrtkT / K_BOLTZMANN);
-      } else if (cell->sqrtkT_.size() == cell->material_.size()) {
+      //} else if (cell->sqrtkT_.size() == cell->material_.size()) {
+      } else if (cell->sqrtkT_.size() == cell->material_length_) {
         double sqrtkT = cell->sqrtkT_[j];
         cell_temps.push_back(sqrtkT*sqrtkT / K_BOLTZMANN);
       } else {
@@ -339,12 +347,15 @@ prepare_distribcell()
   for (int i = 0; i < model::cells.size(); i++) {
     Cell& c {*model::cells[i]};
 
-    if (c.material_.size() > 1) {
-      if (c.material_.size() != c.n_instances_) {
+    //if (c.material_.size() > 1) {
+    if (c.material_length_ > 1) {
+      //if (c.material_.size() != c.n_instances_) {
+      if (c.material_length_ != c.n_instances_) {
         fatal_error(fmt::format(
           "Cell {} was specified with {} materials but has {} distributed "
           "instances. The number of materials must equal one or the number "
-          "of instances.", c.id_, c.material_.size(), c.n_instances_
+          //"of instances.", c.id_, c.material_.size(), c.n_instances_
+          "of instances.", c.id_, c.material_length_, c.n_instances_
         ));
       }
     }

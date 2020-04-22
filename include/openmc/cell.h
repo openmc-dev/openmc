@@ -179,7 +179,9 @@ public:
   //! \brief Material(s) within this cell.
   //!
   //! May be multiple materials for distribcell.
-  std::vector<int32_t> material_;
+  //std::vector<int32_t> material_;
+  int32_t material_[MATERIAL_SIZE];
+  int64_t material_length_ {0};
 
   //! \brief Temperature(s) within this cell.
   //!

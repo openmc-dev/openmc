@@ -158,7 +158,8 @@ std::vector<std::vector<double>> MgxsInterface::get_mat_kTs()
     // Skip non-material cells
     if (cell->fill_ != C_NONE) continue;
 
-    for (int j = 0; j < cell->material_.size(); ++j) {
+    //for (int j = 0; j < cell->material_.size(); ++j) {
+    for (int j = 0; j < cell->material_length_; ++j) {
       // Skip void materials
       int i_material = cell->material_[j];
       if (i_material == MATERIAL_VOID) continue;

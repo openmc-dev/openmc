@@ -106,7 +106,9 @@ void legacy_assign_material(const std::string& mat_string, DAGCell* c)
       // assign the material with that name
       if (!mat_found_by_name) {
         mat_found_by_name = true;
-        c->material_.push_back(m->id_);
+        //c->material_.push_back(m->id_);
+        assert(c->material_length_ < MATERIAL_SIZE );
+        c->material_[c->material_length_++] = m->id_;
       // report error if more than one material is found
       } else {
         fatal_error(fmt::format(
@@ -121,7 +123,9 @@ void legacy_assign_material(const std::string& mat_string, DAGCell* c)
   if (!mat_found_by_name) {
     try {
       auto id = std::stoi(mat_string);
-      c->material_.emplace_back(id);
+      //c->material_.emplace_back(id);
+      assert(c->material_length_ < MATERIAL_SIZE );
+      c->material_[c->material_length_++] = id;
     } catch (const std::invalid_argument&) {
       fatal_error(fmt::format(
         "No material {} found for volume (cell) {}", mat_string, c->id_));
@@ -223,7 +227,9 @@ void load_dagmc_geometry()
           std::string comp_mat = DMD.volume_material_property_data_eh[vol_handle];
           // Note: material numbers are set by UWUW
           int mat_number = uwuw.material_library[comp_mat].metadata["mat_number"].asInt();
-          c->material_.push_back(mat_number);
+          //c->material_.push_back(mat_number);
+          assert(c->material_length_ < MATERIAL_SIZE );
+          c->material_[c->material_length_++] = mat_number;
         } else {
           std::string mat_value;
           rval= model::DAG->prop_value(vol_handle, "mat", mat_value);
@@ -237,7 +243,9 @@ void load_dagmc_geometry()
         }
       } else {
         // if no material is found, the implicit complement is void
-        c->material_.push_back(MATERIAL_VOID);
+        //c->material_.push_back(MATERIAL_VOID);
+        assert(c->material_length_ < MATERIAL_SIZE );
+        c->material_[c->material_length_++] = MATERIAL_VOID;
       }
       continue;
     }
@@ -260,7 +268,9 @@ void load_dagmc_geometry()
 
     // material void checks
     if (cmp_str == "void" || cmp_str == "vacuum" || cmp_str == "graveyard") {
-      c->material_.push_back(MATERIAL_VOID);
+      //c->material_.push_back(MATERIAL_VOID);
+      assert(c->material_length_ < MATERIAL_SIZE );
+      c->material_[c->material_length_++] = MATERIAL_VOID;
     } else {
       if (using_uwuw) {
         // lookup material in uwuw if the were present
@@ -268,7 +278,9 @@ void load_dagmc_geometry()
         if (uwuw.material_library.count(uwuw_mat) != 0) {
           // Note: material numbers are set by UWUW
           int mat_number = uwuw.material_library[uwuw_mat].metadata["mat_number"].asInt();
-          c->material_.push_back(mat_number);
+          //c->material_.push_back(mat_number);
+          assert(c->material_length_ < MATERIAL_SIZE );
+          c->material_[c->material_length_++] = mat_number;
         } else {
           fatal_error(fmt::format("Material with value {} not found in the "
             "UWUW material library", mat_value));

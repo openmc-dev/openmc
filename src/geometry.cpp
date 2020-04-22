@@ -77,9 +77,6 @@ find_cell_inner(Particle* p, const NeighborList* neighbor_list)
     for (int64_t i = 0; i < neighbor_list->get_length(); i++) {
       //i_cell = *it;
       i_cell = neighbor_list->list_[i];
-      if( i_cell < 0 || i_cell >= model::cells.size() )
-        std::cout << "i_cell = " << i_cell << std::endl;
-      assert( i_cell >= 0 && i_cell < model::cells.size() );
 
       // Make sure the search cell is in the same universe.
       int i_universe = p->coord_[p->n_coord_-1].universe;
@@ -157,7 +154,8 @@ find_cell_inner(Particle* p, const NeighborList* neighbor_list)
 
       // Set the material and temperature.
       p->material_last_ = p->material_;
-      if (c.material_.size() > 1) {
+      //if (c.material_.size() > 1) {
+      if (c.material_length_ > 1) {
         p->material_ = c.material_[p->cell_instance_];
       } else {
         p->material_ = c.material_[0];
@@ -282,14 +280,7 @@ find_cell(Particle* p, bool use_neighbor_lists)
     // cells in this universe, and update the neighbor list if we find a new
     // neighboring cell.
     found = find_cell_inner(p, nullptr);
-    if (found)
-    {
-      int32_t new_elem = p->coord_[coord_lvl].cell;
-      if( new_elem < 0 || new_elem >= model::cells.size() )
-        std::cout << "new_elem = " << new_elem << std::endl;
-      assert( new_elem >= 0 && new_elem < model::cells.size() );
-      c.neighbors_.push_back(p->coord_[coord_lvl].cell);
-    }
+    if (found) c.neighbors_.push_back(p->coord_[coord_lvl].cell);
     return found;
 
   } else {

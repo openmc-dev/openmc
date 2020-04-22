@@ -345,11 +345,6 @@ void finalize_batch()
     simulation::n_realizations = 0;
   }
 
-  if (settings::run_mode == RunMode::EIGENVALUE) {
-    // Write batch output
-    if (mpi::master && settings::verbosity >= 7) print_batch_keff();
-  }
-
   // Check_triggers
   if (mpi::master) check_triggers();
 #ifdef OPENMC_MPI
@@ -442,9 +437,7 @@ void finalize_generation()
 
     // Write generation output
     if (mpi::master && settings::verbosity >= 7) {
-      if (simulation::current_gen != settings::gen_per_batch) {
-        print_generation();
-      }
+      print_generation();
     }
 
   }

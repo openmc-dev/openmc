@@ -12,6 +12,13 @@ from ._xml import get_text
 from .mixin import IDManagerMixin
 from .surface import _BOUNDARY_TYPES
 
+try:
+    import vtk
+    from vtk.util import numpy_support as vtk_npsup
+    _VTK = True
+except ImportError:
+    _VTK = False
+
 
 class MeshBase(IDManagerMixin, ABC):
     """A mesh that partitions geometry for tallying purposes.
@@ -655,6 +662,13 @@ class UnstructuredMesh(MeshBase):
     def centroids(self):
         return self._centroids
 
+    @property
+    def n_elements(self):
+        if not self.centroids:
+            raise RuntimeError("No information about this mesh has "
+                               "been loaded from a statepoint file.")
+        return len(self._centroids)
+
     @centroids.setter
     def centroids(self, centroids):
         cv.check_type("Unstructured mesh centroids", centroids,
@@ -664,6 +678,80 @@ class UnstructuredMesh(MeshBase):
     def __repr__(self):
         string = super().__repr__()
         return string + '{: <16}=\t{}\n'.format('\tFilename', self.filename)
+
+    def data_to_vtk(self, filename, datasets, volume_normalization=True):
+        """Map data to the unstructured mesh element centroids
+           to create a VTK point-cloud dataset.
+
+        Parameters
+        ----------
+
+        filename : str
+            Name of the VTK file to write.
+        datasets : dict
+            Dictionary whose keys are the data labels
+            and values are the data sets.
+        volume_normalization : boolt
+            Whether or not to normalize the data by the
+            volume of the mesh elements
+        """
+
+        if not _VTK:
+            raise RuntimeError("The VTK Python module is not installed.")
+
+        if not self.centroids:
+            raise RuntimeError("No centroid information if present for this mesh. "
+                               "Please load this information from a relevant statepoint file.")
+
+        if not self.volumes and volume_normalization:
+            raise RuntimeError("No volume data is present on this mesh. "
+                               "Please load the mesh information from a statepoint file.")
+
+        # check that the data sets are appropriately sized
+        for label, dataset in datasets.items():
+            assert len(dataset) == self.n_elements
+            assert isinstance(label, str)
+
+        # create data arrays for the cells/points
+        vertices = vtk.vtkCellArray()
+        points = vtk.vtkPoints()
+
+        for centroid in self.centroids:
+            # create a point for each centroid
+            point_id = points.InsertNextPoint(centroid)
+            # create a cell of type "Vertex" for each point
+            cell_id = vertices.InsertNextCell(1, (point_id,))
+
+        # create a VTK data object
+        polyData = vtk.vtkPolyData()
+        polyData.SetPoints(points)
+        polyData.SetVerts(vertices)
+
+        # create VTK arrays for each of
+        # the data sets
+        for label, dataset in datasets.items():
+            dataset = np.asarray(dataset).flatten()
+
+            if volume_normalization:
+                dataset /= self.volumes.flatten()
+
+            array = vtk.vtkDoubleArray()
+            array.SetName(label)
+            array.SetNumberOfComponents(1)
+            array.SetArray(vtk_npsup.numpy_to_vtk(dataset),
+                           dataset.size,
+                           True)
+
+            polyData.GetPointData().AddArray(array)
+
+        # set filename
+        if filename[-4:] != ".vtk":
+            filename += ".vtk"
+
+        writer = vtk.vtkGenericDataObjectWriter()
+        writer.SetFileName(filename)
+        writer.SetInputData(polyData)
+        writer.Write()
 
     @classmethod
     def from_hdf5(cls, group):

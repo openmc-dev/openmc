@@ -9,8 +9,7 @@
 
 #include "openmc/openmp_interface.h"
 
-//#define NEIGHBOR_SIZE 15
-#define NEIGHBOR_SIZE 100
+#define NEIGHBOR_SIZE 11 // limited by triso regression test
 
 namespace openmc{
 

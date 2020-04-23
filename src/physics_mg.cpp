@@ -92,7 +92,7 @@ create_fission_sites(Particle* p)
 {
   // If uniform fission source weighting is turned on, we increase or decrease
   // the expected number of fission sites produced
-  double weight = settings::ufs_on ? ufs_get_weight(p) : 1.0;
+  double weight = settings::ufs_on ? ufs_get_weight(*p) : 1.0;
 
   // Determine the expected number of neutrons produced
   double nu_t = p->wgt_ / simulation::keff * weight *

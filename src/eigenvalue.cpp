@@ -573,12 +573,12 @@ void ufs_count_sites()
   }
 }
 
-double ufs_get_weight(const Particle* p)
+double ufs_get_weight(const Particle& p)
 {
   // Determine indices on ufs mesh for current location
-  int mesh_bin = simulation::ufs_mesh->get_bin(p->r());
+  int mesh_bin = simulation::ufs_mesh->get_bin(p.r());
   if (mesh_bin < 0) {
-    p->write_restart();
+    p.write_restart();
     fatal_error("Source site outside UFS mesh!");
   }
 

@@ -707,4 +707,34 @@ Particle::write_restart() const
   } // #pragma omp critical
 }
 
+std::string particle_type_to_str(Particle::Type type)
+{
+  switch (type) {
+    case Particle::Type::neutron:
+      return "neutron";
+    case Particle::Type::photon:
+      return "photon";
+    case Particle::Type::electron:
+      return "electron";
+    case Particle::Type::positron:
+      return "positron";
+  }
+  UNREACHABLE();
+}
+
+Particle::Type str_to_particle_type(std::string str)
+{
+  if (str == "neutron") {
+    return Particle::Type::neutron;
+  } else if (str == "photon") {
+    return Particle::Type::photon;
+  } else if (str == "electron") {
+    return Particle::Type::electron;
+  } else if (str == "positron") {
+    return Particle::Type::positron;
+  } else {
+    throw std::invalid_argument{fmt::format("Invalid particle name: {}", str)};
+  }
+}
+
 } // namespace openmc

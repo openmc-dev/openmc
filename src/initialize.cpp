@@ -111,7 +111,9 @@ void initialize_mpi(MPI_Comm intracomm)
   MPI_Get_address(&b.particle, &disp[5]);
   MPI_Get_address(&b.parent_id, &disp[6]);
   MPI_Get_address(&b.progeny_id, &disp[7]);
-  for (int i = 7; i >= 0; --i) disp[i] -= disp[0];
+  for (int i = 7; i >= 0; --i) {
+    disp[i] -= disp[0];
+  }
 
   int blocks[] {3, 3, 1, 1, 1, 1, 1, 1};
   MPI_Datatype types[] {MPI_DOUBLE, MPI_DOUBLE, MPI_DOUBLE, MPI_DOUBLE, MPI_INT, MPI_INT, MPI_LONG, MPI_LONG};
@@ -208,8 +210,9 @@ parse_command_line(int argc, char* argv[])
         }
         omp_set_num_threads(n_threads);
 #else
-        if (mpi::master)
+        if (mpi::master) {
           warning("Ignoring number of threads specified on command line.");
+        }
 #endif
 
       } else if (arg == "-?" || arg == "-h" || arg == "--help") {

@@ -18,14 +18,14 @@ class OpenMPMutex
 public:
   OpenMPMutex()
   {
-    #ifdef _OPEMP
+    #ifdef _OPENMP
       omp_init_lock(&mutex_);
     #endif
   }
 
   ~OpenMPMutex()
   {
-    #ifdef _OPEMP
+    #ifdef _OPENMP
       omp_destroy_lock(&mutex_);
     #endif
   }
@@ -41,7 +41,7 @@ public:
   //! This function blocks execution until the lock succeeds.
   void lock()
   {
-    #ifdef _OPEMP
+    #ifdef _OPENMP
       omp_set_lock(&mutex_);
     #endif
   }
@@ -52,7 +52,7 @@ public:
   //! the lock is unavailable.
   bool try_lock() noexcept
   {
-    #ifdef _OPEMP
+    #ifdef _OPENMP
       return omp_test_lock(&mutex_);
     #else
       return true;
@@ -62,13 +62,13 @@ public:
   //! Unlock the mutex.
   void unlock() noexcept
   {
-    #ifdef _OPEMP
+    #ifdef _OPENMP
       omp_unset_lock(&mutex_);
     #endif
   }
 
 private:
-  #ifdef _OPEMP
+  #ifdef _OPENMP
     omp_lock_t mutex_;
   #endif
 };

@@ -282,6 +282,7 @@ read_ce_cross_sections(const std::vector<std::vector<double>>& nuc_temps,
     }
   }
 
+  // Perform final tasks -- reading S(a,b) tables, normalizing densities
   for (auto& mat : model::materials) {
     for (const auto& table : mat->thermal_tables_) {
       // Get name of S(a,b) table
@@ -408,6 +409,8 @@ void read_ce_cross_sections_xml()
   } else {
     // If no directory is listed in cross_sections.xml, by default select the
     // directory in which the cross_sections.xml file resides
+
+    // TODO: Use std::filesystem functionality when C++17 is adopted
     auto pos = filename.rfind("/");
     if (pos == std::string::npos) {
       // no '/' found, probably a Windows directory

@@ -1,6 +1,7 @@
 #include "openmc/tallies/filter_mesh.h"
 
 #include <fmt/core.h>
+#include <gsl/gsl>
 
 #include "openmc/capi.h"
 #include "openmc/constants.h"
@@ -54,7 +55,7 @@ MeshFilter::to_statepoint(hid_t filter_group) const
 std::string
 MeshFilter::text_label(int bin) const
 {
-  auto& mesh = *model::meshes[mesh_];
+  auto& mesh = *model::meshes.at(mesh_);
   return mesh.bin_label(bin);
 }
 
@@ -72,6 +73,11 @@ MeshFilter::set_mesh(int32_t mesh)
 extern "C" int
 openmc_mesh_filter_get_mesh(int32_t index, int32_t* index_mesh)
 {
+  if (!index_mesh) {
+    set_errmsg("Mesh index argument is a null pointer.");
+    return OPENMC_E_INVALID_ARGUMENT;
+  }
+
   // Make sure this is a valid index to an allocated filter.
   if (int err = verify_filter(index)) return err;
 

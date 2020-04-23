@@ -31,17 +31,17 @@ MeshFilter::from_xml(pugi::xml_node node)
 }
 
 void
-MeshFilter::get_all_bins(const Particle* p, TallyEstimator estimator, FilterMatch& match)
+MeshFilter::get_all_bins(const Particle& p, TallyEstimator estimator, FilterMatch& match)
 const
 {
   if (estimator != TallyEstimator::TRACKLENGTH) {
-    auto bin = model::meshes[mesh_]->get_bin(p->r());
+    auto bin = model::meshes[mesh_]->get_bin(p.r());
     if (bin >= 0) {
       match.bins_.push_back(bin);
       match.weights_.push_back(1.0);
     }
   } else {
-    model::meshes[mesh_]->bins_crossed(p, match.bins_, match.weights_);
+    model::meshes[mesh_]->bins_crossed(&p, match.bins_, match.weights_);
   }
 }
 

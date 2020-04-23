@@ -37,7 +37,7 @@ DelayedGroupFilter::set_groups(gsl::span<int> groups)
 }
 
 void
-DelayedGroupFilter::get_all_bins(const Particle* p, TallyEstimator estimator,
+DelayedGroupFilter::get_all_bins(const Particle& p, TallyEstimator estimator,
                                  FilterMatch& match) const
 {
   match.bins_.push_back(0);

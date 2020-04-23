@@ -45,20 +45,22 @@ SphericalHarmonicsFilter::set_cosine(gsl::cstring_span cosine)
 }
 
 void
-SphericalHarmonicsFilter::get_all_bins(const Particle* p, TallyEstimator estimator,
+SphericalHarmonicsFilter::get_all_bins(const Particle& p, TallyEstimator estimator,
                                        FilterMatch& match) const
 {
   // Determine cosine term for scatter expansion if necessary
   std::vector<double> wgt(order_ + 1);
   if (cosine_ == SphericalHarmonicsCosine::scatter) {
-    calc_pn_c(order_, p->mu_, wgt.data());
+    calc_pn_c(order_, p.mu_, wgt.data());
   } else {
-    for (int i = 0; i < order_ + 1; i++) wgt[i] = 1;
+    for (int i = 0; i < order_ + 1; i++) {
+      wgt[i] = 1;
+    }
   }
 
   // Find the Rn,m values
   std::vector<double> rn(n_bins_);
-  calc_rn(order_, p->u_last_, rn.data());
+  calc_rn(order_, p.u_last_, rn.data());
 
   int j = 0;
   for (int n = 0; n < order_ + 1; n++) {

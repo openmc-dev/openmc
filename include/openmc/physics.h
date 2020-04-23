@@ -52,7 +52,7 @@ void create_fission_sites(Particle& p, int i_nuclide, const Reaction& rx);
 
 int sample_element(Particle& p);
 
-Reaction* sample_fission(int i_nuclide, Particle& p);
+Reaction& sample_fission(int i_nuclide, Particle& p);
 
 void sample_photon_product(int i_nuclide, Particle& p, int* i_rx, int* i_product);
 

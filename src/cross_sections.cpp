@@ -142,7 +142,7 @@ void read_cross_sections_xml()
               "materials.xml or in the OPENMC_MG_CROSS_SECTIONS environment "
               "variable. OpenMC needs such a file to identify where to "
               "find MG cross section libraries. Please consult the user's "
-              "guide at http://openmc.readthedocs.io for information on "
+              "guide at https://docs.openmc.org for information on "
               "how to set up MG cross section libraries.");
       }
       settings::path_cross_sections = envvar;

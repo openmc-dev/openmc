@@ -75,7 +75,7 @@ void title()
   fmt::print(
     "                   | The OpenMC Monte Carlo Code\n"
     "         Copyright | 2011-2020 MIT and OpenMC contributors\n"
-    "           License | http://openmc.readthedocs.io/en/latest/license.html\n"
+    "           License | https://docs.openmc.org/en/latest/license.html\n"
     "           Version | {}.{}.{}{}\n", VERSION_MAJOR, VERSION_MINOR,
     VERSION_RELEASE, VERSION_DEV ? "-dev" : "");
 #ifdef GIT_SHA1
@@ -328,9 +328,9 @@ void print_version()
 #ifdef GIT_SHA1
     fmt::print("Git SHA1: {}\n", GIT_SHA1);
 #endif
-    fmt::print("Copyright (c) 2011-2019 Massachusetts Institute of "
+    fmt::print("Copyright (c) 2011-2020 Massachusetts Institute of "
       "Technology and OpenMC contributors\nMIT/X license at "
-      "<http://openmc.readthedocs.io/en/latest/license.html>\n");
+      "<https://docs.openmc.org/en/latest/license.html>\n");
   }
 }
 

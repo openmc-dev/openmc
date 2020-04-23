@@ -55,6 +55,7 @@ bool check_cell_overlap(Particle* p, bool error)
           }
           return true;
         }
+        #pragma omp atomic
         ++model::overlap_check_count[index_cell];
       }
     }

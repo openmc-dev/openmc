@@ -289,9 +289,9 @@ Particle::event_collide()
   surface_ = 0;
 
   if (settings::run_CE) {
-    collision(this);
+    collision(*this);
   } else {
-    collision_mg(this);
+    collision_mg(*this);
   }
 
   // Score collision estimator tallies -- this is done after a collision

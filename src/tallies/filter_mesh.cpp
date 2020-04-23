@@ -41,7 +41,7 @@ const
       match.weights_.push_back(1.0);
     }
   } else {
-    model::meshes[mesh_]->bins_crossed(&p, match.bins_, match.weights_);
+    model::meshes[mesh_]->bins_crossed(p, match.bins_, match.weights_);
   }
 }
 

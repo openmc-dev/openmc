@@ -315,7 +315,7 @@ apply_derivative_to_score(const Particle& p, int i_tally, int i_nuclide,
           if (material.nuclide_[i] == p.event_nuclide_) break;
 
         const auto& nuc {*data::nuclides[p.event_nuclide_]};
-        if (!multipole_in_range(&nuc, p.E_last_)) {
+        if (!multipole_in_range(nuc, p.E_last_)) {
           score *= flux_deriv;
           break;
         }
@@ -395,7 +395,7 @@ apply_derivative_to_score(const Particle& p, int i_tally, int i_nuclide,
     case TallyEstimator::COLLISION:
       if (i_nuclide != -1) {
         const auto& nuc {data::nuclides[i_nuclide]};
-        if (!multipole_in_range(nuc.get(), p.E_last_)) {
+        if (!multipole_in_range(*nuc, p.E_last_)) {
           score *= flux_deriv;
           return;
         }
@@ -409,7 +409,7 @@ apply_derivative_to_score(const Particle& p, int i_tally, int i_nuclide,
           for (auto i = 0; i < material.nuclide_.size(); ++i) {
             auto i_nuc = material.nuclide_[i];
             const auto& nuc {*data::nuclides[i_nuc]};
-            if (multipole_in_range(&nuc, p.E_last_)
+            if (multipole_in_range(nuc, p.E_last_)
                 && p.neutron_xs_[i_nuc].total) {
               double dsig_s, dsig_a, dsig_f;
               std::tie(dsig_s, dsig_a, dsig_f)
@@ -437,7 +437,7 @@ apply_derivative_to_score(const Particle& p, int i_tally, int i_nuclide,
           for (auto i = 0; i < material.nuclide_.size(); ++i) {
             auto i_nuc = material.nuclide_[i];
             const auto& nuc {*data::nuclides[i_nuc]};
-            if (multipole_in_range(&nuc, p.E_last_)
+            if (multipole_in_range(nuc, p.E_last_)
                 && (p.neutron_xs_[i_nuc].total
                 - p.neutron_xs_[i_nuc].absorption)) {
               double dsig_s, dsig_a, dsig_f;
@@ -467,7 +467,7 @@ apply_derivative_to_score(const Particle& p, int i_tally, int i_nuclide,
           for (auto i = 0; i < material.nuclide_.size(); ++i) {
             auto i_nuc = material.nuclide_[i];
             const auto& nuc {*data::nuclides[i_nuc]};
-            if (multipole_in_range(&nuc, p.E_last_)
+            if (multipole_in_range(nuc, p.E_last_)
                 && p.neutron_xs_[i_nuc].absorption) {
               double dsig_s, dsig_a, dsig_f;
               std::tie(dsig_s, dsig_a, dsig_f)
@@ -494,7 +494,7 @@ apply_derivative_to_score(const Particle& p, int i_tally, int i_nuclide,
           for (auto i = 0; i < material.nuclide_.size(); ++i) {
             auto i_nuc = material.nuclide_[i];
             const auto& nuc {*data::nuclides[i_nuc]};
-            if (multipole_in_range(&nuc, p.E_last_)
+            if (multipole_in_range(nuc, p.E_last_)
                 && p.neutron_xs_[i_nuc].fission) {
               double dsig_s, dsig_a, dsig_f;
               std::tie(dsig_s, dsig_a, dsig_f)
@@ -521,7 +521,7 @@ apply_derivative_to_score(const Particle& p, int i_tally, int i_nuclide,
           for (auto i = 0; i < material.nuclide_.size(); ++i) {
             auto i_nuc = material.nuclide_[i];
             const auto& nuc {*data::nuclides[i_nuc]};
-            if (multipole_in_range(&nuc, p.E_last_)
+            if (multipole_in_range(nuc, p.E_last_)
                 && p.neutron_xs_[i_nuc].fission) {
               double nu = p.neutron_xs_[i_nuc].nu_fission
                 / p.neutron_xs_[i_nuc].fission;
@@ -590,7 +590,7 @@ score_track_derivative(Particle& p, double distance)
     case DerivativeVariable::TEMPERATURE:
       for (auto i = 0; i < material.nuclide_.size(); ++i) {
         const auto& nuc {*data::nuclides[material.nuclide_[i]]};
-        if (multipole_in_range(&nuc, p.E_last_)) {
+        if (multipole_in_range(nuc, p.E_last_)) {
           // phi is proportional to e^(-Sigma_tot * dist)
           // (1 / phi) * (d_phi / d_T) = - (d_Sigma_tot / d_T) * dist
           // (1 / phi) * (d_phi / d_T) = - N (d_sigma_tot / d_T) * dist
@@ -651,7 +651,7 @@ void score_collision_derivative(Particle& p)
       // Loop over the material's nuclides until we find the event nuclide.
       for (auto i_nuc : material.nuclide_) {
         const auto& nuc {*data::nuclides[i_nuc]};
-        if (i_nuc == p.event_nuclide_ && multipole_in_range(&nuc, p.E_last_)) {
+        if (i_nuc == p.event_nuclide_ && multipole_in_range(nuc, p.E_last_)) {
           // phi is proportional to Sigma_s
           // (1 / phi) * (d_phi / d_T) = (d_Sigma_s / d_T) / Sigma_s
           // (1 / phi) * (d_phi / d_T) = (d_sigma_s / d_T) / sigma_s

@@ -989,10 +989,9 @@ void nuclides_clear()
   data::nuclide_map.clear();
 }
 
-bool multipole_in_range(const Nuclide* nuc, double E)
+bool multipole_in_range(const Nuclide& nuc, double E)
 {
-  return nuc->multipole_ && E >= nuc->multipole_->E_min_&&
-    E <= nuc->multipole_->E_max_;
+  return E >= nuc.multipole_->E_min_ && E <= nuc.multipole_->E_max_;
 }
 
 } // namespace openmc

@@ -42,7 +42,6 @@ TallyDerivative::TallyDerivative(pugi::xml_node node)
 
   if (variable_str == "density") {
     variable = DerivativeVariable::DENSITY;
-
   } else if (variable_str == "nuclide_density") {
     variable = DerivativeVariable::NUCLIDE_DENSITY;
 
@@ -58,10 +57,8 @@ TallyDerivative::TallyDerivative(pugi::xml_node node)
       fatal_error(fmt::format("Could not find the nuclide \"{}\" specified in "
         "derivative {} in any material.", nuclide_name, id));
     }
-
   } else if (variable_str == "temperature") {
     variable = DerivativeVariable::TEMPERATURE;
-
   } else {
     fatal_error(fmt::format("Unrecognized variable \"{}\" on derivative {}",
       variable_str, id));
@@ -562,6 +559,7 @@ score_track_derivative(Particle& p, double distance)
 {
   // A void material cannot be perturbed so it will not affect flux derivatives.
   if (p.material_ == MATERIAL_VOID) return;
+
   const Material& material {*model::materials[p.material_]};
 
   for (auto idx = 0; idx < model::tally_derivs.size(); idx++) {

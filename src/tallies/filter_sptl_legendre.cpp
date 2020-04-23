@@ -55,7 +55,7 @@ SpatialLegendreFilter::set_axis(LegendreAxis axis)
 void
 SpatialLegendreFilter::set_minmax(double min, double max)
 {
-  if (max < min) {
+  if (max <= min) {
     throw std::invalid_argument{"Maximum value must be greater than minimum value"};
   }
   min_ = min;

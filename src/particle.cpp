@@ -156,7 +156,7 @@ Particle::event_calculate_xs()
   // initiate a search for the current cell. This generally happens at the
   // beginning of the history and again for any secondary particles
   if (coord_[n_coord_ - 1].cell == C_NONE) {
-    if (!find_cell(this, false)) {
+    if (!find_cell(*this, false)) {
       this->mark_as_lost("Could not find the cell containing particle "
         + std::to_string(id_));
       return;
@@ -169,7 +169,7 @@ Particle::event_calculate_xs()
   // Write particle track.
   if (write_track_) write_particle_track(*this);
 
-  if (settings::check_overlaps) check_cell_overlap(this);
+  if (settings::check_overlaps) check_cell_overlap(*this);
 
   // Calculate microscopic and macroscopic cross sections
   if (material_ != MATERIAL_VOID) {
@@ -201,7 +201,7 @@ void
 Particle::event_advance()
 {
   // Find the distance to the nearest boundary
-  boundary_ = distance_to_boundary(this);
+  boundary_ = distance_to_boundary(*this);
 
   // Sample a distance to collision
   if (type_ == Particle::Type::electron ||
@@ -234,7 +234,7 @@ Particle::event_advance()
 
   // Score flux derivative accumulators for differential tallies.
   if (!model::active_tallies.empty()) {
-    score_track_derivative(this, distance);
+    score_track_derivative(*this, distance);
   }
 }
 
@@ -255,7 +255,7 @@ Particle::event_cross_surface()
       boundary_.lattice_translation[1] != 0 ||
       boundary_.lattice_translation[2] != 0) {
     // Particle crosses lattice boundary
-    cross_lattice(this, boundary_);
+    cross_lattice(*this, boundary_);
     event_ = TallyEvent::LATTICE;
   } else {
     // Particle crosses surface
@@ -337,7 +337,7 @@ Particle::event_collide()
   }
 
   // Score flux derivative accumulators for differential tallies.
-  if (!model::active_tallies.empty()) score_collision_derivative(this);
+  if (!model::active_tallies.empty()) score_collision_derivative(*this);
 }
 
 void
@@ -490,7 +490,7 @@ Particle::cross_surface()
     // (unless we're using a dagmc model, which has exactly one universe)
     if (!settings::dagmc) {
       n_coord_ = 1;
-      if (!find_cell(this, true)) {
+      if (!find_cell(*this, true)) {
         this->mark_as_lost("Couldn't find particle after reflecting from surface "
                            + std::to_string(surf->id_) + ".");
         return;
@@ -545,7 +545,7 @@ Particle::cross_surface()
     // Figure out what cell particle is in now
     n_coord_ = 1;
 
-    if (!find_cell(this, true)) {
+    if (!find_cell(*this, true)) {
       this->mark_as_lost("Couldn't find particle after hitting periodic "
         "boundary on surface " + std::to_string(surf->id_) + ".");
       return;
@@ -583,7 +583,7 @@ Particle::cross_surface()
   }
 #endif
 
-  if (find_cell(this, true)) return;
+  if (find_cell(*this, true)) return;
 
   // ==========================================================================
   // COULDN'T FIND PARTICLE IN NEIGHBORING CELLS, SEARCH ALL CELLS
@@ -591,7 +591,7 @@ Particle::cross_surface()
   // Remove lower coordinate levels and assignment of surface
   surface_ = 0;
   n_coord_ = 1;
-  bool found = find_cell(this, false);
+  bool found = find_cell(*this, false);
 
   if (settings::run_mode != RunMode::PLOTTING && (!found)) {
     // If a cell is still not found, there are two possible causes: 1) there is
@@ -605,7 +605,7 @@ Particle::cross_surface()
     // Couldn't find next cell anywhere! This probably means there is an actual
     // undefined region in the geometry.
 
-    if (!find_cell(this, false)) {
+    if (!find_cell(*this, false)) {
       this->mark_as_lost("After particle " + std::to_string(id_) +
         " crossed surface " + std::to_string(surf->id_) +
         " it could not be located in any cell and it did not leak.");

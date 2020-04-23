@@ -26,7 +26,7 @@ void header(const char* msg, int level);
 std::string time_stamp();
 
 //! Display the attributes of a particle.
-extern "C" void print_particle(Particle* p);
+void print_particle(Particle& p);
 
 //! Display plot information.
 void print_plot();

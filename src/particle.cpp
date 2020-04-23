@@ -223,7 +223,7 @@ Particle::event_advance()
 
   // Score track-length tallies
   if (!model::active_tracklength_tallies.empty()) {
-    score_tracklength_tally(this, distance);
+    score_tracklength_tally(*this, distance);
   }
 
   // Score track-length estimate of k-eff
@@ -264,7 +264,7 @@ Particle::event_cross_surface()
   }
   // Score cell to cell partial currents
   if (!model::active_surface_tallies.empty()) {
-    score_surface_tally(this, model::active_surface_tallies);
+    score_surface_tally(*this, model::active_surface_tallies);
   }
 }
 
@@ -283,7 +283,7 @@ Particle::event_collide()
   // pre-collision direction to figure out what mesh surfaces were crossed
 
   if (!model::active_meshsurf_tallies.empty())
-    score_surface_tally(this, model::active_meshsurf_tallies);
+    score_surface_tally(*this, model::active_meshsurf_tallies);
 
   // Clear surface component
   surface_ = 0;
@@ -297,12 +297,12 @@ Particle::event_collide()
   // Score collision estimator tallies -- this is done after a collision
   // has occurred rather than before because we need information on the
   // outgoing energy for any tallies with an outgoing energy filter
-  if (!model::active_collision_tallies.empty()) score_collision_tally(this);
+  if (!model::active_collision_tallies.empty()) score_collision_tally(*this);
   if (!model::active_analog_tallies.empty()) {
     if (settings::run_CE) {
-      score_analog_tally_ce(this);
+      score_analog_tally_ce(*this);
     } else {
-      score_analog_tally_mg(this);
+      score_analog_tally_mg(*this);
     }
   }
 
@@ -429,7 +429,7 @@ Particle::cross_surface()
       // physically moving the particle forward slightly
 
       this->r() += TINY_BIT * this->u();
-      score_surface_tally(this, model::active_meshsurf_tallies);
+      score_surface_tally(*this, model::active_meshsurf_tallies);
     }
 
     // Score to global leakage tally
@@ -462,14 +462,14 @@ Particle::cross_surface()
     // with a mesh boundary
 
     if (!model::active_surface_tallies.empty()) {
-      score_surface_tally(this, model::active_surface_tallies);
+      score_surface_tally(*this, model::active_surface_tallies);
     }
 
 
     if (!model::active_meshsurf_tallies.empty()) {
       Position r {this->r()};
       this->r() -= TINY_BIT * this->u();
-      score_surface_tally(this, model::active_meshsurf_tallies);
+      score_surface_tally(*this, model::active_meshsurf_tallies);
       this->r() = r;
     }
 
@@ -524,7 +524,7 @@ Particle::cross_surface()
     if (!model::active_meshsurf_tallies.empty()) {
       Position r {this->r()};
       this->r() -= TINY_BIT * this->u();
-      score_surface_tally(this, model::active_meshsurf_tallies);
+      score_surface_tally(*this, model::active_meshsurf_tallies);
       this->r() = r;
     }
 

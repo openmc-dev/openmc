@@ -243,7 +243,7 @@ class Nuclide:
             rx_elem = ET.SubElement(elem, 'reaction')
             rx_elem.set('type', rx)
             rx_elem.set('Q', str(Q))
-            if rx != 'fission' or daughter is not None:
+            if daughter is not None:
                 rx_elem.set('target', daughter)
             if br != 1.0:
                 rx_elem.set('branching_ratio', str(br))

@@ -42,7 +42,7 @@ void read_tally_derivatives(pugi::xml_node node);
 //! Scale the given score by its logarithmic derivative
 
 void
-apply_derivative_to_score(const Particle* p, int i_tally, int i_nuclide,
+apply_derivative_to_score(const Particle& p, int i_tally, int i_nuclide,
   double atom_density, int score_bin, double& score);
 
 //! Adjust diff tally flux derivatives for a particle scattering event.

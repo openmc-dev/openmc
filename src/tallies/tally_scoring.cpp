@@ -36,7 +36,7 @@ FilterBinIter::FilterBinIter(const Tally& tally, Particle* p)
     if (!match.bins_present_) {
       match.bins_.clear();
       match.weights_.clear();
-      model::tally_filters[i_filt]->get_all_bins(p, tally_.estimator_, match);
+      model::tally_filters[i_filt]->get_all_bins(*p, tally_.estimator_, match);
       match.bins_present_ = true;
     }
 

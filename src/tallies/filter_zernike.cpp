@@ -28,12 +28,12 @@ ZernikeFilter::from_xml(pugi::xml_node node)
 }
 
 void
-ZernikeFilter::get_all_bins(const Particle* p, TallyEstimator estimator,
+ZernikeFilter::get_all_bins(const Particle& p, TallyEstimator estimator,
                             FilterMatch& match) const
 {
   // Determine the normalized (r,theta) coordinates.
-  double x = p->r().x - x_;
-  double y = p->r().y - y_;
+  double x = p.r().x - x_;
+  double y = p.r().y - y_;
   double r = std::sqrt(x*x + y*y) / r_;
   double theta = std::atan2(y, x);
 
@@ -88,12 +88,12 @@ ZernikeFilter::set_order(int order)
 //==============================================================================
 
 void
-ZernikeRadialFilter::get_all_bins(const Particle* p, TallyEstimator estimator,
+ZernikeRadialFilter::get_all_bins(const Particle& p, TallyEstimator estimator,
                                   FilterMatch& match) const
 {
   // Determine the normalized radius coordinate.
-  double x = p->r().x - x_;
-  double y = p->r().y - y_;
+  double x = p.r().x - x_;
+  double y = p.r().y - y_;
   double r = std::sqrt(x*x + y*y) / r_;
 
   if (r <= 1.0) {

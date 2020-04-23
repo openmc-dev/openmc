@@ -149,12 +149,12 @@ void get_run_parameters(pugi::xml_node node_base)
   // Get max number of lost particles
   if (check_for_node(node_base, "max_lost_particles")) {
     max_lost_particles = std::stoi(get_node_value(node_base, "max_lost_particles"));
-  }  
+  }
 
   // Get relative number of lost particles
   if (check_for_node(node_base, "rel_max_lost_particles")) {
     rel_max_lost_particles = std::stod(get_node_value(node_base, "rel_max_lost_particles"));
-  }    
+  }
 
   // Get number of inactive batches
   if (run_mode == RunMode::EIGENVALUE) {
@@ -192,6 +192,9 @@ void get_run_parameters(pugi::xml_node node_base)
       if (check_for_node(node_keff_trigger, "threshold")) {
         keff_trigger.threshold = std::stod(get_node_value(
           node_keff_trigger, "threshold"));
+        if (keff_trigger.threshold <= 0) {
+          fatal_error("keff trigger threshold must be positive");
+        }
       } else {
         fatal_error("Specify keff trigger threshold in settings XML");
       }
@@ -367,7 +370,7 @@ void read_settings_xml()
       fatal_error("Number of max lost particles must be greater than zero.");
     } else if (rel_max_lost_particles <= 0.0 || rel_max_lost_particles >= 1.0) {
       fatal_error("Relative max lost particles must be between zero and one.");
-    }       
+    }
   }
 
   // Copy random number seed if specified

@@ -115,7 +115,7 @@ void run_particle_restart()
     p.flux_derivs_.resize(model::tally_derivs.size(), 0.0);
     std::fill(p.flux_derivs_.begin(), p.flux_derivs_.end(), 0.0);
   }
-  
+
   // Allocate space for tally filter matches
   p.filter_matches_.resize(model::tally_filters.size());
 
@@ -123,7 +123,7 @@ void run_particle_restart()
   transport_history_based_single_particle(p);
 
   // Write output if particle made it
-  print_particle(&p);
+  print_particle(p);
 }
 
 } // namespace openmc

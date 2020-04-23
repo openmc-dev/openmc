@@ -767,6 +767,7 @@ DAGCell::DAGCell() : Cell{} {};
 std::pair<double, int32_t>
 DAGCell::distance(Position r, Direction u, int32_t on_surface, Particle* p) const
 {
+  Expects(p);
   // if we've changed direction or we're not on a surface,
   // reset the history and update last direction
   if (u != p->last_dir_ || on_surface == 0) {

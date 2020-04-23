@@ -558,15 +558,15 @@ apply_derivative_to_score(const Particle& p, int i_tally, int i_nuclide,
 }
 
 void
-score_track_derivative(Particle* p, double distance)
+score_track_derivative(Particle& p, double distance)
 {
   // A void material cannot be perturbed so it will not affect flux derivatives.
-  if (p->material_ == MATERIAL_VOID) return;
-  const Material& material {*model::materials[p->material_]};
+  if (p.material_ == MATERIAL_VOID) return;
+  const Material& material {*model::materials[p.material_]};
 
   for (auto idx = 0; idx < model::tally_derivs.size(); idx++) {
     const auto& deriv = model::tally_derivs[idx];
-    auto& flux_deriv = p->flux_derivs_[idx];
+    auto& flux_deriv = p.flux_derivs_[idx];
     if (deriv.diff_material != material.id_) continue;
 
     switch (deriv.variable) {
@@ -575,7 +575,7 @@ score_track_derivative(Particle* p, double distance)
       // phi is proportional to e^(-Sigma_tot * dist)
       // (1 / phi) * (d_phi / d_rho) = - (d_Sigma_tot / d_rho) * dist
       // (1 / phi) * (d_phi / d_rho) = - Sigma_tot / rho * dist
-      flux_deriv -= distance * p->macro_xs_.total
+      flux_deriv -= distance * p.macro_xs_.total
         / material.density_gpcc_;
       break;
 
@@ -584,19 +584,19 @@ score_track_derivative(Particle* p, double distance)
       // (1 / phi) * (d_phi / d_N) = - (d_Sigma_tot / d_N) * dist
       // (1 / phi) * (d_phi / d_N) = - sigma_tot * dist
       flux_deriv -= distance
-        * p->neutron_xs_[deriv.diff_nuclide].total;
+        * p.neutron_xs_[deriv.diff_nuclide].total;
       break;
 
     case DerivativeVariable::TEMPERATURE:
       for (auto i = 0; i < material.nuclide_.size(); ++i) {
         const auto& nuc {*data::nuclides[material.nuclide_[i]]};
-        if (multipole_in_range(&nuc, p->E_last_)) {
+        if (multipole_in_range(&nuc, p.E_last_)) {
           // phi is proportional to e^(-Sigma_tot * dist)
           // (1 / phi) * (d_phi / d_T) = - (d_Sigma_tot / d_T) * dist
           // (1 / phi) * (d_phi / d_T) = - N (d_sigma_tot / d_T) * dist
           double dsig_s, dsig_a, dsig_f;
           std::tie(dsig_s, dsig_a, dsig_f)
-            = nuc.multipole_->evaluate_deriv(p->E_, p->sqrtkT_);
+            = nuc.multipole_->evaluate_deriv(p.E_, p.sqrtkT_);
           flux_deriv -= distance * (dsig_s + dsig_a)
             * material.atom_density_(i);
         }
@@ -606,16 +606,16 @@ score_track_derivative(Particle* p, double distance)
   }
 }
 
-void score_collision_derivative(Particle* p)
+void score_collision_derivative(Particle& p)
 {
   // A void material cannot be perturbed so it will not affect flux derivatives.
-  if (p->material_ == MATERIAL_VOID) return;
+  if (p.material_ == MATERIAL_VOID) return;
 
-  const Material& material {*model::materials[p->material_]};
+  const Material& material {*model::materials[p.material_]};
 
   for (auto idx = 0; idx < model::tally_derivs.size(); idx++) {
     const auto& deriv = model::tally_derivs[idx];
-    auto& flux_deriv = p->flux_derivs_[idx];
+    auto& flux_deriv = p.flux_derivs_[idx];
 
     if (deriv.diff_material != material.id_) continue;
 
@@ -629,7 +629,7 @@ void score_collision_derivative(Particle* p)
       break;
 
     case DerivativeVariable::NUCLIDE_DENSITY:
-      if (p->event_nuclide_ != deriv.diff_nuclide) continue;
+      if (p.event_nuclide_ != deriv.diff_nuclide) continue;
       // Find the index in this material for the diff_nuclide.
       int i;
       for (i = 0; i < material.nuclide_.size(); ++i)
@@ -651,14 +651,14 @@ void score_collision_derivative(Particle* p)
       // Loop over the material's nuclides until we find the event nuclide.
       for (auto i_nuc : material.nuclide_) {
         const auto& nuc {*data::nuclides[i_nuc]};
-        if (i_nuc == p->event_nuclide_ && multipole_in_range(&nuc, p->E_last_)) {
+        if (i_nuc == p.event_nuclide_ && multipole_in_range(&nuc, p.E_last_)) {
           // phi is proportional to Sigma_s
           // (1 / phi) * (d_phi / d_T) = (d_Sigma_s / d_T) / Sigma_s
           // (1 / phi) * (d_phi / d_T) = (d_sigma_s / d_T) / sigma_s
-          const auto& micro_xs {p->neutron_xs_[i_nuc]};
+          const auto& micro_xs {p.neutron_xs_[i_nuc]};
           double dsig_s, dsig_a, dsig_f;
           std::tie(dsig_s, dsig_a, dsig_f)
-            = nuc.multipole_->evaluate_deriv(p->E_last_, p->sqrtkT_);
+            = nuc.multipole_->evaluate_deriv(p.E_last_, p.sqrtkT_);
           flux_deriv += dsig_s / (micro_xs.total - micro_xs.absorption);
           // Note that this is an approximation!  The real scattering cross
           // section is

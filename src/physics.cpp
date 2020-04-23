@@ -38,7 +38,7 @@ void collision(Particle& p)
   ++(p.n_collision_);
 
   // Sample reaction for the material the particle is in
-  switch (static_cast<Particle::Type>(p.type_)) {
+  switch (p.type_) {
   case Particle::Type::neutron:
     sample_neutron_reaction(p);
     break;

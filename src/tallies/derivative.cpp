@@ -99,7 +99,7 @@ read_tally_derivatives(pugi::xml_node node)
 }
 
 void
-apply_derivative_to_score(const Particle* p, int i_tally, int i_nuclide,
+apply_derivative_to_score(const Particle& p, int i_tally, int i_nuclide,
   double atom_density, int score_bin, double& score)
 {
   const Tally& tally {*model::tallies[i_tally]};
@@ -112,17 +112,17 @@ apply_derivative_to_score(const Particle* p, int i_tally, int i_nuclide,
   // perturbated variable.
 
   const auto& deriv {model::tally_derivs[tally.deriv_]};
-  const auto flux_deriv = p->flux_derivs_[tally.deriv_];
+  const auto flux_deriv = p.flux_derivs_[tally.deriv_];
 
   // Handle special cases where we know that d_c/d_p must be zero.
   if (score_bin == SCORE_FLUX) {
     score *= flux_deriv;
     return;
-  } else if (p->material_ == MATERIAL_VOID) {
+  } else if (p.material_ == MATERIAL_VOID) {
     score *= flux_deriv;
     return;
   }
-  const Material& material {*model::materials[p->material_]};
+  const Material& material {*model::materials[p.material_]};
   if (material.id_ != deriv.diff_material) {
     score *= flux_deriv;
     return;
@@ -182,7 +182,7 @@ apply_derivative_to_score(const Particle* p, int i_tally, int i_nuclide,
     switch (tally.estimator_) {
 
     case TallyEstimator::ANALOG:
-      if (p->event_nuclide_ != deriv.diff_nuclide) {
+      if (p.event_nuclide_ != deriv.diff_nuclide) {
         score *= flux_deriv;
         return;
       }
@@ -213,12 +213,12 @@ apply_derivative_to_score(const Particle* p, int i_tally, int i_nuclide,
       switch (score_bin) {
 
       case SCORE_TOTAL:
-        if (i_nuclide == -1 && p->macro_xs_.total > 0.0) {
+        if (i_nuclide == -1 && p.macro_xs_.total > 0.0) {
           score *= flux_deriv
-            + p->neutron_xs_[deriv.diff_nuclide].total
-            / p->macro_xs_.total;
+            + p.neutron_xs_[deriv.diff_nuclide].total
+            / p.macro_xs_.total;
         } else if (i_nuclide == deriv.diff_nuclide
-                   && p->neutron_xs_[i_nuclide].total) {
+                   && p.neutron_xs_[i_nuclide].total) {
           score *= flux_deriv + 1. / atom_density;
         } else {
           score *= flux_deriv;
@@ -226,13 +226,13 @@ apply_derivative_to_score(const Particle* p, int i_tally, int i_nuclide,
         break;
 
       case SCORE_SCATTER:
-        if (i_nuclide == -1 && (p->macro_xs_.total
-                                - p->macro_xs_.absorption) > 0.0) {
+        if (i_nuclide == -1 && (p.macro_xs_.total
+                                - p.macro_xs_.absorption) > 0.0) {
           score *= flux_deriv
-            + (p->neutron_xs_[deriv.diff_nuclide].total
-            - p->neutron_xs_[deriv.diff_nuclide].absorption)
-            / (p->macro_xs_.total
-            - p->macro_xs_.absorption);
+            + (p.neutron_xs_[deriv.diff_nuclide].total
+            - p.neutron_xs_[deriv.diff_nuclide].absorption)
+            / (p.macro_xs_.total
+            - p.macro_xs_.absorption);
         } else if (i_nuclide == deriv.diff_nuclide) {
           score *= flux_deriv + 1. / atom_density;
         } else {
@@ -241,12 +241,12 @@ apply_derivative_to_score(const Particle* p, int i_tally, int i_nuclide,
         break;
 
       case SCORE_ABSORPTION:
-        if (i_nuclide == -1 && p->macro_xs_.absorption > 0.0) {
+        if (i_nuclide == -1 && p.macro_xs_.absorption > 0.0) {
           score *= flux_deriv
-            + p->neutron_xs_[deriv.diff_nuclide].absorption
-            / p->macro_xs_.absorption;
+            + p.neutron_xs_[deriv.diff_nuclide].absorption
+            / p.macro_xs_.absorption;
         } else if (i_nuclide == deriv.diff_nuclide
-                   && p->neutron_xs_[i_nuclide].absorption) {
+                   && p.neutron_xs_[i_nuclide].absorption) {
           score *= flux_deriv + 1. / atom_density;
         } else {
           score *= flux_deriv;
@@ -254,12 +254,12 @@ apply_derivative_to_score(const Particle* p, int i_tally, int i_nuclide,
         break;
 
       case SCORE_FISSION:
-        if (i_nuclide == -1 && p->macro_xs_.fission > 0.0) {
+        if (i_nuclide == -1 && p.macro_xs_.fission > 0.0) {
           score *= flux_deriv
-            + p->neutron_xs_[deriv.diff_nuclide].fission
-            / p->macro_xs_.fission;
+            + p.neutron_xs_[deriv.diff_nuclide].fission
+            / p.macro_xs_.fission;
         } else if (i_nuclide == deriv.diff_nuclide
-                   && p->neutron_xs_[i_nuclide].fission) {
+                   && p.neutron_xs_[i_nuclide].fission) {
           score *= flux_deriv + 1. / atom_density;
         } else {
           score *= flux_deriv;
@@ -267,12 +267,12 @@ apply_derivative_to_score(const Particle* p, int i_tally, int i_nuclide,
         break;
 
       case SCORE_NU_FISSION:
-        if (i_nuclide == -1 && p->macro_xs_.nu_fission > 0.0) {
+        if (i_nuclide == -1 && p.macro_xs_.nu_fission > 0.0) {
           score *= flux_deriv
-            + p->neutron_xs_[deriv.diff_nuclide].nu_fission
-            / p->macro_xs_.nu_fission;
+            + p.neutron_xs_[deriv.diff_nuclide].nu_fission
+            / p.macro_xs_.nu_fission;
         } else if (i_nuclide == deriv.diff_nuclide
-                   && p->neutron_xs_[i_nuclide].nu_fission) {
+                   && p.neutron_xs_[i_nuclide].nu_fission) {
           score *= flux_deriv + 1. / atom_density;
         } else {
           score *= flux_deriv;
@@ -312,10 +312,10 @@ apply_derivative_to_score(const Particle* p, int i_tally, int i_nuclide,
         // Find the index of the event nuclide.
         int i;
         for (i = 0; i < material.nuclide_.size(); ++i)
-          if (material.nuclide_[i] == p->event_nuclide_) break;
+          if (material.nuclide_[i] == p.event_nuclide_) break;
 
-        const auto& nuc {*data::nuclides[p->event_nuclide_]};
-        if (!multipole_in_range(&nuc, p->E_last_)) {
+        const auto& nuc {*data::nuclides[p.event_nuclide_]};
+        if (!multipole_in_range(&nuc, p.E_last_)) {
           score *= flux_deriv;
           break;
         }
@@ -323,64 +323,63 @@ apply_derivative_to_score(const Particle* p, int i_tally, int i_nuclide,
         switch (score_bin) {
 
         case SCORE_TOTAL:
-          if (p->neutron_xs_[p->event_nuclide_].total) {
+          if (p.neutron_xs_[p.event_nuclide_].total) {
             double dsig_s, dsig_a, dsig_f;
             std::tie(dsig_s, dsig_a, dsig_f)
-              = nuc.multipole_->evaluate_deriv(p->E_last_, p->sqrtkT_);
+              = nuc.multipole_->evaluate_deriv(p.E_last_, p.sqrtkT_);
             score *= flux_deriv + (dsig_s + dsig_a) * material.atom_density_(i)
-              / p->macro_xs_.total;
+              / p.macro_xs_.total;
           } else {
             score *= flux_deriv;
           }
           break;
 
         case SCORE_SCATTER:
-          if (p->neutron_xs_[p->event_nuclide_].total
-              - p->neutron_xs_[p->event_nuclide_].absorption) {
+          if (p.neutron_xs_[p.event_nuclide_].total
+              - p.neutron_xs_[p.event_nuclide_].absorption) {
             double dsig_s, dsig_a, dsig_f;
             std::tie(dsig_s, dsig_a, dsig_f)
-              = nuc.multipole_->evaluate_deriv(p->E_last_, p->sqrtkT_);
+              = nuc.multipole_->evaluate_deriv(p.E_last_, p.sqrtkT_);
             score *= flux_deriv + dsig_s * material.atom_density_(i)
-              / (p->macro_xs_.total
-              - p->macro_xs_.absorption);
+              / (p.macro_xs_.total - p.macro_xs_.absorption);
           } else {
             score *= flux_deriv;
           }
           break;
 
         case SCORE_ABSORPTION:
-          if (p->neutron_xs_[p->event_nuclide_].absorption) {
+          if (p.neutron_xs_[p.event_nuclide_].absorption) {
             double dsig_s, dsig_a, dsig_f;
             std::tie(dsig_s, dsig_a, dsig_f)
-              = nuc.multipole_->evaluate_deriv(p->E_last_, p->sqrtkT_);
+              = nuc.multipole_->evaluate_deriv(p.E_last_, p.sqrtkT_);
             score *= flux_deriv + dsig_a * material.atom_density_(i)
-              / p->macro_xs_.absorption;
+              / p.macro_xs_.absorption;
           } else {
             score *= flux_deriv;
           }
           break;
 
         case SCORE_FISSION:
-          if (p->neutron_xs_[p->event_nuclide_].fission) {
+          if (p.neutron_xs_[p.event_nuclide_].fission) {
             double dsig_s, dsig_a, dsig_f;
             std::tie(dsig_s, dsig_a, dsig_f)
-              = nuc.multipole_->evaluate_deriv(p->E_last_, p->sqrtkT_);
+              = nuc.multipole_->evaluate_deriv(p.E_last_, p.sqrtkT_);
             score *= flux_deriv + dsig_f * material.atom_density_(i)
-              / p->macro_xs_.fission;
+              / p.macro_xs_.fission;
           } else {
             score *= flux_deriv;
           }
           break;
 
         case SCORE_NU_FISSION:
-          if (p->neutron_xs_[p->event_nuclide_].fission) {
-            double nu = p->neutron_xs_[p->event_nuclide_].nu_fission
-              / p->neutron_xs_[p->event_nuclide_].fission;
+          if (p.neutron_xs_[p.event_nuclide_].fission) {
+            double nu = p.neutron_xs_[p.event_nuclide_].nu_fission
+              / p.neutron_xs_[p.event_nuclide_].fission;
             double dsig_s, dsig_a, dsig_f;
             std::tie(dsig_s, dsig_a, dsig_f)
-              = nuc.multipole_->evaluate_deriv(p->E_last_, p->sqrtkT_);
+              = nuc.multipole_->evaluate_deriv(p.E_last_, p.sqrtkT_);
             score *= flux_deriv + nu * dsig_f * material.atom_density_(i)
-              / p->macro_xs_.nu_fission;
+              / p.macro_xs_.nu_fission;
           } else {
             score *= flux_deriv;
           }
@@ -396,7 +395,7 @@ apply_derivative_to_score(const Particle* p, int i_tally, int i_nuclide,
     case TallyEstimator::COLLISION:
       if (i_nuclide != -1) {
         const auto& nuc {data::nuclides[i_nuclide]};
-        if (!multipole_in_range(nuc.get(), p->E_last_)) {
+        if (!multipole_in_range(nuc.get(), p.E_last_)) {
           score *= flux_deriv;
           return;
         }
@@ -405,141 +404,141 @@ apply_derivative_to_score(const Particle* p, int i_tally, int i_nuclide,
       switch (score_bin) {
 
       case SCORE_TOTAL:
-        if (i_nuclide == -1 && p->macro_xs_.total > 0.0) {
+        if (i_nuclide == -1 && p.macro_xs_.total > 0.0) {
           double cum_dsig = 0;
           for (auto i = 0; i < material.nuclide_.size(); ++i) {
             auto i_nuc = material.nuclide_[i];
             const auto& nuc {*data::nuclides[i_nuc]};
-            if (multipole_in_range(&nuc, p->E_last_)
-                && p->neutron_xs_[i_nuc].total) {
+            if (multipole_in_range(&nuc, p.E_last_)
+                && p.neutron_xs_[i_nuc].total) {
               double dsig_s, dsig_a, dsig_f;
               std::tie(dsig_s, dsig_a, dsig_f)
-                = nuc.multipole_->evaluate_deriv(p->E_last_, p->sqrtkT_);
+                = nuc.multipole_->evaluate_deriv(p.E_last_, p.sqrtkT_);
               cum_dsig += (dsig_s + dsig_a) * material.atom_density_(i);
             }
           }
-          score *= flux_deriv + cum_dsig / p->macro_xs_.total;
-        } else if (p->neutron_xs_[i_nuclide].total) {
+          score *= flux_deriv + cum_dsig / p.macro_xs_.total;
+        } else if (p.neutron_xs_[i_nuclide].total) {
           const auto& nuc {*data::nuclides[i_nuclide]};
           double dsig_s, dsig_a, dsig_f;
           std::tie(dsig_s, dsig_a, dsig_f)
-            = nuc.multipole_->evaluate_deriv(p->E_last_, p->sqrtkT_);
+            = nuc.multipole_->evaluate_deriv(p.E_last_, p.sqrtkT_);
           score *= flux_deriv
-            + (dsig_s + dsig_a) / p->neutron_xs_[i_nuclide].total;
+            + (dsig_s + dsig_a) / p.neutron_xs_[i_nuclide].total;
         } else {
           score *= flux_deriv;
         }
         break;
 
       case SCORE_SCATTER:
-        if (i_nuclide == -1 && (p->macro_xs_.total
-            - p->macro_xs_.absorption)) {
+        if (i_nuclide == -1 && (p.macro_xs_.total
+            - p.macro_xs_.absorption)) {
           double cum_dsig = 0;
           for (auto i = 0; i < material.nuclide_.size(); ++i) {
             auto i_nuc = material.nuclide_[i];
             const auto& nuc {*data::nuclides[i_nuc]};
-            if (multipole_in_range(&nuc, p->E_last_)
-                && (p->neutron_xs_[i_nuc].total
-                - p->neutron_xs_[i_nuc].absorption)) {
+            if (multipole_in_range(&nuc, p.E_last_)
+                && (p.neutron_xs_[i_nuc].total
+                - p.neutron_xs_[i_nuc].absorption)) {
               double dsig_s, dsig_a, dsig_f;
               std::tie(dsig_s, dsig_a, dsig_f)
-                = nuc.multipole_->evaluate_deriv(p->E_last_, p->sqrtkT_);
+                = nuc.multipole_->evaluate_deriv(p.E_last_, p.sqrtkT_);
               cum_dsig += dsig_s * material.atom_density_(i);
             }
           }
-          score *= flux_deriv + cum_dsig / (p->macro_xs_.total
-            - p->macro_xs_.absorption);
-        } else if (p->neutron_xs_[i_nuclide].total
-                   - p->neutron_xs_[i_nuclide].absorption) {
+          score *= flux_deriv + cum_dsig / (p.macro_xs_.total
+            - p.macro_xs_.absorption);
+        } else if (p.neutron_xs_[i_nuclide].total
+                   - p.neutron_xs_[i_nuclide].absorption) {
           const auto& nuc {*data::nuclides[i_nuclide]};
           double dsig_s, dsig_a, dsig_f;
           std::tie(dsig_s, dsig_a, dsig_f)
-            = nuc.multipole_->evaluate_deriv(p->E_last_, p->sqrtkT_);
-          score *= flux_deriv + dsig_s / (p->neutron_xs_[i_nuclide].total
-            - p->neutron_xs_[i_nuclide].absorption);
+            = nuc.multipole_->evaluate_deriv(p.E_last_, p.sqrtkT_);
+          score *= flux_deriv + dsig_s / (p.neutron_xs_[i_nuclide].total
+            - p.neutron_xs_[i_nuclide].absorption);
         } else {
           score *= flux_deriv;
         }
         break;
 
       case SCORE_ABSORPTION:
-        if (i_nuclide == -1 && p->macro_xs_.absorption > 0.0) {
+        if (i_nuclide == -1 && p.macro_xs_.absorption > 0.0) {
           double cum_dsig = 0;
           for (auto i = 0; i < material.nuclide_.size(); ++i) {
             auto i_nuc = material.nuclide_[i];
             const auto& nuc {*data::nuclides[i_nuc]};
-            if (multipole_in_range(&nuc, p->E_last_)
-                && p->neutron_xs_[i_nuc].absorption) {
+            if (multipole_in_range(&nuc, p.E_last_)
+                && p.neutron_xs_[i_nuc].absorption) {
               double dsig_s, dsig_a, dsig_f;
               std::tie(dsig_s, dsig_a, dsig_f)
-                = nuc.multipole_->evaluate_deriv(p->E_last_, p->sqrtkT_);
+                = nuc.multipole_->evaluate_deriv(p.E_last_, p.sqrtkT_);
               cum_dsig += dsig_a * material.atom_density_(i);
             }
           }
-          score *= flux_deriv + cum_dsig / p->macro_xs_.absorption;
-        } else if (p->neutron_xs_[i_nuclide].absorption) {
+          score *= flux_deriv + cum_dsig / p.macro_xs_.absorption;
+        } else if (p.neutron_xs_[i_nuclide].absorption) {
           const auto& nuc {*data::nuclides[i_nuclide]};
           double dsig_s, dsig_a, dsig_f;
           std::tie(dsig_s, dsig_a, dsig_f)
-            = nuc.multipole_->evaluate_deriv(p->E_last_, p->sqrtkT_);
+            = nuc.multipole_->evaluate_deriv(p.E_last_, p.sqrtkT_);
           score *= flux_deriv
-            + dsig_a / p->neutron_xs_[i_nuclide].absorption;
+            + dsig_a / p.neutron_xs_[i_nuclide].absorption;
         } else {
           score *= flux_deriv;
         }
         break;
 
       case SCORE_FISSION:
-        if (i_nuclide == -1 && p->macro_xs_.fission > 0.0) {
+        if (i_nuclide == -1 && p.macro_xs_.fission > 0.0) {
           double cum_dsig = 0;
           for (auto i = 0; i < material.nuclide_.size(); ++i) {
             auto i_nuc = material.nuclide_[i];
             const auto& nuc {*data::nuclides[i_nuc]};
-            if (multipole_in_range(&nuc, p->E_last_)
-                && p->neutron_xs_[i_nuc].fission) {
+            if (multipole_in_range(&nuc, p.E_last_)
+                && p.neutron_xs_[i_nuc].fission) {
               double dsig_s, dsig_a, dsig_f;
               std::tie(dsig_s, dsig_a, dsig_f)
-                = nuc.multipole_->evaluate_deriv(p->E_last_, p->sqrtkT_);
+                = nuc.multipole_->evaluate_deriv(p.E_last_, p.sqrtkT_);
               cum_dsig += dsig_f * material.atom_density_(i);
             }
           }
-          score *= flux_deriv + cum_dsig / p->macro_xs_.fission;
-        } else if (p->neutron_xs_[i_nuclide].fission) {
+          score *= flux_deriv + cum_dsig / p.macro_xs_.fission;
+        } else if (p.neutron_xs_[i_nuclide].fission) {
           const auto& nuc {*data::nuclides[i_nuclide]};
           double dsig_s, dsig_a, dsig_f;
           std::tie(dsig_s, dsig_a, dsig_f)
-            = nuc.multipole_->evaluate_deriv(p->E_last_, p->sqrtkT_);
+            = nuc.multipole_->evaluate_deriv(p.E_last_, p.sqrtkT_);
           score *= flux_deriv
-            + dsig_f / p->neutron_xs_[i_nuclide].fission;
+            + dsig_f / p.neutron_xs_[i_nuclide].fission;
         } else {
           score *= flux_deriv;
         }
         break;
 
       case SCORE_NU_FISSION:
-        if (i_nuclide == -1 && p->macro_xs_.nu_fission > 0.0) {
+        if (i_nuclide == -1 && p.macro_xs_.nu_fission > 0.0) {
           double cum_dsig = 0;
           for (auto i = 0; i < material.nuclide_.size(); ++i) {
             auto i_nuc = material.nuclide_[i];
             const auto& nuc {*data::nuclides[i_nuc]};
-            if (multipole_in_range(&nuc, p->E_last_)
-                && p->neutron_xs_[i_nuc].fission) {
-              double nu = p->neutron_xs_[i_nuc].nu_fission
-                / p->neutron_xs_[i_nuc].fission;
+            if (multipole_in_range(&nuc, p.E_last_)
+                && p.neutron_xs_[i_nuc].fission) {
+              double nu = p.neutron_xs_[i_nuc].nu_fission
+                / p.neutron_xs_[i_nuc].fission;
               double dsig_s, dsig_a, dsig_f;
               std::tie(dsig_s, dsig_a, dsig_f)
-                = nuc.multipole_->evaluate_deriv(p->E_last_, p->sqrtkT_);
+                = nuc.multipole_->evaluate_deriv(p.E_last_, p.sqrtkT_);
               cum_dsig += nu * dsig_f * material.atom_density_(i);
             }
           }
-          score *= flux_deriv + cum_dsig / p->macro_xs_.nu_fission;
-        } else if (p->neutron_xs_[i_nuclide].fission) {
+          score *= flux_deriv + cum_dsig / p.macro_xs_.nu_fission;
+        } else if (p.neutron_xs_[i_nuclide].fission) {
           const auto& nuc {*data::nuclides[i_nuclide]};
           double dsig_s, dsig_a, dsig_f;
           std::tie(dsig_s, dsig_a, dsig_f)
-            = nuc.multipole_->evaluate_deriv(p->E_last_, p->sqrtkT_);
+            = nuc.multipole_->evaluate_deriv(p.E_last_, p.sqrtkT_);
           score *= flux_deriv
-            + dsig_f / p->neutron_xs_[i_nuclide].fission;
+            + dsig_f / p.neutron_xs_[i_nuclide].fission;
         } else {
           score *= flux_deriv;
         }

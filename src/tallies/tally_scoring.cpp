@@ -347,7 +347,7 @@ score_fission_eout(Particle* p, int i_tally, int i_score, int score_bin)
     // i_nuclide and atom_density arguments do not matter since this is an
     // analog estimator.
     if (tally.deriv_ != C_NONE)
-      apply_derivative_to_score(p, i_tally, 0, 0., SCORE_NU_FISSION, score);
+      apply_derivative_to_score(*p, i_tally, 0, 0., SCORE_NU_FISSION, score);
 
     if (!settings::run_CE && eo_filt.matches_transport_groups()) {
 
@@ -1299,7 +1299,7 @@ score_general_ce(Particle* p, int i_tally, int start_index, int filter_index,
 
     // Add derivative information on score for differential tallies.
     if (tally.deriv_ != C_NONE)
-      apply_derivative_to_score(p, i_tally, i_nuclide, atom_density, score_bin,
+      apply_derivative_to_score(*p, i_tally, i_nuclide, atom_density, score_bin,
         score);
 
     // Update tally results

@@ -96,12 +96,12 @@ void sample_neutron_reaction(Particle& p)
   const auto& nuc {data::nuclides[i_nuclide]};
 
   if (nuc->fissionable_) {
-    Reaction* rx = sample_fission(i_nuclide, p);
+    auto& rx = sample_fission(i_nuclide, p);
     if (settings::run_mode == RunMode::EIGENVALUE) {
-      create_fission_sites(p, i_nuclide, *rx);
+      create_fission_sites(p, i_nuclide, rx);
     } else if (settings::run_mode == RunMode::FIXED_SOURCE &&
       settings::create_fission_neutrons) {
-      create_fission_sites(p, i_nuclide, *rx);
+      create_fission_sites(p, i_nuclide, rx);
 
       // Make sure particle population doesn't grow out of control for
       // subcritical multiplication problems.
@@ -117,7 +117,7 @@ void sample_neutron_reaction(Particle& p)
   if (settings::photon_transport) {
     p.stream_ = STREAM_PHOTON;
     sample_secondary_photons(p, i_nuclide);
-	p.stream_ = STREAM_TRACKING;
+	  p.stream_ = STREAM_TRACKING;
   }
 
   // If survival biasing is being used, the following subroutine adjusts the
@@ -498,7 +498,7 @@ int sample_element(Particle& p)
   fatal_error("Did not sample any element during collision.");
 }
 
-Reaction* sample_fission(int i_nuclide, Particle& p)
+Reaction& sample_fission(int i_nuclide, Particle& p)
 {
   // Get pointer to nuclide
   const auto& nuc {data::nuclides[i_nuclide]};
@@ -507,14 +507,14 @@ Reaction* sample_fission(int i_nuclide, Particle& p)
   // default to the first reaction if we know that there are no partial fission
   // reactions
   if (p.neutron_xs_[i_nuclide].use_ptable || !nuc->has_partial_fission_) {
-    return nuc->fission_rx_[0];
+    return *nuc->fission_rx_[0];
   }
 
   // Check to see if we are in a windowed multipole range.  WMP only supports
   // the first fission reaction.
   if (nuc->multipole_) {
     if (p.E_ >= nuc->multipole_->E_min_ && p.E_ <= nuc->multipole_->E_max_) {
-      return nuc->fission_rx_[0];
+      return *nuc->fission_rx_[0];
     }
   }
 
@@ -536,7 +536,7 @@ Reaction* sample_fission(int i_nuclide, Particle& p)
             + f*rx->xs_[i_temp].value[i_grid - threshold + 1];
 
     // Create fission bank sites if fission occurs
-    if (prob > cutoff) return rx;
+    if (prob > cutoff) return *rx;
   }
 
   // If we reached here, no reaction was sampled

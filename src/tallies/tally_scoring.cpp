@@ -95,7 +95,7 @@ FilterBinIter::operator++()
   // Find the next valid combination of filter bins.  To do this, we search
   // backwards through the filters until we find the first filter whose bins
   // can be incremented.
-  bool done_looping = true;
+  bool visited_all_combinations = true;
   for (int i = tally_.filters().size()-1; i >= 0; --i) {
     auto i_filt = tally_.filters(i);
     auto& match {filter_matches_[i_filt]};
@@ -103,7 +103,7 @@ FilterBinIter::operator++()
       // The bin for this filter can be incremented.  Increment it and do not
       // touch any of the remaining filters.
       ++match.i_bin_;
-      done_looping = false;
+      visited_all_combinations = false;
       break;
     } else {
       // This bin cannot be incremented so reset it and continue to the next
@@ -112,7 +112,7 @@ FilterBinIter::operator++()
     }
   }
 
-  if (done_looping) {
+  if (visited_all_combinations) {
     // We have visited every valid combination.  All done!
     index_ = -1;
   } else {
@@ -227,19 +227,17 @@ double score_fission_q(const Particle& p, int score_bin, const Tally& tally,
       const Nuclide& nuc {*data::nuclides[i_nuclide]};
       return get_nuc_fission_q(nuc, p, score_bin) * atom_density * flux
              * p.neutron_xs_[i_nuclide].fission;
-    } else {
-      if (p.material_ != MATERIAL_VOID) {
-        const Material& material {*model::materials[p.material_]};
-        double score {0.0};
-        for (auto i = 0; i < material.nuclide_.size(); ++i) {
-          auto j_nuclide = material.nuclide_[i];
-          auto atom_density = material.atom_density_(i);
-          const Nuclide& nuc {*data::nuclides[j_nuclide]};
-          score += get_nuc_fission_q(nuc, p, score_bin) * atom_density
-            * p.neutron_xs_[j_nuclide].fission;
-        }
-        return score * flux;
+    } else if (p.material_ != MATERIAL_VOID) {
+      const Material& material {*model::materials[p.material_]};
+      double score {0.0};
+      for (auto i = 0; i < material.nuclide_.size(); ++i) {
+        auto j_nuclide = material.nuclide_[i];
+        auto atom_density = material.atom_density_(i);
+        const Nuclide& nuc {*data::nuclides[j_nuclide]};
+        score += get_nuc_fission_q(nuc, p, score_bin) * atom_density
+          * p.neutron_xs_[j_nuclide].fission;
       }
+      return score * flux;
     }
   }
   return 0.0;
@@ -580,8 +578,7 @@ score_general_ce(Particle& p, int i_tally, int start_index, int filter_index,
         score = p.wgt_last_ * flux;
       } else {
         // Get yield and apply to score
-        auto m =
-          data::nuclides[p.event_nuclide_]->reaction_index_[p.event_mt_];
+        auto m = data::nuclides[p.event_nuclide_]->reaction_index_[p.event_mt_];
         const auto& rxn {*data::nuclides[p.event_nuclide_]->reactions_[m]};
         score = p.wgt_last_ * flux * (*rxn.products_[0].yield_)(E);
       }
@@ -775,9 +772,9 @@ score_general_ce(Particle& p, int i_tally, int start_index, int filter_index,
                 model::tally_filters[i_dg_filt].get())};
               // Tally each delayed group bin individually
               for (auto d_bin = 0; d_bin < filt.n_bins(); ++d_bin) {
-                auto d = filt.groups()[d_bin];
+                auto dg = filt.groups()[d_bin];
                 auto yield = data::nuclides[p.event_nuclide_]
-                  ->nu(E, ReactionProduct::EmissionMode::delayed, d);
+                  ->nu(E, ReactionProduct::EmissionMode::delayed, dg);
                 score = p.wgt_absorb_ * yield
                   * p.neutron_xs_[p.event_nuclide_].fission
                   / p.neutron_xs_[p.event_nuclide_].absorption * flux;
@@ -853,6 +850,7 @@ score_general_ce(Particle& p, int i_tally, int start_index, int filter_index,
               * atom_density * flux;
           }
         } else {
+          // Need to add up contributions for each nuclide
           if (tally.delayedgroup_filter_ != C_NONE) {
             auto i_dg_filt = tally.filters()[tally.delayedgroup_filter_];
             const DelayedGroupFilter& filt
@@ -1119,18 +1117,16 @@ score_general_ce(Particle& p, int i_tally, int start_index, int filter_index,
             score = rxn.q_value_ * p.neutron_xs_[i_nuclide].fission
               * atom_density * flux;
           }
-        } else {
-          if (p.material_ != MATERIAL_VOID) {
-            const Material& material {*model::materials[p.material_]};
-            for (auto i = 0; i < material.nuclide_.size(); ++i) {
-              auto j_nuclide = material.nuclide_[i];
-              auto atom_density = material.atom_density_(i);
-              const auto& nuc {*data::nuclides[j_nuclide]};
-              if (nuc.fissionable_) {
-                const auto& rxn {*nuc.fission_rx_[0]};
-                score += rxn.q_value_ * p.neutron_xs_[j_nuclide].fission
-                  * atom_density * flux;
-              }
+        } else if (p.material_ != MATERIAL_VOID) {
+          const Material& material {*model::materials[p.material_]};
+          for (auto i = 0; i < material.nuclide_.size(); ++i) {
+            auto j_nuclide = material.nuclide_[i];
+            auto atom_density = material.atom_density_(i);
+            const auto& nuc {*data::nuclides[j_nuclide]};
+            if (nuc.fissionable_) {
+              const auto& rxn {*nuc.fission_rx_[0]};
+              score += rxn.q_value_ * p.neutron_xs_[j_nuclide].fission
+                * atom_density * flux;
             }
           }
         }
@@ -1270,26 +1266,24 @@ score_general_ce(Particle& p, int i_tally, int start_index, int filter_index,
                 + f * xs.value[i_grid-xs.threshold+1]) * atom_density * flux;
             }
           }
-        } else {
-          if (p.material_ != MATERIAL_VOID) {
-            const Material& material {*model::materials[p.material_]};
-            for (auto i = 0; i < material.nuclide_.size(); ++i) {
-              auto j_nuclide = material.nuclide_[i];
-              auto atom_density = material.atom_density_(i);
-              const auto& nuc {*data::nuclides[j_nuclide]};
-              auto m = nuc.reaction_index_[score_bin];
-              if (m == C_NONE) continue;
-              const auto& rxn {*nuc.reactions_[m]};
-              auto i_temp = p.neutron_xs_[j_nuclide].index_temp;
-              if (i_temp >= 0) { // Can be false due to multipole
-                auto i_grid = p.neutron_xs_[j_nuclide].index_grid;
-                auto f = p.neutron_xs_[j_nuclide].interp_factor;
-                const auto& xs {rxn.xs_[i_temp]};
-                if (i_grid >= xs.threshold) {
-                  score += ((1.0 - f) * xs.value[i_grid-xs.threshold]
-                    + f * xs.value[i_grid-xs.threshold+1]) * atom_density
-                    * flux;
-                }
+        } else if (p.material_ != MATERIAL_VOID) {
+          const Material& material {*model::materials[p.material_]};
+          for (auto i = 0; i < material.nuclide_.size(); ++i) {
+            auto j_nuclide = material.nuclide_[i];
+            auto atom_density = material.atom_density_(i);
+            const auto& nuc {*data::nuclides[j_nuclide]};
+            auto m = nuc.reaction_index_[score_bin];
+            if (m == C_NONE) continue;
+            const auto& rxn {*nuc.reactions_[m]};
+            auto i_temp = p.neutron_xs_[j_nuclide].index_temp;
+            if (i_temp >= 0) { // Can be false due to multipole
+              auto i_grid = p.neutron_xs_[j_nuclide].index_grid;
+              auto f = p.neutron_xs_[j_nuclide].interp_factor;
+              const auto& xs {rxn.xs_[i_temp]};
+              if (i_grid >= xs.threshold) {
+                score += ((1.0 - f) * xs.value[i_grid-xs.threshold]
+                  + f * xs.value[i_grid-xs.threshold+1]) * atom_density
+                  * flux;
               }
             }
           }

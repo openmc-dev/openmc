@@ -766,7 +766,10 @@ class MeshFilter(Filter):
         cv.check_type('filter mesh', mesh, openmc.MeshBase)
         self._mesh = mesh
         if isinstance(mesh, openmc.UnstructuredMesh):
-            self.bins = list(range(len(mesh.volumes)))
+            if mesh.volumes is None:
+                self.bins = []
+            else:
+                self.bins = list(range(len(mesh.volumes)))
         else:
             self.bins = list(mesh.indices)
 

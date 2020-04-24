@@ -633,8 +633,8 @@ class UnstructuredMesh(MeshBase):
     def __init__(self, filename, mesh_id=None, name=''):
         super().__init__(mesh_id, name)
         self.filename = filename
-        self._volumes = []
-        self._centroids = []
+        self._volumes = None
+        self._centroids = None
 
     @property
     def filename(self):
@@ -664,7 +664,7 @@ class UnstructuredMesh(MeshBase):
 
     @property
     def n_elements(self):
-        if not self.centroids:
+        if self._centroids is None:
             raise RuntimeError("No information about this mesh has "
                                "been loaded from a statepoint file.")
         return len(self._centroids)
@@ -679,7 +679,7 @@ class UnstructuredMesh(MeshBase):
         string = super().__repr__()
         return string + '{: <16}=\t{}\n'.format('\tFilename', self.filename)
 
-    def data_to_vtk(self, filename, datasets, volume_normalization=True):
+    def write_data_to_vtk(self, filename, datasets, volume_normalization=True):
         """Map data to the unstructured mesh element centroids
            to create a VTK point-cloud dataset.
 
@@ -691,7 +691,7 @@ class UnstructuredMesh(MeshBase):
         datasets : dict
             Dictionary whose keys are the data labels
             and values are the data sets.
-        volume_normalization : boolt
+        volume_normalization : bool
             Whether or not to normalize the data by the
             volume of the mesh elements
         """
@@ -699,20 +699,26 @@ class UnstructuredMesh(MeshBase):
         if not _VTK:
             raise RuntimeError("The VTK Python module is not installed.")
 
-        if not self.centroids:
-            raise RuntimeError("No centroid information if present for this mesh. "
-                               "Please load this information from a relevant statepoint file.")
+        if self.centroids is None:
+            raise RuntimeError("No centroid information is present on this "
+                               "unstructured mesh. Please load this "
+                               "information from a relevant statepoint file.")
 
-        if not self.volumes and volume_normalization:
-            raise RuntimeError("No volume data is present on this mesh. "
-                               "Please load the mesh information from a statepoint file.")
+        if self.volumes is None and volume_normalization:
+            raise RuntimeError("No volume data is present on this "
+                               "unstructured mesh. Please load the "
+                               " mesh information from a statepoint file.")
 
         # check that the data sets are appropriately sized
         for label, dataset in datasets.items():
-            assert len(dataset) == self.n_elements
-            assert isinstance(label, str)
+            if isinstance(dataset, np.ndarray):
+                assert dataset.size == self.n_elements
+            else:
+                assert len(dataset) == self.n_elements
+            cv.check_type('label', label, str)
 
         # create data arrays for the cells/points
+        cell_dim = 1
         vertices = vtk.vtkCellArray()
         points = vtk.vtkPoints()
 
@@ -720,12 +726,17 @@ class UnstructuredMesh(MeshBase):
             # create a point for each centroid
             point_id = points.InsertNextPoint(centroid)
             # create a cell of type "Vertex" for each point
-            cell_id = vertices.InsertNextCell(1, (point_id,))
+            cell_id = vertices.InsertNextCell(cell_dim, (point_id,))
 
         # create a VTK data object
-        polyData = vtk.vtkPolyData()
-        polyData.SetPoints(points)
-        polyData.SetVerts(vertices)
+        poly_data = vtk.vtkPolyData()
+        poly_data.SetPoints(points)
+        poly_data.SetVerts(vertices)
+
+        # strange VTK nuance:
+        # arrays must be held in some container
+        # until the vtk file is written
+        data_holder = []
 
         # create VTK arrays for each of
         # the data sets
@@ -742,7 +753,8 @@ class UnstructuredMesh(MeshBase):
                            dataset.size,
                            True)
 
-            polyData.GetPointData().AddArray(array)
+            data_holder.append(dataset)
+            poly_data.GetPointData().AddArray(array)
 
         # set filename
         if filename[-4:] != ".vtk":
@@ -750,7 +762,7 @@ class UnstructuredMesh(MeshBase):
 
         writer = vtk.vtkGenericDataObjectWriter()
         writer.SetFileName(filename)
-        writer.SetInputData(polyData)
+        writer.SetInputData(poly_data)
         writer.Write()
 
     @classmethod

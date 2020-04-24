@@ -734,7 +734,7 @@ class UnstructuredMesh(MeshBase):
         poly_data.SetVerts(vertices)
 
         # strange VTK nuance:
-        # arrays must be held in some container
+        # data must be held in some container
         # until the vtk file is written
         data_holder = []
 

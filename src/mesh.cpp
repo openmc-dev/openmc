@@ -2190,10 +2190,11 @@ LibMesh::centroid(int bin) const {
 std::string LibMesh::library() const { return "libmesh"; }
 
 void LibMesh::initialize() {
-    // always 3 for unstructured meshes
+  // always 3 for unstructured meshes
   n_dimension_ = 3;
 
-  m_ = std::unique_ptr<libMesh::Mesh>(new libMesh::Mesh(settings::LMI->comm(), 3));
+  m_ = std::make_unique<libMesh::Mesh>(*settings::libmesh_comm, 3);
+
   m_->read(filename_);
   m_->prepare_for_use();
 

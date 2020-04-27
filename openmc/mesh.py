@@ -685,7 +685,6 @@ class UnstructuredMesh(MeshBase):
 
         Parameters
         ----------
-
         filename : str
             Name of the VTK file to write.
         datasets : dict
@@ -757,7 +756,7 @@ class UnstructuredMesh(MeshBase):
             poly_data.GetPointData().AddArray(array)
 
         # set filename
-        if filename[-4:] != ".vtk":
+        if not filename.endswith(".vtk"):
             filename += ".vtk"
 
         writer = vtk.vtkGenericDataObjectWriter()

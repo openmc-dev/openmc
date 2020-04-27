@@ -336,7 +336,7 @@ Particle::event_collide()
   for (int j = 0; j < n_coord_ - 1; ++j) {
     if (coord_[j + 1].rotated) {
       // If next level is rotated, apply rotation matrix
-      const auto& m {model::cells[coord_[j].cell]->rotation_};
+      const auto& m {model::cells[coord_[j].cell].rotation_};
       const auto& u {coord_[j].u};
       coord_[j + 1].u = u.rotate(m);
     } else {

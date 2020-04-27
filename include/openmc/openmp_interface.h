@@ -30,11 +30,17 @@ public:
     #endif
   }
 
+  /*
   // Mutexes cannot be copied.  We need to explicitly delete the copy
   // constructor and copy assignment operator to ensure the compiler doesn't
   // "help" us by implicitly trying to copy the underlying mutexes.
+
+  // I don't see why they can't be copied. I think they are just some uniquely
+  // assigned integer. Seems copyable?
+
   OpenMPMutex(const OpenMPMutex&) = delete;
   OpenMPMutex& operator= (const OpenMPMutex&) = delete;
+  */
 
   //! Lock the mutex.
   //

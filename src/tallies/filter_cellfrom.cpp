@@ -23,7 +23,7 @@ CellFromFilter::get_all_bins(const Particle* p, TallyEstimator estimator,
 std::string
 CellFromFilter::text_label(int bin) const
 {
-  return "Cell from " + std::to_string(model::cells[cells_[bin]]->id_);
+  return "Cell from " + std::to_string(model::cells[cells_[bin]].id_);
 }
 
 } // namespace openmc

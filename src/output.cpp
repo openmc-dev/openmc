@@ -169,7 +169,7 @@ extern "C" void print_particle(Particle* p)
     fmt::print("  Level {}\n", i);
 
     if (p->coord_[i].cell != C_NONE) {
-      const Cell& c {*model::cells[p->coord_[i].cell]};
+      const Cell& c {model::cells[p->coord_[i].cell]};
       fmt::print("    Cell             = {}\n", c.id_);
     }
 
@@ -280,9 +280,9 @@ print_overlap_check()
 
     std::vector<int32_t> sparse_cell_ids;
     for (int i = 0; i < model::cells.size(); i++) {
-      fmt::print(" {:8}{:17}\n", model::cells[i]->id_, model::overlap_check_count[i]);
+      fmt::print(" {:8}{:17}\n", model::cells[i].id_, model::overlap_check_count[i]);
       if (model::overlap_check_count[i] < 10) {
-        sparse_cell_ids.push_back(model::cells[i]->id_);
+        sparse_cell_ids.push_back(model::cells[i].id_);
       }
     }
 

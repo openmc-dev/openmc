@@ -4,7 +4,7 @@
 #include <cstdint>
 #include <functional> // for hash
 #include <limits>
-#include <memory> // for unique_ptr
+#include <memory>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -65,7 +65,8 @@ class Universe;
 class UniversePartitioner;
 
 namespace model {
-  extern std::vector<std::unique_ptr<Cell>> cells;
+  //extern std::vector<std::unique_ptr<Cell>> cells;
+  extern std::vector<Cell> cells;
   extern std::unordered_map<int32_t, int32_t> cell_map;
 
   extern std::vector<std::unique_ptr<Universe>> universes;
@@ -102,7 +103,7 @@ public:
 
   explicit Cell(pugi::xml_node cell_node);
   Cell() {};
-  virtual ~Cell() = default;
+  ~Cell() = default;
 
   //----------------------------------------------------------------------------
   // Methods
@@ -126,19 +127,22 @@ public:
   //! \param on_surface The signed index of a surface that the coordinate is
   //!   known to be on.  This index takes precedence over surface sense
   //!   calculations.
-  virtual bool
-  contains(Position r, Direction u, int32_t on_surface) const = 0;
+  bool
+  contains(Position r, Direction u, int32_t on_surface) const;
 
   //! Find the oncoming boundary of this cell.
-  virtual std::pair<double, int32_t>
-  distance(Position r, Direction u, int32_t on_surface, Particle* p) const = 0;
+  std::pair<double, int32_t>
+  distance(Position r, Direction u, int32_t on_surface, Particle* p) const;
 
   //! Write all information needed to reconstruct the cell to an HDF5 group.
   //! \param group_id An HDF5 group id.
-  virtual void to_hdf5(hid_t group_id) const = 0;
+  void to_hdf5(hid_t group_id) const;
 
   //! Get the BoundingBox for this cell.
-  virtual BoundingBox bounding_box() const = 0;
+  BoundingBox bounding_box() const;
+
+  void allocate_on_device();
+  void copy_to_device();
 
   //----------------------------------------------------------------------------
   // Accessors
@@ -179,20 +183,22 @@ public:
   //! \brief Material(s) within this cell.
   //!
   //! May be multiple materials for distribcell.
-  //std::vector<int32_t> material_;
-  int32_t material_[MATERIAL_SIZE];
-  int64_t material_length_ {0};
+  std::vector<int32_t> material_;
+  int32_t* device_material_{NULL};
 
   //! \brief Temperature(s) within this cell.
   //!
   //! The stored values are actually sqrt(k_Boltzmann * T) for each temperature
   //! T. The units are sqrt(eV).
   std::vector<double> sqrtkT_;
+  double* device_sqrtkT_{NULL};
 
   //! Definition of spatial region as Boolean expression of half-spaces
   std::vector<std::int32_t> region_;
+  int32_t* device_region_{NULL};
   //! Reverse Polish notation for region expression
   std::vector<std::int32_t> rpn_;
+  int32_t* device_rpn_{NULL};
   bool simple_;  //!< Does the region contain only intersections?
 
   //! \brief Neighboring cells in the same universe.
@@ -207,12 +213,40 @@ public:
   //! rotation angles about the x-, y- and z- axes in degrees, these values are
   //! also present at the end of the vector, making it of length 12.
   std::vector<double> rotation_;
+  double* device_rotation_{NULL};
 
   std::vector<int32_t> offset_;  //!< Distribcell offset table
+  int32_t* device_offset_{NULL};
+
+protected:
+  bool contains_simple(Position r, Direction u, int32_t on_surface) const;
+  bool contains_complex(Position r, Direction u, int32_t on_surface) const;
+  BoundingBox bounding_box_simple() const;
+  static BoundingBox bounding_box_complex(std::vector<int32_t> rpn);
+
+  //! Applies DeMorgan's laws to a section of the RPN
+  //! \param start Starting point for token modification
+  //! \param stop Stopping point for token modification
+  static void apply_demorgan(std::vector<int32_t>::iterator start,
+                             std::vector<int32_t>::iterator stop);
+
+  //! Removes complement operators from the RPN
+  //! \param rpn The rpn to remove complement operators from.
+  static void remove_complement_ops(std::vector<int32_t>& rpn);
+
+  //! Returns the beginning position of a parenthesis block (immediately before
+  //! two surface tokens) in the RPN given a starting position at the end of
+  //! that block (immediately after two surface tokens)
+  //! \param start Starting position of the search
+  //! \param rpn The rpn being searched
+  static std::vector<int32_t>::iterator
+  find_left_parenthesis(std::vector<int32_t>::iterator start,
+                        const std::vector<int32_t>& rpn);
 };
 
 //==============================================================================
 
+/*
 class CSGCell : public Cell
 {
 public:
@@ -256,6 +290,7 @@ protected:
                         const std::vector<int32_t>& rpn);
 
 };
+                        */
 
 //==============================================================================
 

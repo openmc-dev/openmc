@@ -103,7 +103,7 @@ void write_geometry(hid_t file)
   write_attribute(geom_group, "n_lattices", model::lattices.size());
 
   auto cells_group = create_group(geom_group, "cells");
-  for (const auto& c : model::cells) c->to_hdf5(cells_group);
+  for (const auto& c : model::cells) c.to_hdf5(cells_group);
   close_group(cells_group);
 
   auto surfaces_group = create_group(geom_group, "surfaces");

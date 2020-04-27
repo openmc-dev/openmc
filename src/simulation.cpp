@@ -130,49 +130,12 @@ int openmc_simulation_init()
     }
   }
 
-  std::cout << "Number of cells in model = " << model::cells.size() << std::endl;
-  int material_max = -1;
-  int sqrtkT_max = -1; 
-  int region_max = -1;
-  int rpn_max = -1;
-  int rotation_max = -1;
-  int offset_max = -1;
-
-  for( int i = 0; i < model::cells.size(); i++ )
-  {
-    Cell& c = *model::cells[i].get();
-    //int material = c.material_.size();
-    int material = c.material_length_;
-    int region = c.region_.size();
-    int sqrtkT =   c.sqrtkT_.size();
-    int rpn = c.rpn_.size();
-    int rotation = c.rotation_.size();
-    int offset = c.offset_.size();
-    if( material > material_max )
-      material_max = material;
-    if( sqrtkT > sqrtkT_max )
-      sqrtkT_max = sqrtkT;
-    if( region > region_max )
-      region_max = region;
-    if( rpn > rpn_max )
-      rpn_max = rpn;
-    if( rotation > rotation_max )
-      rotation_max = rotation;
-    if( offset > offset_max )
-      offset_max = offset;
+  // Move data to device
+  std::cout << "Moving " << model::cells.size() << " cells to device..." << std::endl;
+  for( auto& cell : model::cells ) {
+    cell.allocate_on_device();
+    cell.copy_to_device();
   }
-  std::cout << "Max material length in a cell = " << material_max << std::endl;
-  std::cout << "Max sqrtkT length in a cell = " << sqrtkT_max << std::endl;
-  std::cout << "Max region length in a cell = " << region_max << std::endl;
-  std::cout << "Max rpn length in a cell = " << rpn_max << std::endl;
-  std::cout << "Max rotation length in a cell = " << rotation_max << std::endl;
-  std::cout << "Max offset length in a cell = " << offset_max << std::endl;
-  assert( material_max <= MATERIAL_SIZE );
-  assert( sqrtkT_max <= SQRTKT_SIZE );
-  assert( region_max <= REGION_SIZE );
-  assert( rpn_max <= RPN_SIZE );
-  assert( rotation_max <= ROTATION_SIZE );
-  assert( offset_max <= OFFSET_SIZE );
 
   // Set flag indicating initialization is done
   simulation::initialized = true;
@@ -182,61 +145,6 @@ int openmc_simulation_init()
 int openmc_simulation_finalize()
 {
   using namespace openmc;
-  
-  std::cout << "Number of cells in model = " << model::cells.size() << std::endl;
-  int material_max = -1;
-  int sqrtkT_max = -1; 
-  int region_max = -1;
-  int rpn_max = -1;
-  int rotation_max = -1;
-  int offset_max = -1;
-  int neighbor_max = -1;
-
-  for( int i = 0; i < model::cells.size(); i++ )
-  {
-    Cell& c = *model::cells[i].get();
-    //int material = c.material_.size();
-    int material = c.material_length_;
-    int region = c.region_.size();
-    int sqrtkT =   c.sqrtkT_.size();
-    int rpn = c.rpn_.size();
-    int rotation = c.rotation_.size();
-    int offset = c.offset_.size();
-    NeighborList& neighbors = c.neighbors_;
-
-    if( material > material_max )
-      material_max = material;
-    if( sqrtkT > sqrtkT_max )
-      sqrtkT_max = sqrtkT;
-    if( region > region_max )
-      region_max = region;
-    if( rpn > rpn_max )
-      rpn_max = rpn;
-    if( rotation > rotation_max )
-      rotation_max = rotation;
-    if( offset > offset_max )
-      offset_max = offset;
-    
-    int num_neighbors = neighbors.get_length();
-    if( num_neighbors > neighbor_max)
-      neighbor_max = num_neighbors;
-  }
-  std::cout << "Max material length in a cell = " << material_max << std::endl;
-  std::cout << "Max sqrtkT length in a cell = " << sqrtkT_max << std::endl;
-  std::cout << "Max region length in a cell = " << region_max << std::endl;
-  std::cout << "Max rpn length in a cell = " << rpn_max << std::endl;
-  std::cout << "Max rotation length in a cell = " << rotation_max << std::endl;
-  std::cout << "Max offset length in a cell = " << offset_max << std::endl;
-  std::cout << "Max neighbor length in a cell = " << neighbor_max << std::endl;
-  assert( material_max <= MATERIAL_SIZE );
-  assert( sqrtkT_max <= SQRTKT_SIZE );
-  assert( region_max <= REGION_SIZE );
-  assert( rpn_max <= RPN_SIZE );
-  assert( rotation_max <= ROTATION_SIZE );
-  assert( offset_max <= OFFSET_SIZE );
-  assert( neighbor_max <= NEIGHBOR_SIZE );
-
-
 
   // Skip if simulation was never run
   if (!simulation::initialized) return 0;

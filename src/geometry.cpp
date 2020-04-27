@@ -45,13 +45,13 @@ bool check_cell_overlap(Particle* p, bool error)
 
     // Loop through each cell on this level
     for (auto index_cell : univ.cells_) {
-      Cell& c = *model::cells[index_cell];
+      Cell& c = model::cells[index_cell];
       if (c.contains(p->coord_[j].r, p->coord_[j].u, p->surface_)) {
         if (index_cell != p->coord_[j].cell) {
           if (error) {
             fatal_error(fmt::format(
               "Overlapping cells detected: {}, {} on universe {}",
-              c.id_, model::cells[p->coord_[j].cell]->id_, univ.id_));
+              c.id_, model::cells[p->coord_[j].cell].id_, univ.id_));
           }
           return true;
         }
@@ -80,13 +80,13 @@ find_cell_inner(Particle* p, const NeighborList* neighbor_list)
 
       // Make sure the search cell is in the same universe.
       int i_universe = p->coord_[p->n_coord_-1].universe;
-      if (model::cells[i_cell]->universe_ != i_universe) continue;
+      if (model::cells[i_cell].universe_ != i_universe) continue;
 
       // Check if this cell contains the particle.
       Position r {p->r_local()};
       Direction u {p->u_local()};
       auto surf = p->surface_;
-      if (model::cells[i_cell]->contains(r, u, surf)) {
+      if (model::cells[i_cell].contains(r, u, surf)) {
         p->coord_[p->n_coord_-1].cell = i_cell;
         found = true;
         break;
@@ -106,13 +106,13 @@ find_cell_inner(Particle* p, const NeighborList* neighbor_list)
 
       // Make sure the search cell is in the same universe.
       int i_universe = p->coord_[p->n_coord_-1].universe;
-      if (model::cells[i_cell]->universe_ != i_universe) continue;
+      if (model::cells[i_cell].universe_ != i_universe) continue;
 
       // Check if this cell contains the particle.
       Position r {p->r_local()};
       Direction u {p->u_local()};
       auto surf = p->surface_;
-      if (model::cells[i_cell]->contains(r, u, surf)) {
+      if (model::cells[i_cell].contains(r, u, surf)) {
         p->coord_[p->n_coord_-1].cell = i_cell;
         found = true;
         break;
@@ -122,12 +122,12 @@ find_cell_inner(Particle* p, const NeighborList* neighbor_list)
 
   // Announce the cell that the particle is entering.
   if (found && (settings::verbosity >= 10 || p->trace_)) {
-    auto msg = fmt::format("    Entering cell {}", model::cells[i_cell]->id_);
+    auto msg = fmt::format("    Entering cell {}", model::cells[i_cell].id_);
     write_message(msg, 1);
   }
 
   if (found) {
-    Cell& c {*model::cells[i_cell]};
+    Cell& c {model::cells[i_cell]};
     if (c.type_ == Fill::MATERIAL) {
       //=======================================================================
       //! Found a material cell which means this is the lowest coord level.
@@ -136,7 +136,7 @@ find_cell_inner(Particle* p, const NeighborList* neighbor_list)
       int offset = 0;
       if (c.distribcell_index_ >= 0) {
         for (int i = 0; i < p->n_coord_; i++) {
-          const auto& c_i {*model::cells[p->coord_[i].cell]};
+          const auto& c_i {model::cells[p->coord_[i].cell]};
           if (c_i.type_ == Fill::UNIVERSE) {
             offset += c_i.offset_[c.distribcell_index_];
           } else if (c_i.type_ == Fill::LATTICE) {
@@ -154,8 +154,7 @@ find_cell_inner(Particle* p, const NeighborList* neighbor_list)
 
       // Set the material and temperature.
       p->material_last_ = p->material_;
-      //if (c.material_.size() > 1) {
-      if (c.material_length_ > 1) {
+      if (c.material_.size() > 1) {
         p->material_ = c.material_[p->cell_instance_];
       } else {
         p->material_ = c.material_[0];
@@ -269,7 +268,7 @@ find_cell(Particle* p, bool use_neighbor_lists)
     // Get the cell this particle was in previously.
     auto coord_lvl = p->n_coord_ - 1;
     auto i_cell = p->coord_[coord_lvl].cell;
-    Cell& c {*model::cells[i_cell]};
+    Cell& c {model::cells[i_cell]};
 
     // Search for the particle in that cell's neighbor list.  Return if we
     // found the particle.
@@ -313,9 +312,9 @@ cross_lattice(Particle* p, const BoundaryInfo& boundary)
   const auto& upper_coord {p->coord_[p->n_coord_ - 2]};
   const auto& cell {model::cells[upper_coord.cell]};
   Position r = upper_coord.r;
-  r -= cell->translation_;
-  if (!cell->rotation_.empty()) {
-    r = r.rotate(cell->rotation_);
+  r -= cell.translation_;
+  if (!cell.rotation_.empty()) {
+    r = r.rotate(cell.rotation_);
   }
   p->r_local() = lat.get_local_position(r, i_xyz);
 
@@ -361,7 +360,7 @@ BoundaryInfo distance_to_boundary(Particle* p)
     const auto& coord {p->coord_[i]};
     Position r {coord.r};
     Direction u {coord.u};
-    Cell& c {*model::cells[coord.cell]};
+    Cell& c {model::cells[coord.cell]};
 
     // Find the oncoming surface in this cell and the distance to it.
     auto surface_distance = c.distance(r, u, p->surface_, p);
@@ -382,9 +381,9 @@ BoundaryInfo distance_to_boundary(Particle* p)
         case LatticeType::hex:
           auto& cell_above {model::cells[p->coord_[i-1].cell]};
           Position r_hex {p->coord_[i-1].r};
-          r_hex -= cell_above->translation_;
+          r_hex -= cell_above.translation_;
           if (coord.rotated) {
-            r_hex = r_hex.rotate(cell_above->rotation_);
+            r_hex = r_hex.rotate(cell_above.rotation_);
           }
           r_hex.z = coord.r.z;
           lattice_distance = lat.distance(r_hex, u, i_xyz);

@@ -194,9 +194,8 @@ Particle::Bank SourceDistribution::sample(uint64_t* seed) const
         if (space_box->only_fissionable()) {
           // Determine material
           const auto& c = model::cells[cell_index];
-          //auto mat_index = c->material_.size() == 1
-          auto mat_index = c->material_length_ == 1
-            ? c->material_[0] : c->material_[instance];
+          auto mat_index = c.material_.size() == 1
+            ? c.material_[0] : c.material_[instance];
 
           if (mat_index == MATERIAL_VOID) {
             found = false;

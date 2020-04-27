@@ -84,31 +84,29 @@ adjust_indices()
 {
   // Adjust material/fill idices.
   for (auto& c : model::cells) {
-    if (c->fill_ != C_NONE) {
-      int32_t id = c->fill_;
+    if (c.fill_ != C_NONE) {
+      int32_t id = c.fill_;
       auto search_univ = model::universe_map.find(id);
       auto search_lat = model::lattice_map.find(id);
       if (search_univ != model::universe_map.end()) {
-        c->type_ = Fill::UNIVERSE;
-        c->fill_ = search_univ->second;
+        c.type_ = Fill::UNIVERSE;
+        c.fill_ = search_univ->second;
       } else if (search_lat != model::lattice_map.end()) {
-        c->type_ = Fill::LATTICE;
-        c->fill_ = search_lat->second;
+        c.type_ = Fill::LATTICE;
+        c.fill_ = search_lat->second;
       } else {
         fatal_error(fmt::format("Specified fill {} on cell {} is neither a "
-          "universe nor a lattice.", id, c->id_));
+          "universe nor a lattice.", id, c.id_));
       }
     } else {
-      c->type_ = Fill::MATERIAL;
-      //for (auto& mat_id : c->material_) {
-      for (auto i = 0; i < c->material_length_; i++) {
-        auto& mat_id = c->material_[i];
+      c.type_ = Fill::MATERIAL;
+      for (auto& mat_id : c.material_) {
         if (mat_id != MATERIAL_VOID) {
           auto search = model::material_map.find(mat_id);
           if (search == model::material_map.end()) {
             fatal_error(fmt::format(
               "Could not find material {} specified on cell {}",
-              mat_id, c->id_));
+              mat_id, c.id_));
           }
           // Change from ID to index
           mat_id = search->second;
@@ -119,12 +117,12 @@ adjust_indices()
 
   // Change cell.universe values from IDs to indices.
   for (auto& c : model::cells) {
-    auto search = model::universe_map.find(c->universe_);
+    auto search = model::universe_map.find(c.universe_);
     if (search != model::universe_map.end()) {
-      c->universe_ = search->second;
+      c.universe_ = search->second;
     } else {
       fatal_error(fmt::format("Could not find universe {} specified on cell {}",
-        c->universe_, c->id_));
+        c.universe_, c.id_));
     }
   }
 
@@ -147,7 +145,7 @@ partition_universes()
       // Collect the set of surfaces in this universe.
       std::unordered_set<int32_t> surf_inds;
       for (auto i_cell : univ->cells_) {
-        for (auto token : model::cells[i_cell]->rpn_) {
+        for (auto token : model::cells[i_cell].rpn_) {
           if (token < OP_UNION) surf_inds.insert(std::abs(token) - 1);
         }
       }
@@ -175,27 +173,23 @@ assign_temperatures()
 {
   for (auto& c : model::cells) {
     // Ignore non-material cells and cells with defined temperature.
-    //if (c->material_.size() == 0) continue;
-    if (c->material_length_ == 0) continue;
-    if (c->sqrtkT_.size() > 0) continue;
+    if (c.material_.size() == 0) continue;
+    if (c.sqrtkT_.size() > 0) continue;
 
-    //c->sqrtkT_.reserve(c->material_.size());
-    c->sqrtkT_.reserve(c->material_length_);
-    //for (auto i_mat : c->material_) {
-    for (auto i = 0; i < c->material_length_; i++) {
-      auto i_mat = c->material_[i];
+    c.sqrtkT_.reserve(c.material_.size());
+    for (auto i_mat : c.material_) {
       if (i_mat == MATERIAL_VOID) {
         // Set void region to 0K.
-        c->sqrtkT_.push_back(0);
+        c.sqrtkT_.push_back(0);
 
       } else {
         if (model::materials[i_mat]->temperature_ >= 0) {
           // This material has a default temperature; use that value.
           auto T = model::materials[i_mat]->temperature_;
-          c->sqrtkT_.push_back(std::sqrt(K_BOLTZMANN * T));
+          c.sqrtkT_.push_back(std::sqrt(K_BOLTZMANN * T));
         } else {
           // Use the global default temperature.
-          c->sqrtkT_.push_back(std::sqrt(K_BOLTZMANN *
+          c.sqrtkT_.push_back(std::sqrt(K_BOLTZMANN *
             settings::temperature_default));
         }
       }
@@ -211,25 +205,23 @@ get_temperatures(std::vector<std::vector<double>>& nuc_temps,
 {
   for (const auto& cell : model::cells) {
     // Skip non-material cells.
-    if (cell->fill_ != C_NONE) continue;
+    if (cell.fill_ != C_NONE) continue;
 
-    //for (int j = 0; j < cell->material_.size(); ++j) {
-    for (int j = 0; j < cell->material_length_; ++j) {
+    for (int j = 0; j < cell.material_.size(); ++j) {
       // Skip void materials
-      int i_material = cell->material_[j];
+      int i_material = cell.material_[j];
       if (i_material == MATERIAL_VOID) continue;
 
       // Get temperature(s) of cell (rounding to nearest integer)
       std::vector<double> cell_temps;
-      if (cell->sqrtkT_.size() == 1) {
-        double sqrtkT = cell->sqrtkT_[0];
+      if (cell.sqrtkT_.size() == 1) {
+        double sqrtkT = cell.sqrtkT_[0];
         cell_temps.push_back(sqrtkT*sqrtkT / K_BOLTZMANN);
-      //} else if (cell->sqrtkT_.size() == cell->material_.size()) {
-      } else if (cell->sqrtkT_.size() == cell->material_length_) {
-        double sqrtkT = cell->sqrtkT_[j];
+      } else if (cell.sqrtkT_.size() == cell.material_.size()) {
+        double sqrtkT = cell.sqrtkT_[j];
         cell_temps.push_back(sqrtkT*sqrtkT / K_BOLTZMANN);
       } else {
-        for (double sqrtkT : cell->sqrtkT_)
+        for (double sqrtkT : cell.sqrtkT_)
           cell_temps.push_back(sqrtkT*sqrtkT / K_BOLTZMANN);
       }
 
@@ -284,7 +276,7 @@ find_root_universe()
   // Find all the universes listed as a cell fill.
   std::unordered_set<int32_t> fill_univ_ids;
   for (const auto& c : model::cells) {
-    fill_univ_ids.insert(c->fill_);
+    fill_univ_ids.insert(c.fill_);
   }
 
   // Find all the universes contained in a lattice.
@@ -338,24 +330,21 @@ prepare_distribcell()
   // By default, add material cells to the list of distributed cells
   if (settings::material_cell_offsets) {
     for (gsl::index i = 0; i < model::cells.size(); ++i) {
-      if (model::cells[i]->type_ == Fill::MATERIAL) distribcells.insert(i);
+      if (model::cells[i].type_ == Fill::MATERIAL) distribcells.insert(i);
     }
   }
 
   // Make sure that the number of materials/temperatures matches the number of
   // cell instances.
   for (int i = 0; i < model::cells.size(); i++) {
-    Cell& c {*model::cells[i]};
+    Cell& c {model::cells[i]};
 
-    //if (c.material_.size() > 1) {
-    if (c.material_length_ > 1) {
-      //if (c.material_.size() != c.n_instances_) {
-      if (c.material_length_ != c.n_instances_) {
+    if (c.material_.size() > 1) {
+      if (c.material_.size() != c.n_instances_) {
         fatal_error(fmt::format(
           "Cell {} was specified with {} materials but has {} distributed "
           "instances. The number of materials must equal one or the number "
-          //"of instances.", c.id_, c.material_.size(), c.n_instances_
-          "of instances.", c.id_, c.material_length_, c.n_instances_
+          "of instances.", c.id_, c.material_.size(), c.n_instances_
         ));
       }
     }
@@ -378,7 +367,7 @@ prepare_distribcell()
   for (const auto& u : model::universes) {
     for (auto idx : u->cells_) {
       if (distribcells.find(idx) != distribcells.end()) {
-        model::cells[idx]->distribcell_index_ = distribcell_index++;
+        model::cells[idx].distribcell_index_ = distribcell_index++;
         target_univ_ids.push_back(u->id_);
       }
     }
@@ -387,8 +376,8 @@ prepare_distribcell()
   // Allocate the cell and lattice offset tables.
   int n_maps = target_univ_ids.size();
   for (auto& c : model::cells) {
-    if (c->type_ != Fill::MATERIAL) {
-      c->offset_.resize(n_maps, C_NONE);
+    if (c.type_ != Fill::MATERIAL) {
+      c.offset_.resize(n_maps, C_NONE);
     }
   }
   for (auto& lat : model::lattices) {
@@ -403,7 +392,7 @@ prepare_distribcell()
     for (const auto& univ : model::universes) {
       int32_t offset = 0;
       for (int32_t cell_indx : univ->cells_) {
-        Cell& c = *model::cells[cell_indx];
+        Cell& c = model::cells[cell_indx];
 
         if (c.type_ == Fill::UNIVERSE) {
           c.offset_[map] = offset;
@@ -429,11 +418,11 @@ count_cell_instances(int32_t univ_indx)
   const auto univ_counts = model::universe_cell_counts.find(univ_indx);
   if (univ_counts != model::universe_cell_counts.end()) {
     for (const auto& it : univ_counts->second) {
-      model::cells[it.first]->n_instances_ += it.second;
+      model::cells[it.first].n_instances_ += it.second;
     }
   } else {
     for (int32_t cell_indx : model::universes[univ_indx]->cells_) {
-      Cell& c = *model::cells[cell_indx];
+      Cell& c = model::cells[cell_indx];
       ++c.n_instances_;
       model::universe_cell_counts[univ_indx][cell_indx] += 1;
 
@@ -472,7 +461,7 @@ count_universe_instances(int32_t search_univ, int32_t target_univ_id,
 
   int count {0};
   for (int32_t cell_indx : model::universes[search_univ]->cells_) {
-    Cell& c = *model::cells[cell_indx];
+    Cell& c = model::cells[cell_indx];
 
     if (c.type_ == Fill::UNIVERSE) {
       int32_t next_univ = c.fill_;
@@ -509,7 +498,7 @@ distribcell_path_inner(int32_t target_cell, int32_t map, int32_t target_offset,
   // write to the path and return.
   for (int32_t cell_indx : search_univ.cells_) {
     if ((cell_indx == target_cell) && (offset == target_offset)) {
-      Cell& c = *model::cells[cell_indx];
+      Cell& c = model::cells[cell_indx];
       path << "c" << c.id_;
       return path.str();
     }
@@ -521,7 +510,7 @@ distribcell_path_inner(int32_t target_cell, int32_t map, int32_t target_offset,
   std::vector<std::int32_t>::const_reverse_iterator cell_it
        {search_univ.cells_.crbegin()};
   for (; cell_it != search_univ.cells_.crend(); ++cell_it) {
-    Cell& c = *model::cells[*cell_it];
+    Cell& c = model::cells[*cell_it];
 
     // Material cells don't contain other cells so ignore them.
     if (c.type_ != Fill::MATERIAL) {
@@ -541,7 +530,7 @@ distribcell_path_inner(int32_t target_cell, int32_t map, int32_t target_offset,
   }
 
   // Add the cell to the path string.
-  Cell& c = *model::cells[*cell_it];
+  Cell& c = model::cells[*cell_it];
   path << "c" << c.id_ << "->";
 
   if (c.type_ == Fill::UNIVERSE) {
@@ -590,7 +579,7 @@ maximum_levels(int32_t univ)
   int levels_below {0};
 
   for (int32_t cell_indx : model::universes[univ]->cells_) {
-    Cell& c = *model::cells[cell_indx];
+    Cell& c = model::cells[cell_indx];
     if (c.type_ == Fill::UNIVERSE) {
       int32_t next_univ = c.fill_;
       levels_below = std::max(levels_below, maximum_levels(next_univ));

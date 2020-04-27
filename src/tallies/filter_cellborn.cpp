@@ -21,7 +21,7 @@ CellbornFilter::get_all_bins(const Particle* p, TallyEstimator estimator,
 std::string
 CellbornFilter::text_label(int bin) const
 {
-  return "Birth Cell " + std::to_string(model::cells[cells_[bin]]->id_);
+  return "Birth Cell " + std::to_string(model::cells[cells_[bin]].id_);
 }
 
 } // namespace openmc

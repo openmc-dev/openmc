@@ -32,7 +32,8 @@ namespace openmc {
 //==============================================================================
 
 namespace model {
-  std::vector<std::unique_ptr<Cell>> cells;
+  //std::vector<std::unique_ptr<Cell>> cells;
+  std::vector<Cell> cells;
   std::unordered_map<int32_t, int32_t> cell_map;
 
   std::vector<std::unique_ptr<Universe>> universes;
@@ -198,7 +199,8 @@ Universe::to_hdf5(hid_t universes_group) const
   // Write the contained cells.
   if (cells_.size() > 0) {
     std::vector<int32_t> cell_ids;
-    for (auto i_cell : cells_) cell_ids.push_back(model::cells[i_cell]->id_);
+    //for (auto i_cell : cells_) cell_ids.push_back(model::cells[i_cell]->id_);
+    for (auto i_cell : cells_) cell_ids.push_back(model::cells[i_cell].id_);
     write_dataset(group, "cells", cell_ids);
   }
 
@@ -212,7 +214,8 @@ BoundingBox Universe::bounding_box() const {
   } else {
     for (const auto& cell : cells_) {
       auto& c = model::cells[cell];
-      bbox |= c->bounding_box();
+      //bbox |= c->bounding_box();
+      bbox |= c.bounding_box();
     }
   }
   return bbox;
@@ -265,14 +268,61 @@ Cell::set_temperature(double T, int32_t instance)
     }
   }
 }
+  
+void Cell::allocate_on_device()
+{
+  int device_id = omp_get_default_device();
+  size_t sz;
+
+  sz = material_.size() * sizeof(int32_t);
+  device_material_ = (int32_t *) omp_target_alloc(sz, device_id);
+
+  sz = sqrtkT_.size() * sizeof(double);
+  device_sqrtkT_ = (double *) omp_target_alloc(sz, device_id);
+
+  sz = region_.size() * sizeof(int32_t);
+  device_region_ = (int32_t *) omp_target_alloc(sz, device_id);
+  
+  sz = rpn_.size() * sizeof(int32_t);
+  device_rpn_ = (int32_t *) omp_target_alloc(sz, device_id);
+
+  sz = rotation_.size() * sizeof(double);
+  device_rotation_ = (double *) omp_target_alloc(sz, device_id);
+  
+  sz = offset_.size() * sizeof(int32_t);
+  device_offset_ = (int32_t *) omp_target_alloc(sz, device_id);
+}
+
+void Cell::copy_to_device()
+{
+  int host_id = omp_get_initial_device();
+  int device_id = omp_get_default_device();
+  size_t sz;
+
+  sz = material_.size() * sizeof(int32_t);
+  omp_target_memcpy(device_material_, material_.data(), sz, 0, 0, device_id, host_id);
+
+  sz = sqrtkT_.size() * sizeof(double);
+  omp_target_memcpy(device_sqrtkT_, sqrtkT_.data(), sz, 0, 0, device_id, host_id);
+
+  sz = region_.size() * sizeof(int32_t);
+  omp_target_memcpy(device_region_, region_.data(), sz, 0, 0, device_id, host_id);
+
+  sz = rpn_.size() * sizeof(int32_t);
+  omp_target_memcpy(device_rpn_, rpn_.data(), sz, 0, 0, device_id, host_id);
+
+  sz = rotation_.size() * sizeof(double);
+  omp_target_memcpy(device_rotation_, rotation_.data(), sz, 0, 0, device_id, host_id);
+
+  sz = offset_.size() * sizeof(int32_t);
+  omp_target_memcpy(device_offset_, offset_.data(), sz, 0, 0, device_id, host_id);
+}
 
 //==============================================================================
 // CSGCell implementation
 //==============================================================================
 
-CSGCell::CSGCell() {} // empty constructor
-
-CSGCell::CSGCell(pugi::xml_node cell_node)
+Cell::Cell(pugi::xml_node cell_node)
 {
   if (check_for_node(cell_node, "id")) {
     id_ = std::stoi(get_node_value(cell_node, "id"));
@@ -319,16 +369,16 @@ CSGCell::CSGCell(pugi::xml_node cell_node)
     std::vector<std::string> mats
          {get_node_array<std::string>(cell_node, "material", true)};
     if (mats.size() > 0) {
-      //material_.reserve(mats.size());
+      material_.reserve(mats.size());
       for (std::string mat : mats) {
         if (mat.compare("void") == 0) {
-          //material_.push_back(MATERIAL_VOID);
-          assert(material_length_ < MATERIAL_SIZE );
-          material_[material_length_++] = MATERIAL_VOID;
+          material_.push_back(MATERIAL_VOID);
+          //assert(material_length_ < MATERIAL_SIZE );
+          //material_[material_length_++] = MATERIAL_VOID;
         } else {
-          //material_.push_back(std::stoi(mat));
-          assert(material_length_ < MATERIAL_SIZE );
-          material_[material_length_++] = std::stoi(mat);
+          material_.push_back(std::stoi(mat));
+          //assert(material_length_ < MATERIAL_SIZE );
+          //material_[material_length_++] = std::stoi(mat);
         }
       }
     } else {
@@ -343,8 +393,8 @@ CSGCell::CSGCell(pugi::xml_node cell_node)
     sqrtkT_.shrink_to_fit();
 
     // Make sure this is a material-filled cell.
-    //if (material_.size() == 0) {
-    if (material_length_ == 0) {
+    if (material_.size() == 0) {
+    //if (material_length_ == 0) {
       fatal_error(fmt::format(
         "Cell {} was specified with a temperature but no material. Temperature"
         "specification is only valid for cells filled with a material.", id_));
@@ -474,7 +524,7 @@ CSGCell::CSGCell(pugi::xml_node cell_node)
 //==============================================================================
 
 bool
-CSGCell::contains(Position r, Direction u, int32_t on_surface) const
+Cell::contains(Position r, Direction u, int32_t on_surface) const
 {
   if (simple_) {
     return contains_simple(r, u, on_surface);
@@ -486,7 +536,7 @@ CSGCell::contains(Position r, Direction u, int32_t on_surface) const
 //==============================================================================
 
 std::pair<double, int32_t>
-CSGCell::distance(Position r, Direction u, int32_t on_surface, Particle* p) const
+Cell::distance(Position r, Direction u, int32_t on_surface, Particle* p) const
 {
   double min_dist {INFTY};
   int32_t i_surf {std::numeric_limits<int32_t>::max()};
@@ -515,7 +565,7 @@ CSGCell::distance(Position r, Direction u, int32_t on_surface, Particle* p) cons
 //==============================================================================
 
 void
-CSGCell::to_hdf5(hid_t cell_group) const
+Cell::to_hdf5(hid_t cell_group) const
 {
   // Create a group for this cell.
   auto group = create_group(cell_group, fmt::format("cell {}", id_));
@@ -552,9 +602,7 @@ CSGCell::to_hdf5(hid_t cell_group) const
   if (type_ == Fill::MATERIAL) {
     write_dataset(group, "fill_type", "material");
     std::vector<int32_t> mat_ids;
-    //for (auto i_mat : material_) {
-    for (auto i = 0; i < material_length_; i++) {
-      auto i_mat = material_[i];
+    for (auto i_mat : material_) {
       if (i_mat != MATERIAL_VOID) {
         mat_ids.push_back(model::materials[i_mat]->id_);
       } else {
@@ -595,7 +643,7 @@ CSGCell::to_hdf5(hid_t cell_group) const
   close_group(group);
 }
 
-BoundingBox CSGCell::bounding_box_simple() const {
+BoundingBox Cell::bounding_box_simple() const {
   BoundingBox bbox;
   for (int32_t token : rpn_) {
     bbox &= model::surfaces[abs(token)-1]->bounding_box(token > 0);
@@ -603,7 +651,7 @@ BoundingBox CSGCell::bounding_box_simple() const {
   return bbox;
 }
 
-void CSGCell::apply_demorgan(std::vector<int32_t>::iterator start,
+void Cell::apply_demorgan(std::vector<int32_t>::iterator start,
                              std::vector<int32_t>::iterator stop)
 {
   while (start < stop) {
@@ -615,7 +663,7 @@ void CSGCell::apply_demorgan(std::vector<int32_t>::iterator start,
 }
 
 std::vector<int32_t>::iterator
-CSGCell::find_left_parenthesis(std::vector<int32_t>::iterator start,
+Cell::find_left_parenthesis(std::vector<int32_t>::iterator start,
                                const std::vector<int32_t>& rpn) {
   // start search at zero
   int parenthesis_level = 0;
@@ -647,7 +695,7 @@ CSGCell::find_left_parenthesis(std::vector<int32_t>::iterator start,
   return it;
 }
 
-void CSGCell::remove_complement_ops(std::vector<int32_t>& rpn) {
+void Cell::remove_complement_ops(std::vector<int32_t>& rpn) {
   auto it = std::find(rpn.begin(), rpn.end(), OP_COMPLEMENT);
   while (it != rpn.end()) {
     // find the opening parenthesis (if any)
@@ -664,7 +712,7 @@ void CSGCell::remove_complement_ops(std::vector<int32_t>& rpn) {
   }
 }
 
-BoundingBox CSGCell::bounding_box_complex(std::vector<int32_t> rpn) {
+BoundingBox Cell::bounding_box_complex(std::vector<int32_t> rpn) {
   // remove complements by adjusting surface signs and operators
   remove_complement_ops(rpn);
 
@@ -688,14 +736,14 @@ BoundingBox CSGCell::bounding_box_complex(std::vector<int32_t> rpn) {
   return stack.front();
 }
 
-BoundingBox CSGCell::bounding_box() const {
+BoundingBox Cell::bounding_box() const {
   return simple_ ? bounding_box_simple() : bounding_box_complex(rpn_);
 }
 
 //==============================================================================
 
 bool
-CSGCell::contains_simple(Position r, Direction u, int32_t on_surface) const
+Cell::contains_simple(Position r, Direction u, int32_t on_surface) const
 {
   for (int32_t token : rpn_) {
     // Assume that no tokens are operators. Evaluate the sense of particle with
@@ -717,7 +765,7 @@ CSGCell::contains_simple(Position r, Direction u, int32_t on_surface) const
 //==============================================================================
 
 bool
-CSGCell::contains_complex(Position r, Direction u, int32_t on_surface) const
+Cell::contains_complex(Position r, Direction u, int32_t on_surface) const
 {
   // Make a stack of booleans.  We don't know how big it needs to be, but we do
   // know that rpn.size() is an upper-bound.
@@ -853,7 +901,8 @@ UniversePartitioner::UniversePartitioner(const Universe& univ)
   // Find all of the z-planes in this universe.  A set is used here for the
   // O(log(n)) insertions that will ensure entries are not repeated.
   for (auto i_cell : univ.cells_) {
-    for (auto token : model::cells[i_cell]->rpn_) {
+    //for (auto token : model::cells[i_cell]->rpn_) {
+    for (auto token : model::cells[i_cell].rpn_) {
       if (token < OP_UNION) {
         auto i_surf = std::abs(token) - 1;
         const auto* surf = model::surfaces[i_surf].get();
@@ -871,7 +920,8 @@ UniversePartitioner::UniversePartitioner(const Universe& univ)
   for (auto i_cell : univ.cells_) {
     // It is difficult to determine the bounds of a complex cell, so add complex
     // cells to all partitions.
-    if (!model::cells[i_cell]->simple_) {
+    //if (!model::cells[i_cell]->simple_) {
+    if (!model::cells[i_cell].simple_) {
       for (auto& p : partitions_) p.push_back(i_cell);
       continue;
     }
@@ -879,7 +929,8 @@ UniversePartitioner::UniversePartitioner(const Universe& univ)
     // Find the tokens for bounding z-planes.
     int32_t lower_token = 0, upper_token = 0;
     double min_z, max_z;
-    for (auto token : model::cells[i_cell]->rpn_) {
+    //for (auto token : model::cells[i_cell]->rpn_) {
+    for (auto token : model::cells[i_cell].rpn_) {
       if (token < OP_UNION) {
         const auto* surf = model::surfaces[std::abs(token) - 1].get();
         if (const auto* zplane = dynamic_cast<const SurfaceZPlane*>(surf)) {
@@ -987,12 +1038,15 @@ void read_cells(pugi::xml_node node)
   // Loop over XML cell elements and populate the array.
   model::cells.reserve(n_cells);
   for (pugi::xml_node cell_node : node.children("cell")) {
-    model::cells.push_back(std::make_unique<CSGCell>(cell_node));
+    //model::cells.push_back(std::make_unique<CSGCell>(cell_node));
+    //model::cells.push_back(cell_node);
+    model::cells.emplace_back(cell_node);
   }
 
   // Fill the cell map.
   for (int i = 0; i < model::cells.size(); i++) {
-    int32_t id = model::cells[i]->id_;
+    //int32_t id = model::cells[i]->id_;
+    int32_t id = model::cells[i].id_;
     auto search = model::cell_map.find(id);
     if (search == model::cell_map.end()) {
       model::cell_map[id] = i;
@@ -1003,7 +1057,8 @@ void read_cells(pugi::xml_node node)
 
   // Populate the Universe vector and map.
   for (int i = 0; i < model::cells.size(); i++) {
-    int32_t uid = model::cells[i]->universe_;
+    //int32_t uid = model::cells[i]->universe_;
+    int32_t uid = model::cells[i].universe_;
     auto it = model::universe_map.find(uid);
     if (it == model::universe_map.end()) {
       model::universes.push_back(std::make_unique<Universe>());
@@ -1030,13 +1085,14 @@ extern "C" int
 openmc_cell_get_fill(int32_t index, int* type, int32_t** indices, int32_t* n)
 {
   if (index >= 0 && index < model::cells.size()) {
-    Cell& c {*model::cells[index]};
+    //Cell& c {*model::cells[index]};
+    Cell& c {model::cells[index]};
     *type = static_cast<int>(c.type_);
     if (c.type_ == Fill::MATERIAL) {
-      //*indices = c.material_.data();
-      *indices = c.material_;
-      //*n = c.material_.size();
-      *n = c.material_length_;
+      *indices = c.material_.data();
+      //*indices = c.material_;
+      *n = c.material_.size();
+      //*n = c.material_length_;
     } else {
       *indices = &c.fill_;
       *n = 1;
@@ -1054,21 +1110,22 @@ openmc_cell_set_fill(int32_t index, int type, int32_t n,
 {
   Fill filltype = static_cast<Fill>(type);
   if (index >= 0 && index < model::cells.size()) {
-    Cell& c {*model::cells[index]};
+    //Cell& c {*model::cells[index]};
+    Cell& c {model::cells[index]};
     if (filltype == Fill::MATERIAL) {
       c.type_ = Fill::MATERIAL;
-      //c.material_.clear();
-      c.material_length_ = 0;
+      c.material_.clear();
+      //c.material_length_ = 0;
       for (int i = 0; i < n; i++) {
         int i_mat = indices[i];
         if (i_mat == MATERIAL_VOID) {
-          //c.material_.push_back(MATERIAL_VOID);
-          assert(c.material_length_ < MATERIAL_SIZE );
-          c.material_[c.material_length_++] = MATERIAL_VOID;
+          c.material_.push_back(MATERIAL_VOID);
+          //assert(c.material_length_ < MATERIAL_SIZE );
+          //c.material_[c.material_length_++] = MATERIAL_VOID;
         } else if (i_mat >= 0 && i_mat < model::materials.size()) {
-          //c.material_.push_back(i_mat);
-          assert(c.material_length_ < MATERIAL_SIZE );
-          c.material_[c.material_length_++] = i_mat;
+          c.material_.push_back(i_mat);
+          //assert(c.material_length_ < MATERIAL_SIZE );
+          //c.material_[c.material_length_++] = i_mat;
         } else {
           set_errmsg("Index in materials array is out of bounds.");
           return OPENMC_E_OUT_OF_BOUNDS;
@@ -1097,7 +1154,8 @@ openmc_cell_set_temperature(int32_t index, double T, const int32_t* instance)
 
   int32_t instance_index = instance ? *instance : -1;
   try {
-    model::cells[index]->set_temperature(T, instance_index);
+    //model::cells[index]->set_temperature(T, instance_index);
+    model::cells[index].set_temperature(T, instance_index);
   } catch (const std::exception& e) {
     set_errmsg(e.what());
     return OPENMC_E_UNASSIGNED;
@@ -1115,7 +1173,8 @@ openmc_cell_get_temperature(int32_t index, const int32_t* instance, double* T)
 
   int32_t instance_index = instance ? *instance : -1;
   try {
-    *T = model::cells[index]->temperature(instance_index);
+    //*T = model::cells[index]->temperature(instance_index);
+    *T = model::cells[index].temperature(instance_index);
   } catch (const std::exception& e) {
     set_errmsg(e.what());
     return OPENMC_E_UNASSIGNED;
@@ -1130,7 +1189,8 @@ openmc_cell_bounding_box(const int32_t index, double* llc, double* urc) {
   BoundingBox bbox;
 
   const auto& c = model::cells[index];
-  bbox = c->bounding_box();
+  //bbox = c->bounding_box();
+  bbox = c.bounding_box();
 
   // set lower left corner values
   llc[0] = bbox.xmin;
@@ -1153,7 +1213,8 @@ openmc_cell_get_name(int32_t index, const char** name) {
     return OPENMC_E_OUT_OF_BOUNDS;
   }
 
-  *name = model::cells[index]->name().data();
+  //*name = model::cells[index]->name().data();
+  *name = model::cells[index].name().data();
 
   return 0;
 }
@@ -1166,7 +1227,8 @@ openmc_cell_set_name(int32_t index, const char* name) {
     return OPENMC_E_OUT_OF_BOUNDS;
   }
 
-  model::cells[index]->set_name(name);
+  //model::cells[index]->set_name(name);
+  model::cells[index].set_name(name);
 
   return 0;
 }
@@ -1191,7 +1253,8 @@ extern "C" int
 openmc_cell_get_id(int32_t index, int32_t* id)
 {
   if (index >= 0 && index < model::cells.size()) {
-    *id = model::cells[index]->id_;
+    //*id = model::cells[index]->id_;
+    *id = model::cells[index].id_;
     return 0;
   } else {
     set_errmsg("Index in cells array is out of bounds.");
@@ -1204,7 +1267,8 @@ extern "C" int
 openmc_cell_set_id(int32_t index, int32_t id)
 {
   if (index >= 0 && index < model::cells.size()) {
-    model::cells[index]->id_ = id;
+    //model::cells[index]->id_ = id;
+    model::cells[index].id_ = id;
     model::cell_map[id] = index;
     return 0;
   } else {
@@ -1220,7 +1284,9 @@ openmc_extend_cells(int32_t n, int32_t* index_start, int32_t* index_end)
   if (index_start) *index_start = model::cells.size();
   if (index_end) *index_end = model::cells.size() + n - 1;
   for (int32_t i = 0; i < n; i++) {
-    model::cells.push_back(std::make_unique<CSGCell>());
+    //model::cells.push_back(std::make_unique<CSGCell>());
+    //model::cells.push_back();
+    model::cells.emplace_back();
   }
   return 0;
 }

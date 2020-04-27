@@ -156,17 +156,16 @@ std::vector<std::vector<double>> MgxsInterface::get_mat_kTs()
 
   for (const auto& cell : model::cells) {
     // Skip non-material cells
-    if (cell->fill_ != C_NONE) continue;
+    if (cell.fill_ != C_NONE) continue;
 
-    //for (int j = 0; j < cell->material_.size(); ++j) {
-    for (int j = 0; j < cell->material_length_; ++j) {
+    for (int j = 0; j < cell.material_.size(); ++j) {
       // Skip void materials
-      int i_material = cell->material_[j];
+      int i_material = cell.material_[j];
       if (i_material == MATERIAL_VOID) continue;
 
       // Get temperature of cell (rounding to nearest integer)
-      double sqrtkT = cell->sqrtkT_.size() == 1 ?
-        cell->sqrtkT_[j] : cell->sqrtkT_[0];
+      double sqrtkT = cell.sqrtkT_.size() == 1 ?
+        cell.sqrtkT_[j] : cell.sqrtkT_[0];
       double kT = sqrtkT * sqrtkT;
 
       // Add temperature if it hasn't already been added

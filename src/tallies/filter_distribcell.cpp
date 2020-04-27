@@ -34,7 +34,7 @@ DistribcellFilter::set_cell(int32_t cell)
   Expects(cell >= 0);
   Expects(cell < model::cells.size());
   cell_ = cell;
-  n_bins_ = model::cells[cell]->n_instances_;
+  n_bins_ = model::cells[cell].n_instances_;
 }
 
 void
@@ -42,9 +42,9 @@ DistribcellFilter::get_all_bins(const Particle* p, TallyEstimator estimator,
                                 FilterMatch& match) const
 {
   int offset = 0;
-  auto distribcell_index = model::cells[cell_]->distribcell_index_;
+  auto distribcell_index = model::cells[cell_].distribcell_index_;
   for (int i = 0; i < p->n_coord_; i++) {
-    auto& c {*model::cells[p->coord_[i].cell]};
+    auto& c {model::cells[p->coord_[i].cell]};
     if (c.type_ == Fill::UNIVERSE) {
       offset += c.offset_[distribcell_index];
     } else if (c.type_ == Fill::LATTICE) {
@@ -71,13 +71,13 @@ void
 DistribcellFilter::to_statepoint(hid_t filter_group) const
 {
   Filter::to_statepoint(filter_group);
-  write_dataset(filter_group, "bins", model::cells[cell_]->id_);
+  write_dataset(filter_group, "bins", model::cells[cell_].id_);
 }
 
 std::string
 DistribcellFilter::text_label(int bin) const
 {
-  auto map = model::cells[cell_]->distribcell_index_;
+  auto map = model::cells[cell_].distribcell_index_;
   auto path = distribcell_path(cell_, map, bin);
   return "Distributed Cell " + path;
 }

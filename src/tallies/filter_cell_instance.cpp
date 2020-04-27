@@ -53,10 +53,10 @@ CellInstanceFilter::set_cell_instances(gsl::span<CellInstance> instances)
     Expects(x.index_cell >= 0);
     Expects(x.index_cell < model::cells.size());
     const auto& c {model::cells[x.index_cell]};
-    if (c->type_ != Fill::MATERIAL) {
+    if (c.type_ != Fill::MATERIAL) {
       throw std::invalid_argument{fmt::format(
         "Cell {} is not filled with a material. Only material cells can be "
-        "used in a cell instance filter.", c->id_)};
+        "used in a cell instance filter.", c.id_)};
     }
     cell_instances_.push_back(x);
     map_[x] = cell_instances_.size() - 1;
@@ -89,7 +89,7 @@ CellInstanceFilter::to_statepoint(hid_t filter_group) const
   xt::xtensor<size_t, 2> data({n, 2});
   for (gsl::index i = 0; i < n; ++i) {
     const auto& x = cell_instances_[i];
-    data(i, 0) = model::cells[x.index_cell]->id_;
+    data(i, 0) = model::cells[x.index_cell].id_;
     data(i, 1) = x.instance;
   }
   write_dataset(filter_group, "bins", data);
@@ -99,7 +99,7 @@ std::string
 CellInstanceFilter::text_label(int bin) const
 {
   const auto& x = cell_instances_[bin];
-  auto cell_id = model::cells[x.index_cell]->id_;
+  auto cell_id = model::cells[x.index_cell].id_;
   return "Cell " + std::to_string(cell_id) + ", Instance "
     + std::to_string(x.instance);
 }

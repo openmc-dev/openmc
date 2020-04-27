@@ -41,7 +41,7 @@ IdData::IdData(size_t h_res, size_t v_res)
 
 void
 IdData::set_value(size_t y, size_t x, const Particle& p, int level) {
-  Cell* c = model::cells[p.coord_[level].cell].get();
+  Cell* c = &model::cells[p.coord_[level].cell];
   data_(y,x,0) = c->id_;
   if (p.material_ == MATERIAL_VOID) {
     data_(y,x,1) = MATERIAL_VOID;
@@ -62,7 +62,7 @@ PropertyData::PropertyData(size_t h_res, size_t v_res)
 
 void
 PropertyData::set_value(size_t y, size_t x, const Particle& p, int level) {
-  Cell* c = model::cells[p.coord_[level].cell].get();
+  Cell* c = &model::cells[p.coord_[level].cell];
   data_(y,x,0) = (p.sqrtkT_ * p.sqrtkT_) / K_BOLTZMANN;
   if (c->type_ != Fill::UNIVERSE && p.material_ != MATERIAL_VOID) {
     Material* m = model::materials[p.material_].get();

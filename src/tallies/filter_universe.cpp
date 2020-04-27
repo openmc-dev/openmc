@@ -65,14 +65,14 @@ UniverseFilter::to_statepoint(hid_t filter_group) const
 {
   Filter::to_statepoint(filter_group);
   std::vector<int32_t> universe_ids;
-  for (auto u : universes_) universe_ids.push_back(model::universes[u]->id_);
+  for (auto u : universes_) universe_ids.push_back(model::universes[u].id_);
   write_dataset(filter_group, "bins", universe_ids);
 }
 
 std::string
 UniverseFilter::text_label(int bin) const
 {
-  return fmt::format("Universe {}", model::universes[universes_[bin]]->id_);
+  return fmt::format("Universe {}", model::universes[universes_[bin]].id_);
 }
 
 } // namespace openmc

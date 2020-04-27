@@ -140,11 +140,12 @@ partition_universes()
 {
   // Iterate over universes with more than 10 cells.  (Fewer than 10 is likely
   // not worth partitioning.)
-  for (const auto& univ : model::universes) {
-    if (univ->cells_.size() > 10) {
+  //for (const auto& univ : model::universes) {
+  for (auto& univ : model::universes) {
+    if (univ.cells_.size() > 10) {
       // Collect the set of surfaces in this universe.
       std::unordered_set<int32_t> surf_inds;
-      for (auto i_cell : univ->cells_) {
+      for (auto i_cell : univ.cells_) {
         for (auto token : model::cells[i_cell].rpn_) {
           if (token < OP_UNION) surf_inds.insert(std::abs(token) - 1);
         }
@@ -157,7 +158,7 @@ partition_universes()
         if (dynamic_cast<const SurfaceZPlane*>(model::surfaces[i_surf].get())) {
           ++n_zplanes;
           if (n_zplanes > 5) {
-            univ->partitioner_ = std::make_unique<UniversePartitioner>(*univ);
+            univ.partitioner_ = std::make_unique<UniversePartitioner>(univ);
             break;
           }
         }
@@ -293,7 +294,7 @@ find_root_universe()
   bool root_found {false};
   int32_t root_univ;
   for (int32_t i = 0; i < model::universes.size(); i++) {
-    auto search = fill_univ_ids.find(model::universes[i]->id_);
+    auto search = fill_univ_ids.find(model::universes[i].id_);
     if (search == fill_univ_ids.end()) {
       if (root_found) {
         fatal_error("Two or more universes are not used as fill universes, so "
@@ -365,10 +366,10 @@ prepare_distribcell()
   int distribcell_index = 0;
   std::vector<int32_t> target_univ_ids;
   for (const auto& u : model::universes) {
-    for (auto idx : u->cells_) {
+    for (auto idx : u.cells_) {
       if (distribcells.find(idx) != distribcells.end()) {
         model::cells[idx].distribcell_index_ = distribcell_index++;
-        target_univ_ids.push_back(u->id_);
+        target_univ_ids.push_back(u.id_);
       }
     }
   }
@@ -391,7 +392,7 @@ prepare_distribcell()
     std::unordered_map<int32_t, int32_t> univ_count_memo;
     for (const auto& univ : model::universes) {
       int32_t offset = 0;
-      for (int32_t cell_indx : univ->cells_) {
+      for (int32_t cell_indx : univ.cells_) {
         Cell& c = model::cells[cell_indx];
 
         if (c.type_ == Fill::UNIVERSE) {
@@ -421,7 +422,7 @@ count_cell_instances(int32_t univ_indx)
       model::cells[it.first].n_instances_ += it.second;
     }
   } else {
-    for (int32_t cell_indx : model::universes[univ_indx]->cells_) {
+    for (int32_t cell_indx : model::universes[univ_indx].cells_) {
       Cell& c = model::cells[cell_indx];
       ++c.n_instances_;
       model::universe_cell_counts[univ_indx][cell_indx] += 1;
@@ -449,7 +450,7 @@ count_universe_instances(int32_t search_univ, int32_t target_univ_id,
   std::unordered_map<int32_t, int32_t>& univ_count_memo)
 {
   // If this is the target, it can't contain itself.
-  if (model::universes[search_univ]->id_ == target_univ_id) {
+  if (model::universes[search_univ].id_ == target_univ_id) {
     return 1;
   }
 
@@ -460,7 +461,7 @@ count_universe_instances(int32_t search_univ, int32_t target_univ_id,
   }
 
   int count {0};
-  for (int32_t cell_indx : model::universes[search_univ]->cells_) {
+  for (int32_t cell_indx : model::universes[search_univ].cells_) {
     Cell& c = model::cells[cell_indx];
 
     if (c.type_ == Fill::UNIVERSE) {
@@ -537,7 +538,7 @@ distribcell_path_inner(int32_t target_cell, int32_t map, int32_t target_offset,
     // Recurse into the fill cell.
     offset += c.offset_[map];
     path << distribcell_path_inner(target_cell, map, target_offset,
-                                   *model::universes[c.fill_], offset);
+                                   model::universes[c.fill_], offset);
     return path.str();
   } else {
     // Recurse into the lattice cell.
@@ -550,7 +551,7 @@ distribcell_path_inner(int32_t target_cell, int32_t map, int32_t target_offset,
         offset = temp_offset;
         path << "(" << lat.index_to_string(it.indx_) << ")->";
         path << distribcell_path_inner(target_cell, map, target_offset,
-                                       *model::universes[*it], offset);
+                                       model::universes[*it], offset);
         return path.str();
       }
     }
@@ -561,7 +562,7 @@ distribcell_path_inner(int32_t target_cell, int32_t map, int32_t target_offset,
 std::string
 distribcell_path(int32_t target_cell, int32_t map, int32_t target_offset)
 {
-  auto& root_univ = *model::universes[model::root_universe];
+  auto& root_univ = model::universes[model::root_universe];
   return distribcell_path_inner(target_cell, map, target_offset, root_univ, 0);
 }
 
@@ -578,7 +579,7 @@ maximum_levels(int32_t univ)
 
   int levels_below {0};
 
-  for (int32_t cell_indx : model::universes[univ]->cells_) {
+  for (int32_t cell_indx : model::universes[univ].cells_) {
     Cell& c = model::cells[cell_indx];
     if (c.type_ == Fill::UNIVERSE) {
       int32_t next_univ = c.fill_;

@@ -111,7 +111,7 @@ void write_geometry(hid_t file)
   close_group(surfaces_group);
 
   auto universes_group = create_group(geom_group, "universes");
-  for (const auto& u : model::universes) u->to_hdf5(universes_group);
+  for (const auto& u : model::universes) u.to_hdf5(universes_group);
   close_group(universes_group);
 
   auto lattices_group = create_group(geom_group, "lattices");

@@ -174,7 +174,7 @@ extern "C" void print_particle(Particle* p)
     }
 
     if (p->coord_[i].universe != C_NONE) {
-      const Universe& u {*model::universes[p->coord_[i].universe]};
+      const Universe& u {model::universes[p->coord_[i].universe]};
       fmt::print("    Universe         = {}\n", u.id_);
     }
 

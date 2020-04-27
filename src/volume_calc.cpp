@@ -158,7 +158,7 @@ std::vector<VolumeCalculation::Result> VolumeCalculation::execute() const
         } else if (domain_type_ == TallyDomain::UNIVERSE) {
           for (int level = 0; level < p.n_coord_; ++level) {
             for (int i_domain = 0; i_domain < n; ++i_domain) {
-              if (model::universes[p.coord_[level].universe]->id_ == domain_ids_[i_domain]) {
+              if (model::universes[p.coord_[level].universe].id_ == domain_ids_[i_domain]) {
                 check_hit(p.material_, indices[i_domain], hits[i_domain]);
                 break;
               }

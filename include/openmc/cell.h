@@ -67,9 +67,12 @@ class UniversePartitioner;
 namespace model {
   //extern std::vector<std::unique_ptr<Cell>> cells;
   extern std::vector<Cell> cells;
+  extern Cell* device_cells;
   extern std::unordered_map<int32_t, int32_t> cell_map;
 
-  extern std::vector<std::unique_ptr<Universe>> universes;
+  //extern std::vector<std::unique_ptr<Universe>> universes;
+  extern std::vector<Universe> universes;
+  extern Universe* device_universes;
   extern std::unordered_map<int32_t, int32_t> universe_map;
 } // namespace model
 
@@ -82,14 +85,18 @@ class Universe
 public:
   int32_t id_;                  //!< Unique ID
   std::vector<int32_t> cells_;  //!< Cells within this universe
+  int32_t* device_cells_;  //!< Cells within this universe
 
   //! \brief Write universe information to an HDF5 group.
   //! \param group_id An HDF5 group id.
   void to_hdf5(hid_t group_id) const;
+  
+  void allocate_and_copy_to_device();
 
   BoundingBox bounding_box() const;
 
   std::unique_ptr<UniversePartitioner> partitioner_;
+  UniversePartitioner* device_partitioner_{NULL};
 };
 
 //==============================================================================
@@ -330,9 +337,10 @@ public:
   //! Return the list of cells that could contain the given coordinates.
   const std::vector<int32_t>& get_cells(Position r, Direction u) const;
 
-private:
+//private:
   //! A sorted vector of indices to surfaces that partition the universe
   std::vector<int32_t> surfs_;
+  int32_t* device_surfs_{NULL};
 
   //! Vectors listing the indices of the cells that lie within each partition
   //
@@ -342,6 +350,7 @@ private:
   //! `surfs_.back()`.  Otherwise, `partitions_[i]` gives cells sandwiched
   //! between `surfs_[i-1]` and `surfs_[i]`.
   std::vector<std::vector<int32_t>> partitions_;
+  int32_t** device_partitions_{NULL};
 };
 
 //==============================================================================

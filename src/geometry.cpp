@@ -41,7 +41,7 @@ bool check_cell_overlap(Particle* p, bool error)
 
   // Loop through each coordinate level
   for (int j = 0; j < n_coord; j++) {
-    Universe& univ = *model::universes[p->coord_[j].universe];
+    Universe& univ = model::universes[p->coord_[j].universe];
 
     // Loop through each cell on this level
     for (auto index_cell : univ.cells_) {
@@ -95,10 +95,10 @@ find_cell_inner(Particle* p, const NeighborList* neighbor_list)
 
   } else {
     int i_universe = p->coord_[p->n_coord_-1].universe;
-    const auto& univ {*model::universes[i_universe]};
+    const auto& univ {model::universes[i_universe]};
     const auto& cells {
       !univ.partitioner_
-      ? model::universes[i_universe]->cells_
+      ? model::universes[i_universe].cells_
       : univ.partitioner_->get_cells(p->r_local(), p->u_local())
     };
     for (auto it = cells.cbegin(); it != cells.cend(); it++) {
@@ -463,7 +463,7 @@ openmc_find_cell(const double* xyz, int32_t* index, int32_t* instance)
 }
 
 extern "C" int openmc_global_bounding_box(double* llc, double* urc) {
-  auto bbox = model::universes.at(model::root_universe)->bounding_box();
+  auto bbox = model::universes.at(model::root_universe).bounding_box();
 
   // set lower left corner values
   llc[0] = bbox.xmin;

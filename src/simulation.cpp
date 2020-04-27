@@ -129,13 +129,45 @@ int openmc_simulation_init()
       if (settings::verbosity >= 7) print_columns();
     }
   }
+ 
+  ////////////////////////////////////////////////////////////////////
+  // BEGIN: Move all read only data to device
+  ////////////////////////////////////////////////////////////////////
+  
+  // Universes ///////////////////////////////////////////////////////
+  // Allocate and move vectors internal to each cell on the device
+  std::cout << "Moving " << model::universes.size() << " universes to device..." << std::endl;
+  for( auto& universe : model::universes ) {
+    universe.allocate_and_copy_to_device();
+  }
+  // Move all universe data to device
+  int host_id = omp_get_initial_device();
+  int device_id = omp_get_default_device();
+  size_t sz = model::universes.size() * sizeof(Universe);
+  model::device_universes = (Universe *) omp_target_alloc(sz, device_id);
+  omp_target_memcpy(model::device_universes, model::universes.data(), sz, 0, 0, device_id, host_id);
+  
+  // Cells ///////////////////////////////////////////////////////////
 
-  // Move data to device
+  // Allocate and move vectors internal to each cell on the device
   std::cout << "Moving " << model::cells.size() << " cells to device..." << std::endl;
   for( auto& cell : model::cells ) {
     cell.allocate_on_device();
     cell.copy_to_device();
   }
+  // Move all cell data to device
+  //int host_id = omp_get_initial_device();
+  //int device_id = omp_get_default_device();
+  //size_t sz = model::cells.size() * sizeof(Cell);
+  sz = model::cells.size() * sizeof(Cell);
+  model::device_cells = (Cell *) omp_target_alloc(sz, device_id);
+  omp_target_memcpy(model::device_cells, model::cells.data(), sz, 0, 0, device_id, host_id);
+
+
+  
+  ////////////////////////////////////////////////////////////////////
+  // END: Move all read only data to device
+  ////////////////////////////////////////////////////////////////////
 
   // Set flag indicating initialization is done
   simulation::initialized = true;

@@ -34,9 +34,12 @@ namespace openmc {
 namespace model {
   //std::vector<std::unique_ptr<Cell>> cells;
   std::vector<Cell> cells;
+  Cell* device_cells;
   std::unordered_map<int32_t, int32_t> cell_map;
 
-  std::vector<std::unique_ptr<Universe>> universes;
+  //std::vector<std::unique_ptr<Universe>> universes;
+  std::vector<Universe> universes;
+  Universe* device_universes;
   std::unordered_map<int32_t, int32_t> universe_map;
 } // namespace model
 
@@ -219,6 +222,61 @@ BoundingBox Universe::bounding_box() const {
     }
   }
   return bbox;
+}
+
+void Universe::allocate_and_copy_to_device()
+{
+  int host_id = omp_get_initial_device();
+  int device_id = omp_get_default_device();
+  size_t sz;
+
+  sz = cells_.size() * sizeof(int32_t);
+  device_cells_ = (int32_t *) omp_target_alloc(sz, device_id);
+  omp_target_memcpy(device_cells_, cells_.data(), sz, 0, 0, device_id, host_id);
+
+  if(partitioner_ != NULL) 
+  {
+    // Allocate space on device for partitioner
+    sz = sizeof(UniversePartitioner);
+    device_partitioner_ = (UniversePartitioner *) omp_target_alloc(sz, device_id);
+
+    // Fill in the partioner info on the host
+    UniversePartitioner up = *partitioner_;
+
+    // Copy over surfs vector (simple 1D)
+    sz = up.surfs_.size() * sizeof(int32_t);
+    up.device_surfs_ = (int32_t *) omp_target_alloc(sz, device_id);
+    omp_target_memcpy(up.device_surfs_, partitioner_->surfs_.data(), sz, 0, 0, device_id, host_id);
+    
+    // Copy over partions_ 2D vector
+
+    // Step 1: Allocate space to store pointer array
+    sz = up.partitions_.size() * sizeof(int32_t *);
+    up.device_partitions_ = (int32_t **) omp_target_alloc(sz, device_id);
+
+    // Allocate host side place to store pointers to each row
+    int32_t ** pmap = (int32_t **) malloc(sz);
+
+    // Allocate and copy each row on device
+    for( int i = 0; i < up.partitions_.size(); i++ )
+    {
+      sz = up.partitions_[i].size() * sizeof(int32_t);
+      pmap[i] = (int32_t *) omp_target_alloc(sz, device_id);
+      omp_target_memcpy(pmap[i], up.partitions_[i].data(), sz, 0, 0, device_id, host_id);
+    }
+
+    // Copy over array of pointers
+    sz = up.partitions_.size() * sizeof(int32_t *);
+    omp_target_memcpy(up.device_partitions_, pmap, sz, 0, 0, device_id, host_id);
+
+    // free pointer map
+    free(pmap);
+
+    // Copy over full partitioner
+    sz = sizeof(UniversePartitioner);
+    omp_target_memcpy(device_partitioner_, &up, sz, 0, 0, device_id, host_id);
+  }
+
 }
 
 //==============================================================================
@@ -574,7 +632,7 @@ Cell::to_hdf5(hid_t cell_group) const
     write_string(group, "name", name_, false);
   }
 
-  write_dataset(group, "universe", model::universes[universe_]->id_);
+  write_dataset(group, "universe", model::universes[universe_].id_);
 
   // Write the region specification.
   if (!region_.empty()) {
@@ -622,7 +680,7 @@ Cell::to_hdf5(hid_t cell_group) const
 
   } else if (type_ == Fill::UNIVERSE) {
     write_dataset(group, "fill_type", "universe");
-    write_dataset(group, "fill", model::universes[fill_]->id_);
+    write_dataset(group, "fill", model::universes[fill_].id_);
     if (translation_ != Position(0, 0, 0)) {
       write_dataset(group, "translation", translation_);
     }
@@ -1061,12 +1119,14 @@ void read_cells(pugi::xml_node node)
     int32_t uid = model::cells[i].universe_;
     auto it = model::universe_map.find(uid);
     if (it == model::universe_map.end()) {
-      model::universes.push_back(std::make_unique<Universe>());
-      model::universes.back()->id_ = uid;
-      model::universes.back()->cells_.push_back(i);
+      //model::universes.push_back(std::make_unique<Universe>());
+      //model::universes.push_back();
+      model::universes.emplace_back();
+      model::universes.back().id_ = uid;
+      model::universes.back().cells_.push_back(i);
       model::universe_map[uid] = model::universes.size() - 1;
     } else {
-      model::universes[it->second]->cells_.push_back(i);
+      model::universes[it->second].cells_.push_back(i);
     }
   }
   model::universes.shrink_to_fit();

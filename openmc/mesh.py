@@ -12,13 +12,6 @@ from ._xml import get_text
 from .mixin import IDManagerMixin
 from .surface import _BOUNDARY_TYPES
 
-try:
-    import vtk
-    from vtk.util import numpy_support as vtk_npsup
-    _VTK = True
-except ImportError:
-    _VTK = False
-
 
 class MeshBase(IDManagerMixin, ABC):
     """A mesh that partitions geometry for tallying purposes.
@@ -695,8 +688,8 @@ class UnstructuredMesh(MeshBase):
             volume of the mesh elements
         """
 
-        if not _VTK:
-            raise RuntimeError("The VTK Python module is not installed.")
+        import vtk
+        from vtk.util import numpy_support as vtk_npsup
 
         if self.centroids is None:
             raise RuntimeError("No centroid information is present on this "

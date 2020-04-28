@@ -138,6 +138,13 @@ UnstructuredMesh::UnstructuredMesh(pugi::xml_node node) : Mesh(node) {
     fatal_error("No filename supplied for unstructured mesh with ID: " +
                 std::to_string(id_));
   }
+
+  // check if mesh tally data should be written with
+  // statepoint files
+  if (check_for_node(node, "output")) {
+    output_ = get_node_value_bool(node, "output");
+  }
+
 }
 
 std::string
@@ -2294,6 +2301,7 @@ LibMesh::set_score_data(const std::string& var_name,
 
 void LibMesh::write(std::string filename) const {
   std::cout << "Writing file : " << filename + ".e" << std::endl;
+
   libMesh::ExodusII_IO exo(*m_);
   std::set<std::string> systems_out = {eq_system_name_};
   exo.write_discontinuous_exodusII(filename + ".e", *equation_systems_, &systems_out);

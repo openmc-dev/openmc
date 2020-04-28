@@ -142,19 +142,11 @@ public:
   //! Write all information needed to reconstruct the surface to an HDF5 group.
   //! \param group_id An HDF5 group id.
   //TODO: this probably needs to include i_periodic for PeriodicSurface
-  virtual void to_hdf5(hid_t group_id) const = 0;
+  void to_hdf5(hid_t group_id) const;
 
   //! Get the BoundingBox for this surface.
   virtual BoundingBox bounding_box(bool pos_side) const { return {}; }
-};
-
-class CSGSurface : public Surface
-{
-public:
-  explicit CSGSurface(pugi::xml_node surf_node);
-  CSGSurface();
-
-  void to_hdf5(hid_t group_id) const;
+  
 
 protected:
   virtual void to_hdf5_inner(hid_t group_id) const = 0;
@@ -163,6 +155,7 @@ protected:
 //==============================================================================
 //! A `Surface` representing a DAGMC-based surface in DAGMC.
 //==============================================================================
+/*
 #ifdef DAGMC
 class DAGSurface : public Surface
 {
@@ -180,6 +173,8 @@ public:
   int32_t dag_index_;      //!< DagMC index of surface
 };
 #endif
+*/
+
 //==============================================================================
 //! A `Surface` that supports periodic boundary conditions.
 //!
@@ -188,7 +183,7 @@ public:
 //! `XPlane`-`YPlane` pairs.
 //==============================================================================
 
-class PeriodicSurface : public CSGSurface
+class PeriodicSurface : public Surface
 {
 public:
   int i_periodic_{C_NONE};    //!< Index of corresponding periodic surface
@@ -298,7 +293,7 @@ public:
 //! \f$(y - y_0)^2 + (z - z_0)^2 - R^2 = 0\f$
 //==============================================================================
 
-class SurfaceXCylinder : public CSGSurface
+class SurfaceXCylinder : public Surface
 {
 public:
   explicit SurfaceXCylinder(pugi::xml_node surf_node);
@@ -318,7 +313,7 @@ public:
 //! \f$(x - x_0)^2 + (z - z_0)^2 - R^2 = 0\f$
 //==============================================================================
 
-class SurfaceYCylinder : public CSGSurface
+class SurfaceYCylinder : public Surface
 {
 public:
   explicit SurfaceYCylinder(pugi::xml_node surf_node);
@@ -338,7 +333,7 @@ public:
 //! \f$(x - x_0)^2 + (y - y_0)^2 - R^2 = 0\f$
 //==============================================================================
 
-class SurfaceZCylinder : public CSGSurface
+class SurfaceZCylinder : public Surface
 {
 public:
   explicit SurfaceZCylinder(pugi::xml_node surf_node);
@@ -358,7 +353,7 @@ public:
 //! \f$(x - x_0)^2 + (y - y_0)^2 + (z - z_0)^2 - R^2 = 0\f$
 //==============================================================================
 
-class SurfaceSphere : public CSGSurface
+class SurfaceSphere : public Surface
 {
 public:
   explicit SurfaceSphere(pugi::xml_node surf_node);
@@ -378,7 +373,7 @@ public:
 //! \f$(y - y_0)^2 + (z - z_0)^2 - R^2 (x - x_0)^2 = 0\f$
 //==============================================================================
 
-class SurfaceXCone : public CSGSurface
+class SurfaceXCone : public Surface
 {
 public:
   explicit SurfaceXCone(pugi::xml_node surf_node);
@@ -397,7 +392,7 @@ public:
 //! \f$(x - x_0)^2 + (z - z_0)^2 - R^2 (y - y_0)^2 = 0\f$
 //==============================================================================
 
-class SurfaceYCone : public CSGSurface
+class SurfaceYCone : public Surface
 {
 public:
   explicit SurfaceYCone(pugi::xml_node surf_node);
@@ -416,7 +411,7 @@ public:
 //! \f$(x - x_0)^2 + (y - y_0)^2 - R^2 (z - z_0)^2 = 0\f$
 //==============================================================================
 
-class SurfaceZCone : public CSGSurface
+class SurfaceZCone : public Surface
 {
 public:
   explicit SurfaceZCone(pugi::xml_node surf_node);
@@ -434,7 +429,7 @@ public:
 //! \f$A x^2 + B y^2 + C z^2 + D x y + E y z + F x z + G x + H y + J z + K = 0\f$
 //==============================================================================
 
-class SurfaceQuadric : public CSGSurface
+class SurfaceQuadric : public Surface
 {
 public:
   explicit SurfaceQuadric(pugi::xml_node surf_node);

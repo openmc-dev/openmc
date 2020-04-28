@@ -199,11 +199,9 @@ Surface::diffuse_reflect(Position r, Direction u, uint64_t* seed) const
   return u/u.norm();
 }
 
-CSGSurface::CSGSurface() : Surface{} {};
-CSGSurface::CSGSurface(pugi::xml_node surf_node) : Surface{surf_node} {};
 
 void
-CSGSurface::to_hdf5(hid_t group_id) const
+Surface::to_hdf5(hid_t group_id) const
 {
   std::string group_name {"surface "};
   group_name += std::to_string(id_);
@@ -240,6 +238,7 @@ CSGSurface::to_hdf5(hid_t group_id) const
 //==============================================================================
 // DAGSurface implementation
 //==============================================================================
+/*
 #ifdef DAGMC
 DAGSurface::DAGSurface() : Surface{} {} // empty constructor
 
@@ -284,12 +283,13 @@ Direction DAGSurface::reflect(Position r, Direction u, Particle* p) const
 void DAGSurface::to_hdf5(hid_t group_id) const {}
 
 #endif
+*/
 //==============================================================================
 // PeriodicSurface implementation
 //==============================================================================
 
 PeriodicSurface::PeriodicSurface(pugi::xml_node surf_node)
-  : CSGSurface {surf_node}
+  : Surface {surf_node}
 {
   if (check_for_node(surf_node, "periodic_surface_id")) {
     i_periodic_ = std::stoi(get_node_value(surf_node, "periodic_surface_id"));
@@ -631,7 +631,7 @@ axis_aligned_cylinder_normal(Position r, double offset1, double offset2)
 //==============================================================================
 
 SurfaceXCylinder::SurfaceXCylinder(pugi::xml_node surf_node)
-  : CSGSurface(surf_node)
+  : Surface(surf_node)
 {
   read_coeffs(surf_node, id_, y0_, z0_, radius_);
 }
@@ -671,7 +671,7 @@ BoundingBox SurfaceXCylinder::bounding_box(bool pos_side) const {
 //==============================================================================
 
 SurfaceYCylinder::SurfaceYCylinder(pugi::xml_node surf_node)
-  : CSGSurface(surf_node)
+  : Surface(surf_node)
 {
   read_coeffs(surf_node, id_, x0_, z0_, radius_);
 }
@@ -712,7 +712,7 @@ BoundingBox SurfaceYCylinder::bounding_box(bool pos_side) const {
 //==============================================================================
 
 SurfaceZCylinder::SurfaceZCylinder(pugi::xml_node surf_node)
-  : CSGSurface(surf_node)
+  : Surface(surf_node)
 {
   read_coeffs(surf_node, id_, x0_, y0_, radius_);
 }
@@ -754,7 +754,7 @@ BoundingBox SurfaceZCylinder::bounding_box(bool pos_side) const {
 //==============================================================================
 
 SurfaceSphere::SurfaceSphere(pugi::xml_node surf_node)
-  : CSGSurface(surf_node)
+  : Surface(surf_node)
 {
   read_coeffs(surf_node, id_, x0_, y0_, z0_, radius_);
 }
@@ -917,7 +917,7 @@ axis_aligned_cone_normal(Position r, double offset1, double offset2,
 //==============================================================================
 
 SurfaceXCone::SurfaceXCone(pugi::xml_node surf_node)
-  : CSGSurface(surf_node)
+  : Surface(surf_node)
 {
   read_coeffs(surf_node, id_, x0_, y0_, z0_, radius_sq_);
 }
@@ -950,7 +950,7 @@ void SurfaceXCone::to_hdf5_inner(hid_t group_id) const
 //==============================================================================
 
 SurfaceYCone::SurfaceYCone(pugi::xml_node surf_node)
-  : CSGSurface(surf_node)
+  : Surface(surf_node)
 {
   read_coeffs(surf_node, id_, x0_, y0_, z0_, radius_sq_);
 }
@@ -983,7 +983,7 @@ void SurfaceYCone::to_hdf5_inner(hid_t group_id) const
 //==============================================================================
 
 SurfaceZCone::SurfaceZCone(pugi::xml_node surf_node)
-  : CSGSurface(surf_node)
+  : Surface(surf_node)
 {
   read_coeffs(surf_node, id_, x0_, y0_, z0_, radius_sq_);
 }
@@ -1016,7 +1016,7 @@ void SurfaceZCone::to_hdf5_inner(hid_t group_id) const
 //==============================================================================
 
 SurfaceQuadric::SurfaceQuadric(pugi::xml_node surf_node)
-  : CSGSurface(surf_node)
+  : Surface(surf_node)
 {
   read_coeffs(surf_node, id_, A_, B_, C_, D_, E_, F_, G_, H_, J_, K_);
 }

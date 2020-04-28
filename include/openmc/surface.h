@@ -15,6 +15,8 @@
 #include "openmc/position.h"
 #include "dagmc.h"
 
+#define 
+
 namespace openmc {
 
 //==============================================================================
@@ -92,19 +94,37 @@ public:
     PERIODIC,
     WHITE
   };
+  
+  // Types of surface
+  enum class SurfaceType {
+        SurfaceXPlane,
+        SurfaceYPlane,
+        SurfaceZPlane,
+        SurfacePlane,
+        SurfaceXCylinder,
+        SurfaceYCylinder,
+        SurfaceZCylinder,
+        SurfaceSphere,
+        SurfaceXCone,
+        SurfaceYCone,
+        SurfaceZCone,
+        SurfaceQuadric
+  };
 
   int id_;                    //!< Unique ID
   BoundaryType bc_;                    //!< Boundary condition
+  SurfaceType type_;                    //!< Surface type
   std::string name_;          //!< User-defined name
 
   // Actual values;
+  int i_periodic_{C_NONE};    //!< Index of corresponding periodic surface
   double x0_, y0_, z0_, radius_, radius_sq_;
   double A_, B_, C_, D_, E_, F_, G_, H_, J_, K_;
 
-  explicit Surface(pugi::xml_node surf_node);
+  explicit Surface(pugi::xml_node surf_node, SurfaceType type);
   Surface();
 
-  virtual ~Surface() {}
+  ~Surface() {}
 
   //! Determine which side of a surface a point lies on.
   //! \param r The 3D Cartesian coordinate of a point.
@@ -119,9 +139,9 @@ public:
   //! \param[in] u Incident direction of the ray
   //! \param[inout] p Pointer to the particle
   //! \return Outgoing direction of the ray
-  virtual Direction reflect(Position r, Direction u, Particle* p) const;
+  Direction reflect(Position r, Direction u, Particle* p) const;
 
-  virtual Direction diffuse_reflect(Position r, Direction u,
+  Direction diffuse_reflect(Position r, Direction u,
     uint64_t* seed) const;
 
   //! Evaluate the equation describing the surface.
@@ -129,19 +149,19 @@ public:
   //! Surfaces can be described by some function f(x, y, z) = 0.  This member
   //! function evaluates that mathematical function.
   //! \param r A 3D Cartesian coordinate.
-  virtual double evaluate(Position r) const = 0;
+  double evaluate(Position r) const = 0;
 
   //! Compute the distance between a point and the surface along a ray.
   //! \param r A 3D Cartesian coordinate.
   //! \param u The direction of the ray.
   //! \param coincident A hint to the code that the given point should lie
   //!   exactly on the surface.
-  virtual double distance(Position r, Direction u, bool coincident) const = 0;
+  double distance(Position r, Direction u, bool coincident) const = 0;
 
   //! Compute the local outward normal direction of the surface.
   //! \param r A 3D Cartesian coordinate.
   //! \return Normal direction
-  virtual Direction normal(Position r) const = 0;
+  Direction normal(Position r) const = 0;
 
   //! Write all information needed to reconstruct the surface to an HDF5 group.
   //! \param group_id An HDF5 group id.
@@ -149,11 +169,13 @@ public:
   void to_hdf5(hid_t group_id) const;
 
   //! Get the BoundingBox for this surface.
-  virtual BoundingBox bounding_box(bool pos_side) const { return {}; }
+  BoundingBox bounding_box(bool pos_side) const { return {}; }
   
-
+  bool periodic_translate(const Surface* other, Position& r,
+                                  Direction& u) const = 0;
+  
 protected:
-  virtual void to_hdf5_inner(hid_t group_id) const = 0;
+  void to_hdf5_inner(hid_t group_id) const = 0;
 };
 
 //==============================================================================
@@ -187,10 +209,11 @@ public:
 //! `XPlane`-`YPlane` pairs.
 //==============================================================================
 
+/*
 class PeriodicSurface : public Surface
 {
 public:
-  int i_periodic_{C_NONE};    //!< Index of corresponding periodic surface
+  //int i_periodic_{C_NONE};    //!< Index of corresponding periodic surface
 
   explicit PeriodicSurface(pugi::xml_node surf_node);
 
@@ -445,6 +468,7 @@ public:
   // Ax^2 + By^2 + Cz^2 + Dxy + Eyz + Fxz + Gx + Hy + Jz + K = 0
   //double A_, B_, C_, D_, E_, F_, G_, H_, J_, K_;
 };
+*/
 
 //==============================================================================
 // Non-member functions

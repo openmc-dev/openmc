@@ -109,7 +109,7 @@ void read_coeffs(pugi::xml_node surf_node, int surf_id, double &c1, double &c2,
 
 Surface::Surface() {} // empty constructor
 
-Surface::Surface(pugi::xml_node surf_node)
+Surface::Surface(pugi::xml_node surf_node, Surface::SurfaceType type) : type_(type)
 {
   if (check_for_node(surf_node, "id")) {
     id_ = std::stoi(get_node_value(surf_node, "id"));
@@ -145,7 +145,25 @@ Surface::Surface(pugi::xml_node surf_node)
   } else {
     bc_ = BoundaryType::TRANSMIT;
   }
+  if (check_for_node(surf_node, "periodic_surface_id")) {
+    i_periodic_ = std::stoi(get_node_value(surf_node, "periodic_surface_id"));
+  }
 
+  // Type specific initializations
+  switch(type_){
+    case SurfaceXPlane:    read_coeffs(surf_node, id_, x0_); break;
+    case SurfaceYPlane:    read_coeffs(surf_node, id_, y0_); break;
+    case SurfaceZPlane:    read_coeffs(surf_node, id_, z0_); break;
+    case SurfacePlane:     read_coeffs(surf_node, id_, A_, B_, C_, D_); break;
+    case SurfaceXCylinder: read_coeffs(surf_node, id_, y0_, z0_, radius_); break;
+    case SurfaceYCylinder: read_coeffs(surf_node, id_, x0_, z0_, radius_); break;
+    case SurfaceZCylinder: read_coeffs(surf_node, id_, x0_, y0_, radius_); break;
+    case SurfaceSphere:    read_coeffs(surf_node, id_, x0_, y0_, z0_, radius_); break;
+    case SurfaceXCone:     read_coeffs(surf_node, id_, x0_, y0_, z0_, radius_sq_); break;
+    case SurfaceYCone:     read_coeffs(surf_node, id_, x0_, y0_, z0_, radius_sq_); break;
+    case SurfaceZCone:     read_coeffs(surf_node, id_, x0_, y0_, z0_, radius_sq_); break;
+    case SurfaceQuadric:   read_coeffs(surf_node, id_, A_, B_, C_, D_, E_, F_, G_, H_, J_, K_); break;
+  }
 }
 
 bool
@@ -288,6 +306,7 @@ void DAGSurface::to_hdf5(hid_t group_id) const {}
 // PeriodicSurface implementation
 //==============================================================================
 
+/*
 PeriodicSurface::PeriodicSurface(pugi::xml_node surf_node)
   : Surface {surf_node}
 {
@@ -295,6 +314,7 @@ PeriodicSurface::PeriodicSurface(pugi::xml_node surf_node)
     i_periodic_ = std::stoi(get_node_value(surf_node, "periodic_surface_id"));
   }
 }
+*/
 
 //==============================================================================
 // Generic functions for x-, y-, and z-, planes.
@@ -315,35 +335,29 @@ axis_aligned_plane_distance(Position r, Direction u, bool coincident, double off
 // SurfaceXPlane implementation
 //==============================================================================
 
-SurfaceXPlane::SurfaceXPlane(pugi::xml_node surf_node)
-  : PeriodicSurface(surf_node)
-{
-  read_coeffs(surf_node, id_, x0_);
-}
-
-double SurfaceXPlane::evaluate(Position r) const
+double SurfaceXPlane_evaluate(Position r) const
 {
   return r.x - x0_;
 }
 
-double SurfaceXPlane::distance(Position r, Direction u, bool coincident) const
+double SurfaceXPlane_distance(Position r, Direction u, bool coincident) const
 {
   return axis_aligned_plane_distance<0>(r, u, coincident, x0_);
 }
 
-Direction SurfaceXPlane::normal(Position r) const
+Direction SurfaceXPlane_normal(Position r) const
 {
   return {1., 0., 0.};
 }
 
-void SurfaceXPlane::to_hdf5_inner(hid_t group_id) const
+void SurfaceXPlane_to_hdf5_inner(hid_t group_id) const
 {
   write_string(group_id, "type", "x-plane", false);
   std::array<double, 1> coeffs {{x0_}};
   write_dataset(group_id, "coefficients", coeffs);
 }
 
-bool SurfaceXPlane::periodic_translate(const PeriodicSurface* other,
+bool SurfaceXPlane_periodic_translate(const PeriodicSurface* other,
                                        Position& r,  Direction& u) const
 {
   Direction other_n = other->normal(r);
@@ -367,7 +381,7 @@ bool SurfaceXPlane::periodic_translate(const PeriodicSurface* other,
 }
 
 BoundingBox
-SurfaceXPlane::bounding_box(bool pos_side) const
+SurfaceXPlane_bounding_box(bool pos_side) const
 {
   if (pos_side) {
     return {x0_, INFTY, -INFTY, INFTY, -INFTY, INFTY};
@@ -380,35 +394,29 @@ SurfaceXPlane::bounding_box(bool pos_side) const
 // SurfaceYPlane implementation
 //==============================================================================
 
-SurfaceYPlane::SurfaceYPlane(pugi::xml_node surf_node)
-  : PeriodicSurface(surf_node)
-{
-  read_coeffs(surf_node, id_, y0_);
-}
-
-double SurfaceYPlane::evaluate(Position r) const
+double SurfaceYPlane_evaluate(Position r) const
 {
   return r.y - y0_;
 }
 
-double SurfaceYPlane::distance(Position r, Direction u, bool coincident) const
+double SurfaceYPlane_distance(Position r, Direction u, bool coincident) const
 {
   return axis_aligned_plane_distance<1>(r, u, coincident, y0_);
 }
 
-Direction SurfaceYPlane::normal(Position r) const
+Direction SurfaceYPlane_normal(Position r) const
 {
   return {0., 1., 0.};
 }
 
-void SurfaceYPlane::to_hdf5_inner(hid_t group_id) const
+void SurfaceYPlane_to_hdf5_inner(hid_t group_id) const
 {
   write_string(group_id, "type", "y-plane", false);
   std::array<double, 1> coeffs {{y0_}};
   write_dataset(group_id, "coefficients", coeffs);
 }
 
-bool SurfaceYPlane::periodic_translate(const PeriodicSurface* other,
+bool SurfaceYPlane_periodic_translate(const PeriodicSurface* other,
                                        Position& r, Direction& u) const
 {
   Direction other_n = other->normal(r);
@@ -433,7 +441,7 @@ bool SurfaceYPlane::periodic_translate(const PeriodicSurface* other,
 }
 
 BoundingBox
-SurfaceYPlane::bounding_box(bool pos_side) const
+SurfaceYPlane_bounding_box(bool pos_side) const
 {
   if (pos_side) {
     return {-INFTY, INFTY, y0_, INFTY, -INFTY, INFTY};
@@ -446,35 +454,29 @@ SurfaceYPlane::bounding_box(bool pos_side) const
 // SurfaceZPlane implementation
 //==============================================================================
 
-SurfaceZPlane::SurfaceZPlane(pugi::xml_node surf_node)
-  : PeriodicSurface(surf_node)
-{
-  read_coeffs(surf_node, id_, z0_);
-}
-
-double SurfaceZPlane::evaluate(Position r) const
+double SurfaceZPlane_evaluate(Position r) const
 {
   return r.z - z0_;
 }
 
-double SurfaceZPlane::distance(Position r, Direction u, bool coincident) const
+double SurfaceZPlane_distance(Position r, Direction u, bool coincident) const
 {
   return axis_aligned_plane_distance<2>(r, u, coincident, z0_);
 }
 
-Direction SurfaceZPlane::normal(Position r) const
+Direction SurfaceZPlane_normal(Position r) const
 {
   return {0., 0., 1.};
 }
 
-void SurfaceZPlane::to_hdf5_inner(hid_t group_id) const
+void SurfaceZPlane_to_hdf5_inner(hid_t group_id) const
 {
   write_string(group_id, "type", "z-plane", false);
   std::array<double, 1> coeffs {{z0_}};
   write_dataset(group_id, "coefficients", coeffs);
 }
 
-bool SurfaceZPlane::periodic_translate(const PeriodicSurface* other,
+bool SurfaceZPlane_periodic_translate(const PeriodicSurface* other,
                                        Position& r, Direction& u) const
 {
   // Assume the other plane is aligned along z.  Just change the z coord.
@@ -483,7 +485,7 @@ bool SurfaceZPlane::periodic_translate(const PeriodicSurface* other,
 }
 
 BoundingBox
-SurfaceZPlane::bounding_box(bool pos_side) const
+SurfaceZPlane_bounding_box(bool pos_side) const
 {
   if (pos_side) {
     return {-INFTY, INFTY, -INFTY, INFTY, z0_, INFTY};
@@ -496,20 +498,14 @@ SurfaceZPlane::bounding_box(bool pos_side) const
 // SurfacePlane implementation
 //==============================================================================
 
-SurfacePlane::SurfacePlane(pugi::xml_node surf_node)
-  : PeriodicSurface(surf_node)
-{
-  read_coeffs(surf_node, id_, A_, B_, C_, D_);
-}
-
 double
-SurfacePlane::evaluate(Position r) const
+SurfacePlane_evaluate(Position r) const
 {
   return A_*r.x + B_*r.y + C_*r.z - D_;
 }
 
 double
-SurfacePlane::distance(Position r, Direction u, bool coincident) const
+SurfacePlane_distance(Position r, Direction u, bool coincident) const
 {
   const double f = A_*r.x + B_*r.y + C_*r.z - D_;
   const double projection = A_*u.x + B_*u.y + C_*u.z;
@@ -523,19 +519,19 @@ SurfacePlane::distance(Position r, Direction u, bool coincident) const
 }
 
 Direction
-SurfacePlane::normal(Position r) const
+SurfacePlane_normal(Position r) const
 {
   return {A_, B_, C_};
 }
 
-void SurfacePlane::to_hdf5_inner(hid_t group_id) const
+void SurfacePlane_to_hdf5_inner(hid_t group_id) const
 {
   write_string(group_id, "type", "plane", false);
   std::array<double, 4> coeffs {{A_, B_, C_, D_}};
   write_dataset(group_id, "coefficients", coeffs);
 }
 
-bool SurfacePlane::periodic_translate(const PeriodicSurface* other, Position& r,
+bool SurfacePlane_periodic_translate(const PeriodicSurface* other, Position& r,
                                       Direction& u) const
 {
   // This function assumes the other plane shares this plane's normal direction.
@@ -630,36 +626,30 @@ axis_aligned_cylinder_normal(Position r, double offset1, double offset2)
 // SurfaceXCylinder implementation
 //==============================================================================
 
-SurfaceXCylinder::SurfaceXCylinder(pugi::xml_node surf_node)
-  : Surface(surf_node)
-{
-  read_coeffs(surf_node, id_, y0_, z0_, radius_);
-}
-
-double SurfaceXCylinder::evaluate(Position r) const
+double SurfaceXCylinder_evaluate(Position r) const
 {
   return axis_aligned_cylinder_evaluate<1, 2>(r, y0_, z0_, radius_);
 }
 
-double SurfaceXCylinder::distance(Position r, Direction u, bool coincident) const
+double SurfaceXCylinder_distance(Position r, Direction u, bool coincident) const
 {
   return axis_aligned_cylinder_distance<0, 1, 2>(r, u, coincident, y0_, z0_,
                                                  radius_);
 }
 
-Direction SurfaceXCylinder::normal(Position r) const
+Direction SurfaceXCylinder_normal(Position r) const
 {
   return axis_aligned_cylinder_normal<0, 1, 2>(r, y0_, z0_);
 }
 
-void SurfaceXCylinder::to_hdf5_inner(hid_t group_id) const
+void SurfaceXCylinder_to_hdf5_inner(hid_t group_id) const
 {
   write_string(group_id, "type", "x-cylinder", false);
   std::array<double, 3> coeffs {{y0_, z0_, radius_}};
   write_dataset(group_id, "coefficients", coeffs);
 }
 
-BoundingBox SurfaceXCylinder::bounding_box(bool pos_side) const {
+BoundingBox SurfaceXCylinder_bounding_box(bool pos_side) const {
   if (!pos_side) {
     return {-INFTY, INFTY, y0_ - radius_, y0_ + radius_, z0_ - radius_, z0_ + radius_};
   } else {
@@ -670,36 +660,30 @@ BoundingBox SurfaceXCylinder::bounding_box(bool pos_side) const {
 // SurfaceYCylinder implementation
 //==============================================================================
 
-SurfaceYCylinder::SurfaceYCylinder(pugi::xml_node surf_node)
-  : Surface(surf_node)
-{
-  read_coeffs(surf_node, id_, x0_, z0_, radius_);
-}
-
-double SurfaceYCylinder::evaluate(Position r) const
+double SurfaceYCylinder_evaluate(Position r) const
 {
   return axis_aligned_cylinder_evaluate<0, 2>(r, x0_, z0_, radius_);
 }
 
-double SurfaceYCylinder::distance(Position r, Direction u, bool coincident) const
+double SurfaceYCylinder_distance(Position r, Direction u, bool coincident) const
 {
   return axis_aligned_cylinder_distance<1, 0, 2>(r, u, coincident, x0_, z0_,
                                                  radius_);
 }
 
-Direction SurfaceYCylinder::normal(Position r) const
+Direction SurfaceYCylinder_normal(Position r) const
 {
   return axis_aligned_cylinder_normal<1, 0, 2>(r, x0_, z0_);
 }
 
-void SurfaceYCylinder::to_hdf5_inner(hid_t group_id) const
+void SurfaceYCylinder_to_hdf5_inner(hid_t group_id) const
 {
   write_string(group_id, "type", "y-cylinder", false);
   std::array<double, 3> coeffs {{x0_, z0_, radius_}};
   write_dataset(group_id, "coefficients", coeffs);
 }
 
-BoundingBox SurfaceYCylinder::bounding_box(bool pos_side) const {
+BoundingBox SurfaceYCylinder_bounding_box(bool pos_side) const {
   if (!pos_side) {
     return {x0_ - radius_, x0_ + radius_, -INFTY, INFTY, z0_ - radius_, z0_ + radius_};
   } else {
@@ -711,36 +695,30 @@ BoundingBox SurfaceYCylinder::bounding_box(bool pos_side) const {
 // SurfaceZCylinder implementation
 //==============================================================================
 
-SurfaceZCylinder::SurfaceZCylinder(pugi::xml_node surf_node)
-  : Surface(surf_node)
-{
-  read_coeffs(surf_node, id_, x0_, y0_, radius_);
-}
-
-double SurfaceZCylinder::evaluate(Position r) const
+double SurfaceZCylinder_evaluate(Position r) const
 {
   return axis_aligned_cylinder_evaluate<0, 1>(r, x0_, y0_, radius_);
 }
 
-double SurfaceZCylinder::distance(Position r, Direction u, bool coincident) const
+double SurfaceZCylinder_distance(Position r, Direction u, bool coincident) const
 {
   return axis_aligned_cylinder_distance<2, 0, 1>(r, u, coincident, x0_, y0_,
                                                  radius_);
 }
 
-Direction SurfaceZCylinder::normal(Position r) const
+Direction SurfaceZCylinder_normal(Position r) const
 {
   return axis_aligned_cylinder_normal<2, 0, 1>(r, x0_, y0_);
 }
 
-void SurfaceZCylinder::to_hdf5_inner(hid_t group_id) const
+void SurfaceZCylinder_to_hdf5_inner(hid_t group_id) const
 {
   write_string(group_id, "type", "z-cylinder", false);
   std::array<double, 3> coeffs {{x0_, y0_, radius_}};
   write_dataset(group_id, "coefficients", coeffs);
 }
 
-BoundingBox SurfaceZCylinder::bounding_box(bool pos_side) const {
+BoundingBox SurfaceZCylinder_bounding_box(bool pos_side) const {
   if (!pos_side) {
     return {x0_ - radius_, x0_ + radius_, y0_ - radius_, y0_ + radius_, -INFTY, INFTY};
   } else {
@@ -753,13 +731,7 @@ BoundingBox SurfaceZCylinder::bounding_box(bool pos_side) const {
 // SurfaceSphere implementation
 //==============================================================================
 
-SurfaceSphere::SurfaceSphere(pugi::xml_node surf_node)
-  : Surface(surf_node)
-{
-  read_coeffs(surf_node, id_, x0_, y0_, z0_, radius_);
-}
-
-double SurfaceSphere::evaluate(Position r) const
+double SurfaceSphere_evaluate(Position r) const
 {
   const double x = r.x - x0_;
   const double y = r.y - y0_;
@@ -767,7 +739,7 @@ double SurfaceSphere::evaluate(Position r) const
   return x*x + y*y + z*z - radius_*radius_;
 }
 
-double SurfaceSphere::distance(Position r, Direction u, bool coincident) const
+double SurfaceSphere_distance(Position r, Direction u, bool coincident) const
 {
   const double x = r.x - x0_;
   const double y = r.y - y0_;
@@ -805,19 +777,19 @@ double SurfaceSphere::distance(Position r, Direction u, bool coincident) const
   }
 }
 
-Direction SurfaceSphere::normal(Position r) const
+Direction SurfaceSphere_normal(Position r) const
 {
   return {2.0*(r.x - x0_), 2.0*(r.y - y0_), 2.0*(r.z - z0_)};
 }
 
-void SurfaceSphere::to_hdf5_inner(hid_t group_id) const
+void SurfaceSphere_to_hdf5_inner(hid_t group_id) const
 {
   write_string(group_id, "type", "sphere", false);
   std::array<double, 4> coeffs {{x0_, y0_, z0_, radius_}};
   write_dataset(group_id, "coefficients", coeffs);
 }
 
-BoundingBox SurfaceSphere::bounding_box(bool pos_side) const {
+BoundingBox SurfaceSphere_bounding_box(bool pos_side) const {
   if (!pos_side) {
     return {x0_ - radius_, x0_ + radius_,
             y0_ - radius_, y0_ + radius_,
@@ -916,29 +888,23 @@ axis_aligned_cone_normal(Position r, double offset1, double offset2,
 // SurfaceXCone implementation
 //==============================================================================
 
-SurfaceXCone::SurfaceXCone(pugi::xml_node surf_node)
-  : Surface(surf_node)
-{
-  read_coeffs(surf_node, id_, x0_, y0_, z0_, radius_sq_);
-}
-
-double SurfaceXCone::evaluate(Position r) const
+double SurfaceXCone_evaluate(Position r) const
 {
   return axis_aligned_cone_evaluate<0, 1, 2>(r, x0_, y0_, z0_, radius_sq_);
 }
 
-double SurfaceXCone::distance(Position r, Direction u, bool coincident) const
+double SurfaceXCone_distance(Position r, Direction u, bool coincident) const
 {
   return axis_aligned_cone_distance<0, 1, 2>(r, u, coincident, x0_, y0_, z0_,
                                              radius_sq_);
 }
 
-Direction SurfaceXCone::normal(Position r) const
+Direction SurfaceXCone_normal(Position r) const
 {
   return axis_aligned_cone_normal<0, 1, 2>(r, x0_, y0_, z0_, radius_sq_);
 }
 
-void SurfaceXCone::to_hdf5_inner(hid_t group_id) const
+void SurfaceXCone_to_hdf5_inner(hid_t group_id) const
 {
   write_string(group_id, "type", "x-cone", false);
   std::array<double, 4> coeffs {{x0_, y0_, z0_, radius_sq_}};
@@ -949,29 +915,23 @@ void SurfaceXCone::to_hdf5_inner(hid_t group_id) const
 // SurfaceYCone implementation
 //==============================================================================
 
-SurfaceYCone::SurfaceYCone(pugi::xml_node surf_node)
-  : Surface(surf_node)
-{
-  read_coeffs(surf_node, id_, x0_, y0_, z0_, radius_sq_);
-}
-
-double SurfaceYCone::evaluate(Position r) const
+double SurfaceYCone_evaluate(Position r) const
 {
   return axis_aligned_cone_evaluate<1, 0, 2>(r, y0_, x0_, z0_, radius_sq_);
 }
 
-double SurfaceYCone::distance(Position r, Direction u, bool coincident) const
+double SurfaceYCone_distance(Position r, Direction u, bool coincident) const
 {
   return axis_aligned_cone_distance<1, 0, 2>(r, u, coincident, y0_, x0_, z0_,
                                              radius_sq_);
 }
 
-Direction SurfaceYCone::normal(Position r) const
+Direction SurfaceYCone_normal(Position r) const
 {
   return axis_aligned_cone_normal<1, 0, 2>(r, y0_, x0_, z0_, radius_sq_);
 }
 
-void SurfaceYCone::to_hdf5_inner(hid_t group_id) const
+void SurfaceYCone_to_hdf5_inner(hid_t group_id) const
 {
   write_string(group_id, "type", "y-cone", false);
   std::array<double, 4> coeffs {{x0_, y0_, z0_, radius_sq_}};
@@ -982,29 +942,23 @@ void SurfaceYCone::to_hdf5_inner(hid_t group_id) const
 // SurfaceZCone implementation
 //==============================================================================
 
-SurfaceZCone::SurfaceZCone(pugi::xml_node surf_node)
-  : Surface(surf_node)
-{
-  read_coeffs(surf_node, id_, x0_, y0_, z0_, radius_sq_);
-}
-
-double SurfaceZCone::evaluate(Position r) const
+double SurfaceZCone_evaluate(Position r) const
 {
   return axis_aligned_cone_evaluate<2, 0, 1>(r, z0_, x0_, y0_, radius_sq_);
 }
 
-double SurfaceZCone::distance(Position r, Direction u, bool coincident) const
+double SurfaceZCone_distance(Position r, Direction u, bool coincident) const
 {
   return axis_aligned_cone_distance<2, 0, 1>(r, u, coincident, z0_, x0_, y0_,
                                              radius_sq_);
 }
 
-Direction SurfaceZCone::normal(Position r) const
+Direction SurfaceZCone_normal(Position r) const
 {
   return axis_aligned_cone_normal<2, 0, 1>(r, z0_, x0_, y0_, radius_sq_);
 }
 
-void SurfaceZCone::to_hdf5_inner(hid_t group_id) const
+void SurfaceZCone_to_hdf5_inner(hid_t group_id) const
 {
   write_string(group_id, "type", "z-cone", false);
   std::array<double, 4> coeffs {{x0_, y0_, z0_, radius_sq_}};
@@ -1015,14 +969,8 @@ void SurfaceZCone::to_hdf5_inner(hid_t group_id) const
 // SurfaceQuadric implementation
 //==============================================================================
 
-SurfaceQuadric::SurfaceQuadric(pugi::xml_node surf_node)
-  : Surface(surf_node)
-{
-  read_coeffs(surf_node, id_, A_, B_, C_, D_, E_, F_, G_, H_, J_, K_);
-}
-
 double
-SurfaceQuadric::evaluate(Position r) const
+SurfaceQuadric_evaluate(Position r) const
 {
   const double x = r.x;
   const double y = r.y;
@@ -1033,7 +981,7 @@ SurfaceQuadric::evaluate(Position r) const
 }
 
 double
-SurfaceQuadric::distance(Position r, Direction ang, bool coincident) const
+SurfaceQuadric_distance(Position r, Direction ang, bool coincident) const
 {
   const double &x = r.x;
   const double &y = r.y;
@@ -1087,7 +1035,7 @@ SurfaceQuadric::distance(Position r, Direction ang, bool coincident) const
 }
 
 Direction
-SurfaceQuadric::normal(Position r) const
+SurfaceQuadric_normal(Position r) const
 {
   const double &x = r.x;
   const double &y = r.y;
@@ -1097,7 +1045,7 @@ SurfaceQuadric::normal(Position r) const
           2.0*C_*z + E_*y + F_*x + J_};
 }
 
-void SurfaceQuadric::to_hdf5_inner(hid_t group_id) const
+void SurfaceQuadric_to_hdf5_inner(hid_t group_id) const
 {
   write_string(group_id, "type", "quadric", false);
   std::array<double, 10> coeffs {{A_, B_, C_, D_, E_, F_, G_, H_, J_, K_}};

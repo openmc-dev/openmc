@@ -54,6 +54,11 @@ openmc_statepoint_write(const char* filename, bool* write_source)
   // Write message
   write_message("Creating state point " + filename_ + "...", 5);
 
+#if defined(LIBMESH) || defined(DAGMC)
+      // write unstructured mesh tallies to VTK if possible
+      write_unstructured_mesh_results();
+#endif
+
   hid_t file_id;
   if (mpi::master) {
     // Create statepoint file
@@ -166,11 +171,6 @@ openmc_statepoint_write(const char* filename, bool* write_source)
       for (const auto& tally : model::tallies)
         tally_ids.push_back(tally->id_);
       write_attribute(tallies_group, "ids", tally_ids);
-
-#if defined(LIBMESH) || defined(DAGMC)
-      // write unstructured mesh tallies to VTK if possible
-      write_unstructured_mesh_results();
-#endif
 
       // Write all tally information except results
       for (const auto& tally : model::tallies) {

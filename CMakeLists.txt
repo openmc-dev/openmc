@@ -71,6 +71,7 @@ else()
 #===============================================================================
 if(libmesh)
   find_package(LIBMESH REQUIRED)
+  list(APPEND cxxflags ${LIBMESH_CFLAGS})
 endif()
 
 #===============================================================================
@@ -415,11 +416,11 @@ if(dagmc)
 endif()
 
 if(libmesh)
-if (debug)
-  target_link_libraries(libopenmc PkgConfig::LIBMESH_DEVEL)
-else()
-  target_link_libraries(libopenmc PkgConfig::LIBMESH)
-endif()
+  if (debug)
+    target_link_libraries(libopenmc PkgConfig::LIBMESH_DEVEL)
+  else()
+    target_link_libraries(libopenmc PkgConfig::LIBMESH)
+  endif()
 endif()
 
 #===============================================================================

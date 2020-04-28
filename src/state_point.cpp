@@ -788,6 +788,8 @@ void write_unstructured_mesh_results() {
 
       if (!umesh) continue;
 
+      if (!umesh->output_) continue;
+
       // if this tally has more than one filter, print
       // warning and skip writing the mesh
       if (tally->filters().size() > 1) {
@@ -857,6 +859,9 @@ void write_unstructured_mesh_results() {
                                          tally->id_,
                                          simulation::current_batch,
                                          w);
+
+      if (umesh->library() == "moab" && !mpi::master) continue;
+
       // Write the unstructured mesh and data to file
       umesh->write(filename);
 

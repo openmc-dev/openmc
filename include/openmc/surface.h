@@ -97,6 +97,10 @@ public:
   BoundaryType bc_;                    //!< Boundary condition
   std::string name_;          //!< User-defined name
 
+  // Actual values;
+  double x0_, y0_, z0_, radius_, radius_sq_;
+  double A_, B_, C_, D_, E_, F_, G_, H_, J_, K_;
+
   explicit Surface(pugi::xml_node surf_node);
   Surface();
 
@@ -221,7 +225,7 @@ public:
                           Direction& u) const;
   BoundingBox bounding_box(bool pos_side) const;
 
-  double x0_;
+  //double x0_;
 };
 
 //==============================================================================
@@ -242,7 +246,7 @@ public:
                           Direction& u) const;
   BoundingBox bounding_box(bool pos_side) const;
 
-  double y0_;
+  //double y0_;
 };
 
 //==============================================================================
@@ -263,7 +267,7 @@ public:
                           Direction& u) const;
   BoundingBox bounding_box(bool pos_side) const;
 
-  double z0_;
+  //double z0_;
 };
 
 //==============================================================================
@@ -283,7 +287,7 @@ public:
   bool periodic_translate(const PeriodicSurface* other, Position& r,
                           Direction& u) const;
 
-  double A_, B_, C_, D_;
+  //double A_, B_, C_, D_;
 };
 
 //==============================================================================
@@ -303,7 +307,7 @@ public:
   void to_hdf5_inner(hid_t group_id) const;
   BoundingBox bounding_box(bool pos_side) const;
 
-  double y0_, z0_, radius_;
+  //double y0_, z0_, radius_;
 };
 
 //==============================================================================
@@ -323,7 +327,7 @@ public:
   void to_hdf5_inner(hid_t group_id) const;
   BoundingBox bounding_box(bool pos_side) const;
 
-  double x0_, z0_, radius_;
+  //double x0_, z0_, radius_;
 };
 
 //==============================================================================
@@ -343,7 +347,7 @@ public:
   void to_hdf5_inner(hid_t group_id) const;
   BoundingBox bounding_box(bool pos_side) const;
 
-  double x0_, y0_, radius_;
+  //double x0_, y0_, radius_;
 };
 
 //==============================================================================
@@ -363,7 +367,7 @@ public:
   void to_hdf5_inner(hid_t group_id) const;
   BoundingBox bounding_box(bool pos_side) const;
 
-  double x0_, y0_, z0_, radius_;
+  //double x0_, y0_, z0_, radius_;
 };
 
 //==============================================================================
@@ -382,7 +386,7 @@ public:
   Direction normal(Position r) const;
   void to_hdf5_inner(hid_t group_id) const;
 
-  double x0_, y0_, z0_, radius_sq_;
+  //double x0_, y0_, z0_, radius_sq_;
 };
 
 //==============================================================================
@@ -401,7 +405,7 @@ public:
   Direction normal(Position r) const;
   void to_hdf5_inner(hid_t group_id) const;
 
-  double x0_, y0_, z0_, radius_sq_;
+  //double x0_, y0_, z0_, radius_sq_;
 };
 
 //==============================================================================
@@ -420,7 +424,7 @@ public:
   Direction normal(Position r) const;
   void to_hdf5_inner(hid_t group_id) const;
 
-  double x0_, y0_, z0_, radius_sq_;
+  //double x0_, y0_, z0_, radius_sq_;
 };
 
 //==============================================================================
@@ -439,7 +443,7 @@ public:
   void to_hdf5_inner(hid_t group_id) const;
 
   // Ax^2 + By^2 + Cz^2 + Dxy + Eyz + Fxz + Gx + Hy + Jz + K = 0
-  double A_, B_, C_, D_, E_, F_, G_, H_, J_, K_;
+  //double A_, B_, C_, D_, E_, F_, G_, H_, J_, K_;
 };
 
 //==============================================================================

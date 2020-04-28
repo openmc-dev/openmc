@@ -325,6 +325,7 @@ public:
   void to_hdf5(hid_t group) const override;
 
   // Data members
+  bool output_ {true};
   std::string filename_; //!< Path to unstructured mesh file
 };
 

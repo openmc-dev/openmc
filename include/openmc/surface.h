@@ -149,19 +149,19 @@ public:
   //! Surfaces can be described by some function f(x, y, z) = 0.  This member
   //! function evaluates that mathematical function.
   //! \param r A 3D Cartesian coordinate.
-  double evaluate(Position r) const = 0;
+  double evaluate(Position r) const;
 
   //! Compute the distance between a point and the surface along a ray.
   //! \param r A 3D Cartesian coordinate.
   //! \param u The direction of the ray.
   //! \param coincident A hint to the code that the given point should lie
   //!   exactly on the surface.
-  double distance(Position r, Direction u, bool coincident) const = 0;
+  double distance(Position r, Direction u, bool coincident) const;
 
   //! Compute the local outward normal direction of the surface.
   //! \param r A 3D Cartesian coordinate.
   //! \return Normal direction
-  Direction normal(Position r) const = 0;
+  Direction normal(Position r) const;
 
   //! Write all information needed to reconstruct the surface to an HDF5 group.
   //! \param group_id An HDF5 group id.
@@ -172,10 +172,10 @@ public:
   BoundingBox bounding_box(bool pos_side) const { return {}; }
   
   bool periodic_translate(const Surface* other, Position& r,
-                                  Direction& u) const = 0;
+                                  Direction& u) const;
   
 protected:
-  void to_hdf5_inner(hid_t group_id) const = 0;
+  void to_hdf5_inner(hid_t group_id) const;
 };
 
 //==============================================================================

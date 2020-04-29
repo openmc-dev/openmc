@@ -254,6 +254,121 @@ Surface::to_hdf5(hid_t group_id) const
 }
 
 //==============================================================================
+// Dispatchers
+//==============================================================================
+double Surface::evaluate(Position r) const
+{
+  switch(type_){
+    case SurfaceXPlane:    return SurfaceXPlane_evaluate(r);    break;
+    case SurfaceYPlane:    return SurfaceYPlane_evaluate(r);    break;
+    case SurfaceZPlane:    return SurfaceZPlane_evaluate(r);    break;
+    case SurfacePlane:     return SurfacePlane_evaluate(r);     break;
+    case SurfaceXCylinder: return SurfaceXCylinder_evaluate(r); break;
+    case SurfaceYCylinder: return SurfaceYCylinder_evaluate(r); break;
+    case SurfaceZCylinder: return SurfaceZCylinder_evaluate(r); break;
+    case SurfaceSphere:    return SurfaceSphere_evaluate(r);    break;
+    case SurfaceXCone:     return SurfaceXCone_evaluate(r);     break;
+    case SurfaceYCone:     return SurfaceYCone_evaluate(r);     break;
+    case SurfaceZCone:     return SurfaceZCone_evaluate(r);     break;
+    case SurfaceQuadric:   return SurfaceQuadric_evaluate(r);   break;
+  }
+}
+
+double Surface::distance(Position r, Direction u, bool coincident) const
+{
+  switch(type_){
+    case SurfaceXPlane:    return SurfaceXPlane_distance(r, u, coincident);    break;
+    case SurfaceYPlane:    return SurfaceYPlane_distance(r, u, coincident);    break;
+    case SurfaceZPlane:    return SurfaceZPlane_distance(r, u, coincident);    break;
+    case SurfacePlane:     return SurfacePlane_distance(r, u, coincident);     break;
+    case SurfaceXCylinder: return SurfaceXCylinder_distance(r, u, coincident); break;
+    case SurfaceYCylinder: return SurfaceYCylinder_distance(r, u, coincident); break;
+    case SurfaceZCylinder: return SurfaceZCylinder_distance(r, u, coincident); break;
+    case SurfaceSphere:    return SurfaceSphere_distance(r, u, coincident);    break;
+    case SurfaceXCone:     return SurfaceXCone_distance(r, u, coincident);     break;
+    case SurfaceYCone:     return SurfaceYCone_distance(r, u, coincident);     break;
+    case SurfaceZCone:     return SurfaceZCone_distance(r, u, coincident);     break;
+    case SurfaceQuadric:   return SurfaceQuadric_distance(r, u, coincident);   break;
+  }
+}
+
+Direction Surface::normal(Position r) const
+{
+  switch(type_){
+    case SurfaceXPlane:    return SurfaceXPlane_normal(r);    break;
+    case SurfaceYPlane:    return SurfaceYPlane_normal(r);    break;
+    case SurfaceZPlane:    return SurfaceZPlane_normal(r);    break;
+    case SurfacePlane:     return SurfacePlane_normal(r);     break;
+    case SurfaceXCylinder: return SurfaceXCylinder_normal(r); break;
+    case SurfaceYCylinder: return SurfaceYCylinder_normal(r); break;
+    case SurfaceZCylinder: return SurfaceZCylinder_normal(r); break;
+    case SurfaceSphere:    return SurfaceSphere_normal(r);    break;
+    case SurfaceXCone:     return SurfaceXCone_normal(r);     break;
+    case SurfaceYCone:     return SurfaceYCone_normal(r);     break;
+    case SurfaceZCone:     return SurfaceZCone_normal(r);     break;
+    case SurfaceQuadric:   return SurfaceQuadric_normal(r);   break;
+  }
+}
+
+void Surface::to_hdf5_inner(hid_t group_id) const
+{
+  switch(type_){
+    case SurfaceXPlane:    SurfaceXPlane_evaluate(group_id);    break;
+    case SurfaceYPlane:    SurfaceYPlane_evaluate(group_id);    break;
+    case SurfaceZPlane:    SurfaceZPlane_evaluate(group_id);    break;
+    case SurfacePlane:     SurfacePlane_evaluate(group_id);     break;
+    case SurfaceXCylinder: SurfaceXCylinder_evaluate(group_id); break;
+    case SurfaceYCylinder: SurfaceYCylinder_evaluate(group_id); break;
+    case SurfaceZCylinder: SurfaceZCylinder_evaluate(group_id); break;
+    case SurfaceSphere:    SurfaceSphere_evaluate(group_id);    break;
+    case SurfaceXCone:     SurfaceXCone_evaluate(group_id);     break;
+    case SurfaceYCone:     SurfaceYCone_evaluate(group_id);     break;
+    case SurfaceZCone:     SurfaceZCone_evaluate(group_id);     break;
+    case SurfaceQuadric:   SurfaceQuadric_evaluate(group_id);   break;
+  }
+}
+
+// Not all types have the ones below...
+BoundingBox Surface::bounding_box(bool pos_side) const
+{
+  switch(type_){
+    case SurfaceXPlane:    return SurfaceXPlane_bounding_box(pos_side);    break;
+    case SurfaceYPlane:    return SurfaceYPlane_bounding_box(pos_side);    break;
+    case SurfaceZPlane:    return SurfaceZPlane_bounding_box(pos_side);    break;
+    //case SurfacePlane:     return SurfacePlane_bounding_box(pos_side);     break;
+    case SurfaceXCylinder: return SurfaceXCylinder_bounding_box(pos_side); break;
+    case SurfaceYCylinder: return SurfaceYCylinder_bounding_box(pos_side); break;
+    case SurfaceZCylinder: return SurfaceZCylinder_bounding_box(pos_side); break;
+    case SurfaceSphere:    return SurfaceSphere_bounding_box(pos_side);    break;
+    //case SurfaceXCone:     return SurfaceXCone_bounding_box(pos_side);     break;
+    //case SurfaceYCone:     return SurfaceYCone_bounding_box(pos_side);     break;
+    //case SurfaceZCone:     return SurfaceZCone_bounding_box(pos_side);     break;
+    //case SurfaceQuadric:   return SurfaceQuadric_bounding_box(pos_side);   break;
+  }
+}
+
+bool Surface::periodic_translate(const PeriodicSurface* other, Position& r,
+                                      Direction& u) const
+{
+  switch(type_){
+    case SurfaceXPlane:    return SurfaceXPlane_periodic_translate(other, r, u);    break;
+    case SurfaceYPlane:    return SurfaceYPlane_periodic_translate(other, r, u);    break;
+    case SurfaceZPlane:    return SurfaceZPlane_periodic_translate(other, r, u);    break;
+    case SurfacePlane:     return SurfacePlane_periodic_translate(other, r, u);     break;
+                           /*
+    case SurfaceXCylinder: return SurfaceXCylinder_periodic_translate(other, r, u); break;
+    case SurfaceYCylinder: return SurfaceYCylinder_periodic_translate(other, r, u); break;
+    case SurfaceZCylinder: return SurfaceZCylinder_periodic_translate(other, r, u); break;
+    case SurfaceSphere:    return SurfaceSphere_periodic_translate(other, r, u);    break;
+    case SurfaceXCone:     return SurfaceXCone_periodic_translate(other, r, u);     break;
+    case SurfaceYCone:     return SurfaceYCone_periodic_translate(other, r, u);     break;
+    case SurfaceZCone:     return SurfaceZCone_periodic_translate(other, r, u);     break;
+    case SurfaceQuadric:   return SurfaceQuadric_periodic_translate(other, r, u);   break;
+    */
+  }
+}
+
+//==============================================================================
 // DAGSurface implementation
 //==============================================================================
 /*

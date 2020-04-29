@@ -945,6 +945,7 @@ UniversePartitioner::UniversePartitioner(const Universe& univ)
   struct compare_surfs {
     bool operator()(const int32_t& i_surf, const int32_t& j_surf) const
     {
+      /*
       const auto* surf = model::surfaces[i_surf].get();
       const auto* zplane = dynamic_cast<const SurfaceZPlane*>(surf);
       double zi = zplane->z0_;
@@ -952,6 +953,8 @@ UniversePartitioner::UniversePartitioner(const Universe& univ)
       zplane = dynamic_cast<const SurfaceZPlane*>(surf);
       double zj = zplane->z0_;
       return zi < zj;
+      */
+      return model::surfaces[i_surf].get()->z0_ < model::surfaces[j_surf].get()->z0_;
     }
   };
   std::set<int32_t, compare_surfs> surf_set;
@@ -964,7 +967,8 @@ UniversePartitioner::UniversePartitioner(const Universe& univ)
       if (token < OP_UNION) {
         auto i_surf = std::abs(token) - 1;
         const auto* surf = model::surfaces[i_surf].get();
-        if (const auto* zplane = dynamic_cast<const SurfaceZPlane*>(surf))
+        //if (const auto* zplane = dynamic_cast<const SurfaceZPlane*>(surf))
+        if( surf->type_ == Surface::SurfaceType::SurfaceZPlane ) 
           surf_set.insert(i_surf);
       }
     }
@@ -991,7 +995,10 @@ UniversePartitioner::UniversePartitioner(const Universe& univ)
     for (auto token : model::cells[i_cell].rpn_) {
       if (token < OP_UNION) {
         const auto* surf = model::surfaces[std::abs(token) - 1].get();
-        if (const auto* zplane = dynamic_cast<const SurfaceZPlane*>(surf)) {
+        //if (const auto* zplane = dynamic_cast<const SurfaceZPlane*>(surf)) {
+        if( surf->type_ == Surface::SurfaceType::SurfaceZPlane ) 
+        {
+          const auto* zplane = surf;
           if (lower_token == 0 || zplane->z0_ < min_z) {
             lower_token = token;
             min_z = zplane->z0_;

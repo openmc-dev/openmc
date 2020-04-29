@@ -151,18 +151,18 @@ Surface::Surface(pugi::xml_node surf_node, Surface::SurfaceType type) : type_(ty
 
   // Type specific initializations
   switch(type_){
-    case SurfaceXPlane:    read_coeffs(surf_node, id_, x0_); break;
-    case SurfaceYPlane:    read_coeffs(surf_node, id_, y0_); break;
-    case SurfaceZPlane:    read_coeffs(surf_node, id_, z0_); break;
-    case SurfacePlane:     read_coeffs(surf_node, id_, A_, B_, C_, D_); break;
-    case SurfaceXCylinder: read_coeffs(surf_node, id_, y0_, z0_, radius_); break;
-    case SurfaceYCylinder: read_coeffs(surf_node, id_, x0_, z0_, radius_); break;
-    case SurfaceZCylinder: read_coeffs(surf_node, id_, x0_, y0_, radius_); break;
-    case SurfaceSphere:    read_coeffs(surf_node, id_, x0_, y0_, z0_, radius_); break;
-    case SurfaceXCone:     read_coeffs(surf_node, id_, x0_, y0_, z0_, radius_sq_); break;
-    case SurfaceYCone:     read_coeffs(surf_node, id_, x0_, y0_, z0_, radius_sq_); break;
-    case SurfaceZCone:     read_coeffs(surf_node, id_, x0_, y0_, z0_, radius_sq_); break;
-    case SurfaceQuadric:   read_coeffs(surf_node, id_, A_, B_, C_, D_, E_, F_, G_, H_, J_, K_); break;
+    case SurfaceType::SurfaceXPlane:    read_coeffs(surf_node, id_, x0_); break;
+    case SurfaceType::SurfaceYPlane:    read_coeffs(surf_node, id_, y0_); break;
+    case SurfaceType::SurfaceZPlane:    read_coeffs(surf_node, id_, z0_); break;
+    case SurfaceType::SurfacePlane:     read_coeffs(surf_node, id_, A_, B_, C_, D_); break;
+    case SurfaceType::SurfaceXCylinder: read_coeffs(surf_node, id_, y0_, z0_, radius_); break;
+    case SurfaceType::SurfaceYCylinder: read_coeffs(surf_node, id_, x0_, z0_, radius_); break;
+    case SurfaceType::SurfaceZCylinder: read_coeffs(surf_node, id_, x0_, y0_, radius_); break;
+    case SurfaceType::SurfaceSphere:    read_coeffs(surf_node, id_, x0_, y0_, z0_, radius_); break;
+    case SurfaceType::SurfaceXCone:     read_coeffs(surf_node, id_, x0_, y0_, z0_, radius_sq_); break;
+    case SurfaceType::SurfaceYCone:     read_coeffs(surf_node, id_, x0_, y0_, z0_, radius_sq_); break;
+    case SurfaceType::SurfaceZCone:     read_coeffs(surf_node, id_, x0_, y0_, z0_, radius_sq_); break;
+    case SurfaceType::SurfaceQuadric:   read_coeffs(surf_node, id_, A_, B_, C_, D_, E_, F_, G_, H_, J_, K_); break;
   }
 }
 
@@ -253,120 +253,6 @@ Surface::to_hdf5(hid_t group_id) const
   close_group(surf_group);
 }
 
-//==============================================================================
-// Dispatchers
-//==============================================================================
-double Surface::evaluate(Position r) const
-{
-  switch(type_){
-    case SurfaceXPlane:    return SurfaceXPlane_evaluate(r);    break;
-    case SurfaceYPlane:    return SurfaceYPlane_evaluate(r);    break;
-    case SurfaceZPlane:    return SurfaceZPlane_evaluate(r);    break;
-    case SurfacePlane:     return SurfacePlane_evaluate(r);     break;
-    case SurfaceXCylinder: return SurfaceXCylinder_evaluate(r); break;
-    case SurfaceYCylinder: return SurfaceYCylinder_evaluate(r); break;
-    case SurfaceZCylinder: return SurfaceZCylinder_evaluate(r); break;
-    case SurfaceSphere:    return SurfaceSphere_evaluate(r);    break;
-    case SurfaceXCone:     return SurfaceXCone_evaluate(r);     break;
-    case SurfaceYCone:     return SurfaceYCone_evaluate(r);     break;
-    case SurfaceZCone:     return SurfaceZCone_evaluate(r);     break;
-    case SurfaceQuadric:   return SurfaceQuadric_evaluate(r);   break;
-  }
-}
-
-double Surface::distance(Position r, Direction u, bool coincident) const
-{
-  switch(type_){
-    case SurfaceXPlane:    return SurfaceXPlane_distance(r, u, coincident);    break;
-    case SurfaceYPlane:    return SurfaceYPlane_distance(r, u, coincident);    break;
-    case SurfaceZPlane:    return SurfaceZPlane_distance(r, u, coincident);    break;
-    case SurfacePlane:     return SurfacePlane_distance(r, u, coincident);     break;
-    case SurfaceXCylinder: return SurfaceXCylinder_distance(r, u, coincident); break;
-    case SurfaceYCylinder: return SurfaceYCylinder_distance(r, u, coincident); break;
-    case SurfaceZCylinder: return SurfaceZCylinder_distance(r, u, coincident); break;
-    case SurfaceSphere:    return SurfaceSphere_distance(r, u, coincident);    break;
-    case SurfaceXCone:     return SurfaceXCone_distance(r, u, coincident);     break;
-    case SurfaceYCone:     return SurfaceYCone_distance(r, u, coincident);     break;
-    case SurfaceZCone:     return SurfaceZCone_distance(r, u, coincident);     break;
-    case SurfaceQuadric:   return SurfaceQuadric_distance(r, u, coincident);   break;
-  }
-}
-
-Direction Surface::normal(Position r) const
-{
-  switch(type_){
-    case SurfaceXPlane:    return SurfaceXPlane_normal(r);    break;
-    case SurfaceYPlane:    return SurfaceYPlane_normal(r);    break;
-    case SurfaceZPlane:    return SurfaceZPlane_normal(r);    break;
-    case SurfacePlane:     return SurfacePlane_normal(r);     break;
-    case SurfaceXCylinder: return SurfaceXCylinder_normal(r); break;
-    case SurfaceYCylinder: return SurfaceYCylinder_normal(r); break;
-    case SurfaceZCylinder: return SurfaceZCylinder_normal(r); break;
-    case SurfaceSphere:    return SurfaceSphere_normal(r);    break;
-    case SurfaceXCone:     return SurfaceXCone_normal(r);     break;
-    case SurfaceYCone:     return SurfaceYCone_normal(r);     break;
-    case SurfaceZCone:     return SurfaceZCone_normal(r);     break;
-    case SurfaceQuadric:   return SurfaceQuadric_normal(r);   break;
-  }
-}
-
-void Surface::to_hdf5_inner(hid_t group_id) const
-{
-  switch(type_){
-    case SurfaceXPlane:    SurfaceXPlane_evaluate(group_id);    break;
-    case SurfaceYPlane:    SurfaceYPlane_evaluate(group_id);    break;
-    case SurfaceZPlane:    SurfaceZPlane_evaluate(group_id);    break;
-    case SurfacePlane:     SurfacePlane_evaluate(group_id);     break;
-    case SurfaceXCylinder: SurfaceXCylinder_evaluate(group_id); break;
-    case SurfaceYCylinder: SurfaceYCylinder_evaluate(group_id); break;
-    case SurfaceZCylinder: SurfaceZCylinder_evaluate(group_id); break;
-    case SurfaceSphere:    SurfaceSphere_evaluate(group_id);    break;
-    case SurfaceXCone:     SurfaceXCone_evaluate(group_id);     break;
-    case SurfaceYCone:     SurfaceYCone_evaluate(group_id);     break;
-    case SurfaceZCone:     SurfaceZCone_evaluate(group_id);     break;
-    case SurfaceQuadric:   SurfaceQuadric_evaluate(group_id);   break;
-  }
-}
-
-// Not all types have the ones below...
-BoundingBox Surface::bounding_box(bool pos_side) const
-{
-  switch(type_){
-    case SurfaceXPlane:    return SurfaceXPlane_bounding_box(pos_side);    break;
-    case SurfaceYPlane:    return SurfaceYPlane_bounding_box(pos_side);    break;
-    case SurfaceZPlane:    return SurfaceZPlane_bounding_box(pos_side);    break;
-    //case SurfacePlane:     return SurfacePlane_bounding_box(pos_side);     break;
-    case SurfaceXCylinder: return SurfaceXCylinder_bounding_box(pos_side); break;
-    case SurfaceYCylinder: return SurfaceYCylinder_bounding_box(pos_side); break;
-    case SurfaceZCylinder: return SurfaceZCylinder_bounding_box(pos_side); break;
-    case SurfaceSphere:    return SurfaceSphere_bounding_box(pos_side);    break;
-    //case SurfaceXCone:     return SurfaceXCone_bounding_box(pos_side);     break;
-    //case SurfaceYCone:     return SurfaceYCone_bounding_box(pos_side);     break;
-    //case SurfaceZCone:     return SurfaceZCone_bounding_box(pos_side);     break;
-    //case SurfaceQuadric:   return SurfaceQuadric_bounding_box(pos_side);   break;
-  }
-}
-
-bool Surface::periodic_translate(const PeriodicSurface* other, Position& r,
-                                      Direction& u) const
-{
-  switch(type_){
-    case SurfaceXPlane:    return SurfaceXPlane_periodic_translate(other, r, u);    break;
-    case SurfaceYPlane:    return SurfaceYPlane_periodic_translate(other, r, u);    break;
-    case SurfaceZPlane:    return SurfaceZPlane_periodic_translate(other, r, u);    break;
-    case SurfacePlane:     return SurfacePlane_periodic_translate(other, r, u);     break;
-                           /*
-    case SurfaceXCylinder: return SurfaceXCylinder_periodic_translate(other, r, u); break;
-    case SurfaceYCylinder: return SurfaceYCylinder_periodic_translate(other, r, u); break;
-    case SurfaceZCylinder: return SurfaceZCylinder_periodic_translate(other, r, u); break;
-    case SurfaceSphere:    return SurfaceSphere_periodic_translate(other, r, u);    break;
-    case SurfaceXCone:     return SurfaceXCone_periodic_translate(other, r, u);     break;
-    case SurfaceYCone:     return SurfaceYCone_periodic_translate(other, r, u);     break;
-    case SurfaceZCone:     return SurfaceZCone_periodic_translate(other, r, u);     break;
-    case SurfaceQuadric:   return SurfaceQuadric_periodic_translate(other, r, u);   break;
-    */
-  }
-}
 
 //==============================================================================
 // DAGSurface implementation
@@ -450,29 +336,29 @@ axis_aligned_plane_distance(Position r, Direction u, bool coincident, double off
 // SurfaceXPlane implementation
 //==============================================================================
 
-double SurfaceXPlane_evaluate(Position r) const
+double Surface::SurfaceXPlane_evaluate(Position r) const
 {
   return r.x - x0_;
 }
 
-double SurfaceXPlane_distance(Position r, Direction u, bool coincident) const
+double Surface::SurfaceXPlane_distance(Position r, Direction u, bool coincident) const
 {
   return axis_aligned_plane_distance<0>(r, u, coincident, x0_);
 }
 
-Direction SurfaceXPlane_normal(Position r) const
+Direction Surface::SurfaceXPlane_normal(Position r) const
 {
   return {1., 0., 0.};
 }
 
-void SurfaceXPlane_to_hdf5_inner(hid_t group_id) const
+void Surface::SurfaceXPlane_to_hdf5_inner(hid_t group_id) const
 {
   write_string(group_id, "type", "x-plane", false);
   std::array<double, 1> coeffs {{x0_}};
   write_dataset(group_id, "coefficients", coeffs);
 }
 
-bool SurfaceXPlane_periodic_translate(const PeriodicSurface* other,
+bool Surface::SurfaceXPlane_periodic_translate(const PeriodicSurface* other,
                                        Position& r,  Direction& u) const
 {
   Direction other_n = other->normal(r);
@@ -496,7 +382,7 @@ bool SurfaceXPlane_periodic_translate(const PeriodicSurface* other,
 }
 
 BoundingBox
-SurfaceXPlane_bounding_box(bool pos_side) const
+Surface::SurfaceXPlane_bounding_box(bool pos_side) const
 {
   if (pos_side) {
     return {x0_, INFTY, -INFTY, INFTY, -INFTY, INFTY};
@@ -509,29 +395,29 @@ SurfaceXPlane_bounding_box(bool pos_side) const
 // SurfaceYPlane implementation
 //==============================================================================
 
-double SurfaceYPlane_evaluate(Position r) const
+double Surface::SurfaceYPlane_evaluate(Position r) const
 {
   return r.y - y0_;
 }
 
-double SurfaceYPlane_distance(Position r, Direction u, bool coincident) const
+double Surface::SurfaceYPlane_distance(Position r, Direction u, bool coincident) const
 {
   return axis_aligned_plane_distance<1>(r, u, coincident, y0_);
 }
 
-Direction SurfaceYPlane_normal(Position r) const
+Direction Surface::SurfaceYPlane_normal(Position r) const
 {
   return {0., 1., 0.};
 }
 
-void SurfaceYPlane_to_hdf5_inner(hid_t group_id) const
+void Surface::SurfaceYPlane_to_hdf5_inner(hid_t group_id) const
 {
   write_string(group_id, "type", "y-plane", false);
   std::array<double, 1> coeffs {{y0_}};
   write_dataset(group_id, "coefficients", coeffs);
 }
 
-bool SurfaceYPlane_periodic_translate(const PeriodicSurface* other,
+bool Surface::SurfaceYPlane_periodic_translate(const PeriodicSurface* other,
                                        Position& r, Direction& u) const
 {
   Direction other_n = other->normal(r);
@@ -556,7 +442,7 @@ bool SurfaceYPlane_periodic_translate(const PeriodicSurface* other,
 }
 
 BoundingBox
-SurfaceYPlane_bounding_box(bool pos_side) const
+Surface::SurfaceYPlane_bounding_box(bool pos_side) const
 {
   if (pos_side) {
     return {-INFTY, INFTY, y0_, INFTY, -INFTY, INFTY};
@@ -569,29 +455,29 @@ SurfaceYPlane_bounding_box(bool pos_side) const
 // SurfaceZPlane implementation
 //==============================================================================
 
-double SurfaceZPlane_evaluate(Position r) const
+double Surface::SurfaceZPlane_evaluate(Position r) const
 {
   return r.z - z0_;
 }
 
-double SurfaceZPlane_distance(Position r, Direction u, bool coincident) const
+double Surface::SurfaceZPlane_distance(Position r, Direction u, bool coincident) const
 {
   return axis_aligned_plane_distance<2>(r, u, coincident, z0_);
 }
 
-Direction SurfaceZPlane_normal(Position r) const
+Direction Surface::SurfaceZPlane_normal(Position r) const
 {
   return {0., 0., 1.};
 }
 
-void SurfaceZPlane_to_hdf5_inner(hid_t group_id) const
+void Surface::SurfaceZPlane_to_hdf5_inner(hid_t group_id) const
 {
   write_string(group_id, "type", "z-plane", false);
   std::array<double, 1> coeffs {{z0_}};
   write_dataset(group_id, "coefficients", coeffs);
 }
 
-bool SurfaceZPlane_periodic_translate(const PeriodicSurface* other,
+bool Surface::SurfaceZPlane_periodic_translate(const PeriodicSurface* other,
                                        Position& r, Direction& u) const
 {
   // Assume the other plane is aligned along z.  Just change the z coord.
@@ -600,7 +486,7 @@ bool SurfaceZPlane_periodic_translate(const PeriodicSurface* other,
 }
 
 BoundingBox
-SurfaceZPlane_bounding_box(bool pos_side) const
+Surface::SurfaceZPlane_bounding_box(bool pos_side) const
 {
   if (pos_side) {
     return {-INFTY, INFTY, -INFTY, INFTY, z0_, INFTY};
@@ -614,13 +500,13 @@ SurfaceZPlane_bounding_box(bool pos_side) const
 //==============================================================================
 
 double
-SurfacePlane_evaluate(Position r) const
+Surface::SurfacePlane_evaluate(Position r) const
 {
   return A_*r.x + B_*r.y + C_*r.z - D_;
 }
 
 double
-SurfacePlane_distance(Position r, Direction u, bool coincident) const
+Surface::SurfacePlane_distance(Position r, Direction u, bool coincident) const
 {
   const double f = A_*r.x + B_*r.y + C_*r.z - D_;
   const double projection = A_*u.x + B_*u.y + C_*u.z;
@@ -634,19 +520,19 @@ SurfacePlane_distance(Position r, Direction u, bool coincident) const
 }
 
 Direction
-SurfacePlane_normal(Position r) const
+Surface::SurfacePlane_normal(Position r) const
 {
   return {A_, B_, C_};
 }
 
-void SurfacePlane_to_hdf5_inner(hid_t group_id) const
+void Surface::SurfacePlane_to_hdf5_inner(hid_t group_id) const
 {
   write_string(group_id, "type", "plane", false);
   std::array<double, 4> coeffs {{A_, B_, C_, D_}};
   write_dataset(group_id, "coefficients", coeffs);
 }
 
-bool SurfacePlane_periodic_translate(const PeriodicSurface* other, Position& r,
+bool Surface::SurfacePlane_periodic_translate(const PeriodicSurface* other, Position& r,
                                       Direction& u) const
 {
   // This function assumes the other plane shares this plane's normal direction.
@@ -741,30 +627,30 @@ axis_aligned_cylinder_normal(Position r, double offset1, double offset2)
 // SurfaceXCylinder implementation
 //==============================================================================
 
-double SurfaceXCylinder_evaluate(Position r) const
+double Surface::SurfaceXCylinder_evaluate(Position r) const
 {
   return axis_aligned_cylinder_evaluate<1, 2>(r, y0_, z0_, radius_);
 }
 
-double SurfaceXCylinder_distance(Position r, Direction u, bool coincident) const
+double Surface::SurfaceXCylinder_distance(Position r, Direction u, bool coincident) const
 {
   return axis_aligned_cylinder_distance<0, 1, 2>(r, u, coincident, y0_, z0_,
                                                  radius_);
 }
 
-Direction SurfaceXCylinder_normal(Position r) const
+Direction Surface::SurfaceXCylinder_normal(Position r) const
 {
   return axis_aligned_cylinder_normal<0, 1, 2>(r, y0_, z0_);
 }
 
-void SurfaceXCylinder_to_hdf5_inner(hid_t group_id) const
+void Surface::SurfaceXCylinder_to_hdf5_inner(hid_t group_id) const
 {
   write_string(group_id, "type", "x-cylinder", false);
   std::array<double, 3> coeffs {{y0_, z0_, radius_}};
   write_dataset(group_id, "coefficients", coeffs);
 }
 
-BoundingBox SurfaceXCylinder_bounding_box(bool pos_side) const {
+BoundingBox Surface::SurfaceXCylinder_bounding_box(bool pos_side) const {
   if (!pos_side) {
     return {-INFTY, INFTY, y0_ - radius_, y0_ + radius_, z0_ - radius_, z0_ + radius_};
   } else {
@@ -775,30 +661,30 @@ BoundingBox SurfaceXCylinder_bounding_box(bool pos_side) const {
 // SurfaceYCylinder implementation
 //==============================================================================
 
-double SurfaceYCylinder_evaluate(Position r) const
+double Surface::SurfaceYCylinder_evaluate(Position r) const
 {
   return axis_aligned_cylinder_evaluate<0, 2>(r, x0_, z0_, radius_);
 }
 
-double SurfaceYCylinder_distance(Position r, Direction u, bool coincident) const
+double Surface::SurfaceYCylinder_distance(Position r, Direction u, bool coincident) const
 {
   return axis_aligned_cylinder_distance<1, 0, 2>(r, u, coincident, x0_, z0_,
                                                  radius_);
 }
 
-Direction SurfaceYCylinder_normal(Position r) const
+Direction Surface::SurfaceYCylinder_normal(Position r) const
 {
   return axis_aligned_cylinder_normal<1, 0, 2>(r, x0_, z0_);
 }
 
-void SurfaceYCylinder_to_hdf5_inner(hid_t group_id) const
+void Surface::SurfaceYCylinder_to_hdf5_inner(hid_t group_id) const
 {
   write_string(group_id, "type", "y-cylinder", false);
   std::array<double, 3> coeffs {{x0_, z0_, radius_}};
   write_dataset(group_id, "coefficients", coeffs);
 }
 
-BoundingBox SurfaceYCylinder_bounding_box(bool pos_side) const {
+BoundingBox Surface::SurfaceYCylinder_bounding_box(bool pos_side) const {
   if (!pos_side) {
     return {x0_ - radius_, x0_ + radius_, -INFTY, INFTY, z0_ - radius_, z0_ + radius_};
   } else {
@@ -810,30 +696,30 @@ BoundingBox SurfaceYCylinder_bounding_box(bool pos_side) const {
 // SurfaceZCylinder implementation
 //==============================================================================
 
-double SurfaceZCylinder_evaluate(Position r) const
+double Surface::SurfaceZCylinder_evaluate(Position r) const
 {
   return axis_aligned_cylinder_evaluate<0, 1>(r, x0_, y0_, radius_);
 }
 
-double SurfaceZCylinder_distance(Position r, Direction u, bool coincident) const
+double Surface::SurfaceZCylinder_distance(Position r, Direction u, bool coincident) const
 {
   return axis_aligned_cylinder_distance<2, 0, 1>(r, u, coincident, x0_, y0_,
                                                  radius_);
 }
 
-Direction SurfaceZCylinder_normal(Position r) const
+Direction Surface::SurfaceZCylinder_normal(Position r) const
 {
   return axis_aligned_cylinder_normal<2, 0, 1>(r, x0_, y0_);
 }
 
-void SurfaceZCylinder_to_hdf5_inner(hid_t group_id) const
+void Surface::SurfaceZCylinder_to_hdf5_inner(hid_t group_id) const
 {
   write_string(group_id, "type", "z-cylinder", false);
   std::array<double, 3> coeffs {{x0_, y0_, radius_}};
   write_dataset(group_id, "coefficients", coeffs);
 }
 
-BoundingBox SurfaceZCylinder_bounding_box(bool pos_side) const {
+BoundingBox Surface::SurfaceZCylinder_bounding_box(bool pos_side) const {
   if (!pos_side) {
     return {x0_ - radius_, x0_ + radius_, y0_ - radius_, y0_ + radius_, -INFTY, INFTY};
   } else {
@@ -846,7 +732,7 @@ BoundingBox SurfaceZCylinder_bounding_box(bool pos_side) const {
 // SurfaceSphere implementation
 //==============================================================================
 
-double SurfaceSphere_evaluate(Position r) const
+double Surface::SurfaceSphere_evaluate(Position r) const
 {
   const double x = r.x - x0_;
   const double y = r.y - y0_;
@@ -854,7 +740,7 @@ double SurfaceSphere_evaluate(Position r) const
   return x*x + y*y + z*z - radius_*radius_;
 }
 
-double SurfaceSphere_distance(Position r, Direction u, bool coincident) const
+double Surface::SurfaceSphere_distance(Position r, Direction u, bool coincident) const
 {
   const double x = r.x - x0_;
   const double y = r.y - y0_;
@@ -892,19 +778,19 @@ double SurfaceSphere_distance(Position r, Direction u, bool coincident) const
   }
 }
 
-Direction SurfaceSphere_normal(Position r) const
+Direction Surface::SurfaceSphere_normal(Position r) const
 {
   return {2.0*(r.x - x0_), 2.0*(r.y - y0_), 2.0*(r.z - z0_)};
 }
 
-void SurfaceSphere_to_hdf5_inner(hid_t group_id) const
+void Surface::SurfaceSphere_to_hdf5_inner(hid_t group_id) const
 {
   write_string(group_id, "type", "sphere", false);
   std::array<double, 4> coeffs {{x0_, y0_, z0_, radius_}};
   write_dataset(group_id, "coefficients", coeffs);
 }
 
-BoundingBox SurfaceSphere_bounding_box(bool pos_side) const {
+BoundingBox Surface::SurfaceSphere_bounding_box(bool pos_side) const {
   if (!pos_side) {
     return {x0_ - radius_, x0_ + radius_,
             y0_ - radius_, y0_ + radius_,
@@ -1003,23 +889,23 @@ axis_aligned_cone_normal(Position r, double offset1, double offset2,
 // SurfaceXCone implementation
 //==============================================================================
 
-double SurfaceXCone_evaluate(Position r) const
+double Surface::SurfaceXCone_evaluate(Position r) const
 {
   return axis_aligned_cone_evaluate<0, 1, 2>(r, x0_, y0_, z0_, radius_sq_);
 }
 
-double SurfaceXCone_distance(Position r, Direction u, bool coincident) const
+double Surface::SurfaceXCone_distance(Position r, Direction u, bool coincident) const
 {
   return axis_aligned_cone_distance<0, 1, 2>(r, u, coincident, x0_, y0_, z0_,
                                              radius_sq_);
 }
 
-Direction SurfaceXCone_normal(Position r) const
+Direction Surface::SurfaceXCone_normal(Position r) const
 {
   return axis_aligned_cone_normal<0, 1, 2>(r, x0_, y0_, z0_, radius_sq_);
 }
 
-void SurfaceXCone_to_hdf5_inner(hid_t group_id) const
+void Surface::SurfaceXCone_to_hdf5_inner(hid_t group_id) const
 {
   write_string(group_id, "type", "x-cone", false);
   std::array<double, 4> coeffs {{x0_, y0_, z0_, radius_sq_}};
@@ -1030,23 +916,23 @@ void SurfaceXCone_to_hdf5_inner(hid_t group_id) const
 // SurfaceYCone implementation
 //==============================================================================
 
-double SurfaceYCone_evaluate(Position r) const
+double Surface::SurfaceYCone_evaluate(Position r) const
 {
   return axis_aligned_cone_evaluate<1, 0, 2>(r, y0_, x0_, z0_, radius_sq_);
 }
 
-double SurfaceYCone_distance(Position r, Direction u, bool coincident) const
+double Surface::SurfaceYCone_distance(Position r, Direction u, bool coincident) const
 {
   return axis_aligned_cone_distance<1, 0, 2>(r, u, coincident, y0_, x0_, z0_,
                                              radius_sq_);
 }
 
-Direction SurfaceYCone_normal(Position r) const
+Direction Surface::SurfaceYCone_normal(Position r) const
 {
   return axis_aligned_cone_normal<1, 0, 2>(r, y0_, x0_, z0_, radius_sq_);
 }
 
-void SurfaceYCone_to_hdf5_inner(hid_t group_id) const
+void Surface::SurfaceYCone_to_hdf5_inner(hid_t group_id) const
 {
   write_string(group_id, "type", "y-cone", false);
   std::array<double, 4> coeffs {{x0_, y0_, z0_, radius_sq_}};
@@ -1057,23 +943,23 @@ void SurfaceYCone_to_hdf5_inner(hid_t group_id) const
 // SurfaceZCone implementation
 //==============================================================================
 
-double SurfaceZCone_evaluate(Position r) const
+double Surface::SurfaceZCone_evaluate(Position r) const
 {
   return axis_aligned_cone_evaluate<2, 0, 1>(r, z0_, x0_, y0_, radius_sq_);
 }
 
-double SurfaceZCone_distance(Position r, Direction u, bool coincident) const
+double Surface::SurfaceZCone_distance(Position r, Direction u, bool coincident) const
 {
   return axis_aligned_cone_distance<2, 0, 1>(r, u, coincident, z0_, x0_, y0_,
                                              radius_sq_);
 }
 
-Direction SurfaceZCone_normal(Position r) const
+Direction Surface::SurfaceZCone_normal(Position r) const
 {
   return axis_aligned_cone_normal<2, 0, 1>(r, z0_, x0_, y0_, radius_sq_);
 }
 
-void SurfaceZCone_to_hdf5_inner(hid_t group_id) const
+void Surface::SurfaceZCone_to_hdf5_inner(hid_t group_id) const
 {
   write_string(group_id, "type", "z-cone", false);
   std::array<double, 4> coeffs {{x0_, y0_, z0_, radius_sq_}};
@@ -1085,7 +971,7 @@ void SurfaceZCone_to_hdf5_inner(hid_t group_id) const
 //==============================================================================
 
 double
-SurfaceQuadric_evaluate(Position r) const
+Surface::SurfaceQuadric_evaluate(Position r) const
 {
   const double x = r.x;
   const double y = r.y;
@@ -1096,7 +982,7 @@ SurfaceQuadric_evaluate(Position r) const
 }
 
 double
-SurfaceQuadric_distance(Position r, Direction ang, bool coincident) const
+Surface::SurfaceQuadric_distance(Position r, Direction ang, bool coincident) const
 {
   const double &x = r.x;
   const double &y = r.y;
@@ -1150,7 +1036,7 @@ SurfaceQuadric_distance(Position r, Direction ang, bool coincident) const
 }
 
 Direction
-SurfaceQuadric_normal(Position r) const
+Surface::SurfaceQuadric_normal(Position r) const
 {
   const double &x = r.x;
   const double &y = r.y;
@@ -1160,11 +1046,126 @@ SurfaceQuadric_normal(Position r) const
           2.0*C_*z + E_*y + F_*x + J_};
 }
 
-void SurfaceQuadric_to_hdf5_inner(hid_t group_id) const
+void Surface::SurfaceQuadric_to_hdf5_inner(hid_t group_id) const
 {
   write_string(group_id, "type", "quadric", false);
   std::array<double, 10> coeffs {{A_, B_, C_, D_, E_, F_, G_, H_, J_, K_}};
   write_dataset(group_id, "coefficients", coeffs);
+}
+
+//==============================================================================
+// Dispatchers
+//==============================================================================
+double Surface::evaluate(Position r) const
+{
+  switch(type_){
+    case SurfaceType::SurfaceXPlane:    return SurfaceXPlane_evaluate(r);    break;
+    case SurfaceType::SurfaceYPlane:    return SurfaceYPlane_evaluate(r);    break;
+    case SurfaceType::SurfaceZPlane:    return SurfaceZPlane_evaluate(r);    break;
+    case SurfaceType::SurfacePlane:     return SurfacePlane_evaluate(r);     break;
+    case SurfaceType::SurfaceXCylinder: return SurfaceXCylinder_evaluate(r); break;
+    case SurfaceType::SurfaceYCylinder: return SurfaceYCylinder_evaluate(r); break;
+    case SurfaceType::SurfaceZCylinder: return SurfaceZCylinder_evaluate(r); break;
+    case SurfaceType::SurfaceSphere:    return SurfaceSphere_evaluate(r);    break;
+    case SurfaceType::SurfaceXCone:     return SurfaceXCone_evaluate(r);     break;
+    case SurfaceType::SurfaceYCone:     return SurfaceYCone_evaluate(r);     break;
+    case SurfaceType::SurfaceZCone:     return SurfaceZCone_evaluate(r);     break;
+    case SurfaceType::SurfaceQuadric:   return SurfaceQuadric_evaluate(r);   break;
+  }
+}
+
+double Surface::distance(Position r, Direction u, bool coincident) const
+{
+  switch(type_){
+    case SurfaceType::SurfaceXPlane:    return SurfaceXPlane_distance(r, u, coincident);    break;
+    case SurfaceType::SurfaceYPlane:    return SurfaceYPlane_distance(r, u, coincident);    break;
+    case SurfaceType::SurfaceZPlane:    return SurfaceZPlane_distance(r, u, coincident);    break;
+    case SurfaceType::SurfacePlane:     return SurfacePlane_distance(r, u, coincident);     break;
+    case SurfaceType::SurfaceXCylinder: return SurfaceXCylinder_distance(r, u, coincident); break;
+    case SurfaceType::SurfaceYCylinder: return SurfaceYCylinder_distance(r, u, coincident); break;
+    case SurfaceType::SurfaceZCylinder: return SurfaceZCylinder_distance(r, u, coincident); break;
+    case SurfaceType::SurfaceSphere:    return SurfaceSphere_distance(r, u, coincident);    break;
+    case SurfaceType::SurfaceXCone:     return SurfaceXCone_distance(r, u, coincident);     break;
+    case SurfaceType::SurfaceYCone:     return SurfaceYCone_distance(r, u, coincident);     break;
+    case SurfaceType::SurfaceZCone:     return SurfaceZCone_distance(r, u, coincident);     break;
+    case SurfaceType::SurfaceQuadric:   return SurfaceQuadric_distance(r, u, coincident);   break;
+  }
+}
+
+Direction Surface::normal(Position r) const
+{
+  switch(type_){
+    case SurfaceType::SurfaceXPlane:    return SurfaceXPlane_normal(r);    break;
+    case SurfaceType::SurfaceYPlane:    return SurfaceYPlane_normal(r);    break;
+    case SurfaceType::SurfaceZPlane:    return SurfaceZPlane_normal(r);    break;
+    case SurfaceType::SurfacePlane:     return SurfacePlane_normal(r);     break;
+    case SurfaceType::SurfaceXCylinder: return SurfaceXCylinder_normal(r); break;
+    case SurfaceType::SurfaceYCylinder: return SurfaceYCylinder_normal(r); break;
+    case SurfaceType::SurfaceZCylinder: return SurfaceZCylinder_normal(r); break;
+    case SurfaceType::SurfaceSphere:    return SurfaceSphere_normal(r);    break;
+    case SurfaceType::SurfaceXCone:     return SurfaceXCone_normal(r);     break;
+    case SurfaceType::SurfaceYCone:     return SurfaceYCone_normal(r);     break;
+    case SurfaceType::SurfaceZCone:     return SurfaceZCone_normal(r);     break;
+    case SurfaceType::SurfaceQuadric:   return SurfaceQuadric_normal(r);   break;
+  }
+}
+
+void Surface::to_hdf5_inner(hid_t group_id) const
+{
+  switch(type_){
+    case SurfaceType::SurfaceXPlane:    SurfaceXPlane_to_hdf5_inner(group_id);    break;
+    case SurfaceType::SurfaceYPlane:    SurfaceYPlane_to_hdf5_inner(group_id);    break;
+    case SurfaceType::SurfaceZPlane:    SurfaceZPlane_to_hdf5_inner(group_id);    break;
+    case SurfaceType::SurfacePlane:     SurfacePlane_to_hdf5_inner(group_id);     break;
+    case SurfaceType::SurfaceXCylinder: SurfaceXCylinder_to_hdf5_inner(group_id); break;
+    case SurfaceType::SurfaceYCylinder: SurfaceYCylinder_to_hdf5_inner(group_id); break;
+    case SurfaceType::SurfaceZCylinder: SurfaceZCylinder_to_hdf5_inner(group_id); break;
+    case SurfaceType::SurfaceSphere:    SurfaceSphere_to_hdf5_inner(group_id);    break;
+    case SurfaceType::SurfaceXCone:     SurfaceXCone_to_hdf5_inner(group_id);     break;
+    case SurfaceType::SurfaceYCone:     SurfaceYCone_to_hdf5_inner(group_id);     break;
+    case SurfaceType::SurfaceZCone:     SurfaceZCone_to_hdf5_inner(group_id);     break;
+    case SurfaceType::SurfaceQuadric:   SurfaceQuadric_to_hdf5_inner(group_id);   break;
+  }
+}
+
+// Not all types have the ones below...
+BoundingBox Surface::bounding_box(bool pos_side) const
+{
+  switch(type_){
+    case SurfaceType::SurfaceXPlane:    return SurfaceXPlane_bounding_box(pos_side);    break;
+    case SurfaceType::SurfaceYPlane:    return SurfaceYPlane_bounding_box(pos_side);    break;
+    case SurfaceType::SurfaceZPlane:    return SurfaceZPlane_bounding_box(pos_side);    break;
+    //case SurfaceType::SurfacePlane:     return SurfacePlane_bounding_box(pos_side);     break;
+    case SurfaceType::SurfaceXCylinder: return SurfaceXCylinder_bounding_box(pos_side); break;
+    case SurfaceType::SurfaceYCylinder: return SurfaceYCylinder_bounding_box(pos_side); break;
+    case SurfaceType::SurfaceZCylinder: return SurfaceZCylinder_bounding_box(pos_side); break;
+    case SurfaceType::SurfaceSphere:    return SurfaceSphere_bounding_box(pos_side);    break;
+    //case SurfaceType::SurfaceXCone:     return SurfaceXCone_bounding_box(pos_side);     break;
+    //case SurfaceType::SurfaceYCone:     return SurfaceYCone_bounding_box(pos_side);     break;
+    //case SurfaceType::SurfaceZCone:     return SurfaceZCone_bounding_box(pos_side);     break;
+    //case SurfaceType::SurfaceQuadric:   return SurfaceQuadric_bounding_box(pos_side);   break;
+  }
+}
+
+bool Surface::periodic_translate(const PeriodicSurface* other, Position& r,
+                                      Direction& u) const
+{
+  switch(type_){
+    case SurfaceType::SurfaceXPlane:    return SurfaceXPlane_periodic_translate(other, r, u);    break;
+    case SurfaceType::SurfaceYPlane:    return SurfaceYPlane_periodic_translate(other, r, u);    break;
+    case SurfaceType::SurfaceZPlane:    return SurfaceZPlane_periodic_translate(other, r, u);    break;
+    case SurfaceType::SurfacePlane:     return SurfacePlane_periodic_translate(other, r, u);     break;
+                           /*
+    case SurfaceType::SurfaceXCylinder: return SurfaceXCylinder_periodic_translate(other, r, u); break;
+    case SurfaceType::SurfaceYCylinder: return SurfaceYCylinder_periodic_translate(other, r, u); break;
+    case SurfaceType::SurfaceZCylinder: return SurfaceZCylinder_periodic_translate(other, r, u); break;
+    case SurfaceType::SurfaceSphere:    return SurfaceSphere_periodic_translate(other, r, u);    break;
+    case SurfaceType::SurfaceXCone:     return SurfaceXCone_periodic_translate(other, r, u);     break;
+    case SurfaceType::SurfaceYCone:     return SurfaceYCone_periodic_translate(other, r, u);     break;
+    case SurfaceType::SurfaceZCone:     return SurfaceZCone_periodic_translate(other, r, u);     break;
+    case SurfaceType::SurfaceQuadric:   return SurfaceQuadric_periodic_translate(other, r, u);   break;
+    */
+  }
 }
 
 //==============================================================================
@@ -1188,40 +1189,40 @@ void read_surfaces(pugi::xml_node node)
       std::string surf_type = get_node_value(surf_node, "type", true, true);
 
       if (surf_type == "x-plane") {
-        model::surfaces.push_back(std::make_unique<SurfaceXPlane>(surf_node));
+        model::surfaces.push_back(std::make_unique<SurfaceXPlane>(surf_node, Surface::SurfaceType::SurfaceXPlane));
 
       } else if (surf_type == "y-plane") {
-        model::surfaces.push_back(std::make_unique<SurfaceYPlane>(surf_node));
+        model::surfaces.push_back(std::make_unique<SurfaceYPlane>(surf_node, Surface::SurfaceType::SurfaceYPlane));
 
       } else if (surf_type == "z-plane") {
-        model::surfaces.push_back(std::make_unique<SurfaceZPlane>(surf_node));
+        model::surfaces.push_back(std::make_unique<SurfaceZPlane>(surf_node, Surface::SurfaceType::SurfaceZPlane));
 
       } else if (surf_type == "plane") {
-        model::surfaces.push_back(std::make_unique<SurfacePlane>(surf_node));
+        model::surfaces.push_back(std::make_unique<SurfacePlane>(surf_node, Surface::SurfaceType::SurfacePlane));
 
       } else if (surf_type == "x-cylinder") {
-        model::surfaces.push_back(std::make_unique<SurfaceXCylinder>(surf_node));
+        model::surfaces.push_back(std::make_unique<SurfaceXCylinder>(surf_node, Surface::SurfaceType::SurfaceXCylinder));
 
       } else if (surf_type == "y-cylinder") {
-        model::surfaces.push_back(std::make_unique<SurfaceYCylinder>(surf_node));
+        model::surfaces.push_back(std::make_unique<SurfaceYCylinder>(surf_node, Surface::SurfaceType::SurfaceYCylinder));
 
       } else if (surf_type == "z-cylinder") {
-        model::surfaces.push_back(std::make_unique<SurfaceZCylinder>(surf_node));
+        model::surfaces.push_back(std::make_unique<SurfaceZCylinder>(surf_node, Surface::SurfaceType::SurfaceZCylinder));
 
       } else if (surf_type == "sphere") {
-        model::surfaces.push_back(std::make_unique<SurfaceSphere>(surf_node));
+        model::surfaces.push_back(std::make_unique<SurfaceSphere>(surf_node, Surface::SurfaceType::SurfaceSphere));
 
       } else if (surf_type == "x-cone") {
-        model::surfaces.push_back(std::make_unique<SurfaceXCone>(surf_node));
+        model::surfaces.push_back(std::make_unique<SurfaceXCone>(surf_node, Surface::SurfaceType::SurfaceXCone));
 
       } else if (surf_type == "y-cone") {
-        model::surfaces.push_back(std::make_unique<SurfaceYCone>(surf_node));
+        model::surfaces.push_back(std::make_unique<SurfaceYCone>(surf_node, Surface::SurfaceType::SurfaceYCone));
 
       } else if (surf_type == "z-cone") {
-        model::surfaces.push_back(std::make_unique<SurfaceZCone>(surf_node));
+        model::surfaces.push_back(std::make_unique<SurfaceZCone>(surf_node, Surface::SurfaceType::SurfaceZCone));
 
       } else if (surf_type == "quadric") {
-        model::surfaces.push_back(std::make_unique<SurfaceQuadric>(surf_node));
+        model::surfaces.push_back(std::make_unique<SurfaceQuadric>(surf_node, Surface::SurfaceType::SurfaceQuadratic));
 
       } else {
         fatal_error(fmt::format("Invalid surface type, \"{}\"", surf_type));

@@ -545,9 +545,11 @@ Particle::cross_surface()
     }
 
     // Get a pointer to the partner periodic surface
-    auto surf_p = dynamic_cast<PeriodicSurface*>(surf);
-    auto other = dynamic_cast<PeriodicSurface*>(
-      model::surfaces[surf_p->i_periodic_].get());
+    //auto surf_p = dynamic_cast<PeriodicSurface*>(surf);
+    auto surf_p = surf;
+    //auto other = dynamic_cast<PeriodicSurface*>(
+    //  model::surfaces[surf_p->i_periodic_].get());
+    auto other = model::surfaces[surf_p->i_periodic_].get();
 
     // Adjust the particle's location and direction.
     bool rotational = other->periodic_translate(surf_p, this->r(), this->u());

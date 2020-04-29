@@ -15,8 +15,6 @@
 #include "openmc/position.h"
 #include "dagmc.h"
 
-#define 
-
 namespace openmc {
 
 //==============================================================================
@@ -150,6 +148,18 @@ public:
   //! function evaluates that mathematical function.
   //! \param r A 3D Cartesian coordinate.
   double evaluate(Position r) const;
+ double SurfaceXPlane_evaluate(Position r) const;   
+ double SurfaceYPlane_evaluate(Position r) const;   
+ double SurfaceZPlane_evaluate(Position r) const;   
+ double SurfacePlane_evaluate(Position r) const;    
+ double SurfaceXCylinder_evaluate(Position r) const;
+ double SurfaceYCylinder_evaluate(Position r) const;
+ double SurfaceZCylinder_evaluate(Position r) const;
+ double SurfaceSphere_evaluate(Position r) const;   
+ double SurfaceXCone_evaluate(Position r) const;    
+ double SurfaceYCone_evaluate(Position r) const;    
+ double SurfaceZCone_evaluate(Position r) const;    
+ double SurfaceQuadric_evaluate(Position r) const;  
 
   //! Compute the distance between a point and the surface along a ray.
   //! \param r A 3D Cartesian coordinate.
@@ -157,11 +167,35 @@ public:
   //! \param coincident A hint to the code that the given point should lie
   //!   exactly on the surface.
   double distance(Position r, Direction u, bool coincident) const;
+ double SurfaceXPlane_distance(Position r, Direction u, bool coincident) const;   
+ double SurfaceYPlane_distance(Position r, Direction u, bool coincident) const;   
+ double SurfaceZPlane_distance(Position r, Direction u, bool coincident) const;   
+ double SurfacePlane_distance(Position r, Direction u, bool coincident) const;    
+ double SurfaceXCylinder_distance(Position r, Direction u, bool coincident) const;
+ double SurfaceYCylinder_distance(Position r, Direction u, bool coincident) const;
+ double SurfaceZCylinder_distance(Position r, Direction u, bool coincident) const;
+ double SurfaceSphere_distance(Position r, Direction u, bool coincident) const;   
+ double SurfaceXCone_distance(Position r, Direction u, bool coincident) const;    
+ double SurfaceYCone_distance(Position r, Direction u, bool coincident) const;    
+ double SurfaceZCone_distance(Position r, Direction u, bool coincident) const;    
+ double SurfaceQuadric_distance(Position r, Direction u, bool coincident) const;  
 
   //! Compute the local outward normal direction of the surface.
   //! \param r A 3D Cartesian coordinate.
   //! \return Normal direction
   Direction normal(Position r) const;
+ Direction SurfaceXPlane_normal(Position r) const;   
+ Direction SurfaceYPlane_normal(Position r) const;   
+ Direction SurfaceZPlane_normal(Position r) const;   
+ Direction SurfacePlane_normal(Position r) const;    
+ Direction SurfaceXCylinder_normal(Position r) const;
+ Direction SurfaceYCylinder_normal(Position r) const;
+ Direction SurfaceZCylinder_normal(Position r) const;
+ Direction SurfaceSphere_normal(Position r) const;   
+ Direction SurfaceXCone_normal(Position r) const;    
+ Direction SurfaceYCone_normal(Position r) const;    
+ Direction SurfaceZCone_normal(Position r) const;    
+ Direction SurfaceQuadric_normal(Position r) const;  
 
   //! Write all information needed to reconstruct the surface to an HDF5 group.
   //! \param group_id An HDF5 group id.
@@ -169,13 +203,43 @@ public:
   void to_hdf5(hid_t group_id) const;
 
   //! Get the BoundingBox for this surface.
-  BoundingBox bounding_box(bool pos_side) const { return {}; }
+  // TODO: Should this be prototype only?
+  //BoundingBox bounding_box(bool pos_side) const { return {}; }
+  BoundingBox bounding_box(bool pos_side) const;
+ BoundingBox SurfaceXPlane_bounding_box(bool pos_side) const;   
+ BoundingBox SurfaceYPlane_bounding_box(bool pos_side) const;   
+ BoundingBox SurfaceZPlane_bounding_box(bool pos_side) const;   
+ //BoundingBox SurfacePlane_bounding_box(bool pos_side) const;    
+ BoundingBox SurfaceXCylinder_bounding_box(bool pos_side) const;
+ BoundingBox SurfaceYCylinder_bounding_box(bool pos_side) const;
+ BoundingBox SurfaceZCylinder_bounding_box(bool pos_side) const;
+ BoundingBox SurfaceSphere_bounding_box(bool pos_side) const;   
+ //BouningBox SurfaceXCone_bounding_box(bool pos_side) const;    
+ //BouningBox SurfaceYCone_bounding_box(bool pos_side) const;    
+ //BouningBox SurfaceZCone_bounding_box(bool pos_side) const;    
+ //BouningBox SurfaceQuadric_bounding_box(bool pos_side) const;  
   
   bool periodic_translate(const Surface* other, Position& r,
                                   Direction& u) const;
+ bool SurfaceXPlane_periodic_translate(const Surface* other, Position& r, Direction& u) const;   
+ bool SurfaceYPlane_periodic_translate(const Surface* other, Position& r, Direction& u) const;   
+ bool SurfaceZPlane_periodic_translate(const Surface* other, Position& r, Direction& u) const;   
+ bool SurfacePlane_periodic_translate(const Surface* other, Position& r, Direction& u) const;    
   
 protected:
   void to_hdf5_inner(hid_t group_id) const;
+ void SurfaceXPlane_to_hdf5_inner(hid_t group_id) const;   
+ void SurfaceYPlane_to_hdf5_inner(hid_t group_id) const;   
+ void SurfaceZPlane_to_hdf5_inner(hid_t group_id) const;   
+ void SurfacePlane_to_hdf5_inner(hid_t group_id) const;    
+ void SurfaceXCylinder_to_hdf5_inner(hid_t group_id) const;
+ void SurfaceYCylinder_to_hdf5_inner(hid_t group_id) const;
+ void SurfaceZCylinder_to_hdf5_inner(hid_t group_id) const;
+ void SurfaceSphere_to_hdf5_inner(hid_t group_id) const;   
+ void SurfaceXCone_to_hdf5_inner(hid_t group_id) const;    
+ void SurfaceYCone_to_hdf5_inner(hid_t group_id) const;    
+ void SurfaceZCone_to_hdf5_inner(hid_t group_id) const;    
+ void SurfaceQuadric_to_hdf5_inner(hid_t group_id) const;  
 };
 
 //==============================================================================

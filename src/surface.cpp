@@ -358,7 +358,7 @@ void Surface::SurfaceXPlane_to_hdf5_inner(hid_t group_id) const
   write_dataset(group_id, "coefficients", coeffs);
 }
 
-bool Surface::SurfaceXPlane_periodic_translate(const PeriodicSurface* other,
+bool Surface::SurfaceXPlane_periodic_translate(const Surface* other,
                                        Position& r,  Direction& u) const
 {
   Direction other_n = other->normal(r);
@@ -417,7 +417,7 @@ void Surface::SurfaceYPlane_to_hdf5_inner(hid_t group_id) const
   write_dataset(group_id, "coefficients", coeffs);
 }
 
-bool Surface::SurfaceYPlane_periodic_translate(const PeriodicSurface* other,
+bool Surface::SurfaceYPlane_periodic_translate(const Surface* other,
                                        Position& r, Direction& u) const
 {
   Direction other_n = other->normal(r);
@@ -477,7 +477,7 @@ void Surface::SurfaceZPlane_to_hdf5_inner(hid_t group_id) const
   write_dataset(group_id, "coefficients", coeffs);
 }
 
-bool Surface::SurfaceZPlane_periodic_translate(const PeriodicSurface* other,
+bool Surface::SurfaceZPlane_periodic_translate(const Surface* other,
                                        Position& r, Direction& u) const
 {
   // Assume the other plane is aligned along z.  Just change the z coord.
@@ -532,7 +532,7 @@ void Surface::SurfacePlane_to_hdf5_inner(hid_t group_id) const
   write_dataset(group_id, "coefficients", coeffs);
 }
 
-bool Surface::SurfacePlane_periodic_translate(const PeriodicSurface* other, Position& r,
+bool Surface::SurfacePlane_periodic_translate(const Surface* other, Position& r,
                                       Direction& u) const
 {
   // This function assumes the other plane shares this plane's normal direction.
@@ -1144,10 +1144,11 @@ BoundingBox Surface::bounding_box(bool pos_side) const
     //case SurfaceType::SurfaceYCone:     return SurfaceYCone_bounding_box(pos_side);     break;
     //case SurfaceType::SurfaceZCone:     return SurfaceZCone_bounding_box(pos_side);     break;
     //case SurfaceType::SurfaceQuadric:   return SurfaceQuadric_bounding_box(pos_side);   break;
+    default: return {};
   }
 }
 
-bool Surface::periodic_translate(const PeriodicSurface* other, Position& r,
+bool Surface::periodic_translate(const Surface* other, Position& r,
                                       Direction& u) const
 {
   switch(type_){
@@ -1165,6 +1166,7 @@ bool Surface::periodic_translate(const PeriodicSurface* other, Position& r,
     case SurfaceType::SurfaceZCone:     return SurfaceZCone_periodic_translate(other, r, u);     break;
     case SurfaceType::SurfaceQuadric:   return SurfaceQuadric_periodic_translate(other, r, u);   break;
     */
+    default: return false;
   }
 }
 
@@ -1189,40 +1191,40 @@ void read_surfaces(pugi::xml_node node)
       std::string surf_type = get_node_value(surf_node, "type", true, true);
 
       if (surf_type == "x-plane") {
-        model::surfaces.push_back(std::make_unique<SurfaceXPlane>(surf_node, Surface::SurfaceType::SurfaceXPlane));
+        model::surfaces.push_back(std::make_unique<Surface>(surf_node, Surface::SurfaceType::SurfaceXPlane));
 
       } else if (surf_type == "y-plane") {
-        model::surfaces.push_back(std::make_unique<SurfaceYPlane>(surf_node, Surface::SurfaceType::SurfaceYPlane));
+        model::surfaces.push_back(std::make_unique<Surface>(surf_node, Surface::SurfaceType::SurfaceYPlane));
 
       } else if (surf_type == "z-plane") {
-        model::surfaces.push_back(std::make_unique<SurfaceZPlane>(surf_node, Surface::SurfaceType::SurfaceZPlane));
+        model::surfaces.push_back(std::make_unique<Surface>(surf_node, Surface::SurfaceType::SurfaceZPlane));
 
       } else if (surf_type == "plane") {
-        model::surfaces.push_back(std::make_unique<SurfacePlane>(surf_node, Surface::SurfaceType::SurfacePlane));
+        model::surfaces.push_back(std::make_unique<Surface>(surf_node, Surface::SurfaceType::SurfacePlane));
 
       } else if (surf_type == "x-cylinder") {
-        model::surfaces.push_back(std::make_unique<SurfaceXCylinder>(surf_node, Surface::SurfaceType::SurfaceXCylinder));
+        model::surfaces.push_back(std::make_unique<Surface>(surf_node, Surface::SurfaceType::SurfaceXCylinder));
 
       } else if (surf_type == "y-cylinder") {
-        model::surfaces.push_back(std::make_unique<SurfaceYCylinder>(surf_node, Surface::SurfaceType::SurfaceYCylinder));
+        model::surfaces.push_back(std::make_unique<Surface>(surf_node, Surface::SurfaceType::SurfaceYCylinder));
 
       } else if (surf_type == "z-cylinder") {
-        model::surfaces.push_back(std::make_unique<SurfaceZCylinder>(surf_node, Surface::SurfaceType::SurfaceZCylinder));
+        model::surfaces.push_back(std::make_unique<Surface>(surf_node, Surface::SurfaceType::SurfaceZCylinder));
 
       } else if (surf_type == "sphere") {
-        model::surfaces.push_back(std::make_unique<SurfaceSphere>(surf_node, Surface::SurfaceType::SurfaceSphere));
+        model::surfaces.push_back(std::make_unique<Surface>(surf_node, Surface::SurfaceType::SurfaceSphere));
 
       } else if (surf_type == "x-cone") {
-        model::surfaces.push_back(std::make_unique<SurfaceXCone>(surf_node, Surface::SurfaceType::SurfaceXCone));
+        model::surfaces.push_back(std::make_unique<Surface>(surf_node, Surface::SurfaceType::SurfaceXCone));
 
       } else if (surf_type == "y-cone") {
-        model::surfaces.push_back(std::make_unique<SurfaceYCone>(surf_node, Surface::SurfaceType::SurfaceYCone));
+        model::surfaces.push_back(std::make_unique<Surface>(surf_node, Surface::SurfaceType::SurfaceYCone));
 
       } else if (surf_type == "z-cone") {
-        model::surfaces.push_back(std::make_unique<SurfaceZCone>(surf_node, Surface::SurfaceType::SurfaceZCone));
+        model::surfaces.push_back(std::make_unique<Surface>(surf_node, Surface::SurfaceType::SurfaceZCone));
 
       } else if (surf_type == "quadric") {
-        model::surfaces.push_back(std::make_unique<SurfaceQuadric>(surf_node, Surface::SurfaceType::SurfaceQuadratic));
+        model::surfaces.push_back(std::make_unique<Surface>(surf_node, Surface::SurfaceType::SurfaceQuadric));
 
       } else {
         fatal_error(fmt::format("Invalid surface type, \"{}\"", surf_type));
@@ -1250,10 +1252,17 @@ void read_surfaces(pugi::xml_node node)
     if (model::surfaces[i_surf]->bc_ == Surface::BoundaryType::PERIODIC) {
       // Downcast to the PeriodicSurface type.
       Surface* surf_base = model::surfaces[i_surf].get();
-      auto surf = dynamic_cast<PeriodicSurface*>(surf_base);
+      //auto surf = dynamic_cast<PeriodicSurface*>(surf_base);
+      auto surf = surf_base;
 
       // Make sure this surface inherits from PeriodicSurface.
-      if (!surf) {
+      //if (!surf) {
+      if (
+          surf->type_ != Surface::SurfaceType::SurfaceXPlane &&
+          surf->type_ != Surface::SurfaceType::SurfaceYPlane &&
+          surf->type_ != Surface::SurfaceType::SurfaceZPlane &&
+          surf->type_ != Surface::SurfaceType::SurfacePlane
+          ) {
         fatal_error(fmt::format(
           "Periodic boundary condition not supported for surface {}. Periodic "
           "BCs are only supported for planar surfaces.", surf_base->id_));
@@ -1293,13 +1302,16 @@ void read_surfaces(pugi::xml_node node)
     if (model::surfaces[i_surf]->bc_ == Surface::BoundaryType::PERIODIC) {
       // Downcast to the PeriodicSurface type.
       Surface* surf_base = model::surfaces[i_surf].get();
-      auto surf = dynamic_cast<PeriodicSurface*>(surf_base);
+      //auto surf = dynamic_cast<PeriodicSurface*>(surf_base);
+      auto surf = surf_base;
 
       // Also try downcasting to the SurfacePlane type (which must be handled
       // differently).
-      SurfacePlane* surf_p = dynamic_cast<SurfacePlane*>(surf);
+      //SurfacePlane* surf_p = dynamic_cast<SurfacePlane*>(surf);
+      auto surf_p = surf;
 
-      if (!surf_p) {
+      //if (!surf_p) {
+      if (surf_p->type_ != Surface::SurfaceType::SurfacePlane) {
         // This is not a SurfacePlane.
         if (surf->i_periodic_ == C_NONE) {
           // The user did not specify the matching periodic surface.  See if we

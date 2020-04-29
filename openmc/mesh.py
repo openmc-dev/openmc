@@ -626,8 +626,8 @@ class UnstructuredMesh(MeshBase):
     def __init__(self, filename, mesh_id=None, name=''):
         super().__init__(mesh_id, name)
         self.filename = filename
-        self._volumes = []
-        self._centroids = []
+        self._volumes = None
+        self._centroids = None
 
     @property
     def filename(self):
@@ -655,6 +655,13 @@ class UnstructuredMesh(MeshBase):
     def centroids(self):
         return self._centroids
 
+    @property
+    def n_elements(self):
+        if self._centroids is None:
+            raise RuntimeError("No information about this mesh has "
+                               "been loaded from a statepoint file.")
+        return len(self._centroids)
+
     @centroids.setter
     def centroids(self, centroids):
         cv.check_type("Unstructured mesh centroids", centroids,
@@ -664,6 +671,91 @@ class UnstructuredMesh(MeshBase):
     def __repr__(self):
         string = super().__repr__()
         return string + '{: <16}=\t{}\n'.format('\tFilename', self.filename)
+
+    def write_data_to_vtk(self, filename, datasets, volume_normalization=True):
+        """Map data to the unstructured mesh element centroids
+           to create a VTK point-cloud dataset.
+
+        Parameters
+        ----------
+        filename : str
+            Name of the VTK file to write.
+        datasets : dict
+            Dictionary whose keys are the data labels
+            and values are the data sets.
+        volume_normalization : bool
+            Whether or not to normalize the data by the
+            volume of the mesh elements
+        """
+
+        import vtk
+        from vtk.util import numpy_support as vtk_npsup
+
+        if self.centroids is None:
+            raise RuntimeError("No centroid information is present on this "
+                               "unstructured mesh. Please load this "
+                               "information from a relevant statepoint file.")
+
+        if self.volumes is None and volume_normalization:
+            raise RuntimeError("No volume data is present on this "
+                               "unstructured mesh. Please load the "
+                               " mesh information from a statepoint file.")
+
+        # check that the data sets are appropriately sized
+        for label, dataset in datasets.items():
+            if isinstance(dataset, np.ndarray):
+                assert dataset.size == self.n_elements
+            else:
+                assert len(dataset) == self.n_elements
+            cv.check_type('label', label, str)
+
+        # create data arrays for the cells/points
+        cell_dim = 1
+        vertices = vtk.vtkCellArray()
+        points = vtk.vtkPoints()
+
+        for centroid in self.centroids:
+            # create a point for each centroid
+            point_id = points.InsertNextPoint(centroid)
+            # create a cell of type "Vertex" for each point
+            cell_id = vertices.InsertNextCell(cell_dim, (point_id,))
+
+        # create a VTK data object
+        poly_data = vtk.vtkPolyData()
+        poly_data.SetPoints(points)
+        poly_data.SetVerts(vertices)
+
+        # strange VTK nuance:
+        # data must be held in some container
+        # until the vtk file is written
+        data_holder = []
+
+        # create VTK arrays for each of
+        # the data sets
+        for label, dataset in datasets.items():
+            dataset = np.asarray(dataset).flatten()
+
+            if volume_normalization:
+                dataset /= self.volumes.flatten()
+
+            array = vtk.vtkDoubleArray()
+            array.SetName(label)
+            array.SetNumberOfComponents(1)
+            array.SetArray(vtk_npsup.numpy_to_vtk(dataset),
+                           dataset.size,
+                           True)
+
+            data_holder.append(dataset)
+            poly_data.GetPointData().AddArray(array)
+
+        # set filename
+        if not filename.endswith(".vtk"):
+            filename += ".vtk"
+
+        writer = vtk.vtkGenericDataObjectWriter()
+        writer.SetFileName(filename)
+        writer.SetInputData(poly_data)
+        writer.Write()
 
     @classmethod
     def from_hdf5(cls, group):

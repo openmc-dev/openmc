@@ -70,14 +70,14 @@ SurfaceFilter::to_statepoint(hid_t filter_group) const
 {
   Filter::to_statepoint(filter_group);
   std::vector<int32_t> surface_ids;
-  for (auto c : surfaces_) surface_ids.push_back(model::surfaces[c]->id_);
+  for (auto c : surfaces_) surface_ids.push_back(model::surfaces[c].id_);
   write_dataset(filter_group, "bins", surface_ids);
 }
 
 std::string
 SurfaceFilter::text_label(int bin) const
 {
-  return fmt::format("Surface {}", model::surfaces[surfaces_[bin]]->id_);
+  return fmt::format("Surface {}", model::surfaces[surfaces_[bin]].id_);
 }
 
 } // namespace openmc

@@ -22,7 +22,8 @@ namespace openmc {
 //==============================================================================
 
 namespace model {
-  std::vector<std::unique_ptr<Surface>> surfaces;
+  //std::vector<std::unique_ptr<Surface>> surfaces;
+  std::vector<Surface> surfaces;
   std::unordered_map<int, int> surface_map;
 } // namespace model
 
@@ -1190,6 +1191,7 @@ void read_surfaces(pugi::xml_node node)
          surf_node = surf_node.next_sibling("surface"), i_surf++) {
       std::string surf_type = get_node_value(surf_node, "type", true, true);
 
+      /*
       if (surf_type == "x-plane") {
         model::surfaces.push_back(std::make_unique<Surface>(surf_node, Surface::SurfaceType::SurfaceXPlane));
 
@@ -1229,12 +1231,53 @@ void read_surfaces(pugi::xml_node node)
       } else {
         fatal_error(fmt::format("Invalid surface type, \"{}\"", surf_type));
       }
+      */
+
+      if (surf_type == "x-plane") {
+        model::surfaces.emplace_back(surf_node, Surface::SurfaceType::SurfaceXPlane);
+
+      } else if (surf_type == "y-plane") {
+        model::surfaces.emplace_back(surf_node, Surface::SurfaceType::SurfaceYPlane);
+
+      } else if (surf_type == "z-plane") {
+        model::surfaces.emplace_back(surf_node, Surface::SurfaceType::SurfaceZPlane);
+
+      } else if (surf_type == "plane") {
+        model::surfaces.emplace_back(surf_node, Surface::SurfaceType::SurfacePlane);
+
+      } else if (surf_type == "x-cylinder") {
+        model::surfaces.emplace_back(surf_node, Surface::SurfaceType::SurfaceXCylinder);
+
+      } else if (surf_type == "y-cylinder") {
+        model::surfaces.emplace_back(surf_node, Surface::SurfaceType::SurfaceYCylinder);
+
+      } else if (surf_type == "z-cylinder") {
+        model::surfaces.emplace_back(surf_node, Surface::SurfaceType::SurfaceZCylinder);
+
+      } else if (surf_type == "sphere") {
+        model::surfaces.emplace_back(surf_node, Surface::SurfaceType::SurfaceSphere);
+
+      } else if (surf_type == "x-cone") {
+        model::surfaces.emplace_back(surf_node, Surface::SurfaceType::SurfaceXCone);
+
+      } else if (surf_type == "y-cone") {
+        model::surfaces.emplace_back(surf_node, Surface::SurfaceType::SurfaceYCone);
+
+      } else if (surf_type == "z-cone") {
+        model::surfaces.emplace_back(surf_node, Surface::SurfaceType::SurfaceZCone);
+
+      } else if (surf_type == "quadric") {
+        model::surfaces.emplace_back(surf_node, Surface::SurfaceType::SurfaceQuadric);
+
+      } else {
+        fatal_error(fmt::format("Invalid surface type, \"{}\"", surf_type));
+      }
     }
   }
 
   // Fill the surface map.
   for (int i_surf = 0; i_surf < model::surfaces.size(); i_surf++) {
-    int id = model::surfaces[i_surf]->id_;
+    int id = model::surfaces[i_surf].id_;
     auto in_map = model::surface_map.find(id);
     if (in_map == model::surface_map.end()) {
       model::surface_map[id] = i_surf;
@@ -1249,9 +1292,9 @@ void read_surfaces(pugi::xml_node node)
          zmin {INFTY}, zmax {-INFTY};
   int i_xmin, i_xmax, i_ymin, i_ymax, i_zmin, i_zmax;
   for (int i_surf = 0; i_surf < model::surfaces.size(); i_surf++) {
-    if (model::surfaces[i_surf]->bc_ == Surface::BoundaryType::PERIODIC) {
+    if (model::surfaces[i_surf].bc_ == Surface::BoundaryType::PERIODIC) {
       // Downcast to the PeriodicSurface type.
-      Surface* surf_base = model::surfaces[i_surf].get();
+      Surface* surf_base = &model::surfaces[i_surf];
       //auto surf = dynamic_cast<PeriodicSurface*>(surf_base);
       auto surf = surf_base;
 
@@ -1299,9 +1342,9 @@ void read_surfaces(pugi::xml_node node)
 
   // Set i_periodic for periodic BC surfaces.
   for (int i_surf = 0; i_surf < model::surfaces.size(); i_surf++) {
-    if (model::surfaces[i_surf]->bc_ == Surface::BoundaryType::PERIODIC) {
+    if (model::surfaces[i_surf].bc_ == Surface::BoundaryType::PERIODIC) {
       // Downcast to the PeriodicSurface type.
-      Surface* surf_base = model::surfaces[i_surf].get();
+      Surface* surf_base = &model::surfaces[i_surf];
       //auto surf = dynamic_cast<PeriodicSurface*>(surf_base);
       auto surf = surf_base;
 
@@ -1349,7 +1392,7 @@ void read_surfaces(pugi::xml_node node)
       }
 
       // Make sure the opposite surface is also periodic.
-      if (model::surfaces[surf->i_periodic_]->bc_ != Surface::BoundaryType::PERIODIC) {
+      if (model::surfaces[surf->i_periodic_].bc_ != Surface::BoundaryType::PERIODIC) {
         fatal_error(fmt::format("Could not find matching surface for periodic "
           "boundary condition on surface {}", surf->id_));
       }
@@ -1360,7 +1403,7 @@ void read_surfaces(pugi::xml_node node)
   // surface
   bool boundary_exists = false;
   for (const auto& surf : model::surfaces) {
-    if (surf->bc_ != Surface::BoundaryType::TRANSMIT) {
+    if (surf.bc_ != Surface::BoundaryType::TRANSMIT) {
       boundary_exists = true;
       break;
     }

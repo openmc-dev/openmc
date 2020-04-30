@@ -107,7 +107,7 @@ void write_geometry(hid_t file)
   close_group(cells_group);
 
   auto surfaces_group = create_group(geom_group, "surfaces");
-  for (const auto& surf : model::surfaces) surf->to_hdf5(surfaces_group);
+  for (const auto& surf : model::surfaces) surf.to_hdf5(surfaces_group);
   close_group(surfaces_group);
 
   auto universes_group = create_group(geom_group, "universes");

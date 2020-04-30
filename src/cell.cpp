@@ -606,7 +606,7 @@ Cell::distance(Position r, Direction u, int32_t on_surface, Particle* p) const
     // Calculate the distance to this surface.
     // Note the off-by-one indexing
     bool coincident {std::abs(token) == std::abs(on_surface)};
-    double d {model::surfaces[abs(token)-1]->distance(r, u, coincident)};
+    double d {model::surfaces[abs(token)-1].distance(r, u, coincident)};
 
     // Check if this distance is the new minimum.
     if (d < min_dist) {
@@ -649,7 +649,7 @@ Cell::to_hdf5(hid_t cell_group) const
         region_spec << " |";
       } else {
         // Note the off-by-one indexing
-        auto surf_id = model::surfaces[abs(token)-1]->id_;
+        auto surf_id = model::surfaces[abs(token)-1].id_;
         region_spec << " " << ((token > 0) ? surf_id : -surf_id);
       }
     }
@@ -704,7 +704,7 @@ Cell::to_hdf5(hid_t cell_group) const
 BoundingBox Cell::bounding_box_simple() const {
   BoundingBox bbox;
   for (int32_t token : rpn_) {
-    bbox &= model::surfaces[abs(token)-1]->bounding_box(token > 0);
+    bbox &= model::surfaces[abs(token)-1].bounding_box(token > 0);
   }
   return bbox;
 }
@@ -786,7 +786,7 @@ BoundingBox Cell::bounding_box_complex(std::vector<int32_t> rpn) {
       i_stack--;
     } else {
       i_stack++;
-      stack[i_stack] = model::surfaces[abs(token) - 1]->bounding_box(token > 0);
+      stack[i_stack] = model::surfaces[abs(token) - 1].bounding_box(token > 0);
     }
   }
 
@@ -813,7 +813,7 @@ Cell::contains_simple(Position r, Direction u, int32_t on_surface) const
       return false;
     } else {
       // Note the off-by-one indexing
-      bool sense = model::surfaces[abs(token)-1]->sense(r, u);
+      bool sense = model::surfaces[abs(token)-1].sense(r, u);
       if (sense != (token > 0)) {return false;}
     }
   }
@@ -854,7 +854,7 @@ Cell::contains_complex(Position r, Direction u, int32_t on_surface) const
         stack[i_stack] = false;
       } else {
         // Note the off-by-one indexing
-        bool sense = model::surfaces[abs(token)-1]->sense(r, u);
+        bool sense = model::surfaces[abs(token)-1].sense(r, u);
         stack[i_stack] = (sense == (token > 0));
       }
     }
@@ -954,7 +954,7 @@ UniversePartitioner::UniversePartitioner(const Universe& univ)
       double zj = zplane->z0_;
       return zi < zj;
       */
-      return model::surfaces[i_surf].get()->z0_ < model::surfaces[j_surf].get()->z0_;
+      return model::surfaces[i_surf].z0_ < model::surfaces[j_surf].z0_;
     }
   };
   std::set<int32_t, compare_surfs> surf_set;
@@ -966,7 +966,7 @@ UniversePartitioner::UniversePartitioner(const Universe& univ)
     for (auto token : model::cells[i_cell].rpn_) {
       if (token < OP_UNION) {
         auto i_surf = std::abs(token) - 1;
-        const auto* surf = model::surfaces[i_surf].get();
+        const auto* surf = &model::surfaces[i_surf];
         //if (const auto* zplane = dynamic_cast<const SurfaceZPlane*>(surf))
         if( surf->type_ == Surface::SurfaceType::SurfaceZPlane ) 
           surf_set.insert(i_surf);
@@ -994,7 +994,7 @@ UniversePartitioner::UniversePartitioner(const Universe& univ)
     //for (auto token : model::cells[i_cell]->rpn_) {
     for (auto token : model::cells[i_cell].rpn_) {
       if (token < OP_UNION) {
-        const auto* surf = model::surfaces[std::abs(token) - 1].get();
+        const auto* surf = &model::surfaces[std::abs(token) - 1];
         //if (const auto* zplane = dynamic_cast<const SurfaceZPlane*>(surf)) {
         if( surf->type_ == Surface::SurfaceType::SurfaceZPlane ) 
         {
@@ -1059,7 +1059,7 @@ UniversePartitioner::get_cells(Position r, Direction u) const
   int right = surfs_.size() - 1;
   while (true) {
     // Check the sense of the coordinates for the current surface.
-    const auto& surf = *model::surfaces[surfs_[middle]];
+    const auto& surf = model::surfaces[surfs_[middle]];
     if (surf.sense(r, u)) {
       // The coordinates lie in the positive halfspace.  Recurse if there are
       // more surfaces to check.  Otherwise, return the cells on the positive

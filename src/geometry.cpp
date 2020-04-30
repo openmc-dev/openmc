@@ -414,7 +414,7 @@ BoundaryInfo distance_to_boundary(Particle* p)
           info.surface_index = level_surf_cross;
         } else {
           Position r_hit = r + d_surf * u;
-          Surface& surf {*model::surfaces[std::abs(level_surf_cross)-1]};
+          Surface& surf {model::surfaces[std::abs(level_surf_cross)-1]};
           Direction norm = surf.normal(r_hit);
           if (u.dot(norm) > 0) {
             info.surface_index = std::abs(level_surf_cross);

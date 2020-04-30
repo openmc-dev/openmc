@@ -191,7 +191,7 @@ extern "C" void print_particle(Particle* p)
 
   // Display miscellaneous info.
   if (p->surface_ != 0) {
-    const Surface& surf {*model::surfaces[std::abs(p->surface_)-1]};
+    const Surface& surf {model::surfaces[std::abs(p->surface_)-1]};
     fmt::print("  Surface = {}\n", (p->surface_ > 0) ? surf.id_ : -surf.id_);
   }
   fmt::print("  Weight = {}\n", p->wgt_);

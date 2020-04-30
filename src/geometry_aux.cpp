@@ -156,7 +156,7 @@ partition_universes()
       int n_zplanes = 0;
       for (auto i_surf : surf_inds) {
         //if (dynamic_cast<const SurfaceZPlane*>(model::surfaces[i_surf].get())) {
-        if (model::surfaces[i_surf].get()->type_ == Surface::SurfaceType::SurfaceZPlane) {
+        if (model::surfaces[i_surf].type_ == Surface::SurfaceType::SurfaceZPlane) {
           ++n_zplanes;
           if (n_zplanes > 5) {
             univ.partitioner_ = std::make_unique<UniversePartitioner>(univ);

@@ -2,7 +2,7 @@
 # module and creates a libmesh imported target
 
 find_path(LIBMESH_PC NAMES libmesh-opt.pc
-          HINTS ${LIBMESH_ROOT} $ENV{LIBMESH_ROOT}
+          HINTS ${LIBMESH_DIR} $ENV{LIBMESH_ROOT}
           PATHS ENV LD_LIBRARY_PATH
           PATH_SUFFIXES lib/pkgconfig pkgconfig
           NO_DEFAULT_PATH)

@@ -223,7 +223,7 @@ def test_unstructured_mesh(test_opts):
     ### Settings ###
     settings = openmc.Settings()
     settings.run_mode = 'fixed source'
-    settings.particles = 100
+    settings.particles = 10000
     settings.batches = 10
 
     # source setup

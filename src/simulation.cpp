@@ -134,16 +134,27 @@ int openmc_simulation_init()
   // BEGIN: Move all read only data to device
   ////////////////////////////////////////////////////////////////////
   
+  int host_id = omp_get_initial_device();
+  int device_id = omp_get_default_device();
+  size_t sz;
+  
+  // Surfaces ////////////////////////////////////////////////////////
+
+  // Allocate space for all surfaces on device
+  std::cout << "Moving " << model::surfaces.size() << " surfaces to device..." << std::endl;
+  sz = model::surfaces.size() * sizeof(Surface);
+  model::device_surfaces = (Surface *) omp_target_alloc(sz, device_id);
+  omp_target_memcpy(model::device_surfaces, model::surfaces.data(), sz, 0, 0, device_id, host_id);
+  
   // Universes ///////////////////////////////////////////////////////
+
   // Allocate and move vectors internal to each cell on the device
   std::cout << "Moving " << model::universes.size() << " universes to device..." << std::endl;
   for( auto& universe : model::universes ) {
     universe.allocate_and_copy_to_device();
   }
   // Move all universe data to device
-  int host_id = omp_get_initial_device();
-  int device_id = omp_get_default_device();
-  size_t sz = model::universes.size() * sizeof(Universe);
+  sz = model::universes.size() * sizeof(Universe);
   model::device_universes = (Universe *) omp_target_alloc(sz, device_id);
   omp_target_memcpy(model::device_universes, model::universes.data(), sz, 0, 0, device_id, host_id);
   

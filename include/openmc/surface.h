@@ -25,6 +25,7 @@ class Surface;
 
 namespace model {
   extern std::vector<Surface> surfaces;
+  extern Surface* device_surfaces;
   extern std::unordered_map<int, int> surface_map;
 } // namespace model
 

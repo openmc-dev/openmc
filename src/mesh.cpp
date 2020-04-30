@@ -2326,7 +2326,7 @@ LibMesh::get_bin(Position r) const
   if (!bbox_.contains_point(p)) { return -1; }
 
   int thread = omp_get_thread_num();
-  auto e = (*point_locators_[thread])(p, false);
+  auto e = (*point_locators_[thread])(p);
   if (!e) {
     return -1;
   } else {

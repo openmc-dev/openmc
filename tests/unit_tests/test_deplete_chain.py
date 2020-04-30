@@ -50,6 +50,15 @@ def simple_chain():
         yield Chain.from_xml('chain_test.xml')
 
 
+@pytest.fixture(scope='module')
+def endf_chain():
+    endf_data = Path(os.environ['OPENMC_ENDF_DATA'])
+    decay_data = (endf_data / 'decay').glob('*.endf')
+    fpy_data = (endf_data / 'nfy').glob('*.endf')
+    neutron_data = (endf_data / 'neutrons').glob('*.endf')
+    return Chain.from_endf(decay_data, fpy_data, neutron_data)
+
+
 def test_init():
     """Test depletion chain initialization."""
     chain = Chain()
@@ -66,14 +75,9 @@ def test_len():
     assert len(chain) == 3
 
 
-def test_from_endf():
+def test_from_endf(endf_chain):
     """Test depletion chain building from ENDF files"""
-    endf_data = Path(os.environ['OPENMC_ENDF_DATA'])
-    decay_data = (endf_data / 'decay').glob('*.endf')
-    fpy_data = (endf_data / 'nfy').glob('*.endf')
-    neutron_data = (endf_data / 'neutrons').glob('*.endf')
-    chain = Chain.from_endf(decay_data, fpy_data, neutron_data)
-
+    chain = endf_chain
     assert len(chain) == len(chain.nuclides) == len(chain.nuclide_dict) == 3820
     for nuc in chain.nuclides:
         assert nuc == chain[nuc.name]
@@ -471,7 +475,7 @@ def gnd_simple_chain():
     return Chain.from_xml(chainfile)
 
 
-def test_reduce(gnd_simple_chain):
+def test_reduce(gnd_simple_chain, endf_chain):
     ref_U5 = gnd_simple_chain["U235"]
     ref_iodine = gnd_simple_chain["I135"]
     ref_U5_yields = ref_U5.yield_data
@@ -552,6 +556,10 @@ def test_reduce(gnd_simple_chain):
     assert set(iodine_chain.nuclide_dict) == set(new_iodine.nuclide_dict)
 
     # Failure if some requested isotopes not in chain
-
     with pytest.raises(IndexError, match=".*not found.*Xx999"):
         gnd_simple_chain.reduce(["U235", "Xx999"])
+
+    # Make sure reduce preserves light nuclides produced from reactions like (n,p)
+    reduced_chain = endf_chain.reduce(['U235'])
+    assert 'H1' in reduced_chain
+    assert 'H2' in reduced_chain

@@ -232,9 +232,8 @@ def test_unstructured_mesh(test_opts):
     phi = openmc.stats.Discrete(x=[0.0], p=[1.0])
 
     space = openmc.stats.SphericalIndependent(r, theta, phi)
-    angle = openmc.stats.Monodirectional((-1.0, 0.0, 0.0))
     energy = openmc.stats.Discrete(x=[15.e+06], p=[1.0])
-    source = openmc.Source(space=space, energy=energy, angle=angle)
+    source = openmc.Source(space=space, energy=energy)
     settings.source = source
 
     model = openmc.model.Model(geometry=geometry,

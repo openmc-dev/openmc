@@ -57,7 +57,6 @@
         <parameters>0.0 1.0</parameters>
       </phi>
     </space>
-    <angle reference_uvw="-1.0 0.0 0.0" type="monodirectional" />
     <energy type="discrete">
       <parameters>15000000.0 1.0</parameters>
     </energy>

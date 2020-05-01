@@ -5,6 +5,7 @@
 
 #include "openmc/endf.h"
 #include "openmc/hdf5_interface.h"
+#include "openmc/particle.h"
 #include "openmc/random_lcg.h"
 #include "openmc/secondary_correlated.h"
 #include "openmc/secondary_kalbach.h"
@@ -22,11 +23,7 @@ ReactionProduct::ReactionProduct(hid_t group)
   // Read particle type
   std::string temp;
   read_attribute(group, "particle", temp);
-  if (temp == "neutron") {
-    particle_ = Particle::Type::neutron;
-  } else if (temp == "photon") {
-    particle_ = Particle::Type::photon;
-  }
+  particle_ = str_to_particle_type(temp);
 
   // Read emission mode and decay rate
   read_attribute(group, "emission_mode", temp);

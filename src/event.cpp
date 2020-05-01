@@ -62,7 +62,7 @@ void process_init_events(int64_t n_particles, int64_t source_offset)
   simulation::time_event_init.start();
   #pragma omp parallel for schedule(runtime)
   for (int64_t i = 0; i < n_particles; i++) {
-    initialize_history(&simulation::particles[i], source_offset + i + 1);
+    initialize_history(simulation::particles[i], source_offset + i + 1);
     dispatch_xs_event(i);
   }
   simulation::time_event_init.stop();
@@ -76,17 +76,17 @@ void process_calculate_xs_events(SharedArray<EventQueueItem>& queue)
   // by particle type, material type, and then energy, in order to
   // improve cache locality and reduce thread divergence on GPU. Prior
   // to C++17, std::sort is a serial only operation, which in this case
-  // makes it too slow to be practical for most test problems. 
+  // makes it too slow to be practical for most test problems.
   //
   // std::sort(std::execution::par_unseq, queue.data(), queue.data() + queue.size());
-  
+
   int64_t offset = simulation::advance_particle_queue.size();;
 
   #pragma omp parallel for schedule(runtime)
   for (int64_t i = 0; i < queue.size(); i++) {
-    Particle* p = &simulation::particles[queue[i].idx]; 
+    Particle* p = &simulation::particles[queue[i].idx];
     p->event_calculate_xs();
-    
+
     // After executing a calculate_xs event, particles will
     // always require an advance event. Therefore, we don't need to use
     // the protected enqueuing function.
@@ -136,7 +136,7 @@ void process_surface_crossing_events()
   }
 
   simulation::surface_crossing_queue.resize(0);
-  
+
   simulation::time_event_surface_crossing.stop();
 }
 

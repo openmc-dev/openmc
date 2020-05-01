@@ -53,7 +53,7 @@ public:
   //! \param[in] p Particle to check
   //! \param[out] bins Bins that were crossed
   //! \param[out] lengths Fraction of tracklength in each bin
-  virtual void bins_crossed(const Particle* p, std::vector<int>& bins,
+  virtual void bins_crossed(const Particle& p, std::vector<int>& bins,
                             std::vector<double>& lengths) const = 0;
 
   //! Determine which surface bins were crossed by a particle
@@ -61,7 +61,7 @@ public:
   //! \param[in] p Particle to check
   //! \param[out] bins Surface bins that were crossed
   virtual void
-  surface_bins_crossed(const Particle* p, std::vector<int>& bins) const = 0;
+  surface_bins_crossed(const Particle& p, std::vector<int>& bins) const = 0;
 
   //! Get bin at a given position in space
   //
@@ -145,10 +145,10 @@ public:
 
   // Overriden methods
 
-  void bins_crossed(const Particle* p, std::vector<int>& bins,
+  void bins_crossed(const Particle& p, std::vector<int>& bins,
                     std::vector<double>& lengths) const override;
 
-  void surface_bins_crossed(const Particle* p, std::vector<int>& bins)
+  void surface_bins_crossed(const Particle& p, std::vector<int>& bins)
   const override;
 
   int get_bin(Position r) const override;
@@ -207,10 +207,10 @@ public:
 
   // Overriden methods
 
-  void bins_crossed(const Particle* p, std::vector<int>& bins,
+  void bins_crossed(const Particle& p, std::vector<int>& bins,
                     std::vector<double>& lengths) const override;
 
-  void surface_bins_crossed(const Particle* p, std::vector<int>& bins)
+  void surface_bins_crossed(const Particle& p, std::vector<int>& bins)
   const override;
 
   int get_bin(Position r) const override;
@@ -256,7 +256,7 @@ public:
   UnstructuredMesh(pugi::xml_node);
   ~UnstructuredMesh() = default;
 
-  void bins_crossed(const Particle* p,
+  void bins_crossed(const Particle& p,
                     std::vector<int>& bins,
                     std::vector<double>& lengths) const override;
 
@@ -267,7 +267,7 @@ public:
   //
   //! \param[in] p Particle to check
   //! \param[out] bins Surface bins that were crossed
-  void surface_bins_crossed(const Particle* p, std::vector<int>& bins) const;
+  void surface_bins_crossed(const Particle& p, std::vector<int>& bins) const;
 
   //! Write mesh data to an HDF5 group.
   //

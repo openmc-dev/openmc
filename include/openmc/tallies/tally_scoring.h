@@ -23,7 +23,7 @@ class FilterBinIter
 public:
 
   //! Construct an iterator over bins that match a given particle's state.
-  FilterBinIter(const Tally& tally, Particle* p);
+  FilterBinIter(const Tally& tally, Particle& p);
 
   //! Construct an iterator over all filter bin combinations.
   //
@@ -41,7 +41,7 @@ public:
 
   int index_ {1};
   double weight_ {1.};
-  
+
   std::vector<FilterMatch>& filter_matches_;
 
 private:
@@ -63,21 +63,21 @@ private:
 //! since collisions do not occur in voids.
 //
 //! \param p The particle being tracked
-void score_collision_tally(Particle* p);
+void score_collision_tally(Particle& p);
 
 //! Score tallies based on a simple count of events (for continuous energy).
 //
 //! Analog tallies are triggered at every collision, not every event.
 //
 //! \param p The particle being tracked
-void score_analog_tally_ce(Particle* p);
+void score_analog_tally_ce(Particle& p);
 
 //! Score tallies based on a simple count of events (for multigroup).
 //
 //! Analog tallies are triggered at every collision, not every event.
 //
 //! \param p The particle being tracked
-void score_analog_tally_mg(Particle* p);
+void score_analog_tally_mg(Particle& p);
 
 //! Score tallies using a tracklength estimate of the flux.
 //
@@ -87,13 +87,13 @@ void score_analog_tally_mg(Particle* p);
 //
 //! \param p The particle being tracked
 //! \param distance The distance in [cm] traveled by the particle
-void score_tracklength_tally(Particle* p, double distance);
+void score_tracklength_tally(Particle& p, double distance);
 
 //! Score surface or mesh-surface tallies for particle currents.
 //
 //! \param p The particle being tracked
 //! \param tallies A vector of tallies to score to
-void score_surface_tally(Particle* p, const std::vector<int>& tallies);
+void score_surface_tally(Particle& p, const std::vector<int>& tallies);
 
 } // namespace openmc
 

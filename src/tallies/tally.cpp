@@ -753,6 +753,9 @@ Tally::init_triggers(pugi::xml_node node)
     double threshold;
     if (check_for_node(trigger_node, "threshold")) {
       threshold = std::stod(get_node_value(trigger_node, "threshold"));
+      if (threshold <= 0) {
+        fatal_error("Tally trigger threshold must be positive");
+      }
     } else {
       fatal_error(fmt::format(
         "Must specify trigger threshold for tally {} in tally XML file", id_));

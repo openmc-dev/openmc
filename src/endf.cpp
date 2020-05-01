@@ -43,7 +43,7 @@ Interpolation int2interp(int i)
 
 bool is_fission(int mt)
 {
-  return mt == 18 || mt == 19 || mt == 20 || mt == 21 || mt == 38;
+  return mt == N_FISSION || mt == N_F || mt == N_NF || mt == N_2NF || mt == N_3NF;
 }
 
 bool is_disappearance(int mt)

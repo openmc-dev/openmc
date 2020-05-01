@@ -8,7 +8,7 @@
 namespace openmc {
 
 void
-MeshSurfaceFilter::get_all_bins(const Particle* p, TallyEstimator estimator,
+MeshSurfaceFilter::get_all_bins(const Particle& p, TallyEstimator estimator,
                                 FilterMatch& match) const
 {
   model::meshes[mesh_]->surface_bins_crossed(p, match.bins_);

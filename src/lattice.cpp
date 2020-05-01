@@ -671,6 +671,7 @@ ReverseLatticeIter HexLattice::rbegin()
 bool
 HexLattice::are_valid_indices(const int i_xyz[3]) const
 {
+  // Check if (x, alpha, z) indices are valid, accounting for number of rings
   return ((i_xyz[0] >= 0) && (i_xyz[1] >= 0) && (i_xyz[2] >= 0)
           && (i_xyz[0] < 2*n_rings_-1) && (i_xyz[1] < 2*n_rings_-1)
           && (i_xyz[0] + i_xyz[1] > n_rings_-2)

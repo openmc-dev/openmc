@@ -182,13 +182,13 @@ T PlotBase::get_map() const {
         p.r()[in_i] = xyz[in_i] + in_pixel * x;
         p.n_coord_ = 1;
         // local variables
-        bool found_cell = find_cell(&p, 0);
+        bool found_cell = find_cell(p, 0);
         j = p.n_coord_ - 1;
         if (level >=0) {j = level + 1;}
         if (found_cell) {
           data.set_value(y, x, p, j);
         }
-        if (color_overlaps_ && check_cell_overlap(&p, false)) {
+        if (color_overlaps_ && check_cell_overlap(p, false)) {
           data.set_overlap(y, x);
         }
       } // inner for

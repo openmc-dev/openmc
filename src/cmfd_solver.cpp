@@ -74,8 +74,9 @@ void set_indexmap(const int* coremap)
   for (int z = 0; z < cmfd::nz; z++) {
     for (int y = 0; y < cmfd::ny; y++) {
       for (int x = 0; x < cmfd::nx; x++) {
-        if (coremap[(z*cmfd::ny*cmfd::nx) + (y*cmfd::nx) + x] != CMFD_NOACCEL) {
-          int counter = coremap[(z*cmfd::ny*cmfd::nx) + (y*cmfd::nx) + x];
+        int idx = (z*cmfd::ny*cmfd::nx) + (y*cmfd::nx) + x;
+        if (coremap[idx] != CMFD_NOACCEL) {
+          int counter = coremap[idx];
           cmfd::indexmap(counter, 0) = x;
           cmfd::indexmap(counter, 1) = y;
           cmfd::indexmap(counter, 2) = z;
@@ -173,7 +174,7 @@ int cmfd_linsolver_2g(const double* A_data, const double* b, double* x,
     for (int irb = 0; irb < 2; irb++) {
 
       // Loop around matrix rows
-      #pragma omp parallel for reduction (+:err) if(cmfd::use_all_threads) 
+      #pragma omp parallel for reduction (+:err) if(cmfd::use_all_threads)
       for (int irow = 0; irow < cmfd::dim; irow+=2) {
         int g, i, j, k;
         matrix_to_indices(irow, g, i, j, k);
@@ -311,6 +312,9 @@ void openmc_initialize_linsolver(const int* indptr, int len_indptr,
                                  double spectral, const int* cmfd_indices,
                                  const int* map, bool use_all_threads)
 {
+  // Make sure vectors are empty
+  free_memory_cmfd();
+
   // Store elements of indptr
   for (int i = 0; i < len_indptr; i++)
     cmfd::indptr.push_back(indptr[i]);

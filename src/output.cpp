@@ -75,7 +75,7 @@ void title()
   fmt::print(
     "                   | The OpenMC Monte Carlo Code\n"
     "         Copyright | 2011-2020 MIT and OpenMC contributors\n"
-    "           License | http://openmc.readthedocs.io/en/latest/license.html\n"
+    "           License | https://docs.openmc.org/en/latest/license.html\n"
     "           Version | {}.{}.{}{}\n", VERSION_MAJOR, VERSION_MINOR,
     VERSION_RELEASE, VERSION_DEV ? "-dev" : "");
 #ifdef GIT_SHA1
@@ -143,10 +143,10 @@ std::string time_stamp()
 
 //==============================================================================
 
-extern "C" void print_particle(Particle* p)
+void print_particle(Particle& p)
 {
   // Display particle type and ID.
-  switch (p->type_) {
+  switch (p.type_) {
     case Particle::Type::neutron:
       fmt::print("Neutron ");
       break;
@@ -162,45 +162,46 @@ extern "C" void print_particle(Particle* p)
     default:
       fmt::print("Unknown Particle ");
   }
-  fmt::print("{}\n", p->id_);
+  fmt::print("{}\n", p.id_);
 
   // Display particle geometry hierarchy.
-  for (auto i = 0; i < p->n_coord_; i++) {
+  for (auto i = 0; i < p.n_coord_; i++) {
     fmt::print("  Level {}\n", i);
 
-    if (p->coord_[i].cell != C_NONE) {
-      const Cell& c {*model::cells[p->coord_[i].cell]};
+    if (p.coord_[i].cell != C_NONE) {
+      const Cell& c {*model::cells[p.coord_[i].cell]};
       fmt::print("    Cell             = {}\n", c.id_);
     }
 
-    if (p->coord_[i].universe != C_NONE) {
-      const Universe& u {*model::universes[p->coord_[i].universe]};
+    if (p.coord_[i].universe != C_NONE) {
+      const Universe& u {*model::universes[p.coord_[i].universe]};
       fmt::print("    Universe         = {}\n", u.id_);
     }
 
-    if (p->coord_[i].lattice != C_NONE) {
-      const Lattice& lat {*model::lattices[p->coord_[i].lattice]};
+    if (p.coord_[i].lattice != C_NONE) {
+      const Lattice& lat {*model::lattices[p.coord_[i].lattice]};
       fmt::print("    Lattice          = {}\n", lat.id_);
-      fmt::print("    Lattice position = ({},{},{})\n", p->coord_[i].lattice_x,
-        p->coord_[i].lattice_y, p->coord_[i].lattice_z);
+      fmt::print("    Lattice position = ({},{},{})\n", p.coord_[i].lattice_x,
+        p.coord_[i].lattice_y, p.coord_[i].lattice_z);
     }
 
-    fmt::print("    r = {}\n", p->coord_[i].r);
-    fmt::print("    u = {}\n", p->coord_[i].u);
+    fmt::print("    r = {}\n", p.coord_[i].r);
+    fmt::print("    u = {}\n", p.coord_[i].u);
   }
 
   // Display miscellaneous info.
-  if (p->surface_ != 0) {
-    const Surface& surf {*model::surfaces[std::abs(p->surface_)-1]};
-    fmt::print("  Surface = {}\n", (p->surface_ > 0) ? surf.id_ : -surf.id_);
+  if (p.surface_ != 0) {
+    // Surfaces identifiers are >= 1, but indices are >= 0 so we need -1
+    const Surface& surf {*model::surfaces[std::abs(p.surface_)-1]};
+    fmt::print("  Surface = {}\n", (p.surface_ > 0) ? surf.id_ : -surf.id_);
   }
-  fmt::print("  Weight = {}\n", p->wgt_);
+  fmt::print("  Weight = {}\n", p.wgt_);
   if (settings::run_CE) {
-    fmt::print("  Energy = {}\n", p->E_);
+    fmt::print("  Energy = {}\n", p.E_);
   } else {
-    fmt::print("  Energy Group = {}\n", p->g_);
+    fmt::print("  Energy Group = {}\n", p.g_);
   }
-  fmt::print("  Delayed Group = {}\n\n", p->delayed_group_);
+  fmt::print("  Delayed Group = {}\n\n", p.delayed_group_);
 }
 
 //==============================================================================
@@ -280,7 +281,7 @@ print_overlap_check()
 
     std::vector<int32_t> sparse_cell_ids;
     for (int i = 0; i < model::cells.size(); i++) {
-      fmt::print(" {:8}{:17}\n", model::cells[i]->id_, model::overlap_check_count[i]);
+      fmt::print(" {:8} {:17}\n", model::cells[i]->id_, model::overlap_check_count[i]);
       if (model::overlap_check_count[i] < 10) {
         sparse_cell_ids.push_back(model::cells[i]->id_);
       }
@@ -327,9 +328,9 @@ void print_version()
 #ifdef GIT_SHA1
     fmt::print("Git SHA1: {}\n", GIT_SHA1);
 #endif
-    fmt::print("Copyright (c) 2011-2019 Massachusetts Institute of "
+    fmt::print("Copyright (c) 2011-2020 Massachusetts Institute of "
       "Technology and OpenMC contributors\nMIT/X license at "
-      "<http://openmc.readthedocs.io/en/latest/license.html>\n");
+      "<https://docs.openmc.org/en/latest/license.html>\n");
   }
 }
 
@@ -352,43 +353,19 @@ void print_columns()
 
 void print_generation()
 {
-  // Determine overall generation and number of active generations
-  int i = overall_generation() - 1;
+  // Determine overall generation index and number of active generations
+  int idx = overall_generation() - 1;
   int n = simulation::current_batch > settings::n_inactive ?
     settings::gen_per_batch*simulation::n_realizations + simulation::current_gen : 0;
 
-  // write out information batch and option independent output
+  // write out batch/generation and generation k-effective
   auto batch_and_gen = std::to_string(simulation::current_batch) + "/" +
     std::to_string(simulation::current_gen);
-  fmt::print("  {:>9}   {:8.5f}", batch_and_gen, simulation::k_generation[i]);
+  fmt::print("  {:>9}   {:8.5f}", batch_and_gen, simulation::k_generation[idx]);
 
   // write out entropy info
   if (settings::entropy_on) {
-    fmt::print("   {:8.5f}", simulation::entropy[i]);
-  }
-
-  if (n > 1) {
-    fmt::print("   {:8.5f} +/-{:8.5f}", simulation::keff, simulation::keff_std);
-  }
-  std::cout << std::endl;
-}
-
-//==============================================================================
-
-void print_batch_keff()
-{
-  // Determine overall generation and number of active generations
-  int i = simulation::current_batch*settings::gen_per_batch - 1;
-  int n = simulation::n_realizations*settings::gen_per_batch;
-
-  // write out information batch and option independent output
-  auto batch_and_gen = std::to_string(simulation::current_batch) + "/" +
-    std::to_string(settings::gen_per_batch);
-  fmt::print("  {:>9}   {:8.5f}", batch_and_gen, simulation::k_generation[i]);
-
-  // write out entropy info
-  if (settings::entropy_on) {
-    fmt::print("   {:8.5f}", simulation::entropy[i]);
+    fmt::print("   {:8.5f}", simulation::entropy[idx]);
   }
 
   if (n > 1) {

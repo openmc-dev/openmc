@@ -135,7 +135,7 @@ ThermalScattering::ThermalScattering(hid_t group, const std::vector<double>& tem
     read_dataset(kT_group, temp_str.data(), kT);
     kTs_.push_back(kT);
 
-    // Open group for temperature i
+    // Open group for this temperature
     hid_t T_group = open_group(group, temp_str.data());
     data_.emplace_back(T_group);
     close_group(T_group);

@@ -55,8 +55,9 @@ void Discrete::normalize()
 {
   // Renormalize density function so that it sums to unity
   double norm = std::accumulate(p_.begin(), p_.end(), 0.0);
-  for (auto& p_i : p_)
+  for (auto& p_i : p_) {
     p_i /= norm;
+  }
 }
 
 //==============================================================================
@@ -66,9 +67,10 @@ void Discrete::normalize()
 Uniform::Uniform(pugi::xml_node node)
 {
   auto params = get_node_array<double>(node, "parameters");
-  if (params.size() != 2)
+  if (params.size() != 2) {
     openmc::fatal_error("Uniform distribution must have two "
                         "parameters specified.");
+  }
 
   a_ = params.at(0);
   b_ = params.at(1);
@@ -119,9 +121,10 @@ double Watt::sample(uint64_t* seed) const
 Normal::Normal(pugi::xml_node node)
 {
   auto params = get_node_array<double>(node,"parameters");
-  if (params.size() != 2)
+  if (params.size() != 2) {
     openmc::fatal_error("Normal energy distribution must have two "
                         "parameters specified.");
+  }
 
   mean_value_ = params.at(0);
   std_dev_ = params.at(1);
@@ -138,9 +141,10 @@ double Normal::sample(uint64_t* seed) const
 Muir::Muir(pugi::xml_node node)
 {
   auto params = get_node_array<double>(node,"parameters");
-  if (params.size() != 3)
+  if (params.size() != 3) {
     openmc::fatal_error("Muir energy distribution must have three "
                         "parameters specified.");
+  }
 
   e0_ = params.at(0);
   m_rat_ = params.at(1);

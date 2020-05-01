@@ -30,33 +30,26 @@ namespace model {
 // Lattice implementation
 //==============================================================================
 
-Lattice::Lattice(pugi::xml_node lat_node)
-{
-  if (check_for_node(lat_node, "id")) {
-    id_ = std::stoi(get_node_value(lat_node, "id"));
-  } else {
-    fatal_error("Must specify id of lattice in geometry XML file.");
-  }
-
-  if (check_for_node(lat_node, "name")) {
-    name_ = get_node_value(lat_node, "name");
-  }
-
-  if (check_for_node(lat_node, "outer")) {
-    outer_ = std::stoi(get_node_value(lat_node, "outer"));
-  }
-}
-
 //==============================================================================
 
 LatticeIter Lattice::begin()
-{return LatticeIter(*this, 0);}
+{
+  if(type_ == LatticeType::rect)
+    return LatticeIter(*this, 0);
+  else
+    return LatticeIter(*this, n_rings_-1);
+}
 
 LatticeIter Lattice::end()
 {return LatticeIter(*this, universes_.size());}
 
 ReverseLatticeIter Lattice::rbegin()
-{return ReverseLatticeIter(*this, universes_.size()-1);}
+{
+  if(type_ == LatticeType::rect)
+    return ReverseLatticeIter(*this, universes_.size()-1);
+  else
+    return ReverseLatticeIter(*this, universes_.size()-n_rings_);
+}
 
 ReverseLatticeIter Lattice::rend()
 {return ReverseLatticeIter(*this, -1);}
@@ -135,76 +128,266 @@ Lattice::to_hdf5(hid_t lattices_group) const
 // RectLattice implementation
 //==============================================================================
 
-RectLattice::RectLattice(pugi::xml_node lat_node)
-  : Lattice {lat_node}
+Lattice::Lattice(pugi::xml_node lat_node, LatticeType type)
+  : type_{type}
 {
-  type_ = LatticeType::rect;
-
-  // Read the number of lattice cells in each dimension.
-  std::string dimension_str {get_node_value(lat_node, "dimension")};
-  std::vector<std::string> dimension_words {split(dimension_str)};
-  if (dimension_words.size() == 2) {
-    n_cells_[0] = std::stoi(dimension_words[0]);
-    n_cells_[1] = std::stoi(dimension_words[1]);
-    n_cells_[2] = 1;
-    is_3d_ = false;
-  } else if (dimension_words.size() == 3) {
-    n_cells_[0] = std::stoi(dimension_words[0]);
-    n_cells_[1] = std::stoi(dimension_words[1]);
-    n_cells_[2] = std::stoi(dimension_words[2]);
-    is_3d_ = true;
+  if (check_for_node(lat_node, "id")) {
+    id_ = std::stoi(get_node_value(lat_node, "id"));
   } else {
-    fatal_error("Rectangular lattice must be two or three dimensions.");
+    fatal_error("Must specify id of lattice in geometry XML file.");
   }
 
-  // Read the lattice lower-left location.
-  std::string ll_str {get_node_value(lat_node, "lower_left")};
-  std::vector<std::string> ll_words {split(ll_str)};
-  if (ll_words.size() != dimension_words.size()) {
-    fatal_error("Number of entries on <lower_left> must be the same as the "
-                "number of entries on <dimension>.");
-  }
-  lower_left_[0] = stod(ll_words[0]);
-  lower_left_[1] = stod(ll_words[1]);
-  if (is_3d_) {lower_left_[2] = stod(ll_words[2]);}
-
-  // Read the lattice pitches.
-  std::string pitch_str {get_node_value(lat_node, "pitch")};
-  std::vector<std::string> pitch_words {split(pitch_str)};
-  if (pitch_words.size() != dimension_words.size()) {
-    fatal_error("Number of entries on <pitch> must be the same as the "
-                "number of entries on <dimension>.");
-  }
-  pitch_[0] = stod(pitch_words[0]);
-  pitch_[1] = stod(pitch_words[1]);
-  if (is_3d_) {pitch_[2] = stod(pitch_words[2]);}
-
-  // Read the universes and make sure the correct number was specified.
-  std::string univ_str {get_node_value(lat_node, "universes")};
-  std::vector<std::string> univ_words {split(univ_str)};
-  if (univ_words.size() != nx*ny*nz) {
-    fatal_error(fmt::format(
-      "Expected {} universes for a rectangular lattice of size {}x{]x{} but {} "
-      "were specified.", nx*ny*nz,  nx, ny, nz, univ_words.size()));
+  if (check_for_node(lat_node, "name")) {
+    name_ = get_node_value(lat_node, "name");
   }
 
-  // Parse the universes.
-  universes_.resize(nx*ny*nz, C_NONE);
-  for (int iz = 0; iz < nz; iz++) {
-    for (int iy = ny-1; iy > -1; iy--) {
-      for (int ix = 0; ix < nx; ix++) {
-        int indx1 = nx*ny*iz + nx*(ny-iy-1) + ix;
-        int indx2 = nx*ny*iz + nx*iy + ix;
-        universes_[indx1] = std::stoi(univ_words[indx2]);
+  if (check_for_node(lat_node, "outer")) {
+    outer_ = std::stoi(get_node_value(lat_node, "outer"));
+  }
+
+  if(type_ == LatticeType::rect) 
+  {
+    // Read the number of lattice cells in each dimension.
+    std::string dimension_str {get_node_value(lat_node, "dimension")};
+    std::vector<std::string> dimension_words {split(dimension_str)};
+    if (dimension_words.size() == 2) {
+      n_cells_[0] = std::stoi(dimension_words[0]);
+      n_cells_[1] = std::stoi(dimension_words[1]);
+      n_cells_[2] = 1;
+      is_3d_ = false;
+    } else if (dimension_words.size() == 3) {
+      n_cells_[0] = std::stoi(dimension_words[0]);
+      n_cells_[1] = std::stoi(dimension_words[1]);
+      n_cells_[2] = std::stoi(dimension_words[2]);
+      is_3d_ = true;
+    } else {
+      fatal_error("Rectangular lattice must be two or three dimensions.");
+    }
+
+    // Read the lattice lower-left location.
+    std::string ll_str {get_node_value(lat_node, "lower_left")};
+    std::vector<std::string> ll_words {split(ll_str)};
+    if (ll_words.size() != dimension_words.size()) {
+      fatal_error("Number of entries on <lower_left> must be the same as the "
+                  "number of entries on <dimension>.");
+    }
+    lower_left_[0] = stod(ll_words[0]);
+    lower_left_[1] = stod(ll_words[1]);
+    if (is_3d_) {lower_left_[2] = stod(ll_words[2]);}
+
+    // Read the lattice pitches.
+    std::string pitch_str {get_node_value(lat_node, "pitch")};
+    std::vector<std::string> pitch_words {split(pitch_str)};
+    if (pitch_words.size() != dimension_words.size()) {
+      fatal_error("Number of entries on <pitch> must be the same as the "
+                  "number of entries on <dimension>.");
+    }
+    pitch_[0] = stod(pitch_words[0]);
+    pitch_[1] = stod(pitch_words[1]);
+    if (is_3d_) {pitch_[2] = stod(pitch_words[2]);}
+
+    // Read the universes and make sure the correct number was specified.
+    std::string univ_str {get_node_value(lat_node, "universes")};
+    std::vector<std::string> univ_words {split(univ_str)};
+    if (univ_words.size() != nx*ny*nz) {
+      fatal_error(fmt::format(
+        "Expected {} universes for a rectangular lattice of size {}x{]x{} but {} "
+        "were specified.", nx*ny*nz,  nx, ny, nz, univ_words.size()));
+    }
+
+    // Parse the universes.
+    universes_.resize(nx*ny*nz, C_NONE);
+    for (int iz = 0; iz < nz; iz++) {
+      for (int iy = ny-1; iy > -1; iy--) {
+        for (int ix = 0; ix < nx; ix++) {
+          int indx1 = nx*ny*iz + nx*(ny-iy-1) + ix;
+          int indx2 = nx*ny*iz + nx*iy + ix;
+          universes_[indx1] = std::stoi(univ_words[indx2]);
+        }
       }
     }
+  }
+  else if(type_ == LatticeType::hex)
+  {
+    // Read the number of lattice cells in each dimension.
+    n_rings_ = std::stoi(get_node_value(lat_node, "n_rings"));
+    if (check_for_node(lat_node, "n_axial")) {
+      n_axial_ = std::stoi(get_node_value(lat_node, "n_axial"));
+      is_3d_ = true;
+    } else {
+      n_axial_ = 1;
+      is_3d_ = false;
+    }
+
+    // Read the lattice orientation.  Default to 'y'.
+    if (check_for_node(lat_node, "orientation")) {
+      std::string orientation = get_node_value(lat_node, "orientation");
+      if (orientation == "y") {
+        orientation_ = Orientation::y;
+      } else if (orientation == "x") {
+        orientation_ = Orientation::x;
+      } else {
+        fatal_error("Unrecognized orientation '" + orientation
+                    + "' for lattice " + std::to_string(id_));
+      }
+    } else {
+      orientation_ = Orientation::y;
+    }
+
+    // Read the lattice center.
+    std::string center_str {get_node_value(lat_node, "center")};
+    std::vector<std::string> center_words {split(center_str)};
+    if (is_3d_ && (center_words.size() != 3)) {
+      fatal_error("A hexagonal lattice with <n_axial> must have <center> "
+                  "specified by 3 numbers.");
+    } else if (!is_3d_ && center_words.size() != 2) {
+      fatal_error("A hexagonal lattice without <n_axial> must have <center> "
+                  "specified by 2 numbers.");
+    }
+    center_[0] = stod(center_words[0]);
+    center_[1] = stod(center_words[1]);
+    if (is_3d_) {center_[2] = stod(center_words[2]);}
+
+    // Read the lattice pitches.
+    std::string pitch_str {get_node_value(lat_node, "pitch")};
+    std::vector<std::string> pitch_words {split(pitch_str)};
+    if (is_3d_ && (pitch_words.size() != 2)) {
+      fatal_error("A hexagonal lattice with <n_axial> must have <pitch> "
+                  "specified by 2 numbers.");
+    } else if (!is_3d_ && (pitch_words.size() != 1)) {
+      fatal_error("A hexagonal lattice without <n_axial> must have <pitch> "
+                  "specified by 1 number.");
+    }
+    pitch_[0] = stod(pitch_words[0]);
+    if (is_3d_) {pitch_[1] = stod(pitch_words[1]);}
+
+    // Read the universes and make sure the correct number was specified.
+    int n_univ = (3*n_rings_*n_rings_ - 3*n_rings_ + 1) * n_axial_;
+    std::string univ_str {get_node_value(lat_node, "universes")};
+    std::vector<std::string> univ_words {split(univ_str)};
+    if (univ_words.size() != n_univ) {
+      fatal_error(fmt::format(
+        "Expected {} universes for a hexagonal lattice with {} rings and {} "
+        "axial levels but {} were specified.", n_univ, n_rings_, n_axial_,
+        univ_words.size()));
+    }
+
+    // Parse the universes.
+    // Universes in hexagonal lattices are stored in a manner that represents
+    // a skewed coordinate system: (x, alpha) in case of 'y' orientation
+    // and (alpha,y) in 'x' one rather than (x, y).  There is
+    // no obvious, direct relationship between the order of universes in the
+    // input and the order that they will be stored in the skewed array so
+    // the following code walks a set of index values across the skewed array
+    // in a manner that matches the input order.  Note that i_x = 0, i_a = 0
+    // or i_a = 0, i_y = 0 corresponds to the center of the hexagonal lattice.
+    universes_.resize((2*n_rings_-1) * (2*n_rings_-1) * n_axial_, C_NONE);
+    if (orientation_ == Orientation::y) {
+      fill_lattice_y(univ_words);
+    } else {
+      fill_lattice_x(univ_words);
+    }
+  }
+}
+
+// Dispatchers
+
+int32_t&
+Lattice::operator[](std::array<int, 3> i_xyz)
+{
+  switch(type_){
+    case LatticeType::rect : return RectLattice_index(i_xyz); break;
+    case LatticeType::hex  : return HexLattice_index(i_xyz); break;
+    default :                fatal_error("Lattice Type not recognized.");
+  }
+}
+
+bool
+Lattice::is_valid_index(int indx) const
+{
+  switch(type_){
+    case LatticeType::rect : return (indx >= 0) && (indx < universes_.size()); break;
+    case LatticeType::hex  : return HexLattice_is_valid_index(indx); break;
+    default :                fatal_error("Lattice Type not recognized.");
+  }
+}
+
+bool
+Lattice::are_valid_indices(const int i_xyz[3]) const
+{
+  switch(type_){
+    case LatticeType::rect : return RectLattice_are_valid_indices(i_xyz); break;
+    case LatticeType::hex  : return HexLattice_are_valid_indices(i_xyz); break;
+    default :                fatal_error("Lattice Type not recognized.");
+  }
+}
+
+std::pair<double, std::array<int, 3>>
+Lattice::distance(Position r, Direction u, const std::array<int, 3>& i_xyz)
+const
+{
+  switch(type_){
+    case LatticeType::rect : return RectLattice_distance(r, u, i_xyz); break;
+    case LatticeType::hex  : return HexLattice_distance(r, u, i_xyz); break;
+    default :                fatal_error("Lattice Type not recognized.");
+  }
+}
+
+std::array<int, 3>
+Lattice::get_indices(Position r, Direction u) const
+{
+  switch(type_){
+    case LatticeType::rect : return RectLattice_get_indices(r,u); break;
+    case LatticeType::hex  : return HexLattice_get_indices(r, u); break;
+    default :                fatal_error("Lattice Type not recognized.");
+  }
+}
+
+Position
+Lattice::get_local_position(Position r, const std::array<int, 3> i_xyz)
+const
+{
+  switch(type_){
+    case LatticeType::rect : return RectLattice_get_local_position(r,i_xyz); break;
+    case LatticeType::hex  : return HexLattice_get_local_position(r, i_xyz); break;
+    default :                fatal_error("Lattice Type not recognized.");
+  }
+}
+
+int32_t&
+Lattice::offset(int map, const int i_xyz[3])
+{
+  switch(type_){
+    case LatticeType::rect : return RectLattice_offset(map, i_xyz); break;
+    case LatticeType::hex  : return HexLattice_offset(map, i_xyz); break;
+    default :                fatal_error("Lattice Type not recognized.");
+  }
+}
+
+std::string
+Lattice::index_to_string(int indx) const
+{
+  switch(type_){
+    case LatticeType::rect : return RectLattice_index_to_string(indx); break;
+    case LatticeType::hex  : return HexLattice_index_to_string(indx); break;
+    default :                fatal_error("Lattice Type not recognized.");
+  }
+}
+
+void
+Lattice::to_hdf5_inner(hid_t lat_group) const
+{
+  switch(type_){
+    case LatticeType::rect : return RectLattice_to_hdf5_inner(lat_group); break;
+    case LatticeType::hex  : return HexLattice_to_hdf5_inner(lat_group); break;
+    default :                fatal_error("Lattice Type not recognized.");
   }
 }
 
 //==============================================================================
 
 int32_t&
-RectLattice::operator[](std::array<int, 3> i_xyz)
+Lattice::RectLattice_index(std::array<int, 3> i_xyz)
 {
   int indx = nx*ny*i_xyz[2] + nx*i_xyz[1] + i_xyz[0];
   return universes_[indx];
@@ -213,7 +396,7 @@ RectLattice::operator[](std::array<int, 3> i_xyz)
 //==============================================================================
 
 bool
-RectLattice::are_valid_indices(const int i_xyz[3]) const
+Lattice::RectLattice_are_valid_indices(const int i_xyz[3]) const
 {
   return (   (i_xyz[0] >= 0) && (i_xyz[0] < n_cells_[0])
           && (i_xyz[1] >= 0) && (i_xyz[1] < n_cells_[1])
@@ -223,7 +406,7 @@ RectLattice::are_valid_indices(const int i_xyz[3]) const
 //==============================================================================
 
 std::pair<double, std::array<int, 3>>
-RectLattice::distance(Position r, Direction u, const std::array<int, 3>& i_xyz)
+Lattice::RectLattice_distance(Position r, Direction u, const std::array<int, 3>& i_xyz)
 const
 {
   // Get short aliases to the coordinates.
@@ -282,7 +465,7 @@ const
 //==============================================================================
 
 std::array<int, 3>
-RectLattice::get_indices(Position r, Direction u) const
+Lattice::RectLattice_get_indices(Position r, Direction u) const
 {
   // Determine x index, accounting for coincidence
   double ix_ {(r.x - lower_left_.x) / pitch_.x};
@@ -321,7 +504,7 @@ RectLattice::get_indices(Position r, Direction u) const
 //==============================================================================
 
 Position
-RectLattice::get_local_position(Position r, const std::array<int, 3> i_xyz)
+Lattice::RectLattice_get_local_position(Position r, const std::array<int, 3> i_xyz)
 const
 {
   r.x -= (lower_left_.x + (i_xyz[0] + 0.5)*pitch_.x);
@@ -335,7 +518,7 @@ const
 //==============================================================================
 
 int32_t&
-RectLattice::offset(int map, const int i_xyz[3])
+Lattice::RectLattice_offset(int map, const int i_xyz[3])
 {
   return offsets_[nx*ny*nz*map + nx*ny*i_xyz[2] + nx*i_xyz[1] + i_xyz[0]];
 }
@@ -343,7 +526,7 @@ RectLattice::offset(int map, const int i_xyz[3])
 //==============================================================================
 
 std::string
-RectLattice::index_to_string(int indx) const
+Lattice::RectLattice_index_to_string(int indx) const
 {
   int iz {indx / (nx * ny)};
   int iy {(indx - nx * ny * iz) / nx};
@@ -361,7 +544,7 @@ RectLattice::index_to_string(int indx) const
 //==============================================================================
 
 void
-RectLattice::to_hdf5_inner(hid_t lat_group) const
+Lattice::RectLattice_to_hdf5_inner(hid_t lat_group) const
 {
   // Write basic lattice information.
   write_string(lat_group, "type", "rectangular", false);
@@ -421,6 +604,7 @@ RectLattice::to_hdf5_inner(hid_t lat_group) const
 // HexLattice implementation
 //==============================================================================
 
+/*
 HexLattice::HexLattice(pugi::xml_node lat_node)
   : Lattice {lat_node}
 {
@@ -505,11 +689,12 @@ HexLattice::HexLattice(pugi::xml_node lat_node)
     fill_lattice_x(univ_words);
   }
 }
+*/
 
 //==============================================================================
 
 void
-HexLattice::fill_lattice_x(const std::vector<std::string>& univ_words)
+Lattice::fill_lattice_x(const std::vector<std::string>& univ_words)
 {
   int input_index = 0;
   for (int m = 0; m < n_axial_; m++) {
@@ -562,7 +747,7 @@ HexLattice::fill_lattice_x(const std::vector<std::string>& univ_words)
 //==============================================================================
 
 void
-HexLattice::fill_lattice_y(const std::vector<std::string>& univ_words)
+Lattice::fill_lattice_y(const std::vector<std::string>& univ_words)
 {
   int input_index = 0;
   for (int m = 0; m < n_axial_; m++) {
@@ -650,7 +835,7 @@ HexLattice::fill_lattice_y(const std::vector<std::string>& univ_words)
 //==============================================================================
 
 int32_t&
-HexLattice::operator[](std::array<int, 3> i_xyz)
+Lattice::HexLattice_index(std::array<int, 3> i_xyz)
 {
   int indx = (2*n_rings_-1)*(2*n_rings_-1) * i_xyz[2]
               + (2*n_rings_-1) * i_xyz[1]
@@ -660,16 +845,11 @@ HexLattice::operator[](std::array<int, 3> i_xyz)
 
 //==============================================================================
 
-LatticeIter HexLattice::begin()
-{return LatticeIter(*this, n_rings_-1);}
-
-ReverseLatticeIter HexLattice::rbegin()
-{return ReverseLatticeIter(*this, universes_.size()-n_rings_);}
 
 //==============================================================================
 
 bool
-HexLattice::are_valid_indices(const int i_xyz[3]) const
+Lattice::HexLattice_are_valid_indices(const int i_xyz[3]) const
 {
   return ((i_xyz[0] >= 0) && (i_xyz[1] >= 0) && (i_xyz[2] >= 0)
           && (i_xyz[0] < 2*n_rings_-1) && (i_xyz[1] < 2*n_rings_-1)
@@ -681,7 +861,7 @@ HexLattice::are_valid_indices(const int i_xyz[3]) const
 //==============================================================================
 
 std::pair<double, std::array<int, 3>>
-HexLattice::distance(Position r, Direction u, const std::array<int, 3>& i_xyz)
+Lattice::HexLattice_distance(Position r, Direction u, const std::array<int, 3>& i_xyz)
 const
 {
   // Short description of the direction vectors used here.  The beta, gamma, and
@@ -823,7 +1003,7 @@ const
 //==============================================================================
 
 std::array<int, 3>
-HexLattice::get_indices(Position r, Direction u) const
+Lattice::HexLattice_get_indices(Position r, Direction u) const
 {
   // Offset the xyz by the lattice center.
   Position r_o {r.x - center_.x, r.y - center_.y, r.z};
@@ -921,7 +1101,7 @@ HexLattice::get_indices(Position r, Direction u) const
 //==============================================================================
 
 Position
-HexLattice::get_local_position(Position r, const std::array<int, 3> i_xyz)
+Lattice::HexLattice_get_local_position(Position r, const std::array<int, 3> i_xyz)
 const
 {
   if (orientation_ == Orientation::y) {
@@ -950,7 +1130,7 @@ const
 //==============================================================================
 
 bool
-HexLattice::is_valid_index(int indx) const
+Lattice::HexLattice_is_valid_index(int indx) const
 {
   int nx {2*n_rings_ - 1};
   int ny {2*n_rings_ - 1};
@@ -964,7 +1144,7 @@ HexLattice::is_valid_index(int indx) const
 //==============================================================================
 
 int32_t&
-HexLattice::offset(int map, const int i_xyz[3])
+Lattice::HexLattice_offset(int map, const int i_xyz[3])
 {
   int nx {2*n_rings_ - 1};
   int ny {2*n_rings_ - 1};
@@ -975,7 +1155,7 @@ HexLattice::offset(int map, const int i_xyz[3])
 //==============================================================================
 
 std::string
-HexLattice::index_to_string(int indx) const
+Lattice::HexLattice_index_to_string(int indx) const
 {
   int nx {2*n_rings_ - 1};
   int ny {2*n_rings_ - 1};
@@ -995,7 +1175,7 @@ HexLattice::index_to_string(int indx) const
 //==============================================================================
 
 void
-HexLattice::to_hdf5_inner(hid_t lat_group) const
+Lattice::HexLattice_to_hdf5_inner(hid_t lat_group) const
 {
   // Write basic lattice information.
   write_string(lat_group, "type", "hexagonal", false);
@@ -1052,10 +1232,12 @@ HexLattice::to_hdf5_inner(hid_t lat_group) const
 void read_lattices(pugi::xml_node node)
 {
   for (pugi::xml_node lat_node : node.children("lattice")) {
-    model::lattices.push_back(std::make_unique<RectLattice>(lat_node));
+    //model::lattices.push_back(std::make_unique<RectLattice>(lat_node));
+    model::lattices.push_back(std::make_unique<Lattice>(lat_node, LatticeType::rect));
   }
   for (pugi::xml_node lat_node : node.children("hex_lattice")) {
-    model::lattices.push_back(std::make_unique<HexLattice>(lat_node));
+    //model::lattices.push_back(std::make_unique<HexLattice>(lat_node));
+    model::lattices.push_back(std::make_unique<Lattice>(lat_node, LatticeType::hex));
   }
 
   // Fill the lattice map.

@@ -57,16 +57,18 @@ public:
   int32_t outer_ {NO_OUTER_UNIVERSE};  //!< Universe tiled outside the lattice
   std::vector<int32_t> offsets_;       //!< Distribcell offset table
 
-  explicit Lattice(pugi::xml_node lat_node);
+  explicit Lattice(pugi::xml_node lat_node, LatticeType type);
 
-  virtual ~Lattice() {}
+  ~Lattice() {}
 
-  virtual int32_t& operator[](std::array<int, 3> i_xyz) = 0;
+  int32_t& operator[](std::array<int, 3> i_xyz);
+  int32_t& RectLattice_index(std::array<int, 3> i_xyz);
+  int32_t& HexLattice_index(std::array<int, 3> i_xyz);
 
-  virtual LatticeIter begin();
+  LatticeIter begin();
   LatticeIter end();
 
-  virtual ReverseLatticeIter rbegin();
+  ReverseLatticeIter rbegin();
   ReverseLatticeIter rend();
 
   //! Convert internal universe values from IDs to indices using universe_map.
@@ -84,7 +86,9 @@ public:
   //! \param i_xyz[3] The indices for a lattice tile.
   //! \return true if the given indices fit within the lattice bounds.  False
   //!   otherwise.
-  virtual bool are_valid_indices(const int i_xyz[3]) const = 0;
+  bool are_valid_indices(const int i_xyz[3]) const;
+  bool RectLattice_are_valid_indices(const int i_xyz[3]) const;
+  bool HexLattice_are_valid_indices(const int i_xyz[3]) const;
 
   bool
   are_valid_indices(std::array<int, 3> i_xyz) const
@@ -99,49 +103,91 @@ public:
   //! \param i_xyz The indices for a lattice tile.
   //! \return The distance to the next crossing and an array indicating how the
   //!   lattice indices would change after crossing that boundary.
-  virtual std::pair<double, std::array<int, 3>>
-  distance(Position r, Direction u, const std::array<int, 3>& i_xyz) const
-  = 0;
+  std::pair<double, std::array<int, 3>>
+  distance(Position r, Direction u, const std::array<int, 3>& i_xyz) const;
+  std::pair<double, std::array<int, 3>>
+  RectLattice_distance(Position r, Direction u, const std::array<int, 3>& i_xyz) const;
+  std::pair<double, std::array<int, 3>>
+  HexLattice_distance(Position r, Direction u, const std::array<int, 3>& i_xyz) const;
 
   //! \brief Find the lattice tile indices for a given point.
   //! \param r A 3D Cartesian coordinate.
   //! \return An array containing the indices of a lattice tile.
-  virtual std::array<int, 3> get_indices(Position r, Direction u) const = 0;
+  std::array<int, 3> get_indices(Position r, Direction u) const;
+  std::array<int, 3> RectLattice_get_indices(Position r, Direction u) const;
+  std::array<int, 3> HexLattice_get_indices(Position r, Direction u) const;
 
   //! \brief Get coordinates local to a lattice tile.
   //! \param r A 3D Cartesian coordinate.
   //! \param i_xyz The indices for a lattice tile.
   //! \return Local 3D Cartesian coordinates.
-  virtual Position
-  get_local_position(Position r, const std::array<int, 3> i_xyz) const = 0;
+  Position
+  get_local_position(Position r, const std::array<int, 3> i_xyz) const;
+  Position
+  RectLattice_get_local_position(Position r, const std::array<int, 3> i_xyz) const;
+  Position
+  HexLattice_get_local_position(Position r, const std::array<int, 3> i_xyz) const;
 
   //! \brief Check flattened lattice index.
   //! \param indx The index for a lattice tile.
   //! \return true if the given index fit within the lattice bounds.  False
   //!   otherwise.
-  virtual bool is_valid_index(int indx) const
-  {return (indx >= 0) && (indx < universes_.size());}
+  bool is_valid_index(int indx) const;
+  bool HexLattice_is_valid_index(int indx) const;
+  //{return (indx >= 0) && (indx < universes_.size());}
 
   //! \brief Get the distribcell offset for a lattice tile.
   //! \param The map index for the target cell.
   //! \param i_xyz[3] The indices for a lattice tile.
   //! \return Distribcell offset i.e. the largest instance number for the target
   //!  cell found in the geometry tree under this lattice tile.
-  virtual int32_t& offset(int map, const int i_xyz[3]) = 0;
+  int32_t& offset(int map, const int i_xyz[3]);
+  int32_t& RectLattice_offset(int map, const int i_xyz[3]);
+  int32_t& HexLattice_offset(int map, const int i_xyz[3]);
 
   //! \brief Convert an array index to a useful human-readable string.
   //! \param indx The index for a lattice tile.
   //! \return A string representing the lattice tile.
-  virtual std::string index_to_string(int indx) const = 0;
+  std::string index_to_string(int indx) const;
+  std::string RectLattice_index_to_string(int indx) const;
+  std::string HexLattice_index_to_string(int indx) const;
 
   //! \brief Write lattice information to an HDF5 group.
   //! \param group_id An HDF5 group id.
   void to_hdf5(hid_t group_id) const;
+  
+private:
+  //! Fill universes_ vector for 'y' orientation
+  void fill_lattice_y(const std::vector<std::string>& univ_words);
+
+  //! Fill universes_ vector for 'x' orientation
+  void fill_lattice_x(const std::vector<std::string>& univ_words);
+
+  enum class Orientation {
+      y, //!< Flat side of lattice parallel to y-axis
+      x  //!< Flat side of lattice parallel to x-axis
+  };
+
+  int n_rings_;                   //!< Number of radial tile positions
+  int n_axial_;                   //!< Number of axial tile positions
+  Orientation orientation_;       //!< Orientation of lattice
+  Position center_;               //!< Global center of lattice
+  Position pitch_;                //!< Lattice tile width along each axis
+  
+  std::array<int, 3> n_cells_;    //!< Number of cells along each axis
+  Position lower_left_;           //!< Global lower-left corner of the lattice
+
+  // Convenience aliases
+  int &nx {n_cells_[0]};
+  int &ny {n_cells_[1]};
+  int &nz {n_cells_[2]};
 
 protected:
   bool is_3d_;  //!< Has divisions along the z-axis?
 
-  virtual void to_hdf5_inner(hid_t group_id) const = 0;
+  void to_hdf5_inner(hid_t group_id) const;
+  void RectLattice_to_hdf5_inner(hid_t group_id) const;
+  void HexLattice_to_hdf5_inner(hid_t group_id) const;
 };
 
 //==============================================================================
@@ -201,6 +247,8 @@ public:
 
 //==============================================================================
 
+
+/*
 class RectLattice : public Lattice
 {
 public:
@@ -234,9 +282,11 @@ private:
   int &ny {n_cells_[1]};
   int &nz {n_cells_[2]};
 };
+*/
 
 //==============================================================================
 
+/*
 class HexLattice : public Lattice
 {
 public:
@@ -271,20 +321,21 @@ private:
       y, //!< Flat side of lattice parallel to y-axis
       x  //!< Flat side of lattice parallel to x-axis
   };
-
+  
   //! Fill universes_ vector for 'y' orientation
   void fill_lattice_y(const std::vector<std::string>& univ_words);
 
   //! Fill universes_ vector for 'x' orientation
   void fill_lattice_x(const std::vector<std::string>& univ_words);
 
+
   int n_rings_;                   //!< Number of radial tile positions
   int n_axial_;                   //!< Number of axial tile positions
   Orientation orientation_;       //!< Orientation of lattice
   Position center_;               //!< Global center of lattice
-  //std::array<double, 2> pitch_;   //!< Lattice tile width and height
   Position pitch_;                //!< Lattice tile width along each axis
 };
+*/
 
 //==============================================================================
 // Non-member functions

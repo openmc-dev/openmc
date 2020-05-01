@@ -1,9 +1,10 @@
 """Tests for openmc.deplete.Chain class."""
 
 from collections.abc import Mapping
+from itertools import product
+from math import log
 import os
 from pathlib import Path
-from itertools import product
 
 import numpy as np
 from openmc.deplete import comm, Chain, reaction_rates, nuclide, cram
@@ -13,14 +14,17 @@ from tests import cdtemp
 
 _TEST_CHAIN = """\
 <depletion_chain>
-  <nuclide name="A" half_life="23652.0" decay_modes="2" decay_energy="0.0" reactions="1">
+  <nuclide name="H1" reactions="0"/>
+  <nuclide name="A" half_life="23652.0" decay_modes="2" decay_energy="0.0" reactions="2">
     <decay type="beta1" target="B" branching_ratio="0.6"/>
     <decay type="beta2" target="C" branching_ratio="0.4"/>
     <reaction type="(n,gamma)" Q="0.0" target="C"/>
+    <reaction type="(n,p)" Q="0.0" target="B"/>
   </nuclide>
-  <nuclide name="B" half_life="32904.0" decay_modes="1" decay_energy="0.0" reactions="1">
+  <nuclide name="B" half_life="32904.0" decay_modes="1" decay_energy="0.0" reactions="2">
     <decay type="beta" target="A" branching_ratio="1.0"/>
     <reaction type="(n,gamma)" Q="0.0" target="C"/>
+    <reaction type="(n,d)" Q="0.0" target="A"/>
   </nuclide>
   <nuclide name="C" reactions="3">
     <reaction type="fission" Q="200000000.0"/>
@@ -46,6 +50,15 @@ def simple_chain():
         yield Chain.from_xml('chain_test.xml')
 
 
+@pytest.fixture(scope='module')
+def endf_chain():
+    endf_data = Path(os.environ['OPENMC_ENDF_DATA'])
+    decay_data = (endf_data / 'decay').glob('*.endf')
+    fpy_data = (endf_data / 'nfy').glob('*.endf')
+    neutron_data = (endf_data / 'neutrons').glob('*.endf')
+    return Chain.from_endf(decay_data, fpy_data, neutron_data)
+
+
 def test_init():
     """Test depletion chain initialization."""
     chain = Chain()
@@ -62,14 +75,9 @@ def test_len():
     assert len(chain) == 3
 
 
-def test_from_endf():
+def test_from_endf(endf_chain):
     """Test depletion chain building from ENDF files"""
-    endf_data = Path(os.environ['OPENMC_ENDF_DATA'])
-    decay_data = (endf_data / 'decay').glob('*.endf')
-    fpy_data = (endf_data / 'nfy').glob('*.endf')
-    neutron_data = (endf_data / 'neutrons').glob('*.endf')
-    chain = Chain.from_endf(decay_data, fpy_data, neutron_data)
-
+    chain = endf_chain
     assert len(chain) == len(chain.nuclides) == len(chain.nuclide_dict) == 3820
     for nuc in chain.nuclides:
         assert nuc == chain[nuc.name]
@@ -84,7 +92,13 @@ def test_from_xml(simple_chain):
     chain = simple_chain
 
     # Basic checks
-    assert len(chain) == 3
+    assert len(chain) == 4
+
+    # H1 tests
+    nuc = chain["H1"]
+    assert nuc.name == "H1"
+    assert nuc.n_decay_modes == 0
+    assert nuc.n_reaction_paths == 0
 
     # A tests
     nuc = chain["A"]
@@ -96,10 +110,10 @@ def test_from_xml(simple_chain):
     assert [m.target for m in modes] == ["B", "C"]
     assert [m.type for m in modes] == ["beta1", "beta2"]
     assert [m.branching_ratio for m in modes] == [0.6, 0.4]
-    assert nuc.n_reaction_paths == 1
-    assert [r.target for r in nuc.reactions] == ["C"]
-    assert [r.type for r in nuc.reactions] == ["(n,gamma)"]
-    assert [r.branching_ratio for r in nuc.reactions] == [1.0]
+    assert nuc.n_reaction_paths == 2
+    assert [r.target for r in nuc.reactions] == ["C", "B"]
+    assert [r.type for r in nuc.reactions] == ["(n,gamma)", "(n,p)"]
+    assert [r.branching_ratio for r in nuc.reactions] == [1.0, 1.0]
 
     # B tests
     nuc = chain["B"]
@@ -111,10 +125,10 @@ def test_from_xml(simple_chain):
     assert [m.target for m in modes] == ["A"]
     assert [m.type for m in modes] == ["beta"]
     assert [m.branching_ratio for m in modes] == [1.0]
-    assert nuc.n_reaction_paths == 1
-    assert [r.target for r in nuc.reactions] == ["C"]
-    assert [r.type for r in nuc.reactions] == ["(n,gamma)"]
-    assert [r.branching_ratio for r in nuc.reactions] == [1.0]
+    assert nuc.n_reaction_paths == 2
+    assert [r.target for r in nuc.reactions] == ["C", "A"]
+    assert [r.type for r in nuc.reactions] == ["(n,gamma)", "(n,d)"]
+    assert [r.branching_ratio for r in nuc.reactions] == [1.0, 1.0]
 
     # C tests
     nuc = chain["C"]
@@ -139,18 +153,26 @@ def test_export_to_xml(run_in_tmpdir):
     # Prevent different MPI ranks from conflicting
     filename = 'test{}.xml'.format(comm.rank)
 
+    H1 = nuclide.Nuclide("H1")
+
     A = nuclide.Nuclide("A")
     A.half_life = 2.36520e4
     A.decay_modes = [
         nuclide.DecayTuple("beta1", "B", 0.6),
         nuclide.DecayTuple("beta2", "C", 0.4)
     ]
-    A.reactions = [nuclide.ReactionTuple("(n,gamma)", "C", 0.0, 1.0)]
+    A.reactions = [
+        nuclide.ReactionTuple("(n,gamma)", "C", 0.0, 1.0),
+        nuclide.ReactionTuple("(n,p)", "B", 0.0, 1.0)
+    ]
 
     B = nuclide.Nuclide("B")
     B.half_life = 3.29040e4
     B.decay_modes = [nuclide.DecayTuple("beta", "A", 1.0)]
-    B.reactions = [nuclide.ReactionTuple("(n,gamma)", "C", 0.0, 1.0)]
+    B.reactions = [
+        nuclide.ReactionTuple("(n,gamma)", "C", 0.0, 1.0),
+        nuclide.ReactionTuple("(n,d)", "A", 0.0, 1.0)
+    ]
 
     C = nuclide.Nuclide("C")
     C.reactions = [
@@ -162,7 +184,7 @@ def test_export_to_xml(run_in_tmpdir):
         0.0253: {"A": 0.0292737, "B": 0.002566345}})
 
     chain = Chain()
-    chain.nuclides = [A, B, C]
+    chain.nuclides = [H1, A, B, C]
     chain.export_to_xml(filename)
 
     chain_xml = open(filename, 'r').read()
@@ -179,43 +201,31 @@ def test_form_matrix(simple_chain):
     nuclides = ["A", "B", "C"]
 
     react = reaction_rates.ReactionRates(mats, nuclides, chain.reactions)
-
     react.set("10000", "C", "fission", 1.0)
     react.set("10000", "A", "(n,gamma)", 2.0)
+    react.set("10000", "A", "(n,p)", 0.1)
     react.set("10000", "B", "(n,gamma)", 3.0)
+    react.set("10000", "B", "(n,d)", 0.2)
     react.set("10000", "C", "(n,gamma)", 4.0)
 
-    mat = chain.form_matrix(react[0, :, :])
-    # Loss A, decay, (n, gamma)
-    mat00 = -np.log(2) / 2.36520E+04 - 2
-    # A -> B, decay, 0.6 branching ratio
-    mat10 = np.log(2) / 2.36520E+04 * 0.6
-    # A -> C, decay, 0.4 branching ratio + (n,gamma)
-    mat20 = np.log(2) / 2.36520E+04 * 0.4 + 2
+    decay_constant = log(2) / 2.36520E+04
+    mat = np.zeros((4, 4))
+    mat[0, 1] = 0.1                       # A -> B, (n,p)
+    mat[1, 1] = -decay_constant - 2.1     # Loss A, decay, (n,gamma), (n,p)
+    mat[2, 1] = decay_constant*0.6 + 0.1  # A -> B, decay, 0.6 branching ratio + (n,p)
+    mat[3, 1] = decay_constant*0.4 + 2    # A -> C, decay, 0.4 branching ratio + (n,gamma)
 
-    # B -> A, decay, 1.0 branching ratio
-    mat01 = np.log(2)/3.29040E+04
-    # Loss B, decay, (n, gamma)
-    mat11 = -np.log(2)/3.29040E+04 - 3
-    # B -> C, (n, gamma)
-    mat21 = 3
+    decay_constant = log(2.0) / 3.29040E+04
+    mat[1, 2] = decay_constant + 0.2   # B -> A, decay, 1.0 branching ratio + (n,d)
+    mat[2, 2] = -decay_constant - 3.2  # Loss B, decay, (n,gamma), (n,d)
+    mat[3, 2] = 3                      # B -> C, (n,gamma)
 
-    # C -> A fission, (n, gamma)
-    mat02 = 0.0292737 * 1.0 + 4.0 * 0.7
-    # C -> B fission, (n, gamma)
-    mat12 = 0.002566345 * 1.0 + 4.0 * 0.3
-    # Loss C, fission, (n, gamma)
-    mat22 = -1.0 - 4.0
+    mat[1, 3] = 0.0292737 * 1.0 + 4.0 * 0.7     # C -> A fission, (n,gamma)
+    mat[2, 3] = 0.002566345 * 1.0 + 4.0 * 0.3   # C -> B fission, (n,gamma)
+    mat[3, 3] = -1.0 - 4.0                      # Loss C, fission, (n,gamma)
 
-    assert mat[0, 0] == mat00
-    assert mat[1, 0] == mat10
-    assert mat[2, 0] == mat20
-    assert mat[0, 1] == mat01
-    assert mat[1, 1] == mat11
-    assert mat[2, 1] == mat21
-    assert mat[0, 2] == mat02
-    assert mat[1, 2] == mat12
-    assert mat[2, 2] == mat22
+    sp_matrix = chain.form_matrix(react[0])
+    assert np.allclose(mat, sp_matrix.toarray())
 
     # Pass equivalent fission yields directly
     # Ensure identical matrix is formed
@@ -226,7 +236,7 @@ def test_form_matrix(simple_chain):
 
 
 def test_getitem():
-    """ Test nuc_by_ind converter function. """
+    """Test nuc_by_ind converter function."""
     chain = Chain()
     chain.nuclides = ["NucA", "NucB", "NucC"]
     chain.nuclide_dict = {nuc: chain.nuclides.index(nuc)
@@ -465,7 +475,7 @@ def gnd_simple_chain():
     return Chain.from_xml(chainfile)
 
 
-def test_reduce(gnd_simple_chain):
+def test_reduce(gnd_simple_chain, endf_chain):
     ref_U5 = gnd_simple_chain["U235"]
     ref_iodine = gnd_simple_chain["I135"]
     ref_U5_yields = ref_U5.yield_data
@@ -546,6 +556,10 @@ def test_reduce(gnd_simple_chain):
     assert set(iodine_chain.nuclide_dict) == set(new_iodine.nuclide_dict)
 
     # Failure if some requested isotopes not in chain
-
     with pytest.raises(IndexError, match=".*not found.*Xx999"):
         gnd_simple_chain.reduce(["U235", "Xx999"])
+
+    # Make sure reduce preserves light nuclides produced from reactions like (n,p)
+    reduced_chain = endf_chain.reduce(['U235'])
+    assert 'H1' in reduced_chain
+    assert 'H2' in reduced_chain

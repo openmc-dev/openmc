@@ -531,6 +531,15 @@ class Chain:
                         if target is not None and path_rate != 0.0:
                             k = self.nuclide_dict[target]
                             matrix[k, i] += path_rate * br
+
+                        # Determine light nuclide production, e.g., (n,d) should
+                        # produce H2
+                        light_nucs = _SECONDARY_PARTICLES.get(r_type, [])
+                        for light_nuc in light_nucs:
+                            k = self.nuclide_dict.get(light_nuc)
+                            if k is not None:
+                                matrix[k, i] += path_rate * br
+
                     else:
                         for product, y in fission_yields[nuc.name].items():
                             yield_val = y * path_rate
@@ -958,13 +967,23 @@ class Chain:
 
                 # Follow all transmutation paths for this nuclide
                 for rxn in nuclide.reactions + nuclide.decay_modes:
-                    if rxn.type == "fission" or rxn.target is None:
+                    if rxn.type == "fission":
                         continue
-                    # Skip if we've already come across this isotope
-                    elif (rxn.target in next_iso
-                          or rxn.target in found or rxn.target in isotopes):
-                        continue
-                    next_iso.add(rxn.target)
+
+                    # Figure out if this reaction produces light nuclides
+                    secondaries = _SECONDARY_PARTICLES.get(rxn.type, [])
+
+                    # Only include secondaries if they are present in original chain
+                    secondaries = [x for x in secondaries if x in self]
+
+                    for product in chain([rxn.target], secondaries):
+                        if product is None:
+                            continue
+                        # Skip if we've already come across this isotope
+                        elif (product in next_iso or product in found
+                              or product in isotopes):
+                            continue
+                        next_iso.add(product)
 
                 if nuclide.yield_data is not None:
                     for product in nuclide.yield_data.products:

@@ -1007,7 +1007,9 @@ HexLattice::to_hdf5_inner(hid_t lat_group) const
     write_string(lat_group, "orientation", "x", false);
   }
   if (is_3d_) {
-    write_dataset(lat_group, "pitch", pitch_);
+    std::array<double, 2> pitch_short {{pitch_[0], pitch_[1]}};
+    write_dataset(lat_group, "pitch", pitch_short);
+    //write_dataset(lat_group, "pitch", pitch_);
     write_dataset(lat_group, "center", center_);
   } else {
     std::array<double, 1> pitch_short {{pitch_[0]}};

@@ -282,7 +282,8 @@ private:
   int n_axial_;                   //!< Number of axial tile positions
   Orientation orientation_;       //!< Orientation of lattice
   Position center_;               //!< Global center of lattice
-  std::array<double, 2> pitch_;   //!< Lattice tile width and height
+  //std::array<double, 2> pitch_;   //!< Lattice tile width and height
+  Position pitch_;                //!< Lattice tile width along each axis
 };
 
 //==============================================================================

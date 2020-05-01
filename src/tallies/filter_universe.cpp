@@ -45,11 +45,11 @@ UniverseFilter::set_universes(gsl::span<int32_t> universes)
 }
 
 void
-UniverseFilter::get_all_bins(const Particle* p, TallyEstimator estimator,
+UniverseFilter::get_all_bins(const Particle& p, TallyEstimator estimator,
                              FilterMatch& match) const
 {
-  for (int i = 0; i < p->n_coord_; i++) {
-    auto search = map_.find(p->coord_[i].universe);
+  for (int i = 0; i < p.n_coord_; i++) {
+    auto search = map_.find(p.coord_[i].universe);
     if (search != map_.end()) {
       match.bins_.push_back(search->second);
       match.weights_.push_back(1.0);

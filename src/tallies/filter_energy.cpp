@@ -58,20 +58,20 @@ EnergyFilter::set_bins(gsl::span<const double> bins)
 }
 
 void
-EnergyFilter::get_all_bins(const Particle* p, TallyEstimator estimator, FilterMatch& match)
+EnergyFilter::get_all_bins(const Particle& p, TallyEstimator estimator, FilterMatch& match)
 const
 {
-  if (p->g_ != F90_NONE && matches_transport_groups_) {
+  if (p.g_ != F90_NONE && matches_transport_groups_) {
     if (estimator == TallyEstimator::TRACKLENGTH) {
-      match.bins_.push_back(data::mg.num_energy_groups_ - p->g_ - 1);
+      match.bins_.push_back(data::mg.num_energy_groups_ - p.g_ - 1);
     } else {
-      match.bins_.push_back(data::mg.num_energy_groups_ - p->g_last_ - 1);
+      match.bins_.push_back(data::mg.num_energy_groups_ - p.g_last_ - 1);
     }
     match.weights_.push_back(1.0);
 
   } else {
     // Get the pre-collision energy of the particle.
-    auto E = p->E_last_;
+    auto E = p.E_last_;
 
     // Bin the energy.
     if (E >= bins_.front() && E <= bins_.back()) {
@@ -100,16 +100,16 @@ EnergyFilter::text_label(int bin) const
 //==============================================================================
 
 void
-EnergyoutFilter::get_all_bins(const Particle* p, TallyEstimator estimator,
+EnergyoutFilter::get_all_bins(const Particle& p, TallyEstimator estimator,
                               FilterMatch& match) const
 {
-  if (p->g_ != F90_NONE && matches_transport_groups_) {
-    match.bins_.push_back(data::mg.num_energy_groups_ - p->g_ - 1);
+  if (p.g_ != F90_NONE && matches_transport_groups_) {
+    match.bins_.push_back(data::mg.num_energy_groups_ - p.g_ - 1);
     match.weights_.push_back(1.0);
 
   } else {
-    if (p->E_ >= bins_.front() && p->E_ <= bins_.back()) {
-      auto bin = lower_bound_index(bins_.begin(), bins_.end(), p->E_);
+    if (p.E_ >= bins_.front() && p.E_ <= bins_.back()) {
+      auto bin = lower_bound_index(bins_.begin(), bins_.end(), p.E_);
       match.bins_.push_back(bin);
       match.weights_.push_back(1.0);
     }
@@ -119,7 +119,7 @@ EnergyoutFilter::get_all_bins(const Particle* p, TallyEstimator estimator,
 std::string
 EnergyoutFilter::text_label(int bin) const
 {
-  return fmt::format("Outgoing Energy [{}, {})", bins_[bin], bins_[bin+1]);
+  return fmt::format("Outgoing Energy [{}, {})", bins_.at(bin), bins_.at(bin+1));
 }
 
 //==============================================================================

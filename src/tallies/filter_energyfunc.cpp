@@ -53,15 +53,15 @@ EnergyFunctionFilter::set_data(gsl::span<const double> energy,
 }
 
 void
-EnergyFunctionFilter::get_all_bins(const Particle* p, TallyEstimator estimator,
+EnergyFunctionFilter::get_all_bins(const Particle& p, TallyEstimator estimator,
                                    FilterMatch& match) const
 {
-  if (p->E_last_ >= energy_.front() && p->E_last_ <= energy_.back()) {
+  if (p.E_last_ >= energy_.front() && p.E_last_ <= energy_.back()) {
     // Search for the incoming energy bin.
-    auto i = lower_bound_index(energy_.begin(), energy_.end(), p->E_last_);
+    auto i = lower_bound_index(energy_.begin(), energy_.end(), p.E_last_);
 
     // Compute the interpolation factor between the nearest bins.
-    double f = (p->E_last_ - energy_[i]) / (energy_[i+1] - energy_[i]);
+    double f = (p.E_last_ - energy_[i]) / (energy_[i+1] - energy_[i]);
 
     // Interpolate on the lin-lin grid.
     match.bins_.push_back(0);

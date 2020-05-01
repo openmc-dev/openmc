@@ -26,7 +26,7 @@ void header(const char* msg, int level);
 std::string time_stamp();
 
 //! Display the attributes of a particle.
-extern "C" void print_particle(Particle* p);
+void print_particle(Particle& p);
 
 //! Display plot information.
 void print_plot();
@@ -45,10 +45,6 @@ void print_columns();
 
 //! Display information about a generation of neutrons
 void print_generation();
-
-//! \brief Display last batch's tallied value of the neutron multiplication
-//! factor as well as the average value if we're in active batches
-void print_batch_keff();
 
 //! Display time elapsed for various stages of a run
 void print_runtime();

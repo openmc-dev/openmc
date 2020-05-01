@@ -45,16 +45,17 @@ moab::DagMC* DAG;
 } // namespace model
 
 
-void check_dagmc_file() {
+std::string dagmc_file() {
   std::string filename = settings::path_input + DAGMC_FILENAME;
   if (!file_exists(filename)) {
     fatal_error("Geometry DAGMC file '" + filename + "' does not exist!");
   }
+  return filename;
 }
 
 bool get_uwuw_materials_xml(std::string& s) {
-  check_dagmc_file();
-  UWUW uwuw((settings::path_input + DAGMC_FILENAME).c_str());
+  std::string filename = dagmc_file();
+  UWUW uwuw(filename.c_str());
 
   std::stringstream ss;
   bool uwuw_mats_present = false;
@@ -79,6 +80,9 @@ bool read_uwuw_materials(pugi::xml_document& doc) {
   bool found_uwuw_mats = get_uwuw_materials_xml(s);
   if (found_uwuw_mats) {
     pugi::xml_parse_result result = doc.load_string(s.c_str());
+    if (!result) {
+      throw std::runtime_error{"Error reading UWUW materials"};
+    }
   }
   return found_uwuw_mats;
 }
@@ -143,16 +147,14 @@ void legacy_assign_material(const std::string& mat_string, DAGCell* c)
 
 void load_dagmc_geometry()
 {
-  check_dagmc_file();
-
   if (!model::DAG) {
     model::DAG = new moab::DagMC();
   }
 
-  std::string filename = settings::path_input + DAGMC_FILENAME;
   // --- Materials ---
 
   // create uwuw instance
+  auto filename = dagmc_file();
   UWUW uwuw(filename.c_str());
 
   // check for uwuw material definitions
@@ -368,8 +370,6 @@ void load_dagmc_geometry()
 
 void read_geometry_dagmc()
 {
-  // Check if dagmc.h5m exists
-  check_dagmc_file();
   write_message("Reading DAGMC geometry...", 5);
   load_dagmc_geometry();
 

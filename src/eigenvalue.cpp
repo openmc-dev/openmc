@@ -134,7 +134,8 @@ void synchronize_bank()
   // ==========================================================================
   // SAMPLE N_PARTICLES FROM FISSION BANK AND PLACE IN TEMP_SITES
 
-  // Allocate temporary source bank
+  // Allocate temporary source bank -- we don't really know how many fission
+  // sites were created, so overallocate by a factor of 3
   int64_t index_temp = 0;
   std::vector<Particle::Bank> temp_sites(3*simulation::work_per_rank);
 
@@ -396,7 +397,8 @@ int openmc_get_keff(double* k_combined)
   // two estimators (vice three) should be used instead.
 
   // First we will identify if there are any matching estimators
-  int i, j, k;
+  int i, j;
+  bool use_three = false;
   if ((std::abs(kv[0] - kv[1]) / kv[0] < FP_REL_PRECISION) &&
       (std::abs(cov(0, 0) - cov(1, 1)) / cov(0, 0) < FP_REL_PRECISION)) {
     // 0 and 1 match, so only use 0 and 2 in our comparisons
@@ -416,12 +418,11 @@ int openmc_get_keff(double* k_combined)
     j = 1;
 
   } else {
-    // No two estimators match, so set i to -1 and this will be the indicator
-    // to use all three estimators.
-    i = -1;
+    // No two estimators match, so set boolean to use all three estimators.
+    use_three = true;
   }
 
-  if (i == -1) {
+  if (use_three) {
     // Use three estimators as derived in the paper by Urbatsch
 
     // Initialize variables
@@ -430,6 +431,7 @@ int openmc_get_keff(double* k_combined)
 
     for (int l = 0; l < 3; ++l) {
       // Permutations of estimates
+      int k;
       switch (l) {
       case 0:
         // i = collision, j = absorption, k = tracklength
@@ -514,11 +516,11 @@ void shannon_entropy()
     if (mpi::master) warning("Fission source site(s) outside of entropy box.");
   }
 
-  // sum values to obtain shannon entropy
   if (mpi::master) {
     // Normalize to total weight of bank sites
     p /= xt::sum(p);
 
+    // Sum values to obtain Shannon entropy
     double H = 0.0;
     for (auto p_i : p) {
       if (p_i > 0.0) {
@@ -571,12 +573,12 @@ void ufs_count_sites()
   }
 }
 
-double ufs_get_weight(const Particle* p)
+double ufs_get_weight(const Particle& p)
 {
   // Determine indices on ufs mesh for current location
-  int mesh_bin = simulation::ufs_mesh->get_bin(p->r());
+  int mesh_bin = simulation::ufs_mesh->get_bin(p.r());
   if (mesh_bin < 0) {
-    p->write_restart();
+    p.write_restart();
     fatal_error("Source site outside UFS mesh!");
   }
 

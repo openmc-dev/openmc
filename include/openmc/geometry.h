@@ -36,7 +36,7 @@ inline bool coincident(double d1, double d2) {
 //! Check for overlapping cells at a particle's position.
 //==============================================================================
 
-bool check_cell_overlap(Particle* p, bool error=true);
+bool check_cell_overlap(Particle& p, bool error=true);
 
 //==============================================================================
 //! Locate a particle in the geometry tree and set its geometry data fields.
@@ -50,19 +50,19 @@ bool check_cell_overlap(Particle* p, bool error=true);
 //!   valid geometry coordinate stack.
 //==============================================================================
 
-bool find_cell(Particle* p, bool use_neighbor_lists);
+bool find_cell(Particle& p, bool use_neighbor_lists);
 
 //==============================================================================
 //! Move a particle into a new lattice tile.
 //==============================================================================
 
-void cross_lattice(Particle* p, const BoundaryInfo& boundary);
+void cross_lattice(Particle& p, const BoundaryInfo& boundary);
 
 //==============================================================================
 //! Find the next boundary a particle will intersect.
 //==============================================================================
 
-BoundaryInfo distance_to_boundary(Particle* p);
+BoundaryInfo distance_to_boundary(Particle& p);
 
 } // namespace openmc
 

@@ -69,7 +69,7 @@ void shannon_entropy();
 void ufs_count_sites();
 
 //! Get UFS weight corresponding to particle's location
-extern "C" double ufs_get_weight(const Particle* p);
+double ufs_get_weight(const Particle& p);
 
 //! Write data related to k-eigenvalue to statepoint
 //! \param[in] group HDF5 group

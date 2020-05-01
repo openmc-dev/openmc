@@ -45,10 +45,10 @@ MaterialFilter::set_materials(gsl::span<const int32_t> materials)
 }
 
 void
-MaterialFilter::get_all_bins(const Particle* p, TallyEstimator estimator,
+MaterialFilter::get_all_bins(const Particle& p, TallyEstimator estimator,
                              FilterMatch& match) const
 {
-  auto search = map_.find(p->material_);
+  auto search = map_.find(p.material_);
   if (search != map_.end()) {
     match.bins_.push_back(search->second);
     match.weights_.push_back(1.0);

@@ -5,6 +5,7 @@
 #include <utility>
 
 #include <fmt/core.h>
+#include <gsl/gsl>
 
 #include "openmc/error.h"
 #include "openmc/dagmc.h"
@@ -276,6 +277,7 @@ Direction DAGSurface::normal(Position r) const
 
 Direction DAGSurface::reflect(Position r, Direction u, Particle* p) const
 {
+  Expects(p);
   p->history_.reset_to_last_intersection();
   p->last_dir_ = Surface::reflect(r, u, p);
   return p->last_dir_;

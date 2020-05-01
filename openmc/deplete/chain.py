@@ -534,12 +534,11 @@ class Chain:
 
                         # Determine light nuclide production, e.g., (n,d) should
                         # produce H2
-                        light_nucs = _SECONDARY_PARTICLES.get(r_type)
-                        if light_nucs is not None:
-                            for light_nuc in light_nucs:
-                                k = self.nuclide_dict.get(light_nuc)
-                                if k is not None:
-                                    matrix[k, i] += path_rate * br
+                        light_nucs = _SECONDARY_PARTICLES.get(r_type, [])
+                        for light_nuc in light_nucs:
+                            k = self.nuclide_dict.get(light_nuc)
+                            if k is not None:
+                                matrix[k, i] += path_rate * br
 
                     else:
                         for product, y in fission_yields[nuc.name].items():

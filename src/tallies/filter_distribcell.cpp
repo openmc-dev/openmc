@@ -48,7 +48,7 @@ DistribcellFilter::get_all_bins(const Particle* p, TallyEstimator estimator,
     if (c.type_ == Fill::UNIVERSE) {
       offset += c.offset_[distribcell_index];
     } else if (c.type_ == Fill::LATTICE) {
-      auto& lat {*model::lattices[p->coord_[i+1].lattice]};
+      auto& lat {model::lattices[p->coord_[i+1].lattice]};
       int i_xyz[3] {p->coord_[i+1].lattice_x,
                     p->coord_[i+1].lattice_y,
                     p->coord_[i+1].lattice_z};

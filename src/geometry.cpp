@@ -140,7 +140,7 @@ find_cell_inner(Particle* p, const NeighborList* neighbor_list)
           if (c_i.type_ == Fill::UNIVERSE) {
             offset += c_i.offset_[c.distribcell_index_];
           } else if (c_i.type_ == Fill::LATTICE) {
-            auto& lat {*model::lattices[p->coord_[i+1].lattice]};
+            auto& lat {model::lattices[p->coord_[i+1].lattice]};
             int i_xyz[3] {p->coord_[i+1].lattice_x,
                           p->coord_[i+1].lattice_y,
                           p->coord_[i+1].lattice_z};
@@ -196,7 +196,7 @@ find_cell_inner(Particle* p, const NeighborList* neighbor_list)
       //========================================================================
       //! Found a lower lattice, update this coord level then search the next.
 
-      Lattice& lat {*model::lattices[c.fill_]};
+      Lattice& lat {model::lattices[c.fill_]};
 
       // Set the position and direction.
       auto& coord {p->coord_[p->n_coord_]};
@@ -294,7 +294,7 @@ void
 cross_lattice(Particle* p, const BoundaryInfo& boundary)
 {
   auto& coord {p->coord_[p->n_coord_ - 1]};
-  auto& lat {*model::lattices[coord.lattice]};
+  auto& lat {model::lattices[coord.lattice]};
 
   if (settings::verbosity >= 10 || p->trace_) {
     write_message(fmt::format(
@@ -369,7 +369,7 @@ BoundaryInfo distance_to_boundary(Particle* p)
 
     // Find the distance to the next lattice tile crossing.
     if (coord.lattice != C_NONE) {
-      auto& lat {*model::lattices[coord.lattice]};
+      auto& lat {model::lattices[coord.lattice]};
       std::array<int, 3> i_xyz {coord.lattice_x, coord.lattice_y, coord.lattice_z};
       //TODO: refactor so both lattice use the same position argument (which
       //also means the lat.type attribute can be removed)

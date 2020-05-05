@@ -22,7 +22,9 @@ namespace openmc {
 //==============================================================================
 
 namespace model {
-  std::vector<std::unique_ptr<Lattice>> lattices;
+  //std::vector<std::unique_ptr<Lattice>> lattices;
+  std::vector<Lattice> lattices;
+  Lattice* device_lattices;
   std::unordered_map<int32_t, int32_t> lattice_map;
 }
 
@@ -1224,6 +1226,21 @@ Lattice::HexLattice_to_hdf5_inner(hid_t lat_group) const
   hsize_t dims[3] {nz, ny, nx};
   write_int(lat_group, 3, dims, "universes", out.data(), false);
 }
+  
+void Lattice::allocate_and_copy_to_device(void)
+{
+  int host_id = omp_get_initial_device();
+  int device_id = omp_get_default_device();
+  size_t sz;
+  
+  sz = universes_.size() * sizeof(int32_t);
+  device_universes_ = (int32_t *) omp_target_alloc(sz, device_id);
+  omp_target_memcpy(device_universes_, universes_.data(), sz, 0, 0, device_id, host_id);
+  
+  sz = offsets_.size() * sizeof(int32_t);
+  device_offsets_ = (int32_t *) omp_target_alloc(sz, device_id);
+  omp_target_memcpy(device_offsets_, offsets_.data(), sz, 0, 0, device_id, host_id);
+}
 
 //==============================================================================
 // Non-method functions
@@ -1233,16 +1250,18 @@ void read_lattices(pugi::xml_node node)
 {
   for (pugi::xml_node lat_node : node.children("lattice")) {
     //model::lattices.push_back(std::make_unique<RectLattice>(lat_node));
-    model::lattices.push_back(std::make_unique<Lattice>(lat_node, LatticeType::rect));
+    //model::lattices.push_back(std::make_unique<Lattice>(lat_node, LatticeType::rect));
+    model::lattices.emplace_back(lat_node, LatticeType::rect);
   }
   for (pugi::xml_node lat_node : node.children("hex_lattice")) {
     //model::lattices.push_back(std::make_unique<HexLattice>(lat_node));
-    model::lattices.push_back(std::make_unique<Lattice>(lat_node, LatticeType::hex));
+    //model::lattices.push_back(std::make_unique<Lattice>(lat_node, LatticeType::hex));
+    model::lattices.emplace_back(lat_node, LatticeType::hex);
   }
 
   // Fill the lattice map.
   for (int i_lat = 0; i_lat < model::lattices.size(); i_lat++) {
-    int id = model::lattices[i_lat]->id_;
+    int id = model::lattices[i_lat].id_;
     auto in_map = model::lattice_map.find(id);
     if (in_map == model::lattice_map.end()) {
       model::lattice_map[id] = i_lat;

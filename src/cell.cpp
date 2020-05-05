@@ -695,7 +695,7 @@ Cell::to_hdf5(hid_t cell_group) const
 
   } else if (type_ == Fill::LATTICE) {
     write_dataset(group, "fill_type", "lattice");
-    write_dataset(group, "lattice", model::lattices[fill_]->id_);
+    write_dataset(group, "lattice", model::lattices[fill_].id_);
   }
 
   close_group(group);

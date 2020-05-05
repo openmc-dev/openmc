@@ -179,7 +179,7 @@ extern "C" void print_particle(Particle* p)
     }
 
     if (p->coord_[i].lattice != C_NONE) {
-      const Lattice& lat {*model::lattices[p->coord_[i].lattice]};
+      const Lattice& lat {model::lattices[p->coord_[i].lattice]};
       fmt::print("    Lattice          = {}\n", lat.id_);
       fmt::print("    Lattice position = ({},{},{})\n", p->coord_[i].lattice_x,
         p->coord_[i].lattice_y, p->coord_[i].lattice_z);

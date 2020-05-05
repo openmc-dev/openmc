@@ -128,7 +128,7 @@ adjust_indices()
 
   // Change all lattice universe values from IDs to indices.
   for (auto& l : model::lattices) {
-    l->adjust_indices();
+    l.adjust_indices();
   }
 }
 
@@ -282,12 +282,22 @@ find_root_universe()
   }
 
   // Find all the universes contained in a lattice.
-  for (const auto& lat : model::lattices) {
-    for (auto it = lat->begin(); it != lat->end(); ++it) {
+  //for (const auto& lat : model::lattices) {
+  //for (auto& lat : model::lattices) {
+  /*
+  for (int i = 0; i < model::lattices.size(); i++ )
+  {
+    const auto& lat = &model::lattices[i];
+    */
+  for( Lattice& lat : model::lattices) {
+    //for (auto it = lat->begin(); it != lat->end(); ++it) {
+    for (LatticeIter it = lat.begin(); it != lat.end(); ++it) {
       fill_univ_ids.insert(*it);
     }
-    if (lat->outer_ != NO_OUTER_UNIVERSE) {
-      fill_univ_ids.insert(lat->outer_);
+    //if (lat->outer_ != NO_OUTER_UNIVERSE) {
+    if (lat.outer_ != NO_OUTER_UNIVERSE) {
+      //fill_univ_ids.insert(lat->outer_);
+      fill_univ_ids.insert(lat.outer_);
     }
   }
 
@@ -383,7 +393,7 @@ prepare_distribcell()
     }
   }
   for (auto& lat : model::lattices) {
-    lat->allocate_offset_table(n_maps);
+    lat.allocate_offset_table(n_maps);
   }
 
   // Fill the cell and lattice offset tables.
@@ -403,7 +413,7 @@ prepare_distribcell()
                                              univ_count_memo);
 
         } else if (c.type_ == Fill::LATTICE) {
-          Lattice& lat = *model::lattices[c.fill_];
+          Lattice& lat = model::lattices[c.fill_];
           offset = lat.fill_offset_table(offset, target_univ_id, map,
                                          univ_count_memo);
         }
@@ -434,7 +444,7 @@ count_cell_instances(int32_t univ_indx)
         update_universe_cell_count(univ_indx, c.fill_);
       } else if (c.type_ == Fill::LATTICE) {
         // This cell contains a lattice.  Recurse into the lattice universes.
-        Lattice& lat = *model::lattices[c.fill_];
+        Lattice& lat = model::lattices[c.fill_];
         for (auto it = lat.begin(); it != lat.end(); ++it) {
           count_cell_instances(*it);
           update_universe_cell_count(univ_indx, *it);
@@ -471,7 +481,7 @@ count_universe_instances(int32_t search_univ, int32_t target_univ_id,
                                         univ_count_memo);
 
     } else if (c.type_ == Fill::LATTICE) {
-      Lattice& lat = *model::lattices[c.fill_];
+      Lattice& lat = model::lattices[c.fill_];
       for (auto it = lat.begin(); it != lat.end(); ++it) {
         int32_t next_univ = *it;
         count += count_universe_instances(next_univ, target_univ_id,
@@ -520,7 +530,7 @@ distribcell_path_inner(int32_t target_cell, int32_t map, int32_t target_offset,
       if (c.type_ == Fill::UNIVERSE) {
         temp_offset = offset + c.offset_[map];
       } else {
-        Lattice& lat = *model::lattices[c.fill_];
+        Lattice& lat = model::lattices[c.fill_];
         int32_t indx = lat.universes_.size()*map + lat.begin().indx_;
         temp_offset = offset + lat.offsets_[indx];
       }
@@ -543,7 +553,7 @@ distribcell_path_inner(int32_t target_cell, int32_t map, int32_t target_offset,
     return path.str();
   } else {
     // Recurse into the lattice cell.
-    Lattice& lat = *model::lattices[c.fill_];
+    Lattice& lat = model::lattices[c.fill_];
     path << "l" << lat.id_;
     for (ReverseLatticeIter it = lat.rbegin(); it != lat.rend(); ++it) {
       int32_t indx = lat.universes_.size()*map + it.indx_;
@@ -586,7 +596,7 @@ maximum_levels(int32_t univ)
       int32_t next_univ = c.fill_;
       levels_below = std::max(levels_below, maximum_levels(next_univ));
     } else if (c.type_ == Fill::LATTICE) {
-      Lattice& lat = *model::lattices[c.fill_];
+      Lattice& lat = model::lattices[c.fill_];
       for (auto it = lat.begin(); it != lat.end(); ++it) {
         int32_t next_univ = *it;
         levels_below = std::max(levels_below, maximum_levels(next_univ));

@@ -35,7 +35,9 @@ enum class LatticeType {
 class Lattice;
 
 namespace model {
-  extern std::vector<std::unique_ptr<Lattice>> lattices;
+  //extern std::vector<std::unique_ptr<Lattice>> lattices;
+  extern std::vector<Lattice> lattices;
+  extern Lattice* device_lattices;
   extern std::unordered_map<int32_t, int32_t> lattice_map;
 } // namespace model
 
@@ -54,8 +56,10 @@ public:
   std::string name_;                   //!< User-defined name
   LatticeType type_;
   std::vector<int32_t> universes_;     //!< Universes filling each lattice tile
+  int32_t* device_universes_;     //!< Universes filling each lattice tile
   int32_t outer_ {NO_OUTER_UNIVERSE};  //!< Universe tiled outside the lattice
   std::vector<int32_t> offsets_;       //!< Distribcell offset table
+  int32_t* device_offsets_;       //!< Distribcell offset table
 
   explicit Lattice(pugi::xml_node lat_node, LatticeType type);
 
@@ -155,6 +159,8 @@ public:
   //! \brief Write lattice information to an HDF5 group.
   //! \param group_id An HDF5 group id.
   void to_hdf5(hid_t group_id) const;
+
+  void allocate_and_copy_to_device(void);
   
 private:
   //! Fill universes_ vector for 'y' orientation

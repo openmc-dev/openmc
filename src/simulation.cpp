@@ -8,6 +8,7 @@
 #include "openmc/error.h"
 #include "openmc/event.h"
 #include "openmc/geometry_aux.h"
+#include "openmc/lattice.h"
 #include "openmc/material.h"
 #include "openmc/message_passing.h"
 #include "openmc/nuclide.h"
@@ -133,6 +134,7 @@ int openmc_simulation_init()
   ////////////////////////////////////////////////////////////////////
   // BEGIN: Move all read only data to device
   ////////////////////////////////////////////////////////////////////
+  /*
   
   int host_id = omp_get_initial_device();
   int device_id = omp_get_default_device();
@@ -173,6 +175,19 @@ int openmc_simulation_init()
   sz = model::cells.size() * sizeof(Cell);
   model::device_cells = (Cell *) omp_target_alloc(sz, device_id);
   omp_target_memcpy(model::device_cells, model::cells.data(), sz, 0, 0, device_id, host_id);
+  
+  // Lattices /////////////////////////////////////////////////////////
+
+  // Allocate and move vectors internal to each cell on the device
+  std::cout << "Moving " << model::lattices.size() << " lattices to device..." << std::endl;
+  for( auto& lattice : model::lattices ) {
+    lattice.allocate_and_copy_to_device();
+  }
+  // Move all lattice data to device
+  sz = model::lattices.size() * sizeof(Lattice);
+  model::device_lattices = (Lattice *) omp_target_alloc(sz, device_id);
+  omp_target_memcpy(model::device_lattices, model::lattices.data(), sz, 0, 0, device_id, host_id);
+  */
 
 
   

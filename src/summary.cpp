@@ -115,7 +115,7 @@ void write_geometry(hid_t file)
   close_group(universes_group);
 
   auto lattices_group = create_group(geom_group, "lattices");
-  for (const auto& lat : model::lattices) lat->to_hdf5(lattices_group);
+  for (const auto& lat : model::lattices) lat.to_hdf5(lattices_group);
   close_group(lattices_group);
 
   close_group(geom_group);

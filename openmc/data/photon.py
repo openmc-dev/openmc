@@ -880,7 +880,7 @@ class IncidentPhoton(EqualityMixin):
                     # Cubic spline interpolation in log energy and linear DCS
                     cs = CubicSpline(logx, y[:, j])
 
-                    # Get scaled DCS values (millibarns) on new energy grid
+                    # Get scaled DCS values (barns) on new energy grid
                     dcs[:, j] = cs(log_energy)
 
                 _BREMSSTRAHLUNG[i]['dcs'] = dcs

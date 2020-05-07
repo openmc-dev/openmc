@@ -223,27 +223,31 @@ Particle::event_advance()
   }
 
   // Select smaller of the two distances
-  double distance = std::min(boundary_.distance, collision_distance_);
+  advance_distance_ = std::min(boundary_.distance, collision_distance_);
 
   // Advance particle
   for (int j = 0; j < n_coord_; ++j) {
-    coord_[j].r += distance * coord_[j].u;
+    coord_[j].r += advance_distance_ * coord_[j].u;
   }
+}
 
+void
+Particle::event_advance_tally()
+{
   // Score track-length tallies
   if (!model::active_tracklength_tallies.empty()) {
-    score_tracklength_tally(this, distance);
+    score_tracklength_tally(this, advance_distance_);
   }
 
   // Score track-length estimate of k-eff
   if (settings::run_mode == RunMode::EIGENVALUE &&
       type_ == Particle::Type::neutron) {
-    keff_tally_tracklength_ += wgt_ * distance * macro_xs_.nu_fission;
+    keff_tally_tracklength_ += wgt_ * advance_distance_ * macro_xs_.nu_fission;
   }
 
   // Score flux derivative accumulators for differential tallies.
   if (!model::active_tallies.empty()) {
-    score_track_derivative(this, distance);
+    score_track_derivative(this, advance_distance_);
   }
 }
 

@@ -236,6 +236,7 @@ public:
   // Coarse-grained particle events
   void event_calculate_xs();
   void event_advance();
+  void event_advance_tally();
   void event_cross_surface();
   void event_collide();
   void event_revive_from_secondary();
@@ -380,6 +381,8 @@ public:
   bool trace_ {false};     //!< flag to show debug information
 
   double collision_distance_; // distance to particle's next closest collision
+  
+  double advance_distance_; // distance the particle actually advanced this event
 
   int n_event_ {0}; // number of events executed in this particle's history
 

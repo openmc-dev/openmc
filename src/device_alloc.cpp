@@ -4,15 +4,17 @@ namespace openmc {
 
 void * device_alloc( size_t sz, int device_id )
 {
-  void * ptr;
+  void * ptr = NULL;
 
-  #ifdef USE_DEVICE
-  ptr = (void *) omp_target_alloc(sz, device_id);
-  #else
-  ptr = (void *) malloc(sz);
-  #endif
-
-  assert(ptr != NULL);
+  if( sz > 0 )
+  {
+    #ifdef USE_DEVICE
+    ptr = (void *) omp_target_alloc(sz, device_id);
+    #else
+    ptr = (void *) malloc(sz);
+    #endif
+    assert(ptr != NULL);
+  }
 
   return ptr;
 }

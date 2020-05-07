@@ -184,9 +184,9 @@ private:
   Position lower_left_;           //!< Global lower-left corner of the lattice
 
   // Convenience aliases
-  int &nx {n_cells_[0]};
-  int &ny {n_cells_[1]};
-  int &nz {n_cells_[2]};
+  //int &nx {n_cells_[0]};
+  //int &ny {n_cells_[1]};
+  //int &nz {n_cells_[2]};
 
 protected:
   bool is_3d_;  //!< Has divisions along the z-axis?

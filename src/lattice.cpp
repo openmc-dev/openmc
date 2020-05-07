@@ -191,6 +191,12 @@ Lattice::Lattice(pugi::xml_node lat_node, LatticeType type)
     // Read the universes and make sure the correct number was specified.
     std::string univ_str {get_node_value(lat_node, "universes")};
     std::vector<std::string> univ_words {split(univ_str)};
+
+    // Convenience aliases
+    int nx {n_cells_[0]};
+    int ny {n_cells_[1]};
+    int nz {n_cells_[2]};
+
     if (univ_words.size() != nx*ny*nz) {
       fatal_error(fmt::format(
         "Expected {} universes for a rectangular lattice of size {}x{]x{} but {} "
@@ -391,6 +397,10 @@ Lattice::to_hdf5_inner(hid_t lat_group) const
 int32_t&
 Lattice::RectLattice_index(std::array<int, 3> i_xyz)
 {
+  // Convenience aliases
+  int nx {n_cells_[0]};
+  int ny {n_cells_[1]};
+  int nz {n_cells_[2]};
   int indx = nx*ny*i_xyz[2] + nx*i_xyz[1] + i_xyz[0];
   return universes_[indx];
 }
@@ -522,6 +532,10 @@ const
 int32_t&
 Lattice::RectLattice_offset(int map, const int i_xyz[3])
 {
+  // Convenience aliases
+  int nx {n_cells_[0]};
+  int ny {n_cells_[1]};
+  int nz {n_cells_[2]};
   return offsets_[nx*ny*nz*map + nx*ny*i_xyz[2] + nx*i_xyz[1] + i_xyz[0]];
 }
 
@@ -530,6 +544,10 @@ Lattice::RectLattice_offset(int map, const int i_xyz[3])
 std::string
 Lattice::RectLattice_index_to_string(int indx) const
 {
+  // Convenience aliases
+  int nx {n_cells_[0]};
+  int ny {n_cells_[1]};
+  int nz {n_cells_[2]};
   int iz {indx / (nx * ny)};
   int iy {(indx - nx * ny * iz) / nx};
   int ix {indx - nx * ny * iz - nx * iy};

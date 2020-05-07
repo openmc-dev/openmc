@@ -1265,7 +1265,6 @@ class Library:
                     i += 1
 
         else:
-            # import pdb; pdb.set_trace()
             # Create the xsdata object and add it to the mgxs_file
             for i, domain in enumerate(self.domains):
                 if self.by_nuclide:

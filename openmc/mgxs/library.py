@@ -1265,6 +1265,7 @@ class Library:
                     i += 1
 
         else:
+            # import pdb; pdb.set_trace()
             # Create the xsdata object and add it to the mgxs_file
             for i, domain in enumerate(self.domains):
                 if self.by_nuclide:
@@ -1277,8 +1278,6 @@ class Library:
                         xsdata_name = 'set' + str(i + 1)
                     else:
                         xsdata_name = xsdata_names[i]
-                    if nuclide != 'total':
-                        xsdata_name += '_' + nuclide
 
                     xsdata = self.get_xsdata(domain, xsdata_name,
                                              nuclide=nuclide, xs_type=xs_type)

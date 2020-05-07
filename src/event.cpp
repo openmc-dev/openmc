@@ -35,6 +35,9 @@ void init_event_queues(int64_t n_particles)
   simulation::collision_queue.reserve(n_particles);
 
   simulation::particles.resize(n_particles);
+
+  // Allocate any queues that are needed on device
+  simulation::advance_particle_queue.allocate_on_device();
 }
 
 void free_event_queues(void)
@@ -105,12 +108,27 @@ void process_advance_particle_events()
 {
   simulation::time_event_advance_particle.start();
 
-  #pragma omp parallel for schedule(runtime)
+  //#pragma omp parallel for schedule(runtime)
+
+  // Move queue and particles host->device
+  simulation::advance_particle_queue.copy_host_to_device();
+  int host_id = omp_get_initial_device();
+  int device_id = omp_get_default_device();
+  size_t sz = simulation::particles.size() * sizeof(Particle);
+  device_memcpy(simulation::device_particles, simulation::particles.data(), sz, device_id, host_id);
+
+  //#pragma omp parallel for schedule(runtime)
+  #pragma omp target teams distribute
   for (int64_t i = 0; i < simulation::advance_particle_queue.size(); i++) {
-    int64_t buffer_idx = simulation::advance_particle_queue[i].idx;
-    Particle& p = simulation::particles[buffer_idx];
+    //int64_t buffer_idx = simulation::advance_particle_queue[i].idx;
+    //int64_t buffer_idx = simulation::advance_particle_queue.device_at(i).idx;
+    int64_t buffer_idx = simulation::advance_particle_queue.device_data_[i].idx;
+    Particle& p = simulation::device_particles[buffer_idx];
     p.event_advance();
   }
+
+  // Move particles device->host
+  device_memcpy(simulation::particles.data(), simulation::device_particles, sz, host_id, device_id);
   
   #pragma omp parallel for schedule(runtime)
   for (int64_t i = 0; i < simulation::advance_particle_queue.size(); i++) {

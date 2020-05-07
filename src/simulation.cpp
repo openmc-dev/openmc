@@ -83,7 +83,9 @@ int openmc_simulation_init()
     int64_t event_buffer_length = std::min(simulation::work_per_rank,
       settings::max_particles_in_flight);
     init_event_queues(event_buffer_length);
-    simulation::device_particles = (Particle*) malloc(event_buffer_length* sizeof(Particle));
+    //simulation::device_particles = (Particle*) malloc(event_buffer_length* sizeof(Particle));
+    int device_id = omp_get_default_device();
+    simulation::device_particles = (Particle*) device_alloc(event_buffer_length* sizeof(Particle), device_id);
   }
 
   // Allocate tally results arrays if they're not allocated yet

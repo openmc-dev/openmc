@@ -6,6 +6,7 @@
 
 #include <memory>
 
+#include "openmc/device_alloc.h"
 
 namespace openmc {
 
@@ -31,6 +32,11 @@ public:
   //! Default constructor.
   SharedArray() = default;
 
+  ~SharedArray()
+  {
+    this->clear();
+  }
+
   //! Construct a zero size container with space to hold capacity number of
   //! elements.
   //
@@ -38,7 +44,7 @@ public:
   //! space for
   SharedArray(int64_t capacity) : capacity_(capacity)
   {
-    data_ = std::make_unique<T[]>(capacity);
+    data_ = new T[capacity];
   }
 
   //==========================================================================
@@ -48,6 +54,9 @@ public:
   //! checking is performed.
   T& operator[](int64_t i) {return data_[i];}
   const T& operator[](int64_t i) const { return data_[i]; }
+  
+  T& device_at(int64_t i) {return device_data_[i];}
+  const T& device_at(int64_t i) const { return device_data_[i]; }
 
   //! Allocate space in the container for the specified number of elements.
   //! reserve() does not change the size of the container.
@@ -55,7 +64,7 @@ public:
   //! \param capacity The number of elements to allocate in the container
   void reserve(int64_t capacity)
   {
-    data_ = std::make_unique<T[]>(capacity);
+    data_ = new T[capacity];
     capacity_ = capacity;
   }
 
@@ -93,7 +102,11 @@ public:
   //! container's size and capacity to 0.
   void clear()
   {
-    data_.reset();
+    if( data_ != NULL )
+    {
+      delete[] data_;
+      data_ = NULL;
+    }
     size_ = 0;
     capacity_ = 0;
   }
@@ -113,14 +126,38 @@ public:
   int64_t capacity() {return capacity_;}
 
   //! Return pointer to the underlying array serving as element storage.
-  T* data() {return data_.get();}
-  const T* data() const {return data_.get();}
+  T* data() {return data_;}
+  const T* data() const {return data_;}
 
+  void allocate_on_device()
+  {
+    int device_id = omp_get_default_device();
+    size_t sz = capacity_ * sizeof(T);
+    device_data_ = (T *) device_alloc(sz, device_id);
+  }
+
+  void copy_host_to_device()
+  {
+    int host_id = omp_get_initial_device();
+    int device_id = omp_get_default_device();
+    size_t sz = capacity_ * sizeof(T);
+    device_memcpy(device_data_, data_, sz, device_id, host_id);
+  }
+  
+  void copy_device_to_host()
+  {
+    int host_id = omp_get_initial_device();
+    int device_id = omp_get_default_device();
+    size_t sz = capacity_ * sizeof(T);
+    device_memcpy(data_, device_data_, sz, host_id, device_id);
+  }
+
+  T* device_data_; //!< An RAII handle to the elements
 private: 
   //==========================================================================
   // Data members
 
-  std::unique_ptr<T[]> data_; //!< An RAII handle to the elements
+  T* data_; //!< An RAII handle to the elements
   int64_t size_ {0}; //!< The current number of elements 
   int64_t capacity_ {0}; //!< The total space allocated for elements
 

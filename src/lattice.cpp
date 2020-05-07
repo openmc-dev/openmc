@@ -7,6 +7,7 @@
 #include <fmt/core.h>
 
 #include "openmc/cell.h"
+#include "openmc/device_alloc.h"
 #include "openmc/error.h"
 #include "openmc/geometry.h"
 #include "openmc/geometry_aux.h"
@@ -1252,12 +1253,16 @@ void Lattice::allocate_and_copy_to_device(void)
   size_t sz;
   
   sz = universes_.size() * sizeof(int32_t);
-  device_universes_ = (int32_t *) omp_target_alloc(sz, device_id);
-  omp_target_memcpy(device_universes_, universes_.data(), sz, 0, 0, device_id, host_id);
+  //device_universes_ = (int32_t *) omp_target_alloc(sz, device_id);
+  //omp_target_memcpy(device_universes_, universes_.data(), sz, 0, 0, device_id, host_id);
+  device_universes_ = (int32_t *) device_alloc(sz, device_id);
+  device_memcpy(device_universes_, universes_.data(), sz, device_id, host_id);
   
   sz = offsets_.size() * sizeof(int32_t);
-  device_offsets_ = (int32_t *) omp_target_alloc(sz, device_id);
-  omp_target_memcpy(device_offsets_, offsets_.data(), sz, 0, 0, device_id, host_id);
+  //device_offsets_ = (int32_t *) omp_target_alloc(sz, device_id);
+  //omp_target_memcpy(device_offsets_, offsets_.data(), sz, 0, 0, device_id, host_id);
+  device_offsets_ = (int32_t *) device_alloc(sz, device_id);
+  device_memcpy(device_offsets_, offsets_.data(), sz, device_id, host_id);
 }
 
 //==============================================================================

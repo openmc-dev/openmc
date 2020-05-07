@@ -15,6 +15,7 @@
 #include "openmc/capi.h"
 #include "openmc/constants.h"
 #include "openmc/dagmc.h"
+#include "openmc/device_alloc.h"
 #include "openmc/error.h"
 #include "openmc/geometry.h"
 #include "openmc/hdf5_interface.h"
@@ -231,28 +232,34 @@ void Universe::allocate_and_copy_to_device()
   size_t sz;
 
   sz = cells_.size() * sizeof(int32_t);
-  device_cells_ = (int32_t *) omp_target_alloc(sz, device_id);
-  omp_target_memcpy(device_cells_, cells_.data(), sz, 0, 0, device_id, host_id);
+  //device_cells_ = (int32_t *) omp_target_alloc(sz, device_id);
+  //omp_target_memcpy(device_cells_, cells_.data(), sz, 0, 0, device_id, host_id);
+  device_cells_ = (int32_t *) device_alloc(sz, device_id);
+  device_memcpy(device_cells_, cells_.data(), sz, device_id, host_id);
 
   if(partitioner_ != NULL) 
   {
     // Allocate space on device for partitioner
     sz = sizeof(UniversePartitioner);
-    device_partitioner_ = (UniversePartitioner *) omp_target_alloc(sz, device_id);
+    //device_partitioner_ = (UniversePartitioner *) omp_target_alloc(sz, device_id);
+    device_partitioner_ = (UniversePartitioner *) device_alloc(sz, device_id);
 
     // Fill in the partioner info on the host
     UniversePartitioner up = *partitioner_;
 
     // Copy over surfs vector (simple 1D)
     sz = up.surfs_.size() * sizeof(int32_t);
-    up.device_surfs_ = (int32_t *) omp_target_alloc(sz, device_id);
-    omp_target_memcpy(up.device_surfs_, partitioner_->surfs_.data(), sz, 0, 0, device_id, host_id);
+    //up.device_surfs_ = (int32_t *) omp_target_alloc(sz, device_id);
+    //omp_target_memcpy(up.device_surfs_, partitioner_->surfs_.data(), sz, 0, 0, device_id, host_id);
+    up.device_surfs_ = (int32_t *) device_alloc(sz, device_id);
+    device_memcpy(up.device_surfs_, partitioner_->surfs_.data(), sz, device_id, host_id);
     
     // Copy over partions_ 2D vector
 
     // Step 1: Allocate space to store pointer array
     sz = up.partitions_.size() * sizeof(int32_t *);
-    up.device_partitions_ = (int32_t **) omp_target_alloc(sz, device_id);
+    //up.device_partitions_ = (int32_t **) omp_target_alloc(sz, device_id);
+    up.device_partitions_ = (int32_t **) device_alloc(sz, device_id);
 
     // Allocate host side place to store pointers to each row
     int32_t ** pmap = (int32_t **) malloc(sz);
@@ -261,20 +268,24 @@ void Universe::allocate_and_copy_to_device()
     for( int i = 0; i < up.partitions_.size(); i++ )
     {
       sz = up.partitions_[i].size() * sizeof(int32_t);
-      pmap[i] = (int32_t *) omp_target_alloc(sz, device_id);
-      omp_target_memcpy(pmap[i], up.partitions_[i].data(), sz, 0, 0, device_id, host_id);
+      //pmap[i] = (int32_t *) omp_target_alloc(sz, device_id);
+      //omp_target_memcpy(pmap[i], up.partitions_[i].data(), sz, 0, 0, device_id, host_id);
+      pmap[i] = (int32_t *) device_alloc(sz, device_id);
+      device_memcpy(pmap[i], up.partitions_[i].data(), sz, device_id, host_id);
     }
 
     // Copy over array of pointers
     sz = up.partitions_.size() * sizeof(int32_t *);
-    omp_target_memcpy(up.device_partitions_, pmap, sz, 0, 0, device_id, host_id);
+    //omp_target_memcpy(up.device_partitions_, pmap, sz, 0, 0, device_id, host_id);
+    device_memcpy(up.device_partitions_, pmap, sz, device_id, host_id);
 
     // free pointer map
     free(pmap);
 
     // Copy over full partitioner
     sz = sizeof(UniversePartitioner);
-    omp_target_memcpy(device_partitioner_, &up, sz, 0, 0, device_id, host_id);
+    //omp_target_memcpy(device_partitioner_, &up, sz, 0, 0, device_id, host_id);
+    device_memcpy(device_partitioner_, &up, sz, device_id, host_id);
   }
 
 }
@@ -333,22 +344,22 @@ void Cell::allocate_on_device()
   size_t sz;
 
   sz = material_.size() * sizeof(int32_t);
-  device_material_ = (int32_t *) omp_target_alloc(sz, device_id);
+  device_material_ = (int32_t *) device_alloc(sz, device_id);
 
   sz = sqrtkT_.size() * sizeof(double);
-  device_sqrtkT_ = (double *) omp_target_alloc(sz, device_id);
+  device_sqrtkT_ = (double *) device_alloc(sz, device_id);
 
   sz = region_.size() * sizeof(int32_t);
-  device_region_ = (int32_t *) omp_target_alloc(sz, device_id);
+  device_region_ = (int32_t *) device_alloc(sz, device_id);
   
   sz = rpn_.size() * sizeof(int32_t);
-  device_rpn_ = (int32_t *) omp_target_alloc(sz, device_id);
+  device_rpn_ = (int32_t *) device_alloc(sz, device_id);
 
   sz = rotation_.size() * sizeof(double);
-  device_rotation_ = (double *) omp_target_alloc(sz, device_id);
+  device_rotation_ = (double *) device_alloc(sz, device_id);
   
   sz = offset_.size() * sizeof(int32_t);
-  device_offset_ = (int32_t *) omp_target_alloc(sz, device_id);
+  device_offset_ = (int32_t *) device_alloc(sz, device_id);
 }
 
 void Cell::copy_to_device()
@@ -358,22 +369,22 @@ void Cell::copy_to_device()
   size_t sz;
 
   sz = material_.size() * sizeof(int32_t);
-  omp_target_memcpy(device_material_, material_.data(), sz, 0, 0, device_id, host_id);
+  device_memcpy(device_material_, material_.data(), sz, device_id, host_id);
 
   sz = sqrtkT_.size() * sizeof(double);
-  omp_target_memcpy(device_sqrtkT_, sqrtkT_.data(), sz, 0, 0, device_id, host_id);
+  device_memcpy(device_sqrtkT_, sqrtkT_.data(), sz, device_id, host_id);
 
   sz = region_.size() * sizeof(int32_t);
-  omp_target_memcpy(device_region_, region_.data(), sz, 0, 0, device_id, host_id);
+  device_memcpy(device_region_, region_.data(), sz, device_id, host_id);
 
   sz = rpn_.size() * sizeof(int32_t);
-  omp_target_memcpy(device_rpn_, rpn_.data(), sz, 0, 0, device_id, host_id);
+  device_memcpy(device_rpn_, rpn_.data(), sz, device_id, host_id);
 
   sz = rotation_.size() * sizeof(double);
-  omp_target_memcpy(device_rotation_, rotation_.data(), sz, 0, 0, device_id, host_id);
+  device_memcpy(device_rotation_, rotation_.data(), sz, device_id, host_id);
 
   sz = offset_.size() * sizeof(int32_t);
-  omp_target_memcpy(device_offset_, offset_.data(), sz, 0, 0, device_id, host_id);
+  device_memcpy(device_offset_, offset_.data(), sz, device_id, host_id);
 }
 
 //==============================================================================

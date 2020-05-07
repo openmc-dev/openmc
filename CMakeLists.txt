@@ -236,6 +236,7 @@ list(APPEND libopenmc_SOURCES
   src/bank.cpp
   src/bremsstrahlung.cpp
   src/dagmc.cpp
+  src/device_alloc.cpp
   src/cell.cpp
   src/cmfd_solver.cpp
   src/cross_sections.cpp

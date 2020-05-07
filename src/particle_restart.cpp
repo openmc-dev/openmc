@@ -1,6 +1,7 @@
 #include "openmc/particle_restart.h"
 
 #include "openmc/constants.h"
+#include "openmc/device_alloc.h"
 #include "openmc/hdf5_interface.h"
 #include "openmc/mgxs_interface.h"
 #include "openmc/nuclide.h"
@@ -73,6 +74,9 @@ void run_particle_restart()
 {
   // Set verbosity high
   settings::verbosity = 10;
+  
+  // Move read on data to device, if running on device
+  move_read_only_data_to_device();
 
   // Initialize the particle to be tracked
   Particle p;
@@ -123,6 +127,7 @@ void run_particle_restart()
   assert( FILTER_MATCHES_SIZE >= model::tally_filters.size() );
 
   // Transport neutron
+  // TODO: run on device
   transport_history_based_single_particle(p);
 
   // Write output if particle made it

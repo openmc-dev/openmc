@@ -360,7 +360,8 @@ BoundaryInfo distance_to_boundary(Particle* p)
     const auto& coord {p->coord_[i]};
     Position r {coord.r};
     Direction u {coord.u};
-    Cell& c {model::cells[coord.cell]};
+    //Cell& c {model::cells[coord.cell]};
+    Cell& c {model::device_cells[coord.cell]};
 
     // Find the oncoming surface in this cell and the distance to it.
     auto surface_distance = c.distance(r, u, p->surface_, p);
@@ -369,7 +370,8 @@ BoundaryInfo distance_to_boundary(Particle* p)
 
     // Find the distance to the next lattice tile crossing.
     if (coord.lattice != C_NONE) {
-      auto& lat {model::lattices[coord.lattice]};
+      //auto& lat {model::lattices[coord.lattice]};
+      auto& lat {model::device_lattices[coord.lattice]};
       std::array<int, 3> i_xyz {coord.lattice_x, coord.lattice_y, coord.lattice_z};
       //TODO: refactor so both lattice use the same position argument (which
       //also means the lat.type attribute can be removed)
@@ -379,7 +381,8 @@ BoundaryInfo distance_to_boundary(Particle* p)
           lattice_distance = lat.distance(r, u, i_xyz);
           break;
         case LatticeType::hex:
-          auto& cell_above {model::cells[p->coord_[i-1].cell]};
+          //auto& cell_above {model::cells[p->coord_[i-1].cell]};
+          auto& cell_above {model::device_cells[p->coord_[i-1].cell]};
           Position r_hex {p->coord_[i-1].r};
           r_hex -= cell_above.translation_;
           if (coord.rotated) {
@@ -414,7 +417,8 @@ BoundaryInfo distance_to_boundary(Particle* p)
           info.surface_index = level_surf_cross;
         } else {
           Position r_hit = r + d_surf * u;
-          Surface& surf {model::surfaces[std::abs(level_surf_cross)-1]};
+          //Surface& surf {model::surfaces[std::abs(level_surf_cross)-1]};
+          Surface& surf {model::device_surfaces[std::abs(level_surf_cross)-1]};
           Direction norm = surf.normal(r_hit);
           if (u.dot(norm) > 0) {
             info.surface_index = std::abs(level_surf_cross);

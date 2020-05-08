@@ -192,7 +192,9 @@ class Library:
         if self._domains == 'all':
             if self.domain_type == 'material':
                 return list(self.geometry.get_all_materials().values())
-            elif self.domain_type in ['cell', 'distribcell']:
+            elif self.domain_type == 'cell':
+                return list(self.geometry.get_all_cells().values())
+            elif self.domain_type in 'distribcell':
                 return list(self.geometry.get_all_material_cells().values())
             elif self.domain_type == 'universe':
                 return list(self.geometry.get_all_universes().values())
@@ -316,7 +318,10 @@ class Library:
             if self.domain_type == 'material':
                 cv.check_type('domain', domains, Iterable, openmc.Material)
                 all_domains = self.geometry.get_all_materials().values()
-            elif self.domain_type in ['cell', 'distribcell']:
+            elif self.domain_type == 'cell':
+                cv.check_type('domain', domains, Iterable, openmc.Cell)
+                all_domains = self.geometry.get_all_cells().values()
+            elif self.domain_type == 'distribcell':
                 cv.check_type('domain', domains, Iterable, openmc.Cell)
                 all_domains = self.geometry.get_all_material_cells().values()
             elif self.domain_type == 'universe':
@@ -1272,8 +1277,6 @@ class Library:
                         xsdata_name = 'set' + str(i + 1)
                     else:
                         xsdata_name = xsdata_names[i]
-                    if nuclide != 'total':
-                        xsdata_name += '_' + nuclide
 
                     xsdata = self.get_xsdata(domain, xsdata_name,
                                              nuclide=nuclide, xs_type=xs_type)
@@ -1382,7 +1385,7 @@ class Library:
             materials = openmc.Materials()
 
             # Get all Cells from the Geometry for differentiation
-            all_cells = geometry.get_all_material_cells().values()
+            all_cells = geometry.get_all_cells().values()
 
             # Create the xsdata object and add it to the mgxs_file
             for i, domain in enumerate(self.domains):

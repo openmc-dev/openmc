@@ -6,7 +6,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define USE_DEVICE
+//#define USE_DEVICE
 
 namespace openmc {
 

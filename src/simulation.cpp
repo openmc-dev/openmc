@@ -87,6 +87,7 @@ int openmc_simulation_init()
     int device_id = omp_get_default_device();
     simulation::device_particles = (Particle*) device_alloc(event_buffer_length* sizeof(Particle), device_id);
   }
+  
 
   // Allocate tally results arrays if they're not allocated yet
   for (auto& t : model::tallies) {
@@ -105,6 +106,8 @@ int openmc_simulation_init()
   simulation::entropy.clear();
   simulation::need_depletion_rx = false;
   openmc_reset();
+  
+  move_read_only_data_to_device();
 
   // If this is a restart run, load the state point data and binary source
   // file
@@ -134,7 +137,6 @@ int openmc_simulation_init()
     }
   }
 
-  move_read_only_data_to_device();
 
   // Set flag indicating initialization is done
   simulation::initialized = true;

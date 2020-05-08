@@ -335,7 +335,8 @@ public:
   explicit UniversePartitioner(const Universe& univ);
 
   //! Return the list of cells that could contain the given coordinates.
-  const std::vector<int32_t>& get_cells(Position r, Direction u) const;
+  //const std::vector<int32_t>& get_cells(Position r, Direction u) const;
+  int32_t* get_cells(Position r, Direction u, int& ncells) const;
 
 //private:
   //! A sorted vector of indices to surfaces that partition the universe
@@ -351,6 +352,7 @@ public:
   //! between `surfs_[i-1]` and `surfs_[i]`.
   std::vector<std::vector<int32_t>> partitions_;
   int32_t** device_partitions_{NULL};
+  int32_t* device_partitions_lengths_{NULL};
 };
 
 //==============================================================================

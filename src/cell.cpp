@@ -216,7 +216,9 @@ BoundingBox Universe::bounding_box() const {
   if (cells_.size() == 0) {
     return {};
   } else {
-    for (const auto& cell : cells_) {
+    //for (const auto& cell : cells_) {
+    for (int i = 0; i < cells_.size(); i++) {
+      const auto& cell = device_cells_[i];
       auto& c = model::cells[cell];
       //bbox |= c->bounding_box();
       bbox |= c.bounding_box();
@@ -263,24 +265,29 @@ void Universe::allocate_and_copy_to_device()
 
     // Allocate host side place to store pointers to each row
     int32_t ** pmap = (int32_t **) malloc(sz);
+    int32_t * lengths = (int32_t *) malloc( up.partitions_.size() * sizeof(int32_t));
 
     // Allocate and copy each row on device
     for( int i = 0; i < up.partitions_.size(); i++ )
     {
+      lengths[i] = up.partitions_[i].size();
       sz = up.partitions_[i].size() * sizeof(int32_t);
-      //pmap[i] = (int32_t *) omp_target_alloc(sz, device_id);
-      //omp_target_memcpy(pmap[i], up.partitions_[i].data(), sz, 0, 0, device_id, host_id);
       pmap[i] = (int32_t *) device_alloc(sz, device_id);
       device_memcpy(pmap[i], up.partitions_[i].data(), sz, device_id, host_id);
     }
 
     // Copy over array of pointers
     sz = up.partitions_.size() * sizeof(int32_t *);
-    //omp_target_memcpy(up.device_partitions_, pmap, sz, 0, 0, device_id, host_id);
     device_memcpy(up.device_partitions_, pmap, sz, device_id, host_id);
+
+    // Allocate and copy over lengths array
+    sz = up.partitions_.size() * sizeof(int32_t);
+    up.device_partitions_lengths_ = (int32_t *) device_alloc(sz, device_id);
+    device_memcpy(up.device_partitions_lengths_, lengths, sz, device_id, host_id);
 
     // free pointer map
     free(pmap);
+
 
     // Copy over full partitioner
     sz = sizeof(UniversePartitioner);
@@ -1061,8 +1068,10 @@ UniversePartitioner::UniversePartitioner(const Universe& univ)
   }
 }
 
-const std::vector<int32_t>&
-UniversePartitioner::get_cells(Position r, Direction u) const
+//const std::vector<int32_t>&
+//UniversePartitioner::get_cells(Position r, Direction u) const
+int32_t*
+UniversePartitioner::get_cells(Position r, Direction u, int& ncells) const
 {
   // Perform a binary search for the partition containing the given coordinates.
   int left = 0;
@@ -1070,7 +1079,9 @@ UniversePartitioner::get_cells(Position r, Direction u) const
   int right = surfs_.size() - 1;
   while (true) {
     // Check the sense of the coordinates for the current surface.
-    const auto& surf = model::surfaces[surfs_[middle]];
+    //const auto& surf = model::surfaces[surfs_[middle]];
+    //const auto& surf = model::device_surfaces[surfs_[middle]];
+    const auto& surf = model::device_surfaces[device_surfs_[middle]];
     if (surf.sense(r, u)) {
       // The coordinates lie in the positive halfspace.  Recurse if there are
       // more surfaces to check.  Otherwise, return the cells on the positive
@@ -1080,7 +1091,9 @@ UniversePartitioner::get_cells(Position r, Direction u) const
         left = middle + 1;
         middle = right_leaf;
       } else {
-        return partitions_[middle+1];
+        //return partitions_[middle+1];
+        ncells = device_partitions_lengths_[middle+1];
+        return device_partitions_[middle+1];
       }
 
     } else {
@@ -1092,7 +1105,9 @@ UniversePartitioner::get_cells(Position r, Direction u) const
         right = middle-1;
         middle = left_leaf;
       } else {
-        return partitions_[middle];
+        //return partitions_[middle];
+        ncells = device_partitions_lengths_[middle];
+        return device_partitions_[middle];
       }
     }
   }

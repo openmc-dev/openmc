@@ -20,11 +20,14 @@ __all__ = [
     "Cram16Solver", "Cram48Solver", "IPFCramSolver"]
 
 
-def deplete(chain, x, rates, dt, matrix_func=None):
+def deplete(func, chain, x, rates, dt, matrix_func=None):
     """Deplete materials using given reaction rates for a specified time
 
     Parameters
     ----------
+    func : callable
+        Function to use to get new compositions. Expected to have the
+        signature ``func(A, n0, t) -> n1``
     chain : openmc.deplete.Chain
         Depletion chain
     x : list of numpy.ndarray
@@ -63,7 +66,7 @@ def deplete(chain, x, rates, dt, matrix_func=None):
     # Use multiprocessing pool to distribute work
     with Pool() as pool:
         inputs = zip(matrices, x, repeat(dt))
-        x_result = list(pool.starmap(CRAM48, inputs))
+        x_result = list(pool.starmap(func, inputs))
 
     return x_result
 

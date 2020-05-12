@@ -32,7 +32,7 @@ def cpp_driver(request):
 
     # Run cmake/make to build the shared libary
     subprocess.run(['cmake', os.path.pardir], check=True)
-    subprocess.run(['make'], check=True)
+    subprocess.run(['make', 'VERBOSE=1'], check=True)
     os.chdir(os.path.pardir)
 
     yield "./build/cpp_driver"

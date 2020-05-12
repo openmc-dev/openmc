@@ -7,11 +7,11 @@ import textwrap
 import openmc
 import pytest
 
+from tests.regression_tests import config
 from tests.testing_harness import PyAPITestHarness
 
-
 @pytest.fixture
-def driver(request):
+def cpp_driver(request):
     """Compile the external source"""
 
     # Get build directory and write CMakeLists.txt file
@@ -40,16 +40,6 @@ def driver(request):
     # Remove local build directory when test is complete
     shutil.rmtree('build')
 
-
-@pytest.fixture
-def model():
-    model = openmc.examples.pwr_pin_cell()
-    model.settings.particles = 100
-    model.settings.batches = 10
-    model.settings.inactive = 1
-    return model
-
-
 class ExternalDriverTestHarness(PyAPITestHarness):
 
     def __init__(self, executable, statepoint_name, model=None):
@@ -57,10 +47,20 @@ class ExternalDriverTestHarness(PyAPITestHarness):
         self.executable = executable
 
     def _run_openmc(self):
-        print("Running openmc")
-        openmc.run(openmc_exec=self.executable)
+        if config['mpi']:
+            mpi_args = [config['mpiexec'], '-n', config['mpi_np']]
+            openmc.run(openmc_exec=self.executable,
+                mpi_args=mpi_args,
+                event_based=config['event'])
+        else:
+            openmc.run(openmc_exec=self.executable,
+                event_based=config['event'])
 
+def test_cpp_driver(cpp_driver):
+    model = openmc.examples.pwr_pin_cell()
+    model.settings.particles = 100
+    model.settings.batches = 10
+    model.settings.inactive = 1
 
-def test_cpp_driver(driver, model):
-    harness = ExternalDriverTestHarness(driver, 'statepoint.10.h5', model)
+    harness = ExternalDriverTestHarness(cpp_driver, 'statepoint.10.h5', model)
     harness.main()

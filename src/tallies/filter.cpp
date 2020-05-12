@@ -72,7 +72,7 @@ Filter::~Filter()
 template<typename T>
 T* Filter::create(int32_t id) {
   static_assert(std::is_base_of<Filter, T>::value,
-                "Type specified is not derived from openmc::Filter.");
+                "Type specified is not derived from openmc::Filter");
 
   auto filter = std::make_unique<T>();
 

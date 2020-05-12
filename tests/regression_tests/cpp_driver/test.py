@@ -49,6 +49,7 @@ def model():
     model.settings.inactive = 1
     return model
 
+
 class ExternalDriverTestHarness(PyAPITestHarness):
 
     def __init__(self, executable, statepoint_name, model=None):

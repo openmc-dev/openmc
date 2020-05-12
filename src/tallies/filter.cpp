@@ -73,13 +73,10 @@ template<typename T>
 T* Filter::create(int32_t id) {
   static_assert(std::is_base_of<Filter, T>::value,
                 "Type specified is not derived from openmc::Filter");
-
+  // Create filter and add to filters vector
   auto filter = std::make_unique<T>();
-
   auto ptr_out = filter.get();
-
   model::tally_filters.emplace_back(std::move(filter));
-
   // Assign ID
   model::tally_filters.back()->set_id(id);
 

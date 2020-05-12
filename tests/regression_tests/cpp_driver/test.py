@@ -30,15 +30,19 @@ def cpp_driver(request):
     local_builddir.mkdir(exist_ok=True)
     os.chdir(str(local_builddir))
 
-    # Run cmake/make to build the shared libary
-    subprocess.run(['cmake', os.path.pardir], check=True)
-    subprocess.run(['make', 'VERBOSE=1'], check=True)
-    os.chdir(os.path.pardir)
+    try:
+        # Run cmake/make to build the shared libary
+        if config['mpi']:
+            os.environ['CXX'] = 'mpicxx'
+        subprocess.run(['cmake', os.path.pardir], check=True)
+        subprocess.run(['make'], check=True)
 
-    yield "./build/cpp_driver"
+        yield "./build/cpp_driver"
 
-    # Remove local build directory when test is complete
-    shutil.rmtree('build')
+    finally:
+        # Remove local build directory when test is complete
+        os.chdir(os.path.pardir)
+        shutil.rmtree('build')
 
 class ExternalDriverTestHarness(PyAPITestHarness):
 
@@ -63,4 +67,4 @@ def test_cpp_driver(cpp_driver):
     model.settings.inactive = 1
 
     harness = ExternalDriverTestHarness(cpp_driver, 'statepoint.10.h5', model)
-    harness.main()
+    harness._build_inputs()

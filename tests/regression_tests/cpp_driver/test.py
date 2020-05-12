@@ -10,6 +10,7 @@ import pytest
 from tests.regression_tests import config
 from tests.testing_harness import PyAPITestHarness
 
+
 @pytest.fixture
 def cpp_driver(request):
     """Compile the external source"""
@@ -30,10 +31,11 @@ def cpp_driver(request):
     local_builddir.mkdir(exist_ok=True)
     os.chdir(str(local_builddir))
 
+    if config['mpi']:
+        os.environ['CXX'] = 'mpicxx'
+
     try:
         # Run cmake/make to build the shared libary
-        if config['mpi']:
-            os.environ['CXX'] = 'mpicxx'
         subprocess.run(['cmake', os.path.pardir], check=True)
         subprocess.run(['make'], check=True)
 
@@ -43,6 +45,7 @@ def cpp_driver(request):
         # Remove local build directory when test is complete
         os.chdir(os.path.pardir)
         shutil.rmtree('build')
+
 
 class ExternalDriverTestHarness(PyAPITestHarness):
 
@@ -54,11 +57,12 @@ class ExternalDriverTestHarness(PyAPITestHarness):
         if config['mpi']:
             mpi_args = [config['mpiexec'], '-n', config['mpi_np']]
             openmc.run(openmc_exec=self.executable,
-                mpi_args=mpi_args,
-                event_based=config['event'])
+                       mpi_args=mpi_args,
+                       event_based=config['event'])
         else:
             openmc.run(openmc_exec=self.executable,
-                event_based=config['event'])
+                       event_based=config['event'])
+
 
 def test_cpp_driver(cpp_driver):
     model = openmc.examples.pwr_pin_cell()

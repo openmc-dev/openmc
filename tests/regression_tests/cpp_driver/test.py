@@ -51,8 +51,8 @@ def model():
 
 class ExternalDriverTestHarness(PyAPITestHarness):
 
-    def __init__(self, executable, statepoint_name, model=None, inputs_true=None):
-        super().__init__(statepoint_name, model, inputs_true)
+    def __init__(self, executable, statepoint_name, model=None):
+        super().__init__(statepoint_name, model)
         self.executable = executable
 
     def _run_openmc(self):
@@ -61,15 +61,5 @@ class ExternalDriverTestHarness(PyAPITestHarness):
 
 
 def test_cpp_driver(driver, model):
-    harness = ExternalDriverTestHarness(driver, 'statepoint.10.h5', model, 'inputs_true1.dat')
-    harness.main()
-
-def test_openmc_run(driver, model):
-    # modify model and test again using the openmc exe
-    cell_filter = openmc.CellFilter(list(model.geometry.get_all_cells().values()))
-    tally = openmc.Tally()
-    tally.filters = [cell_filter]
-    tally.scores = ['flux']
-    model.tallies = [tally]
-    harness = PyAPITestHarness('statepoint.10.h5', model, 'inputs_true2.dat')
+    harness = ExternalDriverTestHarness(driver, 'statepoint.10.h5', model)
     harness.main()

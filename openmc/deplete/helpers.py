@@ -444,7 +444,7 @@ class FissionYieldCutoffHelper(TalliedFissionYieldHelper):
 
     def unpack(self):
         """Obtain fast and thermal fission fractions from tally"""
-        if not self._tally_nucs:
+        if not self._tally_nucs or self._local_indexes.size == 0:
             self.results = None
             return
         fission_rates = self._fission_rate_tally.results[..., 1].reshape(
@@ -605,7 +605,7 @@ class AveragedFissionYieldHelper(TalliedFissionYieldHelper):
 
     def unpack(self):
         """Unpack tallies and populate :attr:`results` with average energies"""
-        if not self._tally_nucs:
+        if not self._tally_nucs or self._local_indexes.size == 0:
             self.results = None
             return
         fission_results = (

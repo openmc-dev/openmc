@@ -35,15 +35,16 @@ def cpp_driver(request):
         os.environ['CXX'] = 'mpicxx'
 
     try:
+        print("Building driver")
         # Run cmake/make to build the shared libary
         subprocess.run(['cmake', os.path.pardir], check=True)
         subprocess.run(['make'], check=True)
+        os.chdir(os.path.pardir)
 
         yield "./build/cpp_driver"
 
     finally:
         # Remove local build directory when test is complete
-        os.chdir(os.path.pardir)
         shutil.rmtree('build')
 
 
@@ -65,10 +66,34 @@ class ExternalDriverTestHarness(PyAPITestHarness):
 
 
 def test_cpp_driver(cpp_driver):
-    model = openmc.examples.pwr_pin_cell()
+
+    model = openmc.model.Model()
+
+    # materials
+    u235 = openmc.Material(name="fuel")
+    u235.add_nuclide('U235', 1.0, 'ao')
+    u235.set_density('g/cc', 11)
+
+    water = openmc.Material(name="water")
+    water.add_nuclide('H1', 2.0, 'ao')
+    water.add_nuclide('O16', 1.0, 'ao')
+    water.set_density('g/cc', 1.0)
+
+    mats = openmc.Materials([u235, water])
+    model.materials = mats
+
+    # geometry
+    fuel_or = openmc.ZCylinder(r=1.5)
+    coolant_or = openmc.ZCylinder(r=3.0, boundary_type='reflective')
+
+    fuel = openmc.Cell(fill=u235, region=-fuel_or)
+    coolant = openmc.Cell(fill=water, region=+fuel_or & -coolant_or)
+
+    model.geometry = openmc.Geometry([fuel, coolant])
+
     model.settings.particles = 100
     model.settings.batches = 10
     model.settings.inactive = 1
 
     harness = ExternalDriverTestHarness(cpp_driver, 'statepoint.10.h5', model)
-    harness._build_inputs()
+    harness.main()

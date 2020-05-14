@@ -216,9 +216,9 @@ BoundingBox Universe::bounding_box() const {
   if (cells_.size() == 0) {
     return {};
   } else {
-    //for (const auto& cell : cells_) {
-    for (int i = 0; i < cells_.size(); i++) {
-      const auto& cell = device_cells_[i];
+    for (const auto& cell : cells_) { // NOTE: we are using the host cells, as this one is only called by python interface
+    //for (int i = 0; i < cells_.size(); i++) {
+      //const auto& cell = device_cells_[i];
       auto& c = model::cells[cell];
       //bbox |= c->bounding_box();
       bbox |= c.bounding_box();
@@ -624,7 +624,8 @@ Cell::distance(Position r, Direction u, int32_t on_surface, Particle* p) const
     // Calculate the distance to this surface.
     // Note the off-by-one indexing
     bool coincident {std::abs(token) == std::abs(on_surface)};
-    double d {model::surfaces[abs(token)-1].distance(r, u, coincident)};
+    //double d {model::surfaces[abs(token)-1].distance(r, u, coincident)};
+    double d {model::device_surfaces[abs(token)-1].distance(r, u, coincident)};
 
     // Check if this distance is the new minimum.
     if (d < min_dist) {

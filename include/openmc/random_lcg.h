@@ -25,7 +25,9 @@ constexpr int64_t DEFAULT_SEED  {1};
 //! @return A random number between 0 and 1
 //==============================================================================
 
+#pragma omp declare target
 double prn(uint64_t* seed);
+#pragma omp end declare target
 
 //==============================================================================
 //! Generate a random number which is 'n' times ahead from the current seed.

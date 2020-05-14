@@ -235,7 +235,9 @@ public:
 
   // Coarse-grained particle events
   void event_calculate_xs();
+  #pragma omp declare target
   void event_advance();
+  #pragma omp end declare target
   void event_advance_tally();
   void event_cross_surface();
   void event_collide();
@@ -259,8 +261,10 @@ public:
   void write_restart() const;
 
   //! Gets the pointer to the particle's current PRN seed
+  #pragma omp declare target
   uint64_t* current_seed() {return seeds_ + stream_;}
   const uint64_t* current_seed() const {return seeds_ + stream_;}
+  #pragma omp end declare target
 
   //==========================================================================
   // Data members

@@ -22,12 +22,16 @@ struct Position {
   Position(const std::array<double, 3>& xyz) : x{xyz[0]}, y{xyz[1]}, z{xyz[2]} { };
 
   // Unary operators
+  #pragma omp declare target
   Position& operator+=(Position);
+  #pragma omp end declare target
   Position& operator+=(double);
   Position& operator-=(Position);
   Position& operator-=(double);
   Position& operator*=(Position);
+  #pragma omp declare target
   Position& operator*=(double);
+  #pragma omp end declare target
   Position& operator/=(Position);
   Position& operator/=(double);
   Position operator-() const;

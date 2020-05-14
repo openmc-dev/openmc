@@ -5,6 +5,7 @@
 #include <functional> // for hash
 #include <limits>
 #include <memory> // for unique_ptr
+#include <set>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -43,6 +44,7 @@ constexpr int32_t OP_UNION        {std::numeric_limits<int32_t>::max() - 4};
 //==============================================================================
 
 class Cell;
+class CellInstanceItem;
 class Universe;
 class UniversePartitioner;
 
@@ -145,6 +147,10 @@ public:
   //! \param[in] name Cell name
   void set_name(const std::string& name) { name_ = name; };
 
+  //! Get all cell instances contained by this cell
+  void get_contained_cells(std::unordered_map<int32_t, std::set<int32_t>>& contained_cells,
+                          std::vector<CellInstanceItem>& parent_cells);
+
   //----------------------------------------------------------------------------
   // Data members
 
@@ -189,6 +195,12 @@ public:
   std::vector<double> rotation_;
 
   std::vector<int32_t> offset_;  //!< Distribcell offset table
+};
+
+struct CellInstanceItem {
+  int32_t index {-1};        //! Index into global cells array
+  int32_t lattice {-1};      //! Lattice value if part of a lattice
+  int     lattice_indx{-1};  //! Flat index value of the lattice cell
 };
 
 //==============================================================================

@@ -55,7 +55,7 @@ class PredictorIntegrator(Integrator):
 
         .. versionadded:: 0.12
     solver : str or callable, optional
-        If a string, must be the tame of the solver responsible for
+        If a string, must be the name of the solver responsible for
         solving the Bateman equations.  Current options are:
 
             * ``cram16`` - 16th order IPF CRAM
@@ -78,9 +78,9 @@ class PredictorIntegrator(Integrator):
         Power of the reactor in [W] for each interval in :attr:`timesteps`
     solver : callable
         Function that will solve the Bateman equations
-        :math:`\vec{n}_{i+1} = A_i\vec{n}_i` with a step size :math:`t_i`. Can
-        be configured using the ``solver`` argument. User-supplied functions
-        are expected to have the following signature:
+        :math:`\frac{\partial}{\partial t}\vec{n} = A_i\vec{n}_i` with a step
+        size :math:`t_i`. Can be configured using the ``solver`` argument.
+        User-supplied functions are expected to have the following signature:
         ``solver(A, n0, t) -> n1`` where
 
             * ``A`` is a :class:`scipy.sparse.csr_matrix` making up the
@@ -174,7 +174,7 @@ class CECMIntegrator(Integrator):
 
         .. versionadded:: 0.12
     solver : str or callable, optional
-        If a string, must be the tame of the solver responsible for
+        If a string, must be the name of the solver responsible for
         solving the Bateman equations.  Current options are:
 
             * ``cram16`` - 16th order IPF CRAM
@@ -197,9 +197,9 @@ class CECMIntegrator(Integrator):
         Power of the reactor in [W] for each interval in :attr:`timesteps`
     solver : callable
         Function that will solve the Bateman equations
-        :math:`\vec{n}_{i+1} = A_i\vec{n}_i` with a step size :math:`t_i`. Can
-        be configured using the ``solver`` argument. User-supplied functions
-        are expected to have the following signature:
+        :math:`\frac{\partial}{\partial t}\vec{n} = A_i\vec{n}_i` with a step
+        size :math:`t_i`. Can be configured using the ``solver`` argument.
+        User-supplied functions are expected to have the following signature:
         ``solver(A, n0, t) -> n1`` where
 
             * ``A`` is a :class:`scipy.sparse.csr_matrix` making up the
@@ -301,7 +301,7 @@ class CF4Integrator(Integrator):
 
         .. versionadded:: 0.12
     solver : str or callable, optional
-        If a string, must be the tame of the solver responsible for
+        If a string, must be the name of the solver responsible for
         solving the Bateman equations.  Current options are:
 
             * ``cram16`` - 16th order IPF CRAM
@@ -324,9 +324,9 @@ class CF4Integrator(Integrator):
         Power of the reactor in [W] for each interval in :attr:`timesteps`
     solver : callable
         Function that will solve the Bateman equations
-        :math:`\vec{n}_{i+1} = A_i\vec{n}_i` with a step size :math:`t_i`. Can
-        be configured using the ``solver`` argument. User-supplied functions
-        are expected to have the following signature:
+        :math:`\frac{\partial}{\partial t}\vec{n} = A_i\vec{n}_i` with a step
+        size :math:`t_i`. Can be configured using the ``solver`` argument.
+        User-supplied functions are expected to have the following signature:
         ``solver(A, n0, t) -> n1`` where
 
             * ``A`` is a :class:`scipy.sparse.csr_matrix` making up the
@@ -445,7 +445,7 @@ class CELIIntegrator(Integrator):
 
         .. versionadded:: 0.12
     solver : str or callable, optional
-        If a string, must be the tame of the solver responsible for
+        If a string, must be the name of the solver responsible for
         solving the Bateman equations.  Current options are:
 
             * ``cram16`` - 16th order IPF CRAM
@@ -468,9 +468,9 @@ class CELIIntegrator(Integrator):
         Power of the reactor in [W] for each interval in :attr:`timesteps`
     solver : callable
         Function that will solve the Bateman equations
-        :math:`\vec{n}_{i+1} = A_i\vec{n}_i` with a step size :math:`t_i`. Can
-        be configured using the ``solver`` argument. User-supplied functions
-        are expected to have the following signature:
+        :math:`\frac{\partial}{\partial t}\vec{n} = A_i\vec{n}_i` with a step
+        size :math:`t_i`. Can be configured using the ``solver`` argument.
+        User-supplied functions are expected to have the following signature:
         ``solver(A, n0, t) -> n1`` where
 
             * ``A`` is a :class:`scipy.sparse.csr_matrix` making up the
@@ -576,7 +576,7 @@ class EPCRK4Integrator(Integrator):
 
         .. versionadded:: 0.12
     solver : str or callable, optional
-        If a string, must be the tame of the solver responsible for
+        If a string, must be the name of the solver responsible for
         solving the Bateman equations.  Current options are:
 
             * ``cram16`` - 16th order IPF CRAM
@@ -598,7 +598,7 @@ class EPCRK4Integrator(Integrator):
     power : iterable of float
         Power of the reactor in [W] for each interval in :attr:`timesteps`
     solver : str or callable, optional
-        If a string, must be the tame of the solver responsible for
+        If a string, must be the name of the solver responsible for
         solving the Bateman equations.  Current options are:
 
             * ``cram16`` - 16th order IPF CRAM
@@ -721,7 +721,7 @@ class LEQIIntegrator(Integrator):
 
         .. versionadded:: 0.12
     solver : str or callable, optional
-        If a string, must be the tame of the solver responsible for
+        If a string, must be the name of the solver responsible for
         solving the Bateman equations.  Current options are:
 
             * ``cram16`` - 16th order IPF CRAM
@@ -744,9 +744,9 @@ class LEQIIntegrator(Integrator):
         Power of the reactor in [W] for each interval in :attr:`timesteps`
     solver : callable
         Function that will solve the Bateman equations
-        :math:`\vec{n}_{i+1} = A_i\vec{n}_i` with a step size :math:`t_i`. Can
-        be configured using the ``solver`` argument. User-supplied functions
-        are expected to have the following signature:
+        :math:`\frac{\partial}{\partial t}\vec{n} = A_i\vec{n}_i` with a step
+        size :math:`t_i`. Can be configured using the ``solver`` argument.
+        User-supplied functions are expected to have the following signature:
         ``solver(A, n0, t) -> n1`` where
 
             * ``A`` is a :class:`scipy.sparse.csr_matrix` making up the
@@ -872,7 +872,7 @@ class SICELIIntegrator(SIIntegrator):
         Number of stochastic iterations per depletion interval.
         Must be greater than zero. Default : 10
     solver : str or callable, optional
-        If a string, must be the tame of the solver responsible for
+        If a string, must be the name of the solver responsible for
         solving the Bateman equations.  Current options are:
 
             * ``cram16`` - 16th order IPF CRAM
@@ -897,9 +897,9 @@ class SICELIIntegrator(SIIntegrator):
         Number of stochastic iterations per depletion interval
     solver : callable
         Function that will solve the Bateman equations
-        :math:`\vec{n}_{i+1} = A_i\vec{n}_i` with a step size :math:`t_i`. Can
-        be configured using the ``solver`` argument. User-supplied functions
-        are expected to have the following signature:
+        :math:`\frac{\partial}{\partial t}\vec{n} = A_i\vec{n}_i` with a step
+        size :math:`t_i`. Can be configured using the ``solver`` argument.
+        User-supplied functions are expected to have the following signature:
         ``solver(A, n0, t) -> n1`` where
 
             * ``A`` is a :class:`scipy.sparse.csr_matrix` making up the
@@ -1009,7 +1009,7 @@ class SILEQIIntegrator(SIIntegrator):
         Number of stochastic iterations per depletion interval.
         Must be greater than zero. Default : 10
     solver : str or callable, optional
-        If a string, must be the tame of the solver responsible for
+        If a string, must be the name of the solver responsible for
         solving the Bateman equations.  Current options are:
 
             * ``cram16`` - 16th order IPF CRAM
@@ -1032,17 +1032,23 @@ class SILEQIIntegrator(SIIntegrator):
         Power of the reactor in [W] for each interval in :attr:`timesteps`
     n_steps : int
         Number of stochastic iterations per depletion interval
-    solver : str or callable, optional
-        If a string, must be the tame of the solver responsible for
-        solving the Bateman equations.  Current options are:
+    solver : callable
+        Function that will solve the Bateman equations
+        :math:`\frac{\partial}{\partial t}\vec{n} = A_i\vec{n}_i` with a step
+        size :math:`t_i`. Can be configured using the ``solver`` argument.
+        User-supplied functions are expected to have the following signature:
+        ``solver(A, n0, t) -> n1`` where
 
-            * ``cram16`` - 16th order IPF CRAM
-            * ``cram48`` - 48th order IPF CRAM [default]
-
-        If a function or other callable, must adhere to the requirements in
-        :attr:`solver`.
+            * ``A`` is a :class:`scipy.sparse.csr_matrix` making up the
+              depletion matrix
+            * ``n0`` is a 1-D :class:`numpy.ndarray` of initial compositions
+              for a given material in atoms/cm3
+            * ``t`` is a float of the time step size in seconds, and
+            * ``n1`` is a :class:`numpy.ndarray` of compositions at the
+              next time step. Expected to be of the same shape as ``n0``
 
         .. versionadded:: 0.12
+
 
     """
     _num_stages = 2

@@ -6,7 +6,6 @@
 #include <cmath>
 #include <iterator>
 #include <sstream>
-#include <set>
 #include <string>
 
 #include <fmt/core.h>
@@ -1158,6 +1157,48 @@ openmc_cell_set_name(int32_t index, const char* name) {
   return 0;
 }
 
+//! Get all cells within this cell
+void
+Cell::get_contained_cells(std::unordered_map<int32_t, std::set<int32_t>>& contained_cells,
+                          std::vector<CellInstanceItem>& parent_cells)
+{
+
+  if (this->type_ == Fill::MATERIAL) {
+    int instance = 0;
+    if (this->distribcell_index_ >= 0) {
+      for (int i = 0; i < parent_cells.size(); i++) {
+        auto& cell = model::cells[parent_cells[i].index];
+        if (cell->type_ == Fill::UNIVERSE) {
+          instance += cell->offset_[this->distribcell_index_];
+        } else if (cell->type_ == Fill::LATTICE) {
+          auto& lattice = model::lattices[cell->fill_];
+          instance += lattice->offset(this->distribcell_index_, parent_cells[i].lattice_indx);
+        }
+      }
+    }
+    // add entry to contained cells
+    contained_cells[model::cell_map[this->id_]].insert(instance);
+  } else if (this->type_ == Fill::UNIVERSE) {
+    parent_cells.push_back({model::cell_map[this->id_], -1, -1});
+    auto& univ = model::universes[fill_];
+    for(auto cell_index : univ->cells_) {
+      auto& cell = model::cells[cell_index];
+      cell->get_contained_cells(contained_cells, parent_cells);
+    }
+    parent_cells.pop_back();
+  } else if (this->type_ == Fill::LATTICE) {
+    auto& lattice = model::lattices[this->fill_];
+    for (auto i = lattice->begin(); i != lattice->end(); ++i) {
+      auto& univ = model::universes[i.indx_];
+      parent_cells.push_back({model::cell_map[this->id_], this->fill_, i.indx_});
+      for (auto cell_index : univ->cells_) {
+        auto& cell = model::cells[cell_index];
+        cell->get_contained_cells(contained_cells, parent_cells);
+      }
+      parent_cells.pop_back();
+    }
+  }
+}
 
 //! Return the index in the cells array of a cell with a given ID
 extern "C" int

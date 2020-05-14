@@ -37,7 +37,9 @@ class Lattice;
 namespace model {
   //extern std::vector<std::unique_ptr<Lattice>> lattices;
   extern std::vector<Lattice> lattices;
+  #pragma omp declare target
   extern Lattice* device_lattices;
+  #pragma omp end declare target
   extern std::unordered_map<int32_t, int32_t> lattice_map;
 } // namespace model
 

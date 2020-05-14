@@ -503,9 +503,11 @@ Cell::Cell(pugi::xml_node cell_node)
   // Convert user IDs to surface indices.
   for (auto& r : region_) {
     if (r < OP_UNION) {
-      const auto& it {model::surface_map.find(abs(r))};
+      //const auto& it {model::surface_map.find(abs(r))};
+      const auto& it {model::surface_map.find(std::abs(r))};
       if (it == model::surface_map.end()) {
-        throw std::runtime_error{"Invalid surface ID " + std::to_string(abs(r))
+        //throw std::runtime_error{"Invalid surface ID " + std::to_string(abs(r))
+        throw std::runtime_error{"Invalid surface ID " + std::to_string(std::abs(r))
           + " specified in region for cell " + std::to_string(id_) + "."};
       }
       r = (r > 0) ? it->second + 1 : -(it->second + 1);
@@ -625,7 +627,8 @@ Cell::distance(Position r, Direction u, int32_t on_surface, Particle* p) const
     // Note the off-by-one indexing
     bool coincident {std::abs(token) == std::abs(on_surface)};
     //double d {model::surfaces[abs(token)-1].distance(r, u, coincident)};
-    double d {model::device_surfaces[abs(token)-1].distance(r, u, coincident)};
+    //double d {model::device_surfaces[abs(token)-1].distance(r, u, coincident)};
+    double d {model::device_surfaces[std::abs(token)-1].distance(r, u, coincident)};
 
     // Check if this distance is the new minimum.
     if (d < min_dist) {
@@ -668,7 +671,8 @@ Cell::to_hdf5(hid_t cell_group) const
         region_spec << " |";
       } else {
         // Note the off-by-one indexing
-        auto surf_id = model::surfaces[abs(token)-1].id_;
+        //auto surf_id = model::surfaces[abs(token)-1].id_;
+        auto surf_id = model::surfaces[std::abs(token)-1].id_;
         region_spec << " " << ((token > 0) ? surf_id : -surf_id);
       }
     }
@@ -723,7 +727,8 @@ Cell::to_hdf5(hid_t cell_group) const
 BoundingBox Cell::bounding_box_simple() const {
   BoundingBox bbox;
   for (int32_t token : rpn_) {
-    bbox &= model::surfaces[abs(token)-1].bounding_box(token > 0);
+    //bbox &= model::surfaces[abs(token)-1].bounding_box(token > 0);
+    bbox &= model::surfaces[std::abs(token)-1].bounding_box(token > 0);
   }
   return bbox;
 }
@@ -805,7 +810,8 @@ BoundingBox Cell::bounding_box_complex(std::vector<int32_t> rpn) {
       i_stack--;
     } else {
       i_stack++;
-      stack[i_stack] = model::surfaces[abs(token) - 1].bounding_box(token > 0);
+      //stack[i_stack] = model::surfaces[abs(token) - 1].bounding_box(token > 0);
+      stack[i_stack] = model::surfaces[std::abs(token) - 1].bounding_box(token > 0);
     }
   }
 
@@ -832,7 +838,8 @@ Cell::contains_simple(Position r, Direction u, int32_t on_surface) const
       return false;
     } else {
       // Note the off-by-one indexing
-      bool sense = model::surfaces[abs(token)-1].sense(r, u);
+      //bool sense = model::surfaces[abs(token)-1].sense(r, u);
+      bool sense = model::surfaces[std::abs(token)-1].sense(r, u);
       if (sense != (token > 0)) {return false;}
     }
   }
@@ -873,7 +880,8 @@ Cell::contains_complex(Position r, Direction u, int32_t on_surface) const
         stack[i_stack] = false;
       } else {
         // Note the off-by-one indexing
-        bool sense = model::surfaces[abs(token)-1].sense(r, u);
+        //bool sense = model::surfaces[abs(token)-1].sense(r, u);
+        bool sense = model::surfaces[std::abs(token)-1].sense(r, u);
         stack[i_stack] = (sense == (token > 0));
       }
     }

@@ -66,9 +66,11 @@ extern "C" std::string path_statepoint;   //!< path to a statepoint file
 
 extern "C" int32_t n_batches;                //!< number of (inactive+active) batches
 extern "C" int32_t n_inactive;               //!< number of inactive batches
+#pragma omp declare target
 extern "C" int32_t max_lost_particles;     //!< maximum number of lost particles
 extern double rel_max_lost_particles;   //!< maximum number of lost particles, relative to the total number of particles
 extern "C" int32_t gen_per_batch;            //!< number of generations per batch
+#pragma omp end declare target
 extern "C" int64_t n_particles;              //!< number of particles per generation
 
 

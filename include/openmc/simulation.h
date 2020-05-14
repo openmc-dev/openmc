@@ -22,7 +22,9 @@ constexpr int STATUS_EXIT_ON_TRIGGER {2};
 
 namespace simulation {
 
+#pragma omp declare target
 extern "C" int current_batch;    //!< current batch
+#pragma omp end declare target
 extern "C" int current_gen;      //!< current fission generation
 extern "C" bool initialized;     //!< has simulation been initialized?
 extern "C" double keff;          //!< average k over batches
@@ -31,13 +33,17 @@ extern "C" double k_col_abs;     //!< sum over batches of k_collision * k_absorp
 extern "C" double k_col_tra;     //!< sum over batches of k_collision * k_tracklength
 extern "C" double k_abs_tra;     //!< sum over batches of k_absorption * k_tracklength
 extern double log_spacing;       //!< lethargy spacing for energy grid searches
+#pragma omp declare target
 extern "C" int n_lost_particles; //!< cumulative number of lost particles
+#pragma omp end declare target
 extern "C" bool need_depletion_rx; //!< need to calculate depletion rx?
 extern "C" int restart_batch;   //!< batch at which a restart job resumed
 extern "C" bool satisfy_triggers; //!< have tally triggers been satisfied?
 extern "C" int total_gen;        //!< total number of generations simulated
 extern double total_weight;  //!< Total source weight in a batch
+#pragma omp declare target
 extern int64_t work_per_rank;         //!< number of particles per MPI rank
+#pragma omp end declare target
 
 extern const RegularMesh* entropy_mesh;
 extern const RegularMesh* ufs_mesh;

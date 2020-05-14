@@ -67,7 +67,9 @@ class UniversePartitioner;
 namespace model {
   //extern std::vector<std::unique_ptr<Cell>> cells;
   extern std::vector<Cell> cells;
+  #pragma omp declare target
   extern Cell* device_cells;
+  #pragma omp end declare target
   extern std::unordered_map<int32_t, int32_t> cell_map;
 
   //extern std::vector<std::unique_ptr<Universe>> universes;

@@ -25,7 +25,9 @@ class Surface;
 
 namespace model {
   extern std::vector<Surface> surfaces;
+  #pragma omp declare target
   extern Surface* device_surfaces;
+  #pragma omp end declare target
   extern std::unordered_map<int, int> surface_map;
 } // namespace model
 

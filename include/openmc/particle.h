@@ -250,6 +250,9 @@ public:
   //! mark a particle as lost and create a particle restart file
   //! \param message A warning message to display
   void mark_as_lost(const char* message);
+  #pragma omp declare target
+  void mark_as_lost_short();
+  #pragma omp end declare target
 
   void mark_as_lost(const std::string& message)
   {mark_as_lost(message.c_str());}

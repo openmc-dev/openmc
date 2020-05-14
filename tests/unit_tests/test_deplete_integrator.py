@@ -195,10 +195,15 @@ def test_integrator(run_in_tmpdir, scheme):
     integrator = bundle.solver(operator, [0.75], 1, solver=cram.CRAM48)
     assert integrator.solver is cram.CRAM48
 
+    integrator = bundle.solver(operator, [0.75], 1, solver="cram16")
+    assert integrator.solver is cram.CRAM16
+
     integrator.solver = mock_good_solver
     assert integrator.solver is mock_good_solver
 
     lfunc = lambda A, n, t: mock_good_solver(A, n, t)
+    integrator.solver = lfunc
+    assert integrator.solver is lfunc
 
 
 @pytest.mark.parametrize("integrator", INTEGRATORS)

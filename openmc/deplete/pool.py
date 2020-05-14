@@ -22,17 +22,18 @@ def deplete(func, chain, x, rates, dt, matrix_func=None):
         Reaction rates (from transport operator)
     dt : float
         Time in [s] to deplete for
-    maxtrix_func : Callable, optional
+    maxtrix_func : callable, optional
         Function to form the depletion matrix after calling
         ``matrix_func(chain, rates, fission_yields)``, where
         ``fission_yields = {parent: {product: yield_frac}}``
         Expected to return the depletion matrix required by
-        :func:`CRAM48`.
+        ``func``
 
     Returns
     -------
     x_result : list of numpy.ndarray
         Updated atom number vectors for each material
+
     """
 
     fission_yields = chain.fission_yields

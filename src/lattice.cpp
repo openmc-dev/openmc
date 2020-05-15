@@ -335,10 +335,12 @@ std::pair<double, std::array<int, 3>>
 Lattice::distance(Position r, Direction u, const std::array<int, 3>& i_xyz)
 const
 {
+  Position def;
   switch(type_){
     case LatticeType::rect : return RectLattice_distance(r, u, i_xyz); break;
     case LatticeType::hex  : return HexLattice_distance(r, u, i_xyz); break;
-    default :                fatal_error("Lattice Type not recognized.");
+    //default :                fatal_error("Lattice Type not recognized.");
+    default :                printf("Lattice Type not recognized."); return std::pair<double, std::array<int,3>>(0.0, {0,2,3});
   }
 }
 
@@ -356,10 +358,12 @@ Position
 Lattice::get_local_position(Position r, const std::array<int, 3> i_xyz)
 const
 {
+  Position def;
   switch(type_){
     case LatticeType::rect : return RectLattice_get_local_position(r,i_xyz); break;
     case LatticeType::hex  : return HexLattice_get_local_position(r, i_xyz); break;
-    default :                fatal_error("Lattice Type not recognized.");
+    //default :                fatal_error("Lattice Type not recognized.");
+    default :                printf("Lattice Type not recognized."); return def;
   }
 }
 

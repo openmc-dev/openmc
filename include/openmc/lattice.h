@@ -109,12 +109,14 @@ public:
   //! \param i_xyz The indices for a lattice tile.
   //! \return The distance to the next crossing and an array indicating how the
   //!   lattice indices would change after crossing that boundary.
+  #pragma omp declare target
   std::pair<double, std::array<int, 3>>
   distance(Position r, Direction u, const std::array<int, 3>& i_xyz) const;
   std::pair<double, std::array<int, 3>>
   RectLattice_distance(Position r, Direction u, const std::array<int, 3>& i_xyz) const;
   std::pair<double, std::array<int, 3>>
   HexLattice_distance(Position r, Direction u, const std::array<int, 3>& i_xyz) const;
+  #pragma omp end declare target
 
   //! \brief Find the lattice tile indices for a given point.
   //! \param r A 3D Cartesian coordinate.
@@ -127,12 +129,14 @@ public:
   //! \param r A 3D Cartesian coordinate.
   //! \param i_xyz The indices for a lattice tile.
   //! \return Local 3D Cartesian coordinates.
+  #pragma omp declare target
   Position
   get_local_position(Position r, const std::array<int, 3> i_xyz) const;
   Position
   RectLattice_get_local_position(Position r, const std::array<int, 3> i_xyz) const;
   Position
   HexLattice_get_local_position(Position r, const std::array<int, 3> i_xyz) const;
+  #pragma omp end declare target
 
   //! \brief Check flattened lattice index.
   //! \param indx The index for a lattice tile.

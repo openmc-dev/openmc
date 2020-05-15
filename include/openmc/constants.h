@@ -55,7 +55,12 @@ constexpr double TINY_BIT {1e-8};
 // User for precision in geometry
 constexpr double FP_PRECISION {1e-14};
 constexpr double FP_REL_PRECISION {1e-5};
+/*
+  #pragma omp declare target
 constexpr double FP_COINCIDENT {1e-12};
+  #pragma omp end declare target
+  */
+#define FP_COINCIDENT 1e-12
 
 // Maximum number of collisions/crossings
 constexpr int MAX_EVENTS {1000000};
@@ -82,7 +87,12 @@ constexpr double EXTSRC_REJECT_FRACTION {0.05};
 // modifying test results
 constexpr double PI {3.1415926535898};
 const double SQRT_PI {std::sqrt(PI)};
+/*
+  #pragma omp declare target
 constexpr double INFTY {std::numeric_limits<double>::max()};
+  #pragma omp end declare target
+  */
+#define INFTY 1.79769313486231570815e+308
 
 // Physical constants
 constexpr double MASS_NEUTRON     {1.00866491588}; // mass of a neutron in amu

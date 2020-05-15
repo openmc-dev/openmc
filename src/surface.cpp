@@ -324,6 +324,7 @@ PeriodicSurface::PeriodicSurface(pugi::xml_node surf_node)
 //==============================================================================
 
 // The template parameter indicates the axis normal to the plane.
+  #pragma omp declare target
 template<int i> double
 axis_aligned_plane_distance(Position r, Direction u, bool coincident, double offset)
 {
@@ -333,6 +334,7 @@ axis_aligned_plane_distance(Position r, Direction u, bool coincident, double off
   if (d < 0.0) return INFTY;
   return d;
 }
+  #pragma omp end declare target
 
 //==============================================================================
 // SurfaceXPlane implementation
@@ -569,6 +571,7 @@ axis_aligned_cylinder_evaluate(Position r, double offset1,
 // The first template parameter indicates which axis the cylinder is aligned to.
 // The other two parameters indicate the other two axes.  offset1 and offset2
 // should correspond with i2 and i3, respectively.
+  #pragma omp declare target
 template<int i1, int i2, int i3> double
 axis_aligned_cylinder_distance(Position r, Direction u,
      bool coincident, double offset1, double offset2, double radius)
@@ -611,6 +614,7 @@ axis_aligned_cylinder_distance(Position r, Direction u,
     return d;
   }
 }
+  #pragma omp end declare target
 
 // The first template parameter indicates which axis the cylinder is aligned to.
 // The other two parameters indicate the other two axes.  offset1 and offset2
@@ -824,6 +828,7 @@ axis_aligned_cone_evaluate(Position r, double offset1,
 // The first template parameter indicates which axis the cone is aligned to.
 // The other two parameters indicate the other two axes.  offset1, offset2,
 // and offset3 should correspond with i1, i2, and i3, respectively.
+  #pragma omp declare target
 template<int i1, int i2, int i3> double
 axis_aligned_cone_distance(Position r, Direction u,
      bool coincident, double offset1, double offset2, double offset3,
@@ -874,6 +879,7 @@ axis_aligned_cone_distance(Position r, Direction u,
   if (d <= 0.0) return INFTY;
   return d;
 }
+  #pragma omp end declare target
 
 // The first template parameter indicates which axis the cone is aligned to.
 // The other two parameters indicate the other two axes.  offset1, offset2,

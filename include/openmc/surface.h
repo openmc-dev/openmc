@@ -169,6 +169,7 @@ public:
   //! \param u The direction of the ray.
   //! \param coincident A hint to the code that the given point should lie
   //!   exactly on the surface.
+  #pragma omp declare target
   double distance(Position r, Direction u, bool coincident) const;
  double SurfaceXPlane_distance(Position r, Direction u, bool coincident) const;   
  double SurfaceYPlane_distance(Position r, Direction u, bool coincident) const;   
@@ -186,7 +187,6 @@ public:
   //! Compute the local outward normal direction of the surface.
   //! \param r A 3D Cartesian coordinate.
   //! \return Normal direction
-  #pragma omp declare target
   Direction normal(Position r) const;
  Direction SurfaceXPlane_normal(Position r) const;   
  Direction SurfaceYPlane_normal(Position r) const;   

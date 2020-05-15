@@ -85,7 +85,8 @@ Position::operator-() const
 }
 
 Position
-Position::rotate(const std::vector<double>& rotation) const
+//Position::rotate(const std::vector<double>& rotation) const
+Position::rotate(const double* rotation) const
 {
   return {
     x*rotation[0] + y*rotation[1] + z*rotation[2],

@@ -215,7 +215,8 @@ find_cell_inner(Particle* p, const NeighborList* neighbor_list)
       coord.r -= c.translation_;
 
       // Apply rotation.
-      if (!c.rotation_.empty()) {
+      //if (!c.rotation_.empty()) {
+      if (c.rotation_length_ != 0) {
         coord.rotate(c.rotation_);
       }
 
@@ -239,7 +240,8 @@ find_cell_inner(Particle* p, const NeighborList* neighbor_list)
       coord.r -= c.translation_;
 
       // Apply rotation.
-      if (!c.rotation_.empty()) {
+      //if (!c.rotation_.empty()) {
+      if (c.rotation_length_ != 0) {
         coord.rotate(c.rotation_);
       }
 
@@ -348,7 +350,8 @@ cross_lattice(Particle* p, const BoundaryInfo& boundary)
   const auto& cell {model::device_cells[upper_coord.cell]};
   Position r = upper_coord.r;
   r -= cell.translation_;
-  if (!cell.rotation_.empty()) {
+  //if (!cell.rotation_.empty()) {
+  if (cell.rotation_length_ != 0) {
     r = r.rotate(cell.rotation_);
   }
   p->r_local() = lat.get_local_position(r, i_xyz);

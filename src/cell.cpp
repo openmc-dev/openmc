@@ -362,8 +362,10 @@ void Cell::allocate_on_device()
   sz = rpn_.size() * sizeof(int32_t);
   device_rpn_ = (int32_t *) device_alloc(sz, device_id);
 
+  /*
   sz = rotation_.size() * sizeof(double);
   device_rotation_ = (double *) device_alloc(sz, device_id);
+  */
   
   sz = offset_.size() * sizeof(int32_t);
   device_offset_ = (int32_t *) device_alloc(sz, device_id);
@@ -387,8 +389,10 @@ void Cell::copy_to_device()
   sz = rpn_.size() * sizeof(int32_t);
   device_memcpy(device_rpn_, rpn_.data(), sz, device_id, host_id);
 
+  /*
   sz = rotation_.size() * sizeof(double);
   device_memcpy(device_rotation_, rotation_.data(), sz, device_id, host_id);
+  */
 
   sz = offset_.size() * sizeof(int32_t);
   device_memcpy(device_offset_, offset_.data(), sz, device_id, host_id);
@@ -570,31 +574,33 @@ Cell::Cell(pugi::xml_node cell_node)
     }
 
     // Compute and store the rotation matrix.
-    rotation_.reserve(rot.size() == 9 ? 9 : 12);
+    //rotation_.reserve(rot.size() == 9 ? 9 : 12);
     if (rot.size() == 3) {
       double phi = -rot[0] * PI / 180.0;
       double theta = -rot[1] * PI / 180.0;
       double psi = -rot[2] * PI / 180.0;
-      rotation_.push_back(std::cos(theta) * std::cos(psi));
-      rotation_.push_back(-std::cos(phi) * std::sin(psi)
-                          + std::sin(phi) * std::sin(theta) * std::cos(psi));
-      rotation_.push_back(std::sin(phi) * std::sin(psi)
-                          + std::cos(phi) * std::sin(theta) * std::cos(psi));
-      rotation_.push_back(std::cos(theta) * std::sin(psi));
-      rotation_.push_back(std::cos(phi) * std::cos(psi)
-                          + std::sin(phi) * std::sin(theta) * std::sin(psi));
-      rotation_.push_back(-std::sin(phi) * std::cos(psi)
-                          + std::cos(phi) * std::sin(theta) * std::sin(psi));
-      rotation_.push_back(-std::sin(theta));
-      rotation_.push_back(std::sin(phi) * std::cos(theta));
-      rotation_.push_back(std::cos(phi) * std::cos(theta));
+      rotation_[0] = std::cos(theta) * std::cos(psi);
+      rotation_[1] = -std::cos(phi) * std::sin(psi)
+                          + std::sin(phi) * std::sin(theta) * std::cos(psi);
+      rotation_[2] = std::sin(phi) * std::sin(psi)
+                          + std::cos(phi) * std::sin(theta) * std::cos(psi);
+      rotation_[3] = std::cos(theta) * std::sin(psi);
+      rotation_[4] = std::cos(phi) * std::cos(psi)
+                          + std::sin(phi) * std::sin(theta) * std::sin(psi);
+      rotation_[5] = -std::sin(phi) * std::cos(psi)
+                          + std::cos(phi) * std::sin(theta) * std::sin(psi);
+      rotation_[6] = -std::sin(theta);
+      rotation_[7] = std::sin(phi) * std::cos(theta);
+      rotation_[8] = std::cos(phi) * std::cos(theta);
 
       // When user specifies angles, write them at end of vector
-      rotation_.push_back(rot[0]);
-      rotation_.push_back(rot[1]);
-      rotation_.push_back(rot[2]);
+      rotation_[9] = rot[0];
+      rotation_[10] = rot[1];
+      rotation_[11] = rot[2];
+      rotation_length_ = 12;
     } else {
-      std::copy(rot.begin(), rot.end(), std::back_inserter(rotation_));
+      std::copy(rot.begin(), rot.end(), rotation_);
+      rotation_length_ = 9;
     }
   }
 }
@@ -707,12 +713,16 @@ Cell::to_hdf5(hid_t cell_group) const
     if (translation_ != Position(0, 0, 0)) {
       write_dataset(group, "translation", translation_);
     }
-    if (!rotation_.empty()) {
-      if (rotation_.size() == 12) {
+    //if (!rotation_.empty()) {
+    if (rotation_length_ != 0) {
+      //if (rotation_.size() == 12) {
+      if (rotation_length_ == 12) {
         std::array<double, 3> rot {rotation_[9], rotation_[10], rotation_[11]};
         write_dataset(group, "rotation", rot);
       } else {
-        write_dataset(group, "rotation", rotation_);
+        std::vector<double> rotation_vector(rotation_, rotation_ + rotation_length_);
+        //write_dataset(group, "rotation", rotation_);
+        write_dataset(group, "rotation", rotation_vector);
       }
     }
 

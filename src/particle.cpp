@@ -36,7 +36,8 @@ namespace openmc {
 //==============================================================================
 
 void
-LocalCoord::rotate(const std::vector<double>& rotation)
+//LocalCoord::rotate(const std::vector<double>& rotation)
+LocalCoord::rotate(const double* rotation)
 {
   this->r = this->r.rotate(rotation);
   this->u = this->u.rotate(rotation);

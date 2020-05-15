@@ -26,7 +26,9 @@ struct Position {
   Position& operator+=(Position);
   #pragma omp end declare target
   Position& operator+=(double);
+  #pragma omp declare target
   Position& operator-=(Position);
+  #pragma omp end declare target
   Position& operator-=(double);
   Position& operator*=(Position);
   #pragma omp declare target
@@ -68,7 +70,10 @@ struct Position {
   }
 
   //! Rotate the position based on a rotation matrix
-  Position rotate(const std::vector<double>& rotation) const;
+  //Position rotate(const std::vector<double>& rotation) const;
+  #pragma omp declare target
+  Position rotate(const double* rotation) const;
+  #pragma omp end declare target
 
   // Data members
   double x = 0.;

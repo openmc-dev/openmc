@@ -50,7 +50,8 @@ constexpr double CACHE_INVALID {-1.0};
 
 class LocalCoord {
 public:
-  void rotate(const std::vector<double>& rotation);
+  //void rotate(const std::vector<double>& rotation);
+  void rotate(const double* rotation);
 
   //! clear data from a single coordinate level
   void reset();

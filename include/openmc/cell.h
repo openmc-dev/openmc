@@ -221,8 +221,10 @@ public:
   //! give the rotation matrix in row-major order. When the user specifies
   //! rotation angles about the x-, y- and z- axes in degrees, these values are
   //! also present at the end of the vector, making it of length 12.
-  std::vector<double> rotation_;
-  double* device_rotation_{NULL};
+  //std::vector<double> rotation_;
+  //double* device_rotation_{NULL};
+  double rotation_[12];
+  int rotation_length_{0};
 
   std::vector<int32_t> offset_;  //!< Distribcell offset table
   int32_t* device_offset_{NULL};

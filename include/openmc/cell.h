@@ -44,7 +44,7 @@ constexpr int32_t OP_UNION        {std::numeric_limits<int32_t>::max() - 4};
 //==============================================================================
 
 class Cell;
-class CellInstanceItem;
+class CellInstance;
 class Universe;
 class UniversePartitioner;
 
@@ -137,7 +137,7 @@ public:
   //! \param[in] T Temperature in [K]
   //! \param[in] instance Instance index. If -1 is given, the temperature for
   //!   all instances is set.
-  void set_temperature(double T, int32_t instance = -1);
+  void set_temperature(double T, int32_t instance = -1, bool set_contained_cells=false);
 
   //! Get the name of a cell
   //! \return Cell name
@@ -149,7 +149,7 @@ public:
 
   //! Get all cell instances contained by this cell
   void get_contained_cells(std::unordered_map<int32_t, std::set<int32_t>>& contained_cells,
-                          std::vector<CellInstanceItem>& parent_cells);
+                          std::vector<CellInstance>& parent_cells);
 
   //----------------------------------------------------------------------------
   // Data members
@@ -199,7 +199,6 @@ public:
 
 struct CellInstanceItem {
   int32_t index {-1};        //! Index into global cells array
-  int32_t lattice {-1};      //! Lattice value if part of a lattice
   int     lattice_indx{-1};  //! Flat index value of the lattice cell
 };
 

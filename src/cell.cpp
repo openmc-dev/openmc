@@ -239,7 +239,7 @@ Cell::temperature(int32_t instance) const
 }
 
 void
-Cell::set_temperature(double T, int32_t instance)
+Cell::set_temperature(double T, int32_t instance, bool set_contained_cells)
 {
   if (settings::temperature_method == TemperatureMethod::INTERPOLATION) {
     if (T < data::temperature_min) {
@@ -251,17 +251,29 @@ Cell::set_temperature(double T, int32_t instance)
     }
   }
 
-  if (instance >= 0) {
-    // If temperature vector is not big enough, resize it first
-    if (sqrtkT_.size() != n_instances_) sqrtkT_.resize(n_instances_, sqrtkT_[0]);
+  if (this->type_ == Fill::MATERIAL) {
+    if (instance >= 0) {
+      // If temperature vector is not big enough, resize it first
+      if (sqrtkT_.size() != n_instances_) sqrtkT_.resize(n_instances_, sqrtkT_[0]);
 
-    // Set temperature for the corresponding instance
-    sqrtkT_.at(instance) = std::sqrt(K_BOLTZMANN * T);
-  } else {
-    // Set temperature for all instances
-    for (auto& T_ : sqrtkT_) {
-      T_ = std::sqrt(K_BOLTZMANN * T);
+      // Set temperature for the corresponding instance
+      sqrtkT_.at(instance) = std::sqrt(K_BOLTZMANN * T);
+    } else {
+      // Set temperature for all instances
+      for (auto& T_ : sqrtkT_) {
+        T_ = std::sqrt(K_BOLTZMANN * T);
+      }
     }
+  } else {
+    if (!set_contained_cells) {
+      throw std::runtime_error{fmt::format("Attempted to set the temperature of cell {} "
+                                           "which is not filled by a material.", id_)};
+    }
+    std::unordered_map<int32_t, std::set<int32_t>> contained_cells;
+    std::vector<CellInstance> parent_cells;
+    this->get_contained_cells(contained_cells, parent_cells);
+
+    std::cout << fmt::format("Found {} contained cells.", contained_cells.size()) << std::endl;
   }
 }
 
@@ -1160,37 +1172,41 @@ openmc_cell_set_name(int32_t index, const char* name) {
 //! Get all cells within this cell
 void
 Cell::get_contained_cells(std::unordered_map<int32_t, std::set<int32_t>>& contained_cells,
-                          std::vector<CellInstanceItem>& parent_cells)
+                          std::vector<CellInstance>& parent_cells)
 {
 
+  // filled by material, determine instance based on parent cells
   if (this->type_ == Fill::MATERIAL) {
     int instance = 0;
     if (this->distribcell_index_ >= 0) {
       for (int i = 0; i < parent_cells.size(); i++) {
-        auto& cell = model::cells[parent_cells[i].index];
+        auto& cell = model::cells[parent_cells[i].index_cell];
         if (cell->type_ == Fill::UNIVERSE) {
           instance += cell->offset_[this->distribcell_index_];
         } else if (cell->type_ == Fill::LATTICE) {
           auto& lattice = model::lattices[cell->fill_];
-          instance += lattice->offset(this->distribcell_index_, parent_cells[i].lattice_indx);
+          instance += lattice->offset(this->distribcell_index_, parent_cells[i].instance);
         }
       }
     }
     // add entry to contained cells
     contained_cells[model::cell_map[this->id_]].insert(instance);
+  // filled with universe, add the containing cell and recurse
   } else if (this->type_ == Fill::UNIVERSE) {
-    parent_cells.push_back({model::cell_map[this->id_], -1, -1});
+    parent_cells.push_back({model::cell_map[this->id_], -1});
     auto& univ = model::universes[fill_];
     for(auto cell_index : univ->cells_) {
       auto& cell = model::cells[cell_index];
       cell->get_contained_cells(contained_cells, parent_cells);
     }
     parent_cells.pop_back();
+  // filled with a lattice, visit each universe in the lattice
+  // with a recursive call
   } else if (this->type_ == Fill::LATTICE) {
     auto& lattice = model::lattices[this->fill_];
     for (auto i = lattice->begin(); i != lattice->end(); ++i) {
-      auto& univ = model::universes[i.indx_];
-      parent_cells.push_back({model::cell_map[this->id_], this->fill_, i.indx_});
+      auto& univ = model::universes[*i];
+      parent_cells.push_back({model::cell_map[this->id_], i.indx_});
       for (auto cell_index : univ->cells_) {
         auto& cell = model::cells[cell_index];
         cell->get_contained_cells(contained_cells, parent_cells);

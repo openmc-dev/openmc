@@ -273,7 +273,14 @@ Cell::set_temperature(double T, int32_t instance, bool set_contained_cells)
     std::vector<CellInstance> parent_cells;
     this->get_contained_cells(contained_cells, parent_cells);
 
-    std::cout << fmt::format("Found {} contained cells.", contained_cells.size()) << std::endl;
+    for (const auto& entry : contained_cells) {
+      auto& cell = model::cells[entry.first];
+      auto& instances =  entry.second;
+      for (auto instance = instances.begin(); instance != instances.end(); ++instance) {
+        Expects(cell->type_ == Fill::MATERIAL);
+        cell->set_temperature(T, *instance);
+      }
+    }
   }
 }
 

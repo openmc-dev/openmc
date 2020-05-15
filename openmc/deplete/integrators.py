@@ -2,7 +2,6 @@ import copy
 from itertools import repeat
 
 from .abc import Integrator, SIIntegrator, OperatorResult
-from .cram import timed_deplete
 from ._matrix_funcs import (
     cf4_f1, cf4_f2, cf4_f3, cf4_f4, celi_f1, celi_f2,
     leqi_f1, leqi_f2, leqi_f3, leqi_f4, rk4_f1, rk4_f4
@@ -55,6 +54,17 @@ class PredictorIntegrator(Integrator):
         kilogram of initial heavy metal).
 
         .. versionadded:: 0.12
+    solver : str or callable, optional
+        If a string, must be the name of the solver responsible for
+        solving the Bateman equations.  Current options are:
+
+            * ``cram16`` - 16th order IPF CRAM
+            * ``cram48`` - 48th order IPF CRAM [default]
+
+        If a function or other callable, must adhere to the requirements in
+        :attr:`solver`.
+
+        .. versionadded:: 0.12
 
     Attributes
     ----------
@@ -66,6 +76,23 @@ class PredictorIntegrator(Integrator):
         Size of each depletion interval in [s]
     power : iterable of float
         Power of the reactor in [W] for each interval in :attr:`timesteps`
+    solver : callable
+        Function that will solve the Bateman equations
+        :math:`\frac{\partial}{\partial t}\vec{n} = A_i\vec{n}_i` with a step
+        size :math:`t_i`. Can be configured using the ``solver`` argument.
+        User-supplied functions are expected to have the following signature:
+        ``solver(A, n0, t) -> n1`` where
+
+            * ``A`` is a :class:`scipy.sparse.csr_matrix` making up the
+              depletion matrix
+            * ``n0`` is a 1-D :class:`numpy.ndarray` of initial compositions
+              for a given material in atoms/cm3
+            * ``t`` is a float of the time step size in seconds, and
+            * ``n1`` is a :class:`numpy.ndarray` of compositions at the
+              next time step. Expected to be of the same shape as ``n0``
+
+        .. versionadded:: 0.12
+
     """
     _num_stages = 1
 
@@ -96,7 +123,7 @@ class PredictorIntegrator(Integrator):
             operator with predictor
 
         """
-        proc_time, conc_end = timed_deplete(self.chain, conc, rates, dt)
+        proc_time, conc_end = self._timed_deplete(conc, rates, dt)
         return proc_time, [conc_end], []
 
 
@@ -146,6 +173,17 @@ class CECMIntegrator(Integrator):
         kilogram of initial heavy metal).
 
         .. versionadded:: 0.12
+    solver : str or callable, optional
+        If a string, must be the name of the solver responsible for
+        solving the Bateman equations.  Current options are:
+
+            * ``cram16`` - 16th order IPF CRAM
+            * ``cram48`` - 48th order IPF CRAM [default]
+
+        If a function or other callable, must adhere to the requirements in
+        :attr:`solver`.
+
+        .. versionadded:: 0.12
 
     Attributes
     ----------
@@ -157,6 +195,23 @@ class CECMIntegrator(Integrator):
         Size of each depletion interval in [s]
     power : iterable of float
         Power of the reactor in [W] for each interval in :attr:`timesteps`
+    solver : callable
+        Function that will solve the Bateman equations
+        :math:`\frac{\partial}{\partial t}\vec{n} = A_i\vec{n}_i` with a step
+        size :math:`t_i`. Can be configured using the ``solver`` argument.
+        User-supplied functions are expected to have the following signature:
+        ``solver(A, n0, t) -> n1`` where
+
+            * ``A`` is a :class:`scipy.sparse.csr_matrix` making up the
+              depletion matrix
+            * ``n0`` is a 1-D :class:`numpy.ndarray` of initial compositions
+              for a given material in atoms/cm3
+            * ``t`` is a float of the time step size in seconds, and
+            * ``n1`` is a :class:`numpy.ndarray` of compositions at the
+              next time step. Expected to be of the same shape as ``n0``
+
+        .. versionadded:: 0.12
+
     """
     _num_stages = 2
 
@@ -187,12 +242,12 @@ class CECMIntegrator(Integrator):
             Eigenvalue and reaction rates from transport simulations
         """
         # deplete across first half of inteval
-        time0, x_middle = timed_deplete(self.chain, conc, rates, dt / 2)
+        time0, x_middle = self._timed_deplete(conc, rates, dt / 2)
         res_middle = self.operator(x_middle, power)
 
         # deplete across entire interval with BOS concentrations,
         # MOS reaction rates
-        time1, x_end = timed_deplete(self.chain, conc, res_middle.rates, dt)
+        time1, x_end = self._timed_deplete(conc, res_middle.rates, dt)
 
         return time0 + time1, [x_middle, x_end], [res_middle]
 
@@ -245,6 +300,17 @@ class CF4Integrator(Integrator):
         kilogram of initial heavy metal).
 
         .. versionadded:: 0.12
+    solver : str or callable, optional
+        If a string, must be the name of the solver responsible for
+        solving the Bateman equations.  Current options are:
+
+            * ``cram16`` - 16th order IPF CRAM
+            * ``cram48`` - 48th order IPF CRAM [default]
+
+        If a function or other callable, must adhere to the requirements in
+        :attr:`solver`.
+
+        .. versionadded:: 0.12
 
     Attributes
     ----------
@@ -256,6 +322,23 @@ class CF4Integrator(Integrator):
         Size of each depletion interval in [s]
     power : iterable of float
         Power of the reactor in [W] for each interval in :attr:`timesteps`
+    solver : callable
+        Function that will solve the Bateman equations
+        :math:`\frac{\partial}{\partial t}\vec{n} = A_i\vec{n}_i` with a step
+        size :math:`t_i`. Can be configured using the ``solver`` argument.
+        User-supplied functions are expected to have the following signature:
+        ``solver(A, n0, t) -> n1`` where
+
+            * ``A`` is a :class:`scipy.sparse.csr_matrix` making up the
+              depletion matrix
+            * ``n0`` is a 1-D :class:`numpy.ndarray` of initial compositions
+              for a given material in atoms/cm3
+            * ``t`` is a float of the time step size in seconds, and
+            * ``n1`` is a :class:`numpy.ndarray` of compositions at the
+              next time step. Expected to be of the same shape as ``n0``
+
+        .. versionadded:: 0.12
+
     """
     _num_stages = 4
 
@@ -287,27 +370,27 @@ class CF4Integrator(Integrator):
             simulations
         """
         # Step 1: deplete with matrix 1/2*A(y0)
-        time1, conc_eos1 = timed_deplete(
-            self.chain, bos_conc, bos_rates, dt, matrix_func=cf4_f1)
+        time1, conc_eos1 = self._timed_deplete(
+            bos_conc, bos_rates, dt, matrix_func=cf4_f1)
         res1 = self.operator(conc_eos1, power)
 
         # Step 2: deplete with matrix 1/2*A(y1)
-        time2, conc_eos2 = timed_deplete(
-            self.chain, bos_conc, res1.rates, dt, matrix_func=cf4_f1)
+        time2, conc_eos2 = self._timed_deplete(
+            bos_conc, res1.rates, dt, matrix_func=cf4_f1)
         res2 = self.operator(conc_eos2, power)
 
         # Step 3: deplete with matrix -1/2*A(y0)+A(y2)
         list_rates = list(zip(bos_rates, res2.rates))
-        time3, conc_eos3 = timed_deplete(
-            self.chain, conc_eos1, list_rates, dt, matrix_func=cf4_f2)
+        time3, conc_eos3 = self._timed_deplete(
+            conc_eos1, list_rates, dt, matrix_func=cf4_f2)
         res3 = self.operator(conc_eos3, power)
 
         # Step 4: deplete with two matrix exponentials
         list_rates = list(zip(bos_rates, res1.rates, res2.rates, res3.rates))
-        time4, conc_inter = timed_deplete(
-            self.chain, bos_conc, list_rates, dt, matrix_func=cf4_f3)
-        time5, conc_eos5 = timed_deplete(
-            self.chain, conc_inter, list_rates, dt, matrix_func=cf4_f4)
+        time4, conc_inter = self._timed_deplete(
+            bos_conc, list_rates, dt, matrix_func=cf4_f3)
+        time5, conc_eos5 = self._timed_deplete(
+            conc_inter, list_rates, dt, matrix_func=cf4_f4)
 
         return (time1 + time2 + time3 + time4 + time5,
                 [conc_eos1, conc_eos2, conc_eos3, conc_eos5],
@@ -361,6 +444,17 @@ class CELIIntegrator(Integrator):
         kilogram of initial heavy metal).
 
         .. versionadded:: 0.12
+    solver : str or callable, optional
+        If a string, must be the name of the solver responsible for
+        solving the Bateman equations.  Current options are:
+
+            * ``cram16`` - 16th order IPF CRAM
+            * ``cram48`` - 48th order IPF CRAM [default]
+
+        If a function or other callable, must adhere to the requirements in
+        :attr:`solver`.
+
+        .. versionadded:: 0.12
 
     Attributes
     ----------
@@ -372,6 +466,23 @@ class CELIIntegrator(Integrator):
         Size of each depletion interval in [s]
     power : iterable of float
         Power of the reactor in [W] for each interval in :attr:`timesteps`
+    solver : callable
+        Function that will solve the Bateman equations
+        :math:`\frac{\partial}{\partial t}\vec{n} = A_i\vec{n}_i` with a step
+        size :math:`t_i`. Can be configured using the ``solver`` argument.
+        User-supplied functions are expected to have the following signature:
+        ``solver(A, n0, t) -> n1`` where
+
+            * ``A`` is a :class:`scipy.sparse.csr_matrix` making up the
+              depletion matrix
+            * ``n0`` is a 1-D :class:`numpy.ndarray` of initial compositions
+              for a given material in atoms/cm3
+            * ``t`` is a float of the time step size in seconds, and
+            * ``n1`` is a :class:`numpy.ndarray` of compositions at the
+              next time step. Expected to be of the same shape as ``n0``
+
+        .. versionadded:: 0.12
+
     """
     _num_stages = 2
 
@@ -403,17 +514,17 @@ class CELIIntegrator(Integrator):
             simulation
         """
         # deplete to end using BOS rates
-        proc_time, conc_ce = timed_deplete(self.chain, bos_conc, rates, dt)
+        proc_time, conc_ce = self._timed_deplete(bos_conc, rates, dt)
         res_ce = self.operator(conc_ce, power)
 
         # deplete using two matrix exponentials
         list_rates = list(zip(rates, res_ce.rates))
 
-        time_le1, conc_inter = timed_deplete(
-            self.chain, bos_conc, list_rates, dt, matrix_func=celi_f1)
+        time_le1, conc_inter = self._timed_deplete(
+            bos_conc, list_rates, dt, matrix_func=celi_f1)
 
-        time_le2, conc_end = timed_deplete(
-            self.chain, conc_inter, list_rates, dt, matrix_func=celi_f2)
+        time_le2, conc_end = self._timed_deplete(
+            conc_inter, list_rates, dt, matrix_func=celi_f2)
 
         return proc_time + time_le1 + time_le1, [conc_ce, conc_end], [res_ce]
 
@@ -464,6 +575,17 @@ class EPCRK4Integrator(Integrator):
         kilogram of initial heavy metal).
 
         .. versionadded:: 0.12
+    solver : str or callable, optional
+        If a string, must be the name of the solver responsible for
+        solving the Bateman equations.  Current options are:
+
+            * ``cram16`` - 16th order IPF CRAM
+            * ``cram48`` - 48th order IPF CRAM [default]
+
+        If a function or other callable, must adhere to the requirements in
+        :attr:`solver`.
+
+        .. versionadded:: 0.12
 
     Attributes
     ----------
@@ -475,6 +597,18 @@ class EPCRK4Integrator(Integrator):
         Size of each depletion interval in [s]
     power : iterable of float
         Power of the reactor in [W] for each interval in :attr:`timesteps`
+    solver : str or callable, optional
+        If a string, must be the name of the solver responsible for
+        solving the Bateman equations.  Current options are:
+
+            * ``cram16`` - 16th order IPF CRAM
+            * ``cram48`` - 48th order IPF CRAM [default]
+
+        If a function or other callable, must adhere to the requirements in
+        :attr:`solver`.
+
+        .. versionadded:: 0.12
+
     """
     _num_stages = 4
 
@@ -507,24 +641,23 @@ class EPCRK4Integrator(Integrator):
         """
 
         # Step 1: deplete with matrix A(y0) / 2
-        time1, conc1 = timed_deplete(
-            self.chain, conc, rates, dt, matrix_func=rk4_f1)
+        time1, conc1 = self._timed_deplete(
+            conc, rates, dt, matrix_func=rk4_f1)
         res1 = self.operator(conc1, power)
 
         # Step 2: deplete with matrix A(y1) / 2
-        time2, conc2 = timed_deplete(
-            self.chain, conc, res1.rates, dt, matrix_func=rk4_f1)
+        time2, conc2 = self._timed_deplete(
+            conc, res1.rates, dt, matrix_func=rk4_f1)
         res2 = self.operator(conc2, power)
 
         # Step 3: deplete with matrix A(y2)
-        time3, conc3 = timed_deplete(
-            self.chain, conc, res2.rates, dt)
+        time3, conc3 = self._timed_deplete(conc, res2.rates, dt)
         res3 = self.operator(conc3, power)
 
         # Step 4: deplete with matrix built from weighted rates
         list_rates = list(zip(rates, res1.rates, res2.rates, res3.rates))
-        time4, conc4 = timed_deplete(
-            self.chain, conc, list_rates, dt, matrix_func=rk4_f4)
+        time4, conc4 = self._timed_deplete(
+            conc, list_rates, dt, matrix_func=rk4_f4)
 
         return (time1 + time2 + time3 + time4, [conc1, conc2, conc3, conc4],
                 [res1, res2, res3])
@@ -587,6 +720,17 @@ class LEQIIntegrator(Integrator):
         kilogram of initial heavy metal).
 
         .. versionadded:: 0.12
+    solver : str or callable, optional
+        If a string, must be the name of the solver responsible for
+        solving the Bateman equations.  Current options are:
+
+            * ``cram16`` - 16th order IPF CRAM
+            * ``cram48`` - 48th order IPF CRAM [default]
+
+        If a function or other callable, must adhere to the requirements in
+        :attr:`solver`.
+
+        .. versionadded:: 0.12
 
     Attributes
     ----------
@@ -598,6 +742,23 @@ class LEQIIntegrator(Integrator):
         Size of each depletion interval in [s]
     power : iterable of float
         Power of the reactor in [W] for each interval in :attr:`timesteps`
+    solver : callable
+        Function that will solve the Bateman equations
+        :math:`\frac{\partial}{\partial t}\vec{n} = A_i\vec{n}_i` with a step
+        size :math:`t_i`. Can be configured using the ``solver`` argument.
+        User-supplied functions are expected to have the following signature:
+        ``solver(A, n0, t) -> n1`` where
+
+            * ``A`` is a :class:`scipy.sparse.csr_matrix` making up the
+              depletion matrix
+            * ``n0`` is a 1-D :class:`numpy.ndarray` of initial compositions
+              for a given material in atoms/cm3
+            * ``t`` is a float of the time step size in seconds, and
+            * ``n1`` is a :class:`numpy.ndarray` of compositions at the
+              next time step. Expected to be of the same shape as ``n0``
+
+        .. versionadded:: 0.12
+
     """
     _num_stages = 2
 
@@ -645,10 +806,10 @@ class LEQIIntegrator(Integrator):
         le_inputs = list(zip(
             self._prev_rates, bos_res.rates, repeat(prev_dt), repeat(dt)))
 
-        time1, conc_inter = timed_deplete(
-            self.chain, bos_conc, le_inputs, dt, matrix_func=leqi_f1)
-        time2, conc_eos0 = timed_deplete(
-            self.chain, conc_inter, le_inputs, dt, matrix_func=leqi_f2)
+        time1, conc_inter = self._timed_deplete(
+            bos_conc, le_inputs, dt, matrix_func=leqi_f1)
+        time2, conc_eos0 = self._timed_deplete(
+            conc_inter, le_inputs, dt, matrix_func=leqi_f2)
 
         res_inter = self.operator(conc_eos0, power)
 
@@ -656,10 +817,10 @@ class LEQIIntegrator(Integrator):
             self._prev_rates, bos_res.rates, res_inter.rates,
             repeat(prev_dt), repeat(dt)))
 
-        time3, conc_inter = timed_deplete(
-            self.chain, bos_conc, qi_inputs, dt, matrix_func=leqi_f3)
-        time4, conc_eos1 = timed_deplete(
-            self.chain, conc_inter, qi_inputs, dt, matrix_func=leqi_f4)
+        time3, conc_inter = self._timed_deplete(
+            bos_conc, qi_inputs, dt, matrix_func=leqi_f3)
+        time4, conc_eos1 = self._timed_deplete(
+            conc_inter, qi_inputs, dt, matrix_func=leqi_f4)
 
         # store updated rates
         self._prev_rates = copy.deepcopy(bos_res.rates)
@@ -710,6 +871,17 @@ class SICELIIntegrator(SIIntegrator):
     n_steps : int, optional
         Number of stochastic iterations per depletion interval.
         Must be greater than zero. Default : 10
+    solver : str or callable, optional
+        If a string, must be the name of the solver responsible for
+        solving the Bateman equations.  Current options are:
+
+            * ``cram16`` - 16th order IPF CRAM
+            * ``cram48`` - 48th order IPF CRAM [default]
+
+        If a function or other callable, must adhere to the requirements in
+        :attr:`solver`.
+
+        .. versionadded:: 0.12
 
     Attributes
     ----------
@@ -723,6 +895,23 @@ class SICELIIntegrator(SIIntegrator):
         Power of the reactor in [W] for each interval in :attr:`timesteps`
     n_steps : int
         Number of stochastic iterations per depletion interval
+    solver : callable
+        Function that will solve the Bateman equations
+        :math:`\frac{\partial}{\partial t}\vec{n} = A_i\vec{n}_i` with a step
+        size :math:`t_i`. Can be configured using the ``solver`` argument.
+        User-supplied functions are expected to have the following signature:
+        ``solver(A, n0, t) -> n1`` where
+
+            * ``A`` is a :class:`scipy.sparse.csr_matrix` making up the
+              depletion matrix
+            * ``n0`` is a 1-D :class:`numpy.ndarray` of initial compositions
+              for a given material in atoms/cm3
+            * ``t`` is a float of the time step size in seconds, and
+            * ``n1`` is a :class:`numpy.ndarray` of compositions at the
+              next time step. Expected to be of the same shape as ``n0``
+
+        .. versionadded:: 0.12
+
     """
     _num_stages = 2
 
@@ -753,8 +942,7 @@ class SICELIIntegrator(SIIntegrator):
             Eigenvalue and reaction rates from intermediate transport
             simulations
         """
-        proc_time, eos_conc = timed_deplete(
-            self.chain, bos_conc, bos_rates, dt)
+        proc_time, eos_conc = self._timed_deplete(bos_conc, bos_rates, dt)
         inter_conc = copy.deepcopy(eos_conc)
 
         # Begin iteration
@@ -769,10 +957,10 @@ class SICELIIntegrator(SIIntegrator):
                 res_bar = OperatorResult(k, rates)
 
             list_rates = list(zip(bos_rates, res_bar.rates))
-            time1, inter_conc = timed_deplete(
-                self.chain, bos_conc, list_rates, dt, matrix_func=celi_f1)
-            time2, inter_conc = timed_deplete(
-                self.chain, inter_conc, list_rates, dt, matrix_func=celi_f2)
+            time1, inter_conc = self._timed_deplete(
+                bos_conc, list_rates, dt, matrix_func=celi_f1)
+            time2, inter_conc = self._timed_deplete(
+                inter_conc, list_rates, dt, matrix_func=celi_f2)
             proc_time += time1 + time2
 
         # end iteration
@@ -820,6 +1008,17 @@ class SILEQIIntegrator(SIIntegrator):
     n_steps : int, optional
         Number of stochastic iterations per depletion interval.
         Must be greater than zero. Default : 10
+    solver : str or callable, optional
+        If a string, must be the name of the solver responsible for
+        solving the Bateman equations.  Current options are:
+
+            * ``cram16`` - 16th order IPF CRAM
+            * ``cram48`` - 48th order IPF CRAM [default]
+
+        If a function or other callable, must adhere to the requirements in
+        :attr:`solver`.
+
+        .. versionadded:: 0.12
 
     Attributes
     ----------
@@ -833,6 +1032,24 @@ class SILEQIIntegrator(SIIntegrator):
         Power of the reactor in [W] for each interval in :attr:`timesteps`
     n_steps : int
         Number of stochastic iterations per depletion interval
+    solver : callable
+        Function that will solve the Bateman equations
+        :math:`\frac{\partial}{\partial t}\vec{n} = A_i\vec{n}_i` with a step
+        size :math:`t_i`. Can be configured using the ``solver`` argument.
+        User-supplied functions are expected to have the following signature:
+        ``solver(A, n0, t) -> n1`` where
+
+            * ``A`` is a :class:`scipy.sparse.csr_matrix` making up the
+              depletion matrix
+            * ``n0`` is a 1-D :class:`numpy.ndarray` of initial compositions
+              for a given material in atoms/cm3
+            * ``t`` is a float of the time step size in seconds, and
+            * ``n1`` is a :class:`numpy.ndarray` of compositions at the
+              next time step. Expected to be of the same shape as ``n0``
+
+        .. versionadded:: 0.12
+
+
     """
     _num_stages = 2
 
@@ -879,10 +1096,10 @@ class SILEQIIntegrator(SIIntegrator):
         # Perform remaining LE/QI
         inputs = list(zip(self._prev_rates, bos_rates,
                           repeat(prev_dt), repeat(dt)))
-        proc_time, inter_conc = timed_deplete(
-            self.chain, bos_conc, inputs, dt, matrix_func=leqi_f1)
-        time1, eos_conc = timed_deplete(
-            self.chain, inter_conc, inputs, dt, matrix_func=leqi_f2)
+        proc_time, inter_conc = self._timed_deplete(
+            bos_conc, inputs, dt, matrix_func=leqi_f1)
+        time1, eos_conc = self._timed_deplete(
+            inter_conc, inputs, dt, matrix_func=leqi_f2)
 
         proc_time += time1
         inter_conc = copy.deepcopy(eos_conc)
@@ -899,10 +1116,10 @@ class SILEQIIntegrator(SIIntegrator):
 
             inputs = list(zip(self._prev_rates, bos_rates, res_bar.rates,
                               repeat(prev_dt), repeat(dt)))
-            time1, inter_conc = timed_deplete(
-                self.chain, bos_conc, inputs, dt, matrix_func=leqi_f3)
-            time2, inter_conc = timed_deplete(
-                self.chain, inter_conc, inputs, dt, matrix_func=leqi_f4)
+            time1, inter_conc = self._timed_deplete(
+                bos_conc, inputs, dt, matrix_func=leqi_f3)
+            time2, inter_conc = self._timed_deplete(
+                inter_conc, inputs, dt, matrix_func=leqi_f4)
             proc_time += time1 + time2
 
         return proc_time, [eos_conc, inter_conc], [res_bar]

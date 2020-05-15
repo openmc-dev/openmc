@@ -143,8 +143,7 @@ with :func:`cram.CRAM48` being the default.
 
    cram.CRAM16
    cram.CRAM48
-   cram.deplete
-   cram.timed_deplete
+   pool.deplete
 
 The following classes are used to help the :class:`openmc.deplete.Operator`
 compute quantities like effective fission yields, reaction rates, and

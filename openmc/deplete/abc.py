@@ -4,15 +4,16 @@ This module contains the Operator class, which is then passed to an integrator
 to run a full depletion simulation.
 """
 
-from collections import namedtuple
-from collections import defaultdict
-from collections.abc import Iterable
+from collections import namedtuple, defaultdict
+from collections.abc import Iterable, Callable
 import os
 from pathlib import Path
 from abc import ABC, abstractmethod
 from copy import deepcopy
 from warnings import warn
 from numbers import Real, Integral
+from inspect import signature
+import time
 
 from numpy import nonzero, empty, asarray
 from uncertainties import ufloat
@@ -23,6 +24,7 @@ from openmc.checkvalue import check_type, check_greater_than
 from .results import Results
 from .chain import Chain
 from .results_list import ResultsList
+from .pool import deplete
 
 
 __all__ = [
@@ -595,7 +597,7 @@ class TalliedFissionYieldHelper(FissionYieldHelper):
 
 
 class Integrator(ABC):
-    """Abstract class for solving the time-integration for depletion
+    r"""Abstract class for solving the time-integration for depletion
 
     Parameters
     ----------
@@ -623,6 +625,17 @@ class Integrator(ABC):
         seconds, 'min' means minutes, 'h' means hours, and 'MWd/kg' indicates
         that the values are given in burnup (MW-d of energy deposited per
         kilogram of initial heavy metal).
+    solver : str or callable, optional
+        If a string, must be the name of the solver responsible for
+        solving the Bateman equations.  Current options are:
+
+            * ``cram16`` - 16th order IPF CRAM
+            * ``cram48`` - 48th order IPF CRAM [default]
+
+        If a function or other callable, must adhere to the requirements in
+        :attr:`solver`.
+
+        .. versionadded:: 0.12
 
     Attributes
     ----------
@@ -634,10 +647,27 @@ class Integrator(ABC):
         Size of each depletion interval in [s]
     power : iterable of float
         Power of the reactor in [W] for each interval in :attr:`timesteps`
+    solver : callable
+        Function that will solve the Bateman equations
+        :math:`\frac{\partial}{\partial t}\vec{n} = A_i\vec{n}_i` with a step
+        size :math:`t_i`. Can be configured using the ``solver`` argument.
+        User-supplied functions are expected to have the following signature:
+        ``solver(A, n0, t) -> n1`` where
+
+            * ``A`` is a :class:`scipy.sparse.csr_matrix` making up the
+              depletion matrix
+            * ``n0`` is a 1-D :class:`numpy.ndarray` of initial compositions
+              for a given material in atoms/cm3
+            * ``t`` is a float of the time step size in seconds, and
+            * ``n1`` is a :class:`numpy.ndarray` of compositions at the
+              next time step. Expected to be of the same shape as ``n0``
+
+        .. versionadded:: 0.12
+
     """
 
     def __init__(self, operator, timesteps, power=None, power_density=None,
-                 timestep_units='s'):
+                 timestep_units='s', solver="cram48"):
         # Check number of stages previously used
         if operator.prev_res is not None:
             res = operator.prev_res[-1]
@@ -677,24 +707,24 @@ class Integrator(ABC):
 
         # Determine number of seconds for each timestep
         seconds = []
-        for time, unit, watts in zip(times, units, power):
+        for timestep, unit, watts in zip(times, units, power):
             # Make sure values passed make sense
-            check_type('timestep', time, Real)
-            check_greater_than('timestep', time, 0.0, False)
+            check_type('timestep', timestep, Real)
+            check_greater_than('timestep', timestep, 0.0, False)
             check_type('timestep units', unit, str)
             check_type('power', watts, Real)
             check_greater_than('power', watts, 0.0, True)
 
             if unit in ('s', 'sec'):
-                seconds.append(time)
+                seconds.append(timestep)
             elif unit in ('min', 'minute'):
-                seconds.append(time*_SECONDS_PER_MINUTE)
+                seconds.append(timestep*_SECONDS_PER_MINUTE)
             elif unit in ('h', 'hr', 'hour'):
-                seconds.append(time*_SECONDS_PER_HOUR)
+                seconds.append(timestep*_SECONDS_PER_HOUR)
             elif unit in ('d', 'day'):
-                seconds.append(time*_SECONDS_PER_DAY)
+                seconds.append(timestep*_SECONDS_PER_DAY)
             elif unit.lower() == 'mwd/kg':
-                watt_days_per_kg = 1e6*time
+                watt_days_per_kg = 1e6*timestep
                 kilograms = 1e-3*operator.heavy_metal
                 days = watt_days_per_kg * kilograms / watts
                 seconds.append(days*_SECONDS_PER_DAY)
@@ -703,6 +733,59 @@ class Integrator(ABC):
 
         self.timesteps = asarray(seconds)
         self.power = asarray(power)
+
+        if isinstance(solver, str):
+            # Delay importing of cram module, which requires this file
+            if solver == "cram48":
+                from .cram import CRAM48
+                self._solver = CRAM48
+            elif solver == "cram16":
+                from .cram import CRAM16
+                self._solver = CRAM16
+            else:
+                raise ValueError(
+                    "Solver {} not understood. Expected 'cram48' or "
+                    "'cram16'".format(solver))
+        else:
+            self.solver = solver
+
+    @property
+    def solver(self):
+        return self._solver
+
+    @solver.setter
+    def solver(self, func):
+        if not isinstance(func, Callable):
+            raise TypeError(
+                "Solver must be callable, not {}".format(type(func)))
+        try:
+            sig = signature(func)
+        except ValueError:
+            # Guard against callables that aren't introspectable, e.g.
+            # fortran functions wrapped by F2PY
+            warn("Could not determine arguments to {}. Proceeding "
+                 "anyways".format(func))
+            self._solver = func
+            return
+
+        # Inspect arguments
+        if len(sig.parameters) != 3:
+            raise ValueError("Function {} does not support three arguments: "
+                             "{!s}".format(func, sig))
+
+        for ix, param in enumerate(sig.parameters.values()):
+            if param.kind in {param.KEYWORD_ONLY, param.VAR_KEYWORD}:
+                raise ValueError(
+                    "Keyword arguments like {} at position {} are not "
+                    "allowed".format(ix, param))
+
+        self._solver = func
+
+    def _timed_deplete(self, concs, rates, dt, matrix_func=None):
+        start = time.time()
+        results = deplete(
+            self._solver, self.chain, concs, rates, dt, matrix_func)
+        return time.time() - start, results
 
     @abstractmethod
     def __call__(self, conc, rates, dt, power, i):
@@ -807,7 +890,7 @@ class Integrator(ABC):
 
 
 class SIIntegrator(Integrator):
-    """Abstract class for the Stochastic Implicit Euler integrators
+    r"""Abstract class for the Stochastic Implicit Euler integrators
 
     Does not provide a ``__call__`` method, but scales and resets
     the number of particles used in initial transport calculation
@@ -841,6 +924,17 @@ class SIIntegrator(Integrator):
     n_steps : int, optional
         Number of stochastic iterations per depletion interval.
         Must be greater than zero. Default : 10
+    solver : str or callable, optional
+        If a string, must be the name of the solver responsible for
+        solving the Bateman equations.  Current options are:
+
+            * ``cram16`` - 16th order IPF CRAM
+            * ``cram48`` - 48th order IPF CRAM [default]
+
+        If a function or other callable, must adhere to the requirements in
+        :attr:`solver`.
+
+        .. versionadded:: 0.12
 
     Attributes
     ----------
@@ -854,12 +948,31 @@ class SIIntegrator(Integrator):
         Power of the reactor in [W] for each interval in :attr:`timesteps`
     n_steps : int
         Number of stochastic iterations per depletion interval
+    solver : callable
+        Function that will solve the Bateman equations
+        :math:`\frac{\partial}{\partial t}\vec{n} = A_i\vec{n}_i` with a step
+        size :math:`t_i`. Can be configured using the ``solver`` argument.
+        User-supplied functions are expected to have the following signature:
+        ``solver(A, n0, t) -> n1`` where
+
+            * ``A`` is a :class:`scipy.sparse.csr_matrix` making up the
+              depletion matrix
+            * ``n0`` is a 1-D :class:`numpy.ndarray` of initial compositions
+              for a given material in atoms/cm3
+            * ``t`` is a float of the time step size in seconds, and
+            * ``n1`` is a :class:`numpy.ndarray` of compositions at the
+              next time step. Expected to be of the same shape as ``n0``
+
+        .. versionadded:: 0.12
+
     """
     def __init__(self, operator, timesteps, power=None, power_density=None,
-                 timestep_units='s', n_steps=10):
+                 timestep_units='s', n_steps=10, solver="cram48"):
         check_type("n_steps", n_steps, Integral)
         check_greater_than("n_steps", n_steps, 0)
-        super().__init__(operator, timesteps, power, power_density, timestep_units)
+        super().__init__(
+            operator, timesteps, power, power_density, timestep_units,
+            solver=solver)
         self.n_steps = n_steps
 
     def _get_bos_data_from_operator(self, step_index, step_power, bos_conc):

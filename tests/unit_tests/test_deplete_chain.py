@@ -7,7 +7,7 @@ import os
 from pathlib import Path
 
 import numpy as np
-from openmc.deplete import comm, Chain, reaction_rates, nuclide, cram
+from openmc.deplete import comm, Chain, reaction_rates, nuclide, cram, pool
 import pytest
 
 from tests import cdtemp
@@ -414,7 +414,7 @@ def test_fission_yield_attribute(simple_chain):
     dummy_conc = [[1, 2]] * (len(empty_chain.fission_yields) + 1)
     with pytest.raises(
             ValueError, match="fission yield.*not equal.*compositions"):
-        cram.deplete(empty_chain, dummy_conc, None, 0.5)
+        pool.deplete(cram.CRAM48, empty_chain, dummy_conc, None, 0.5)
 
 
 def test_validate(simple_chain):

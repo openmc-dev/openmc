@@ -140,8 +140,10 @@ public:
   contains(Position r, Direction u, int32_t on_surface) const;
 
   //! Find the oncoming boundary of this cell.
+  #pragma omp declare target
   std::pair<double, int32_t>
   distance(Position r, Direction u, int32_t on_surface, Particle* p) const;
+  #pragma omp end declare target
 
   //! Write all information needed to reconstruct the cell to an HDF5 group.
   //! \param group_id An HDF5 group id.

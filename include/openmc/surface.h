@@ -186,7 +186,7 @@ public:
   //! Compute the local outward normal direction of the surface.
   //! \param r A 3D Cartesian coordinate.
   //! \return Normal direction
-  //#pragma omp declare target
+  #pragma omp declare target
   Direction normal(Position r) const;
  Direction SurfaceXPlane_normal(Position r) const;   
  Direction SurfaceYPlane_normal(Position r) const;   
@@ -200,7 +200,7 @@ public:
  Direction SurfaceYCone_normal(Position r) const;    
  Direction SurfaceZCone_normal(Position r) const;    
  Direction SurfaceQuadric_normal(Position r) const;  
- // #pragma omp end declare target
+  #pragma omp end declare target
 
   //! Write all information needed to reconstruct the surface to an HDF5 group.
   //! \param group_id An HDF5 group id.

@@ -615,6 +615,7 @@ axis_aligned_cylinder_distance(Position r, Direction u,
 // The first template parameter indicates which axis the cylinder is aligned to.
 // The other two parameters indicate the other two axes.  offset1 and offset2
 // should correspond with i2 and i3, respectively.
+#pragma omp declare target
 template<int i1, int i2, int i3> Direction
 axis_aligned_cylinder_normal(Position r, double offset1, double offset2)
 {
@@ -624,6 +625,7 @@ axis_aligned_cylinder_normal(Position r, double offset1, double offset2)
   u[i1] = 0.0;
   return u;
 }
+#pragma omp end declare target
 
 //==============================================================================
 // SurfaceXCylinder implementation
@@ -876,6 +878,7 @@ axis_aligned_cone_distance(Position r, Direction u,
 // The first template parameter indicates which axis the cone is aligned to.
 // The other two parameters indicate the other two axes.  offset1, offset2,
 // and offset3 should correspond with i1, i2, and i3, respectively.
+  #pragma omp declare target
 template<int i1, int i2, int i3> Direction
 axis_aligned_cone_normal(Position r, double offset1, double offset2,
                          double offset3, double radius_sq)
@@ -886,6 +889,7 @@ axis_aligned_cone_normal(Position r, double offset1, double offset2,
   u[i3] = 2.0 * (r[i3] - offset3);
   return u;
 }
+  #pragma omp end declare target
 
 //==============================================================================
 // SurfaceXCone implementation

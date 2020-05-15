@@ -48,25 +48,8 @@ def cpp_driver(request):
         shutil.rmtree('build')
 
 
-class ExternalDriverTestHarness(PyAPITestHarness):
-
-    def __init__(self, executable, statepoint_name, model=None):
-        super().__init__(statepoint_name, model)
-        self.executable = executable
-
-    def _run_openmc(self):
-        if config['mpi']:
-            mpi_args = [config['mpiexec'], '-n', config['mpi_np']]
-            openmc.run(openmc_exec=self.executable,
-                       mpi_args=mpi_args,
-                       event_based=config['event'])
-        else:
-            openmc.run(openmc_exec=self.executable,
-                       event_based=config['event'])
-
-
-def test_cpp_driver(cpp_driver):
-
+@pytest.fixture
+def model():
     model = openmc.model.Model()
 
     # materials
@@ -95,5 +78,26 @@ def test_cpp_driver(cpp_driver):
     model.settings.batches = 10
     model.settings.inactive = 1
 
+    return model
+
+
+class ExternalDriverTestHarness(PyAPITestHarness):
+
+    def __init__(self, executable, statepoint_name, model=None):
+        super().__init__(statepoint_name, model)
+        self.executable = executable
+
+    def _run_openmc(self):
+        if config['mpi']:
+            mpi_args = [config['mpiexec'], '-n', config['mpi_np']]
+            openmc.run(openmc_exec=self.executable,
+                       mpi_args=mpi_args,
+                       event_based=config['event'])
+        else:
+            openmc.run(openmc_exec=self.executable,
+                       event_based=config['event'])
+
+
+def test_cpp_driver(cpp_driver, model):
     harness = ExternalDriverTestHarness(cpp_driver, 'statepoint.10.h5', model)
     harness.main()

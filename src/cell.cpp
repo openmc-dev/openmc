@@ -269,15 +269,13 @@ Cell::set_temperature(double T, int32_t instance, bool set_contained_cells)
       throw std::runtime_error{fmt::format("Attempted to set the temperature of cell {} "
                                            "which is not filled by a material.", id_)};
     }
-    std::unordered_map<int32_t, std::set<int32_t>> contained_cells;
-    std::vector<CellInstance> parent_cells;
-    this->get_contained_cells(contained_cells, parent_cells);
 
+    auto contained_cells = this->get_contained_cells();
     for (const auto& entry : contained_cells) {
       auto& cell = model::cells[entry.first];
+      Expects(cell->type_ == Fill::MATERIAL);
       auto& instances =  entry.second;
       for (auto instance = instances.begin(); instance != instances.end(); ++instance) {
-        Expects(cell->type_ == Fill::MATERIAL);
         cell->set_temperature(T, *instance);
       }
     }
@@ -1176,10 +1174,21 @@ openmc_cell_set_name(int32_t index, const char* name) {
   return 0;
 }
 
+
+std::unordered_map<int32_t, std::set<int32_t>>
+Cell::get_contained_cells() {
+  std::unordered_map<int32_t, std::set<int32_t>> contained_cells;
+  std::vector<CellInstance> parent_cells;
+
+  this->get_contained_cells_inner(contained_cells, parent_cells);
+
+  return contained_cells;
+}
+
 //! Get all cells within this cell
 void
-Cell::get_contained_cells(std::unordered_map<int32_t, std::set<int32_t>>& contained_cells,
-                          std::vector<CellInstance>& parent_cells)
+Cell::get_contained_cells_inner(std::unordered_map<int32_t, std::set<int32_t>>& contained_cells,
+                                std::vector<CellInstance>& parent_cells)
 {
 
   // filled by material, determine instance based on parent cells
@@ -1204,7 +1213,7 @@ Cell::get_contained_cells(std::unordered_map<int32_t, std::set<int32_t>>& contai
     auto& univ = model::universes[fill_];
     for(auto cell_index : univ->cells_) {
       auto& cell = model::cells[cell_index];
-      cell->get_contained_cells(contained_cells, parent_cells);
+      cell->get_contained_cells_inner(contained_cells, parent_cells);
     }
     parent_cells.pop_back();
   // filled with a lattice, visit each universe in the lattice
@@ -1216,7 +1225,7 @@ Cell::get_contained_cells(std::unordered_map<int32_t, std::set<int32_t>>& contai
       parent_cells.push_back({model::cell_map[this->id_], i.indx_});
       for (auto cell_index : univ->cells_) {
         auto& cell = model::cells[cell_index];
-        cell->get_contained_cells(contained_cells, parent_cells);
+        cell->get_contained_cells_inner(contained_cells, parent_cells);
       }
       parent_cells.pop_back();
     }

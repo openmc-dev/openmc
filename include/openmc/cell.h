@@ -76,7 +76,6 @@ public:
 };
 
 //==============================================================================
-//! A geometry primitive that links surfaces, universes, and materials
 //==============================================================================
 
 class Cell {
@@ -148,8 +147,13 @@ public:
   void set_name(const std::string& name) { name_ = name; };
 
   //! Get all cell instances contained by this cell
-  void get_contained_cells(std::unordered_map<int32_t, std::set<int32_t>>& contained_cells,
-                          std::vector<CellInstance>& parent_cells);
+  //! \return Map with cell indexes as keys and instances as values
+  std::unordered_map<int32_t, std::set<int32_t>>
+  get_contained_cells();
+
+  void
+  get_contained_cells_inner(std::unordered_map<int32_t, std::set<int32_t>>& contained_cells,
+                            std::vector<CellInstance>& parent_cells);
 
   //----------------------------------------------------------------------------
   // Data members

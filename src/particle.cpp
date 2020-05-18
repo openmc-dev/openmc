@@ -230,6 +230,11 @@ Particle::event_advance()
   for (int j = 0; j < n_coord_; ++j) {
     coord_[j].r += advance_distance_ * coord_[j].u;
   }
+  if( id_ == 1 )
+  {
+     printf("device particle %ld distance: %.4le\n", 0, advance_distance_);
+     printf("device particle %ld material: %ld\n", 0, material_);
+  }
 }
 
 void

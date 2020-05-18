@@ -117,8 +117,11 @@ void process_advance_particle_events()
   size_t sz = simulation::particles.size() * sizeof(Particle);
   device_memcpy(simulation::device_particles, simulation::particles.data(), sz, device_id, host_id);
 
-  //#pragma omp parallel for schedule(runtime)
-  #pragma omp target teams distribute
+  #ifdef USE_DEVICE
+  #pragma omp target teams distribute parallel for
+  #else
+  #pragma omp parallel for schedule(runtime)
+  #endif
   for (int64_t i = 0; i < simulation::advance_particle_queue.size(); i++) {
     //int64_t buffer_idx = simulation::advance_particle_queue[i].idx;
     //int64_t buffer_idx = simulation::advance_particle_queue.device_at(i).idx;
@@ -129,6 +132,26 @@ void process_advance_particle_events()
 
   // Move particles device->host
   device_memcpy(simulation::particles.data(), simulation::device_particles, sz, host_id, device_id);
+
+
+  // Let's look at some particles
+  /*
+  for (int64_t i = 0; i < simulation::advance_particle_queue.size(); i++) {
+    int64_t buffer_idx = simulation::advance_particle_queue[i].idx;
+    Particle& p = simulation::particles[buffer_idx];
+    printf("particle %ld distance: %.4le\n", buffer_idx, p.advance_distance_);
+  }
+  */
+  // Let's look at particle 0
+  for (int64_t i = 0; i < simulation::advance_particle_queue.size(); i++) {
+    int64_t buffer_idx = simulation::advance_particle_queue[i].idx;
+    if( buffer_idx == 0 )
+    {
+      Particle& p = simulation::particles[buffer_idx];
+      printf("host   particle %ld distance: %.4le\n", buffer_idx, p.advance_distance_);
+      printf("host   particle %ld material: %ld\n", buffer_idx, p.material_);
+    }
+  }
   
   #pragma omp parallel for schedule(runtime)
   for (int64_t i = 0; i < simulation::advance_particle_queue.size(); i++) {

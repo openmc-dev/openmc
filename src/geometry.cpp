@@ -72,7 +72,9 @@ find_cell_inner(Particle* p, const NeighborList* neighbor_list)
   // to shorten the search if one was provided.
   bool found = false;
   int32_t i_cell;
+    printf("finding_cell\n");
   if (neighbor_list) {
+    printf("searching neighbor_list\n");
     //for (auto it = neighbor_list->cbegin(); it != neighbor_list->cend(); ++it) {
     for (int64_t i = 0; i < neighbor_list->get_length(); i++) {
       //i_cell = *it;
@@ -80,15 +82,15 @@ find_cell_inner(Particle* p, const NeighborList* neighbor_list)
 
       // Make sure the search cell is in the same universe.
       int i_universe = p->coord_[p->n_coord_-1].universe;
-      //if (model::cells[i_cell].universe_ != i_universe) continue;
-      if (model::device_cells[i_cell].universe_ != i_universe) continue;
+      if (model::cells[i_cell].universe_ != i_universe) continue;
+      //if (model::device_cells[i_cell].universe_ != i_universe) continue;
 
       // Check if this cell contains the particle.
       Position r {p->r_local()};
       Direction u {p->u_local()};
       auto surf = p->surface_;
-      //if (model::cells[i_cell].contains(r, u, surf)) {
-      if (model::device_cells[i_cell].contains(r, u, surf)) {
+      if (model::cells[i_cell].contains(r, u, surf)) {
+      //if (model::device_cells[i_cell].contains(r, u, surf)) {
         p->coord_[p->n_coord_-1].cell = i_cell;
         found = true;
         break;
@@ -97,8 +99,8 @@ find_cell_inner(Particle* p, const NeighborList* neighbor_list)
 
   } else {
     int i_universe = p->coord_[p->n_coord_-1].universe;
-    //const auto& univ {model::universes[i_universe]};
-    const auto& univ {model::device_universes[i_universe]};
+    const auto& univ {model::universes[i_universe]};
+    //const auto& univ {model::device_universes[i_universe]};
 
     /*
     const auto& cells {
@@ -111,16 +113,20 @@ find_cell_inner(Particle* p, const NeighborList* neighbor_list)
     */
     int32_t* cells = NULL;
     int32_t ncells = 0;
-    if( !univ.device_partitioner_ )
+    //if( !univ.device_partitioner_ )
+    if( !univ.partitioner_ )
     {
       //cells = model::universes[i_universe].device_cells_;
-      cells = model::device_universes[i_universe].device_cells_;
+      //cells = model::device_universes[i_universe].device_cells_;
+      cells = model::universes[i_universe].cells_.data();
       //ncells = model::universes[i_universe].cells_.size();
-      ncells = model::device_universes[i_universe].cells_.size();
+      //ncells = model::device_universes[i_universe].cells_.size();
+      ncells = model::universes[i_universe].cells_.size();
     }
     else
     {
-      cells = univ.device_partitioner_->get_cells(p->r_local(), p->u_local(), ncells);
+      //cells = univ.device_partitioner_->get_cells(p->r_local(), p->u_local(), ncells);
+      cells = univ.partitioner_->get_cells(p->r_local(), p->u_local(), ncells);
     }
     //for (auto it = cells.cbegin(); it != cells.cend(); it++) {
     for (int i = 0; i < ncells; i++) {
@@ -129,15 +135,15 @@ find_cell_inner(Particle* p, const NeighborList* neighbor_list)
 
       // Make sure the search cell is in the same universe.
       int i_universe = p->coord_[p->n_coord_-1].universe;
-      //if (model::cells[i_cell].universe_ != i_universe) continue;
-      if (model::device_cells[i_cell].universe_ != i_universe) continue;
+      if (model::cells[i_cell].universe_ != i_universe) continue;
+      //if (model::device_cells[i_cell].universe_ != i_universe) continue;
 
       // Check if this cell contains the particle.
       Position r {p->r_local()};
       Direction u {p->u_local()};
       auto surf = p->surface_;
-      //if (model::cells[i_cell].contains(r, u, surf)) {
-      if (model::device_cells[i_cell].contains(r, u, surf)) {
+      if (model::cells[i_cell].contains(r, u, surf)) {
+      //if (model::device_cells[i_cell].contains(r, u, surf)) {
         p->coord_[p->n_coord_-1].cell = i_cell;
         found = true;
         break;
@@ -147,14 +153,16 @@ find_cell_inner(Particle* p, const NeighborList* neighbor_list)
 
   // Announce the cell that the particle is entering.
   if (found && (settings::verbosity >= 10 || p->trace_)) {
-    //auto msg = fmt::format("    Entering cell {}", model::cells[i_cell].id_);
-    auto msg = fmt::format("    Entering cell {}", model::device_cells[i_cell].id_);
+    auto msg = fmt::format("    Entering cell {}", model::cells[i_cell].id_);
+    //auto msg = fmt::format("    Entering cell {}", model::device_cells[i_cell].id_);
     write_message(msg, 1);
   }
 
   if (found) {
-    //Cell& c {model::cells[i_cell]};
-    Cell& c {model::device_cells[i_cell]};
+    if( p->id_ == 1 )
+      printf("cell found\n");
+    Cell& c {model::cells[i_cell]};
+    //Cell& c {model::device_cells[i_cell]};
     if (c.type_ == Fill::MATERIAL) {
       //=======================================================================
       //! Found a material cell which means this is the lowest coord level.
@@ -163,13 +171,13 @@ find_cell_inner(Particle* p, const NeighborList* neighbor_list)
       int offset = 0;
       if (c.distribcell_index_ >= 0) {
         for (int i = 0; i < p->n_coord_; i++) {
-          //const auto& c_i {model::cells[p->coord_[i].cell]};
-          const auto& c_i {model::device_cells[p->coord_[i].cell]};
+          const auto& c_i {model::cells[p->coord_[i].cell]};
+          //const auto& c_i {model::device_cells[p->coord_[i].cell]};
           if (c_i.type_ == Fill::UNIVERSE) {
             offset += c_i.offset_[c.distribcell_index_];
           } else if (c_i.type_ == Fill::LATTICE) {
-            //auto& lat {model::lattices[p->coord_[i+1].lattice]};
-            auto& lat {model::device_lattices[p->coord_[i+1].lattice]};
+            auto& lat {model::lattices[p->coord_[i+1].lattice]};
+            //auto& lat {model::device_lattices[p->coord_[i+1].lattice]};
             int i_xyz[3] {p->coord_[i+1].lattice_x,
                           p->coord_[i+1].lattice_y,
                           p->coord_[i+1].lattice_z};
@@ -184,11 +192,17 @@ find_cell_inner(Particle* p, const NeighborList* neighbor_list)
       // Set the material and temperature.
       p->material_last_ = p->material_;
       if (c.material_.size() > 1) {
-        //p->material_ = c.material_[p->cell_instance_];
-        p->material_ = c.device_material_[p->cell_instance_];
+        p->material_ = c.material_[p->cell_instance_];
+        //p->material_ = c.device_material_[p->cell_instance_];
       } else {
-        //p->material_ = c.material_[0];
-        p->material_ = c.device_material_[0];
+        p->material_ = c.material_[0];
+        //p->material_ = c.device_material_[0];
+        /*
+        if(p->id_ == 1 )
+        {
+          printf("Writing cell material to %d\n", c.device_material_[0]);
+        }
+        */
       }
       p->sqrtkT_last_ = p->sqrtkT_;
       if (c.sqrtkT_.size() > 1) {
@@ -228,8 +242,8 @@ find_cell_inner(Particle* p, const NeighborList* neighbor_list)
       //========================================================================
       //! Found a lower lattice, update this coord level then search the next.
 
-      //Lattice& lat {model::lattices[c.fill_]};
-      Lattice& lat {model::device_lattices[c.fill_]};
+      Lattice& lat {model::lattices[c.fill_]};
+      //Lattice& lat {model::device_lattices[c.fill_]};
 
       // Set the position and direction.
       auto& coord {p->coord_[p->n_coord_]};
@@ -302,8 +316,8 @@ find_cell(Particle* p, bool use_neighbor_lists)
     // Get the cell this particle was in previously.
     auto coord_lvl = p->n_coord_ - 1;
     auto i_cell = p->coord_[coord_lvl].cell;
-    //Cell& c {model::cells[i_cell]};
-    Cell& c {model::device_cells[i_cell]};
+    Cell& c {model::cells[i_cell]};
+    //Cell& c {model::device_cells[i_cell]};
 
     // Search for the particle in that cell's neighbor list.  Return if we
     // found the particle.
@@ -329,8 +343,8 @@ void
 cross_lattice(Particle* p, const BoundaryInfo& boundary)
 {
   auto& coord {p->coord_[p->n_coord_ - 1]};
-  //auto& lat {model::lattices[coord.lattice]};
-  auto& lat {model::device_lattices[coord.lattice]};
+  auto& lat {model::lattices[coord.lattice]};
+  //auto& lat {model::device_lattices[coord.lattice]};
 
   if (settings::verbosity >= 10 || p->trace_) {
     write_message(fmt::format(
@@ -346,8 +360,8 @@ cross_lattice(Particle* p, const BoundaryInfo& boundary)
 
   // Set the new coordinate position.
   const auto& upper_coord {p->coord_[p->n_coord_ - 2]};
-  //const auto& cell {model::cells[upper_coord.cell]};
-  const auto& cell {model::device_cells[upper_coord.cell]};
+  const auto& cell {model::cells[upper_coord.cell]};
+  //const auto& cell {model::device_cells[upper_coord.cell]};
   Position r = upper_coord.r;
   r -= cell.translation_;
   //if (!cell.rotation_.empty()) {

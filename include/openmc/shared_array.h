@@ -112,7 +112,9 @@ public:
   }
 
   //! Return the number of elements in the container
+  //#pragma omp declare target
   int64_t size() {return size_;}
+  //#pragma omp end declare target
 
   //! Resize the container to contain a specified number of elements. This is
   //! useful in cases where the container is written to in a non-thread safe manner,

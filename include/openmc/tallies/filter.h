@@ -33,6 +33,15 @@ public:
 
   //! Create a new tally filter
   //
+  //! \tparam T Type of the filter
+  //! \param[in] id  Unique ID for the filter. If none is passed, an ID is
+  //!    automatically assigned
+  //! \return Pointer to the new filter object
+  template<typename T>
+  static T* create(int32_t id = -1);
+
+  //! Create a new tally filter
+  //
   //! \param[in] type  Type of the filter
   //! \param[in] id  Unique ID for the filter. If none is passed, an ID is
   //!    automatically assigned

@@ -1,0 +1,26 @@
+<?xml version='1.0' encoding='utf-8'?>
+<geometry>
+  <cell id="1" material="1" region="-1" universe="1" />
+  <cell id="2" material="2" region="1 -2" universe="1" />
+  <surface coeffs="0.0 0.0 1.5" id="1" type="z-cylinder" />
+  <surface boundary="reflective" coeffs="0.0 0.0 3.0" id="2" type="z-cylinder" />
+</geometry>
+<?xml version='1.0' encoding='utf-8'?>
+<materials>
+  <material depletable="true" id="1" name="fuel">
+    <density units="g/cc" value="11" />
+    <nuclide ao="1.0" name="U235" />
+  </material>
+  <material id="2" name="water">
+    <density units="g/cc" value="1.0" />
+    <nuclide ao="2.0" name="H1" />
+    <nuclide ao="1.0" name="O16" />
+  </material>
+</materials>
+<?xml version='1.0' encoding='utf-8'?>
+<settings>
+  <run_mode>eigenvalue</run_mode>
+  <particles>100</particles>
+  <batches>10</batches>
+  <inactive>1</inactive>
+</settings>

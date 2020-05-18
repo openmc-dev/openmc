@@ -216,8 +216,6 @@ class Results:
                     for res in all_results:
                         res._to_hdf5(handle, step, parallel=False)
 
-
-
     def _write_hdf5_metadata(self, handle):
         """Writes result metadata in HDF5 file
 

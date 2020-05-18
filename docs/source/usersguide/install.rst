@@ -407,9 +407,7 @@ Prerequisites
 The Python API works with Python 3.5+. In addition to Python itself, the API
 relies on a number of third-party packages. All prerequisites can be installed
 using Conda_ (recommended), pip_, or through the package manager in most Linux
-distributions. To run simulations in parallel using MPI, it is recommended to
-build mpi4py, HDF5, h5py from source, in that order, using the same compilers
-as for OpenMC.
+distributions.
 
 .. admonition:: Required
    :class: error
@@ -460,6 +458,29 @@ as for OpenMC.
 
    `pytest <https://docs.pytest.org>`_
       The pytest framework is used for unit testing the Python API.
+
+If you are running simulations that require OpenMC's Python bindings to the C
+API (including depletion and CMFD), it is recommended to build ``h5py`` (and
+``mpi4py``, if you are using MPI) using the same compilers and HDF5 version as
+for OpenMC. Thus, the install process would proceed as follows:
+
+.. code-block:: sh
+
+    mkdir build && cd build
+    HDF5_ROOT=<path to HDF5> CXX=<path to mpicxx> cmake ..
+    make
+    make install
+
+    cd ..
+    MPICC=<path to mpicc> pip install mpi4py
+    HDF5_DIR=<path to HDF5> pip install --no-binary=h5py h5py
+
+If you are using parallel HDF5, you'll also need to make sure the right MPI
+wrapper is used when installing h5py:
+
+.. code-block:: sh
+
+    CC=<path to mpicc> HDF5_MPI=ON HDF5_DIR=<path to HDF5> pip install --no-binary=h5py h5py
 
 .. _usersguide_nxml:
 

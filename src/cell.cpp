@@ -1098,9 +1098,9 @@ UniversePartitioner::get_cells(Position r, Direction u, int& ncells) const
   int right = surfs_.size() - 1;
   while (true) {
     // Check the sense of the coordinates for the current surface.
-    //const auto& surf = model::surfaces[surfs_[middle]];
+    const auto& surf = model::surfaces[surfs_[middle]];
     //const auto& surf = model::device_surfaces[surfs_[middle]];
-    const auto& surf = model::device_surfaces[device_surfs_[middle]];
+    //const auto& surf = model::device_surfaces[device_surfs_[middle]];
     if (surf.sense(r, u)) {
       // The coordinates lie in the positive halfspace.  Recurse if there are
       // more surfaces to check.  Otherwise, return the cells on the positive
@@ -1111,8 +1111,13 @@ UniversePartitioner::get_cells(Position r, Direction u, int& ncells) const
         middle = right_leaf;
       } else {
         //return partitions_[middle+1];
+        /*
         ncells = device_partitions_lengths_[middle+1];
         return device_partitions_[middle+1];
+        */
+        //ncells = partitions_lengths_[middle+1];
+        ncells = partitions_[middle+1].size();
+        return const_cast<int32_t *>(partitions_[middle+1].data());
       }
 
     } else {
@@ -1125,8 +1130,11 @@ UniversePartitioner::get_cells(Position r, Direction u, int& ncells) const
         middle = left_leaf;
       } else {
         //return partitions_[middle];
-        ncells = device_partitions_lengths_[middle];
-        return device_partitions_[middle];
+        //ncells = device_partitions_lengths_[middle];
+        //return device_partitions_[middle];
+        ncells = partitions_[middle].size();
+        return const_cast<int32_t *> (partitions_[middle].data());
+        //return partitions_[middle].data();
       }
     }
   }

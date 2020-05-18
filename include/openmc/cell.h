@@ -342,6 +342,7 @@ public:
 
   //! Return the list of cells that could contain the given coordinates.
   //const std::vector<int32_t>& get_cells(Position r, Direction u) const;
+  //int32_t* get_cells(Position r, Direction u, int& ncells) const;
   int32_t* get_cells(Position r, Direction u, int& ncells) const;
 
 //private:

@@ -72,9 +72,9 @@ find_cell_inner(Particle* p, const NeighborList* neighbor_list)
   // to shorten the search if one was provided.
   bool found = false;
   int32_t i_cell;
-    printf("finding_cell\n");
+    //printf("finding_cell\n");
   if (neighbor_list) {
-    printf("searching neighbor_list\n");
+    //printf("searching neighbor_list\n");
     //for (auto it = neighbor_list->cbegin(); it != neighbor_list->cend(); ++it) {
     for (int64_t i = 0; i < neighbor_list->get_length(); i++) {
       //i_cell = *it;
@@ -159,8 +159,8 @@ find_cell_inner(Particle* p, const NeighborList* neighbor_list)
   }
 
   if (found) {
-    if( p->id_ == 1 )
-      printf("cell found\n");
+    //if( p->id_ == 1 )
+      //printf("cell found\n");
     Cell& c {model::cells[i_cell]};
     //Cell& c {model::device_cells[i_cell]};
     if (c.type_ == Fill::MATERIAL) {
@@ -197,12 +197,11 @@ find_cell_inner(Particle* p, const NeighborList* neighbor_list)
       } else {
         p->material_ = c.material_[0];
         //p->material_ = c.device_material_[0];
-        /*
-        if(p->id_ == 1 )
-        {
-          printf("Writing cell material to %d\n", c.device_material_[0]);
-        }
-        */
+        //if(p->id_ == 1 )
+        //{
+          //printf("Writing cell material to %d\n", c.device_material_[0]);
+          //printf("Writing cell material to %d\n", c.material_[0]);
+       // }
       }
       p->sqrtkT_last_ = p->sqrtkT_;
       if (c.sqrtkT_.size() > 1) {

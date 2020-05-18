@@ -9,7 +9,7 @@ import copy
 import h5py
 import numpy as np
 
-from . import comm, have_mpi, MPI
+from . import comm, MPI
 from .reaction_rates import ReactionRates
 
 VERSION_RESULTS = (1, 0)
@@ -197,16 +197,24 @@ class Results:
             What step is this?
 
         """
-        if have_mpi and h5py.get_config().mpi:
-            kwargs = {'driver': 'mpio', 'comm': comm}
-        else:
-            kwargs = {}
-
         # Write new file if first time step, else add to existing file
-        kwargs['mode'] = "w" if step == 0 else "a"
+        kwargs = {'mode': "w" if step == 0 else "a"}
 
-        with h5py.File(filename, **kwargs) as handle:
-            self._to_hdf5(handle, step)
+        if h5py.get_config().mpi and comm.size > 1:
+            # Write results in parallel
+            kwargs['driver'] = 'mpio'
+            kwargs['comm'] = comm
+            with h5py.File(filename, **kwargs) as handle:
+                self._to_hdf5(handle, step, parallel=True)
+        else:
+            # Gather results at root process
+            all_results = comm.gather(self)
+
+            # Only root process writes results
+            if comm.rank == 0:
+                with h5py.File(filename, **kwargs) as handle:
+                    for res in all_results:
+                        res._to_hdf5(handle, step, parallel=False)
 
     def _write_hdf5_metadata(self, handle):
         """Writes result metadata in HDF5 file
@@ -286,7 +294,7 @@ class Results:
             "depletion time", (1,), maxshape=(None,),
             dtype="float64")
 
-    def _to_hdf5(self, handle, index):
+    def _to_hdf5(self, handle, index, parallel=False):
         """Converts results object into an hdf5 object.
 
         Parameters
@@ -295,13 +303,17 @@ class Results:
             An HDF5 file or group type to store this in.
         index : int
             What step is this?
+        parallel : bool
+            Being called with parallel HDF5?
 
         """
         if "/number" not in handle:
-            comm.barrier()
+            if parallel:
+                comm.barrier()
             self._write_hdf5_metadata(handle)
 
-        comm.barrier()
+        if parallel:
+            comm.barrier()
 
         # Grab handles
         number_dset = handle["/number"]
@@ -353,13 +365,13 @@ class Results:
         low = min(inds)
         high = max(inds)
         for i in range(n_stages):
-            number_dset[index, i, low:high+1, :] = self.data[i, :, :]
-            rxn_dset[index, i, low:high+1, :, :] = self.rates[i][:, :, :]
+            number_dset[index, i, low:high+1] = self.data[i]
+            rxn_dset[index, i, low:high+1] = self.rates[i]
             if comm.rank == 0:
                 eigenvalues_dset[index, i] = self.k[i]
         if comm.rank == 0:
-            time_dset[index, :] = self.time
-            power_dset[index, :] = self.power
+            time_dset[index] = self.time
+            power_dset[index] = self.power
             if self.proc_time is not None:
                 proc_time_dset[index] = (
                     self.proc_time / (comm.size * self.n_hdf5_mats)

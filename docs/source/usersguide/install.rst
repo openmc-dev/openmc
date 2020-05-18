@@ -478,7 +478,7 @@ for OpenMC. Thus, the install process would proceed as follows:
 If you are using parallel HDF5, you'll also need to make sure the right MPI
 wrapper is used when installing h5py:
 
-.. code-block::
+.. code-block:: sh
 
     CC=<path to mpicc> HDF5_MPI=ON HDF5_DIR=<path to HDF5> pip install --no-binary=h5py h5py
 

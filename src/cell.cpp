@@ -239,7 +239,7 @@ Cell::temperature(int32_t instance) const
 }
 
 void
-Cell::set_temperature(double T, int32_t instance, bool set_contained_cells)
+Cell::set_temperature(double T, int32_t instance, bool set_contained)
 {
   if (settings::temperature_method == TemperatureMethod::INTERPOLATION) {
     if (T < data::temperature_min) {
@@ -265,7 +265,7 @@ Cell::set_temperature(double T, int32_t instance, bool set_contained_cells)
       }
     }
   } else {
-    if (!set_contained_cells) {
+    if (!set_contained) {
       throw std::runtime_error{fmt::format("Attempted to set the temperature of cell {} "
                                            "which is not filled by a material.", id_)};
     }

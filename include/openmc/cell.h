@@ -136,7 +136,10 @@ public:
   //! \param[in] T Temperature in [K]
   //! \param[in] instance Instance index. If -1 is given, the temperature for
   //!   all instances is set.
-  void set_temperature(double T, int32_t instance = -1, bool set_contained_cells=false);
+  //! \param[in] set_contained If this cell is not filled with a material,
+  //!   collect all contained cells with material fills and set their
+  //!   temperatures.
+  void set_temperature(double T, int32_t instance = -1, bool set_contained=false);
 
   //! Get the name of a cell
   //! \return Cell name

@@ -39,6 +39,7 @@ def compile_source(request):
 
     # Remove local build directory when test is complete
     shutil.rmtree('build')
+    os.remove('CMakeLists.txt')
 
 
 @pytest.fixture

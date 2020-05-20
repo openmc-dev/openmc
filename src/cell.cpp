@@ -1180,7 +1180,10 @@ Cell::get_contained_cells() {
   std::unordered_map<int32_t, std::vector<int32_t>> contained_cells;
   std::vector<ParentCell> parent_cells;
 
-  this->get_contained_cells_inner(contained_cells, parent_cells);
+  // if this cell is filled w/ a material, it contains no other cells
+  if (type_ != Fill::MATERIAL) {
+    this->get_contained_cells_inner(contained_cells, parent_cells);
+  }
 
   return contained_cells;
 }

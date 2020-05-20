@@ -140,7 +140,7 @@ public:
   //! \param[in] set_contained If this cell is not filled with a material,
   //!   collect all contained cells with material fills and set their
   //!   temperatures.
-  void set_temperature(double T, int32_t instance = -1, bool set_contained=false);
+  void set_temperature(double T, int32_t instance = -1, bool set_contained = false);
 
   //! Get the name of a cell
   //! \return Cell name

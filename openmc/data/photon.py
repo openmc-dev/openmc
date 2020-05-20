@@ -847,7 +847,7 @@ class IncidentPhoton(EqualityMixin):
                 brem = fh.read().split()
 
             # Incident electron kinetic energy grid in eV
-            _BREMSSTRAHLUNG['electron_energy'] = np.logspace(3, 9, 200)
+            _BREMSSTRAHLUNG['electron_energy'] = np.logspace(3, 10, 200)
             log_energy = np.log(_BREMSSTRAHLUNG['electron_energy'])
 
             # Get number of tabulated electron and photon energy values

@@ -44,6 +44,7 @@ constexpr int32_t OP_UNION        {std::numeric_limits<int32_t>::max() - 4};
 //==============================================================================
 
 class Cell;
+class ParentCell;
 class CellInstance;
 class Universe;
 class UniversePartitioner;
@@ -151,13 +152,15 @@ public:
 
   //! Get all cell instances contained by this cell
   //! \return Map with cell indexes as keys and instances as values
-  std::unordered_map<int32_t, std::set<int32_t>>
+  std::unordered_map<int32_t, std::vector<int32_t>>
   get_contained_cells();
 
+protected:
   void
-  get_contained_cells_inner(std::unordered_map<int32_t, std::set<int32_t>>& contained_cells,
-                            std::vector<CellInstance>& parent_cells);
+  get_contained_cells_inner(std::unordered_map<int32_t, std::vector<int32_t>>& contained_cells,
+                            std::vector<ParentCell>& parent_cells);
 
+public:
   //----------------------------------------------------------------------------
   // Data members
 
@@ -305,6 +308,16 @@ private:
   //! `surfs_.back()`.  Otherwise, `partitions_[i]` gives cells sandwiched
   //! between `surfs_[i-1]` and `surfs_[i]`.
   std::vector<std::vector<int32_t>> partitions_;
+};
+
+
+//==============================================================================
+//! Define a containing (parent) cell
+//==============================================================================
+
+struct ParentCell {
+  gsl::index cell_index;
+  gsl::index lattice_index;
 };
 
 //==============================================================================

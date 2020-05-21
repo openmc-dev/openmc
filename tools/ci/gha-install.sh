@@ -17,6 +17,10 @@ fi
 # Install vectfit for WMP generation if needed
 if [[ $VECTFIT = 'y' ]]; then
     ./tools/ci/gha-install-vectfit.sh
+
+# Install LibMesh if needed
+if [[ $LIBMESH = 'y' ]]; then
+    ./tools/ci/travis-install-libmesh.sh
 fi
 
 # Install mpi4py for MPI configurations

@@ -19,7 +19,7 @@ def which(program):
     return None
 
 
-def install(omp=False, mpi=False, phdf5=False, dagmc=False):
+def install(omp=False, mpi=False, phdf5=False, dagmc=False, libmesh=False):
     # Create build directory and change to it
     shutil.rmtree('build', ignore_errors=True)
     os.mkdir('build')
@@ -49,6 +49,9 @@ def install(omp=False, mpi=False, phdf5=False, dagmc=False):
         cmake_cmd.append('-Ddagmc=ON')
         cmake_cmd.append('-DCMAKE_PREFIX_PATH=~/DAGMC')
 
+    if libmesh:
+        cmake_cmd.append('-Dlibmesh=ON')
+
     # Build in coverage mode for coverage testing
     cmake_cmd.append('-Dcoverage=on')
 
@@ -65,9 +68,10 @@ def main():
     mpi = (os.environ.get('MPI') == 'y')
     phdf5 = (os.environ.get('PHDF5') == 'y')
     dagmc = (os.environ.get('DAGMC') == 'y')
+    libmesh = (os.environ.get('LIBMESH') == 'y')
 
     # Build and install
-    install(omp, mpi, phdf5, dagmc)
+    install(omp, mpi, phdf5, dagmc, libmesh)
 
 if __name__ == '__main__':
     main()

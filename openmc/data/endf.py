@@ -448,10 +448,7 @@ class Evaluation:
         self._read_header()
 
     def __repr__(self):
-        if 'zsymam' in self.target:
-            name = self.target['zsymam'].replace(' ', '')
-        else:
-            name = 'Unknown'
+        name = self.target['zsymam'].replace(' ', '')
         return '<{} for {} {}>'.format(self.info['sublibrary'], name,
                                        self.info['library'])
 
@@ -514,6 +511,8 @@ class Evaluation:
             self.info['date_entry'] = text[1][55:63]
             self.info['identifier'] = text[2:5]
             self.info['description'] = text[5:]
+        else:
+            self.target['zsymam'] = 'Unknown'
 
         # File numbers, reaction designations, and number of records
         for i in range(NXC):

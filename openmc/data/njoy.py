@@ -339,7 +339,7 @@ def make_ace(filename, temperatures=None, acer=True, xsdir=None,
 
     ev = evaluation if evaluation is not None else endf.Evaluation(filename)
     mat = ev.material
-    zsymam = ev.target.get('zsymam', 'Unknown')
+    zsymam = ev.target['zsymam']
 
     # Determine name of library
     library = '{}-{}.{}'.format(*ev.info['library'])
@@ -499,7 +499,7 @@ def make_ace_thermal(filename, filename_thermal, temperatures=None,
     ev_thermal = (evaluation_thermal if evaluation_thermal is not None
                   else endf.Evaluation(filename_thermal))
     mat_thermal = ev_thermal.material
-    zsymam_thermal = ev_thermal.target.get('zsymam', 'Unknown')
+    zsymam_thermal = ev_thermal.target['zsymam']
 
     # Determine name, isotopes based on MAT number
     data = _get_thermal_data(ev_thermal, mat_thermal)

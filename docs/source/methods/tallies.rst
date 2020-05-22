@@ -383,7 +383,7 @@ Confidence Intervals
 While the sample variance and standard deviation gives us some idea about the
 variability of the estimate of the mean of whatever quantities we've tallied, it
 does not help us interpret how confidence we should be in the results. To
-quantity the reliability of our estimates, we can use `confidence intervals`_
+quantify the reliability of our estimates, we can use `confidence intervals`_
 based on the calculated sample variance.
 
 A :math:`1-\alpha` confidence interval for a population parameter is defined as

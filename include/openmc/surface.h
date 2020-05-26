@@ -196,7 +196,7 @@ public:
   explicit PeriodicSurface(pugi::xml_node surf_node);
 
   // Default constructor has no periodic surface associated
-  PeriodicSurface();
+  PeriodicSurface() : i_periodic_(C_NONE) {}
 
   //! Translate a particle onto this surface from a periodic partner surface.
   //! \param other A pointer to the partner surface in this periodic BC.

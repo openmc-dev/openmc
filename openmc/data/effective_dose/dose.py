@@ -33,22 +33,24 @@ def dose_coefficients(particle, geometry='AP'):
 
     This function provides fluence to dose conversion coefficients for effective
     dose for various types of external exposures based on values in `ICRP
-    Publication 116 <https://doi.org/10.1016/j.icrp.2011.10.001>`_.
+    Publication 116 <https://doi.org/10.1016/j.icrp.2011.10.001>`_. Corrected
+    values found in a correigendum are used rather than the values in the
+    original report.
 
     Parameters
     ----------
     particle : {'neutron', 'photon', 'electron', 'positron'}
         Incident particle
     geometry : {'AP', 'PA', 'LLAT', 'RLAT', 'ROT', 'ISO'}
-        Irradiation geometry assumed. Refer to ICRP-116 for the meaning of the
-        options here.
+        Irradiation geometry assumed. Refer to ICRP-116 (Section 3.2) for the
+        meaning of the options here.
 
     Returns
     -------
     energy : numpy.ndarray
         Energies at which dose conversion coefficients are given
-    dose : numpy.ndarray
-        Effective dose in [pSv cm^2] at provided energies
+    dose_coeffs : numpy.ndarray
+        Effective dose coefficients in [pSv cm^2] at provided energies
 
     """
     if not _DOSE_ICRP116:
@@ -67,5 +69,5 @@ def dose_coefficients(particle, geometry='AP'):
 
     # Pull out energy and dose from table
     energy = data[:, 0].copy()
-    dose = data[:, index + 1].copy()
-    return energy, dose
+    dose_coeffs = data[:, index + 1].copy()
+    return energy, dose_coeffs

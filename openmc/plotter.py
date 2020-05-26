@@ -476,7 +476,7 @@ def _calculate_cexs_nuclide(this, types, temperature=294., sab_name=None,
                     funcs.append(lambda x: xi)
                 else:
                     funcs.append(lambda x: 0.)
-            funcs = funcs if funcs else [lambda x:0.]
+            funcs = funcs if funcs else [lambda x: 0.]
             xs.append(openmc.data.Combination(funcs, op))
     else:
         raise ValueError(this + " not in library")

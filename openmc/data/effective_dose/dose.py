@@ -31,15 +31,15 @@ def _load_dose_icrp116():
 def dose_coefficients(particle, geometry='AP'):
     """Return effective dose conversion coefficients from ICRP-116
 
-    This function provides fluence to dose conversion coefficients for effective
-    dose for various types of external exposures based on values in `ICRP
-    Publication 116 <https://doi.org/10.1016/j.icrp.2011.10.001>`_. Corrected
-    values found in a correigendum are used rather than the values in the
-    original report.
+    This function provides fluence (and air kerma) to effective dose conversion
+    coefficients for various types of external exposures based on values in
+    `ICRP Publication 116 <https://doi.org/10.1016/j.icrp.2011.10.001>`_.
+    Corrected values found in a correigendum are used rather than the values in
+    theoriginal report.
 
     Parameters
     ----------
-    particle : {'neutron', 'photon', 'electron', 'positron'}
+    particle : {'neutron', 'photon', 'photon kerma', 'electron', 'positron'}
         Incident particle
     geometry : {'AP', 'PA', 'LLAT', 'RLAT', 'ROT', 'ISO'}
         Irradiation geometry assumed. Refer to ICRP-116 (Section 3.2) for the
@@ -50,7 +50,8 @@ def dose_coefficients(particle, geometry='AP'):
     energy : numpy.ndarray
         Energies at which dose conversion coefficients are given
     dose_coeffs : numpy.ndarray
-        Effective dose coefficients in [pSv cm^2] at provided energies
+        Effective dose coefficients in [pSv cm^2] at provided energies. For
+        'photon kerma', the coefficients are given in [Sv/Gy].
 
     """
     if not _DOSE_ICRP116:
@@ -62,7 +63,7 @@ def dose_coefficients(particle, geometry='AP'):
         raise ValueError("{} has no effective dose data".format(particle))
 
     # Determine index for selected geometry
-    if particle in ('neutron', 'photon', 'proton'):
+    if particle in ('neutron', 'photon', 'proton', 'photon kerma'):
         index = ('AP', 'PA', 'LLAT', 'RLAT', 'ROT', 'ISO').index(geometry)
     else:
         index = ('AP', 'PA', 'ISO').index(geometry)

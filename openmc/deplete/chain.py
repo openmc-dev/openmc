@@ -898,7 +898,7 @@ class Chain:
             previous = self[iso]
             new_nuclide = Nuclide(previous.name)
             new_nuclide.half_life = previous.half_life
-            new_nuclide.decay_energy = new_nuclide.decay_energy
+            new_nuclide.decay_energy = previous.decay_energy
 
             new_decay = []
             for mode in previous.decay_modes:

@@ -487,6 +487,8 @@ def test_reduce(gnd_simple_chain, endf_chain):
 
     u5_round0 = no_depth["U235"]
     assert u5_round0.n_decay_modes == ref_U5.n_decay_modes
+    assert u5_round0.half_life == ref_U5.half_life
+    assert u5_round0.decay_energy == ref_U5.decay_energy
     for newmode, refmode in zip(u5_round0.decay_modes, ref_U5.decay_modes):
         assert newmode.target is None
         assert newmode.type == refmode.type
@@ -507,6 +509,8 @@ def test_reduce(gnd_simple_chain, endf_chain):
 
     bareI5 = no_depth["I135"]
     assert bareI5.n_decay_modes == ref_iodine.n_decay_modes
+    assert bareI5.half_life == ref_iodine.half_life
+    assert bareI5.decay_energy == ref_iodine.decay_energy
     for newmode, refmode in zip(bareI5.decay_modes, ref_iodine.decay_modes):
         assert newmode.target is None
         assert newmode.type == refmode.type

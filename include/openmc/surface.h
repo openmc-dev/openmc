@@ -195,6 +195,9 @@ public:
 
   explicit PeriodicSurface(pugi::xml_node surf_node);
 
+  // Default constructor has no periodic surface associated
+  PeriodicSurface();
+
   //! Translate a particle onto this surface from a periodic partner surface.
   //! \param other A pointer to the partner surface in this periodic BC.
   //! \param r A point on the partner surface that will be translated onto
@@ -218,6 +221,7 @@ class SurfaceXPlane : public PeriodicSurface
 {
 public:
   explicit SurfaceXPlane(pugi::xml_node surf_node);
+  explicit SurfaceXPlane(double x) : x0_(x) {}
   double evaluate(Position r) const;
   double distance(Position r, Direction u, bool coincident) const;
   Direction normal(Position r) const;
@@ -239,6 +243,7 @@ class SurfaceYPlane : public PeriodicSurface
 {
 public:
   explicit SurfaceYPlane(pugi::xml_node surf_node);
+  explicit SurfaceYPlane(double y) : y0_(y) {}
   double evaluate(Position r) const;
   double distance(Position r, Direction u, bool coincident) const;
   Direction normal(Position r) const;
@@ -260,6 +265,7 @@ class SurfaceZPlane : public PeriodicSurface
 {
 public:
   explicit SurfaceZPlane(pugi::xml_node surf_node);
+  explicit SurfaceZPlane(double z) : z0_(z) {}
   double evaluate(Position r) const;
   double distance(Position r, Direction u, bool coincident) const;
   Direction normal(Position r) const;
@@ -281,6 +287,8 @@ class SurfacePlane : public PeriodicSurface
 {
 public:
   explicit SurfacePlane(pugi::xml_node surf_node);
+  explicit SurfacePlane(double a, double b, double c, double d) :
+    A_(a), B_(b), C_(c), D_(d) {}
   double evaluate(Position r) const;
   double distance(Position r, Direction u, bool coincident) const;
   Direction normal(Position r) const;
@@ -302,6 +310,8 @@ class SurfaceXCylinder : public CSGSurface
 {
 public:
   explicit SurfaceXCylinder(pugi::xml_node surf_node);
+  explicit SurfaceXCylinder(double y, double z, double r) :
+    y0_(y), z0_(z), radius_(r) {}
   double evaluate(Position r) const;
   double distance(Position r, Direction u, bool coincident) const;
   Direction normal(Position r) const;
@@ -322,6 +332,8 @@ class SurfaceYCylinder : public CSGSurface
 {
 public:
   explicit SurfaceYCylinder(pugi::xml_node surf_node);
+  explicit SurfaceYCylinder(double x, double z, double r) :
+    x0_(x), z0_(z), radius_(r) {}
   double evaluate(Position r) const;
   double distance(Position r, Direction u, bool coincident) const;
   Direction normal(Position r) const;
@@ -342,6 +354,8 @@ class SurfaceZCylinder : public CSGSurface
 {
 public:
   explicit SurfaceZCylinder(pugi::xml_node surf_node);
+  explicit SurfaceZCylinder(double x, double y, double r) :
+    x0_(x), y0_(y), radius_(r) {}
   double evaluate(Position r) const;
   double distance(Position r, Direction u, bool coincident) const;
   Direction normal(Position r) const;
@@ -362,6 +376,8 @@ class SurfaceSphere : public CSGSurface
 {
 public:
   explicit SurfaceSphere(pugi::xml_node surf_node);
+  explicit SurfaceSphere(double x, double y, double z, double r) :
+    x0_(x), y0_(y), z0_(z), radius_(r) {}
   double evaluate(Position r) const;
   double distance(Position r, Direction u, bool coincident) const;
   Direction normal(Position r) const;
@@ -382,6 +398,8 @@ class SurfaceXCone : public CSGSurface
 {
 public:
   explicit SurfaceXCone(pugi::xml_node surf_node);
+  explicit SurfaceXCone(double x, double y, double z, double rad_sq) :
+    x0_(x), y0_(y), z0_(z), radius_sq_(rad_sq) {}
   double evaluate(Position r) const;
   double distance(Position r, Direction u, bool coincident) const;
   Direction normal(Position r) const;
@@ -401,6 +419,8 @@ class SurfaceYCone : public CSGSurface
 {
 public:
   explicit SurfaceYCone(pugi::xml_node surf_node);
+  explicit SurfaceYCone(double x, double y, double z, double rad_sq) :
+    x0_(x), y0_(y), z0_(z), radius_sq_(rad_sq) {}
   double evaluate(Position r) const;
   double distance(Position r, Direction u, bool coincident) const;
   Direction normal(Position r) const;
@@ -420,6 +440,8 @@ class SurfaceZCone : public CSGSurface
 {
 public:
   explicit SurfaceZCone(pugi::xml_node surf_node);
+  explicit SurfaceZCone(double x, double y, double z, double rad_sq) :
+    x0_(x), y0_(y), z0_(z), radius_sq_(rad_sq) {}
   double evaluate(Position r) const;
   double distance(Position r, Direction u, bool coincident) const;
   Direction normal(Position r) const;
@@ -438,6 +460,9 @@ class SurfaceQuadric : public CSGSurface
 {
 public:
   explicit SurfaceQuadric(pugi::xml_node surf_node);
+  explicit SurfaceQuadric(double a, double b, double c, double d,
+      double e, double f, double g, double h, double j, double k) :
+    A_(a), B_(b), C_(c), D_(d), E_(e), F_(f), G_(g), H_(h), J_(j), K_(k) {}
   double evaluate(Position r) const;
   double distance(Position r, Direction u, bool coincident) const;
   Direction normal(Position r) const;

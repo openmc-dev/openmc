@@ -60,6 +60,7 @@ Core Functions
     :template: myfunction.rst
 
     atomic_mass
+    dose_coefficients
     gnd_name
     linearize
     thin

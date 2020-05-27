@@ -40,25 +40,8 @@ PLOT_TYPES_MT = {
     'nu-fission': [18],
     'nu-scatter': [2] + _INELASTIC,
     'unity': [UNITY_MT],
-    'slowing-down power': [2] + _INELASTIC + [XI_MT],
+    'slowing-down power': [2] + [XI_MT],
     'damage': [444]
-}
-# Operations to use when combining MTs the first np.add is used in reference
-# to zero
-PLOT_TYPES_OP = {
-    'total': (np.add,),
-    'scatter': (np.add,) * (len(PLOT_TYPES_MT['scatter']) - 1),
-    'elastic': (),
-    'inelastic': (np.add,) * (len(PLOT_TYPES_MT['inelastic']) - 1),
-    'fission': (),
-    'absorption': (),
-    'capture': (),
-    'nu-fission': (),
-    'nu-scatter': (np.add,) * (len(PLOT_TYPES_MT['nu-scatter']) - 1),
-    'unity': (),
-    'slowing-down power': \
-        (np.add,) * (len(PLOT_TYPES_MT['slowing-down power']) - 2) + (np.multiply,),
-    'damage': ()
 }
 
 # Types of plots to plot linearly in y
@@ -347,26 +330,6 @@ def _calculate_cexs_nuclide(this, types, temperature=294., sab_name=None,
 
     """
 
-    # Parse the types
-    mts = []
-    ops = []
-    yields = []
-    for line in types:
-        if line in PLOT_TYPES:
-            mts.append(PLOT_TYPES_MT[line])
-            if line.startswith('nu'):
-                yields.append(True)
-            else:
-                yields.append(False)
-            ops.append(PLOT_TYPES_OP[line])
-        else:
-            # Not a built-in type, we have to parse it ourselves
-            cv.check_type('MT in types', line, Integral)
-            cv.check_greater_than('MT in types', line, 0)
-            mts.append((line,))
-            ops.append(())
-            yields.append(False)
-
     # Load the library
     library = openmc.data.DataLibrary.from_xml(cross_sections)
 
@@ -423,6 +386,32 @@ def _calculate_cexs_nuclide(this, types, temperature=294., sab_name=None,
             energy_grid = grid
         else:
             energy_grid = nuc.energy[nucT]
+
+        # Parse the types
+        mts = []
+        ops = []
+        yields = []
+        for line in types:
+            if line in PLOT_TYPES:
+                tmp_mts = [mtj for mti in PLOT_TYPES_MT[line] for mtj in
+                           nuc.get_reaction_components(mti)]
+                mts.append(tmp_mts)
+                if line.startswith('nu'):
+                    yields.append(True)
+                else:
+                    yields.append(False)
+                if XI_MT in tmp_mts:
+                    ops.append((np.add,) * (len(tmp_mts) - 2) + (np.multiply,))
+                else:
+                    ops.append((np.add,) * (len(tmp_mts) - 1))
+            else:
+                # Not a built-in type, we have to parse it ourselves
+                cv.check_type('MT in types', line, Integral)
+                cv.check_greater_than('MT in types', line, 0)
+                tmp_mts = nuc.get_reaction_components(line)
+                mts.append(tmp_mts)
+                ops.append((np.add,) * (len(tmp_mts) - 1))
+                yields.append(False)
 
         for i, mt_set in enumerate(mts):
             # Get the reaction xs data from the nuclide
@@ -487,6 +476,7 @@ def _calculate_cexs_nuclide(this, types, temperature=294., sab_name=None,
                     funcs.append(lambda x: xi)
                 else:
                     funcs.append(lambda x: 0.)
+            funcs = funcs if funcs else [lambda x: 0.]
             xs.append(openmc.data.Combination(funcs, op))
     else:
         raise ValueError(this + " not in library")

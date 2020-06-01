@@ -89,6 +89,8 @@ extern "C" {
   int openmc_reset_timers();
   int openmc_run();
   void openmc_set_seed(int64_t new_seed);
+  int openmc_set_n_batches(int32_t n_batches, int32_t n_max_batches,
+                           bool add_statepoint_batch);
   int openmc_simulation_finalize();
   int openmc_simulation_init();
   int openmc_source_bank(void** ptr, int64_t* n);

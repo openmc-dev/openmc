@@ -827,4 +827,48 @@ void free_memory_settings() {
   settings::res_scat_nuclides.clear();
 }
 
+//==============================================================================
+// C API functions
+//==============================================================================
+
+extern "C" int
+openmc_set_n_batches(int32_t n_batches, int32_t n_max_batches,
+                     bool add_statepoint_batch)
+{
+  if (settings::n_inactive >= n_batches ||
+      settings::n_inactive >= n_max_batches) {
+    set_errmsg("Number of active batches must be greater than zero.");
+    return OPENMC_E_INVALID_ARGUMENT;
+  }
+
+  if (simulation::current_batch >= n_batches ||
+      simulation::current_batch >= n_max_batches) {
+    set_errmsg("Number of batches must be greater than current batch.");
+    return OPENMC_E_INVALID_ARGUMENT;
+  }
+
+  if (!settings::trigger_on) {
+    // Set n_batches and n_max_batches to same value
+    settings::n_batches = n_batches;
+    settings::n_max_batches = n_batches;
+  }
+  else {
+    // Set n_batches and n_max_batches separately
+    settings::n_batches = n_batches;
+    settings::n_max_batches = n_max_batches;
+  }
+
+  // Update size of k_generation and entropy
+  int m = settings::n_max_batches * settings::gen_per_batch;
+  simulation::k_generation.reserve(m);
+  simulation::entropy.reserve(m);
+
+  // Add value of n_batches to statepoint_batch
+  if (add_statepoint_batch &&
+      !(contains(settings::statepoint_batch, n_batches)))
+    settings::statepoint_batch.insert(n_batches);
+
+  return 0;
+}
+
 } // namespace openmc

@@ -2,6 +2,7 @@ from ctypes import c_int, c_int32, c_int64, c_double, c_char_p, c_bool
 
 from . import _dll
 from .core import _DLLGlobal
+from .error import _error_handler
 
 _RUN_MODES = {1: 'fixed source',
               2: 'eigenvalue',
@@ -11,11 +12,13 @@ _RUN_MODES = {1: 'fixed source',
 
 _dll.openmc_set_seed.argtypes = [c_int64]
 _dll.openmc_get_seed.restype = c_int64
+_dll.openmc_set_n_batches.argtypes = [c_int32, c_int32, c_bool]
+_dll.openmc_set_n_batches.restype = c_int
+_dll.openmc_set_n_batches.errcheck = _error_handler
 
 
 class _Settings:
     # Attributes that are accessed through a descriptor
-    batches = _DLLGlobal(c_int32, 'n_batches')
     cmfd_run = _DLLGlobal(c_bool, 'cmfd_run')
     entropy_on = _DLLGlobal(c_bool, 'entropy_on')
     generations_per_batch = _DLLGlobal(c_int32, 'gen_per_batch')
@@ -58,6 +61,24 @@ class _Settings:
     @seed.setter
     def seed(self, seed):
         _dll.openmc_set_seed(seed)
+
+    def set_n_batches(self, n_batches, n_max_batches=None, add_sp_batch=True):
+        """Set n_batches and n_max_batches
+
+        Parameters
+        ----------
+        n_batches : int
+            Number of batches to simulate
+        n_max_batches : int
+            Maximum number of batches. Only has an effect when triggers are used
+        add_sp_batch : bool
+            Whether to add `n_batches` as a statepoint batch
+
+        """
+        if not n_max_batches:
+            _dll.openmc_set_n_batches(n_batches, n_batches, add_sp_batch)
+        else:
+            _dll.openmc_set_n_batches(n_batches, n_max_batches, add_sp_batch)
 
 
 settings = _Settings()

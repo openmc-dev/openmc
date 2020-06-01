@@ -452,6 +452,16 @@ Functions
    :return: Return status (negative if an error occurs)
    :rtype: int
 
+.. c:function:: int openmc_set_n_batches(int32_t n_batches, int32_t n_max_batches, int32_t add_statepoint_batch)
+
+   Set number of batches and number of max batches
+
+   :param int32_t n_batches: Number of batches to simulate
+   :param int32_t n_batches: Maximum number of batches to simulate (only relevant when triggers are used)
+   :param bool add_statepoint_batch: Whether to add `n_batches` to `settings::statepoint_batch`
+   :return: Return status (negative if an error occurred)
+   :rtype: int
+
 .. c:function:: int openmc_simulation_finalize()
 
    Finalize a simulation.

@@ -342,8 +342,8 @@ RectLattice::offset(int map, const int i_xyz[3])
 
 //==============================================================================
 
-int32_t&
-RectLattice::offset(int map, int indx)
+int32_t
+RectLattice::offset(int map, int indx) const
 {
   return offsets_[nx*ny*nz*map + indx];
 }
@@ -981,8 +981,8 @@ HexLattice::offset(int map, const int i_xyz[3])
   return offsets_[nx*ny*nz*map + nx*ny*i_xyz[2] + nx*i_xyz[1] + i_xyz[0]];
 }
 
-int32_t&
-HexLattice::offset(int map, int indx)
+int32_t
+HexLattice::offset(int map, int indx) const
 {
   int nx {2*n_rings_ - 1};
   int ny {2*n_rings_ - 1};

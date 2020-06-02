@@ -266,6 +266,15 @@ Functions
    :return: Return status (negative if an error occurs)
    :rtype: int
 
+.. c:function:: int openmc_get_n_batches(int* n_batches, int* n_max_batches)
+
+   Get number of batches to simulate
+
+   :param int* n_batches: Number of batches to simulate
+   :param int* n_max_batches: Maximum number of batches to simulate (only relevant when triggers are used)
+   :return: Return status (negative if an error occurred)
+   :rtype: int
+
 .. c:function:: int openmc_get_nuclide_index(const char name[], int* index)
 
    Get the index in the nuclides array for a nuclide with a given name
@@ -457,7 +466,7 @@ Functions
    Set number of batches and number of max batches
 
    :param int32_t n_batches: Number of batches to simulate
-   :param int32_t n_batches: Maximum number of batches to simulate (only relevant when triggers are used)
+   :param int32_t n_max_batches: Maximum number of batches to simulate (only relevant when triggers are used)
    :param bool add_statepoint_batch: Whether to add `n_batches` to `settings::statepoint_batch`
    :return: Return status (negative if an error occurred)
    :rtype: int

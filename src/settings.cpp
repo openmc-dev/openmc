@@ -78,7 +78,6 @@ std::string path_source_library;
 std::string path_sourcepoint;
 std::string path_statepoint;
 
-int32_t n_batches;
 int32_t n_inactive {0};
 int32_t max_lost_particles {10};
 double rel_max_lost_particles {1.0e-6};
@@ -92,6 +91,7 @@ std::array<double, 4> energy_cutoff {0.0, 1000.0, 0.0, 0.0};
 int legendre_to_tabular_points {C_NONE};
 int max_order {0};
 int n_log_bins {8000};
+int n_batches;
 int n_max_batches;
 ResScatMethod res_scat_method {ResScatMethod::rvs};
 double res_scat_energy_min {0.01};
@@ -832,17 +832,15 @@ void free_memory_settings() {
 //==============================================================================
 
 extern "C" int
-openmc_set_n_batches(int32_t n_batches, int32_t n_max_batches,
+openmc_set_n_batches(int32_t n_batches, bool set_max_batches,
                      bool add_statepoint_batch)
 {
-  if (settings::n_inactive >= n_batches ||
-      settings::n_inactive >= n_max_batches) {
+  if (settings::n_inactive >= n_batches) {
     set_errmsg("Number of active batches must be greater than zero.");
     return OPENMC_E_INVALID_ARGUMENT;
   }
 
-  if (simulation::current_batch >= n_batches ||
-      simulation::current_batch >= n_max_batches) {
+  if (simulation::current_batch >= n_batches) {
     set_errmsg("Number of batches must be greater than current batch.");
     return OPENMC_E_INVALID_ARGUMENT;
   }
@@ -853,9 +851,11 @@ openmc_set_n_batches(int32_t n_batches, int32_t n_max_batches,
     settings::n_max_batches = n_batches;
   }
   else {
-    // Set n_batches and n_max_batches separately
-    settings::n_batches = n_batches;
-    settings::n_max_batches = n_max_batches;
+    // Set n_batches and n_max_batches based on value of set_max_batches
+    if (set_max_batches)
+      settings::n_max_batches = n_batches;
+    else
+      settings::n_batches = n_batches;
   }
 
   // Update size of k_generation and entropy
@@ -867,6 +867,17 @@ openmc_set_n_batches(int32_t n_batches, int32_t n_max_batches,
   if (add_statepoint_batch &&
       !(contains(settings::statepoint_batch, n_batches)))
     settings::statepoint_batch.insert(n_batches);
+
+  return 0;
+}
+
+extern "C" int
+openmc_get_n_batches(int* n_batches, bool get_max_batches)
+{
+  if (get_max_batches)
+    *n_batches = settings::n_max_batches;
+  else
+    *n_batches = settings::n_batches;
 
   return 0;
 }

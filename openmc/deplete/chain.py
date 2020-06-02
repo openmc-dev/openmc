@@ -490,16 +490,14 @@ class Chain:
             fission_yields = self.get_default_fission_yields()
 
         for i, nuc in enumerate(self.nuclides):
-
-            if nuc.n_decay_modes != 0:
-                # Decay paths
-                # Loss
+            # Loss from radioactive decay
+            if nuc.half_life is not None:
                 decay_constant = math.log(2) / nuc.half_life
-
                 if decay_constant != 0.0:
                     matrix[i, i] -= decay_constant
 
-                # Gain
+            # Gain from radioactive decay
+            if nuc.n_decay_modes != 0:
                 for _, target, branching_ratio in nuc.decay_modes:
                     # Allow for total annihilation for debug purposes
                     if target is not None:

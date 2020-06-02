@@ -316,11 +316,9 @@ def test_by_batch(lib_run):
         openmc.lib.simulation_finalize()
 
 
-def test_set_n_batches(lib_run, mpi_intracomm):
+def test_set_n_batches(lib_run):
     # Run simulation_init so that current_batch reset to 0
     openmc.lib.hard_reset()
-    openmc.lib.finalize()
-    openmc.lib.init(intracomm=mpi_intracomm)
     openmc.lib.simulation_init()
 
     settings = openmc.lib.settings
@@ -348,6 +346,7 @@ def test_set_n_batches(lib_run, mpi_intracomm):
 
     # n_active should have been overwritten from 5 to 15
     assert openmc.lib.num_realizations() == 15
+    assert os.path.exists('statepoint.20.h5')
 
 
 def test_reset(lib_run):
@@ -566,8 +565,8 @@ def test_trigger_set_n_batches(lib_run, mpi_intracomm):
 
     settings = openmc.lib.settings
     # Change n_batches to 12 and n_max_batches to 20
-    settings.set_batches(12, set_max_batches=False)
-    settings.set_batches(20, set_max_batches=True)
+    settings.set_batches(12, set_max_batches=False, add_sp_batch=False)
+    settings.set_batches(20, set_max_batches=True, add_sp_batch=True)
 
     assert settings.get_batches(get_max_batches=False) == 12
     assert settings.get_batches(get_max_batches=True) == 20
@@ -578,3 +577,7 @@ def test_trigger_set_n_batches(lib_run, mpi_intracomm):
 
     # n_active should have been overwritten from 5 to 15
     assert openmc.lib.num_realizations() == 15
+
+    # Ensure statepoint was created only at batch 20 when calling set_batches
+    assert not os.path.exists('statepoint.12.h5')
+    assert os.path.exists('statepoint.20.h5')

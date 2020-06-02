@@ -1,4 +1,4 @@
-from ctypes import c_int, c_int32, c_int64, c_double, c_char_p, c_bool
+from ctypes import c_int, c_int32, c_int64, c_double, c_char_p, c_bool, POINTER
 
 from . import _dll
 from .core import _DLLGlobal
@@ -12,7 +12,10 @@ _RUN_MODES = {1: 'fixed source',
 
 _dll.openmc_set_seed.argtypes = [c_int64]
 _dll.openmc_get_seed.restype = c_int64
-_dll.openmc_set_n_batches.argtypes = [c_int32, c_int32, c_bool]
+_dll.openmc_get_n_batches.argtypes = [POINTER(c_int), c_bool]
+_dll.openmc_get_n_batches.restype = c_int
+_dll.openmc_get_n_batches.errcheck = _error_handler
+_dll.openmc_set_n_batches.argtypes = [c_int32, c_bool, c_bool]
 _dll.openmc_set_n_batches.restype = c_int
 _dll.openmc_set_n_batches.errcheck = _error_handler
 
@@ -62,23 +65,42 @@ class _Settings:
     def seed(self, seed):
         _dll.openmc_set_seed(seed)
 
-    def set_n_batches(self, n_batches, n_max_batches=None, add_sp_batch=True):
-        """Set n_batches and n_max_batches
+    def set_batches(self, n_batches, set_max_batches=True, add_sp_batch=True):
+        """Set n_batches
 
         Parameters
         ----------
         n_batches : int
             Number of batches to simulate
-        n_max_batches : int
-            Maximum number of batches. Only has an effect when triggers are used
+        set_max_batches : int
+            Whether to set maximum number of batches. If true, the value of
+            `n_max_batches` is overridden, otherwise the value of `n_batches`
+            is overridden. Only has an effect when triggers are used
         add_sp_batch : bool
             Whether to add `n_batches` as a statepoint batch
 
         """
-        if not n_max_batches:
-            _dll.openmc_set_n_batches(n_batches, n_batches, add_sp_batch)
-        else:
-            _dll.openmc_set_n_batches(n_batches, n_max_batches, add_sp_batch)
+        _dll.openmc_set_n_batches(n_batches, set_max_batches, add_sp_batch)
+
+    def get_batches(self, get_max_batches=True):
+        """Set n_batches and n_max_batches
+
+        Parameters
+        ----------
+        get_max_batches : bool
+            Return `n_max_batches` if true, else return `n_batches`. Difference
+            arises only if triggers are used.
+
+        Returns
+        -------
+        int
+            Number of batches to simulate
+
+        """
+        n_batches = c_int()
+        _dll.openmc_get_n_batches(n_batches, get_max_batches)
+
+        return n_batches.value
 
 
 settings = _Settings()

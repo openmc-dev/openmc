@@ -162,8 +162,8 @@ def test_nuclide_mapping(lib_init):
 
 def test_settings(lib_init):
     settings = openmc.lib.settings
-    assert settings.batches == 10
-    settings.batches = 10
+    assert settings.get_batches() == 10
+    settings.set_batches(10)
     assert settings.inactive == 5
     assert settings.generations_per_batch == 1
     assert settings.particles == 100

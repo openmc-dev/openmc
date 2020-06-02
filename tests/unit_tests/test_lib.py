@@ -346,6 +346,8 @@ def test_set_n_batches(lib_run):
 
     # n_active should have been overwritten from 5 to 15
     assert openmc.lib.num_realizations() == 15
+
+    # Ensure statepoint created at new value of n_batches
     assert os.path.exists('statepoint.20.h5')
 
 

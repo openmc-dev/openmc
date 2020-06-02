@@ -5,7 +5,6 @@
 #include <functional> // for hash
 #include <limits>
 #include <memory> // for unique_ptr
-#include <set>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -153,12 +152,12 @@ public:
   //! Get all cell instances contained by this cell
   //! \return Map with cell indexes as keys and instances as values
   std::unordered_map<int32_t, std::vector<int32_t>>
-  get_contained_cells();
+  get_contained_cells() const;
 
 protected:
   void
   get_contained_cells_inner(std::unordered_map<int32_t, std::vector<int32_t>>& contained_cells,
-                            std::vector<ParentCell>& parent_cells);
+                            std::vector<ParentCell>& parent_cells) const;
 
 public:
   //----------------------------------------------------------------------------

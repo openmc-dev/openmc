@@ -5,6 +5,7 @@
 #include <cctype>
 #include <cmath>
 #include <iterator>
+#include <set>
 #include <sstream>
 #include <string>
 
@@ -275,8 +276,8 @@ Cell::set_temperature(double T, int32_t instance, bool set_contained)
       auto& cell = model::cells[entry.first];
       Expects(cell->type_ == Fill::MATERIAL);
       auto& instances =  entry.second;
-      for (auto instance = instances.begin(); instance != instances.end(); ++instance) {
-        cell->set_temperature(T, *instance);
+      for (auto instance : instances) {
+        cell->set_temperature(T, instance);
       }
     }
   }
@@ -1176,7 +1177,7 @@ openmc_cell_set_name(int32_t index, const char* name) {
 
 
 std::unordered_map<int32_t, std::vector<int32_t>>
-Cell::get_contained_cells() {
+Cell::get_contained_cells() const {
   std::unordered_map<int32_t, std::vector<int32_t>> contained_cells;
   std::vector<ParentCell> parent_cells;
 
@@ -1191,20 +1192,20 @@ Cell::get_contained_cells() {
 //! Get all cells within this cell
 void
 Cell::get_contained_cells_inner(std::unordered_map<int32_t, std::vector<int32_t>>& contained_cells,
-                                std::vector<ParentCell>& parent_cells)
+                                std::vector<ParentCell>& parent_cells) const
 {
 
   // filled by material, determine instance based on parent cells
   if (this->type_ == Fill::MATERIAL) {
     int instance = 0;
     if (this->distribcell_index_ >= 0) {
-      for (int i = 0; i < parent_cells.size(); i++) {
-        auto& cell = model::cells[parent_cells[i].cell_index];
+      for (auto& parent_cell : parent_cells) {
+        auto& cell = openmc::model::cells[parent_cell.cell_index];
         if (cell->type_ == Fill::UNIVERSE) {
           instance += cell->offset_[this->distribcell_index_];
         } else if (cell->type_ == Fill::LATTICE) {
           auto& lattice = model::lattices[cell->fill_];
-          instance += lattice->offset(this->distribcell_index_, parent_cells[i].lattice_index);
+          instance += lattice->offset(this->distribcell_index_, parent_cell.lattice_index);
         }
       }
     }

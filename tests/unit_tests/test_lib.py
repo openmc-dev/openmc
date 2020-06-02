@@ -162,8 +162,6 @@ def test_nuclide_mapping(lib_init):
 
 def test_settings(lib_init):
     settings = openmc.lib.settings
-    assert settings.get_batches() == 10
-    settings.set_batches(10)
     assert settings.inactive == 5
     assert settings.generations_per_batch == 1
     assert settings.particles == 100
@@ -316,6 +314,40 @@ def test_by_batch(lib_run):
 
     finally:
         openmc.lib.simulation_finalize()
+
+
+def test_set_n_batches(lib_run, mpi_intracomm):
+    # Run simulation_init so that current_batch reset to 0
+    openmc.lib.hard_reset()
+    openmc.lib.finalize()
+    openmc.lib.init(intracomm=mpi_intracomm)
+    openmc.lib.simulation_init()
+
+    settings = openmc.lib.settings
+    assert settings.get_batches() == 10
+
+    # Setting n_batches less than n_inactive should raise error
+    with pytest.raises(exc.InvalidArgumentError):
+        settings.set_batches(3)
+    # n_batches should stay the same
+    assert settings.get_batches() == 10
+
+    for i in range(7):
+        openmc.lib.next_batch()
+    # Setting n_batches less than current_batch should raise error
+    with pytest.raises(exc.InvalidArgumentError):
+        settings.set_batches(6)
+    # n_batches should stay the same
+    assert settings.get_batches() == 10
+
+    # Change n_batches from 10 to 20
+    settings.set_batches(20)
+    for _ in openmc.lib.iter_batches():
+        pass
+    openmc.lib.simulation_finalize()
+
+    # n_active should have been overwritten from 5 to 15
+    assert openmc.lib.num_realizations() == 15
 
 
 def test_reset(lib_run):
@@ -515,3 +547,34 @@ def test_global_bounding_box(lib_init):
 
     assert tuple(llc) == expected_llc
     assert tuple(urc) == expected_urc
+
+
+def test_trigger_set_n_batches(lib_run, mpi_intracomm):
+    openmc.reset_auto_ids()
+    pincell = openmc.examples.pwr_pin_cell()
+    pincell.settings.verbosity = 1
+    pincell.settings.keff_trigger = {'type': 'std_dev', 'threshold': 0.01}
+    pincell.settings.trigger_active = True
+    pincell.settings.trigger_max_batches = 10
+    pincell.settings.trigger_batch_interval = 1
+
+    pincell.export_to_xml()
+    openmc.lib.hard_reset()
+    openmc.lib.finalize()
+    openmc.lib.init(intracomm=mpi_intracomm)
+    openmc.lib.simulation_init()
+
+    settings = openmc.lib.settings
+    # Change n_batches to 12 and n_max_batches to 20
+    settings.set_batches(12, set_max_batches=False)
+    settings.set_batches(20, set_max_batches=True)
+
+    assert settings.get_batches(get_max_batches=False) == 12
+    assert settings.get_batches(get_max_batches=True) == 20
+
+    for _ in openmc.lib.iter_batches():
+        pass
+    openmc.lib.simulation_finalize()
+
+    # n_active should have been overwritten from 5 to 15
+    assert openmc.lib.num_realizations() == 15

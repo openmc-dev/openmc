@@ -252,7 +252,7 @@ Cell::set_temperature(double T, int32_t instance, bool set_contained)
     }
   }
 
-  if (this->type_ == Fill::MATERIAL) {
+  if (type_ == Fill::MATERIAL) {
     if (instance >= 0) {
       // If temperature vector is not big enough, resize it first
       if (sqrtkT_.size() != n_instances_) sqrtkT_.resize(n_instances_, sqrtkT_[0]);
@@ -1196,13 +1196,13 @@ Cell::get_contained_cells_inner(std::unordered_map<int32_t, std::vector<int32_t>
 {
 
   // filled by material, determine instance based on parent cells
-  if (this->type_ == Fill::MATERIAL) {
+  if (type_ == Fill::MATERIAL) {
     int instance = 0;
     if (this->distribcell_index_ >= 0) {
       for (auto& parent_cell : parent_cells) {
         auto& cell = openmc::model::cells[parent_cell.cell_index];
         if (cell->type_ == Fill::UNIVERSE) {
-          instance += cell->offset_[this->distribcell_index_];
+          instance += cell->offset_[distribcell_index_];
         } else if (cell->type_ == Fill::LATTICE) {
           auto& lattice = model::lattices[cell->fill_];
           instance += lattice->offset(this->distribcell_index_, parent_cell.lattice_index);
@@ -1210,11 +1210,11 @@ Cell::get_contained_cells_inner(std::unordered_map<int32_t, std::vector<int32_t>
       }
     }
     // add entry to contained cells
-    contained_cells[model::cell_map[this->id_]].push_back(instance);
+    contained_cells[model::cell_map[id_]].push_back(instance);
   // filled with universe, add the containing cell to the parent cells
   // and recurse
-  } else if (this->type_ == Fill::UNIVERSE) {
-    parent_cells.push_back({model::cell_map[this->id_], -1});
+  } else if (type_ == Fill::UNIVERSE) {
+    parent_cells.push_back({model::cell_map[id_], -1});
     auto& univ = model::universes[fill_];
     for(auto cell_index : univ->cells_) {
       auto& cell = model::cells[cell_index];
@@ -1223,11 +1223,11 @@ Cell::get_contained_cells_inner(std::unordered_map<int32_t, std::vector<int32_t>
     parent_cells.pop_back();
   // filled with a lattice, visit each universe in the lattice
   // with a recursive call to collect the cell instances
-  } else if (this->type_ == Fill::LATTICE) {
-    auto& lattice = model::lattices[this->fill_];
+  } else if (type_ == Fill::LATTICE) {
+    auto& lattice = model::lattices[fill_];
     for (auto i = lattice->begin(); i != lattice->end(); ++i) {
       auto& univ = model::universes[*i];
-      parent_cells.push_back({model::cell_map[this->id_], i.indx_});
+      parent_cells.push_back({model::cell_map[id_], i.indx_});
       for (auto cell_index : univ->cells_) {
         auto& cell = model::cells[cell_index];
         cell->get_contained_cells_inner(contained_cells, parent_cells);

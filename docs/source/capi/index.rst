@@ -266,12 +266,12 @@ Functions
    :return: Return status (negative if an error occurs)
    :rtype: int
 
-.. c:function:: int openmc_get_n_batches(int* n_batches, int* n_max_batches)
+.. c:function:: int openmc_get_n_batches(int* n_batches, bool get_max_batches)
 
    Get number of batches to simulate
 
    :param int* n_batches: Number of batches to simulate
-   :param int* n_max_batches: Maximum number of batches to simulate (only relevant when triggers are used)
+   :param int* get_max_batches: Whether to return `n_batches` or `n_max_batches` (only relevant when triggers are used)
    :return: Return status (negative if an error occurred)
    :rtype: int
 
@@ -461,12 +461,12 @@ Functions
    :return: Return status (negative if an error occurs)
    :rtype: int
 
-.. c:function:: int openmc_set_n_batches(int32_t n_batches, int32_t n_max_batches, int32_t add_statepoint_batch)
+.. c:function:: int openmc_set_n_batches(int32_t n_batches, bool set_max_batches, bool add_statepoint_batch)
 
    Set number of batches and number of max batches
 
    :param int32_t n_batches: Number of batches to simulate
-   :param int32_t n_max_batches: Maximum number of batches to simulate (only relevant when triggers are used)
+   :param bool set_max_batches: Whether to set `settings::n_max_batches` or `settings::n_batches` (only relevant when triggers are used)
    :param bool add_statepoint_batch: Whether to add `n_batches` to `settings::statepoint_batch`
    :return: Return status (negative if an error occurred)
    :rtype: int

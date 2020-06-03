@@ -104,8 +104,8 @@ proceed. The life of a single particle will proceed as follows:
      continuous-energy simulations as multi-group simulations use nuclide
      data which has already been combined in to material-specific data.
 
-  8. Once the specific nuclide is sampled, the random samples a reaction for
-     that nuclide based on the microscopic cross sections. If the microscopic
+  8. Once the specific nuclide is sampled, a reaction for
+     that nuclide is randomly sampled based on the microscopic cross sections. If the microscopic
      cross section for some reaction :math:`x` is :math:`\sigma_x` and the total
      microscopic cross section for the nuclide is :math:`\sigma_t`, then the
      probability that reaction :math:`x` will occur is

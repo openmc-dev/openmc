@@ -344,14 +344,11 @@ public:
                     std::vector<int>& bins,
                     std::vector<double>& lengths) const override;
 
-  std::pair<std::vector<double>, std::vector<double>>
-  plot(Position plot_ll, Position plot_ur) const override;
-
   //! Determine which surface bins were crossed by a particle.
   //
   //! \param[in] p Particle to check
   //! \param[out] bins Surface bins that were crossed
-  void surface_bins_crossed(const Particle* p, std::vector<int>& bins) const;
+  void surface_bins_crossed(const Particle& p, std::vector<int>& bins) const;
 
   int get_bin(Position r) const;
 
@@ -503,11 +500,11 @@ public:
   LibMesh(const std::string& filename);
 
   // Methods
-  void bins_crossed(const Particle* p,
+  void bins_crossed(const Particle& p,
                     std::vector<int>& bins,
                     std::vector<double>& lengths) const override;
 
-  void surface_bins_crossed(const Particle* p, std::vector<int>& bins) const override;
+  void surface_bins_crossed(const Particle& p, std::vector<int>& bins) const override;
 
   int get_bin(Position r) const override;
 

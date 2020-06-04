@@ -1743,7 +1743,7 @@ MOABUnstructuredMesh::intersect_track(const moab::CartVect& start,
 }
 
 void
-MOABUnstructuredMesh::bins_crossed(const Particle* p,
+MOABUnstructuredMesh::bins_crossed(const Particle& p,
                                std::vector<int>& bins,
                                std::vector<double>& lengths) const
 {
@@ -1869,7 +1869,7 @@ double MOABUnstructuredMesh::tet_volume(moab::EntityHandle tet) const {
  return 1.0 / 6.0 * (((p[1] - p[0]) * (p[2] - p[0])) % (p[3] - p[0]));
 }
 
-void MOABUnstructuredMesh::surface_bins_crossed(const Particle* p, std::vector<int>& bins) const {
+void MOABUnstructuredMesh::surface_bins_crossed(const Particle& p, std::vector<int>& bins) const {
   // TODO: Implement triangle crossings here
   throw std::runtime_error{"Unstructured mesh surface tallies are not implemented."};
 }
@@ -2237,7 +2237,7 @@ int LibMesh::n_surface_bins() const {
 }
 
 void
-LibMesh::surface_bins_crossed(const Particle* p,
+LibMesh::surface_bins_crossed(const Particle& p,
                                std::vector<int>& bins) const
 {
   // TODO: Implement triangle crossings here
@@ -2308,7 +2308,7 @@ void LibMesh::write(std::string filename) const {
 }
 
 void
-LibMesh::bins_crossed(const Particle* p,
+LibMesh::bins_crossed(const Particle& p,
                       std::vector<int>& bins,
                       std::vector<double>& lengths) const
 {

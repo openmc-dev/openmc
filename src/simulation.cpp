@@ -79,10 +79,8 @@ int openmc_simulation_init()
   // Determine how much work each process should do
   calculate_work();
 
-  // Allocate source and fission banks for eigenvalue simulations
-  if (settings::run_mode == RunMode::EIGENVALUE) {
-    allocate_banks();
-  }
+  // Allocate source, fission and surface source banks.
+  allocate_banks();
 
   // If doing an event-based simulation, intialize the particle buffer
   // and event queues
@@ -281,13 +279,19 @@ std::vector<int64_t> work_index;
 
 void allocate_banks()
 {
-  // Allocate source bank
-  simulation::source_bank.resize(simulation::work_per_rank);
+  if (settings::run_mode == RunMode::EIGENVALUE) {
+    // Allocate source bank
+    simulation::source_bank.resize(simulation::work_per_rank);
 
-  // Allocate fission bank
-  init_fission_bank(3*simulation::work_per_rank);
+    // Allocate fission bank
+    init_fission_bank(3*simulation::work_per_rank);
+  }
 
-  init_surf_src_bank(10*simulation::work_per_rank);  // TODO: capacity enough?
+  if (settings::surface_source) {
+    // Allocate surface source bank
+    init_surf_src_bank(10*simulation::work_per_rank);  // TODO: capacity enough?
+  }
+
 }
 
 void initialize_batch()

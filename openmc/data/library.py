@@ -47,7 +47,7 @@ class DataLibrary(EqualityMixin):
                 return library
         return None
 
-    def register_file(self, filename):
+    def register_file(self, filename, nucName=None):
         """Register a file with the data library.
 
         Parameters
@@ -75,6 +75,8 @@ class DataLibrary(EqualityMixin):
                 "File type {} not supported by {}"
                 .format(path.name, self.__class__.__name__))
 
+        if nucName is not None:
+            materials = nucName
         library = {'path': str(path), 'type': filetype, 'materials': materials}
         self.libraries.append(library)
 
@@ -104,7 +106,7 @@ class DataLibrary(EqualityMixin):
                 lib_element = ET.SubElement(root, "depletion_chain")
             else:
                 lib_element = ET.SubElement(root, "library")
-                lib_element.set('materials', ' '.join(library['materials']))
+                lib_element.set('materials', ''.join(library['materials']))
             lib_element.set('path', os.path.relpath(library['path'], common_dir))
             lib_element.set('type', library['type'])
 

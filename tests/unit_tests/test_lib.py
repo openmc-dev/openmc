@@ -50,6 +50,37 @@ def pincell_model():
 
 
 @pytest.fixture(scope='module')
+def uo2_trigger_model():
+    """Set up a simple UO2 model with k-eff trigger"""
+    model = openmc.model.Model()
+    m = openmc.Material(name='UO2')
+    m.add_nuclide('U235', 1.0)
+    m.add_nuclide('O16', 2.0)
+    m.set_density('g/cm3', 10.0)
+    model.materials.append(m)
+
+    cyl = openmc.ZCylinder(r=1.0, boundary_type='vacuum')
+    c = openmc.Cell(fill=m, region=-cyl)
+    model.geometry.root_universe = openmc.Universe(cells=[c])
+
+    model.settings.batches = 10
+    model.settings.inactive = 5
+    model.settings.particles = 100
+    model.settings.source = openmc.Source(space=openmc.stats.Box(
+        [-0.5, -0.5, -1], [0.5, 0.5, 1], only_fissionable=True))
+    model.settings.verbosity = 1
+    model.settings.keff_trigger = {'type': 'std_dev', 'threshold': 0.001}
+    model.settings.trigger_active = True
+    model.settings.trigger_max_batches = 10
+    model.settings.trigger_batch_interval = 1
+
+    # Write XML files in tmpdir
+    with cdtemp():
+        model.export_to_xml()
+        yield
+
+
+@pytest.fixture(scope='module')
 def lib_init(pincell_model, mpi_intracomm):
     openmc.lib.init(intracomm=mpi_intracomm)
     yield
@@ -550,17 +581,7 @@ def test_global_bounding_box(lib_init):
     assert tuple(urc) == expected_urc
 
 
-def test_trigger_set_n_batches(lib_run, mpi_intracomm):
-    openmc.reset_auto_ids()
-    pincell = openmc.examples.pwr_pin_cell()
-    pincell.settings.verbosity = 1
-    pincell.settings.keff_trigger = {'type': 'std_dev', 'threshold': 0.01}
-    pincell.settings.trigger_active = True
-    pincell.settings.trigger_max_batches = 10
-    pincell.settings.trigger_batch_interval = 1
-
-    pincell.export_to_xml()
-    openmc.lib.hard_reset()
+def test_trigger_set_n_batches(uo2_trigger_model, mpi_intracomm):
     openmc.lib.finalize()
     openmc.lib.init(intracomm=mpi_intracomm)
     openmc.lib.simulation_init()

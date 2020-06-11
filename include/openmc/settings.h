@@ -64,7 +64,6 @@ extern std::string path_source_library;   //!< path to the source shared object
 extern std::string path_sourcepoint;      //!< path to a source file
 extern "C" std::string path_statepoint;   //!< path to a statepoint file
 
-extern "C" int32_t n_batches;                //!< number of (inactive+active) batches
 extern "C" int32_t n_inactive;               //!< number of inactive batches
 extern "C" int32_t max_lost_particles;     //!< maximum number of lost particles
 extern double rel_max_lost_particles;   //!< maximum number of lost particles, relative to the total number of particles
@@ -79,6 +78,7 @@ extern std::array<double, 4> energy_cutoff;  //!< Energy cutoff in [eV] for each
 extern int legendre_to_tabular_points; //!< number of points to convert Legendres
 extern int max_order;                //!< Maximum Legendre order for multigroup data
 extern int n_log_bins;               //!< number of bins for logarithmic energy grid
+extern int n_batches;                //!< number of (inactive+active) batches
 extern int n_max_batches;            //!< Maximum number of batches
 extern ResScatMethod res_scat_method; //!< resonance upscattering method
 extern double res_scat_energy_min;   //!< Min energy in [eV] for res. upscattering

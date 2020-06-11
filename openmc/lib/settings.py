@@ -83,7 +83,7 @@ class _Settings:
         _dll.openmc_set_n_batches(n_batches, set_max_batches, add_sp_batch)
 
     def get_batches(self, get_max_batches=True):
-        """Set n_batches and n_max_batches
+        """Get number of batches or maximum number of batches
 
         Parameters
         ----------

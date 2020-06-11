@@ -271,7 +271,7 @@ Functions
    Get number of batches to simulate
 
    :param int* n_batches: Number of batches to simulate
-   :param int* get_max_batches: Whether to return `n_batches` or `n_max_batches` (only relevant when triggers are used)
+   :param bool get_max_batches: Whether to return `n_batches` or `n_max_batches` (only relevant when triggers are used)
    :return: Return status (negative if an error occurred)
    :rtype: int
 

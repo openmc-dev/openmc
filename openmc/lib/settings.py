@@ -66,14 +66,14 @@ class _Settings:
         _dll.openmc_set_seed(seed)
 
     def set_batches(self, n_batches, set_max_batches=True, add_sp_batch=True):
-        """Set n_batches
+        """Set number of batches or maximum number of batches
 
         Parameters
         ----------
         n_batches : int
             Number of batches to simulate
-        set_max_batches : int
-            Whether to set maximum number of batches. If true, the value of
+        set_max_batches : bool
+            Whether to set maximum number of batches. If True, the value of
             `n_max_batches` is overridden, otherwise the value of `n_batches`
             is overridden. Only has an effect when triggers are used
         add_sp_batch : bool

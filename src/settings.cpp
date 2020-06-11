@@ -849,13 +849,13 @@ openmc_set_n_batches(int32_t n_batches, bool set_max_batches,
     // Set n_batches and n_max_batches to same value
     settings::n_batches = n_batches;
     settings::n_max_batches = n_batches;
-  }
-  else {
+  } else {
     // Set n_batches and n_max_batches based on value of set_max_batches
-    if (set_max_batches)
+    if (set_max_batches) {
       settings::n_max_batches = n_batches;
-    else
+    } else {
       settings::n_batches = n_batches;
+    }
   }
 
   // Update size of k_generation and entropy
@@ -874,10 +874,7 @@ openmc_set_n_batches(int32_t n_batches, bool set_max_batches,
 extern "C" int
 openmc_get_n_batches(int* n_batches, bool get_max_batches)
 {
-  if (get_max_batches)
-    *n_batches = settings::n_max_batches;
-  else
-    *n_batches = settings::n_batches;
+  *n_batches = get_max_batches ? settings::n_max_batches : settings::n_batches;
 
   return 0;
 }

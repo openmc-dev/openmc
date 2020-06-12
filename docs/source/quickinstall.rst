@@ -23,6 +23,7 @@ you have `conda` installed on your system, OpenMC can be installed via the
     conda config --add channels conda-forge
 
 To list the versions of OpenMC that are available to install, in your terminal window or an Anaconda Prompt, run:
+
 .. code-block:: sh 
 
     conda search openmc

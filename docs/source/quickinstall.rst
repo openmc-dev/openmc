@@ -22,11 +22,16 @@ you have `conda` installed on your system, OpenMC can be installed via the
 
     conda config --add channels conda-forge
 
-OpenMC can then be installed with:
+To list the versions of OpenMC that are available to install, in your terminal window or an Anaconda Prompt, run:
+.. code-block:: sh 
+
+    conda search openmc
+    
+Specific version of OpenMC can then be installed with:
 
 .. code-block:: sh
 
-    conda install openmc
+    conda install openmc=0.X.0 python=3.X
 
 --------------------------------
 Installing on Ubuntu through PPA

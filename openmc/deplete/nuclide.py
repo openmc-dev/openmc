@@ -155,13 +155,15 @@ class Nuclide:
         return self.yield_data.energies
 
     @classmethod
-    def from_xml(cls, element, fission_q=None):
+    def from_xml(cls, element, root, fission_q=None):
         """Read nuclide from an XML element.
 
         Parameters
         ----------
         element : xml.etree.ElementTree.Element
-            XML element to write nuclide data to
+            XML element to read nuclide data from
+        root : xml.etree.ElementTree.Element
+            Root XML element for chain file
         fission_q : None or float
             User-supplied fission Q value [eV].
             Will be read from the element if not given
@@ -212,6 +214,14 @@ class Nuclide:
 
         fpy_elem = element.find('neutron_fission_yields')
         if fpy_elem is not None:
+            # Check for use of FPY from other nuclide
+            parent = fpy_elem.get('parent')
+            if parent is not None:
+                fpy_elem = root.find(
+                    './/nuclide[@name="{}"]/neutron_fission_yields'.format(parent)
+                )
+                nuc._fpy = parent
+
             nuc.yield_data = FissionYieldDistribution.from_xml_element(fpy_elem)
 
         return nuc
@@ -250,9 +260,14 @@ class Nuclide:
 
         if self.yield_data:
             fpy_elem = ET.SubElement(elem, 'neutron_fission_yields')
-            energy_elem = ET.SubElement(fpy_elem, 'energies')
-            energy_elem.text = ' '.join(str(E) for E in self.yield_energies)
-            self.yield_data.to_xml_element(fpy_elem)
+
+            if hasattr(self, '_fpy'):
+                # Check for link to other nuclide data
+                fpy_elem.set('parent', self._fpy)
+            else:
+                energy_elem = ET.SubElement(fpy_elem, 'energies')
+                energy_elem.text = ' '.join(str(E) for E in self.yield_energies)
+                self.yield_data.to_xml_element(fpy_elem)
 
         return elem
 

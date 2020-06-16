@@ -32,9 +32,14 @@ OpenMC can then be installed with:
 
 .. code-block:: sh
 
-    conda install openmc=0.X.0 python=3.X
+    conda install -n openmc-env openmc
     
-.. note:: Replace ``python=3.X`` with ``python=2.7`` if using legacy Python2. ``openmc=0.X.0`` is the package and version you want to install.
+This will install OpenMC in a conda environment called `openmc-env`. To activate
+the environment, run:
+
+.. code-block:: sh
+
+    conda activate openmc-env
 
 --------------------------------
 Installing on Ubuntu through PPA

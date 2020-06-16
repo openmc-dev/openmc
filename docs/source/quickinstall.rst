@@ -33,7 +33,7 @@ OpenMC can then be installed with:
 
 .. code-block:: sh
 
-    conda install -n openmc-env openmc
+    conda create -n openmc-env openmc
     
 This will install OpenMC in a conda environment called `openmc-env`. To activate
 the environment, run:

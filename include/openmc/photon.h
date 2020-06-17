@@ -38,8 +38,9 @@ public:
 
 class PhotonInteraction {
 public:
-  // Constructors
-  PhotonInteraction(hid_t group, int i_element);
+  // Constructors/destructor
+  PhotonInteraction(hid_t group);
+  ~PhotonInteraction();
 
   // Methods
   void calculate_xs(Particle& p) const;

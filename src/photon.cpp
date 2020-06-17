@@ -36,11 +36,14 @@ std::unordered_map<std::string, int> element_map;
 // PhotonInteraction implementation
 //==============================================================================
 
-PhotonInteraction::PhotonInteraction(hid_t group, int i_element)
-  : i_element_{i_element}
+PhotonInteraction::PhotonInteraction(hid_t group)
 {
+  // Set index of element in global vector
+  i_element_ = data::elements.size();
+
   // Get name of nuclide from group, removing leading '/'
   name_ = object_name(group).substr(1);
+  data::element_map[name_] = i_element_;
 
   // Get atomic number
   read_attribute(group, "Z", Z_);
@@ -292,6 +295,11 @@ PhotonInteraction::PhotonInteraction(hid_t group, int i_element)
   pair_production_total_ = xt::where(pair_production_total_ > 0.0,
     xt::log(pair_production_total_), -500.0);
   heating_ = xt::where(heating_ > 0.0, xt::log(heating_), -500.0);
+}
+
+PhotonInteraction::~PhotonInteraction()
+{
+  data::element_map.erase(name_);
 }
 
 void PhotonInteraction::compton_scatter(double alpha, bool doppler,

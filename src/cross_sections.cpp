@@ -221,7 +221,7 @@ read_ce_cross_sections(const std::vector<std::vector<double>>& nuc_temps,
       hid_t group = open_group(file_id, name.c_str());
       int i_nuclide = data::nuclides.size();
       data::nuclides.push_back(std::make_unique<Nuclide>(
-        group, nuc_temps[i_nuc], i_nuclide));
+        group, nuc_temps[i_nuc]));
 
       close_group(group);
       file_close(file_id);
@@ -255,7 +255,7 @@ read_ce_cross_sections(const std::vector<std::vector<double>>& nuc_temps,
 
           // Read element data from HDF5
           hid_t group = open_group(file_id, element.c_str());
-          data::elements.emplace_back(group, data::elements.size());
+          data::elements.emplace_back(group);
 
           // Determine if minimum/maximum energy for this element is greater/less than
           // the previous

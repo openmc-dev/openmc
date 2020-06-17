@@ -46,11 +46,14 @@ int Nuclide::XS_FISSION {2};
 int Nuclide::XS_NU_FISSION {3};
 int Nuclide::XS_PHOTON_PROD {4};
 
-Nuclide::Nuclide(hid_t group, const std::vector<double>& temperature, int i_nuclide)
-  : i_nuclide_{i_nuclide}
+Nuclide::Nuclide(hid_t group, const std::vector<double>& temperature)
 {
+  // Set index of nuclide in global vector
+  i_nuclide_ = data::nuclides.size();
+
   // Get name of nuclide from group, removing leading '/'
   name_ = object_name(group).substr(1);
+  data::nuclide_map[name_] = i_nuclide_;
 
   read_attribute(group, "Z", Z_);
   read_attribute(group, "A", A_);
@@ -274,6 +277,11 @@ Nuclide::Nuclide(hid_t group, const std::vector<double>& temperature, int i_nucl
   }
 
   this->create_derived(prompt_photons.get(), delayed_photons.get());
+}
+
+Nuclide::~Nuclide()
+{
+  data::nuclide_map.erase(name_);
 }
 
 void Nuclide::create_derived(const Function1D* prompt_photons, const Function1D* delayed_photons)
@@ -940,21 +948,17 @@ extern "C" int openmc_load_nuclide(const char* name)
     // Read nuclide data from HDF5
     hid_t group = open_group(file_id, name);
     std::vector<double> temperature;
-    int i_nuclide = data::nuclides.size();
-    data::nuclides.push_back(std::make_unique<Nuclide>(
-      group, temperature, i_nuclide));
+    data::nuclides.push_back(std::make_unique<Nuclide>(group, temperature));
 
     close_group(group);
     file_close(file_id);
 
-    // Add entry to nuclide dictionary
-    data::nuclide_map[name] = i_nuclide;
-
     // Initialize nuclide grid
-    data::nuclides.back()->init_grid();
+    const auto& nuc = data::nuclides.back();
+    nuc->init_grid();
 
     // Read multipole file into the appropriate entry on the nuclides array
-    if (settings::temperature_multipole) read_multipole_data(i_nuclide);
+    if (settings::temperature_multipole) read_multipole_data(nuc->i_nuclide_);
 
     // Read elemental data, if necessary
     if (settings::photon_transport) {
@@ -972,14 +976,10 @@ extern "C" int openmc_load_nuclide(const char* name)
 
         // Read element data from HDF5
         hid_t group = open_group(file_id, element.c_str());
-        data::elements.emplace_back(group, data::elements.size());
+        data::elements.emplace_back(group);
 
         close_group(group);
         file_close(file_id);
-
-        // Add element mapping
-        int i_elem = data::element_map.size();
-        data::element_map[element] = i_elem;
       }
     }
   }

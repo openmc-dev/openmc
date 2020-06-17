@@ -34,8 +34,9 @@ public:
     std::vector<double> energy;
   };
 
-  // Constructors
-  Nuclide(hid_t group, const std::vector<double>& temperature, int i_nuclide);
+  // Constructors/destructors
+  Nuclide(hid_t group, const std::vector<double>& temperature);
+  ~Nuclide();
 
   //! Initialize logarithmic grid for energy searches
   void init_grid();

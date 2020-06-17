@@ -57,6 +57,9 @@ void allocate_banks();
 //! Determine number of particles to transport per process
 void calculate_work();
 
+//! Determine energy limits for incident neutron/photon data
+void determine_energy_limits();
+
 //! Initialize a batch
 void initialize_batch();
 

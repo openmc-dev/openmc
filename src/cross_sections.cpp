@@ -316,15 +316,6 @@ read_ce_cross_sections(const std::vector<std::vector<double>>& nuc_temps,
     mat->finalize();
   } // materials
 
-
-  // Set up logarithmic grid for nuclides
-  for (auto& nuc : data::nuclides) {
-    nuc->init_grid();
-  }
-  int neutron = static_cast<int>(Particle::Type::neutron);
-  simulation::log_spacing = std::log(data::energy_max[neutron] /
-    data::energy_min[neutron]) / settings::n_log_bins;
-
   if (settings::photon_transport && settings::electron_treatment == ElectronTreatment::TTB) {
     // Determine if minimum/maximum energy for bremsstrahlung is greater/less
     // than the current minimum/maximum

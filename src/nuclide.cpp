@@ -953,11 +953,8 @@ extern "C" int openmc_load_nuclide(const char* name)
     close_group(group);
     file_close(file_id);
 
-    // Initialize nuclide grid
-    const auto& nuc = data::nuclides.back();
-    nuc->init_grid();
-
     // Read multipole file into the appropriate entry on the nuclides array
+    const auto& nuc = data::nuclides.back();
     if (settings::temperature_multipole) read_multipole_data(nuc->i_nuclide_);
 
     // Read elemental data, if necessary

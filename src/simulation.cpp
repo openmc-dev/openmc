@@ -68,6 +68,14 @@ int openmc_simulation_init()
   // Skip if simulation has already been initialized
   if (simulation::initialized) return 0;
 
+  // Set up logarithmic grid for nuclides
+  for (auto& nuc : data::nuclides) {
+    nuc->init_grid();
+  }
+  int neutron = static_cast<int>(Particle::Type::neutron);
+  simulation::log_spacing = std::log(data::energy_max[neutron] /
+    data::energy_min[neutron]) / settings::n_log_bins;
+
   // Determine how much work each process should do
   calculate_work();
 

@@ -118,6 +118,24 @@ def test_fpy_parent():
     assert fpy_elem.get('parent') == 'U235'
     assert len(fpy_elem) == 0
 
+    data = """
+<depletion_chain>
+  <nuclide name="U235" reactions="1">
+    <reaction type="fission" Q="193405400.0"/>
+  </nuclide>
+  <nuclide name="U238" reactions="1">
+    <reaction type="fission" Q="200.0e6"/>
+    <neutron_fission_yields parent="U235"/>
+  </nuclide>
+</depletion_chain>
+    """
+
+    # U235 yields are missing, so we should get an exception
+    root = ET.fromstring(data)
+    elems = root.findall('nuclide')
+    with pytest.raises(ValueError, match="yields"):
+        u238 = nuclide.Nuclide.from_xml(elems[1], root)
+
 
 def test_to_xml_element():
     """Test writing nuclide data to an XML element."""

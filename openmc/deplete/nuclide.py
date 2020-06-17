@@ -218,9 +218,16 @@ class Nuclide:
             # Check for use of FPY from other nuclide
             parent = fpy_elem.get('parent')
             if parent is not None:
+                assert root is not None
                 fpy_elem = root.find(
                     './/nuclide[@name="{}"]/neutron_fission_yields'.format(parent)
                 )
+                if fpy_elem is None:
+                    raise ValueError(
+                        "Fission product yields for {0} borrow from {1}, but {1} is"
+                        " not present in the chain file or has no yields.".format(
+                            nuc.name, parent
+                        ))
                 nuc._fpy = parent
 
             nuc.yield_data = FissionYieldDistribution.from_xml_element(fpy_elem)

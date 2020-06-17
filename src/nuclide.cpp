@@ -927,10 +927,12 @@ nuclides_size()
 // C API
 //==============================================================================
 
-extern "C" int openmc_load_nuclide(const char* name)
+extern "C" int openmc_load_nuclide(const char* name, const double* temps, int n)
 {
-  if (data::nuclide_map.find(name) == data::nuclide_map.end()) {
-    const auto& it = data::library_map.find({Library::Type::neutron, name});
+  if (data::nuclide_map.find(name) == data::nuclide_map.end() ||
+      data::nuclide_map.at(name) >= data::elements.size()) {
+    LibraryKey key {Library::Type::neutron, name};
+    const auto& it = data::library_map.find(key);
     if (it == data::library_map.end()) {
       set_errmsg("Nuclide '" + std::string{name} + "' is not present in library.");
       return OPENMC_E_DATA;
@@ -947,7 +949,7 @@ extern "C" int openmc_load_nuclide(const char* name)
 
     // Read nuclide data from HDF5
     hid_t group = open_group(file_id, name);
-    std::vector<double> temperature;
+    std::vector<double> temperature{temps, temps + n};
     data::nuclides.push_back(std::make_unique<Nuclide>(group, temperature));
 
     close_group(group);
@@ -960,10 +962,17 @@ extern "C" int openmc_load_nuclide(const char* name)
     // Read elemental data, if necessary
     if (settings::photon_transport) {
       auto element = to_element(name);
-      if (data::element_map.find(element) == data::element_map.end()) {
+      if (data::element_map.find(element) == data::element_map.end() ||
+          data::element_map.at(element) >= data::elements.size()) {
         // Read photon interaction data from HDF5 photon library
         LibraryKey key {Library::Type::photon, element};
-        int idx = data::library_map[key];
+        const auto& it = data::library_map.find(key);
+        if (it == data::library_map.end()) {
+          set_errmsg("Element '" + std::string{element} + "' is not present in library.");
+          return OPENMC_E_DATA;
+        }
+
+        int idx = it->second;
         const auto& filename = data::libraries[idx].path_;
         write_message("Reading " + element + " from " + filename, 6);
 

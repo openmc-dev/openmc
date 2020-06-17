@@ -8,7 +8,7 @@ import numpy as np
 
 import openmc
 import openmc.checkvalue as cv
-from ._xml import clean_indentation
+from ._xml import clean_indentation, reorder_attributes
 from .mixin import IDManagerMixin
 
 
@@ -844,5 +844,6 @@ class Plots(cv.CheckedList):
             p /= 'plots.xml'
 
         # Write the XML Tree to the plots.xml file
+        reorder_attributes(self._plots_file)  # TODO: Remove when support is Python 3.8+
         tree = ET.ElementTree(self._plots_file)
         tree.write(str(p), xml_declaration=True, encoding='utf-8')

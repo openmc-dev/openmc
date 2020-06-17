@@ -264,6 +264,16 @@ class Chain:
         -------
         Chain
 
+        Notes
+        -----
+        When an actinide is missing fission product yield (FPY) data, yields will
+        copied from a parent isotope, found according to:
+
+        1. If the nuclide is in a ground state and a metastable state exists with
+           fission yields, copy the yields from the metastable
+        2. Find an isotone (same number of neutrons) and copy those yields
+        3. Copy the yields of U235 if the previous two checks fail
+
         """
         chain = cls()
 

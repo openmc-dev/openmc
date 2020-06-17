@@ -1,5 +1,5 @@
 from collections.abc import Mapping
-from ctypes import c_int, c_char_p, POINTER, c_size_t
+from ctypes import c_int, c_double, c_char_p, POINTER, c_size_t
 from weakref import WeakValueDictionary
 
 from ..exceptions import DataError, AllocationError
@@ -14,7 +14,7 @@ __all__ = ['Nuclide', 'nuclides', 'load_nuclide']
 _dll.openmc_get_nuclide_index.argtypes = [c_char_p, POINTER(c_int)]
 _dll.openmc_get_nuclide_index.restype = c_int
 _dll.openmc_get_nuclide_index.errcheck = _error_handler
-_dll.openmc_load_nuclide.argtypes = [c_char_p]
+_dll.openmc_load_nuclide.argtypes = [c_char_p, POINTER(c_double), c_int]
 _dll.openmc_load_nuclide.restype = c_int
 _dll.openmc_load_nuclide.errcheck = _error_handler
 _dll.openmc_nuclide_name.argtypes = [c_int, POINTER(c_char_p)]
@@ -32,7 +32,7 @@ def load_nuclide(name):
         Name of the nuclide, e.g. 'U235'
 
     """
-    _dll.openmc_load_nuclide(name.encode())
+    _dll.openmc_load_nuclide(name.encode(), None, 0)
 
 
 class Nuclide(_FortranObject):

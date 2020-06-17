@@ -55,7 +55,7 @@ extern "C" {
   bool openmc_is_statepoint_batch();
   int openmc_legendre_filter_get_order(int32_t index, int* order);
   int openmc_legendre_filter_set_order(int32_t index, int order);
-  int openmc_load_nuclide(const char* name);
+  int openmc_load_nuclide(const char* name, const double* temps, int n);
   int openmc_material_add_nuclide(int32_t index, const char name[], double density);
   int openmc_material_get_densities(int32_t index, const int** nuclides, const double** densities, int* n);
   int openmc_material_get_id(int32_t index, int32_t* id);

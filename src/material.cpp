@@ -943,7 +943,7 @@ void Material::set_densities(const std::vector<std::string>& name,
   for (gsl::index i = 0; i < n; ++i) {
     const auto& nuc {name[i]};
     if (data::nuclide_map.find(nuc) == data::nuclide_map.end()) {
-      int err = openmc_load_nuclide(nuc.c_str());
+      int err = openmc_load_nuclide(nuc.c_str(), nullptr, 0);
       if (err < 0) throw std::runtime_error{openmc_err_msg};
     }
 
@@ -1053,7 +1053,7 @@ void Material::add_nuclide(const std::string& name, double density)
   }
 
   // If nuclide wasn't found, extend nuclide/density arrays
-  int err = openmc_load_nuclide(name.c_str());
+  int err = openmc_load_nuclide(name.c_str(), nullptr, 0);
   if (err < 0) throw std::runtime_error{openmc_err_msg};
 
   // Append new nuclide/density

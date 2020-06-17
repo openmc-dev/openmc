@@ -12,7 +12,7 @@ import numpy as np
 import openmc
 import openmc.data
 import openmc.checkvalue as cv
-from ._xml import clean_indentation
+from ._xml import clean_indentation, reorder_attributes
 from .mixin import IDManagerMixin
 
 
@@ -1239,6 +1239,7 @@ class Materials(cv.CheckedList):
                 clean_indentation(element, level=1)
                 element.tail = element.tail.strip(' ')
                 fh.write('  ')
+                reorder_attributes(element)  # TODO: Remove when support is Python 3.8+
                 ET.ElementTree(element).write(fh, encoding='unicode')
 
             # Write the <material> elements.
@@ -1247,6 +1248,7 @@ class Materials(cv.CheckedList):
                 clean_indentation(element, level=1)
                 element.tail = element.tail.strip(' ')
                 fh.write('  ')
+                reorder_attributes(element)  # TODO: Remove when support is Python 3.8+
                 ET.ElementTree(element).write(fh, encoding='unicode')
 
             # Write the closing tag for the root element.

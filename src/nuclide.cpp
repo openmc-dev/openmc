@@ -923,37 +923,64 @@ extern "C" int openmc_load_nuclide(const char* name)
 {
   if (data::nuclide_map.find(name) == data::nuclide_map.end()) {
     const auto& it = data::library_map.find({Library::Type::neutron, name});
-    if (it != data::library_map.end()) {
-      // Get filename for library containing nuclide
-      int idx = it->second;
-      std::string& filename = data::libraries[idx].path_;
-      write_message("Reading " + std::string{name} + " from " + filename, 6);
-
-      // Open file and make sure version is sufficient
-      hid_t file_id = file_open(filename, 'r');
-      check_data_version(file_id);
-
-      // Read nuclide data from HDF5
-      hid_t group = open_group(file_id, name);
-      std::vector<double> temperature;
-      int i_nuclide = data::nuclides.size();
-      data::nuclides.push_back(std::make_unique<Nuclide>(
-        group, temperature, i_nuclide));
-
-      close_group(group);
-      file_close(file_id);
-
-      // Add entry to nuclide dictionary
-      data::nuclide_map[name] = i_nuclide;
-
-      // Initialize nuclide grid
-      data::nuclides.back()->init_grid();
-
-      // Read multipole file into the appropriate entry on the nuclides array
-      if (settings::temperature_multipole) read_multipole_data(i_nuclide);
-    } else {
+    if (it == data::library_map.end()) {
       set_errmsg("Nuclide '" + std::string{name} + "' is not present in library.");
       return OPENMC_E_DATA;
+    }
+
+    // Get filename for library containing nuclide
+    int idx = it->second;
+    const auto& filename = data::libraries[idx].path_;
+    write_message("Reading " + std::string{name} + " from " + filename, 6);
+
+    // Open file and make sure version is sufficient
+    hid_t file_id = file_open(filename, 'r');
+    check_data_version(file_id);
+
+    // Read nuclide data from HDF5
+    hid_t group = open_group(file_id, name);
+    std::vector<double> temperature;
+    int i_nuclide = data::nuclides.size();
+    data::nuclides.push_back(std::make_unique<Nuclide>(
+      group, temperature, i_nuclide));
+
+    close_group(group);
+    file_close(file_id);
+
+    // Add entry to nuclide dictionary
+    data::nuclide_map[name] = i_nuclide;
+
+    // Initialize nuclide grid
+    data::nuclides.back()->init_grid();
+
+    // Read multipole file into the appropriate entry on the nuclides array
+    if (settings::temperature_multipole) read_multipole_data(i_nuclide);
+
+    // Read elemental data, if necessary
+    if (settings::photon_transport) {
+      auto element = to_element(name);
+      if (data::element_map.find(element) == data::element_map.end()) {
+        // Read photon interaction data from HDF5 photon library
+        LibraryKey key {Library::Type::photon, element};
+        int idx = data::library_map[key];
+        const auto& filename = data::libraries[idx].path_;
+        write_message("Reading " + element + " from " + filename, 6);
+
+        // Open file and make sure version is sufficient
+        hid_t file_id = file_open(filename, 'r');
+        check_data_version(file_id);
+
+        // Read element data from HDF5
+        hid_t group = open_group(file_id, element.c_str());
+        data::elements.emplace_back(group, data::elements.size());
+
+        close_group(group);
+        file_close(file_id);
+
+        // Add element mapping
+        int i_elem = data::element_map.size();
+        data::element_map[element] = i_elem;
+      }
     }
   }
   return 0;

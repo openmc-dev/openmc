@@ -162,7 +162,7 @@ class Nuclide:
         ----------
         element : xml.etree.ElementTree.Element
             XML element to read nuclide data from
-        root : None or xml.etree.ElementTree.Element
+        root : xml.etree.ElementTree.Element, optional
             Root XML element for chain file (only used when fission product
             yields are borrowed from another parent)
         fission_q : None or float

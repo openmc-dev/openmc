@@ -155,15 +155,16 @@ class Nuclide:
         return self.yield_data.energies
 
     @classmethod
-    def from_xml(cls, element, root, fission_q=None):
+    def from_xml(cls, element, root=None, fission_q=None):
         """Read nuclide from an XML element.
 
         Parameters
         ----------
         element : xml.etree.ElementTree.Element
             XML element to read nuclide data from
-        root : xml.etree.ElementTree.Element
-            Root XML element for chain file
+        root : None or xml.etree.ElementTree.Element
+            Root XML element for chain file (only used when fission product
+            yields are borrowed from another parent)
         fission_q : None or float
             User-supplied fission Q value [eV].
             Will be read from the element if not given

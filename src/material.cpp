@@ -936,6 +936,7 @@ void Material::set_densities(const std::vector<std::string>& name,
   if (n != nuclide_.size()) {
     nuclide_.resize(n);
     atom_density_ = xt::zeros<double>({n});
+    if (settings::photon_transport) element_.resize(n);
   }
 
   double sum_density = 0.0;
@@ -950,10 +951,20 @@ void Material::set_densities(const std::vector<std::string>& name,
     Expects(density[i] > 0.0);
     atom_density_(i) = density[i];
     sum_density += density[i];
+
+    if (settings::photon_transport) {
+      auto element_name = to_element(nuc);
+      element_[i] = data::element_map.at(element_name);
+    }
   }
 
   // Set total density to the sum of the vector
   this->set_density(sum_density, "atom/b-cm");
+
+  // Generate material bremsstrahlung data for electrons and positrons
+  if (settings::photon_transport && settings::electron_treatment == ElectronTreatment::TTB) {
+    this->init_bremsstrahlung();
+  }
 
   // Assign S(a,b) tables
   this->init_thermal();
@@ -1048,6 +1059,12 @@ void Material::add_nuclide(const std::string& name, double density)
   // Append new nuclide/density
   int i_nuc = data::nuclide_map[name];
   nuclide_.push_back(i_nuc);
+
+  // Append new element if photon transport is on
+  if (settings::photon_transport) {
+    int i_elem = data::element_map[to_element(name)];
+    element_.push_back(i_elem);
+  }
 
   auto n = nuclide_.size();
 

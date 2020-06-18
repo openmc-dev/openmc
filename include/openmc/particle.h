@@ -216,6 +216,16 @@ public:
   //! \param E Energy of the secondary particle in [eV]
   //! \param type Particle type
   void create_secondary(Direction u, double E, Type type);
+  
+  //! create a secondary particle with weight                add by Yuan
+  //
+  //! stores the current phase space attributes of the particle in the
+  //! secondary bank and increments the number of sites in the secondary bank.
+  //! \param u Direction of the secondary particle
+  //! \param E Energy of the secondary particle in [eV]
+  //! \param type Particle type
+  //! \param wgt Particle weight
+  void create_secondary(Direction u, double E, Type type, double weight);
 
   //! initialize from a source site
   //

@@ -603,7 +603,7 @@ class Plot(IDManagerMixin):
         element.set("color_by", self._color_by)
         element.set("type", self._type)
 
-        if self._type is 'slice':
+        if self._type == 'slice':
             element.set("basis", self._basis)
 
         subelement = ET.SubElement(element, "origin")

@@ -243,7 +243,7 @@ Particle::Bank SourceDistribution::sample(uint64_t* seed) const
     double random_number=prn(seed);
     for (i=0; i<settings::cumulative_biasing.size()-1; i++) 
       if ( settings::cumulative_biasing.at(i) <= random_number && random_number < settings::cumulative_biasing.at(i+1) )  break;
-    site.E = settings::biasing_energy.at(i) + ( settings::biasing_energy.at(i+1)-settings::biasing_energy.at(i) ) * prn();
+    site.E = settings::biasing_energy.at(i) + ( settings::biasing_energy.at(i+1)-settings::biasing_energy.at(i) ) * prn(seed);
     site.wgt = site.wgt * settings::origin_possibility.at(i+1) / settings::biasing.at(i+1);
     site.delayed_group = 0;
 

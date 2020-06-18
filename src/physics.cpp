@@ -517,7 +517,7 @@ void sample_photon_reaction(Particle& p)
           survival_ww = weight/number;
         }
 
-        if (prn(p.current_seed())<=number)  { p.gt_=survival_ww;  p.wgt_last_=p.wgt_; }   
+        if (prn(p.current_seed())<=number)  { p.wgt_=survival_ww;  p.wgt_last_=p.wgt_; }   
         else  {       
           p.alive_ = false;
           p.wgt_ = 0.0;

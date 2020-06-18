@@ -146,6 +146,69 @@ void sample_neutron_reaction(Particle& p)
     russian_roulette(p);
     if (!p.alive_) return;
   }
+	
+  
+  // weight window  add by Yuan
+  // Check if weight window is used
+  if (settings::weightwindow && settings::n_ww) {
+    Position pos = p->r();
+    double weight = p->wgt_;
+    double Energy = p->E_;
+    int ijk[3]={0};
+    int i=0;
+    int energy_bin=0;
+    int indices=0;
+    bool in_mesh = true;
+    double lower_ww;
+    double upper_ww;
+    double survival_ww;
+
+    for (i = 0; i < 3; ++i) {
+      if (pos[i] < settings::lower_left_point[i])  in_mesh=false;
+      else if (pos[i] > settings::upper_right_point[i]) in_mesh=false;
+    }
+   
+    if (in_mesh) {
+
+      for (i=0; i<settings::mesh_x.size()-1; ++i)  if ( settings::mesh_x.at(i) <= pos[0] && pos[0] <settings::mesh_x.at(i+1) ) break;
+      ijk[0] = i+1;      // get the mesh bin in x direction
+      for (i=0; i<settings::mesh_y.size()-1; ++i)  if ( settings::mesh_y.at(i) <= pos[1] && pos[1] <settings::mesh_y.at(i+1) ) break;
+      ijk[1] = i+1;      // get the mesh bin in y direction 
+      for (i=0; i<settings::mesh_z.size()-1; ++i)  if ( settings::mesh_z.at(i) <= pos[2] && pos[2] <settings::mesh_z.at(i+1) ) break;
+      ijk[2] = i+1;      // get the mesh bin in z direction
+      for (i=0; i<settings::n_energy_group.size()-1; ++i)  if ( settings::n_energy_group.at(i) <= Energy && Energy <settings::n_energy_group.at(i+1) ) break;
+      energy_bin = i+1;      // get the mesh bin in energy group
+
+      indices=( ((ijk[2]-1)*settings::shape[1]+(ijk[1]-1))*settings::shape[0]+ijk[0]-1 ) + (energy_bin-1)*settings::shape[0]*settings::shape[1]*settings::shape[2];                          // get the indices
+      lower_ww=settings::n_ww_lower[indices]*settings::n_multiplier;
+      upper_ww = lower_ww*settings::n_upper_ratio;
+      survival_ww = lower_ww*settings::n_survival_ratio;
+      
+      if (weight>=upper_ww) {
+        double number = weight/upper_ww;  
+        int num = std::ceil(number);       
+        if (num>settings::n_max_split) num=settings::n_max_split;
+        for (int i=0; i<num-1; ++i)  { p->create_secondary(p->u(), p->E_, p->type_, weight/double(num)); }
+        p->wgt_ = weight/double(num);
+        p->wgt_last_=p->wgt_;
+      } else if (weight<=lower_ww) {  
+        double number = weight/survival_ww;
+        if (number < 1.0/double(settings::n_max_split) ) {
+          number = 1.0/double(settings::n_max_split);
+          survival_ww = weight/number;
+        }
+        if (prn(p.current_seed())<=number)  { p->wgt_=survival_ww;  p->wgt_last_=p->wgt_; }   
+        else  {       
+          p->alive_ = false;
+          p->wgt_ = 0.0;
+          p->wgt_last_=p->wgt_;
+        }
+      }
+    }
+  }
+  // weight window  add by Yuan
+  
+
 }
 
 void
@@ -275,8 +338,8 @@ void sample_photon_reaction(Particle& p)
     p.u() = rotate_angle(p.u(), mu, nullptr, p.current_seed());
     p.event_ = TallyEvent::SCATTER;
     p.event_mt_ = COHERENT;
-    return;
-  }
+    //return;  commented by Yuan
+  } else { // add by Yuan
 
   // Incoherent (Compton) scattering
   prob += micro.incoherent;
@@ -318,8 +381,8 @@ void sample_photon_reaction(Particle& p)
     p.u() = rotate_angle(p.u(), mu, &phi, p.current_seed());
     p.event_ = TallyEvent::SCATTER;
     p.event_mt_ = INCOHERENT;
-    return;
-  }
+    //return;  commented by Yuan
+  } else {  // add by Yuan
 
   // Photoelectric effect
   double prob_after = prob + micro.photoelectric;
@@ -399,6 +462,71 @@ void sample_photon_reaction(Particle& p)
     p.alive_ = false;
     p.E_ = 0.0;
   }
+  } // add by Yuan
+  } // add by Yuan
+	
+  // weight window  add by Yuan
+  // Check if weight window is used
+  if (settings::weightwindow && settings::p_ww && p->E_ > 0.0) {
+    Position pos = p->r();
+    double weight = p->wgt_;
+    double Energy = p->E_;
+    int ijk[3]={0};
+    int i=0;
+    int energy_bin=0;
+    int indices=0;
+    bool in_mesh = true;
+    double lower_ww;
+    double upper_ww;
+    double survival_ww;
+
+    for (i = 0; i < 3; ++i) {
+      if (pos[i] < settings::lower_left_point[i])  in_mesh=false;
+      else if (pos[i] > settings::upper_right_point[i]) in_mesh=false;
+    }
+   
+    if (in_mesh) {
+
+      for (i=0; i<settings::mesh_x.size()-1; ++i)  if ( settings::mesh_x.at(i) <= pos[0] && pos[0] <settings::mesh_x.at(i+1) ) break;
+      ijk[0] = i+1;      // get the mesh bin in x direction
+      for (i=0; i<settings::mesh_y.size()-1; ++i)  if ( settings::mesh_y.at(i) <= pos[1] && pos[1] <settings::mesh_y.at(i+1) ) break;
+      ijk[1] = i+1;      // get the mesh bin in y direction 
+      for (i=0; i<settings::mesh_z.size()-1; ++i)  if ( settings::mesh_z.at(i) <= pos[2] && pos[2] <settings::mesh_z.at(i+1) ) break;
+      ijk[2] = i+1;      // get the mesh bin in z direction
+      for (i=0; i<settings::p_energy_group.size()-1; ++i)  if ( settings::p_energy_group.at(i) <= Energy && Energy <settings::p_energy_group.at(i+1) ) break;
+      energy_bin = i+1;      // get the mesh bin in energy group
+
+      indices=( ((ijk[2]-1)*settings::shape[1]+(ijk[1]-1))*settings::shape[0]+ijk[0]-1 ) + (energy_bin-1)*settings::shape[0]*settings::shape[1]*settings::shape[2];                          // get the indices
+
+      lower_ww=settings::p_ww_lower[indices]*settings::p_multiplier;
+      upper_ww = lower_ww*settings::p_upper_ratio;
+      survival_ww = lower_ww*settings::p_survival_ratio;
+      
+      if (weight>=upper_ww) {
+        double number = weight/upper_ww;  
+        int num = std::ceil(number);       
+        if (num>settings::p_max_split) num=settings::p_max_split;
+
+        for (int i=0; i<num-1; ++i)  { p->create_secondary(p->u(), p->E_, p->type_, weight/double(num)); }
+        p->wgt_ = weight/double(num);
+        p->wgt_last_=p->wgt_;
+      } else if (weight<=lower_ww) {  
+        double number = weight/survival_ww;
+        if (number < 1.0/double(settings::p_max_split) ) {
+          number = 1.0/double(settings::p_max_split);
+          survival_ww = weight/number;
+        }
+
+        if (prn(p.current_seed())<=number)  { p->wgt_=survival_ww;  p->wgt_last_=p->wgt_; }   
+        else  {       
+          p->alive_ = false;
+          p->wgt_ = 0.0;
+          p->wgt_last_=p->wgt_;
+        }
+      }
+    }
+  }
+  // weight window  add by Yuan
 }
 
 void sample_electron_reaction(Particle& p)

@@ -151,9 +151,9 @@ void sample_neutron_reaction(Particle& p)
   // weight window  add by Yuan
   // Check if weight window is used
   if (settings::weightwindow && settings::n_ww) {
-    Position pos = p->r();
-    double weight = p->wgt_;
-    double Energy = p->E_;
+    Position pos = p.r();
+    double weight = p.wgt_;
+    double Energy = p.E_;
     int ijk[3]={0};
     int i=0;
     int energy_bin=0;
@@ -188,20 +188,20 @@ void sample_neutron_reaction(Particle& p)
         double number = weight/upper_ww;  
         int num = std::ceil(number);       
         if (num>settings::n_max_split) num=settings::n_max_split;
-        for (int i=0; i<num-1; ++i)  { p->create_secondary(p->u(), p->E_, p->type_, weight/double(num)); }
-        p->wgt_ = weight/double(num);
-        p->wgt_last_=p->wgt_;
+        for (int i=0; i<num-1; ++i)  { p.create_secondary(p.u(), p.E_, p.type_, weight/double(num)); }
+        p.wgt_ = weight/double(num);
+        p.wgt_last_=p.wgt_;
       } else if (weight<=lower_ww) {  
         double number = weight/survival_ww;
         if (number < 1.0/double(settings::n_max_split) ) {
           number = 1.0/double(settings::n_max_split);
           survival_ww = weight/number;
         }
-        if (prn(p.current_seed())<=number)  { p->wgt_=survival_ww;  p->wgt_last_=p->wgt_; }   
+        if (prn(p.current_seed())<=number)  { p.wgt_=survival_ww;  p.wgt_last_=p.wgt_; }   
         else  {       
-          p->alive_ = false;
-          p->wgt_ = 0.0;
-          p->wgt_last_=p->wgt_;
+          p.alive_ = false;
+          p.wgt_ = 0.0;
+          p.wgt_last_=p.wgt_;
         }
       }
     }
@@ -467,10 +467,10 @@ void sample_photon_reaction(Particle& p)
 	
   // weight window  add by Yuan
   // Check if weight window is used
-  if (settings::weightwindow && settings::p_ww && p->E_ > 0.0) {
-    Position pos = p->r();
-    double weight = p->wgt_;
-    double Energy = p->E_;
+  if (settings::weightwindow && settings::p_ww && p.E_ > 0.0) {
+    Position pos = p.r();
+    double weight = p.wgt_;
+    double Energy = p.E_;
     int ijk[3]={0};
     int i=0;
     int energy_bin=0;
@@ -507,9 +507,9 @@ void sample_photon_reaction(Particle& p)
         int num = std::ceil(number);       
         if (num>settings::p_max_split) num=settings::p_max_split;
 
-        for (int i=0; i<num-1; ++i)  { p->create_secondary(p->u(), p->E_, p->type_, weight/double(num)); }
-        p->wgt_ = weight/double(num);
-        p->wgt_last_=p->wgt_;
+        for (int i=0; i<num-1; ++i)  { p.create_secondary(p.u(), p.E_, p.type_, weight/double(num)); }
+        p.wgt_ = weight/double(num);
+        p.wgt_last_=p.wgt_;
       } else if (weight<=lower_ww) {  
         double number = weight/survival_ww;
         if (number < 1.0/double(settings::p_max_split) ) {
@@ -517,11 +517,11 @@ void sample_photon_reaction(Particle& p)
           survival_ww = weight/number;
         }
 
-        if (prn(p.current_seed())<=number)  { p->wgt_=survival_ww;  p->wgt_last_=p->wgt_; }   
+        if (prn(p.current_seed())<=number)  { p.gt_=survival_ww;  p.wgt_last_=p.wgt_; }   
         else  {       
-          p->alive_ = false;
-          p->wgt_ = 0.0;
-          p->wgt_last_=p->wgt_;
+          p.alive_ = false;
+          p.wgt_ = 0.0;
+          p.wgt_last_=p.wgt_;
         }
       }
     }

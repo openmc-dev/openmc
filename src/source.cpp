@@ -236,7 +236,20 @@ Particle::Bank SourceDistribution::sample(uint64_t* seed) const
                   "one cross section table");
     }
   }
+  
+  // source weight biasing in energy   add by Yuan
+  if (settings::user_defined_biasing) {
+    int i=0;
+    double random_number=prn();
+    for (i=0; i<settings::cumulative_biasing.size()-1; i++) 
+      if ( settings::cumulative_biasing.at(i) <= random_number && random_number < settings::cumulative_biasing.at(i+1) )  break;
+    site.E = settings::biasing_energy.at(i) + ( settings::biasing_energy.at(i+1)-settings::biasing_energy.at(i) ) * prn();
+    site.wgt = site.wgt * settings::origin_possibility.at(i+1) / settings::biasing.at(i+1);
+    site.delayed_group = 0;
 
+  } else {
+
+  // origin code
   while (true) {
     // Sample energy spectrum
     site.E = energy_->sample(seed);
@@ -247,7 +260,10 @@ Particle::Bank SourceDistribution::sample(uint64_t* seed) const
 
   // Set delayed group
   site.delayed_group = 0;
-
+ // origin code
+  
+  }// add by Yuan
+  
   return site;
 }
 

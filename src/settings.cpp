@@ -69,6 +69,62 @@ bool urr_ptables_on          {true};
 bool write_all_tracks        {false};
 bool write_initial_source    {false};
 
+// ---
+// weight window   add by Yuan
+// ---
+bool weightwindow            {false};
+int ww_type   {-1};
+
+// weight window mesh
+double lower_left_point[3] = {0., 0., 0. };
+double upper_right_point[3]= {0., 0., 0. };
+std::vector<double> coarse_x;
+std::vector<double> coarse_y;
+std::vector<double> coarse_z;
+std::vector<int> shape_x;
+std::vector<int> shape_y;
+std::vector<int> shape_z;
+int shape[3] = {0, 0, 0};
+std::vector<double> width_x;
+std::vector<double> width_y;
+std::vector<double> width_z;
+std::vector<double> mesh_x;
+std::vector<double> mesh_y;
+std::vector<double> mesh_z;
+std::vector<double> n_energy_group;
+std::vector<double> p_energy_group;
+std::vector<double> n_ww_lower;
+std::vector<double> p_ww_lower;
+bool n_ww   {false};
+bool p_ww   {false};
+// weight window mesh
+
+// WWP
+// neutron
+double n_upper_ratio     {5};
+double n_survival_ratio  {3};
+int n_max_split          {5};
+double n_multiplier      {1};
+// neutron
+
+// photon
+double p_upper_ratio     {5};
+double p_survival_ratio  {3};
+int p_max_split          {5};
+double p_multiplier      {1};
+// photon
+
+// source weight biasing in energy
+bool user_defined_biasing {false};
+std::vector<double> biasing_energy;
+std::vector<double> origin_possibility;
+std::vector<double> cumulative_possibility;
+std::vector<double> biasing;
+std::vector<double> cumulative_biasing;
+// ---
+// weight window   add by Yuan
+// ---
+  
 std::string path_cross_sections;
 std::string path_input;
 std::string path_output;
@@ -416,6 +472,460 @@ void read_settings_xml()
       "the OMP_NUM_THREADS environment variable to set the number of threads.");
   }
 
+  
+  
+  // ==========================================================================
+  // Weight window, add by Yuan
+  if (check_for_node(root, "weightwindow")) {
+    weightwindow = true;
+    xml_node node_weightwindow = root.child("weightwindow");
+
+    // weight window type
+    if (check_for_node(node_weightwindow, "type")) {
+      ww_type = std::stoi(get_node_value(node_weightwindow,"type"));
+      if (ww_type!=0 && ww_type!=1 )   fatal_error("Must assign weight window input file type, 0 for wwinp file with only lower weight window, 1 for MCNP wwinp file");
+    } else { fatal_error("Must assign weight window input file type, 0 for wwinp file with only lower weight window, 1 for MCNP wwinp file");  }
+
+    if (ww_type) {      // ww_type=1 for MCNP wwinp file
+
+      // open wwinp file
+      std::ifstream wwfile; 
+      wwfile.open("wwinp");
+      if(!wwfile.is_open ())  fatal_error("Open weight window file failure, wwinp file is not exist.");
+
+      // parameters for MCNP wwinp file
+      // BLOCK 1
+      int ww_if, ww_iv, ww_ni, ww_nr;
+      std::vector<int> ww_ne;
+      double ww_nfx, ww_nfy, ww_nfz, ww_x0, ww_y0, ww_z0, ww_ncx, ww_ncy, ww_ncz, ww_nwg;
+
+      // BLOCK 2 & BLOCK 3 have been difined before
+   
+      // reading wwinp file, BLOCK 1
+      double ww;
+
+      wwfile>>ww_if;
+      wwfile>>ww_iv;
+      wwfile>>ww_ni;
+      wwfile>>ww_nr;
+      for (int i=0; i<ww_ni; i++) {   
+        wwfile>>ww;
+        ww_ne.push_back(ww);
+      } 
+
+      wwfile>>ww_nfx;        
+      wwfile>>ww_nfy;   
+      wwfile>>ww_nfz;   
+      wwfile>>ww_x0;    
+      wwfile>>ww_y0;    
+      wwfile>>ww_z0;    
+      wwfile>>ww_ncx;   
+      wwfile>>ww_ncy;   
+      wwfile>>ww_ncz;   
+      wwfile>>ww_nwg;    
+      if(ww_nr!=10)  fatal_error("Only cartesian WWINP is currently supported");
+
+      lower_left_point[0]=ww_x0;
+      lower_left_point[1]=ww_y0;
+      lower_left_point[2]=ww_z0;
+
+      shape[0]=ww_nfx;
+      shape[1]=ww_nfy;
+      shape[2]=ww_nfz;
+
+      // reading wwinp file, BLOCK 2
+      for (int i=0; i<ww_ncx; i++) {
+        if (i==0) { wwfile>>ww; coarse_x.push_back(ww); }      // the first value is x0, the origin point
+        wwfile>>ww;   // nfmx(i)
+        shape_x.push_back(ww);
+        wwfile>>ww;   // x(i)
+        coarse_x.push_back(ww);      
+        wwfile>>ww;   // rx(i)        
+      }
+      upper_right_point[0]=coarse_x.back();
+
+      for (int i=0; i<ww_ncy; i++) {
+        if (i==0) { wwfile>>ww; coarse_y.push_back(ww); }      // the first value is y0, the origin point
+        wwfile>>ww;   // nfmy(i)
+        shape_y.push_back(ww);
+        wwfile>>ww;   // y(i)
+        coarse_y.push_back(ww);       
+        wwfile>>ww;   // ry(i)        
+      }
+      upper_right_point[1]=coarse_y.back();
+
+      for (int i=0; i<ww_ncz; i++) {
+        if (i==0) { wwfile>>ww; coarse_z.push_back(ww); }      // the first value is z0, the origin point
+        wwfile>>ww;   // nfmz(i)
+        shape_z.push_back(ww);
+        wwfile>>ww;   // z(i)
+        coarse_z.push_back(ww);      
+        wwfile>>ww;   // rz(i)        
+      }
+      upper_right_point[2]=coarse_z.back();
+      
+      // calculate the fine mesh in x direction
+      for (int i=0; i<coarse_x.size()-1; i++) {
+
+          width_x.push_back( (coarse_x.at(i+1)-coarse_x.at(i))/shape_x.at(i) );
+          for (int j=0; j<shape_x.at(i); j++)  mesh_x.push_back( coarse_x.at(i)+width_x.back()*j );
+
+      }
+      mesh_x.push_back(coarse_x.back());
+
+      // locations of fine meshes in y direction
+      for (int i=0; i<coarse_y.size()-1; i++) {
+
+          width_y.push_back( (coarse_y.at(i+1)-coarse_y.at(i))/shape_y.at(i) );
+          for (int j=0; j<shape_y.at(i); j++)  mesh_y.push_back( coarse_y.at(i)+width_y.back()*j );
+        
+
+      }
+      mesh_y.push_back(coarse_y.back());
+
+      // locations of fine meshes in z direction
+      for (int i=0; i<coarse_z.size()-1; i++) {
+
+          width_z.push_back( (coarse_z.at(i+1)-coarse_z.at(i))/shape_z.at(i) );
+          for (int j=0; j<shape_z.at(i); j++)  mesh_z.push_back( coarse_z.at(i)+width_z.back()*j );
+        
+
+      }
+      mesh_z.push_back(coarse_z.back());
+
+ 
+      // reading wwinp file, BLOCK 3
+      // energy group & weight window for neutron
+      if (ww_ne.at(0) != 0 ) {
+      
+        n_ww = true;  // turn on the flag
+        
+        // energy group
+        n_energy_group.push_back(0);
+        for (int j=0; j<ww_ne.at(0); j++) {
+          wwfile>>ww;
+          n_energy_group.push_back(ww*1e6);   
+        }  
+        
+        // weight window
+        for (int j=0; j<ww_ne.at(0); j++) {
+          for (int kk=0; kk<ww_nfx*ww_nfy*ww_nfz; kk++) { 
+            wwfile>>ww;
+            n_ww_lower.push_back(ww);   
+          }
+        }
+        
+      }
+      
+      // energy group & weight window for photon
+      if ( ww_ni == 2 && ww_ne.at(1) !=0 ) {
+
+        p_ww = true;  // turn on the flag
+        
+        // energy group
+        p_energy_group.push_back(0);
+        for (int j=0; j<ww_ne.at(1); j++) {
+          wwfile>>ww;
+          p_energy_group.push_back(ww*1e6);   
+        }  
+        
+        // weight window
+        for (int j=0; j<ww_ne.at(1); j++) {
+          for (int kk=0; kk<ww_nfx*ww_nfy*ww_nfz; kk++) { 
+            wwfile>>ww;
+            p_ww_lower.push_back(ww);   
+          }
+        }   
+      
+      }
+
+      wwfile.close();  
+
+    } else {        // ww_type=0 for wwinp file with only weight window
+    
+      // Lower-left coordinates for mesh
+      if (check_for_node(node_weightwindow, "origin")) {
+        auto value = get_node_xarray<double>(node_weightwindow, "origin");
+        lower_left_point[0] = value.at(0);
+        lower_left_point[1] = value.at(1);
+        lower_left_point[2] = value.at(2);
+      }
+
+      // Locations of the coarse meshes in x direction
+      if (check_for_node(node_weightwindow, "xmesh")) {
+        auto value = get_node_xarray<double>(node_weightwindow, "xmesh");
+        for (int i=0; i<value.size(); i++)  coarse_x.push_back(value.at(i));
+        upper_right_point[0] = coarse_x.back();
+      }
+
+      // Number of fine meshes within corresponding coarse meshes in x direction
+      if (check_for_node(node_weightwindow, "xints")) {
+        auto value = get_node_xarray<int>(node_weightwindow, "xints");
+        for (int i=0; i<value.size(); i++)  shape_x.push_back(value.at(i));
+        if (coarse_x.size() != shape_x.size())      fatal_error("The number of xmesh and xints must be same.");
+      }
+
+      // Locations of the coarse meshes in y direction
+      if (check_for_node(node_weightwindow, "ymesh")) {
+        auto value = get_node_xarray<double>(node_weightwindow, "ymesh");
+        for (int i=0; i<value.size(); i++)  coarse_y.push_back(value.at(i));
+        upper_right_point[1] = coarse_y.back();
+      }
+
+      // Number of fine meshes within corresponding coarse meshes in y direction
+      if (check_for_node(node_weightwindow, "yints")) {
+        auto value = get_node_xarray<int>(node_weightwindow, "yints");
+        for (int i=0; i<value.size(); i++)  shape_y.push_back(value.at(i));
+        if (coarse_y.size() != shape_y.size())      fatal_error("The number of ymesh and yints must be same.");
+      }
+
+      // Locations of the coarse meshes in z direction
+      if (check_for_node(node_weightwindow, "zmesh")) {
+        auto value = get_node_xarray<double>(node_weightwindow, "zmesh");
+        for (int i=0; i<value.size(); i++)  coarse_z.push_back(value.at(i));
+        upper_right_point[2] = coarse_z.back();
+      }
+
+      // Number of fine meshes within corresponding coarse meshes in z direction
+      if (check_for_node(node_weightwindow, "zints")) {
+        auto value = get_node_xarray<int>(node_weightwindow, "zints");
+        for (int i=0; i<value.size(); i++)  shape_z.push_back(value.at(i));
+        if (coarse_z.size() != shape_z.size())      fatal_error("The number of zmesh and zints must be same.");
+      }
+
+      // Energy group
+      if (check_for_node(node_weightwindow, "energy")) {
+        xml_node weightwindow_energy = node_weightwindow.child("energy");
+        
+        // energy group for neutron
+        if (check_for_node(weightwindow_energy,"neutron")) {
+        
+          n_ww=true; // turn on the flag
+          
+          auto value = get_node_xarray<double>(weightwindow_energy, "neutron");
+          n_energy_group.push_back(0);
+          for (int i=0; i<value.size(); i++)  n_energy_group.push_back(value.at(i));
+        }
+        
+        
+        // energy group for photon
+        if (check_for_node(weightwindow_energy,"photon")) {
+        
+          if (!settings::photon_transport) { fatal_error("Photon transport is not on but weight window for photon is used"); }  // check if photon transport is on
+        
+          p_ww=true; // turn on the flag
+          
+          auto value = get_node_xarray<double>(weightwindow_energy, "photon");
+          p_energy_group.push_back(0);
+          for (int i=0; i<value.size(); i++)  p_energy_group.push_back(value.at(i));
+        }
+      } else { fatal_error("Must assign energy group for weight window"); }
+        
+
+      // locations of fine meshes in x direction
+      for (int i=0; i<coarse_x.size(); i++) {
+
+        if (i==0) { 
+          width_x.push_back( (coarse_x.at(0)-lower_left_point[0])/shape_x.at(0) );
+          for (int j=0; j<shape_x.at(i); j++)  mesh_x.push_back( lower_left_point[0]+width_x.back()*j );
+        } else {
+          width_x.push_back( (coarse_x.at(i)-coarse_x.at(i-1))/shape_x.at(i) );
+          for (int j=0; j<shape_x.at(i); j++)  mesh_x.push_back( coarse_x.at(i-1)+width_x.back()*j );
+        }
+
+      }
+      mesh_x.push_back(coarse_x.back());
+      upper_right_point[0]=coarse_x.back();
+
+      // locations of fine meshes in y direction
+      for (int i=0; i<coarse_y.size(); i++) {
+
+        if (i==0) { 
+          width_y.push_back( (coarse_y.at(0)-lower_left_point[1])/shape_y.at(0) );
+          for (int j=0; j<shape_y.at(i); j++)  mesh_y.push_back( lower_left_point[1]+width_y.back()*j );
+        } else {
+          width_y.push_back( (coarse_y.at(i)-coarse_y.at(i-1))/shape_y.at(i) );
+          for (int j=0; j<shape_y.at(i); j++)  mesh_y.push_back( coarse_y.at(i-1)+width_y.back()*j );
+        }
+
+      }
+      mesh_y.push_back(coarse_y.back());
+      upper_right_point[1]=coarse_y.back();
+
+      // locations of fine meshes in z direction
+      for (int i=0; i<coarse_z.size(); i++) {
+
+        if (i==0) { 
+          width_z.push_back( (coarse_z.at(0)-lower_left_point[2])/shape_z.at(0) );
+          for (int j=0; j<shape_z.at(i); j++)  mesh_z.push_back( lower_left_point[2]+width_z.back()*j );
+        } else {
+          width_z.push_back( (coarse_z.at(i)-coarse_z.at(i-1))/shape_z.at(i) );
+          for (int j=0; j<shape_z.at(i); j++)  mesh_z.push_back( coarse_z.at(i-1)+width_z.back()*j );
+        }
+
+      }
+      mesh_z.push_back(coarse_z.back());
+      upper_right_point[2]=coarse_z.back();
+
+
+      // read wwinp file
+      std::ifstream wwfile; 
+      wwfile.open("wwinp");
+      if(!wwfile.is_open ())  fatal_error("Open weight window file failure, wwinp file is not exist.");
+
+      double ww=0.0;
+      for (int i=0; i<shape_x.size(); i++) shape[0]=+shape_x.at(i); 
+      for (int i=0; i<shape_y.size(); i++) shape[1]=+shape_y.at(i);
+      for (int i=0; i<shape_z.size(); i++) shape[2]=+shape_z.at(i);
+      
+      if (n_ww) {
+        for (int i=0; i<shape[0]*shape[1]*shape[2]*(n_energy_group.size()-1); i++) {   
+          wwfile>>ww;
+          n_ww_lower.push_back(ww);
+        }  
+        //wwfile.close(); 
+      } 
+      
+      if (p_ww) {
+        for (int i=0; i<shape[0]*shape[1]*shape[2]*(p_energy_group.size()-1); i++) {   
+          wwfile>>ww;
+          p_ww_lower.push_back(ww);
+        }  
+        //wwfile.close(); 
+      } 
+      wwfile.close();
+    }
+    
+    // WWP-- weight window parameters
+    // neutron
+    if (check_for_node(node_weightwindow, "neutron_parameters")) {
+      xml_node neutron_wwp = node_weightwindow.child("neutron_parameters");
+        
+      // upper weight window
+      if (check_for_node(neutron_wwp,"upper")) {
+        n_upper_ratio = std::stod(get_node_value(neutron_wwp,"upper"));
+        if (n_upper_ratio<2 )   fatal_error("Ratio of upper/lower weight window must bigger than 2.");
+      }
+      
+      // survival weight window
+      if (check_for_node(neutron_wwp, "survival")) {
+        n_survival_ratio = std::stod(get_node_value(neutron_wwp,"survival"));
+        if (n_survival_ratio<=1 || n_survival_ratio>= n_upper_ratio )  
+          fatal_error("Ratio of survival/lower weight window must bigger than 1 and less than upper/lower ratio.");
+      }
+      
+      // max split
+      if (check_for_node(neutron_wwp, "max_split")) {
+        n_max_split = std::stoi(get_node_value(neutron_wwp,"max_split"));
+        if (n_max_split<=1 )   fatal_error("Max split number must bigger than 1.");
+      }
+      
+      // multiplier for weight window lower bounds
+      if (check_for_node(neutron_wwp, "multiplier")) {
+        n_multiplier = std::stod(get_node_value(neutron_wwp,"multiplier"));
+        if (n_multiplier<=0 )   fatal_error("Multiplier for lower weight window must bigger than 0.");
+      }
+      
+    }
+    // neutron
+        
+        
+    // photon
+    if (check_for_node(node_weightwindow, "photon_parameters")) {
+      xml_node photon_wwp = node_weightwindow.child("photon_parameters");
+        
+      // upper weight window
+      if (check_for_node(photon_wwp,"upper")) {
+        p_upper_ratio = std::stod(get_node_value(photon_wwp,"upper"));
+        if (p_upper_ratio<2 )   fatal_error("Ratio of upper/lower weight window must bigger than 2.");
+      }
+      
+      // survival weight window
+      if (check_for_node(photon_wwp, "survival")) {
+        p_survival_ratio = std::stod(get_node_value(photon_wwp,"survival"));
+        if (p_survival_ratio<=1 || p_survival_ratio>= p_upper_ratio )  
+          fatal_error("Ratio of survival/lower weight window must bigger than 1 and less than upper/lower ratio.");
+      }
+      
+      // max split
+      if (check_for_node(photon_wwp, "max_split")) {
+        p_max_split = std::stoi(get_node_value(photon_wwp,"max_split"));
+        if (p_max_split<=1 )   fatal_error("Max split number must bigger than 1.");
+      }
+      
+      // multiplier for weight window lower bounds
+      if (check_for_node(photon_wwp, "multiplier")) {
+        p_multiplier = std::stod(get_node_value(photon_wwp,"multiplier"));
+        if (p_multiplier<=0 )   fatal_error("Multiplier for lower weight window must bigger than 0.");
+      }
+      
+    }
+    // photon
+    
+    // user difined source weight biasing in energy
+    if (check_for_node(node_weightwindow, "user_defined_biasing")) {
+      user_defined_biasing = true;
+      xml_node node_user_defined_biasing = node_weightwindow.child("user_defined_biasing");
+      
+      // energy group for source weight biasing
+      if (check_for_node(node_user_defined_biasing, "biasing_energy")) {
+        auto value = get_node_xarray<double>(node_user_defined_biasing, "biasing_energy");
+        biasing_energy.push_back(0.);
+        for (int i=0; i<value.size(); i++)   biasing_energy.push_back(value.at(i));
+      } else {
+        fatal_error("Must provide energy group for biasing.");
+      }
+
+      // origin possibility for each energy group
+      if (check_for_node(node_user_defined_biasing, "origin_possibility")) {
+        auto value = get_node_xarray<double>(node_user_defined_biasing, "origin_possibility");
+        if (value.size()!=biasing_energy.size()-1)  fatal_error("Origin_possibility and biasing_energy must have the same number of input.");
+        origin_possibility.push_back(0.);
+        cumulative_possibility.push_back(0.);
+        for (int i=0; i<value.size(); i++) {
+          origin_possibility.push_back(value.at(i));
+          cumulative_possibility.push_back(0.);
+        }
+        // normalization
+        double total_possibility=0.0;
+        for (int i=0; i<origin_possibility.size(); i++)   total_possibility += origin_possibility.at(i);
+        for (int i=1; i<origin_possibility.size(); i++)  {   
+          origin_possibility.at(i) = origin_possibility.at(i) / total_possibility;
+          cumulative_possibility.at(i) = cumulative_possibility.at(i-1) + origin_possibility.at(i);
+        }
+      } else {
+        fatal_error("Must provide origin_possibility for each group.");
+      }
+      
+      // biasing weight for each energy group
+      if (check_for_node(node_user_defined_biasing, "biasing")) {
+        auto value = get_node_xarray<double>(node_user_defined_biasing, "biasing");
+        if (value.size()!=biasing_energy.size()-1)  fatal_error("Biasing and biasing_energy must have the same number of input.");
+        biasing.push_back(0);
+        cumulative_biasing.push_back(0);
+        for (int i=0; i<value.size(); i++) {
+          biasing.push_back(value.at(i));
+          cumulative_biasing.push_back(0);
+        }
+        // normalization
+        double total_possibility=0.0;
+        for (int i=0; i<biasing.size(); i++)   total_possibility += biasing.at(i);
+        for (int i=1; i<biasing.size(); i++) {
+          biasing.at(i) = biasing.at(i) / total_possibility;
+          cumulative_biasing.at(i) = cumulative_biasing.at(i-1) + biasing.at(i);
+        }
+      } else {
+        fatal_error("Must provide biasing for each energy group.");
+      }
+      
+    }
+
+  }
+  // Weight window, add by Yuan
+  // ==========================================================================
+  
+  
+  
   // ==========================================================================
   // EXTERNAL SOURCE
 

@@ -1265,7 +1265,7 @@ void inelastic_scatter(const Nuclide& nuc, const Reaction& rx, Particle& p)
 void sample_secondary_photons(Particle& p, int i_nuclide)
 {
   // Sample the number of photons produced
-  double y_t = /*p.wgt_ */ p.neutron_xs_[i_nuclide].photon_prod /
+  double y_t =  p.neutron_xs_[i_nuclide].photon_prod /
     p.neutron_xs_[i_nuclide].total;
   int y = static_cast<int>(y_t);
   if (prn(p.current_seed()) <= y_t - y) ++y;

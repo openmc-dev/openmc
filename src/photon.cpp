@@ -39,11 +39,11 @@ std::unordered_map<std::string, int> element_map;
 PhotonInteraction::PhotonInteraction(hid_t group)
 {
   // Set index of element in global vector
-  i_element_ = data::elements.size();
+  index_ = data::elements.size();
 
   // Get name of nuclide from group, removing leading '/'
   name_ = object_name(group).substr(1);
-  data::element_map[name_] = i_element_;
+  data::element_map[name_] = index_;
 
   // Get atomic number
   read_attribute(group, "Z", Z_);
@@ -472,7 +472,7 @@ void PhotonInteraction::calculate_xs(Particle& p) const
   // calculate interpolation factor
   double f = (log_E - energy_(i_grid)) / (energy_(i_grid+1) - energy_(i_grid));
 
-  auto& xs {p.photon_xs_[i_element_]};
+  auto& xs {p.photon_xs_[index_]};
   xs.index_grid = i_grid;
   xs.interp_factor = f;
 

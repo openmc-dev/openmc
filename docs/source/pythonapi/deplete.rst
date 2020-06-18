@@ -145,6 +145,17 @@ with :func:`cram.CRAM48` being the default.
    cram.CRAM48
    pool.deplete
 
+.. data:: pool.USE_MULTIPROCESSING
+
+   Boolean switch to enable or disable the use of :mod:`multiprocessing`
+   when solving the Bateman equations. The default is to use
+   :mod:`multiprocessing`, but can cause the simulation for hang in
+   some computing environments, namely due to MPI and networking
+   restrictions. Disabling this option will not utilize all processing
+   units and take a little more time.
+
+   :type: bool
+
 The following classes are used to help the :class:`openmc.deplete.Operator`
 compute quantities like effective fission yields, reaction rates, and
 total system energy.

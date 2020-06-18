@@ -49,11 +49,11 @@ int Nuclide::XS_PHOTON_PROD {4};
 Nuclide::Nuclide(hid_t group, const std::vector<double>& temperature)
 {
   // Set index of nuclide in global vector
-  i_nuclide_ = data::nuclides.size();
+  index_ = data::nuclides.size();
 
   // Get name of nuclide from group, removing leading '/'
   name_ = object_name(group).substr(1);
-  data::nuclide_map[name_] = i_nuclide_;
+  data::nuclide_map[name_] = index_;
 
   read_attribute(group, "Z", Z_);
   read_attribute(group, "A", A_);
@@ -497,7 +497,7 @@ double Nuclide::nu(double E, EmissionMode mode, int group) const
 void Nuclide::calculate_elastic_xs(Particle& p) const
 {
   // Get temperature index, grid index, and interpolation factor
-  auto& micro {p.neutron_xs_[i_nuclide_]};
+  auto& micro {p.neutron_xs_[index_]};
   int i_temp = micro.index_temp;
   int i_grid = micro.index_grid;
   double f = micro.interp_factor;
@@ -533,7 +533,7 @@ double Nuclide::elastic_xs_0K(double E) const
 
 void Nuclide::calculate_xs(int i_sab, int i_log_union, double sab_frac, Particle& p)
 {
-  auto& micro {p.neutron_xs_[i_nuclide_]};
+  auto& micro {p.neutron_xs_[index_]};
 
   // Initialize cached cross sections to zero
   micro.elastic = CACHE_INVALID;
@@ -740,7 +740,7 @@ void Nuclide::calculate_xs(int i_sab, int i_log_union, double sab_frac, Particle
 
 void Nuclide::calculate_sab_xs(int i_sab, double sab_frac, Particle& p)
 {
-  auto& micro {p.neutron_xs_[i_nuclide_]};
+  auto& micro {p.neutron_xs_[index_]};
 
   // Set flag that S(a,b) treatment should be used for scattering
   micro.index_sab = i_sab;
@@ -769,7 +769,7 @@ void Nuclide::calculate_sab_xs(int i_sab, double sab_frac, Particle& p)
 
 void Nuclide::calculate_urr_xs(int i_temp, Particle& p) const
 {
-  auto& micro = p.neutron_xs_[i_nuclide_];
+  auto& micro = p.neutron_xs_[index_];
   micro.use_ptable = true;
 
   // Create a shorthand for the URR data
@@ -787,8 +787,8 @@ void Nuclide::calculate_urr_xs(int i_temp, Particle& p) const
   // therefore preserving correlation of temperature in probability tables.
   p.stream_ = STREAM_URR_PTABLE;
   //TODO: to maintain the same random number stream as the Fortran code this
-  //replaces, the seed is set with i_nuclide_ + 1 instead of i_nuclide_
-  double r = future_prn(static_cast<int64_t>(i_nuclide_ + 1), *p.current_seed());
+  //replaces, the seed is set with index_ + 1 instead of index_
+  double r = future_prn(static_cast<int64_t>(index_ + 1), *p.current_seed());
   p.stream_ = STREAM_TRACKING;
 
   int i_low = 0;
@@ -956,8 +956,8 @@ extern "C" int openmc_load_nuclide(const char* name, const double* temps, int n)
     file_close(file_id);
 
     // Read multipole file into the appropriate entry on the nuclides array
-    const auto& nuc = data::nuclides.back();
-    if (settings::temperature_multipole) read_multipole_data(nuc->i_nuclide_);
+    int i_nuclide = data::nuclide_map.at(name);
+    if (settings::temperature_multipole) read_multipole_data(i_nuclide);
 
     // Read elemental data, if necessary
     if (settings::photon_transport) {

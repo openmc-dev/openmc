@@ -9,6 +9,7 @@
 #include <unordered_map>
 #include <vector>
 
+#include <gsl/gsl>
 #include <hdf5.h>
 
 #include "openmc/constants.h"
@@ -63,7 +64,7 @@ public:
   int A_; //!< Mass number
   int metastable_; //!< Metastable state
   double awr_; //!< Atomic weight ratio
-  int i_nuclide_; //!< Index in the nuclides array
+  gsl::index index_; //!< Index in the nuclides array
 
   // Temperature dependent cross section data
   std::vector<double> kTs_; //!< temperatures in eV (k*T)

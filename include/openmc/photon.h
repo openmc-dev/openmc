@@ -4,6 +4,7 @@
 #include "openmc/endf.h"
 #include "openmc/particle.h"
 
+#include <gsl/gsl>
 #include <hdf5.h>
 #include "xtensor/xtensor.hpp"
 
@@ -58,7 +59,7 @@ public:
   // Data members
   std::string name_; //!< Name of element, e.g. "Zr"
   int Z_; //!< Atomic number
-  int i_element_; //!< Index in global elements vector
+  gsl::index index_; //!< Index in global elements vector
 
   // Microscopic cross sections
   xt::xtensor<double, 1> energy_;

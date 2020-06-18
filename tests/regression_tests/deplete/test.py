@@ -5,6 +5,7 @@ import shutil
 from pathlib import Path
 
 import numpy as np
+import pytest
 import openmc
 from openmc.data import JOULE_PER_EV
 import openmc.deplete
@@ -13,7 +14,17 @@ from tests.regression_tests import config
 from example_geometry import generate_problem
 
 
-def test_full(run_in_tmpdir):
+@pytest.fixture(scope="module")
+def problem():
+    n_rings = 2
+    n_wedges = 4
+
+    # Load geometry from example
+    return generate_problem(n_rings, n_wedges)
+
+
+@pytest.mark.parametrize("multiproc", [True, False])
+def test_full(run_in_tmpdir, problem, multiproc):
     """Full system test suite.
 
     Runs an entire OpenMC simulation with depletion coupling and verifies
@@ -25,11 +36,7 @@ def test_full(run_in_tmpdir):
 
     """
 
-    n_rings = 2
-    n_wedges = 4
-
-    # Load geometry from example
-    geometry, lower_left, upper_right = generate_problem(n_rings, n_wedges)
+    geometry, lower_left, upper_right = problem
 
     # OpenMC-specific settings
     settings = openmc.Settings()
@@ -54,6 +61,7 @@ def test_full(run_in_tmpdir):
     power = 2.337e15*4*JOULE_PER_EV*1e6  # MeV/second cm from CASMO
 
     # Perform simulation using the predictor algorithm
+    openmc.deplete.pool.USE_MULTIPROCESSING = multiproc
     openmc.deplete.PredictorIntegrator(op, dt, power).integrate()
 
     # Get path to test and reference results

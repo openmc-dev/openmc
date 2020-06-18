@@ -74,6 +74,9 @@ void run_particle_restart()
   // Set verbosity high
   settings::verbosity = 10;
 
+  // Initialize nuclear data (energy limits, log grid, etc.)
+  initialize_data();
+
   // Initialize the particle to be tracked
   Particle p;
 

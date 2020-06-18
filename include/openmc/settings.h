@@ -54,6 +54,61 @@ extern bool urr_ptables_on;           //!< use unresolved resonance prob. tables
 extern bool write_all_tracks;         //!< write track files for every particle?
 extern bool write_initial_source;     //!< write out initial source file?
 
+// ---
+// weight window   add by Yuan
+// ---
+extern bool weightwindow;             // use weight window or not, add by Yuan
+extern int ww_type;                   // type of weight window input file
+// weight window mesh
+extern double lower_left_point[3];    //!< Lower-left coordinates of weight window mesh
+extern double upper_right_point[3];   //!< Upper-right coordinates of weight window mesh
+extern std::vector<double> coarse_x;  // Locations of the coarse meshes in the x direction
+extern std::vector<double> coarse_y;  // Locations of the coarse meshes in the y direction
+extern std::vector<double> coarse_z;  // Locations of the coarse meshes in the z direction
+extern std::vector<int> shape_x;      //!< Number of fine mesh in each coarse mesh in x dimension
+extern std::vector<int> shape_y;      //!< Number of fine mesh in each coarse mesh in y dimension
+extern std::vector<int> shape_z;      //!< Number of fine mesh in each coarse mesh in z dimension
+extern int shape[3];                  // total number of mesh elements in each dimension
+extern std::vector<double> width_x;   //!< Width of fine mesh in each coarse mesh in x dimension
+extern std::vector<double> width_y;   //!< Width of fine mesh in each coarse mesh in y dimension
+extern std::vector<double> width_z;   //!< Width of fine mesh in each coarse mesh in z dimension
+extern std::vector<double> mesh_x;    //!< Coordinates of each fine mesh elements in x dimension
+extern std::vector<double> mesh_y;    //!< Coordinates of each fine mesh elements in y dimension
+extern std::vector<double> mesh_z;    //!< Coordinates of each fine mesh elements in z dimension
+extern std::vector<double> n_energy_group; // energy group for neutron
+extern std::vector<double> p_energy_group; // energy group for photon
+extern std::vector<double> n_ww_lower;     // lower weight window for mesh for neutron
+extern std::vector<double> p_ww_lower;     // lower weight window for mesh for photon
+extern bool n_ww;                          // flag for neutron use weight window
+extern bool p_ww;                          // flag for photon use weight window
+// weight window mesh
+
+// WWP
+// neutron
+extern double n_upper_ratio;            // upper weight window = upper_ratio * lower weight window
+extern double n_survival_ratio;         // survival weight = survival_ratio * lower weight window
+extern int n_max_split;                 // max number of split particles
+extern double n_multiplier;             // multiplier for weight window lower bounds
+// neutron
+
+// photon
+extern double p_upper_ratio;            // upper weight window = upper_ratio * lower weight window
+extern double p_survival_ratio;         // survival weight = survival_ratio * lower weight window
+extern int p_max_split;                 // max number of split particles
+extern double p_multiplier;             // multiplier for weight window lower bounds
+// photon
+
+// source weight biasing in energy
+extern bool user_defined_biasing;      // use user difined weight or not
+extern std::vector<double> biasing_energy;   // energy group for weight biasing
+extern std::vector<double> origin_possibility; // possibility for each group
+extern std::vector<double> cumulative_possibility; // cumulative possibility for each group
+extern std::vector<double> biasing;   // biasing for each energy group
+extern std::vector<double> cumulative_biasing;   // cumulative possibility for biasing for each energy group
+// ---
+// weight window  add by Yuan
+// ---
+  
 // Paths to various files
 extern std::string path_cross_sections;   //!< path to cross_sections.xml
 extern std::string path_input;            //!< directory where main .xml files resides

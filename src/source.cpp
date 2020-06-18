@@ -240,7 +240,7 @@ Particle::Bank SourceDistribution::sample(uint64_t* seed) const
   // source weight biasing in energy   add by Yuan
   if (settings::user_defined_biasing) {
     int i=0;
-    double random_number=prn();
+    double random_number=prn(seed);
     for (i=0; i<settings::cumulative_biasing.size()-1; i++) 
       if ( settings::cumulative_biasing.at(i) <= random_number && random_number < settings::cumulative_biasing.at(i+1) )  break;
     site.E = settings::biasing_energy.at(i) + ( settings::biasing_energy.at(i+1)-settings::biasing_energy.at(i) ) * prn();

@@ -69,18 +69,10 @@ int openmc_simulation_init()
   // Skip if simulation has already been initialized
   if (simulation::initialized) return 0;
 
-  // Determine limits for incident neutron/photon data
+  // Initialize nuclear data (energy limits, log grid)
   if (settings::run_CE) {
-    determine_energy_limits();
+    initialize_data();
   }
-
-  // Set up logarithmic grid for nuclides
-  for (auto& nuc : data::nuclides) {
-    nuc->init_grid();
-  }
-  int neutron = static_cast<int>(Particle::Type::neutron);
-  simulation::log_spacing = std::log(data::energy_max[neutron] /
-    data::energy_min[neutron]) / settings::n_log_bins;
 
   // Determine how much work each process should do
   calculate_work();
@@ -569,7 +561,7 @@ void calculate_work()
   }
 }
 
-void determine_energy_limits()
+void initialize_data()
 {
   // Determine minimum/maximum energy for incident neutron/photon data
   data::energy_max = {INFTY, INFTY};
@@ -629,6 +621,14 @@ void determine_energy_limits()
       }
     }
   }
+
+  // Set up logarithmic grid for nuclides
+  for (auto& nuc : data::nuclides) {
+    nuc->init_grid();
+  }
+  int neutron = static_cast<int>(Particle::Type::neutron);
+  simulation::log_spacing = std::log(data::energy_max[neutron] /
+    data::energy_min[neutron]) / settings::n_log_bins;
 }
 
 #ifdef OPENMC_MPI

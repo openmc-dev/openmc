@@ -237,7 +237,7 @@ Particle::Bank SourceDistribution::sample(uint64_t* seed) const
     }
   }
   
-  // source weight biasing in energy   add by Yuan
+  // source weight biasing in energy,   add by Yuan
   if (settings::user_defined_biasing) {
     int i=0;
     double random_number=prn(seed);

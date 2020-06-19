@@ -155,7 +155,7 @@ html_title = "OpenMC Documentation"
 html_static_path = ['_static']
 
 def setup(app):
-    app.add_stylesheet('theme_overrides.css')
+    app.add_css_file('theme_overrides.css')
 
 # If not '', a 'Last updated on:' timestamp is inserted at every page bottom,
 # using the given strftime format.

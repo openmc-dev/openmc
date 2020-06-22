@@ -313,11 +313,15 @@ Functions
    :return: Return status (negative if an error occurs)
    :rtype: int
 
-.. c:function:: int openmc_load_nuclide(char name[])
+.. c:function:: int openmc_load_nuclide(const char* name, const double* temps, int n)
 
    Load data for a nuclide from the HDF5 data library.
 
-   :param char[] name: Name of the nuclide.
+   :param name: Name of the nuclide.
+   :type name: const char*
+   :param temps: Temperatures in [K] to load data at
+   :type temps: const double*
+   :param int n: Number of temperatures
    :return: Return status (negative if an error occurs)
    :rtype: int
 
@@ -373,7 +377,7 @@ Functions
    :return: Return status (negative if an error occurs)
    :rtype: int
 
-.. c:function:: int openmc_material_set_densities(int32_t index, int n, const char** name, const double density*)
+.. c:function:: int openmc_material_set_densities(int32_t index, int n, const char** name, const double* density)
 
    :param int32_t index: Index in the materials array
    :param int n: Length of name/density

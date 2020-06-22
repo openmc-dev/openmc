@@ -1244,7 +1244,7 @@ void split_particle(Particle& p)
       
   if (weight >= upper_ww) {
     double number = weight/upper_ww;  
-    double num = std::min(std::ceil(number), max_split);
+    double num = std::min(std::ceil(number), double(max_split));
 
     for (int l=0; l < num-1; ++l)  { p.create_secondary(p.u(), p.E_, p.type_, weight/num); }
     p.wgt_ = weight/num;

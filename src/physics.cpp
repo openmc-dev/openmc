@@ -1180,21 +1180,27 @@ void split_particle(Particle& p)
 {
   // weight window  add by Yuan
 
+  std::vector<double> energy_group;
+  std::vector<double> ww_lower;
+  double lower_ww;       
+  double upper_ww;
+  double survival_ww;
+  int    max_split;
   // Determine which set of weight window values to be used based on particle type
   if (p.type_==Particle::Type::neutron) {
-    auto& energy_group = settings::n_energy_group;
-    auto& ww_lower     = settings::n_ww_lower;
-    double lower_ww    = settings::n_multiplier;       
-    double upper_ww    = settings::n_upper_ratio;
-    double survival_ww = settings::n_survival_ratio;
-    int    max_split   = settings::n_max_split;
+    energy_group = settings::n_energy_group;
+    ww_lower     = settings::n_ww_lower;
+    lower_ww     = settings::n_multiplier;       
+    upper_ww     = settings::n_upper_ratio;
+    survival_ww  = settings::n_survival_ratio;
+    max_split    = settings::n_max_split;
   } else if (p.type_==Particle::Type::photon) {
-    auto& energy_group = settings::p_energy_group;
-    auto& ww_lower     = settings::p_ww_lower;
-    double lower_ww    = settings::p_multiplier;
-    double upper_ww    = settings::p_upper_ratio;
-    double survival_ww = settings::p_survival_ratio;
-    int    max_split   = settings::p_max_split;
+    energy_group = settings::p_energy_group;
+    ww_lower     = settings::p_ww_lower;
+    lower_ww     = settings::p_multiplier;       
+    upper_ww     = settings::p_upper_ratio;
+    survival_ww  = settings::p_survival_ratio;
+    max_split    = settings::p_max_split;
   }
 
   // Particle's position, weight and energy
@@ -1203,7 +1209,7 @@ void split_particle(Particle& p)
   double Energy = p.E_;	
 
   // Check if this particle is in the weight weindow mesh
-  for (i = 0; i < 3; ++i) {
+  for (int i = 0; i < 3; ++i) {
     if ((pos[i] < settings::lower_left_point[i]) || (pos[i] > settings::upper_right_point[i])) return;
   }
 	
@@ -1240,7 +1246,7 @@ void split_particle(Particle& p)
     double number = weight/upper_ww;  
     double num = std::min(std::ceil(number), max_split);
 
-    for (int i=0; i < num-1; ++i)  { p.create_secondary(p.u(), p.E_, p.type_, weight/num); }
+    for (int l=0; l < num-1; ++l)  { p.create_secondary(p.u(), p.E_, p.type_, weight/num); }
     p.wgt_ = weight/num;
     p.wgt_last_ = p.wgt_;
 	  

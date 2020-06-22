@@ -499,7 +499,7 @@ void read_settings_xml()
       std::vector<int> ww_ne;
       double ww_nfx, ww_nfy, ww_nfz, ww_x0, ww_y0, ww_z0, ww_ncx, ww_ncy, ww_ncz, ww_nwg;
 
-      // BLOCK 2 & BLOCK 3 have been difined before
+      // BLOCK 2 & BLOCK 3 have been defined before
    
       // reading wwinp file, BLOCK 1
       double ww;
@@ -523,7 +523,7 @@ void read_settings_xml()
       wwfile>>ww_ncy;   
       wwfile>>ww_ncz;   
       wwfile>>ww_nwg;    
-      if(ww_nr!=10)  fatal_error("Only cartesian WWINP is currently supported");
+      if (ww_nr!=10)  fatal_error("Only cartesian WWINP is currently supported");
 
       lower_left_point[0]=ww_x0;
       lower_left_point[1]=ww_y0;
@@ -862,7 +862,7 @@ void read_settings_xml()
     }
     // photon
     
-    // user difined source weight biasing in energy
+    // user defined source weight biasing in energy
     if (check_for_node(node_weightwindow, "user_defined_biasing")) {
       user_defined_biasing = true;
       xml_node node_user_defined_biasing = node_weightwindow.child("user_defined_biasing");

@@ -121,6 +121,9 @@ Coupling and Multi-physics
 Geometry and Visualization
 --------------------------
 
+- Patrick C. Shriwise, Xiaokang Zhang, and Andrew Davis, "DAG-OpenMC: CAD-Based
+  Geometry in OpenMC", *Trans. Am. Nucl. Soc.*, **122**, 395-398 (2020).
+
 - Sterling Harper, Paul Romano, Benoit Forget, and Kord Smith, "Efficient
   dynamic threadsafe neighbor lists for Monte Carlo ray tracing," *Proc. M&C*,
   918-926, Portland, Oregon, Aug. 25-29 (2019).
@@ -145,6 +148,10 @@ Geometry and Visualization
 -------------
 Miscellaneous
 -------------
+
+- Jiankai Yu, Qiudong Wang, Ding She, and Benoit Forget, "Modelling of the
+  HTR-PM Pebble-bed Reactor using OpenMC", *Trans. Am. Nucl. Soc.*, **122**,
+  643-646 (2020).
 
 - Sharif Abu Darda, Abdelfattah Y. Soliman, Mohammed S. Aljohani, and Ned Xoubi,
   "`Technical feasibility study of BAEC TRIGA reactor (BTRR) as a neutron source

@@ -150,62 +150,7 @@ void sample_neutron_reaction(Particle& p)
   
   // weight window  add by Yuan
   // Check if weight window is used
-  if (settings::weightwindow && settings::n_ww) {
-    Position pos = p.r();
-    double weight = p.wgt_;
-    double Energy = p.E_;
-    int ijk[3]={0};
-    int i=0;
-    int energy_bin=0;
-    int indices=0;
-    bool in_mesh = true;
-    double lower_ww;
-    double upper_ww;
-    double survival_ww;
-
-    for (i = 0; i < 3; ++i) {
-      if (pos[i] < settings::lower_left_point[i])  in_mesh=false;
-      else if (pos[i] > settings::upper_right_point[i]) in_mesh=false;
-    }
-   
-    if (in_mesh) {
-
-      for (i=0; i<settings::mesh_x.size()-1; ++i)  if ( settings::mesh_x.at(i) <= pos[0] && pos[0] <settings::mesh_x.at(i+1) ) break;
-      ijk[0] = i+1;      // get the mesh bin in x direction
-      for (i=0; i<settings::mesh_y.size()-1; ++i)  if ( settings::mesh_y.at(i) <= pos[1] && pos[1] <settings::mesh_y.at(i+1) ) break;
-      ijk[1] = i+1;      // get the mesh bin in y direction 
-      for (i=0; i<settings::mesh_z.size()-1; ++i)  if ( settings::mesh_z.at(i) <= pos[2] && pos[2] <settings::mesh_z.at(i+1) ) break;
-      ijk[2] = i+1;      // get the mesh bin in z direction
-      for (i=0; i<settings::n_energy_group.size()-1; ++i)  if ( settings::n_energy_group.at(i) <= Energy && Energy <settings::n_energy_group.at(i+1) ) break;
-      energy_bin = i+1;      // get the mesh bin in energy group
-
-      indices=( ((ijk[2]-1)*settings::shape[1]+(ijk[1]-1))*settings::shape[0]+ijk[0]-1 ) + (energy_bin-1)*settings::shape[0]*settings::shape[1]*settings::shape[2];                          // get the indices
-      lower_ww=settings::n_ww_lower[indices]*settings::n_multiplier;
-      upper_ww = lower_ww*settings::n_upper_ratio;
-      survival_ww = lower_ww*settings::n_survival_ratio;
-      
-      if (weight>=upper_ww) {
-        double number = weight/upper_ww;  
-        int num = std::ceil(number);       
-        if (num>settings::n_max_split) num=settings::n_max_split;
-        for (int i=0; i<num-1; ++i)  { p.create_secondary(p.u(), p.E_, p.type_, weight/double(num)); }
-        p.wgt_ = weight/double(num);
-        p.wgt_last_=p.wgt_;
-      } else if (weight<=lower_ww) {  
-        double number = weight/survival_ww;
-        if (number < 1.0/double(settings::n_max_split) ) {
-          number = 1.0/double(settings::n_max_split);
-          survival_ww = weight/number;
-        }
-        if (prn(p.current_seed())<=number)  { p.wgt_=survival_ww;  p.wgt_last_=p.wgt_; }   
-        else  {       
-          p.alive_ = false;
-          p.wgt_ = 0.0;
-          p.wgt_last_=p.wgt_;
-        }
-      }
-    }
-  }
+  if (settings::weightwindow && settings::n_ww)  split_particle(p);
   // weight window  add by Yuan
   
 
@@ -338,194 +283,134 @@ void sample_photon_reaction(Particle& p)
     p.u() = rotate_angle(p.u(), mu, nullptr, p.current_seed());
     p.event_ = TallyEvent::SCATTER;
     p.event_mt_ = COHERENT;
-    //return;  commented by Yuan
   } else { // add by Yuan
 
-  // Incoherent (Compton) scattering
-  prob += micro.incoherent;
-  if (prob > cutoff) {
-    double alpha_out, mu;
-    int i_shell;
-    element.compton_scatter(alpha, true, &alpha_out, &mu, &i_shell, p.current_seed());
+    // Incoherent (Compton) scattering
+    prob += micro.incoherent;
+    if (prob > cutoff) {
+      double alpha_out, mu;
+      int i_shell;
+      element.compton_scatter(alpha, true, &alpha_out, &mu, &i_shell, p.current_seed());
 
-    // Determine binding energy of shell. The binding energy is 0.0 if
-    // doppler broadening is not used.
-    double e_b;
-    if (i_shell == -1) {
-      e_b = 0.0;
-    } else {
-      e_b = element.binding_energy_[i_shell];
-    }
+      // Determine binding energy of shell. The binding energy is 0.0 if
+      // doppler broadening is not used.
+      double e_b;
+      if (i_shell == -1) {
+        e_b = 0.0;
+      } else {
+        e_b = element.binding_energy_[i_shell];
+      }
 
-    // Create Compton electron
-    double phi = 2.0*PI*prn(p.current_seed());
-    double E_electron = (alpha - alpha_out)*MASS_ELECTRON_EV - e_b;
-    int electron = static_cast<int>(Particle::Type::electron);
-    if (E_electron >= settings::energy_cutoff[electron]) {
-      double mu_electron = (alpha - alpha_out*mu)
-        / std::sqrt(alpha*alpha + alpha_out*alpha_out - 2.0*alpha*alpha_out*mu);
-      Direction u = rotate_angle(p.u(), mu_electron, &phi, p.current_seed());
-      p.create_secondary(u, E_electron, Particle::Type::electron);
-    }
+      // Create Compton electron
+      double phi = 2.0*PI*prn(p.current_seed());
+      double E_electron = (alpha - alpha_out)*MASS_ELECTRON_EV - e_b;
+      int electron = static_cast<int>(Particle::Type::electron);
+      if (E_electron >= settings::energy_cutoff[electron]) {
+        double mu_electron = (alpha - alpha_out*mu)
+          / std::sqrt(alpha*alpha + alpha_out*alpha_out - 2.0*alpha*alpha_out*mu);
+        Direction u = rotate_angle(p.u(), mu_electron, &phi, p.current_seed());
+        p.create_secondary(u, E_electron, Particle::Type::electron);
+      }
 
-    // TODO: Compton subshell data does not match atomic relaxation data
-    // Allow electrons to fill orbital and produce auger electrons
-    // and fluorescent photons
-    if (i_shell >= 0) {
-      const auto& shell = element.shells_[i_shell];
-      element.atomic_relaxation(shell, p);
-    }
+      // TODO: Compton subshell data does not match atomic relaxation data
+      // Allow electrons to fill orbital and produce auger electrons
+      // and fluorescent photons
+      if (i_shell >= 0) {
+        const auto& shell = element.shells_[i_shell];
+        element.atomic_relaxation(shell, p);
+      }
 
-    phi += PI;
-    p.E_ = alpha_out*MASS_ELECTRON_EV;
-    p.u() = rotate_angle(p.u(), mu, &phi, p.current_seed());
-    p.event_ = TallyEvent::SCATTER;
-    p.event_mt_ = INCOHERENT;
-    //return;  commented by Yuan
-  } else {  // add by Yuan
+      phi += PI;
+      p.E_ = alpha_out*MASS_ELECTRON_EV;
+      p.u() = rotate_angle(p.u(), mu, &phi, p.current_seed());
+      p.event_ = TallyEvent::SCATTER;
+      p.event_mt_ = INCOHERENT;
+    } else {  // add by Yuan
 
-  // Photoelectric effect
-  double prob_after = prob + micro.photoelectric;
-  if (prob_after > cutoff) {
-    for (const auto& shell : element.shells_) {
-      // Get grid index and interpolation factor
-      int i_grid = micro.index_grid;
-      double f = micro.interp_factor;
+      // Photoelectric effect
+      double prob_after = prob + micro.photoelectric;
+      if (prob_after > cutoff) {
+        for (const auto& shell : element.shells_) {
+          // Get grid index and interpolation factor
+          int i_grid = micro.index_grid;
+          double f = micro.interp_factor;
 
-      // Check threshold of reaction
-      int i_start = shell.threshold;
-      if (i_grid < i_start) continue;
+          // Check threshold of reaction
+          int i_start = shell.threshold;
+          if (i_grid < i_start) continue;
 
-      // Evaluation subshell photoionization cross section
-      double xs = std::exp(shell.cross_section(i_grid - i_start) +
-        f*(shell.cross_section(i_grid + 1 - i_start) -
-        shell.cross_section(i_grid - i_start)));
+          // Evaluation subshell photoionization cross section
+          double xs = std::exp(shell.cross_section(i_grid - i_start) +
+            f*(shell.cross_section(i_grid + 1 - i_start) -
+            shell.cross_section(i_grid - i_start)));
 
-      prob += xs;
-      if (prob > cutoff) {
-        double E_electron = p.E_ - shell.binding_energy;
+          prob += xs;
+          if (prob > cutoff) {
+            double E_electron = p.E_ - shell.binding_energy;
 
-        // Sample mu using non-relativistic Sauter distribution.
-        // See Eqns 3.19 and 3.20 in "Implementing a photon physics
-        // model in Serpent 2" by Toni Kaltiaisenaho
-        double mu;
-        while (true) {
-          double r = prn(p.current_seed());
-          if (4.0*(1.0 - r)*r >= prn(p.current_seed())) {
-            double rel_vel = std::sqrt(E_electron * (E_electron +
-              2.0*MASS_ELECTRON_EV)) / (E_electron + MASS_ELECTRON_EV);
-            mu = (2.0*r + rel_vel - 1.0) / (2.0*rel_vel*r - rel_vel + 1.0);
-            break;
+            // Sample mu using non-relativistic Sauter distribution.
+            // See Eqns 3.19 and 3.20 in "Implementing a photon physics
+            // model in Serpent 2" by Toni Kaltiaisenaho
+            double mu;
+            while (true) {
+              double r = prn(p.current_seed());
+              if (4.0*(1.0 - r)*r >= prn(p.current_seed())) {
+                double rel_vel = std::sqrt(E_electron * (E_electron +
+                  2.0*MASS_ELECTRON_EV)) / (E_electron + MASS_ELECTRON_EV);
+                mu = (2.0*r + rel_vel - 1.0) / (2.0*rel_vel*r - rel_vel + 1.0);
+                break;
+              }
+            }
+
+            double phi = 2.0*PI*prn(p.current_seed());
+            Direction u;
+            u.x = mu;
+            u.y = std::sqrt(1.0 - mu*mu)*std::cos(phi);
+            u.z = std::sqrt(1.0 - mu*mu)*std::sin(phi);
+
+            // Create secondary electron
+            p.create_secondary(u, E_electron, Particle::Type::electron);
+
+            // Allow electrons to fill orbital and produce auger electrons
+            // and fluorescent photons
+            element.atomic_relaxation(shell, p);
+            p.event_ = TallyEvent::ABSORB;
+            p.event_mt_ = 533 + shell.index_subshell;
+            p.alive_ = false;
+            p.E_ = 0.0;
+            return;
           }
         }
+      }
+      prob = prob_after;
 
-        double phi = 2.0*PI*prn(p.current_seed());
-        Direction u;
-        u.x = mu;
-        u.y = std::sqrt(1.0 - mu*mu)*std::cos(phi);
-        u.z = std::sqrt(1.0 - mu*mu)*std::sin(phi);
+      // Pair production
+      prob += micro.pair_production;
+      if (prob > cutoff) {
+        double E_electron, E_positron;
+        double mu_electron, mu_positron;
+        element.pair_production(alpha, &E_electron, &E_positron,
+          &mu_electron, &mu_positron, p.current_seed());
 
         // Create secondary electron
+        Direction u = rotate_angle(p.u(), mu_electron, nullptr, p.current_seed());
         p.create_secondary(u, E_electron, Particle::Type::electron);
 
-        // Allow electrons to fill orbital and produce auger electrons
-        // and fluorescent photons
-        element.atomic_relaxation(shell, p);
+        // Create secondary positron
+        u = rotate_angle(p.u(), mu_positron, nullptr, p.current_seed());
+        p.create_secondary(u, E_positron, Particle::Type::positron);
+
         p.event_ = TallyEvent::ABSORB;
-        p.event_mt_ = 533 + shell.index_subshell;
+        p.event_mt_ = PAIR_PROD;
         p.alive_ = false;
         p.E_ = 0.0;
-        return;
       }
-    }
-  }
-  prob = prob_after;
-
-  // Pair production
-  prob += micro.pair_production;
-  if (prob > cutoff) {
-    double E_electron, E_positron;
-    double mu_electron, mu_positron;
-    element.pair_production(alpha, &E_electron, &E_positron,
-      &mu_electron, &mu_positron, p.current_seed());
-
-    // Create secondary electron
-    Direction u = rotate_angle(p.u(), mu_electron, nullptr, p.current_seed());
-    p.create_secondary(u, E_electron, Particle::Type::electron);
-
-    // Create secondary positron
-    u = rotate_angle(p.u(), mu_positron, nullptr, p.current_seed());
-    p.create_secondary(u, E_positron, Particle::Type::positron);
-
-    p.event_ = TallyEvent::ABSORB;
-    p.event_mt_ = PAIR_PROD;
-    p.alive_ = false;
-    p.E_ = 0.0;
-  }
-  } // add by Yuan
+    } // add by Yuan
   } // add by Yuan
 	
   // weight window  add by Yuan
   // Check if weight window is used
-  if (settings::weightwindow && settings::p_ww && p.E_ > 0.0) {
-    Position pos = p.r();
-    double weight = p.wgt_;
-    double Energy = p.E_;
-    int ijk[3]={0};
-    int i=0;
-    int energy_bin=0;
-    int indices=0;
-    bool in_mesh = true;
-    double lower_ww;
-    double upper_ww;
-    double survival_ww;
-
-    for (i = 0; i < 3; ++i) {
-      if (pos[i] < settings::lower_left_point[i])  in_mesh=false;
-      else if (pos[i] > settings::upper_right_point[i]) in_mesh=false;
-    }
-   
-    if (in_mesh) {
-
-      for (i=0; i<settings::mesh_x.size()-1; ++i)  if ( settings::mesh_x.at(i) <= pos[0] && pos[0] <settings::mesh_x.at(i+1) ) break;
-      ijk[0] = i+1;      // get the mesh bin in x direction
-      for (i=0; i<settings::mesh_y.size()-1; ++i)  if ( settings::mesh_y.at(i) <= pos[1] && pos[1] <settings::mesh_y.at(i+1) ) break;
-      ijk[1] = i+1;      // get the mesh bin in y direction 
-      for (i=0; i<settings::mesh_z.size()-1; ++i)  if ( settings::mesh_z.at(i) <= pos[2] && pos[2] <settings::mesh_z.at(i+1) ) break;
-      ijk[2] = i+1;      // get the mesh bin in z direction
-      for (i=0; i<settings::p_energy_group.size()-1; ++i)  if ( settings::p_energy_group.at(i) <= Energy && Energy <settings::p_energy_group.at(i+1) ) break;
-      energy_bin = i+1;      // get the mesh bin in energy group
-
-      indices=( ((ijk[2]-1)*settings::shape[1]+(ijk[1]-1))*settings::shape[0]+ijk[0]-1 ) + (energy_bin-1)*settings::shape[0]*settings::shape[1]*settings::shape[2];                          // get the indices
-
-      lower_ww=settings::p_ww_lower[indices]*settings::p_multiplier;
-      upper_ww = lower_ww*settings::p_upper_ratio;
-      survival_ww = lower_ww*settings::p_survival_ratio;
-      
-      if (weight>=upper_ww) {
-        double number = weight/upper_ww;  
-        int num = std::ceil(number);       
-        if (num>settings::p_max_split) num=settings::p_max_split;
-
-        for (int i=0; i<num-1; ++i)  { p.create_secondary(p.u(), p.E_, p.type_, weight/double(num)); }
-        p.wgt_ = weight/double(num);
-        p.wgt_last_=p.wgt_;
-      } else if (weight<=lower_ww) {  
-        double number = weight/survival_ww;
-        if (number < 1.0/double(settings::p_max_split) ) {
-          number = 1.0/double(settings::p_max_split);
-          survival_ww = weight/number;
-        }
-
-        if (prn(p.current_seed())<=number)  { p.wgt_=survival_ww;  p.wgt_last_=p.wgt_; }   
-        else  {       
-          p.alive_ = false;
-          p.wgt_ = 0.0;
-          p.wgt_last_=p.wgt_;
-        }
-      }
-    }
-  }
+  if (settings::weightwindow && settings::p_ww && p.E_ > 0.0) split_particle(p);
   // weight window  add by Yuan
 }
 
@@ -1289,6 +1174,93 @@ void sample_secondary_photons(Particle& p, int i_nuclide)
     // Create the secondary photon
     p.create_secondary(u, E, Particle::Type::photon);
   }
+}
+	
+void split_particle(Particle& p)
+{
+  // weight window  add by Yuan
+
+  // Determine which set of weight window values to be used based on particle type
+  if (p.type_==Particle::Type::neutron) {
+    auto& energy_group = settings::n_energy_group;
+    auto& ww_lower     = settings::n_ww_lower;
+    double lower_ww    = settings::n_multiplier;       
+    double upper_ww    = settings::n_upper_ratio;
+    double survival_ww = settings::n_survival_ratio;
+    int    max_split   = settings::n_max_split;
+  } else if (p.type_==Particle::Type::photon) {
+    auto& energy_group = settings::p_energy_group;
+    auto& ww_lower     = settings::p_ww_lower;
+    double lower_ww    = settings::p_multiplier;
+    double upper_ww    = settings::p_upper_ratio;
+    double survival_ww = settings::p_survival_ratio;
+    int    max_split   = settings::p_max_split;
+  }
+
+  // Particle's position, weight and energy
+  Position pos  = p.r();
+  double weight = p.wgt_;
+  double Energy = p.E_;	
+
+  // Check if this particle is in the weight weindow mesh
+  for (i = 0; i < 3; ++i) {
+    if ((pos[i] < settings::lower_left_point[i]) || (pos[i] > settings::upper_right_point[i])) return;
+  }
+	
+  // index for position and energy
+  int ijk[3]     = {0}; // mesh bin in each direction
+  int i, j, k, e;       // 
+  int energy_bin = 0;   // energy bin
+  int indices    = 0;   // indices in weight window vector
+	
+  // get the mesh bin in x direction
+  auto i = lower_bound_index(settings::mesh_x.begin(), settings::mesh_x.end(), pos[0]);
+  ijk[0] = i + 1;
+	
+  // get the mesh bin in y direction
+  auto j = lower_bound_index(settings::mesh_y.begin(), settings::mesh_y.end(), pos[1]);
+  ijk[1] = j + 1;
+	
+  // get the mesh bin in z direction
+  auto k = lower_bound_index(settings::mesh_z.begin(), settings::mesh_z.end(), pos[2]);
+  ijk[2] = k + 1;
+
+  // get the mesh bin in energy group
+  auto e = lower_bound_index(energy_group.begin(), energy_group.end(), Energy);
+  energy_bin = e + 1;
+
+  auto& shape = settings::shape;
+  indices = ((ijk[2]-1)*shape[1] + (ijk[1]-1))*shape[0] + ijk[0]-1;
+  indices += (energy_bin-1)*shape[0]*shape[1]*shape[2];                   // get the indices
+
+  lower_ww = lower_ww*ww_lower[indices];  // equal to multiplier * lower weight window bound (from input file)
+  upper_ww = lower_ww*upper_ww;           // equal to multiplied lower weight window bound * upper/lower ratio
+  survival_ww = lower_ww*survival_ww;     // equal to multiplied lower weight window bound * survival/lower ratio
+      
+  if (weight >= upper_ww) {
+    double number = weight/upper_ww;  
+    double num = std::min(std::ceil(number), max_split);
+
+    for (int i=0; i < num-1; ++i)  { p.create_secondary(p.u(), p.E_, p.type_, weight/num); }
+    p.wgt_ = weight/num;
+    p.wgt_last_ = p.wgt_;
+	  
+  } else if (weight <= lower_ww) {  
+    double number = weight/survival_ww;
+    if (number < 1.0/double(max_split) ) {
+      number = 1.0/double(max_split);
+      survival_ww = weight/number;
+    }
+
+    if (prn(p.current_seed())<=number)  { p.wgt_ = survival_ww;  p.wgt_last_ = p.wgt_; }   
+    else  {       
+      p.alive_ = false;
+      p.wgt_ = 0.0;
+      p.wgt_last_ = p.wgt_;
+    }
+  }
+  // weight window  add by Yuan
+	
 }
 
 } // namespace openmc

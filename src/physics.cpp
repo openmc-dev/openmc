@@ -1209,7 +1209,6 @@ void split_particle(Particle& p)
 	
   // index for position and energy
   int ijk[3]     = {0}; // mesh bin in each direction
-  int i, j, k, e;       // 
   int energy_bin = 0;   // energy bin
   int indices    = 0;   // indices in weight window vector
 	

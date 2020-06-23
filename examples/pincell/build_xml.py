@@ -77,6 +77,7 @@ entropy_mesh.lower_left = (-fuel_or.r, -fuel_or.r)
 entropy_mesh.upper_right = (fuel_or.r, fuel_or.r)
 entropy_mesh.dimension = (10, 10)
 settings.entropy_mesh = entropy_mesh
+settings.alpha_mode = True
 settings.export_to_xml()
 
 ###############################################################################

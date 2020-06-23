@@ -26,6 +26,8 @@ class Particle:
         Number of particles per generation
     run_mode : int
         Type of simulation (criticality or fixed source)
+    alpha_mode : bool
+        Running alpha (time eigenvalue) mode?
     id : long
         Identifier of the particle
     type : int
@@ -55,6 +57,7 @@ class Particle:
             self.type = f['type'][()]
             self.n_particles = f['n_particles'][()]
             self.run_mode = f['run_mode'][()].decode()
+            self.alpha_mode = f['alpha_mode'][()].decode()
             self.uvw = f['uvw'][()]
             self.weight = f['weight'][()]
             self.xyz = f['xyz'][()]

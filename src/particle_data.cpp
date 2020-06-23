@@ -3,6 +3,7 @@
 #include "openmc/geometry.h"
 #include "openmc/nuclide.h"
 #include "openmc/photon.h"
+#include "openmc/simulation.h"
 #include "openmc/settings.h"
 #include "openmc/tallies/derivative.h"
 #include "openmc/tallies/filter.h"
@@ -51,6 +52,11 @@ ParticleData::ParticleData()
   // Create microscopic cross section caches
   neutron_xs_.resize(data::nuclides.size());
   photon_xs_.resize(data::elements.size());
+  
+  // Allocate alpha_tally_Cd_
+  alpha_tally_Cd_.resize(simulation::alpha_I);
+  for (int i = 0; i < simulation::alpha_I; i++)
+    alpha_tally_Cd_[i].resize(simulation::alpha_J[i], 0.0);
 }
 
 } // namespace openmc

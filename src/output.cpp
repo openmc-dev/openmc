@@ -102,6 +102,7 @@ std::string header(const char* msg)
 {
   // Determine how many times to repeat the '=' character.
   int n_prefix = (63 - strlen(msg)) / 2;
+  if (settings::alpha_mode) n_prefix = (88 - strlen(msg)) / 2;
   int n_suffix = n_prefix;
   if ((strlen(msg) % 2) == 0)
     ++n_suffix;
@@ -345,12 +346,26 @@ void print_version()
 
 void print_columns()
 {
-  if (settings::entropy_on) {
-    fmt::print("  Bat./Gen.      k       Entropy         Average k \n"
-               "  =========   ========   ========   ====================\n");
+  if (!settings::alpha_mode) {
+    if (settings::entropy_on) {
+      fmt::print(
+        "  Bat./Gen.      k       Entropy         Average k \n"
+        "  =========   ========   ========   ====================\n");
+    } else {
+      fmt::print(
+        "  Bat./Gen.      k            Average k\n"
+        "  =========   ========   ====================\n");
+    }
   } else {
-    fmt::print("  Bat./Gen.      k            Average k\n"
-               "  =========   ========   ====================\n");
+    if (settings::entropy_on) {
+      fmt::print(
+        "  Bat./Gen.      k          alpha      Entropy         Average k               Average alpha       \n"
+        "  =========   ========   ===========   ========   ====================   ==========================\n");
+    } else {
+      fmt::print(
+        "  Bat./Gen.      k          alpha           Average k               Average alpha       \n"
+        "  =========   ========   ===========   ====================   ==========================\n");
+    }
   }
 }
 
@@ -370,6 +385,11 @@ void print_generation()
                        std::to_string(simulation::current_gen);
   fmt::print("  {:>9}   {:8.5f}", batch_and_gen, simulation::k_generation[idx]);
 
+  // write out batch/generation and generation alpha (time) eigenvalue
+  if (settings::alpha_mode) {
+    fmt::print("   {:11.3e}", simulation::alpha_generation[idx]);
+  }
+
   // write out entropy info
   if (settings::entropy_on) {
     fmt::print("   {:8.5f}", simulation::entropy[idx]);
@@ -377,6 +397,9 @@ void print_generation()
 
   if (n > 1) {
     fmt::print("   {:8.5f} +/-{:8.5f}", simulation::keff, simulation::keff_std);
+    if (settings::alpha_mode)
+      fmt::print("   {:11.3e} +/-{:11.3e}", simulation::alpha_eff, 
+          simulation::alpha_eff_std);
   }
   std::cout << std::endl;
 }

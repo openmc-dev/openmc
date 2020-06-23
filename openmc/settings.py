@@ -26,6 +26,8 @@ class Settings:
 
     Attributes
     ----------
+    alpha_mode : bool
+        Running alpha-eigenvalue mode?
     batches : int
         Number of batches to simulate
     confidence_intervals : bool
@@ -215,6 +217,7 @@ class Settings:
 
     def __init__(self):
         self._run_mode = RunMode.EIGENVALUE
+        self._alpha_mode = None
         self._batches = None
         self._generations_per_batch = None
         self._inactive = None
@@ -290,6 +293,10 @@ class Settings:
     @property
     def run_mode(self):
         return self._run_mode.value
+
+    @property
+    def alpha_mode(self):
+        return self._alpha_mode
 
     @property
     def batches(self):
@@ -477,6 +484,11 @@ class Settings:
         for mode in RunMode:
             if mode.value == run_mode:
                 self._run_mode = mode
+
+    @alpha_mode.setter
+    def alpha_mode(self, alpha_mode):
+        cv.check_type('alpha mode', alpha_mode, bool)
+        self._alpha_mode = alpha_mode
 
     @batches.setter
     def batches(self, batches):
@@ -881,6 +893,11 @@ class Settings:
     def _create_run_mode_subelement(self, root):
         elem = ET.SubElement(root, "run_mode")
         elem.text = self._run_mode.value
+
+    def _create_alpha_mode_subelement(self, root):
+        if self._alpha_mode is not None:
+            element = ET.SubElement(root, "alpha_mode")
+            element.text = str(self._alpha_mode).lower()
 
     def _create_batches_subelement(self, root):
         if self._batches is not None:
@@ -1500,6 +1517,7 @@ class Settings:
         root_element = ET.Element("settings")
 
         self._create_run_mode_subelement(root_element)
+        self._create_alpha_mode_subelement(root_element)
         self._create_particles_subelement(root_element)
         self._create_batches_subelement(root_element)
         self._create_inactive_subelement(root_element)

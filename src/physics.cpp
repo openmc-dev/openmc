@@ -166,8 +166,10 @@ void create_fission_sites(Particle& p, int i_nuclide, const Reaction& rx)
   double weight = settings::ufs_on ? ufs_get_weight(p) : 1.0;
 
   // Determine the expected number of neutrons produced
-  double nu_t = p.wgt() / simulation::keff * weight *
-                p.neutron_xs(i_nuclide).nu_fission /
+  double nu_effective = (settings::alpha_mode) ? 
+                        p.neutron_xs(i_nuclide).nu_fission_alpha :
+                        p.neutron_xs(i_nuclide).nu_fission;
+  double nu_t = p.wgt() / simulation::keff * weight * nu_effective /
                 p.neutron_xs(i_nuclide).total;
 
   // Sample the number of neutrons produced
@@ -635,8 +637,10 @@ void absorption(Particle& p, int i_nuclide)
 
     // Score implicit absorption estimate of keff
     if (settings::run_mode == RunMode::EIGENVALUE) {
-      p.keff_tally_absorption() += p.wgt_absorb() *
-                                   p.neutron_xs(i_nuclide).nu_fission /
+      double nu_effective = (settings::alpha_mode) ? 
+                            p.neutron_xs(i_nuclide).nu_fission_alpha :
+                            p.neutron_xs(i_nuclide).nu_fission;
+      p.keff_tally_absorption() += p.wgt_absorb() * nu_effective /
                                    p.neutron_xs(i_nuclide).absorption;
     }
   } else {
@@ -645,8 +649,10 @@ void absorption(Particle& p, int i_nuclide)
         prn(p.current_seed()) * p.neutron_xs(i_nuclide).total) {
       // Score absorption estimate of keff
       if (settings::run_mode == RunMode::EIGENVALUE) {
-        p.keff_tally_absorption() += p.wgt() *
-                                     p.neutron_xs(i_nuclide).nu_fission /
+        double nu_effective = (settings::alpha_mode) ? 
+                              p.neutron_xs(i_nuclide).nu_fission_alpha :
+                              p.neutron_xs(i_nuclide).nu_fission;
+        p.keff_tally_absorption() += p.wgt() * nu_effective /
                                      p.neutron_xs(i_nuclide).absorption;
       }
 
@@ -1048,8 +1054,14 @@ void sample_fission_neutron(int i_nuclide, const Reaction& rx, double E_in,
 {
   // Determine total nu, delayed nu, and delayed neutron fraction
   const auto& nuc {data::nuclides[i_nuclide]};
-  double nu_t = nuc->nu(E_in, Nuclide::EmissionMode::total);
-  double nu_d = nuc->nu(E_in, Nuclide::EmissionMode::delayed);
+  double nu_t, nu_d;
+  if (settings::alpha_mode) {
+    nu_t = nuc->nu(E_in, Nuclide::EmissionMode::total_alpha);
+    nu_d = nuc->nu(E_in, Nuclide::EmissionMode::delayed_alpha);
+  } else {
+    nu_t = nuc->nu(E_in, Nuclide::EmissionMode::total);
+    nu_d = nuc->nu(E_in, Nuclide::EmissionMode::delayed);
+  }
   double beta = nu_d / nu_t;
 
   if (prn(seed) < beta) {
@@ -1062,7 +1074,12 @@ void sample_fission_neutron(int i_nuclide, const Reaction& rx, double E_in,
     int group;
     for (group = 1; group < nuc->n_precursor_; ++group) {
       // determine delayed neutron precursor yield for group j
-      double yield = (*rx.products_[group].yield_)(E_in);
+      double yield;
+      if (settings::alpha_mode) {
+        yield = nuc->nu(E_in, Nuclide::EmissionMode::delayed_alpha, group);
+      } else {
+        yield = nuc->nu(E_in, Nuclide::EmissionMode::delayed, group);
+      }
 
       // Check if this group is sampled
       prob += yield;

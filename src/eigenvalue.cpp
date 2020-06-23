@@ -37,6 +37,7 @@ namespace simulation {
 
 double keff_generation;
 array<double, 2> k_sum;
+array<double, 2> alpha_sum;
 vector<double> entropy;
 xt::xtensor<double, 1> source_frac;
 
@@ -68,6 +69,42 @@ void calculate_generation_keff()
   // TODO: This should be normalized by total_weight, not by n_particles
   keff_reduced /= settings::n_particles;
   simulation::k_generation.push_back(keff_reduced);
+
+  // Get and normalize global tallies for alpha-eigenvalue update
+  if (settings::alpha_mode) {
+#ifdef OPENMC_MPI
+    // Combine values across all processors (TODO: group it as one reduce)
+    double Cn_reduced, Cp_reduced, Cd_reduced;
+
+    // Cn
+    MPI_Allreduce(&global_tally_alpha_Cn, &Cn_reduced, 1, MPI_DOUBLE,
+      MPI_SUM, mpi::intracomm);
+    global_tally_alpha_Cn = Cn_reduced;
+
+    // Cp
+    MPI_Allreduce(&global_tally_alpha_Cp, &Cp_reduced, 1, MPI_DOUBLE,
+      MPI_SUM, mpi::intracomm);
+    global_tally_alpha_Cp = Cp_reduced;
+
+    // Cd
+    for (int i = 0; i < simulation::alpha_I; i++) { 
+      for (int j = 0; j < simulation::alpha_J[i]; j++) {
+        MPI_Allreduce(&global_tally_alpha_Cd[i][j], &Cd_reduced, 1, MPI_DOUBLE,
+          MPI_SUM, mpi::intracomm);
+        global_tally_alpha_Cd[i][j] = Cd_reduced;
+      }
+    }
+#endif
+  }
+  
+  // TODO: This should be normalized by total_weight, not by n_particles
+  global_tally_alpha_Cn /= settings::n_particles;
+  global_tally_alpha_Cp /= settings::n_particles;
+  for (int i = 0; i < simulation::alpha_I; i++) { 
+    for (int j = 0; j < simulation::alpha_J[i]; j++) {
+      global_tally_alpha_Cd[i][j] /= settings::n_particles;
+    }
+  }
 }
 
 void synchronize_bank()
@@ -361,6 +398,97 @@ void calculate_average_keff()
           (simulation::k_sum[1] / n - std::pow(simulation::keff, 2)) / (n - 1));
     }
   }
+  
+  //============================================================================
+  // Update alpha eigenvalue
+  //============================================================================
+ 
+  if (settings::alpha_mode) {
+    // The constants (for easy referring)
+    const double Cn = global_tally_alpha_Cn;
+    const double Cp = global_tally_alpha_Cp;
+    const vector<vector<double>> Cd = global_tally_alpha_Cd;
+    const vector<vector<double>> lambda = simulation::alpha_lambda;
+    const double alpha_min = simulation::alpha_min;
+
+    // Newton raphson to update alpha [Goal: find x yielding f(x) = 0]
+    const double epsilon = 1E-8;                  // error tolerance 
+                                                  // (TODO: let user decide?)
+    const double alpha   = simulation::alpha_eff; // previous alpha
+    double error1        = 1.0;                   // iterate relative change
+    double error2        = 1.0;                   // residual
+    double x             = alpha;                 // updated alpha (solution)
+    while (error1 > epsilon || error2 > epsilon) {
+      // Evaluate f(x)
+      double f = (alpha - x)*Cn + Cp - 1.0;
+      // Accumulate delayed terms
+      for (int i = 0; i < simulation::alpha_I; i++) {
+        // i is local
+        for (int j = 0; j < simulation::alpha_J[i]; j++) {
+          f += lambda[i][j]/(x+lambda[i][j]) * Cd[i][j];
+        }
+      }
+
+      // Evaluate f'(x) function
+      double df = -Cn;
+      // Accumulate delayed terms
+      for (int i = 0; i < simulation::alpha_I; i++) { 
+        // i is local
+        for (int j = 0; j < simulation::alpha_J[i]; j++) {
+          double denom = (x+lambda[i][j]); denom *= denom;
+          df -= lambda[i][j]/denom * Cd[i][j];
+        }
+      }
+
+      // Next solution
+      double x_new = x - f/df;
+      
+      // Exceed minimum?
+      if (x_new < alpha_min) { x_new = 0.5*(x + alpha_min); }
+
+      // Calculate errors
+      error1 = std::abs((x_new - x)/x_new);
+      error2 = (alpha - x_new)*Cn + Cp - 1.0;
+      for (int i = 0; i < simulation::alpha_I; i++) { 
+        // i is local
+        for (int j = 0; j < simulation::alpha_J[i]; j++) {
+          error2 += lambda[i][j]/(x_new+lambda[i][j]) * Cd[i][j];
+        }
+      }
+    
+      // Reset x
+      x = x_new;
+    }
+    // Update alpha
+    simulation::alpha_eff = x;
+    simulation::alpha_generation.push_back(simulation::alpha_eff);
+
+    if (n > 0) {
+      // The following follows the procedure used for k eigenvalue
+      // Sample mean of alpha_eff
+      simulation::alpha_sum[0] += simulation::alpha_generation[i];
+      simulation::alpha_sum[1] += std::pow(simulation::alpha_generation[i], 2);
+
+      // Determine mean
+      simulation::alpha_eff = simulation::alpha_sum[0] / n;
+
+      if (n > 1) {
+        double t_value;
+        if (settings::confidence_intervals) {
+          // Calculate t-value for confidence intervals
+          double alpha = 1.0 - CONFIDENCE_LEVEL;
+          t_value = t_percentile(1.0 - alpha/2.0, n - 1);
+        } else {
+          t_value = 1.0;
+        }
+
+        // Standard deviation of the sample mean of alpha
+        simulation::alpha_eff_std = t_value 
+          * std::sqrt((simulation::alpha_sum[1]/n 
+                       - std::pow(simulation::alpha_eff, 2)) / (n - 1));
+      }
+    }
+  }
 }
 
 int openmc_get_keff(double* k_combined)
@@ -616,6 +744,8 @@ void write_eigenvalue_hdf5(hid_t group)
   write_dataset(group, "n_inactive", settings::n_inactive);
   write_dataset(group, "generations_per_batch", settings::gen_per_batch);
   write_dataset(group, "k_generation", simulation::k_generation);
+  if (settings::alpha_mode)
+    write_dataset(group, "alpha_generation", simulation::alpha_generation);
   if (settings::entropy_on) {
     write_dataset(group, "entropy", simulation::entropy);
   }
@@ -625,6 +755,14 @@ void write_eigenvalue_hdf5(hid_t group)
   array<double, 2> k_combined;
   openmc_get_keff(k_combined.data());
   write_dataset(group, "k_combined", k_combined);
+
+  // alpha (time) eigenvalue for easy access
+  std::array<double, 2> alpha_final;
+  const int n = simulation::k_generation.size() - settings::n_inactive;
+  alpha_final[0] = simulation::alpha_sum[0]/n;
+  alpha_final[1] = simulation::alpha_eff_std;
+  write_dataset(group, "alpha_final", alpha_final);
+  write_attribute(group, "alpha_final", alpha_final);
 }
 
 void read_eigenvalue_hdf5(hid_t group)
@@ -632,7 +770,10 @@ void read_eigenvalue_hdf5(hid_t group)
   read_dataset(group, "generations_per_batch", settings::gen_per_batch);
   int n = simulation::restart_batch * settings::gen_per_batch;
   simulation::k_generation.resize(n);
+  simulation::alpha_generation.resize(n);
   read_dataset(group, "k_generation", simulation::k_generation);
+  if (settings::alpha_mode)
+    read_dataset(group, "alpha_generation", simulation::alpha_generation);
   if (settings::entropy_on) {
     read_dataset(group, "entropy", simulation::entropy);
   }

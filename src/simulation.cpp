@@ -9,6 +9,7 @@
 #include "openmc/geometry_aux.h"
 #include "openmc/material.h"
 #include "openmc/message_passing.h"
+#include "openmc/mgxs_interface.h"
 #include "openmc/nuclide.h"
 #include "openmc/output.h"
 #include "openmc/particle.h"
@@ -38,6 +39,7 @@
 #include <algorithm>
 #include <cmath>
 #include <string>
+#include <vector>
 
 //==============================================================================
 // C API functions
@@ -76,6 +78,81 @@ int openmc_simulation_init()
     initialize_data();
   }
 
+  //============================================================================
+  // Preparation for alpha-eigenvalue mode
+  //   Determine alpha_min, _I, _J, _idx, _lambda, and allocate global_tally_alpha_Cd
+  //============================================================================
+
+  if (settings::alpha_mode) {
+    if (settings::run_CE) {
+      simulation::alpha_min = -INFTY;
+      simulation::alpha_I = 0;
+      simulation::alpha_idx.resize(data::nuclides.size(),-1); // -1 for non-fissionable
+      for (int i = 0; i < data::nuclides.size(); i++){
+        if (data::nuclides[i]->fissionable_) {
+          // Set index
+          simulation::alpha_idx[i] = simulation::alpha_I;
+
+          // Increment I
+          simulation::alpha_I++;
+
+          // Allocate decay constant
+          simulation::alpha_lambda.resize(simulation::alpha_I);
+
+          // Set alpha_lambda for each precursor group j of nuclide i, and update alpha_min if necessary
+          auto rx = data::nuclides[i]->fission_rx_[0];
+          for (int j = 1; j < rx->products_.size(); ++j) {
+            const auto& product = rx->products_[j];
+            if (product.particle_ != ParticleType::neutron) continue;
+            if (product.emission_mode_ == Nuclide::EmissionMode::delayed) {
+              // Set decay constant of precursor group j of nuclide i
+              simulation::alpha_lambda.back().push_back(product.decay_rate_);
+              if (simulation::alpha_min < -product.decay_rate_)
+                simulation::alpha_min = -product.decay_rate_;
+            }
+          }
+
+          // Total J in i
+          simulation::alpha_J.push_back(simulation::alpha_lambda.back().size());
+        }
+      }
+    } else {
+      simulation::alpha_min = -INFTY;
+      simulation::alpha_I = 0;
+      simulation::alpha_idx.resize(data::mg.macro_xs_.size(),-1);
+      for (int i = 0; i < data::mg.macro_xs_.size(); i++){
+        if (data::mg.macro_xs_[i].fissionable) {
+          // Set index
+          simulation::alpha_idx[i] = simulation::alpha_I;
+
+          // Increment I
+          simulation::alpha_I++;
+
+          // Allocate decay constant
+          simulation::alpha_lambda.resize(simulation::alpha_I);
+
+          // Set alpha_lambda for each precursor group j of nuclide i, and update alpha_min if necessary
+          int J = data::mg.num_delayed_groups_;
+          for (int j = 0; j < J; ++j) {
+            // Set decay constant of precursor group j of nuclide i
+            double lam = data::mg.macro_xs_[i].get_xs(MgxsType::DECAY_RATE,0,nullptr,nullptr,&j);
+            simulation::alpha_lambda.back().push_back(lam);
+            if (simulation::alpha_min < -lam)
+              simulation::alpha_min = -lam;
+          }
+
+          // Total J in i
+          simulation::alpha_J.push_back(simulation::alpha_lambda.back().size());
+        }
+      }
+    }
+    // Allocate global_tally_alpha_Cd
+    global_tally_alpha_Cd.resize(simulation::alpha_I);
+    for (int i = 0; i < simulation::alpha_I; i++)
+      global_tally_alpha_Cd[i].resize(simulation::alpha_J[i], 0.0);
+  }
+  // Alpha mode preparation done
+
   // Determine how much work each process should do
   calculate_work();
 
@@ -104,6 +181,7 @@ int openmc_simulation_init()
   // will potentially populate k_generation and entropy)
   simulation::current_batch = 0;
   simulation::k_generation.clear();
+  simulation::alpha_generation.clear();
   simulation::entropy.clear();
   openmc_reset();
 
@@ -124,7 +202,11 @@ int openmc_simulation_init()
     if (settings::run_mode == RunMode::FIXED_SOURCE) {
       header("FIXED SOURCE TRANSPORT SIMULATION", 3);
     } else if (settings::run_mode == RunMode::EIGENVALUE) {
-      header("K EIGENVALUE SIMULATION", 3);
+      if (settings::alpha_mode) {
+        header("ALPHA EIGENVALUE SIMULATION", 3);
+      } else {
+        header("K EIGENVALUE SIMULATION", 3);
+      }
       if (settings::verbosity >= 7)
         print_columns();
     }
@@ -275,7 +357,17 @@ const RegularMesh* entropy_mesh {nullptr};
 const RegularMesh* ufs_mesh {nullptr};
 
 vector<double> k_generation;
+vector<double> alpha_generation;
 vector<int64_t> work_index;
+
+// For alpha-eigenvalue mode
+double alpha_eff {0.0};    
+double alpha_eff_std;
+double alpha_min {-INFTY};    
+int alpha_I;
+vector<int>alpha_J;
+vector<int> alpha_idx;
+vector<vector<double>> alpha_lambda;
 
 } // namespace simulation
 
@@ -428,7 +520,7 @@ void finalize_generation()
   }
   gt(GlobalTally::LEAKAGE, TallyResult::VALUE) += global_tally_leakage;
 
-  // reset tallies
+  // reset global tallies
   if (settings::run_mode == RunMode::EIGENVALUE) {
     global_tally_collision = 0.0;
     global_tally_absorption = 0.0;
@@ -452,11 +544,28 @@ void finalize_generation()
     // Collect results and statistics
     calculate_generation_keff();
     calculate_average_keff();
+    
+    // reset global tallies of alpha-eigenvalue mode
+    if (settings::alpha_mode) {
+      global_tally_alpha_Cn = 0.0;
+      global_tally_alpha_Cp = 0.0;
+      for (int i = 0; i < simulation::alpha_I; i++) { 
+        for (int j = 0; j < simulation::alpha_J[i]; j++) {
+          global_tally_alpha_Cd[i][j] = 0.0;
+        }
+      }
+    }
 
     // Write generation output
     if (mpi::master && settings::verbosity >= 7) {
       print_generation();
     }
+
+    // Use k_generation instead of the current running average
+    int idx = overall_generation() - 1;
+    simulation::keff = simulation::k_generation[idx];
+    if (settings::alpha_mode)
+      simulation::alpha_eff = simulation::alpha_generation[idx];
   }
 }
 
@@ -675,6 +784,7 @@ void broadcast_results()
 void free_memory_simulation()
 {
   simulation::k_generation.clear();
+  simulation::alpha_generation.clear();
   simulation::entropy.clear();
 }
 

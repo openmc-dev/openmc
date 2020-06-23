@@ -65,6 +65,9 @@ double global_tally_absorption;
 double global_tally_collision;
 double global_tally_tracklength;
 double global_tally_leakage;
+double global_tally_alpha_Cn;                          
+double global_tally_alpha_Cp;                          
+vector<vector<double>> global_tally_alpha_Cd;
 
 //==============================================================================
 // Tally object implementation

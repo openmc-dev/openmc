@@ -71,6 +71,10 @@ class StatePoint:
         Cross-product of absorption and tracklength estimates of k-effective
     k_generation : numpy.ndarray
         Estimate of k-effective for each batch/generation
+    alpha_final : numpy.ndarray
+        Final alpha value
+    alpha_generation : numpy.ndarray
+        Estimate of alpha for each batch/generation
     meshes : dict
         Dictionary whose keys are mesh IDs and whose values are MeshBase objects
     n_batches : int
@@ -87,6 +91,8 @@ class StatePoint:
         Indicate whether photon transport is active
     run_mode : str
         Simulation run mode, e.g. 'eigenvalue'
+    alpha_mode : bool
+        Running alpha mode?
     runtime : dict
         Dictionary whose keys are strings describing various runtime metrics
         and whose values are time values in seconds.
@@ -260,6 +266,13 @@ class StatePoint:
             return None
 
     @property
+    def alpha_generation(self):
+        if self.run_mode == 'eigenvalue':
+            return self._f['alpha_generation'][()]
+        else:
+            return None
+
+    @property
     def k_combined(self):
         if self.run_mode == 'eigenvalue':
             return ufloat(*self._f['k_combined'][()])
@@ -284,6 +297,13 @@ class StatePoint:
     def k_abs_tra(self):
         if self.run_mode == 'eigenvalue':
             return self._f['k_abs_tra'][()]
+        else:
+            return None
+
+    @property
+    def alpha_final(self):
+        if self.run_mode == 'eigenvalue':
+            return self._f['alpha_final'][()]
         else:
             return None
 
@@ -331,6 +351,10 @@ class StatePoint:
     @property
     def run_mode(self):
         return self._f['run_mode'][()].decode()
+
+    @property
+    def alpha_mode(self):
+        return self._f.attrs['alpha_mode'] > 0
 
     @property
     def runtime(self):

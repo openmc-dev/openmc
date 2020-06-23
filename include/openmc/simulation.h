@@ -45,8 +45,21 @@ extern const RegularMesh* entropy_mesh;
 extern const RegularMesh* ufs_mesh;
 
 extern vector<double> k_generation;
+extern vector<double> alpha_generation;
 extern vector<int64_t> work_index;
 
+// For alpha-eigenvalue mode
+extern "C" double alpha_eff;     //!< average alpha over batches
+extern "C" double alpha_eff_std; //!< standard deviation of average alpha
+extern "C" double alpha_min;     //!< minimum possible value of alpha
+                                 //!< (negative of the smallest precursor group 
+                                 //!<  decay constant)
+// Note: we allow different J for each fissionable nuclide i
+extern "C" int alpha_I;       //!< # of fissionable nuclides
+extern vector<int>alpha_J;    //!< # of precursor groups in nuclide i
+extern vector<int> alpha_idx; //!< indices for data::nuclides in 
+                              //!< global_tally_alpha_Cd 
+extern vector<vector<double>> alpha_lambda; //!< decay constant for each i & j
 } // namespace simulation
 
 //==============================================================================

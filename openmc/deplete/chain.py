@@ -965,6 +965,8 @@ class Chain:
             new_nuclide = Nuclide(previous.name)
             new_nuclide.half_life = previous.half_life
             new_nuclide.decay_energy = previous.decay_energy
+            if hasattr(previous, '_fpy'):
+                new_nuclide._fpy = previous._fpy
 
             new_decay = []
             for mode in previous.decay_modes:

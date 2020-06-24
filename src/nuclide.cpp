@@ -46,11 +46,14 @@ int Nuclide::XS_FISSION {2};
 int Nuclide::XS_NU_FISSION {3};
 int Nuclide::XS_PHOTON_PROD {4};
 
-Nuclide::Nuclide(hid_t group, const std::vector<double>& temperature, int i_nuclide)
-  : i_nuclide_{i_nuclide}
+Nuclide::Nuclide(hid_t group, const std::vector<double>& temperature)
 {
+  // Set index of nuclide in global vector
+  index_ = data::nuclides.size();
+
   // Get name of nuclide from group, removing leading '/'
   name_ = object_name(group).substr(1);
+  data::nuclide_map[name_] = index_;
 
   read_attribute(group, "Z", Z_);
   read_attribute(group, "A", A_);
@@ -276,6 +279,11 @@ Nuclide::Nuclide(hid_t group, const std::vector<double>& temperature, int i_nucl
   this->create_derived(prompt_photons.get(), delayed_photons.get());
 }
 
+Nuclide::~Nuclide()
+{
+  data::nuclide_map.erase(name_);
+}
+
 void Nuclide::create_derived(const Function1D* prompt_photons, const Function1D* delayed_photons)
 {
   for (const auto& grid : grid_) {
@@ -489,7 +497,7 @@ double Nuclide::nu(double E, EmissionMode mode, int group) const
 void Nuclide::calculate_elastic_xs(Particle& p) const
 {
   // Get temperature index, grid index, and interpolation factor
-  auto& micro {p.neutron_xs_[i_nuclide_]};
+  auto& micro {p.neutron_xs_[index_]};
   int i_temp = micro.index_temp;
   int i_grid = micro.index_grid;
   double f = micro.interp_factor;
@@ -525,7 +533,7 @@ double Nuclide::elastic_xs_0K(double E) const
 
 void Nuclide::calculate_xs(int i_sab, int i_log_union, double sab_frac, Particle& p)
 {
-  auto& micro {p.neutron_xs_[i_nuclide_]};
+  auto& micro {p.neutron_xs_[index_]};
 
   // Initialize cached cross sections to zero
   micro.elastic = CACHE_INVALID;
@@ -732,7 +740,7 @@ void Nuclide::calculate_xs(int i_sab, int i_log_union, double sab_frac, Particle
 
 void Nuclide::calculate_sab_xs(int i_sab, double sab_frac, Particle& p)
 {
-  auto& micro {p.neutron_xs_[i_nuclide_]};
+  auto& micro {p.neutron_xs_[index_]};
 
   // Set flag that S(a,b) treatment should be used for scattering
   micro.index_sab = i_sab;
@@ -761,7 +769,7 @@ void Nuclide::calculate_sab_xs(int i_sab, double sab_frac, Particle& p)
 
 void Nuclide::calculate_urr_xs(int i_temp, Particle& p) const
 {
-  auto& micro = p.neutron_xs_[i_nuclide_];
+  auto& micro = p.neutron_xs_[index_];
   micro.use_ptable = true;
 
   // Create a shorthand for the URR data
@@ -779,8 +787,8 @@ void Nuclide::calculate_urr_xs(int i_temp, Particle& p) const
   // therefore preserving correlation of temperature in probability tables.
   p.stream_ = STREAM_URR_PTABLE;
   //TODO: to maintain the same random number stream as the Fortran code this
-  //replaces, the seed is set with i_nuclide_ + 1 instead of i_nuclide_
-  double r = future_prn(static_cast<int64_t>(i_nuclide_ + 1), *p.current_seed());
+  //replaces, the seed is set with index_ + 1 instead of index_
+  double r = future_prn(static_cast<int64_t>(index_ + 1), *p.current_seed());
   p.stream_ = STREAM_TRACKING;
 
   int i_low = 0;
@@ -919,41 +927,66 @@ nuclides_size()
 // C API
 //==============================================================================
 
-extern "C" int openmc_load_nuclide(const char* name)
+extern "C" int openmc_load_nuclide(const char* name, const double* temps, int n)
 {
-  if (data::nuclide_map.find(name) == data::nuclide_map.end()) {
-    const auto& it = data::library_map.find({Library::Type::neutron, name});
-    if (it != data::library_map.end()) {
-      // Get filename for library containing nuclide
-      int idx = it->second;
-      std::string& filename = data::libraries[idx].path_;
-      write_message("Reading " + std::string{name} + " from " + filename, 6);
-
-      // Open file and make sure version is sufficient
-      hid_t file_id = file_open(filename, 'r');
-      check_data_version(file_id);
-
-      // Read nuclide data from HDF5
-      hid_t group = open_group(file_id, name);
-      std::vector<double> temperature;
-      int i_nuclide = data::nuclides.size();
-      data::nuclides.push_back(std::make_unique<Nuclide>(
-        group, temperature, i_nuclide));
-
-      close_group(group);
-      file_close(file_id);
-
-      // Add entry to nuclide dictionary
-      data::nuclide_map[name] = i_nuclide;
-
-      // Initialize nuclide grid
-      data::nuclides.back()->init_grid();
-
-      // Read multipole file into the appropriate entry on the nuclides array
-      if (settings::temperature_multipole) read_multipole_data(i_nuclide);
-    } else {
+  if (data::nuclide_map.find(name) == data::nuclide_map.end() ||
+      data::nuclide_map.at(name) >= data::elements.size()) {
+    LibraryKey key {Library::Type::neutron, name};
+    const auto& it = data::library_map.find(key);
+    if (it == data::library_map.end()) {
       set_errmsg("Nuclide '" + std::string{name} + "' is not present in library.");
       return OPENMC_E_DATA;
+    }
+
+    // Get filename for library containing nuclide
+    int idx = it->second;
+    const auto& filename = data::libraries[idx].path_;
+    write_message("Reading " + std::string{name} + " from " + filename, 6);
+
+    // Open file and make sure version is sufficient
+    hid_t file_id = file_open(filename, 'r');
+    check_data_version(file_id);
+
+    // Read nuclide data from HDF5
+    hid_t group = open_group(file_id, name);
+    std::vector<double> temperature{temps, temps + n};
+    data::nuclides.push_back(std::make_unique<Nuclide>(group, temperature));
+
+    close_group(group);
+    file_close(file_id);
+
+    // Read multipole file into the appropriate entry on the nuclides array
+    int i_nuclide = data::nuclide_map.at(name);
+    if (settings::temperature_multipole) read_multipole_data(i_nuclide);
+
+    // Read elemental data, if necessary
+    if (settings::photon_transport) {
+      auto element = to_element(name);
+      if (data::element_map.find(element) == data::element_map.end() ||
+          data::element_map.at(element) >= data::elements.size()) {
+        // Read photon interaction data from HDF5 photon library
+        LibraryKey key {Library::Type::photon, element};
+        const auto& it = data::library_map.find(key);
+        if (it == data::library_map.end()) {
+          set_errmsg("Element '" + std::string{element} + "' is not present in library.");
+          return OPENMC_E_DATA;
+        }
+
+        int idx = it->second;
+        const auto& filename = data::libraries[idx].path_;
+        write_message("Reading " + element + " from " + filename, 6);
+
+        // Open file and make sure version is sufficient
+        hid_t file_id = file_open(filename, 'r');
+        check_data_version(file_id);
+
+        // Read element data from HDF5
+        hid_t group = open_group(file_id, element.c_str());
+        data::elements.push_back(std::make_unique<PhotonInteraction>(group));
+
+        close_group(group);
+        file_close(file_id);
+      }
     }
   }
   return 0;

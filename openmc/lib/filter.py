@@ -202,6 +202,10 @@ class CellfromFilter(Filter):
     filter_type = 'cellfrom'
 
 
+class CellInstanceFilter(Filter):
+    filter_type = 'cellinstance'
+
+
 class DelayedGroupFilter(Filter):
     filter_type = 'delayedgroup'
 
@@ -340,6 +344,10 @@ class MuFilter(Filter):
     filter_type = 'mu'
 
 
+class ParticleFilter(Filter):
+    filter_type = 'particle'
+
+
 class PolarFilter(Filter):
     filter_type = 'polar'
 
@@ -418,6 +426,7 @@ _FILTER_TYPE_MAP = {
     'cell': CellFilter,
     'cellborn': CellbornFilter,
     'cellfrom': CellfromFilter,
+    'cellinstance': CellInstanceFilter,
     'delayedgroup': DelayedGroupFilter,
     'distribcell': DistribcellFilter,
     'energy': EnergyFilter,
@@ -428,6 +437,7 @@ _FILTER_TYPE_MAP = {
     'mesh': MeshFilter,
     'meshsurface': MeshSurfaceFilter,
     'mu': MuFilter,
+    'particle': ParticleFilter,
     'polar': PolarFilter,
     'sphericalharmonics': SphericalHarmonicsFilter,
     'spatiallegendre': SpatialLegendreFilter,

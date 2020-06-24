@@ -185,8 +185,8 @@ Miscellaneous
   Institute of Technology (2019).
 
 - Ilham Variansyah, Benjamin R. Betzler, and William R. Martin,
-  ":math:`\alpha`\ -weighted transition rate matrix method", *Proc. M&C*,
-  1368-1377, Portland, Oregon, Aug. 25-29 (2019).
+  "α-weighted transition rate matrix method", *Proc. M&C*, 1368-1377, Portland,
+  Oregon, Aug. 25-29 (2019).
 
 - Shikhar Kumar, Benoit Forget, and Kord Smith, "Analysis of fission source
   convergence for a 3-D SMR core using functional expansion tallies," *Proc.
@@ -276,7 +276,7 @@ Multigroup Cross Section Generation
 -----------------------------------
 
 - Ilham Variansyah, Benjamin R. Betzler, and William R. Martin, "`Multigroup
-  Constant Calculation with Static :math:`\alpha`\ -Eigenvalue Monte Carlo for
+  Constant Calculation with Static α-Eigenvalue Monte Carlo for
   Time-Dependent Neutron Transport Simulation
   <https://doi.org/10.1080/00295639.2020.1743578>`_", *Nucl. Sci. Eng.*, 2020.
 

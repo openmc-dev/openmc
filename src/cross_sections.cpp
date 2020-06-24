@@ -1,5 +1,6 @@
 #include "openmc/cross_sections.h"
 
+#include "openmc/capi.h"
 #include "openmc/constants.h"
 #include "openmc/container_util.h"
 #ifdef DAGMC
@@ -207,78 +208,11 @@ read_ce_cross_sections(const std::vector<std::vector<double>>& nuc_temps,
       // If we've already read this nuclide, skip it
       if (already_read.find(name) != already_read.end()) continue;
 
-      LibraryKey key {Library::Type::neutron, name};
-      int idx = data::library_map[key];
-      std::string& filename = data::libraries[idx].path_;
+      const auto& temps = nuc_temps[i_nuc];
+      int err = openmc_load_nuclide(name.c_str(), temps.data(), temps.size());
+      if (err < 0) throw std::runtime_error{openmc_err_msg};
 
-      write_message("Reading " + name + " from " + filename, 6);
-
-      // Open file and make sure version is sufficient
-      hid_t file_id = file_open(filename, 'r');
-      check_data_version(file_id);
-
-      // Read nuclide data from HDF5
-      hid_t group = open_group(file_id, name.c_str());
-      int i_nuclide = data::nuclides.size();
-      data::nuclides.push_back(std::make_unique<Nuclide>(
-        group, nuc_temps[i_nuc], i_nuclide));
-
-      close_group(group);
-      file_close(file_id);
-
-      // Determine if minimum/maximum energy for this nuclide is greater/less
-      // than the previous
-      if (data::nuclides[i_nuclide]->grid_.size() >= 1) {
-        int neutron = static_cast<int>(Particle::Type::neutron);
-        data::energy_min[neutron] = std::max(data::energy_min[neutron],
-          data::nuclides[i_nuclide]->grid_[0].energy.front());
-        data::energy_max[neutron] = std::min(data::energy_max[neutron],
-          data::nuclides[i_nuclide]->grid_[0].energy.back());
-      }
-
-      // Add name and alias to dictionary
       already_read.insert(name);
-
-      // Check if elemental data has been read, if needed
-      std::string element = to_element(name);
-      if (settings::photon_transport) {
-        if (already_read.find(element) == already_read.end()) {
-          // Read photon interaction data from HDF5 photon library
-          LibraryKey key {Library::Type::photon, element};
-          int idx = data::library_map[key];
-          std::string& filename = data::libraries[idx].path_;
-          write_message("Reading " + element + " from " + filename, 6);
-
-          // Open file and make sure version is sufficient
-          hid_t file_id = file_open(filename, 'r');
-          check_data_version(file_id);
-
-          // Read element data from HDF5
-          hid_t group = open_group(file_id, element.c_str());
-          data::elements.emplace_back(group, data::elements.size());
-
-          // Determine if minimum/maximum energy for this element is greater/less than
-          // the previous
-          const auto& elem {data::elements.back()};
-          if (elem.energy_.size() >= 1) {
-            int photon = static_cast<int>(Particle::Type::photon);
-            int n = elem.energy_.size();
-            data::energy_min[photon] = std::max(data::energy_min[photon],
-              std::exp(elem.energy_(1)));
-            data::energy_max[photon] = std::min(data::energy_max[photon],
-              std::exp(elem.energy_(n - 1)));
-          }
-
-          close_group(group);
-          file_close(file_id);
-
-          // Add element to set
-          already_read.insert(element);
-        }
-      }
-
-      // Read multipole file into the appropriate entry on the nuclides array
-      if (settings::temperature_multipole) read_multipole_data(i_nuclide);
     }
   }
 
@@ -316,47 +250,9 @@ read_ce_cross_sections(const std::vector<std::vector<double>>& nuc_temps,
     mat->finalize();
   } // materials
 
-
-  // Set up logarithmic grid for nuclides
-  for (auto& nuc : data::nuclides) {
-    nuc->init_grid();
-  }
-  int neutron = static_cast<int>(Particle::Type::neutron);
-  simulation::log_spacing = std::log(data::energy_max[neutron] /
-    data::energy_min[neutron]) / settings::n_log_bins;
-
   if (settings::photon_transport && settings::electron_treatment == ElectronTreatment::TTB) {
-    // Determine if minimum/maximum energy for bremsstrahlung is greater/less
-    // than the current minimum/maximum
-    if (data::ttb_e_grid.size() >= 1) {
-      int photon = static_cast<int>(Particle::Type::photon);
-      int n_e = data::ttb_e_grid.size();
-      data::energy_min[photon] = std::max(data::energy_min[photon], data::ttb_e_grid(1));
-      data::energy_max[photon] = std::min(data::energy_max[photon], data::ttb_e_grid(n_e - 1));
-    }
-
     // Take logarithm of energies since they are log-log interpolated
     data::ttb_e_grid = xt::log(data::ttb_e_grid);
-  }
-
-  // Show which nuclide results in lowest energy for neutron transport
-  for (const auto& nuc : data::nuclides) {
-    // If a nuclide is present in a material that's not used in the model, its
-    // grid has not been allocated
-    if (nuc->grid_.size() > 0) {
-      double max_E = nuc->grid_[0].energy.back();
-      int neutron = static_cast<int>(Particle::Type::neutron);
-      if (max_E == data::energy_max[neutron]) {
-        write_message("Maximum neutron transport energy: " +
-          std::to_string(data::energy_max[neutron]) + " eV for " +
-          nuc->name_, 7);
-        if (mpi::master && data::energy_max[neutron] < 20.0e6) {
-          warning("Maximum neutron energy is below 20 MeV. This may bias "
-            " the results.");
-        }
-        break;
-      }
-    }
   }
 
   // Show minimum/maximum temperature

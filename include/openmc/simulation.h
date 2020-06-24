@@ -57,6 +57,9 @@ void allocate_banks();
 //! Determine number of particles to transport per process
 void calculate_work();
 
+//! Initialize nuclear data before a simulation
+void initialize_data();
+
 //! Initialize a batch
 void initialize_batch();
 

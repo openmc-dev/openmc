@@ -76,21 +76,22 @@ bool weightwindow            {false};
 int ww_type   {-1};
 
 // weight window mesh
-double lower_left_point[3] = {0., 0., 0. };
-double upper_right_point[3]= {0., 0., 0. };
-std::vector<double> coarse_x;
-std::vector<double> coarse_y;
-std::vector<double> coarse_z;
-std::vector<int> shape_x;
-std::vector<int> shape_y;
-std::vector<int> shape_z;
-int shape[3] = {0, 0, 0};
-std::vector<double> width_x;
-std::vector<double> width_y;
-std::vector<double> width_z;
-std::vector<double> mesh_x;
-std::vector<double> mesh_y;
-std::vector<double> mesh_z;
+RectilinearMesh    ww_fine_mesh;
+//double lower_left_point[3] = {0., 0., 0. };
+//double upper_right_point[3]= {0., 0., 0. };
+//std::vector<double> coarse_x;
+//std::vector<double> coarse_y;
+//std::vector<double> coarse_z;
+//std::vector<int> shape_x;
+//std::vector<int> shape_y;
+//std::vector<int> shape_z;
+//int shape[3] = {0, 0, 0};
+//std::vector<double> width_x;
+//std::vector<double> width_y;
+//std::vector<double> width_z;
+//std::vector<double> mesh_x;
+//std::vector<double> mesh_y;
+//std::vector<double> mesh_z;
 std::vector<double> n_energy_group;
 std::vector<double> p_energy_group;
 std::vector<double> n_ww_lower;
@@ -479,6 +480,23 @@ void read_settings_xml()
   if (check_for_node(root, "weightwindow")) {
     weightwindow = true;
     xml_node node_weightwindow = root.child("weightwindow");
+    
+    // Mesh Parameters
+    double lower_left_point[3] = {0., 0., 0. };
+    double upper_right_point[3]= {0., 0., 0. };
+    std::vector<double> coarse_x;
+    std::vector<double> coarse_y;
+    std::vector<double> coarse_z;
+    std::vector<int> shape_x;
+    std::vector<int> shape_y;
+    std::vector<int> shape_z;
+    int shape[3] = {0, 0, 0};
+    std::vector<double> width_x;
+    std::vector<double> width_y;
+    std::vector<double> width_z;
+    std::vector<double> mesh_x;
+    std::vector<double> mesh_y;
+    std::vector<double> mesh_z;
 
     // weight window type
     if (check_for_node(node_weightwindow, "type")) {
@@ -525,13 +543,13 @@ void read_settings_xml()
       wwfile>>ww_nwg;    
       if (ww_nr!=10)  fatal_error("Only cartesian WWINP is currently supported");
 
-      lower_left_point[0]=ww_x0;
-      lower_left_point[1]=ww_y0;
-      lower_left_point[2]=ww_z0;
+      //lower_left_point[0]=ww_x0;
+      //lower_left_point[1]=ww_y0;
+      //lower_left_point[2]=ww_z0;
 
-      shape[0]=ww_nfx;
-      shape[1]=ww_nfy;
-      shape[2]=ww_nfz;
+      //shape[0]=ww_nfx;
+      //shape[1]=ww_nfy;
+      //shape[2]=ww_nfz;
 
       // reading wwinp file, BLOCK 2
       for (int i=0; i<ww_ncx; i++) {
@@ -592,6 +610,8 @@ void read_settings_xml()
 
       }
       mesh_z.push_back(coarse_z.back());
+      
+      ww_fine_mesh = RectilinearMesh(mesh_x, mesh_y, mesh_z);
 
  
       // reading wwinp file, BLOCK 3
@@ -766,6 +786,8 @@ void read_settings_xml()
       }
       mesh_z.push_back(coarse_z.back());
       upper_right_point[2]=coarse_z.back();
+      
+      ww_fine_mesh = RectilinearMesh(mesh_x, mesh_y, mesh_z);
 
 
       // read wwinp file

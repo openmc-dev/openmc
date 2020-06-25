@@ -76,7 +76,6 @@ bool weightwindow            {false};
 int ww_type   {-1};
 
 // weight window mesh
-RectilinearMesh    ww_fine_mesh;
 //double lower_left_point[3] = {0., 0., 0. };
 //double upper_right_point[3]= {0., 0., 0. };
 //std::vector<double> coarse_x;
@@ -611,7 +610,7 @@ void read_settings_xml()
       }
       mesh_z.push_back(coarse_z.back());
       
-      ww_fine_mesh = RectilinearMesh(mesh_x, mesh_y, mesh_z);
+      RectilinearMesh ww_fine_mesh = RectilinearMesh(mesh_x, mesh_y, mesh_z);
 
  
       // reading wwinp file, BLOCK 3
@@ -787,7 +786,7 @@ void read_settings_xml()
       mesh_z.push_back(coarse_z.back());
       upper_right_point[2]=coarse_z.back();
       
-      ww_fine_mesh = RectilinearMesh(mesh_x, mesh_y, mesh_z);
+      RectilinearMesh ww_fine_mesh = RectilinearMesh(mesh_x, mesh_y, mesh_z);
 
       // read wwinp file
       std::ifstream wwfile; 

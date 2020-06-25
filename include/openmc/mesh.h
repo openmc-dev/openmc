@@ -204,6 +204,9 @@ class RectilinearMesh : public StructuredMesh
 public:
   // Constructors
   RectilinearMesh(pugi::xml_node node);
+  
+  // A new Constructors for Weight Window, add by Yuan
+  RectilinearMesh(std::vector<double>& x_grid, std::vector<double>& y_grid, std::vector<double>& z_grid);
 
   // Overriden methods
 

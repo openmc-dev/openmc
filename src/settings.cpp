@@ -610,7 +610,7 @@ void read_settings_xml()
       }
       mesh_z.push_back(coarse_z.back());
       
-      RectilinearMesh ww_fine_mesh = RectilinearMesh(mesh_x, mesh_y, mesh_z);
+      extern RectilinearMesh ww_fine_mesh = RectilinearMesh(mesh_x, mesh_y, mesh_z);
 
  
       // reading wwinp file, BLOCK 3
@@ -786,7 +786,7 @@ void read_settings_xml()
       mesh_z.push_back(coarse_z.back());
       upper_right_point[2]=coarse_z.back();
       
-      RectilinearMesh ww_fine_mesh = RectilinearMesh(mesh_x, mesh_y, mesh_z);
+      extern RectilinearMesh ww_fine_mesh = RectilinearMesh(mesh_x, mesh_y, mesh_z);
 
       // read wwinp file
       std::ifstream wwfile; 

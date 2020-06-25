@@ -1176,10 +1176,16 @@ void split_particle(Particle& p)
   double weight = p.wgt_;
   double Energy = p.E_;	
 
-  // Check if this particle is in the weight weindow mesh
-  for (int i = 0; i < 3; ++i) {
-    if ((pos[i] < settings::lower_left_point[i]) || (pos[i] > settings::upper_right_point[i])) return;
-  }
+  // index for position and energy
+  std::vector<int> ijk[3]     = {0}; // mesh bin in each direction
+  int energy_bin = 0;   // energy bin
+  int indices    = 0;   // indices in weight window vector
+  bool in_mesh;         
+
+  // Check if this particle is in the weight weindow mesh and get the mesh bins in each direction
+  settings::ww_fine_mesh->get_indices(pos, ijk.data(), &in_mesh);
+	
+  if (!in_mesh) return;
 	
   std::vector<double> energy_group;
   std::vector<double> ww_lower;
@@ -1204,27 +1210,12 @@ void split_particle(Particle& p)
     max_split    = settings::p_max_split;
   }
 
-	
-  // index for position and energy
-  int ijk[3]     = {0}; // mesh bin in each direction
-  int energy_bin = 0;   // energy bin
-  int indices    = 0;   // indices in weight window vector
-	
-  // get the mesh bin in x direction
-  ijk[0] = lower_bound_index(settings::mesh_x.begin(), settings::mesh_x.end(), pos[0]);
-	
-  // get the mesh bin in y direction
-  ijk[1] = lower_bound_index(settings::mesh_y.begin(), settings::mesh_y.end(), pos[1]);
-	
-  // get the mesh bin in z direction
-  ijk[2] = lower_bound_index(settings::mesh_z.begin(), settings::mesh_z.end(), pos[2]);
-
   // get the mesh bin in energy group
   energy_bin = lower_bound_index(energy_group.begin(), energy_group.end(), Energy);
 
-  auto& shape = settings::shape;
-  indices = (ijk[2]*shape[1] + ijk[1])*shape[0] + ijk[0];
-  indices += energy_bin*shape[0]*shape[1]*shape[2];                   // get the indices
+  //auto& shape = settings::shape;
+  indices = settings::ww_fine_mesh->get_bin(pos);
+  indices += energy_bin*settings::ww_fine_mesh.shape_[0]*settings::ww_fine_mesh.shape_[1]*settings::ww_fine_mesh.shape_[2];                   // get the indices
 
   lower_ww = lower_ww*ww_lower[indices];  // equal to multiplier * lower weight window bound (from input file)
   upper_ww = lower_ww*upper_ww;           // equal to multiplied lower weight window bound * upper/lower ratio

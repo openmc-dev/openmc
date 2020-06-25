@@ -373,20 +373,20 @@ void finalize_batch()
     // Write out a separate source point if it's been specified for this batch
     if (contains(settings::sourcepoint_batch, simulation::current_batch)
         && settings::source_write && settings::source_separate) {
-      write_source_point(nullptr);
+      write_source_point(nullptr, false);
     }
 
     // Write a continously-overwritten source point if requested.
     if (settings::source_latest) {
       auto filename = settings::path_output + "source.h5";
-      write_source_point(filename.c_str());
+      write_source_point(filename.c_str(), false);
     }
   }
 
   // Write out surface source if requested.
   if (settings::surface_source && simulation::current_batch == settings::n_batches) {
     auto filename = settings::path_output + "surface_source.h5";
-    write_surf_src_point(filename.c_str());  //!!
+    write_source_point(filename.c_str(), true);  //!!
   }
 }
 

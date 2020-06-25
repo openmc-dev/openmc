@@ -525,7 +525,7 @@ hid_t h5banktype() {
 }
 
 void
-write_source_point(const char* filename)
+write_source_point(const char* filename, bool surf_src_bank)
 {
   // When using parallel HDF5, the file is written to collectively by all
   // processes. With MPI-only, the file is opened and written by the master
@@ -555,15 +555,21 @@ write_source_point(const char* filename)
   }
 
   // Get pointer to source bank and write to file
-  write_source_bank(file_id);
+  write_source_bank(file_id, surf_src_bank);
 
   if (mpi::master || parallel) file_close(file_id);
 }
 
 void
-write_source_bank(hid_t group_id)
+write_source_bank(hid_t group_id, bool surf_src_bank)
 {
   hid_t banktype = h5banktype();
+
+  if (surf_src_bank) {
+    std::vector<Particle::Bank> src_bank = simulation::source_bank
+  } else {
+    SharedArray<Particle::Bank> src_bank = simulation::surf_src_bank
+  }
 
 #ifdef PHDF5
   // Set size of total dataspace for all procs and rank
@@ -585,7 +591,7 @@ write_source_bank(hid_t group_id)
   H5Pset_dxpl_mpio(plist, H5FD_MPIO_COLLECTIVE);
 
   // Write data to file in parallel
-  H5Dwrite(dset, banktype, memspace, dspace, plist, simulation::source_bank.data());
+  H5Dwrite(dset, banktype, memspace, dspace, plist, src_bank.data());
 
   // Free resources
   H5Sclose(dspace);
@@ -604,8 +610,8 @@ write_source_bank(hid_t group_id)
 
     // Save source bank sites since the souce_bank array is overwritten below
 #ifdef OPENMC_MPI
-    std::vector<Particle::Bank> temp_source {simulation::source_bank.begin(),
-      simulation::source_bank.begin() + simulation::work_per_rank};
+    std::vector<Particle::Bank> temp_source {src_bank.begin(),
+      src_bank.begin() + simulation::work_per_rank};
 #endif
 
     for (int i = 0; i < mpi::n_procs; ++i) {
@@ -617,7 +623,7 @@ write_source_bank(hid_t group_id)
 #ifdef OPENMC_MPI
       // Receive source sites from other processes
       if (i > 0)
-        MPI_Recv(simulation::source_bank.data(), count[0], mpi::bank, i, i,
+        MPI_Recv(src_bank.data(), count[0], mpi::bank, i, i,
                  mpi::intracomm, MPI_STATUS_IGNORE);
 #endif
 
@@ -627,8 +633,7 @@ write_source_bank(hid_t group_id)
       H5Sselect_hyperslab(dspace, H5S_SELECT_SET, start, nullptr, count, nullptr);
 
       // Write data to hyperslab
-      H5Dwrite(dset, banktype, memspace, dspace, H5P_DEFAULT,
-        simulation::source_bank.data());
+      H5Dwrite(dset, banktype, memspace, dspace, H5P_DEFAULT, src_bank.data());
 
       H5Sclose(memspace);
       H5Sclose(dspace);
@@ -639,11 +644,11 @@ write_source_bank(hid_t group_id)
 
 #ifdef OPENMC_MPI
     // Restore state of source bank
-    std::copy(temp_source.begin(), temp_source.end(), simulation::source_bank.begin());
+    std::copy(temp_source.begin(), temp_source.end(), src_bank.begin());
 #endif
   } else {
 #ifdef OPENMC_MPI
-    MPI_Send(simulation::source_bank.data(), simulation::work_per_rank, mpi::bank,
+    MPI_Send(src_bank.data(), simulation::work_per_rank, mpi::bank,
       0, mpi::rank, mpi::intracomm);
 #endif
   }

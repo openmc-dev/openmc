@@ -12,8 +12,8 @@
 namespace openmc {
 
 void load_state_point();
-void write_source_point(const char* filename);
-void write_source_bank(hid_t group_id);
+void write_source_point(const char* filename, bool surf_src_bank);
+void write_source_bank(hid_t group_id, bool surf_src_bank);
 void write_surf_src_point(const char* filename);
 void write_surf_src_bank(hid_t group_id);
 void read_source_bank(hid_t group_id, std::vector<Particle::Bank>& sites, bool distribute);

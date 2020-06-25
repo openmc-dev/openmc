@@ -61,7 +61,7 @@ extern bool write_initial_source;     //!< write out initial source file?
 extern bool weightwindow;             // use weight window or not, add by Yuan
 extern int ww_type;                   // type of weight window input file
 // weight window mesh
-//extern RectilinearMesh    ww_fine_mesh;
+extern RectilinearMesh    ww_fine_mesh;
 //extern double lower_left_point[3];    //!< Lower-left coordinates of weight window mesh
 //extern double upper_right_point[3];   //!< Upper-right coordinates of weight window mesh
 //extern std::vector<double> coarse_x;  // Locations of the coarse meshes in the x direction

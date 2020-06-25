@@ -60,21 +60,22 @@ extern bool write_initial_source;     //!< write out initial source file?
 extern bool weightwindow;             // use weight window or not, add by Yuan
 extern int ww_type;                   // type of weight window input file
 // weight window mesh
-extern double lower_left_point[3];    //!< Lower-left coordinates of weight window mesh
-extern double upper_right_point[3];   //!< Upper-right coordinates of weight window mesh
-extern std::vector<double> coarse_x;  // Locations of the coarse meshes in the x direction
-extern std::vector<double> coarse_y;  // Locations of the coarse meshes in the y direction
-extern std::vector<double> coarse_z;  // Locations of the coarse meshes in the z direction
-extern std::vector<int> shape_x;      //!< Number of fine mesh in each coarse mesh in x dimension
-extern std::vector<int> shape_y;      //!< Number of fine mesh in each coarse mesh in y dimension
-extern std::vector<int> shape_z;      //!< Number of fine mesh in each coarse mesh in z dimension
-extern int shape[3];                  // total number of mesh elements in each dimension
-extern std::vector<double> width_x;   //!< Width of fine mesh in each coarse mesh in x dimension
-extern std::vector<double> width_y;   //!< Width of fine mesh in each coarse mesh in y dimension
-extern std::vector<double> width_z;   //!< Width of fine mesh in each coarse mesh in z dimension
-extern std::vector<double> mesh_x;    //!< Coordinates of each fine mesh elements in x dimension
-extern std::vector<double> mesh_y;    //!< Coordinates of each fine mesh elements in y dimension
-extern std::vector<double> mesh_z;    //!< Coordinates of each fine mesh elements in z dimension
+extern RectilinearMesh    ww_fine_mesh;
+//extern double lower_left_point[3];    //!< Lower-left coordinates of weight window mesh
+//extern double upper_right_point[3];   //!< Upper-right coordinates of weight window mesh
+//extern std::vector<double> coarse_x;  // Locations of the coarse meshes in the x direction
+//extern std::vector<double> coarse_y;  // Locations of the coarse meshes in the y direction
+//extern std::vector<double> coarse_z;  // Locations of the coarse meshes in the z direction
+//extern std::vector<int> shape_x;      //!< Number of fine mesh in each coarse mesh in x dimension
+//extern std::vector<int> shape_y;      //!< Number of fine mesh in each coarse mesh in y dimension
+//extern std::vector<int> shape_z;      //!< Number of fine mesh in each coarse mesh in z dimension
+//extern int shape[3];                  // total number of mesh elements in each dimension
+//extern std::vector<double> width_x;   //!< Width of fine mesh in each coarse mesh in x dimension
+//extern std::vector<double> width_y;   //!< Width of fine mesh in each coarse mesh in y dimension
+//extern std::vector<double> width_z;   //!< Width of fine mesh in each coarse mesh in z dimension
+//extern std::vector<double> mesh_x;    //!< Coordinates of each fine mesh elements in x dimension
+//extern std::vector<double> mesh_y;    //!< Coordinates of each fine mesh elements in y dimension
+//extern std::vector<double> mesh_z;    //!< Coordinates of each fine mesh elements in z dimension
 extern std::vector<double> n_energy_group; // energy group for neutron
 extern std::vector<double> p_energy_group; // energy group for photon
 extern std::vector<double> n_ww_lower;     // lower weight window for mesh for neutron

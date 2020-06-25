@@ -13,6 +13,7 @@
 #include "pugixml.hpp"
 
 #include "openmc/constants.h"
+#include "openmc/mesh.h"
 
 namespace openmc {
 

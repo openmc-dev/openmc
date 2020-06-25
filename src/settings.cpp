@@ -789,7 +789,6 @@ void read_settings_xml()
       
       ww_fine_mesh = RectilinearMesh(mesh_x, mesh_y, mesh_z);
 
-
       // read wwinp file
       std::ifstream wwfile; 
       wwfile.open("wwinp");

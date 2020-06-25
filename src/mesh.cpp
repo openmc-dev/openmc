@@ -898,6 +898,33 @@ RectilinearMesh::RectilinearMesh(pugi::xml_node node)
   lower_left_ = {grid_[0].front(), grid_[1].front(), grid_[2].front()};
   upper_right_ = {grid_[0].back(), grid_[1].back(), grid_[2].back()};
 }
+ 
+// New constructors for Weight Window, add by Yuan
+RectilinearMesh::RectilinearMesh(std::vector<double>& x_grid, std::vector<double>& y_grid, std::vector<double>& z_grid)
+{
+  n_dimension_ = 3;
+
+  grid_.resize(3);
+  grid_[0] = x_grid;
+  grid_[1] = y_grid;
+  grid_[2] = z_grid;
+
+  shape_ = {static_cast<int>(grid_[0].size()) - 1,
+            static_cast<int>(grid_[1].size()) - 1,
+            static_cast<int>(grid_[2].size()) - 1};
+
+  for (const auto& g : grid_) {
+    if (g.size() < 2) fatal_error("x-, y-, and z- grids for rectilinear meshes "
+      "must each have at least 2 points");
+    for (int i = 1; i < g.size(); ++i) {
+      if (g[i] <= g[i-1]) fatal_error("Values in for x-, y-, and z- grids for "
+        "rectilinear meshes must be sorted and unique.");
+    }
+  }
+
+  lower_left_ = {grid_[0].front(), grid_[1].front(), grid_[2].front()};
+  upper_right_ = {grid_[0].back(), grid_[1].back(), grid_[2].back()};
+}
 
 void RectilinearMesh::bins_crossed(const Particle& p, std::vector<int>& bins,
                                    std::vector<double>& lengths) const

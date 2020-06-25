@@ -14,13 +14,14 @@ from .material import Material
 from .mesh import RegularMesh
 
 
-__all__ = ['Filter', 'AzimuthalFilter', 'CellFilter',
-           'CellbornFilter', 'CellfromFilter', 'DistribcellFilter',
-           'DelayedGroupFilter', 'EnergyFilter', 'EnergyoutFilter',
-           'EnergyFunctionFilter', 'LegendreFilter', 'MaterialFilter', 'MeshFilter',
-           'MeshSurfaceFilter', 'MuFilter', 'PolarFilter', 'SphericalHarmonicsFilter',
-           'SpatialLegendreFilter', 'SurfaceFilter',
-           'UniverseFilter', 'ZernikeFilter', 'ZernikeRadialFilter', 'filters']
+__all__ = [
+    'Filter', 'AzimuthalFilter', 'CellFilter', 'CellbornFilter', 'CellfromFilter',
+    'CellInstanceFilter', 'DistribcellFilter', 'DelayedGroupFilter', 'EnergyFilter',
+    'EnergyoutFilter', 'EnergyFunctionFilter', 'LegendreFilter', 'MaterialFilter',
+    'MeshFilter', 'MeshSurfaceFilter', 'MuFilter', 'ParticleFilter', 'PolarFilter',
+    'SphericalHarmonicsFilter', 'SpatialLegendreFilter', 'SurfaceFilter',
+    'UniverseFilter', 'ZernikeFilter', 'ZernikeRadialFilter', 'filters'
+]
 
 # Tally functions
 _dll.openmc_cell_filter_get_bins.argtypes = [

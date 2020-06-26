@@ -887,14 +887,6 @@ class Integrator(ABC):
             Results.save(self.operator, [conc], res_list, [t, t],
                          p, self._i_res + len(self), proc_time)
             self.operator.write_bos_data(len(self) + self._i_res)
-        self._finalize()
-
-    @staticmethod
-    def _finalize():
-        # Revert the se of multiprocessing, regardless of
-        # how the integration was performed
-        global _USE_MULTIPROCESSING
-        _USE_MULTIPROCESSING = True
 
 
 class SIIntegrator(Integrator):
@@ -1028,9 +1020,6 @@ class SIIntegrator(Integrator):
             Results.save(self.operator, [conc], [res_list[-1]], [t, t],
                          p, self._i_res + len(self), proc_time)
             self.operator.write_bos_data(self._i_res + len(self))
-
-        # Tidy up: reset use of multiprocessing
-        super()._finalize()
 
 
 class DepSystemSolver(ABC):

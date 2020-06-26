@@ -149,10 +149,10 @@ with :func:`cram.CRAM48` being the default.
 
    Boolean switch to enable or disable the use of :mod:`multiprocessing`
    when solving the Bateman equations. The default is to use
-   :mod:`multiprocessing`, but can cause the simulation for hang in
+   :mod:`multiprocessing`, but can cause the simulation to hang in
    some computing environments, namely due to MPI and networking
-   restrictions. Disabling this option will not utilize all processing
-   units and take a little more time.
+   restrictions. Disabling this option will result in only a single
+   CPU core being used for depletion.
 
    :type: bool
 

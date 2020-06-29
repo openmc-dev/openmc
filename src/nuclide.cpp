@@ -267,6 +267,11 @@ Nuclide::Nuclide(hid_t group, const std::vector<double>& temperature)
     fission_q_prompt_ = read_function(fer_group, "q_prompt");
     fission_q_recov_ = read_function(fer_group, "q_recoverable");
 
+    // Read fission fragment and delayed beta energy release. This is needed for
+    // energy normalization in k-eigenvalue calculations
+    fragments_ = read_function(fer_group, "fragments");
+    betas_ = read_function(fer_group, "betas");
+
     // We need prompt/delayed photon energy release for scaling fission photon
     // production
     prompt_photons_ = read_function(fer_group, "prompt_photons");

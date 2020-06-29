@@ -303,7 +303,7 @@ void sample_photon_reaction(Particle& p)
       double mu_electron = (alpha - alpha_out*mu)
         / std::sqrt(alpha*alpha + alpha_out*alpha_out - 2.0*alpha*alpha_out*mu);
       Direction u = rotate_angle(p.u(), mu_electron, &phi, p.current_seed());
-      p.create_secondary(u, E_electron, Particle::Type::electron);
+      p.create_secondary(p.wgt_, u, E_electron, Particle::Type::electron);
     }
 
     // TODO: Compton subshell data does not match atomic relaxation data
@@ -364,7 +364,7 @@ void sample_photon_reaction(Particle& p)
         u.z = std::sqrt(1.0 - mu*mu)*std::sin(phi);
 
         // Create secondary electron
-        p.create_secondary(u, E_electron, Particle::Type::electron);
+        p.create_secondary(p.wgt_, u, E_electron, Particle::Type::electron);
 
         // Allow electrons to fill orbital and produce auger electrons
         // and fluorescent photons
@@ -389,11 +389,11 @@ void sample_photon_reaction(Particle& p)
 
     // Create secondary electron
     Direction u = rotate_angle(p.u(), mu_electron, nullptr, p.current_seed());
-    p.create_secondary(u, E_electron, Particle::Type::electron);
+    p.create_secondary(p.wgt_, u, E_electron, Particle::Type::electron);
 
     // Create secondary positron
     u = rotate_angle(p.u(), mu_positron, nullptr, p.current_seed());
-    p.create_secondary(u, E_positron, Particle::Type::positron);
+    p.create_secondary(p.wgt_, u, E_positron, Particle::Type::positron);
 
     p.event_ = TallyEvent::ABSORB;
     p.event_mt_ = PAIR_PROD;
@@ -434,8 +434,8 @@ void sample_positron_reaction(Particle& p)
   u.z = std::sqrt(1.0 - mu*mu)*std::sin(phi);
 
   // Create annihilation photon pair traveling in opposite directions
-  p.create_secondary(u, MASS_ELECTRON_EV, Particle::Type::photon);
-  p.create_secondary(-u, MASS_ELECTRON_EV, Particle::Type::photon);
+  p.create_secondary(p.wgt_, u, MASS_ELECTRON_EV, Particle::Type::photon);
+  p.create_secondary(p.wgt_, -u, MASS_ELECTRON_EV, Particle::Type::photon);
 
   p.E_ = 0.0;
   p.alive_ = false;
@@ -1140,7 +1140,7 @@ void inelastic_scatter(const Nuclide& nuc, const Reaction& rx, Particle& p)
   if (std::floor(yield) == yield) {
     // If yield is integral, create exactly that many secondary particles
     for (int i = 0; i < static_cast<int>(std::round(yield)) - 1; ++i) {
-      p.create_secondary(p.u(), p.E_, Particle::Type::neutron);
+      p.create_secondary(p.wgt_, p.u(), p.E_, Particle::Type::neutron);
     }
   } else {
     // Otherwise, change weight of particle based on yield
@@ -1151,7 +1151,7 @@ void inelastic_scatter(const Nuclide& nuc, const Reaction& rx, Particle& p)
 void sample_secondary_photons(Particle& p, int i_nuclide)
 {
   // Sample the number of photons produced
-  double y_t =  p.neutron_xs_[i_nuclide].photon_prod /
+  double y_t = p.neutron_xs_[i_nuclide].photon_prod /
     p.neutron_xs_[i_nuclide].total;
   int y = static_cast<int>(y_t);
   if (prn(p.current_seed()) <= y_t - y) ++y;
@@ -1172,8 +1172,21 @@ void sample_secondary_photons(Particle& p, int i_nuclide)
     // Sample the new direction
     Direction u = rotate_angle(p.u(), mu, nullptr, p.current_seed());
 
+    // In a k-eigenvalue simulation, it's necessary to provide higher weight to
+    // secondary photons from non-fission reactions to properly balance energy
+    // release and deposition. See D. P. Griesheimer, S. J. Douglass, and M. H.
+    // Stedry, "Self-consistent energy normalization for quasistatic reactor
+    // calculations", Proc. PHYSOR, Cambridge, UK, Mar 29-Apr 2, 2020.
+    double wgt;
+    if (settings::run_mode == RunMode::EIGENVALUE && !is_fission(rx->mt_)) {
+      wgt = simulation::keff * p.wgt_;
+    } else {
+      wgt = p.wgt_;
+    }
+
     // Create the secondary photon
-    p.create_secondary(u, E, Particle::Type::photon);
+    p.create_secondary(wgt, u, E, Particle::Type::photon);
+
   }
 }
 

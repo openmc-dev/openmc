@@ -27,8 +27,8 @@ namespace data {
 
 xt::xtensor<double, 1> compton_profile_pz;
 
-std::vector<std::unique_ptr<PhotonInteraction>> elements;
 std::unordered_map<std::string, int> element_map;
+std::vector<std::unique_ptr<PhotonInteraction>> elements;
 
 } // namespace data
 

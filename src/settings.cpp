@@ -71,10 +71,7 @@ bool write_initial_source    {false};
 
 // ---
 // weight window   add by Yuan
-// ---
 bool weightwindow            {false};
-// ---
-// weight window   add by Yuan
 // ---
   
 std::string path_cross_sections;

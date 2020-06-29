@@ -299,14 +299,12 @@ public:
   double n_survival_ratio;         // survival weight = survival_ratio * lower weight window
   int n_max_split;                 // max number of split particles
   double n_multiplier;             // multiplier for weight window lower bounds
-  // neutron
 
   // photon
   double p_upper_ratio;            // upper weight window = upper_ratio * lower weight window
   double p_survival_ratio;         // survival weight = survival_ratio * lower weight window
   int p_max_split;                 // max number of split particles
   double p_multiplier;             // multiplier for weight window lower bounds
-  // photon
 
   // source weight biasing in energy
   bool user_defined_biasing;      // use user difined weight or not

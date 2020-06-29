@@ -286,6 +286,7 @@ public:
   xt::xtensor<int, 1> shape_; //!< Number of mesh elements in each dimension
   
   // weight window parameters
+  int ww_type;                        // weight window input file type
   std::vector<double> n_energy_group; // energy group for neutron
   std::vector<double> p_energy_group; // energy group for photon
   std::vector<double> n_ww_lower;     // lower weight window for mesh for neutron

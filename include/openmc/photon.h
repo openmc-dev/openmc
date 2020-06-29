@@ -120,8 +120,8 @@ namespace data {
 extern xt::xtensor<double, 1> compton_profile_pz; //! Compton profile momentum grid
 
 //! Photon interaction data for each element
-extern std::vector<std::unique_ptr<PhotonInteraction>> elements;
 extern std::unordered_map<std::string, int> element_map;
+extern std::vector<std::unique_ptr<PhotonInteraction>> elements;
 
 } // namespace data
 

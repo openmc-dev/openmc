@@ -2178,6 +2178,117 @@ void WeightWindowMesh::to_hdf5(hid_t group) const
   close_group(mesh_group);
 }
   
+bool WeightWindowMesh::intersects(Position& r0, Position r1, int* ijk) const
+{
+  // Copy coordinates of starting point
+  double x0 = r0.x;
+  double y0 = r0.y;
+  double z0 = r0.z;
+
+  // Copy coordinates of ending point
+  double x1 = r1.x;
+  double y1 = r1.y;
+  double z1 = r1.z;
+
+  // Copy coordinates of mesh lower_left
+  double xm0 = grid_[0].front();
+  double ym0 = grid_[1].front();
+  double zm0 = grid_[2].front();
+
+  // Copy coordinates of mesh upper_right
+  double xm1 = grid_[0].back();
+  double ym1 = grid_[1].back();
+  double zm1 = grid_[2].back();
+
+  double min_dist = INFTY;
+
+  // Check if line intersects left surface -- calculate the intersection point
+  // (y,z)
+  if ((x0 < xm0 && x1 > xm0) || (x0 > xm0 && x1 < xm0)) {
+    double yi = y0 + (xm0 - x0) * (y1 - y0) / (x1 - x0);
+    double zi = z0 + (xm0 - x0) * (z1 - z0) / (x1 - x0);
+    if (yi >= ym0 && yi < ym1 && zi >= zm0 && zi < zm1) {
+      if (check_intersection_point(xm0, x0, yi, y0, zi, z0, r0, min_dist)) {
+        ijk[0] = 1;
+        ijk[1] = lower_bound_index(grid_[1].begin(), grid_[1].end(), yi) + 1;
+        ijk[2] = lower_bound_index(grid_[2].begin(), grid_[2].end(), zi) + 1;
+      }
+    }
+  }
+
+  // Check if line intersects back surface -- calculate the intersection point
+  // (x,z)
+  if ((y0 < ym0 && y1 > ym0) || (y0 > ym0 && y1 < ym0)) {
+    double xi = x0 + (ym0 - y0) * (x1 - x0) / (y1 - y0);
+    double zi = z0 + (ym0 - y0) * (z1 - z0) / (y1 - y0);
+    if (xi >= xm0 && xi < xm1 && zi >= zm0 && zi < zm1) {
+      if (check_intersection_point(xi, x0, ym0, y0, zi, z0, r0, min_dist)) {
+        ijk[0] = lower_bound_index(grid_[0].begin(), grid_[0].end(), xi) + 1;
+        ijk[1] = 1;
+        ijk[2] = lower_bound_index(grid_[2].begin(), grid_[2].end(), zi) + 1;
+      }
+    }
+  }
+
+  // Check if line intersects bottom surface -- calculate the intersection
+  // point (x,y)
+  if ((z0 < zm0 && z1 > zm0) || (z0 > zm0 && z1 < zm0)) {
+    double xi = x0 + (zm0 - z0) * (x1 - x0) / (z1 - z0);
+    double yi = y0 + (zm0 - z0) * (y1 - y0) / (z1 - z0);
+    if (xi >= xm0 && xi < xm1 && yi >= ym0 && yi < ym1) {
+      if (check_intersection_point(xi, x0, yi, y0, zm0, z0, r0, min_dist)) {
+        ijk[0] = lower_bound_index(grid_[0].begin(), grid_[0].end(), xi) + 1;
+        ijk[1] = lower_bound_index(grid_[1].begin(), grid_[1].end(), yi) + 1;
+        ijk[2] = 1;
+      }
+    }
+  }
+
+  // Check if line intersects right surface -- calculate the intersection point
+  // (y,z)
+  if ((x0 < xm1 && x1 > xm1) || (x0 > xm1 && x1 < xm1)) {
+    double yi = y0 + (xm1 - x0) * (y1 - y0) / (x1 - x0);
+    double zi = z0 + (xm1 - x0) * (z1 - z0) / (x1 - x0);
+    if (yi >= ym0 && yi < ym1 && zi >= zm0 && zi < zm1) {
+      if (check_intersection_point(xm1, x0, yi, y0, zi, z0, r0, min_dist)) {
+        ijk[0] = shape_[0];
+        ijk[1] = lower_bound_index(grid_[1].begin(), grid_[1].end(), yi) + 1;
+        ijk[2] = lower_bound_index(grid_[2].begin(), grid_[2].end(), zi) + 1;
+      }
+    }
+  }
+
+  // Check if line intersects front surface -- calculate the intersection point
+  // (x,z)
+  if ((y0 < ym1 && y1 > ym1) || (y0 > ym1 && y1 < ym1)) {
+    double xi = x0 + (ym1 - y0) * (x1 - x0) / (y1 - y0);
+    double zi = z0 + (ym1 - y0) * (z1 - z0) / (y1 - y0);
+    if (xi >= xm0 && xi < xm1 && zi >= zm0 && zi < zm1) {
+      if (check_intersection_point(xi, x0, ym1, y0, zi, z0, r0, min_dist)) {
+        ijk[0] = lower_bound_index(grid_[0].begin(), grid_[0].end(), xi) + 1;
+        ijk[1] = shape_[1];
+        ijk[2] = lower_bound_index(grid_[2].begin(), grid_[2].end(), zi) + 1;
+      }
+    }
+  }
+
+  // Check if line intersects top surface -- calculate the intersection point
+  // (x,y)
+  if ((z0 < zm1 && z1 > zm1) || (z0 > zm1 && z1 < zm1)) {
+    double xi = x0 + (zm1 - z0) * (x1 - x0) / (z1 - z0);
+    double yi = y0 + (zm1 - z0) * (y1 - y0) / (z1 - z0);
+    if (xi >= xm0 && xi < xm1 && yi >= ym0 && yi < ym1) {
+      if (check_intersection_point(xi, x0, yi, y0, zm1, z0, r0, min_dist)) {
+        ijk[0] = lower_bound_index(grid_[0].begin(), grid_[0].end(), xi) + 1;
+        ijk[1] = lower_bound_index(grid_[1].begin(), grid_[1].end(), yi) + 1;
+        ijk[2] = shape_[2];
+      }
+    }
+  }
+
+  return min_dist < INFTY;
+}
+  
 //! source weight biasing in energy
 void WeightWindowMesh::weight_biasing(Particle::Bank& site, uint64_t* seed) 
 {

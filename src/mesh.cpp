@@ -6,6 +6,9 @@
 #include <memory> // for allocator
 #include <string>
 
+#include <sstream>
+#include <fstream>
+
 #ifdef OPENMC_MPI
 #include "mpi.h"
 #endif
@@ -1411,6 +1414,8 @@ bool RectilinearMesh::intersects(Position& r0, Position r1, int* ijk) const
 WeightWindowMesh::WeightWindowMesh(pugi::xml_node node)
   : StructuredMesh {node}
 {
+  using namespace pugi;
+  
   n_dimension_ = 3;
   grid_.resize(3);
 
@@ -1483,7 +1488,7 @@ WeightWindowMesh::WeightWindowMesh(pugi::xml_node node)
     if (ww_nr!=10)  fatal_error("Only cartesian WWINP is currently supported");
       
     lower_left_ = { ww_x0, ww_y0, ww_z0 };
-    shape_ = { ww_nfx, ww_nfy, ww_nfz };
+    shape_ = { static_cast<int>(ww_nfx), static_cast<int>(ww_nfy), static_cast<int>(ww_nfz) };
 
     // reading wwinp file, BLOCK 2
     for (int i=0; i<ww_ncx; i++) {
@@ -1513,7 +1518,7 @@ WeightWindowMesh::WeightWindowMesh(pugi::xml_node node)
       wwfile>>ww;   // rz(i)        
     }
 
-    upper_right = { coarse_x.back(), coarse_y.back(), coarse_z.back() };
+    upper_right_ = { coarse_x.back(), coarse_y.back(), coarse_z.back() };
      
     // locations of fine mesh in x direction
     for (int i=0; i<coarse_x.size()-1; i++) {
@@ -1660,7 +1665,7 @@ WeightWindowMesh::WeightWindowMesh(pugi::xml_node node)
     }
     grid_[2].push_back(coarse_z.back());
       
-    upper_right = { coarse_x.back(), coarse_y.back(), coarse_z.back() };
+    upper_right_ = { coarse_x.back(), coarse_y.back(), coarse_z.back() };
     
     // Energy group
     if (check_for_node(node, "energy")) {

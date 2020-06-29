@@ -204,10 +204,6 @@ class RectilinearMesh : public StructuredMesh
 public:
   // Constructors
   RectilinearMesh(pugi::xml_node node);
-  
-  // A new Constructors and a new set function for Weight Window, add by Yuan
-  RectilinearMesh();
-  void set_grid(std::vector<double>& x_grid, std::vector<double>& y_grid, std::vector<double>& z_grid);
 
   // Overriden methods
 
@@ -263,6 +259,11 @@ public:
   //void set_grid(std::vector<double>& x_grid, std::vector<double>& y_grid, std::vector<double>& z_grid);
 
   // Overriden methods
+  void bins_crossed(const Particle& p, std::vector<int>& bins,
+                    std::vector<double>& lengths) const override;
+
+  void surface_bins_crossed(const Particle& p, std::vector<int>& bins)
+  const override;
 
   int get_bin(Position r) const override;
 
@@ -273,6 +274,13 @@ public:
   void get_indices_from_bin(int bin, int* ijk) const override;
 
   int n_bins() const override;
+
+  int n_surface_bins() const override;
+
+  std::pair<std::vector<double>, std::vector<double>>
+  plot(Position plot_ll, Position plot_ur) const override;
+
+  void to_hdf5(hid_t group) const override;
   
   // New methods
 

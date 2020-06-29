@@ -41,11 +41,11 @@ void collision(Particle& p)
   switch (p.type_) {
   case Particle::Type::neutron:
     sample_neutron_reaction(p);
-    if (settings::n_ww)  split_particle(p);    // weight window  add by Yuan
+    if (settings::ww_fine_mesh->n_ww)  split_particle(p);    // weight window  add by Yuan
     break;
   case Particle::Type::photon:
     sample_photon_reaction(p);
-    if (settings::p_ww)  split_particle(p);    // weight window  add by Yuan
+    if (settings::ww_fine_mesh->p_ww)  split_particle(p);    // weight window  add by Yuan
     break;
   case Particle::Type::electron:
     sample_electron_reaction(p);
@@ -1183,7 +1183,7 @@ void split_particle(Particle& p)
   bool in_mesh;         
 
   // Check if this particle is in the weight weindow mesh and get the mesh bins in each direction
-  settings::ww_fine_mesh.get_indices(pos, ijk, &in_mesh);
+  settings::ww_fine_mesh->get_indices(pos, ijk, &in_mesh);
 	
   if (!in_mesh) return;
 	
@@ -1197,27 +1197,26 @@ void split_particle(Particle& p)
 	
   // Determine which set of weight window values to be used based on particle type
   if (p.type_==Particle::Type::neutron) {
-    energy_group = settings::n_energy_group;
-    ww_lower     = settings::n_ww_lower;
-    lower_ww     = settings::n_multiplier;       
-    upper_ww     = settings::n_upper_ratio;
-    survival_ww  = settings::n_survival_ratio;
-    max_split    = settings::n_max_split;
+    energy_group = settings::ww_fine_mesh->n_energy_group;
+    ww_lower     = settings::ww_fine_mesh->n_ww_lower;
+    lower_ww     = settings::ww_fine_mesh->n_multiplier;       
+    upper_ww     = settings::ww_fine_mesh->n_upper_ratio;
+    survival_ww  = settings::ww_fine_mesh->n_survival_ratio;
+    max_split    = settings::ww_fine_mesh->n_max_split;
   } else if (p.type_==Particle::Type::photon) {
-    energy_group = settings::p_energy_group;
-    ww_lower     = settings::p_ww_lower;
-    lower_ww     = settings::p_multiplier;       
-    upper_ww     = settings::p_upper_ratio;
-    survival_ww  = settings::p_survival_ratio;
-    max_split    = settings::p_max_split;
+    energy_group = settings::ww_fine_mesh->p_energy_group;
+    ww_lower     = settings::ww_fine_mesh->p_ww_lower;
+    lower_ww     = settings::ww_fine_mesh->p_multiplier;       
+    upper_ww     = settings::ww_fine_mesh->p_upper_ratio;
+    survival_ww  = settings::ww_fine_mesh->p_survival_ratio;
+    max_split    = settings::ww_fine_mesh->p_max_split;
   }
 
   // get the mesh bin in energy group
   energy_bin = lower_bound_index(energy_group.begin(), energy_group.end(), Energy);
 
-  //auto& shape = settings::shape;
-  indices = fine_mesh.get_bin(pos);
-  indices += energy_bin*fine_mesh.shape_[0]*fine_mesh.shape_[1]*fine_mesh.shape_[2];                   // get the indices
+  indices = fine_mesh->get_bin(pos);
+  indices += energy_bin*fine_mesh->shape_[0]*fine_mesh->shape_[1]*fine_mesh->shape_[2];                   // get the indices
 
   lower_ww = lower_ww*ww_lower[indices];  // equal to multiplier * lower weight window bound (from input file)
   upper_ww = lower_ww*upper_ww;           // equal to multiplied lower weight window bound * upper/lower ratio

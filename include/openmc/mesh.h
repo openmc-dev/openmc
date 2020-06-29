@@ -282,6 +282,14 @@ public:
 
   void to_hdf5(hid_t group) const override;
   
+  //! Check where a line segment intersects the mesh and if it intersects at all
+  //
+  //! \param[in,out] r0 In: starting position, out: intersection point
+  //! \param[in] r1 Ending position
+  //! \param[out] ijk Indices of the mesh bin containing the intersection point
+  //! \return Whether the line segment connecting r0 and r1 intersects mesh
+  bool intersects(Position& r0, Position r1, int* ijk) const;
+  
   // New methods
 
   //! source weight biasing in energy

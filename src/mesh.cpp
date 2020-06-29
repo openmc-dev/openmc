@@ -1814,7 +1814,7 @@ WeightWindowMesh::WeightWindowMesh(pugi::xml_node node)
     }
   }
 }
-
+/*
 void WeightWindowMesh::bins_crossed(const Particle& p, std::vector<int>& bins,
                                    std::vector<double>& lengths) const
 {
@@ -2087,7 +2087,7 @@ void WeightWindowMesh::surface_bins_crossed(const Particle& p,
     r0 += distance * u;
   }
 }
-
+*/
   
 int WeightWindowMesh::get_bin(Position r) const
 {
@@ -2131,7 +2131,7 @@ int WeightWindowMesh::n_bins() const
 {
   return xt::prod(shape_)();
 }
-
+/*
 int WeightWindowMesh::n_surface_bins() const
 {
   return 4 * n_dimension_ * n_bins();
@@ -2288,7 +2288,7 @@ bool WeightWindowMesh::intersects(Position& r0, Position r1, int* ijk) const
   }
 
   return min_dist < INFTY;
-}
+}*/
   
 //! source weight biasing in energy
 void WeightWindowMesh::weight_biasing(Particle::Bank& site, uint64_t* seed) 

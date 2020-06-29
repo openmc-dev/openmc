@@ -249,7 +249,7 @@ Particle::Bank SourceDistribution::sample(uint64_t* seed) const
       if (site.E < data::energy_max[p] && site.E > data::energy_min[p]) break;
     }
     // origin code
-  }  // add by Yuan
+  }   // add by Yuan
   
   // Set delayed group
   site.delayed_group = 0;

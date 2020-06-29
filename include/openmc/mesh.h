@@ -259,11 +259,11 @@ public:
   //void set_grid(std::vector<double>& x_grid, std::vector<double>& y_grid, std::vector<double>& z_grid);
 
   // Overriden methods
-  virtual void bins_crossed(const Particle& p, std::vector<int>& bins,
-                    std::vector<double>& lengths) const = 0;
+  void bins_crossed(const Particle& p, std::vector<int>& bins,
+                    std::vector<double>& lengths) const override;
 
-  virtual void surface_bins_crossed(const Particle& p, std::vector<int>& bins)
-  const  = 0;
+  void surface_bins_crossed(const Particle& p, std::vector<int>& bins)
+  const  override;
 
   int get_bin(Position r) const override;
 
@@ -275,12 +275,12 @@ public:
 
   int n_bins() const override;
 
-  virtual int n_surface_bins() const  = 0;
+  int n_surface_bins() const override;
 
-  virtual std::pair<std::vector<double>, std::vector<double>>
-  plot(Position plot_ll, Position plot_ur) const  = 0;
+  std::pair<std::vector<double>, std::vector<double>>
+  plot(Position plot_ll, Position plot_ur) const override;
 
-  virtual void to_hdf5(hid_t group) const  = 0;
+  void to_hdf5(hid_t group) const override;
   
   //! Check where a line segment intersects the mesh and if it intersects at all
   //
@@ -288,7 +288,7 @@ public:
   //! \param[in] r1 Ending position
   //! \param[out] ijk Indices of the mesh bin containing the intersection point
   //! \return Whether the line segment connecting r0 and r1 intersects mesh
-  virtual bool intersects(Position& r0, Position r1, int* ijk) const  = 0;
+  bool intersects(Position& r0, Position r1, int* ijk) const ;
   
   // New methods
 

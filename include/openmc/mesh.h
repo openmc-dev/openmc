@@ -260,10 +260,10 @@ public:
 
   // Overriden methods
   void bins_crossed(const Particle& p, std::vector<int>& bins,
-                    std::vector<double>& lengths) const override;
+                    std::vector<double>& lengths) const = 0;
 
   void surface_bins_crossed(const Particle& p, std::vector<int>& bins)
-  const override;
+  const  = 0;
 
   int get_bin(Position r) const override;
 
@@ -275,12 +275,12 @@ public:
 
   int n_bins() const override;
 
-  int n_surface_bins() const override;
+  int n_surface_bins() const  = 0;
 
   std::pair<std::vector<double>, std::vector<double>>
-  plot(Position plot_ll, Position plot_ur) const override;
+  plot(Position plot_ll, Position plot_ur) const  = 0;
 
-  void to_hdf5(hid_t group) const override;
+  void to_hdf5(hid_t group) const  = 0;
   
   //! Check where a line segment intersects the mesh and if it intersects at all
   //
@@ -288,7 +288,7 @@ public:
   //! \param[in] r1 Ending position
   //! \param[out] ijk Indices of the mesh bin containing the intersection point
   //! \return Whether the line segment connecting r0 and r1 intersects mesh
-  bool intersects(Position& r0, Position r1, int* ijk) const;
+  bool intersects(Position& r0, Position r1, int* ijk) const  = 0;
   
   // New methods
 

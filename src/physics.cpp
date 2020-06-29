@@ -41,11 +41,11 @@ void collision(Particle& p)
   switch (p.type_) {
   case Particle::Type::neutron:
     sample_neutron_reaction(p);
-    if (settings::ww_fine_mesh->n_ww)  split_particle(p);    // weight window  add by Yuan
+    if ( settings::weightwindow && settings::ww_fine_mesh->n_ww)  split_particle(p);    // weight window  add by Yuan
     break;
   case Particle::Type::photon:
     sample_photon_reaction(p);
-    if (settings::ww_fine_mesh->p_ww)  split_particle(p);    // weight window  add by Yuan
+    if ( settings::weightwindow && settings::ww_fine_mesh->p_ww)  split_particle(p);    // weight window  add by Yuan
     break;
   case Particle::Type::electron:
     sample_electron_reaction(p);

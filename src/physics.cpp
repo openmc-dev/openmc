@@ -1193,7 +1193,6 @@ void split_particle(Particle& p)
   double upper_ww;
   double survival_ww;
   int    max_split;
-  auto fine_mesh = settings::ww_fine_mesh;
 	
   // Determine which set of weight window values to be used based on particle type
   if (p.type_==Particle::Type::neutron) {
@@ -1215,8 +1214,8 @@ void split_particle(Particle& p)
   // get the mesh bin in energy group
   energy_bin = lower_bound_index(energy_group.begin(), energy_group.end(), Energy);
 
-  indices = fine_mesh->get_bin(pos);
-  indices += energy_bin*fine_mesh->shape_[0]*fine_mesh->shape_[1]*fine_mesh->shape_[2];                   // get the indices
+  indices = settings::ww_fine_mesh->get_bin(pos);
+  indices += energy_bin*settings::ww_fine_mesh->shape_[0]*settings::ww_fine_mesh->shape_[1]*settings::ww_fine_mesh->shape_[2];                   // get the indices
 
   lower_ww = lower_ww*ww_lower[indices];  // equal to multiplier * lower weight window bound (from input file)
   upper_ww = lower_ww*upper_ww;           // equal to multiplied lower weight window bound * upper/lower ratio

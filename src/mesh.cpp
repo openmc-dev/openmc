@@ -1401,7 +1401,7 @@ WeightWindowMesh::WeightWindowMesh(pugi::xml_node node)
   // default parameters
   n_ww = false;                  // flag for neutron use weight window
   p_ww = false;                  // flag for photon use weight window
-  user_defined_biasing = true;   // flag for weight biasing in energy
+  user_defined_biasing = false;  // flag for weight biasing in energy
   
   // WWP
   // neutron

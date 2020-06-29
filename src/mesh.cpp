@@ -1700,14 +1700,14 @@ WeightWindowMesh::WeightWindowMesh(pugi::xml_node node)
     for (int k=0; k<shape_z.size(); k++) shape_[2]=+shape_z.at(k);
       
     if (n_ww) {
-      for (int i=0; i<shape[0]*shape[1]*shape[2]*(n_energy_group.size()-1); i++) {   
+      for (int i=0; i<shape_[0]*shape_[1]*shape_[2]*(n_energy_group.size()-1); i++) {   
         wwfile>>ww;
         n_ww_lower.push_back(ww);
       }  
     } 
       
     if (p_ww) {
-      for (int i=0; i<shape[0]*shape[1]*shape[2]*(p_energy_group.size()-1); i++) {   
+      for (int i=0; i<shape_[0]*shape_[1]*shape_[2]*(p_energy_group.size()-1); i++) {   
         wwfile>>ww;
         p_ww_lower.push_back(ww);
       }  
@@ -1889,7 +1889,7 @@ int WeightWindowMesh::n_bins() const
 }
 
 //! source weight biasing in energy
-void weight_biasing(Particle::Bank& site, uint64_t* seed) 
+void WeightWindowMesh::weight_biasing(Particle::Bank& site, uint64_t* seed) 
 {
   int i=0;
   double random_number=prn(seed);

@@ -238,31 +238,21 @@ Particle::Bank SourceDistribution::sample(uint64_t* seed) const
   }
   
   // source weight biasing in energy,   add by Yuan
-  if (settings::user_defined_biasing) {
-    int i=0;
-    double random_number=prn(seed);
-    for (i=0; i<settings::cumulative_biasing.size()-1; i++) 
-      if ( settings::cumulative_biasing.at(i) <= random_number && random_number < settings::cumulative_biasing.at(i+1) )  break;
-    site.E = settings::biasing_energy.at(i) + ( settings::biasing_energy.at(i+1)-settings::biasing_energy.at(i) ) * prn(seed);
-    site.wgt = site.wgt * settings::origin_possibility.at(i+1) / settings::biasing.at(i+1);
-    site.delayed_group = 0;
+  if (ww_fine_mesh->user_defined_biasing)  ww_fine_mesh->weight_biasing(site, seed);
+  else {
+    // origin code
+    while (true) {
+      // Sample energy spectrum
+      site.E = energy_->sample(seed);
 
-  } else {
-
-  // origin code
-  while (true) {
-    // Sample energy spectrum
-    site.E = energy_->sample(seed);
-
-    // Resample if energy falls outside minimum or maximum particle energy
-    if (site.E < data::energy_max[p] && site.E > data::energy_min[p]) break;
-  }
-
+      // Resample if energy falls outside minimum or maximum particle energy
+      if (site.E < data::energy_max[p] && site.E > data::energy_min[p]) break;
+    }
+    // origin code
+  }  // add by Yuan
+  
   // Set delayed group
   site.delayed_group = 0;
- // origin code
-  
-  }// add by Yuan
   
   return site;
 }

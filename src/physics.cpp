@@ -4,6 +4,7 @@
 #include "openmc/bremsstrahlung.h"
 #include "openmc/constants.h"
 #include "openmc/eigenvalue.h"
+#include "openmc/endf.h"
 #include "openmc/error.h"
 #include "openmc/material.h"
 #include "openmc/math_functions.h"
@@ -567,8 +568,21 @@ void sample_photon_product(int i_nuclide, Particle& p, int* i_rx, int* i_product
 
     for (int j = 0; j < rx->products_.size(); ++j) {
       if (rx->products_[j].particle_ == Particle::Type::photon) {
+        // For fission, artificially increase the photon yield to account
+        // for delayed photons
+        double f = 1.0;
+        if (settings::delayed_photon_scaling) {
+          if (is_fission(rx->mt_)) {
+            if (nuc->prompt_photons_ && nuc->delayed_photons_) {
+              double energy_prompt = (*nuc->prompt_photons_)(p.E_);
+              double energy_delayed = (*nuc->delayed_photons_)(p.E_);
+              f = (energy_prompt + energy_delayed)/(energy_prompt);
+            }
+          }
+        }
+
         // add to cumulative probability
-        prob += (*rx->products_[j].yield_)(p.E_) * xs;
+        prob += f * (*rx->products_[j].yield_)(p.E_) * xs;
 
         *i_rx = i;
         *i_product = j;

@@ -250,6 +250,77 @@ public:
 private:
   std::vector<std::vector<double>> grid_;
 };
+  
+// Weight Window Mesh class, add by Yuan
+class WeightWindowMesh : public StructuredMesh
+{
+public:
+  // Constructors
+  WeightWindowMesh(pugi::xml_node node);
+  
+  // A new Constructors and a new set function for Weight Window, add by Yuan
+  //RectilinearMesh();
+  //void set_grid(std::vector<double>& x_grid, std::vector<double>& y_grid, std::vector<double>& z_grid);
+
+  // Overriden methods
+
+  int get_bin(Position r) const override;
+
+  int get_bin_from_indices(const int* ijk) const override;
+
+  void get_indices(Position r, int* ijk, bool* in_mesh) const override;
+
+  void get_indices_from_bin(int bin, int* ijk) const override;
+
+  int n_bins() const override;
+  
+  // New methods
+
+  //! source weight biasing in energy
+  //
+  //! \param[in, out] p particle, output with the biased energy and weight
+  //! \param[in] seed, random number seed
+  void weight_biasing(Particle::Bank& site, uint64_t* seed) ;
+
+  // Data members
+  xt::xtensor<int, 1> shape_; //!< Number of mesh elements in each dimension
+  
+  // weight window parameters
+  std::vector<double> n_energy_group; // energy group for neutron
+  std::vector<double> p_energy_group; // energy group for photon
+  std::vector<double> n_ww_lower;     // lower weight window for mesh for neutron
+  std::vector<double> p_ww_lower;     // lower weight window for mesh for photon
+  bool n_ww;                          // flag for neutron use weight window
+  bool p_ww;                          // flag for photon use weight window
+  
+  // WWP
+  // neutron
+  double n_upper_ratio;            // upper weight window = upper_ratio * lower weight window
+  double n_survival_ratio;         // survival weight = survival_ratio * lower weight window
+  int n_max_split;                 // max number of split particles
+  double n_multiplier;             // multiplier for weight window lower bounds
+  // neutron
+
+  // photon
+  double p_upper_ratio;            // upper weight window = upper_ratio * lower weight window
+  double p_survival_ratio;         // survival weight = survival_ratio * lower weight window
+  int p_max_split;                 // max number of split particles
+  double p_multiplier;             // multiplier for weight window lower bounds
+  // photon
+
+  // source weight biasing in energy
+  bool user_defined_biasing;      // use user difined weight or not
+  std::vector<double> biasing_energy;   // energy group for weight biasing
+  std::vector<double> origin_possibility; // possibility for each group
+  std::vector<double> cumulative_possibility; // cumulative possibility for each group
+  std::vector<double> biasing;   // biasing for each energy group
+  std::vector<double> cumulative_biasing;   // cumulative possibility for biasing for each energy group
+
+private:
+  std::vector<std::vector<double>> grid_;
+};
+// Weight Window Mesh class, add by Yuan
+
 
 #ifdef DAGMC
 

@@ -5271,7 +5271,7 @@ class Chi(MGXS):
     by_nuclide : bool
         If true, computes cross sections for each nuclide in domain
     domain : openmc.Material or openmc.Cell or openmc.Universe or openmc.RegularMesh
-        Domain for spatial homogenization`
+        Domain for spatial homogenization
     domain_type : {'material', 'cell', 'distribcell', 'universe', 'mesh'}
         Domain type for spatial homogenization
     energy_groups : openmc.mgxs.EnergyGroups

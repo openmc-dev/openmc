@@ -4,6 +4,8 @@ import openmc
 
 
 class CompositeMixin:
+    """Mixin class for composite surfaces"""
+
     def evaluate(self, point):
         raise NotImplementedError('Composite surfaces do not have a surface equation.')
 
@@ -17,7 +19,7 @@ class CompositeMixin:
             setattr(surf, name, s.translate(vector, inplace))
         return surf
 
-    def rotate(self, rotation):
+    def rotate(self, rotation, pivot=(0., 0., 0.), order='xyz', inplace=False):
         surf = copy(self)
         for name in self._surface_names:
             s = getattr(surf, name)
@@ -29,11 +31,42 @@ class CompositeMixin:
 
 
 class RightCircularCylinder(CompositeMixin, openmc.Surface):
-    _surface_names = ('cyl', 'bottom', 'top')
+    """Right circular cylinder composite surface
 
-    def __init__(self, center_base, height, radius, axis='z',
-                 boundary_type='transmission'):
-        kwargs = {'boundary_type': boundary_type}
+    A right circular cylinder is composed of a cylinder and two planar surface
+    perpendicular to the axis of the cylinder. This class acts as a proper
+    surface, meaning that unary `+` and `-` operators applied to it will produce
+    a half-space. The negative side is defined to be the region inside of the
+    right circular cylinder.
+
+    .. versionadded:: 0.12
+
+    Parameters
+    ----------
+    center_base : iterable of float
+        Cartesian coordinate of the center of the base of the cylinder
+    height : float
+        Height of the cylinder
+    radius : float
+        Radius of the cylinder
+    axis : {'x', 'y', 'z'}
+        Axis of the cylinder
+    **kwargs
+        Keyword arguments passed to underlying cylinder and plane classes
+
+    Attributes
+    ----------
+    cyl : openmc.Cylinder
+        Underlying cylinder surface
+    bottom : openmc.Plane
+        Bottom planar surface of the cylinder
+    top : openmc.Plane
+        Top planar surface of the cylinder
+
+    """
+    surface_names = ('cyl', 'bottom', 'top')
+
+    def __init__(self, center_base, height, radius, axis='z', **kwargs):
         cx, cy, cz = center_base
         if axis == 'x':
             self.cyl = openmc.XCylinder(y0=cy, z0=cz, r=radius, **kwargs)
@@ -56,10 +89,39 @@ class RightCircularCylinder(CompositeMixin, openmc.Surface):
 
 
 class RectangularParallelepiped(CompositeMixin, openmc.Surface):
-    _surface_names = ('xmin', 'xmax', 'ymin', 'ymax', 'zmin', 'zmax')
+    """Rectangular parallelpiped composite surface
 
-    def __init__(self, xmin, xmax, ymin, ymax, zmin, zmax, boundary_type='transmission'):
-        kwargs = {'boundary_type': boundary_type}
+    A rectangular parallelpiped is composed of six planar surfaces. This class
+    acts as a proper surface, meaning that unary `+` and `-` operators applied
+    to it will produce a half-space. The negative side is defined to be the
+    region inside of the rectangular parallelpiped.
+
+    .. versionadded:: 0.12
+
+    Parameters
+    ----------
+    xmin, xmax : float
+        Minimum and maximum x coordinates of the parallelepiped
+    ymin, ymax : float
+        Minimum and maximum y coordinates of the parallelepiped
+    zmin, zmax : float
+        Minimum and maximum z coordinates of the parallelepiped
+    **kwargs
+        Keyword arguments passed to underlying plane classes
+
+    Attributes
+    ----------
+    xmin, xmax : openmc.XPlane
+        Sides of the parallelepiped
+    ymin, ymax : openmc.YPlane
+        Sides of the parallelepiped
+    zmin, zmax : openmc.ZPlane
+        Sides of the parallelepiped
+
+    """
+    surface_names = ('xmin', 'xmax', 'ymin', 'ymax', 'zmin', 'zmax')
+
+    def __init__(self, xmin, xmax, ymin, ymax, zmin, zmax, **kwargs):
         self.xmin = openmc.XPlane(x0=xmin, **kwargs)
         self.xmax = openmc.XPlane(x0=xmax, **kwargs)
         self.ymin = openmc.YPlane(y0=ymin, **kwargs)
@@ -75,10 +137,41 @@ class RectangularParallelepiped(CompositeMixin, openmc.Surface):
 
 
 class Box(CompositeMixin, openmc.Surface):
+    """Arbitrarily oriented orthogonal box
+
+    An arbitrarily oriented orthogonal box is composed of six planar surfaces.
+    This class acts as a proper surface, meaning that unary `+` and `-`
+    operators applied to it will produce a half-space. The negative side is
+    defined to be the region inside of the box.
+
+    .. versionadded:: 0.12
+
+    Parameters
+    ----------
+    v : iterable of float
+        Cartesian coordinates of a corner of the box
+    a1 : iterable of float
+        Vector of first side from the specified corner coordinates
+    a2 : iterable of float
+        Vector of second side from the specified corner coordinates
+    a3 : iterable of float
+        Vector of third side from the specified corner coordinates
+    **kwargs
+        Keyword arguments passed to underlying plane classes
+
+    Attributes
+    ----------
+    xmin, xmax : openmc.XPlane
+        Sides of the box
+    ymin, ymax : openmc.YPlane
+        Sides of the box
+    zmin, zmax : openmc.ZPlane
+        Sides of the box
+
+    """
     _surface_names = ('xmin', 'xmax', 'ymin', 'ymax', 'zmin', 'zmax')
 
-    def __init__(self, v, a1, a2, a3, boundary_type='transmission'):
-        kwargs = {'boundary_type': boundary_type}
+    def __init__(self, v, a1, a2, a3, **kwargs):
         vx, vy, vz = v
         a1x, a1y, a1z = a1
         a2x, a2y, a2z = a2
@@ -123,6 +216,43 @@ class Box(CompositeMixin, openmc.Surface):
 
 
 class XConeOneSided(CompositeMixin, openmc.Surface):
+    """One-sided cone parallel the x-axis
+
+    A one-sided cone is composed of a normal cone surface and an "ambiguity"
+    surface that eliminates the ambiguity as to which region of space is
+    included. This class acts as a proper surface, meaning that unary `+` and
+    `-` operators applied to it will produce a half-space. The negative side is
+    defined to be the region inside of the cone.
+
+    .. versionadded:: 0.12
+
+    Parameters
+    ----------
+    x0 : float, optional
+        x-coordinate of the apex. Defaults to 0.
+    y0 : float, optional
+        y-coordinate of the apex. Defaults to 0.
+    z0 : float, optional
+        z-coordinate of the apex. Defaults to 0.
+    r2 : float, optional
+        Parameter related to the aperature. Defaults to 1.
+    up : bool
+        Whether to select the side of the cone that extends to infinity in the
+        positive direction of the coordinate axis
+    **kwargs
+        Keyword arguments passed to underlying plane classes
+
+    Attributes
+    ----------
+    cone : openmc.XCone
+        Regular two-sided cone
+    plane : openmc.XPlane
+        Ambiguity surface
+    up : bool
+        Whether to select the side of the cone that extends to infinity in the
+        positive direction of the coordinate axis
+
+    """
     _surface_names = ('cone', 'plane')
 
     def __init__(self, x0=0., y0=0., z0=0., r2=1., up=True, **kwargs):
@@ -141,6 +271,43 @@ class XConeOneSided(CompositeMixin, openmc.Surface):
 
 
 class YConeOneSided(CompositeMixin, openmc.Surface):
+    """One-sided cone parallel the y-axis
+
+    A one-sided cone is composed of a normal cone surface and an "ambiguity"
+    surface that eliminates the ambiguity as to which region of space is
+    included. This class acts as a proper surface, meaning that unary `+` and
+    `-` operators applied to it will produce a half-space. The negative side is
+    defined to be the region inside of the cone.
+
+    .. versionadded:: 0.12
+
+    Parameters
+    ----------
+    x0 : float, optional
+        x-coordinate of the apex. Defaults to 0.
+    y0 : float, optional
+        y-coordinate of the apex. Defaults to 0.
+    z0 : float, optional
+        z-coordinate of the apex. Defaults to 0.
+    r2 : float, optional
+        Parameter related to the aperature. Defaults to 1.
+    up : bool
+        Whether to select the side of the cone that extends to infinity in the
+        positive direction of the coordinate axis
+    **kwargs
+        Keyword arguments passed to underlying plane classes
+
+    Attributes
+    ----------
+    cone : openmc.YCone
+        Regular two-sided cone
+    plane : openmc.YPlane
+        Ambiguity surface
+    up : bool
+        Whether to select the side of the cone that extends to infinity in the
+        positive direction of the coordinate axis
+
+    """
     _surface_names = ('cone', 'plane')
 
     def __init__(self, x0=0., y0=0., z0=0., r2=1., up=True, **kwargs):
@@ -153,6 +320,43 @@ class YConeOneSided(CompositeMixin, openmc.Surface):
 
 
 class ZConeOneSided(CompositeMixin, openmc.Surface):
+    """One-sided cone parallel the z-axis
+
+    A one-sided cone is composed of a normal cone surface and an "ambiguity"
+    surface that eliminates the ambiguity as to which region of space is
+    included. This class acts as a proper surface, meaning that unary `+` and
+    `-` operators applied to it will produce a half-space. The negative side is
+    defined to be the region inside of the cone.
+
+    .. versionadded:: 0.12
+
+    Parameters
+    ----------
+    x0 : float, optional
+        x-coordinate of the apex. Defaults to 0.
+    y0 : float, optional
+        y-coordinate of the apex. Defaults to 0.
+    z0 : float, optional
+        z-coordinate of the apex. Defaults to 0.
+    r2 : float, optional
+        Parameter related to the aperature. Defaults to 1.
+    up : bool
+        Whether to select the side of the cone that extends to infinity in the
+        positive direction of the coordinate axis
+    **kwargs
+        Keyword arguments passed to underlying plane classes
+
+    Attributes
+    ----------
+    cone : openmc.ZCone
+        Regular two-sided cone
+    plane : openmc.ZPlane
+        Ambiguity surface
+    up : bool
+        Whether to select the side of the cone that extends to infinity in the
+        positive direction of the coordinate axis
+
+    """
     _surface_names = ('cone', 'plane')
 
     def __init__(self, x0=0., y0=0., z0=0., r2=1., up=True, **kwargs):

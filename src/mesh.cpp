@@ -1534,7 +1534,7 @@ WeightWindowMesh::WeightWindowMesh(pugi::xml_node node)
     }
     fine_z.push_back(coarse_z.back());
     
-    mesh_ = RectilinearMesh(fine_x, fine_y, fine_z);
+    mesh_ = std::make_unique<RectilinearMesh>(fine_x, fine_y, fine_z);
  
     // reading wwinp file, BLOCK 3
     // energy group & weight window for neutron
@@ -1662,7 +1662,7 @@ WeightWindowMesh::WeightWindowMesh(pugi::xml_node node)
     }
     fine_z.push_back(coarse_z.back());
 
-    mesh_ = RectilinearMesh(fine_x, fine_y, fine_z);
+    mesh_ = std::make_unique<RectilinearMesh>(fine_x, fine_y, fine_z);
     
     // Energy group
     if (check_for_node(node, "energy")) {

@@ -23,8 +23,20 @@ class CompositeMixin:
         surf = copy(self)
         for name in self._surface_names:
             s = getattr(surf, name)
-            setattr(surf, name, s.rotate(rotation))
+            setattr(surf, name, s.rotate(rotation, pivot, order, inplace))
         return surf
+
+    @property
+    def boundary_type(self):
+        return getattr(self, self._surface_names[0]).boundary_type
+
+    @boundary_type.setter
+    def boundary_type(self, boundary_type):
+        # Set boundary type on underlying surfaces, but not for ambiguity plane
+        # on one-sided cones
+        for name in self._surface_names:
+            if name != 'plane':
+                getattr(self, name).boundary_type = boundary_type
 
     def __repr__(self):
         return "<{} at 0x{:x}>".format(type(self).__name__, id(self))
@@ -64,7 +76,7 @@ class RightCircularCylinder(CompositeMixin, openmc.Surface):
         Top planar surface of the cylinder
 
     """
-    surface_names = ('cyl', 'bottom', 'top')
+    _surface_names = ('cyl', 'bottom', 'top')
 
     def __init__(self, center_base, height, radius, axis='z', **kwargs):
         cx, cy, cz = center_base
@@ -119,7 +131,7 @@ class RectangularParallelepiped(CompositeMixin, openmc.Surface):
         Sides of the parallelepiped
 
     """
-    surface_names = ('xmin', 'xmax', 'ymin', 'ymax', 'zmin', 'zmax')
+    _surface_names = ('xmin', 'xmax', 'ymin', 'ymax', 'zmin', 'zmax')
 
     def __init__(self, xmin, xmax, ymin, ymax, zmin, zmax, **kwargs):
         self.xmin = openmc.XPlane(x0=xmin, **kwargs)

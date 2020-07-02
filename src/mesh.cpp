@@ -1832,14 +1832,6 @@ WeightWindowMesh::WeightWindowMesh(pugi::xml_node node)
     }
   }
 
-  for (const auto& g : mesh_.grid_) {
-    if (g.size() < 2) fatal_error("x-, y-, and z- grids for rectilinear meshes "
-      "must each have at least 2 points");
-    for (int i = 1; i < g.size(); ++i) {
-      if (g[i] <= g[i-1]) fatal_error("Values in for x-, y-, and z- grids for "
-        "rectilinear meshes must be sorted and unique.");
-    }
-  }
 }
   
 //! source weight biasing in energy

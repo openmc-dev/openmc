@@ -392,7 +392,7 @@ class MDGXS(MGXS):
                                           nuclides=query_nuclides, value=value)
 
         # Divide by atom number densities for microscopic cross sections
-        if xs_type == 'micro':
+        if xs_type == 'micro' and self._divide_by_density:
             if self.by_nuclide:
                 densities = self.get_nuclide_densities(nuclides)
             else:
@@ -860,7 +860,7 @@ class MDGXS(MGXS):
                 df = df[df['group out'].isin(groups)]
 
         # If user requested micro cross sections, divide out the atom densities
-        if xs_type == 'micro':
+        if xs_type == 'micro' and self._divide_by_density:
             if self.by_nuclide:
                 densities = self.get_nuclide_densities(nuclides)
             else:
@@ -1005,6 +1005,11 @@ class ChiDelayed(MDGXS):
 
     """
 
+    # Store whether or not the number density should be removed for microscopic
+    # values of this data; since this chi data is normalized to 1.0, the 
+    # data should not be divided by the number density 
+    _divide_by_density = False
+
     def __init__(self, domain=None, domain_type=None, energy_groups=None,
                  delayed_groups=None, by_nuclide=False, name='',
                  num_polar=1, num_azimuthal=1):
@@ -1088,7 +1093,6 @@ class ChiDelayed(MDGXS):
         """
 
         return self._get_homogenized_mgxs(other_mgxs, 'delayed-nu-fission-in')
-
 
     def get_slice(self, nuclides=[], groups=[], delayed_groups=[]):
         """Build a sliced ChiDelayed for the specified nuclides and energy
@@ -1653,6 +1657,11 @@ class Beta(MDGXS):
 
     """
 
+    # Store whether or not the number density should be removed for microscopic
+    # values of this data; since the beta is not a microscopic or macroscopic
+    # quantity, it should not be divided by the number density
+    _divide_by_density = False
+
     def __init__(self, domain=None, domain_type=None, energy_groups=None,
                  delayed_groups=None, by_nuclide=False, name='',
                  num_polar=1, num_azimuthal=1):
@@ -1837,6 +1846,11 @@ class DecayRate(MDGXS):
         The key used to index multi-group cross sections in an HDF5 data store
 
     """
+
+    # Store whether or not the number density should be removed for microscopic
+    # values of this data; since the decay rates are not microscopic or
+    # macroscopic quantities, it should not be divided by the number density.
+    _divide_by_density = False
 
     def __init__(self, domain=None, domain_type=None, energy_groups=None,
                  delayed_groups=None, by_nuclide=False, name='',
@@ -2161,7 +2175,7 @@ class MatrixMDGXS(MDGXS):
                                           nuclides=query_nuclides, value=value)
 
         # Divide by atom number densities for microscopic cross sections
-        if xs_type == 'micro':
+        if xs_type == 'micro' and self._divide_by_density:
             if self.by_nuclide:
                 densities = self.get_nuclide_densities(nuclides)
             else:

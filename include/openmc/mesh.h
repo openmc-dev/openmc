@@ -265,7 +265,7 @@ public:
   void weight_biasing(Particle::Bank& site, uint64_t* seed) ;
   
   // weight window mesh and energy group
-  RectilinearMesh mesh_;              // RectilinearMesh for Weight window
+  std::unique_ptr<RectilinearMesh>  mesh_;   // RectilinearMesh for Weight window
   int ww_type;                        // weight window input file type
   std::vector<double> n_energy_group; // energy group for neutron
   std::vector<double> p_energy_group; // energy group for photon

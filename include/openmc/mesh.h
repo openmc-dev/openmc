@@ -255,6 +255,7 @@ class WeightWindowMesh
 {
 public:
   // Constructors
+  WeightWindowMesh() = default;
   WeightWindowMesh(pugi::xml_node node);
 
   //! source weight biasing in energy

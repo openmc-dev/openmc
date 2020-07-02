@@ -429,8 +429,6 @@ void read_settings_xml()
     xml_node ww_node = root.child("weightwindow");
     ww_fine_mesh = std::make_unique<WeightWindowMesh>(ww_node);
   }
-  // Weight window, add by Yuan
-  // ==========================================================================
   
   // ==========================================================================
   // EXTERNAL SOURCE

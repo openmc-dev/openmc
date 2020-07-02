@@ -248,12 +248,10 @@ Particle::Bank SourceDistribution::sample(uint64_t* seed) const
       // Resample if energy falls outside minimum or maximum particle energy
       if (site.E < data::energy_max[p] && site.E > data::energy_min[p]) break;
     }
-    // origin code
   }   // add by Yuan
   
   // Set delayed group
   site.delayed_group = 0;
-  
   return site;
 }
 

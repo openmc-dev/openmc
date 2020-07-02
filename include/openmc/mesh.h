@@ -248,60 +248,20 @@ private:
 };
   
 // Weight Window Mesh class, add by Yuan
-class WeightWindowMesh : public StructuredMesh
+class WeightWindowMesh 
 {
 public:
   // Constructors
   WeightWindowMesh(pugi::xml_node node);
-  
-  // A new Constructors and a new set function for Weight Window, add by Yuan
-  //RectilinearMesh();
-  //void set_grid(std::vector<double>& x_grid, std::vector<double>& y_grid, std::vector<double>& z_grid);
-
-  // Overriden methods
-  void bins_crossed(const Particle& p, std::vector<int>& bins,
-                    std::vector<double>& lengths) const override;
-
-  void surface_bins_crossed(const Particle& p, std::vector<int>& bins)
-  const  override;
-
-  int get_bin(Position r) const override;
-
-  int get_bin_from_indices(const int* ijk) const override;
-
-  void get_indices(Position r, int* ijk, bool* in_mesh) const override;
-
-  void get_indices_from_bin(int bin, int* ijk) const override;
-
-  int n_bins() const override;
-
-  int n_surface_bins() const override;
-
-  std::pair<std::vector<double>, std::vector<double>>
-  plot(Position plot_ll, Position plot_ur) const override;
-
-  void to_hdf5(hid_t group) const override;
-  
-  //! Check where a line segment intersects the mesh and if it intersects at all
-  //
-  //! \param[in,out] r0 In: starting position, out: intersection point
-  //! \param[in] r1 Ending position
-  //! \param[out] ijk Indices of the mesh bin containing the intersection point
-  //! \return Whether the line segment connecting r0 and r1 intersects mesh
-  bool intersects(Position& r0, Position r1, int* ijk) const ;
-  
-  // New methods
 
   //! source weight biasing in energy
   //
   //! \param[in, out] p particle, output with the biased energy and weight
   //! \param[in] seed, random number seed
   void weight_biasing(Particle::Bank& site, uint64_t* seed) ;
-
-  // Data members
-  xt::xtensor<int, 1> shape_; //!< Number of mesh elements in each dimension
   
-  // weight window parameters
+  // weight window mesh and energy group
+  RectilinearMesh mesh_;              // RectilinearMesh for Weight window
   int ww_type;                        // weight window input file type
   std::vector<double> n_energy_group; // energy group for neutron
   std::vector<double> p_energy_group; // energy group for photon
@@ -331,8 +291,6 @@ public:
   std::vector<double> biasing;   // biasing for each energy group
   std::vector<double> cumulative_biasing;   // cumulative possibility for biasing for each energy group
 
-private:
-  std::vector<std::vector<double>> grid_;
 };
 // Weight Window Mesh class, add by Yuan
 

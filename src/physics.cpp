@@ -1183,7 +1183,7 @@ void split_particle(Particle& p)
   bool in_mesh;         
 
   // Check if this particle is in the weight weindow mesh and get the mesh bins in each direction
-  settings::ww_fine_mesh->mesh_.get_indices(pos, ijk, &in_mesh);
+  settings::ww_fine_mesh->mesh_->get_indices(pos, ijk, &in_mesh);
 	
   if (!in_mesh) return;
 	
@@ -1214,9 +1214,9 @@ void split_particle(Particle& p)
   // get the mesh bin in energy group
   energy_bin = lower_bound_index(energy_group.begin(), energy_group.end(), Energy);
 
-  indices = settings::ww_fine_mesh->mesh_.get_bin(pos);
-  indices += energy_bin * settings::ww_fine_mesh->mesh_.shape_[0]
-	  * settings::ww_fine_mesh->mesh_.shape_[1] * settings::ww_fine_mesh->mesh_.shape_[2];                   // get the indices
+  indices = settings::ww_fine_mesh->mesh_->get_bin(pos);
+  indices += energy_bin * settings::ww_fine_mesh->mesh_->shape_[0]
+	  * settings::ww_fine_mesh->mesh_->shape_[1] * settings::ww_fine_mesh->mesh_->shape_[2];                   // get the indices
 
   lower_ww = lower_ww*ww_lower[indices];  // equal to multiplier * lower weight window bound (from input file)
   upper_ww = lower_ww*upper_ww;           // equal to multiplied lower weight window bound * upper/lower ratio

@@ -901,6 +901,33 @@ RectilinearMesh::RectilinearMesh(pugi::xml_node node)
   lower_left_ = {grid_[0].front(), grid_[1].front(), grid_[2].front()};
   upper_right_ = {grid_[0].back(), grid_[1].back(), grid_[2].back()};
 }
+  
+// new constructors for weight window
+RectilinearMesh(std::vector<double> x_grid, std::vector<double> y_grid, std::vector<double> z_grid);
+{
+  n_dimension_ = 3;
+
+  grid_.resize(3);
+  grid_[0] = x_grid;
+  grid_[1] = y_grid;
+  grid_[2] = z_grid;
+
+  shape_ = {static_cast<int>(grid_[0].size()) - 1,
+            static_cast<int>(grid_[1].size()) - 1,
+            static_cast<int>(grid_[2].size()) - 1};
+
+  for (const auto& g : grid_) {
+    if (g.size() < 2) fatal_error("x-, y-, and z- grids for rectilinear meshes "
+      "must each have at least 2 points");
+    for (int i = 1; i < g.size(); ++i) {
+      if (g[i] <= g[i-1]) fatal_error("Values in for x-, y-, and z- grids for "
+        "rectilinear meshes must be sorted and unique.");
+    }
+  }
+
+  lower_left_ = {grid_[0].front(), grid_[1].front(), grid_[2].front()};
+  upper_right_ = {grid_[0].back(), grid_[1].back(), grid_[2].back()};
+}
 
 void RectilinearMesh::bins_crossed(const Particle& p, std::vector<int>& bins,
                                    std::vector<double>& lengths) const
@@ -1381,22 +1408,23 @@ bool RectilinearMesh::intersects(Position& r0, Position r1, int* ijk) const
 //==============================================================================
 
 WeightWindowMesh::WeightWindowMesh(pugi::xml_node node)
-  : StructuredMesh {node}
 {
   using namespace pugi;
   
-  mesh_.n_dimension_ = 3;
-  mesh_.grid_.resize(3);
-
-  std::vector<double> coarse_x;
-  std::vector<double> coarse_y;
-  std::vector<double> coarse_z;
-  std::vector<int> shape_x;
-  std::vector<int> shape_y;
-  std::vector<int> shape_z;
-  std::vector<double> width_x;
-  std::vector<double> width_y;
-  std::vector<double> width_z;
+  double lower_left_point[3]  = {0., 0., 0. };   //!< Lower-left coordinates of weight window mesh
+  double upper_right_point[3] = {0., 0., 0. };   //!< Upper-right coordinates of weight window mesh
+  std::vector<double> coarse_x;                  //!< Locations of the coarse meshes in the x direction
+  std::vector<double> coarse_y;                  //!< Locations of the coarse meshes in the y direction
+  std::vector<double> coarse_z;                  //!< Locations of the coarse meshes in the z direction
+  std::vector<int> shape_x;                      //!< Number of fine mesh in each coarse meshes in the x direction
+  std::vector<int> shape_y;                      //!< Number of fine mesh in each coarse meshes in the y direction
+  std::vector<int> shape_z;                      //!< Number of fine mesh in each coarse meshes in the z direction
+  std::vector<double> width_x;                   //!< Width of fine mesh in each coarse meshes in the x direction
+  std::vector<double> width_y;                   //!< Width of fine mesh in each coarse meshes in the y direction
+  std::vector<double> width_z;                   //!< Width of fine mesh in each coarse meshes in the z direction
+  std::vector<double> fine_x;                    //!< Locations of the fine meshes in the x direction
+  std::vector<double> fine_y;                    //!< Locations of the fine meshes in the y direction
+  std::vector<double> fine_z;                    //!< Locations of the fine meshes in the z direction
   
   // default parameters
   n_ww = false;                  // flag for neutron use weight window
@@ -1456,9 +1484,6 @@ WeightWindowMesh::WeightWindowMesh(pugi::xml_node node)
     wwfile>>ww_ncz;   
     wwfile>>ww_nwg;    
     if (ww_nr!=10)  fatal_error("Only cartesian WWINP is currently supported");
-      
-    mesh_.lower_left_ = { ww_x0, ww_y0, ww_z0 };
-    mesh_.shape_ = { static_cast<int>(ww_nfx), static_cast<int>(ww_nfy), static_cast<int>(ww_nfz) };
 
     // reading wwinp file, BLOCK 2
     for (int i=0; i<ww_ncx; i++) {
@@ -1487,29 +1512,29 @@ WeightWindowMesh::WeightWindowMesh(pugi::xml_node node)
       coarse_z.push_back(ww);      
       wwfile>>ww;   // rz(i)        
     }
-
-    mesh_.upper_right_ = { coarse_x.back(), coarse_y.back(), coarse_z.back() };
      
     // locations of fine mesh in x direction
     for (int i=0; i<coarse_x.size()-1; i++) {
       width_x.push_back( (coarse_x.at(i+1)-coarse_x.at(i))/shape_x.at(i) );
-      for (int j=0; j<shape_x.at(i); j++)  mesh_.grid_[0].push_back( coarse_x.at(i)+width_x.back()*j );
+      for (int j=0; j<shape_x.at(i); j++)  fine_x.push_back( coarse_x.at(i)+width_x.back()*j );
     }
-    mesh_.grid_[0].push_back(coarse_x.back());
+    fine_x.push_back(coarse_x.back());
 
     // locations of fine meshes in y direction
     for (int i=0; i<coarse_y.size()-1; i++) {
       width_y.push_back( (coarse_y.at(i+1)-coarse_y.at(i))/shape_y.at(i) );
-      for (int j=0; j<shape_y.at(i); j++)  mesh_.grid_[1].push_back( coarse_y.at(i)+width_y.back()*j );
+      for (int j=0; j<shape_y.at(i); j++)  fine_y.push_back( coarse_y.at(i)+width_y.back()*j );
     }
-    mesh_.grid_[1].push_back(coarse_y.back());
+    fine_y.push_back(coarse_y.back());
 
     // locations of fine meshes in z direction
     for (int i=0; i<coarse_z.size()-1; i++) {
       width_z.push_back( (coarse_z.at(i+1)-coarse_z.at(i))/shape_z.at(i) );
-      for (int j=0; j<shape_z.at(i); j++)  mesh_.grid_[2].push_back( coarse_z.at(i)+width_z.back()*j );
+      for (int j=0; j<shape_z.at(i); j++)  fine_z.push_back( coarse_z.at(i)+width_z.back()*j );
     }
-    mesh_.grid_[2].push_back(coarse_z.back());
+    fine_z.push_back(coarse_z.back());
+    
+    mesh_ = RectilinearMesh(fine_x, fine_y, fine_z);
  
     // reading wwinp file, BLOCK 3
     // energy group & weight window for neutron
@@ -1557,7 +1582,9 @@ WeightWindowMesh::WeightWindowMesh(pugi::xml_node node)
     if (check_for_node(node, "origin")) {
       auto value = get_node_xarray<double>(node, "origin");
       if (value.size() != 3)      fatal_error("The origin point must be 3 dimension.");
-      mesh_.lower_left_ = { value.at(0), value.at(1), value.at(2) };
+      lower_left_point[0] = value.at(0);
+      lower_left_point[1] = value.at(1);
+      lower_left_point[2] = value.at(2);
     }
 
     // Locations of the coarse meshes in x direction
@@ -1576,14 +1603,14 @@ WeightWindowMesh::WeightWindowMesh(pugi::xml_node node)
     // locations of fine meshes in x direction
     for (int i=0; i<coarse_x.size(); i++) {
       if (i==0) { 
-        width_x.push_back( (coarse_x.at(0)-mesh_.lower_left_[0])/shape_x.at(0) );
-        for (int j=0; j<shape_x.at(i); j++)  mesh_.grid_[0].push_back( mesh_.lower_left_[0]+width_x.back()*j );
+        width_x.push_back( (coarse_x.at(0)-lower_left_point[0])/shape_x.at(0) );
+        for (int j=0; j<shape_x.at(i); j++)  fine_x.push_back( lower_left_point[0]+width_x.back()*j );
       } else {
         width_x.push_back( (coarse_x.at(i)-coarse_x.at(i-1))/shape_x.at(i) );
-        for (int j=0; j<shape_x.at(i); j++)  mesh_.grid_[0].push_back( coarse_x.at(i-1)+width_x.back()*j );
+        for (int j=0; j<shape_x.at(i); j++)  fine_x.push_back( coarse_x.at(i-1)+width_x.back()*j );
       }
     }
-    mesh_.grid_[0].push_back(coarse_x.back());
+    fine_x.push_back(coarse_x.back());
     
     // Locations of the coarse meshes in y direction
     if (check_for_node(node, "ymesh")) {
@@ -1601,14 +1628,14 @@ WeightWindowMesh::WeightWindowMesh(pugi::xml_node node)
     // locations of fine meshes in y direction
     for (int i=0; i<coarse_y.size(); i++) {
       if (i==0) { 
-        width_y.push_back( (coarse_y.at(0)-mesh_.lower_left_[1])/shape_y.at(0) );
-        for (int j=0; j<shape_y.at(i); j++)  mesh_.grid_[1].push_back( mesh_.lower_left_[1]+width_y.back()*j );
+        width_y.push_back( (coarse_y.at(0)-lower_left_point[1])/shape_y.at(0) );
+        for (int j=0; j<shape_y.at(i); j++)  fine_y.push_back( lower_left_point[1]+width_y.back()*j );
       } else {
         width_y.push_back( (coarse_y.at(i)-coarse_y.at(i-1))/shape_y.at(i) );
-        for (int j=0; j<shape_y.at(i); j++) mesh_. grid_[1].push_back( coarse_y.at(i-1)+width_y.back()*j );
+        for (int j=0; j<shape_y.at(i); j++)  fine_y.push_back( coarse_y.at(i-1)+width_y.back()*j );
       }
     }
-    mesh_.grid_[1].push_back(coarse_y.back());
+    fine_y.push_back(coarse_y.back());
     
     // Locations of the coarse meshes in z direction
     if (check_for_node(node, "zmesh")) {
@@ -1626,16 +1653,16 @@ WeightWindowMesh::WeightWindowMesh(pugi::xml_node node)
     // locations of fine meshes in z direction
     for (int i=0; i<coarse_z.size(); i++) {
       if (i==0) { 
-        width_z.push_back( (coarse_z.at(0)-mesh_.lower_left_[2])/shape_z.at(0) );
-        for (int j=0; j<shape_z.at(i); j++)  mesh_.grid_[2].push_back( mesh_.lower_left_[2]+width_z.back()*j );
+        width_z.push_back( (coarse_z.at(0)-lower_left_point[2])/shape_z.at(0) );
+        for (int j=0; j<shape_z.at(i); j++)  fine_z.push_back( lower_left_point[2]+width_z.back()*j );
       } else {
         width_z.push_back( (coarse_z.at(i)-coarse_z.at(i-1))/shape_z.at(i) );
-        for (int j=0; j<shape_z.at(i); j++)  mesh_.grid_[2].push_back( coarse_z.at(i-1)+width_z.back()*j );
+        for (int j=0; j<shape_z.at(i); j++)  fine_z.push_back( coarse_z.at(i-1)+width_z.back()*j );
       }
     }
-    mesh_.grid_[2].push_back(coarse_z.back());
-      
-    mesh_.upper_right_ = { coarse_x.back(), coarse_y.back(), coarse_z.back() };
+    fine_z.push_back(coarse_z.back());
+
+    mesh_ = RectilinearMesh(fine_x, fine_y, fine_z);
     
     // Energy group
     if (check_for_node(node, "energy")) {

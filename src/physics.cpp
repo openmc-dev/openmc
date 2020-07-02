@@ -261,7 +261,7 @@ void sample_photon_reaction(Particle& p)
   // Sample element within material
   int i_element = sample_element(p);
   const auto& micro {p.photon_xs_[i_element]};
-  const auto& element {data::elements[i_element]};
+  const auto& element {*data::elements[i_element]};
 
   // Calculate photon energy over electron rest mass equivalent
   double alpha = p.E_/MASS_ELECTRON_EV;

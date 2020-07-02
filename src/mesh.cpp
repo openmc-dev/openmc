@@ -903,7 +903,7 @@ RectilinearMesh::RectilinearMesh(pugi::xml_node node)
 }
   
 // new constructors for weight window
-RectilinearMesh(std::vector<double> x_grid, std::vector<double> y_grid, std::vector<double> z_grid);
+RectilinearMesh(std::vector<double> x_grid, std::vector<double> y_grid, std::vector<double> z_grid)
 {
   n_dimension_ = 3;
 

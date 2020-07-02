@@ -1690,21 +1690,16 @@ WeightWindowMesh::WeightWindowMesh(pugi::xml_node node)
     wwfile.open("wwinp");
     if(!wwfile.is_open ())  fatal_error("Open weight window file failure, wwinp file does not exist.");
 
-    double ww=0.0;
-    mesh_.shape_ = {0, 0, 0};
-    for (int i=0; i<shape_x.size(); i++) mesh_.shape_[0]=+shape_x.at(i); 
-    for (int j=0; j<shape_y.size(); j++) mesh_.shape_[1]=+shape_y.at(j);
-    for (int k=0; k<shape_z.size(); k++) mesh_.shape_[2]=+shape_z.at(k);
-      
+    double ww=0.0;      
     if (n_ww) {
-      for (int i=0; i<mesh_.shape_[0]*mesh_.shape_[1]*mesh_.shape_[2]*(n_energy_group.size()-1); i++) {   
+      for (int i=0; i<mesh_->shape_[0]*mesh_->shape_[1]*mesh_->shape_[2]*(n_energy_group.size()-1); i++) {   
         wwfile>>ww;
         n_ww_lower.push_back(ww);
       }  
     } 
       
     if (p_ww) {
-      for (int i=0; i<mesh_.shape_[0]*mesh_.shape_[1]*mesh_.shape_[2]*(p_energy_group.size()-1); i++) {   
+      for (int i=0; i<mesh_->shape_[0]*mesh_->shape_[1]*mesh_->shape_[2]*(p_energy_group.size()-1); i++) {   
         wwfile>>ww;
         p_ww_lower.push_back(ww);
       }  

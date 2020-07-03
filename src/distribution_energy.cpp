@@ -224,13 +224,11 @@ double ContinuousTabular::sample(double E, uint64_t* seed) const
 
   double E_l_k = distribution_[l].e_out[k];
   double p_l_k = distribution_[l].p[k];
-  double E_out;
+  double E_out = E_l_k;
   if (distribution_[l].interpolation == Interpolation::histogram) {
     // Histogram interpolation
     if (p_l_k > 0.0 && k >= n_discrete) {
       E_out = E_l_k + (r1 - c_k)/p_l_k;
-    } else {
-      E_out = E_l_k;
     }
 
   } else if (distribution_[l].interpolation == Interpolation::lin_lin) {

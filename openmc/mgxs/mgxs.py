@@ -222,6 +222,10 @@ class MGXS:
 
     """
 
+    # Store whether or not the number density should be removed for microscopic
+    # values of this data
+    _divide_by_density = True
+
     def __init__(self, domain=None, domain_type=None,
                  energy_groups=None, by_nuclide=False, name='', num_polar=1,
                  num_azimuthal=1):
@@ -1081,7 +1085,7 @@ class MGXS:
                                           nuclides=query_nuclides, value=value)
 
         # Divide by atom number densities for microscopic cross sections
-        if xs_type == 'micro':
+        if xs_type == 'micro' and self._divide_by_density:
             if self.by_nuclide:
                 densities = self.get_nuclide_densities(nuclides)
             else:
@@ -1938,7 +1942,7 @@ class MGXS:
                 df = df[df['group out'].isin(groups)]
 
         # If user requested micro cross sections, divide out the atom densities
-        if xs_type == 'micro':
+        if xs_type == 'micro' and self._divide_by_density:
             if self.by_nuclide:
                 densities = self.get_nuclide_densities(nuclides)
             else:
@@ -2101,10 +2105,9 @@ class MatrixMGXS(MGXS):
 
         return self._add_angle_filters(filters)
 
-    def get_xs(self, in_groups='all', out_groups='all',
-               subdomains='all', nuclides='all',
-               xs_type='macro', order_groups='increasing',
-               row_column='inout', value='mean', squeeze=True, **kwargs):
+    def get_xs(self, in_groups='all', out_groups='all', subdomains='all',
+               nuclides='all', xs_type='macro', order_groups='increasing',
+               row_column='inout', value='mean', squeeze=True,  **kwargs):
         """Returns an array of multi-group cross sections.
 
         This method constructs a 4D NumPy array for the requested
@@ -2217,7 +2220,7 @@ class MatrixMGXS(MGXS):
                                           nuclides=query_nuclides, value=value)
 
         # Divide by atom number densities for microscopic cross sections
-        if xs_type == 'micro':
+        if xs_type == 'micro' and self._divide_by_density:
             if self.by_nuclide:
                 densities = self.get_nuclide_densities(nuclides)
             else:
@@ -4413,7 +4416,7 @@ class ScatterMatrixXS(MatrixMGXS):
                                           nuclides=query_nuclides, value=value)
 
         # Divide by atom number densities for microscopic cross sections
-        if xs_type == 'micro':
+        if xs_type == 'micro' and self._divide_by_density:
             if self.by_nuclide:
                 densities = self.get_nuclide_densities(nuclides)
             else:
@@ -4820,6 +4823,12 @@ class MultiplicityMatrixXS(MatrixMGXS):
 
     """
 
+    # Store whether or not the number density should be removed for microscopic
+    # values of this data; since a multiplicity matrix should reflect the
+    # multiplication relative to 1, this class will not divide by density
+    # for microscopic data
+    _divide_by_density = False
+
     def __init__(self, domain=None, domain_type=None, groups=None,
                  by_nuclide=False, name='', num_polar=1, num_azimuthal=1):
         super().__init__(domain, domain_type, groups, by_nuclide, name,
@@ -4986,6 +4995,11 @@ class ScatterProbabilityMatrix(MatrixMGXS):
         The key used to index multi-group cross sections in an HDF5 data store
 
     """
+
+    # Store whether or not the number density should be removed for microscopic
+    # values of this data; since this probability matrix is always normalized
+    # to 1.0, this density division is not necessary
+    _divide_by_density = False
 
     def __init__(self, domain=None, domain_type=None, groups=None,
                  by_nuclide=False, name='', num_polar=1, num_azimuthal=1):
@@ -5313,6 +5327,11 @@ class Chi(MGXS):
         The key used to index multi-group cross sections in an HDF5 data store
 
     """
+
+    # Store whether or not the number density should be removed for microscopic
+    # values of this data; since this chi data is normalized to 1.0, the 
+    # data should not be divided by the number density 
+    _divide_by_density = False
 
     def __init__(self, domain=None, domain_type=None, groups=None,
                  prompt=False, by_nuclide=False, name='', num_polar=1,
@@ -5695,62 +5714,6 @@ class Chi(MGXS):
 
         return xs
 
-    def get_pandas_dataframe(self, groups='all', nuclides='all',
-                             xs_type='macro', paths=False):
-        """Build a Pandas DataFrame for the MGXS data.
-
-        This method leverages :meth:`openmc.Tally.get_pandas_dataframe`, but
-        renames the columns with terminology appropriate for cross section data.
-
-        Parameters
-        ----------
-        groups : Iterable of Integral or 'all'
-            Energy groups of interest. Defaults to 'all'.
-        nuclides : Iterable of str or 'all' or 'sum'
-            The nuclides of the cross-sections to include in the dataframe. This
-            may be a list of nuclide name strings (e.g., ['U235', 'U238']).
-            The special string 'all' will include the cross sections for all
-            nuclides in the spatial domain. The special string 'sum' will
-            include the cross sections summed over all nuclides. Defaults to
-            'all'.
-        xs_type: {'macro', 'micro'}
-            Return macro or micro cross section in units of cm^-1 or barns.
-            Defaults to 'macro'.
-        paths : bool, optional
-            Construct columns for distribcell tally filters (default is True).
-            The geometric information in the Summary object is embedded into
-            a Multi-index column with a geometric "path" to each distribcell
-            instance.
-
-        Returns
-        -------
-        pandas.DataFrame
-            A Pandas DataFrame for the cross section data.
-
-        Raises
-        ------
-        ValueError
-            When this method is called before the multi-group cross section is
-            computed from tally data.
-
-        """
-
-        # Build the dataframe using the parent class method
-        df = super().get_pandas_dataframe(groups, nuclides, xs_type, paths=paths)
-
-        # If user requested micro cross sections, multiply by the atom
-        # densities to cancel out division made by the parent class method
-        if xs_type == 'micro':
-            if self.by_nuclide:
-                densities = self.get_nuclide_densities(nuclides)
-            else:
-                densities = self.get_nuclide_densities('sum')
-            tile_factor = int(df.shape[0] / len(densities))
-            df['mean'] *= np.tile(densities, tile_factor)
-            df['std. dev.'] *= np.tile(densities, tile_factor)
-
-        return df
-
     def get_units(self, xs_type='macro'):
         """Returns the units of Chi.
 
@@ -5891,6 +5854,12 @@ class InverseVelocity(MGXS):
         The key used to index multi-group cross sections in an HDF5 data store
 
     """
+
+    # Store whether or not the number density should be removed for microscopic
+    # values of this data; since the inverse velocity does not contain number
+    # density scaling, we should not remove the number density from microscopic
+    # values
+    _divide_by_density = False
 
     def __init__(self, domain=None, domain_type=None, groups=None,
                  by_nuclide=False, name='', num_polar=1, num_azimuthal=1):

@@ -212,10 +212,11 @@ public:
   //
   //! stores the current phase space attributes of the particle in the
   //! secondary bank and increments the number of sites in the secondary bank.
+  //! \param wgt Weight of the secondary particle
   //! \param u Direction of the secondary particle
   //! \param E Energy of the secondary particle in [eV]
   //! \param type Particle type
-  void create_secondary(Direction u, double E, Type type);
+  void create_secondary(double wgt, Direction u, double E, Type type);
 
   //! initialize from a source site
   //

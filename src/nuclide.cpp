@@ -262,21 +262,24 @@ Nuclide::Nuclide(hid_t group, const std::vector<double>& temperature)
   }
 
   // Read fission energy release data if present
-  std::unique_ptr<Function1D> prompt_photons;
-  std::unique_ptr<Function1D> delayed_photons;
   if (object_exists(group, "fission_energy_release")) {
     hid_t fer_group = open_group(group, "fission_energy_release");
     fission_q_prompt_ = read_function(fer_group, "q_prompt");
     fission_q_recov_ = read_function(fer_group, "q_recoverable");
 
+    // Read fission fragment and delayed beta energy release. This is needed for
+    // energy normalization in k-eigenvalue calculations
+    fragments_ = read_function(fer_group, "fragments");
+    betas_ = read_function(fer_group, "betas");
+
     // We need prompt/delayed photon energy release for scaling fission photon
     // production
-    prompt_photons = read_function(fer_group, "prompt_photons");
-    delayed_photons = read_function(fer_group, "delayed_photons");
+    prompt_photons_ = read_function(fer_group, "prompt_photons");
+    delayed_photons_ = read_function(fer_group, "delayed_photons");
     close_group(fer_group);
   }
 
-  this->create_derived(prompt_photons.get(), delayed_photons.get());
+  this->create_derived(prompt_photons_.get(), delayed_photons_.get());
 }
 
 Nuclide::~Nuclide()

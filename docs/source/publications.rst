@@ -149,6 +149,16 @@ Geometry and Visualization
 Miscellaneous
 -------------
 
+- Shikhar Kumar, Benoit Forget, and Kord Smith, "`Stationarity Diagnostic using
+  Functional Expansion Tallies
+  <https://doi.org/10.1016/j.anucene.2020.107388>`_", *Ann. Nucl. Energy*,
+  **143**, 107388 (2020).
+
+- T. Eade, B. Colling, J. Naish, L. W. Packer, and A. Valentine, "`Shutdown dose
+  rate benchmarking using modern particle transport codes
+  <https://doi.org/10.1088/1741-4326/ab8181>`_, *Nucl. Fusion*, **60**, 056024
+  (2020).
+
 - Jiankai Yu, Qiudong Wang, Ding She, and Benoit Forget, "Modelling of the
   HTR-PM Pebble-bed Reactor using OpenMC", *Trans. Am. Nucl. Soc.*, **122**,
   643-646 (2020).

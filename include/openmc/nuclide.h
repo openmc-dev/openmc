@@ -82,6 +82,10 @@ public:
   std::unique_ptr<Function1D> total_nu_; //!< Total neutron yield
   std::unique_ptr<Function1D> fission_q_prompt_; //!< Prompt fission energy release
   std::unique_ptr<Function1D> fission_q_recov_; //!< Recoverable fission energy release
+  std::unique_ptr<Function1D> prompt_photons_; //!< Prompt photon energy release
+  std::unique_ptr<Function1D> delayed_photons_; //!< Delayed photon energy release
+  std::unique_ptr<Function1D> fragments_; //!< Fission fragment energy release
+  std::unique_ptr<Function1D> betas_; //!< Delayed beta energy release
 
   // Resonance scattering information
   bool resonant_ {false};

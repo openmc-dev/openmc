@@ -259,9 +259,27 @@ double get_nuclide_neutron_heating(const Particle& p, const Nuclide& nuc,
   auto i_grid = p.neutron_xs_[i_nuclide].index_grid;
   if (i_grid < xs.threshold) return 0.0;
 
+  // Determine total kerma
   auto f = p.neutron_xs_[i_nuclide].interp_factor;
-  return (1.0 - f) * xs.value[i_grid-xs.threshold]
+  double kerma = (1.0 - f) * xs.value[i_grid-xs.threshold]
     + f * xs.value[i_grid-xs.threshold+1];
+
+  if (settings::run_mode == RunMode::EIGENVALUE) {
+    // Determine kerma for fission as (EFR + EB)*sigma_f
+    double kerma_fission = nuc.fragments_ ?
+      ((*nuc.fragments_)(p.E_last_) + (*nuc.betas_)(p.E_last_))
+      *p.neutron_xs_[i_nuclide].fission : 0.0;
+
+    // Determine non-fission kerma as difference
+    double kerma_non_fission = kerma - kerma_fission;
+
+    // Re-weight non-fission kerma by keff to properly balance energy release
+    // and deposition. See D. P. Griesheimer, S. J. Douglass, and M. H. Stedry,
+    // "Self-consistent energy normalization for quasistatic reactor
+    // calculations", Proc. PHYSOR, Cambridge, UK, Mar 29-Apr 2, 2020.
+    kerma = simulation::keff * kerma_non_fission + kerma_fission;
+  }
+  return kerma;
 }
 
 //! Helper function to obtain neutron heating [eV]
@@ -450,6 +468,51 @@ score_fission_eout(Particle& p, int i_tally, int i_score, int score_bin)
 
   // Reset outgoing energy bin and score index
   p.filter_matches_[i_eout_filt].bins_[i_bin] = bin_energyout;
+}
+
+double get_nuclide_xs(const Particle& p, int i_nuclide, int score_bin) {
+  const auto& nuc {*data::nuclides[i_nuclide]};
+
+  // Get reaction object, or return 0 if reaction is not present
+  auto m = nuc.reaction_index_[score_bin];
+  if (m == C_NONE) return 0.0;
+  const auto& rxn {*nuc.reactions_[m]};
+
+  auto i_temp = p.neutron_xs_[i_nuclide].index_temp;
+  if (i_temp >= 0) { // Can be false due to multipole
+    // Get index on energy grid and interpolation factor
+    auto i_grid = p.neutron_xs_[i_nuclide].index_grid;
+    auto f = p.neutron_xs_[i_nuclide].interp_factor;
+
+    // Calculate interpolated cross section
+    const auto& xs {rxn.xs_[i_temp]};
+    double value;
+    if (i_grid >= xs.threshold) {
+      value = ((1.0 - f) * xs.value[i_grid-xs.threshold]
+        + f * xs.value[i_grid-xs.threshold+1]);
+    } else {
+      value = 0.0;
+    }
+
+    if (settings::run_mode == RunMode::EIGENVALUE && score_bin == HEATING_LOCAL) {
+      // Determine kerma for fission as (EFR + EGP + EGD + EB)*sigma_f
+      double kerma_fission = nuc.fragments_ ?
+        ((*nuc.fragments_)(p.E_last_) + (*nuc.betas_)(p.E_last_) +
+         (*nuc.prompt_photons_)(p.E_last_) + (*nuc.delayed_photons_)(p.E_last_))
+        * p.neutron_xs_[i_nuclide].fission : 0.0;
+
+      // Determine non-fission kerma as difference
+      double kerma_non_fission = value - kerma_fission;
+
+      // Re-weight non-fission kerma by keff to properly balance energy release
+      // and deposition. See D. P. Griesheimer, S. J. Douglass, and M. H. Stedry,
+      // "Self-consistent energy normalization for quasistatic reactor
+      // calculations", Proc. PHYSOR, Cambridge, UK, Mar 29-Apr 2, 2020.
+      value = simulation::keff * kerma_non_fission + kerma_fission;
+    }
+    return value;
+  }
+  return 0.0;
 }
 
 //! Update tally results for continuous-energy tallies with any estimator.
@@ -1252,40 +1315,13 @@ score_general_ce(Particle& p, int i_tally, int start_index, int filter_index,
           + std::to_string(tally.id_));
         score = 0.;
         if (i_nuclide >= 0) {
-          const auto& nuc {*data::nuclides[i_nuclide]};
-          auto m = nuc.reaction_index_[score_bin];
-          if (m == C_NONE) continue;
-          const auto& rxn {*nuc.reactions_[m]};
-          auto i_temp = p.neutron_xs_[i_nuclide].index_temp;
-          if (i_temp >= 0) { // Can be false due to multipole
-            auto i_grid = p.neutron_xs_[i_nuclide].index_grid;
-            auto f = p.neutron_xs_[i_nuclide].interp_factor;
-            const auto& xs {rxn.xs_[i_temp]};
-            if (i_grid >= xs.threshold) {
-              score = ((1.0 - f) * xs.value[i_grid-xs.threshold]
-                + f * xs.value[i_grid-xs.threshold+1]) * atom_density * flux;
-            }
-          }
+          score = get_nuclide_xs(p, i_nuclide, score_bin) * atom_density * flux;
         } else if (p.material_ != MATERIAL_VOID) {
           const Material& material {*model::materials[p.material_]};
           for (auto i = 0; i < material.nuclide_.size(); ++i) {
             auto j_nuclide = material.nuclide_[i];
             auto atom_density = material.atom_density_(i);
-            const auto& nuc {*data::nuclides[j_nuclide]};
-            auto m = nuc.reaction_index_[score_bin];
-            if (m == C_NONE) continue;
-            const auto& rxn {*nuc.reactions_[m]};
-            auto i_temp = p.neutron_xs_[j_nuclide].index_temp;
-            if (i_temp >= 0) { // Can be false due to multipole
-              auto i_grid = p.neutron_xs_[j_nuclide].index_grid;
-              auto f = p.neutron_xs_[j_nuclide].interp_factor;
-              const auto& xs {rxn.xs_[i_temp]};
-              if (i_grid >= xs.threshold) {
-                score += ((1.0 - f) * xs.value[i_grid-xs.threshold]
-                  + f * xs.value[i_grid-xs.threshold+1]) * atom_density
-                  * flux;
-              }
-            }
+            score += get_nuclide_xs(p, j_nuclide, score_bin) * atom_density * flux;
           }
         }
       }

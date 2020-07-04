@@ -27,8 +27,8 @@ namespace data {
 
 xt::xtensor<double, 1> compton_profile_pz;
 
-std::vector<std::unique_ptr<PhotonInteraction>> elements;
 std::unordered_map<std::string, int> element_map;
+std::vector<std::unique_ptr<PhotonInteraction>> elements;
 
 } // namespace data
 
@@ -669,7 +669,7 @@ void PhotonInteraction::atomic_relaxation(const ElectronSubshell& shell, Particl
     u.y = std::sqrt(1.0 - mu*mu)*std::cos(phi);
     u.z = std::sqrt(1.0 - mu*mu)*std::sin(phi);
     double E = shell.binding_energy;
-    p.create_secondary(u, E, Particle::Type::photon);
+    p.create_secondary(p.wgt_, u, E, Particle::Type::photon);
     return;
   }
 
@@ -701,7 +701,7 @@ void PhotonInteraction::atomic_relaxation(const ElectronSubshell& shell, Particl
     // Non-radiative transition -- Auger/Coster-Kronig effect
 
     // Create auger electron
-    p.create_secondary(u, E, Particle::Type::electron);
+    p.create_secondary(p.wgt_, u, E, Particle::Type::electron);
 
     // Fill hole left by emitted auger electron
     int i_hole = shell_map_.at(secondary);
@@ -711,7 +711,7 @@ void PhotonInteraction::atomic_relaxation(const ElectronSubshell& shell, Particl
     // Radiative transition -- get X-ray energy
 
     // Create fluorescent photon
-    p.create_secondary(u, E, Particle::Type::photon);
+    p.create_secondary(p.wgt_, u, E, Particle::Type::photon);
   }
 
   // Fill hole created by electron transitioning to the photoelectron hole

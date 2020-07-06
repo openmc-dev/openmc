@@ -34,8 +34,6 @@ void sort_fission_bank();
 
 void free_memory_bank();
 
-void init_surf_src_bank(int64_t max);
-
 void init_fission_bank(int64_t max);
 
 } // namespace openmc

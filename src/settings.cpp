@@ -99,6 +99,7 @@ std::vector<std::string> res_scat_nuclides;
 RunMode run_mode {RunMode::UNSET};
 std::unordered_set<int> sourcepoint_batch;
 std::unordered_set<int> statepoint_batch;
+int max_surf_banks;
 TemperatureMethod temperature_method {TemperatureMethod::NEAREST};
 double temperature_tolerance {10.0};
 double temperature_default {293.6};
@@ -625,7 +626,15 @@ void read_settings_xml()
 
   // Check if the user has specified to write surface source.
   if (check_for_node(root, "surface_source")) {
-    surface_source = get_node_value_bool(root, "surface_source");
+    surface_source = true;
+    // Get surface source node
+    xml_node node_ss = root.child("surface_source");
+
+    // Get maximum number of particles to be banked per surface.
+    if (check_for_node(node_ss, "max_surf_banks")) {
+	max_surf_banks = std::stoi(get_node_value(node_ss,
+	  "max_surf_banks"));
+    }
   }
 
   // If source is not seperate and is to be written out in the statepoint file,

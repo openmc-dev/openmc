@@ -566,10 +566,12 @@ write_source_bank(hid_t group_id, bool surf_src_bank)
 {
   hid_t banktype = h5banktype();
 
+  std::vector<Particle::Bank> src_bank = simulation::source_bank;
   if (surf_src_bank) {
-    std::vector<Particle::Bank> src_bank = simulation::source_bank
-  } else {
-    SharedArray<Particle::Bank> src_bank = simulation::surf_src_bank
+    src_bank.clear();
+    src_bank.assign(simulation::surf_src_bank.data(),
+		    simulation::surf_src_bank.data()
+		    + simulation::surf_src_bank.size());
   }
 
 #ifdef PHDF5

@@ -289,7 +289,7 @@ void allocate_banks()
 
   if (settings::surface_source) {
     // Allocate surface source bank
-    init_surf_src_bank(10*simulation::work_per_rank);  // TODO: capacity enough?
+    simulation::surf_src_bank.reserve(settings::max_surf_banks);
   }
 
 }

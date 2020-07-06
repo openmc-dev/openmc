@@ -44,11 +44,6 @@ void free_memory_bank()
   simulation::progeny_per_particle.clear();
 }
 
-void init_surf_src_bank(int64_t max)
-{
-  simulation::surf_src_bank.reserve(max);
-}
-
 void init_fission_bank(int64_t max)
 {
   simulation::fission_bank.reserve(max);

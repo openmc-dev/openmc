@@ -1,10 +1,11 @@
+from abc import ABC, abstractmethod
 from copy import copy
 
 import openmc
 
 
-class CompositeMixin:
-    """Mixin class for composite surfaces"""
+class CompositeSurface(ABC):
+    """Multiple primitive surfaces combined into a composite surface"""
 
     def evaluate(self, point):
         raise NotImplementedError('Composite surfaces do not have a surface equation.')
@@ -41,8 +42,21 @@ class CompositeMixin:
     def __repr__(self):
         return "<{} at 0x{:x}>".format(type(self).__name__, id(self))
 
+    @property
+    @abstractmethod
+    def _surface_names(self):
+        """Iterable of attribute names corresponding to underlying surfaces."""
 
-class RightCircularCylinder(CompositeMixin, openmc.Surface):
+    @abstractmethod
+    def __pos__(self):
+        """Return the positive half-space of the composite surface."""
+
+    @abstractmethod
+    def __neg__(self):
+        """Return the negative half-space of the composite surface."""
+
+
+class RightCircularCylinder(CompositeSurface):
     """Right circular cylinder composite surface
 
     A right circular cylinder is composed of a cylinder and two planar surface
@@ -100,7 +114,7 @@ class RightCircularCylinder(CompositeMixin, openmc.Surface):
         return +self.cyl | -self.bottom | +self.top
 
 
-class RectangularParallelepiped(CompositeMixin, openmc.Surface):
+class RectangularParallelepiped(CompositeSurface):
     """Rectangular parallelpiped composite surface
 
     A rectangular parallelpiped is composed of six planar surfaces. This class
@@ -148,7 +162,7 @@ class RectangularParallelepiped(CompositeMixin, openmc.Surface):
         return -self.xmin | +self.ymax | -self.ymin | +self.ymax | -self.zmin | +self.zmax
 
 
-class Box(CompositeMixin, openmc.Surface):
+class Box(CompositeSurface):
     """Arbitrarily oriented orthogonal box
 
     An arbitrarily oriented orthogonal box is composed of six planar surfaces.
@@ -227,7 +241,7 @@ class Box(CompositeMixin, openmc.Surface):
                 -self.zmin | +self.zmax)
 
 
-class XConeOneSided(CompositeMixin, openmc.Surface):
+class XConeOneSided(CompositeSurface):
     """One-sided cone parallel the x-axis
 
     A one-sided cone is composed of a normal cone surface and an "ambiguity"
@@ -282,7 +296,7 @@ class XConeOneSided(CompositeMixin, openmc.Surface):
             return (+self.cone & -self.plane) | +self.plane
 
 
-class YConeOneSided(CompositeMixin, openmc.Surface):
+class YConeOneSided(CompositeSurface):
     """One-sided cone parallel the y-axis
 
     A one-sided cone is composed of a normal cone surface and an "ambiguity"
@@ -331,7 +345,7 @@ class YConeOneSided(CompositeMixin, openmc.Surface):
     __pos__ = XConeOneSided.__pos__
 
 
-class ZConeOneSided(CompositeMixin, openmc.Surface):
+class ZConeOneSided(CompositeSurface):
     """One-sided cone parallel the z-axis
 
     A one-sided cone is composed of a normal cone surface and an "ambiguity"

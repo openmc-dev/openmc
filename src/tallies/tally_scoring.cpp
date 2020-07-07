@@ -588,6 +588,8 @@ score_general_ce(Particle& p, int i_tally, int start_index, int filter_index,
 
 
     case SCORE_INVERSE_VELOCITY:
+      if (p.type_ != Particle::Type::neutron) continue;
+
       if (tally.estimator_ == TallyEstimator::ANALOG) {
         // All events score to an inverse velocity bin. We actually use a
         // collision estimator in place of an analog one since there is no way
@@ -609,6 +611,8 @@ score_general_ce(Particle& p, int i_tally, int start_index, int filter_index,
 
 
     case SCORE_SCATTER:
+      if (p.type_ != Particle::Type::neutron) continue;
+
       if (tally.estimator_ == TallyEstimator::ANALOG) {
         // Skip any event where the particle didn't scatter
         if (p.event_ != TallyEvent::SCATTER) continue;
@@ -620,14 +624,15 @@ score_general_ce(Particle& p, int i_tally, int start_index, int filter_index,
           score = (p.neutron_xs_[i_nuclide].total
             - p.neutron_xs_[i_nuclide].absorption) * atom_density * flux;
         } else {
-          score = (p.macro_xs_.total
-            - p.macro_xs_.absorption) * flux;
+          score = (p.macro_xs_.total - p.macro_xs_.absorption) * flux;
         }
       }
       break;
 
 
     case SCORE_NU_SCATTER:
+      if (p.type_ != Particle::Type::neutron) continue;
+
       // Only analog estimators are available.
       // Skip any event where the particle didn't scatter
       if (p.event_ != TallyEvent::SCATTER) continue;
@@ -649,6 +654,8 @@ score_general_ce(Particle& p, int i_tally, int start_index, int filter_index,
 
 
     case SCORE_ABSORPTION:
+      if (p.type_ != Particle::Type::neutron) continue;
+
       if (tally.estimator_ == TallyEstimator::ANALOG) {
         if (settings::survival_biasing) {
           // No absorption events actually occur if survival biasing is on --
@@ -1205,6 +1212,8 @@ score_general_ce(Particle& p, int i_tally, int start_index, int filter_index,
 
 
     case ELASTIC:
+      if (p.type_ != Particle::Type::neutron) continue;
+
       if (tally.estimator_ == TallyEstimator::ANALOG) {
         // Check if event MT matches
         if (p.event_mt_ != ELASTIC) continue;
@@ -1244,6 +1253,8 @@ score_general_ce(Particle& p, int i_tally, int start_index, int filter_index,
     case N_GAMMA:
     case N_P:
     case N_A:
+      if (p.type_ != Particle::Type::neutron) continue;
+
       if (tally.estimator_ == TallyEstimator::ANALOG) {
         // Check if the event MT matches
         if (p.event_mt_ != score_bin) continue;

@@ -179,7 +179,7 @@ void load_dagmc_geometry()
   dagmcMetaData DMD(model::DAG, false, false);
   DMD.load_property_data();
 
-  std::vector<std::string> keywords {"temp", "boundary"};
+  std::vector<std::string> keywords {"temp"};
   std::map<std::string, std::string> dum;
   std::string delimiters = ":/";
   rval = model::DAG->parse_properties(keywords, dum, delimiters.c_str());
@@ -296,27 +296,20 @@ void load_dagmc_geometry()
     s->dagmc_ptr_ = model::DAG;
 
     // set BCs
-    std::string bc_value;
-    if (model::DAG->has_prop(surf_handle, "boundary")) {
-      rval = model::DAG->prop_value(surf_handle, "boundary", bc_value);
-      MB_CHK_ERR_CONT(rval);
-      to_lower(bc_value);
-
-      if (bc_value == "transmit" || bc_value == "transmission") {
-        s->bc_ = Surface::BoundaryType::TRANSMIT;
-      } else if (bc_value == "vacuum") {
-        s->bc_ = Surface::BoundaryType::VACUUM;
-      } else if (bc_value == "reflective" || bc_value == "reflect" || bc_value == "reflecting") {
-        s->bc_ = Surface::BoundaryType::REFLECT;
-      } else if (bc_value == "periodic") {
-        fatal_error("Periodic boundary condition not supported in DAGMC.");
-      } else {
-        fatal_error(fmt::format("Unknown boundary condition \"{}\" specified "
-          "on surface {}", bc_value, s->id_));
-      }
-    } else {
-      // if no condition is found, set to transmit
+    std::string bc_value = DMD.get_surface_property("boundary", surf_handle);
+    to_lower(bc_value);
+    if (bc_value.empty() || bc_value == "transmit" || bc_value == "transmission") {
+      // set to transmission by default
       s->bc_ = Surface::BoundaryType::TRANSMIT;
+    } else if (bc_value == "vacuum") {
+      s->bc_ = Surface::BoundaryType::VACUUM;
+    } else if (bc_value == "reflective" || bc_value == "reflect" || bc_value == "reflecting") {
+      s->bc_ = Surface::BoundaryType::REFLECT;
+    } else if (bc_value == "periodic") {
+      fatal_error("Periodic boundary condition not supported in DAGMC.");
+    } else {
+      fatal_error(fmt::format("Unknown boundary condition \"{}\" specified "
+        "on surface {}", bc_value, s->id_));
     }
 
     // graveyard check

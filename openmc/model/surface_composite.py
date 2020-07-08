@@ -7,12 +7,6 @@ import openmc
 class CompositeSurface(ABC):
     """Multiple primitive surfaces combined into a composite surface"""
 
-    def evaluate(self, point):
-        raise NotImplementedError('Composite surfaces do not have a surface equation.')
-
-    def _get_base_coeffs(self):
-        raise NotImplementedError('Composite surfaces do not have base coefficients.')
-
     def translate(self, vector, inplace=False):
         surf = self if inplace else copy(self)
         for name in self._surface_names:
@@ -264,7 +258,8 @@ class XConeOneSided(CompositeSurface):
         Parameter related to the aperature. Defaults to 1.
     up : bool
         Whether to select the side of the cone that extends to infinity in the
-        positive direction of the coordinate axis
+        positive direction of the coordinate axis (the positive half-space of
+        the ambiguity plane)
     **kwargs
         Keyword arguments passed to underlying plane classes
 
@@ -276,7 +271,8 @@ class XConeOneSided(CompositeSurface):
         Ambiguity surface
     up : bool
         Whether to select the side of the cone that extends to infinity in the
-        positive direction of the coordinate axis
+        positive direction of the coordinate axis (the positive half-space of
+        the ambiguity plane)
 
     """
     _surface_names = ('cone', 'plane')
@@ -319,7 +315,8 @@ class YConeOneSided(CompositeSurface):
         Parameter related to the aperature. Defaults to 1.
     up : bool
         Whether to select the side of the cone that extends to infinity in the
-        positive direction of the coordinate axis
+        positive direction of the coordinate axis (the positive half-space of
+        the ambiguity plane)
     **kwargs
         Keyword arguments passed to underlying plane classes
 
@@ -331,7 +328,8 @@ class YConeOneSided(CompositeSurface):
         Ambiguity surface
     up : bool
         Whether to select the side of the cone that extends to infinity in the
-        positive direction of the coordinate axis
+        positive direction of the coordinate axis (the positive half-space of
+        the ambiguity plane)
 
     """
     _surface_names = ('cone', 'plane')
@@ -368,7 +366,8 @@ class ZConeOneSided(CompositeSurface):
         Parameter related to the aperature. Defaults to 1.
     up : bool
         Whether to select the side of the cone that extends to infinity in the
-        positive direction of the coordinate axis
+        positive direction of the coordinate axis (the positive half-space of
+        the ambiguity plane)
     **kwargs
         Keyword arguments passed to underlying plane classes
 
@@ -380,7 +379,8 @@ class ZConeOneSided(CompositeSurface):
         Ambiguity surface
     up : bool
         Whether to select the side of the cone that extends to infinity in the
-        positive direction of the coordinate axis
+        positive direction of the coordinate axis (the positive half-space of
+        the ambiguity plane)
 
     """
     _surface_names = ('cone', 'plane')

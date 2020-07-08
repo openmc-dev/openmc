@@ -1243,7 +1243,7 @@ void split_particle(Particle& p)
       p.wgt_last_ = p.wgt_;
     }
   }
-  // weight window  add by Yuan
+  // weight window   add by Yuan
 	
 }
 

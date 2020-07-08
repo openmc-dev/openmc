@@ -1161,8 +1161,21 @@ void sample_secondary_photons(Particle& p, int i_nuclide)
     // Sample the new direction
     Direction u = rotate_angle(p.u(), mu, nullptr, p.current_seed());
 
+    // In a k-eigenvalue simulation, it's necessary to provide higher weight to
+    // secondary photons from non-fission reactions to properly balance energy
+    // release and deposition. See D. P. Griesheimer, S. J. Douglass, and M. H.
+    // Stedry, "Self-consistent energy normalization for quasistatic reactor
+    // calculations", Proc. PHYSOR, Cambridge, UK, Mar 29-Apr 2, 2020.
+    double wgt;
+    if (settings::run_mode == RunMode::EIGENVALUE && !is_fission(rx->mt_)) {
+      wgt = simulation::keff * p.wgt_;
+    } else {
+      wgt = p.wgt_;
+    }
+
     // Create the secondary photon
-    p.create_secondary(p.wgt_, u, E, Particle::Type::photon);
+    p.create_secondary(wgt, u, E, Particle::Type::photon);
+
   }
 }
 	

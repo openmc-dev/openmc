@@ -176,11 +176,10 @@ void load_dagmc_geometry()
   MB_CHK_ERR_CONT(rval);
 
   // parse model metadata
-  dagmcMetaData DMD(model::DAG);
-  if (using_uwuw) {
-    DMD.load_property_data();
-  }
-  std::vector<std::string> keywords {"temp", "mat", "density", "boundary"};
+  dagmcMetaData DMD(model::DAG, false, false);
+  DMD.load_property_data();
+
+  std::vector<std::string> keywords {"temp"};
   std::map<std::string, std::string> dum;
   std::string delimiters = ":/";
   rval = model::DAG->parse_properties(keywords, dum, delimiters.c_str());
@@ -218,54 +217,25 @@ void load_dagmc_geometry()
 
     // MATERIALS
 
-    if (model::DAG->is_implicit_complement(vol_handle)) {
-      if (model::DAG->has_prop(vol_handle, "mat")) {
-        // if the implicit complement has been assigned a material, use it
-        if (using_uwuw) {
-          std::string comp_mat = DMD.volume_material_property_data_eh[vol_handle];
-          // Note: material numbers are set by UWUW
-          int mat_number = uwuw.material_library[comp_mat].metadata["mat_number"].asInt();
-          c->material_.push_back(mat_number);
-        } else {
-          std::string mat_value;
-          rval= model::DAG->prop_value(vol_handle, "mat", mat_value);
-          MB_CHK_ERR_CONT(rval);
-          // remove _comp
-          std::string _comp = "_comp";
-          size_t _comp_pos = mat_value.find(_comp);
-          if (_comp_pos != std::string::npos) { mat_value.erase(_comp_pos, _comp.length()); }
-          // assign IC material by id
-          legacy_assign_material(mat_value, c);
-        }
-      } else {
-        // if no material is found, the implicit complement is void
-        c->material_.push_back(MATERIAL_VOID);
-      }
-      continue;
-    }
-
     // determine volume material assignment
-    std::string mat_value;
-    if (model::DAG->has_prop(vol_handle, "mat")) {
-      rval = model::DAG->prop_value(vol_handle, "mat", mat_value);
-      MB_CHK_ERR_CONT(rval);
-    } else {
+    std::string mat_str = DMD.get_volume_property("material", vol_handle);
+
+    if (mat_str.empty()) {
       fatal_error(fmt::format("Volume {} has no material assignment.", c->id_));
     }
 
-    std::string cmp_str = mat_value;
-    to_lower(cmp_str);
+    to_lower(mat_str);
 
-    if (cmp_str == "graveyard") {
+    if (mat_str == "graveyard") {
       graveyard = vol_handle;
     }
 
     // material void checks
-    if (cmp_str == "void" || cmp_str == "vacuum" || cmp_str == "graveyard") {
+    if (mat_str == "void" || mat_str == "vacuum" || mat_str == "graveyard") {
       c->material_.push_back(MATERIAL_VOID);
     } else {
       if (using_uwuw) {
-        // lookup material in uwuw if the were present
+        // lookup material in uwuw if present
         std::string uwuw_mat = DMD.volume_material_property_data_eh[vol_handle];
         if (uwuw.material_library.count(uwuw_mat) != 0) {
           // Note: material numbers are set by UWUW
@@ -273,10 +243,10 @@ void load_dagmc_geometry()
           c->material_.push_back(mat_number);
         } else {
           fatal_error(fmt::format("Material with value {} not found in the "
-            "UWUW material library", mat_value));
+            "UWUW material library", mat_str));
         }
       } else {
-        legacy_assign_material(mat_value, c);
+        legacy_assign_material(mat_str, c);
       }
     }
 
@@ -326,27 +296,20 @@ void load_dagmc_geometry()
     s->dagmc_ptr_ = model::DAG;
 
     // set BCs
-    std::string bc_value;
-    if (model::DAG->has_prop(surf_handle, "boundary")) {
-      rval = model::DAG->prop_value(surf_handle, "boundary", bc_value);
-      MB_CHK_ERR_CONT(rval);
-      to_lower(bc_value);
-
-      if (bc_value == "transmit" || bc_value == "transmission") {
-        s->bc_ = Surface::BoundaryType::TRANSMIT;
-      } else if (bc_value == "vacuum") {
-        s->bc_ = Surface::BoundaryType::VACUUM;
-      } else if (bc_value == "reflective" || bc_value == "reflect" || bc_value == "reflecting") {
-        s->bc_ = Surface::BoundaryType::REFLECT;
-      } else if (bc_value == "periodic") {
-        fatal_error("Periodic boundary condition not supported in DAGMC.");
-      } else {
-        fatal_error(fmt::format("Unknown boundary condition \"{}\" specified "
-          "on surface {}", bc_value, s->id_));
-      }
-    } else {
-      // if no condition is found, set to transmit
+    std::string bc_value = DMD.get_surface_property("boundary", surf_handle);
+    to_lower(bc_value);
+    if (bc_value.empty() || bc_value == "transmit" || bc_value == "transmission") {
+      // set to transmission by default
       s->bc_ = Surface::BoundaryType::TRANSMIT;
+    } else if (bc_value == "vacuum") {
+      s->bc_ = Surface::BoundaryType::VACUUM;
+    } else if (bc_value == "reflective" || bc_value == "reflect" || bc_value == "reflecting") {
+      s->bc_ = Surface::BoundaryType::REFLECT;
+    } else if (bc_value == "periodic") {
+      fatal_error("Periodic boundary condition not supported in DAGMC.");
+    } else {
+      fatal_error(fmt::format("Unknown boundary condition \"{}\" specified "
+        "on surface {}", bc_value, s->id_));
     }
 
     // graveyard check
@@ -356,7 +319,7 @@ void load_dagmc_geometry()
 
     // if this surface belongs to the graveyard
     if (graveyard && parent_vols.find(graveyard) != parent_vols.end()) {
-      // set BC to vacuum
+      // set graveyard surface BC's to vacuum
       s->bc_ = Surface::BoundaryType::VACUUM;
     }
 

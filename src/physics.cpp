@@ -305,7 +305,7 @@ void sample_photon_reaction(Particle& p)
       double mu_electron = (alpha - alpha_out*mu)
         / std::sqrt(alpha*alpha + alpha_out*alpha_out - 2.0*alpha*alpha_out*mu);
       Direction u = rotate_angle(p.u(), mu_electron, &phi, p.current_seed());
-      p.create_secondary(u, E_electron, Particle::Type::electron);
+      p.create_secondary(p.wgt_, u, E_electron, Particle::Type::electron);
     }
 
     // TODO: Compton subshell data does not match atomic relaxation data
@@ -366,7 +366,7 @@ void sample_photon_reaction(Particle& p)
         u.z = std::sqrt(1.0 - mu*mu)*std::sin(phi);
 
         // Create secondary electron
-        p.create_secondary(u, E_electron, Particle::Type::electron);
+        p.create_secondary(p.wgt_, u, E_electron, Particle::Type::electron);
 
         // Allow electrons to fill orbital and produce auger electrons
         // and fluorescent photons
@@ -391,11 +391,11 @@ void sample_photon_reaction(Particle& p)
 
     // Create secondary electron
     Direction u = rotate_angle(p.u(), mu_electron, nullptr, p.current_seed());
-    p.create_secondary(u, E_electron, Particle::Type::electron);
+    p.create_secondary(p.wgt_, u, E_electron, Particle::Type::electron);
 
     // Create secondary positron
     u = rotate_angle(p.u(), mu_positron, nullptr, p.current_seed());
-    p.create_secondary(u, E_positron, Particle::Type::positron);
+    p.create_secondary(p.wgt_, u, E_positron, Particle::Type::positron);
 
     p.event_ = TallyEvent::ABSORB;
     p.event_mt_ = PAIR_PROD;
@@ -436,8 +436,8 @@ void sample_positron_reaction(Particle& p)
   u.z = std::sqrt(1.0 - mu*mu)*std::sin(phi);
 
   // Create annihilation photon pair traveling in opposite directions
-  p.create_secondary(u, MASS_ELECTRON_EV, Particle::Type::photon);
-  p.create_secondary(-u, MASS_ELECTRON_EV, Particle::Type::photon);
+  p.create_secondary(p.wgt_, u, MASS_ELECTRON_EV, Particle::Type::photon);
+  p.create_secondary(p.wgt_, -u, MASS_ELECTRON_EV, Particle::Type::photon);
 
   p.E_ = 0.0;
   p.alive_ = false;
@@ -1129,7 +1129,7 @@ void inelastic_scatter(const Nuclide& nuc, const Reaction& rx, Particle& p)
   if (std::floor(yield) == yield) {
     // If yield is integral, create exactly that many secondary particles
     for (int i = 0; i < static_cast<int>(std::round(yield)) - 1; ++i) {
-      p.create_secondary(p.u(), p.E_, Particle::Type::neutron);
+      p.create_secondary(p.wgt_, p.u(), p.E_, Particle::Type::neutron);
     }
   } else {
     // Otherwise, change weight of particle based on yield
@@ -1162,7 +1162,7 @@ void sample_secondary_photons(Particle& p, int i_nuclide)
     Direction u = rotate_angle(p.u(), mu, nullptr, p.current_seed());
 
     // Create the secondary photon
-    p.create_secondary(u, E, Particle::Type::photon);
+    p.create_secondary(p.wgt_, u, E, Particle::Type::photon);
   }
 }
 	
@@ -1215,8 +1215,7 @@ void split_particle(Particle& p)
   energy_bin = lower_bound_index(energy_group.begin(), energy_group.end(), Energy);
 
   indices = settings::ww_fine_mesh->mesh_->get_bin(pos);
-  indices += energy_bin * settings::ww_fine_mesh->mesh_->shape_[0]
-	  * settings::ww_fine_mesh->mesh_->shape_[1] * settings::ww_fine_mesh->mesh_->shape_[2];                   // get the indices
+  indices += energy_bin * settings::ww_fine_mesh->mesh_->n_bins();                   // get the indices
 
   lower_ww = lower_ww*ww_lower[indices];  // equal to multiplier * lower weight window bound (from input file)
   upper_ww = lower_ww*upper_ww;           // equal to multiplied lower weight window bound * upper/lower ratio
@@ -1226,7 +1225,7 @@ void split_particle(Particle& p)
     double number = weight/upper_ww;  
     double num = std::min(std::ceil(number), double(max_split));
 
-    for (int l=0; l < num-1; ++l)  { p.create_secondary(p.u(), p.E_, p.type_, weight/num); }
+    for (int l=0; l < num-1; ++l)  { p.create_secondary(weight/num, p.u(), p.E_, p.type_); }
     p.wgt_ = weight/num;
     p.wgt_last_ = p.wgt_;
 	  

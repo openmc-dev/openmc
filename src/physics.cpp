@@ -1178,6 +1178,7 @@ void sample_secondary_photons(Particle& p, int i_nuclide)
 
   }
 }
+
 	
 void split_particle(Particle& p)
 {
@@ -1256,8 +1257,8 @@ void split_particle(Particle& p)
       p.wgt_last_ = p.wgt_;
     }
   }
-  // weight window   add by Yuan
-	
+  // weight window   add by Yuan	
 }
 
+	
 } // namespace openmc

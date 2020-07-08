@@ -58,11 +58,8 @@ extern bool write_initial_source;     //!< write out initial source file?
 // ---
 // weight window   add by Yuan
 // ---
-extern bool weightwindow;             // use weight window or not
-// weight window mesh
-extern std::unique_ptr<WeightWindowMesh>  ww_fine_mesh;
-// weight window  add by Yuan
-// ---
+extern bool weightwindow;  //!< use weight window or not
+extern std::unique_ptr<WeightWindowMesh>  ww_fine_mesh;  //!< weight window mesh
   
 // Paths to various files
 extern std::string path_cross_sections;   //!< path to cross_sections.xml

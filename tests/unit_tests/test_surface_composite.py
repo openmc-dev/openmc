@@ -99,10 +99,6 @@ def test_rectangular_parallelepiped():
     assert (xmin + dx/2, ymin + dy/2, zmin + dz/2) in -s
     assert (xmin + dx/2, ymin + dy/2, zmin + dz/2) not in +s
 
-    # evaluate method
-    with pytest.raises(NotImplementedError):
-        s.evaluate((0., 0., 0.))
-
     # translate method
     t = uniform(-5.0, 5.0)
     s_t = s.translate((t, t, t))
@@ -151,10 +147,6 @@ def test_right_circular_cylinder(axis, indices):
     point_neg = (x, y, z) + np.roll([h/2, 0, 0], indices[0])
     assert point_neg in -s
     assert point_neg not in +s
-
-    # evaluate method
-    with pytest.raises(NotImplementedError):
-        s.evaluate((0., 0., 0.))
 
     # translate method
     t = uniform(-5.0, 5.0)
@@ -205,10 +197,6 @@ def test_cone_one_sided(axis, point_pos, point_neg, ll_true):
     assert point_pos not in -s
     assert point_neg in -s
     assert point_neg not in +s
-
-    # evaluate method
-    with pytest.raises(NotImplementedError):
-        s.evaluate((0., 0., 0.))
 
     # translate method
     t = uniform(-5.0, 5.0)

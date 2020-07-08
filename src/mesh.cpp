@@ -889,14 +889,7 @@ RectilinearMesh::RectilinearMesh(pugi::xml_node node)
             static_cast<int>(grid_[1].size()) - 1,
             static_cast<int>(grid_[2].size()) - 1};
 
-  for (const auto& g : grid_) {
-    if (g.size() < 2) fatal_error("x-, y-, and z- grids for rectilinear meshes "
-      "must each have at least 2 points");
-    for (int i = 1; i < g.size(); ++i) {
-      if (g[i] <= g[i-1]) fatal_error("Values in for x-, y-, and z- grids for "
-        "rectilinear meshes must be sorted and unique.");
-    }
-  }
+  check_grids(grid_);
 
   lower_left_ = {grid_[0].front(), grid_[1].front(), grid_[2].front()};
   upper_right_ = {grid_[0].back(), grid_[1].back(), grid_[2].back()};
@@ -916,7 +909,17 @@ RectilinearMesh::RectilinearMesh(std::vector<double>&  x_grid, std::vector<doubl
             static_cast<int>(grid_[1].size()) - 1,
             static_cast<int>(grid_[2].size()) - 1};
 
-  for (const auto& g : grid_) {
+  check_grids(grid_);
+
+  lower_left_ = {grid_[0].front(), grid_[1].front(), grid_[2].front()};
+  upper_right_ = {grid_[0].back(), grid_[1].back(), grid_[2].back()};
+}
+  
+void RectilinearMesh::check_grids(std::vector<std::vector<double>> grids) 
+{
+  // ========================================================================
+  // check grids for rectilinear meshes.
+  for (const auto& g : grids) {
     if (g.size() < 2) fatal_error("x-, y-, and z- grids for rectilinear meshes "
       "must each have at least 2 points");
     for (int i = 1; i < g.size(); ++i) {
@@ -924,9 +927,6 @@ RectilinearMesh::RectilinearMesh(std::vector<double>&  x_grid, std::vector<doubl
         "rectilinear meshes must be sorted and unique.");
     }
   }
-
-  lower_left_ = {grid_[0].front(), grid_[1].front(), grid_[2].front()};
-  upper_right_ = {grid_[0].back(), grid_[1].back(), grid_[2].back()};
 }
 
 void RectilinearMesh::bins_crossed(const Particle& p, std::vector<int>& bins,
@@ -1412,7 +1412,6 @@ WeightWindowMesh::WeightWindowMesh(pugi::xml_node node)
   using namespace pugi;
   
   double lower_left_point[3]  = {0., 0., 0. };   //!< Lower-left coordinates of weight window mesh
-  double upper_right_point[3] = {0., 0., 0. };   //!< Upper-right coordinates of weight window mesh
   std::vector<double> coarse_x;                  //!< Locations of the coarse meshes in the x direction
   std::vector<double> coarse_y;                  //!< Locations of the coarse meshes in the y direction
   std::vector<double> coarse_z;                  //!< Locations of the coarse meshes in the z direction
@@ -1692,14 +1691,14 @@ WeightWindowMesh::WeightWindowMesh(pugi::xml_node node)
 
     double ww=0.0;      
     if (n_ww) {
-      for (int i=0; i<mesh_->shape_[0]*mesh_->shape_[1]*mesh_->shape_[2]*(n_energy_group.size()-1); i++) {   
+      for (int i=0; i<mesh_->n_bins()*(n_energy_group.size()-1); i++) {   
         wwfile>>ww;
         n_ww_lower.push_back(ww);
       }  
     } 
       
     if (p_ww) {
-      for (int i=0; i<mesh_->shape_[0]*mesh_->shape_[1]*mesh_->shape_[2]*(p_energy_group.size()-1); i++) {   
+      for (int i=0; i<mesh_->n_bins()*(p_energy_group.size()-1); i++) {   
         wwfile>>ww;
         p_ww_lower.push_back(ww);
       }  

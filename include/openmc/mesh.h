@@ -207,6 +207,9 @@ public:
   
   // new constructors for weight window
   RectilinearMesh(std::vector<double>&  x_grid, std::vector<double>&  y_grid, std::vector<double>&  z_grid);
+  
+  // check grids for rectilinear meshes
+  void check_grids(std::vector<std::vector<double>> grids);
 
   // Overriden methods
 
@@ -255,7 +258,6 @@ class WeightWindowMesh
 {
 public:
   // Constructors
-  WeightWindowMesh() = default;
   WeightWindowMesh(pugi::xml_node node);
 
   //! source weight biasing in energy
@@ -265,35 +267,35 @@ public:
   void weight_biasing(Particle::Bank& site, uint64_t* seed) ;
   
   // weight window mesh and energy group
-  std::unique_ptr<RectilinearMesh>  mesh_;   // RectilinearMesh for Weight window
-  int ww_type;                        // weight window input file type
-  std::vector<double> n_energy_group; // energy group for neutron
-  std::vector<double> p_energy_group; // energy group for photon
-  std::vector<double> n_ww_lower;     // lower weight window for mesh for neutron
-  std::vector<double> p_ww_lower;     // lower weight window for mesh for photon
-  bool n_ww;                          // flag for neutron use weight window
-  bool p_ww;                          // flag for photon use weight window
+  std::unique_ptr<RectilinearMesh>  mesh_;   //!< RectilinearMesh for Weight window
+  int ww_type;   //!< weight window input file type
+  std::vector<double> n_energy_group; //!< energy group for neutron
+  std::vector<double> p_energy_group; //!< energy group for photon
+  std::vector<double> n_ww_lower;  //!< lower weight window for mesh for neutron
+  std::vector<double> p_ww_lower;  //!< lower weight window for mesh for photon
+  bool n_ww;   //!< flag for neutron use weight window
+  bool p_ww;   //!< flag for photon use weight window
   
   // WWP
   // neutron
-  double n_upper_ratio;            // upper weight window = upper_ratio * lower weight window
-  double n_survival_ratio;         // survival weight = survival_ratio * lower weight window
-  int n_max_split;                 // max number of split particles
-  double n_multiplier;             // multiplier for weight window lower bounds
+  double n_upper_ratio;  //!< upper weight window = upper_ratio * lower weight window
+  double n_survival_ratio;  //!< survival weight = survival_ratio * lower weight window
+  int n_max_split;   //!< max number of split particles
+  double n_multiplier;   //!< multiplier for weight window lower bounds
 
   // photon
-  double p_upper_ratio;            // upper weight window = upper_ratio * lower weight window
-  double p_survival_ratio;         // survival weight = survival_ratio * lower weight window
-  int p_max_split;                 // max number of split particles
-  double p_multiplier;             // multiplier for weight window lower bounds
+  double p_upper_ratio;   //!< upper weight window = upper_ratio * lower weight window
+  double p_survival_ratio;  //!< survival weight = survival_ratio * lower weight window
+  int p_max_split;   //!< max number of split particles
+  double p_multiplier;  //!< multiplier for weight window lower bounds
 
   // source weight biasing in energy
-  bool user_defined_biasing;      // use user difined weight or not
-  std::vector<double> biasing_energy;   // energy group for weight biasing
-  std::vector<double> origin_possibility; // possibility for each group
-  std::vector<double> cumulative_possibility; // cumulative possibility for each group
-  std::vector<double> biasing;   // biasing for each energy group
-  std::vector<double> cumulative_biasing;   // cumulative possibility for biasing for each energy group
+  bool user_defined_biasing;      //!< use user difined weight or not
+  std::vector<double> biasing_energy;   //!< energy group for weight biasing
+  std::vector<double> origin_possibility; //!< possibility for each group
+  std::vector<double> cumulative_possibility; //!< cumulative possibility for each group
+  std::vector<double> biasing;   //!< biasing for each energy group
+  std::vector<double> cumulative_biasing;   //!< cumulative possibility for biasing for each energy group
 
 };
 // Weight Window Mesh class, add by Yuan

@@ -151,10 +151,10 @@ void legacy_assign_material(std::string mat_string, DAGCell* c)
 
 void load_dagmc_geometry()
 {
-  create_dagmc_universe(dagmc_file());
+  int32_t univ_idx = create_dagmc_universe(dagmc_file());
 }
 
-void create_dagmc_universe(const std::string& filename) {
+int32_t create_dagmc_universe(const std::string& filename) {
   if (!model::DAG) {
     model::DAG = std::make_shared<moab::DagMC>();
   }
@@ -338,7 +338,7 @@ void create_dagmc_universe(const std::string& filename) {
     model::surface_map[s->id_] = i;
   }
 
-  return;
+  return model::universes.size() - 1;
 }
 
 void read_geometry_dagmc()

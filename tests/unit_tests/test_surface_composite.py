@@ -5,63 +5,6 @@ import openmc
 import pytest
 
 
-def test_box():
-    x, y, z = 1.0, -2.5, 3.0
-    dx, dy, dz = 4.0, 3.0, 6.0
-    s = openmc.model.Box((x, y, z), (dx, 0, 0), (0, dy, 0), (0, 0, dz))
-    assert isinstance(s.xmin, openmc.XPlane)
-    assert isinstance(s.xmax, openmc.XPlane)
-    assert isinstance(s.ymin, openmc.YPlane)
-    assert isinstance(s.ymax, openmc.YPlane)
-    assert isinstance(s.zmin, openmc.ZPlane)
-    assert isinstance(s.zmax, openmc.ZPlane)
-
-    # Make sure boundary condition propagates
-    s.boundary_type = 'reflective'
-    assert s.boundary_type == 'reflective'
-    for axis in 'xyz':
-        assert getattr(s, '{}min'.format(axis)).boundary_type == 'reflective'
-        assert getattr(s, '{}max'.format(axis)).boundary_type == 'reflective'
-
-    # Check bounding box
-    ll, ur = (+s).bounding_box
-    assert np.all(np.isinf(ll))
-    assert np.all(np.isinf(ur))
-    ll, ur = (-s).bounding_box
-    assert ur == pytest.approx((x + dx, y + dy, z + dz))
-    assert ll == pytest.approx((x, y, z))
-
-    # __contains__ on associated half-spaces
-    assert (x - 1, 0, 0) in +s
-    assert (x - 1, 0, 0) not in -s
-    assert (x + dx/2, y + dy/2, z + dz/2) in -s
-    assert (x + dx/2, y + dy/2, z + dz/2) not in +s
-
-    # evaluate method
-    with pytest.raises(NotImplementedError):
-        s.evaluate((0., 0., 0.))
-
-    # translate method
-    t = uniform(-5.0, 5.0)
-    s_t = s.translate((t, t, t))
-    ll_t, ur_t = (-s_t).bounding_box
-    assert ur_t == pytest.approx(ur + t)
-    assert ll_t == pytest.approx(ll + t)
-
-    # rotate method
-    s_rot = s.rotate((0., 0., 90.))
-    ll, ur = (-s_rot).bounding_box
-    assert ll == pytest.approx((-(y + dy), x, z))
-    assert ur == pytest.approx((-y, x + dx, z + dz))
-
-    # Make sure repr works
-    repr(s)
-
-    # non-axis-aligned vectors not implemented
-    with pytest.raises(NotImplementedError):
-        openmc.model.Box((0, 0, 0), (1, 1, 1), (1, 1, 1), (1, 1, 1))
-
-
 def test_rectangular_parallelepiped():
     xmin = uniform(-5., 5.)
     xmax = xmin + uniform(0., 5.)

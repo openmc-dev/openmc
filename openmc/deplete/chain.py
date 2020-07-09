@@ -47,6 +47,7 @@ _REACTIONS = [
 
 __all__ = ["Chain"]
 
+
 def replace_missing(product, decay_data):
     """Replace missing product with suitable decay daughter.
 
@@ -107,6 +108,54 @@ def replace_missing(product, decay_data):
         product = '{}{}'.format(openmc.data.ATOMIC_SYMBOL[Z], A)
 
     return product
+
+
+def replace_missing_fpy(actinide, fpy_data, decay_data):
+    """Replace missing fission product yields
+
+    Parameters
+    ----------
+    actinide : str
+        Name of actinide missing FPY data
+    fpy_data : dict
+        Dictionary of FPY data
+    decay_data : dict
+        Dictionary of decay data
+
+    Returns
+    -------
+    str
+        Actinide that can be used as replacement for FPY purposes
+
+    """
+
+    # Check if metastable state has data (e.g., Am242m)
+    Z, A, m = zam(actinide)
+    if m == 0:
+        metastable = gnd_name(Z, A, 1)
+        if metastable in fpy_data:
+            return metastable
+
+    # Try increasing Z, holding N constant
+    isotone = actinide
+    while isotone in decay_data:
+        Z += 1
+        A += 1
+        isotone = gnd_name(Z, A, 0)
+        if isotone in fpy_data:
+            return isotone
+
+    # Try decreasing Z, holding N constant
+    isotone = actinide
+    while isotone in decay_data:
+        Z -= 1
+        A -= 1
+        isotone = gnd_name(Z, A, 0)
+        if isotone in fpy_data:
+            return isotone
+
+    # If all else fails, use U235 yields
+    return 'U235'
 
 
 _SECONDARY_PARTICLES = {
@@ -215,6 +264,16 @@ class Chain:
         -------
         Chain
 
+        Notes
+        -----
+        When an actinide is missing fission product yield (FPY) data, yields will
+        copied from a parent isotope, found according to:
+
+        1. If the nuclide is in a ground state and a metastable state exists with
+           fission yields, copy the yields from the metastable
+        2. Find an isotone (same number of neutrons) and copy those yields
+        3. Copy the yields of U235 if the previous two checks fail
+
         """
         chain = cls()
 
@@ -290,6 +349,7 @@ class Chain:
                     # Append decay mode
                     nuclide.decay_modes.append(DecayTuple(type_, target, br))
 
+            fissionable = False
             if parent in reactions:
                 reactions_available = set(reactions[parent].keys())
                 for name, mts, changes in _REACTIONS:
@@ -317,18 +377,21 @@ class Chain:
                             name, daughter, q_value, 1.0))
 
                 if any(mt in reactions_available for mt in openmc.data.FISSION_MTS):
-                    if parent in fpy_data:
-                        q_value = reactions[parent][18]
-                        nuclide.reactions.append(
-                            ReactionTuple('fission', 0, q_value, 1.0))
+                    q_value = reactions[parent][18]
+                    nuclide.reactions.append(
+                        ReactionTuple('fission', None, q_value, 1.0))
+                    fissionable = True
 
-                        if 'fission' not in chain.reactions:
-                            chain.reactions.append('fission')
-                    else:
-                        missing_fpy.append(parent)
+                    if 'fission' not in chain.reactions:
+                        chain.reactions.append('fission')
 
-            if parent in fpy_data:
-                fpy = fpy_data[parent]
+            if fissionable:
+                if parent in fpy_data:
+                    fpy = fpy_data[parent]
+                else:
+                    nuclide._fpy = replace_missing_fpy(parent, fpy_data, decay_data)
+                    missing_fpy.append((parent, nuclide._fpy))
+                    continue
 
                 if fpy.energies is not None:
                     yield_energies = fpy.energies
@@ -354,6 +417,11 @@ class Chain:
 
                 nuclide.yield_data = FissionYieldDistribution(yield_data)
 
+        # Replace missing FPY data
+        for nuclide in chain.nuclides:
+            if hasattr(nuclide, '_fpy'):
+                nuclide.yield_data = chain[nuclide._fpy].yield_data
+
         # Display warnings
         if missing_daughter:
             print('The following decay modes have daughters with no decay data:')
@@ -369,8 +437,8 @@ class Chain:
 
         if missing_fpy:
             print('The following fissionable nuclides have no fission product yields:')
-            for parent in missing_fpy:
-                print('  ' + parent)
+            for parent, replacement in missing_fpy:
+                print('  {}, replaced with {}'.format(parent, replacement))
             print('')
 
         if missing_fp:
@@ -406,7 +474,7 @@ class Chain:
         for i, nuclide_elem in enumerate(root.findall('nuclide')):
             this_q = fission_q.get(nuclide_elem.get("name"))
 
-            nuc = Nuclide.from_xml(nuclide_elem, this_q)
+            nuc = Nuclide.from_xml(nuclide_elem, root, this_q)
             chain.nuclide_dict[nuc.name] = i
 
             # Check for reaction paths
@@ -897,6 +965,8 @@ class Chain:
             new_nuclide = Nuclide(previous.name)
             new_nuclide.half_life = previous.half_life
             new_nuclide.decay_energy = previous.decay_energy
+            if hasattr(previous, '_fpy'):
+                new_nuclide._fpy = previous._fpy
 
             new_decay = []
             for mode in previous.decay_modes:

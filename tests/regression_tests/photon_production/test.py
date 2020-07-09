@@ -13,9 +13,9 @@ def model():
     model.materials.append(mat)
 
     cyl = openmc.XCylinder(r=1.0, boundary_type='vacuum')
-    x_plane_left = openmc.XPlane(-1.0, 'vacuum')
+    x_plane_left = openmc.XPlane(-1.0, boundary_type='vacuum')
     x_plane_center = openmc.XPlane(1.0)
-    x_plane_right = openmc.XPlane(1.0e9, 'vacuum')
+    x_plane_right = openmc.XPlane(1.0e9, boundary_type='vacuum')
 
     inner_cyl_left = openmc.Cell()
     inner_cyl_right = openmc.Cell()

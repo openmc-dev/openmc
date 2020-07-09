@@ -155,7 +155,37 @@ void load_dagmc_geometry()
   model::universe_map[model::universes.back()->id_] = model::universes.size() - 1;
 }
 
-DAGUniverse::DAGUniverse(const std::string& filename) {
+DAGUniverse::DAGUniverse(pugi::xml_node node) {
+  if (check_for_node(node, "id")) {
+    id_ = std::stoi(get_node_value(node, "id"));
+  } else {
+    fatal_error("Must specify the id of the DAGMC universe");
+  }
+
+  if (check_for_node(node, "filename")) {
+    filename_ = get_node_value(node, "filename");
+  } else {
+    fatal_error("Must specify a file for the DAGMC universe");
+  }
+
+  initialize();
+}
+
+DAGUniverse::DAGUniverse(const std::string& filename) : filename_(filename) {
+  // determine the next universe id
+  int32_t next_univ_id = 0;
+  for (const auto& u : model::universes) {
+    if (u->id_ > next_univ_id) next_univ_id = u->id_;
+  }
+  next_univ_id++;
+
+  // set the universe id
+  id_ = next_univ_id;
+
+  initialize();
+}
+
+void DAGUniverse::initialize() {
 
   // determine the next cell id
   int32_t next_cell_id = 0;
@@ -171,23 +201,13 @@ DAGUniverse::DAGUniverse(const std::string& filename) {
   }
   next_surf_id++;
 
-  // determine the next universe id
-  int32_t next_univ_id = 0;
-  for (const auto& u : model::universes) {
-    if (u->id_ > next_univ_id) next_univ_id = u->id_;
-  }
-  next_univ_id++;
-
-  // set the universe id
-  id_ = next_univ_id;
-
   // create a new DAGMC instance
   dagmc_instance_ = std::make_shared<moab::DagMC>();
 
   // --- Materials ---
 
   // create uwuw instance
-  UWUW uwuw(filename.c_str());
+  UWUW uwuw(filename_.c_str());
 
   // check for uwuw material definitions
   bool using_uwuw = !uwuw.material_library.empty();
@@ -198,7 +218,7 @@ DAGUniverse::DAGUniverse(const std::string& filename) {
   }
 
   // load the DAGMC geometry
-  moab::ErrorCode rval = dagmc_instance_->load_file(filename.c_str());
+  moab::ErrorCode rval = dagmc_instance_->load_file(filename_.c_str());
   MB_CHK_ERR_CONT(rval);
 
   // initialize acceleration data structures
@@ -236,17 +256,6 @@ DAGUniverse::DAGUniverse(const std::string& filename) {
     model::cells.emplace_back(c);
     model::cell_map[c->id_] = model::cells.size() - 1;
     cells_.push_back(model::cell_map[c->id_]);
-
-    // Populate the Universe vector and dict
-    // auto it = model::universe_map.find(dagmc_univ_id);
-    // if (it == model::universe_map.end()) {
-    //   model::universes.push_back(std::make_unique<Universe>());
-    //   model::universes.back()->id_ = dagmc_univ_id;
-    //   model::universes.back()->cells_.push_back(i);
-    //   model::universe_map[id_] = model::universes.size() - 1;
-    // } else {
-    //   model::universes[it->second]->cells_.push_back(i);
-    // }
 
     // MATERIALS
 
@@ -554,8 +563,7 @@ void read_geometry_dagmc()
 {
   write_message("Reading DAGMC geometry...", 5);
   load_dagmc_geometry();
-
-  model::root_universe = 0;
+  model::root_universe = find_root_universe();
 }
 
 }

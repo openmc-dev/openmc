@@ -80,11 +80,11 @@ public:
 class DAGUniverse : public Universe {
 
 public:
-  explicit DAGUniverse(std::string filename);
+  explicit DAGUniverse(const std::string& filename);
 
 
   // Data Members
-  std::shared_ptr<moab::DagMC> dag_instance_; //! DAGMC Instance for this universe
+  std::shared_ptr<moab::DagMC> dagmc_instance_; //! DAGMC Instance for this universe
 };
 
 #endif

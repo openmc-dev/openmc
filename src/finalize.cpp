@@ -51,9 +51,6 @@ void free_memory()
   if (settings::event_based) {
     free_event_queues();
   }
-#ifdef DAGMC
-  free_memory_dagmc();
-#endif
 }
 
 }

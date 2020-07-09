@@ -75,6 +75,20 @@ public:
   unique_ptr<UniversePartitioner> partitioner_;
 };
 
+#ifdef DAGMC
+
+class DAGUniverse : public Universe {
+
+public:
+  explicit DAGUniverse(std::string filename);
+
+
+  // Data Members
+  std::shared_ptr<moab::DagMC> dag_instance_; //! DAGMC Instance for this universe
+};
+
+#endif
+
 //==============================================================================
 //==============================================================================
 
@@ -271,7 +285,7 @@ public:
 
   void to_hdf5(hid_t group_id) const;
 
-  moab::DagMC* dagmc_ptr_; //!< Pointer to DagMC instance
+  std::shared_ptr<moab::DagMC> dagmc_ptr_; //!< Pointer to DagMC instance
   int32_t dag_index_;      //!< DagMC index of cell
 };
 #endif
@@ -343,6 +357,7 @@ struct CellInstanceHash {
 void read_cells(pugi::xml_node node);
 
 #ifdef DAGMC
+void read_dagmc_universes(pugi::xml_node node);
 int32_t next_cell(DAGCell* cur_cell, DAGSurface* surf_xed);
 #endif
 

@@ -15,7 +15,7 @@ extern "C" const bool DAGMC_ENABLED;
 namespace openmc {
 
 namespace model {
-  extern moab::DagMC* DAG;
+  extern std::shared_ptr<moab::DagMC> DAG;
 }
 
 //==============================================================================
@@ -23,7 +23,7 @@ namespace model {
 //==============================================================================
 
 void load_dagmc_geometry();
-void free_memory_dagmc();
+void create_dagmc_universe(const std::string& filename);
 void read_geometry_dagmc();
 bool read_uwuw_materials(pugi::xml_document& doc);
 bool get_uwuw_materials_xml(std::string& s);

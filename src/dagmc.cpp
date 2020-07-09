@@ -41,7 +41,7 @@ const std::string DAGMC_FILENAME = "dagmc.h5m";
 
 namespace model {
 
-moab::DagMC* DAG;
+std::shared_ptr<moab::DagMC> DAG;
 
 } // namespace model
 
@@ -151,14 +151,17 @@ void legacy_assign_material(std::string mat_string, DAGCell* c)
 
 void load_dagmc_geometry()
 {
+  create_dagmc_universe(dagmc_file());
+}
+
+void create_dagmc_universe(const std::string& filename) {
   if (!model::DAG) {
-    model::DAG = new moab::DagMC();
+    model::DAG = std::make_shared<moab::DagMC>();
   }
 
   // --- Materials ---
 
   // create uwuw instance
-  auto filename = dagmc_file();
   UWUW uwuw(filename.c_str());
 
   // check for uwuw material definitions
@@ -180,7 +183,7 @@ void load_dagmc_geometry()
   MB_CHK_ERR_CONT(rval);
 
   // parse model metadata
-  dagmcMetaData DMD(model::DAG, false, false);
+  dagmcMetaData DMD(model::DAG.get(), false, false);
   DMD.load_property_data();
 
   vector<std::string> keywords {"temp"};
@@ -345,12 +348,6 @@ void read_geometry_dagmc()
 
   model::root_universe = find_root_universe();
 }
-
-void free_memory_dagmc()
-{
-  delete model::DAG;
-}
-
 
 }
 #endif

@@ -30,7 +30,7 @@ class UWUWTest(PyAPITestHarness):
         # tally
         tally = openmc.Tally()
         tally.scores = ['total']
-        tally.filters = [openmc.CellFilter(1)]
+        tally.filters = [openmc.CellFilter(2)]
         model.tallies = [tally]
 
         model.tallies.export_to_xml()

@@ -2,6 +2,7 @@ from abc import ABC, abstractmethod
 from copy import copy
 
 import openmc
+from openmc.checkvalue import check_greater_than, check_value
 
 
 class CompositeSurface(ABC):
@@ -88,6 +89,9 @@ class RightCircularCylinder(CompositeSurface):
 
     def __init__(self, center_base, height, radius, axis='z', **kwargs):
         cx, cy, cz = center_base
+        check_greater_than('cylinder height', height, 0.0)
+        check_greater_than('cylinder radius', radius, 0.0)
+        check_value('cylinder axis', axis, ('x', 'y', 'z'))
         if axis == 'x':
             self.cyl = openmc.XCylinder(y0=cy, z0=cz, r=radius, **kwargs)
             self.bottom = openmc.XPlane(x0=cx, **kwargs)
@@ -142,6 +146,12 @@ class RectangularParallelepiped(CompositeSurface):
     _surface_names = ('xmin', 'xmax', 'ymin', 'ymax', 'zmin', 'zmax')
 
     def __init__(self, xmin, xmax, ymin, ymax, zmin, zmax, **kwargs):
+        if xmin >= xmax:
+            raise ValueError('xmin must be less than xmax')
+        if ymin >= ymax:
+            raise ValueError('ymin must be less than ymax')
+        if zmin >= zmax:
+            raise ValueError('zmin must be less than zmax')
         self.xmin = openmc.XPlane(x0=xmin, **kwargs)
         self.xmax = openmc.XPlane(x0=xmax, **kwargs)
         self.ymin = openmc.YPlane(y0=ymin, **kwargs)
@@ -199,6 +209,7 @@ class XConeOneSided(CompositeSurface):
     _surface_names = ('cone', 'plane')
 
     def __init__(self, x0=0., y0=0., z0=0., r2=1., up=True, **kwargs):
+        check_greater_than('cone R^2', r2, 0.0)
         self.cone = openmc.XCone(x0, y0, z0, r2, **kwargs)
         self.plane = openmc.XPlane(x0)
         self.up = up
@@ -256,6 +267,7 @@ class YConeOneSided(CompositeSurface):
     _surface_names = ('cone', 'plane')
 
     def __init__(self, x0=0., y0=0., z0=0., r2=1., up=True, **kwargs):
+        check_greater_than('cone R^2', r2, 0.0)
         self.cone = openmc.YCone(x0, y0, z0, r2, **kwargs)
         self.plane = openmc.YPlane(y0)
         self.up = up
@@ -307,6 +319,7 @@ class ZConeOneSided(CompositeSurface):
     _surface_names = ('cone', 'plane')
 
     def __init__(self, x0=0., y0=0., z0=0., r2=1., up=True, **kwargs):
+        check_greater_than('cone R^2', r2, 0.0)
         self.cone = openmc.ZCone(x0, y0, z0, r2, **kwargs)
         self.plane = openmc.ZPlane(z0)
         self.up = up

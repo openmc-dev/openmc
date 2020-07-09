@@ -63,6 +63,7 @@ namespace model {
 class Universe
 {
 public:
+
   int32_t id_;                  //!< Unique ID
   vector<int32_t> cells_;       //!< Cells within this universe
 
@@ -88,6 +89,8 @@ public:
   // Data Members
   std::string filename_;
   std::shared_ptr<moab::DagMC> dagmc_instance_; //! DAGMC Instance for this universe
+  int32_t cell_idx_offset_;
+  int32_t surf_idx_offset_;
 };
 
 #endif

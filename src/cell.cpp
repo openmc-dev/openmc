@@ -793,6 +793,11 @@ DAGCell::distance(Position r, Direction u, int32_t on_surface, Particle* p) cons
     p->last_dir() = u;
   }
 
+  const auto& univ = model::universes[p->coord_[p->n_coord_ - 1].universe];
+
+  DAGUniverse* dag_univ = static_cast<DAGUniverse*>(univ.get());
+  if (!dag_univ) fatal_error("DAGMC call made for particle in a non-DAGMC universe");
+
   moab::ErrorCode rval;
   moab::EntityHandle vol = dagmc_ptr_->entity_by_index(3, dag_index_);
   moab::EntityHandle hit_surf;
@@ -803,7 +808,7 @@ DAGCell::distance(Position r, Direction u, int32_t on_surface, Particle* p) cons
   MB_CHK_ERR_CONT(rval);
   int surf_idx;
   if (hit_surf != 0) {
-    surf_idx = dagmc_ptr_->index_by_handle(hit_surf);
+    surf_idx = dag_univ->surf_idx_offset_ + dagmc_ptr_->index_by_handle(hit_surf);
   } else {
     // indicate that particle is lost
     surf_idx = -1;

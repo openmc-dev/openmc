@@ -386,24 +386,24 @@ Particle::cross_surface()
   // ==========================================================================
   // SEARCH NEIGHBOR LISTS FOR NEXT CELL
 
-#ifdef DAGMC
-  if (settings::dagmc) {
-    auto cellp = dynamic_cast<DAGCell*>(model::cells[cell_last(0)].get());
-    // TODO: off-by-one
-    auto surfp =
-      dynamic_cast<DAGSurface*>(model::surfaces[std::abs(surface()) - 1].get());
-    int32_t i_cell = next_cell(cellp, surfp) - 1;
-    // save material and temp
-    material_last() = material();
-    sqrtkT_last() = sqrtkT();
-    // set new cell value
-    coord(0).cell = i_cell;
-    cell_instance() = 0;
-    material() = model::cells[i_cell]->material_[0];
-    sqrtkT() = model::cells[i_cell]->sqrtkT_[0];
-    return;
-  }
-#endif
+
+// #ifdef DAGMC
+//   if (settings::dagmc) {
+//     auto cellp = dynamic_cast<DAGCell*>(model::cells[cell_last_[0]].get());
+//     // TODO: off-by-one
+//     auto surfp = dynamic_cast<DAGSurface*>(model::surfaces[std::abs(surface_) - 1].get());
+//     int32_t i_cell = next_cell(cellp, surfp) - 1;
+//     // save material and temp
+//     material_last_ = material_;
+//     sqrtkT_last_ = sqrtkT_;
+//     // set new cell value
+//     coord_[0].cell = i_cell;
+//     cell_instance_ = 0;
+//     material_ = model::cells[i_cell]->material_[0];
+//     sqrtkT_ = model::cells[i_cell]->sqrtkT_[0];
+//     return;
+//   }
+// #endif
 
   if (neighbor_list_find_cell(*this))
     return;

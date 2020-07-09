@@ -171,7 +171,7 @@ DAGUniverse::DAGUniverse(pugi::xml_node node) {
   initialize();
 }
 
-DAGUniverse::DAGUniverse(const std::string& filename) : filename_(filename) {
+DAGUniverse::DAGUniverse(const std::string& filename): filename_(filename) {
   // determine the next universe id
   int32_t next_univ_id = 0;
   for (const auto& u : model::universes) {
@@ -192,6 +192,7 @@ void DAGUniverse::initialize() {
   for (const auto& c : model::cells) {
     if (c->id_ > next_cell_id) next_cell_id = c->id_;
   }
+  cell_idx_offset_ = model::cells.size();
   next_cell_id++;
 
   // determine the next surface id
@@ -199,6 +200,7 @@ void DAGUniverse::initialize() {
   for (const auto& s : model::surfaces) {
     if (s->id_ > next_surf_id) next_surf_id = s->id_;
   }
+  surf_idx_offset_ = model::surfaces.size();
   next_surf_id++;
 
   // create a new DAGMC instance
@@ -367,7 +369,7 @@ void DAGUniverse::initialize() {
 
     // add to global array and map
     model::surfaces.emplace_back(s);
-//    model::surface_map[s->id_] = model::surfaces.size() - 1;
+    model::surface_map[s->id_] = model::surfaces.size() - 1;
   }
 }
 

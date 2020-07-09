@@ -80,10 +80,13 @@ public:
 class DAGUniverse : public Universe {
 
 public:
+  explicit DAGUniverse(pugi::xml_node node);
   explicit DAGUniverse(const std::string& filename);
 
+  void initialize(); //!< Sets up the DAGMC instance and OpenMC internals
 
   // Data Members
+  std::string filename_;
   std::shared_ptr<moab::DagMC> dagmc_instance_; //! DAGMC Instance for this universe
 };
 

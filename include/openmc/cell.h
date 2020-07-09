@@ -358,6 +358,7 @@ struct CellInstanceHash {
 //==============================================================================
 
 void read_cells(pugi::xml_node node);
+void read_dagmc_universes(pugi::xml_node node);
 
 #ifdef DAGMC
 void read_dagmc_universes(pugi::xml_node node);

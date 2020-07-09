@@ -992,9 +992,6 @@ void read_cells(pugi::xml_node node)
   // Count the number of cells.
   int n_cells = 0;
   for (pugi::xml_node cell_node: node.children("cell")) {n_cells++;}
-  if (n_cells == 0) {
-    fatal_error("No cells found in geometry.xml!");
-  }
 
   // Loop over XML cell elements and populate the array.
   model::cells.reserve(n_cells);
@@ -1013,10 +1010,7 @@ void read_cells(pugi::xml_node node)
     }
   }
 
-#ifdef DAGMC
-  // read any DAGMC universes
   read_dagmc_universes(node);
-#endif
 
   // Populate the Universe vector and map.
   for (int i = 0; i < model::cells.size(); i++) {
@@ -1037,17 +1031,17 @@ void read_cells(pugi::xml_node node)
   if (settings::check_overlaps) {
     model::overlap_check_count.resize(model::cells.size(), 0);
   }
+
+  if (model::cells.size() == 0) {
+    fatal_error("No cells were found in the geometry.xml file");
+  }
 }
 
 void read_dagmc_universes(pugi::xml_node node) {
-
-  // determine the max cell id
-  int32_t next_cell_id = 0;
-  for (const auto& c : model::cells) {
-    if (c->id_ > next_cell_id) next_cell_id = c->id_;
+  for (pugi::xml_node dag_node : node.children("dagmc")) {
+    model::universes.push_back(std::make_unique<DAGUniverse>(dag_node));
+    model::universe_map[model::universes.back()->id_] = model::universes.size() - 1;
   }
-  next_cell_id++;
-
 }
 
 //==============================================================================

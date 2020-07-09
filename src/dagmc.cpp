@@ -367,7 +367,7 @@ void DAGUniverse::initialize() {
 
     // add to global array and map
     model::surfaces.emplace_back(s);
-    model::surface_map[s->id_] = model::surfaces.size() - 1;
+//    model::surface_map[s->id_] = model::surfaces.size() - 1;
   }
 }
 

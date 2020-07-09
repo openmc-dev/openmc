@@ -42,13 +42,6 @@ void update_universe_cell_count(int32_t a, int32_t b) {
 
 void read_geometry_xml()
 {
-#ifdef DAGMC
-  if (settings::dagmc) {
-    read_geometry_dagmc();
-    return;
-  }
-#endif
-
   // Display output message
   write_message("Reading geometry XML file...", 5);
 
@@ -69,8 +62,8 @@ void read_geometry_xml()
   pugi::xml_node root = doc.document_element();
 
   // Read surfaces, cells, lattice
-  read_surfaces(root);
   read_cells(root);
+  read_surfaces(root);
   read_lattices(root);
 
   // Allocate universes, universe cell arrays, and assign base universe

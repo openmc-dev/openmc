@@ -1190,13 +1190,13 @@ void read_surfaces(pugi::xml_node node)
       break;
     }
   }
-  if (settings::run_mode != RunMode::PLOTTING && !boundary_exists) {
-    fatal_error("No boundary conditions were applied to any surfaces!");
-  }
+  // if (settings::run_mode != RunMode::PLOTTING && !boundary_exists) {
+  //   fatal_error("No boundary conditions were applied to any surfaces!");
+  // }
 
-  if (model::surfaces.size() == 0) {
-    fatal_error("No surfaces found in geometry.xml!");
-  }
+  // if (model::surfaces.size() == 0) {
+  //   fatal_error("No surfaces found in geometry.xml!");
+  // }
 }
 
 void free_memory_surfaces()

@@ -62,8 +62,8 @@ void read_geometry_xml()
   pugi::xml_node root = doc.document_element();
 
   // Read surfaces, cells, lattice
-  read_cells(root);
   read_surfaces(root);
+  read_cells(root);
   read_lattices(root);
 
   // Allocate universes, universe cell arrays, and assign base universe

@@ -1,3 +1,4 @@
+from abc import ABCMeta
 from collections import OrderedDict
 import copy
 from numbers import Integral
@@ -6,6 +7,7 @@ import warnings
 
 import h5py
 import numpy as np
+from six import string_types
 
 import openmc
 import openmc.checkvalue as cv
@@ -36,7 +38,8 @@ MGXS_TYPES = (
     'chi-prompt',
     'inverse-velocity',
     'prompt-nu-fission',
-    'prompt-nu-fission matrix'
+    'prompt-nu-fission matrix',
+    'current'
 )
 
 # Supported domain types

@@ -335,7 +335,7 @@ class NormalizationHelper(ABC):
         self._energy = 0.0
 
     @abstractmethod
-    def prepare(self, chain_nucs, rate_index, materials):
+    def prepare(self, chain_nucs, rate_index):
         """Perform work needed to obtain energy produced
 
         This method is called prior to the transport simulations
@@ -348,13 +348,9 @@ class NormalizationHelper(ABC):
         rate_index : dict of str to int
             Mapping from nuclide name to index in the
             `fission_rates` for :meth:`update`.
-        materials : list of str
-            All materials tracked on the operator helped by this
-            object. Should correspond to
-            :attr:`openmc.deplete.Operator.burnable_materials`
         """
 
-    def update(self, fission_rates, mat_index):
+    def update(self, fission_rates):
         """Update the energy produced
 
         Parameters
@@ -363,9 +359,6 @@ class NormalizationHelper(ABC):
             fission reaction rate for each isotope in the specified
             material. Should be ordered corresponding to initial
             ``rate_index`` used in :meth:`prepare`
-        mat_index : int
-            Index for the specific material in the list of all burnable
-            materials.
         """
 
     @property

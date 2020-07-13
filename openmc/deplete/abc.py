@@ -29,7 +29,7 @@ from .pool import deplete
 
 __all__ = [
     "OperatorResult", "TransportOperator", "ReactionRateHelper",
-    "EnergyHelper", "FissionYieldHelper", "TalliedFissionYieldHelper",
+    "NormalizationHelper", "FissionYieldHelper", "TalliedFissionYieldHelper",
     "Integrator", "SIIntegrator", "DepSystemSolver"]
 
 
@@ -302,14 +302,14 @@ class ReactionRateHelper(ABC):
         return results
 
 
-class EnergyHelper(ABC):
-    """Abstract class for obtaining energy produced
+class NormalizationHelper(ABC):
+    """Abstract class for obtaining normalization factor on tallies
 
-    The ultimate goal of this helper is to provide instances of
-    :class:`openmc.deplete.Operator` with the total energy produced
-    in a transport simulation. This information, provided with the
-    power requested by the user and reaction rates from a
-    :class:`ReactionRateHelper` will scale reaction rates to the
+    This helper class determines how reaction rates calculated by an instance of
+    :class:`openmc.deplete.Operator` should be normalized for the purpose of
+    constructing a burnup matrix. Based on the method chosen, the power or
+    source rate provided by the user, and reaction rates from a
+    :class:`ReactionRateHelper`, this class will scale reaction rates to the
     correct values.
 
     Attributes

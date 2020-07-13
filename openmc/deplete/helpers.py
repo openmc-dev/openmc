@@ -113,7 +113,7 @@ class ChainFissionHelper(NormalizationHelper):
         super().__init__()
         self._fission_q_vector = None
 
-    def prepare(self, chain_nucs, rate_index, _materials):
+    def prepare(self, chain_nucs, rate_index):
         """Populate the fission Q value vector from a chain.
 
         Parameters
@@ -125,8 +125,6 @@ class ChainFissionHelper(NormalizationHelper):
             Dictionary mapping names of nuclides, e.g. ``"U235"``,
             to a corresponding index in the desired fission Q
             vector.
-        _materials : list of str
-            Unused. Materials to be tracked for this helper.
         """
         if (self._fission_q_vector is not None
                 and self._fission_q_vector.shape == (len(rate_index),)):
@@ -143,7 +141,7 @@ class ChainFissionHelper(NormalizationHelper):
 
         self._fission_q_vector = fission_qs
 
-    def update(self, fission_rates, _mat_index):
+    def update(self, fission_rates):
         """Update energy produced with fission rates in a material
 
         Parameters
@@ -152,9 +150,6 @@ class ChainFissionHelper(NormalizationHelper):
             fission reaction rate for each isotope in the specified
             material. Should be ordered corresponding to initial
             ``rate_index`` used in :meth:`prepare`
-        _mat_index : int
-            index for the material requested. Unused, as identical
-            isotopes in all materials have the same Q value.
         """
         self._energy += dot(fission_rates, self._fission_q_vector)
 

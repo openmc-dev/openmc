@@ -492,7 +492,7 @@ class Operator(TransportOperator):
                      for i in self.burnable_mats]
         self._rate_helper.generate_tallies(materials, self.chain.reactions)
         self._normalization_helper.prepare(
-            self.chain.nuclides, self.reaction_rates.index_nuc, materials)
+            self.chain.nuclides, self.reaction_rates.index_nuc)
         # Tell fission yield helper what materials this process is
         # responsible for
         self._yield_helper.generate_tallies(
@@ -672,7 +672,7 @@ class Operator(TransportOperator):
             fission_yields.append(self._yield_helper.weighted_yields(i))
 
             # Accumulate energy from fission
-            self._normalization_helper.update(tally_rates[:, fission_ind], mat_index)
+            self._normalization_helper.update(tally_rates[:, fission_ind])
 
             # Divide by total number and store
             rates[i] = self._rate_helper.divide_by_adens(number)

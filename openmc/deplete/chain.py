@@ -33,17 +33,81 @@ from openmc._xml import clean_indentation
 from .nuclide import Nuclide, DecayTuple, ReactionTuple
 
 
-# tuple of (reaction name, possible MT values, (dA, dZ)) where dA is the change
-# in the mass number and dZ is the change in the atomic number
-_REACTIONS = [
-    ('(n,2n)', set(chain([16], range(875, 892))), (-1, 0)),
-    ('(n,3n)', {17}, (-2, 0)),
-    ('(n,4n)', {37}, (-3, 0)),
-    ('(n,gamma)', {102}, (1, 0)),
-    ('(n,p)', set(chain([103], range(600, 650))), (0, -1)),
-    ('(n,a)', set(chain([107], range(800, 850))), (-3, -2))
-]
+# tuple of (possible MT values, (dA, dZ)) where dA is the change in the mass
+# number and dZ is the change in the atomic number
+_REACTIONS = {
+    '(n,2n)': (set(chain([16], range(875, 892))), (-1, 0)),
+    '(n,3n)': ({17}, (-2, 0)),
+    '(n,4n)': ({37}, (-3, 0)),
+    '(n,gamma)': ({102}, (1, 0)),
+    '(n,p)': (set(chain([103], range(600, 650))), (0, -1)),
+    '(n,d)': (set(chain([104], range(650, 700))), (-1, -1)),
+    '(n,t)': (set(chain([105], range(700, 750))), (-2, -1)),
+    '(n,3He)': (set(chain([106], range(750, 800))), (-2, -2)),
+    '(n,a)': (set(chain([107], range(800, 850))), (-3, -2)),
+    '(n,2a)': ({108}, (-7, -4)),
+    '(n,3a)': ({109}, (-11, -6)),
+    '(n,2p)': ({111}, (-1, -2)),
+    '(n,pa)': ({112}, (-4, -3)),
+    '(n,t2a)': ({113}, (-10, -5)),
+    '(n,d2a)': ({114}, (-9, -5)),
+    '(n,pd)': ({115}, (-2, -2)),
+    '(n,pt)': ({116}, (-3, -2)),
+    '(n,da)': ({117}, (-5, -3)),
+    '(n,5n)': ({152}, (-4, 0)),
+    '(n,6n)': ({153}, (-5, 0)),
+    '(n,2nt)': ({154}, (-4, -1)),
+    '(n,ta)': ({155}, (-6, -3)),
+    '(n,4np)': ({156}, (-4, -1)),
+    '(n,3nd)': ({157}, (-4, -1)),
+    '(n,nda)': ({158}, (-6, -3)),
+    '(n,2npa)': ({159}, (-6, -3)),
+    '(n,7n)': ({160}, (-6, 0)),
+    '(n,8n)': ({161}, (-7, 0)),
+    '(n,5np)': ({162}, (-5, -1)),
+    '(n,6np)': ({163}, (-6, -1)),
+    '(n,7np)': ({164}, (-7, -1)),
+    '(n,4na)': ({165}, (-7, -2)),
+    '(n,5na)': ({166}, (-8, -2)),
+    '(n,6na)': ({167}, (-9, -2)),
+    '(n,7na)': ({168}, (-10, -2)),
+    '(n,4nd)': ({169}, (-5, -1)),
+    '(n,5nd)': ({170}, (-6, -1)),
+    '(n,6nd)': ({171}, (-7, -1)),
+    '(n,3nt)': ({172}, (-5, -1)),
+    '(n,4nt)': ({173}, (-6, -1)),
+    '(n,5nt)': ({174}, (-7, -1)),
+    '(n,6nt)': ({175}, (-8, -1)),
+    '(n,2n3He)': ({176}, (-4, -2)),
+    '(n,3n3He)': ({177}, (-5, -2)),
+    '(n,4n3He)': ({178}, (-6, -2)),
+    '(n,3n2p)': ({179}, (-4, -2)),
+    '(n,3n2a)': ({180}, (-10, -4)),
+    '(n,3npa)': ({181}, (-7, -3)),
+    '(n,dt)': ({182}, (-4, -2)),
+    '(n,npd)': ({183}, (-3, -2)),
+    '(n,npt)': ({184}, (-4, -2)),
+    '(n,ndt)': ({185}, (-5, -2)),
+    '(n,np3He)': ({186}, (-4, -3)),
+    '(n,nd3He)': ({187}, (-5, -3)),
+    '(n,nt3He)': ({188}, (-6, -3)),
+    '(n,nta)': ({189}, (-7, -3)),
+    '(n,2n2p)': ({190}, (-3, -2)),
+    '(n,p3He)': ({191}, (-4, -3)),
+    '(n,d3He)': ({192}, (-5, -3)),
+    '(n,3Hea)': ({193}, (-6, -4)),
+    '(n,4n2p)': ({194}, (-5, -2)),
+    '(n,4n2a)': ({195}, (-11, -4)),
+    '(n,4npa)': ({196}, (-8, -3)),
+    '(n,3p)': ({197}, (-2, -3)),
+    '(n,n3p)': ({198}, (-3, -3)),
+    '(n,3n2pa)': ({199}, (-8, -4)),
+    '(n,5n2p)': ({200}, (-6, -2)),
+}
 
+TRANSMUTATION_REACTIONS = [
+    '(n,2n)', '(n,3n)', '(n,4n)', '(n,gamma)', '(n,p)', '(n,a)'
+]
 
 __all__ = ["Chain"]
 
@@ -213,7 +277,7 @@ _SECONDARY_PARTICLES = {
     '(n,3n3He)': ['He3'],
     '(n,4n3He)': ['He3'],
     '(n,3n2p)': ['H1'] * 2,
-    '(n,3n3a)': ['He4'] * 3,
+    '(n,3n2a)': ['He4'] * 2,
     '(n,3npa)': ['H1', 'He4'],
     '(n,dt)': ['H2', 'H3'],
     '(n,npd)': ['H1', 'H2'],
@@ -397,7 +461,8 @@ class Chain:
             fissionable = False
             if parent in reactions:
                 reactions_available = set(reactions[parent].keys())
-                for name, mts, changes in _REACTIONS:
+                for name in TRANSMUTATION_REACTIONS:
+                    mts, changes = _REACTIONS[name]
                     if mts & reactions_available:
                         delta_A, delta_Z = changes
                         A = data.nuclide['mass_number'] + delta_A

@@ -14,7 +14,7 @@ from openmc.checkvalue import check_type, check_greater_than
 from openmc.lib import (
     Tally, MaterialFilter, EnergyFilter, EnergyFunctionFilter)
 from .abc import (
-    ReactionRateHelper, EnergyHelper, FissionYieldHelper,
+    ReactionRateHelper, NormalizationHelper, FissionYieldHelper,
     TalliedFissionYieldHelper)
 
 __all__ = (
@@ -91,13 +91,13 @@ class DirectReactionRateHelper(ReactionRateHelper):
         return self._results_cache
 
 
-# ----------------------------
-# Helpers for obtaining energy
-# ----------------------------
+# ------------------------------------------
+# Helpers for obtaining normalization factor
+# ------------------------------------------
 
 
-class ChainFissionHelper(EnergyHelper):
-    """Computes energy using fission Q values from depletion chain
+class ChainFissionHelper(NormalizationHelper):
+    """Computes normalization using fission Q values from depletion chain
 
     Attributes
     ----------
@@ -159,7 +159,7 @@ class ChainFissionHelper(EnergyHelper):
         self._energy += dot(fission_rates, self._fission_q_vector)
 
 
-class EnergyScoreHelper(EnergyHelper):
+class EnergyScoreHelper(NormalizationHelper):
     """Class responsible for obtaining system energy via a tally score
 
     Parameters
@@ -172,7 +172,7 @@ class EnergyScoreHelper(EnergyHelper):
     ----------
     nuclides : list of str
         List of nuclides with reaction rates. Not needed, but provided
-        for a consistent API across other :class:`EnergyHelper`
+        for a consistent API across other :class:`NormalizationHelper`
     energy : float
         System energy [eV] computed from the tally. Will be zero for
         all MPI processes that are not the "master" process to avoid

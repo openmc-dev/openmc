@@ -5898,7 +5898,7 @@ class InverseVelocity(MGXS):
             raise ValueError('Unable to return the units of InverseVelocity'
                              ' for xs_type other than "macro"')
 
-class SurfaceMGXS(MGXS,metaclass=ABCMeta):
+class SurfaceMGXS(MGXS):
     """An abstract multi-group cross section for some energy group structure
     on the surfaces of a mesh domain.
     This class can be used for both OpenMC input generation and tally data

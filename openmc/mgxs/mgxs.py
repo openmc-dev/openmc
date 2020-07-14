@@ -6022,7 +6022,6 @@ class SurfaceMGXS(MGXS,metaclass=ABCMeta):
 
         return self._add_angle_filters(filters)
 
-
     @property
     def xs_tally(self):
         if self._xs_tally is None:

@@ -1,4 +1,3 @@
-from abc import ABCMeta
 from collections import OrderedDict
 import copy
 from numbers import Integral
@@ -7,7 +6,6 @@ import warnings
 
 import h5py
 import numpy as np
-from six import string_types
 
 import openmc
 import openmc.checkvalue as cv
@@ -5898,7 +5896,8 @@ class InverseVelocity(MGXS):
             raise ValueError('Unable to return the units of InverseVelocity'
                              ' for xs_type other than "macro"')
 
-class SurfaceMGXS(MGXS,metaclass=ABCMeta):
+
+class SurfaceMGXS(MGXS):
     """An abstract multi-group cross section for some energy group structure
     on the surfaces of a mesh domain.
     This class can be used for both OpenMC input generation and tally data
@@ -5980,7 +5979,7 @@ class SurfaceMGXS(MGXS,metaclass=ABCMeta):
 
     # Store whether or not the number density should be removed for microscopic
     # values of this data
-    _divide_by_density = True
+    _divide_by_density = False
 
     def __init__(self, domain=None, domain_type=None, energy_groups=None,
                  by_nuclide=False, name=''):
@@ -6173,7 +6172,7 @@ class SurfaceMGXS(MGXS,metaclass=ABCMeta):
         filter_bins = []
 
         # Construct a collection of the domain filter bins
-        if not isinstance(subdomains, string_types):
+        if not isinstance(subdomains, str):
             cv.check_iterable_type('subdomains', subdomains, Integral,
                                    max_depth=3)
 

@@ -108,9 +108,11 @@ The following tables show all valid scores:
     +----------------------+---------------------------------------------------+
     |Score                 | Description                                       |
     +======================+===================================================+
-    |absorption            |Total absorption rate. This accounts for all       |
-    |                      |reactions which do not produce secondary neutrons  |
-    |                      |as well as fission.                                |
+    |absorption            |Total absorption rate. For incident neutrons, this |
+    |                      |accounts for all reactions that do not produce     |
+    |                      |secondary neutrons as well as fission. For incident|
+    |                      |photons, this includes photoelectric and pair      |
+    |                      |production.                                        |
     +----------------------+---------------------------------------------------+
     |elastic               |Elastic scattering reaction rate.                  |
     +----------------------+---------------------------------------------------+
@@ -193,6 +195,14 @@ The following tables show all valid scores:
     |(n,pt)                |(n,pt) reaction rate.                              |
     +----------------------+---------------------------------------------------+
     |(n,da)                |(n,d\ :math:`\alpha`\ ) reaction rate.             |
+    +----------------------+---------------------------------------------------+
+    |coherent-scatter      |Coherent (Rayleigh) scattering reaction rate.      |
+    +----------------------+---------------------------------------------------+
+    |incoherent-scatter    |Incoherent (Compton) scattering reaction rate.     |
+    +----------------------+---------------------------------------------------+
+    |photoelectric         |Photoelectric absorption reaction rate.            |
+    +----------------------+---------------------------------------------------+
+    |pair-production       |Pair production reaction rate.                     |
     +----------------------+---------------------------------------------------+
     |*Arbitrary integer*   |An arbitrary integer is interpreted to mean the    |
     |                      |reaction rate for a reaction with a given ENDF MT  |

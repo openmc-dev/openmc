@@ -4,16 +4,17 @@ This module contains the Operator class, which is then passed to an integrator
 to run a full depletion simulation.
 """
 
+from abc import ABC, abstractmethod
 from collections import namedtuple, defaultdict
 from collections.abc import Iterable, Callable
+from copy import deepcopy
+from inspect import signature
+from numbers import Real, Integral
 import os
 from pathlib import Path
-from abc import ABC, abstractmethod
-from copy import deepcopy
-from warnings import warn
-from numbers import Real, Integral
-from inspect import signature
+import sys
 import time
+from warnings import warn
 
 from numpy import nonzero, empty, asarray
 from uncertainties import ufloat
@@ -21,6 +22,7 @@ from uncertainties import ufloat
 from openmc.data import DataLibrary, JOULE_PER_EV
 from openmc.lib import MaterialFilter, Tally
 from openmc.checkvalue import check_type, check_greater_than
+from . import comm
 from .results import Results
 from .chain import Chain
 from .results_list import ResultsList
@@ -317,18 +319,11 @@ class NormalizationHelper(ABC):
     nuclides : list of str
         All nuclides with desired reaction rates. Ordered to be
         consistent with :class:`openmc.deplete.Operator`
-    energy : float
-        Total energy [J/s/source neutron] produced in a transport simulation.
-        Updated in the material iteration with :meth:`update`.
+
     """
 
     def __init__(self):
         self._nuclides = None
-        self._energy = 0.0
-
-    @property
-    def energy(self):
-        return self._energy * JOULE_PER_EV
 
     def reset(self):
         """Reset energy produced prior to unpacking tallies"""
@@ -370,6 +365,23 @@ class NormalizationHelper(ABC):
     def nuclides(self, nuclides):
         check_type("nuclides", nuclides, list, str)
         self._nuclides = nuclides
+
+    def factor(self, power):
+        # Reduce energy produced from all processes
+        # J / s / source neutron
+        energy = comm.allreduce(self._energy) * JOULE_PER_EV
+
+        # Guard against divide by zero
+        if energy == 0:
+            if comm.rank == 0:
+                sys.stderr.flush()
+                print("No energy reported from OpenMC tallies. Do your HDF5 "
+                      "files have heating data?\n", file=sys.stderr, flush=True)
+            comm.barrier()
+            comm.Abort(1)
+
+        # Return normalization factor for scaling reaction rates
+        return power / energy
 
 
 class FissionYieldHelper(ABC):

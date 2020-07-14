@@ -154,7 +154,7 @@ score_str_to_int(std::string score_str)
     return N_ND;
   if (score_str == "(n,nt)")
     return N_NT;
-  if (score_str == "(n,nHe-3)")
+  if (score_str == "(n,n3He)")
     return N_N3HE;
   if (score_str == "(n,nd2a)")
     return N_ND2A;

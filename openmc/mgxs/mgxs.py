@@ -6296,6 +6296,7 @@ class Current(SurfaceMGXS):
     name : str, optional
         Name of the multi-group cross section. Used as a label to identify
         tallies in OpenMC 'tallies.xml' file.
+
     Attributes
     ----------
     name : str, optional

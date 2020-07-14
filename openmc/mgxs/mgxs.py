@@ -6173,7 +6173,7 @@ class SurfaceMGXS(MGXS):
         filter_bins = []
 
         # Construct a collection of the domain filter bins
-        if not isinstance(subdomains, string_types):
+        if not isinstance(subdomains, str):
             cv.check_iterable_type('subdomains', subdomains, Integral,
                                    max_depth=3)
 

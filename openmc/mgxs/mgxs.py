@@ -6161,7 +6161,7 @@ class SurfaceMGXS(MGXS):
             filter_bins.append(tuple(subdomain_bins))
 
         # Construct list of energy group bounds tuples for all requested groups
-        if not isinstance(groups, string_types):
+        if not isinstance(groups, str):
             cv.check_iterable_type('groups', groups, Integral)
             filters.append(openmc.EnergyFilter)
             energy_bins = []

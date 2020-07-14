@@ -5905,6 +5905,7 @@ class SurfaceMGXS(MGXS,metaclass=ABCMeta):
     post-processing to compute surface- and energy-integrated multi-group cross
     section for multi-group neutronics calculations.
     NOTE: Users should instantiate the subclasses of this abstract class.
+
     Parameters
     ----------
     domain : openmc.RegularMesh
@@ -5918,6 +5919,7 @@ class SurfaceMGXS(MGXS,metaclass=ABCMeta):
     name : str, optional
         Name of the multi-group cross section. Used as a label to identify
         tallies in OpenMC 'tallies.xml' file.
+
     Attributes
     ----------
     name : str, optional
@@ -6021,7 +6023,6 @@ class SurfaceMGXS(MGXS,metaclass=ABCMeta):
         filters = [[meshsurface_filter, energy_filter]]
 
         return self._add_angle_filters(filters)
-
 
     @property
     def xs_tally(self):
@@ -6281,6 +6282,7 @@ class Current(SurfaceMGXS):
        \frac{\int_{r \in V} dr \int_{4\pi} d\Omega \int_{E_g}^{E_{g-1}} dE \;
        \sigma_t (r, E) \psi (r, E, \Omega)}{\int_{r \in V} dr \int_{4\pi}
        d\Omega \int_{E_g}^{E_{g-1}} dE \; \psi (r, E, \Omega)}.
+
     Parameters
     ----------
     domain : openmc.Material or openmc.Cell or openmc.Universe or openmc.RegularMesh
@@ -6294,6 +6296,7 @@ class Current(SurfaceMGXS):
     name : str, optional
         Name of the multi-group cross section. Used as a label to identify
         tallies in OpenMC 'tallies.xml' file.
+
     Attributes
     ----------
     name : str, optional

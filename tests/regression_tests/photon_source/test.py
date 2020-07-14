@@ -41,19 +41,9 @@ class SourceTestHarness(PyAPITestHarness):
         particle_filter = openmc.ParticleFilter('photon')
         tally = openmc.Tally()
         tally.filters = [particle_filter]
-        tally.scores = ['flux']
+        tally.scores = ['flux', '(n,gamma)']
         tallies = openmc.Tallies([tally])
         tallies.export_to_xml()
-
-    def _get_results(self):
-        with openmc.StatePoint(self._sp_name) as sp:
-            outstr = ''
-            t = sp.get_tally()
-            outstr += 'tally {}:\n'.format(t.id)
-            outstr += 'sum = {:12.6E}\n'.format(t.sum[0, 0, 0])
-            outstr += 'sum_sq = {:12.6E}\n'.format(t.sum_sq[0, 0, 0])
-
-            return outstr
 
 
 def test_photon_source():

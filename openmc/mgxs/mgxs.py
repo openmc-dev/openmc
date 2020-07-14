@@ -5905,6 +5905,7 @@ class SurfaceMGXS(MGXS,metaclass=ABCMeta):
     post-processing to compute surface- and energy-integrated multi-group cross
     section for multi-group neutronics calculations.
     NOTE: Users should instantiate the subclasses of this abstract class.
+
     Parameters
     ----------
     domain : openmc.RegularMesh

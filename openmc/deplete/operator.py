@@ -7,7 +7,6 @@ densities is all done in-memory instead of through the filesystem.
 
 """
 
-import sys
 import copy
 from collections import OrderedDict
 import os
@@ -677,21 +676,8 @@ class Operator(TransportOperator):
             # Divide by total number and store
             rates[i] = self._rate_helper.divide_by_adens(number)
 
-        # Reduce energy produced from all processes
-        # J / s / source neutron
-        energy = comm.allreduce(self._normalization_helper.energy)
-
-        # Guard against divide by zero
-        if energy == 0:
-            if comm.rank == 0:
-                sys.stderr.flush()
-                print(" No energy reported from OpenMC tallies. Do your HDF5 "
-                      "files have heating data?\n", file=sys.stderr, flush=True)
-            comm.barrier()
-            comm.Abort(1)
-
         # Scale reaction rates to obtain units of reactions/sec
-        rates *= power / energy
+        rates *= self._normalization_helper.factor(power)
 
         # Store new fission yields on the chain
         self.chain.fission_yields = fission_yields

@@ -71,7 +71,7 @@ variety of ways. This requires knowing what the total fission energy release sho
 be, including indirect components. Some examples are provided below::
 
     # use a dictionary of fission_q values
-    fission_q = {"U235": 202}  # energy in MeV
+    fission_q = {"U235": 202e+6}  # energy in eV
 
     # create a modified chain and write it to a new file
     chain = openmc.deplete.Chain.from_xml("chain.xml", fission_q)

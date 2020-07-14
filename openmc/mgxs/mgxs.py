@@ -5992,28 +5992,6 @@ class SurfaceMGXS(MGXS):
         return [self.rxn_type]
 
     @property
-    def domain(self):
-        return self._domain
-
-    @property
-    def domain_type(self):
-        return self._domain_type
-
-    @domain.setter
-    def domain(self, domain):
-        cv.check_type('domain', domain, openmc.RegularMesh)
-        self._domain = domain
-
-        # Assign a domain type
-        if self.domain_type is None:
-            self._domain_type = 'mesh'
-
-    @domain_type.setter
-    def domain_type(self, domain_type):
-        cv.check_value('domain type', domain_type, 'mesh')
-        self._domain_type = domain_type
-
-    @property
     def filters(self):
         group_edges = self.energy_groups.group_edges
         energy_filter = openmc.EnergyFilter(group_edges)

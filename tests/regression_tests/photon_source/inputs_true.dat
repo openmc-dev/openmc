@@ -40,6 +40,6 @@
   </filter>
   <tally id="1">
     <filters>1</filters>
-    <scores>flux</scores>
+    <scores>flux (n,gamma)</scores>
   </tally>
 </tallies>

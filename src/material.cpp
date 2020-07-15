@@ -5,6 +5,7 @@
 #include <iterator>
 #include <string>
 #include <sstream>
+#include <unordered_set>
 
 #include "xtensor/xbuilder.hpp"
 #include "xtensor/xoperation.hpp"
@@ -412,7 +413,14 @@ void Material::init_thermal()
 {
   std::vector<ThermalTable> tables;
 
+  std::unordered_set<int> already_checked;
   for (const auto& table : thermal_tables_) {
+    // Make sure each S(a,b) table only gets checked once
+    if (already_checked.find(table.index_table) != already_checked.end()) {
+      continue;
+    }
+    already_checked.insert(table.index_table);
+
     // In order to know which nuclide the S(a,b) table applies to, we need
     // to search through the list of nuclides for one which has a matching
     // name

@@ -5986,7 +5986,6 @@ class SurfaceMGXS(MGXS):
         super(SurfaceMGXS, self).__init__(domain, domain_type, energy_groups,
                                           by_nuclide, name)
 
-
     @property
     def scores(self):
         return [self.rxn_type]

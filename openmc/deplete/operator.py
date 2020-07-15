@@ -604,7 +604,7 @@ class Operator(TransportOperator):
         nuc_list = comm.bcast(nuc_list)
         return [nuc for nuc in nuc_list if nuc in self.chain]
 
-    def _unpack_tallies_and_normalize(self, power):
+    def _unpack_tallies_and_normalize(self, source_rate):
         """Unpack tallies from OpenMC and return an operator result
 
         This method uses OpenMC's C API bindings to determine the k-effective
@@ -614,8 +614,8 @@ class Operator(TransportOperator):
 
         Parameters
         ----------
-        power : float
-            Power of the reactor in [W]
+        source_rate : float
+            Power in [W] or source rate in [neutrons/sec]
 
         Returns
         -------
@@ -677,7 +677,7 @@ class Operator(TransportOperator):
             rates[i] = self._rate_helper.divide_by_adens(number)
 
         # Scale reaction rates to obtain units of reactions/sec
-        rates *= self._normalization_helper.factor(power)
+        rates *= self._normalization_helper.factor(source_rate)
 
         # Store new fission yields on the chain
         self.chain.fission_yields = fission_yields

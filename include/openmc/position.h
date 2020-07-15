@@ -63,6 +63,14 @@ struct Position {
     return std::sqrt(x*x + y*y + z*z);
   }
 
+  inline Position reflect(Position n) {
+    const double projection = n.dot(*this);
+    const double magnitude = n.dot(n);
+
+    n *= (2.0 * projection / magnitude);
+    return *this -= n;
+  }
+
   //! Rotate the position based on a rotation matrix
   Position rotate(const std::vector<double>& rotation) const;
 

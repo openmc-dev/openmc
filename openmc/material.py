@@ -654,6 +654,8 @@ class Material(IDManagerMixin):
             if enrichment_target is not None and element == re.sub(r'\d+$', '', enrichment_target):
                 self.add_element(element, percent, percent_type, enrichment,
                                  enrichment_target, enrichment_type)
+            elif enrichment is not None and enrichment_target is None and element == 'U':
+                self.add_element(element, percent, percent_type, enrichment)
             else:
                 self.add_element(element, percent, percent_type)
 

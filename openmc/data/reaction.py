@@ -422,7 +422,12 @@ def _get_fission_products_endf(ev):
             file_obj = StringIO(ev.section[5, 455])
             items = get_head_record(file_obj)
             nk = items[4]
-            if nk != len(decay_constants):
+            if nk > 1 and len(decay_constants) == 1:
+                # If only one precursor group is listed in MF=1, MT=455, use the
+                # energy spectra from MF=5 to split them into different groups
+                for _ in range(nk - 1):
+                    products.append(deepcopy(products[1]))
+            elif nk != len(decay_constants):
                 raise ValueError(
                     'Number of delayed neutron fission spectra ({}) does not '
                     'match number of delayed neutron precursors ({}).'.format(

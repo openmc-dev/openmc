@@ -138,15 +138,15 @@ class TransportOperator(ABC):
         self._dilute_initial = value
 
     @abstractmethod
-    def __call__(self, vec, power):
+    def __call__(self, vec, source_rate):
         """Runs a simulation.
 
         Parameters
         ----------
         vec : list of numpy.ndarray
             Total atoms to be used in function.
-        power : float
-            Power of the reactor in [W]
+        source_rate : float
+            Power in [W] or source rate in [neutron/sec]
 
         Returns
         -------
@@ -366,9 +366,9 @@ class NormalizationHelper(ABC):
         check_type("nuclides", nuclides, list, str)
         self._nuclides = nuclides
 
-    def factor(self, power):
+    def factor(self, source_rate):
         # Reduce energy produced from all processes
-        # J / s / source neutron
+        # J / source neutron
         energy = comm.allreduce(self._energy) * JOULE_PER_EV
 
         # Guard against divide by zero
@@ -380,8 +380,9 @@ class NormalizationHelper(ABC):
             comm.barrier()
             comm.Abort(1)
 
-        # Return normalization factor for scaling reaction rates
-        return power / energy
+        # Return normalization factor for scaling reaction rates. In this case,
+        # the source rate is the power in [W], so [W] / [J/src] = [src/s]
+        return source_rate / energy
 
 
 class FissionYieldHelper(ABC):
@@ -619,12 +620,16 @@ class Integrator(ABC):
         indicates potentially different power levels for each timestep.
         For a 2D problem, the power can be given in [W/cm] as long
         as the "volume" assigned to a depletion material is actually
-        an area in [cm^2]. Either ``power`` or ``power_density`` must be
-        specified.
+        an area in [cm^2]. Either ``power``, ``power_density``, or
+        ``source_rates`` must be specified.
     power_density : float or iterable of float, optional
         Power density of the reactor in [W/gHM]. It is multiplied by
         initial heavy metal inventory to get total power if ``power``
         is not speficied.
+    source_rates : iterable of float
+        Source rate in [neutrons/sec] for each interval in :attr:`timesteps`
+
+        .. versionadded:: 0.12.1
     timestep_units : {'s', 'min', 'h', 'd', 'MWd/kg'}
         Units for values specified in the `timesteps` argument. 's' means
         seconds, 'min' means minutes, 'h' means hours, and 'MWd/kg' indicates
@@ -650,8 +655,9 @@ class Integrator(ABC):
         Depletion chain
     timesteps : iterable of float
         Size of each depletion interval in [s]
-    power : iterable of float
-        Power of the reactor in [W] for each interval in :attr:`timesteps`
+    source_rates : iterable of float
+        Source rate in [W] or [neutrons/sec] for each interval in
+        :attr:`timesteps`
     solver : callable
         Function that will solve the Bateman equations
         :math:`\frac{\partial}{\partial t}\vec{n} = A_i\vec{n}_i` with a step
@@ -672,7 +678,7 @@ class Integrator(ABC):
     """
 
     def __init__(self, operator, timesteps, power=None, power_density=None,
-                 timestep_units='s', solver="cram48"):
+                 source_rates=None, timestep_units='s', solver="cram48"):
         # Check number of stages previously used
         if operator.prev_res is not None:
             res = operator.prev_res[-1]
@@ -686,22 +692,25 @@ class Integrator(ABC):
         self.operator = operator
         self.chain = operator.chain
 
-        # Determine power and normalize units to W
-        if power is None:
-            if power_density is None:
-                raise ValueError("Either power or power density must be set")
+        # Determine source rate and normalize units to W in using power
+        if power is not None:
+            source_rates = power
+        elif power_density is not None:
             if not isinstance(power_density, Iterable):
-                power = power_density * operator.heavy_metal
+                source_rates = power_density * operator.heavy_metal
             else:
-                power = [p*operator.heavy_metal for p in power_density]
-        if not isinstance(power, Iterable):
-            # Ensure that power is single value if that is the case
-            power = [power] * len(timesteps)
+                source_rates = [p*operator.heavy_metal for p in power_density]
+        elif source_rates is None:
+            raise ValueError("Either power, power_density, or source_rates must be set")
 
-        if len(power) != len(timesteps):
+        if not isinstance(source_rates, Iterable):
+            # Ensure that rate is single value if that is the case
+            source_rates = [source_rates] * len(timesteps)
+
+        if len(source_rates) != len(timesteps):
             raise ValueError(
                 "Number of time steps ({}) != number of powers ({})".format(
-                    len(timesteps), len(power)))
+                    len(timesteps), len(source_rates)))
 
         # Get list of times / units
         if isinstance(timesteps[0], Iterable):
@@ -712,13 +721,13 @@ class Integrator(ABC):
 
         # Determine number of seconds for each timestep
         seconds = []
-        for timestep, unit, watts in zip(times, units, power):
+        for timestep, unit, rate in zip(times, units, source_rates):
             # Make sure values passed make sense
             check_type('timestep', timestep, Real)
             check_greater_than('timestep', timestep, 0.0, False)
             check_type('timestep units', unit, str)
-            check_type('power', watts, Real)
-            check_greater_than('power', watts, 0.0, True)
+            check_type('source rate', rate, Real)
+            check_greater_than('source rate', rate, 0.0, True)
 
             if unit in ('s', 'sec'):
                 seconds.append(timestep)
@@ -731,13 +740,13 @@ class Integrator(ABC):
             elif unit.lower() == 'mwd/kg':
                 watt_days_per_kg = 1e6*timestep
                 kilograms = 1e-3*operator.heavy_metal
-                days = watt_days_per_kg * kilograms / watts
+                days = watt_days_per_kg * kilograms / rate
                 seconds.append(days*_SECONDS_PER_DAY)
             else:
                 raise ValueError("Invalid timestep unit '{}'".format(unit))
 
         self.timesteps = asarray(seconds)
-        self.power = asarray(power)
+        self.source_rates = asarray(source_rates)
 
         if isinstance(solver, str):
             # Delay importing of cram module, which requires this file
@@ -830,22 +839,22 @@ class Integrator(ABC):
         """
 
     def __iter__(self):
-        """Return pairs of time steps in [s] and powers in [W]"""
-        return zip(self.timesteps, self.power)
+        """Return pair of time step in [s] and source rate in [W] or [neutrons/sec]"""
+        return zip(self.timesteps, self.source_rates)
 
     def __len__(self):
         """Return integer number of depletion intervals"""
         return len(self.timesteps)
 
-    def _get_bos_data_from_operator(self, step_index, step_power, bos_conc):
+    def _get_bos_data_from_operator(self, step_index, source_rate, bos_conc):
         """Get beginning of step concentrations, reaction rates from Operator
         """
         x = deepcopy(bos_conc)
-        res = self.operator(x, step_power)
+        res = self.operator(x, source_rate)
         self.operator.write_bos_data(step_index + self._i_res)
         return x, res
 
-    def _get_bos_data_from_restart(self, step_index, step_power, bos_conc):
+    def _get_bos_data_from_restart(self, step_index, source_rate, bos_conc):
         """Get beginning of step concentrations, reaction rates from restart"""
         res = self.operator.prev_res[-1]
         # Depletion methods expect list of arrays
@@ -853,8 +862,8 @@ class Integrator(ABC):
         rates = res.rates[0]
         k = ufloat(res.k[0, 0], res.k[0, 1])
 
-        # Scale rates by ratio of powers
-        rates *= step_power / res.power[0]
+        # Scale reaction rates by ratio of source rates
+        rates *= source_rate / res.source_rate[0]
         return bos_conc, OperatorResult(k, rates)
 
     def _get_start_data(self):
@@ -868,12 +877,12 @@ class Integrator(ABC):
         with self.operator as conc:
             t, self._i_res = self._get_start_data()
 
-            for i, (dt, p) in enumerate(self):
+            for i, (dt, source_rate) in enumerate(self):
                 if i > 0 or self.operator.prev_res is None:
-                    conc, res = self._get_bos_data_from_operator(i, p, conc)
+                    conc, res = self._get_bos_data_from_operator(i, source_rate, conc)
                 else:
-                    conc, res = self._get_bos_data_from_restart(i, p, conc)
-                proc_time, conc_list, res_list = self(conc, res.rates, dt, p, i)
+                    conc, res = self._get_bos_data_from_restart(i, source_rate, conc)
+                proc_time, conc_list, res_list = self(conc, res.rates, dt, source_rate, i)
 
                 # Insert BOS concentration, transport results
                 conc_list.insert(0, conc)
@@ -883,14 +892,14 @@ class Integrator(ABC):
                 conc = conc_list.pop()
 
                 Results.save(self.operator, conc_list, res_list, [t, t + dt],
-                             p, self._i_res + i, proc_time)
+                             source_rate, self._i_res + i, proc_time)
 
                 t += dt
 
             # Final simulation
-            res_list = [self.operator(conc, p)]
+            res_list = [self.operator(conc, source_rate)]
             Results.save(self.operator, [conc], res_list, [t, t],
-                         p, self._i_res + len(self), proc_time)
+                         source_rate, self._i_res + len(self), proc_time)
             self.operator.write_bos_data(len(self) + self._i_res)
 
 
@@ -976,8 +985,8 @@ class SIIntegrator(Integrator):
         check_type("n_steps", n_steps, Integral)
         check_greater_than("n_steps", n_steps, 0)
         super().__init__(
-            operator, timesteps, power, power_density, timestep_units,
-            solver=solver)
+            operator, timesteps, power, power_density,
+            timestep_units=timestep_units, solver=solver)
         self.n_steps = n_steps
 
     def _get_bos_data_from_operator(self, step_index, step_power, bos_conc):

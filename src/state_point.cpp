@@ -566,8 +566,28 @@ write_source_bank(hid_t group_id, bool surf_src_bank)
 {
   hid_t banktype = h5banktype();
 
+  int64_t dims_size = settings::n_particles;
+  int64_t count_size = simulation::work_per_rank;
+  std::vector<int64_t> wi = simulation::work_index;
   std::vector<Particle::Bank> src_bank = simulation::source_bank;
+
   if (surf_src_bank) {
+
+    // Taken from calculate_work
+    int64_t min_work = dims_size / mpi::n_procs;
+    int64_t remainder = dims_size % mpi::n_procs;
+    int64_t i_bank = 0;
+    wi.clear();
+    wi.resize(mpi::n_procs + 1);
+    wi[0] = 0;
+    for (int i = 0; i < mpi::n_procs; ++i) {
+      int64_t work_i = i < remainder ? min_work +1 : min_work;
+      if (mpi::rank == i) count_size = work_i;
+      i_bank += work_i;
+      wi[i + 1] = i_bank;
+    }
+
+    dims_size = settings::max_surf_banks;
     src_bank.clear();
     src_bank.assign(simulation::surf_src_bank.data(),
 		    simulation::surf_src_bank.data()
@@ -576,17 +596,17 @@ write_source_bank(hid_t group_id, bool surf_src_bank)
 
 #ifdef PHDF5
   // Set size of total dataspace for all procs and rank
-  hsize_t dims[] {static_cast<hsize_t>(settings::n_particles)};
+  hsize_t dims[] {static_cast<hsize_t>(dims_size)};
   hid_t dspace = H5Screate_simple(1, dims, nullptr);
   hid_t dset = H5Dcreate(group_id, "source_bank", banktype, dspace,
                          H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
 
   // Create another data space but for each proc individually
-  hsize_t count[] {static_cast<hsize_t>(simulation::work_per_rank)};
+  hsize_t count[] {static_cast<hsize_t>(count_size)};
   hid_t memspace = H5Screate_simple(1, count, nullptr);
 
   // Select hyperslab for this dataspace
-  hsize_t start[] {static_cast<hsize_t>(simulation::work_index[mpi::rank])};
+  hsize_t start[] {static_cast<hsize_t>(wi[mpi::rank])};
   H5Sselect_hyperslab(dspace, H5S_SELECT_SET, start, nullptr, count, nullptr);
 
   // Set up the property list for parallel writing
@@ -606,7 +626,7 @@ write_source_bank(hid_t group_id, bool surf_src_bank)
 
   if (mpi::master) {
     // Create dataset big enough to hold all source sites
-    hsize_t dims[] {static_cast<hsize_t>(settings::n_particles)};
+    hsize_t dims[] {static_cast<hsize_t>(dims_size)};
     hid_t dspace = H5Screate_simple(1, dims, nullptr);
     hid_t dset = H5Dcreate(group_id, "source_bank", banktype, dspace,
                            H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
@@ -614,13 +634,12 @@ write_source_bank(hid_t group_id, bool surf_src_bank)
     // Save source bank sites since the souce_bank array is overwritten below
 #ifdef OPENMC_MPI
     std::vector<Particle::Bank> temp_source {src_bank.begin(),
-      src_bank.begin() + simulation::work_per_rank};
+      src_bank.begin() + count_size};
 #endif
 
     for (int i = 0; i < mpi::n_procs; ++i) {
       // Create memory space
-      hsize_t count[] {static_cast<hsize_t>(simulation::work_index[i+1] -
-        simulation::work_index[i])};
+      hsize_t count[] {static_cast<hsize_t>(wi[i+1] - wi[i])};
       hid_t memspace = H5Screate_simple(1, count, nullptr);
 
 #ifdef OPENMC_MPI
@@ -632,7 +651,7 @@ write_source_bank(hid_t group_id, bool surf_src_bank)
 
       // Select hyperslab for this dataspace
       dspace = H5Dget_space(dset);
-      hsize_t start[] {static_cast<hsize_t>(simulation::work_index[i])};
+      hsize_t start[] {static_cast<hsize_t>(wi[i])};
       H5Sselect_hyperslab(dspace, H5S_SELECT_SET, start, nullptr, count, nullptr);
 
       // Write data to hyperslab

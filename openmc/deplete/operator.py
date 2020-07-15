@@ -183,7 +183,6 @@ class Operator(TransportOperator):
                 "or fission-q".format(energy_mode))
         super().__init__(chain_file, fission_q, dilute_initial, prev_results)
         self.round_number = False
-        self.prev_res = None
         self.settings = settings
         self.geometry = geometry
         self.diff_burnable_mats = diff_burnable_mats

@@ -6075,9 +6075,6 @@ class SurfaceMGXS(MGXS):
             self._rxn_rate_tally = None
             self._loaded_sp = False
 
-        # Make a list of the surface bins
-        #surface_bins = list(range(1, 4 * self.domain.n_dimension + 1))
-
         # Find, slice and store Tallies from StatePoint
         # The tally slicing is needed if tally merging was used
         for tally_type, tally in self.tallies.items():

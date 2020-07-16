@@ -29,7 +29,7 @@ class PredictorIntegrator(Integrator):
     """
     _num_stages = 1
 
-    def __call__(self, conc, rates, dt, power, _i=None):
+    def __call__(self, conc, rates, dt, source_rate, _i=None):
         """Perform the integration across one time step
 
         Parameters
@@ -40,8 +40,8 @@ class PredictorIntegrator(Integrator):
             Reaction rates from operator
         dt : float
             Time in [s] for the entire depletion interval
-        power : float
-            Power of the system in [W]
+        source_rate : float
+            Power in [W] or source rate in [neutron/sec]
         _i : int or None
             Iteration index. Not used
 
@@ -81,7 +81,7 @@ class CECMIntegrator(Integrator):
     """
     _num_stages = 2
 
-    def __call__(self, conc, rates, dt, power, _i=None):
+    def __call__(self, conc, rates, dt, source_rate, _i=None):
         """Integrate using CE/CM
 
         Parameters
@@ -92,8 +92,8 @@ class CECMIntegrator(Integrator):
             Reaction rates from operator
         dt : float
             Time in [s] for the entire depletion interval
-        power : float
-            Power of the system [W]
+        source_rate : float
+            Power in [W] or source rate in [neutron/sec]
         _i : int, optional
             Current iteration count. Not used
 
@@ -109,7 +109,7 @@ class CECMIntegrator(Integrator):
         """
         # deplete across first half of inteval
         time0, x_middle = self._timed_deplete(conc, rates, dt / 2)
-        res_middle = self.operator(x_middle, power)
+        res_middle = self.operator(x_middle, source_rate)
 
         # deplete across entire interval with BOS concentrations,
         # MOS reaction rates
@@ -141,7 +141,7 @@ class CF4Integrator(Integrator):
     """
     _num_stages = 4
 
-    def __call__(self, bos_conc, bos_rates, dt, power, _i=None):
+    def __call__(self, bos_conc, bos_rates, dt, source_rate, _i=None):
         """Perform the integration across one time step
 
         Parameters
@@ -152,8 +152,8 @@ class CF4Integrator(Integrator):
             Reaction rates from operator
         dt : float
             Time in [s] for the entire depletion interval
-        power : float
-            Power of the system in [W]
+        source_rate : float
+            Power in [W] or source rate in [neutron/sec]
         _i : int, optional
             Current depletion step index. Not used
 
@@ -171,18 +171,18 @@ class CF4Integrator(Integrator):
         # Step 1: deplete with matrix 1/2*A(y0)
         time1, conc_eos1 = self._timed_deplete(
             bos_conc, bos_rates, dt, matrix_func=cf4_f1)
-        res1 = self.operator(conc_eos1, power)
+        res1 = self.operator(conc_eos1, source_rate)
 
         # Step 2: deplete with matrix 1/2*A(y1)
         time2, conc_eos2 = self._timed_deplete(
             bos_conc, res1.rates, dt, matrix_func=cf4_f1)
-        res2 = self.operator(conc_eos2, power)
+        res2 = self.operator(conc_eos2, source_rate)
 
         # Step 3: deplete with matrix -1/2*A(y0)+A(y2)
         list_rates = list(zip(bos_rates, res2.rates))
         time3, conc_eos3 = self._timed_deplete(
             conc_eos1, list_rates, dt, matrix_func=cf4_f2)
-        res3 = self.operator(conc_eos3, power)
+        res3 = self.operator(conc_eos3, source_rate)
 
         # Step 4: deplete with two matrix exponentials
         list_rates = list(zip(bos_rates, res1.rates, res2.rates, res3.rates))
@@ -218,7 +218,7 @@ class CELIIntegrator(Integrator):
     """
     _num_stages = 2
 
-    def __call__(self, bos_conc, rates, dt, power, _i=None):
+    def __call__(self, bos_conc, rates, dt, source_rate, _i=None):
         """Perform the integration across one time step
 
         Parameters
@@ -229,8 +229,8 @@ class CELIIntegrator(Integrator):
             Reaction rates from operator
         dt : float
             Time in [s] for the entire depletion interval
-        power : float
-            Power of the system in [W]
+        source_rate : float
+            Power in [W] or source rate in [neutron/sec]
         _i : int, optional
             Current iteration count. Not used
 
@@ -247,7 +247,7 @@ class CELIIntegrator(Integrator):
         """
         # deplete to end using BOS rates
         proc_time, conc_ce = self._timed_deplete(bos_conc, rates, dt)
-        res_ce = self.operator(conc_ce, power)
+        res_ce = self.operator(conc_ce, source_rate)
 
         # deplete using two matrix exponentials
         list_rates = list(zip(rates, res_ce.rates))
@@ -282,7 +282,7 @@ class EPCRK4Integrator(Integrator):
     """
     _num_stages = 4
 
-    def __call__(self, conc, rates, dt, power, _i=None):
+    def __call__(self, conc, rates, dt, source_rate, _i=None):
         """Perform the integration across one time step
 
         Parameters
@@ -293,8 +293,8 @@ class EPCRK4Integrator(Integrator):
             Reaction rates from operator
         dt : float
             Time in [s] for the entire depletion interval
-        power : float
-            Power of the system in [W]
+        source_rate : float
+            Power in [W] or source rate in [neutron/sec]
         _i : int, optional
             Current depletion step index, unused.
 
@@ -313,16 +313,16 @@ class EPCRK4Integrator(Integrator):
         # Step 1: deplete with matrix A(y0) / 2
         time1, conc1 = self._timed_deplete(
             conc, rates, dt, matrix_func=rk4_f1)
-        res1 = self.operator(conc1, power)
+        res1 = self.operator(conc1, source_rate)
 
         # Step 2: deplete with matrix A(y1) / 2
         time2, conc2 = self._timed_deplete(
             conc, res1.rates, dt, matrix_func=rk4_f1)
-        res2 = self.operator(conc2, power)
+        res2 = self.operator(conc2, source_rate)
 
         # Step 3: deplete with matrix A(y2)
         time3, conc3 = self._timed_deplete(conc, res2.rates, dt)
-        res3 = self.operator(conc3, power)
+        res3 = self.operator(conc3, source_rate)
 
         # Step 4: deplete with matrix built from weighted rates
         list_rates = list(zip(rates, res1.rates, res2.rates, res3.rates))
@@ -365,7 +365,7 @@ class LEQIIntegrator(Integrator):
     """
     _num_stages = 2
 
-    def __call__(self, bos_conc, bos_rates, dt, power, i):
+    def __call__(self, bos_conc, bos_rates, dt, source_rate, i):
         """Perform the integration across one time step
 
         Parameters
@@ -376,8 +376,8 @@ class LEQIIntegrator(Integrator):
             Reaction rates from operator
         dt : float
             Time in [s] for the entire depletion interval
-        power : float
-            Power of the system in [W]
+        source_rate : float
+            Power in [W] or source rate in [neutron/sec]
         i : int
             Current depletion step index
 
@@ -396,7 +396,7 @@ class LEQIIntegrator(Integrator):
             if self._i_res < 1:  # need at least previous transport solution
                 self._prev_rates = bos_rates
                 return CELIIntegrator.__call__(
-                    self, bos_conc, bos_rates, dt, power, i)
+                    self, bos_conc, bos_rates, dt, source_rate, i)
             prev_res = self.operator.prev_res[-2]
             prev_dt = self.timesteps[i] - prev_res.time[0]
             self._prev_rates = prev_res.rates[0]
@@ -404,7 +404,7 @@ class LEQIIntegrator(Integrator):
             prev_dt = self.timesteps[i - 1]
 
         # Remaining LE/QI
-        bos_res = self.operator(bos_conc, power)
+        bos_res = self.operator(bos_conc, source_rate)
 
         le_inputs = list(zip(
             self._prev_rates, bos_res.rates, repeat(prev_dt), repeat(dt)))
@@ -414,7 +414,7 @@ class LEQIIntegrator(Integrator):
         time2, conc_eos0 = self._timed_deplete(
             conc_inter, le_inputs, dt, matrix_func=leqi_f2)
 
-        res_inter = self.operator(conc_eos0, power)
+        res_inter = self.operator(conc_eos0, source_rate)
 
         qi_inputs = list(zip(
             self._prev_rates, bos_res.rates, res_inter.rates,
@@ -446,7 +446,7 @@ class SICELIIntegrator(SIIntegrator):
     """
     _num_stages = 2
 
-    def __call__(self, bos_conc, bos_rates, dt, power, _i=None):
+    def __call__(self, bos_conc, bos_rates, dt, source_rate, _i=None):
         """Perform the integration across one time step
 
         Parameters
@@ -457,8 +457,8 @@ class SICELIIntegrator(SIIntegrator):
             Reaction rates from operator
         dt : float
             Time in [s] for the entire depletion interval
-        power : float
-            Power of the system in [W]
+        source_rate : float
+            Power in [W] or source rate in [neutron/sec]
         _i : int, optional
             Current depletion step index. Not used
 
@@ -478,7 +478,7 @@ class SICELIIntegrator(SIIntegrator):
 
         # Begin iteration
         for j in range(self.n_steps + 1):
-            inter_res = self.operator(inter_conc, power)
+            inter_res = self.operator(inter_conc, source_rate)
 
             if j <= 1:
                 res_bar = copy.deepcopy(inter_res)
@@ -511,7 +511,7 @@ class SILEQIIntegrator(SIIntegrator):
     """
     _num_stages = 2
 
-    def __call__(self, bos_conc, bos_rates, dt, power, i):
+    def __call__(self, bos_conc, bos_rates, dt, source_rate, i):
         """Perform the integration across one time step
 
         Parameters
@@ -523,8 +523,8 @@ class SILEQIIntegrator(SIIntegrator):
             Reaction rates from operator for all depletable materials
         dt : float
             Time in [s] for the entire depletion interval
-        power : float
-            Power of the system in [W]
+        source_rate : float
+            Power in [W] or source rate in [neutron/sec]
         i : int
             Current depletion step index
 
@@ -544,7 +544,7 @@ class SILEQIIntegrator(SIIntegrator):
                 self._prev_rates = bos_rates
                 # Perform CELI for initial steps
                 return SICELIIntegrator.__call__(
-                    self, bos_conc, bos_rates, dt, power, i)
+                    self, bos_conc, bos_rates, dt, source_rate, i)
             prev_res = self.operator.prev_res[-2]
             prev_dt = self.timesteps[i] - prev_res.time[0]
             self._prev_rates = prev_res.rates[0]
@@ -563,7 +563,7 @@ class SILEQIIntegrator(SIIntegrator):
         inter_conc = copy.deepcopy(eos_conc)
 
         for j in range(self.n_steps + 1):
-            inter_res = self.operator(inter_conc, power)
+            inter_res = self.operator(inter_conc, source_rate)
 
             if j <= 1:
                 res_bar = copy.deepcopy(inter_res)

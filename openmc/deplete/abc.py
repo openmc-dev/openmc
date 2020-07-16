@@ -822,7 +822,7 @@ class Integrator(ABC):
         dt : float
             Time in [s] for the entire depletion interval
         source_rate : float
-            Power in [W] or source rate in [neutrons/sec]
+            Power in [W] or source rate in [neutron/sec]
         i : int
             Current depletion step index
 
@@ -847,7 +847,7 @@ class Integrator(ABC):
         """
 
     def __iter__(self):
-        """Return pair of time step in [s] and source rate in [W] or [neutrons/sec]"""
+        """Return pair of time step in [s] and source rate in [W] or [neutron/sec]"""
         return zip(self.timesteps, self.source_rates)
 
     def __len__(self):

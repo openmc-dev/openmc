@@ -253,7 +253,7 @@ class Operator(TransportOperator):
         self._yield_helper = fission_helper.from_operator(
             self, **fission_yield_opts)
 
-    def __call__(self, vec, power):
+    def __call__(self, vec, source_rate):
         """Runs a simulation.
 
         Simulation will abort under the following circumstances:
@@ -264,8 +264,8 @@ class Operator(TransportOperator):
         ----------
         vec : list of numpy.ndarray
             Total atoms to be used in function.
-        power : float
-            Power of the reactor in [W]
+        source_rate : float
+            Source rate in [W] in [neutron/sec]
 
         Returns
         -------
@@ -292,7 +292,7 @@ class Operator(TransportOperator):
         openmc.lib.reset_timers()
 
         # Extract results
-        op_result = self._unpack_tallies_and_normalize(power)
+        op_result = self._unpack_tallies_and_normalize(source_rate)
 
         return copy.deepcopy(op_result)
 
@@ -609,13 +609,12 @@ class Operator(TransportOperator):
 
         This method uses OpenMC's C API bindings to determine the k-effective
         value and reaction rates from the simulation. The reaction rates are
-        normalized by the user-specified power, summing the product of the
-        fission reaction rate times the fission Q value for each material.
+        normalized by a helper class depending on the method being used.
 
         Parameters
         ----------
         source_rate : float
-            Power in [W] or source rate in [neutrons/sec]
+            Power in [W] or source rate in [neutron/sec]
 
         Returns
         -------
@@ -635,8 +634,6 @@ class Operator(TransportOperator):
         # Form fast map
         nuc_ind = [rates.index_nuc[nuc] for nuc in nuclides]
         react_ind = [rates.index_rx[react] for react in self.chain.reactions]
-
-        # Compute fission power
 
         # Keep track of energy produced from all reactions in eV per source
         # particle

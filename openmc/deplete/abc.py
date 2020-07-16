@@ -32,7 +32,7 @@ from .pool import deplete
 __all__ = [
     "OperatorResult", "TransportOperator", "ReactionRateHelper",
     "NormalizationHelper", "FissionYieldHelper", "TalliedFissionYieldHelper",
-    "Integrator", "SIIntegrator", "DepSystemSolver"]
+    "Integrator", "SIIntegrator", "DepSystemSolver", "add_params"]
 
 
 _SECONDS_PER_MINUTE = 60
@@ -602,9 +602,17 @@ class TalliedFissionYieldHelper(FissionYieldHelper):
         """
 
 
+def add_params(cls):
+    cls.__doc__ += cls._params
+    return cls
+
+
+@add_params
 class Integrator(ABC):
     r"""Abstract class for solving the time-integration for depletion
+    """
 
+    _params = r"""
     Parameters
     ----------
     operator : openmc.deplete.TransportOperator
@@ -802,7 +810,7 @@ class Integrator(ABC):
         return time.time() - start, results
 
     @abstractmethod
-    def __call__(self, conc, rates, dt, power, i):
+    def __call__(self, conc, rates, dt, source_rate, i):
         """Perform the integration across one time step
 
         Parameters
@@ -813,8 +821,8 @@ class Integrator(ABC):
             Reaction rates from operator
         dt : float
             Time in [s] for the entire depletion interval
-        power : float
-            Power of the system in [W]
+        source_rate : float
+            Power in [W] or source rate in [neutrons/sec]
         i : int
             Current depletion step index
 
@@ -903,12 +911,15 @@ class Integrator(ABC):
             self.operator.write_bos_data(len(self) + self._i_res)
 
 
+@add_params
 class SIIntegrator(Integrator):
     r"""Abstract class for the Stochastic Implicit Euler integrators
 
     Does not provide a ``__call__`` method, but scales and resets
     the number of particles used in initial transport calculation
+    """
 
+    _params = r"""
     Parameters
     ----------
     operator : openmc.deplete.TransportOperator
@@ -980,6 +991,7 @@ class SIIntegrator(Integrator):
         .. versionadded:: 0.12
 
     """
+
     def __init__(self, operator, timesteps, power=None, power_density=None,
                  timestep_units='s', n_steps=10, solver="cram48"):
         check_type("n_steps", n_steps, Integral)

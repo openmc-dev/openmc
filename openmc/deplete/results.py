@@ -28,7 +28,7 @@ class Results:
     time : list of float
         Time at beginning, end of step, in seconds.
     source_rate : float
-        Source rate during timestep in [W] or [neutrons/sec]
+        Source rate during timestep in [W] or [neutron/sec]
     n_mat : int
         Number of mats.
     n_nuc : int
@@ -458,7 +458,7 @@ class Results:
         t : list of float
             Time indices.
         source_rate : float
-            Source rate during time step in [W] or [neutrons/sec]
+            Source rate during time step in [W] or [neutron/sec]
         step_ind : int
             Step index.
         proc_time : float or None

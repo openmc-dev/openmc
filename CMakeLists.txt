@@ -325,8 +325,11 @@ else()
   add_library(libopenmc SHARED ${libopenmc_SOURCES})
 endif()
 
+# Avoid vs error lnk1149 :output filename matches input filename
+if(NOT MSVC)
 set_target_properties(libopenmc PROPERTIES
-  OUTPUT_NAME openmc)
+  OUTPUT_NAME openmc) 
+endif()
 
 target_include_directories(libopenmc
   PUBLIC

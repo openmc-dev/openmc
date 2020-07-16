@@ -122,7 +122,7 @@ class TransportOperator(ABC):
             self.prev_res = None
         else:
             check_type("previous results", prev_results, ResultsList)
-            self.prev_results = prev_results
+            self.prev_res = prev_results
 
     @property
     def dilute_initial(self):

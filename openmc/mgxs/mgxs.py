@@ -6077,8 +6077,6 @@ class SurfaceMGXS(MGXS):
         # Find, slice and store Tallies from StatePoint
         # The tally slicing is needed if tally merging was used
         for tally_type, tally in self.tallies.items():
-            #surface_filter = openmc.SurfaceFilter(surface_bins)
-            #tally.filters.append(surface_filter)
             sp_tally = statepoint.get_tally(
                 tally.scores, tally.filters, tally.nuclides,
                 estimator=tally.estimator, exact_filters=True)

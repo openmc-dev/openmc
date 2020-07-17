@@ -18,8 +18,8 @@ from .abc import (
     TalliedFissionYieldHelper)
 
 __all__ = (
-    "DirectReactionRateHelper", "ChainFissionHelper",
-    "ConstantFissionYieldHelper", "FissionYieldCutoffHelper",
+    "DirectReactionRateHelper", "ChainFissionHelper", "EnergyScoreHelper"
+    "SourceRateHelper", "ConstantFissionYieldHelper", "FissionYieldCutoffHelper",
     "AveragedFissionYieldHelper")
 
 # -------------------------------------
@@ -204,6 +204,14 @@ class EnergyScoreHelper(NormalizationHelper):
         super().reset()
         if comm.rank == 0:
             self._energy = self._tally.results[0, 0, 1]
+
+
+class SourceRateHelper(NormalizationHelper):
+    def prepare(self, *args, **kwargs):
+        pass
+
+    def factor(self, source_rate):
+        return source_rate
 
 # ------------------------------------
 # Helper for collapsing fission yields

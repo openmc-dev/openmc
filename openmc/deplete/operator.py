@@ -26,7 +26,8 @@ from .reaction_rates import ReactionRates
 from .results_list import ResultsList
 from .helpers import (
     DirectReactionRateHelper, ChainFissionHelper, ConstantFissionYieldHelper,
-    FissionYieldCutoffHelper, AveragedFissionYieldHelper, EnergyScoreHelper)
+    FissionYieldCutoffHelper, AveragedFissionYieldHelper, EnergyScoreHelper,
+    SourceRateHelper)
 
 
 __all__ = ["Operator", "OperatorResult"]
@@ -238,13 +239,14 @@ class Operator(TransportOperator):
         # Get classes to assist working with tallies
         self._rate_helper = DirectReactionRateHelper(
             self.reaction_rates.n_nuc, self.reaction_rates.n_react)
+
         if normalization_mode == "fission-q":
             self._normalization_helper = ChainFissionHelper()
         elif normalization_mode == "energy-deposition":
             score = "heating" if settings.photon_transport else "heating-local"
             self._normalization_helper = EnergyScoreHelper(score)
         else:
-            self._normalization_helper = ...
+            self._normalization_helper = SourceRateHelper()
 
         # Select and create fission yield helper
         fission_helper = self._fission_helpers[fission_yield_mode]

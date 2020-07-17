@@ -18,7 +18,7 @@ class MGXSTestHarness(PyAPITestHarness):
         self.mgxs_lib = openmc.mgxs.Library(self._model.geometry)
         self.mgxs_lib.by_nuclide = True
         # Test all MGXS types
-        self.mgxs_lib.mgxs_types = openmc.mgxs.MGXS_TYPES
+        self.mgxs_lib.mgxs_types = openmc.mgxs.MGXS_TYPES[:-1]
         self.mgxs_lib.energy_groups = energy_groups
         self.mgxs_lib.legendre_order = 3
         self.mgxs_lib.domain_type = 'material'

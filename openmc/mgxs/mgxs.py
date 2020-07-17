@@ -5914,7 +5914,7 @@ class SurfaceMGXS(MGXS):
     energy_groups : openmc.mgxs.EnergyGroups
         The energy group structure for energy condensation
     by_nuclide : bool
-        If true, computes cross sections for each nuclide in domain
+        Unused for SurfacMGXS
     name : str, optional
         Name of the multi-group cross section. Used as a label to identify
         tallies in OpenMC 'tallies.xml' file.
@@ -5926,7 +5926,7 @@ class SurfaceMGXS(MGXS):
     rxn_type : str
         Reaction type (e.g., 'total', 'nu-fission', etc.)
     by_nuclide : bool
-        If true, computes cross sections for each nuclide in domain
+        Unused for SurfaceMGXS
     domain : Mesh
         Domain for spatial homogenization
     domain_type : {'mesh'}
@@ -5959,13 +5959,9 @@ class SurfaceMGXS(MGXS):
         two to account for both the incoming and outgoing current from the
         mesh cell surfaces.
     num_nuclides : int
-        The number of nuclides for which the multi-group cross section is
-        being tracked. This is unity if the by_nuclide attribute is False.
+        Unused n SurfaceMGXS
     nuclides : Iterable of str or 'sum'
-        The optional user-specified nuclides for which to compute cross
-        sections (e.g., 'U238', 'O16'). If by_nuclide is True but nuclides
-        are not specified by the user, all nuclides in the spatial domain
-        are included. This attribute is 'sum' if by_nuclide is false.
+        Unused in SurfaceMGXS
     sparse : bool
         Whether or not the MGXS' tallies use SciPy's LIL sparse matrix format
         for compressed data storage
@@ -5977,14 +5973,17 @@ class SurfaceMGXS(MGXS):
         The key used to index multi-group cross sections in an HDF5 data store
     """
 
-    # Store whether or not the number density should be removed for microscopic
-    # values of this data
-    _divide_by_density = False
-
     def __init__(self, domain=None, domain_type=None, energy_groups=None,
                  by_nuclide=False, name=''):
         super(SurfaceMGXS, self).__init__(domain, domain_type, energy_groups,
                                           by_nuclide, name)
+        self._estimator = ['analog']
+        self._valid_estimators = ['analog']
+        if domain_type != 'mesh':
+            msg = 'Unable to compute a SurfaceMGXS for domain type {0} ' \
+                    'which is not a mesh type'.format(domain_type)
+            raise ValueError(msg)
+
 
     @property
     def scores(self):
@@ -6037,23 +6036,6 @@ class SurfaceMGXS(MGXS):
                   'linked with a summary file'
             raise ValueError(msg)
 
-        # Override the domain object that loaded from an OpenMC summary file
-        # NOTE: This is necessary for micro cross-sections which require
-        # the isotopic number densities as computed by OpenMC
-        geom = statepoint.summary.geometry
-        if self.domain_type in ('cell', 'distribcell'):
-            self.domain = geom.get_all_cells()[self.domain.id]
-        elif self.domain_type == 'universe':
-            self.domain = geom.get_all_universes()[self.domain.id]
-        elif self.domain_type == 'material':
-            self.domain = geom.get_all_materials()[self.domain.id]
-        elif self.domain_type == 'mesh':
-            self.domain = statepoint.meshes[self.domain.id]
-        else:
-            msg = 'Unable to load data from a statepoint for domain type {0} ' \
-                  'which is not yet supported'.format(self.domain_type)
-            raise ValueError(msg)
-
         # Use tally "slicing" to ensure that tallies correspond to our domain
         # NOTE: This is important if tally merging was used
         if self.domain_type == 'mesh':
@@ -6102,13 +6084,10 @@ class SurfaceMGXS(MGXS):
         subdomains : Iterable of Integral or 'all'
             Subdomain IDs of interest. Defaults to 'all'.
         nuclides : Iterable of str or 'all' or 'sum'
-            A list of nuclide name strings (e.g., ['U235', 'U238']). The
-            special string 'all' will return the cross sections for all nuclides
-            in the spatial domain. The special string 'sum' will return the
-            cross section summed over all nuclides. Defaults to 'all'.
-        xs_type: {'macro', 'micro'}
-            Return the macro or micro cross section in units of cm^-1 or barns.
-            Defaults to 'macro'.
+            Unused in SurfaceMGXS
+        xs_type: {'macro'}
+            The 'macro'/'micro' distinction does not apply to SurfaceMGXS.
+            The calculation of a 'micro' xs_type is omited in this class.
         order_groups: {'increasing', 'decreasing'}
             Return the cross section indexed according to increasing or
             decreasing energy groups (decreasing or increasing energies).
@@ -6131,14 +6110,7 @@ class SurfaceMGXS(MGXS):
         """
 
         cv.check_value('value', value, ['mean', 'std_dev', 'rel_err'])
-        cv.check_value('xs_type', xs_type, ['macro', 'micro'])
-
-        # FIXME: Unable to get microscopic xs for mesh domain because the mesh
-        # cells do not know the nuclide densities in each mesh cell.
-        if self.domain_type == 'mesh' and xs_type == 'micro':
-            msg = 'Unable to get micro xs for mesh domain since the mesh ' \
-                  'cells do not know the nuclide densities in each mesh cell.'
-            raise ValueError(msg)
+        cv.check_value('xs_type', xs_type, ['macro'])
 
         filters = []
         filter_bins = []
@@ -6163,34 +6135,6 @@ class SurfaceMGXS(MGXS):
                 energy_bins.append(
                     (self.energy_groups.get_group_bounds(group),))
             filter_bins.append(tuple(energy_bins))
-
-        # Construct a collection of the nuclides to retrieve from the xs tally
-        if self.by_nuclide:
-            if nuclides == 'all' or nuclides == 'sum' or nuclides == ['sum']:
-                query_nuclides = self.get_nuclides()
-            else:
-                query_nuclides = nuclides
-        else:
-            query_nuclides = ['total']
-
-        # If user requested the sum for all nuclides, use tally summation
-        if nuclides == 'sum' or nuclides == ['sum']:
-            xs_tally = self.xs_tally.summation(nuclides=query_nuclides)
-            xs = xs_tally.get_values(filters=filters,
-                                     filter_bins=filter_bins, value=value)
-        else:
-            xs = self.xs_tally.get_values(filters=filters,
-                                          filter_bins=filter_bins,
-                                          nuclides=query_nuclides, value=value)
-
-        # Divide by atom number densities for microscopic cross sections
-        if xs_type == 'micro' and self._divide_by_density:
-            if self.by_nuclide:
-                densities = self.get_nuclide_densities(nuclides)
-            else:
-                densities = self.get_nuclide_densities('sum')
-            if value == 'mean' or value == 'std_dev':
-                xs /= densities[np.newaxis, :, np.newaxis]
 
         # Eliminate the trivial score dimension
         xs = np.squeeze(xs, axis=len(xs.shape) - 1)
@@ -6262,7 +6206,7 @@ class Current(SurfaceMGXS):
     groups : openmc.mgxs.EnergyGroups
         The energy group structure for energy condensation
     by_nuclide : bool
-        If true, computes cross sections for each nuclide in domain
+        Unused in SurfaceMGXS
     name : str, optional
         Name of the multi-group cross section. Used as a label to identify
         tallies in OpenMC 'tallies.xml' file.
@@ -6274,10 +6218,10 @@ class Current(SurfaceMGXS):
     rxn_type : str
         Reaction type (e.g., 'total', 'nu-fission', etc.)
     by_nuclide : bool
-        If true, computes cross sections for each nuclide in domain
-    domain : Material or Cell or Universe or Mesh
+        Unused for SurfaceMGXS
+    domain : Mesh
         Domain for spatial homogenization
-    domain_type : {'material', 'cell', 'distribcell', 'universe', 'mesh'}
+    domain_type : {'mesh'}
         Domain type for spatial homogenization
     energy_groups : openmc.mgxs.EnergyGroups
         Energy group structure for energy condensation
@@ -6291,7 +6235,7 @@ class Current(SurfaceMGXS):
     tally_keys : list of str
         The keys into the tallies dictionary for each tally used to compute
         the multi-group cross section
-    estimator : {'tracklength', 'analog'}
+    estimator : {'analog'}
         The tally estimator used to compute the multi-group cross section
     tallies : collections.OrderedDict
         OpenMC tallies needed to compute the multi-group cross section. The keys
@@ -6305,18 +6249,13 @@ class Current(SurfaceMGXS):
         Derived tally for the multi-group cross section. This attribute
         is None unless the multi-group cross section has been computed.
     num_subdomains : int
-        The number of subdomains is unity for 'material', 'cell' and 'universe'
-        domain types. This is equal to the number of cell instances
-        for 'distribcell' domain types (it is equal to unity prior to loading
-        tally data from a statepoint file).
+        The number of subdomains is equal to the number of mesh surfaces times
+        two to account for both the incoming and outgoing current from the 
+        mesh cell surfaces.
     num_nuclides : int
-        The number of nuclides for which the multi-group cross section is
-        being tracked. This is unity if the by_nuclide attribute is False.
+        Unused in SurfaceMGXS
     nuclides : Iterable of str or 'sum'
-        The optional user-specified nuclides for which to compute cross
-        sections (e.g., 'U238', 'O16'). If by_nuclide is True but nuclides
-        are not specified by the user, all nuclides in the spatial domain
-        are included. This attribute is 'sum' if by_nuclide is false.
+        Unused in SurfaceMGXS
     sparse : bool
         Whether or not the MGXS' tallies use SciPy's LIL sparse matrix format
         for compressed data storage

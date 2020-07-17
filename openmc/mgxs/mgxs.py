@@ -5902,7 +5902,7 @@ class SurfaceMGXS(MGXS):
     on the surfaces of a mesh domain.
     This class can be used for both OpenMC input generation and tally data
     post-processing to compute surface- and energy-integrated multi-group cross
-    section for multi-group neutronics calculations.
+    sections for multi-group neutronics calculations.
     NOTE: Users should instantiate the subclasses of this abstract class.
 
     Parameters
@@ -6236,23 +6236,22 @@ class SurfaceMGXS(MGXS):
 class Current(SurfaceMGXS):
     r"""A current multi-group cross section.
     This class can be used for both OpenMC input generation and tally data
-    post-processing to compute spatially-homogenized and energy-integrated
-    multi-group total cross sections for multi-group neutronics calculations. At
-    a minimum, one needs to set the :attr:`TotalXS.energy_groups` and
-    :attr:`TotalXS.domain` properties. Tallies for the flux and appropriate
+    post-processing to compute surface- and energy-integrated
+    multi-group current cross sections for multi-group neutronics calculations. At
+    a minimum, one needs to set the :attr:`Current.energy_groups` and
+    :attr:`Current.domain` properties. Tallies for the appropriate
     reaction rates over the specified domain are generated automatically via the
-    :attr:`TotalXS.tallies` property, which can then be appended to a
+    :attr:`Current.tallies` property, which can then be appended to a
     :class:`openmc.Tallies` instance.
     For post-processing, the :meth:`MGXS.load_from_statepoint` will pull in the
     necessary data to compute multi-group cross sections from a
     :class:`openmc.StatePoint` instance. The derived multi-group cross section
-    can then be obtained from the :attr:`TotalXS.xs_tally` property.
-    For a spatial domain :math:`V` and energy group :math:`[E_g,E_{g-1}]`, the
+    can then be obtained from the :attr:`Current.xs_tally` property.
+    For a spatial domain :math:`S` and energy group :math:`[E_g,E_{g-1}]`, the
     total cross section is calculated as:
     .. math::
-       \frac{\int_{r \in V} dr \int_{4\pi} d\Omega \int_{E_g}^{E_{g-1}} dE \;
-       \sigma_t (r, E) \psi (r, E, \Omega)}{\int_{r \in V} dr \int_{4\pi}
-       d\Omega \int_{E_g}^{E_{g-1}} dE \; \psi (r, E, \Omega)}.
+       \frac{\int_{r \in S} dS \int_{E_g}^{E_{g-1}} dE \;
+       J(r, E)}{\int_{r \in S} dS \int_{E_g}^{E_{g-1}} dE}.
 
     Parameters
     ----------

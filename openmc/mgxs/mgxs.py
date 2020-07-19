@@ -6196,15 +6196,9 @@ class SurfaceMGXS(MGXS):
         groups : Iterable of Integral or 'all'
             Energy groups of interest. Defaults to 'all'.
         nuclides : Iterable of str or 'all' or 'sum'
-            The nuclides of the cross-sections to include in the dataframe. This
-            may be a list of nuclide name strings (e.g., ['U235', 'U238']).
-            The special string 'all' will include the cross sections for all
-            nuclides in the spatial domain. The special string 'sum' will
-            include the cross sections summed over all nuclides. Defaults
-            to 'all'.
-        xs_type: {'macro', 'micro'}
-            Return macro or micro cross section in units of cm^-1 or barns.
-            Defaults to 'macro'.
+            Unused in SurfaceMGXS
+        xs_type: {'macro'}
+            'micro' unused in SurfaceMGXS.
         paths : bool, optional
             Construct columns for distribcell tally filters (default is True).
             The geometric information in the Summary object is embedded into
@@ -6223,31 +6217,9 @@ class SurfaceMGXS(MGXS):
 
         if not isinstance(groups, str):
             cv.check_iterable_type('groups', groups, Integral)
-        if nuclides != 'all' and nuclides != 'sum':
-            cv.check_iterable_type('nuclides', nuclides, str)
-        cv.check_value('xs_type', xs_type, ['macro', 'micro'])
+        cv.check_value('xs_type', xs_type, ['macro'])
 
-        # Get a Pandas DataFrame from the derived xs tally
-        if self.by_nuclide and nuclides == 'sum':
-
-            # Use tally summation to sum across all nuclides
-            xs_tally = self.xs_tally.summation(nuclides=self.get_nuclides())
-            df = xs_tally.get_pandas_dataframe(paths=paths)
-
-            # Remove nuclide column since it is homogeneous and redundant
-            if self.domain_type == 'mesh':
-                df.drop('sum(nuclide)', axis=1, level=0, inplace=True)
-            else:
-                df.drop('sum(nuclide)', axis=1, inplace=True)
-
-        # If the user requested a specific set of nuclides
-        elif self.by_nuclide and nuclides != 'all':
-            xs_tally = self.xs_tally.get_slice(nuclides=nuclides)
-            df = xs_tally.get_pandas_dataframe(paths=paths)
-
-        # If the user requested all nuclides, keep nuclide column in dataframe
-        else:
-            df = self.xs_tally.get_pandas_dataframe(paths=paths)
+        df = self.xs_tally.get_pandas_dataframe(paths=paths)
 
         # Remove the score column since it is homogeneous and redundant
         if self.domain_type == 'mesh':
@@ -6266,20 +6238,15 @@ class SurfaceMGXS(MGXS):
             if 'group out' in df:
                 df = df[df['group out'].isin(groups)]
 
-        # If user requested micro cross sections, divide out the atom densities
-        if xs_type == 'micro' and self._divide_by_density:
-            if self.by_nuclide:
-                densities = self.get_nuclide_densities(nuclides)
-            else:
-                densities = self.get_nuclide_densities('sum')
-            densities = np.repeat(densities, len(self.rxn_rate_tally.scores))
-            tile_factor = int(df.shape[0] / len(densities))
-            df['mean'] /= np.tile(densities, tile_factor)
-            df['std. dev.'] /= np.tile(densities, tile_factor)
-
-            # Replace NaNs by zeros (happens if nuclide density is zero)
-            df['mean'].replace(np.nan, 0.0, inplace=True)
-            df['std. dev.'].replace(np.nan, 0.0, inplace=True)
+        mesh_str = 'mesh {0}'.format(self.domain.id)
+        if len(self.domain.dimension) == 1:
+            df.sort_values(by=[(mesh_str, 'x')] + columns, inplace=True)
+        elif len(self.domain.dimension) == 2:
+            df.sort_values(by=[(mesh_str, 'x'),
+                (mesh_str, 'y')] + columns, inplace=True)
+        elif len(self.domain.dimension) == 3:
+            df.sort_values(by=[(mesh_str, 'x'),
+                    (mesh_str, 'y'), (mesh_str, 'z')] + columns, inplace=True)
 
         return df
 

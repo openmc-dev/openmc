@@ -1964,6 +1964,7 @@ class MGXS:
         # energy groups such that data is from fast to thermal
         if self.domain_type == 'mesh':
             mesh_str = 'mesh {0}'.format(self.domain.id)
+            print("HELLO WORLD", mesh_str)
             df.sort_values(by=[(mesh_str, 'x'), (mesh_str, 'y'),
                                (mesh_str, 'z')] + columns, inplace=True)
         else:
@@ -5979,15 +5980,32 @@ class SurfaceMGXS(MGXS):
                                           by_nuclide, name)
         self._estimator = ['analog']
         self._valid_estimators = ['analog']
-        if domain_type != 'mesh':
-            msg = 'Unable to compute a SurfaceMGXS for domain type {0} ' \
-                    'which is not a mesh type'.format(domain_type)
-            raise ValueError(msg)
-
 
     @property
     def scores(self):
         return [self.rxn_type]
+
+    @property
+    def domain(self):
+        return self._domain
+
+    @property
+    def domain_type(self):
+        return self._domain_type
+
+    @domain.setter
+    def domain(self, domain):
+        cv.check_type('domain', domain, openmc.RegularMesh)
+        self._domain = domain
+
+        # Assign a domain type
+        if self.domain_type is None:
+            self._domain_type = 'mesh'
+
+    @domain_type.setter
+    def domain_type(self, domain_type):
+        cv.check_value('domain type', domain_type, 'mesh')
+        self._domain_type = domain_type
 
     @property
     def filters(self):
@@ -6036,18 +6054,8 @@ class SurfaceMGXS(MGXS):
                   'linked with a summary file'
             raise ValueError(msg)
 
-        # Use tally "slicing" to ensure that tallies correspond to our domain
-        # NOTE: This is important if tally merging was used
-        if self.domain_type == 'mesh':
-            filters = []
-            filter_bins = []
-        elif self.domain_type != 'distribcell':
-            filters = [_DOMAIN_TO_FILTER[self.domain_type]]
-            filter_bins = [(self.domain.id,)]
-        # Distribcell filters only accept single cell - neglect it when slicing
-        else:
-            filters = []
-            filter_bins = []
+        filters= []
+        filter_bins = []
 
         # Clear any tallies previously loaded from a statepoint
         if self.loaded_sp:
@@ -6125,6 +6133,9 @@ class SurfaceMGXS(MGXS):
             for subdomain in subdomains:
                 subdomain_bins.append(subdomain)
             filter_bins.append(tuple(subdomain_bins))
+
+        xs = self.xs_tally.get_values(filters=filters,
+                filter_bins=filter_bins, value=value)
 
         # Construct list of energy group bounds tuples for all requested groups
         if not isinstance(groups, str):

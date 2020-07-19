@@ -6240,13 +6240,14 @@ class SurfaceMGXS(MGXS):
 
         mesh_str = 'mesh {0}'.format(self.domain.id)
         if len(self.domain.dimension) == 1:
-            df.sort_values(by=[(mesh_str, 'x')] + columns, inplace=True)
+            df.sort_values(by=[(mesh_str, 'x'), (mesh_str, 'surf')] 
+                    + columns, inplace=True)
         elif len(self.domain.dimension) == 2:
-            df.sort_values(by=[(mesh_str, 'x'),
-                (mesh_str, 'y')] + columns, inplace=True)
+            df.sort_values(by=[(mesh_str, 'x'), (mesh_str, 'y'), 
+                (mesh_str, 'surf')] + columns, inplace=True)
         elif len(self.domain.dimension) == 3:
-            df.sort_values(by=[(mesh_str, 'x'),
-                    (mesh_str, 'y'), (mesh_str, 'z')] + columns, inplace=True)
+            df.sort_values(by=[(mesh_str, 'x'), (mesh_str, 'y'), 
+                (mesh_str, 'z'), (mesh_str, 'surf')] + columns, inplace=True)
 
         return df
 

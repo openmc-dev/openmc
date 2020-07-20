@@ -6239,14 +6239,17 @@ class SurfaceMGXS(MGXS):
                 df = df[df['group out'].isin(groups)]
 
         mesh_str = 'mesh {0}'.format(self.domain.id)
+        surfaces = df[(mesh_str,'surf')]
+        df.drop(columns=[(mesh_str,'surf')],inplace=True)
+        df.insert(len(self.domain.dimension),(mesh_str,'surf'),surfaces)
         if len(self.domain.dimension) == 1:
             df.sort_values(by=[(mesh_str, 'x'), (mesh_str, 'surf')] 
                     + columns, inplace=True)
         elif len(self.domain.dimension) == 2:
-            df.sort_values(by=[(mesh_str, 'x'), (mesh_str, 'y'), 
+            df.sort_values(by=[(mesh_str, 'x'), (mesh_str, 'y'),
                 (mesh_str, 'surf')] + columns, inplace=True)
         elif len(self.domain.dimension) == 3:
-            df.sort_values(by=[(mesh_str, 'x'), (mesh_str, 'y'), 
+            df.sort_values(by=[(mesh_str, 'x'), (mesh_str, 'y'),
                 (mesh_str, 'z'), (mesh_str, 'surf')] + columns, inplace=True)
 
         return df

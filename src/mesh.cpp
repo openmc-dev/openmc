@@ -1685,25 +1685,25 @@ WeightWindowMesh::WeightWindowMesh(pugi::xml_node node)
     } else { fatal_error("Must assign energy group for weight window"); }  
 
     // read wwinp file
-    std::ifstream wwfile; 
-    wwfile.open("wwinp");
-    if(!wwfile.is_open ())  fatal_error("Open weight window file failure, wwinp file does not exist.");
-
-    double ww=0.0;      
-    if (n_ww) {
-      for (int i=0; i<mesh_->n_bins()*(n_energy_group.size()-1); i++) {   
-        wwfile>>ww;
-        n_ww_lower.push_back(ww);
-      }  
-    } 
-      
-    if (p_ww) {
-      for (int i=0; i<mesh_->n_bins()*(p_energy_group.size()-1); i++) {   
-        wwfile>>ww;
-        p_ww_lower.push_back(ww);
-      }  
-    } 
-    wwfile.close();
+    if (check_for_node(node, "lower_ww")) {
+      auto value = get_node_xarray<double>(node, "lower_ww");
+      if ( value.size() != ( mesh_->n_bins()*( n_energy_group.size()+p_energy_group.size() ) ) ) 
+         { fatal_error("The number of lower weight window bounds is not the same as energy-space mesh cell numbers");  }
+      // neutron lower weight window bound first     
+      if (n_ww) {
+        for (int i=0; i<mesh_->n_bins()*n_energy_group.size(); i++) {   
+          n_ww_lower.push_back(value.at(i));
+        }  
+      } 
+    
+      // photon lower weight window bound later
+      if (p_ww) {
+        for (int i=0; i<mesh_->n_bins()*p_energy_group.size(); i++) {   
+          p_ww_lower.push_back(value.at(i+mesh_->n_bins()*n_energy_group.size()));
+        }   
+      } 
+    } else { fatal_error("Must assign lower weight window bound for weight window"); } 
+    
   }
     
   // WWP-- weight window parameters

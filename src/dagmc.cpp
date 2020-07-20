@@ -186,6 +186,7 @@ DAGUniverse::DAGUniverse(const std::string& filename): filename_(filename) {
 }
 
 void DAGUniverse::initialize() {
+  type_ = UniverseType::DAG;
 
   // determine the next cell id
   int32_t next_cell_id = 0;
@@ -336,7 +337,7 @@ void DAGUniverse::initialize() {
     // set cell ids using global IDs
     DAGSurface* s = new DAGSurface();
     s->dag_index_ = i+1;
-    s->id_ = next_surf_id++;
+    s->id_ = dagmc_instance_->id_by_index(2, i+1);
     s->dagmc_ptr_ = dagmc_instance_;
 
     // set BCs
@@ -564,7 +565,6 @@ int32_t create_dagmc_universe(const std::string& filename) {
 void read_geometry_dagmc()
 {
   write_message("Reading DAGMC geometry...", 5);
-  load_dagmc_geometry();
   model::root_universe = find_root_universe();
 }
 

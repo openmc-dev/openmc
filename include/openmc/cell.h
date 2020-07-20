@@ -31,6 +31,11 @@ enum class Fill {
   LATTICE
 };
 
+enum class UniverseType {
+  CSG,
+  DAG
+};
+
 // TODO: Convert to enum
 constexpr int32_t OP_LEFT_PAREN   {std::numeric_limits<int32_t>::max()};
 constexpr int32_t OP_RIGHT_PAREN  {std::numeric_limits<int32_t>::max() - 1};
@@ -73,6 +78,7 @@ public:
 
   BoundingBox bounding_box() const;
 
+  UniverseType type_ = UniverseType::CSG;
   unique_ptr<UniversePartitioner> partitioner_;
 };
 
@@ -138,7 +144,9 @@ public:
 
   //! Write all information needed to reconstruct the cell to an HDF5 group.
   //! \param group_id An HDF5 group id.
-  virtual void to_hdf5(hid_t group_id) const = 0;
+  virtual void to_hdf5(hid_t group_id) const;
+
+  virtual void to_hdf5_inner(hid_t group_id) const = 0;
 
   //! Get the BoundingBox for this cell.
   virtual BoundingBox bounding_box() const = 0;
@@ -168,6 +176,8 @@ public:
   //! Set the temperature of a cell instance
   //! \param[in] name Cell name
   void set_name(const std::string& name) { name_ = name; };
+
+
 
   //! Get all cell instances contained by this cell
   //! \return Map with cell indexes as keys and instances as values
@@ -245,7 +255,7 @@ public:
   std::pair<double, int32_t>
   distance(Position r, Direction u, int32_t on_surface, Particle* p) const;
 
-  void to_hdf5(hid_t group_id) const;
+  void to_hdf5_inner(hid_t group_id) const;
 
   BoundingBox bounding_box() const;
 
@@ -289,7 +299,7 @@ public:
 
   BoundingBox bounding_box() const;
 
-  void to_hdf5(hid_t group_id) const;
+  void to_hdf5_inner(hid_t group_id) const;
 
   std::shared_ptr<moab::DagMC> dagmc_ptr_; //!< Pointer to DagMC instance
   int32_t dag_index_;      //!< DagMC index of cell
@@ -365,7 +375,7 @@ void read_dagmc_universes(pugi::xml_node node);
 
 #ifdef DAGMC
 void read_dagmc_universes(pugi::xml_node node);
-int32_t next_cell(DAGCell* cur_cell, DAGSurface* surf_xed);
+int32_t next_cell(DAGUniverse* dag_univ, DAGCell* cur_cell, DAGSurface* surf_xed);
 #endif
 
 } // namespace openmc

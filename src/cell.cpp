@@ -194,6 +194,15 @@ Universe::to_hdf5(hid_t universes_group) const
   // Create a group for this universe.
   auto group = create_group(universes_group, fmt::format("universe {}", id_));
 
+  switch(type_) {
+    case UniverseType::CSG :
+      write_string(group, "geom_type", "csg", false);
+      break;
+    case UniverseType::DAG :
+      write_string(group, "geom_type", "dagmc", false);
+      break;
+  }
+
   // Write the contained cells.
   if (cells_.size() > 0) {
     vector<int32_t> cell_ids;
@@ -280,6 +289,66 @@ Cell::set_temperature(double T, int32_t instance, bool set_contained)
       }
     }
   }
+}
+
+void
+Cell::to_hdf5(hid_t cell_group) const {
+
+ // Create a group for this cell.
+  auto group = create_group(cell_group, fmt::format("cell {}", id_));
+
+  if (!name_.empty()) {
+    write_string(group, "name", name_, false);
+  }
+
+  write_dataset(group, "universe", model::universes[universe_]->id_);
+
+
+  to_hdf5_inner(group);
+
+  // Write fill information.
+  if (type_ == Fill::MATERIAL) {
+    write_dataset(group, "fill_type", "material");
+    std::vector<int32_t> mat_ids;
+    for (auto i_mat : material_) {
+      if (i_mat != MATERIAL_VOID) {
+        mat_ids.push_back(model::materials[i_mat]->id_);
+      } else {
+        mat_ids.push_back(MATERIAL_VOID);
+      }
+    }
+    if (mat_ids.size() == 1) {
+      write_dataset(group, "material", mat_ids[0]);
+    } else {
+      write_dataset(group, "material", mat_ids);
+    }
+
+    std::vector<double> temps;
+    for (auto sqrtkT_val : sqrtkT_)
+      temps.push_back(sqrtkT_val * sqrtkT_val / K_BOLTZMANN);
+    write_dataset(group, "temperature", temps);
+
+  } else if (type_ == Fill::UNIVERSE) {
+    write_dataset(group, "fill_type", "universe");
+    write_dataset(group, "fill", model::universes[fill_]->id_);
+    if (translation_ != Position(0, 0, 0)) {
+      write_dataset(group, "translation", translation_);
+    }
+    if (!rotation_.empty()) {
+      if (rotation_.size() == 12) {
+        std::array<double, 3> rot {rotation_[9], rotation_[10], rotation_[11]};
+        write_dataset(group, "rotation", rot);
+      } else {
+        write_dataset(group, "rotation", rotation_);
+      }
+    }
+
+  } else if (type_ == Fill::LATTICE) {
+    write_dataset(group, "fill_type", "lattice");
+    write_dataset(group, "lattice", model::lattices[fill_]->id_);
+  }
+
+  close_group(group);
 }
 
 //==============================================================================
@@ -526,16 +595,10 @@ CSGCell::distance(Position r, Direction u, int32_t on_surface, Particle* p) cons
 //==============================================================================
 
 void
-CSGCell::to_hdf5(hid_t cell_group) const
+CSGCell::to_hdf5_inner(hid_t group_id) const
 {
-  // Create a group for this cell.
-  auto group = create_group(cell_group, fmt::format("cell {}", id_));
 
-  if (!name_.empty()) {
-    write_string(group, "name", name_, false);
-  }
-
-  write_dataset(group, "universe", model::universes[universe_]->id_);
+  write_string(group_id, "geom_type", "csg", false);
 
   // Write the region specification.
   if (!region_.empty()) {
@@ -556,52 +619,9 @@ CSGCell::to_hdf5(hid_t cell_group) const
         region_spec << " " << ((token > 0) ? surf_id : -surf_id);
       }
     }
-    write_string(group, "region", region_spec.str(), false);
+    write_string(group_id, "region", region_spec.str(), false);
   }
 
-  // Write fill information.
-  if (type_ == Fill::MATERIAL) {
-    write_dataset(group, "fill_type", "material");
-    vector<int32_t> mat_ids;
-    for (auto i_mat : material_) {
-      if (i_mat != MATERIAL_VOID) {
-        mat_ids.push_back(model::materials[i_mat]->id_);
-      } else {
-        mat_ids.push_back(MATERIAL_VOID);
-      }
-    }
-    if (mat_ids.size() == 1) {
-      write_dataset(group, "material", mat_ids[0]);
-    } else {
-      write_dataset(group, "material", mat_ids);
-    }
-
-    vector<double> temps;
-    for (auto sqrtkT_val : sqrtkT_)
-      temps.push_back(sqrtkT_val * sqrtkT_val / K_BOLTZMANN);
-    write_dataset(group, "temperature", temps);
-
-  } else if (type_ == Fill::UNIVERSE) {
-    write_dataset(group, "fill_type", "universe");
-    write_dataset(group, "fill", model::universes[fill_]->id_);
-    if (translation_ != Position(0, 0, 0)) {
-      write_dataset(group, "translation", translation_);
-    }
-    if (!rotation_.empty()) {
-      if (rotation_.size() == 12) {
-        array<double, 3> rot {rotation_[9], rotation_[10], rotation_[11]};
-        write_dataset(group, "rotation", rot);
-      } else {
-        write_dataset(group, "rotation", rotation_);
-      }
-    }
-
-  } else if (type_ == Fill::LATTICE) {
-    write_dataset(group, "fill_type", "lattice");
-    write_dataset(group, "lattice", model::lattices[fill_]->id_);
-  }
-
-  close_group(group);
 }
 
 BoundingBox CSGCell::bounding_box_simple() const {
@@ -831,7 +851,9 @@ bool DAGCell::contains(Position r, Direction u, int32_t on_surface) const
   return result;
 }
 
-void DAGCell::to_hdf5(hid_t group_id) const { return; }
+void DAGCell::to_hdf5_inner(hid_t group_id) const {
+  write_string(group_id, "geom_type", "dagmc", false);
+}
 
 BoundingBox DAGCell::bounding_box() const
 {
@@ -1306,7 +1328,7 @@ openmc_extend_cells(int32_t n, int32_t* index_start, int32_t* index_end)
 }
 
 #ifdef DAGMC
-int32_t next_cell(DAGCell* cur_cell, DAGSurface* surf_xed)
+int32_t next_cell(DAGUniverse* dag_univ, DAGCell* cur_cell, DAGSurface* surf_xed)
 {
   moab::EntityHandle surf =
     surf_xed->dagmc_ptr_->entity_by_index(2, surf_xed->dag_index_);
@@ -1316,7 +1338,7 @@ int32_t next_cell(DAGCell* cur_cell, DAGSurface* surf_xed)
   moab::EntityHandle new_vol;
   cur_cell->dagmc_ptr_->next_vol(surf, vol, new_vol);
 
-  return cur_cell->dagmc_ptr_->index_by_handle(new_vol);
+  return cur_cell->dagmc_ptr_->index_by_handle(new_vol) + dag_univ->cell_idx_offset_;
 }
 #endif
 

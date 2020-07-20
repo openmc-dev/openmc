@@ -285,6 +285,8 @@ Particle::event_collide()
 
   // Score flux derivative accumulators for differential tallies.
   if (!model::active_tallies.empty()) score_collision_derivative(*this);
+
+  history_.reset();
 }
 
 void
@@ -318,9 +320,8 @@ void
 Particle::event_death()
 {
   #ifdef DAGMC
-  if (settings::dagmc)
-    history().reset();
-#endif
+  history_.reset();
+  #endif
 
   // Finish particle track output.
   if (write_track()) {
@@ -387,23 +388,25 @@ Particle::cross_surface()
   // SEARCH NEIGHBOR LISTS FOR NEXT CELL
 
 
-// #ifdef DAGMC
-//   if (settings::dagmc) {
-//     auto cellp = dynamic_cast<DAGCell*>(model::cells[cell_last_[0]].get());
-//     // TODO: off-by-one
-//     auto surfp = dynamic_cast<DAGSurface*>(model::surfaces[std::abs(surface_) - 1].get());
-//     int32_t i_cell = next_cell(cellp, surfp) - 1;
-//     // save material and temp
-//     material_last_ = material_;
-//     sqrtkT_last_ = sqrtkT_;
-//     // set new cell value
-//     coord_[0].cell = i_cell;
-//     cell_instance_ = 0;
-//     material_ = model::cells[i_cell]->material_[0];
-//     sqrtkT_ = model::cells[i_cell]->sqrtkT_[0];
-//     return;
-//   }
-// #endif
+#ifdef DAGMC
+  auto surfp = dynamic_cast<DAGSurface*>(model::surfaces[std::abs(surface_) - 1].get());
+  if (surfp) {
+    auto cellp = dynamic_cast<DAGCell*>(model::cells[cell_last_[n_coord_ - 1]].get());
+    // TODO: off-by-one
+    auto univp = static_cast<DAGUniverse*>(model::universes[coord_[n_coord_ - 1].universe].get());
+
+    int32_t i_cell = next_cell(univp, cellp, surfp) - 1;
+    // save material and temp
+    material_last_ = material_;
+    sqrtkT_last_ = sqrtkT_;
+    // set new cell value
+    coord_[n_coord_ - 1].cell = i_cell;
+    cell_instance_ = 0;
+    material_ = model::cells[i_cell]->material_[0];
+    sqrtkT_ = model::cells[i_cell]->sqrtkT_[0];
+    return;
+  }
+#endif
 
   if (neighbor_list_find_cell(*this))
     return;

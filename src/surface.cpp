@@ -198,16 +198,12 @@ Surface::diffuse_reflect(Position r, Direction u, uint64_t* seed) const
   return u/u.norm();
 }
 
-CSGSurface::CSGSurface() : Surface{} {};
-CSGSurface::CSGSurface(pugi::xml_node surf_node) : Surface{surf_node} {};
-
 void
-CSGSurface::to_hdf5(hid_t group_id) const
+Surface::to_hdf5(hid_t group_id) const
 {
-  std::string group_name {"surface "};
-  group_name += std::to_string(id_);
+  hid_t surf_group = create_group(group_id, fmt::format("surface {}", id_));
 
-  hid_t surf_group = create_group(group_id, group_name);
+  write_string(surf_group, "geom_type", "csg", false);
 
   if (bc_) {
     write_string(surf_group, "boundary_type", bc_->type(), false);
@@ -223,6 +219,9 @@ CSGSurface::to_hdf5(hid_t group_id) const
 
   close_group(surf_group);
 }
+
+CSGSurface::CSGSurface() : Surface{} {};
+CSGSurface::CSGSurface(pugi::xml_node surf_node) : Surface{surf_node} {};
 
 //==============================================================================
 // DAGSurface implementation
@@ -275,7 +274,9 @@ Direction DAGSurface::reflect(Position r, Direction u, Particle* p) const
   return p->last_dir();
 }
 
-void DAGSurface::to_hdf5(hid_t group_id) const {}
+void DAGSurface::to_hdf5_inner(hid_t group_id) const {
+  write_string(group_id, "geom_type", "dagmc", false);
+}
 
 #endif
 

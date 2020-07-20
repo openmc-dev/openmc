@@ -138,6 +138,9 @@ public:
 
   //! Get the BoundingBox for this surface.
   virtual BoundingBox bounding_box(bool /*pos_side*/) const { return {}; }
+
+  protected:
+    virtual void to_hdf5_inner(hid_t group_id) const = 0;
 };
 
 class CSGSurface : public Surface
@@ -147,9 +150,6 @@ public:
   CSGSurface();
 
   void to_hdf5(hid_t group_id) const;
-
-protected:
-  virtual void to_hdf5_inner(hid_t group_id) const = 0;
 };
 
 //==============================================================================
@@ -166,7 +166,7 @@ public:
   Direction normal(Position r) const;
   Direction reflect(Position r, Direction u, Particle* p) const;
 
-  void to_hdf5(hid_t group_id) const;
+  void to_hdf5_inner(hid_t group_id) const override;
 
   std::shared_ptr<moab::DagMC> dagmc_ptr_; //!< Pointer to DagMC instance
   int32_t dag_index_;      //!< DagMC index of surface

@@ -8,7 +8,7 @@ What's New in 0.12.0
 Summary
 -------
 
-This release of OpenMC includes an assorted of new features and many bug fixes.
+This release of OpenMC includes an assortment of new features and many bug fixes.
 In particular, the :mod:`openmc.deplete` module has been heavily tested which
 has resulted in a number of usability improvements, bug fixes, and other
 enhancements. Energy deposition calculations, particularly for coupled
@@ -67,7 +67,7 @@ New Features
 - A trigger can now be specified for a volume calculation via the
   :meth:`openmc.VolumeCalculation.set_trigger` method.
 - The :class:`openmc.stats.SphericalIndependent` and
-  :class:`openmc.stats.CylindricalIndependent` classes allows a user to
+  :class:`openmc.stats.CylindricalIndependent` classes allow a user to
   specify source distributions based on spherical or cylindrical coordinates.
 - Custom external source distributions can be used via the
   :attr:`openmc.Source.library` attribute.

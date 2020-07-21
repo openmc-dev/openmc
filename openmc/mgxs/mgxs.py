@@ -5897,7 +5897,7 @@ class InverseVelocity(MGXS):
                              ' for xs_type other than "macro"')
 
 
-class SurfaceMGXS(MGXS):
+class MeshSurfaceMGXS(MGXS):
     """An abstract multi-group cross section for some energy group structure
     on the surfaces of a mesh domain.
     This class can be used for both OpenMC input generation and tally data
@@ -5926,7 +5926,7 @@ class SurfaceMGXS(MGXS):
     rxn_type : str
         Reaction type (e.g., 'total', 'nu-fission', etc.)
     by_nuclide : bool
-        Unused for SurfaceMGXS
+        Unused for MeshSurfaceMGXS
     domain : Mesh
         Domain for spatial homogenization
     domain_type : {'mesh'}
@@ -5959,9 +5959,9 @@ class SurfaceMGXS(MGXS):
         two to account for both the incoming and outgoing current from the
         mesh cell surfaces.
     num_nuclides : int
-        Unused n SurfaceMGXS
+        Unused in MeshSurfaceMGXS
     nuclides : Iterable of str or 'sum'
-        Unused in SurfaceMGXS
+        Unused in MeshSurfaceMGXS
     sparse : bool
         Whether or not the MGXS' tallies use SciPy's LIL sparse matrix format
         for compressed data storage
@@ -5975,7 +5975,7 @@ class SurfaceMGXS(MGXS):
 
     def __init__(self, domain=None, domain_type=None, energy_groups=None,
                  by_nuclide=False, name=''):
-        super(SurfaceMGXS, self).__init__(domain, domain_type, energy_groups,
+        super(MeshSurfaceMGXS, self).__init__(domain, domain_type, energy_groups,
                                           by_nuclide, name)
         self._estimator = ['analog']
         self._valid_estimators = ['analog']
@@ -6091,9 +6091,9 @@ class SurfaceMGXS(MGXS):
         subdomains : Iterable of Integral or 'all'
             Subdomain IDs of interest. Defaults to 'all'.
         nuclides : Iterable of str or 'all' or 'sum'
-            Unused in SurfaceMGXS
+            Unused in MeshSurfaceMGXS
         xs_type: {'macro'}
-            The 'macro'/'micro' distinction does not apply to SurfaceMGXS.
+            The 'macro'/'micro' distinction does not apply to MeshSurfaceMGXS.
             The calculation of a 'micro' xs_type is omited in this class.
         order_groups: {'increasing', 'decreasing'}
             Return the cross section indexed according to increasing or
@@ -6196,9 +6196,9 @@ class SurfaceMGXS(MGXS):
         groups : Iterable of Integral or 'all'
             Energy groups of interest. Defaults to 'all'.
         nuclides : Iterable of str or 'all' or 'sum'
-            Unused in SurfaceMGXS
+            Unused in MeshSurfaceMGXS
         xs_type: {'macro'}
-            'micro' unused in SurfaceMGXS.
+            'micro' unused in MeshSurfaceMGXS.
         paths : bool, optional
             Construct columns for distribcell tally filters (default is True).
             The geometric information in the Summary object is embedded into
@@ -6255,7 +6255,7 @@ class SurfaceMGXS(MGXS):
         return df
 
 
-class Current(SurfaceMGXS):
+class Current(MeshSurfaceMGXS):
     r"""A current multi-group cross section.
     This class can be used for both OpenMC input generation and tally data
     post-processing to compute surface- and energy-integrated
@@ -6284,7 +6284,7 @@ class Current(SurfaceMGXS):
     groups : openmc.mgxs.EnergyGroups
         The energy group structure for energy condensation
     by_nuclide : bool
-        Unused in SurfaceMGXS
+        Unused in MeshSurfaceMGXS
     name : str, optional
         Name of the multi-group cross section. Used as a label to identify
         tallies in OpenMC 'tallies.xml' file.
@@ -6296,7 +6296,7 @@ class Current(SurfaceMGXS):
     rxn_type : str
         Reaction type (e.g., 'total', 'nu-fission', etc.)
     by_nuclide : bool
-        Unused for SurfaceMGXS
+        Unused for MeshSurfaceMGXS
     domain : Mesh
         Domain for spatial homogenization
     domain_type : {'mesh'}
@@ -6331,9 +6331,9 @@ class Current(SurfaceMGXS):
         two to account for both the incoming and outgoing current from the 
         mesh cell surfaces.
     num_nuclides : int
-        Unused in SurfaceMGXS
+        Unused in MeshSurfaceMGXS
     nuclides : Iterable of str or 'sum'
-        Unused in SurfaceMGXS
+        Unused in MeshSurfaceMGXS
     sparse : bool
         Whether or not the MGXS' tallies use SciPy's LIL sparse matrix format
         for compressed data storage

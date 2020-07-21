@@ -413,7 +413,9 @@ class Chain:
                             chain.reactions.append(name)
 
                         if daughter not in decay_data:
-                            missing_rx_product.append((parent, name, daughter))
+                            daughter = replace_missing(daughter, decay_data)
+                            if daughter is None:
+                                missing_rx_product.append((parent, name, daughter))
 
                         # Store Q value
                         for mt in sorted(mts):

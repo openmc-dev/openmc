@@ -572,22 +572,12 @@ write_source_bank(hid_t group_id, bool surf_src_bank)
   std::vector<Particle::Bank> src_bank = simulation::source_bank;
 
   if (surf_src_bank) {
+    dims_size = simulation::total_surf_banks;
+    count_size = simulation::surf_src_bank.size();
 
-    // Taken from calculate_work
-    int64_t min_work = dims_size / mpi::n_procs;
-    int64_t remainder = dims_size % mpi::n_procs;
-    int64_t i_bank = 0;
     wi.clear();
-    wi.resize(mpi::n_procs + 1);
-    wi[0] = 0;
-    for (int i = 0; i < mpi::n_procs; ++i) {
-      int64_t work_i = i < remainder ? min_work +1 : min_work;
-      if (mpi::rank == i) count_size = work_i;
-      i_bank += work_i;
-      wi[i + 1] = i_bank;
-    }
+    wi = simulation::surf_src_index;
 
-    dims_size = settings::max_surf_banks;
     src_bank.clear();
     src_bank.assign(simulation::surf_src_bank.data(),
 		    simulation::surf_src_bank.data()
@@ -670,7 +660,7 @@ write_source_bank(hid_t group_id, bool surf_src_bank)
 #endif
   } else {
 #ifdef OPENMC_MPI
-    MPI_Send(src_bank.data(), simulation::work_per_rank, mpi::bank,
+    MPI_Send(src_bank.data(), count_size, mpi::bank,
       0, mpi::rank, mpi::intracomm);
 #endif
   }

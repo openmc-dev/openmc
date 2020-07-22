@@ -37,7 +37,7 @@ from .nuclide import Nuclide, DecayTuple, ReactionTuple
 # the mass number and dZ is the change in the atomic number
 ReactionInfo = namedtuple('ReactionInfo', ('mts', 'dadz', 'secondaries'))
 
-_REACTIONS = {
+REACTIONS = {
     '(n,2nd)': ReactionInfo({11}, (-3, -1), ('H2',)),
     '(n,2n)': ReactionInfo(set(chain([16], range(875, 892))), (-1, 0), ()),
     '(n,3n)': ReactionInfo({17}, (-2, 0), ()),
@@ -123,10 +123,6 @@ _REACTIONS = {
     '(n,3n2pa)': ReactionInfo({199}, (-8, -4), ('H1', 'H1', 'He4')),
     '(n,5n2p)': ReactionInfo({200}, (-6, -2), ('H1', 'H1')),
 }
-
-TRANSMUTATION_REACTIONS = [
-    '(n,2n)', '(n,3n)', '(n,4n)', '(n,gamma)', '(n,p)', '(n,a)'
-]
 
 __all__ = ["Chain"]
 
@@ -289,7 +285,10 @@ class Chain:
         return len(self.nuclides)
 
     @classmethod
-    def from_endf(cls, decay_files, fpy_files, neutron_files, progress=True):
+    def from_endf(cls, decay_files, fpy_files, neutron_files,
+        reactions=('(n,2n)', '(n,3n)', '(n,4n)', '(n,gamma)', '(n,p)', '(n,a)'),
+        progress=True
+    ):
         """Create a depletion chain from ENDF files.
 
         String arguments in ``decay_files``, ``fpy_files``, and
@@ -305,6 +304,10 @@ class Chain:
             List of ENDF neutron-induced fission product yield sub-library files
         neutron_files : list of str or openmc.data.endf.Evaluation
             List of ENDF neutron reaction sub-library files
+        reactions : iterable of str, optional
+            Transmutation reactions to include in the depletion chain, e.g.,
+            `["(n,2n)", "(n,gamma)"]`. Note that fission is always included if
+            it is present.
         progress : bool, optional
             Flag to print status messages during processing. Does not
             effect warning messages
@@ -324,7 +327,7 @@ class Chain:
         3. Copy the yields of U235 if the previous two checks fail
 
         """
-        chain = cls()
+        transmutation_reactions = reactions
 
         # Create dictionary mapping target to filename
         if progress:
@@ -366,6 +369,7 @@ class Chain:
         missing_fpy = []
         missing_fp = []
 
+        chain = cls()
         for idx, parent in enumerate(sorted(decay_data, key=openmc.data.zam)):
             data = decay_data[parent]
 
@@ -401,8 +405,8 @@ class Chain:
             fissionable = False
             if parent in reactions:
                 reactions_available = set(reactions[parent].keys())
-                for name in TRANSMUTATION_REACTIONS:
-                    mts, changes, _ = _REACTIONS[name]
+                for name in transmutation_reactions:
+                    mts, changes, _ = REACTIONS[name]
                     if mts & reactions_available:
                         delta_A, delta_Z = changes
                         A = data.nuclide['mass_number'] + delta_A
@@ -652,7 +656,7 @@ class Chain:
 
                         # Determine light nuclide production, e.g., (n,d) should
                         # produce H2
-                        light_nucs = _REACTIONS[r_type].secondaries
+                        light_nucs = REACTIONS[r_type].secondaries
                         for light_nuc in light_nucs:
                             k = self.nuclide_dict.get(light_nuc)
                             if k is not None:
@@ -766,7 +770,7 @@ class Chain:
         bad_sums = {}
 
         # Secondary products, like alpha particles, should not be modified
-        secondary = _REACTIONS[reaction].secondaries
+        secondary = REACTIONS[reaction].secondaries
 
         # Check for validity before manipulation
 
@@ -1091,8 +1095,8 @@ class Chain:
                         continue
 
                     # Figure out if this reaction produces light nuclides
-                    if rxn.type in _REACTIONS:
-                        secondaries = _REACTIONS[rxn.type].secondaries
+                    if rxn.type in REACTIONS:
+                        secondaries = REACTIONS[rxn.type].secondaries
                     else:
                         secondaries = []
 

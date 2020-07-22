@@ -270,6 +270,8 @@ const RegularMesh* ufs_mesh {nullptr};
 std::vector<double> k_generation;
 std::vector<int64_t> work_index;
 
+int64_t total_surf_banks;
+std::vector<int64_t> surf_src_index;
 
 } // namespace simulation
 
@@ -385,6 +387,9 @@ void finalize_batch()
 
   // Write out surface source if requested.
   if (settings::surface_source && simulation::current_batch == settings::n_batches) {
+
+    query_surf_src_size();
+
     auto filename = settings::path_output + "surface_source.h5";
     write_source_point(filename.c_str(), true);  //!!
   }
@@ -628,6 +633,27 @@ void initialize_data()
   int neutron = static_cast<int>(Particle::Type::neutron);
   simulation::log_spacing = std::log(data::energy_max[neutron] /
     data::energy_min[neutron]) / settings::n_log_bins;
+}
+
+void query_surf_src_size()
+{
+  int64_t i_bank = 0;
+  simulation::surf_src_index.resize(mpi::n_procs + 1);
+  simulation::surf_src_index[0] = 0;
+  for (int i = 0; i < mpi::n_procs; ++i) {
+    int64_t work_i = 0;
+
+    // Set number of particles
+    if (mpi::rank == i) work_i = simulation::surf_src_bank.size();
+#ifdef OPENMC_MPI
+    MPI_Reduce(&work_i, &simulation::total_surf_banks, 1, MPI_INT,
+               MPI_SUM, 0, mpi::intracomm);
+#endif
+
+    // Set index into source bank for rank i
+    i_bank += work_i;
+    simulation::surf_src_index[i + 1] = i_bank;
+  }
 }
 
 #ifdef OPENMC_MPI

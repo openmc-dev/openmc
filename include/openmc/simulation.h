@@ -45,6 +45,9 @@ extern const RegularMesh* ufs_mesh;
 extern std::vector<double> k_generation;
 extern std::vector<int64_t> work_index;
 
+extern int64_t total_surf_banks;  //!< Total number of surface source banks
+extern std::vector<int64_t> surf_src_index;
+
 } // namespace simulation
 
 //==============================================================================
@@ -59,6 +62,9 @@ void calculate_work();
 
 //! Initialize nuclear data before a simulation
 void initialize_data();
+
+//! Get the total number of surface source banks and populate surf_src_index
+void query_surf_src_size();
 
 //! Initialize a batch
 void initialize_batch();

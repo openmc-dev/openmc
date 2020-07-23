@@ -83,7 +83,7 @@ class DirectReactionRateHelper(ReactionRateHelper):
             reaction rates in this material
         """
         self._results_cache.fill(0.0)
-        full_tally_res = self._rate_tally.results[mat_id, :, 1]
+        full_tally_res = self._rate_tally.mean[mat_id]
         for i_tally, (i_nuc, i_react) in enumerate(
                 product(nuc_index, react_index)):
             self._results_cache[i_nuc, i_react] = full_tally_res[i_tally]
@@ -203,7 +203,7 @@ class EnergyScoreHelper(NormalizationHelper):
         """
         super().reset()
         if comm.rank == 0:
-            self._energy = self._tally.results[0, 0, 1]
+            self._energy = self._tally.mean[0, 0]
 
 
 class SourceRateHelper(NormalizationHelper):
@@ -450,7 +450,7 @@ class FissionYieldCutoffHelper(TalliedFissionYieldHelper):
         if not self._tally_nucs or self._local_indexes.size == 0:
             self.results = None
             return
-        fission_rates = self._fission_rate_tally.results[..., 1].reshape(
+        fission_rates = self._fission_rate_tally.mean.reshape(
             self.n_bmats, 2, len(self._tally_nucs))
         self.results = fission_rates[self._local_indexes]
         total_fission = self.results.sum(axis=1)
@@ -612,9 +612,9 @@ class AveragedFissionYieldHelper(TalliedFissionYieldHelper):
             self.results = None
             return
         fission_results = (
-            self._fission_rate_tally.results[self._local_indexes, :, 1])
+            self._fission_rate_tally.mean[self._local_indexes])
         self.results = (
-            self._weighted_tally.results[self._local_indexes, :, 1]).copy()
+            self._weighted_tally.mean[self._local_indexes]).copy()
         nz_mat, nz_nuc = fission_results.nonzero()
         self.results[nz_mat, nz_nuc] /= fission_results[nz_mat, nz_nuc]
 

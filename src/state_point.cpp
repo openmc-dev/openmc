@@ -743,6 +743,7 @@ void write_unstructured_mesh_results() {
 
           std::string score_name = tally->score_name(i_score);
           auto score_str = fmt::format("{}_{}", score_name, nuclide_name);
+          tally_scores.push_back(score_str);
           umesh->set_score_data(score_str, mean_vec, std_dev_vec);
         }
       }

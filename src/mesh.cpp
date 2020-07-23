@@ -2036,7 +2036,12 @@ void UnstructuredMesh::remove_score(std::string score) const {
                            " on unstructured mesh {}", score, id_);
   }
 
-
+  rval = mbi_->tag_delete(tag);
+  if (rval != moab::MB_SUCCESS) {
+    auto msg = fmt::format("Failed to delete mesh tag for the score {}"
+                           " on unstructured mesh {}", score, id_);
+    fatal_error(msg);
+  }
 }
 
 void

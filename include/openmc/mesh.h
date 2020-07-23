@@ -298,6 +298,9 @@ public:
   //! Add a score to the mesh instance
   void add_score(std::string score) const;
 
+  //! Remove a score from the mesh instance
+  void remove_score(std::string score) const;
+
   //! Set data for a score
   void set_score_data(const std::string& score,
                       std::vector<double> values,

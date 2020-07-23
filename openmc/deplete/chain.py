@@ -284,6 +284,23 @@ class Chain:
         """Number of nuclides in chain."""
         return len(self.nuclides)
 
+    def add_nuclide(self, nuclide):
+        """Add a nuclide to the depletion chain
+
+        Parameters
+        ----------
+        nuclide : openmc.deplete.Nuclide
+            Nuclide to add
+
+        """
+        self.nuclide_dict[nuclide.name] = len(self.nuclides)
+        self.nuclides.append(nuclide)
+
+        # Check for reaction paths
+        for rx in nuclide.reactions:
+            if rx.type not in self.reactions:
+                self.reactions.append(rx.type)
+
     @classmethod
     def from_endf(cls, decay_files, fpy_files, neutron_files,
         reactions=('(n,2n)', '(n,3n)', '(n,4n)', '(n,gamma)', '(n,p)', '(n,a)'),
@@ -376,9 +393,6 @@ class Chain:
 
             nuclide = Nuclide(parent)
 
-            chain.nuclides.append(nuclide)
-            chain.nuclide_dict[parent] = idx
-
             if not data.nuclide['stable'] and data.half_life.nominal_value != 0.0:
                 nuclide.half_life = data.half_life.nominal_value
                 nuclide.decay_energy = sum(E.nominal_value for E in
@@ -414,9 +428,6 @@ class Chain:
                         Z = data.nuclide['atomic_number'] + delta_Z
                         daughter = '{}{}'.format(openmc.data.ATOMIC_SYMBOL[Z], A)
 
-                        if name not in chain.reactions:
-                            chain.reactions.append(name)
-
                         if daughter not in decay_data:
                             daughter = replace_missing(daughter, decay_data)
                             if daughter is None:
@@ -439,8 +450,6 @@ class Chain:
                         ReactionTuple('fission', None, q_value, 1.0))
                     fissionable = True
 
-                    if 'fission' not in chain.reactions:
-                        chain.reactions.append('fission')
 
             if fissionable:
                 if parent in fpy_data:
@@ -473,6 +482,9 @@ class Chain:
                     yield_data[E] = yields
 
                 nuclide.yield_data = FissionYieldDistribution(yield_data)
+
+            # Add nuclide to chain
+            chain.add_nuclide(nuclide)
 
         # Replace missing FPY data
         for nuclide in chain.nuclides:
@@ -532,14 +544,7 @@ class Chain:
             this_q = fission_q.get(nuclide_elem.get("name"))
 
             nuc = Nuclide.from_xml(nuclide_elem, root, this_q)
-            chain.nuclide_dict[nuc.name] = i
-
-            # Check for reaction paths
-            for rx in nuc.reactions:
-                if rx.type not in chain.reactions:
-                    chain.reactions.append(rx.type)
-
-            chain.nuclides.append(nuc)
+            chain.add_nuclide(nuc)
 
         return chain
 

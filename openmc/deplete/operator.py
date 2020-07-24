@@ -649,7 +649,7 @@ class Operator(TransportOperator):
         # numbers, zeroed out in material iteration
         number = np.empty(rates.n_nuc)
 
-        fission_ind = rates.index_rx["fission"]
+        fission_ind = rates.index_rx.get("fission")
 
         # Extract results
         for i, mat in enumerate(self.local_mats):
@@ -670,7 +670,8 @@ class Operator(TransportOperator):
             fission_yields.append(self._yield_helper.weighted_yields(i))
 
             # Accumulate energy from fission
-            self._normalization_helper.update(tally_rates[:, fission_ind])
+            if fission_ind is not None:
+                self._normalization_helper.update(tally_rates[:, fission_ind])
 
             # Divide by total number and store
             rates[i] = self._rate_helper.divide_by_adens(number)

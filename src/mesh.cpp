@@ -1843,7 +1843,7 @@ void WeightWindowMesh::weight_biasing(Particle::Bank& site, uint64_t* seed)
   for (i = 0; i < cumulative_biasing.size() - 1; i++) 
     if (cumulative_biasing.at(i) <= random_number && random_number < cumulative_biasing.at(i+1))  break;
   site.E = biasing_energy.at(i) + ( biasing_energy.at(i+1)-biasing_energy.at(i) ) * prn(seed);
-  site.wgt = site.wgt * origin_possibility.at(i+1) / biasing.at(i+1);
+  site.wgt = site.wgt * origin_probability.at(i+1) / biasing.at(i+1);
 }
   
 //==============================================================================

@@ -915,7 +915,7 @@ RectilinearMesh::RectilinearMesh(std::vector<double>&  x_grid, std::vector<doubl
   upper_right_ = {grid_[0].back(), grid_[1].back(), grid_[2].back()};
 }
   
-void RectilinearMesh::check_grids(std::vector<std::vector<double>> grids) 
+void RectilinearMesh::check_grids(const std::vector<std::vector<double>>& grids) 
 {
   // ========================================================================
   // check grids for rectilinear meshes.
@@ -1404,14 +1404,14 @@ bool RectilinearMesh::intersects(Position& r0, Position r1, int* ijk) const
 }
 
 //==============================================================================
-// WeightWindowMesh implementation, add by Yuan
+// WeightWindowMesh implementation
 //==============================================================================
 
 WeightWindowMesh::WeightWindowMesh(pugi::xml_node node)
 {
   using namespace pugi;
   
-  double lower_left_point[3]  = {0., 0., 0. };   //!< Lower-left coordinates of weight window mesh
+  double lower_left_point[3]  = {0., 0., 0.};    //!< Lower-left coordinates of weight window mesh
   std::vector<double> coarse_x;                  //!< Locations of the coarse meshes in the x direction
   std::vector<double> coarse_y;                  //!< Locations of the coarse meshes in the y direction
   std::vector<double> coarse_z;                  //!< Locations of the coarse meshes in the z direction
@@ -1446,8 +1446,13 @@ WeightWindowMesh::WeightWindowMesh(pugi::xml_node node)
   // weight window type
   if (check_for_node(node, "type")) {
     ww_type = std::stoi(get_node_value(node,"type"));
-    if (ww_type!=0 && ww_type!=1 )   fatal_error("Must assign weight window input file type, 0 for wwinp file with only lower weight window, 1 for MCNP wwinp file");
-  } else { fatal_error("Must assign weight window input file type, 0 for wwinp file with only lower weight window, 1 for MCNP wwinp file");  }
+    if (ww_type!=0 && ww_type!=1 ) {
+      fatal_error("Must assign weight window input file type, "
+                  "0 for wwinp file with only lower weight window, 1 for MCNP wwinp file");
+  } else { 
+      fatal_error("Must assign weight window input file type, "
+                  "0 for wwinp file with only lower weight window, 1 for MCNP wwinp file");  
+  }
 
   if (ww_type) {      // ww_type=1 for MCNP wwinp file
     // open wwinp file
@@ -1580,7 +1585,7 @@ WeightWindowMesh::WeightWindowMesh(pugi::xml_node node)
     // Lower-left coordinates for mesh
     if (check_for_node(node, "origin")) {
       auto value = get_node_xarray<double>(node, "origin");
-      if (value.size() != 3)      fatal_error("The origin point must be 3 dimension.");
+      if (value.size() != 3) fatal_error("The origin point must be 3 dimension.");
       lower_left_point[0] = value.at(0);
       lower_left_point[1] = value.at(1);
       lower_left_point[2] = value.at(2);
@@ -1588,75 +1593,69 @@ WeightWindowMesh::WeightWindowMesh(pugi::xml_node node)
 
     // Locations of the coarse meshes in x direction
     if (check_for_node(node, "xmesh")) {
-      auto value = get_node_xarray<double>(node, "xmesh");
-      for (int i=0; i<value.size(); i++)  coarse_x.push_back(value.at(i));
+      coarse_x = get_node_xarray<double>(node, "xmesh");
     }
 
     // Number of fine meshes within corresponding coarse meshes in x direction
     if (check_for_node(node, "xints")) {
-      auto value = get_node_xarray<int>(node, "xints");
-      for (int i=0; i<value.size(); i++)  shape_x.push_back(value.at(i));
-      if (coarse_x.size() != shape_x.size())      fatal_error("The number of xmesh and xints must be same.");
+      shape_x = get_node_xarray<int>(node, "xints");
+      if (coarse_x.size() != shape_x.size()) fatal_error("The number of xmesh and xints must be same.");
     }
 
     // locations of fine meshes in x direction
-    for (int i=0; i<coarse_x.size(); i++) {
-      if (i==0) { 
-        width_x.push_back( (coarse_x.at(0)-lower_left_point[0])/shape_x.at(0) );
-        for (int j=0; j<shape_x.at(i); j++)  fine_x.push_back( lower_left_point[0]+width_x.back()*j );
+    for (int i = 0; i < coarse_x.size(); i++) {
+      if (i == 0) { 
+        width_x.push_back( (coarse_x.at(0) - lower_left_point[0]) / shape_x.at(0) );
+        for (int j = 0; j < shape_x.at(i); j++)  fine_x.push_back( lower_left_point[0] + width_x.back()*j );
       } else {
-        width_x.push_back( (coarse_x.at(i)-coarse_x.at(i-1))/shape_x.at(i) );
-        for (int j=0; j<shape_x.at(i); j++)  fine_x.push_back( coarse_x.at(i-1)+width_x.back()*j );
+        width_x.push_back( (coarse_x.at(i) - coarse_x.at(i-1)) / shape_x.at(i) );
+        for (int j = 0; j < shape_x.at(i); j++)  fine_x.push_back( coarse_x.at(i-1) + width_x.back()*j );
       }
     }
     fine_x.push_back(coarse_x.back());
     
     // Locations of the coarse meshes in y direction
     if (check_for_node(node, "ymesh")) {
-      auto value = get_node_xarray<double>(node, "ymesh");
-      for (int i=0; i<value.size(); i++)  coarse_y.push_back(value.at(i));
+      coarse_y = get_node_xarray<double>(node, "ymesh");
     }
 
     // Number of fine meshes within corresponding coarse meshes in y direction
     if (check_for_node(node, "yints")) {
-      auto value = get_node_xarray<int>(node, "yints");
-      for (int i=0; i<value.size(); i++)  shape_y.push_back(value.at(i));
-      if (coarse_y.size() != shape_y.size())      fatal_error("The number of ymesh and yints must be same.");
+      shape_y = get_node_xarray<int>(node, "yints");
+      if (coarse_y.size() != shape_y.size()) fatal_error("The number of ymesh and yints must be same.");
     }
 
     // locations of fine meshes in y direction
-    for (int i=0; i<coarse_y.size(); i++) {
-      if (i==0) { 
-        width_y.push_back( (coarse_y.at(0)-lower_left_point[1])/shape_y.at(0) );
-        for (int j=0; j<shape_y.at(i); j++)  fine_y.push_back( lower_left_point[1]+width_y.back()*j );
+    for (int i = 0; i < coarse_y.size(); i++) {
+      if (i == 0) { 
+        width_y.push_back( (coarse_y.at(0) - lower_left_point[1]) / shape_y.at(0) );
+        for (int j = 0; j < shape_y.at(i); j++)  fine_y.push_back( lower_left_point[1] + width_y.back()*j );
       } else {
-        width_y.push_back( (coarse_y.at(i)-coarse_y.at(i-1))/shape_y.at(i) );
-        for (int j=0; j<shape_y.at(i); j++)  fine_y.push_back( coarse_y.at(i-1)+width_y.back()*j );
+        width_y.push_back( (coarse_y.at(i) - coarse_y.at(i-1)) / shape_y.at(i) );
+        for (int j = 0; j < shape_y.at(i); j++)  fine_y.push_back( coarse_y.at(i-1) + width_y.back()*j );
       }
     }
     fine_y.push_back(coarse_y.back());
     
     // Locations of the coarse meshes in z direction
     if (check_for_node(node, "zmesh")) {
-      auto value = get_node_xarray<double>(node, "zmesh");
-      for (int i=0; i<value.size(); i++)  coarse_z.push_back(value.at(i));
+      coarse_z = get_node_xarray<double>(node, "zmesh");
     }
 
     // Number of fine meshes within corresponding coarse meshes in z direction
     if (check_for_node(node, "zints")) {
-      auto value = get_node_xarray<int>(node, "zints");
-      for (int i=0; i<value.size(); i++)  shape_z.push_back(value.at(i));
-      if (coarse_z.size() != shape_z.size())      fatal_error("The number of zmesh and zints must be same.");
+      shape_z = get_node_xarray<int>(node, "zints");
+      if (coarse_z.size() != shape_z.size()) fatal_error("The number of zmesh and zints must be same.");
     }
 
     // locations of fine meshes in z direction
-    for (int i=0; i<coarse_z.size(); i++) {
-      if (i==0) { 
-        width_z.push_back( (coarse_z.at(0)-lower_left_point[2])/shape_z.at(0) );
-        for (int j=0; j<shape_z.at(i); j++)  fine_z.push_back( lower_left_point[2]+width_z.back()*j );
+    for (int i = 0; i < coarse_z.size(); i++) {
+      if (i == 0) { 
+        width_z.push_back( (coarse_z.at(0) - lower_left_point[2]) / shape_z.at(0) );
+        for (int j = 0; j < shape_z.at(i); j++)  fine_z.push_back( lower_left_point[2] + width_z.back()*j );
       } else {
-        width_z.push_back( (coarse_z.at(i)-coarse_z.at(i-1))/shape_z.at(i) );
-        for (int j=0; j<shape_z.at(i); j++)  fine_z.push_back( coarse_z.at(i-1)+width_z.back()*j );
+        width_z.push_back( (coarse_z.at(i) - coarse_z.at(i-1)) / shape_z.at(i) );
+        for (int j = 0; j < shape_z.at(i); j++)  fine_z.push_back( coarse_z.at(i-1) + width_z.back()*j );
       }
     }
     fine_z.push_back(coarse_z.back());
@@ -1667,22 +1666,24 @@ WeightWindowMesh::WeightWindowMesh(pugi::xml_node node)
     if (check_for_node(node, "energy")) {
       xml_node weightwindow_energy = node.child("energy");
       // energy group for neutron
-      if (check_for_node(weightwindow_energy,"neutron")) {
-        n_ww=true; // turn on the flag
-        auto value = get_node_xarray<double>(weightwindow_energy, "neutron");
-        n_energy_group.push_back(0);
-        for (int i=0; i<value.size(); i++)  n_energy_group.push_back(value.at(i));
+      if (check_for_node(weightwindow_energy, "neutron")) {
+        n_ww = true; // turn on the flag
+        n_energy_group = get_node_xarray<double>(weightwindow_energy, "neutron");
+        n_energy_group.insert(n_energy_group.begin(), 0);
       }
              
       // energy group for photon
-      if (check_for_node(weightwindow_energy,"photon")) {
-        if (!settings::photon_transport) { fatal_error("Photon transport is not on but weight window for photon is used"); }  // check if photon transport is on
-        p_ww=true; // turn on the flag
-        auto value = get_node_xarray<double>(weightwindow_energy, "photon");
-        p_energy_group.push_back(0);
-        for (int i=0; i<value.size(); i++)  p_energy_group.push_back(value.at(i));
+      if (check_for_node(weightwindow_energy, "photon")) {
+        if (!settings::photon_transport) { 
+          fatal_error("Photon transport is not on but weight window for photon is used"); 
+        }  
+        p_ww = true; // turn on the flag
+        p_energy_group = get_node_xarray<double>(weightwindow_energy, "photon");
+        p_energy_group.insert(p_energy_group.begin(), 0);
       }   
-    } else { fatal_error("Must assign energy group for weight window"); }  
+    } else { 
+      fatal_error("Must assign energy group for weight window"); 
+    }  
 
     // read wwinp file
     if (check_for_node(node, "lower_ww")) {
@@ -1691,18 +1692,21 @@ WeightWindowMesh::WeightWindowMesh(pugi::xml_node node)
          { fatal_error("The number of lower weight window bounds is not the same as energy-space mesh cell numbers");  }
       // neutron lower weight window bound first     
       if (n_ww) {
-        for (int i=0; i<mesh_->n_bins()*n_energy_group.size(); i++) {   
+        for (int i = 0; i < mesh_->n_bins()*n_energy_group.size(); i++) {   
           n_ww_lower.push_back(value.at(i));
         }  
       } 
     
       // photon lower weight window bound later
       if (p_ww) {
-        for (int i=0; i<mesh_->n_bins()*p_energy_group.size(); i++) {   
-          p_ww_lower.push_back(value.at(i+mesh_->n_bins()*n_energy_group.size()));
+        auto offset = mesh_->n_bins()*n_energy_group.size();
+        for (int i = 0; i < mesh_->n_bins()*p_energy_group.size(); i++) {   
+          p_ww_lower.push_back(value.at(i + offset));
         }   
       } 
-    } else { fatal_error("Must assign lower weight window bound for weight window"); } 
+    } else { 
+      fatal_error("Must assign lower weight window bound for weight window"); 
+    } 
     
   }
     
@@ -1713,27 +1717,28 @@ WeightWindowMesh::WeightWindowMesh(pugi::xml_node node)
         
     // upper weight window
     if (check_for_node(neutron_wwp,"upper")) {
-      n_upper_ratio = std::stod(get_node_value(neutron_wwp,"upper"));
-      if (n_upper_ratio<2 )   fatal_error("Ratio of upper/lower weight window must bigger than 2.");
+      n_upper_ratio = std::stod(get_node_value(neutron_wwp, "upper"));
+      if (n_upper_ratio < 2 ) fatal_error("Upper to lower weight window ratio must bigger than 2.");
     }
       
     // survival weight window
     if (check_for_node(neutron_wwp, "survival")) {
-      n_survival_ratio = std::stod(get_node_value(neutron_wwp,"survival"));
-      if (n_survival_ratio<=1 || n_survival_ratio>= n_upper_ratio )  
-        fatal_error("Ratio of survival/lower weight window must bigger than 1 and less than upper/lower ratio.");
+      n_survival_ratio = std::stod(get_node_value(neutron_wwp, "survival"));
+      if (n_survival_ratio <= 1 || n_survival_ratio >= n_upper_ratio )  
+        fatal_error("Survival to lower weight window ratio must bigger than 1 "
+                    "and less than the upper to lower weight window ratio.");
     }
       
     // max split
     if (check_for_node(neutron_wwp, "max_split")) {
-      n_max_split = std::stoi(get_node_value(neutron_wwp,"max_split"));
-      if (n_max_split<=1 )   fatal_error("Max split number must bigger than 1.");
+      n_max_split = std::stoi(get_node_value(neutron_wwp, "max_split"));
+      if (n_max_split <= 1 ) fatal_error("Max split number must larger than 1.");
     }
       
     // multiplier for weight window lower bounds
     if (check_for_node(neutron_wwp, "multiplier")) {
-      n_multiplier = std::stod(get_node_value(neutron_wwp,"multiplier"));
-      if (n_multiplier<=0 )   fatal_error("Multiplier for lower weight window must bigger than 0.");
+      n_multiplier = std::stod(get_node_value(neutron_wwp, "multiplier"));
+      if (n_multiplier <= 0 ) fatal_error("Multiplier for lower weight window must larger than 0.");
     }      
   }
   // neutron      
@@ -1743,28 +1748,29 @@ WeightWindowMesh::WeightWindowMesh(pugi::xml_node node)
     xml_node photon_wwp = node.child("photon_parameters");
         
     // upper weight window
-    if (check_for_node(photon_wwp,"upper")) {
-      p_upper_ratio = std::stod(get_node_value(photon_wwp,"upper"));
-      if (p_upper_ratio<2 )   fatal_error("Ratio of upper/lower weight window must bigger than 2.");
+    if (check_for_node(photon_wwp, "upper")) {
+      p_upper_ratio = std::stod(get_node_value(photon_wwp, "upper"));
+      if (p_upper_ratio < 2 ) fatal_error("Upper to lower weight window ratio must larger than 2.");
     }
       
     // survival weight window
     if (check_for_node(photon_wwp, "survival")) {
-      p_survival_ratio = std::stod(get_node_value(photon_wwp,"survival"));
-      if (p_survival_ratio<=1 || p_survival_ratio>= p_upper_ratio )  
-        fatal_error("Ratio of survival/lower weight window must bigger than 1 and less than upper/lower ratio.");
+      p_survival_ratio = std::stod(get_node_value(photon_wwp, "survival"));
+      if (p_survival_ratio <= 1 || p_survival_ratio >= p_upper_ratio )  
+        fatal_error("Survival to lower weight window ratio must bigger than 1 "
+                    "and less than the upper to lower weight window ratio.");
     }
       
     // max split
     if (check_for_node(photon_wwp, "max_split")) {
-      p_max_split = std::stoi(get_node_value(photon_wwp,"max_split"));
-      if (p_max_split<=1 )   fatal_error("Max split number must bigger than 1.");
+      p_max_split = std::stoi(get_node_value(photon_wwp, "max_split"));
+      if (p_max_split <= 1 ) fatal_error("Max split number must larger than 1.");
     }
       
     // multiplier for weight window lower bounds
     if (check_for_node(photon_wwp, "multiplier")) {
-      p_multiplier = std::stod(get_node_value(photon_wwp,"multiplier"));
-      if (p_multiplier<=0 )   fatal_error("Multiplier for lower weight window must bigger than 0.");
+      p_multiplier = std::stod(get_node_value(photon_wwp, "multiplier"));
+      if (p_multiplier <= 0 ) fatal_error("Multiplier for lower weight window must larger than 0.");
     }     
   }
   // photon
@@ -1776,49 +1782,48 @@ WeightWindowMesh::WeightWindowMesh(pugi::xml_node node)
     
     // energy group for source weight biasing
     if (check_for_node(node_user_defined_biasing, "biasing_energy")) {
-      auto value = get_node_xarray<double>(node_user_defined_biasing, "biasing_energy");
-      biasing_energy.push_back(0.);
-      for (int i=0; i<value.size(); i++)   biasing_energy.push_back(value.at(i));
+      biasing_energy = get_node_xarray<double>(node_user_defined_biasing, "biasing_energy");
+      biasing_energy.insert(biasing_energy.begin(), 0.);
     } else {
-      fatal_error("Must provide energy group for biasing.");
+      fatal_error("Must provide energy groups for biasing.");
     }
 
-    // origin possibility for each energy group
-    if (check_for_node(node_user_defined_biasing, "origin_possibility")) {
-      auto value = get_node_xarray<double>(node_user_defined_biasing, "origin_possibility");
-      if (value.size()!=biasing_energy.size()-1)  fatal_error("Origin_possibility and biasing_energy must have the same number of input.");
-      origin_possibility.push_back(0.);
-      cumulative_possibility.push_back(0.);
-      for (int i=0; i<value.size(); i++) {
-        origin_possibility.push_back(value.at(i));
-        cumulative_possibility.push_back(0.);
+    // origin probability for each energy group
+    if (check_for_node(node_user_defined_biasing, "origin_probability")) {
+      auto value = get_node_xarray<double>(node_user_defined_biasing, "origin_probability");
+      if (value.size() != biasing_energy.size() - 1) fatal_error("Origin probabilities and biasing energies must have the same number of values.");
+      origin_probability.push_back(0.);
+      cumulative_probability.push_back(0.);
+      for (int i = 0; i < value.size(); i++) {
+        origin_probability.push_back(value.at(i));
+        cumulative_probability.push_back(0.);
       }
       // normalization
-      double total_possibility=0.0;
-      for (int i=0; i<origin_possibility.size(); i++)   total_possibility += origin_possibility.at(i);
-      for (int i=1; i<origin_possibility.size(); i++)  {   
-        origin_possibility.at(i) = origin_possibility.at(i) / total_possibility;
-        cumulative_possibility.at(i) = cumulative_possibility.at(i-1) + origin_possibility.at(i);
+      double total_possibility = 0.0;
+      for (int i = 0; i < origin_probability.size(); i++) total_probability += origin_probability.at(i);
+      for (int i = 1; i < origin_probability.size(); i++) {   
+        origin_probability.at(i) = origin_probability.at(i)/total_probability;
+        cumulative_probability.at(i) = cumulative_probability.at(i-1) + origin_probability.at(i);
       }
     } else {
-      fatal_error("Must provide origin_possibility for each group.");
+      fatal_error("Must provide origin_probability for each group.");
     }
       
     // biasing weight for each energy group
     if (check_for_node(node_user_defined_biasing, "biasing")) {
       auto value = get_node_xarray<double>(node_user_defined_biasing, "biasing");
-      if (value.size()!=biasing_energy.size()-1)  fatal_error("Biasing and biasing_energy must have the same number of input.");
+      if (value.size() != biasing_energy.size() - 1) fatal_error("Biasing and biasing energies must have the same number of values.");
       biasing.push_back(0);
       cumulative_biasing.push_back(0);
-      for (int i=0; i<value.size(); i++) {
+      for (int i = 0; i < value.size(); i++) {
         biasing.push_back(value.at(i));
         cumulative_biasing.push_back(0);
       }
       // normalization
-      double total_possibility=0.0;
-      for (int i=0; i<biasing.size(); i++)   total_possibility += biasing.at(i);
-      for (int i=1; i<biasing.size(); i++) {
-        biasing.at(i) = biasing.at(i) / total_possibility;
+      double total_possibility = 0.0;
+      for (int i = 0; i < biasing.size(); i++) total_possibility += biasing.at(i);
+      for (int i = 1; i < biasing.size(); i++) {
+        biasing.at(i) = biasing.at(i)/total_possibility;
         cumulative_biasing.at(i) = cumulative_biasing.at(i-1) + biasing.at(i);
       }
     } else {
@@ -1831,10 +1836,10 @@ WeightWindowMesh::WeightWindowMesh(pugi::xml_node node)
 //! source weight biasing in energy
 void WeightWindowMesh::weight_biasing(Particle::Bank& site, uint64_t* seed) 
 {
-  int i=0;
-  double random_number=prn(seed);
-  for (i=0; i<cumulative_biasing.size()-1; i++) 
-    if ( cumulative_biasing.at(i) <= random_number && random_number < cumulative_biasing.at(i+1) )  break;
+  int i = 0;
+  double random_number = prn(seed);
+  for (i = 0; i < cumulative_biasing.size() - 1; i++) 
+    if (cumulative_biasing.at(i) <= random_number && random_number < cumulative_biasing.at(i+1))  break;
   site.E = biasing_energy.at(i) + ( biasing_energy.at(i+1)-biasing_energy.at(i) ) * prn(seed);
   site.wgt = site.wgt * origin_possibility.at(i+1) / biasing.at(i+1);
 }

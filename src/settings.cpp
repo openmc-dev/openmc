@@ -69,11 +69,9 @@ bool urr_ptables_on          {true};
 bool write_all_tracks        {false};
 bool write_initial_source    {false};
 
-// ---
-// weight window   add by Yuan
-bool weightwindow            {false};
+// weight windows
+bool weightwindow {false};
 std::unique_ptr<WeightWindowMesh> ww_fine_mesh;
-// ---
   
 std::string path_cross_sections;
 std::string path_input;

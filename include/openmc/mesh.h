@@ -209,7 +209,7 @@ public:
   RectilinearMesh(std::vector<double>&  x_grid, std::vector<double>&  y_grid, std::vector<double>&  z_grid);
   
   // check grids for rectilinear meshes
-  void check_grids(std::vector<std::vector<double>> grids);
+  void check_grids(const std::vector<std::vector<double>>& grids);
 
   // Overriden methods
 
@@ -253,7 +253,7 @@ private:
   std::vector<std::vector<double>> grid_;
 };
   
-// Weight Window Mesh class, add by Yuan
+// Weight Window Mesh class 
 class WeightWindowMesh 
 {
 public:
@@ -292,13 +292,13 @@ public:
   // source weight biasing in energy
   bool user_defined_biasing;      //!< use user difined weight or not
   std::vector<double> biasing_energy;   //!< energy group for weight biasing
-  std::vector<double> origin_possibility; //!< possibility for each group
-  std::vector<double> cumulative_possibility; //!< cumulative possibility for each group
+  std::vector<double> origin_probability; //!< probability for each group
+  std::vector<double> cumulative_probability; //!< cumulative probability for each group
   std::vector<double> biasing;   //!< biasing for each energy group
-  std::vector<double> cumulative_biasing;   //!< cumulative possibility for biasing for each energy group
+  std::vector<double> cumulative_biasing;   //!< cumulative probability for biasing for each energy group
 
 };
-// Weight Window Mesh class, add by Yuan
+// Weight Window Mesh class
 
 
 #ifdef DAGMC

@@ -1412,12 +1412,12 @@ WeightWindowMesh::WeightWindowMesh(pugi::xml_node node)
   using namespace pugi;
   
   double lower_left_point[3]  = {0., 0., 0.};    //!< Lower-left coordinates of weight window mesh
-  std::vector<double> coarse_x;                  //!< Locations of the coarse meshes in the x direction
-  std::vector<double> coarse_y;                  //!< Locations of the coarse meshes in the y direction
-  std::vector<double> coarse_z;                  //!< Locations of the coarse meshes in the z direction
-  std::vector<int> shape_x;                      //!< Number of fine mesh in each coarse meshes in the x direction
-  std::vector<int> shape_y;                      //!< Number of fine mesh in each coarse meshes in the y direction
-  std::vector<int> shape_z;                      //!< Number of fine mesh in each coarse meshes in the z direction
+  xt::xarray<double> coarse_x;                  //!< Locations of the coarse meshes in the x direction
+  xt::xarray<double> coarse_y;                  //!< Locations of the coarse meshes in the y direction
+  xt::xarray<double> coarse_z;                  //!< Locations of the coarse meshes in the z direction
+  xt::xarray<int> shape_x;                      //!< Number of fine mesh in each coarse meshes in the x direction
+  xt::xarray<int> shape_y;                      //!< Number of fine mesh in each coarse meshes in the y direction
+  xt::xarray<int> shape_z;                      //!< Number of fine mesh in each coarse meshes in the z direction
   std::vector<double> width_x;                   //!< Width of fine mesh in each coarse meshes in the x direction
   std::vector<double> width_y;                   //!< Width of fine mesh in each coarse meshes in the y direction
   std::vector<double> width_z;                   //!< Width of fine mesh in each coarse meshes in the z direction

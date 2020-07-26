@@ -1799,7 +1799,7 @@ WeightWindowMesh::WeightWindowMesh(pugi::xml_node node)
         cumulative_probability.push_back(0.);
       }
       // normalization
-      double total_possibility = 0.0;
+      double total_probability = 0.0;
       for (int i = 0; i < origin_probability.size(); i++) total_probability += origin_probability.at(i);
       for (int i = 1; i < origin_probability.size(); i++) {   
         origin_probability.at(i) = origin_probability.at(i)/total_probability;
@@ -1820,10 +1820,10 @@ WeightWindowMesh::WeightWindowMesh(pugi::xml_node node)
         cumulative_biasing.push_back(0);
       }
       // normalization
-      double total_possibility = 0.0;
-      for (int i = 0; i < biasing.size(); i++) total_possibility += biasing.at(i);
+      double total_probability = 0.0;
+      for (int i = 0; i < biasing.size(); i++) total_probability += biasing.at(i);
       for (int i = 1; i < biasing.size(); i++) {
-        biasing.at(i) = biasing.at(i)/total_possibility;
+        biasing.at(i) = biasing.at(i)/total_probability;
         cumulative_biasing.at(i) = cumulative_biasing.at(i-1) + biasing.at(i);
       }
     } else {

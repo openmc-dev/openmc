@@ -1830,6 +1830,8 @@ WeightWindowMesh::WeightWindowMesh(pugi::xml_node node)
       fatal_error("Must provide biasing for each energy group.");
     }
   }
+    
+}
 
 }
   

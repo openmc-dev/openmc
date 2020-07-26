@@ -237,9 +237,10 @@ Particle::Bank SourceDistribution::sample(uint64_t* seed) const
     }
   }
   
-  // source weight biasing in energy,   add by Yuan
-  if (settings::weightwindow && settings::ww_fine_mesh->user_defined_biasing)  { settings::ww_fine_mesh->weight_biasing(site, seed); }
-  else {
+  // source weight biasing in energy
+  if (settings::weightwindow && settings::ww_fine_mesh->user_defined_biasing)  { 
+    settings::ww_fine_mesh->weight_biasing(site, seed); 
+  } else {
     // origin code
     while (true) {
       // Sample energy spectrum
@@ -248,7 +249,7 @@ Particle::Bank SourceDistribution::sample(uint64_t* seed) const
       // Resample if energy falls outside minimum or maximum particle energy
       if (site.E < data::energy_max[p] && site.E > data::energy_min[p]) break;
     }
-  }   // add by Yuan
+  } 
   
   // Set delayed group
   site.delayed_group = 0;

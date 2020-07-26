@@ -55,9 +55,7 @@ extern bool urr_ptables_on;           //!< use unresolved resonance prob. tables
 extern bool write_all_tracks;         //!< write track files for every particle?
 extern bool write_initial_source;     //!< write out initial source file?
 
-// ---
-// weight window   add by Yuan
-// ---
+// weight window   
 extern bool weightwindow;  //!< use weight window or not
 extern std::unique_ptr<WeightWindowMesh>  ww_fine_mesh;  //!< weight window mesh
   

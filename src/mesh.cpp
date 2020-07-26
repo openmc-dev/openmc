@@ -1412,12 +1412,12 @@ WeightWindowMesh::WeightWindowMesh(pugi::xml_node node)
   using namespace pugi;
   
   double lower_left_point[3]  = {0., 0., 0.};    //!< Lower-left coordinates of weight window mesh
-  xt::xarray<double> coarse_x;                  //!< Locations of the coarse meshes in the x direction
-  xt::xarray<double> coarse_y;                  //!< Locations of the coarse meshes in the y direction
-  xt::xarray<double> coarse_z;                  //!< Locations of the coarse meshes in the z direction
-  xt::xarray<int> shape_x;                      //!< Number of fine mesh in each coarse meshes in the x direction
-  xt::xarray<int> shape_y;                      //!< Number of fine mesh in each coarse meshes in the y direction
-  xt::xarray<int> shape_z;                      //!< Number of fine mesh in each coarse meshes in the z direction
+  std::vector<double> coarse_x;                  //!< Locations of the coarse meshes in the x direction
+  std::vector<double> coarse_y;                  //!< Locations of the coarse meshes in the y direction
+  std::vector<double> coarse_z;                  //!< Locations of the coarse meshes in the z direction
+  std::vector<int> shape_x;                      //!< Number of fine mesh in each coarse meshes in the x direction
+  std::vector<int> shape_y;                      //!< Number of fine mesh in each coarse meshes in the y direction
+  std::vector<int> shape_z;                      //!< Number of fine mesh in each coarse meshes in the z direction
   std::vector<double> width_x;                   //!< Width of fine mesh in each coarse meshes in the x direction
   std::vector<double> width_y;                   //!< Width of fine mesh in each coarse meshes in the y direction
   std::vector<double> width_z;                   //!< Width of fine mesh in each coarse meshes in the z direction
@@ -1593,12 +1593,12 @@ WeightWindowMesh::WeightWindowMesh(pugi::xml_node node)
 
     // Locations of the coarse meshes in x direction
     if (check_for_node(node, "xmesh")) {
-      coarse_x = get_node_xarray<double>(node, "xmesh");
+      coarse_x = get_node_array<double>(node, "xmesh");
     }
 
     // Number of fine meshes within corresponding coarse meshes in x direction
     if (check_for_node(node, "xints")) {
-      shape_x = get_node_xarray<int>(node, "xints");
+      shape_x = get_node_array<int>(node, "xints");
       if (coarse_x.size() != shape_x.size()) fatal_error("The number of xmesh and xints must be same.");
     }
 
@@ -1616,12 +1616,12 @@ WeightWindowMesh::WeightWindowMesh(pugi::xml_node node)
     
     // Locations of the coarse meshes in y direction
     if (check_for_node(node, "ymesh")) {
-      coarse_y = get_node_xarray<double>(node, "ymesh");
+      coarse_y = get_node_array<double>(node, "ymesh");
     }
 
     // Number of fine meshes within corresponding coarse meshes in y direction
     if (check_for_node(node, "yints")) {
-      shape_y = get_node_xarray<int>(node, "yints");
+      shape_y = get_node_array<int>(node, "yints");
       if (coarse_y.size() != shape_y.size()) fatal_error("The number of ymesh and yints must be same.");
     }
 
@@ -1639,12 +1639,12 @@ WeightWindowMesh::WeightWindowMesh(pugi::xml_node node)
     
     // Locations of the coarse meshes in z direction
     if (check_for_node(node, "zmesh")) {
-      coarse_z = get_node_xarray<double>(node, "zmesh");
+      coarse_z = get_node_array<double>(node, "zmesh");
     }
 
     // Number of fine meshes within corresponding coarse meshes in z direction
     if (check_for_node(node, "zints")) {
-      shape_z = get_node_xarray<int>(node, "zints");
+      shape_z = get_node_array<int>(node, "zints");
       if (coarse_z.size() != shape_z.size()) fatal_error("The number of zmesh and zints must be same.");
     }
 
@@ -1668,7 +1668,7 @@ WeightWindowMesh::WeightWindowMesh(pugi::xml_node node)
       // energy group for neutron
       if (check_for_node(weightwindow_energy, "neutron")) {
         n_ww = true; // turn on the flag
-        n_energy_group = get_node_xarray<double>(weightwindow_energy, "neutron");
+        n_energy_group = get_node_array<double>(weightwindow_energy, "neutron");
         n_energy_group.insert(n_energy_group.begin(), 0);
       }
              
@@ -1678,7 +1678,7 @@ WeightWindowMesh::WeightWindowMesh(pugi::xml_node node)
           fatal_error("Photon transport is not on but weight window for photon is used"); 
         }  
         p_ww = true; // turn on the flag
-        p_energy_group = get_node_xarray<double>(weightwindow_energy, "photon");
+        p_energy_group = get_node_array<double>(weightwindow_energy, "photon");
         p_energy_group.insert(p_energy_group.begin(), 0);
       }   
     } else { 
@@ -1782,7 +1782,7 @@ WeightWindowMesh::WeightWindowMesh(pugi::xml_node node)
     
     // energy group for source weight biasing
     if (check_for_node(node_user_defined_biasing, "biasing_energy")) {
-      biasing_energy = get_node_xarray<double>(node_user_defined_biasing, "biasing_energy");
+      biasing_energy = get_node_array<double>(node_user_defined_biasing, "biasing_energy");
       biasing_energy.insert(biasing_energy.begin(), 0.);
     } else {
       fatal_error("Must provide energy groups for biasing.");

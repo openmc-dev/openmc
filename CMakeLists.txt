@@ -29,10 +29,16 @@ option(dagmc    "Enable support for DAGMC (CAD) geometry"        OFF)
 # MPI for distributed-memory parallelism
 #===============================================================================
 
-set(MPI_ENABLED FALSE)
-if(${CMAKE_CXX_COMPILER} MATCHES "(mpi[^/]*|CC)$")
-  message(STATUS "Detected MPI wrapper: ${CMAKE_CXX_COMPILER}")
-  set(MPI_ENABLED TRUE)
+if(CMAKE_VERSION VERSION_GREATER_EQUAL 3.10)
+  # This sets MPI_CXX_FOUND
+  find_package(MPI COMPONENTS CXX)
+else()
+  if(${CMAKE_CXX_COMPILER} MATCHES "(mpi[^/]*|CC)$")
+    message(STATUS "Detected MPI wrapper: ${CMAKE_CXX_COMPILER}")
+    set(MPI_CXX_FOUND TRUE)
+  else()
+    set(MPI_CXX_FOUND FALSE)
+  endif()
 endif()
 
 #===============================================================================
@@ -61,7 +67,7 @@ endif()
 
 find_package(HDF5 REQUIRED COMPONENTS C HL)
 if(HDF5_IS_PARALLEL)
-  if(NOT MPI_ENABLED)
+  if(NOT MPI_CXX_FOUND)
     message(FATAL_ERROR "Parallel HDF5 must be used with MPI.")
   endif()
   message(STATUS "Using parallel HDF5")
@@ -344,7 +350,7 @@ target_compile_options(libopenmc PRIVATE ${cxxflags})
 if (HDF5_IS_PARALLEL)
   target_compile_definitions(libopenmc PRIVATE -DPHDF5)
 endif()
-if (MPI_ENABLED)
+if (MPI_CXX_FOUND)
   target_compile_definitions(libopenmc PUBLIC -DOPENMC_MPI)
 endif()
 
@@ -364,6 +370,9 @@ endif()
 # linker flags. Thus, we can pass both linker flags and libraries together.
 target_link_libraries(libopenmc ${ldflags} ${HDF5_LIBRARIES} ${HDF5_HL_LIBRARIES}
                       pugixml faddeeva xtensor gsl-lite-v1 fmt::fmt)
+if(CMAKE_VERSION VERSION_GREATER_EQUAL 3.10 AND MPI_CXX_FOUND)
+  target_link_libraries(libopenmc MPI::MPI_CXX)
+endif()
 
 if(dagmc)
   target_compile_definitions(libopenmc PRIVATE DAGMC)

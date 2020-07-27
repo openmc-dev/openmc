@@ -1043,6 +1043,18 @@ openmc_nuclide_name(int index, const char** name)
   }
 }
 
+extern "C" int
+openmc_nuclide_one_group_xs(int index, int MT, const double* energy, const double* flux, int n, double* xs)
+{
+  if (index < 0 || index >= data::nuclides.size()) {
+    set_errmsg("Index in nuclides vector is out of bounds.");
+    return OPENMC_E_OUT_OF_BOUNDS;
+  }
+
+  *xs = data::nuclides[index]->one_group_xs(MT, {energy, energy + n + 1}, {flux, flux + n});
+  return 0;
+}
+
 void nuclides_clear()
 {
   data::nuclides.clear();

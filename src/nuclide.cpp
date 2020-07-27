@@ -908,6 +908,20 @@ void Nuclide::calculate_urr_xs(int i_temp, Particle& p) const
 
 }
 
+double Nuclide::one_group_xs(int MT, gsl::span<const double> energy, gsl::span<const double> flux) const
+{
+  Expects(MT > 0);
+  Expects(energy.size() > 0);
+  Expects(energy.size() == flux.size() + 1);
+
+  int i_rx = reaction_index_[MT];
+  if (i_rx < 0) return 0.0;
+
+  const auto& rx = reactions_[i_rx];
+  const auto& grid = grid_[0].energy;
+  return rx->one_group_xs(energy, flux, grid);
+}
+
 //==============================================================================
 // Non-member functions
 //==============================================================================

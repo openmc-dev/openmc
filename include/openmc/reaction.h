@@ -7,6 +7,7 @@
 #include <string>
 #include <vector>
 
+#include <gsl/gsl>
 #include "hdf5.h"
 
 #include "openmc/reaction_product.h"
@@ -25,6 +26,8 @@ public:
   //! \param[in] group HDF5 group containing reaction data
   //! \param[in] temperatures Desired temperatures for cross sections
   explicit Reaction(hid_t group, const std::vector<int>& temperatures);
+
+  double one_group_xs(gsl::span<const double> energy, gsl::span<const double> flux, const std::vector<double>& grid) const;
 
   //! Cross section at a single temperature
   struct TemperatureXS {

@@ -58,6 +58,8 @@ public:
   //! from probability tables.
   void calculate_urr_xs(int i_temp, Particle& p) const;
 
+  double one_group_xs(int MT, gsl::span<const double> energy, gsl::span<const double> flux) const;
+
   // Data members
   std::string name_; //!< Name of nuclide, e.g. "U235"
   int Z_; //!< Atomic number

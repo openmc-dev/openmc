@@ -10,6 +10,7 @@
 #include "openmc/hdf5_interface.h"
 #include "openmc/endf.h"
 #include "openmc/random_lcg.h"
+#include "openmc/search.h"
 #include "openmc/secondary_uncorrelated.h"
 
 namespace openmc {
@@ -81,6 +82,61 @@ Reaction::Reaction(hid_t group, const std::vector<int>& temperatures)
     }
   }
   // <<<<<<<<<<<<<<<<<<<<<<<<<<<< REMOVE THIS <<<<<<<<<<<<<<<<<<<<<<<<<
+}
+
+double
+Reaction::one_group_xs(gsl::span<const double> energy, gsl::span<const double> flux, const std::vector<double>& grid) const
+{
+  // TODO: deal with threshold index
+
+  // Find index corresponding to first energy
+  double E_start = energy[0];
+  // TODO: Figure out how to deal with temperature
+  const auto& xs = xs_[0].value;
+  int i_low = lower_bound_index(grid.cbegin(), grid.cend(), energy[0]);
+
+  double xs_flux_sum = 0.0;
+  double flux_sum = 0.0;
+
+  for (int j = 0; j < flux.size(); ++j) {
+    double E_group_low = energy[j];
+    double E_group_high = energy[j + 1];
+
+    // Determine energy grid index corresponding to group high
+    int i_high = i_low;
+    while (grid[i_high + 1] < E_group_high) ++i_high;
+
+    while (i_low <= i_high) {
+      // Determine bounding grid energies and cross sections
+      double E_l = grid[i_low];
+      double E_r = grid[i_low + 1];
+      double xs_l = xs[i_low];
+      double xs_r = xs[i_low + 1];
+
+      // Determine actual energies
+      double E_low = std::max(E_group_low, E_l);
+      double E_high = std::min(E_group_high, E_r);
+
+      double m = (xs_r - xs_l) / (E_r - E_l);
+      double xs_low = xs_l + m*(E_low - E_l);
+      double xs_high = xs_l + m*(E_high - E_l);
+      double xs_avg = 0.5*(xs_low + xs_high);
+
+      // Add contribution from segment
+      double dE = (E_high - E_low);
+      flux_sum += flux[j] * dE;
+      xs_flux_sum += flux[j] * xs_avg * dE;
+
+      ++i_low;
+    }
+
+    i_low = i_high;
+
+    // Check for end of energy grid
+    if (i_low + 1 == grid.size()) break;
+  }
+
+  return xs_flux_sum / flux_sum;
 }
 
 //==============================================================================

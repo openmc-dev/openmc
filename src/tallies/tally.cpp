@@ -137,7 +137,7 @@ score_str_to_int(std::string score_str)
   if (score_str == "(n,2nd)")
     return N_2ND;
   if (score_str == "(n,na)")
-    return N_2NA;
+    return N_NA;
   if (score_str == "(n,n3a)")
     return N_N3A;
   if (score_str == "(n,2na)")
@@ -232,7 +232,6 @@ score_str_to_int(std::string score_str)
       || score_str.rfind("total-y", 0) == 0
       || score_str.rfind("flux-y", 0) == 0)
     fatal_error(score_str + " is no longer an available score");
-
 
   // Assume the given string is a reaction MT number.  Make sure it's a natural
   // number then return.

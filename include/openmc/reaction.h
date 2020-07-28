@@ -27,7 +27,7 @@ public:
   //! \param[in] temperatures Desired temperatures for cross sections
   explicit Reaction(hid_t group, const std::vector<int>& temperatures);
 
-  double one_group_xs(gsl::span<const double> energy, gsl::span<const double> flux, const std::vector<double>& grid) const;
+  double collapse_rate(gsl::span<const double> energy, gsl::span<const double> flux, const std::vector<double>& grid) const;
 
   //! Cross section at a single temperature
   struct TemperatureXS {

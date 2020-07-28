@@ -87,18 +87,28 @@ Reaction::Reaction(hid_t group, const std::vector<int>& temperatures)
 double
 Reaction::one_group_xs(gsl::span<const double> energy, gsl::span<const double> flux, const std::vector<double>& grid) const
 {
-  // TODO: deal with threshold index
+  // TODO: Figure out how to deal with temperature
+  int i_temp = 0;
 
   // Find index corresponding to first energy
-  double E_start = energy[0];
-  // TODO: Figure out how to deal with temperature
-  const auto& xs = xs_[0].value;
-  int i_low = lower_bound_index(grid.cbegin(), grid.cend(), energy[0]);
+  const auto& xs = xs_[i_temp].value;
+  int i_low = lower_bound_index(grid.cbegin(), grid.cend(), energy.front());
+
+  // Check for threshold and adjust starting point if necessary
+  int j_start = 0;
+  int i_threshold = xs_[i_temp].threshold;
+  if (i_low < i_threshold) {
+    i_low = i_threshold;
+    while (energy[j_start + 1] < grid[i_low]) {
+      ++j_start;
+      if (j_start + 1 == energy.size()) return 0.0;
+    }
+  }
 
   double xs_flux_sum = 0.0;
   double flux_sum = 0.0;
 
-  for (int j = 0; j < flux.size(); ++j) {
+  for (int j = j_start; j < flux.size(); ++j) {
     double E_group_low = energy[j];
     double E_group_high = energy[j + 1];
 
@@ -110,8 +120,8 @@ Reaction::one_group_xs(gsl::span<const double> energy, gsl::span<const double> f
       // Determine bounding grid energies and cross sections
       double E_l = grid[i_low];
       double E_r = grid[i_low + 1];
-      double xs_l = xs[i_low];
-      double xs_r = xs[i_low + 1];
+      double xs_l = xs[i_low - i_threshold];
+      double xs_r = xs[i_low + 1 - i_threshold];
 
       // Determine actual energies
       double E_low = std::max(E_group_low, E_l);

@@ -270,7 +270,7 @@ const RegularMesh* ufs_mesh {nullptr};
 std::vector<double> k_generation;
 std::vector<int64_t> work_index;
 
-int64_t total_surf_banks;
+int64_t total_surf_banks {0};
 std::vector<int64_t> surf_src_index;
 
 } // namespace simulation
@@ -637,23 +637,34 @@ void initialize_data()
 
 void query_surf_src_size()
 {
-  int64_t i_bank = 0;
-  simulation::surf_src_index.resize(mpi::n_procs + 1);
-  simulation::surf_src_index[0] = 0;
-  for (int i = 0; i < mpi::n_procs; ++i) {
-    int64_t work_i = 0;
+  int64_t total;
+  if (mpi::master) {
+    simulation::surf_src_index.resize(mpi::n_procs + 1);
+    simulation::surf_src_index[0] = 0;
+  }
 
-    // Set number of particles
-    if (mpi::rank == i) work_i = simulation::surf_src_bank.size();
 #ifdef OPENMC_MPI
-    MPI_Reduce(&work_i, &simulation::total_surf_banks, 1, MPI_INT,
-               MPI_SUM, 0, mpi::intracomm);
+  std::vector<int64_t> bank_size;
+  bank_size.resize(mpi::n_procs);
+
+  int64_t size = simulation::surf_src_bank.size();
+  MPI_Gather(&size, 1, MPI_INT64_T,
+             bank_size.data(), 1, MPI_INT64_T,
+             0, mpi::intracomm);
+
+  if (mpi::master) {
+    for (int i = 1; i < mpi::n_procs + 1; ++i) {
+      simulation::surf_src_index[i] = simulation::surf_src_index[i - 1] + bank_size[i - 1];
+    }
+    total = simulation::surf_src_index[mpi::n_procs];
+  }
+#else
+  total = simulation::surf_src_bank.size();
+  simulation::surf_src_index[mpi::n_procs] = total;
 #endif
 
-    // Set index into source bank for rank i
-    i_bank += work_i;
-    simulation::surf_src_index[i + 1] = i_bank;
-  }
+  simulation::total_surf_banks = total;
+
 }
 
 #ifdef OPENMC_MPI

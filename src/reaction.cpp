@@ -85,7 +85,7 @@ Reaction::Reaction(hid_t group, const std::vector<int>& temperatures)
 }
 
 double
-Reaction::one_group_xs(gsl::span<const double> energy, gsl::span<const double> flux, const std::vector<double>& grid) const
+Reaction::collapse_rate(gsl::span<const double> energy, gsl::span<const double> flux, const std::vector<double>& grid) const
 {
   // TODO: Figure out how to deal with temperature
   int i_temp = 0;

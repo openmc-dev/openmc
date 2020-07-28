@@ -106,16 +106,17 @@ Reaction::one_group_xs(gsl::span<const double> energy, gsl::span<const double> f
   }
 
   double xs_flux_sum = 0.0;
-  double flux_sum = 0.0;
 
   for (int j = j_start; j < flux.size(); ++j) {
     double E_group_low = energy[j];
     double E_group_high = energy[j + 1];
+    double flux_per_eV = flux[j] / (E_group_high - E_group_low);
 
     // Determine energy grid index corresponding to group high
     int i_high = i_low;
     while (grid[i_high + 1] < E_group_high) ++i_high;
 
+    // Loop over energy grid points within [E_group_low, E_group_high]
     while (i_low <= i_high) {
       // Determine bounding grid energies and cross sections
       double E_l = grid[i_low];
@@ -127,6 +128,7 @@ Reaction::one_group_xs(gsl::span<const double> energy, gsl::span<const double> f
       double E_low = std::max(E_group_low, E_l);
       double E_high = std::min(E_group_high, E_r);
 
+      // Determine average cross section across segment
       double m = (xs_r - xs_l) / (E_r - E_l);
       double xs_low = xs_l + m*(E_low - E_l);
       double xs_high = xs_l + m*(E_high - E_l);
@@ -134,8 +136,7 @@ Reaction::one_group_xs(gsl::span<const double> energy, gsl::span<const double> f
 
       // Add contribution from segment
       double dE = (E_high - E_low);
-      flux_sum += flux[j] * dE;
-      xs_flux_sum += flux[j] * xs_avg * dE;
+      xs_flux_sum += flux_per_eV * xs_avg * dE;
 
       ++i_low;
     }
@@ -146,7 +147,7 @@ Reaction::one_group_xs(gsl::span<const double> energy, gsl::span<const double> f
     if (i_low + 1 == grid.size()) break;
   }
 
-  return xs_flux_sum / flux_sum;
+  return xs_flux_sum;
 }
 
 //==============================================================================

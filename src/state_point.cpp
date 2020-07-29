@@ -665,64 +665,6 @@ write_source_bank(hid_t group_id, bool surf_src_bank)
 }
 
 
-void
-write_surf_src_point(const char* filename)
-{
-  std::string filename_;
-  filename_ = filename;
-
-  hid_t file_id;
-  file_id = file_open(filename_, 'w', true);
-  write_attribute(file_id, "filetype", "source");
-
-  write_surf_src_bank(file_id);
-
-  file_close(file_id);
-}
-
-
-void
-write_surf_src_bank(hid_t group_id)
-{
-  hid_t banktype = h5banktype();
-
-  if (mpi::master) {
-    // Create dataset big enough to hold all source sites
-    hsize_t dims[] {static_cast<hsize_t>(settings::n_particles)*2};  // 2 being hard-coded number of surfaces.
-    hid_t dspace = H5Screate_simple(1, dims, nullptr);
-    hid_t dset = H5Dcreate(group_id, "source_bank", banktype, dspace,
-                           H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-
-    for (int i = 0; i < mpi::n_procs; ++i) {
-
-      // Create memory space
-      hsize_t count[] {static_cast<hsize_t>(simulation::work_index[i+1] -
-        simulation::work_index[i])*2};  // 2 being hard-coded number of surfaces.
-      hid_t memspace = H5Screate_simple(1, count, nullptr);
-
-      // Select hyperslab for this dataspace
-      dspace = H5Dget_space(dset);
-      hsize_t start[] {static_cast<hsize_t>(simulation::work_index[i])};
-      H5Sselect_hyperslab(dspace, H5S_SELECT_SET, start, nullptr, count, nullptr);
-
-      // Write data to hyperslab
-      H5Dwrite(dset, banktype, memspace, dspace, H5P_DEFAULT,
-        simulation::surf_src_bank.data());
-
-      H5Sclose(memspace);
-      H5Sclose(dspace);
-    }
-
-    // Close all ids
-    H5Dclose(dset);
-
-  } else {
-  }
-
-  H5Tclose(banktype);
-}
-
-
 void read_source_bank(hid_t group_id, std::vector<Particle::Bank>& sites, bool distribute)
 {
   hid_t banktype = h5banktype();

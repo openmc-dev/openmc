@@ -271,6 +271,7 @@ std::vector<double> k_generation;
 std::vector<int64_t> work_index;
 
 int64_t total_surf_banks {0};
+int64_t max_bank_size {0};
 std::vector<int64_t> surf_src_index;
 
 } // namespace simulation
@@ -557,6 +558,9 @@ void calculate_work()
     // Number of particles for rank i
     int64_t work_i = i < remainder ? min_work + 1 : min_work;
 
+    // Set maximum bank size
+    if (mpi::master) simulation::max_bank_size = work_i;
+
     // Set number of particles
     if (mpi::rank == i) simulation::work_per_rank = work_i;
 
@@ -656,6 +660,7 @@ void query_surf_src_size()
     for (int i = 1; i < mpi::n_procs + 1; ++i) {
       simulation::surf_src_index[i] = simulation::surf_src_index[i - 1] + bank_size[i - 1];
     }
+    simulation::max_bank_size = *std::max_element(bank_size.begin(), bank_size.end());
     total = simulation::surf_src_index[mpi::n_procs];
   }
 #else

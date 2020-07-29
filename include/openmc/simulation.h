@@ -46,6 +46,7 @@ extern std::vector<double> k_generation;
 extern std::vector<int64_t> work_index;
 
 extern int64_t total_surf_banks;  //!< Total number of surface source banks
+extern int64_t max_bank_size;     //!< Maximum bank size for MPI
 extern std::vector<int64_t> surf_src_index;
 
 } // namespace simulation

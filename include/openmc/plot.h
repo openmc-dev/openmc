@@ -27,8 +27,8 @@ class Plot;
 
 namespace model {
 
-extern std::vector<Plot> plots; //!< Plot instance container
 extern std::unordered_map<int, int> plot_map; //!< map of plot ids to index
+extern std::vector<Plot> plots; //!< Plot instance container
 
 extern uint64_t plotter_prn_seeds[N_STREAMS]; // Random number seeds used for plotter
 extern int plotter_stream; // Stream index used by the plotter

@@ -80,8 +80,8 @@ void PropertyData::set_overlap(size_t y, size_t x) {
 
 namespace model {
 
-std::vector<Plot> plots;
 std::unordered_map<int, int> plot_map;
+std::vector<Plot> plots;
 uint64_t plotter_seed = 1;
 
 } // namespace model

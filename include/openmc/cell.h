@@ -49,11 +49,11 @@ class Universe;
 class UniversePartitioner;
 
 namespace model {
-  extern std::vector<std::unique_ptr<Cell>> cells;
   extern std::unordered_map<int32_t, int32_t> cell_map;
+  extern std::vector<std::unique_ptr<Cell>> cells;
 
-  extern std::vector<std::unique_ptr<Universe>> universes;
   extern std::unordered_map<int32_t, int32_t> universe_map;
+  extern std::vector<std::unique_ptr<Universe>> universes;
 } // namespace model
 
 //==============================================================================

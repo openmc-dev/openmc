@@ -22,8 +22,8 @@ namespace openmc {
 //==============================================================================
 
 namespace model {
-  std::vector<std::unique_ptr<Lattice>> lattices;
   std::unordered_map<int32_t, int32_t> lattice_map;
+  std::vector<std::unique_ptr<Lattice>> lattices;
 }
 
 //==============================================================================

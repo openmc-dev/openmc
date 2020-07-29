@@ -124,7 +124,7 @@ REACTIONS = {
     '(n,5n2p)': ReactionInfo({200}, (-6, -2), ('H1', 'H1')),
 }
 
-__all__ = ["Chain"]
+__all__ = ["Chain", "REACTIONS"]
 
 
 def replace_missing(product, decay_data):
@@ -307,7 +307,8 @@ class Chain:
         reactions : iterable of str, optional
             Transmutation reactions to include in the depletion chain, e.g.,
             `["(n,2n)", "(n,gamma)"]`. Note that fission is always included if
-            it is present.
+            it is present. A complete listing of transmutation reactions can be
+            found in :data:`openmc.deplete.chain.REACTIONS`.
         progress : bool, optional
             Flag to print status messages during processing. Does not
             effect warning messages

@@ -389,8 +389,6 @@ void finalize_batch()
   // Write out surface source if requested.
   if (settings::surface_source && simulation::current_batch == settings::n_batches) {
 
-    query_surf_src_size();
-
     auto filename = settings::path_output + "surface_source.h5";
     write_source_point(filename.c_str(), true);  //!!
   }
@@ -557,9 +555,6 @@ void calculate_work()
   for (int i = 0; i < mpi::n_procs; ++i) {
     // Number of particles for rank i
     int64_t work_i = i < remainder ? min_work + 1 : min_work;
-
-    // Set maximum bank size
-    if (mpi::master) simulation::max_bank_size = work_i;
 
     // Set number of particles
     if (mpi::rank == i) simulation::work_per_rank = work_i;

@@ -34,8 +34,8 @@ namespace openmc {
 
 namespace data {
 
-std::vector<Library> libraries;
 std::map<LibraryKey, std::size_t> library_map;
+std::vector<Library> libraries;
 
 }
 

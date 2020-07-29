@@ -566,11 +566,15 @@ write_source_bank(hid_t group_id, bool surf_src_bank)
 {
   hid_t banktype = h5banktype();
 
+  // Set total and individual process dataspace sizes for source bank
   int64_t dims_size = settings::n_particles;
   int64_t count_size = simulation::work_per_rank;
+
+  // Set vectors for source bank and starting bank index of each process
   std::vector<int64_t> wi = simulation::work_index;
   std::vector<Particle::Bank> src_bank = simulation::source_bank;
 
+  // Reset dataspace sizes and vectors for surface source bank
   if (surf_src_bank) {
     dims_size = simulation::total_surf_banks;
     count_size = simulation::surf_src_bank.size();

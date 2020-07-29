@@ -46,7 +46,7 @@ extern std::vector<double> k_generation;
 extern std::vector<int64_t> work_index;
 
 extern int64_t total_surf_banks;  //!< Total number of surface source banks
-extern int64_t max_bank_size;     //!< Maximum bank size for MPI
+extern int64_t max_bank_size;     //!< Maximum bank size from a process
 extern std::vector<int64_t> surf_src_index;
 
 } // namespace simulation
@@ -61,11 +61,11 @@ void allocate_banks();
 //! Determine number of particles to transport per process
 void calculate_work();
 
+//! Determine number of surface source banks per process and their sum
+void query_surf_src_size();
+
 //! Initialize nuclear data before a simulation
 void initialize_data();
-
-//! Get the total number of surface source banks and populate surf_src_index
-void query_surf_src_size();
 
 //! Initialize a batch
 void initialize_batch();

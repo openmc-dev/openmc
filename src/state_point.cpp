@@ -570,17 +570,22 @@ write_source_bank(hid_t group_id, bool surf_src_bank)
   int64_t dims_size = settings::n_particles;
   int64_t count_size = simulation::work_per_rank;
 
+  // Set maximum bank size
+  simulation::max_bank_size = simulation::work_per_rank;
+
   // Set vectors for source bank and starting bank index of each process
-  std::vector<int64_t> wi = simulation::work_index;
+  std::vector<int64_t> bank_index = simulation::work_index;
   std::vector<Particle::Bank> src_bank = simulation::source_bank;
 
   // Reset dataspace sizes and vectors for surface source bank
   if (surf_src_bank) {
+    query_surf_src_size();
+
     dims_size = simulation::total_surf_banks;
     count_size = simulation::surf_src_bank.size();
 
-    wi.clear();
-    wi = simulation::surf_src_index;
+    bank_index.clear();
+    bank_index = simulation::surf_src_index;
 
     src_bank.clear();
     src_bank.assign(simulation::surf_src_bank.data(),
@@ -600,7 +605,7 @@ write_source_bank(hid_t group_id, bool surf_src_bank)
   hid_t memspace = H5Screate_simple(1, count, nullptr);
 
   // Select hyperslab for this dataspace
-  hsize_t start[] {static_cast<hsize_t>(wi[mpi::rank])};
+  hsize_t start[] {static_cast<hsize_t>(bank_index[mpi::rank])};
   H5Sselect_hyperslab(dspace, H5S_SELECT_SET, start, nullptr, count, nullptr);
 
   // Set up the property list for parallel writing
@@ -632,7 +637,7 @@ write_source_bank(hid_t group_id, bool surf_src_bank)
 
     for (int i = 0; i < mpi::n_procs; ++i) {
       // Create memory space
-      hsize_t count[] {static_cast<hsize_t>(wi[i+1] - wi[i])};
+      hsize_t count[] {static_cast<hsize_t>(bank_index[i+1] - bank_index[i])};
       hid_t memspace = H5Screate_simple(1, count, nullptr);
 
 #ifdef OPENMC_MPI
@@ -644,7 +649,7 @@ write_source_bank(hid_t group_id, bool surf_src_bank)
 
       // Select hyperslab for this dataspace
       dspace = H5Dget_space(dset);
-      hsize_t start[] {static_cast<hsize_t>(wi[i])};
+      hsize_t start[] {static_cast<hsize_t>(bank_index[i])};
       H5Sselect_hyperslab(dspace, H5S_SELECT_SET, start, nullptr, count, nullptr);
 
       // Write data to hyperslab

@@ -8,7 +8,7 @@ from io import StringIO
 from itertools import chain
 import math
 import re
-from collections import OrderedDict, defaultdict
+from collections import OrderedDict, defaultdict, namedtuple
 from collections.abc import Mapping, Iterable
 from numbers import Real, Integral
 from warnings import warn
@@ -33,19 +33,98 @@ from openmc._xml import clean_indentation
 from .nuclide import Nuclide, DecayTuple, ReactionTuple
 
 
-# tuple of (reaction name, possible MT values, (dA, dZ)) where dA is the change
-# in the mass number and dZ is the change in the atomic number
-_REACTIONS = [
-    ('(n,2n)', set(chain([16], range(875, 892))), (-1, 0)),
-    ('(n,3n)', {17}, (-2, 0)),
-    ('(n,4n)', {37}, (-3, 0)),
-    ('(n,gamma)', {102}, (1, 0)),
-    ('(n,p)', set(chain([103], range(600, 650))), (0, -1)),
-    ('(n,a)', set(chain([107], range(800, 850))), (-3, -2))
-]
+# tuple of (possible MT values, (dA, dZ), secondaries) where dA is the change in
+# the mass number and dZ is the change in the atomic number
+ReactionInfo = namedtuple('ReactionInfo', ('mts', 'dadz', 'secondaries'))
 
+REACTIONS = {
+    '(n,2nd)': ReactionInfo({11}, (-3, -1), ('H2',)),
+    '(n,2n)': ReactionInfo(set(chain([16], range(875, 892))), (-1, 0), ()),
+    '(n,3n)': ReactionInfo({17}, (-2, 0), ()),
+    '(n,na)': ReactionInfo({22}, (-4, -2), ('He4',)),
+    '(n,n3a)': ReactionInfo({23}, (-12, -6), ('He4', 'He4', 'He4')),
+    '(n,2na)': ReactionInfo({24}, (-5, -2), ('He4',)),
+    '(n,3na)': ReactionInfo({25}, (-6, -2), ('He4',)),
+    '(n,np)': ReactionInfo({28}, (-1, -1), ('H1',)),
+    '(n,n2a)': ReactionInfo({29}, (-8, -4), ('He4', 'He4')),
+    '(n,2n2a)': ReactionInfo({30}, (-9, -4), ('He4', 'He4')),
+    '(n,nd)': ReactionInfo({32}, (-2, -1), ('H2',)),
+    '(n,nt)': ReactionInfo({33}, (-3, -1), ('H3',)),
+    '(n,n3He)': ReactionInfo({34}, (-3, -2), ('He3',)),
+    '(n,nd2a)': ReactionInfo({35}, (-10, -5), ('H2', 'He4', 'He4')),
+    '(n,nt2a)': ReactionInfo({36}, (-11, -5), ('H3', 'He4', 'He4')),
+    '(n,4n)': ReactionInfo({37}, (-3, 0), ()),
+    '(n,2np)': ReactionInfo({41}, (-2, -1), ('H1',)),
+    '(n,3np)': ReactionInfo({42}, (-3, -1), ('H1',)),
+    '(n,n2p)': ReactionInfo({44}, (-2, -2), ('H1', 'H1')),
+    '(n,npa)': ReactionInfo({45}, (-5, -3), ('H1', 'He4')),
+    '(n,gamma)': ReactionInfo({102}, (1, 0), ()),
+    '(n,p)': ReactionInfo(set(chain([103], range(600, 650))), (0, -1), ('H1',)),
+    '(n,d)': ReactionInfo(set(chain([104], range(650, 700))), (-1, -1), ('H2',)),
+    '(n,t)': ReactionInfo(set(chain([105], range(700, 750))), (-2, -1), ('H3',)),
+    '(n,3He)': ReactionInfo(set(chain([106], range(750, 800))), (-2, -2), ('He3',)),
+    '(n,a)': ReactionInfo(set(chain([107], range(800, 850))), (-3, -2), ('He4',)),
+    '(n,2a)': ReactionInfo({108}, (-7, -4), ('He4', 'He4')),
+    '(n,3a)': ReactionInfo({109}, (-11, -6), ('He4', 'He4', 'He4')),
+    '(n,2p)': ReactionInfo({111}, (-1, -2), ('H1', 'H1')),
+    '(n,pa)': ReactionInfo({112}, (-4, -3), ('H1', 'He4')),
+    '(n,t2a)': ReactionInfo({113}, (-10, -5), ('H3', 'He4', 'He4')),
+    '(n,d2a)': ReactionInfo({114}, (-9, -5), ('H2', 'He4', 'He4')),
+    '(n,pd)': ReactionInfo({115}, (-2, -2), ('H1', 'H2')),
+    '(n,pt)': ReactionInfo({116}, (-3, -2), ('H1', 'H3')),
+    '(n,da)': ReactionInfo({117}, (-5, -3), ('H2', 'He4')),
+    '(n,5n)': ReactionInfo({152}, (-4, 0), ()),
+    '(n,6n)': ReactionInfo({153}, (-5, 0), ()),
+    '(n,2nt)': ReactionInfo({154}, (-4, -1), ('H3',)),
+    '(n,ta)': ReactionInfo({155}, (-6, -3), ('H3', 'He4')),
+    '(n,4np)': ReactionInfo({156}, (-4, -1), ('H1',)),
+    '(n,3nd)': ReactionInfo({157}, (-4, -1), ('H2',)),
+    '(n,nda)': ReactionInfo({158}, (-6, -3), ('H2', 'He4')),
+    '(n,2npa)': ReactionInfo({159}, (-6, -3), ('H1', 'He4')),
+    '(n,7n)': ReactionInfo({160}, (-6, 0), ()),
+    '(n,8n)': ReactionInfo({161}, (-7, 0), ()),
+    '(n,5np)': ReactionInfo({162}, (-5, -1), ('H1',)),
+    '(n,6np)': ReactionInfo({163}, (-6, -1), ('H1',)),
+    '(n,7np)': ReactionInfo({164}, (-7, -1), ('H1',)),
+    '(n,4na)': ReactionInfo({165}, (-7, -2), ('He4',)),
+    '(n,5na)': ReactionInfo({166}, (-8, -2), ('He4',)),
+    '(n,6na)': ReactionInfo({167}, (-9, -2), ('He4',)),
+    '(n,7na)': ReactionInfo({168}, (-10, -2), ('He4',)),
+    '(n,4nd)': ReactionInfo({169}, (-5, -1), ('H2',)),
+    '(n,5nd)': ReactionInfo({170}, (-6, -1), ('H2',)),
+    '(n,6nd)': ReactionInfo({171}, (-7, -1), ('H2',)),
+    '(n,3nt)': ReactionInfo({172}, (-5, -1), ('H3',)),
+    '(n,4nt)': ReactionInfo({173}, (-6, -1), ('H3',)),
+    '(n,5nt)': ReactionInfo({174}, (-7, -1), ('H3',)),
+    '(n,6nt)': ReactionInfo({175}, (-8, -1), ('H3',)),
+    '(n,2n3He)': ReactionInfo({176}, (-4, -2), ('He3',)),
+    '(n,3n3He)': ReactionInfo({177}, (-5, -2), ('He3',)),
+    '(n,4n3He)': ReactionInfo({178}, (-6, -2), ('He3',)),
+    '(n,3n2p)': ReactionInfo({179}, (-4, -2), ('H1', 'H1')),
+    '(n,3n2a)': ReactionInfo({180}, (-10, -4), ('He4', 'He4')),
+    '(n,3npa)': ReactionInfo({181}, (-7, -3), ('H1', 'He4')),
+    '(n,dt)': ReactionInfo({182}, (-4, -2), ('H2', 'H3')),
+    '(n,npd)': ReactionInfo({183}, (-3, -2), ('H1', 'H2')),
+    '(n,npt)': ReactionInfo({184}, (-4, -2), ('H1', 'H3')),
+    '(n,ndt)': ReactionInfo({185}, (-5, -2), ('H2', 'H3')),
+    '(n,np3He)': ReactionInfo({186}, (-4, -3), ('H1', 'He3')),
+    '(n,nd3He)': ReactionInfo({187}, (-5, -3), ('H2', 'He3')),
+    '(n,nt3He)': ReactionInfo({188}, (-6, -3), ('H3', 'He3')),
+    '(n,nta)': ReactionInfo({189}, (-7, -3), ('H3', 'He4')),
+    '(n,2n2p)': ReactionInfo({190}, (-3, -2), ('H1', 'H1')),
+    '(n,p3He)': ReactionInfo({191}, (-4, -3), ('H1', 'He3')),
+    '(n,d3He)': ReactionInfo({192}, (-5, -3), ('H2', 'He3')),
+    '(n,3Hea)': ReactionInfo({193}, (-6, -4), ('He3', 'He4')),
+    '(n,4n2p)': ReactionInfo({194}, (-5, -2), ('H1', 'H1')),
+    '(n,4n2a)': ReactionInfo({195}, (-11, -4), ('He4', 'He4')),
+    '(n,4npa)': ReactionInfo({196}, (-8, -3), ('H1', 'He4')),
+    '(n,3p)': ReactionInfo({197}, (-2, -3), ('H1', 'H1', 'H1')),
+    '(n,n3p)': ReactionInfo({198}, (-3, -3), ('H1', 'H1', 'H1')),
+    '(n,3n2pa)': ReactionInfo({199}, (-8, -4), ('H1', 'H1', 'He4')),
+    '(n,5n2p)': ReactionInfo({200}, (-6, -2), ('H1', 'H1')),
+}
 
-__all__ = ["Chain"]
+__all__ = ["Chain", "REACTIONS"]
 
 
 def replace_missing(product, decay_data):
@@ -158,40 +237,6 @@ def replace_missing_fpy(actinide, fpy_data, decay_data):
     return 'U235'
 
 
-_SECONDARY_PARTICLES = {
-    '(n,p)': ['H1'],
-    '(n,d)': ['H2'],
-    '(n,t)': ['H3'],
-    '(n,3He)': ['He3'],
-    '(n,a)': ['He4'],
-    '(n,2nd)': ['H2'],
-    '(n,na)': ['He4'],
-    '(n,3na)': ['He4'],
-    '(n,n3a)': ['He4'] * 3,
-    '(n,2na)': ['He4'],
-    '(n,np)': ['H1'],
-    '(n,n2a)': ['He4'] * 2,
-    '(n,2n2a)': ['He4'] * 2,
-    '(n,nd)': ['H2'],
-    '(n,nt)': ['H3'],
-    '(n,nHe-3)': ['He3'],
-    '(n,nd2a)': ['H2', 'He4'],
-    '(n,nt2a)': ['H3', 'He4', 'He4'],
-    '(n,2np)': ['H1'],
-    '(n,3np)': ['H1'],
-    '(n,n2p)': ['H1'] * 2,
-    '(n,2a)': ['He4'] * 2,
-    '(n,3a)': ['He4'] * 3,
-    '(n,2p)': ['H1'] * 2,
-    '(n,pa)': ['H1', 'He4'],
-    '(n,t2a)': ['H3', 'He4', 'He4'],
-    '(n,d2a)': ['H2', 'He4', 'He4'],
-    '(n,pd)': ['H1', 'H2'],
-    '(n,pt)': ['H1', 'H3'],
-    '(n,da)': ['H2', 'He4']
-}
-
-
 class Chain:
     """Full representation of a depletion chain.
 
@@ -240,7 +285,10 @@ class Chain:
         return len(self.nuclides)
 
     @classmethod
-    def from_endf(cls, decay_files, fpy_files, neutron_files, progress=True):
+    def from_endf(cls, decay_files, fpy_files, neutron_files,
+        reactions=('(n,2n)', '(n,3n)', '(n,4n)', '(n,gamma)', '(n,p)', '(n,a)'),
+        progress=True
+    ):
         """Create a depletion chain from ENDF files.
 
         String arguments in ``decay_files``, ``fpy_files``, and
@@ -256,6 +304,11 @@ class Chain:
             List of ENDF neutron-induced fission product yield sub-library files
         neutron_files : list of str or openmc.data.endf.Evaluation
             List of ENDF neutron reaction sub-library files
+        reactions : iterable of str, optional
+            Transmutation reactions to include in the depletion chain, e.g.,
+            `["(n,2n)", "(n,gamma)"]`. Note that fission is always included if
+            it is present. A complete listing of transmutation reactions can be
+            found in :data:`openmc.deplete.chain.REACTIONS`.
         progress : bool, optional
             Flag to print status messages during processing. Does not
             effect warning messages
@@ -275,7 +328,7 @@ class Chain:
         3. Copy the yields of U235 if the previous two checks fail
 
         """
-        chain = cls()
+        transmutation_reactions = reactions
 
         # Create dictionary mapping target to filename
         if progress:
@@ -317,6 +370,7 @@ class Chain:
         missing_fpy = []
         missing_fp = []
 
+        chain = cls()
         for idx, parent in enumerate(sorted(decay_data, key=openmc.data.zam)):
             data = decay_data[parent]
 
@@ -352,7 +406,8 @@ class Chain:
             fissionable = False
             if parent in reactions:
                 reactions_available = set(reactions[parent].keys())
-                for name, mts, changes in _REACTIONS:
+                for name in transmutation_reactions:
+                    mts, changes, _ = REACTIONS[name]
                     if mts & reactions_available:
                         delta_A, delta_Z = changes
                         A = data.nuclide['mass_number'] + delta_A
@@ -363,7 +418,9 @@ class Chain:
                             chain.reactions.append(name)
 
                         if daughter not in decay_data:
-                            missing_rx_product.append((parent, name, daughter))
+                            daughter = replace_missing(daughter, decay_data)
+                            if daughter is None:
+                                missing_rx_product.append((parent, name, daughter))
 
                         # Store Q value
                         for mt in sorted(mts):
@@ -600,7 +657,7 @@ class Chain:
 
                         # Determine light nuclide production, e.g., (n,d) should
                         # produce H2
-                        light_nucs = _SECONDARY_PARTICLES.get(r_type, [])
+                        light_nucs = REACTIONS[r_type].secondaries
                         for light_nuc in light_nucs:
                             k = self.nuclide_dict.get(light_nuc)
                             if k is not None:
@@ -714,7 +771,7 @@ class Chain:
         bad_sums = {}
 
         # Secondary products, like alpha particles, should not be modified
-        secondary = _SECONDARY_PARTICLES.get(reaction, [])
+        secondary = REACTIONS[reaction].secondaries
 
         # Check for validity before manipulation
 
@@ -1039,7 +1096,10 @@ class Chain:
                         continue
 
                     # Figure out if this reaction produces light nuclides
-                    secondaries = _SECONDARY_PARTICLES.get(rxn.type, [])
+                    if rxn.type in REACTIONS:
+                        secondaries = REACTIONS[rxn.type].secondaries
+                    else:
+                        secondaries = []
 
                     # Only include secondaries if they are present in original chain
                     secondaries = [x for x in secondaries if x in self]

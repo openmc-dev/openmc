@@ -124,7 +124,7 @@ const std::unordered_map<int, std::string> REACTION_NAME_MAP {
   {N_2N2A, "(n,2n2a)"},
   {N_ND, "(n,nd)"},
   {N_NT, "(n,nt)"},
-  {N_N3HE, "(n,nHe-3)"},
+  {N_N3HE, "(n,n3He)"},
   {N_ND2A, "(n,nd2a)"},
   {N_NT2A, "(n,nt2a)"},
   {N_4N, "(n,4n)"},

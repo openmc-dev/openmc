@@ -114,13 +114,15 @@ Reaction::collapse_rate(gsl::span<const double> energy, gsl::span<const double> 
 
     // Determine energy grid index corresponding to group high
     int i_high = i_low;
-    while (grid[i_high + 1] < E_group_high) ++i_high;
+    while (grid[i_high + 1] < E_group_high && i_high + 1 < grid.size() - 1) ++i_high;
 
     // Loop over energy grid points within [E_group_low, E_group_high]
-    while (i_low <= i_high) {
+    for (; i_low <= i_high; ++i_low) {
       // Determine bounding grid energies and cross sections
       double E_l = grid[i_low];
       double E_r = grid[i_low + 1];
+      if (E_l == E_r) continue;
+
       double xs_l = xs[i_low - i_threshold];
       double xs_r = xs[i_low + 1 - i_threshold];
 
@@ -137,8 +139,6 @@ Reaction::collapse_rate(gsl::span<const double> energy, gsl::span<const double> 
       // Add contribution from segment
       double dE = (E_high - E_low);
       xs_flux_sum += flux_per_eV * xs_avg * dE;
-
-      ++i_low;
     }
 
     i_low = i_high;

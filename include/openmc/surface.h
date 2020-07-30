@@ -24,8 +24,8 @@ namespace openmc {
 class Surface;
 
 namespace model {
-  extern std::vector<std::unique_ptr<Surface>> surfaces;
   extern std::unordered_map<int, int> surface_map;
+  extern std::vector<std::unique_ptr<Surface>> surfaces;
 } // namespace model
 
 //==============================================================================

@@ -32,8 +32,8 @@ class Mesh;
 
 namespace model {
 
-extern std::vector<std::unique_ptr<Mesh>> meshes;
 extern std::unordered_map<int32_t, int32_t> mesh_map;
+extern std::vector<std::unique_ptr<Mesh>> meshes;
 
 } // namespace model
 

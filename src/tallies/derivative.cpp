@@ -18,8 +18,8 @@ namespace openmc {
 //==============================================================================
 
 namespace model {
-  std::vector<TallyDerivative> tally_derivs;
   std::unordered_map<int, int> tally_deriv_map;
+  std::vector<TallyDerivative> tally_derivs;
 }
 
 //==============================================================================

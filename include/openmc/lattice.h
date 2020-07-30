@@ -35,8 +35,8 @@ enum class LatticeType {
 class Lattice;
 
 namespace model {
-  extern std::vector<std::unique_ptr<Lattice>> lattices;
   extern std::unordered_map<int32_t, int32_t> lattice_map;
+  extern std::vector<std::unique_ptr<Lattice>> lattices;
 } // namespace model
 
 //==============================================================================

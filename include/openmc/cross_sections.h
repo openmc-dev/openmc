@@ -43,11 +43,11 @@ using LibraryKey = std::pair<Library::Type, std::string>;
 
 namespace data {
 
-//!< Data libraries
-extern std::vector<Library> libraries;
-
 //! Maps (type, name) to index in libraries
 extern std::map<LibraryKey, std::size_t> library_map;
+
+//!< Data libraries
+extern std::vector<Library> libraries;
 
 } // namespace data
 

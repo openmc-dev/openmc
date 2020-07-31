@@ -235,6 +235,56 @@ file in your build directory. Setting the :attr:`openmc.Source.library`
 attribute to the path of this shared library will indicate that it should be
 used for sampling source particles at runtime.
 
+.. _serialized_custom_source:
+
+Custom Serialized Sources
+-------------------------
+
+If the custom source may be used with parameters at a variety of values then it
+may be necessary to serialize the source to an appropriate format (XML, JSON,
+etc.) in order to avoid recompiling the source library for each run. This is
+supported by defining the ``source_sampling`` function with an additional
+parameter that receives the serialized form of the source:
+
+.. code-block:: c++
+
+   // you must have external C linkage here
+   extern "C" openmc::Particle::Bank sample_source(uint64_t* seed, char* serialized_source) {
+     // function to deserialize the source
+     SerializedSource source = SerializedSource::from_xml(serialized_source);
+
+     openmc::Particle::Bank particle;
+     // wgt
+     particle.particle = openmc::Particle::Type::neutron;
+     particle.wgt = 1.0;
+     // position
+     double angle = 2. * M_PI * openmc::prn(seed);
+
+     // get the radius from the serialized form of the source
+     double radius = source.radius();
+     particle.r.x = radius * std::cos(angle);
+     particle.r.y = radius * std::sin(angle);
+     particle.r.z = 0.0;
+     // angle
+     particle.u = {1.0, 0.0, 0.0};
+
+     // get the energy from the serialized form of the source
+     particle.E = source.energy();
+     particle.delayed_group = 0;
+
+     return particle;
+   }
+
+The details of the serialization routine, in particular the schema of the source
+are to be defined by the implementation of the serializable source class. The
+location of the serialized representation of the source to be used must be
+provided via the :attr:`openmc.Source.serialization` attribute, along with the
+custom source library location in :attr:`openmc.Source.library`.
+
+When defining a class to be implemented via this deserialization approach, care
+must be taken to ensure that unique symbols in the resulting binary are
+discoverable when the ``sample_source`` function is loaded via ``dlsym``.
+
 ---------------
 Shannon Entropy
 ---------------

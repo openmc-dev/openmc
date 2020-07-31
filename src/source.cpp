@@ -46,6 +46,9 @@ namespace {
 
 using sample_t = Particle::Bank (*)(uint64_t* seed);
 sample_t custom_source_function;
+std::string serialization;
+using serialized_sample_t = Particle::Bank (*)(uint64_t* seed, const char* serialization);
+serialized_sample_t custom_serialized_source_function;
 void* custom_source_library;
 
 }
@@ -93,6 +96,10 @@ SourceDistribution::SourceDistribution(pugi::xml_node node)
     if (!file_exists(settings::path_source_library)) {
       fatal_error(fmt::format("Source library '{}' does not exist.",
         settings::path_source_library));
+    }
+
+    if (check_for_node(node, "serialization")) {
+      serialization = get_node_value(node, "serialization", false, true);
     }
   } else {
 
@@ -367,9 +374,15 @@ void load_custom_source_library()
   // reset errors
   dlerror();
 
-  // get the function from the library
-  using sample_t = Particle::Bank (*)(uint64_t* seed);
-  custom_source_function = reinterpret_cast<sample_t>(dlsym(custom_source_library, "sample_source"));
+  if (serialization.empty()) {
+    // get the function from the library
+    using sample_t = Particle::Bank (*)(uint64_t* seed);
+    custom_source_function = reinterpret_cast<sample_t>(dlsym(custom_source_library, "sample_source"));
+  } else {
+    // get the function from the library using the provided serialization
+    using sample_t = Particle::Bank (*)(uint64_t* seed, const char* serialization);
+    custom_serialized_source_function = reinterpret_cast<sample_t>(dlsym(custom_source_library, "sample_source"));
+  }
 
   // check for any dlsym errors
   auto dlsym_error = dlerror();
@@ -396,7 +409,11 @@ void close_custom_source_library()
 
 Particle::Bank sample_custom_source_library(uint64_t* seed)
 {
-  return custom_source_function(seed);
+  if (serialization.empty()) {
+    return custom_source_function(seed);
+  } else {
+    return custom_serialized_source_function(seed, serialization.c_str());
+  }
 }
 
 void fill_source_bank_custom_source()

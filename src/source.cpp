@@ -99,7 +99,13 @@ SourceDistribution::SourceDistribution(pugi::xml_node node)
     }
 
     if (check_for_node(node, "serialization")) {
-      serialization = get_node_value(node, "serialization", false, true);
+      // If the source is serialized then make sure we only load it from file once, otherwise there will
+      // be a significant I/O overhead.
+      pugi::xml_document doc;
+      doc.load_file(get_node_value(node, "serialization", false, true).c_str());
+      std::stringstream ss;
+      doc.print(ss);
+      serialization = ss.str();
     }
   } else {
 

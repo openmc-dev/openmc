@@ -5,13 +5,13 @@
 #include "openmc/particle.h"
 #include "pugixml.hpp"
 
-class SerialisedSource {
+class SerializedSource {
   protected:
     double radius_;
     double energy_;
 
     // Protect the constructor so that the class can only be created by serialisation.
-    SerialisedSource(double radius, double energy) {
+    SerializedSource(double radius, double energy) {
       radius_ = radius;
       energy_ = energy;
     }
@@ -25,21 +25,20 @@ class SerialisedSource {
     // in the input XML document.
     // Note that the source will have already been read from file, so what will be passed
     // in here is a string-like serialized value (not the path to the serialized value).
-    static SerialisedSource from_xml(char* serialised_source) {
+    static SerializedSource from_xml(char* serialized_source) {
       pugi::xml_document doc;
-      doc.load_string(serialised_source);
+      doc.load_string(serialized_source);
       pugi::xml_node root_node = doc.root().child("Source");
       double radius = root_node.child("Radius").text().as_double();
       double energy = root_node.child("Energy").text().as_double();
-      return SerialisedSource(radius, energy);
+      return SerializedSource(radius, energy);
     }
 };
 
 // you must have external C linkage here otherwise
 // dlopen will not find the file
-extern "C" openmc::Particle::Bank sample_source(uint64_t* seed, char* serialised_source)
-{
-  SerialisedSource source = SerialisedSource::from_xml(serialised_source);
+extern "C" openmc::Particle::Bank sample_source(uint64_t* seed, char* serialized_source) {
+  SerializedSource source = SerializedSource::from_xml(serialized_source);
 
   openmc::Particle::Bank particle;
   // wgt

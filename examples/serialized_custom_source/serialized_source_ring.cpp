@@ -23,9 +23,11 @@ class SerialisedSource {
 
     // The deserialisation routine populates the constructor from well defined elements
     // in the input XML document.
+    // Note that the source will have already been read from file, so what will be passed
+    // in here is a string-like serialized value (not the path to the serialized value).
     static SerialisedSource from_xml(char* serialised_source) {
       pugi::xml_document doc;
-      doc.load_file(serialised_source);
+      doc.load_string(serialised_source);
       pugi::xml_node root_node = doc.root().child("Source");
       double radius = root_node.child("Radius").text().as_double();
       double energy = root_node.child("Energy").text().as_double();

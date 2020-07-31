@@ -6239,7 +6239,7 @@ class MeshSurfaceMGXS(MGXS):
                 df = df[df['group out'].isin(groups)]
 
         mesh_str = 'mesh {0}'.format(self.domain.id)
-        surfaces = df[(mesh_str,'surf')]
+        surfaces = df[(mesh_str, 'surf')]
         df.drop(columns=[(mesh_str,'surf')],inplace=True)
         df.insert(len(self.domain.dimension),(mesh_str,'surf'),surfaces)
         if len(self.domain.dimension) == 1:

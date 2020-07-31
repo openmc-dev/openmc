@@ -1,6 +1,6 @@
 import openmc
 
-# Define the serialised source
+# Define the serialized source
 serialized_source = """<Source>
   <Radius>1.5</Radius>
   <Energy>1e3</Energy>

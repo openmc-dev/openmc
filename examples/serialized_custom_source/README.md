@@ -1,4 +1,4 @@
-# Building a Serialised Custom Source
+# Building a Serialized Custom Source
 
 To run this example, you first need to compile the custom source library, which
 requires headers from OpenMC. A CMakeLists.txt file has been set up for you that
@@ -10,7 +10,7 @@ library, you can run:
     make
 
 After this, you can build the model by running `python build_xml.py`. In the XML
-files that are created, you should see a reference to build/libserialised_source.so,
+files that are created, you should see a reference to build/libserialized_source.so,
 the custom source library that was built by CMake, and the path to the serialized
 representation of the source in serialized_source.xml. The model is also set up with a
 mesh tally of the flux, so once you run `openmc`, you will get a statepoint file
@@ -19,5 +19,5 @@ results from the statepoint file and display them. If all worked well, you
 should see a ring "imprint" as well as a higher flux to the right side (since
 the custom source has all particles moving in the positive x direction).
 
-Once built, you can edit the serialised_source.xml file to change the radius of the
+Once built, you can edit the serialized_source.xml file to change the radius of the
 sampled ring or the energy of the sampled particles.

@@ -11,7 +11,8 @@ library, you can run:
 
 After this, you can build the model by running `python build_xml.py`. In the XML
 files that are created, you should see a reference to build/libserialised_source.so,
-the custom source library that was built by CMake. The model is also set up with a
+the custom source library that was built by CMake, and the path to the serialized
+representation of the source in serialized_source.xml. The model is also set up with a
 mesh tally of the flux, so once you run `openmc`, you will get a statepoint file
 with the tally results in it. Running `python show_flux.py` will pull in the
 results from the statepoint file and display them. If all worked well, you

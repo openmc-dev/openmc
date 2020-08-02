@@ -830,7 +830,7 @@ class CMFDRun:
 
         """
         if filename is None:
-            batch_str_len = len(str(openmc.lib.settings.batches))
+            batch_str_len = len(str(openmc.lib.settings.get_batches()))
             batch_str = str(openmc.lib.current_batch()).zfill(batch_str_len)
             filename = 'statepoint.{}.h5'.format(batch_str)
 
@@ -1164,8 +1164,8 @@ class CMFDRun:
                 self._k_cmfd.append(self._keff)
 
                 # Check to perform adjoint on last batch
-                if (openmc.lib.current_batch() == openmc.lib.settings.batches
-                        and self._run_adjoint):
+                batches = openmc.lib.settings.get_batches()
+                if openmc.lib.current_batch() == batches and self._run_adjoint:
                     self._cmfd_solver_execute(adjoint=True)
 
                 # Calculate fission source

@@ -34,6 +34,7 @@
 #endif
 
 #include <algorithm>
+#include <cmath>
 #include <string>
 
 
@@ -67,6 +68,11 @@ int openmc_simulation_init()
 
   // Skip if simulation has already been initialized
   if (simulation::initialized) return 0;
+
+  // Initialize nuclear data (energy limits, log grid)
+  if (settings::run_CE) {
+    initialize_data();
+  }
 
   // Determine how much work each process should do
   calculate_work();
@@ -553,6 +559,76 @@ void calculate_work()
     i_bank += work_i;
     simulation::work_index[i + 1] = i_bank;
   }
+}
+
+void initialize_data()
+{
+  // Determine minimum/maximum energy for incident neutron/photon data
+  data::energy_max = {INFTY, INFTY};
+  data::energy_min = {0.0, 0.0};
+  for (const auto& nuc : data::nuclides) {
+    if (nuc->grid_.size() >= 1) {
+      int neutron = static_cast<int>(Particle::Type::neutron);
+      data::energy_min[neutron] = std::max(data::energy_min[neutron],
+        nuc->grid_[0].energy.front());
+      data::energy_max[neutron] = std::min(data::energy_max[neutron],
+        nuc->grid_[0].energy.back());
+    }
+  }
+
+  if (settings::photon_transport) {
+    for (const auto& elem : data::elements) {
+      if (elem->energy_.size() >= 1) {
+        int photon = static_cast<int>(Particle::Type::photon);
+        int n = elem->energy_.size();
+        data::energy_min[photon] = std::max(data::energy_min[photon],
+          std::exp(elem->energy_(1)));
+        data::energy_max[photon] = std::min(data::energy_max[photon],
+          std::exp(elem->energy_(n - 1)));
+      }
+    }
+
+    if (settings::electron_treatment == ElectronTreatment::TTB) {
+      // Determine if minimum/maximum energy for bremsstrahlung is greater/less
+      // than the current minimum/maximum
+      if (data::ttb_e_grid.size() >= 1) {
+        int photon = static_cast<int>(Particle::Type::photon);
+        int n_e = data::ttb_e_grid.size();
+        data::energy_min[photon] = std::max(data::energy_min[photon],
+          std::exp(data::ttb_e_grid(1)));
+        data::energy_max[photon] = std::min(data::energy_max[photon],
+          std::exp(data::ttb_e_grid(n_e - 1)));
+      }
+    }
+  }
+
+  // Show which nuclide results in lowest energy for neutron transport
+  for (const auto& nuc : data::nuclides) {
+    // If a nuclide is present in a material that's not used in the model, its
+    // grid has not been allocated
+    if (nuc->grid_.size() > 0) {
+      double max_E = nuc->grid_[0].energy.back();
+      int neutron = static_cast<int>(Particle::Type::neutron);
+      if (max_E == data::energy_max[neutron]) {
+        write_message("Maximum neutron transport energy: " +
+          std::to_string(data::energy_max[neutron]) + " eV for " +
+          nuc->name_, 7);
+        if (mpi::master && data::energy_max[neutron] < 20.0e6) {
+          warning("Maximum neutron energy is below 20 MeV. This may bias "
+            "the results.");
+        }
+        break;
+      }
+    }
+  }
+
+  // Set up logarithmic grid for nuclides
+  for (auto& nuc : data::nuclides) {
+    nuc->init_grid();
+  }
+  int neutron = static_cast<int>(Particle::Type::neutron);
+  simulation::log_spacing = std::log(data::energy_max[neutron] /
+    data::energy_min[neutron]) / settings::n_log_bins;
 }
 
 #ifdef OPENMC_MPI

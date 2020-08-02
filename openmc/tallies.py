@@ -14,7 +14,7 @@ import scipy.sparse as sps
 
 import openmc
 import openmc.checkvalue as cv
-from ._xml import clean_indentation
+from ._xml import clean_indentation, reorder_attributes
 from .mixin import IDManagerMixin
 
 
@@ -3143,5 +3143,6 @@ class Tallies(cv.CheckedList):
             p /= 'tallies.xml'
 
         # Write the XML Tree to the tallies.xml file
+        reorder_attributes(root_element)  # TODO: Remove when support is Python 3.8+
         tree = ET.ElementTree(root_element)
         tree.write(str(p), xml_declaration=True, encoding='utf-8')

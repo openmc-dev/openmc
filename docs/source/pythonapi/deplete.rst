@@ -112,6 +112,16 @@ for a depletion chain:
    FissionYieldDistribution
    FissionYield
 
+The :class:`Chain` class uses information from the following module variable:
+
+.. data:: chain.REACTIONS
+
+   Dictionary that maps transmutation reaction names to information needed when
+   a chain is being generated: MT values, the change in atomic/mass numbers
+   resulting from the reaction, and what secondaries are produced.
+
+   :type: dict
+
 The following classes are used during a depletion simulation and store auxiliary
 data, such as number densities and reaction rates for each material.
 
@@ -144,6 +154,17 @@ with :func:`cram.CRAM48` being the default.
    cram.CRAM16
    cram.CRAM48
    pool.deplete
+
+.. data:: pool.USE_MULTIPROCESSING
+
+   Boolean switch to enable or disable the use of :mod:`multiprocessing`
+   when solving the Bateman equations. The default is to use
+   :mod:`multiprocessing`, but can cause the simulation to hang in
+   some computing environments, namely due to MPI and networking
+   restrictions. Disabling this option will result in only a single
+   CPU core being used for depletion.
+
+   :type: bool
 
 The following classes are used to help the :class:`openmc.deplete.Operator`
 compute quantities like effective fission yields, reaction rates, and

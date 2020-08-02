@@ -35,8 +35,8 @@ namespace openmc {
 
 namespace model {
 
-std::vector<std::unique_ptr<Mesh>> meshes;
 std::unordered_map<int32_t, int32_t> mesh_map;
+std::vector<std::unique_ptr<Mesh>> meshes;
 
 } // namespace model
 

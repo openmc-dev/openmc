@@ -9,6 +9,7 @@
 #include <unordered_map>
 #include <vector>
 
+#include <gsl/gsl>
 #include <hdf5.h>
 
 #include "openmc/constants.h"
@@ -34,8 +35,9 @@ public:
     std::vector<double> energy;
   };
 
-  // Constructors
-  Nuclide(hid_t group, const std::vector<double>& temperature, int i_nuclide);
+  // Constructors/destructors
+  Nuclide(hid_t group, const std::vector<double>& temperature);
+  ~Nuclide();
 
   //! Initialize logarithmic grid for energy searches
   void init_grid();
@@ -62,7 +64,7 @@ public:
   int A_; //!< Mass number
   int metastable_; //!< Metastable state
   double awr_; //!< Atomic weight ratio
-  int i_nuclide_; //!< Index in the nuclides array
+  gsl::index index_; //!< Index in the nuclides array
 
   // Temperature dependent cross section data
   std::vector<double> kTs_; //!< temperatures in eV (k*T)
@@ -80,6 +82,10 @@ public:
   std::unique_ptr<Function1D> total_nu_; //!< Total neutron yield
   std::unique_ptr<Function1D> fission_q_prompt_; //!< Prompt fission energy release
   std::unique_ptr<Function1D> fission_q_recov_; //!< Recoverable fission energy release
+  std::unique_ptr<Function1D> prompt_photons_; //!< Prompt photon energy release
+  std::unique_ptr<Function1D> delayed_photons_; //!< Delayed photon energy release
+  std::unique_ptr<Function1D> fragments_; //!< Fission fragment energy release
+  std::unique_ptr<Function1D> betas_; //!< Delayed beta energy release
 
   // Resonance scattering information
   bool resonant_ {false};
@@ -132,8 +138,8 @@ extern double temperature_min;
 //! Maximum temperature in [K] that nuclide data is available at
 extern double temperature_max;
 
-extern std::vector<std::unique_ptr<Nuclide>> nuclides;
 extern std::unordered_map<std::string, int> nuclide_map;
+extern std::vector<std::unique_ptr<Nuclide>> nuclides;
 
 } // namespace data
 

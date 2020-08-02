@@ -30,8 +30,8 @@ option(dagmc    "Enable support for DAGMC (CAD) geometry"        OFF)
 #===============================================================================
 
 set(MPI_ENABLED FALSE)
-if($ENV{CXX} MATCHES "(mpi[^/]*|CC)$")
-  message(STATUS "Detected MPI wrapper: $ENV{CXX}")
+if(${CMAKE_CXX_COMPILER} MATCHES "(mpi[^/]*|CC)$")
+  message(STATUS "Detected MPI wrapper: ${CMAKE_CXX_COMPILER}")
   set(MPI_ENABLED TRUE)
 endif()
 
@@ -325,8 +325,11 @@ else()
   add_library(libopenmc SHARED ${libopenmc_SOURCES})
 endif()
 
+# Avoid vs error lnk1149 :output filename matches input filename
+if(NOT MSVC)
 set_target_properties(libopenmc PROPERTIES
-  OUTPUT_NAME openmc)
+  OUTPUT_NAME openmc) 
+endif()
 
 target_include_directories(libopenmc
   PUBLIC

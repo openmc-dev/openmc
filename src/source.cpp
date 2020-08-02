@@ -386,7 +386,12 @@ void load_custom_source_library()
 
 void close_custom_source_library()
 {
+#ifdef HAS_DYNAMIC_LINKING
   dlclose(custom_source_library);
+#else
+  fatal_error("Custom source libraries have not yet been implemented for "
+              "non-POSIX systems");
+#endif
 }
 
 Particle::Bank sample_custom_source_library(uint64_t* seed)

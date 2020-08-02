@@ -23,8 +23,8 @@ namespace openmc {
 //==============================================================================
 
 namespace model {
-  std::vector<std::unique_ptr<Surface>> surfaces;
   std::unordered_map<int, int> surface_map;
+  std::vector<std::unique_ptr<Surface>> surfaces;
 } // namespace model
 
 //==============================================================================

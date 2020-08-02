@@ -259,9 +259,27 @@ double get_nuclide_neutron_heating(const Particle& p, const Nuclide& nuc,
   auto i_grid = p.neutron_xs_[i_nuclide].index_grid;
   if (i_grid < xs.threshold) return 0.0;
 
+  // Determine total kerma
   auto f = p.neutron_xs_[i_nuclide].interp_factor;
-  return (1.0 - f) * xs.value[i_grid-xs.threshold]
+  double kerma = (1.0 - f) * xs.value[i_grid-xs.threshold]
     + f * xs.value[i_grid-xs.threshold+1];
+
+  if (settings::run_mode == RunMode::EIGENVALUE) {
+    // Determine kerma for fission as (EFR + EB)*sigma_f
+    double kerma_fission = nuc.fragments_ ?
+      ((*nuc.fragments_)(p.E_last_) + (*nuc.betas_)(p.E_last_))
+      *p.neutron_xs_[i_nuclide].fission : 0.0;
+
+    // Determine non-fission kerma as difference
+    double kerma_non_fission = kerma - kerma_fission;
+
+    // Re-weight non-fission kerma by keff to properly balance energy release
+    // and deposition. See D. P. Griesheimer, S. J. Douglass, and M. H. Stedry,
+    // "Self-consistent energy normalization for quasistatic reactor
+    // calculations", Proc. PHYSOR, Cambridge, UK, Mar 29-Apr 2, 2020.
+    kerma = simulation::keff * kerma_non_fission + kerma_fission;
+  }
+  return kerma;
 }
 
 //! Helper function to obtain neutron heating [eV]
@@ -452,6 +470,51 @@ score_fission_eout(Particle& p, int i_tally, int i_score, int score_bin)
   p.filter_matches_[i_eout_filt].bins_[i_bin] = bin_energyout;
 }
 
+double get_nuclide_xs(const Particle& p, int i_nuclide, int score_bin) {
+  const auto& nuc {*data::nuclides[i_nuclide]};
+
+  // Get reaction object, or return 0 if reaction is not present
+  auto m = nuc.reaction_index_[score_bin];
+  if (m == C_NONE) return 0.0;
+  const auto& rxn {*nuc.reactions_[m]};
+
+  auto i_temp = p.neutron_xs_[i_nuclide].index_temp;
+  if (i_temp >= 0) { // Can be false due to multipole
+    // Get index on energy grid and interpolation factor
+    auto i_grid = p.neutron_xs_[i_nuclide].index_grid;
+    auto f = p.neutron_xs_[i_nuclide].interp_factor;
+
+    // Calculate interpolated cross section
+    const auto& xs {rxn.xs_[i_temp]};
+    double value;
+    if (i_grid >= xs.threshold) {
+      value = ((1.0 - f) * xs.value[i_grid-xs.threshold]
+        + f * xs.value[i_grid-xs.threshold+1]);
+    } else {
+      value = 0.0;
+    }
+
+    if (settings::run_mode == RunMode::EIGENVALUE && score_bin == HEATING_LOCAL) {
+      // Determine kerma for fission as (EFR + EGP + EGD + EB)*sigma_f
+      double kerma_fission = nuc.fragments_ ?
+        ((*nuc.fragments_)(p.E_last_) + (*nuc.betas_)(p.E_last_) +
+         (*nuc.prompt_photons_)(p.E_last_) + (*nuc.delayed_photons_)(p.E_last_))
+        * p.neutron_xs_[i_nuclide].fission : 0.0;
+
+      // Determine non-fission kerma as difference
+      double kerma_non_fission = value - kerma_fission;
+
+      // Re-weight non-fission kerma by keff to properly balance energy release
+      // and deposition. See D. P. Griesheimer, S. J. Douglass, and M. H. Stedry,
+      // "Self-consistent energy normalization for quasistatic reactor
+      // calculations", Proc. PHYSOR, Cambridge, UK, Mar 29-Apr 2, 2020.
+      value = simulation::keff * kerma_non_fission + kerma_fission;
+    }
+    return value;
+  }
+  return 0.0;
+}
+
 //! Update tally results for continuous-energy tallies with any estimator.
 //
 //! For analog tallies, the flux estimate depends on the score type so the flux
@@ -466,6 +529,8 @@ score_general_ce(Particle& p, int i_tally, int start_index, int filter_index,
 
   // Get the pre-collision energy of the particle.
   auto E = p.E_last_;
+
+  using Type = Particle::Type;
 
   for (auto i = 0; i < tally.scores_.size(); ++i) {
     auto score_bin = tally.scores_[i];
@@ -486,8 +551,7 @@ score_general_ce(Particle& p, int i_tally, int start_index, int filter_index,
           score = p.wgt_last_;
         }
 
-        if (p.type_ == Particle::Type::neutron ||
-          p.type_ == Particle::Type::photon) {
+        if (p.type_ == Type::neutron || p.type_ == Type::photon) {
           score *= flux / p.macro_xs_.total;
         } else {
           score = 0.;
@@ -512,9 +576,9 @@ score_general_ce(Particle& p, int i_tally, int start_index, int filter_index,
 
       } else {
         if (i_nuclide >= 0) {
-          if (p.type_ == Particle::Type::neutron) {
+          if (p.type_ == Type::neutron) {
             score = p.neutron_xs_[i_nuclide].total * atom_density * flux;
-          } else if (p.type_ == Particle::Type::photon) {
+          } else if (p.type_ == Type::photon) {
             score = p.photon_xs_[i_nuclide].total * atom_density * flux;
           }
         } else {
@@ -525,6 +589,8 @@ score_general_ce(Particle& p, int i_tally, int start_index, int filter_index,
 
 
     case SCORE_INVERSE_VELOCITY:
+      if (p.type_ != Type::neutron) continue;
+
       if (tally.estimator_ == TallyEstimator::ANALOG) {
         // All events score to an inverse velocity bin. We actually use a
         // collision estimator in place of an analog one since there is no way
@@ -546,6 +612,8 @@ score_general_ce(Particle& p, int i_tally, int start_index, int filter_index,
 
 
     case SCORE_SCATTER:
+      if (p.type_ != Type::neutron && p.type_ != Type::photon) continue;
+
       if (tally.estimator_ == TallyEstimator::ANALOG) {
         // Skip any event where the particle didn't scatter
         if (p.event_ != TallyEvent::SCATTER) continue;
@@ -554,17 +622,27 @@ score_general_ce(Particle& p, int i_tally, int start_index, int filter_index,
         score = p.wgt_last_ * flux;
       } else {
         if (i_nuclide >= 0) {
-          score = (p.neutron_xs_[i_nuclide].total
-            - p.neutron_xs_[i_nuclide].absorption) * atom_density * flux;
+          if (p.type_ == Type::neutron) {
+            const auto& micro = p.neutron_xs_[i_nuclide];
+            score = (micro.total - micro.absorption) * atom_density * flux;
+          } else {
+            const auto& micro = p.photon_xs_[i_nuclide];
+            score = (micro.coherent + micro.incoherent) * atom_density * flux;
+          }
         } else {
-          score = (p.macro_xs_.total
-            - p.macro_xs_.absorption) * flux;
+          if (p.type_ == Type::neutron) {
+            score = (p.macro_xs_.total - p.macro_xs_.absorption) * flux;
+          } else {
+            score = (p.macro_xs_.coherent + p.macro_xs_.incoherent) * flux;
+          }
         }
       }
       break;
 
 
     case SCORE_NU_SCATTER:
+      if (p.type_ != Type::neutron) continue;
+
       // Only analog estimators are available.
       // Skip any event where the particle didn't scatter
       if (p.event_ != TallyEvent::SCATTER) continue;
@@ -586,6 +664,8 @@ score_general_ce(Particle& p, int i_tally, int start_index, int filter_index,
 
 
     case SCORE_ABSORPTION:
+      if (p.type_ != Type::neutron && p.type_ != Type::photon) continue;
+
       if (tally.estimator_ == TallyEstimator::ANALOG) {
         if (settings::survival_biasing) {
           // No absorption events actually occur if survival biasing is on --
@@ -600,10 +680,18 @@ score_general_ce(Particle& p, int i_tally, int start_index, int filter_index,
         }
       } else {
         if (i_nuclide >= 0) {
-          score = p.neutron_xs_[i_nuclide].absorption * atom_density
-            * flux;
+          if (p.type_ == Type::neutron) {
+            score = p.neutron_xs_[i_nuclide].absorption * atom_density * flux;
+          } else {
+            const auto& xs = p.photon_xs_[i_nuclide];
+            score = (xs.total - xs.coherent - xs.incoherent) * atom_density * flux;
+          }
         } else {
-          score = p.macro_xs_.absorption * flux;
+          if (p.type_ == Type::neutron) {
+            score = p.macro_xs_.absorption * flux;
+          } else {
+            score = (p.macro_xs_.photoelectric + p.macro_xs_.pair_production) * flux;
+          }
         }
       }
       break;
@@ -1142,6 +1230,8 @@ score_general_ce(Particle& p, int i_tally, int start_index, int filter_index,
 
 
     case ELASTIC:
+      if (p.type_ != Type::neutron) continue;
+
       if (tally.estimator_ == TallyEstimator::ANALOG) {
         // Check if event MT matches
         if (p.event_mt_ != ELASTIC) continue;
@@ -1181,6 +1271,8 @@ score_general_ce(Particle& p, int i_tally, int start_index, int filter_index,
     case N_GAMMA:
     case N_P:
     case N_A:
+      if (p.type_ != Type::neutron) continue;
+
       if (tally.estimator_ == TallyEstimator::ANALOG) {
         // Check if the event MT matches
         if (p.event_mt_ != score_bin) continue;
@@ -1214,8 +1306,46 @@ score_general_ce(Particle& p, int i_tally, int start_index, int filter_index,
       break;
 
 
+    case COHERENT:
+    case INCOHERENT:
+    case PHOTOELECTRIC:
+    case PAIR_PROD:
+      if (p.type_ != Type::photon) continue;
+
+      if (tally.estimator_ == TallyEstimator::ANALOG) {
+        if (score_bin == PHOTOELECTRIC) {
+          // Photoelectric events are assigned an MT value corresponding to the
+          // shell cross section. Also, photons below the energy cutoff are
+          // assumed to have been absorbed via photoelectric absorption
+          if ((p.event_mt_ < 534 || p.event_mt_ > 572) &&
+              p.event_mt_ != REACTION_NONE) continue;
+        } else {
+          if (p.event_mt_ != score_bin) continue;
+        }
+        score = p.wgt_last_ * flux;
+      } else {
+        if (i_nuclide >= 0) {
+          const auto& micro = p.photon_xs_[i_nuclide];
+          double xs =
+            (score_bin == COHERENT) ? micro.coherent :
+            (score_bin == INCOHERENT) ? micro.incoherent :
+            (score_bin == PHOTOELECTRIC) ? micro.photoelectric :
+            micro.pair_production;
+          score = xs * atom_density * flux;
+        } else {
+          double xs =
+            (score_bin == COHERENT) ? p.macro_xs_.coherent :
+            (score_bin == INCOHERENT) ? p.macro_xs_.incoherent :
+            (score_bin == PHOTOELECTRIC) ? p.macro_xs_.photoelectric :
+            p.macro_xs_.pair_production;
+          score = xs * flux;
+        }
+      }
+      break;
+
+
     case HEATING:
-      if (p.type_ == Particle::Type::neutron) {
+      if (p.type_ == Type::neutron) {
         score = score_neutron_heating(p, tally, flux, HEATING,
             i_nuclide, atom_density);
       } else {
@@ -1238,7 +1368,7 @@ score_general_ce(Particle& p, int i_tally, int start_index, int filter_index,
 
       // The default block is really only meant for redundant neutron reactions
       // (e.g. 444, 901)
-      if (p.type_ != Particle::Type::neutron) continue;
+      if (p.type_ != Type::neutron) continue;
 
       if (tally.estimator_ == TallyEstimator::ANALOG) {
 
@@ -1252,40 +1382,13 @@ score_general_ce(Particle& p, int i_tally, int start_index, int filter_index,
           + std::to_string(tally.id_));
         score = 0.;
         if (i_nuclide >= 0) {
-          const auto& nuc {*data::nuclides[i_nuclide]};
-          auto m = nuc.reaction_index_[score_bin];
-          if (m == C_NONE) continue;
-          const auto& rxn {*nuc.reactions_[m]};
-          auto i_temp = p.neutron_xs_[i_nuclide].index_temp;
-          if (i_temp >= 0) { // Can be false due to multipole
-            auto i_grid = p.neutron_xs_[i_nuclide].index_grid;
-            auto f = p.neutron_xs_[i_nuclide].interp_factor;
-            const auto& xs {rxn.xs_[i_temp]};
-            if (i_grid >= xs.threshold) {
-              score = ((1.0 - f) * xs.value[i_grid-xs.threshold]
-                + f * xs.value[i_grid-xs.threshold+1]) * atom_density * flux;
-            }
-          }
+          score = get_nuclide_xs(p, i_nuclide, score_bin) * atom_density * flux;
         } else if (p.material_ != MATERIAL_VOID) {
           const Material& material {*model::materials[p.material_]};
           for (auto i = 0; i < material.nuclide_.size(); ++i) {
             auto j_nuclide = material.nuclide_[i];
             auto atom_density = material.atom_density_(i);
-            const auto& nuc {*data::nuclides[j_nuclide]};
-            auto m = nuc.reaction_index_[score_bin];
-            if (m == C_NONE) continue;
-            const auto& rxn {*nuc.reactions_[m]};
-            auto i_temp = p.neutron_xs_[j_nuclide].index_temp;
-            if (i_temp >= 0) { // Can be false due to multipole
-              auto i_grid = p.neutron_xs_[j_nuclide].index_grid;
-              auto f = p.neutron_xs_[j_nuclide].interp_factor;
-              const auto& xs {rxn.xs_[i_temp]};
-              if (i_grid >= xs.threshold) {
-                score += ((1.0 - f) * xs.value[i_grid-xs.threshold]
-                  + f * xs.value[i_grid-xs.threshold+1]) * atom_density
-                  * flux;
-              }
-            }
+            score += get_nuclide_xs(p, j_nuclide, score_bin) * atom_density * flux;
           }
         }
       }

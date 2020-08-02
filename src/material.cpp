@@ -5,6 +5,7 @@
 #include <iterator>
 #include <string>
 #include <sstream>
+#include <unordered_set>
 
 #include "xtensor/xbuilder.hpp"
 #include "xtensor/xoperation.hpp"
@@ -412,7 +413,14 @@ void Material::init_thermal()
 {
   std::vector<ThermalTable> tables;
 
+  std::unordered_set<int> already_checked;
   for (const auto& table : thermal_tables_) {
+    // Make sure each S(a,b) table only gets checked once
+    if (already_checked.find(table.index_table) != already_checked.end()) {
+      continue;
+    }
+    already_checked.insert(table.index_table);
+
     // In order to know which nuclide the S(a,b) table applies to, we need
     // to search through the list of nuclides for one which has a matching
     // name
@@ -475,7 +483,7 @@ void Material::collision_stopping_power(double* s_col, bool positron)
   std::vector<double> e_b_sq;
 
   for (int i = 0; i < element_.size(); ++i) {
-    const auto& elm = data::elements[element_[i]];
+    const auto& elm = *data::elements[element_[i]];
     double awr = data::nuclides[nuclide_[i]]->awr_;
 
     // Get atomic density of nuclide given atom/weight percent
@@ -589,7 +597,7 @@ void Material::init_bremsstrahlung()
     // Bragg's additivity rule.
     for (int i = 0; i < n; ++i) {
       // Get pointer to current element
-      const auto& elm = data::elements[element_[i]];
+      const auto& elm = *data::elements[element_[i]];
       double awr = data::nuclides[nuclide_[i]]->awr_;
 
       // Get atomic density and mass density of nuclide given atom/weight percent
@@ -838,7 +846,7 @@ void Material::calculate_photon_xs(Particle& p) const
     // Calculate microscopic cross section for this nuclide
     const auto& micro {p.photon_xs_[i_element]};
     if (p.E_ != micro.last_E) {
-      data::elements[i_element].calculate_xs(p);
+      data::elements[i_element]->calculate_xs(p);
     }
 
     // ========================================================================
@@ -936,13 +944,14 @@ void Material::set_densities(const std::vector<std::string>& name,
   if (n != nuclide_.size()) {
     nuclide_.resize(n);
     atom_density_ = xt::zeros<double>({n});
+    if (settings::photon_transport) element_.resize(n);
   }
 
   double sum_density = 0.0;
   for (gsl::index i = 0; i < n; ++i) {
     const auto& nuc {name[i]};
     if (data::nuclide_map.find(nuc) == data::nuclide_map.end()) {
-      int err = openmc_load_nuclide(nuc.c_str());
+      int err = openmc_load_nuclide(nuc.c_str(), nullptr, 0);
       if (err < 0) throw std::runtime_error{openmc_err_msg};
     }
 
@@ -950,10 +959,20 @@ void Material::set_densities(const std::vector<std::string>& name,
     Expects(density[i] > 0.0);
     atom_density_(i) = density[i];
     sum_density += density[i];
+
+    if (settings::photon_transport) {
+      auto element_name = to_element(nuc);
+      element_[i] = data::element_map.at(element_name);
+    }
   }
 
   // Set total density to the sum of the vector
   this->set_density(sum_density, "atom/b-cm");
+
+  // Generate material bremsstrahlung data for electrons and positrons
+  if (settings::photon_transport && settings::electron_treatment == ElectronTreatment::TTB) {
+    this->init_bremsstrahlung();
+  }
 
   // Assign S(a,b) tables
   this->init_thermal();
@@ -1042,12 +1061,18 @@ void Material::add_nuclide(const std::string& name, double density)
   }
 
   // If nuclide wasn't found, extend nuclide/density arrays
-  int err = openmc_load_nuclide(name.c_str());
+  int err = openmc_load_nuclide(name.c_str(), nullptr, 0);
   if (err < 0) throw std::runtime_error{openmc_err_msg};
 
   // Append new nuclide/density
   int i_nuc = data::nuclide_map[name];
   nuclide_.push_back(i_nuc);
+
+  // Append new element if photon transport is on
+  if (settings::photon_transport) {
+    int i_elem = data::element_map[to_element(name)];
+    element_.push_back(i_elem);
+  }
 
   auto n = nuclide_.size();
 

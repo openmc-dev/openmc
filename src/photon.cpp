@@ -27,8 +27,8 @@ namespace data {
 
 xt::xtensor<double, 1> compton_profile_pz;
 
-std::vector<PhotonInteraction> elements;
 std::unordered_map<std::string, int> element_map;
+std::vector<std::unique_ptr<PhotonInteraction>> elements;
 
 } // namespace data
 
@@ -36,11 +36,14 @@ std::unordered_map<std::string, int> element_map;
 // PhotonInteraction implementation
 //==============================================================================
 
-PhotonInteraction::PhotonInteraction(hid_t group, int i_element)
-  : i_element_{i_element}
+PhotonInteraction::PhotonInteraction(hid_t group)
 {
+  // Set index of element in global vector
+  index_ = data::elements.size();
+
   // Get name of nuclide from group, removing leading '/'
   name_ = object_name(group).substr(1);
+  data::element_map[name_] = index_;
 
   // Get atomic number
   read_attribute(group, "Z", Z_);
@@ -294,6 +297,11 @@ PhotonInteraction::PhotonInteraction(hid_t group, int i_element)
   heating_ = xt::where(heating_ > 0.0, xt::log(heating_), -500.0);
 }
 
+PhotonInteraction::~PhotonInteraction()
+{
+  data::element_map.erase(name_);
+}
+
 void PhotonInteraction::compton_scatter(double alpha, bool doppler,
   double* alpha_out, double* mu, int* i_shell, uint64_t* seed) const
 {
@@ -464,7 +472,7 @@ void PhotonInteraction::calculate_xs(Particle& p) const
   // calculate interpolation factor
   double f = (log_E - energy_(i_grid)) / (energy_(i_grid+1) - energy_(i_grid));
 
-  auto& xs {p.photon_xs_[i_element_]};
+  auto& xs {p.photon_xs_[index_]};
   xs.index_grid = i_grid;
   xs.interp_factor = f;
 
@@ -661,7 +669,7 @@ void PhotonInteraction::atomic_relaxation(const ElectronSubshell& shell, Particl
     u.y = std::sqrt(1.0 - mu*mu)*std::cos(phi);
     u.z = std::sqrt(1.0 - mu*mu)*std::sin(phi);
     double E = shell.binding_energy;
-    p.create_secondary(u, E, Particle::Type::photon);
+    p.create_secondary(p.wgt_, u, E, Particle::Type::photon);
     return;
   }
 
@@ -693,7 +701,7 @@ void PhotonInteraction::atomic_relaxation(const ElectronSubshell& shell, Particl
     // Non-radiative transition -- Auger/Coster-Kronig effect
 
     // Create auger electron
-    p.create_secondary(u, E, Particle::Type::electron);
+    p.create_secondary(p.wgt_, u, E, Particle::Type::electron);
 
     // Fill hole left by emitted auger electron
     int i_hole = shell_map_.at(secondary);
@@ -703,7 +711,7 @@ void PhotonInteraction::atomic_relaxation(const ElectronSubshell& shell, Particl
     // Radiative transition -- get X-ray energy
 
     // Create fluorescent photon
-    p.create_secondary(u, E, Particle::Type::photon);
+    p.create_secondary(p.wgt_, u, E, Particle::Type::photon);
   }
 
   // Fill hole created by electron transitioning to the photoelectron hole

@@ -50,6 +50,37 @@ def pincell_model():
 
 
 @pytest.fixture(scope='module')
+def uo2_trigger_model():
+    """Set up a simple UO2 model with k-eff trigger"""
+    model = openmc.model.Model()
+    m = openmc.Material(name='UO2')
+    m.add_nuclide('U235', 1.0)
+    m.add_nuclide('O16', 2.0)
+    m.set_density('g/cm3', 10.0)
+    model.materials.append(m)
+
+    cyl = openmc.ZCylinder(r=1.0, boundary_type='vacuum')
+    c = openmc.Cell(fill=m, region=-cyl)
+    model.geometry.root_universe = openmc.Universe(cells=[c])
+
+    model.settings.batches = 10
+    model.settings.inactive = 5
+    model.settings.particles = 100
+    model.settings.source = openmc.Source(space=openmc.stats.Box(
+        [-0.5, -0.5, -1], [0.5, 0.5, 1], only_fissionable=True))
+    model.settings.verbosity = 1
+    model.settings.keff_trigger = {'type': 'std_dev', 'threshold': 0.001}
+    model.settings.trigger_active = True
+    model.settings.trigger_max_batches = 10
+    model.settings.trigger_batch_interval = 1
+
+    # Write XML files in tmpdir
+    with cdtemp():
+        model.export_to_xml()
+        yield
+
+
+@pytest.fixture(scope='module')
 def lib_init(pincell_model, mpi_intracomm):
     openmc.lib.init(intracomm=mpi_intracomm)
     yield
@@ -162,8 +193,6 @@ def test_nuclide_mapping(lib_init):
 
 def test_settings(lib_init):
     settings = openmc.lib.settings
-    assert settings.batches == 10
-    settings.batches = 10
     assert settings.inactive == 5
     assert settings.generations_per_batch == 1
     assert settings.particles == 100
@@ -316,6 +345,41 @@ def test_by_batch(lib_run):
 
     finally:
         openmc.lib.simulation_finalize()
+
+
+def test_set_n_batches(lib_run):
+    # Run simulation_init so that current_batch reset to 0
+    openmc.lib.hard_reset()
+    openmc.lib.simulation_init()
+
+    settings = openmc.lib.settings
+    assert settings.get_batches() == 10
+
+    # Setting n_batches less than n_inactive should raise error
+    with pytest.raises(exc.InvalidArgumentError):
+        settings.set_batches(3)
+    # n_batches should stay the same
+    assert settings.get_batches() == 10
+
+    for i in range(7):
+        openmc.lib.next_batch()
+    # Setting n_batches less than current_batch should raise error
+    with pytest.raises(exc.InvalidArgumentError):
+        settings.set_batches(6)
+    # n_batches should stay the same
+    assert settings.get_batches() == 10
+
+    # Change n_batches from 10 to 20
+    settings.set_batches(20)
+    for _ in openmc.lib.iter_batches():
+        pass
+    openmc.lib.simulation_finalize()
+
+    # n_active should have been overwritten from 5 to 15
+    assert openmc.lib.num_realizations() == 15
+
+    # Ensure statepoint created at new value of n_batches
+    assert os.path.exists('statepoint.20.h5')
 
 
 def test_reset(lib_run):
@@ -515,3 +579,28 @@ def test_global_bounding_box(lib_init):
 
     assert tuple(llc) == expected_llc
     assert tuple(urc) == expected_urc
+
+
+def test_trigger_set_n_batches(uo2_trigger_model, mpi_intracomm):
+    openmc.lib.finalize()
+    openmc.lib.init(intracomm=mpi_intracomm)
+    openmc.lib.simulation_init()
+
+    settings = openmc.lib.settings
+    # Change n_batches to 12 and n_max_batches to 20
+    settings.set_batches(12, set_max_batches=False, add_sp_batch=False)
+    settings.set_batches(20, set_max_batches=True, add_sp_batch=True)
+
+    assert settings.get_batches(get_max_batches=False) == 12
+    assert settings.get_batches(get_max_batches=True) == 20
+
+    for _ in openmc.lib.iter_batches():
+        pass
+    openmc.lib.simulation_finalize()
+
+    # n_active should have been overwritten from 5 to 15
+    assert openmc.lib.num_realizations() == 15
+
+    # Ensure statepoint was created only at batch 20 when calling set_batches
+    assert not os.path.exists('statepoint.12.h5')
+    assert os.path.exists('statepoint.20.h5')

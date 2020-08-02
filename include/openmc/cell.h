@@ -43,15 +43,17 @@ constexpr int32_t OP_UNION        {std::numeric_limits<int32_t>::max() - 4};
 //==============================================================================
 
 class Cell;
+class ParentCell;
+class CellInstance;
 class Universe;
 class UniversePartitioner;
 
 namespace model {
-  extern std::vector<std::unique_ptr<Cell>> cells;
   extern std::unordered_map<int32_t, int32_t> cell_map;
+  extern std::vector<std::unique_ptr<Cell>> cells;
 
-  extern std::vector<std::unique_ptr<Universe>> universes;
   extern std::unordered_map<int32_t, int32_t> universe_map;
+  extern std::vector<std::unique_ptr<Universe>> universes;
 } // namespace model
 
 //==============================================================================
@@ -74,7 +76,6 @@ public:
 };
 
 //==============================================================================
-//! A geometry primitive that links surfaces, universes, and materials
 //==============================================================================
 
 class Cell {
@@ -135,7 +136,10 @@ public:
   //! \param[in] T Temperature in [K]
   //! \param[in] instance Instance index. If -1 is given, the temperature for
   //!   all instances is set.
-  void set_temperature(double T, int32_t instance = -1);
+  //! \param[in] set_contained If this cell is not filled with a material,
+  //!   collect all contained cells with material fills and set their
+  //!   temperatures.
+  void set_temperature(double T, int32_t instance = -1, bool set_contained = false);
 
   //! Get the name of a cell
   //! \return Cell name
@@ -145,6 +149,17 @@ public:
   //! \param[in] name Cell name
   void set_name(const std::string& name) { name_ = name; };
 
+  //! Get all cell instances contained by this cell
+  //! \return Map with cell indexes as keys and instances as values
+  std::unordered_map<int32_t, std::vector<int32_t>>
+  get_contained_cells() const;
+
+protected:
+  void
+  get_contained_cells_inner(std::unordered_map<int32_t, std::vector<int32_t>>& contained_cells,
+                            std::vector<ParentCell>& parent_cells) const;
+
+public:
   //----------------------------------------------------------------------------
   // Data members
 
@@ -189,6 +204,11 @@ public:
   std::vector<double> rotation_;
 
   std::vector<int32_t> offset_;  //!< Distribcell offset table
+};
+
+struct CellInstanceItem {
+  int32_t index {-1};        //! Index into global cells array
+  int     lattice_indx{-1};  //! Flat index value of the lattice cell
 };
 
 //==============================================================================
@@ -287,6 +307,16 @@ private:
   //! `surfs_.back()`.  Otherwise, `partitions_[i]` gives cells sandwiched
   //! between `surfs_[i-1]` and `surfs_[i]`.
   std::vector<std::vector<int32_t>> partitions_;
+};
+
+
+//==============================================================================
+//! Define a containing (parent) cell
+//==============================================================================
+
+struct ParentCell {
+  gsl::index cell_index;
+  gsl::index lattice_index;
 };
 
 //==============================================================================

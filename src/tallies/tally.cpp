@@ -154,7 +154,7 @@ score_str_to_int(std::string score_str)
     return N_ND;
   if (score_str == "(n,nt)")
     return N_NT;
-  if (score_str == "(n,nHe-3)")
+  if (score_str == "(n,n3He)")
     return N_N3HE;
   if (score_str == "(n,nd2a)")
     return N_ND2A;
@@ -216,6 +216,14 @@ score_str_to_int(std::string score_str)
     return N_XA;
   if (score_str == "damage-energy")
     return DAMAGE_ENERGY;
+  if (score_str == "coherent-scatter")
+    return COHERENT;
+  if (score_str == "incoherent-scatter")
+    return INCOHERENT;
+  if (score_str == "pair-production")
+    return PAIR_PROD;
+  if (score_str == "photoelectric")
+    return PHOTOELECTRIC;
 
   // So far we have not identified this score string.  Check to see if it is a
   // deprecated score.

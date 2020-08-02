@@ -13,9 +13,9 @@ def model():
     model.materials.append(mat)
 
     cyl = openmc.XCylinder(r=1.0, boundary_type='vacuum')
-    x_plane_left = openmc.XPlane(-1.0, 'vacuum')
+    x_plane_left = openmc.XPlane(-1.0, boundary_type='vacuum')
     x_plane_center = openmc.XPlane(1.0)
-    x_plane_right = openmc.XPlane(1.0e9, 'vacuum')
+    x_plane_right = openmc.XPlane(1.0e9, boundary_type='vacuum')
 
     inner_cyl_left = openmc.Cell()
     inner_cyl_right = openmc.Cell()
@@ -48,17 +48,17 @@ def model():
     current_tally.scores = ['current']
     tally_tracklength = openmc.Tally()
     tally_tracklength.filters = [particle_filter]
-    tally_tracklength.scores = ['total']  # heating doesn't work with tracklength
+    tally_tracklength.scores = ['total', '(n,gamma)']  # heating doesn't work with tracklength
     tally_tracklength.nuclides = ['Al27', 'total']
     tally_tracklength.estimator = 'tracklength'
     tally_collision = openmc.Tally()
     tally_collision.filters = [particle_filter]
-    tally_collision.scores = ['total', 'heating']
+    tally_collision.scores = ['total', 'heating', '(n,gamma)']
     tally_collision.nuclides = ['Al27', 'total']
     tally_collision.estimator = 'collision'
     tally_analog = openmc.Tally()
     tally_analog.filters = [particle_filter]
-    tally_analog.scores = ['total', 'heating']
+    tally_analog.scores = ['total', 'heating', '(n,gamma)']
     tally_analog.nuclides = ['Al27', 'total']
     tally_analog.estimator = 'analog'
     model.tallies.extend([current_tally, tally_tracklength,

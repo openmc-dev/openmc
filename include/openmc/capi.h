@@ -44,6 +44,7 @@ extern "C" {
   int openmc_get_keff(double k_combined[]);
   int openmc_get_material_index(int32_t id, int32_t* index);
   int openmc_get_mesh_index(int32_t id, int32_t* index);
+  int openmc_get_n_batches(int* n_batches, bool get_max_batches);
   int openmc_get_nuclide_index(const char name[], int* index);
   int64_t openmc_get_seed();
   int openmc_get_tally_index(int32_t id, int32_t* index);
@@ -54,7 +55,7 @@ extern "C" {
   bool openmc_is_statepoint_batch();
   int openmc_legendre_filter_get_order(int32_t index, int* order);
   int openmc_legendre_filter_set_order(int32_t index, int order);
-  int openmc_load_nuclide(const char* name);
+  int openmc_load_nuclide(const char* name, const double* temps, int n);
   int openmc_material_add_nuclide(int32_t index, const char name[], double density);
   int openmc_material_get_densities(int32_t index, const int** nuclides, const double** densities, int* n);
   int openmc_material_get_id(int32_t index, int32_t* id);
@@ -89,6 +90,8 @@ extern "C" {
   int openmc_reset_timers();
   int openmc_run();
   void openmc_set_seed(int64_t new_seed);
+  int openmc_set_n_batches(int32_t n_batches, bool set_max_batches,
+                           bool add_statepoint_batch);
   int openmc_simulation_finalize();
   int openmc_simulation_init();
   int openmc_source_bank(void** ptr, int64_t* n);

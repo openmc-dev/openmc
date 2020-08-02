@@ -84,13 +84,13 @@ Particle::clear()
 }
 
 void
-Particle::create_secondary(Direction u, double E, Type type)
+Particle::create_secondary(double wgt, Direction u, double E, Type type)
 {
   secondary_bank_.emplace_back();
 
   auto& bank {secondary_bank_.back()};
   bank.particle = type;
-  bank.wgt = wgt_;
+  bank.wgt = wgt;
   bank.r = this->r();
   bank.u = u;
   bank.E = settings::run_CE ? E : g_;

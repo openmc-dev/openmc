@@ -121,6 +121,9 @@ Coupling and Multi-physics
 Geometry and Visualization
 --------------------------
 
+- Patrick C. Shriwise, Xiaokang Zhang, and Andrew Davis, "DAG-OpenMC: CAD-Based
+  Geometry in OpenMC", *Trans. Am. Nucl. Soc.*, **122**, 395-398 (2020).
+
 - Sterling Harper, Paul Romano, Benoit Forget, and Kord Smith, "Efficient
   dynamic threadsafe neighbor lists for Monte Carlo ray tracing," *Proc. M&C*,
   918-926, Portland, Oregon, Aug. 25-29 (2019).
@@ -146,10 +149,39 @@ Geometry and Visualization
 Miscellaneous
 -------------
 
-- Ned Xoubi, Sharif Abu Darda,  Abdelfattah Y. Soliman, and Tareq Abulfaraj,
+- Shikhar Kumar, Benoit Forget, and Kord Smith, "`Stationarity Diagnostic using
+  Functional Expansion Tallies
+  <https://doi.org/10.1016/j.anucene.2020.107388>`_", *Ann. Nucl. Energy*,
+  **143**, 107388 (2020).
+
+- T. Eade, B. Colling, J. Naish, L. W. Packer, and A. Valentine, "`Shutdown dose
+  rate benchmarking using modern particle transport codes
+  <https://doi.org/10.1088/1741-4326/ab8181>`_, *Nucl. Fusion*, **60**, 056024
+  (2020).
+
+- Jiankai Yu, Qiudong Wang, Ding She, and Benoit Forget, "Modelling of the
+  HTR-PM Pebble-bed Reactor using OpenMC", *Trans. Am. Nucl. Soc.*, **122**,
+  643-646 (2020).
+
+- Sharif Abu Darda, Abdelfattah Y. Soliman, Mohammed S. Aljohani, and Ned Xoubi,
+  "`Technical feasibility study of BAEC TRIGA reactor (BTRR) as a neutron source
+  for BNCT using OpenMC Monte Carlo code
+  <https://doi.org/10.1016/j.pnucene.2020.103418>`_", *Prog. Nucl. Energy*,
+  **126**, 103418 (2020).
+
+- Stefano Segantin, Raffaella Testoni, and Massimo Zucchetti, "`ARC reactor --
+  Neutron irradiation analysis <https://doi.org/10.1016/j.fusengdes.2020.111792>`_",
+  *Fus. Eng. Design*, **159**, 111792 (2020).
+
+- Muhammad Ilham, Helen Raflis, and Zaki Suud, "`Full Core Optimization of Small
+  Modular Gas-Cooled Fast Reactors Using OpenMC Program Code
+  <https://doi.org/10.1088/1742-6596/1493/1/012007>`_", *J. Phys.: Conf. Series*,
+  **1493**, 012007 (2020).
+
+- Ned Xoubi, Sharif Abu Darda, Abdelfattah Y. Soliman, and Tareq Abulfaraj,
   "`An investigative study of enrichment reduction impact on the neutron flux in
   the in-core flux-trap facility of MTR research reactors
-  <https://doi.org/10.1016/j.net.2019.08.008>`_", Nucl. Eng. Technol., **52**,
+  <https://doi.org/10.1016/j.net.2019.08.008>`_", *Nucl. Eng. Technol.*, **52**,
   469-476 (2020).
 
 - J. Rolando Granada, J. Ignacio Marquez Damian, and Christian Helman, "`Studies
@@ -161,6 +193,10 @@ Miscellaneous
   Shutdown System in a Small Lead-Cooled Reactor
   <https://doi.org/10.13140/RG.2.2.26088.01281>`_," M.S. Thesis, KTH Royal
   Institute of Technology (2019).
+
+- Ilham Variansyah, Benjamin R. Betzler, and William R. Martin,
+  "α-weighted transition rate matrix method", *Proc. M&C*, 1368-1377, Portland,
+  Oregon, Aug. 25-29 (2019).
 
 - Shikhar Kumar, Benoit Forget, and Kord Smith, "Analysis of fission source
   convergence for a 3-D SMR core using functional expansion tallies," *Proc.
@@ -248,6 +284,16 @@ Miscellaneous
 -----------------------------------
 Multigroup Cross Section Generation
 -----------------------------------
+
+- Ilham Variansyah, Benjamin R. Betzler, and William R. Martin, "`Multigroup
+  Constant Calculation with Static α-Eigenvalue Monte Carlo for
+  Time-Dependent Neutron Transport Simulation
+  <https://doi.org/10.1080/00295639.2020.1743578>`_", *Nucl. Sci. Eng.*, 2020.
+
+- Chenghui Wan, Tianliang Hu, and Liangzhi Cao, "`Multi-physics numerical
+  analysis of the fuel-addition transients in the liquid-fuel molten salt reactor
+  <https://doi.org/10.1016/j.anucene.2020.107514>`_", *Ann. Nucl. Energy*,
+  **144**, 107514 (2020).
 
 - William Boyd, Adam Nelson, Paul K. Romano, Samuel Shaner, Benoit Forget, and
   Kord Smith, "`Multigroup Cross-Section Generation with the OpenMC Monte Carlo

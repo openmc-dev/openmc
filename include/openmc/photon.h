@@ -4,9 +4,11 @@
 #include "openmc/endf.h"
 #include "openmc/particle.h"
 
+#include <gsl/gsl>
 #include <hdf5.h>
 #include "xtensor/xtensor.hpp"
 
+#include <memory> // for unique_ptr
 #include <string>
 #include <unordered_map>
 #include <utility> // for pair
@@ -38,8 +40,9 @@ public:
 
 class PhotonInteraction {
 public:
-  // Constructors
-  PhotonInteraction(hid_t group, int i_element);
+  // Constructors/destructor
+  PhotonInteraction(hid_t group);
+  ~PhotonInteraction();
 
   // Methods
   void calculate_xs(Particle& p) const;
@@ -57,7 +60,7 @@ public:
   // Data members
   std::string name_; //!< Name of element, e.g. "Zr"
   int Z_; //!< Atomic number
-  int i_element_; //!< Index in global elements vector
+  gsl::index index_; //!< Index in global elements vector
 
   // Microscopic cross sections
   xt::xtensor<double, 1> energy_;
@@ -117,8 +120,8 @@ namespace data {
 extern xt::xtensor<double, 1> compton_profile_pz; //! Compton profile momentum grid
 
 //! Photon interaction data for each element
-extern std::vector<PhotonInteraction> elements;
 extern std::unordered_map<std::string, int> element_map;
+extern std::vector<std::unique_ptr<PhotonInteraction>> elements;
 
 } // namespace data
 

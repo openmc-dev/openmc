@@ -33,6 +33,8 @@
 #include <mpi.h>
 #endif
 
+#include <fmt/format.h>
+
 #include <algorithm>
 #include <cmath>
 #include <string>
@@ -500,7 +502,7 @@ void initialize_history(Particle& p, int64_t index_source)
 
   // Display message if high verbosity or trace is on
   if (settings::verbosity >= 9 || p.trace_) {
-    write_message("Simulating Particle " + std::to_string(p.id_));
+    write_message(fmt::format("Simulating Particle {}", p.id_));
   }
 
   // Add paricle's starting weight to count for normalizing tallies later

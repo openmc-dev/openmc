@@ -19,7 +19,7 @@ from warnings import warn
 from numpy import nonzero, empty, asarray
 from uncertainties import ufloat
 
-from openmc.data import DataLibrary, JOULE_PER_EV
+from openmc.data import DataLibrary
 from openmc.lib import MaterialFilter, Tally
 from openmc.checkvalue import check_type, check_greater_than
 from . import comm
@@ -326,15 +326,15 @@ class NormalizationHelper(ABC):
         self._nuclides = None
 
     def reset(self):
-        """Reset energy produced prior to unpacking tallies"""
-        self._energy = 0.0
+        """Reset state for normalization"""
 
     @abstractmethod
     def prepare(self, chain_nucs, rate_index):
         """Perform work needed to obtain energy produced
 
         This method is called prior to the transport simulations
-        in :meth:`openmc.deplete.Operator.initial_condition`.
+        in :meth:`openmc.deplete.Operator.initial_condition`. Only used for
+        energy-based normalization.
 
         Parameters
         ----------
@@ -346,7 +346,8 @@ class NormalizationHelper(ABC):
         """
 
     def update(self, fission_rates):
-        """Update the energy produced
+        """Update the normalization based on fission rates (only used for
+        energy-based normalization)
 
         Parameters
         ----------
@@ -366,23 +367,21 @@ class NormalizationHelper(ABC):
         check_type("nuclides", nuclides, list, str)
         self._nuclides = nuclides
 
+    @abstractmethod
     def factor(self, source_rate):
-        # Reduce energy produced from all processes
-        # J / source neutron
-        energy = comm.allreduce(self._energy) * JOULE_PER_EV
+        """Return normalization factor
 
-        # Guard against divide by zero
-        if energy == 0:
-            if comm.rank == 0:
-                sys.stderr.flush()
-                print("No energy reported from OpenMC tallies. Do your HDF5 "
-                      "files have heating data?\n", file=sys.stderr, flush=True)
-            comm.barrier()
-            comm.Abort(1)
+        Parameters
+        ----------
+        source_rate : float
+            Power in [W] or source rate in [neutron/sec]
 
-        # Return normalization factor for scaling reaction rates. In this case,
-        # the source rate is the power in [W], so [W] / [J/src] = [src/s]
-        return source_rate / energy
+        Returns
+        -------
+        float
+            Normalization factor for tallies
+
+        """
 
 
 class FissionYieldHelper(ABC):

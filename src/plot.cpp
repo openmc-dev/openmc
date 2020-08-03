@@ -114,7 +114,7 @@ void read_plots_xml()
   // Check if plots.xml exists
   std::string filename = settings::path_input + "plots.xml";
   if (!file_exists(filename)) {
-    fatal_error("Plots XML file '" + filename + "' does not exist!");
+    fatal_error(fmt::format("Plots XML file '{}' does not exist!", filename));
   }
 
   write_message("Reading plot XML file...", 5);

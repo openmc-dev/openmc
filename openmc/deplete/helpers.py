@@ -11,6 +11,7 @@ from numpy import dot, zeros, newaxis
 
 from . import comm
 from openmc.checkvalue import check_type, check_greater_than
+from openmc.data import JOULE_PER_EV
 from openmc.lib import (
     Tally, MaterialFilter, EnergyFilter, EnergyFunctionFilter)
 from .abc import (
@@ -96,7 +97,33 @@ class DirectReactionRateHelper(ReactionRateHelper):
 # ------------------------------------------
 
 
-class ChainFissionHelper(NormalizationHelper):
+class EnergyNormalizationHelper(NormalizationHelper):
+    """Compute energy-based normalization."""
+
+    def reset(self):
+        """Reset energy produced prior to unpacking tallies"""
+        self._energy = 0.0
+
+    def factor(self, source_rate):
+        # Reduce energy produced from all processes
+        # J / source neutron
+        energy = comm.allreduce(self._energy) * JOULE_PER_EV
+
+        # Guard against divide by zero
+        if energy == 0:
+            if comm.rank == 0:
+                sys.stderr.flush()
+                print("No energy reported from OpenMC tallies. Do your HDF5 "
+                      "files have heating data?\n", file=sys.stderr, flush=True)
+            comm.barrier()
+            comm.Abort(1)
+
+        # Return normalization factor for scaling reaction rates. In this case,
+        # the source rate is the power in [W], so [W] / [J/src] = [src/s]
+        return source_rate / energy
+
+
+class ChainFissionHelper(EnergyNormalizationHelper):
     """Computes normalization using fission Q values from depletion chain
 
     Attributes
@@ -154,7 +181,7 @@ class ChainFissionHelper(NormalizationHelper):
         self._energy += dot(fission_rates, self._fission_q_vector)
 
 
-class EnergyScoreHelper(NormalizationHelper):
+class EnergyScoreHelper(EnergyNormalizationHelper):
     """Class responsible for obtaining system energy via a tally score
 
     Parameters

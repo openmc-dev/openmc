@@ -307,8 +307,7 @@ void initialize_batch()
   ++simulation::current_batch;
 
   if (settings::run_mode == RunMode::FIXED_SOURCE) {
-    int b = simulation::current_batch;
-    write_message("Simulating batch " + std::to_string(b), 6);
+    write_message(6, "Simulating batch {}", simulation::current_batch);
   }
 
   // Reset total starting particle weight used for normalizing tallies
@@ -612,9 +611,8 @@ void initialize_data()
       double max_E = nuc->grid_[0].energy.back();
       int neutron = static_cast<int>(Particle::Type::neutron);
       if (max_E == data::energy_max[neutron]) {
-        write_message("Maximum neutron transport energy: " +
-          std::to_string(data::energy_max[neutron]) + " eV for " +
-          nuc->name_, 7);
+        write_message(7, "Maximum neutron transport energy: {} eV for {}",
+          data::energy_max[neutron], nuc->name_);
         if (mpi::master && data::energy_max[neutron] < 20.0e6) {
           warning("Maximum neutron energy is below 20 MeV. This may bias "
             "the results.");

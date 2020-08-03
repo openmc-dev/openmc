@@ -3,9 +3,8 @@
 #include "openmc/random_lcg.h"
 #include "openmc/source.h"
 #include "openmc/particle.h"
-#include "pugixml.hpp"
 
-class SerializedSource {
+class SerializedSource : public openmc::CustomSource {
   protected:
     double energy_;
 
@@ -18,7 +17,9 @@ class SerializedSource {
     // Getters for the values that we want to use in sampling.
     double energy() { return energy_; }
 
-    static SerializedSource from_string(const char* parameters) {
+    // Defines a function that can create a pointer to a new instance of this class
+    // by deserializing from the provided string.
+    static SerializedSource* from_string(const char* parameters) {
       std::unordered_map<std::string, std::string> parameter_mapping;
 
       std::stringstream ss(parameters);
@@ -30,27 +31,36 @@ class SerializedSource {
         parameter_mapping[key] = value;
       }
 
-      return SerializedSource(std::stod(parameter_mapping["energy"]));
+      return new SerializedSource(std::stod(parameter_mapping["energy"]));
+    }
+
+    // Samples from an instance of this class.
+    openmc::Particle::Bank sample_source(uint64_t* seed) {
+      openmc::Particle::Bank particle;
+      // wgt
+      particle.particle = openmc::Particle::Type::neutron;
+      particle.wgt = 1.0;
+      // position
+      particle.r.x = 0.0;
+      particle.r.y = 0.0;
+      particle.r.z = 0.0;
+      // angle
+      particle.u = {1.0, 0.0, 0.0};
+      particle.E = this->energy();
+      particle.delayed_group = 0;
+
+      return particle;
     }
 };
 
 // you must have external C linkage here otherwise
 // dlopen will not find the file
-extern "C" openmc::Particle::Bank sample_source(uint64_t* seed, const char* parameters) {
-  SerializedSource source = SerializedSource::from_string(parameters);
+extern "C" SerializedSource* create(const char* serialized_source) {
+  return SerializedSource::from_string(serialized_source);
+}
 
-  openmc::Particle::Bank particle;
-  // wgt
-  particle.particle = openmc::Particle::Type::neutron;
-  particle.wgt = 1.0;
-  // position
-  particle.r.x = 0.0;
-  particle.r.y = 0.0;
-  particle.r.z = 0.0;
-  // angle
-  particle.u = {1.0, 0.0, 0.0};
-  particle.E = source.energy();
-  particle.delayed_group = 0;
-
-  return particle;
+// you must have external C linkage here otherwise
+// dlopen will not find the file
+extern "C" void destroy(SerializedSource* source) {
+  delete source;
 }

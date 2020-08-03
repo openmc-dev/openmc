@@ -46,8 +46,8 @@ namespace {
 
 using sample_t = Particle::Bank (*)(uint64_t* seed);
 sample_t custom_source_function;
-std::string serialization;
-using serialized_sample_t = Particle::Bank (*)(uint64_t* seed, const char* serialization);
+std::string custom_source_parameters;
+using serialized_sample_t = Particle::Bank (*)(uint64_t* seed, const char* parameters);
 serialized_sample_t custom_serialized_source_function;
 void* custom_source_library;
 
@@ -98,14 +98,8 @@ SourceDistribution::SourceDistribution(pugi::xml_node node)
         settings::path_source_library));
     }
 
-    if (check_for_node(node, "serialization")) {
-      // If the source is serialized then make sure we only load it from file once, otherwise there will
-      // be a significant I/O overhead.
-      pugi::xml_document doc;
-      doc.load_file(get_node_value(node, "serialization", false, true).c_str());
-      std::stringstream ss;
-      doc.print(ss);
-      serialization = ss.str();
+    if (check_for_node(node, "parameters")) {
+      custom_source_parameters = get_node_value(node, "parameters", false, true);
     }
   } else {
 
@@ -380,13 +374,13 @@ void load_custom_source_library()
   // reset errors
   dlerror();
 
-  if (serialization.empty()) {
+  if (custom_source_parameters.empty()) {
     // get the function from the library
     using sample_t = Particle::Bank (*)(uint64_t* seed);
     custom_source_function = reinterpret_cast<sample_t>(dlsym(custom_source_library, "sample_source"));
   } else {
     // get the function from the library using the provided serialization
-    using sample_t = Particle::Bank (*)(uint64_t* seed, const char* serialization);
+    using sample_t = Particle::Bank (*)(uint64_t* seed, const char* parameters);
     custom_serialized_source_function = reinterpret_cast<sample_t>(dlsym(custom_source_library, "sample_source"));
   }
 
@@ -415,10 +409,10 @@ void close_custom_source_library()
 
 Particle::Bank sample_custom_source_library(uint64_t* seed)
 {
-  if (serialization.empty()) {
+  if (custom_source_parameters.empty()) {
     return custom_source_function(seed);
   } else {
-    return custom_serialized_source_function(seed, serialization.c_str());
+    return custom_serialized_source_function(seed, custom_source_parameters.c_str());
   }
 }
 

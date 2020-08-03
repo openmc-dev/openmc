@@ -64,7 +64,7 @@ def model():
     # custom source from shared library
     source = openmc.Source()
     source.library = 'build/libserialized_source.so'
-    source.serialization = 'serialized_source.xml'
+    source.parameters = 'energy=1e3'
     model.settings.source = source
 
     return model

@@ -1,14 +1,5 @@
 import openmc
 
-# Define the serialized source
-serialized_source = """<Source>
-  <Radius>1.5</Radius>
-  <Energy>1e3</Energy>
-</Source>
-"""
-with open('serialized_source.xml', 'w') as f:
-    f.write(serialized_source)
-
 # Create a single material
 iron = openmc.Material()
 iron.set_density('g/cm3', 5.0)
@@ -29,7 +20,7 @@ settings.batches = 10
 settings.particles = 1000
 source = openmc.Source()
 source.library = 'build/libserialized_source.so'
-source.serialization = 'serialized_source.xml'
+source.parameters = 'radius=3.0, energy=14.08e6'
 settings.source = source
 settings.export_to_xml()
 

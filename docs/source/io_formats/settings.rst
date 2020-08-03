@@ -468,14 +468,13 @@ attributes/sub-elements:
 
     *Default*: None
 
-  :serialization:
+  :parameters:
     If this attribute is given, it indicates that the source is to be
     instantiated from an externally compiled source function, with parameters
-    defined by a serialized form of the source. The serialized source will be
-    read from a file in the location provided by this attribute. In this case,
-    the ``sample_source()`` function must take as input an additional character
-    array containing the serialization that OpenMC will have read from the
-    provided file. If the library attribute is not provided then this attribute
+    defined by the string provided in this attribute. In this case, the
+    ``sample_source()`` function must take as input an additional character
+    array containing the serialization that OpenMC will have read from this
+    attribute. If the library attribute is not provided then this attribute
     will be ignored. More documentation on how to build serialized sources can
     be found in :ref:`serialized_custom_source`.
 

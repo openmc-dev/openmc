@@ -11,13 +11,13 @@ library, you can run:
 
 After this, you can build the model by running `python build_xml.py`. In the XML
 files that are created, you should see a reference to build/libserialized_source.so,
-the custom source library that was built by CMake, and the path to the serialized
-representation of the source in serialized_source.xml. The model is also set up with a
-mesh tally of the flux, so once you run `openmc`, you will get a statepoint file
-with the tally results in it. Running `python show_flux.py` will pull in the
-results from the statepoint file and display them. If all worked well, you
-should see a ring "imprint" as well as a higher flux to the right side (since
-the custom source has all particles moving in the positive x direction).
+the custom source library that was built by CMake, and the serialized representation
+of the source in the parameters attribute. The model is also set up with a mesh tally
+of the flux, so once you run `openmc`, you will get a statepoint file with the tally
+results in it. Running `python show_flux.py` will pull in the results from the
+statepoint file and display them. If all worked well, you should see a ring "imprint"
+as well as a higher flux to the right side (since the custom source has all particles
+moving in the positive x direction).
 
-Once built, you can edit the serialized_source.xml file to change the radius of the
-sampled ring or the energy of the sampled particles.
+Once built, you can edit the parameters attribute on the source to change the radius of
+the sampled ring or the energy of the sampled particles.

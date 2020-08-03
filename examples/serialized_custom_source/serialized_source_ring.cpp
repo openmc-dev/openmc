@@ -1,9 +1,9 @@
 #include <cmath> // for M_PI
+#include <unordered_map>
 
 #include "openmc/random_lcg.h"
 #include "openmc/source.h"
 #include "openmc/particle.h"
-#include "pugixml.hpp"
 
 class SerializedSource {
   protected:
@@ -21,24 +21,26 @@ class SerializedSource {
     double radius() { return radius_; }
     double energy() { return energy_; }
 
-    // The deserialisation routine populates the constructor from well defined elements
-    // in the input XML document.
-    // Note that the source will have already been read from file, so what will be passed
-    // in here is a string-like serialized value (not the path to the serialized value).
-    static SerializedSource from_xml(char* serialized_source) {
-      pugi::xml_document doc;
-      doc.load_string(serialized_source);
-      pugi::xml_node root_node = doc.root().child("Source");
-      double radius = root_node.child("Radius").text().as_double();
-      double energy = root_node.child("Energy").text().as_double();
-      return SerializedSource(radius, energy);
+    static SerializedSource from_string(const char* parameters) {
+      std::unordered_map<std::string, std::string> parameter_mapping;
+
+      std::stringstream ss(parameters);
+      std::string parameter;
+      while (std::getline(ss, parameter, ',')) {
+        parameter.erase(0, parameter.find_first_not_of(' '));
+        std::string key = parameter.substr(0, parameter.find_first_of('='));
+        std::string value = parameter.substr(parameter.find_first_of('=') + 1, parameter.length());
+        parameter_mapping[key] = value;
+      }
+
+      return SerializedSource(std::stod(parameter_mapping["radius"]), std::stod(parameter_mapping["energy"]));
     }
 };
 
 // you must have external C linkage here otherwise
 // dlopen will not find the file
-extern "C" openmc::Particle::Bank sample_source(uint64_t* seed, char* serialized_source) {
-  SerializedSource source = SerializedSource::from_xml(serialized_source);
+extern "C" openmc::Particle::Bank sample_source(uint64_t* seed, const char* parameters) {
+  SerializedSource source = SerializedSource::from_string(parameters);
 
   openmc::Particle::Bank particle;
   // wgt

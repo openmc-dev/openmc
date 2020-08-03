@@ -241,17 +241,17 @@ Custom Serialized Sources
 -------------------------
 
 If the custom source may be used with parameters at a variety of values then it
-may be necessary to serialize the source to an appropriate format (XML, JSON,
-etc.) in order to avoid recompiling the source library for each run. This is
-supported by defining the ``source_sampling`` function with an additional
-parameter that receives the serialized form of the source:
+may be necessary to serialize the source to an appropriate format in order to
+avoid recompiling the source library for each run. This is supported by defining
+the ``source_sampling`` function with an additional parameter that receives the
+parameters used to build the source:
 
 .. code-block:: c++
 
    // you must have external C linkage here
-   extern "C" openmc::Particle::Bank sample_source(uint64_t* seed, char* serialized_source) {
+   extern "C" openmc::Particle::Bank sample_source(uint64_t* seed, const char* parameters) {
      // function to deserialize the source
-     SerializedSource source = SerializedSource::from_xml(serialized_source);
+     SerializedSource source = SerializedSource::from_string(parameters);
 
      openmc::Particle::Bank particle;
      // wgt
@@ -278,7 +278,7 @@ parameter that receives the serialized form of the source:
 The details of the serialization routine, in particular the schema of the source
 are to be defined by the implementation of the serializable source class. The
 location of the serialized representation of the source to be used must be
-provided via the :attr:`openmc.Source.serialization` attribute, along with the
+provided via the :attr:`openmc.Source.parameters` attribute, along with the
 custom source library location in :attr:`openmc.Source.library`.
 
 When defining a class to be implemented via this deserialization approach, care

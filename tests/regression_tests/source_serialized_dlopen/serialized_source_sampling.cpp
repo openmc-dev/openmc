@@ -1,3 +1,5 @@
+#include <unordered_map>
+
 #include "openmc/random_lcg.h"
 #include "openmc/source.h"
 #include "openmc/particle.h"
@@ -16,19 +18,26 @@ class SerializedSource {
     // Getters for the values that we want to use in sampling.
     double energy() { return energy_; }
 
-    static SerializedSource from_xml(char* serialized_source) {
-      pugi::xml_document doc;
-      doc.load_string(serialized_source);
-      pugi::xml_node root_node = doc.root().child("Source");
-      double energy = root_node.child("Energy").text().as_double();
-      return SerializedSource(energy);
+    static SerializedSource from_string(const char* parameters) {
+      std::unordered_map<std::string, std::string> parameter_mapping;
+
+      std::stringstream ss(parameters);
+      std::string parameter;
+      while (std::getline(ss, parameter, ',')) {
+        parameter.erase(0, parameter.find_first_not_of(' '));
+        std::string key = parameter.substr(0, parameter.find_first_of('='));
+        std::string value = parameter.substr(parameter.find_first_of('=') + 1, parameter.length());
+        parameter_mapping[key] = value;
+      }
+
+      return SerializedSource(std::stod(parameter_mapping["energy"]));
     }
 };
 
 // you must have external C linkage here otherwise
 // dlopen will not find the file
-extern "C" openmc::Particle::Bank sample_source(uint64_t* seed, char* serialized_source) {
-  SerializedSource source = SerializedSource::from_xml(serialized_source);
+extern "C" openmc::Particle::Bank sample_source(uint64_t* seed, const char* parameters) {
+  SerializedSource source = SerializedSource::from_string(parameters);
 
   openmc::Particle::Bank particle;
   // wgt

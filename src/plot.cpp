@@ -94,8 +94,7 @@ extern "C"
 int openmc_plot_geometry()
 {
   for (auto pl : model::plots) {
-    write_message(fmt::format("Processing plot {}: {}...",
-      pl.id_, pl.path_plot_), 5);
+    write_message(5, "Processing plot {}: {}...", pl.id_, pl.path_plot_);
 
     if (PlotType::slice == pl.type_) {
       // create 2D image

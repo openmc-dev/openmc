@@ -243,47 +243,92 @@ Custom Serialized Sources
 If the custom source may be used with parameters at a variety of values then it
 may be necessary to serialize the source to an appropriate format in order to
 avoid recompiling the source library for each run. This is supported by defining
-the ``source_sampling`` function with an additional parameter that receives the
-parameters used to build the source:
+a class inheriting from ``openmc::CustomSource`` that implements a
+``sample_source`` function. The class should also have logic to deserialise
+the parameters provided via the settings.xml file in the
+:attr:``openmc.Source.parameters`` attribute:
 
 .. code-block:: c++
 
-   // you must have external C linkage here
-   extern "C" openmc::Particle::Bank sample_source(uint64_t* seed, const char* parameters) {
-     // function to deserialize the source
-     SerializedSource source = SerializedSource::from_string(parameters);
+  #include <unordered_map>
 
-     openmc::Particle::Bank particle;
-     // wgt
-     particle.particle = openmc::Particle::Type::neutron;
-     particle.wgt = 1.0;
-     // position
-     double angle = 2. * M_PI * openmc::prn(seed);
+  #include "openmc/random_lcg.h"
+  #include "openmc/source.h"
+  #include "openmc/particle.h"
 
-     // get the radius from the serialized form of the source
-     double radius = source.radius();
-     particle.r.x = radius * std::cos(angle);
-     particle.r.y = radius * std::sin(angle);
-     particle.r.z = 0.0;
-     // angle
-     particle.u = {1.0, 0.0, 0.0};
+  class SerializedSource : public openmc::CustomSource {
+    protected:
+      double energy_;
 
-     // get the energy from the serialized form of the source
-     particle.E = source.energy();
-     particle.delayed_group = 0;
+      // Protect the constructor so that the class can only be created by serialisation.
+      SerializedSource(double energy) {
+        energy_ = energy;
+      }
 
-     return particle;
-   }
+    public:
+      // Getters for the values that we want to use in sampling.
+      double energy() { return energy_; }
 
-The details of the serialization routine, in particular the schema of the source
-are to be defined by the implementation of the serializable source class. The
-location of the serialized representation of the source to be used must be
-provided via the :attr:`openmc.Source.parameters` attribute, along with the
-custom source library location in :attr:`openmc.Source.library`.
+      // Defines a function that can create a pointer to a new instance of this class
+      // by deserializing from the provided string.
+      static SerializedSource* from_string(const char* parameters) {
+        std::unordered_map<std::string, std::string> parameter_mapping;
 
-When defining a class to be implemented via this deserialization approach, care
-must be taken to ensure that unique symbols in the resulting binary are
-discoverable when the ``sample_source`` function is loaded via ``dlsym``.
+        std::stringstream ss(parameters);
+        std::string parameter;
+        while (std::getline(ss, parameter, ',')) {
+          parameter.erase(0, parameter.find_first_not_of(' '));
+          std::string key = parameter.substr(0, parameter.find_first_of('='));
+          std::string value = parameter.substr(parameter.find_first_of('=') + 1, parameter.length());
+          parameter_mapping[key] = value;
+        }
+
+        return new SerializedSource(std::stod(parameter_mapping["energy"]));
+      }
+
+      // Samples from an instance of this class.
+      openmc::Particle::Bank sample_source(uint64_t* seed) {
+        openmc::Particle::Bank particle;
+        // wgt
+        particle.particle = openmc::Particle::Type::neutron;
+        particle.wgt = 1.0;
+        // position
+        particle.r.x = 0.0;
+        particle.r.y = 0.0;
+        particle.r.z = 0.0;
+        // angle
+        particle.u = {1.0, 0.0, 0.0};
+        particle.E = this->energy();
+        particle.delayed_group = 0;
+
+        return particle;
+      }
+  };
+
+The custom source library function in this case must also define a ``create``
+method and a ``destroy`` method. The ``create`` method will be used to
+generate an instance of the custom source, based on the value supplied in
+the :attr:``openmc.Source.parameters`` attribute. The ``destroy`` method
+will be used to destroy that instance once the sampling has completed. Both
+must be defined with ``extern "C"``:
+
+.. code-block:: c++
+
+  // you must have external C linkage here otherwise
+  // dlopen will not find the file
+  extern "C" SerializedSource* create(const char* serialized_source) {
+    return SerializedSource::from_string(serialized_source);
+  }
+
+  // you must have external C linkage here otherwise
+  // dlopen will not find the file
+  extern "C" void destroy(SerializedSource* source) {
+    delete source;
+  }
+
+As with the basic custom source functionality, the custom source library
+location must also be provided in the :attr:`openmc.Source.library`
+attribute.
 
 ---------------
 Shannon Entropy

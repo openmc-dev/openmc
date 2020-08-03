@@ -472,9 +472,15 @@ attributes/sub-elements:
     If this attribute is given, it indicates that the source is to be
     instantiated from an externally compiled source function, with parameters
     defined by the string provided in this attribute. In this case, the
-    ``sample_source()`` function must take as input an additional character
-    array containing the serialization that OpenMC will have read from this
-    attribute. If the library attribute is not provided then this attribute
+    custom source library must define a class that inherits from the
+    ``openmc::CustomSource`` abstract class. This class must implement a
+    ``sample_source()`` function, which takes an array of integers as an
+    argument. The custom source library must also contain a ``create`` method,
+    which takes a serialized form of the source (as provided to the parameters
+    attribute) as an argument and returns a pointer to an instance of the custom
+    source, and a ``destroy`` method, which takes a pointer to an instance of
+    the custom source as an argument and deletes the memory allocated to the
+    custom source. If the library attribute is not provided then this attribute
     will be ignored. More documentation on how to build serialized sources can
     be found in :ref:`serialized_custom_source`.
 

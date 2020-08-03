@@ -44,12 +44,13 @@ std::vector<SourceDistribution> external_sources;
 
 namespace {
 
+void* custom_source_library;
 using sample_t = Particle::Bank (*)(uint64_t* seed);
 sample_t custom_source_function;
+
 std::string custom_source_parameters;
-using serialized_sample_t = Particle::Bank (*)(uint64_t* seed, const char* parameters);
-serialized_sample_t custom_serialized_source_function;
-void* custom_source_library;
+CustomSource* custom_source;
+destroy_custom_source_t* destroy_custom_source;
 
 }
 
@@ -379,9 +380,12 @@ void load_custom_source_library()
     using sample_t = Particle::Bank (*)(uint64_t* seed);
     custom_source_function = reinterpret_cast<sample_t>(dlsym(custom_source_library, "sample_source"));
   } else {
-    // get the function from the library using the provided serialization
-    using sample_t = Particle::Bank (*)(uint64_t* seed, const char* parameters);
-    custom_serialized_source_function = reinterpret_cast<sample_t>(dlsym(custom_source_library, "sample_source"));
+    // get the functions to create and destroy the CustomSource from the library
+    create_custom_source_t* create_custom_source = (create_custom_source_t*) dlsym(custom_source_library, "create");
+    destroy_custom_source = (destroy_custom_source_t*) dlsym(custom_source_library, "destroy");
+
+    // create a pointer to an instance of the CustomSource
+    custom_source = create_custom_source(custom_source_parameters.c_str());
   }
 
   // check for any dlsym errors
@@ -399,6 +403,11 @@ void load_custom_source_library()
 
 void close_custom_source_library()
 {
+  if (custom_source) {
+    // destroy the CustomSource if it exists
+    destroy_custom_source(custom_source);
+  }
+
 #ifdef HAS_DYNAMIC_LINKING
   dlclose(custom_source_library);
 #else
@@ -412,7 +421,8 @@ Particle::Bank sample_custom_source_library(uint64_t* seed)
   if (custom_source_parameters.empty()) {
     return custom_source_function(seed);
   } else {
-    return custom_serialized_source_function(seed, custom_source_parameters.c_str());
+    // sample from the instance of the CustomSource
+    return custom_source->sample_source(seed);
   }
 }
 

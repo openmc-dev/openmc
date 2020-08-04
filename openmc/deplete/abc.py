@@ -225,11 +225,11 @@ class TransportOperator(ABC):
 class ReactionRateHelper(ABC):
     """Abstract class for generating reaction rates for operators
 
-    Responsible for generating reaction rate tallies for burnable
-    materials, given nuclides and scores from the operator.
+    Responsible for generating reaction rate tallies for burnable materials,
+    given nuclides and scores from the operator.
 
-    Reaction rates are passed back to the operator for be used in
-    an :class:`openmc.deplete.OperatorResult` instance
+    Reaction rates are passed back to the operator for be used in an
+    :class:`openmc.deplete.OperatorResult` instance.
 
     Parameters
     ----------
@@ -246,7 +246,6 @@ class ReactionRateHelper(ABC):
 
     def __init__(self, n_nucs, n_react):
         self._nuclides = None
-        self._rate_tally = None
         self._results_cache = empty((n_nucs, n_react))
 
     @abstractmethod
@@ -262,7 +261,6 @@ class ReactionRateHelper(ABC):
     def nuclides(self, nuclides):
         check_type("nuclides", nuclides, list, str)
         self._nuclides = nuclides
-        self._rate_tally.nuclides = nuclides
 
     @abstractmethod
     def get_material_rates(self, mat_id, nuc_index, react_index):
@@ -281,8 +279,7 @@ class ReactionRateHelper(ABC):
     def divide_by_adens(self, number):
         """Normalize reaction rates by number of nuclides
 
-        Acts on the current material examined by
-        :meth:`get_material_rates`
+        Acts on the current material examined by :meth:`get_material_rates`
 
         Parameters
         ----------
@@ -559,7 +556,6 @@ class TalliedFissionYieldHelper(FissionYieldHelper):
         self._fission_rate_tally = Tally()
         self._fission_rate_tally.writable = False
         self._fission_rate_tally.scores = ['fission']
-
         self._fission_rate_tally.filters = [MaterialFilter(materials)]
 
     def update_tally_nuclides(self, nuclides):

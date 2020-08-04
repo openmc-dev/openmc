@@ -7,13 +7,14 @@ from numbers import Real
 import bisect
 from collections import defaultdict
 
-from numpy import dot, zeros, newaxis
+from numpy import dot, zeros, newaxis, asarray
 
 from . import comm
 from openmc.checkvalue import check_type, check_greater_than
-from openmc.data import JOULE_PER_EV
+from openmc.data import JOULE_PER_EV, REACTION_NAME
 from openmc.lib import (
     Tally, MaterialFilter, EnergyFilter, EnergyFunctionFilter)
+import openmc.lib
 from .abc import (
     ReactionRateHelper, NormalizationHelper, FissionYieldHelper,
     TalliedFissionYieldHelper)
@@ -21,7 +22,7 @@ from .abc import (
 __all__ = (
     "DirectReactionRateHelper", "ChainFissionHelper", "EnergyScoreHelper"
     "SourceRateHelper", "ConstantFissionYieldHelper", "FissionYieldCutoffHelper",
-    "AveragedFissionYieldHelper")
+    "AveragedFissionYieldHelper", "FluxCollapseHelper")
 
 # -------------------------------------
 # Helpers for generating reaction rates
@@ -43,6 +44,14 @@ class DirectReactionRateHelper(ReactionRateHelper):
     nuclides : list of str
         All nuclides with desired reaction rates.
     """
+    def __init__(self, n_nuc, n_react):
+        super().__init__(n_nuc, n_react)
+        self._rate_tally = None
+
+    @ReactionRateHelper.nuclides.setter
+    def nuclides(self, nuclides):
+        ReactionRateHelper.nuclides.fset(self, nuclides)
+        self._rate_tally.nuclides = nuclides
 
     def generate_tallies(self, materials, scores):
         """Produce one-group reaction rate tally
@@ -91,6 +100,107 @@ class DirectReactionRateHelper(ReactionRateHelper):
 
         return self._results_cache
 
+
+class FluxCollapseHelper(ReactionRateHelper):
+    """Class that generates tallies for one-group rates
+
+    .. versionadded:: 0.12.1
+
+    Parameters
+    ----------
+    n_nucs : int
+        Number of burnable nuclides tracked by :class:`openmc.deplete.Operator`
+    n_react : int
+        Number of reactions tracked by :class:`openmc.deplete.Operator`
+    energies : iterable of float
+        Energy group boundaries for flux spectrum in [eV]
+
+    Attributes
+    ----------
+    nuclides : list of str
+        All nuclides with desired reaction rates.
+    """
+    def __init__(self, n_nucs, n_reacts, energies):
+        super().__init__(n_nucs, n_reacts)
+        self._energies = asarray(energies)
+
+    def generate_tallies(self, materials, scores):
+        """Produce multigroup flux spectrum tally
+
+        Uses the :mod:`openmc.lib` module to generate a multigroup flux tally
+        for each burnable material.
+
+        Parameters
+        ----------
+        materials : iterable of :class:`openmc.Material`
+            Burnable materials in the problem. Used to construct a
+            :class:`openmc.MaterialFilter`
+        scores : iterable of str
+            Reaction identifiers, e.g. ``"(n, fission)"``, ``"(n, gamma)"``,
+            needed for the reaction rate tally.
+        """
+        self._materials = materials
+
+        # Convert reactions to MT values (needed when collapsing)
+        mt_values = {v: k for k, v in REACTION_NAME.items()}
+        mt_values['fission'] = 18
+        self._mts = [mt_values[x] for x in scores]
+
+        # Create flux tally with material and energy filters
+        self._flux_tally = Tally()
+        self._flux_tally.writable = False
+        self._flux_tally.filters = [
+            MaterialFilter(materials),
+            EnergyFilter(self._energies)
+        ]
+        self._flux_tally.scores = ['flux']
+
+    def get_material_rates(self, mat_index, nuc_index, react_index):
+        """Return an array of reaction rates for a material
+
+        Parameters
+        ----------
+        mat_index : int
+            Index for material
+        nuc_index : iterable of int
+            Index for each nuclide in :attr:`nuclides` in the
+            desired reaction rate matrix
+        react_index : iterable of int
+            Index for each reaction scored in the tally
+
+        Returns
+        -------
+        rates : numpy.ndarray
+            Array with shape ``(n_nuclides, n_rxns)`` with the reaction rates in
+            this material
+
+        """
+        self._results_cache.fill(0.0)
+
+        # Get flux for specified material
+        shape = (len(self._materials), len(self._energies) - 1)
+        mean_value = self._flux_tally.mean.reshape(shape)
+        flux = mean_value[mat_index]
+
+        mat = self._materials[mat_index]
+        for name, i_nuc in zip(self.nuclides, nuc_index):
+            # Determine density of nuclide
+            # TODO: O(N) search for nuclide is not ideal
+            for nucname, density in zip(mat.nuclides, mat.densities):
+                if nucname == name:
+                    break
+            else:
+                raise ValueError("Couldn't find {} in material {}".format(name, mat_id))
+
+            for mt, i_react in zip(self._mts, react_index):
+                # Use flux to collapse reaction rate (per N)
+                nuc = openmc.lib.nuclides[name]
+                rate_per_nuc = nuc.collapse_rate(mt, self._energies, flux)
+
+                # Multiply by density to get absolute reaction rate
+                self._results_cache[i_nuc, i_react] = rate_per_nuc * density
+
+        return self._results_cache
 
 # ------------------------------------------
 # Helpers for obtaining normalization factor

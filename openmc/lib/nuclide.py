@@ -78,6 +78,23 @@ class Nuclide(_FortranObject):
         return name.value.decode()
 
     def collapse_rate(self, MT, energy, flux):
+        """Calculate reaction rate based on group-wise flux distribution
+
+        Parameters
+        ----------
+        MT : int
+            ENDF MT value of the desired reaction
+        energy : iterable of float
+            Energy group boundaries in [eV]
+        flux : iterable of float
+            Flux in each energt group (not normalized per eV)
+
+        Returns
+        -------
+        float
+            Reaction rate
+
+        """
         energy = np.asarray(energy, dtype=float)
         flux = np.asarray(flux, dtype=float)
         xs = c_double()

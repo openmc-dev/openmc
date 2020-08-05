@@ -235,55 +235,28 @@ file in your build directory. Setting the :attr:`openmc.Source.library`
 attribute to the path of this shared library will indicate that it should be
 used for sampling source particles at runtime.
 
-.. _serialized_custom_source:
+.. _parameterized_custom_source:
 
-Custom Serialized Sources
--------------------------
+Custom Parameterized Sources
+----------------------------
 
 If the custom source may be used with parameters at a variety of values then it
-may be necessary to serialize the source to an appropriate format in order to
-avoid recompiling the source library for each run. This is supported by defining
-a class inheriting from ``openmc::CustomSource`` that implements a
-``sample_source`` function. The class should also have logic to deserialise
-the parameters provided via the settings.xml file in the
-:attr:``openmc.Source.parameters`` attribute:
+may be necessary to represent those parameters as a string in order to avoid
+recompiling the source library for each run. This is supported by defining a
+class inheriting from ``openmc::CustomSource`` that implements a
+``sample_source`` function:
 
 .. code-block:: c++
 
-  #include <unordered_map>
-
-  #include "openmc/random_lcg.h"
   #include "openmc/source.h"
   #include "openmc/particle.h"
 
-  class SerializedSource : public openmc::CustomSource {
-    protected:
-      double energy_;
-
-      // Protect the constructor so that the class can only be created by serialisation.
-      SerializedSource(double energy) {
-        energy_ = energy;
-      }
-
+  class ParameterizedSource : public openmc::CustomSource {
     public:
-      // Getters for the values that we want to use in sampling.
-      double energy() { return energy_; }
-
-      // Defines a function that can create a pointer to a new instance of this class
-      // by deserializing from the provided string.
-      static SerializedSource* from_string(const char* parameters) {
-        std::unordered_map<std::string, std::string> parameter_mapping;
-
-        std::stringstream ss(parameters);
-        std::string parameter;
-        while (std::getline(ss, parameter, ',')) {
-          parameter.erase(0, parameter.find_first_not_of(' '));
-          std::string key = parameter.substr(0, parameter.find_first_of('='));
-          std::string value = parameter.substr(parameter.find_first_of('=') + 1, parameter.length());
-          parameter_mapping[key] = value;
-        }
-
-        return new SerializedSource(std::stod(parameter_mapping["energy"]));
+      double energy;
+      
+      ParameterizedSource(double energy) {
+        this->energy = energy;
       }
 
       // Samples from an instance of this class.
@@ -298,32 +271,25 @@ the parameters provided via the settings.xml file in the
         particle.r.z = 0.0;
         // angle
         particle.u = {1.0, 0.0, 0.0};
-        particle.E = this->energy();
+        particle.E = this->energy;
         particle.delayed_group = 0;
 
         return particle;
       }
   };
 
-The custom source library function in this case must also define a ``create``
-method and a ``destroy`` method. The ``create`` method will be used to
-generate an instance of the custom source, based on the value supplied in
-the :attr:``openmc.Source.parameters`` attribute. The ``destroy`` method
-will be used to destroy that instance once the sampling has completed. Both
-must be defined with ``extern "C"``:
+The custom source library function in this case must also define an
+``openmc_create_source`` method, which will be used to generate an instance of
+the custom source, based on the value supplied in the
+:attr:``openmc.Source.parameters`` attribute. The
+``openmc_create_source`` method must be defined with ``extern "C"``:
 
 .. code-block:: c++
 
   // you must have external C linkage here otherwise
   // dlopen will not find the file
-  extern "C" SerializedSource* create(const char* serialized_source) {
-    return SerializedSource::from_string(serialized_source);
-  }
-
-  // you must have external C linkage here otherwise
-  // dlopen will not find the file
-  extern "C" void destroy(SerializedSource* source) {
-    delete source;
+  extern "C" ParameterizedSource* openmc_create_source(const char* parameterized_source) {
+    return new ParameterizedSource(std::stod(parameters));
   }
 
 As with the basic custom source functionality, the custom source library

@@ -474,15 +474,13 @@ attributes/sub-elements:
     defined by the string provided in this attribute. In this case, the
     custom source library must define a class that inherits from the
     ``openmc::CustomSource`` abstract class. This class must implement a
-    ``sample_source()`` function, which takes an array of integers as an
-    argument. The custom source library must also contain a ``create`` method,
-    which takes a serialized form of the source (as provided to the parameters
-    attribute) as an argument and returns a pointer to an instance of the custom
-    source, and a ``destroy`` method, which takes a pointer to an instance of
-    the custom source as an argument and deletes the memory allocated to the
-    custom source. If the library attribute is not provided then this attribute
-    will be ignored. More documentation on how to build serialized sources can
-    be found in :ref:`serialized_custom_source`.
+    ``sample_source()`` function, which takes an unsigned integer pointer as an
+    argument. The custom source library must also contain an
+    ``openmc_create_source`` method, which takes the value provided to the
+    parameters attribute as an argument and returns a pointer to an instance of
+    the custom source. If the library attribute is not provided then this
+    attribute will be ignored. More documentation on how to build parametrized
+    sources can be found in :ref:`parameterized_custom_source`.
 
     *Default*: None
 

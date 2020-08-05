@@ -5914,7 +5914,7 @@ class MeshSurfaceMGXS(MGXS):
     energy_groups : openmc.mgxs.EnergyGroups
         The energy group structure for energy condensation
     by_nuclide : bool
-        Unused for SurfacMGXS
+        Unused in MeshSurfacMGXS
     name : str, optional
         Name of the multi-group cross section. Used as a label to identify
         tallies in OpenMC 'tallies.xml' file.
@@ -5926,7 +5926,7 @@ class MeshSurfaceMGXS(MGXS):
     rxn_type : str
         Reaction type (e.g., 'total', 'nu-fission', etc.)
     by_nuclide : bool
-        Unused for MeshSurfaceMGXS
+        Unused in MeshSurfaceMGXS
     domain : Mesh
         Domain for spatial homogenization
     domain_type : {'mesh'}
@@ -6296,7 +6296,7 @@ class Current(MeshSurfaceMGXS):
     rxn_type : str
         Reaction type (e.g., 'total', 'nu-fission', etc.)
     by_nuclide : bool
-        Unused for MeshSurfaceMGXS
+        Unused in MeshSurfaceMGXS
     domain : Mesh
         Domain for spatial homogenization
     domain_type : {'mesh'}

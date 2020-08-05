@@ -55,6 +55,6 @@ class ParameterizedSource : public openmc::CustomSource {
 
 // you must have external C linkage here otherwise
 // dlopen will not find the file
-extern "C" ParameterizedSource* create(const char* parameters) {
+extern "C" ParameterizedSource* openmc_create_source(const char* parameters) {
   return ParameterizedSource::from_string(parameters);
 }

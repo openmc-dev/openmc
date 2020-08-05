@@ -62,6 +62,6 @@ class ParameterizedSource : public openmc::CustomSource {
 // A function to create a pointer to an instance of this class when generated
 // via a plugin call using dlopen/dlsym.
 // You must have external C linkage here otherwise dlopen will not find the file
-extern "C" ParameterizedSource* create(const char* parameters) {
+extern "C" ParameterizedSource* openmc_create_source(const char* parameters) {
   return ParameterizedSource::from_string(parameters);
 }

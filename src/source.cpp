@@ -380,7 +380,7 @@ void load_custom_source_library()
     custom_source_function = reinterpret_cast<sample_t>(dlsym(custom_source_library, "sample_source"));
   } else {
     // get the function to create the CustomSource from the library
-    create_custom_source_t* create_custom_source = (create_custom_source_t*) dlsym(custom_source_library, "create");
+    create_custom_source_t* create_custom_source = (create_custom_source_t*) dlsym(custom_source_library, "openmc_create_source");
 
     // create a pointer to an instance of the CustomSource
     custom_source = create_custom_source(custom_source_parameters.c_str());

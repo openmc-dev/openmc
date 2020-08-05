@@ -61,6 +61,7 @@ bool source_latest           {false};
 bool source_separate         {false};
 bool source_write            {true};
 bool surface_source          {false};
+bool surf_src_read           {false};
 bool survival_biasing        {false};
 bool temperature_multipole   {false};
 bool trigger_on              {false};

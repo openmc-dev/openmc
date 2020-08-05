@@ -20,9 +20,9 @@ def compile_source(request):
         f.write(textwrap.dedent("""
             cmake_minimum_required(VERSION 3.3 FATAL_ERROR)
             project(openmc_sources CXX)
-            add_library(serialized_source SHARED serialized_source_sampling.cpp)
+            add_library(parameterized_source SHARED parameterized_source_sampling.cpp)
             find_package(OpenMC REQUIRED HINTS {})
-            target_link_libraries(serialized_source OpenMC::libopenmc)
+            target_link_libraries(parameterized_source OpenMC::libopenmc)
             """.format(openmc_dir)))
 
     # Create temporary build directory and change to there
@@ -63,7 +63,7 @@ def model():
 
     # custom source from shared library
     source = openmc.Source()
-    source.library = 'build/libserialized_source.so'
+    source.library = 'build/libparameterized_source.so'
     source.parameters = 'energy=1e3'
     model.settings.source = source
 

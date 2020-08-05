@@ -19,5 +19,5 @@
   <particles>1000</particles>
   <batches>10</batches>
   <inactive>0</inactive>
-  <source library="build/libserialized_source.so" parameters="energy=1e3" strength="1.0" />
+  <source library="build/libparameterized_source.so" parameters="energy=1e3" strength="1.0" />
 </settings>

@@ -5,13 +5,13 @@
 #include "openmc/source.h"
 #include "openmc/particle.h"
 
-class SerializedSource : public openmc::CustomSource {
+class ParameterizedSource : public openmc::CustomSource {
   protected:
     double radius_;
     double energy_;
 
     // Protect the constructor so that the class can only be created by serialisation.
-    SerializedSource(double radius, double energy) {
+    ParameterizedSource(double radius, double energy) {
       radius_ = radius;
       energy_ = energy;
     }
@@ -23,7 +23,7 @@ class SerializedSource : public openmc::CustomSource {
 
     // Defines a function that can create a pointer to a new instance of this class
     // by deserializing from the provided string.
-    static SerializedSource* from_string(const char* parameters) {
+    static ParameterizedSource* from_string(const char* parameters) {
       std::unordered_map<std::string, std::string> parameter_mapping;
 
       std::stringstream ss(parameters);
@@ -35,7 +35,7 @@ class SerializedSource : public openmc::CustomSource {
         parameter_mapping[key] = value;
       }
 
-      return new SerializedSource(std::stod(parameter_mapping["radius"]), std::stod(parameter_mapping["energy"]));
+      return new ParameterizedSource(std::stod(parameter_mapping["radius"]), std::stod(parameter_mapping["energy"]));
     }
 
     // Samples from an instance of this class.
@@ -62,13 +62,13 @@ class SerializedSource : public openmc::CustomSource {
 // A function to create a pointer to an instance of this class when generated
 // via a plugin call using dlopen/dlsym.
 // You must have external C linkage here otherwise dlopen will not find the file
-extern "C" SerializedSource* create(const char* parameters) {
-  return SerializedSource::from_string(parameters);
+extern "C" ParameterizedSource* create(const char* parameters) {
+  return ParameterizedSource::from_string(parameters);
 }
 
 // A function to destroy a pointer to an instance of this class when generated
 // via a plugin call using dlopen/dlsym.
 // You must have external C linkage here otherwise dlopen will not find the file
-extern "C" void destroy(SerializedSource* source) {
+extern "C" void destroy(ParameterizedSource* source) {
   delete source;
 }

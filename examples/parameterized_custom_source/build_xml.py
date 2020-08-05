@@ -19,7 +19,7 @@ settings.run_mode = 'fixed source'
 settings.batches = 10
 settings.particles = 1000
 source = openmc.Source()
-source.library = 'build/libserialized_source.so'
+source.library = 'build/libparameterized_source.so'
 source.parameters = 'radius=3.0, energy=14.08e6'
 settings.source = source
 settings.export_to_xml()

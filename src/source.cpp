@@ -50,7 +50,6 @@ sample_t custom_source_function;
 
 std::string custom_source_parameters;
 CustomSource* custom_source;
-destroy_custom_source_t* destroy_custom_source;
 
 }
 
@@ -380,9 +379,8 @@ void load_custom_source_library()
     using sample_t = Particle::Bank (*)(uint64_t* seed);
     custom_source_function = reinterpret_cast<sample_t>(dlsym(custom_source_library, "sample_source"));
   } else {
-    // get the functions to create and destroy the CustomSource from the library
+    // get the function to create the CustomSource from the library
     create_custom_source_t* create_custom_source = (create_custom_source_t*) dlsym(custom_source_library, "create");
-    destroy_custom_source = (destroy_custom_source_t*) dlsym(custom_source_library, "destroy");
 
     // create a pointer to an instance of the CustomSource
     custom_source = create_custom_source(custom_source_parameters.c_str());
@@ -404,8 +402,8 @@ void load_custom_source_library()
 void close_custom_source_library()
 {
   if (custom_source) {
-    // destroy the CustomSource if it exists
-    destroy_custom_source(custom_source);
+    // delete the CustomSource if it exists
+    delete custom_source;
   }
 
 #ifdef HAS_DYNAMIC_LINKING

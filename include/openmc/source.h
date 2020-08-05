@@ -67,7 +67,6 @@ class CustomSource {
 };
 
 typedef CustomSource* create_custom_source_t(const char* parameters);
-typedef void destroy_custom_source_t(CustomSource*);
 
 //==============================================================================
 // Functions

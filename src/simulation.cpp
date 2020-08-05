@@ -114,7 +114,8 @@ int openmc_simulation_init()
     write_message("Resuming simulation...", 6);
   } else {
     // Only initialize primary source bank for eigenvalue simulations
-    if (settings::run_mode == RunMode::EIGENVALUE) {
+    // or when a surface source file is provided.
+    if (settings::run_mode == RunMode::EIGENVALUE || settings::surf_src_read) {
       initialize_source();
     }
   }

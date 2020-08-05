@@ -288,8 +288,8 @@ the custom source, based on the value supplied in the
 
   // you must have external C linkage here otherwise
   // dlopen will not find the file
-  extern "C" ParameterizedSource* openmc_create_source(const char* parameterized_source) {
-    return new ParameterizedSource(std::stod(parameters));
+  extern "C" ParameterizedSource* openmc_create_source(const char* parameter) {
+    return new ParameterizedSource(atof(parameter));
   }
 
 As with the basic custom source functionality, the custom source library

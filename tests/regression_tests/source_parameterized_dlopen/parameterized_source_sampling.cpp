@@ -1,37 +1,12 @@
-#include <unordered_map>
-
-#include "openmc/random_lcg.h"
 #include "openmc/source.h"
 #include "openmc/particle.h"
 
 class ParameterizedSource : public openmc::CustomSource {
-  protected:
-    double energy_;
-
-    // Protect the constructor so that the class can only be created by serialisation.
-    ParameterizedSource(double energy) {
-      energy_ = energy;
-    }
-
   public:
-    // Getters for the values that we want to use in sampling.
-    double energy() { return energy_; }
+    double energy;
 
-    // Defines a function that can create a pointer to a new instance of this class
-    // by deserializing from the provided string.
-    static ParameterizedSource* from_string(const char* parameters) {
-      std::unordered_map<std::string, std::string> parameter_mapping;
-
-      std::stringstream ss(parameters);
-      std::string parameter;
-      while (std::getline(ss, parameter, ',')) {
-        parameter.erase(0, parameter.find_first_not_of(' '));
-        std::string key = parameter.substr(0, parameter.find_first_of('='));
-        std::string value = parameter.substr(parameter.find_first_of('=') + 1, parameter.length());
-        parameter_mapping[key] = value;
-      }
-
-      return new ParameterizedSource(std::stod(parameter_mapping["energy"]));
+    ParameterizedSource(double energy) {
+      this->energy = energy;
     }
 
     // Samples from an instance of this class.
@@ -46,7 +21,7 @@ class ParameterizedSource : public openmc::CustomSource {
       particle.r.z = 0.0;
       // angle
       particle.u = {1.0, 0.0, 0.0};
-      particle.E = this->energy();
+      particle.E = this->energy;
       particle.delayed_group = 0;
 
       return particle;
@@ -55,6 +30,6 @@ class ParameterizedSource : public openmc::CustomSource {
 
 // you must have external C linkage here otherwise
 // dlopen will not find the file
-extern "C" ParameterizedSource* openmc_create_source(const char* parameters) {
-  return ParameterizedSource::from_string(parameters);
+extern "C" ParameterizedSource* openmc_create_source(const char* parameter) {
+  return new ParameterizedSource(atof(parameter));
 }

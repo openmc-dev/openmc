@@ -66,7 +66,7 @@ class CustomSource {
     virtual Particle::Bank sample_source(uint64_t* seed) = 0;
 };
 
-typedef CustomSource* create_custom_source_t(const char* serialized_source);
+typedef CustomSource* create_custom_source_t(const char* parameters);
 typedef void destroy_custom_source_t(CustomSource*);
 
 //==============================================================================

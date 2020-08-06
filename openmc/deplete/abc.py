@@ -633,7 +633,7 @@ class Integrator(ABC):
         Power density of the reactor in [W/gHM]. It is multiplied by
         initial heavy metal inventory to get total power if ``power``
         is not speficied.
-    source_rates : iterable of float
+    source_rates : float or iterable of float, optional
         Source rate in [neutrons/sec] for each interval in :attr:`timesteps`
 
         .. versionadded:: 0.12.1
@@ -934,12 +934,16 @@ class SIIntegrator(Integrator):
         indicates potentially different power levels for each timestep.
         For a 2D problem, the power can be given in [W/cm] as long
         as the "volume" assigned to a depletion material is actually
-        an area in [cm^2]. Either ``power`` or ``power_density`` must be
-        specified.
+        an area in [cm^2]. Either ``power``, ``power_density``, or
+        ``source_rates`` must be specified.
     power_density : float or iterable of float, optional
         Power density of the reactor in [W/gHM]. It is multiplied by
         initial heavy metal inventory to get total power if ``power``
         is not speficied.
+    source_rates : float or iterable of float, optional
+        Source rate in [neutrons/sec] for each interval in :attr:`timesteps`
+
+        .. versionadded:: 0.12.1
     timestep_units : {'s', 'min', 'h', 'd', 'MWd/kg'}
         Units for values specified in the `timesteps` argument. 's' means
         seconds, 'min' means minutes, 'h' means hours, and 'MWd/kg' indicates
@@ -992,11 +996,12 @@ class SIIntegrator(Integrator):
     """
 
     def __init__(self, operator, timesteps, power=None, power_density=None,
-                 timestep_units='s', n_steps=10, solver="cram48"):
+                 source_rates=None, timestep_units='s', n_steps=10,
+                 solver="cram48"):
         check_type("n_steps", n_steps, Integral)
         check_greater_than("n_steps", n_steps, 0)
         super().__init__(
-            operator, timesteps, power, power_density,
+            operator, timesteps, power, power_density, source_rates,
             timestep_units=timestep_units, solver=solver)
         self.n_steps = n_steps
 

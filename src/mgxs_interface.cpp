@@ -99,7 +99,7 @@ void
 MgxsInterface::add_mgxs(hid_t file_id, const std::string& name,
   const std::vector<double>& temperature)
 {
-  write_message(fmt::format("Loading {} data...", name), 6);
+  write_message(5, "Loading {} data...", name);
 
   // Check to make sure cross section set exists in the library
   hid_t xs_grp;

@@ -501,7 +501,7 @@ void initialize_history(Particle& p, int64_t index_source)
 
   // Display message if high verbosity or trace is on
   if (settings::verbosity >= 9 || p.trace_) {
-    write_message(fmt::format("Simulating Particle {}", p.id_));
+    write_message("Simulating Particle {}", p.id_);
   }
 
   // Add paricle's starting weight to count for normalizing tallies later

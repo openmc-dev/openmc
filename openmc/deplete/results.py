@@ -12,7 +12,7 @@ import numpy as np
 from . import comm, MPI
 from .reaction_rates import ReactionRates
 
-VERSION_RESULTS = (1, 0)
+VERSION_RESULTS = (1, 1)
 
 
 __all__ = ["Results"]
@@ -394,7 +394,11 @@ class Results:
         number_dset = handle["/number"]
         eigenvalues_dset = handle["/eigenvalues"]
         time_dset = handle["/time"]
-        source_rate_dset = handle["/source_rate"]
+        if "source_rate" in handle:
+            source_rate_dset = handle["/source_rate"]
+        else:
+            # Older versions used "power" instead of "source_rate"
+            source_rate_dset = handle["/power"]
 
         results.data = number_dset[step, :, :, :]
         results.k = eigenvalues_dset[step, :]

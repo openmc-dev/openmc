@@ -5,6 +5,7 @@
 #include "openmc/hdf5_interface.h"
 #include "openmc/math_functions.h"
 #include "openmc/nuclide.h"
+#include "openmc/error.h"  // for writing messages
 
 #include <fmt/core.h>
 
@@ -227,7 +228,7 @@ void read_multipole_data(int i_nuclide)
   std::string& filename = data::libraries[idx].path_;
 
   // Display message
-  write_message("Reading " + nuc->name_ + " WMP data from " + filename, 6);
+  write_message(6, "Reading {} WMP data from {}", nuc->name_, filename);
 
   // Open file and make sure version is sufficient
   hid_t file = file_open(filename, 'r');

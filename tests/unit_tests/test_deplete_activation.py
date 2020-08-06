@@ -43,7 +43,7 @@ def test_activation(run_in_tmpdir, model):
     sp = model.run()
     with openmc.StatePoint(sp) as sp:
         tally = sp.tallies[1]
-        capture_rate = tally.get_values().ravel()[0]
+        capture_rate = tally.mean.flat[0]
 
     # Create one-nuclide depletion chain
     chain = openmc.deplete.Chain()

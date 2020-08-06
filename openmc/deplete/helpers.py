@@ -183,14 +183,13 @@ class FluxCollapseHelper(ReactionRateHelper):
         flux = mean_value[mat_index]
 
         mat = self._materials[mat_index]
+
+        # Build nucname: density mapping to enable O(1) lookup in loop below
+        densities = dict(zip(mat.nuclides, mat.densities))
+
         for name, i_nuc in zip(self.nuclides, nuc_index):
             # Determine density of nuclide
-            # TODO: O(N) search for nuclide is not ideal
-            for nucname, density in zip(mat.nuclides, mat.densities):
-                if nucname == name:
-                    break
-            else:
-                raise ValueError("Couldn't find {} in material {}".format(name, mat_id))
+            density = densities[name]
 
             for mt, i_react in zip(self._mts, react_index):
                 # Use flux to collapse reaction rate (per N)

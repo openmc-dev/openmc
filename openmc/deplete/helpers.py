@@ -194,7 +194,7 @@ class FluxCollapseHelper(ReactionRateHelper):
             for mt, i_react in zip(self._mts, react_index):
                 # Use flux to collapse reaction rate (per N)
                 nuc = openmc.lib.nuclides[name]
-                rate_per_nuc = nuc.collapse_rate(mt, self._energies, flux)
+                rate_per_nuc = nuc.collapse_rate(mt, mat.temperature, self._energies, flux)
 
                 # Multiply by density to get absolute reaction rate
                 self._results_cache[i_nuc, i_react] = rate_per_nuc * density

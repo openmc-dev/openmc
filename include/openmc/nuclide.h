@@ -7,6 +7,7 @@
 #include <array>
 #include <memory> // for unique_ptr
 #include <unordered_map>
+#include <utility> // for pair
 #include <vector>
 
 #include <gsl/gsl>
@@ -33,11 +34,6 @@ public:
   struct EnergyGrid {
     std::vector<int> grid_index;
     std::vector<double> energy;
-  };
-
-  struct InterpResult {
-    gsl::index i;  //!< Index in tabulated data
-    double f;      //!< Interpolation factor between i and i+1
   };
 
   // Constructors/destructors
@@ -120,7 +116,11 @@ public:
 private:
   void create_derived(const Function1D* prompt_photons, const Function1D* delayed_photons);
 
-  InterpResult find_temperature(double T) const;
+  //! Determine temperature index and interpolation factor
+  //
+  //! \param[in] T Temperature in [K]
+  //! \return Temperature index and interpolation factor
+  std::pair<gsl::index, double> find_temperature(double T) const;
 
   static int XS_TOTAL;
   static int XS_ABSORPTION;

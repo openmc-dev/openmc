@@ -560,7 +560,10 @@ class MGXS:
             domain_type = self.domain_type[4:-1]
         else:
             domain_type = self.domain_type
-        filter_type = _DOMAIN_TO_FILTER[domain_type]
+        if self._rxn_type == 'current':
+            filter_type = openmc.MeshSurfaceFilter
+        else:
+            filter_type = _DOMAIN_TO_FILTER[domain_type]
         domain_filter = self.xs_tally.find_filter(filter_type)
         return domain_filter.num_bins
 

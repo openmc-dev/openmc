@@ -35,6 +35,11 @@ public:
     std::vector<double> energy;
   };
 
+  struct InterpResult {
+    gsl::index i;  //!< Index in tabulated data
+    double f;      //!< Interpolation factor between i and i+1
+  };
+
   // Constructors/destructors
   Nuclide(hid_t group, const std::vector<double>& temperature);
   ~Nuclide();
@@ -61,10 +66,12 @@ public:
   //! \brief Calculate reaction rate based on group-wise flux distribution
   //
   //! \param[in] MT ENDF MT value for desired reaction
+  //! \param[in] temperature Temperature in [K]
   //! \param[in] energy Energy group boundaries in [eV]
   //! \param[in] flux Flux in each energy group (not normalized per eV)
   //! \return Reaction rate
-  double collapse_rate(int MT, gsl::span<const double> energy, gsl::span<const double> flux) const;
+  double collapse_rate(int MT, double temperature, gsl::span<const double> energy,
+    gsl::span<const double> flux) const;
 
   // Data members
   std::string name_; //!< Name of nuclide, e.g. "U235"
@@ -112,6 +119,8 @@ public:
 
 private:
   void create_derived(const Function1D* prompt_photons, const Function1D* delayed_photons);
+
+  InterpResult find_temperature(double T) const;
 
   static int XS_TOTAL;
   static int XS_ABSORPTION;

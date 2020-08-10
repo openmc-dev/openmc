@@ -28,6 +28,8 @@ operator class requires a :class:`openmc.Geometry` instance and a
 
     op = openmc.deplete.Operator(geom, settings)
 
+Any material that contains a fissionable nuclide is depleted by default, but
+this can behavior can be changed with the :attr:`Material.depletable` attribute.
 :mod:`openmc.deplete` supports multiple time-integration methods for determining
 material compositions over time. Each method appears as a different class.
 For example, :class:`openmc.deplete.CECMIntegrator` runs a depletion calculation
@@ -62,6 +64,12 @@ based on a known source rate. First, as with all fixed-source calculations, we
 need to set the run mode::
 
     settings.run_mode = 'fixed source'
+
+Additionally, all materials that you wish to deplete need to be marked as such
+using the :attr:`Material.depletable` attribute::
+
+    mat = openmc.Material()
+    mat.depletable = True
 
 When constructing the :class:`~openmc.deplete.Operator`, you should indicate
 that normalization of tally results will be done based on the source rate rather

@@ -634,7 +634,7 @@ class Integrator(ABC):
         initial heavy metal inventory to get total power if ``power``
         is not speficied.
     source_rates : float or iterable of float, optional
-        Source rate in [neutrons/sec] for each interval in :attr:`timesteps`
+        Source rate in [neutron/sec] for each interval in :attr:`timesteps`
 
         .. versionadded:: 0.12.1
     timestep_units : {'s', 'min', 'h', 'd', 'MWd/kg'}
@@ -663,7 +663,7 @@ class Integrator(ABC):
     timesteps : iterable of float
         Size of each depletion interval in [s]
     source_rates : iterable of float
-        Source rate in [W] or [neutrons/sec] for each interval in
+        Source rate in [W] or [neutron/sec] for each interval in
         :attr:`timesteps`
     solver : callable
         Function that will solve the Bateman equations
@@ -941,7 +941,7 @@ class SIIntegrator(Integrator):
         initial heavy metal inventory to get total power if ``power``
         is not speficied.
     source_rates : float or iterable of float, optional
-        Source rate in [neutrons/sec] for each interval in :attr:`timesteps`
+        Source rate in [neutron/sec] for each interval in :attr:`timesteps`
 
         .. versionadded:: 0.12.1
     timestep_units : {'s', 'min', 'h', 'd', 'MWd/kg'}

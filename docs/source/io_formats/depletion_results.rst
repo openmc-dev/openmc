@@ -26,7 +26,7 @@ The current version of the depletion results file format is 1.1.
            - **time** (*double[][2]*) -- Time in [s] at beginning/end of each
              step.
            - **source_rate** (*double[][]*) -- Power in [W] or source rate in
-             [neutrons/sec]. This array has shape (number of timesteps, number
+             [neutron/sec]. This array has shape (number of timesteps, number
              of stages).
            - **depletion time** (*double[]*) -- Average process time in [s]
              spent depleting a material across all burnable materials and,

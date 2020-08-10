@@ -83,10 +83,12 @@ class Operator(TransportOperator):
         Volumes are divided equally from the original material volume.
         Default: False.
     normalization_mode : {"energy-deposition", "fission-q", "source-rate"}
-        Indicator for computing system energy. ``"energy-deposition"`` will
-        compute with a single energy deposition tally, taking fission energy
-        release data and heating into consideration. ``"fission-q"`` will
-        use the fission Q values from the depletion chain
+        Indicate how tally results should be normalized. ``"energy-deposition"``
+        computes the total energy deposited in the system and uses the ratio of
+        the power to the energy produced as a normalization factor.
+        ``"fission-q"`` uses the fission Q values from the depletion chain to
+        compute the  total energy deposited. ``"source-rate"`` normalizes
+        tallies based on the source rate (for fixed source calculations).
     fission_q : dict, optional
         Dictionary of nuclides and their fission Q values [eV]. If not given,
         values will be pulled from the ``chain_file``. Only applicable
@@ -267,7 +269,7 @@ class Operator(TransportOperator):
         vec : list of numpy.ndarray
             Total atoms to be used in function.
         source_rate : float
-            Source rate in [W] in [neutron/sec]
+            Power in [W] or source rate in [neutron/sec]
 
         Returns
         -------

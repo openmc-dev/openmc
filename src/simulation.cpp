@@ -461,7 +461,7 @@ void initialize_history(Particle& p, int64_t index_source)
 {
   // set defaults
   if (settings::run_mode == RunMode::EIGENVALUE || settings::surf_src_read) {
-    // set defaults for eigenvalue simulations from primary bank
+    // set defaults for eigenvalue simulations and surface source reading from primary bank
     p.from_source(&simulation::source_bank[index_source - 1]);
   } else if (settings::run_mode == RunMode::FIXED_SOURCE) {
     // initialize random number seed

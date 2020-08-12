@@ -82,8 +82,8 @@ IndependentSource::IndependentSource(pugi::xml_node node)
     }
 
     // Check if it is a surface source file.
-    if (check_for_node(node, "surf_src_file")) {
-      settings::surf_src_read = get_node_value_bool(node, "surf_src_file");
+    if (check_for_node(node, "surf_src_read")) {
+      settings::surf_src_read = get_node_value_bool(node, "surf_src_read");
     }
 
   } else if (check_for_node(node, "library")) {

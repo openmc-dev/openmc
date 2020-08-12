@@ -60,7 +60,7 @@ bool run_CE                  {true};
 bool source_latest           {false};
 bool source_separate         {false};
 bool source_write            {true};
-bool surface_source          {false};
+bool surf_src_write          {false};
 bool surf_src_read           {false};
 bool survival_biasing        {false};
 bool temperature_multipole   {false};
@@ -626,15 +626,14 @@ void read_settings_xml()
   }
 
   // Check if the user has specified to write surface source.
-  if (check_for_node(root, "surface_source")) {
-    surface_source = true;
+  if (check_for_node(root, "surf_src_write")) {
+    surf_src_write = true;
     // Get surface source node
-    xml_node node_ss = root.child("surface_source");
+    xml_node node_ss = root.child("surf_src_write");
 
     // Get maximum number of particles to be banked per surface.
     if (check_for_node(node_ss, "max_surf_banks")) {
-	max_surf_banks = std::stoi(get_node_value(node_ss,
-	  "max_surf_banks"));
+      max_surf_banks = std::stoi(get_node_value(node_ss, "max_surf_banks"));
     }
   }
 

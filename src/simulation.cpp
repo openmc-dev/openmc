@@ -294,7 +294,7 @@ void allocate_banks()
     simulation::source_bank.resize(simulation::work_per_rank);
   }
 
-  if (settings::surface_source) {
+  if (settings::surf_src_write) {
     // Allocate surface source bank
     simulation::surf_src_bank.reserve(settings::max_surf_banks);
   }
@@ -391,7 +391,7 @@ void finalize_batch()
   }
 
   // Write out surface source if requested.
-  if (settings::surface_source && simulation::current_batch == settings::n_batches) {
+  if (settings::surf_src_write && simulation::current_batch == settings::n_batches) {
 
     auto filename = settings::path_output + "surface_source.h5";
     write_source_point(filename.c_str(), true);  //!!

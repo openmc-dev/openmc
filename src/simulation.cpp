@@ -289,6 +289,9 @@ void allocate_banks()
 
     // Allocate fission bank
     init_fission_bank(3*simulation::work_per_rank);
+  } else if (settings::surf_src_read) {
+    // Allocate source bank for reading surface source file.
+    simulation::source_bank.resize(simulation::work_per_rank);
   }
 
   if (settings::surface_source) {
@@ -457,7 +460,10 @@ void finalize_generation()
 void initialize_history(Particle& p, int64_t index_source)
 {
   // set defaults
-  if (settings::run_mode == RunMode::FIXED_SOURCE) {
+  if (settings::run_mode == RunMode::EIGENVALUE || settings::surf_src_read) {
+    // set defaults for eigenvalue simulations from primary bank
+    p.from_source(&simulation::source_bank[index_source - 1]);
+  } else if (settings::run_mode == RunMode::FIXED_SOURCE) {
     // initialize random number seed
     int64_t id = (simulation::total_gen + overall_generation() - 1)*settings::n_particles +
       simulation::work_index[mpi::rank] + index_source;
@@ -465,9 +471,6 @@ void initialize_history(Particle& p, int64_t index_source)
     // sample from external source distribution or custom library then set
     auto site = sample_external_source(&seed);
     p.from_source(&site);
-  } else if (settings::run_mode == RunMode::EIGENVALUE) {
-    // set defaults for eigenvalue simulations from primary bank
-    p.from_source(&simulation::source_bank[index_source - 1]);
   }
   p.current_work_ = index_source;
 

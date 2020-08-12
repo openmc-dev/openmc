@@ -422,8 +422,8 @@ Particle::cross_surface()
     site.delayed_group = this->delayed_group_;
     site.surf_num = surf->id_;
     site.particle = this->type_;
-    // site.parent_id = this->id_;
-    // site.progeny_id = this->n_progeny_;
+    site.parent_id = this->id_;
+    site.progeny_id = this->n_progeny_;
     int64_t idx = simulation::surf_src_bank.thread_safe_append(site);
   }
 

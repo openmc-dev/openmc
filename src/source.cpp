@@ -263,8 +263,7 @@ void initialize_source()
     // Read the source from a binary file instead of sampling from some
     // assumed source distribution
 
-    write_message(fmt::format("Reading source file from {}...",
-      settings::path_source), 6);
+    write_message(6, "Reading source file from {}...", settings::path_source);
 
     // Open the binary file
     hid_t file_id = file_open(settings::path_source, 'r', true);
@@ -285,13 +284,13 @@ void initialize_source()
     file_close(file_id);
   } else if (!settings::path_source_library.empty()) {
 
-    write_message(fmt::format("Sampling from library source {}...",
-      settings::path_source), 6);
+    write_message(6, "Sampling library source {}...", settings::path_source);
 
     fill_source_bank_custom_source();
 
   } else {
     // Generation source sites from specified distribution in user input
+    #pragma omp parallel for
     for (int64_t i = 0; i < simulation::work_per_rank; ++i) {
       // initialize random number seed
       int64_t id = simulation::total_gen*settings::n_particles +

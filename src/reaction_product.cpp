@@ -3,7 +3,10 @@
 #include <memory> // for unique_ptr
 #include <string> // for string
 
+#include <fmt/core.h>
+
 #include "openmc/endf.h"
+#include "openmc/error.h"
 #include "openmc/hdf5_interface.h"
 #include "openmc/particle.h"
 #include "openmc/random_lcg.h"
@@ -36,8 +39,14 @@ ReactionProduct::ReactionProduct(hid_t group)
   }
 
   // Read decay rate for delayed emission
-  if (emission_mode_ == EmissionMode::delayed)
-    read_attribute(group, "decay_rate", decay_rate_);
+  if (emission_mode_ == EmissionMode::delayed) {
+    if (attribute_exists(group, "decay_rate")) {
+      read_attribute(group, "decay_rate", decay_rate_);
+    } else if (particle_ == Particle::Type::neutron) {
+      warning(fmt::format("Decay rate doesn't exist for delayed neutron "
+        "emission ({}).", object_name(group)));
+    }
+  }
 
   // Read secondary particle yield
   yield_ = read_function(group, "yield");

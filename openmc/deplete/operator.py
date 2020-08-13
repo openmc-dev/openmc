@@ -276,6 +276,16 @@ class Operator(TransportOperator):
             Eigenvalue and reaction rates resulting from transport operator
 
         """
+        # Reset results in OpenMC
+        openmc.lib.reset()
+
+        # If the source rate is zero, return zero reaction rates without running
+        # a transport solve
+        if power == 0.0:
+            rates = self.reaction_rates.copy()
+            rates.fill(0.0)
+            return OperatorResult(ufloat(0.0, 0.0), rates)
+
         # Prevent OpenMC from complaining about re-creating tallies
         openmc.reset_auto_ids()
 
@@ -290,7 +300,6 @@ class Operator(TransportOperator):
         self._yield_helper.update_tally_nuclides(nuclides)
 
         # Run OpenMC
-        openmc.lib.reset()
         openmc.lib.run()
         openmc.lib.reset_timers()
 

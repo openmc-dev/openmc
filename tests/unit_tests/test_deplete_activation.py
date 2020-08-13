@@ -1,5 +1,5 @@
 from math import pi, log
-from random import uniform
+from random import uniform, normalvariate
 
 import openmc.deplete
 import openmc
@@ -99,3 +99,51 @@ def test_activation(run_in_tmpdir, model):
 
     assert atoms[0] == pytest.approx(n0)
     assert atoms[1] / atoms[0] == pytest.approx(0.5, rel=1e-3)
+
+
+def test_decay(run_in_tmpdir):
+    """Test decay-only timesteps where no transport solve is performed"""
+
+    # Create a model with a single nuclide, Sr89
+    mat = openmc.Material()
+    mat.add_nuclide('Sr89', 1.0)
+    mat.set_density('g/cm3', 1.0)
+    mat.depletable = True
+    r = 5.0
+    mat.volume = 4/3 * pi * r**3
+    surf = openmc.Sphere(r=r, boundary_type='vacuum')
+    cell = openmc.Cell(fill=mat, region=-surf)
+    geometry = openmc.Geometry([cell])
+    settings = openmc.Settings()
+    settings.batches = 10
+    settings.particles = 1000
+    settings.run_mode = 'fixed source'
+
+    # Create depletion chain with only Sr89 and sample its half-life. Note that
+    # currently at least one reaction has to exist in the depletion chain
+    chain = openmc.deplete.Chain()
+    sr89 = openmc.deplete.Nuclide('Sr89')
+    sr89.half_life = normalvariate(4365792.0, 6048.0)
+    sr89.add_decay_mode('beta-', None, 1.0)
+    sr89.add_reaction('(n,gamma)', None, 0.0, 1.0)
+    chain.add_nuclide(sr89)
+    chain.export_to_xml('test_chain.xml')
+
+    # Create transport operator
+    op = openmc.deplete.Operator(
+        geometry, settings, 'test_chain.xml', normalization_mode="source-rate"
+    )
+
+    # Deplete with two decay steps
+    integrator = openmc.deplete.PredictorIntegrator(
+        op, [sr89.half_life, 2*sr89.half_life], source_rates=[0.0, 0.0]
+    )
+    integrator.integrate()
+
+    # Get resulting number of atoms
+    results = openmc.deplete.ResultsList.from_hdf5('depletion_results.h5')
+    _, atoms = results.get_atoms(str(mat.id), "Sr89")
+
+    # Ensure density goes down by a factor of 2 after each half-life
+    assert atoms[1] / atoms[0] == pytest.approx(0.5)
+    assert atoms[2] / atoms[1] == pytest.approx(0.25)

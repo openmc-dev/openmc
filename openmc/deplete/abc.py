@@ -858,16 +858,29 @@ class Integrator(ABC):
         return (self.operator.prev_res[-1].time[-1],
                 len(self.operator.prev_res) - 1)
 
-    def integrate(self):
-        """Perform the entire depletion process across all steps"""
+    def integrate(self, final_step=True):
+        """Perform the entire depletion process across all steps
+
+        Parameters
+        ----------
+        final_step : bool, optional
+            Indicate whether or not a transport solve should be run at the end
+            of the last timestep.
+
+            .. versionadded:: 0.12.1
+
+        """
         with self.operator as conc:
             t, self._i_res = self._get_start_data()
 
             for i, (dt, p) in enumerate(self):
+                # Solve transport equation (or obtain result from restart)
                 if i > 0 or self.operator.prev_res is None:
                     conc, res = self._get_bos_data_from_operator(i, p, conc)
                 else:
                     conc, res = self._get_bos_data_from_restart(i, p, conc)
+
+                # Solve Bateman equations over time interval
                 proc_time, conc_list, res_list = self(conc, res.rates, dt, p, i)
 
                 # Insert BOS concentration, transport results
@@ -882,8 +895,11 @@ class Integrator(ABC):
 
                 t += dt
 
-            # Final simulation
-            res_list = [self.operator(conc, p)]
+            # Final simulation -- in the case that final_step is False, a zero
+            # source rate is passed to the transport operator (which knows to
+            # just return zero reaction rates without actually doing a transport
+            # solve)
+            res_list = [self.operator(conc, p if final_step else 0.0)]
             Results.save(self.operator, [conc], res_list, [t, t],
                          p, self._i_res + len(self), proc_time)
             self.operator.write_bos_data(len(self) + self._i_res)

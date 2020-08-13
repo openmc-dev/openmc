@@ -468,9 +468,7 @@ int openmc_calculate_volumes() {
   time_volume.start();
 
   for (int i = 0; i < model::volume_calcs.size(); ++i) {
-    if (mpi::master) {
-      write_message(fmt::format("Running volume calculation {}...", i + 1), 4);
-    }
+    write_message(4, "Running volume calculation {}", i+1);
 
     // Run volume calculation
     const auto& vol_calc {model::volume_calcs[i]};
@@ -488,8 +486,8 @@ int openmc_calculate_volumes() {
 
       // Display domain volumes
       for (int j = 0; j < vol_calc.domain_ids_.size(); j++) {
-        write_message(fmt::format("{}{}: {} +/- {} cm^3", domain_type,
-          vol_calc.domain_ids_[j], results[j].volume[0], results[j].volume[1]), 4);
+        write_message(4, "{}{}: {} +/- {} cm^3", domain_type,
+          vol_calc.domain_ids_[j], results[j].volume[0], results[j].volume[1]);
       }
 
       // Write volumes to HDF5 file
@@ -502,9 +500,7 @@ int openmc_calculate_volumes() {
 
   // Show elapsed time
   time_volume.stop();
-  if (mpi::master) {
-    write_message(fmt::format("Elapsed time: {} s", time_volume.elapsed()), 6);
-  }
+  write_message(6, "Elapsed time: {} s", time_volume.elapsed());
 
   return 0;
 }

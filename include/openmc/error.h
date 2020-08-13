@@ -5,7 +5,10 @@
 #include <string>
 #include <sstream>
 
+#include <fmt/format.h>
+
 #include "openmc/capi.h"
+#include "openmc/settings.h"
 
 #ifdef __GNUC__
 #define UNREACHABLE() __builtin_unreachable()
@@ -61,6 +64,21 @@ inline
 void write_message(const std::stringstream& message, int level)
 {
   write_message(message.str(), level);
+}
+
+template<typename... Params>
+void write_message(
+  int level, const std::string& message, const Params&... fmt_args)
+{
+  if (settings::verbosity >= level) {
+    write_message(fmt::format(message, fmt_args...));
+  }
+}
+
+template<typename... Params>
+void write_message(const std::string& message, const Params&... fmt_args)
+{
+  write_message(fmt::format(message, fmt_args...));
 }
 
 #ifdef OPENMC_MPI

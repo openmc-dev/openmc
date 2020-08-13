@@ -228,7 +228,7 @@ read_ce_cross_sections(const std::vector<std::vector<double>>& nuc_temps,
         int idx = data::library_map[key];
         std::string& filename = data::libraries[idx].path_;
 
-        write_message("Reading " + name + " from " + filename, 6);
+        write_message(6, "Reading {} from {}", name, filename);
 
         // Open file and make sure version matches
         hid_t file_id = file_open(filename, 'r');
@@ -256,10 +256,8 @@ read_ce_cross_sections(const std::vector<std::vector<double>>& nuc_temps,
   }
 
   // Show minimum/maximum temperature
-  write_message("Minimum neutron data temperature: " +
-    std::to_string(data::temperature_min) + " K", 4);
-  write_message("Maximum neutron data temperature: " +
-    std::to_string(data::temperature_max) + " K", 4);
+  write_message(4, "Minimum neutron data temperature: {} K", data::temperature_min);
+  write_message(4, "Maximum neutron data temperature: {} K", data::temperature_max);
 
   // If the user wants multipole, make sure we found a multipole library.
   if (settings::temperature_multipole) {

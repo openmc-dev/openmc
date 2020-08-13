@@ -239,10 +239,12 @@ score_str_to_int(std::string score_str)
   try {
     MT = std::stoi(score_str);
   } catch (const std::invalid_argument& ex) {
-    throw std::invalid_argument("Invalid tally score \"" + score_str + "\"");
+    throw std::invalid_argument("Invalid tally score \"" + score_str + "\". See the docs "
+      "for details: https://docs.openmc.org/en/stable/usersguide/tallies.html#scores");
   }
   if (MT < 1)
-    throw std::invalid_argument("Invalid tally score \"" + score_str + "\"");
+    throw std::invalid_argument("Invalid tally score \"" + score_str + "\". See the docs "
+      "for details: https://docs.openmc.org/en/stable/usersguide/tallies.html#scores");
   return MT;
 }
 

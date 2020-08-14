@@ -16,7 +16,7 @@ import openmc.checkvalue as cv
 from openmc.mixin import EqualityMixin
 from openmc.stats import Discrete, Tabular
 from . import HDF5_VERSION, HDF5_VERSION_MAJOR, endf
-from .data import K_BOLTZMANN, ATOMIC_SYMBOL, EV_PER_MEV, NATURAL_ABUNDANCE
+from .data import K_BOLTZMANN, ATOMIC_SYMBOL, EV_PER_MEV, isotopes
 from .ace import Table, get_table, Library
 from .angle_energy import AngleEnergy
 from .function import Tabulated1D, Function1D
@@ -722,10 +722,9 @@ class ThermalScattering(EqualityMixin):
                 else:
                     if element + '0' not in table.nuclides:
                         table.nuclides.append(element + '0')
-                    for isotope in sorted(NATURAL_ABUNDANCE):
-                        if re.match(r'{}\d+'.format(element), isotope):
-                            if isotope not in table.nuclides:
-                                table.nuclides.append(isotope)
+                    for isotope, _ in isotopes(element):
+                        if isotope not in table.nuclides:
+                            table.nuclides.append(isotope)
 
         return table
 

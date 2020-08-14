@@ -236,10 +236,8 @@ def atomic_mass(isotope):
         for element in ['C', 'Zn', 'Pt', 'Os', 'Tl']:
             isotope_zero = element.lower() + '0'
             _ATOMIC_MASS[isotope_zero] = 0.
-            for iso, abundance in NATURAL_ABUNDANCE.items():
-                if re.match(r'{}\d+'.format(element), iso):
-                    _ATOMIC_MASS[isotope_zero] += abundance * \
-                                                  _ATOMIC_MASS[iso.lower()]
+            for iso, abundance in isotopes(element):
+                _ATOMIC_MASS[isotope_zero] += abundance * _ATOMIC_MASS[iso.lower()]
 
     # Get rid of metastable information
     if '_' in isotope:
@@ -257,7 +255,7 @@ def atomic_weight(element):
     Parameters
     ----------
     element : str
-        Name of element, e.g. 'H', 'U'
+        Element symbol (e.g., 'H') or name (e.g., 'helium')
 
     Returns
     -------
@@ -266,9 +264,8 @@ def atomic_weight(element):
 
     """
     weight = 0.
-    for nuclide, abundance in NATURAL_ABUNDANCE.items():
-        if re.match(r'{}\d+'.format(element), nuclide):
-            weight += atomic_mass(nuclide) * abundance
+    for nuclide, abundance in isotopes(element):
+        weight += atomic_mass(nuclide) * abundance
     if weight > 0.:
         return weight
     else:
@@ -402,6 +399,41 @@ def gnd_name(Z, A, m=0):
         return '{}{}_m{}'.format(ATOMIC_SYMBOL[Z], A, m)
     else:
         return '{}{}'.format(ATOMIC_SYMBOL[Z], A)
+
+
+def isotopes(element):
+    """Return naturally-occurring isotopes and their abundances
+
+    Parameters
+    ----------
+    element : str
+        Element symbol (e.g., 'H') or name (e.g., 'helium')
+
+    Returns
+    -------
+    list
+        A list of tuples of (isotope, abundance)
+
+    Raises
+    ------
+    ValueError
+        If the element name is not recognized
+
+    """
+    # Convert name to symbol if needed
+    if len(element) > 2:
+        symbol = ELEMENT_SYMBOL.get(element.lower())
+        if symbol is None:
+            raise ValueError('Element name "{}" not recognised'.format(element))
+        element = symbol
+
+    # Get the nuclides present in nature
+    result = []
+    for kv in sorted(NATURAL_ABUNDANCE.items()):
+        if re.match(r'{}\d+'.format(element), kv[0]):
+            result.append(kv)
+
+    return result
 
 
 def zam(name):

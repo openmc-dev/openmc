@@ -20,10 +20,8 @@ class MGXSTestHarness(PyAPITestHarness):
         self.mgxs_lib.by_nuclide = False
 
         # Test all relevant MGXS types
-        relevant_MGXS_TYPES = []
-        for item in openmc.mgxs.MGXS_TYPES:
-            if item != 'current':
-                relevant_MGXS_TYPES = relevant_MGXS_TYPES + [item]
+        relevant_MGXS_TYPES = [item for item in openmc.mgxs.MGXS_TYPES
+                               if item != 'current']
         self.mgxs_lib.mgxs_types = tuple(relevant_MGXS_TYPES) + \
                                    openmc.mgxs.MDGXS_TYPES
         self.mgxs_lib.energy_groups = energy_groups

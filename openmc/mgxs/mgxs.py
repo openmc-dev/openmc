@@ -5903,10 +5903,12 @@ class InverseVelocity(MGXS):
 class MeshSurfaceMGXS(MGXS):
     """An abstract multi-group cross section for some energy group structure
     on the surfaces of a mesh domain.
+
     This class can be used for both OpenMC input generation and tally data
     post-processing to compute surface- and energy-integrated multi-group cross
     sections for multi-group neutronics calculations.
-    NOTE: Users should instantiate the subclasses of this abstract class.
+
+    .. note:: Users should instantiate the subclasses of this abstract class.
 
     Parameters
     ----------

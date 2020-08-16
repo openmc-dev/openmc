@@ -6260,6 +6260,7 @@ class MeshSurfaceMGXS(MGXS):
 
 class Current(MeshSurfaceMGXS):
     r"""A current multi-group cross section.
+
     This class can be used for both OpenMC input generation and tally data
     post-processing to compute surface- and energy-integrated
     multi-group current cross sections for multi-group neutronics calculations. At
@@ -6268,12 +6269,14 @@ class Current(MeshSurfaceMGXS):
     reaction rates over the specified domain are generated automatically via the
     :attr:`Current.tallies` property, which can then be appended to a
     :class:`openmc.Tallies` instance.
+
     For post-processing, the :meth:`MGXS.load_from_statepoint` will pull in the
     necessary data to compute multi-group cross sections from a
     :class:`openmc.StatePoint` instance. The derived multi-group cross section
     can then be obtained from the :attr:`Current.xs_tally` property.
     For a spatial domain :math:`S` and energy group :math:`[E_g,E_{g-1}]`, the
     total cross section is calculated as:
+
     .. math::
        \frac{\int_{r \in S} dS \int_{E_g}^{E_{g-1}} dE \;
        J(r, E)}{\int_{r \in S} dS \int_{E_g}^{E_{g-1}} dE}.

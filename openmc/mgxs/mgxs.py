@@ -6087,10 +6087,12 @@ class MeshSurfaceMGXS(MGXS):
                xs_type='macro', order_groups='increasing',
                value='mean', squeeze=True, **kwargs):
         r"""Returns an array of multi-group cross sections.
+
         This method constructs a 3D NumPy array for the requested
         multi-group cross section data for one or more subdomains
         (1st dimension), energy groups (2nd dimension), and nuclides
         (3rd dimension).
+
         Parameters
         ----------
         groups : Iterable of Integral or 'all'

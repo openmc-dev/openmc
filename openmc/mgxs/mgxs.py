@@ -6035,9 +6035,13 @@ class MeshSurfaceMGXS(MGXS):
     def load_from_statepoint(self, statepoint):
         """Extracts tallies in an OpenMC StatePoint with the data needed to
         compute multi-group cross sections.
+
         This method is needed to compute cross section data from tallies
         in an OpenMC StatePoint object.
-        NOTE: The statepoint must first be linked with an OpenMC Summary object.
+
+        .. note:: The statepoint must first be linked with a :class:`openmc.Summary`
+                  object.
+
         Parameters
         ----------
         statepoint : openmc.StatePoint

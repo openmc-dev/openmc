@@ -6200,8 +6200,10 @@ class MeshSurfaceMGXS(MGXS):
     def get_pandas_dataframe(self, groups='all', nuclides='all',
                              xs_type='macro', paths=True):
         """Build a Pandas DataFrame for the MGXS data.
+
         This method leverages :meth:`openmc.Tally.get_pandas_dataframe`, but
         renames the columns with terminology appropriate for cross section data.
+
         Parameters
         ----------
         groups : Iterable of Integral or 'all'

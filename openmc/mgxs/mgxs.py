@@ -6217,10 +6217,12 @@ class MeshSurfaceMGXS(MGXS):
             The geometric information in the Summary object is embedded into
             a Multi-index column with a geometric "path" to each distribcell
             instance.
+
         Returns
         -------
         pandas.DataFrame
             A Pandas DataFrame for the cross section data.
+
         Raises
         ------
         ValueError

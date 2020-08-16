@@ -5917,7 +5917,7 @@ class MeshSurfaceMGXS(MGXS):
     energy_groups : openmc.mgxs.EnergyGroups
         The energy group structure for energy condensation
     by_nuclide : bool
-        Unused in MeshSurfacMGXS
+        Unused in MeshSurfaceMGXS
     name : str, optional
         Name of the multi-group cross section. Used as a label to identify
         tallies in OpenMC 'tallies.xml' file.

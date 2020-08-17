@@ -62,8 +62,8 @@ class MGXSTestHarness(PyAPITestHarness):
             for domain in self.mgxs_lib.domains:
                 for mgxs_type in self.mgxs_lib.mgxs_types:
                     outstr += 'domain={0} type={1}\n'.format(domain.id, mgxs_type)
-                    avg_key = 'mesh/{0}/{1}/average'.format(domain.id, mgxs_type)
-                    std_key = 'mesh/{0}/{1}/std. dev.'.format(domain.id, mgxs_type)
+                    avg_key = 'mesh/{}/{}/average'.format(domain.id, mgxs_type)
+                    std_key = 'mesh/{}/{}/std. dev.'.format(domain.id, mgxs_type)
                     outstr += '{}\n{}\n'.format(f[avg_key][...], f[std_key][...])
 
         # Hash the results if necessary

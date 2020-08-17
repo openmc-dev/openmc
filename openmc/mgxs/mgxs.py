@@ -6237,10 +6237,7 @@ class MeshSurfaceMGXS(MGXS):
         df = self.xs_tally.get_pandas_dataframe(paths=paths)
 
         # Remove the score column since it is homogeneous and redundant
-        if self.domain_type == 'mesh':
-            df = df.drop('score', axis=1, level=0)
-        else:
-            df = df.drop('score', axis=1)
+        df = df.drop('score', axis=1, level=0)
 
         # Convert azimuthal, polar, energy in and energy out bin values in to
         # bin indices
@@ -6254,9 +6251,9 @@ class MeshSurfaceMGXS(MGXS):
                 df = df[df['group out'].isin(groups)]
 
         mesh_str = 'mesh {0}'.format(self.domain.id)
-        surfaces = df[(mesh_str, 'surf')]
-        df.drop(columns=[(mesh_str,'surf')],inplace=True)
-        df.insert(len(self.domain.dimension),(mesh_str,'surf'),surfaces)
+        col_key = (mesh_str, 'surf')
+        surfaces = df.pop(col_key)
+        df.insert(len(self.domain.dimension), col_key, surfaces)
         if len(self.domain.dimension) == 1:
             df.sort_values(by=[(mesh_str, 'x'), (mesh_str, 'surf')] 
                     + columns, inplace=True)
@@ -6295,9 +6292,9 @@ class Current(MeshSurfaceMGXS):
 
     Parameters
     ----------
-    domain : openmc.Material or openmc.Cell or openmc.Universe or openmc.RegularMesh
+    domain : openmc.RegularMesh
         The domain for spatial homogenization
-    domain_type : {'material', 'cell', 'distribcell', 'universe', 'mesh'}
+    domain_type : ('mesh'}
         The domain type for spatial homogenization
     groups : openmc.mgxs.EnergyGroups
         The energy group structure for energy condensation
@@ -6315,7 +6312,7 @@ class Current(MeshSurfaceMGXS):
         Reaction type (e.g., 'total', 'nu-fission', etc.)
     by_nuclide : bool
         Unused in MeshSurfaceMGXS
-    domain : Mesh
+    domain : openmc.RegularMesh
         Domain for spatial homogenization
     domain_type : {'mesh'}
         Domain type for spatial homogenization

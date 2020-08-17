@@ -12,33 +12,35 @@ Installation and Configuration
 Installing on Linux/Mac with conda-forge
 ----------------------------------------
 
-Conda_ is an open source package management system and environment management
-system for installing multiple versions of software packages and their
-dependencies and switching easily between them. `conda-forge
-<https://conda-forge.github.io/>`_ is a community-led conda channel of
-installable packages. For instructions on installing conda, please consult their
-`documentation
-<https://docs.conda.io/projects/conda/en/latest/user-guide/install/>`_.
-
-Once you have `conda` installed on your system, add the `conda-forge` channel to
-your configuration with:
+`Conda <http://conda.pydata.org/docs/>`_ is an open source package management
+system and environment management system for installing multiple versions of
+software packages and their dependencies and switching easily between them. If
+you have `conda` installed on your system, OpenMC can be installed via the
+`conda-forge` channel. First, add the `conda-forge` channel with:
 
 .. code-block:: sh
 
     conda config --add channels conda-forge
 
-Once the `conda-forge` channel has been enabled, OpenMC can then be installed
-with:
+To list the versions of OpenMC that are available on the `conda-forge` channel,
+in your terminal window or an Anaconda Prompt run:
+
+.. code-block:: sh 
+
+    conda search openmc
+    
+OpenMC can then be installed with:
 
 .. code-block:: sh
 
-    conda install openmc
-
-It is possible to list all of the versions of OpenMC available on your platform with:
+    conda create -n openmc-env openmc
+    
+This will install OpenMC in a conda environment called `openmc-env`. To activate
+the environment, run:
 
 .. code-block:: sh
 
-    conda search openmc --channel conda-forge
+    conda activate openmc-env
 
 .. _install_ppa:
 

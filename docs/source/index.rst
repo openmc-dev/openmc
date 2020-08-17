@@ -15,7 +15,8 @@ OpenMC was originally developed by members of the `Computational Reactor Physics
 Group <http://crpg.mit.edu>`_ at the `Massachusetts Institute of Technology
 <http://web.mit.edu>`_ starting in 2011. Various universities, laboratories, and
 other organizations now contribute to the development of OpenMC. For more
-information on OpenMC, feel free to send a message to the User's Group `OpenMC Discourse Forum <https://openmc.discourse.group/>`_.
+information on OpenMC, feel free to post a message on the `OpenMC Discourse
+Forum <https://openmc.discourse.group/>`_.
 
 .. admonition:: Recommended publication for citing
    :class: tip

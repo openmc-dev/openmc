@@ -4,7 +4,8 @@ import re
 from xml.etree import ElementTree as ET
 
 import openmc.checkvalue as cv
-from openmc.data import NATURAL_ABUNDANCE, atomic_mass
+from openmc.data import NATURAL_ABUNDANCE, atomic_mass, \
+    isotopes as natural_isotopes
 
 
 class Element(str):
@@ -119,10 +120,7 @@ class Element(str):
             cv.check_greater_than('enrichment', enrichment, 0., equality=True)
 
         # Get the nuclides present in nature
-        natural_nuclides = set()
-        for nuclide in sorted(NATURAL_ABUNDANCE.keys()):
-            if re.match(r'{}\d+'.format(self), nuclide):
-                natural_nuclides.add(nuclide)
+        natural_nuclides = {name for name, abundance in natural_isotopes(self)}
 
         # Create dict to store the expanded nuclides and abundances
         abundances = OrderedDict()

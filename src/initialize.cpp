@@ -108,7 +108,7 @@ void initialize_mpi(MPI_Comm intracomm)
   MPI_Get_address(&b.E, &disp[2]);
   MPI_Get_address(&b.wgt, &disp[3]);
   MPI_Get_address(&b.delayed_group, &disp[4]);
-  MPI_Get_address(&b.surf_num, &disp[5]);
+  MPI_Get_address(&b.surf_id, &disp[5]);
   MPI_Get_address(&b.particle, &disp[6]);
   MPI_Get_address(&b.parent_id, &disp[7]);
   MPI_Get_address(&b.progeny_id, &disp[8]);

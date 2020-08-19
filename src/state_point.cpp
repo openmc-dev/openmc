@@ -518,7 +518,7 @@ hid_t h5banktype() {
   H5Tinsert(banktype, "E", HOFFSET(Particle::Bank, E), H5T_NATIVE_DOUBLE);
   H5Tinsert(banktype, "wgt", HOFFSET(Particle::Bank, wgt), H5T_NATIVE_DOUBLE);
   H5Tinsert(banktype, "delayed_group", HOFFSET(Particle::Bank, delayed_group), H5T_NATIVE_INT);
-  H5Tinsert(banktype, "surf_num", HOFFSET(Particle::Bank, surf_num), H5T_NATIVE_INT);
+  H5Tinsert(banktype, "surf_id", HOFFSET(Particle::Bank, surf_id), H5T_NATIVE_INT);
   H5Tinsert(banktype, "particle", HOFFSET(Particle::Bank, particle), H5T_NATIVE_INT);
 
   H5Tclose(postype);

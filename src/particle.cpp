@@ -420,7 +420,7 @@ Particle::cross_surface()
     site.E = this->E_;
     site.wgt = this->wgt_;
     site.delayed_group = this->delayed_group_;
-    site.surf_num = surf->id_;
+    site.surf_id = surf->id_;
     site.particle = this->type_;
     site.parent_id = this->id_;
     site.progeny_id = this->n_progeny_;

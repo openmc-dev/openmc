@@ -525,6 +525,45 @@ hid_t h5banktype() {
   return banktype;
 }
 
+void query_surf_src_size()
+{
+  int64_t total;
+  if (mpi::master) {
+    simulation::surf_src_index.resize(mpi::n_procs + 1);
+    simulation::surf_src_index[0] = 0;
+  }
+
+#ifdef OPENMC_MPI
+  std::vector<int64_t> bank_size;
+  bank_size.resize(mpi::n_procs);
+
+  // Collect the number of surface source banks from all processes
+  int64_t size = simulation::surf_src_bank.size();
+  MPI_Gather(&size, 1, MPI_INT64_T,
+             bank_size.data(), 1, MPI_INT64_T,
+             0, mpi::intracomm);
+
+  if (mpi::master) {
+    // Populate the surf_src_index with cumulative sum of the number of
+    // surface source banks per process
+    for (int i = 1; i < mpi::n_procs + 1; ++i) {
+      simulation::surf_src_index[i] = \
+        simulation::surf_src_index[i - 1] + bank_size[i - 1];
+    }
+    // Set maximum bank size
+    simulation::max_bank_size = *std::max_element(bank_size.begin(),
+                                                  bank_size.end());
+    total = simulation::surf_src_index[mpi::n_procs];
+  }
+#else
+  total = simulation::surf_src_bank.size();
+  simulation::surf_src_index[mpi::n_procs] = total;
+#endif
+  // Set total number of surface source banks
+  simulation::total_surf_banks = total;
+
+}
+
 void
 write_source_point(const char* filename, bool surf_src_bank)
 {

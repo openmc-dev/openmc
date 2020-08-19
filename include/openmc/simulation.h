@@ -61,9 +61,6 @@ void allocate_banks();
 //! Determine number of particles to transport per process
 void calculate_work();
 
-//! Determine number of surface source banks per process and their sum
-void query_surf_src_size();
-
 //! Initialize nuclear data before a simulation
 void initialize_data();
 

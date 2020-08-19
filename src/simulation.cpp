@@ -394,7 +394,7 @@ void finalize_batch()
   if (settings::surf_src_write && simulation::current_batch == settings::n_batches) {
 
     auto filename = settings::path_output + "surface_source.h5";
-    write_source_point(filename.c_str(), true);  //!!
+    write_source_point(filename.c_str(), true);
   }
 }
 

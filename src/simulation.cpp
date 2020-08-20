@@ -271,8 +271,6 @@ const RegularMesh* ufs_mesh {nullptr};
 std::vector<double> k_generation;
 std::vector<int64_t> work_index;
 
-int64_t total_surf_banks {0};
-int64_t max_bank_size {0};
 std::vector<int64_t> surf_src_index;
 
 } // namespace simulation

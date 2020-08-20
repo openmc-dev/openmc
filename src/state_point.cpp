@@ -525,8 +525,11 @@ hid_t h5banktype() {
   return banktype;
 }
 
-void query_surf_src_size()
+int* query_surf_src_size()
 {
+  // total_surf_banks, max_bank_size
+  static int qsize[2] = {0, 0};
+
   int64_t total;
   if (mpi::master) {
     simulation::surf_src_index.resize(mpi::n_procs + 1);
@@ -551,17 +554,16 @@ void query_surf_src_size()
         simulation::surf_src_index[i - 1] + bank_size[i - 1];
     }
     // Set maximum bank size
-    simulation::max_bank_size = *std::max_element(bank_size.begin(),
-                                                  bank_size.end());
-    total = simulation::surf_src_index[mpi::n_procs];
+    qsize[1] = *std::max_element(bank_size.begin(), bank_size.end());
+    qsize[0] = simulation::surf_src_index[mpi::n_procs];
   }
 #else
-  total = simulation::surf_src_bank.size();
-  simulation::surf_src_index[mpi::n_procs] = total;
+  qsize[0] = simulation::surf_src_bank.size();
+  simulation::surf_src_index[mpi::n_procs] = simulation::surf_src_bank.size();
+  qsize[1] = simulation::work_per_rank;
 #endif
-  // Set total number of surface source banks
-  simulation::total_surf_banks = total;
 
+  return qsize;
 }
 
 void
@@ -610,7 +612,7 @@ write_source_bank(hid_t group_id, bool surf_src_bank)
   int64_t count_size = simulation::work_per_rank;
 
   // Set maximum bank size
-  simulation::max_bank_size = simulation::work_per_rank;
+  int64_t max_bank_size = simulation::work_per_rank;
 
   // Set vectors for source bank and starting bank index of each process
   std::vector<int64_t> bank_index = simulation::work_index;
@@ -618,9 +620,9 @@ write_source_bank(hid_t group_id, bool surf_src_bank)
 
   // Reset dataspace sizes and vectors for surface source bank
   if (surf_src_bank) {
-    query_surf_src_size();
+    int* qsize = query_surf_src_size();
 
-    dims_size = simulation::total_surf_banks;
+    dims_size = qsize[0];
     count_size = simulation::surf_src_bank.size();
 
     bank_index.clear();
@@ -630,6 +632,7 @@ write_source_bank(hid_t group_id, bool surf_src_bank)
     src_bank.assign(simulation::surf_src_bank.data(),
                     simulation::surf_src_bank.data()
                     + simulation::surf_src_bank.size());
+    max_bank_size = qsize[1];
   }
 
 #ifdef PHDF5
@@ -671,7 +674,7 @@ write_source_bank(hid_t group_id, bool surf_src_bank)
 
     // Set new bank sites to avoid the src_bank being overwritten on MPI_Recv
     std::vector<Particle::Bank> src_to_save;
-    src_to_save.reserve(simulation::max_bank_size);
+    src_to_save.reserve(max_bank_size);
     std::copy(src_bank.begin(), src_bank.end(), src_to_save.begin());
 
     for (int i = 0; i < mpi::n_procs; ++i) {

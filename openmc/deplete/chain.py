@@ -147,9 +147,9 @@ def replace_missing(product, decay_data):
     Z, A, state = openmc.data.zam(product)
     symbol = openmc.data.ATOMIC_SYMBOL[Z]
 
-    # Replace neutron with proton
-    if Z == 0 and A == 1:
-        return 'H1'
+    # Replace neutron with nothing
+    if Z == 0:
+        return None
 
     # First check if ground state is available
     if state:

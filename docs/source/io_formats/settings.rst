@@ -462,25 +462,23 @@ attributes/sub-elements:
   :library:
     If this attribute is given, it indicates that the source is to be
     instantiated from an externally compiled source function. This source can be
-    as complex as is required to define the source for your problem. The only
-    requirement is that there is a function called ``sample_source()``. More
-    documentation on how to build sources can be found in :ref:`custom_source`.
+    as complex as is required to define the source for your problem. The library
+    has a few basic requirements:
+
+    * It must contain a class that inherits from ``openmc::CustomSource``;
+    * The class must implement a function called ``sample_source()``;
+    * There must be a ``create_openmc_source()`` function that creates the source
+      as a unique pointer. This function can be used to pass parameters through to
+      the source from the XML, if needed.
+
+    More documentation on how to build sources can be found in :ref:`custom_source`.
 
     *Default*: None
 
   :parameters:
-    If this attribute is given, it indicates that the source is to be
-    instantiated from an externally compiled source function, with parameters
-    defined by the string provided in this attribute. In this case, the
-    custom source library must define a class that inherits from the
-    ``openmc::CustomSource`` abstract class. This class must implement a
-    ``sample_source()`` function, which takes an unsigned integer pointer as an
-    argument. The custom source library must also contain an
-    ``openmc_create_source`` method, which takes the value provided to the
-    parameters attribute as an argument and returns a pointer to an instance of
-    the custom source. If the library attribute is not provided then this
-    attribute will be ignored. More documentation on how to build parametrized
-    sources can be found in :ref:`parameterized_custom_source`.
+    If this attribute is given, it provides the parameters to pass through to the
+    class generated using the ``library`` parameter . More documentation on how to
+    build parametrized sources can be found in :ref:`parameterized_custom_source`.
 
     *Default*: None
 

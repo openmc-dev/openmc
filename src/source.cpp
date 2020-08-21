@@ -5,6 +5,7 @@
 #endif
 
 #include <algorithm> // for move
+#include <memory> // for unique_ptr
 
 #ifdef HAS_DYNAMIC_LINKING
 #include <dlfcn.h> // for dlopen, dlsym, dlclose, dlerror
@@ -45,11 +46,8 @@ std::vector<SourceDistribution> external_sources;
 namespace {
 
 void* custom_source_library;
-using sample_t = Particle::Bank (*)(uint64_t* seed);
-sample_t custom_source_function;
-
-std::string custom_source_parameters;
-CustomSource* custom_source;
+std::string custom_source_parameters = "";
+std::unique_ptr<CustomSource> custom_source;
 
 }
 
@@ -374,17 +372,11 @@ void load_custom_source_library()
   // reset errors
   dlerror();
 
-  if (custom_source_parameters.empty()) {
-    // get the function from the library
-    using sample_t = Particle::Bank (*)(uint64_t* seed);
-    custom_source_function = reinterpret_cast<sample_t>(dlsym(custom_source_library, "sample_source"));
-  } else {
-    // get the function to create the CustomSource from the library
-    create_custom_source_t* create_custom_source = (create_custom_source_t*) dlsym(custom_source_library, "openmc_create_source");
+  // get the function to create the CustomSource from the library
+  create_custom_source_t* create_custom_source = (create_custom_source_t*) dlsym(custom_source_library, "openmc_create_source");
 
-    // create a pointer to an instance of the CustomSource
-    custom_source = create_custom_source(custom_source_parameters.c_str());
-  }
+  // create a pointer to an instance of the CustomSource
+  custom_source = create_custom_source(custom_source_parameters.c_str());
 
   // check for any dlsym errors
   auto dlsym_error = dlerror();
@@ -401,9 +393,9 @@ void load_custom_source_library()
 
 void close_custom_source_library()
 {
-  if (custom_source) {
-    // delete the CustomSource if it exists
-    delete custom_source;
+  if (custom_source.get()) {
+    // Make sure the custom source is destroyed before we close it's libary.
+    custom_source.reset();
   }
 
 #ifdef HAS_DYNAMIC_LINKING
@@ -416,12 +408,8 @@ void close_custom_source_library()
 
 Particle::Bank sample_custom_source_library(uint64_t* seed)
 {
-  if (custom_source_parameters.empty()) {
-    return custom_source_function(seed);
-  } else {
-    // sample from the instance of the CustomSource
-    return custom_source->sample_source(seed);
-  }
+  // sample from the instance of the CustomSource
+  return custom_source->sample_source(seed);
 }
 
 void fill_source_bank_custom_source()

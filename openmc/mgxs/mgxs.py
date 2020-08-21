@@ -6102,7 +6102,8 @@ class MeshSurfaceMGXS(MGXS):
         subdomains : Iterable of Integral or 'all'
             Subdomain IDs of interest. Defaults to 'all'.
         nuclides : Iterable of str or 'all' or 'sum'
-            Unused in MeshSurfaceMGXS
+            Unused in MeshSurfaceMGXS, its value will be ignored. The nuclides
+            dimension of the resultant array will always have a length of 1.
         xs_type: {'macro'}
             The 'macro'/'micro' distinction does not apply to MeshSurfaceMGXS.
             The calculation of a 'micro' xs_type is omited in this class.
@@ -6209,7 +6210,8 @@ class MeshSurfaceMGXS(MGXS):
         groups : Iterable of Integral or 'all'
             Energy groups of interest. Defaults to 'all'.
         nuclides : Iterable of str or 'all' or 'sum'
-            Unused in MeshSurfaceMGXS
+            Unused in MeshSurfaceMGXS, its value will be ignored. The nuclides
+            dimension of the resultant array will always have a length of 1.
         xs_type: {'macro'}
             'micro' unused in MeshSurfaceMGXS.
         paths : bool, optional

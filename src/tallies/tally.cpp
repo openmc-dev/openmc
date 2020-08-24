@@ -377,7 +377,6 @@ Tally::set_scores(const std::vector<std::string>& scores)
 {
   // Reset state and prepare for the new scores.
   scores_.clear();
-  depletion_rx_ = false;
   scores_.reserve(scores.size());
 
   // Check for the presence of certain restrictive filters.
@@ -447,15 +446,6 @@ Tally::set_scores(const std::vector<std::string>& scores)
         if (energyout_present || legendre_present)
           estimator_ = TallyEstimator::ANALOG;
       }
-      break;
-
-    case N_2N:
-    case N_3N:
-    case N_4N:
-    case N_GAMMA:
-    case N_P:
-    case N_A:
-      depletion_rx_ = true;
       break;
 
     case SCORE_CURRENT:
@@ -859,9 +849,6 @@ setup_active_tallies()
       case TallyType::SURFACE:
         model::active_surface_tallies.push_back(i);
       }
-
-      // Check if tally contains depletion reactions and if so, set flag
-      if (tally.depletion_rx_) simulation::need_depletion_rx = true;
     }
   }
 }

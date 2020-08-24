@@ -27,12 +27,13 @@ class _Settings:
     generations_per_batch = _DLLGlobal(c_int32, 'gen_per_batch')
     inactive = _DLLGlobal(c_int32, 'n_inactive')
     max_lost_particles = _DLLGlobal(c_int32, 'max_lost_particles')
-    rel_max_lost_particles = _DLLGlobal(c_double, 'rel_max_lost_particles')
+    need_depletion_rx = _DLLGlobal(c_bool, 'need_depletion_rx')
+    output_summary = _DLLGlobal(c_bool, 'output_summary')
     particles = _DLLGlobal(c_int64, 'n_particles')
+    rel_max_lost_particles = _DLLGlobal(c_double, 'rel_max_lost_particles')
     restart_run = _DLLGlobal(c_bool, 'restart_run')
     run_CE = _DLLGlobal(c_bool, 'run_CE')
     verbosity = _DLLGlobal(c_int, 'verbosity')
-    output_summary = _DLLGlobal(c_bool, 'output_summary')
 
     @property
     def run_mode(self):

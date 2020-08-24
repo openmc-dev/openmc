@@ -33,6 +33,7 @@ Multi-group Cross Sections
     openmc.mgxs.AbsorptionXS
     openmc.mgxs.CaptureXS
     openmc.mgxs.Chi
+    openmc.mgxs.Current
     openmc.mgxs.FissionXS
     openmc.mgxs.InverseVelocity
     openmc.mgxs.KappaFissionXS

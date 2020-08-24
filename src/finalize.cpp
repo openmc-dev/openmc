@@ -119,6 +119,7 @@ int openmc_finalize()
 
   simulation::keff = 1.0;
   simulation::n_lost_particles = 0;
+  simulation::need_depletion_rx = false;
   simulation::satisfy_triggers = false;
   simulation::total_gen = 0;
 

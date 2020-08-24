@@ -48,6 +48,9 @@ class DirectReactionRateHelper(ReactionRateHelper):
         super().__init__(n_nuc, n_react)
         self._rate_tally = None
 
+        # Automatically pre-calculate reaction rates for depletion
+        openmc.lib.settings.need_depletion_rx = True
+
     @ReactionRateHelper.nuclides.setter
     def nuclides(self, nuclides):
         ReactionRateHelper.nuclides.fset(self, nuclides)

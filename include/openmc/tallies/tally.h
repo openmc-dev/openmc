@@ -119,8 +119,6 @@ public:
   int energyout_filter_ {C_NONE};
   int delayedgroup_filter_ {C_NONE};
 
-  bool depletion_rx_ {false}; //!< Has depletion reactions (e.g. (n,2n))
-
   std::vector<Trigger> triggers_;
 
   int deriv_ {C_NONE}; //!< Index of a TallyDerivative object for diff tallies.

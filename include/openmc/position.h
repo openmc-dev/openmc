@@ -67,7 +67,7 @@ struct Position {
     const double projection = n.dot(*this);
     const double magnitude = n.dot(n);
     n *= (2.0 * projection / magnitude);
-    return *this -= n;
+    return *this - n;
   }
 
   //! Rotate the position based on a rotation matrix

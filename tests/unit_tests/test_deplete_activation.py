@@ -61,7 +61,7 @@ def test_activation(run_in_tmpdir, model, reaction_rate_mode):
         model.geometry, model.settings, 'test_chain.xml',
         normalization_mode="source-rate",
         reaction_rate_mode=reaction_rate_mode,
-        reaction_rate_energies=energies,
+        reaction_rate_opts={'energies': energies},
     )
 
     # To determine the source rate necessary to reduce W186 density in half, we

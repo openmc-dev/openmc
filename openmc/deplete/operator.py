@@ -27,7 +27,7 @@ from .results_list import ResultsList
 from .helpers import (
     DirectReactionRateHelper, ChainFissionHelper, ConstantFissionYieldHelper,
     FissionYieldCutoffHelper, AveragedFissionYieldHelper, EnergyScoreHelper,
-    SourceRateHelper, FluxCollapseHelper)
+    SourceRateHelper, FluxCollapseHelper, HybridReactionHelper)
 
 
 __all__ = ["Operator", "OperatorResult"]
@@ -120,7 +120,7 @@ class Operator(TransportOperator):
         rates after a transport solve.
 
         .. versionadded:: 0.12.1
-    reaction_rate_energies : iterable of float
+    reaction_rate_opts : iterable of float
         Energy group boundaries that are to be used for calculating a multigroup
         flux spectrum when the "flux" based ``reaction_rate_mode`` is being used.
 
@@ -182,7 +182,7 @@ class Operator(TransportOperator):
                  diff_burnable_mats=False, normalization_mode="fission-q",
                  fission_q=None, dilute_initial=1.0e3,
                  fission_yield_mode="constant", fission_yield_opts=None,
-                 reaction_rate_mode="direct", reaction_rate_energies=None,
+                 reaction_rate_mode="direct", reaction_rate_opts=None,
                  reduce_chain=False, reduce_chain_level=None):
         check_value('fission yield mode', fission_yield_mode,
                     self._fission_helpers.keys())
@@ -255,18 +255,27 @@ class Operator(TransportOperator):
         if reaction_rate_mode == "direct":
             self._rate_helper = DirectReactionRateHelper(
                 self.reaction_rates.n_nuc, self.reaction_rates.n_react)
-        elif reaction_rate_mode == "flux":
+        elif reaction_rate_mode in ("flux", "hybrid"):
+            if reaction_rate_opts is None:
+                reaction_rate_opts = {}
+
             # Ensure energy group boundaries were specified
-            if reaction_rate_energies is None:
+            if 'energies' not in reaction_rate_opts:
                 raise ValueError(
                     "Energy group boundaries must be specified in the "
-                    "reaction_rate_energies argument when reaction_rate_mode is"
-                    "set to 'flux'.")
+                    "reaction_rate_opts argument when reaction_rate_mode is"
+                    "set to 'flux' or 'hybrid'.")
 
-            self._rate_helper = FluxCollapseHelper(
+            if reaction_rate_mode == "flux":
+                cls = FluxCollapseHelper
+            else:
+                cls = HybridReactionHelper
+
+
+            self._rate_helper = cls(
                 self.reaction_rates.n_nuc,
                 self.reaction_rates.n_react,
-                reaction_rate_energies
+                **reaction_rate_opts
             )
         else:
             raise ValueError("Invalid reaction rate mode.")

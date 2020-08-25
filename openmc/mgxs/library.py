@@ -1402,12 +1402,12 @@ class Library:
                 if self.domain_type == 'material':
                     # Fill all appropriate Cells with new Material
                     for cell in all_cells:
-                        if cell.fill.id == domain.id:
+                        if isinstance(cell.fill, openmc.Material) and cell.fill.id == domain.id:
                             cell.fill = material
 
                 elif self.domain_type == 'cell':
                     for cell in all_cells:
-                        if cell.id == domain.id:
+                        if isinstance(cell.fill, openmc.Material) and cell.id == domain.id:
                             cell.fill = material
 
         return mgxs_file, materials, geometry

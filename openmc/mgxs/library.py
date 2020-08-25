@@ -1407,7 +1407,11 @@ class Library:
 
                 elif self.domain_type == 'cell':
                     for cell in all_cells:
-                        if isinstance(cell.fill, openmc.Material) and cell.id == domain.id:
+                        if not isinstance(cell.fill, openmc.Material):
+                            warn('If the library domain includes a lattice or universe cell '
+                            'in conjunction with a consituent cell of that lattice/universe, '
+                            'the multi-group simulation will fail') 
+                        if cell.id == domain.id:
                             cell.fill = material
 
         return mgxs_file, materials, geometry

@@ -1090,7 +1090,7 @@ class Library:
                                                subdomain=subdomain)
 
         if 'beta' in self.mgxs_types:
-            mymgxs = self.get_mgxs(domain, 'nu-fission')
+            mymgxs = self.get_mgxs(domain, 'beta')
             xsdata.set_beta_mgxs(mymgxs, xs_type=xs_type, nuclide=[nuclide],
                                  subdomain=subdomain)
 

@@ -350,6 +350,18 @@ class XSdata:
         return self._chi_delayed
 
     @property
+    def beta(self):
+        return self._beta
+
+    @property
+    def decay_rate(self):
+        return self._decay_rate
+
+    @property
+    def inverse_velocity(self):
+        return self._inverse_velocity
+
+    @property
     def num_orders(self):
         if self._order is None:
             raise ValueError('Order has not been set.')

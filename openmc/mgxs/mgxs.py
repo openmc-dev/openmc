@@ -4160,7 +4160,7 @@ class ScatterMatrixXS(MatrixMGXS):
             if self.correction == 'P0' and legendre_order > 0:
                 msg = 'The P0 correction will be ignored since the ' \
                       'scattering order {} is greater than '\
-                      'zero'.format(self.legendre_order)
+                      'zero'.format(legendre_order)
                 warnings.warn(msg, RuntimeWarning)
                 self.correction = None
         elif self.scatter_format == SCATTER_HISTOGRAM:

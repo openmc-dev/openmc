@@ -2016,10 +2016,9 @@ UnstructuredMesh::add_score(std::string score) const {
 }
 
 void UnstructuredMesh::remove_score(std::string score) const {
-  moab::ErrorCode rval;
-  moab::Tag tag;
   auto value_name = score + "_mean";
-  rval = mbi_->tag_get_handle(value_name.c_str(), tag);
+  moab::Tag tag;
+  moab::ErrorCode rval = mbi_->tag_get_handle(value_name.c_str(), tag);
   if (rval != moab::MB_SUCCESS) return;
 
   rval = mbi_->tag_delete(tag);

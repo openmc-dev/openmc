@@ -779,7 +779,7 @@ CSGCell::contains_complex(Position r, Direction u, int32_t on_surface) const
 // DAGMC Cell implementation
 //==============================================================================
 #ifdef DAGMC
-DAGCell::DAGCell() : Cell{} {};
+DAGCell::DAGCell() : Cell{} { simple_ = true; };
 
 std::pair<double, int32_t>
 DAGCell::distance(Position r, Direction u, int32_t on_surface, Particle* p) const

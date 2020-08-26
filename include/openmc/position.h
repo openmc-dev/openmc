@@ -63,6 +63,11 @@ struct Position {
     return std::sqrt(x*x + y*y + z*z);
   }
 
+  //! Reflect a direction across a normal vector
+  //! \param[in] other Vector to reflect across
+  //! \result Reflected vector
+  Position reflect(Position n) const;
+
   //! Rotate the position based on a rotation matrix
   Position rotate(const std::vector<double>& rotation) const;
 
@@ -88,6 +93,13 @@ inline Position operator*(double a, Position b)   { return b *= a; }
 inline Position operator/(Position a, Position b) { return a /= b; }
 inline Position operator/(Position a, double b)   { return a /= b; }
 inline Position operator/(double a, Position b)   { return b /= a; }
+
+inline Position Position::reflect(Position n) const {
+  const double projection = n.dot(*this);
+  const double magnitude = n.dot(n);
+  n *= (2.0 * projection / magnitude);
+  return *this - n;
+}
 
 inline bool operator==(Position a, Position b)
 {return a.x == b.x && a.y == b.y && a.z == b.z;}

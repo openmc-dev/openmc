@@ -87,7 +87,7 @@ Reaction::Reaction(hid_t group, const std::vector<int>& temperatures)
 // Non-member functions
 //==============================================================================
 
-const std::unordered_map<int, std::string> REACTION_NAME_MAP {
+std::unordered_map<int, std::string> REACTION_NAME_MAP {
   {SCORE_FLUX, "flux"},
   {SCORE_TOTAL, "total"},
   {SCORE_SCATTER, "scatter"},
@@ -150,6 +150,55 @@ const std::unordered_map<int, std::string> REACTION_NAME_MAP {
   {N_PD, "(n,pd)"},
   {N_PT, "(n,pt)"},
   {N_DA, "(n,da)"},
+  {N_5N, "(n,5n)"},
+  {N_6N, "(n,6n)"},
+  {N_2NT, "(n,2nt)"},
+  {N_TA, "(n,ta)"},
+  {N_4NP, "(n,4np)"},
+  {N_3ND, "(n,3nd)"},
+  {N_NDA, "(n,nda)"},
+  {N_2NPA, "(n,2npa)"},
+  {N_7N, "(n,7n)"},
+  {N_8N, "(n,8n)"},
+  {N_5NP, "(n,5np)"},
+  {N_6NP, "(n,6np)"},
+  {N_7NP, "(n,7np)"},
+  {N_4NA, "(n,4na)"},
+  {N_5NA, "(n,5na)"},
+  {N_6NA, "(n,6na)"},
+  {N_7NA, "(n,7na)"},
+  {N_4ND, "(n,4nd)"},
+  {N_5ND, "(n,5nd)"},
+  {N_6ND, "(n,6nd)"},
+  {N_3NT, "(n,3nt)"},
+  {N_4NT, "(n,4nt)"},
+  {N_5NT, "(n,5nt)"},
+  {N_6NT, "(n,6nt)"},
+  {N_2N3HE, "(n,2n3He)"},
+  {N_3N3HE, "(n,3n3He)"},
+  {N_4N3HE, "(n,4n3He)"},
+  {N_3N2P, "(n,3n2p)"},
+  {N_3N3A, "(n,3n3a)"},
+  {N_3NPA, "(n,3npa)"},
+  {N_DT, "(n,dt)"},
+  {N_NPD, "(n,npd)"},
+  {N_NPT, "(n,npt)"},
+  {N_NDT, "(n,ndt)"},
+  {N_NP3HE, "(n,np3He)"},
+  {N_ND3HE, "(n,nd3He)"},
+  {N_NT3HE, "(n,nt3He)"},
+  {N_NTA, "(n,nta)"},
+  {N_2N2P, "(n,2n2p)"},
+  {N_P3HE, "(n,p3He)"},
+  {N_D3HE, "(n,d3He)"},
+  {N_3HEA, "(n,3Hea)"},
+  {N_4N2P, "(n,4n2p)"},
+  {N_4N2A, "(n,4n2a)"},
+  {N_4NPA, "(n,4npa)"},
+  {N_3P, "(n,3p)"},
+  {N_N3P, "(n,n3p)"},
+  {N_3N2PA, "(n,3n2pa)"},
+  {N_5N2P, "(n,5n2p)"},
   {201, "(n,Xn)"},
   {202, "(n,Xgamma)"},
   {N_XP, "(n,Xp)"},
@@ -174,32 +223,98 @@ const std::unordered_map<int, std::string> REACTION_NAME_MAP {
   {HEATING_LOCAL, "heating-local"},
 };
 
-std::string reaction_name(int mt)
+std::unordered_map<std::string, int> REACTION_TYPE_MAP;
+
+void initialize_maps()
 {
-  if (N_N1 <= mt && mt <= N_N40) {
-    return fmt::format("(n,n{})", mt - 50);
-  } else if (534 <= mt && mt <= 572) {
-    return fmt::format("photoelectric, {} subshell", SUBSHELLS[mt - 534]);
-  } else if (N_P0 <= mt && mt < N_PC) {
-    return fmt::format("(n,p{})", mt - N_P0);
-  } else if (N_D0 <= mt && mt < N_DC) {
-    return fmt::format("(n,d{})", mt - N_D0);
-  } else if (N_T0 <= mt && mt < N_TC) {
-    return fmt::format("(n,t{})", mt - N_T0);
-  } else if (N_3HE0 <= mt && mt < N_3HEC) {
-    return fmt::format("(n,3He{})", mt - N_3HE0);
-  } else if (N_A0 <= mt && mt < N_AC) {
-    return fmt::format("(n,a{})", mt - N_A0);
-  } else if (N_2N0 <= mt && mt < N_2NC) {
-    return fmt::format("(n,2n{})", mt - N_2N0);
-  } else {
-    auto it = REACTION_NAME_MAP.find(mt);
-    if (it != REACTION_NAME_MAP.end()) {
-      return it->second;
-    } else {
-      return fmt::format("MT={}", mt);
+  // Add level reactions to name map
+  for (int level = 0; level <= 48; ++level) {
+    if (level >= 1 && level <= 40) {
+      REACTION_NAME_MAP[50 + level] = fmt::format("(n,n{})", level);
+    }
+    REACTION_NAME_MAP[600 + level] = fmt::format("(n,p{})", level);
+    REACTION_NAME_MAP[650 + level] = fmt::format("(n,d{})", level);
+    REACTION_NAME_MAP[700 + level] = fmt::format("(n,t{})", level);
+    REACTION_NAME_MAP[750 + level] = fmt::format("(n,3He{})", level);
+    REACTION_NAME_MAP[800 + level] = fmt::format("(n,a{})", level);
+    if (level <= 15) {
+      REACTION_NAME_MAP[875 + level] = fmt::format("(n,a{})", level);
     }
   }
+
+  // Create photoelectric subshells
+  for (int mt = 534; mt <= 572; ++mt) {
+    REACTION_NAME_MAP[mt] = fmt::format("photoelectric, {} subshell",
+      SUBSHELLS[mt - 534]);
+  }
+
+  // Invert name map to create type map
+  for (const auto& kv : REACTION_NAME_MAP) {
+    REACTION_TYPE_MAP[kv.second] = kv.first;
+  }
+}
+
+std::string reaction_name(int mt)
+{
+  // Initialize remainder of name map and all of type map
+  if (REACTION_TYPE_MAP.empty()) initialize_maps();
+
+  // Get reaction name from map
+  auto it = REACTION_NAME_MAP.find(mt);
+  if (it != REACTION_NAME_MAP.end()) {
+    return it->second;
+  } else {
+    return fmt::format("MT={}", mt);
+  }
+}
+
+int reaction_type(std::string name)
+{
+  // Initialize remainder of name map and all of type map
+  if (REACTION_TYPE_MAP.empty()) initialize_maps();
+
+  // Check if type map has an entry for this reaction name
+  auto it = REACTION_TYPE_MAP.find(name);
+  if (it != REACTION_TYPE_MAP.end()) {
+    return it->second;
+  }
+
+  // Alternate names for several reactions
+  if (name == "(n,total)") {
+    return SCORE_TOTAL;
+  } else if (name == "elastic") {
+    return ELASTIC;
+  } else if (name == "n2n") {
+    return N_2N;
+  } else if (name == "n3n") {
+    return N_3N;
+  } else if (name == "n4n") {
+    return N_4N;
+  } else if (name == "H1-production") {
+    return N_XP;
+  } else if (name == "H2-production") {
+    return N_XD;
+  } else if (name == "H3-production") {
+    return N_XT;
+  } else if (name == "He3-production") {
+    return N_X3HE;
+  } else if (name == "He4-production") {
+    return N_XA;
+  }
+
+  // Assume the given string is a reaction MT number.  Make sure it's a natural
+  // number then return.
+  int MT = 0;
+  try {
+    MT = std::stoi(name);
+  } catch (const std::invalid_argument& ex) {
+    throw std::invalid_argument("Invalid tally score \"" + name + "\". See the docs "
+      "for details: https://docs.openmc.org/en/stable/usersguide/tallies.html#scores");
+  }
+  if (MT < 1)
+    throw std::invalid_argument("Invalid tally score \"" + name + "\". See the docs "
+      "for details: https://docs.openmc.org/en/stable/usersguide/tallies.html#scores");
+  return MT;
 }
 
 } // namespace openmc

@@ -44,7 +44,17 @@ public:
 // Non-member functions
 //==============================================================================
 
+//! Return reaction name given an ENDF MT value
+//
+//! \param[in] mt  ENDF MT value
+//! \return Name of the corresponding reaction
 std::string reaction_name(int mt);
+
+//! Return reaction type (MT value) given a reaction name
+//
+//! \param[in] name  Reaction name
+//! \return Corresponding reaction type (MT value)
+int reaction_type(std::string name);
 
 } // namespace openmc
 

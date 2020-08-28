@@ -46,7 +46,7 @@ std::vector<SourceDistribution> external_sources;
 namespace {
 
 void* custom_source_library;
-std::string custom_source_parameters = "";
+std::string custom_source_parameters;
 std::unique_ptr<CustomSource> custom_source;
 
 }
@@ -373,17 +373,19 @@ void load_custom_source_library()
   dlerror();
 
   // get the function to create the CustomSource from the library
-  create_custom_source_t* create_custom_source = (create_custom_source_t*) dlsym(custom_source_library, "openmc_create_source");
-
-  // create a pointer to an instance of the CustomSource
-  custom_source = create_custom_source(custom_source_parameters.c_str());
+  auto create_custom_source = reinterpret_cast<create_custom_source_t*>(
+    dlsym(custom_source_library, "openmc_create_source"));
 
   // check for any dlsym errors
   auto dlsym_error = dlerror();
   if (dlsym_error) {
+    std::string error_msg = fmt::format("Couldn't open the openmc_create_source symbol: {}", dlsym_error);
     dlclose(custom_source_library);
-    fatal_error(fmt::format("Couldn't open the sample_source symbol: {}", dlsym_error));
+    fatal_error(error_msg);
   }
+
+  // create a pointer to an instance of the CustomSource
+  custom_source = create_custom_source(custom_source_parameters);
 
 #else
   fatal_error("Custom source libraries have not yet been implemented for "
@@ -409,7 +411,7 @@ void close_custom_source_library()
 Particle::Bank sample_custom_source_library(uint64_t* seed)
 {
   // sample from the instance of the CustomSource
-  return custom_source->sample_source(seed);
+  return custom_source->sample(seed);
 }
 
 void fill_source_bank_custom_source()

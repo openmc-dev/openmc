@@ -196,7 +196,7 @@ below.
 
   class Source : public openmc::CustomSource
   {
-    openmc::Particle::Bank sample_source(uint64_t* seed)
+    openmc::Particle::Bank sample(uint64_t* seed)
     {
       openmc::Particle::Bank particle;
       // weight
@@ -216,8 +216,9 @@ below.
     }
   };
 
-  extern "C" std::unique_ptr<Source> openmc_create_source() {
-    return std::unique_ptr<Source> (new Source());
+  extern "C" std::unique_ptr<Source> openmc_create_source(std::string parameters)
+  {
+    return std::make_unique<Source>();
   }
 
 The above source creates monodirectional 14.08 MeV neutrons that are distributed
@@ -225,7 +226,7 @@ in a ring with a 3 cm radius. This routine is not particularly complex, but
 should serve as an example upon which to build more complicated sources.
 
   .. note:: The source class must inherit from ``openmc::CustomSource`` and
-            implement a ``sample_source()`` function.
+            implement a ``sample()`` function.
 
   .. note:: The ``openmc_create_source()`` function signature must be declared
             ``extern "C"``.
@@ -254,7 +255,7 @@ Custom Parameterized Sources
 ----------------------------
 
 Some custom sources may have values (parameters) that can be changed between
-runs. This is supported by using the ``create_custom_source()`` function to
+runs. This is supported by using the ``openmc_create_source()`` function to
 pass parameters defined in the :attr:`openmc.Source.parameters` attribute to
 the source class when it is created:
 
@@ -265,17 +266,12 @@ the source class when it is created:
   #include "openmc/source.h"
   #include "openmc/particle.h"
 
-  class Source : public openmc::CustomSource
-  {
-    double energy;
-
-    Source(double energy)
-    {
-      this->energy = energy;
-    }
+  class Source : public openmc::CustomSource {
+  public:
+    Source(double energy) : energy_{energy} { }
 
     // Samples from an instance of this class.
-    openmc::Particle::Bank sample_source(uint64_t* seed)
+    openmc::Particle::Bank sample(uint64_t* seed)
     {
       openmc::Particle::Bank particle;
       // weight
@@ -287,15 +283,19 @@ the source class when it is created:
       particle.r.z = 0.0;
       // angle
       particle.u = {1.0, 0.0, 0.0};
-      particle.E = this->energy;
+      particle.E = this->energy_;
       particle.delayed_group = 0;
 
       return particle;
     }
+
+  private:
+    double energy_;
   };
 
-  extern "C" std::unique_ptr<Source> openmc_create_source(const char* parameter) {
-    return std::unique_ptr<Source> (new Source(atof(parameter)));
+  extern "C" std::unique_ptr<Source> openmc_create_source(std::string parameter) {
+    double energy = std::stod(parameter);
+    return std::make_unique<Source>(energy);
   }
 
 As with the basic custom source functionality, the custom source library

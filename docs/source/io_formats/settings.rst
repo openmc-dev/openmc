@@ -467,7 +467,7 @@ attributes/sub-elements:
 
     * It must contain a class that inherits from ``openmc::CustomSource``;
     * The class must implement a function called ``sample_source()``;
-    * There must be a ``create_openmc_source()`` function that creates the source
+    * There must be an ``openmc_create_source()`` function that creates the source
       as a unique pointer. This function can be used to pass parameters through to
       the source from the XML, if needed.
 

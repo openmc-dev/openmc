@@ -23,7 +23,7 @@ class Source:
     library : str
         Path to a custom source library
     parameters : str
-        Parameters to be provided to the custom source
+        Parameters to be provided to the custom source library
 
         .. versionadded:: 0.12
     strength : float
@@ -44,7 +44,7 @@ class Source:
     library : str or None
         Path to a custom source library
     parameters : str
-        Parameters to be provided to the custom source
+        Parameters to be provided to the custom source library
     strength : float
         Strength of the source
     particle : {'neutron', 'photon'}

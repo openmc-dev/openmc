@@ -63,10 +63,10 @@ class CustomSource {
   public:
     virtual ~CustomSource() {}
 
-    virtual Particle::Bank sample_source(uint64_t* seed) = 0;
+    virtual Particle::Bank sample(uint64_t* seed) = 0;
 };
 
-typedef std::unique_ptr<CustomSource> create_custom_source_t(const char* parameters);
+typedef std::unique_ptr<CustomSource> create_custom_source_t(std::string parameters);
 
 //==============================================================================
 // Functions

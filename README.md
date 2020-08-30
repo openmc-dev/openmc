@@ -12,7 +12,7 @@ project started under the Computational Reactor Physics Group at MIT.
 Complete documentation on the usage of OpenMC is hosted on Read the Docs (both
 for the [latest release](http://openmc.readthedocs.io/en/stable/) and
 [developmental](http://openmc.readthedocs.io/en/latest/) version). If you are
-interested in the project or would like to help and contribute, please get in touch on the OpenMC [discussion forum](https://openmc.discourse.group/).
+interested in the project, or would like to help and contribute, please get in touch on the OpenMC [discussion forum](https://openmc.discourse.group/).
 
 ## Installation
 

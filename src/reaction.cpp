@@ -238,7 +238,7 @@ void initialize_maps()
     REACTION_NAME_MAP[750 + level] = fmt::format("(n,3He{})", level);
     REACTION_NAME_MAP[800 + level] = fmt::format("(n,a{})", level);
     if (level <= 15) {
-      REACTION_NAME_MAP[875 + level] = fmt::format("(n,a{})", level);
+      REACTION_NAME_MAP[875 + level] = fmt::format("(n,2n{})", level);
     }
   }
 
@@ -273,6 +273,10 @@ int reaction_type(std::string name)
   // Initialize remainder of name map and all of type map
   if (REACTION_TYPE_MAP.empty()) initialize_maps();
 
+  // (n,total) exists in REACTION_TYPE_MAP for MT=1, but we need this to return
+  // the special SCORE_TOTAL score
+  if (name == "(n,total)") return SCORE_TOTAL;
+
   // Check if type map has an entry for this reaction name
   auto it = REACTION_TYPE_MAP.find(name);
   if (it != REACTION_TYPE_MAP.end()) {
@@ -280,9 +284,7 @@ int reaction_type(std::string name)
   }
 
   // Alternate names for several reactions
-  if (name == "(n,total)") {
-    return SCORE_TOTAL;
-  } else if (name == "elastic") {
+  if (name == "elastic") {
     return ELASTIC;
   } else if (name == "n2n") {
     return N_2N;

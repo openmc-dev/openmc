@@ -516,7 +516,7 @@ def _vectfit_nuclide(endf_file, njoy_error=5e-4, vf_error=1e-3, vf_pieces=None,
         poles.append(p)
         residues.append(r)
 
-    # gather multipole data into a dictionary
+    # collect multipole data into a dictionary
     mp_data = {"name": nuc_ce.name,
                "AWR": nuc_ce.atomic_weight_ratio,
                "E_min": E_min,
@@ -637,10 +637,10 @@ def _windowing(mp_data, rtol=1e-3, atol=1e-5, n_win=None, n_cf=None,
         poles, residues = mp_poles[i_piece], mp_residues[i_piece]
         n_poles = poles.size
 
-        # energy points for fitting
+        # generate energy points for fitting: equally spaced in momentum
         n_points = min(max(100, int((e_end - e_start)*4)), 10000)
-        energy = np.logspace(np.log10(e_start), np.log10(e_end), n_points)
-        energy_sqrt = np.sqrt(energy)
+        energy_sqrt = np.linspace(np.sqrt(e_start), np.sqrt(e_end), n_points)
+        energy = energy_sqrt**2
 
         # reference xs from multipole form
         xs_ref = vf.evaluate(energy_sqrt, poles, residues*1j) / energy
@@ -706,17 +706,17 @@ def _windowing(mp_data, rtol=1e-3, atol=1e-5, n_win=None, n_cf=None,
         data.append(np.vstack([mp_poles[ip][used], mp_residues[ip][:, used]]).T)
     # stack poles/residues in sequence vertically
     data = np.vstack(data)
-
     # new start/end pole indices
     windows = []
     curvefit = []
     for iw in range(n_win):
         ip, lp, rp, coefs = win_data[iw]
         # adjust indices and change to 1-based for the library format
+        n_prev_poles = sum([poles_unused[i].size for i in range(ip)])
         n_unused = sum([(poles_unused[i]==1).sum() for i in range(ip)]) + \
                   (poles_unused[ip][:lp]==1).sum()
-        lp = lp - n_unused + 1
-        rp = rp - n_unused
+        lp += n_prev_poles - n_unused + 1
+        rp += n_prev_poles - n_unused
         windows.append([lp, rp])
         curvefit.append(coefs)
 

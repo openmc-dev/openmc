@@ -5,6 +5,7 @@
 #endif
 
 #include <algorithm> // for move
+#include <memory> // for unique_ptr
 
 #ifdef HAS_DYNAMIC_LINKING
 #include <dlfcn.h> // for dlopen, dlsym, dlclose, dlerror
@@ -44,9 +45,9 @@ std::vector<SourceDistribution> external_sources;
 
 namespace {
 
-using sample_t = Particle::Bank (*)(uint64_t* seed);
-sample_t custom_source_function;
 void* custom_source_library;
+std::string custom_source_parameters;
+std::unique_ptr<CustomSource> custom_source;
 
 }
 
@@ -93,6 +94,10 @@ SourceDistribution::SourceDistribution(pugi::xml_node node)
     if (!file_exists(settings::path_source_library)) {
       fatal_error(fmt::format("Source library '{}' does not exist.",
         settings::path_source_library));
+    }
+
+    if (check_for_node(node, "parameters")) {
+      custom_source_parameters = get_node_value(node, "parameters", false, true);
     }
   } else {
 
@@ -366,16 +371,20 @@ void load_custom_source_library()
   // reset errors
   dlerror();
 
-  // get the function from the library
-  using sample_t = Particle::Bank (*)(uint64_t* seed);
-  custom_source_function = reinterpret_cast<sample_t>(dlsym(custom_source_library, "sample_source"));
+  // get the function to create the CustomSource from the library
+  auto create_custom_source = reinterpret_cast<create_custom_source_t*>(
+    dlsym(custom_source_library, "openmc_create_source"));
 
   // check for any dlsym errors
   auto dlsym_error = dlerror();
   if (dlsym_error) {
+    std::string error_msg = fmt::format("Couldn't open the openmc_create_source symbol: {}", dlsym_error);
     dlclose(custom_source_library);
-    fatal_error(fmt::format("Couldn't open the sample_source symbol: {}", dlsym_error));
+    fatal_error(error_msg);
   }
+
+  // create a pointer to an instance of the CustomSource
+  custom_source = create_custom_source(custom_source_parameters);
 
 #else
   fatal_error("Custom source libraries have not yet been implemented for "
@@ -385,6 +394,11 @@ void load_custom_source_library()
 
 void close_custom_source_library()
 {
+  if (custom_source.get()) {
+    // Make sure the custom source is destroyed before we close it's libary.
+    custom_source.reset();
+  }
+
 #ifdef HAS_DYNAMIC_LINKING
   dlclose(custom_source_library);
 #else
@@ -395,7 +409,8 @@ void close_custom_source_library()
 
 Particle::Bank sample_custom_source_library(uint64_t* seed)
 {
-  return custom_source_function(seed);
+  // sample from the instance of the CustomSource
+  return custom_source->sample(seed);
 }
 
 void fill_source_bank_custom_source()

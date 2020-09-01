@@ -175,6 +175,9 @@ def _vectfit_xs(energy, ce_xs, mts, rtol=1e-3, atol=1e-5, orders=None,
 
     """
 
+    # import vectfit package: https://github.com/mit-crpg/vectfit
+    import vectfit as vf
+
     ne = energy.size
     nmt = len(mts)
     if ce_xs.shape != (nmt, ne):
@@ -568,6 +571,9 @@ def _windowing(mp_data, rtol=1e-3, atol=1e-5, n_win=None, n_cf=None,
         format.
 
     """
+
+    # import vectfit package: https://github.com/mit-crpg/vectfit
+    import vectfit as vf
 
     # unpack multipole data
     name = mp_data["name"]

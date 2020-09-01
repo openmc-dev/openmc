@@ -1143,7 +1143,8 @@ class WindowedMultipole(EqualityMixin):
         # the 1-based vs. 0-based indexing.  Similarly startw needs to be
         # decreased by 1.  endw does not need to be decreased because
         # range(startw, endw) does not include endw.
-        i_window = int(np.floor((sqrtE - sqrt(self.E_min)) / self.spacing))
+        i_window = min(self.n_windows - 1,
+                       int(np.floor((sqrtE - sqrt(self.E_min)) / self.spacing)))
         startw = self.windows[i_window, 0] - 1
         endw = self.windows[i_window, 1]
 

@@ -41,14 +41,21 @@ IdData::IdData(size_t h_res, size_t v_res)
 
 void
 IdData::set_value(size_t y, size_t x, const Particle& p, int level) {
-  Cell* c = model::cells[p.coord_[level].cell].get();
-  data_(y,x,0) = c->id_;
+  // set cell data
+  if (p.n_coord_ <= level) {
+    data_(y, x, 0) = NOT_FOUND;
+  } else {
+    data_(y, x, 0) = model::cells[p.coord_[level].cell]->id_;
+  }
+
+  // set material data
+  Cell* c = model::cells[p.coord_[p.n_coord_ - 1].cell].get();
   if (p.material_ == MATERIAL_VOID) {
-    data_(y,x,1) = MATERIAL_VOID;
+    data_(y, x, 1) = MATERIAL_VOID;
     return;
-  } else if (c->type_ != Fill::UNIVERSE) {
+  } else if (c->type_ == Fill::MATERIAL) {
     Material* m = model::materials[p.material_].get();
-    data_(y,x,1) = m->id_;
+    data_(y, x, 1) = m->id_;
   }
 }
 
@@ -62,7 +69,7 @@ PropertyData::PropertyData(size_t h_res, size_t v_res)
 
 void
 PropertyData::set_value(size_t y, size_t x, const Particle& p, int level) {
-  Cell* c = model::cells[p.coord_[level].cell].get();
+  Cell* c = model::cells[p.coord_[p.n_coord_ - 1].cell].get();
   data_(y,x,0) = (p.sqrtkT_ * p.sqrtkT_) / K_BOLTZMANN;
   if (c->type_ != Fill::UNIVERSE && p.material_ != MATERIAL_VOID) {
     Material* m = model::materials[p.material_].get();
@@ -80,8 +87,8 @@ void PropertyData::set_overlap(size_t y, size_t x) {
 
 namespace model {
 
-std::unordered_map<int, int> plot_map;
 std::vector<Plot> plots;
+std::unordered_map<int, int> plot_map;
 uint64_t plotter_seed = 1;
 
 } // namespace model
@@ -94,7 +101,8 @@ extern "C"
 int openmc_plot_geometry()
 {
   for (auto pl : model::plots) {
-    write_message(5, "Processing plot {}: {}...", pl.id_, pl.path_plot_);
+    write_message(fmt::format("Processing plot {}: {}...",
+      pl.id_, pl.path_plot_), 5);
 
     if (PlotType::slice == pl.type_) {
       // create 2D image
@@ -113,7 +121,7 @@ void read_plots_xml()
   // Check if plots.xml exists
   std::string filename = settings::path_input + "plots.xml";
   if (!file_exists(filename)) {
-    fatal_error(fmt::format("Plots XML file '{}' does not exist!", filename));
+    fatal_error("Plots XML file '" + filename + "' does not exist!");
   }
 
   write_message("Reading plot XML file...", 5);

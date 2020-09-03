@@ -27,7 +27,7 @@ from .results_list import ResultsList
 from .helpers import (
     DirectReactionRateHelper, ChainFissionHelper, ConstantFissionYieldHelper,
     FissionYieldCutoffHelper, AveragedFissionYieldHelper, EnergyScoreHelper,
-    SourceRateHelper, FluxCollapseHelper, HybridReactionHelper)
+    SourceRateHelper, FluxCollapseHelper)
 
 
 __all__ = ["Operator", "OperatorResult"]
@@ -113,16 +113,20 @@ class Operator(TransportOperator):
         ``fission_yield_mode``. Will be passed directly on to the
         helper. Passing a value of None will use the defaults for
         the associated helper.
-    reaction_rate_mode : {"direct", "flux"}
+    reaction_rate_mode : {"direct", "flux"}, optional
         Indicate how one-group reaction rates should be calculated. The "direct"
         method tallies transmutation reaction rates directly. The "flux" method
         tallies a multigroup flux spectrum and then collapses one-group reaction
-        rates after a transport solve.
+        rates after a transport solve (with an option to tally some reaction
+        rates directly).
 
         .. versionadded:: 0.12.1
-    reaction_rate_opts : iterable of float
-        Energy group boundaries that are to be used for calculating a multigroup
-        flux spectrum when the "flux" based ``reaction_rate_mode`` is being used.
+    reaction_rate_opts : dict, optional
+        Keyword arguments that are passed to the reaction rate helper class.
+        When ``reaction_rate_mode`` is set to "flux", energy group boundaries
+        can be set using the "energies" key. See the
+        :class:`~openmc.deplete.helpers.FluxCollapseHelper` class for all
+        options.
 
         .. versionadded:: 0.12.1
     reduce_chain : bool, optional
@@ -255,7 +259,7 @@ class Operator(TransportOperator):
         if reaction_rate_mode == "direct":
             self._rate_helper = DirectReactionRateHelper(
                 self.reaction_rates.n_nuc, self.reaction_rates.n_react)
-        elif reaction_rate_mode in ("flux", "hybrid"):
+        elif reaction_rate_mode == "flux":
             if reaction_rate_opts is None:
                 reaction_rate_opts = {}
 
@@ -264,15 +268,9 @@ class Operator(TransportOperator):
                 raise ValueError(
                     "Energy group boundaries must be specified in the "
                     "reaction_rate_opts argument when reaction_rate_mode is"
-                    "set to 'flux' or 'hybrid'.")
+                    "set to 'flux'.")
 
-            if reaction_rate_mode == "flux":
-                cls = FluxCollapseHelper
-            else:
-                cls = HybridReactionHelper
-
-
-            self._rate_helper = cls(
+            self._rate_helper = FluxCollapseHelper(
                 self.reaction_rates.n_nuc,
                 self.reaction_rates.n_react,
                 **reaction_rate_opts

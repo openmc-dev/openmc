@@ -230,16 +230,16 @@ class HybridReactionHelper(ReactionRateHelper):
         All nuclides with desired reaction rates.
 
     """
-    def __init__(self, n_nucs, n_reacts, energies, reactions, nuclides=None):
+    def __init__(self, n_nucs, n_reacts, energies, reactions=None, nuclides=None):
         super().__init__(n_nucs, n_reacts)
         self._energies = asarray(energies)
-        self._reactions_direct = list(reactions)
+        self._reactions_direct = list(reactions) if reactions is not None else []
         self._nuclides_direct = list(nuclides) if nuclides is not None else None
 
     @ReactionRateHelper.nuclides.setter
     def nuclides(self, nuclides):
         ReactionRateHelper.nuclides.fset(self, nuclides)
-        if self._nuclides_direct is None:
+        if self._reactions_direct and self._nuclides_direct is None:
             self._rate_tally.nuclides = nuclides
 
     def generate_tallies(self, materials, scores):
@@ -275,12 +275,13 @@ class HybridReactionHelper(ReactionRateHelper):
         self._flux_tally.scores = ['flux']
 
         # Create reaction rate tally
-        self._rate_tally = Tally()
-        self._rate_tally.writable = False
-        self._rate_tally.scores = self._reactions_direct
-        self._rate_tally.filters = [MaterialFilter(materials)]
-        if self._nuclides_direct is not None:
-            self._rate_tally.nuclides = self._nuclides_direct
+        if self._reactions_direct:
+            self._rate_tally = Tally()
+            self._rate_tally.writable = False
+            self._rate_tally.scores = self._reactions_direct
+            self._rate_tally.filters = [MaterialFilter(materials)]
+            if self._nuclides_direct is not None:
+                self._rate_tally.nuclides = self._nuclides_direct
 
     def get_material_rates(self, mat_index, nuc_index, react_index):
         """Return an array of reaction rates for a material
@@ -310,9 +311,10 @@ class HybridReactionHelper(ReactionRateHelper):
         flux = mean_value[mat_index]
 
         # Get direct reaction rates
-        nuclides_direct = self._rate_tally.nuclides
-        shape = (len(nuclides_direct), len(self._reactions_direct))
-        rx_rates = self._rate_tally.mean[mat_index].reshape(shape)
+        if self._reactions_direct:
+            nuclides_direct = self._rate_tally.nuclides
+            shape = (len(nuclides_direct), len(self._reactions_direct))
+            rx_rates = self._rate_tally.mean[mat_index].reshape(shape)
 
         mat = self._materials[mat_index]
 

@@ -40,8 +40,16 @@ def model():
     return model
 
 
-@pytest.mark.parametrize("reaction_rate_mode", ["direct", "flux"])
-def test_activation(run_in_tmpdir, model, reaction_rate_mode):
+ENERGIES = np.logspace(log10(1e-5), log10(2e7), 100)
+
+
+@pytest.mark.parametrize("reaction_rate_mode,reaction_rate_opts", [
+    ("direct", {}),
+    ("flux", {'energies': ENERGIES}),
+    ("flux", {'energies': ENERGIES, 'reactions': ['(n,gamma)']}),
+    ("flux", {'energies': ENERGIES, 'reactions': ['(n,gamma)'], 'nuclides': ['W186']}),
+])
+def test_activation(run_in_tmpdir, model, reaction_rate_mode, reaction_rate_opts):
     # Determine (n.gamma) reaction rate using initial run
     sp = model.run()
     with openmc.StatePoint(sp) as sp:
@@ -56,12 +64,11 @@ def test_activation(run_in_tmpdir, model, reaction_rate_mode):
     chain.export_to_xml('test_chain.xml')
 
     # Create transport operator
-    energies = np.logspace(log10(1e-5), log10(2e7), 100)
     op = openmc.deplete.Operator(
         model.geometry, model.settings, 'test_chain.xml',
         normalization_mode="source-rate",
         reaction_rate_mode=reaction_rate_mode,
-        reaction_rate_opts={'energies': energies},
+        reaction_rate_opts=reaction_rate_opts,
     )
 
     # To determine the source rate necessary to reduce W186 density in half, we

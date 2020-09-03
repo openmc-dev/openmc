@@ -203,7 +203,7 @@ def _vectfit_xs(energy, ce_xs, mts, rtol=1e-3, atol=1e-5, orders=None,
     test_s = np.sqrt(test_energy)
     weight = 1.0/f
 
-    # very small cross sections can lead to huge weights, which will harm the 
+    # very small cross sections can lead to huge weights, which will harm the
     # fitting accuracy
     MIN_CROSS_SECTION = 1e-7
     for i in range(nmt):
@@ -631,7 +631,7 @@ def _windowing(mp_data, rtol=1e-3, atol=1e-5, n_win=None, n_cf=None,
         inbegin = sqrt(E_min) + spacing * iw
         inend = inbegin + spacing
         incenter = (inbegin + inend) / 2.0
-        # extend window energy range for Doppler broadening 
+        # extend window energy range for Doppler broadening
         if iw == 0 or sqrt(alpha)*inbegin < 4.0:
             e_start = inbegin**2
         else:
@@ -1024,7 +1024,7 @@ class WindowedMultipole(EqualityMixin):
             Dictionary of keyword arguments, e.g. {'rtol':0.001, 'log':True},
             passed to :func:`openmc.data.multipole._vectfit_nuclide`
         wmp_options : dict
-            Dictionary of keyword arguments, e.g. {'search': True, 'log': True},
+            Dictionary of keyword arguments, e.g. {'search':True, 'log': True},
             passed to :func:`openmc.data.WindowedMultipole.from_multipole`
 
         Returns

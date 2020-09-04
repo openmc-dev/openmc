@@ -42,7 +42,7 @@ IdData::IdData(size_t h_res, size_t v_res)
 void
 IdData::set_value(size_t y, size_t x, const Particle& p, int level) {
   // set cell data
-  if (p.n_coord_ < level) {
+  if (p.n_coord_ <= level) {
     data_(y, x, 0) = NOT_FOUND;
   } else {
     data_(y, x, 0) = model::cells.at(p.coord_.at(level).cell)->id_;

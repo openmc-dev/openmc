@@ -98,8 +98,8 @@ has a collision. For example, if you received this error at cycle 5, generation
     <trace>5 1 4032</trace>
 
 For large runs it is often advantageous to run only the offending particle by
-using particle restart mode with the ``-s``, ``-particle``, or ``--particle``
-command-line options in conjunction with the particle restart files that are
-created when particles are lost with this error.
+using particle restart mode with the ``-r`` command-line option in conjunction
+with the particle restart files that are created when particles are lost with
+this error.
 
 .. _mailing list: https://groups.google.com/forum/?fromgroups=#!forum/openmc-users

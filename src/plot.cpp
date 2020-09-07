@@ -41,14 +41,21 @@ IdData::IdData(size_t h_res, size_t v_res)
 
 void
 IdData::set_value(size_t y, size_t x, const Particle& p, int level) {
-  Cell* c = model::cells[p.coord_[level].cell].get();
-  data_(y,x,0) = c->id_;
+  // set cell data
+  if (p.n_coord_ <= level) {
+    data_(y, x, 0) = NOT_FOUND;
+  } else {
+    data_(y, x, 0) = model::cells.at(p.coord_.at(level).cell)->id_;
+  }
+
+  // set material data
+  Cell* c = model::cells.at(p.coord_.at(p.n_coord_ - 1).cell).get();
   if (p.material_ == MATERIAL_VOID) {
-    data_(y,x,1) = MATERIAL_VOID;
+    data_(y, x, 1) = MATERIAL_VOID;
     return;
-  } else if (c->type_ != Fill::UNIVERSE) {
-    Material* m = model::materials[p.material_].get();
-    data_(y,x,1) = m->id_;
+  } else if (c->type_ == Fill::MATERIAL) {
+    Material* m = model::materials.at(p.material_).get();
+    data_(y, x, 1) = m->id_;
   }
 }
 
@@ -62,10 +69,10 @@ PropertyData::PropertyData(size_t h_res, size_t v_res)
 
 void
 PropertyData::set_value(size_t y, size_t x, const Particle& p, int level) {
-  Cell* c = model::cells[p.coord_[level].cell].get();
+  Cell* c = model::cells.at(p.coord_.at(p.n_coord_ - 1).cell).get();
   data_(y,x,0) = (p.sqrtkT_ * p.sqrtkT_) / K_BOLTZMANN;
   if (c->type_ != Fill::UNIVERSE && p.material_ != MATERIAL_VOID) {
-    Material* m = model::materials[p.material_].get();
+    Material* m = model::materials.at(p.material_).get();
     data_(y,x,1) = m->density_gpcc_;
   }
 }

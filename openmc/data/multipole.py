@@ -448,23 +448,19 @@ def _vectfit_nuclide(endf_file, njoy_error=5e-4, vf_error=1e-3, vf_pieces=None,
     E_min, E_max = energy[0], energy[-1]
     n_points = energy.size
     total_xs = nuc_ce[1].xs['0K'](energy)
-    if 2 in nuc_ce:
+    try:
         elastic_xs = nuc_ce[2].xs['0K'](energy)
-    else:
+    except:
         elastic_xs = np.zeros_like(total_xs)
-    if 27 in nuc_ce:
+    try:
         absorption_xs = nuc_ce[27].xs['0K'](energy)
-    else:
-        if 101 in nuc_ce:
-            absorption_xs = nuc_ce[101].xs['0K'](energy)
-            if 18 in nuc_ce:
-                absorption_xs += nuc_ce[18].xs['0K'](energy)
-        else:
-            absorption_xs = np.zeros_like(total_xs)
+    except:
+        absorption_xs = np.zeros_like(total_xs)
     fissionable = False
-    if 18 in nuc_ce:
+    try:
         fission_xs = nuc_ce[18].xs['0K'](energy)
         fissionable = True
+    except:pass
 
     # make vectors
     if fissionable:

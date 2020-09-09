@@ -9,6 +9,11 @@ if [[ $DAGMC = 'y' ]]; then
     ./tools/ci/travis-install-dagmc.sh
 fi
 
+# Install vectfit for WMP generation if needed
+if [[ $VECTFIT = 'y' ]]; then
+    ./tools/ci/travis-install-vectfit.sh
+fi
+
 # Upgrade pip, pytest, numpy before doing anything else
 pip install --upgrade pip
 pip install --upgrade pytest

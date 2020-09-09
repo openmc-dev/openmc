@@ -5,6 +5,14 @@ import numpy as np
 import pytest
 import openmc.data
 
+no_vectfit = False
+try:
+    import vectfit as vf
+except:
+    no_vectfit = True
+
+vf_only = pytest.mark.skipif(no_vectfit, reason="vectfit package not installed")
+
 
 @pytest.fixture(scope='module')
 def u235():
@@ -46,3 +54,10 @@ def test_export_to_hdf5(tmpdir, u235):
     filename = str(tmpdir.join('092235.h5'))
     u235.export_to_hdf5(filename)
     assert os.path.exists(filename)
+
+@vf_only
+def test_from_endf():
+    endf_data = os.environ['OPENMC_ENDF_DATA']
+    endf_file = os.path.join(endf_data, 'neutrons', 'n-001_H_001.endf')
+    return openmc.data.WindowedMultipole.from_endf(
+            endf_file, wmp_options={"search": True})

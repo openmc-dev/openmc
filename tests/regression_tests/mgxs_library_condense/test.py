@@ -24,7 +24,15 @@ class MGXSTestHarness(PyAPITestHarness):
         self.mgxs_lib.energy_groups = energy_groups
         self.mgxs_lib.num_delayed_groups = 6
         self.mgxs_lib.legendre_order = 3
-        self.mgxs_lib.domain_type = 'material'
+        self.mgxs_lib.domain_type = 'mesh'
+
+        # Instantiate a tally mesh
+        mesh = openmc.RegularMesh(mesh_id=1)
+        mesh.dimension = [2, 2]
+        mesh.lower_left = [-100., -100.]
+        mesh.width = [100., 100.]
+
+        self.mgxs_lib.domains = [mesh]
         self.mgxs_lib.build_library()
 
         # Add tallies

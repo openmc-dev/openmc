@@ -172,11 +172,9 @@ Surface::reflect(Position r, Direction u, Particle* p) const
   // Determine projection of direction onto normal and squared magnitude of
   // normal.
   Direction n = normal(r);
-  const double projection = n.dot(u);
-  const double magnitude = n.dot(n);
 
   // Reflect direction according to normal.
-  return u -= (2.0 * projection / magnitude) * n;
+  return u.reflect(n);
 }
 
 Direction
@@ -279,7 +277,13 @@ Direction DAGSurface::reflect(Position r, Direction u, Particle* p) const
 {
   Expects(p);
   p->history_.reset_to_last_intersection();
-  p->last_dir_ = Surface::reflect(r, u, p);
+  moab::ErrorCode rval;
+  moab::EntityHandle surf = dagmc_ptr_->entity_by_index(2, dag_index_);
+  double pnt[3] = {r.x, r.y, r.z};
+  double dir[3];
+  rval = dagmc_ptr_->get_angle(surf, pnt, dir, &p->history_);
+  MB_CHK_ERR_CONT(rval);
+  p->last_dir_ = u.reflect(dir);
   return p->last_dir_;
 }
 

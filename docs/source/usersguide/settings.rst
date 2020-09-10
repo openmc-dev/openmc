@@ -182,42 +182,56 @@ Custom Sources
 
 It is often the case that one may wish to simulate a complex source distribution
 that is not possible to represent with the classes described above. For these
-situations, it is possible to define a complex source with an externally defined
-source function that is loaded at runtime. A simple example source is shown
+situations, it is possible to define a complex source class containing an externally
+defined source function that is loaded at runtime. A simple example source is shown
 below.
 
 .. code-block:: c++
 
-   #include "openmc/random_lcg.h"
-   #include "openmc/source.h"
-   #include "openmc/particle.h"
+  #include <memory> // for unique_ptr
 
-   // you must have external C linkage here
-   extern "C" openmc::Particle::Bank sample_source(uint64_t* seed) {
-     openmc::Particle::Bank particle;
-     // weight
-     particle.particle = openmc::Particle::Type::neutron;
-     particle.wgt = 1.0;
-     // position
-     double angle = 2.0 * M_PI * openmc::prn(seed);
-     double radius = 3.0;
-     particle.r.x = radius * std::cos(angle);
-     particle.r.y = radius * std::sin(angle);
-     particle.r.z = 0.0;
-     // angle
-     particle.u = {1.0, 0.0, 0.0};
-     particle.E = 14.08e6;
-     particle.delayed_group = 0;
-     return particle;
+  #include "openmc/random_lcg.h"
+  #include "openmc/source.h"
+  #include "openmc/particle.h"
+
+  class Source : public openmc::CustomSource
+  {
+    openmc::Particle::Bank sample(uint64_t* seed)
+    {
+      openmc::Particle::Bank particle;
+      // weight
+      particle.particle = openmc::Particle::Type::neutron;
+      particle.wgt = 1.0;
+      // position
+      double angle = 2.0 * M_PI * openmc::prn(seed);
+      double radius = 3.0;
+      particle.r.x = radius * std::cos(angle);
+      particle.r.y = radius * std::sin(angle);
+      particle.r.z = 0.0;
+      // angle
+      particle.u = {1.0, 0.0, 0.0};
+      particle.E = 14.08e6;
+      particle.delayed_group = 0;
+      return particle;
+    }
+  };
+
+  extern "C" std::unique_ptr<Source> openmc_create_source(std::string parameters)
+  {
+    return std::make_unique<Source>();
   }
 
 The above source creates monodirectional 14.08 MeV neutrons that are distributed
 in a ring with a 3 cm radius. This routine is not particularly complex, but
 should serve as an example upon which to build more complicated sources.
 
-  .. note:: The function signature must be declared ``extern "C"``.
+  .. note:: The source class must inherit from ``openmc::CustomSource`` and
+            implement a ``sample()`` function.
 
-  .. note:: You should only use the openmc::prn() random number generator
+  .. note:: The ``openmc_create_source()`` function signature must be declared
+            ``extern "C"``.
+
+  .. note:: You should only use the ``openmc::prn()`` random number generator.
 
 In order to build your external source, you will need to link it against the
 OpenMC shared library. This can be done by writing a CMakeLists.txt file:
@@ -234,6 +248,58 @@ After running ``cmake`` and ``make``, you will have a libsource.so (or .dylib)
 file in your build directory. Setting the :attr:`openmc.Source.library`
 attribute to the path of this shared library will indicate that it should be
 used for sampling source particles at runtime.
+
+.. _parameterized_custom_source:
+
+Custom Parameterized Sources
+----------------------------
+
+Some custom sources may have values (parameters) that can be changed between
+runs. This is supported by using the ``openmc_create_source()`` function to
+pass parameters defined in the :attr:`openmc.Source.parameters` attribute to
+the source class when it is created:
+
+.. code-block:: c++
+
+  #include <memory> // for unique_ptr
+
+  #include "openmc/source.h"
+  #include "openmc/particle.h"
+
+  class Source : public openmc::CustomSource {
+  public:
+    Source(double energy) : energy_{energy} { }
+
+    // Samples from an instance of this class.
+    openmc::Particle::Bank sample(uint64_t* seed)
+    {
+      openmc::Particle::Bank particle;
+      // weight
+      particle.particle = openmc::Particle::Type::neutron;
+      particle.wgt = 1.0;
+      // position
+      particle.r.x = 0.0;
+      particle.r.y = 0.0;
+      particle.r.z = 0.0;
+      // angle
+      particle.u = {1.0, 0.0, 0.0};
+      particle.E = this->energy_;
+      particle.delayed_group = 0;
+
+      return particle;
+    }
+
+  private:
+    double energy_;
+  };
+
+  extern "C" std::unique_ptr<Source> openmc_create_source(std::string parameter) {
+    double energy = std::stod(parameter);
+    return std::make_unique<Source>(energy);
+  }
+
+As with the basic custom source functionality, the custom source library
+location must be provided in the :attr:`openmc.Source.library` attribute.
 
 ---------------
 Shannon Entropy

@@ -237,6 +237,16 @@ Nuclide::Nuclide(hid_t group, const std::vector<double>& temperature)
     // section should be determined from a normal reaction cross section, we
     // need to get the index of the reaction.
     if (temps_to_read.size() > 0) {
+      // Make sure inelastic flags are consistent for different temperatures
+      for (int i = 0; i < urr_data_.size() - 1; ++i) {
+        if (urr_data_[i].inelastic_flag_ != urr_data_[i+1].inelastic_flag_) {
+          fatal_error(fmt::format("URR inelastic flag is not consistent for "
+            "multiple temperatures in nuclide {}. This most likely indicates "
+            "a problem in how the data was processed.", name_));
+        }
+      }
+
+
       if (urr_data_[0].inelastic_flag_ > 0) {
         for (int i = 0; i < reactions_.size(); i++) {
           if (reactions_[i]->mt_ == urr_data_[0].inelastic_flag_) {

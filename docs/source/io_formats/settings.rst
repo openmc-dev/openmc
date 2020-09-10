@@ -462,9 +462,23 @@ attributes/sub-elements:
   :library:
     If this attribute is given, it indicates that the source is to be
     instantiated from an externally compiled source function. This source can be
-    as complex as is required to define the source for your problem. The only
-    requirement is that there is a function called ``sample_source()``. More
-    documentation on how to build sources can be found in :ref:`custom_source`.
+    as complex as is required to define the source for your problem. The library
+    has a few basic requirements:
+
+    * It must contain a class that inherits from ``openmc::CustomSource``;
+    * The class must implement a function called ``sample()``;
+    * There must be an ``openmc_create_source()`` function that creates the source
+      as a unique pointer. This function can be used to pass parameters through to
+      the source from the XML, if needed.
+
+    More documentation on how to build sources can be found in :ref:`custom_source`.
+
+    *Default*: None
+
+  :parameters:
+    If this attribute is given, it provides the parameters to pass through to the
+    class generated using the ``library`` parameter . More documentation on how to
+    build parametrized sources can be found in :ref:`parameterized_custom_source`.
 
     *Default*: None
 

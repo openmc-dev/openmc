@@ -59,6 +59,15 @@ private:
   UPtrDist energy_; //!< Energy distribution
 };
 
+class CustomSource {
+  public:
+    virtual ~CustomSource() {}
+
+    virtual Particle::Bank sample(uint64_t* seed) = 0;
+};
+
+typedef std::unique_ptr<CustomSource> create_custom_source_t(std::string parameters);
+
 //==============================================================================
 // Functions
 //==============================================================================

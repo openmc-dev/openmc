@@ -2015,6 +2015,34 @@ UnstructuredMesh::add_score(std::string score) const {
   auto score_tags = this->get_score_tags(score);
 }
 
+void UnstructuredMesh::remove_score(std::string score) const {
+  auto value_name = score + "_mean";
+  moab::Tag tag;
+  moab::ErrorCode rval = mbi_->tag_get_handle(value_name.c_str(), tag);
+  if (rval != moab::MB_SUCCESS) return;
+
+  rval = mbi_->tag_delete(tag);
+  if (rval != moab::MB_SUCCESS) {
+    auto msg = fmt::format("Failed to delete mesh tag for the score {}"
+                           " on unstructured mesh {}", score, id_);
+    fatal_error(msg);
+  }
+
+  auto std_dev_name = score + "_std_dev";
+  rval = mbi_->tag_get_handle(std_dev_name.c_str(), tag);
+  if (rval != moab::MB_SUCCESS) {
+    auto msg = fmt::format("Std. Dev. mesh tag does not exist for the score {}"
+                           " on unstructured mesh {}", score, id_);
+  }
+
+  rval = mbi_->tag_delete(tag);
+  if (rval != moab::MB_SUCCESS) {
+    auto msg = fmt::format("Failed to delete mesh tag for the score {}"
+                           " on unstructured mesh {}", score, id_);
+    fatal_error(msg);
+  }
+}
+
 void
 UnstructuredMesh::set_score_data(const std::string& score,
                                  std::vector<double> values,

@@ -16,7 +16,7 @@ import openmc.checkvalue as cv
 from openmc.mixin import EqualityMixin
 from openmc.stats import Discrete, Tabular
 from . import HDF5_VERSION, HDF5_VERSION_MAJOR, endf
-from .data import K_BOLTZMANN, ATOMIC_SYMBOL, EV_PER_MEV, NATURAL_ABUNDANCE
+from .data import K_BOLTZMANN, ATOMIC_SYMBOL, EV_PER_MEV, isotopes
 from .ace import Table, get_table, Library
 from .angle_energy import AngleEnergy
 from .function import Tabulated1D, Function1D
@@ -29,14 +29,14 @@ from .thermal_angle_energy import (CoherentElasticAE, IncoherentElasticAE,
 
 _THERMAL_NAMES = {
     'c_Al27': ('al', 'al27', 'al-27'),
-    'c_Al_in_Sapphire': ('asap00',),
+    'c_Al_in_Sapphire': ('asap00', 'asap'),
     'c_Be': ('be', 'be-metal', 'be-met', 'be00'),
     'c_BeO': ('beo',),
     'c_Be_in_BeO': ('bebeo', 'be-beo', 'be-o', 'be/o', 'bbeo00'),
     'c_Be_in_Be2C': ('bebe2c',),
     'c_C6H6': ('benz', 'c6h6'),
     'c_C_in_SiC': ('csic', 'c-sic'),
-    'c_Ca_in_CaH2': ('cah', 'cah00'),
+    'c_Ca_in_CaH2': ('cah', 'cah00', 'cacah2'),
     'c_D_in_D2O': ('dd2o', 'd-d2o', 'hwtr', 'hw', 'dhw00'),
     'c_D_in_D2O_ice': ('dice',),
     'c_Fe56': ('fe', 'fe56', 'fe-56'),
@@ -51,20 +51,20 @@ _THERMAL_NAMES = {
     'c_H_in_H2O': ('hh2o', 'h-h2o', 'lwtr', 'lw', 'lw00'),
     'c_H_in_H2O_solid': ('hice', 'h-ice', 'ice00'),
     'c_H_in_C5O2H8': ('lucite', 'c5o2h8', 'h-luci'),
-    'c_H_in_Mesitylene': ('mesi00',),
-    'c_H_in_Toluene': ('tol00',),
+    'c_H_in_Mesitylene': ('mesi00', 'mesi'),
+    'c_H_in_Toluene': ('tol00', 'tol'),
     'c_H_in_YH2': ('hyh2', 'h-yh2'),
     'c_H_in_ZrH': ('hzrh', 'h-zrh', 'h-zr', 'h/zr', 'hzr', 'hzr00'),
     'c_Mg24': ('mg', 'mg24', 'mg00'),
-    'c_O_in_Sapphire': ('osap00',),
+    'c_O_in_Sapphire': ('osap00', 'osap'),
     'c_O_in_BeO': ('obeo', 'o-beo', 'o-be', 'o/be', 'obeo00'),
     'c_O_in_D2O': ('od2o', 'o-d2o', 'ohw00'),
     'c_O_in_H2O_ice': ('oice', 'o-ice'),
     'c_O_in_UO2': ('ouo2', 'o-uo2', 'o2-u', 'o2/u', 'ouo200'),
     'c_N_in_UN': ('n-un',),
-    'c_ortho_D': ('orthod', 'orthoD', 'dortho', 'od200'),
-    'c_ortho_H': ('orthoh', 'orthoH', 'hortho', 'oh200'),
-    'c_Si28': ('si00',),
+    'c_ortho_D': ('orthod', 'orthoD', 'dortho', 'od200', 'ortod'),
+    'c_ortho_H': ('orthoh', 'orthoH', 'hortho', 'oh200', 'ortoh'),
+    'c_Si28': ('si00', 'sili'),
     'c_Si_in_SiC': ('sisic', 'si-sic'),
     'c_SiO2_alpha': ('sio2', 'sio2a'),
     'c_SiO2_beta': ('sio2b',),
@@ -722,10 +722,9 @@ class ThermalScattering(EqualityMixin):
                 else:
                     if element + '0' not in table.nuclides:
                         table.nuclides.append(element + '0')
-                    for isotope in sorted(NATURAL_ABUNDANCE):
-                        if re.match(r'{}\d+'.format(element), isotope):
-                            if isotope not in table.nuclides:
-                                table.nuclides.append(isotope)
+                    for isotope, _ in isotopes(element):
+                        if isotope not in table.nuclides:
+                            table.nuclides.append(isotope)
 
         return table
 

@@ -22,6 +22,8 @@ class Source:
         Source file from which sites should be sampled
     library : str
         Path to a custom source library
+    parameters : str
+        Parameters to be provided to the custom source library
 
         .. versionadded:: 0.12
     strength : float
@@ -41,6 +43,8 @@ class Source:
         Source file from which sites should be sampled
     library : str or None
         Path to a custom source library
+    parameters : str
+        Parameters to be provided to the custom source library
     strength : float
         Strength of the source
     particle : {'neutron', 'photon'}
@@ -49,12 +53,13 @@ class Source:
     """
 
     def __init__(self, space=None, angle=None, energy=None, filename=None,
-                 library=None, strength=1.0, particle='neutron'):
+                 library=None, parameters=None, strength=1.0, particle='neutron'):
         self._space = None
         self._angle = None
         self._energy = None
         self._file = None
         self._library = None
+        self._parameters = None
 
         if space is not None:
             self.space = space
@@ -66,6 +71,8 @@ class Source:
             self.file = filename
         if library is not None:
             self.library = library
+        if parameters is not None:
+            self.parameters = parameters
         self.strength = strength
         self.particle = particle
 
@@ -76,6 +83,10 @@ class Source:
     @property
     def library(self):
         return self._library
+
+    @property
+    def parameters(self):
+        return self._parameters
 
     @property
     def space(self):
@@ -106,6 +117,11 @@ class Source:
     def library(self, library_name):
         cv.check_type('library', library_name, str)
         self._library = library_name
+
+    @parameters.setter
+    def parameters(self, parameters_path):
+        cv.check_type('parameters', parameters_path, str)
+        self._parameters = parameters_path
 
     @space.setter
     def space(self, space):
@@ -150,6 +166,8 @@ class Source:
             element.set("file", self.file)
         if self.library is not None:
             element.set("library", self.library)
+        if self.parameters is not None:
+            element.set("parameters", self.parameters)
         if self.space is not None:
             element.append(self.space.to_xml_element())
         if self.angle is not None:
@@ -190,6 +208,10 @@ class Source:
         library = get_text(elem, 'library')
         if library is not None:
             source.library = library
+
+        parameters = get_text(elem, 'parameters')
+        if parameters is not None:
+            source.parameters = parameters
 
         space = elem.find('space')
         if space is not None:

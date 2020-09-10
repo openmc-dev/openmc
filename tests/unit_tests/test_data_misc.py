@@ -84,6 +84,7 @@ def test_atomic_mass():
 
 def test_atomic_weight():
     assert openmc.data.atomic_weight('C') == 12.011115164864455
+    assert openmc.data.atomic_weight('carbon') == 12.011115164864455
     with pytest.raises(ValueError):
         openmc.data.atomic_weight('Qt')
 
@@ -104,6 +105,17 @@ def test_gnd_name():
     assert openmc.data.gnd_name(95, 242, 0) == ('Am242')
     assert openmc.data.gnd_name(95, 242, 1) == ('Am242_m1')
     assert openmc.data.gnd_name(95, 242, 10) == ('Am242_m10')
+
+
+def test_isotopes():
+    hydrogen_isotopes = [('H1', 0.99984426), ('H2', 0.00015574)]
+    assert openmc.data.isotopes('H') == hydrogen_isotopes
+    assert openmc.data.isotopes('hydrogen') == hydrogen_isotopes
+    assert openmc.data.isotopes('Al') == [('Al27', 1.0)]
+    assert openmc.data.isotopes('Aluminum') == [('Al27', 1.0)]
+    assert openmc.data.isotopes('aluminium') == [('Al27', 1.0)]
+    with pytest.raises(ValueError):
+        openmc.data.isotopes('Чорнобиль')
 
 
 def test_zam():

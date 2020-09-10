@@ -412,7 +412,7 @@ class Library:
             if self.correction == 'P0' and legendre_order > 0:
                 msg = 'The P0 correction will be ignored since the ' \
                       'scattering order {} is greater than '\
-                      'zero'.format(self.legendre_order)
+                      'zero'.format(legendre_order)
                 warn(msg, RuntimeWarning)
                 self.correction = None
         elif self.scatter_format == 'histogram':
@@ -1090,7 +1090,7 @@ class Library:
                                                subdomain=subdomain)
 
         if 'beta' in self.mgxs_types:
-            mymgxs = self.get_mgxs(domain, 'nu-fission')
+            mymgxs = self.get_mgxs(domain, 'beta')
             xsdata.set_beta_mgxs(mymgxs, xs_type=xs_type, nuclide=[nuclide],
                                  subdomain=subdomain)
 
@@ -1402,11 +1402,15 @@ class Library:
                 if self.domain_type == 'material':
                     # Fill all appropriate Cells with new Material
                     for cell in all_cells:
-                        if cell.fill.id == domain.id:
+                        if isinstance(cell.fill, openmc.Material) and cell.fill.id == domain.id:
                             cell.fill = material
 
                 elif self.domain_type == 'cell':
                     for cell in all_cells:
+                        if not isinstance(cell.fill, openmc.Material):
+                            warn('If the library domain includes a lattice or universe cell '
+                            'in conjunction with a consituent cell of that lattice/universe, '
+                            'the multi-group simulation will fail') 
                         if cell.id == domain.id:
                             cell.fill = material
 

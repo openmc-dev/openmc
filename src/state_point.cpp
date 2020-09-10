@@ -687,6 +687,8 @@ void read_source_bank(hid_t group_id)
 void write_unstructured_mesh_results() {
 
   for (auto& tally : model::tallies) {
+
+    std::vector<std::string> tally_scores;
     for (auto filter_idx : tally->filters()) {
       auto& filter = model::tally_filters[filter_idx];
       if (filter->type() != "mesh") continue;
@@ -741,6 +743,7 @@ void write_unstructured_mesh_results() {
 
           std::string score_name = tally->score_name(i_score);
           auto score_str = fmt::format("{}_{}", score_name, nuclide_name);
+          tally_scores.push_back(score_str);
           umesh->set_score_data(score_str, mean_vec, std_dev_vec);
         }
       }
@@ -754,6 +757,8 @@ void write_unstructured_mesh_results() {
                                          w);
       // Write the unstructured mesh and data to file
       umesh->write(filename);
+
+      for (const auto& score : tally_scores) { umesh->remove_score(score); }
     }
   }
 }

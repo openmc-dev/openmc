@@ -17,8 +17,11 @@ class MGXSTestHarness(PyAPITestHarness):
         # Initialize MGXS Library for a few cross section types
         self.mgxs_lib = openmc.mgxs.Library(self._model.geometry)
         self.mgxs_lib.by_nuclide = True
-        # Test all MGXS types
-        self.mgxs_lib.mgxs_types = openmc.mgxs.MGXS_TYPES
+
+        # Test relevant all MGXS types
+        relevant_MGXS_TYPES = [item for item in openmc.mgxs.MGXS_TYPES
+                               if item != 'current']
+        self.mgxs_lib.mgxs_types = tuple(relevant_MGXS_TYPES)
         self.mgxs_lib.energy_groups = energy_groups
         self.mgxs_lib.legendre_order = 3
         self.mgxs_lib.domain_type = 'material'

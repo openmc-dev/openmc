@@ -184,7 +184,7 @@ T PlotBase::get_map() const {
         // local variables
         bool found_cell = find_cell(p, 0);
         j = p.n_coord_ - 1;
-        if (level >=0) {j = level + 1;}
+        if (level >= 0) { j = level; }
         if (found_cell) {
           data.set_value(y, x, p, j);
         }

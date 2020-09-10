@@ -12,9 +12,7 @@ project started under the Computational Reactor Physics Group at MIT.
 Complete documentation on the usage of OpenMC is hosted on Read the Docs (both
 for the [latest release](http://openmc.readthedocs.io/en/stable/) and
 [developmental](http://openmc.readthedocs.io/en/latest/) version). If you are
-interested in the project or would like to help and contribute, please send a
-message to the OpenMC User's Group [mailing
-list](https://groups.google.com/forum/?fromgroups=#!forum/openmc-users).
+interested in the project, or would like to help and contribute, please get in touch on the OpenMC [discussion forum](https://openmc.discourse.group/).
 
 ## Installation
 
@@ -35,11 +33,9 @@ citing the following publication:
 ## Troubleshooting
 
 If you run into problems compiling, installing, or running OpenMC, first check
-the [Troubleshooting
-section](http://openmc.readthedocs.io/en/stable/usersguide/troubleshoot.html) in
+the [Troubleshooting section](http://openmc.readthedocs.io/en/stable/usersguide/troubleshoot.html) in
 the User's Guide. If you are not able to find a solution to your problem there,
-please send a message to the User's Group [mailing
-list](https://groups.google.com/forum/?fromgroups=#!forum/openmc-users).
+please post to the [discussion forum](https://openmc.discourse.group/).
 
 ## Reporting Bugs
 

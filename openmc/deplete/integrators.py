@@ -1,7 +1,7 @@
 import copy
 from itertools import repeat
 
-from .abc import Integrator, SIIntegrator, OperatorResult
+from .abc import Integrator, SIIntegrator, OperatorResult, add_params
 from ._matrix_funcs import (
     cf4_f1, cf4_f2, cf4_f3, cf4_f4, celi_f1, celi_f2,
     leqi_f1, leqi_f2, leqi_f3, leqi_f4, rk4_f1, rk4_f4
@@ -13,6 +13,7 @@ __all__ = [
     "SICELIIntegrator", "SILEQIIntegrator"]
 
 
+@add_params
 class PredictorIntegrator(Integrator):
     r"""Deplete using a first-order predictor algorithm.
 
@@ -25,78 +26,10 @@ class PredictorIntegrator(Integrator):
         A_p &= A(y_n, t_n) \\
         y_{n+1} &= \text{expm}(A_p h) y_n
         \end{aligned}
-
-    Parameters
-    ----------
-    operator : openmc.deplete.TransportOperator
-        Operator to perform transport simulations
-    timesteps : iterable of float or iterable of tuple
-        Array of timesteps. Note that values are not cumulative. The units are
-        specified by the `timestep_units` argument when `timesteps` is an
-        iterable of float. Alternatively, units can be specified for each step
-        by passing an iterable of (value, unit) tuples.
-    power : float or iterable of float, optional
-        Power of the reactor in [W]. A single value indicates that
-        the power is constant over all timesteps. An iterable
-        indicates potentially different power levels for each timestep.
-        For a 2D problem, the power can be given in [W/cm] as long
-        as the "volume" assigned to a depletion material is actually
-        an area in [cm^2]. Either ``power`` or ``power_density`` must be
-        specified.
-    power_density : float or iterable of float, optional
-        Power density of the reactor in [W/gHM]. It is multiplied by
-        initial heavy metal inventory to get total power if ``power``
-        is not speficied.
-    timestep_units : {'s', 'min', 'h', 'd', 'MWd/kg'}
-        Units for values specified in the `timesteps` argument. 's' means
-        seconds, 'min' means minutes, 'h' means hours, and 'MWd/kg' indicates
-        that the values are given in burnup (MW-d of energy deposited per
-        kilogram of initial heavy metal).
-
-        .. versionadded:: 0.12
-    solver : str or callable, optional
-        If a string, must be the name of the solver responsible for
-        solving the Bateman equations.  Current options are:
-
-            * ``cram16`` - 16th order IPF CRAM
-            * ``cram48`` - 48th order IPF CRAM [default]
-
-        If a function or other callable, must adhere to the requirements in
-        :attr:`solver`.
-
-        .. versionadded:: 0.12
-
-    Attributes
-    ----------
-    operator : openmc.deplete.TransportOperator
-        Operator to perform transport simulations
-    chain : openmc.deplete.Chain
-        Depletion chain
-    timesteps : iterable of float
-        Size of each depletion interval in [s]
-    power : iterable of float
-        Power of the reactor in [W] for each interval in :attr:`timesteps`
-    solver : callable
-        Function that will solve the Bateman equations
-        :math:`\frac{\partial}{\partial t}\vec{n} = A_i\vec{n}_i` with a step
-        size :math:`t_i`. Can be configured using the ``solver`` argument.
-        User-supplied functions are expected to have the following signature:
-        ``solver(A, n0, t) -> n1`` where
-
-            * ``A`` is a :class:`scipy.sparse.csr_matrix` making up the
-              depletion matrix
-            * ``n0`` is a 1-D :class:`numpy.ndarray` of initial compositions
-              for a given material in atoms/cm3
-            * ``t`` is a float of the time step size in seconds, and
-            * ``n1`` is a :class:`numpy.ndarray` of compositions at the
-              next time step. Expected to be of the same shape as ``n0``
-
-        .. versionadded:: 0.12
-
     """
     _num_stages = 1
 
-    def __call__(self, conc, rates, dt, power, _i=None):
+    def __call__(self, conc, rates, dt, source_rate, _i=None):
         """Perform the integration across one time step
 
         Parameters
@@ -107,8 +40,8 @@ class PredictorIntegrator(Integrator):
             Reaction rates from operator
         dt : float
             Time in [s] for the entire depletion interval
-        power : float
-            Power of the system in [W]
+        source_rate : float
+            Power in [W] or source rate in [neutron/sec]
         _i : int or None
             Iteration index. Not used
 
@@ -127,6 +60,7 @@ class PredictorIntegrator(Integrator):
         return proc_time, [conc_end], []
 
 
+@add_params
 class CECMIntegrator(Integrator):
     r"""Deplete using the CE/CM algorithm.
 
@@ -144,78 +78,10 @@ class CECMIntegrator(Integrator):
         A_c &= A(y_m, t_n + h/2) \\
         y_{n+1} &= \text{expm}(A_c h) y_n
         \end{aligned}
-
-    Parameters
-    ----------
-    operator : openmc.deplete.TransportOperator
-        Operator to perform transport simulations
-    timesteps : iterable of float or iterable of tuple
-        Array of timesteps. Note that values are not cumulative. The units are
-        specified by the `timestep_units` argument when `timesteps` is an
-        iterable of float. Alternatively, units can be specified for each step
-        by passing an iterable of (value, unit) tuples.
-    power : float or iterable of float, optional
-        Power of the reactor in [W]. A single value indicates that
-        the power is constant over all timesteps. An iterable
-        indicates potentially different power levels for each timestep.
-        For a 2D problem, the power can be given in [W/cm] as long
-        as the "volume" assigned to a depletion material is actually
-        an area in [cm^2]. Either ``power`` or ``power_density`` must be
-        specified.
-    power_density : float or iterable of float, optional
-        Power density of the reactor in [W/gHM]. It is multiplied by
-        initial heavy metal inventory to get total power if ``power``
-        is not speficied.
-    timestep_units : {'s', 'min', 'h', 'd', 'MWd/kg'}
-        Units for values specified in the `timesteps` argument. 's' means
-        seconds, 'min' means minutes, 'h' means hours, and 'MWd/kg' indicates
-        that the values are given in burnup (MW-d of energy deposited per
-        kilogram of initial heavy metal).
-
-        .. versionadded:: 0.12
-    solver : str or callable, optional
-        If a string, must be the name of the solver responsible for
-        solving the Bateman equations.  Current options are:
-
-            * ``cram16`` - 16th order IPF CRAM
-            * ``cram48`` - 48th order IPF CRAM [default]
-
-        If a function or other callable, must adhere to the requirements in
-        :attr:`solver`.
-
-        .. versionadded:: 0.12
-
-    Attributes
-    ----------
-    operator : openmc.deplete.TransportOperator
-        Operator to perform transport simulations
-    chain : openmc.deplete.Chain
-        Depletion chain
-    timesteps : iterable of float
-        Size of each depletion interval in [s]
-    power : iterable of float
-        Power of the reactor in [W] for each interval in :attr:`timesteps`
-    solver : callable
-        Function that will solve the Bateman equations
-        :math:`\frac{\partial}{\partial t}\vec{n} = A_i\vec{n}_i` with a step
-        size :math:`t_i`. Can be configured using the ``solver`` argument.
-        User-supplied functions are expected to have the following signature:
-        ``solver(A, n0, t) -> n1`` where
-
-            * ``A`` is a :class:`scipy.sparse.csr_matrix` making up the
-              depletion matrix
-            * ``n0`` is a 1-D :class:`numpy.ndarray` of initial compositions
-              for a given material in atoms/cm3
-            * ``t`` is a float of the time step size in seconds, and
-            * ``n1`` is a :class:`numpy.ndarray` of compositions at the
-              next time step. Expected to be of the same shape as ``n0``
-
-        .. versionadded:: 0.12
-
     """
     _num_stages = 2
 
-    def __call__(self, conc, rates, dt, power, _i=None):
+    def __call__(self, conc, rates, dt, source_rate, _i=None):
         """Integrate using CE/CM
 
         Parameters
@@ -226,8 +92,8 @@ class CECMIntegrator(Integrator):
             Reaction rates from operator
         dt : float
             Time in [s] for the entire depletion interval
-        power : float
-            Power of the system [W]
+        source_rate : float
+            Power in [W] or source rate in [neutron/sec]
         _i : int, optional
             Current iteration count. Not used
 
@@ -243,7 +109,7 @@ class CECMIntegrator(Integrator):
         """
         # deplete across first half of inteval
         time0, x_middle = self._timed_deplete(conc, rates, dt / 2)
-        res_middle = self.operator(x_middle, power)
+        res_middle = self.operator(x_middle, source_rate)
 
         # deplete across entire interval with BOS concentrations,
         # MOS reaction rates
@@ -252,6 +118,7 @@ class CECMIntegrator(Integrator):
         return time0 + time1, [x_middle, x_end], [res_middle]
 
 
+@add_params
 class CF4Integrator(Integrator):
     r"""Deplete using the CF4 algorithm.
 
@@ -271,78 +138,10 @@ class CF4Integrator(Integrator):
         y_4 &= \text{expm}( 1/4  F_1 + 1/6 F_2 + 1/6 F_3 - 1/12 F_4)
                \text{expm}(-1/12 F_1 + 1/6 F_2 + 1/6 F_3 + 1/4  F_4) y_0
         \end{aligned}
-
-    Parameters
-    ----------
-    operator : openmc.deplete.TransportOperator
-        Operator to perform transport simulations
-    timesteps : iterable of float or iterable of tuple
-        Array of timesteps. Note that values are not cumulative. The units are
-        specified by the `timestep_units` argument when `timesteps` is an
-        iterable of float. Alternatively, units can be specified for each step
-        by passing an iterable of (value, unit) tuples.
-    power : float or iterable of float, optional
-        Power of the reactor in [W]. A single value indicates that
-        the power is constant over all timesteps. An iterable
-        indicates potentially different power levels for each timestep.
-        For a 2D problem, the power can be given in [W/cm] as long
-        as the "volume" assigned to a depletion material is actually
-        an area in [cm^2]. Either ``power`` or ``power_density`` must be
-        specified.
-    power_density : float or iterable of float, optional
-        Power density of the reactor in [W/gHM]. It is multiplied by
-        initial heavy metal inventory to get total power if ``power``
-        is not speficied.
-    timestep_units : {'s', 'min', 'h', 'd', 'MWd/kg'}
-        Units for values specified in the `timesteps` argument. 's' means
-        seconds, 'min' means minutes, 'h' means hours, and 'MWd/kg' indicates
-        that the values are given in burnup (MW-d of energy deposited per
-        kilogram of initial heavy metal).
-
-        .. versionadded:: 0.12
-    solver : str or callable, optional
-        If a string, must be the name of the solver responsible for
-        solving the Bateman equations.  Current options are:
-
-            * ``cram16`` - 16th order IPF CRAM
-            * ``cram48`` - 48th order IPF CRAM [default]
-
-        If a function or other callable, must adhere to the requirements in
-        :attr:`solver`.
-
-        .. versionadded:: 0.12
-
-    Attributes
-    ----------
-    operator : openmc.deplete.TransportOperator
-        Operator to perform transport simulations
-    chain : openmc.deplete.Chain
-        Depletion chain
-    timesteps : iterable of float
-        Size of each depletion interval in [s]
-    power : iterable of float
-        Power of the reactor in [W] for each interval in :attr:`timesteps`
-    solver : callable
-        Function that will solve the Bateman equations
-        :math:`\frac{\partial}{\partial t}\vec{n} = A_i\vec{n}_i` with a step
-        size :math:`t_i`. Can be configured using the ``solver`` argument.
-        User-supplied functions are expected to have the following signature:
-        ``solver(A, n0, t) -> n1`` where
-
-            * ``A`` is a :class:`scipy.sparse.csr_matrix` making up the
-              depletion matrix
-            * ``n0`` is a 1-D :class:`numpy.ndarray` of initial compositions
-              for a given material in atoms/cm3
-            * ``t`` is a float of the time step size in seconds, and
-            * ``n1`` is a :class:`numpy.ndarray` of compositions at the
-              next time step. Expected to be of the same shape as ``n0``
-
-        .. versionadded:: 0.12
-
     """
     _num_stages = 4
 
-    def __call__(self, bos_conc, bos_rates, dt, power, _i=None):
+    def __call__(self, bos_conc, bos_rates, dt, source_rate, _i=None):
         """Perform the integration across one time step
 
         Parameters
@@ -353,8 +152,8 @@ class CF4Integrator(Integrator):
             Reaction rates from operator
         dt : float
             Time in [s] for the entire depletion interval
-        power : float
-            Power of the system in [W]
+        source_rate : float
+            Power in [W] or source rate in [neutron/sec]
         _i : int, optional
             Current depletion step index. Not used
 
@@ -372,18 +171,18 @@ class CF4Integrator(Integrator):
         # Step 1: deplete with matrix 1/2*A(y0)
         time1, conc_eos1 = self._timed_deplete(
             bos_conc, bos_rates, dt, matrix_func=cf4_f1)
-        res1 = self.operator(conc_eos1, power)
+        res1 = self.operator(conc_eos1, source_rate)
 
         # Step 2: deplete with matrix 1/2*A(y1)
         time2, conc_eos2 = self._timed_deplete(
             bos_conc, res1.rates, dt, matrix_func=cf4_f1)
-        res2 = self.operator(conc_eos2, power)
+        res2 = self.operator(conc_eos2, source_rate)
 
         # Step 3: deplete with matrix -1/2*A(y0)+A(y2)
         list_rates = list(zip(bos_rates, res2.rates))
         time3, conc_eos3 = self._timed_deplete(
             conc_eos1, list_rates, dt, matrix_func=cf4_f2)
-        res3 = self.operator(conc_eos3, power)
+        res3 = self.operator(conc_eos3, source_rate)
 
         # Step 4: deplete with two matrix exponentials
         list_rates = list(zip(bos_rates, res1.rates, res2.rates, res3.rates))
@@ -397,6 +196,7 @@ class CF4Integrator(Integrator):
                 [res1, res2, res3])
 
 
+@add_params
 class CELIIntegrator(Integrator):
     r"""Deplete using the CE/LI CFQ4 algorithm.
 
@@ -415,78 +215,10 @@ class CELIIntegrator(Integrator):
         y_{n+1} &= \text{expm}(\frac{h}{12} A_0 + \frac{5h}{12} A1)
                    \text{expm}(\frac{5h}{12} A_0 + \frac{h}{12} A1) y_n
         \end{aligned}
-
-    Parameters
-    ----------
-    operator : openmc.deplete.TransportOperator
-        Operator to perform transport simulations
-    timesteps : iterable of float or iterable of tuple
-        Array of timesteps. Note that values are not cumulative. The units are
-        specified by the `timestep_units` argument when `timesteps` is an
-        iterable of float. Alternatively, units can be specified for each step
-        by passing an iterable of (value, unit) tuples.
-    power : float or iterable of float, optional
-        Power of the reactor in [W]. A single value indicates that
-        the power is constant over all timesteps. An iterable
-        indicates potentially different power levels for each timestep.
-        For a 2D problem, the power can be given in [W/cm] as long
-        as the "volume" assigned to a depletion material is actually
-        an area in [cm^2]. Either ``power`` or ``power_density`` must be
-        specified.
-    power_density : float or iterable of float, optional
-        Power density of the reactor in [W/gHM]. It is multiplied by
-        initial heavy metal inventory to get total power if ``power``
-        is not speficied.
-    timestep_units : {'s', 'min', 'h', 'd', 'MWd/kg'}
-        Units for values specified in the `timesteps` argument. 's' means
-        seconds, 'min' means minutes, 'h' means hours, and 'MWd/kg' indicates
-        that the values are given in burnup (MW-d of energy deposited per
-        kilogram of initial heavy metal).
-
-        .. versionadded:: 0.12
-    solver : str or callable, optional
-        If a string, must be the name of the solver responsible for
-        solving the Bateman equations.  Current options are:
-
-            * ``cram16`` - 16th order IPF CRAM
-            * ``cram48`` - 48th order IPF CRAM [default]
-
-        If a function or other callable, must adhere to the requirements in
-        :attr:`solver`.
-
-        .. versionadded:: 0.12
-
-    Attributes
-    ----------
-    operator : openmc.deplete.TransportOperator
-        Operator to perform transport simulations
-    chain : openmc.deplete.Chain
-        Depletion chain
-    timesteps : iterable of float
-        Size of each depletion interval in [s]
-    power : iterable of float
-        Power of the reactor in [W] for each interval in :attr:`timesteps`
-    solver : callable
-        Function that will solve the Bateman equations
-        :math:`\frac{\partial}{\partial t}\vec{n} = A_i\vec{n}_i` with a step
-        size :math:`t_i`. Can be configured using the ``solver`` argument.
-        User-supplied functions are expected to have the following signature:
-        ``solver(A, n0, t) -> n1`` where
-
-            * ``A`` is a :class:`scipy.sparse.csr_matrix` making up the
-              depletion matrix
-            * ``n0`` is a 1-D :class:`numpy.ndarray` of initial compositions
-              for a given material in atoms/cm3
-            * ``t`` is a float of the time step size in seconds, and
-            * ``n1`` is a :class:`numpy.ndarray` of compositions at the
-              next time step. Expected to be of the same shape as ``n0``
-
-        .. versionadded:: 0.12
-
     """
     _num_stages = 2
 
-    def __call__(self, bos_conc, rates, dt, power, _i=None):
+    def __call__(self, bos_conc, rates, dt, source_rate, _i=None):
         """Perform the integration across one time step
 
         Parameters
@@ -497,8 +229,8 @@ class CELIIntegrator(Integrator):
             Reaction rates from operator
         dt : float
             Time in [s] for the entire depletion interval
-        power : float
-            Power of the system in [W]
+        source_rate : float
+            Power in [W] or source rate in [neutron/sec]
         _i : int, optional
             Current iteration count. Not used
 
@@ -515,7 +247,7 @@ class CELIIntegrator(Integrator):
         """
         # deplete to end using BOS rates
         proc_time, conc_ce = self._timed_deplete(bos_conc, rates, dt)
-        res_ce = self.operator(conc_ce, power)
+        res_ce = self.operator(conc_ce, source_rate)
 
         # deplete using two matrix exponentials
         list_rates = list(zip(rates, res_ce.rates))
@@ -529,6 +261,7 @@ class CELIIntegrator(Integrator):
         return proc_time + time_le1 + time_le1, [conc_ce, conc_end], [res_ce]
 
 
+@add_params
 class EPCRK4Integrator(Integrator):
     r"""Deplete using the EPC-RK4 algorithm.
 
@@ -546,73 +279,10 @@ class EPCRK4Integrator(Integrator):
         F_4 &= h A(y_3) \\
         y_4 &= \text{expm}(1/6 F_1 + 1/3 F_2 + 1/3 F_3 + 1/6 F_4) y_0
         \end{aligned}
-
-    Parameters
-    ----------
-    operator : openmc.deplete.TransportOperator
-        Operator to perform transport simulations
-    timesteps : iterable of float or iterable of tuple
-        Array of timesteps. Note that values are not cumulative. The units are
-        specified by the `timestep_units` argument when `timesteps` is an
-        iterable of float. Alternatively, units can be specified for each step
-        by passing an iterable of (value, unit) tuples.
-    power : float or iterable of float, optional
-        Power of the reactor in [W]. A single value indicates that
-        the power is constant over all timesteps. An iterable
-        indicates potentially different power levels for each timestep.
-        For a 2D problem, the power can be given in [W/cm] as long
-        as the "volume" assigned to a depletion material is actually
-        an area in [cm^2]. Either ``power`` or ``power_density`` must be
-        specified.
-    power_density : float or iterable of float, optional
-        Power density of the reactor in [W/gHM]. It is multiplied by
-        initial heavy metal inventory to get total power if ``power``
-        is not speficied.
-    timestep_units : {'s', 'min', 'h', 'd', 'MWd/kg'}
-        Units for values specified in the `timesteps` argument. 's' means
-        seconds, 'min' means minutes, 'h' means hours, and 'MWd/kg' indicates
-        that the values are given in burnup (MW-d of energy deposited per
-        kilogram of initial heavy metal).
-
-        .. versionadded:: 0.12
-    solver : str or callable, optional
-        If a string, must be the name of the solver responsible for
-        solving the Bateman equations.  Current options are:
-
-            * ``cram16`` - 16th order IPF CRAM
-            * ``cram48`` - 48th order IPF CRAM [default]
-
-        If a function or other callable, must adhere to the requirements in
-        :attr:`solver`.
-
-        .. versionadded:: 0.12
-
-    Attributes
-    ----------
-    operator : openmc.deplete.TransportOperator
-        Operator to perform transport simulations
-    chain : openmc.deplete.Chain
-        Depletion chain
-    timesteps : iterable of float
-        Size of each depletion interval in [s]
-    power : iterable of float
-        Power of the reactor in [W] for each interval in :attr:`timesteps`
-    solver : str or callable, optional
-        If a string, must be the name of the solver responsible for
-        solving the Bateman equations.  Current options are:
-
-            * ``cram16`` - 16th order IPF CRAM
-            * ``cram48`` - 48th order IPF CRAM [default]
-
-        If a function or other callable, must adhere to the requirements in
-        :attr:`solver`.
-
-        .. versionadded:: 0.12
-
     """
     _num_stages = 4
 
-    def __call__(self, conc, rates, dt, power, _i=None):
+    def __call__(self, conc, rates, dt, source_rate, _i=None):
         """Perform the integration across one time step
 
         Parameters
@@ -623,8 +293,8 @@ class EPCRK4Integrator(Integrator):
             Reaction rates from operator
         dt : float
             Time in [s] for the entire depletion interval
-        power : float
-            Power of the system in [W]
+        source_rate : float
+            Power in [W] or source rate in [neutron/sec]
         _i : int, optional
             Current depletion step index, unused.
 
@@ -643,16 +313,16 @@ class EPCRK4Integrator(Integrator):
         # Step 1: deplete with matrix A(y0) / 2
         time1, conc1 = self._timed_deplete(
             conc, rates, dt, matrix_func=rk4_f1)
-        res1 = self.operator(conc1, power)
+        res1 = self.operator(conc1, source_rate)
 
         # Step 2: deplete with matrix A(y1) / 2
         time2, conc2 = self._timed_deplete(
             conc, res1.rates, dt, matrix_func=rk4_f1)
-        res2 = self.operator(conc2, power)
+        res2 = self.operator(conc2, source_rate)
 
         # Step 3: deplete with matrix A(y2)
         time3, conc3 = self._timed_deplete(conc, res2.rates, dt)
-        res3 = self.operator(conc3, power)
+        res3 = self.operator(conc3, source_rate)
 
         # Step 4: deplete with matrix built from weighted rates
         list_rates = list(zip(rates, res1.rates, res2.rates, res3.rates))
@@ -663,6 +333,7 @@ class EPCRK4Integrator(Integrator):
                 [res1, res2, res3])
 
 
+@add_params
 class LEQIIntegrator(Integrator):
     r"""Deplete using the LE/QI CFQ4 algorithm.
 
@@ -691,78 +362,10 @@ class LEQIIntegrator(Integrator):
         \end{aligned}
 
     It is initialized using the CE/LI algorithm.
-
-    Parameters
-    ----------
-    operator : openmc.deplete.TransportOperator
-        Operator to perform transport simulations
-    timesteps : iterable of float or iterable of tuple
-        Array of timesteps. Note that values are not cumulative. The units are
-        specified by the `timestep_units` argument when `timesteps` is an
-        iterable of float. Alternatively, units can be specified for each step
-        by passing an iterable of (value, unit) tuples.
-    power : float or iterable of float, optional
-        Power of the reactor in [W]. A single value indicates that
-        the power is constant over all timesteps. An iterable
-        indicates potentially different power levels for each timestep.
-        For a 2D problem, the power can be given in [W/cm] as long
-        as the "volume" assigned to a depletion material is actually
-        an area in [cm^2]. Either ``power`` or ``power_density`` must be
-        specified.
-    power_density : float or iterable of float, optional
-        Power density of the reactor in [W/gHM]. It is multiplied by
-        initial heavy metal inventory to get total power if ``power``
-        is not speficied.
-    timestep_units : {'s', 'min', 'h', 'd', 'MWd/kg'}
-        Units for values specified in the `timesteps` argument. 's' means
-        seconds, 'min' means minutes, 'h' means hours, and 'MWd/kg' indicates
-        that the values are given in burnup (MW-d of energy deposited per
-        kilogram of initial heavy metal).
-
-        .. versionadded:: 0.12
-    solver : str or callable, optional
-        If a string, must be the name of the solver responsible for
-        solving the Bateman equations.  Current options are:
-
-            * ``cram16`` - 16th order IPF CRAM
-            * ``cram48`` - 48th order IPF CRAM [default]
-
-        If a function or other callable, must adhere to the requirements in
-        :attr:`solver`.
-
-        .. versionadded:: 0.12
-
-    Attributes
-    ----------
-    operator : openmc.deplete.TransportOperator
-        Operator to perform transport simulations
-    chain : openmc.deplete.Chain
-        Depletion chain
-    timesteps : iterable of float
-        Size of each depletion interval in [s]
-    power : iterable of float
-        Power of the reactor in [W] for each interval in :attr:`timesteps`
-    solver : callable
-        Function that will solve the Bateman equations
-        :math:`\frac{\partial}{\partial t}\vec{n} = A_i\vec{n}_i` with a step
-        size :math:`t_i`. Can be configured using the ``solver`` argument.
-        User-supplied functions are expected to have the following signature:
-        ``solver(A, n0, t) -> n1`` where
-
-            * ``A`` is a :class:`scipy.sparse.csr_matrix` making up the
-              depletion matrix
-            * ``n0`` is a 1-D :class:`numpy.ndarray` of initial compositions
-              for a given material in atoms/cm3
-            * ``t`` is a float of the time step size in seconds, and
-            * ``n1`` is a :class:`numpy.ndarray` of compositions at the
-              next time step. Expected to be of the same shape as ``n0``
-
-        .. versionadded:: 0.12
-
     """
     _num_stages = 2
 
-    def __call__(self, bos_conc, bos_rates, dt, power, i):
+    def __call__(self, bos_conc, bos_rates, dt, source_rate, i):
         """Perform the integration across one time step
 
         Parameters
@@ -773,8 +376,8 @@ class LEQIIntegrator(Integrator):
             Reaction rates from operator
         dt : float
             Time in [s] for the entire depletion interval
-        power : float
-            Power of the system in [W]
+        source_rate : float
+            Power in [W] or source rate in [neutron/sec]
         i : int
             Current depletion step index
 
@@ -793,7 +396,7 @@ class LEQIIntegrator(Integrator):
             if self._i_res < 1:  # need at least previous transport solution
                 self._prev_rates = bos_rates
                 return CELIIntegrator.__call__(
-                    self, bos_conc, bos_rates, dt, power, i)
+                    self, bos_conc, bos_rates, dt, source_rate, i)
             prev_res = self.operator.prev_res[-2]
             prev_dt = self.timesteps[i] - prev_res.time[0]
             self._prev_rates = prev_res.rates[0]
@@ -801,7 +404,7 @@ class LEQIIntegrator(Integrator):
             prev_dt = self.timesteps[i - 1]
 
         # Remaining LE/QI
-        bos_res = self.operator(bos_conc, power)
+        bos_res = self.operator(bos_conc, source_rate)
 
         le_inputs = list(zip(
             self._prev_rates, bos_res.rates, repeat(prev_dt), repeat(dt)))
@@ -811,7 +414,7 @@ class LEQIIntegrator(Integrator):
         time2, conc_eos0 = self._timed_deplete(
             conc_inter, le_inputs, dt, matrix_func=leqi_f2)
 
-        res_inter = self.operator(conc_eos0, power)
+        res_inter = self.operator(conc_eos0, source_rate)
 
         qi_inputs = list(zip(
             self._prev_rates, bos_res.rates, res_inter.rates,
@@ -830,6 +433,7 @@ class LEQIIntegrator(Integrator):
             [bos_res, res_inter])
 
 
+@add_params
 class SICELIIntegrator(SIIntegrator):
     r"""Deplete using the SI-CE/LI CFQ4 algorithm.
 
@@ -839,83 +443,10 @@ class SICELIIntegrator(SIIntegrator):
 
     Detailed algorithm can be found in section 3.2 in `Colin Josey's thesis
     <http://hdl.handle.net/1721.1/113721>`_.
-
-    Parameters
-    ----------
-    operator : openmc.deplete.TransportOperator
-        The operator object to simulate on.
-    timesteps : iterable of float or iterable of tuple
-        Array of timesteps. Note that values are not cumulative. The units are
-        specified by the `timestep_units` argument when `timesteps` is an
-        iterable of float. Alternatively, units can be specified for each step
-        by passing an iterable of (value, unit) tuples.
-    power : float or iterable of float, optional
-        Power of the reactor in [W]. A single value indicates that
-        the power is constant over all timesteps. An iterable
-        indicates potentially different power levels for each timestep.
-        For a 2D problem, the power can be given in [W/cm] as long
-        as the "volume" assigned to a depletion material is actually
-        an area in [cm^2]. Either ``power`` or ``power_density`` must be
-        specified.
-    power_density : float or iterable of float, optional
-        Power density of the reactor in [W/gHM]. It is multiplied by
-        initial heavy metal inventory to get total power if ``power``
-        is not speficied.
-    timestep_units : {'s', 'min', 'h', 'd', 'MWd/kg'}
-        Units for values specified in the `timesteps` argument. 's' means
-        seconds, 'min' means minutes, 'h' means hours, and 'MWd/kg' indicates
-        that the values are given in burnup (MW-d of energy deposited per
-        kilogram of initial heavy metal).
-
-        .. versionadded:: 0.12
-    n_steps : int, optional
-        Number of stochastic iterations per depletion interval.
-        Must be greater than zero. Default : 10
-    solver : str or callable, optional
-        If a string, must be the name of the solver responsible for
-        solving the Bateman equations.  Current options are:
-
-            * ``cram16`` - 16th order IPF CRAM
-            * ``cram48`` - 48th order IPF CRAM [default]
-
-        If a function or other callable, must adhere to the requirements in
-        :attr:`solver`.
-
-        .. versionadded:: 0.12
-
-    Attributes
-    ----------
-    operator : openmc.deplete.TransportOperator
-        Operator to perform transport simulations
-    chain : openmc.deplete.Chain
-        Depletion chain
-    timesteps : iterable of float
-        Size of each depletion interval in [s]
-    power : iterable of float
-        Power of the reactor in [W] for each interval in :attr:`timesteps`
-    n_steps : int
-        Number of stochastic iterations per depletion interval
-    solver : callable
-        Function that will solve the Bateman equations
-        :math:`\frac{\partial}{\partial t}\vec{n} = A_i\vec{n}_i` with a step
-        size :math:`t_i`. Can be configured using the ``solver`` argument.
-        User-supplied functions are expected to have the following signature:
-        ``solver(A, n0, t) -> n1`` where
-
-            * ``A`` is a :class:`scipy.sparse.csr_matrix` making up the
-              depletion matrix
-            * ``n0`` is a 1-D :class:`numpy.ndarray` of initial compositions
-              for a given material in atoms/cm3
-            * ``t`` is a float of the time step size in seconds, and
-            * ``n1`` is a :class:`numpy.ndarray` of compositions at the
-              next time step. Expected to be of the same shape as ``n0``
-
-        .. versionadded:: 0.12
-
     """
     _num_stages = 2
 
-    def __call__(self, bos_conc, bos_rates, dt, power, _i=None):
+    def __call__(self, bos_conc, bos_rates, dt, source_rate, _i=None):
         """Perform the integration across one time step
 
         Parameters
@@ -926,8 +457,8 @@ class SICELIIntegrator(SIIntegrator):
             Reaction rates from operator
         dt : float
             Time in [s] for the entire depletion interval
-        power : float
-            Power of the system in [W]
+        source_rate : float
+            Power in [W] or source rate in [neutron/sec]
         _i : int, optional
             Current depletion step index. Not used
 
@@ -947,7 +478,7 @@ class SICELIIntegrator(SIIntegrator):
 
         # Begin iteration
         for j in range(self.n_steps + 1):
-            inter_res = self.operator(inter_conc, power)
+            inter_res = self.operator(inter_conc, source_rate)
 
             if j <= 1:
                 res_bar = copy.deepcopy(inter_res)
@@ -967,6 +498,7 @@ class SICELIIntegrator(SIIntegrator):
         return proc_time, [eos_conc, inter_conc], [res_bar]
 
 
+@add_params
 class SILEQIIntegrator(SIIntegrator):
     r"""Deplete using the SI-LE/QI CFQ4 algorithm.
 
@@ -976,84 +508,10 @@ class SILEQIIntegrator(SIIntegrator):
 
     Detailed algorithm can be found in Section 3.2 in `Colin Josey's thesis
     <http://hdl.handle.net/1721.1/113721>`_.
-
-    Parameters
-    ----------
-    operator : openmc.deplete.TransportOperator
-        The operator object to simulate on.
-    timesteps : iterable of float or iterable of tuple
-        Array of timesteps. Note that values are not cumulative. The units are
-        specified by the `timestep_units` argument when `timesteps` is an
-        iterable of float. Alternatively, units can be specified for each step
-        by passing an iterable of (value, unit) tuples.
-    power : float or iterable of float, optional
-        Power of the reactor in [W]. A single value indicates that
-        the power is constant over all timesteps. An iterable
-        indicates potentially different power levels for each timestep.
-        For a 2D problem, the power can be given in [W/cm] as long
-        as the "volume" assigned to a depletion material is actually
-        an area in [cm^2]. Either ``power`` or ``power_density`` must be
-        specified.
-    power_density : float or iterable of float, optional
-        Power density of the reactor in [W/gHM]. It is multiplied by
-        initial heavy metal inventory to get total power if ``power``
-        is not speficied.
-    timestep_units : {'s', 'min', 'h', 'd', 'MWd/kg'}
-        Units for values specified in the `timesteps` argument. 's' means
-        seconds, 'min' means minutes, 'h' means hours, and 'MWd/kg' indicates
-        that the values are given in burnup (MW-d of energy deposited per
-        kilogram of initial heavy metal).
-
-        .. versionadded:: 0.12
-    n_steps : int, optional
-        Number of stochastic iterations per depletion interval.
-        Must be greater than zero. Default : 10
-    solver : str or callable, optional
-        If a string, must be the name of the solver responsible for
-        solving the Bateman equations.  Current options are:
-
-            * ``cram16`` - 16th order IPF CRAM
-            * ``cram48`` - 48th order IPF CRAM [default]
-
-        If a function or other callable, must adhere to the requirements in
-        :attr:`solver`.
-
-        .. versionadded:: 0.12
-
-    Attributes
-    ----------
-    operator : openmc.deplete.TransportOperator
-        Operator to perform transport simulations
-    chain : openmc.deplete.Chain
-        Depletion chain
-    timesteps : iterable of float
-        Size of each depletion interval in [s]
-    power : iterable of float
-        Power of the reactor in [W] for each interval in :attr:`timesteps`
-    n_steps : int
-        Number of stochastic iterations per depletion interval
-    solver : callable
-        Function that will solve the Bateman equations
-        :math:`\frac{\partial}{\partial t}\vec{n} = A_i\vec{n}_i` with a step
-        size :math:`t_i`. Can be configured using the ``solver`` argument.
-        User-supplied functions are expected to have the following signature:
-        ``solver(A, n0, t) -> n1`` where
-
-            * ``A`` is a :class:`scipy.sparse.csr_matrix` making up the
-              depletion matrix
-            * ``n0`` is a 1-D :class:`numpy.ndarray` of initial compositions
-              for a given material in atoms/cm3
-            * ``t`` is a float of the time step size in seconds, and
-            * ``n1`` is a :class:`numpy.ndarray` of compositions at the
-              next time step. Expected to be of the same shape as ``n0``
-
-        .. versionadded:: 0.12
-
-
     """
     _num_stages = 2
 
-    def __call__(self, bos_conc, bos_rates, dt, power, i):
+    def __call__(self, bos_conc, bos_rates, dt, source_rate, i):
         """Perform the integration across one time step
 
         Parameters
@@ -1065,8 +523,8 @@ class SILEQIIntegrator(SIIntegrator):
             Reaction rates from operator for all depletable materials
         dt : float
             Time in [s] for the entire depletion interval
-        power : float
-            Power of the system in [W]
+        source_rate : float
+            Power in [W] or source rate in [neutron/sec]
         i : int
             Current depletion step index
 
@@ -1086,7 +544,7 @@ class SILEQIIntegrator(SIIntegrator):
                 self._prev_rates = bos_rates
                 # Perform CELI for initial steps
                 return SICELIIntegrator.__call__(
-                    self, bos_conc, bos_rates, dt, power, i)
+                    self, bos_conc, bos_rates, dt, source_rate, i)
             prev_res = self.operator.prev_res[-2]
             prev_dt = self.timesteps[i] - prev_res.time[0]
             self._prev_rates = prev_res.rates[0]
@@ -1105,7 +563,7 @@ class SILEQIIntegrator(SIIntegrator):
         inter_conc = copy.deepcopy(eos_conc)
 
         for j in range(self.n_steps + 1):
-            inter_res = self.operator(inter_conc, power)
+            inter_res = self.operator(inter_conc, source_rate)
 
             if j <= 1:
                 res_bar = copy.deepcopy(inter_res)

@@ -130,7 +130,7 @@ def test_bad_integrator_inputs():
     timesteps = [1]
 
     # No power nor power density given
-    with pytest.raises(ValueError, match="Either power or power density"):
+    with pytest.raises(ValueError, match="Either power"):
         PredictorIntegrator(op, timesteps)
 
     # Length of power != length time

@@ -625,10 +625,8 @@ write_source_bank(hid_t group_id, bool surf_src_bank)
     dims_size = qsize[0];
     count_size = simulation::surf_src_bank.size();
 
-    bank_index.clear();
     bank_index = simulation::surf_src_index;
 
-    src_bank.clear();
     src_bank.assign(simulation::surf_src_bank.data(),
                     simulation::surf_src_bank.data()
                     + simulation::surf_src_bank.size());

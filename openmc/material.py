@@ -1081,10 +1081,7 @@ class Material(IDManagerMixin):
 
         # If any of the involved materials is depletable, the new material is 
         # depletable
-        for mat in materials:
-            if mat.depletable:
-                new_mat.depletable = True
-                break
+        new_mat.depletable = any(mat.depletable for mat in materials)
 
         return new_mat
 

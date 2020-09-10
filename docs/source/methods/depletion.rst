@@ -243,5 +243,5 @@ user to choose one of two methods for estimating the heating rate, including:
 2. Using the ``heating`` or ``heating-local`` scores to obtain an nuclide- and
    energy-dependent estimate of the true heating rate.
 
-The method for normalization can be chosen through the ``energy_mode`` argument
-to the :class:`openmc.deplete.Operator` class.
+The method for normalization can be chosen through the ``normalization_mode``
+argument to the :class:`openmc.deplete.Operator` class.

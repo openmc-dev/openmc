@@ -12,7 +12,7 @@ import numpy as np
 from . import comm, MPI
 from .reaction_rates import ReactionRates
 
-VERSION_RESULTS = (1, 0)
+VERSION_RESULTS = (1, 1)
 
 
 __all__ = ["Results"]
@@ -27,8 +27,8 @@ class Results:
         Eigenvalue and uncertainty for each substep.
     time : list of float
         Time at beginning, end of step, in seconds.
-    power : float
-        Power during time step, in Watts
+    source_rate : float
+        Source rate during timestep in [W] or [neutron/sec]
     n_mat : int
         Number of mats.
     n_nuc : int
@@ -57,7 +57,7 @@ class Results:
     def __init__(self):
         self.k = None
         self.time = None
-        self.power = None
+        self.source_rate = None
         self.rates = None
         self.volume = None
         self.proc_time = None
@@ -177,7 +177,7 @@ class Results:
         new.mat_to_ind = {mat: idx for (idx, mat) in enumerate(local_materials)}
 
         # Direct transfer
-        direct_attrs = ("time", "k", "power", "nuc_to_ind",
+        direct_attrs = ("time", "k", "source_rate", "nuc_to_ind",
                         "mat_to_hdf5_ind", "proc_time")
         for attr in direct_attrs:
             setattr(new, attr, getattr(self, attr))
@@ -287,7 +287,7 @@ class Results:
 
         handle.create_dataset("time", (1, 2), maxshape=(None, 2), dtype='float64')
 
-        handle.create_dataset("power", (1, n_stages), maxshape=(None, n_stages),
+        handle.create_dataset("source_rate", (1, n_stages), maxshape=(None, n_stages),
                               dtype='float64')
 
         handle.create_dataset(
@@ -320,7 +320,7 @@ class Results:
         rxn_dset = handle["/reaction rates"]
         eigenvalues_dset = handle["/eigenvalues"]
         time_dset = handle["/time"]
-        power_dset = handle["/power"]
+        source_rate_dset = handle["/source_rate"]
         proc_time_dset = handle["/depletion time"]
 
         # Get number of results stored
@@ -346,9 +346,9 @@ class Results:
             time_shape[0] = new_shape
             time_dset.resize(time_shape)
 
-            power_shape = list(power_dset.shape)
-            power_shape[0] = new_shape
-            power_dset.resize(power_shape)
+            source_rate_shape = list(source_rate_dset.shape)
+            source_rate_shape[0] = new_shape
+            source_rate_dset.resize(source_rate_shape)
 
             proc_shape = list(proc_time_dset.shape)
             proc_shape[0] = new_shape
@@ -371,7 +371,7 @@ class Results:
                 eigenvalues_dset[index, i] = self.k[i]
         if comm.rank == 0:
             time_dset[index] = self.time
-            power_dset[index] = self.power
+            source_rate_dset[index] = self.source_rate
             if self.proc_time is not None:
                 proc_time_dset[index] = (
                     self.proc_time / (comm.size * self.n_hdf5_mats)
@@ -394,12 +394,16 @@ class Results:
         number_dset = handle["/number"]
         eigenvalues_dset = handle["/eigenvalues"]
         time_dset = handle["/time"]
-        power_dset = handle["/power"]
+        if "source_rate" in handle:
+            source_rate_dset = handle["/source_rate"]
+        else:
+            # Older versions used "power" instead of "source_rate"
+            source_rate_dset = handle["/power"]
 
         results.data = number_dset[step, :, :, :]
         results.k = eigenvalues_dset[step, :]
         results.time = time_dset[step, :]
-        results.power = power_dset[step, :]
+        results.source_rate = source_rate_dset[step, :]
 
         if "depletion time" in handle:
             proc_time_dset = handle["/depletion time"]
@@ -444,7 +448,7 @@ class Results:
         return results
 
     @staticmethod
-    def save(op, x, op_results, t, power, step_ind, proc_time=None):
+    def save(op, x, op_results, t, source_rate, step_ind, proc_time=None):
         """Creates and writes depletion results to disk
 
         Parameters
@@ -457,8 +461,8 @@ class Results:
             Results of applying transport operator
         t : list of float
             Time indices.
-        power : float
-            Power during time step
+        source_rate : float
+            Source rate during time step in [W] or [neutron/sec]
         step_ind : int
             Step index.
         proc_time : float or None
@@ -485,7 +489,7 @@ class Results:
         results.k = [(r.k.nominal_value, r.k.std_dev) for r in op_results]
         results.rates = [r.rates for r in op_results]
         results.time = t
-        results.power = power
+        results.source_rate = source_rate
         results.proc_time = proc_time
         if results.proc_time is not None:
             results.proc_time = comm.reduce(proc_time, op=MPI.SUM)

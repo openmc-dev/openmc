@@ -7,7 +7,6 @@ densities is all done in-memory instead of through the filesystem.
 
 """
 
-import sys
 import copy
 from collections import OrderedDict
 import os
@@ -18,6 +17,7 @@ import numpy as np
 from uncertainties import ufloat
 
 import openmc
+from openmc.checkvalue import check_value
 import openmc.lib
 from . import comm
 from .abc import TransportOperator, OperatorResult
@@ -26,7 +26,8 @@ from .reaction_rates import ReactionRates
 from .results_list import ResultsList
 from .helpers import (
     DirectReactionRateHelper, ChainFissionHelper, ConstantFissionYieldHelper,
-    FissionYieldCutoffHelper, AveragedFissionYieldHelper, EnergyScoreHelper)
+    FissionYieldCutoffHelper, AveragedFissionYieldHelper, EnergyScoreHelper,
+    SourceRateHelper)
 
 
 __all__ = ["Operator", "OperatorResult"]
@@ -81,15 +82,17 @@ class Operator(TransportOperator):
         Whether to differentiate burnable materials with multiple instances.
         Volumes are divided equally from the original material volume.
         Default: False.
-    energy_mode : {"energy-deposition", "fission-q"}
-        Indicator for computing system energy. ``"energy-deposition"`` will
-        compute with a single energy deposition tally, taking fission energy
-        release data and heating into consideration. ``"fission-q"`` will
-        use the fission Q values from the depletion chain
+    normalization_mode : {"energy-deposition", "fission-q", "source-rate"}
+        Indicate how tally results should be normalized. ``"energy-deposition"``
+        computes the total energy deposited in the system and uses the ratio of
+        the power to the energy produced as a normalization factor.
+        ``"fission-q"`` uses the fission Q values from the depletion chain to
+        compute the  total energy deposited. ``"source-rate"`` normalizes
+        tallies based on the source rate (for fixed source calculations).
     fission_q : dict, optional
         Dictionary of nuclides and their fission Q values [eV]. If not given,
         values will be pulled from the ``chain_file``. Only applicable
-        if ``"energy_mode" == "fission-q"``
+        if ``"normalization_mode" == "fission-q"``
     dilute_initial : float, optional
         Initial atom density [atoms/cm^3] to add for nuclides that are zero
         in initial condition to ensure they exist in the decay chain.
@@ -164,23 +167,18 @@ class Operator(TransportOperator):
     }
 
     def __init__(self, geometry, settings, chain_file=None, prev_results=None,
-                 diff_burnable_mats=False, energy_mode="fission-q",
+                 diff_burnable_mats=False, normalization_mode="fission-q",
                  fission_q=None, dilute_initial=1.0e3,
                  fission_yield_mode="constant", fission_yield_opts=None,
                  reduce_chain=False, reduce_chain_level=None):
-        if fission_yield_mode not in self._fission_helpers:
-            raise KeyError(
-                "fission_yield_mode must be one of {}, not {}".format(
-                    ", ".join(self._fission_helpers), fission_yield_mode))
-        if energy_mode == "energy-deposition":
+        check_value('fission yield mode', fission_yield_mode,
+                    self._fission_helpers.keys())
+        check_value('normalization mode', normalization_mode,
+                    ('energy-deposition', 'fission-q', 'source-rate'))
+        if normalization_mode != "fission-q":
             if fission_q is not None:
-                warn("Fission Q dictionary not used if energy deposition "
-                     "is used")
+                warn("Fission Q dictionary will not be used")
                 fission_q = None
-        elif energy_mode != "fission-q":
-            raise ValueError(
-                "energy_mode {} not supported. Must be energy-deposition "
-                "or fission-q".format(energy_mode))
         super().__init__(chain_file, fission_q, dilute_initial, prev_results)
         self.round_number = False
         self.settings = settings
@@ -243,11 +241,14 @@ class Operator(TransportOperator):
         # Get classes to assist working with tallies
         self._rate_helper = DirectReactionRateHelper(
             self.reaction_rates.n_nuc, self.reaction_rates.n_react)
-        if energy_mode == "fission-q":
-            self._energy_helper = ChainFissionHelper()
-        else:
+
+        if normalization_mode == "fission-q":
+            self._normalization_helper = ChainFissionHelper()
+        elif normalization_mode == "energy-deposition":
             score = "heating" if settings.photon_transport else "heating-local"
-            self._energy_helper = EnergyScoreHelper(score)
+            self._normalization_helper = EnergyScoreHelper(score)
+        else:
+            self._normalization_helper = SourceRateHelper()
 
         # Select and create fission yield helper
         fission_helper = self._fission_helpers[fission_yield_mode]
@@ -256,7 +257,7 @@ class Operator(TransportOperator):
         self._yield_helper = fission_helper.from_operator(
             self, **fission_yield_opts)
 
-    def __call__(self, vec, power):
+    def __call__(self, vec, source_rate):
         """Runs a simulation.
 
         Simulation will abort under the following circumstances:
@@ -267,8 +268,8 @@ class Operator(TransportOperator):
         ----------
         vec : list of numpy.ndarray
             Total atoms to be used in function.
-        power : float
-            Power of the reactor in [W]
+        source_rate : float
+            Power in [W] or source rate in [neutron/sec]
 
         Returns
         -------
@@ -281,7 +282,7 @@ class Operator(TransportOperator):
 
         # If the source rate is zero, return zero reaction rates without running
         # a transport solve
-        if power == 0.0:
+        if source_rate == 0.0:
             rates = self.reaction_rates.copy()
             rates.fill(0.0)
             return OperatorResult(ufloat(0.0, 0.0), rates)
@@ -296,7 +297,7 @@ class Operator(TransportOperator):
         self._update_materials()
         nuclides = self._get_tally_nuclides()
         self._rate_helper.nuclides = nuclides
-        self._energy_helper.nuclides = nuclides
+        self._normalization_helper.nuclides = nuclides
         self._yield_helper.update_tally_nuclides(nuclides)
 
         # Run OpenMC
@@ -304,7 +305,7 @@ class Operator(TransportOperator):
         openmc.lib.reset_timers()
 
         # Extract results
-        op_result = self._unpack_tallies_and_normalize(power)
+        op_result = self._unpack_tallies_and_normalize(source_rate)
 
         return copy.deepcopy(op_result)
 
@@ -502,8 +503,8 @@ class Operator(TransportOperator):
         materials = [openmc.lib.materials[int(i)]
                      for i in self.burnable_mats]
         self._rate_helper.generate_tallies(materials, self.chain.reactions)
-        self._energy_helper.prepare(
-            self.chain.nuclides, self.reaction_rates.index_nuc, materials)
+        self._normalization_helper.prepare(
+            self.chain.nuclides, self.reaction_rates.index_nuc)
         # Tell fission yield helper what materials this process is
         # responsible for
         self._yield_helper.generate_tallies(
@@ -616,18 +617,17 @@ class Operator(TransportOperator):
         nuc_list = comm.bcast(nuc_list)
         return [nuc for nuc in nuc_list if nuc in self.chain]
 
-    def _unpack_tallies_and_normalize(self, power):
+    def _unpack_tallies_and_normalize(self, source_rate):
         """Unpack tallies from OpenMC and return an operator result
 
         This method uses OpenMC's C API bindings to determine the k-effective
         value and reaction rates from the simulation. The reaction rates are
-        normalized by the user-specified power, summing the product of the
-        fission reaction rate times the fission Q value for each material.
+        normalized by a helper class depending on the method being used.
 
         Parameters
         ----------
-        power : float
-            Power of the reactor in [W]
+        source_rate : float
+            Power in [W] or source rate in [neutron/sec]
 
         Returns
         -------
@@ -648,11 +648,9 @@ class Operator(TransportOperator):
         nuc_ind = [rates.index_nuc[nuc] for nuc in nuclides]
         react_ind = [rates.index_rx[react] for react in self.chain.reactions]
 
-        # Compute fission power
-
         # Keep track of energy produced from all reactions in eV per source
         # particle
-        self._energy_helper.reset()
+        self._normalization_helper.reset()
         self._yield_helper.unpack()
 
         # Store fission yield dictionaries
@@ -662,7 +660,7 @@ class Operator(TransportOperator):
         # numbers, zeroed out in material iteration
         number = np.empty(rates.n_nuc)
 
-        fission_ind = rates.index_rx["fission"]
+        fission_ind = rates.index_rx.get("fission")
 
         # Extract results
         for i, mat in enumerate(self.local_mats):
@@ -683,26 +681,14 @@ class Operator(TransportOperator):
             fission_yields.append(self._yield_helper.weighted_yields(i))
 
             # Accumulate energy from fission
-            self._energy_helper.update(tally_rates[:, fission_ind], mat_index)
+            if fission_ind is not None:
+                self._normalization_helper.update(tally_rates[:, fission_ind])
 
             # Divide by total number and store
             rates[i] = self._rate_helper.divide_by_adens(number)
 
-        # Reduce energy produced from all processes
-        # J / s / source neutron
-        energy = comm.allreduce(self._energy_helper.energy)
-
-        # Guard against divide by zero
-        if energy == 0:
-            if comm.rank == 0:
-                sys.stderr.flush()
-                print(" No energy reported from OpenMC tallies. Do your HDF5 "
-                      "files have heating data?\n", file=sys.stderr, flush=True)
-            comm.barrier()
-            comm.Abort(1)
-
         # Scale reaction rates to obtain units of reactions/sec
-        rates *= power / energy
+        rates *= self._normalization_helper.factor(source_rate)
 
         # Store new fission yields on the chain
         self.chain.fission_yields = fission_yields

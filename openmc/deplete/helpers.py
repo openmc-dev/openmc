@@ -11,15 +11,16 @@ from numpy import dot, zeros, newaxis
 
 from . import comm
 from openmc.checkvalue import check_type, check_greater_than
+from openmc.data import JOULE_PER_EV
 from openmc.lib import (
     Tally, MaterialFilter, EnergyFilter, EnergyFunctionFilter)
 from .abc import (
-    ReactionRateHelper, EnergyHelper, FissionYieldHelper,
+    ReactionRateHelper, NormalizationHelper, FissionYieldHelper,
     TalliedFissionYieldHelper)
 
 __all__ = (
-    "DirectReactionRateHelper", "ChainFissionHelper",
-    "ConstantFissionYieldHelper", "FissionYieldCutoffHelper",
+    "DirectReactionRateHelper", "ChainFissionHelper", "EnergyScoreHelper"
+    "SourceRateHelper", "ConstantFissionYieldHelper", "FissionYieldCutoffHelper",
     "AveragedFissionYieldHelper")
 
 # -------------------------------------
@@ -83,7 +84,7 @@ class DirectReactionRateHelper(ReactionRateHelper):
             reaction rates in this material
         """
         self._results_cache.fill(0.0)
-        full_tally_res = self._rate_tally.results[mat_id, :, 1]
+        full_tally_res = self._rate_tally.mean[mat_id]
         for i_tally, (i_nuc, i_react) in enumerate(
                 product(nuc_index, react_index)):
             self._results_cache[i_nuc, i_react] = full_tally_res[i_tally]
@@ -91,13 +92,39 @@ class DirectReactionRateHelper(ReactionRateHelper):
         return self._results_cache
 
 
-# ----------------------------
-# Helpers for obtaining energy
-# ----------------------------
+# ------------------------------------------
+# Helpers for obtaining normalization factor
+# ------------------------------------------
 
 
-class ChainFissionHelper(EnergyHelper):
-    """Computes energy using fission Q values from depletion chain
+class EnergyNormalizationHelper(NormalizationHelper):
+    """Compute energy-based normalization."""
+
+    def reset(self):
+        """Reset energy produced prior to unpacking tallies"""
+        self._energy = 0.0
+
+    def factor(self, source_rate):
+        # Reduce energy produced from all processes
+        # J / source neutron
+        energy = comm.allreduce(self._energy) * JOULE_PER_EV
+
+        # Guard against divide by zero
+        if energy == 0:
+            if comm.rank == 0:
+                sys.stderr.flush()
+                print("No energy reported from OpenMC tallies. Do your HDF5 "
+                      "files have heating data?\n", file=sys.stderr, flush=True)
+            comm.barrier()
+            comm.Abort(1)
+
+        # Return normalization factor for scaling reaction rates. In this case,
+        # the source rate is the power in [W], so [W] / [J/src] = [src/s]
+        return source_rate / energy
+
+
+class ChainFissionHelper(EnergyNormalizationHelper):
+    """Computes normalization using fission Q values from depletion chain
 
     Attributes
     ----------
@@ -113,7 +140,7 @@ class ChainFissionHelper(EnergyHelper):
         super().__init__()
         self._fission_q_vector = None
 
-    def prepare(self, chain_nucs, rate_index, _materials):
+    def prepare(self, chain_nucs, rate_index):
         """Populate the fission Q value vector from a chain.
 
         Parameters
@@ -125,8 +152,6 @@ class ChainFissionHelper(EnergyHelper):
             Dictionary mapping names of nuclides, e.g. ``"U235"``,
             to a corresponding index in the desired fission Q
             vector.
-        _materials : list of str
-            Unused. Materials to be tracked for this helper.
         """
         if (self._fission_q_vector is not None
                 and self._fission_q_vector.shape == (len(rate_index),)):
@@ -143,7 +168,7 @@ class ChainFissionHelper(EnergyHelper):
 
         self._fission_q_vector = fission_qs
 
-    def update(self, fission_rates, _mat_index):
+    def update(self, fission_rates):
         """Update energy produced with fission rates in a material
 
         Parameters
@@ -152,14 +177,11 @@ class ChainFissionHelper(EnergyHelper):
             fission reaction rate for each isotope in the specified
             material. Should be ordered corresponding to initial
             ``rate_index`` used in :meth:`prepare`
-        _mat_index : int
-            index for the material requested. Unused, as identical
-            isotopes in all materials have the same Q value.
         """
         self._energy += dot(fission_rates, self._fission_q_vector)
 
 
-class EnergyScoreHelper(EnergyHelper):
+class EnergyScoreHelper(EnergyNormalizationHelper):
     """Class responsible for obtaining system energy via a tally score
 
     Parameters
@@ -172,7 +194,7 @@ class EnergyScoreHelper(EnergyHelper):
     ----------
     nuclides : list of str
         List of nuclides with reaction rates. Not needed, but provided
-        for a consistent API across other :class:`EnergyHelper`
+        for a consistent API across other :class:`NormalizationHelper`
     energy : float
         System energy [eV] computed from the tally. Will be zero for
         all MPI processes that are not the "master" process to avoid
@@ -208,7 +230,15 @@ class EnergyScoreHelper(EnergyHelper):
         """
         super().reset()
         if comm.rank == 0:
-            self._energy = self._tally.results[0, 0, 1]
+            self._energy = self._tally.mean[0, 0]
+
+
+class SourceRateHelper(NormalizationHelper):
+    def prepare(self, *args, **kwargs):
+        pass
+
+    def factor(self, source_rate):
+        return source_rate
 
 # ------------------------------------
 # Helper for collapsing fission yields
@@ -447,7 +477,7 @@ class FissionYieldCutoffHelper(TalliedFissionYieldHelper):
         if not self._tally_nucs or self._local_indexes.size == 0:
             self.results = None
             return
-        fission_rates = self._fission_rate_tally.results[..., 1].reshape(
+        fission_rates = self._fission_rate_tally.mean.reshape(
             self.n_bmats, 2, len(self._tally_nucs))
         self.results = fission_rates[self._local_indexes]
         total_fission = self.results.sum(axis=1)
@@ -609,9 +639,9 @@ class AveragedFissionYieldHelper(TalliedFissionYieldHelper):
             self.results = None
             return
         fission_results = (
-            self._fission_rate_tally.results[self._local_indexes, :, 1])
+            self._fission_rate_tally.mean[self._local_indexes])
         self.results = (
-            self._weighted_tally.results[self._local_indexes, :, 1]).copy()
+            self._weighted_tally.mean[self._local_indexes]).copy()
         nz_mat, nz_nuc = fission_results.nonzero()
         self.results[nz_mat, nz_nuc] /= fission_results[nz_mat, nz_nuc]
 

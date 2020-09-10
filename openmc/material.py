@@ -1079,6 +1079,10 @@ class Material(IDManagerMixin):
         new_density = np.sum([dens for dens in mass_per_cc.values()])
         new_mat.set_density('g/cm3', new_density)
 
+        # If any of the involved materials is depletable, the new material is 
+        # depletable
+        new_mat.depletable = any(mat.depletable for mat in materials)
+
         return new_mat
 
     @classmethod

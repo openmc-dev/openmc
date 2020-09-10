@@ -1,7 +1,6 @@
 #!/bin/bash
 set -ex
 
-#pip3 install pybind11
 PYBIND_BRANCH='master'
 PYBIND_REPO='https://github.com/pybind/pybind11'
 
@@ -17,8 +16,10 @@ XTENSOR_PYTHON_REPO='https://github.com/xtensor-stack/xtensor-python'
 XTENSOR_BLAS_BRANCH='0.17.1'
 XTENSOR_BLAS_REPO='https://github.com/xtensor-stack/xtensor-blas'
 
+
 cd $HOME
 git clone -b $PYBIND_BRANCH $PYBIND_REPO
+pip install ./pybind11
 cd pybind11 && mkdir build && cd build && cmake .. && sudo make install
 
 cd $HOME
@@ -40,4 +41,4 @@ cd xtensor-blas && mkdir build && cd build && cmake .. && sudo make install
 # Install vectfit
 cd $HOME
 git clone https://github.com/liangjg/vectfit.git
-pip3 install ./vectfit
+pip install ./vectfit

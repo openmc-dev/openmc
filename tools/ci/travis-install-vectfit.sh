@@ -19,8 +19,8 @@ XTENSOR_BLAS_REPO='https://github.com/xtensor-stack/xtensor-blas'
 
 cd $HOME
 git clone -b $PYBIND_BRANCH $PYBIND_REPO
-pip install ./pybind11
 cd pybind11 && mkdir build && cd build && cmake .. && sudo make install
+pip install $HOME/pybind11
 
 cd $HOME
 git clone -b $XTL_BRANCH $XTL_REPO

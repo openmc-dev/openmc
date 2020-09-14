@@ -24,7 +24,7 @@ def _load_dose_icrp116():
     for particle, filename in _FILES:
         path = Path(__file__).parent / filename
         data = np.loadtxt(path, skiprows=3)
-        data[:, 0] *= 1e-6   # Change energies to eV
+        data[:, 0] *= 1e6   # Change energies to eV
         _DOSE_ICRP116[particle] = data
 
 

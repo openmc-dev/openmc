@@ -30,7 +30,10 @@ __all__ = (
 
 
 class DirectReactionRateHelper(ReactionRateHelper):
-    """Class that generates tallies for one-group rates
+    """Class for generating one-group reaction rates with direct tallies
+
+    This class generates reaction rate tallies for each nuclide and
+    transmutation reaction relevant for a depletion calculation.
 
     Parameters
     ----------
@@ -105,7 +108,14 @@ class DirectReactionRateHelper(ReactionRateHelper):
 
 
 class FluxCollapseHelper(ReactionRateHelper):
-    """Class that generates tallies for one-group rates
+    """Class that generating one-group reaction rates using multigroup flux
+
+    This class generates a multigroup flux tally that is used afterward to
+    calculate a one-group reaction rate by collapsing it with continuous-energy
+    cross section data. Additionally, select nuclides/reactions can be treated
+    with a direct reaction rate tally when using a multigroup flux spectrum
+    would not be sufficiently accurate. This is often the case for (n,gamma) and
+    fission reactions.
 
     .. versionadded:: 0.12.1
 
@@ -121,7 +131,7 @@ class FluxCollapseHelper(ReactionRateHelper):
         Reactions for which rates should be directly tallied
     nuclides : iterable of str
         Nuclides for which some reaction rates should be directly tallied. If
-        None, then all ``reactions`` will be used for all nuclides.
+        None, then ``reactions`` will be used for all nuclides.
 
     Attributes
     ----------

@@ -1096,7 +1096,7 @@ class Library:
 
         if 'decay-rate' in self.mgxs_types:
             mymgxs = self.get_mgxs(domain, 'decay-rate')
-            xsdata.set_decay_rate_mgxs(mymgxs, xs_types=xs_type, nuclide=[nuclide],
+            xsdata.set_decay_rate_mgxs(mymgxs, xs_type=xs_type, nuclide=[nuclide],
                                 subdomain=subdomain)
 
         # If multiplicity matrix is available, prefer that

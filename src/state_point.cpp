@@ -33,6 +33,8 @@ namespace openmc {
 extern "C" int
 openmc_statepoint_write(const char* filename, bool* write_source)
 {
+  simulation::time_statepoint.start();
+
   // Set the filename
   std::string filename_;
   if (filename) {
@@ -296,6 +298,7 @@ openmc_statepoint_write(const char* filename, bool* write_source)
     }
     write_dataset(runtime_group, "accumulating tallies", time_tallies.elapsed());
     write_dataset(runtime_group, "total", time_total.elapsed());
+    write_dataset(runtime_group, "writing statepoints", time_statepoint.elapsed());
     close_group(runtime_group);
 
     file_close(file_id);
@@ -313,6 +316,8 @@ openmc_statepoint_write(const char* filename, bool* write_source)
     write_source_bank(file_id);
     if (mpi::master || parallel) file_close(file_id);
   }
+
+  simulation::time_statepoint.stop();
 
   return 0;
 }

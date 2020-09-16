@@ -642,6 +642,7 @@ void Tally::accumulate()
     double norm = total_source / (settings::n_particles * settings::gen_per_batch);
 
     // Accumulate each result
+    #pragma omp parallel for
     for (int i = 0; i < results_.shape()[0]; ++i) {
       for (int j = 0; j < results_.shape()[1]; ++j) {
         double val = results_(i, j, TallyResult::VALUE) * norm;

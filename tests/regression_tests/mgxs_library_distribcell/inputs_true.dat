@@ -438,13 +438,13 @@
     <estimator>tracklength</estimator>
   </tally>
   <tally id="58">
-    <filters>1 65 2</filters>
+    <filters>1 65</filters>
     <nuclides>total</nuclides>
     <scores>delayed-nu-fission</scores>
     <estimator>tracklength</estimator>
   </tally>
   <tally id="59">
-    <filters>1 65 2</filters>
+    <filters>1 65</filters>
     <nuclides>total</nuclides>
     <scores>decay-rate</scores>
     <estimator>tracklength</estimator>

@@ -666,7 +666,7 @@ void read_settings_xml()
   // Check if the user has specified to not reduce tallies at the end of every
   // batch
   if (check_for_node(root, "no_reduce")) {
-    reduce_tallies = get_node_value_bool(root, "no_reduce");
+    reduce_tallies = !get_node_value_bool(root, "no_reduce");
   }
 
   // Check if the user has specified to use confidence intervals for

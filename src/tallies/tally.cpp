@@ -775,7 +775,7 @@ accumulate_tallies()
 {
 #ifdef OPENMC_MPI
   // Combine tally results onto master process
-  if (settings::reduce_tallies) reduce_tally_results();
+  if (settings::reduce_tallies && mpi::n_procs > 1) reduce_tally_results();
 #endif
 
   // Increase number of realizations (only used for global tallies)

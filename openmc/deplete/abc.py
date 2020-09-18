@@ -228,7 +228,7 @@ class ReactionRateHelper(ABC):
     Responsible for generating reaction rate tallies for burnable materials,
     given nuclides and scores from the operator.
 
-    Reaction rates are passed back to the operator for be used in an
+    Reaction rates are passed back to the operator to be used by an
     :class:`openmc.deplete.OperatorResult` instance.
 
     Parameters

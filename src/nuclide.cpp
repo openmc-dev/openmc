@@ -1111,7 +1111,7 @@ openmc_nuclide_collapse_rate(int index, int MT, double temperature,
     *xs = data::nuclides[index]->collapse_rate(MT, temperature,
       {energy, energy + n + 1}, {flux, flux + n});
   } catch (const std::out_of_range& e) {
-    fmt::print("Cuaght error\n");
+    fmt::print("Caught error\n");
     set_errmsg(e.what());
     return OPENMC_E_OUT_OF_BOUNDS;
   }

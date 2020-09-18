@@ -43,13 +43,13 @@ def model():
 ENERGIES = np.logspace(log10(1e-5), log10(2e7), 100)
 
 
-@pytest.mark.parametrize("reaction_rate_mode,reaction_rate_opts", [
-    ("direct", {}),
-    ("flux", {'energies': ENERGIES}),
-    ("flux", {'energies': ENERGIES, 'reactions': ['(n,gamma)']}),
-    ("flux", {'energies': ENERGIES, 'reactions': ['(n,gamma)'], 'nuclides': ['W186']}),
+@pytest.mark.parametrize("reaction_rate_mode,reaction_rate_opts,tolerance", [
+    ("direct", {}, 1e-5),
+    ("flux", {'energies': ENERGIES}, 0.01),
+    ("flux", {'energies': ENERGIES, 'reactions': ['(n,gamma)']}, 1e-5),
+    ("flux", {'energies': ENERGIES, 'reactions': ['(n,gamma)'], 'nuclides': ['W186']}, 1e-5),
 ])
-def test_activation(run_in_tmpdir, model, reaction_rate_mode, reaction_rate_opts):
+def test_activation(run_in_tmpdir, model, reaction_rate_mode, reaction_rate_opts, tolerance):
     # Determine (n.gamma) reaction rate using initial run
     sp = model.run()
     with openmc.StatePoint(sp) as sp:
@@ -111,7 +111,7 @@ def test_activation(run_in_tmpdir, model, reaction_rate_mode, reaction_rate_opts
     _, atoms = results.get_atoms(str(w.id), "W186")
 
     assert atoms[0] == pytest.approx(n0)
-    assert atoms[1] / atoms[0] == pytest.approx(0.5, rel=0.01)
+    assert atoms[1] / atoms[0] == pytest.approx(0.5, rel=tolerance)
 
 
 def test_decay(run_in_tmpdir):

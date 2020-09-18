@@ -108,7 +108,7 @@ class DirectReactionRateHelper(ReactionRateHelper):
 
 
 class FluxCollapseHelper(ReactionRateHelper):
-    """Class that generating one-group reaction rates using multigroup flux
+    """Class that generates one-group reaction rates using multigroup flux
 
     This class generates a multigroup flux tally that is used afterward to
     calculate a one-group reaction rate by collapsing it with continuous-energy

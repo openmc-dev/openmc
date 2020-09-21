@@ -1,5 +1,7 @@
-from math import pi, log
+from math import pi, log, log10
 from random import uniform, normalvariate
+
+import numpy as np
 
 import openmc.deplete
 import openmc
@@ -38,7 +40,16 @@ def model():
     return model
 
 
-def test_activation(run_in_tmpdir, model):
+ENERGIES = np.logspace(log10(1e-5), log10(2e7), 100)
+
+
+@pytest.mark.parametrize("reaction_rate_mode,reaction_rate_opts,tolerance", [
+    ("direct", {}, 1e-5),
+    ("flux", {'energies': ENERGIES}, 0.01),
+    ("flux", {'energies': ENERGIES, 'reactions': ['(n,gamma)']}, 1e-5),
+    ("flux", {'energies': ENERGIES, 'reactions': ['(n,gamma)'], 'nuclides': ['W186']}, 1e-5),
+])
+def test_activation(run_in_tmpdir, model, reaction_rate_mode, reaction_rate_opts, tolerance):
     # Determine (n.gamma) reaction rate using initial run
     sp = model.run()
     with openmc.StatePoint(sp) as sp:
@@ -55,7 +66,9 @@ def test_activation(run_in_tmpdir, model):
     # Create transport operator
     op = openmc.deplete.Operator(
         model.geometry, model.settings, 'test_chain.xml',
-        normalization_mode="source-rate"
+        normalization_mode="source-rate",
+        reaction_rate_mode=reaction_rate_mode,
+        reaction_rate_opts=reaction_rate_opts,
     )
 
     # To determine the source rate necessary to reduce W186 density in half, we
@@ -98,7 +111,7 @@ def test_activation(run_in_tmpdir, model):
     _, atoms = results.get_atoms(str(w.id), "W186")
 
     assert atoms[0] == pytest.approx(n0)
-    assert atoms[1] / atoms[0] == pytest.approx(0.5, rel=1e-3)
+    assert atoms[1] / atoms[0] == pytest.approx(0.5, rel=tolerance)
 
 
 def test_decay(run_in_tmpdir):

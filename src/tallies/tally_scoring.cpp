@@ -477,12 +477,13 @@ double get_nuclide_xs(const Particle& p, int i_nuclide, int score_bin) {
   auto m = nuc.reaction_index_[score_bin];
   if (m == C_NONE) return 0.0;
   const auto& rxn {*nuc.reactions_[m]};
+  const auto& micro {p.neutron_xs_[i_nuclide]};
 
-  auto i_temp = p.neutron_xs_[i_nuclide].index_temp;
+  auto i_temp = micro.index_temp;
   if (i_temp >= 0) { // Can be false due to multipole
     // Get index on energy grid and interpolation factor
-    auto i_grid = p.neutron_xs_[i_nuclide].index_grid;
-    auto f = p.neutron_xs_[i_nuclide].interp_factor;
+    auto i_grid = micro.index_grid;
+    auto f = micro.interp_factor;
 
     // Calculate interpolated cross section
     const auto& xs {rxn.xs_[i_temp]};
@@ -499,7 +500,7 @@ double get_nuclide_xs(const Particle& p, int i_nuclide, int score_bin) {
       double kerma_fission = nuc.fragments_ ?
         ((*nuc.fragments_)(p.E_last_) + (*nuc.betas_)(p.E_last_) +
          (*nuc.prompt_photons_)(p.E_last_) + (*nuc.delayed_photons_)(p.E_last_))
-        * p.neutron_xs_[i_nuclide].fission : 0.0;
+        * micro.fission : 0.0;
 
       // Determine non-fission kerma as difference
       double kerma_non_fission = value - kerma_fission;
@@ -511,6 +512,9 @@ double get_nuclide_xs(const Particle& p, int i_nuclide, int score_bin) {
       value = simulation::keff * kerma_non_fission + kerma_fission;
     }
     return value;
+  } else {
+    // For multipole, calculate (n,gamma) from other reactions
+    return rxn.mt_ == N_GAMMA ? micro.absorption - micro.fission : 0.0;
   }
   return 0.0;
 }
@@ -1271,6 +1275,11 @@ score_general_ce(Particle& p, int i_tally, int start_index, int filter_index,
     case N_GAMMA:
     case N_P:
     case N_A:
+      // This case block only works if cross sections for these reactions have
+      // been precalculated. When they are not, we revert to the default case,
+      // which looks up cross sections
+      if (!simulation::need_depletion_rx) goto default_case;
+
       if (p.type_ != Type::neutron) continue;
 
       if (tally.estimator_ == TallyEstimator::ANALOG) {
@@ -1365,6 +1374,7 @@ score_general_ce(Particle& p, int i_tally, int start_index, int filter_index,
       break;
 
     default:
+    default_case:
 
       // The default block is really only meant for redundant neutron reactions
       // (e.g. 444, 901)

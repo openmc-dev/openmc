@@ -35,6 +35,9 @@ _dll.openmc_material_get_densities.errcheck = _error_handler
 _dll.openmc_material_get_density.argtypes = [c_int32, POINTER(c_double)]
 _dll.openmc_material_get_density.restype = c_int
 _dll.openmc_material_get_density.errcheck = _error_handler
+_dll.openmc_material_get_temperature.argtypes = [c_int32, POINTER(c_double)]
+_dll.openmc_material_get_temperature.restype = c_int
+_dll.openmc_material_get_temperature.errcheck = _error_handler
 _dll.openmc_material_get_volume.argtypes = [c_int32, POINTER(c_double)]
 _dll.openmc_material_get_volume.restype = c_int
 _dll.openmc_material_get_volume.errcheck = _error_handler
@@ -86,6 +89,12 @@ class Material(_FortranObjectWithID):
         List of nuclides in the material
     densities : numpy.ndarray
         Array of densities in atom/b-cm
+    name : str
+        Name of the material
+    temperature : float
+        Temperature of the material in [K]
+    volume : float
+        Volume of the material in [cm^3]
 
     """
     __instances = WeakValueDictionary()
@@ -140,6 +149,12 @@ class Material(_FortranObjectWithID):
     def name(self, name):
         name_ptr = c_char_p(name.encode())
         _dll.openmc_material_set_name(self._index, name_ptr)
+
+    @property
+    def temperature(self):
+        temperature = c_double()
+        _dll.openmc_material_get_temperature(self._index, temperature)
+        return temperature.value
 
     @property
     def volume(self):

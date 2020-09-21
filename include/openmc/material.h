@@ -131,6 +131,10 @@ public:
   //! \return Volume in [cm^3]
   double volume() const;
 
+  //! Get temperature of material
+  //! \return Temperature in [K]
+  double temperature() const;
+
   //----------------------------------------------------------------------------
   // Data
   int32_t id_ {C_NONE}; //!< Unique ID
@@ -154,11 +158,6 @@ public:
   // Thermal scattering tables
   std::vector<ThermalTable> thermal_tables_;
 
-  //! \brief Default temperature for cells containing this material.
-  //!
-  //! A negative value indicates no default temperature was specified.
-  double temperature_ {-1};
-
   std::unique_ptr<Bremsstrahlung> ttb_;
 
 private:
@@ -180,6 +179,11 @@ private:
   //----------------------------------------------------------------------------
   // Private data members
   gsl::index index_;
+
+  //! \brief Default temperature for cells containing this material.
+  //!
+  //! A negative value indicates no default temperature was specified.
+  double temperature_ {-1};
 };
 
 //==============================================================================

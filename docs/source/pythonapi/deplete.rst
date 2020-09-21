@@ -181,7 +181,7 @@ total system energy.
    helpers.DirectReactionRateHelper
    helpers.EnergyScoreHelper
    helpers.FissionYieldCutoffHelper
-
+   helpers.FluxCollapseHelper
 
 Abstract Base Classes
 ---------------------

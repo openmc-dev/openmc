@@ -107,7 +107,6 @@ int openmc_simulation_init()
   simulation::current_batch = 0;
   simulation::k_generation.clear();
   simulation::entropy.clear();
-  simulation::need_depletion_rx = false;
   openmc_reset();
 
   // If this is a restart run, load the state point data and binary source
@@ -190,7 +189,6 @@ int openmc_simulation_finalize()
   if (settings::check_overlaps) print_overlap_check();
 
   // Reset flags
-  simulation::need_depletion_rx = false;
   simulation::initialized = false;
   return 0;
 }

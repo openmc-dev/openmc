@@ -263,10 +263,8 @@ void load_dagmc_geometry()
       MB_CHK_ERR_CONT(rval);
       double temp = std::stod(temp_value);
       c->sqrtkT_.push_back(std::sqrt(K_BOLTZMANN * temp));
-    } else if (mat->temperature_ > 0.0) {
-      c->sqrtkT_.push_back(std::sqrt(K_BOLTZMANN * mat->temperature_));
     } else {
-      c->sqrtkT_.push_back(std::sqrt(K_BOLTZMANN * settings::temperature_default));
+      c->sqrtkT_.push_back(std::sqrt(K_BOLTZMANN * mat->temperature()));
     }
 
   }

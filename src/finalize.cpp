@@ -74,15 +74,17 @@ int openmc_finalize()
   settings::confidence_intervals = false;
   settings::create_fission_neutrons = true;
   settings::electron_treatment = ElectronTreatment::LED;
+  settings::dagmc = false;
   settings::delayed_photon_scaling = true;
   settings::energy_cutoff = {0.0, 1000.0, 0.0, 0.0};
   settings::entropy_on = false;
+  settings::event_based = false;
   settings::gen_per_batch = 1;
   settings::legendre_to_tabular = true;
   settings::legendre_to_tabular_points = -1;
-  settings::event_based = false;
   settings::material_cell_offsets = true;
   settings::max_particles_in_flight = 100000;
+  settings::n_inactive = 0;
   settings::n_particles = -1;
   settings::output_summary = true;
   settings::output_tallies = true;
@@ -96,7 +98,6 @@ int openmc_finalize()
   settings::restart_run = false;
   settings::run_CE = true;
   settings::run_mode = RunMode::UNSET;
-  settings::dagmc = false;
   settings::source_latest = false;
   settings::source_separate = false;
   settings::source_write = true;
@@ -119,6 +120,7 @@ int openmc_finalize()
 
   simulation::keff = 1.0;
   simulation::n_lost_particles = 0;
+  simulation::need_depletion_rx = false;
   simulation::satisfy_triggers = false;
   simulation::total_gen = 0;
 

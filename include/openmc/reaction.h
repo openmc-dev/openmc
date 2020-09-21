@@ -7,6 +7,7 @@
 #include <string>
 #include <vector>
 
+#include <gsl/gsl>
 #include "hdf5.h"
 
 #include "openmc/reaction_product.h"
@@ -25,6 +26,16 @@ public:
   //! \param[in] group HDF5 group containing reaction data
   //! \param[in] temperatures Desired temperatures for cross sections
   explicit Reaction(hid_t group, const std::vector<int>& temperatures);
+
+  //! \brief Calculate reaction rate based on group-wise flux distribution
+  //
+  //! \param[in] i_temp Temperature index
+  //! \param[in] energy Energy group boundaries in [eV]
+  //! \param[in] flux Flux in each energy group (not normalized per eV)
+  //! \param[in] grid Nuclide energy grid
+  //! \return Reaction rate
+  double collapse_rate(gsl::index i_temp, gsl::span<const double> energy,
+    gsl::span<const double> flux, const std::vector<double>& grid) const;
 
   //! Cross section at a single temperature
   struct TemperatureXS {

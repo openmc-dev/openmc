@@ -27,7 +27,7 @@ from .results_list import ResultsList
 from .helpers import (
     DirectReactionRateHelper, ChainFissionHelper, ConstantFissionYieldHelper,
     FissionYieldCutoffHelper, AveragedFissionYieldHelper, EnergyScoreHelper,
-    SourceRateHelper)
+    SourceRateHelper, FluxCollapseHelper)
 
 
 __all__ = ["Operator", "OperatorResult"]
@@ -113,6 +113,22 @@ class Operator(TransportOperator):
         ``fission_yield_mode``. Will be passed directly on to the
         helper. Passing a value of None will use the defaults for
         the associated helper.
+    reaction_rate_mode : {"direct", "flux"}, optional
+        Indicate how one-group reaction rates should be calculated. The "direct"
+        method tallies transmutation reaction rates directly. The "flux" method
+        tallies a multigroup flux spectrum and then collapses one-group reaction
+        rates after a transport solve (with an option to tally some reaction
+        rates directly).
+
+        .. versionadded:: 0.12.1
+    reaction_rate_opts : dict, optional
+        Keyword arguments that are passed to the reaction rate helper class.
+        When ``reaction_rate_mode`` is set to "flux", energy group boundaries
+        can be set using the "energies" key. See the
+        :class:`~openmc.deplete.helpers.FluxCollapseHelper` class for all
+        options.
+
+        .. versionadded:: 0.12.1
     reduce_chain : bool, optional
         If True, use :meth:`openmc.deplete.Chain.reduce` to reduce the
         depletion chain up to ``reduce_chain_level``. Default is False.
@@ -170,6 +186,7 @@ class Operator(TransportOperator):
                  diff_burnable_mats=False, normalization_mode="fission-q",
                  fission_q=None, dilute_initial=1.0e3,
                  fission_yield_mode="constant", fission_yield_opts=None,
+                 reaction_rate_mode="direct", reaction_rate_opts=None,
                  reduce_chain=False, reduce_chain_level=None):
         check_value('fission yield mode', fission_yield_mode,
                     self._fission_helpers.keys())
@@ -239,8 +256,27 @@ class Operator(TransportOperator):
             self.local_mats, self._burnable_nucs, self.chain.reactions)
 
         # Get classes to assist working with tallies
-        self._rate_helper = DirectReactionRateHelper(
-            self.reaction_rates.n_nuc, self.reaction_rates.n_react)
+        if reaction_rate_mode == "direct":
+            self._rate_helper = DirectReactionRateHelper(
+                self.reaction_rates.n_nuc, self.reaction_rates.n_react)
+        elif reaction_rate_mode == "flux":
+            if reaction_rate_opts is None:
+                reaction_rate_opts = {}
+
+            # Ensure energy group boundaries were specified
+            if 'energies' not in reaction_rate_opts:
+                raise ValueError(
+                    "Energy group boundaries must be specified in the "
+                    "reaction_rate_opts argument when reaction_rate_mode is"
+                    "set to 'flux'.")
+
+            self._rate_helper = FluxCollapseHelper(
+                self.reaction_rates.n_nuc,
+                self.reaction_rates.n_react,
+                **reaction_rate_opts
+            )
+        else:
+            raise ValueError("Invalid reaction rate mode.")
 
         if normalization_mode == "fission-q":
             self._normalization_helper = ChainFissionHelper()

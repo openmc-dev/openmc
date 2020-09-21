@@ -15,6 +15,8 @@
 #include "openmc/string_utils.h"
 #include "openmc/thermal.h"
 
+#include <fmt/core.h>
+
 #include "xtensor/xbuilder.hpp"
 #include "xtensor/xview.hpp"
 
@@ -908,6 +910,73 @@ void Nuclide::calculate_urr_xs(int i_temp, Particle& p) const
 
 }
 
+std::pair<gsl::index, double> Nuclide::find_temperature(double T) const
+{
+  Expects(T >= 0.0);
+
+  // Determine temperature index
+  gsl::index i_temp = 0;
+  double f = 0.0;
+  double kT = K_BOLTZMANN * T;
+  gsl::index n = kTs_.size();
+  switch (settings::temperature_method) {
+  case TemperatureMethod::NEAREST:
+    {
+      double max_diff = INFTY;
+      for (gsl::index t = 0; t < n; ++t) {
+        double diff = std::abs(kTs_[t] - kT);
+        if (diff < max_diff) {
+          i_temp = t;
+          max_diff = diff;
+        }
+      }
+    }
+    break;
+
+  case TemperatureMethod::INTERPOLATION:
+    // Find temperatures that bound the actual temperature
+    while (kTs_[i_temp + 1] < kT && i_temp + 1 < n - 1) ++i_temp;
+
+    // Determine interpolation factor
+    f = (kT - kTs_[i_temp]) / (kTs_[i_temp + 1] - kTs_[i_temp]);
+  }
+
+  Ensures(i_temp >= 0 && i_temp < n);
+
+  return {i_temp, f};
+}
+
+double Nuclide::collapse_rate(int MT, double temperature, gsl::span<const double> energy,
+  gsl::span<const double> flux) const
+{
+  Expects(MT > 0);
+  Expects(energy.size() > 0);
+  Expects(energy.size() == flux.size() + 1);
+
+  int i_rx = reaction_index_[MT];
+  if (i_rx < 0) return 0.0;
+  const auto& rx = reactions_[i_rx];
+
+  // Determine temperature index
+  gsl::index i_temp;
+  double f;
+  std::tie(i_temp, f) = this->find_temperature(temperature);
+
+  // Get reaction rate at lower temperature
+  const auto& grid_low = grid_[i_temp].energy;
+  double rr_low = rx->collapse_rate(i_temp, energy, flux, grid_low);
+
+  if (f > 0.0) {
+    // Interpolate between reaction rate at lower and higher temperature
+    const auto& grid_high = grid_[i_temp + 1].energy;
+    double rr_high = rx->collapse_rate(i_temp + 1, energy, flux, grid_high);
+    return rr_low + f*(rr_high - rr_low);
+  } else {
+    // If interpolation factor is zero, return reaction rate at lower temperature
+    return rr_low;
+  }
+}
+
 //==============================================================================
 // Non-member functions
 //==============================================================================
@@ -1027,6 +1096,26 @@ openmc_nuclide_name(int index, const char** name)
     set_errmsg("Index in nuclides vector is out of bounds.");
     return OPENMC_E_OUT_OF_BOUNDS;
   }
+}
+
+extern "C" int
+openmc_nuclide_collapse_rate(int index, int MT, double temperature,
+  const double* energy, const double* flux, int n, double* xs)
+{
+  if (index < 0 || index >= data::nuclides.size()) {
+    set_errmsg("Index in nuclides vector is out of bounds.");
+    return OPENMC_E_OUT_OF_BOUNDS;
+  }
+
+  try {
+    *xs = data::nuclides[index]->collapse_rate(MT, temperature,
+      {energy, energy + n + 1}, {flux, flux + n});
+  } catch (const std::out_of_range& e) {
+    fmt::print("Caught error\n");
+    set_errmsg(e.what());
+    return OPENMC_E_OUT_OF_BOUNDS;
+  }
+  return 0;
 }
 
 void nuclides_clear()

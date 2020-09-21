@@ -181,17 +181,9 @@ assign_temperatures()
       if (i_mat == MATERIAL_VOID) {
         // Set void region to 0K.
         c->sqrtkT_.push_back(0);
-
       } else {
-        if (model::materials[i_mat]->temperature_ >= 0) {
-          // This material has a default temperature; use that value.
-          auto T = model::materials[i_mat]->temperature_;
-          c->sqrtkT_.push_back(std::sqrt(K_BOLTZMANN * T));
-        } else {
-          // Use the global default temperature.
-          c->sqrtkT_.push_back(std::sqrt(K_BOLTZMANN *
-            settings::temperature_default));
-        }
+        const auto& mat {model::materials[i_mat]};
+        c->sqrtkT_.push_back(std::sqrt(K_BOLTZMANN * mat->temperature()));
       }
     }
   }

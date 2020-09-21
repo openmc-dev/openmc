@@ -987,6 +987,12 @@ double Material::volume() const
   return volume_;
 }
 
+double Material::temperature() const
+{
+  // If material doesn't have an assigned temperature, use global default
+  return temperature_ >= 0 ? temperature_ : settings::temperature_default;
+}
+
 void Material::to_hdf5(hid_t group) const
 {
   hid_t material_group = create_group(group, "material " + std::to_string(id_));
@@ -1338,6 +1344,18 @@ openmc_material_get_id(int32_t index, int32_t* id)
     return OPENMC_E_OUT_OF_BOUNDS;
   }
 }
+
+extern "C" int
+openmc_material_get_temperature(int32_t index, double* temperature)
+{
+  if (index < 0 || index >= model::materials.size()) {
+    set_errmsg("Index in materials array is out of bounds.");
+    return OPENMC_E_OUT_OF_BOUNDS;
+  }
+  *temperature = model::materials[index]->temperature();
+  return 0;
+}
+
 
 extern "C" int
 openmc_material_get_volume(int32_t index, double* volume)

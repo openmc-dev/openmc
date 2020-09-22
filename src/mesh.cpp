@@ -913,7 +913,7 @@ void RectilinearMesh::check_grids() const
 {
   // ========================================================================
   // check grids for rectilinear meshes.
-  for (const auto& g : grids_) {
+  for (const auto& g : this->grids_) {
     if (g.size() < 2) fatal_error("x-, y-, and z- grids for rectilinear meshes "
       "must each have at least 2 points");
     for (int i = 1; i < g.size(); ++i) {
@@ -922,8 +922,8 @@ void RectilinearMesh::check_grids() const
     }
   }
   
-  lower_left_ = {grid_[0].front(), grid_[1].front(), grid_[2].front()};
-  upper_right_ = {grid_[0].back(), grid_[1].back(), grid_[2].back()};
+  this->lower_left_ = {this->grid_[0].front(), this->grid_[1].front(), this->grid_[2].front()};
+  this->upper_right_ = {this->grid_[0].back(), this->grid_[1].back(), this->grid_[2].back()};
 }
 
 void RectilinearMesh::bins_crossed(const Particle& p, std::vector<int>& bins,
@@ -1842,7 +1842,7 @@ void WeightWindowMesh::weight_biasing(Particle::Bank& site, uint64_t* seed)
 }
   
 //! Get weight windows parameters given particle
-WWParams WeightWindowMesh::get_params(Particle& p) const
+WeightWindowMesh::WWParams WeightWindowMesh::get_params(Particle& p) const
 {	
   // Particle's position and energy
   Position pos  = p.r();

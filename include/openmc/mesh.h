@@ -206,13 +206,9 @@ public:
   RectilinearMesh(pugi::xml_node node);
   
   // new constructors for weight window
-  RectilinearMesh(std::vector<double>&  x_grid, std::vector<double>&  y_grid, std::vector<double>&  z_grid);
-  
-  // check grids for rectilinear meshes
-  void check_grids(const std::vector<std::vector<double>>& grids);
+  RectilinearMesh(const std::vector<double>& x_grid, const std::vector<double>& y_grid, const std::vector<double>& z_grid);
 
   // Overriden methods
-
   void bins_crossed(const Particle& p, std::vector<int>& bins,
                     std::vector<double>& lengths) const override;
 
@@ -251,6 +247,9 @@ public:
 
 private:
   std::vector<std::vector<double>> grid_;
+  
+  // check grids for rectilinear meshes
+  void check_grids() const;
 };
   
 // Weight Window Mesh class 
@@ -262,9 +261,9 @@ public:
 
   //! source weight biasing in energy
   //
-  //! \param[in, out] p particle, output with the biased energy and weight
+  //! \param[in] site, particle in bank, modify the weight based on the input energy biasing
   //! \param[in] seed, random number seed
-  void weight_biasing(Particle::Bank& site, uint64_t* seed) ;
+  void weight_biasing(Particle::Bank& site, uint64_t* seed);
   
   // weight window mesh and energy group
   std::unique_ptr<RectilinearMesh>  mesh_;   //!< RectilinearMesh for Weight window
@@ -296,6 +295,18 @@ public:
   std::vector<double> cumulative_probability; //!< cumulative probability for each group
   std::vector<double> biasing;   //!< biasing for each energy group
   std::vector<double> cumulative_biasing;   //!< cumulative probability for biasing for each energy group
+  
+  struct WWParams {
+    double lower_weight;
+    double upper_weight;
+    double survival_weight;
+    int max_split;
+  }
+  
+  WWparams params;  //!< weight windows parameters
+  
+  // Get weight windows parameters given particle
+  WWparams get_params(Particle& p) const;
 
 };
 // Weight Window Mesh class

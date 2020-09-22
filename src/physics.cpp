@@ -1215,23 +1215,23 @@ void split_particle(Particle& p)
 
   auto params = settings::ww_fine_mesh->get_params(p);
 	
-  if (weight >= params.upper_ww) {
-    double number = weight/params.upper_ww;  
+  if (weight >= params.upper_weight) {
+    double number = weight/params.upper_weight;  
     double num = std::min(std::ceil(number), double(max_split));
 
     for (int l = 0; l < num - 1; ++l)  { p.create_secondary(weight/num, p.u(), p.E_, p.type_); }
     p.wgt_ = weight/num; 
     p.wgt_last_ = p.wgt_;
 	  
-  } else if (weight <= lower_ww) {  
-    double number = weight/survival_ww;
+  } else if (weight <= params.lower_weight) {  
+    double number = weight/params.survival_weight;
     if (number < 1.0/max_split) {
       number = 1.0/max_split;
-      survival_ww = weight/number;
+      params.survival_weight = weight/number;
     }
 
     if (prn(p.current_seed())<=number)  {
-      p.wgt_ = survival_ww;
+      p.wgt_ = params.survival_weight;
       p.wgt_last_ = p.wgt_;
     } else {       
       p.alive_ = false;

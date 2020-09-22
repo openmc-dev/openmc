@@ -246,7 +246,7 @@ public:
   xt::xtensor<int, 1> shape_; //!< Number of mesh elements in each dimension
   
   // check grids for rectilinear meshes
-  void check_grids() const;
+  void check_grids(const std::vector<std::vector<double>>& grids);
   
 private:
   std::vector<std::vector<double>> grid_;

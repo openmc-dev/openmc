@@ -238,7 +238,7 @@ Particle::Bank SourceDistribution::sample(uint64_t* seed) const
   }
   
   // source weight biasing in energy
-  if (settings::weightwindow && settings::ww_fine_mesh->user_defined_biasing)  { 
+  if (settings::weightwindow_on && settings::ww_fine_mesh->user_defined_biasing)  { 
     settings::ww_fine_mesh->weight_biasing(site, seed); 
   } else {
     // origin code

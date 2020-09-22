@@ -922,8 +922,8 @@ void RectilinearMesh::check_grids(const std::vector<std::vector<double>>& grids)
     }
   }
   
-  this->lower_left_ = {grid[0].front(), grid[1].front(), grid[2].front()};
-  this->upper_right_ = {grid[0].back(), grid[1].back(), grid[2].back()};
+  this->lower_left_ = {grids[0].front(), grids[1].front(), grids[2].front()};
+  this->upper_right_ = {grids[0].back(), grids[1].back(), grids[2].back()};
 }
 
 void RectilinearMesh::bins_crossed(const Particle& p, std::vector<int>& bins,

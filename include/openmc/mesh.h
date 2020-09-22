@@ -303,10 +303,10 @@ public:
     int max_split;
   };
   
-  WWparams params;  //!< weight windows parameters
+  WWParams params;  //!< weight windows parameters
   
   // Get weight windows parameters given particle
-  WWparams get_params(Particle& p) const;
+  WWParams get_params(Particle& p) const;
 
 };
 // Weight Window Mesh class

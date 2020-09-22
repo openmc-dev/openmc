@@ -326,7 +326,7 @@ class MDGXS(MGXS):
         -------
         numpy.ndarray
             A NumPy array of the multi-group cross section indexed in the order
-            each group, subdomain and nuclide is listed in the parameters.
+            each group, subdomain and nuclide as listed in the parameters.
 
         Raises
         ------
@@ -1872,14 +1872,12 @@ class DecayRate(MDGXS):
 
         # Create the non-domain specific Filters for the Tallies
         group_edges = self.energy_groups.group_edges
-        energy_filter = openmc.EnergyFilter(group_edges)
 
         if self.delayed_groups is not None:
             delayed_filter = openmc.DelayedGroupFilter(self.delayed_groups)
-            filters = [[delayed_filter, energy_filter], [delayed_filter,
-                                                         energy_filter]]
+            filters = [[delayed_filter], [delayed_filter]]
         else:
-            filters = [[energy_filter], [energy_filter]]
+            filters = None
 
         return self._add_angle_filters(filters)
 
@@ -1921,6 +1919,144 @@ class DecayRate(MDGXS):
         """
 
         return self._get_homogenized_mgxs(other_mgxs, 'delayed-nu-fission')
+
+    def get_xs(self, subdomains='all', nuclides='all',
+               xs_type='macro', order_groups='increasing',
+               value='mean', delayed_groups='all', squeeze=True, **kwargs):
+        """Returns an array of multi-delayed-group cross sections.
+
+        This method constructs a 4D NumPy array for the requested
+        multi-delayed-group cross section data for one or more
+        subdomains (1st dimension), delayed groups (2nd demension),
+        energy groups (3rd dimension), and nuclides (4th dimension).
+
+        Parameters
+        ----------
+        subdomains : Iterable of Integral or 'all'
+            Subdomain IDs of interest. Defaults to 'all'.
+        nuclides : Iterable of str or 'all' or 'sum'
+            A list of nuclide name strings (e.g., ['U-235', 'U-238']). The
+            special string 'all' will return the cross sections for all nuclides
+            in the spatial domain. The special string 'sum' will return the
+            cross section summed over all nuclides. Defaults to 'all'.
+        xs_type: {'macro', 'micro'}
+            Return the macro or micro cross section in units of cm^-1 or barns.
+            Defaults to 'macro'.
+        order_groups: {'increasing', 'decreasing'}
+            Return the cross section indexed according to increasing or
+            decreasing energy groups (decreasing or increasing energies).
+            Defaults to 'increasing'.
+        value : {'mean', 'std_dev', 'rel_err'}
+            A string for the type of value to return. Defaults to 'mean'.
+        delayed_groups : list of int or 'all'
+            Delayed groups of interest. Defaults to 'all'.
+        squeeze : bool
+            A boolean representing whether to eliminate the extra dimensions
+            of the multi-dimensional array to be returned. Defaults to True.
+
+        Returns
+        -------
+        numpy.ndarray
+            A NumPy array of the multi-group cross section indexed in the order
+            each group, subdomain and nuclide as listed in the parameters.
+
+        Raises
+        ------
+        ValueError
+            When this method is called before the multi-delayed-group cross
+            section is computed from tally data.
+
+        """
+
+        cv.check_value('value', value, ['mean', 'std_dev', 'rel_err'])
+        cv.check_value('xs_type', xs_type, ['macro', 'micro'])
+
+        # FIXME: Unable to get microscopic xs for mesh domain because the mesh
+        # cells do not know the nuclide densities in each mesh cell.
+        if self.domain_type == 'mesh' and xs_type == 'micro':
+            msg = 'Unable to get micro xs for mesh domain since the mesh ' \
+                  'cells do not know the nuclide densities in each mesh cell.'
+            raise ValueError(msg)
+
+        filters = []
+        filter_bins = []
+
+        # Construct a collection of the domain filter bins
+        if not isinstance(subdomains, str):
+            cv.check_iterable_type('subdomains', subdomains, Integral,
+                                   max_depth=3)
+            for subdomain in subdomains:
+                filters.append(_DOMAIN_TO_FILTER[self.domain_type])
+                filter_bins.append((subdomain,))
+
+        # Construct list of delayed group tuples for all requested groups
+        if not isinstance(delayed_groups, str):
+            cv.check_type('delayed groups', delayed_groups, list, int)
+            for delayed_group in delayed_groups:
+                filters.append(openmc.DelayedGroupFilter)
+                filter_bins.append((delayed_group,))
+
+        # Construct a collection of the nuclides to retrieve from the xs tally
+        if self.by_nuclide:
+            if nuclides == 'all' or nuclides == 'sum' or nuclides == ['sum']:
+                query_nuclides = self.get_nuclides()
+            else:
+                query_nuclides = nuclides
+        else:
+            query_nuclides = ['total']
+
+        # If user requested the sum for all nuclides, use tally summation
+        if nuclides == 'sum' or nuclides == ['sum']:
+            xs_tally = self.xs_tally.summation(nuclides=query_nuclides)
+            xs = xs_tally.get_values(filters=filters,
+                                     filter_bins=filter_bins, value=value)
+        else:
+            xs = self.xs_tally.get_values(filters=filters,
+                                          filter_bins=filter_bins,
+                                          nuclides=query_nuclides, value=value)
+
+        # Divide by atom number densities for microscopic cross sections
+        if xs_type == 'micro' and self._divide_by_density:
+            if self.by_nuclide:
+                densities = self.get_nuclide_densities(nuclides)
+            else:
+                densities = self.get_nuclide_densities('sum')
+            if value == 'mean' or value == 'std_dev':
+                xs /= densities[np.newaxis, :, np.newaxis]
+
+        # Eliminate the trivial score dimension
+        xs = np.squeeze(xs, axis=len(xs.shape) - 1)
+        xs = np.nan_to_num(xs)
+
+        if delayed_groups == 'all':
+            num_delayed_groups = self.num_delayed_groups
+        else:
+            num_delayed_groups = len(delayed_groups)
+
+        # Reshape tally data array with separate axes for domain,
+        # energy groups, delayed groups, and nuclides
+        # Accommodate the polar and azimuthal bins if needed
+        num_subdomains = \
+            int(xs.shape[0] / (num_delayed_groups *
+                               self.num_polar * self.num_azimuthal))
+        if self.num_polar > 1 or self.num_azimuthal > 1:
+            new_shape = (self.num_polar, self.num_azimuthal, num_subdomains,
+                         num_delayed_groups)
+        else:
+            new_shape = (num_subdomains, num_delayed_groups)
+        xs = np.reshape(xs, new_shape)
+
+        # Reverse data if user requested increasing energy groups since
+        # tally data is stored in order of increasing energies
+        if order_groups == 'increasing':
+            xs = xs[..., ::-1, :]
+
+        if squeeze:
+            # We want to squeeze out everything but the polar, azimuthal,
+            # delayed group, and energy group data.
+            xs = self._squeeze_xs(xs)
+
+        return xs
 
 
 class MatrixMDGXS(MDGXS):

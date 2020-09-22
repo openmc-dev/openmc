@@ -1446,6 +1446,7 @@ WeightWindowMesh::WeightWindowMesh(pugi::xml_node node)
     if (ww_type!=0 && ww_type!=1 ) {
       fatal_error("Invalid input value, only 0 or 1 are supported, "
                   "0 for wwinp file with only lower weight window, 1 for MCNP wwinp file");
+    }
   } else { 
       fatal_error("Must assign weight window input file type, "
                   "0 for wwinp file with only lower weight window, 1 for MCNP wwinp file");  
@@ -1685,19 +1686,22 @@ WeightWindowMesh::WeightWindowMesh(pugi::xml_node node)
     // read wwinp file
     if (check_for_node(node, "lower_ww")) {
       auto value = get_node_xarray<double>(node, "lower_ww");
-      if ( value.size() != ( mesh_->n_bins()*( n_energy_group.size()+p_energy_group.size() ) ) ) 
+      int groups = 0;  // total energy groups for neutron and photon
+      if (n_ww) groups += n_energy_group.size() - 1;
+      if (p_ww) groups += p_energy_group.size() - 1;
+      if ( value.size() != ( mesh_->n_bins()* groups ) ) 
          { fatal_error("The number of lower weight window bounds is not the same as energy-space mesh cell numbers");  }
       // neutron lower weight window bound first     
       if (n_ww) {
-        for (int i = 0; i < mesh_->n_bins()*n_energy_group.size(); i++) {   
+        for (int i = 0; i < mesh_->n_bins()*(n_energy_group.size()-1); i++) {   
           n_ww_lower.push_back(value.at(i));
         }  
       } 
     
       // photon lower weight window bound later
       if (p_ww) {
-        auto offset = mesh_->n_bins()*n_energy_group.size();
-        for (int i = 0; i < mesh_->n_bins()*p_energy_group.size(); i++) {   
+        auto offset = mesh_->n_bins()*(n_energy_group.size()-1);
+        for (int i = 0; i < mesh_->n_bins()*(p_energy_group.size()-1); i++) {   
           p_ww_lower.push_back(value.at(i + offset));
         }   
       } 
@@ -1825,8 +1829,6 @@ WeightWindowMesh::WeightWindowMesh(pugi::xml_node node)
       fatal_error("Must provide biasing for each energy group.");
     }
   }
-    
-}
 
 }
   

@@ -889,7 +889,7 @@ RectilinearMesh::RectilinearMesh(pugi::xml_node node)
             static_cast<int>(grid_[1].size()) - 1,
             static_cast<int>(grid_[2].size()) - 1};
 
-  check_grids();
+  check_grids(grid_);
 }
   
 // new constructors for weight window
@@ -906,14 +906,14 @@ RectilinearMesh::RectilinearMesh(const std::vector<double>& x_grid, const std::v
             static_cast<int>(grid_[1].size()) - 1,
             static_cast<int>(grid_[2].size()) - 1};
 
-  check_grids();
+  check_grids(grid_);
 }
   
-void RectilinearMesh::check_grids() const 
+void RectilinearMesh::check_grids(const std::vector<std::vector<double>>& grids)
 {
   // ========================================================================
   // check grids for rectilinear meshes.
-  for (const auto& g : this->grids_) {
+  for (const auto& g : grids) {
     if (g.size() < 2) fatal_error("x-, y-, and z- grids for rectilinear meshes "
       "must each have at least 2 points");
     for (int i = 1; i < g.size(); ++i) {
@@ -922,8 +922,8 @@ void RectilinearMesh::check_grids() const
     }
   }
   
-  this->lower_left_ = {this->grid_[0].front(), this->grid_[1].front(), this->grid_[2].front()};
-  this->upper_right_ = {this->grid_[0].back(), this->grid_[1].back(), this->grid_[2].back()};
+  this->lower_left_ = {grid[0].front(), grid[1].front(), grid[2].front()};
+  this->upper_right_ = {grid[0].back(), grid[1].back(), grid[2].back()};
 }
 
 void RectilinearMesh::bins_crossed(const Particle& p, std::vector<int>& bins,
@@ -1866,7 +1866,7 @@ WeightWindowMesh::WWParams WeightWindowMesh::get_params(Particle& p) const
     params.lower_weight = p_multiplier;       
     params.upper_weight = p_upper_ratio;
     params.survival_weight = p_survival_ratio;
-    params..max_split = p_max_split;
+    params.max_split = p_max_split;
   }
 
   // get the mesh bin in energy group

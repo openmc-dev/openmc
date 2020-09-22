@@ -306,7 +306,7 @@ public:
   WWParams params;  //!< weight windows parameters
   
   // Get weight windows parameters given particle
-  WWParams get_params(Particle& p) const;
+  WeightWindowMesh::WWParams get_params(Particle& p) const;
 
 };
 // Weight Window Mesh class

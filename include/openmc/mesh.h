@@ -244,12 +244,12 @@ public:
 
   // Data members
   xt::xtensor<int, 1> shape_; //!< Number of mesh elements in each dimension
-
-private:
-  std::vector<std::vector<double>> grid_;
   
   // check grids for rectilinear meshes
   void check_grids() const;
+  
+private:
+  std::vector<std::vector<double>> grid_;
 };
   
 // Weight Window Mesh class 

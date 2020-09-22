@@ -68,9 +68,9 @@ bool ufs_on                  {false};
 bool urr_ptables_on          {true};
 bool write_all_tracks        {false};
 bool write_initial_source    {false};
+bool weightwindow_on         {false};
 
 // weight windows
-bool weightwindow {false};
 std::unique_ptr<WeightWindowMesh> ww_fine_mesh;
   
 std::string path_cross_sections;
@@ -423,7 +423,7 @@ void read_settings_xml()
   // ==========================================================================
   // Weight window, add by Yuan
   if (check_for_node(root, "weightwindow")) {
-    weightwindow = true;
+    weightwindow_on = true;
     xml_node ww_node = root.child("weightwindow");
     ww_fine_mesh = std::make_unique<WeightWindowMesh>(ww_node);
   }

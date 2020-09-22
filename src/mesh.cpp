@@ -889,14 +889,11 @@ RectilinearMesh::RectilinearMesh(pugi::xml_node node)
             static_cast<int>(grid_[1].size()) - 1,
             static_cast<int>(grid_[2].size()) - 1};
 
-  check_grids(grid_);
-
-  lower_left_ = {grid_[0].front(), grid_[1].front(), grid_[2].front()};
-  upper_right_ = {grid_[0].back(), grid_[1].back(), grid_[2].back()};
+  check_grids();
 }
   
 // new constructors for weight window
-RectilinearMesh::RectilinearMesh(std::vector<double>&  x_grid, std::vector<double>&  y_grid, std::vector<double>&  z_grid)
+RectilinearMesh::RectilinearMesh(const std::vector<double>& x_grid, const std::vector<double>& y_grid, const std::vector<double>& z_grid)
 {
   n_dimension_ = 3;
 
@@ -909,17 +906,14 @@ RectilinearMesh::RectilinearMesh(std::vector<double>&  x_grid, std::vector<doubl
             static_cast<int>(grid_[1].size()) - 1,
             static_cast<int>(grid_[2].size()) - 1};
 
-  check_grids(grid_);
-
-  lower_left_ = {grid_[0].front(), grid_[1].front(), grid_[2].front()};
-  upper_right_ = {grid_[0].back(), grid_[1].back(), grid_[2].back()};
+  check_grids();
 }
   
-void RectilinearMesh::check_grids(const std::vector<std::vector<double>>& grids) 
+void RectilinearMesh::check_grids() const 
 {
   // ========================================================================
   // check grids for rectilinear meshes.
-  for (const auto& g : grids) {
+  for (const auto& g : grids_) {
     if (g.size() < 2) fatal_error("x-, y-, and z- grids for rectilinear meshes "
       "must each have at least 2 points");
     for (int i = 1; i < g.size(); ++i) {
@@ -927,6 +921,9 @@ void RectilinearMesh::check_grids(const std::vector<std::vector<double>>& grids)
         "rectilinear meshes must be sorted and unique.");
     }
   }
+  
+  lower_left_ = {grid_[0].front(), grid_[1].front(), grid_[2].front()};
+  upper_right_ = {grid_[0].back(), grid_[1].back(), grid_[2].back()};
 }
 
 void RectilinearMesh::bins_crossed(const Particle& p, std::vector<int>& bins,
@@ -1814,15 +1811,15 @@ WeightWindowMesh::WeightWindowMesh(pugi::xml_node node)
       if (value.size() != biasing_energy.size() - 1) fatal_error("Biasing and biasing energies must have the same number of values.");
       biasing.push_back(0);
       cumulative_biasing.push_back(0);
-      for (int i = 0; i < value.size(); i++) {
-        biasing.push_back(value.at(i));
+      for (double v : value) {
+        biasing.push_back(v);
         cumulative_biasing.push_back(0);
       }
       // normalization
       double total_probability = std::accumulate(biasing.begin(), biasing.end(), 0.0);
       for (int i = 1; i < biasing.size(); i++) {
-        biasing.at(i) = biasing.at(i)/total_probability;
-        cumulative_biasing.at(i) = cumulative_biasing.at(i-1) + biasing.at(i);
+        biasing[i] = biasing[i]/total_probability;
+        cumulative_biasing[i] = cumulative_biasing[i-1] + biasing[i];
       }
     } else {
       fatal_error("Must provide biasing for each energy group.");
@@ -1837,11 +1834,53 @@ WeightWindowMesh::WeightWindowMesh(pugi::xml_node node)
 void WeightWindowMesh::weight_biasing(Particle::Bank& site, uint64_t* seed) 
 {
   int i = 0;
-  double random_number = prn(seed);
+  double r = prn(seed);
   for (i = 0; i < cumulative_biasing.size() - 1; i++) 
-    if (cumulative_biasing.at(i) <= random_number && random_number < cumulative_biasing.at(i+1))  break;
-  site.E = biasing_energy.at(i) + ( biasing_energy.at(i+1)-biasing_energy.at(i) ) * prn(seed);
-  site.wgt = site.wgt * origin_probability.at(i+1) / biasing.at(i+1);
+    if (cumulative_biasing[i] <= r && r < cumulative_biasing[i+1])  break;
+  site.E = biasing_energy[i] + ( biasing_energy[i+1] - biasing_energy[i] ) * prn(seed);
+  site.wgt *= origin_probability[i+1] / biasing[i+1];
+}
+  
+//! Get weight windows parameters given particle
+WWParams WeightWindowMesh::get_params(Particle& p) const
+{	
+  // Particle's position and energy
+  Position pos  = p.r();
+  double E = p.E_;
+  
+  std::vector<double> energy_group;
+  std::vector<double> ww_lower;
+  WWParams params;
+	
+  // Determine which set of weight window values to be used based on particle type
+  if (p.type_ == Particle::Type::neutron) {
+    energy_group = n_energy_group;
+    ww_lower = n_ww_lower;
+    params.lower_weight = n_multiplier;       
+    params.upper_weight = n_upper_ratio;
+    params.survival_weight = n_survival_ratio;
+    params.max_split = n_max_split;
+  } else if (p.type_ == Particle::Type::photon) {
+    energy_group = p_energy_group;
+    ww_lower = p_ww_lower;
+    params.lower_weight = p_multiplier;       
+    params.upper_weight = p_upper_ratio;
+    params.survival_weight = p_survival_ratio;
+    params..max_split = p_max_split;
+  }
+
+  // get the mesh bin in energy group
+  int energy_bin = lower_bound_index(energy_group.begin(), energy_group.end(), E);
+
+  // indices in weight window vector
+  int indices = mesh_->get_bin(pos);
+  indices += energy_bin*mesh_->n_bins(); 
+
+  params.lower_weight = params.lower_weight*ww_lower[indices];  // equal to multiplier * lower weight window bound (from input file)
+  params.upper_weight = params.lower_weight*params.upper_weight;           // equal to multiplied lower weight window bound * upper/lower ratio
+  params.survival_weight = params.lower_weight*params.survival_weight;     // equal to multiplied lower weight window bound * survival/lower ratio
+  
+  return params;
 }
   
 //==============================================================================

@@ -1444,7 +1444,7 @@ WeightWindowMesh::WeightWindowMesh(pugi::xml_node node)
   if (check_for_node(node, "type")) {
     ww_type = std::stoi(get_node_value(node,"type"));
     if (ww_type!=0 && ww_type!=1 ) {
-      fatal_error("Must assign weight window input file type, "
+      fatal_error("Invalid input value, only 0 or 1 are supported, "
                   "0 for wwinp file with only lower weight window, 1 for MCNP wwinp file");
   } else { 
       fatal_error("Must assign weight window input file type, "

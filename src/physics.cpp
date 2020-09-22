@@ -1217,7 +1217,7 @@ void split_particle(Particle& p)
 	
   if (weight >= params.upper_weight) {
     double number = weight/params.upper_weight;  
-    double num = std::min(std::ceil(number), double(max_split));
+    double num = std::min(std::ceil(number), double(params.max_split));
 
     for (int l = 0; l < num - 1; ++l)  { p.create_secondary(weight/num, p.u(), p.E_, p.type_); }
     p.wgt_ = weight/num; 
@@ -1225,8 +1225,8 @@ void split_particle(Particle& p)
 	  
   } else if (weight <= params.lower_weight) {  
     double number = weight/params.survival_weight;
-    if (number < 1.0/max_split) {
-      number = 1.0/max_split;
+    if (number < 1.0/params.max_split) {
+      number = 1.0/params.max_split;
       params.survival_weight = weight/number;
     }
 

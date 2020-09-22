@@ -42,11 +42,15 @@ void collision(Particle& p)
   switch (p.type_) {
   case Particle::Type::neutron:
     sample_neutron_reaction(p);
-    if (settings::weightwindow && settings::ww_fine_mesh->n_ww) { split_particle(p); }
+    if (settings::weightwindow_on && settings::ww_fine_mesh->n_ww) { 
+      split_particle(p); 
+    }
     break;
   case Particle::Type::photon:
     sample_photon_reaction(p);
-    if (settings::weightwindow && settings::ww_fine_mesh->p_ww) { split_particle(p); }
+    if (settings::weightwindow_on && settings::ww_fine_mesh->p_ww) { 
+      split_particle(p); 
+    }
     break;
   case Particle::Type::electron:
     sample_electron_reaction(p);
@@ -1201,54 +1205,18 @@ void split_particle(Particle& p)
   // Particle's position, weight and energy
   Position pos  = p.r();
   double weight = p.wgt_;
-  double Energy = p.E_;	
-
-  // index for position and energy
-  int ijk[3] = {0};     // mesh bin in each direction
-  int energy_bin = 0;   // energy bin
-  int indices = 0;      // indices in weight window vector
-  bool in_mesh;         
+  double E = p.E_;	      
 
   // Check if this particle is in the weight weindow mesh and get the mesh bins in each direction
+  int ijk[3] = {0};     // mesh bin in each direction
+  bool in_mesh;  
   settings::ww_fine_mesh->mesh_->get_indices(pos, ijk, &in_mesh);
   if (!in_mesh) return;
+
+  auto params = settings::ww_fine_mesh->get_params(p);
 	
-  std::vector<double> energy_group;
-  std::vector<double> ww_lower;
-  double lower_ww;       
-  double upper_ww;
-  double survival_ww;
-  int max_split;
-	
-  // Determine which set of weight window values to be used based on particle type
-  if (p.type_ == Particle::Type::neutron) {
-    energy_group = settings::ww_fine_mesh->n_energy_group;
-    ww_lower = settings::ww_fine_mesh->n_ww_lower;
-    lower_ww = settings::ww_fine_mesh->n_multiplier;       
-    upper_ww = settings::ww_fine_mesh->n_upper_ratio;
-    survival_ww = settings::ww_fine_mesh->n_survival_ratio;
-    max_split = settings::ww_fine_mesh->n_max_split;
-  } else if (p.type_ == Particle::Type::photon) {
-    energy_group = settings::ww_fine_mesh->p_energy_group;
-    ww_lower = settings::ww_fine_mesh->p_ww_lower;
-    lower_ww = settings::ww_fine_mesh->p_multiplier;       
-    upper_ww = settings::ww_fine_mesh->p_upper_ratio;
-    survival_ww = settings::ww_fine_mesh->p_survival_ratio;
-    max_split = settings::ww_fine_mesh->p_max_split;
-  }
-
-  // get the mesh bin in energy group
-  energy_bin = lower_bound_index(energy_group.begin(), energy_group.end(), Energy);
-
-  indices = settings::ww_fine_mesh->mesh_->get_bin(pos);
-  indices += energy_bin*settings::ww_fine_mesh->mesh_->n_bins(); 
-
-  lower_ww = lower_ww*ww_lower[indices];  // equal to multiplier * lower weight window bound (from input file)
-  upper_ww = lower_ww*upper_ww;           // equal to multiplied lower weight window bound * upper/lower ratio
-  survival_ww = lower_ww*survival_ww;     // equal to multiplied lower weight window bound * survival/lower ratio
-      
-  if (weight >= upper_ww) {
-    double number = weight/upper_ww;  
+  if (weight >= params.upper_ww) {
+    double number = weight/params.upper_ww;  
     double num = std::min(std::ceil(number), double(max_split));
 
     for (int l = 0; l < num - 1; ++l)  { p.create_secondary(weight/num, p.u(), p.E_, p.type_); }

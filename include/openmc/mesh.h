@@ -301,7 +301,7 @@ public:
     double upper_weight;
     double survival_weight;
     int max_split;
-  }
+  };
   
   WWparams params;  //!< weight windows parameters
   

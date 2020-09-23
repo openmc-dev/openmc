@@ -143,6 +143,11 @@ class Settings:
         Options for writing state points. Acceptable keys are:
 
         :batches: list of batches at which to write source
+    surf_src_write : dict
+        Options for writing surface source points. Acceptable keys are:
+
+        :max_surf_banks: Maximum number of particles to be banked on surfaces
+                         per process (int)
     survival_biasing : bool
         Indicate whether survival biasing is to be used
     tabular_legendre : dict
@@ -228,6 +233,8 @@ class Settings:
         # Output options
         self._statepoint = {}
         self._sourcepoint = {}
+
+        self._surf_src_write = {}
 
         self._no_reduce = None
 
@@ -355,6 +362,10 @@ class Settings:
     @property
     def statepoint(self):
         return self._statepoint
+
+    @property
+    def surf_src_write(self):
+        return self._surf_src_write
 
     @property
     def no_reduce(self):
@@ -566,6 +577,19 @@ class Settings:
                 raise ValueError("Unknown key '{}' encountered when setting "
                                  "statepoint options.".format(key))
         self._statepoint = statepoint
+
+    @surf_src_write.setter
+    def surf_src_write(self, surf_src_write):
+        cv.check_type('surface source writing options', surf_src_write, Mapping)
+        for key, value in surf_src_write.items():
+            cv.check_value('surface source writing key', key,
+                           ('max_surf_banks'))
+            if key == 'max_surf_banks':
+                cv.check_type('maximum particle banks on surfaces per process',
+                              value, Iterable, Integral)
+                cv.check_greater_than('maximum particle banks on surfaces per process',
+                                      value, 0)
+        self._surf_src_write = surf_src_write
 
     @confidence_intervals.setter
     def confidence_intervals(self, confidence_intervals):
@@ -889,6 +913,13 @@ class Settings:
                 subelement = ET.SubElement(element, "overwrite_latest")
                 subelement.text = str(self._sourcepoint['overwrite']).lower()
 
+    def _create_surf_src_write_subelement(self, root):
+        if self._surf_src_write:
+            element = ET.SubElement(root, "surf_src_write")
+            if 'max_surf_banks' in self._surf_src_write:
+                subelement = ET.SubElement(element, "max_surf_banks")
+                subelement.text = str(self._surf_src_write['max_surf_banks'])
+
     def _create_confidence_intervals(self, root):
         if self._confidence_intervals is not None:
             element = ET.SubElement(root, "confidence_intervals")
@@ -1151,6 +1182,16 @@ class Settings:
                         value = [int(x) for x in value.split()]
                     self.sourcepoint[key] = value
 
+    def _surf_src_write_from_xml_element(self, root):
+        elem = root.find('surf_src_write')
+        if elem is not None:
+            for key in ('max_surf_banks'):
+                value = get_text(elem, key)
+                if value is not None:
+                    if key in ('max_surf_banks'):
+                        value = int(value)
+                    self.surf_src_write[key] = value
+
     def _confidence_intervals_from_xml_element(self, root):
         text = get_text(root, 'confidence_intervals')
         if text is not None:
@@ -1349,6 +1390,7 @@ class Settings:
         self._create_output_subelement(root_element)
         self._create_statepoint_subelement(root_element)
         self._create_sourcepoint_subelement(root_element)
+        self._create_surf_src_write_subelement(root_element)
         self._create_confidence_intervals(root_element)
         self._create_electron_treatment_subelement(root_element)
         self._create_energy_mode_subelement(root_element)
@@ -1422,6 +1464,7 @@ class Settings:
         settings._output_from_xml_element(root)
         settings._statepoint_from_xml_element(root)
         settings._sourcepoint_from_xml_element(root)
+        settings._surf_src_write_from_xml_element(root)
         settings._confidence_intervals_from_xml_element(root)
         settings._electron_treatment_from_xml_element(root)
         settings._energy_mode_from_xml_element(root)

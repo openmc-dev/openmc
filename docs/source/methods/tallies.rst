@@ -382,7 +382,7 @@ Confidence Intervals
 
 While the sample variance and standard deviation gives us some idea about the
 variability of the estimate of the mean of whatever quantities we've tallied, it
-does not help us interpret how confidence we should be in the results. To
+does not help us interpret how confident we should be in the results. To
 quantify the reliability of our estimates, we can use `confidence intervals`_
 based on the calculated sample variance.
 

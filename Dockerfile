@@ -11,12 +11,10 @@ ENV CC=/usr/bin/mpicc CXX=/usr/bin/mpicxx \
 # Install dependencies from Debian package manager
 RUN apt-get update -y && \
     apt-get upgrade -y && \
-    apt-get install -y python3-pip && \
-    apt-get install -y wget git && \
-    apt-get install -y gfortran g++ cmake && \
-    apt-get install -y mpich libmpich-dev && \
-    apt-get install -y libhdf5-serial-dev libhdf5-mpich-dev && \
-    apt-get install -y imagemagick && \
+    apt-get install -y \
+        python3-pip python-is-python3 wget git gfortran g++ cmake \
+        mpich libmpich-dev libhdf5-serial-dev libhdf5-mpich-dev \
+        imagemagick && \
     apt-get autoremove
 
 # Update system-provided pip
@@ -36,4 +34,4 @@ RUN git clone --recurse-submodules https://github.com/openmc-dev/openmc.git \
     cd .. && pip install -e .[test]
 
 # Download cross sections (NNDC and WMP) and ENDF data needed by test suite
-RUN ./opt/openmc/tools/ci/download-xs.sh
+RUN /opt/openmc/tools/ci/download-xs.sh

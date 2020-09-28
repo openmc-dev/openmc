@@ -226,7 +226,7 @@ def test_normal_dist():
         samples.append(openmc.lib.math.normal_variate(a, b, prn_seed))
         prn_seed = prn_seed + 1
 
-    stat,p = shaprio(samples)
+    stat,p = shapiro(samples)
     assert stat > 0.97
 
     # cleanup

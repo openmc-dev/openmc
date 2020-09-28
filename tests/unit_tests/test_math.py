@@ -224,7 +224,7 @@ def test_normal_dist():
     for i in range(num_samples):
         # sample the normal distribution from openmc
         samples.append(openmc.lib.math.normal_variate(a, b, prn_seed)
-        prn_seed += 1
+        prn_seed = prn_seed + 1
 
     stat,p = shaprio(samples)
     assert stat > 0.97

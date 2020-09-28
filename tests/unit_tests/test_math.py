@@ -213,13 +213,24 @@ def test_normal_dist():
 
     assert ref_val == pytest.approx(test_val)
 
-    prn_seed = 1
-    a = 14.08
+    # make sigma = 1.0
     b = 1.0
-    ref_val = 16.436645416691427
-    test_val = openmc.lib.math.normal_variate(a, b, prn_seed)
 
-    assert ref_val == pytest.approx(test_val)
+    # import shapiro test 
+    from scipy.stats import shapiro
+    samples = []
+    num_samples = 10000
+    # sample some numbers
+    for i in range(num_samples):
+        # sample the normal distribution from openmc
+        samples.append(openmc.lib.math.normal_variate(a, b, prn_seed)
+        prn_seed += 1
+
+    stat,p = shaprio(samples)
+    assert stat > 0.97
+
+    # cleanup
+    del samples
 
 
 def test_broaden_wmp_polynomials():

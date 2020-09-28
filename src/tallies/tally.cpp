@@ -719,28 +719,34 @@ void read_tallies_xml()
 #ifdef OPENMC_MPI
 void reduce_tally_results()
 {
-  for (int i_tally : model::active_tallies) {
-    // Skip any tallies that are not active
-    auto& tally {model::tallies[i_tally]};
+  // Don't reduce tally is no_reduce option is on
+  if (settings::reduce_tallies) {
+    for (int i_tally : model::active_tallies) {
+      // Skip any tallies that are not active
+      auto& tally {model::tallies[i_tally]};
 
-    // Get view of accumulated tally values
-    auto values_view = xt::view(tally->results_, xt::all(), xt::all(), static_cast<int>(TallyResult::VALUE));
+      // Get view of accumulated tally values
+      auto values_view = xt::view(tally->results_, xt::all(), xt::all(), static_cast<int>(TallyResult::VALUE));
 
-    // Make copy of tally values in contiguous array
-    xt::xtensor<double, 2> values = values_view;
-    xt::xtensor<double, 2> values_reduced = xt::empty_like(values);
+      // Make copy of tally values in contiguous array
+      xt::xtensor<double, 2> values = values_view;
+      xt::xtensor<double, 2> values_reduced = xt::empty_like(values);
 
-    // Reduce contiguous set of tally results
-    MPI_Reduce(values.data(), values_reduced.data(), values.size(),
-      MPI_DOUBLE, MPI_SUM, 0, mpi::intracomm);
+      // Reduce contiguous set of tally results
+      MPI_Reduce(values.data(), values_reduced.data(), values.size(),
+        MPI_DOUBLE, MPI_SUM, 0, mpi::intracomm);
 
-    // Transfer values on master and reset on other ranks
-    if (mpi::master) {
-      values_view = values_reduced;
-    } else {
-      values_view = 0.0;
+      // Transfer values on master and reset on other ranks
+      if (mpi::master) {
+        values_view = values_reduced;
+      } else {
+        values_view = 0.0;
+      }
     }
   }
+
+  // Note that global tallies are *always* reduced even when no_reduce option is
+  // on.
 
   // Get view of global tally values
   auto& gt = simulation::global_tallies;
@@ -775,11 +781,11 @@ accumulate_tallies()
 {
 #ifdef OPENMC_MPI
   // Combine tally results onto master process
-  if (settings::reduce_tallies && mpi::n_procs > 1) reduce_tally_results();
+  if (mpi::n_procs > 1) reduce_tally_results();
 #endif
 
   // Increase number of realizations (only used for global tallies)
-  simulation::n_realizations += settings::reduce_tallies ? 1 : mpi::n_procs;
+  simulation::n_realizations += 1;
 
   // Accumulate on master only unless run is not reduced then do it on all
   if (mpi::master || !settings::reduce_tallies) {

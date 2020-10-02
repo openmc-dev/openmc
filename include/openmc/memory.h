@@ -9,8 +9,6 @@
 #include <cub/cub.cuh>
 #endif
 
-#include "openmc/settings.h"
-
 namespace openmc {
 
 #ifdef __CUDACC__
@@ -42,23 +40,17 @@ public:
   inline pointer allocate(size_type n)
   {
     pointer tmp;
-    if (settings::gpu_mode) {
-      cudaError_t error_code =
-        cudaMallocManaged(&tmp, n * sizeof(value_type), cudaMemAttachGlobal);
-      if (error_code != cudaSuccess)
-        CubDebugExit(error_code);
-    } else
-      tmp = (pointer)malloc(n * sizeof(value_type));
+    cudaError_t error_code =
+      cudaMallocManaged(&tmp, n * sizeof(value_type), cudaMemAttachGlobal);
+    if (error_code != cudaSuccess)
+      CubDebugExit(error_code);
     return tmp;
   }
   inline void deallocate(pointer p, size_type)
   {
-    if (settings::gpu_mode) {
-      cudaError_t error_code = cudaFree(p);
-      if (error_code != cudaSuccess)
-        CubDebugExit(error_code);
-    } else
-      free(p);
+    cudaError_t error_code = cudaFree(p);
+    if (error_code != cudaSuccess)
+      CubDebugExit(error_code);
   }
 
   // Need to be able to construct in the newly allocated memory in a few ways
@@ -119,10 +111,7 @@ T* openmc_new(Args... args)
 {
   T* loc = nullptr;
 
-  if (settings::gpu_mode)
-    cudaMallocManaged(&loc, sizeof(T));
-  else
-    loc = (T*)malloc(sizeof(T));
+  cudaMallocManaged(&loc, sizeof(T));
 
   // Run the constructor as usual on the host
   new (loc) T(args...);
@@ -130,7 +119,7 @@ T* openmc_new(Args... args)
   // Now, copy the host data to device, and run the copy constructor there.
   // This will correctly initialize vtables on the device. Without re-running
   // a constructor on the device, polymorphism fails.
-  if (std::is_polymorphic<T>::value && settings::gpu_mode)
+  if (std::is_polymorphic<T>::value)
     run_copy_constructor_on_device<<<1, 1>>>(loc);
 
   return loc;

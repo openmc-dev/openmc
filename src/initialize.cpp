@@ -175,6 +175,10 @@ parse_command_line(int argc, char* argv[])
       } else if (arg == "-e" || arg == "--event") {
         settings::event_based = true;
 
+      } else if (arg == "-g" || arg == "--gpu") {
+        settings::gpu_mode = true;
+        settings::event_based = true;
+
       } else if (arg == "-r" || arg == "--restart") {
         i += 1;
 
@@ -227,7 +231,7 @@ parse_command_line(int argc, char* argv[])
         }
 
       } else if (arg == "-g" || arg == "--geometry-debug") {
-      settings::check_overlaps = true;
+        settings::check_overlaps = true;
       } else if (arg == "-c" || arg == "--volume") {
         settings::run_mode = RunMode::VOLUME;
       } else if (arg == "-s" || arg == "--threads") {

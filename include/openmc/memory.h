@@ -48,6 +48,7 @@ public:
   }
   inline void deallocate(pointer p, size_type)
   {
+    if (p == nullptr) return;
     cudaError_t error_code = cudaFree(p);
     if (error_code != cudaSuccess)
       CubDebugExit(error_code);

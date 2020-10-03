@@ -15,6 +15,7 @@
 #include "openmc/particle.h"
 #include "openmc/position.h"
 #include "openmc/vector.h"
+#include "openmc/string.h"
 
 namespace openmc {
 
@@ -86,8 +87,8 @@ class Surface
 public:
 
   int id_; //!< Unique ID
-  std::string name_; //!< User-defined name
-  std::shared_ptr<BoundaryCondition> bc_ {nullptr}; //!< Boundary condition
+  string name_; //!< User-defined name
+  unique_ptr<BoundaryCondition> bc_ {nullptr}; //!< Boundary condition
   bool surf_source_ {false};     //!< Activate source banking for the surface?
 
   explicit Surface(pugi::xml_node surf_node);

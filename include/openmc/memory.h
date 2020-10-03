@@ -97,17 +97,17 @@ __global__ void run_constructor_on_device(T* dist, Args... args)
 }
 
 template<typename T>
-__global__ void run_copy_constructor_on_device(T* dist)
+__global__ void run_move_constructor_on_device(T* dist)
 {
-  static_assert(std::is_copy_constructible<T>::value,
-    "Polymorphic objects to be used on the GPU must be copy constructible.");
-  new (dist) T(*dist);
+  static_assert(std::is_move_constructible<T>::value,
+    "Polymorphic objects to be used on the GPU must be move constructible.");
+  new (dist) T(std::move(*dist));
 }
 
 // Allocates unified memory if running in GPU mode, else acts
 // like operator new.
 template<typename T, typename... Args>
-T* openmc_new(Args... args)
+T* unified_new(Args... args)
 {
   T* loc = nullptr;
 
@@ -120,7 +120,7 @@ T* openmc_new(Args... args)
   // This will correctly initialize vtables on the device. Without re-running
   // a constructor on the device, polymorphism fails.
   if (std::is_polymorphic<T>::value)
-    run_copy_constructor_on_device<<<1, 1>>>(loc);
+    run_move_constructor_on_device<<<1, 1>>>(loc);
 
   return loc;
 }
@@ -152,12 +152,19 @@ public:
   // functionality
   unique_ptr(unique_ptr const&) = delete;
   unique_ptr& operator=(unique_ptr const&) = delete;
+  unique_ptr& operator=(unique_ptr&& u)
+  {
+    free_mem(); // free memory currently held, if any
+    ptr = u.release();
+    return *this;
+  }
 
-  ~unique_ptr()
+  void free_mem()
   {
     if (ptr != nullptr)
       cudaFree(ptr);
   }
+  ~unique_ptr() { free_mem(); }
 
   // observers
   __host__ __device__ typename std::add_lvalue_reference<T>::type operator*()
@@ -195,7 +202,7 @@ private:
 template<typename T, typename... Args>
 unique_ptr<T> make_unique(Args&&... args)
 {
-  return unique_ptr<T>(openmc_new<T>(std::forward<Args>(args)...));
+  return unique_ptr<T>(unified_new<T>(std::forward<Args>(args)...));
 }
 
 // Below are the expected standard library routines and data if not compiling
@@ -203,11 +210,10 @@ unique_ptr<T> make_unique(Args&&... args)
 
 #else
 
-template<class T, class D>
-using unique_ptr = std::unique_ptr<T, D>;
-
-template<class T, class... Args>
-using make_unique = std::make_unique<T, Args...>
+// template<class T, class D = std::default_delete<T>>
+// using unique_ptr = std::unique_ptr<T, D>;
+using std::make_unique;
+using std::unique_ptr;
 
 #endif
 

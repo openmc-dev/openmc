@@ -14,6 +14,7 @@
 #include "openmc/memory.h"
 #include <algorithm>
 #include <cstddef>
+#include <memory>
 #include <type_traits>
 #include <utility>
 #include <vector>
@@ -35,67 +36,112 @@ namespace openmc {
 template<class T, class Alloc = UnifiedAllocator<T>>
 class vector {
 private:
-  T* begin;
-  std::size_t length;
-  std::size_t capacity;
+  T* begin_;
+  std::size_t size_;
+  std::size_t capacity_;
   Alloc alloc;
 
   __host__ void grow()
   {
-    T* old_begin = begin;
-    auto old_capacity = capacity;
-    capacity *= 2;
-    begin = alloc.allocate(length);
-    memcpy(begin, old_begin, length * sizeof(T));
+    T* old_begin = begin_;
+    auto old_capacity = capacity_;
+    capacity_ *= 2;
+    begin_ = alloc.allocate(size_);
+    memcpy(begin_, old_begin, size_ * sizeof(T));
     alloc.deallocate(old_begin, old_capacity);
   }
 
 public:
-  __host__ vector() : begin(nullptr), length(0), capacity(0) {}
+  __host__ vector() : begin_(nullptr), size_(0), capacity_(0) {}
 
   // Construct, default-initializing elements in a vector of
-  // length new_length.
-  __host__ vector(std::size_t new_length, const T& value = T())
+  // length new_size.
+  __host__ vector(std::size_t new_size, const T& value = T())
   {
-    begin = alloc.allocate(new_length);
-    capacity = new_length;
-    for (std::size_t i = 0; i < new_length; ++i)
-      new (begin + i) T(value);
-    length = new_length;
+    begin_ = alloc.allocate(new_size);
+    capacity_ = new_size;
+    for (std::size_t i = 0; i < new_size; ++i)
+      new (begin_ + i) T(value);
+    size_ = new_size;
   }
 
-  __host__ void reserve(std::size_t new_length)
+  // The copy constructor should create a totally independent deep copy
+  __host__ vector(vector const& copy_from)
   {
-    T* old_begin = begin;
-    auto old_capacity = capacity;
-    capacity = new_length;
-    begin = alloc.allocate(capacity);
-    memcpy(begin, old_begin, length * sizeof(T));
+    begin_ = alloc.allocate(copy_from.size());
+    size_ = copy_from.size();
+    capacity_ = size_;
+  }
+
+  __host__ ~vector()
+  {
+    for (std::size_t i = 0; i < size_; ++i)
+      (begin_ + i)->~T();
+    alloc.deallocate(begin_, capacity_);
+  }
+
+  // Construct from iterators
+  __host__ vector(const T* begin, const T* end)
+    : begin_(nullptr), size_(end - begin), capacity_(end - begin)
+  {
+    // If bad ordering, create vector of length zero
+    if (end < begin) {
+      size_ = 0;
+      capacity_ = 0;
+    }
+
+    begin_ = alloc.allocate(size_);
+    for (std::size_t i = 0; i < size_; ++i)
+      begin_[i] = begin[i];
+  }
+
+  __host__ void reserve(std::size_t new_size)
+  {
+    T* old_begin = begin_;
+    auto old_capacity = capacity_;
+    capacity_ = new_size;
+    begin_ = alloc.allocate(capacity_);
+    memcpy(begin_, old_begin, size_ * sizeof(T));
     alloc.deallocate(old_begin, old_capacity);
   }
 
   __host__ void push_back(const T& value)
   {
-    if (length == capacity)
+    if (size_ == capacity_)
       grow();
-    begin[length++] = value;
+    begin_[size_++] = value;
+  }
+  __host__ void push_back(T&& value)
+  {
+    if (size_ == capacity_)
+      grow();
+    begin_[size_++] = std::move(value);
   }
 
-  __host__ __device__ T& operator[](std::size_t n) { return *(begin + n); }
+  __host__ __device__ T& operator[](std::size_t n) { return *(begin_ + n); }
   __host__ __device__ T const& operator[](std::size_t n) const
   {
-    return *(begin + n);
+    return *(begin_ + n);
   }
 
-  __host__ __device__ bool empty() { return length > 0; }
-  __host__ __device__ T* data() { return begin; }
-  __host__ __device__ std::size_t size() { return length; }
+  __host__ __device__ bool empty() const { return size_ > 0; }
+  __host__ __device__ T* data() const { return begin_; }
+  __host__ __device__ std::size_t size() const { return size_; }
+  __host__ __device__ T* begin() { return begin_; }
+  __host__ __device__ T* end() { return begin_ + size_; }
+
+  __host__ void clear()
+  {
+    capacity_ = 0;
+    size_ = 0;
+    alloc.deallocate(begin_, capacity_);
+    begin_ = nullptr;
+  }
 };
 
 #else
 
-template<class T, class Alloc>
-using vector = std::vector<T, Alloc>;
+using std::vector;
 
 #endif
 

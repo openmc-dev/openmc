@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.3 FATAL_ERROR)
+cmake_minimum_required(VERSION 3.8 FATAL_ERROR)
 project(openmc C CXX)
 
 # Set version numbers
@@ -25,14 +25,15 @@ endif()
 # Command line options
 #===============================================================================
 
-option(openmp   "Enable shared-memory parallelism with OpenMP"         ON)
-option(profile  "Compile with profiling flags"                         OFF)
-option(debug    "Compile with debug flags"                             OFF)
-option(optimize "Turn on all compiler optimization flags"              OFF)
-option(coverage "Compile with coverage analysis flags"                 OFF)
-option(dagmc    "Enable support for DAGMC (CAD) geometry"              OFF)
+option(openmp   "Enable shared-memory parallelism with OpenMP"   ON)
+option(profile  "Compile with profiling flags"                   OFF)
+option(debug    "Compile with debug flags"                       OFF)
+option(optimize "Turn on all compiler optimization flags"        OFF)
+option(coverage "Compile with coverage analysis flags"           OFF)
+option(dagmc    "Enable support for DAGMC (CAD) geometry"        OFF)
 option(libmesh  "Enable support for libMesh unstructured mesh tallies" OFF)
 option(fp32_xs  "Use single precision floats for cross sections"       OFF)
+option(cuda     "Enable support for execution on Nvidia GPUs"    OFF)
 
 #===============================================================================
 # MPI for distributed-memory parallelism
@@ -58,7 +59,6 @@ endif()
 #===============================================================================
 # Check for submodules perhaps already on system
 #===============================================================================
-
 # If not found, we just pull appropriate versions from github and build them.
 find_package(fmt QUIET NO_SYSTEM_ENVIRONMENT_PATH)
 if(fmt_FOUND)
@@ -71,6 +71,14 @@ if(pugixml_FOUND)
   message(STATUS "Found pugixml: ${pugixml_DIR}")
 else()
   message(STATUS "Did not find pugixml, will use submodule instead")
+
+#===============================================================================
+# CUDA support
+#===============================================================================
+if(cuda)
+  enable_language(CUDA)
+  set(CMAKE_CUDA_ARCHITECTURES 70)
+  set(CMAKE_CUDA_SEPARABLE_COMPILATION ON)
 endif()
 
 #===============================================================================
@@ -362,6 +370,12 @@ list(APPEND libopenmc_SOURCES
   src/wmp.cpp
   src/xml_interface.cpp
   src/xsdata.cpp)
+
+# If we're compiling for Nvidia GPUs, ensure that nvcc compiles all .cpp files
+if (cuda)
+  set_source_files_properties(${libopenmc_SOURCES} PROPERTIES LANGUAGE CUDA)
+  set_source_files_properties(src/main.cpp PROPERTIES LANGUAGE CUDA)
+endif()
 
 # For Visual Studio compilers
 if(MSVC)

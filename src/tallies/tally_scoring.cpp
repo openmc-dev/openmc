@@ -253,7 +253,6 @@ double get_nuclide_neutron_heating(const Particle& p, const Nuclide& nuc,
     int rxn_index, int i_nuclide)
 {
   size_t mt = nuc.reaction_index_[rxn_index];
-  if (mt == C_NONE) return 0.0;
 
   auto i_temp = p.neutron_xs(i_nuclide).index_temp;
   if (i_temp < 0) return 0.0; // Can be true due to multipole
@@ -481,7 +480,6 @@ double get_nuclide_xs(const Particle& p, int i_nuclide, int score_bin) {
 
   // Get reaction object, or return 0 if reaction is not present
   auto m = nuc.reaction_index_[score_bin];
-  if (m == C_NONE) return 0.0;
   const auto& rxn {*nuc.reactions_[m]};
   const auto& micro {p.neutron_xs(i_nuclide)};
 

@@ -81,9 +81,9 @@ public:
 
   // The move constructor may need to run on the device in the case of
   // construction of polymorphic objects living on GPU that contain vectors.
-  __host__ __device__ vector(vector&& move_from) : begin_(move_from.begin_),
-    size_(move_from.size_),
-    capacity_(move_from.capacity_) {}
+  __host__ __device__ vector(vector&& move_from) : begin_(std::move(move_from.begin_)),
+    size_(std::move(move_from.size_)),
+    capacity_(std::move(move_from.capacity_)) {}
 
   __host__ ~vector()
   {

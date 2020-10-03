@@ -94,6 +94,13 @@ public:
   explicit Surface(pugi::xml_node surf_node);
   Surface();
 
+  // Have to explicitly give the implicit rvalue constructor to make
+  // CUDA compile it on device so we can use polymorphism... why :|
+  __host__ __device__ Surface(Surface&& other) :
+    bc_(std::move(other.bc_)),
+    id_(std::move(other.id_)),
+    name_(std::move(other.name_)) {}
+
   virtual ~Surface() {}
 
   //! Determine which side of a surface a point lies on.
@@ -147,6 +154,9 @@ public:
   explicit CSGSurface(pugi::xml_node surf_node);
   CSGSurface();
 
+  __host__ __device__ CSGSurface(CSGSurface&& other) :
+    Surface(std::move(other)) {}
+
   void to_hdf5(hid_t group_id) const;
 
 protected:
@@ -184,6 +194,10 @@ class SurfaceXPlane : public CSGSurface
 {
 public:
   explicit SurfaceXPlane(pugi::xml_node surf_node);
+  __host__ __device__ SurfaceXPlane(SurfaceXPlane&& other) :
+    PeriodicSurface(std::move(other)),
+    x0_(std::move(other.x0_)) {}
+
   double evaluate(Position r) const;
   double distance(Position r, Direction u, bool coincident) const;
   Direction normal(Position r) const;
@@ -203,6 +217,10 @@ class SurfaceYPlane : public CSGSurface
 {
 public:
   explicit SurfaceYPlane(pugi::xml_node surf_node);
+  __host__ __device__ SurfaceYPlane(SurfaceYPlane&& other) :
+    PeriodicSurface(std::move(other)),
+    y0_(std::move(other.y0_)) {}
+
   double evaluate(Position r) const;
   double distance(Position r, Direction u, bool coincident) const;
   Direction normal(Position r) const;
@@ -222,6 +240,9 @@ class SurfaceZPlane : public CSGSurface
 {
 public:
   explicit SurfaceZPlane(pugi::xml_node surf_node);
+  __host__ __device__ SurfaceZPlane(SurfaceZPlane&& other) :
+    PeriodicSurface(std::move(other)),
+    z0_(std::move(other.z0_)) {}
   double evaluate(Position r) const;
   double distance(Position r, Direction u, bool coincident) const;
   Direction normal(Position r) const;
@@ -241,6 +262,14 @@ class SurfacePlane : public CSGSurface
 {
 public:
   explicit SurfacePlane(pugi::xml_node surf_node);
+
+  __host__ __device__ SurfacePlane(SurfacePlane&& other) :
+    PeriodicSurface(std::move(other)),
+    A_(std::move(other.A_)),
+    B_(std::move(other.B_)),
+    C_(std::move(other.C_)),
+    D_(std::move(other.D_)) {}
+
   double evaluate(Position r) const;
   double distance(Position r, Direction u, bool coincident) const;
   Direction normal(Position r) const;
@@ -260,6 +289,11 @@ class SurfaceXCylinder : public CSGSurface
 {
 public:
   explicit SurfaceXCylinder(pugi::xml_node surf_node);
+  __host__ __device__ SurfaceXCylinder(SurfaceXCylinder&& other) :
+    CSGSurface(std::move(other)),
+    y0_(std::move(other.y0_)),
+    z0_(std::move(other.z0_)),
+    radius_(std::move(other.radius_)) {}
   double evaluate(Position r) const;
   double distance(Position r, Direction u, bool coincident) const;
   Direction normal(Position r) const;
@@ -280,6 +314,11 @@ class SurfaceYCylinder : public CSGSurface
 {
 public:
   explicit SurfaceYCylinder(pugi::xml_node surf_node);
+  __host__ __device__ SurfaceYCylinder(SurfaceYCylinder&& other) :
+    CSGSurface(std::move(other)),
+    x0_(std::move(other.x0_)),
+    z0_(std::move(other.z0_)),
+    radius_(std::move(other.radius_)) {}
   double evaluate(Position r) const;
   double distance(Position r, Direction u, bool coincident) const;
   Direction normal(Position r) const;
@@ -300,6 +339,12 @@ class SurfaceZCylinder : public CSGSurface
 {
 public:
   explicit SurfaceZCylinder(pugi::xml_node surf_node);
+  __host__ __device__ SurfaceZCylinder(SurfaceZCylinder&& other) :
+    CSGSurface(std::move(other)),
+    x0_(std::move(other.x0_)),
+    y0_(std::move(other.y0_)),
+    radius_(std::move(other.radius_)) {}
+
   double evaluate(Position r) const;
   double distance(Position r, Direction u, bool coincident) const;
   Direction normal(Position r) const;
@@ -320,6 +365,12 @@ class SurfaceSphere : public CSGSurface
 {
 public:
   explicit SurfaceSphere(pugi::xml_node surf_node);
+  __host__ __device__ SurfaceSphere(SurfaceSphere&& other) :
+    CSGSurface(std::move(other)),
+    x0_(std::move(other.x0_)),
+    y0_(std::move(other.y0_)),
+    z0_(std::move(other.z0_)),
+    radius_(std::move(other.radius_)) {}
   double evaluate(Position r) const;
   double distance(Position r, Direction u, bool coincident) const;
   Direction normal(Position r) const;
@@ -340,6 +391,12 @@ class SurfaceXCone : public CSGSurface
 {
 public:
   explicit SurfaceXCone(pugi::xml_node surf_node);
+  __host__ __device__ SurfaceXCone(SurfaceXCone&& other) :
+    CSGSurface(std::move(other)),
+    x0_(std::move(other.x0_)),
+    y0_(std::move(other.y0_)),
+    z0_(std::move(other.z0_)),
+    radius_sq_(std::move(other.radius_sq_)) {}
   double evaluate(Position r) const;
   double distance(Position r, Direction u, bool coincident) const;
   Direction normal(Position r) const;
@@ -359,6 +416,12 @@ class SurfaceYCone : public CSGSurface
 {
 public:
   explicit SurfaceYCone(pugi::xml_node surf_node);
+  __host__ __device__ SurfaceYCone(SurfaceYCone&& other) :
+    CSGSurface(std::move(other)),
+    x0_(std::move(other.x0_)),
+    y0_(std::move(other.y0_)),
+    z0_(std::move(other.z0_)),
+    radius_sq_(std::move(other.radius_sq_)) {}
   double evaluate(Position r) const;
   double distance(Position r, Direction u, bool coincident) const;
   Direction normal(Position r) const;
@@ -378,6 +441,12 @@ class SurfaceZCone : public CSGSurface
 {
 public:
   explicit SurfaceZCone(pugi::xml_node surf_node);
+  __host__ __device__ SurfaceZCone(SurfaceZCone&& other) :
+    CSGSurface(std::move(other)),
+    x0_(std::move(other.x0_)),
+    y0_(std::move(other.y0_)),
+    z0_(std::move(other.z0_)),
+    radius_sq_(std::move(other.radius_sq_)) {}
   double evaluate(Position r) const;
   double distance(Position r, Direction u, bool coincident) const;
   Direction normal(Position r) const;
@@ -396,6 +465,19 @@ class SurfaceQuadric : public CSGSurface
 {
 public:
   explicit SurfaceQuadric(pugi::xml_node surf_node);
+  __host__ __device__ SurfaceQuadric(SurfaceQuadric&& other) :
+    CSGSurface(std::move(other)),
+    A_(std::move(other.A_)),
+    B_(std::move(other.B_)),
+    C_(std::move(other.C_)),
+    D_(std::move(other.D_)),
+    E_(std::move(other.E_)),
+    F_(std::move(other.F_)),
+    G_(std::move(other.G_)),
+    H_(std::move(other.H_)),
+    J_(std::move(other.J_)),
+    K_(std::move(other.K_)) {}
+
   double evaluate(Position r) const;
   double distance(Position r, Direction u, bool coincident) const;
   Direction normal(Position r) const;

@@ -39,16 +39,16 @@ private:
   T* begin_;
   std::size_t size_;
   std::size_t capacity_;
-  Alloc alloc;
+  Alloc alloc_;
 
   __host__ void grow()
   {
     T* old_begin = begin_;
     auto old_capacity = capacity_;
     capacity_ *= 2;
-    begin_ = alloc.allocate(size_);
+    begin_ = alloc_.allocate(size_);
     memcpy(begin_, old_begin, size_ * sizeof(T));
-    alloc.deallocate(old_begin, old_capacity);
+    alloc_.deallocate(old_begin, old_capacity);
   }
 
 public:
@@ -58,7 +58,7 @@ public:
   // length new_size.
   __host__ vector(std::size_t new_size, const T& value = T())
   {
-    begin_ = alloc.allocate(new_size);
+    begin_ = alloc_.allocate(new_size);
     capacity_ = new_size;
     for (std::size_t i = 0; i < new_size; ++i)
       new (begin_ + i) T(value);
@@ -68,28 +68,33 @@ public:
   // The copy constructor should create a totally independent deep copy
   __host__ vector(vector const& copy_from)
   {
-    begin_ = alloc.allocate(copy_from.size());
+    begin_ = alloc_.allocate(copy_from.size());
     size_ = copy_from.size();
     capacity_ = size_;
+    alloc_ = copy_from.alloc_;
   }
-  __host__ vector& operator=(vector&& copy_from) {
-    begin_ = copy_from.begin_;
-    size_ = copy_from.size_;
-    capacity_ = copy_from.capacity_;
+  __host__ __device__ vector& operator=(vector&& copy_from)
+  {
+    begin_ = std::move(copy_from.begin_);
+    size_ = std::move(copy_from.size_);
+    capacity_ = std::move(copy_from.capacity_);
+    alloc_ = std::move(copy_from.alloc_);
     return *this;
   }
 
   // The move constructor may need to run on the device in the case of
   // construction of polymorphic objects living on GPU that contain vectors.
-  __host__ __device__ vector(vector&& move_from) : begin_(std::move(move_from.begin_)),
-    size_(std::move(move_from.size_)),
-    capacity_(std::move(move_from.capacity_)) {}
+  __host__ __device__ vector(vector&& move_from)
+    : begin_(std::move(move_from.begin_)), size_(std::move(move_from.size_)),
+      capacity_(std::move(move_from.capacity_)),
+      alloc_(std::move(move_from.alloc_))
+  {}
 
   __host__ ~vector()
   {
     for (std::size_t i = 0; i < size_; ++i)
       (begin_ + i)->~T();
-    alloc.deallocate(begin_, capacity_);
+    alloc_.deallocate(begin_, capacity_);
   }
 
   // Construct from iterators
@@ -102,7 +107,7 @@ public:
       capacity_ = 0;
     }
 
-    begin_ = alloc.allocate(size_);
+    begin_ = alloc_.allocate(size_);
     for (std::size_t i = 0; i < size_; ++i)
       begin_[i] = begin[i];
   }
@@ -112,9 +117,9 @@ public:
     T* old_begin = begin_;
     auto old_capacity = capacity_;
     capacity_ = new_size;
-    begin_ = alloc.allocate(capacity_);
+    begin_ = alloc_.allocate(capacity_);
     memcpy(begin_, old_begin, size_ * sizeof(T));
-    alloc.deallocate(old_begin, old_capacity);
+    alloc_.deallocate(old_begin, old_capacity);
   }
 
   __host__ void push_back(const T& value)
@@ -146,7 +151,7 @@ public:
   {
     capacity_ = 0;
     size_ = 0;
-    alloc.deallocate(begin_, capacity_);
+    alloc_.deallocate(begin_, capacity_);
     begin_ = nullptr;
   }
 };

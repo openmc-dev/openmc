@@ -477,14 +477,15 @@ void print_results()
 
   // Calculate t-value for confidence intervals
   int n = simulation::n_realizations;
-  double alpha, t_n1, t_n3;
+  double alpha, t_n1; //, t_n3;
+  // NOTE: t_n3 is currently not used
   if (settings::confidence_intervals) {
     alpha = 1.0 - CONFIDENCE_LEVEL;
     t_n1 = t_percentile(1.0 - alpha/2.0, n - 1);
-    t_n3 = t_percentile(1.0 - alpha/2.0, n - 3);
+    // t_n3 = t_percentile(1.0 - alpha/2.0, n - 3);
   } else {
     t_n1 = 1.0;
-    t_n3 = 1.0;
+    // t_n3 = 1.0;
   }
 
   // write global tallies

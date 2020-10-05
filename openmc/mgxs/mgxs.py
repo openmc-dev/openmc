@@ -3018,6 +3018,10 @@ class DiffusionCoefficient(TransportXS):
         ----------
         coarse_groups : openmc.mgxs.EnergyGroups
             The coarse energy group structure of interest
+        condense_diff_coef: bool
+            A boolean representing whether a condensed DiffusionCoefficient
+            mgxs will be calculated. 
+
         Returns
         -------
         MGXS

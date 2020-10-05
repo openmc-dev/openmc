@@ -319,7 +319,7 @@ class VolumeCalculation:
         results = type(self).from_hdf5(filename)
 
         # Make sure properties match
-        assert self.ids == results.ids
+        assert set(self.ids) == set(results.ids)
         assert np.all(self.lower_left == results.lower_left)
         assert np.all(self.upper_right == results.upper_right)
 

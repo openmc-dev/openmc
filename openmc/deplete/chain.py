@@ -395,8 +395,7 @@ class Chain:
 
             if not data.nuclide['stable'] and data.half_life.nominal_value != 0.0:
                 nuclide.half_life = data.half_life.nominal_value
-                nuclide.decay_energy = sum(E.nominal_value for E in
-                                           data.average_energies.values())
+                nuclide.decay_energy = data.decay_energy.nominal_value
                 sum_br = 0.0
                 for i, mode in enumerate(data.modes):
                     type_ = ','.join(mode.modes)

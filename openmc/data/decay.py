@@ -298,7 +298,7 @@ class Decay(EqualityMixin):
         applications.
     decay_constant : uncertainties.UFloat
         Decay constant in inverse seconds.
-    decay_energy : float
+    decay_energy : uncertainties.UFloat
         Average energy in [eV] per decay for a decay heat
     half_life : uncertainties.UFloat
         Half-life of the decay in seconds.
@@ -472,7 +472,7 @@ class Decay(EqualityMixin):
         if energy:
             return energy['light'] + energy['electromagnetic'] + energy['heavy']
         else:
-            return 0.0
+            return ufloat(0, 0)
 
     @classmethod
     def from_endf(cls, ev_or_filename):

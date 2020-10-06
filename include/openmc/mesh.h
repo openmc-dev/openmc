@@ -34,6 +34,9 @@ namespace model {
 
 extern std::unordered_map<int32_t, int32_t> mesh_map;
 extern std::vector<std::unique_ptr<Mesh>> meshes;
+#ifdef DAGMC
+extern std::shared_ptr<moab::Interface> moabPtr;
+#endif
 
 } // namespace model
 
@@ -97,6 +100,12 @@ public:
   // Data members
   int id_ {-1};  //!< User-specified ID
   int n_dimension_; //!< Number of dimensions
+
+protected:
+
+  //! Set and check ID
+  virtual void setMeshID(pugi::xml_node node);
+
 };
 
 class StructuredMesh : public Mesh {
@@ -305,6 +314,34 @@ public:
   //! Write the mesh with any current tally data
   void write(std::string base_filename) const;
 
+protected:
+
+  //! Initialise data members
+  virtual void init(pugi::xml_node node);
+
+  //! Set internal string holding meshtype
+  virtual void setMeshType(pugi::xml_node node);
+
+  //! Check that internal mesh type matches xml
+  virtual void checkMeshType(const std::string & mesh_type,pugi::xml_node node);
+
+  //! Set internal string holding filename
+  virtual void setFilename(pugi::xml_node node);
+
+  //! Initialise MOAB interface
+  virtual void initMOAB();
+
+  //! Load required mesh data into memory
+  virtual void initMeshData();
+
+  // data members
+  moab::Range ehs_; //!< Range of tetrahedra EntityHandle's in the mesh
+  moab::EntityHandle tetset_; //!< EntitySet containing all tetrahedra
+  moab::EntityHandle kdtree_root_; //!< Root of the MOAB KDTree
+  std::shared_ptr<moab::Interface> mbi_; //!< MOAB instance
+  std::unique_ptr<moab::AdaptiveKDTree> kdtree_; //!< MOAB KDTree instance
+  std::vector<moab::Matrix3> baryc_data_; //!< Barycentric data for tetrahedra
+  std::string mesh_type_; // String representation of mesh type
   std::string filename_; //!< Path to unstructured mesh file
 
 private:
@@ -399,16 +436,27 @@ private:
   std::pair<moab::Tag, moab::Tag>
   get_score_tags(std::string score) const;
 
-  // data members
-  moab::Range ehs_; //!< Range of tetrahedra EntityHandle's in the mesh
-  moab::EntityHandle tetset_; //!< EntitySet containing all tetrahedra
-  moab::EntityHandle kdtree_root_; //!< Root of the MOAB KDTree
-  std::unique_ptr<moab::Interface> mbi_; //!< MOAB instance
-  std::unique_ptr<moab::AdaptiveKDTree> kdtree_; //!< MOAB KDTree instance
-  std::vector<moab::Matrix3> baryc_data_; //!< Barycentric data for tetrahedra
+
 };
 
-#endif
+//! Same as ExternalMesh, but MOAB interface is stored in model
+class ExternalMesh : public UnstructuredMesh {
+
+public:
+
+  ExternalMesh() = default;
+  ExternalMesh(pugi::xml_node node);
+  ~ExternalMesh() = default;
+
+protected:
+
+  virtual void setMeshType(pugi::xml_node node) override;
+  virtual void setFilename(pugi::xml_node node) override;
+  virtual void initMOAB() override;
+
+};
+
+#endif // end DAGMC
 
 //==============================================================================
 // Non-member functions
@@ -427,6 +475,15 @@ void meshes_to_hdf5(hid_t group);
 RegularMesh* get_regular_mesh(int32_t index);
 
 void free_memory_mesh();
+
+#ifdef DAGMC
+//! Create / load mesh into MOAB interface stored in model
+//! \param[in] XML node
+void create_external_mesh(pugi::xml_node node);
+
+//! \param[in] XML node
+void load_external_mesh(const std::string & filename);
+#endif
 
 } // namespace openmc
 

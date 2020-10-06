@@ -37,6 +37,7 @@ namespace model {
 
 std::unordered_map<int32_t, int32_t> mesh_map;
 std::vector<std::unique_ptr<Mesh>> meshes;
+std::shared_ptr<moab::Interface> moabPtr;
 
 } // namespace model
 
@@ -72,6 +73,11 @@ inline bool check_intersection_point(double x1, double x0, double y1,
 
 Mesh::Mesh(pugi::xml_node node)
 {
+  setMeshID(node);
+}
+
+void
+Mesh::setMeshID(pugi::xml_node node){
   // Copy mesh id
   if (check_for_node(node, "id")) {
     id_ = std::stoi(get_node_value(node, "id"));
@@ -1285,34 +1291,69 @@ openmc_mesh_set_params(int32_t index, int n, const double* ll, const double* ur,
 
 #ifdef DAGMC
 
-UnstructuredMesh::UnstructuredMesh(pugi::xml_node node) : Mesh(node)
+//==============================================================================
+// UnstructuredMesh implementation
+//==============================================================================
+
+UnstructuredMesh::UnstructuredMesh(pugi::xml_node node)
 {
+  init(node);
+}
+
+void
+UnstructuredMesh::init(pugi::xml_node node)
+{
+
+  setMeshID(node);
+
   // unstructured always assumed to be 3D
   n_dimension_ = 3;
 
-  // check the mesh type
-  if (check_for_node(node, "type")) {
-    auto temp = get_node_value(node, "type", true, true);
-    if (temp != "unstructured") {
-      fatal_error("Invalid mesh type: " + temp);
-    }
-  }
+  setMeshType(node);
 
-  // get the filename of the unstructured mesh to load
+  setFilename(node);
+
+  initMOAB();
+
+  initMeshData();
+}
+
+void
+UnstructuredMesh::setMeshType(pugi::xml_node node)
+{
+  mesh_type_="unstructured";
+  checkMeshType(mesh_type_,node);
+}
+
+void
+UnstructuredMesh::setFilename(pugi::xml_node node)
+{
+ // get the filename of the unstructured mesh to load
   if (check_for_node(node, "filename")) {
     filename_ = get_node_value(node, "filename");
   } else {
     fatal_error("No filename supplied for unstructured mesh with ID: " +
                 std::to_string(id_));
   }
+}
 
+void
+UnstructuredMesh::initMOAB()
+{
   // create MOAB instance
-  mbi_ = std::make_unique<moab::Core>();
+  mbi_ = std::make_shared<moab::Core>();
+
   // load unstructured mesh file
   moab::ErrorCode rval = mbi_->load_file(filename_.c_str());
   if (rval != moab::MB_SUCCESS) {
     fatal_error("Failed to load the unstructured mesh file: " + filename_);
   }
+}
+
+void UnstructuredMesh::initMeshData()
+{
+
+  moab::ErrorCode rval = moab::MB_SUCCESS;
 
   // set member range of tetrahedral entities
   rval = mbi_->get_entities_by_dimension(0, n_dimension_, ehs_);
@@ -1340,6 +1381,19 @@ UnstructuredMesh::UnstructuredMesh(pugi::xml_node node) : Mesh(node)
   // build acceleration data structures
   compute_barycentric_data(ehs_);
   build_kdtree(ehs_);
+
+}
+
+void
+UnstructuredMesh::checkMeshType(const std::string & mesh_type,pugi::xml_node node)
+{
+  // check the mesh type
+  if (check_for_node(node, "type")) {
+    auto temp = get_node_value(node, "type", true, true);
+    if (temp != mesh_type) {
+      fatal_error("Invalid mesh type in checkMeshType: "+temp);
+    }
+  }
 }
 
 void
@@ -1851,6 +1905,35 @@ UnstructuredMesh::write(std::string base_filename) const {
   }
 }
 
+//==============================================================================
+// ExternalMesh implementation
+//==============================================================================
+
+ExternalMesh::ExternalMesh(pugi::xml_node node)
+{
+  init(node);
+}
+
+void
+ExternalMesh::setMeshType(pugi::xml_node node)
+{
+  mesh_type_="external";
+  checkMeshType(mesh_type_,node);
+}
+
+void
+ExternalMesh::initMOAB()
+{
+  mbi_ = model::moabPtr;
+}
+
+void
+ExternalMesh::setFilename(pugi::xml_node)
+{
+  filename_ = "external";
+}
+
+
 #endif
 
 //==============================================================================
@@ -1859,6 +1942,7 @@ UnstructuredMesh::write(std::string base_filename) const {
 
 void read_meshes(pugi::xml_node root)
 {
+
   for (auto node : root.children("mesh")) {
     std::string mesh_type;
     if (check_for_node(node, "type")) {
@@ -1875,9 +1959,14 @@ void read_meshes(pugi::xml_node root)
 #ifdef DAGMC
     } else if (mesh_type == "unstructured") {
       model::meshes.push_back(std::make_unique<UnstructuredMesh>(node));
+    } else if (mesh_type == "external") {
+      create_external_mesh(node);
+      model::meshes.push_back(std::make_unique<ExternalMesh>(node));
 #else
     } else if (mesh_type == "unstructured") {
       fatal_error("Unstructured mesh support is disabled.");
+    } else if (mesh_type == "external") {
+      fatal_error("External mesh support is disabled.");
 #endif
     } else {
       fatal_error("Invalid mesh type: " + mesh_type);
@@ -1913,6 +2002,44 @@ void free_memory_mesh()
   model::meshes.clear();
   model::mesh_map.clear();
 }
+
+#ifdef DAGMC
+void create_external_mesh(pugi::xml_node node){
+
+  // Create MOAB interface
+  if(model::moabPtr!=nullptr){
+    fatal_error("Pre-existing external mesh interface in memory");
+  }
+  model::moabPtr = std::make_shared<moab::Core>();
+
+  // Get the filename of the external mesh to load
+  std::string filename;
+  if (check_for_node(node, "filename")) {
+    filename = get_node_value(node, "filename");
+  } else {
+    fatal_error("No filename supplied for external mesh");
+  }
+
+  load_external_mesh(filename);
+
+}
+
+void load_external_mesh(const std::string & filename)
+{
+
+  if(model::moabPtr==nullptr){
+    fatal_error("Mesh interface was not created before load_external_mesh called");
+  }
+
+  // load mesh file
+  moab::ErrorCode rval = model::moabPtr->load_file(filename.c_str());
+  if (rval != moab::MB_SUCCESS) {
+    fatal_error("Failed to load the external mesh file: " + filename);
+  }
+  //
+}
+
+#endif
 
 extern "C" int n_meshes() { return model::meshes.size(); }
 

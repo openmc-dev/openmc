@@ -299,7 +299,7 @@ class Decay(EqualityMixin):
     decay_constant : uncertainties.UFloat
         Decay constant in inverse seconds.
     decay_energy : uncertainties.UFloat
-        Average energy in [eV] per decay for a decay heat
+        Average energy in [eV] per decay for decay heat applications
     half_life : uncertainties.UFloat
         Half-life of the decay in seconds.
     modes : list

@@ -2972,8 +2972,6 @@ class DiffusionCoefficient(TransportXS):
         super(DiffusionCoefficient, self).__init__(domain, domain_type, groups,
                                                    nu, by_nuclide, name,
                                                    num_polar, num_azimuthal)
-        #self._rxn_type = 'diffusion-coefficient'
-        #cv.check_value('nu for diffusion-coefficient', nu, [False])
         if not nu:
             self._rxn_type = 'diffusion-coefficient'
         else:
@@ -5312,7 +5310,6 @@ class ScatterProbabilityMatrix(MatrixMGXS):
                  by_nuclide=False, name='', num_polar=1, num_azimuthal=1):
         super().__init__(domain, domain_type, groups, by_nuclide,
                          name, num_polar, num_azimuthal)
-
         self._rxn_type = 'scatter'
         self._hdf5_key = 'scatter probability matrix'
         self._estimator = 'analog'

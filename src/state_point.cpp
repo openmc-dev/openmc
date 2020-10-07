@@ -670,10 +670,11 @@ write_source_bank(hid_t group_id, bool surf_src_bank)
     hid_t dset = H5Dcreate(group_id, "source_bank", banktype, dspace,
                            H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
 
-    // Set new bank sites to avoid the src_bank being overwritten on MPI_Recv
-    std::vector<Particle::Bank> src_to_save;
-    src_to_save.reserve(max_bank_size);
-    std::copy(src_bank.begin(), src_bank.end(), src_to_save.begin());
+    // Save source bank sites since the array is overwritten below
+#ifdef OPENMC_MPI
+    std::vector<Particle::Bank> temp_source {src_bank.begin(),
+      src_bank.begin() + count_size};
+#endif
 
     for (int i = 0; i < mpi::n_procs; ++i) {
       // Create memory space
@@ -683,7 +684,7 @@ write_source_bank(hid_t group_id, bool surf_src_bank)
 #ifdef OPENMC_MPI
       // Receive source sites from other processes
       if (i > 0)
-        MPI_Recv(src_to_save.data(), count[0], mpi::bank, i, i,
+        MPI_Recv(src_bank.data(), count[0], mpi::bank, i, i,
                  mpi::intracomm, MPI_STATUS_IGNORE);
 #endif
 
@@ -693,7 +694,7 @@ write_source_bank(hid_t group_id, bool surf_src_bank)
       H5Sselect_hyperslab(dspace, H5S_SELECT_SET, start, nullptr, count, nullptr);
 
       // Write data to hyperslab
-      H5Dwrite(dset, banktype, memspace, dspace, H5P_DEFAULT, src_to_save.data());
+      H5Dwrite(dset, banktype, memspace, dspace, H5P_DEFAULT, src_bank.data());
 
       H5Sclose(memspace);
       H5Sclose(dspace);
@@ -702,6 +703,10 @@ write_source_bank(hid_t group_id, bool surf_src_bank)
     // Close all ids
     H5Dclose(dset);
 
+#ifdef OPENMC_MPI
+    // Restore state of source bank
+    std::copy(temp_source.begin(), temp_source.end(), src_bank.begin());
+#endif
   } else {
 #ifdef OPENMC_MPI
     MPI_Send(src_bank.data(), count_size, mpi::bank,

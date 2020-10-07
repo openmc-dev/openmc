@@ -38,7 +38,8 @@ MGXS_TYPES = (
     'prompt-nu-fission',
     'prompt-nu-fission matrix',
     'current',
-    'diffusion-coefficient'
+    'diffusion-coefficient',
+    'nu-diffusion-coefficient'
 )
 
 # Supported domain types
@@ -697,7 +698,7 @@ class MGXS:
 
         Parameters
         ----------
-        mgxs_type : {'total', 'transport', 'nu-transport', 'absorption', 'capture', 'fission', 'nu-fission', 'kappa-fission', 'scatter', 'nu-scatter', 'scatter matrix', 'nu-scatter matrix', 'multiplicity matrix', 'nu-fission matrix', 'chi', 'chi-prompt', 'inverse-velocity', 'prompt-nu-fission', 'prompt-nu-fission matrix', 'current', 'diffusion-coefficient'}
+        mgxs_type : {'total', 'transport', 'nu-transport', 'absorption', 'capture', 'fission', 'nu-fission', 'kappa-fission', 'scatter', 'nu-scatter', 'scatter matrix', 'nu-scatter matrix', 'multiplicity matrix', 'nu-fission matrix', 'chi', 'chi-prompt', 'inverse-velocity', 'prompt-nu-fission', 'prompt-nu-fission matrix', 'current', 'diffusion-coefficient', 'nu-diffusion-coefficient'}
             The type of multi-group cross section object to return
         domain : openmc.Material or openmc.Cell or openmc.Universe or openmc.RegularMesh
             The domain for spatial homogenization
@@ -779,6 +780,8 @@ class MGXS:
             mgxs = Current(domain, domain_type, energy_groups)
         elif mgxs_type == 'diffusion-coefficient':
             mgxs = DiffusionCoefficient(domain, domain_type, energy_groups)
+        elif mgxs_type == 'nu-diffusion-coefficient':
+            mgxs = DiffusionCoefficient(domain, domain_type, energy_groups, nu=True)
 
         mgxs.by_nuclide = by_nuclide
         mgxs.name = name
@@ -2647,7 +2650,7 @@ class TransportXS(MGXS):
         The energy group structure for energy condensation
     nu : bool
         If True, the cross section data will include neutron multiplication;
-        defaults to True.
+        defaults to False.
     by_nuclide : bool
         If true, computes cross sections for each nuclide in domain
     name : str, optional
@@ -2870,6 +2873,9 @@ class DiffusionCoefficient(TransportXS):
        D = \frac{1}{3 \sigma_{tr}}
        \end{aligned}
        
+    To incorporate the effect of scattering multiplication in the above
+    relation, the `nu` parameter can be set to `True`.
+
     Parameters
     ----------
     domain : openmc.Material or openmc.Cell or openmc.Universe or openmc.RegularMesh
@@ -2880,7 +2886,7 @@ class DiffusionCoefficient(TransportXS):
         The energy group structure for energy condensation
     nu : bool
         If True, the cross section data will include neutron multiplication;
-        must be False in DiffusionCoefficient.
+        defaults to False.
     by_nuclide : bool
         If true, computes cross sections for each nuclide in domain
     name : str, optional
@@ -2966,8 +2972,13 @@ class DiffusionCoefficient(TransportXS):
         super(DiffusionCoefficient, self).__init__(domain, domain_type, groups,
                                                    nu, by_nuclide, name,
                                                    num_polar, num_azimuthal)
-        self._rxn_type = 'diffusion-coefficient'
-        cv.check_value('nu for diffusion-coefficient', nu, [False])
+        #self._rxn_type = 'diffusion-coefficient'
+        #cv.check_value('nu for diffusion-coefficient', nu, [False])
+        if not nu:
+            self._rxn_type = 'diffusion-coefficient'
+        else:
+            self._rxn_type = 'nu-diffision-coefficient'
+
 
     @property
     def rxn_rate_tally(self):
@@ -3012,15 +3023,12 @@ class DiffusionCoefficient(TransportXS):
 
         return self._xs_tally
 
-    def get_condensed_xs(self, coarse_groups, condense_dif_coef=True):
+    def get_condensed_xs(self, coarse_groups):
         """Construct an energy-condensed version of this cross section.
         Parameters
         ----------
         coarse_groups : openmc.mgxs.EnergyGroups
             The coarse energy group structure of interest
-        condense_diff_coef: bool
-            A boolean representing whether a condensed DiffusionCoefficient
-            mgxs will be calculated. 
 
         Returns
         -------

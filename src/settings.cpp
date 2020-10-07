@@ -100,6 +100,7 @@ std::vector<std::string> res_scat_nuclides;
 RunMode run_mode {RunMode::UNSET};
 std::unordered_set<int> sourcepoint_batch;
 std::unordered_set<int> statepoint_batch;
+std::unordered_set<int> src_write_surf_id;
 int64_t max_surf_banks;
 TemperatureMethod temperature_method {TemperatureMethod::NEAREST};
 double temperature_tolerance {10.0};
@@ -631,6 +632,14 @@ void read_settings_xml()
     // Get surface source node
     xml_node node_ss = root.child("surf_src_write");
 
+    // Determine surface ids at which crossing particles are to be banked.
+    if (check_for_node(node_ss, "surf_ids")) {
+      auto temp = get_node_array<int>(node_ss, "surf_ids");
+      for (const auto& b : temp) {
+        src_write_surf_id.insert(b);
+      }
+    }
+
     // Get maximum number of particles to be banked per surface.
     if (check_for_node(node_ss, "max_surf_banks")) {
       max_surf_banks = std::stoi(get_node_value(node_ss, "max_surf_banks"));
@@ -809,6 +818,7 @@ void read_settings_xml()
 void free_memory_settings() {
   settings::statepoint_batch.clear();
   settings::sourcepoint_batch.clear();
+  settings::src_write_surf_id.clear();
   settings::res_scat_nuclides.clear();
 }
 

@@ -3039,39 +3039,36 @@ class DiffusionCoefficient(TransportXS):
         # Clone this MGXS to initialize the condensed version
         condensed_xs = copy.deepcopy(self)
 
-        if condense_dif_coef:
-            if self._rxn_rate_tally is None:
+        if self._rxn_rate_tally is None:
 
-                p1_tally = self.tallies['scatter-1']
-                old_filt = p1_tally.filters[-2]
-                new_filt = openmc.EnergyFilter(old_filt.values)
-                p1_tally.filters[-2] = new_filt
+            p1_tally = self.tallies['scatter-1']
+            old_filt = p1_tally.filters[-2]
+            new_filt = openmc.EnergyFilter(old_filt.values)
+            p1_tally.filters[-2] = new_filt
 
-                # Slice Legendre expansion filter and change name of score
-                p1_tally = p1_tally.get_slice(filters=[openmc.LegendreFilter],
-                        filter_bins=[('P1',)],
-                        squeeze=True)
-                p1_tally._scores = ['scatter-1']
-
+            # Slice Legendre expansion filter and change name of score
+            p1_tally = p1_tally.get_slice(filters=[openmc.LegendreFilter],
+                    filter_bins=[('P1',)],
+                    squeeze=True)
+            p1_tally._scores = ['scatter-1']
+            
             total = self.tallies['total'] / self.tallies['flux (tracklength)']
             trans_corr = p1_tally / self.tallies['flux (analog)']
             transport = (total - trans_corr)
             dif_coef = transport**(-1) / 3.0
             dif_coef *= self.tallies['flux (tracklength)']
-            flux_tally = condensed_xs.tallies['flux (tracklength)']
-            condensed_xs._tallies = OrderedDict()
-            condensed_xs._tallies[self._rxn_type] = dif_coef
-            condensed_xs._tallies['flux (tracklength)'] = flux_tally
-            condensed_xs._rxn_rate_tally = dif_coef
-            condensed_xs._xs_tally = None
-            condensed_xs._sparse = False
-            condensed_xs._energy_groups = coarse_groups
 
         else:
-            condensed_xs._rxn_rate_tally = None
-            condensed_xs._xs_tally = None
-            condensed_xs._sparse = False
-            condensed_xs._energy_groups = coarse_groups
+            dif_coef = self.rxn_rate_tally
+            
+        flux_tally = condensed_xs.tallies['flux (tracklength)']
+        condensed_xs._tallies = OrderedDict()
+        condensed_xs._tallies[self._rxn_type] = dif_coef
+        condensed_xs._tallies['flux (tracklength)'] = flux_tally
+        condensed_xs._rxn_rate_tally = dif_coef
+        condensed_xs._xs_tally = None
+        condensed_xs._sparse = False
+        condensed_xs._energy_groups = coarse_groups
 
         # Build energy indices to sum across
         energy_indices = []

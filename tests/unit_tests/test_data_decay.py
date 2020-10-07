@@ -34,7 +34,7 @@ def u235_yields():
 def test_nb90_halflife(nb90):
     ufloat_close(nb90.half_life, ufloat(52560.0, 180.0))
     ufloat_close(nb90.decay_constant, log(2.)/nb90.half_life)
-
+    ufloat_close(nb90.decay_energy, ufloat(2265527.5, 25159.400474401213))
 
 def test_nb90_nuclide(nb90):
     assert nb90.nuclide['atomic_number'] == 41

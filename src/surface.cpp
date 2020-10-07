@@ -8,6 +8,7 @@
 #include <fmt/core.h>
 #include <gsl/gsl>
 
+#include "openmc/container_util.h"
 #include "openmc/error.h"
 #include "openmc/dagmc.h"
 #include "openmc/hdf5_interface.h"
@@ -115,6 +116,9 @@ Surface::Surface(pugi::xml_node surf_node)
 {
   if (check_for_node(surf_node, "id")) {
     id_ = std::stoi(get_node_value(surf_node, "id"));
+    if (contains(settings::src_write_surf_id, id_)) {
+      surf_src_ = true;
+    }
   } else {
     fatal_error("Must specify id of surface in geometry XML file.");
   }
@@ -141,10 +145,6 @@ Surface::Surface(pugi::xml_node surf_node)
       fatal_error(fmt::format("Unknown boundary condition \"{}\" specified "
         "on surface {}", surf_bc, id_));
     }
-  }
-
-  if (check_for_node(surf_node, "surf_src")) {
-    surf_src_ = get_node_value_bool(surf_node, "surf_src");
   }
 
 }

@@ -2975,7 +2975,7 @@ class DiffusionCoefficient(TransportXS):
         if not nu:
             self._rxn_type = 'diffusion-coefficient'
         else:
-            self._rxn_type = 'nu-diffision-coefficient'
+            self._rxn_type = 'nu-diffusion-coefficient'
 
 
     @property

@@ -222,6 +222,16 @@
 2      2  1  1        1   total  0.282075  0.053614
 7      2  2  1        0   total  1.070487  0.130335
 6      2  2  1        1   total  0.301100  0.036907
+  mesh 1       group in nuclide      mean std. dev.
+       x  y  z                                     
+1      1  1  1        0   total  1.074807  0.098944
+0      1  1  1        1   total  0.303789  0.059060
+5      1  2  1        0   total  1.085284  0.132314
+4      1  2  1        1   total  0.299594  0.054735
+3      2  1  1        0   total  1.056682  0.124372
+2      2  1  1        1   total  0.282075  0.053614
+7      2  2  1        0   total  1.070487  0.130335
+6      2  2  1        1   total  0.301100  0.036907
    mesh 1       delayedgroup group in nuclide      mean     std. dev.
         x  y  z                                                      
 0       1  1  1            1        1   total  0.000006  3.337014e-07

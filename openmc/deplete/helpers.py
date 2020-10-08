@@ -11,7 +11,7 @@ from numpy import dot, zeros, newaxis, asarray
 
 from . import comm
 from openmc.checkvalue import check_type, check_greater_than
-from openmc.data import JOULE_PER_EV, REACTION_NAME
+from openmc.data import JOULE_PER_EV, REACTION_NUMBER
 from openmc.lib import (
     Tally, MaterialFilter, EnergyFilter, EnergyFunctionFilter)
 import openmc.lib
@@ -168,10 +168,9 @@ class FluxCollapseHelper(ReactionRateHelper):
         """
         self._materials = materials
 
-        # Convert reactions to MT values (needed when collapsing)
-        mt_values = {v: k for k, v in REACTION_NAME.items()}
-        mt_values['fission'] = 18
-        self._mts = [mt_values[x] for x in scores]
+        # adds an entry for fisson to the dictionary of reactions
+        REACTION_NUMBER['fission'] = 18
+        self._mts = [REACTION_NUMBER[x] for x in scores]
         self._scores = scores
 
         # Create flux tally with material and energy filters

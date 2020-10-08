@@ -64,6 +64,8 @@ REACTION_NAME.update({i: '(n,3He{})'.format(i - 750) for i in range(750, 799)})
 REACTION_NAME.update({i: '(n,a{})'.format(i - 800) for i in range(800, 849)})
 REACTION_NAME.update({i: '(n,2n{})'.format(i - 875) for i in range(875, 891)})
 
+REACTION_NUMBER = dict(zip(REACTION_NAME.values(), REACTION_NAME.keys()))
+
 FISSION_MTS = (18, 19, 20, 21, 38)
 
 

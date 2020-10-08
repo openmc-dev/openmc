@@ -479,7 +479,7 @@ void free_memory_mesh();
 #ifdef DAGMC
 //! Create / load mesh into MOAB interface stored in model
 //! \param[in] XML node
-void create_external_mesh(pugi::xml_node node);
+void create_and_load_external_mesh(pugi::xml_node node);
 
 //! \param[in] XML node
 void load_external_mesh(const std::string & filename);

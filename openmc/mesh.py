@@ -82,6 +82,8 @@ class MeshBase(IDManagerMixin, ABC):
             return RectilinearMesh.from_hdf5(group)
         elif mesh_type == 'unstructured':
             return UnstructuredMesh.from_hdf5(group)
+        elif mesh_type == 'external':
+            return ExternalMesh.from_hdf5(group)
         else:
             raise ValueError('Unrecognized mesh type: "' + mesh_type + '"')
 
@@ -807,5 +809,117 @@ class UnstructuredMesh(MeshBase):
         filename = get_text(elem, 'filename')
 
         mesh = cls(filename, mesh_id)
+
+        return mesh
+
+class ExternalMesh(UnstructuredMesh):
+    """A 3D unstructured mesh, where the MOAB instance can be
+    accessed externally when OpenMC is run via the C API.
+    Note, use of this class through the Python API is only intended
+    for XML input generation.
+
+    User may choose to supply their own mesh, and manually load,
+    in which case set create=False, load=False.
+
+    User may choose to supply their own mesh, but load from OpenMC,
+    in which case set create=False, load=True.
+
+    User may choose to let OpenMC create and load the mesh
+    in which case set create=True, load=True. In this case the only difference
+    with respect to an UnstructuredMesh is that MOAB pointer may be
+    accessed from the model namespace.
+
+    The combination create=True, load=False will fail.
+
+    Parameters
+    ----------
+    create : bool
+        Tell OpenMC whether to create a MOAB instance.
+    load : bool
+        Tell OpenMC whether to load the mesh from file.
+    filename : str
+        Location of the unstructured mesh file.
+        This is required if load=True, and will be ignored if load=False
+    mesh_id : int
+        Unique identifier for the mesh.
+    name : str
+        Name of the mesh.
+
+    Attributes
+    ----------
+    id : int
+        Unique identifier for the mesh
+    name : str
+        Name of the mesh
+    filename : str
+        Name of the file containing the unstructured mesh
+    volumes : Iterable of float
+        Volumes of the unstructured mesh elements
+    total_volume : float
+        Volume of the unstructured mesh in total
+    centroids : Iterable of tuple
+        An iterable of element centroid coordinates, e.g. [(0.0, 0.0, 0.0),
+        (1.0, 1.0, 1.0), ...]
+
+    """
+
+    def __init__(self, create=True, load=True, filename='', mesh_id=None, name=''):
+        super().__init__(filename,mesh_id, name)
+        if load and filename=="":
+            raise ValueError('Please specify a filename when load=True')
+        if load==False and create:
+            raise ValueError("User set create=True and load=False. Valid combinations are\n    1) create=False and load=False\n    2) create=False and load=True\n    3) create=True and load=True")
+
+        self.create=create
+        self.load=load
+
+
+    @classmethod
+    def from_hdf5(cls, group):
+        mesh = super().from_hdf5(cls,group)
+        mesh.create=True
+        mesh.load=True
+        return mesh
+
+    def to_xml_element(self):
+        """Return XML representation of the mesh
+
+        Returns
+        -------
+        element : xml.etree.ElementTree.Element
+            XML element containing mesh data
+
+        """
+
+        element = ET.Element("mesh")
+        element.set("id", str(self._id))
+        element.set("type", "external")
+        element.set("create", str(self.create))
+        element.set("load", str(self.load))
+
+        subelement = ET.SubElement(element, "filename")
+        subelement.text = self.filename
+
+        return element
+
+    @classmethod
+    def from_xml_element(cls, elem):
+        """Generate unstructured mesh object from XML element
+
+        Parameters
+        ----------
+        elem : xml.etree.ElementTree.Element
+            XML element
+
+        Returns
+        -------
+        openmc.ExternalMesh
+            ExternalMesh generated from an XML element
+        """
+        mesh_id = int(get_text(elem, 'id'))
+        filename = get_text(elem, 'filename')
+        create = bool(get_text(elem, 'create'))
+        load = bool(get_text(elem, 'load'))
+        mesh = cls(create,load,filename, mesh_id)
 
         return mesh

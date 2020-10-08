@@ -126,6 +126,29 @@ T* unified_new(Args... args)
   return loc;
 }
 
+// Returns a pointer to the same object constructed on both the host,
+// and the device separately. This is necessary for polymorphic stuff.
+template<typename T, typename... Args>
+std::pair<T*, T*> replicated_new(Args... args)
+{
+  T* loc_host = nullptr;
+  T* loc_device = nullptr;
+
+  loc_host = static_cast<T*>(malloc(sizeof(T)));
+  cudaMalloc(&loc_device, sizeof(T));
+
+  // Run the constructor as usual on the host
+  new (loc_host) T(args...);
+
+  // Now, copy the host data to device, and run the copy constructor there.
+  // This will correctly initialize vtables on the device. Without re-running
+  // a constructor on the device, polymorphism fails.
+  cudaMemcpy(loc_device, loc_host, sizeof(T), cudaMemcpyHostToDevice);
+  run_move_constructor_on_device<<<1, 1>>>(loc_device);
+
+  return {loc_host, loc_device};
+}
+
 /**
  * This is a partial implementation of std::unique_ptr that can be
  * used on the GPU. By default, CUDA does not define __device__ functions
@@ -140,14 +163,26 @@ public:
   typedef T* pointer;
   typedef T element_type;
 
-  // Allowable constructors
-  explicit unique_ptr(pointer p) : ptr(p) {}
+  // This one assumes that the pointer was allocated
+  // using cudaMallocManaged, and thus contains a pointer usable
+  // from both host and device.
+  explicit unique_ptr(pointer p) : ptr(p), ptr_dev(p) {}
 
-  unique_ptr(unique_ptr&& u) : ptr(u.release()) {}
+  // This one assumes the pointers were separately allocated
+  // and are replications of the same data. This is done so that
+  // both copies of host and device compatible vtables are kept
+  // for polymorphic data.
+  explicit unique_ptr(std::pair<pointer, pointer> ptr_pair)
+    : ptr(ptr_pair.first), ptr_dev(ptr_pair.second)
+  {}
+
+  unique_ptr(unique_ptr&& u) { std::tie(ptr, ptr_dev) = u.release(); }
 
   template<class U>
-  unique_ptr(unique_ptr<U>&& u) : ptr(u.release())
-  {}
+  unique_ptr(unique_ptr<U>&& u)
+  {
+    std::tie(ptr, ptr_dev) = u.release();
+  }
 
   // Constructors/operators that unique_ptr must rid of to attain its desired
   // functionality
@@ -156,14 +191,21 @@ public:
   unique_ptr& operator=(unique_ptr&& u)
   {
     free_mem(); // free memory currently held, if any
-    ptr = u.release();
+    std::tie(ptr, ptr_dev) = u.release();
     return *this;
   }
 
   void free_mem()
   {
-    if (ptr != nullptr)
+    if (ptr != nullptr) {
+      ptr->~T();
       cudaFree(ptr);
+    }
+    if (ptr_dev != nullptr) {
+      // Not calling destructor on device since those are almost always related
+      // to memory management, and we should manage all memory from the host.
+      cudaFree(ptr_dev);
+    }
   }
   ~unique_ptr() { free_mem(); }
 
@@ -171,28 +213,53 @@ public:
   __host__ __device__ typename std::add_lvalue_reference<T>::type operator*()
     const
   {
+#ifdef __CUDA_ARCH__
+    return *ptr_dev;
+#else
     return *ptr;
+#endif
   }
 
-  // These observers can possibly be called on the GPU
-  __host__ __device__ pointer operator->() const noexcept { return ptr; }
+  // These observers can be called on the GPU or the CPU.
+  __host__ __device__ pointer operator->() const noexcept
+  {
+#ifdef __CUDA_ARCH__
+    return ptr_dev;
+#else
+    return ptr;
+#endif
+  }
 
-  __host__ __device__ pointer get() const noexcept { return ptr; }
+  __host__ __device__ pointer get() const noexcept
+  {
+#ifdef __CUDA_ARCH__
+    return ptr_dev;
+#else
+    return ptr;
+#endif
+  }
 
-  pointer release() noexcept
+  std::tuple<pointer, pointer> release() noexcept
   {
     pointer tmp = ptr;
+    pointer tmp_dev = ptr_dev;
     ptr = nullptr;
-    return tmp;
+    ptr_dev = nullptr;
+    return {tmp, tmp_dev};
   }
 
   __host__ __device__ explicit operator bool() const noexcept
   {
+#ifdef __CUDA_ARCH__
+    return ptr_dev != nullptr;
+#else
     return ptr != nullptr;
+#endif
   }
 
 private:
   pointer ptr {nullptr};
+  pointer ptr_dev {nullptr};
 };
 
 /**
@@ -203,7 +270,13 @@ private:
 template<typename T, typename... Args>
 unique_ptr<T> make_unique(Args&&... args)
 {
-  return unique_ptr<T>(unified_new<T>(std::forward<Args>(args)...));
+  // Polymorphic data uses a replicated memory approach.
+  // Non-polymorphic uses the managed memory approach which doesn't
+  // require any explicit synchronization.
+  if (std::is_polymorphic<T>::value)
+    return unique_ptr<T>(replicated_new<T>(std::forward<Args>(args)...));
+  else
+    return unique_ptr<T>(unified_new<T>(std::forward<Args>(args)...));
 }
 
 // Below are the expected standard library routines and data if not compiling

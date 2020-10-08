@@ -141,7 +141,7 @@ public:
     return *(begin_ + n);
   }
 
-  __host__ __device__ bool empty() const { return size_ > 0; }
+  __host__ __device__ bool empty() const { return size_ == 0; }
   __host__ __device__ T* data() const { return begin_; }
   __host__ __device__ std::size_t size() const { return size_; }
   __host__ __device__ T* begin() { return begin_; }

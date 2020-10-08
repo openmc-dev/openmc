@@ -594,7 +594,7 @@ class Settings:
                                           surf_id, 0)
             elif key == 'max_surf_banks':
                 cv.check_type('maximum particle banks on surfaces per process',
-                              value, Iterable, Integral)
+                              value, Integral)
                 cv.check_greater_than('maximum particle banks on surfaces per process',
                                       value, 0)
         self._surf_src_write = surf_src_write

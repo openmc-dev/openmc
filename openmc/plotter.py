@@ -309,8 +309,9 @@ def _calculate_cexs_nuclide(this, types, temperature=294., sab_name=None,
         Nuclide object to source data from
     types : Iterable of str or Integral
         The type of cross sections to calculate; values can either be those
-        in openmc.PLOT_TYPES or integers which correspond to reaction
-        channel (MT) numbers.
+        in openmc.PLOT_TYPES or keys from openmc.data.REACTION_NUMBER which
+        correspond to a reaction description e.g '(n,2n)' or integers which
+        correspond to reaction channel (MT) numbers.
     temperature : float, optional
         Temperature in Kelvin to plot. If not specified, a default
         temperature of 294K will be plotted. Note that the nearest

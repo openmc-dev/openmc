@@ -193,16 +193,6 @@ RegularMesh::RegularMesh(pugi::xml_node node)
 
 int RegularMesh::get_bin(Position r) const
 {
-  // Loop over the dimensions of the mesh
-  for (int i = 0; i < n_dimension_; ++i) {
-    // Check for cases where particle is outside of mesh
-    if (r[i] < lower_left_[i]) {
-      return -1;
-    } else if (r[i] > upper_right_[i]) {
-      return -1;
-    }
-  }
-
   // Determine indices
   std::vector<int> ijk(n_dimension_);
   bool in_mesh;

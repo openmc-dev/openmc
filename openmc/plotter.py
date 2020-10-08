@@ -404,6 +404,12 @@ def _calculate_cexs_nuclide(this, types, temperature=294., sab_name=None,
                     ops.append((np.add,) * (len(tmp_mts) - 2) + (np.multiply,))
                 else:
                     ops.append((np.add,) * (len(tmp_mts) - 1))
+            if line in openmc.data.REACTION_NUMBER:
+                openmc.data.REACTION_NUMBER[line]
+                tmp_mts = nuc.get_reaction_components(line)
+                mts.append(tmp_mts)
+                ops.append((np.add,) * (len(tmp_mts) - 1))
+                yields.append(False)
             else:
                 # Not a built-in type, we have to parse it ourselves
                 cv.check_type('MT in types', line, Integral)

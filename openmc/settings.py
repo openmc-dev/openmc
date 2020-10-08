@@ -146,6 +146,8 @@ class Settings:
     surf_src_write : dict
         Options for writing surface source points. Acceptable keys are:
 
+        :surf_ids: List of surface ids at which crossing particles are to be
+                         banked (int)
         :max_surf_banks: Maximum number of particles to be banked on surfaces
                          per process (int)
     survival_biasing : bool
@@ -583,8 +585,14 @@ class Settings:
         cv.check_type('surface source writing options', surf_src_write, Mapping)
         for key, value in surf_src_write.items():
             cv.check_value('surface source writing key', key,
-                           ('max_surf_banks'))
-            if key == 'max_surf_banks':
+                           ('surf_ids', 'max_surf_banks'))
+            if key == 'surf_ids':
+                cv.check_type('surface ids for source banking', value,
+                              Iterable, Integral)
+                for surf_id in value:
+                    cv.check_greater_than('surface id for source banking',
+                                          surf_id, 0)
+            elif key == 'max_surf_banks':
                 cv.check_type('maximum particle banks on surfaces per process',
                               value, Iterable, Integral)
                 cv.check_greater_than('maximum particle banks on surfaces per process',
@@ -916,6 +924,10 @@ class Settings:
     def _create_surf_src_write_subelement(self, root):
         if self._surf_src_write:
             element = ET.SubElement(root, "surf_src_write")
+            if 'surf_ids' in self._surf_src_write:
+                subelement = ET.SubElement(element, "surf_ids")
+                subelement.text = ' '.join(
+                    str(x) for x in self._surf_src_write['surf_ids'])
             if 'max_surf_banks' in self._surf_src_write:
                 subelement = ET.SubElement(element, "max_surf_banks")
                 subelement.text = str(self._surf_src_write['max_surf_banks'])
@@ -1185,10 +1197,12 @@ class Settings:
     def _surf_src_write_from_xml_element(self, root):
         elem = root.find('surf_src_write')
         if elem is not None:
-            for key in ('max_surf_banks'):
+            for key in ('surf_ids', 'max_surf_banks'):
                 value = get_text(elem, key)
                 if value is not None:
-                    if key in ('max_surf_banks'):
+                    if key == 'surf_ids':
+                        value = [int(x) for x in value.split()]
+                    elif key in ('max_surf_banks'):
                         value = int(value)
                     self.surf_src_write[key] = value
 

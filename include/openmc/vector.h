@@ -22,8 +22,7 @@
 namespace openmc {
 
 /**
- * This is an "implementation" of a C++ standard vector,
- * except for how it's actually not.
+ * This is an implementation of a C++ standard vector.
  *
  * Importantly, this uses CUDA unified memory. It's set up so
  * that all memory control should be done from the host, and
@@ -45,8 +44,9 @@ private:
   {
     T* old_begin = begin_;
     auto old_capacity = capacity_;
-    capacity_ *= 2;
-    begin_ = alloc_.allocate(size_);
+    // Multiply capacity by two if capacity is nonzero
+    capacity_ = capacity_ ? capacity_ * 2 : 1;
+    begin_ = alloc_.allocate(capacity_);
     memcpy(begin_, old_begin, size_ * sizeof(T));
     alloc_.deallocate(old_begin, old_capacity);
   }
@@ -122,18 +122,20 @@ public:
     alloc_.deallocate(old_begin, old_capacity);
   }
 
+  template<class... Args>
+  __host__ void emplace_back(Args&&... args)
+  {
+    if (size_ == capacity_)
+      grow();
+    new (begin_ + size_++) T(std::forward<Args>(args)...);
+  }
   __host__ void push_back(const T& value)
   {
     if (size_ == capacity_)
       grow();
     begin_[size_++] = value;
   }
-  __host__ void push_back(T&& value)
-  {
-    if (size_ == capacity_)
-      grow();
-    begin_[size_++] = std::move(value);
-  }
+  __host__ void push_back(T&& value) { emplace_back(std::move(value)); }
 
   __host__ __device__ T& operator[](std::size_t n) { return *(begin_ + n); }
   __host__ __device__ T const& operator[](std::size_t n) const

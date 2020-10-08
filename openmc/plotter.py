@@ -405,13 +405,15 @@ def _calculate_cexs_nuclide(this, types, temperature=294., sab_name=None,
                     ops.append((np.add,) * (len(tmp_mts) - 2) + (np.multiply,))
                 else:
                     ops.append((np.add,) * (len(tmp_mts) - 1))
-            if line in openmc.data.REACTION_NUMBER:
-                openmc.data.REACTION_NUMBER[line]
-                tmp_mts = nuc.get_reaction_components(line)
+            elif line in openmc.data.REACTION_NUMBER.keys():
+                mt_number = openmc.data.REACTION_NUMBER[line]
+                cv.check_type('MT in types', mt_number, Integral)
+                cv.check_greater_than('MT in types', mt_number, 0)
+                tmp_mts = nuc.get_reaction_components(mt_number)
                 mts.append(tmp_mts)
                 ops.append((np.add,) * (len(tmp_mts) - 1))
                 yields.append(False)
-            else:
+            elif isinstance(line, int):
                 # Not a built-in type, we have to parse it ourselves
                 cv.check_type('MT in types', line, Integral)
                 cv.check_greater_than('MT in types', line, 0)
@@ -419,6 +421,8 @@ def _calculate_cexs_nuclide(this, types, temperature=294., sab_name=None,
                 mts.append(tmp_mts)
                 ops.append((np.add,) * (len(tmp_mts) - 1))
                 yields.append(False)
+            else:
+                raise TypeError("Invalid type", line)
 
         for i, mt_set in enumerate(mts):
             # Get the reaction xs data from the nuclide

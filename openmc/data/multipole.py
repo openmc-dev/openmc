@@ -5,8 +5,12 @@ import warnings
 
 import os
 import h5py
+import pickle
 import numpy as np
 from scipy.signal import find_peaks
+import matplotlib
+matplotlib.use("agg")
+import matplotlib.pyplot as plt
 
 import openmc.checkvalue as cv
 from ..exceptions import DataError
@@ -37,6 +41,7 @@ TEMPERATURE_LIMIT = 3000
 
 # Logging control
 DETAILED_LOGGING = 2
+
 
 def _faddeeva(z):
     r"""Evaluate the complex Faddeeva function.
@@ -141,16 +146,18 @@ def _broaden_wmp_polynomials(E, dopp, n):
 
     return factors
 
+
 def _vectfit_xs(energy, ce_xs, mts, rtol=1e-3, atol=1e-5, orders=None,
-                n_vf_iter=30, log=False, path_out=None, **kwargs):
-    r"""Convert point-wise cross section to multipole data via Vector Fitting.
+                n_vf_iter=30, log=False, path_out=None):
+    """Convert point-wise cross section to multipole data via vector fitting.
 
     Parameters
     ----------
     energy : np.ndarray
         Energy array
     ce_xs : np.ndarray
-        Point-wise cross sections to be fitted
+        Point-wise cross sections to be fitted, with shape (number of reactions,
+        number of energy points)
     mts : Iterable of int
         Reaction list
     rtol : float, optional
@@ -162,15 +169,14 @@ def _vectfit_xs(energy, ce_xs, mts, rtol=1e-3, atol=1e-5, orders=None,
     n_vf_iter : int, optional
         Number of maximum VF iterations
     log : bool or int, optional
-        Whether to print running logs
+        Whether to print running logs (use int for verbosity control)
     path_out : str, optional
-        Path to save the figures
-    **kwargs
-        Additional keyword arguments
+        Path to save the figures to show discrepancies between the original and
+        fitted cross sections for different reactions
 
     Returns
     -------
-    Tuple
+    tuple
         (poles, residues)
 
     """
@@ -184,10 +190,10 @@ def _vectfit_xs(energy, ce_xs, mts, rtol=1e-3, atol=1e-5, orders=None,
         raise ValueError('Inconsistent cross section data.')
 
     # construct test data: interpolate xs with finer grids
-    N_FINER = 10
-    ne_test = (ne-1)*N_FINER + 1
+    n_finer = 10
+    ne_test = (ne - 1)*n_finer + 1
     test_energy = np.interp(np.arange(ne_test),
-                            np.arange(ne_test, step=N_FINER), energy)
+                            np.arange(ne_test, step=n_finer), energy)
     test_energy[[0, -1]] = energy[[0, -1]] # avoid numerical issue
     test_xs_ref = np.zeros((nmt, ne_test))
     for i in range(nmt):
@@ -197,32 +203,35 @@ def _vectfit_xs(energy, ce_xs, mts, rtol=1e-3, atol=1e-5, orders=None,
         print("Energy: {:.3e} to {:.3e} eV ({} points)".format(
               energy[0], energy[-1], ne))
 
-    # inputs
-    f = ce_xs * energy # sigma*E
-    s = np.sqrt(energy) # sqrt(E)
+    # transform xs (sigma) and energy (E) to f (sigma*E) and s (sqrt(E)) to be
+    # compatible with the multipole representation
+    f = ce_xs * energy
+    s = np.sqrt(energy)
     test_s = np.sqrt(test_energy)
+
+    # inverse weighting is used for minimizing the relative deviation instead of
+    # absolute deviation in vector fitting
     weight = 1.0/f
 
-    # very small cross sections can lead to huge weights, which will harm the
-    # fitting accuracy
-    MIN_CROSS_SECTION = 1e-7
+    # avoid too large weights which will harm the fitting accuracy
+    min_cross_section = 1e-7
     for i in range(nmt):
-        if np.all(ce_xs[i]<=MIN_CROSS_SECTION):
+        if np.all(ce_xs[i] <= min_cross_section):
             weight[i] = 1.0
-        elif np.any(ce_xs[i]<=MIN_CROSS_SECTION):
-            weight[i, ce_xs[i]<=MIN_CROSS_SECTION] = \
-               max(weight[i, ce_xs[i]>MIN_CROSS_SECTION])
+        elif np.any(ce_xs[i] <= min_cross_section):
+            weight[i, ce_xs[i] <= min_cross_section] = \
+               max(weight[i, ce_xs[i] > min_cross_section])
 
     # detect peaks (resonances) and determine VF order search range
-    peaks, _ = find_peaks(ce_xs[0]+ce_xs[1])
+    peaks, _ = find_peaks(ce_xs[0] + ce_xs[1])
     n_peaks = peaks.size
     if orders is not None:
         # make sure orders are even integers
-        orders = list(set([int(i/2)*2 for i in orders if i>=2]))
+        orders = list(set([int(i/2)*2 for i in orders if i >= 2]))
     else:
         lowest_order = max(2, 2*n_peaks)
         highest_order = max(200, 4*n_peaks)
-        orders = list(range(lowest_order, highest_order+1, 2))
+        orders = list(range(lowest_order, highest_order + 1, 2))
 
     if log:
         print("Found {} peaks".format(n_peaks))
@@ -237,20 +246,17 @@ def _vectfit_xs(energy, ce_xs, mts, rtol=1e-3, atol=1e-5, orders=None,
             print("Order={}({}/{})".format(order, i, len(orders)))
         # initial guessed poles
         poles = np.linspace(s[0], s[-1], order//2)
-        poles = poles + poles*0.01j
+        poles += poles*0.01j
         poles = np.sort(np.append(poles, np.conj(poles)))
 
         found_better = False
         # fitting iteration
         for i_vf in range(n_vf_iter):
             if log >= DETAILED_LOGGING:
-                print("VF iteration {}/{}".format(i_vf+1, n_vf_iter))
+                print("VF iteration {}/{}".format(i_vf + 1, n_vf_iter))
 
             # call vf
-            try:
-                poles, residues, cf, f_fit, rms = vf.vectfit(f, s, poles, weight)
-            except:
-                break
+            poles, residues, cf, f_fit, rms = vf.vectfit(f, s, poles, weight)
 
             # convert real pole to conjugate pairs
             n_real_poles = 0
@@ -280,9 +286,13 @@ def _vectfit_xs(energy, ce_xs, mts, rtol=1e-3, atol=1e-5, orders=None,
                 maxre, ratio, ratio2 = 0., 1., 1.
             else:
                 maxre = np.max(relerr[abserr > atol])
-                ratio = np.sum((relerr<rtol) | (abserr<atol)) / relerr.size
-                ratio2 = np.sum((relerr<10*rtol) | (abserr<atol)) / relerr.size
+                ratio = np.sum((relerr < rtol) | (abserr < atol)) / relerr.size
+                ratio2 = np.sum((relerr < 10*rtol) | (abserr < atol)) / relerr.size
 
+            # define a metric for choosing the best fitting results
+            # basically, it is preferred to have more points within accuracy
+            # tolerance, smaller maximum deviation and fewer poles
+            #TODO: improve the metric with clearer basis
             quality = ratio + ratio2 - min(0.1*maxre, 1) - 0.001*new_poles.size
 
             if np.any(test_xs < -atol):
@@ -335,7 +345,7 @@ def _vectfit_xs(energy, ce_xs, mts, rtol=1e-3, atol=1e-5, orders=None,
         if np.imag(p) == 0.:
             real_idx.append(i)
         else:
-            if i < best_poles.size and np.conj(p) == best_poles[i+1]:
+            if i < best_poles.size and np.conj(p) == best_poles[i + 1]:
                 found_conj = True
                 conj_idx.append(i)
             else:
@@ -350,9 +360,6 @@ def _vectfit_xs(energy, ce_xs, mts, rtol=1e-3, atol=1e-5, orders=None,
         print("Final number of poles: {}".format(mp_poles.size))
 
     if path_out:
-        import matplotlib
-        matplotlib.use("agg")
-        import matplotlib.pyplot as plt
         if not os.path.exists(path_out):
             os.makedirs(path_out)
         for i, mt in enumerate(mts):
@@ -371,7 +378,7 @@ def _vectfit_xs(energy, ce_xs, mts, rtol=1e-3, atol=1e-5, orders=None,
             ax2.set_ylabel('relative error', color='r')
             ax2.tick_params('y', colors='r')
 
-            plt.title("MT {} vectfitted with {} poles".format(mt, mp_poles.size))
+            plt.title("MT {} vector fitted with {} poles".format(mt, mp_poles.size))
             fig.tight_layout()
             fig_file = os.path.join(path_out, "{:.0f}-{:.0f}_MT{}.png".format(
                                     energy[0], energy[-1], mt))
@@ -395,11 +402,11 @@ def _vectfit_nuclide(endf_file, njoy_error=5e-4, vf_error=1e-3, vf_pieces=None,
     vf_error : float, optional
         Fractional error tolerance for data fitting
     vf_pieces : integer, optional
-        Number of equal-in-mementum spaced energy pieces for data fitting
+        Number of equal-in-momentum spaced energy pieces for data fitting
     log : bool or int, optional
-        Whether to print running logs
+        Whether to print running logs (use int for verbosity control)
     path_out : str, optional
-        Path to write out data files
+        Path to write out mutipole data file and vector fitting figures
     mp_filename : str, optional
         File name to write out multipole data
     **kwargs
@@ -444,23 +451,26 @@ def _vectfit_nuclide(endf_file, njoy_error=5e-4, vf_error=1e-3, vf_pieces=None,
                 E_max_idx = threshold_idx
 
     # parse energy and cross sections
-    energy = nuc_ce.energy['0K'][:E_max_idx+1]
+    energy = nuc_ce.energy['0K'][:E_max_idx + 1]
     E_min, E_max = energy[0], energy[-1]
     n_points = energy.size
     total_xs = nuc_ce[1].xs['0K'](energy)
     try:
         elastic_xs = nuc_ce[2].xs['0K'](energy)
-    except:
+    except KeyError:
         elastic_xs = np.zeros_like(total_xs)
+
     try:
         absorption_xs = nuc_ce[27].xs['0K'](energy)
-    except:
+    except KeyError:
         absorption_xs = np.zeros_like(total_xs)
+
     fissionable = False
     try:
         fission_xs = nuc_ce[18].xs['0K'](energy)
         fissionable = True
-    except:pass
+    except KeyError:
+        pass
 
     # make vectors
     if fissionable:
@@ -494,23 +504,23 @@ def _vectfit_nuclide(endf_file, njoy_error=5e-4, vf_error=1e-3, vf_pieces=None,
     # VF piece by piece
     for i_piece in range(vf_pieces):
         if log:
-            print("Processing piece {}/{}...".format(i_piece+1, vf_pieces))
+            print("Processing piece {}/{}...".format(i_piece + 1, vf_pieces))
         # start E of this piece
         e_bound = (sqrt(E_min) + piece_width*(i_piece-0.5))**2
         if i_piece == 0 or sqrt(alpha*e_bound) < 4.0:
             e_start = E_min
             e_start_idx = 0
         else:
-            e_start = max(E_min, (sqrt(alpha*e_bound)-4.0)**2/alpha)
+            e_start = max(E_min, (sqrt(alpha*e_bound) - 4.0)**2/alpha)
             e_start_idx = np.searchsorted(energy, e_start, side='right') - 1
         # end E of this piece
-        e_bound = (sqrt(E_min) + piece_width*(i_piece+1))**2
+        e_bound = (sqrt(E_min) + piece_width*(i_piece + 1))**2
         e_end = min(E_max, (sqrt(alpha*e_bound) + 4.0)**2/alpha)
         e_end_idx = np.searchsorted(energy, e_end, side='left') + 1
-        e_idx = range(e_start_idx, min(e_end_idx+1, n_points))
+        e_idx = range(e_start_idx, min(e_end_idx + 1, n_points))
 
         p, r = _vectfit_xs(energy[e_idx], ce_xs[:, e_idx], mts, rtol=vf_error,
-                       log=log, path_out=path_out, **kwargs)
+                           log=log, path_out=path_out, **kwargs)
 
         poles.append(p)
         residues.append(r)
@@ -525,7 +535,6 @@ def _vectfit_nuclide(endf_file, njoy_error=5e-4, vf_error=1e-3, vf_pieces=None,
 
     # dump multipole data to file
     if path_out:
-        import pickle
         if not os.path.exists(path_out):
             os.makedirs(path_out)
         if not mp_filename:
@@ -538,27 +547,27 @@ def _vectfit_nuclide(endf_file, njoy_error=5e-4, vf_error=1e-3, vf_pieces=None,
 
     return mp_data
 
-def _windowing(mp_data, rtol=1e-3, atol=1e-5, n_win=None, n_cf=None,
-               spacing=None, log=False):
-    r"""Generate windowed multipole library from multipole data with specific
+def _windowing(mp_data, n_cf, rtol=1e-3, atol=1e-5, n_win=None, spacing=None,
+               log=False):
+    """Generate windowed multipole library from multipole data with specific
         settings of window size, curve fit order, etc.
 
     Parameters
     ----------
     mp_data : dict
         Multipole data
+    n_cf : int
+        Curve fitting order
     rtol : float, optional
         Maximum relative error tolerance
     atol : float, optional
         Minimum absolute error tolerance
     n_win : int, optional
         Number of equal-in-mementum spaced energy windows
-    n_cf : int, optional
-        Curve fitting order
     spacing : float, optional
         Inner window spacing (sqrt energy space)
     log : bool or int, optional
-        Whether to print running logs
+        Whether to print running logs (use int for verbosity control)
 
     Returns
     -------
@@ -598,11 +607,6 @@ def _windowing(mp_data, rtol=1e-3, atol=1e-5, n_win=None, n_cf=None,
     if spacing > piece_width:
         raise ValueError('Window spacing cannot be larger than piece spacing.')
 
-    # determine curve fit order
-    if n_cf is None:
-        warnings.warn("Curvefit order not specified.")
-        n_cf = 5
-
     if log:
         print("Windowing with # windows: {}, spacing: {}, CF order: {}".format(
                n_win, spacing, n_cf))
@@ -621,7 +625,7 @@ def _windowing(mp_data, rtol=1e-3, atol=1e-5, n_win=None, n_cf=None,
     win_data = []
     for iw in range(n_win):
         if log >= DETAILED_LOGGING:
-            print("Processing window {}/{}...".format(iw+1, n_win))
+            print("Processing window {}/{}...".format(iw + 1, n_win))
 
         # inner window boundaries
         inbegin = sqrt(E_min) + spacing * iw
@@ -631,11 +635,11 @@ def _windowing(mp_data, rtol=1e-3, atol=1e-5, n_win=None, n_cf=None,
         if iw == 0 or sqrt(alpha)*inbegin < 4.0:
             e_start = inbegin**2
         else:
-            e_start = max(E_min, (sqrt(alpha)*inbegin-4.0)**2/alpha)
+            e_start = max(E_min, (sqrt(alpha)*inbegin - 4.0)**2/alpha)
         e_end = min(E_max, (sqrt(alpha)*inend + 4.0)**2/alpha)
 
         # locate piece and relevant poles
-        i_piece = min(n_pieces-1, int((inbegin - sqrt(E_min))/piece_width + 0.5))
+        i_piece = min(n_pieces - 1, int((inbegin - sqrt(E_min))/piece_width + 0.5))
         poles, residues = mp_poles[i_piece], mp_residues[i_piece]
         n_poles = poles.size
 
@@ -648,11 +652,11 @@ def _windowing(mp_data, rtol=1e-3, atol=1e-5, n_win=None, n_cf=None,
         xs_ref = vf.evaluate(energy_sqrt, poles, residues*1j) / energy
 
         # curve fit matrix
-        matrix = np.vstack([energy**(0.5*i-1) for i in range(n_cf+1)]).T
+        matrix = np.vstack([energy**(0.5*i - 1) for i in range(n_cf + 1)]).T
 
         # start from 0 poles, initialize pointers to the center nearest pole
         center_pole_ind = np.argmin((np.fabs(poles.real - incenter)))
-        lp, rp = center_pole_ind, center_pole_ind
+        lp = rp = center_pole_ind
         while True:
             if log >= DETAILED_LOGGING:
                 print("Trying poles {} to {}".format(lp, rp))
@@ -672,9 +676,9 @@ def _windowing(mp_data, rtol=1e-3, atol=1e-5, n_win=None, n_cf=None,
             abserr = np.abs(xs_fit + xs_wp - xs_ref)
             relerr = abserr / xs_ref
             if not np.any(np.isnan(abserr)):
-                re = relerr[abserr>atol]
+                re = relerr[abserr > atol]
                 if re.size == 0 or np.all(re <= rtol) or \
-                   (re.max() <= 2*rtol and (re>rtol).sum() <= 0.01*relerr.size) or \
+                   (re.max() <= 2*rtol and (re > rtol).sum() <= 0.01*relerr.size) or \
                    (iw == 0 and np.all(relerr.mean(axis=1) <= rtol)):
                     # meet tolerances
                     if log >= DETAILED_LOGGING:
@@ -688,11 +692,11 @@ def _windowing(mp_data, rtol=1e-3, atol=1e-5, n_win=None, n_cf=None,
 
             # try to include one more pole (next center nearest)
             if rp >= n_poles:
-                lp = lp - 1
-            elif lp <= 0 or poles[rp] - incenter <= incenter - poles[lp-1]:
-                rp = rp + 1
+                lp -= 1
+            elif lp <= 0 or poles[rp] - incenter <= incenter - poles[lp - 1]:
+                rp += 1
             else:
-                lp = lp - 1
+                lp -= 1
 
         # save data for this window
         win_data.append((i_piece, lp, rp, coefs))
@@ -715,8 +719,8 @@ def _windowing(mp_data, rtol=1e-3, atol=1e-5, n_win=None, n_cf=None,
         ip, lp, rp, coefs = win_data[iw]
         # adjust indices and change to 1-based for the library format
         n_prev_poles = sum([poles_unused[i].size for i in range(ip)])
-        n_unused = sum([(poles_unused[i]==1).sum() for i in range(ip)]) + \
-                  (poles_unused[ip][:lp]==1).sum()
+        n_unused = sum([(poles_unused[i] == 1).sum() for i in range(ip)]) + \
+                  (poles_unused[ip][:lp] == 1).sum()
         lp += n_prev_poles - n_unused + 1
         rp += n_prev_poles - n_unused
         windows.append([lp, rp])
@@ -1009,7 +1013,7 @@ class WindowedMultipole(EqualityMixin):
         return out
 
     @classmethod
-    def from_endf(cls, endf_file, vf_options={}, wmp_options={}):
+    def from_endf(cls, endf_file, vf_options=None, wmp_options=None):
         """Generate windowed multipole neutron data from an ENDF evaluation.
 
         Parameters
@@ -1017,10 +1021,10 @@ class WindowedMultipole(EqualityMixin):
         endf_file : str
             Path to ENDF evaluation
         vf_options : dict
-            Dictionary of keyword arguments, e.g. {'rtol':0.001, 'log':True},
+            Dictionary of keyword arguments, e.g. {'rtol': 0.001, 'log': True},
             passed to :func:`openmc.data.multipole._vectfit_nuclide`
         wmp_options : dict
-            Dictionary of keyword arguments, e.g. {'search':True, 'log': True},
+            Dictionary of keyword arguments, e.g. {'search': True, 'log': True},
             passed to :func:`openmc.data.WindowedMultipole.from_multipole`
 
         Returns
@@ -1030,6 +1034,12 @@ class WindowedMultipole(EqualityMixin):
             format.
 
         """
+
+        if vf_options is None:
+            vf_options = {}
+
+        if wmp_options is None:
+            wmp_options = {}
 
         # generate multipole data from EDNF
         mp_data = _vectfit_nuclide(endf_file, **vf_options)
@@ -1044,11 +1054,11 @@ class WindowedMultipole(EqualityMixin):
         Parameters
         ----------
         mp_data : dictionary or str
-            Dictionary or Path to the multipole data
+            Dictionary or Path to the multipole data stored in a pickle file
         search : bool, optional
             Whether to search for optimal window size and curvefit order
         log : bool or int, optional
-            Whether to print running logs
+            Whether to print running logs (use int for verbosity control)
         **kwargs
             Keyword arguments passed to :func:`openmc.data.multipole._windowing`
 
@@ -1062,7 +1072,6 @@ class WindowedMultipole(EqualityMixin):
 
         if isinstance(mp_data, str):
             # load multipole data from file
-            import pickle
             with open(mp_data, 'rb') as f:
                 mp_data = pickle.load(f)
 
@@ -1076,7 +1085,7 @@ class WindowedMultipole(EqualityMixin):
         n_poles = sum([p.size for p in mp_data["poles"]])
         n_win_min = max(5, n_poles // 20)
         n_win_max = 2000 if n_poles < 2000 else 8000
-        best_wmp, best_metric = None, None
+        best_wmp = best_metric = None
         for n_w in np.unique(np.linspace(n_win_min, n_win_max, 20, dtype=int)):
             for n_cf in range(10, 1, -1):
                 if log:
@@ -1163,7 +1172,7 @@ class WindowedMultipole(EqualityMixin):
             dopp = self.sqrtAWR / sqrtkT
             broadened_polynomials = _broaden_wmp_polynomials(E, dopp,
                                                              self.fit_order + 1)
-            for i_poly in range(self.fit_order+1):
+            for i_poly in range(self.fit_order + 1):
                 sig_s += (self.curvefit[i_window, i_poly, _FIT_S]
                           * broadened_polynomials[i_poly])
                 sig_a += (self.curvefit[i_window, i_poly, _FIT_A]
@@ -1173,7 +1182,7 @@ class WindowedMultipole(EqualityMixin):
                               * broadened_polynomials[i_poly])
         else:
             temp = invE
-            for i_poly in range(self.fit_order+1):
+            for i_poly in range(self.fit_order + 1):
                 sig_s += self.curvefit[i_window, i_poly, _FIT_S] * temp
                 sig_a += self.curvefit[i_window, i_poly, _FIT_A] * temp
                 if self.fissionable:

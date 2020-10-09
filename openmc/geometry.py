@@ -50,7 +50,8 @@ class Geometry:
 
     @root_universe.setter
     def root_universe(self, root_universe):
-        check_type('root universe', root_universe, openmc.Universe)
+        check_type('root universe', root_universe,
+                   (openmc.Universe, openmc.DAGMCUniverse))
         self._root_universe = root_universe
 
     def add_volume_information(self, volume_calc):

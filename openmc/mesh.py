@@ -876,9 +876,13 @@ class ExternalMesh(UnstructuredMesh):
 
     @classmethod
     def from_hdf5(cls, group):
-        mesh = super().from_hdf5(cls,group)
-        mesh.create=True
-        mesh.load=True
+        mesh_id = int(group.name.split('/')[-1].lstrip('mesh '))
+        filename = group['filename'][()].decode()
+        mesh = cls(True,True,filename, mesh_id)
+        vol_data = group['volumes'][()]
+        centroids = group['centroids'][()]
+        mesh.volumes = np.reshape(vol_data, (vol_data.shape[0],))
+        mesh.centroids = np.reshape(centroids, (vol_data.shape[0], 3))
         return mesh
 
     def to_xml_element(self):

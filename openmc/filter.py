@@ -765,7 +765,8 @@ class MeshFilter(Filter):
     def mesh(self, mesh):
         cv.check_type('filter mesh', mesh, openmc.MeshBase)
         self._mesh = mesh
-        if isinstance(mesh, openmc.UnstructuredMesh):
+        if ( isinstance(mesh, openmc.UnstructuredMesh) or
+             isinstance(mesh, openmc.ExternalMesh) ):
             if mesh.volumes is None:
                 self.bins = []
             else:

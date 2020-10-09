@@ -1635,7 +1635,7 @@ UnstructuredMesh::to_hdf5(hid_t group) const
 {
     hid_t mesh_group = create_group(group, fmt::format("mesh {}", id_));
 
-    write_dataset(mesh_group, "type", "unstructured");
+    write_dataset(mesh_group, "type", mesh_type_);
     write_dataset(mesh_group, "filename", filename_);
 
     // write volume and centroid of each tet
@@ -1925,6 +1925,12 @@ ExternalMesh::setMeshType(pugi::xml_node node)
 }
 
 void
+ExternalMesh::setFilename(pugi::xml_node)
+{
+  filename_ = "external";
+}
+
+void
 ExternalMesh::initMOAB()
 {
   if(model::moabPtr==nullptr){
@@ -1932,13 +1938,6 @@ ExternalMesh::initMOAB()
   }
   mbi_ = model::moabPtr;
 }
-
-void
-ExternalMesh::setFilename(pugi::xml_node)
-{
-  filename_ = "external";
-}
-
 
 #endif
 

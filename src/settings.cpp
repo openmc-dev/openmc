@@ -626,36 +626,36 @@ void read_settings_xml()
     sourcepoint_batch = statepoint_batch;
   }
 
-  // Check if the user has specified to write surface source.
+  // Check if the user has specified to write surface source
   if (check_for_node(root, "surf_src_write")) {
     surf_src_write = true;
-    // Get surface source node
-    xml_node node_ss = root.child("surf_src_write");
+    // Get surface source write node
+    xml_node node_ssw = root.child("surf_src_write");
 
-    // Determine surface ids at which crossing particles are to be banked.
-    if (check_for_node(node_ss, "surf_ids")) {
-      auto temp = get_node_array<int>(node_ss, "surf_ids");
+    // Determine surface ids at which crossing particles are to be banked
+    if (check_for_node(node_ssw, "surf_ids")) {
+      auto temp = get_node_array<int>(node_ssw, "surf_ids");
       for (const auto& b : temp) {
         src_write_surf_id.insert(b);
       }
     }
 
-    // Get maximum number of particles to be banked per surface.
-    if (check_for_node(node_ss, "max_surf_banks")) {
-      max_surf_banks = std::stoi(get_node_value(node_ss, "max_surf_banks"));
+    // Get maximum number of particles to be banked per surface
+    if (check_for_node(node_ssw, "max_surf_banks")) {
+      max_surf_banks = std::stoi(get_node_value(node_ssw, "max_surf_banks"));
     }
   }
 
-  // Check if the user has specified to read surface source.
+  // Check if the user has specified to read surface source
   if (check_for_node(root, "surf_src_read")) {
     surf_src_read = true;
     // Get surface source read node
-    xml_node node_ss = root.child("surf_src_read");
+    xml_node node_ssr = root.child("surf_src_read");
 
     settings::path_source = "surface_source.h5";
     // Check if the user has specified different file for surface source reading
-    if (check_for_node(node_ss, "file")) {
-      settings::path_source = get_node_value(node_ss, "file", false, true);
+    if (check_for_node(node_ssr, "file")) {
+      settings::path_source = get_node_value(node_ssr, "file", false, true);
       }
 
     // Check if surface source file exists

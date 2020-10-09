@@ -175,10 +175,6 @@ parse_command_line(int argc, char* argv[])
       } else if (arg == "-e" || arg == "--event") {
         settings::event_based = true;
 
-      } else if (arg == "-g" || arg == "--gpu") {
-        settings::gpu_mode = true;
-        settings::event_based = true;
-
       } else if (arg == "-r" || arg == "--restart") {
         i += 1;
 

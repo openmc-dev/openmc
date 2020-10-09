@@ -654,8 +654,8 @@ void read_settings_xml()
 
     settings::path_source = "surface_source.h5";
     // Check if the user has specified different file for surface source reading
-    if (check_for_node(node_ssr, "file")) {
-      settings::path_source = get_node_value(node_ssr, "file", false, true);
+    if (check_for_node(node_ssr, "path")) {
+      settings::path_source = get_node_value(node_ssr, "path", false, true);
       }
 
     // Check if surface source file exists

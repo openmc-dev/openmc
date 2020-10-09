@@ -646,6 +646,25 @@ void read_settings_xml()
     }
   }
 
+  // Check if the user has specified to read surface source.
+  if (check_for_node(root, "surf_src_read")) {
+    surf_src_read = true;
+    // Get surface source read node
+    xml_node node_ss = root.child("surf_src_read");
+
+    settings::path_source = "surface_source.h5";
+    // Check if the user has specified different file for surface source reading
+    if (check_for_node(node_ss, "file")) {
+      settings::path_source = get_node_value(node_ss, "file", false, true);
+      }
+
+    // Check if surface source file exists
+    if (!file_exists(settings::path_source)) {
+      fatal_error(fmt::format("Source file '{}' does not exist.",
+        settings::path_source));
+    }
+  }
+
   // If source is not seperate and is to be written out in the statepoint file,
   // make sure that the sourcepoint batch numbers are contained in the
   // statepoint list

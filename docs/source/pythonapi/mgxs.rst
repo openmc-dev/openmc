@@ -34,6 +34,7 @@ Multi-group Cross Sections
     openmc.mgxs.CaptureXS
     openmc.mgxs.Chi
     openmc.mgxs.Current
+    openmc.mgxs.DiffusionCoefficient
     openmc.mgxs.FissionXS
     openmc.mgxs.InverseVelocity
     openmc.mgxs.KappaFissionXS

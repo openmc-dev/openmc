@@ -71,7 +71,6 @@ int openmc_finalize()
   settings::confidence_intervals = false;
   settings::create_fission_neutrons = true;
   settings::electron_treatment = ElectronTreatment::LED;
-  settings::dagmc = false;
   settings::delayed_photon_scaling = true;
   settings::energy_cutoff = {0.0, 1000.0, 0.0, 0.0};
   settings::entropy_on = false;

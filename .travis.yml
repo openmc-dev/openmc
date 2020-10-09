@@ -40,10 +40,8 @@ matrix:
     - python: "3.8"
       env: OMP=y MPI=n PHDF5=n
     - python: "3.8"
-      env: OMP=n MPI=y PHDF5=n
-    - python: "3.8"
       env: OMP=n MPI=y PHDF5=n VECTFIT=y
-    - python: "3.7"
+    - python: "3.8"
       env: OMP=n MPI=y PHDF5=y
     - python: "3.8"
       env: OMP=y MPI=y PHDF5=y DAGMC=y

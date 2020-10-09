@@ -20,8 +20,6 @@ from .data import K_BOLTZMANN
 from .neutron import IncidentNeutron
 from .resonance import ResonanceRange
 
-import vectfit as vf
-
 
 # Constants that determine which value to access
 _MP_EA = 0       # Pole
@@ -353,7 +351,7 @@ def _vectfit_xs(energy, ce_xs, mts, rtol=1e-3, atol=1e-5, orders=None,
     if log:
         print("Found {} real poles and {} conjugate complex pairs.".format(
                len(real_idx), len(conj_idx)))
-    mp_poles = best_poles[real_idx+conj_idx]
+    mp_poles = best_poles[real_idx + conj_idx]
     mp_residues = np.concatenate((best_residues[:, real_idx],
                                   best_residues[:, conj_idx]*2), axis=1)/1j
     if log:

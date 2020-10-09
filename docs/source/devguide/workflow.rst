@@ -50,7 +50,7 @@ Contributing
 ------------
 
 Now that you understand the basic development workflow, let's discuss how an
-individual to contribute to development. Note that this would apply to both new
+individual can contribute to development. Note that this would apply to both new
 features and bug fixes. The general steps for contributing are as follows:
 
 1. Fork the main openmc repository from `openmc-dev/openmc`_. This will create a

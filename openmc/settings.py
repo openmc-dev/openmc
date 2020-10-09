@@ -143,6 +143,10 @@ class Settings:
         Options for writing state points. Acceptable keys are:
 
         :batches: list of batches at which to write source
+    surf_src_read : dict
+        Options for reading surface source points. Acceptable keys are:
+
+        :path: Path to surface source file (str).
     surf_src_write : dict
         Options for writing surface source points. Acceptable keys are:
 
@@ -236,6 +240,7 @@ class Settings:
         self._statepoint = {}
         self._sourcepoint = {}
 
+        self._surf_src_read = {}
         self._surf_src_write = {}
 
         self._no_reduce = None
@@ -364,6 +369,10 @@ class Settings:
     @property
     def statepoint(self):
         return self._statepoint
+
+    @property
+    def surf_src_read(self):
+        return self._surf_src_read
 
     @property
     def surf_src_write(self):
@@ -579,6 +588,16 @@ class Settings:
                 raise ValueError("Unknown key '{}' encountered when setting "
                                  "statepoint options.".format(key))
         self._statepoint = statepoint
+
+    @surf_src_read.setter
+    def surf_src_read(self, surf_src_read):
+        cv.check_type('surface source writing options', surf_src_read, Mapping)
+        for key, value in surf_src_read.items():
+            cv.check_value('surface source reading key', key,
+                           ('path'))
+            if key == 'path':
+                cv.check_type('path to surface source file', value, str)
+        self._surf_src_read = surf_src_read
 
     @surf_src_write.setter
     def surf_src_write(self, surf_src_write):
@@ -921,6 +940,13 @@ class Settings:
                 subelement = ET.SubElement(element, "overwrite_latest")
                 subelement.text = str(self._sourcepoint['overwrite']).lower()
 
+    def _create_surf_src_read_subelement(self, root):
+        if self._surf_src_read:
+            element = ET.SubElement(root, "surf_src_read")
+            if 'path' in self._surf_src_read:
+                subelement = ET.SubElement(element, "path")
+                subelement.text = self._surf_src_read['path']
+
     def _create_surf_src_write_subelement(self, root):
         if self._surf_src_write:
             element = ET.SubElement(root, "surf_src_write")
@@ -1194,6 +1220,13 @@ class Settings:
                         value = [int(x) for x in value.split()]
                     self.sourcepoint[key] = value
 
+    def _surf_src_read_from_xml_element(self, root):
+        elem = root.find('surf_src_read')
+        if elem is not None:
+            value = get_text(elem, 'path')
+            if value is not None:
+                self.surf_src_read['path'] = value
+
     def _surf_src_write_from_xml_element(self, root):
         elem = root.find('surf_src_write')
         if elem is not None:
@@ -1404,6 +1437,7 @@ class Settings:
         self._create_output_subelement(root_element)
         self._create_statepoint_subelement(root_element)
         self._create_sourcepoint_subelement(root_element)
+        self._create_surf_src_read_subelement(root_element)
         self._create_surf_src_write_subelement(root_element)
         self._create_confidence_intervals(root_element)
         self._create_electron_treatment_subelement(root_element)
@@ -1478,6 +1512,7 @@ class Settings:
         settings._output_from_xml_element(root)
         settings._statepoint_from_xml_element(root)
         settings._sourcepoint_from_xml_element(root)
+        settings._surf_src_read_from_xml_element(root)
         settings._surf_src_write_from_xml_element(root)
         settings._confidence_intervals_from_xml_element(root)
         settings._electron_treatment_from_xml_element(root)

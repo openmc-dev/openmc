@@ -243,8 +243,8 @@ def _vectfit_xs(energy, ce_xs, mts, rtol=1e-3, atol=1e-5, orders=None,
         if log:
             print("Order={}({}/{})".format(order, i, len(orders)))
         # initial guessed poles
-        poles = np.linspace(s[0], s[-1], order//2)
-        poles += poles*0.01j
+        poles_r = np.linspace(s[0], s[-1], order//2)
+        poles = poles_r + poles_r*0.01j
         poles = np.sort(np.append(poles, np.conj(poles)))
 
         found_better = False

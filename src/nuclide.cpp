@@ -314,6 +314,7 @@ void Nuclide::create_derived(const Function1D* prompt_photons, const Function1D*
     xs_.emplace_back(shape, 0.0);
   }
 
+  reaction_index_.fill(C_NONE);
   for (int i = 0; i < reactions_.size(); ++i) {
     const auto& rx {reactions_[i]};
 

@@ -257,6 +257,30 @@ public:
 #endif
   }
 
+  // The following two methods synchronize data between host and device manually
+  // if a polymorphic object is being pointed to by this unique_ptr object.
+  // Because polymorphic things can't use managed memory (the vtable would not
+  // be set up for each host and device), these are done manually for now. This
+  // could be made automatic with some ease.
+  __host__ void syncHostToDevice()
+  {
+    if (!ptr_dev)
+      return; // don't do anything if not using managed memory
+    cudaError_t error_code =
+      cudaMemcpy(ptr_dev, ptr, sizeof(T), cudaMemcpyHostToDevice);
+    if (error_code != cudaSuccess)
+      CubDebugExit(error_code);
+  }
+  __host__ void syncDeviceToHost()
+  {
+    if (!ptr_dev)
+      return; // don't do anything if not using managed memory
+    cudaError_t error_code =
+      cudaMemcpy(ptr, ptr_dev, sizeof(T), cudaMemcpyDeviceToHost);
+    if (error_code != cudaSuccess)
+      CubDebugExit(error_code);
+  }
+
 private:
   pointer ptr {nullptr};
   pointer ptr_dev {nullptr};

@@ -124,9 +124,7 @@ Surface::Surface(pugi::xml_node surf_node)
   }
 
   if (check_for_node(surf_node, "name")) {
-    std::string name_tmp = get_node_value(surf_node, "name", false);
-    name_ =
-      vector<char>(name_tmp.c_str(), name_tmp.c_str() + name_tmp.size() + 1);
+    name_ = get_node_value(surf_node, "name", false);
   }
 
   if (check_for_node(surf_node, "boundary")) {
@@ -218,7 +216,7 @@ CSGSurface::to_hdf5(hid_t group_id) const
   }
 
   if (!name_.empty()) {
-    write_string(surf_group, "name", name_.data(), false);
+    write_string(surf_group, "name", name_, false);
   }
 
   to_hdf5_inner(surf_group);

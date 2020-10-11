@@ -81,6 +81,13 @@ public:
     alloc_ = std::move(copy_from.alloc_);
     return *this;
   }
+  // Allow construction from std::vector
+  __host__ __device__ vector& operator=(std::vector<T>& copy_from)
+  {
+    resize(copy_from.size());
+    memcpy(begin_, copy_from.data(), size_ * sizeof(T));
+    return *this;
+  }
 
   // The move constructor may need to run on the device in the case of
   // construction of polymorphic objects living on GPU that contain vectors.
@@ -162,8 +169,8 @@ public:
   __host__ __device__ bool empty() const { return size_ == 0; }
   __host__ __device__ T* data() const { return begin_; }
   __host__ __device__ std::size_t size() const { return size_; }
-  __host__ __device__ T* begin() { return begin_; }
-  __host__ __device__ T* end() { return begin_ + size_; }
+  __host__ __device__ T* begin() const { return begin_; }
+  __host__ __device__ T* end() const { return begin_ + size_; }
 
   __host__ void clear()
   {

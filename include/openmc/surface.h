@@ -14,6 +14,7 @@
 #include "openmc/memory.h" // for unique_ptr
 #include "openmc/particle.h"
 #include "openmc/position.h"
+#include "openmc/string.h"
 #include "openmc/vector.h"
 #include "openmc/string.h"
 

@@ -8,8 +8,6 @@ import h5py
 import pickle
 import numpy as np
 from scipy.signal import find_peaks
-import matplotlib
-matplotlib.use("agg")
 import matplotlib.pyplot as plt
 
 import openmc.checkvalue as cv
@@ -646,7 +644,8 @@ def _windowing(mp_data, n_cf, rtol=1e-3, atol=1e-5, n_win=None, spacing=None,
         energy_sqrt = np.linspace(np.sqrt(e_start), np.sqrt(e_end), n_points)
         energy = energy_sqrt**2
 
-        # reference xs from multipole form
+        # reference xs from multipole form, note the residue terms in the
+        # multipole and vector fitting representations differ by a 1j
         xs_ref = vf.evaluate(energy_sqrt, poles, residues*1j) / energy
 
         # curve fit matrix

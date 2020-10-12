@@ -33,6 +33,8 @@ namespace openmc {
 extern "C" int
 openmc_statepoint_write(const char* filename, bool* write_source)
 {
+  simulation::time_statepoint.start();
+
   // Set the filename
   std::string filename_;
   if (filename) {
@@ -272,7 +274,9 @@ openmc_statepoint_write(const char* filename, bool* write_source)
   } else if (mpi::master) {
     // Write number of global realizations
     write_dataset(file_id, "n_realizations", simulation::n_realizations);
+  }
 
+  if (mpi::master) {
     // Write out the runtime metrics.
     using namespace simulation;
     hid_t runtime_group = create_group(file_id, "runtime");
@@ -294,6 +298,7 @@ openmc_statepoint_write(const char* filename, bool* write_source)
     }
     write_dataset(runtime_group, "accumulating tallies", time_tallies.elapsed());
     write_dataset(runtime_group, "total", time_total.elapsed());
+    write_dataset(runtime_group, "writing statepoints", time_statepoint.elapsed());
     close_group(runtime_group);
 
     file_close(file_id);
@@ -311,6 +316,8 @@ openmc_statepoint_write(const char* filename, bool* write_source)
     write_source_bank(file_id);
     if (mpi::master || parallel) file_close(file_id);
   }
+
+  simulation::time_statepoint.stop();
 
   return 0;
 }
@@ -774,9 +781,6 @@ void write_tally_results_nr(hid_t file_id)
     // Write number of realizations
     write_dataset(file_id, "n_realizations", simulation::n_realizations);
 
-    // Write number of global tallies
-    write_dataset(file_id, "n_global_tallies", N_GLOBAL_TALLIES);
-
     tallies_group = open_group(file_id, "tallies");
   }
 
@@ -808,7 +812,7 @@ void write_tally_results_nr(hid_t file_id)
     if (!t->active_) continue;
     if (!t->writable_) continue;
 
-    if (mpi::master && !object_exists(file_id, "tallies_present")) {
+    if (mpi::master && !attribute_exists(file_id, "tallies_present")) {
       write_attribute(file_id, "tallies_present", 1);
     }
 
@@ -817,7 +821,7 @@ void write_tally_results_nr(hid_t file_id)
       xt::range(static_cast<int>(TallyResult::SUM), static_cast<int>(TallyResult::SUM_SQ) + 1));
 
     // Make copy of tally values in contiguous array
-    xt::xtensor<double, 2> values = values_view;
+    xt::xtensor<double, 3> values = values_view;
 
     if (mpi::master) {
       // Open group for tally
@@ -863,6 +867,8 @@ void write_tally_results_nr(hid_t file_id)
       // Indicate that tallies are off
       write_dataset(file_id, "tallies_present", 0);
     }
+
+    close_group(tallies_group);
   }
 }
 

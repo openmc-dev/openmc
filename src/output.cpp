@@ -420,6 +420,7 @@ void print_runtime()
     show_time("SEND/RECV source sites", time_bank_sendrecv.elapsed(), 2);
   }
   show_time("Time accumulating tallies", time_tallies.elapsed(), 1);
+  show_time("Time writing statepoints", time_statepoint.elapsed(), 1);
   show_time("Total time for finalization", time_finalize.elapsed());
   show_time("Total time elapsed", time_total.elapsed());
 

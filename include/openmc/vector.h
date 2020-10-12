@@ -14,6 +14,7 @@
 #include "openmc/memory.h"
 #include <algorithm>
 #include <cstddef>
+#include <iterator>
 #include <memory>
 #include <type_traits>
 #include <utility>
@@ -52,6 +53,15 @@ private:
   }
 
 public:
+  using value_type = T;
+  using size_type = std::size_t;
+  using reference = T&;
+  using pointer = T*;
+  using iterator = T*;
+  using const_iterator = T const*;
+  using reverse_iterator = std::reverse_iterator<iterator>;
+  using const_reverse_iterator = std::reverse_iterator<const_iterator>;
+
   __host__ vector() : begin_(nullptr), size_(0), capacity_(0) {}
 
   // Construct, default-initializing elements in a vector of
@@ -86,6 +96,20 @@ public:
   {
     resize(copy_from.size());
     memcpy(begin_, copy_from.data(), size_ * sizeof(T));
+    return *this;
+  }
+  __host__ __device__ vector& operator=(std::vector<T>&& copy_from)
+  {
+    // TODO this could be improved to steal the memory the other vector
+    // is holding. However, this memory would not  be compatible with the
+    // CUDA managed memory system unless that std::vector also used a
+    // UnifiedAllocator, so this could be specialized for that special
+    // case where the memory is known to be stealable. I am unsure how to
+    // make the old std::vector not call delete on its memory when it's done
+    // though.
+    resize(copy_from.size());
+    for (std::size_t i = 0; i < size_; ++i)
+      begin_[i] = std::move(copy_from[i]);
     return *this;
   }
 
@@ -132,6 +156,7 @@ public:
   __host__ void resize(std::size_t new_size)
   {
     reserve(new_size);
+    size_ = new_size;
     // Default initialize new things:
     for (std::size_t i = size_; i < new_size; ++i)
       begin_[i] = T();
@@ -139,6 +164,7 @@ public:
   __host__ void resize(std::size_t new_size, T const& default_value)
   {
     reserve(new_size);
+    size_ = new_size;
     // set new things to be default_value
     for (std::size_t i = size_; i < new_size; ++i)
       begin_[i] = default_value;
@@ -165,12 +191,42 @@ public:
   {
     return *(begin_ + n);
   }
+  __host__ T& at(std::size_t n)
+  {
+    if (n >= size_) {
+      throw std::out_of_range("openmc::vector::at() out of range!");
+    }
+    return *(begin_ + n);
+  }
+  __host__ T const& at(std::size_t n) const
+  {
+    if (n >= size_) {
+      throw std::out_of_range("openmc::vector::at() out of range!");
+    }
+    return *(begin_ + n);
+  }
+  __host__ iterator insert(iterator pos, const T& value)
+  {
+    // Make space for the new entry, and grow if necessary
+    if (size_ == capacity_)
+      grow();
+    std::size_t indx = pos - begin_;
+    for (std::size_t i = size_; i > indx; i--)
+      begin_[i] = begin_[i - 1];
+    begin_[indx] = value;
+    size_++;
+  }
 
   __host__ __device__ bool empty() const { return size_ == 0; }
   __host__ __device__ T* data() const { return begin_; }
   __host__ __device__ std::size_t size() const { return size_; }
-  __host__ __device__ T* begin() const { return begin_; }
-  __host__ __device__ T* end() const { return begin_ + size_; }
+  __host__ __device__ iterator begin() const { return begin_; }
+  __host__ __device__ iterator end() const { return begin_ + size_; }
+  __host__ __device__ reverse_iterator rbegin() const { return begin_ + size_; }
+  __host__ __device__ reverse_iterator rend() const { return begin_; }
+  __host__ __device__ void pop_back() { size_--; }
+  __host__ __device__ reference back() { return begin_[size_ - 1]; }
+  __host__ __device__ reference front() { return begin_[0]; }
 
   __host__ void clear()
   {

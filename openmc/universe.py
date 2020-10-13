@@ -4,6 +4,7 @@ from collections.abc import Iterable
 from copy import copy, deepcopy
 from numbers import Real
 import random
+from xml.etree import ElementTree as ET
 
 import numpy as np
 
@@ -677,10 +678,20 @@ class DAGMCUniverse(UniverseBase):
     def clone(self, clone_materials=True, clone_regions=True, memo=None):
         pass
 
+    def get_all_cells(self, memo=None):
+        return OrderedDict()
+
     def create_xml_subelement(self, xml_element, memo=None):
+
+        if memo and self in memo:
+            return
+
+        if memo is not None:
+            memo.add(self)
+
         # Set xml element values
         dagmc_element = ET.Element('dagmc')
-        dagmc_element.set('id', self.id)
+        dagmc_element.set('id', str(self.id))
         dagmc_element.set('name', self.name)
         dagmc_element.set('filename', self.filename)
         xml_element.append(dagmc_element)

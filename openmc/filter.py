@@ -15,7 +15,7 @@ from .cell import Cell
 from .material import Material
 from .mixin import IDManagerMixin
 from .surface import Surface
-from .universe import Universe
+from .universe import UniverseBase
 
 
 _FILTER_TYPES = (
@@ -408,8 +408,8 @@ class UniverseFilter(WithIDFilter):
 
     Parameters
     ----------
-    bins : openmc.Universe, int, or iterable thereof
-        The Universes to tally. Either openmc.Universe objects or their
+    bins : openmc.UniverseBase, int, or iterable thereof
+        The Universes to tally. Either openmc.UniverseBase objects or their
         Integral ID numbers can be used.
     filter_id : int
         Unique identifier for the filter
@@ -417,14 +417,14 @@ class UniverseFilter(WithIDFilter):
     Attributes
     ----------
     bins : Iterable of Integral
-        openmc.Universe IDs.
+        openmc.UniverseBase IDs.
     id : int
         Unique identifier for the filter
     num_bins : Integral
         The number of filter bins
 
     """
-    expected_type = Universe
+    expected_type = UniverseBase
 
 
 class MaterialFilter(WithIDFilter):

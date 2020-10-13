@@ -257,8 +257,6 @@ void DAGUniverse::initialize() {
     c->fill_ = C_NONE; // no fill, single universe
 
     model::cells.emplace_back(c);
-    model::cell_map[c->id_] = model::cells.size() - 1;
-    cells_.push_back(model::cell_map[c->id_]);
 
     // MATERIALS
 
@@ -330,14 +328,14 @@ void DAGUniverse::initialize() {
 
   // initialize surface objects
   int n_surfaces = dagmc_instance_->num_entities(2);
-
   for (int i = 0; i < n_surfaces; i++) {
     moab::EntityHandle surf_handle = dagmc_instance_->entity_by_index(2, i+1);
 
     // set cell ids using global IDs
     DAGSurface* s = new DAGSurface();
     s->dag_index_ = i+1;
-    s->id_ = dagmc_instance_->id_by_index(2, i+1);
+    s->id_ = next_surf_id++;
+    // s->id_ = dagmc_instance_->id_by_index(2, i+1);
     s->dagmc_ptr_ = dagmc_instance_;
 
     // set BCs
@@ -369,10 +367,20 @@ void DAGUniverse::initialize() {
     }
 
     // add to global array and map
+
+    auto in_map = model::surface_map.find(s->id_);
+    if (in_map == model::surface_map.end()) {
+      model::surface_map[s->id_] = model::surfaces.size();
+    } else {
+            fatal_error(fmt::format(
+        "Two or more surfaces use the same unique ID: {}", s->id_));
+    }
     model::surfaces.emplace_back(s);
-    model::surface_map[s->id_] = model::surfaces.size() - 1;
-  }
+
+  } // end surface loop
+
 }
+
 
 int32_t create_dagmc_universe(const std::string& filename) {
   if (!model::DAG) {

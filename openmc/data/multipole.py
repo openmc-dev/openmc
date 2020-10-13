@@ -207,7 +207,8 @@ def _vectfit_xs(energy, ce_xs, mts, rtol=1e-3, atol=1e-5, orders=None,
 
     # inverse weighting is used for minimizing the relative deviation instead of
     # absolute deviation in vector fitting
-    weight = 1.0/f
+    with np.errstate(divide='ignore'):
+        weight = 1.0/f
 
     # avoid too large weights which will harm the fitting accuracy
     min_cross_section = 1e-7
@@ -387,7 +388,7 @@ def _vectfit_xs(energy, ce_xs, mts, rtol=1e-3, atol=1e-5, orders=None,
     return (mp_poles, mp_residues)
 
 
-def _vectfit_nuclide(endf_file, njoy_error=5e-4, vf_pieces=None,
+def vectfit_nuclide(endf_file, njoy_error=5e-4, vf_pieces=None,
                      log=False, path_out=None, mp_filename=None, **kwargs):
     r"""Generate multipole data for a nuclide from ENDF.
 
@@ -1023,7 +1024,7 @@ class WindowedMultipole(EqualityMixin):
             Whether to print running logs (use int for verbosity control)
         vf_options : dict, optional
             Dictionary of keyword arguments, e.g. {'njoy_error': 0.001},
-            passed to :func:`openmc.data.multipole._vectfit_nuclide`
+            passed to :func:`openmc.data.multipole.vectfit_nuclide`
         wmp_options : dict, optional
             Dictionary of keyword arguments, e.g. {'search': True, 'rtol': 0.01},
             passed to :func:`openmc.data.WindowedMultipole.from_multipole`
@@ -1047,13 +1048,13 @@ class WindowedMultipole(EqualityMixin):
             wmp_options.update(log=log)
 
         # generate multipole data from EDNF
-        mp_data = _vectfit_nuclide(endf_file, **vf_options)
+        mp_data = vectfit_nuclide(endf_file, **vf_options)
 
         # windowing
         return cls.from_multipole(mp_data, **wmp_options)
 
     @classmethod
-    def from_multipole(cls, mp_data, search=False, log=False, **kwargs):
+    def from_multipole(cls, mp_data, search=True, log=False, **kwargs):
         """Generate windowed multipole neutron data from multipole data.
 
         Parameters
@@ -1082,6 +1083,9 @@ class WindowedMultipole(EqualityMixin):
 
         # windowing with specific options
         if not search:
+            # set default value for curvefit order if not specified
+            if 'n_cf' not in kwargs:
+                kwargs.update(n_cf=5)
             return _windowing(mp_data, log=log, **kwargs)
 
         # search optimal WMP from a range of window sizes and CF orders

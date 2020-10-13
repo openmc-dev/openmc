@@ -14,13 +14,13 @@ class Geometry:
 
     Parameters
     ----------
-    root : openmc.Universe or Iterable of openmc.Cell, optional
+    root : openmc.UniverseBase or Iterable of openmc.Cell, optional
         Root universe which contains all others, or an iterable of cells that
         should be used to create a root universe.
 
     Attributes
     ----------
-    root_universe : openmc.Universe
+    root_universe : openmc.UniverseBase
         Root universe which contains all others
     bounding_box : 2-tuple of numpy.array
         Lower-left and upper-right coordinates of an axis-aligned bounding box
@@ -32,7 +32,7 @@ class Geometry:
         self._root_universe = None
         self._offsets = {}
         if root is not None:
-            if isinstance(root, openmc.Universe):
+            if isinstance(root, openmc.UniverseBase):
                 self.root_universe = root
             else:
                 univ = openmc.Universe()
@@ -50,8 +50,7 @@ class Geometry:
 
     @root_universe.setter
     def root_universe(self, root_universe):
-        check_type('root universe', root_universe,
-                   (openmc.Universe, openmc.DAGMCUniverse))
+        check_type('root universe', root_universe, openmc.UniverseBase)
         self._root_universe = root_universe
 
     def add_volume_information(self, volume_calc):

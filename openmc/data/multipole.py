@@ -32,7 +32,7 @@ _FIT_S = 0       # Scattering
 _FIT_A = 1       # Absorption
 _FIT_F = 2       # Fission
 
-# Upper temperature limit
+# Upper temperature limit (K)
 TEMPERATURE_LIMIT = 3000
 
 # Logging control
@@ -190,7 +190,7 @@ def _vectfit_xs(energy, ce_xs, mts, rtol=1e-3, atol=1e-5, orders=None,
     ne_test = (ne - 1)*n_finer + 1
     test_energy = np.interp(np.arange(ne_test),
                             np.arange(ne_test, step=n_finer), energy)
-    test_energy[[0, -1]] = energy[[0, -1]] # avoid numerical issue
+    test_energy[[0, -1]] = energy[[0, -1]]  # avoid numerical issue
     test_xs_ref = np.zeros((nmt, ne_test))
     for i in range(nmt):
         test_xs_ref[i] = np.interp(test_energy, energy, ce_xs[i])
@@ -235,7 +235,7 @@ def _vectfit_xs(energy, ce_xs, mts, rtol=1e-3, atol=1e-5, orders=None,
 
     # perform VF with increasing orders
     found_ideal = False
-    n_discarded = 0 # for accelation, number of discarded searches
+    n_discarded = 0  # for accelation, number of discarded searches
     best_quality = best_ratio = -np.inf
     for i, order in enumerate(orders):
         if log:
@@ -275,7 +275,8 @@ def _vectfit_xs(energy, ce_xs, mts, rtol=1e-3, atol=1e-5, orders=None,
             # assess the result on test grid
             test_xs = vf.evaluate(test_s, new_poles, residues) / test_energy
             abserr = np.abs(test_xs - test_xs_ref)
-            relerr = abserr / test_xs_ref
+            with np.errstate(invalid='ignore'):
+                relerr = abserr / test_xs_ref
             if np.any(np.isnan(abserr)):
                 maxre, ratio, ratio2 = np.inf, -np.inf, -np.inf
             elif np.all(abserr <= atol):
@@ -302,7 +303,7 @@ def _vectfit_xs(energy, ce_xs, mts, rtol=1e-3, atol=1e-5, orders=None,
 
             if quality > best_quality:
                 if log >= DETAILED_LOGGING:
-                    print("  Best by far!")
+                    print("  Best so far!")
                 found_better = True
                 best_quality, best_ratio = quality, ratio
                 best_poles, best_residues = new_poles, residues
@@ -385,7 +386,8 @@ def _vectfit_xs(energy, ce_xs, mts, rtol=1e-3, atol=1e-5, orders=None,
 
     return (mp_poles, mp_residues)
 
-def _vectfit_nuclide(endf_file, njoy_error=5e-4, vf_error=1e-3, vf_pieces=None,
+
+def _vectfit_nuclide(endf_file, njoy_error=5e-4, vf_pieces=None,
                      log=False, path_out=None, mp_filename=None, **kwargs):
     r"""Generate multipole data for a nuclide from ENDF.
 
@@ -395,8 +397,6 @@ def _vectfit_nuclide(endf_file, njoy_error=5e-4, vf_error=1e-3, vf_pieces=None,
         Path to ENDF evaluation
     njoy_error : float, optional
         Fractional error tolerance for processing point-wise data with NJOY
-    vf_error : float, optional
-        Fractional error tolerance for data fitting
     vf_pieces : integer, optional
         Number of equal-in-momentum spaced energy pieces for data fitting
     log : bool or int, optional
@@ -515,8 +515,8 @@ def _vectfit_nuclide(endf_file, njoy_error=5e-4, vf_error=1e-3, vf_pieces=None,
         e_end_idx = np.searchsorted(energy, e_end, side='left') + 1
         e_idx = range(e_start_idx, min(e_end_idx + 1, n_points))
 
-        p, r = _vectfit_xs(energy[e_idx], ce_xs[:, e_idx], mts, rtol=vf_error,
-                           log=log, path_out=path_out, **kwargs)
+        p, r = _vectfit_xs(energy[e_idx], ce_xs[:, e_idx], mts, log=log,
+                           path_out=path_out, **kwargs)
 
         poles.append(p)
         residues.append(r)
@@ -542,6 +542,7 @@ def _vectfit_nuclide(endf_file, njoy_error=5e-4, vf_error=1e-3, vf_pieces=None,
             print("Dumped multipole data to file: {}".format(mp_filename))
 
     return mp_data
+
 
 def _windowing(mp_data, n_cf, rtol=1e-3, atol=1e-5, n_win=None, spacing=None,
                log=False):
@@ -595,7 +596,6 @@ def _windowing(mp_data, n_cf, rtol=1e-3, atol=1e-5, n_win=None, spacing=None,
             n_win = int((sqrt(E_max) - sqrt(E_min)) / spacing)
             E_max = (sqrt(E_min) + n_win*spacing)**2
         else:
-            warnings.warn("Number of windows or window size not specified.")
             n_win = 1000
     # inner window size
     spacing = (sqrt(E_max) - sqrt(E_min)) / n_win
@@ -671,7 +671,8 @@ def _windowing(mp_data, n_cf, rtol=1e-3, atol=1e-5, n_win=None, spacing=None,
 
             # assess the result
             abserr = np.abs(xs_fit + xs_wp - xs_ref)
-            relerr = abserr / xs_ref
+            with np.errstate(invalid='ignore'):
+                relerr = abserr / xs_ref
             if not np.any(np.isnan(abserr)):
                 re = relerr[abserr > atol]
                 if re.size == 0 or np.all(re <= rtol) or \
@@ -702,7 +703,7 @@ def _windowing(mp_data, n_cf, rtol=1e-3, atol=1e-5, n_win=None, spacing=None,
         poles_unused[i_piece][lp:rp] = 0
 
     # flatten and shrink by removing unused poles
-    data = [] # used poles and residues
+    data = []  # used poles and residues
     for ip in range(n_pieces):
         used = (poles_unused[ip] == 0)
         # stack poles and residues for library format
@@ -736,6 +737,7 @@ def _windowing(mp_data, n_cf, rtol=1e-3, atol=1e-5, n_win=None, spacing=None,
     wmp.broaden_poly = np.ones((n_win,), dtype=bool)
 
     return wmp
+
 
 class WindowedMultipole(EqualityMixin):
     """Resonant cross sections represented in the windowed multipole format.
@@ -1010,18 +1012,20 @@ class WindowedMultipole(EqualityMixin):
         return out
 
     @classmethod
-    def from_endf(cls, endf_file, vf_options=None, wmp_options=None):
+    def from_endf(cls, endf_file, log=False, vf_options=None, wmp_options=None):
         """Generate windowed multipole neutron data from an ENDF evaluation.
 
         Parameters
         ----------
         endf_file : str
             Path to ENDF evaluation
-        vf_options : dict
-            Dictionary of keyword arguments, e.g. {'rtol': 0.001, 'log': True},
+        log : bool or int, optional
+            Whether to print running logs (use int for verbosity control)
+        vf_options : dict, optional
+            Dictionary of keyword arguments, e.g. {'njoy_error': 0.001},
             passed to :func:`openmc.data.multipole._vectfit_nuclide`
-        wmp_options : dict
-            Dictionary of keyword arguments, e.g. {'search': True, 'log': True},
+        wmp_options : dict, optional
+            Dictionary of keyword arguments, e.g. {'search': True, 'rtol': 0.01},
             passed to :func:`openmc.data.WindowedMultipole.from_multipole`
 
         Returns
@@ -1037,6 +1041,10 @@ class WindowedMultipole(EqualityMixin):
 
         if wmp_options is None:
             wmp_options = {}
+
+        if log:
+            vf_options.update(log=log)
+            wmp_options.update(log=log)
 
         # generate multipole data from EDNF
         mp_data = _vectfit_nuclide(endf_file, **vf_options)
@@ -1106,7 +1114,7 @@ class WindowedMultipole(EqualityMixin):
                            wmp.n_windows * 0.01)
                 if best_wmp is None or metric > best_metric:
                     if log:
-                        print("Best library by far.")
+                        print("Best library so far.")
                     best_wmp = deepcopy(wmp)
                     best_metric = metric
 

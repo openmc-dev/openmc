@@ -455,10 +455,7 @@ def vectfit_nuclide(endf_file, njoy_error=5e-4, vf_pieces=None,
     E_min, E_max = energy[0], energy[-1]
     n_points = energy.size
     total_xs = nuc_ce[1].xs['0K'](energy)
-    try:
-        elastic_xs = nuc_ce[2].xs['0K'](energy)
-    except KeyError:
-        elastic_xs = np.zeros_like(total_xs)
+    elastic_xs = nuc_ce[2].xs['0K'](energy)
 
     try:
         absorption_xs = nuc_ce[27].xs['0K'](energy)
@@ -1067,7 +1064,8 @@ class WindowedMultipole(EqualityMixin):
         mp_data : dictionary or str
             Dictionary or Path to the multipole data stored in a pickle file
         search : bool, optional
-            Whether to search for optimal window size and curvefit order
+            Whether to search for optimal window size and curvefit order.
+            Defaults to True if no windowing parameters are specified.
         log : bool or int, optional
             Whether to print running logs (use int for verbosity control)
         **kwargs

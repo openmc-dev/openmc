@@ -72,7 +72,8 @@ kwargs = {
     'extras_require': {
         'depletion-mpi': ['mpi4py'],
         'docs': ['sphinx', 'sphinxcontrib-katex', 'sphinx-numfig', 'jupyter',
-                 'sphinxcontrib-svg2pdfconverter', 'sphinx-rtd-theme'],
+                 'sphinxcontrib-svg2pdfconverter', 'sphinx-rtd-theme',
+                 'nbsphinx'],
         'test': ['pytest', 'pytest-cov', 'colorama'],
         'vtk': ['vtk'],
     },

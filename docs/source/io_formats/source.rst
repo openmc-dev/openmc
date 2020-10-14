@@ -15,7 +15,7 @@ is that documented here.
 :Datasets:
 
            - **source_bank** (Compound type) -- Source bank information for each
-             particle. The compound type has fields ``wgt``, ``xyz``, ``uvw``,
-             ``E``, ``delayed_group``, and ``particle``, which represent the
-             weight, position, direction, energy, energy group, delayed group,
-             and type of the source particle, respectively.
+             particle. The compound type has fields ``r``, ``u``, ``E``,
+             ``wgt``, ``delayed_group``, and ``particle``, which represent the
+             position, direction, energy, weight, delayed group, and particle
+             type (0=neutron, 1=photon, 2=electron, 3=positron), respectively.

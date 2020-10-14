@@ -196,8 +196,9 @@ def _vectfit_xs(energy, ce_xs, mts, rtol=1e-3, atol=1e-5, orders=None,
         test_xs_ref[i] = np.interp(test_energy, energy, ce_xs[i])
 
     if log:
-        print("Energy: {:.3e} to {:.3e} eV ({} points)".format(
+        print("  energy: {:.3e} to {:.3e} eV ({} points)".format(
               energy[0], energy[-1], ne))
+        print("  error tolerance: rtol={}, atol={}".format(rtol, atol))
 
     # transform xs (sigma) and energy (E) to f (sigma*E) and s (sqrt(E)) to be
     # compatible with the multipole representation
@@ -276,16 +277,16 @@ def _vectfit_xs(energy, ce_xs, mts, rtol=1e-3, atol=1e-5, orders=None,
             # assess the result on test grid
             test_xs = vf.evaluate(test_s, new_poles, residues) / test_energy
             abserr = np.abs(test_xs - test_xs_ref)
-            with np.errstate(invalid='ignore'):
+            with np.errstate(invalid='ignore', divide='ignore'):
                 relerr = abserr / test_xs_ref
-            if np.any(np.isnan(abserr)):
-                maxre, ratio, ratio2 = np.inf, -np.inf, -np.inf
-            elif np.all(abserr <= atol):
-                maxre, ratio, ratio2 = 0., 1., 1.
-            else:
-                maxre = np.max(relerr[abserr > atol])
-                ratio = np.sum((relerr < rtol) | (abserr < atol)) / relerr.size
-                ratio2 = np.sum((relerr < 10*rtol) | (abserr < atol)) / relerr.size
+                if np.any(np.isnan(abserr)):
+                    maxre, ratio, ratio2 = np.inf, -np.inf, -np.inf
+                elif np.all(abserr <= atol):
+                    maxre, ratio, ratio2 = 0., 1., 1.
+                else:
+                    maxre = np.max(relerr[abserr > atol])
+                    ratio = np.sum((relerr < rtol) | (abserr < atol)) / relerr.size
+                    ratio2 = np.sum((relerr < 10*rtol) | (abserr < atol)) / relerr.size
 
             # define a metric for choosing the best fitting results
             # basically, it is preferred to have more points within accuracy
@@ -361,6 +362,8 @@ def _vectfit_xs(energy, ce_xs, mts, rtol=1e-3, atol=1e-5, orders=None,
         if not os.path.exists(path_out):
             os.makedirs(path_out)
         for i, mt in enumerate(mts):
+            if not test_xs_ref[i].any():
+                continue
             fig, ax1 = plt.subplots()
             lns1 = ax1.loglog(test_energy, test_xs_ref[i], 'g', label="ACE xs")
             lns2 = ax1.loglog(test_energy, best_test_xs[i], 'b', label="VF xs")
@@ -389,7 +392,7 @@ def _vectfit_xs(energy, ce_xs, mts, rtol=1e-3, atol=1e-5, orders=None,
 
 
 def vectfit_nuclide(endf_file, njoy_error=5e-4, vf_pieces=None,
-                     log=False, path_out=None, mp_filename=None, **kwargs):
+                    log=False, path_out=None, mp_filename=None, **kwargs):
     r"""Generate multipole data for a nuclide from ENDF.
 
     Parameters
@@ -421,7 +424,7 @@ def vectfit_nuclide(endf_file, njoy_error=5e-4, vf_pieces=None,
 
     # make 0K ACE data using njoy
     if log:
-        print("Running NJOY to get 0K point-wise data...")
+        print("Running NJOY to get 0K point-wise data (error={})...".format(njoy_error))
 
     nuc_ce = IncidentNeutron.from_njoy(endf_file, temperatures=[0.0],
              error=njoy_error, broadr=False, heatr=False, purr=False)
@@ -501,7 +504,7 @@ def vectfit_nuclide(endf_file, njoy_error=5e-4, vf_pieces=None,
     # VF piece by piece
     for i_piece in range(vf_pieces):
         if log:
-            print("Processing piece {}/{}...".format(i_piece + 1, vf_pieces))
+            print("Vector fitting piece {}/{}...".format(i_piece + 1, vf_pieces))
         # start E of this piece
         e_bound = (sqrt(E_min) + piece_width*(i_piece-0.5))**2
         if i_piece == 0 or sqrt(alpha*e_bound) < 4.0:
@@ -593,7 +596,7 @@ def _windowing(mp_data, n_cf, rtol=1e-3, atol=1e-5, n_win=None, spacing=None,
     # determine window size
     if n_win is None:
         if spacing is not None:
-            # Ensure the windows are within the multipole energy range
+            # ensure the windows are within the multipole energy range
             n_win = int((sqrt(E_max) - sqrt(E_min)) / spacing)
             E_max = (sqrt(E_min) + n_win*spacing)**2
         else:
@@ -605,8 +608,10 @@ def _windowing(mp_data, n_cf, rtol=1e-3, atol=1e-5, n_win=None, spacing=None,
         raise ValueError('Window spacing cannot be larger than piece spacing.')
 
     if log:
-        print("Windowing with # windows: {}, spacing: {}, CF order: {}".format(
+        print("Windowing:")
+        print("  config: # windows={}, spacing={}, CF order={}".format(
                n_win, spacing, n_cf))
+        print("  error tolerance: rtol={}, atol={}".format(rtol, atol))
 
     # sort poles (and residues) by the real component of the pole
     for ip in range(n_pieces):
@@ -672,7 +677,7 @@ def _windowing(mp_data, n_cf, rtol=1e-3, atol=1e-5, n_win=None, spacing=None,
 
             # assess the result
             abserr = np.abs(xs_fit + xs_wp - xs_ref)
-            with np.errstate(invalid='ignore'):
+            with np.errstate(invalid='ignore', divide='ignore'):
                 relerr = abserr / xs_ref
             if not np.any(np.isnan(abserr)):
                 re = relerr[abserr > atol]
@@ -1054,7 +1059,7 @@ class WindowedMultipole(EqualityMixin):
         return cls.from_multipole(mp_data, **wmp_options)
 
     @classmethod
-    def from_multipole(cls, mp_data, search=True, log=False, **kwargs):
+    def from_multipole(cls, mp_data, search=None, log=False, **kwargs):
         """Generate windowed multipole neutron data from multipole data.
 
         Parameters
@@ -1080,6 +1085,12 @@ class WindowedMultipole(EqualityMixin):
             # load multipole data from file
             with open(mp_data, 'rb') as f:
                 mp_data = pickle.load(f)
+
+        if search is None:
+            if 'n_cf' in kwargs and ('n_win' in kwargs or 'spacing' in kwargs):
+                search = False
+            else:
+                search = True
 
         # windowing with specific options
         if not search:

@@ -10,6 +10,7 @@
 #include <fmt/core.h>
 
 #include <cmath>
+#include <algorithm> // for min
 
 namespace openmc {
 
@@ -70,7 +71,8 @@ WindowedMultipole::evaluate(double E, double sqrtkT)
   double invE = 1.0 / E;
 
   // Locate window containing energy
-  int i_window = (sqrtE - std::sqrt(E_min_)) / spacing_;
+  int i_window = std::min(windows_.shape()[0] - 1,
+        static_cast<unsigned long>((sqrtE - std::sqrt(E_min_)) / spacing_));
   int startw = windows_(i_window, 0) - 1;
   int endw = windows_(i_window, 1) - 1;
 

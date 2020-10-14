@@ -652,12 +652,16 @@ class DAGMCUniverse(UniverseBase):
         Name of the universe
     filename : str
         Path to the DAGMC file used to represent this universe.
+    auto_ids : bool
+        Set IDs automatically on initialization (True) or report overlaps
+        in ID space between CSG and DAGMC (False)
     """
 
-    def __init__(self, filename, universe_id=None, name=''):
+    def __init__(self, filename, universe_id=None, name='', auto_ids=False):
         super().__init__(universe_id, name)
         # Initialize class attributes
         self.filename = filename
+        self.auto_ids = auto_ids
 
     def __repr__(self):
         fmt_str = '{: <16}=\t{}\n'
@@ -672,8 +676,17 @@ class DAGMCUniverse(UniverseBase):
 
     @filename.setter
     def filename(self, val):
-        cv.check_type('DAGMC file', val, str)
+        cv.check_type('DAGMC filename', val, str)
         self._filename = val
+
+    @property
+    def auto_ids(self):
+        return self._auto_ids
+
+    @auto_ids.setter
+    def auto_ids(self, val):
+        cv.check_type('DAGMC auto ids', val, bool)
+        self._auto_ids = val
 
     def clone(self, clone_materials=True, clone_regions=True, memo=None):
         pass
@@ -693,5 +706,7 @@ class DAGMCUniverse(UniverseBase):
         dagmc_element = ET.Element('dagmc')
         dagmc_element.set('id', str(self.id))
         dagmc_element.set('name', self.name)
+        if self.auto_ids:
+            dagmc_element.set('auto_ids', 'true')
         dagmc_element.set('filename', self.filename)
         xml_element.append(dagmc_element)

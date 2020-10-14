@@ -54,6 +54,46 @@ std::string dagmc_file() {
   return filename;
 }
 
+std::string dagmc_ids_for_dim(std::shared_ptr<moab::DagMC>& dagmc_instance,
+                              int dim) {
+  // generate a vector of ids
+  std::vector<int> id_vec;
+  int n_cells = dagmc_instance->num_entities(dim);
+  for (int i = 1; i <= n_cells; i++) {
+    id_vec.push_back(dagmc_instance->id_by_index(dim, i));
+  }
+
+  // sort the vector of ids
+  std::sort(id_vec.begin(), id_vec.end());
+
+  // generate a string representation of the range
+  std::stringstream out;
+
+  int i = 0;
+  int start_id = id_vec[0];
+  int stop_id;
+  while (i < n_cells) {
+    stop_id = id_vec[i];
+
+    if (id_vec[i + 1] > stop_id + 1) {
+      if (start_id != stop_id) {
+        // there are several IDs in a row, print condensed version
+        out << start_id << "-" << stop_id;
+      } else {
+        // only one ID in this contiguous block
+        out << start_id;
+      }
+      if (i < n_cells - 1) { out << ", "; }
+      start_id = id_vec[++i];
+      stop_id = start_id;
+    }
+
+    i++;
+  }
+
+  return out.str();
+}
+
 bool get_uwuw_materials_xml(std::string& s) {
   std::string filename = dagmc_file();
   UWUW uwuw(filename.c_str());
@@ -168,10 +208,15 @@ DAGUniverse::DAGUniverse(pugi::xml_node node) {
     fatal_error("Must specify a file for the DAGMC universe");
   }
 
+  adjust_ids_ = false;
+  if (check_for_node(node, "auto_ids")) {
+    adjust_ids_ = get_node_value_bool(node, "auto_ids");
+  }
   initialize();
 }
 
-DAGUniverse::DAGUniverse(const std::string& filename): filename_(filename) {
+DAGUniverse::DAGUniverse(const std::string& filename, bool auto_ids)
+: filename_(filename), adjust_ids_(auto_ids) {
   // determine the next universe id
   int32_t next_univ_id = 0;
   for (const auto& u : model::universes) {
@@ -249,12 +294,20 @@ void DAGUniverse::initialize() {
     // set cell ids using global IDs
     DAGCell* c = new DAGCell();
     c->dag_index_ = i + 1;
-    std::cout << "Cell id: " << next_cell_id << std::endl;
-    c->id_ = next_cell_id++;
-    // c->id_ = model::DAG->id_by_index(3, c->dag_index_);
+    c->id_ = adjust_ids_ ? next_cell_id++ : dagmc_instance_->id_by_index(3, c->dag_index_);
     c->dagmc_ptr_ = dagmc_instance_;
     c->universe_ = id_; // set to zero for now
     c->fill_ = C_NONE; // no fill, single universe
+
+
+   auto in_map = model::cell_map.find(c->id_);
+    if (in_map == model::cell_map.end()) {
+      model::cell_map[c->id_] = model::cells.size();
+    } else {
+      warning(fmt::format("DAGMC Cell IDs: {}", dagmc_ids_for_dim(dagmc_instance_, 3)));
+      fatal_error(fmt::format("Cell ID {} exists in both DAGMC Universe {} "
+                              "and the CSG geometry.", c->id_, this->id_));
+    }
 
     model::cells.emplace_back(c);
 
@@ -334,8 +387,7 @@ void DAGUniverse::initialize() {
     // set cell ids using global IDs
     DAGSurface* s = new DAGSurface();
     s->dag_index_ = i+1;
-    s->id_ = next_surf_id++;
-    // s->id_ = dagmc_instance_->id_by_index(2, i+1);
+    s->id_ = adjust_ids_ ? next_surf_id++ : dagmc_instance_->id_by_index(2, i+1);
     s->dagmc_ptr_ = dagmc_instance_;
 
     // set BCs
@@ -372,8 +424,9 @@ void DAGUniverse::initialize() {
     if (in_map == model::surface_map.end()) {
       model::surface_map[s->id_] = model::surfaces.size();
     } else {
-            fatal_error(fmt::format(
-        "Two or more surfaces use the same unique ID: {}", s->id_));
+      warning(fmt::format("DAGMC Surface IDs: {}", dagmc_ids_for_dim(dagmc_instance_, 2)));
+      fatal_error(fmt::format("Surface ID {} exists in both Universe {} "
+                              "and the CSG geometry.", s->id_, this->id_));
     }
     model::surfaces.emplace_back(s);
 
@@ -427,12 +480,10 @@ int32_t create_dagmc_universe(const std::string& filename) {
   moab::EntityHandle graveyard = 0;
   for (int i = 0; i < n_cells; i++) {
     moab::EntityHandle vol_handle = model::DAG->entity_by_index(3, i+1);
-
     // set cell ids using global IDs
     DAGCell* c = new DAGCell();
     c->dag_index_ = i+1;
     c->id_ = model::DAG->id_by_index(3, c->dag_index_);
-    std::cout << "Cell id: " << c->id_ << std::endl;
     c->dagmc_ptr_ = model::DAG;
     c->universe_ = dagmc_univ_id; // set to zero for now
     c->fill_ = C_NONE; // no fill, single universe

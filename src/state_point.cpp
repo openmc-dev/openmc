@@ -508,6 +508,12 @@ hid_t h5banktype() {
   H5Tinsert(postype, "z", HOFFSET(Position, z), H5T_NATIVE_DOUBLE);
 
   // Create bank datatype
+  //
+  // If you make changes to the compound datatype here, make sure you update:
+  // - openmc/source.py
+  // - openmc/statepoint.py
+  // - docs/source/io_formats/statepoint.rst
+  // - docs/source/io_formats/source.rst
   hid_t banktype = H5Tcreate(H5T_COMPOUND, sizeof(struct Particle::Bank));
   H5Tinsert(banktype, "r", HOFFSET(Particle::Bank, r), postype);
   H5Tinsert(banktype, "u", HOFFSET(Particle::Bank, u), postype);

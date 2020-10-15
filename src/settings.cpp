@@ -582,7 +582,7 @@ void read_settings_xml()
 
     // Assign ID and set mapping
     model::meshes.back()->id_ = 10001;
-    model::mesh_map[10001] = index_entropy_mesh;
+    model::mesh_map[10001] = i_ufs_mesh;
   }
 
   if (i_ufs_mesh >= 0) {

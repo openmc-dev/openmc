@@ -82,13 +82,35 @@ SourceDistribution::SourceDistribution(pugi::xml_node node)
   // Check for external source file
   if (check_for_node(node, "file")) {
     // Copy path of source file
-    settings::path_source = get_node_value(node, "file", false, true);
+    auto path_source = get_node_value(node, "file", false, true);
 
     // Check if source file exists
-    if (!file_exists(settings::path_source)) {
-      fatal_error(fmt::format("Source file '{}' does not exist.",
-        settings::path_source));
+    if (!file_exists(path_source)) {
+      fatal_error(fmt::format("Source file '{}' does not exist.", path_source));
     }
+
+    // Read the source from a binary file instead of sampling from some
+    // assumed source distribution
+    write_message(6, "Reading source file from {}...", path_source);
+
+    // Open the binary file
+    hid_t file_id = file_open(path_source, 'r', true);
+
+    // Read the file type
+    std::string filetype;
+    read_attribute(file_id, "filetype", filetype);
+
+    // Check to make sure this is a source file
+    if (filetype != "source" && filetype != "statepoint") {
+      fatal_error("Specified starting source file not a source file type.");
+    }
+
+    // Read in the source bank
+    read_source_bank(file_id, sites_);
+
+    // Close file
+    file_close(file_id);
+
   } else if (check_for_node(node, "library")) {
     settings::path_source_library = get_node_value(node, "library", false, true);
     if (!file_exists(settings::path_source_library)) {
@@ -180,15 +202,20 @@ Particle::Bank SourceDistribution::sample(uint64_t* seed) const
   int n_reject = 0;
   static int n_accept = 0;
   while (!found) {
-    // Set particle type
-    site.particle = particle_;
+    if (!sites_.empty()) {
+      size_t i_site = sites_.size()*prn(seed);
+      site = sites_[i_site];
+    } else {
+      // Set particle type
+      site.particle = particle_;
 
-    // Sample spatial distribution
-    site.r = space_->sample(seed);
-    double xyz[] {site.r.x, site.r.y, site.r.z};
+      // Sample spatial distribution
+      site.r = space_->sample(seed);
+    }
 
     // Now search to see if location exists in geometry
     int32_t cell_index, instance;
+    double xyz[] {site.r.x, site.r.y, site.r.z};
     int err = openmc_find_cell(xyz, &cell_index, &instance);
     found = (err != OPENMC_E_GEOMETRY);
 
@@ -224,6 +251,8 @@ Particle::Bank SourceDistribution::sample(uint64_t* seed) const
 
   // Increment number of accepted samples
   ++n_accept;
+
+  if (!sites_.empty()) return site;
 
   // Sample angle
   site.u = angle_->sample(seed);
@@ -264,33 +293,8 @@ void initialize_source()
 {
   write_message("Initializing source particles...", 5);
 
-  if (!settings::path_source.empty()) {
-    // Read the source from a binary file instead of sampling from some
-    // assumed source distribution
-
-    write_message(6, "Reading source file from {}...", settings::path_source);
-
-    // Open the binary file
-    hid_t file_id = file_open(settings::path_source, 'r', true);
-
-    // Read the file type
-    std::string filetype;
-    read_attribute(file_id, "filetype", filetype);
-
-    // Check to make sure this is a source file
-    if (filetype != "source" && filetype != "statepoint") {
-      fatal_error("Specified starting source file not a source file type.");
-    }
-
-    // Read in the source bank
-    read_source_bank(file_id);
-
-    // Close file
-    file_close(file_id);
-  } else if (!settings::path_source_library.empty()) {
-
-    write_message(6, "Sampling library source {}...", settings::path_source);
-
+  if (!settings::path_source_library.empty()) {
+    write_message(6, "Sampling library source {}...", settings::path_source_library);
     fill_source_bank_custom_source();
 
   } else {

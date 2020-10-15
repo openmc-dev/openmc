@@ -59,7 +59,6 @@ extern std::string path_cross_sections;   //!< path to cross_sections.xml
 extern std::string path_input;            //!< directory where main .xml files resides
 extern std::string path_output;           //!< directory where output files are written
 extern std::string path_particle_restart; //!< path to a particle restart file
-extern std::string path_source;
 extern std::string path_source_library;   //!< path to the source shared object
 extern std::string path_sourcepoint;      //!< path to a source file
 extern "C" std::string path_statepoint;   //!< path to a statepoint file

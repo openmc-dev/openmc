@@ -102,14 +102,27 @@ StructuredMesh::bin_label(int bin) const {
   }
 }
 
-void
-StructuredMesh::get_indices(Position r, int* ijk, bool* in_mesh) const
+void StructuredMesh::get_indices(Position r, int* ijk, bool* in_mesh) const
 {
   *in_mesh = true;
   for (int i = 0; i < n_dimension_; ++i) {
     ijk[i] = get_index_in_direction(r, i);
 
     if (ijk[i] < 1 || ijk[i] > shape_[i]) *in_mesh = false;
+  }
+}
+
+int StructuredMesh::get_bin_from_indices(const int* ijk) const
+{
+  switch (n_dimension_) {
+  case 1:
+    return ijk[0] - 1;
+  case 2:
+    return (ijk[1] - 1)*shape_[0] + ijk[0] - 1;
+  case 3:
+    return ((ijk[2] - 1)*shape_[1] + (ijk[1] - 1))*shape_[0] + ijk[0] - 1;
+  default:
+    throw std::runtime_error{"Invalid number of mesh dimensions"};
   }
 }
 
@@ -208,20 +221,6 @@ int RegularMesh::get_bin(Position r) const
 
   // Convert indices to bin
   return get_bin_from_indices(ijk.data());
-}
-
-int RegularMesh::get_bin_from_indices(const int* ijk) const
-{
-  switch (n_dimension_) {
-  case 1:
-    return ijk[0] - 1;
-  case 2:
-    return (ijk[1] - 1)*shape_[0] + ijk[0] - 1;
-  case 3:
-    return ((ijk[2] - 1)*shape_[1] + (ijk[1] - 1))*shape_[0] + ijk[0] - 1;
-  default:
-    throw std::runtime_error{"Invalid number of mesh dimensions"};
-  }
 }
 
 int RegularMesh::get_index_in_direction(Position r, int i) const
@@ -1172,11 +1171,6 @@ int RectilinearMesh::get_bin(Position r) const
 
   // Convert indices to bin
   return get_bin_from_indices(ijk);
-}
-
-int RectilinearMesh::get_bin_from_indices(const int* ijk) const
-{
-  return ((ijk[2] - 1)*shape_[1] + (ijk[1] - 1))*shape_[0] + ijk[0] - 1;
 }
 
 int RectilinearMesh::get_index_in_direction(Position r, int i) const

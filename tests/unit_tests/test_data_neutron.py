@@ -219,6 +219,7 @@ def test_derived_products(am244):
     assert total_neutron.yield_(6e6) == pytest.approx(4.2558)
 
 
+@needs_njoy
 def test_kerma(run_in_tmpdir, am244, h2):
     # Make sure kerma w/ local photon is >= regular kerma
     for nuc in (am244, h2):

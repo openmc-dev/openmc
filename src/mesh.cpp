@@ -405,99 +405,7 @@ bool StructuredMesh::intersects_3d(Position& r0, Position r1, int* ijk) const
   return min_dist < INFTY;
 }
 
-
-//==============================================================================
-// RegularMesh implementation
-//==============================================================================
-
-RegularMesh::RegularMesh(pugi::xml_node node)
-  : StructuredMesh {node}
-{
-  // Determine number of dimensions for mesh
-  if (check_for_node(node, "dimension")) {
-    shape_ = get_node_xarray<int>(node, "dimension");
-    int n = n_dimension_ = shape_.size();
-    if (n != 1 && n != 2 && n != 3) {
-      fatal_error("Mesh must be one, two, or three dimensions.");
-    }
-
-    // Check that dimensions are all greater than zero
-    if (xt::any(shape_ <= 0)) {
-      fatal_error("All entries on the <dimension> element for a tally "
-        "mesh must be positive.");
-    }
-  } else {
-    fatal_error("Must specify <dimension> on a mesh.");
-  }
-
-  // Check for lower-left coordinates
-  if (check_for_node(node, "lower_left")) {
-    // Read mesh lower-left corner location
-    lower_left_ = get_node_xarray<double>(node, "lower_left");
-
-    // Make sure lower_left and dimension match
-    if (n_dimension_ != lower_left_.size()) {
-      fatal_error("Number of entries on <lower_left> must be the same "
-        "as the number of entries on <dimension>.");
-    }
-  } else {
-    fatal_error("Must specify <lower_left> on a mesh.");
-  }
-
-  if (check_for_node(node, "width")) {
-    // Make sure both upper-right or width were specified
-    if (check_for_node(node, "upper_right")) {
-      fatal_error("Cannot specify both <upper_right> and <width> on a mesh.");
-    }
-
-    width_ = get_node_xarray<double>(node, "width");
-
-    // Check to ensure width has same dimensions
-    if (n_dimension_ != width_.size()) {
-      fatal_error("Number of entries on <width> must be the same as "
-        "the number of entries on <lower_left>.");
-    }
-
-    // Check for negative widths
-    if (xt::any(width_ < 0.0)) {
-      fatal_error("Cannot have a negative <width> on a tally mesh.");
-    }
-
-    // Set width and upper right coordinate
-    upper_right_ = xt::eval(lower_left_ + shape_ * width_);
-
-  } else if (check_for_node(node, "upper_right")) {
-    upper_right_ = get_node_xarray<double>(node, "upper_right");
-
-    // Check to ensure upper right has same dimensions
-    if (n_dimension_ != upper_right_.size()) {
-      fatal_error("Number of entries on <upper_right> must be the "
-        "same as the number of entries on <lower_left>.");
-    }
-
-    // Check that upper-right is above lower-left
-    if (xt::any(upper_right_ < lower_left_)) {
-      fatal_error("The <upper_right> coordinates must be greater than "
-        "the <lower_left> coordinates on a tally mesh.");
-    }
-
-    // Set width
-    width_ = xt::eval((upper_right_ - lower_left_) / shape_);
-  } else {
-    fatal_error("Must specify either <upper_right> and <width> on a mesh.");
-  }
-
-  // Set volume fraction
-  volume_frac_ = 1.0/xt::prod(shape_)();
-}
-
-int RegularMesh::get_index_in_direction(double r, int i) const
-{
-  return std::ceil((r - lower_left_[i]) / width_[i]);
-}
-
-void RegularMesh::bins_crossed(const Particle& p, std::vector<int>& bins,
-                               std::vector<double>& lengths) const
+void StructuredMesh::bins_crossed(const Particle& p, std::vector<int>& bins,
 {
   // ========================================================================
   // Determine where the track intersects the mesh and if it intersects at all.
@@ -565,10 +473,10 @@ void RegularMesh::bins_crossed(const Particle& p, std::vector<int>& bins,
       if (std::fabs(u[k]) < FP_PRECISION) {
         d[k] = INFTY;
       } else if (u[k] > 0) {
-        double xyz_cross = lower_left_[k] + ijk0[k] * width_[k];
+        double xyz_cross = positive_grid_boundary(ijk0.data(), k);
         d[k] = (xyz_cross - r0[k]) / u[k];
       } else {
-        double xyz_cross = lower_left_[k] + (ijk0[k] - 1) * width_[k];
+        double xyz_cross = negative_grid_boundary(ijk0.data(), k);
         d[k] = (xyz_cross - r0[k]) / u[k];
       }
     }
@@ -600,6 +508,111 @@ void RegularMesh::bins_crossed(const Particle& p, std::vector<int>& bins,
     }
     if (!in_mesh) break;
   }
+}
+
+
+//==============================================================================
+// RegularMesh implementation
+//==============================================================================
+
+RegularMesh::RegularMesh(pugi::xml_node node)
+  : StructuredMesh {node}
+{
+  // Determine number of dimensions for mesh
+  if (check_for_node(node, "dimension")) {
+    shape_ = get_node_xarray<int>(node, "dimension");
+    int n = n_dimension_ = shape_.size();
+    if (n != 1 && n != 2 && n != 3) {
+      fatal_error("Mesh must be one, two, or three dimensions.");
+    }
+
+    // Check that dimensions are all greater than zero
+    if (xt::any(shape_ <= 0)) {
+      fatal_error("All entries on the <dimension> element for a tally "
+        "mesh must be positive.");
+    }
+  }
+
+  // Check for lower-left coordinates
+  if (check_for_node(node, "lower_left")) {
+    // Read mesh lower-left corner location
+    lower_left_ = get_node_xarray<double>(node, "lower_left");
+  } else {
+    fatal_error("Must specify <lower_left> on a mesh.");
+  }
+
+  if (check_for_node(node, "width")) {
+    // Make sure both upper-right or width were specified
+    if (check_for_node(node, "upper_right")) {
+      fatal_error("Cannot specify both <upper_right> and <width> on a mesh.");
+    }
+
+    width_ = get_node_xarray<double>(node, "width");
+
+    // Check to ensure width has same dimensions
+    auto n = width_.size();
+    if (n != lower_left_.size()) {
+      fatal_error("Number of entries on <width> must be the same as "
+        "the number of entries on <lower_left>.");
+    }
+
+    // Check for negative widths
+    if (xt::any(width_ < 0.0)) {
+      fatal_error("Cannot have a negative <width> on a tally mesh.");
+    }
+
+    // Set width and upper right coordinate
+    upper_right_ = xt::eval(lower_left_ + shape_ * width_);
+
+  } else if (check_for_node(node, "upper_right")) {
+    upper_right_ = get_node_xarray<double>(node, "upper_right");
+
+    // Check to ensure width has same dimensions
+    auto n = upper_right_.size();
+    if (n != lower_left_.size()) {
+      fatal_error("Number of entries on <upper_right> must be the "
+        "same as the number of entries on <lower_left>.");
+    }
+
+    // Check that upper-right is above lower-left
+    if (xt::any(upper_right_ < lower_left_)) {
+      fatal_error("The <upper_right> coordinates must be greater than "
+        "the <lower_left> coordinates on a tally mesh.");
+    }
+
+    // Set width
+    if (shape_.size() > 0) {
+      width_ = xt::eval((upper_right_ - lower_left_) / shape_);
+    }
+  } else {
+    fatal_error("Must specify either <upper_right> and <width> on a mesh.");
+  }
+
+  // Make sure lower_left and dimension match
+  if (shape_.size() > 0) {
+    if (shape_.size() != lower_left_.size()) {
+      fatal_error("Number of entries on <lower_left> must be the same "
+        "as the number of entries on <dimension>.");
+    }
+
+    // Set volume fraction
+    volume_frac_ = 1.0/xt::prod(shape_)();
+  }
+}
+
+int RegularMesh::get_index_in_direction(double r, int i) const
+{
+  return std::ceil((r - lower_left_[i]) / width_[i]);
+}
+
+double RegularMesh::positive_grid_boundary(int* ijk, int i) const
+{
+  return lower_left_[i] + ijk[i] * width_[i];
+}
+
+double RegularMesh::negative_grid_boundary(int* ijk, int i) const
+{
+  return lower_left_[i] + (ijk[i] - 1) * width_[i];
 }
 
 void RegularMesh::surface_bins_crossed(const Particle& p,
@@ -640,9 +653,9 @@ void RegularMesh::surface_bins_crossed(const Particle& p,
   Position xyz_cross;
   for (int i = 0; i < n; ++i) {
     if (u[i] > 0.0) {
-      xyz_cross[i] = lower_left_[i] + ijk0[i] * width_[i];
+      xyz_cross[i] = positive_grid_boundary(ijk0.data(), i);
     } else {
-      xyz_cross[i] = lower_left_[i] + (ijk0[i] - 1) * width_[i];
+      xyz_cross[i] = negative_grid_boundary(ijk0.data(), i);
     }
   }
 
@@ -887,109 +900,14 @@ RectilinearMesh::RectilinearMesh(pugi::xml_node node)
   upper_right_ = {grid_[0].back(), grid_[1].back(), grid_[2].back()};
 }
 
-void RectilinearMesh::bins_crossed(const Particle& p, std::vector<int>& bins,
-                                   std::vector<double>& lengths) const
+double RectilinearMesh::positive_grid_boundary(int* ijk, int i) const
 {
-  // ========================================================================
-  // Determine where the track intersects the mesh and if it intersects at all.
+  return grid_[i][ijk[i]];
+}
 
-  // Copy the starting and ending coordinates of the particle.
-  Position last_r {p.r_last_};
-  Position r {p.r()};
-  Direction u {p.u()};
-
-  // Compute the length of the entire track.
-  double total_distance = (r - last_r).norm();
-
-  // While determining if this track intersects the mesh, offset the starting
-  // and ending coords by a bit.  This avoid finite-precision errors that can
-  // occur when the mesh surfaces coincide with lattice or geometric surfaces.
-  Position r0 = last_r + TINY_BIT*u;
-  Position r1 = r - TINY_BIT*u;
-
-  // Determine the mesh indices for the starting and ending coords.
-  int ijk0[3], ijk1[3];
-  bool start_in_mesh;
-  get_indices(r0, ijk0, &start_in_mesh);
-  bool end_in_mesh;
-  get_indices(r1, ijk1, &end_in_mesh);
-
-  // Reset coordinates and check for a mesh intersection if necessary.
-  if (start_in_mesh) {
-    // The initial coords lie in the mesh, use those coords for tallying.
-    r0 = last_r;
-  } else {
-    // The initial coords do not lie in the mesh.  Check to see if the particle
-    // eventually intersects the mesh and compute the relevant coords and
-    // indices.
-    if (!intersects(r0, r1, ijk0)) return;
-  }
-  r1 = r;
-
-  // The TINY_BIT offsets above mean that the preceding logic cannot always find
-  // the correct ijk0 and ijk1 indices. For tracks shorter than 2*TINY_BIT, just
-  // assume the track lies in only one mesh bin. These tracks are very short so
-  // any error caused by this assumption will be small. It is important that
-  // ijk0 values are used rather than ijk1 because the previous logic guarantees
-  // ijk0 is a valid mesh bin.
-  if (total_distance < 2*TINY_BIT) {
-    for (int i = 0; i < 3; ++i) ijk1[i] = ijk0[i];
-  }
-
-  // ========================================================================
-  // Find which mesh cells are traversed and the length of each traversal.
-
-  while (true) {
-    if (std::equal(ijk0, ijk0+3, ijk1)) {
-      // The track ends in this cell.  Use the particle end location rather
-      // than the mesh surface and stop iterating.
-      double distance = (r1 - r0).norm();
-      bins.push_back(get_bin_from_indices(ijk0));
-      lengths.push_back(distance / total_distance);
-      break;
-    }
-
-    // The track exits this cell.  Determine the distance to each mesh surface.
-    double d[3];
-    for (int k = 0; k < 3; ++k) {
-      if (std::fabs(u[k]) < FP_PRECISION) {
-        d[k] = INFTY;
-      } else if (u[k] > 0) {
-        double xyz_cross = grid_[k][ijk0[k]];
-        d[k] = (xyz_cross - r0[k]) / u[k];
-      } else {
-        double xyz_cross = grid_[k][ijk0[k] - 1];
-        d[k] = (xyz_cross - r0[k]) / u[k];
-      }
-    }
-
-    // Pick the closest mesh surface and append this traversal to the output.
-    auto j = std::min_element(d, d+3) - d;
-    double distance = d[j];
-    bins.push_back(get_bin_from_indices(ijk0));
-    lengths.push_back(distance / total_distance);
-
-    // Translate to the oncoming mesh surface.
-    r0 += distance * u;
-
-    // Increment the indices into the next mesh cell.
-    if (u[j] > 0.0) {
-      ++ijk0[j];
-    } else {
-      --ijk0[j];
-    }
-
-    // If the next indices are invalid, then the track has left the mesh and
-    // we are done.
-    bool in_mesh = true;
-    for (int i = 0; i < 3; ++i) {
-      if (ijk0[i] < 1 || ijk0[i] > shape_[i]) {
-        in_mesh = false;
-        break;
-      }
-    }
-    if (!in_mesh) break;
-  }
+double RectilinearMesh::negative_grid_boundary(int* ijk, int i) const
+{
+  return grid_[i][ijk[i] - 1];
 }
 
 void RectilinearMesh::surface_bins_crossed(const Particle& p,
@@ -1086,9 +1004,9 @@ void RectilinearMesh::surface_bins_crossed(const Particle& p,
   Position xyz_cross;
   for (int i = 0; i < 3; ++i) {
     if (u[i] > 0.0) {
-      xyz_cross[i] = grid_[i][ijk0[i]];
+      xyz_cross[i] = positive_grid_boundary(ijk0, i);
     } else {
-      xyz_cross[i] = grid_[i][ijk0[i] - 1];
+      xyz_cross[i] = negative_grid_boundary(ijk0, i);
     }
   }
 

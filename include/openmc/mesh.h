@@ -107,6 +107,10 @@ public:
 
   int get_bin(Position r) const override;
 
+  int n_bins() const override;
+
+  int n_surface_bins() const override;
+
   //! Get bin given mesh indices
   //
   //! \param[in] Array of mesh indices
@@ -175,10 +179,6 @@ public:
 
   int get_index_in_direction(double r, int i) const override;
 
-  int n_bins() const override;
-
-  int n_surface_bins() const override;
-
   std::pair<std::vector<double>, std::vector<double>>
   plot(Position plot_ll, Position plot_ur) const override;
 
@@ -216,10 +216,6 @@ public:
   const override;
 
   int get_index_in_direction(double r, int i) const override;
-
-  int n_bins() const override;
-
-  int n_surface_bins() const override;
 
   std::pair<std::vector<double>, std::vector<double>>
   plot(Position plot_ll, Position plot_ur) const override;

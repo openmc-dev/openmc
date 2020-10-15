@@ -152,6 +152,16 @@ int StructuredMesh::get_bin(Position r) const
   return get_bin_from_indices(ijk.data());
 }
 
+int StructuredMesh::n_bins() const
+{
+  return xt::prod(shape_)();
+}
+
+int StructuredMesh::n_surface_bins() const
+{
+  return 4 * n_dimension_ * n_bins();
+}
+
 bool StructuredMesh::intersects(Position& r0, Position r1, int* ijk) const
 {
   switch(n_dimension_) {
@@ -484,18 +494,6 @@ RegularMesh::RegularMesh(pugi::xml_node node)
 int RegularMesh::get_index_in_direction(double r, int i) const
 {
   return std::ceil((r - lower_left_[i]) / width_[i]);
-}
-
-int RegularMesh::n_bins() const
-{
-  int n_bins = 1;
-  for (auto dim : shape_) n_bins *= dim;
-  return n_bins;
-}
-
-int RegularMesh::n_surface_bins() const
-{
-  return 4 * n_dimension_ * n_bins();
 }
 
 void RegularMesh::bins_crossed(const Particle& p, std::vector<int>& bins,
@@ -1165,16 +1163,6 @@ void RectilinearMesh::surface_bins_crossed(const Particle& p,
 int RectilinearMesh::get_index_in_direction(double r, int i) const
 {
   return lower_bound_index(grid_[i].begin(), grid_[i].end(), r) + 1;
-}
-
-int RectilinearMesh::n_bins() const
-{
-  return xt::prod(shape_)();
-}
-
-int RectilinearMesh::n_surface_bins() const
-{
-  return 4 * n_dimension_ * n_bins();
 }
 
 std::pair<std::vector<double>, std::vector<double>>

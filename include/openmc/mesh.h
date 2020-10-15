@@ -105,6 +105,8 @@ public:
   StructuredMesh(pugi::xml_node node) : Mesh {node} {};
   virtual ~StructuredMesh() = default;
 
+  int get_bin(Position r) const override;
+
   //! Get bin given mesh indices
   //
   //! \param[in] Array of mesh indices
@@ -171,9 +173,7 @@ public:
   void surface_bins_crossed(const Particle& p, std::vector<int>& bins)
   const override;
 
-  int get_bin(Position r) const override;
-
-  int get_index_in_direction(Position r, int i) const override;
+  int get_index_in_direction(double r, int i) const override;
 
   int n_bins() const override;
 
@@ -215,9 +215,7 @@ public:
   void surface_bins_crossed(const Particle& p, std::vector<int>& bins)
   const override;
 
-  int get_bin(Position r) const override;
-
-  int get_index_in_direction(Position r, int i) const override;
+  int get_index_in_direction(double r, int i) const override;
 
   int n_bins() const override;
 

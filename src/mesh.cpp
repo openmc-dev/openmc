@@ -140,6 +140,18 @@ void StructuredMesh::get_indices_from_bin(int bin, int* ijk) const
   }
 }
 
+int StructuredMesh::get_bin(Position r) const
+{
+  // Determine indices
+  std::vector<int> ijk(n_dimension_);
+  bool in_mesh;
+  get_indices(r, ijk.data(), &in_mesh);
+  if (!in_mesh) return -1;
+
+  // Convert indices to bin
+  return get_bin_from_indices(ijk.data());
+}
+
 bool StructuredMesh::intersects(Position& r0, Position r1, int* ijk) const
 {
   switch(n_dimension_) {
@@ -467,18 +479,6 @@ RegularMesh::RegularMesh(pugi::xml_node node)
 
   // Set volume fraction
   volume_frac_ = 1.0/xt::prod(shape_)();
-}
-
-int RegularMesh::get_bin(Position r) const
-{
-  // Determine indices
-  std::vector<int> ijk(n_dimension_);
-  bool in_mesh;
-  get_indices(r, ijk.data(), &in_mesh);
-  if (!in_mesh) return -1;
-
-  // Convert indices to bin
-  return get_bin_from_indices(ijk.data());
 }
 
 int RegularMesh::get_index_in_direction(double r, int i) const
@@ -1160,18 +1160,6 @@ void RectilinearMesh::surface_bins_crossed(const Particle& p,
     // Calculate new coordinates
     r0 += distance * u;
   }
-}
-
-int RectilinearMesh::get_bin(Position r) const
-{
-  // Determine indices
-  int ijk[3];
-  bool in_mesh;
-  get_indices(r, ijk, &in_mesh);
-  if (!in_mesh) return -1;
-
-  // Convert indices to bin
-  return get_bin_from_indices(ijk);
 }
 
 int RectilinearMesh::get_index_in_direction(double r, int i) const

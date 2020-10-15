@@ -111,6 +111,9 @@ public:
 
   int n_surface_bins() const override;
 
+  void bins_crossed(const Particle& p, std::vector<int>& bins,
+                    std::vector<double>& lengths) const override;
+
   //! Get bin given mesh indices
   //
   //! \param[in] Array of mesh indices
@@ -144,6 +147,18 @@ public:
   //! \return Whether the line segment connecting r0 and r1 intersects mesh
   virtual bool intersects(Position& r0, Position r1, int* ijk) const;
 
+  //! Get the coordinate for the mesh grid boundary in the positive direction
+  //!
+  //! \param[in] ijk Array of mesh indices
+  //! \param[in] i Direction index
+  virtual double positive_grid_boundary(int* ijk, int i) const = 0;
+
+  //! Get the coordinate for the mesh grid boundary in the negative direction
+  //!
+  //! \param[in] ijk Array of mesh indices
+  //! \param[in] i Direction index
+  virtual double negative_grid_boundary(int* ijk, int i) const = 0;
+
   //! Get a label for the mesh bin
   std::string bin_label(int bin) const override;
 
@@ -171,13 +186,14 @@ public:
 
   // Overriden methods
 
-  void bins_crossed(const Particle& p, std::vector<int>& bins,
-                    std::vector<double>& lengths) const override;
-
   void surface_bins_crossed(const Particle& p, std::vector<int>& bins)
   const override;
 
   int get_index_in_direction(double r, int i) const override;
+
+  double positive_grid_boundary(int* ijk, int i) const override;
+
+  double negative_grid_boundary(int* ijk, int i) const override;
 
   std::pair<std::vector<double>, std::vector<double>>
   plot(Position plot_ll, Position plot_ur) const override;
@@ -209,13 +225,14 @@ public:
 
   // Overriden methods
 
-  void bins_crossed(const Particle& p, std::vector<int>& bins,
-                    std::vector<double>& lengths) const override;
-
   void surface_bins_crossed(const Particle& p, std::vector<int>& bins)
   const override;
 
   int get_index_in_direction(double r, int i) const override;
+
+  double positive_grid_boundary(int* ijk, int i) const override;
+
+  double negative_grid_boundary(int* ijk, int i) const override;
 
   std::pair<std::vector<double>, std::vector<double>>
   plot(Position plot_ll, Position plot_ur) const override;

@@ -122,7 +122,7 @@ public:
   //
   //! \param[in] bin Mesh bin
   //! \param[out] ijk Mesh indices
-  virtual void get_indices_from_bin(int bin, int* ijk) const = 0;
+  virtual void get_indices_from_bin(int bin, int* ijk) const;
 
   //! Get mesh index in a particular direction
   //!
@@ -159,8 +159,6 @@ public:
   const override;
 
   int get_bin(Position r) const override;
-
-  void get_indices_from_bin(int bin, int* ijk) const override;
 
   int get_index_in_direction(Position r, int i) const override;
 
@@ -218,8 +216,6 @@ public:
   const override;
 
   int get_bin(Position r) const override;
-
-  void get_indices_from_bin(int bin, int* ijk) const override;
 
   int get_index_in_direction(Position r, int i) const override;
 

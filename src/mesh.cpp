@@ -126,6 +126,20 @@ int StructuredMesh::get_bin_from_indices(const int* ijk) const
   }
 }
 
+void StructuredMesh::get_indices_from_bin(int bin, int* ijk) const
+{
+  if (n_dimension_ == 1) {
+    ijk[0] = bin + 1;
+  } else if (n_dimension_ == 2) {
+    ijk[0] = bin % shape_[0] + 1;
+    ijk[1] = bin / shape_[0] + 1;
+  } else if (n_dimension_ == 3) {
+    ijk[0] = bin % shape_[0] + 1;
+    ijk[1] = (bin % (shape_[0] * shape_[1])) / shape_[0] + 1;
+    ijk[2] = bin / (shape_[0] * shape_[1]) + 1;
+  }
+}
+
 //==============================================================================
 // RegularMesh implementation
 //==============================================================================
@@ -226,20 +240,6 @@ int RegularMesh::get_bin(Position r) const
 int RegularMesh::get_index_in_direction(Position r, int i) const
 {
   return std::ceil((r[i] - lower_left_[i]) / width_[i]);
-}
-
-void RegularMesh::get_indices_from_bin(int bin, int* ijk) const
-{
-  if (n_dimension_ == 1) {
-    ijk[0] = bin + 1;
-  } else if (n_dimension_ == 2) {
-    ijk[0] = bin % shape_[0] + 1;
-    ijk[1] = bin / shape_[0] + 1;
-  } else if (n_dimension_ == 3) {
-    ijk[0] = bin % shape_[0] + 1;
-    ijk[1] = (bin % (shape_[0] * shape_[1])) / shape_[0] + 1;
-    ijk[2] = bin / (shape_[0] * shape_[1]) + 1;
-  }
 }
 
 int RegularMesh::n_bins() const
@@ -1176,13 +1176,6 @@ int RectilinearMesh::get_bin(Position r) const
 int RectilinearMesh::get_index_in_direction(Position r, int i) const
 {
   return lower_bound_index(grid_[i].begin(), grid_[i].end(), r[i]) + 1;
-}
-
-void RectilinearMesh::get_indices_from_bin(int bin, int* ijk) const
-{
-  ijk[0] = bin % shape_[0] + 1;
-  ijk[1] = (bin % (shape_[0] * shape_[1])) / shape_[0] + 1;
-  ijk[2] = bin / (shape_[0] * shape_[1]) + 1;
 }
 
 int RectilinearMesh::n_bins() const

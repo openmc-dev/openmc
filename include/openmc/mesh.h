@@ -126,9 +126,17 @@ public:
 
   //! Get mesh index in a particular direction
   //!
-  //! \param[in] r Position to get index for
+  //! \param[in] r Coordinate to get index for
   //! \param[in] i Direction index
-  virtual int get_index_in_direction(Position r, int i) const = 0;
+  virtual int get_index_in_direction(double r, int i) const = 0;
+
+  //! Check where a line segment intersects the mesh and if it intersects at all
+  //
+  //! \param[in,out] r0 In: starting position, out: intersection point
+  //! \param[in] r1 Ending position
+  //! \param[out] ijk Indices of the mesh bin containing the intersection point
+  //! \return Whether the line segment connecting r0 and r1 intersects mesh
+  virtual bool intersects(Position& r0, Position r1, int* ijk) const;
 
   //! Get a label for the mesh bin
   std::string bin_label(int bin) const override;
@@ -137,6 +145,11 @@ public:
   xt::xtensor<double, 1> lower_left_; //!< Lower-left coordinates of mesh
   xt::xtensor<double, 1> upper_right_; //!< Upper-right coordinates of mesh
   xt::xtensor<int, 1> shape_; //!< Number of mesh elements in each dimension
+
+protected:
+  virtual bool intersects_1d(Position& r0, Position r1, int* ijk) const;
+  virtual bool intersects_2d(Position& r0, Position r1, int* ijk) const;
+  virtual bool intersects_3d(Position& r0, Position r1, int* ijk) const;
 };
 
 //==============================================================================
@@ -173,14 +186,6 @@ public:
 
   // New methods
 
-  //! Check where a line segment intersects the mesh and if it intersects at all
-  //
-  //! \param[in,out] r0 In: starting position, out: intersection point
-  //! \param[in] r1 Ending position
-  //! \param[out] ijk Indices of the mesh bin containing the intersection point
-  //! \return Whether the line segment connecting r0 and r1 intersects mesh
-  bool intersects(Position& r0, Position r1, int* ijk) const;
-
   //! Count number of bank sites in each mesh bin / energy bin
   //
   //! \param[in] bank Array of bank sites
@@ -193,11 +198,6 @@ public:
 
   double volume_frac_; //!< Volume fraction of each mesh element
   xt::xtensor<double, 1> width_; //!< Width of each mesh element
-
-private:
-  bool intersects_1d(Position& r0, Position r1, int* ijk) const;
-  bool intersects_2d(Position& r0, Position r1, int* ijk) const;
-  bool intersects_3d(Position& r0, Position r1, int* ijk) const;
 };
 
 
@@ -227,16 +227,6 @@ public:
   plot(Position plot_ll, Position plot_ur) const override;
 
   void to_hdf5(hid_t group) const override;
-
-  // New methods
-
-  //! Check where a line segment intersects the mesh and if it intersects at all
-  //
-  //! \param[in,out] r0 In: starting position, out: intersection point
-  //! \param[in] r1 Ending position
-  //! \param[out] ijk Indices of the mesh bin containing the intersection point
-  //! \return Whether the line segment connecting r0 and r1 intersects mesh
-  bool intersects(Position& r0, Position r1, int* ijk) const;
 
 private:
   std::vector<std::vector<double>> grid_;

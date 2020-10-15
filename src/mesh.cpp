@@ -106,7 +106,7 @@ void StructuredMesh::get_indices(Position r, int* ijk, bool* in_mesh) const
 {
   *in_mesh = true;
   for (int i = 0; i < n_dimension_; ++i) {
-    ijk[i] = get_index_in_direction(r, i);
+    ijk[i] = get_index_in_direction(r[i], i);
 
     if (ijk[i] < 1 || ijk[i] > shape_[i]) *in_mesh = false;
   }
@@ -139,6 +139,250 @@ void StructuredMesh::get_indices_from_bin(int bin, int* ijk) const
     ijk[2] = bin / (shape_[0] * shape_[1]) + 1;
   }
 }
+
+bool StructuredMesh::intersects(Position& r0, Position r1, int* ijk) const
+{
+  switch(n_dimension_) {
+  case 1:
+    return intersects_1d(r0, r1, ijk);
+  case 2:
+    return intersects_2d(r0, r1, ijk);
+  case 3:
+    return intersects_3d(r0, r1, ijk);
+  default:
+    throw std::runtime_error{"Invalid number of mesh dimensions."};
+  }
+}
+
+bool StructuredMesh::intersects_1d(Position& r0, Position r1, int* ijk) const
+{
+  // Copy coordinates of starting point
+  double x0 = r0.x;
+  double y0 = r0.y;
+  double z0 = r0.z;
+
+  // Copy coordinates of ending point
+  double x1 = r1.x;
+  double y1 = r1.y;
+  double z1 = r1.z;
+
+  // Copy coordinates of mesh lower_left and upper_right
+  double xm0 = lower_left_[0];
+  double xm1 = upper_right_[0];
+
+  double min_dist = INFTY;
+
+  // Check if line intersects left surface -- calculate the intersection point
+  // (y,z)
+  if ((x0 < xm0 && x1 > xm0) || (x0 > xm0 && x1 < xm0)) {
+    double yi = y0 + (xm0 - x0) * (y1 - y0) / (x1 - x0);
+    double zi = z0 + (xm0 - x0) * (z1 - z0) / (x1 - x0);
+    if (check_intersection_point(xm0, x0, yi, yi, zi, zi, r0, min_dist)) {
+      ijk[0] = 1;
+    }
+  }
+
+  // Check if line intersects right surface -- calculate the intersection point
+  // (y,z)
+  if ((x0 < xm1 && x1 > xm1) || (x0 > xm1 && x1 < xm1)) {
+    double yi = y0 + (xm1 - x0) * (y1 - y0) / (x1 - x0);
+    double zi = z0 + (xm1 - x0) * (z1 - z0) / (x1 - x0);
+    if (check_intersection_point(xm1, x0, yi, yi, zi, zi, r0, min_dist)) {
+      ijk[0] = shape_[0];
+    }
+  }
+
+  return min_dist < INFTY;
+}
+
+bool StructuredMesh::intersects_2d(Position& r0, Position r1, int* ijk) const
+{
+  // Copy coordinates of starting point
+  double x0 = r0.x;
+  double y0 = r0.y;
+  double z0 = r0.z;
+
+  // Copy coordinates of ending point
+  double x1 = r1.x;
+  double y1 = r1.y;
+  double z1 = r1.z;
+
+  // Copy coordinates of mesh lower_left
+  double xm0 = lower_left_[0];
+  double ym0 = lower_left_[1];
+
+  // Copy coordinates of mesh upper_right
+  double xm1 = upper_right_[0];
+  double ym1 = upper_right_[1];
+
+  double min_dist = INFTY;
+
+  // Check if line intersects left surface -- calculate the intersection point
+  // (y,z)
+  if ((x0 < xm0 && x1 > xm0) || (x0 > xm0 && x1 < xm0)) {
+    double yi = y0 + (xm0 - x0) * (y1 - y0) / (x1 - x0);
+    double zi = z0 + (xm0 - x0) * (z1 - z0) / (x1 - x0);
+    if (yi >= ym0 && yi < ym1) {
+      if (check_intersection_point(xm0, x0, yi, y0, zi, zi, r0, min_dist)) {
+        ijk[0] = 1;
+        ijk[1] = get_index_in_direction(yi, 1);
+      }
+    }
+  }
+
+  // Check if line intersects back surface -- calculate the intersection point
+  // (x,z)
+  if ((y0 < ym0 && y1 > ym0) || (y0 > ym0 && y1 < ym0)) {
+    double xi = x0 + (ym0 - y0) * (x1 - x0) / (y1 - y0);
+    double zi = z0 + (ym0 - y0) * (z1 - z0) / (y1 - y0);
+    if (xi >= xm0 && xi < xm1) {
+      if (check_intersection_point(xi, x0, ym0, y0, zi, zi, r0, min_dist)) {
+        ijk[0] = get_index_in_direction(xi, 0);
+        ijk[1] = 1;
+      }
+    }
+  }
+
+  // Check if line intersects right surface -- calculate the intersection point
+  // (y,z)
+  if ((x0 < xm1 && x1 > xm1) || (x0 > xm1 && x1 < xm1)) {
+    double yi = y0 + (xm1 - x0) * (y1 - y0) / (x1 - x0);
+    double zi = z0 + (xm1 - x0) * (z1 - z0) / (x1 - x0);
+    if (yi >= ym0 && yi < ym1) {
+      if (check_intersection_point(xm1, x0, yi, y0, zi, zi, r0, min_dist)) {
+        ijk[0] = shape_[0];
+        ijk[1] = get_index_in_direction(yi, 1);
+      }
+    }
+  }
+
+  // Check if line intersects front surface -- calculate the intersection point
+  // (x,z)
+  if ((y0 < ym1 && y1 > ym1) || (y0 > ym1 && y1 < ym1)) {
+    double xi = x0 + (ym1 - y0) * (x1 - x0) / (y1 - y0);
+    double zi = z0 + (ym1 - y0) * (z1 - z0) / (y1 - y0);
+    if (xi >= xm0 && xi < xm1) {
+      if (check_intersection_point(xi, x0, ym1, y0, zi, zi, r0, min_dist)) {
+        ijk[0] = get_index_in_direction(xi, 0);
+        ijk[1] = shape_[1];
+      }
+    }
+  }
+
+  return min_dist < INFTY;
+}
+
+bool StructuredMesh::intersects_3d(Position& r0, Position r1, int* ijk) const
+{
+  // Copy coordinates of starting point
+  double x0 = r0.x;
+  double y0 = r0.y;
+  double z0 = r0.z;
+
+  // Copy coordinates of ending point
+  double x1 = r1.x;
+  double y1 = r1.y;
+  double z1 = r1.z;
+
+  // Copy coordinates of mesh lower_left
+  double xm0 = lower_left_[0];
+  double ym0 = lower_left_[1];
+  double zm0 = lower_left_[2];
+
+  // Copy coordinates of mesh upper_right
+  double xm1 = upper_right_[0];
+  double ym1 = upper_right_[1];
+  double zm1 = upper_right_[2];
+
+  double min_dist = INFTY;
+
+  // Check if line intersects left surface -- calculate the intersection point
+  // (y,z)
+  if ((x0 < xm0 && x1 > xm0) || (x0 > xm0 && x1 < xm0)) {
+    double yi = y0 + (xm0 - x0) * (y1 - y0) / (x1 - x0);
+    double zi = z0 + (xm0 - x0) * (z1 - z0) / (x1 - x0);
+    if (yi >= ym0 && yi < ym1 && zi >= zm0 && zi < zm1) {
+      if (check_intersection_point(xm0, x0, yi, y0, zi, z0, r0, min_dist)) {
+        ijk[0] = 1;
+        ijk[1] = get_index_in_direction(yi, 1);
+        ijk[2] = get_index_in_direction(zi, 2);
+      }
+    }
+  }
+
+  // Check if line intersects back surface -- calculate the intersection point
+  // (x,z)
+  if ((y0 < ym0 && y1 > ym0) || (y0 > ym0 && y1 < ym0)) {
+    double xi = x0 + (ym0 - y0) * (x1 - x0) / (y1 - y0);
+    double zi = z0 + (ym0 - y0) * (z1 - z0) / (y1 - y0);
+    if (xi >= xm0 && xi < xm1 && zi >= zm0 && zi < zm1) {
+      if (check_intersection_point(xi, x0, ym0, y0, zi, z0, r0, min_dist)) {
+        ijk[0] = get_index_in_direction(xi, 0);
+        ijk[1] = 1;
+        ijk[2] = get_index_in_direction(zi, 2);
+      }
+    }
+  }
+
+  // Check if line intersects bottom surface -- calculate the intersection
+  // point (x,y)
+  if ((z0 < zm0 && z1 > zm0) || (z0 > zm0 && z1 < zm0)) {
+    double xi = x0 + (zm0 - z0) * (x1 - x0) / (z1 - z0);
+    double yi = y0 + (zm0 - z0) * (y1 - y0) / (z1 - z0);
+    if (xi >= xm0 && xi < xm1 && yi >= ym0 && yi < ym1) {
+      if (check_intersection_point(xi, x0, yi, y0, zm0, z0, r0, min_dist)) {
+        ijk[0] = get_index_in_direction(xi, 0);
+        ijk[1] = get_index_in_direction(yi, 1);
+        ijk[2] = 1;
+      }
+    }
+  }
+
+  // Check if line intersects right surface -- calculate the intersection point
+  // (y,z)
+  if ((x0 < xm1 && x1 > xm1) || (x0 > xm1 && x1 < xm1)) {
+    double yi = y0 + (xm1 - x0) * (y1 - y0) / (x1 - x0);
+    double zi = z0 + (xm1 - x0) * (z1 - z0) / (x1 - x0);
+    if (yi >= ym0 && yi < ym1 && zi >= zm0 && zi < zm1) {
+      if (check_intersection_point(xm1, x0, yi, y0, zi, z0, r0, min_dist)) {
+        ijk[0] = shape_[0];
+        ijk[1] = get_index_in_direction(yi, 1);
+        ijk[2] = get_index_in_direction(zi, 2);
+      }
+    }
+  }
+
+  // Check if line intersects front surface -- calculate the intersection point
+  // (x,z)
+  if ((y0 < ym1 && y1 > ym1) || (y0 > ym1 && y1 < ym1)) {
+    double xi = x0 + (ym1 - y0) * (x1 - x0) / (y1 - y0);
+    double zi = z0 + (ym1 - y0) * (z1 - z0) / (y1 - y0);
+    if (xi >= xm0 && xi < xm1 && zi >= zm0 && zi < zm1) {
+      if (check_intersection_point(xi, x0, ym1, y0, zi, z0, r0, min_dist)) {
+        ijk[0] = get_index_in_direction(xi, 0);
+        ijk[1] = shape_[1];
+        ijk[2] = get_index_in_direction(zi, 2);
+      }
+    }
+  }
+
+  // Check if line intersects top surface -- calculate the intersection point
+  // (x,y)
+  if ((z0 < zm1 && z1 > zm1) || (z0 > zm1 && z1 < zm1)) {
+    double xi = x0 + (zm1 - z0) * (x1 - x0) / (z1 - z0);
+    double yi = y0 + (zm1 - z0) * (y1 - y0) / (z1 - z0);
+    if (xi >= xm0 && xi < xm1 && yi >= ym0 && yi < ym1) {
+      if (check_intersection_point(xi, x0, yi, y0, zm1, z0, r0, min_dist)) {
+        ijk[0] = get_index_in_direction(xi, 0);
+        ijk[1] = get_index_in_direction(yi, 1);
+        ijk[2] = shape_[2];
+      }
+    }
+  }
+
+  return min_dist < INFTY;
+}
+
 
 //==============================================================================
 // RegularMesh implementation
@@ -237,9 +481,9 @@ int RegularMesh::get_bin(Position r) const
   return get_bin_from_indices(ijk.data());
 }
 
-int RegularMesh::get_index_in_direction(Position r, int i) const
+int RegularMesh::get_index_in_direction(double r, int i) const
 {
-  return std::ceil((r[i] - lower_left_[i]) / width_[i]);
+  return std::ceil((r - lower_left_[i]) / width_[i]);
 }
 
 int RegularMesh::n_bins() const
@@ -252,249 +496,6 @@ int RegularMesh::n_bins() const
 int RegularMesh::n_surface_bins() const
 {
   return 4 * n_dimension_ * n_bins();
-}
-
-bool RegularMesh::intersects(Position& r0, Position r1, int* ijk) const
-{
-  switch(n_dimension_) {
-  case 1:
-    return intersects_1d(r0, r1, ijk);
-  case 2:
-    return intersects_2d(r0, r1, ijk);
-  case 3:
-    return intersects_3d(r0, r1, ijk);
-  default:
-    throw std::runtime_error{"Invalid number of mesh dimensions."};
-  }
-}
-
-bool RegularMesh::intersects_1d(Position& r0, Position r1, int* ijk) const
-{
-  // Copy coordinates of starting point
-  double x0 = r0.x;
-  double y0 = r0.y;
-  double z0 = r0.z;
-
-  // Copy coordinates of ending point
-  double x1 = r1.x;
-  double y1 = r1.y;
-  double z1 = r1.z;
-
-  // Copy coordinates of mesh lower_left and upper_right
-  double xm0 = lower_left_[0];
-  double xm1 = upper_right_[0];
-
-  double min_dist = INFTY;
-
-  // Check if line intersects left surface -- calculate the intersection point
-  // (y,z)
-  if ((x0 < xm0 && x1 > xm0) || (x0 > xm0 && x1 < xm0)) {
-    double yi = y0 + (xm0 - x0) * (y1 - y0) / (x1 - x0);
-    double zi = z0 + (xm0 - x0) * (z1 - z0) / (x1 - x0);
-    if (check_intersection_point(xm0, x0, yi, yi, zi, zi, r0, min_dist)) {
-      ijk[0] = 1;
-    }
-  }
-
-  // Check if line intersects right surface -- calculate the intersection point
-  // (y,z)
-  if ((x0 < xm1 && x1 > xm1) || (x0 > xm1 && x1 < xm1)) {
-    double yi = y0 + (xm1 - x0) * (y1 - y0) / (x1 - x0);
-    double zi = z0 + (xm1 - x0) * (z1 - z0) / (x1 - x0);
-    if (check_intersection_point(xm1, x0, yi, yi, zi, zi, r0, min_dist)) {
-      ijk[0] = shape_[0];
-    }
-  }
-
-  return min_dist < INFTY;
-}
-
-bool RegularMesh::intersects_2d(Position& r0, Position r1, int* ijk) const
-{
-  // Copy coordinates of starting point
-  double x0 = r0.x;
-  double y0 = r0.y;
-  double z0 = r0.z;
-
-  // Copy coordinates of ending point
-  double x1 = r1.x;
-  double y1 = r1.y;
-  double z1 = r1.z;
-
-  // Copy coordinates of mesh lower_left
-  double xm0 = lower_left_[0];
-  double ym0 = lower_left_[1];
-
-  // Copy coordinates of mesh upper_right
-  double xm1 = upper_right_[0];
-  double ym1 = upper_right_[1];
-
-  double min_dist = INFTY;
-
-  // Check if line intersects left surface -- calculate the intersection point
-  // (y,z)
-  if ((x0 < xm0 && x1 > xm0) || (x0 > xm0 && x1 < xm0)) {
-    double yi = y0 + (xm0 - x0) * (y1 - y0) / (x1 - x0);
-    double zi = z0 + (xm0 - x0) * (z1 - z0) / (x1 - x0);
-    if (yi >= ym0 && yi < ym1) {
-      if (check_intersection_point(xm0, x0, yi, y0, zi, zi, r0, min_dist)) {
-        ijk[0] = 1;
-        ijk[1] = std::ceil((yi - lower_left_[1]) / width_[1]);
-      }
-    }
-  }
-
-  // Check if line intersects back surface -- calculate the intersection point
-  // (x,z)
-  if ((y0 < ym0 && y1 > ym0) || (y0 > ym0 && y1 < ym0)) {
-    double xi = x0 + (ym0 - y0) * (x1 - x0) / (y1 - y0);
-    double zi = z0 + (ym0 - y0) * (z1 - z0) / (y1 - y0);
-    if (xi >= xm0 && xi < xm1) {
-      if (check_intersection_point(xi, x0, ym0, y0, zi, zi, r0, min_dist)) {
-        ijk[0] = std::ceil((xi - lower_left_[0]) / width_[0]);
-        ijk[1] = 1;
-      }
-    }
-  }
-
-  // Check if line intersects right surface -- calculate the intersection point
-  // (y,z)
-  if ((x0 < xm1 && x1 > xm1) || (x0 > xm1 && x1 < xm1)) {
-    double yi = y0 + (xm1 - x0) * (y1 - y0) / (x1 - x0);
-    double zi = z0 + (xm1 - x0) * (z1 - z0) / (x1 - x0);
-    if (yi >= ym0 && yi < ym1) {
-      if (check_intersection_point(xm1, x0, yi, y0, zi, zi, r0, min_dist)) {
-        ijk[0] = shape_[0];
-        ijk[1] = std::ceil((yi - lower_left_[1]) / width_[1]);
-      }
-    }
-  }
-
-  // Check if line intersects front surface -- calculate the intersection point
-  // (x,z)
-  if ((y0 < ym1 && y1 > ym1) || (y0 > ym1 && y1 < ym1)) {
-    double xi = x0 + (ym1 - y0) * (x1 - x0) / (y1 - y0);
-    double zi = z0 + (ym1 - y0) * (z1 - z0) / (y1 - y0);
-    if (xi >= xm0 && xi < xm1) {
-      if (check_intersection_point(xi, x0, ym1, y0, zi, zi, r0, min_dist)) {
-        ijk[0] = std::ceil((xi - lower_left_[0]) / width_[0]);
-        ijk[1] = shape_[1];
-      }
-    }
-  }
-
-  return min_dist < INFTY;
-}
-
-bool RegularMesh::intersects_3d(Position& r0, Position r1, int* ijk) const
-{
-  // Copy coordinates of starting point
-  double x0 = r0.x;
-  double y0 = r0.y;
-  double z0 = r0.z;
-
-  // Copy coordinates of ending point
-  double x1 = r1.x;
-  double y1 = r1.y;
-  double z1 = r1.z;
-
-  // Copy coordinates of mesh lower_left
-  double xm0 = lower_left_[0];
-  double ym0 = lower_left_[1];
-  double zm0 = lower_left_[2];
-
-  // Copy coordinates of mesh upper_right
-  double xm1 = upper_right_[0];
-  double ym1 = upper_right_[1];
-  double zm1 = upper_right_[2];
-
-  double min_dist = INFTY;
-
-  // Check if line intersects left surface -- calculate the intersection point
-  // (y,z)
-  if ((x0 < xm0 && x1 > xm0) || (x0 > xm0 && x1 < xm0)) {
-    double yi = y0 + (xm0 - x0) * (y1 - y0) / (x1 - x0);
-    double zi = z0 + (xm0 - x0) * (z1 - z0) / (x1 - x0);
-    if (yi >= ym0 && yi < ym1 && zi >= zm0 && zi < zm1) {
-      if (check_intersection_point(xm0, x0, yi, y0, zi, z0, r0, min_dist)) {
-        ijk[0] = 1;
-        ijk[1] = std::ceil((yi - lower_left_[1]) / width_[1]);
-        ijk[2] = std::ceil((zi - lower_left_[2]) / width_[2]);
-      }
-    }
-  }
-
-  // Check if line intersects back surface -- calculate the intersection point
-  // (x,z)
-  if ((y0 < ym0 && y1 > ym0) || (y0 > ym0 && y1 < ym0)) {
-    double xi = x0 + (ym0 - y0) * (x1 - x0) / (y1 - y0);
-    double zi = z0 + (ym0 - y0) * (z1 - z0) / (y1 - y0);
-    if (xi >= xm0 && xi < xm1 && zi >= zm0 && zi < zm1) {
-      if (check_intersection_point(xi, x0, ym0, y0, zi, z0, r0, min_dist)) {
-        ijk[0] = std::ceil((xi - lower_left_[0]) / width_[0]);
-        ijk[1] = 1;
-        ijk[2] = std::ceil((zi - lower_left_[2]) / width_[2]);
-      }
-    }
-  }
-
-  // Check if line intersects bottom surface -- calculate the intersection
-  // point (x,y)
-  if ((z0 < zm0 && z1 > zm0) || (z0 > zm0 && z1 < zm0)) {
-    double xi = x0 + (zm0 - z0) * (x1 - x0) / (z1 - z0);
-    double yi = y0 + (zm0 - z0) * (y1 - y0) / (z1 - z0);
-    if (xi >= xm0 && xi < xm1 && yi >= ym0 && yi < ym1) {
-      if (check_intersection_point(xi, x0, yi, y0, zm0, z0, r0, min_dist)) {
-        ijk[0] = std::ceil((xi - lower_left_[0]) / width_[0]);
-        ijk[1] = std::ceil((yi - lower_left_[1]) / width_[1]);
-        ijk[2] = 1;
-      }
-    }
-  }
-
-  // Check if line intersects right surface -- calculate the intersection point
-  // (y,z)
-  if ((x0 < xm1 && x1 > xm1) || (x0 > xm1 && x1 < xm1)) {
-    double yi = y0 + (xm1 - x0) * (y1 - y0) / (x1 - x0);
-    double zi = z0 + (xm1 - x0) * (z1 - z0) / (x1 - x0);
-    if (yi >= ym0 && yi < ym1 && zi >= zm0 && zi < zm1) {
-      if (check_intersection_point(xm1, x0, yi, y0, zi, z0, r0, min_dist)) {
-        ijk[0] = shape_[0];
-        ijk[1] = std::ceil((yi - lower_left_[1]) / width_[1]);
-        ijk[2] = std::ceil((zi - lower_left_[2]) / width_[2]);
-      }
-    }
-  }
-
-  // Check if line intersects front surface -- calculate the intersection point
-  // (x,z)
-  if ((y0 < ym1 && y1 > ym1) || (y0 > ym1 && y1 < ym1)) {
-    double xi = x0 + (ym1 - y0) * (x1 - x0) / (y1 - y0);
-    double zi = z0 + (ym1 - y0) * (z1 - z0) / (y1 - y0);
-    if (xi >= xm0 && xi < xm1 && zi >= zm0 && zi < zm1) {
-      if (check_intersection_point(xi, x0, ym1, y0, zi, z0, r0, min_dist)) {
-        ijk[0] = std::ceil((xi - lower_left_[0]) / width_[0]);
-        ijk[1] = shape_[1];
-        ijk[2] = std::ceil((zi - lower_left_[2]) / width_[2]);
-      }
-    }
-  }
-
-  // Check if line intersects top surface -- calculate the intersection point
-  // (x,y)
-  if ((z0 < zm1 && z1 > zm1) || (z0 > zm1 && z1 < zm1)) {
-    double xi = x0 + (zm1 - z0) * (x1 - x0) / (z1 - z0);
-    double yi = y0 + (zm1 - z0) * (y1 - y0) / (z1 - z0);
-    if (xi >= xm0 && xi < xm1 && yi >= ym0 && yi < ym1) {
-      if (check_intersection_point(xi, x0, yi, y0, zm1, z0, r0, min_dist)) {
-        ijk[0] = std::ceil((xi - lower_left_[0]) / width_[0]);
-        ijk[1] = std::ceil((yi - lower_left_[1]) / width_[1]);
-        ijk[2] = shape_[2];
-      }
-    }
-  }
-
-  return min_dist < INFTY;
 }
 
 void RegularMesh::bins_crossed(const Particle& p, std::vector<int>& bins,
@@ -1173,9 +1174,9 @@ int RectilinearMesh::get_bin(Position r) const
   return get_bin_from_indices(ijk);
 }
 
-int RectilinearMesh::get_index_in_direction(Position r, int i) const
+int RectilinearMesh::get_index_in_direction(double r, int i) const
 {
-  return lower_bound_index(grid_[i].begin(), grid_[i].end(), r[i]) + 1;
+  return lower_bound_index(grid_[i].begin(), grid_[i].end(), r) + 1;
 }
 
 int RectilinearMesh::n_bins() const
@@ -1228,117 +1229,6 @@ void RectilinearMesh::to_hdf5(hid_t group) const
   write_dataset(mesh_group, "z_grid", grid_[2]);
 
   close_group(mesh_group);
-}
-
-bool RectilinearMesh::intersects(Position& r0, Position r1, int* ijk) const
-{
-  // Copy coordinates of starting point
-  double x0 = r0.x;
-  double y0 = r0.y;
-  double z0 = r0.z;
-
-  // Copy coordinates of ending point
-  double x1 = r1.x;
-  double y1 = r1.y;
-  double z1 = r1.z;
-
-  // Copy coordinates of mesh lower_left
-  double xm0 = grid_[0].front();
-  double ym0 = grid_[1].front();
-  double zm0 = grid_[2].front();
-
-  // Copy coordinates of mesh upper_right
-  double xm1 = grid_[0].back();
-  double ym1 = grid_[1].back();
-  double zm1 = grid_[2].back();
-
-  double min_dist = INFTY;
-
-  // Check if line intersects left surface -- calculate the intersection point
-  // (y,z)
-  if ((x0 < xm0 && x1 > xm0) || (x0 > xm0 && x1 < xm0)) {
-    double yi = y0 + (xm0 - x0) * (y1 - y0) / (x1 - x0);
-    double zi = z0 + (xm0 - x0) * (z1 - z0) / (x1 - x0);
-    if (yi >= ym0 && yi < ym1 && zi >= zm0 && zi < zm1) {
-      if (check_intersection_point(xm0, x0, yi, y0, zi, z0, r0, min_dist)) {
-        ijk[0] = 1;
-        ijk[1] = lower_bound_index(grid_[1].begin(), grid_[1].end(), yi) + 1;
-        ijk[2] = lower_bound_index(grid_[2].begin(), grid_[2].end(), zi) + 1;
-      }
-    }
-  }
-
-  // Check if line intersects back surface -- calculate the intersection point
-  // (x,z)
-  if ((y0 < ym0 && y1 > ym0) || (y0 > ym0 && y1 < ym0)) {
-    double xi = x0 + (ym0 - y0) * (x1 - x0) / (y1 - y0);
-    double zi = z0 + (ym0 - y0) * (z1 - z0) / (y1 - y0);
-    if (xi >= xm0 && xi < xm1 && zi >= zm0 && zi < zm1) {
-      if (check_intersection_point(xi, x0, ym0, y0, zi, z0, r0, min_dist)) {
-        ijk[0] = lower_bound_index(grid_[0].begin(), grid_[0].end(), xi) + 1;
-        ijk[1] = 1;
-        ijk[2] = lower_bound_index(grid_[2].begin(), grid_[2].end(), zi) + 1;
-      }
-    }
-  }
-
-  // Check if line intersects bottom surface -- calculate the intersection
-  // point (x,y)
-  if ((z0 < zm0 && z1 > zm0) || (z0 > zm0 && z1 < zm0)) {
-    double xi = x0 + (zm0 - z0) * (x1 - x0) / (z1 - z0);
-    double yi = y0 + (zm0 - z0) * (y1 - y0) / (z1 - z0);
-    if (xi >= xm0 && xi < xm1 && yi >= ym0 && yi < ym1) {
-      if (check_intersection_point(xi, x0, yi, y0, zm0, z0, r0, min_dist)) {
-        ijk[0] = lower_bound_index(grid_[0].begin(), grid_[0].end(), xi) + 1;
-        ijk[1] = lower_bound_index(grid_[1].begin(), grid_[1].end(), yi) + 1;
-        ijk[2] = 1;
-      }
-    }
-  }
-
-  // Check if line intersects right surface -- calculate the intersection point
-  // (y,z)
-  if ((x0 < xm1 && x1 > xm1) || (x0 > xm1 && x1 < xm1)) {
-    double yi = y0 + (xm1 - x0) * (y1 - y0) / (x1 - x0);
-    double zi = z0 + (xm1 - x0) * (z1 - z0) / (x1 - x0);
-    if (yi >= ym0 && yi < ym1 && zi >= zm0 && zi < zm1) {
-      if (check_intersection_point(xm1, x0, yi, y0, zi, z0, r0, min_dist)) {
-        ijk[0] = shape_[0];
-        ijk[1] = lower_bound_index(grid_[1].begin(), grid_[1].end(), yi) + 1;
-        ijk[2] = lower_bound_index(grid_[2].begin(), grid_[2].end(), zi) + 1;
-      }
-    }
-  }
-
-  // Check if line intersects front surface -- calculate the intersection point
-  // (x,z)
-  if ((y0 < ym1 && y1 > ym1) || (y0 > ym1 && y1 < ym1)) {
-    double xi = x0 + (ym1 - y0) * (x1 - x0) / (y1 - y0);
-    double zi = z0 + (ym1 - y0) * (z1 - z0) / (y1 - y0);
-    if (xi >= xm0 && xi < xm1 && zi >= zm0 && zi < zm1) {
-      if (check_intersection_point(xi, x0, ym1, y0, zi, z0, r0, min_dist)) {
-        ijk[0] = lower_bound_index(grid_[0].begin(), grid_[0].end(), xi) + 1;
-        ijk[1] = shape_[1];
-        ijk[2] = lower_bound_index(grid_[2].begin(), grid_[2].end(), zi) + 1;
-      }
-    }
-  }
-
-  // Check if line intersects top surface -- calculate the intersection point
-  // (x,y)
-  if ((z0 < zm1 && z1 > zm1) || (z0 > zm1 && z1 < zm1)) {
-    double xi = x0 + (zm1 - z0) * (x1 - x0) / (z1 - z0);
-    double yi = y0 + (zm1 - z0) * (y1 - y0) / (z1 - z0);
-    if (xi >= xm0 && xi < xm1 && yi >= ym0 && yi < ym1) {
-      if (check_intersection_point(xi, x0, yi, y0, zm1, z0, r0, min_dist)) {
-        ijk[0] = lower_bound_index(grid_[0].begin(), grid_[0].end(), xi) + 1;
-        ijk[1] = lower_bound_index(grid_[1].begin(), grid_[1].end(), yi) + 1;
-        ijk[2] = shape_[2];
-      }
-    }
-  }
-
-  return min_dist < INFTY;
 }
 
 //==============================================================================

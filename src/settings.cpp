@@ -510,52 +510,25 @@ void read_settings_xml()
   read_meshes(root);
 
   // Shannon Entropy mesh
-  int32_t index_entropy_mesh = -1;
   if (check_for_node(root, "entropy_mesh")) {
     int temp = std::stoi(get_node_value(root, "entropy_mesh"));
     if (model::mesh_map.find(temp) == model::mesh_map.end()) {
       fatal_error(fmt::format(
         "Mesh {} specified for Shannon entropy does not exist.", temp));
     }
-    index_entropy_mesh = model::mesh_map.at(temp);
 
-  } else if (check_for_node(root, "entropy")) {
-    warning("Specifying a Shannon entropy mesh via the <entropy> element "
-      "is deprecated. Please create a mesh using <mesh> and then reference "
-      "it by specifying its ID in an <entropy_mesh> element.");
-
-    // Read entropy mesh from <entropy>
-    auto node_entropy = root.child("entropy");
-    model::meshes.push_back(std::make_unique<RegularMesh>(node_entropy));
-
-    // Set entropy mesh index
-    index_entropy_mesh = model::meshes.size() - 1;
-
-    // Assign ID and set mapping
-    model::meshes.back()->id_ = 10000;
-    model::mesh_map[10000] = index_entropy_mesh;
-  }
-
-  if (index_entropy_mesh >= 0) {
     auto* m = dynamic_cast<RegularMesh*>(
-      model::meshes[index_entropy_mesh].get());
+      model::meshes[model::mesh_map.at(temp)].get());
     if (!m) fatal_error("Only regular meshes can be used as an entropy mesh");
     simulation::entropy_mesh = m;
 
-    if (m->shape_.size() == 0) {
-      // If the user did not specify how many mesh cells are to be used in
-      // each direction, we automatically determine an appropriate number of
-      // cells
-      int n = std::ceil(std::pow(n_particles / 20.0, 1.0/3.0));
-      m->shape_ = {n, n, n};
-      m->n_dimension_ = 3;
-
-      // Calculate width
-      m->width_ = (m->upper_right_ - m->lower_left_) / m->shape_;
-    }
-
     // Turn on Shannon entropy calculation
     entropy_on = true;
+
+  } else if (check_for_node(root, "entropy")) {
+    fatal_error("Specifying a Shannon entropy mesh via the <entropy> element "
+      "is deprecated. Please create a mesh using <mesh> and then reference "
+      "it by specifying its ID in an <entropy_mesh> element.");
   }
 
   // Uniform fission source weighting mesh

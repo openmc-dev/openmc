@@ -3,6 +3,7 @@ from enum import Enum
 from pathlib import Path
 from numbers import Real, Integral
 from xml.etree import ElementTree as ET
+from math import ceil
 
 import openmc.checkvalue as cv
 from . import VolumeCalculation, Source, RegularMesh
@@ -58,7 +59,7 @@ class Settings:
         Set whether the calculation should be continuous-energy or multi-group.
     entropy_mesh : openmc.RegularMesh
         Mesh to be used to calculate Shannon entropy. If the mesh dimensions are
-        not specified. OpenMC assigns a mesh such that 20 source sites per mesh
+        not specified, OpenMC assigns a mesh such that 20 source sites per mesh
         cell are to be expected on average.
     event_based : bool
         Indicate whether to use event-based parallelism instead of the default
@@ -927,6 +928,12 @@ class Settings:
 
     def _create_entropy_mesh_subelement(self, root):
         if self.entropy_mesh is not None:
+            # use default heuristic for entropy mesh if not set by user
+            if self.entropy_mesh.dimension is None:
+                n = ceil((self.particles / 20.0)**(1.0 / 3.0))
+                d = len(self.entropy_mesh.lower_left)
+                self.entropy_mesh.dimension = (n,)*d
+
             # See if a <mesh> element already exists -- if not, add it
             path = "./mesh[@id='{}']".format(self.entropy_mesh.id)
             if root.find(path) is None:

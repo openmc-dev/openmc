@@ -73,7 +73,6 @@ std::string path_cross_sections;
 std::string path_input;
 std::string path_output;
 std::string path_particle_restart;
-std::string path_source;
 std::string path_source_library;
 std::string path_sourcepoint;
 std::string path_statepoint;

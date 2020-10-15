@@ -57,6 +57,7 @@ private:
   UPtrSpace space_; //!< Spatial distribution
   UPtrAngle angle_; //!< Angular distribution
   UPtrDist energy_; //!< Energy distribution
+  std::vector<Particle::Bank> sites_; //!< Source sites from a file
 };
 
 class CustomSource {

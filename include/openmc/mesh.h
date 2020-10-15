@@ -116,7 +116,7 @@ public:
   //! \param[in] r Position to get indices for
   //! \param[out] ijk Array of mesh indices
   //! \param[out] in_mesh Whether position is in mesh
-  virtual void get_indices(Position r, int* ijk, bool* in_mesh) const = 0;
+  virtual void get_indices(Position r, int* ijk, bool* in_mesh) const;
 
   //! Get mesh indices corresponding to a mesh bin
   //
@@ -124,12 +124,19 @@ public:
   //! \param[out] ijk Mesh indices
   virtual void get_indices_from_bin(int bin, int* ijk) const = 0;
 
+  //! Get mesh index in a particular direction
+  //!
+  //! \param[in] r Position to get index for
+  //! \param[in] i Direction index
+  virtual int get_index_in_direction(Position r, int i) const = 0;
+
   //! Get a label for the mesh bin
   std::string bin_label(int bin) const override;
 
   // Data members
   xt::xtensor<double, 1> lower_left_; //!< Lower-left coordinates of mesh
   xt::xtensor<double, 1> upper_right_; //!< Upper-right coordinates of mesh
+  xt::xtensor<int, 1> shape_; //!< Number of mesh elements in each dimension
 };
 
 //==============================================================================
@@ -155,9 +162,9 @@ public:
 
   int get_bin_from_indices(const int* ijk) const override;
 
-  void get_indices(Position r, int* ijk, bool* in_mesh) const override;
-
   void get_indices_from_bin(int bin, int* ijk) const override;
+
+  int get_index_in_direction(Position r, int i) const override;
 
   int n_bins() const override;
 
@@ -189,7 +196,6 @@ public:
   // Data members
 
   double volume_frac_; //!< Volume fraction of each mesh element
-  xt::xtensor<int, 1> shape_; //!< Number of mesh elements in each dimension
   xt::xtensor<double, 1> width_; //!< Width of each mesh element
 
 private:
@@ -217,9 +223,9 @@ public:
 
   int get_bin_from_indices(const int* ijk) const override;
 
-  void get_indices(Position r, int* ijk, bool* in_mesh) const override;
-
   void get_indices_from_bin(int bin, int* ijk) const override;
+
+  int get_index_in_direction(Position r, int i) const override;
 
   int n_bins() const override;
 
@@ -239,9 +245,6 @@ public:
   //! \param[out] ijk Indices of the mesh bin containing the intersection point
   //! \return Whether the line segment connecting r0 and r1 intersects mesh
   bool intersects(Position& r0, Position r1, int* ijk) const;
-
-  // Data members
-  xt::xtensor<int, 1> shape_; //!< Number of mesh elements in each dimension
 
 private:
   std::vector<std::vector<double>> grid_;

@@ -102,6 +102,17 @@ StructuredMesh::bin_label(int bin) const {
   }
 }
 
+void
+StructuredMesh::get_indices(Position r, int* ijk, bool* in_mesh) const
+{
+  *in_mesh = true;
+  for (int i = 0; i < n_dimension_; ++i) {
+    ijk[i] = get_index_in_direction(r, i);
+
+    if (ijk[i] < 1 || ijk[i] > shape_[i]) *in_mesh = false;
+  }
+}
+
 //==============================================================================
 // RegularMesh implementation
 //==============================================================================
@@ -213,16 +224,9 @@ int RegularMesh::get_bin_from_indices(const int* ijk) const
   }
 }
 
-void RegularMesh::get_indices(Position r, int* ijk, bool* in_mesh) const
+int RegularMesh::get_index_in_direction(Position r, int i) const
 {
-  // Find particle in mesh
-  *in_mesh = true;
-  for (int i = 0; i < n_dimension_; ++i) {
-    ijk[i] = std::ceil((r[i] - lower_left_[i]) / width_[i]);
-
-    // Check if indices are within bounds
-    if (ijk[i] < 1 || ijk[i] > shape_[i]) *in_mesh = false;
-  }
+  return std::ceil((r[i] - lower_left_[i]) / width_[i]);
 }
 
 void RegularMesh::get_indices_from_bin(int bin, int* ijk) const
@@ -1175,18 +1179,9 @@ int RectilinearMesh::get_bin_from_indices(const int* ijk) const
   return ((ijk[2] - 1)*shape_[1] + (ijk[1] - 1))*shape_[0] + ijk[0] - 1;
 }
 
-void RectilinearMesh::get_indices(Position r, int* ijk, bool* in_mesh) const
+int RectilinearMesh::get_index_in_direction(Position r, int i) const
 {
-  *in_mesh = true;
-
-  for (int i = 0; i < 3; ++i) {
-    if (r[i] < grid_[i].front() || r[i] > grid_[i].back()) {
-      ijk[i] = -1;
-      *in_mesh = false;
-    } else {
-      ijk[i] = lower_bound_index(grid_[i].begin(), grid_[i].end(), r[i]) + 1;
-    }
-  }
+  return lower_bound_index(grid_[i].begin(), grid_[i].end(), r[i]) + 1;
 }
 
 void RectilinearMesh::get_indices_from_bin(int bin, int* ijk) const

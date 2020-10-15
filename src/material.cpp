@@ -211,10 +211,12 @@ Material::Material(pugi::xml_node node)
   for (int i = 0; i < n; ++i) {
     const auto& name {names[i]};
 
-    // Check that this nuclide is listed in the cross_sections.xml file
+    // Check that this nuclide is listed in the nuclear data library
+    // (cross_sections.xml for CE and the MGXS HDF5 for MG)
     LibraryKey key {Library::Type::neutron, name};
     if (data::library_map.find(key) == data::library_map.end()) {
-      fatal_error("Could not find nuclide " + name + " in cross_sections.xml.");
+      fatal_error("Could not find nuclide " + name + " in the "
+                  "nuclear data library.");
     }
 
     // If this nuclide hasn't been encountered yet, we need to add its name

@@ -532,39 +532,24 @@ void read_settings_xml()
   }
 
   // Uniform fission source weighting mesh
-  int32_t i_ufs_mesh = -1;
   if (check_for_node(root, "ufs_mesh")) {
     auto temp = std::stoi(get_node_value(root, "ufs_mesh"));
     if (model::mesh_map.find(temp) == model::mesh_map.end()) {
       fatal_error(fmt::format("Mesh {} specified for uniform fission site "
         "method does not exist.", temp));
     }
-    i_ufs_mesh = model::mesh_map.at(temp);
 
-  } else if (check_for_node(root, "uniform_fs")) {
-    warning("Specifying a UFS mesh via the <uniform_fs> element "
-      "is deprecated. Please create a mesh using <mesh> and then reference "
-      "it by specifying its ID in a <ufs_mesh> element.");
-
-    // Read entropy mesh from <entropy>
-    auto node_ufs = root.child("uniform_fs");
-    model::meshes.push_back(std::make_unique<RegularMesh>(node_ufs));
-
-    // Set entropy mesh index
-    i_ufs_mesh = model::meshes.size() - 1;
-
-    // Assign ID and set mapping
-    model::meshes.back()->id_ = 10001;
-    model::mesh_map[10001] = i_ufs_mesh;
-  }
-
-  if (i_ufs_mesh >= 0) {
-    auto* m = dynamic_cast<RegularMesh*>(model::meshes[i_ufs_mesh].get());
+    auto* m = dynamic_cast<RegularMesh*>(model::meshes[model::mesh_map.at(temp)].get());
     if (!m) fatal_error("Only regular meshes can be used as a UFS mesh");
     simulation::ufs_mesh = m;
 
     // Turn on uniform fission source weighting
     ufs_on = true;
+
+  } else if (check_for_node(root, "uniform_fs")) {
+    fatal_error("Specifying a UFS mesh via the <uniform_fs> element "
+      "is deprecated. Please create a mesh using <mesh> and then reference "
+      "it by specifying its ID in a <ufs_mesh> element.");
   }
 
   // Check if the user has specified to write state points

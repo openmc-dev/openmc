@@ -141,7 +141,6 @@ Surface::Surface(pugi::xml_node surf_node)
       new_bc_ = std::make_shared<WhiteBC>();
     } else if (surf_bc == "periodic") {
       bc_ = BoundaryType::PERIODIC;
-      new_bc_ = std::make_shared<PeriodicBC>();
     } else {
       fatal_error(fmt::format("Unknown boundary condition \"{}\" specified "
         "on surface {}", surf_bc, id_));
@@ -1118,21 +1117,25 @@ void SurfaceQuadric::to_hdf5_inner(hid_t group_id) const
 
 void read_surfaces(pugi::xml_node node)
 {
-  // Count the number of surfaces.
+  // Count the number of surfaces
   int n_surfaces = 0;
   for (pugi::xml_node surf_node : node.children("surface")) {n_surfaces++;}
   if (n_surfaces == 0) {
     fatal_error("No surfaces found in geometry.xml!");
   }
 
-  // Loop over XML surface elements and populate the array.
+  // Loop over XML surface elements and populate the array.  Keep track of
+  // periodic surfaces.
   model::surfaces.reserve(n_surfaces);
+  std::vector<std::pair<int, int>> periodic_pairs;
   {
     pugi::xml_node surf_node;
     int i_surf;
     for (surf_node = node.child("surface"), i_surf = 0; surf_node;
          surf_node = surf_node.next_sibling("surface"), i_surf++) {
       std::string surf_type = get_node_value(surf_node, "type", true, true);
+
+      // Allocate and initialize the new surface
 
       if (surf_type == "x-plane") {
         model::surfaces.push_back(std::make_unique<SurfaceXPlane>(surf_node));
@@ -1173,10 +1176,24 @@ void read_surfaces(pugi::xml_node node)
       } else {
         fatal_error(fmt::format("Invalid surface type, \"{}\"", surf_type));
       }
+
+      // Check for a periodic surface
+      if (check_for_node(surf_node, "boundary")) {
+        std::string surf_bc = get_node_value(surf_node, "boundary", true, true);
+        if (surf_bc == "periodic") {
+          if (check_for_node(surf_node, "periodic_surface_id")) {
+            int i_periodic = std::stoi(get_node_value(surf_node,
+                                                      "periodic_surface_id"));
+            periodic_pairs.push_back({model::surfaces.back()->id_, i_periodic});
+          } else {
+            periodic_pairs.push_back({model::surfaces.back()->id_, -1});
+          }
+        }
+      }
     }
   }
 
-  // Fill the surface map.
+  // Fill the surface map
   for (int i_surf = 0; i_surf < model::surfaces.size(); i_surf++) {
     int id = model::surfaces[i_surf]->id_;
     auto in_map = model::surface_map.find(id);
@@ -1188,106 +1205,54 @@ void read_surfaces(pugi::xml_node node)
     }
   }
 
-  // Find the global bounding box (of periodic BC surfaces).
-  double xmin {INFTY}, xmax {-INFTY}, ymin {INFTY}, ymax {-INFTY},
-         zmin {INFTY}, zmax {-INFTY};
-  int i_xmin, i_xmax, i_ymin, i_ymax, i_zmin, i_zmax;
-  for (int i_surf = 0; i_surf < model::surfaces.size(); i_surf++) {
-    if (model::surfaces[i_surf]->bc_ == Surface::BoundaryType::PERIODIC) {
-      // Downcast to the PeriodicSurface type.
-      Surface* surf_base = model::surfaces[i_surf].get();
-      auto surf = dynamic_cast<PeriodicSurface*>(surf_base);
-
-      // Make sure this surface inherits from PeriodicSurface.
-      if (!surf) {
-        fatal_error(fmt::format(
-          "Periodic boundary condition not supported for surface {}. Periodic "
-          "BCs are only supported for planar surfaces.", surf_base->id_));
-      }
-
-      // See if this surface makes part of the global bounding box.
-      auto bb = surf->bounding_box(true) & surf->bounding_box(false);
-      if (bb.xmin > -INFTY && bb.xmin < xmin) {
-        xmin = bb.xmin;
-        i_xmin = i_surf;
-      }
-      if (bb.xmax < INFTY && bb.xmax > xmax) {
-        xmax = bb.xmax;
-        i_xmax = i_surf;
-      }
-      if (bb.ymin > -INFTY && bb.ymin < ymin) {
-        ymin = bb.ymin;
-        i_ymin = i_surf;
-      }
-      if (bb.ymax < INFTY && bb.ymax > ymax) {
-        ymax = bb.ymax;
-        i_ymax = i_surf;
-      }
-      if (bb.zmin > -INFTY && bb.zmin < zmin) {
-        zmin = bb.zmin;
-        i_zmin = i_surf;
-      }
-      if (bb.zmax < INFTY && bb.zmax > zmax) {
-        zmax = bb.zmax;
-        i_zmax = i_surf;
-      }
+  // Remove duplicate permutations from the pairs of periodic surfaces (using a
+  // functor to compare the pairs)
+  struct compare_pairs {
+    bool operator()(const std::pair<int, int> p1, const std::pair<int, int> p2)
+      const {
+      return p1.first == p2.second;
     }
+  };
+  compare_pairs compare_f;
+  auto last = std::unique(periodic_pairs.begin(), periodic_pairs.end(),
+                          compare_f);
+  periodic_pairs.erase(last, periodic_pairs.end());
+
+  // Resolve unpaired periodic surfaces
+  struct is_unresolved_pair {
+    bool operator()(const std::pair<int, int> p) const
+    {return p.second == -1;}
+  };
+  is_unresolved_pair unresolved_f;
+  auto first_unresolved = std::find_if(periodic_pairs.begin(),
+    periodic_pairs.end(), unresolved_f);
+  if (first_unresolved != periodic_pairs.end()) {
+    auto second_unresolved = std::find_if(first_unresolved+1,
+      periodic_pairs.end(), unresolved_f);
+    if (second_unresolved == periodic_pairs.end()) {
+      fatal_error("Found only one periodic surface without a specified partner."
+        " Please specify the partner for each periodic surface.");
+    }
+    auto third_unresolved = std::find_if(second_unresolved+1,
+      periodic_pairs.end(), unresolved_f);
+    if (third_unresolved != periodic_pairs.end()) {
+      fatal_error("Found at least three periodic surfaces without a specified "
+        "partner. Please specify the partner for each periodic surface.");
+    }
+    first_unresolved->second = second_unresolved->first;
+    periodic_pairs.erase(second_unresolved);
   }
 
-  // Set i_periodic for periodic BC surfaces.
-  for (int i_surf = 0; i_surf < model::surfaces.size(); i_surf++) {
-    if (model::surfaces[i_surf]->bc_ == Surface::BoundaryType::PERIODIC) {
-      // Downcast to the PeriodicSurface type.
-      Surface* surf_base = model::surfaces[i_surf].get();
-      auto surf = dynamic_cast<PeriodicSurface*>(surf_base);
-
-      // Also try downcasting to the SurfacePlane type (which must be handled
-      // differently).
-      SurfacePlane* surf_p = dynamic_cast<SurfacePlane*>(surf);
-
-      if (!surf_p) {
-        // This is not a SurfacePlane.
-        if (surf->i_periodic_ == C_NONE) {
-          // The user did not specify the matching periodic surface.  See if we
-          // can find the partnered surface from the bounding box information.
-          if (i_surf == i_xmin) {
-            surf->i_periodic_ = i_xmax;
-          } else if (i_surf == i_xmax) {
-            surf->i_periodic_ = i_xmin;
-          } else if (i_surf == i_ymin) {
-            surf->i_periodic_ = i_ymax;
-          } else if (i_surf == i_ymax) {
-            surf->i_periodic_ = i_ymin;
-          } else if (i_surf == i_zmin) {
-            surf->i_periodic_ = i_zmax;
-          } else if (i_surf == i_zmax) {
-            surf->i_periodic_ = i_zmin;
-          } else {
-            fatal_error("Periodic boundary condition applied to interior "
-                        "surface");
-          }
-        } else {
-          // Convert the surface id to an index.
-          surf->i_periodic_ = model::surface_map[surf->i_periodic_];
-        }
-      } else {
-        // This is a SurfacePlane.  We won't try to find it's partner if the
-        // user didn't specify one.
-        if (surf->i_periodic_ == C_NONE) {
-          fatal_error(fmt::format("No matching periodic surface specified for "
-            "periodic boundary condition on surface {}", surf->id_));
-        } else {
-          // Convert the surface id to an index.
-          surf->i_periodic_ = model::surface_map[surf->i_periodic_];
-        }
-      }
-
-      // Make sure the opposite surface is also periodic.
-      if (model::surfaces[surf->i_periodic_]->bc_ != Surface::BoundaryType::PERIODIC) {
-        fatal_error(fmt::format("Could not find matching surface for periodic "
-          "boundary condition on surface {}", surf->id_));
-      }
-    }
+  // Assign the periodic boundary conditions
+  for (auto periodic_pair : periodic_pairs) {
+    int i_surf = model::surface_map[periodic_pair.first];
+    int j_surf = model::surface_map[periodic_pair.second];
+    Surface& surf1 {*model::surfaces[i_surf]};
+    Surface& surf2 {*model::surfaces[j_surf]};
+    surf1.new_bc_ = std::make_shared<PeriodicBC>(i_surf, j_surf);
+    surf2.new_bc_ = surf1.new_bc_;
+    dynamic_cast<PeriodicSurface*>(&surf1)->i_periodic_ = j_surf;
+    dynamic_cast<PeriodicSurface*>(&surf2)->i_periodic_ = i_surf;
   }
 
   // Check to make sure a boundary condition was applied to at least one

@@ -58,39 +58,57 @@ TranslationalPeriodicBC::TranslationalPeriodicBC(int i_surf, int j_surf)
   // The following blocks will resolve the type of each surface and compute the
   // appropriate translation vector
 
-  // Check for a pair of x-planes
-  if (const auto* xplane1 = dynamic_cast<const SurfaceXPlane*>(&surf1)) {
-    if (const auto* xplane2 = dynamic_cast<const SurfaceXPlane*>(&surf2)) {
-      translation_ = {xplane2->x0_ - xplane1->x0_, 0, 0};
-    } else {
-      throw std::invalid_argument(fmt::format("Invalid pair of periodic "
-        "surfaces ({} and {}). For a translational periodic BC, both surfaces "
-        "must be of the same type (e.g. both x-plane).", surf1.id_, surf2.id_));
-    }
-
-  // Check for a pair of y-planes
-  } else if (const auto* yplane1 = dynamic_cast<const SurfaceYPlane*>(&surf1)) {
-    if (const auto* yplane2 = dynamic_cast<const SurfaceYPlane*>(&surf2)) {
-      translation_ = {0, yplane2->y0_ - yplane1->y0_, 0};
-    } else {
-      throw std::invalid_argument(fmt::format("Invalid pair of periodic "
-        "surfaces ({} and {}). For a translational periodic BC, both surfaces "
-        "must be of the same type (e.g. both x-plane).", surf1.id_, surf2.id_));
-    }
-
-  // Check for a pair of z-planes
-  } else if (const auto* zplane1 = dynamic_cast<const SurfaceZPlane*>(&surf1)) {
-    if (const auto* zplane2 = dynamic_cast<const SurfaceZPlane*>(&surf2)) {
-      translation_ = {0, 0, zplane2->z0_ - zplane1->z0_};
-    } else {
-      throw std::invalid_argument(fmt::format("Invalid pair of periodic "
-        "surfaces ({} and {}). For a translational periodic BC, both surfaces "
-        "must be of the same type (e.g. both x-plane).", surf1.id_, surf2.id_));
-    }
+  // Make sure the first surface has an appropriate type.
+  if (const auto* ptr = dynamic_cast<const SurfaceXPlane*>(&surf1)) {
+  } else if (const auto* ptr = dynamic_cast<const SurfaceYPlane*>(&surf1)) {
+  } else if (const auto* ptr = dynamic_cast<const SurfaceZPlane*>(&surf1)) {
+  } else if (const auto* ptr = dynamic_cast<const SurfacePlane*>(&surf1)) {
+  } else {
+    throw std::invalid_argument(fmt::format("Surface {} is an invalid type for "
+      "translational periodic BCs. Only planes are supported for these BCs.",
+      surf1.id_));
   }
 
-  // TODO: Check for a pair of general planes
+  // Make sure the second surface has an appropriate type.
+  if (const auto* ptr = dynamic_cast<const SurfaceXPlane*>(&surf2)) {
+  } else if (const auto* ptr = dynamic_cast<const SurfaceYPlane*>(&surf2)) {
+  } else if (const auto* ptr = dynamic_cast<const SurfaceZPlane*>(&surf2)) {
+  } else if (const auto* ptr = dynamic_cast<const SurfacePlane*>(&surf2)) {
+  } else {
+    throw std::invalid_argument(fmt::format("Surface {} is an invalid type for "
+      "translational periodic BCs. Only planes are supported for these BCs.",
+      surf2.id_));
+  }
 
+  // Compute the distance from the first surface to the origin.  Check the
+  // surface evaluate function to decide if the distance is positive, negative,
+  // or zero.
+  Position origin {0, 0, 0};
+  Direction u = surf1.normal(origin);
+  double d1;
+  double e1 = surf1.evaluate(origin);
+  if (e1 > FP_COINCIDENT) {
+    d1 = -surf1.distance(origin, -u, false);
+  } else if (e1 < -FP_COINCIDENT) {
+    d1 = surf1.distance(origin, u, false);
+  } else {
+    d1 = 0.0;
+  }
+
+  // Compute the distance from the second surface to the origin.
+  double d2;
+  double e2 = surf2.evaluate(origin);
+  if (e2 > FP_COINCIDENT) {
+    d2 = -surf2.distance(origin, -u, false);
+  } else if (e2 < -FP_COINCIDENT) {
+    d2 = surf2.distance(origin, u, false);
+  } else {
+    d2 = 0.0;
+  }
+
+  // Set the translation vector; it's length is the difference in the two
+  // distances.
+  translation_ = u * (d2 - d1);
 }
 
 void

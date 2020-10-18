@@ -77,6 +77,9 @@ public:
 
   void
   handle_particle(Particle& p, const Surface& surf) const override;
+
+protected:
+  double angle_;
 };
 
 } // namespace openmc

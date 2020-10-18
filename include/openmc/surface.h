@@ -196,18 +196,6 @@ public:
   int i_periodic_{C_NONE};    //!< Index of corresponding periodic surface
 
   explicit PeriodicSurface(pugi::xml_node surf_node);
-
-  //! Translate a particle onto this surface from a periodic partner surface.
-  //! \param other A pointer to the partner surface in this periodic BC.
-  //! \param r A point on the partner surface that will be translated onto
-  //!   this surface.
-  //! \param u A direction that will be rotated for systems with rotational
-  //!   periodicity.
-  //! \return true if this surface and its partner make a rotationally-periodic
-  //!   boundary condition.
-  virtual bool periodic_translate(const PeriodicSurface* other, Position& r,
-                                  Direction& u) const = 0;
-
 };
 
 //==============================================================================

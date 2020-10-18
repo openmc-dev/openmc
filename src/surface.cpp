@@ -130,6 +130,7 @@ Surface::Surface(pugi::xml_node surf_node)
 
     } else if (surf_bc == "vacuum") {
       bc_ = BoundaryType::VACUUM;
+      new_bc_ = std::make_shared<VacuumBC>();
 
     } else if (surf_bc == "reflective" || surf_bc == "reflect"
                || surf_bc == "reflecting") {
@@ -140,6 +141,7 @@ Surface::Surface(pugi::xml_node surf_node)
       new_bc_ = std::make_shared<WhiteBC>();
     } else if (surf_bc == "periodic") {
       bc_ = BoundaryType::PERIODIC;
+      new_bc_ = std::make_shared<PeriodicBC>();
     } else {
       fatal_error(fmt::format("Unknown boundary condition \"{}\" specified "
         "on surface {}", surf_bc, id_));

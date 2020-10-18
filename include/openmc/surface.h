@@ -143,7 +143,6 @@ public:
 
   //! Write all information needed to reconstruct the surface to an HDF5 group.
   //! \param group_id An HDF5 group id.
-  //TODO: this probably needs to include i_periodic for PeriodicSurface
   virtual void to_hdf5(hid_t group_id) const = 0;
 
   //! Get the BoundingBox for this surface.
@@ -182,21 +181,6 @@ public:
   int32_t dag_index_;      //!< DagMC index of surface
 };
 #endif
-//==============================================================================
-//! A `Surface` that supports periodic boundary conditions.
-//!
-//! Translational periodicity is supported for the `XPlane`, `YPlane`, `ZPlane`,
-//! and `Plane` types.  Rotational periodicity is supported for
-//! `XPlane`-`YPlane` pairs.
-//==============================================================================
-
-class PeriodicSurface : public CSGSurface
-{
-public:
-  int i_periodic_{C_NONE};    //!< Index of corresponding periodic surface
-
-  explicit PeriodicSurface(pugi::xml_node surf_node);
-};
 
 //==============================================================================
 //! A plane perpendicular to the x-axis.
@@ -204,7 +188,7 @@ public:
 //! The plane is described by the equation \f$x - x_0 = 0\f$
 //==============================================================================
 
-class SurfaceXPlane : public PeriodicSurface
+class SurfaceXPlane : public CSGSurface
 {
 public:
   explicit SurfaceXPlane(pugi::xml_node surf_node);
@@ -212,8 +196,6 @@ public:
   double distance(Position r, Direction u, bool coincident) const;
   Direction normal(Position r) const;
   void to_hdf5_inner(hid_t group_id) const;
-  bool periodic_translate(const PeriodicSurface* other, Position& r,
-                          Direction& u) const;
   BoundingBox bounding_box(bool pos_side) const;
 
   double x0_;
@@ -225,7 +207,7 @@ public:
 //! The plane is described by the equation \f$y - y_0 = 0\f$
 //==============================================================================
 
-class SurfaceYPlane : public PeriodicSurface
+class SurfaceYPlane : public CSGSurface
 {
 public:
   explicit SurfaceYPlane(pugi::xml_node surf_node);
@@ -233,8 +215,6 @@ public:
   double distance(Position r, Direction u, bool coincident) const;
   Direction normal(Position r) const;
   void to_hdf5_inner(hid_t group_id) const;
-  bool periodic_translate(const PeriodicSurface* other, Position& r,
-                          Direction& u) const;
   BoundingBox bounding_box(bool pos_side) const;
 
   double y0_;
@@ -246,7 +226,7 @@ public:
 //! The plane is described by the equation \f$z - z_0 = 0\f$
 //==============================================================================
 
-class SurfaceZPlane : public PeriodicSurface
+class SurfaceZPlane : public CSGSurface
 {
 public:
   explicit SurfaceZPlane(pugi::xml_node surf_node);
@@ -254,8 +234,6 @@ public:
   double distance(Position r, Direction u, bool coincident) const;
   Direction normal(Position r) const;
   void to_hdf5_inner(hid_t group_id) const;
-  bool periodic_translate(const PeriodicSurface* other, Position& r,
-                          Direction& u) const;
   BoundingBox bounding_box(bool pos_side) const;
 
   double z0_;
@@ -267,7 +245,7 @@ public:
 //! The plane is described by the equation \f$A x + B y + C z - D = 0\f$
 //==============================================================================
 
-class SurfacePlane : public PeriodicSurface
+class SurfacePlane : public CSGSurface
 {
 public:
   explicit SurfacePlane(pugi::xml_node surf_node);
@@ -275,8 +253,6 @@ public:
   double distance(Position r, Direction u, bool coincident) const;
   Direction normal(Position r) const;
   void to_hdf5_inner(hid_t group_id) const;
-  bool periodic_translate(const PeriodicSurface* other, Position& r,
-                          Direction& u) const;
 
   double A_, B_, C_, D_;
 };

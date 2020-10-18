@@ -293,17 +293,6 @@ Direction DAGSurface::reflect(Position r, Direction u, Particle* p) const
 void DAGSurface::to_hdf5(hid_t group_id) const {}
 
 #endif
-//==============================================================================
-// PeriodicSurface implementation
-//==============================================================================
-
-PeriodicSurface::PeriodicSurface(pugi::xml_node surf_node)
-  : CSGSurface {surf_node}
-{
-  if (check_for_node(surf_node, "periodic_surface_id")) {
-    i_periodic_ = std::stoi(get_node_value(surf_node, "periodic_surface_id"));
-  }
-}
 
 //==============================================================================
 // Generic functions for x-, y-, and z-, planes.
@@ -325,7 +314,7 @@ axis_aligned_plane_distance(Position r, Direction u, bool coincident, double off
 //==============================================================================
 
 SurfaceXPlane::SurfaceXPlane(pugi::xml_node surf_node)
-  : PeriodicSurface(surf_node)
+  : CSGSurface(surf_node)
 {
   read_coeffs(surf_node, id_, x0_);
 }
@@ -367,7 +356,7 @@ SurfaceXPlane::bounding_box(bool pos_side) const
 //==============================================================================
 
 SurfaceYPlane::SurfaceYPlane(pugi::xml_node surf_node)
-  : PeriodicSurface(surf_node)
+  : CSGSurface(surf_node)
 {
   read_coeffs(surf_node, id_, y0_);
 }
@@ -409,7 +398,7 @@ SurfaceYPlane::bounding_box(bool pos_side) const
 //==============================================================================
 
 SurfaceZPlane::SurfaceZPlane(pugi::xml_node surf_node)
-  : PeriodicSurface(surf_node)
+  : CSGSurface(surf_node)
 {
   read_coeffs(surf_node, id_, z0_);
 }
@@ -451,7 +440,7 @@ SurfaceZPlane::bounding_box(bool pos_side) const
 //==============================================================================
 
 SurfacePlane::SurfacePlane(pugi::xml_node surf_node)
-  : PeriodicSurface(surf_node)
+  : CSGSurface(surf_node)
 {
   read_coeffs(surf_node, id_, A_, B_, C_, D_);
 }
@@ -1190,9 +1179,6 @@ void read_surfaces(pugi::xml_node node)
       surf1.new_bc_ = std::make_shared<RotationalPeriodicBC>(i_surf, j_surf);
       surf2.new_bc_ = surf1.new_bc_;
     }
-
-    dynamic_cast<PeriodicSurface*>(&surf1)->i_periodic_ = j_surf;
-    dynamic_cast<PeriodicSurface*>(&surf2)->i_periodic_ = i_surf;
   }
 
   // Check to make sure a boundary condition was applied to at least one

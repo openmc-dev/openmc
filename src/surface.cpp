@@ -1249,8 +1249,19 @@ void read_surfaces(pugi::xml_node node)
     int j_surf = model::surface_map[periodic_pair.second];
     Surface& surf1 {*model::surfaces[i_surf]};
     Surface& surf2 {*model::surfaces[j_surf]};
-    surf1.new_bc_ = std::make_shared<PeriodicBC>(i_surf, j_surf);
-    surf2.new_bc_ = surf1.new_bc_;
+
+    Direction norm1 = surf1.normal({0, 0, 0});
+    Direction norm2 = surf2.normal({0, 0, 0});
+    double dot_prod = norm1.dot(norm2);
+
+    if (std::abs(1.0 - dot_prod) < FP_PRECISION) {
+      surf1.new_bc_ = std::make_shared<TranslationalPeriodicBC>(i_surf, j_surf);
+      surf2.new_bc_ = surf1.new_bc_;
+    } else {
+      surf1.new_bc_ = std::make_shared<RotationalPeriodicBC>(i_surf, j_surf);
+      surf2.new_bc_ = surf1.new_bc_;
+    }
+
     dynamic_cast<PeriodicSurface*>(&surf1)->i_periodic_ = j_surf;
     dynamic_cast<PeriodicSurface*>(&surf2)->i_periodic_ = i_surf;
   }

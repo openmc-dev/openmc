@@ -134,8 +134,10 @@ Surface::Surface(pugi::xml_node surf_node)
     } else if (surf_bc == "reflective" || surf_bc == "reflect"
                || surf_bc == "reflecting") {
       bc_ = BoundaryType::REFLECT;
+      new_bc_ = std::make_shared<ReflectiveBC>();
     } else if (surf_bc == "white") {
       bc_ = BoundaryType::WHITE;
+      new_bc_ = std::make_shared<WhiteBC>();
     } else if (surf_bc == "periodic") {
       bc_ = BoundaryType::PERIODIC;
     } else {

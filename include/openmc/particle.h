@@ -247,7 +247,8 @@ public:
   void cross_reflective_bc(const Surface& surf, Direction new_u);
 
   //! Cross a periodic boundary condition.
-  void cross_periodic_bc(const Surface& surf);
+  void cross_periodic_bc(const Surface& surf, Position new_r, Direction new_u,
+                         int new_surface);
 
   //! mark a particle as lost and create a particle restart file
   //! \param message A warning message to display

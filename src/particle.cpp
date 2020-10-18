@@ -413,23 +413,9 @@ Particle::cross_surface()
     write_message(1, "    Crossing surface {}", surf->id_);
   }
 
-  if (surf->bc_ == Surface::BoundaryType::VACUUM && (settings::run_mode != RunMode::PLOTTING)) {
-
-    cross_vacuum_bc(*surf);
-
-    return;
-
-  } else if ((surf->bc_ == Surface::BoundaryType::REFLECT ||
-              surf->bc_ == Surface::BoundaryType::WHITE)
-              && (settings::run_mode != RunMode::PLOTTING)) {
-
+  // Handle any applicable boundary conditions.
+  if (surf->new_bc_ && settings::run_mode != RunMode::PLOTTING) {
     surf->new_bc_->handle_particle(*this, *surf);
-
-    return;
-
-  } else if (surf->bc_ == Surface::BoundaryType::PERIODIC && settings::run_mode != RunMode::PLOTTING) {
-    cross_periodic_bc(*surf);
-
     return;
   }
 
@@ -570,7 +556,8 @@ Particle::cross_reflective_bc(const Surface& surf, Direction new_u)
 }
 
 void
-Particle::cross_periodic_bc(const Surface& surf)
+Particle::cross_periodic_bc(const Surface& surf, Position new_r,
+                            Direction new_u, int new_surface)
 {
   // Do not handle periodic boundary conditions on lower universes
   if (n_coord_ != 1) {
@@ -596,13 +583,11 @@ Particle::cross_periodic_bc(const Surface& surf)
     model::surfaces[surf_p->i_periodic_].get());
 
   // Adjust the particle's location and direction.
-  bool rotational = other->periodic_translate(surf_p, this->r(), this->u());
+  r() = new_r;
+  u() = new_u;
 
   // Reassign particle's surface
-  // TODO: off-by-one
-  surface_ = rotational ?
-    surf_p->i_periodic_ + 1 :
-    ((surface_ > 0) ? surf_p->i_periodic_ + 1 : -(surf_p->i_periodic_ + 1));
+  surface_ = new_surface;
 
   // Figure out what cell particle is in now
   n_coord_ = 1;

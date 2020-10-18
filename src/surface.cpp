@@ -352,29 +352,6 @@ void SurfaceXPlane::to_hdf5_inner(hid_t group_id) const
   write_dataset(group_id, "coefficients", coeffs);
 }
 
-bool SurfaceXPlane::periodic_translate(const PeriodicSurface* other,
-                                       Position& r,  Direction& u) const
-{
-  Direction other_n = other->normal(r);
-  if (other_n.x == 1 && other_n.y == 0 && other_n.z == 0) {
-    r.x = x0_;
-    return false;
-  } else {
-    // Assume the partner is an YPlane (the only supported partner).  Use the
-    // evaluate function to find y0, then adjust position/Direction for
-    // rotational symmetry.
-    double y0_ = -other->evaluate({0., 0., 0.});
-    r.y = r.x - x0_ + y0_;
-    r.x = x0_;
-
-    double ux = u.x;
-    u.x = -u.y;
-    u.y = ux;
-
-    return true;
-  }
-}
-
 BoundingBox
 SurfaceXPlane::bounding_box(bool pos_side) const
 {
@@ -417,30 +394,6 @@ void SurfaceYPlane::to_hdf5_inner(hid_t group_id) const
   write_dataset(group_id, "coefficients", coeffs);
 }
 
-bool SurfaceYPlane::periodic_translate(const PeriodicSurface* other,
-                                       Position& r, Direction& u) const
-{
-  Direction other_n = other->normal(r);
-  if (other_n.x == 0 && other_n.y == 1 && other_n.z == 0) {
-    // The periodic partner is also aligned along y.  Just change the y coord.
-    r.y = y0_;
-    return false;
-  } else {
-    // Assume the partner is an XPlane (the only supported partner).  Use the
-    // evaluate function to find x0, then adjust position/Direction for rotational
-    // symmetry.
-    double x0_ = -other->evaluate({0., 0., 0.});
-    r.x = r.y - y0_ + x0_;
-    r.y = y0_;
-
-    double ux = u.x;
-    u.x = u.y;
-    u.y = -ux;
-
-    return true;
-  }
-}
-
 BoundingBox
 SurfaceYPlane::bounding_box(bool pos_side) const
 {
@@ -481,14 +434,6 @@ void SurfaceZPlane::to_hdf5_inner(hid_t group_id) const
   write_string(group_id, "type", "z-plane", false);
   std::array<double, 1> coeffs {{z0_}};
   write_dataset(group_id, "coefficients", coeffs);
-}
-
-bool SurfaceZPlane::periodic_translate(const PeriodicSurface* other,
-                                       Position& r, Direction& u) const
-{
-  // Assume the other plane is aligned along z.  Just change the z coord.
-  r.z = z0_;
-  return false;
 }
 
 BoundingBox
@@ -542,22 +487,6 @@ void SurfacePlane::to_hdf5_inner(hid_t group_id) const
   write_string(group_id, "type", "plane", false);
   std::array<double, 4> coeffs {{A_, B_, C_, D_}};
   write_dataset(group_id, "coefficients", coeffs);
-}
-
-bool SurfacePlane::periodic_translate(const PeriodicSurface* other, Position& r,
-                                      Direction& u) const
-{
-  // This function assumes the other plane shares this plane's normal direction.
-
-  // Determine the distance to intersection.
-  double d = evaluate(r) / (A_*A_ + B_*B_ + C_*C_);
-
-  // Move the particle that distance along the normal vector.
-  r.x -= d * A_;
-  r.y -= d * B_;
-  r.z -= d * C_;
-
-  return false;
 }
 
 //==============================================================================

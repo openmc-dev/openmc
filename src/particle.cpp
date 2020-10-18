@@ -577,11 +577,6 @@ Particle::cross_periodic_bc(const Surface& surf, Position new_r,
     this->r() = r;
   }
 
-  // Get a pointer to the partner periodic surface
-  auto surf_p = dynamic_cast<const PeriodicSurface*>(&surf);
-  auto other = dynamic_cast<const PeriodicSurface*>(
-    model::surfaces[surf_p->i_periodic_].get());
-
   // Adjust the particle's location and direction.
   r() = new_r;
   u() = new_u;

@@ -9,11 +9,19 @@
 
 namespace openmc {
 
+//==============================================================================
+// VacuumBC implementation
+//==============================================================================
+
 void
 VacuumBC::handle_particle(Particle& p, const Surface& surf) const
 {
   p.cross_vacuum_bc(surf);
 }
+
+//==============================================================================
+// ReflectiveBC implementation
+//==============================================================================
 
 void
 ReflectiveBC::handle_particle(Particle& p, const Surface& surf) const
@@ -24,6 +32,10 @@ ReflectiveBC::handle_particle(Particle& p, const Surface& surf) const
   p.cross_reflective_bc(surf, u);
 }
 
+//==============================================================================
+// WhiteBC implementation
+//==============================================================================
+
 void
 WhiteBC::handle_particle(Particle& p, const Surface& surf) const
 {
@@ -32,6 +44,10 @@ WhiteBC::handle_particle(Particle& p, const Surface& surf) const
 
   p.cross_reflective_bc(surf, u);
 }
+
+//==============================================================================
+// TranslationalPeriodicBC implementation
+//==============================================================================
 
 TranslationalPeriodicBC::TranslationalPeriodicBC(int i_surf, int j_surf)
   : PeriodicBC(i_surf, j_surf)
@@ -101,6 +117,10 @@ TranslationalPeriodicBC::handle_particle(Particle& p, const Surface& surf) const
   // Pass the new location and surface to the particle.
   p.cross_periodic_bc(surf, new_r, p.u(), new_surface);
 }
+
+//==============================================================================
+// RotationalPeriodicBC implementation
+//==============================================================================
 
 RotationalPeriodicBC::RotationalPeriodicBC(int i_surf, int j_surf)
   : PeriodicBC(i_surf, j_surf)

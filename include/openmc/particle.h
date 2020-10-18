@@ -40,6 +40,9 @@ constexpr double CACHE_INVALID {-1.0};
 // Class declarations
 //==============================================================================
 
+// Forward declare the Surface class for use in function arguments.
+class Surface;
+
 class LocalCoord {
 public:
   void rotate(const std::vector<double>& rotation);
@@ -236,6 +239,15 @@ public:
 
   //! Cross a surface and handle boundary conditions
   void cross_surface();
+
+  //! Cross a vacuum boundary condition.
+  void cross_vacuum_bc(const Surface& surf);
+
+  //! Cross a reflective boundary condition.
+  void cross_reflective_bc(const Surface& surf);
+
+  //! Cross a periodic boundary condition.
+  void cross_periodic_bc(const Surface& surf);
 
   //! mark a particle as lost and create a particle restart file
   //! \param message A warning message to display

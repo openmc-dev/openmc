@@ -84,6 +84,7 @@ public:
 
 protected:
   double angle_;
+  bool aligned_normals_;
 };
 
 } // namespace openmc

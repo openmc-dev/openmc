@@ -9,12 +9,6 @@ namespace openmc {
 // Global variables
 //==============================================================================
 
-//class BoundaryCondition;
-//
-//namespace model {
-//  extern std::vector<std::unique_ptr<BoundaryCondition>> boundary_conditions;
-//} // namespace model
-
 class Particle;
 class Surface;
 
@@ -23,6 +17,8 @@ class BoundaryCondition
 public:
   virtual void
   handle_particle(Particle& p, const Surface& surf) const = 0;
+
+  virtual std::string type() const = 0;
 };
 
 class VacuumBC : public BoundaryCondition
@@ -30,6 +26,8 @@ class VacuumBC : public BoundaryCondition
 public:
   void
   handle_particle(Particle& p, const Surface& surf) const override;
+
+  std::string type() const override {return "vacuum";}
 };
 
 class ReflectiveBC : public BoundaryCondition
@@ -37,6 +35,8 @@ class ReflectiveBC : public BoundaryCondition
 public:
   void
   handle_particle(Particle& p, const Surface& surf) const override;
+
+  std::string type() const override {return "reflective";}
 };
 
 class WhiteBC : public BoundaryCondition
@@ -44,6 +44,8 @@ class WhiteBC : public BoundaryCondition
 public:
   void
   handle_particle(Particle& p, const Surface& surf) const override;
+
+  std::string type() const override {return "white";}
 };
 
 class PeriodicBC : public BoundaryCondition
@@ -52,6 +54,8 @@ public:
   PeriodicBC(int i_surf, int j_surf)
     : i_surf_(i_surf), j_surf_(j_surf)
   {};
+
+  std::string type() const override {return "periodic";}
 
 protected:
   int i_surf_;

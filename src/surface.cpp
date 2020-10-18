@@ -126,28 +126,20 @@ Surface::Surface(pugi::xml_node surf_node)
     std::string surf_bc = get_node_value(surf_node, "boundary", true, true);
 
     if (surf_bc == "transmission" || surf_bc == "transmit" ||surf_bc.empty()) {
-      bc_ = BoundaryType::TRANSMIT;
-
+      // Leave the bc_ a nullptr
     } else if (surf_bc == "vacuum") {
-      bc_ = BoundaryType::VACUUM;
-      new_bc_ = std::make_shared<VacuumBC>();
-
+      bc_ = std::make_shared<VacuumBC>();
     } else if (surf_bc == "reflective" || surf_bc == "reflect"
                || surf_bc == "reflecting") {
-      bc_ = BoundaryType::REFLECT;
-      new_bc_ = std::make_shared<ReflectiveBC>();
+      bc_ = std::make_shared<ReflectiveBC>();
     } else if (surf_bc == "white") {
-      bc_ = BoundaryType::WHITE;
-      new_bc_ = std::make_shared<WhiteBC>();
+      bc_ = std::make_shared<WhiteBC>();
     } else if (surf_bc == "periodic") {
-      bc_ = BoundaryType::PERIODIC;
+      // periodic BC's are handled separately
     } else {
       fatal_error(fmt::format("Unknown boundary condition \"{}\" specified "
         "on surface {}", surf_bc, id_));
     }
-
-  } else {
-    bc_ = BoundaryType::TRANSMIT;
   }
 
 }
@@ -212,22 +204,10 @@ CSGSurface::to_hdf5(hid_t group_id) const
 
   hid_t surf_group = create_group(group_id, group_name);
 
-  switch(bc_) {
-    case BoundaryType::TRANSMIT :
-      write_string(surf_group, "boundary_type", "transmission", false);
-      break;
-    case BoundaryType::VACUUM :
-      write_string(surf_group, "boundary_type", "vacuum", false);
-      break;
-    case BoundaryType::REFLECT :
-      write_string(surf_group, "boundary_type", "reflective", false);
-      break;
-    case BoundaryType::WHITE :
-      write_string(surf_group, "boundary_type", "white", false);
-      break;
-    case BoundaryType::PERIODIC :
-      write_string(surf_group, "boundary_type", "periodic", false);
-      break;
+  if (bc_) {
+    write_string(surf_group, "boundary_type", bc_->type(), false);
+  } else {
+    write_string(surf_group, "boundary_type", "transmission", false);
   }
 
   if (!name_.empty()) {
@@ -1173,11 +1153,11 @@ void read_surfaces(pugi::xml_node node)
     double dot_prod = norm1.dot(norm2);
 
     if (std::abs(1.0 - dot_prod) < FP_PRECISION) {
-      surf1.new_bc_ = std::make_shared<TranslationalPeriodicBC>(i_surf, j_surf);
-      surf2.new_bc_ = surf1.new_bc_;
+      surf1.bc_ = std::make_shared<TranslationalPeriodicBC>(i_surf, j_surf);
+      surf2.bc_ = surf1.bc_;
     } else {
-      surf1.new_bc_ = std::make_shared<RotationalPeriodicBC>(i_surf, j_surf);
-      surf2.new_bc_ = surf1.new_bc_;
+      surf1.bc_ = std::make_shared<RotationalPeriodicBC>(i_surf, j_surf);
+      surf2.bc_ = surf1.bc_;
     }
   }
 
@@ -1185,7 +1165,7 @@ void read_surfaces(pugi::xml_node node)
   // surface
   bool boundary_exists = false;
   for (const auto& surf : model::surfaces) {
-    if (surf->bc_ != Surface::BoundaryType::TRANSMIT) {
+    if (surf->bc_) {
       boundary_exists = true;
       break;
     }

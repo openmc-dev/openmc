@@ -85,19 +85,9 @@ class Surface
 {
 public:
 
-  // Types of available boundary conditions on a surface
-  enum class BoundaryType {
-    TRANSMIT,
-    VACUUM,
-    REFLECT,
-    PERIODIC,
-    WHITE
-  };
-
-  int id_;                    //!< Unique ID
-  BoundaryType bc_;                    //!< Boundary condition
-  std::shared_ptr<BoundaryCondition> new_bc_ {nullptr};
-  std::string name_;          //!< User-defined name
+  int id_; //!< Unique ID
+  std::string name_; //!< User-defined name
+  std::shared_ptr<BoundaryCondition> bc_ {nullptr}; //!< Boundary condition
 
   explicit Surface(pugi::xml_node surf_node);
   Surface();

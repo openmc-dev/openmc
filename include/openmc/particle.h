@@ -244,7 +244,7 @@ public:
   void cross_vacuum_bc(const Surface& surf);
 
   //! Cross a reflective boundary condition.
-  void cross_reflective_bc(const Surface& surf);
+  void cross_reflective_bc(const Surface& surf, Direction new_u);
 
   //! Cross a periodic boundary condition.
   void cross_periodic_bc(const Surface& surf);

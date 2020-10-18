@@ -414,8 +414,6 @@ Particle::cross_surface()
   }
 
   if (surf->bc_ == Surface::BoundaryType::VACUUM && (settings::run_mode != RunMode::PLOTTING)) {
-    // =======================================================================
-    // PARTICLE LEAKS OUT OF PROBLEM
 
     cross_vacuum_bc(*surf);
 
@@ -425,7 +423,7 @@ Particle::cross_surface()
               surf->bc_ == Surface::BoundaryType::WHITE)
               && (settings::run_mode != RunMode::PLOTTING)) {
 
-    cross_reflective_bc(*surf);
+    surf->new_bc_->handle_particle(*this, *surf);
 
     return;
 
@@ -515,7 +513,7 @@ Particle::cross_vacuum_bc(const Surface& surf)
 }
 
 void
-Particle::cross_reflective_bc(const Surface& surf)
+Particle::cross_reflective_bc(const Surface& surf, Direction new_u)
 {
   // Do not handle reflective boundary conditions on lower universes
   if (n_coord_ != 1) {
@@ -542,12 +540,8 @@ Particle::cross_reflective_bc(const Surface& surf)
     this->r() = r;
   }
 
-  Direction u = (surf.bc_ == Surface::BoundaryType::REFLECT) ?
-    surf.reflect(this->r(), this->u(), this) :
-    surf.diffuse_reflect(this->r(), this->u(), this->current_seed());
-
-  // Make sure new particle direction is normalized
-  this->u() = u / u.norm();
+  // Set the new particle direction
+  this->u() = new_u;
 
   // Reassign particle's cell and surface
   coord_[0].cell = cell_last_[n_coord_last_ - 1];

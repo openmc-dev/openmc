@@ -10,6 +10,7 @@
 #include "hdf5.h"
 #include "pugixml.hpp"
 
+#include "openmc/boundary_condition.h"
 #include "openmc/constants.h"
 #include "openmc/particle.h"
 #include "openmc/position.h"
@@ -95,6 +96,7 @@ public:
 
   int id_;                    //!< Unique ID
   BoundaryType bc_;                    //!< Boundary condition
+  std::shared_ptr<BoundaryCondition> new_bc_ {nullptr};
   std::string name_;          //!< User-defined name
 
   explicit Surface(pugi::xml_node surf_node);

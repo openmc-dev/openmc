@@ -406,6 +406,7 @@ bool StructuredMesh::intersects_3d(Position& r0, Position r1, int* ijk) const
 }
 
 void StructuredMesh::bins_crossed(const Particle& p, std::vector<int>& bins,
+  std::vector<double>& lengths) const
 {
   // ========================================================================
   // Determine where the track intersects the mesh and if it intersects at all.
@@ -424,13 +425,18 @@ void StructuredMesh::bins_crossed(const Particle& p, std::vector<int>& bins,
   Position r0 = last_r + TINY_BIT*u;
   Position r1 = r - TINY_BIT*u;
 
-  // Determine the mesh indices for the starting and ending coords.
+  // Determine the mesh indices for the starting and ending coords. Here, we
+  // use arrays for ijk0 and ijk1 instead of std::vector because we obtain a
+  // small performance improvement by forcing this data to live on the stack,
+  // rather than on the heap. We know the maximum length is 3, and by
+  // ensuring that all loops are only indexed up to n_dimension, we will not
+  // access any non-initialized values. The same concept is used throughout.
   int n = n_dimension_;
-  std::vector<int> ijk0(n), ijk1(n);
+  int ijk0[3], ijk1[3];
   bool start_in_mesh;
-  get_indices(r0, ijk0.data(), &start_in_mesh);
+  get_indices(r0, ijk0, &start_in_mesh);
   bool end_in_mesh;
-  get_indices(r1, ijk1.data(), &end_in_mesh);
+  get_indices(r1, ijk1, &end_in_mesh);
 
   // Reset coordinates and check for a mesh intersection if necessary.
   if (start_in_mesh) {
@@ -440,7 +446,7 @@ void StructuredMesh::bins_crossed(const Particle& p, std::vector<int>& bins,
     // The initial coords do not lie in the mesh.  Check to see if the particle
     // eventually intersects the mesh and compute the relevant coords and
     // indices.
-    if (!intersects(r0, r1, ijk0.data())) return;
+    if (!intersects(r0, r1, ijk0)) return;
   }
   r1 = r;
 
@@ -458,33 +464,33 @@ void StructuredMesh::bins_crossed(const Particle& p, std::vector<int>& bins,
   // Find which mesh cells are traversed and the length of each traversal.
 
   while (true) {
-    if (ijk0 == ijk1) {
+    if (std::equal(ijk0, ijk0 + n, ijk1)) {
       // The track ends in this cell.  Use the particle end location rather
       // than the mesh surface and stop iterating.
       double distance = (r1 - r0).norm();
-      bins.push_back(get_bin_from_indices(ijk0.data()));
+      bins.push_back(get_bin_from_indices(ijk0));
       lengths.push_back(distance / total_distance);
       break;
     }
 
     // The track exits this cell.  Determine the distance to each mesh surface.
-    std::vector<double> d(n);
+    double d[3];
     for (int k = 0; k < n; ++k) {
       if (std::fabs(u[k]) < FP_PRECISION) {
         d[k] = INFTY;
       } else if (u[k] > 0) {
-        double xyz_cross = positive_grid_boundary(ijk0.data(), k);
+        double xyz_cross = positive_grid_boundary(ijk0, k);
         d[k] = (xyz_cross - r0[k]) / u[k];
       } else {
-        double xyz_cross = negative_grid_boundary(ijk0.data(), k);
+        double xyz_cross = negative_grid_boundary(ijk0, k);
         d[k] = (xyz_cross - r0[k]) / u[k];
       }
     }
 
     // Pick the closest mesh surface and append this traversal to the output.
-    auto j = std::min_element(d.begin(), d.end()) - d.begin();
+    auto j = std::min_element(d, d + n) - d;
     double distance = d[j];
-    bins.push_back(get_bin_from_indices(ijk0.data()));
+    bins.push_back(get_bin_from_indices(ijk0));
     lengths.push_back(distance / total_distance);
 
     // Translate to the oncoming mesh surface.

@@ -297,12 +297,13 @@ void load_dagmc_geometry()
     std::string bc_value = DMD.get_surface_property("boundary", surf_handle);
     to_lower(bc_value);
     if (bc_value.empty() || bc_value == "transmit" || bc_value == "transmission") {
-      // set to transmission by default
-      s->bc_ = Surface::BoundaryType::TRANSMIT;
+      // Leave the bc_ a nullptr
     } else if (bc_value == "vacuum") {
-      s->bc_ = Surface::BoundaryType::VACUUM;
+      s->bc_ = std::make_shared<VacuumBC>();
     } else if (bc_value == "reflective" || bc_value == "reflect" || bc_value == "reflecting") {
-      s->bc_ = Surface::BoundaryType::REFLECT;
+      s->bc_ = std::make_shared<ReflectiveBC>();
+    } else if (bc_value == "white") {
+      fatal_error("White boundary condition not supported in DAGMC.");
     } else if (bc_value == "periodic") {
       fatal_error("Periodic boundary condition not supported in DAGMC.");
     } else {
@@ -318,7 +319,7 @@ void load_dagmc_geometry()
     // if this surface belongs to the graveyard
     if (graveyard && parent_vols.find(graveyard) != parent_vols.end()) {
       // set graveyard surface BC's to vacuum
-      s->bc_ = Surface::BoundaryType::VACUUM;
+      s->bc_ = std::make_shared<VacuumBC>();
     }
 
     // add to global array and map

@@ -382,7 +382,7 @@ Mgxs::Mgxs(const std::string& in_name, const std::vector<double>& mat_kTs,
     // We will do this by treating the multiple temperatures of a nuclide as
     // a different nuclide. Mathematically this just means the temperature
     // interpolant is included in the number density.
-    // These interpolants are contained within interp.
+    // These interpolants are contained within interpolant.
     std::vector<double> interpolant;     // the interpolant for the Mgxs
     std::vector<int> temp_indices;       // the temperature index for each Mgxs
     std::vector<Mgxs*> mgxs_to_combine;  // The Mgxs to combine

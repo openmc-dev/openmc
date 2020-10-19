@@ -309,8 +309,9 @@ def _calculate_cexs_nuclide(this, types, temperature=294., sab_name=None,
         Nuclide object to source data from
     types : Iterable of str or Integral
         The type of cross sections to calculate; values can either be those
-        in openmc.PLOT_TYPES or integers which correspond to reaction
-        channel (MT) numbers.
+        in openmc.PLOT_TYPES or keys from openmc.data.REACTION_MT which
+        correspond to a reaction description e.g '(n,2n)' or integers which
+        correspond to reaction channel (MT) numbers.
     temperature : float, optional
         Temperature in Kelvin to plot. If not specified, a default
         temperature of 294K will be plotted. Note that the nearest
@@ -404,7 +405,15 @@ def _calculate_cexs_nuclide(this, types, temperature=294., sab_name=None,
                     ops.append((np.add,) * (len(tmp_mts) - 2) + (np.multiply,))
                 else:
                     ops.append((np.add,) * (len(tmp_mts) - 1))
-            else:
+            elif line in openmc.data.REACTION_MT:
+                mt_number = openmc.data.REACTION_MT[line]
+                cv.check_type('MT in types', mt_number, Integral)
+                cv.check_greater_than('MT in types', mt_number, 0)
+                tmp_mts = nuc.get_reaction_components(mt_number)
+                mts.append(tmp_mts)
+                ops.append((np.add,) * (len(tmp_mts) - 1))
+                yields.append(False)
+            elif isinstance(line, int):
                 # Not a built-in type, we have to parse it ourselves
                 cv.check_type('MT in types', line, Integral)
                 cv.check_greater_than('MT in types', line, 0)
@@ -412,6 +421,8 @@ def _calculate_cexs_nuclide(this, types, temperature=294., sab_name=None,
                 mts.append(tmp_mts)
                 ops.append((np.add,) * (len(tmp_mts) - 1))
                 yields.append(False)
+            else:
+                raise TypeError("Invalid type", line)
 
         for i, mt_set in enumerate(mts):
             # Get the reaction xs data from the nuclide

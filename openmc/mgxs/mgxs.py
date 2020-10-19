@@ -2872,7 +2872,7 @@ class DiffusionCoefficient(TransportXS):
        \phi \rangle}{\langle \phi \rangle} \\
        D = \frac{1}{3 \sigma_{tr}}
        \end{aligned}
-       
+
     To incorporate the effect of scattering multiplication in the above
     relation, the `nu` parameter can be set to `True`.
 
@@ -3057,7 +3057,7 @@ class DiffusionCoefficient(TransportXS):
                     filter_bins=[('P1',)],
                     squeeze=True)
             p1_tally._scores = ['scatter-1']
-            
+
             total = self.tallies['total'] / self.tallies['flux (tracklength)']
             trans_corr = p1_tally / self.tallies['flux (analog)']
             transport = (total - trans_corr)
@@ -3066,7 +3066,7 @@ class DiffusionCoefficient(TransportXS):
 
         else:
             dif_coef = self.rxn_rate_tally
-            
+
         flux_tally = condensed_xs.tallies['flux (tracklength)']
         condensed_xs._tallies = OrderedDict()
         condensed_xs._tallies[self._rxn_type] = dif_coef
@@ -5633,8 +5633,8 @@ class Chi(MGXS):
     """
 
     # Store whether or not the number density should be removed for microscopic
-    # values of this data; since this chi data is normalized to 1.0, the 
-    # data should not be divided by the number density 
+    # values of this data; since this chi data is normalized to 1.0, the
+    # data should not be divided by the number density
     _divide_by_density = False
 
     def __init__(self, domain=None, domain_type=None, groups=None,
@@ -6554,7 +6554,7 @@ class MeshSurfaceMGXS(MGXS):
         surfaces = df.pop(col_key)
         df.insert(len(self.domain.dimension), col_key, surfaces)
         if len(self.domain.dimension) == 1:
-            df.sort_values(by=[(mesh_str, 'x'), (mesh_str, 'surf')] 
+            df.sort_values(by=[(mesh_str, 'x'), (mesh_str, 'surf')]
                     + columns, inplace=True)
         elif len(self.domain.dimension) == 2:
             df.sort_values(by=[(mesh_str, 'x'), (mesh_str, 'y'),
@@ -6642,7 +6642,7 @@ class Current(MeshSurfaceMGXS):
         is None unless the multi-group cross section has been computed.
     num_subdomains : int
         The number of subdomains is equal to the number of mesh surfaces times
-        two to account for both the incoming and outgoing current from the 
+        two to account for both the incoming and outgoing current from the
         mesh cell surfaces.
     num_nuclides : int
         Unused in MeshSurfaceMGXS

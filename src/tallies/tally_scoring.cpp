@@ -1566,17 +1566,17 @@ score_general_mg(Particle& p, int i_tally, int start_index, int filter_index,
         score = p.wgt_last_ * flux;
         if (i_nuclide >= 0) {
           score *= atom_density * nuc_xs.get_xs(
-              MgxsType::SCATTER_FMU_MULT, p.g_last_, &p.g_, &p.mu_, nullptr)
+              MgxsType::SCATTER_FMU, p.g_last_, &p.g_, &p.mu_, nullptr)
             / macro_xs.get_xs(
-              MgxsType::SCATTER_FMU_MULT, p.g_last_, &p.g_, &p.mu_, nullptr);
+              MgxsType::SCATTER_FMU, p.g_last_, &p.g_, &p.mu_, nullptr);
         }
       } else {
         if (i_nuclide >= 0) {
           score = atom_density * flux * nuc_xs.get_xs(
-            MgxsType::SCATTER_MULT, p_g, nullptr, &p.mu_, nullptr);
+            MgxsType::SCATTER, p_g, nullptr, &p.mu_, nullptr);
         } else {
           score = flux * macro_xs.get_xs(
-            MgxsType::SCATTER_MULT, p_g, nullptr, &p.mu_, nullptr);
+            MgxsType::SCATTER, p_g, nullptr, &p.mu_, nullptr);
         }
       }
       break;
@@ -1595,16 +1595,16 @@ score_general_mg(Particle& p, int i_tally, int start_index, int filter_index,
         // adjust the score by the actual probability for that nuclide.
         if (i_nuclide >= 0) {
           score *= atom_density
-            * nuc_xs.get_xs(MgxsType::SCATTER_FMU, p.g_last_, &p.g_,
+            * nuc_xs.get_xs(MgxsType::NU_SCATTER_FMU, p.g_last_, &p.g_,
                             &p.mu_, nullptr)
-            / macro_xs.get_xs(MgxsType::SCATTER_FMU, p.g_last_, &p.g_,
+            / macro_xs.get_xs(MgxsType::NU_SCATTER_FMU, p.g_last_, &p.g_,
                               &p.mu_, nullptr);
         }
       } else {
         if (i_nuclide >= 0) {
-          score = atom_density * flux * nuc_xs.get_xs(MgxsType::SCATTER, p_g);
+          score = atom_density * flux * nuc_xs.get_xs(MgxsType::NU_SCATTER, p_g);
         } else {
-          score = flux * macro_xs.get_xs(MgxsType::SCATTER, p_g);
+          score = flux * macro_xs.get_xs(MgxsType::NU_SCATTER, p_g);
         }
       }
       break;

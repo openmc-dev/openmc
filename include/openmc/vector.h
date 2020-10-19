@@ -380,7 +380,7 @@ __host__ __device__ bool operator==(
 
 #else
 
-using vector;
+using std::vector;
 
 #endif
 

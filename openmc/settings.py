@@ -930,13 +930,13 @@ class Settings:
         if self.entropy_mesh is not None:
             # use default heuristic for entropy mesh if not set by user
             if self.entropy_mesh.dimension is None:
-                    if self.particles is None:
-                        raise RuntimeError("Number of particles must be set in order to " \
-                          "use entropy mesh dimension heuristic")
-                    else:
-                        n = ceil((self.particles / 20.0)**(1.0 / 3.0))
-                        d = len(self.entropy_mesh.lower_left)
-                        self.entropy_mesh.dimension = (n,)*d
+                if self.particles is None:
+                    raise RuntimeError("Number of particles must be set in order to " \
+                      "use entropy mesh dimension heuristic")
+                else:
+                    n = ceil((self.particles / 20.0)**(1.0 / 3.0))
+                    d = len(self.entropy_mesh.lower_left)
+                    self.entropy_mesh.dimension = (n,)*d
 
             # See if a <mesh> element already exists -- if not, add it
             path = "./mesh[@id='{}']".format(self.entropy_mesh.id)

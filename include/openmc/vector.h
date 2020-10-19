@@ -302,9 +302,9 @@ public:
   __host__ iterator insert(iterator pos, const T& value)
   {
     // Make space for the new entry, and grow if necessary
+    std::size_t indx = pos - begin_;
     if (size_ == capacity_)
       grow();
-    std::size_t indx = pos - begin_;
     for (std::size_t i = size_; i > indx; i--)
       begin_[i] = begin_[i - 1];
     begin_[indx] = value;

@@ -309,7 +309,7 @@ def _calculate_cexs_nuclide(this, types, temperature=294., sab_name=None,
         Nuclide object to source data from
     types : Iterable of str or Integral
         The type of cross sections to calculate; values can either be those
-        in openmc.PLOT_TYPES or keys from openmc.data.REACTION_NUMBER which
+        in openmc.PLOT_TYPES or keys from openmc.data.REACTION_MT which
         correspond to a reaction description e.g '(n,2n)' or integers which
         correspond to reaction channel (MT) numbers.
     temperature : float, optional
@@ -405,8 +405,8 @@ def _calculate_cexs_nuclide(this, types, temperature=294., sab_name=None,
                     ops.append((np.add,) * (len(tmp_mts) - 2) + (np.multiply,))
                 else:
                     ops.append((np.add,) * (len(tmp_mts) - 1))
-            elif line in openmc.data.REACTION_NUMBER.keys():
-                mt_number = openmc.data.REACTION_NUMBER[line]
+            elif line in openmc.data.REACTION_MT:
+                mt_number = openmc.data.REACTION_MT[line]
                 cv.check_type('MT in types', mt_number, Integral)
                 cv.check_greater_than('MT in types', mt_number, 0)
                 tmp_mts = nuc.get_reaction_components(mt_number)

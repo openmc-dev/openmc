@@ -797,11 +797,8 @@ double RegularMesh::negative_grid_boundary(int* ijk, int i) const
   return lower_left_[i] + (ijk[i] - 1) * width_[i];
 }
 
-void
-RegularMesh::surface_bins_crossed(Position r0,
-                                  Position r1,
-                                  const Direction& u,
-                                  vector<int>& bins) const
+void RegularMesh::surface_bins_crossed(
+  const Particle& p, vector<int>& bins) const
 {
   // ========================================================================
   // Determine if the track intersects the tally mesh.

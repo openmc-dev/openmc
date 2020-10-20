@@ -141,11 +141,8 @@ public:
 
   int n_surface_bins() const override;
 
-  void bins_crossed(Position r0,
-                    Position r1,
-                    const Direction& u,
-                    vector<int>& bins,
-                    vector<double>& lengths) const override;
+  void bins_crossed(const Particle& p, vector<int>& bins,
+    vector<double>& lengths) const override;
 
   //! Count number of bank sites in each mesh bin / energy bin
   //
@@ -268,8 +265,6 @@ public:
 
   void surface_bins_crossed(const Particle& p, vector<int>& bins)
   const override;
-
-  int get_index_in_direction(double r, int i) const override;
 
   int get_index_in_direction(double r, int i) const override;
 

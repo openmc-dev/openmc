@@ -1403,10 +1403,6 @@ openmc_material_set_density(int32_t index, double density, const char* units)
 extern "C" int
 openmc_material_set_densities(int32_t index, int n, const char** name, const double* density)
 {
-#ifdef __CUDACC__
-  throw std::runtime_error(
-    "TODO: implement openmc_material_set_densities w/ GPU-compatible vectors");
-#else
   if (index >= 0 && index < model::materials.size()) {
     try {
       model::materials[index]->set_densities({name, name + n}, {density, density + n});
@@ -1419,7 +1415,6 @@ openmc_material_set_densities(int32_t index, int n, const char** name, const dou
     return OPENMC_E_OUT_OF_BOUNDS;
   }
   return 0;
-#endif
 }
 
 extern "C" int

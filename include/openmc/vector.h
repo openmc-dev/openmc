@@ -218,7 +218,7 @@ public:
     }
     begin_ = alloc_.allocate(size_);
     for (std::size_t i = 0; i < size_; ++i)
-      begin_[i] = begin[i];
+      new (begin_ + i) value_type(begin[i]);
   }
 
   // Conversion assignment

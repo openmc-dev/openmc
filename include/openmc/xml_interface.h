@@ -1,9 +1,10 @@
 #ifndef OPENMC_XML_INTERFACE_H
 #define OPENMC_XML_INTERFACE_H
 
+#include "openmc/string.h"
+#include "openmc/vector.h"
 #include <cstddef> // for size_t
 #include <sstream> // for stringstream
-#include <string>
 
 #include "pugixml.hpp"
 #include "xtensor/xarray.hpp"

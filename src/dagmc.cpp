@@ -183,7 +183,7 @@ void load_dagmc_geometry()
   dagmcMetaData DMD(model::DAG, false, false);
   DMD.load_property_data();
 
-  vector<std::string> keywords {"temp"};
+  vector<string> keywords {"temp"};
   std::map<std::string, std::string> dum;
   std::string delimiters = ":/";
   rval = model::DAG->parse_properties(keywords, dum, delimiters.c_str());

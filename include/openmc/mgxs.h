@@ -4,13 +4,12 @@
 #ifndef OPENMC_MGXS_H
 #define OPENMC_MGXS_H
 
-#include <string>
-
 #include "xtensor/xtensor.hpp"
 
 #include "openmc/constants.h"
 #include "openmc/hdf5_interface.h"
 #include "openmc/particle.h"
+#include "openmc/string.h"
 #include "openmc/vector.h"
 #include "openmc/xsdata.h"
 

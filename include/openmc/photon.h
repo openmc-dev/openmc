@@ -4,13 +4,13 @@
 #include "openmc/endf.h"
 #include "openmc/memory.h" // for unique_ptr
 #include "openmc/particle.h"
+#include "openmc/string.h"
 #include "openmc/vector.h"
 
 #include <gsl/gsl>
 #include <hdf5.h>
 #include "xtensor/xtensor.hpp"
 
-#include <string>
 #include <unordered_map>
 #include <utility> // for pair
 

@@ -1,7 +1,7 @@
 #ifndef OPENMC_TALLIES_FILTER_SPH_HARM_H
 #define OPENMC_TALLIES_FILTER_SPH_HARM_H
 
-#include <string>
+#include "openmc/string.h"
 
 #include <gsl/gsl>
 

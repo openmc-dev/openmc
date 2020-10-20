@@ -1,5 +1,6 @@
 #include "openmc/state_point.h"
 
+#include "openmc/vector.h"
 #include <algorithm>
 #include <cstdint> // for int64_t
 #include <string>
@@ -203,7 +204,7 @@ openmc_statepoint_write(const char* filename, bool* write_source)
         }
 
         // Write the nuclides this tally scores
-        vector<std::string> nuclides;
+        vector<string> nuclides;
         for (auto i_nuclide : tally->nuclides_) {
           if (i_nuclide == -1) {
             nuclides.push_back("total");
@@ -221,7 +222,7 @@ openmc_statepoint_write(const char* filename, bool* write_source)
           model::tally_derivs[tally->deriv_].id);
 
         // Write the tally score bins
-        vector<std::string> scores;
+        vector<string> scores;
         for (auto sc : tally->scores_) scores.push_back(reaction_name(sc));
         write_dataset(tally_group, "n_score_bins", scores.size());
         write_dataset(tally_group, "score_bins", scores);
@@ -777,7 +778,7 @@ void write_unstructured_mesh_results() {
 
   for (auto& tally : model::tallies) {
 
-    vector<std::string> tally_scores;
+    vector<string> tally_scores;
     for (auto filter_idx : tally->filters()) {
       auto& filter = model::tally_filters[filter_idx];
       if (filter->type() != "mesh") continue;

@@ -9,7 +9,7 @@ namespace openmc {
 void
 ParticleFilter::from_xml(pugi::xml_node node)
 {
-  auto particles = get_node_array<std::string>(node, "bins");
+  auto particles = get_node_array<string>(node, "bins");
 
   // Convert to vector of ParticleType
   vector<ParticleType> types;
@@ -48,7 +48,7 @@ void
 ParticleFilter::to_statepoint(hid_t filter_group) const
 {
   Filter::to_statepoint(filter_group);
-  vector<std::string> particles;
+  vector<string> particles;
   for (auto p : particles_) {
     particles.push_back(particle_type_to_str(p));
   }

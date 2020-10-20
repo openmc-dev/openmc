@@ -1,8 +1,8 @@
 #ifndef OPENMC_TALLIES_FILTER_AZIMUTHAL_H
 #define OPENMC_TALLIES_FILTER_AZIMUTHAL_H
 
+#include "openmc/string.h"
 #include "openmc/vector.h"
-#include <string>
 
 #include <gsl/gsl>
 

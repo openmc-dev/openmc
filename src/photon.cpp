@@ -112,7 +112,7 @@ PhotonInteraction::PhotonInteraction(hid_t group)
 
   // Read subshell photoionization cross section and atomic relaxation data
   rgroup = open_group(group, "subshells");
-  vector<std::string> designators;
+  vector<string> designators;
   read_attribute(rgroup, "designators", designators);
   auto n_shell = designators.size();
   if (n_shell == 0) {

@@ -1,5 +1,6 @@
 #include "openmc/initialize.h"
 
+#include "openmc/vector.h"
 #include <cstddef>
 #include <cstdlib> // for getenv
 #include <cstring>

@@ -2,7 +2,6 @@
 #define OPENMC_TALLIES_FILTER_H
 
 #include <cstdint>
-#include <string>
 #include <unordered_map>
 
 #include "pugixml.hpp"
@@ -13,6 +12,7 @@
 #include "openmc/memory.h"
 #include "openmc/particle.h"
 #include "openmc/tallies/filter_match.h"
+#include "openmc/string.h"
 #include "openmc/vector.h"
 
 namespace openmc {

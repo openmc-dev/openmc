@@ -40,6 +40,7 @@ namespace openmc {
 namespace model {
 
 vector<unique_ptr<Source>> external_sources;
+
 }
 
 //==============================================================================

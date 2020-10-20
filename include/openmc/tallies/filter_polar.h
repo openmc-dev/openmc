@@ -1,6 +1,7 @@
 #ifndef OPENMC_TALLIES_FILTER_POLAR_H
 #define OPENMC_TALLIES_FILTER_POLAR_H
 
+#include "openmc/vector.h"
 #include <cmath>
 
 #include <gsl/gsl>

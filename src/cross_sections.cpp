@@ -66,7 +66,7 @@ Library::Library(pugi::xml_node node, const std::string& directory)
 
   // Get list of materials
   if (check_for_node(node, "materials")) {
-    materials_ = get_node_array<std::string>(node, "materials");
+    materials_ = get_node_array<string>(node, "materials");
   }
 
   // determine path of cross section table
@@ -84,7 +84,8 @@ Library::Library(pugi::xml_node node, const std::string& directory)
   }
 
   if (!file_exists(path_)) {
-    warning("Cross section library " + path_ + " does not exist.");
+    warning("Cross section library " + static_cast<std::string>(path_) +
+            " does not exist.");
   }
 }
 
@@ -174,9 +175,14 @@ void read_cross_sections_xml()
   // Check that 0K nuclides are listed in the cross_sections.xml file
   for (const auto& name : settings::res_scat_nuclides) {
     LibraryKey key {Library::Type::neutron, name};
+
+    // TODO define operator+(openmc::string, const char*)....
+    // Can remove this line after that.
+    std::string name_tmp(name);
+
     if (data::library_map.find(key) == data::library_map.end()) {
-      fatal_error("Could not find resonant scatterer " +
-        name + " in cross_sections.xml file!");
+      fatal_error("Could not find resonant scatterer " + name_tmp +
+                  " in cross_sections.xml file!");
     }
   }
 }
@@ -188,8 +194,8 @@ void read_ce_cross_sections(const vector<vector<xsfloat>>& nuc_temps,
 
   // Construct a vector of nuclide names because we haven't loaded nuclide data
   // yet, but we need to know the name of the i-th nuclide
-  vector<std::string> nuclide_names(data::nuclide_map.size());
-  vector<std::string> thermal_names(data::thermal_scatt_map.size());
+  vector<string> nuclide_names(data::nuclide_map.size());
+  vector<string> thermal_names(data::thermal_scatt_map.size());
   for (const auto& kv : data::nuclide_map) {
     nuclide_names[kv.second] = kv.first;
   }
@@ -203,7 +209,7 @@ void read_ce_cross_sections(const vector<vector<xsfloat>>& nuc_temps,
       // Find name of corresponding nuclide. Because we haven't actually loaded
       // data, we don't have the name available, so instead we search through
       // all key/value pairs in nuclide_map
-      std::string& name = nuclide_names[i_nuc];
+      std::string name(nuclide_names[i_nuc]);
 
       // If we've already read this nuclide, skip it
       if (already_read.find(name) != already_read.end()) continue;
@@ -221,12 +227,12 @@ void read_ce_cross_sections(const vector<vector<xsfloat>>& nuc_temps,
     for (const auto& table : mat->thermal_tables_) {
       // Get name of S(a,b) table
       int i_table = table.index_table;
-      std::string& name = thermal_names[i_table];
+      std::string name(thermal_names[i_table]);
 
       if (already_read.find(name) == already_read.end()) {
         LibraryKey key {Library::Type::thermal, name};
         int idx = data::library_map[key];
-        std::string& filename = data::libraries[idx].path_;
+        std::string filename(data::libraries[idx].path_);
 
         write_message(6, "Reading {} from {}", name, filename);
 

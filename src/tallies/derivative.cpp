@@ -9,8 +9,6 @@
 
 #include <fmt/core.h>
 
-template class openmc::vector<openmc::TallyDerivative>;
-
 namespace openmc {
 
 //==============================================================================

@@ -4,7 +4,7 @@
 #ifndef OPENMC_OUTPUT_H
 #define OPENMC_OUTPUT_H
 
-#include <string>
+#include "openmc/string.h"
 
 #include "openmc/particle.h"
 

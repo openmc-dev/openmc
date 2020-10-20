@@ -57,7 +57,7 @@ Reaction::Reaction(hid_t group, const vector<int>& temperatures)
 
   // Read products
   for (const auto& name : group_names(group)) {
-    if (name.rfind("product_", 0) == 0) {
+    if (static_cast<std::string>(name).rfind("product_", 0) == 0) {
       hid_t pgroup = open_group(group, name.c_str());
       products_.emplace_back(pgroup);
       close_group(pgroup);

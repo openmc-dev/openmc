@@ -241,7 +241,7 @@ void read_multipole_data(int i_nuclide)
 
   // Check if WMP library exists
   int idx = it->second;
-  std::string& filename = data::libraries[idx].path_;
+  std::string filename(data::libraries[idx].path_);
 
   // Display message
   write_message(6, "Reading {} WMP data from {}", nuc->name_, filename);

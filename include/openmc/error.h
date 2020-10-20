@@ -1,8 +1,8 @@
 #ifndef OPENMC_ERROR_H
 #define OPENMC_ERROR_H
 
+#include "openmc/string.h"
 #include <cstring>
-#include <string>
 #include <sstream>
 
 #include <fmt/format.h>

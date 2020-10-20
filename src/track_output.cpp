@@ -10,6 +10,7 @@
 #include <fmt/core.h>
 #include "xtensor/xtensor.hpp"
 
+#include "openmc/vector.h"
 #include <cstddef> // for size_t
 #include <string>
 

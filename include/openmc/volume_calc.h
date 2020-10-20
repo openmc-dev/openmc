@@ -4,12 +4,12 @@
 #include "openmc/array.h"
 #include "openmc/position.h"
 #include "openmc/tallies/trigger.h"
+#include "openmc/string.h"
 #include "openmc/vector.h"
 
 #include "pugixml.hpp"
 #include "xtensor/xtensor.hpp"
 
-#include <string>
 #include <gsl/gsl>
 
 namespace openmc {

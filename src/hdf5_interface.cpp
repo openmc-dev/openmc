@@ -336,7 +336,7 @@ get_groups(hid_t group_id, char* name[])
   }
 }
 
-vector<std::string> member_names(hid_t group_id, H5O_type_t type)
+vector<string> member_names(hid_t group_id, H5O_type_t type)
 {
   // Determine number of links in the group
   H5G_info_t info;
@@ -345,7 +345,7 @@ vector<std::string> member_names(hid_t group_id, H5O_type_t type)
   // Iterate over links to get names
   H5O_info_t oinfo;
   size_t size;
-  vector<std::string> names;
+  vector<string> names;
   for (hsize_t i = 0; i < info.nlinks; ++i) {
     // Determine type of object (and skip non-group)
     H5Oget_info_by_idx(group_id, ".", H5_INDEX_NAME, H5_ITER_INC, i, &oinfo,
@@ -366,12 +366,12 @@ vector<std::string> member_names(hid_t group_id, H5O_type_t type)
   return names;
 }
 
-vector<std::string> group_names(hid_t group_id)
+vector<string> group_names(hid_t group_id)
 {
   return member_names(group_id, H5O_TYPE_GROUP);
 }
 
-vector<std::string> dataset_names(hid_t group_id)
+vector<string> dataset_names(hid_t group_id)
 {
   return member_names(group_id, H5O_TYPE_DATASET);
 }

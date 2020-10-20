@@ -1,8 +1,8 @@
 #ifndef OPENMC_FILE_UTILS_H
 #define OPENMC_FILE_UTILS_H
 
+#include "openmc/string.h"
 #include <fstream> // for ifstream
-#include <string>
 
 namespace openmc {
 

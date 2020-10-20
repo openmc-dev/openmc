@@ -4,12 +4,11 @@
 #ifndef OPENMC_REACTION_H
 #define OPENMC_REACTION_H
 
-#include <string>
-
 #include <gsl/gsl>
 #include "hdf5.h"
 
 #include "openmc/reaction_product.h"
+#include "openmc/string.h"
 #include "openmc/vector.h"
 
 namespace openmc {

@@ -2,7 +2,6 @@
 #define OPENMC_THERMAL_H
 
 #include <cstddef>
-#include <string>
 #include <unordered_map>
 
 #include "xtensor/xtensor.hpp"
@@ -12,6 +11,7 @@
 #include "openmc/hdf5_interface.h"
 #include "openmc/memory.h"
 #include "openmc/particle.h"
+#include "openmc/string.h"
 #include "openmc/vector.h"
 
 namespace openmc {
@@ -105,7 +105,7 @@ public:
   double awr_;       //!< weight of nucleus in neutron masses
   double energy_max_; //!< maximum energy for thermal scattering in [eV]
   vector<xsfloat> kTs_;           //!< temperatures in [eV] (k*T)
-  vector<std::string> nuclides_; //!< Valid nuclides
+  vector<string> nuclides_; //!< Valid nuclides
 
   //! cross sections and distributions at each temperature
   vector<ThermalData> data_;

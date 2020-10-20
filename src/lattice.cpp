@@ -1,7 +1,6 @@
 #include "openmc/lattice.h"
 
 #include <cmath>
-#include <string>
 
 #include <fmt/core.h>
 
@@ -11,6 +10,7 @@
 #include "openmc/geometry_aux.h"
 #include "openmc/hdf5_interface.h"
 #include "openmc/string_utils.h"
+#include "openmc/string.h"
 #include "openmc/vector.h"
 #include "openmc/xml_interface.h"
 
@@ -141,7 +141,7 @@ RectLattice::RectLattice(pugi::xml_node lat_node)
 
   // Read the number of lattice cells in each dimension.
   std::string dimension_str {get_node_value(lat_node, "dimension")};
-  vector<std::string> dimension_words {split(dimension_str)};
+  vector<string> dimension_words {split(dimension_str)};
   if (dimension_words.size() == 2) {
     n_cells_[0] = std::stoi(dimension_words[0]);
     n_cells_[1] = std::stoi(dimension_words[1]);
@@ -158,30 +158,34 @@ RectLattice::RectLattice(pugi::xml_node lat_node)
 
   // Read the lattice lower-left location.
   std::string ll_str {get_node_value(lat_node, "lower_left")};
-  vector<std::string> ll_words {split(ll_str)};
+  vector<string> ll_words {split(ll_str)};
   if (ll_words.size() != dimension_words.size()) {
     fatal_error("Number of entries on <lower_left> must be the same as the "
                 "number of entries on <dimension>.");
   }
-  lower_left_[0] = stod(ll_words[0]);
-  lower_left_[1] = stod(ll_words[1]);
-  if (is_3d_) {lower_left_[2] = stod(ll_words[2]);}
+  lower_left_[0] = std::stod(ll_words[0]);
+  lower_left_[1] = std::stod(ll_words[1]);
+  if (is_3d_) {
+    lower_left_[2] = std::stod(ll_words[2]);
+  }
 
   // Read the lattice pitches.
   std::string pitch_str {get_node_value(lat_node, "pitch")};
-  vector<std::string> pitch_words {split(pitch_str)};
+  vector<string> pitch_words {split(pitch_str)};
   if (pitch_words.size() != dimension_words.size()) {
     fatal_error("Number of entries on <pitch> must be the same as the "
                 "number of entries on <dimension>.");
   }
-  pitch_[0] = stod(pitch_words[0]);
-  pitch_[1] = stod(pitch_words[1]);
-  if (is_3d_) {pitch_[2] = stod(pitch_words[2]);}
+  pitch_[0] = std::stod(pitch_words[0]);
+  pitch_[1] = std::stod(pitch_words[1]);
+  if (is_3d_) {
+    pitch_[2] = std::stod(pitch_words[2]);
+  }
 
   // Read the universes and make sure the correct number was specified.
   std::string univ_str {get_node_value(lat_node, "universes")};
-  vector<std::string> univ_words {split(univ_str)};
-  if (univ_words.size() != n_cells_[0] * n_cells_[1] * n_cells_[2]) {
+  vector<string> univ_words {split(univ_str)};
+  if (univ_words.size() != nx*ny*nz) {
     fatal_error(fmt::format(
       "Expected {} universes for a rectangular lattice of size {}x{}x{} but {} "
       "were specified.",
@@ -458,7 +462,7 @@ HexLattice::HexLattice(pugi::xml_node lat_node)
 
   // Read the lattice center.
   std::string center_str {get_node_value(lat_node, "center")};
-  vector<std::string> center_words {split(center_str)};
+  vector<string> center_words {split(center_str)};
   if (is_3d_ && (center_words.size() != 3)) {
     fatal_error("A hexagonal lattice with <n_axial> must have <center> "
                 "specified by 3 numbers.");
@@ -466,13 +470,15 @@ HexLattice::HexLattice(pugi::xml_node lat_node)
     fatal_error("A hexagonal lattice without <n_axial> must have <center> "
                 "specified by 2 numbers.");
   }
-  center_[0] = stod(center_words[0]);
-  center_[1] = stod(center_words[1]);
-  if (is_3d_) {center_[2] = stod(center_words[2]);}
+  center_[0] = std::stod(center_words[0]);
+  center_[1] = std::stod(center_words[1]);
+  if (is_3d_) {
+    center_[2] = std::stod(center_words[2]);
+  }
 
   // Read the lattice pitches.
   std::string pitch_str {get_node_value(lat_node, "pitch")};
-  vector<std::string> pitch_words {split(pitch_str)};
+  vector<string> pitch_words {split(pitch_str)};
   if (is_3d_ && (pitch_words.size() != 2)) {
     fatal_error("A hexagonal lattice with <n_axial> must have <pitch> "
                 "specified by 2 numbers.");
@@ -480,13 +486,15 @@ HexLattice::HexLattice(pugi::xml_node lat_node)
     fatal_error("A hexagonal lattice without <n_axial> must have <pitch> "
                 "specified by 1 number.");
   }
-  pitch_[0] = stod(pitch_words[0]);
-  if (is_3d_) {pitch_[1] = stod(pitch_words[1]);}
+  pitch_[0] = std::stod(pitch_words[0]);
+  if (is_3d_) {
+    pitch_[1] = std::stod(pitch_words[1]);
+  }
 
   // Read the universes and make sure the correct number was specified.
   int n_univ = (3*n_rings_*n_rings_ - 3*n_rings_ + 1) * n_axial_;
   std::string univ_str {get_node_value(lat_node, "universes")};
-  vector<std::string> univ_words {split(univ_str)};
+  vector<string> univ_words {split(univ_str)};
   if (univ_words.size() != n_univ) {
     fatal_error(fmt::format(
       "Expected {} universes for a hexagonal lattice with {} rings and {} "
@@ -513,7 +521,7 @@ HexLattice::HexLattice(pugi::xml_node lat_node)
 
 //==============================================================================
 
-void HexLattice::fill_lattice_x(const vector<std::string>& univ_words)
+void HexLattice::fill_lattice_x(const vector<string>& univ_words)
 {
   int input_index = 0;
   for (int m = 0; m < n_axial_; m++) {
@@ -565,7 +573,7 @@ void HexLattice::fill_lattice_x(const vector<std::string>& univ_words)
 
 //==============================================================================
 
-void HexLattice::fill_lattice_y(const vector<std::string>& univ_words)
+void HexLattice::fill_lattice_y(const vector<string>& univ_words)
 {
   int input_index = 0;
   for (int m = 0; m < n_axial_; m++) {

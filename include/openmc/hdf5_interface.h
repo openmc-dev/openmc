@@ -1,11 +1,12 @@
 #ifndef OPENMC_HDF5_INTERFACE_H
 #define OPENMC_HDF5_INTERFACE_H
 
+#include "openmc/string.h"
+#include "openmc/vector.h"
 #include <algorithm> // for min
 #include <complex>
 #include <cstddef>
 #include <cstring> // for strlen
-#include <string>
 #include <sstream>
 #include <type_traits>
 
@@ -56,9 +57,9 @@ void write_string(hid_t group_id, const char* name, const std::string& buffer,
                   bool indep);
 
 vector<hsize_t> attribute_shape(hid_t obj_id, const char* name);
-vector<std::string> dataset_names(hid_t group_id);
+vector<string> dataset_names(hid_t group_id);
 void ensure_exists(hid_t obj_id, const char* name, bool attribute=false);
-vector<std::string> group_names(hid_t group_id);
+vector<string> group_names(hid_t group_id);
 vector<hsize_t> object_shape(hid_t obj_id);
 std::string object_name(hid_t obj_id);
 
@@ -198,9 +199,8 @@ read_attribute(hid_t obj_id, const char* name, std::string& str)
   delete[] buffer;
 }
 
-// overload for vector<std::string>
-inline void read_attribute(
-  hid_t obj_id, const char* name, vector<std::string>& vec)
+// overload for vector<string>
+inline void read_attribute(hid_t obj_id, const char* name, vector<string>& vec)
 {
   auto dims = attribute_shape(obj_id, name);
   auto m = dims[0];
@@ -466,7 +466,7 @@ inline void write_dataset(
 }
 
 inline void write_dataset(
-  hid_t obj_id, const char* name, const vector<std::string>& buffer)
+  hid_t obj_id, const char* name, const vector<string>& buffer)
 {
   auto n {buffer.size()};
   hsize_t dims[] {n};
@@ -506,7 +506,7 @@ write_dataset(hid_t obj_id, const char* name, const xt::xcontainer<D>& arr)
 {
   using T = typename D::value_type;
   auto s = arr.shape();
-  vector<hsize_t> dims {s.cbegin(), s.cend()};
+  vector<hsize_t> dims(s.cbegin(), s.cend());
   write_dataset_lowlevel(obj_id, dims.size(), dims.data(), name,
                          H5TypeMap<T>::type_id, H5S_ALL, false, arr.data());
 }

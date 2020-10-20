@@ -1,7 +1,7 @@
 #ifndef OPENMC_PROGRESSBAR_H
 #define OPENMC_PROGRESSBAR_H
 
-#include <string>
+#include "openmc/string.h"
 
 class ProgressBar {
 

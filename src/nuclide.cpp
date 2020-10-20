@@ -1035,7 +1035,7 @@ extern "C" int openmc_load_nuclide(const char* name, const xsfloat* temps, int n
 
     // Get filename for library containing nuclide
     int idx = it->second;
-    const auto& filename = data::libraries[idx].path_;
+    std::string filename(data::libraries[idx].path_);
     write_message(6, "Reading {} from {}", name, filename);
 
     // Open file and make sure version is sufficient
@@ -1068,7 +1068,7 @@ extern "C" int openmc_load_nuclide(const char* name, const xsfloat* temps, int n
         }
 
         int idx = it->second;
-        const auto& filename = data::libraries[idx].path_;
+        std::string filename(data::libraries[idx].path_);
         write_message(6, "Reading {} from {} ", element, filename);
 
         // Open file and make sure version is sufficient

@@ -12,7 +12,9 @@
 #include "xtensor/xfixed.hpp"
 #include "xtensor/xtensor.hpp"
 
-#include <string>
+#include "openmc/string.h"
+#include "openmc/vector.h"
+#include <memory> // for unique_ptr
 #include <unordered_map>
 
 namespace openmc {
@@ -41,11 +43,11 @@ public:
 
   void set_scores(pugi::xml_node node);
 
-  void set_scores(const vector<std::string>& scores);
+  void set_scores(const vector<string>& scores);
 
   void set_nuclides(pugi::xml_node node);
 
-  void set_nuclides(const vector<std::string>& nuclides);
+  void set_nuclides(const vector<string>& nuclides);
 
   const vector<int32_t>& filters() const { return filters_; }
 

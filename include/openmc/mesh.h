@@ -76,11 +76,8 @@ public:
   //! \param[in] u Particle direction
   //! \param[out] bins Bins that were crossed
   //! \param[out] lengths Fraction of tracklength in each bin
-  virtual void bins_crossed(Position r0,
-                            Position r1,
-                            const Direction& u,
-                            vector<int>& bins,
-                            vector<double>& lengths) const = 0;
+  virtual void bins_crossed(
+    const Particle& p, vector<int>& bins, vector<double>& lengths) const = 0;
 
   //! Determine which surface bins were crossed by a particle
   //
@@ -88,11 +85,8 @@ public:
   //! \param[in] r1 Current position of the particle
   //! \param[in] u Particle direction
   //! \param[out] bins Surface bins that were crossed
-  virtual void
-  surface_bins_crossed(Position r0,
-                       Position r1,
-                       const Direction& u,
-                       vector<int>& bins) const = 0;
+  virtual void surface_bins_crossed(
+    const Particle& p, vector<int>& bins) const = 0;
 
   //! Get bin at a given position in space
   //
@@ -232,11 +226,9 @@ public:
   RegularMesh(pugi::xml_node node);
 
   // Overriden methods
-  void
-  surface_bins_crossed(Position r0,
-                       Position r1,
-                       const Direction& u,
-                       vector<int>& bins) const override;
+
+  void surface_bins_crossed(const Particle& p, vector<int>& bins)
+  const override;
 
   int get_index_in_direction(double r, int i) const override;
 
@@ -273,11 +265,11 @@ public:
   RectilinearMesh(pugi::xml_node node);
 
   // Overriden methods
-  void
-  surface_bins_crossed(Position r0,
-                       Position r1,
-                       const Direction& u,
-                       vector<int>& bins) const override;
+
+  void surface_bins_crossed(const Particle& p, vector<int>& bins)
+  const override;
+
+  int get_index_in_direction(double r, int i) const override;
 
   int get_index_in_direction(double r, int i) const override;
 

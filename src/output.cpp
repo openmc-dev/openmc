@@ -272,7 +272,7 @@ print_overlap_check()
   vector<int64_t> temp(model::overlap_check_count);
   MPI_Reduce(temp.data(), model::overlap_check_count.data(),
     model::overlap_check_count.size(), MPI_INT64_T, MPI_SUM, 0, mpi::intracomm);
-#endif
+  #endif
 
   if (mpi::master) {
     header("cell overlap check summary", 1);
@@ -606,9 +606,8 @@ write_tallies()
     }
 
     // Initialize Filter Matches Object
-    vector<FilterMatch> filter_matches;
-    // Allocate space for tally filter matches
-    filter_matches.resize(model::tally_filters.size());
+    vector<FilterMatch> filter_matches(model::tally_filters.size());
+    FilterMatch* filter_match_start = &filter_matches.front();
 
     // Loop over all filter bin combinations.
     auto filter_iter = FilterBinIter(tally, false, filter_match_start);

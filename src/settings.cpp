@@ -96,7 +96,7 @@ int n_max_batches;
 ResScatMethod res_scat_method {ResScatMethod::rvs};
 double res_scat_energy_min {0.01};
 double res_scat_energy_max {1000.0};
-vector<std::string> res_scat_nuclides;
+vector<string> res_scat_nuclides;
 RunMode run_mode {RunMode::UNSET};
 std::unordered_set<int> sourcepoint_batch;
 std::unordered_set<int> statepoint_batch;
@@ -749,7 +749,7 @@ void read_settings_xml()
 
     // Get resonance scattering nuclides
     if (check_for_node(node_res_scat, "nuclides")) {
-      res_scat_nuclides = get_node_array<std::string>(node_res_scat, "nuclides");
+      res_scat_nuclides = get_node_array<string>(node_res_scat, "nuclides");
     }
   }
 

@@ -4,6 +4,7 @@
 #include "openmc/particle.h"
 #include "openmc/vector.h"
 
+#include "openmc/vector.h"
 #include <unordered_map>
 
 #include "pugixml.hpp"

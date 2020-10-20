@@ -1,6 +1,7 @@
 #ifndef OPENMC_BANK_H
 #define OPENMC_BANK_H
 
+#include "openmc/vector.h"
 #include <cstdint>
 
 #include "openmc/particle.h"

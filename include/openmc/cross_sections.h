@@ -3,10 +3,9 @@
 
 #include "pugixml.hpp"
 
-#include <string>
-#include <map>
-
+#include "openmc/string.h"
 #include "openmc/vector.h"
+#include <map>
 
 namespace openmc {
 
@@ -32,11 +31,11 @@ public:
 
   // Data members
   Type type_; //!< Type of data library
-  vector<std::string> materials_; //!< Materials contained in library
-  std::string path_; //!< File path to library
+  vector<string> materials_; //!< Materials contained in library
+  string path_;              //!< File path to library
 };
 
-using LibraryKey = std::pair<Library::Type, std::string>;
+using LibraryKey = std::pair<Library::Type, string>;
 
 //==============================================================================
 // Global variable declarations

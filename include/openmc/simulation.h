@@ -8,6 +8,7 @@
 #include "openmc/particle.h"
 #include "openmc/vector.h"
 
+#include "openmc/vector.h"
 #include <cstdint>
 
 namespace openmc {

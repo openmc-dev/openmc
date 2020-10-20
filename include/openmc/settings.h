@@ -85,7 +85,7 @@ extern int n_max_batches;            //!< Maximum number of batches
 extern ResScatMethod res_scat_method; //!< resonance upscattering method
 extern double res_scat_energy_min;   //!< Min energy in [eV] for res. upscattering
 extern double res_scat_energy_max;   //!< Max energy in [eV] for res. upscattering
-extern vector<std::string>
+extern vector<string>
   res_scat_nuclides; //!< Nuclides using res. upscattering treatment
 extern RunMode run_mode;                 //!< Run mode (eigenvalue, fixed src, etc.)
 extern std::unordered_set<int> sourcepoint_batch; //!< Batches when source should be written

@@ -30,6 +30,7 @@
 #include "openmc/settings.h"
 #include "openmc/tallies/filter.h"
 #include "openmc/tallies/tally.h"
+#include "openmc/vector.h"
 #include "openmc/xml_interface.h"
 
 #ifdef LIBMESH
@@ -580,11 +581,8 @@ bool StructuredMesh::intersects_3d(Position& r0, Position r1, int* ijk) const
   return min_dist < INFTY;
 }
 
-void StructuredMesh::bins_crossed(Position r0,
-                                  Position r1,
-                                  const Direction& u,
-                                  vector<int>& bins,
-                                  vector<double>& lengths) const
+void StructuredMesh::bins_crossed(const Particle& p, vector<int>& bins,
+  vector<double>& lengths) const
 {
   // ========================================================================
   // Determine where the track intersects the mesh and if it intersects at all.
@@ -1110,10 +1108,8 @@ int RectilinearMesh::set_grid()
   return 0;
 }
 
-void RectilinearMesh::surface_bins_crossed(Position r0,
-                                           Position r1,
-                                           const Direction& u,
-                                           vector<int>& bins) const
+void RectilinearMesh::surface_bins_crossed(
+  const Particle& p, vector<int>& bins) const
 {
   // Determine indices for starting and ending location.
   int ijk0[3], ijk1[3];
@@ -1666,9 +1662,11 @@ MOABMesh::build_kdtree(const moab::Range& all_tets)
   }
 }
 
-void MOABMesh::intersect_track(const moab::CartVect& start,
-  const moab::CartVect& dir, double track_len, vector<double>& hits) const
-{
+void
+MOABMesh::intersect_track(const moab::CartVect& start,
+                          const moab::CartVect& dir,
+                          double track_len,
+                          vector<double>& hits) const {
   hits.clear();
 
   moab::ErrorCode rval;

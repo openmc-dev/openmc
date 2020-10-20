@@ -4,8 +4,9 @@
 #ifndef OPENMC_GEOMETRY_AUX_H
 #define OPENMC_GEOMETRY_AUX_H
 
+#include "openmc/string.h"
+#include "openmc/vector.h"
 #include <cstdint>
-#include <string>
 #include <unordered_map>
 
 #include "openmc/vector.h"
@@ -48,7 +49,6 @@ void get_temperatures(
 //==============================================================================
 //! \brief Perform final setup for geometry
 //==============================================================================
-
 void finalize_geometry();
 
 //==============================================================================

@@ -1,7 +1,7 @@
 #ifndef OPENMC_TALLIES_FILTER_CELLFROM_H
 #define OPENMC_TALLIES_FILTER_CELLFROM_H
 
-#include <string>
+#include "openmc/string.h"
 
 #include "openmc/tallies/filter_cell.h"
 

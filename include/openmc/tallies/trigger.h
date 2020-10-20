@@ -1,7 +1,7 @@
 #ifndef OPENMC_TALLIES_TRIGGER_H
 #define OPENMC_TALLIES_TRIGGER_H
 
-#include <string>
+#include "openmc/string.h"
 
 #include "pugixml.hpp"
 

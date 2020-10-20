@@ -4,7 +4,6 @@
 #include <cstdint>
 #include <functional> // for hash
 #include <limits>
-#include <string>
 #include <unordered_map>
 
 #include <gsl/gsl>
@@ -14,6 +13,8 @@
 
 #include "openmc/constants.h"
 #include "openmc/memory.h" // for unique_ptr
+#include "openmc/string.h"
+#include "openmc/vector.h"
 #include "openmc/neighbor_list.h"
 #include "openmc/position.h"
 #include "openmc/surface.h"

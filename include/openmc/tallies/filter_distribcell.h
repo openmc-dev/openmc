@@ -1,7 +1,7 @@
 #ifndef OPENMC_TALLIES_FILTER_DISTRIBCELL_H
 #define OPENMC_TALLIES_FILTER_DISTRIBCELL_H
 
-#include <string>
+#include "openmc/string.h"
 
 #include "openmc/tallies/filter.h"
 

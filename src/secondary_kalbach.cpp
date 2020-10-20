@@ -1,5 +1,6 @@
 #include "openmc/secondary_kalbach.h"
 
+#include "openmc/vector.h"
 #include <algorithm> // for copy, move
 #include <cmath>     // for log, sqrt, sinh
 #include <cstddef>   // for size_t

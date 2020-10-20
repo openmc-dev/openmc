@@ -40,8 +40,7 @@ public:
   inline pointer allocate(size_type n)
   {
     pointer tmp;
-    cudaError_t error_code =
-      cudaMallocManaged(&tmp, n * sizeof(value_type), cudaMemAttachGlobal);
+    cudaError_t error_code = cudaMallocManaged(&tmp, n * sizeof(value_type));
     if (error_code != cudaSuccess)
       CubDebugExit(error_code);
     return tmp;

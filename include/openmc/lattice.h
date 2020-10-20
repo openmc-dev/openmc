@@ -2,7 +2,6 @@
 #define OPENMC_LATTICE_H
 
 #include <cstdint>
-#include <string>
 #include <unordered_map>
 
 #include "hdf5.h"
@@ -12,6 +11,7 @@
 #include "openmc/constants.h"
 #include "openmc/memory.h"
 #include "openmc/position.h"
+#include "openmc/string.h"
 #include "openmc/vector.h"
 
 namespace openmc {
@@ -49,7 +49,7 @@ class Lattice
 {
 public:
   int32_t id_;                         //!< Universe ID number
-  std::string name_;                   //!< User-defined name
+  // string name_;                   //!< User-defined name
   LatticeType type_;
   vector<int32_t> universes_;          //!< Universes filling each lattice tile
   int32_t outer_ {NO_OUTER_UNIVERSE};  //!< Universe tiled outside the lattice
@@ -269,10 +269,10 @@ private:
   };
 
   //! Fill universes_ vector for 'y' orientation
-  void fill_lattice_y(const vector<std::string>& univ_words);
+  void fill_lattice_y(const vector<string>& univ_words);
 
   //! Fill universes_ vector for 'x' orientation
-  void fill_lattice_x(const vector<std::string>& univ_words);
+  void fill_lattice_x(const vector<string>& univ_words);
 
   int n_rings_;                   //!< Number of radial tile positions
   int n_axial_;                   //!< Number of axial tile positions

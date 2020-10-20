@@ -421,7 +421,7 @@ void VolumeCalculation::to_hdf5(
     // Create array of nuclide names from the vector
     auto n_nuc = result.nuclides.size();
 
-    vector<std::string> nucnames;
+    vector<string> nucnames;
     for (int i_nuc : result.nuclides) {
       nucnames.push_back(data::nuclides[i_nuc]->name_);
     }

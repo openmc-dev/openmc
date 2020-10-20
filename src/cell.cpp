@@ -332,8 +332,7 @@ CSGCell::CSGCell(pugi::xml_node cell_node)
   // universe), more than one material (distribmats), and some materials may
   // be "void".
   if (material_present) {
-    vector<std::string> mats {
-      get_node_array<std::string>(cell_node, "material", true)};
+    vector<string> mats {get_node_array<string>(cell_node, "material", true)};
     if (mats.size() > 0) {
       material_.reserve(mats.size());
       for (std::string mat : mats) {

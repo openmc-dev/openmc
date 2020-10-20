@@ -4,16 +4,13 @@
 //! \file particle.h
 //! \brief Particle type
 
-#include <cstdint>
-#include <sstream>
-#include <string>
-
 #include "openmc/constants.h"
 #include "openmc/memory.h" // for unique_ptr
 #include "openmc/particle_data.h"
 #include "openmc/position.h"
 #include "openmc/random_lcg.h"
 #include "openmc/soa_particle.h"
+#include "openmc/string.h"
 #include "openmc/tallies/filter_match.h"
 #include "openmc/vector.h"
 

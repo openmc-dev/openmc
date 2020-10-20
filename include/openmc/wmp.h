@@ -5,10 +5,10 @@
 #include "xtensor/xtensor.hpp"
 
 #include <complex>
-#include <string>
 #include <tuple>
 
 #include "openmc/array.h"
+#include "openmc/string.h"
 #include "openmc/vector.h"
 
 namespace openmc {

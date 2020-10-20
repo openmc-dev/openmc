@@ -1,6 +1,7 @@
 #ifndef OPENMC_TALLIES_FILTER_CELL_H
 #define OPENMC_TALLIES_FILTER_CELL_H
 
+#include "openmc/vector.h"
 #include <cstdint>
 #include <unordered_map>
 

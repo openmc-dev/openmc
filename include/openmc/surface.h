@@ -1,8 +1,8 @@
 #ifndef OPENMC_SURFACE_H
 #define OPENMC_SURFACE_H
 
-#include <limits>  // For numeric_limits
-#include <string>
+#include "openmc/string.h"
+#include <limits> // For numeric_limits
 #include <unordered_map>
 
 #include "hdf5.h"

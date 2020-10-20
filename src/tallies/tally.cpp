@@ -384,11 +384,11 @@ Tally::set_scores(pugi::xml_node node)
   if (!check_for_node(node, "scores"))
     fatal_error(fmt::format("No scores specified on tally {}", id_));
 
-  auto scores = get_node_array<std::string>(node, "scores");
+  auto scores = get_node_array<string>(node, "scores");
   set_scores(scores);
 }
 
-void Tally::set_scores(const vector<std::string>& scores)
+void Tally::set_scores(const vector<string>& scores)
 {
   // Reset state and prepare for the new scores.
   scores_.clear();
@@ -419,9 +419,12 @@ void Tally::set_scores(const vector<std::string>& scores)
   // Iterate over the given scores.
   for (auto score_str : scores) {
     // Make sure a delayed group filter wasn't used with an incompatible score.
+    std::string score_str_std(
+      score_str); // TODO remove eventually after adding operator+
     if (delayedgroup_filter_ != C_NONE) {
       if (score_str != "delayed-nu-fission" && score_str != "decay-rate")
-        fatal_error("Cannot tally " + score_str + "with a delayedgroup filter");
+        fatal_error(
+          "Cannot tally " + score_str_std + "with a delayedgroup filter");
     }
 
     // Determine integer code for score
@@ -440,8 +443,9 @@ void Tally::set_scores(const vector<std::string>& scores)
     case SCORE_ABSORPTION:
     case SCORE_FISSION:
       if (energyout_present)
-        fatal_error("Cannot tally " + score_str + " reaction rate with an "
-          "outgoing energy filter");
+        fatal_error("Cannot tally " + score_str_std +
+                    " reaction rate with an "
+                    "outgoing energy filter");
       break;
 
     case SCORE_SCATTER:
@@ -535,12 +539,12 @@ Tally::set_nuclides(pugi::xml_node node)
   } else {
     // The user provided specifics nuclides.  Parse it as an array with either
     // "total" or a nuclide name like "U-235" in each position.
-    auto words = get_node_array<std::string>(node, "nuclides");
+    auto words = get_node_array<string>(node, "nuclides");
     this->set_nuclides(words);
   }
 }
 
-void Tally::set_nuclides(const vector<std::string>& nuclides)
+void Tally::set_nuclides(const vector<string>& nuclides)
 {
   nuclides_.clear();
 
@@ -551,7 +555,8 @@ void Tally::set_nuclides(const vector<std::string>& nuclides)
       auto search = data::nuclide_map.find(nuc);
       if (search == data::nuclide_map.end())
         fatal_error(fmt::format("Could not find the nuclide {} specified in "
-          "tally {} in any material", nuc, id_));
+                                "tally {} in any material",
+          static_cast<std::string>(nuc), id_));
       nuclides_.push_back(search->second);
     }
   }
@@ -593,9 +598,9 @@ Tally::init_triggers(pugi::xml_node node)
     }
 
     // Read the trigger scores.
-    vector<std::string> trigger_scores;
+    vector<string> trigger_scores;
     if (check_for_node(trigger_node, "scores")) {
-      trigger_scores = get_node_array<std::string>(trigger_node, "scores");
+      trigger_scores = get_node_array<string>(trigger_node, "scores");
     } else {
       trigger_scores.push_back("all");
     }
@@ -613,8 +618,10 @@ Tally::init_triggers(pugi::xml_node node)
           if (reaction_name(this->scores_[i_score]) == score_str) break;
         }
         if (i_score == this->scores_.size()) {
-          fatal_error(fmt::format("Could not find the score \"{}\" in tally "
-            "{} but it was listed in a trigger on that tally", score_str, id_));
+          fatal_error(
+            fmt::format("Could not find the score \"{}\" in tally "
+                        "{} but it was listed in a trigger on that tally",
+              static_cast<std::string>(score_str), id_));
         }
         triggers_.push_back({metric, threshold, i_score});
       }
@@ -1106,7 +1113,7 @@ openmc_tally_set_scores(int32_t index, int n, const char** scores)
     return OPENMC_E_OUT_OF_BOUNDS;
   }
 
-  vector<std::string> scores_str(scores, scores + n);
+  vector<string> scores_str(scores, scores + n);
   try {
     model::tallies[index]->set_scores(scores_str);
   } catch (const std::invalid_argument& ex) {
@@ -1141,7 +1148,7 @@ openmc_tally_set_nuclides(int32_t index, int n, const char** nuclides)
     return OPENMC_E_OUT_OF_BOUNDS;
   }
 
-  vector<std::string> words(nuclides, nuclides + n);
+  vector<string> words(nuclides, nuclides + n);
   vector<int> nucs;
   for (auto word : words){
     if (word == "total") {
@@ -1149,7 +1156,9 @@ openmc_tally_set_nuclides(int32_t index, int n, const char** nuclides)
     } else {
       auto search = data::nuclide_map.find(word);
       if (search == data::nuclide_map.end()) {
-        set_errmsg("Nuclide \"" + word  + "\" has not been loaded yet");
+        // TODO remove after openmc::string has operator+
+        set_errmsg("Nuclide \"" + static_cast<std::string>(word) +
+                   "\" has not been loaded yet");
         return OPENMC_E_DATA;
       }
       nucs.push_back(search->second);

@@ -29,7 +29,7 @@ namespace data {
 }
 
 MgxsInterface::MgxsInterface(const std::string& path_cross_sections,
-  const vector<std::string> xs_to_read, const vector<vector<xsfloat>> xs_temps)
+  const vector<string> xs_to_read, const vector<vector<double>> xs_temps)
 {
   read_header(path_cross_sections);
   set_nuclides_and_temperatures(xs_to_read, xs_temps);
@@ -37,7 +37,7 @@ MgxsInterface::MgxsInterface(const std::string& path_cross_sections,
 }
 
 void MgxsInterface::set_nuclides_and_temperatures(
-  vector<std::string> xs_to_read, vector<vector<xsfloat>> xs_temps)
+  vector<string> xs_to_read, vector<vector<double>> xs_temps)
 {
   // Check to remove all duplicates
   xs_to_read_ = xs_to_read;
@@ -260,7 +260,7 @@ void set_mg_interface_nuclides_and_temps()
   // Loop over materials to find xs and temperature to be read
   for (const auto& mat : model::materials) {
     for (int i_nuc : mat->nuclide_) {
-      std::string& name = nuclide_names[i_nuc];
+      std::string name(nuclide_names[i_nuc]);
 
       if (already_read.find(name) == already_read.end()) {
         data::mg.xs_to_read_.push_back(name);

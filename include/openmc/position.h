@@ -1,12 +1,12 @@
 #ifndef OPENMC_POSITION_H
 #define OPENMC_POSITION_H
 
+#include "openmc/array.h"
+#include "openmc/vector.h"
+#include <array>
 #include <cmath> // for sqrt
 #include <iostream>
 #include <stdexcept> // for out_of_range
-
-#include "openmc/array.h"
-#include "openmc/vector.h"
 
 namespace openmc {
 

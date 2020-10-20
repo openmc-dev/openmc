@@ -127,7 +127,7 @@ Material::Material(pugi::xml_node node)
   auto node_macros = node.children("macroscopic");
   int num_macros = std::distance(node_macros.begin(), node_macros.end());
 
-  vector<std::string> names;
+  vector<string> names;
   vector<double> densities;
   if (settings::run_CE && num_macros > 0) {
     fatal_error("Macroscopic can not be used in continuous-energy mode.");
@@ -194,9 +194,9 @@ Material::Material(pugi::xml_node node)
   // =======================================================================
   // READ AND PARSE <isotropic> element
 
-  vector<std::string> iso_lab;
+  vector<string> iso_lab;
   if (check_for_node(node, "isotropic")) {
-    iso_lab = get_node_array<std::string>(node, "isotropic");
+    iso_lab = get_node_array<string>(node, "isotropic");
   }
 
   // ========================================================================
@@ -209,7 +209,12 @@ Material::Material(pugi::xml_node node)
   if (settings::photon_transport) element_.reserve(n);
 
   for (int i = 0; i < n; ++i) {
-    const auto& name {names[i]};
+
+    // Have to make std::string non-reference intermediate for CUDA compat.
+    // Eventually, openmc::string should have all the functionality of a
+    // std::string.
+    // TODO
+    std::string name(names[i]);
 
     // Check that this nuclide is listed in the nuclear data library
     // (cross_sections.xml for CE and the MGXS HDF5 for MG)
@@ -295,7 +300,7 @@ Material::Material(pugi::xml_node node)
   if (settings::run_CE) {
     // Loop over <sab> elements
 
-    vector<std::string> sab_names;
+    vector<string> sab_names;
     for (auto node_sab : node.children("sab")) {
       // Determine name of thermal scattering table
       if (!check_for_node(node_sab, "name")) {
@@ -939,7 +944,7 @@ void Material::set_density(double density, gsl::cstring_span units)
 }
 
 void Material::set_densities(
-  const vector<std::string>& name, const vector<double>& density)
+  const vector<string>& name, const vector<double>& density)
 {
   auto n = name.size();
   Expects(n > 0);
@@ -1012,8 +1017,8 @@ void Material::to_hdf5(hid_t group) const
   write_dataset(material_group, "atom_density", density_);
 
   // Copy nuclide/macro name for each nuclide to vector
-  vector<std::string> nuc_names;
-  vector<std::string> macro_names;
+  vector<string> nuc_names;
+  vector<string> macro_names;
   vector<double> nuc_densities;
   if (settings::run_CE) {
     for (int i = 0; i < nuclide_.size(); ++i) {
@@ -1045,7 +1050,7 @@ void Material::to_hdf5(hid_t group) const
   }
 
   if (!thermal_tables_.empty()) {
-    vector<std::string> sab_names;
+    vector<string> sab_names;
     for (const auto& table : thermal_tables_) {
       sab_names.push_back(data::thermal_scatt[table.index_table]->name_);
     }
@@ -1398,6 +1403,10 @@ openmc_material_set_density(int32_t index, double density, const char* units)
 extern "C" int
 openmc_material_set_densities(int32_t index, int n, const char** name, const double* density)
 {
+#ifdef __CUDACC__
+  throw std::runtime_error(
+    "TODO: implement openmc_material_set_densities w/ GPU-compatible vectors");
+#else
   if (index >= 0 && index < model::materials.size()) {
     try {
       model::materials[index]->set_densities({name, name + n}, {density, density + n});
@@ -1410,6 +1419,7 @@ openmc_material_set_densities(int32_t index, int n, const char** name, const dou
     return OPENMC_E_OUT_OF_BOUNDS;
   }
   return 0;
+#endif
 }
 
 extern "C" int

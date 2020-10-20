@@ -355,14 +355,14 @@ public:
   __host__ __device__ reference back() const { return begin_[size_ - 1]; }
   __host__ __device__ reference front() const { return begin_[0]; }
 
+  // Since in OpenMC, it is quite common to clear a vector and expect to
+  // start pushing back to it again immediately after. So, it doesn't make
+  // sense to deallocate memory here.
   __host__ void clear()
   {
-    capacity_ = 0;
     size_ = 0;
     for (std::size_t i = 0; i < size_; ++i)
       (begin_ + i)->~T();
-    alloc_.deallocate(begin_, capacity_);
-    begin_ = nullptr;
   }
 };
 

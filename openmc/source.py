@@ -308,9 +308,11 @@ def write_source_file(source_particles, filename, **kwargs):
     ])
 
     # Create array of source particles
+    cv.check_iterable_type("source particles", source_particles, SourceParticle)
     arr = np.array([s.to_tuple() for s in source_particles], dtype=source_dtype)
 
     # Write array to file
     kwargs.setdefault('mode', 'w')
     with h5py.File(filename, **kwargs) as fh:
+        fh.attrs['filetype'] = np.string_("source")
         fh.create_dataset('source_bank', data=arr, dtype=source_dtype)

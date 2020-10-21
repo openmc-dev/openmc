@@ -49,7 +49,11 @@ public:
   {
     if (p == nullptr) return;
     cudaError_t error_code = cudaFree(p);
-    if (error_code != cudaSuccess)
+    // For the latter, this happens when running deallocate in destructors
+    // in on of OpenMC's many global variables which destruct after main().
+    // The CUDA RT API has already handled freeing the memory in that case,
+    // so that error is safe to ignore.
+    if (error_code != cudaSuccess && error_code != cudaErrorCudartUnloading)
       CubDebugExit(error_code);
   }
 

@@ -301,10 +301,13 @@ public:
   }
   __host__ iterator insert(iterator pos, const T& value)
   {
-    // Make space for the new entry, and grow if necessary
+    // Must handle edge case where vector has nothing in it yet
     std::size_t indx = pos - begin_;
+
+    // Make space for the new entry if necessary
     if (size_ == capacity_)
       grow();
+
     for (std::size_t i = size_; i > indx; i--)
       begin_[i] = begin_[i - 1];
     begin_[indx] = value;
@@ -312,11 +315,14 @@ public:
     return begin_ + indx;
   }
 
+  // This one is pretty inefficient and could certainly be improved
   template<typename Iterator>
   __host__ void insert(iterator pos, Iterator first, Iterator last)
   {
+    std::size_t indx = pos - begin_;
+    // Have to recompute iterator since begin_ may be changing
     while (first != last)
-      insert(pos, *(first++));
+      insert(begin_ + indx++, *(first++));
   }
 
   __host__ iterator erase(iterator pos)

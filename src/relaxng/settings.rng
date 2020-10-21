@@ -639,6 +639,48 @@
       </element>
     </optional>
     <optional>
+      <element name="surf_src_read">
+        <choice>
+          <element name="path">
+            <data type="string"/>
+          </element>
+          <attribute name="path">
+            <data type="string"/>
+          </attribute>
+        </choice>
+      </element>
+    </optional>
+    <optional>
+      <element name="surf_src_write">
+        <interleave>
+          <choice>
+            <element name="surf_ids">
+              <list>
+                <oneOrMore>
+                  <data type="positiveInteger"/>
+                </oneOrMore>
+              </list>
+            </element>
+            <attribute name="surf_ids">
+              <list>
+                <oneOrMore>
+                  <data type="positiveInteger"/>
+                </oneOrMore>
+              </list>
+            </attribute>
+          </choice>
+          <choice>
+            <element name="max_surf_banks">
+              <data type="positiveInteger"/>
+            </element>
+            <attribute name="max_surf_banks">
+              <data type="positiveInteger"/>
+            </attribute>
+          </choice>
+        </interleave>
+      </element>
+    </optional>
+    <optional>
       <element name="survival_biasing">
         <data type="boolean"/>
       </element>

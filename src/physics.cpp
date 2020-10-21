@@ -453,6 +453,7 @@ int sample_nuclide(Particle* p)
 
   // Get pointers to nuclide/density arrays
   const auto& mat {model::materials[p->material_]};
+  //printf("particle material = %d\n", p->material_);
   int n = mat->nuclide_.size();
 
   double prob = 0.0;

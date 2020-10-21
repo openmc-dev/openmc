@@ -197,11 +197,13 @@ find_cell_inner(Particle* p, const NeighborList* neighbor_list)
       } else {
         p->material_ = c.material_[0];
         //p->material_ = c.device_material_[0];
-        //if(p->id_ == 1 )
-        //{
+        /*
+        if(p->id_ == 1 )
+        {
           //printf("Writing cell material to %d\n", c.device_material_[0]);
-          //printf("Writing cell material to %d\n", c.material_[0]);
-       // }
+          printf("Writing cell material to %d\n", c.material_[0]);
+        }
+        */
       }
       p->sqrtkT_last_ = p->sqrtkT_;
       if (c.sqrtkT_.size() > 1) {

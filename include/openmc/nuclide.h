@@ -36,6 +36,19 @@ public:
     vector<xsfloat> energy;
   };
 
+  struct CrossSectionSet {
+    xsfloat total;
+    xsfloat absorption;
+    xsfloat fission;
+    xsfloat nu_fission;
+    xsfloat photon_production;
+
+    // Construction gives zero XS
+    CrossSectionSet()
+      : total(0), absorption(0), fission(0), nu_fission(0), photon_production(0)
+    {}
+  };
+
   // Constructors/destructors
   Nuclide(hid_t group, const vector<xsfloat>& temperature);
   ~Nuclide();
@@ -80,7 +93,7 @@ public:
   // Temperature dependent cross section data
   vector<xsfloat> kTs_;                //!< temperatures in eV (k*T)
   vector<EnergyGrid> grid_;           //!< Energy grid at each temperature
-  vector<xt::xtensor<xsfloat, 2>> xs_; //!< Cross sections at each temperature
+  vector<vector<CrossSectionSet>> xs_; //!< Cross sections at each temperature
 
   // Multipole data
   unique_ptr<WindowedMultipole> multipole_;
@@ -121,13 +134,7 @@ private:
   //
   //! \param[in] T Temperature in [K]
   //! \return Temperature index and interpolation factor
-  std::pair<gsl::index, xsfloat> find_temperature(xsfloat T) const;
-
-  static int XS_TOTAL;
-  static int XS_ABSORPTION;
-  static int XS_FISSION;
-  static int XS_NU_FISSION;
-  static int XS_PHOTON_PROD;
+  std::pair<gsl::index, double> find_temperature(double T) const;
 };
 
 //==============================================================================

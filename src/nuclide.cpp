@@ -42,12 +42,6 @@ vector<unique_ptr<Nuclide>> nuclides;
 // Nuclide implementation
 //==============================================================================
 
-int Nuclide::XS_TOTAL {0};
-int Nuclide::XS_ABSORPTION {1};
-int Nuclide::XS_FISSION {2};
-int Nuclide::XS_NU_FISSION {3};
-int Nuclide::XS_PHOTON_PROD {4};
-
 Nuclide::Nuclide(hid_t group, const vector<xsfloat>& temperature)
 {
   // Set index of nuclide in global vector
@@ -308,11 +302,8 @@ Nuclide::~Nuclide()
 
 void Nuclide::create_derived(const Function1D* prompt_photons, const Function1D* delayed_photons)
 {
-  for (const auto& grid : grid_) {
-    // Allocate and initialize cross section
-    array<size_t, 2> shape {grid.energy.size(), 5};
-    xs_.emplace_back(shape, 0.0);
-  }
+  for (const auto& grid : grid_)
+    xs_.emplace_back(grid.energy.size());
 
   reaction_index_.fill(C_NONE);
   for (int i = 0; i < reactions_.size(); ++i) {
@@ -328,7 +319,6 @@ void Nuclide::create_derived(const Function1D* prompt_photons, const Function1D*
 
       for (const auto& p : rx->products_) {
         if (p.particle_ == ParticleType::photon) {
-          auto pprod = xt::view(xs_[t], xt::range(j, j+n), XS_PHOTON_PROD);
           for (int k = 0; k < n; ++k) {
             auto E = grid_[t].energy[k+j];
 
@@ -344,8 +334,7 @@ void Nuclide::create_derived(const Function1D* prompt_photons, const Function1D*
                 }
               }
             }
-
-            pprod[k] += f * xs[k] * (*p.yield_)(E);
+            xs_[t][j + k].photon_production += f * xs[k] * (*p.yield_)(E);
           }
         }
       }
@@ -354,20 +343,37 @@ void Nuclide::create_derived(const Function1D* prompt_photons, const Function1D*
       if (rx->redundant_) continue;
 
       // Add contribution to total cross section
-      auto total = xt::view(xs_[t], xt::range(j,j+n), XS_TOTAL);
-      total += xs;
+      std::transform(xs.cbegin(), xs.cend(), xs_[t].begin() + j,
+        xs_[t].begin() + j,
+        [](double const& rx_xs, CrossSectionSet& xs) -> CrossSectionSet& {
+          xs.total += rx_xs;
+          return xs;
+        });
 
       // Add contribution to absorption cross section
-      auto absorption = xt::view(xs_[t], xt::range(j,j+n), XS_ABSORPTION);
-      if (is_disappearance(rx->mt_)) {
-        absorption += xs;
-      }
+      if (is_disappearance(rx->mt_))
+        std::transform(xs.cbegin(), xs.cend(), xs_[t].begin() + j,
+          xs_[t].begin() + j,
+          [](double const& rx_xs, CrossSectionSet& xs) -> CrossSectionSet& {
+            xs.absorption += rx_xs;
+            return xs;
+          });
 
       if (is_fission(rx->mt_)) {
         fissionable_ = true;
-        auto fission = xt::view(xs_[t], xt::range(j,j+n), XS_FISSION);
-        fission += xs;
-        absorption += xs;
+
+        std::transform(xs.cbegin(), xs.cend(), xs_[t].begin() + j,
+          xs_[t].begin() + j,
+          [](double const& rx_xs, CrossSectionSet& xs) -> CrossSectionSet& {
+            xs.fission += rx_xs;
+            return xs;
+          });
+        std::transform(xs.cbegin(), xs.cend(), xs_[t].begin() + j,
+          xs_[t].begin() + j,
+          [](double const& rx_xs, CrossSectionSet& xs) -> CrossSectionSet& {
+            xs.absorption += rx_xs;
+            return xs;
+          });
 
         // Keep track of fission reactions
         if (t == 0) {
@@ -393,8 +399,7 @@ void Nuclide::create_derived(const Function1D* prompt_photons, const Function1D*
       int n = grid_[t].energy.size();
       for (int i = 0; i < n; ++i) {
         xsfloat E = grid_[t].energy[i];
-        xs_[t](i, XS_NU_FISSION) = nu(E, EmissionMode::total)
-          * xs_[t](i, XS_FISSION);
+        xs_[t][i].nu_fission = nu(E, EmissionMode::total) * xs_[t][i].fission;
       }
     }
   }
@@ -642,8 +647,6 @@ void Nuclide::calculate_xs(int i_sab, int i_log_union, double sab_frac, Particle
     // performed
 
     const auto& grid {grid_[i_temp]};
-    const auto& xs {xs_[i_temp]};
-
     int i_grid;
     if (p.E() < grid.energy.front()) {
       i_grid = 0;
@@ -659,6 +662,8 @@ void Nuclide::calculate_xs(int i_sab, int i_log_union, double sab_frac, Particle
       i_grid = i_low + lower_bound_index(
                          &grid.energy[i_low], &grid.energy[i_high], p.E());
     }
+    const auto& xs_left {xs_[i_temp][i_grid]};
+    const auto& xs_right {xs_[i_temp][i_grid + 1]};
 
     // check for rare case where two energy points are the same
     if (grid.energy[i_grid] == grid.energy[i_grid + 1]) ++i_grid;
@@ -671,30 +676,25 @@ void Nuclide::calculate_xs(int i_sab, int i_log_union, double sab_frac, Particle
     micro.index_grid = i_grid;
     micro.interp_factor = f;
 
-    // Calculate microscopic nuclide total cross section
-    micro.total = (1.0 - f)*xs(i_grid, XS_TOTAL)
-          + f*xs(i_grid + 1, XS_TOTAL);
-
-    // Calculate microscopic nuclide absorption cross section
-    micro.absorption = (1.0 - f)*xs(i_grid, XS_ABSORPTION)
-      + f*xs(i_grid + 1, XS_ABSORPTION);
+    // Calculate all microscopic cross sections
+    micro.total = (1.0 - f) * xs_left.total + f * xs_right.total;
+    micro.absorption = (1.0 - f) * xs_left.absorption + f * xs_right.absorption;
 
     if (fissionable_) {
       // Calculate microscopic nuclide total cross section
-      micro.fission = (1.0 - f)*xs(i_grid, XS_FISSION)
-            + f*xs(i_grid + 1, XS_FISSION);
+      micro.fission = (1.0 - f) * xs_left.fission + f * xs_right.fission;
 
       // Calculate microscopic nuclide nu-fission cross section
-      micro.nu_fission = (1.0 - f)*xs(i_grid, XS_NU_FISSION)
-        + f*xs(i_grid + 1, XS_NU_FISSION);
+      micro.nu_fission =
+        (1.0 - f) * xs_left.nu_fission + f * xs_right.nu_fission;
     } else {
       micro.fission = 0.0;
       micro.nu_fission = 0.0;
     }
 
     // Calculate microscopic nuclide photon production cross section
-    micro.photon_prod = (1.0 - f)*xs(i_grid, XS_PHOTON_PROD)
-      + f*xs(i_grid + 1, XS_PHOTON_PROD);
+    micro.photon_prod =
+      (1.0 - f) * xs_left.photon_production + f * xs_right.photon_production;
 
     // Depletion-related reactions
     if (simulation::need_depletion_rx) {

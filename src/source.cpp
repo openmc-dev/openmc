@@ -43,17 +43,8 @@ std::vector<std::unique_ptr<SourceDistribution>> external_sources;
 
 }
 
-namespace {
-
-void* custom_source_library;
-std::string custom_source_parameters;
-std::unique_ptr<SourceDistribution> custom_source;
-
-}
-
-
 //==============================================================================
-// SourceDistribution implementation
+// IndependentSourceDistribution implementation
 //==============================================================================
 
 IndependentSourceDistribution::IndependentSourceDistribution(UPtrSpace space, UPtrAngle angle, UPtrDist energy)
@@ -111,16 +102,6 @@ IndependentSourceDistribution::IndependentSourceDistribution(pugi::xml_node node
     // Close file
     file_close(file_id);
 
-  } else if (check_for_node(node, "library")) {
-    settings::path_source_library = get_node_value(node, "library", false, true);
-    if (!file_exists(settings::path_source_library)) {
-      fatal_error(fmt::format("Source library '{}' does not exist.",
-        settings::path_source_library));
-    }
-
-    if (check_for_node(node, "parameters")) {
-      custom_source_parameters = get_node_value(node, "parameters", false, true);
-    }
   } else {
 
     // Spatial distribution for external source
@@ -188,7 +169,6 @@ IndependentSourceDistribution::IndependentSourceDistribution(pugi::xml_node node
     }
   }
 }
-
 
 Particle::Bank IndependentSourceDistribution::sample(uint64_t* seed)
 {
@@ -286,6 +266,56 @@ Particle::Bank IndependentSourceDistribution::sample(uint64_t* seed)
 }
 
 //==============================================================================
+// CustomSourceWrapper implementation
+//==============================================================================
+
+CustomSourceWrapper::CustomSourceWrapper(std::string path, std::string parameters)
+{
+#ifdef HAS_DYNAMIC_LINKING
+  // Open the library
+  shared_library_ = dlopen(path.c_str(), RTLD_LAZY);
+  if (!shared_library_) {
+    fatal_error("Couldn't open source library " + path);
+  }
+
+  // reset errors
+  dlerror();
+
+  // get the function to create the custom source from the library
+  auto create_custom_source = reinterpret_cast<create_custom_source_t*>(
+    dlsym(shared_library_, "openmc_create_source"));
+
+  // check for any dlsym errors
+  auto dlsym_error = dlerror();
+  if (dlsym_error) {
+    std::string error_msg = fmt::format("Couldn't open the openmc_create_source symbol: {}", dlsym_error);
+    dlclose(shared_library_);
+    fatal_error(error_msg);
+  }
+
+  // create a pointer to an instance of the custom source
+  custom_source_ = create_custom_source(parameters);
+
+#else
+  fatal_error("Custom source libraries have not yet been implemented for "
+    "non-POSIX systems");
+#endif
+}
+
+CustomSourceWrapper::~CustomSourceWrapper()
+{
+  // Make sure custom source is cleared before closing shared library
+  if (custom_source_.get()) custom_source_.reset();
+
+#ifdef HAS_DYNAMIC_LINKING
+  dlclose(shared_library_);
+#else
+  fatal_error("Custom source libraries have not yet been implemented for "
+              "non-POSIX systems");
+#endif
+}
+
+//==============================================================================
 // Non-member functions
 //==============================================================================
 
@@ -293,22 +323,16 @@ void initialize_source()
 {
   write_message("Initializing source particles...", 5);
 
-  if (!settings::path_source_library.empty()) {
-    write_message(6, "Sampling library source {}...", settings::path_source_library);
-    fill_source_bank_custom_source();
+  // Generation source sites from specified distribution in user input
+  #pragma omp parallel for
+  for (int64_t i = 0; i < simulation::work_per_rank; ++i) {
+    // initialize random number seed
+    int64_t id = simulation::total_gen*settings::n_particles +
+      simulation::work_index[mpi::rank] + i + 1;
+    uint64_t seed = init_seed(id, STREAM_SOURCE);
 
-  } else {
-    // Generation source sites from specified distribution in user input
-    #pragma omp parallel for
-    for (int64_t i = 0; i < simulation::work_per_rank; ++i) {
-      // initialize random number seed
-      int64_t id = simulation::total_gen*settings::n_particles +
-        simulation::work_index[mpi::rank] + i + 1;
-      uint64_t seed = init_seed(id, STREAM_SOURCE);
-
-      // sample external source distribution
-      simulation::source_bank[i] = sample_external_source(&seed);
-    }
+    // sample external source distribution
+    simulation::source_bank[i] = sample_external_source(&seed);
   }
 
   // Write out initial source
@@ -323,11 +347,6 @@ void initialize_source()
 
 Particle::Bank sample_external_source(uint64_t* seed)
 {
-  // return values from custom source if using
-  if (!settings::path_source_library.empty()) {
-    return sample_custom_source_library(seed);
-  }
-
   // Determine total source strength
   double total_strength = 0.0;
   for (auto& s : model::external_sources)
@@ -360,82 +379,6 @@ Particle::Bank sample_external_source(uint64_t* seed)
 void free_memory_source()
 {
   model::external_sources.clear();
-}
-
-void load_custom_source_library()
-{
-#ifdef HAS_DYNAMIC_LINKING
-
-  // Open the library
-  custom_source_library = dlopen(settings::path_source_library.c_str(), RTLD_LAZY);
-  if (!custom_source_library) {
-    fatal_error("Couldn't open source library " + settings::path_source_library);
-  }
-
-  // reset errors
-  dlerror();
-
-  // get the function to create the custom source from the library
-  auto create_custom_source = reinterpret_cast<create_custom_source_t*>(
-    dlsym(custom_source_library, "openmc_create_source"));
-
-  // check for any dlsym errors
-  auto dlsym_error = dlerror();
-  if (dlsym_error) {
-    std::string error_msg = fmt::format("Couldn't open the openmc_create_source symbol: {}", dlsym_error);
-    dlclose(custom_source_library);
-    fatal_error(error_msg);
-  }
-
-  // create a pointer to an instance of the custom source
-  custom_source = create_custom_source(custom_source_parameters);
-
-#else
-  fatal_error("Custom source libraries have not yet been implemented for "
-    "non-POSIX systems");
-#endif
-}
-
-void close_custom_source_library()
-{
-  if (custom_source.get()) {
-    // Make sure the custom source is destroyed before we close it's libary.
-    custom_source.reset();
-  }
-
-#ifdef HAS_DYNAMIC_LINKING
-  dlclose(custom_source_library);
-#else
-  fatal_error("Custom source libraries have not yet been implemented for "
-              "non-POSIX systems");
-#endif
-}
-
-Particle::Bank sample_custom_source_library(uint64_t* seed)
-{
-  // sample from the instance of the custom source
-  return custom_source->sample(seed);
-}
-
-void fill_source_bank_custom_source()
-{
-  // Load the custom library
-  load_custom_source_library();
-
-  // Generation source sites from specified distribution in the
-  // library source
-  for (int64_t i = 0; i < simulation::work_per_rank; ++i) {
-    // initialize random number seed
-    int64_t id = (simulation::total_gen + overall_generation()) *
-      settings::n_particles + simulation::work_index[mpi::rank] + i + 1;
-     uint64_t seed = init_seed(id, STREAM_SOURCE);
-
-    // sample custom library source
-    simulation::source_bank[i] = sample_custom_source_library(&seed);
-  }
-
-  // release the library
-  close_custom_source_library();
 }
 
 } // namespace openmc

@@ -632,7 +632,7 @@ void Tally::accumulate()
     double total_source = 0.0;
     if (settings::run_mode == RunMode::FIXED_SOURCE) {
       for (const auto& s : model::external_sources) {
-        total_source += s.strength();
+        total_source += s->strength();
       }
     } else {
       total_source = 1.0;

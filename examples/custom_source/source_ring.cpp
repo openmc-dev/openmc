@@ -5,7 +5,7 @@
 #include "openmc/source.h"
 #include "openmc/particle.h"
 
-class Source : public openmc::CustomSource
+class Source : public openmc::SourceDistribution
 {
   openmc::Particle::Bank sample(uint64_t* seed)
   {

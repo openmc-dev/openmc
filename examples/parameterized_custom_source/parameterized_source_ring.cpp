@@ -6,8 +6,7 @@
 #include "openmc/source.h"
 #include "openmc/particle.h"
 
-class Source : public openmc::CustomSource
-{
+class Source : public openmc::SourceDistribution {
   public:
     Source(double radius, double energy) : radius_(radius), energy_(energy) { }
 

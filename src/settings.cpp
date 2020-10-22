@@ -420,17 +420,16 @@ void read_settings_xml()
 
   // Get point to list of <source> elements and make sure there is at least one
   for (pugi::xml_node node : root.children("source")) {
-    model::external_sources.emplace_back(node);
+    model::external_sources.push_back(std::make_unique<IndependentSourceDistribution>(node));
   }
 
   // If no source specified, default to isotropic point source at origin with Watt spectrum
   if (model::external_sources.empty()) {
-    SourceDistribution source {
+    model::external_sources.push_back(std::make_unique<IndependentSourceDistribution>(
       UPtrSpace{new SpatialPoint({0.0, 0.0, 0.0})},
       UPtrAngle{new Isotropic()},
       UPtrDist{new Watt(0.988e6, 2.249e-6)}
-    };
-    model::external_sources.push_back(std::move(source));
+    ));
   }
 
   // Check if we want to write out source

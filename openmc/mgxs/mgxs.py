@@ -699,8 +699,13 @@ class MGXS:
 
         Parameters
         ----------
-        mgxs_type : {'total', 'transport', 'nu-transport', 'absorption', 'capture', 'fission', 'nu-fission', 'kappa-fission', 'scatter', 'nu-scatter', 'scatter matrix', 'nu-scatter matrix', 'multiplicity matrix', 'nu-fission matrix', 'chi', 'chi-prompt', 'inverse-velocity', 'prompt-nu-fission', 'prompt-nu-fission matrix', 'current', 'diffusion-coefficient', 'nu-diffusion-coefficient', mt}
-            The type of multi-group cross section object to return
+        mgxs_type : str or Integral
+            The type of multi-group cross section object to return; valid
+            values are members of MGXS_TYPES, or the reaction types that are
+            the keys of REACTION_MT. Note that if a reaction type from
+            REACTION_MT is used, it can be appended with ' matrix' to obtain
+            a multigroup matrix (from incoming to outgoing energy groups) for
+            reactions with a neutron in an outgoing channel.
         domain : openmc.Material or openmc.Cell or openmc.Universe or openmc.RegularMesh
             The domain for spatial homogenization
         domain_type : {'material', 'cell', 'distribcell', 'universe', 'mesh'}
@@ -727,8 +732,6 @@ class MGXS:
             section type requested by the user
 
         """
-
-        cv.check_value('mgxs_type', mgxs_type, MGXS_TYPES)
 
         if mgxs_type == 'total':
             mgxs = TotalXS(domain, domain_type, energy_groups)
@@ -784,11 +787,28 @@ class MGXS:
         elif mgxs_type == 'nu-diffusion-coefficient':
             mgxs = DiffusionCoefficient(domain, domain_type, energy_groups, nu=True)
         else:
-            if mgxs_type in REACTION_MT.keys() + REACTION_MT.values():
+            # Now parse the REACTION_MT options, or raise an error
+            if mgxs_type in REACTION_MT.keys():
                 # Then it is a reaction not covered by the above that is
-                # supported by the ArbitraryMTXS Class
-                mgxs = ArbitraryMTXS(mgxs_type, domain, domain_type,
+                # supported by the ArbitraryXS Class
+                mgxs = ArbitraryXS(mgxs_type, domain, domain_type,
                                      energy_groups)
+            elif mgxs_type.endswith("matrix"):
+                # Then we should see if it is a valid REACTION_MT type
+                # To do that, split it into words
+                split_mgxs_types = mgxs_type.split(" ")
+                rxn = split_mgxs_types[0]
+
+                # Check for correctness
+                if rxn not in REACTION_MT.keys():
+                    # This is an invalid type so let the user know.
+                    msg = 'Unable to set "{0}" to "{1}"'.format("mgxs_type",
+                                                                mgxs_type) + \
+                        " as it is not an accepted MGXS type."
+                    raise ValueError(msg)
+
+                mgxs = ArbitraryMatrixXS(mgxs_type, domain, domain_type,
+                                           energy_groups)
             else:
                 # This is an invalid type so let the user know.
                 msg = 'Unable to set "{0}" to "{1}"'.format("mgxs_type",
@@ -3862,35 +3882,38 @@ class ScatterXS(MGXS):
             self._valid_estimators = ['analog']
 
 
-
-class ArbitraryMTXS(MGXS):
+class ArbitraryXS(MGXS):
     r"""A multi-group cross section for an arbitrary reaction type.
 
     This class can be used for both OpenMC input generation and tally data
     post-processing to compute spatially-homogenized and energy-integrated
-    multi-group total cross sections for multi-group neutronics calculations. At
-    a minimum, one needs to set the :attr:`TotalXS.energy_groups` and
-    :attr:`TotalXS.domain` properties. Tallies for the flux and appropriate
+    multi-group total cross sections for multi-group neutronics calculations.
+    At a minimum, one needs to set the :attr:`ArbitraryXS.energy_groups` and
+    :attr:`ArbitraryXS.domain` properties. Tallies for the flux and appropriate
     reaction rates over the specified domain are generated automatically via the
-    :attr:`TotalXS.tallies` property, which can then be appended to a
+    :attr:`ArbitraryXS.tallies` property, which can then be appended to a
     :class:`openmc.Tallies` instance.
 
     For post-processing, the :meth:`MGXS.load_from_statepoint` will pull in the
     necessary data to compute multi-group cross sections from a
     :class:`openmc.StatePoint` instance. The derived multi-group cross section
-    can then be obtained from the :attr:`TotalXS.xs_tally` property.
+    can then be obtained from the :attr:`ArbitraryXS.xs_tally` property.
 
     For a spatial domain :math:`V` and energy group :math:`[E_g,E_{g-1}]`, the
-    total cross section is calculated as:
+    requested cross section is calculated as:
 
     .. math::
 
        \frac{\int_{r \in V} dr \int_{4\pi} d\Omega \int_{E_g}^{E_{g-1}} dE \;
-       \sigma_t (r, E) \psi (r, E, \Omega)}{\int_{r \in V} dr \int_{4\pi}
-       d\Omega \int_{E_g}^{E_{g-1}} dE \; \psi (r, E, \Omega)}.
+       \sigma_X (r, E) \psi (r, E, \Omega)}{\int_{r \in V} dr \int_{4\pi}
+       d\Omega \int_{E_g}^{E_{g-1}} dE \; \psi (r, E, \Omega)}
+
+    where :math:`_\sigma_X` is the requested reaction type of interest.
 
     Parameters
     ----------
+    rxn_type : str
+        Reaction type (e.g., '(n,2n)', '(n,Xt)', etc.)
     domain : openmc.Material or openmc.Cell or openmc.Universe or openmc.RegularMesh
         The domain for spatial homogenization
     domain_type : {'material', 'cell', 'distribcell', 'universe', 'mesh'}
@@ -3914,7 +3937,7 @@ class ArbitraryMTXS(MGXS):
     name : str, optional
         Name of the multi-group cross section
     rxn_type : str
-        Reaction type (e.g., 'total', 'nu-fission', etc.)
+        Reaction type (e.g., '(n,2n)', '(n,Xt)', etc.)
     by_nuclide : bool
         If true, computes cross sections for each nuclide in domain
     domain : openmc.Material or openmc.Cell or openmc.Universe or openmc.RegularMesh
@@ -3980,6 +4003,172 @@ class ArbitraryMTXS(MGXS):
         super().__init__(domain, domain_type, groups, by_nuclide, name,
                          num_polar, num_azimuthal)
         self._rxn_type = rxn_type
+
+
+class ArbitraryMatrixXS(MatrixMGXS):
+    r"""A multi-group matrix cross section for an arbitrary reaction type.
+
+    This class can be used for both OpenMC input generation and tally data
+    post-processing to compute spatially-homogenized and energy-integrated
+    multi-group cross sections for multi-group neutronics calculations. At a
+    minimum, one needs to set the :attr:`ArbitraryMatrixXS.energy_groups` and
+    :attr:`ArbitraryMatrixXS.domain` properties. Tallies for the flux and
+    appropriate reaction rates over the specified domain are generated
+    automatically via the :attr:`ArbitraryMatrixXS.tallies` property, which can
+    then be appended to a :class:`openmc.Tallies` instance.
+
+    For post-processing, the :meth:`MGXS.load_from_statepoint` will pull in the
+    necessary data to compute multi-group cross sections from a
+    :class:`openmc.StatePoint` instance. The derived multi-group cross section
+    can then be obtained from the :attr:`ArbitraryMatrixXS.xs_tally` property.
+
+    For a spatial domain :math:`V`, incoming energy group
+    :math:`[E_{g'},E_{g'-1}]`, and outgoing energy group :math:`[E_g,E_{g-1}]`,
+    the fission production is calculated as:
+
+    .. math::
+
+       \begin{aligned}
+       \langle \sigma_{X,g'\rightarrow g} \phi \rangle &= \int_{r \in V} dr
+       \int_{4\pi} d\Omega' \int_{E_{g'}}^{E_{g'-1}} dE' \int_{E_g}^{E_{g-1}} dE
+       \; \chi(E) \sigma_X (r, E') \psi(r, E', \Omega')\\
+       \langle \phi \rangle &= \int_{r \in V} dr \int_{4\pi} d\Omega
+       \int_{E_g}^{E_{g-1}} dE \; \psi (r, E, \Omega) \\
+       \sigma_{X,g'\rightarrow g} &= \frac{\langle \sigma_{X,g'\rightarrow
+       g} \phi \rangle}{\langle \phi \rangle}
+       \end{aligned}
+
+    where :math:`_\sigma_X` is the requested reaction type of interest.
+
+    Parameters
+    ----------
+    rxn_type : str
+        Reaction type (e.g., '(n,2n)', '(n,nta)', etc.). Valid names have
+        neutrons as a product.
+    domain : openmc.Material or openmc.Cell or openmc.Universe or openmc.RegularMesh
+        The domain for spatial homogenization
+    domain_type : {'material', 'cell', 'distribcell', 'universe', 'mesh'}
+        The domain type for spatial homogenization
+    groups : openmc.mgxs.EnergyGroups
+        The energy group structure for energy condensation
+    by_nuclide : bool
+        If true, computes cross sections for each nuclide in domain
+    name : str, optional
+        Name of the multi-group cross section. Used as a label to identify
+        tallies in OpenMC 'tallies.xml' file.
+    num_polar : Integral, optional
+        Number of equi-width polar angle bins for angle discretization;
+        defaults to one bin
+    num_azimuthal : Integral, optional
+        Number of equi-width azimuthal angle bins for angle discretization;
+        defaults to one bin
+    prompt : bool
+        If true, computes cross sections which only includes prompt neutrons;
+        defaults to False which includes prompt and delayed in total
+
+    Attributes
+    ----------
+    name : str, optional
+        Name of the multi-group cross section
+    rxn_type : str
+        Reaction type (e.g., 'total', 'nu-fission', etc.)
+    prompt : bool
+        If true, computes cross sections which only includes prompt neutrons
+    by_nuclide : bool
+        If true, computes cross sections for each nuclide in domain
+    domain : openmc.Material or openmc.Cell or openmc.Universe or openmc.RegularMesh
+        Domain for spatial homogenization
+    domain_type : {'material', 'cell', 'distribcell', 'universe', 'mesh'}
+        Domain type for spatial homogenization
+    energy_groups : openmc.mgxs.EnergyGroups
+        Energy group structure for energy condensation
+    num_polar : Integral
+        Number of equi-width polar angle bins for angle discretization
+    num_azimuthal : Integral
+        Number of equi-width azimuthal angle bins for angle discretization
+    tally_trigger : openmc.Trigger
+        An (optional) tally precision trigger given to each tally used to
+        compute the cross section
+    scores : list of str
+        The scores in each tally used to compute the multi-group cross section
+    filters : list of openmc.Filter
+        The filters in each tally used to compute the multi-group cross section
+    tally_keys : list of str
+        The keys into the tallies dictionary for each tally used to compute
+        the multi-group cross section
+    estimator : 'analog'
+        The tally estimator used to compute the multi-group cross section
+    tallies : collections.OrderedDict
+        OpenMC tallies needed to compute the multi-group cross section. The keys
+        are strings listed in the :attr:`NuFissionMatrixXS.tally_keys`
+        property and values are instances of :class:`openmc.Tally`.
+    rxn_rate_tally : openmc.Tally
+        Derived tally for the reaction rate tally used in the numerator to
+        compute the multi-group cross section. This attribute is None
+        unless the multi-group cross section has been computed.
+    xs_tally : openmc.Tally
+        Derived tally for the multi-group cross section. This attribute
+        is None unless the multi-group cross section has been computed.
+    num_subdomains : int
+        The number of subdomains is unity for 'material', 'cell' and 'universe'
+        domain types. This is equal to the number of cell instances
+        for 'distribcell' domain types (it is equal to unity prior to loading
+        tally data from a statepoint file).
+    num_nuclides : int
+        The number of nuclides for which the multi-group cross section is
+        being tracked. This is unity if the by_nuclide attribute is False.
+    nuclides : Iterable of str or 'sum'
+        The optional user-specified nuclides for which to compute cross
+        sections (e.g., 'U238', 'O16'). If by_nuclide is True but nuclides
+        are not specified by the user, all nuclides in the spatial domain
+        are included. This attribute is 'sum' if by_nuclide is false.
+    sparse : bool
+        Whether or not the MGXS' tallies use SciPy's LIL sparse matrix format
+        for compressed data storage
+    loaded_sp : bool
+        Whether or not a statepoint file has been loaded with tally data
+    derived : bool
+        Whether or not the MGXS is merged from one or more other MGXS
+    hdf5_key : str
+        The key used to index multi-group cross sections in an HDF5 data store
+
+    """
+
+    def __init__(self, domain=None, domain_type=None, groups=None,
+                 by_nuclide=False, name='', num_polar=1,
+                 num_azimuthal=1, prompt=False):
+        super().__init__(domain, domain_type, groups, by_nuclide, name,
+                         num_polar, num_azimuthal)
+        # Do that with the error variable just because PEP8 puts us in
+        # a hard place for multi-line if conditionals
+        # First we see if there are more words than there should be,
+        # then we make sure its a valid reaction, then we dont allow
+        # non (n,...) type reactions like 'heating-local' as they cant
+        # be matrices
+        split_rxn_type = rxn_type.split(" ")
+        error = len(split_rxn_type) > 2 or rxn not in REACTION_MT.keys() or \
+            not rxn.startswith("(")
+        if error:
+            # This is an invalid type so let the user know.
+            msg = 'Unable to set "{0}" to "{1}"'.format("rxns_type",
+                                                        rxn_type) + \
+                " as it is not an accepted ArbitraryMatrixXS type."
+            raise ValueError(msg)
+
+        # See if the rxn can be a matrix type; we've already made sure its
+        # an (X,Y) type of reaction, get the product (Y)
+        _, product = rxn.strip("()").split(',', maxsplit=2)
+        if "n" not in product:
+            msg = 'Unable to set "{0}" to "{1}"'.format("rxns_type",
+                                                        rxn_type) + \
+                " as it is not an accepted ArbitraryMatrixXS type."
+            raise ValueError(msg)
+
+        # If we made it here, then we are good to go
+        self._rxn_type = rxn_type
+        self._estimator = 'analog'
+        self._valid_estimators = ['analog']
+
 
 class ScatterMatrixXS(MatrixMGXS):
     r"""A scattering matrix multi-group cross section with the cosine of the

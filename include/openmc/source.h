@@ -71,6 +71,28 @@ private:
   std::vector<Particle::Bank> sites_; //!< Source sites from a file
 };
 
+//==============================================================================
+//! Wrapper for custom sources that manages opening/closing shared library
+//==============================================================================
+
+class CustomSourceWrapper : public SourceDistribution {
+public:
+  // Constructors, destructors
+  CustomSourceWrapper(std::string path, std::string parameters);
+  ~CustomSourceWrapper();
+
+  // Defer implementation to custom source library
+  Particle::Bank sample(uint64_t* seed) override
+  {
+    return custom_source_->sample(seed);
+  }
+
+  double strength() const override { return custom_source_->strength(); }
+private:
+  void* shared_library_; //!< library from dlopen
+  std::unique_ptr<SourceDistribution> custom_source_;
+};
+
 typedef std::unique_ptr<SourceDistribution> create_custom_source_t(std::string parameters);
 
 //==============================================================================
@@ -85,18 +107,6 @@ extern "C" void initialize_source();
 //! \param[inout] seed Pseudorandom seed pointer
 //! \return Sampled source site
 Particle::Bank sample_external_source(uint64_t* seed);
-
-//! Sample a site from custom source library
-Particle::Bank sample_custom_source_library(uint64_t* seed);
-
-//! Load custom source library
-void load_custom_source_library();
-
-//! Release custom source library
-void close_custom_source_library();
-
-//! Fill source bank at the end of a generation for dlopen based source simulation
-void fill_source_bank_custom_source();
 
 void free_memory_source();
 

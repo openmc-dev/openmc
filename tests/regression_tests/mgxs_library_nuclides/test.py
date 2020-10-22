@@ -21,6 +21,8 @@ class MGXSTestHarness(PyAPITestHarness):
         # Test relevant all MGXS types
         relevant_MGXS_TYPES = [item for item in openmc.mgxs.MGXS_TYPES
                                if item != 'current']
+        relevant_MGXS_TYPES += openmc.mgxs.ARBITRARY_VECTOR_TYPES
+        relevant_MGXS_TYPES += openmc.mgxs.ARBITRARY_MATRIX_TYPES
         self.mgxs_lib.mgxs_types = tuple(relevant_MGXS_TYPES)
         self.mgxs_lib.energy_groups = energy_groups
         self.mgxs_lib.legendre_order = 3

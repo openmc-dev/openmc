@@ -56,7 +56,7 @@ REACTION_NAME = {1: '(n,total)', 2: '(n,elastic)', 4: '(n,level)',
                  301: 'heating', 444: 'damage-energy',
                  649: '(n,pc)', 699: '(n,dc)', 749: '(n,tc)', 799: '(n,3Hec)',
                  849: '(n,ac)', 891: '(n,2nc)', 901: 'heating-local'}
-REACTION_NAME.update({i: '(n,n{})'.format(i - 50) for i in range(50, 91)})
+REACTION_NAME.update({i: '(n,n{})'.format(i - 50) for i in range(51, 91)})
 REACTION_NAME.update({i: '(n,p{})'.format(i - 600) for i in range(600, 649)})
 REACTION_NAME.update({i: '(n,d{})'.format(i - 650) for i in range(650, 699)})
 REACTION_NAME.update({i: '(n,t{})'.format(i - 700) for i in range(700, 749)})

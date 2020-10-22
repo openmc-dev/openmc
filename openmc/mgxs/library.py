@@ -277,7 +277,9 @@ class Library:
 
     @mgxs_types.setter
     def mgxs_types(self, mgxs_types):
-        all_mgxs_types = openmc.mgxs.MGXS_TYPES + openmc.mgxs.MDGXS_TYPES
+        all_mgxs_types = openmc.mgxs.MGXS_TYPES + openmc.mgxs.MDGXS_TYPES + \
+            openmc.mgxs.ARBITRARY_VECTOR_TYPES + \
+            openmc.mgxs.ARBITRARY_MATRIX_TYPES
         if mgxs_types == 'all':
             self._mgxs_types = all_mgxs_types
         else:

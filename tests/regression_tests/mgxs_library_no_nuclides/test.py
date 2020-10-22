@@ -2,6 +2,7 @@ import hashlib
 
 import openmc
 import openmc.mgxs
+from openmc.data import REACTION_MT
 from openmc.examples import pwr_pin_cell
 
 from tests.testing_harness import PyAPITestHarness
@@ -22,6 +23,8 @@ class MGXSTestHarness(PyAPITestHarness):
         # Test all relevant MGXS types
         relevant_MGXS_TYPES = [item for item in openmc.mgxs.MGXS_TYPES
                                if item != 'current']
+        relevant_MGXS_TYPES += openmc.mgxs.ARBITRARY_VECTOR_TYPES
+        relevant_MGXS_TYPES += openmc.mgxs.ARBITRARY_MATRIX_TYPES
         self.mgxs_lib.mgxs_types = tuple(relevant_MGXS_TYPES) + \
                                    openmc.mgxs.MDGXS_TYPES
         self.mgxs_lib.energy_groups = energy_groups
@@ -48,7 +51,7 @@ class MGXSTestHarness(PyAPITestHarness):
             for mgxs_type in self.mgxs_lib.mgxs_types:
                 mgxs = self.mgxs_lib.get_mgxs(domain, mgxs_type)
                 df = mgxs.get_pandas_dataframe()
-                outstr += df.to_string() + '\n'
+                outstr += mgxs_type + '\n' + df.to_string() + '\n'
 
         # Hash the results if necessary
         if hash_output:

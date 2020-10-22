@@ -8,7 +8,7 @@ import h5py
 import numpy as np
 
 import openmc
-from openmc.data import REACTION_MT
+from openmc.data import REACTION_MT, REACTION_NAME, FISSION_MTS
 import openmc.checkvalue as cv
 from ..tallies import ESTIMATOR_TYPES
 from . import EnergyGroups
@@ -42,6 +42,22 @@ MGXS_TYPES = (
     'diffusion-coefficient',
     'nu-diffusion-coefficient'
 )
+
+# Some scores from REACTION_MT are not supported, or are simply overkill to
+# support and test (like inelastic levels), remoev those from consideration
+_BAD_SCORES = ["(n,misc)", "(n,absorption)", "(n,total)", "fission"]
+_BAD_SCORES += [REACTION_NAME[mt] for mt in FISSION_MTS]
+ARBITRARY_VECTOR_TYPES = [k for k in REACTION_MT.keys() if k not in _BAD_SCORES]
+ARBITRARY_VECTOR_TYPES = tuple(ARBITRARY_VECTOR_TYPES)
+ARBITRARY_MATRIX_TYPES = []
+for rxn in ARBITRARY_VECTOR_TYPES:
+    # Preclude the fission channels from being treated as a matrix
+    if rxn not in [REACTION_NAME[mt] for mt in FISSION_MTS]:
+        split_rxn = rxn.strip("()").split(",")
+        if len(split_rxn) > 1 and "n" in split_rxn[1]:
+            # Then there is a neutron product, so it can also be a matrix
+            ARBITRARY_MATRIX_TYPES.append(rxn + " matrix")
+ARBITRARY_MATRIX_TYPES = tuple(ARBITRARY_MATRIX_TYPES)
 
 # Supported domain types
 DOMAIN_TYPES = (
@@ -733,6 +749,10 @@ class MGXS:
 
         """
 
+        cv.check_value(
+            "mgxs_type", mgxs_type,
+            MGXS_TYPES + ARBITRARY_VECTOR_TYPES + ARBITRARY_MATRIX_TYPES)
+
         if mgxs_type == 'total':
             mgxs = TotalXS(domain, domain_type, energy_groups)
         elif mgxs_type == 'transport':
@@ -786,35 +806,14 @@ class MGXS:
             mgxs = DiffusionCoefficient(domain, domain_type, energy_groups)
         elif mgxs_type == 'nu-diffusion-coefficient':
             mgxs = DiffusionCoefficient(domain, domain_type, energy_groups, nu=True)
-        else:
-            # Now parse the REACTION_MT options, or raise an error
-            if mgxs_type in REACTION_MT.keys():
-                # Then it is a reaction not covered by the above that is
-                # supported by the ArbitraryXS Class
-                mgxs = ArbitraryXS(mgxs_type, domain, domain_type,
+        elif mgxs_type in ARBITRARY_VECTOR_TYPES:
+            # Then it is a reaction not covered by the above that is
+            # supported by the ArbitraryXS Class
+            mgxs = ArbitraryXS(mgxs_type, domain, domain_type, energy_groups)
+        elif mgxs_type in ARBITRARY_MATRIX_TYPES:
+            mgxs = ArbitraryMatrixXS(mgxs_type, domain, domain_type,
                                      energy_groups)
-            elif mgxs_type.endswith("matrix"):
-                # Then we should see if it is a valid REACTION_MT type
-                # To do that, split it into words
-                split_mgxs_types = mgxs_type.split(" ")
-                rxn = split_mgxs_types[0]
 
-                # Check for correctness
-                if rxn not in REACTION_MT.keys():
-                    # This is an invalid type so let the user know.
-                    msg = 'Unable to set "{0}" to "{1}"'.format("mgxs_type",
-                                                                mgxs_type) + \
-                        " as it is not an accepted MGXS type."
-                    raise ValueError(msg)
-
-                mgxs = ArbitraryMatrixXS(mgxs_type, domain, domain_type,
-                                           energy_groups)
-            else:
-                # This is an invalid type so let the user know.
-                msg = 'Unable to set "{0}" to "{1}"'.format("mgxs_type",
-                                                            mgxs_type) + \
-                    " as it is not an accepted MGXS type."
-                raise ValueError(msg)
         mgxs.by_nuclide = by_nuclide
         mgxs.name = name
         mgxs.num_polar = num_polar
@@ -4000,6 +3999,7 @@ class ArbitraryXS(MGXS):
 
     def __init__(self, rxn_type, domain=None, domain_type=None, groups=None,
                  by_nuclide=False, name='', num_polar=1, num_azimuthal=1):
+        cv.check_value("rxn_type", rxn_type, ARBITRARY_VECTOR_TYPES)
         super().__init__(domain, domain_type, groups, by_nuclide, name,
                          num_polar, num_azimuthal)
         self._rxn_type = rxn_type
@@ -4062,9 +4062,6 @@ class ArbitraryMatrixXS(MatrixMGXS):
     num_azimuthal : Integral, optional
         Number of equi-width azimuthal angle bins for angle discretization;
         defaults to one bin
-    prompt : bool
-        If true, computes cross sections which only includes prompt neutrons;
-        defaults to False which includes prompt and delayed in total
 
     Attributes
     ----------
@@ -4072,8 +4069,6 @@ class ArbitraryMatrixXS(MatrixMGXS):
         Name of the multi-group cross section
     rxn_type : str
         Reaction type (e.g., 'total', 'nu-fission', etc.)
-    prompt : bool
-        If true, computes cross sections which only includes prompt neutrons
     by_nuclide : bool
         If true, computes cross sections for each nuclide in domain
     domain : openmc.Material or openmc.Cell or openmc.Universe or openmc.RegularMesh
@@ -4134,38 +4129,13 @@ class ArbitraryMatrixXS(MatrixMGXS):
 
     """
 
-    def __init__(self, domain=None, domain_type=None, groups=None,
+    def __init__(self, rxn_type, domain=None, domain_type=None, groups=None,
                  by_nuclide=False, name='', num_polar=1,
-                 num_azimuthal=1, prompt=False):
+                 num_azimuthal=1):
+        cv.check_value("rxn_type", rxn_type, ARBITRARY_MATRIX_TYPES)
         super().__init__(domain, domain_type, groups, by_nuclide, name,
                          num_polar, num_azimuthal)
-        # Do that with the error variable just because PEP8 puts us in
-        # a hard place for multi-line if conditionals
-        # First we see if there are more words than there should be,
-        # then we make sure its a valid reaction, then we dont allow
-        # non (n,...) type reactions like 'heating-local' as they cant
-        # be matrices
-        split_rxn_type = rxn_type.split(" ")
-        error = len(split_rxn_type) > 2 or rxn not in REACTION_MT.keys() or \
-            not rxn.startswith("(")
-        if error:
-            # This is an invalid type so let the user know.
-            msg = 'Unable to set "{0}" to "{1}"'.format("rxns_type",
-                                                        rxn_type) + \
-                " as it is not an accepted ArbitraryMatrixXS type."
-            raise ValueError(msg)
-
-        # See if the rxn can be a matrix type; we've already made sure its
-        # an (X,Y) type of reaction, get the product (Y)
-        _, product = rxn.strip("()").split(',', maxsplit=2)
-        if "n" not in product:
-            msg = 'Unable to set "{0}" to "{1}"'.format("rxns_type",
-                                                        rxn_type) + \
-                " as it is not an accepted ArbitraryMatrixXS type."
-            raise ValueError(msg)
-
-        # If we made it here, then we are good to go
-        self._rxn_type = rxn_type
+        self._rxn_type = rxn_type.split(" ")[0]
         self._estimator = 'analog'
         self._valid_estimators = ['analog']
 

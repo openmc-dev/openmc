@@ -305,7 +305,10 @@ void Nuclide::create_derived(const Function1D* prompt_photons, const Function1D*
   for (const auto& grid : grid_)
     xs_.emplace_back(grid.energy.size());
 
-  reaction_index_.fill(C_NONE);
+  // static cast removes annoying conversion warning (C_NONE ends up being the
+  // largest unsigned)
+  reaction_index_.fill(
+    static_cast<typename decltype(reaction_index_)::value_type>(C_NONE));
   for (int i = 0; i < reactions_.size(); ++i) {
     const auto& rx {reactions_[i]};
 

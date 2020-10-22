@@ -247,7 +247,8 @@ public:
 
   __host__ void resize(std::size_t new_size)
   {
-    reserve(new_size);
+    if (new_size > capacity_)
+      reserve(new_size);
     // Default initialize new things:
     for (std::size_t i = size_; i < new_size; ++i)
       begin_[i] = T();
@@ -255,7 +256,8 @@ public:
   }
   __host__ void resize(std::size_t new_size, T const& default_value)
   {
-    reserve(new_size);
+    if (new_size > capacity_)
+      reserve(new_size);
     // set new things to be default_value
     for (std::size_t i = size_; i < new_size; ++i)
       begin_[i] = default_value;

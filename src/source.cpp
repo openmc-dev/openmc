@@ -39,7 +39,7 @@ namespace openmc {
 
 namespace model {
 
-std::vector<SourceDistribution> external_sources;
+std::vector<std::unique_ptr<SourceDistribution>> external_sources;
 
 }
 
@@ -47,7 +47,7 @@ namespace {
 
 void* custom_source_library;
 std::string custom_source_parameters;
-std::unique_ptr<CustomSource> custom_source;
+std::unique_ptr<SourceDistribution> custom_source;
 
 }
 
@@ -56,10 +56,10 @@ std::unique_ptr<CustomSource> custom_source;
 // SourceDistribution implementation
 //==============================================================================
 
-SourceDistribution::SourceDistribution(UPtrSpace space, UPtrAngle angle, UPtrDist energy)
+IndependentSourceDistribution::IndependentSourceDistribution(UPtrSpace space, UPtrAngle angle, UPtrDist energy)
   : space_{std::move(space)}, angle_{std::move(angle)}, energy_{std::move(energy)} { }
 
-SourceDistribution::SourceDistribution(pugi::xml_node node)
+IndependentSourceDistribution::IndependentSourceDistribution(pugi::xml_node node)
 {
   // Check for particle type
   if (check_for_node(node, "particle")) {
@@ -190,7 +190,7 @@ SourceDistribution::SourceDistribution(pugi::xml_node node)
 }
 
 
-Particle::Bank SourceDistribution::sample(uint64_t* seed) const
+Particle::Bank IndependentSourceDistribution::sample(uint64_t* seed)
 {
   Particle::Bank site;
 
@@ -331,7 +331,7 @@ Particle::Bank sample_external_source(uint64_t* seed)
   // Determine total source strength
   double total_strength = 0.0;
   for (auto& s : model::external_sources)
-    total_strength += s.strength();
+    total_strength += s->strength();
 
   // Sample from among multiple source distributions
   int i = 0;
@@ -339,13 +339,13 @@ Particle::Bank sample_external_source(uint64_t* seed)
     double xi = prn(seed)*total_strength;
     double c = 0.0;
     for (; i < model::external_sources.size(); ++i) {
-      c += model::external_sources[i].strength();
+      c += model::external_sources[i]->strength();
       if (xi < c) break;
     }
   }
 
   // Sample source site from i-th source distribution
-  Particle::Bank site {model::external_sources[i].sample(seed)};
+  Particle::Bank site {model::external_sources[i]->sample(seed)};
 
   // If running in MG, convert site.E to group
   if (!settings::run_CE) {
@@ -375,7 +375,7 @@ void load_custom_source_library()
   // reset errors
   dlerror();
 
-  // get the function to create the CustomSource from the library
+  // get the function to create the custom source from the library
   auto create_custom_source = reinterpret_cast<create_custom_source_t*>(
     dlsym(custom_source_library, "openmc_create_source"));
 
@@ -387,7 +387,7 @@ void load_custom_source_library()
     fatal_error(error_msg);
   }
 
-  // create a pointer to an instance of the CustomSource
+  // create a pointer to an instance of the custom source
   custom_source = create_custom_source(custom_source_parameters);
 
 #else
@@ -413,7 +413,7 @@ void close_custom_source_library()
 
 Particle::Bank sample_custom_source_library(uint64_t* seed)
 {
-  // sample from the instance of the CustomSource
+  // sample from the instance of the custom source
   return custom_source->sample(seed);
 }
 

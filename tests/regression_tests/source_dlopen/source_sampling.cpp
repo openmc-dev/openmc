@@ -5,7 +5,7 @@
 #include "openmc/source.h"
 #include "openmc/particle.h"
 
-class Source : openmc::CustomSource
+class Source : public openmc::SourceDistribution
 {
   openmc::Particle::Bank sample(uint64_t *seed)
   {
@@ -14,7 +14,7 @@ class Source : openmc::CustomSource
     particle.particle = openmc::Particle::Type::neutron;
     particle.wgt = 1.0;
     // position
-    
+
     particle.r.x = 0.;
     particle.r.y = 0.;
     particle.r.z = 0.;
@@ -22,7 +22,7 @@ class Source : openmc::CustomSource
     particle.u = {1.0, 0.0, 0.0};
     particle.E = 14.08e6;
     particle.delayed_group = 0;
-    return particle;    
+    return particle;
   }
 };
 

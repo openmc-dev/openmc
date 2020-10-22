@@ -23,7 +23,7 @@ class SourceDistribution;
 
 namespace model {
 
-extern std::vector<SourceDistribution> external_sources;
+extern std::vector<std::unique_ptr<SourceDistribution>> external_sources;
 
 } // namespace model
 
@@ -33,18 +33,29 @@ extern std::vector<SourceDistribution> external_sources;
 
 class SourceDistribution {
 public:
+  virtual ~SourceDistribution() = default;
+
+  // Methods that must be implemented
+  virtual Particle::Bank sample(uint64_t* seed) = 0;
+
+  // Methods that can be overridden
+  virtual double strength() const { return 1.0; }
+};
+
+class IndependentSourceDistribution : public SourceDistribution {
+public:
   // Constructors
-  SourceDistribution(UPtrSpace space, UPtrAngle angle, UPtrDist energy);
-  explicit SourceDistribution(pugi::xml_node node);
+  IndependentSourceDistribution(UPtrSpace space, UPtrAngle angle, UPtrDist energy);
+  explicit IndependentSourceDistribution(pugi::xml_node node);
 
   //! Sample from the external source distribution
   //! \param[inout] seed Pseudorandom seed pointer
   //! \return Sampled site
-  Particle::Bank sample(uint64_t* seed) const;
+  Particle::Bank sample(uint64_t* seed) override;
 
   // Properties
   Particle::Type particle_type() const { return particle_; }
-  double strength() const { return strength_; }
+  double strength() const override { return strength_; }
 
   // Make observing pointers available
   SpatialDistribution* space() const { return space_.get(); }
@@ -60,14 +71,7 @@ private:
   std::vector<Particle::Bank> sites_; //!< Source sites from a file
 };
 
-class CustomSource {
-  public:
-    virtual ~CustomSource() {}
-
-    virtual Particle::Bank sample(uint64_t* seed) = 0;
-};
-
-typedef std::unique_ptr<CustomSource> create_custom_source_t(std::string parameters);
+typedef std::unique_ptr<SourceDistribution> create_custom_source_t(std::string parameters);
 
 //==============================================================================
 // Functions

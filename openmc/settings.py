@@ -151,7 +151,7 @@ class Settings:
         Options for writing surface source points. Acceptable keys are:
 
         :surf_ids: List of surface ids at which crossing particles are to be
-                         banked (int)
+                   banked (int)
         :max_surf_banks: Maximum number of particles to be banked on surfaces
                          per process (int)
     survival_biasing : bool

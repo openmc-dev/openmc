@@ -72,35 +72,6 @@ IndependentSourceDistribution::IndependentSourceDistribution(pugi::xml_node node
 
   // Check for external source file
   if (check_for_node(node, "file")) {
-    // Copy path of source file
-    auto path_source = get_node_value(node, "file", false, true);
-
-    // Check if source file exists
-    if (!file_exists(path_source)) {
-      fatal_error(fmt::format("Source file '{}' does not exist.", path_source));
-    }
-
-    // Read the source from a binary file instead of sampling from some
-    // assumed source distribution
-    write_message(6, "Reading source file from {}...", path_source);
-
-    // Open the binary file
-    hid_t file_id = file_open(path_source, 'r', true);
-
-    // Read the file type
-    std::string filetype;
-    read_attribute(file_id, "filetype", filetype);
-
-    // Check to make sure this is a source file
-    if (filetype != "source" && filetype != "statepoint") {
-      fatal_error("Specified starting source file not a source file type.");
-    }
-
-    // Read in the source bank
-    read_source_bank(file_id, sites_);
-
-    // Close file
-    file_close(file_id);
 
   } else {
 
@@ -182,16 +153,11 @@ Particle::Bank IndependentSourceDistribution::sample(uint64_t* seed)
   int n_reject = 0;
   static int n_accept = 0;
   while (!found) {
-    if (!sites_.empty()) {
-      size_t i_site = sites_.size()*prn(seed);
-      site = sites_[i_site];
-    } else {
-      // Set particle type
-      site.particle = particle_;
+    // Set particle type
+    site.particle = particle_;
 
-      // Sample spatial distribution
-      site.r = space_->sample(seed);
-    }
+    // Sample spatial distribution
+    site.r = space_->sample(seed);
 
     // Now search to see if location exists in geometry
     int32_t cell_index, instance;
@@ -232,8 +198,6 @@ Particle::Bank IndependentSourceDistribution::sample(uint64_t* seed)
   // Increment number of accepted samples
   ++n_accept;
 
-  if (!sites_.empty()) return site;
-
   // Sample angle
   site.u = angle_->sample(seed);
 
@@ -263,6 +227,44 @@ Particle::Bank IndependentSourceDistribution::sample(uint64_t* seed)
   site.delayed_group = 0;
 
   return site;
+}
+
+//==============================================================================
+// SourceFile implementation
+//==============================================================================
+
+SourceFile::SourceFile(std::string path)
+{
+  // Check if source file exists
+  if (!file_exists(path)) {
+    fatal_error(fmt::format("Source file '{}' does not exist.", path));
+  }
+
+  // Read the source from a binary file instead of sampling from some
+  // assumed source distribution
+  write_message(6, "Reading source file from {}...", path);
+
+  // Open the binary file
+  hid_t file_id = file_open(path, 'r', true);
+
+  // Check to make sure this is a source file
+  std::string filetype;
+  read_attribute(file_id, "filetype", filetype);
+  if (filetype != "source" && filetype != "statepoint") {
+    fatal_error("Specified starting source file not a source file type.");
+  }
+
+  // Read in the source bank
+  read_source_bank(file_id, sites_);
+
+  // Close file
+  file_close(file_id);
+}
+
+Particle::Bank SourceFile::sample(uint64_t* seed)
+{
+  size_t i_site = sites_.size()*prn(seed);
+  return sites_[i_site];
 }
 
 //==============================================================================

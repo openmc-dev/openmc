@@ -68,6 +68,18 @@ private:
   UPtrSpace space_; //!< Spatial distribution
   UPtrAngle angle_; //!< Angular distribution
   UPtrDist energy_; //!< Energy distribution
+};
+
+
+class SourceFile : public SourceDistribution {
+public:
+  // Constructors
+  explicit SourceFile(std::string path);
+
+  // Methods
+  Particle::Bank sample(uint64_t* seed) override;
+
+private:
   std::vector<Particle::Bank> sites_; //!< Source sites from a file
 };
 

@@ -204,12 +204,17 @@ SourceSite IndependentSource::sample(uint64_t* seed) const
   // Check for monoenergetic source above maximum particle energy
   auto p = static_cast<int>(particle_);
   auto energy_ptr = dynamic_cast<Discrete*>(energy_.get());
+  double const& min_energy = data::energy_min[p];
+  double const& max_energy = data::energy_max[p];
   if (energy_ptr) {
-    auto energies = xt::adapt(energy_ptr->x());
-    if (xt::any(energies > data::energy_max[p])) {
+    auto const& energies = energy_ptr->x();
+    if (std::any_of(energies.begin(), energies.end(),
+          [max_energy](double const& energy) { return energy > max_energy; })) {
       fatal_error("Source energy above range of energies of at least "
                   "one cross section table");
-    } else if (xt::any(energies < data::energy_min[p])) {
+    } else if (std::any_of(energies.begin(), energies.end(),
+                 [min_energy](
+                   double const& energy) { return energy < min_energy; })) {
       fatal_error("Source energy below range of energies of at least "
                   "one cross section table");
     }

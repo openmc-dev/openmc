@@ -56,15 +56,16 @@ get_shape(hid_t obj_id, hsize_t* dims)
   H5Sclose(dspace);
 }
 
-vector<hsize_t> attribute_shape(hid_t obj_id, const char* name)
+vector<hsize_t, std::allocator<hsize_t>> attribute_shape(
+  hid_t obj_id, const char* name)
 {
   hid_t attr = H5Aopen(obj_id, name, H5P_DEFAULT);
-  vector<hsize_t> shape = object_shape(attr);
+  auto shape = object_shape(attr);
   H5Aclose(attr);
   return shape;
 }
 
-vector<hsize_t> object_shape(hid_t obj_id)
+vector<hsize_t, std::allocator<hsize_t>> object_shape(hid_t obj_id)
 {
   // Get number of dimensions
   auto type = H5Iget_type(obj_id);
@@ -80,7 +81,7 @@ vector<hsize_t> object_shape(hid_t obj_id)
   int n = H5Sget_simple_extent_ndims(dspace);
 
   // Get shape of array
-  vector<hsize_t> shape(n);
+  vector<hsize_t, std::allocator<hsize_t>> shape(n);
   H5Sget_simple_extent_dims(dspace, shape.data(), nullptr);
 
   // Free resources and return
@@ -488,7 +489,7 @@ template<>
 void read_dataset(hid_t dset, xt::xarray<std::complex<double>>& arr, bool indep)
 {
   // Get shape of dataset
-  vector<hsize_t> shape = object_shape(dset);
+  auto shape = object_shape(dset);
 
   // Allocate new array to read data into
   std::size_t size = 1;

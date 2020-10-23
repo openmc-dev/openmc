@@ -198,7 +198,8 @@ PhotonInteraction::PhotonInteraction(hid_t group)
 
   // Create Compton profile CDF
   auto n_profile = data::compton_profile_pz.size();
-  profile_cdf_ = xt::empty<xsfloat>({n_shell, n_profile});
+  profile_cdf_ =
+    xt::empty<xsfloat>(std::vector<std::size_t>({n_shell, n_profile}));
   for (int i = 0; i < n_shell; ++i) {
     xsfloat c = 0.0;
     profile_cdf_(i,0) = 0.0;

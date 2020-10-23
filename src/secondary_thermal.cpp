@@ -234,7 +234,7 @@ IncoherentInelasticAE::IncoherentInelasticAE(hid_t group)
         // On first pass, allocate space for angles
         if (j == 0) {
           auto n_mu = adist->x().size();
-          d.mu = xt::empty<xsfloat>({d.n_e_out, n_mu});
+          d.mu = xt::empty<xsfloat>(std::vector<size_t>({d.n_e_out, n_mu}));
         }
 
         // Copy outgoing angles

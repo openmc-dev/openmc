@@ -56,11 +56,12 @@ hid_t file_open(const std::string& filename, char mode, bool parallel=false);
 void write_string(hid_t group_id, const char* name, const std::string& buffer,
                   bool indep);
 
-vector<hsize_t> attribute_shape(hid_t obj_id, const char* name);
+vector<hsize_t, std::allocator<hsize_t>> attribute_shape(
+  hid_t obj_id, const char* name);
 vector<string> dataset_names(hid_t group_id);
 void ensure_exists(hid_t obj_id, const char* name, bool attribute=false);
 vector<string> group_names(hid_t group_id);
-vector<hsize_t> object_shape(hid_t obj_id);
+vector<hsize_t, std::allocator<hsize_t>> object_shape(hid_t obj_id);
 std::string object_name(hid_t obj_id);
 
 //==============================================================================
@@ -176,7 +177,11 @@ void read_attribute(hid_t obj_id, const char* name, xt::xarray<T>& arr)
   std::size_t size = 1;
   for (const auto x : shape)
     size *= x;
-  vector<T> buffer(size);
+
+  // Seems to require size_t size_type in vector for xtensor.
+  // Also, we know this won't be used on GPU ever, so use
+  // std::allocator.
+  vector<T, std::allocator<T>> buffer(size);
 
   // Read data from attribute
   read_attr(obj_id, name, H5TypeMap<T>::type_id, buffer.data());
@@ -267,7 +272,7 @@ template<typename T>
 void read_dataset(hid_t dset, vector<T>& vec, bool indep = false)
 {
   // Get shape of dataset
-  vector<hsize_t> shape = object_shape(dset);
+  auto shape = object_shape(dset);
 
   // Resize vector to appropriate size
   vec.resize(shape[0]);
@@ -290,7 +295,7 @@ template <typename T>
 void read_dataset(hid_t dset, xt::xarray<T>& arr, bool indep=false)
 {
   // Get shape of dataset
-  vector<hsize_t> shape = object_shape(dset);
+  auto shape = object_shape(dset);
 
   // Allocate space in the array to read data into
   std::size_t size = 1;
@@ -326,7 +331,7 @@ void read_dataset(hid_t obj_id, const char* name, xt::xtensor<T, N>& arr,
   hid_t dset = open_dataset(obj_id, name);
 
   // Get shape of dataset
-  vector<hsize_t> hsize_t_shape = object_shape(dset);
+  auto hsize_t_shape = object_shape(dset);
   close_dataset(dset);
 
   // cast from hsize_t to size_t
@@ -373,7 +378,7 @@ inline void read_dataset_as_shape(hid_t obj_id, const char* name,
                         buffer.data());
 
   // Adapt into xarray
-  arr = xt::adapt(buffer, arr.shape());
+  arr = xt::adapt(buffer.data(), arr.shape());
 
   close_dataset(dset);
 }

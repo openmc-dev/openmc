@@ -19,21 +19,21 @@ namespace openmc {
 // Global variables
 //==============================================================================
 
-class SourceDistribution;
+class Source;
 
 namespace model {
 
-extern std::vector<std::unique_ptr<SourceDistribution>> external_sources;
+extern std::vector<std::unique_ptr<Source>> external_sources;
 
 } // namespace model
 
 //==============================================================================
-//! External source distribution
+//! Abstract source interface
 //==============================================================================
 
-class SourceDistribution {
+class Source {
 public:
-  virtual ~SourceDistribution() = default;
+  virtual ~Source() = default;
 
   // Methods that must be implemented
   virtual Particle::Bank sample(uint64_t* seed) = 0;
@@ -42,11 +42,15 @@ public:
   virtual double strength() const { return 1.0; }
 };
 
-class IndependentSourceDistribution : public SourceDistribution {
+//==============================================================================
+//! Source composed of independent spatial, angle, and energy distributions
+//==============================================================================
+
+class IndependentSource : public Source {
 public:
   // Constructors
-  IndependentSourceDistribution(UPtrSpace space, UPtrAngle angle, UPtrDist energy);
-  explicit IndependentSourceDistribution(pugi::xml_node node);
+  IndependentSource(UPtrSpace space, UPtrAngle angle, UPtrDist energy);
+  explicit IndependentSource(pugi::xml_node node);
 
   //! Sample from the external source distribution
   //! \param[inout] seed Pseudorandom seed pointer
@@ -70,11 +74,14 @@ private:
   UPtrDist energy_; //!< Energy distribution
 };
 
+//==============================================================================
+//! Source composed of particles read from a file
+//==============================================================================
 
-class SourceFile : public SourceDistribution {
+class FileSource : public Source {
 public:
   // Constructors
-  explicit SourceFile(std::string path);
+  explicit FileSource(std::string path);
 
   // Methods
   Particle::Bank sample(uint64_t* seed) override;
@@ -87,7 +94,7 @@ private:
 //! Wrapper for custom sources that manages opening/closing shared library
 //==============================================================================
 
-class CustomSourceWrapper : public SourceDistribution {
+class CustomSourceWrapper : public Source {
 public:
   // Constructors, destructors
   CustomSourceWrapper(std::string path, std::string parameters);
@@ -102,10 +109,10 @@ public:
   double strength() const override { return custom_source_->strength(); }
 private:
   void* shared_library_; //!< library from dlopen
-  std::unique_ptr<SourceDistribution> custom_source_;
+  std::unique_ptr<Source> custom_source_;
 };
 
-typedef std::unique_ptr<SourceDistribution> create_custom_source_t(std::string parameters);
+typedef std::unique_ptr<Source> create_custom_source_t(std::string parameters);
 
 //==============================================================================
 // Functions

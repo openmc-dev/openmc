@@ -39,18 +39,18 @@ namespace openmc {
 
 namespace model {
 
-std::vector<std::unique_ptr<SourceDistribution>> external_sources;
+std::vector<std::unique_ptr<Source>> external_sources;
 
 }
 
 //==============================================================================
-// IndependentSourceDistribution implementation
+// IndependentSource implementation
 //==============================================================================
 
-IndependentSourceDistribution::IndependentSourceDistribution(UPtrSpace space, UPtrAngle angle, UPtrDist energy)
+IndependentSource::IndependentSource(UPtrSpace space, UPtrAngle angle, UPtrDist energy)
   : space_{std::move(space)}, angle_{std::move(angle)}, energy_{std::move(energy)} { }
 
-IndependentSourceDistribution::IndependentSourceDistribution(pugi::xml_node node)
+IndependentSource::IndependentSource(pugi::xml_node node)
 {
   // Check for particle type
   if (check_for_node(node, "particle")) {
@@ -141,7 +141,7 @@ IndependentSourceDistribution::IndependentSourceDistribution(pugi::xml_node node
   }
 }
 
-Particle::Bank IndependentSourceDistribution::sample(uint64_t* seed)
+Particle::Bank IndependentSource::sample(uint64_t* seed)
 {
   Particle::Bank site;
 
@@ -233,7 +233,7 @@ Particle::Bank IndependentSourceDistribution::sample(uint64_t* seed)
 // SourceFile implementation
 //==============================================================================
 
-SourceFile::SourceFile(std::string path)
+FileSource::FileSource(std::string path)
 {
   // Check if source file exists
   if (!file_exists(path)) {
@@ -261,7 +261,7 @@ SourceFile::SourceFile(std::string path)
   file_close(file_id);
 }
 
-Particle::Bank SourceFile::sample(uint64_t* seed)
+Particle::Bank FileSource::sample(uint64_t* seed)
 {
   size_t i_site = sites_.size()*prn(seed);
   return sites_[i_site];

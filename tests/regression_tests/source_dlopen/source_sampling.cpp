@@ -5,7 +5,7 @@
 #include "openmc/source.h"
 #include "openmc/particle.h"
 
-class Source : public openmc::SourceDistribution
+class CustomSource : public openmc::Source
 {
   openmc::Particle::Bank sample(uint64_t *seed)
   {
@@ -29,7 +29,7 @@ class Source : public openmc::SourceDistribution
 // A function to create a unique pointer to an instance of this class when generated
 // via a plugin call using dlopen/dlsym.
 // You must have external C linkage here otherwise dlopen will not find the file
-extern "C" std::unique_ptr<Source> openmc_create_source(std::string parameters)
+extern "C" std::unique_ptr<CustomSource> openmc_create_source(std::string parameters)
 {
-  return std::make_unique<Source>();
+  return std::make_unique<CustomSource>();
 }

@@ -420,7 +420,10 @@ void read_settings_xml()
 
   // Get point to list of <source> elements and make sure there is at least one
   for (pugi::xml_node node : root.children("source")) {
-    if (check_for_node(node, "library")) {
+    if (check_for_node(node, "file")) {
+      auto path = get_node_value(node, "file", false, true);
+      model::external_sources.push_back(std::make_unique<SourceFile>(path));
+    } else if (check_for_node(node, "library")) {
       // Get shared library path and parameters
       auto path = get_node_value(node, "library", false, true);
       std::string parameters;

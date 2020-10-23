@@ -659,27 +659,26 @@ void read_source_bank(hid_t group_id, std::vector<Particle::Bank>& sites)
 
   // Open the dataset
   hid_t dset = H5Dopen(group_id, "source_bank", H5P_DEFAULT);
-
-  // Create another data space but for each proc individually
-  hsize_t dims[] {static_cast<hsize_t>(simulation::work_per_rank)};
-  hid_t memspace = H5Screate_simple(1, dims, nullptr);
+  hid_t dspace = H5Dget_space(dset);
+  hsize_t n_sites;
+  H5Sget_simple_extent_dims(dspace, &n_sites, nullptr);
 
   // Make sure source bank is big enough
-  hid_t dspace = H5Dget_space(dset);
-  hsize_t dims_all;
-  H5Sget_simple_extent_dims(dspace, &dims_all, nullptr);
-  if (&sites == &simulation::source_bank) {
-    if (simulation::work_index[mpi::n_procs] > dims_all) {
-      fatal_error("Number of source sites in source file is less "
-                  "than number of source particles per generation.");
-    }
-  } else {
-    sites.resize(dims_all);
-  }
+  sites.resize(n_sites);
+
+  // Determine number of source particles to read from each rank and offset
+  hsize_t min_sites = n_sites / mpi::n_procs;
+  hsize_t remainder = n_sites % mpi::n_procs;
+  hsize_t n_sites_local = (mpi::rank < remainder) ? min_sites + 1 : min_sites;
+  hsize_t offset = (mpi::rank <= remainder) ?
+    mpi::rank*(min_sites + 1) :
+    remainder*(min_sites + 1) + (mpi::rank - remainder)*min_sites;
+
+  // Create another data space but for each proc individually
+  hid_t memspace = H5Screate_simple(1, &n_sites_local, nullptr);
 
   // Select hyperslab for each process
-  hsize_t start[] {static_cast<hsize_t>(simulation::work_index[mpi::rank])};
-  H5Sselect_hyperslab(dspace, H5S_SELECT_SET, start, nullptr, dims, nullptr);
+  H5Sselect_hyperslab(dspace, H5S_SELECT_SET, &offset, nullptr, &n_sites_local, nullptr);
 
 #ifdef PHDF5
     // Read data in parallel

@@ -591,7 +591,7 @@ class Settings:
 
     @surf_src_read.setter
     def surf_src_read(self, surf_src_read):
-        cv.check_type('surface source writing options', surf_src_read, Mapping)
+        cv.check_type('surface source reading options', surf_src_read, Mapping)
         for key, value in surf_src_read.items():
             cv.check_value('surface source reading key', key,
                            ('path'))

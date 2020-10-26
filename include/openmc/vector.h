@@ -252,6 +252,31 @@ public:
     // thing at begin_+size_
     new (begin_ + size_++) T(value);
   }
+
+  __host__ size_type thread_safe_append(const T& value)
+  {
+    // This is what to do if acting on GPU
+    size_type idx;
+#ifdef __CUDA_ARCH__
+    idx = atomicInc(&size_, capacity_);
+#else
+// else, do this on CPU
+#pragma omp atomic capture
+    idx = size_++;
+    // For the applications here, it makes more sense to just do nothing
+    if (idx >= capacity_) {
+#pragma omp atomic write
+      size_ = capacity_;
+      idx = size_ - 1;
+    }
+#endif
+
+    // Call copy constructor in the right place
+    new (begin_ + idx) T(value);
+
+    return idx;
+  }
+
   __host__ void push_back(T&& value) { emplace_back(std::move(value)); }
 
   __host__ __device__ T& operator[](size_type n) { return *(begin_ + n); }
@@ -311,6 +336,7 @@ public:
   __host__ __device__ bool empty() const { return size_ == 0; }
   __host__ __device__ T* data() const { return begin_; }
   __host__ __device__ size_type size() const { return size_; }
+  __host__ __device__ size_type capacity() const { return capacity_; }
   __host__ __device__ iterator begin() const { return begin_; }
   __host__ __device__ iterator end() const { return begin_ + size_; }
   __host__ __device__ const_iterator cbegin() const { return begin_; }

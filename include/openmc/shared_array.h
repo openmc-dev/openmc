@@ -4,13 +4,21 @@
 //! \file shared_array.h
 //! \brief Shared array data structure
 
-#include "openmc/memory.h"
+#include <memory>
+#ifdef __CUDACC__
+#include "openmc/vector.h"
+#endif
 
 namespace openmc {
 
 //==============================================================================
 // Class declarations
 //==============================================================================
+
+#ifdef __CUDACC__
+template<typename T>
+using SharedArray = vector<T>;
+#else
 
 // This container is an array that is capable of being appended to in an
 // thread safe manner by use of atomics. It only provides protection for the
@@ -123,8 +131,8 @@ private:
   int64_t size_ {0}; //!< The current number of elements 
   int64_t capacity_ {0}; //!< The total space allocated for elements
 
-}; 
-
+};
+#endif
 } // namespace openmc
 
 #endif // OPENMC_SHARED_ARRAY_H

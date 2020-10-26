@@ -95,8 +95,6 @@ void process_calculate_xs_events(SharedArray<EventQueueItem>& queue)
   //
   // std::sort(std::execution::par_unseq, queue.data(), queue.data() + queue.size());
 
-  int64_t offset = simulation::advance_particle_queue.size();;
-
   #pragma omp parallel for schedule(runtime)
   for (int64_t i = 0; i < queue.size(); i++) {
     ParticleReference p = get_particle(queue[i].idx);
@@ -107,8 +105,6 @@ void process_calculate_xs_events(SharedArray<EventQueueItem>& queue)
     // the protected enqueuing function.
     simulation::advance_particle_queue[offset + i] = queue[i];
   }
-
-  simulation::advance_particle_queue.resize(offset + queue.size());
 
   queue.resize(0);
 

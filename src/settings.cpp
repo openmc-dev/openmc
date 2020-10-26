@@ -39,7 +39,7 @@ namespace settings {
 
 #ifdef LIBMESH
 std::unique_ptr<libMesh::LibMeshInit> LMI;
-libMesh::Parallel::Communicator* libmesh_comm;
+const libMesh::Parallel::Communicator* libmesh_comm;
 #endif
 
 // Default values for boolean flags

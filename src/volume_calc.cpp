@@ -140,7 +140,7 @@ std::vector<VolumeCalculation::Result> VolumeCalculation::execute() const
         if (domain_type_ == TallyDomain::MATERIAL) {
           if (p.material_ != MATERIAL_VOID) {
             for (int i_domain = 0; i_domain < n; i_domain++) {
-              if (model::materials[p.material_]->id_ == domain_ids_[i_domain]) {
+              if (model::materials[p.material_].id_ == domain_ids_[i_domain]) {
                 this->check_hit(p.material_, indices[i_domain], hits[i_domain]);
                 break;
               }
@@ -268,11 +268,11 @@ std::vector<VolumeCalculation::Result> VolumeCalculation::execute() const
           if (i_material == MATERIAL_VOID) continue;
 
           const auto& mat = model::materials[i_material];
-          for (int k = 0; k < mat->nuclide_.size(); ++k) {
+          for (int k = 0; k < mat.nuclide_.size(); ++k) {
             // Accumulate nuclide density
-            int i_nuclide = mat->nuclide_[k];
-            atoms(i_nuclide, 0) += mat->atom_density_[k] * f;
-            atoms(i_nuclide, 1) += std::pow(mat->atom_density_[k], 2) * var_f;
+            int i_nuclide = mat.nuclide_[k];
+            atoms(i_nuclide, 0) += mat.atom_density_[k] * f;
+            atoms(i_nuclide, 1) += std::pow(mat.atom_density_[k], 2) * var_f;
           }
         }
 

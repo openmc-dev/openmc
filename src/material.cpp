@@ -39,7 +39,7 @@ namespace openmc {
 namespace model {
 
 std::unordered_map<int32_t, int32_t> material_map;
-std::vector<std::unique_ptr<Material>> materials;
+std::vector<Material> materials;
 
 } // namespace model
 
@@ -334,11 +334,6 @@ Material::Material(pugi::xml_node node)
       thermal_tables_.push_back({index_table, 0, fraction});
     }
   }
-}
-
-Material::~Material()
-{
-  model::material_map.erase(id_);
 }
 
 void Material::finalize()
@@ -885,7 +880,7 @@ void Material::set_id(int32_t id)
   if (id == C_NONE) {
     id = 0;
     for (const auto& m : model::materials) {
-      id = std::max(id, m->id_);
+      id = std::max(id, m.id_);
     }
     ++id;
   }
@@ -1245,7 +1240,7 @@ void read_materials_xml()
   // Loop over XML material elements and populate the array.
   pugi::xml_node root = doc.document_element();
   for (pugi::xml_node material_node : root.children("material")) {
-    model::materials.push_back(std::make_unique<Material>(material_node));
+    model::materials.emplace_back(material_node);
   }
   model::materials.shrink_to_fit();
 }
@@ -1279,7 +1274,7 @@ openmc_material_add_nuclide(int32_t index, const char* name, double density)
   int err = 0;
   if (index >= 0 && index < model::materials.size()) {
     try {
-      model::materials[index]->add_nuclide(name, density);
+      model::materials[index].add_nuclide(name, density);
     } catch (const std::runtime_error& e) {
       return OPENMC_E_DATA;
     }
@@ -1295,10 +1290,10 @@ openmc_material_get_densities(int32_t index, const int** nuclides, const double*
 {
   if (index >= 0 && index < model::materials.size()) {
     auto& mat = model::materials[index];
-    if (!mat->nuclides().empty()) {
-      *nuclides = mat->nuclides().data();
-      *densities = mat->densities().data();
-      *n = mat->nuclides().size();
+    if (!mat.nuclides().empty()) {
+      *nuclides = mat.nuclides().data();
+      *densities = mat.densities().data();
+      *n = mat.nuclides().size();
       return 0;
     } else {
       set_errmsg("Material atom density array has not been allocated.");
@@ -1315,7 +1310,7 @@ openmc_material_get_density(int32_t index, double* density)
 {
   if (index >= 0 && index < model::materials.size()) {
     auto& mat = model::materials[index];
-    *density = mat->density_gpcc();
+    *density = mat.density_gpcc();
     return 0;
   } else {
     set_errmsg("Index in materials array is out of bounds.");
@@ -1327,7 +1322,7 @@ extern "C" int
 openmc_material_get_fissionable(int32_t index, bool* fissionable)
 {
   if (index >= 0 && index < model::materials.size()) {
-    *fissionable = model::materials[index]->fissionable();
+    *fissionable = model::materials[index].fissionable();
     return 0;
   } else {
     set_errmsg("Index in materials array is out of bounds.");
@@ -1339,7 +1334,7 @@ extern "C" int
 openmc_material_get_id(int32_t index, int32_t* id)
 {
   if (index >= 0 && index < model::materials.size()) {
-    *id = model::materials[index]->id();
+    *id = model::materials[index].id();
     return 0;
   } else {
     set_errmsg("Index in materials array is out of bounds.");
@@ -1354,7 +1349,7 @@ openmc_material_get_temperature(int32_t index, double* temperature)
     set_errmsg("Index in materials array is out of bounds.");
     return OPENMC_E_OUT_OF_BOUNDS;
   }
-  *temperature = model::materials[index]->temperature();
+  *temperature = model::materials[index].temperature();
   return 0;
 }
 
@@ -1364,7 +1359,7 @@ openmc_material_get_volume(int32_t index, double* volume)
 {
   if (index >= 0 && index < model::materials.size()) {
     try {
-      *volume = model::materials[index]->volume();
+      *volume = model::materials[index].volume();
     } catch (const std::exception& e) {
       set_errmsg(e.what());
       return OPENMC_E_UNASSIGNED;
@@ -1381,7 +1376,7 @@ openmc_material_set_density(int32_t index, double density, const char* units)
 {
   if (index >= 0 && index < model::materials.size()) {
     try {
-      model::materials[index]->set_density(density, units);
+      model::materials[index].set_density(density, units);
     } catch (const std::exception& e) {
       set_errmsg(e.what());
       return OPENMC_E_UNASSIGNED;
@@ -1398,7 +1393,8 @@ openmc_material_set_densities(int32_t index, int n, const char** name, const dou
 {
   if (index >= 0 && index < model::materials.size()) {
     try {
-      model::materials[index]->set_densities({name, name + n}, {density, density + n});
+      model::materials[index].set_densities(
+        {name, name + n}, {density, density + n});
     } catch (const std::exception& e) {
       set_errmsg(e.what());
       return OPENMC_E_UNASSIGNED;
@@ -1415,7 +1411,7 @@ openmc_material_set_id(int32_t index, int32_t id)
 {
   if (index >= 0 && index < model::materials.size()) {
     try {
-      model::materials.at(index)->set_id(id);
+      model::materials.at(index).set_id(id);
     } catch (const std::exception& e) {
       set_errmsg(e.what());
       return OPENMC_E_UNASSIGNED;
@@ -1434,7 +1430,7 @@ openmc_material_get_name(int32_t index, const char** name) {
     return OPENMC_E_OUT_OF_BOUNDS;
   }
 
-  *name = model::materials[index]->name().data();
+  *name = model::materials[index].name().data();
 
   return 0;
 }
@@ -1446,7 +1442,7 @@ openmc_material_set_name(int32_t index, const char* name) {
     return OPENMC_E_OUT_OF_BOUNDS;
   }
 
-  model::materials[index]->set_name(name);
+  model::materials[index].set_name(name);
 
   return 0;
 }
@@ -1457,7 +1453,7 @@ openmc_material_set_volume(int32_t index, double volume)
   if (index >= 0 && index < model::materials.size()) {
     auto& m {model::materials[index]};
     if (volume >= 0.0) {
-      m->volume_ = volume;
+      m.volume_ = volume;
       return 0;
     } else {
       set_errmsg("Volume must be non-negative");
@@ -1475,7 +1471,7 @@ openmc_extend_materials(int32_t n, int32_t* index_start, int32_t* index_end)
   if (index_start) *index_start = model::materials.size();
   if (index_end) *index_end = model::materials.size() + n - 1;
   for (int32_t i = 0; i < n; i++) {
-    model::materials.push_back(std::make_unique<Material>());
+    model::materials.emplace_back();
   }
   return 0;
 }

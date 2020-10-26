@@ -44,7 +44,7 @@ sample_reaction(Particle& p)
   // change when sampling fission sites. The following block handles all
   // absorption (including fission)
 
-  if (model::materials[p.material_]->fissionable_) {
+  if (model::materials[p.material_].fissionable_) {
     if (settings::run_mode == RunMode::EIGENVALUE  ||
        (settings::run_mode == RunMode::FIXED_SOURCE &&
         settings::create_fission_neutrons)) {

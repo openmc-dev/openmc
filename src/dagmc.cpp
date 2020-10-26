@@ -106,12 +106,12 @@ void legacy_assign_material(const std::string& mat_string, DAGCell* c)
   bool mat_found_by_name = false;
   // attempt to find a material with a matching name
   for (const auto& m : model::materials) {
-    if (mat_string == m->name_) {
+    if (mat_string == m.name_) {
       // assign the material with that name
       if (!mat_found_by_name) {
         mat_found_by_name = true;
-        c->material_.push_back(m->id_);
-      // report error if more than one material is found
+        c->material_.push_back(m.id_);
+        // report error if more than one material is found
       } else {
         fatal_error(fmt::format(
           "More than one material found with name {}. Please ensure materials "
@@ -137,9 +137,9 @@ void legacy_assign_material(const std::string& mat_string, DAGCell* c)
     std::stringstream msg;
     msg << "DAGMC material " << mat_string << " was assigned";
     if (mat_found_by_name) {
-      msg << " using material name: " << m->name_;
+      msg << " using material name: " << m.name_;
     } else {
-      msg << " using material id: " << m->id_;
+      msg << " using material id: " << m.id_;
     }
     write_message(msg.str(), 10);
   }
@@ -264,7 +264,7 @@ void load_dagmc_geometry()
       double temp = std::stod(temp_value);
       c->sqrtkT_.push_back(std::sqrt(K_BOLTZMANN * temp));
     } else {
-      c->sqrtkT_.push_back(std::sqrt(K_BOLTZMANN * mat->temperature()));
+      c->sqrtkT_.push_back(std::sqrt(K_BOLTZMANN * mat.temperature()));
     }
 
   }

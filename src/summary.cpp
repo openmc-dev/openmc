@@ -128,7 +128,7 @@ void write_materials(hid_t file)
 
   hid_t materials_group = create_group(file, "materials");
   for (const auto& mat : model::materials) {
-    mat->to_hdf5(materials_group);
+    mat.to_hdf5(materials_group);
   }
   close_group(materials_group);
 }

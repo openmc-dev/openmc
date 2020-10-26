@@ -50,7 +50,8 @@ void free_event_queues(void)
 void dispatch_xs_event(int64_t buffer_idx)
 {
   Particle& p = simulation::particles[buffer_idx];
-  if (p.material_ == MATERIAL_VOID || !model::materials[p.material_]->fissionable_) {
+  if (p.material_ == MATERIAL_VOID ||
+      !model::materials[p.material_].fissionable_) {
     simulation::calculate_nonfuel_xs_queue.thread_safe_append({p, buffer_idx});
   } else {
     simulation::calculate_fuel_xs_queue.thread_safe_append({p, buffer_idx});

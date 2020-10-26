@@ -26,7 +26,7 @@ class Material;
 namespace model {
 
 extern std::unordered_map<int32_t, int32_t> material_map;
-extern std::vector<std::unique_ptr<Material>> materials;
+extern std::vector<Material> materials;
 
 } // namespace model
 
@@ -47,9 +47,11 @@ public:
 
   //----------------------------------------------------------------------------
   // Constructors, destructors, factory functions
-  Material() {};
   explicit Material(pugi::xml_node material_node);
-  ~Material();
+  Material() = default;
+  Material(Material&&) = default;
+  Material(Material const&) = default;
+  ~Material() = default;
 
   //----------------------------------------------------------------------------
   // Methods

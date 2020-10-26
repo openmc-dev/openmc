@@ -2210,7 +2210,12 @@ void LibMesh::initialize() {
     equation_systems_->add_system<libMesh::ExplicitSystem>(eq_system_name_);
 
   // setup the point locator
+  #ifdef _OPENMP
   int n_threads = omp_get_max_threads();
+  #else
+  int n_threads = 1;
+  #endif
+
   point_locators_ = std::vector<std::unique_ptr<libMesh::PointLocatorBase>>(n_threads);
   for (int i = 0; i < n_threads; i++) {
     point_locators_[i] = m_->sub_point_locator();
@@ -2329,7 +2334,12 @@ LibMesh::get_bin(Position r) const
   // quick rejection check
   if (!bbox_.contains_point(p)) { return -1; }
 
+  #ifdef _OPENMP
   int thread = omp_get_thread_num();
+  #else
+  int thread = 0;
+  #endif
+
   auto e = (*point_locators_[thread])(p);
   if (!e) {
     return -1;

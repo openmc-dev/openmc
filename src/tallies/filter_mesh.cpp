@@ -34,14 +34,25 @@ void
 MeshFilter::get_all_bins(const Particle& p, TallyEstimator estimator, FilterMatch& match)
 const
 {
+
+  Position last_r = p.r_last_;
+  Position r = p.r();
+  Position u = p.u();
+
+  // apply translation if present
+  if (translated_) {
+    last_r -= translation_;
+    r -= translation_;
+  }
+
   if (estimator != TallyEstimator::TRACKLENGTH) {
-    auto bin = model::meshes[mesh_]->get_bin(p.r());
+    auto bin = model::meshes[mesh_]->get_bin(r);
     if (bin >= 0) {
       match.bins_.push_back(bin);
       match.weights_.push_back(1.0);
     }
   } else {
-    model::meshes[mesh_]->bins_crossed(p, match.bins_, match.weights_);
+    model::meshes[mesh_]->bins_crossed(last_r, r, u, match.bins_, match.weights_);
   }
 }
 
@@ -64,6 +75,18 @@ MeshFilter::set_mesh(int32_t mesh)
 {
   mesh_ = mesh;
   n_bins_ = model::meshes[mesh_]->n_bins();
+}
+
+void MeshFilter::set_translation(const Position& translation)
+{
+  translated_ = true;
+  translation_ = translation;
+}
+
+void MeshFilter::set_translation(const double translation[3])
+{
+  translated_ = true;
+  translation_ = translation;
 }
 
 //==============================================================================
@@ -122,5 +145,28 @@ openmc_mesh_filter_set_mesh(int32_t index, int32_t index_mesh)
   filt->set_mesh(index_mesh);
   return 0;
 }
+
+extern "C" int
+openmc_mesh_filter_set_translation(int32_t index, double translation[3])
+{
+  // Make sure this is a valid index to an allocated filter
+  if (int err = verify_filter(index)) return err;
+
+  // Get a pointer to the filter and downcast.
+  const auto& filt_base = model::tally_filters[index].get();
+  auto* filt = dynamic_cast<MeshFilter*>(filt_base);
+
+  // Check the filter type
+  if (!filt) {
+    set_errmsg("Tried to set mesh on a non-mesh filter.");
+    return OPENMC_E_INVALID_TYPE;
+  }
+
+  // Set the translation
+  filt->set_translation(translation);
+
+  return 0;
+}
+
 
 } // namespace openmc

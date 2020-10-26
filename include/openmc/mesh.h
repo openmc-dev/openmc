@@ -222,8 +222,6 @@ public:
 
   double negative_grid_boundary(int* ijk, int i) const override;
 
-  int n_surface_bins() const override;
-
   std::pair<std::vector<double>, std::vector<double>>
   plot(Position plot_ll, Position plot_ur) const override;
 
@@ -294,6 +292,9 @@ public:
   //! Add a variable to the mesh instance
   virtual void add_score(const std::string& var_name) = 0;
 
+  //! Remove variable from the mesh instance
+  virtual void remove_score(const std::string& var_name) = 0;
+
   //! Set the value of a bin for a variable on the mesh instance
   virtual void set_score_data(const std::string& var_name,
                               std::vector<double> values,
@@ -323,6 +324,15 @@ public:
   std::string bin_label(int bin) const override;
 
   void to_hdf5(hid_t group) const override;
+
+  //! Count number of bank sites in each mesh bin / energy bin
+  //
+  //! \param[in] bank Array of bank sites
+  //! \param[out] Whether any bank sites are outside the mesh
+  //! \return Array indicating number of sites in each mesh/energy bin
+  xt::xtensor<double, 1> count_sites(const Particle::Bank* bank,
+                                     int64_t length,
+                                     bool* outside) const;
 
   // Data members
   bool output_ {true};
@@ -370,7 +380,7 @@ public:
                       std::vector<double> std_dev) override;
 
   //! Remove a score from the mesh instance
-  void remove_score(std::string score) const;
+  void remove_score(const std::string& score) override;
 
   //! Set data for a score
   void set_score_data(const std::string& score,
@@ -516,6 +526,8 @@ public:
                                                            Position plot_ur) const override;
 
   void add_score(const std::string& var_name) override;
+
+  void remove_score(const std::string& var_name) override;
 
   void set_score_data(const std::string& var_name,
                       std::vector<double> values,

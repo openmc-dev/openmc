@@ -489,7 +489,7 @@ void load_state_point()
     }
 
     // Read source
-    read_source_bank(file_id, simulation::source_bank);
+    read_source_bank(file_id, simulation::source_bank, true);
 
   }
 
@@ -653,7 +653,7 @@ write_source_bank(hid_t group_id)
 }
 
 
-void read_source_bank(hid_t group_id, std::vector<Particle::Bank>& sites)
+void read_source_bank(hid_t group_id, std::vector<Particle::Bank>& sites, bool distribute)
 {
   hid_t banktype = h5banktype();
 
@@ -663,22 +663,27 @@ void read_source_bank(hid_t group_id, std::vector<Particle::Bank>& sites)
   hsize_t n_sites;
   H5Sget_simple_extent_dims(dspace, &n_sites, nullptr);
 
-  // Make sure source bank is big enough
-  sites.resize(n_sites);
+  // Make sure vector is big enough in case where we're reading entire source on
+  // each process
+  if (!distribute) sites.resize(n_sites);
 
-  // Determine number of source particles to read from each rank and offset
-  hsize_t min_sites = n_sites / mpi::n_procs;
-  hsize_t remainder = n_sites % mpi::n_procs;
-  hsize_t n_sites_local = (mpi::rank < remainder) ? min_sites + 1 : min_sites;
-  hsize_t offset = (mpi::rank <= remainder) ?
-    mpi::rank*(min_sites + 1) :
-    remainder*(min_sites + 1) + (mpi::rank - remainder)*min_sites;
+  hid_t memspace;
+  if (distribute) {
+    if (simulation::work_index[mpi::n_procs] > n_sites) {
+      fatal_error("Number of source sites in source file is less "
+                  "than number of source particles per generation.");
+    }
 
-  // Create another data space but for each proc individually
-  hid_t memspace = H5Screate_simple(1, &n_sites_local, nullptr);
+    // Create another data space but for each proc individually
+    hsize_t n_sites_local = simulation::work_per_rank;
+    memspace = H5Screate_simple(1, &n_sites_local, nullptr);
 
-  // Select hyperslab for each process
-  H5Sselect_hyperslab(dspace, H5S_SELECT_SET, &offset, nullptr, &n_sites_local, nullptr);
+    // Select hyperslab for each process
+    hsize_t offset = simulation::work_index[mpi::rank];
+    H5Sselect_hyperslab(dspace, H5S_SELECT_SET, &offset, nullptr, &n_sites_local, nullptr);
+  } else {
+    memspace = H5S_ALL;
+  }
 
 #ifdef PHDF5
     // Read data in parallel
@@ -692,7 +697,7 @@ void read_source_bank(hid_t group_id, std::vector<Particle::Bank>& sites)
 
   // Close all ids
   H5Sclose(dspace);
-  H5Sclose(memspace);
+  if (distribute) H5Sclose(memspace);
   H5Dclose(dset);
   H5Tclose(banktype);
 }

@@ -219,8 +219,8 @@ void check_wmp_version(hid_t file)
 void read_multipole_data(int i_nuclide)
 {
   // Look for WMP data in cross_sections.xml
-  const auto& nuc {data::nuclides[i_nuclide]};
-  auto it = data::library_map.find({Library::Type::wmp, nuc->name_});
+  auto& nuc {data::nuclides[i_nuclide]};
+  auto it = data::library_map.find({Library::Type::wmp, nuc.name_});
 
   // If no WMP library for this nuclide, just return
   if (it == data::library_map.end()) return;
@@ -230,15 +230,15 @@ void read_multipole_data(int i_nuclide)
   std::string& filename = data::libraries[idx].path_;
 
   // Display message
-  write_message(6, "Reading {} WMP data from {}", nuc->name_, filename);
+  write_message(6, "Reading {} WMP data from {}", nuc.name_, filename);
 
   // Open file and make sure version is sufficient
   hid_t file = file_open(filename, 'r');
   check_wmp_version(file);
 
   // Read nuclide data from HDF5
-  hid_t group = open_group(file, nuc->name_.c_str());
-  nuc->multipole_ = std::make_unique<WindowedMultipole>(group);
+  hid_t group = open_group(file, nuc.name_.c_str());
+  nuc.multipole_ = std::make_unique<WindowedMultipole>(group);
   close_group(group);
   file_close(file);
 }

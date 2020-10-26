@@ -263,7 +263,7 @@ read_ce_cross_sections(const std::vector<std::vector<double>>& nuc_temps,
   if (settings::temperature_multipole) {
     bool mp_found = false;
     for (const auto& nuc : data::nuclides) {
-      if (nuc->multipole_) {
+      if (nuc.multipole_) {
         mp_found = true;
         break;
       }

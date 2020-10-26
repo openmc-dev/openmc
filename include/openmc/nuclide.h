@@ -38,7 +38,9 @@ public:
 
   // Constructors/destructors
   Nuclide(hid_t group, const std::vector<double>& temperature);
-  ~Nuclide();
+  Nuclide(Nuclide&&) = default;
+  Nuclide(Nuclide const&) = default;
+  ~Nuclide() = default;
 
   //! Initialize logarithmic grid for energy searches
   void init_grid();
@@ -156,7 +158,7 @@ extern double temperature_min;
 extern double temperature_max;
 
 extern std::unordered_map<std::string, int> nuclide_map;
-extern std::vector<std::unique_ptr<Nuclide>> nuclides;
+extern std::vector<Nuclide> nuclides;
 
 } // namespace data
 

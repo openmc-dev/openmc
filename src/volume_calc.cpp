@@ -407,7 +407,7 @@ void VolumeCalculation::to_hdf5(const std::string& filename,
 
     std::vector<std::string> nucnames;
     for (int i_nuc : result.nuclides) {
-      nucnames.push_back(data::nuclides[i_nuc]->name_);
+      nucnames.push_back(data::nuclides[i_nuc].name_);
     }
 
     // Create array of total # of atoms with uncertainty for each nuclide

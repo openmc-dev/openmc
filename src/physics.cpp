@@ -68,12 +68,12 @@ void collision(Particle& p)
       msg = fmt::format("    Killed. Energy = {} eV.", p.E_);
     } else if (p.type_ == Particle::Type::neutron) {
       msg = fmt::format("    {} with {}. Energy = {} eV.",
-        reaction_name(p.event_mt_), data::nuclides[p.event_nuclide_]->name_,
+        reaction_name(p.event_mt_), data::nuclides[p.event_nuclide_].name_,
         p.E_);
     } else if (p.type_ == Particle::Type::photon) {
       msg = fmt::format("    {} with {}. Energy = {} eV.",
         reaction_name(p.event_mt_),
-        to_element(data::nuclides[p.event_nuclide_]->name_), p.E_);
+        to_element(data::nuclides[p.event_nuclide_].name_), p.E_);
     } else {
       msg = fmt::format("    Disappeared. Energy = {} eV.", p.E_);
     }
@@ -96,7 +96,7 @@ void sample_neutron_reaction(Particle& p)
 
   const auto& nuc {data::nuclides[i_nuclide]};
 
-  if (nuc->fissionable_) {
+  if (nuc.fissionable_) {
     auto& rx = sample_fission(i_nuclide, p);
     if (settings::run_mode == RunMode::EIGENVALUE) {
       create_fission_sites(p, i_nuclide, rx);
@@ -499,7 +499,7 @@ int sample_element(Particle& p)
   fatal_error("Did not sample any element during collision.");
 }
 
-Reaction& sample_fission(int i_nuclide, Particle& p)
+Reaction const& sample_fission(int i_nuclide, Particle& p)
 {
   // Get pointer to nuclide
   const auto& nuc {data::nuclides[i_nuclide]};
@@ -507,15 +507,15 @@ Reaction& sample_fission(int i_nuclide, Particle& p)
   // If we're in the URR, by default use the first fission reaction. We also
   // default to the first reaction if we know that there are no partial fission
   // reactions
-  if (p.neutron_xs_[i_nuclide].use_ptable || !nuc->has_partial_fission_) {
-    return *nuc->fission_rx_[0];
+  if (p.neutron_xs_[i_nuclide].use_ptable || !nuc.has_partial_fission_) {
+    return *nuc.fission_rx_[0];
   }
 
   // Check to see if we are in a windowed multipole range.  WMP only supports
   // the first fission reaction.
-  if (nuc->multipole_) {
-    if (p.E_ >= nuc->multipole_->E_min_ && p.E_ <= nuc->multipole_->E_max_) {
-      return *nuc->fission_rx_[0];
+  if (nuc.multipole_) {
+    if (p.E_ >= nuc.multipole_->E_min_ && p.E_ <= nuc.multipole_->E_max_) {
+      return *nuc.fission_rx_[0];
     }
   }
 
@@ -527,7 +527,7 @@ Reaction& sample_fission(int i_nuclide, Particle& p)
   double prob = 0.0;
 
   // Loop through each partial fission reaction type
-  for (auto& rx : nuc->fission_rx_) {
+  for (auto& rx : nuc.fission_rx_) {
     // if energy is below threshold for this reaction, skip it
     int threshold = rx->xs_[i_temp].threshold;
     if (i_grid < threshold) continue;
@@ -541,7 +541,7 @@ Reaction& sample_fission(int i_nuclide, Particle& p)
   }
 
   // If we reached here, no reaction was sampled
-  throw std::runtime_error{"No fission reaction was sampled for " + nuc->name_};
+  throw std::runtime_error {"No fission reaction was sampled for " + nuc.name_};
 }
 
 void sample_photon_product(int i_nuclide, Particle& p, int* i_rx, int* i_product)
@@ -555,8 +555,8 @@ void sample_photon_product(int i_nuclide, Particle& p, int* i_rx, int* i_product
 
   // Loop through each reaction type
   const auto& nuc {data::nuclides[i_nuclide]};
-  for (int i = 0; i < nuc->reactions_.size(); ++i) {
-    const auto& rx = nuc->reactions_[i];
+  for (int i = 0; i < nuc.reactions_.size(); ++i) {
+    const auto& rx = nuc.reactions_[i];
     int threshold = rx->xs_[i_temp].threshold;
 
     // if energy is below threshold for this reaction, skip it
@@ -573,9 +573,9 @@ void sample_photon_product(int i_nuclide, Particle& p, int* i_rx, int* i_product
         double f = 1.0;
         if (settings::delayed_photon_scaling) {
           if (is_fission(rx->mt_)) {
-            if (nuc->prompt_photons_ && nuc->delayed_photons_) {
-              double energy_prompt = (*nuc->prompt_photons_)(p.E_);
-              double energy_delayed = (*nuc->delayed_photons_)(p.E_);
+            if (nuc.prompt_photons_ && nuc.delayed_photons_) {
+              double energy_prompt = (*nuc.prompt_photons_)(p.E_);
+              double energy_delayed = (*nuc.delayed_photons_)(p.E_);
               f = (energy_prompt + energy_delayed)/(energy_prompt);
             }
           }
@@ -644,7 +644,7 @@ void scatter(Particle& p, int i_nuclide)
 
   // Calculate elastic cross section if it wasn't precalculated
   if (micro.elastic == CACHE_INVALID) {
-    nuc->calculate_elastic_xs(p);
+    nuc.calculate_elastic_xs(p);
   }
 
   double prob = micro.elastic - micro.thermal;
@@ -653,10 +653,10 @@ void scatter(Particle& p, int i_nuclide)
     // NON-S(A,B) ELASTIC SCATTERING
 
     // Determine temperature
-    double kT = nuc->multipole_ ? p.sqrtkT_*p.sqrtkT_ : nuc->kTs_[i_temp];
+    double kT = nuc.multipole_ ? p.sqrtkT_ * p.sqrtkT_ : nuc.kTs_[i_temp];
 
     // Perform collision physics for elastic scattering
-    elastic_scatter(i_nuclide, *nuc->reactions_[0], kT, p);
+    elastic_scatter(i_nuclide, *nuc.reactions_[0], kT, p);
 
     p.event_mt_ = ELASTIC;
     sampled = true;
@@ -680,17 +680,17 @@ void scatter(Particle& p, int i_nuclide)
     int j = 0;
     int i = 0;
     while (prob < cutoff) {
-      i = nuc->index_inelastic_scatter_[j];
+      i = nuc.index_inelastic_scatter_[j];
       ++j;
 
       // Check to make sure inelastic scattering reaction sampled
-      if (i >= nuc->reactions_.size()) {
+      if (i >= nuc.reactions_.size()) {
         p.write_restart();
-        fatal_error("Did not sample any reaction for nuclide " + nuc->name_);
+        fatal_error("Did not sample any reaction for nuclide " + nuc.name_);
       }
 
       // if energy is below threshold for this reaction, skip it
-      const auto& xs {nuc->reactions_[i]->xs_[i_temp]};
+      const auto& xs {nuc.reactions_[i]->xs_[i_temp]};
       if (i_grid < xs.threshold) continue;
 
       // add to cumulative probability
@@ -699,8 +699,8 @@ void scatter(Particle& p, int i_nuclide)
     }
 
     // Perform collision physics for inelastic scattering
-    const auto& rx {nuc->reactions_[i]};
-    inelastic_scatter(*nuc, *rx, p);
+    const auto& rx {nuc.reactions_[i]};
+    inelastic_scatter(nuc, *rx, p);
     p.event_mt_ = rx->mt_;
   }
 
@@ -732,7 +732,7 @@ void elastic_scatter(int i_nuclide, const Reaction& rx, double kT,
   const auto& nuc {data::nuclides[i_nuclide]};
 
   double vel = std::sqrt(p.E_);
-  double awr = nuc->awr_;
+  double awr = nuc.awr_;
 
   // Neutron velocity in LAB
   Direction v_n = vel*p.u();
@@ -740,7 +740,7 @@ void elastic_scatter(int i_nuclide, const Reaction& rx, double kT,
   // Sample velocity of target nucleus
   Direction v_t {};
   if (!p.neutron_xs_[i_nuclide].use_ptable) {
-    v_t = sample_target_velocity(*nuc, p.E_, p.u(), v_n,
+    v_t = sample_target_velocity(nuc, p.E_, p.u(), v_n,
       p.neutron_xs_[i_nuclide].elastic, kT, p.current_seed());
   }
 
@@ -1024,8 +1024,8 @@ void sample_fission_neutron(int i_nuclide, const Reaction& rx, double E_in, Part
 
   // Determine total nu, delayed nu, and delayed neutron fraction
   const auto& nuc {data::nuclides[i_nuclide]};
-  double nu_t = nuc->nu(E_in, Nuclide::EmissionMode::total);
-  double nu_d = nuc->nu(E_in, Nuclide::EmissionMode::delayed);
+  double nu_t = nuc.nu(E_in, Nuclide::EmissionMode::total);
+  double nu_d = nuc.nu(E_in, Nuclide::EmissionMode::delayed);
   double beta = nu_d / nu_t;
 
   if (prn(seed) < beta) {
@@ -1036,7 +1036,7 @@ void sample_fission_neutron(int i_nuclide, const Reaction& rx, double E_in, Part
     double xi = prn(seed)*nu_d;
     double prob = 0.0;
     int group;
-    for (group = 1; group < nuc->n_precursor_; ++group) {
+    for (group = 1; group < nuc.n_precursor_; ++group) {
       // determine delayed neutron precursor yield for group j
       double yield = (*rx.products_[group].yield_)(E_in);
 
@@ -1048,7 +1048,7 @@ void sample_fission_neutron(int i_nuclide, const Reaction& rx, double E_in, Part
     // if the sum of the probabilities is slightly less than one and the
     // random number is greater, j will be greater than nuc %
     // n_precursor -- check for this condition
-    group = std::min(group, nuc->n_precursor_);
+    group = std::min(group, nuc.n_precursor_);
 
     // set the delayed group for the particle born from fission
     site->delayed_group = group;
@@ -1068,7 +1068,8 @@ void sample_fission_neutron(int i_nuclide, const Reaction& rx, double E_in, Part
       if (n_sample == MAX_SAMPLE) {
         // particle_write_restart(p)
         fatal_error("Resampled energy distribution maximum number of times "
-          "for nuclide " + nuc->name_);
+                    "for nuclide " +
+                    nuc.name_);
       }
     }
 
@@ -1093,7 +1094,8 @@ void sample_fission_neutron(int i_nuclide, const Reaction& rx, double E_in, Part
       if (n_sample == MAX_SAMPLE) {
         // particle_write_restart(p)
         fatal_error("Resampled energy distribution maximum number of times "
-          "for nuclide " + nuc->name_);
+                    "for nuclide " +
+                    nuc.name_);
       }
     }
   }
@@ -1164,7 +1166,7 @@ void sample_secondary_photons(Particle& p, int i_nuclide)
     sample_photon_product(i_nuclide, p, &i_rx, &i_product);
 
     // Sample the outgoing energy and angle
-    auto& rx = data::nuclides[i_nuclide]->reactions_[i_rx];
+    auto& rx = data::nuclides[i_nuclide].reactions_[i_rx];
     double E;
     double mu;
     rx->products_[i_product].sample(p.E_, E, mu, p.current_seed());

@@ -35,7 +35,7 @@ std::array<double, 2> energy_max {INFTY, INFTY};
 double temperature_min {0.0};
 double temperature_max {INFTY};
 std::unordered_map<std::string, int> nuclide_map;
-std::vector<std::unique_ptr<Nuclide>> nuclides;
+std::vector<Nuclide> nuclides;
 } // namespace data
 
 //==============================================================================
@@ -292,11 +292,6 @@ Nuclide::Nuclide(hid_t group, const std::vector<double>& temperature)
   }
 
   this->create_derived(prompt_photons_.get(), delayed_photons_.get());
-}
-
-Nuclide::~Nuclide()
-{
-  data::nuclide_map.erase(name_);
 }
 
 void Nuclide::create_derived(const Function1D* prompt_photons, const Function1D* delayed_photons)
@@ -1032,7 +1027,7 @@ extern "C" int openmc_load_nuclide(const char* name, const double* temps, int n)
     // Read nuclide data from HDF5
     hid_t group = open_group(file_id, name);
     std::vector<double> temperature{temps, temps + n};
-    data::nuclides.push_back(std::make_unique<Nuclide>(group, temperature));
+    data::nuclides.emplace_back(group, temperature);
 
     close_group(group);
     file_close(file_id);
@@ -1090,7 +1085,7 @@ extern "C" int
 openmc_nuclide_name(int index, const char** name)
 {
   if (index >= 0 && index < data::nuclides.size()) {
-    *name = data::nuclides[index]->name_.data();
+    *name = data::nuclides[index].name_.data();
     return 0;
   } else {
     set_errmsg("Index in nuclides vector is out of bounds.");
@@ -1108,8 +1103,8 @@ openmc_nuclide_collapse_rate(int index, int MT, double temperature,
   }
 
   try {
-    *xs = data::nuclides[index]->collapse_rate(MT, temperature,
-      {energy, energy + n + 1}, {flux, flux + n});
+    *xs = data::nuclides[index].collapse_rate(
+      MT, temperature, {energy, energy + n + 1}, {flux, flux + n});
   } catch (const std::out_of_range& e) {
     fmt::print("Caught error\n");
     set_errmsg(e.what());

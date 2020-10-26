@@ -340,7 +340,7 @@ void Material::finalize()
 {
   // Set fissionable if any nuclide is fissionable
   for (const auto& i_nuc : nuclide_) {
-    if (data::nuclides[i_nuc]->fissionable_) {
+    if (data::nuclides[i_nuc].fissionable_) {
       fissionable_ = true;
       break;
     }
@@ -366,8 +366,8 @@ void Material::normalize_density()
   for (int i = 0; i < nuclide_.size(); ++i) {
     // determine atomic weight ratio
     int i_nuc = nuclide_[i];
-    double awr = settings::run_CE ?
-      data::nuclides[i_nuc]->awr_ : data::mg.nuclides_[i_nuc].awr;
+    double awr = settings::run_CE ? data::nuclides[i_nuc].awr_
+                                  : data::mg.nuclides_[i_nuc].awr;
 
     // if given weight percent, convert all values so that they are divided
     // by awr. thus, when a sum is done over the values, it's actually
@@ -386,8 +386,8 @@ void Material::normalize_density()
     double sum_percent = 0.0;
     for (int i = 0; i < nuclide_.size(); ++i) {
       int i_nuc = nuclide_[i];
-      double awr = settings::run_CE ?
-        data::nuclides[i_nuc]->awr_ : data::mg.nuclides_[i_nuc].awr;
+      double awr = settings::run_CE ? data::nuclides[i_nuc].awr_
+                                    : data::mg.nuclides_[i_nuc].awr;
       sum_percent += atom_density_(i)*awr;
     }
     sum_percent = 1.0 / sum_percent;
@@ -401,7 +401,7 @@ void Material::normalize_density()
   density_gpcc_ = 0.0;
   for (int i = 0; i < nuclide_.size(); ++i) {
     int i_nuc = nuclide_[i];
-    double awr = settings::run_CE ? data::nuclides[i_nuc]->awr_ : 1.0;
+    double awr = settings::run_CE ? data::nuclides[i_nuc].awr_ : 1.0;
     density_gpcc_ += atom_density_(i) * awr * MASS_NEUTRON / N_AVOGADRO;
   }
 }
@@ -423,7 +423,7 @@ void Material::init_thermal()
     // name
     bool found = false;
     for (int j = 0; j < nuclide_.size(); ++j) {
-      const auto& name {data::nuclides[nuclide_[j]]->name_};
+      const auto& name {data::nuclides[nuclide_[j]].name_};
       if (contains(data::thermal_scatt[table.index_table]->nuclides_, name)) {
         tables.push_back({table.index_table, j, table.fraction});
         found = true;
@@ -443,7 +443,7 @@ void Material::init_thermal()
     for (int k = j+1; k < tables.size(); ++k) {
       if (tables[j].index_nuclide == tables[k].index_nuclide) {
         int index = nuclide_[tables[j].index_nuclide];
-        auto name = data::nuclides[index]->name_;
+        auto name = data::nuclides[index].name_;
         fatal_error(name + " in material " + std::to_string(id_) + " was found "
           "in multiple thermal scattering tables. Each nuclide can appear in "
           "only one table per material.");
@@ -481,7 +481,7 @@ void Material::collision_stopping_power(double* s_col, bool positron)
 
   for (int i = 0; i < element_.size(); ++i) {
     const auto& elm = *data::elements[element_[i]];
-    double awr = data::nuclides[nuclide_[i]]->awr_;
+    double awr = data::nuclides[nuclide_[i]].awr_;
 
     // Get atomic density of nuclide given atom/weight percent
     double atom_density = (atom_density_[0] > 0.0) ?
@@ -595,7 +595,7 @@ void Material::init_bremsstrahlung()
     for (int i = 0; i < n; ++i) {
       // Get pointer to current element
       const auto& elm = *data::elements[element_[i]];
-      double awr = data::nuclides[nuclide_[i]]->awr_;
+      double awr = data::nuclides[nuclide_[i]].awr_;
 
       // Get atomic density and mass density of nuclide given atom/weight percent
       double atom_density = (atom_density_[0] > 0.0) ?
@@ -808,7 +808,7 @@ void Material::calculate_neutron_xs(Particle& p) const
         || p.sqrtkT_ != micro.last_sqrtkT
         || i_sab != micro.index_sab
         || sab_frac != micro.sab_frac) {
-      data::nuclides[i_nuclide]->calculate_xs(i_sab, i_grid, sab_frac, p);
+      data::nuclides[i_nuclide].calculate_xs(i_sab, i_grid, sab_frac, p);
     }
 
     // ======================================================================
@@ -913,7 +913,7 @@ void Material::set_density(double density, gsl::cstring_span units)
     density_gpcc_ = 0.0;
     for (int i = 0; i < nuclide_.size(); ++i) {
       int i_nuc = nuclide_[i];
-      double awr = data::nuclides[i_nuc]->awr_;
+      double awr = data::nuclides[i_nuc].awr_;
       density_gpcc_ += atom_density_(i) * awr * MASS_NEUTRON / N_AVOGADRO;
     }
   } else if (units == "g/cm3" || units == "g/cc") {
@@ -1011,7 +1011,7 @@ void Material::to_hdf5(hid_t group) const
   if (settings::run_CE) {
     for (int i = 0; i < nuclide_.size(); ++i) {
       int i_nuc = nuclide_[i];
-      nuc_names.push_back(data::nuclides[i_nuc]->name_);
+      nuc_names.push_back(data::nuclides[i_nuc].name_);
       nuc_densities.push_back(atom_density_(i));
     }
   } else {
@@ -1053,8 +1053,8 @@ void Material::add_nuclide(const std::string& name, double density)
   // Check if nuclide is already in material
   for (int i = 0; i < nuclide_.size(); ++i) {
     int i_nuc = nuclide_[i];
-    if (data::nuclides[i_nuc]->name_ == name) {
-      double awr = data::nuclides[i_nuc]->awr_;
+    if (data::nuclides[i_nuc].name_ == name) {
+      double awr = data::nuclides[i_nuc].awr_;
       density_ += density - atom_density_(i);
       density_gpcc_ += (density - atom_density_(i))
         * awr * MASS_NEUTRON / N_AVOGADRO;
@@ -1086,8 +1086,8 @@ void Material::add_nuclide(const std::string& name, double density)
   atom_density_ = atom_density;
 
   density_ += density;
-  density_gpcc_ += density * data::nuclides[i_nuc]->awr_
-    * MASS_NEUTRON / N_AVOGADRO;
+  density_gpcc_ +=
+    density * data::nuclides[i_nuc].awr_ * MASS_NEUTRON / N_AVOGADRO;
 }
 
 //==============================================================================

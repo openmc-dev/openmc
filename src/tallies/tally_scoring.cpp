@@ -200,7 +200,7 @@ double score_fission_q(const Particle& p, int score_bin, const Tally& tally,
   double flux, int i_nuclide, double atom_density)
 {
   if (tally.estimator_ == TallyEstimator::ANALOG) {
-    const Nuclide& nuc {*data::nuclides[p.event_nuclide_]};
+    const Nuclide& nuc {data::nuclides[p.event_nuclide_]};
     if (settings::survival_biasing) {
       // No fission events occur if survival biasing is on -- need to
       // calculate fraction of absorptions that would have resulted in
@@ -224,7 +224,7 @@ double score_fission_q(const Particle& p, int score_bin, const Tally& tally,
     }
   } else {
     if (i_nuclide >= 0) {
-      const Nuclide& nuc {*data::nuclides[i_nuclide]};
+      const Nuclide& nuc {data::nuclides[i_nuclide]};
       return get_nuc_fission_q(nuc, p, score_bin) * atom_density * flux
              * p.neutron_xs_[i_nuclide].fission;
     } else if (p.material_ != MATERIAL_VOID) {
@@ -233,7 +233,7 @@ double score_fission_q(const Particle& p, int score_bin, const Tally& tally,
       for (auto i = 0; i < material.nuclide_.size(); ++i) {
         auto j_nuclide = material.nuclide_[i];
         auto atom_density = material.atom_density_(i);
-        const Nuclide& nuc {*data::nuclides[j_nuclide]};
+        const Nuclide& nuc {data::nuclides[j_nuclide]};
         score += get_nuc_fission_q(nuc, p, score_bin) * atom_density
           * p.neutron_xs_[j_nuclide].fission;
       }
@@ -291,7 +291,7 @@ double score_neutron_heating(const Particle& p, const Tally& tally, double flux,
   // Get heating macroscopic "cross section"
   double heating_xs;
   if (i_nuclide >= 0) {
-    const Nuclide& nuc {*data::nuclides[i_nuclide]};
+    const Nuclide& nuc {data::nuclides[i_nuclide]};
     heating_xs = get_nuclide_neutron_heating(p, nuc, rxn_bin, i_nuclide);
     if (tally.estimator_ == TallyEstimator::ANALOG) {
       heating_xs /= p.neutron_xs_[i_nuclide].total;
@@ -305,7 +305,7 @@ double score_neutron_heating(const Particle& p, const Tally& tally, double flux,
       for (auto i = 0; i< material.nuclide_.size(); ++i) {
         int j_nuclide = material.nuclide_[i];
         double atom_density {material.atom_density_(i)};
-        const Nuclide& nuc {*data::nuclides[j_nuclide]};
+        const Nuclide& nuc {data::nuclides[j_nuclide]};
         heating_xs += atom_density * get_nuclide_neutron_heating(p, nuc, rxn_bin, j_nuclide);
       }
       if (tally.estimator_ == TallyEstimator::ANALOG) {
@@ -471,7 +471,7 @@ score_fission_eout(Particle& p, int i_tally, int i_score, int score_bin)
 }
 
 double get_nuclide_xs(const Particle& p, int i_nuclide, int score_bin) {
-  const auto& nuc {*data::nuclides[i_nuclide]};
+  const auto& nuc {data::nuclides[i_nuclide]};
 
   // Get reaction object, or return 0 if reaction is not present
   auto m = nuc.reaction_index_[score_bin];
@@ -660,9 +660,9 @@ score_general_ce(Particle& p, int i_tally, int start_index, int filter_index,
         score = p.wgt_last_ * flux;
       } else {
         // Get yield and apply to score
-        auto m = data::nuclides[p.event_nuclide_]->reaction_index_[p.event_mt_];
-        const auto& rxn {*data::nuclides[p.event_nuclide_]->reactions_[m]};
-        score = p.wgt_last_ * flux * (*rxn.products_[0].yield_)(E);
+        auto m = data::nuclides[p.event_nuclide_].reaction_index_[p.event_mt_];
+        const auto& rxn {data::nuclides[p.event_nuclide_].reactions_[m]};
+        score = p.wgt_last_ * flux * (*(rxn->products_[0].yield_))(E);
       }
       break;
 
@@ -794,11 +794,10 @@ score_general_ce(Particle& p, int i_tally, int start_index, int filter_index,
           // calculate fraction of absorptions that would have resulted in
           // prompt-nu-fission
           if (p.neutron_xs_[p.event_nuclide_].absorption > 0) {
-            score = p.wgt_absorb_
-              * p.neutron_xs_[p.event_nuclide_].fission
-              * data::nuclides[p.event_nuclide_]
-              ->nu(E, ReactionProduct::EmissionMode::prompt)
-              / p.neutron_xs_[p.event_nuclide_].absorption * flux;
+            score = p.wgt_absorb_ * p.neutron_xs_[p.event_nuclide_].fission *
+                    data::nuclides[p.event_nuclide_].nu(
+                      E, ReactionProduct::EmissionMode::prompt) /
+                    p.neutron_xs_[p.event_nuclide_].absorption * flux;
           } else {
             score = 0.;
           }
@@ -817,10 +816,10 @@ score_general_ce(Particle& p, int i_tally, int start_index, int filter_index,
         }
       } else {
         if (i_nuclide >= 0) {
-          score = p.neutron_xs_[i_nuclide].fission
-            * data::nuclides[i_nuclide]
-            ->nu(E, ReactionProduct::EmissionMode::prompt)
-            * atom_density * flux;
+          score = p.neutron_xs_[i_nuclide].fission *
+                  data::nuclides[i_nuclide].nu(
+                    E, ReactionProduct::EmissionMode::prompt) *
+                  atom_density * flux;
         } else {
           score = 0.;
           // Add up contributions from each nuclide in the material.
@@ -829,10 +828,10 @@ score_general_ce(Particle& p, int i_tally, int start_index, int filter_index,
             for (auto i = 0; i < material.nuclide_.size(); ++i) {
               auto j_nuclide = material.nuclide_[i];
               auto atom_density = material.atom_density_(i);
-              score += p.neutron_xs_[j_nuclide].fission
-                * data::nuclides[j_nuclide]
-                ->nu(E, ReactionProduct::EmissionMode::prompt)
-                * atom_density * flux;
+              score += p.neutron_xs_[j_nuclide].fission *
+                       data::nuclides[j_nuclide].nu(
+                         E, ReactionProduct::EmissionMode::prompt) *
+                       atom_density * flux;
             }
           }
         }
@@ -855,8 +854,8 @@ score_general_ce(Particle& p, int i_tally, int start_index, int filter_index,
           // No fission events occur if survival biasing is on -- need to
           // calculate fraction of absorptions that would have resulted in
           // delayed-nu-fission
-          if (p.neutron_xs_[p.event_nuclide_].absorption > 0
-            && data::nuclides[p.event_nuclide_]->fissionable_) {
+          if (p.neutron_xs_[p.event_nuclide_].absorption > 0 &&
+              data::nuclides[p.event_nuclide_].fissionable_) {
             if (tally.delayedgroup_filter_ != C_NONE) {
               auto i_dg_filt = tally.filters()[tally.delayedgroup_filter_];
               const DelayedGroupFilter& filt
@@ -865,8 +864,8 @@ score_general_ce(Particle& p, int i_tally, int start_index, int filter_index,
               // Tally each delayed group bin individually
               for (auto d_bin = 0; d_bin < filt.n_bins(); ++d_bin) {
                 auto dg = filt.groups()[d_bin];
-                auto yield = data::nuclides[p.event_nuclide_]
-                  ->nu(E, ReactionProduct::EmissionMode::delayed, dg);
+                auto yield = data::nuclides[p.event_nuclide_].nu(
+                  E, ReactionProduct::EmissionMode::delayed, dg);
                 score = p.wgt_absorb_ * yield
                   * p.neutron_xs_[p.event_nuclide_].fission
                   / p.neutron_xs_[p.event_nuclide_].absorption * flux;
@@ -878,11 +877,10 @@ score_general_ce(Particle& p, int i_tally, int start_index, int filter_index,
               // If the delayed group filter is not present, compute the score
               // by multiplying the absorbed weight by the fraction of the
               // delayed-nu-fission xs to the absorption xs
-              score = p.wgt_absorb_
-                * p.neutron_xs_[p.event_nuclide_].fission
-                * data::nuclides[p.event_nuclide_]
-                ->nu(E, ReactionProduct::EmissionMode::delayed)
-                / p.neutron_xs_[p.event_nuclide_].absorption *flux;
+              score = p.wgt_absorb_ * p.neutron_xs_[p.event_nuclide_].fission *
+                      data::nuclides[p.event_nuclide_].nu(
+                        E, ReactionProduct::EmissionMode::delayed) /
+                      p.neutron_xs_[p.event_nuclide_].absorption * flux;
             }
           }
         } else {
@@ -926,8 +924,8 @@ score_general_ce(Particle& p, int i_tally, int start_index, int filter_index,
             // Tally each delayed group bin individually
             for (auto d_bin = 0; d_bin < filt.n_bins(); ++d_bin) {
               auto d = filt.groups()[d_bin];
-              auto yield = data::nuclides[i_nuclide]
-                ->nu(E, ReactionProduct::EmissionMode::delayed, d);
+              auto yield = data::nuclides[i_nuclide].nu(
+                E, ReactionProduct::EmissionMode::delayed, d);
               score = p.neutron_xs_[i_nuclide].fission * yield
                 * atom_density * flux;
               score_fission_delayed_dg(i_tally, d_bin, score, score_index, p.filter_matches_);
@@ -936,10 +934,10 @@ score_general_ce(Particle& p, int i_tally, int start_index, int filter_index,
           } else {
             // If the delayed group filter is not present, compute the score
             // by multiplying the delayed-nu-fission macro xs by the flux
-            score = p.neutron_xs_[i_nuclide].fission
-              * data::nuclides[i_nuclide]
-              ->nu(E, ReactionProduct::EmissionMode::delayed)
-              * atom_density * flux;
+            score = p.neutron_xs_[i_nuclide].fission *
+                    data::nuclides[i_nuclide].nu(
+                      E, ReactionProduct::EmissionMode::delayed) *
+                    atom_density * flux;
           }
         } else {
           // Need to add up contributions for each nuclide
@@ -956,8 +954,8 @@ score_general_ce(Particle& p, int i_tally, int start_index, int filter_index,
                 // Tally each delayed group bin individually
                 for (auto d_bin = 0; d_bin < filt.n_bins(); ++d_bin) {
                   auto d = filt.groups()[d_bin];
-                  auto yield = data::nuclides[j_nuclide]
-                    ->nu(E, ReactionProduct::EmissionMode::delayed, d);
+                  auto yield = data::nuclides[j_nuclide].nu(
+                    E, ReactionProduct::EmissionMode::delayed, d);
                   score = p.neutron_xs_[j_nuclide].fission * yield
                     * atom_density * flux;
                   score_fission_delayed_dg(i_tally, d_bin, score,
@@ -973,10 +971,10 @@ score_general_ce(Particle& p, int i_tally, int start_index, int filter_index,
               for (auto i = 0; i < material.nuclide_.size(); ++i) {
                 auto j_nuclide = material.nuclide_[i];
                 auto atom_density = material.atom_density_(i);
-                score += p.neutron_xs_[j_nuclide].fission
-                  * data::nuclides[j_nuclide]
-                  ->nu(E, ReactionProduct::EmissionMode::delayed)
-                  * atom_density * flux;
+                score += p.neutron_xs_[j_nuclide].fission *
+                         data::nuclides[j_nuclide].nu(
+                           E, ReactionProduct::EmissionMode::delayed) *
+                         atom_density * flux;
               }
             }
           }
@@ -992,7 +990,7 @@ score_general_ce(Particle& p, int i_tally, int start_index, int filter_index,
           // No fission events occur if survival biasing is on -- need to
           // calculate fraction of absorptions that would have resulted in
           // delayed-nu-fission
-          const auto& nuc {*data::nuclides[p.event_nuclide_]};
+          const auto& nuc {data::nuclides[p.event_nuclide_]};
           if (p.neutron_xs_[p.event_nuclide_].absorption > 0
             && nuc.fissionable_) {
             const auto& rxn {*nuc.fission_rx_[0]};
@@ -1051,7 +1049,7 @@ score_general_ce(Particle& p, int i_tally, int start_index, int filter_index,
             const auto& bank = p.nu_bank_[i];
             auto g = bank.delayed_group;
             if (g != 0) {
-              const auto& nuc {*data::nuclides[p.event_nuclide_]};
+              const auto& nuc {data::nuclides[p.event_nuclide_]};
               const auto& rxn {*nuc.fission_rx_[0]};
               auto rate = rxn.products_[g].decay_rate_;
               score += simulation::keff * bank.wgt * rate * flux;
@@ -1074,7 +1072,7 @@ score_general_ce(Particle& p, int i_tally, int start_index, int filter_index,
         }
       } else {
         if (i_nuclide >= 0) {
-          const auto& nuc {*data::nuclides[i_nuclide]};
+          const auto& nuc {data::nuclides[i_nuclide]};
           if (!nuc.fissionable_) continue;
           const auto& rxn {*nuc.fission_rx_[0]};
           if (tally.delayedgroup_filter_ != C_NONE) {
@@ -1119,7 +1117,7 @@ score_general_ce(Particle& p, int i_tally, int start_index, int filter_index,
               for (auto i = 0; i < material.nuclide_.size(); ++i) {
                 auto j_nuclide = material.nuclide_[i];
                 auto atom_density = material.atom_density_(i);
-                const auto& nuc {*data::nuclides[j_nuclide]};
+                const auto& nuc {data::nuclides[j_nuclide]};
                 if (nuc.fissionable_) {
                   const auto& rxn {*nuc.fission_rx_[0]};
                   // Tally each delayed group bin individually
@@ -1144,7 +1142,7 @@ score_general_ce(Particle& p, int i_tally, int start_index, int filter_index,
               for (auto i = 0; i < material.nuclide_.size(); ++i) {
                 auto j_nuclide = material.nuclide_[i];
                 auto atom_density = material.atom_density_(i);
-                const auto& nuc {*data::nuclides[j_nuclide]};
+                const auto& nuc {data::nuclides[j_nuclide]};
                 if (nuc.fissionable_) {
                   const auto& rxn {*nuc.fission_rx_[0]};
                   // We need to be careful not to overshoot the number of
@@ -1178,7 +1176,7 @@ score_general_ce(Particle& p, int i_tally, int start_index, int filter_index,
           // No fission events occur if survival biasing is on -- need to
           // calculate fraction of absorptions that would have resulted in
           // fission scaled by the Q-value
-          const auto& nuc {*data::nuclides[p.event_nuclide_]};
+          const auto& nuc {data::nuclides[p.event_nuclide_]};
           if (p.neutron_xs_[p.event_nuclide_].absorption > 0
             && nuc.fissionable_) {
             const auto& rxn {*nuc.fission_rx_[0]};
@@ -1192,7 +1190,7 @@ score_general_ce(Particle& p, int i_tally, int start_index, int filter_index,
           // All fission events will contribute, so again we can use particle's
           // weight entering the collision as the estimate for the fission
           // reaction rate
-          const auto& nuc {*data::nuclides[p.event_nuclide_]};
+          const auto& nuc {data::nuclides[p.event_nuclide_]};
           if (p.neutron_xs_[p.event_nuclide_].absorption > 0
             && nuc.fissionable_) {
             const auto& rxn {*nuc.fission_rx_[0]};
@@ -1203,7 +1201,7 @@ score_general_ce(Particle& p, int i_tally, int start_index, int filter_index,
         }
       } else {
         if (i_nuclide >= 0) {
-          const auto& nuc {*data::nuclides[i_nuclide]};
+          const auto& nuc {data::nuclides[i_nuclide]};
           if (nuc.fissionable_) {
             const auto& rxn {*nuc.fission_rx_[0]};
             score = rxn.q_value_ * p.neutron_xs_[i_nuclide].fission
@@ -1214,7 +1212,7 @@ score_general_ce(Particle& p, int i_tally, int start_index, int filter_index,
           for (auto i = 0; i < material.nuclide_.size(); ++i) {
             auto j_nuclide = material.nuclide_[i];
             auto atom_density = material.atom_density_(i);
-            const auto& nuc {*data::nuclides[j_nuclide]};
+            const auto& nuc {data::nuclides[j_nuclide]};
             if (nuc.fissionable_) {
               const auto& rxn {*nuc.fission_rx_[0]};
               score += rxn.q_value_ * p.neutron_xs_[j_nuclide].fission
@@ -1243,7 +1241,7 @@ score_general_ce(Particle& p, int i_tally, int start_index, int filter_index,
       } else {
         if (i_nuclide >= 0) {
           if (p.neutron_xs_[i_nuclide].elastic == CACHE_INVALID)
-            data::nuclides[i_nuclide]->calculate_elastic_xs(p);
+            data::nuclides[i_nuclide].calculate_elastic_xs(p);
           score = p.neutron_xs_[i_nuclide].elastic * atom_density * flux;
         } else {
           score = 0.;
@@ -1253,7 +1251,7 @@ score_general_ce(Particle& p, int i_tally, int start_index, int filter_index,
               auto j_nuclide = material.nuclide_[i];
               auto atom_density = material.atom_density_(i);
               if (p.neutron_xs_[j_nuclide].elastic == CACHE_INVALID)
-                data::nuclides[j_nuclide]->calculate_elastic_xs(p);
+                data::nuclides[j_nuclide].calculate_elastic_xs(p);
               score += p.neutron_xs_[j_nuclide].elastic * atom_density
                 * flux;
             }

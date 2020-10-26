@@ -254,8 +254,8 @@ FileSource::FileSource(std::string path)
     fatal_error("Specified starting source file not a source file type.");
   }
 
-  // Read in the source bank
-  read_source_bank(file_id, sites_);
+  // Read in the source particles
+  read_source_bank(file_id, sites_, false);
 
   // Close file
   file_close(file_id);

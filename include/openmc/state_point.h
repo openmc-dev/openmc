@@ -14,7 +14,7 @@ namespace openmc {
 void load_state_point();
 void write_source_point(const char* filename);
 void write_source_bank(hid_t group_id);
-void read_source_bank(hid_t group_id, std::vector<Particle::Bank>& sites);
+void read_source_bank(hid_t group_id, std::vector<Particle::Bank>& sites, bool distribute);
 void write_tally_results_nr(hid_t file_id);
 void restart_set_keff();
 

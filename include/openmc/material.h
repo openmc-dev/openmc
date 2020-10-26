@@ -155,7 +155,7 @@ public:
   std::string name_; //!< Name of material
   vector<int> nuclide_;                 //!< Indices in nuclides vector
   vector<int> element_;                 //!< Indices in elements vector
-  xt::xtensor<double, 1> atom_density_; //!< Nuclide atom density in [atom/b-cm]
+  vector<double> atom_density_;         //!< Nuclide atom density in [atom/b-cm]
   double density_; //!< Total atom density in [atom/b-cm]
   double density_gpcc_; //!< Total atom density in [g/cm^3]
   double volume_ {-1.0}; //!< Volume in [cm^3]

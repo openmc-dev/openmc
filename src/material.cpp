@@ -205,7 +205,7 @@ Material::Material(pugi::xml_node node)
   // allocate arrays in Material object
   auto n = names.size();
   nuclide_.reserve(n);
-  atom_density_ = xt::empty<double>({n});
+  atom_density_.resize(n, 0.0);
   if (settings::photon_transport) element_.reserve(n);
 
   for (int i = 0; i < n; ++i) {
@@ -256,7 +256,7 @@ Material::Material(pugi::xml_node node)
     }
 
     // Copy atom/weight percent
-    atom_density_(i) = densities[i];
+    atom_density_[i] = densities[i];
   }
 
   if (settings::run_CE) {
@@ -278,14 +278,18 @@ Material::Material(pugi::xml_node node)
 
   // Check to make sure either all atom percents or all weight percents are
   // given
-  if (!(xt::all(atom_density_ >= 0.0) || xt::all(atom_density_ <= 0.0))) {
+  bool densities_positive = std::all_of(atom_density_.begin(),
+    atom_density_.end(), [](double const& dens) { return dens >= 0.0; });
+  bool densities_negative = std::all_of(atom_density_.begin(),
+    atom_density_.end(), [](double const& dens) { return dens <= 0.0; });
+  if (!(densities_positive || densities_negative)) {
     fatal_error("Cannot mix atom and weight percents in material "
       + std::to_string(id_));
   }
 
   // Determine density if it is a sum value
-  if (sum_density) density_ = xt::sum(atom_density_)();
-
+  if (sum_density)
+    density_ = std::accumulate(atom_density_.begin(), atom_density_.end(), 0.0);
 
   if (check_for_node(node, "temperature")) {
     temperature_ = std::stod(get_node_value(node, "temperature"));
@@ -370,7 +374,7 @@ void Material::finalize()
 
 void Material::normalize_density()
 {
-  bool percent_in_atom = (atom_density_(0) >= 0.0);
+  bool percent_in_atom = (atom_density_[0] >= 0.0);
   bool density_in_atom = (density_ >= 0.0);
 
   for (int i = 0; i < nuclide_.size(); ++i) {
@@ -382,13 +386,17 @@ void Material::normalize_density()
     // if given weight percent, convert all values so that they are divided
     // by awr. thus, when a sum is done over the values, it's actually
     // sum(w/awr)
-    if (!percent_in_atom) atom_density_(i) = -atom_density_(i) / awr;
+    if (!percent_in_atom)
+      atom_density_[i] = -atom_density_[i] / awr;
   }
 
   // determine normalized atom percents. if given atom percents, this is
   // straightforward. if given weight percents, the value is w/awr and is
   // divided by sum(w/awr)
-  atom_density_ /= xt::sum(atom_density_)();
+  double density_sum =
+    std::accumulate(atom_density_.begin(), atom_density_.end(), 0.0);
+  for (auto& value : atom_density_)
+    value /= density_sum;
 
   // Change density in g/cm^3 to atom/b-cm. Since all values are now in
   // atom percent, the sum needs to be re-evaluated as 1/sum(x*awr)
@@ -398,21 +406,22 @@ void Material::normalize_density()
       int i_nuc = nuclide_[i];
       double awr = settings::run_CE ?
         data::nuclides[i_nuc]->awr_ : data::mg.nuclides_[i_nuc].awr;
-      sum_percent += atom_density_(i)*awr;
+      sum_percent += atom_density_[i]*awr;
     }
     sum_percent = 1.0 / sum_percent;
     density_ = -density_ * N_AVOGADRO / MASS_NEUTRON * sum_percent;
   }
 
   // Calculate nuclide atom densities
-  atom_density_ *= density_;
+  for (auto& value : atom_density_)
+    value *= density_;
 
   // Calculate density in g/cm^3.
   density_gpcc_ = 0.0;
   for (int i = 0; i < nuclide_.size(); ++i) {
     int i_nuc = nuclide_[i];
     double awr = settings::run_CE ? data::nuclides[i_nuc]->awr_ : 1.0;
-    density_gpcc_ += atom_density_(i) * awr * MASS_NEUTRON / N_AVOGADRO;
+    density_gpcc_ += atom_density_[i] * awr * MASS_NEUTRON / N_AVOGADRO;
   }
 }
 
@@ -827,7 +836,7 @@ void Material::calculate_neutron_xs(Particle& p) const
     // ADD TO MACROSCOPIC CROSS SECTION
 
     // Copy atom density of nuclide in material
-    double atom_density = atom_density_(i);
+    double const& atom_density = atom_density_[i];
 
     // Add contributions to cross sections
     p.macro_xs().total += atom_density * micro.total;
@@ -862,7 +871,7 @@ void Material::calculate_photon_xs(Particle& p) const
     // ADD TO MACROSCOPIC CROSS SECTION
 
     // Copy atom density of nuclide in material
-    double atom_density = atom_density_(i);
+    double const& atom_density = atom_density_[i];
 
     // Add contributions to material macroscopic cross sections
     p.macro_xs().total += atom_density * micro.total;
@@ -915,18 +924,21 @@ void Material::set_density(double density, gsl::cstring_span units)
     density_ = density;
 
     // Determine normalized atom percents
-    double sum_percent = xt::sum(atom_density_)();
-    atom_density_ /= sum_percent;
+    double sum_percent =
+      std::accumulate(atom_density_.begin(), atom_density_.end(), 0.0);
+    for (auto& value : atom_density_)
+      value /= sum_percent;
 
     // Recalculate nuclide atom densities based on given density
-    atom_density_ *= density;
+    for (auto& value : atom_density_)
+      value *= density;
 
     // Calculate density in g/cm^3.
     density_gpcc_ = 0.0;
     for (int i = 0; i < nuclide_.size(); ++i) {
       int i_nuc = nuclide_[i];
       double awr = data::nuclides[i_nuc]->awr_;
-      density_gpcc_ += atom_density_(i) * awr * MASS_NEUTRON / N_AVOGADRO;
+      density_gpcc_ += atom_density_[i] * awr * MASS_NEUTRON / N_AVOGADRO;
     }
   } else if (units == "g/cm3" || units == "g/cc") {
     // Determine factor by which to change densities
@@ -936,7 +948,8 @@ void Material::set_density(double density, gsl::cstring_span units)
     // Update densities
     density_gpcc_ = density;
     density_ *= f;
-    atom_density_ *= f;
+    for (auto& value : atom_density_)
+      value *= f;
   } else {
     throw std::invalid_argument{"Invalid units '" + std::string(units.data())
       + "' specified."};
@@ -952,7 +965,7 @@ void Material::set_densities(
 
   if (n != nuclide_.size()) {
     nuclide_.resize(n);
-    atom_density_ = xt::zeros<double>({n});
+    atom_density_.resize(n, 0.0);
     if (settings::photon_transport) element_.resize(n);
   }
 
@@ -966,7 +979,7 @@ void Material::set_densities(
 
     nuclide_[i] = data::nuclide_map.at(nuc);
     Expects(density[i] > 0.0);
-    atom_density_(i) = density[i];
+    atom_density_[i] = density[i];
     sum_density += density[i];
 
     if (settings::photon_transport) {
@@ -1024,14 +1037,14 @@ void Material::to_hdf5(hid_t group) const
     for (int i = 0; i < nuclide_.size(); ++i) {
       int i_nuc = nuclide_[i];
       nuc_names.push_back(data::nuclides[i_nuc]->name_);
-      nuc_densities.push_back(atom_density_(i));
+      nuc_densities.push_back(atom_density_[i]);
     }
   } else {
     for (int i = 0; i < nuclide_.size(); ++i) {
       int i_nuc = nuclide_[i];
       if (data::mg.nuclides_[i_nuc].awr != MACROSCOPIC_AWR) {
         nuc_names.push_back(data::mg.nuclides_[i_nuc].name);
-        nuc_densities.push_back(atom_density_(i));
+        nuc_densities.push_back(atom_density_[i]);
       } else {
         macro_names.push_back(data::mg.nuclides_[i_nuc].name);
       }
@@ -1067,10 +1080,10 @@ void Material::add_nuclide(const std::string& name, double density)
     int i_nuc = nuclide_[i];
     if (data::nuclides[i_nuc]->name_ == name) {
       double awr = data::nuclides[i_nuc]->awr_;
-      density_ += density - atom_density_(i);
-      density_gpcc_ += (density - atom_density_(i))
+      density_ += density - atom_density_[i];
+      density_gpcc_ += (density - atom_density_[i])
         * awr * MASS_NEUTRON / N_AVOGADRO;
-      atom_density_(i) = density;
+      atom_density_[i] = density;
       return;
     }
   }
@@ -1089,13 +1102,7 @@ void Material::add_nuclide(const std::string& name, double density)
     element_.push_back(i_elem);
   }
 
-  auto n = nuclide_.size();
-
-  // Create copy of atom_density_ array with one extra entry
-  xt::xtensor<double, 1> atom_density = xt::zeros<double>({n});
-  xt::view(atom_density, xt::range(0, n-1)) = atom_density_;
-  atom_density(n-1) = density;
-  atom_density_ = atom_density;
+  atom_density_.push_back(density);
 
   density_ += density;
   density_gpcc_ += density * data::nuclides[i_nuc]->awr_

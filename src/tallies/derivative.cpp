@@ -194,7 +194,7 @@ apply_derivative_to_score(const Particle& p, int i_tally, int i_nuclide,
           int i;
           for (i = 0; i < material.nuclide_.size(); ++i)
             if (material.nuclide_[i] == deriv.diff_nuclide) break;
-          score *= flux_deriv + 1. / material.atom_density_(i);
+          score *= flux_deriv + 1. / material.atom_density_[i];
         }
         break;
 
@@ -634,7 +634,7 @@ void score_collision_derivative(Particle& p)
       // (1 / phi) * (d_phi / d_N) = (d_Sigma_s / d_N) / Sigma_s
       // (1 / phi) * (d_phi / d_N) = sigma_s / Sigma_s
       // (1 / phi) * (d_phi / d_N) = 1 / N
-      flux_deriv += 1. / material.atom_density_(i);
+      flux_deriv += 1. / material.atom_density_[i];
       break;
 
     case DerivativeVariable::TEMPERATURE:

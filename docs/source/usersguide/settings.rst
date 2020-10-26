@@ -196,7 +196,7 @@ below.
 
   class CustomSource : public openmc::Source
   {
-    openmc::Particle::Bank sample(uint64_t* seed)
+    openmc::Particle::Bank sample(uint64_t* seed) const
     {
       openmc::Particle::Bank particle;
       // weight
@@ -271,7 +271,7 @@ the source class when it is created:
     CustomSource(double energy) : energy_{energy} { }
 
     // Samples from an instance of this class.
-    openmc::Particle::Bank sample(uint64_t* seed)
+    openmc::Particle::Bank sample(uint64_t* seed) const
     {
       openmc::Particle::Bank particle;
       // weight

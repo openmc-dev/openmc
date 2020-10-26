@@ -31,7 +31,7 @@ class RingSource : public openmc::Source {
     }
 
     // Samples from an instance of this class.
-    openmc::Particle::Bank sample(uint64_t* seed)
+    openmc::Particle::Bank sample(uint64_t* seed) const
     {
       openmc::Particle::Bank particle;
       // wgt

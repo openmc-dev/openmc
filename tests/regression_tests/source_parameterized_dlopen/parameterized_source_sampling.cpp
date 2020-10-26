@@ -6,7 +6,7 @@ class CustomSource : public openmc::Source {
     CustomSource(double energy) : energy_(energy) { }
 
     // Samples from an instance of this class.
-    openmc::Particle::Bank sample(uint64_t* seed)
+    openmc::Particle::Bank sample(uint64_t* seed) const
     {
       openmc::Particle::Bank particle;
       // wgt

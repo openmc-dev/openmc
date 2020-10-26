@@ -141,7 +141,7 @@ IndependentSource::IndependentSource(pugi::xml_node node)
   }
 }
 
-Particle::Bank IndependentSource::sample(uint64_t* seed)
+Particle::Bank IndependentSource::sample(uint64_t* seed) const
 {
   Particle::Bank site;
 
@@ -261,7 +261,7 @@ FileSource::FileSource(std::string path)
   file_close(file_id);
 }
 
-Particle::Bank FileSource::sample(uint64_t* seed)
+Particle::Bank FileSource::sample(uint64_t* seed) const
 {
   size_t i_site = sites_.size()*prn(seed);
   return sites_[i_site];

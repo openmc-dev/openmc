@@ -36,7 +36,7 @@ public:
   virtual ~Source() = default;
 
   // Methods that must be implemented
-  virtual Particle::Bank sample(uint64_t* seed) = 0;
+  virtual Particle::Bank sample(uint64_t* seed) const = 0;
 
   // Methods that can be overridden
   virtual double strength() const { return 1.0; }
@@ -55,7 +55,7 @@ public:
   //! Sample from the external source distribution
   //! \param[inout] seed Pseudorandom seed pointer
   //! \return Sampled site
-  Particle::Bank sample(uint64_t* seed) override;
+  Particle::Bank sample(uint64_t* seed) const override;
 
   // Properties
   Particle::Type particle_type() const { return particle_; }
@@ -84,7 +84,7 @@ public:
   explicit FileSource(std::string path);
 
   // Methods
-  Particle::Bank sample(uint64_t* seed) override;
+  Particle::Bank sample(uint64_t* seed) const override;
 
 private:
   std::vector<Particle::Bank> sites_; //!< Source sites from a file
@@ -101,7 +101,7 @@ public:
   ~CustomSourceWrapper();
 
   // Defer implementation to custom source library
-  Particle::Bank sample(uint64_t* seed) override
+  Particle::Bank sample(uint64_t* seed) const override
   {
     return custom_source_->sample(seed);
   }

@@ -4,6 +4,7 @@
 #include <cstdint>
 
 #include "openmc/tallies/filter.h"
+#include "openmc/position.h"
 
 namespace openmc {
 
@@ -42,11 +43,22 @@ public:
 
   virtual void set_mesh(int32_t mesh);
 
+  virtual void set_translation(const Position& translation);
+
+  virtual void set_translation(const double translation[3]);
+
+  virtual const Position& translation() const {return translation_;}
+
+  virtual bool translated() const {return translated_;}
+
+
 protected:
   //----------------------------------------------------------------------------
   // Data members
 
   int32_t mesh_;
+  bool translated_ {false};
+  Position translation_ {0.0, 0.0, 0.0};
 };
 
 } // namespace openmc

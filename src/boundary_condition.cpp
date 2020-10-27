@@ -190,12 +190,12 @@ RotationalPeriodicBC::RotationalPeriodicBC(int i_surf, int j_surf)
   // Make sure both surfaces intersect the origin
   if (std::abs(surf1.evaluate({0, 0, 0})) > FP_COINCIDENT) {
     throw std::invalid_argument(fmt::format("Rotational periodic BCs are only "
-      "supported for rotations about the origin, but surface{} does not "
+      "supported for rotations about the origin, but surface {} does not "
       "intersect the origin.", surf1.id_));
   }
   if (std::abs(surf2.evaluate({0, 0, 0})) > FP_COINCIDENT) {
     throw std::invalid_argument(fmt::format("Rotational periodic BCs are only "
-      "supported for rotations about the origin, but surface{} does not "
+      "supported for rotations about the origin, but surface {} does not "
       "intersect the origin.", surf2.id_));
   }
 
@@ -253,14 +253,16 @@ RotationalPeriodicBC::handle_particle(Particle& p, const Surface& surf) const
   // Rotate the particle's position and direction about the z-axis.
   Position r = p.r();
   Direction u = p.u();
+  double cos_theta = std::cos(theta);
+  double sin_theta = std::sin(theta);
   Position new_r = {
-    std::cos(theta)*r[0] - std::sin(theta)*r[1],
-    std::sin(theta)*r[0] + std::cos(theta)*r[1],
-    r[2]};
+    cos_theta*r.x - sin_theta*r.y,
+    sin_theta*r.x + cos_theta*r.y,
+    r.z};
   Direction new_u = {
-    std::cos(theta)*u[0] - std::sin(theta)*u[1],
-    std::sin(theta)*u[0] + std::cos(theta)*u[1],
-    u[2]};
+    cos_theta*u.x - sin_theta*u.y,
+    sin_theta*u.x + cos_theta*u.y,
+    u.z};
 
   // Pass the new location, direction, and surface to the particle.
   p.cross_periodic_bc(surf, new_r, new_u, new_surface);

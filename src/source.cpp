@@ -230,7 +230,7 @@ Particle::Bank IndependentSource::sample(uint64_t* seed) const
 }
 
 //==============================================================================
-// SourceFile implementation
+// FileSource implementation
 //==============================================================================
 
 FileSource::FileSource(std::string path)

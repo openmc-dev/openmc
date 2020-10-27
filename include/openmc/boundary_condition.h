@@ -13,13 +13,12 @@ class Surface;
 //! A class that tells particles what to do after they strike an outer boundary.
 //==============================================================================
 
-class BoundaryCondition
-{
+class BoundaryCondition {
 public:
   //! Perform tracking operations for a particle that strikes the boundary.
   //! \param p The particle that struck the boundary.  This class is not meant
   //!   to directly modify anything about the particle, but it will do so
-  //!   indirectly by calling the particle's appropriate cross*bc function.
+  //!   indirectly by calling the particle's appropriate cross_*_bc function.
   //! \param surf The specific surface on the boundary the particle struck.
   virtual void
   handle_particle(Particle& p, const Surface& surf) const = 0;
@@ -32,8 +31,7 @@ public:
 //! A BC that kills particles, indicating they left the problem.
 //==============================================================================
 
-class VacuumBC : public BoundaryCondition
-{
+class VacuumBC : public BoundaryCondition {
 public:
   void
   handle_particle(Particle& p, const Surface& surf) const override;
@@ -45,8 +43,7 @@ public:
 //! A BC that returns particles via specular reflection.
 //==============================================================================
 
-class ReflectiveBC : public BoundaryCondition
-{
+class ReflectiveBC : public BoundaryCondition {
 public:
   void
   handle_particle(Particle& p, const Surface& surf) const override;
@@ -58,8 +55,7 @@ public:
 //! A BC that returns particles via diffuse reflection.
 //==============================================================================
 
-class WhiteBC : public BoundaryCondition
-{
+class WhiteBC : public BoundaryCondition {
 public:
   void
   handle_particle(Particle& p, const Surface& surf) const override;
@@ -71,8 +67,7 @@ public:
 //! A BC that moves particles to another part of the problem.
 //==============================================================================
 
-class PeriodicBC : public BoundaryCondition
-{
+class PeriodicBC : public BoundaryCondition {
 public:
   PeriodicBC(int i_surf, int j_surf)
     : i_surf_(i_surf), j_surf_(j_surf)
@@ -89,8 +84,7 @@ protected:
 //! A BC that moves particles to another part of the problem without rotation.
 //==============================================================================
 
-class TranslationalPeriodicBC : public PeriodicBC
-{
+class TranslationalPeriodicBC : public PeriodicBC {
 public:
   TranslationalPeriodicBC(int i_surf, int j_surf);
 
@@ -108,8 +102,7 @@ protected:
 //! Currently only rotations about the z-axis are supported.
 //==============================================================================
 
-class RotationalPeriodicBC : public PeriodicBC
-{
+class RotationalPeriodicBC : public PeriodicBC {
 public:
   RotationalPeriodicBC(int i_surf, int j_surf);
 

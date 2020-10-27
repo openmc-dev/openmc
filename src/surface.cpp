@@ -1148,10 +1148,14 @@ void read_surfaces(pugi::xml_node node)
     Surface& surf1 {*model::surfaces[i_surf]};
     Surface& surf2 {*model::surfaces[j_surf]};
 
+    // Compute the dot product of the surface normals
     Direction norm1 = surf1.normal({0, 0, 0});
     Direction norm2 = surf2.normal({0, 0, 0});
     double dot_prod = norm1.dot(norm2);
 
+    // If the dot product is 1 (to within floating point precision) then the
+    // planes are parallel which indicates a translational periodic boundary
+    // condition.  Otherwise, it is a rotational periodic BC.
     if (std::abs(1.0 - dot_prod) < FP_PRECISION) {
       surf1.bc_ = std::make_shared<TranslationalPeriodicBC>(i_surf, j_surf);
       surf2.bc_ = surf1.bc_;

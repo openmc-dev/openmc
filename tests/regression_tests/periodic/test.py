@@ -43,17 +43,6 @@ class PeriodicTest(PyAPITestHarness):
         geometry.root_universe = root_universe
         geometry.export_to_xml()
 
-        plots = openmc.Plots()
-
-        plot = openmc.Plot()
-        plot.basis = 'xz'
-        plot.origin = (2.5, 2.5, 0)
-        plot.width = (6, 11)
-        plot.pixels = (300, 300)
-        plots.append(plot)
-
-        plots.export_to_xml()
-
         # Define settings
         settings = openmc.Settings()
         settings.particles = 1000

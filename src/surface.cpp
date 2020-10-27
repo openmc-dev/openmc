@@ -3,6 +3,7 @@
 #include <array>
 #include <cmath>
 #include <utility>
+#include <set>
 
 #include <fmt/core.h>
 #include <gsl/gsl>
@@ -1025,7 +1026,7 @@ void read_surfaces(pugi::xml_node node)
   // Loop over XML surface elements and populate the array.  Keep track of
   // periodic surfaces.
   model::surfaces.reserve(n_surfaces);
-  std::vector<std::pair<int, int>> periodic_pairs;
+  std::set<std::pair<int, int>> periodic_pairs;
   {
     pugi::xml_node surf_node;
     int i_surf;
@@ -1082,9 +1083,11 @@ void read_surfaces(pugi::xml_node node)
           if (check_for_node(surf_node, "periodic_surface_id")) {
             int i_periodic = std::stoi(get_node_value(surf_node,
                                                       "periodic_surface_id"));
-            periodic_pairs.push_back({model::surfaces.back()->id_, i_periodic});
+            int lo_id = std::min(model::surfaces.back()->id_, i_periodic);
+            int hi_id = std::max(model::surfaces.back()->id_, i_periodic);
+            periodic_pairs.insert({lo_id, hi_id});
           } else {
-            periodic_pairs.push_back({model::surfaces.back()->id_, -1});
+            periodic_pairs.insert({model::surfaces.back()->id_, -1});
           }
         }
       }
@@ -1103,41 +1106,38 @@ void read_surfaces(pugi::xml_node node)
     }
   }
 
-  // Remove duplicate permutations from the pairs of periodic surfaces (using a
-  // functor to compare the pairs)
-  struct compare_pairs {
-    bool operator()(const std::pair<int, int> p1, const std::pair<int, int> p2)
-      const {
-      return p1.first == p2.second;
-    }
-  };
-  compare_pairs compare_f;
-  auto last = std::unique(periodic_pairs.begin(), periodic_pairs.end(),
-                          compare_f);
-  periodic_pairs.erase(last, periodic_pairs.end());
-
-  // Resolve unpaired periodic surfaces
-  struct is_unresolved_pair {
-    bool operator()(const std::pair<int, int> p) const
-    {return p.second == -1;}
-  };
-  is_unresolved_pair unresolved_f;
+  // Resolve unpaired periodic surfaces.  A lambda function is used with
+  // std::find_if to identify the unpaired surfaces.
+  auto is_unresolved_pair =
+    [](const std::pair<int, int> p){return p.second == -1;};
   auto first_unresolved = std::find_if(periodic_pairs.begin(),
-    periodic_pairs.end(), unresolved_f);
+    periodic_pairs.end(), is_unresolved_pair);
   if (first_unresolved != periodic_pairs.end()) {
-    auto second_unresolved = std::find_if(first_unresolved+1,
-      periodic_pairs.end(), unresolved_f);
+    // Found one unpaired surface; search for a second one
+    auto next_elem = first_unresolved;
+    next_elem++;
+    auto second_unresolved = std::find_if(next_elem, periodic_pairs.end(),
+      is_unresolved_pair);
     if (second_unresolved == periodic_pairs.end()) {
       fatal_error("Found only one periodic surface without a specified partner."
         " Please specify the partner for each periodic surface.");
     }
-    auto third_unresolved = std::find_if(second_unresolved+1,
-      periodic_pairs.end(), unresolved_f);
+
+    // Make sure there isn't a third unpaired surface
+    next_elem = second_unresolved;
+    next_elem++;
+    auto third_unresolved = std::find_if(next_elem,
+      periodic_pairs.end(), is_unresolved_pair);
     if (third_unresolved != periodic_pairs.end()) {
       fatal_error("Found at least three periodic surfaces without a specified "
         "partner. Please specify the partner for each periodic surface.");
     }
-    first_unresolved->second = second_unresolved->first;
+
+    // Add the completed pair and remove the old, unpaired entries
+    int lo_id = std::min(first_unresolved->first, second_unresolved->first);
+    int hi_id = std::max(first_unresolved->first, second_unresolved->first);
+    periodic_pairs.insert({lo_id, hi_id});
+    periodic_pairs.erase(first_unresolved);
     periodic_pairs.erase(second_unresolved);
   }
 

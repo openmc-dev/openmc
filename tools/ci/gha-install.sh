@@ -17,8 +17,9 @@ fi
 # Install vectfit for WMP generation if needed
 if [[ $VECTFIT = 'y' ]]; then
     ./tools/ci/gha-install-vectfit.sh
+fi
 
-# Install LibMesh if needed
+# Install libMesh if needed
 if [[ $LIBMESH = 'y' ]]; then
     ./tools/ci/travis-install-libmesh.sh
 fi

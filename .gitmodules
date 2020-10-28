@@ -4,12 +4,15 @@
 [submodule "vendor/gsl-lite"]
 	path = vendor/gsl-lite
 	url = https://github.com/martinmoene/gsl-lite.git
+
+# Must use Gavin's CUDA-compatibility patches for xtensor
 [submodule "vendor/xtensor"]
 	path = vendor/xtensor
-	url = https://github.com/xtensor-stack/xtensor.git
+	url = https://github.com/gridley/xtensor.git
 [submodule "vendor/xtl"]
 	path = vendor/xtl
-	url = https://github.com/xtensor-stack/xtl.git
+	url = https://github.com/gridley/xtl.git
+
 [submodule "vendor/fmt"]
 	path = vendor/fmt
 	url = https://github.com/fmtlib/fmt.git

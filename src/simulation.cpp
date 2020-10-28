@@ -668,6 +668,7 @@ void free_memory_simulation()
 void transport_history_based_single_particle(Particle& p)
 {
   while (true) {
+    p.event_find_cell();
     p.event_calculate_xs();
     p.event_advance();
     if (p.collision_distance() > p.boundary().distance) {

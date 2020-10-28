@@ -111,7 +111,12 @@ void process_calculate_xs_events(SharedArray<EventQueueItem>& queue)
 //   }
 // 
 // #else
-  #pragma omp parallel for schedule(runtime)
+#pragma omp parallel for schedule(runtime)
+  for (int64_t i = 0; i < queue.size(); i++) {
+    Particle* p = &simulation::particles[queue[i].idx];
+    p->event_find_cell();
+  }
+#pragma omp parallel for schedule(runtime)
   for (int64_t i = 0; i < queue.size(); i++) {
     ParticleReference p = get_particle(queue[i].idx);
     p.event_calculate_xs();

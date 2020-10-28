@@ -104,7 +104,11 @@ template<typename T>
 __global__ void run_move_constructor_on_device(T* dist)
 {
   static_assert(std::is_move_constructible<T>::value,
-    "Polymorphic objects to be used on the GPU must be move constructible.");
+    "Polymorphic objects to be put on device must be move constructible.");
+
+  // NOTE: possibly need to use intermediate temporary object here.
+  // Seems to work though. I think this is not necessarily guaranteed
+  // to work though.
   new (dist) T(std::move(*dist));
 }
 
@@ -119,13 +123,6 @@ T* unified_new(Args... args)
 
   // Run the constructor as usual on the host
   new (loc) T(args...);
-
-  // Now, copy the host data to device, and run the copy constructor there.
-  // This will correctly initialize vtables on the device. Without re-running
-  // a constructor on the device, polymorphism fails.
-  if (std::is_polymorphic<T>::value)
-    run_move_constructor_on_device<<<1, 1>>>(loc);
-
   return loc;
 }
 
@@ -174,7 +171,7 @@ public:
   // This one assumes the pointers were separately allocated
   // and are replications of the same data. This is done so that
   // both copies of host and device compatible vtables are kept
-  // for polymorphic data.
+  // for polymorphic data. make_replicated handles this.
   explicit unique_ptr(std::pair<pointer, pointer> ptr_pair)
     : ptr(ptr_pair.first), ptr_dev(ptr_pair.second)
   {}
@@ -200,16 +197,18 @@ public:
 
   void free_mem()
   {
+    // If NOT using managed memory, must separately free device memory
+    if (ptr_dev != ptr) {
+      cudaFree(ptr_dev);
+    }
+    // Now, free whatever lives on the host OR the managed memory
+    // if that was not called in the prior cudaFree.
     if (ptr != nullptr) {
       ptr->~T();
       cudaFree(ptr);
     }
-    if (ptr_dev != nullptr) {
-      // Not calling destructor on device since those are almost always related
-      // to memory management, and we should manage all memory from the host.
-      cudaFree(ptr_dev);
-    }
   }
+
   ~unique_ptr() { free_mem(); }
 
   // observers
@@ -292,18 +291,21 @@ private:
 /**
  * This is std::make_unique, but it does not use the "new" operator.
  * Rather, it will call a function which optionally uses CUDA
- * unified memory if we're running in GPU mode.
+ * unified memory if we're running in GPU mode. SFINAE selects whether
+ * the replicated or managed memory approach is taken depending on
+ * whether the object under consideration is polymorphic.
  */
 template<typename T, typename... Args>
-unique_ptr<T> make_unique(Args&&... args)
+std::enable_if_t<std::is_polymorphic<T>::value, unique_ptr<T>> make_unique(
+  Args&&... args)
 {
-  // Polymorphic data uses a replicated memory approach.
-  // Non-polymorphic uses the managed memory approach which doesn't
-  // require any explicit synchronization.
-  if (std::is_polymorphic<T>::value)
-    return unique_ptr<T>(replicated_new<T>(std::forward<Args>(args)...));
-  else
-    return unique_ptr<T>(unified_new<T>(std::forward<Args>(args)...));
+  return unique_ptr<T>(replicated_new<T>(std::forward<Args>(args)...));
+}
+template<typename T, typename... Args>
+std::enable_if_t<!std::is_polymorphic<T>::value, unique_ptr<T>> make_unique(
+  Args&&... args)
+{
+  return unique_ptr<T>(unified_new<T>(std::forward<Args>(args)...));
 }
 
 // Below are the expected standard library routines and data if not compiling

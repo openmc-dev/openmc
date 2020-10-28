@@ -1,13 +1,6 @@
 #ifndef OPENMC_MATERIAL_H
 #define OPENMC_MATERIAL_H
 
-<<<<<<< HEAD
-#include <string>
-=======
-#include "openmc/string.h"
-#include "openmc/vector.h"
-#include <memory> // for unique_ptr
->>>>>>> 4d2d6de07 (mostly replace string and vector, mostly working)
 #include <unordered_map>
 
 #include <gsl/gsl>
@@ -19,6 +12,7 @@
 #include "openmc/constants.h"
 #include "openmc/memory.h" // for unique_ptr
 #include "openmc/particle.h"
+#include "openmc/string.h"
 #include "openmc/vector.h"
 
 namespace openmc {
@@ -32,11 +26,7 @@ class Material;
 namespace model {
 
 extern std::unordered_map<int32_t, int32_t> material_map;
-<<<<<<< HEAD
 extern vector<unique_ptr<Material>> materials;
-=======
-extern vector<std::unique_ptr<Material>> materials;
->>>>>>> 4d2d6de07 (mostly replace string and vector, mostly working)
 
 } // namespace model
 
@@ -89,12 +79,7 @@ public:
   //
   //! \param[in] name Name of each nuclide
   //! \param[in] density Density of each nuclide in [atom/b-cm]
-<<<<<<< HEAD
-  void set_densities(
-    const vector<std::string>& name, const vector<double>& density);
-=======
   void set_densities(const vector<string>& name, const vector<double>& density);
->>>>>>> 4d2d6de07 (mostly replace string and vector, mostly working)
 
   //----------------------------------------------------------------------------
   // Accessors

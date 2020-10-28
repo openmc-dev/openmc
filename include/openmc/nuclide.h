@@ -13,7 +13,7 @@
 #include "openmc/array.h"
 #include "openmc/constants.h"
 #include "openmc/endf.h"
-#include "openmc/memory.h" // for unique_ptr
+#include "openmc/memory.h"
 #include "openmc/particle.h"
 #include "openmc/reaction.h"
 #include "openmc/reaction_product.h"

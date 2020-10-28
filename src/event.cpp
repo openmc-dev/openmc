@@ -4,6 +4,10 @@
 #include "openmc/simulation.h"
 #include "openmc/timer.h"
 
+#ifdef __CUDACC__
+#include "openmc/cuda/calculate_xs.h"
+#endif
+
 namespace openmc {
 
 //==============================================================================
@@ -95,6 +99,18 @@ void process_calculate_xs_events(SharedArray<EventQueueItem>& queue)
   //
   // std::sort(std::execution::par_unseq, queue.data(), queue.data() + queue.size());
 
+// #ifdef __CUDACC__
+//   process_calculate_xs_events_device<<<10,32>>>(simulation::particles.data(), queue.data(), queue.size(),
+//       model::materials.data(), data::nuclides.data());
+//   cudaDeviceSynchronize();
+// 
+//   // TODO write a kernel that does this in bulk
+//   #pragma omp parallel for
+//   for (int64_t i = 0; i < queue.size(); i++) {
+//     simulation::advance_particle_queue.thread_safe_append(queue[i]);
+//   }
+// 
+// #else
   #pragma omp parallel for schedule(runtime)
   for (int64_t i = 0; i < queue.size(); i++) {
     ParticleReference p = get_particle(queue[i].idx);
@@ -105,6 +121,7 @@ void process_calculate_xs_events(SharedArray<EventQueueItem>& queue)
     // the protected enqueuing function.
     simulation::advance_particle_queue[offset + i] = queue[i];
   }
+// #endif
 
   queue.resize(0);
 

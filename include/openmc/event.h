@@ -7,6 +7,13 @@
 #include "openmc/particle.h"
 #include "openmc/shared_array.h"
 
+// Need declarations of nuclide and material vectors for launching the
+// cuda kernel for XS lookup
+#ifdef __CUDACC__
+#include "openmc/material.h"
+#include "openmc/nuclide.h"
+#endif
+
 
 namespace openmc {
 

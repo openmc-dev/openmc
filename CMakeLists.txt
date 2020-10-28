@@ -373,6 +373,7 @@ list(APPEND libopenmc_SOURCES
 
 # If we're compiling for Nvidia GPUs, ensure that nvcc compiles all .cpp files
 if (cuda)
+  list(APPEND libopenmc_SOURCES src/cuda/calculate_xs.cu)
   set_source_files_properties(${libopenmc_SOURCES} PROPERTIES LANGUAGE CUDA)
   set_source_files_properties(src/main.cpp PROPERTIES LANGUAGE CUDA)
 endif()

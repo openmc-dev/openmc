@@ -66,12 +66,12 @@ if(pugixml_FOUND)
   message(STATUS "Found pugixml: ${pugixml_DIR}")
 else()
   message(STATUS "Did not find pugixml, will use submodule instead")
+
 #===============================================================================
 # libMesh Unstructured Mesh Support
 #===============================================================================
 if(libmesh)
   find_package(LIBMESH REQUIRED)
-  list(APPEND cxxflags ${LIBMESH_CFLAGS})
 endif()
 
 #===============================================================================
@@ -389,9 +389,6 @@ endif()
 if (MPI_ENABLED)
   target_compile_definitions(libopenmc PUBLIC -DOPENMC_MPI)
 endif()
-if (libmesh)
-  target_compile_definitions(libopenmc PRIVATE LIBMESH)
-endif()
 
 # Set git SHA1 hash as a compile definition
 if(GIT_FOUND)
@@ -416,11 +413,8 @@ if(dagmc)
 endif()
 
 if(libmesh)
-  if (debug)
-    target_link_libraries(libopenmc PkgConfig::LIBMESH_DEVEL)
-  else()
-    target_link_libraries(libopenmc PkgConfig::LIBMESH)
-  endif()
+  target_compile_definitions(libopenmc PRIVATE LIBMESH)
+  target_link_libraries(libopenmc PkgConfig::LIBMESH)
 endif()
 
 #===============================================================================

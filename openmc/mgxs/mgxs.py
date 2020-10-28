@@ -1170,6 +1170,120 @@ class MGXS:
 
         return xs
 
+    def get_flux(self, groups='all', subdomains='all',
+                 order_groups='increasing', value='mean',
+                 squeeze=True, **kwargs):
+        r"""Returns an array of the fluxes used to weight the MGXS.
+
+        This method constructs a 2D NumPy array for the requested
+        weighting flux for one or more subdomains (1st dimension), and
+        energy groups (2nd dimension).
+
+        Parameters
+        ----------
+        groups : Iterable of Integral or 'all'
+            Energy groups of interest. Defaults to 'all'.
+        subdomains : Iterable of Integral or 'all'
+            Subdomain IDs of interest. Defaults to 'all'.
+        order_groups: {'increasing', 'decreasing'}
+            Return the cross section indexed according to increasing or
+            decreasing energy groups (decreasing or increasing energies).
+            Defaults to 'increasing'.
+        value : {'mean', 'std_dev', 'rel_err'}
+            A string for the type of value to return. Defaults to 'mean'.
+        squeeze : bool
+            A boolean representing whether to eliminate the extra dimensions
+            of the multi-dimensional array to be returned. Defaults to True.
+
+        Returns
+        -------
+        numpy.ndarray
+            A NumPy array of the flux indexed in the order
+            each group and subdomain is listed in the parameters.
+
+        Raises
+        ------
+        ValueError
+            When this method is called before the data is available from tally
+            data, or, when this is used on an MGXS type without a flux score.
+
+        """
+
+        cv.check_value('value', value, ['mean', 'std_dev', 'rel_err'])
+
+        filters = []
+        filter_bins = []
+
+        # Construct a collection of the domain filter bins
+        if not isinstance(subdomains, str):
+            cv.check_iterable_type('subdomains', subdomains, Integral,
+                                   max_depth=3)
+
+            filters.append(_DOMAIN_TO_FILTER[self.domain_type])
+            subdomain_bins = []
+            for subdomain in subdomains:
+                subdomain_bins.append(subdomain)
+            filter_bins.append(tuple(subdomain_bins))
+
+        # Construct list of energy group bounds tuples for all requested groups
+        if not isinstance(groups, str):
+            cv.check_iterable_type('groups', groups, Integral)
+            filters.append(openmc.EnergyFilter)
+            energy_bins = []
+            for group in groups:
+                energy_bins.append(
+                    (self.energy_groups.get_group_bounds(group),))
+            filter_bins.append(tuple(energy_bins))
+
+        # Determine which flux to obtain
+        # Step through in order of usefulness
+        tally = None
+        for key in ['flux', 'flux (tracklength)', 'flux (analog)']:
+            if key in self.tally_keys:
+                tally = self.tallies[key]
+                break
+        if tally is None:
+            msg = "MGXS of Type {} do not have an explicit weighting flux!"
+            raise ValueError(msg.format(self.__name__))
+
+        flux = tally.get_values(filters=filters, filter_bins=filter_bins,
+                                nuclides=['total'], value=value)
+
+        # Eliminate the trivial score dimension
+        flux = np.squeeze(flux, axis=len(flux.shape) - 1)
+        # Eliminate the trivial nuclide dimension
+        flux = np.squeeze(flux, axis=len(flux.shape) - 1)
+        flux = np.nan_to_num(flux)
+
+        if groups == 'all':
+            num_groups = self.num_groups
+        else:
+            num_groups = len(groups)
+
+        # Reshape tally data array with separate axes for domain and energy
+        # Accomodate the polar and azimuthal bins if needed
+        num_subdomains = int(flux.shape[0] / (num_groups * self.num_polar *
+                                              self.num_azimuthal))
+        if self.num_polar > 1 or self.num_azimuthal > 1:
+            new_shape = (self.num_polar, self.num_azimuthal, num_subdomains,
+                         num_groups)
+        else:
+            new_shape = (num_subdomains, num_groups)
+        new_shape += flux.shape[1:]
+        flux = np.reshape(flux, new_shape)
+
+        # Reverse data if user requested increasing energy groups since
+        # tally data is stored in order of increasing energies
+        if order_groups == 'increasing':
+            flux = flux[..., ::-1]
+
+        if squeeze:
+            # We want to squeeze out everything but the polar, azimuthal,
+            # and energy group data.
+            flux = self._squeeze_xs(flux)
+
+        return flux
+
     def get_condensed_xs(self, coarse_groups):
         """Construct an energy-condensed version of this cross section.
 

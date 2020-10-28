@@ -82,7 +82,7 @@ void Particle::from_source(const SourceSite* src)
   E_last() = E();
 }
 
-void Particle::event_find_cell()
+void Particle::event_pre_calculate_xs()
 {
   // If the cell hasn't been determined based on the particle's location,
   // initiate a search for the current cell. This generally happens at the
@@ -98,11 +98,7 @@ void Particle::event_find_cell()
     if (cell_born_ == C_NONE)
       cell_born_ = coord_[n_coord_ - 1].cell;
   }
-}
 
-void
-Particle::event_calculate_xs()
-{
   // Set the random number stream
   stream() = STREAM_TRACKING;
 
@@ -122,7 +118,10 @@ Particle::event_calculate_xs()
     write_particle_track(*this);
 
   if (settings::check_overlaps) check_cell_overlap(*this);
+}
 
+void Particle::event_calculate_xs()
+{
   // Calculate microscopic and macroscopic cross sections
   if (material() != MATERIAL_VOID) {
     if (settings::run_CE) {

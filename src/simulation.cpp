@@ -757,18 +757,18 @@ void transport_event_based()
 void init_gpu_constant_memory()
 {
   constexpr int neutron = static_cast<int>(Particle::Type::neutron);
-  cudaMemcpyToSymbol(gpu::materials, model::materials.data(),
-    sizeof(unique_ptr<Material>*), 0, cudaMemcpyHostToDevice);
-  cudaMemcpyToSymbol(gpu::nuclides, data::nuclides.data(),
-    sizeof(unique_ptr<Nuclide>*), 0, cudaMemcpyHostToDevice);
-  cudaMemcpyToSymbol(gpu::particles, simulation::particles.data(),
-    sizeof(Particle*), 0, cudaMemcpyHostToDevice);
-  cudaMemcpyToSymbol(gpu::energy_min_neutron, &data::energy_min[neutron],
-    sizeof(double), 0, cudaMemcpyHostToDevice);
-  cudaMemcpyToSymbol(gpu::log_spacing, &simulation::log_spacing, sizeof(double),
-    0, cudaMemcpyHostToDevice);
-  cudaMemcpyToSymbol(gpu::need_depletion_rx, &simulation::need_depletion_rx,
-    sizeof(double), 0, cudaMemcpyHostToDevice);
+  cudaMemcpyToSymbol(
+    gpu::materials, &model::materials[0], sizeof(unique_ptr<Material>*));
+  cudaMemcpyToSymbol(
+    gpu::nuclides, &data::nuclides[0], sizeof(unique_ptr<Nuclide>*));
+  cudaMemcpyToSymbol(
+    gpu::particles, &simulation::particles[0], sizeof(Particle*));
+  cudaMemcpyToSymbol(
+    gpu::energy_min_neutron, &data::energy_min[neutron], sizeof(double));
+  cudaMemcpyToSymbol(
+    gpu::log_spacing, &simulation::log_spacing, sizeof(double));
+  cudaMemcpyToSymbol(
+    gpu::need_depletion_rx, &simulation::need_depletion_rx, sizeof(bool));
 }
 
 } // namespace openmc

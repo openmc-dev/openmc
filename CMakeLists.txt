@@ -156,6 +156,9 @@ if(coverage)
   list(APPEND cxxflags --coverage)
   list(APPEND ldflags --coverage)
 endif()
+if (debug AND cuda)
+  list(APPEND cuflags -G)
+endif()
 
 # Show flags being used
 message(STATUS "OpenMC C++ flags: ${cxxflags}")
@@ -412,7 +415,7 @@ target_include_directories(libopenmc
 )
 
 # Set compile flags
-target_compile_options(libopenmc PRIVATE ${cxxflags})
+target_compile_options(libopenmc PRIVATE ${cxxflags} ${cuflags})
 
 # Add include directory for configured version file
 target_include_directories(libopenmc PRIVATE ${CMAKE_BINARY_DIR}/include)

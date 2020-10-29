@@ -36,7 +36,7 @@ private:
 
 public:
   // Let default constructor work on host or device
-  __host__ __device__ string() : data_(1, '\0') {}
+  __host__ string() : data_(1, '\0') {}
 
   // Plain old rvalue constructor
   __host__ __device__ string& operator=(string&& copy_from)

@@ -99,7 +99,7 @@ void process_calculate_xs_events(SharedArray<EventQueueItem>& queue)
   //
   // std::sort(std::execution::par_unseq, queue.data(), queue.data() + queue.size());
 
-// TODO write a kernel that does this in bulk
+// TODO write a kernel that does this eventually. requires GPU geometry
 #pragma omp parallel for
   for (int64_t i = 0; i < queue.size(); i++) {
     Particle* p = &simulation::particles[queue[i].idx];

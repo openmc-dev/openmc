@@ -18,7 +18,7 @@ typename std::iterator_traits<It>::difference_type __host__ __device__
   if (value > *(last - 1))
     return last - 1 - first;
   It orig_first = first;
-  while (last != first + 2) {
+  while (last > first + 2) {
     // unsigned interpolation = static_cast<unsigned>(
     //   (value - *first) / (*(last - 1) - *first) * (last - first - 1));
     unsigned interpolation = static_cast<unsigned>(last - first - 1) / 2;

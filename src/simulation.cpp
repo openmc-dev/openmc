@@ -757,12 +757,17 @@ void transport_event_based()
 void init_gpu_constant_memory()
 {
   constexpr int neutron = static_cast<int>(Particle::Type::neutron);
+  auto first_material = model::materials.data();
   cudaMemcpyToSymbol(
-    gpu::materials, &model::materials[0], sizeof(unique_ptr<Material>*));
+    gpu::materials, &first_material, sizeof(unique_ptr<Material>*));
+
+  auto first_nuclide = data::nuclides.data();
   cudaMemcpyToSymbol(
-    gpu::nuclides, &data::nuclides[0], sizeof(unique_ptr<Nuclide>*));
-  cudaMemcpyToSymbol(
-    gpu::particles, &simulation::particles[0], sizeof(Particle*));
+    gpu::nuclides, &first_nuclide, sizeof(unique_ptr<Nuclide>*));
+
+  auto first_particle = simulation::particles.data();
+  cudaMemcpyToSymbol(gpu::particles, &first_particle, sizeof(Particle*));
+
   cudaMemcpyToSymbol(
     gpu::energy_min_neutron, &data::energy_min[neutron], sizeof(double));
   cudaMemcpyToSymbol(

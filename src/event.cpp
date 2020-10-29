@@ -97,9 +97,11 @@ void process_calculate_xs_events(SharedArray<EventQueueItem>& queue)
   // to C++17, std::sort is a serial only operation, which in this case
   // makes it too slow to be practical for most test problems.
   //
-  // std::sort(std::execution::par_unseq, queue.data(), queue.data() + queue.size());
+  // std::sort(std::execution::par_unseq, queue.data(), queue.data() +
+  // queue.size());
+  //
 
-// TODO write a kernel that does this eventually. requires GPU geometry
+  // TODO write a kernel that does this eventually. requires GPU geometry
 #pragma omp parallel for
   for (int64_t i = 0; i < queue.size(); i++) {
     Particle* p = &simulation::particles[queue[i].idx];

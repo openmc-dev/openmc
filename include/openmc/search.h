@@ -11,8 +11,7 @@ namespace openmc {
 //! Perform binary search
 
 template<class It, class T>
-typename std::iterator_traits<It>::difference_type __host__ __device__
-  __forceinline__
+typename std::iterator_traits<It>::difference_type HD inline
   lower_bound_index(It first, It last, const T& value)
 {
   if (value > *(last - 1))

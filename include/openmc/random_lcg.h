@@ -23,7 +23,7 @@ constexpr int64_t DEFAULT_SEED  {1};
 //! @return A random number between 0 and 1
 //==============================================================================
 
-__host__ __device__ double prn(uint64_t* seed);
+HD double prn(uint64_t* seed);
 
 //==============================================================================
 //! Generate a random number which is 'n' times ahead from the current seed.

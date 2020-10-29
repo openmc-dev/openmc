@@ -455,11 +455,9 @@ if(libmesh)
 endif()
 
 if(cuda)
-  target_compile_definitions(libopenmc PRIVATE HOST=__host__)
-  target_compile_definitions(libopenmc PRIVATE DEVICE=__device__)
+  target_compile_definitions(libopenmc PRIVATE HD=__host__\ __device__)
 else()
-  target_compile_definitions(libopenmc PRIVATE HOST=)
-  target_compile_definitions(libopenmc PRIVATE DEVICE=)
+  target_compile_definitions(libopenmc PRIVATE HD=)
 endif()
 
 #===============================================================================

@@ -756,6 +756,7 @@ void transport_event_based()
 
 void init_gpu_constant_memory()
 {
+#ifdef __CUDACC__
   constexpr int neutron = static_cast<int>(Particle::Type::neutron);
   auto first_material = model::materials.data();
   cudaMemcpyToSymbol(
@@ -774,6 +775,7 @@ void init_gpu_constant_memory()
     gpu::log_spacing, &simulation::log_spacing, sizeof(double));
   cudaMemcpyToSymbol(
     gpu::need_depletion_rx, &simulation::need_depletion_rx, sizeof(bool));
+#endif
 }
 
 } // namespace openmc

@@ -105,24 +105,59 @@ public:
   StructuredMesh(pugi::xml_node node) : Mesh {node} {};
   virtual ~StructuredMesh() = default;
 
+  int get_bin(Position r) const override;
+
+  int n_bins() const override;
+
+  int n_surface_bins() const override;
+
+  void bins_crossed(const Particle& p, std::vector<int>& bins,
+                    std::vector<double>& lengths) const override;
+
   //! Get bin given mesh indices
   //
   //! \param[in] Array of mesh indices
   //! \return Mesh bin
-  virtual int get_bin_from_indices(const int* ijk) const = 0;
+  virtual int get_bin_from_indices(const int* ijk) const;
 
   //! Get mesh indices given a position
   //
   //! \param[in] r Position to get indices for
   //! \param[out] ijk Array of mesh indices
   //! \param[out] in_mesh Whether position is in mesh
-  virtual void get_indices(Position r, int* ijk, bool* in_mesh) const = 0;
+  virtual void get_indices(Position r, int* ijk, bool* in_mesh) const;
 
   //! Get mesh indices corresponding to a mesh bin
   //
   //! \param[in] bin Mesh bin
   //! \param[out] ijk Mesh indices
-  virtual void get_indices_from_bin(int bin, int* ijk) const = 0;
+  virtual void get_indices_from_bin(int bin, int* ijk) const;
+
+  //! Get mesh index in a particular direction
+  //!
+  //! \param[in] r Coordinate to get index for
+  //! \param[in] i Direction index
+  virtual int get_index_in_direction(double r, int i) const = 0;
+
+  //! Check where a line segment intersects the mesh and if it intersects at all
+  //
+  //! \param[in,out] r0 In: starting position, out: intersection point
+  //! \param[in] r1 Ending position
+  //! \param[out] ijk Indices of the mesh bin containing the intersection point
+  //! \return Whether the line segment connecting r0 and r1 intersects mesh
+  virtual bool intersects(Position& r0, Position r1, int* ijk) const;
+
+  //! Get the coordinate for the mesh grid boundary in the positive direction
+  //!
+  //! \param[in] ijk Array of mesh indices
+  //! \param[in] i Direction index
+  virtual double positive_grid_boundary(int* ijk, int i) const = 0;
+
+  //! Get the coordinate for the mesh grid boundary in the negative direction
+  //!
+  //! \param[in] ijk Array of mesh indices
+  //! \param[in] i Direction index
+  virtual double negative_grid_boundary(int* ijk, int i) const = 0;
 
   //! Get a label for the mesh bin
   std::string bin_label(int bin) const override;
@@ -130,6 +165,12 @@ public:
   // Data members
   xt::xtensor<double, 1> lower_left_; //!< Lower-left coordinates of mesh
   xt::xtensor<double, 1> upper_right_; //!< Upper-right coordinates of mesh
+  xt::xtensor<int, 1> shape_; //!< Number of mesh elements in each dimension
+
+protected:
+  virtual bool intersects_1d(Position& r0, Position r1, int* ijk) const;
+  virtual bool intersects_2d(Position& r0, Position r1, int* ijk) const;
+  virtual bool intersects_3d(Position& r0, Position r1, int* ijk) const;
 };
 
 //==============================================================================
@@ -145,23 +186,14 @@ public:
 
   // Overriden methods
 
-  void bins_crossed(const Particle& p, std::vector<int>& bins,
-                    std::vector<double>& lengths) const override;
-
   void surface_bins_crossed(const Particle& p, std::vector<int>& bins)
   const override;
 
-  int get_bin(Position r) const override;
+  int get_index_in_direction(double r, int i) const override;
 
-  int get_bin_from_indices(const int* ijk) const override;
+  double positive_grid_boundary(int* ijk, int i) const override;
 
-  void get_indices(Position r, int* ijk, bool* in_mesh) const override;
-
-  void get_indices_from_bin(int bin, int* ijk) const override;
-
-  int n_bins() const override;
-
-  int n_surface_bins() const override;
+  double negative_grid_boundary(int* ijk, int i) const override;
 
   std::pair<std::vector<double>, std::vector<double>>
   plot(Position plot_ll, Position plot_ur) const override;
@@ -169,14 +201,6 @@ public:
   void to_hdf5(hid_t group) const override;
 
   // New methods
-
-  //! Check where a line segment intersects the mesh and if it intersects at all
-  //
-  //! \param[in,out] r0 In: starting position, out: intersection point
-  //! \param[in] r1 Ending position
-  //! \param[out] ijk Indices of the mesh bin containing the intersection point
-  //! \return Whether the line segment connecting r0 and r1 intersects mesh
-  bool intersects(Position& r0, Position r1, int* ijk) const;
 
   //! Count number of bank sites in each mesh bin / energy bin
   //
@@ -189,13 +213,7 @@ public:
   // Data members
 
   double volume_frac_; //!< Volume fraction of each mesh element
-  xt::xtensor<int, 1> shape_; //!< Number of mesh elements in each dimension
   xt::xtensor<double, 1> width_; //!< Width of each mesh element
-
-private:
-  bool intersects_1d(Position& r0, Position r1, int* ijk) const;
-  bool intersects_2d(Position& r0, Position r1, int* ijk) const;
-  bool intersects_3d(Position& r0, Position r1, int* ijk) const;
 };
 
 
@@ -207,41 +225,19 @@ public:
 
   // Overriden methods
 
-  void bins_crossed(const Particle& p, std::vector<int>& bins,
-                    std::vector<double>& lengths) const override;
-
   void surface_bins_crossed(const Particle& p, std::vector<int>& bins)
   const override;
 
-  int get_bin(Position r) const override;
+  int get_index_in_direction(double r, int i) const override;
 
-  int get_bin_from_indices(const int* ijk) const override;
+  double positive_grid_boundary(int* ijk, int i) const override;
 
-  void get_indices(Position r, int* ijk, bool* in_mesh) const override;
-
-  void get_indices_from_bin(int bin, int* ijk) const override;
-
-  int n_bins() const override;
-
-  int n_surface_bins() const override;
+  double negative_grid_boundary(int* ijk, int i) const override;
 
   std::pair<std::vector<double>, std::vector<double>>
   plot(Position plot_ll, Position plot_ur) const override;
 
   void to_hdf5(hid_t group) const override;
-
-  // New methods
-
-  //! Check where a line segment intersects the mesh and if it intersects at all
-  //
-  //! \param[in,out] r0 In: starting position, out: intersection point
-  //! \param[in] r1 Ending position
-  //! \param[out] ijk Indices of the mesh bin containing the intersection point
-  //! \return Whether the line segment connecting r0 and r1 intersects mesh
-  bool intersects(Position& r0, Position r1, int* ijk) const;
-
-  // Data members
-  xt::xtensor<int, 1> shape_; //!< Number of mesh elements in each dimension
 
 private:
   std::vector<std::vector<double>> grid_;

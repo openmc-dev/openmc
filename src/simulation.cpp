@@ -25,6 +25,10 @@
 #include "openmc/timer.h"
 #include "openmc/track_output.h"
 
+#ifdef __CUDACC__
+#include "openmc/cuda/calculate_xs.h"
+#endif
+
 #ifdef _OPENMP
 #include <omp.h>
 #endif
@@ -134,6 +138,10 @@ int openmc_simulation_init()
       if (settings::verbosity >= 7) print_columns();
     }
   }
+
+#ifdef __CUDACC__
+  init_gpu_constant_memory();
+#endif
 
   // Set flag indicating initialization is done
   simulation::initialized = true;
@@ -744,6 +752,23 @@ void transport_event_based()
     remaining_work -= n_particles;
     source_offset += n_particles;
   }
+}
+
+void init_gpu_constant_memory()
+{
+  constexpr int neutron = static_cast<int>(Particle::Type::neutron);
+  cudaMemcpyToSymbol(gpu::materials, model::materials.data(),
+    sizeof(unique_ptr<Material>*), 0, cudaMemcpyHostToDevice);
+  cudaMemcpyToSymbol(gpu::nuclides, data::nuclides.data(),
+    sizeof(unique_ptr<Nuclide>*), 0, cudaMemcpyHostToDevice);
+  cudaMemcpyToSymbol(gpu::particles, simulation::particles.data(),
+    sizeof(Particle*), 0, cudaMemcpyHostToDevice);
+  cudaMemcpyToSymbol(gpu::energy_min_neutron, &data::energy_min[neutron],
+    sizeof(double), 0, cudaMemcpyHostToDevice);
+  cudaMemcpyToSymbol(gpu::log_spacing, &simulation::log_spacing, sizeof(double),
+    0, cudaMemcpyHostToDevice);
+  cudaMemcpyToSymbol(gpu::need_depletion_rx, &simulation::need_depletion_rx,
+    sizeof(double), 0, cudaMemcpyHostToDevice);
 }
 
 } // namespace openmc

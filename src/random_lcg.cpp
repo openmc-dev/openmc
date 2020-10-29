@@ -29,7 +29,7 @@ constexpr uint64_t prn_stride {152917LL};                // stride between parti
 //    month = Sep,
 //    xurl = "https://www.cs.hmc.edu/tr/hmc-cs-2014-0905.pdf",
 //}
-double prn(uint64_t* seed)
+HD double prn(uint64_t* seed)
 {
   // Advance the LCG
   *seed = (prn_mult * (*seed) + prn_add);

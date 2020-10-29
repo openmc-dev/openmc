@@ -99,6 +99,9 @@ void transport_history_based();
 //! Simulate all particle histories using event-based parallelism
 void transport_event_based();
 
+//! Copy a few things to GPU constant memory manually
+void init_gpu_constant_memory();
+
 } // namespace openmc
 
 #endif // OPENMC_SIMULATION_H

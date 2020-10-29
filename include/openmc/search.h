@@ -11,12 +11,34 @@ namespace openmc {
 //! Perform binary search
 
 template<class It, class T>
-typename std::iterator_traits<It>::difference_type
-lower_bound_index(It first, It last, const T& value)
+typename std::iterator_traits<It>::difference_type __host__ __device__
+  __forceinline__
+  lower_bound_index(It first, It last, const T& value)
 {
-  if (*first == value) return 0;
-  It index = std::lower_bound(first, last, value) - 1;
-  return (index == last) ? -1 : index - first;
+  if (value > *(last - 1))
+    return last - 1 - first;
+  It orig_first = first;
+  while (last != first + 2) {
+    // unsigned interpolation = static_cast<unsigned>(
+    //   (value - *first) / (*(last - 1) - *first) * (last - first - 1));
+    unsigned interpolation = static_cast<unsigned>(last - first - 1) / 2;
+    if (!interpolation)
+      interpolation++;
+    else if (interpolation == last - first)
+      interpolation--;
+    It mid = first + interpolation;
+    if (mid == first)
+      mid++;
+    else if (mid == last)
+      mid--;
+    if (*mid == value)
+      return mid - orig_first - 1;
+    else if (*mid < value)
+      first = mid;
+    else
+      last = mid + 1;
+  }
+  return first - orig_first;
 }
 
 template<class It, class T>

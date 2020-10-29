@@ -464,7 +464,7 @@ endif()
 # openmc executable
 #===============================================================================
 add_executable(openmc src/main.cpp)
-target_compile_options(openmc PRIVATE ${cxxflags})
+target_compile_options(openmc PRIVATE ${cxxflags} ${cuflags})
 target_include_directories(openmc PRIVATE ${CMAKE_BINARY_DIR}/include)
 target_link_libraries(openmc libopenmc)
 

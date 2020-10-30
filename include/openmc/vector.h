@@ -48,15 +48,30 @@ namespace openmc {
 
 template<typename T, typename Alloc = UnifiedAllocator<T>>
 class vector {
+public:
+  using value_type = T;
+  using size_type = unsigned int;
+  using difference_type = int;
+  using reference = T&;
+  using const_reference = T const&;
+  using pointer = typename Alloc::pointer;
+  using iterator = T*;
+  using const_iterator = T const*;
+  using const_pointer = typename Alloc::const_pointer;
+  using reverse_iterator = std::reverse_iterator<iterator>;
+  using const_reverse_iterator = std::reverse_iterator<const_iterator>;
+  using allocator_type = Alloc;
+
 private:
-  T* begin_;
+  pointer begin_;
   unsigned int size_;
   unsigned int capacity_;
   Alloc alloc_;
 
+public:
   __host__ void grow()
   {
-    T* old_begin = begin_;
+    pointer old_begin = begin_;
     auto old_capacity = capacity_;
     capacity_ = capacity_ ? capacity_ * 2 : 1;
     begin_ = alloc_.allocate(capacity_);
@@ -64,20 +79,6 @@ private:
     if (old_capacity)
       alloc_.deallocate(old_begin, old_capacity);
   }
-
-public:
-  using value_type = T;
-  using size_type = unsigned int;
-  using difference_type = int;
-  using reference = T&;
-  using const_reference = T const&;
-  using pointer = T*;
-  using iterator = T*;
-  using const_iterator = T const*;
-  using const_pointer = T const*;
-  using reverse_iterator = std::reverse_iterator<iterator>;
-  using const_reverse_iterator = std::reverse_iterator<const_iterator>;
-  using allocator_type = Alloc;
 
   __host__ vector() : begin_(nullptr), size_(0), capacity_(0) {}
 
@@ -207,7 +208,7 @@ public:
 
   __host__ void reserve(size_type new_size)
   {
-    T* old_begin = begin_;
+    pointer old_begin = begin_;
     auto old_capacity = capacity_;
     capacity_ = new_size;
     begin_ = alloc_.allocate(capacity_);
@@ -334,7 +335,7 @@ public:
   }
 
   __host__ __device__ bool empty() const { return size_ == 0; }
-  __host__ __device__ T* data() const { return begin_; }
+  __host__ __device__ pointer data() const { return begin_; }
   __host__ __device__ size_type size() const { return size_; }
   __host__ __device__ size_type capacity() const { return capacity_; }
   __host__ __device__ iterator begin() const { return begin_; }

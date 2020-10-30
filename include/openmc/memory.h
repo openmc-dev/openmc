@@ -91,6 +91,149 @@ public:
   bool operator==(const UnifiedAllocator<T>& /* other */) const { return true; }
 };
 
+// Keeps track of replicated memory, and acts like a normal pointer as
+// appropriate
+template<typename T>
+class DualPointer {
+private:
+  T* host;
+  T* device;
+
+public:
+  __host__ __device__ T& operator*()
+  {
+#ifdef __CUDA_ARCH__
+    return *device;
+#else
+    return *host;
+#endif
+  }
+  __host__ __device__ operator T* const &()
+  {
+#ifdef __CUDA_ARCH__
+    return device;
+#else
+    return host;
+#endif
+  }
+  template<typename SizeType>
+  __host__ __device__ T& operator[](SizeType indx)
+  {
+#ifdef __CUDA_ARCH__
+    return device[indx];
+#else
+    return host[indx];
+#endif
+  }
+
+  __host__ __device__ DualPointer() : host(nullptr), device(nullptr) {}
+
+  // Copy a given pointer into each. This can be used with managed memory
+  __host__ __device__ DualPointer(T* const& ptr) : host(ptr), device(ptr) {}
+  __host__ __device__ DualPointer& operator=(T* const& ptr)
+  {
+    host = ptr;
+    device = ptr;
+  }
+
+  DualPointer(DualPointer const&) = default;
+  DualPointer& operator=(DualPointer const&) = default;
+  DualPointer(DualPointer&&) = default;
+  DualPointer& operator=(DualPointer&&) = default;
+  ~DualPointer() = default;
+};
+
+template<typename T>
+class ReplicatedAllocator {
+public:
+  typedef T value_type;
+  typedef std::size_t size_type;
+  typedef std::ptrdiff_t difference_type;
+  typedef DualPointer<T> pointer;
+
+  // Not const-correct here. Not sure how to easily implement that in
+  // DualPointer.
+  typedef DualPointer<T> const_pointer;
+
+  typedef T& reference;
+  typedef const T& const_reference;
+
+  inline ReplicatedAllocator() throw() {}
+  template<typename T2>
+  inline ReplicatedAllocator(const ReplicatedAllocator<T2>&) throw()
+  {}
+  inline ~ReplicatedAllocator() throw() {}
+  inline pointer address(reference r) { return &r; }
+  inline const_pointer address(const_reference r) const { return &r; }
+  inline pointer allocate(size_type n)
+  {
+    pointer tmp;
+
+    // Allocate on host
+    // Pinned memory implementation: this is probably not worth it
+    // given the anticipated access patterns to replicated memory.
+    // cudaError_t error_code = cudaMallocHost(&tmp.host, n *
+    // sizeof(value_type)); if (error_code != cudaSuccess)
+    //   CubDebugExit(error_code);
+    tmp.host = (T*)malloc(n * sizeof(value_type));
+
+    // Allocate on device
+    cudaError_t error_code = cudaMalloc(&tmp.device, n * sizeof(value_type));
+    if (error_code != cudaSuccess)
+      CubDebugExit(error_code);
+
+    return tmp;
+  }
+  inline void deallocate(pointer p, size_type)
+  {
+    if (p.host)
+      free(p.host);
+
+    // See comment in UnifiedAllocator on this method
+    if (p.device) {
+      cudaError_t error_code = cudaFree(p.device);
+      if (error_code != cudaSuccess && error_code != cudaErrorCudartUnloading)
+        CubDebugExit(error_code);
+    }
+  }
+
+  // Need to be able to construct in the newly allocated memory in a few ways
+  inline void construct(pointer p) { new (p) value_type(); }
+  inline void construct(pointer p, const value_type& wert)
+  {
+    new (p) value_type(wert);
+  }
+  inline void construct(pointer p, value_type& wert)
+  {
+    new (p) value_type(wert);
+  }
+
+  // This method is required for constructing vectors of unique_ptrs
+  template<class U, class... Args>
+  inline void construct(U* p, Args&&... args)
+  {
+    new (p) U(std::forward<Args>(args)...);
+  }
+
+  inline void destroy(pointer p) { p->~value_type(); }
+  inline size_type max_size() const throw()
+  {
+    return size_type(-1) / sizeof(value_type);
+  }
+  template<typename T2>
+  struct rebind {
+    typedef ReplicatedAllocator<T2> other;
+  };
+  bool operator!=(const ReplicatedAllocator<T>& other) const
+  {
+    return !(*this == other);
+  }
+  bool operator==(const ReplicatedAllocator<T>& /* other */) const
+  {
+    return true;
+  }
+};
+
 // This can be used for running constructors on the device using arguments from
 // the host. You have to note that stuff like XML parsing for the constructor
 // won't work, in this case.

@@ -1370,7 +1370,7 @@ void UnstructuredMesh::initMeshData()
   }
 
   // make an entity set for all tetrahedra
-  // this is used for convenience later in output
+  // this is used for convenience later in output11
   rval = mbi_->create_meshset(moab::MESHSET_SET, tetset_);
   if (rval != moab::MB_SUCCESS) {
     fatal_error("Failed to create an entity set for the tetrahedral elements");

@@ -34,7 +34,7 @@ public:
   //! \param[in] grid Nuclide energy grid
   //! \return Reaction rate
   xsfloat collapse_rate(gsl::index i_temp, gsl::span<const xsfloat> energy,
-    gsl::span<const double> flux, const vector<xsfloat>& grid) const;
+    gsl::span<const double> flux, const vector<xsfloat, ReplicatedAllocator<double>>& grid) const;
 
   //! Cross section at a single temperature
   struct TemperatureXS {

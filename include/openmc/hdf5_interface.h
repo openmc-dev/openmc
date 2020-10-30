@@ -268,8 +268,8 @@ inline void read_dataset(
 }
 
 // vector version
-template<typename T>
-void read_dataset(hid_t dset, vector<T>& vec, bool indep = false)
+template<typename T, typename Alloc>
+void read_dataset(hid_t dset, vector<T, Alloc>& vec, bool indep = false)
 {
   // Get shape of dataset
   auto shape = object_shape(dset);
@@ -282,9 +282,26 @@ void read_dataset(hid_t dset, vector<T>& vec, bool indep = false)
                         vec.data());
 }
 
+// Partial specialization for if data is to be also read to the GPU
 template<typename T>
 void read_dataset(
-  hid_t obj_id, const char* name, vector<T>& vec, bool indep = false)
+  hid_t dset, vector<T, ReplicatedAllocator<T>>& vec, bool indep = false)
+{
+  // Get shape of dataset
+  auto shape = object_shape(dset);
+
+  // Resize vector to appropriate size
+  vec.resize(shape[0]);
+
+  // Read data into vector
+  read_dataset_lowlevel(
+    dset, nullptr, H5TypeMap<T>::type_id, H5S_ALL, indep, vec.data());
+  vec.syncToDevice(); // Important!!
+}
+
+template<typename T, typename Alloc>
+void read_dataset(
+  hid_t obj_id, const char* name, vector<T, Alloc>& vec, bool indep = false)
 {
   hid_t dset = open_dataset(obj_id, name);
   read_dataset(dset, vec, indep);
@@ -479,14 +496,15 @@ inline void write_dataset(
   // Determine length of longest string, including \0
   size_t m = 1;
   for (const auto& s : buffer) {
-    m = std::max(m, s.size() + 1);
+    // Must static cast because CUDA vectors use unsigned as their size type
+    m = std::max(m, static_cast<size_t>(s.size() + 1));
   }
 
   // Copy data into contiguous buffer
   char* temp = new char[n*m];
   std::fill(temp, temp + n*m, '\0');
-  for (decltype(n) i = 0; i < n; ++i) {
-    std::copy(buffer[i].begin(), buffer[i].end(), temp + i*m);
+  for (int i = 0; i < n; ++i) {
+    std::copy(buffer[i].cbegin(), buffer[i].cend(), temp + i * m);
   }
 
   // Write 2D data

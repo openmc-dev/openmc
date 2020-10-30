@@ -91,6 +91,9 @@ public:
   bool operator==(const UnifiedAllocator<T>& /* other */) const { return true; }
 };
 
+template<typename T>
+class ReplicatedAllocator;
+
 // Keeps track of replicated memory, and acts like a normal pointer as
 // appropriate
 template<typename T>
@@ -108,7 +111,15 @@ public:
     return *host;
 #endif
   }
-  __host__ __device__ operator T* const &()
+  __host__ __device__ T const& operator*() const
+  {
+#ifdef __CUDA_ARCH__
+    return *device;
+#else
+    return *host;
+#endif
+  }
+  __host__ __device__ operator T*()
   {
 #ifdef __CUDA_ARCH__
     return device;
@@ -116,13 +127,46 @@ public:
     return host;
 #endif
   }
-  template<typename SizeType>
-  __host__ __device__ T& operator[](SizeType indx)
+  __host__ __device__ operator T const *() const
+  {
+#ifdef __CUDA_ARCH__
+    return device;
+#else
+    return host;
+#endif
+  }
+
+  __host__ __device__ T const& operator[](unsigned int indx) const
   {
 #ifdef __CUDA_ARCH__
     return device[indx];
 #else
     return host[indx];
+#endif
+  }
+  __host__ __device__ T& operator[](unsigned int indx)
+  {
+#ifdef __CUDA_ARCH__
+    return device[indx];
+#else
+    return host[indx];
+#endif
+  }
+
+  __host__ __device__ T* operator+(unsigned int offset)
+  {
+#ifdef __CUDA_ARCH__
+    return device + offset;
+#else
+    return host + offset;
+#endif
+  }
+  __host__ __device__ T const* operator+(unsigned int offset) const
+  {
+#ifdef __CUDA_ARCH__
+    return device + offset;
+#else
+    return host + offset;
 #endif
   }
 
@@ -136,11 +180,17 @@ public:
     device = ptr;
   }
 
+  // These should exclusively be used for cudaMemcpy calls
+  __host__ T* host_pointer() { return host; }
+  __host__ T* device_pointer() { return device; }
+
   DualPointer(DualPointer const&) = default;
   DualPointer& operator=(DualPointer const&) = default;
   DualPointer(DualPointer&&) = default;
   DualPointer& operator=(DualPointer&&) = default;
   ~DualPointer() = default;
+
+  friend class ReplicatedAllocator<T>;
 };
 
 template<typename T>

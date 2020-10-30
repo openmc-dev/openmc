@@ -109,42 +109,48 @@ public:
   __host__ operator std::string() const
   {
     std::string tmp(
-      data_.begin(), data_.end() - 1); // do not include null terminator
+      data_.cbegin(), data_.cend() - 1); // do not include null terminator
     return tmp;
   }
 
-  __host__ __device__ char* begin() const { return data_.begin(); }
-  __host__ __device__ char* end() const { return data_.end(); }
+  __host__ __device__ char* begin() { return data_.begin(); }
+  __host__ __device__ char* end() { return data_.end(); }
+  __host__ __device__ char const* cbegin() const { return data_.cbegin(); }
+  __host__ __device__ char const* cend() const { return data_.cend(); }
   __host__ __device__ bool empty() const
   {
     return data_.empty() || data_[0] == '\0';
   }
-  __host__ __device__ std::size_t size() const { return data_.size() - 1; }
-  __host__ __device__ const char* c_str() const { return data_.begin(); }
-  __host__ __device__ char* data() const { return data_.begin(); }
+  __host__ __device__ typename decltype(data_)::size_type size() const
+  {
+    return data_.size() - 1;
+  }
+  __host__ __device__ char* c_str() { return data_.begin(); }
+  __host__ __device__ char const* c_str() const { return data_.cbegin(); }
+  __host__ __device__ char* data() { return data_.begin(); }
 };
 
 inline __host__ bool operator<(string const& left, string const& right)
 {
   return std::lexicographical_compare(
-    left.begin(), left.end(), right.begin(), right.end());
+    left.cbegin(), left.cend(), right.cbegin(), right.cend());
 }
 inline __host__ bool operator==(string const& left, string const& right)
 {
-  return std::strcmp(left.begin(), right.begin()) == 0;
+  return std::strcmp(left.cbegin(), right.cbegin()) == 0;
 }
 inline __host__ bool operator!=(string const& left, string const& right)
 {
-  return std::strcmp(left.begin(), right.begin()) != 0;
+  return std::strcmp(left.cbegin(), right.cbegin()) != 0;
 }
 
 inline __host__ bool operator==(string const& left, const char* right)
 {
-  return std::strcmp(left.begin(), right) == 0;
+  return std::strcmp(left.cbegin(), right) == 0;
 }
 inline __host__ bool operator!=(string const& left, const char* right)
 {
-  return std::strcmp(left.begin(), right) != 0;
+  return std::strcmp(left.cbegin(), right) != 0;
 }
 
 template<class CharT, class Traits>

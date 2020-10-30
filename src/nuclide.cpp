@@ -449,6 +449,13 @@ void Nuclide::create_derived(const Function1D* prompt_photons, const Function1D*
       }
     }
   }
+
+  // If in CUDA mode, additionally manually synchronize to device, since
+  // these pieces of data are very frequently used but not modified and
+  // are thus best as replicated data on both CPU and GPU.
+  xs_.syncToDevice();
+  for (auto& temperature_point : xs_)
+    temperature_point.syncToDevice();
 }
 
 void Nuclide::init_grid()
@@ -480,6 +487,12 @@ void Nuclide::init_grid()
       }
       grid.grid_index[k] = j;
     }
+  }
+
+  grid_.syncToDevice();
+  for (auto& grid : grid_) {
+    grid.grid_index.syncToDevice();
+    grid.energy.syncToDevice();
   }
 }
 

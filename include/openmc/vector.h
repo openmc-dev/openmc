@@ -338,6 +338,8 @@ public:
   __host__ __device__ pointer data() const { return begin_; }
   __host__ __device__ size_type size() const { return size_; }
   __host__ __device__ size_type capacity() const { return capacity_; }
+  __host__ __device__ iterator begin() { return begin_; }
+  __host__ __device__ iterator end() { return begin_ + size_; }
   __host__ __device__ iterator begin() const { return begin_; }
   __host__ __device__ iterator end() const { return begin_ + size_; }
   __host__ __device__ const_iterator cbegin() const { return begin_; }
@@ -359,8 +361,10 @@ public:
     return std::make_reverse_iterator(begin_);
   }
   __host__ __device__ void pop_back() { size_--; }
-  __host__ __device__ reference back() const { return begin_[size_ - 1]; }
-  __host__ __device__ reference front() const { return begin_[0]; }
+  __host__ __device__ const_reference back() const { return begin_[size_ - 1]; }
+  __host__ __device__ const_reference front() const { return begin_[0]; }
+  __host__ __device__ reference back() { return begin_[size_ - 1]; }
+  __host__ __device__ reference front() { return begin_[0]; }
 
   // Since in OpenMC, it is quite common to clear a vector and expect to
   // start pushing back to it again immediately after. So, it doesn't make
@@ -370,6 +374,21 @@ public:
     size_ = 0;
     for (size_type i = 0; i < size_; ++i)
       (begin_ + i)->~T();
+  }
+
+  // Enable host-device synchronization functions if replicated memory is being
+  // used
+  template<typename U = pointer>
+  std::enable_if_t<std::is_same<U, DualPointer<T>>::value> syncToDevice()
+  {
+    cudaMemcpy(begin_.device_pointer(), begin_.host_pointer(),
+      sizeof(value_type) * size_, cudaMemcpyHostToDevice);
+  }
+  template<typename U = pointer>
+  std::enable_if_t<std::is_same<U, DualPointer<T>>::value> syncToHost()
+  {
+    cudaMemcpy(begin_.host_pointer(), begin_.device_pointer(),
+      sizeof(value_type) * size_, cudaMemcpyDeviceToHost);
   }
 };
 

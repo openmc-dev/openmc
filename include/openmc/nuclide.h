@@ -32,8 +32,8 @@ public:
   // Types, aliases
   using EmissionMode = ReactionProduct::EmissionMode;
   struct EnergyGrid {
-    vector<int> grid_index;
-    vector<xsfloat> energy;
+    vector<int, ReplicatedAllocator<int>> grid_index;
+    vector<xsfloat, ReplicatedAllocator<double>> energy;
   };
 
   struct CrossSectionSet {
@@ -92,8 +92,13 @@ public:
 
   // Temperature dependent cross section data
   vector<xsfloat> kTs_;                //!< temperatures in eV (k*T)
-  vector<EnergyGrid> grid_;           //!< Energy grid at each temperature
-  vector<vector<CrossSectionSet>> xs_; //!< Cross sections at each temperature
+  vector<EnergyGrid, ReplicatedAllocator<EnergyGrid>>
+    grid_; //!< Energy grid at each temperature
+
+  using CrossSectionSetVector =
+    vector<CrossSectionSet, ReplicatedAllocator<CrossSectionSet>>;
+  vector<CrossSectionSetVector, ReplicatedAllocator<CrossSectionSetVector>>
+    xs_; //!< Cross sections at each temperature
 
   // Multipole data
   unique_ptr<WindowedMultipole> multipole_;

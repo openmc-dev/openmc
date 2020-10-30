@@ -55,7 +55,7 @@ openmc_statepoint_write(const char* filename, bool* write_source)
   write_message("Creating state point " + filename_ + "...", 5);
 
 #if defined(LIBMESH) || defined(DAGMC)
-      // write unstructured mesh tallies to VTK if possible
+      // write unstructured mesh tallies to VTK
       write_unstructured_mesh_results();
 #endif
 
@@ -770,9 +770,13 @@ void read_source_bank(hid_t group_id, std::vector<Particle::Bank>& sites, bool d
   H5Tclose(banktype);
 }
 
-#if defined(LIBMESH) || defined(DAGMC)
+
+
 void write_unstructured_mesh_results() {
 
+#if !defined(LIBMESH) && !defined(DAGMC)
+  fatal_error("Unstructured mesh is disabled for this build of OpenMC.");
+#else
 
   for (auto& tally : model::tallies) {
 
@@ -868,8 +872,8 @@ void write_unstructured_mesh_results() {
       for (const auto& score : tally_scores) { umesh->remove_score(score); }
     }
   }
+  #endif
 }
-#endif
 
 void write_tally_results_nr(hid_t file_id)
 {

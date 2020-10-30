@@ -34,10 +34,16 @@ __global__ void process_calculate_xs_events_device(
     for (int i = 0; i < m.nuclide_.size(); ++i) {
       auto const& i_nuclide = m.nuclide_[i];
       auto& micro {p.neutron_xs_[i_nuclide]};
+      double const& atom_density = m.atom_density_[i];
 
-      // Possibly worth just not caching here and recalculating every time
-      if (!(p.E_ != micro.last_E || p.sqrtkT_ != micro.last_sqrtkT))
+      // Possibly worth just not caching here and recalculating every time?
+      if (!(p.E_ != micro.last_E || p.sqrtkT_ != micro.last_sqrtkT)) {
+        p.macro_xs_.total += atom_density * micro.total;
+        p.macro_xs_.absorption += atom_density * micro.absorption;
+        p.macro_xs_.fission += atom_density * micro.fission;
+        p.macro_xs_.nu_fission += atom_density * micro.nu_fission;
         continue;
+      }
 
       auto const& nuclide = *nuclides[i_nuclide];
       micro.elastic = CACHE_INVALID;
@@ -118,14 +124,22 @@ __global__ void process_calculate_xs_events_device(
       micro.sab_frac = 0.0;
       micro.last_E = p.E_;
       micro.last_sqrtkT = p.sqrtkT_;
-
-      double const& atom_density = m.atom_density_[i];
-
       p.macro_xs_.total += atom_density * micro.total;
       p.macro_xs_.absorption += atom_density * micro.absorption;
       p.macro_xs_.fission += atom_density * micro.fission;
       p.macro_xs_.nu_fission += atom_density * micro.nu_fission;
     }
+
+    // TODO investigate effect of putting this on its own
+    // for (int i = 0; i < m.nuclide_.size(); ++i) {
+    //   double const& atom_density = m.atom_density_[i];
+    //   auto const& i_nuclide = m.nuclide_[i];
+    //   auto const& micro {p.neutron_xs_[i_nuclide]};
+    //   p.macro_xs_.total += atom_density * micro.total;
+    //   p.macro_xs_.absorption += atom_density * micro.absorption;
+    //   p.macro_xs_.fission += atom_density * micro.fission;
+    //   p.macro_xs_.nu_fission += atom_density * micro.nu_fission;
+    // }
   }
 }
 

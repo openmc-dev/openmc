@@ -110,7 +110,7 @@ void process_calculate_xs_events(SharedArray<EventQueueItem>& queue)
   }
 
 #ifdef __CUDACC__
-  gpu::process_calculate_xs_events_device<<<20, 32>>>(
+  gpu::process_calculate_xs_events_device<<<queue.size() / 32 + 1, 32>>>(
     queue.data(), queue.size());
   cudaDeviceSynchronize();
 #else

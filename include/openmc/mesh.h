@@ -51,9 +51,11 @@ extern std::vector<std::unique_ptr<Mesh>> meshes;
 
 } // namespace model
 
-//==============================================================================
-//! Tessellation of n-dimensional Euclidean space by congruent squares or cubes
-//==============================================================================
+#ifdef LIBMESH
+namespace settings {
+extern std::unique_ptr<libMesh::LibMeshInit> LMI;
+}
+#endif
 
 class Mesh
 {
@@ -302,7 +304,6 @@ public:
 
   //! Write the unstructured mesh to file
   //
-  //
   //! \param[in] filename Name of the file to write
   virtual void write(std::string filename) const = 0;
 
@@ -323,16 +324,10 @@ public:
 
   std::string bin_label(int bin) const override;
 
-  void to_hdf5(hid_t group) const override;
+  void surface_bins_crossed(const Particle& p,
+                            std::vector<int>& bins) const override;
 
-  //! Count number of bank sites in each mesh bin / energy bin
-  //
-  //! \param[in] bank Array of bank sites
-  //! \param[out] Whether any bank sites are outside the mesh
-  //! \return Array indicating number of sites in each mesh/energy bin
-  xt::xtensor<double, 1> count_sites(const Particle::Bank* bank,
-                                     int64_t length,
-                                     bool* outside) const;
+  void to_hdf5(hid_t group) const override;
 
   // Data members
   bool output_ {true};
@@ -341,24 +336,18 @@ public:
 
 #ifdef DAGMC
 
-class MOABUnstructuredMesh : public UnstructuredMesh {
+class MOABMesh : public UnstructuredMesh {
 
 public:
 
-  MOABUnstructuredMesh() = default;
-  MOABUnstructuredMesh(pugi::xml_node);
-  MOABUnstructuredMesh(const std::string& filename);
-  ~MOABUnstructuredMesh() = default;
+  MOABMesh() = default;
+  MOABMesh(pugi::xml_node);
+  MOABMesh(const std::string& filename);
+  ~MOABMesh() = default;
 
   void bins_crossed(const Particle& p,
                     std::vector<int>& bins,
                     std::vector<double>& lengths) const override;
-
-  //! Determine which surface bins were crossed by a particle.
-  //
-  //! \param[in] p Particle to check
-  //! \param[out] bins Surface bins that were crossed
-  void surface_bins_crossed(const Particle& p, std::vector<int>& bins) const;
 
   int get_bin(Position r) const;
 
@@ -502,8 +491,6 @@ private:
 #ifdef LIBMESH
 class LibMesh : public UnstructuredMesh {
 
-  typedef std::vector<std::pair<double, const libMesh::Elem*>> UnstructuredMeshHits;
-
 public:
   // Constructors
   LibMesh(pugi::xml_node node);
@@ -514,16 +501,14 @@ public:
                     std::vector<int>& bins,
                     std::vector<double>& lengths) const override;
 
-  void surface_bins_crossed(const Particle& p, std::vector<int>& bins) const override;
-
   int get_bin(Position r) const override;
 
   int n_bins() const override;
 
   int n_surface_bins() const override;
 
-  std::pair<std::vector<double>, std::vector<double>> plot(Position plot_ll,
-                                                           Position plot_ur) const override;
+  std::pair<std::vector<double>, std::vector<double>>
+  plot(Position plot_ll, Position plot_ur) const override;
 
   void add_score(const std::string& var_name) override;
 
@@ -552,12 +537,12 @@ private:
   int get_bin_from_element(const libMesh::Elem* elem) const;
 
   // Data members
-  std::unique_ptr<libMesh::Mesh> m_; //!< pointer to the libmesh mesh instance
+  std::unique_ptr<libMesh::Mesh> m_; //!< pointer to the libMesh mesh instance
   std::vector<std::unique_ptr<libMesh::PointLocatorBase>> point_locators_; //!< pointers to locators for each thread
-  std::unique_ptr<libMesh::EquationSystems> equation_systems_; //!< pointer to the equation systems of the mesh (for result output)
-  std::map<std::string, unsigned int> variable_map_; //!< mapping of variable names (scores) to their numbers on the mesh
-  libMesh::BoundingBox bbox_; //!< bounding box of the mesh
+  std::unique_ptr<libMesh::EquationSystems> equation_systems_; //!< pointer to the equation systems of the mesh
   std::string eq_system_name_; //!< name of the equation system holding OpenMC results
+  std::map<std::string, unsigned int> variable_map_; //!< mapping of variable names (tally scores) to libMesh variable numbers
+  libMesh::BoundingBox bbox_; //!< bounding box of the mesh
   libMesh::Elem* first_element_; //!< pointer to the first element in the mesh (maybe should be a key?)
 };
 #endif

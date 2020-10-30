@@ -37,11 +37,6 @@ namespace openmc {
 
 namespace settings {
 
-#ifdef LIBMESH
-std::unique_ptr<libMesh::LibMeshInit> LMI;
-const libMesh::Parallel::Communicator* libmesh_comm;
-#endif
-
 // Default values for boolean flags
 bool assume_separate         {false};
 bool check_overlaps          {false};

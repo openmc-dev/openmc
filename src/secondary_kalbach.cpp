@@ -33,6 +33,7 @@ KalbachMann::KalbachMann(hid_t group)
   auto temp_b = xt::view(temp, 0); // view of breakpoints
   auto temp_i = xt::view(temp, 1); // view of interpolation parameters
 
+  breakpoints_.reserve(temp_b.size());
   std::copy(temp_b.begin(), temp_b.end(), std::back_inserter(breakpoints_));
   for (const auto i : temp_i)
     interpolation_.push_back(int2interp(i));

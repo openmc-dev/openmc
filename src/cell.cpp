@@ -476,6 +476,7 @@ CSGCell::CSGCell(pugi::xml_node cell_node)
       rotation_.push_back(rot[1]);
       rotation_.push_back(rot[2]);
     } else {
+      rotation_.reserve(rot.size());
       std::copy(rot.begin(), rot.end(), std::back_inserter(rotation_));
     }
   }

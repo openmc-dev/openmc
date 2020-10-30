@@ -23,7 +23,6 @@
 
 #include <algorithm> // for min
 #include <cmath> // for sqrt, abs, pow
-#include <iterator> // for back_inserter
 #include <string>
 #include <limits> //for infinity
 

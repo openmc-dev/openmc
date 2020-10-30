@@ -145,6 +145,8 @@ Tabulated1D::Tabulated1D(hid_t dset)
   auto xs = xt::view(arr, 0);
   auto ys = xt::view(arr, 1);
 
+  x_.reserve(xs.size());
+  y_.reserve(ys.size());
   std::copy(xs.begin(), xs.end(), std::back_inserter(x_));
   std::copy(ys.begin(), ys.end(), std::back_inserter(y_));
   n_pairs_ = x_.size();
@@ -222,6 +224,8 @@ CoherentElasticXS::CoherentElasticXS(hid_t dset)
   auto s = xt::view(arr, 1);
 
   // Copy Bragg edges and partial sums of structure factors
+  bragg_edges_.reserve(E.size());
+  factors_.reserve(s.size());
   std::copy(E.begin(), E.end(), std::back_inserter(bragg_edges_));
   std::copy(s.begin(), s.end(), std::back_inserter(factors_));
 }

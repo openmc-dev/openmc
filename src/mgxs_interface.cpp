@@ -204,6 +204,7 @@ void MgxsInterface::read_header(const std::string& path_cross_sections)
   read_attribute(file_id, "group structure", rev_energy_bins_);
 
   // Reverse energy bins
+  energy_bins_.reserve(rev_energy_bins_.size());
   std::copy(rev_energy_bins_.crbegin(), rev_energy_bins_.crend(),
     std::back_inserter(energy_bins_));
 

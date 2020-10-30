@@ -24,6 +24,8 @@ Discrete::Discrete(pugi::xml_node node)
   auto params = get_node_array<xsfloat>(node, "parameters");
 
   std::size_t n = params.size();
+  x_.reserve(n / 2);
+  p_.reserve(n / 2);
   std::copy(params.begin(), params.begin() + n/2, std::back_inserter(x_));
   std::copy(params.begin() + n/2, params.end(), std::back_inserter(p_));
 
@@ -193,6 +195,8 @@ Tabular::Tabular(const xsfloat* x, const xsfloat* p, int n, Interpolation interp
 void Tabular::init(const xsfloat* x, const xsfloat* p, std::size_t n, const xsfloat* c)
 {
   // Copy x/p arrays into vectors
+  x_.reserve(n);
+  p_.reserve(n);
   std::copy(x, x + n, std::back_inserter(x_));
   std::copy(p, p + n, std::back_inserter(p_));
 
@@ -205,6 +209,7 @@ void Tabular::init(const xsfloat* x, const xsfloat* p, std::size_t n, const xsfl
 
   // Calculate cumulative distribution function
   if (c) {
+    c_.reserve(n);
     std::copy(c, c + n, std::back_inserter(c_));
   } else {
     c_.resize(n);

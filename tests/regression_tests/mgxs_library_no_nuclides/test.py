@@ -2,7 +2,6 @@ import hashlib
 
 import openmc
 import openmc.mgxs
-from openmc.data import REACTION_MT
 from openmc.examples import pwr_pin_cell
 
 from tests.testing_harness import PyAPITestHarness
@@ -20,11 +19,17 @@ class MGXSTestHarness(PyAPITestHarness):
         self.mgxs_lib = openmc.mgxs.Library(self._model.geometry)
         self.mgxs_lib.by_nuclide = False
 
-        # Test all relevant MGXS types
+        # Test relevant MGXS types
         relevant_MGXS_TYPES = [item for item in openmc.mgxs.MGXS_TYPES
                                if item != 'current']
-        relevant_MGXS_TYPES += openmc.mgxs.ARBITRARY_VECTOR_TYPES
-        relevant_MGXS_TYPES += openmc.mgxs.ARBITRARY_MATRIX_TYPES
+        # Add in a subset of openmc.mgxs.ARBITRARY_VECTOR_TYPES and
+        # openmc.mgxs.ARBITRARY_MATRIX_TYPES so we can see the code works,
+        # but not use too much resources
+        relevant_MGXS_TYPES += [
+            "(n,elastic)",  "(n,level)",  "(n,2n)",  "(n,na)",  "(n,nc)",
+            "(n,gamma)",  "(n,a)",  "(n,Xa)",  "heating",  "damage-energy",
+            "(n,n1)",  "(n,a0)",  "(n,nc) matrix",  "(n,n1) matrix",
+            "(n,2n) matrix"]
         self.mgxs_lib.mgxs_types = tuple(relevant_MGXS_TYPES) + \
                                    openmc.mgxs.MDGXS_TYPES
         self.mgxs_lib.energy_groups = energy_groups

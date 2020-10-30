@@ -75,9 +75,7 @@ if (!settings::LMI && !libMesh::initialized())
 #else
   settings::LMI = std::make_unique<libMesh::LibMeshInit>(argc, argv, n_threads);
 #endif
-  settings::libmesh_comm = &(settings::LMI->comm());
 }
-
 #endif
 
   // Start total and initialization timer

@@ -27,10 +27,6 @@ namespace openmc {
 
 namespace settings {
 
-#ifdef LIBMESH
-extern std::unique_ptr<libMesh::LibMeshInit> LMI;
-extern const libMesh::Parallel::Communicator* libmesh_comm;
-#endif
 
 // Boolean flags
 extern bool assume_separate;          //!< assume tallies are spatially separate?

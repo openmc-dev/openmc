@@ -53,6 +53,12 @@ std::vector<std::unique_ptr<Mesh>> meshes;
 
 } // namespace model
 
+#ifdef LIBMESH
+namespace settings {
+std::unique_ptr<libMesh::LibMeshInit> LMI;
+}
+#endif
+
 //==============================================================================
 // Helper functions
 //==============================================================================
@@ -116,7 +122,7 @@ StructuredMesh::bin_label(int bin) const {
 }
 
 //==============================================================================
-// Untructured Mesh implementation
+// Unstructured Mesh implementation
 //==============================================================================
 
 UnstructuredMesh::UnstructuredMesh(pugi::xml_node node) : Mesh(node) {
@@ -147,6 +153,12 @@ UnstructuredMesh::UnstructuredMesh(pugi::xml_node node) : Mesh(node) {
 
 }
 
+void
+UnstructuredMesh::surface_bins_crossed(const Particle& p,
+                                       std::vector<int>& bins) const {
+  throw std::runtime_error{"Unstructured mesh surface tallies are not implemented."};
+}
+
 std::string
 UnstructuredMesh::bin_label(int bin) const {
   return fmt::format("Mesh Index ({})", bin);
@@ -174,96 +186,6 @@ UnstructuredMesh::to_hdf5(hid_t group) const
 
     close_group(mesh_group);
 }
-
-
-//==============================================================================
-// RegularMesh implementation
-//==============================================================================
-
-// RegularMesh::RegularMesh(pugi::xml_node node)
-//   : StructuredMesh {node}
-// {
-//   // Determine number of dimensions for mesh
-//   if (check_for_node(node, "dimension")) {
-//     shape_ = get_node_xarray<int>(node, "dimension");
-//     int n = n_dimension_ = shape_.size();
-//     if (n != 1 && n != 2 && n != 3) {
-//       fatal_error("Mesh must be one, two, or three dimensions.");
-//     }
-
-//     // Check that dimensions are all greater than zero
-//     if (xt::any(shape_ <= 0)) {
-//       fatal_error("All entries on the <dimension> element for a tally "
-//         "mesh must be positive.");
-//     }
-//   }
-
-//   // Check for lower-left coordinates
-//   if (check_for_node(node, "lower_left")) {
-//     // Read mesh lower-left corner location
-//     lower_left_ = get_node_xarray<double>(node, "lower_left");
-//   } else {
-//     fatal_error("Must specify <lower_left> on a mesh.");
-//   }
-
-//   if (check_for_node(node, "width")) {
-//     // Make sure both upper-right or width were specified
-//     if (check_for_node(node, "upper_right")) {
-//       fatal_error("Cannot specify both <upper_right> and <width> on a mesh.");
-//     }
-
-//     width_ = get_node_xarray<double>(node, "width");
-
-//     // Check to ensure width has same dimensions
-//     auto n = width_.size();
-//     if (n != lower_left_.size()) {
-//       fatal_error("Number of entries on <width> must be the same as "
-//         "the number of entries on <lower_left>.");
-//     }
-
-//     // Check for negative widths
-//     if (xt::any(width_ < 0.0)) {
-//       fatal_error("Cannot have a negative <width> on a tally mesh.");
-//     }
-
-//     // Set width and upper right coordinate
-//     upper_right_ = xt::eval(lower_left_ + shape_ * width_);
-
-//   } else if (check_for_node(node, "upper_right")) {
-//     upper_right_ = get_node_xarray<double>(node, "upper_right");
-
-//     // Check to ensure width has same dimensions
-//     auto n = upper_right_.size();
-//     if (n != lower_left_.size()) {
-//       fatal_error("Number of entries on <upper_right> must be the "
-//         "same as the number of entries on <lower_left>.");
-//     }
-
-//     // Check that upper-right is above lower-left
-//     if (xt::any(upper_right_ < lower_left_)) {
-//       fatal_error("The <upper_right> coordinates must be greater than "
-//         "the <lower_left> coordinates on a tally mesh.");
-//     }
-
-//     // Set width
-//     if (shape_.size() > 0) {
-//       width_ = xt::eval((upper_right_ - lower_left_) / shape_);
-//     }
-//   } else {
-//     fatal_error("Must specify either <upper_right> and <width> on a mesh.");
-//   }
-
-//   // Make sure lower_left and dimension match
-//   if (shape_.size() > 0) {
-//     if (shape_.size() != lower_left_.size()) {
-//       fatal_error("Number of entries on <lower_left> must be the same "
-//         "as the number of entries on <dimension>.");
-//     }
-
-//     // Set volume fraction
-//     volume_frac_ = 1.0/xt::prod(shape_)();
-//   }
-// }
 
 void StructuredMesh::get_indices(Position r, int* ijk, bool* in_mesh) const
 {
@@ -1441,32 +1363,35 @@ extern "C" int openmc_add_unstructured_mesh(const char filename[],
                                             const char library[],
                                             int* id)
 {
+
+  std::string lib_name(library);
+  std::string mesh_file(filename);
   bool valid_lib = false;
 #ifdef DAGMC
-  if (library == "moab") {
-    model::meshes.push_back(std::move(std::make_unique<MOABUnstructuredMesh>(filename)));
+  if (lib_name == "moab") {
+    model::meshes.push_back(std::move(std::make_unique<MOABMesh>(mesh_file)));
     valid_lib = true;
   }
 #endif
 
 #ifdef LIBMESH
-  if (library == "libmesh") {
-    model::meshes.push_back(std::move(std::make_unique<LibMesh>(filename)));
+  if (lib_name == "libmesh") {
+    model::meshes.push_back(std::move(std::make_unique<LibMesh>(mesh_file)));
     valid_lib = true;
   }
 #endif
 
   if (!valid_lib) {
-    set_errmsg("Mesh library " + std::string(library) + \
-               "is not supported by this build of OpenMC");
+    set_errmsg(fmt::format("Mesh library {} is not supported "
+                           "by this build of OpenMC", lib_name));
     return OPENMC_E_INVALID_ARGUMENT;
   }
 
   int mesh_id = 0;
   for (const auto& m : model::meshes) { mesh_id = std::max(m->id_, mesh_id); }
-
   mesh_id += 1;
-  model::meshes.back()->id_ = mesh_id;
+
+  model::meshes.back()->id_ = mesh_id + 1;
   *id = mesh_id;
 
   return 0;
@@ -1630,16 +1555,16 @@ openmc_rectilinear_mesh_set_grid(int32_t index, const double* grid_x,
 
 #ifdef DAGMC
 
-MOABUnstructuredMesh::MOABUnstructuredMesh(pugi::xml_node node) : UnstructuredMesh(node) {
+MOABMesh::MOABMesh(pugi::xml_node node) : UnstructuredMesh(node) {
   initialize();
 }
 
-MOABUnstructuredMesh::MOABUnstructuredMesh(const std::string& filename) {
+MOABMesh::MOABMesh(const std::string& filename) {
   filename_ = filename;
   initialize();
 }
 
-void MOABUnstructuredMesh::initialize() {
+void MOABMesh::initialize() {
   // create MOAB instance
   mbi_ = std::make_unique<moab::Core>();
   // load unstructured mesh file
@@ -1677,7 +1602,7 @@ void MOABUnstructuredMesh::initialize() {
 }
 
 void
-MOABUnstructuredMesh::build_kdtree(const moab::Range& all_tets)
+MOABMesh::build_kdtree(const moab::Range& all_tets)
 {
   moab::Range all_tris;
   int adj_dim = 2;
@@ -1712,7 +1637,7 @@ MOABUnstructuredMesh::build_kdtree(const moab::Range& all_tets)
 }
 
 void
-MOABUnstructuredMesh::intersect_track(const moab::CartVect& start,
+MOABMesh::intersect_track(const moab::CartVect& start,
                                   const moab::CartVect& dir,
                                   double track_len,
                                   std::vector<double>& hits) const {
@@ -1743,7 +1668,7 @@ MOABUnstructuredMesh::intersect_track(const moab::CartVect& start,
 }
 
 void
-MOABUnstructuredMesh::bins_crossed(const Particle& p,
+MOABMesh::bins_crossed(const Particle& p,
                                std::vector<int>& bins,
                                std::vector<double>& lengths) const
 {
@@ -1820,7 +1745,7 @@ MOABUnstructuredMesh::bins_crossed(const Particle& p,
 };
 
 moab::EntityHandle
-MOABUnstructuredMesh::get_tet(const Position& r) const
+MOABMesh::get_tet(const Position& r) const
 {
   moab::CartVect pos(r.x, r.y, r.z);
   // find the leaf of the kd-tree for this position
@@ -1847,13 +1772,13 @@ MOABUnstructuredMesh::get_tet(const Position& r) const
   return 0;
 }
 
-double MOABUnstructuredMesh::volume(int bin) const {
+double MOABMesh::volume(int bin) const {
   return tet_volume(get_ent_handle_from_bin(bin));
 }
 
-std::string MOABUnstructuredMesh::library() const { return "moab"; }
+std::string MOABMesh::library() const { return "moab"; }
 
-double MOABUnstructuredMesh::tet_volume(moab::EntityHandle tet) const {
+double MOABMesh::tet_volume(moab::EntityHandle tet) const {
  std::vector<moab::EntityHandle> conn;
  moab::ErrorCode rval = mbi_->get_connectivity(&tet, 1, conn);
  if (rval != moab::MB_SUCCESS) {
@@ -1869,13 +1794,8 @@ double MOABUnstructuredMesh::tet_volume(moab::EntityHandle tet) const {
  return 1.0 / 6.0 * (((p[1] - p[0]) * (p[2] - p[0])) % (p[3] - p[0]));
 }
 
-void MOABUnstructuredMesh::surface_bins_crossed(const Particle& p, std::vector<int>& bins) const {
-  // TODO: Implement triangle crossings here
-  throw std::runtime_error{"Unstructured mesh surface tallies are not implemented."};
-}
-
 int
-MOABUnstructuredMesh::get_bin(Position r) const {
+MOABMesh::get_bin(Position r) const {
   moab::EntityHandle tet = get_tet(r);
   if (tet == 0) {
     return -1;
@@ -1885,7 +1805,7 @@ MOABUnstructuredMesh::get_bin(Position r) const {
 }
 
 void
-MOABUnstructuredMesh::compute_barycentric_data(const moab::Range& tets) {
+MOABMesh::compute_barycentric_data(const moab::Range& tets) {
   moab::ErrorCode rval;
 
   baryc_data_.clear();
@@ -1915,7 +1835,7 @@ MOABUnstructuredMesh::compute_barycentric_data(const moab::Range& tets) {
 }
 
 bool
-MOABUnstructuredMesh::point_in_tet(const moab::CartVect& r, moab::EntityHandle tet) const {
+MOABMesh::point_in_tet(const moab::CartVect& r, moab::EntityHandle tet) const {
 
   moab::ErrorCode rval;
 
@@ -1950,7 +1870,7 @@ MOABUnstructuredMesh::point_in_tet(const moab::CartVect& r, moab::EntityHandle t
 }
 
 int
-MOABUnstructuredMesh::get_bin_from_index(int idx) const {
+MOABMesh::get_bin_from_index(int idx) const {
   if (idx >= n_bins()) {
     fatal_error(fmt::format("Invalid bin index: {}", idx));
   }
@@ -1958,25 +1878,25 @@ MOABUnstructuredMesh::get_bin_from_index(int idx) const {
 }
 
 int
-MOABUnstructuredMesh::get_index(const Position& r,
+MOABMesh::get_index(const Position& r,
                             bool* in_mesh) const {
   int bin = get_bin(r);
   *in_mesh = bin != -1;
   return bin;
 }
 
-int MOABUnstructuredMesh::get_index_from_bin(int bin) const {
+int MOABMesh::get_index_from_bin(int bin) const {
   return bin;
 }
 
 std::pair<std::vector<double>, std::vector<double>>
-MOABUnstructuredMesh::plot(Position plot_ll, Position plot_ur) const {
+MOABMesh::plot(Position plot_ll, Position plot_ur) const {
   // TODO: Implement mesh lines
   return {};
 }
 
 int
-MOABUnstructuredMesh::get_bin_from_ent_handle(moab::EntityHandle eh) const {
+MOABMesh::get_bin_from_ent_handle(moab::EntityHandle eh) const {
   int bin = eh - ehs_[0];
   if (bin >= n_bins()) {
     fatal_error(fmt::format("Invalid bin: {}", bin));
@@ -1985,18 +1905,18 @@ MOABUnstructuredMesh::get_bin_from_ent_handle(moab::EntityHandle eh) const {
 }
 
 moab::EntityHandle
-MOABUnstructuredMesh::get_ent_handle_from_bin(int bin) const {
+MOABMesh::get_ent_handle_from_bin(int bin) const {
   if (bin >= n_bins()) {
     fatal_error(fmt::format("Invalid bin index: ", bin));
   }
   return ehs_[0] + bin;
 }
 
-int MOABUnstructuredMesh::n_bins() const {
+int MOABMesh::n_bins() const {
   return ehs_.size();
 }
 
-int MOABUnstructuredMesh::n_surface_bins() const {
+int MOABMesh::n_surface_bins() const {
   // collect all triangles in the set of tets for this mesh
   moab::Range tris;
   moab::ErrorCode rval;
@@ -2009,7 +1929,7 @@ int MOABUnstructuredMesh::n_surface_bins() const {
 }
 
 Position
-MOABUnstructuredMesh::centroid(int bin) const {
+MOABMesh::centroid(int bin) const {
   moab::ErrorCode rval;
 
   auto tet = this->get_ent_handle_from_bin(bin);
@@ -2041,7 +1961,7 @@ MOABUnstructuredMesh::centroid(int bin) const {
 }
 
 std::pair<moab::Tag, moab::Tag>
-MOABUnstructuredMesh::get_score_tags(std::string score) const {
+MOABMesh::get_score_tags(std::string score) const {
   moab::ErrorCode rval;
   // add a tag to the mesh
   // all scores are treated as a single value
@@ -2083,11 +2003,11 @@ MOABUnstructuredMesh::get_score_tags(std::string score) const {
 }
 
 void
-MOABUnstructuredMesh::add_score(const std::string& score) {
+MOABMesh::add_score(const std::string& score) {
   auto score_tags = get_score_tags(score);
 }
 
-void MOABUnstructuredMesh::remove_score(const std::string& score) {
+void MOABMesh::remove_score(const std::string& score) {
   auto value_name = score + "_mean";
   moab::Tag tag;
   moab::ErrorCode rval = mbi_->tag_get_handle(value_name.c_str(), tag);
@@ -2116,7 +2036,7 @@ void MOABUnstructuredMesh::remove_score(const std::string& score) {
 }
 
 void
-MOABUnstructuredMesh::set_score_data(const std::string& score,
+MOABMesh::set_score_data(const std::string& score,
                                  std::vector<double> values,
                                  std::vector<double> std_dev) {
   auto score_tags = this->get_score_tags(score);
@@ -2148,7 +2068,7 @@ MOABUnstructuredMesh::set_score_data(const std::string& score,
 }
 
 void
-MOABUnstructuredMesh::write(std::string base_filename) const {
+MOABMesh::write(std::string base_filename) const {
   // add extension to the base name
   auto filename = base_filename + ".vtk";
   write_message(5, "Writing unstructured mesh {}...", filename);
@@ -2163,14 +2083,6 @@ MOABUnstructuredMesh::write(std::string base_filename) const {
     auto msg = fmt::format("Failed to write unstructured mesh {}", id_);
     warning(msg);
   }
-}
-
-xt::xtensor<double, 1>
-UnstructuredMesh::count_sites(const Particle::Bank* bank,
-                              int64_t length,
-                              bool* outside) const {
-    xt::xtensor<double, 1> out;
-    return out;
 }
 
 #endif
@@ -2195,10 +2107,7 @@ LibMesh::centroid(int bin) const {
 std::string LibMesh::library() const { return "libmesh"; }
 
 void LibMesh::initialize() {
-  // always 3 for unstructured meshes
-  n_dimension_ = 3;
-
-  m_ = std::make_unique<libMesh::Mesh>(*settings::libmesh_comm, 3);
+  m_ = std::make_unique<libMesh::Mesh>(settings::LMI->comm(), 3);
 
   m_->read(filename_);
   m_->prepare_for_use();
@@ -2227,7 +2136,6 @@ void LibMesh::initialize() {
 
   // bounding box for the mesh
   bbox_ = libMesh::MeshTools::create_bounding_box(*m_);
-
 }
 
 int LibMesh::n_bins() const {
@@ -2235,21 +2143,22 @@ int LibMesh::n_bins() const {
 }
 
 int LibMesh::n_surface_bins() const {
-  // TODO: Return number of faces in the mesh here
-  throw std::runtime_error{"Unstructured mesh surface tallies are not implemented."};
-}
-
-void
-LibMesh::surface_bins_crossed(const Particle& p,
-                               std::vector<int>& bins) const
-{
-  // TODO: Implement triangle crossings here
-  throw std::runtime_error{"Unstructured mesh surface tallies are not implemented."};
+  int n_bins = 0;
+  for (int i = 0; i < this->n_bins(); i++) {
+    const libMesh::Elem& e = m_->elem_ref(i);
+    n_bins += e.n_faces();
+    // if this is a boundary element, sure to count boundary faces
+    // twice
+    for (int j = 0; j < e.n_sides(); j++) {
+      if (e.neighbor_ptr(j) == NULL) { n_bins++; }
+    }
+  }
+  return n_bins;
 }
 
 void
 LibMesh::add_score(const std::string& var_name) {
-  // check if this is a new varaible
+  // check if this is a new variable
   std::string value_name = var_name + "_mean";
   if (!variable_map_.count(value_name)) {
     auto& eqn_sys = equation_systems_->get_system(eq_system_name_);
@@ -2258,7 +2167,7 @@ LibMesh::add_score(const std::string& var_name) {
   }
 
   std::string std_dev_name = var_name + "_std_dev";
-  // check if this is a new varaible
+  // check if this is a new variable
   if (!variable_map_.count(std_dev_name)) {
     auto& eqn_sys = equation_systems_->get_system(eq_system_name_);
     auto var_num = eqn_sys.add_variable(std_dev_name, libMesh::CONSTANT, libMesh::MONOMIAL);
@@ -2309,8 +2218,7 @@ LibMesh::set_score_data(const std::string& var_name,
 }
 
 void LibMesh::write(std::string filename) const {
-  std::cout << "Writing file : " << filename + ".e" << std::endl;
-
+  write_message(fmt::format("Writing file: {}.e for unstructured mesh {}", filename, this->id_));
   libMesh::ExodusII_IO exo(*m_);
   std::set<std::string> systems_out = {eq_system_name_};
   exo.write_discontinuous_exodusII(filename + ".e", *equation_systems_, &systems_out);
@@ -2322,7 +2230,7 @@ LibMesh::bins_crossed(const Particle& p,
                       std::vector<double>& lengths) const
 {
   // TODO: Implement triangle crossings here
-  throw std::runtime_error{"LibMesh tracklength tallies are not implemented."};
+  throw std::runtime_error{"Tracklength tallies on libMesh instances are not implemented."};
 }
 
 int
@@ -2366,7 +2274,9 @@ LibMesh::get_element_from_bin(int bin) const {
   return m_->elem_ptr(bin);
 }
 
-double LibMesh::volume(int bin) const { return m_->elem_ref(bin).volume(); }
+double LibMesh::volume(int bin) const {
+   return m_->elem_ref(bin).volume();
+}
 
 #endif // LIBMESH
 
@@ -2397,7 +2307,7 @@ void read_meshes(pugi::xml_node root)
       model::meshes.push_back(std::make_unique<RectilinearMesh>(node));
 #ifdef DAGMC
     } else if (mesh_type == "unstructured" && mesh_lib == "moab") {
-      model::meshes.push_back(std::make_unique<MOABUnstructuredMesh>(node));
+      model::meshes.push_back(std::make_unique<MOABMesh>(node));
 #endif
 #ifdef LIBMESH
     } else if (mesh_type == "unstructured" && mesh_lib == "libmesh") {

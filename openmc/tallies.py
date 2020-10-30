@@ -1043,19 +1043,19 @@ class Tally(IDManagerMixin):
                 if type(self_filter) is test_filter:
                     bins = filter_bins[j]
                     break
-            else:
-                # If not a user-requested Filter, get all bins
-                if isinstance(self_filter, openmc.DistribcellFilter):
-                    # Create list of cell instance IDs for distribcell Filters
-                    bins = list(range(self_filter.num_bins))
-
-                elif isinstance(self_filter, openmc.EnergyFunctionFilter):
-                    # EnergyFunctionFilters don't have bins so just add a None
-                    bins = [None]
-
                 else:
-                    # Create list of IDs for bins for all other filter types
-                    bins = self_filter.bins
+                    # If not a user-requested Filter, get all bins
+                    if isinstance(self_filter, openmc.DistribcellFilter):
+                        # Create list of cell instance IDs for distribcell Filters
+                        bins = list(range(self_filter.num_bins))
+
+                    elif isinstance(self_filter, openmc.EnergyFunctionFilter):
+                        # EnergyFunctionFilters don't have bins so just add a None
+                        bins = [None]
+
+                    else:
+                        # Create list of IDs for bins for all other filter types
+                        bins = self_filter.bins
 
             # Add indices for each bin in this Filter to the list
             indices = np.array([self_filter.get_bin_index(b) for b in bins])

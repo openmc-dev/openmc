@@ -75,24 +75,6 @@ struct BoundingBox
     return *this;
   }
 
-  // ensure bounding box contains a point
-  inline void update(const Position& r) {
-    xmin = std::min(xmin, r.x);
-    xmax = std::max(xmax, r.x);
-    ymin = std::min(ymin, r.y);
-    ymax = std::max(ymax, r.y);
-    zmin = std::min(zmin, r.z);
-    zmax = std::max(zmax, r.z);
-  }
-
-  // check if a point is in the box
-  inline bool contains(const Position& r) const {
-    if (r.x < xmin || r.x > xmax) { return false; }
-    if (r.y < ymin || r.y > ymax) { return false; }
-    if (r.z < zmin || r.z > zmax) { return false; }
-    return true;
-  }
-
 };
 
 //==============================================================================

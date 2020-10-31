@@ -36,8 +36,15 @@ vector<T> get_node_array(
   std::stringstream iss {s};
   T value;
   vector<T> values;
-  while (iss >> value)
-    values.push_back(value);
+
+  // First count what to reserve for vector, then push back
+  unsigned stream_length = 0;
+  while (iss >> value) stream_length++;
+  iss.clear();
+  iss.seekg(0);
+  values.reserve(stream_length);
+
+  while (iss >> value) values.push_back(value);
 
   return values;
 }

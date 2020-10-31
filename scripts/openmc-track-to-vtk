@@ -46,7 +46,7 @@ def main():
         n_coords = track.attrs['n_coords']
         coords = []
         for i in range(n_particles):
-            coords.append(track['coordinates_' + str(i + 1)].value)
+            coords.append(track['coordinates_' + str(i + 1)][()])
             for j in range(n_coords[i]):
                 points.InsertNextPoint(coords[i][j,:])
 

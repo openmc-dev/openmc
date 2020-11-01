@@ -126,6 +126,12 @@ void process_calculate_xs_events(SharedArray<EventQueueItem>& queue)
   }
 #endif
 
+  // #pragma omp parallel for schedule(runtime)
+  for (int64_t i = 0; i < queue.size(); i++) {
+    Particle& p = simulation::particles[queue[i].idx];
+    p.neutron_xs_.syncToHost();
+  }
+
   queue.resize(0);
 
   simulation::time_event_calculate_xs.stop();

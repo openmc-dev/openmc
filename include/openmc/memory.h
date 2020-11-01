@@ -178,6 +178,7 @@ public:
   {
     host = ptr;
     device = ptr;
+    return *this;
   }
 
   // These should exclusively be used for cudaMemcpy calls

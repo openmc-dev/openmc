@@ -34,96 +34,91 @@ __global__ void process_calculate_xs_events_device(
     for (int i = 0; i < m.nuclide_.size(); ++i) {
       auto const& i_nuclide = m.nuclide_[i];
       auto& micro {p.neutron_xs_[i_nuclide]};
+
+      if (p.E_ != micro.last_E || p.sqrtkT_ != micro.last_sqrtkT) {
+        auto const& nuclide = *nuclides[i_nuclide];
+        micro.elastic = CACHE_INVALID;
+        micro.thermal = 0.0;
+        micro.thermal_elastic = 0.0;
+
+        // Find the appropriate temperature index. why would someone use
+        // nearest?
+        double kT = p.sqrtkT_ * p.sqrtkT_;
+        double f;
+
+        int i_temp = 0;
+        // int i_temp = -1;
+
+        // // Find temperatures that bound the actual temperature
+        // for (i_temp = 0; i_temp < nuclide.kTs_.size() - 1; ++i_temp) {
+        //   if (nuclide.kTs_[i_temp] <= kT && kT < nuclide.kTs_[i_temp + 1])
+        //     break;
+        // }
+
+        // // Randomly sample between temperature i and i+1
+        // f = (kT - nuclide.kTs_[i_temp]) /
+        //     (nuclide.kTs_[i_temp + 1] - nuclide.kTs_[i_temp]);
+        // if (f > prn(p.seeds_))
+        //   ++i_temp;
+
+        const auto& grid {nuclide.grid_[i_temp]};
+        int i_grid;
+        if (p.E_ < grid.energy.front()) {
+          i_grid = 0;
+        } else if (p.E_ > grid.energy.back()) {
+          i_grid = grid.energy.size() - 2;
+        } else {
+          // Determine bounding indices based on which equal log-spaced
+          // interval the energy is in
+          int i_low = grid.grid_index[i_log_union];
+          int i_high = grid.grid_index[i_log_union + 1] + 1;
+
+          // Perform binary search over reduced range
+          i_grid = i_low + lower_bound_index(
+                             &grid.energy[i_low], &grid.energy[i_high], p.E_);
+        }
+        const auto& xs_left {nuclide.xs_[i_temp][i_grid]};
+        const auto& xs_right {nuclide.xs_[i_temp][i_grid + 1]};
+        // check for rare case where two energy points are the same
+        if (grid.energy[i_grid] == grid.energy[i_grid + 1])
+          ++i_grid;
+
+        // calculate interpolation factor
+        f = (p.E_ - grid.energy[i_grid]) /
+            (grid.energy[i_grid + 1] - grid.energy[i_grid]);
+
+        micro.index_temp = i_temp;
+        micro.index_grid = i_grid;
+        micro.interp_factor = f;
+
+        // Calculate all microscopic cross sections
+        micro.total = (1.0 - f) * xs_left.total + f * xs_right.total;
+        micro.absorption =
+          (1.0 - f) * xs_left.absorption + f * xs_right.absorption;
+
+        if (nuclide.fissionable_) {
+          // Calculate microscopic nuclide total cross section
+          micro.fission = (1.0 - f) * xs_left.fission + f * xs_right.fission;
+
+          // Calculate microscopic nuclide nu-fission cross section
+          micro.nu_fission =
+            (1.0 - f) * xs_left.nu_fission + f * xs_right.nu_fission;
+        } else {
+          micro.fission = 0.0;
+          micro.nu_fission = 0.0;
+        }
+
+        // Calculate microscopic nuclide photon production cross section
+        micro.photon_prod = (1.0 - f) * xs_left.photon_production +
+                            f * xs_right.photon_production;
+
+        micro.index_sab = C_NONE;
+        micro.sab_frac = 0.0;
+        micro.last_E = p.E_;
+        micro.last_sqrtkT = p.sqrtkT_;
+      }
+
       double const& atom_density = m.atom_density_[i];
-
-      // Possibly worth just not caching here and recalculating every time?
-      if (!(p.E_ != micro.last_E || p.sqrtkT_ != micro.last_sqrtkT)) {
-        p.macro_xs_.total += atom_density * micro.total;
-        p.macro_xs_.absorption += atom_density * micro.absorption;
-        p.macro_xs_.fission += atom_density * micro.fission;
-        p.macro_xs_.nu_fission += atom_density * micro.nu_fission;
-        continue;
-      }
-
-      auto const& nuclide = *nuclides[i_nuclide];
-      micro.elastic = CACHE_INVALID;
-      micro.thermal = 0.0;
-      micro.thermal_elastic = 0.0;
-
-      // Find the appropriate temperature index. why would someone use nearest?
-      double kT = p.sqrtkT_ * p.sqrtkT_;
-      double f;
-
-      int i_temp = 0;
-      // int i_temp = -1;
-
-      // // Find temperatures that bound the actual temperature
-      // for (i_temp = 0; i_temp < nuclide.kTs_.size() - 1; ++i_temp) {
-      //   if (nuclide.kTs_[i_temp] <= kT && kT < nuclide.kTs_[i_temp + 1])
-      //     break;
-      // }
-
-      // // Randomly sample between temperature i and i+1
-      // f = (kT - nuclide.kTs_[i_temp]) /
-      //     (nuclide.kTs_[i_temp + 1] - nuclide.kTs_[i_temp]);
-      // if (f > prn(p.seeds_))
-      //   ++i_temp;
-
-      const auto& grid {nuclide.grid_[i_temp]};
-      int i_grid;
-      if (p.E_ < grid.energy.front()) {
-        i_grid = 0;
-      } else if (p.E_ > grid.energy.back()) {
-        i_grid = grid.energy.size() - 2;
-      } else {
-        // Determine bounding indices based on which equal log-spaced
-        // interval the energy is in
-        int i_low = grid.grid_index[i_log_union];
-        int i_high = grid.grid_index[i_log_union + 1] + 1;
-
-        // Perform binary search over reduced range
-        i_grid = i_low + lower_bound_index(
-                           &grid.energy[i_low], &grid.energy[i_high], p.E_);
-      }
-      const auto& xs_left {nuclide.xs_[i_temp][i_grid]};
-      const auto& xs_right {nuclide.xs_[i_temp][i_grid + 1]};
-      // check for rare case where two energy points are the same
-      if (grid.energy[i_grid] == grid.energy[i_grid + 1])
-        ++i_grid;
-
-      // calculate interpolation factor
-      f = (p.E_ - grid.energy[i_grid]) /
-          (grid.energy[i_grid + 1] - grid.energy[i_grid]);
-
-      micro.index_temp = i_temp;
-      micro.index_grid = i_grid;
-      micro.interp_factor = f;
-
-      // Calculate all microscopic cross sections
-      micro.total = (1.0 - f) * xs_left.total + f * xs_right.total;
-      micro.absorption =
-        (1.0 - f) * xs_left.absorption + f * xs_right.absorption;
-
-      if (nuclide.fissionable_) {
-        // Calculate microscopic nuclide total cross section
-        micro.fission = (1.0 - f) * xs_left.fission + f * xs_right.fission;
-
-        // Calculate microscopic nuclide nu-fission cross section
-        micro.nu_fission =
-          (1.0 - f) * xs_left.nu_fission + f * xs_right.nu_fission;
-      } else {
-        micro.fission = 0.0;
-        micro.nu_fission = 0.0;
-      }
-
-      // Calculate microscopic nuclide photon production cross section
-      micro.photon_prod =
-        (1.0 - f) * xs_left.photon_production + f * xs_right.photon_production;
-
-      micro.index_sab = C_NONE;
-      micro.sab_frac = 0.0;
-      micro.last_E = p.E_;
-      micro.last_sqrtkT = p.sqrtkT_;
       p.macro_xs_.total += atom_density * micro.total;
       p.macro_xs_.absorption += atom_density * micro.absorption;
       p.macro_xs_.fission += atom_density * micro.fission;

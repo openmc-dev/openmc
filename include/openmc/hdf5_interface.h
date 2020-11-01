@@ -282,7 +282,11 @@ void read_dataset(hid_t dset, vector<T, Alloc>& vec, bool indep = false)
                         vec.data());
 }
 
-// Partial specialization for if data is to be also read to the GPU
+#ifdef __CUDACC__
+// Partial specialization for if data is to be also read to the GPU. Must
+// manually sync to the device if we're not using unified memory. This is
+// best when the data won't change over the course of the simulation, e.g.
+// cross sections or other physics data.
 template<typename T>
 void read_dataset(
   hid_t dset, vector<T, ReplicatedAllocator<T>>& vec, bool indep = false)
@@ -298,6 +302,7 @@ void read_dataset(
     dset, nullptr, H5TypeMap<T>::type_id, H5S_ALL, indep, vec.data());
   vec.syncToDevice(); // Important!!
 }
+#endif
 
 template<typename T, typename Alloc>
 void read_dataset(

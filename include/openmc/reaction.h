@@ -19,6 +19,12 @@ namespace openmc {
 //! distributions)
 //==============================================================================
 
+#ifdef __CUDACC__
+using nuclide_grid_type = vector<xsfloat, ReplicatedAllocator<xsfloat>>;
+#else
+using nuclide_grid_type = vector<xsfloat>;
+#endif
+
 class Reaction {
 public:
   //! Construct reaction from HDF5 data
@@ -33,8 +39,8 @@ public:
   //! \param[in] flux Flux in each energy group (not normalized per eV)
   //! \param[in] grid Nuclide energy grid
   //! \return Reaction rate
-  xsfloat collapse_rate(gsl::index i_temp, gsl::span<const xsfloat> energy,
-    gsl::span<const double> flux, const vector<xsfloat, ReplicatedAllocator<double>>& grid) const;
+  double collapse_rate(gsl::index i_temp, gsl::span<const double> energy,
+    gsl::span<const double> flux, const nuclide_grid_type& grid) const;
 
   //! Cross section at a single temperature
   struct TemperatureXS {

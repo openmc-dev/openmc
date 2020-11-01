@@ -23,6 +23,16 @@
 
 namespace openmc {
 
+// See vector.h if you're trying to understand the CUDA version. Otherwise,
+// the things called replicated_vector are just normal std::vectors.
+#ifdef __CUDACC__
+template<typename T>
+using replicated_vector = vector<T, ReplicatedAllocator<T>>;
+#else
+template<typename T>
+using replicated_vector = std::vector<T>;
+#endif
+
 //==============================================================================
 // Data for a nuclide
 //==============================================================================
@@ -32,8 +42,8 @@ public:
   // Types, aliases
   using EmissionMode = ReactionProduct::EmissionMode;
   struct EnergyGrid {
-    vector<int, ReplicatedAllocator<int>> grid_index;
-    vector<xsfloat, ReplicatedAllocator<double>> energy;
+    replicated_vector<int> grid_index;
+    replicated_vector<xsfloat> energy;
   };
 
   struct CrossSectionSet {
@@ -92,12 +102,8 @@ public:
 
   // Temperature dependent cross section data
   vector<xsfloat> kTs_;                //!< temperatures in eV (k*T)
-  vector<EnergyGrid, ReplicatedAllocator<EnergyGrid>>
-    grid_; //!< Energy grid at each temperature
-
-  using CrossSectionSetVector =
-    vector<CrossSectionSet, ReplicatedAllocator<CrossSectionSet>>;
-  vector<CrossSectionSetVector, ReplicatedAllocator<CrossSectionSetVector>>
+  replicated_vector<EnergyGrid> grid_; //!< Energy grid at each temperature
+  replicated_vector<replicated_vector<CrossSectionSet>>
     xs_; //!< Cross sections at each temperature
 
   // Multipole data

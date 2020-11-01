@@ -404,9 +404,16 @@ __host__ __device__ bool operator==(
   return true;
 }
 
+template<typename T>
+using replicated_vector = vector<T, ReplicatedAllocator<T>>;
+
 #else
 
 using std::vector;
+
+// Let the replicated vector just be nothing
+template<typename T>
+using replicated_vector = std::vector<T>;
 
 #endif
 

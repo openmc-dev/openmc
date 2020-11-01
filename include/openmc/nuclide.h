@@ -23,16 +23,6 @@
 
 namespace openmc {
 
-// See vector.h if you're trying to understand the CUDA version. Otherwise,
-// the things called replicated_vector are just normal std::vectors.
-#ifdef __CUDACC__
-template<typename T>
-using replicated_vector = vector<T, ReplicatedAllocator<T>>;
-#else
-template<typename T>
-using replicated_vector = std::vector<T>;
-#endif
-
 //==============================================================================
 // Data for a nuclide
 //==============================================================================
@@ -42,6 +32,8 @@ public:
   // Types, aliases
   using EmissionMode = ReactionProduct::EmissionMode;
   struct EnergyGrid {
+    // See vector.h if you're trying to understand the CUDA version. Otherwise,
+    // the things called replicated_vector are just normal std::vectors.
     replicated_vector<int> grid_index;
     replicated_vector<xsfloat> energy;
   };

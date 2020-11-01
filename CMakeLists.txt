@@ -157,9 +157,18 @@ if(coverage)
   list(APPEND ldflags --coverage)
 endif()
 if (cuda)
-  if (debug OR profile)
+
+  if (debug)
     list(APPEND cuflags -G)
+  # else()
+  #   list(APPEND cuflags -dlto)
   endif()
+
+  # -G is very bad for just profiling. Use -lineinfo rather
+  if (profile)
+    list(APPEND cuflags -lineinfo)
+  endif()
+
 endif()
 
 # Show flags being used

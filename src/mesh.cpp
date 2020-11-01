@@ -2099,8 +2099,8 @@ LibMesh::LibMesh(const std::string& filename) {
 
 Position
 LibMesh::centroid(int bin) const {
-  auto elem = this->get_element_from_bin(bin);
-  auto centroid = elem->centroid();
+  auto& elem = this->get_element_from_bin(bin);
+  auto centroid = elem.centroid();
   return {centroid(0), centroid(1), centroid(2)};
 }
 
@@ -2145,7 +2145,7 @@ int LibMesh::n_bins() const {
 int LibMesh::n_surface_bins() const {
   int n_bins = 0;
   for (int i = 0; i < this->n_bins(); i++) {
-    const libMesh::Elem& e = m_->elem_ref(i);
+    const libMesh::Elem& e = get_element_from_bin(i);
     n_bins += e.n_faces();
     // if this is a boundary element, sure to count boundary faces
     // twice
@@ -2269,9 +2269,9 @@ std::pair<std::vector<double>, std::vector<double>>
 LibMesh::plot(Position plot_ll,
               Position plot_ur) const { return {}; }
 
-const libMesh::Elem*
+const libMesh::Elem&
 LibMesh::get_element_from_bin(int bin) const {
-  return m_->elem_ptr(bin);
+  return m_->elem_ref(bin);
 }
 
 double LibMesh::volume(int bin) const {

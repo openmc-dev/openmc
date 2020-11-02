@@ -3,7 +3,7 @@ import numpy as np
 
 from .results import Results, VERSION_RESULTS
 from openmc.checkvalue import check_filetype_version, check_value
-
+import openmc
 
 __all__ = ["ResultsList"]
 
@@ -192,3 +192,41 @@ class ResultsList(list):
         for ix, res in enumerate(items):
             times[ix] = res.proc_time
         return times
+
+    def export_to_materials_xml(self, mats_list, burnup_index, nuc_with_data=None):
+        """Export Materials.xml file from the depletion results
+        
+        ..note::
+        
+           Will require mats_list from statepoint file match thatin depletion results
+
+        Parameters
+        ----------
+        mats_list : Iterable of openmc.Material
+            Materials to evaluate
+        burn_index : int
+            Index of burnup step to evaluate
+        nuc_with_data : Iterable of str, optional
+            nuclides list to evaluate with neutron data
+
+        Returns
+        -------
+        """
+        result = self[burnup_index]
+        mat_file = openmc.Materials()
+        for i, mat in enumerate(mats_list):
+            mat_id = mat.id
+            new_mat = openmc.Material(mat_id)
+            if str(mat_id) in result.mat_to_ind.keys():
+                new_mat.volume = result.volume[str(mat_id)]
+                for nuc in result.nuc_to_ind.keys():
+                    atoms = result[0, str(mat_id), nuc]
+                    if atoms > 0.0:
+                        atoms_per_barn_cm = 1e-24 * atoms / new_mat.volume
+                        if (nuc_with_data is None) or (nuc in nuc_with_data):
+                            new_mat.add_nuclide(nuc, atoms_per_barn_cm)
+                mat_file.append(new_mat)
+            else:
+                mat_file.append(mat)
+        mat_file.export_to_xml()
+

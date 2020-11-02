@@ -65,10 +65,10 @@
 </settings>
 <?xml version='1.0' encoding='utf-8'?>
 <tallies>
-  <mesh create="True" id="1" load="True" type="external">
+  <mesh create="True" id="1" load="True" type="unstructured">
     <filename>test_mesh_tets.h5m</filename>
   </mesh>
-  <mesh id="2" type="unstructured">
+  <mesh create="True" id="2" load="True" type="unstructured">
     <filename>test_mesh_tets.h5m</filename>
   </mesh>
   <filter id="1" type="mesh">

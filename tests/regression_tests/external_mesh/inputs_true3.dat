@@ -65,17 +65,17 @@
 </settings>
 <?xml version='1.0' encoding='utf-8'?>
 <tallies>
-  <mesh create="False" id="6" load="False" type="external">
+  <mesh create="False" id="1" load="False" type="unstructured">
     <filename>test_mesh_tets.h5m</filename>
   </mesh>
-  <mesh id="7" type="unstructured">
+  <mesh create="True" id="4" load="True" type="unstructured">
     <filename>test_mesh_tets.h5m</filename>
   </mesh>
   <filter id="5" type="mesh">
-    <bins>6</bins>
+    <bins>1</bins>
   </filter>
   <filter id="6" type="mesh">
-    <bins>7</bins>
+    <bins>4</bins>
   </filter>
   <tally id="5" name="external mesh tally">
     <filters>5</filters>

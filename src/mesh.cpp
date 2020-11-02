@@ -35,9 +35,9 @@ namespace openmc {
 
 namespace model {
 
-std::unordered_map<int32_t, int32_t> mesh_map;
-std::vector<std::unique_ptr<Mesh>> meshes;
-std::shared_ptr<moab::Interface> moabPtr;
+  std::unordered_map<int32_t, int32_t> mesh_map;
+  std::vector<std::unique_ptr<Mesh> > meshes;
+  std::map<int32_t, std::shared_ptr<moab::Interface> > moabPtrs;
 
 } // namespace model
 
@@ -1294,7 +1294,11 @@ openmc_mesh_set_params(int32_t index, int n, const double* ll, const double* ur,
 // UnstructuredMesh implementation
 //==============================================================================
 
-UnstructuredMesh::UnstructuredMesh(pugi::xml_node node)
+UnstructuredMesh::UnstructuredMesh(pugi::xml_node node) :
+  Mesh(node),
+  create_(true),
+  load_(true),
+  filename_("")
 {
   init(node);
 }
@@ -1303,50 +1307,105 @@ void
 UnstructuredMesh::init(pugi::xml_node node)
 {
 
-  setMeshID(node);
-
+  // Set the spacial dimension of the mesh;
   // unstructured always assumed to be 3D
   n_dimension_ = 3;
 
-  setMeshType(node);
+  // check the mesh type
+  if (check_for_node(node, "type")) {
+    auto temp = get_node_value(node, "type", true, true);
+    if (temp != "unstructured") {
+      fatal_error("Invalid mesh type: " + temp);
+    }
+  }
 
-  setFilename(node);
-
-  initMOAB();
-
-  initMeshData();
-}
-
-void
-UnstructuredMesh::setMeshType(pugi::xml_node node)
-{
-  mesh_type_="unstructured";
-  checkMeshType(mesh_type_,node);
-}
-
-void
-UnstructuredMesh::setFilename(pugi::xml_node node)
-{
- // get the filename of the unstructured mesh to load
+  // get the filename of the unstructured mesh to load
   if (check_for_node(node, "filename")) {
     filename_ = get_node_value(node, "filename");
   } else {
     fatal_error("No filename supplied for unstructured mesh with ID: " +
                 std::to_string(id_));
   }
+
+  // Create / load MOAB
+  initMOAB(node);
+
+  // Retrieve data from MOAB that we need
+  initMeshData();
 }
 
 void
-UnstructuredMesh::initMOAB()
+UnstructuredMesh::initMOAB(pugi::xml_node node)
 {
-  // create MOAB instance
-  mbi_ = std::make_shared<moab::Core>();
 
-  // load unstructured mesh file
-  moab::ErrorCode rval = mbi_->load_file(filename_.c_str());
-  if (rval != moab::MB_SUCCESS) {
-    fatal_error("Failed to load the unstructured mesh file: " + filename_);
+  // Find out whether MOAB constructor should be called (default = yes)
+  if (check_for_node(node, "create")) {
+    create_ = get_node_value_bool(node, "create");
   }
+
+  if(create_){
+    // Check for pre-existing MOAB interface
+    if(model::moabPtrs.find(id_)!=model::moabPtrs.end()){
+      if(model::moabPtrs[id_]!=nullptr){
+        fatal_error("Pre-existing MOAB interface in memory for mesh ID "+std::to_string(id_));
+      }
+    }
+    // Create MOAB interface
+    write_message("Creating MOAB interface for mesh ID "+std::to_string(id_), 5);
+    model::moabPtrs[id_] = std::make_shared<moab::Core>();
+  }
+  else{
+    write_message("User set create=False. Assuming external mesh provided.", 5);
+  }
+
+  // Set the internal pointer to MOAB
+  if(model::moabPtrs.find(id_)==model::moabPtrs.end())
+    fatal_error("No MOAB interface found for mesh ID "+std::to_string(id_));
+  mbi_ = model::moabPtrs[id_];
+
+  // Find out whether to load a file into MOAB (default = yes)
+  if (check_for_node(node, "load")) {
+    load_ = get_node_value_bool(node, "load");
+  }
+
+  if(load_){
+    // Load file
+    loadMOAB();
+  }
+  else{
+    write_message("User set load=False. Assuming manual load.", 5);
+  }
+}
+
+
+void
+UnstructuredMesh::loadMOAB()
+{
+
+  if(mbi_==nullptr){
+    fatal_error("MOAB inteface is null. Check your settings.");
+  }
+  else if(filename_==""){
+    fatal_error("Empty filename provided for unstructured mesh.");
+  }
+
+  // Before we load, check there wasn't already something loaded
+
+  // set member range of tetrahedral entities
+  moab::Range testRange;
+  moab::ErrorCode rval = mbi_->get_entities_by_dimension(0, n_dimension_, testRange);
+  if (rval == moab::MB_SUCCESS && !testRange.empty() ) {
+    fatal_error("Pre-existing mesh data found prior to load. Please check settings.");
+  }
+
+  write_message("Loading mesh into MOAB from file " + filename_, 5);
+
+  // Load mesh file
+  rval = mbi_->load_file(filename_.c_str());
+  if (rval != moab::MB_SUCCESS) {
+    fatal_error("Failed to load  mesh from file: " + filename_);
+  }
+
 }
 
 void UnstructuredMesh::initMeshData()
@@ -1384,18 +1443,6 @@ void UnstructuredMesh::initMeshData()
   compute_barycentric_data(ehs_);
   build_kdtree(ehs_);
 
-}
-
-void
-UnstructuredMesh::checkMeshType(const std::string & mesh_type,pugi::xml_node node)
-{
-  // check the mesh type
-  if (check_for_node(node, "type")) {
-    auto temp = get_node_value(node, "type", true, true);
-    if (temp != mesh_type) {
-      fatal_error("Invalid mesh type in checkMeshType: "+temp);
-    }
-  }
 }
 
 void
@@ -1634,7 +1681,7 @@ UnstructuredMesh::to_hdf5(hid_t group) const
 {
     hid_t mesh_group = create_group(group, fmt::format("mesh {}", id_));
 
-    write_dataset(mesh_group, "type", mesh_type_);
+    write_dataset(mesh_group, "type", "unstructured");
     write_dataset(mesh_group, "filename", filename_);
 
     // write volume and centroid of each tet
@@ -1907,37 +1954,6 @@ UnstructuredMesh::write(std::string base_filename) const {
   }
 }
 
-//==============================================================================
-// ExternalMesh implementation
-//==============================================================================
-
-ExternalMesh::ExternalMesh(pugi::xml_node node)
-{
-  init(node);
-}
-
-void
-ExternalMesh::setMeshType(pugi::xml_node node)
-{
-  mesh_type_="external";
-  checkMeshType(mesh_type_,node);
-}
-
-void
-ExternalMesh::setFilename(pugi::xml_node)
-{
-  filename_ = "external";
-}
-
-void
-ExternalMesh::initMOAB()
-{
-  if(model::moabPtr==nullptr){
-    fatal_error("External MOAB inteface is null. Check your settings.");
-  }
-  mbi_ = model::moabPtr;
-}
-
 #endif
 
 //==============================================================================
@@ -1963,14 +1979,9 @@ void read_meshes(pugi::xml_node root)
 #ifdef DAGMC
     } else if (mesh_type == "unstructured") {
       model::meshes.push_back(std::make_unique<UnstructuredMesh>(node));
-    } else if (mesh_type == "external") {
-      create_and_load_external_mesh(node);
-      model::meshes.push_back(std::make_unique<ExternalMesh>(node));
 #else
     } else if (mesh_type == "unstructured") {
       fatal_error("Unstructured mesh support is disabled.");
-    } else if (mesh_type == "external") {
-      fatal_error("External mesh support is disabled.");
 #endif
     } else {
       fatal_error("Invalid mesh type: " + mesh_type);
@@ -2006,70 +2017,6 @@ void free_memory_mesh()
   model::meshes.clear();
   model::mesh_map.clear();
 }
-
-#ifdef DAGMC
-void create_and_load_external_mesh(pugi::xml_node node){
-
-  bool create=true;
-  if (check_for_node(node, "create")) {
-    create = get_node_value_bool(node, "create");
-  }
-  bool load=true;
-  if (check_for_node(node, "load")) {
-    load = get_node_value_bool(node, "load");
-  }
-
-  if(create){
-    // Create MOAB interface
-    if(model::moabPtr!=nullptr){
-      fatal_error("Pre-existing external mesh interface in memory");
-    }
-    write_message("Creating MOAB interface for external mesh", 5);
-    model::moabPtr = std::make_shared<moab::Core>();
-  }
-  else{
-    write_message("User set create=False. Assuming external mesh provided.", 5);
-  }
-
-  if(load){
-    // Get the filename of the external mesh to load
-    std::string filename;
-    if (check_for_node(node, "filename")) {
-      filename = get_node_value(node, "filename");
-    } else {
-      fatal_error("No filename supplied for external mesh");
-    }
-
-    load_external_mesh(filename);
-  }
-  else {
-    write_message("User set load=False. Assuming manual load.", 5);
-  }
-
-
-}
-
-void load_external_mesh(const std::string & filename)
-{
-
-  if(model::moabPtr==nullptr){
-    fatal_error("Mesh interface was not created before load_external_mesh called");
-  }
-  else if(filename==""){
-    fatal_error("Empty filename provided.");
-  }
-
-  write_message("Loading external mesh into MOAB from file" + filename, 5);
-
-  // load mesh file
-  moab::ErrorCode rval = model::moabPtr->load_file(filename.c_str());
-  if (rval != moab::MB_SUCCESS) {
-    fatal_error("Failed to load the external mesh file: " + filename);
-  }
-  //
-}
-
-#endif
 
 extern "C" int n_meshes() { return model::meshes.size(); }
 

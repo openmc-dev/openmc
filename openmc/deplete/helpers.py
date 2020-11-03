@@ -1,11 +1,12 @@
 """
 Class for normalizing fission energy deposition
 """
+import bisect
+from collections import defaultdict
 from copy import deepcopy
 from itertools import product
 from numbers import Real
-import bisect
-from collections import defaultdict
+import sys
 
 from numpy import dot, zeros, newaxis, asarray
 

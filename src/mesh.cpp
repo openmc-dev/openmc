@@ -37,7 +37,9 @@ namespace model {
 
   std::unordered_map<int32_t, int32_t> mesh_map;
   std::vector<std::unique_ptr<Mesh> > meshes;
+#ifdef DAGMC
   std::map<int32_t, std::shared_ptr<moab::Interface> > moabPtrs;
+#endif
 
 } // namespace model
 

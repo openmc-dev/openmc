@@ -149,7 +149,7 @@ Material::Material(pugi::xml_node node)
 
     // Set density for macroscopic data
     if (units == "macro") {
-      densities.push_back(1.0);
+      densities.push_back(density_);
     } else {
       fatal_error("Units can only be macro for macroscopic data " + name);
     }
@@ -169,7 +169,7 @@ Material::Material(pugi::xml_node node)
       // Check if no atom/weight percents were specified or if both atom and
       // weight percents were specified
       if (units == "macro") {
-        densities.push_back(1.0);
+        densities.push_back(density_);
       } else {
         bool has_ao = check_for_node(node_nuc, "ao");
         bool has_wo = check_for_node(node_nuc, "wo");

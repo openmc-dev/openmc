@@ -67,7 +67,7 @@ class MGXSTestHarness(PyAPITestHarness):
 
         # Instantiate some Materials and register the appropriate objects
         mat = openmc.Material(material_id=1, name='UO2 fuel')
-        mat.set_density('macro', 1.0)
+        mat.set_density('macro', 1.1)
         mat.add_macroscopic(uo2_data)
 
         # Instantiate a Materials collection and export to XML

@@ -1,7 +1,7 @@
 import os
 import h5py
-import numpy as np
 
+import numpy as np
 import pytest
 import openmc
 
@@ -13,7 +13,7 @@ def model(request):
     marker = request.node.get_closest_marker("surf_src_op")
     surf_src_op = marker.args[0]
 
-    model = openmc.model.Model()
+    openmc_model = openmc.model.Model()
 
     # Materials
     # None
@@ -33,44 +33,44 @@ def model(request):
     cell_4 = openmc.Cell(4, region=+sph_3&-sph_4)
     root = openmc.Universe(universe_id=1,
                            cells=[cell_1, cell_2, cell_3, cell_4])
-    model.geometry = openmc.Geometry(root)
+    openmc_model.geometry = openmc.Geometry(root)
 
     # Settings
-    model.settings.run_mode = 'fixed source'
-    model.settings.particles = 1000
-    model.settings.batches = 10
+    openmc_model.settings.run_mode = 'fixed source'
+    openmc_model.settings.particles = 1000
+    openmc_model.settings.batches = 10
 
     if surf_src_op == 'write':
         point = openmc.stats.Point((0, 0, 0))
         pt_src = openmc.Source(space=point)
-        model.settings.source = pt_src
+        openmc_model.settings.source = pt_src
 
-        model.settings.surf_src_write = {'surf_ids': [1],
-                                         'max_surf_banks': 1000}
-
+        openmc_model.settings.surf_src_write = {'surf_ids': [1],
+                                                'max_surf_banks': 1000}
     elif surf_src_op == 'read':
-        model.settings.surf_src_read = {'path': 'surface_source_true.h5'}
+        openmc_model.settings.surf_src_read = {'path': 'surface_source_true.h5'}
 
     # Tallies
     tal = openmc.Tally(1)
     cell_filter = openmc.CellFilter(cell_3, 1)
     tal.filters = [cell_filter]
     tal.scores = ['flux']
-    model.tallies.append(tal)
+    openmc_model.tallies.append(tal)
 
-    return model
+    return openmc_model
 
 
 class SurfaceSourceTestHarness(PyAPITestHarness):
-
     def _test_output_created(self):
+        """Make sure surface_source.h5 has also been created."""
         super()._test_output_created()
-        # Check 'surface_source.h5'
+        # Check if 'surface_source.h5' has been created.
         if self._model.settings.surf_src_write:
             assert os.path.exists('surface_source.h5'), \
                 'Surface source file does not exist.'
 
     def _compare_output(self):
+        """Make sure the current surface_source.h5 agree with the reference."""
         if self._model.settings.surf_src_write:
             with h5py.File("surface_source_true.h5", 'r') as f:
                 src_true = f['source_bank'][()]
@@ -79,7 +79,7 @@ class SurfaceSourceTestHarness(PyAPITestHarness):
             assert np.all(np.sort(src_true) == np.sort(src_test))
 
     def execute_test(self):
-        """Build input XMLs, run OpenMC, and verify correct results."""
+        """Build input XMLs, run OpenMC, check output and results."""
         try:
             self._build_inputs()
             inputs = self._get_inputs()
@@ -95,23 +95,15 @@ class SurfaceSourceTestHarness(PyAPITestHarness):
             self._cleanup()
 
     def _cleanup(self):
+        """Delete statepoints, tally, and test files."""
         super()._cleanup()
         fs = 'surface_source.h5'
         if os.path.exists(fs):
             os.remove(fs)
 
-    # - create model geom, mat, (fxd_src) sett - without surf_src_read/write cap
-    # - add surf_src_write sett
-    # - run with tally
-    # - check surf_src.h5 exist - give sample/ref?
-    # - compare tally result, check
-    # - restart, add surf_src_read sett
-    # - run with the same tally
-    # - compare tally result, check
 
 @pytest.mark.surf_src_op('write')
 def test_surface_source_write(model):
-
     harness = SurfaceSourceTestHarness('statepoint.10.h5',
                                        model,
                                        'inputs_true_write.dat')
@@ -120,7 +112,6 @@ def test_surface_source_write(model):
 
 @pytest.mark.surf_src_op('read')
 def test_surface_source_read(model):
-
     harness = SurfaceSourceTestHarness('statepoint.10.h5',
                                        model,
                                        'inputs_true_read.dat')

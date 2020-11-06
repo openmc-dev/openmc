@@ -44,6 +44,7 @@ Output Files
 
    statepoint
    source
+   surface_source
    summary
    depletion_results
    particle_restart

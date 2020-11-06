@@ -371,15 +371,17 @@ class Operator(TransportOperator):
             [mat for mat in self.geometry.get_all_materials().values()
              if mat.depletable and mat.num_instances > 1])
 
+        for mat in distribmats:
+            if mat.volume is None:
+                raise RuntimeError("Volume not specified for depletable "
+                                    "material with ID={}.".format(mat.id))
+            mat.volume /= mat.num_instances
+
         if distribmats:
             # Assign distribmats to cells
             for cell in self.geometry.get_all_material_cells().values():
-                if cell.fill in distribmats and cell.num_instances > 1:
+                if cell.fill in distribmats:
                     mat = cell.fill
-                    if mat.volume is None:
-                        raise RuntimeError("Volume not specified for depletable "
-                                           "material with ID={}.".format(mat.id))
-                    mat.volume /= mat.num_instances
                     cell.fill = [mat.clone()
                                  for i in range(cell.num_instances)]
 

@@ -525,11 +525,8 @@ hid_t h5banktype() {
   return banktype;
 }
 
-int* query_surf_src_size()
+int query_surf_src_size()
 {
-  // total_surf_banks, max_bank_size
-  static int qsize[2] = {0, 0};
-
   int64_t total;
   if (mpi::master) {
     simulation::surf_src_index.resize(mpi::n_procs + 1);
@@ -553,17 +550,14 @@ int* query_surf_src_size()
       simulation::surf_src_index[i] = \
         simulation::surf_src_index[i - 1] + bank_size[i - 1];
     }
-    // Set maximum bank size
-    qsize[1] = *std::max_element(bank_size.begin(), bank_size.end());
-    qsize[0] = simulation::surf_src_index[mpi::n_procs];
+    total = simulation::surf_src_index[mpi::n_procs];
   }
 #else
-  qsize[0] = simulation::surf_src_bank.size();
   simulation::surf_src_index[mpi::n_procs] = simulation::surf_src_bank.size();
-  qsize[1] = simulation::work_per_rank;
+  total = simulation::surf_src_bank.size();
 #endif
 
-  return qsize;
+  return total;
 }
 
 void
@@ -611,18 +605,13 @@ write_source_bank(hid_t group_id, bool surf_src_bank)
   int64_t dims_size = settings::n_particles;
   int64_t count_size = simulation::work_per_rank;
 
-  // Set maximum bank size
-  int64_t max_bank_size = simulation::work_per_rank;
-
   // Set vectors for source bank and starting bank index of each process
   std::vector<int64_t>* bank_index = &simulation::work_index;
   std::vector<Particle::Bank> src_bank = simulation::source_bank;
 
   // Reset dataspace sizes and vectors for surface source bank
   if (surf_src_bank) {
-    int* qsize = query_surf_src_size();
-
-    dims_size = qsize[0];
+    dims_size = query_surf_src_size();
     count_size = simulation::surf_src_bank.size();
 
     bank_index = &simulation::surf_src_index;
@@ -630,7 +619,6 @@ write_source_bank(hid_t group_id, bool surf_src_bank)
     src_bank.assign(simulation::surf_src_bank.data(),
                     simulation::surf_src_bank.data()
                     + simulation::surf_src_bank.size());
-    max_bank_size = qsize[1];
   }
 
 #ifdef PHDF5

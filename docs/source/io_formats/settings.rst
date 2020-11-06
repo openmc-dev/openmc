@@ -728,7 +728,7 @@ attributes/sub-elements:
 ---------------------------
 
 The ``<surf_src_read>`` element specifies a surface source file for OpenMC to
-read source bank for initializing batches.
+read source bank for initializing histories.
 This element has the following attributes/sub-elements:
 
   :path:

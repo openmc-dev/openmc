@@ -1038,7 +1038,9 @@ void read_cells(pugi::xml_node node)
     }
   }
 
+  #ifdef DAGMC
   read_dagmc_universes(node);
+  #endif
 
   // Populate the Universe vector and map.
   for (int i = 0; i < model::cells.size(); i++) {
@@ -1062,13 +1064,6 @@ void read_cells(pugi::xml_node node)
 
   if (model::cells.size() == 0) {
     fatal_error("No cells were found in the geometry.xml file");
-  }
-}
-
-void read_dagmc_universes(pugi::xml_node node) {
-  for (pugi::xml_node dag_node : node.children("dagmc")) {
-    model::universes.push_back(std::make_unique<DAGUniverse>(dag_node));
-    model::universe_map[model::universes.back()->id_] = model::universes.size() - 1;
   }
 }
 

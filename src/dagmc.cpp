@@ -195,6 +195,16 @@ void load_dagmc_geometry()
   model::universe_map[model::universes.back()->id_] = model::universes.size() - 1;
 }
 
+#ifdef DAGMC
+void read_dagmc_universes(pugi::xml_node node) {
+  for (pugi::xml_node dag_node : node.children("dagmc")) {
+    model::universes.push_back(std::make_unique<DAGUniverse>(dag_node));
+    model::universe_map[model::universes.back()->id_] = model::universes.size() - 1;
+  }
+}
+#endif
+
+
 DAGUniverse::DAGUniverse(pugi::xml_node node) {
   if (check_for_node(node, "id")) {
     id_ = std::stoi(get_node_value(node, "id"));

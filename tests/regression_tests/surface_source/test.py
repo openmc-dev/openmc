@@ -39,6 +39,7 @@ def model(request):
     openmc_model.settings.run_mode = 'fixed source'
     openmc_model.settings.particles = 1000
     openmc_model.settings.batches = 10
+    openmc_model.settings.seed = 1
 
     if surf_src_op == 'write':
         point = openmc.stats.Point((0, 0, 0))

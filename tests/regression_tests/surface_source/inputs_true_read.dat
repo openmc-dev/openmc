@@ -20,6 +20,7 @@
   <surf_src_read>
     <path>surface_source_true.h5</path>
   </surf_src_read>
+  <seed>1</seed>
 </settings>
 <?xml version='1.0' encoding='utf-8'?>
 <tallies>

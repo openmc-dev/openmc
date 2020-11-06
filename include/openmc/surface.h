@@ -30,7 +30,16 @@ namespace model {
 } // namespace model
 
 //==============================================================================
-//! Coordinates for an axis-aligned cuboid bounding a geometric object.
+// Constants
+//==============================================================================
+
+enum class GeometryType {
+  CSG,
+  DAG
+};
+
+//==============================================================================
+//! Coordinates for an axis-aligned cube that bounds a geometric object.
 //==============================================================================
 
 struct BoundingBox
@@ -166,7 +175,7 @@ public:
   Direction normal(Position r) const;
   Direction reflect(Position r, Direction u, Particle* p) const;
 
-  void to_hdf5_inner(hid_t group_id) const override;
+  inline void to_hdf5_inner(hid_t group_id) const override {};
 
   std::shared_ptr<moab::DagMC> dagmc_ptr_; //!< Pointer to DagMC instance
   int32_t dag_index_;      //!< DagMC index of surface

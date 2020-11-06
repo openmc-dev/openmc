@@ -241,7 +241,7 @@ DAGUniverse::DAGUniverse(const std::string& filename, bool auto_ids)
 }
 
 void DAGUniverse::initialize() {
-  type_ = UniverseType::DAG;
+  type_ = GeometryType::DAG;
 
   // determine the next cell id
   int32_t next_cell_id = 0;

@@ -203,12 +203,17 @@ Surface::to_hdf5(hid_t group_id) const
 {
   hid_t surf_group = create_group(group_id, fmt::format("surface {}", id_));
 
-  write_string(surf_group, "geom_type", "csg", false);
+  if (geom_type_ == GeometryType::DAG) {
+    write_string(surf_group, "geom_type", "dagmc", false);
+  }
+  else if (geom_type_ == GeometryType::CSG) {
+    write_string(surf_group, "geom_type", "csg", false);
 
-  if (bc_) {
-    write_string(surf_group, "boundary_type", bc_->type(), false);
-  } else {
-    write_string(surf_group, "boundary_type", "transmission", false);
+    if (bc_) {
+      write_string(surf_group, "boundary_type", bc_->type(), false);
+    } else {
+      write_string(surf_group, "boundary_type", "transmission", false);
+    }
   }
 
   if (!name_.empty()) {
@@ -220,14 +225,20 @@ Surface::to_hdf5(hid_t group_id) const
   close_group(surf_group);
 }
 
-CSGSurface::CSGSurface() : Surface{} {};
-CSGSurface::CSGSurface(pugi::xml_node surf_node) : Surface{surf_node} {};
+CSGSurface::CSGSurface() : Surface{} {
+  geom_type_ = GeometryType::CSG;
+};
+CSGSurface::CSGSurface(pugi::xml_node surf_node) : Surface{surf_node} {
+  geom_type_ = GeometryType::CSG;
+};
 
 //==============================================================================
 // DAGSurface implementation
 //==============================================================================
 #ifdef DAGMC
-DAGSurface::DAGSurface() : Surface{} {} // empty constructor
+DAGSurface::DAGSurface() : Surface{} {
+  geom_type_ = GeometryType::DAG;
+} // empty constructor
 
 double DAGSurface::evaluate(Position r) const
 {
@@ -272,10 +283,6 @@ Direction DAGSurface::reflect(Position r, Direction u, Particle* p) const
   MB_CHK_ERR_CONT(rval);
   p->last_dir() = u.reflect(dir);
   return p->last_dir();
-}
-
-void DAGSurface::to_hdf5_inner(hid_t group_id) const {
-  write_string(group_id, "geom_type", "dagmc", false);
 }
 
 #endif

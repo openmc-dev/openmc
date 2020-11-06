@@ -195,10 +195,10 @@ Universe::to_hdf5(hid_t universes_group) const
   auto group = create_group(universes_group, fmt::format("universe {}", id_));
 
   switch(type_) {
-    case UniverseType::CSG :
+    case GeometryType::CSG :
       write_string(group, "geom_type", "csg", false);
       break;
-    case UniverseType::DAG :
+    case GeometryType::DAG :
       write_string(group, "geom_type", "dagmc", false);
       break;
   }
@@ -355,10 +355,15 @@ Cell::to_hdf5(hid_t cell_group) const {
 // CSGCell implementation
 //==============================================================================
 
-CSGCell::CSGCell() {} // empty constructor
+// default constructor
+CSGCell::CSGCell() {
+  geom_type_ = GeometryType::CSG;
+}
 
 CSGCell::CSGCell(pugi::xml_node cell_node)
 {
+  geom_type_ = GeometryType::CSG;
+
   if (check_for_node(cell_node, "id")) {
     id_ = std::stoi(get_node_value(cell_node, "id"));
   } else {
@@ -800,7 +805,10 @@ CSGCell::contains_complex(Position r, Direction u, int32_t on_surface) const
 // DAGMC Cell implementation
 //==============================================================================
 #ifdef DAGMC
-DAGCell::DAGCell() : Cell{} { simple_ = true; };
+DAGCell::DAGCell() : Cell{} {
+  geom_type_ = GeometryType::DAG;
+  simple_ = true;
+};
 
 std::pair<double, int32_t>
 DAGCell::distance(Position r, Direction u, int32_t on_surface, Particle* p) const

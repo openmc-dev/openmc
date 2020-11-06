@@ -16,6 +16,7 @@ is that documented here.
 
            - **source_bank** (Compound type) -- Source bank information for each
              particle. The compound type has fields ``r``, ``u``, ``E``,
-             ``wgt``, ``delayed_group``, and ``particle``, which represent the
-             position, direction, energy, weight, delayed group, and particle
-             type (0=neutron, 1=photon, 2=electron, 3=positron), respectively.
+             ``wgt``, ``delayed_group``, ``surf_id`` and ``particle``,
+             which represent the position, direction, energy, weight,
+             delayed group, surface ID, and particle type (0=neutron, 1=photon,
+             2=electron, 3=positron), respectively.

@@ -77,8 +77,7 @@ class SurfaceSourceTestHarness(PyAPITestHarness):
                 src_true = f['source_bank'][()]
             with h5py.File("surface_source.h5", 'r') as f:
                 src_test = f['source_bank'][()]
-            for (true_p, test_p) in zip(np.sort(src_true), np.sort(src_test)):
-                assert true_p == test_p
+            np.testing.assert_array_equal(np.sort(src_true), np.sort(src_test))
 
     def execute_test(self):
         """Build input XMLs, run OpenMC, check output and results."""

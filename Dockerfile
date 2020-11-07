@@ -1,3 +1,9 @@
+# To build with OpenMC
+# docker build -t openmc .
+
+# To build with OpenMC and DAGMC enabled
+# docker build -t openmc_dagmc --build-arg include_dagmc=true .
+
 FROM ubuntu:latest
 
 # By default this Dockerfile builds OpenMC without dagmc
@@ -71,6 +77,7 @@ RUN if [ "$include_dagmc" = "true" ] ; \
                 -DCMAKE_INSTALL_RPATH=${hdf5_install_dir}:$HOME/MOAB ; \
     make ; \
     make install ; \
+    fi
 
 # Clone and install DAGMC
 RUN if [ "$include_dagmc" = "true" ] ; \

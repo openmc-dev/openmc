@@ -49,21 +49,29 @@ RUN if [ "$include_dagmc" = "false" ] ; \
     pip install -e .[test] ; \
     fi
 
+# install addition packages required for DAGMC
+RUN if [ "$include_dagmc" = "true" ] ; \
+    then apt-get --yes install libeigen3-dev ; \
+    apt-get --yes install libblas-dev ; \
+    apt-get --yes install liblapack-dev ; \
+    apt-get --yes install libnetcdf-dev ; \
+    #apt-get --yes install libnetcdf13 ; \
+    fi
+
+ENV LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu/hdf5/serial:$LD_LIBRARY_PATH
+
 # Clone and install MOAB
 RUN if [ "$include_dagmc" = "true" ] ; \
     then mkdir -p MOAB/bld ; \
     cd MOAB ; \
     git clone --depth 1 https://bitbucket.org/fathomteam/moab -b Version5.1.0 ; \
     cd bld ; \
-    cmake ../moab -DBUILD_SHARED_LIBS=OFF ; \
-                -DENABLE_HDF5=ON ; \
-                -DENABLE_BLASLAPACK=OFF ; \
+    cmake ../moab -DENABLE_HDF5=ON ; \
+                -DENABLE_NETCDF=ON ; \
+                -DBUILD_SHARED_LIBS=OFF ; \
                 -DENABLE_FORTRAN=OFF ; \
                 -DCMAKE_INSTALL_PREFIX=$HOME/MOAB ; \
-                -DCMAKE_C_COMPILER=${CC} ; \
-                -DCMAKE_CXX_COMPILER=${CXX} ; \
-                -DCMAKE_INSTALL_RPATH=${hdf5_install_dir}:$HOME/MOAB ; \
-    make ; \
+    make -j4; \
     make install ; \
     rm -rf * ; \
     cmake ../moab -DBUILD_SHARED_LIBS=ON ; \
@@ -72,22 +80,23 @@ RUN if [ "$include_dagmc" = "true" ] ; \
                 -DENABLE_BLASLAPACK=OFF ; \
                 -DENABLE_FORTRAN=OFF ; \
                 -DCMAKE_INSTALL_PREFIX=$HOME/MOAB ; \
-                -DCMAKE_C_COMPILER=${CC} ; \
-                -DCMAKE_CXX_COMPILER=${CXX} ; \
-                -DCMAKE_INSTALL_RPATH=${hdf5_install_dir}:$HOME/MOAB ; \
-    make ; \
+    make -j4; \
     make install ; \
     fi
 
 # Clone and install DAGMC
 RUN if [ "$include_dagmc" = "true" ] ; \
-    then DAGMC && \
-    cd DAGMC && \
-    git clone -b develop https://github.com/svalinn/dagmc && \
-    mkdir build && \
-    cd build && \
-    cmake ../dagmc -DBUILD_TALLY=ON -DCMAKE_INSTALL_PREFIX=$DAGMC_INSTALL_DIR -DMOAB_DIR=$MOAB_INSTALL_DIR -DBUILD_STATIC_LIBS=OFF -DBUILD_STATIC_EXE=OFF && \
-    make -j install && \
+    then mkdir DAGMC ; \
+    cd DAGMC ; \
+    git clone -b develop https://github.com/svalinn/dagmc ; \
+    mkdir build ; \
+    cd build ; \
+    cmake ../dagmc -DBUILD_TALLY=ON ; \
+                -DCMAKE_INSTALL_PREFIX=$HOME/DAGMC/ ; \
+                -DMOAB_DIR=$HOME/MOAB  ; \
+                -DBUILD_STATIC_LIBS=OFF ; \
+                -DBUILD_STATIC_EXE=OFF ; \
+    make -j install ; \
     rm -rf $HOME/DAGMC/dagmc $HOME/DAGMC/build ; \
     fi
 
@@ -98,7 +107,9 @@ RUN if [ "$include_dagmc" = "true" ] ; \
     cd /opt/openmc ; \
     mkdir -p build ; \
     cd build ; \
-    cmake -Doptimize=on -Ddagmc=ON -DDAGMC_ROOT=$DAGMC_INSTALL_DIR -DHDF5_PREFER_PARALLEL=on .. && \
+    cmake -Doptimize=on -Ddagmc=ON ; \
+                    -DDAGMC_DIR=$HOME/DAGMC/ ; \
+                    -DHDF5_PREFER_PARALLEL=on ..  ; \
     make  ; \
     make install ; \
     cd ..  ; \

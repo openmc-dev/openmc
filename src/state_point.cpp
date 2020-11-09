@@ -485,11 +485,11 @@ void load_state_point()
         + "...", 5);
 
       // Open source file
-      file_id = file_open(settings::path_source.c_str(), 'r', true);
+      file_id = file_open(settings::path_sourcepoint.c_str(), 'r', true);
     }
 
     // Read source
-    read_source_bank(file_id);
+    read_source_bank(file_id, simulation::source_bank, true);
 
   }
 
@@ -653,43 +653,51 @@ write_source_bank(hid_t group_id)
 }
 
 
-void read_source_bank(hid_t group_id)
+void read_source_bank(hid_t group_id, std::vector<Particle::Bank>& sites, bool distribute)
 {
   hid_t banktype = h5banktype();
 
   // Open the dataset
   hid_t dset = H5Dopen(group_id, "source_bank", H5P_DEFAULT);
-
-  // Create another data space but for each proc individually
-  hsize_t dims[] {static_cast<hsize_t>(simulation::work_per_rank)};
-  hid_t memspace = H5Screate_simple(1, dims, nullptr);
-
-  // Make sure source bank is big enough
   hid_t dspace = H5Dget_space(dset);
-  hsize_t dims_all[1];
-  H5Sget_simple_extent_dims(dspace, dims_all, nullptr);
-  if (simulation::work_index[mpi::n_procs] > dims_all[0]) {
-    fatal_error("Number of source sites in source file is less "
-                "than number of source particles per generation.");
-  }
+  hsize_t n_sites;
+  H5Sget_simple_extent_dims(dspace, &n_sites, nullptr);
 
-  // Select hyperslab for each process
-  hsize_t start[] {static_cast<hsize_t>(simulation::work_index[mpi::rank])};
-  H5Sselect_hyperslab(dspace, H5S_SELECT_SET, start, nullptr, dims, nullptr);
+  // Make sure vector is big enough in case where we're reading entire source on
+  // each process
+  if (!distribute) sites.resize(n_sites);
+
+  hid_t memspace;
+  if (distribute) {
+    if (simulation::work_index[mpi::n_procs] > n_sites) {
+      fatal_error("Number of source sites in source file is less "
+                  "than number of source particles per generation.");
+    }
+
+    // Create another data space but for each proc individually
+    hsize_t n_sites_local = simulation::work_per_rank;
+    memspace = H5Screate_simple(1, &n_sites_local, nullptr);
+
+    // Select hyperslab for each process
+    hsize_t offset = simulation::work_index[mpi::rank];
+    H5Sselect_hyperslab(dspace, H5S_SELECT_SET, &offset, nullptr, &n_sites_local, nullptr);
+  } else {
+    memspace = H5S_ALL;
+  }
 
 #ifdef PHDF5
     // Read data in parallel
   hid_t plist = H5Pcreate(H5P_DATASET_XFER);
   H5Pset_dxpl_mpio(plist, H5FD_MPIO_COLLECTIVE);
-  H5Dread(dset, banktype, memspace, dspace, plist, simulation::source_bank.data());
+  H5Dread(dset, banktype, memspace, dspace, plist, sites.data());
   H5Pclose(plist);
 #else
-  H5Dread(dset, banktype, memspace, dspace, H5P_DEFAULT, simulation::source_bank.data());
+  H5Dread(dset, banktype, memspace, dspace, H5P_DEFAULT, sites.data());
 #endif
 
   // Close all ids
   H5Sclose(dspace);
-  H5Sclose(memspace);
+  if (distribute) H5Sclose(memspace);
   H5Dclose(dset);
   H5Tclose(banktype);
 }

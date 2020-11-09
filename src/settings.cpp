@@ -73,8 +73,6 @@ std::string path_cross_sections;
 std::string path_input;
 std::string path_output;
 std::string path_particle_restart;
-std::string path_source;
-std::string path_source_library;
 std::string path_sourcepoint;
 std::string path_statepoint;
 
@@ -421,17 +419,31 @@ void read_settings_xml()
 
   // Get point to list of <source> elements and make sure there is at least one
   for (pugi::xml_node node : root.children("source")) {
-    model::external_sources.emplace_back(node);
+    if (check_for_node(node, "file")) {
+      auto path = get_node_value(node, "file", false, true);
+      model::external_sources.push_back(std::make_unique<FileSource>(path));
+    } else if (check_for_node(node, "library")) {
+      // Get shared library path and parameters
+      auto path = get_node_value(node, "library", false, true);
+      std::string parameters;
+      if (check_for_node(node, "parameters")) {
+        parameters = get_node_value(node, "parameters", false, true);
+      }
+
+      // Create custom source
+      model::external_sources.push_back(std::make_unique<CustomSourceWrapper>(path, parameters));
+    } else {
+      model::external_sources.push_back(std::make_unique<IndependentSource>(node));
+    }
   }
 
   // If no source specified, default to isotropic point source at origin with Watt spectrum
   if (model::external_sources.empty()) {
-    SourceDistribution source {
+    model::external_sources.push_back(std::make_unique<IndependentSource>(
       UPtrSpace{new SpatialPoint({0.0, 0.0, 0.0})},
       UPtrAngle{new Isotropic()},
       UPtrDist{new Watt(0.988e6, 2.249e-6)}
-    };
-    model::external_sources.push_back(std::move(source));
+    ));
   }
 
   // Check if we want to write out source

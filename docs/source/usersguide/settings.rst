@@ -194,9 +194,9 @@ below.
   #include "openmc/source.h"
   #include "openmc/particle.h"
 
-  class Source : public openmc::CustomSource
+  class CustomSource : public openmc::Source
   {
-    openmc::Particle::Bank sample(uint64_t* seed)
+    openmc::Particle::Bank sample(uint64_t* seed) const
     {
       openmc::Particle::Bank particle;
       // weight
@@ -216,16 +216,16 @@ below.
     }
   };
 
-  extern "C" std::unique_ptr<Source> openmc_create_source(std::string parameters)
+  extern "C" std::unique_ptr<CustomSource> openmc_create_source(std::string parameters)
   {
-    return std::make_unique<Source>();
+    return std::make_unique<CustomSource>();
   }
 
 The above source creates monodirectional 14.08 MeV neutrons that are distributed
 in a ring with a 3 cm radius. This routine is not particularly complex, but
 should serve as an example upon which to build more complicated sources.
 
-  .. note:: The source class must inherit from ``openmc::CustomSource`` and
+  .. note:: The source class must inherit from ``openmc::Source`` and
             implement a ``sample()`` function.
 
   .. note:: The ``openmc_create_source()`` function signature must be declared
@@ -266,12 +266,12 @@ the source class when it is created:
   #include "openmc/source.h"
   #include "openmc/particle.h"
 
-  class Source : public openmc::CustomSource {
+  class CustomSource : public openmc::Source {
   public:
-    Source(double energy) : energy_{energy} { }
+    CustomSource(double energy) : energy_{energy} { }
 
     // Samples from an instance of this class.
-    openmc::Particle::Bank sample(uint64_t* seed)
+    openmc::Particle::Bank sample(uint64_t* seed) const
     {
       openmc::Particle::Bank particle;
       // weight
@@ -293,9 +293,9 @@ the source class when it is created:
     double energy_;
   };
 
-  extern "C" std::unique_ptr<Source> openmc_create_source(std::string parameter) {
+  extern "C" std::unique_ptr<CustomSource> openmc_create_source(std::string parameter) {
     double energy = std::stod(parameter);
-    return std::make_unique<Source>(energy);
+    return std::make_unique<CustomSource>(energy);
   }
 
 As with the basic custom source functionality, the custom source library

@@ -47,8 +47,8 @@ MGXS_TYPES = (
 # support and test (like inelastic levels), remoev those from consideration
 _BAD_SCORES = ["(n,misc)", "(n,absorption)", "(n,total)", "fission"]
 _BAD_SCORES += [REACTION_NAME[mt] for mt in FISSION_MTS]
-ARBITRARY_VECTOR_TYPES = [k for k in REACTION_MT.keys() if k not in _BAD_SCORES]
-ARBITRARY_VECTOR_TYPES = tuple(ARBITRARY_VECTOR_TYPES)
+ARBITRARY_VECTOR_TYPES = tuple(k for k in REACTION_MT.keys()
+                               if k not in _BAD_SCORES)
 ARBITRARY_MATRIX_TYPES = []
 for rxn in ARBITRARY_VECTOR_TYPES:
     # Preclude the fission channels from being treated as a matrix
@@ -1237,12 +1237,11 @@ class MGXS:
 
         # Determine which flux to obtain
         # Step through in order of usefulness
-        tally = None
         for key in ['flux', 'flux (tracklength)', 'flux (analog)']:
             if key in self.tally_keys:
                 tally = self.tallies[key]
                 break
-        if tally is None:
+        else:
             msg = "MGXS of Type {} do not have an explicit weighting flux!"
             raise ValueError(msg.format(self.__name__))
 
@@ -4021,7 +4020,7 @@ class ArbitraryXS(MGXS):
        \sigma_X (r, E) \psi (r, E, \Omega)}{\int_{r \in V} dr \int_{4\pi}
        d\Omega \int_{E_g}^{E_{g-1}} dE \; \psi (r, E, \Omega)}
 
-    where :math:`_\sigma_X` is the requested reaction type of interest.
+    where :math:`\sigma_X` is the requested reaction type of interest.
 
     Parameters
     ----------
@@ -4152,7 +4151,7 @@ class ArbitraryMatrixXS(MatrixMGXS):
        g} \phi \rangle}{\langle \phi \rangle}
        \end{aligned}
 
-    where :math:`_\sigma_X` is the requested reaction type of interest.
+    where :math:`\sigma_X` is the requested reaction type of interest.
 
     Parameters
     ----------

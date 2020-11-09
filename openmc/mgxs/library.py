@@ -946,10 +946,10 @@ class Library:
         apply_domain_chi : bool
             This parameter sets whether (True) or not (False) the
             domain-averaged values of chi, chi-prompt, and chi-delayed are to
-            be applied to each of the nuclidic fission energy spectra of a
-            domain. In effect, if this is True, then every nuclide in the
+            be applied to each of the nuclide-dependent fission energy spectra
+            of a domain. In effect, if this is True, then every nuclide in the
             domain receives the same flux-weighted Chi. This is useful for
-            downstream multigroup solvers that pre-compute a material-specific
+            downstream multigroup solvers that precompute a material-specific
             chi before the transport solve provides group-wise fluxes. Defaults
             to False.
 
@@ -1242,10 +1242,10 @@ class Library:
         apply_domain_chi : bool
             This parameter sets whether (True) or not (False) the
             domain-averaged values of chi, chi-prompt, and chi-delayed are to
-            be applied to each of the nuclidic fission energy spectra of a
-            domain. In effect, if this is True, then every nuclide in the
+            be applied to each of the nuclide-dependent fission energy spectra
+            of a domain. In effect, if this is True, then every nuclide in the
             domain receives the same flux-weighted Chi. This is useful for
-            downstream multigroup solvers that pre-compute a material-specific
+            downstream multigroup solvers that precompute a material-specific
             chi before the transport solve provides group-wise fluxes. Defaults
             to False.
 
@@ -1354,10 +1354,10 @@ class Library:
         apply_domain_chi : bool
             This parameter sets whether (True) or not (False) the
             domain-averaged values of chi, chi-prompt, and chi-delayed are to
-            be applied to each of the nuclidic fission energy spectra of a
-            domain. In effect, if this is True, then every nuclide in the
+            be applied to each of the nuclide-dependent fission energy spectra
+            of a domain. In effect, if this is True, then every nuclide in the
             domain receives the same flux-weighted Chi. This is useful for
-            downstream multigroup solvers that pre-compute a material-specific
+            downstream multigroup solvers that precompute a material-specific
             chi before the transport solve provides group-wise fluxes. Defaults
             to False.
 

@@ -21,18 +21,9 @@ on_rtd = os.environ.get('READTHEDOCS', None) == 'True'
 from unittest.mock import MagicMock
 
 MOCK_MODULES = [
-    'numpy', 'numpy.polynomial', 'numpy.polynomial.polynomial',
-    'numpy.ctypeslib', 'scipy', 'scipy.sparse', 'scipy.sparse.linalg',
-    'scipy.interpolate', 'scipy.integrate', 'scipy.optimize', 'scipy.signal',
-    'scipy.special', 'scipy.stats', 'scipy.spatial', 'h5py', 'pandas',
-    'uncertainties', 'matplotlib', 'matplotlib.pyplot', 'openmoc',
-    'openmc.data.reconstruct', 'openmc.checkvalue'
+    'openmoc', 'openmc.data.reconstruct',
 ]
 sys.modules.update((mod_name, MagicMock()) for mod_name in MOCK_MODULES)
-
-import numpy as np
-np.ndarray = MagicMock
-np.polynomial.Polynomial = MagicMock
 
 
 # If extensions (or modules to document with autodoc) are in another directory,

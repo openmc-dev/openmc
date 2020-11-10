@@ -719,7 +719,7 @@ void Nuclide::calculate_xs(int i_sab, int i_log_union, double sab_frac, Particle
     // Depletion-related reactions
     if (simulation::need_depletion_rx) {
       // Initialize all reaction cross sections to zero
-      for (xsfloat& xs_i : micro.reaction) {
+      for (auto& xs_i : micro.reaction) {
         xs_i = 0.0;
       }
 

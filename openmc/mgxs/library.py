@@ -277,7 +277,9 @@ class Library:
 
     @mgxs_types.setter
     def mgxs_types(self, mgxs_types):
-        all_mgxs_types = openmc.mgxs.MGXS_TYPES + openmc.mgxs.MDGXS_TYPES
+        all_mgxs_types = openmc.mgxs.MGXS_TYPES + openmc.mgxs.MDGXS_TYPES + \
+            openmc.mgxs.ARBITRARY_VECTOR_TYPES + \
+            openmc.mgxs.ARBITRARY_MATRIX_TYPES
         if mgxs_types == 'all':
             self._mgxs_types = all_mgxs_types
         else:
@@ -612,8 +614,10 @@ class Library:
         ----------
         domain : openmc.Material or openmc.Cell or openmc.Universe or openmc.RegularMesh or Integral
             The material, cell, or universe object of interest (or its ID)
-        mgxs_type : {'total', 'transport', 'nu-transport', 'absorption', 'capture', 'fission', 'nu-fission', 'kappa-fission', 'scatter', 'nu-scatter', 'scatter matrix', 'nu-scatter matrix', 'multiplicity matrix', 'nu-fission matrix', chi', 'chi-prompt', 'inverse-velocity', 'prompt-nu-fission', 'prompt-nu-fission matrix', 'delayed-nu-fission', 'delayed-nu-fission matrix', 'chi-delayed', 'beta'}
-            The type of multi-group cross section object to return
+        mgxs_type : str
+            The type of multi-group cross section object to return; allowable
+            values are those MGXS to the Library and present in the
+            mgxs_types attribute.
 
         Returns
         -------
@@ -912,7 +916,7 @@ class Library:
             return pickle.load(f)
 
     def get_xsdata(self, domain, xsdata_name, nuclide='total', xs_type='macro',
-                   subdomain=None):
+                   subdomain=None, apply_domain_chi=False):
         """Generates an openmc.XSdata object describing a multi-group cross section
         dataset for writing to an openmc.MGXSLibrary object.
 
@@ -939,6 +943,15 @@ class Library:
             mesh cell of interest in the openmc.RegularMesh object.  Note:
             this parameter currently only supports subdomains within a mesh,
             and not the subdomains of a distribcell.
+        apply_domain_chi : bool
+            This parameter sets whether (True) or not (False) the
+            domain-averaged values of chi, chi-prompt, and chi-delayed are to
+            be applied to each of the nuclide-dependent fission energy spectra
+            of a domain. In effect, if this is True, then every nuclide in the
+            domain receives the same flux-weighted Chi. This is useful for
+            downstream multigroup solvers that precompute a material-specific
+            chi before the transport solve provides group-wise fluxes. Defaults
+            to False.
 
         Returns
         -------
@@ -1046,18 +1059,30 @@ class Library:
 
         if 'chi' in self.mgxs_types:
             mymgxs = self.get_mgxs(domain, 'chi')
-            xsdata.set_chi_mgxs(mymgxs, xs_type=xs_type, nuclide=[nuclide],
+            if apply_domain_chi and nuclide != "total":
+                nuc = "sum"
+            else:
+                nuc = nuclide
+            xsdata.set_chi_mgxs(mymgxs, xs_type=xs_type, nuclide=[nuc],
                                 subdomain=subdomain)
 
         if 'chi-prompt' in self.mgxs_types:
             mymgxs = self.get_mgxs(domain, 'chi-prompt')
+            if apply_domain_chi and nuclide != "total":
+                nuc = "sum"
+            else:
+                nuc = nuclide
             xsdata.set_chi_prompt_mgxs(mymgxs, xs_type=xs_type,
-                                       nuclide=[nuclide], subdomain=subdomain)
+                                       nuclide=[nuc], subdomain=subdomain)
 
         if 'chi-delayed' in self.mgxs_types:
             mymgxs = self.get_mgxs(domain, 'chi-delayed')
+            if apply_domain_chi and nuclide != "total":
+                nuc = "sum"
+            else:
+                nuc = nuclide
             xsdata.set_chi_delayed_mgxs(mymgxs, xs_type=xs_type,
-                                        nuclide=[nuclide], subdomain=subdomain)
+                                        nuclide=[nuc], subdomain=subdomain)
 
         if 'nu-fission' in self.mgxs_types:
             mymgxs = self.get_mgxs(domain, 'nu-fission')
@@ -1196,7 +1221,8 @@ class Library:
 
         return xsdata
 
-    def create_mg_library(self, xs_type='macro', xsdata_names=None):
+    def create_mg_library(self, xs_type='macro', xsdata_names=None,
+                          apply_domain_chi=False):
         """Creates an openmc.MGXSLibrary object to contain the MGXS data for the
         Multi-Group mode of OpenMC.
 
@@ -1213,6 +1239,15 @@ class Library:
         xsdata_names : Iterable of str
             List of names to apply to the "xsdata" entries in the
             resultant mgxs data file. Defaults to 'set1', 'set2', ...
+        apply_domain_chi : bool
+            This parameter sets whether (True) or not (False) the
+            domain-averaged values of chi, chi-prompt, and chi-delayed are to
+            be applied to each of the nuclide-dependent fission energy spectra
+            of a domain. In effect, if this is True, then every nuclide in the
+            domain receives the same flux-weighted Chi. This is useful for
+            downstream multigroup solvers that precompute a material-specific
+            chi before the transport solve provides group-wise fluxes. Defaults
+            to False.
 
         Returns
         -------
@@ -1284,13 +1319,15 @@ class Library:
                         xsdata_name = xsdata_names[i]
 
                     xsdata = self.get_xsdata(domain, xsdata_name,
-                                             nuclide=nuclide, xs_type=xs_type)
+                                             nuclide=nuclide, xs_type=xs_type,
+                                             apply_domain_chi=apply_domain_chi)
 
                     mgxs_file.add_xsdata(xsdata)
 
         return mgxs_file
 
-    def create_mg_mode(self, xsdata_names=None, bc=['reflective'] * 6):
+    def create_mg_mode(self, xsdata_names=None, bc=['reflective'] * 6,
+                       apply_domain_chi=False):
         """Creates an openmc.MGXSLibrary object to contain the MGXS data for the
         Multi-Group mode of OpenMC as well as the associated openmc.Materials
         and openmc.Geometry objects.
@@ -1314,6 +1351,15 @@ class Library:
             (if applying to a 3D mesh) provided in the following order:
             [x min, x max, y min, y max, z min, z max].  2-D cells do not
             contain the z min and z max entries.
+        apply_domain_chi : bool
+            This parameter sets whether (True) or not (False) the
+            domain-averaged values of chi, chi-prompt, and chi-delayed are to
+            be applied to each of the nuclide-dependent fission energy spectra
+            of a domain. In effect, if this is True, then every nuclide in the
+            domain receives the same flux-weighted Chi. This is useful for
+            downstream multigroup solvers that precompute a material-specific
+            chi before the transport solve provides group-wise fluxes. Defaults
+            to False.
 
         Returns
         -------
@@ -1354,7 +1400,8 @@ class Library:
             cv.check_length("domains", self.domains, 1, 1)
 
         # Get the MGXS File Data
-        mgxs_file = self.create_mg_library('macro', xsdata_names)
+        mgxs_file = self.create_mg_library('macro', xsdata_names,
+                                           apply_domain_chi=apply_domain_chi)
 
         # Now move on the creating the geometry and assigning materials
         if self.domain_type == 'mesh':
@@ -1415,7 +1462,7 @@ class Library:
                         if not isinstance(cell.fill, openmc.Material):
                             warn('If the library domain includes a lattice or universe cell '
                             'in conjunction with a consituent cell of that lattice/universe, '
-                            'the multi-group simulation will fail') 
+                            'the multi-group simulation will fail')
                         if cell.id == domain.id:
                             cell.fill = material
 

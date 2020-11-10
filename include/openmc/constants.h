@@ -199,7 +199,7 @@ enum ReactionType {
   N_3N3HE = 177,
   N_4N3HE = 178,
   N_3N2P  = 179,
-  N_3N3A  = 180,
+  N_3N2A  = 180,
   N_3NPA  = 181,
   N_DT    = 182,
   N_NPD   = 183,

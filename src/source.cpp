@@ -72,21 +72,6 @@ IndependentSource::IndependentSource(pugi::xml_node node)
 
   // Check for external source file
   if (check_for_node(node, "file")) {
-    // Copy path of source file
-    settings::path_source = get_node_value(node, "file", false, true);
-
-    // Check if source file exists
-    if (!file_exists(settings::path_source)) {
-      fatal_error(fmt::format("Source file '{}' does not exist.",
-        settings::path_source));
-    }
-
-  } else if (check_for_node(node, "library")) {
-    settings::path_source_library = get_node_value(node, "library", false, true);
-    if (!file_exists(settings::path_source_library)) {
-      fatal_error(fmt::format("Source library '{}' does not exist.",
-        settings::path_source_library));
-    }
 
   } else {
 

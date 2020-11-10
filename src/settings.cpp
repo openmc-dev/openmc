@@ -652,17 +652,12 @@ void read_settings_xml()
     // Get surface source read node
     xml_node node_ssr = root.child("surf_src_read");
 
-    settings::path_source = "surface_source.h5";
+    std::string path = "surface_source.h5";
     // Check if the user has specified different file for surface source reading
     if (check_for_node(node_ssr, "path")) {
-      settings::path_source = get_node_value(node_ssr, "path", false, true);
+      path = get_node_value(node_ssr, "path", false, true);
       }
-
-    // Check if surface source file exists
-    if (!file_exists(settings::path_source)) {
-      fatal_error(fmt::format("Source file '{}' does not exist.",
-        settings::path_source));
-    }
+    model::external_sources.push_back(std::make_unique<FileSource>(path));
   }
 
   // If source is not seperate and is to be written out in the statepoint file,

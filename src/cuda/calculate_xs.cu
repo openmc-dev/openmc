@@ -7,8 +7,10 @@ namespace gpu {
 __constant__ unique_ptr<Material>* materials;
 __constant__ unique_ptr<Nuclide>* nuclides;
 __constant__ Particle* particles;
+__constant__ NuclideMicroXS* micros;
 __constant__ double energy_min_neutron;
 __constant__ double log_spacing;
+__constant__ unsigned number_nuclides;
 __constant__ bool need_depletion_rx;
 
 __global__ void process_calculate_xs_events_device(
@@ -33,7 +35,7 @@ __global__ void process_calculate_xs_events_device(
     // Add contribution from each nuclide in material
     for (int i = 0; i < m.nuclide_.size(); ++i) {
       auto const& i_nuclide = m.nuclide_[i];
-      auto& micro {p.neutron_xs_[i_nuclide]};
+      auto& micro {micros[number_nuclides * queue[tid].idx + i_nuclide]};
 
       if (p.E_ != micro.last_E || p.sqrtkT_ != micro.last_sqrtkT) {
         auto const& nuclide = *nuclides[i_nuclide];
@@ -129,7 +131,7 @@ __global__ void process_calculate_xs_events_device(
     // for (int i = 0; i < m.nuclide_.size(); ++i) {
     //   double const& atom_density = m.atom_density_[i];
     //   auto const& i_nuclide = m.nuclide_[i];
-    //   auto const& micro {p.neutron_xs_[i_nuclide]};
+    //   auto const& micro {micros[particle_id * n_nuclides + i_nuclide]};
     //   p.macro_xs_.total += atom_density * micro.total;
     //   p.macro_xs_.absorption += atom_density * micro.absorption;
     //   p.macro_xs_.fission += atom_density * micro.fission;

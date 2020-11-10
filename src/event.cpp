@@ -23,6 +23,7 @@ SharedArray<EventQueueItem> surface_crossing_queue;
 SharedArray<EventQueueItem> collision_queue;
 
 vector<Particle> particles;
+replicated_vector<NuclideMicroXS> micros;
 
 } // namespace simulation
 
@@ -62,6 +63,7 @@ void free_event_queues(void)
   simulation::collision_queue.clear();
 
   simulation::particles.clear();
+  simulation::micros.clear();
 }
 
 void dispatch_xs_event(int64_t buffer_idx)
@@ -113,6 +115,12 @@ void process_calculate_xs_events(SharedArray<EventQueueItem>& queue)
   gpu::process_calculate_xs_events_device<<<queue.size() / 32 + 1, 32>>>(
     queue.data(), queue.size());
   cudaDeviceSynchronize();
+
+  // Copy all of the newly calculated XS back to the host. This copy event
+  // is VERY expensive if done on a particle-by-particle basis. The effective
+  // bandwidth is up by a factor of over 100 if lumping them all into one
+  // vector.
+  simulation::micros.syncToHost();
 #else
 #pragma omp parallel for schedule(runtime)
   for (int64_t i = 0; i < queue.size(); i++) {
@@ -125,12 +133,6 @@ void process_calculate_xs_events(SharedArray<EventQueueItem>& queue)
     simulation::advance_particle_queue[offset + i] = queue[i];
   }
 #endif
-
-  // #pragma omp parallel for schedule(runtime)
-  for (int64_t i = 0; i < queue.size(); i++) {
-    Particle& p = simulation::particles[queue[i].idx];
-    p.neutron_xs_.syncToHost();
-  }
 
   queue.resize(0);
 

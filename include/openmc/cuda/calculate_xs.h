@@ -17,8 +17,10 @@ namespace gpu {
 extern __constant__ unique_ptr<Material>* materials;
 extern __constant__ unique_ptr<Nuclide>* nuclides;
 extern __constant__ Particle* particles;
+extern __constant__ NuclideMicroXS* micros;
 extern __constant__ double energy_min_neutron;
 extern __constant__ double log_spacing;
+extern __constant__ unsigned number_nuclides;
 extern __constant__ bool need_depletion_rx;
 
 __global__ void process_calculate_xs_events_device(

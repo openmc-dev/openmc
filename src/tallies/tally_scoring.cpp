@@ -1346,7 +1346,7 @@ score_general_ce(Particle& p, int i_tally, int start_index, int filter_index,
             const Material& material {*model::materials[p.material()]};
             for (auto i = 0; i < material.nuclide_.size(); ++i) {
               auto j_nuclide = material.nuclide_[i];
-              auto atom_density = material.atom_density_(i);
+              auto atom_density = material.atom_density_[i];
               score +=
                 p.neutron_xs(j_nuclide).reaction[m] * atom_density * flux;
             }

@@ -76,7 +76,7 @@ extern vector<Particle> particles;
 
 // Nuclide micro XS buffer. This is contiguous in memory for fast data transfer
 // on GPU
-extern replicated_vector<NuclideMicroXS> micros;
+extern pinned_replicated_vector<NuclideMicroXS> micros;
 
 } // namespace simulation
 

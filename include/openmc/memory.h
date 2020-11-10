@@ -91,7 +91,11 @@ public:
   bool operator==(const UnifiedAllocator<T>& /* other */) const { return true; }
 };
 
-template<typename T>
+// Expressive way to give a yes/no answer regarding whether
+// pinned memory is to be used on the host.
+enum class PinnedAllocationOnHost { yes, no };
+
+template<typename T, PinnedAllocationOnHost UsePinned>
 class ReplicatedAllocator;
 
 // Keeps track of replicated memory, and acts like a normal pointer as
@@ -191,10 +195,12 @@ public:
   DualPointer& operator=(DualPointer&&) = default;
   ~DualPointer() = default;
 
-  friend class ReplicatedAllocator<T>;
+  friend class ReplicatedAllocator<T, PinnedAllocationOnHost::no>;
+  friend class ReplicatedAllocator<T, PinnedAllocationOnHost::yes>;
 };
 
-template<typename T>
+template<typename T,
+  PinnedAllocationOnHost UsePinned = PinnedAllocationOnHost::no>
 class ReplicatedAllocator {
 public:
   typedef T value_type;
@@ -220,13 +226,14 @@ public:
   {
     pointer tmp;
 
-    // Allocate on host
-    // Pinned memory implementation: this is probably not worth it
-    // given the anticipated access patterns to replicated memory.
-    // cudaError_t error_code = cudaMallocHost(&tmp.host, n *
-    // sizeof(value_type)); if (error_code != cudaSuccess)
-    //   CubDebugExit(error_code);
-    tmp.host = (T*)malloc(n * sizeof(value_type));
+    if (UsePinned == PinnedAllocationOnHost::yes) {
+      cudaError_t error_code =
+        cudaMallocHost(&tmp.host, n * sizeof(value_type));
+      if (error_code != cudaSuccess)
+        CubDebugExit(error_code);
+    } else {
+      tmp.host = (T*)malloc(n * sizeof(value_type));
+    }
 
     // Allocate on device
     cudaError_t error_code = cudaMalloc(&tmp.device, n * sizeof(value_type));
@@ -237,8 +244,15 @@ public:
   }
   inline void deallocate(pointer p, size_type)
   {
-    if (p.host)
-      free(p.host);
+    if (p.host) {
+      if (UsePinned == PinnedAllocationOnHost::yes) {
+        cudaError_t error_code = cudaFree(p.host);
+        if (error_code != cudaSuccess && error_code != cudaErrorCudartUnloading)
+          CubDebugExit(error_code);
+      } else {
+        free(p.host);
+      }
+    }
 
     // See comment in UnifiedAllocator on this method
     if (p.device) {

@@ -23,7 +23,7 @@ SharedArray<EventQueueItem> surface_crossing_queue;
 SharedArray<EventQueueItem> collision_queue;
 
 vector<Particle> particles;
-replicated_vector<NuclideMicroXS> micros;
+pinned_replicated_vector<NuclideMicroXS> micros;
 
 } // namespace simulation
 

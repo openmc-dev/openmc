@@ -406,6 +406,9 @@ __host__ __device__ bool operator==(
 
 template<typename T>
 using replicated_vector = vector<T, ReplicatedAllocator<T>>;
+template<typename T>
+using pinned_replicated_vector =
+  vector<T, ReplicatedAllocator<T, PinnedAllocationOnHost::yes>>;
 
 #else
 

@@ -441,6 +441,20 @@ void read_settings_xml()
     }
   }
 
+  // Check if the user has specified to read surface source
+  if (check_for_node(root, "surf_src_read")) {
+    surf_src_read = true;
+    // Get surface source read node
+    xml_node node_ssr = root.child("surf_src_read");
+
+    std::string path = "surface_source.h5";
+    // Check if the user has specified different file for surface source reading
+    if (check_for_node(node_ssr, "path")) {
+      path = get_node_value(node_ssr, "path", false, true);
+      }
+    model::external_sources.push_back(std::make_unique<FileSource>(path));
+  }
+
   // If no source specified, default to isotropic point source at origin with Watt spectrum
   if (model::external_sources.empty()) {
     model::external_sources.push_back(std::make_unique<IndependentSource>(
@@ -644,20 +658,6 @@ void read_settings_xml()
     if (check_for_node(node_ssw, "max_surf_banks")) {
       max_surf_banks = std::stoi(get_node_value(node_ssw, "max_surf_banks"));
     }
-  }
-
-  // Check if the user has specified to read surface source
-  if (check_for_node(root, "surf_src_read")) {
-    surf_src_read = true;
-    // Get surface source read node
-    xml_node node_ssr = root.child("surf_src_read");
-
-    std::string path = "surface_source.h5";
-    // Check if the user has specified different file for surface source reading
-    if (check_for_node(node_ssr, "path")) {
-      path = get_node_value(node_ssr, "path", false, true);
-      }
-    model::external_sources.push_back(std::make_unique<FileSource>(path));
   }
 
   // If source is not seperate and is to be written out in the statepoint file,

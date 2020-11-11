@@ -75,10 +75,14 @@ class SurfaceSourceTestHarness(PyAPITestHarness):
         if self._model.settings.surf_src_write:
             with h5py.File("surface_source_true.h5", 'r') as f:
                 src_true = f['source_bank'][()]
+                # Convert dtye from mixed to a float for comparison assertion
+                src_true.dtype = 'float64'
             with h5py.File("surface_source.h5", 'r') as f:
                 src_test = f['source_bank'][()]
-            for (true_p, test_p) in zip(np.sort(src_true), np.sort(src_test)):
-                np.testing.assert_array_equal(true_p, test_p)
+                # Convert dtye from mixed to a float for comparison assertion
+                src_test.dtype = 'float64'
+            np.testing.assert_allclose(np.sort(src_true), np.sort(src_test),
+                                       atol=1e-07)
 
     def execute_test(self):
         """Build input XMLs, run OpenMC, check output and results."""

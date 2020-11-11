@@ -550,6 +550,12 @@ RegularMesh::RegularMesh(pugi::xml_node node)
     fatal_error("Must specify <lower_left> on a mesh.");
   }
 
+  // Make sure lower_left and dimension match
+  if (shape_.size() != lower_left_.size()) {
+    fatal_error("Number of entries on <lower_left> must be the same "
+      "as the number of entries on <dimension>.");
+  }
+
   if (check_for_node(node, "width")) {
     // Make sure both upper-right or width were specified
     if (check_for_node(node, "upper_right")) {
@@ -593,12 +599,6 @@ RegularMesh::RegularMesh(pugi::xml_node node)
     width_ = xt::eval((upper_right_ - lower_left_) / shape_);
   } else {
     fatal_error("Must specify either <upper_right> and <width> on a mesh.");
-  }
-
-  // Make sure lower_left and dimension match
-  if (shape_.size() != lower_left_.size()) {
-    fatal_error("Number of entries on <lower_left> must be the same "
-      "as the number of entries on <dimension>.");
   }
 
   // Set volume fraction

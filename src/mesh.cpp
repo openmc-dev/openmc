@@ -525,18 +525,21 @@ RegularMesh::RegularMesh(pugi::xml_node node)
   : StructuredMesh {node}
 {
   // Determine number of dimensions for mesh
-  if (check_for_node(node, "dimension")) {
-    shape_ = get_node_xarray<int>(node, "dimension");
-    int n = n_dimension_ = shape_.size();
-    if (n != 1 && n != 2 && n != 3) {
-      fatal_error("Mesh must be one, two, or three dimensions.");
-    }
+  if (!check_for_node(node, "dimension")) {
+    fatal_error("Must specify <dimension> on a regular mesh.");
+  }
 
-    // Check that dimensions are all greater than zero
-    if (xt::any(shape_ <= 0)) {
-      fatal_error("All entries on the <dimension> element for a tally "
-        "mesh must be positive.");
-    }
+
+  shape_ = get_node_xarray<int>(node, "dimension");
+  int n = n_dimension_ = shape_.size();
+  if (n != 1 && n != 2 && n != 3) {
+    fatal_error("Mesh must be one, two, or three dimensions.");
+  }
+
+  // Check that dimensions are all greater than zero
+  if (xt::any(shape_ <= 0)) {
+    fatal_error("All entries on the <dimension> element for a tally "
+      "mesh must be positive.");
   }
 
   // Check for lower-left coordinates
@@ -545,6 +548,12 @@ RegularMesh::RegularMesh(pugi::xml_node node)
     lower_left_ = get_node_xarray<double>(node, "lower_left");
   } else {
     fatal_error("Must specify <lower_left> on a mesh.");
+  }
+
+  // Make sure lower_left and dimension match
+  if (shape_.size() != lower_left_.size()) {
+    fatal_error("Number of entries on <lower_left> must be the same "
+      "as the number of entries on <dimension>.");
   }
 
   if (check_for_node(node, "width")) {
@@ -587,23 +596,13 @@ RegularMesh::RegularMesh(pugi::xml_node node)
     }
 
     // Set width
-    if (shape_.size() > 0) {
-      width_ = xt::eval((upper_right_ - lower_left_) / shape_);
-    }
+    width_ = xt::eval((upper_right_ - lower_left_) / shape_);
   } else {
     fatal_error("Must specify either <upper_right> and <width> on a mesh.");
   }
 
-  // Make sure lower_left and dimension match
-  if (shape_.size() > 0) {
-    if (shape_.size() != lower_left_.size()) {
-      fatal_error("Number of entries on <lower_left> must be the same "
-        "as the number of entries on <dimension>.");
-    }
-
-    // Set volume fraction
-    volume_frac_ = 1.0/xt::prod(shape_)();
-  }
+  // Set volume fraction
+  volume_frac_ = 1.0/xt::prod(shape_)();
 }
 
 int RegularMesh::get_index_in_direction(double r, int i) const

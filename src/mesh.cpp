@@ -2121,9 +2121,15 @@ void LibMesh::initialize() {
   libMesh::ExplicitSystem& eq_sys =
     equation_systems_->add_system<libMesh::ExplicitSystem>(eq_system_name_);
 
-  PL_ = m_->sub_point_locator();
-  PL_->set_contains_point_tol(FP_COINCIDENT);
-  PL_->enable_out_of_mesh_mode();
+  #pragma omp parallel
+  {
+    #pragma omp critical
+    {
+    PL_ = m_->sub_point_locator();
+    }
+    PL_->set_contains_point_tol(FP_COINCIDENT);
+    PL_->enable_out_of_mesh_mode();
+  }
 
   first_element_ = *m_->elements_begin();
 

@@ -286,7 +286,9 @@ Particle::event_collide()
   // Score flux derivative accumulators for differential tallies.
   if (!model::active_tallies.empty()) score_collision_derivative(*this);
 
+  #ifdef DAGMC
   history_.reset();
+  #endif
 }
 
 void
@@ -501,6 +503,10 @@ Particle::cross_reflective_bc(const Surface& surf, Direction new_u)
   // Reassign particle's cell and surface
   coord(0).cell = cell_last(n_coord_last() - 1);
   surface() = -surface();
+
+  #ifdef DAGMC
+  if (surf->geom_type_ != GeometryType::DAGMC) history_.reset();
+  #endif
 
   // If a reflective surface is coincident with a lattice or universe
   // boundary, it is necessary to redetermine the particle's coordinates in

@@ -694,6 +694,9 @@ class DAGMCUniverse(UniverseBase):
     def get_all_cells(self, memo=None):
         return OrderedDict()
 
+    def get_all_materials(self, memo=None):
+        return OrderedDict()
+
     def create_xml_subelement(self, xml_element, memo=None):
 
         if memo and self in memo:

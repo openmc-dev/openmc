@@ -26,6 +26,10 @@ def model():
 
     model.settings.dagmc = True
 
+    # geometry
+    dag_univ = openmc.DAGMCUniverse("dagmc.h5m")
+    model.geometry = openmc.Geometry(root=dag_univ)
+
     # tally
     tally = openmc.Tally()
     tally.scores = ['total']

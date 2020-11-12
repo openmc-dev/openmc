@@ -163,7 +163,7 @@ class RectangularParallelepiped(CompositeSurface):
         return +self.xmin & -self.xmax & +self.ymin & -self.ymax & +self.zmin & -self.zmax
 
     def __pos__(self):
-        return -self.xmin | +self.ymax | -self.ymin | +self.ymax | -self.zmin | +self.zmax
+        return -self.xmin | +self.xmax | -self.ymin | +self.ymax | -self.zmin | +self.zmax
 
 
 class XConeOneSided(CompositeSurface):

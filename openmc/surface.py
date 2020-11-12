@@ -455,7 +455,9 @@ class Surface(IDManagerMixin, ABC):
 
         surface_id = int(group.name.split('/')[-1].lstrip('surface '))
         name = group['name'][()].decode() if 'name' in group else ''
-        surf_type = group['type'][()].decode()
+        surf_type = group['geom_type'][()].decode()
+        if surf_type == 'dagmc':
+            return
         bc = group['boundary_type'][()].decode()
         coeffs = group['coefficients'][...]
         kwargs = {'boundary_type': bc, 'name': name, 'surface_id': surface_id}

@@ -123,7 +123,8 @@ class Summary:
     def _read_surfaces(self):
         for group in self._f['geometry/surfaces'].values():
             surface = openmc.Surface.from_hdf5(group)
-            self._fast_surfaces[surface.id] = surface
+            if surface:
+                self._fast_surfaces[surface.id] = surface
 
     def _read_cells(self):
 

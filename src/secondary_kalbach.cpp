@@ -115,14 +115,6 @@ KalbachMann::KalbachMann(hid_t group)
 
 void KalbachMann::sample(double E_in, double& E_out, double& mu, uint64_t* seed) const
 {
-  // <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<< REMOVE THIS <<<<<<<<<<<<<<<<<<<<<<<<<<<<<
-  // Before the secondary distribution refactor, an isotropic polar cosine was
-  // always sampled but then overwritten with the polar cosine sampled from the
-  // correlated distribution. To preserve the random number stream, we keep
-  // this dummy sampling here but can remove it later (will change answers)
-  mu = 2.0*prn(seed) - 1.0;
-  // <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<< REMOVE THIS <<<<<<<<<<<<<<<<<<<<<<<<<<<<<
-
   // Find energy bin and calculate interpolation factor -- if the energy is
   // outside the range of the tabulated energies, choose the first or last bins
   auto n_energy_in = energy_.size();

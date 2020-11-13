@@ -1015,7 +1015,6 @@ void sample_fission_neutron(int i_nuclide, const Reaction& rx, double E_in, Part
   double nu_d = nuc->nu(E_in, Nuclide::EmissionMode::delayed);
   double beta = nu_d / nu_t;
 
-  double mu;
   if (prn(seed) < beta) {
     // ====================================================================
     // DELAYED NEUTRON SAMPLED
@@ -1041,52 +1040,35 @@ void sample_fission_neutron(int i_nuclide, const Reaction& rx, double E_in, Part
     // set the delayed group for the particle born from fission
     site->delayed_group = group;
 
-    int n_sample = 0;
-    while (true) {
-      // sample from energy/angle distribution -- note that mu has already been
-      // sampled above and doesn't need to be resampled
-      rx.products_[group].sample(E_in, site->E, mu, seed);
-
-      // resample if energy is greater than maximum neutron energy
-      constexpr int neutron = static_cast<int>(Particle::Type::neutron);
-      if (site->E < data::energy_max[neutron]) break;
-
-      // check for large number of resamples
-      ++n_sample;
-      if (n_sample == MAX_SAMPLE) {
-        // particle_write_restart(p)
-        fatal_error("Resampled energy distribution maximum number of times "
-          "for nuclide " + nuc->name_);
-      }
-    }
-
   } else {
     // ====================================================================
     // PROMPT NEUTRON SAMPLED
 
     // set the delayed group for the particle born from fission to 0
     site->delayed_group = 0;
+  }
 
-    // sample from prompt neutron energy distribution
-    int n_sample = 0;
-    while (true) {
-      rx.products_[0].sample(E_in, site->E, mu, seed);
+  // sample from prompt neutron energy distribution
+  int n_sample = 0;
+  double mu;
+  while (true) {
+    rx.products_[site->delayed_group].sample(E_in, site->E, mu, seed);
 
-      // resample if energy is greater than maximum neutron energy
-      constexpr int neutron = static_cast<int>(Particle::Type::neutron);
-      if (site->E < data::energy_max[neutron]) break;
+    // resample if energy is greater than maximum neutron energy
+    constexpr int neutron = static_cast<int>(Particle::Type::neutron);
+    if (site->E < data::energy_max[neutron]) break;
 
-      // check for large number of resamples
-      ++n_sample;
-      if (n_sample == MAX_SAMPLE) {
-        // particle_write_restart(p)
-        fatal_error("Resampled energy distribution maximum number of times "
-          "for nuclide " + nuc->name_);
-      }
+    // check for large number of resamples
+    ++n_sample;
+    if (n_sample == MAX_SAMPLE) {
+      // particle_write_restart(p)
+      fatal_error("Resampled energy distribution maximum number of times "
+        "for nuclide " + nuc->name_);
     }
   }
 
   // Sample azimuthal angle uniformly in [0, 2*pi) and assign angle
+  // TODO: use rotate_angle instead
   double phi = 2.0*PI*prn(seed);
   site->u.x = mu;
   site->u.y = std::sqrt(1.0 - mu*mu) * std::cos(phi);

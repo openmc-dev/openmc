@@ -55,12 +55,7 @@ UncorrelatedAngleEnergy::sample(double E_in, double& E_out, double& mu,
   uint64_t* seed) const
 {
   // Sample cosine of scattering angle
-  if (fission_) {
-    // <<<<<<<<<<<<<<<<<<<<<<<<<<<<<< REMOVE THIS <<<<<<<<<<<<<<<<<<<<<<<<<<<<<
-    // For fission, the angle is not used, so just assign a dummy value
-    mu = 1.0;
-    // <<<<<<<<<<<<<<<<<<<<<<<<<<<<<< REMOVE THIS <<<<<<<<<<<<<<<<<<<<<<<<<<<<<
-  } else if (!angle_.empty()) {
+  if (!angle_.empty()) {
     mu = angle_.sample(E_in, seed);
   } else {
     // no angle distribution given => assume isotropic for all energies

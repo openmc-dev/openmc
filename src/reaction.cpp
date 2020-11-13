@@ -63,25 +63,6 @@ Reaction::Reaction(hid_t group, const std::vector<int>& temperatures)
       close_group(pgroup);
     }
   }
-
-  // <<<<<<<<<<<<<<<<<<<<<<<<<<<< REMOVE THIS <<<<<<<<<<<<<<<<<<<<<<<<<
-  // Before the secondary distribution refactor, when the angle/energy
-  // distribution was uncorrelated, no angle was actually sampled. With
-  // the refactor, an angle is always sampled for an uncorrelated
-  // distribution even when no angle distribution exists in the ACE file
-  // (isotropic is assumed). To preserve the RNG stream, we explicitly
-  // mark fission reactions so that we avoid the angle sampling.
-  if (is_fission(mt_)) {
-    for (auto& p : products_) {
-      if (p.particle_ == Particle::Type::neutron) {
-        for (auto& d : p.distribution_) {
-          auto d_ = dynamic_cast<UncorrelatedAngleEnergy*>(d.get());
-          if (d_) d_->fission() = true;
-        }
-      }
-    }
-  }
-  // <<<<<<<<<<<<<<<<<<<<<<<<<<<< REMOVE THIS <<<<<<<<<<<<<<<<<<<<<<<<<
 }
 
 double

@@ -1009,24 +1009,13 @@ sample_cxs_target_velocity(double awr, double E, Direction u, double kT, uint64_
 
 void sample_fission_neutron(int i_nuclide, const Reaction& rx, double E_in, Particle::Bank* site, uint64_t* seed)
 {
-  // Sample cosine of angle -- fission neutrons are always emitted
-  // isotropically. Sometimes in ACE data, fission reactions actually have
-  // an angular distribution listed, but for those that do, it's simply just
-  // a uniform distribution in mu
-  double mu = 2.0 * prn(seed) - 1.0;
-
-  // Sample azimuthal angle uniformly in [0,2*pi)
-  double phi = 2.0*PI*prn(seed);
-  site->u.x = mu;
-  site->u.y = std::sqrt(1.0 - mu*mu) * std::cos(phi);
-  site->u.z = std::sqrt(1.0 - mu*mu) * std::sin(phi);
-
   // Determine total nu, delayed nu, and delayed neutron fraction
   const auto& nuc {data::nuclides[i_nuclide]};
   double nu_t = nuc->nu(E_in, Nuclide::EmissionMode::total);
   double nu_d = nuc->nu(E_in, Nuclide::EmissionMode::delayed);
   double beta = nu_d / nu_t;
 
+  double mu;
   if (prn(seed) < beta) {
     // ====================================================================
     // DELAYED NEUTRON SAMPLED
@@ -1096,6 +1085,12 @@ void sample_fission_neutron(int i_nuclide, const Reaction& rx, double E_in, Part
       }
     }
   }
+
+  // Sample azimuthal angle uniformly in [0, 2*pi) and assign angle
+  double phi = 2.0*PI*prn(seed);
+  site->u.x = mu;
+  site->u.y = std::sqrt(1.0 - mu*mu) * std::cos(phi);
+  site->u.z = std::sqrt(1.0 - mu*mu) * std::sin(phi);
 }
 
 void inelastic_scatter(const Nuclide& nuc, const Reaction& rx, Particle& p)

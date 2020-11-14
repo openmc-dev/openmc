@@ -112,9 +112,6 @@ public:
 protected:
   //! Angle about the axis by which particle coordinates will be rotated
   double angle_;
-
-  //! Whether or not the boundary normal vector reverses after a rotation
-  bool aligned_normals_;
 };
 
 } // namespace openmc

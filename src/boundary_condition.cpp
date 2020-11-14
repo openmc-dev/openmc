@@ -211,14 +211,6 @@ RotationalPeriodicBC::RotationalPeriodicBC(int i_surf, int j_surf)
       "angle of {} degrees which does not evenly divide 360 degrees.",
       angle_ * 180 / PI));
   }
-
-  // Guess whether or not the normal vectors of the two planes are aligned, i.e.
-  // if an arc passing from one surface through the geometry to the other
-  // surface will pass through the same "side" of both surfaces.  If the user
-  // specified an x-plane and a y-plane then the geometry likely lies in the
-  // first quadrant which means the normals are not aligned.  Otherwise, assume
-  // the opposite.
-  aligned_normals_ = !(surf1_is_xyplane && surf2_is_xyplane);
 }
 
 void
@@ -233,21 +225,14 @@ RotationalPeriodicBC::handle_particle(Particle& p, const Surface& surf) const
   double theta;
   int new_surface;
   if (i_particle_surf == i_surf_) {
-    theta = angle_;
-    new_surface = p.surface_ > 0 ? j_surf_ + 1 : -(j_surf_ + 1);
-  } else if (i_particle_surf == j_surf_) {
     theta = -angle_;
-    new_surface = p.surface_ > 0 ? i_surf_ + 1 : -(i_surf_ + 1);
+    new_surface = p.surface_ > 0 ? -(j_surf_ + 1) : j_surf_ + 1;
+  } else if (i_particle_surf == j_surf_) {
+    theta = angle_;
+    new_surface = p.surface_ > 0 ? -(i_surf_ + 1) : i_surf_ + 1;
   } else {
     throw std::runtime_error("Called BoundaryCondition::handle_particle after "
       "hitting a surface, but that surface is not recognized by the BC.");
-  }
-
-  // If the normal vectors of the two surfaces are not aligned, then the logic
-  // must be reversed for rotation and picking a new surface halfspace.
-  if (not aligned_normals_) {
-    theta = -theta;
-    new_surface = -new_surface;
   }
 
   // Rotate the particle's position and direction about the z-axis.

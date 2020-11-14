@@ -35,11 +35,3 @@
     </space>
   </source>
 </settings>
-<?xml version='1.0' encoding='utf-8'?>
-<plots>
-  <plot basis="xz" color_by="cell" id="2" type="slice">
-    <origin>2.5 2.5 0</origin>
-    <width>6 11</width>
-    <pixels>300 300</pixels>
-  </plot>
-</plots>

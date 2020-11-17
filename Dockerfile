@@ -43,7 +43,7 @@ RUN if [ "$include_dagmc" = "false" ] ; \
     mkdir -p build ; \
     cd build ; \
     cmake -Doptimize=on -DHDF5_PREFER_PARALLEL=on .. ; \
-    make  ; \
+    make ; \
     make install ; \
     cd ..  ; \
     pip install -e .[test] ; \
@@ -56,21 +56,52 @@ RUN if [ "$include_dagmc" = "true" ] ; \
     apt-get --yes install liblapack-dev ; \
     apt-get --yes install libnetcdf-dev ; \
     #apt-get --yes install libnetcdf13 ; \
+    apt-get --yes install libtbb-dev ; \
+    apt-get --yes install libglfw3-dev ; \
     fi
 
-ENV LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu/hdf5/serial:$LD_LIBRARY_PATH
+# perhaps not needed#
+# ENV LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu/hdf5/serial:$LD_LIBRARY_PATH
+
+RUN git clone https://github.com/embree/embree
+RUN git clone https://github.com/pshriwise/double-down
+RUN git clone -b develop https://github.com/svalinn/dagmc
+RUN git clone --recurse-submodules https://github.com/openmc-dev/openmc.git
+RUN cd $HOME && \
+    mkdir MOAB && \
+    cd MOAB && \
+    git clone  --single-branch --branch develop https://bitbucket.org/fathomteam/moab/
+
+
+RUN apt-get --yes install  
+
+
+# Clone and install Embree
+RUN if [ "$include_dagmc" = "true" ] ; \
+    then echo installing embree ; \
+    # git clone https://github.com/embree/embree ; \
+    cd embree ; \
+    mkdir build ; \
+    cd build ; \
+    cmake .. -DCMAKE_INSTALL_PREFIX=.. \
+        -DEMBREE_ISPC_SUPPORT=OFF ; \
+    make ; \
+    make install ; \
+    fi
+
 
 # Clone and install MOAB
 RUN if [ "$include_dagmc" = "true" ] ; \
-    then mkdir -p MOAB/bld ; \
+    then mkdir MOAB ; \
+    mkdir build ; \
     cd MOAB ; \
-    git clone --depth 1 https://bitbucket.org/fathomteam/moab -b Version5.1.0 ; \
-    cd bld ; \
+    # git clone --depth 1 https://bitbucket.org/fathomteam/moab -b develop ; \
+    cd build ; \
     cmake ../moab -DENABLE_HDF5=ON ; \
                 -DENABLE_NETCDF=ON ; \
                 -DBUILD_SHARED_LIBS=OFF ; \
                 -DENABLE_FORTRAN=OFF ; \
-                -DCMAKE_INSTALL_PREFIX=$HOME/MOAB ; \
+                -DCMAKE_INSTALL_PREFIX=/MOAB ; \
     make -j4; \
     make install ; \
     rm -rf * ; \
@@ -79,8 +110,24 @@ RUN if [ "$include_dagmc" = "true" ] ; \
                 -DENABLE_PYMOAB=ON ; \
                 -DENABLE_BLASLAPACK=OFF ; \
                 -DENABLE_FORTRAN=OFF ; \
-                -DCMAKE_INSTALL_PREFIX=$HOME/MOAB ; \
+                -DCMAKE_INSTALL_PREFIX=/MOAB ; \
     make -j4; \
+    make install ; \
+    fi
+
+
+# Clone and install double-down
+RUN if [ "$include_dagmc" = "true" ] ; \
+    then echo installing double-down ; \
+    # git clone https://github.com/pshriwise/double-down ; \
+    cd double-down ; \
+    mkdir build ; \
+    cd build ; \
+    cmake .. -DCMAKE_INSTALL_PREFIX=.. ; \
+        -DMOAB_DIR=/MOAB ; \
+        -DEMBREE_DIR=/embree ; \
+        -DEMBREE_ROOT=/embree ; \
+    make ; \
     make install ; \
     fi
 
@@ -88,28 +135,30 @@ RUN if [ "$include_dagmc" = "true" ] ; \
 RUN if [ "$include_dagmc" = "true" ] ; \
     then mkdir DAGMC ; \
     cd DAGMC ; \
-    git clone -b develop https://github.com/svalinn/dagmc ; \
+    # git clone -b develop https://github.com/svalinn/dagmc ; \
     mkdir build ; \
     cd build ; \
     cmake ../dagmc -DBUILD_TALLY=ON ; \
-                -DCMAKE_INSTALL_PREFIX=$HOME/DAGMC/ ; \
-                -DMOAB_DIR=$HOME/MOAB  ; \
-                -DBUILD_STATIC_LIBS=OFF ; \
-                -DBUILD_STATIC_EXE=OFF ; \
+        -DCMAKE_INSTALL_PREFIX=/DAGMC/ ; \
+        -DMOAB_DIR=/MOAB  ; \
+        -DBUILD_STATIC_LIBS=OFF ; \
+        -DBUILD_STATIC_EXE=OFF ; \
     make -j install ; \
-    rm -rf $HOME/DAGMC/dagmc $HOME/DAGMC/build ; \
+    rm -rf /DAGMC/dagmc /DAGMC/build ; \
     fi
+
 
 # Clone and install OpenMC with DAGMC
 RUN if [ "$include_dagmc" = "true" ] ; \
-    then git clone --recurse-submodules https://github.com/openmc-dev/openmc.git \
+    then echo installing openmc with dagmc ; \
+    # then git clone --recurse-submodules https://github.com/openmc-dev/openmc.git ; \
     /opt/openmc ; \
     cd /opt/openmc ; \
     mkdir -p build ; \
     cd build ; \
     cmake -Doptimize=on -Ddagmc=ON ; \
-                    -DDAGMC_DIR=$HOME/DAGMC/ ; \
-                    -DHDF5_PREFER_PARALLEL=on ..  ; \
+        -DDAGMC_DIR=/DAGMC/ ; \
+        -DHDF5_PREFER_PARALLEL=on ..  ; \
     make  ; \
     make install ; \
     cd ..  ; \

@@ -298,8 +298,7 @@ class ResultsList(list):
                 time, time_units, atol, rtol)
         )
 
-    def export_to_materials_xml(self, burnup_index, nuc_with_data=None,
-            new_xml_name='depleted_materials.xml'):
+    def export_to_materials_xml(self, burnup_index, nuc_with_data=None, new_xml_name=None):
         """Export Materials.xml file from the depletion results
 
         Parameters
@@ -307,12 +306,19 @@ class ResultsList(list):
         burn_index : int
             Index of burnup step to evaluate
         nuc_with_data : Iterable of str, optional
-            nuclides list to evaluate with neutron data
+            nuclides list to evaluate with neutron data. If not provided,
+            nuclides from the cross_sections element of materials.xml will
+            be used. If that element is not present, nuclides from
+            OPENMC_CROSS_SECTIONS will be used.
         new_xml_name : str, optional
-            name of xml file to put depleted materials into
+            name of xml file to put depleted materials into. If not
+            provided, no new xml file will be written.
 
         Returns
         -------
+        mat_file : Materials
+            A modified Materials instance containing depleted material data,
+            plus original isotopic compositions of non-depletable materials
         """
         result = self[burnup_index]
 
@@ -327,7 +333,6 @@ class ResultsList(list):
         # is first ones provided as a kwarg here, then ones specified
         # in the materials.xml file if provided, then finally from
         # the environment variable OPENMC_CROSS_SECTIONS.
-        env_xs_name = "OPENMC_CROSS_SECTIONS"
         if nuc_with_data:
             available_cross_sections = nuc_with_data
         else:
@@ -357,4 +362,7 @@ class ResultsList(list):
                         if nuc in available_cross_sections:
                             mat.add_nuclide(nuc, atoms_per_barn_cm)
 
-        mat_file.export_to_xml(path=new_xml_name)
+        if new_xml_name:
+            mat_file.export_to_xml(path=new_xml_name)
+
+        return mat_file

@@ -60,26 +60,11 @@ RUN if [ "$include_dagmc" = "true" ] ; \
     apt-get --yes install libglfw3-dev ; \
     fi
 
-# perhaps not needed#
-# ENV LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu/hdf5/serial:$LD_LIBRARY_PATH
-
-RUN git clone https://github.com/embree/embree
-RUN git clone https://github.com/pshriwise/double-down
-RUN git clone -b develop https://github.com/svalinn/dagmc
-RUN git clone --recurse-submodules https://github.com/openmc-dev/openmc.git
-RUN cd $HOME && \
-    mkdir MOAB && \
-    cd MOAB && \
-    git clone  --single-branch --branch develop https://bitbucket.org/fathomteam/moab/
-
-
-RUN apt-get --yes install  
-
 
 # Clone and install Embree
 RUN if [ "$include_dagmc" = "true" ] ; \
     then echo installing embree ; \
-    # git clone https://github.com/embree/embree ; \
+    git clone https://github.com/embree/embree ; \
     cd embree ; \
     mkdir build ; \
     cd build ; \
@@ -92,26 +77,27 @@ RUN if [ "$include_dagmc" = "true" ] ; \
 
 # Clone and install MOAB
 RUN if [ "$include_dagmc" = "true" ] ; \
-    then mkdir MOAB ; \
-    mkdir build ; \
+    then pip install --upgrade numpy cython ; \
+    mkdir MOAB ; \
     cd MOAB ; \
-    # git clone --depth 1 https://bitbucket.org/fathomteam/moab -b develop ; \
+    mkdir build ; \
+    git clone  --single-branch --branch develop https://bitbucket.org/fathomteam/moab/ ; \
     cd build ; \
-    cmake ../moab -DENABLE_HDF5=ON ; \
-                -DENABLE_NETCDF=ON ; \
-                -DBUILD_SHARED_LIBS=OFF ; \
-                -DENABLE_FORTRAN=OFF ; \
+    cmake ../moab -DENABLE_HDF5=ON \
+                -DENABLE_NETCDF=ON \
+                -DBUILD_SHARED_LIBS=OFF \
+                -DENABLE_FORTRAN=OFF \
                 -DCMAKE_INSTALL_PREFIX=/MOAB ; \
-    make -j4; \
+    make -j; \
     make install ; \
     rm -rf * ; \
-    cmake ../moab -DBUILD_SHARED_LIBS=ON ; \
-                -DENABLE_HDF5=ON ; \
-                -DENABLE_PYMOAB=ON ; \
-                -DENABLE_BLASLAPACK=OFF ; \
-                -DENABLE_FORTRAN=OFF ; \
+    cmake ../moab -DBUILD_SHARED_LIBS=ON \
+                -DENABLE_HDF5=ON \
+                -DENABLE_PYMOAB=ON \
+                -DENABLE_BLASLAPACK=OFF \
+                -DENABLE_FORTRAN=OFF \
                 -DCMAKE_INSTALL_PREFIX=/MOAB ; \
-    make -j4; \
+    make -j; \
     make install ; \
     fi
 
@@ -119,29 +105,30 @@ RUN if [ "$include_dagmc" = "true" ] ; \
 # Clone and install double-down
 RUN if [ "$include_dagmc" = "true" ] ; \
     then echo installing double-down ; \
-    # git clone https://github.com/pshriwise/double-down ; \
+    git clone https://github.com/pshriwise/double-down ; \
     cd double-down ; \
     mkdir build ; \
     cd build ; \
-    cmake .. -DCMAKE_INSTALL_PREFIX=.. ; \
-        -DMOAB_DIR=/MOAB ; \
-        -DEMBREE_DIR=/embree ; \
-        -DEMBREE_ROOT=/embree ; \
-    make ; \
-    make install ; \
+    cmake .. -DCMAKE_INSTALL_PREFIX=.. \
+        -DMOAB_DIR=/MOAB \
+        -DEMBREE_DIR=/embree/lib/cmake/embree-3.12.1 \
+        -DEMBREE_ROOT=/embree/lib/cmake/embree-3.12.1 ; \
+    make -j ; \
+    make -j install ; \
     fi
+
 
 # Clone and install DAGMC
 RUN if [ "$include_dagmc" = "true" ] ; \
     then mkdir DAGMC ; \
     cd DAGMC ; \
-    # git clone -b develop https://github.com/svalinn/dagmc ; \
+    git clone -b develop https://github.com/svalinn/dagmc ; \
     mkdir build ; \
     cd build ; \
-    cmake ../dagmc -DBUILD_TALLY=ON ; \
-        -DCMAKE_INSTALL_PREFIX=/DAGMC/ ; \
-        -DMOAB_DIR=/MOAB  ; \
-        -DBUILD_STATIC_LIBS=OFF ; \
+    cmake ../dagmc -DBUILD_TALLY=ON \
+        -DCMAKE_INSTALL_PREFIX=/dagmc/ \
+        -DMOAB_DIR=/MOAB \
+        -DBUILD_STATIC_LIBS=OFF \
         -DBUILD_STATIC_EXE=OFF ; \
     make -j install ; \
     rm -rf /DAGMC/dagmc /DAGMC/build ; \
@@ -151,7 +138,7 @@ RUN if [ "$include_dagmc" = "true" ] ; \
 # Clone and install OpenMC with DAGMC
 RUN if [ "$include_dagmc" = "true" ] ; \
     then echo installing openmc with dagmc ; \
-    # then git clone --recurse-submodules https://github.com/openmc-dev/openmc.git ; \
+    then git clone --recurse-submodules https://github.com/openmc-dev/openmc.git ; \
     /opt/openmc ; \
     cd /opt/openmc ; \
     mkdir -p build ; \

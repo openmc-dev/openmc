@@ -95,6 +95,9 @@ RUN if [ "$include_dagmc" = "true" ] ; \
                 -DCMAKE_INSTALL_PREFIX=/MOAB ; \
     make ; \
     make install ; \
+    cd pymoab ; \
+    bash install.sh ; \
+    python setup.py install ; \
     fi
 
 # Clone and install Double-Down

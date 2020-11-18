@@ -221,11 +221,14 @@ BoundingBox Universe::bounding_box() const {
 // Cell implementation
 //==============================================================================
 
-double
-Cell::temperature(int32_t instance) const
+double HD Cell::temperature(int32_t instance) const
 {
   if (sqrtkT_.size() < 1) {
+#ifdef __CUDA_ARCH__
+    asm("trap;");
+#else
     throw std::runtime_error{"Cell temperature has not yet been set."};
+#endif
   }
 
   if (instance >= 0) {
@@ -286,9 +289,7 @@ Cell::set_temperature(double T, int32_t instance, bool set_contained)
 // CSGCell implementation
 //==============================================================================
 
-CSGCell::CSGCell() {} // empty constructor
-
-CSGCell::CSGCell(pugi::xml_node cell_node)
+__host__ CSGCell::CSGCell(pugi::xml_node cell_node)
 {
   if (check_for_node(cell_node, "id")) {
     id_ = std::stoi(get_node_value(cell_node, "id"));
@@ -500,7 +501,8 @@ std::pair<double, int32_t>
 CSGCell::distance(Position r, Direction u, int32_t on_surface, Particle* p) const
 {
   double min_dist {INFTY};
-  int32_t i_surf {std::numeric_limits<int32_t>::max()};
+  constexpr int32_t default_cell_index = std::numeric_limits<int32_t>::max();
+  int32_t i_surf {default_cell_index};
 
   for (int32_t token : rpn_) {
     // Ignore this token if it corresponds to an operator rather than a region.
@@ -730,6 +732,11 @@ CSGCell::contains_simple(Position r, Direction u, int32_t on_surface) const
 bool
 CSGCell::contains_complex(Position r, Direction u, int32_t on_surface) const
 {
+  // TODO figure out how to make this work on gpu
+#ifdef __CUDA_ARCH__
+  asm("trap;");
+  return false;
+#else
   // Make a stack of booleans.  We don't know how big it needs to be, but we do
   // know that rpn.size() is an upper-bound.
   vector<bool> stack(rpn_.size());
@@ -774,6 +781,7 @@ CSGCell::contains_complex(Position r, Direction u, int32_t on_surface) const
     // still be -1.
     return true;
   }
+#endif
 }
 
 //==============================================================================

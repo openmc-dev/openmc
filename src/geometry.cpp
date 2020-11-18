@@ -360,7 +360,7 @@ cross_lattice(Particle& p, const BoundaryInfo& boundary)
 
 //==============================================================================
 
-BoundaryInfo distance_to_boundary(Particle& p)
+HD BoundaryInfo distance_to_boundary(Particle& p)
 {
   BoundaryInfo info;
   double d_lat = INFINITY;

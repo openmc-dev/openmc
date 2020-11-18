@@ -640,8 +640,8 @@ void rotate_angle_c(double uvw[3], double mu, const double* phi, uint64_t* seed)
   uvw[2] = u.z;
 }
 
-
-Direction rotate_angle(Direction u, double mu, const double* phi, uint64_t* seed)
+HD Direction rotate_angle(
+  Direction u, double mu, const double* phi, uint64_t* seed)
 {
   // Sample azimuthal angle in [0,2pi) if none provided
   double phi_;

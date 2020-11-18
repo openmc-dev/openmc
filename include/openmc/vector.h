@@ -254,7 +254,7 @@ public:
     new (begin_ + size_++) T(value);
   }
 
-  __host__ size_type thread_safe_append(const T& value)
+  __host__ __device__ size_type thread_safe_append(const T& value)
   {
     // This is what to do if acting on GPU
     size_type idx;
@@ -285,17 +285,25 @@ public:
   {
     return *(begin_ + n);
   }
-  __host__ T& at(size_type n)
+  __host__ __device__ T& at(size_type n)
   {
     if (n >= size_) {
+#ifdef __CUDA_ARCH__
+      asm("trap;");
+#else
       throw std::out_of_range("openmc::vector::at() out of range!");
+#endif
     }
     return *(begin_ + n);
   }
-  __host__ T const& at(size_type n) const
+  __host__ __device__ T const& at(size_type n) const
   {
     if (n >= size_) {
+#ifdef __CUDA_ARCH__
+      asm("trap;");
+#else
       throw std::out_of_range("openmc::vector::at() out of range!");
+#endif
     }
     return *(begin_ + n);
   }
@@ -336,6 +344,7 @@ public:
 
   __host__ __device__ bool empty() const { return size_ == 0; }
   __host__ __device__ pointer data() const { return begin_; }
+  __host__ __device__ pointer data() { return begin_; }
   __host__ __device__ size_type size() const { return size_; }
   __host__ __device__ size_type capacity() const { return capacity_; }
   __host__ __device__ iterator begin() { return begin_; }

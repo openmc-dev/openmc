@@ -18,6 +18,10 @@
 #include "openmc/vector.h"
 #include "openmc/string.h"
 
+#ifndef __CUDACC__
+#define max std::max
+#endif
+
 namespace openmc {
 
 //==============================================================================
@@ -28,7 +32,7 @@ class Surface;
 
 namespace model {
   extern std::unordered_map<int, int> surface_map;
-  extern vector<unique_ptr<Surface>> surfaces;
+  __managed__ extern vector<unique_ptr<Surface>> surfaces;
 } // namespace model
 
 //==============================================================================
@@ -44,39 +48,41 @@ struct BoundingBox
   double zmin = -INFTY;
   double zmax = INFTY;
 
-
-  inline BoundingBox operator &(const BoundingBox& other) {
+  HD inline BoundingBox operator&(const BoundingBox& other)
+  {
     BoundingBox result = *this;
     return result &= other;
   }
 
-  inline BoundingBox operator |(const BoundingBox& other) {
+  HD inline BoundingBox operator|(const BoundingBox& other)
+  {
     BoundingBox result = *this;
     return result |= other;
   }
 
   // intersect operator
-  inline BoundingBox& operator &=(const BoundingBox& other) {
-    xmin = std::max(xmin, other.xmin);
-    xmax = std::min(xmax, other.xmax);
-    ymin = std::max(ymin, other.ymin);
-    ymax = std::min(ymax, other.ymax);
-    zmin = std::max(zmin, other.zmin);
-    zmax = std::min(zmax, other.zmax);
+  HD inline BoundingBox& operator&=(const BoundingBox& other)
+  {
+    xmin = max(xmin, other.xmin);
+    xmax = min(xmax, other.xmax);
+    ymin = max(ymin, other.ymin);
+    ymax = min(ymax, other.ymax);
+    zmin = max(zmin, other.zmin);
+    zmax = min(zmax, other.zmax);
     return *this;
   }
 
   // union operator
-  inline BoundingBox& operator |=(const BoundingBox& other) {
-    xmin = std::min(xmin, other.xmin);
-    xmax = std::max(xmax, other.xmax);
-    ymin = std::min(ymin, other.ymin);
-    ymax = std::max(ymax, other.ymax);
-    zmin = std::min(zmin, other.zmin);
-    zmax = std::max(zmax, other.zmax);
+  HD inline BoundingBox& operator|=(const BoundingBox& other)
+  {
+    xmin = min(xmin, other.xmin);
+    xmax = max(xmax, other.xmax);
+    ymin = min(ymin, other.ymin);
+    ymax = max(ymax, other.ymax);
+    zmin = min(zmin, other.zmin);
+    zmax = max(zmax, other.zmax);
     return *this;
   }
-
 };
 
 //==============================================================================
@@ -93,11 +99,9 @@ public:
   bool surf_source_ {false};     //!< Activate source banking for the surface?
 
   explicit Surface(pugi::xml_node surf_node);
-  Surface();
+  Surface() = default;
 
   Surface(Surface&& other) = default;
-
-  virtual ~Surface() {}
 
   //! Determine which side of a surface a point lies on.
   //! \param r The 3D Cartesian coordinate of a point.
@@ -105,50 +109,51 @@ public:
   //!   point is very close to the surface.
   //! \return true if the point is on the "positive" side of the surface and
   //!   false otherwise.
-  bool sense(Position r, Direction u) const;
+  HD bool sense(Position r, Direction u) const;
 
   //! Determine the direction of a ray reflected from the surface.
   //! \param[in] r The point at which the ray is incident.
   //! \param[in] u Incident direction of the ray
   //! \param[inout] p Pointer to the particle
   //! \return Outgoing direction of the ray
-  virtual Direction reflect(Position r, Direction u, Particle* p) const;
+  HD virtual Direction reflect(Position r, Direction u, Particle* p) const;
 
-  virtual Direction diffuse_reflect(Position r, Direction u,
-    uint64_t* seed) const;
+  HD virtual Direction diffuse_reflect(
+    Position r, Direction u, uint64_t* seed) const;
 
   //! Evaluate the equation describing the surface.
   //!
   //! Surfaces can be described by some function f(x, y, z) = 0.  This member
   //! function evaluates that mathematical function.
   //! \param r A 3D Cartesian coordinate.
-  virtual double evaluate(Position r) const = 0;
+  HD virtual double evaluate(Position r) const = 0;
 
   //! Compute the distance between a point and the surface along a ray.
   //! \param r A 3D Cartesian coordinate.
   //! \param u The direction of the ray.
   //! \param coincident A hint to the code that the given point should lie
   //!   exactly on the surface.
-  virtual double distance(Position r, Direction u, bool coincident) const = 0;
+  HD virtual double distance(
+    Position r, Direction u, bool coincident) const = 0;
 
   //! Compute the local outward normal direction of the surface.
   //! \param r A 3D Cartesian coordinate.
   //! \return Normal direction
-  virtual Direction normal(Position r) const = 0;
+  HD virtual Direction normal(Position r) const = 0;
 
   //! Write all information needed to reconstruct the surface to an HDF5 group.
   //! \param group_id An HDF5 group id.
   virtual void to_hdf5(hid_t group_id) const = 0;
 
   //! Get the BoundingBox for this surface.
-  virtual BoundingBox bounding_box(bool /*pos_side*/) const { return {}; }
+  HD virtual BoundingBox bounding_box(bool /* pos_side */) const { return {}; }
 };
 
 class CSGSurface : public Surface
 {
 public:
   explicit CSGSurface(pugi::xml_node surf_node);
-  CSGSurface();
+  CSGSurface() = default;
   CSGSurface(CSGSurface&& other) = default;
 
   void to_hdf5(hid_t group_id) const;
@@ -190,11 +195,11 @@ public:
   explicit SurfaceXPlane(pugi::xml_node surf_node);
   SurfaceXPlane(SurfaceXPlane&& other) = default;
 
-  double evaluate(Position r) const;
-  double distance(Position r, Direction u, bool coincident) const;
-  Direction normal(Position r) const;
+  HD double evaluate(Position r) const;
+  HD double distance(Position r, Direction u, bool coincident) const;
+  HD Direction normal(Position r) const;
   void to_hdf5_inner(hid_t group_id) const;
-  BoundingBox bounding_box(bool pos_side) const;
+  HD BoundingBox bounding_box(bool pos_side) const;
 
   double x0_;
 };
@@ -211,11 +216,11 @@ public:
   explicit SurfaceYPlane(pugi::xml_node surf_node);
   SurfaceYPlane(SurfaceYPlane&& other) = default;
 
-  double evaluate(Position r) const;
-  double distance(Position r, Direction u, bool coincident) const;
-  Direction normal(Position r) const;
+  HD double evaluate(Position r) const;
+  HD double distance(Position r, Direction u, bool coincident) const;
+  HD Direction normal(Position r) const;
   void to_hdf5_inner(hid_t group_id) const;
-  BoundingBox bounding_box(bool pos_side) const;
+  HD BoundingBox bounding_box(bool pos_side) const;
 
   double y0_;
 };
@@ -231,11 +236,11 @@ class SurfaceZPlane : public CSGSurface
 public:
   explicit SurfaceZPlane(pugi::xml_node surf_node);
   SurfaceZPlane(SurfaceZPlane&& other) = default;
-  double evaluate(Position r) const;
-  double distance(Position r, Direction u, bool coincident) const;
-  Direction normal(Position r) const;
+  HD double evaluate(Position r) const;
+  HD double distance(Position r, Direction u, bool coincident) const;
+  HD Direction normal(Position r) const;
   void to_hdf5_inner(hid_t group_id) const;
-  BoundingBox bounding_box(bool pos_side) const;
+  HD BoundingBox bounding_box(bool pos_side) const;
 
   double z0_;
 };
@@ -253,9 +258,9 @@ public:
 
   SurfacePlane(SurfacePlane&& other) = default;
 
-  double evaluate(Position r) const;
-  double distance(Position r, Direction u, bool coincident) const;
-  Direction normal(Position r) const;
+  HD double evaluate(Position r) const;
+  HD double distance(Position r, Direction u, bool coincident) const;
+  HD Direction normal(Position r) const;
   void to_hdf5_inner(hid_t group_id) const;
 
   double A_, B_, C_, D_;
@@ -273,11 +278,11 @@ class SurfaceXCylinder : public CSGSurface
 public:
   explicit SurfaceXCylinder(pugi::xml_node surf_node);
   SurfaceXCylinder(SurfaceXCylinder&& other) = default;
-  double evaluate(Position r) const;
-  double distance(Position r, Direction u, bool coincident) const;
-  Direction normal(Position r) const;
+  HD double evaluate(Position r) const;
+  HD double distance(Position r, Direction u, bool coincident) const;
+  HD Direction normal(Position r) const;
   void to_hdf5_inner(hid_t group_id) const;
-  BoundingBox bounding_box(bool pos_side) const;
+  HD BoundingBox bounding_box(bool pos_side) const;
 
   double y0_, z0_, radius_;
 };
@@ -294,11 +299,11 @@ class SurfaceYCylinder : public CSGSurface
 public:
   explicit SurfaceYCylinder(pugi::xml_node surf_node);
   SurfaceYCylinder(SurfaceYCylinder&& other) = default;
-  double evaluate(Position r) const;
-  double distance(Position r, Direction u, bool coincident) const;
-  Direction normal(Position r) const;
+  HD double evaluate(Position r) const;
+  HD double distance(Position r, Direction u, bool coincident) const;
+  HD Direction normal(Position r) const;
   void to_hdf5_inner(hid_t group_id) const;
-  BoundingBox bounding_box(bool pos_side) const;
+  HD BoundingBox bounding_box(bool pos_side) const;
 
   double x0_, z0_, radius_;
 };
@@ -316,11 +321,11 @@ public:
   explicit SurfaceZCylinder(pugi::xml_node surf_node);
   SurfaceZCylinder(SurfaceZCylinder&& other) = default;
 
-  double evaluate(Position r) const;
-  double distance(Position r, Direction u, bool coincident) const;
-  Direction normal(Position r) const;
+  HD double evaluate(Position r) const;
+  HD double distance(Position r, Direction u, bool coincident) const;
+  HD Direction normal(Position r) const;
   void to_hdf5_inner(hid_t group_id) const;
-  BoundingBox bounding_box(bool pos_side) const;
+  HD BoundingBox bounding_box(bool pos_side) const;
 
   double x0_, y0_, radius_;
 };
@@ -337,11 +342,11 @@ class SurfaceSphere : public CSGSurface
 public:
   explicit SurfaceSphere(pugi::xml_node surf_node);
   SurfaceSphere(SurfaceSphere&& other) = default;
-  double evaluate(Position r) const;
-  double distance(Position r, Direction u, bool coincident) const;
-  Direction normal(Position r) const;
+  HD double evaluate(Position r) const;
+  HD double distance(Position r, Direction u, bool coincident) const;
+  HD Direction normal(Position r) const;
   void to_hdf5_inner(hid_t group_id) const;
-  BoundingBox bounding_box(bool pos_side) const;
+  HD BoundingBox bounding_box(bool pos_side) const;
 
   double x0_, y0_, z0_, radius_;
 };
@@ -358,9 +363,9 @@ class SurfaceXCone : public CSGSurface
 public:
   explicit SurfaceXCone(pugi::xml_node surf_node);
   SurfaceXCone(SurfaceXCone&& other) = default;
-  double evaluate(Position r) const;
-  double distance(Position r, Direction u, bool coincident) const;
-  Direction normal(Position r) const;
+  HD double evaluate(Position r) const;
+  HD double distance(Position r, Direction u, bool coincident) const;
+  HD Direction normal(Position r) const;
   void to_hdf5_inner(hid_t group_id) const;
 
   double x0_, y0_, z0_, radius_sq_;
@@ -378,9 +383,9 @@ class SurfaceYCone : public CSGSurface
 public:
   explicit SurfaceYCone(pugi::xml_node surf_node);
   SurfaceYCone(SurfaceYCone&& other) = default;
-  double evaluate(Position r) const;
-  double distance(Position r, Direction u, bool coincident) const;
-  Direction normal(Position r) const;
+  HD double evaluate(Position r) const;
+  HD double distance(Position r, Direction u, bool coincident) const;
+  HD Direction normal(Position r) const;
   void to_hdf5_inner(hid_t group_id) const;
 
   double x0_, y0_, z0_, radius_sq_;
@@ -398,9 +403,9 @@ class SurfaceZCone : public CSGSurface
 public:
   explicit SurfaceZCone(pugi::xml_node surf_node);
   SurfaceZCone(SurfaceZCone&& other) = default;
-  double evaluate(Position r) const;
-  double distance(Position r, Direction u, bool coincident) const;
-  Direction normal(Position r) const;
+  HD double evaluate(Position r) const;
+  HD double distance(Position r, Direction u, bool coincident) const;
+  HD Direction normal(Position r) const;
   void to_hdf5_inner(hid_t group_id) const;
 
   double x0_, y0_, z0_, radius_sq_;
@@ -418,9 +423,9 @@ public:
   explicit SurfaceQuadric(pugi::xml_node surf_node);
   SurfaceQuadric(SurfaceQuadric&& other) = default;
 
-  double evaluate(Position r) const;
-  double distance(Position r, Direction u, bool coincident) const;
-  Direction normal(Position r) const;
+  HD double evaluate(Position r) const;
+  HD double distance(Position r, Direction u, bool coincident) const;
+  HD Direction normal(Position r) const;
   void to_hdf5_inner(hid_t group_id) const;
 
   // Ax^2 + By^2 + Cz^2 + Dxy + Eyz + Fxz + Gx + Hy + Jz + K = 0

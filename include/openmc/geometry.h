@@ -61,7 +61,7 @@ void cross_lattice(Particle& p, const BoundaryInfo& boundary);
 //! Find the next boundary a particle will intersect.
 //==============================================================================
 
-BoundaryInfo distance_to_boundary(Particle& p);
+HD BoundaryInfo distance_to_boundary(Particle& p);
 
 } // namespace openmc
 

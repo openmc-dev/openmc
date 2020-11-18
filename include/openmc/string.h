@@ -127,6 +127,7 @@ public:
   }
   __host__ __device__ char* c_str() { return data_.begin(); }
   __host__ __device__ char const* c_str() const { return data_.cbegin(); }
+  __host__ __device__ char const* data() const { return data_.begin(); }
   __host__ __device__ char* data() { return data_.begin(); }
 };
 

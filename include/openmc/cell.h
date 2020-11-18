@@ -85,8 +85,8 @@ public:
   // Constructors, destructors, factory functions
 
   explicit Cell(pugi::xml_node cell_node);
-  Cell() {};
-  virtual ~Cell() = default;
+  __host__ Cell() {}
+  __host__ virtual ~Cell() {}
 
   //----------------------------------------------------------------------------
   // Methods
@@ -110,12 +110,12 @@ public:
   //! \param on_surface The signed index of a surface that the coordinate is
   //!   known to be on.  This index takes precedence over surface sense
   //!   calculations.
-  virtual bool
-  contains(Position r, Direction u, int32_t on_surface) const = 0;
+  virtual bool HD contains(
+    Position r, Direction u, int32_t on_surface) const = 0;
 
   //! Find the oncoming boundary of this cell.
-  virtual std::pair<double, int32_t>
-  distance(Position r, Direction u, int32_t on_surface, Particle* p) const = 0;
+  virtual std::pair<double, int32_t> HD distance(
+    Position r, Direction u, int32_t on_surface, Particle* p) const = 0;
 
   //! Write all information needed to reconstruct the cell to an HDF5 group.
   //! \param group_id An HDF5 group id.
@@ -131,7 +131,7 @@ public:
   //! \param[in] instance Instance index. If -1 is given, the temperature for
   //!   the first instance is returned.
   //! \return Temperature in [K]
-  double temperature(int32_t instance = -1) const;
+  HD double temperature(int32_t instance = -1) const;
 
   //! Set the temperature of a cell instance
   //! \param[in] T Temperature in [K]
@@ -144,7 +144,7 @@ public:
 
   //! Get the name of a cell
   //! \return Cell name
-  const std::string& name() const { return name_; };
+  const string& name() const { return name_; };
 
   //! Set the temperature of a cell instance
   //! \param[in] name Cell name
@@ -164,8 +164,8 @@ public:
   // Data members
 
   int32_t id_;                //!< Unique ID
-  std::string name_;          //!< User-defined name
-  Fill type_;                  //!< Material, universe, or lattice
+  string name_;               //!< User-defined name
+  Fill type_;                 //!< Material, universe, or lattice
   int32_t universe_;          //!< Universe # this cell is in
   int32_t fill_;              //!< Universe # filling this cell
   int32_t n_instances_{0};    //!< Number of instances of this cell
@@ -185,9 +185,9 @@ public:
   vector<double> sqrtkT_;
 
   //! Definition of spatial region as Boolean expression of half-spaces
-  vector<std::int32_t> region_;
+  vector<int32_t> region_;
   //! Reverse Polish notation for region expression
-  vector<std::int32_t> rpn_;
+  vector<int32_t> rpn_;
   bool simple_;  //!< Does the region contain only intersections?
 
   //! \brief Neighboring cells in the same universe.
@@ -216,23 +216,21 @@ struct CellInstanceItem {
 class CSGCell : public Cell
 {
 public:
-  CSGCell();
-
   explicit CSGCell(pugi::xml_node cell_node);
+  __host__ CSGCell() {}
 
-  bool
-  contains(Position r, Direction u, int32_t on_surface) const;
+  bool HD contains(Position r, Direction u, int32_t on_surface) const;
 
-  std::pair<double, int32_t>
-  distance(Position r, Direction u, int32_t on_surface, Particle* p) const;
+  std::pair<double, int32_t> HD distance(
+    Position r, Direction u, int32_t on_surface, Particle* p) const;
 
   void to_hdf5(hid_t group_id) const;
 
   BoundingBox bounding_box() const;
 
 protected:
-  bool contains_simple(Position r, Direction u, int32_t on_surface) const;
-  bool contains_complex(Position r, Direction u, int32_t on_surface) const;
+  bool HD contains_simple(Position r, Direction u, int32_t on_surface) const;
+  bool HD contains_complex(Position r, Direction u, int32_t on_surface) const;
   BoundingBox bounding_box_simple() const;
   static BoundingBox bounding_box_complex(vector<int32_t> rpn);
 

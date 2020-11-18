@@ -364,6 +364,9 @@ std::pair<T*, T*> replicated_new(Args... args)
  * the device. This fills that gap. Memory is assumed to be managed by the
  * host and made available on the device by use of the unified memory
  * capability.
+ *
+ * TODO: this could be cleaned up to internally use the DualPointer
+ * class rather than two raw pointers.
  */
 template<class T>
 class unique_ptr {
@@ -448,6 +451,9 @@ public:
     return ptr;
 #endif
   }
+
+  __host__ __device__ pointer get_dev() const noexcept { return ptr_dev; }
+  __host__ __device__ pointer get_host() const noexcept { return ptr; }
 
   std::tuple<pointer, pointer> release() noexcept
   {

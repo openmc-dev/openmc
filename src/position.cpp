@@ -6,8 +6,7 @@ namespace openmc {
 // Position implementation
 //==============================================================================
 
-Position&
-Position::operator+=(Position other)
+HD Position& Position::operator+=(Position other)
 {
   x += other.x;
   y += other.y;
@@ -15,8 +14,7 @@ Position::operator+=(Position other)
   return *this;
 }
 
-Position&
-Position::operator+=(double v)
+HD Position& Position::operator+=(double v)
 {
   x += v;
   y += v;
@@ -24,8 +22,7 @@ Position::operator+=(double v)
   return *this;
 }
 
-Position&
-Position::operator-=(Position other)
+HD Position& Position::operator-=(Position other)
 {
   x -= other.x;
   y -= other.y;
@@ -33,8 +30,7 @@ Position::operator-=(Position other)
   return *this;
 }
 
-Position&
-Position::operator-=(double v)
+HD Position& Position::operator-=(double v)
 {
   x -= v;
   y -= v;
@@ -42,8 +38,7 @@ Position::operator-=(double v)
   return *this;
 }
 
-Position&
-Position::operator*=(Position other)
+HD Position& Position::operator*=(Position other)
 {
   x *= other.x;
   y *= other.y;

@@ -169,6 +169,9 @@ if (cuda)
     list(APPEND cuflags -lineinfo)
   endif()
 
+  # Allows us to use constexpr stuff like numeric_max in device code
+  list(APPEND cuflags --expt-relaxed-constexpr)
+
 endif()
 
 # Show flags being used

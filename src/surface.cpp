@@ -26,7 +26,7 @@ namespace openmc {
 
 namespace model {
   std::unordered_map<int, int> surface_map;
-  vector<unique_ptr<Surface>> surfaces;
+  __managed__ vector<unique_ptr<Surface>> surfaces;
 } // namespace model
 
 //==============================================================================
@@ -110,8 +110,6 @@ void read_coeffs(pugi::xml_node surf_node, int surf_id, double &c1, double &c2,
 // Surface implementation
 //==============================================================================
 
-Surface::Surface() {} // empty constructor
-
 Surface::Surface(pugi::xml_node surf_node)
 {
   if (check_for_node(surf_node, "id")) {
@@ -149,8 +147,7 @@ Surface::Surface(pugi::xml_node surf_node)
 
 }
 
-bool
-Surface::sense(Position r, Direction u) const
+HD bool Surface::sense(Position r, Direction u) const
 {
   // Evaluate the surface equation at the particle's coordinates to determine
   // which side the particle is on.
@@ -166,8 +163,7 @@ Surface::sense(Position r, Direction u) const
   return f > 0.0;
 }
 
-Direction
-Surface::reflect(Position r, Direction u, Particle* p) const
+HD Direction Surface::reflect(Position r, Direction u, Particle* p) const
 {
   // Determine projection of direction onto normal and squared magnitude of
   // normal.
@@ -177,8 +173,8 @@ Surface::reflect(Position r, Direction u, Particle* p) const
   return u.reflect(n);
 }
 
-Direction
-Surface::diffuse_reflect(Position r, Direction u, uint64_t* seed) const
+HD Direction Surface::diffuse_reflect(
+  Position r, Direction u, uint64_t* seed) const
 {
   // Diffuse reflect direction according to the normal.
   // cosine distribution
@@ -198,7 +194,6 @@ Surface::diffuse_reflect(Position r, Direction u, uint64_t* seed) const
   return u/u.norm();
 }
 
-CSGSurface::CSGSurface() : Surface{} {};
 CSGSurface::CSGSurface(pugi::xml_node surf_node) : Surface{surf_node} {};
 
 void
@@ -304,17 +299,18 @@ SurfaceXPlane::SurfaceXPlane(pugi::xml_node surf_node)
   read_coeffs(surf_node, id_, x0_);
 }
 
-double SurfaceXPlane::evaluate(Position r) const
+HD double SurfaceXPlane::evaluate(Position r) const
 {
   return r.x - x0_;
 }
 
-double SurfaceXPlane::distance(Position r, Direction u, bool coincident) const
+HD double SurfaceXPlane::distance(
+  Position r, Direction u, bool coincident) const
 {
   return axis_aligned_plane_distance<0>(r, u, coincident, x0_);
 }
 
-Direction SurfaceXPlane::normal(Position r) const
+HD Direction SurfaceXPlane::normal(Position r) const
 {
   return {1., 0., 0.};
 }
@@ -346,17 +342,18 @@ SurfaceYPlane::SurfaceYPlane(pugi::xml_node surf_node)
   read_coeffs(surf_node, id_, y0_);
 }
 
-double SurfaceYPlane::evaluate(Position r) const
+HD double SurfaceYPlane::evaluate(Position r) const
 {
   return r.y - y0_;
 }
 
-double SurfaceYPlane::distance(Position r, Direction u, bool coincident) const
+HD double SurfaceYPlane::distance(
+  Position r, Direction u, bool coincident) const
 {
   return axis_aligned_plane_distance<1>(r, u, coincident, y0_);
 }
 
-Direction SurfaceYPlane::normal(Position r) const
+HD Direction SurfaceYPlane::normal(Position r) const
 {
   return {0., 1., 0.};
 }
@@ -388,17 +385,18 @@ SurfaceZPlane::SurfaceZPlane(pugi::xml_node surf_node)
   read_coeffs(surf_node, id_, z0_);
 }
 
-double SurfaceZPlane::evaluate(Position r) const
+HD double SurfaceZPlane::evaluate(Position r) const
 {
   return r.z - z0_;
 }
 
-double SurfaceZPlane::distance(Position r, Direction u, bool coincident) const
+HD double SurfaceZPlane::distance(
+  Position r, Direction u, bool coincident) const
 {
   return axis_aligned_plane_distance<2>(r, u, coincident, z0_);
 }
 
-Direction SurfaceZPlane::normal(Position r) const
+HD Direction SurfaceZPlane::normal(Position r) const
 {
   return {0., 0., 1.};
 }
@@ -430,14 +428,12 @@ SurfacePlane::SurfacePlane(pugi::xml_node surf_node)
   read_coeffs(surf_node, id_, A_, B_, C_, D_);
 }
 
-double
-SurfacePlane::evaluate(Position r) const
+double HD SurfacePlane::evaluate(Position r) const
 {
   return A_*r.x + B_*r.y + C_*r.z - D_;
 }
 
-double
-SurfacePlane::distance(Position r, Direction u, bool coincident) const
+double HD SurfacePlane::distance(Position r, Direction u, bool coincident) const
 {
   const double f = A_*r.x + B_*r.y + C_*r.z - D_;
   const double projection = A_*u.x + B_*u.y + C_*u.z;
@@ -450,8 +446,7 @@ SurfacePlane::distance(Position r, Direction u, bool coincident) const
   }
 }
 
-Direction
-SurfacePlane::normal(Position r) const
+Direction HD SurfacePlane::normal(Position r) const
 {
   return {A_, B_, C_};
 }
@@ -548,18 +543,19 @@ SurfaceXCylinder::SurfaceXCylinder(pugi::xml_node surf_node)
   read_coeffs(surf_node, id_, y0_, z0_, radius_);
 }
 
-double SurfaceXCylinder::evaluate(Position r) const
+HD double SurfaceXCylinder::evaluate(Position r) const
 {
   return axis_aligned_cylinder_evaluate<1, 2>(r, y0_, z0_, radius_);
 }
 
-double SurfaceXCylinder::distance(Position r, Direction u, bool coincident) const
+HD double SurfaceXCylinder::distance(
+  Position r, Direction u, bool coincident) const
 {
   return axis_aligned_cylinder_distance<0, 1, 2>(r, u, coincident, y0_, z0_,
                                                  radius_);
 }
 
-Direction SurfaceXCylinder::normal(Position r) const
+HD Direction SurfaceXCylinder::normal(Position r) const
 {
   return axis_aligned_cylinder_normal<0, 1, 2>(r, y0_, z0_);
 }
@@ -571,7 +567,8 @@ void SurfaceXCylinder::to_hdf5_inner(hid_t group_id) const
   write_dataset(group_id, "coefficients", coeffs);
 }
 
-BoundingBox SurfaceXCylinder::bounding_box(bool pos_side) const {
+HD BoundingBox SurfaceXCylinder::bounding_box(bool pos_side) const
+{
   if (!pos_side) {
     return {-INFTY, INFTY, y0_ - radius_, y0_ + radius_, z0_ - radius_, z0_ + radius_};
   } else {
@@ -588,18 +585,19 @@ SurfaceYCylinder::SurfaceYCylinder(pugi::xml_node surf_node)
   read_coeffs(surf_node, id_, x0_, z0_, radius_);
 }
 
-double SurfaceYCylinder::evaluate(Position r) const
+HD double SurfaceYCylinder::evaluate(Position r) const
 {
   return axis_aligned_cylinder_evaluate<0, 2>(r, x0_, z0_, radius_);
 }
 
-double SurfaceYCylinder::distance(Position r, Direction u, bool coincident) const
+HD double SurfaceYCylinder::distance(
+  Position r, Direction u, bool coincident) const
 {
   return axis_aligned_cylinder_distance<1, 0, 2>(r, u, coincident, x0_, z0_,
                                                  radius_);
 }
 
-Direction SurfaceYCylinder::normal(Position r) const
+HD Direction SurfaceYCylinder::normal(Position r) const
 {
   return axis_aligned_cylinder_normal<1, 0, 2>(r, x0_, z0_);
 }
@@ -611,7 +609,8 @@ void SurfaceYCylinder::to_hdf5_inner(hid_t group_id) const
   write_dataset(group_id, "coefficients", coeffs);
 }
 
-BoundingBox SurfaceYCylinder::bounding_box(bool pos_side) const {
+HD BoundingBox SurfaceYCylinder::bounding_box(bool pos_side) const
+{
   if (!pos_side) {
     return {x0_ - radius_, x0_ + radius_, -INFTY, INFTY, z0_ - radius_, z0_ + radius_};
   } else {
@@ -629,18 +628,19 @@ SurfaceZCylinder::SurfaceZCylinder(pugi::xml_node surf_node)
   read_coeffs(surf_node, id_, x0_, y0_, radius_);
 }
 
-double SurfaceZCylinder::evaluate(Position r) const
+HD double SurfaceZCylinder::evaluate(Position r) const
 {
   return axis_aligned_cylinder_evaluate<0, 1>(r, x0_, y0_, radius_);
 }
 
-double SurfaceZCylinder::distance(Position r, Direction u, bool coincident) const
+HD double SurfaceZCylinder::distance(
+  Position r, Direction u, bool coincident) const
 {
   return axis_aligned_cylinder_distance<2, 0, 1>(r, u, coincident, x0_, y0_,
                                                  radius_);
 }
 
-Direction SurfaceZCylinder::normal(Position r) const
+HD Direction SurfaceZCylinder::normal(Position r) const
 {
   return axis_aligned_cylinder_normal<2, 0, 1>(r, x0_, y0_);
 }
@@ -652,14 +652,14 @@ void SurfaceZCylinder::to_hdf5_inner(hid_t group_id) const
   write_dataset(group_id, "coefficients", coeffs);
 }
 
-BoundingBox SurfaceZCylinder::bounding_box(bool pos_side) const {
+HD BoundingBox SurfaceZCylinder::bounding_box(bool pos_side) const
+{
   if (!pos_side) {
     return {x0_ - radius_, x0_ + radius_, y0_ - radius_, y0_ + radius_, -INFTY, INFTY};
   } else {
     return {};
   }
 }
-
 
 //==============================================================================
 // SurfaceSphere implementation
@@ -671,7 +671,7 @@ SurfaceSphere::SurfaceSphere(pugi::xml_node surf_node)
   read_coeffs(surf_node, id_, x0_, y0_, z0_, radius_);
 }
 
-double SurfaceSphere::evaluate(Position r) const
+HD double SurfaceSphere::evaluate(Position r) const
 {
   const double x = r.x - x0_;
   const double y = r.y - y0_;
@@ -679,7 +679,8 @@ double SurfaceSphere::evaluate(Position r) const
   return x*x + y*y + z*z - radius_*radius_;
 }
 
-double SurfaceSphere::distance(Position r, Direction u, bool coincident) const
+HD double SurfaceSphere::distance(
+  Position r, Direction u, bool coincident) const
 {
   const double x = r.x - x0_;
   const double y = r.y - y0_;
@@ -717,7 +718,7 @@ double SurfaceSphere::distance(Position r, Direction u, bool coincident) const
   }
 }
 
-Direction SurfaceSphere::normal(Position r) const
+HD Direction SurfaceSphere::normal(Position r) const
 {
   return {2.0*(r.x - x0_), 2.0*(r.y - y0_), 2.0*(r.z - z0_)};
 }
@@ -729,7 +730,8 @@ void SurfaceSphere::to_hdf5_inner(hid_t group_id) const
   write_dataset(group_id, "coefficients", coeffs);
 }
 
-BoundingBox SurfaceSphere::bounding_box(bool pos_side) const {
+HD BoundingBox SurfaceSphere::bounding_box(bool pos_side) const
+{
   if (!pos_side) {
     return {x0_ - radius_, x0_ + radius_,
             y0_ - radius_, y0_ + radius_,
@@ -835,18 +837,18 @@ SurfaceXCone::SurfaceXCone(pugi::xml_node surf_node)
   read_coeffs(surf_node, id_, x0_, y0_, z0_, radius_sq_);
 }
 
-double SurfaceXCone::evaluate(Position r) const
+HD double SurfaceXCone::evaluate(Position r) const
 {
   return axis_aligned_cone_evaluate<0, 1, 2>(r, x0_, y0_, z0_, radius_sq_);
 }
 
-double SurfaceXCone::distance(Position r, Direction u, bool coincident) const
+HD double SurfaceXCone::distance(Position r, Direction u, bool coincident) const
 {
   return axis_aligned_cone_distance<0, 1, 2>(r, u, coincident, x0_, y0_, z0_,
                                              radius_sq_);
 }
 
-Direction SurfaceXCone::normal(Position r) const
+HD Direction SurfaceXCone::normal(Position r) const
 {
   return axis_aligned_cone_normal<0, 1, 2>(r, x0_, y0_, z0_, radius_sq_);
 }
@@ -868,18 +870,18 @@ SurfaceYCone::SurfaceYCone(pugi::xml_node surf_node)
   read_coeffs(surf_node, id_, x0_, y0_, z0_, radius_sq_);
 }
 
-double SurfaceYCone::evaluate(Position r) const
+HD double SurfaceYCone::evaluate(Position r) const
 {
   return axis_aligned_cone_evaluate<1, 0, 2>(r, y0_, x0_, z0_, radius_sq_);
 }
 
-double SurfaceYCone::distance(Position r, Direction u, bool coincident) const
+HD double SurfaceYCone::distance(Position r, Direction u, bool coincident) const
 {
   return axis_aligned_cone_distance<1, 0, 2>(r, u, coincident, y0_, x0_, z0_,
                                              radius_sq_);
 }
 
-Direction SurfaceYCone::normal(Position r) const
+HD Direction SurfaceYCone::normal(Position r) const
 {
   return axis_aligned_cone_normal<1, 0, 2>(r, y0_, x0_, z0_, radius_sq_);
 }
@@ -901,18 +903,18 @@ SurfaceZCone::SurfaceZCone(pugi::xml_node surf_node)
   read_coeffs(surf_node, id_, x0_, y0_, z0_, radius_sq_);
 }
 
-double SurfaceZCone::evaluate(Position r) const
+HD double SurfaceZCone::evaluate(Position r) const
 {
   return axis_aligned_cone_evaluate<2, 0, 1>(r, z0_, x0_, y0_, radius_sq_);
 }
 
-double SurfaceZCone::distance(Position r, Direction u, bool coincident) const
+HD double SurfaceZCone::distance(Position r, Direction u, bool coincident) const
 {
   return axis_aligned_cone_distance<2, 0, 1>(r, u, coincident, z0_, x0_, y0_,
                                              radius_sq_);
 }
 
-Direction SurfaceZCone::normal(Position r) const
+HD Direction SurfaceZCone::normal(Position r) const
 {
   return axis_aligned_cone_normal<2, 0, 1>(r, z0_, x0_, y0_, radius_sq_);
 }
@@ -934,8 +936,7 @@ SurfaceQuadric::SurfaceQuadric(pugi::xml_node surf_node)
   read_coeffs(surf_node, id_, A_, B_, C_, D_, E_, F_, G_, H_, J_, K_);
 }
 
-double
-SurfaceQuadric::evaluate(Position r) const
+double HD SurfaceQuadric::evaluate(Position r) const
 {
   const double x = r.x;
   const double y = r.y;
@@ -945,8 +946,8 @@ SurfaceQuadric::evaluate(Position r) const
          z*(C_*z + F_*x + J_) + K_;
 }
 
-double
-SurfaceQuadric::distance(Position r, Direction ang, bool coincident) const
+double HD SurfaceQuadric::distance(
+  Position r, Direction ang, bool coincident) const
 {
   const double &x = r.x;
   const double &y = r.y;
@@ -1011,8 +1012,7 @@ SurfaceQuadric::distance(Position r, Direction ang, bool coincident) const
   return d;
 }
 
-Direction
-SurfaceQuadric::normal(Position r) const
+Direction HD SurfaceQuadric::normal(Position r) const
 {
   const double &x = r.x;
   const double &y = r.y;

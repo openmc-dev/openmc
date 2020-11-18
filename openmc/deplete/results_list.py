@@ -7,6 +7,7 @@ import numpy as np
 
 from .results import Results, VERSION_RESULTS
 from openmc.checkvalue import check_filetype_version, check_value, check_type
+from openmc.data.library import DataLibrary
 from openmc.material import Material, Materials
 
 __all__ = ["ResultsList"]
@@ -197,7 +198,6 @@ class ResultsList(list):
             times[ix] = res.proc_time
         return times
 
-
     def get_times(self, time_units="d") -> np.ndarray:
         """Return the points in time that define the depletion schedule
 
@@ -298,39 +298,63 @@ class ResultsList(list):
                 time, time_units, atol, rtol)
         )
 
-    def export_to_materials_xml(self, mats_list, burnup_index, nuc_with_data=None):
+    def export_to_materials_xml(self, burnup_index, nuc_with_data=None,
+            new_xml_name='depleted_materials.xml'):
         """Export Materials.xml file from the depletion results
-        
-        ..note::
-        
-           Will require mats_list from statepoint file match thatin depletion results
 
         Parameters
         ----------
-        mats_list : Iterable of openmc.Material
-            Materials to evaluate
         burn_index : int
             Index of burnup step to evaluate
         nuc_with_data : Iterable of str, optional
             nuclides list to evaluate with neutron data
+        new_xml_name : str, optional
+            name of xml file to put depleted materials into
 
         Returns
         -------
         """
         result = self[burnup_index]
-        mat_file = Materials()
-        for i, mat in enumerate(mats_list):
-            mat_id = mat.id
-            new_mat = Material(mat_id)
-            if str(mat_id) in result.mat_to_ind.keys():
-                new_mat.volume = result.volume[str(mat_id)]
-                for nuc in result.nuc_to_ind.keys():
-                    atoms = result[0, str(mat_id), nuc]
-                    if atoms > 0.0:
-                        atoms_per_barn_cm = 1e-24 * atoms / new_mat.volume
-                        if (nuc_with_data is None) or (nuc in nuc_with_data):
-                            new_mat.add_nuclide(nuc, atoms_per_barn_cm)
-                mat_file.append(new_mat)
+
+        # Only materials found in the original materials.xml file will be
+        # updated. If for some reason you have modified OpenMC to produce
+        # new materials as depletion takes place, this method will not
+        # work as expected and leave out that material.
+        mat_file = Materials.from_xml("materials.xml")
+
+        # Only nuclides with valid transport data will be written to
+        # the new materials XML file. The precedence of nuclides to select
+        # is first ones provided as a kwarg here, then ones specified
+        # in the materials.xml file if provided, then finally from
+        # the environment variable OPENMC_CROSS_SECTIONS.
+        env_xs_name = "OPENMC_CROSS_SECTIONS"
+        if nuc_with_data:
+            available_cross_sections = nuc_with_data
+        else:
+            # select cross_sections.xml file to use
+            if mat_file.cross_sections:
+                this_library = DataLibrary.from_xml(path=mat_file.cross_sections)
             else:
-                mat_file.append(mat)
-        mat_file.export_to_xml()
+                this_library = DataLibrary.from_xml()
+
+            # Find neutron libraries we have access to
+            available_cross_sections = []
+            for lib in this_library.libraries:
+                if lib['type'] == 'neutron':
+                    available_cross_sections.extend(lib['materials'])
+            if not available_cross_sections:
+                raise Exception('No neutron libraries found in cross_sections.xml')
+
+        # Overwrite material definitions, if they can be found in the depletion
+        # results, and save them to the new depleted xml file.
+        for mat in mat_file:
+            if str(mat.id) in result.mat_to_ind.keys():
+                mat.volume = result.volume[str(mat.id)]
+                for nuc in result.nuc_to_ind.keys():
+                    atoms = result[0, str(mat.id), nuc]
+                    if atoms > 0.0:
+                        atoms_per_barn_cm = 1e-24 * atoms / mat.volume
+                        if nuc in available_cross_sections:
+                            mat.add_nuclide(nuc, atoms_per_barn_cm)
+
+        mat_file.export_to_xml(path=new_xml_name)

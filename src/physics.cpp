@@ -190,6 +190,7 @@ create_fission_sites(Particle& p, int i_nuclide, const Reaction& rx)
     site.wgt = 1. / weight;
     site.parent_id = p.id_;
     site.progeny_id = p.n_progeny_++;
+    site.surf_id = 0;
 
     // Sample delayed group and angle/energy for fission reaction
     sample_fission_neutron(i_nuclide, rx, p.E_, &site, p.current_seed());

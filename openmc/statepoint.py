@@ -94,9 +94,9 @@ class StatePoint:
         Pseudorandom number generator seed
     source : numpy.ndarray of compound datatype
         Array of source sites. The compound datatype has fields 'r', 'u',
-        'E', 'wgt', 'delayed_group', and 'particle', corresponding to the
-        position, direction, energy, weight, delayed group, and particle type
-        of the source site, respectively.
+        'E', 'wgt', 'delayed_group', 'surf_id', and 'particle', corresponding to
+        the position, direction, energy, weight, delayed group, surface ID and
+        particle type of the source site, respectively.
     source_present : bool
         Indicate whether source sites are present
     sparse : bool

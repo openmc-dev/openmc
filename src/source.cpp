@@ -225,6 +225,8 @@ Particle::Bank IndependentSource::sample(uint64_t* seed) const
 
   // Set delayed group
   site.delayed_group = 0;
+  // Set surface ID
+  site.surf_id = 0;
 
   return site;
 }

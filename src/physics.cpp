@@ -1200,7 +1200,7 @@ void sample_secondary_photons(Particle& p, int i_nuclide)
 	
 void split_particle(Particle& p)
 {
-  if (p.E_ <= 0) return;
+  if (p.E_ <= 0 || !p.alive_) return;
 	
   // Particle's position, weight and energy
   Position pos  = p.r();

@@ -528,10 +528,9 @@ hid_t h5banktype() {
 int query_surf_src_size()
 {
   int64_t total;
-  if (mpi::master) {
-    simulation::surf_src_index.resize(mpi::n_procs + 1);
-    simulation::surf_src_index[0] = 0;
-  }
+
+  simulation::surf_src_index.resize(mpi::n_procs + 1);
+  simulation::surf_src_index[0] = 0;
 
 #ifdef OPENMC_MPI
   std::vector<int64_t> bank_size;
@@ -552,6 +551,9 @@ int query_surf_src_size()
     }
     total = simulation::surf_src_index[mpi::n_procs];
   }
+  MPI_Bcast(simulation::surf_src_index.data(), mpi::n_procs + 1, MPI_INT64_T, 0, mpi::intracomm);
+  MPI_Bcast(&total, 1, MPI_INT64_T, 0, mpi::intracomm);
+
 #else
   simulation::surf_src_index[mpi::n_procs] = simulation::surf_src_bank.size();
   total = simulation::surf_src_bank.size();

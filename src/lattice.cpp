@@ -19,11 +19,14 @@ namespace openmc {
 //==============================================================================
 // Global variables
 //==============================================================================
+namespace gpu {
+__constant__ unique_ptr<Lattice>* lattices;
+}
 
 namespace model {
   std::unordered_map<int32_t, int32_t> lattice_map;
   vector<unique_ptr<Lattice>> lattices;
-}
+} // namespace model
 
 //==============================================================================
 // Lattice implementation
@@ -227,7 +230,7 @@ bool RectLattice::are_valid_indices(array<int, 3> const& i_xyz) const
 
 //==============================================================================
 
-std::pair<double, array<int, 3>> RectLattice::distance(
+pair<double, array<int, 3>> RectLattice::distance(
   Position r, Direction u, const array<int, 3>& i_xyz) const
 {
   // Get short aliases to the coordinates.
@@ -377,7 +380,8 @@ RectLattice::to_hdf5_inner(hid_t lat_group) const
   if (is_3d_) {
     write_dataset(lat_group, "pitch", pitch_);
     write_dataset(lat_group, "lower_left", lower_left_);
-    write_dataset(lat_group, "dimension", n_cells_);
+    write_dataset(
+      lat_group, "dimension", static_cast<std::array<int, 3>>(n_cells_));
   } else {
     array<double, 2> pitch_short {{pitch_[0], pitch_[1]}};
     write_dataset(lat_group, "pitch", pitch_short);
@@ -1020,7 +1024,8 @@ HexLattice::to_hdf5_inner(hid_t lat_group) const
     write_string(lat_group, "orientation", "x", false);
   }
   if (is_3d_) {
-    write_dataset(lat_group, "pitch", pitch_);
+    write_dataset(
+      lat_group, "pitch", static_cast<std::array<double, 2>>(pitch_));
     write_dataset(lat_group, "center", center_);
   } else {
     array<double, 1> pitch_short {{pitch_[0]}};
@@ -1080,6 +1085,13 @@ void read_lattices(pugi::xml_node node)
         "Two or more lattices use the same unique ID: {}", id));
     }
   }
+
+#ifdef __CUDACC__
+  // Copy lattice vector first entry pointer to GPU constant memory
+  auto first_lattice = model::lattices.data();
+  cudaMemcpyToSymbol(
+    gpu::lattices, &first_lattice, sizeof(unique_ptr<Lattice>*));
+#endif
 }
 
 } // namespace openmc

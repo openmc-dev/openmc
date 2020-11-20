@@ -33,11 +33,16 @@ namespace openmc {
 
 namespace model {
   std::unordered_map<int32_t, int32_t> cell_map;
-  vector<unique_ptr<Cell>> cells;
+  vector<unique_ptr<CSGCell>> cells;
 
   std::unordered_map<int32_t, int32_t> universe_map;
   vector<unique_ptr<Universe>> universes;
 } // namespace model
+
+namespace gpu {
+__constant__ unique_ptr<CSGCell>* cells;
+__constant__ unique_ptr<Universe>* universes;
+} // namespace gpu
 
 //==============================================================================
 //! Convert region specification string to integer tokens.
@@ -967,16 +972,21 @@ UniversePartitioner::UniversePartitioner(const Universe& univ)
   }
 }
 
-const vector<int32_t>& UniversePartitioner::get_cells(
+HD const vector<int32_t>& UniversePartitioner::get_cells(
   Position r, Direction u) const
 {
+#ifdef __CUDA_ARCH__
+  using gpu::surfaces;
+#else
+  using model::surfaces;
+#endif
   // Perform a binary search for the partition containing the given coordinates.
   int left = 0;
   int middle = (surfs_.size() - 1) / 2;
   int right = surfs_.size() - 1;
   while (true) {
     // Check the sense of the coordinates for the current surface.
-    const auto& surf = *model::surfaces[surfs_[middle]];
+    const auto& surf = *surfaces[surfs_[middle]];
     if (surf.sense(r, u)) {
       // The coordinates lie in the positive halfspace.  Recurse if there are
       // more surfaces to check.  Otherwise, return the cells on the positive
@@ -1053,6 +1063,16 @@ void read_cells(pugi::xml_node node)
   if (settings::check_overlaps) {
     model::overlap_check_count.resize(model::cells.size(), 0);
   }
+
+#ifdef __CUDACC__
+  // Put pointers to start of universe and cell pointer arrays into GPU constant
+  // memory
+  auto first_cell = model::cells.data();
+  auto first_universe = model::universes.data();
+  cudaMemcpyToSymbol(gpu::cells, &first_cell, sizeof(unique_ptr<CSGCell>*));
+  cudaMemcpyToSymbol(
+    gpu::universes, &first_universe, sizeof(unique_ptr<Universe>*));
+#endif
 }
 
 //==============================================================================

@@ -43,7 +43,7 @@ constexpr int32_t OP_UNION        {std::numeric_limits<int32_t>::max() - 4};
 // Global variables
 //==============================================================================
 
-class Cell;
+class CSGCell;
 class ParentCell;
 class CellInstance;
 class Universe;
@@ -51,11 +51,20 @@ class UniversePartitioner;
 
 namespace model {
   extern std::unordered_map<int32_t, int32_t> cell_map;
-  extern vector<unique_ptr<Cell>> cells;
+
+  // For some reason, CUDA has some issue with virtual destructors, so I have to
+  // restrict this to not use the base class. TODO add some ifdef magic to
+  // maintain this working with DAGMC
+  extern vector<unique_ptr<CSGCell>> cells;
 
   extern std::unordered_map<int32_t, int32_t> universe_map;
   extern vector<unique_ptr<Universe>> universes;
 } // namespace model
+
+namespace gpu {
+extern __constant__ unique_ptr<CSGCell>* cells;
+extern __constant__ unique_ptr<Universe>* universes;
+} // namespace gpu
 
 //==============================================================================
 //! A geometry primitive that fills all space and contains cells.
@@ -86,7 +95,6 @@ public:
 
   explicit Cell(pugi::xml_node cell_node);
   __host__ Cell() {}
-  __host__ virtual ~Cell() {}
 
   //----------------------------------------------------------------------------
   // Methods
@@ -110,19 +118,19 @@ public:
   //! \param on_surface The signed index of a surface that the coordinate is
   //!   known to be on.  This index takes precedence over surface sense
   //!   calculations.
-  virtual bool HD contains(
-    Position r, Direction u, int32_t on_surface) const = 0;
+  // virtual bool HD contains(
+  //   Position r, Direction u, int32_t on_surface) const = 0;
 
   //! Find the oncoming boundary of this cell.
-  virtual std::pair<double, int32_t> HD distance(
-    Position r, Direction u, int32_t on_surface, Particle* p) const = 0;
+  // virtual std::pair<double, int32_t> HD distance(
+  //   Position r, Direction u, int32_t on_surface, Particle* p) const = 0;
 
   //! Write all information needed to reconstruct the cell to an HDF5 group.
   //! \param group_id An HDF5 group id.
-  virtual void to_hdf5(hid_t group_id) const = 0;
+  // virtual void to_hdf5(hid_t group_id) const = 0;
 
   //! Get the BoundingBox for this cell.
-  virtual BoundingBox bounding_box() const = 0;
+  // virtual BoundingBox bounding_box() const = 0;
 
   //----------------------------------------------------------------------------
   // Accessors
@@ -289,7 +297,7 @@ public:
   explicit UniversePartitioner(const Universe& univ);
 
   //! Return the list of cells that could contain the given coordinates.
-  const vector<int32_t>& get_cells(Position r, Direction u) const;
+  HD const vector<int32_t>& get_cells(Position r, Direction u) const;
 
 private:
   //! A sorted vector of indices to surfaces that partition the universe

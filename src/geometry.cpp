@@ -8,6 +8,7 @@
 #include "openmc/constants.h"
 #include "openmc/error.h"
 #include "openmc/lattice.h"
+#include "openmc/pair.h"
 #include "openmc/settings.h"
 #include "openmc/simulation.h"
 #include "openmc/string_utils.h"
@@ -29,6 +30,10 @@ int n_coord_levels;
 vector<int64_t> overlap_check_count;
 
 } // namespace model
+
+namespace gpu {
+__constant__ int root_universe;
+}
 
 //==============================================================================
 // Non-member functions
@@ -65,9 +70,17 @@ bool check_cell_overlap(Particle& p, bool error)
 
 //==============================================================================
 
-bool
-find_cell_inner(Particle& p, const NeighborList* neighbor_list)
+bool HD find_cell_inner(Particle& p, const NeighborList* neighbor_list)
 {
+#ifdef __CUDA_ARCH__
+  using gpu::cells;
+  using gpu::lattices;
+  using gpu::universes;
+#else
+  using model::cells;
+  using model::lattices;
+  using model::universes;
+#endif
   // Find which cell of this universe the particle is in.  Use the neighbor list
   // to shorten the search if one was provided.
   bool found = false;
@@ -115,11 +128,11 @@ find_cell_inner(Particle& p, const NeighborList* neighbor_list)
       const auto& univ {*model::universes[i_universe]};
       const auto& cells {
         !univ.partitioner_
-        ? model::universes[i_universe]->cells_
+        ? universes[i_universe]->cells_
         : univ.partitioner_->get_cells(p.r_local(), p.u_local())
       };
 
-      for (auto it = cells.cbegin(); it != cells.cend(); it++) {
+      for (auto it = universe_cells.cbegin(); it != universe_cells.cend(); it++) {
         i_cell = *it;
 
         // Make sure the search cell is in the same universe.
@@ -141,13 +154,15 @@ find_cell_inner(Particle& p, const NeighborList* neighbor_list)
       return found;
     }
 
+#ifndef __CUDA_ARCH__
     // Announce the cell that the particle is entering.
     if (found && (settings::verbosity >= 10 || p.trace())) {
       auto msg = fmt::format("    Entering cell {}", model::cells[i_cell]->id_);
       write_message(msg, 1);
     }
+#endif
 
-    Cell& c {*model::cells[i_cell]};
+    auto const& c {*cells[i_cell]};
     if (c.type_ == Fill::MATERIAL) {
       // Found a material cell which means this is the lowest coord level.
 
@@ -155,7 +170,7 @@ find_cell_inner(Particle& p, const NeighborList* neighbor_list)
       int offset = 0;
       if (c.distribcell_index_ >= 0) {
         for (int i = 0; i < p.n_coord(); i++) {
-          const auto& c_i {*model::cells[p.coord(i).cell]};
+          const auto& c_i {*cells[p.coord(i).cell]};
           if (c_i.type_ == Fill::UNIVERSE) {
             offset += c_i.offset_[c.distribcell_index_];
           } else if (c_i.type_ == Fill::LATTICE) {
@@ -209,7 +224,7 @@ find_cell_inner(Particle& p, const NeighborList* neighbor_list)
       //========================================================================
       //! Found a lower lattice, update this coord level then search the next.
 
-      Lattice& lat {*model::lattices[c.fill_]};
+      Lattice& lat {*lattices[c.fill_]};
 
       // Set the position and direction.
       auto& coord {p.coord(p.n_coord())};
@@ -241,9 +256,11 @@ find_cell_inner(Particle& p, const NeighborList* neighbor_list)
         if (lat.outer_ != NO_OUTER_UNIVERSE) {
           coord.universe = lat.outer_;
         } else {
+#ifndef __CUDA_ARCH__
           warning(fmt::format("Particle {} is outside lattice {} but the "
                               "lattice has no defined outer universe.",
             p.id(), lat.id_));
+#endif
           return false;
         }
       }
@@ -259,6 +276,11 @@ find_cell_inner(Particle& p, const NeighborList* neighbor_list)
 
 bool neighbor_list_find_cell(Particle& p)
 {
+#ifdef __CUDA_ARCH__
+  using gpu::cells;
+#else
+  using model::cells;
+#endif
 
   // Reset all the deeper coordinate levels.
   for (int i = p.n_coord(); i < model::n_coord_levels; i++) {
@@ -287,6 +309,11 @@ bool neighbor_list_find_cell(Particle& p)
 
 bool exhaustive_find_cell(Particle& p)
 {
+#ifdef __CUDA_ARCH__
+  using gpu::root_universe;
+#else
+  using model::root_universe;
+#endif
   int i_universe = p.coord(p.n_coord() - 1).universe;
   if (i_universe == C_NONE) {
     p.coord(0).universe = model::root_universe;
@@ -302,17 +329,25 @@ bool exhaustive_find_cell(Particle& p)
 
 //==============================================================================
 
-void
-cross_lattice(Particle& p, const BoundaryInfo& boundary)
+void HD cross_lattice(Particle& p, const BoundaryInfo& boundary)
 {
+#ifdef __CUDA_ARCH__
+  using gpu::cells;
+  using gpu::lattices;
+#else
+  using model::cells;
+  using model::lattices;
+#endif
   auto& coord {p.coord(p.n_coord() - 1)};
   auto& lat {*model::lattices[coord.lattice]};
 
+#ifndef __CUDA_ARCH__
   if (settings::verbosity >= 10 || p.trace()) {
     write_message(fmt::format(
       "    Crossing lattice {}. Current position ({},{},{}). r={}",
       lat.id_, coord.lattice_i[0], coord.lattice_i[1], coord.lattice_i[2], p.r()), 1);
   }
+#endif
 
   // Set the lattice indices.
   coord.lattice_i[0] += boundary.lattice_translation[0];
@@ -334,9 +369,12 @@ cross_lattice(Particle& p, const BoundaryInfo& boundary)
     p.n_coord() = 1;
     bool found = exhaustive_find_cell(p);
     if (!found && p.alive()) {
+#ifdef __CUDA_ARCH__
+      asm("trap;");
+#else
       p.mark_as_lost(fmt::format("Could not locate particle {} after "
-                                 "crossing a lattice boundary",
-        p.id()));
+        "crossing a lattice boundary", p.id()));
+#endif
     }
 
   } else {
@@ -350,9 +388,12 @@ cross_lattice(Particle& p, const BoundaryInfo& boundary)
       p.n_coord() = 1;
       bool found = exhaustive_find_cell(p);
       if (!found && p.alive()) {
+#ifdef __CUDA_ARCH__
+        asm("trap;");
+#else
         p.mark_as_lost(fmt::format("Could not locate particle {} after "
-                                   "crossing a lattice boundary",
-          p.id()));
+          "crossing a lattice boundary", p.id()));
+#endif
       }
     }
   }
@@ -362,18 +403,28 @@ cross_lattice(Particle& p, const BoundaryInfo& boundary)
 
 HD BoundaryInfo distance_to_boundary(Particle& p)
 {
+#ifdef __CUDA_ARCH__
+  using gpu::cells;
+  using gpu::lattices;
+  using gpu::surfaces;
+#else
+  using model::cells;
+  using model::lattices;
+  using model::surfaces;
+#endif
+
   BoundaryInfo info;
   double d_lat = INFINITY;
   double d_surf = INFINITY;
   int32_t level_surf_cross;
-  array<int, 3> level_lat_trans {};
+  array<int, 3> level_lat_trans;
 
   // Loop over each coordinate level.
-  for (int i = 0; i < p.n_coord(); i++) {
-    const auto& coord {p.coord(i)};
+  for (int i = 0; i < p.n_coord_; i++) {
+    const auto& coord {p.coord_[i]};
     const Position& r {coord.r};
     const Direction& u {coord.u};
-    Cell& c {*model::cells[coord.cell]};
+    auto& c {*cells[coord.cell]};
 
     // Find the oncoming surface in this cell and the distance to it.
     auto surface_distance = c.distance(r, u, p.surface(), &p);
@@ -382,10 +433,11 @@ HD BoundaryInfo distance_to_boundary(Particle& p)
 
     // Find the distance to the next lattice tile crossing.
     if (coord.lattice != C_NONE) {
-      auto& lat {*model::lattices[coord.lattice]};
+      auto& lat {*lattices[coord.lattice]};
+      array<int, 3> i_xyz {coord.lattice_x, coord.lattice_y, coord.lattice_z};
       //TODO: refactor so both lattice use the same position argument (which
       //also means the lat.type attribute can be removed)
-      std::pair<double, array<int, 3>> lattice_distance;
+      pair<double, array<int, 3>> lattice_distance;
       switch (lat.type_) {
         case LatticeType::rect:
           lattice_distance = lat.distance(r, u, coord.lattice_i);
@@ -405,8 +457,12 @@ HD BoundaryInfo distance_to_boundary(Particle& p)
       level_lat_trans = lattice_distance.second;
 
       if (d_lat < 0) {
+#ifdef __CUDA_ARCH__
+        asm("trap;");
+#else
         p.mark_as_lost(fmt::format(
           "Particle {} had a negative distance to a lattice boundary", p.id()));
+#endif
       }
     }
 
@@ -426,7 +482,7 @@ HD BoundaryInfo distance_to_boundary(Particle& p)
           info.surface_index = level_surf_cross;
         } else {
           Position r_hit = r + d_surf * u;
-          Surface& surf {*model::surfaces[std::abs(level_surf_cross)-1]};
+          Surface& surf {*surfaces[std::abs(level_surf_cross) - 1]};
           Direction norm = surf.normal(r_hit);
           if (u.dot(norm) > 0) {
             info.surface_index = std::abs(level_surf_cross);
@@ -444,7 +500,9 @@ HD BoundaryInfo distance_to_boundary(Particle& p)
       if (d == INFINITY || (d - d_lat)/d >= FP_REL_PRECISION) {
         d = d_lat;
         info.surface_index = 0;
-        info.lattice_translation = level_lat_trans;
+        info.lattice_translation[0] = level_lat_trans[0];
+        info.lattice_translation[1] = level_lat_trans[1];
+        info.lattice_translation[2] = level_lat_trans[2];
         info.coord_level = i + 1;
       }
     }

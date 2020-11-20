@@ -94,10 +94,18 @@ public:
 #endif
   }
 
-  __host__ __device__ const_iterator cbegin() { return buffer_; }
-  __host__ __device__ const_iterator cend() { return buffer_ + current_size; }
+  __host__ __device__ const_iterator cbegin() const { return buffer_; }
+  __host__ __device__ const_iterator cend() const
+  {
+    return buffer_ + current_size;
+  }
   __host__ __device__ iterator begin() { return buffer_; }
   __host__ __device__ iterator end() { return buffer_ + current_size; }
+  __host__ __device__ const_iterator begin() const { return buffer_; }
+  __host__ __device__ const_iterator end() const
+  {
+    return buffer_ + current_size;
+  }
 
 private:
   int lock;

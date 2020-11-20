@@ -75,6 +75,9 @@ void read_geometry_xml()
 
   // Allocate universes, universe cell arrays, and assign base universe
   model::root_universe = find_root_universe();
+#ifdef __CUDACC__
+  cudaMemcpyToSymbol(gpu::root_universe, &model::root_universe, sizeof(int));
+#endif
 }
 
 //==============================================================================

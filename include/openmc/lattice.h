@@ -10,6 +10,7 @@
 #include "openmc/array.h"
 #include "openmc/constants.h"
 #include "openmc/memory.h"
+#include "openmc/pair.h"
 #include "openmc/position.h"
 #include "openmc/string.h"
 #include "openmc/vector.h"
@@ -37,6 +38,10 @@ namespace model {
   extern vector<unique_ptr<Lattice>> lattices;
 } // namespace model
 
+namespace gpu {
+extern __constant__ unique_ptr<Lattice>* lattices;
+}
+
 //==============================================================================
 //! \class Lattice
 //! \brief Abstract type for ordered array of universes.
@@ -49,7 +54,7 @@ class Lattice
 {
 public:
   int32_t id_;                         //!< Universe ID number
-  // string name_;                   //!< User-defined name
+  string name_;                   //!< User-defined name
   LatticeType type_;
   vector<int32_t> universes_;          //!< Universes filling each lattice tile
   int32_t outer_ {NO_OUTER_UNIVERSE};  //!< Universe tiled outside the lattice
@@ -57,7 +62,7 @@ public:
 
   explicit Lattice(pugi::xml_node lat_node);
 
-  virtual ~Lattice() {}
+  virtual __host__ ~Lattice() {}
 
   virtual int32_t const& operator[](array<int, 3> const& i_xyz) = 0;
 
@@ -90,21 +95,19 @@ public:
   //! \param i_xyz The indices for a lattice tile.
   //! \return The distance to the next crossing and an array indicating how the
   //!   lattice indices would change after crossing that boundary.
-  virtual std::pair<double, array<int, 3>> distance(
+  HD virtual pair<double, array<int, 3>> distance(
     Position r, Direction u, const array<int, 3>& i_xyz) const = 0;
 
   //! \brief Find the lattice tile indices for a given point.
   //! \param r A 3D Cartesian coordinate.
-  //! \param u Direction of a particle
-  //! \param result resulting indices to save to
-  virtual void get_indices(
-    Position r, Direction u, array<int, 3>& result) const = 0;
+  //! \return An array containing the indices of a lattice tile.
+  virtual HD void get_indices(Position r, Direction u, array<int, 3>& result) const = 0;
 
   //! \brief Get coordinates local to a lattice tile.
   //! \param r A 3D Cartesian coordinate.
   //! \param i_xyz The indices for a lattice tile.
   //! \return Local 3D Cartesian coordinates.
-  virtual Position get_local_position(
+  virtual HD Position get_local_position(
     Position r, const array<int, 3>& i_xyz) const = 0;
 
   //! \brief Check flattened lattice index.
@@ -126,7 +129,7 @@ public:
   //! \param indx The index for a lattice tile.
   //! \return Distribcell offset i.e. the largest instance number for the target
   //!  cell found in the geometry tree for this lattice index.
-  virtual int32_t offset(int map, int indx) const = 0;
+  virtual HD int32_t offset(int map, int indx) const = 0;
 
   //! \brief Convert an array index to a useful human-readable string.
   //! \param indx The index for a lattice tile.
@@ -207,18 +210,18 @@ public:
 
   int32_t const& operator[](array<int, 3> const& i_xyz);
 
-  bool are_valid_indices(array<int, 3> const& i_xyz) const;
+  HD bool are_valid_indices(array<int, 3> const& i_xyz) const;
 
-  std::pair<double, array<int, 3>> distance(
+  HD pair<double, array<int, 3>> distance(
     Position r, Direction u, const array<int, 3>& i_xyz) const;
 
-  void get_indices(Position r, Direction u, array<int, 3>& result) const;
+  HD void get_indices(Position r, Direction u, array<int, 3>& result) const;
 
-  Position get_local_position(Position r, const array<int, 3>& i_xyz) const;
+  HD Position get_local_position(Position r, const array<int, 3>& i_xyz) const;
 
-  int32_t& offset(int map, array<int, 3> const& i_xyz);
+  HD int32_t& offset(int map, array<int, 3> const& i_xyz);
 
-  int32_t offset(int map, int indx) const;
+  HD int32_t offset(int map, int indx) const;
 
   std::string index_to_string(int indx) const;
 
@@ -243,20 +246,20 @@ public:
 
   ReverseLatticeIter rbegin();
 
-  bool are_valid_indices(array<int, 3> const& i_xyz) const;
+  HD bool are_valid_indices(array<int, 3> const& i_xyz) const;
 
-  std::pair<double, array<int, 3>> distance(
+  HD pair<double, array<int, 3>> distance(
     Position r, Direction u, const array<int, 3>& i_xyz) const;
 
-  void get_indices(Position r, Direction u, array<int, 3>& result) const;
+  HD void get_indices(Position r, Direction u, array<int, 3>& result) const;
 
-  Position get_local_position(Position r, const array<int, 3>& i_xyz) const;
+  HD Position get_local_position(Position r, const array<int, 3>& i_xyz) const;
 
   bool is_valid_index(int indx) const;
 
-  int32_t& offset(int map, array<int, 3> const& i_xyz);
+  HD int32_t& offset(int map, array<int, 3> const& i_xyz);
 
-  int32_t offset(int map, int indx) const;
+  HD int32_t offset(int map, int indx) const;
 
   std::string index_to_string(int indx) const;
 

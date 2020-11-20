@@ -79,7 +79,7 @@ Position::operator-() const
   return {-x, -y, -z};
 }
 
-Position Position::rotate(const vector<double>& rotation) const
+HD Position Position::rotate(const vector<double>& rotation) const
 {
   return {
     x*rotation[0] + y*rotation[1] + z*rotation[2],

@@ -433,8 +433,28 @@ public:
 #endif
   }
 
+  // observers
+  __host__ __device__ typename std::add_lvalue_reference<T>::type operator*()
+  {
+#ifdef __CUDA_ARCH__
+    return *ptr_dev;
+#else
+    return *ptr;
+#endif
+  }
+
   // These observers can be called on the GPU or the CPU.
   __host__ __device__ pointer operator->() const noexcept
+  {
+#ifdef __CUDA_ARCH__
+    return ptr_dev;
+#else
+    return ptr;
+#endif
+  }
+
+  // These observers can be called on the GPU or the CPU.
+  __host__ __device__ pointer operator->() noexcept
   {
 #ifdef __CUDA_ARCH__
     return ptr_dev;

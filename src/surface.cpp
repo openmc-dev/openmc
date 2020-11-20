@@ -1208,7 +1208,7 @@ void read_surfaces(pugi::xml_node node)
   // on device are kept separately
   unique_ptr<Surface>* first_surface_ptr = model.data();
   cudaMemcpyToSymbol(
-    gpu::surfaces, &first_surface_ptr, sizeof(unique_ptr<Surface>));
+    gpu::surfaces, &first_surface_ptr, sizeof(unique_ptr<Surface>*));
 #endif
 }
 

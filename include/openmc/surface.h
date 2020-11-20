@@ -32,8 +32,13 @@ class Surface;
 
 namespace model {
   extern std::unordered_map<int, int> surface_map;
-  __managed__ extern vector<unique_ptr<Surface>> surfaces;
+  extern vector<unique_ptr<Surface>> surfaces;
 } // namespace model
+
+namespace gpu {
+// Pointer to start of vector of surface pointers on device
+extern __constant__ unique_ptr<Surface>* surfaces;
+} // namespace gpu
 
 //==============================================================================
 //! Coordinates for an axis-aligned cuboid bounding a geometric object.

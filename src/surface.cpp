@@ -26,8 +26,13 @@ namespace openmc {
 
 namespace model {
   std::unordered_map<int, int> surface_map;
-  __managed__ vector<unique_ptr<Surface>> surfaces;
+  vector<unique_ptr<Surface>> surfaces;
 } // namespace model
+
+namespace gpu {
+// Pointer to start of vector of surface pointers on device
+__constant__ unique_ptr<Surface>* surfaces;
+} // namespace gpu
 
 //==============================================================================
 // Helper functions for reading the "coeffs" node of an XML surface element
@@ -279,8 +284,9 @@ void DAGSurface::to_hdf5(hid_t group_id) const {}
 //==============================================================================
 
 // The template parameter indicates the axis normal to the plane.
-template<int i> double
-axis_aligned_plane_distance(Position r, Direction u, bool coincident, double offset)
+template<int i>
+double HD axis_aligned_plane_distance(
+  Position r, Direction u, bool coincident, double offset)
 {
   const double f = offset - r[i];
   if (coincident || std::abs(f) < FP_COINCIDENT || u[i] == 0.0) return INFTY;
@@ -465,9 +471,9 @@ void SurfacePlane::to_hdf5_inner(hid_t group_id) const
 // The template parameters indicate the axes perpendicular to the axis of the
 // cylinder.  offset1 and offset2 should correspond with i1 and i2,
 // respectively.
-template<int i1, int i2> double
-axis_aligned_cylinder_evaluate(Position r, double offset1,
-                               double offset2, double radius)
+template<int i1, int i2>
+double HD axis_aligned_cylinder_evaluate(
+  Position r, double offset1, double offset2, double radius)
 {
   const double r1 = r.get<i1>() - offset1;
   const double r2 = r.get<i2>() - offset2;
@@ -477,9 +483,9 @@ axis_aligned_cylinder_evaluate(Position r, double offset1,
 // The first template parameter indicates which axis the cylinder is aligned to.
 // The other two parameters indicate the other two axes.  offset1 and offset2
 // should correspond with i2 and i3, respectively.
-template<int i1, int i2, int i3> double
-axis_aligned_cylinder_distance(Position r, Direction u,
-     bool coincident, double offset1, double offset2, double radius)
+template<int i1, int i2, int i3>
+double HD axis_aligned_cylinder_distance(Position r, Direction u,
+  bool coincident, double offset1, double offset2, double radius)
 {
   const double a = 1.0 - u.get<i1>() * u.get<i1>(); // u^2 + v^2
   if (a == 0.0) return INFTY;
@@ -523,8 +529,9 @@ axis_aligned_cylinder_distance(Position r, Direction u,
 // The first template parameter indicates which axis the cylinder is aligned to.
 // The other two parameters indicate the other two axes.  offset1 and offset2
 // should correspond with i2 and i3, respectively.
-template<int i1, int i2, int i3> Direction
-axis_aligned_cylinder_normal(Position r, double offset1, double offset2)
+template<int i1, int i2, int i3>
+Direction HD axis_aligned_cylinder_normal(
+  Position r, double offset1, double offset2)
 {
   Direction u;
   u.get<i2>() = 2.0 * (r.get<i2>() - offset1);
@@ -748,9 +755,9 @@ HD BoundingBox SurfaceSphere::bounding_box(bool pos_side) const
 // The first template parameter indicates which axis the cone is aligned to.
 // The other two parameters indicate the other two axes.  offset1, offset2,
 // and offset3 should correspond with i1, i2, and i3, respectively.
-template<int i1, int i2, int i3> double
-axis_aligned_cone_evaluate(Position r, double offset1,
-                           double offset2, double offset3, double radius_sq)
+template<int i1, int i2, int i3>
+double HD axis_aligned_cone_evaluate(
+  Position r, double offset1, double offset2, double offset3, double radius_sq)
 {
   const double r1 = r.get<i1>() - offset1;
   const double r2 = r.get<i2>() - offset2;
@@ -761,10 +768,9 @@ axis_aligned_cone_evaluate(Position r, double offset1,
 // The first template parameter indicates which axis the cone is aligned to.
 // The other two parameters indicate the other two axes.  offset1, offset2,
 // and offset3 should correspond with i1, i2, and i3, respectively.
-template<int i1, int i2, int i3> double
-axis_aligned_cone_distance(Position r, Direction u,
-     bool coincident, double offset1, double offset2, double offset3,
-     double radius_sq)
+template<int i1, int i2, int i3>
+double HD axis_aligned_cone_distance(Position r, Direction u, bool coincident,
+  double offset1, double offset2, double offset3, double radius_sq)
 {
   const double r1 = r.get<i1>() - offset1;
   const double r2 = r.get<i2>() - offset2;
@@ -816,9 +822,9 @@ axis_aligned_cone_distance(Position r, Direction u,
 // The first template parameter indicates which axis the cone is aligned to.
 // The other two parameters indicate the other two axes.  offset1, offset2,
 // and offset3 should correspond with i1, i2, and i3, respectively.
-template<int i1, int i2, int i3> Direction
-axis_aligned_cone_normal(Position r, double offset1, double offset2,
-                         double offset3, double radius_sq)
+template<int i1, int i2, int i3>
+Direction HD axis_aligned_cone_normal(
+  Position r, double offset1, double offset2, double offset3, double radius_sq)
 {
   Direction u;
   u.get<i1>() = -2.0 * radius_sq * (r.get<i1>() - offset1);
@@ -1196,6 +1202,14 @@ void read_surfaces(pugi::xml_node node)
   if (settings::run_mode != RunMode::PLOTTING && !boundary_exists) {
     fatal_error("No boundary conditions were applied to any surfaces!");
   }
+
+#ifdef __CUDACC__
+  // Save pointer to vector of surface pointers on GPU, since global variables
+  // on device are kept separately
+  unique_ptr<Surface>* first_surface_ptr = model.data();
+  cudaMemcpyToSymbol(
+    gpu::surfaces, &first_surface_ptr, sizeof(unique_ptr<Surface>));
+#endif
 }
 
 void free_memory_surfaces()

@@ -497,8 +497,8 @@ CSGCell::contains(Position r, Direction u, int32_t on_surface) const
 
 //==============================================================================
 
-std::pair<double, int32_t>
-CSGCell::distance(Position r, Direction u, int32_t on_surface, Particle* p) const
+std::pair<double, int32_t> HD CSGCell::distance(
+  Position r, Direction u, int32_t on_surface, Particle* p) const
 {
   double min_dist {INFTY};
   constexpr int32_t default_cell_index = std::numeric_limits<int32_t>::max();
@@ -511,7 +511,12 @@ CSGCell::distance(Position r, Direction u, int32_t on_surface, Particle* p) cons
     // Calculate the distance to this surface.
     // Note the off-by-one indexing
     bool coincident {std::abs(token) == std::abs(on_surface)};
+
+#ifdef __CUDA_ARCH__
+    double d {gpu::surfaces[abs(token) - 1]->distance(r, u, coincident)};
+#else
     double d {model::surfaces[abs(token)-1]->distance(r, u, coincident)};
+#endif
 
     // Check if this distance is the new minimum.
     if (d < min_dist) {
@@ -720,7 +725,11 @@ CSGCell::contains_simple(Position r, Direction u, int32_t on_surface) const
       return false;
     } else {
       // Note the off-by-one indexing
+#ifdef __CUDA_ARCH__
+      bool sense = gpu::surfaces[abs(token) - 1]->sense(r, u);
+#else
       bool sense = model::surfaces[abs(token)-1]->sense(r, u);
+#endif
       if (sense != (token > 0)) {return false;}
     }
   }
@@ -766,7 +775,11 @@ CSGCell::contains_complex(Position r, Direction u, int32_t on_surface) const
         stack[i_stack] = false;
       } else {
         // Note the off-by-one indexing
+#ifdef __CUDA_ARCH__
+        bool sense = gpu::surfaces[abs(token) - 1]->sense(r, u);
+#else
         bool sense = model::surfaces[abs(token)-1]->sense(r, u);
+#endif
         stack[i_stack] = (sense == (token > 0));
       }
     }

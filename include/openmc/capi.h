@@ -131,6 +131,18 @@ extern "C" {
   int openmc_zernike_filter_set_params(int32_t index, const double* x,
                                        const double* y, const double* r);
 
+  //! Sets the mesh and energy grid for CMFD reweight
+  //! \param[in] id of CMFD Mesh Tally
+  //! \param[in] CMFD normalization factor
+  //! \param[in] CMFD weight clipping factor
+  extern "C" void openmc_initialize_mesh_egrid(const int meshtally_id, const int* cmfd_indices,
+                                               const double norm);
+
+  //! Sets the mesh and energy grid for CMFD reweight
+  //! \param[in] whether or not to run CMFD feedback
+  //! \param[in] computed CMFD source
+  extern "C" void openmc_cmfd_reweight(const bool feedback, const double* cmfd_src);
+
   //! Sets the fixed variables that are used for CMFD linear solver
   //! \param[in] CSR format index pointer array of loss matrix
   //! \param[in] length of indptr
@@ -143,7 +155,6 @@ extern "C" {
   extern "C" void openmc_initialize_linsolver(const int* indptr, int len_indptr,
                                               const int* indices, int n_elements,
                                               int dim, double spectral,
-                                              const int* cmfd_indices,
                                               const int* map, bool use_all_threads);
 
   //! Runs a Gauss Seidel linear solver to solve CMFD matrix equations

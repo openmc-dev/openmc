@@ -4,10 +4,16 @@
 # To build with OpenMC and DAGMC enabled
 # docker build -t openmc_dagmc --build-arg include_dagmc=true .
 
+# To make use of multiple cores during the compile stages of the docker build
+# docker build -t openmc_dagmc --build-arg compile_cores=8
+
 FROM ubuntu:latest
 
 # By default this Dockerfile builds OpenMC without dagmc
 ARG include_dagmc=false
+
+# By default one core is used to compile
+ARG compile_cores=1
 
 # Setup environment variables for Docker image
 ENV CC=/usr/bin/mpicc CXX=/usr/bin/mpicxx \
@@ -43,8 +49,8 @@ RUN if [ "$include_dagmc" = "false" ] ; \
     mkdir -p build ; \
     cd build ; \
     cmake -Doptimize=on -DHDF5_PREFER_PARALLEL=on .. ; \
-    make ; \
-    make install ; \
+    make -j"$compile_cores" ; \
+    make -j"$compile_cores" install ; \
     cd ..  ; \
     pip install -e .[test] ; \
     fi
@@ -67,8 +73,8 @@ RUN if [ "$include_dagmc" = "true" ] ; \
     cd build ; \
     cmake .. -DCMAKE_INSTALL_PREFIX=.. \
         -DEMBREE_ISPC_SUPPORT=OFF ; \
-    make ; \
-    make install ; \
+    make -j"$compile_cores" ; \
+    make -j"$compile_cores" install ; \
     fi
 
 # Clone and install MOAB
@@ -84,8 +90,8 @@ RUN if [ "$include_dagmc" = "true" ] ; \
                 -DBUILD_SHARED_LIBS=OFF \
                 -DENABLE_FORTRAN=OFF \
                 -DCMAKE_INSTALL_PREFIX=/MOAB ; \
-    make ; \
-    make install ; \
+    make -j"$compile_cores" ; \
+    make -j"$compile_cores" install ; \
     rm -rf * ; \
     cmake ../moab -DBUILD_SHARED_LIBS=ON \
                 -DENABLE_HDF5=ON \
@@ -93,8 +99,8 @@ RUN if [ "$include_dagmc" = "true" ] ; \
                 -DENABLE_BLASLAPACK=OFF \
                 -DENABLE_FORTRAN=OFF \
                 -DCMAKE_INSTALL_PREFIX=/MOAB ; \
-    make ; \
-    make install ; \
+    make -j"$compile_cores" ; \
+    make -j"$compile_cores" install ; \
     cd pymoab ; \
     bash install.sh ; \
     python setup.py install ; \
@@ -110,8 +116,8 @@ RUN if [ "$include_dagmc" = "true" ] ; \
         -DMOAB_DIR=/MOAB \
         -DEMBREE_DIR=/embree/lib/cmake/embree-3.12.1 \
         -DEMBREE_ROOT=/embree/lib/cmake/embree-3.12.1 ; \
-    make ; \
-    make install ; \
+    make -j"$compile_cores" ; \
+    make -j"$compile_cores" install ; \
     fi
 
 # Clone and install DAGMC
@@ -126,7 +132,7 @@ RUN if [ "$include_dagmc" = "true" ] ; \
         -DMOAB_DIR=/MOAB \
         -DBUILD_STATIC_LIBS=OFF \
         -DBUILD_STATIC_EXE=OFF ; \
-    make install ; \
+    make -j"$compile_cores" install ; \
     rm -rf /DAGMC/dagmc /DAGMC/build ; \
     fi
 
@@ -139,8 +145,8 @@ RUN if [ "$include_dagmc" = "true" ] ; \
     cmake -Doptimize=on -Ddagmc=ON \
         -DDAGMC_DIR=/DAGMC/ \
         -DHDF5_PREFER_PARALLEL=on ..  ; \
-    make  ; \
-    make install ; \
+    make -j"$compile_cores" ; \
+    make -j"$compile_cores" install ; \
     cd ..  ; \
     pip install -e .[test] ; \
     fi

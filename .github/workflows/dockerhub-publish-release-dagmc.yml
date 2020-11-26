@@ -32,6 +32,7 @@ jobs:
           tags: openmc/openmc:${{ env.RELEASE_VERSION }}-dagmc
           build-args: |
             include_dagmc=true
+            compile_cores=2
       -
         name: Image digest
         run: echo ${{ steps.docker_build.outputs.digest }}

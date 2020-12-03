@@ -8,9 +8,15 @@
 #endif
 #include "xtensor/xtensor.hpp"
 
+#include "openmc/bank.h"
 #include "openmc/error.h"
 #include "openmc/constants.h"
 #include "openmc/capi.h"
+#include "openmc/mesh.h"
+#include "openmc/message_passing.h"
+#include "openmc/tallies/filter_energy.h"
+#include "openmc/tallies/filter_mesh.h"
+#include "openmc/tallies/tally.h"
 
 namespace openmc {
 
@@ -34,7 +40,199 @@ xt::xtensor<int, 2> indexmap;
 
 int use_all_threads;
 
+RegularMesh* mesh;
+
+std::vector<double> egrid;
+
+double norm;
+
 } // namespace cmfd
+
+//==============================================================================
+// GET_CMFD_ENERGY_BIN returns the energy bin for a source site energy
+//==============================================================================
+
+int get_cmfd_energy_bin(const double E)
+{
+  // Check if energy is out of grid bounds
+  if (E < cmfd::egrid[0]) {
+    // throw warning message
+    warning("Detected source point below energy grid");
+    return 0;
+  } else if (E >= cmfd::egrid[cmfd::ng]) {
+    // throw warning message
+    warning("Detected source point above energy grid");
+    return cmfd::ng - 1;
+  } else {
+    // Iterate through energy grid to find matching bin
+    for (int g = 0; g < cmfd::ng; g++) {
+      if (E >= cmfd::egrid[g] && E < cmfd::egrid[g+1]) {
+        return g;
+      }
+    }
+  }
+  // Return -1 by default
+  return -1;
+}
+
+//==============================================================================
+// COUNT_BANK_SITES bins fission sites according to CMFD mesh and energy
+//==============================================================================
+
+xt::xtensor<double, 1> count_bank_sites(xt::xtensor<int, 1>& bins, bool* outside)
+{
+  // Determine shape of array for counts
+  std::size_t cnt_size = cmfd::nx * cmfd::ny * cmfd::nz * cmfd::ng;
+  std::vector<std::size_t> cnt_shape = {cnt_size};
+
+  // Create array of zeros
+  xt::xarray<double> cnt {cnt_shape, 0.0};
+  bool outside_ = false;
+
+  auto bank_size = simulation::source_bank.size();
+  for (int i = 0; i < bank_size; i++) {
+    const auto& site = simulation::source_bank[i];
+
+    // determine scoring bin for CMFD mesh
+    int mesh_bin = cmfd::mesh->get_bin(site.r);
+
+    // if outside mesh, skip particle
+    if (mesh_bin < 0) {
+      outside_ = true;
+      continue;
+    }
+
+    // determine scoring bin for CMFD energy
+    int energy_bin = get_cmfd_energy_bin(site.E);
+
+    // add to appropriate bin
+    cnt(mesh_bin*cmfd::ng+energy_bin) += site.wgt;
+
+    // store bin index which is used again when updating weights
+    bins[i] = mesh_bin*cmfd::ng+energy_bin;
+  }
+
+  // Create copy of count data. Since ownership will be acquired by xtensor,
+  // std::allocator must be used to avoid Valgrind mismatched free() / delete
+  // warnings.
+  int total = cnt.size();
+  double* cnt_reduced = std::allocator<double>{}.allocate(total);
+
+#ifdef OPENMC_MPI
+  // collect values from all processors
+  MPI_Reduce(cnt.data(), cnt_reduced, total, MPI_DOUBLE, MPI_SUM, 0,
+    mpi::intracomm);
+
+  // Check if there were sites outside the mesh for any processor
+  MPI_Reduce(&outside_, outside, 1, MPI_C_BOOL, MPI_LOR, 0, mpi::intracomm);
+
+#else
+  std::copy(cnt.data(), cnt.data() + total, cnt_reduced);
+  *outside = outside_;
+#endif
+
+  // Adapt reduced values in array back into an xarray
+  auto arr = xt::adapt(cnt_reduced, total, xt::acquire_ownership(), cnt_shape);
+  xt::xarray<double> counts = arr;
+
+  return counts;
+}
+
+//==============================================================================
+// OPENMC_CMFD_REWEIGHT performs reweighting of particles in source bank
+//==============================================================================
+
+extern "C"
+void openmc_cmfd_reweight(const bool feedback, const double* cmfd_src)
+{
+  // Get size of source bank and cmfd_src
+  auto bank_size = simulation::source_bank.size();
+  std::size_t src_size = cmfd::nx * cmfd::ny * cmfd::nz * cmfd::ng;
+
+  // count bank sites for CMFD mesh, store bins in bank_bins for reweighting
+  xt::xtensor<int, 1> bank_bins({bank_size}, 0);
+  bool sites_outside;
+  xt::xtensor<double, 1> sourcecounts = count_bank_sites(bank_bins,
+                                                         &sites_outside);
+
+  // Compute CMFD weightfactors
+  xt::xtensor<double, 1> weightfactors = xt::xtensor<double, 1>({src_size}, 1.);
+  if (mpi::master) {
+    if (sites_outside) {
+      fatal_error("Source sites outside of the CMFD mesh");
+    }
+
+    double norm = xt::sum(sourcecounts)()/cmfd::norm;
+    for (int i = 0; i < src_size; i++) {
+      if (sourcecounts[i] > 0 && cmfd_src[i] > 0) {
+        weightfactors[i] = cmfd_src[i] * norm / sourcecounts[i];
+      }
+    }
+  }
+
+  if (!feedback) return;
+
+#ifdef OPENMC_MPI
+  // Send weightfactors to all processors
+  MPI_Bcast(weightfactors.data(), src_size, MPI_DOUBLE, 0, mpi::intracomm);
+#endif
+
+  // Iterate through fission bank and update particle weights
+  for (int64_t i = 0; i < bank_size; i++) {
+    auto& site = simulation::source_bank[i];
+    site.wgt *= weightfactors(bank_bins(i));
+  }
+}
+
+//==============================================================================
+// OPENMC_INITIALIZE_MESH_EGRID sets the mesh and energy grid for CMFD reweight
+//==============================================================================
+
+extern "C"
+void openmc_initialize_mesh_egrid(const int meshtally_id, const int* cmfd_indices,
+                                  const double norm)
+{
+  // Make sure all CMFD memory is freed
+  free_memory_cmfd();
+
+  // Set CMFD indices
+  cmfd::nx = cmfd_indices[0];
+  cmfd::ny = cmfd_indices[1];
+  cmfd::nz = cmfd_indices[2];
+  cmfd::ng = cmfd_indices[3];
+
+  // Set CMFD reweight properties
+  cmfd::norm = norm;
+
+  // Find index corresponding to tally id
+  int32_t tally_index;
+  openmc_get_tally_index(meshtally_id, &tally_index);
+
+  // Get filters assocaited with tally
+  const auto& tally_filters = model::tallies[tally_index]->filters();
+
+  // Get mesh filter index
+  auto meshfilter_index = tally_filters[0];
+
+  // Store energy filter index if defined, otherwise set to -1
+  auto energy_index = (tally_filters.size() == 2) ? tally_filters[1] : -1;
+
+  // Get mesh index from mesh filter index
+  int32_t mesh_index;
+  openmc_mesh_filter_get_mesh(meshfilter_index, &mesh_index);
+
+  // Get mesh from mesh index
+  cmfd::mesh = get_regular_mesh(mesh_index);
+
+  // Get energy bins from energy index, otherwise use default
+  if (energy_index != -1) {
+    auto efilt_base = model::tally_filters[energy_index].get();
+    auto* efilt = dynamic_cast<EnergyFilter*>(efilt_base);
+    cmfd::egrid = efilt->bins();
+  } else {
+    cmfd::egrid = {0.0, INFTY};
+  }
+}
 
 //==============================================================================
 // MATRIX_TO_INDICES converts a matrix index to spatial and group
@@ -309,12 +507,9 @@ int cmfd_linsolver_ng(const double* A_data, const double* b, double* x,
 extern "C"
 void openmc_initialize_linsolver(const int* indptr, int len_indptr,
                                  const int* indices, int n_elements, int dim,
-                                 double spectral, const int* cmfd_indices,
-                                 const int* map, bool use_all_threads)
+                                 double spectral, const int* map,
+                                 bool use_all_threads)
 {
-  // Make sure vectors are empty
-  free_memory_cmfd();
-
   // Store elements of indptr
   for (int i = 0; i < len_indptr; i++)
     cmfd::indptr.push_back(indptr[i]);
@@ -327,15 +522,8 @@ void openmc_initialize_linsolver(const int* indptr, int len_indptr,
   cmfd::dim = dim;
   cmfd::spectral = spectral;
 
-  // Set number of groups
-  cmfd::ng = cmfd_indices[3];
-
-  // Set problem dimensions and indexmap if 1 or 2 group problem
+  // Set indexmap if 1 or 2 group problem
   if (cmfd::ng == 1 || cmfd::ng == 2) {
-    cmfd::nx = cmfd_indices[0];
-    cmfd::ny = cmfd_indices[1];
-    cmfd::nz = cmfd_indices[2];
-
     // Resize indexmap and set its elements
     cmfd::indexmap.resize({static_cast<size_t>(dim), 3});
     set_indexmap(map);
@@ -366,10 +554,16 @@ int openmc_run_linsolver(const double* A_data, const double* b, double* x,
 
 void free_memory_cmfd()
 {
+  // Clear std::vectors
   cmfd::indptr.clear();
   cmfd::indices.clear();
-  // Resize indexmap to be an empty array
+  cmfd::egrid.clear();
+
+  // Resize xtensors to be empty
   cmfd::indexmap.resize({0});
+
+  // Set pointers to null
+  cmfd::mesh = nullptr;
 }
 
 } // namespace openmc

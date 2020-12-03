@@ -131,27 +131,38 @@ extern "C" {
   int openmc_zernike_filter_set_params(int32_t index, const double* x,
                                        const double* y, const double* r);
 
+  //! Sets the mesh and energy grid for CMFD reweight
+  //! \param[in] meshtyally_id id of CMFD Mesh Tally
+  //! \param[in] cmfd_indices indices storing spatial and energy dimensions of CMFD problem
+  //! \param[in] norm CMFD normalization factor
+  extern "C" void openmc_initialize_mesh_egrid(const int meshtally_id, const int* cmfd_indices,
+                                               const double norm);
+
+  //! Sets the mesh and energy grid for CMFD reweight
+  //! \param[in] feedback whether or not to run CMFD feedback
+  //! \param[in] cmfd_src computed CMFD source
+  extern "C" void openmc_cmfd_reweight(const bool feedback, const double* cmfd_src);
+
   //! Sets the fixed variables that are used for CMFD linear solver
-  //! \param[in] CSR format index pointer array of loss matrix
-  //! \param[in] length of indptr
-  //! \param[in] CSR format index array of loss matrix
-  //! \param[in] number of non-zero elements in CMFD loss matrix
-  //! \param[in] dimension n of nxn CMFD loss matrix
-  //! \param[in] spectral radius of CMFD matrices and tolerances
-  //! \param[in] indices storing spatial and energy dimensions of CMFD problem
-  //! \param[in] coremap for problem, storing accelerated regions
+  //! \param[in] indptr CSR format index pointer array of loss matrix
+  //! \param[in] len_indptr length of indptr
+  //! \param[in] indices CSR format index array of loss matrix
+  //! \param[in] n_elements number of non-zero elements in CMFD loss matrix
+  //! \param[in] dim dimension n of nxn CMFD loss matrix
+  //! \param[in] spectral spectral radius of CMFD matrices and tolerances
+  //! \param[in] map coremap for problem, storing accelerated regions
+  //! \param[in] use_all_threads whether to use all threads when running CMFD solver
   extern "C" void openmc_initialize_linsolver(const int* indptr, int len_indptr,
                                               const int* indices, int n_elements,
                                               int dim, double spectral,
-                                              const int* cmfd_indices,
                                               const int* map, bool use_all_threads);
 
   //! Runs a Gauss Seidel linear solver to solve CMFD matrix equations
   //! linear solver
-  //! \param[in] CSR format data array of coefficient matrix
-  //! \param[in] right hand side vector
-  //! \param[out] unknown vector
-  //! \param[in] tolerance on final error
+  //! \param[in] A_data CSR format data array of coefficient matrix
+  //! \param[in] b right hand side vector
+  //! \param[out] x unknown vector
+  //! \param[in] tol tolerance on final error
   //! \return number of inner iterations required to reach convergence
   extern "C" int openmc_run_linsolver(const double* A_data, const double* b,
                                       double* x, double tol);

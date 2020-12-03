@@ -170,9 +170,7 @@ void openmc_cmfd_reweight(const bool feedback, const double* cmfd_src)
     }
   }
 
-  if (!feedback) {
-    return;
-  }
+  if (!feedback) return;
 
 #ifdef OPENMC_MPI
   // Send weightfactors to all processors
@@ -211,7 +209,7 @@ void openmc_initialize_mesh_egrid(const int meshtally_id, const int* cmfd_indice
   openmc_get_tally_index(meshtally_id, &tally_index);
 
   // Get filters assocaited with tally
-  auto tally_filters = model::tallies[tally_index]->filters();
+  const auto& tally_filters = model::tallies[tally_index]->filters();
 
   // Get mesh filter index
   auto meshfilter_index = tally_filters[0];
@@ -220,15 +218,14 @@ void openmc_initialize_mesh_egrid(const int meshtally_id, const int* cmfd_indice
   auto energy_index = (tally_filters.size() == 2) ? tally_filters[1] : -1;
 
   // Get mesh index from mesh filter index
-  int32_t  mesh_index;
+  int32_t mesh_index;
   openmc_mesh_filter_get_mesh(meshfilter_index, &mesh_index);
 
   // Get mesh from mesh index
   cmfd::mesh = get_regular_mesh(mesh_index);
 
   // Get energy bins from energy index, otherwise use default
-  if (energy_index != -1)
-  {
+  if (energy_index != -1) {
     auto efilt_base = model::tally_filters[energy_index].get();
     auto* efilt = dynamic_cast<EnergyFilter*>(efilt_base);
     cmfd::egrid = efilt->bins();

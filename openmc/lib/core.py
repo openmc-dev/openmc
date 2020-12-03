@@ -47,8 +47,9 @@ _dll.openmc_init.errcheck = _error_handler
 _dll.openmc_get_keff.argtypes = [POINTER(c_double*2)]
 _dll.openmc_get_keff.restype = c_int
 _dll.openmc_get_keff.errcheck = _error_handler
-_init_mesh_egrid_args = [c_int, _array_1d_int, c_double]
-_dll.openmc_initialize_mesh_egrid.argtypes = _init_mesh_egrid_args
+_dll.openmc_initialize_mesh_egrid.argtypes = [
+    c_int, _array_1d_int, c_double
+]
 _dll.openmc_initialize_mesh_egrid.restype = None
 _init_linsolver_argtypes = [_array_1d_int, c_int, _array_1d_int, c_int, c_int,
                             c_double, _array_1d_int, c_bool]

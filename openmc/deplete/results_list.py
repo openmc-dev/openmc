@@ -2,7 +2,7 @@ import h5py
 import numpy as np
 
 from .results import Results, VERSION_RESULTS
-from openmc.checkvalue import check_filetype_version, check_value
+from openmc.checkvalue import check_filetype_version, check_value, check_type
 
 
 __all__ = ["ResultsList"]
@@ -191,4 +191,40 @@ class ResultsList(list):
             items = self[1:]
         for ix, res in enumerate(items):
             times[ix] = res.proc_time
+        return times
+
+    def get_times(self, time_units="d") -> np.ndarray:
+        """Return the points in time that define the depletion schedule
+
+        Parameters
+        ----------
+        time_units : {"s", "d", "h", "min"}, optional
+            Return the vector in these units. Default is to
+            convert to days
+
+        Returns
+        -------
+        numpy.ndarray
+            1-D vector of time points
+
+        """
+        check_type("time_units", time_units, str)
+
+        times = np.fromiter(
+            (r.time[0] for r in self),
+            dtype=self[0].time.dtype,
+            count=len(self),
+        )
+
+        if time_units == "d":
+            times /= (60 * 60 * 24)
+        elif time_units == "h":
+            times /= (60 * 60)
+        elif time_units == "min":
+            times /= 60
+        elif time_units != "s":
+            raise ValueError(
+                f'Unable to set "time_units" to {time_units} since it is not '
+                'in ("s", "d", "min", "h")'
+            )
         return times

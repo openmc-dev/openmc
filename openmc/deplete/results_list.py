@@ -1,3 +1,7 @@
+import numbers
+import bisect
+import math
+
 import h5py
 import numpy as np
 
@@ -228,3 +232,64 @@ class ResultsList(list):
                 'in ("s", "d", "min", "h")'
             )
         return times
+
+    def get_step_where(
+        self, time, time_units="d", atol=1e-6, rtol=1e-3
+    ) -> int:
+        """Return the index closest to a given point in time
+
+        In the event ``time`` lies exactly between two points, the
+        lower index will be returned. It is possible that the index
+        will be at most one past the point in time requested, but only
+        according to tolerances requested.
+
+        Parameters
+        ----------
+        time : float
+            Desired point in time
+        time_units : {"s", "d", "min", "h"}, optional
+            Units on ``time``. Default: days
+        atol : float, optional
+            Absolute tolerance (in ``time_units``) if ``time`` is not
+            found. A value of ``None`` is converted to infinity.
+        rtol : float, optional
+            Relative tolerance if ``time`` is not found. A value of
+            ``None`` is converted to infinity.
+
+        Returns
+        -------
+        int
+
+        """
+        check_type("time", time, numbers.Real)
+        if atol is not None:
+            check_type("atol", atol, numbers.Real)
+        else:
+            atol = math.inf
+        if rtol is not None:
+            check_type("rtol", rtol, numbers.Real)
+        else:
+            rtol = math.inf
+
+        times = self.get_times(time_units)
+
+        if times[0] < time < times[-1]:
+            ix = bisect.bisect_left(times, time)
+            if ix == times.size:
+                ix -= 1
+            # Bisection will place us either directly on the point
+            # or one-past the first value less than time
+            elif time - times[ix - 1] <= times[ix] - time:
+                ix -= 1
+        elif times[0] >= time:
+            ix = 0
+        elif time >= times[-1]:
+            ix = times.size - 1
+
+        if math.isclose(time, times[ix], rel_tol=rtol, abs_tol=atol):
+            return ix
+
+        raise ValueError(
+            f"A value of {time} {time_units} was not found given absolute and "
+            f"relative tolerances {atol} and {rtol}."
+        )

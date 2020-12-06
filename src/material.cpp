@@ -1237,6 +1237,10 @@ void read_materials_xml()
   for (pugi::xml_node material_node : root.children("material")) {
     model::materials.push_back(make_unique<Material>(material_node));
   }
+
+  // Search for materials defined on DAGMC models
+  read_dagmc_uwuw_materials();
+
   model::materials.shrink_to_fit();
 }
 

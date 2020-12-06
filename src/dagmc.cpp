@@ -128,6 +128,50 @@ bool read_uwuw_materials(pugi::xml_document& doc) {
   return found_uwuw_mats;
 }
 
+void read_dagmc_uwuw_materials() {
+  std::string filename = settings::path_input + "geometry.xml";
+  if (!file_exists(filename)) {
+    fatal_error(fmt::format("Geometry XML file '{}' does not exist!", filename));
+  }
+
+  pugi::xml_document doc;
+  auto result = doc.load_file(filename.c_str());
+  if (!result) {
+    fatal_error("Error processing geometry.xml file.");
+  }
+  pugi::xml_node root = doc.document_element();
+  // Loop over DAGMC elements
+  for (pugi::xml_node dagmc_node : root.children("dagmc")) {
+    if (!check_for_node(dagmc_node, "filename")) {
+      fatal_error("No filename specified on a DAGMC universe element");
+    }
+    std::string dagmc_filename = get_node_value(dagmc_node, "filename");
+    // Load any existing UWUW materials
+    UWUW uwuw(dagmc_filename.c_str());
+    const auto& mat_lib = uwuw.material_library;
+    if (mat_lib.size() == 0) continue;
+
+    std::stringstream ss;
+    ss << "<?xml version=\"1.0\"?>\n";
+    ss << "<materials>\n";
+    for (auto mat : mat_lib) { ss << mat.second.openmc("atom"); }
+    ss << "</materials>";
+    std::string mat_xml_string = ss.str();
+
+    // create a pugi XML document from this string
+    pugi::xml_document doc;
+    auto result = doc.load_string(mat_xml_string.c_str());
+    if (!result) {
+      fatal_error("Error processing XML created using DAGMC UWUW materials.");
+    }
+    pugi::xml_node root = doc.document_element();
+    for (pugi::xml_node material_node : root.children("material")) {
+      model::materials.push_back(std::make_unique<Material>(material_node));
+    }
+  }
+}
+
+
 bool write_uwuw_materials_xml() {
   std::string s;
   bool found_uwuw_mats = get_uwuw_materials_xml(s);

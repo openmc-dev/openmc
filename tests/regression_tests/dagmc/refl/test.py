@@ -27,6 +27,10 @@ class UWUWTest(PyAPITestHarness):
 
         model.settings.export_to_xml()
 
+        # geometry
+        dag_univ = openmc.DAGMCUniverse("dagmc.h5m")
+        model.geometry = openmc.Geometry(root=dag_univ)
+
         # tally
         tally = openmc.Tally()
         tally.scores = ['total']
@@ -34,6 +38,7 @@ class UWUWTest(PyAPITestHarness):
         model.tallies = [tally]
 
         model.tallies.export_to_xml()
+        model.export_to_xml()
 
 def test_refl():
     harness = UWUWTest('statepoint.5.h5')

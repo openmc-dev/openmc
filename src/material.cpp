@@ -1239,7 +1239,7 @@ void read_materials_xml()
   }
 
   // Search for materials defined on DAGMC models
-  read_dagmc_uwuw_materials();
+  read_dagmc_materials();
 
   model::materials.shrink_to_fit();
 }

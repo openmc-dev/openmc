@@ -453,15 +453,19 @@ class Surface(IDManagerMixin, ABC):
 
         """
 
+        # If this is a DAGMC surface, do nothing for now
+        geom_type = group['geom_type'][()].decode()
+        if geom_type == 'dagmc':
+            return
+
         surface_id = int(group.name.split('/')[-1].lstrip('surface '))
         name = group['name'][()].decode() if 'name' in group else ''
-        surf_type = group['geom_type'][()].decode()
-        if surf_type == 'dagmc':
-            return
+
         bc = group['boundary_type'][()].decode()
         coeffs = group['coefficients'][...]
         kwargs = {'boundary_type': bc, 'name': name, 'surface_id': surface_id}
 
+        surf_type = group['type'][()].decode()
         cls = _SURFACE_CLASSES[surf_type]
 
         return cls(*coeffs, **kwargs)

@@ -128,7 +128,7 @@ bool read_uwuw_materials(pugi::xml_document& doc) {
   return found_uwuw_mats;
 }
 
-void read_dagmc_uwuw_materials() {
+void read_dagmc_materials() {
   std::string filename = settings::path_input + "geometry.xml";
   if (!file_exists(filename)) {
     fatal_error(fmt::format("Geometry XML file '{}' does not exist!", filename));

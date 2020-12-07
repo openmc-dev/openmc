@@ -389,8 +389,8 @@ Particle::cross_surface()
   // ==========================================================================
   // SEARCH NEIGHBOR LISTS FOR NEXT CELL
 
-
 #ifdef DAGMC
+  // in DAGMC, we know what the next cell should be
   auto surfp = dynamic_cast<DAGSurface*>(model::surfaces[std::abs(surface_) - 1].get());
   if (surfp) {
     auto cellp = dynamic_cast<DAGCell*>(model::cells[cell_last_[n_coord_ - 1]].get());
@@ -512,13 +512,11 @@ Particle::cross_reflective_bc(const Surface& surf, Direction new_u)
   // boundary, it is necessary to redetermine the particle's coordinates in
   // the lower universes.
   // (unless we're using a dagmc model, which has exactly one universe)
-  if (!settings::dagmc) {
-    n_coord() = 1;
-    if (!neighbor_list_find_cell(*this)) {
-      mark_as_lost("Couldn't find particle after reflecting from surface " +
-                   std::to_string(surf.id_) + ".");
-      return;
-    }
+  n_coord() = 1;
+  if (surf->geom_type_ != GeometryType::DAGMC && !neighbor_list_find_cell(*this, true)) {
+    this->mark_as_lost("Couldn't find particle after reflecting from surface "
+                        + std::to_string(surf.id_) + ".");
+    return;
   }
 
   // Set previous coordinate going slightly past surface crossing

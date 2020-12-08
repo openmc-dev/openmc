@@ -3,7 +3,7 @@
 
 include(FindPkgConfig)
 set(ENV{PKG_CONFIG_PATH} "$ENV{PKG_CONFIG_PATH}:${LIBMESH_PC}")
-pkg_check_modules(LIBMESH REQUIRED libmesh IMPORTED_TARGET)
+pkg_check_modules(LIBMESH REQUIRED libmesh>=1.6.0 IMPORTED_TARGET)
 
 find_path(LIBMESH_PC NAMES libmesh.pc
           HINTS ${LIBMESH_LIBDIR}

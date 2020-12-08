@@ -31,7 +31,7 @@ option(debug    "Compile with debug flags"                       OFF)
 option(optimize "Turn on all compiler optimization flags"        OFF)
 option(coverage "Compile with coverage analysis flags"           OFF)
 option(dagmc    "Enable support for DAGMC (CAD) geometry"        OFF)
-option(libmesh  "Enable support for libmesh unstructured mesh tallies" OFF)
+option(libmesh  "Enable support for libMesh unstructured mesh tallies" OFF)
 
 #===============================================================================
 # MPI for distributed-memory parallelism

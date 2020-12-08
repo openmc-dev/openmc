@@ -5,7 +5,7 @@
 # docker build -t openmc_dagmc --build-arg include_dagmc=true .
 
 # To make use of multiple cores during the compile stages of the docker build
-# docker build -t openmc_dagmc --build-arg compile_cores=8
+# docker build -t openmc_dagmc --build-arg compile_cores=8 .
 
 FROM ubuntu:latest
 
@@ -58,8 +58,6 @@ RUN if [ "$include_dagmc" = "false" ] ; \
 # install addition packages required for DAGMC
 RUN if [ "$include_dagmc" = "true" ] ; \
     then apt-get --yes install libeigen3-dev ; \
-    apt-get --yes install libblas-dev ; \
-    apt-get --yes install liblapack-dev ; \
     apt-get --yes install libnetcdf-dev ; \
     apt-get --yes install libtbb-dev ; \
     apt-get --yes install libglfw3-dev ; \
@@ -89,7 +87,8 @@ RUN if [ "$include_dagmc" = "true" ] ; \
                 -DENABLE_NETCDF=ON \
                 -DBUILD_SHARED_LIBS=OFF \
                 -DENABLE_FORTRAN=OFF \
-                -DCMAKE_INSTALL_PREFIX=/MOAB ; \
+                -DCMAKE_INSTALL_PREFIX=/MOAB \
+                -DENABLE_BLASLAPACK=OFF ; \
     make -j"$compile_cores" ; \
     make -j"$compile_cores" install ; \
     rm -rf * ; \
@@ -98,7 +97,8 @@ RUN if [ "$include_dagmc" = "true" ] ; \
                 -DENABLE_PYMOAB=ON \
                 -DENABLE_BLASLAPACK=OFF \
                 -DENABLE_FORTRAN=OFF \
-                -DCMAKE_INSTALL_PREFIX=/MOAB ; \
+                -DCMAKE_INSTALL_PREFIX=/MOAB \
+                -DENABLE_BLASLAPACK=OFF ; \
     make -j"$compile_cores" ; \
     make -j"$compile_cores" install ; \
     cd pymoab ; \

@@ -528,10 +528,10 @@ private:
 
   void initialize() override;
 
-  //! Translate a bin value to an element pointer
+  //! Translate a bin value to an element reference
   const libMesh::Elem& get_element_from_bin(int bin) const;
 
-  //! Translate an element pointer to a bin value
+  //! Translate an element pointer to a bin index
   int get_bin_from_element(const libMesh::Elem* elem) const;
 
   // Data members

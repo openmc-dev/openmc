@@ -72,7 +72,7 @@ RUN if [ "$include_dagmc" = "true" ] ; \
     mkdir build ; \
     cd build ; \
     cmake .. -DCMAKE_INSTALL_PREFIX=.. \
-        -DEMBREE_ISPC_SUPPORT=OFF ; \
+             -DEMBREE_ISPC_SUPPORT=OFF ; \
     make -j"$compile_cores" ; \
     make -j"$compile_cores" install ; \
     fi
@@ -113,9 +113,9 @@ RUN if [ "$include_dagmc" = "true" ] ; \
     mkdir build ; \
     cd build ; \
     cmake .. -DCMAKE_INSTALL_PREFIX=.. \
-        -DMOAB_DIR=/MOAB \
-        -DEMBREE_DIR=/embree/lib/cmake/embree-3.12.1 \
-        -DEMBREE_ROOT=/embree/lib/cmake/embree-3.12.1 ; \
+             -DMOAB_DIR=/MOAB \
+             -DEMBREE_DIR=/embree/lib/cmake/embree-3.12.1 \
+             -DEMBREE_ROOT=/embree/lib/cmake/embree-3.12.1 ; \
     make -j"$compile_cores" ; \
     make -j"$compile_cores" install ; \
     fi

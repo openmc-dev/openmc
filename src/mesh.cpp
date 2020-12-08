@@ -2037,8 +2037,8 @@ void MOABMesh::remove_score(const std::string& score) {
 
 void
 MOABMesh::set_score_data(const std::string& score,
-                                 std::vector<double> values,
-                                 std::vector<double> std_dev) {
+                         std::vector<double> values,
+                         std::vector<double> std_dev) {
   auto score_tags = this->get_score_tags(score);
 
   // normalize tally values by element volume
@@ -2182,8 +2182,8 @@ LibMesh::remove_score(const std::string& var_name) {
 
 void
 LibMesh::set_score_data(const std::string& var_name,
-                      std::vector<double> values,
-                      std::vector<double> std_dev)
+                        std::vector<double> values,
+                        std::vector<double> std_dev)
 {
   auto& eqn_sys = equation_systems_->get_system(eq_system_name_);
 

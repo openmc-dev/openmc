@@ -53,6 +53,7 @@ extern std::vector<std::unique_ptr<Mesh>> meshes;
 
 #ifdef LIBMESH
 namespace settings {
+// used when creating new libMesh::Mesh instances
 extern std::unique_ptr<libMesh::LibMeshInit> LMI;
 }
 #endif
@@ -274,6 +275,7 @@ public:
   int set_grid();
 };
 
+// Abstract class for unstructured meshes
 class UnstructuredMesh : public Mesh {
 
 public:
@@ -286,7 +288,7 @@ public:
 private:
 
   //! Setup method for the mesh. Builds data structures,
-  //! element mapping, etc.
+  //! sets up element mapping, creates bounding boxes, etc.
   virtual void initialize() = 0;
 
 public:
@@ -297,7 +299,8 @@ public:
   //! Remove variable from the mesh instance
   virtual void remove_score(const std::string& var_name) = 0;
 
-  //! Set the value of a bin for a variable on the mesh instance
+  //! Set the value of a bin for a variable on the internal
+  //  mesh instance
   virtual void set_score_data(const std::string& var_name,
                               std::vector<double> values,
                               std::vector<double> std_dev) = 0;
@@ -316,7 +319,7 @@ public:
   //! Get the volume of a mesh bin
   //
   //! \param[in] bin Bin to return the volume for
-  //! \return The volume of the bin
+  //! \return Volume of the bin
   virtual double volume(int bin) const = 0;
 
   //! Get the library used for this unstructured mesh
@@ -330,7 +333,7 @@ public:
   void to_hdf5(hid_t group) const override;
 
   // Data members
-  bool output_ {true};
+  bool output_ {true}; //!< Write tallies onto the unstructured mesh at the end of a run
   std::string filename_; //!< Path to unstructured mesh file
 };
 
@@ -343,7 +346,6 @@ public:
   MOABMesh() = default;
   MOABMesh(pugi::xml_node);
   MOABMesh(const std::string& filename);
-  ~MOABMesh() = default;
 
   void bins_crossed(const Particle& p,
                     std::vector<int>& bins,
@@ -361,12 +363,7 @@ public:
   std::string library() const override;
 
   //! Add a score to the mesh instance
-  void add_score(const std::string& score);
-
-  //! Set the value of a bin for a variable on the libmesh mesh instance
-  void set_score_data(const std::string& var_name,
-                      std::vector<double> values,
-                      std::vector<double> std_dev) override;
+  void add_score(const std::string& score) override;
 
   //! Remove a score from the mesh instance
   void remove_score(const std::string& score) override;
@@ -374,7 +371,7 @@ public:
   //! Set data for a score
   void set_score_data(const std::string& score,
                       std::vector<double> values,
-                      std::vector<double> std_dev) const;
+                      std::vector<double> std_dev) override;
 
   //! Write the mesh with any current tally data
   void write(std::string base_filename) const;
@@ -489,6 +486,7 @@ private:
 #endif
 
 #ifdef LIBMESH
+
 class LibMesh : public UnstructuredMesh {
 
 public:
@@ -539,7 +537,7 @@ private:
   // Data members
   std::unique_ptr<libMesh::Mesh> m_; //!< pointer to the libMesh mesh instance
   static std::unique_ptr<libMesh::PointLocatorBase> PL_; //!< per-thread point locators
-  #pragma omp threadprivate(PL_)
+  #pragma omp threadprivate(PL_) // each thread has its own point locator
   std::unique_ptr<libMesh::EquationSystems> equation_systems_; //!< pointer to the equation systems of the mesh
   std::string eq_system_name_; //!< name of the equation system holding OpenMC results
   std::map<std::string, unsigned int> variable_map_; //!< mapping of variable names (tally scores) to libMesh variable numbers

@@ -29,7 +29,7 @@ public:
     xt::xtensor<double, 1> e_out; //!< Outgoing energies [eV]
     xt::xtensor<double, 1> p; //!< Probability density
     xt::xtensor<double, 1> c; //!< Cumulative distribution
-    std::vector<UPtrDist> angle; //!< Angle distribution
+    std::vector<std::unique_ptr<Tabular>> angle; //!< Angle distribution
   };
 
   explicit CorrelatedAngleEnergy(hid_t group);

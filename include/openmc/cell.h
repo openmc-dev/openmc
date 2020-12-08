@@ -73,6 +73,8 @@ extern __constant__ unique_ptr<Universe>* universes;
 class Universe
 {
 public:
+  Universe() = default;
+
   int32_t id_;                  //!< Unique ID
   vector<int32_t> cells_;       //!< Cells within this universe
 

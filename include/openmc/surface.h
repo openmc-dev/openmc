@@ -53,6 +53,11 @@ struct BoundingBox
   double zmin = -INFTY;
   double zmax = INFTY;
 
+  BoundingBox() = default;
+  BoundingBox(BoundingBox&&) = default;
+  BoundingBox(BoundingBox const&) = default;
+  BoundingBox& operator=(BoundingBox const&) = default;
+
   HD inline BoundingBox operator&(const BoundingBox& other)
   {
     BoundingBox result = *this;

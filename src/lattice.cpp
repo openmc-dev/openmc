@@ -40,9 +40,9 @@ Lattice::Lattice(pugi::xml_node lat_node)
     fatal_error("Must specify id of lattice in geometry XML file.");
   }
 
-  if (check_for_node(lat_node, "name")) {
-    name_ = get_node_value(lat_node, "name");
-  }
+  // if (check_for_node(lat_node, "name")) {
+  //   name_ = get_node_value(lat_node, "name");
+  // }
 
   if (check_for_node(lat_node, "outer")) {
     outer_ = std::stoi(get_node_value(lat_node, "outer"));
@@ -116,9 +116,9 @@ Lattice::to_hdf5(hid_t lattices_group) const
   hid_t lat_group = create_group(lattices_group, group_name);
 
   // Write the name and outer universe.
-  if (!name_.empty()) {
-    write_string(lat_group, "name", name_, false);
-  }
+  // if (!name_.empty()) {
+  //   write_string(lat_group, "name", name_, false);
+  // }
 
   if (outer_ != NO_OUTER_UNIVERSE) {
     int32_t outer_id = model::universes[outer_]->id_;

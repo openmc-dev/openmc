@@ -54,13 +54,16 @@ class Lattice
 {
 public:
   int32_t id_;                         //!< Universe ID number
-  string name_;                   //!< User-defined name
+  string name_;                        //!< User-defined name
   LatticeType type_;
   vector<int32_t> universes_;          //!< Universes filling each lattice tile
   int32_t outer_ {NO_OUTER_UNIVERSE};  //!< Universe tiled outside the lattice
   vector<int32_t> offsets_;            //!< Distribcell offset table
 
   explicit Lattice(pugi::xml_node lat_node);
+  Lattice() = delete;
+  Lattice(Lattice const&) = delete;
+  Lattice(Lattice&&) = default;
 
   virtual __host__ ~Lattice() {}
 

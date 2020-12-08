@@ -323,21 +323,21 @@ __global__ void run_move_constructor_on_device(T* dist)
 // Allocates unified memory if running in GPU mode, else acts
 // like operator new.
 template<typename T, typename... Args>
-T* unified_new(Args... args)
+T* unified_new(Args&&... args)
 {
   T* loc = nullptr;
 
   cudaMallocManaged(&loc, sizeof(T));
 
   // Run the constructor as usual on the host
-  new (loc) T(args...);
+  new (loc) T(std::forward<Args>(args)...);
   return loc;
 }
 
 // Returns a pointer to the same object constructed on both the host,
 // and the device separately. This is necessary for polymorphic stuff.
 template<typename T, typename... Args>
-std::pair<T*, T*> replicated_new(Args... args)
+std::pair<T*, T*> replicated_new(Args&&... args)
 {
   T* loc_host = nullptr;
   T* loc_device = nullptr;
@@ -346,7 +346,7 @@ std::pair<T*, T*> replicated_new(Args... args)
   cudaMalloc(&loc_device, sizeof(T));
 
   // Run the constructor as usual on the host
-  new (loc_host) T(args...);
+  new (loc_host) T(std::forward<Args>(args)...);
 
   // Now, copy the host data to device, and run the copy constructor there.
   // This will correctly initialize vtables on the device. Without re-running
@@ -397,6 +397,7 @@ public:
 
   // Constructors/operators that unique_ptr must rid of to attain its desired
   // functionality
+  unique_ptr() : ptr_dev(nullptr), ptr(nullptr) {}
   unique_ptr(unique_ptr const&) = delete;
   unique_ptr& operator=(unique_ptr const&) = delete;
   unique_ptr& operator=(unique_ptr&& u)
@@ -423,8 +424,7 @@ public:
   ~unique_ptr() { free_mem(); }
 
   // observers
-  __host__ __device__ typename std::add_lvalue_reference<T>::type operator*()
-    const
+  __host__ __device__ T const& operator*() const
   {
 #ifdef __CUDA_ARCH__
     return *ptr_dev;
@@ -434,7 +434,7 @@ public:
   }
 
   // observers
-  __host__ __device__ typename std::add_lvalue_reference<T>::type operator*()
+  __host__ __device__ T& operator*()
   {
 #ifdef __CUDA_ARCH__
     return *ptr_dev;

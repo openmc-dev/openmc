@@ -1206,7 +1206,7 @@ void read_surfaces(pugi::xml_node node)
 #ifdef __CUDACC__
   // Save pointer to vector of surface pointers on GPU, since global variables
   // on device are kept separately
-  unique_ptr<Surface>* first_surface_ptr = model.data();
+  unique_ptr<Surface>* first_surface_ptr = model::surfaces.data();
   cudaMemcpyToSymbol(
     gpu::surfaces, &first_surface_ptr, sizeof(unique_ptr<Surface>*));
 #endif

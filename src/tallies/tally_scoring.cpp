@@ -384,12 +384,16 @@ score_fission_eout(Particle& p, int i_tally, int i_score, int score_bin)
 
     } else {
 
+#ifndef __CUDACC__
       double E_out;
       if (settings::run_CE) {
         E_out = bank.E;
       } else {
         E_out = data::mg.energy_bin_avg_[static_cast<int>(bank.E)];
       }
+#else
+      double E_out = bank.E;
+#endif
 
       // Set EnergyoutFilter bin index
       if (E_out < eo_filt.bins().front() || E_out > eo_filt.bins().back()) {
@@ -1466,6 +1470,7 @@ score_general_ce(Particle& p, int i_tally, int start_index, int filter_index,
 //! For analog tallies, the flux estimate depends on the score type so the flux
 //! argument is really just used for filter weights.
 
+#ifndef __CUDACC__
 void
 score_general_mg(Particle& p, int i_tally, int start_index, int filter_index,
   double filter_weight, int i_nuclide, double atom_density, double flux)
@@ -2141,6 +2146,7 @@ score_general_mg(Particle& p, int i_tally, int start_index, int filter_index,
     tally.results_(filter_index, score_index, TallyResult::VALUE) += score*filter_weight;
   }
 }
+#endif
 
 //! Tally rates for when the user requests a tally on all nuclides.
 
@@ -2157,6 +2163,7 @@ score_all_nuclides(Particle& p, int i_tally, double flux,
     auto atom_density = material.atom_density_[i];
 
     //TODO: consider replacing this "if" with pointers or templates
+#ifndef __CUDACC__
     if (settings::run_CE) {
       score_general_ce(p, i_tally, i_nuclide*tally.scores_.size(), filter_index,
         filter_weight, i_nuclide, atom_density, flux);
@@ -2164,6 +2171,10 @@ score_all_nuclides(Particle& p, int i_tally, double flux,
       score_general_mg(p, i_tally, i_nuclide*tally.scores_.size(), filter_index,
         filter_weight, i_nuclide, atom_density, flux);
     }
+#else
+    score_general_ce(p, i_tally, i_nuclide * tally.scores_.size(), filter_index,
+      filter_weight, i_nuclide, atom_density, flux);
+#endif
   }
 
   // Score total material reaction rates.
@@ -2171,6 +2182,7 @@ score_all_nuclides(Particle& p, int i_tally, double flux,
   double atom_density = 0.;
   auto n_nuclides = data::nuclides.size();
   //TODO: consider replacing this "if" with pointers or templates
+#ifndef __CUDACC__
   if (settings::run_CE) {
     score_general_ce(p, i_tally, n_nuclides*tally.scores_.size(), filter_index,
       filter_weight, i_nuclide, atom_density, flux);
@@ -2178,6 +2190,10 @@ score_all_nuclides(Particle& p, int i_tally, double flux,
     score_general_mg(p, i_tally, n_nuclides*tally.scores_.size(), filter_index,
       filter_weight, i_nuclide, atom_density, flux);
   }
+#else
+  score_general_ce(p, i_tally, n_nuclides * tally.scores_.size(), filter_index,
+    filter_weight, i_nuclide, atom_density, flux);
+#endif
 }
 
 void score_analog_tally_ce(Particle& p)
@@ -2244,6 +2260,7 @@ void score_analog_tally_ce(Particle& p)
   p.reset_filter_matches();
 }
 
+#ifndef __CUDACC__
 void score_analog_tally_mg(Particle& p)
 {
   for (auto i_tally : model::active_analog_tallies) {
@@ -2288,6 +2305,7 @@ void score_analog_tally_mg(Particle& p)
   // Reset all the filter matches for the next tally event.
   p.reset_filter_matches();
 }
+#endif
 
 void
 score_tracklength_tally(Particle& p, double distance)
@@ -2331,6 +2349,7 @@ score_tracklength_tally(Particle& p, double distance)
           }
 
           //TODO: consider replacing this "if" with pointers or templates
+#ifndef __CUDACC__
           if (settings::run_CE) {
             score_general_ce(p, i_tally, i*tally.scores_.size(), filter_index,
               filter_weight, i_nuclide, atom_density, flux);
@@ -2338,6 +2357,10 @@ score_tracklength_tally(Particle& p, double distance)
             score_general_mg(p, i_tally, i*tally.scores_.size(), filter_index,
               filter_weight, i_nuclide, atom_density, flux);
           }
+#else
+          score_general_ce(p, i_tally, i * tally.scores_.size(), filter_index,
+            filter_weight, i_nuclide, atom_density, flux);
+#endif
         }
       }
 
@@ -2399,6 +2422,7 @@ void score_collision_tally(Particle& p)
           }
 
           //TODO: consider replacing this "if" with pointers or templates
+#ifndef __CUDACC__
           if (settings::run_CE) {
             score_general_ce(p, i_tally, i*tally.scores_.size(), filter_index,
               filter_weight, i_nuclide, atom_density, flux);
@@ -2406,6 +2430,10 @@ void score_collision_tally(Particle& p)
             score_general_mg(p, i_tally, i*tally.scores_.size(), filter_index,
               filter_weight, i_nuclide, atom_density, flux);
           }
+#else
+          score_general_ce(p, i_tally, i * tally.scores_.size(), filter_index,
+            filter_weight, i_nuclide, atom_density, flux);
+#endif
         }
       }
     }

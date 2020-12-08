@@ -44,6 +44,7 @@ EnergyFilter::set_bins(gsl::span<const double> bins)
   // group structure.  In that case, the matching bin index is simply the group
   // (after flipping for the different ordering of the library and tallying
   // systems).
+#ifndef __CUDACC__
   if (!settings::run_CE) {
     if (n_bins_ == data::mg.num_energy_groups_) {
       matches_transport_groups_ = true;
@@ -55,12 +56,14 @@ EnergyFilter::set_bins(gsl::span<const double> bins)
       }
     }
   }
+#endif
 }
 
 void
 EnergyFilter::get_all_bins(const Particle& p, TallyEstimator estimator, FilterMatch& match)
 const
 {
+#ifndef __CUDACC__
   if (p.g() != F90_NONE && matches_transport_groups_) {
     if (estimator == TallyEstimator::TRACKLENGTH) {
       match.bins_.push_back(data::mg.num_energy_groups_ - p.g() - 1);
@@ -70,6 +73,7 @@ const
     match.weights_.push_back(1.0);
 
   } else {
+#endif
     // Get the pre-collision energy of the particle.
     auto E = p.E_last();
 
@@ -79,7 +83,9 @@ const
       match.bins_.push_back(bin);
       match.weights_.push_back(1.0);
     }
+#ifndef __CUDACC__
   }
+#endif
 }
 
 void
@@ -103,17 +109,21 @@ void
 EnergyoutFilter::get_all_bins(const Particle& p, TallyEstimator estimator,
                               FilterMatch& match) const
 {
+#ifndef __CUDACC__
   if (p.g() != F90_NONE && matches_transport_groups_) {
     match.bins_.push_back(data::mg.num_energy_groups_ - p.g() - 1);
     match.weights_.push_back(1.0);
 
   } else {
+#endif
     if (p.E() >= bins_.front() && p.E() <= bins_.back()) {
       auto bin = lower_bound_index(bins_.begin(), bins_.end(), p.E());
       match.bins_.push_back(bin);
       match.weights_.push_back(1.0);
     }
+#ifndef __CUDACC__
   }
+#endif
 }
 
 std::string

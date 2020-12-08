@@ -640,8 +640,10 @@ write_tallies()
             fmt::print(tallies_out, "{0:{1}}{2}\n", "", indent + 1,
               data::nuclides[i_nuclide]->name_);
           } else {
+#ifndef __CUDACC__
             fmt::print(tallies_out, "{0:{1}}{2}\n", "", indent + 1,
               data::mg.nuclides_[i_nuclide].name);
+#endif
           }
         }
 

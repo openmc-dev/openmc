@@ -1,6 +1,7 @@
 //! \file mgxs.h
 //! A collection of classes for Multi-Group Cross Section data
 
+#ifndef __CUDACC__ // Do not allow multigroup mode for GPU version
 #ifndef OPENMC_MGXS_H
 #define OPENMC_MGXS_H
 
@@ -188,3 +189,4 @@ class Mgxs {
 
 } // namespace openmc
 #endif // OPENMC_MGXS_H
+#endif // CUDACC

@@ -212,7 +212,9 @@ openmc_statepoint_write(const char* filename, bool* write_source)
             if (settings::run_CE) {
               nuclides.push_back(data::nuclides[i_nuclide]->name_);
             } else {
+#ifndef __CUDACC__
               nuclides.push_back(data::mg.nuclides_[i_nuclide].name);
+#endif
             }
           }
         }

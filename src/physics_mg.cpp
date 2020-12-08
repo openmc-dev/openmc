@@ -1,3 +1,4 @@
+#ifndef __CUDACC__
 #include "openmc/physics_mg.h"
 
 #include <stdexcept>
@@ -230,3 +231,4 @@ absorption(Particle& p)
 }
 
 } //namespace openmc
+#endif

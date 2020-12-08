@@ -1,3 +1,5 @@
+#ifndef __CUDACC__
+
 #include "openmc/xsdata.h"
 
 #include <cmath>
@@ -569,3 +571,4 @@ XsData::equiv(const XsData& that)
 }
 
 } //namespace openmc
+#endif

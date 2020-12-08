@@ -51,10 +51,12 @@ void read_particle_restart(Particle& p, RunMode& previous_run_mode)
   read_dataset(file_id, "uvw", p.u());
 
   // Set energy group and average energy in multi-group mode
+#ifndef __CUDACC__
   if (!settings::run_CE) {
     p.g() = p.E();
     p.E() = data::mg.energy_bin_avg_[p.g()];
   }
+#endif
 
   // Set particle last attributes
   p.wgt_last() = p.wgt();

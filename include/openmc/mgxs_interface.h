@@ -1,5 +1,6 @@
 //! \file mgxs_interface.h
 //! A collection of C interfaces to the C++ Mgxs class
+#ifndef __CUDACC__ // no multigroup mode on GPU
 
 #ifndef OPENMC_MGXS_INTERFACE_H
 #define OPENMC_MGXS_INTERFACE_H
@@ -79,3 +80,4 @@ void mark_fissionable_mgxs_materials();
 
 } // namespace openmc
 #endif // OPENMC_MGXS_INTERFACE_H
+#endif

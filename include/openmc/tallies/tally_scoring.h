@@ -77,7 +77,9 @@ void score_analog_tally_ce(Particle& p);
 //! Analog tallies are triggered at every collision, not every event.
 //
 //! \param p The particle being tracked
+#ifndef __CUDACC__
 void score_analog_tally_mg(Particle& p);
+#endif
 
 //! Score tallies using a tracklength estimate of the flux.
 //

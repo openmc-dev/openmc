@@ -76,9 +76,11 @@ void Particle::from_source(const SourceSite* src)
     E() = src->E;
     g() = 0;
   } else {
+#ifndef __CUDACC__
     g() = static_cast<int>(src->E);
     g_last() = static_cast<int>(src->E);
     E() = data::mg.energy_bin_avg_[g()];
+#endif
   }
   E_last() = E();
 }
@@ -133,6 +135,7 @@ void Particle::event_calculate_xs()
         model::materials[material()]->calculate_xs(*this);
       }
     } else {
+#ifndef __CUDACC__
       // Get the MG data; unlike the CE case above, we have to re-calculate
       // cross sections for every collision since the cross sections may
       // be angle-dependent
@@ -140,6 +143,9 @@ void Particle::event_calculate_xs()
 
       // Update the particle's group while we know we are multi-group
       g_last() = g();
+#else
+      fatal_error("Cannot calculate MG XS if compiled for CUDA mode.");
+#endif
     }
   } else {
     macro_xs().total = 0.0;
@@ -238,22 +244,30 @@ Particle::event_collide()
   // Clear surface component
   surface() = 0;
 
+#ifndef __CUDACC__
   if (settings::run_CE) {
     collision(*this);
   } else {
     collision_mg(*this);
   }
+#else
+  collision(*this);
+#endif
 
   // Score collision estimator tallies -- this is done after a collision
   // has occurred rather than before because we need information on the
   // outgoing energy for any tallies with an outgoing energy filter
   if (!model::active_collision_tallies.empty()) score_collision_tally(*this);
   if (!model::active_analog_tallies.empty()) {
+#ifndef __CUDACC__
     if (settings::run_CE) {
       score_analog_tally_ce(*this);
     } else {
       score_analog_tally_mg(*this);
     }
+#else
+    score_analog_tally_ce(*this);
+#endif
   }
 
   // Reset banked weight during collision

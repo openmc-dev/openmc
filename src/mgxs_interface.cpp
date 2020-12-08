@@ -1,3 +1,4 @@
+#ifndef __CUDACC__
 #include "openmc/mgxs_interface.h"
 
 #include <string>
@@ -285,3 +286,4 @@ void mark_fissionable_mgxs_materials()
 }
 
 } // namespace openmc
+#endif

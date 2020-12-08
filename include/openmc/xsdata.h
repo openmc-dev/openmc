@@ -1,6 +1,7 @@
 //! \file xsdata.h
 //! A collection of classes for containing the Multi-Group Cross Section data
 
+#ifndef __CUDACC__ // Do not compile multigroup stuff for GPU
 #ifndef OPENMC_XSDATA_H
 #define OPENMC_XSDATA_H
 
@@ -156,3 +157,4 @@ class XsData {
 
 } //namespace openmc
 #endif // OPENMC_XSDATA_H
+#endif // CUDACC

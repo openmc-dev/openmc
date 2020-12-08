@@ -57,6 +57,7 @@ void write_nuclides(hid_t file)
       nuc_names.push_back(nuc->name_);
       awrs.push_back(nuc->awr_);
     } else {
+#ifndef __CUDACC__
       const auto& nuc {data::mg.nuclides_[i]};
       if (nuc.awr != MACROSCOPIC_AWR) {
         nuc_names.push_back(nuc.name);
@@ -64,6 +65,7 @@ void write_nuclides(hid_t file)
       } else {
         macro_names.push_back(nuc.name);
       }
+#endif
     }
   }
 

@@ -376,11 +376,13 @@ SourceSite sample_external_source(uint64_t* seed)
   SourceSite site {model::external_sources[i]->sample(seed)};
 
   // If running in MG, convert site.E to group
+#ifndef __CUDACC__
   if (!settings::run_CE) {
     site.E = lower_bound_index(data::mg.rev_energy_bins_.begin(),
       data::mg.rev_energy_bins_.end(), site.E);
     site.E = data::mg.num_energy_groups_ - site.E - 1.;
   }
+#endif
 
   return site;
 }

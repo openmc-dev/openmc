@@ -139,6 +139,10 @@ void read_cross_sections_xml()
       }
       settings::path_cross_sections = envvar;
     } else {
+#ifdef __CUDACC__
+      fatal_error("MGXS mode is not functional on GPU at the moment. Recompile "
+                  "without CUDA.");
+#else
       char* envvar = std::getenv("OPENMC_MG_CROSS_SECTIONS");
       if (!envvar) {
         fatal_error("No mgxs.h5 file was specified in "
@@ -149,6 +153,7 @@ void read_cross_sections_xml()
               "how to set up MG cross section libraries.");
       }
       settings::path_cross_sections = envvar;
+#endif
     }
   } else {
     settings::path_cross_sections = get_node_value(root, "cross_sections");
@@ -158,8 +163,13 @@ void read_cross_sections_xml()
   if (settings::run_CE) {
     read_ce_cross_sections_xml();
   } else {
+#ifdef __CUDACC__
+    fatal_error("MGXS mode is not functional on GPU at the moment. Recompile "
+                "without CUDA.");
+#else
     data::mg.read_header(settings::path_cross_sections);
     put_mgxs_header_data_to_globals();
+#endif
   }
 
   // Establish mapping between (type, material) and index in libraries

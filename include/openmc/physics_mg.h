@@ -1,3 +1,4 @@
+#ifndef __CUDACC__
 //! \file physics_mg.h
 //! Methods needed to perform the collision physics for multi-group mode
 
@@ -41,3 +42,4 @@ absorption(Particle& p);
 
 } // namespace openmc
 #endif // OPENMC_PHYSICS_MG_H
+#endif

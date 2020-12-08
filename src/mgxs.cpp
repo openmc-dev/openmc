@@ -1,3 +1,5 @@
+#ifndef __CUDACC__
+
 #include "openmc/mgxs.h"
 
 #include <cmath>
@@ -700,3 +702,4 @@ Mgxs::set_angle_index(Direction u)
 }
 
 } // namespace openmc
+#endif

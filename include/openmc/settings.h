@@ -15,10 +15,6 @@
 
 #include "openmc/constants.h"
 
-#ifdef LIBMESH
-#include "libmesh/libmesh.h"
-#endif
-
 namespace openmc {
 
 //==============================================================================

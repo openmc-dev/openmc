@@ -1,6 +1,7 @@
 """Tests the ResultsList class"""
 
 from pathlib import Path
+from math import inf
 
 import numpy as np
 import pytest
@@ -110,12 +111,12 @@ def test_get_steps(unit):
             target = value + mult * offset
             # Compare using absolute and relative tolerances
             actual = results.get_step_where(
-                target, time_units=unit, atol=offset * 2, rtol=None)
+                target, time_units=unit, atol=offset * 2, rtol=inf)
             assert actual == expected, (
                 target, times[actual], times[expected], offset)
 
             actual = results.get_step_where(
-                target, time_units=unit, atol=None, rtol=offset / value)
+                target, time_units=unit, atol=inf, rtol=offset / value)
             assert actual == expected, (
                 target, times[actual], times[expected], offset)
         # Check that the lower index is returned for the exact mid-point
@@ -126,5 +127,5 @@ def test_get_steps(unit):
 
     # Shoot way over with no tolerance -> just give closest value
     actual = results.get_step_where(
-        times[-1] * 100, time_units=unit, atol=None, rtol=None)
+        times[-1] * 100, time_units=unit, atol=inf, rtol=inf)
     assert actual == times.size - 1

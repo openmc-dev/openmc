@@ -106,7 +106,7 @@ def test_get_steps(unit):
     offset = delta * 0.1
     for expected, value in enumerate(times[1:-1], start=1):
         # Shoot a little low and a little high
-        for mult in {1, -1}:
+        for mult in (1, -1):
             target = value + mult * offset
             # Compare using absolute and relative tolerances
             actual = results.get_step_where(

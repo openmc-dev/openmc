@@ -2123,9 +2123,18 @@ LibMesh::LibMesh(const std::string& filename)
 
 void LibMesh::initialize()
 {
-  m_ = std::make_unique<libMesh::Mesh>(settings::LMI->comm(), 3);
+  if (!settings::LMI) {
+    fatal_error("Attempting to use an unstructured mesh without a libMesh::LibMeshInit object.");
+  }
+
+  m_ = std::make_unique<libMesh::Mesh>(settings::LMI->comm(), n_dimension_);
   m_->read(filename_);
   m_->prepare_for_use();
+
+  // ensure that the loaded mesh is 3 dimensional
+  if(m_->spatial_dimension() != n_dimension_) {
+    fatal_error(fmt::format("Mesh file {} specified for use in an unstructured mesh is not a 3D mesh.", filename_));
+  }
 
   // create an equation system for storing values
   eq_system_name_ = "mesh_" + std::to_string(id_) + "_system";

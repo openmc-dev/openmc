@@ -82,9 +82,6 @@ if (!settings::LMI && !libMesh::initialized())
 #endif
 }
 
-if (!settings::LMI) {
-  fatal_error("libMesh::LibMeshInit object isn't set.");
-}
 #endif
 
   // Start total and initialization timer

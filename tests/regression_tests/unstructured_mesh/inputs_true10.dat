@@ -70,7 +70,7 @@
     <upper_right>10.0 10.0 10.0</upper_right>
   </mesh>
   <mesh id="2" library="moab" type="unstructured">
-    <filename>test_mesh_tets_w_holes.exo</filename>
+    <filename>test_mesh_tets_w_holes.e</filename>
   </mesh>
   <filter id="1" type="mesh">
     <bins>1</bins>

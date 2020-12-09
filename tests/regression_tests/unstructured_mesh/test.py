@@ -198,9 +198,9 @@ def test_unstructured_mesh(test_opts):
     regular_mesh_filter = openmc.MeshFilter(mesh=regular_mesh)
 
     if test_opts['holes']:
-        mesh_filename = "test_mesh_tets_w_holes.exo"
+        mesh_filename = "test_mesh_tets_w_holes.e"
     else:
-        mesh_filename = "test_mesh_tets.exo"
+        mesh_filename = "test_mesh_tets.e"
 
     uscd_mesh = openmc.UnstructuredMesh(mesh_filename, test_opts['library'])
     uscd_filter = openmc.MeshFilter(mesh=uscd_mesh)

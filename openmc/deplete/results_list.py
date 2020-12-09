@@ -243,6 +243,9 @@ class ResultsList(list):
         will be at most one past the point in time requested, but only
         according to tolerances requested.
 
+        Passing ``atol=math.inf`` and ``rtol=math.inf`` will return
+        the closest index to the requested point.
+
         Parameters
         ----------
         time : float
@@ -251,10 +254,9 @@ class ResultsList(list):
             Units on ``time``. Default: days
         atol : float, optional
             Absolute tolerance (in ``time_units``) if ``time`` is not
-            found. A value of ``None`` is converted to infinity.
+            found.
         rtol : float, optional
-            Relative tolerance if ``time`` is not found. A value of
-            ``None`` is converted to infinity.
+            Relative tolerance if ``time`` is not found.
 
         Returns
         -------
@@ -262,14 +264,8 @@ class ResultsList(list):
 
         """
         check_type("time", time, numbers.Real)
-        if atol is not None:
-            check_type("atol", atol, numbers.Real)
-        else:
-            atol = math.inf
-        if rtol is not None:
-            check_type("rtol", rtol, numbers.Real)
-        else:
-            rtol = math.inf
+        check_type("atol", atol, numbers.Real)
+        check_type("rtol", rtol, numbers.Real)
 
         times = self.get_times(time_units)
 

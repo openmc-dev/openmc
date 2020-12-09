@@ -3,6 +3,7 @@
 
 include(FindPkgConfig)
 set(ENV{PKG_CONFIG_PATH} "$ENV{PKG_CONFIG_PATH}:${LIBMESH_PC}")
+set(PKG_CONFIG_USE_CMAKE_PREFIX_PATH True)
 pkg_check_modules(LIBMESH REQUIRED libmesh>=1.6.0 IMPORTED_TARGET)
 
 find_path(LIBMESH_PC NAMES libmesh.pc

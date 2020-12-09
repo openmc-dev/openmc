@@ -276,7 +276,7 @@ should be set to:
       <filter type="azimuthal" bins="2" />
 
 :mesh:
-  The unique ID of a mesh to be tallied over.z
+  The unique ID of a mesh to be tallied over.
 
 :distribcell:
   The single cell which should be tallied uniquely for all instances.

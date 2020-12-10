@@ -89,7 +89,12 @@ public:
                   << std::endl
                   << "Must recompile with increased buffer size." << std::endl;
       }
-      buffer_[current_size++] = new_elem;
+      bool cell_not_in_list = true;
+      for (unsigned i = 0; i < current_size; ++i)
+        if (new_elem == buffer_[i])
+          cell_not_in_list = false;
+      if (cell_not_in_list)
+        buffer_[current_size++] = new_elem;
     }
 #endif
   }

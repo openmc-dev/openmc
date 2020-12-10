@@ -2108,8 +2108,6 @@ MOABMesh::write(std::string base_filename) const
 
 #ifdef LIBMESH
 
-std::unique_ptr<libMesh::PointLocatorBase> LibMesh::PL_ = nullptr;
-
 LibMesh::LibMesh(pugi::xml_node node) : UnstructuredMesh(node)
 {
   initialize();
@@ -2143,15 +2141,17 @@ void LibMesh::initialize()
   libMesh::ExplicitSystem& eq_sys =
     equation_systems_->add_system<libMesh::ExplicitSystem>(eq_system_name_);
 
-  // one point locator created per thread
-  #pragma omp parallel
-  {
-    #pragma omp critical
-    {
-    PL_ = m_->sub_point_locator();
-    }
-    PL_->set_contains_point_tol(FP_COINCIDENT);
-    PL_->enable_out_of_mesh_mode();
+
+  #ifdef _OPENMP
+  int n_threads = omp_get_max_threads();
+  #else
+  int n_threads = 1;
+  #endif
+
+  for (int i = 0; i < n_threads; i++) {
+      PL_.emplace_back(m_->sub_point_locator());
+      PL_.back()->set_contains_point_tol(FP_COINCIDENT);
+      PL_.back()->enable_out_of_mesh_mode();
   }
 
   // store first element in the mesh to use as an offset for bin indices
@@ -2280,7 +2280,15 @@ LibMesh::get_bin(Position r) const
   // quick rejection check
   if (!bbox_.contains_point(p)) { return -1; }
 
-  auto e = (*LibMesh::PL_)(p);
+  #ifdef _OPENMP
+  int thread_num = omp_get_thread_num();
+  #else
+  int thread_num = 0;
+  #endif
+
+  const auto& point_locator = PL_.at(thread_num);
+
+  auto e = (*point_locator)(p);
   if (!e) {
     return -1;
   } else {

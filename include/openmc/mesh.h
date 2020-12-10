@@ -536,8 +536,7 @@ private:
 
   // Data members
   std::unique_ptr<libMesh::Mesh> m_; //!< pointer to the libMesh mesh instance
-  static std::unique_ptr<libMesh::PointLocatorBase> PL_; //!< per-thread point locators
-  #pragma omp threadprivate(PL_) // each thread has its own point locator
+  std::vector<std::unique_ptr<libMesh::PointLocatorBase>> PL_; //!< per-thread point locators
   std::unique_ptr<libMesh::EquationSystems> equation_systems_; //!< pointer to the equation systems of the mesh
   std::string eq_system_name_; //!< name of the equation system holding OpenMC results
   std::map<std::string, unsigned int> variable_map_; //!< mapping of variable names (tally scores) to libMesh variable numbers

@@ -399,6 +399,20 @@ public:
     cudaMemcpy(begin_.host_pointer(), begin_.device_pointer(),
       sizeof(value_type) * size_, cudaMemcpyDeviceToHost);
   }
+
+  /*
+   * this function can be used to pass the data pointer to a
+   * GPU kernel to let it write directly into the allocated memory,
+   * and possibly push back so long as you can assure that the
+   * capacity of the vector will not be exceeded. Use this function
+   * to update the size after running such a kernel.
+   */
+  void __host__ updateIndex(unsigned new_size)
+  {
+    size_ = new_size;
+    if (size_ > capacity_)
+      throw std::out_of_range("GPU has written off the end of an array!");
+  }
 };
 
 template<typename T, typename Alloc>

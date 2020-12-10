@@ -5,6 +5,7 @@
 #include "openmc/timer.h"
 
 #ifdef __CUDACC__
+#include "openmc/cuda/advance.h"
 #include "openmc/cuda/calculate_xs.h"
 #endif
 
@@ -143,7 +144,28 @@ void process_advance_particle_events()
 {
   simulation::time_event_advance_particle.start();
 
-  #pragma omp parallel for schedule(runtime)
+#ifdef __CUDACC__
+  // Can't put SharedArrays in managed memory, so these intermediate variables
+  // are used to allow pushing back within the kernel. They are both markers
+  // for the new size of the queues, and diagnostics in that we'll know if a
+  // write out-of-bounds happened after the fact.
+  gpu::managed_surface_crossing_queue_index =
+    simulation::surface_crossing_queue.size();
+  gpu::managed_collision_queue_index = simulation::collision_queue.size();
+
+  gpu::process_advance_events_device<<<
+    simulation::advance_particle_queue.size() / 32 + 1, 32>>>(
+    simulation::advance_particle_queue.data(),
+    simulation::advance_particle_queue.size(),
+    simulation::surface_crossing_queue.data(),
+    simulation::collision_queue.data());
+  cudaDeviceSynchronize();
+
+  simulation::surface_crossing_queue.updateIndex(
+    gpu::managed_surface_crossing_queue_index);
+  simulation::collision_queue.updateIndex(gpu::managed_collision_queue_index);
+#else
+#pragma omp parallel for schedule(runtime)
   for (int64_t i = 0; i < simulation::advance_particle_queue.size(); i++) {
     int64_t buffer_idx = simulation::advance_particle_queue[i].idx;
     ParticleReference p = get_particle(buffer_idx);
@@ -154,6 +176,7 @@ void process_advance_particle_events()
       simulation::collision_queue.thread_safe_append({p, buffer_idx});
     }
   }
+#endif
 
   simulation::advance_particle_queue.resize(0);
 

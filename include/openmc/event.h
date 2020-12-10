@@ -38,7 +38,7 @@ struct EventQueueItem{
 
   // Constructors
   EventQueueItem() = default;
-  EventQueueItem(const Particle& p, int64_t buffer_idx)
+  HD EventQueueItem(const Particle& p, int64_t buffer_idx)
     : idx(buffer_idx), type(p.type()), material(p.material()), E(p.E())
   {}
 

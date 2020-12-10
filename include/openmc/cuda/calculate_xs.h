@@ -6,9 +6,6 @@
 #include "openmc/memory.h"
 #include "openmc/nuclide.h"
 
-//==============================================================================
-// CUDA kernels for events
-//==============================================================================
 namespace openmc {
 namespace gpu {
 

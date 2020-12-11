@@ -228,8 +228,8 @@ class ResultsList(list):
             times /= 60
         elif time_units != "s":
             raise ValueError(
-                f'Unable to set "time_units" to {time_units} since it is not '
-                'in ("s", "d", "min", "h")'
+                'Unable to set "time_units" to {} since it is not '
+                'in ("s", "d", "min", "h")'.format(time_units)
             )
         return times
 
@@ -286,6 +286,7 @@ class ResultsList(list):
             return ix
 
         raise ValueError(
-            f"A value of {time} {time_units} was not found given absolute and "
-            f"relative tolerances {atol} and {rtol}."
+            "A value of {} {} was not found given absolute and "
+            "relative tolerances {} and {}.".format(
+                time, time_units, atol, rtol)
         )

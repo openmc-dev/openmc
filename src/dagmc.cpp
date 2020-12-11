@@ -2,6 +2,7 @@
 
 #include "openmc/cell.h"
 #include "openmc/constants.h"
+#include "openmc/container_util.h"
 #include "openmc/error.h"
 #include "openmc/file_utils.h"
 #include "openmc/geometry.h"
@@ -295,6 +296,10 @@ void load_dagmc_geometry()
     s->dag_index_ = i+1;
     s->id_ = model::DAG->id_by_index(2, s->dag_index_);
     s->dagmc_ptr_ = model::DAG;
+
+    if (contains(settings::src_write_surf_id, s->id_)) {
+      s->surf_src_ = true;
+    }
 
     // set BCs
     std::string bc_value = DMD.get_surface_property("boundary", surf_handle);

@@ -5,6 +5,7 @@
 #include "openmc/timer.h"
 
 #ifdef __CUDACC__
+#include "openmc/bank.h" // needed to set bank container data in collision kernel
 #include "openmc/cuda/advance.h"
 #include "openmc/cuda/calculate_xs.h"
 #endif
@@ -206,7 +207,18 @@ void process_collision_events()
 {
   simulation::time_event_collision.start();
 
-  #pragma omp parallel for schedule(runtime)
+#ifdef __CUDACC__
+  auto fission_bank_start = simulation::fission_bank.data();
+  unsigned fission_bank_size = simulation::fission_bank.size();
+  unsigned fission_bank_capacity = simulation::fission_bank.capacity();
+  cudaMemcpyToSymbol(
+    gpu::fission_bank_start, &fission_bank_start, sizeof(Particle::Bank*));
+  cudaMemcpyToSymbol(
+    gpu::fission_bank_index, &fission_bank_size, sizeof(unsigned));
+  cudaMemcpyToSymbol(
+    gpu::fission_bank_capacity, &fission_bank_capacity, sizeof(unsigned));
+#else
+#pragma omp parallel for schedule(runtime)
   for (int64_t i = 0; i < simulation::collision_queue.size(); i++) {
     int64_t buffer_idx = simulation::collision_queue[i].idx;
     ParticleReference p = get_particle(buffer_idx);
@@ -215,6 +227,7 @@ void process_collision_events()
     if (p.alive())
       dispatch_xs_event(buffer_idx);
   }
+#endif
 
   simulation::collision_queue.resize(0);
 

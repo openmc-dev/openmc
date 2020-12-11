@@ -539,7 +539,12 @@ xsfloat Nuclide::nu(xsfloat E, EmissionMode mode, int group) const
       return (*fission_rx_[0]->products_[0].yield_)(E);
     }
   }
+#ifdef __CUDA_ARCH__
+  asm("trap;");
+  return -1;
+#else
   UNREACHABLE();
+#endif
 }
 
 void Nuclide::calculate_elastic_xs(Particle& p) const

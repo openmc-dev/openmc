@@ -331,6 +331,9 @@ void calculate_average_keff()
 
     // Determine mean
     simulation::keff = simulation::k_sum[0] / n;
+#ifdef __CUDACC__
+    cudaMemcpyToSymbol(gpu::keff, &simulation::keff, sizeof(double));
+#endif
 
     if (n > 1) {
       double t_value;

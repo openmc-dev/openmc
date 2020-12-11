@@ -29,6 +29,12 @@
 #include <algorithm> // for max, min, max_element
 #include <cmath> // for sqrt, exp, log, abs, copysign
 
+// Some constant memory device variables, like the nuclides and materials,
+// are defined herein
+#ifdef __CUDACC__
+#include "openmc/cuda/calculate_xs.h"
+#endif
+
 namespace openmc {
 
 //==============================================================================
@@ -83,8 +89,18 @@ void collision(Particle& p)
   }
 }
 
-void sample_neutron_reaction(Particle& p)
+HD void sample_neutron_reaction(Particle& p)
 {
+#ifdef __CUDA_ARCH__
+  using gpu::nuclides;
+  using gpu::number_nuclides;
+  using gpu::survival_biasing;
+#else
+  using data::nuclides;
+  using settings::survival_biasing;
+  unsigned number_nuclides = data::nuclides.size();
+#endif
+
   // Sample a nuclide within the material
   int i_nuclide = sample_nuclide(p);
 
@@ -96,10 +112,13 @@ void sample_neutron_reaction(Particle& p)
   // change when sampling fission sites. The following block handles all
   // absorption (including fission)
 
-  const auto& nuc {data::nuclides[i_nuclide]};
+  const auto& nuc {nuclides[i_nuclide]};
 
   if (nuc->fissionable_) {
     auto& rx = sample_fission(i_nuclide, p);
+#ifdef __CUDA_ARCH__
+    create_fission_sites(p, i_nuclide, rx);
+#else
     if (settings::run_mode == RunMode::EIGENVALUE) {
       create_fission_sites(p, i_nuclide, rx);
     } else if (settings::run_mode == RunMode::FIXED_SOURCE &&
@@ -114,12 +133,15 @@ void sample_neutron_reaction(Particle& p)
         "with k-effective close to or greater than one.");
       }
     }
+#endif
   }
 
   // Create secondary photons
+#ifndef __CUDACC__
   if (settings::photon_transport) {
     sample_secondary_photons(p, i_nuclide);
   }
+#endif
 
   // If survival biasing is being used, the following subroutine adjusts the
   // weight of the particle. Otherwise, it checks to see if absorption occurs
@@ -139,12 +161,12 @@ void sample_neutron_reaction(Particle& p)
   // Advance URR seed stream 'N' times after energy changes
   if (p.E() != p.E_last()) {
     p.stream() = STREAM_URR_PTABLE;
-    advance_prn_seed(data::nuclides.size(), p.current_seed());
+    advance_prn_seed(number_nuclides, p.current_seed());
     p.stream() = STREAM_TRACKING;
   }
 
   // Play russian roulette if survival biasing is turned on
-  if (settings::survival_biasing) {
+  if (survival_biasing) {
     russian_roulette(p);
     if (!p.alive())
       return;
@@ -154,13 +176,25 @@ void sample_neutron_reaction(Particle& p)
 void
 create_fission_sites(Particle& p, int i_nuclide, const Reaction& rx)
 {
+#ifdef __CUDA_ARCH__
+  using gpu::keff;
+  using gpu::run_mode;
+#else
+  using settings::run_mode;
+  using simulation::keff;
+#endif
+
   // If uniform fission source weighting is turned on, we increase or decrease
   // the expected number of fission sites produced
+#ifndef __CUDA_ARCH__
+  // TODO: no uniform fission site method for GPU method
   double weight = settings::ufs_on ? ufs_get_weight(p) : 1.0;
+#else
+  constexpr double weight = 1.0;
+#endif
 
   // Determine the expected number of neutrons produced
-  double nu_t = p.wgt() / simulation::keff * weight *
-                p.neutron_xs(i_nuclide).nu_fission /
+  double nu_t = p.wgt_ / keff * weight * p.neutron_xs(i_nuclide).nu_fission /
                 p.neutron_xs(i_nuclide).total;
 
   // Sample the number of neutrons produced
@@ -183,7 +217,7 @@ create_fission_sites(Particle& p, int i_nuclide, const Reaction& rx)
 
   // Determine whether to place fission sites into the shared fission bank
   // or the secondary particle bank.
-  bool use_fission_bank = (settings::run_mode == RunMode::EIGENVALUE);
+  bool use_fission_bank = (run_mode == RunMode::EIGENVALUE);
 
   for (int i = 0; i < nu; ++i) {
     // Initialize fission site object with particle data
@@ -200,6 +234,11 @@ create_fission_sites(Particle& p, int i_nuclide, const Reaction& rx)
 
     // Store fission site in bank
     if (use_fission_bank) {
+#ifdef __CUDA_ARCH__
+      auto idx =
+        atomicInc(&gpu::fission_bank_index, gpu::fission_bank_capacity);
+      gpu::fission_bank_start[idx] = site;
+#else
       int64_t idx = simulation::fission_bank.thread_safe_append(site);
       if (idx == -1) {
         warning("The shared fission bank is full. Additional fission sites created "
@@ -207,6 +246,7 @@ create_fission_sites(Particle& p, int i_nuclide, const Reaction& rx)
         skipped++;
         break;
       }
+#endif
     } else {
       p.secondary_bank_push_back(site);
     }
@@ -220,8 +260,8 @@ create_fission_sites(Particle& p, int i_nuclide, const Reaction& rx)
     }
 
     // Write fission particles to nuBank
-    p.nu_bank().emplace_back();
-    NuBank* nu_bank_entry = &p.nu_bank().back();
+    p.nu_bank_emplace_back();
+    NuBank* nu_bank_entry = &p.nu_bank_back();
     nu_bank_entry->wgt              = site.wgt;
     nu_bank_entry->E                = site.E;
     nu_bank_entry->delayed_group    = site.delayed_group;
@@ -439,13 +479,17 @@ void sample_positron_reaction(Particle& p)
   p.event() = TallyEvent::ABSORB;
 }
 
-int sample_nuclide(Particle& p)
+HD int sample_nuclide(Particle& p)
 {
   // Sample cumulative distribution function
   double cutoff = prn(p.current_seed()) * p.macro_xs().total;
 
   // Get pointers to nuclide/density arrays
+#ifdef __CUDA_ARCH__
+  const auto& mat {gpu::materials[p.material()]};
+#else
   const auto& mat {model::materials[p.material()]};
+#endif
   int n = mat->nuclide_.size();
 
   double prob = 0.0;
@@ -460,8 +504,13 @@ int sample_nuclide(Particle& p)
   }
 
   // If we reach here, no nuclide was sampled
+#ifndef __CUDA_ARCH__
   p.write_restart();
   throw std::runtime_error{"Did not sample any nuclide during collision."};
+#else
+  asm("trap;");
+  return 0;
+#endif
 }
 
 int sample_element(Particle& p)
@@ -496,10 +545,14 @@ int sample_element(Particle& p)
   fatal_error("Did not sample any element during collision.");
 }
 
-Reaction& sample_fission(int i_nuclide, Particle& p)
+HD Reaction& sample_fission(int i_nuclide, Particle& p)
 {
   // Get pointer to nuclide
+#ifdef __CUDA_ARCH__
+  const auto& nuc {gpu::nuclides[i_nuclide]};
+#else
   const auto& nuc {data::nuclides[i_nuclide]};
+#endif
 
   // If we're in the URR, by default use the first fission reaction. We also
   // default to the first reaction if we know that there are no partial fission
@@ -538,7 +591,12 @@ Reaction& sample_fission(int i_nuclide, Particle& p)
   }
 
   // If we reached here, no reaction was sampled
+#ifdef __CUDA_ARCH__
+  asm("trap;");
+  return *nuc->fission_rx_[0];
+#else
   throw std::runtime_error{"No fission reaction was sampled for " + nuc->name_};
+#endif
 }
 
 void sample_photon_product(int i_nuclide, Particle& p, int* i_rx, int* i_product)
@@ -589,9 +647,14 @@ void sample_photon_product(int i_nuclide, Particle& p, int* i_rx, int* i_product
   }
 }
 
-void absorption(Particle& p, int i_nuclide)
+HD void absorption(Particle& p, int i_nuclide)
 {
-  if (settings::survival_biasing) {
+#ifdef __CUDA_ARCH__
+  using gpu::survival_biasing;
+#else
+  using settings::survival_biasing;
+#endif
+  if (survival_biasing) {
     // Determine weight absorbed in survival biasing
     p.wgt_absorb() = p.wgt() * p.neutron_xs(i_nuclide).absorption /
                      p.neutron_xs(i_nuclide).total;
@@ -601,21 +664,32 @@ void absorption(Particle& p, int i_nuclide)
     p.wgt_last() = p.wgt();
 
     // Score implicit absorption estimate of keff
+#ifdef __CUDA_ARCH__
+    p.keff_tally_absorption_ += p.wgt_absorb_ *
+                                p.neutron_xs(i_nuclide).nu_fission /
+                                p.neutron_xs(i_nuclide).absorption;
+#else
     if (settings::run_mode == RunMode::EIGENVALUE) {
       p.keff_tally_absorption() += p.wgt_absorb() *
                                    p.neutron_xs(i_nuclide).nu_fission /
                                    p.neutron_xs(i_nuclide).absorption;
     }
+#endif
   } else {
     // See if disappearance reaction happens
     if (p.neutron_xs(i_nuclide).absorption >
         prn(p.current_seed()) * p.neutron_xs(i_nuclide).total) {
       // Score absorption estimate of keff
+#ifdef __CUDA_ARCH__
+      p.keff_tally_absorption_ += p.wgt_ * p.neutron_xs(i_nuclide).nu_fission /
+                                  p.neutron_xs(i_nuclide).absorption;
+#else
       if (settings::run_mode == RunMode::EIGENVALUE) {
         p.keff_tally_absorption() += p.wgt() *
                                      p.neutron_xs(i_nuclide).nu_fission /
                                      p.neutron_xs(i_nuclide).absorption;
       }
+#endif
 
       p.alive() = false;
       p.event() = TallyEvent::ABSORB;
@@ -624,13 +698,20 @@ void absorption(Particle& p, int i_nuclide)
   }
 }
 
-void scatter(Particle& p, int i_nuclide)
+HD void scatter(Particle& p, int i_nuclide)
 {
+#ifdef __CUDA_ARCH__
+  using gpu::materials;
+  using gpu::nuclides;
+#else
+  using data::nuclides;
+  using model::materials;
+#endif
   // copy incoming direction
   Direction u_old {p.u()};
 
   // Get pointer to nuclide and grid index/interpolation factor
-  const auto& nuc {data::nuclides[i_nuclide]};
+  const auto& nuc {nuclides[i_nuclide]};
   const auto& micro {p.neutron_xs(i_nuclide)};
   int i_temp =  micro.index_temp;
   int i_grid =  micro.index_grid;
@@ -646,7 +727,18 @@ void scatter(Particle& p, int i_nuclide)
     nuc->calculate_elastic_xs(p);
   }
 
+  // TODO TODO add thermal scattering to the GPU. Also, the code here seems
+  // it really could be cleand up some.
   double prob = micro.elastic - micro.thermal;
+#ifdef __CUDA_ARCH__
+  double kT = nuc->multipole_ ? p.sqrtkT_ * p.sqrtkT_ : nuc->kTs_[i_temp];
+  if (prob > cutoff) {
+    elastic_scatter(i_nuclide, *nuc->reactions_[0], kT, p);
+    p.event_mt_ = ELASTIC;
+    sampled = true;
+  }
+#else
+
   if (prob > cutoff) {
     // =======================================================================
     // NON-S(A,B) ELASTIC SCATTERING
@@ -671,6 +763,7 @@ void scatter(Particle& p, int i_nuclide)
     p.event_mt() = ELASTIC;
     sampled = true;
   }
+#endif
 
   if (!sampled) {
     // =======================================================================
@@ -684,8 +777,12 @@ void scatter(Particle& p, int i_nuclide)
 
       // Check to make sure inelastic scattering reaction sampled
       if (i >= nuc->reactions_.size()) {
+#ifdef __CUDA_ARCH__
+        asm("trap;");
+#else
         p.write_restart();
         fatal_error("Did not sample any reaction for nuclide " + nuc->name_);
+#endif
       }
 
       // if energy is below threshold for this reaction, skip it
@@ -707,7 +804,7 @@ void scatter(Particle& p, int i_nuclide)
   p.event() = TallyEvent::SCATTER;
 
   // Sample new outgoing angle for isotropic-in-lab scattering
-  const auto& mat {model::materials[p.material()]};
+  const auto& mat {materials[p.material()]};
   if (!mat->p0_.empty()) {
     int i_nuc_mat = mat->mat_nuclide_index_[i_nuclide];
     if (mat->p0_[i_nuc_mat]) {
@@ -718,11 +815,16 @@ void scatter(Particle& p, int i_nuclide)
   }
 }
 
-void elastic_scatter(int i_nuclide, const Reaction& rx, double kT,
-  Particle& p)
+HD void elastic_scatter(
+  int i_nuclide, const Reaction& rx, double kT, Particle& p)
 {
+#ifdef __CUDA_ARCH__
+  using gpu::nuclides;
+#else
+  using data::nuclides;
+#endif
   // get pointer to nuclide
-  const auto& nuc {data::nuclides[i_nuclide]};
+  const auto& nuc {nuclides[i_nuclide]};
 
   double vel = std::sqrt(p.E());
   double awr = nuc->awr_;
@@ -748,14 +850,8 @@ void elastic_scatter(int i_nuclide, const Reaction& rx, double kT,
 
   // Sample scattering angle, checking if angle distribution is present (assume
   // isotropic otherwise)
-  double mu_cm;
   auto& d = rx.products_[0].distribution_[0];
-  auto d_ = dynamic_cast<UncorrelatedAngleEnergy*>(d.get());
-  if (!d_->angle().empty()) {
-    mu_cm = d_->angle().sample(p.E(), p.current_seed());
-  } else {
-    mu_cm = uniform_distribution(-1., 1., p.current_seed());
-  }
+  auto mu_cm = d->sample_mu(p.E(), p.current_seed());
 
   // Determine direction cosines in CM
   Direction u_cm = v_n/vel;
@@ -785,6 +881,7 @@ void elastic_scatter(int i_nuclide, const Reaction& rx, double kT,
     p.mu() = std::copysign(1.0, p.mu());
 }
 
+// TODO make this work on the device
 void sab_scatter(int i_nuclide, int i_sab, Particle& p)
 {
   // Determine temperature index
@@ -801,22 +898,32 @@ void sab_scatter(int i_nuclide, int i_sab, Particle& p)
   p.u() = rotate_angle(p.u(), p.mu(), nullptr, p.current_seed());
 }
 
-Direction sample_target_velocity(const Nuclide& nuc, double E, Direction u,
+HD Direction sample_target_velocity(const Nuclide& nuc, double E, Direction u,
   Direction v_neut, double xs_eff, double kT, uint64_t* seed)
 {
+#ifdef __CUDA_ARCH__
+  using gpu::res_scat_energy_max;
+  using gpu::res_scat_energy_min;
+  using gpu::res_scat_method;
+#else
+  using settings::res_scat_energy_max;
+  using settings::res_scat_energy_min;
+  using settings::res_scat_method;
+#endif
+
   // check if nuclide is a resonant scatterer
   ResScatMethod sampling_method;
   if (nuc.resonant_) {
 
     // sampling method to use
-    sampling_method = settings::res_scat_method;
+    sampling_method = res_scat_method;
 
     // upper resonance scattering energy bound (target is at rest above this E)
-    if (E > settings::res_scat_energy_max) {
+    if (E > res_scat_energy_max) {
       return {};
 
     // lower resonance scattering energy bound (should be no resonances below)
-    } else if (E < settings::res_scat_energy_min) {
+    } else if (E < res_scat_energy_min) {
       sampling_method = ResScatMethod::cxs;
     }
 
@@ -949,11 +1056,16 @@ Direction sample_target_velocity(const Nuclide& nuc, double E, Direction u,
     } // case RVS, DBRC
   } // switch (sampling_method)
 
+#ifdef __CUDA_ARCH__
+  asm("trap;");
+  return {0, 0, 0};
+#else
   UNREACHABLE();
+#endif
 }
 
-Direction
-sample_cxs_target_velocity(double awr, double E, Direction u, double kT, uint64_t* seed)
+HD Direction sample_cxs_target_velocity(
+  double awr, double E, Direction u, double kT, uint64_t* seed)
 {
   double beta_vn = std::sqrt(awr * E / kT);
   double alpha = 1.0/(1.0 + std::sqrt(PI)*beta_vn/2.0);
@@ -1006,8 +1118,14 @@ sample_cxs_target_velocity(double awr, double E, Direction u, double kT, uint64_
 void sample_fission_neutron(int i_nuclide, const Reaction& rx, double E_in,
   SourceSite* site, uint64_t* seed)
 {
+#ifdef __CUDA_ARCH__
+  using gpu::nuclides;
+#else
+  using data::nuclides;
+#endif
+
   // Determine total nu, delayed nu, and delayed neutron fraction
-  const auto& nuc {data::nuclides[i_nuclide]};
+  const auto& nuc {nuclides[i_nuclide]};
   double nu_t = nuc->nu(E_in, Nuclide::EmissionMode::total);
   double nu_d = nuc->nu(E_in, Nuclide::EmissionMode::delayed);
   double beta = nu_d / nu_t;
@@ -1037,6 +1155,34 @@ void sample_fission_neutron(int i_nuclide, const Reaction& rx, double E_in,
     // set the delayed group for the particle born from fission
     site->delayed_group = group;
 
+    int n_sample = 0;
+    while (true) {
+      // sample from energy/angle distribution -- note that mu has already been
+      // sampled above and doesn't need to be resampled
+      rx.products_[group].sample(E_in, site->E, mu, seed);
+
+      // resample if energy is greater than maximum neutron energy
+#ifdef __CUDA_ARCH__
+      if (site->E < gpu::energy_max_neutron)
+        break;
+#else
+      constexpr int neutron = static_cast<int>(ParticleType::neutron);
+      if (site->E < data::energy_max[neutron]) break;
+#endif
+
+        // check for large number of resamples
+      ++n_sample;
+      if (n_sample == MAX_SAMPLE) {
+        // particle_write_restart(p)
+#ifndef __CUDA_ARCH__
+        fatal_error("Resampled energy distribution maximum number of times "
+          "for nuclide " + nuc->name_);
+#else
+        __trap();
+#endif
+      }
+    }
+
   } else {
     // ====================================================================
     // PROMPT NEUTRON SAMPLED
@@ -1047,20 +1193,29 @@ void sample_fission_neutron(int i_nuclide, const Reaction& rx, double E_in,
 
   // sample from prompt neutron energy distribution
   int n_sample = 0;
-  xsfloat mu;
+  double mu;
   while (true) {
     rx.products_[site->delayed_group].sample(E_in, site->E, mu, seed);
 
     // resample if energy is greater than maximum neutron energy
+#ifndef __CUDA_ARCH__
     constexpr int neutron = static_cast<int>(ParticleType::neutron);
     if (site->E < data::energy_max[neutron]) break;
+#else
+    if (site->E < gpu::energy_max_neutron)
+      break;
+#endif
 
     // check for large number of resamples
     ++n_sample;
     if (n_sample == MAX_SAMPLE) {
       // particle_write_restart(p)
+#ifndef __CUDA_ARCH__
       fatal_error("Resampled energy distribution maximum number of times "
         "for nuclide " + nuc->name_);
+#else
+      __trap();
+#endif
     }
   }
 

@@ -48,6 +48,10 @@ extern vector<int64_t> work_index;
 
 } // namespace simulation
 
+namespace gpu {
+__constant__ extern double keff;
+}
+
 //==============================================================================
 // Functions
 //==============================================================================

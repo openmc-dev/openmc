@@ -63,12 +63,12 @@ public:
   void calculate_sab_xs(int i_sab, double sab_frac, Particle& p);
 
   // Methods
-  xsfloat nu(xsfloat E, EmissionMode mode, int group=0) const;
-  void calculate_elastic_xs(Particle& p) const;
+  HD xsfloat nu(xsfloat E, EmissionMode mode, int group=0) const;
+  HD void calculate_elastic_xs(Particle& p) const;
 
   //! Determines the microscopic 0K elastic cross section at a trial relative
   //! energy used in resonance scattering
-  xsfloat elastic_xs_0K(xsfloat E) const;
+  HD xsfloat elastic_xs_0K(xsfloat E) const;
 
   //! \brief Determines cross sections in the unresolved resonance range
   //! from probability tables.

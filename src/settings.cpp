@@ -117,6 +117,16 @@ double weight_survive {1.0};
 
 } // namespace settings
 
+namespace gpu {
+__constant__ double weight_cutoff;
+__constant__ double weight_survive;
+__constant__ bool survival_biasing;
+__constant__ ResScatMethod res_scat_method;
+__constant__ double res_scat_energy_min;
+__constant__ double res_scat_energy_max;
+__constant__ RunMode run_mode;
+} // namespace gpu
+
 //==============================================================================
 // Functions
 //==============================================================================
@@ -266,6 +276,9 @@ void read_settings_xml()
       run_CE = false;
     } else if (temp_str == "ce" || temp_str == "continuous-energy") {
       run_CE = true;
+#ifdef __CUDACC__
+      fatal_error("Multigroup mode not supported in GPU mode, sorry.");
+#endif
     }
   }
 
@@ -356,6 +369,9 @@ void read_settings_xml()
       }
     }
   }
+#ifdef __CUDACC__
+  cudaMemcpyToSymbol(gpu::run_mode, &run_mode, sizeof(RunMode));
+#endif
 
   if (run_mode == RunMode::EIGENVALUE || run_mode == RunMode::FIXED_SOURCE) {
     // Read run parameters
@@ -401,6 +417,10 @@ void read_settings_xml()
       fatal_error("Photon transport is not currently supported in "
         "multigroup mode");
     }
+#ifdef __CUDACC__
+    if (photon_transport)
+      fatal_error("Photon transport unsupported in GPU mode, sorry.");
+#endif
   }
 
   // Number of bins for logarithmic grid
@@ -574,6 +594,10 @@ void read_settings_xml()
 
     // Turn on uniform fission source weighting
     ufs_on = true;
+
+#ifdef __CUDACC__
+    fatal_error("UFS is not available in GPU mode, sorry.");
+#endif
 
   } else if (check_for_node(root, "uniform_fs")) {
     fatal_error("Specifying a UFS mesh via the <uniform_fs> element "
@@ -809,6 +833,10 @@ void read_settings_xml()
   if (run_mode == RunMode::FIXED_SOURCE) {
     if (check_for_node(root, "create_fission_neutrons")) {
       create_fission_neutrons = get_node_value_bool(root, "create_fission_neutrons");
+#ifdef __CUDACC__
+      if (!create_fission_neutrons)
+        fatal_error("Fission neutrons are always created in GPU mode, sorry.");
+#endif
     }
   }
 
@@ -826,6 +854,11 @@ void read_settings_xml()
   if (check_for_node(root, "material_cell_offsets")) {
     material_cell_offsets = get_node_value_bool(root, "material_cell_offsets");
   }
+
+  // Copy necessary settings data to GPU
+#ifdef __CUDACC__
+  copy_settings_to_gpu();
+#endif
 }
 
 void free_memory_settings() {
@@ -834,6 +867,24 @@ void free_memory_settings() {
   settings::source_write_surf_id.clear();
   settings::res_scat_nuclides.clear();
 }
+
+#ifdef __CUDACC__
+void copy_settings_to_gpu()
+{
+  cudaMemcpyToSymbol(
+    gpu::weight_cutoff, &settings::weight_cutoff, sizeof(double));
+  cudaMemcpyToSymbol(
+    gpu::weight_survive, &settings::weight_survive, sizeof(double));
+  cudaMemcpyToSymbol(
+    gpu::survival_biasing, &settings::survival_biasing, sizeof(bool));
+  cudaMemcpyToSymbol(
+    gpu::res_scat_method, settings::res_scat_method, sizeof(ResScatMethod));
+  cudaMemcpyToSymbol(
+    gpu::res_scat_energy_min, settings::res_scat_energy_min, sizeof(double));
+  cudaMemcpyToSymbol(
+    gpu::res_scat_energy_max, settings::res_scat_energy_max, sizeof(double));
+}
+#endif
 
 //==============================================================================
 // C API functions

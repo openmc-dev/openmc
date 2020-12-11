@@ -22,6 +22,8 @@ namespace openmc {
 
 class ThermalScattering;
 
+// TODO put thermal scattering on the GPU
+
 namespace data {
 extern std::unordered_map<std::string, int> thermal_scatt_map;
 extern vector<unique_ptr<ThermalScattering>> thermal_scatt;

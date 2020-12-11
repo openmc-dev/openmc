@@ -238,17 +238,31 @@ public:
   }
   __host__ void shrink_to_fit() { reserve(size_); }
 
+  // Note: you have to guarantee thread safety if you're running this on GPU
+#pragma hd_warning_disable
   template<class... Args>
-  __host__ void emplace_back(Args&&... args)
+  __host__ __device__ void emplace_back(Args&&... args)
   {
-    if (size_ == capacity_)
+    if (size_ == capacity_) {
+#ifdef __CUDA_ARCH__
+      asm("trap;"); // fail here! Need to resize on host beforehand.
+#else
       grow();
+#endif
+    }
     new (begin_ + size_++) T(std::forward<Args>(args)...);
   }
-  __host__ void push_back(const T& value)
+
+  // Note: you have to guarantee thread safety if you're running this on GPU
+  __host__ __device__ void push_back(const T& value)
   {
-    if (size_ == capacity_)
+    if (size_ == capacity_) {
+#ifdef __CUDA_ARCH__
+      asm("trap;"); // fail here! Need to resize on host beforehand.
+#else
       grow();
+#endif
+    }
     // use copy constructor, NOT copy assignment which will deref the invalid
     // thing at begin_+size_
     new (begin_ + size_++) T(value);
@@ -278,7 +292,10 @@ public:
     return idx;
   }
 
-  __host__ void push_back(T&& value) { emplace_back(std::move(value)); }
+  __host__ __device__ void push_back(T&& value)
+  {
+    emplace_back(std::move(value));
+  }
 
   __host__ __device__ T& operator[](size_type n) { return *(begin_ + n); }
   __host__ __device__ T const& operator[](size_type n) const
@@ -378,11 +395,15 @@ public:
   // Since in OpenMC, it is quite common to clear a vector and expect to
   // start pushing back to it again immediately after. So, it doesn't make
   // sense to deallocate memory here.
-  __host__ void clear()
+  __host__ __device__ void clear()
   {
     size_ = 0;
+    // Destructors almost always won't work on the device, so if you
+    // call this there, it's your fault.
+#ifndef __CUDA_ARCH__
     for (size_type i = 0; i < size_; ++i)
       (begin_ + i)->~T();
+#endif
   }
 
   // Enable host-device synchronization functions if replicated memory is being

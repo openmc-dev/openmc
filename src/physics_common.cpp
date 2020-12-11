@@ -9,11 +9,18 @@ namespace openmc {
 // RUSSIAN_ROULETTE
 //==============================================================================
 
-void russian_roulette(Particle& p)
+HD void russian_roulette(Particle& p)
 {
-  if (p.wgt() < settings::weight_cutoff) {
-    if (prn(p.current_seed()) < p.wgt() / settings::weight_survive) {
-      p.wgt() = settings::weight_survive;
+#ifdef __CUDA_ARCH__
+  using gpu::weight_cutoff;
+  using gpu::weight_survive;
+#else
+  using settings::weight_cutoff;
+  using settings::weight_survive;
+#endif
+  if (p.wgt() < weight_cutoff) {
+    if (prn(p.current_seed()) < p.wgt() / weight_survive) {
+      p.wgt() = weight_survive;
       p.wgt_last() = p.wgt();
     } else {
       p.wgt() = 0.;

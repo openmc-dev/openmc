@@ -39,8 +39,11 @@ bool is_inelastic_scatter(int MT);
 
 class Function1D {
 public:
-  virtual xsfloat operator()(xsfloat x) const = 0;
+  HD virtual xsfloat operator()(xsfloat x) const = 0;
   virtual ~Function1D() = default;
+  Function1D() = default;
+  Function1D(Function1D const&) = delete;
+  Function1D(Function1D&&) = default;
 };
 
 //==============================================================================
@@ -56,7 +59,7 @@ public:
   //! Evaluate the polynomials
   //! \param[in] x independent variable
   //! \return Polynomial evaluated at x
-  xsfloat operator()(xsfloat x) const override;
+  HD xsfloat operator()(xsfloat x) const override;
 private:
   vector<xsfloat> coef_; //!< Polynomial coefficients
 };
@@ -76,7 +79,7 @@ public:
   //! Evaluate the tabulated function
   //! \param[in] x independent variable
   //! \return Function evaluated at x
-  xsfloat operator()(xsfloat x) const override;
+  HD xsfloat operator()(xsfloat x) const override;
 
   // Accessors
   const vector<xsfloat>& x() const { return x_; }
@@ -99,7 +102,7 @@ class CoherentElasticXS : public Function1D {
 public:
   explicit CoherentElasticXS(hid_t dset);
 
-  xsfloat operator()(xsfloat E) const override;
+  HD xsfloat operator()(xsfloat E) const override;
 
   const vector<xsfloat>& bragg_edges() const { return bragg_edges_; }
   const vector<xsfloat>& factors() const { return factors_; }
@@ -117,7 +120,7 @@ class IncoherentElasticXS : public Function1D {
 public:
   explicit IncoherentElasticXS(hid_t dset);
 
-  xsfloat operator()(xsfloat E) const override;
+  HD xsfloat operator()(xsfloat E) const override;
 private:
   double bound_xs_; //!< Characteristic bound xs in [b]
   double debye_waller_; //!< Debye-Waller integral divided by atomic mass in [eV^-1]

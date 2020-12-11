@@ -113,6 +113,16 @@ constexpr bool structure_of_array_particles =
 
 } // namespace settings
 
+namespace gpu {
+__constant__ extern double weight_cutoff;
+__constant__ extern double weight_survive;
+__constant__ extern bool survival_biasing;
+__constant__ extern ResScatMethod res_scat_method;
+__constant__ extern double res_scat_energy_min;
+__constant__ extern double res_scat_energy_max;
+__constant__ extern RunMode run_mode;
+} // namespace gpu
+
 //==============================================================================
 // Functions
 //==============================================================================
@@ -122,6 +132,10 @@ constexpr bool structure_of_array_particles =
 void read_settings_xml();
 
 void free_memory_settings();
+
+#ifdef __CUDACC__
+void copy_settings_to_gpu();
+#endif
 
 } // namespace openmc
 

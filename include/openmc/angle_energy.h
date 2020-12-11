@@ -14,9 +14,15 @@ namespace openmc {
 
 class AngleEnergy {
 public:
-  virtual void sample(xsfloat E_in, xsfloat& E_out, xsfloat& mu,
+  HD virtual void sample(xsfloat E_in, xsfloat& E_out, xsfloat& mu,
     uint64_t* seed) const = 0;
   virtual ~AngleEnergy() = default;
+
+  // Center of mass mu sampling
+  HD virtual double sample_mu(double const& E, uint64_t* seed)
+  {
+    return 2.0 * prn(seed) - 1.0;
+  }
 };
 
 }

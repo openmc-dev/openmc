@@ -67,7 +67,7 @@ void init_particle_seeds(int64_t id, uint64_t* seeds);
 //! @param n The number of RNG seeds to skip ahead by
 //==============================================================================
 
-void advance_prn_seed(int64_t n, uint64_t* seed);
+HD void advance_prn_seed(int64_t n, uint64_t* seed);
 
 //==============================================================================
 //! Advance a random number seed 'n' times.
@@ -79,7 +79,7 @@ void advance_prn_seed(int64_t n, uint64_t* seed);
 //! @param seed The starting to seed to advance from
 //==============================================================================
 
-uint64_t future_seed(uint64_t n, uint64_t seed);
+HD uint64_t future_seed(uint64_t n, uint64_t seed);
 
 //==============================================================================
 //                               API FUNCTIONS

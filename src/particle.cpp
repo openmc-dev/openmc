@@ -34,6 +34,11 @@
 #include "DagMC.hpp"
 #endif
 
+// Contains XS micro cache for GPU mode, which is contiguous in memory
+#ifdef __CUDACC__
+#include "openmc/cuda/calculate_xs.h"
+#endif
+
 namespace openmc {
 
 void Particle::create_secondary(
@@ -46,7 +51,12 @@ void Particle::create_secondary(
   bank.wgt = wgt;
   bank.r = r();
   bank.u = u;
+
+#ifdef __CUDA_ARCH__
   bank.E = settings::run_CE ? E : g();
+#else
+  bank.E = E
+#endif
 
   n_bank_second() += 1;
 }

@@ -286,6 +286,10 @@ vector<int64_t> work_index;
 
 } // namespace simulation
 
+namespace gpu {
+__constant__ double keff;
+}
+
 //==============================================================================
 // Non-member functions
 //==============================================================================
@@ -778,9 +782,13 @@ void init_gpu_constant_memory()
   cudaMemcpyToSymbol(
     gpu::energy_min_neutron, &data::energy_min[neutron], sizeof(double));
   cudaMemcpyToSymbol(
+    gpu::energy_max_neutron, &data::energy_max[neutron], sizeof(double));
+  cudaMemcpyToSymbol(
     gpu::log_spacing, &simulation::log_spacing, sizeof(double));
   cudaMemcpyToSymbol(
     gpu::need_depletion_rx, &simulation::need_depletion_rx, sizeof(bool));
+
+  cudaMemcpyToSymbol(gpu::keff, &simulation::keff, sizeof(double));
 #endif
 }
 

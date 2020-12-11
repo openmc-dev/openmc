@@ -1,5 +1,4 @@
 #include "openmc/mesh.h"
-
 #include <algorithm> // for copy, equal, min, min_element
 #include <cstddef> // for size_t
 #include <cmath>  // for ceil
@@ -21,6 +20,7 @@
 #include "openmc/capi.h"
 #include "openmc/constants.h"
 #include "openmc/error.h"
+#include "openmc/file_utils.h"
 #include "openmc/hdf5_interface.h"
 #include "openmc/message_passing.h"
 #include "openmc/search.h"
@@ -139,6 +139,9 @@ UnstructuredMesh::UnstructuredMesh(pugi::xml_node node) : Mesh(node) {
   // get the filename of the unstructured mesh to load
   if (check_for_node(node, "filename")) {
     filename_ = get_node_value(node, "filename");
+    if (!file_exists(filename_)) {
+      fatal_error("Mesh file '" + filename_ + "' does not exist!");
+    }
   }
   else {
     fatal_error(fmt::format("No filename supplied for unstructured mesh with ID: {}", id_));

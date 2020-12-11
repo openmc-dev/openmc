@@ -1,0 +1,102 @@
+name: CI
+
+on: [push]
+
+env:
+  MPI_DIR: /usr
+  DAGMC_ROOT: $HOME/DAGMC
+  HDF5_ROOT: /usr
+  OMP_NUM_THREADS: 2
+  OPENMC_CROSS_SECTIONS: $HOME/nndc_hdf5/cross_sections.xml
+  OPENMC_ENDF_DATA: $HOME/endf-b-vii.1
+  COVERALLS_PARALLEL: true
+  NUMPY_EXPERIMENTAL_ARRAY_FUNCTION: 0
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+
+jobs:
+  main:
+    runs-on: ubuntu-16.04
+    strategy:
+      matrix:
+        python-version: [3.8]
+        mpi: [n, y]
+        omp: [n, y]
+        dagmc: [n]
+        event: [n]
+        vectfit: [n]
+
+        include:
+          - python-version: 3.6
+            omp: n
+            mpi: n
+          - python-version: 3.7
+            omp: n
+            mpi: n
+          - dagmc: y
+            python-version: 3.8
+            mpi: y
+            omp: y
+          - event: y
+            python-version: 3.8
+            omp: y
+            mpi: n
+          - vectfit: y
+            python-version: 3.8
+            omp: n
+            mpi: y
+
+    steps:
+      -
+        uses: actions/checkout@v2
+
+      - 
+        name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      -
+        name: Environment Variables
+        run: |
+          echo "OPENMC_CROSS_SECTIONS=$HOME/nndc_hdf5/cross_sections.xml" >> $GITHUB_ENV
+          echo "OPENMC_ENDF_DATA=$HOME/endf-b-vii.1" >> $GITHUB_ENV
+          echo "MPI=${{ matrix.mpi }}" >> $GITHUB_ENV
+          echo "PHDF5=${{ matrix.mpi }}" >> $GITHUB_ENV
+          echo "OMP=${{ matrix.omp }}" >> $GITHUB_ENV
+          echo "DAGMC=${{ matrix.dagmc }}" >> $GITHUB_ENV
+          echo "EVENT=${{ matrix.event }}" >> $GITHUB_ENV
+          echo "VECTFIT=${{ matrix.vectfit }}" >> $GITHUB_ENV
+          
+      -
+        name: Apt dependencies
+        shell: bash
+        run: |
+          sudo apt -y update
+          sudo apt install -y mpich \
+                              libmpich-dev \
+                              libhdf5-serial-dev \
+                              libhdf5-mpich-dev \
+                              libeigen3-dev
+      -
+        name: install
+        shell: bash
+        run: |
+          echo "$HOME/NJOY2016/build" >> $GITHUB_PATH
+          $GITHUB_WORKSPACE/tools/ci/travis-install.sh
+      - 
+        name: before
+        shell: bash
+        run: $GITHUB_WORKSPACE/tools/ci/travis-before-script.sh
+
+      -
+        name: test
+        shell: bash
+        run: $GITHUB_WORKSPACE/tools/ci/travis-script.sh
+
+      - 
+        name: after_success
+        shell: bash
+        run: |
+          cpp-coveralls -i src -i include --exclude-pattern "/usr/*" --dump cpp_cov.json
+          coveralls --merge=cpp_cov.json

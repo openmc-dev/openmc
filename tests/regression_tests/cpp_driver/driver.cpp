@@ -48,7 +48,11 @@ int main(int argc, char** argv) {
   // the summary file will be used to check that
   // temperatures were set correctly so clear
   // error output can be provided
+#ifdef OPENMC_MPI
+  if (openmc::mpi::master) openmc::write_summary();
+#else
   openmc::write_summary();
+#endif
 
   openmc_run();
   openmc_finalize();

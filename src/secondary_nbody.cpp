@@ -67,18 +67,13 @@ void NBodyPhaseSpace::sample(double E_in, double& E_out, double& mu,
 
 UnifiedAngleEnergy NBodyPhaseSpace::serialize() const
 {
-  constexpr size_t n = 28;
-  auto data = std::make_unique<uint8_t[]>(n);
+  DataBuffer buffer(28);
+  buffer.add(n_bodies_);
+  buffer.add(mass_ratio_);
+  buffer.add(A_);
+  buffer.add(Q_);
 
-  auto data_int = reinterpret_cast<int*>(data.get());
-  data_int[0] = n_bodies_;
-
-  auto data_double = reinterpret_cast<double*>(data.get() + 4);
-  data_double[0] = mass_ratio_;
-  data_double[1] = A_;
-  data_double[2] = Q_;
-
-  return {AngleEnergyType::NBODY, std::move(data)};
+  return {AngleEnergyType::NBODY, std::move(buffer)};
 }
 
 void NBodyPhaseSpaceFlat::sample(double E_in, double& E_out, double& mu,

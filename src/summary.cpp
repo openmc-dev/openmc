@@ -14,11 +14,6 @@ namespace openmc {
 
 void write_summary()
 {
-
-#ifdef MPI
-  if (!mpi::master) return;
-#endif
-
   // Display output message
   write_message("Writing summary.h5 file...", 5);
 

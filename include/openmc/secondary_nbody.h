@@ -4,9 +4,12 @@
 #ifndef OPENMC_SECONDARY_NBODY_H
 #define OPENMC_SECONDARY_NBODY_H
 
-#include "hdf5.h"
+#include <cstdint>
+
+#include <hdf5.h>
 
 #include "openmc/angle_energy.h"
+#include "openmc/secondary_unified.h"
 
 namespace openmc {
 
@@ -20,18 +23,36 @@ class NBodyPhaseSpace : public AngleEnergy {
 public:
   explicit NBodyPhaseSpace(hid_t group);
 
+  NBodyPhaseSpace(int n_bodies, double mass_ratio, double A, double Q)
+    : n_bodies_(n_bodies), mass_ratio_(mass_ratio), A_(A), Q_(Q) { }
+
   //! Sample distribution for an angle and energy
   //! \param[in] E_in Incoming energy in [eV]
   //! \param[out] E_out Outgoing energy in [eV]
   //! \param[out] mu Outgoing cosine with respect to current direction
   //! \param[inout] seed Pseudorandom seed pointer
-  void sample(double E_in, double& E_out, double& mu,
-    uint64_t* seed) const override;
+  void sample(double E_in, double& E_out, double& mu, uint64_t* seed) const override;
+
+  UnifiedAngleEnergy serialize() const;
 private:
   int n_bodies_; //!< Number of particles distributed
   double mass_ratio_; //!< Total mass of particles [neutron mass]
   double A_; //!< Atomic weight ratio
   double Q_; //!< Reaction Q-value [eV]
+};
+
+class NBodyPhaseSpaceFlat : public AngleEnergy {
+public:
+  explicit NBodyPhaseSpaceFlat(uint8_t* data) : data_(data) { }
+
+  void sample(double E_in, double& E_out, double& mu, uint64_t* seed) const override;
+
+  int n_bodies() const { return *reinterpret_cast<int*>(data_); };
+  double mass_ratio() const { return *reinterpret_cast<double*>(data_ + 4); }
+  double A() const { return *reinterpret_cast<double*>(data_ + 12); }
+  double Q() const { return *reinterpret_cast<double*>(data_ + 20); }
+private:
+  uint8_t* data_;
 };
 
 } // namespace openmc

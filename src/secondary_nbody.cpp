@@ -65,4 +65,64 @@ void NBodyPhaseSpace::sample(double E_in, double& E_out, double& mu,
   E_out = E_max * v;
 }
 
+UnifiedAngleEnergy NBodyPhaseSpace::serialize() const
+{
+  constexpr size_t n = 28;
+  auto data = std::make_unique<uint8_t[]>(n);
+
+  auto data_int = reinterpret_cast<int*>(data.get());
+  data_int[0] = n_bodies_;
+
+  auto data_double = reinterpret_cast<double*>(data.get() + 4);
+  data_double[0] = mass_ratio_;
+  data_double[1] = A_;
+  data_double[2] = Q_;
+
+  return {AngleEnergyType::NBODY, std::move(data)};
+}
+
+void NBodyPhaseSpaceFlat::sample(double E_in, double& E_out, double& mu,
+  uint64_t* seed) const
+{
+  // By definition, the distribution of the angle is isotropic for an N-body
+  // phase space distribution
+  mu = 2.0*prn(seed) - 1.0;
+
+  // Determine E_max parameter
+  double Ap = mass_ratio();
+  double E_max = (Ap - 1.0)/Ap * (A()/(A() + 1.0)*E_in + Q());
+
+  // x is essentially a Maxwellian distribution
+  double x = maxwell_spectrum(1.0, seed);
+
+  double y;
+  double r1, r2, r3, r4, r5, r6;
+  switch (n_bodies()) {
+  case 3:
+    y = maxwell_spectrum(1.0, seed);
+    break;
+  case 4:
+    r1 = prn(seed);
+    r2 = prn(seed);
+    r3 = prn(seed);
+    y = -std::log(r1*r2*r3);
+    break;
+  case 5:
+    r1 = prn(seed);
+    r2 = prn(seed);
+    r3 = prn(seed);
+    r4 = prn(seed);
+    r5 = prn(seed);
+    r6 = prn(seed);
+    y = -std::log(r1*r2*r3*r4) - std::log(r5) * std::pow(std::cos(PI/2.0*r6), 2);
+    break;
+  default:
+    throw std::runtime_error{"N-body phase space with >5 bodies."};
+  }
+
+  // Now determine v and E_out
+  double v = x/(x + y);
+  E_out = E_max * v;
+}
+
 } // namespace openmc

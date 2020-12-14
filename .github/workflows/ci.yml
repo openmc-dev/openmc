@@ -10,10 +10,12 @@ env:
   OPENMC_CROSS_SECTIONS: $HOME/nndc_hdf5/cross_sections.xml
   OPENMC_ENDF_DATA: $HOME/endf-b-vii.1
   COVERALLS_PARALLEL: true
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
 
 jobs:
   main:
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-16.04
     strategy:
       matrix:
         python-version: [3.8]

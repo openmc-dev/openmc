@@ -306,14 +306,14 @@ class ResultsList(list):
         burn_index : int
             Index of burnup step to evaluate
         nuc_with_data : Iterable of str, optional
-            nuclides list to evaluate with neutron data. If not provided,
-            nuclides from the cross_sections element of materials.xml will
-            be used. If that element is not present, nuclides from
-            OPENMC_CROSS_SECTIONS will be used.
-        new_xml_name : str, optional
-            name of xml file to put depleted materials into. If not
-            provided, no new xml file will be written.
+            nuclides iterable to evaluate with neutron data
 
+            This must be specified because not all nuclides appearing in
+            depletion results have associated neutron cross sections, and
+            as such cannot be used in subsequent transport calculations.
+            If not provided, nuclides from the cross_sections element of
+            materials.xml will be used. If that element is not present,
+            nuclides from OPENMC_CROSS_SECTIONS will be used.
         Returns
         -------
         mat_file : Materials
@@ -334,6 +334,8 @@ class ResultsList(list):
         # in the materials.xml file if provided, then finally from
         # the environment variable OPENMC_CROSS_SECTIONS.
         if nuc_with_data:
+            if not all(isinstance(nuclide_name, str) for nuclide_name in nuc_with_data):
+                raise Exception("Expected an iterable of strings as acceptable nuclide data.")
             available_cross_sections = nuc_with_data
         else:
             # select cross_sections.xml file to use
@@ -343,10 +345,10 @@ class ResultsList(list):
                 this_library = DataLibrary.from_xml()
 
             # Find neutron libraries we have access to
-            available_cross_sections = []
+            available_cross_sections = set()
             for lib in this_library.libraries:
                 if lib['type'] == 'neutron':
-                    available_cross_sections.extend(lib['materials'])
+                    available_cross_sections.update(lib['materials'])
             if not available_cross_sections:
                 raise Exception('No neutron libraries found in cross_sections.xml')
 
@@ -356,13 +358,11 @@ class ResultsList(list):
             if str(mat.id) in result.mat_to_ind.keys():
                 mat.volume = result.volume[str(mat.id)]
                 for nuc in result.nuc_to_ind.keys():
+                    if nuc not in available_cross_sections:
+                        continue
                     atoms = result[0, str(mat.id), nuc]
                     if atoms > 0.0:
                         atoms_per_barn_cm = 1e-24 * atoms / mat.volume
-                        if nuc in available_cross_sections:
-                            mat.add_nuclide(nuc, atoms_per_barn_cm)
-
-        if new_xml_name:
-            mat_file.export_to_xml(path=new_xml_name)
+                        mat.add_nuclide(nuc, atoms_per_barn_cm)
 
         return mat_file

@@ -1,4 +1,5 @@
 #include "openmc/secondary_unified.h"
+#include "openmc/secondary_nbody.h"
 
 namespace openmc {
 
@@ -35,6 +36,8 @@ UnifiedAngleEnergy::sample(double E_in, double& E_out, double& mu, uint64_t* see
   case AngleEnergyType::CORRELATED:
     break;
   case AngleEnergyType::NBODY:
+    NBodyPhaseSpaceFlat dist(this->data());
+    dist.sample(E_in, E_out, mu, seed);
     break;
   }
 }

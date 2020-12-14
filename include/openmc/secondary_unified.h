@@ -41,7 +41,7 @@ public:
   //! \param[inout] seed Pseudorandom seed pointer
   void sample(double E_in, double& E_out, double& mu, uint64_t* seed) const override;
 
-  uint8_t* data() { return buffer_.data_.get(); }
+  const uint8_t* data() const { return buffer_.data_.get(); }
 private:
   // Data members
   AngleEnergyType type_;

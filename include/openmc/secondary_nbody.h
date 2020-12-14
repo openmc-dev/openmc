@@ -43,16 +43,16 @@ private:
 
 class NBodyPhaseSpaceFlat : public AngleEnergy {
 public:
-  explicit NBodyPhaseSpaceFlat(uint8_t* data) : data_(data) { }
+  explicit NBodyPhaseSpaceFlat(const uint8_t* data) : data_(data) { }
 
   void sample(double E_in, double& E_out, double& mu, uint64_t* seed) const override;
 
-  int n_bodies() const { return *reinterpret_cast<int*>(data_); };
-  double mass_ratio() const { return *reinterpret_cast<double*>(data_ + 4); }
-  double A() const { return *reinterpret_cast<double*>(data_ + 12); }
-  double Q() const { return *reinterpret_cast<double*>(data_ + 20); }
+  int n_bodies() const { return *reinterpret_cast<const int*>(data_); };
+  double mass_ratio() const { return *reinterpret_cast<const double*>(data_ + 4); }
+  double A() const { return *reinterpret_cast<const double*>(data_ + 12); }
+  double Q() const { return *reinterpret_cast<const double*>(data_ + 20); }
 private:
-  uint8_t* data_;
+  const uint8_t* data_;
 };
 
 } // namespace openmc

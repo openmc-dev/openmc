@@ -2,6 +2,7 @@
 #include "openmc/capi.h"
 #include "openmc/cell.h"
 #include "openmc/geometry.h"
+#include "openmc/message_passing.h"
 #include "openmc/summary.h"
 #include "openmc/tallies/filter.h"
 #include "openmc/tallies/filter_cell.h"

@@ -1,0 +1,142 @@
+jtramm@iris07:~/openmc_offload/openmc/examples/pincell$ ~/openmc_offload/bld/bin/openmc --event
+                                %%%%%%%%%%%%%%%
+                           %%%%%%%%%%%%%%%%%%%%%%%%
+                        %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+                      %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+                    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+                   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+                                    %%%%%%%%%%%%%%%%%%%%%%%%
+                                     %%%%%%%%%%%%%%%%%%%%%%%%
+                 ###############      %%%%%%%%%%%%%%%%%%%%%%%%
+                ##################     %%%%%%%%%%%%%%%%%%%%%%%
+                ###################     %%%%%%%%%%%%%%%%%%%%%%%
+                ####################     %%%%%%%%%%%%%%%%%%%%%%
+                #####################     %%%%%%%%%%%%%%%%%%%%%
+                ######################     %%%%%%%%%%%%%%%%%%%%
+                #######################     %%%%%%%%%%%%%%%%%%
+                 #######################     %%%%%%%%%%%%%%%%%
+                 ######################     %%%%%%%%%%%%%%%%%
+                  ####################     %%%%%%%%%%%%%%%%%
+                    #################     %%%%%%%%%%%%%%%%%
+                     ###############     %%%%%%%%%%%%%%%%
+                       ############     %%%%%%%%%%%%%%%
+                          ########     %%%%%%%%%%%%%%
+                                      %%%%%%%%%%%
+
+                   | The OpenMC Monte Carlo Code
+         Copyright | 2011-2020 MIT and OpenMC contributors
+           License | http://openmc.readthedocs.io/en/latest/license.html
+           Version | 0.12.0-dev
+          Git SHA1 | 6f59d2bb32477679977b1f72e974b4b844c924a6
+         Date/Time | 2020-12-14 17:02:54
+    OpenMP Threads | 8
+
+ Reading settings XML file...
+ Reading cross sections XML file...
+ Reading materials XML file...
+ Reading geometry XML file...
+ Reading U234 from /home/jtramm/nndc_hdf5/U234.h5
+ Reading U235 from /home/jtramm/nndc_hdf5/U235.h5
+ Reading U238 from /home/jtramm/nndc_hdf5/U238.h5
+ Reading U236 from /home/jtramm/nndc_hdf5/U236.h5
+ Reading O16 from /home/jtramm/nndc_hdf5/O16.h5
+ Reading O17 from /home/jtramm/nndc_hdf5/O17.h5
+ Reading He3 from /home/jtramm/nndc_hdf5/He3.h5
+ Reading He4 from /home/jtramm/nndc_hdf5/He4.h5
+ Reading Sn112 from /home/jtramm/nndc_hdf5/Sn112.h5
+ Reading Sn114 from /home/jtramm/nndc_hdf5/Sn114.h5
+ Reading Sn115 from /home/jtramm/nndc_hdf5/Sn115.h5
+ Reading Sn116 from /home/jtramm/nndc_hdf5/Sn116.h5
+ Reading Sn117 from /home/jtramm/nndc_hdf5/Sn117.h5
+ Reading Sn118 from /home/jtramm/nndc_hdf5/Sn118.h5
+ Reading Sn119 from /home/jtramm/nndc_hdf5/Sn119.h5
+ Reading Sn120 from /home/jtramm/nndc_hdf5/Sn120.h5
+ Reading Sn122 from /home/jtramm/nndc_hdf5/Sn122.h5
+ Reading Sn124 from /home/jtramm/nndc_hdf5/Sn124.h5
+ Reading Fe54 from /home/jtramm/nndc_hdf5/Fe54.h5
+ Reading Fe56 from /home/jtramm/nndc_hdf5/Fe56.h5
+ Reading Fe57 from /home/jtramm/nndc_hdf5/Fe57.h5
+ Reading Fe58 from /home/jtramm/nndc_hdf5/Fe58.h5
+ Reading Cr50 from /home/jtramm/nndc_hdf5/Cr50.h5
+ Reading Cr52 from /home/jtramm/nndc_hdf5/Cr52.h5
+ Reading Cr53 from /home/jtramm/nndc_hdf5/Cr53.h5
+ Reading Cr54 from /home/jtramm/nndc_hdf5/Cr54.h5
+ Reading Zr90 from /home/jtramm/nndc_hdf5/Zr90.h5
+ Reading Zr91 from /home/jtramm/nndc_hdf5/Zr91.h5
+ Reading Zr92 from /home/jtramm/nndc_hdf5/Zr92.h5
+ Reading Zr94 from /home/jtramm/nndc_hdf5/Zr94.h5
+ Reading Zr96 from /home/jtramm/nndc_hdf5/Zr96.h5
+ Reading B10 from /home/jtramm/nndc_hdf5/B10.h5
+ Reading B11 from /home/jtramm/nndc_hdf5/B11.h5
+ Reading H1 from /home/jtramm/nndc_hdf5/H1.h5
+ Reading H2 from /home/jtramm/nndc_hdf5/H2.h5
+ Reading c_H_in_H2O from /home/jtramm/nndc_hdf5/c_H_in_H2O.h5
+ Maximum neutron transport energy: 20000000.000000 eV for U235
+ Minimum neutron data temperature: 294.000000 K
+ Maximum neutron data temperature: 294.000000 K
+ Reading tallies XML file...
+ Preparing distributed cell instances...
+ Writing summary.h5 file...
+Moving 7 surfaces to device...
+Moving 1 universes to device...
+Moving 4 cells to device...
+Moving 0 lattices to device...
+ Initializing source particles...
+
+ ====================>     K EIGENVALUE SIMULATION     <====================
+
+  Bat./Gen.      k       Entropy         Average k
+  =========   ========   ========   ====================
+        1/1    1.13016    6.28141
+        2/1    1.18315    6.26426
+        3/1    1.15798    6.30912
+        4/1    1.20440    6.29927
+        5/1    1.09616    6.29548
+        6/1    1.19999    6.29232
+        7/1    1.18252    6.29054
+        8/1    1.14389    6.25865
+        9/1    1.15238    6.31698
+       10/1    1.07947    6.32395
+       11/1    1.13919    6.29566
+       12/1    1.18488    6.32198    1.16204 +/- 0.02285
+       13/1    1.13075    6.30615    1.15161 +/- 0.01682
+       14/1    1.11640    6.31951    1.14281 +/- 0.01479
+       15/1    1.18054    6.29544    1.15035 +/- 0.01372
+       16/1    1.12506    6.32598    1.14614 +/- 0.01197
+       17/1    1.14051    6.30834    1.14533 +/- 0.01015
+       18/1    1.15769    6.25137    1.14688 +/- 0.00892
+       19/1    1.17924    6.31004    1.15047 +/- 0.00865
+       20/1    1.17564    6.32562    1.15299 +/- 0.00814
+ Creating state point statepoint.20.h5...
+
+ =======================>     TIMING STATISTICS     <=======================
+
+ Total time for initialization     = 3.3633e+00 seconds
+   Reading cross sections          = 3.1797e+00 seconds
+ Total time in simulation          = 2.4573e+02 seconds
+   Time in transport only          = 2.4571e+02 seconds
+     Particle initialization       = 1.3657e-02 seconds
+     XS lookups                    = 5.0612e-01 seconds
+     Advancing                     = 2.4493e+02 seconds
+     Surface crossings             = 1.6432e-01 seconds
+     Collisions                    = 8.4432e-02 seconds
+     Particle death                = 3.6326e-03 seconds
+   Time in inactive batches        = 1.2435e+02 seconds
+   Time in active batches          = 1.2139e+02 seconds
+   Time synchronizing fission bank = 7.9939e-04 seconds
+     Sampling source sites         = 7.0959e-04 seconds
+     SEND/RECV source sites        = 8.0698e-05 seconds
+   Time accumulating tallies       = 7.0740e-04 seconds
+ Total time for finalization       = 4.8306e-02 seconds
+ Total time elapsed                = 2.4916e+02 seconds
+ Calculation Rate (inactive)       = 80.4210 particles/second
+ Calculation Rate (active)         = 82.3814 particles/second
+
+ ============================>     RESULTS     <============================
+
+ k-effective (Collision)     = 1.15874 +/- 0.01206
+ k-effective (Track-length)  = 1.15299 +/- 0.00814
+ k-effective (Absorption)    = 1.18689 +/- 0.01062
+ Combined k-effective        = 1.16419 +/- 0.01149
+ Leakage Fraction            = 0.00000 +/- 0.00000
+

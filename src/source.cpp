@@ -240,7 +240,7 @@ SourceSite IndependentSource::sample(uint64_t* seed) const
 // FileSource implementation
 //==============================================================================
 
-FileSource::FileSource(std::string path)
+FileSource::FileSource(std::string const& path)
 {
   // Check if source file exists
   if (!file_exists(path)) {
@@ -278,7 +278,8 @@ SourceSite FileSource::sample(uint64_t* seed) const
 // CustomSourceWrapper implementation
 //==============================================================================
 
-CustomSourceWrapper::CustomSourceWrapper(std::string path, std::string parameters)
+CustomSourceWrapper::CustomSourceWrapper(
+  std::string const& path, std::string const& parameters)
 {
 #ifdef HAS_DYNAMIC_LINKING
   // Open the library

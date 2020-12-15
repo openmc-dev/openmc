@@ -33,6 +33,8 @@ extern vector<unique_ptr<Source>> external_sources;
 class Source {
 public:
   virtual ~Source() = default;
+  Source() = default;
+  Source(Source&&) = default;
 
   // Methods that must be implemented
   virtual SourceSite sample(uint64_t* seed) const = 0;
@@ -50,6 +52,7 @@ public:
   // Constructors
   IndependentSource(UPtrSpace space, UPtrAngle angle, UPtrDist energy);
   explicit IndependentSource(pugi::xml_node node);
+  IndependentSource(IndependentSource&&) = default;
 
   //! Sample from the external source distribution
   //! \param[inout] seed Pseudorandom seed pointer
@@ -80,7 +83,8 @@ private:
 class FileSource : public Source {
 public:
   // Constructors
-  explicit FileSource(std::string path);
+  explicit FileSource(std::string const& path);
+  FileSource(FileSource&&) = default;
 
   // Methods
   SourceSite sample(uint64_t* seed) const override;
@@ -96,7 +100,8 @@ private:
 class CustomSourceWrapper : public Source {
 public:
   // Constructors, destructors
-  CustomSourceWrapper(std::string path, std::string parameters);
+  CustomSourceWrapper(std::string const& path, std::string const& parameters);
+  CustomSourceWrapper(CustomSourceWrapper&&) = default;
   ~CustomSourceWrapper();
 
   // Defer implementation to custom source library

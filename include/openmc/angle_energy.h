@@ -18,6 +18,7 @@ public:
   HD virtual void sample(xsfloat E_in, xsfloat& E_out, xsfloat& mu,
     uint64_t* seed) const = 0;
   AngleEnergy(AngleEnergy&&) = default;
+  AngleEnergy() = default;
   virtual ~AngleEnergy() = default;
 
   // Center of mass mu sampling

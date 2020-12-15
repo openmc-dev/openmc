@@ -18,6 +18,7 @@
 #include "openmc/eigenvalue.h"
 #include "openmc/error.h"
 #include "openmc/file_utils.h"
+#include "openmc/memory.h"
 #include "openmc/mesh.h"
 #include "openmc/message_passing.h"
 #include "openmc/output.h"
@@ -444,8 +445,8 @@ void read_settings_xml()
   // Get point to list of <source> elements and make sure there is at least one
   for (pugi::xml_node node : root.children("source")) {
     if (check_for_node(node, "file")) {
-      auto path = get_node_value(node, "file", false, true);
-      model::external_sources.push_back(make_unique<FileSource>(path));
+      std::string path = get_node_value(node, "file", false, true);
+      model::external_sources.push_back(openmc::make_unique<FileSource>(path));
     } else if (check_for_node(node, "library")) {
       // Get shared library path and parameters
       auto path = get_node_value(node, "library", false, true);
@@ -456,7 +457,7 @@ void read_settings_xml()
 
       // Create custom source
       model::external_sources.push_back(
-        make_unique<CustomSourceWrapper>(path, parameters));
+        openmc::make_unique<CustomSourceWrapper>(path, parameters));
     } else {
       model::external_sources.push_back(make_unique<IndependentSource>(node));
     }
@@ -478,9 +479,9 @@ void read_settings_xml()
 
   // If no source specified, default to isotropic point source at origin with Watt spectrum
   if (model::external_sources.empty()) {
-    model::external_sources.push_back(
-      make_unique<IndependentSource>(make_unique<SpatialPoint>({0.0, 0.0, 0.0}),
-        make_unique<Isotropic>(), make_unique<Watt>(0.988e6, 2.249e-6)));
+    model::external_sources.push_back(make_unique<IndependentSource>(
+      make_unique<SpatialPoint>(Position {0.0, 0.0, 0.0}),
+      make_unique<Isotropic>(), make_unique<Watt>(0.988e6, 2.249e-6)));
   }
 
   // Check if we want to write out source
@@ -878,11 +879,11 @@ void copy_settings_to_gpu()
   cudaMemcpyToSymbol(
     gpu::survival_biasing, &settings::survival_biasing, sizeof(bool));
   cudaMemcpyToSymbol(
-    gpu::res_scat_method, settings::res_scat_method, sizeof(ResScatMethod));
+    gpu::res_scat_method, &settings::res_scat_method, sizeof(ResScatMethod));
   cudaMemcpyToSymbol(
-    gpu::res_scat_energy_min, settings::res_scat_energy_min, sizeof(double));
+    gpu::res_scat_energy_min, &settings::res_scat_energy_min, sizeof(double));
   cudaMemcpyToSymbol(
-    gpu::res_scat_energy_max, settings::res_scat_energy_max, sizeof(double));
+    gpu::res_scat_energy_max, &settings::res_scat_energy_max, sizeof(double));
 }
 #endif
 

@@ -28,7 +28,7 @@ public:
 
   //! Determine whether angle distribution is empty
   //! \return Whether distribution is empty
-  bool empty() const { return energy_.empty(); }
+  HD bool empty() const { return energy_.empty(); }
 
 private:
   vector<xsfloat> energy_;

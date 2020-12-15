@@ -31,7 +31,7 @@ public:
   //! \param[out] E_out Outgoing energy in [eV]
   //! \param[out] mu Outgoing cosine with respect to current direction
   //! \param[inout] seed Pseudorandom seed pointer
-  void sample(xsfloat E_in, xsfloat& E_out, xsfloat& mu,
+  HD void sample(xsfloat E_in, xsfloat& E_out, xsfloat& mu,
     uint64_t* seed) const override;
 private:
   const CoherentElasticXS& xs_; //!< Coherent elastic scattering cross section
@@ -53,7 +53,7 @@ public:
   //! \param[out] E_out Outgoing energy in [eV]
   //! \param[out] mu Outgoing cosine with respect to current direction
   //! \param[inout] seed Pseudorandom number seed pointer
-  void sample(xsfloat E_in, xsfloat& E_out, xsfloat& mu,
+  HD void sample(xsfloat E_in, xsfloat& E_out, xsfloat& mu,
     uint64_t* seed) const override;
 private:
   double debye_waller_;
@@ -77,7 +77,7 @@ public:
   //! \param[out] E_out Outgoing energy in [eV]
   //! \param[out] mu Outgoing cosine with respect to current direction
   //! \param[inout] seed Pseudorandom number seed pointer
-  void sample(xsfloat E_in, xsfloat& E_out, xsfloat& mu,
+  HD void sample(xsfloat E_in, xsfloat& E_out, xsfloat& mu,
     uint64_t* seed) const override;
 private:
   const vector<xsfloat>& energy_;  //!< Energies at which cosines are tabulated
@@ -102,7 +102,7 @@ public:
   //! \param[out] E_out Outgoing energy in [eV]
   //! \param[out] mu Outgoing cosine with respect to current direction
   //! \param[inout] seed Pseudorandom number seed pointer
-  void sample(xsfloat E_in, xsfloat& E_out, xsfloat& mu,
+  HD void sample(xsfloat E_in, xsfloat& E_out, xsfloat& mu,
     uint64_t* seed) const override;
 private:
   const vector<xsfloat>& energy_;      //!< Incident energies
@@ -127,7 +127,7 @@ public:
   //! \param[out] E_out Outgoing energy in [eV]
   //! \param[out] mu Outgoing cosine with respect to current direction
   //! \param[inout] seed Pseudorandom number seed pointer
-  void sample(xsfloat E_in, xsfloat& E_out, xsfloat& mu,
+  HD void sample(xsfloat E_in, xsfloat& E_out, xsfloat& mu,
     uint64_t* seed) const override;
 private:
   //! Secondary energy/angle distribution

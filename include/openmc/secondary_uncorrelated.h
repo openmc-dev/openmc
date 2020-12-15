@@ -23,10 +23,7 @@ namespace openmc {
 class UncorrelatedAngleEnergy : public AngleEnergy {
 public:
   UncorrelatedAngleEnergy(UncorrelatedAngleEnergy&&) = default;
-  UncorrelatedAngleEnergy(UncorrelatedAngleEnergy const&) = delete;
   UncorrelatedAngleEnergy() = delete;
-  UncorrelatedAngleEnergy& operator=(UncorrelatedAngleEnergy const&) = delete;
-  UncorrelatedAngleEnergy& operator=(UncorrelatedAngleEnergy&&) = delete;
   explicit UncorrelatedAngleEnergy(hid_t group);
 
   //! Sample distribution for an angle and energy

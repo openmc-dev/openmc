@@ -20,7 +20,7 @@ namespace openmc {
 
 class Distribution {
 public:
-  virtual ~Distribution() = default;
+  virtual ~Distribution() {}
   HD virtual xsfloat sample(uint64_t* seed) const = 0;
 };
 
@@ -31,6 +31,7 @@ public:
 class Discrete : public Distribution {
 public:
   explicit Discrete(pugi::xml_node node);
+  Discrete(Discrete&&) = default;
   Discrete(const xsfloat* x, const xsfloat* p, int n);
 
   //! Sample a value from the distribution
@@ -58,6 +59,7 @@ class Uniform : public Distribution {
 public:
   explicit Uniform(pugi::xml_node node);
   Uniform(xsfloat a, xsfloat b) : a_{a}, b_{b} {};
+  Uniform(Uniform&&) = default;
 
   //! Sample a value from the distribution
   //! \param seed Pseudorandom number seed pointer
@@ -78,6 +80,7 @@ private:
 class Maxwell : public Distribution {
 public:
   explicit Maxwell(pugi::xml_node node);
+  Maxwell(Maxwell&&) = default;
   Maxwell(double theta) : theta_{theta} { };
 
   //! Sample a value from the distribution
@@ -97,6 +100,7 @@ private:
 class Watt : public Distribution {
 public:
   explicit Watt(pugi::xml_node node);
+  Watt(Watt&&) = default;
   Watt(double a, double b) : a_{a}, b_{b} { };
 
   //! Sample a value from the distribution
@@ -118,6 +122,7 @@ private:
 class Normal : public Distribution {
 public:
   explicit Normal(pugi::xml_node node);
+  Normal(Normal&&) = default;
   Normal(double mean_value, double std_dev) : mean_value_{mean_value}, std_dev_{std_dev} { };
 
   //! Sample a value from the distribution
@@ -140,6 +145,7 @@ private:
 class Muir : public Distribution {
 public:
   explicit Muir(pugi::xml_node node);
+  Muir(Muir&&) = default;
   Muir(double e0, double m_rat, double kt) : e0_{e0}, m_rat_{m_rat}, kt_{kt} { };
 
   //! Sample a value from the distribution
@@ -168,6 +174,7 @@ public:
   explicit Tabular(pugi::xml_node node);
   Tabular(const xsfloat* x, const xsfloat* p, int n, Interpolation interp,
           const xsfloat* c=nullptr);
+  Tabular(Tabular&&) = default;
 
   //! Sample a value from the distribution
   //! \param seed Pseudorandom number seed pointer
@@ -201,6 +208,7 @@ class Equiprobable : public Distribution {
 public:
   explicit Equiprobable(pugi::xml_node node);
   Equiprobable(const xsfloat* x, int n) : x_{x, x+n} { };
+  Equiprobable(Equiprobable&&) = default;
 
   //! Sample a value from the distribution
   //! \param seed Pseudorandom number seed pointer

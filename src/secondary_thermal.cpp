@@ -35,6 +35,7 @@ void
 CoherentElasticAE::sample(xsfloat E_in, xsfloat& E_out, xsfloat& mu,
   uint64_t* seed) const
 {
+#ifndef __CUDA_ARCH__
   // Get index and interpolation factor for elastic grid
   int i;
   xsfloat f;
@@ -54,6 +55,7 @@ CoherentElasticAE::sample(xsfloat E_in, xsfloat& E_out, xsfloat& mu,
 
   // Energy doesn't change in elastic scattering (ENDF-102, Eq. 7-1)
   E_out = E_in;
+#endif
 }
 
 //==============================================================================
@@ -69,12 +71,14 @@ void
 IncoherentElasticAE::sample(xsfloat E_in, xsfloat& E_out, xsfloat& mu,
   uint64_t* seed) const
 {
+#ifndef __CUDA_ARCH__
   // Sample angle by inverting the distribution in ENDF-102, Eq. 7.4
   xsfloat c = 2 * E_in * debye_waller_;
   mu = std::log(1.0 + prn(seed)*(std::exp(2.0*c) - 1))/c - 1.0;
 
   // Energy doesn't change in elastic scattering (ENDF-102, Eq. 7.4)
   E_out = E_in;
+#endif
 }
 
 //==============================================================================
@@ -92,6 +96,7 @@ void
 IncoherentElasticAEDiscrete::sample(xsfloat E_in, xsfloat& E_out, xsfloat& mu,
   uint64_t* seed) const
 {
+#ifndef __CUDA_ARCH__
   // Get index and interpolation factor for elastic grid
   int i;
   xsfloat f;
@@ -129,6 +134,7 @@ IncoherentElasticAEDiscrete::sample(xsfloat E_in, xsfloat& E_out, xsfloat& mu,
 
   // Energy doesn't change in elastic scattering
   E_out = E_in;
+#endif
 }
 
 //==============================================================================
@@ -148,6 +154,7 @@ void
 IncoherentInelasticAEDiscrete::sample(xsfloat E_in, xsfloat& E_out, xsfloat& mu,
   uint64_t* seed) const
 {
+#ifndef __CUDA_ARCH__
   // Get index and interpolation factor for inelastic grid
   int i;
   xsfloat f;
@@ -203,6 +210,7 @@ IncoherentInelasticAEDiscrete::sample(xsfloat E_in, xsfloat& E_out, xsfloat& mu,
 
   // Cosine of angle between incoming and outgoing neutron
   mu = (1 - f)*mu_ijk + f*mu_i1jk;
+#endif
 }
 
 //==============================================================================
@@ -211,6 +219,7 @@ IncoherentInelasticAEDiscrete::sample(xsfloat E_in, xsfloat& E_out, xsfloat& mu,
 
 IncoherentInelasticAE::IncoherentInelasticAE(hid_t group)
 {
+#ifndef __CUDA_ARCH__
   // Read correlated angle-energy distribution
   CorrelatedAngleEnergy dist {group};
 
@@ -246,12 +255,14 @@ IncoherentInelasticAE::IncoherentInelasticAE(hid_t group)
     distribution_.emplace_back(std::move(d));
   }
 
+#endif
 }
 
 void
 IncoherentInelasticAE::sample(xsfloat E_in, xsfloat& E_out, xsfloat& mu,
   uint64_t* seed) const
 {
+#ifndef __CUDA_ARCH__
   // Get index and interpolation factor for inelastic grid
   int i;
   xsfloat f;
@@ -329,6 +340,7 @@ IncoherentInelasticAE::sample(xsfloat E_in, xsfloat& E_out, xsfloat& mu,
 
   // Smear cosine
   mu += std::min(mu - mu_left, mu_right - mu)*(prn(seed) - 0.5);
+#endif
 }
 
 } // namespace openmc

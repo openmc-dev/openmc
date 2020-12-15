@@ -387,7 +387,19 @@ public:
     : ptr(ptr_pair.first), ptr_dev(ptr_pair.second)
   {}
 
-  unique_ptr(unique_ptr&& u) { std::tie(ptr, ptr_dev) = u.release(); }
+  __host__ __device__ unique_ptr(unique_ptr&& u)
+  {
+    // So, this is really dirty and yes, technically risks memory leak,
+    // but this allows polymorphism to work on the device. Is it disgusting?
+    // Yes. Do I really need to set things up like this for the moment to
+    // get a master's degree? Again, yes.
+#ifdef __CUDA_ARCH__
+    ptr = u.ptr;
+    ptr_dev = u.ptr_dev;
+#else
+    std::tie(ptr, ptr_dev) = u.release();
+#endif
+  }
 
   template<class U>
   unique_ptr(unique_ptr<U>&& u)
@@ -431,6 +443,7 @@ public:
   }
 
   ~unique_ptr() { free_mem(); }
+  void reset() { free_mem(); }
 
   // observers
   __host__ __device__ T const& operator*() const

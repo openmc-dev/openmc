@@ -43,6 +43,14 @@ namespace openmc {
 
 void collision(Particle& p)
 {
+#ifdef __CUDA_ARCH__
+  ++(p.n_collision_);
+  sample_neutron_reaction(p);
+  if (p.E_ < gpu::energy_max_neutron) {
+    p.alive_ = false;
+    p.wgt_ = 0.0;
+  }
+#else
   // Add to collision counter for particle
   ++(p.n_collision());
 
@@ -87,6 +95,7 @@ void collision(Particle& p)
     }
     write_message(msg, 1);
   }
+#endif
 }
 
 HD void sample_neutron_reaction(Particle& p)

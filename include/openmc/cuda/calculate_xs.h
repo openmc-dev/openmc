@@ -1,10 +1,11 @@
 #pragma once
 
+#include "openmc/constants.h" // MATERIAL_VOID
 #include "openmc/event.h"
-#include "openmc/particle.h"
 #include "openmc/material.h"
 #include "openmc/memory.h"
 #include "openmc/nuclide.h"
+#include "openmc/particle.h"
 
 namespace openmc {
 namespace gpu {
@@ -23,8 +24,23 @@ extern __constant__ double log_spacing;
 extern __constant__ unsigned number_nuclides;
 extern __constant__ bool need_depletion_rx;
 
+extern __managed__ unsigned managed_calculate_fuel_queue_index;
+extern __managed__ unsigned managed_calculate_nonfuel_queue_index;
+
 __global__ void process_calculate_xs_events_device(
   EventQueueItem* queue, unsigned queue_size);
+
+inline void __device__ dispatch_xs_event_device(Particle& p, unsigned p_idx,
+  EventQueueItem* calc_nonfuel_queue, EventQueueItem* calc_fuel_queue)
+{
+  if (p.material_ == MATERIAL_VOID ||
+      !gpu::materials[p.material_]->fissionable_)
+    calc_nonfuel_queue[atomicInc(
+      &managed_calculate_nonfuel_queue_index, 0xFFFFFFF)] = {p, p_idx};
+  else
+    calc_fuel_queue[atomicInc(
+      &managed_calculate_nonfuel_queue_index, 0xFFFFFFF)] = {p, p_idx};
+}
 
 } // namespace gpu
 }

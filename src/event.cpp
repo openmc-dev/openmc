@@ -8,6 +8,7 @@
 #include "openmc/bank.h" // needed to set bank container data in collision kernel
 #include "openmc/cuda/advance.h"
 #include "openmc/cuda/calculate_xs.h"
+#include "openmc/cuda/collide.h"
 #endif
 
 namespace openmc {
@@ -114,6 +115,9 @@ void process_calculate_xs_events(SharedArray<EventQueueItem>& queue)
   }
 
 #ifdef __CUDACC__
+  // TODO: this could possibly be separated into the retrieval of cached
+  // XS components and the lookup of new cross sections for nuclides where
+  // necessary.
   gpu::process_calculate_xs_events_device<<<queue.size() / 32 + 1, 32>>>(
     queue.data(), queue.size());
   cudaDeviceSynchronize();
@@ -209,14 +213,32 @@ void process_collision_events()
 
 #ifdef __CUDACC__
   auto fission_bank_start = simulation::fission_bank.data();
-  unsigned fission_bank_size = simulation::fission_bank.size();
   unsigned fission_bank_capacity = simulation::fission_bank.capacity();
   cudaMemcpyToSymbol(
     gpu::fission_bank_start, &fission_bank_start, sizeof(Particle::Bank*));
   cudaMemcpyToSymbol(
-    gpu::fission_bank_index, &fission_bank_size, sizeof(unsigned));
-  cudaMemcpyToSymbol(
     gpu::fission_bank_capacity, &fission_bank_capacity, sizeof(unsigned));
+  gpu::fission_bank_index = simulation::fission_bank.size();
+
+  // Set initial positions of the XS calculation queues for appending
+  // while running on GPU
+  gpu::managed_calculate_nonfuel_queue_index =
+    simulation::calculate_nonfuel_xs_queue.size();
+  gpu::managed_calculate_fuel_queue_index =
+    simulation::calculate_fuel_xs_queue.size();
+
+  gpu::process_collision_events_device<<<
+    simulation::advance_particle_queue.size() / 32 + 1, 32>>>(
+    simulation::collision_queue.data(), simulation::collision_queue.size(),
+    simulation::calculate_nonfuel_xs_queue.data(),
+    simulation::calculate_fuel_xs_queue.data());
+  cudaDeviceSynchronize();
+
+  simulation::fission_bank.updateIndex(gpu::fission_bank_index);
+  simulation::calculate_nonfuel_xs_queue.updateIndex(
+    gpu::managed_calculate_nonfuel_queue_index);
+  simulation::calculate_fuel_xs_queue.updateIndex(
+    gpu::managed_calculate_fuel_queue_index);
 #else
 #pragma omp parallel for schedule(runtime)
   for (int64_t i = 0; i < simulation::collision_queue.size(); i++) {

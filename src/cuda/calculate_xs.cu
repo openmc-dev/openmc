@@ -13,6 +13,8 @@ __constant__ double energy_max_neutron;
 __constant__ double log_spacing;
 __constant__ unsigned number_nuclides;
 __constant__ bool need_depletion_rx;
+__managed__ unsigned managed_calculate_fuel_queue_index;
+__managed__ unsigned managed_calculate_nonfuel_queue_index;
 
 __global__ void process_calculate_xs_events_device(
   EventQueueItem* queue, unsigned queue_size)

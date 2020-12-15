@@ -55,7 +55,7 @@ void Particle::create_secondary(
 #ifdef __CUDA_ARCH__
   bank.E = E;
 #else
-  bank.E = settings::run_CE ? E : g_;
+  bank.E = settings::run_CE ? E : g();
 #endif
 
   n_bank_second() += 1;
@@ -238,18 +238,31 @@ Particle::event_cross_surface()
 void
 Particle::event_collide()
 {
+#ifdef __CUDA_ARCH__
+  using gpu::cells;
+#else
+  using model::cells;
+#endif
+
+#ifndef __CUDACC__
   // Score collision estimate of keff
   if (settings::run_mode == RunMode::EIGENVALUE &&
       type() == ParticleType::neutron) {
     keff_tally_collision() += wgt() * macro_xs().neutron.nu_fission / macro_xs().total;
   }
+#else
+  keff_tally_collision_ += wgt_ * macro_xs_.nu_fission / macro_xs_.total;
+#endif
 
   // Score surface current tallies -- this has to be done before the collision
   // since the direction of the particle will change and we need to use the
   // pre-collision direction to figure out what mesh surfaces were crossed
 
+#ifndef __CUDACC__
+  // TODO make tallies work here
   if (!model::active_meshsurf_tallies.empty())
     score_surface_tally(*this, model::active_meshsurf_tallies);
+#endif
 
   // Clear surface component
   surface() = 0;
@@ -267,18 +280,18 @@ Particle::event_collide()
   // Score collision estimator tallies -- this is done after a collision
   // has occurred rather than before because we need information on the
   // outgoing energy for any tallies with an outgoing energy filter
+  // TODO let collision tallies work on GPU
+#ifndef __CUDACC__
   if (!model::active_collision_tallies.empty()) score_collision_tally(*this);
   if (!model::active_analog_tallies.empty()) {
-#ifndef __CUDACC__
     if (settings::run_CE) {
       score_analog_tally_ce(*this);
     } else {
       score_analog_tally_mg(*this);
     }
-#else
     score_analog_tally_ce(*this);
-#endif
   }
+#endif
 
   // Reset banked weight during collision
   n_bank() = 0;
@@ -301,7 +314,7 @@ Particle::event_collide()
   for (int j = 0; j < n_coord() - 1; ++j) {
     if (coord(j + 1).rotated) {
       // If next level is rotated, apply rotation matrix
-      const auto& m {model::cells[coord(j).cell]->rotation_};
+      const auto& m {cells[coord(j).cell]->rotation_};
       const auto& u {coord(j).u};
       coord(j + 1).u = u.rotate(m);
     } else {
@@ -310,8 +323,10 @@ Particle::event_collide()
     }
   }
 
+#ifndef __CUDA_ARCH__
   // Score flux derivative accumulators for differential tallies.
   if (!model::active_tallies.empty()) score_collision_derivative(*this);
+#endif
 }
 
 void

@@ -130,6 +130,38 @@ public:
     return *this;
   }
 
+  // Allow copy assignment from anything that looks like a 1D xtensor
+  template<typename View>
+  __host__ vector& operator=(View const& view)
+  {
+    if (view.shape().size() != 1)
+      throw std::invalid_argument {
+        "operator= template on openmc::vector requires rank 1 argument."};
+
+    unsigned new_size = view.shape()[0];
+    resize(new_size);
+    for (unsigned i = 0; i < new_size; ++i)
+      begin_[i] = view(i);
+    return *this;
+  }
+
+  // Allow division and multiplication of the array by scalars in the
+  // way that you would expect. This allows drop-in replacement of xtensors
+  // to a limited extent.
+  __host__ vector& operator*=(double multiplier)
+  {
+    for (unsigned i = 0; i < size_; ++i)
+      begin_[i] *= multiplier;
+    return *this;
+  }
+  __host__ vector& operator/=(double divisor)
+  {
+    double multiplier = 1.0 / divisor;
+    for (unsigned i = 0; i < size_; ++i)
+      begin_[i] *= multiplier;
+    return *this;
+  }
+
   // Constructing from initializer lists
   __host__ vector(std::initializer_list<T> list)
     : begin_(nullptr), size_(0), capacity_(0)
@@ -254,6 +286,7 @@ public:
   }
 
   // Note: you have to guarantee thread safety if you're running this on GPU
+#pragma hd_warning_disable
   __host__ __device__ void push_back(const T& value)
   {
     if (size_ == capacity_) {
@@ -292,6 +325,7 @@ public:
     return idx;
   }
 
+#pragma hd_warning_disable
   __host__ __device__ void push_back(T&& value)
   {
     emplace_back(std::move(value));

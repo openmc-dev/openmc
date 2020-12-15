@@ -43,14 +43,14 @@ PolarAzimuthal::PolarAzimuthal(pugi::xml_node node)
     pugi::xml_node node_dist = node.child("mu");
     mu_ = distribution_from_xml(node_dist);
   } else {
-    mu_ = UPtrDist{new Uniform(-1., 1.)};
+    mu_ = make_unique<Uniform>(-1., 1.);
   }
 
   if (check_for_node(node, "phi")) {
     pugi::xml_node node_dist = node.child("phi");
     phi_ = distribution_from_xml(node_dist);
   } else {
-    phi_ = UPtrDist{new Uniform(0.0, 2.0*PI)};
+    phi_ = make_unique<Uniform>(0.0, 2.0 * PI);
   }
 }
 

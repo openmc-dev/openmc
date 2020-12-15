@@ -114,8 +114,8 @@ xsfloat Polynomial::operator()(xsfloat x) const
   // Use Horner's rule to evaluate polynomial. Note that coefficients are
   // ordered in increasing powers of x.
   xsfloat y = XSZERO;
-  for (auto c = coef_.crbegin(); c != coef_.crend(); ++c) {
-    y = y*x + *c;
+  for (int i = coef_.size() - 1; i >= 0; --i) {
+    y = y * x + coef_[i];
   }
   return y;
 }
@@ -211,6 +211,7 @@ xsfloat Tabulated1D::operator()(xsfloat x) const
     throw std::runtime_error{"Invalid interpolation scheme."};
 #endif
   }
+  return 0;
 }
 
 //==============================================================================

@@ -53,9 +53,9 @@ void Particle::create_secondary(
   bank.u = u;
 
 #ifdef __CUDA_ARCH__
-  bank.E = settings::run_CE ? E : g();
+  bank.E = E;
 #else
-  bank.E = E
+  bank.E = settings::run_CE ? E : g_;
 #endif
 
   n_bank_second() += 1;

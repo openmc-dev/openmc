@@ -22,6 +22,7 @@ namespace openmc {
 class EnergyDistribution {
 public:
   virtual xsfloat sample(xsfloat E, uint64_t* seed) const = 0;
+  EnergyDistribution(EnergyDistribution&&) = default;
   virtual ~EnergyDistribution() = default;
 };
 
@@ -32,6 +33,7 @@ public:
 class DiscretePhoton : public EnergyDistribution {
 public:
   explicit DiscretePhoton(hid_t group);
+  DiscretePhoton(DiscretePhoton&&) = default;
 
   //! Sample energy distribution
   //! \param[in] E Incident particle energy in [eV]
@@ -52,6 +54,7 @@ private:
 class LevelInelastic : public EnergyDistribution {
 public:
   explicit LevelInelastic(hid_t group);
+  LevelInelastic(LevelInelastic&&) = default;
 
   //! Sample energy distribution
   //! \param[in] E Incident particle energy in [eV]
@@ -72,6 +75,7 @@ private:
 class ContinuousTabular : public EnergyDistribution {
 public:
   explicit ContinuousTabular(hid_t group);
+  ContinuousTabular(ContinuousTabular&&) = default;
 
   //! Sample energy distribution
   //! \param[in] E Incident particle energy in [eV]
@@ -79,13 +83,14 @@ public:
   //! \return Sampled energy in [eV]
   xsfloat sample(xsfloat E, uint64_t* seed) const;
 private:
+
   //! Outgoing energy for a single incoming energy
   struct CTTable {
     Interpolation interpolation; //!< Interpolation law
     int n_discrete; //!< Number of of discrete energies
-    xt::xtensor<xsfloat, 1> e_out; //!< Outgoing energies in [eV]
-    xt::xtensor<xsfloat, 1> p; //!< Probability density
-    xt::xtensor<xsfloat, 1> c; //!< Cumulative distribution
+    vector<xsfloat> e_out; //!< Outgoing energies in [eV]
+    vector<xsfloat> p;     //!< Probability density
+    vector<xsfloat> c;     //!< Cumulative distribution
   };
 
   int n_region_; //!< Number of inteprolation regions
@@ -102,6 +107,7 @@ private:
 class Evaporation : public EnergyDistribution {
 public:
   explicit Evaporation(hid_t group);
+  Evaporation(Evaporation&&) = default;
 
   //! Sample energy distribution
   //! \param[in] E Incident particle energy in [eV]
@@ -121,6 +127,7 @@ private:
 class MaxwellEnergy : public EnergyDistribution {
 public:
   explicit MaxwellEnergy(hid_t group);
+  MaxwellEnergy(MaxwellEnergy&&) = default;
 
   //! Sample energy distribution
   //! \param[in] E Incident particle energy in [eV]
@@ -140,6 +147,7 @@ private:
 class WattEnergy : public EnergyDistribution {
 public:
   explicit WattEnergy(hid_t group);
+  WattEnergy(WattEnergy&&) = default;
 
   //! Sample energy distribution
   //! \param[in] E Incident particle energy in [eV]

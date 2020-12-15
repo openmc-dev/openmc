@@ -29,19 +29,18 @@ UncorrelatedAngleEnergy::UncorrelatedAngleEnergy(hid_t group)
 
     std::string type;
     read_attribute(energy_group, "type", type);
-    using UPtrEDist = unique_ptr<EnergyDistribution>;
     if (type == "discrete_photon") {
-      energy_ = UPtrEDist{new DiscretePhoton{energy_group}};
+      energy_ = make_unique<DiscretePhoton>(energy_group);
     } else if (type == "level") {
-      energy_ = UPtrEDist{new LevelInelastic{energy_group}};
+      energy_ = make_unique<LevelInelastic>(energy_group);
     } else if (type == "continuous") {
-      energy_ = UPtrEDist{new ContinuousTabular{energy_group}};
+      energy_ = make_unique<ContinuousTabular>(energy_group);
     } else if (type == "maxwell") {
-      energy_ = UPtrEDist{new MaxwellEnergy{energy_group}};
+      energy_ = make_unique<MaxwellEnergy>(energy_group);
     } else if (type == "evaporation") {
-      energy_ = UPtrEDist{new Evaporation{energy_group}};
+      energy_ = make_unique<Evaporation>(energy_group);
     } else if (type == "watt") {
-      energy_ = UPtrEDist{new WattEnergy{energy_group}};
+      energy_ = make_unique<WattEnergy>(energy_group);
     } else {
       warning(fmt::format("Energy distribution type '{}' not implemented.", type));
     }

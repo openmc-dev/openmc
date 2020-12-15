@@ -24,7 +24,7 @@ public:
   //! \param[in] E Particle energy in [eV]
   //! \param[inout] seed pseudorandom number seed pointer
   //! \return Cosine of the angle in the range [-1,1]
-  xsfloat sample(xsfloat E, uint64_t* seed) const;
+  HD xsfloat sample(xsfloat E, uint64_t* seed) const;
 
   //! Determine whether angle distribution is empty
   //! \return Whether distribution is empty

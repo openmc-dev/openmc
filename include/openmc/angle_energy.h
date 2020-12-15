@@ -1,6 +1,7 @@
 #ifndef OPENMC_ANGLE_ENERGY_H
 #define OPENMC_ANGLE_ENERGY_H
 
+#include "openmc/random_lcg.h"
 #include <cstdint>
 
 namespace openmc {
@@ -16,6 +17,7 @@ class AngleEnergy {
 public:
   HD virtual void sample(xsfloat E_in, xsfloat& E_out, xsfloat& mu,
     uint64_t* seed) const = 0;
+  AngleEnergy(AngleEnergy&&) = default;
   virtual ~AngleEnergy() = default;
 
   // Center of mass mu sampling

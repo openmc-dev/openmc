@@ -36,6 +36,9 @@ public:
   //! Construct reaction product from HDF5 data
   //! \param[in] group HDF5 group containing data
   explicit ReactionProduct(hid_t group);
+  ReactionProduct() = delete;
+  ReactionProduct(ReactionProduct const&) = delete;
+  ReactionProduct(ReactionProduct&&) = default;
 
   //! Sample an outgoing angle and energy
   //! \param[in] E_in Incoming energy in [eV]

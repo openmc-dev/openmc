@@ -21,7 +21,7 @@ public:
   };
 
   // Constructors
-  Library() { };
+  Library() = default;
   Library(pugi::xml_node node, const std::string& directory);
 
   // Comparison operator (for using in map)

@@ -397,13 +397,22 @@ public:
 
   // Constructors/operators that unique_ptr must rid of to attain its desired
   // functionality
-  unique_ptr() : ptr_dev(nullptr), ptr(nullptr) {}
+  __host__ __device__ unique_ptr() : ptr_dev(nullptr), ptr(nullptr) {}
   unique_ptr(unique_ptr const&) = delete;
   unique_ptr& operator=(unique_ptr const&) = delete;
-  unique_ptr& operator=(unique_ptr&& u)
+
+  // If this is running on the device, we assume that the
+  // destination does not hold any memory. This is because
+  // this is only called in that case when constructing stuff.
+  __host__ __device__ unique_ptr& operator=(unique_ptr&& u)
   {
+#ifndef __CUDA_ARCH__
     free_mem(); // free memory currently held, if any
     std::tie(ptr, ptr_dev) = u.release();
+#else
+    ptr = u.ptr;
+    ptr_dev = u.ptr_dev;
+#endif
     return *this;
   }
 

@@ -21,7 +21,7 @@ namespace openmc {
 class Distribution {
 public:
   virtual ~Distribution() = default;
-  virtual xsfloat sample(uint64_t* seed) const = 0;
+  HD virtual xsfloat sample(uint64_t* seed) const = 0;
 };
 
 //==============================================================================
@@ -36,7 +36,7 @@ public:
   //! Sample a value from the distribution
   //! \param seed Pseudorandom number seed pointer
   //! \return Sampled value
-  xsfloat sample(uint64_t* seed) const;
+  HD xsfloat sample(uint64_t* seed) const;
 
   // Properties
   const vector<xsfloat>& x() const { return x_; }
@@ -62,7 +62,7 @@ public:
   //! Sample a value from the distribution
   //! \param seed Pseudorandom number seed pointer
   //! \return Sampled value
-  xsfloat sample(uint64_t* seed) const;
+  HD xsfloat sample(uint64_t* seed) const;
 
   xsfloat a() const { return a_; }
   xsfloat b() const { return b_; }
@@ -83,7 +83,7 @@ public:
   //! Sample a value from the distribution
   //! \param seed Pseudorandom number seed pointer
   //! \return Sampled value
-  xsfloat sample(uint64_t* seed) const;
+  HD xsfloat sample(uint64_t* seed) const;
 
   double theta() const { return theta_; }
 private:
@@ -102,7 +102,7 @@ public:
   //! Sample a value from the distribution
   //! \param seed Pseudorandom number seed pointer
   //! \return Sampled value
-  xsfloat sample(uint64_t* seed) const;
+  HD xsfloat sample(uint64_t* seed) const;
 
   double a() const { return a_; }
   double b() const { return b_; }
@@ -123,7 +123,7 @@ public:
   //! Sample a value from the distribution
   //! \param seed Pseudorandom number seed pointer
   //! \return Sampled value
-  xsfloat sample(uint64_t* seed) const;
+  HD xsfloat sample(uint64_t* seed) const;
 
   double mean_value() const { return mean_value_; }
   double std_dev() const { return std_dev_; }
@@ -145,7 +145,7 @@ public:
   //! Sample a value from the distribution
   //! \param seed Pseudorandom number seed pointer
   //! \return Sampled value
-  xsfloat sample(uint64_t* seed) const;
+  HD xsfloat sample(uint64_t* seed) const;
 
   double e0() const { return e0_; }
   double m_rat() const { return m_rat_; }
@@ -172,7 +172,7 @@ public:
   //! Sample a value from the distribution
   //! \param seed Pseudorandom number seed pointer
   //! \return Sampled value
-  xsfloat sample(uint64_t* seed) const;
+  HD xsfloat sample(uint64_t* seed) const;
 
   // x property
   vector<xsfloat>& x() { return x_; }
@@ -205,7 +205,7 @@ public:
   //! Sample a value from the distribution
   //! \param seed Pseudorandom number seed pointer
   //! \return Sampled value
-  xsfloat sample(uint64_t* seed) const;
+  HD xsfloat sample(uint64_t* seed) const;
 
   const vector<xsfloat>& x() const { return x_; }
 

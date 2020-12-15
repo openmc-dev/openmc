@@ -48,7 +48,11 @@ xsfloat Discrete::sample(uint64_t* seed) const
       c += p_[i];
       if (xi < c) return x_[i];
     }
+#ifndef __CUDA_ARCH__
     throw std::runtime_error{"Error when sampling probability mass function."};
+#else
+    return 0;
+#endif
   } else {
     return x_[0];
   }
@@ -298,25 +302,24 @@ UPtrDist distribution_from_xml(pugi::xml_node node)
   std::string type = get_node_value(node, "type", true, true);
 
   // Allocate extension of Distribution
-  UPtrDist dist;
   if (type == "uniform") {
-    dist = UPtrDist{new Uniform(node)};
+    return make_unique<Uniform>(node);
   } else if (type == "maxwell") {
-    dist = UPtrDist{new Maxwell(node)};
+    return make_unique<Maxwell>(node);
   } else if (type == "watt") {
-    dist = UPtrDist{new Watt(node)};
+    return make_unique<Watt>(node);
   } else if (type == "normal") {
-    dist = UPtrDist{new Normal(node)};
+    return make_unique<Normal>(node);
   } else if (type == "muir") {
-    dist = UPtrDist{new Muir(node)};
+    return make_unique<Muir>(node);
   } else if (type == "discrete") {
-    dist = UPtrDist{new Discrete(node)};
+    return make_unique<Discrete>(node);
   } else if (type == "tabular") {
-    dist = UPtrDist{new Tabular(node)};
+    return make_unique<Tabular>(node);
   } else {
     openmc::fatal_error("Invalid distribution type: " + type);
+    return make_unique<Uniform>(node); // avoid CUDA compiler warning (sad)
   }
-  return dist;
 }
 
 } // namespace openmc

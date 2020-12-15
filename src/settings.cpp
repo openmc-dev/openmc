@@ -478,9 +478,9 @@ void read_settings_xml()
 
   // If no source specified, default to isotropic point source at origin with Watt spectrum
   if (model::external_sources.empty()) {
-    model::external_sources.push_back(make_unique<IndependentSource>(
-      UPtrSpace {new SpatialPoint({0.0, 0.0, 0.0})},
-      UPtrAngle {new Isotropic()}, UPtrDist {new Watt(0.988e6, 2.249e-6)}));
+    model::external_sources.push_back(
+      make_unique<IndependentSource>(make_unique<SpatialPoint>({0.0, 0.0, 0.0}),
+        make_unique<Isotropic>(), make_unique<Watt>(0.988e6, 2.249e-6)));
   }
 
   // Check if we want to write out source

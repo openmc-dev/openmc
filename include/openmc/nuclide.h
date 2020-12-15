@@ -32,6 +32,10 @@ public:
   // Types, aliases
   using EmissionMode = ReactionProduct::EmissionMode;
   struct EnergyGrid {
+
+    // Host-only constructor so as to not raise warnings
+    __host__ EnergyGrid() {}
+
     // See vector.h if you're trying to understand the CUDA version. Otherwise,
     // the things called replicated_vector are just normal std::vectors.
     replicated_vector<int> grid_index;

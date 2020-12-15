@@ -20,7 +20,7 @@ CartesianIndependent::CartesianIndependent(pugi::xml_node node)
     // If no distribution was specified, default to a single point at x=0
     xsfloat x[] {0.0};
     xsfloat p[] {1.0};
-    x_ = UPtrDist{new Discrete{x, p, 1}};
+    x_ = make_unique<Discrete>(x, p, 1);
   }
 
   // Read distribution for y coordinate
@@ -31,7 +31,7 @@ CartesianIndependent::CartesianIndependent(pugi::xml_node node)
     // If no distribution was specified, default to a single point at y=0
     xsfloat x[] {0.0};
     xsfloat p[] {1.0};
-    y_ = UPtrDist{new Discrete{x, p, 1}};
+    y_ = make_unique<Discrete>(x, p, 1);
   }
 
   // Read distribution for z coordinate
@@ -42,7 +42,7 @@ CartesianIndependent::CartesianIndependent(pugi::xml_node node)
     // If no distribution was specified, default to a single point at z=0
     xsfloat x[] {0.0};
     xsfloat p[] {1.0};
-    z_ = UPtrDist{new Discrete{x, p, 1}};
+    z_ = make_unique<Discrete>(x, p, 1);
   }
 }
 

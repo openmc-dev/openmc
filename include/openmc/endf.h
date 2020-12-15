@@ -44,6 +44,7 @@ public:
   Function1D() = default;
   Function1D(Function1D const&) = delete;
   Function1D(Function1D&&) = default;
+  Function1D& operator=(Function1D&&) = default;
 };
 
 //==============================================================================
@@ -55,6 +56,7 @@ public:
   //! Construct polynomial from HDF5 data
   //! \param[in] dset Dataset containing coefficients
   explicit Polynomial(hid_t dset);
+  Polynomial(Polynomial&&) = default;
 
   //! Evaluate the polynomials
   //! \param[in] x independent variable
@@ -71,6 +73,8 @@ private:
 class Tabulated1D : public Function1D {
 public:
   Tabulated1D() = default;
+  Tabulated1D& operator=(Tabulated1D&&) = default;
+  Tabulated1D(Tabulated1D&&) = default;
 
   //! Construct function from HDF5 data
   //! \param[in] dset Dataset containing tabulated data
@@ -101,6 +105,7 @@ private:
 class CoherentElasticXS : public Function1D {
 public:
   explicit CoherentElasticXS(hid_t dset);
+  CoherentElasticXS(CoherentElasticXS&&) = default;
 
   HD xsfloat operator()(xsfloat E) const override;
 
@@ -119,6 +124,7 @@ private:
 class IncoherentElasticXS : public Function1D {
 public:
   explicit IncoherentElasticXS(hid_t dset);
+  IncoherentElasticXS(IncoherentElasticXS&&) = default;
 
   HD xsfloat operator()(xsfloat E) const override;
 private:

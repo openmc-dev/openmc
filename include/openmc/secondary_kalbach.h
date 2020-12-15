@@ -29,18 +29,18 @@ public:
   //! \param[out] E_out Outgoing energy in [eV]
   //! \param[out] mu Outgoing cosine with respect to current direction
   //! \param[inout] seed Pseudorandom seed pointer
-  void sample(xsfloat E_in, xsfloat& E_out, xsfloat& mu,
+  HD void sample(xsfloat E_in, xsfloat& E_out, xsfloat& mu,
     uint64_t* seed) const override;
 private:
   //! Outgoing energy/angle at a single incoming energy
   struct KMTable {
     int n_discrete; //!< Number of discrete lines
     Interpolation interpolation; //!< Interpolation law
-    xt::xtensor<xsfloat, 1> e_out; //!< Outgoing energies [eV]
-    xt::xtensor<xsfloat, 1> p; //!< Probability density
-    xt::xtensor<xsfloat, 1> c; //!< Cumulative distribution
-    xt::xtensor<xsfloat, 1> r; //!< Pre-compound fraction
-    xt::xtensor<xsfloat, 1> a; //!< Parameterized function
+    vector<xsfloat> e_out; //!< Outgoing energies [eV]
+    vector<xsfloat> p; //!< Probability density
+    vector<xsfloat> c; //!< Cumulative distribution
+    vector<xsfloat> r; //!< Pre-compound fraction
+    vector<xsfloat> a; //!< Parameterized function
   };
 
   int n_region_; //!< Number of interpolation regions

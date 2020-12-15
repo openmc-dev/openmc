@@ -116,18 +116,18 @@ IndependentSource::IndependentSource(pugi::xml_node node)
       if (check_for_node(node_angle, "type"))
         type = get_node_value(node_angle, "type", true, true);
       if (type == "isotropic") {
-        angle_ = UPtrAngle{new Isotropic()};
+        angle_ = make_unique<Isotropic>();
       } else if (type == "monodirectional") {
-        angle_ = UPtrAngle{new Monodirectional(node_angle)};
+        angle_ = make_unique<Monodirectional>(node_angle);
       } else if (type == "mu-phi") {
-        angle_ = UPtrAngle{new PolarAzimuthal(node_angle)};
+        angle_ = make_unique<PolarAzimuthal>(node_angle);
       } else {
         fatal_error(fmt::format(
           "Invalid angular distribution for external source: {}", type));
       }
 
     } else {
-      angle_ = UPtrAngle{new Isotropic()};
+      angle_ = make_unique<Isotropic>();
     }
 
     // Determine external source energy distribution
@@ -136,7 +136,7 @@ IndependentSource::IndependentSource(pugi::xml_node node)
       energy_ = distribution_from_xml(node_dist);
     } else {
       // Default to a Watt spectrum with parameters 0.988 MeV and 2.249 MeV^-1
-      energy_ = UPtrDist{new Watt(0.988e6, 2.249e-6)};
+      energy_ = make_unique<Watt>(0.988e6, 2.249e-6);
     }
   }
 }

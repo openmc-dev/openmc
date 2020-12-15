@@ -58,7 +58,11 @@ void NBodyPhaseSpace::sample(xsfloat E_in, xsfloat& E_out, xsfloat& mu,
     y = -std::log(r1*r2*r3*r4) - std::log(r5) * std::pow(std::cos(PI/2.0*r6), 2);
     break;
   default:
+#ifdef __CUDA_ARCH__
+    asm("trap;");
+#else
     throw std::runtime_error{"N-body phase space with >5 bodies."};
+#endif
   }
 
   // Now determine v and E_out

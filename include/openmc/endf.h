@@ -10,6 +10,7 @@
 #include "hdf5.h"
 
 #include "openmc/constants.h"
+#include "openmc/serialize.h"
 
 namespace openmc {
 
@@ -78,6 +79,10 @@ public:
   //! \param[in] x independent variable
   //! \return Function evaluated at x
   double operator()(double x) const override;
+
+  size_t nbytes() const;
+
+  void serialize(DataBuffer& buffer) const;
 
   // Accessors
   const std::vector<double>& x() const { return x_; }

@@ -35,6 +35,13 @@ double DiscretePhoton::sample(double E, uint64_t* seed) const
   }
 }
 
+void DiscretePhoton::serialize(DataBuffer& buffer) const
+{
+  buffer.add(primary_flag_);
+  buffer.add(energy_);
+  buffer.add(A_);
+}
+
 //==============================================================================
 // LevelInelastic implementation
 //==============================================================================
@@ -48,6 +55,12 @@ LevelInelastic::LevelInelastic(hid_t group)
 double LevelInelastic::sample(double E, uint64_t* seed) const
 {
   return mass_ratio_*(E - threshold_);
+}
+
+void LevelInelastic::serialize(DataBuffer& buffer) const
+{
+  buffer.add(threshold_);
+  buffer.add(mass_ratio_);
 }
 
 //==============================================================================
@@ -264,6 +277,56 @@ double ContinuousTabular::sample(double E, uint64_t* seed) const
 
 }
 
+size_t ContinuousTabular::nbytes() const
+{
+  size_t n_region = n_region_;
+  size_t n_energy = energy_.size();
+
+  // Memory for breakpoints/interpolation
+  size_t n = 4 + (4 + 4)*n_region;
+
+  // Memory for incident energy grid and distributions
+  n += 8 + (4 + 8)*n_energy;
+  for (const auto& dist : distribution_) {
+    size_t n_eout = dist.e_out.size();
+    n += 4 + 4 + 8 + 8 * 3*n_eout;
+  }
+  return n;
+}
+
+void ContinuousTabular::serialize(DataBuffer& buffer) const
+{
+  buffer.add(n_region_);
+  buffer.add(breakpoints_);
+  std::vector<int> interp;
+  for (const auto& v : interpolation_) {
+    interp.push_back(static_cast<int>(v));
+  }
+  buffer.add(interp);
+  buffer.add(energy_.size());
+  buffer.add(energy_);
+
+  // Create locators
+  std::vector<int> locators;
+  int offset = 0;
+  for (const auto& dist : distribution_) {
+    locators.push_back(offset);
+    size_t n_eout = dist.e_out.size();
+    offset += 4 + 4 + 8 + 8 * 3*n_eout;
+  }
+  buffer.add(locators);
+
+  // Write distributions
+  for (const auto& dist : distribution_) {
+    buffer.add(static_cast<int>(dist.interpolation));
+    buffer.add(dist.n_discrete);
+    buffer.add(dist.e_out.size());
+    buffer.add(dist.e_out);
+    buffer.add(dist.p);
+    buffer.add(dist.c);
+  }
+}
+
 //==============================================================================
 // MaxwellEnergy implementation
 //==============================================================================
@@ -288,6 +351,12 @@ double MaxwellEnergy::sample(double E, uint64_t* seed) const
     // Accept energy based on restriction energy
     if (E_out <= E - u_) return E_out;
   }
+}
+
+void MaxwellEnergy::serialize(DataBuffer& buffer) const
+{
+  buffer.add(u_);
+  theta_.serialize(buffer);
 }
 
 //==============================================================================
@@ -321,6 +390,12 @@ double Evaporation::sample(double E, uint64_t* seed) const
   return x * theta;
 }
 
+void Evaporation::serialize(DataBuffer& buffer) const
+{
+  buffer.add(u_);
+  theta_.serialize(buffer);
+}
+
 //==============================================================================
 // WattEnergy implementation
 //==============================================================================
@@ -352,6 +427,20 @@ double WattEnergy::sample(double E, uint64_t* seed) const
     // Accept energy based on restriction energy
     if (E_out <= E - u_) return E_out;
   }
+}
+
+size_t WattEnergy::nbytes() const
+{
+  return 8 + 8 + a_.nbytes() + b_.nbytes();
+}
+
+void WattEnergy::serialize(DataBuffer& buffer) const
+{
+  buffer.add(u_);
+  size_t n = b_.nbytes();
+  buffer.add(n);
+  a_.serialize(buffer);
+  b_.serialize(buffer);
 }
 
 }

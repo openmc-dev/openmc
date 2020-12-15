@@ -11,6 +11,7 @@
 #include "pugixml.hpp"
 
 #include "openmc/constants.h"
+#include "openmc/serialize.h"
 
 namespace openmc {
 
@@ -172,6 +173,10 @@ public:
   //! \param seed Pseudorandom number seed pointer
   //! \return Sampled value
   double sample(uint64_t* seed) const;
+
+  size_t nbytes() const;
+
+  void serialize(DataBuffer& buffer) const;
 
   // x property
   std::vector<double>& x() { return x_; }

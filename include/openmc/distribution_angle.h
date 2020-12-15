@@ -9,6 +9,7 @@
 #include "hdf5.h"
 
 #include "openmc/distribution.h"
+#include "openmc/serialize.h"
 
 namespace openmc {
 
@@ -30,6 +31,10 @@ public:
   //! Determine whether angle distribution is empty
   //! \return Whether distribution is empty
   bool empty() const { return energy_.empty(); }
+
+  size_t nbytes() const;
+
+  void serialize(DataBuffer& buffer) const;
 
 private:
   std::vector<double> energy_;

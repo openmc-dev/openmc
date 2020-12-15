@@ -4,10 +4,8 @@
 #ifndef OPENMC_SECONDARY_UNIFIED_H
 #define OPENMC_SECONDARY_UNIFIED_H
 
-#include <cstdint> // for uint8_t
-#include <memory> // for unique_ptr
-
 #include "openmc/angle_energy.h"
+#include "openmc/serialize.h"
 
 namespace openmc {
 
@@ -16,17 +14,6 @@ enum AngleEnergyType {
   KALBACH_MANN,
   CORRELATED,
   NBODY
-};
-
-class DataBuffer {
-public:
-  explicit DataBuffer(size_t n);
-
-  void add(int value);
-  void add(double value);
-
-  std::unique_ptr<uint8_t[]> data_;
-  size_t offset_{0};
 };
 
 class UnifiedAngleEnergy : public AngleEnergy {
@@ -47,7 +34,6 @@ private:
   AngleEnergyType type_;
   DataBuffer buffer_;
 };
-
 
 } // namespace openmc
 

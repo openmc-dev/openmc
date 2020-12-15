@@ -71,4 +71,23 @@ UncorrelatedAngleEnergy::sample(double E_in, double& E_out, double& mu,
   E_out = energy_->sample(E_in, seed);
 }
 
+UnifiedAngleEnergy UncorrelatedAngleEnergy::serialize() const
+{
+  // Determine size of distribution
+  size_t n = angle_.nbytes();
+  if (energy_) {
+    n += energy_->nbytes();
+  }
+  DataBuffer buffer(n);
+
+  // Write locator for energy
+  buffer.add(energy_ ? n : 0);
+
+  // Create buffer and serialize data
+  angle_.serialize(buffer);
+  if (energy_) energy_->serialize(buffer);
+
+  return {AngleEnergyType::UNCORRELATED, std::move(buffer)};
+}
+
 } // namespace openmc

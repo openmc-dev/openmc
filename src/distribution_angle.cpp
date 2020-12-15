@@ -94,4 +94,35 @@ double AngleDistribution::sample(double E, uint64_t* seed) const
   return mu;
 }
 
+size_t AngleDistribution::nbytes() const
+{
+  size_t n_energy = energy_.size();
+  size_t n = (8 + 4)*n_energy;
+  for (const auto& dist : distribution_) {
+    n += dist->nbytes();
+  }
+  return n;
+}
+
+void AngleDistribution::serialize(DataBuffer& buffer) const
+{
+  int n = energy_.size();
+  buffer.add(n);
+  buffer.add(energy_);
+
+  // Create locators
+  std::vector<int> locators;
+  int offset = 0;
+  for (const auto& dist : distribution_) {
+    locators.push_back(offset);
+    offset += dist->nbytes();
+  }
+  buffer.add(locators);
+
+  // Write distributions
+  for (const auto& dist : distribution_) {
+    dist->serialize(buffer);
+  }
+}
+
 } // namespace openmc

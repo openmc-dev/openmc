@@ -209,6 +209,25 @@ double Tabulated1D::operator()(double x) const
   }
 }
 
+size_t Tabulated1D::nbytes() const
+{
+  return 8 + (4 + 4)*n_regions_ + 8 + (8 + 8)*n_pairs_;
+}
+
+void Tabulated1D::serialize(DataBuffer& buffer) const
+{
+  buffer.add(n_regions_);
+  buffer.add(nbt_);
+  std::vector<int> interp;
+  for (auto x : int_) {
+    interp.push_back(static_cast<int>(x));
+  }
+  buffer.add(interp);
+  buffer.add(n_pairs_);
+  buffer.add(x_);
+  buffer.add(y_);
+}
+
 //==============================================================================
 // CoherentElasticXS implementation
 //==============================================================================

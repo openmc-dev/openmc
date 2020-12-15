@@ -2,10 +2,11 @@
 
 #include "openmc/constants.h"
 #include "openmc/cross_sections.h"
+#include "openmc/error.h" // for writing messages
 #include "openmc/hdf5_interface.h"
 #include "openmc/math_functions.h"
+#include "openmc/memory.h"
 #include "openmc/nuclide.h"
-#include "openmc/error.h"  // for writing messages
 
 #include <fmt/core.h>
 

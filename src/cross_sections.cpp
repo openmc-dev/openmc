@@ -11,6 +11,7 @@
 #include "openmc/file_utils.h"
 #include "openmc/hdf5_interface.h"
 #include "openmc/material.h"
+#include "openmc/memory.h"
 #include "openmc/message_passing.h"
 #include "openmc/mgxs_interface.h"
 #include "openmc/nuclide.h"
@@ -20,8 +21,8 @@
 #include "openmc/string_utils.h"
 #include "openmc/timer.h"
 #include "openmc/thermal.h"
-#include "openmc/xml_interface.h"
 #include "openmc/wmp.h"
+#include "openmc/xml_interface.h"
 
 #include "pugixml.hpp"
 

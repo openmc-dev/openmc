@@ -190,6 +190,14 @@ ThermalScattering::has_nuclide(const char* name) const
 
 ThermalData::ThermalData(hid_t group)
 {
+  // There is no good way to tell CUDA to NOT compile device code
+  // for this, because it's a class where we call emplace_back on
+  // an openmc::vector, which is a device function. This would be
+  // possible if we could SFINAE for whether a device constructor
+  // exists. Unforunately, this macro trick has to be used instead.
+#ifdef __CUDA_ARCH__
+  __trap();
+#else
   // Coherent/incoherent elastic data
   if (object_exists(group, "elastic")) {
     // Read cross section data
@@ -240,6 +248,7 @@ ThermalData::ThermalData(hid_t group)
 
     close_group(inelastic_group);
   }
+#endif
 }
 
 void

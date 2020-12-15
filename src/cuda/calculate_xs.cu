@@ -9,6 +9,7 @@ __constant__ unique_ptr<Nuclide>* nuclides;
 __constant__ Particle* particles;
 __constant__ NuclideMicroXS* micros;
 __constant__ double energy_min_neutron;
+__constant__ double energy_max_neutron;
 __constant__ double log_spacing;
 __constant__ unsigned number_nuclides;
 __constant__ bool need_depletion_rx;

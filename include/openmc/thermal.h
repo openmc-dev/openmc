@@ -57,7 +57,7 @@ public:
 private:
   struct Reaction {
     // Default constructor
-    Reaction() { }
+    Reaction() = default;
 
     // Data members
     unique_ptr<Function1D> xs; //!< Cross section

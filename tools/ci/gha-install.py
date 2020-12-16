@@ -47,6 +47,7 @@ def install(omp=False, mpi=False, phdf5=False, dagmc=False):
 
     if dagmc:
         cmake_cmd.append('-Ddagmc=ON')
+        cmake_cmd.append('-DCMAKE_PREFIX_PATH=~/DAGMC')
 
     # Build in coverage mode for coverage testing
     cmake_cmd.append('-Dcoverage=on')

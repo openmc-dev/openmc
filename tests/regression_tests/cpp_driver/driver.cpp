@@ -2,6 +2,7 @@
 #include "openmc/capi.h"
 #include "openmc/cell.h"
 #include "openmc/geometry.h"
+#include "openmc/message_passing.h"
 #include "openmc/summary.h"
 #include "openmc/tallies/filter.h"
 #include "openmc/tallies/filter_cell.h"
@@ -48,7 +49,11 @@ int main(int argc, char** argv) {
   // the summary file will be used to check that
   // temperatures were set correctly so clear
   // error output can be provided
+#ifdef OPENMC_MPI
+  if (openmc::mpi::master) openmc::write_summary();
+#else
   openmc::write_summary();
+#endif
 
   openmc_run();
   openmc_finalize();

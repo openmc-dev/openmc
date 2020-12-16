@@ -1,23 +1,23 @@
 #!/bin/bash
 set -ex
 
-# Install NJOY 2016
-./tools/ci/travis-install-njoy.sh
-
-# Install DAGMC if needed
-if [[ $DAGMC = 'y' ]]; then
-    ./tools/ci/travis-install-dagmc.sh
-fi
-
-# Install vectfit for WMP generation if needed
-if [[ $VECTFIT = 'y' ]]; then
-    ./tools/ci/travis-install-vectfit.sh
-fi
-
 # Upgrade pip, pytest, numpy before doing anything else
 pip install --upgrade pip
 pip install --upgrade pytest
 pip install --upgrade numpy
+
+# Install NJOY 2016
+./tools/ci/gha-install-njoy.sh
+
+# Install DAGMC if needed
+if [[ $DAGMC = 'y' ]]; then
+    ./tools/ci/gha-install-dagmc.sh
+fi
+
+# Install vectfit for WMP generation if needed
+if [[ $VECTFIT = 'y' ]]; then
+    ./tools/ci/gha-install-vectfit.sh
+fi
 
 # Install mpi4py for MPI configurations
 if [[ $MPI == 'y' ]]; then
@@ -25,7 +25,7 @@ if [[ $MPI == 'y' ]]; then
 fi
 
 # Build and install OpenMC executable
-python tools/ci/travis-install.py
+python tools/ci/gha-install.py
 
 # Install Python API in editable mode
 pip install -e .[test,vtk]

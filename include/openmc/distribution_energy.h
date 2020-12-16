@@ -74,6 +74,19 @@ private:
   double A_; //!< Atomic weight ratio of the target nuclide
 };
 
+class DiscretePhotonFlat {
+public:
+  explicit DiscretePhotonFlat(const uint8_t* data) : data_(data) { }
+
+  double sample(double E, uint64_t* seed) const;
+private:
+  int primary_flag() const { return *reinterpret_cast<const int*>(data_); }
+  double energy() const { return *reinterpret_cast<const double*>(data_ + 4); }
+  double A() const { return *reinterpret_cast<const double*>(data_ + 12); }
+
+  const uint8_t* data_;
+};
+
 //===============================================================================
 //! Level inelastic scattering distribution
 //===============================================================================
@@ -94,6 +107,18 @@ public:
 private:
   double threshold_; //!< Energy threshold in lab, (A + 1)/A * |Q|
   double mass_ratio_; //!< (A/(A+1))^2
+};
+
+class LevelInelasticFlat {
+public:
+  explicit LevelInelasticFlat(const uint8_t* data) : data_(data) { }
+
+  double sample(double E, uint64_t* seed) const;
+private:
+  double threshold() const { return *reinterpret_cast<const double*>(data_); }
+  double mass_ratio() const { return *reinterpret_cast<const double*>(data_ + 8); }
+
+  const uint8_t* data_;
 };
 
 //===============================================================================
@@ -190,6 +215,19 @@ private:
   double u_; //!< Restriction energy
 };
 
+class MaxwellFlat {
+public:
+  explicit MaxwellFlat(const uint8_t* data) : data_(data) { }
+
+  double sample(double E, uint64_t* seed) const;
+
+private:
+  double u() const;
+  Tabulated1DFlat theta() const;
+
+  const uint8_t* data_;
+};
+
 //===============================================================================
 //! Energy distribution of neutrons emitted from a Watt fission spectrum. This
 //! corresponds to ACE law 11 and ENDF File 5, LF=11.
@@ -212,6 +250,20 @@ private:
   Tabulated1D a_; //!< Energy-dependent 'a' parameter
   Tabulated1D b_; //!< Energy-dependent 'b' parameter
   double u_; //!< Restriction energy
+};
+
+class WattFlat {
+public:
+  explicit WattFlat(const uint8_t* data) : data_(data) { }
+
+  double sample(double E, uint64_t* seed) const;
+
+private:
+  Tabulated1DFlat a() const;
+  Tabulated1DFlat b() const;
+  double u() const;
+
+  const uint8_t* data_;
 };
 
 } // namespace openmc

@@ -132,9 +132,11 @@ AngleDistributionFlat::AngleDistributionFlat(const uint8_t* data) : data_(data)
 
 double AngleDistributionFlat::sample(double E, uint64_t* seed) const
 {
+  // If angle distribution is empty, sample isotropic
+  if (n_ == 0) return 2.0*prn(seed) - 1.0;
+
   // Determine number of incoming energies
   auto energy = this->energy();
-  auto n = energy.size();
 
   // Find energy bin and calculate interpolation factor -- if the energy is
   // outside the range of the tabulated energies, choose the first or last bins
@@ -143,8 +145,8 @@ double AngleDistributionFlat::sample(double E, uint64_t* seed) const
   if (E < energy[0]) {
     i = 0;
     r = 0.0;
-  } else if (E > energy[n - 1]) {
-    i = n - 2;
+  } else if (E > energy[n_ - 1]) {
+    i = n_ - 2;
     r = 1.0;
   } else {
     i = lower_bound_index(energy.begin(), energy.end(), E);

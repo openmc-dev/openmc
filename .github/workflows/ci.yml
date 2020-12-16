@@ -15,7 +15,6 @@ on:
 
 env:
   MPI_DIR: /usr
-  DAGMC_ROOT: $HOME/DAGMC
   HDF5_ROOT: /usr
   OMP_NUM_THREADS: 2
   COVERALLS_PARALLEL: true
@@ -75,8 +74,9 @@ jobs:
       -
         name: Environment Variables
         run: |
-          echo "OPENMC_CROSS_SECTIONS=${{ env.HOME }}/nndc_hdf5/cross_sections.xml" >> $GITHUB_ENV
-          echo "OPENMC_ENDF_DATA=${{ env.HOME }}/endf-b-vii.1" >> $GITHUB_ENV
+          echo "DAGMC_ROOT=$HOME/DAGMC"
+          echo "OPENMC_CROSS_SECTIONS=$HOME/nndc_hdf5/cross_sections.xml" >> $GITHUB_ENV
+          echo "OPENMC_ENDF_DATA=$HOME/endf-b-vii.1" >> $GITHUB_ENV
 
       -
         name: Apt dependencies

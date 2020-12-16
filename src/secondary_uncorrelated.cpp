@@ -78,7 +78,7 @@ UnifiedAngleEnergy UncorrelatedAngleEnergy::serialize() const
   if (energy_) {
     n += energy_->nbytes();
   }
-  DataBuffer buffer(n);
+  DataBuffer buffer(n + 8);
 
   // Write locator for energy
   buffer.add(energy_ ? n : 0);
@@ -88,6 +88,13 @@ UnifiedAngleEnergy UncorrelatedAngleEnergy::serialize() const
   if (energy_) energy_->serialize(buffer);
 
   return {AngleEnergyType::UNCORRELATED, std::move(buffer)};
+}
+
+void
+UncorrelatedAngleEnergyFlat::sample(double E_in, double& E_out, double& mu, uint64_t* seed) const
+{
+  AngleDistributionFlat angle(data_ + 8);
+  mu = angle.sample(E_in, seed);
 }
 
 } // namespace openmc

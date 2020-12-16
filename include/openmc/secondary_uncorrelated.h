@@ -46,7 +46,7 @@ private:
 
 class UncorrelatedAngleEnergyFlat : public AngleEnergy {
 public:
-  explicit UncorrelatedAngleEnergyFlat(uint8_t* data) : data_(data) { }
+  explicit UncorrelatedAngleEnergyFlat(const uint8_t* data) : data_(data) { }
 
   //! Sample distribution for an angle and energy
   //! \param[in] E_in Incoming energy in [eV]
@@ -55,7 +55,7 @@ public:
   //! \param[inout] seed Pseudorandom seed pointer
   void sample(double E_in, double& E_out, double& mu, uint64_t* seed) const override;
 private:
-  uint8_t* data_;
+  const uint8_t* data_;
 };
 
 } // namespace openmc

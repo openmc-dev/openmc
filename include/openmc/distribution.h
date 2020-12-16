@@ -8,6 +8,7 @@
 #include <memory> // for unique_ptr
 #include <vector> // for vector
 
+#include <gsl/gsl>
 #include "pugixml.hpp"
 
 #include "openmc/constants.h"
@@ -195,6 +196,21 @@ private:
   //! \param n Number of tabulated values
   void init(const double* x, const double* p, std::size_t n,
             const double* c=nullptr);
+};
+
+class TabularFlat : public Distribution {
+public:
+  explicit TabularFlat(const uint8_t* data);
+
+  double sample(uint64_t* seed) const;
+private:
+  Interpolation interp() const;
+  gsl::span<const double> x() const;
+  gsl::span<const double> p() const;
+  gsl::span<const double> c() const;
+
+  const uint8_t* data_;
+  size_t n_;
 };
 
 //==============================================================================

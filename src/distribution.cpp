@@ -279,6 +279,77 @@ void Tabular::serialize(DataBuffer& buffer) const
   buffer.add(c_);
 }
 
+TabularFlat::TabularFlat(const uint8_t* data) : data_(data)
+{
+  n_ = *reinterpret_cast<const int*>(data_ + 4);
+}
+
+double TabularFlat::sample(uint64_t* seed) const
+{
+  // Sample value of CDF
+  double c = prn(seed);
+
+  auto x_ = this->x();
+  auto p_ = this->p();
+  auto c_ = this->c();
+
+  // Find first CDF bin which is above the sampled value
+  double c_i = c_[0];
+  int i;
+  std::size_t n = c_.size();
+  for (i = 0; i < n - 1; ++i) {
+    if (c <= c_[i+1]) break;
+    c_i = c_[i+1];
+  }
+
+  // Determine bounding PDF values
+  double x_i = x_[i];
+  double p_i = p_[i];
+
+  if (this->interp() == Interpolation::histogram) {
+    // Histogram interpolation
+    if (p_i > 0.0) {
+      return x_i + (c - c_i)/p_i;
+    } else {
+      return x_i;
+    }
+  } else {
+    // Linear-linear interpolation
+    double x_i1 = x_[i + 1];
+    double p_i1 = p_[i + 1];
+
+    double m = (p_i1 - p_i)/(x_i1 - x_i);
+    if (m == 0.0) {
+      return x_i + (c - c_i)/p_i;
+    } else {
+      return x_i + (std::sqrt(std::max(0.0, p_i*p_i + 2*m*(c - c_i))) - p_i)/m;
+    }
+  }
+}
+
+Interpolation TabularFlat::interp() const
+{
+  return static_cast<Interpolation>(*reinterpret_cast<const int*>(data_));
+}
+
+gsl::span<const double> TabularFlat::x() const
+{
+  auto start = reinterpret_cast<const double*>(data_ + 8);
+  return {start, n_};
+}
+
+gsl::span<const double> TabularFlat::p() const
+{
+  auto start = reinterpret_cast<const double*>(data_ + 8 + 8*n_);
+  return {start, n_};
+}
+
+gsl::span<const double> TabularFlat::c() const
+{
+  auto start = reinterpret_cast<const double*>(data_ + 8 + 2*8*n_);
+  return {start, n_};
+}
+
 //==============================================================================
 // Equiprobable implementation
 //==============================================================================

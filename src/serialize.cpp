@@ -33,20 +33,20 @@ void DataBuffer::add(size_t value)
 
 void DataBuffer::add(const std::vector<int>& value)
 {
-  auto data_int = reinterpret_cast<int*>(data_.get() + offset_);
-  std::memcpy(data_int, value.data(), value.size());
+  std::memcpy(data_.get() + offset_, value.data(), 4*value.size());
+  offset_ += 4*value.size();
 }
 
 void DataBuffer::add(const std::vector<double>& value)
 {
-  auto data_double = reinterpret_cast<int*>(data_.get() + offset_);
-  std::memcpy(data_double, value.data(), value.size());
+  std::memcpy(data_.get() + offset_, value.data(), 8*value.size());
+  offset_ += 8*value.size();
 }
 
 void DataBuffer::add(const xt::xtensor<double, 1>& value)
 {
-  auto data_double = reinterpret_cast<int*>(data_.get() + offset_);
-  std::memcpy(data_double, value.data(), value.size());
+  std::memcpy(data_.get() + offset_, value.data(), 8*value.size());
+  offset_ += 8*value.size();
 }
 
 

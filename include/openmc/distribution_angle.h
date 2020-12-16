@@ -7,6 +7,7 @@
 #include <vector> // for vector
 
 #include "hdf5.h"
+#include <gsl/gsl>
 
 #include "openmc/distribution.h"
 #include "openmc/serialize.h"
@@ -39,6 +40,21 @@ public:
 private:
   std::vector<double> energy_;
   std::vector<std::unique_ptr<Tabular>> distribution_;
+};
+
+class AngleDistributionFlat {
+public:
+  explicit AngleDistributionFlat(const uint8_t* data);
+
+  double sample(double E, uint64_t* seed) const;
+
+  bool empty() const { return energy().empty(); }
+
+  gsl::span<const double> energy() const;
+  TabularFlat distribution(gsl::index i) const;
+private:
+  const uint8_t* data_;
+  size_t n_;
 };
 
 } // namespace openmc

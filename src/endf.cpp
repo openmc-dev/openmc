@@ -223,6 +223,7 @@ void Tabulated1D::serialize(DataBuffer& buffer) const
     interp.push_back(static_cast<int>(x));
   }
   buffer.add(interp);
+
   buffer.add(n_pairs_);
   buffer.add(x_);
   buffer.add(y_);

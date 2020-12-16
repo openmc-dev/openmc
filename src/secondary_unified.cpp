@@ -1,6 +1,7 @@
 #include "openmc/secondary_unified.h"
 
 #include "openmc/secondary_nbody.h"
+#include "openmc/secondary_uncorrelated.h"
 
 namespace openmc {
 
@@ -12,14 +13,20 @@ UnifiedAngleEnergy::sample(double E_in, double& E_out, double& mu, uint64_t* see
 {
   switch (type_) {
   case AngleEnergyType::UNCORRELATED:
+    {
+      UncorrelatedAngleEnergyFlat dist(this->data());
+      dist.sample(E_in, E_out, mu, seed);
+    }
     break;
   case AngleEnergyType::KALBACH_MANN:
     break;
   case AngleEnergyType::CORRELATED:
     break;
   case AngleEnergyType::NBODY:
-    NBodyPhaseSpaceFlat dist(this->data());
-    dist.sample(E_in, E_out, mu, seed);
+    {
+      NBodyPhaseSpaceFlat dist(this->data());
+      dist.sample(E_in, E_out, mu, seed);
+    }
     break;
   }
 }

@@ -66,8 +66,6 @@ jobs:
       -
         name: Environment Variables
         run: |
-          echo "OPENMC_CROSS_SECTIONS=$HOME/nndc_hdf5/cross_sections.xml" >> $GITHUB_ENV
-          echo "OPENMC_ENDF_DATA=$HOME/endf-b-vii.1" >> $GITHUB_ENV
           echo "MPI=${{ matrix.mpi }}" >> $GITHUB_ENV
           echo "PHDF5=${{ matrix.mpi }}" >> $GITHUB_ENV
           echo "OMP=${{ matrix.omp }}" >> $GITHUB_ENV
@@ -90,16 +88,16 @@ jobs:
         shell: bash
         run: |
           echo "$HOME/NJOY2016/build" >> $GITHUB_PATH
-          $GITHUB_WORKSPACE/tools/ci/travis-install.sh
+          $GITHUB_WORKSPACE/tools/ci/gha-install.sh
       - 
         name: before
         shell: bash
-        run: $GITHUB_WORKSPACE/tools/ci/travis-before-script.sh
+        run: $GITHUB_WORKSPACE/tools/ci/gha-before-script.sh
 
       -
         name: test
         shell: bash
-        run: $GITHUB_WORKSPACE/tools/ci/travis-script.sh
+        run: $GITHUB_WORKSPACE/tools/ci/gha-script.sh
 
       - 
         name: after_success
@@ -107,3 +105,13 @@ jobs:
         run: |
           cpp-coveralls -i src -i include --exclude-pattern "/usr/*" --dump cpp_cov.json
           coveralls --merge=cpp_cov.json
+
+  finish:
+    needs: main
+    runs-on: ubuntu-latest
+    steps:
+    - name: Coveralls Finished
+      uses: coverallsapp/github-action@master
+      with:
+        github-token: ${{ secrets.github_token }}
+        parallel-finished: true

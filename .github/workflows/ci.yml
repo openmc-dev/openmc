@@ -1,6 +1,9 @@
 name: CI
 
 on:
+  # allows us to run workflows manually
+  workflow_dispatch:
+
   pull_request:
     branches:
       - develop
@@ -15,8 +18,6 @@ env:
   DAGMC_ROOT: $HOME/DAGMC
   HDF5_ROOT: /usr
   OMP_NUM_THREADS: 2
-  OPENMC_CROSS_SECTIONS: $HOME/nndc_hdf5/cross_sections.xml
-  OPENMC_ENDF_DATA: $HOME/endf-b-vii.1
   COVERALLS_PARALLEL: true
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -53,6 +54,14 @@ jobs:
             omp: n
             mpi: y
 
+    env:
+      MPI: ${{ matrix.mpi }}
+      PHDF5: ${{ matrix.mpi }}
+      OMP: ${{ matrix.omp }}
+      DAGMC: ${{ matrix.dagmc }}
+      EVENT: ${{ matrix.event }}
+      VECTFIT: ${{ matrix.vectfit }}
+
     steps:
       -
         uses: actions/checkout@v2
@@ -66,13 +75,9 @@ jobs:
       -
         name: Environment Variables
         run: |
-          echo "MPI=${{ matrix.mpi }}" >> $GITHUB_ENV
-          echo "PHDF5=${{ matrix.mpi }}" >> $GITHUB_ENV
-          echo "OMP=${{ matrix.omp }}" >> $GITHUB_ENV
-          echo "DAGMC=${{ matrix.dagmc }}" >> $GITHUB_ENV
-          echo "EVENT=${{ matrix.event }}" >> $GITHUB_ENV
-          echo "VECTFIT=${{ matrix.vectfit }}" >> $GITHUB_ENV
-          
+          echo "OPENMC_CROSS_SECTIONS=${{ env.HOME }}/nndc_hdf5/cross_sections.xml" >> $GITHUB_ENV
+          echo "OPENMC_ENDF_DATA=${{ env.HOME }}/endf-b-vii.1" >> $GITHUB_ENV
+
       -
         name: Apt dependencies
         shell: bash

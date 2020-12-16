@@ -1,7 +1,7 @@
 # OpenMC Monte Carlo Particle Transport Code
 
 [![License](https://img.shields.io/github/license/openmc-dev/openmc.svg)](http://openmc.readthedocs.io/en/latest/license.html)
-[![GitHub Actions build status (Linux)](https://github.com/pshriwise/openmc/workflows/CI/badge.svg?branch=develop)](https://github.com/openmc-dev/openmc/actions)
+[![GitHub Actions build status (Linux)](https://github.com/openmc-dev/openmc/workflows/CI/badge.svg?branch=develop)](https://github.com/openmc-dev/openmc/actions)
 [![Code Coverage](https://coveralls.io/repos/github/openmc-dev/openmc/badge.svg?branch=develop)](https://coveralls.io/github/openmc-dev/openmc?branch=develop)
 
 The OpenMC project aims to provide a fully-featured Monte Carlo particle

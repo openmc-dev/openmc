@@ -13,6 +13,7 @@
 #include "openmc/angle_energy.h"
 #include "openmc/constants.h"
 #include "openmc/endf.h"
+#include "openmc/secondary_unified.h"
 
 namespace openmc {
 
@@ -31,8 +32,9 @@ public:
   //! \param[out] E_out Outgoing energy in [eV]
   //! \param[out] mu Outgoing cosine with respect to current direction
   //! \param[inout] seed Pseudorandom seed pointer
-  void sample(double E_in, double& E_out, double& mu,
-    uint64_t* seed) const override;
+  void sample(double E_in, double& E_out, double& mu, uint64_t* seed) const override;
+
+  UnifiedAngleEnergy serialize() const;
 private:
   //! Outgoing energy/angle at a single incoming energy
   struct KMTable {
@@ -51,6 +53,38 @@ private:
   std::vector<double> energy_; //!< Energies [eV] at which distributions
                                //!< are tabulated
   std::vector<KMTable> distribution_; //!< Distribution at each energy
+};
+
+class KMTableFlat {
+public:
+  explicit KMTableFlat(const uint8_t* data);
+
+  int n_discrete() const;
+  Interpolation interpolation() const;
+  gsl::span<const double> e_out() const;
+  gsl::span<const double> p() const;
+  gsl::span<const double> c() const;
+  gsl::span<const double> r() const;
+  gsl::span<const double> a() const;
+private:
+  const uint8_t* data_;
+  size_t n_eout_;
+};
+
+class KalbachMannFlat : AngleEnergy {
+public:
+  explicit KalbachMannFlat(const uint8_t* data);
+
+  void sample(double E_in, double& E_out, double& mu, uint64_t* seed) const;
+private:
+  gsl::span<const int> breakpoints() const;
+  Interpolation interpolation(gsl::index i) const;
+  gsl::span<const double> energy() const;
+  KMTableFlat distribution(gsl::index i) const;
+
+  const uint8_t* data_;
+  size_t n_region_;
+  size_t n_energy_;
 };
 
 } // namespace openmc

@@ -229,6 +229,97 @@ void Tabulated1D::serialize(DataBuffer& buffer) const
   buffer.add(y_);
 }
 
+Tabulated1DFlat::Tabulated1DFlat(const uint8_t* data) : data_(data)
+{
+  n_regions_ = *reinterpret_cast<const size_t*>(data_);
+  n_pairs_ = *reinterpret_cast<const size_t*>(data_ + 8 + (4 + 4)*n_regions_);
+}
+
+double Tabulated1DFlat::operator()(double x) const
+{
+  auto nbt_ = this->nbt();
+  auto x_ = this->x();
+  auto y_ = this->y();
+
+  // find which bin the abscissa is in -- if the abscissa is outside the
+  // tabulated range, the first or last point is chosen, i.e. no interpolation
+  // is done outside the energy range
+  int i;
+  if (x < x_[0]) {
+    return y_[0];
+  } else if (x > x_[n_pairs_ - 1]) {
+    return y_[n_pairs_ - 1];
+  } else {
+    i = lower_bound_index(x_.begin(), x_.end(), x);
+  }
+
+  // determine interpolation scheme
+  Interpolation interp;
+  if (n_regions_ == 0) {
+    interp = Interpolation::lin_lin;
+  } else {
+    interp = this->interp(0);
+    for (int j = 0; j < n_regions_; ++j) {
+      if (i < nbt_[j]) {
+        interp = this->interp(j);
+        break;
+      }
+    }
+  }
+
+  // handle special case of histogram interpolation
+  if (interp == Interpolation::histogram) return y_[i];
+
+  // determine bounding values
+  double x0 = x_[i];
+  double x1 = x_[i + 1];
+  double y0 = y_[i];
+  double y1 = y_[i + 1];
+
+  // determine interpolation factor and interpolated value
+  double r;
+  switch (interp) {
+  case Interpolation::lin_lin:
+    r = (x - x0)/(x1 - x0);
+    return y0 + r*(y1 - y0);
+  case Interpolation::lin_log:
+    r = log(x/x0)/log(x1/x0);
+    return y0 + r*(y1 - y0);
+  case Interpolation::log_lin:
+    r = (x - x0)/(x1 - x0);
+    return y0*exp(r*log(y1/y0));
+  case Interpolation::log_log:
+    r = log(x/x0)/log(x1/x0);
+    return y0*exp(r*log(y1/y0));
+  default:
+    throw std::runtime_error{"Invalid interpolation scheme."};
+  }
+}
+
+gsl::span<const int> Tabulated1DFlat::nbt() const
+{
+  auto start = reinterpret_cast<const int*>(data_ + 8);
+  return {start, n_regions_};
+}
+
+Interpolation Tabulated1DFlat::interp(gsl::index i) const
+{
+  auto start = reinterpret_cast<const int*>(data_ + 8 + 4*n_regions_);
+  return static_cast<Interpolation>(start[i]);
+}
+
+gsl::span<const double> Tabulated1DFlat::x() const
+{
+  auto start = reinterpret_cast<const double*>(data_ + 16 + (4 + 4)*n_regions_);
+  return {start, n_pairs_};
+}
+
+gsl::span<const double> Tabulated1DFlat::y() const
+{
+  auto start = reinterpret_cast<const double*>(data_ + 16 + (4 + 4)*n_regions_ + 8*n_pairs_);
+  return {start, n_pairs_};
+}
+
 //==============================================================================
 // CoherentElasticXS implementation
 //==============================================================================

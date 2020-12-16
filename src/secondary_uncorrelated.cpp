@@ -73,15 +73,17 @@ UncorrelatedAngleEnergy::sample(double E_in, double& E_out, double& mu,
 
 UnifiedAngleEnergy UncorrelatedAngleEnergy::serialize() const
 {
-  // Determine size of distribution
-  size_t n = angle_.nbytes();
+  // Determine size of angular distribution
+  size_t bytes_angle = angle_.nbytes();
+
+  size_t n = 8 + bytes_angle;
   if (energy_) {
     n += energy_->nbytes();
   }
-  DataBuffer buffer(n + 8);
+  DataBuffer buffer(n);
 
   // Write locator for energy
-  buffer.add(energy_ ? n : 0);
+  buffer.add(energy_ ? 8 + bytes_angle : 0);
 
   // Create buffer and serialize data
   angle_.serialize(buffer);
@@ -90,11 +92,28 @@ UnifiedAngleEnergy UncorrelatedAngleEnergy::serialize() const
   return {AngleEnergyType::UNCORRELATED, std::move(buffer)};
 }
 
+AngleDistributionFlat UncorrelatedAngleEnergyFlat::angle() const
+{
+  return AngleDistributionFlat(data_ + 8);
+}
+
+EnergyDistributionFlat UncorrelatedAngleEnergyFlat::energy() const
+{
+  size_t offset = *reinterpret_cast<const size_t*>(data_);
+
+  // Determine type
+  auto type = static_cast<EnergyDistType>(*reinterpret_cast<const int*>(data_ + offset));
+  return EnergyDistributionFlat(type, data_ + offset + 4);
+}
+
 void
 UncorrelatedAngleEnergyFlat::sample(double E_in, double& E_out, double& mu, uint64_t* seed) const
 {
-  AngleDistributionFlat angle(data_ + 8);
-  mu = angle.sample(E_in, seed);
+  // Sample cosine of scattering angle
+  mu = this->angle().sample(E_in, seed);
+
+  // Sample outgoing energy
+  E_out = this->energy().sample(E_in, seed);
 }
 
 } // namespace openmc

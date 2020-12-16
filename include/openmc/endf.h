@@ -8,6 +8,7 @@
 #include <vector>
 
 #include "hdf5.h"
+#include <gsl/gsl>
 
 #include "openmc/constants.h"
 #include "openmc/serialize.h"
@@ -94,6 +95,23 @@ private:
   std::size_t n_pairs_; //!< number of (x,y) pairs
   std::vector<double> x_; //!< values of abscissa
   std::vector<double> y_; //!< values of ordinate
+};
+
+class Tabulated1DFlat {
+public:
+  explicit Tabulated1DFlat(const uint8_t* data);
+
+  double operator()(double x) const;
+
+private:
+  gsl::span<const int> nbt() const;
+  Interpolation interp(gsl::index i) const;
+  gsl::span<const double> x() const;
+  gsl::span<const double> y() const;
+
+  const uint8_t* data_;
+  size_t n_regions_;
+  size_t n_pairs_;
 };
 
 //==============================================================================

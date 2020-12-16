@@ -54,6 +54,9 @@ public:
   //! \param[out] mu Outgoing cosine with respect to current direction
   //! \param[inout] seed Pseudorandom seed pointer
   void sample(double E_in, double& E_out, double& mu, uint64_t* seed) const override;
+
+  AngleDistributionFlat angle() const;
+  EnergyDistributionFlat energy() const;
 private:
   const uint8_t* data_;
 };

@@ -15,6 +15,27 @@
 
 namespace openmc {
 
+double EnergyDistributionFlat::sample(double E, uint64_t* seed) const
+{
+  switch (type_) {
+  case EnergyDistType::DISCRETE_PHOTON:
+    break;
+  case EnergyDistType::LEVEL_INELASTIC:
+    break;
+  case EnergyDistType::CONTINUOUS_TABULAR:
+    break;
+  case EnergyDistType::EVAPORATION:
+    {
+      EvaporationFlat dist(data_);
+      return dist.sample(E, seed);
+    }
+  case EnergyDistType::MAXWELL:
+    break;
+  case EnergyDistType::WATT:
+    break;
+  }
+}
+
 //==============================================================================
 // DiscretePhoton implementation
 //==============================================================================
@@ -37,6 +58,7 @@ double DiscretePhoton::sample(double E, uint64_t* seed) const
 
 void DiscretePhoton::serialize(DataBuffer& buffer) const
 {
+  buffer.add(static_cast<int>(EnergyDistType::DISCRETE_PHOTON));
   buffer.add(primary_flag_);
   buffer.add(energy_);
   buffer.add(A_);
@@ -59,6 +81,7 @@ double LevelInelastic::sample(double E, uint64_t* seed) const
 
 void LevelInelastic::serialize(DataBuffer& buffer) const
 {
+  buffer.add(static_cast<int>(EnergyDistType::LEVEL_INELASTIC));
   buffer.add(threshold_);
   buffer.add(mass_ratio_);
 }
@@ -282,8 +305,8 @@ size_t ContinuousTabular::nbytes() const
   size_t n_region = n_region_;
   size_t n_energy = energy_.size();
 
-  // Memory for breakpoints/interpolation
-  size_t n = 4 + (4 + 4)*n_region;
+  // Memory for type, breakpoints/interpolation
+  size_t n = 4 + 4 + (4 + 4)*n_region;
 
   // Memory for incident energy grid and distributions
   n += 8 + (4 + 8)*n_energy;
@@ -296,6 +319,7 @@ size_t ContinuousTabular::nbytes() const
 
 void ContinuousTabular::serialize(DataBuffer& buffer) const
 {
+  buffer.add(static_cast<int>(EnergyDistType::CONTINUOUS_TABULAR));
   buffer.add(n_region_);
   buffer.add(breakpoints_);
   std::vector<int> interp;
@@ -355,6 +379,7 @@ double MaxwellEnergy::sample(double E, uint64_t* seed) const
 
 void MaxwellEnergy::serialize(DataBuffer& buffer) const
 {
+  buffer.add(static_cast<int>(EnergyDistType::MAXWELL));
   buffer.add(u_);
   theta_.serialize(buffer);
 }
@@ -392,8 +417,38 @@ double Evaporation::sample(double E, uint64_t* seed) const
 
 void Evaporation::serialize(DataBuffer& buffer) const
 {
+  buffer.add(static_cast<int>(EnergyDistType::EVAPORATION));
   buffer.add(u_);
   theta_.serialize(buffer);
+}
+
+double EvaporationFlat::sample(double E, uint64_t* seed) const
+{
+  // Get temperature corresponding to incoming energy
+  double theta = this->theta()(E);
+
+  double y = (E - this->u())/theta;
+  double v = 1.0 - std::exp(-y);
+
+  // Sample outgoing energy based on evaporation spectrum probability
+  // density function
+  double x;
+  while (true) {
+    x = -std::log((1.0 - v*prn(seed))*(1.0 - v*prn(seed)));
+    if (x <= y) break;
+  }
+
+  return x * theta;
+}
+
+double EvaporationFlat::u() const
+{
+  return *reinterpret_cast<const double*>(data_);
+}
+
+Tabulated1DFlat EvaporationFlat::theta() const
+{
+  return Tabulated1DFlat(data_ + 8);
 }
 
 //==============================================================================
@@ -431,11 +486,12 @@ double WattEnergy::sample(double E, uint64_t* seed) const
 
 size_t WattEnergy::nbytes() const
 {
-  return 8 + 8 + a_.nbytes() + b_.nbytes();
+  return 4 + 8 + 8 + a_.nbytes() + b_.nbytes();
 }
 
 void WattEnergy::serialize(DataBuffer& buffer) const
 {
+  buffer.add(static_cast<int>(EnergyDistType::WATT));
   buffer.add(u_);
   size_t n = b_.nbytes();
   buffer.add(n);

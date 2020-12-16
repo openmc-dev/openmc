@@ -16,6 +16,26 @@
 
 namespace openmc {
 
+enum EnergyDistType {
+  DISCRETE_PHOTON,
+  LEVEL_INELASTIC,
+  CONTINUOUS_TABULAR,
+  EVAPORATION,
+  MAXWELL,
+  WATT
+};
+
+class EnergyDistributionFlat {
+public:
+  EnergyDistributionFlat(EnergyDistType type, const uint8_t* data)
+    : type_(type), data_(data) { }
+
+  double sample(double E, uint64_t* seed) const;
+private:
+  EnergyDistType type_;
+  const uint8_t* data_;
+};
+
 //===============================================================================
 //! Abstract class defining an energy distribution that is a function of the
 //! incident energy of a projectile. Each derived type must implement a sample()
@@ -44,7 +64,7 @@ public:
   //! \return Sampled energy in [eV]
   double sample(double E, uint64_t* seed) const;
 
-  size_t nbytes() const { return 20; }
+  size_t nbytes() const { return 24; }
 
   void serialize(DataBuffer& buffer) const;
 private:
@@ -68,7 +88,7 @@ public:
   //! \return Sampled energy in [eV]
   double sample(double E, uint64_t* seed) const;
 
-  size_t nbytes() const { return 16; }
+  size_t nbytes() const { return 20; }
 
   void serialize(DataBuffer& buffer) const;
 private:
@@ -126,12 +146,25 @@ public:
   //! \return Sampled energy in [eV]
   double sample(double E, uint64_t* seed) const;
 
-  size_t nbytes() const { return theta_.nbytes() + 8; }
+  size_t nbytes() const { return 12 + theta_.nbytes(); }
 
   void serialize(DataBuffer& buffer) const;
 private:
   Tabulated1D theta_; //!< Incoming energy dependent parameter
   double u_; //!< Restriction energy
+};
+
+class EvaporationFlat {
+public:
+  explicit EvaporationFlat(const uint8_t* data) : data_(data) { }
+
+  double sample(double E, uint64_t* seed) const;
+
+private:
+  double u() const;
+  Tabulated1DFlat theta() const;
+
+  const uint8_t* data_;
 };
 
 //===============================================================================
@@ -149,7 +182,7 @@ public:
   //! \return Sampled energy in [eV]
   double sample(double E, uint64_t* seed) const;
 
-  size_t nbytes() const { return theta_.nbytes() + 8; }
+  size_t nbytes() const { return 12 + theta_.nbytes(); }
 
   void serialize(DataBuffer& buffer) const;
 private:

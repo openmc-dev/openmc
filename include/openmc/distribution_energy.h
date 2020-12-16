@@ -16,7 +16,7 @@
 
 namespace openmc {
 
-enum EnergyDistType {
+enum class EnergyDistType {
   DISCRETE_PHOTON,
   LEVEL_INELASTIC,
   CONTINUOUS_TABULAR,
@@ -155,6 +155,36 @@ private:
   std::vector<Interpolation> interpolation_; //!< Interpolation laws
   std::vector<double> energy_; //!< Incident energy in [eV]
   std::vector<CTTable> distribution_; //!< Distributions for each incident energy
+};
+
+class CTTableFlat {
+public:
+  explicit CTTableFlat(const uint8_t* data);
+
+  Interpolation interpolation() const;
+  int n_discrete() const;
+  gsl::span<const double> e_out() const;
+  gsl::span<const double> p() const;
+  gsl::span<const double> c() const;
+private:
+  const uint8_t* data_;
+  size_t n_eout_;
+};
+
+class ContinuousTabularFlat {
+public:
+  explicit ContinuousTabularFlat(const uint8_t* data);
+
+  double sample(double E, uint64_t* seed) const;
+private:
+  gsl::span<const int> breakpoints() const;
+  Interpolation interpolation(gsl::index i) const;
+  gsl::span<const double> energy() const;
+  CTTableFlat distribution(gsl::index i) const;
+
+  const uint8_t* data_;
+  size_t n_region_;
+  size_t n_energy_;
 };
 
 //===============================================================================

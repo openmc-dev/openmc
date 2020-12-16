@@ -1995,13 +1995,13 @@ score_general_mg(Particle& p, int i_tally, int start_index, int filter_index,
           for (auto d_bin = 0; d_bin < filt.n_bins(); ++d_bin) {
             auto d = filt.groups()[d_bin] - 1;
             if (i_nuclide >= 0) {
-              score += atom_density * flux
+              score = atom_density * flux
                 * nuc_xs.get_xs(MgxsType::DECAY_RATE, p_g, nullptr,
                                 nullptr, &d)
                 * nuc_xs.get_xs(MgxsType::DELAYED_NU_FISSION, p_g, nullptr,
                                 nullptr, &d);
             } else {
-              score += flux
+              score = flux
                 * macro_xs.get_xs(MgxsType::DECAY_RATE, p_g, nullptr,
                                   nullptr, &d)
                 * macro_xs.get_xs(MgxsType::DELAYED_NU_FISSION, p_g, nullptr,

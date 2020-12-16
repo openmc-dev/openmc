@@ -1,0 +1,122 @@
+name: CI
+
+on:
+  # allows us to run workflows manually
+  workflow_dispatch:
+
+  pull_request:
+    branches:
+      - develop
+      - master
+  push:
+    branches:
+      - develop
+      - master
+
+env:
+  MPI_DIR: /usr
+  HDF5_ROOT: /usr
+  OMP_NUM_THREADS: 2
+  COVERALLS_PARALLEL: true
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+
+jobs:
+  main:
+    runs-on: ubuntu-16.04
+    strategy:
+      matrix:
+        python-version: [3.8]
+        mpi: [n, y]
+        omp: [n, y]
+        dagmc: [n]
+        event: [n]
+        vectfit: [n]
+
+        include:
+          - python-version: 3.6
+            omp: n
+            mpi: n
+          - python-version: 3.7
+            omp: n
+            mpi: n
+          - dagmc: y
+            python-version: 3.8
+            mpi: y
+            omp: y
+          - event: y
+            python-version: 3.8
+            omp: y
+            mpi: n
+          - vectfit: y
+            python-version: 3.8
+            omp: n
+            mpi: y
+
+    env:
+      MPI: ${{ matrix.mpi }}
+      PHDF5: ${{ matrix.mpi }}
+      OMP: ${{ matrix.omp }}
+      DAGMC: ${{ matrix.dagmc }}
+      EVENT: ${{ matrix.event }}
+      VECTFIT: ${{ matrix.vectfit }}
+
+    steps:
+      -
+        uses: actions/checkout@v2
+
+      - 
+        name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      -
+        name: Environment Variables
+        run: |
+          echo "DAGMC_ROOT=$HOME/DAGMC"
+          echo "OPENMC_CROSS_SECTIONS=$HOME/nndc_hdf5/cross_sections.xml" >> $GITHUB_ENV
+          echo "OPENMC_ENDF_DATA=$HOME/endf-b-vii.1" >> $GITHUB_ENV
+
+      -
+        name: Apt dependencies
+        shell: bash
+        run: |
+          sudo apt -y update
+          sudo apt install -y mpich \
+                              libmpich-dev \
+                              libhdf5-serial-dev \
+                              libhdf5-mpich-dev \
+                              libeigen3-dev
+      -
+        name: install
+        shell: bash
+        run: |
+          echo "$HOME/NJOY2016/build" >> $GITHUB_PATH
+          $GITHUB_WORKSPACE/tools/ci/gha-install.sh
+      - 
+        name: before
+        shell: bash
+        run: $GITHUB_WORKSPACE/tools/ci/gha-before-script.sh
+
+      -
+        name: test
+        shell: bash
+        run: $GITHUB_WORKSPACE/tools/ci/gha-script.sh
+
+      - 
+        name: after_success
+        shell: bash
+        run: |
+          cpp-coveralls -i src -i include --exclude-pattern "/usr/*" --dump cpp_cov.json
+          coveralls --merge=cpp_cov.json
+
+  finish:
+    needs: main
+    runs-on: ubuntu-latest
+    steps:
+    - name: Coveralls Finished
+      uses: coverallsapp/github-action@master
+      with:
+        github-token: ${{ secrets.github_token }}
+        parallel-finished: true

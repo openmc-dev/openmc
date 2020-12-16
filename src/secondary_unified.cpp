@@ -1,5 +1,6 @@
 #include "openmc/secondary_unified.h"
 
+#include "openmc/secondary_correlated.h"
 #include "openmc/secondary_kalbach.h"
 #include "openmc/secondary_nbody.h"
 #include "openmc/secondary_uncorrelated.h"
@@ -26,6 +27,10 @@ UnifiedAngleEnergy::sample(double E_in, double& E_out, double& mu, uint64_t* see
     }
     break;
   case AngleEnergyType::CORRELATED:
+    {
+      CorrelatedAngleEnergyFlat dist(this->data());
+      dist.sample(E_in, E_out, mu, seed);
+    }
     break;
   case AngleEnergyType::NBODY:
     {

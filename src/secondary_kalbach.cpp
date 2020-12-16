@@ -493,5 +493,4 @@ KMTableFlat KalbachMannFlat::distribution(gsl::index i) const
   return KMTableFlat(data_ + offset);
 }
 
-
 }

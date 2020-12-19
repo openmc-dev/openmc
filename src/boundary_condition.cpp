@@ -199,9 +199,14 @@ RotationalPeriodicBC::RotationalPeriodicBC(int i_surf, int j_surf)
       "intersect the origin.", surf2.id_));
   }
 
-  // Compute the angle between the two surfaces; this is the BC rotation angle
+  // Compute the BC rotation angle.  Here it is assumed that both surface
+  // normal vectors point inwards---towards the valid geometry region.
+  // Consequently, the rotation angle is not the difference between the two
+  // normals, but is instead the difference between one normal and one
+  // anti-normal.  (An incident ray on one surface must be an outgoing ray on
+  // the other surface after rotation hence the anti-normal.)
   double theta1 = std::atan2(norm1.y, norm1.x);
-  double theta2 = std::atan2(norm2.y, norm2.x);
+  double theta2 = std::atan2(norm2.y, norm2.x) + PI;
   angle_ = theta2 - theta1;
 
   // Warn the user if the angle does not evenly divide a circle
@@ -225,10 +230,10 @@ RotationalPeriodicBC::handle_particle(Particle& p, const Surface& surf) const
   double theta;
   int new_surface;
   if (i_particle_surf == i_surf_) {
-    theta = -angle_;
+    theta = angle_;
     new_surface = p.surface_ > 0 ? -(j_surf_ + 1) : j_surf_ + 1;
   } else if (i_particle_surf == j_surf_) {
-    theta = angle_;
+    theta = -angle_;
     new_surface = p.surface_ > 0 ? -(i_surf_ + 1) : i_surf_ + 1;
   } else {
     throw std::runtime_error("Called BoundaryCondition::handle_particle after "

@@ -33,7 +33,8 @@ class ScattData {
 
     //! \brief Combines microscopic ScattDatas into a macroscopic one.
     void
-    base_combine(size_t max_order, const std::vector<ScattData*>& those_scatts,
+    base_combine(size_t max_order, size_t order_dim,
+         const std::vector<ScattData*>& those_scatts,
          const std::vector<double>& scalars, xt::xtensor<int, 1>& in_gmin,
          xt::xtensor<int, 1>& in_gmax, double_2dvec& sparse_mult,
          double_3dvec& sparse_scatter);

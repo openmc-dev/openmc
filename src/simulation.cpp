@@ -121,12 +121,6 @@ int openmc_simulation_init()
     }
   }
 
-  // If fixed source and using custom source library then need to load
-  if (settings::run_mode == RunMode::FIXED_SOURCE &&
-      !settings::path_source_library.empty()) {
-    load_custom_source_library();
-  }
-
   // Display header
   if (mpi::master) {
     if (settings::run_mode == RunMode::FIXED_SOURCE) {
@@ -171,12 +165,6 @@ int openmc_simulation_finalize()
   // Deactivate all tallies
   for (auto& t : model::tallies) {
     t->active_ = false;
-  }
-
-  // If fixed source and using custom source library then need to close
-  if (settings::run_mode == RunMode::FIXED_SOURCE &&
-      !settings::path_source_library.empty()) {
-    close_custom_source_library();
   }
 
   // Stop timers and show timing statistics

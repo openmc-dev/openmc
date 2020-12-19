@@ -366,8 +366,6 @@ class CMFDRun:
         self._current = None
         self._cmfd_src = None
         self._openmc_src = None
-        self._sourcecounts = None
-        self._weightfactors = None
         self._entropy = []
         self._balance = []
         self._src_cmp = []
@@ -914,7 +912,7 @@ class CMFDRun:
 
         args = temp_loss.indptr, len(temp_loss.indptr), \
             temp_loss.indices, len(temp_loss.indices), n, \
-            self._spectral, self._indices, coremap, self._use_all_threads
+            self._spectral, coremap, self._use_all_threads
         return openmc.lib._dll.openmc_initialize_linsolver(*args)
 
     def _write_cmfd_output(self):
@@ -1171,8 +1169,12 @@ class CMFDRun:
                 # Calculate fission source
                 self._calc_fission_source()
 
-            # Calculate weight factors
-            self._cmfd_reweight()
+            # Calculate weight factors through C++ and manipulate CMFD
+            # source into a 1-D vector that matches C++ array ordering
+            src_flipped = np.flip(self._cmfd_src, axis=3)
+            src_swapped = np.swapaxes(src_flipped, 0, 2)
+            args = self._feedback, src_swapped.flatten()
+            openmc.lib._dll.openmc_cmfd_reweight(*args)
 
         # Stop CMFD timer
         if openmc.lib.master():
@@ -1389,151 +1391,6 @@ class CMFDRun:
         # Calculate differences between normalized sources
         self._src_cmp.append(np.sqrt(1.0 / self._norm
                              * np.sum((self._cmfd_src - self._openmc_src)**2)))
-
-    def _cmfd_reweight(self):
-        """Performs weighting of particles in source bank"""
-        # Get spatial dimensions and energy groups
-        nx, ny, nz, ng = self._indices
-
-        # Count bank site in mesh and reverse due to egrid structured
-        outside = self._count_bank_sites()
-
-        # Check and raise error if source sites exist outside of CMFD mesh
-        if openmc.lib.master() and outside:
-            raise OpenMCError('Source sites outside of the CMFD mesh')
-
-        # Have master compute weight factors, ignore any zeros in
-        # sourcecounts or cmfd_src
-        if openmc.lib.master():
-            # Compute normalization factor
-            norm = np.sum(self._sourcecounts) / np.sum(self._cmfd_src)
-
-            # Define target reshape dimensions for sourcecounts. This
-            # defines how self._sourcecounts is ordered by dimension
-            target_shape = [nz, ny, nx, ng]
-
-            # Reshape sourcecounts to target shape. Swap x and z axes so
-            # that the shape is now [nx, ny, nz, ng]
-            sourcecounts = np.swapaxes(
-                    self._sourcecounts.reshape(target_shape), 0, 2)
-
-            # Flip index of energy dimension
-            sourcecounts = np.flip(sourcecounts, axis=3)
-
-            # Compute weight factors
-            div_condition = np.logical_and(sourcecounts > 0,
-                                           self._cmfd_src > 0)
-            self._weightfactors = (np.divide(self._cmfd_src * norm,
-                                   sourcecounts, where=div_condition,
-                                   out=np.ones_like(self._cmfd_src),
-                                   dtype=np.float32))
-
-        if not self._feedback:
-            return
-
-        # Broadcast weight factors to all procs
-        if have_mpi:
-            self._weightfactors = self._intracomm.bcast(
-                                  self._weightfactors)
-
-        m = openmc.lib.meshes[self._mesh_id]
-        energy = self._egrid
-        ng = self._indices[3]
-
-        # Get locations and energies of all particles in source bank
-        source_xyz = openmc.lib.source_bank()['r']
-        source_energies = openmc.lib.source_bank()['E']
-
-        # Convert xyz location to the CMFD mesh index
-        mesh_ijk = np.floor((source_xyz - m.lower_left)/m.width).astype(int)
-
-        # Determine which energy bin each particle's energy belongs to
-        # Separate into cases bases on where source energies lies on egrid
-        energy_bins = np.zeros(len(source_energies), dtype=int)
-        idx = np.where(source_energies < energy[0])
-        energy_bins[idx] = ng - 1
-        idx = np.where(source_energies > energy[-1])
-        energy_bins[idx] = 0
-        idx = np.where((source_energies >= energy[0]) &
-                       (source_energies <= energy[-1]))
-        energy_bins[idx] = ng - np.digitize(source_energies[idx], energy)
-
-        # Determine weight factor of each particle based on its mesh index
-        # and energy bin and updates its weight
-        openmc.lib.source_bank()['wgt'] *= self._weightfactors[
-                mesh_ijk[:,0], mesh_ijk[:,1], mesh_ijk[:,2], energy_bins]
-
-        if openmc.lib.master() and np.any(source_energies < energy[0]):
-            print(' WARNING: Source point below energy grid')
-            sys.stdout.flush()
-        if openmc.lib.master() and np.any(source_energies > energy[-1]):
-            print(' WARNING: Source point above energy grid')
-            sys.stdout.flush()
-
-    def _count_bank_sites(self):
-        """Determines the number of fission bank sites in each cell of a given
-        mesh and energy group structure.
-        Returns
-        -------
-        bool
-            Wheter any source sites outside of CMFD mesh were found
-
-        """
-        # Initialize variables
-        m = openmc.lib.meshes[self._mesh_id]
-        bank = openmc.lib.source_bank()
-        energy = self._egrid
-        sites_outside = np.zeros(1, dtype=bool)
-        nxnynz = np.prod(self._indices[0:3])
-        ng = self._indices[3]
-
-        outside = np.zeros(1, dtype=bool)
-        self._sourcecounts = np.zeros((nxnynz, ng))
-        count = np.zeros(self._sourcecounts.shape)
-
-        # Get location and energy of each particle in source bank
-        source_xyz = openmc.lib.source_bank()['r']
-        source_energies = openmc.lib.source_bank()['E']
-
-        # Convert xyz location to mesh index and ravel index to scalar
-        mesh_locations = np.floor((source_xyz - m.lower_left) / m.width)
-        mesh_bins = mesh_locations[:,2] * m.dimension[1] * m.dimension[0] + \
-            mesh_locations[:,1] * m.dimension[0] + mesh_locations[:,0]
-
-        # Check if any source locations lie outside of defined CMFD mesh
-        if np.any(mesh_bins < 0) or np.any(mesh_bins >= np.prod(m.dimension)):
-            outside[0] = True
-
-        # Determine which energy bin each particle's energy belongs to
-        # Separate into cases bases on where source energies lies on egrid
-        energy_bins = np.zeros(len(source_energies), dtype=int)
-        idx = np.where(source_energies < energy[0])
-        energy_bins[idx] = 0
-        idx = np.where(source_energies > energy[-1])
-        energy_bins[idx] = ng - 1
-        idx = np.where((source_energies >= energy[0]) &
-                       (source_energies <= energy[-1]))
-        energy_bins[idx] = np.digitize(source_energies[idx], energy) - 1
-
-        # Determine all unique combinations of mesh bin and energy bin, and
-        # count number of particles that belong to these combinations
-        idx, counts = np.unique(np.array([mesh_bins, energy_bins]), axis=1,
-                                return_counts=True)
-
-        # Store counts to appropriate mesh-energy combination
-        count[idx[0].astype(int), idx[1].astype(int)] = counts
-
-        if have_mpi:
-            # Collect values of count from all processors
-            self._intracomm.Reduce(count, self._sourcecounts, MPI.SUM)
-            # Check if there were sites outside the mesh for any processor
-            self._intracomm.Reduce(outside, sites_outside, MPI.LOR)
-        # Deal with case if MPI not defined (only one proc)
-        else:
-            sites_outside = outside
-            self._sourcecounts = count
-
-        return sites_outside[0]
 
     def _build_loss_matrix(self, adjoint):
         # Extract spatial and energy indices and define matrix dimension
@@ -3045,3 +2902,7 @@ class CMFDRun:
 
             # Set all tallies to be active from beginning
             cmfd_tally.active = True
+
+        # Initialize CMFD mesh and energy grid in C++ for CMFD reweight
+        args = self._tally_ids[0], self._indices, self._norm
+        openmc.lib._dll.openmc_initialize_mesh_egrid(*args)

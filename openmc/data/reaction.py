@@ -56,13 +56,16 @@ REACTION_NAME = {1: '(n,total)', 2: '(n,elastic)', 4: '(n,level)',
                  301: 'heating', 444: 'damage-energy',
                  649: '(n,pc)', 699: '(n,dc)', 749: '(n,tc)', 799: '(n,3Hec)',
                  849: '(n,ac)', 891: '(n,2nc)', 901: 'heating-local'}
-REACTION_NAME.update({i: '(n,n{})'.format(i - 50) for i in range(50, 91)})
+REACTION_NAME.update({i: '(n,n{})'.format(i - 50) for i in range(51, 91)})
 REACTION_NAME.update({i: '(n,p{})'.format(i - 600) for i in range(600, 649)})
 REACTION_NAME.update({i: '(n,d{})'.format(i - 650) for i in range(650, 699)})
 REACTION_NAME.update({i: '(n,t{})'.format(i - 700) for i in range(700, 749)})
 REACTION_NAME.update({i: '(n,3He{})'.format(i - 750) for i in range(750, 799)})
 REACTION_NAME.update({i: '(n,a{})'.format(i - 800) for i in range(800, 849)})
 REACTION_NAME.update({i: '(n,2n{})'.format(i - 875) for i in range(875, 891)})
+
+REACTION_MT = {name: mt for mt, name in REACTION_NAME.items()}
+REACTION_MT['fission'] = 18
 
 FISSION_MTS = (18, 19, 20, 21, 38)
 

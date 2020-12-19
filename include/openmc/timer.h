@@ -21,7 +21,6 @@ extern Timer time_finalize;
 extern Timer time_inactive;
 extern Timer time_initialize;
 extern Timer time_read_xs;
-extern Timer time_sample_source;
 extern Timer time_statepoint;
 extern Timer time_tallies;
 extern Timer time_total;

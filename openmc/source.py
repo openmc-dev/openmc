@@ -1,5 +1,9 @@
+from enum import Enum
 from numbers import Real
 from xml.etree import ElementTree as ET
+
+import numpy as np
+import h5py
 
 import openmc.checkvalue as cv
 from openmc.stats.multivariate import UnitSphere, Spatial
@@ -226,3 +230,89 @@ class Source:
             source.energy = Univariate.from_xml_element(energy)
 
         return source
+
+
+class ParticleType(Enum):
+    NEUTRON = 0
+    PHOTON = 1
+    ELECTRON = 2
+    POSITRON = 3
+
+
+class SourceParticle:
+    """Source particle
+
+    This class can be used to create source particles that can be written to a
+    file and used by OpenMC
+
+    Parameters
+    ----------
+    r : iterable of float
+        Position of particle in Cartesian coordinates
+    u : iterable of float
+        Directional cosines
+    E : float
+        Energy of particle in [eV]
+    wgt : float
+        Weight of the particle
+    delayed_group : int
+        Delayed group particle was created in (neutrons only)
+    particle : ParticleType
+        Type of the particle
+
+    """
+    def __init__(self, r=(0., 0., 0.), u=(0., 0., 1.), E=1.0e6, wgt=1.0,
+                 delayed_group=0, particle=ParticleType.NEUTRON):
+        self.r = tuple(r)
+        self.u = tuple(u)
+        self.E = float(E)
+        self.wgt = float(wgt)
+        self.delayed_group = delayed_group
+        self.particle = particle
+
+    def to_tuple(self):
+        """Return source particle attributes as a tuple
+
+        Returns
+        -------
+        tuple
+            Source particle attributes
+
+        """
+        return (self.r, self.u, self.E, self.wgt,
+                self.delayed_group, self.particle.value)
+
+
+def write_source_file(source_particles, filename, **kwargs):
+    """Write a source file using a collection of source particles
+
+    Parameters
+    ----------
+    source_particles : iterable of SourceParticle
+        Source particles to write to file
+    filename : str or path-like
+        Path to source file to write
+    **kwargs
+        Keyword arguments to pass to :class:`h5py.File`
+
+    """
+    # Create compound datatype for source particles
+    pos_dtype = np.dtype([('x', '<f8'), ('y', '<f8'), ('z', '<f8')])
+    source_dtype = np.dtype([
+        ('r', pos_dtype),
+        ('u', pos_dtype),
+        ('E', '<f8'),
+        ('wgt', '<f8'),
+        ('delayed_group', '<i4'),
+        ('particle', '<i4'),
+    ])
+
+    # Create array of source particles
+    cv.check_iterable_type("source particles", source_particles, SourceParticle)
+    arr = np.array([s.to_tuple() for s in source_particles], dtype=source_dtype)
+
+    # Write array to file
+    kwargs.setdefault('mode', 'w')
+    with h5py.File(filename, **kwargs) as fh:
+        fh.attrs['filetype'] = np.string_("source")
+        fh.create_dataset('source_bank', data=arr, dtype=source_dtype)

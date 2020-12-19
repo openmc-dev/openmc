@@ -20,26 +20,15 @@ on_rtd = os.environ.get('READTHEDOCS', None) == 'True'
 # ImportErrors when building documentation
 from unittest.mock import MagicMock
 
-
 MOCK_MODULES = [
-    'numpy', 'numpy.polynomial', 'numpy.polynomial.polynomial',
-    'numpy.ctypeslib', 'scipy', 'scipy.sparse', 'scipy.sparse.linalg',
-    'scipy.interpolate', 'scipy.integrate', 'scipy.optimize', 'scipy.special',
-    'scipy.stats', 'scipy.spatial', 'h5py', 'pandas', 'uncertainties',
-    'matplotlib', 'matplotlib.pyplot', 'openmoc',
-    'openmc.data.reconstruct', 'openmc.checkvalue'
+    'openmoc', 'openmc.data.reconstruct',
 ]
 sys.modules.update((mod_name, MagicMock()) for mod_name in MOCK_MODULES)
-
-import numpy as np
-np.ndarray = MagicMock
-np.polynomial.Polynomial = MagicMock
 
 
 # If extensions (or modules to document with autodoc) are in another directory,
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.
-sys.path.insert(0, os.path.abspath('../sphinxext'))
 sys.path.insert(0, os.path.abspath('../..'))
 
 
@@ -47,14 +36,16 @@ sys.path.insert(0, os.path.abspath('../..'))
 
 # Add any Sphinx extension module names here, as strings. They can be extensions
 # coming with Sphinx (named 'sphinx.ext.*') or your custom ones.
-extensions = ['sphinx.ext.autodoc',
-              'sphinx.ext.napoleon',
-              'sphinx.ext.autosummary',
-              'sphinx.ext.intersphinx',
-              'sphinx.ext.viewcode',
-              'sphinxcontrib.katex',
-              'sphinx_numfig',
-              'notebook_sphinxext']
+extensions = [
+    'sphinx.ext.autodoc',
+    'sphinx.ext.napoleon',
+    'sphinx.ext.autosummary',
+    'sphinx.ext.intersphinx',
+    'sphinx.ext.viewcode',
+    'sphinxcontrib.katex',
+    'sphinx_numfig',
+    'nbsphinx'
+]
 if not on_rtd:
     extensions.append('sphinxcontrib.rsvgconverter')
 

@@ -1,12 +1,12 @@
 #include "openmc/source.h"
 #include "openmc/particle.h"
 
-class Source : public openmc::CustomSource {
+class CustomSource : public openmc::Source {
   public:
-    Source(double energy) : energy_(energy) { }
+    CustomSource(double energy) : energy_(energy) { }
 
     // Samples from an instance of this class.
-    openmc::Particle::Bank sample(uint64_t* seed)
+    openmc::Particle::Bank sample(uint64_t* seed) const
     {
       openmc::Particle::Bank particle;
       // wgt
@@ -31,8 +31,8 @@ class Source : public openmc::CustomSource {
 // A function to create a unique pointer to an instance of this class when generated
 // via a plugin call using dlopen/dlsym.
 // You must have external C linkage here otherwise dlopen will not find the file
-extern "C" std::unique_ptr<Source> openmc_create_source(std::string parameter)
+extern "C" std::unique_ptr<CustomSource> openmc_create_source(std::string parameter)
 {
   double energy = std::stod(parameter);
-  return std::make_unique<Source>(energy);
+  return std::make_unique<CustomSource>(energy);
 }

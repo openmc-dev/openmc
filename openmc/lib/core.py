@@ -31,6 +31,8 @@ _array_1d_dble = np.ctypeslib.ndpointer(dtype=np.double, ndim=1,
 
 _dll.openmc_calculate_volumes.restype = c_int
 _dll.openmc_calculate_volumes.errcheck = _error_handler
+_dll.openmc_cmfd_reweight.argtypes = c_bool, _array_1d_dble
+_dll.openmc_cmfd_reweight.restype = None
 _dll.openmc_finalize.restype = c_int
 _dll.openmc_finalize.errcheck = _error_handler
 _dll.openmc_find_cell.argtypes = [POINTER(c_double*3), POINTER(c_int32),
@@ -45,8 +47,12 @@ _dll.openmc_init.errcheck = _error_handler
 _dll.openmc_get_keff.argtypes = [POINTER(c_double*2)]
 _dll.openmc_get_keff.restype = c_int
 _dll.openmc_get_keff.errcheck = _error_handler
+_dll.openmc_initialize_mesh_egrid.argtypes = [
+    c_int, _array_1d_int, c_double
+]
+_dll.openmc_initialize_mesh_egrid.restype = None
 _init_linsolver_argtypes = [_array_1d_int, c_int, _array_1d_int, c_int, c_int,
-                            c_double, _array_1d_int, _array_1d_int, c_bool]
+                            c_double, _array_1d_int, c_bool]
 _dll.openmc_initialize_linsolver.argtypes = _init_linsolver_argtypes
 _dll.openmc_initialize_linsolver.restype = None
 _dll.openmc_is_statepoint_batch.restype = c_bool

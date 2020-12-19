@@ -73,8 +73,6 @@ std::string path_cross_sections;
 std::string path_input;
 std::string path_output;
 std::string path_particle_restart;
-std::string path_source;
-std::string path_source_library;
 std::string path_sourcepoint;
 std::string path_statepoint;
 
@@ -421,17 +419,31 @@ void read_settings_xml()
 
   // Get point to list of <source> elements and make sure there is at least one
   for (pugi::xml_node node : root.children("source")) {
-    model::external_sources.emplace_back(node);
+    if (check_for_node(node, "file")) {
+      auto path = get_node_value(node, "file", false, true);
+      model::external_sources.push_back(std::make_unique<FileSource>(path));
+    } else if (check_for_node(node, "library")) {
+      // Get shared library path and parameters
+      auto path = get_node_value(node, "library", false, true);
+      std::string parameters;
+      if (check_for_node(node, "parameters")) {
+        parameters = get_node_value(node, "parameters", false, true);
+      }
+
+      // Create custom source
+      model::external_sources.push_back(std::make_unique<CustomSourceWrapper>(path, parameters));
+    } else {
+      model::external_sources.push_back(std::make_unique<IndependentSource>(node));
+    }
   }
 
   // If no source specified, default to isotropic point source at origin with Watt spectrum
   if (model::external_sources.empty()) {
-    SourceDistribution source {
+    model::external_sources.push_back(std::make_unique<IndependentSource>(
       UPtrSpace{new SpatialPoint({0.0, 0.0, 0.0})},
       UPtrAngle{new Isotropic()},
       UPtrDist{new Watt(0.988e6, 2.249e-6)}
-    };
-    model::external_sources.push_back(std::move(source));
+    ));
   }
 
   // Check if we want to write out source
@@ -510,88 +522,46 @@ void read_settings_xml()
   read_meshes(root);
 
   // Shannon Entropy mesh
-  int32_t index_entropy_mesh = -1;
   if (check_for_node(root, "entropy_mesh")) {
     int temp = std::stoi(get_node_value(root, "entropy_mesh"));
     if (model::mesh_map.find(temp) == model::mesh_map.end()) {
       fatal_error(fmt::format(
         "Mesh {} specified for Shannon entropy does not exist.", temp));
     }
-    index_entropy_mesh = model::mesh_map.at(temp);
 
-  } else if (check_for_node(root, "entropy")) {
-    warning("Specifying a Shannon entropy mesh via the <entropy> element "
-      "is deprecated. Please create a mesh using <mesh> and then reference "
-      "it by specifying its ID in an <entropy_mesh> element.");
-
-    // Read entropy mesh from <entropy>
-    auto node_entropy = root.child("entropy");
-    model::meshes.push_back(std::make_unique<RegularMesh>(node_entropy));
-
-    // Set entropy mesh index
-    index_entropy_mesh = model::meshes.size() - 1;
-
-    // Assign ID and set mapping
-    model::meshes.back()->id_ = 10000;
-    model::mesh_map[10000] = index_entropy_mesh;
-  }
-
-  if (index_entropy_mesh >= 0) {
     auto* m = dynamic_cast<RegularMesh*>(
-      model::meshes[index_entropy_mesh].get());
+      model::meshes[model::mesh_map.at(temp)].get());
     if (!m) fatal_error("Only regular meshes can be used as an entropy mesh");
     simulation::entropy_mesh = m;
 
-    if (m->shape_.size() == 0) {
-      // If the user did not specify how many mesh cells are to be used in
-      // each direction, we automatically determine an appropriate number of
-      // cells
-      int n = std::ceil(std::pow(n_particles / 20.0, 1.0/3.0));
-      m->shape_ = {n, n, n};
-      m->n_dimension_ = 3;
-
-      // Calculate width
-      m->width_ = (m->upper_right_ - m->lower_left_) / m->shape_;
-    }
-
     // Turn on Shannon entropy calculation
     entropy_on = true;
+
+  } else if (check_for_node(root, "entropy")) {
+    fatal_error("Specifying a Shannon entropy mesh via the <entropy> element "
+      "is deprecated. Please create a mesh using <mesh> and then reference "
+      "it by specifying its ID in an <entropy_mesh> element.");
   }
 
   // Uniform fission source weighting mesh
-  int32_t i_ufs_mesh = -1;
   if (check_for_node(root, "ufs_mesh")) {
     auto temp = std::stoi(get_node_value(root, "ufs_mesh"));
     if (model::mesh_map.find(temp) == model::mesh_map.end()) {
       fatal_error(fmt::format("Mesh {} specified for uniform fission site "
         "method does not exist.", temp));
     }
-    i_ufs_mesh = model::mesh_map.at(temp);
 
-  } else if (check_for_node(root, "uniform_fs")) {
-    warning("Specifying a UFS mesh via the <uniform_fs> element "
-      "is deprecated. Please create a mesh using <mesh> and then reference "
-      "it by specifying its ID in a <ufs_mesh> element.");
-
-    // Read entropy mesh from <entropy>
-    auto node_ufs = root.child("uniform_fs");
-    model::meshes.push_back(std::make_unique<RegularMesh>(node_ufs));
-
-    // Set entropy mesh index
-    i_ufs_mesh = model::meshes.size() - 1;
-
-    // Assign ID and set mapping
-    model::meshes.back()->id_ = 10001;
-    model::mesh_map[10001] = index_entropy_mesh;
-  }
-
-  if (i_ufs_mesh >= 0) {
-    auto* m = dynamic_cast<RegularMesh*>(model::meshes[i_ufs_mesh].get());
+    auto* m = dynamic_cast<RegularMesh*>(model::meshes[model::mesh_map.at(temp)].get());
     if (!m) fatal_error("Only regular meshes can be used as a UFS mesh");
     simulation::ufs_mesh = m;
 
     // Turn on uniform fission source weighting
     ufs_on = true;
+
+  } else if (check_for_node(root, "uniform_fs")) {
+    fatal_error("Specifying a UFS mesh via the <uniform_fs> element "
+      "is deprecated. Please create a mesh using <mesh> and then reference "
+      "it by specifying its ID in a <ufs_mesh> element.");
   }
 
   // Check if the user has specified to write state points

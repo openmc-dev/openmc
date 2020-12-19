@@ -529,11 +529,24 @@ XsData::combine(const std::vector<XsData*>& those_xs,
       kappa_fission += scalar * that->kappa_fission;
       fission += scalar * that->fission;
       delayed_nu_fission += scalar * that->delayed_nu_fission;
-      chi_prompt += scalar * that->chi_prompt;
-      chi_delayed += scalar * that->chi_delayed;
+      chi_prompt += scalar *
+           xt::view(xt::sum(that->prompt_nu_fission, {1}),
+                    xt::all(), xt::newaxis(), xt::newaxis()) *
+           that->chi_prompt;
+      chi_delayed += scalar *
+           xt::view(xt::sum(that->delayed_nu_fission, {2}),
+                    xt::all(), xt::all(), xt::newaxis(), xt::newaxis()) *
+           that->chi_delayed;
     }
     decay_rate += scalar * that->decay_rate;
   }
+
+  // Ensure the chi_prompt and chi_delayed are normalized to 1 for each
+  // azimuthal angle and delayed group (for chi_delayed)
+  chi_prompt /=
+    xt::view(xt::sum(chi_prompt, {2}), xt::all(), xt::all(), xt::newaxis());
+  chi_delayed /= xt::view(xt::sum(chi_delayed, {3}), xt::all(), xt::all(),
+                          xt::all(), xt::newaxis());
 
   // Allow the ScattData object to combine itself
   for (size_t a = 0; a < total.shape()[0]; a++) {

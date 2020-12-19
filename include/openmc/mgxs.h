@@ -117,7 +117,7 @@ class Mgxs {
         int num_group, int num_delay);
 
     //! \brief Constructor that initializes and populates all data to build a
-    //!   macroscopic cross section from microscopic cross section.
+    //!   macroscopic cross section from microscopic cross sections.
     //!
     //! @param in_name Name of the object.
     //! @param mat_kTs temperatures (in units of eV) that data is needed.

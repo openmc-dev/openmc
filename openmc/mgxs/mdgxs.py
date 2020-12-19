@@ -2044,12 +2044,8 @@ class DecayRate(MDGXS):
                          num_delayed_groups)
         else:
             new_shape = (num_subdomains, num_delayed_groups)
+        new_shape += xs.shape[1:]
         xs = np.reshape(xs, new_shape)
-
-        # Reverse data if user requested increasing energy groups since
-        # tally data is stored in order of increasing energies
-        if order_groups == 'increasing':
-            xs = xs[..., ::-1, :]
 
         if squeeze:
             # We want to squeeze out everything but the polar, azimuthal,

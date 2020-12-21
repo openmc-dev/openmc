@@ -753,10 +753,7 @@ void Material::calculate_xs(Particle& p) const
   p.macro_xs_.fission = 0.0;
   p.macro_xs_.nu_fission = 0.0;
   p.macro_xs_.prompt_nu_fission = 0.0;
-  p.macro_xs_.delayed_nu_fission.resize(8);
-  for (int d = 1; d <= p.macro_xs_.delayed_nu_fission.size(); ++d) {
-    p.macro_xs_.delayed_nu_fission[d-1] = 0.0;
-  }
+  p.macro_xs_.delayed_nu_fission.fill(0.0);
   p.macro_xs_.inverse_velocity = 0.0;
 
   if (p.type_ == Particle::Type::neutron) {
@@ -834,8 +831,8 @@ void Material::calculate_neutron_xs(Particle& p) const
     p.macro_xs_.fission += atom_density * micro.fission;
     p.macro_xs_.nu_fission += atom_density * micro.nu_fission;
     p.macro_xs_.prompt_nu_fission += atom_density * micro.prompt_nu_fission;
-    for (int d = 1; d <= micro.delayed_nu_fission.size(); ++d) {
-      p.macro_xs_.delayed_nu_fission[d-1] += atom_density * micro.delayed_nu_fission[d-1];
+    for (int d = 0; d < micro.delayed_nu_fission.size(); ++d) {
+      p.macro_xs_.delayed_nu_fission[d] += atom_density * micro.delayed_nu_fission[d];
     }
     double velocity = sqrt(2*p.E_ / MASS_NEUTRON_EV) * C_LIGHT * 100.0;
     p.macro_xs_.inverse_velocity += atom_density * 1. / velocity; 

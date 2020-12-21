@@ -70,7 +70,7 @@ struct NuclideMicroXS {
   double fission;          //!< fission
   double nu_fission;       //!< neutron production from fission
   double prompt_nu_fission;//!< prompt neutron production from fission
-  std::vector<double> delayed_nu_fission;//!< delayed neutron production from fission
+  std::array<double, 8> delayed_nu_fission;//!< delayed neutron production from fission
 
   double elastic;          //!< If sab_frac is not 1 or 0, then this value is
                            //!<   averaged over bound and non-bound nuclei
@@ -125,7 +125,7 @@ struct MacroXS {
   double fission;       //!< macroscopic fission xs
   double nu_fission;    //!< macroscopic production xs
   double prompt_nu_fission;//!< macroscopic prompt production
-  std::vector<double> delayed_nu_fission;//!< macroscopic delayed production
+  std::array<double, 8> delayed_nu_fission;//!< macroscopic delayed production
   double inverse_velocity;//!< macroscopic inverse velocity 
   double photon_prod;   //!< macroscopic photon production xs
 
@@ -286,7 +286,7 @@ public:
 
   // Other physical data
   double wgt_ {1.0};     //!< particle weight
-  double freq {0.0};      //!< weight adjustment for frequency transform method
+  double freq_ {0.0};      //!< weight adjustment for frequency transform method
   double mu_;      //!< angle of scatter
   bool alive_ {true};     //!< is particle alive?
 

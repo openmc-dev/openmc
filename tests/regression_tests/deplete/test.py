@@ -150,24 +150,6 @@ def test_depletion_results_to_material(run_in_tmpdir, problem):
     # using only nuclides available in the current nuclear data library
     last_step_materials = res_ref.export_to_materials(-1)
 
-    # Because files are written here that need to be cleaned up even
-    # if something fails, stuff after here goes in a try/except.
-
-    # If updating results, do so and return. We write out the last-step
-    # depleted materials as an XML, hash the file, and save the hash to
-    # the reference file.
-    reference_hash_file = Path(__file__).with_name('reference_materials_xml_hash')
-    if config['update']:
-        reference_material_file = 'last_step_materials_reference.xml'
-        last_step_materials.export_to_xml(path=reference_material_file)
-        with open(reference_material_file, 'rb') as ref_file:
-            result_file_hash = hashlib.sha512()
-            for line in ref_file:
-                result_file_hash.update(line)
-        with open(reference_hash_file, 'w') as refhash_file:
-            refhash_file.write(result_file_hash.hexdigest())
-        return
-
     # Check that the conversion of the final step depleted materials XML
     # file hashes to what we expect.
     output_xml_file = 'last_step_materials.xml'
@@ -176,7 +158,17 @@ def test_depletion_results_to_material(run_in_tmpdir, problem):
         result_file_hash = hashlib.sha512()
         for line in result_file:
             result_file_hash.update(line)
+
+    # If updating results, do so and return. We write out the last-step
+    # depleted materials as an XML, hash the file, and save the hash to
+    # the reference file.
+    reference_hash_file = Path(__file__).with_name('reference_materials_xml_hash')
+    if config['update']:
+        with open(reference_hash_file, 'w') as refhash_file:
+            refhash_file.write(result_file_hash.hexdigest())
+        return
+
+    # Check hash of final depletion point material XML matches expected
     with open(reference_hash_file) as refhash_f:
         reference_hash = refhash_f.read()
-
     assert reference_hash == result_file_hash.hexdigest()

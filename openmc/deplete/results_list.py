@@ -9,6 +9,7 @@ from .results import Results, VERSION_RESULTS
 from openmc.checkvalue import check_filetype_version, check_value, check_type
 from openmc.data.library import DataLibrary
 from openmc.material import Material, Materials
+from openmc.exceptions import DataError, InvalidArgumentError
 
 __all__ = ["ResultsList"]
 
@@ -335,7 +336,7 @@ class ResultsList(list):
         # the environment variable OPENMC_CROSS_SECTIONS.
         if nuc_with_data:
             if not all(isinstance(nuclide_name, str) for nuclide_name in nuc_with_data):
-                raise Exception("Expected an iterable of strings as acceptable nuclide data.")
+                raise InvalidArgumentError("Expected an iterable of strings as acceptable nuclide data.")
             available_cross_sections = nuc_with_data
         else:
             # select cross_sections.xml file to use
@@ -350,7 +351,7 @@ class ResultsList(list):
                 if lib['type'] == 'neutron':
                     available_cross_sections.update(lib['materials'])
             if not available_cross_sections:
-                raise Exception('No neutron libraries found in cross_sections.xml')
+                raise DataError('No neutron libraries found in cross_sections.xml')
 
         # Overwrite material definitions, if they can be found in the depletion
         # results, and save them to the new depleted xml file.

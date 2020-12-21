@@ -1,5 +1,6 @@
 """ Full system test suite. """
 
+import hashlib # for comparing conversion of depletion results to XML
 from math import floor
 import shutil
 from pathlib import Path
@@ -130,3 +131,52 @@ def test_full(run_in_tmpdir, problem, multiproc):
 
     # Check that no additional tallies are loaded from the files
     assert np.all(n_tallies == 0)
+
+# Checks openmc.Materials objects can be created from depletion results
+def test_depletion_results_to_material(run_in_tmpdir, problem):
+
+    # Load the reference/test results
+    path_reference = Path(__file__).with_name('test_reference.h5')
+    res_ref = openmc.deplete.ResultsList.from_hdf5(path_reference)
+
+    # Firstly need to export materials.xml file for the initial simulation state
+    geometry, lower_left, upper_right = problem
+    materials = openmc.Materials()
+    for mat in geometry.root_universe.get_all_materials().values():
+        materials.append(mat)
+    materials.export_to_xml()
+
+    # Export last step of depletion to its own openmc.Materials object,
+    # using only nuclides available in the current nuclear data library
+    last_step_materials = res_ref.export_to_materials(-1)
+
+    # Because files are written here that need to be cleaned up even
+    # if something fails, stuff after here goes in a try/except.
+
+    # If updating results, do so and return. We write out the last-step
+    # depleted materials as an XML, hash the file, and save the hash to
+    # the reference file.
+    reference_hash_file = Path(__file__).with_name('reference_materials_xml_hash')
+    if config['update']:
+        reference_material_file = 'last_step_materials_reference.xml'
+        last_step_materials.export_to_xml(path=reference_material_file)
+        with open(reference_material_file, 'rb') as ref_file:
+            result_file_hash = hashlib.sha512()
+            for line in ref_file:
+                result_file_hash.update(line)
+        with open(reference_hash_file, 'w') as refhash_file:
+            refhash_file.write(result_file_hash.hexdigest())
+        return
+
+    # Check that the conversion of the final step depleted materials XML
+    # file hashes to what we expect.
+    output_xml_file = 'last_step_materials.xml'
+    last_step_materials.export_to_xml(path=output_xml_file)
+    with open(output_xml_file, 'rb') as result_file:
+        result_file_hash = hashlib.sha512()
+        for line in result_file:
+            result_file_hash.update(line)
+    with open(reference_hash_file) as refhash_f:
+        reference_hash = refhash_f.read()
+
+    assert reference_hash == result_file_hash.hexdigest()

@@ -1,10 +1,11 @@
 import numpy as np
+import pytest
 import scipy as sp
+from scipy.stats import shapiro
 
 import openmc
 import openmc.lib
 
-import pytest
 
 def test_t_percentile():
     # Permutations include 1 DoF, 2 DoF, and > 2 DoF
@@ -216,21 +217,16 @@ def test_normal_dist():
     # make sigma = 1.0
     b = 1.0
 
-    # import shapiro test 
-    from scipy.stats import shapiro
     samples = []
     num_samples = 10000
     # sample some numbers
     for i in range(num_samples):
         # sample the normal distribution from openmc
         samples.append(openmc.lib.math.normal_variate(a, b, prn_seed))
-        prn_seed = prn_seed + 1
+        prn_seed += 1
 
-    stat,p = shapiro(samples)
-    assert stat > 0.97
-
-    # cleanup
-    del samples
+    stat, p = shapiro(samples)
+    assert p > 0.05
 
 
 def test_broaden_wmp_polynomials():

@@ -692,16 +692,19 @@ double maxwell_spectrum(double T, uint64_t* seed) {
 
 
 double normal_variate(double mean, double standard_deviation, uint64_t* seed) {
-  // now correct method to sample a normal distubted number
-  double v1 = 2 * prn(seed) - 1.;
-  double v2 = 2 * prn(seed) - 1.;
-  double r = std::pow(v1, 2) + std::pow(v2, 2);
-  if ( r == 0 || r > 1 ) return normal_variate(mean,standard_deviation,seed);
-  double z = std::sqrt(-2.0 * std::log(r)/r);
-  return mean + standard_deviation*z*v1;
+  // Sample a normal variate using Marsaglia's polar method
+  double x, y, r2;
+  do {
+    x = 2 * prn(seed) - 1.;
+    y = 2 * prn(seed) - 1.;
+    r2 = x*x + y*y;
+  } while (r2 > 1 || r2 == 0);
+  double z = std::sqrt(-2.0 * std::log(r2)/r2);
+  return mean + standard_deviation*z*x;
 }
 
 double muir_spectrum(double e0, double m_rat, double kt, uint64_t* seed) {
+  // https://permalink.lanl.gov/object/tr?what=info:lanl-repo/lareport/LA-05411-MS
   double sigma = std::sqrt(4.*e0*kt/m_rat);
   return normal_variate(e0, sigma, seed);
 }

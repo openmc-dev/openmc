@@ -153,13 +153,10 @@ ThermalScattering::calculate_xs(double E, double sqrtkT, int* i_temp,
   double kT = sqrtkT*sqrtkT;
   int i = 0;
 
-  if (kTs_.size() > 1) {
+  auto n = kTs_.size();
+  if (n > 1) {
     // Find temperatures that bound the actual temperature
-    for (i = 0; i < kTs_.size() - 1; ++i) {
-      if (kTs_[i] <= kT && kT < kTs_[i+1]) {
-        break;
-      }
-    }
+    while (kTs_[i+1] < kT && i + 1 < n - 1) ++i;
 
     if (settings::temperature_method == TemperatureMethod::NEAREST) {
       // Pick closer of two bounding temperatures

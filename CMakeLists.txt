@@ -225,6 +225,7 @@ target_compile_options(faddeeva PRIVATE ${cxxflags})
 
 list(APPEND libopenmc_SOURCES
   src/bank.cpp
+  src/boundary_condition.cpp
   src/bremsstrahlung.cpp
   src/dagmc.cpp
   src/cell.cpp

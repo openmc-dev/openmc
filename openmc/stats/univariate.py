@@ -244,11 +244,11 @@ class Uniform(Univariate):
 
 
 class Maxwell(Univariate):
-    """Maxwellian distribution in energy.
+    r"""Maxwellian distribution in energy.
 
     The Maxwellian distribution in energy is characterized by a single parameter
-    :math:`\theta` and has a density function :math:`p(E) dE = c E e^{-E/\theta}
-    dE`.
+    :math:`\theta` and has a density function :math:`p(E) dE = c \sqrt{E}
+    e^{-E/\theta} dE`.
 
     Parameters
     ----------

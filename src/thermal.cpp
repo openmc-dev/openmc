@@ -151,25 +151,22 @@ ThermalScattering::calculate_xs(double E, double sqrtkT, int* i_temp,
 {
   // Determine temperature for S(a,b) table
   double kT = sqrtkT*sqrtkT;
-  int i;
-  if (settings::temperature_method == TemperatureMethod::NEAREST) {
-    // If using nearest temperature, do linear search on temperature
-    for (i = 0; i < kTs_.size(); ++i) {
-      if (std::abs(kTs_[i] - kT) < K_BOLTZMANN*settings::temperature_tolerance) {
-        break;
-      }
-    }
-  } else {
-    // Find temperatures that bound the actual temperature
-    for (i = 0; i < kTs_.size() - 1; ++i) {
-      if (kTs_[i] <= kT && kT < kTs_[i+1]) {
-        break;
-      }
-    }
+  int i = 0;
 
-    // Randomly sample between temperature i and i+1
-    double f = (kT - kTs_[i]) / (kTs_[i+1] - kTs_[i]);
-    if (f > prn(seed)) ++i;
+  auto n = kTs_.size();
+  if (n > 1) {
+    // Find temperatures that bound the actual temperature
+    while (kTs_[i+1] < kT && i + 1 < n - 1) ++i;
+
+    if (settings::temperature_method == TemperatureMethod::NEAREST) {
+      // Pick closer of two bounding temperatures
+      if (kT - kTs_[i] > kTs_[i+1] - kT) ++i;
+
+    } else {
+      // Randomly sample between temperature i and i+1
+      double f = (kT - kTs_[i]) / (kTs_[i+1] - kTs_[i]);
+      if (f > prn(seed)) ++i;
+    }
   }
 
   // Set temperature index

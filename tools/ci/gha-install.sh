@@ -21,7 +21,7 @@ fi
 
 # Install libMesh if needed
 if [[ $LIBMESH = 'y' ]]; then
-    ./tools/ci/travis-install-libmesh.sh
+    ./tools/ci/gha-install-libmesh.sh
 fi
 
 # Install mpi4py for MPI configurations

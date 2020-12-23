@@ -3,6 +3,7 @@
 #include <string>  // for string
 
 #include <fmt/core.h>
+#include <gsl/gsl>
 
 #include "openmc/error.h"
 #include "openmc/hdf5_interface.h"
@@ -88,6 +89,7 @@ UnifiedAngleEnergy UncorrelatedAngleEnergy::serialize() const
   // Create buffer and serialize data
   angle_.serialize(buffer);
   if (energy_) energy_->serialize(buffer);
+  Ensures(n == buffer.offset_);
 
   return {AngleEnergyType::UNCORRELATED, std::move(buffer)};
 }

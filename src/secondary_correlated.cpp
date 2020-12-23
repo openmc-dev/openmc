@@ -5,6 +5,7 @@
 #include <cstddef>   // for size_t
 #include <iterator>  // for back_inserter
 
+#include <gsl/gsl>
 #include "xtensor/xarray.hpp"
 #include "xtensor/xview.hpp"
 
@@ -321,6 +322,7 @@ UnifiedAngleEnergy CorrelatedAngleEnergy::serialize() const
       adist->serialize(buffer);
     }
   }
+  Ensures(n == buffer.offset_);
 
   return {AngleEnergyType::CORRELATED, std::move(buffer)};
 }

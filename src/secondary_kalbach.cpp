@@ -6,6 +6,7 @@
 #include <iterator>  // for back_inserter
 #include <vector>
 
+#include <gsl/gsl>
 #include "xtensor/xarray.hpp"
 #include "xtensor/xview.hpp"
 
@@ -277,6 +278,7 @@ UnifiedAngleEnergy KalbachMann::serialize() const
     buffer.add(dist.r);
     buffer.add(dist.a);
   }
+  Ensures(n == buffer.offset_);
 
   return {AngleEnergyType::KALBACH_MANN, std::move(buffer)};
 }

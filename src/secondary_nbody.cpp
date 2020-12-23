@@ -2,6 +2,8 @@
 
 #include <cmath> // for log
 
+#include <gsl/gsl>
+
 #include "openmc/constants.h"
 #include "openmc/hdf5_interface.h"
 #include "openmc/math_functions.h"
@@ -72,6 +74,7 @@ UnifiedAngleEnergy NBodyPhaseSpace::serialize() const
   buffer.add(mass_ratio_);
   buffer.add(A_);
   buffer.add(Q_);
+  Ensures(buffer.offset_ == 28);
 
   return {AngleEnergyType::NBODY, std::move(buffer)};
 }

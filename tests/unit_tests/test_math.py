@@ -206,25 +206,22 @@ def test_watt_spectrum():
 
 
 def test_normal_dist():
+    # When standard deviation is zero, sampled value should be mean
     prn_seed = 1
-    a = 14.08
-    b = 0.0
+    mean = 14.08
+    stdev = 0.0
     ref_val = 14.08
-    test_val = openmc.lib.math.normal_variate(a, b, prn_seed)
-
+    test_val = openmc.lib.math.normal_variate(mean, stdev, prn_seed)
     assert ref_val == pytest.approx(test_val)
 
-    # make sigma = 1.0
-    b = 1.0
-
+    # Use Shapiro-Wilk test to ensure normality of sampled vairates
+    stdev = 1.0
     samples = []
     num_samples = 10000
-    # sample some numbers
-    for i in range(num_samples):
+    for _ in range(num_samples):
         # sample the normal distribution from openmc
-        samples.append(openmc.lib.math.normal_variate(a, b, prn_seed))
+        samples.append(openmc.lib.math.normal_variate(mean, stdev, prn_seed))
         prn_seed += 1
-
     stat, p = shapiro(samples)
     assert p > 0.05
 

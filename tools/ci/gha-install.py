@@ -51,7 +51,8 @@ def install(omp=False, mpi=False, phdf5=False, dagmc=False, libmesh=False):
 
     if libmesh:
         cmake_cmd.append('-Dlibmesh=ON')
-        cmake_cmd.append('-DCMAKE_PREFIX_PATH=/home/travis/LIBMESH')
+        libmesh_path = os.environ.get('HOME') + '/MOOSE/libmesh/installed'
+        cmake_cmd.append('-DCMAKE_PREFIX_PATH=' + libmesh_path)
 
     # Build in coverage mode for coverage testing
     cmake_cmd.append('-Dcoverage=on')

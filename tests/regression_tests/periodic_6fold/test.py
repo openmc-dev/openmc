@@ -1,9 +1,10 @@
 import openmc
+import numpy as np
 
 from tests.testing_harness import PyAPITestHarness
 
 
-class PeriodicTest(PyAPITestHarness):
+class Periodic6FoldTest(PyAPITestHarness):
     def _build_inputs(self):
         # Define materials
         water = openmc.Material(1)
@@ -20,23 +21,26 @@ class PeriodicTest(PyAPITestHarness):
         materials.default_temperature = '294K'
         materials.export_to_xml()
 
-        # Define geometry
-        x_min = openmc.XPlane(surface_id=1, x0=0., boundary_type='periodic')
-        x_max = openmc.XPlane(surface_id=2, x0=5., boundary_type='reflective')
+        # Define the geometry.  Note that this geometry is somewhat non-sensical
+        # (it essentially defines a circle of half-cylinders), but it is
+        # designed so that periodic and reflective BCs will give different
+        # answers.
+        theta1 = (-1/6 + 1/2) * np.pi
+        theta2 = (1/6 - 1/2) * np.pi
+        plane1 = openmc.Plane(a=np.cos(theta1), b=np.sin(theta1),
+                              boundary_type='periodic')
+        plane2 = openmc.Plane(a=np.cos(theta2), b=np.sin(theta2),
+                              boundary_type='periodic')
 
-        y_min = openmc.YPlane(surface_id=3, y0=0., boundary_type='periodic')
-        y_max = openmc.YPlane(surface_id=4, y0=5., boundary_type='reflective')
-        y_min.periodic_surface = x_min
+        x_max = openmc.XPlane(x0=5., boundary_type='reflective')
 
-        z_min = openmc.ZPlane(surface_id=5, z0=-5., boundary_type='periodic')
-        z_max = openmc.Plane(surface_id=6, a=0, b=0, c=1, d=5.,
-                             boundary_type='periodic')
-        z_cyl = openmc.ZCylinder(surface_id=7, x0=2.5, y0=0., r=2.0)
+        z_cyl = openmc.ZCylinder(x0=3*np.cos(np.pi/6), y0=3*np.sin(np.pi/6),
+                                 r=2.0)
 
         outside_cyl = openmc.Cell(1, fill=water, region=(
-            +x_min & -x_max & +y_min & -y_max & +z_min & -z_max & +z_cyl))
+            +plane1 & +plane2 & -x_max & +z_cyl))
         inside_cyl = openmc.Cell(2, fill=fuel, region=(
-            +y_min & +z_min & -z_max & -z_cyl))
+            +plane1 & +plane2 & -z_cyl))
         root_universe = openmc.Universe(0, cells=(outside_cyl, inside_cyl))
 
         geometry = openmc.Geometry()
@@ -54,5 +58,5 @@ class PeriodicTest(PyAPITestHarness):
 
 
 def test_periodic():
-    harness = PeriodicTest('statepoint.4.h5')
+    harness = Periodic6FoldTest('statepoint.4.h5')
     harness.main()

@@ -1,8 +1,12 @@
+import numbers
+import bisect
+import math
+
 import h5py
 import numpy as np
 
 from .results import Results, VERSION_RESULTS
-from openmc.checkvalue import check_filetype_version, check_value
+from openmc.checkvalue import check_filetype_version, check_value, check_type
 
 
 __all__ = ["ResultsList"]
@@ -192,3 +196,103 @@ class ResultsList(list):
         for ix, res in enumerate(items):
             times[ix] = res.proc_time
         return times
+
+    def get_times(self, time_units="d") -> np.ndarray:
+        """Return the points in time that define the depletion schedule
+
+
+        .. versionadded:: 0.12.1
+
+        Parameters
+        ----------
+        time_units : {"s", "d", "h", "min"}, optional
+            Return the vector in these units. Default is to
+            convert to days
+
+        Returns
+        -------
+        numpy.ndarray
+            1-D vector of time points
+
+        """
+        check_type("time_units", time_units, str)
+
+        times = np.fromiter(
+            (r.time[0] for r in self),
+            dtype=self[0].time.dtype,
+            count=len(self),
+        )
+
+        if time_units == "d":
+            times /= (60 * 60 * 24)
+        elif time_units == "h":
+            times /= (60 * 60)
+        elif time_units == "min":
+            times /= 60
+        elif time_units != "s":
+            raise ValueError(
+                'Unable to set "time_units" to {} since it is not '
+                'in ("s", "d", "min", "h")'.format(time_units)
+            )
+        return times
+
+    def get_step_where(
+        self, time, time_units="d", atol=1e-6, rtol=1e-3
+    ) -> int:
+        """Return the index closest to a given point in time
+
+        In the event ``time`` lies exactly between two points, the
+        lower index will be returned. It is possible that the index
+        will be at most one past the point in time requested, but only
+        according to tolerances requested.
+
+        Passing ``atol=math.inf`` and ``rtol=math.inf`` will return
+        the closest index to the requested point.
+
+
+        .. versionadded:: 0.12.1
+
+        Parameters
+        ----------
+        time : float
+            Desired point in time
+        time_units : {"s", "d", "min", "h"}, optional
+            Units on ``time``. Default: days
+        atol : float, optional
+            Absolute tolerance (in ``time_units``) if ``time`` is not
+            found.
+        rtol : float, optional
+            Relative tolerance if ``time`` is not found.
+
+        Returns
+        -------
+        int
+
+        """
+        check_type("time", time, numbers.Real)
+        check_type("atol", atol, numbers.Real)
+        check_type("rtol", rtol, numbers.Real)
+
+        times = self.get_times(time_units)
+
+        if times[0] < time < times[-1]:
+            ix = bisect.bisect_left(times, time)
+            if ix == times.size:
+                ix -= 1
+            # Bisection will place us either directly on the point
+            # or one-past the first value less than time
+            elif time - times[ix - 1] <= times[ix] - time:
+                ix -= 1
+        elif times[0] >= time:
+            ix = 0
+        elif time >= times[-1]:
+            ix = times.size - 1
+
+        if math.isclose(time, times[ix], rel_tol=rtol, abs_tol=atol):
+            return ix
+
+        raise ValueError(
+            "A value of {} {} was not found given absolute and "
+            "relative tolerances {} and {}.".format(
+                time, time_units, atol, rtol)
+        )

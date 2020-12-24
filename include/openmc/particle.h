@@ -125,7 +125,7 @@ struct MacroXS {
   double fission;       //!< macroscopic fission xs
   double nu_fission;    //!< macroscopic production xs
   double prompt_nu_fission;//!< macroscopic prompt production
-  std::array<double, 8> delayed_nu_fission;//!< macroscopic delayed production
+  std::vector<double> delayed_nu_fission;//!< macroscopic delayed production
   double inverse_velocity;//!< macroscopic inverse velocity 
   double photon_prod;   //!< macroscopic photon production xs
 

@@ -47,12 +47,15 @@ bool dagmc                   {false};
 bool delayed_photon_scaling  {true};
 bool entropy_on              {false};
 bool event_based             {false};
+bool flux_frequency_on       {false};
+bool frequency_method_on     {false};
 bool legendre_to_tabular     {true};
 bool material_cell_offsets   {true};
 bool output_summary          {true};
 bool output_tallies          {true};
 bool particle_restart_run    {false};
 bool photon_transport        {false};
+bool precursor_frequency_on  {false};
 bool reduce_tallies          {true};
 bool res_scat_on             {false};
 bool restart_run             {false};
@@ -83,6 +86,12 @@ int32_t gen_per_batch {1};
 int64_t n_particles {-1};
 
 int64_t max_particles_in_flight {100000};
+
+std::vector<double> flux_frequency;
+std::vector<double> precursor_frequency;
+std::vector<double> frequency_energy_bins;
+int num_frequency_delayed_groups;
+
 
 ElectronTreatment electron_treatment {ElectronTreatment::TTB};
 std::array<double, 4> energy_cutoff {0.0, 1000.0, 0.0, 0.0};
@@ -542,6 +551,59 @@ void read_settings_xml()
       "is deprecated. Please create a mesh using <mesh> and then reference "
       "it by specifying its ID in an <entropy_mesh> element.");
   }
+
+  // Frequency mesh
+  int32_t index_frequency_mesh = -1;
+  int num_frequency_energy_groups = 0;
+  if (check_for_node(root, "frequency")) {
+
+    settings::frequency_method_on = true;
+
+    // Read the frequency mesh from <frequency>
+    auto node_frequency = root.child("frequency");
+    if (check_for_node(node_frequency, "frequency_mesh")) {
+      int temp = std::stoi(get_node_value(node_frequency, "frequency_mesh"));
+      if (model::mesh_map.find(temp) == model::mesh_map.end()) {
+        fatal_error(fmt::format(
+	  "Mesh {} specified for frequency mesh does not exist.", temp));
+      }
+
+      auto* m = dynamic_cast<RegularMesh*>(
+       model::meshes[model::mesh_map.at(temp)].get());
+      if (!m) fatal_error("Only regular meshes can be used as a frequency mesh");
+      simulation::frequency_mesh = m;
+    }
+
+    // Check for group structure
+    if (check_for_node(node_frequency, "group_structure")) {
+      auto f_energy_bins = get_node_array<double>(node_frequency, "group_structure");
+      num_frequency_energy_groups = f_energy_bins.size() - 1;
+      double frequency_energy_bin_avg[num_frequency_energy_groups];
+      for (int i = 0; i < num_frequency_energy_groups; ++i) {
+        frequency_energy_bin_avg[i] = 1./2. * (f_energy_bins[i] + f_energy_bins[i + 1]);
+      }
+      settings::frequency_energy_bins = f_energy_bins;
+    }
+
+    // Check for num delayed groups
+    if (check_for_node(node_frequency, "delayed_groups")) {
+      int num_f_delayed_groups = std::stoi(get_node_value(node_frequency, "delayed_groups"));
+
+      // Check for precursor frequency
+      if (check_for_node(node_frequency, "precursor_frequency")) {
+	settings::precursor_frequency = get_node_array<double>(node_frequency, "precursor_frequency");
+	settings::precursor_frequency_on = true;
+	settings::num_frequency_delayed_groups = num_f_delayed_groups;
+      }
+    }
+
+    // Check for flux frequency
+    if (check_for_node(node_frequency, "flux_frequency")) {
+      settings::flux_frequency = get_node_array<double>(node_frequency, "flux_frequency");
+      settings::flux_frequency_on = true;
+    }
+  }
+
 
   // Uniform fission source weighting mesh
   if (check_for_node(root, "ufs_mesh")) {

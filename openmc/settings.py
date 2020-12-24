@@ -7,6 +7,7 @@ from math import ceil
 
 import openmc.checkvalue as cv
 from . import VolumeCalculation, Source, RegularMesh
+import openmc
 from ._xml import clean_indentation, get_text, reorder_attributes
 
 
@@ -66,6 +67,16 @@ class Settings:
         history-based parallelism.
 
         .. versionadded:: 0.12
+    frequency_mesh : openmc.RegularMesh
+        Mesh to be used to set the flux or precursor frequency
+    frequency_group_structure : openmc.mgxs.EnergyGroups
+        Energy group structure used for setting the flux frequency
+    frequency_num_delayed_groups : int
+        Number of delayed groups for precursor frequency
+    flux_frequency : np.ndarray
+        Array of flux frequencies of size frequency_mesh x frequency_energy_groups
+    precursor_frequency : np.ndarray
+        Array of precursor frequencies of size frequency_mesh x frequency_delayed_groups
     generations_per_batch : int
         Number of generations per batch
     max_lost_particles : int
@@ -218,6 +229,13 @@ class Settings:
         # Shannon entropy mesh
         self._entropy_mesh = None
 
+        # Frequency data
+        self._frequency_mesh = None
+        self._frequency_group_structure = None
+        self._frequency_num_delayed_groups = None
+        self._flux_frequency = None
+        self._precursor_frequency = None
+
         # Trigger subelement
         self._trigger_active = None
         self._trigger_max_batches = None
@@ -331,6 +349,26 @@ class Settings:
     @property
     def entropy_mesh(self):
         return self._entropy_mesh
+
+    @property
+    def frequency_mesh(self):
+        return self._frequency_mesh
+
+    @property
+    def frequency_group_structure(self):
+        return self._frequency_group_structure
+
+    @property
+    def frequency_num_delayed_groups(self):
+        return self._frequency_num_delayed_groups
+
+    @property
+    def flux_frequency(self):
+        return self._flux_frequency
+
+    @property
+    def precursor_frequency(self):
+        return self._precursor_frequency
 
     @property
     def trigger_active(self):
@@ -631,6 +669,27 @@ class Settings:
     def entropy_mesh(self, entropy):
         cv.check_type('entropy mesh', entropy, RegularMesh)
         self._entropy_mesh = entropy
+
+    @frequency_mesh.setter
+    def frequency_mesh(self, mesh):
+        cv.check_type('frequency mesh', mesh, RegularMesh)
+        self._frequency_mesh = mesh
+
+    @frequency_group_structure.setter
+    def frequency_group_structure(self, group_structure):
+        self._frequency_group_structure = group_structure
+
+    @frequency_num_delayed_groups.setter
+    def frequency_num_delayed_groups(self, delayed_groups):
+        self._frequency_num_delayed_groups = delayed_groups
+
+    @flux_frequency.setter
+    def flux_frequency(self, frequency):
+        self._flux_frequency = frequency
+
+    @precursor_frequency.setter
+    def precursor_frequency(self, frequency):
+        self._precursor_frequency = frequency
 
     @trigger_active.setter
     def trigger_active(self, trigger_active):
@@ -946,6 +1005,37 @@ class Settings:
             subelement = ET.SubElement(root, "entropy_mesh")
             subelement.text = str(self.entropy_mesh.id)
 
+    def _create_frequency_subelement(self, root):
+        if self._frequency_mesh is not None:
+            element = ET.SubElement(root, "frequency")
+
+            # See if a <mesh> element already exists -- if not, add it
+            path = "./mesh[@id='{}']".format(self._frequency_mesh.id)
+            if root.find(path) is None:
+                root.append(self._frequency_mesh.to_xml_element())
+
+            subelement = ET.SubElement(element, "frequency_mesh")
+            subelement.text = str(self._frequency_mesh.id)
+
+            if self._frequency_group_structure is not None:
+                subelement = ET.SubElement(element, "group_structure")
+                subelement.text = ' '.join(
+                        str(x) for x in self._frequency_group_structure.group_edges)
+
+            if self._frequency_num_delayed_groups is not None:
+                subelement = ET.SubElement(element, "delayed_groups")
+                subelement.text = str(self._frequency_num_delayed_groups)
+
+            if self._flux_frequency is not None:
+                subelement = ET.SubElement(element, "flux_frequency")
+                subelement.text = ' '.join(
+                        str(x) for x in self._flux_frequency)
+
+            if self._precursor_frequency is not None:
+                subelement = ET.SubElement(element, "precursor_frequency")
+                subelement.text = ' '.join(
+                        str(x) for x in self._precursor_frequency)
+
     def _create_trigger_subelement(self, root):
         if self._trigger_active is not None:
             trigger_element = ET.SubElement(root, "trigger")
@@ -1209,6 +1299,36 @@ class Settings:
             if elem is not None:
                 self.entropy_mesh = RegularMesh.from_xml_element(elem)
 
+    def _frequency_from_xml_element(self, root):
+        elem = root.find('frequency')
+        if elem is not None:
+            self.frequency_mesh = RegularMesh()
+            value = get_text(elem, 'lower_left')
+            if value is not None:
+                self.frequency_mesh.lower_left = [float(x) for x in value.split()]
+            value = get_text(elem, 'upper_right')
+            if value is not None:
+                self.frequency_mesh.upper_right = [float(x) for x in value.split()]
+            value = get_text(elem, 'width')
+            if value is not None:
+                self.frequency_mesh.width = [float(x) for x in value.split()]
+            value = get_text(elem, 'dimension')
+            if value is not None:
+                self.frequency_mesh.dimension = [int(x) for x in value.split()]
+            value = get_text(elem, 'group_structure')
+            if value is not None:
+                group_edges = [float(x) for x in value.split()]
+                self.frequency_group_structure = openmc.mgxs.EnergyGroups(group_edges)
+            value = get_text(elem, 'delayed_groups')
+            if value is not None:
+                self.frequency_num_delayed_groups = int(value)
+            value = get_text(elem, 'flux_frequency')
+            if value is not None:
+                self.flux_frequency = [float(x) for x in value.split()]
+            value = get_text(elem, 'precursor_frequency')
+            if value is not None:
+                self.precursor_frequency = [float(x) for x in value.split()]
+
     def _trigger_from_xml_element(self, root):
         elem = root.find('trigger')
         if elem is not None:
@@ -1359,6 +1479,7 @@ class Settings:
         self._create_survival_biasing_subelement(root_element)
         self._create_cutoff_subelement(root_element)
         self._create_entropy_mesh_subelement(root_element)
+        self._create_frequency_subelement(root_element)
         self._create_trigger_subelement(root_element)
         self._create_no_reduce_subelement(root_element)
         self._create_verbosity_subelement(root_element)
@@ -1432,6 +1553,7 @@ class Settings:
         settings._survival_biasing_from_xml_element(root)
         settings._cutoff_from_xml_element(root)
         settings._entropy_mesh_from_xml_element(root)
+        settings._frequency_from_xml_element(root)
         settings._trigger_from_xml_element(root)
         settings._no_reduce_from_xml_element(root)
         settings._verbosity_from_xml_element(root)

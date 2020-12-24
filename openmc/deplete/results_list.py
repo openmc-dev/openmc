@@ -200,6 +200,9 @@ class ResultsList(list):
     def get_times(self, time_units="d") -> np.ndarray:
         """Return the points in time that define the depletion schedule
 
+
+        .. versionadded:: 0.12.1
+
         Parameters
         ----------
         time_units : {"s", "d", "h", "min"}, optional
@@ -245,6 +248,9 @@ class ResultsList(list):
 
         Passing ``atol=math.inf`` and ``rtol=math.inf`` will return
         the closest index to the requested point.
+
+
+        .. versionadded:: 0.12.1
 
         Parameters
         ----------

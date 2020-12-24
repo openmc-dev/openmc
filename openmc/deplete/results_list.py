@@ -315,6 +315,7 @@ class ResultsList(list):
             If not provided, nuclides from the cross_sections element of
             materials.xml will be used. If that element is not present,
             nuclides from OPENMC_CROSS_SECTIONS will be used.
+
         Returns
         -------
         mat_file : Materials

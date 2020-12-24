@@ -300,15 +300,14 @@ class ResultsList(list):
         )
 
     def export_to_materials(self, burnup_index, nuc_with_data=None):
-        """Export openmc.Materials file from the depletion results
+        """Return openmc.Materials created from these depletion results.
 
         Parameters
         ----------
         burn_index : int
             Index of burnup step to evaluate
         nuc_with_data : Iterable of str, optional
-            nuclides iterable to evaluate with neutron data
-
+            Nuclides iterable to evaluate with neutron data.
             This must be specified if not all nuclides appearing in
             depletion results have associated neutron cross sections, and
             as such cannot be used in subsequent transport calculations.

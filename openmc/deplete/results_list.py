@@ -299,8 +299,8 @@ class ResultsList(list):
                 time, time_units, atol, rtol)
         )
 
-    def export_to_materials_xml(self, burnup_index, nuc_with_data=None, new_xml_name=None):
-        """Export Materials.xml file from the depletion results
+    def export_to_materials(self, burnup_index, nuc_with_data=None):
+        """Export openmc.Materials file from the depletion results
 
         Parameters
         ----------
@@ -309,7 +309,7 @@ class ResultsList(list):
         nuc_with_data : Iterable of str, optional
             nuclides iterable to evaluate with neutron data
 
-            This must be specified because not all nuclides appearing in
+            This must be specified if not all nuclides appearing in
             depletion results have associated neutron cross sections, and
             as such cannot be used in subsequent transport calculations.
             If not provided, nuclides from the cross_sections element of

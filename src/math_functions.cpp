@@ -692,25 +692,20 @@ double maxwell_spectrum(double T, uint64_t* seed) {
 
 
 double normal_variate(double mean, double standard_deviation, uint64_t* seed) {
-  // perhaps there should be a limit to the number of resamples
-  while ( true ) {
-    double v1 = 2 * prn(seed) - 1.;
-    double v2 = 2 * prn(seed) - 1.;
-
-    double r = std::pow(v1, 2) + std::pow(v2, 2);
-    double r2 = std::pow(r, 2);
-    if (r2 < 1) {
-      double z = std::sqrt(-2.0 * std::log(r2)/r2);
-      z *= (prn(seed) <= 0.5) ? v1 : v2;
-      return mean + standard_deviation*z;
-    }
-  }
+  // Sample a normal variate using Marsaglia's polar method
+  double x, y, r2;
+  do {
+    x = 2 * prn(seed) - 1.;
+    y = 2 * prn(seed) - 1.;
+    r2 = x*x + y*y;
+  } while (r2 > 1 || r2 == 0);
+  double z = std::sqrt(-2.0 * std::log(r2)/r2);
+  return mean + standard_deviation*z*x;
 }
 
 double muir_spectrum(double e0, double m_rat, double kt, uint64_t* seed) {
-  // note sigma here is a factor of 2 shy of equation
-  // 8 in https://permalink.lanl.gov/object/tr?what=info:lanl-repo/lareport/LA-05411-MS
-  double sigma = std::sqrt(2.*e0*kt/m_rat);
+  // https://permalink.lanl.gov/object/tr?what=info:lanl-repo/lareport/LA-05411-MS
+  double sigma = std::sqrt(4.*e0*kt/m_rat);
   return normal_variate(e0, sigma, seed);
 }
 

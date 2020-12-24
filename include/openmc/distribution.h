@@ -71,7 +71,7 @@ private:
 };
 
 //==============================================================================
-//! Maxwellian distribution of form c*E*exp(-E/theta)
+//! Maxwellian distribution of form c*sqrt(E)*exp(-E/theta)
 //==============================================================================
 
 class Maxwell : public Distribution {

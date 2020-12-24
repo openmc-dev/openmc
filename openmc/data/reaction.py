@@ -703,7 +703,7 @@ def _get_photon_products_endf(ev, rx):
                     # TODO: Get file 15 distribution
                     pass
                 elif law == 2:
-                    energy = items[1]
+                    energy = items[0]
                     primary_flag = items[2]
                     dist.energy = DiscretePhoton(primary_flag, energy,
                                                  ev.target['mass'])

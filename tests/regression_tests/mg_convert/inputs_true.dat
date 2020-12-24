@@ -10,7 +10,7 @@
 <materials>
   <cross_sections>./mgxs.h5</cross_sections>
   <material id="1" name="UO2 fuel">
-    <density units="macro" value="1.0" />
+    <density units="macro" value="1.1" />
     <macroscopic name="UO2" />
   </material>
 </materials>

@@ -87,7 +87,7 @@ RUN if [ "$include_dagmc" = "true" ] ; \
                 -DENABLE_NETCDF=ON \
                 -DBUILD_SHARED_LIBS=OFF \
                 -DENABLE_FORTRAN=OFF \
-                -DCMAKE_INSTALL_PREFIX=/MOAB \
+                -DPYMOAB_PREFIX=/MOAB/build/pymoab \
                 -DENABLE_BLASLAPACK=OFF ; \
     make -j"$compile_cores" ; \
     make -j"$compile_cores" install ; \
@@ -97,13 +97,9 @@ RUN if [ "$include_dagmc" = "true" ] ; \
                 -DENABLE_PYMOAB=ON \
                 -DENABLE_BLASLAPACK=OFF \
                 -DENABLE_FORTRAN=OFF \
-                -DCMAKE_INSTALL_PREFIX=/MOAB \
                 -DENABLE_BLASLAPACK=OFF ; \
     make -j"$compile_cores" ; \
     make -j"$compile_cores" install ; \
-    cd pymoab ; \
-    bash install.sh ; \
-    python setup.py install ; \
     fi
 
 # Clone and install Double-Down
@@ -113,7 +109,7 @@ RUN if [ "$include_dagmc" = "true" ] ; \
     mkdir build ; \
     cd build ; \
     cmake .. -DCMAKE_INSTALL_PREFIX=.. \
-             -DMOAB_DIR=/MOAB \
+             -DMOAB_DIR=/usr/local \
              -DEMBREE_DIR=/embree/lib/cmake/embree-3.12.1 ; \
     make -j"$compile_cores" ; \
     make -j"$compile_cores" install ; \
@@ -128,7 +124,7 @@ RUN if [ "$include_dagmc" = "true" ] ; \
     cd build ; \
     cmake ../dagmc -DBUILD_TALLY=ON \
         -DCMAKE_INSTALL_PREFIX=/dagmc/ \
-        -DMOAB_DIR=/MOAB \
+        -DMOAB_DIR=/usr/local \
         -DBUILD_STATIC_LIBS=OFF \
         -DBUILD_STATIC_EXE=OFF ; \
     make -j"$compile_cores" install ; \

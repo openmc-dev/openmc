@@ -84,11 +84,10 @@ RUN if [ "$include_dagmc" = "true" ] ; \
     git clone  --single-branch --branch develop https://bitbucket.org/fathomteam/moab/ ; \
     cd build ; \
     cmake ../moab -DENABLE_HDF5=ON \
-                -DENABLE_NETCDF=ON \
-                -DBUILD_SHARED_LIBS=OFF \
-                -DENABLE_FORTRAN=OFF \
-                -DPYMOAB_PREFIX=/MOAB/build/pymoab \
-                -DENABLE_BLASLAPACK=OFF ; \
+                  -DENABLE_NETCDF=ON \
+                  -DBUILD_SHARED_LIBS=OFF \
+                  -DENABLE_FORTRAN=OFF \
+                  -DENABLE_BLASLAPACK=OFF ; \
     make -j"$compile_cores" ; \
     make -j"$compile_cores" install ; \
     rm -rf * ; \

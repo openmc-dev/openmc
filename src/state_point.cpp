@@ -701,7 +701,7 @@ write_source_bank(hid_t group_id, bool surf_src_bank)
 #endif
   } else {
 #ifdef OPENMC_MPI
-    MPI_Send((*src_bank).data(), count_size, mpi::bank,
+    MPI_Send(src_bank->data(), count_size, mpi::bank,
       0, mpi::rank, mpi::intracomm);
 #endif
   }

@@ -676,7 +676,7 @@ write_source_bank(hid_t group_id, bool surf_src_bank)
 #ifdef OPENMC_MPI
       // Receive source sites from other processes
       if (i > 0)
-        MPI_Recv((*src_bank).data(), count[0], mpi::bank, i, i,
+        MPI_Recv(src_bank->data(), count[0], mpi::bank, i, i,
                  mpi::intracomm, MPI_STATUS_IGNORE);
 #endif
 

@@ -646,7 +646,7 @@ write_source_bank(hid_t group_id, bool surf_src_bank)
   H5Pset_dxpl_mpio(plist, H5FD_MPIO_COLLECTIVE);
 
   // Write data to file in parallel
-  H5Dwrite(dset, banktype, memspace, dspace, plist, (*src_bank).data());
+  H5Dwrite(dset, banktype, memspace, dspace, plist, src_bank->data());
 
   // Free resources
   H5Sclose(dspace);

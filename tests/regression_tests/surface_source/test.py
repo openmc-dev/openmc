@@ -52,8 +52,8 @@ def model(request):
         openmc_model.settings.surf_src_read = {'path': 'surface_source_true.h5'}
 
     # Tallies
-    tal = openmc.Tally(1)
-    cell_filter = openmc.CellFilter(cell_3, 1)
+    tal = openmc.Tally()
+    cell_filter = openmc.CellFilter(cell_3)
     tal.filters = [cell_filter]
     tal.scores = ['flux']
     openmc_model.tallies.append(tal)

@@ -1,6 +1,6 @@
 import os
-import h5py
 
+import h5py
 import numpy as np
 import pytest
 import openmc

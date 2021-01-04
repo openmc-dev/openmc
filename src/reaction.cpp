@@ -75,8 +75,10 @@ Reaction::Reaction(hid_t group, const std::vector<int>& temperatures)
     for (auto& p : products_) {
       if (p.particle_ == Particle::Type::neutron) {
         for (auto& d : p.distribution_) {
-          auto d_ = dynamic_cast<UncorrelatedAngleEnergy*>(d.get());
-          if (d_) d_->fission() = true;
+          if (d.type() == AngleEnergyType::UNCORRELATED) {
+            UncorrelatedAngleEnergyFlat dist(d.data());
+            dist.set_fission(true);
+          }
         }
       }
     }

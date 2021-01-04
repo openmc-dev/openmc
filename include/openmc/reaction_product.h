@@ -12,6 +12,7 @@
 #include "openmc/angle_energy.h"
 #include "openmc/endf.h"
 #include "openmc/particle.h"
+#include "openmc/secondary_unified.h"
 
 namespace openmc {
 
@@ -32,7 +33,7 @@ public:
     total    // Delayed emission of secondary particle
   };
 
-  using Secondary = std::unique_ptr<AngleEnergy>;
+  using Secondary = UnifiedAngleEnergy;
 
   //! Construct reaction product from HDF5 data
   //! \param[in] group HDF5 group containing data

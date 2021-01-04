@@ -69,13 +69,17 @@ ReactionProduct::ReactionProduct(hid_t group)
     // Determine distribution type and read data
     read_attribute(dgroup, "type", temp);
     if (temp == "uncorrelated") {
-      distribution_.push_back(std::make_unique<UncorrelatedAngleEnergy>(dgroup));
+      UncorrelatedAngleEnergy dist(dgroup);
+      distribution_.push_back(dist.serialize());
     } else if (temp == "correlated") {
-      distribution_.push_back(std::make_unique<CorrelatedAngleEnergy>(dgroup));
+      CorrelatedAngleEnergy dist(dgroup);
+      distribution_.push_back(dist.serialize());
     } else if (temp == "nbody") {
-      distribution_.push_back(std::make_unique<NBodyPhaseSpace>(dgroup));
+      NBodyPhaseSpace dist(dgroup);
+      distribution_.push_back(dist.serialize());
     } else if (temp == "kalbach-mann") {
-      distribution_.push_back(std::make_unique<KalbachMann>(dgroup));
+      KalbachMann dist(dgroup);
+      distribution_.push_back(dist.serialize());
     }
 
     close_group(dgroup);
@@ -95,13 +99,13 @@ void ReactionProduct::sample(double E_in, double& E_out, double& mu,
 
       // If i-th distribution is sampled, sample energy from the distribution
       if (c <= prob) {
-        distribution_[i]->sample(E_in, E_out, mu, seed);
+        distribution_[i].sample(E_in, E_out, mu, seed);
         break;
       }
     }
   } else {
     // If only one distribution is present, go ahead and sample it
-    distribution_[0]->sample(E_in, E_out, mu, seed);
+    distribution_[0].sample(E_in, E_out, mu, seed);
   }
 }
 

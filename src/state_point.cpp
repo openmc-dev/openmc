@@ -665,8 +665,7 @@ write_source_bank(hid_t group_id, bool surf_src_bank)
 
     // Save source bank sites since the array is overwritten below
 #ifdef OPENMC_MPI
-    std::vector<Particle::Bank> temp_source {(*src_bank).begin(),
-      (*src_bank).begin() + count_size};
+    std::vector<Particle::Bank> temp_source {src_bank->begin(), src_bank->end()};
 #endif
 
     for (int i = 0; i < mpi::n_procs; ++i) {

@@ -57,6 +57,8 @@ public:
 
   AngleDistributionFlat angle() const;
   EnergyDistributionFlat energy() const;
+  bool fission() const;
+  void set_fission(bool fission);
 private:
   const uint8_t* data_;
 };

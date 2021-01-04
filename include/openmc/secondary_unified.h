@@ -29,6 +29,7 @@ public:
   void sample(double E_in, double& E_out, double& mu, uint64_t* seed) const override;
 
   const uint8_t* data() const { return buffer_.data_.get(); }
+  AngleEnergyType type() const { return type_; }
 private:
   // Data members
   AngleEnergyType type_;

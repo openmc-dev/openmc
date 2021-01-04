@@ -77,14 +77,18 @@ UnifiedAngleEnergy UncorrelatedAngleEnergy::serialize() const
   // Determine size of angular distribution
   size_t bytes_angle = angle_.nbytes();
 
-  size_t n = 8 + bytes_angle;
+  size_t n = 8 + 4 + bytes_angle;
   if (energy_) {
     n += energy_->nbytes();
   }
   DataBuffer buffer(n);
 
   // Write locator for energy
-  buffer.add(energy_ ? 8 + bytes_angle : 0);
+  buffer.add(energy_ ? 8 + 4 + bytes_angle : 0);
+
+  // Write placeholder for fission
+  int fission = 0;
+  buffer.add(fission);
 
   // Create buffer and serialize data
   angle_.serialize(buffer);
@@ -96,7 +100,7 @@ UnifiedAngleEnergy UncorrelatedAngleEnergy::serialize() const
 
 AngleDistributionFlat UncorrelatedAngleEnergyFlat::angle() const
 {
-  return AngleDistributionFlat(data_ + 8);
+  return AngleDistributionFlat(data_ + 8 + 4);
 }
 
 EnergyDistributionFlat UncorrelatedAngleEnergyFlat::energy() const
@@ -108,11 +112,30 @@ EnergyDistributionFlat UncorrelatedAngleEnergyFlat::energy() const
   return EnergyDistributionFlat(type, data_ + offset + 4);
 }
 
+bool UncorrelatedAngleEnergyFlat::fission() const
+{
+  return (*reinterpret_cast<const int*>(data_ + 8) > 0);
+}
+
+void UncorrelatedAngleEnergyFlat::set_fission(bool fission)
+{
+  auto data_writable = const_cast<uint8_t*>(data_);
+  auto data_int = reinterpret_cast<int*>(data_writable + 8);
+  *data_int = fission ? 1 : 0;
+}
+
 void
 UncorrelatedAngleEnergyFlat::sample(double E_in, double& E_out, double& mu, uint64_t* seed) const
 {
   // Sample cosine of scattering angle
-  mu = this->angle().sample(E_in, seed);
+  if (this->fission()) {
+    // <<<<<<<<<<<<<<<<<<<<<<<<<<<<<< REMOVE THIS <<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+    // For fission, the angle is not used, so just assign a dummy value
+    mu = 1.0;
+    // <<<<<<<<<<<<<<<<<<<<<<<<<<<<<< REMOVE THIS <<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+  } else {
+    mu = this->angle().sample(E_in, seed);
+  }
 
   // Sample outgoing energy
   E_out = this->energy().sample(E_in, seed);

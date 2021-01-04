@@ -697,7 +697,7 @@ write_source_bank(hid_t group_id, bool surf_src_bank)
 
 #ifdef OPENMC_MPI
     // Restore state of source bank
-    std::copy(temp_source.begin(), temp_source.end(), (*src_bank).begin());
+    std::copy(temp_source.begin(), temp_source.end(), src_bank->begin());
 #endif
   } else {
 #ifdef OPENMC_MPI

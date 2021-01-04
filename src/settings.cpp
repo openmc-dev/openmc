@@ -451,7 +451,7 @@ void read_settings_xml()
     // Check if the user has specified different file for surface source reading
     if (check_for_node(node_ssr, "path")) {
       path = get_node_value(node_ssr, "path", false, true);
-      }
+    }
     model::external_sources.push_back(std::make_unique<FileSource>(path));
   }
 

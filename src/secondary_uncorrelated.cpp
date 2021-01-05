@@ -72,16 +72,10 @@ UncorrelatedAngleEnergy::sample(double E_in, double& E_out, double& mu,
   E_out = energy_->sample(E_in, seed);
 }
 
-UnifiedAngleEnergy UncorrelatedAngleEnergy::serialize() const
+void UncorrelatedAngleEnergy::serialize(DataBuffer& buffer) const
 {
   // Determine size of angular distribution
   size_t bytes_angle = angle_.nbytes();
-
-  size_t n = 8 + 4 + bytes_angle;
-  if (energy_) {
-    n += energy_->nbytes();
-  }
-  DataBuffer buffer(n);
 
   // Write locator for energy
   buffer.add(energy_ ? 8 + 4 + bytes_angle : 0);
@@ -93,6 +87,22 @@ UnifiedAngleEnergy UncorrelatedAngleEnergy::serialize() const
   // Create buffer and serialize data
   angle_.serialize(buffer);
   if (energy_) energy_->serialize(buffer);
+}
+
+UnifiedAngleEnergy UncorrelatedAngleEnergy::flatten() const
+{
+  // TODO: Remove once serialize method handles byte counting
+
+  // Determine size of angular distribution
+  size_t bytes_angle = angle_.nbytes();
+
+  size_t n = 8 + 4 + bytes_angle;
+  if (energy_) {
+    n += energy_->nbytes();
+  }
+
+  DataBuffer buffer(n);
+  this->serialize(buffer);
   Ensures(n == buffer.offset_);
 
   return {AngleEnergyType::UNCORRELATED, std::move(buffer)};

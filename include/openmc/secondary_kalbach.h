@@ -34,7 +34,9 @@ public:
   //! \param[inout] seed Pseudorandom seed pointer
   void sample(double E_in, double& E_out, double& mu, uint64_t* seed) const override;
 
-  UnifiedAngleEnergy serialize() const;
+  void serialize(DataBuffer& buffer) const;
+
+  UnifiedAngleEnergy flatten() const;
 private:
   //! Outgoing energy/angle at a single incoming energy
   struct KMTable {

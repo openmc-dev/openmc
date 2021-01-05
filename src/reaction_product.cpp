@@ -70,16 +70,16 @@ ReactionProduct::ReactionProduct(hid_t group)
     read_attribute(dgroup, "type", temp);
     if (temp == "uncorrelated") {
       UncorrelatedAngleEnergy dist(dgroup);
-      distribution_.push_back(dist.serialize());
+      distribution_.push_back(dist.flatten());
     } else if (temp == "correlated") {
       CorrelatedAngleEnergy dist(dgroup);
-      distribution_.push_back(dist.serialize());
+      distribution_.push_back(dist.flatten());
     } else if (temp == "nbody") {
       NBodyPhaseSpace dist(dgroup);
-      distribution_.push_back(dist.serialize());
+      distribution_.push_back(dist.flatten());
     } else if (temp == "kalbach-mann") {
       KalbachMann dist(dgroup);
-      distribution_.push_back(dist.serialize());
+      distribution_.push_back(dist.flatten());
     }
 
     close_group(dgroup);

@@ -44,7 +44,9 @@ public:
   void sample(double E_in, double& E_out, double& mu,
     uint64_t* seed) const override;
 
-  UnifiedAngleEnergy serialize() const;
+  void serialize(DataBuffer& buffer) const;
+
+  UnifiedAngleEnergy flatten() const;
 
   // energy property
   std::vector<double>& energy() { return energy_; }

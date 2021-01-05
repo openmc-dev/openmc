@@ -240,18 +240,16 @@ void KalbachMann::sample(double E_in, double& E_out, double& mu, uint64_t* seed)
   }
 }
 
-UnifiedAngleEnergy KalbachMann::serialize() const
+void KalbachMann::serialize(DataBuffer& buffer) const
 {
   // Determine size of buffer needed
   size_t n = 4 + (4 + 4)*n_region_ + 8 + (8 + 4)*energy_.size();
-  int offset = n;
   std::vector<int> locators;
   for (const auto& dist : distribution_) {
     locators.push_back(n);
     size_t n_eout = dist.e_out.size();
     n += 4 + 4 + 8 + 8*5*n_eout;
   }
-  DataBuffer buffer(n);
 
   // Write interpolation information
   buffer.add(n_region_);
@@ -278,6 +276,21 @@ UnifiedAngleEnergy KalbachMann::serialize() const
     buffer.add(dist.r);
     buffer.add(dist.a);
   }
+}
+
+UnifiedAngleEnergy KalbachMann::flatten() const
+{
+  // TODO: Remove once serialize method handles byte counting
+
+  // Determine size of buffer needed
+  size_t n = 4 + (4 + 4)*n_region_ + 8 + (8 + 4)*energy_.size();
+  for (const auto& dist : distribution_) {
+    size_t n_eout = dist.e_out.size();
+    n += 4 + 4 + 8 + 8*5*n_eout;
+  }
+
+  DataBuffer buffer(n);
+  this->serialize(buffer);
   Ensures(n == buffer.offset_);
 
   return {AngleEnergyType::KALBACH_MANN, std::move(buffer)};

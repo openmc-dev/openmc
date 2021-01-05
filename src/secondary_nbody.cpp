@@ -67,13 +67,18 @@ void NBodyPhaseSpace::sample(double E_in, double& E_out, double& mu,
   E_out = E_max * v;
 }
 
-UnifiedAngleEnergy NBodyPhaseSpace::serialize() const
+void NBodyPhaseSpace::serialize(DataBuffer& buffer) const
 {
-  DataBuffer buffer(28);
   buffer.add(n_bodies_);
   buffer.add(mass_ratio_);
   buffer.add(A_);
   buffer.add(Q_);
+}
+
+UnifiedAngleEnergy NBodyPhaseSpace::flatten() const
+{
+  DataBuffer buffer(28);
+  this->serialize(buffer);
   Ensures(buffer.offset_ == 28);
 
   return {AngleEnergyType::NBODY, std::move(buffer)};

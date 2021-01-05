@@ -49,10 +49,10 @@ public:
 
   void sample(double E_in, double& E_out, double& mu, uint64_t* seed) const override;
 
-  int n_bodies() const { return *reinterpret_cast<const int*>(data_); };
-  double mass_ratio() const { return *reinterpret_cast<const double*>(data_ + 4); }
-  double A() const { return *reinterpret_cast<const double*>(data_ + 12); }
-  double Q() const { return *reinterpret_cast<const double*>(data_ + 20); }
+  int n_bodies() const { return *reinterpret_cast<const int*>(data_ + 4); };
+  double mass_ratio() const { return *reinterpret_cast<const double*>(data_ + 8); }
+  double A() const { return *reinterpret_cast<const double*>(data_ + 16); }
+  double Q() const { return *reinterpret_cast<const double*>(data_ + 24); }
 private:
   const uint8_t* data_;
 };

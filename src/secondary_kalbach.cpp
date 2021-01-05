@@ -242,8 +242,10 @@ void KalbachMann::sample(double E_in, double& E_out, double& mu, uint64_t* seed)
 
 void KalbachMann::serialize(DataBuffer& buffer) const
 {
+  buffer.add(static_cast<int>(AngleEnergyType::KALBACH_MANN));
+
   // Determine size of buffer needed
-  size_t n = 4 + (4 + 4)*n_region_ + 8 + (8 + 4)*energy_.size();
+  size_t n = 4 + 4 + (4 + 4)*n_region_ + 8 + (8 + 4)*energy_.size();
   std::vector<int> locators;
   for (const auto& dist : distribution_) {
     locators.push_back(n);
@@ -288,7 +290,7 @@ UnifiedAngleEnergy KalbachMann::flatten() const
   this->serialize(buffer);
   Ensures(n == buffer.offset_);
 
-  return {AngleEnergyType::KALBACH_MANN, std::move(buffer)};
+  return {std::move(buffer)};
 }
 
 KMTableFlat::KMTableFlat(const uint8_t* data) : data_(data)
@@ -338,8 +340,8 @@ gsl::span<const double> KMTableFlat::a() const
 
 KalbachMannFlat::KalbachMannFlat(const uint8_t* data) : data_(data)
 {
-  n_region_ = *reinterpret_cast<const int*>(data_);
-  n_energy_ = *reinterpret_cast<const size_t*>(data_ + 4 + (4 + 4)*n_region_);
+  n_region_ = *reinterpret_cast<const int*>(data_ + 4);
+  n_energy_ = *reinterpret_cast<const size_t*>(data_ + 4 + 4 + (4 + 4)*n_region_);
 }
 
 void KalbachMannFlat::sample(double E_in, double& E_out, double& mu, uint64_t* seed) const
@@ -480,25 +482,25 @@ void KalbachMannFlat::sample(double E_in, double& E_out, double& mu, uint64_t* s
 
 gsl::span<const int> KalbachMannFlat::breakpoints() const
 {
-  auto start = reinterpret_cast<const int*>(data_ + 4);
+  auto start = reinterpret_cast<const int*>(data_ + 4 + 4);
   return {start, n_region_};
 }
 
 Interpolation KalbachMannFlat::interpolation(gsl::index i) const
 {
-  auto start = reinterpret_cast<const int*>(data_ + 4 + 4*n_region_);
+  auto start = reinterpret_cast<const int*>(data_ + 4 + 4 + 4*n_region_);
   return static_cast<Interpolation>(start[i]);
 }
 
 gsl::span<const double> KalbachMannFlat::energy() const
 {
-  auto start = reinterpret_cast<const double*>(data_ + 4 + (4 + 4)*n_region_ + 8);
+  auto start = reinterpret_cast<const double*>(data_ + 4 + 4 + (4 + 4)*n_region_ + 8);
   return {start, n_energy_};
 }
 
 KMTableFlat KalbachMannFlat::distribution(gsl::index i) const
 {
-  auto indices = reinterpret_cast<const int*>(data_ + 4 + (4 + 4)*n_region_ + 8 + 8*n_energy_);
+  auto indices = reinterpret_cast<const int*>(data_ + 4 + 4 + (4 + 4)*n_region_ + 8 + 8*n_energy_);
   size_t offset = indices[i];
   return KMTableFlat(data_ + offset);
 }

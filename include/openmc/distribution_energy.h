@@ -27,8 +27,7 @@ enum class EnergyDistType {
 
 class EnergyDistributionFlat {
 public:
-  EnergyDistributionFlat(EnergyDistType type, const uint8_t* data)
-    : type_(type), data_(data) { }
+  EnergyDistributionFlat(const uint8_t* data);
 
   double sample(double E, uint64_t* seed) const;
 private:
@@ -77,9 +76,9 @@ public:
 
   double sample(double E, uint64_t* seed) const;
 private:
-  int primary_flag() const { return *reinterpret_cast<const int*>(data_); }
-  double energy() const { return *reinterpret_cast<const double*>(data_ + 4); }
-  double A() const { return *reinterpret_cast<const double*>(data_ + 12); }
+  int primary_flag() const { return *reinterpret_cast<const int*>(data_ + 4); }
+  double energy() const { return *reinterpret_cast<const double*>(data_ + 8); }
+  double A() const { return *reinterpret_cast<const double*>(data_ + 16); }
 
   const uint8_t* data_;
 };
@@ -110,8 +109,8 @@ public:
 
   double sample(double E, uint64_t* seed) const;
 private:
-  double threshold() const { return *reinterpret_cast<const double*>(data_); }
-  double mass_ratio() const { return *reinterpret_cast<const double*>(data_ + 8); }
+  double threshold() const { return *reinterpret_cast<const double*>(data_ + 4); }
+  double mass_ratio() const { return *reinterpret_cast<const double*>(data_ + 12); }
 
   const uint8_t* data_;
 };

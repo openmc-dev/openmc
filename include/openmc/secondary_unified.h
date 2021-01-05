@@ -19,7 +19,7 @@ enum AngleEnergyType {
 class UnifiedAngleEnergy : public AngleEnergy {
 public:
   // Constructors
-  UnifiedAngleEnergy(AngleEnergyType type, DataBuffer buffer);
+  UnifiedAngleEnergy(DataBuffer buffer);
 
   //! Sample distribution for an angle and energy
   //! \param[in] E_in Incoming energy in [eV]

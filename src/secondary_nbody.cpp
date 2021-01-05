@@ -69,6 +69,7 @@ void NBodyPhaseSpace::sample(double E_in, double& E_out, double& mu,
 
 void NBodyPhaseSpace::serialize(DataBuffer& buffer) const
 {
+  buffer.add(static_cast<int>(AngleEnergyType::NBODY));
   buffer.add(n_bodies_);
   buffer.add(mass_ratio_);
   buffer.add(A_);
@@ -80,9 +81,9 @@ UnifiedAngleEnergy NBodyPhaseSpace::flatten() const
   size_t n = buffer_nbytes(*this);
   DataBuffer buffer(n);
   this->serialize(buffer);
-  Ensures(buffer.offset_ == 28);
+  Ensures(buffer.offset_ == n);
 
-  return {AngleEnergyType::NBODY, std::move(buffer)};
+  return {std::move(buffer)};
 }
 
 void NBodyPhaseSpaceFlat::sample(double E_in, double& E_out, double& mu,

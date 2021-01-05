@@ -7,8 +7,12 @@
 
 namespace openmc {
 
-UnifiedAngleEnergy::UnifiedAngleEnergy(AngleEnergyType type, DataBuffer buffer)
-  : type_(type), buffer_(std::move(buffer)) { }
+UnifiedAngleEnergy::UnifiedAngleEnergy(DataBuffer buffer)
+  : buffer_(std::move(buffer))
+{
+  int value = *reinterpret_cast<const int*>(this->data());
+  type_ = static_cast<AngleEnergyType>(value);
+}
 
 void
 UnifiedAngleEnergy::sample(double E_in, double& E_out, double& mu, uint64_t* seed) const

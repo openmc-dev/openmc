@@ -74,11 +74,13 @@ UncorrelatedAngleEnergy::sample(double E_in, double& E_out, double& mu,
 
 void UncorrelatedAngleEnergy::serialize(DataBuffer& buffer) const
 {
+  buffer.add(static_cast<int>(AngleEnergyType::UNCORRELATED));
+
   // Determine size of angular distribution
   size_t bytes_angle = buffer_nbytes(angle_);
 
   // Write locator for energy
-  buffer.add(energy_ ? 8 + 4 + bytes_angle : 0);
+  buffer.add(energy_ ? 4 + 8 + 4 + bytes_angle : 0);
 
   // Write placeholder for fission
   int fission = 0;
@@ -99,32 +101,29 @@ UnifiedAngleEnergy UncorrelatedAngleEnergy::flatten() const
   this->serialize(buffer);
   Ensures(n == buffer.size());
 
-  return {AngleEnergyType::UNCORRELATED, std::move(buffer)};
+  return {std::move(buffer)};
 }
 
 AngleDistributionFlat UncorrelatedAngleEnergyFlat::angle() const
 {
-  return AngleDistributionFlat(data_ + 8 + 4);
+  return AngleDistributionFlat(data_ + 4 + 8 + 4);
 }
 
 EnergyDistributionFlat UncorrelatedAngleEnergyFlat::energy() const
 {
-  size_t offset = *reinterpret_cast<const size_t*>(data_);
-
-  // Determine type
-  auto type = static_cast<EnergyDistType>(*reinterpret_cast<const int*>(data_ + offset));
-  return EnergyDistributionFlat(type, data_ + offset + 4);
+  size_t offset = *reinterpret_cast<const size_t*>(data_ + 4);
+  return EnergyDistributionFlat(data_ + offset);
 }
 
 bool UncorrelatedAngleEnergyFlat::fission() const
 {
-  return (*reinterpret_cast<const int*>(data_ + 8) > 0);
+  return (*reinterpret_cast<const int*>(data_ + 4 + 8) > 0);
 }
 
 void UncorrelatedAngleEnergyFlat::set_fission(bool fission)
 {
   auto data_writable = const_cast<uint8_t*>(data_);
-  auto data_int = reinterpret_cast<int*>(data_writable + 8);
+  auto data_int = reinterpret_cast<int*>(data_writable + 4 + 8);
   *data_int = fission ? 1 : 0;
 }
 

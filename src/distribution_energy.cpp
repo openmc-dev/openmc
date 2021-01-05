@@ -332,23 +332,6 @@ double ContinuousTabular::sample(double E, uint64_t* seed) const
   }
 }
 
-size_t ContinuousTabular::nbytes() const
-{
-  size_t n_region = n_region_;
-  size_t n_energy = energy_.size();
-
-  // Memory for type, breakpoints/interpolation
-  size_t n = 4 + 4 + (4 + 4)*n_region;
-
-  // Memory for incident energy grid and distributions
-  n += 8 + (4 + 8)*n_energy;
-  for (const auto& dist : distribution_) {
-    size_t n_eout = dist.e_out.size();
-    n += 4 + 4 + 8 + 8 * 3*n_eout;
-  }
-  return n;
-}
-
 void ContinuousTabular::serialize(DataBuffer& buffer) const
 {
   buffer.add(static_cast<int>(EnergyDistType::CONTINUOUS_TABULAR));
@@ -730,16 +713,11 @@ double WattEnergy::sample(double E, uint64_t* seed) const
   }
 }
 
-size_t WattEnergy::nbytes() const
-{
-  return 4 + 8 + 8 + a_.nbytes() + b_.nbytes();
-}
-
 void WattEnergy::serialize(DataBuffer& buffer) const
 {
   buffer.add(static_cast<int>(EnergyDistType::WATT));
   buffer.add(u_);
-  size_t n = a_.nbytes();
+  size_t n = buffer_nbytes(a_);
   buffer.add(16 + n);
   a_.serialize(buffer);
   b_.serialize(buffer);

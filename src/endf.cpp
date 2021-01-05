@@ -209,11 +209,6 @@ double Tabulated1D::operator()(double x) const
   }
 }
 
-size_t Tabulated1D::nbytes() const
-{
-  return 8 + (4 + 4)*n_regions_ + 8 + (8 + 8)*n_pairs_;
-}
-
 void Tabulated1D::serialize(DataBuffer& buffer) const
 {
   buffer.add(n_regions_);

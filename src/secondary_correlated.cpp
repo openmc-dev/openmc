@@ -279,7 +279,7 @@ void CorrelatedAngleEnergy::serialize(DataBuffer& buffer) const
     n += 4 + 4 + 8 + (8*3 + 4)*n_eout;
 
     for (const auto& adist : dist.angle) {
-      n += adist->nbytes();
+      n += buffer_nbytes(*adist);
     };
   }
 
@@ -311,7 +311,7 @@ void CorrelatedAngleEnergy::serialize(DataBuffer& buffer) const
     int offset = 4 + 4 + 8 + (8*3 + 4)*dist.e_out.size();
     for (const auto& adist : dist.angle) {
       angle_dist_offsets.push_back(offset);
-      offset += adist->nbytes();
+      offset += buffer_nbytes(*adist);
     }
     buffer.add(angle_dist_offsets);
 

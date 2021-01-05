@@ -81,8 +81,6 @@ public:
   //! \return Function evaluated at x
   double operator()(double x) const override;
 
-  size_t nbytes() const;
-
   void serialize(DataBuffer& buffer) const;
 
   // Accessors

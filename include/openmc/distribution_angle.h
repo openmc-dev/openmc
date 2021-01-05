@@ -33,8 +33,6 @@ public:
   //! \return Whether distribution is empty
   bool empty() const { return energy_.empty(); }
 
-  size_t nbytes() const;
-
   void serialize(DataBuffer& buffer) const;
 
 private:

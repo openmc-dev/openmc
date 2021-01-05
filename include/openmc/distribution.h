@@ -175,8 +175,6 @@ public:
   //! \return Sampled value
   double sample(uint64_t* seed) const;
 
-  size_t nbytes() const;
-
   void serialize(DataBuffer& buffer) const;
 
   // x property

@@ -45,7 +45,6 @@ private:
 class EnergyDistribution {
 public:
   virtual double sample(double E, uint64_t* seed) const = 0;
-  virtual size_t nbytes() const = 0;
   virtual void serialize(DataBuffer& buffer) const = 0;
   virtual ~EnergyDistribution() = default;
 };
@@ -63,8 +62,6 @@ public:
   //! \param[inout] seed Pseudorandom number seed pointer
   //! \return Sampled energy in [eV]
   double sample(double E, uint64_t* seed) const;
-
-  size_t nbytes() const { return 24; }
 
   void serialize(DataBuffer& buffer) const;
 private:
@@ -101,8 +98,6 @@ public:
   //! \return Sampled energy in [eV]
   double sample(double E, uint64_t* seed) const;
 
-  size_t nbytes() const { return 20; }
-
   void serialize(DataBuffer& buffer) const;
 private:
   double threshold_; //!< Energy threshold in lab, (A + 1)/A * |Q|
@@ -136,8 +131,6 @@ public:
   //! \param[inout] seed Pseudorandom number seed pointer
   //! \return Sampled energy in [eV]
   double sample(double E, uint64_t* seed) const;
-
-  size_t nbytes() const;
 
   void serialize(DataBuffer& buffer) const;
 private:
@@ -201,8 +194,6 @@ public:
   //! \return Sampled energy in [eV]
   double sample(double E, uint64_t* seed) const;
 
-  size_t nbytes() const { return 12 + theta_.nbytes(); }
-
   void serialize(DataBuffer& buffer) const;
 private:
   Tabulated1D theta_; //!< Incoming energy dependent parameter
@@ -237,8 +228,6 @@ public:
   //! \return Sampled energy in [eV]
   double sample(double E, uint64_t* seed) const;
 
-  size_t nbytes() const { return 12 + theta_.nbytes(); }
-
   void serialize(DataBuffer& buffer) const;
 private:
   Tabulated1D theta_; //!< Incoming energy dependent parameter
@@ -272,8 +261,6 @@ public:
   //! \param[inout] seed Pseudorandom number seed pointer
   //! \return Sampled energy in [eV]
   double sample(double E, uint64_t* seed) const;
-
-  size_t nbytes() const;
 
   void serialize(DataBuffer& buffer) const;
 private:

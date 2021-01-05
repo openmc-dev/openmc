@@ -263,12 +263,6 @@ double Tabular::sample(uint64_t* seed) const
   }
 }
 
-size_t Tabular::nbytes() const
-{
-  size_t n = x_.size();
-  return 4 + 4 + 8*3*n;
-}
-
 void Tabular::serialize(DataBuffer& buffer) const
 {
   buffer.add(static_cast<int>(interp_));

@@ -43,8 +43,7 @@ RUN git clone https://github.com/njoy/NJOY2016 /opt/NJOY2016 && \
 
 # Clone and install OpenMC without DAGMC
 RUN if [ "$include_dagmc" = "false" ] ; \
-    then git clone --recurse-submodules https://github.com/openmc-dev/openmc.git ; \
-    /opt/openmc ; \
+    then git clone --recurse-submodules https://github.com/openmc-dev/openmc.git /opt/openmc ; \
     cd /opt/openmc ; \
     mkdir -p build ; \
     cd build ; \

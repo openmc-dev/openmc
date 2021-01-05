@@ -60,6 +60,8 @@ public:
   //! \param[in] x independent variable
   //! \return Polynomial evaluated at x
   double operator()(double x) const override;
+
+  void serialize(DataBuffer& buffer) const;
 private:
   std::vector<double> coef_; //!< Polynomial coefficients
 };
@@ -124,6 +126,8 @@ public:
 
   const std::vector<double>& bragg_edges() const { return bragg_edges_; }
   const std::vector<double>& factors() const { return factors_; }
+
+  void serialize(DataBuffer& buffer) const;
 private:
   std::vector<double> bragg_edges_; //!< Bragg edges in [eV]
   std::vector<double> factors_;     //!< Partial sums of structure factors [eV-b]
@@ -138,6 +142,8 @@ public:
   explicit IncoherentElasticXS(hid_t dset);
 
   double operator()(double E) const override;
+
+  void serialize(DataBuffer& buffer) const;
 private:
   double bound_xs_; //!< Characteristic bound xs in [b]
   double debye_waller_; //!< Debye-Waller integral divided by atomic mass in [eV^-1]

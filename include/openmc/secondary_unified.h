@@ -9,7 +9,7 @@
 
 namespace openmc {
 
-enum AngleEnergyType {
+enum class AngleEnergyType {
   UNCORRELATED,
   KALBACH_MANN,
   CORRELATED,

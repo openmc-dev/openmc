@@ -77,7 +77,8 @@ void NBodyPhaseSpace::serialize(DataBuffer& buffer) const
 
 UnifiedAngleEnergy NBodyPhaseSpace::flatten() const
 {
-  DataBuffer buffer(28);
+  size_t n = buffer_nbytes(*this);
+  DataBuffer buffer(n);
   this->serialize(buffer);
   Ensures(buffer.offset_ == 28);
 

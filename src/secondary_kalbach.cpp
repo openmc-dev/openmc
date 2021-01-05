@@ -280,15 +280,10 @@ void KalbachMann::serialize(DataBuffer& buffer) const
 
 UnifiedAngleEnergy KalbachMann::flatten() const
 {
-  // TODO: Remove once serialize method handles byte counting
+  // Determine number of bytes needed for buffer
+  size_t n = buffer_nbytes(*this);
 
-  // Determine size of buffer needed
-  size_t n = 4 + (4 + 4)*n_region_ + 8 + (8 + 4)*energy_.size();
-  for (const auto& dist : distribution_) {
-    size_t n_eout = dist.e_out.size();
-    n += 4 + 4 + 8 + 8*5*n_eout;
-  }
-
+  // Write into buffer
   DataBuffer buffer(n);
   this->serialize(buffer);
   Ensures(n == buffer.offset_);

@@ -324,19 +324,10 @@ void CorrelatedAngleEnergy::serialize(DataBuffer& buffer) const
 
 UnifiedAngleEnergy CorrelatedAngleEnergy::flatten() const
 {
-  // TODO: Remove once serialize method handles byte counting
-
   // Determine size of buffer needed
-  size_t n = 4 + (4 + 4)*n_region_ + 8 + (8 + 4)*energy_.size();
-  for (const auto& dist : distribution_) {
-    size_t n_eout = dist.e_out.size();
-    n += 4 + 4 + 8 + (8*3 + 4)*n_eout;
+  size_t n = buffer_nbytes(*this);
 
-    for (const auto& adist : dist.angle) {
-      n += adist->nbytes();
-    };
-  }
-
+  // Write into buffer
   DataBuffer buffer(n);
   this->serialize(buffer);
   Ensures(n == buffer.offset_);

@@ -1,8 +1,10 @@
 # OpenMC Monte Carlo Particle Transport Code
 
 [![License](https://img.shields.io/github/license/openmc-dev/openmc.svg)](http://openmc.readthedocs.io/en/latest/license.html)
-[![GitHub Actions build status (Linux)](https://github.com/openmc-dev/openmc/workflows/CI/badge.svg?branch=develop)](https://github.com/openmc-dev/openmc/actions)
+[![GitHub Actions build status (Linux)](https://github.com/openmc-dev/openmc/workflows/CI/badge.svg?branch=develop)](https://github.com/openmc-dev/openmc/actions?query=workflow%3ACI)
 [![Code Coverage](https://coveralls.io/repos/github/openmc-dev/openmc/badge.svg?branch=develop)](https://coveralls.io/github/openmc-dev/openmc?branch=develop)
+[![dockerhub-publish-develop-dagmc](https://github.com/openmc-dev/openmc/workflows/dockerhub-publish-develop-dagmc/badge.svg)](https://github.com/openmc-dev/openmc/actions?query=workflow%3Adockerhub-publish-develop-dagmc)
+[![dockerhub-publish-develop](https://github.com/openmc-dev/openmc/workflows/dockerhub-publish-develop/badge.svg)](https://github.com/openmc-dev/openmc/actions?query=workflow%3Adockerhub-publish-develop)
 
 The OpenMC project aims to provide a fully-featured Monte Carlo particle
 transport code based on modern methods. It is a constructive solid geometry,

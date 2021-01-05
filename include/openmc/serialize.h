@@ -16,16 +16,38 @@ class DataBuffer {
 public:
   explicit DataBuffer(size_t n);
 
-  void add(int value);
-  void add(double value);
-  void add(size_t value);
-  void add(const std::vector<double>& value);
-  void add(const std::vector<int>& value);
-  void add(const xt::xtensor<double, 1>& value);
+  template<typename T> std::enable_if_t<std::is_scalar<std::decay_t<T>>::value>
+  add(T value);
+
+  template<typename T> void add(const std::vector<T>& value);
+  template<typename T> void add(const xt::xtensor<T, 1>& value);
 
   std::unique_ptr<uint8_t[]> data_;
   size_t offset_{0};
 };
+
+template<typename T> inline
+std::enable_if_t<std::is_scalar<std::decay_t<T>>::value>
+DataBuffer::add(T value)
+{
+  auto ptr = reinterpret_cast<T*>(data_.get() + offset_);
+  *ptr = value;
+  offset_ += sizeof(T);
+}
+
+template<typename T> inline
+void DataBuffer::add(const std::vector<T>& value)
+{
+  std::memcpy(data_.get() + offset_, value.data(), sizeof(T)*value.size());
+  offset_ += sizeof(T)*value.size();
+}
+
+template<typename T> inline
+void DataBuffer::add(const xt::xtensor<T, 1>& value)
+{
+  std::memcpy(data_.get() + offset_, value.data(), sizeof(T)*value.size());
+  offset_ += sizeof(T)*value.size();
+}
 
 } // namespace openmc
 

@@ -9,7 +9,7 @@
 
 namespace openmc {
 
-enum FunctionType {
+enum class FunctionType {
   POLYNOMIAL,
   TABULATED,
   COHERENT_ELASTIC,
@@ -18,7 +18,7 @@ enum FunctionType {
 
 class Function1DFlat : public Function1D {
 public:
-  Function1DFlat(DataBuffer buffer);
+  explicit Function1DFlat(DataBuffer buffer);
 
   double operator()(double x) const override;
 

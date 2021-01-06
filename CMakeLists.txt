@@ -284,6 +284,7 @@ list(APPEND libopenmc_SOURCES
   src/distribution_spatial.cpp
   src/eigenvalue.cpp
   src/endf.cpp
+  src/endf_flat.cpp
   src/error.cpp
   src/event.cpp
   src/initialize.cpp

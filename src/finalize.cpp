@@ -138,7 +138,7 @@ int openmc_finalize()
   free_memory();
 
 #ifdef LIBMESH
-  settings::LMI.reset();
+  settings::libmesh_init.reset();
 #endif
 
   // Free all MPI types

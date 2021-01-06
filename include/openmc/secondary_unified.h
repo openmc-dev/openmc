@@ -16,17 +16,18 @@ enum class AngleEnergyType {
   NBODY
 };
 
-class UnifiedAngleEnergy : public AngleEnergy {
+class UnifiedAngleEnergy {
 public:
   // Constructors
-  UnifiedAngleEnergy(DataBuffer buffer);
+  explicit UnifiedAngleEnergy(const AngleEnergy& dist);
+  explicit UnifiedAngleEnergy(DataBuffer buffer);
 
   //! Sample distribution for an angle and energy
   //! \param[in] E_in Incoming energy in [eV]
   //! \param[out] E_out Outgoing energy in [eV]
   //! \param[out] mu Outgoing cosine with respect to current direction
   //! \param[inout] seed Pseudorandom seed pointer
-  void sample(double E_in, double& E_out, double& mu, uint64_t* seed) const override;
+  void sample(double E_in, double& E_out, double& mu, uint64_t* seed) const;
 
   const uint8_t* data() const { return buffer_.data_.get(); }
   AngleEnergyType type() const { return type_; }

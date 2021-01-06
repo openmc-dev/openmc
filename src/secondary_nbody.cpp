@@ -76,16 +76,6 @@ void NBodyPhaseSpace::serialize(DataBuffer& buffer) const
   buffer.add(Q_);
 }
 
-UnifiedAngleEnergy NBodyPhaseSpace::flatten() const
-{
-  size_t n = buffer_nbytes(*this);
-  DataBuffer buffer(n);
-  this->serialize(buffer);
-  Ensures(buffer.offset_ == n);
-
-  return {std::move(buffer)};
-}
-
 void NBodyPhaseSpaceFlat::sample(double E_in, double& E_out, double& mu,
   uint64_t* seed) const
 {

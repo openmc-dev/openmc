@@ -7,6 +7,20 @@
 
 namespace openmc {
 
+UnifiedAngleEnergy::UnifiedAngleEnergy(const AngleEnergy& dist)
+{
+  // Determine number of bytes needed and create allocation
+  size_t n = buffer_nbytes(dist);
+
+  // Write into buffer
+  buffer_.reserve(n);
+  dist.serialize(buffer_);
+  Ensures(n == buffer_.size());
+
+  int value = *reinterpret_cast<const int*>(this->data());
+  type_ = static_cast<AngleEnergyType>(value);
+}
+
 UnifiedAngleEnergy::UnifiedAngleEnergy(DataBuffer buffer)
   : buffer_(std::move(buffer))
 {

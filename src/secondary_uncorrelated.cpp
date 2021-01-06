@@ -91,19 +91,6 @@ void UncorrelatedAngleEnergy::serialize(DataBuffer& buffer) const
   if (energy_) energy_->serialize(buffer);
 }
 
-UnifiedAngleEnergy UncorrelatedAngleEnergy::flatten() const
-{
-  // Determine number of bytes needed and create allocation
-  size_t n = buffer_nbytes(*this);
-
-  // Write into buffer
-  DataBuffer buffer(n);
-  this->serialize(buffer);
-  Ensures(n == buffer.size());
-
-  return {std::move(buffer)};
-}
-
 AngleDistributionFlat UncorrelatedAngleEnergyFlat::angle() const
 {
   return AngleDistributionFlat(data_ + 4 + 8 + 4);

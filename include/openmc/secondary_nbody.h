@@ -33,9 +33,7 @@ public:
   //! \param[inout] seed Pseudorandom seed pointer
   void sample(double E_in, double& E_out, double& mu, uint64_t* seed) const override;
 
-  void serialize(DataBuffer& buffer) const;
-
-  UnifiedAngleEnergy flatten() const;
+  void serialize(DataBuffer& buffer) const override;
 private:
   int n_bodies_; //!< Number of particles distributed
   double mass_ratio_; //!< Total mass of particles [neutron mass]
@@ -43,11 +41,11 @@ private:
   double Q_; //!< Reaction Q-value [eV]
 };
 
-class NBodyPhaseSpaceFlat : public AngleEnergy {
+class NBodyPhaseSpaceFlat {
 public:
   explicit NBodyPhaseSpaceFlat(const uint8_t* data) : data_(data) { }
 
-  void sample(double E_in, double& E_out, double& mu, uint64_t* seed) const override;
+  void sample(double E_in, double& E_out, double& mu, uint64_t* seed) const;
 
   int n_bodies() const { return *reinterpret_cast<const int*>(data_ + 4); };
   double mass_ratio() const { return *reinterpret_cast<const double*>(data_ + 8); }

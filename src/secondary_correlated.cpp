@@ -324,19 +324,6 @@ void CorrelatedAngleEnergy::serialize(DataBuffer& buffer) const
   }
 }
 
-UnifiedAngleEnergy CorrelatedAngleEnergy::flatten() const
-{
-  // Determine size of buffer needed
-  size_t n = buffer_nbytes(*this);
-
-  // Write into buffer
-  DataBuffer buffer(n);
-  this->serialize(buffer);
-  Ensures(n == buffer.offset_);
-
-  return {std::move(buffer)};
-}
-
 CorrTableFlat::CorrTableFlat(const uint8_t* data) : data_(data)
 {
   n_eout_ = *reinterpret_cast<const size_t*>(data_ + 8);

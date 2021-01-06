@@ -280,19 +280,6 @@ void KalbachMann::serialize(DataBuffer& buffer) const
   }
 }
 
-UnifiedAngleEnergy KalbachMann::flatten() const
-{
-  // Determine number of bytes needed for buffer
-  size_t n = buffer_nbytes(*this);
-
-  // Write into buffer
-  DataBuffer buffer(n);
-  this->serialize(buffer);
-  Ensures(n == buffer.offset_);
-
-  return {std::move(buffer)};
-}
-
 KMTableFlat::KMTableFlat(const uint8_t* data) : data_(data)
 {
   n_eout_ = *reinterpret_cast<const size_t*>(data_ + 8);

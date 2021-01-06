@@ -11,6 +11,7 @@
 #include "xtensor/xview.hpp"
 
 #include "openmc/constants.h"
+#include "openmc/endf_flat.h"
 #include "openmc/hdf5_interface.h"
 #include "openmc/search.h"
 
@@ -124,8 +125,28 @@ double Polynomial::operator()(double x) const
 
 void Polynomial::serialize(DataBuffer& buffer) const
 {
+  buffer.add(static_cast<int>(FunctionType::POLYNOMIAL));
   buffer.add(coef_.size());
   buffer.add(coef_);
+}
+
+double PolynomialFlat::operator()(double x) const
+{
+  // Use Horner's rule to evaluate polynomial. Note that coefficients are
+  // ordered in increasing powers of x.
+  double y = 0.0;
+  auto coef = this->coef();
+  for (auto c = coef.crbegin(); c != coef.crend(); ++c) {
+    y = y*x + *c;
+  }
+  return y;
+}
+
+gsl::span<const double> PolynomialFlat::coef() const
+{
+  auto n = *reinterpret_cast<const size_t*>(data_ + 4);
+  auto start = reinterpret_cast<const double*>(data_ + 4 + 8);
+  return {start, n};
 }
 
 //==============================================================================
@@ -217,6 +238,7 @@ double Tabulated1D::operator()(double x) const
 
 void Tabulated1D::serialize(DataBuffer& buffer) const
 {
+  buffer.add(static_cast<int>(FunctionType::TABULATED));
   buffer.add(n_regions_);
   buffer.add(nbt_);
   std::vector<int> interp;
@@ -232,8 +254,8 @@ void Tabulated1D::serialize(DataBuffer& buffer) const
 
 Tabulated1DFlat::Tabulated1DFlat(const uint8_t* data) : data_(data)
 {
-  n_regions_ = *reinterpret_cast<const size_t*>(data_);
-  n_pairs_ = *reinterpret_cast<const size_t*>(data_ + 8 + (4 + 4)*n_regions_);
+  n_regions_ = *reinterpret_cast<const size_t*>(data_ + 4);
+  n_pairs_ = *reinterpret_cast<const size_t*>(data_ + 4 + 8 + (4 + 4)*n_regions_);
 }
 
 double Tabulated1DFlat::operator()(double x) const
@@ -299,25 +321,25 @@ double Tabulated1DFlat::operator()(double x) const
 
 gsl::span<const int> Tabulated1DFlat::nbt() const
 {
-  auto start = reinterpret_cast<const int*>(data_ + 8);
+  auto start = reinterpret_cast<const int*>(data_ + 4 + 8);
   return {start, n_regions_};
 }
 
 Interpolation Tabulated1DFlat::interp(gsl::index i) const
 {
-  auto start = reinterpret_cast<const int*>(data_ + 8 + 4*n_regions_);
+  auto start = reinterpret_cast<const int*>(data_ + 4 + 8 + 4*n_regions_);
   return static_cast<Interpolation>(start[i]);
 }
 
 gsl::span<const double> Tabulated1DFlat::x() const
 {
-  auto start = reinterpret_cast<const double*>(data_ + 16 + (4 + 4)*n_regions_);
+  auto start = reinterpret_cast<const double*>(data_ + 20 + (4 + 4)*n_regions_);
   return {start, n_pairs_};
 }
 
 gsl::span<const double> Tabulated1DFlat::y() const
 {
-  auto start = reinterpret_cast<const double*>(data_ + 16 + (4 + 4)*n_regions_ + 8*n_pairs_);
+  auto start = reinterpret_cast<const double*>(data_ + 20 + (4 + 4)*n_regions_ + 8*n_pairs_);
   return {start, n_pairs_};
 }
 
@@ -354,9 +376,38 @@ double CoherentElasticXS::operator()(double E) const
 
 void CoherentElasticXS::serialize(DataBuffer& buffer) const
 {
+  buffer.add(static_cast<int>(FunctionType::COHERENT_ELASTIC));
   buffer.add(bragg_edges_.size());
   buffer.add(bragg_edges_);
   buffer.add(factors_);
+}
+
+double CoherentElasticXSFlat::operator()(double E) const
+{
+  auto bragg_edges = this->bragg_edges();
+  auto factors = this->factors();
+  if (E < bragg_edges[0]) {
+    // If energy is below that of the lowest Bragg peak, the elastic cross
+    // section will be zero
+    return 0.0;
+  } else {
+    auto i_grid = lower_bound_index(bragg_edges.begin(), bragg_edges.end(), E);
+    return factors[i_grid] / E;
+  }
+}
+
+gsl::span<const double> CoherentElasticXSFlat::bragg_edges() const
+{
+  auto n = *reinterpret_cast<const size_t*>(data_ + 4);
+  auto start = reinterpret_cast<const double*>(data_ + 12);
+  return {start, n};
+}
+
+gsl::span<const double> CoherentElasticXSFlat::factors() const
+{
+  auto n = *reinterpret_cast<const size_t*>(data_ + 4);
+  auto start = reinterpret_cast<const double*>(data_ + 12 + 8*n);
+  return {start, n};
 }
 
 //==============================================================================
@@ -378,11 +429,18 @@ double IncoherentElasticXS::operator()(double E) const
   return bound_xs_ / 2.0 * ((1 - std::exp(-4.0*E*W))/(2.0*E*W));
 }
 
-
 void IncoherentElasticXS::serialize(DataBuffer& buffer) const
 {
+  buffer.add(static_cast<int>(FunctionType::INCOHERENT_ELASTIC));
   buffer.add(bound_xs_);
   buffer.add(debye_waller_);
+}
+
+double IncoherentElasticXSFlat::operator()(double E) const
+{
+  // Determine cross section using ENDF-102, Eq. (7.5)
+  double W = this->debye_waller();
+  return this->bound_xs() / 2.0 * ((1 - std::exp(-4.0*E*W))/(2.0*E*W));
 }
 
 } // namespace openmc

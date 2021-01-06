@@ -66,6 +66,17 @@ private:
   std::vector<double> coef_; //!< Polynomial coefficients
 };
 
+class PolynomialFlat : public Function1D {
+public:
+  explicit PolynomialFlat(const uint8_t* data) : data_(data) { }
+
+  double operator()(double x) const override;
+private:
+  gsl::span<const double> coef() const;
+
+  const uint8_t* data_;
+};
+
 //==============================================================================
 //! One-dimensional interpolable function
 //==============================================================================
@@ -133,6 +144,18 @@ private:
   std::vector<double> factors_;     //!< Partial sums of structure factors [eV-b]
 };
 
+class CoherentElasticXSFlat : public Function1D {
+public:
+  explicit CoherentElasticXSFlat(const uint8_t* data) : data_{data} { }
+
+  double operator()(double E) const override;
+private:
+  gsl::span<const double> bragg_edges() const;
+  gsl::span<const double> factors() const;
+
+  const uint8_t* data_;
+};
+
 //==============================================================================
 //! Incoherent elastic scattering cross section
 //==============================================================================
@@ -147,6 +170,18 @@ public:
 private:
   double bound_xs_; //!< Characteristic bound xs in [b]
   double debye_waller_; //!< Debye-Waller integral divided by atomic mass in [eV^-1]
+};
+
+class IncoherentElasticXSFlat : public Function1D {
+public:
+  explicit IncoherentElasticXSFlat(const uint8_t* data) : data_{data} { }
+
+  double operator()(double E) const override;
+private:
+  double bound_xs() const { return *reinterpret_cast<const double*>(data_ + 4); }
+  double debye_waller() const { return *reinterpret_cast<const double*>(data_ + 12); }
+
+  const uint8_t* data_;
 };
 
 //! Read 1D function from HDF5 dataset

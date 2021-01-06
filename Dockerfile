@@ -94,7 +94,6 @@ RUN if [ "$include_dagmc" = "true" ] ; \
     cmake ../moab -DBUILD_SHARED_LIBS=ON \
                   -DENABLE_HDF5=ON \
                   -DENABLE_PYMOAB=ON \
-                  -DENABLE_BLASLAPACK=OFF \
                   -DENABLE_FORTRAN=OFF \
                   -DENABLE_BLASLAPACK=OFF ; \
     make -j"$compile_cores" ; \

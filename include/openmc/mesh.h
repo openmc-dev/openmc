@@ -40,7 +40,7 @@ namespace openmc {
 // Global variables
 //==============================================================================
 
-extern "C" const bool libmesh_enabled;
+extern "C" const bool LIBMESH_ENABLED;
 
 class Mesh;
 
@@ -54,7 +54,7 @@ extern std::vector<std::unique_ptr<Mesh>> meshes;
 #ifdef LIBMESH
 namespace settings {
 // used when creating new libMesh::Mesh instances
-extern std::unique_ptr<libMesh::LibMeshInit> LMI;
+extern std::unique_ptr<libMesh::LibMeshInit> libmesh_init;
 }
 #endif
 
@@ -94,6 +94,9 @@ public:
 
   //! Get the number of mesh cell surfaces.
   virtual int n_surface_bins() const = 0;
+
+  //! Set the mesh ID
+  void set_id(int32_t id=-1);
 
   //! Write mesh data to an HDF5 group
   //
@@ -285,12 +288,6 @@ public:
   UnstructuredMesh(const std::string& filename);
 
   // Methods
-private:
-
-  //! Setup method for the mesh. Builds data structures,
-  //! sets up element mapping, creates bounding boxes, etc.
-  virtual void initialize() = 0;
-
 public:
 
   //! Add a variable to the mesh instance
@@ -332,6 +329,13 @@ public:
 
   void to_hdf5(hid_t group) const override;
 
+private:
+
+  //! Setup method for the mesh. Builds data structures,
+  //! sets up element mapping, creates bounding boxes, etc.
+  virtual void initialize() = 0;
+
+public:
   // Data members
   bool output_ {true}; //!< Write tallies onto the unstructured mesh at the end of a run
   std::string filename_; //!< Path to unstructured mesh file
@@ -534,10 +538,10 @@ private:
 
   // Data members
   std::unique_ptr<libMesh::Mesh> m_; //!< pointer to the libMesh mesh instance
-  std::vector<std::unique_ptr<libMesh::PointLocatorBase>> PL_; //!< per-thread point locators
+  std::vector<std::unique_ptr<libMesh::PointLocatorBase>> pl_; //!< per-thread point locators
   std::unique_ptr<libMesh::EquationSystems> equation_systems_; //!< pointer to the equation systems of the mesh
   std::string eq_system_name_; //!< name of the equation system holding OpenMC results
-  std::map<std::string, unsigned int> variable_map_; //!< mapping of variable names (tally scores) to libMesh variable numbers
+  std::unordered_map<std::string, unsigned int> variable_map_; //!< mapping of variable names (tally scores) to libMesh variable numbers
   libMesh::BoundingBox bbox_; //!< bounding box of the mesh
   libMesh::Elem* first_element_; //!< pointer to the first element in the mesh (maybe should be a key?)
 };

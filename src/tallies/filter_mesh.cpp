@@ -43,8 +43,6 @@ const
   } else {
     model::meshes[mesh_]->bins_crossed(p, match.bins_, match.weights_);
   }
-
-  double total = std::accumulate(match.weights_.begin(), match.weights_.end(), 0.0);
 }
 
 void

@@ -40,9 +40,9 @@ namespace openmc {
 //==============================================================================
 
 #ifdef LIBMESH
-const bool libmesh_enabled = true;
+const bool LIBMESH_ENABLED = true;
 #else
-const bool libmesh_enabled = false;
+const bool LIBMESH_ENABLED = false;
 #endif
 
 
@@ -55,7 +55,7 @@ std::vector<std::unique_ptr<Mesh>> meshes;
 
 #ifdef LIBMESH
 namespace settings {
-std::unique_ptr<libMesh::LibMeshInit> LMI;
+std::unique_ptr<libMesh::LibMeshInit> libmesh_init;
 }
 #endif
 
@@ -101,6 +101,35 @@ Mesh::Mesh(pugi::xml_node node)
         std::to_string(id_));
     }
   }
+}
+
+void
+Mesh::set_id(int32_t id) {
+  Expects(id >=0 || id == C_NONE);
+
+  // Clear entry in mesh map in case one was already assigned
+  if (id_ != C_NONE) {
+    model::mesh_map.erase(id_);
+    id_ = C_NONE;
+  }
+
+  // Ensure no other mesh has the same ID
+  if (model::mesh_map.find(id) != model::mesh_map.end()) {
+    throw std::runtime_error{fmt::format("Two meshes have the same ID: {}", id)};
+  }
+
+  // If no ID is specified, auto-assign the next ID in the sequence
+  if (id == C_NONE) {
+    id = 0;
+    for (const auto& m : model::meshes) {
+      id = std::max(id, m->id_);
+    }
+    ++id;
+  }
+
+  // Update ID and entry in the mesh map
+  id_ = id;
+  model::mesh_map[id] = model::meshes.size() - 1;
 }
 
 //==============================================================================
@@ -1388,12 +1417,9 @@ extern "C" int openmc_add_unstructured_mesh(const char filename[],
     return OPENMC_E_INVALID_ARGUMENT;
   }
 
-  int mesh_id = 0;
-  for (const auto& m : model::meshes) { mesh_id = std::max(m->id_, mesh_id); }
-  mesh_id += 1;
-
-  model::meshes.back()->id_ = mesh_id + 1;
-  *id = mesh_id;
+  // auto-assign new ID
+  model::meshes.back()->set_id(-1);
+  *id = model::meshes.back()->id_;
 
   return 0;
 }
@@ -2124,11 +2150,11 @@ LibMesh::LibMesh(const std::string& filename)
 
 void LibMesh::initialize()
 {
-  if (!settings::LMI) {
+  if (!settings::libmesh_init) {
     fatal_error("Attempting to use an unstructured mesh without a libMesh::LibMeshInit object.");
   }
 
-  m_ = std::make_unique<libMesh::Mesh>(settings::LMI->comm(), n_dimension_);
+  m_ = std::make_unique<libMesh::Mesh>(settings::libmesh_init->comm(), n_dimension_);
   m_->read(filename_);
   m_->prepare_for_use();
 
@@ -2152,9 +2178,9 @@ void LibMesh::initialize()
   #endif
 
   for (int i = 0; i < n_threads; i++) {
-      PL_.emplace_back(m_->sub_point_locator());
-      PL_.back()->set_contains_point_tol(FP_COINCIDENT);
-      PL_.back()->enable_out_of_mesh_mode();
+      pl_.emplace_back(m_->sub_point_locator());
+      pl_.back()->set_contains_point_tol(FP_COINCIDENT);
+      pl_.back()->enable_out_of_mesh_mode();
   }
 
   // store first element in the mesh to use as an offset for bin indices
@@ -2188,7 +2214,7 @@ int LibMesh::n_surface_bins() const
     // if this is a boundary element, sure to count boundary faces
     // twice
     for (int j = 0; j < e.n_sides(); j++) {
-      if (e.neighbor_ptr(j) == NULL) { n_bins++; }
+      if (e.neighbor_ptr(j) == nullptr) { n_bins++; }
     }
   }
   return n_bins;
@@ -2289,14 +2315,10 @@ LibMesh::get_bin(Position r) const
   int thread_num = 0;
   #endif
 
-  const auto& point_locator = PL_.at(thread_num);
+  const auto& point_locator = pl_.at(thread_num);
 
-  auto e = (*point_locator)(p);
-  if (!e) {
-    return -1;
-  } else {
-    return get_bin_from_element(e);
-  }
+  const auto elem_ptr = (*point_locator)(p);
+  return elem_ptr ? get_bin_from_element(elem_ptr) : -1;
 }
 
 int

@@ -40,13 +40,13 @@ else:
 
 
 def _dagmc_enabled():
-    return c_bool.in_dll(_dll, "dagmc_enabled").value
+    return c_bool.in_dll(_dll, "DAGMC_ENABLED").value
 
 def _coord_levels():
     return c_int.in_dll(_dll, "n_coord_levels").value
 
 def _libmesh_enabled():
-    return c_bool.in_dll(_dll, "libmesh_enabled").value
+    return c_bool.in_dll(_dll, "LIBMESH_ENABLED").value
 
 from .error import *
 from .core import *

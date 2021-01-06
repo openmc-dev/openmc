@@ -806,11 +806,11 @@ void write_unstructured_mesh_results() {
       int n_realizations = tally->n_realizations_;
 
       for (int i_score = 0; i_score < tally->scores_.size(); i_score++) {
-        for (int i_nuc = 0; i_nuc < tally->nuclides_.size(); i_nuc++) {
+        for (auto nuc_idx : tally->nuclides_) {
           // generate a name for the value
           std::string nuclide_name = "total"; // start with total by default
-          if (tally->nuclides_[i_nuc] > -1) {
-            nuclide_name = data::nuclides[tally->nuclides_[i_nuc]]->name_;
+          if (nuc_idx > -1) {
+            nuclide_name = data::nuclides[nuc_idx]->name_;
           }
 
           std::string score_name = tally->score_name(i_score);

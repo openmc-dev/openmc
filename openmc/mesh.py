@@ -652,7 +652,7 @@ class UnstructuredMesh(MeshBase):
 
     @library.setter
     def library(self, lib):
-        cv.check_value('mesh_lib', lib, ('moab', 'libmesh'))
+        cv.check_value('Unstructured mesh library', lib, ('moab', 'libmesh'))
         self._library = lib
 
     @property
@@ -706,7 +706,7 @@ class UnstructuredMesh(MeshBase):
     def __repr__(self):
         string = super().__repr__()
         string += '{: <16}=\t{}\n'.format('\tFilename', self.filename)
-        string += '{0: <16}=\t{}\n'.format('\tMesh Library', self.mesh_lib)
+        string += '{: <16}=\t{}\n'.format('\tMesh Library', self.mesh_lib)
         return string
 
     def write_data_to_vtk(self, filename, datasets, volume_normalization=True):

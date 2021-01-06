@@ -340,9 +340,8 @@ public:
 #ifdef DAGMC
 
 class MOABMesh : public UnstructuredMesh {
-
 public:
-
+  // Constructors
   MOABMesh() = default;
   MOABMesh(pugi::xml_node);
   MOABMesh(const std::string& filename);
@@ -488,7 +487,6 @@ private:
 #ifdef LIBMESH
 
 class LibMesh : public UnstructuredMesh {
-
 public:
   // Constructors
   LibMesh(pugi::xml_node node);

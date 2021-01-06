@@ -55,8 +55,8 @@ openmc_statepoint_write(const char* filename, bool* write_source)
   write_message("Creating state point " + filename_ + "...", 5);
 
 #if defined(LIBMESH) || defined(DAGMC)
-      // write unstructured mesh tallies to VTK
-      write_unstructured_mesh_results();
+  // write unstructured mesh tallies to VTK
+  write_unstructured_mesh_results();
 #endif
 
   hid_t file_id;

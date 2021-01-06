@@ -1,4 +1,4 @@
-#include "openmc/secondary_unified.h"
+#include "openmc/secondary_flat.h"
 
 #include "openmc/secondary_correlated.h"
 #include "openmc/secondary_kalbach.h"
@@ -7,7 +7,7 @@
 
 namespace openmc {
 
-UnifiedAngleEnergy::UnifiedAngleEnergy(const AngleEnergy& dist)
+AngleEnergyFlat::AngleEnergyFlat(const AngleEnergy& dist)
 {
   // Determine number of bytes needed and create allocation
   size_t n = buffer_nbytes(dist);
@@ -21,7 +21,7 @@ UnifiedAngleEnergy::UnifiedAngleEnergy(const AngleEnergy& dist)
   type_ = static_cast<AngleEnergyType>(value);
 }
 
-UnifiedAngleEnergy::UnifiedAngleEnergy(DataBuffer buffer)
+AngleEnergyFlat::AngleEnergyFlat(DataBuffer buffer)
   : buffer_(std::move(buffer))
 {
   int value = *reinterpret_cast<const int*>(this->data());
@@ -29,7 +29,7 @@ UnifiedAngleEnergy::UnifiedAngleEnergy(DataBuffer buffer)
 }
 
 void
-UnifiedAngleEnergy::sample(double E_in, double& E_out, double& mu, uint64_t* seed) const
+AngleEnergyFlat::sample(double E_in, double& E_out, double& mu, uint64_t* seed) const
 {
   switch (type_) {
   case AngleEnergyType::UNCORRELATED:

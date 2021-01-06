@@ -9,7 +9,7 @@
 #include <hdf5.h>
 
 #include "openmc/angle_energy.h"
-#include "openmc/secondary_unified.h"
+#include "openmc/secondary_flat.h"
 
 namespace openmc {
 

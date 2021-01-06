@@ -1,8 +1,8 @@
-//! \file secondary_unified.h
+//! \file secondary_flat.h
 //! Unified angle-energy distribution
 
-#ifndef OPENMC_SECONDARY_UNIFIED_H
-#define OPENMC_SECONDARY_UNIFIED_H
+#ifndef OPENMC_SECONDARY_FLAT_H
+#define OPENMC_SECONDARY_FLAT_H
 
 #include "openmc/angle_energy.h"
 #include "openmc/serialize.h"
@@ -16,11 +16,11 @@ enum class AngleEnergyType {
   NBODY
 };
 
-class UnifiedAngleEnergy {
+class AngleEnergyFlat {
 public:
   // Constructors
-  explicit UnifiedAngleEnergy(const AngleEnergy& dist);
-  explicit UnifiedAngleEnergy(DataBuffer buffer);
+  explicit AngleEnergyFlat(const AngleEnergy& dist);
+  explicit AngleEnergyFlat(DataBuffer buffer);
 
   //! Sample distribution for an angle and energy
   //! \param[in] E_in Incoming energy in [eV]
@@ -39,4 +39,4 @@ private:
 
 } // namespace openmc
 
-#endif // OPENMC_SECONDARY_UNIFIED_H
+#endif // OPENMC_SECONDARY_FLAT_H

@@ -68,16 +68,17 @@ int openmc_init(int argc, char* argv[], const void* intracomm)
 #endif
 
 // initialize libMesh if it hasn't been initialized already
-// (if initialized externally, the LMI object needs to be provided also)
-if (!settings::LMI && !libMesh::initialized()) {
+// (if initialized externally, the libmesh_init object needs to be provided also)
+if (!settings::libmesh_init && !libMesh::initialized())
+{
 #ifdef OPENMC_MPI
   // pass command line args, empty MPI communicator, and number of threads.
   // Because libMesh was not initialized, we assume that OpenMC is the primary
   // application and that its main MPI comm should be used.
-  settings::LMI = std::make_unique<libMesh::LibMeshInit>(argc, argv, comm, n_threads);
+  settings::libmesh_init = std::make_unique<libMesh::LibMeshInit>(argc, argv, comm, n_threads);
 #else
   // pass command line args, empty MPI communicator, and number of threads
-  settings::LMI = std::make_unique<libMesh::LibMeshInit>(argc, argv, 0, n_threads);
+  settings::libmesh_init = std::make_unique<libMesh::LibMeshInit>(argc, argv, 0, n_threads);
 #endif
 }
 

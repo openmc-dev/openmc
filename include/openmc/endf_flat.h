@@ -16,11 +16,12 @@ enum class FunctionType {
   INCOHERENT_ELASTIC
 };
 
-class Function1DFlat : public Function1D {
+class Function1DFlat {
 public:
+  explicit Function1DFlat(const Function1D& func);
   explicit Function1DFlat(DataBuffer buffer);
 
-  double operator()(double x) const override;
+  double operator()(double x) const;
 
   const uint8_t* data() const { return buffer_.data_.get(); }
   FunctionType type() const { return type_; }

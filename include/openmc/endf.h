@@ -44,6 +44,7 @@ class Function1D {
 public:
   virtual double operator()(double x) const = 0;
   virtual ~Function1D() = default;
+  virtual void serialize(DataBuffer& buffer) const = 0;
 };
 
 //==============================================================================
@@ -66,11 +67,11 @@ private:
   std::vector<double> coef_; //!< Polynomial coefficients
 };
 
-class PolynomialFlat : public Function1D {
+class PolynomialFlat {
 public:
   explicit PolynomialFlat(const uint8_t* data) : data_(data) { }
 
-  double operator()(double x) const override;
+  double operator()(double x) const;
 private:
   gsl::span<const double> coef() const;
 
@@ -144,11 +145,11 @@ private:
   std::vector<double> factors_;     //!< Partial sums of structure factors [eV-b]
 };
 
-class CoherentElasticXSFlat : public Function1D {
+class CoherentElasticXSFlat {
 public:
   explicit CoherentElasticXSFlat(const uint8_t* data) : data_{data} { }
 
-  double operator()(double E) const override;
+  double operator()(double E) const;
 private:
   gsl::span<const double> bragg_edges() const;
   gsl::span<const double> factors() const;
@@ -172,11 +173,11 @@ private:
   double debye_waller_; //!< Debye-Waller integral divided by atomic mass in [eV^-1]
 };
 
-class IncoherentElasticXSFlat : public Function1D {
+class IncoherentElasticXSFlat {
 public:
   explicit IncoherentElasticXSFlat(const uint8_t* data) : data_{data} { }
 
-  double operator()(double E) const override;
+  double operator()(double E) const;
 private:
   double bound_xs() const { return *reinterpret_cast<const double*>(data_ + 4); }
   double debye_waller() const { return *reinterpret_cast<const double*>(data_ + 12); }

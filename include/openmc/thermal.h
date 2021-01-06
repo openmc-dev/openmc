@@ -12,8 +12,10 @@
 
 #include "openmc/angle_energy.h"
 #include "openmc/endf.h"
+#include "openmc/endf_flat.h"
 #include "openmc/hdf5_interface.h"
 #include "openmc/particle.h"
+#include "openmc/secondary_flat.h"
 
 namespace openmc {
 
@@ -59,8 +61,8 @@ private:
     Reaction() { }
 
     // Data members
-    std::unique_ptr<Function1D> xs; //!< Cross section
-    std::unique_ptr<AngleEnergy> distribution; //!< Secondary angle-energy distribution
+    std::unique_ptr<Function1DFlat> xs; //!< Cross section
+    std::unique_ptr<AngleEnergyFlat> distribution; //!< Secondary angle-energy distribution
   };
 
   // Inelastic scattering data

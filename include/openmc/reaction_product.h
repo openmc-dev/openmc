@@ -11,6 +11,7 @@
 
 #include "openmc/angle_energy.h"
 #include "openmc/endf.h"
+#include "openmc/endf_flat.h"
 #include "openmc/particle.h"
 #include "openmc/secondary_flat.h"
 
@@ -49,7 +50,7 @@ public:
   Particle::Type particle_; //!< Particle type
   EmissionMode emission_mode_; //!< Emission mode
   double decay_rate_; //!< Decay rate (for delayed neutron precursors) in [1/s]
-  std::unique_ptr<Function1D> yield_; //!< Yield as a function of energy
+  std::unique_ptr<Function1DFlat> yield_; //!< Yield as a function of energy
   std::vector<Tabulated1D> applicability_; //!< Applicability of distribution
   std::vector<Secondary> distribution_; //!< Secondary angle-energy distribution
 };

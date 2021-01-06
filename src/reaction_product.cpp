@@ -49,7 +49,7 @@ ReactionProduct::ReactionProduct(hid_t group)
   }
 
   // Read secondary particle yield
-  yield_ = read_function(group, "yield");
+  yield_ = std::make_unique<Function1DFlat>(*read_function(group, "yield"));
 
   int n;
   read_attribute(group, "n_distribution", n);

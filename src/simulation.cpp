@@ -267,7 +267,6 @@ double total_weight;
 int64_t work_per_rank;
 
 const RegularMesh* entropy_mesh {nullptr};
-const RegularMesh* frequency_mesh {nullptr};
 const RegularMesh* ufs_mesh {nullptr};
 
 std::vector<double> k_generation;

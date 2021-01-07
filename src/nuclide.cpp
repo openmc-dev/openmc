@@ -573,14 +573,16 @@ void Nuclide::calculate_xs(int i_sab, int i_log_union, double sab_frac, Particle
     micro.fission = sig_f;
     micro.nu_fission = fissionable_ ?
       sig_f * this->nu(p.E_, EmissionMode::total) : 0.0;
-    micro.prompt_nu_fission = fissionable_ ?
-      sig_f * this->nu(p.E_, EmissionMode::prompt) : 0.0;
-    if (fissionable_) {
-      for (int d = 0; d < n_precursor_; ++d) {
-        micro.delayed_nu_fission[d] = sig_f * this->nu(p.E_, EmissionMode::delayed, d+1);
+    if (settings::frequency_method_on) {
+      if (fissionable_) {
+	micro.prompt_nu_fission = sig_f * this->nu(p.E_, EmissionMode::prompt);
+        for (int d = 0; d < n_precursor_; ++d) {
+          micro.delayed_nu_fission[d] = sig_f * this->nu(p.E_, EmissionMode::delayed, d+1);
+        }
+      } else {
+	micro.prompt_nu_fission = 0.0;
+        micro.delayed_nu_fission.fill(0.0);
       }
-    } else {
-      micro.delayed_nu_fission.fill(0.0);
     }
 
     if (simulation::need_depletion_rx) {
@@ -933,9 +935,11 @@ void Nuclide::calculate_urr_xs(int i_temp, Particle& p) const
   // Determine nu-fission cross-section
   if (fissionable_) {
     micro.nu_fission = nu(p.E_, EmissionMode::total) * micro.fission;
-    micro.prompt_nu_fission = nu(p.E_, EmissionMode::prompt) * micro.fission;
-    for (int d = 0; d < n_precursor_; ++d) {
-      micro.delayed_nu_fission[d] = nu(p.E_, EmissionMode::delayed, d+1) * micro.fission;
+    if (settings::frequency_method_on) {
+      micro.prompt_nu_fission = nu(p.E_, EmissionMode::prompt) * micro.fission;
+      for (int d = 0; d < n_precursor_; ++d) {
+        micro.delayed_nu_fission[d] = nu(p.E_, EmissionMode::delayed, d+1) * micro.fission;
+      }
     }
   }
 

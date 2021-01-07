@@ -69,8 +69,8 @@ struct NuclideMicroXS {
   double absorption;       //!< absorption (disappearance)
   double fission;          //!< fission
   double nu_fission;       //!< neutron production from fission
-  double prompt_nu_fission;//!< prompt neutron production from fission
-  std::array<double, 8> delayed_nu_fission;//!< delayed neutron production from fission
+  double prompt_nu_fission; //!< prompt neutron production from fission
+  std::array<double, MAX_DELAYED_GROUPS> delayed_nu_fission; //!< delayed neutron production from fission
 
   double elastic;          //!< If sab_frac is not 1 or 0, then this value is
                            //!<   averaged over bound and non-bound nuclei
@@ -124,9 +124,9 @@ struct MacroXS {
   double absorption;    //!< macroscopic absorption xs
   double fission;       //!< macroscopic fission xs
   double nu_fission;    //!< macroscopic production xs
-  double prompt_nu_fission;//!< macroscopic prompt production
-  std::vector<double> delayed_nu_fission;//!< macroscopic delayed production
-  double inverse_velocity;//!< macroscopic inverse velocity 
+  double prompt_nu_fission; //!< macroscopic prompt production
+  std::vector<double> delayed_nu_fission; //!< macroscopic delayed production
+  double inverse_velocity; //!< macroscopic inverse velocity 
   double photon_prod;   //!< macroscopic photon production xs
 
   // Photon cross sections

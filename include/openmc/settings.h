@@ -32,7 +32,6 @@ extern "C" bool dagmc;                //!< indicator of DAGMC geometry
 extern bool delayed_photon_scaling;   //!< Scale fission photon yield to include delayed
 extern "C" bool entropy_on;           //!< calculate Shannon entropy?
 extern bool event_based;              //!< use event-based mode (instead of history-based)
-extern "C" bool flux_frequency_on;    //!< use flux_frequency
 extern "C" bool frequency_method_on;  //!< use frequency method
 extern bool legendre_to_tabular;      //!< convert Legendre distributions to tabular?
 extern bool material_cell_offsets;    //!< create material cells offsets?
@@ -40,7 +39,6 @@ extern "C" bool output_summary;       //!< write summary.h5?
 extern bool output_tallies;           //!< write tallies.out?
 extern bool particle_restart_run;     //!< particle restart run?
 extern "C" bool photon_transport;     //!< photon transport turned on?
-extern "C" bool precursor_frequency_on; //!< use precursor frequency
 extern "C" bool reduce_tallies;       //!< reduce tallies at end of batch?
 extern bool res_scat_on;              //!< use resonance upscattering method?
 extern "C" bool restart_run;          //!< restart run?
@@ -73,11 +71,6 @@ extern "C" int64_t n_particles;              //!< number of particles per genera
 
 
 extern int64_t max_particles_in_flight; //!< Max num. event-based particles in flight
-
-extern std::vector<double> flux_frequency; //!< flux frequency used for frequency method
-extern std::vector<double> precursor_frequency; //!< precursor frequency used for frequency method
-extern std::vector<double> frequency_energy_bins; //!< energy groups for frequency method
-extern int num_frequency_delayed_groups;   //!< number of precursor groups used by frequency method
 
 extern ElectronTreatment electron_treatment;       //!< how to treat secondary electrons
 extern std::array<double, 4> energy_cutoff;  //!< Energy cutoff in [eV] for each particle type

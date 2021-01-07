@@ -112,6 +112,7 @@ HD void sample_neutron_reaction(Particle& p)
 
   // Sample a nuclide within the material
   int i_nuclide = sample_nuclide(p);
+  printf("%i\n", i_nuclide);
 
   // Save which nuclide particle had collision with
   p.event_nuclide() = i_nuclide;
@@ -216,7 +217,10 @@ create_fission_sites(Particle& p, int i_nuclide, const Reaction& rx)
 
   // Initialize the counter of delayed neutrons encountered for each delayed
   // group.
-  double nu_d[MAX_DELAYED_GROUPS] = {0.};
+  double nu_d[MAX_DELAYED_GROUPS];
+#pragma unroll MAX_DELAYED_GROUPS
+  for (short del_idx = 0; del_idx < MAX_DELAYED_GROUPS; ++del_idx)
+    nu_d[del_idx] = 0;
 
   // Clear out particle's nu fission bank
   p.nu_bank_clear();
@@ -268,6 +272,12 @@ create_fission_sites(Particle& p, int i_nuclide, const Reaction& rx)
       nu_d[p.delayed_group() - 1]++;
     }
 
+    // TODO need to add this back for GPU tally stuff, or come
+    // up with an alternative. Alternative is likely best here.
+    // There is a small upper bound on the fissions that will ever
+    // take place. Will likely be best to use a fixed length array
+    // here as a result.
+
     // Write fission particles to nuBank
     p.nu_bank_emplace_back();
     NuBank* nu_bank_entry = &p.nu_bank_back();
@@ -277,22 +287,27 @@ create_fission_sites(Particle& p, int i_nuclide, const Reaction& rx)
   }
 
   // If shared fission bank was full, and no fissions could be added,
-  // set the particle fission flag to false.
+  // set the particle fission flag to false. This can never happen on the GPU.
+#ifndef __CUDA_ARCH__
   if (nu == skipped) {
     p.fission() = false;
     return;
   }
+#endif
 
   // If shared fission bank was full, but some fissions could be added,
   // reduce nu accordingly
   nu -= skipped;
 
   // Store the total weight banked for analog fission tallies
-  p.n_bank() = nu;
-  p.wgt_bank() = nu / weight;
-  for (size_t d = 0; d < MAX_DELAYED_GROUPS; d++) {
-    p.n_delayed_bank(d) = nu_d[d];
-  }
+  // TODO GPU code does not work here (and probably should be implemented
+  // differently) because I've not allocated the delayed bank ahead of time on
+  // each particle.
+  // p.n_bank() = nu;
+  // p.wgt_bank() = nu / weight;
+  // for (size_t d = 0; d < MAX_DELAYED_GROUPS; d++) {
+  //   p.n_delayed_bank(d) = nu_d[d];
+  // }
 }
 
 void sample_photon_reaction(Particle& p)
@@ -517,7 +532,7 @@ HD int sample_nuclide(Particle& p)
   p.write_restart();
   throw std::runtime_error{"Did not sample any nuclide during collision."};
 #else
-  asm("trap;");
+  __trap();
   return 0;
 #endif
 }
@@ -601,7 +616,7 @@ HD Reaction& sample_fission(int i_nuclide, Particle& p)
 
   // If we reached here, no reaction was sampled
 #ifdef __CUDA_ARCH__
-  asm("trap;");
+  __trap();
   return *nuc->fission_rx_[0];
 #else
   throw std::runtime_error{"No fission reaction was sampled for " + nuc->name_};
@@ -787,7 +802,7 @@ HD void scatter(Particle& p, int i_nuclide)
       // Check to make sure inelastic scattering reaction sampled
       if (i >= nuc->reactions_.size()) {
 #ifdef __CUDA_ARCH__
-        asm("trap;");
+        __trap();
 #else
         p.write_restart();
         fatal_error("Did not sample any reaction for nuclide " + nuc->name_);
@@ -1066,7 +1081,7 @@ HD Direction sample_target_velocity(const Nuclide& nuc, double E, Direction u,
   } // switch (sampling_method)
 
 #ifdef __CUDA_ARCH__
-  asm("trap;");
+  __trap();
   return {0, 0, 0};
 #else
   UNREACHABLE();

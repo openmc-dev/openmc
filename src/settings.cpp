@@ -370,9 +370,6 @@ void read_settings_xml()
       }
     }
   }
-#ifdef __CUDACC__
-  cudaMemcpyToSymbol(gpu::run_mode, &run_mode, sizeof(RunMode));
-#endif
 
   if (run_mode == RunMode::EIGENVALUE || run_mode == RunMode::FIXED_SOURCE) {
     // Read run parameters
@@ -872,6 +869,7 @@ void free_memory_settings() {
 #ifdef __CUDACC__
 void copy_settings_to_gpu()
 {
+  cudaMemcpyToSymbol(gpu::run_mode, &settings::run_mode, sizeof(RunMode));
   cudaMemcpyToSymbol(
     gpu::weight_cutoff, &settings::weight_cutoff, sizeof(double));
   cudaMemcpyToSymbol(

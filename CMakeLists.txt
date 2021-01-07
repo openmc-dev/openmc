@@ -77,7 +77,7 @@ else()
 #===============================================================================
 if(cuda)
   enable_language(CUDA)
-  set(CMAKE_CUDA_ARCHITECTURES 61 72)
+  set(CMAKE_CUDA_ARCHITECTURES 61 70)
   set(CMAKE_CUDA_SEPARABLE_COMPILATION ON)
 endif()
 

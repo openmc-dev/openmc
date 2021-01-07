@@ -308,16 +308,18 @@ __global__ void run_constructor_on_device(T* dist, Args... args)
   new (dist) T(args...);
 }
 
+// This sets up vtables in device memory
 template<typename T>
 __global__ void run_move_constructor_on_device(T* dist)
 {
+  // TODO: it may be faster to allocate a buffer in memory here.
   static_assert(std::is_move_constructible<T>::value,
     "Polymorphic objects to be put on device must be move constructible.");
-
-  // NOTE: possibly need to use intermediate temporary object here.
-  // Seems to work though. I think this is not necessarily guaranteed
-  // to work though.
-  new (dist) T(std::move(*dist));
+  char buffer[sizeof(T) + alignof(T)];
+  char* aligned_buffer =
+    buffer + alignof(T) - reinterpret_cast<intptr_t>(buffer) % alignof(T);
+  T* tmp = new (aligned_buffer) T(std::move(*dist));
+  new (dist) T(std::move(*tmp));
 }
 
 // Allocates unified memory if running in GPU mode, else acts
@@ -389,16 +391,17 @@ public:
 
   __host__ __device__ unique_ptr(unique_ptr&& u)
   {
-    // So, this is really dirty and yes, technically risks memory leak,
-    // but this allows polymorphism to work on the device. Is it disgusting?
-    // Yes. Do I really need to set things up like this for the moment to
-    // get a master's degree? Again, yes.
 #ifdef __CUDA_ARCH__
+    // This should not be called on the device if memory is held.
+    if (ptr || ptr_dev)
+      __trap();
+#else
+    free_mem();
+#endif
     ptr = u.ptr;
     ptr_dev = u.ptr_dev;
-#else
-    std::tie(ptr, ptr_dev) = u.release();
-#endif
+    u.ptr = nullptr;
+    u.ptr_dev = nullptr;
   }
 
   template<class U>
@@ -418,13 +421,17 @@ public:
   // this is only called in that case when constructing stuff.
   __host__ __device__ unique_ptr& operator=(unique_ptr&& u)
   {
-#ifndef __CUDA_ARCH__
-    free_mem(); // free memory currently held, if any
-    std::tie(ptr, ptr_dev) = u.release();
+#ifdef __CUDA_ARCH__
+    // This should not be called on the device if memory is held.
+    if (ptr || ptr_dev)
+      __trap();
 #else
+    free_mem();
+#endif
     ptr = u.ptr;
     ptr_dev = u.ptr_dev;
-#endif
+    u.ptr = nullptr;
+    u.ptr_dev = nullptr;
     return *this;
   }
 

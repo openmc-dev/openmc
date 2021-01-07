@@ -22,6 +22,7 @@ AngleDistribution::AngleDistribution(hid_t group)
   // Get incoming energies
   read_dataset(group, "energy", energy_);
   int n_energy = energy_.size();
+  distribution_.reserve(n_energy);
 
   // Get outgoing energy distribution data
   vector<int> offsets;

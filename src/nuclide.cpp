@@ -696,15 +696,11 @@ void Nuclide::calculate_xs(int i_sab, int i_log_union, double sab_frac, Particle
 
     if (settings::frequency_method_on) {
       if (fissionable_) {
-        micro.prompt_nu_fission = (1.0 - f)*(xs(i_grid, XS_FISSION) *
-	  	nu(grid.energy[i_grid], EmissionMode::prompt))
-		+ f*(xs(i_grid + 1, XS_FISSION) * 
-		nu(grid.energy[i_grid + 1], EmissionMode::prompt));
+        micro.prompt_nu_fission = nu(p.E_, EmissionMode::prompt) 
+		* micro.fission;
         for (int d = 0; d < n_precursor_; ++d) {
-	  micro.delayed_nu_fission[d] = (1.0 - f)*(xs(i_grid, XS_FISSION) * 
-		nu(grid.energy[i_grid], EmissionMode::delayed, d+1))
-		+ f*(xs(i_grid + 1, XS_FISSION) *
-		nu(grid.energy[i_grid + 1], EmissionMode::delayed, d+1));
+          micro.delayed_nu_fission[d] = nu(p.E_, EmissionMode::delayed, d+1) 
+		  * micro.fission;	
         }
       } else {
 	micro.prompt_nu_fission = 0.0;

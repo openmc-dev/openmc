@@ -834,7 +834,7 @@ void Material::calculate_neutron_xs(Particle& p) const
     if (settings::frequency_method_on) {
       p.macro_xs_.prompt_nu_fission += atom_density * micro.prompt_nu_fission;
       for (int d = 1; d < micro.delayed_nu_fission.size(); ++d) {
-	p.macro_xs_.delayed_nu_fission[d] += atom_density * micro.delayed_nu_fission[d];
+        p.macro_xs_.delayed_nu_fission[d] += atom_density * micro.delayed_nu_fission[d];
       }
       double velocity = sqrt(2*p.E_ / MASS_NEUTRON_EV) * C_LIGHT * 100.0;
       p.macro_xs_.inverse_velocity += atom_density * 1. / velocity;

@@ -365,6 +365,7 @@ class ResultsList(list):
                     atoms = result[0, mat_id, nuc]
                     if atoms > 0.0:
                         atoms_per_barn_cm = 1e-24 * atoms / mat.volume
+                        mat.remove_nuclide(nuc) # Replace if it's there
                         mat.add_nuclide(nuc, atoms_per_barn_cm)
 
         return mat_file

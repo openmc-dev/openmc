@@ -2248,8 +2248,9 @@ LibMesh::add_score(const std::string& var_name)
 void
 LibMesh::remove_scores()
 {
-  equation_systems_->clear();
-  equation_systems_->init();
+  auto& eqn_sys = equation_systems_->get_system(eq_system_name_);
+  eqn_sys.clear();
+  eqn_sys.init();
 }
 
 void

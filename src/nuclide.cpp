@@ -575,12 +575,12 @@ void Nuclide::calculate_xs(int i_sab, int i_log_union, double sab_frac, Particle
       sig_f * this->nu(p.E_, EmissionMode::total) : 0.0;
     if (settings::frequency_method_on) {
       if (fissionable_) {
-	micro.prompt_nu_fission = sig_f * this->nu(p.E_, EmissionMode::prompt);
+        micro.prompt_nu_fission = sig_f * this->nu(p.E_, EmissionMode::prompt);
         for (int d = 0; d < n_precursor_; ++d) {
           micro.delayed_nu_fission[d] = sig_f * this->nu(p.E_, EmissionMode::delayed, d+1);
         }
       } else {
-	micro.prompt_nu_fission = 0.0;
+        micro.prompt_nu_fission = 0.0;
         micro.delayed_nu_fission.fill(0.0);
       }
     }
@@ -703,8 +703,8 @@ void Nuclide::calculate_xs(int i_sab, int i_log_union, double sab_frac, Particle
 		  * micro.fission;	
         }
       } else {
-	micro.prompt_nu_fission = 0.0;
-	micro.delayed_nu_fission.fill(0.0);
+        micro.prompt_nu_fission = 0.0;
+        micro.delayed_nu_fission.fill(0.0);
       }
     }
 

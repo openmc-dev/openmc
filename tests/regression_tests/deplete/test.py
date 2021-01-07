@@ -176,5 +176,5 @@ def test_depletion_results_to_material(run_in_tmpdir, problem):
     for line in diff_vs_expected:
         if line:
             success = False
-            print(line)
+            print(line.rstrip())
     assert success

@@ -318,8 +318,8 @@ class ResultsList(list):
         Returns
         -------
         mat_file : Materials
-            A modified Materials instance containing depleted material data,
-            plus original isotopic compositions of non-depletable materials
+            A modified Materials instance containing depleted material data
+            and original isotopic compositions of non-depletable materials
         """
         result = self[burnup_index]
 

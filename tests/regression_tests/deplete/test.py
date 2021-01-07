@@ -150,16 +150,14 @@ def test_depletion_results_to_material(run_in_tmpdir, problem):
     # using only nuclides available in the current nuclear data library
     last_step_materials = res_ref.export_to_materials(-1)
 
-    # Check that the conversion of the final step depleted materials XML
-    # file hashes to what we expect.
+    # Export final depletion  step materials to XML
     output_xml_file = 'last_step_materials.xml'
     last_step_materials.export_to_xml(path=output_xml_file)
     with open(output_xml_file, 'r') as result_file:
         result_file_lines = result_file.readlines()
 
     # If updating results, do so and return. We write out the last-step
-    # depleted materials as an XML, hash the file, and save the hash to
-    # the reference file.
+    # depleted materials as an XML, and save the list of lines to diff.
     reference_file = Path(__file__).with_name('last_step_reference_materials.xml')
     if config['update']:
         with open(reference_file, 'w') as ref_file:
@@ -171,10 +169,9 @@ def test_depletion_results_to_material(run_in_tmpdir, problem):
         reference_lines = ref_file.readlines()
     diff_vs_expected = unified_diff(reference_lines, result_file_lines)
 
-    # Check all lines match, printing along the way
+    # Check all lines match, printing errors along the way
     success = True 
     for line in diff_vs_expected:
-        if line:
-            success = False
-            print(line.rstrip())
+        success = False
+        print(line.rstrip())
     assert success

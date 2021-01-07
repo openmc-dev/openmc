@@ -2,13 +2,6 @@
 <materials>
   <material depletable="true" id="1" temperature="293.6" volume="0.06674732823364922">
     <density units="sum" />
-    <nuclide ao="1e-14" name="Xe135" />
-    <nuclide ao="1e-14" name="Xe136" />
-    <nuclide ao="1e-14" name="Gd157" />
-    <nuclide ao="1e-14" name="Gd156" />
-    <nuclide ao="1.00506e-05" name="U234" />
-    <nuclide ao="0.0010569199999999998" name="U235" />
-    <nuclide ao="0.022137099999999996" name="U238" />
     <nuclide ao="0.046295399999999994" name="O16" />
     <nuclide ao="0.00011276839999999999" name="O17" />
     <nuclide ao="4.611985879920533e-07" name="Cs135" />
@@ -23,13 +16,6 @@
   </material>
   <material depletable="true" id="2" temperature="293.6" volume="0.06674732823364922">
     <density units="sum" />
-    <nuclide ao="1e-14" name="Xe135" />
-    <nuclide ao="1e-14" name="Xe136" />
-    <nuclide ao="1e-14" name="Gd157" />
-    <nuclide ao="1e-14" name="Gd156" />
-    <nuclide ao="1.00506e-05" name="U234" />
-    <nuclide ao="0.0010569199999999998" name="U235" />
-    <nuclide ao="0.022137099999999996" name="U238" />
     <nuclide ao="0.046295399999999994" name="O16" />
     <nuclide ao="0.00011276839999999999" name="O17" />
     <nuclide ao="4.565939641481984e-07" name="Cs135" />
@@ -44,13 +30,6 @@
   </material>
   <material depletable="true" id="3" temperature="293.6" volume="0.06674732823364922">
     <density units="sum" />
-    <nuclide ao="1e-14" name="Xe135" />
-    <nuclide ao="1e-14" name="Xe136" />
-    <nuclide ao="1e-14" name="Gd157" />
-    <nuclide ao="1e-14" name="Gd156" />
-    <nuclide ao="1.00506e-05" name="U234" />
-    <nuclide ao="0.0010569199999999998" name="U235" />
-    <nuclide ao="0.022137099999999996" name="U238" />
     <nuclide ao="0.046295399999999994" name="O16" />
     <nuclide ao="0.00011276839999999999" name="O17" />
     <nuclide ao="4.510650897362913e-07" name="Cs135" />
@@ -65,13 +44,6 @@
   </material>
   <material depletable="true" id="4" temperature="293.6" volume="0.06674732823364922">
     <density units="sum" />
-    <nuclide ao="1e-14" name="Xe135" />
-    <nuclide ao="1e-14" name="Xe136" />
-    <nuclide ao="1e-14" name="Gd157" />
-    <nuclide ao="1e-14" name="Gd156" />
-    <nuclide ao="1.00506e-05" name="U234" />
-    <nuclide ao="0.0010569199999999998" name="U235" />
-    <nuclide ao="0.022137099999999996" name="U238" />
     <nuclide ao="0.046295399999999994" name="O16" />
     <nuclide ao="0.00011276839999999999" name="O17" />
     <nuclide ao="4.6530710024597434e-07" name="Cs135" />
@@ -86,10 +58,6 @@
   </material>
   <material depletable="true" id="5" temperature="293.6" volume="0.06674732823364922">
     <density units="sum" />
-    <nuclide ao="0.00010815599999999999" name="Gd157" />
-    <nuclide ao="3.9551699999999996e-14" name="Gd156" />
-    <nuclide ao="0.00103579" name="U235" />
-    <nuclide ao="0.021694299999999996" name="U238" />
     <nuclide ao="0.0464035" name="O16" />
     <nuclide ao="3.99748337301028e-07" name="Cs135" />
     <nuclide ao="3.938875563284977e-09" name="Gd156" />
@@ -103,13 +71,6 @@
   </material>
   <material depletable="true" id="6" temperature="293.6" volume="0.06674732823364922">
     <density units="sum" />
-    <nuclide ao="1e-14" name="Xe135" />
-    <nuclide ao="1e-14" name="Xe136" />
-    <nuclide ao="1e-14" name="Gd157" />
-    <nuclide ao="1e-14" name="Gd156" />
-    <nuclide ao="1.00506e-05" name="U234" />
-    <nuclide ao="0.0010569199999999998" name="U235" />
-    <nuclide ao="0.022137099999999996" name="U238" />
     <nuclide ao="0.046295399999999994" name="O16" />
     <nuclide ao="0.00011276839999999999" name="O17" />
     <nuclide ao="4.807098076521783e-07" name="Cs135" />
@@ -124,13 +85,6 @@
   </material>
   <material depletable="true" id="7" temperature="293.6" volume="0.06674732823364922">
     <density units="sum" />
-    <nuclide ao="1e-14" name="Xe135" />
-    <nuclide ao="1e-14" name="Xe136" />
-    <nuclide ao="1e-14" name="Gd157" />
-    <nuclide ao="1e-14" name="Gd156" />
-    <nuclide ao="1.00506e-05" name="U234" />
-    <nuclide ao="0.0010569199999999998" name="U235" />
-    <nuclide ao="0.022137099999999996" name="U238" />
     <nuclide ao="0.046295399999999994" name="O16" />
     <nuclide ao="0.00011276839999999999" name="O17" />
     <nuclide ao="4.3584819569281354e-07" name="Cs135" />
@@ -145,13 +99,6 @@
   </material>
   <material depletable="true" id="8" temperature="293.6" volume="0.06674732823364922">
     <density units="sum" />
-    <nuclide ao="1e-14" name="Xe135" />
-    <nuclide ao="1e-14" name="Xe136" />
-    <nuclide ao="1e-14" name="Gd157" />
-    <nuclide ao="1e-14" name="Gd156" />
-    <nuclide ao="1.00506e-05" name="U234" />
-    <nuclide ao="0.0010569199999999998" name="U235" />
-    <nuclide ao="0.022137099999999996" name="U238" />
     <nuclide ao="0.046295399999999994" name="O16" />
     <nuclide ao="0.00011276839999999999" name="O17" />
     <nuclide ao="4.2371666592489366e-07" name="Cs135" />
@@ -166,13 +113,6 @@
   </material>
   <material depletable="true" id="9" temperature="293.6" volume="0.06674732823364922">
     <density units="sum" />
-    <nuclide ao="1e-14" name="Xe135" />
-    <nuclide ao="1e-14" name="Xe136" />
-    <nuclide ao="1e-14" name="Gd157" />
-    <nuclide ao="1e-14" name="Gd156" />
-    <nuclide ao="1.00506e-05" name="U234" />
-    <nuclide ao="0.0010569199999999998" name="U235" />
-    <nuclide ao="0.022137099999999996" name="U238" />
     <nuclide ao="0.046295399999999994" name="O16" />
     <nuclide ao="0.00011276839999999999" name="O17" />
     <nuclide ao="4.010187672489071e-07" name="Cs135" />
@@ -187,13 +127,6 @@
   </material>
   <material depletable="true" id="10" temperature="293.6" volume="0.06674732823364922">
     <density units="sum" />
-    <nuclide ao="1e-14" name="Xe135" />
-    <nuclide ao="1e-14" name="Xe136" />
-    <nuclide ao="1e-14" name="Gd157" />
-    <nuclide ao="1e-14" name="Gd156" />
-    <nuclide ao="1.00506e-05" name="U234" />
-    <nuclide ao="0.0010569199999999998" name="U235" />
-    <nuclide ao="0.022137099999999996" name="U238" />
     <nuclide ao="0.046295399999999994" name="O16" />
     <nuclide ao="0.00011276839999999999" name="O17" />
     <nuclide ao="4.383494559877303e-07" name="Cs135" />
@@ -208,13 +141,6 @@
   </material>
   <material depletable="true" id="11" temperature="293.6" volume="0.06674732823364922">
     <density units="sum" />
-    <nuclide ao="1e-14" name="Xe135" />
-    <nuclide ao="1e-14" name="Xe136" />
-    <nuclide ao="1e-14" name="Gd157" />
-    <nuclide ao="1e-14" name="Gd156" />
-    <nuclide ao="1.00506e-05" name="U234" />
-    <nuclide ao="0.0010569199999999998" name="U235" />
-    <nuclide ao="0.022137099999999996" name="U238" />
     <nuclide ao="0.046295399999999994" name="O16" />
     <nuclide ao="0.00011276839999999999" name="O17" />
     <nuclide ao="4.406303147079341e-07" name="Cs135" />
@@ -229,13 +155,6 @@
   </material>
   <material depletable="true" id="12" temperature="293.6" volume="0.06674732823364922">
     <density units="sum" />
-    <nuclide ao="1e-14" name="Xe135" />
-    <nuclide ao="1e-14" name="Xe136" />
-    <nuclide ao="1e-14" name="Gd157" />
-    <nuclide ao="1e-14" name="Gd156" />
-    <nuclide ao="1.00506e-05" name="U234" />
-    <nuclide ao="0.0010569199999999998" name="U235" />
-    <nuclide ao="0.022137099999999996" name="U238" />
     <nuclide ao="0.046295399999999994" name="O16" />
     <nuclide ao="0.00011276839999999999" name="O17" />
     <nuclide ao="4.327328464626704e-07" name="Cs135" />
@@ -250,13 +169,6 @@
   </material>
   <material depletable="true" id="13" temperature="293.6" volume="0.06674732823364922">
     <density units="sum" />
-    <nuclide ao="1e-14" name="Xe135" />
-    <nuclide ao="1e-14" name="Xe136" />
-    <nuclide ao="1e-14" name="Gd157" />
-    <nuclide ao="1e-14" name="Gd156" />
-    <nuclide ao="1.00506e-05" name="U234" />
-    <nuclide ao="0.0010569199999999998" name="U235" />
-    <nuclide ao="0.022137099999999996" name="U238" />
     <nuclide ao="0.046295399999999994" name="O16" />
     <nuclide ao="0.00011276839999999999" name="O17" />
     <nuclide ao="4.582600012666176e-07" name="Cs135" />
@@ -271,10 +183,6 @@
   </material>
   <material depletable="true" id="14" temperature="293.6" volume="0.06674732823364922">
     <density units="sum" />
-    <nuclide ao="0.00010815599999999999" name="Gd157" />
-    <nuclide ao="3.9551699999999996e-14" name="Gd156" />
-    <nuclide ao="0.00103579" name="U235" />
-    <nuclide ao="0.021694299999999996" name="U238" />
     <nuclide ao="0.0464035" name="O16" />
     <nuclide ao="4.2175046450192374e-07" name="Cs135" />
     <nuclide ao="4.2762518468614226e-09" name="Gd156" />
@@ -288,13 +196,6 @@
   </material>
   <material depletable="true" id="15" temperature="293.6" volume="0.06674732823364922">
     <density units="sum" />
-    <nuclide ao="1e-14" name="Xe135" />
-    <nuclide ao="1e-14" name="Xe136" />
-    <nuclide ao="1e-14" name="Gd157" />
-    <nuclide ao="1e-14" name="Gd156" />
-    <nuclide ao="1.00506e-05" name="U234" />
-    <nuclide ao="0.0010569199999999998" name="U235" />
-    <nuclide ao="0.022137099999999996" name="U238" />
     <nuclide ao="0.046295399999999994" name="O16" />
     <nuclide ao="0.00011276839999999999" name="O17" />
     <nuclide ao="4.738331340510774e-07" name="Cs135" />
@@ -309,13 +210,6 @@
   </material>
   <material depletable="true" id="16" temperature="293.6" volume="0.06674732823364922">
     <density units="sum" />
-    <nuclide ao="1e-14" name="Xe135" />
-    <nuclide ao="1e-14" name="Xe136" />
-    <nuclide ao="1e-14" name="Gd157" />
-    <nuclide ao="1e-14" name="Gd156" />
-    <nuclide ao="1.00506e-05" name="U234" />
-    <nuclide ao="0.0010569199999999998" name="U235" />
-    <nuclide ao="0.022137099999999996" name="U238" />
     <nuclide ao="0.046295399999999994" name="O16" />
     <nuclide ao="0.00011276839999999999" name="O17" />
     <nuclide ao="4.6613464771383493e-07" name="Cs135" />
@@ -330,13 +224,6 @@
   </material>
   <material depletable="true" id="17" temperature="293.6" volume="0.06674732823364922">
     <density units="sum" />
-    <nuclide ao="1e-14" name="Xe135" />
-    <nuclide ao="1e-14" name="Xe136" />
-    <nuclide ao="1e-14" name="Gd157" />
-    <nuclide ao="1e-14" name="Gd156" />
-    <nuclide ao="1.00506e-05" name="U234" />
-    <nuclide ao="0.0010569199999999998" name="U235" />
-    <nuclide ao="0.022137099999999996" name="U238" />
     <nuclide ao="0.046295399999999994" name="O16" />
     <nuclide ao="0.00011276839999999999" name="O17" />
     <nuclide ao="4.568926074046896e-07" name="Cs135" />
@@ -351,13 +238,6 @@
   </material>
   <material depletable="true" id="18" temperature="293.6" volume="0.06674732823364922">
     <density units="sum" />
-    <nuclide ao="1e-14" name="Xe135" />
-    <nuclide ao="1e-14" name="Xe136" />
-    <nuclide ao="1e-14" name="Gd157" />
-    <nuclide ao="1e-14" name="Gd156" />
-    <nuclide ao="1.00506e-05" name="U234" />
-    <nuclide ao="0.0010569199999999998" name="U235" />
-    <nuclide ao="0.022137099999999996" name="U238" />
     <nuclide ao="0.046295399999999994" name="O16" />
     <nuclide ao="0.00011276839999999999" name="O17" />
     <nuclide ao="4.132121114226326e-07" name="Cs135" />
@@ -372,13 +252,6 @@
   </material>
   <material depletable="true" id="19" temperature="293.6" volume="0.06674732823364922">
     <density units="sum" />
-    <nuclide ao="1e-14" name="Xe135" />
-    <nuclide ao="1e-14" name="Xe136" />
-    <nuclide ao="1e-14" name="Gd157" />
-    <nuclide ao="1e-14" name="Gd156" />
-    <nuclide ao="1.00506e-05" name="U234" />
-    <nuclide ao="0.0010569199999999998" name="U235" />
-    <nuclide ao="0.022137099999999996" name="U238" />
     <nuclide ao="0.046295399999999994" name="O16" />
     <nuclide ao="0.00011276839999999999" name="O17" />
     <nuclide ao="4.6785062457643253e-07" name="Cs135" />
@@ -393,13 +266,6 @@
   </material>
   <material depletable="true" id="20" temperature="293.6" volume="0.06674732823364922">
     <density units="sum" />
-    <nuclide ao="1e-14" name="Xe135" />
-    <nuclide ao="1e-14" name="Xe136" />
-    <nuclide ao="1e-14" name="Gd157" />
-    <nuclide ao="1e-14" name="Gd156" />
-    <nuclide ao="1.00506e-05" name="U234" />
-    <nuclide ao="0.0010569199999999998" name="U235" />
-    <nuclide ao="0.022137099999999996" name="U238" />
     <nuclide ao="0.046295399999999994" name="O16" />
     <nuclide ao="0.00011276839999999999" name="O17" />
     <nuclide ao="4.3242533875789617e-07" name="Cs135" />
@@ -414,13 +280,6 @@
   </material>
   <material depletable="true" id="21" temperature="293.6" volume="0.06674732823364922">
     <density units="sum" />
-    <nuclide ao="1e-14" name="Xe135" />
-    <nuclide ao="1e-14" name="Xe136" />
-    <nuclide ao="1e-14" name="Gd157" />
-    <nuclide ao="1e-14" name="Gd156" />
-    <nuclide ao="1.00506e-05" name="U234" />
-    <nuclide ao="0.0010569199999999998" name="U235" />
-    <nuclide ao="0.022137099999999996" name="U238" />
     <nuclide ao="0.046295399999999994" name="O16" />
     <nuclide ao="0.00011276839999999999" name="O17" />
     <nuclide ao="4.240322874842906e-07" name="Cs135" />
@@ -435,13 +294,6 @@
   </material>
   <material depletable="true" id="22" temperature="293.6" volume="0.06674732823364922">
     <density units="sum" />
-    <nuclide ao="1e-14" name="Xe135" />
-    <nuclide ao="1e-14" name="Xe136" />
-    <nuclide ao="1e-14" name="Gd157" />
-    <nuclide ao="1e-14" name="Gd156" />
-    <nuclide ao="1.00506e-05" name="U234" />
-    <nuclide ao="0.0010569199999999998" name="U235" />
-    <nuclide ao="0.022137099999999996" name="U238" />
     <nuclide ao="0.046295399999999994" name="O16" />
     <nuclide ao="0.00011276839999999999" name="O17" />
     <nuclide ao="4.5291421182990846e-07" name="Cs135" />
@@ -456,10 +308,6 @@
   </material>
   <material depletable="true" id="23" temperature="293.6" volume="0.06674732823364922">
     <density units="sum" />
-    <nuclide ao="0.00010815599999999999" name="Gd157" />
-    <nuclide ao="3.9551699999999996e-14" name="Gd156" />
-    <nuclide ao="0.00103579" name="U235" />
-    <nuclide ao="0.021694299999999996" name="U238" />
     <nuclide ao="0.0464035" name="O16" />
     <nuclide ao="4.4697656765961874e-07" name="Cs135" />
     <nuclide ao="4.089132470651742e-09" name="Gd156" />
@@ -473,13 +321,6 @@
   </material>
   <material depletable="true" id="24" temperature="293.6" volume="0.06674732823364922">
     <density units="sum" />
-    <nuclide ao="1e-14" name="Xe135" />
-    <nuclide ao="1e-14" name="Xe136" />
-    <nuclide ao="1e-14" name="Gd157" />
-    <nuclide ao="1e-14" name="Gd156" />
-    <nuclide ao="1.00506e-05" name="U234" />
-    <nuclide ao="0.0010569199999999998" name="U235" />
-    <nuclide ao="0.022137099999999996" name="U238" />
     <nuclide ao="0.046295399999999994" name="O16" />
     <nuclide ao="0.00011276839999999999" name="O17" />
     <nuclide ao="4.466376936130862e-07" name="Cs135" />
@@ -494,13 +335,6 @@
   </material>
   <material depletable="true" id="25" temperature="293.6" volume="0.06674732823364922">
     <density units="sum" />
-    <nuclide ao="1e-14" name="Xe135" />
-    <nuclide ao="1e-14" name="Xe136" />
-    <nuclide ao="1e-14" name="Gd157" />
-    <nuclide ao="1e-14" name="Gd156" />
-    <nuclide ao="1.00506e-05" name="U234" />
-    <nuclide ao="0.0010569199999999998" name="U235" />
-    <nuclide ao="0.022137099999999996" name="U238" />
     <nuclide ao="0.046295399999999994" name="O16" />
     <nuclide ao="0.00011276839999999999" name="O17" />
     <nuclide ao="4.3802981392738887e-07" name="Cs135" />
@@ -515,13 +349,6 @@
   </material>
   <material depletable="true" id="26" temperature="293.6" volume="0.06674732823364922">
     <density units="sum" />
-    <nuclide ao="1e-14" name="Xe135" />
-    <nuclide ao="1e-14" name="Xe136" />
-    <nuclide ao="1e-14" name="Gd157" />
-    <nuclide ao="1e-14" name="Gd156" />
-    <nuclide ao="1.00506e-05" name="U234" />
-    <nuclide ao="0.0010569199999999998" name="U235" />
-    <nuclide ao="0.022137099999999996" name="U238" />
     <nuclide ao="0.046295399999999994" name="O16" />
     <nuclide ao="0.00011276839999999999" name="O17" />
     <nuclide ao="4.217039440346574e-07" name="Cs135" />
@@ -536,13 +363,6 @@
   </material>
   <material depletable="true" id="27" temperature="293.6" volume="0.06674732823364922">
     <density units="sum" />
-    <nuclide ao="1e-14" name="Xe135" />
-    <nuclide ao="1e-14" name="Xe136" />
-    <nuclide ao="1e-14" name="Gd157" />
-    <nuclide ao="1e-14" name="Gd156" />
-    <nuclide ao="1.00506e-05" name="U234" />
-    <nuclide ao="0.0010569199999999998" name="U235" />
-    <nuclide ao="0.022137099999999996" name="U238" />
     <nuclide ao="0.046295399999999994" name="O16" />
     <nuclide ao="0.00011276839999999999" name="O17" />
     <nuclide ao="4.4660744895745063e-07" name="Cs135" />
@@ -557,13 +377,6 @@
   </material>
   <material depletable="true" id="28" temperature="293.6" volume="0.06674732823364922">
     <density units="sum" />
-    <nuclide ao="1e-14" name="Xe135" />
-    <nuclide ao="1e-14" name="Xe136" />
-    <nuclide ao="1e-14" name="Gd157" />
-    <nuclide ao="1e-14" name="Gd156" />
-    <nuclide ao="1.00506e-05" name="U234" />
-    <nuclide ao="0.0010569199999999998" name="U235" />
-    <nuclide ao="0.022137099999999996" name="U238" />
     <nuclide ao="0.046295399999999994" name="O16" />
     <nuclide ao="0.00011276839999999999" name="O17" />
     <nuclide ao="4.3674309112215355e-07" name="Cs135" />
@@ -578,13 +391,6 @@
   </material>
   <material depletable="true" id="29" temperature="293.6" volume="0.06674732823364922">
     <density units="sum" />
-    <nuclide ao="1e-14" name="Xe135" />
-    <nuclide ao="1e-14" name="Xe136" />
-    <nuclide ao="1e-14" name="Gd157" />
-    <nuclide ao="1e-14" name="Gd156" />
-    <nuclide ao="1.00506e-05" name="U234" />
-    <nuclide ao="0.0010569199999999998" name="U235" />
-    <nuclide ao="0.022137099999999996" name="U238" />
     <nuclide ao="0.046295399999999994" name="O16" />
     <nuclide ao="0.00011276839999999999" name="O17" />
     <nuclide ao="4.56550369712442e-07" name="Cs135" />
@@ -599,13 +405,6 @@
   </material>
   <material depletable="true" id="30" temperature="293.6" volume="0.06674732823364922">
     <density units="sum" />
-    <nuclide ao="1e-14" name="Xe135" />
-    <nuclide ao="1e-14" name="Xe136" />
-    <nuclide ao="1e-14" name="Gd157" />
-    <nuclide ao="1e-14" name="Gd156" />
-    <nuclide ao="1.00506e-05" name="U234" />
-    <nuclide ao="0.0010569199999999998" name="U235" />
-    <nuclide ao="0.022137099999999996" name="U238" />
     <nuclide ao="0.046295399999999994" name="O16" />
     <nuclide ao="0.00011276839999999999" name="O17" />
     <nuclide ao="4.291006511373932e-07" name="Cs135" />
@@ -620,13 +419,6 @@
   </material>
   <material depletable="true" id="31" temperature="293.6" volume="0.06674732823364922">
     <density units="sum" />
-    <nuclide ao="1e-14" name="Xe135" />
-    <nuclide ao="1e-14" name="Xe136" />
-    <nuclide ao="1e-14" name="Gd157" />
-    <nuclide ao="1e-14" name="Gd156" />
-    <nuclide ao="1.00506e-05" name="U234" />
-    <nuclide ao="0.0010569199999999998" name="U235" />
-    <nuclide ao="0.022137099999999996" name="U238" />
     <nuclide ao="0.046295399999999994" name="O16" />
     <nuclide ao="0.00011276839999999999" name="O17" />
     <nuclide ao="4.374814754418585e-07" name="Cs135" />
@@ -641,10 +433,6 @@
   </material>
   <material depletable="true" id="32" temperature="293.6" volume="0.06674732823364922">
     <density units="sum" />
-    <nuclide ao="0.00010815599999999999" name="Gd157" />
-    <nuclide ao="3.9551699999999996e-14" name="Gd156" />
-    <nuclide ao="0.00103579" name="U235" />
-    <nuclide ao="0.021694299999999996" name="U238" />
     <nuclide ao="0.0464035" name="O16" />
     <nuclide ao="4.1094979781421314e-07" name="Cs135" />
     <nuclide ao="4.094809768295066e-09" name="Gd156" />
@@ -658,13 +446,6 @@
   </material>
   <material depletable="true" id="33" temperature="293.6" volume="0.06674732823364922">
     <density units="sum" />
-    <nuclide ao="1e-14" name="Xe135" />
-    <nuclide ao="1e-14" name="Xe136" />
-    <nuclide ao="1e-14" name="Gd157" />
-    <nuclide ao="1e-14" name="Gd156" />
-    <nuclide ao="1.00506e-05" name="U234" />
-    <nuclide ao="0.0010569199999999998" name="U235" />
-    <nuclide ao="0.022137099999999996" name="U238" />
     <nuclide ao="0.046295399999999994" name="O16" />
     <nuclide ao="0.00011276839999999999" name="O17" />
     <nuclide ao="4.3966194744147387e-07" name="Cs135" />
@@ -679,13 +460,6 @@
   </material>
   <material depletable="true" id="34" temperature="293.6" volume="0.06674732823364922">
     <density units="sum" />
-    <nuclide ao="1e-14" name="Xe135" />
-    <nuclide ao="1e-14" name="Xe136" />
-    <nuclide ao="1e-14" name="Gd157" />
-    <nuclide ao="1e-14" name="Gd156" />
-    <nuclide ao="1.00506e-05" name="U234" />
-    <nuclide ao="0.0010569199999999998" name="U235" />
-    <nuclide ao="0.022137099999999996" name="U238" />
     <nuclide ao="0.046295399999999994" name="O16" />
     <nuclide ao="0.00011276839999999999" name="O17" />
     <nuclide ao="4.4727849962421704e-07" name="Cs135" />
@@ -700,13 +474,6 @@
   </material>
   <material depletable="true" id="35" temperature="293.6" volume="0.06674732823364922">
     <density units="sum" />
-    <nuclide ao="1e-14" name="Xe135" />
-    <nuclide ao="1e-14" name="Xe136" />
-    <nuclide ao="1e-14" name="Gd157" />
-    <nuclide ao="1e-14" name="Gd156" />
-    <nuclide ao="1.00506e-05" name="U234" />
-    <nuclide ao="0.0010569199999999998" name="U235" />
-    <nuclide ao="0.022137099999999996" name="U238" />
     <nuclide ao="0.046295399999999994" name="O16" />
     <nuclide ao="0.00011276839999999999" name="O17" />
     <nuclide ao="4.3102196927928333e-07" name="Cs135" />
@@ -721,13 +488,6 @@
   </material>
   <material depletable="true" id="36" temperature="293.6" volume="0.06674732823364922">
     <density units="sum" />
-    <nuclide ao="1e-14" name="Xe135" />
-    <nuclide ao="1e-14" name="Xe136" />
-    <nuclide ao="1e-14" name="Gd157" />
-    <nuclide ao="1e-14" name="Gd156" />
-    <nuclide ao="1.00506e-05" name="U234" />
-    <nuclide ao="0.0010569199999999998" name="U235" />
-    <nuclide ao="0.022137099999999996" name="U238" />
     <nuclide ao="0.046295399999999994" name="O16" />
     <nuclide ao="0.00011276839999999999" name="O17" />
     <nuclide ao="4.19895158690527e-07" name="Cs135" />
@@ -742,13 +502,6 @@
   </material>
   <material depletable="true" id="37" temperature="293.6" volume="0.06674732823364922">
     <density units="sum" />
-    <nuclide ao="1e-14" name="Xe135" />
-    <nuclide ao="1e-14" name="Xe136" />
-    <nuclide ao="1e-14" name="Gd157" />
-    <nuclide ao="1e-14" name="Gd156" />
-    <nuclide ao="1.00506e-05" name="U234" />
-    <nuclide ao="0.0010569199999999998" name="U235" />
-    <nuclide ao="0.022137099999999996" name="U238" />
     <nuclide ao="0.046295399999999994" name="O16" />
     <nuclide ao="0.00011276839999999999" name="O17" />
     <nuclide ao="4.476670406728495e-07" name="Cs135" />
@@ -763,13 +516,6 @@
   </material>
   <material depletable="true" id="38" temperature="293.6" volume="0.06674732823364922">
     <density units="sum" />
-    <nuclide ao="1e-14" name="Xe135" />
-    <nuclide ao="1e-14" name="Xe136" />
-    <nuclide ao="1e-14" name="Gd157" />
-    <nuclide ao="1e-14" name="Gd156" />
-    <nuclide ao="1.00506e-05" name="U234" />
-    <nuclide ao="0.0010569199999999998" name="U235" />
-    <nuclide ao="0.022137099999999996" name="U238" />
     <nuclide ao="0.046295399999999994" name="O16" />
     <nuclide ao="0.00011276839999999999" name="O17" />
     <nuclide ao="4.4172837861703006e-07" name="Cs135" />
@@ -784,13 +530,6 @@
   </material>
   <material depletable="true" id="39" temperature="293.6" volume="0.06674732823364922">
     <density units="sum" />
-    <nuclide ao="1e-14" name="Xe135" />
-    <nuclide ao="1e-14" name="Xe136" />
-    <nuclide ao="1e-14" name="Gd157" />
-    <nuclide ao="1e-14" name="Gd156" />
-    <nuclide ao="1.00506e-05" name="U234" />
-    <nuclide ao="0.0010569199999999998" name="U235" />
-    <nuclide ao="0.022137099999999996" name="U238" />
     <nuclide ao="0.046295399999999994" name="O16" />
     <nuclide ao="0.00011276839999999999" name="O17" />
     <nuclide ao="4.4092709587855365e-07" name="Cs135" />
@@ -805,13 +544,6 @@
   </material>
   <material depletable="true" id="40" temperature="293.6" volume="0.06674732823364922">
     <density units="sum" />
-    <nuclide ao="1e-14" name="Xe135" />
-    <nuclide ao="1e-14" name="Xe136" />
-    <nuclide ao="1e-14" name="Gd157" />
-    <nuclide ao="1e-14" name="Gd156" />
-    <nuclide ao="1.00506e-05" name="U234" />
-    <nuclide ao="0.0010569199999999998" name="U235" />
-    <nuclide ao="0.022137099999999996" name="U238" />
     <nuclide ao="0.046295399999999994" name="O16" />
     <nuclide ao="0.00011276839999999999" name="O17" />
     <nuclide ao="4.540978729248881e-07" name="Cs135" />
@@ -826,10 +558,6 @@
   </material>
   <material depletable="true" id="41" temperature="293.6" volume="0.06674732823364922">
     <density units="sum" />
-    <nuclide ao="0.00010815599999999999" name="Gd157" />
-    <nuclide ao="3.9551699999999996e-14" name="Gd156" />
-    <nuclide ao="0.00103579" name="U235" />
-    <nuclide ao="0.021694299999999996" name="U238" />
     <nuclide ao="0.0464035" name="O16" />
     <nuclide ao="4.285830252201259e-07" name="Cs135" />
     <nuclide ao="4.789913703940913e-09" name="Gd156" />
@@ -843,13 +571,6 @@
   </material>
   <material depletable="true" id="42" temperature="293.6" volume="0.06674732823364922">
     <density units="sum" />
-    <nuclide ao="1e-14" name="Xe135" />
-    <nuclide ao="1e-14" name="Xe136" />
-    <nuclide ao="1e-14" name="Gd157" />
-    <nuclide ao="1e-14" name="Gd156" />
-    <nuclide ao="1.00506e-05" name="U234" />
-    <nuclide ao="0.0010569199999999998" name="U235" />
-    <nuclide ao="0.022137099999999996" name="U238" />
     <nuclide ao="0.046295399999999994" name="O16" />
     <nuclide ao="0.00011276839999999999" name="O17" />
     <nuclide ao="4.801487326088528e-07" name="Cs135" />
@@ -864,13 +585,6 @@
   </material>
   <material depletable="true" id="43" temperature="293.6" volume="0.06674732823364922">
     <density units="sum" />
-    <nuclide ao="1e-14" name="Xe135" />
-    <nuclide ao="1e-14" name="Xe136" />
-    <nuclide ao="1e-14" name="Gd157" />
-    <nuclide ao="1e-14" name="Gd156" />
-    <nuclide ao="1.00506e-05" name="U234" />
-    <nuclide ao="0.0010569199999999998" name="U235" />
-    <nuclide ao="0.022137099999999996" name="U238" />
     <nuclide ao="0.046295399999999994" name="O16" />
     <nuclide ao="0.00011276839999999999" name="O17" />
     <nuclide ao="4.411008607596261e-07" name="Cs135" />
@@ -885,13 +599,6 @@
   </material>
   <material depletable="true" id="44" temperature="293.6" volume="0.06674732823364922">
     <density units="sum" />
-    <nuclide ao="1e-14" name="Xe135" />
-    <nuclide ao="1e-14" name="Xe136" />
-    <nuclide ao="1e-14" name="Gd157" />
-    <nuclide ao="1e-14" name="Gd156" />
-    <nuclide ao="1.00506e-05" name="U234" />
-    <nuclide ao="0.0010569199999999998" name="U235" />
-    <nuclide ao="0.022137099999999996" name="U238" />
     <nuclide ao="0.046295399999999994" name="O16" />
     <nuclide ao="0.00011276839999999999" name="O17" />
     <nuclide ao="4.387384113409894e-07" name="Cs135" />
@@ -906,13 +613,6 @@
   </material>
   <material depletable="true" id="45" temperature="293.6" volume="0.06674732823364922">
     <density units="sum" />
-    <nuclide ao="1e-14" name="Xe135" />
-    <nuclide ao="1e-14" name="Xe136" />
-    <nuclide ao="1e-14" name="Gd157" />
-    <nuclide ao="1e-14" name="Gd156" />
-    <nuclide ao="1.00506e-05" name="U234" />
-    <nuclide ao="0.0010569199999999998" name="U235" />
-    <nuclide ao="0.022137099999999996" name="U238" />
     <nuclide ao="0.046295399999999994" name="O16" />
     <nuclide ao="0.00011276839999999999" name="O17" />
     <nuclide ao="4.045708338451944e-07" name="Cs135" />
@@ -927,13 +627,6 @@
   </material>
   <material depletable="true" id="46" temperature="293.6" volume="0.06674732823364922">
     <density units="sum" />
-    <nuclide ao="1e-14" name="Xe135" />
-    <nuclide ao="1e-14" name="Xe136" />
-    <nuclide ao="1e-14" name="Gd157" />
-    <nuclide ao="1e-14" name="Gd156" />
-    <nuclide ao="1.00506e-05" name="U234" />
-    <nuclide ao="0.0010569199999999998" name="U235" />
-    <nuclide ao="0.022137099999999996" name="U238" />
     <nuclide ao="0.046295399999999994" name="O16" />
     <nuclide ao="0.00011276839999999999" name="O17" />
     <nuclide ao="4.7632817035857404e-07" name="Cs135" />
@@ -948,13 +641,6 @@
   </material>
   <material depletable="true" id="47" temperature="293.6" volume="0.06674732823364922">
     <density units="sum" />
-    <nuclide ao="1e-14" name="Xe135" />
-    <nuclide ao="1e-14" name="Xe136" />
-    <nuclide ao="1e-14" name="Gd157" />
-    <nuclide ao="1e-14" name="Gd156" />
-    <nuclide ao="1.00506e-05" name="U234" />
-    <nuclide ao="0.0010569199999999998" name="U235" />
-    <nuclide ao="0.022137099999999996" name="U238" />
     <nuclide ao="0.046295399999999994" name="O16" />
     <nuclide ao="0.00011276839999999999" name="O17" />
     <nuclide ao="4.384709156527353e-07" name="Cs135" />
@@ -969,13 +655,6 @@
   </material>
   <material depletable="true" id="48" temperature="293.6" volume="0.06674732823364922">
     <density units="sum" />
-    <nuclide ao="1e-14" name="Xe135" />
-    <nuclide ao="1e-14" name="Xe136" />
-    <nuclide ao="1e-14" name="Gd157" />
-    <nuclide ao="1e-14" name="Gd156" />
-    <nuclide ao="1.00506e-05" name="U234" />
-    <nuclide ao="0.0010569199999999998" name="U235" />
-    <nuclide ao="0.022137099999999996" name="U238" />
     <nuclide ao="0.046295399999999994" name="O16" />
     <nuclide ao="0.00011276839999999999" name="O17" />
     <nuclide ao="4.50135422695122e-07" name="Cs135" />
@@ -990,13 +669,6 @@
   </material>
   <material depletable="true" id="49" temperature="293.6" volume="0.06674732823364922">
     <density units="sum" />
-    <nuclide ao="1e-14" name="Xe135" />
-    <nuclide ao="1e-14" name="Xe136" />
-    <nuclide ao="1e-14" name="Gd157" />
-    <nuclide ao="1e-14" name="Gd156" />
-    <nuclide ao="1.00506e-05" name="U234" />
-    <nuclide ao="0.0010569199999999998" name="U235" />
-    <nuclide ao="0.022137099999999996" name="U238" />
     <nuclide ao="0.046295399999999994" name="O16" />
     <nuclide ao="0.00011276839999999999" name="O17" />
     <nuclide ao="4.5814878190683917e-07" name="Cs135" />
@@ -1011,10 +683,6 @@
   </material>
   <material depletable="true" id="50" temperature="293.6" volume="0.06674732823364922">
     <density units="sum" />
-    <nuclide ao="0.00010815599999999999" name="Gd157" />
-    <nuclide ao="3.9551699999999996e-14" name="Gd156" />
-    <nuclide ao="0.00103579" name="U235" />
-    <nuclide ao="0.021694299999999996" name="U238" />
     <nuclide ao="0.0464035" name="O16" />
     <nuclide ao="4.3040890910638693e-07" name="Cs135" />
     <nuclide ao="4.9070311041251205e-09" name="Gd156" />
@@ -1028,13 +696,6 @@
   </material>
   <material depletable="true" id="51" temperature="293.6" volume="0.06674732823364922">
     <density units="sum" />
-    <nuclide ao="1e-14" name="Xe135" />
-    <nuclide ao="1e-14" name="Xe136" />
-    <nuclide ao="1e-14" name="Gd157" />
-    <nuclide ao="1e-14" name="Gd156" />
-    <nuclide ao="1.00506e-05" name="U234" />
-    <nuclide ao="0.0010569199999999998" name="U235" />
-    <nuclide ao="0.022137099999999996" name="U238" />
     <nuclide ao="0.046295399999999994" name="O16" />
     <nuclide ao="0.00011276839999999999" name="O17" />
     <nuclide ao="4.925294953845175e-07" name="Cs135" />
@@ -1049,13 +710,6 @@
   </material>
   <material depletable="true" id="52" temperature="293.6" volume="0.06674732823364922">
     <density units="sum" />
-    <nuclide ao="1e-14" name="Xe135" />
-    <nuclide ao="1e-14" name="Xe136" />
-    <nuclide ao="1e-14" name="Gd157" />
-    <nuclide ao="1e-14" name="Gd156" />
-    <nuclide ao="1.00506e-05" name="U234" />
-    <nuclide ao="0.0010569199999999998" name="U235" />
-    <nuclide ao="0.022137099999999996" name="U238" />
     <nuclide ao="0.046295399999999994" name="O16" />
     <nuclide ao="0.00011276839999999999" name="O17" />
     <nuclide ao="4.6265657663873527e-07" name="Cs135" />
@@ -1070,13 +724,6 @@
   </material>
   <material depletable="true" id="53" temperature="293.6" volume="0.06674732823364922">
     <density units="sum" />
-    <nuclide ao="1e-14" name="Xe135" />
-    <nuclide ao="1e-14" name="Xe136" />
-    <nuclide ao="1e-14" name="Gd157" />
-    <nuclide ao="1e-14" name="Gd156" />
-    <nuclide ao="1.00506e-05" name="U234" />
-    <nuclide ao="0.0010569199999999998" name="U235" />
-    <nuclide ao="0.022137099999999996" name="U238" />
     <nuclide ao="0.046295399999999994" name="O16" />
     <nuclide ao="0.00011276839999999999" name="O17" />
     <nuclide ao="4.641302135097088e-07" name="Cs135" />
@@ -1091,13 +738,6 @@
   </material>
   <material depletable="true" id="54" temperature="293.6" volume="0.06674732823364922">
     <density units="sum" />
-    <nuclide ao="1e-14" name="Xe135" />
-    <nuclide ao="1e-14" name="Xe136" />
-    <nuclide ao="1e-14" name="Gd157" />
-    <nuclide ao="1e-14" name="Gd156" />
-    <nuclide ao="1.00506e-05" name="U234" />
-    <nuclide ao="0.0010569199999999998" name="U235" />
-    <nuclide ao="0.022137099999999996" name="U238" />
     <nuclide ao="0.046295399999999994" name="O16" />
     <nuclide ao="0.00011276839999999999" name="O17" />
     <nuclide ao="4.2473301269382887e-07" name="Cs135" />
@@ -1112,13 +752,6 @@
   </material>
   <material depletable="true" id="55" temperature="293.6" volume="0.06674732823364922">
     <density units="sum" />
-    <nuclide ao="1e-14" name="Xe135" />
-    <nuclide ao="1e-14" name="Xe136" />
-    <nuclide ao="1e-14" name="Gd157" />
-    <nuclide ao="1e-14" name="Gd156" />
-    <nuclide ao="1.00506e-05" name="U234" />
-    <nuclide ao="0.0010569199999999998" name="U235" />
-    <nuclide ao="0.022137099999999996" name="U238" />
     <nuclide ao="0.046295399999999994" name="O16" />
     <nuclide ao="0.00011276839999999999" name="O17" />
     <nuclide ao="4.2710908031859986e-07" name="Cs135" />
@@ -1133,13 +766,6 @@
   </material>
   <material depletable="true" id="56" temperature="293.6" volume="0.06674732823364922">
     <density units="sum" />
-    <nuclide ao="1e-14" name="Xe135" />
-    <nuclide ao="1e-14" name="Xe136" />
-    <nuclide ao="1e-14" name="Gd157" />
-    <nuclide ao="1e-14" name="Gd156" />
-    <nuclide ao="1.00506e-05" name="U234" />
-    <nuclide ao="0.0010569199999999998" name="U235" />
-    <nuclide ao="0.022137099999999996" name="U238" />
     <nuclide ao="0.046295399999999994" name="O16" />
     <nuclide ao="0.00011276839999999999" name="O17" />
     <nuclide ao="4.458610263116294e-07" name="Cs135" />
@@ -1154,13 +780,6 @@
   </material>
   <material depletable="true" id="57" temperature="293.6" volume="0.06674732823364922">
     <density units="sum" />
-    <nuclide ao="1e-14" name="Xe135" />
-    <nuclide ao="1e-14" name="Xe136" />
-    <nuclide ao="1e-14" name="Gd157" />
-    <nuclide ao="1e-14" name="Gd156" />
-    <nuclide ao="1.00506e-05" name="U234" />
-    <nuclide ao="0.0010569199999999998" name="U235" />
-    <nuclide ao="0.022137099999999996" name="U238" />
     <nuclide ao="0.046295399999999994" name="O16" />
     <nuclide ao="0.00011276839999999999" name="O17" />
     <nuclide ao="4.31228760730496e-07" name="Cs135" />
@@ -1175,13 +794,6 @@
   </material>
   <material depletable="true" id="58" temperature="293.6" volume="0.06674732823364922">
     <density units="sum" />
-    <nuclide ao="1e-14" name="Xe135" />
-    <nuclide ao="1e-14" name="Xe136" />
-    <nuclide ao="1e-14" name="Gd157" />
-    <nuclide ao="1e-14" name="Gd156" />
-    <nuclide ao="1.00506e-05" name="U234" />
-    <nuclide ao="0.0010569199999999998" name="U235" />
-    <nuclide ao="0.022137099999999996" name="U238" />
     <nuclide ao="0.046295399999999994" name="O16" />
     <nuclide ao="0.00011276839999999999" name="O17" />
     <nuclide ao="4.4643067727754964e-07" name="Cs135" />
@@ -1196,10 +808,6 @@
   </material>
   <material depletable="true" id="59" temperature="293.6" volume="0.06674732823364922">
     <density units="sum" />
-    <nuclide ao="0.00010815599999999999" name="Gd157" />
-    <nuclide ao="3.9551699999999996e-14" name="Gd156" />
-    <nuclide ao="0.00103579" name="U235" />
-    <nuclide ao="0.021694299999999996" name="U238" />
     <nuclide ao="0.0464035" name="O16" />
     <nuclide ao="4.3788057535765137e-07" name="Cs135" />
     <nuclide ao="4.648368016948851e-09" name="Gd156" />
@@ -1213,13 +821,6 @@
   </material>
   <material depletable="true" id="60" temperature="293.6" volume="0.06674732823364922">
     <density units="sum" />
-    <nuclide ao="1e-14" name="Xe135" />
-    <nuclide ao="1e-14" name="Xe136" />
-    <nuclide ao="1e-14" name="Gd157" />
-    <nuclide ao="1e-14" name="Gd156" />
-    <nuclide ao="1.00506e-05" name="U234" />
-    <nuclide ao="0.0010569199999999998" name="U235" />
-    <nuclide ao="0.022137099999999996" name="U238" />
     <nuclide ao="0.046295399999999994" name="O16" />
     <nuclide ao="0.00011276839999999999" name="O17" />
     <nuclide ao="4.5685041371146885e-07" name="Cs135" />
@@ -1234,13 +835,6 @@
   </material>
   <material depletable="true" id="61" temperature="293.6" volume="0.06674732823364922">
     <density units="sum" />
-    <nuclide ao="1e-14" name="Xe135" />
-    <nuclide ao="1e-14" name="Xe136" />
-    <nuclide ao="1e-14" name="Gd157" />
-    <nuclide ao="1e-14" name="Gd156" />
-    <nuclide ao="1.00506e-05" name="U234" />
-    <nuclide ao="0.0010569199999999998" name="U235" />
-    <nuclide ao="0.022137099999999996" name="U238" />
     <nuclide ao="0.046295399999999994" name="O16" />
     <nuclide ao="0.00011276839999999999" name="O17" />
     <nuclide ao="4.295570585907227e-07" name="Cs135" />
@@ -1255,13 +849,6 @@
   </material>
   <material depletable="true" id="62" temperature="293.6" volume="0.06674732823364922">
     <density units="sum" />
-    <nuclide ao="1e-14" name="Xe135" />
-    <nuclide ao="1e-14" name="Xe136" />
-    <nuclide ao="1e-14" name="Gd157" />
-    <nuclide ao="1e-14" name="Gd156" />
-    <nuclide ao="1.00506e-05" name="U234" />
-    <nuclide ao="0.0010569199999999998" name="U235" />
-    <nuclide ao="0.022137099999999996" name="U238" />
     <nuclide ao="0.046295399999999994" name="O16" />
     <nuclide ao="0.00011276839999999999" name="O17" />
     <nuclide ao="4.5256168173375016e-07" name="Cs135" />
@@ -1276,13 +863,6 @@
   </material>
   <material depletable="true" id="63" temperature="293.6" volume="0.06674732823364922">
     <density units="sum" />
-    <nuclide ao="1e-14" name="Xe135" />
-    <nuclide ao="1e-14" name="Xe136" />
-    <nuclide ao="1e-14" name="Gd157" />
-    <nuclide ao="1e-14" name="Gd156" />
-    <nuclide ao="1.00506e-05" name="U234" />
-    <nuclide ao="0.0010569199999999998" name="U235" />
-    <nuclide ao="0.022137099999999996" name="U238" />
     <nuclide ao="0.046295399999999994" name="O16" />
     <nuclide ao="0.00011276839999999999" name="O17" />
     <nuclide ao="4.7023309914422315e-07" name="Cs135" />
@@ -1297,13 +877,6 @@
   </material>
   <material depletable="true" id="64" temperature="293.6" volume="0.06674732823364922">
     <density units="sum" />
-    <nuclide ao="1e-14" name="Xe135" />
-    <nuclide ao="1e-14" name="Xe136" />
-    <nuclide ao="1e-14" name="Gd157" />
-    <nuclide ao="1e-14" name="Gd156" />
-    <nuclide ao="1.00506e-05" name="U234" />
-    <nuclide ao="0.0010569199999999998" name="U235" />
-    <nuclide ao="0.022137099999999996" name="U238" />
     <nuclide ao="0.046295399999999994" name="O16" />
     <nuclide ao="0.00011276839999999999" name="O17" />
     <nuclide ao="4.2511747018087236e-07" name="Cs135" />
@@ -1318,13 +891,6 @@
   </material>
   <material depletable="true" id="65" temperature="293.6" volume="0.06674732823364922">
     <density units="sum" />
-    <nuclide ao="1e-14" name="Xe135" />
-    <nuclide ao="1e-14" name="Xe136" />
-    <nuclide ao="1e-14" name="Gd157" />
-    <nuclide ao="1e-14" name="Gd156" />
-    <nuclide ao="1.00506e-05" name="U234" />
-    <nuclide ao="0.0010569199999999998" name="U235" />
-    <nuclide ao="0.022137099999999996" name="U238" />
     <nuclide ao="0.046295399999999994" name="O16" />
     <nuclide ao="0.00011276839999999999" name="O17" />
     <nuclide ao="4.439838549156342e-07" name="Cs135" />
@@ -1339,13 +905,6 @@
   </material>
   <material depletable="true" id="66" temperature="293.6" volume="0.06674732823364922">
     <density units="sum" />
-    <nuclide ao="1e-14" name="Xe135" />
-    <nuclide ao="1e-14" name="Xe136" />
-    <nuclide ao="1e-14" name="Gd157" />
-    <nuclide ao="1e-14" name="Gd156" />
-    <nuclide ao="1.00506e-05" name="U234" />
-    <nuclide ao="0.0010569199999999998" name="U235" />
-    <nuclide ao="0.022137099999999996" name="U238" />
     <nuclide ao="0.046295399999999994" name="O16" />
     <nuclide ao="0.00011276839999999999" name="O17" />
     <nuclide ao="4.324740649210923e-07" name="Cs135" />
@@ -1360,13 +919,6 @@
   </material>
   <material depletable="true" id="67" temperature="293.6" volume="0.06674732823364922">
     <density units="sum" />
-    <nuclide ao="1e-14" name="Xe135" />
-    <nuclide ao="1e-14" name="Xe136" />
-    <nuclide ao="1e-14" name="Gd157" />
-    <nuclide ao="1e-14" name="Gd156" />
-    <nuclide ao="1.00506e-05" name="U234" />
-    <nuclide ao="0.0010569199999999998" name="U235" />
-    <nuclide ao="0.022137099999999996" name="U238" />
     <nuclide ao="0.046295399999999994" name="O16" />
     <nuclide ao="0.00011276839999999999" name="O17" />
     <nuclide ao="4.3444140909084486e-07" name="Cs135" />
@@ -1381,10 +933,6 @@
   </material>
   <material depletable="true" id="68" temperature="293.6" volume="0.06674732823364922">
     <density units="sum" />
-    <nuclide ao="0.00010815599999999999" name="Gd157" />
-    <nuclide ao="3.9551699999999996e-14" name="Gd156" />
-    <nuclide ao="0.00103579" name="U235" />
-    <nuclide ao="0.021694299999999996" name="U238" />
     <nuclide ao="0.0464035" name="O16" />
     <nuclide ao="4.170323522984891e-07" name="Cs135" />
     <nuclide ao="4.759282158664724e-09" name="Gd156" />
@@ -1398,13 +946,6 @@
   </material>
   <material depletable="true" id="69" temperature="293.6" volume="0.06674732823364922">
     <density units="sum" />
-    <nuclide ao="1e-14" name="Xe135" />
-    <nuclide ao="1e-14" name="Xe136" />
-    <nuclide ao="1e-14" name="Gd157" />
-    <nuclide ao="1e-14" name="Gd156" />
-    <nuclide ao="1.00506e-05" name="U234" />
-    <nuclide ao="0.0010569199999999998" name="U235" />
-    <nuclide ao="0.022137099999999996" name="U238" />
     <nuclide ao="0.046295399999999994" name="O16" />
     <nuclide ao="0.00011276839999999999" name="O17" />
     <nuclide ao="4.46589396686561e-07" name="Cs135" />
@@ -1419,13 +960,6 @@
   </material>
   <material depletable="true" id="70" temperature="293.6" volume="0.06674732823364922">
     <density units="sum" />
-    <nuclide ao="1e-14" name="Xe135" />
-    <nuclide ao="1e-14" name="Xe136" />
-    <nuclide ao="1e-14" name="Gd157" />
-    <nuclide ao="1e-14" name="Gd156" />
-    <nuclide ao="1.00506e-05" name="U234" />
-    <nuclide ao="0.0010569199999999998" name="U235" />
-    <nuclide ao="0.022137099999999996" name="U238" />
     <nuclide ao="0.046295399999999994" name="O16" />
     <nuclide ao="0.00011276839999999999" name="O17" />
     <nuclide ao="4.4795149344418667e-07" name="Cs135" />
@@ -1440,13 +974,6 @@
   </material>
   <material depletable="true" id="71" temperature="293.6" volume="0.06674732823364922">
     <density units="sum" />
-    <nuclide ao="1e-14" name="Xe135" />
-    <nuclide ao="1e-14" name="Xe136" />
-    <nuclide ao="1e-14" name="Gd157" />
-    <nuclide ao="1e-14" name="Gd156" />
-    <nuclide ao="1.00506e-05" name="U234" />
-    <nuclide ao="0.0010569199999999998" name="U235" />
-    <nuclide ao="0.022137099999999996" name="U238" />
     <nuclide ao="0.046295399999999994" name="O16" />
     <nuclide ao="0.00011276839999999999" name="O17" />
     <nuclide ao="4.471759562020332e-07" name="Cs135" />
@@ -1461,13 +988,6 @@
   </material>
   <material depletable="true" id="72" temperature="293.6" volume="0.06674732823364922">
     <density units="sum" />
-    <nuclide ao="1e-14" name="Xe135" />
-    <nuclide ao="1e-14" name="Xe136" />
-    <nuclide ao="1e-14" name="Gd157" />
-    <nuclide ao="1e-14" name="Gd156" />
-    <nuclide ao="1.00506e-05" name="U234" />
-    <nuclide ao="0.0010569199999999998" name="U235" />
-    <nuclide ao="0.022137099999999996" name="U238" />
     <nuclide ao="0.046295399999999994" name="O16" />
     <nuclide ao="0.00011276839999999999" name="O17" />
     <nuclide ao="4.281479653693193e-07" name="Cs135" />

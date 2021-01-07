@@ -356,12 +356,13 @@ class ResultsList(list):
         # Overwrite material definitions, if they can be found in the depletion
         # results, and save them to the new depleted xml file.
         for mat in mat_file:
-            if str(mat.id) in result.mat_to_ind.keys():
-                mat.volume = result.volume[str(mat.id)]
-                for nuc in result.nuc_to_ind.keys():
+            mat_id = str(mat.id)
+            if mat_id in result.mat_to_ind:
+                mat.volume = result.volume[mat_id]
+                for nuc in result.nuc_to_ind:
                     if nuc not in available_cross_sections:
                         continue
-                    atoms = result[0, str(mat.id), nuc]
+                    atoms = result[0, mat_id, nuc]
                     if atoms > 0.0:
                         atoms_per_barn_cm = 1e-24 * atoms / mat.volume
                         mat.add_nuclide(nuc, atoms_per_barn_cm)

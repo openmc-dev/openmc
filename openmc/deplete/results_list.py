@@ -300,7 +300,7 @@ class ResultsList(list):
         )
 
     def export_to_materials(self, burnup_index, nuc_with_data=None):
-        """Return openmc.Materials created from these depletion results.
+        """Return openmc.Materials object based on results at a given step
 
         Parameters
         ----------

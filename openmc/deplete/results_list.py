@@ -6,7 +6,7 @@ import h5py
 import numpy as np
 
 from .results import Results, VERSION_RESULTS
-from openmc.checkvalue import check_filetype_version, check_value, check_type
+import openmc.checkvalue as cv
 from openmc.data.library import DataLibrary
 from openmc.material import Material, Materials
 from openmc.exceptions import DataError, InvalidArgumentError
@@ -36,7 +36,7 @@ class ResultsList(list):
             New instance of depletion results
         """
         with h5py.File(str(filename), "r") as fh:
-            check_filetype_version(fh, 'depletion results', VERSION_RESULTS[0])
+            cv.check_filetype_version(fh, 'depletion results', VERSION_RESULTS[0])
             new = cls()
 
             # Get number of results stored
@@ -80,8 +80,8 @@ class ResultsList(list):
             Concentration of specified nuclide in units of ``nuc_units``
 
         """
-        check_value("time_units", time_units, {"s", "d", "min", "h"})
-        check_value("nuc_units", nuc_units,
+        cv.check_value("time_units", time_units, {"s", "d", "min", "h"})
+        cv.check_value("nuc_units", nuc_units,
                     {"atoms", "atom/b-cm", "atom/cm3"})
 
         times = np.empty_like(self, dtype=float)
@@ -217,7 +217,7 @@ class ResultsList(list):
             1-D vector of time points
 
         """
-        check_type("time_units", time_units, str)
+        cv.check_type("time_units", time_units, str)
 
         times = np.fromiter(
             (r.time[0] for r in self),
@@ -271,9 +271,9 @@ class ResultsList(list):
         int
 
         """
-        check_type("time", time, numbers.Real)
-        check_type("atol", atol, numbers.Real)
-        check_type("rtol", rtol, numbers.Real)
+        cv.check_type("time", time, numbers.Real)
+        cv.check_type("atol", atol, numbers.Real)
+        cv.check_type("rtol", rtol, numbers.Real)
 
         times = self.get_times(time_units)
 
@@ -299,16 +299,17 @@ class ResultsList(list):
                 time, time_units, atol, rtol)
         )
 
-    def export_to_materials(self, burnup_index, nuc_with_data=None):
+    def export_to_materials(self, burnup_index, nuc_with_data=None) -> Materials:
         """Return openmc.Materials object based on results at a given step
 
         Parameters
         ----------
         burn_index : int
-            Index of burnup step to evaluate
+            Index of burnup step to evaluate. See also: get_step_where for
+            obtaining burnup step indices from other data such as the time.
         nuc_with_data : Iterable of str, optional
-            Nuclides iterable to evaluate with neutron data.
-            This must be specified if not all nuclides appearing in
+            Nuclides to include in resulting materials.
+            This can be specified if not all nuclides appearing in
             depletion results have associated neutron cross sections, and
             as such cannot be used in subsequent transport calculations.
             If not provided, nuclides from the cross_sections element of
@@ -335,8 +336,7 @@ class ResultsList(list):
         # in the materials.xml file if provided, then finally from
         # the environment variable OPENMC_CROSS_SECTIONS.
         if nuc_with_data:
-            if not all(isinstance(nuclide_name, str) for nuclide_name in nuc_with_data):
-                raise InvalidArgumentError("Expected an iterable of strings as acceptable nuclide data.")
+            cv.check_iterable_type('nuclide names', nuc_with_data, str)
             available_cross_sections = nuc_with_data
         else:
             # select cross_sections.xml file to use

@@ -293,8 +293,8 @@ public:
   //! Add a variable to the mesh instance
   virtual void add_score(const std::string& var_name) = 0;
 
-  //! Remove variable from the mesh instance
-  virtual void remove_score(const std::string& var_name) = 0;
+  //! Remove tally data from the instance
+  virtual void remove_scores() = 0;
 
   //! Set the value of a bin for a variable on the internal
   //  mesh instance
@@ -304,8 +304,8 @@ public:
 
   //! Write the unstructured mesh to file
   //
-  //! \param[in] filename Name of the file to write
-  virtual void write(std::string filename) const = 0;
+  //! \param[in] filename Base of the file to write
+  virtual void write(const std::string& base_filename) const = 0;
 
   //! Retrieve a centroid for the mesh cell
   //
@@ -369,7 +369,7 @@ public:
   void add_score(const std::string& score) override;
 
   //! Remove a score from the mesh instance
-  void remove_score(const std::string& score) override;
+  void remove_scores() override;
 
   //! Set data for a score
   void set_score_data(const std::string& score,
@@ -377,7 +377,7 @@ public:
                       std::vector<double> std_dev) override;
 
   //! Write the mesh with any current tally data
-  void write(std::string base_filename) const;
+  void write(const std::string& base_filename) const;
 
   Position centroid(int bin) const override;
 
@@ -484,6 +484,7 @@ private:
   std::unique_ptr<moab::Interface> mbi_; //!< MOAB instance
   std::unique_ptr<moab::AdaptiveKDTree> kdtree_; //!< MOAB KDTree instance
   std::vector<moab::Matrix3> baryc_data_; //!< Barycentric data for tetrahedra
+  std::vector<std::string> tag_names_; //!< Names of score tags added to the mesh
 };
 
 #endif
@@ -512,13 +513,13 @@ public:
 
   void add_score(const std::string& var_name) override;
 
-  void remove_score(const std::string& var_name) override;
+  void remove_scores() override;
 
   void set_score_data(const std::string& var_name,
                       std::vector<double> values,
                       std::vector<double> std_dev) override;
 
-  void write(std::string filename) const override;
+  void write(const std::string& base_filename) const override;
 
   Position centroid(int bin) const override;
 

@@ -25,6 +25,7 @@
 #include "openmc/message_passing.h"
 #include "openmc/search.h"
 #include "openmc/settings.h"
+#include "openmc/tallies/tally.h"
 #include "openmc/tallies/filter.h"
 #include "openmc/xml_interface.h"
 
@@ -2050,35 +2051,39 @@ void
 MOABMesh::add_score(const std::string& score)
 {
   auto score_tags = get_score_tags(score);
+  tag_names_.push_back(score);
 }
 
-void MOABMesh::remove_score(const std::string& score)
+void MOABMesh::remove_scores()
 {
-  auto value_name = score + "_mean";
-  moab::Tag tag;
-  moab::ErrorCode rval = mbi_->tag_get_handle(value_name.c_str(), tag);
-  if (rval != moab::MB_SUCCESS) return;
+  for (const auto& name : tag_names_) {
+    auto value_name = name + "_mean";
+    moab::Tag tag;
+    moab::ErrorCode rval = mbi_->tag_get_handle(value_name.c_str(), tag);
+    if (rval != moab::MB_SUCCESS) return;
 
-  rval = mbi_->tag_delete(tag);
-  if (rval != moab::MB_SUCCESS) {
-    auto msg = fmt::format("Failed to delete mesh tag for the score {}"
-                           " on unstructured mesh {}", score, id_);
-    fatal_error(msg);
-  }
+    rval = mbi_->tag_delete(tag);
+    if (rval != moab::MB_SUCCESS) {
+      auto msg = fmt::format("Failed to delete mesh tag for the score {}"
+                            " on unstructured mesh {}", name, id_);
+      fatal_error(msg);
+    }
 
-  auto std_dev_name = score + "_std_dev";
-  rval = mbi_->tag_get_handle(std_dev_name.c_str(), tag);
-  if (rval != moab::MB_SUCCESS) {
-    auto msg = fmt::format("Std. Dev. mesh tag does not exist for the score {}"
-                           " on unstructured mesh {}", score, id_);
-  }
+    auto std_dev_name = name + "_std_dev";
+    rval = mbi_->tag_get_handle(std_dev_name.c_str(), tag);
+    if (rval != moab::MB_SUCCESS) {
+      auto msg = fmt::format("Std. Dev. mesh tag does not exist for the score {}"
+                            " on unstructured mesh {}", name, id_);
+    }
 
-  rval = mbi_->tag_delete(tag);
-  if (rval != moab::MB_SUCCESS) {
-    auto msg = fmt::format("Failed to delete mesh tag for the score {}"
-                           " on unstructured mesh {}", score, id_);
-    fatal_error(msg);
+    rval = mbi_->tag_delete(tag);
+    if (rval != moab::MB_SUCCESS) {
+      auto msg = fmt::format("Failed to delete mesh tag for the score {}"
+                            " on unstructured mesh {}", name, id_);
+      fatal_error(msg);
+    }
   }
+  tag_names_.clear();
 }
 
 void
@@ -2115,7 +2120,7 @@ MOABMesh::set_score_data(const std::string& score,
 }
 
 void
-MOABMesh::write(std::string base_filename) const
+MOABMesh::write(const std::string& base_filename) const
 {
   // add extension to the base name
   auto filename = base_filename + ".vtk";
@@ -2241,11 +2246,11 @@ LibMesh::add_score(const std::string& var_name)
 }
 
 void
-LibMesh::remove_score(const std::string& var_name)
+LibMesh::remove_scores()
 {
-  return;
+  equation_systems_->clear();
+  equation_systems_->init();
 }
-
 
 void
 LibMesh::set_score_data(const std::string& var_name,
@@ -2283,7 +2288,7 @@ LibMesh::set_score_data(const std::string& var_name,
   }
 }
 
-void LibMesh::write(std::string filename) const
+void LibMesh::write(const std::string& filename) const
 {
   write_message(fmt::format("Writing file: {}.e for unstructured mesh {}", filename, this->id_));
   libMesh::ExodusII_IO exo(*m_);

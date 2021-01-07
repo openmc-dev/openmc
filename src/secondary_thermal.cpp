@@ -56,6 +56,12 @@ CoherentElasticAE::sample(double E_in, double& E_out, double& mu,
   E_out = E_in;
 }
 
+void CoherentElasticAE::serialize(DataBuffer& buffer) const
+{
+  buffer.add(static_cast<int>(AngleEnergyType::COHERENT_ELASTIC));
+  xs_.serialize(buffer);
+}
+
 //==============================================================================
 // IncoherentElasticAE implementation
 //==============================================================================
@@ -75,6 +81,12 @@ IncoherentElasticAE::sample(double E_in, double& E_out, double& mu,
 
   // Energy doesn't change in elastic scattering (ENDF-102, Eq. 7.4)
   E_out = E_in;
+}
+
+void IncoherentElasticAE::serialize(DataBuffer& buffer) const
+{
+  buffer.add(static_cast<int>(AngleEnergyType::INCOHERENT_ELASTIC));
+  buffer.add(debye_waller_);
 }
 
 //==============================================================================
@@ -129,6 +141,16 @@ IncoherentElasticAEDiscrete::sample(double E_in, double& E_out, double& mu,
 
   // Energy doesn't change in elastic scattering
   E_out = E_in;
+}
+
+void IncoherentElasticAEDiscrete::serialize(DataBuffer& buffer) const
+{
+  buffer.add(static_cast<int>(AngleEnergyType::INCOHERENT_ELASTIC_DISCRETE));
+  auto shape = mu_out_.shape();
+  buffer.add(shape[0]);
+  buffer.add(shape[1]);
+  buffer.add(energy_);
+  buffer.add(mu_out_);
 }
 
 //==============================================================================
@@ -203,6 +225,19 @@ IncoherentInelasticAEDiscrete::sample(double E_in, double& E_out, double& mu,
 
   // Cosine of angle between incoming and outgoing neutron
   mu = (1 - f)*mu_ijk + f*mu_i1jk;
+}
+
+void IncoherentInelasticAEDiscrete::serialize(DataBuffer& buffer) const
+{
+  buffer.add(static_cast<int>(AngleEnergyType::INCOHERENT_INELASTIC_DISCRETE));
+  auto shape = mu_out_.shape();
+  buffer.add(skewed_);
+  buffer.add(shape[0]);
+  buffer.add(shape[1]);
+  buffer.add(shape[2]);
+  buffer.add(energy_);
+  buffer.add(energy_out_);
+  buffer.add(mu_out_);
 }
 
 //==============================================================================
@@ -329,6 +364,38 @@ IncoherentInelasticAE::sample(double E_in, double& E_out, double& mu,
 
   // Smear cosine
   mu += std::min(mu - mu_left, mu_right - mu)*(prn(seed) - 0.5);
+}
+
+void IncoherentInelasticAE::serialize(DataBuffer& buffer) const
+{
+  buffer.add(static_cast<int>(AngleEnergyType::INCOHERENT_INELASTIC));
+
+  // Calculate offsets for distributions
+  size_t offset = 8 + (8 + 4)*energy_.size();
+  std::vector<int> offsets;
+  for (const auto& dist : distribution_) {
+    offsets.push_back(offset);
+    auto shape = dist.mu.shape();
+    size_t n_e_out = shape[0];
+    size_t n_mu = shape[1];
+    offset += 8 + 8 + 8*n_e_out*(3 + n_mu);
+  }
+
+  // Write energy grid and offsets
+  buffer.add(energy_.size());
+  buffer.add(energy_);
+  buffer.add(offsets);
+
+  // Write distributions
+  for (const auto& dist : distribution_) {
+    auto shape = dist.mu.shape();
+    buffer.add(shape[0]);
+    buffer.add(shape[1]);
+    buffer.add(dist.e_out);
+    buffer.add(dist.e_out_pdf);
+    buffer.add(dist.e_out_cdf);
+    buffer.add(dist.mu);
+  }
 }
 
 } // namespace openmc

@@ -29,7 +29,7 @@ public:
   add(T value);
 
   template<typename T> void add(const std::vector<T>& value);
-  template<typename T> void add(const xt::xtensor<T, 1>& value);
+  template<typename T, std::size_t N> void add(const xt::xtensor<T, N>& value);
 
   std::unique_ptr<uint8_t[]> data_;
   size_t offset_{0};
@@ -56,8 +56,8 @@ void DataBuffer::add(const std::vector<T>& value)
   offset_ += sizeof(T)*value.size();
 }
 
-template<typename T> inline
-void DataBuffer::add(const xt::xtensor<T, 1>& value)
+template<typename T, std::size_t N> inline
+void DataBuffer::add(const xt::xtensor<T, N>& value)
 {
   if (mode_ == Mode::write) {
     std::memcpy(data_.get() + offset_, value.data(), sizeof(T)*value.size());

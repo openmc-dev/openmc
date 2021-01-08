@@ -639,7 +639,7 @@
       </element>
     </optional>
     <optional>
-      <element name="surf_src_read">
+      <element name="surf_source_read">
         <choice>
           <element name="path">
             <data type="string"/>
@@ -651,7 +651,7 @@
       </element>
     </optional>
     <optional>
-      <element name="surf_src_write">
+      <element name="surf_source_write">
         <interleave>
           <choice>
             <element name="surf_ids">

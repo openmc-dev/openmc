@@ -46,8 +46,8 @@ def model(request):
         pt_src = openmc.Source(space=point)
         openmc_model.settings.source = pt_src
 
-        openmc_model.settings.surf_src_write = {'surf_ids': [1],
-                                                'max_surf_banks': 1000}
+        openmc_model.settings.surf_source_write = {'surf_ids': [1],
+                                                   'max_surf_banks': 1000}
     elif surf_src_op == 'read':
         openmc_model.settings.surf_src_read = {'path': 'surface_source_true.h5'}
 
@@ -66,22 +66,23 @@ class SurfaceSourceTestHarness(PyAPITestHarness):
         """Make sure surface_source.h5 has also been created."""
         super()._test_output_created()
         # Check if 'surface_source.h5' has been created.
-        if self._model.settings.surf_src_write:
+        if self._model.settings.surf_source_write:
             assert os.path.exists('surface_source.h5'), \
                 'Surface source file does not exist.'
 
     def _compare_output(self):
         """Make sure the current surface_source.h5 agree with the reference."""
-        if self._model.settings.surf_src_write:
+        if self._model.settings.surf_source_write:
             with h5py.File("surface_source_true.h5", 'r') as f:
-                src_true = f['source_bank'][()]
+                source_true = f['source_bank'][()]
                 # Convert dtye from mixed to a float for comparison assertion
-                src_true.dtype = 'float64'
+                source_true.dtype = 'float64'
             with h5py.File("surface_source.h5", 'r') as f:
-                src_test = f['source_bank'][()]
+                source_test = f['source_bank'][()]
                 # Convert dtye from mixed to a float for comparison assertion
-                src_test.dtype = 'float64'
-            np.testing.assert_allclose(np.sort(src_true), np.sort(src_test),
+                source_test.dtype = 'float64'
+            np.testing.assert_allclose(np.sort(source_true),
+                                       np.sort(source_test),
                                        atol=1e-07)
 
     def execute_test(self):

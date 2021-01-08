@@ -297,8 +297,8 @@ void load_dagmc_geometry()
     s->id_ = model::DAG->id_by_index(2, s->dag_index_);
     s->dagmc_ptr_ = model::DAG;
 
-    if (contains(settings::src_write_surf_id, s->id_)) {
-      s->surf_src_ = true;
+    if (contains(settings::source_write_surf_id, s->id_)) {
+      s->surf_source_ = true;
     }
 
     // set BCs

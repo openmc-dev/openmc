@@ -18,7 +18,7 @@ namespace simulation {
 
 extern std::vector<Particle::Bank> source_bank;
 
-extern SharedArray<Particle::Bank> surf_src_bank;
+extern SharedArray<Particle::Bank> surf_source_bank;
 
 extern SharedArray<Particle::Bank> fission_bank;
 

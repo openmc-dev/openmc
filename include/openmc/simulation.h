@@ -45,7 +45,7 @@ extern const RegularMesh* ufs_mesh;
 extern std::vector<double> k_generation;
 extern std::vector<int64_t> work_index;
 
-extern std::vector<int64_t> surf_src_index;
+extern std::vector<int64_t> surf_source_index;
 
 } // namespace simulation
 

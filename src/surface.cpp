@@ -116,8 +116,8 @@ Surface::Surface(pugi::xml_node surf_node)
 {
   if (check_for_node(surf_node, "id")) {
     id_ = std::stoi(get_node_value(surf_node, "id"));
-    if (contains(settings::src_write_surf_id, id_)) {
-      surf_src_ = true;
+    if (contains(settings::source_write_surf_id, id_)) {
+      surf_source_ = true;
     }
   } else {
     fatal_error("Must specify id of surface in geometry XML file.");

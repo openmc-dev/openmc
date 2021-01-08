@@ -17,9 +17,9 @@
   <run_mode>fixed source</run_mode>
   <particles>1000</particles>
   <batches>10</batches>
-  <surf_src_read>
+  <surf_source_read>
     <path>surface_source_true.h5</path>
-  </surf_src_read>
+  </surf_source_read>
   <seed>1</seed>
 </settings>
 <?xml version='1.0' encoding='utf-8'?>

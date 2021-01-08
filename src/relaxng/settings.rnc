@@ -139,11 +139,11 @@ element settings {
       attribute overwrite_latest {xsd:boolean})?
   }? &
 
-  element surf_src_read {
+  element surf_source_read {
     (element path { xsd:string } | attribute path { xsd:string })
   }? &
 
-  element surf_src_write {
+  element surf_source_write {
     (element surf_ids { list { xsd:positiveInteger+ } } |
       attribute surf_ids { list { xsd:positiveInteger+ } }) &
     (element max_surf_banks { xsd:positiveInteger } |

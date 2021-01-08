@@ -60,8 +60,8 @@ bool run_CE                  {true};
 bool source_latest           {false};
 bool source_separate         {false};
 bool source_write            {true};
-bool surf_src_write          {false};
-bool surf_src_read           {false};
+bool surf_source_write       {false};
+bool surf_source_read        {false};
 bool survival_biasing        {false};
 bool temperature_multipole   {false};
 bool trigger_on              {false};
@@ -100,7 +100,7 @@ std::vector<std::string> res_scat_nuclides;
 RunMode run_mode {RunMode::UNSET};
 std::unordered_set<int> sourcepoint_batch;
 std::unordered_set<int> statepoint_batch;
-std::unordered_set<int> src_write_surf_id;
+std::unordered_set<int> source_write_surf_id;
 int64_t max_surf_banks;
 TemperatureMethod temperature_method {TemperatureMethod::NEAREST};
 double temperature_tolerance {10.0};
@@ -442,10 +442,10 @@ void read_settings_xml()
   }
 
   // Check if the user has specified to read surface source
-  if (check_for_node(root, "surf_src_read")) {
-    surf_src_read = true;
+  if (check_for_node(root, "surf_source_read")) {
+    surf_source_read = true;
     // Get surface source read node
-    xml_node node_ssr = root.child("surf_src_read");
+    xml_node node_ssr = root.child("surf_source_read");
 
     std::string path = "surface_source.h5";
     // Check if the user has specified different file for surface source reading
@@ -641,16 +641,16 @@ void read_settings_xml()
   }
 
   // Check if the user has specified to write surface source
-  if (check_for_node(root, "surf_src_write")) {
-    surf_src_write = true;
+  if (check_for_node(root, "surf_source_write")) {
+    surf_source_write = true;
     // Get surface source write node
-    xml_node node_ssw = root.child("surf_src_write");
+    xml_node node_ssw = root.child("surf_source_write");
 
     // Determine surface ids at which crossing particles are to be banked
     if (check_for_node(node_ssw, "surf_ids")) {
       auto temp = get_node_array<int>(node_ssw, "surf_ids");
       for (const auto& b : temp) {
-        src_write_surf_id.insert(b);
+        source_write_surf_id.insert(b);
       }
     }
 
@@ -832,7 +832,7 @@ void read_settings_xml()
 void free_memory_settings() {
   settings::statepoint_batch.clear();
   settings::sourcepoint_batch.clear();
-  settings::src_write_surf_id.clear();
+  settings::source_write_surf_id.clear();
   settings::res_scat_nuclides.clear();
 }
 

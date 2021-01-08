@@ -115,7 +115,7 @@ int openmc_simulation_init()
   } else {
     // Only initialize primary source bank for eigenvalue simulations
     // or when a surface source file is provided.
-    if (settings::run_mode == RunMode::EIGENVALUE || settings::surf_src_read) {
+    if (settings::run_mode == RunMode::EIGENVALUE || settings::surf_source_read) {
       initialize_source();
     }
   }
@@ -271,7 +271,7 @@ const RegularMesh* ufs_mesh {nullptr};
 std::vector<double> k_generation;
 std::vector<int64_t> work_index;
 
-std::vector<int64_t> surf_src_index;
+std::vector<int64_t> surf_source_index;
 
 } // namespace simulation
 
@@ -287,14 +287,14 @@ void allocate_banks()
 
     // Allocate fission bank
     init_fission_bank(3*simulation::work_per_rank);
-  } else if (settings::surf_src_read) {
+  } else if (settings::surf_source_read) {
     // Allocate source bank for reading surface source file.
     simulation::source_bank.resize(simulation::work_per_rank);
   }
 
-  if (settings::surf_src_write) {
+  if (settings::surf_source_write) {
     // Allocate surface source bank
-    simulation::surf_src_bank.reserve(settings::max_surf_banks);
+    simulation::surf_source_bank.reserve(settings::max_surf_banks);
   }
 
 }
@@ -389,7 +389,7 @@ void finalize_batch()
   }
 
   // Write out surface source if requested.
-  if (settings::surf_src_write && simulation::current_batch == settings::n_batches) {
+  if (settings::surf_source_write && simulation::current_batch == settings::n_batches) {
 
     auto filename = settings::path_output + "surface_source.h5";
     write_source_point(filename.c_str(), true);
@@ -458,7 +458,7 @@ void finalize_generation()
 void initialize_history(Particle& p, int64_t index_source)
 {
   // set defaults
-  if (settings::run_mode == RunMode::EIGENVALUE || settings::surf_src_read) {
+  if (settings::run_mode == RunMode::EIGENVALUE || settings::surf_source_read) {
     // set defaults for eigenvalue simulations and surface source reading from primary bank
     p.from_source(&simulation::source_bank[index_source - 1]);
   } else if (settings::run_mode == RunMode::FIXED_SOURCE) {

@@ -525,45 +525,45 @@ hid_t h5banktype() {
   return banktype;
 }
 
-int query_surf_src_size()
+int query_surf_source_size()
 {
   int64_t total;
 
-  simulation::surf_src_index.resize(mpi::n_procs + 1);
-  simulation::surf_src_index[0] = 0;
+  simulation::surf_source_index.resize(mpi::n_procs + 1);
+  simulation::surf_source_index[0] = 0;
 
 #ifdef OPENMC_MPI
   std::vector<int64_t> bank_size;
   bank_size.resize(mpi::n_procs);
 
   // Collect the number of surface source banks from all processes
-  int64_t size = simulation::surf_src_bank.size();
+  int64_t size = simulation::surf_source_bank.size();
   MPI_Gather(&size, 1, MPI_INT64_T,
              bank_size.data(), 1, MPI_INT64_T,
              0, mpi::intracomm);
 
   if (mpi::master) {
-    // Populate the surf_src_index with cumulative sum of the number of
+    // Populate the surf_source_index with cumulative sum of the number of
     // surface source banks per process
     for (int i = 1; i < mpi::n_procs + 1; ++i) {
-      simulation::surf_src_index[i] = \
-        simulation::surf_src_index[i - 1] + bank_size[i - 1];
+      simulation::surf_source_index[i] = \
+        simulation::surf_source_index[i - 1] + bank_size[i - 1];
     }
-    total = simulation::surf_src_index[mpi::n_procs];
+    total = simulation::surf_source_index[mpi::n_procs];
   }
-  MPI_Bcast(simulation::surf_src_index.data(), mpi::n_procs + 1, MPI_INT64_T, 0, mpi::intracomm);
+  MPI_Bcast(simulation::surf_source_index.data(), mpi::n_procs + 1, MPI_INT64_T, 0, mpi::intracomm);
   MPI_Bcast(&total, 1, MPI_INT64_T, 0, mpi::intracomm);
 
 #else
-  simulation::surf_src_index[mpi::n_procs] = simulation::surf_src_bank.size();
-  total = simulation::surf_src_bank.size();
+  simulation::surf_source_index[mpi::n_procs] = simulation::surf_source_bank.size();
+  total = simulation::surf_source_bank.size();
 #endif
 
   return total;
 }
 
 void
-write_source_point(const char* filename, bool surf_src_bank)
+write_source_point(const char* filename, bool surf_source_bank)
 {
   // When using parallel HDF5, the file is written to collectively by all
   // processes. With MPI-only, the file is opened and written by the master
@@ -593,13 +593,13 @@ write_source_point(const char* filename, bool surf_src_bank)
   }
 
   // Get pointer to source bank and write to file
-  write_source_bank(file_id, surf_src_bank);
+  write_source_bank(file_id, surf_source_bank);
 
   if (mpi::master || parallel) file_close(file_id);
 }
 
 void
-write_source_bank(hid_t group_id, bool surf_src_bank)
+write_source_bank(hid_t group_id, bool surf_source_bank)
 {
   hid_t banktype = h5banktype();
 
@@ -609,21 +609,21 @@ write_source_bank(hid_t group_id, bool surf_src_bank)
 
   // Set vectors for source bank and starting bank index of each process
   std::vector<int64_t>* bank_index = &simulation::work_index;
-  std::vector<Particle::Bank>* src_bank = &simulation::source_bank;
-  std::vector<Particle::Bank> surf_src_bank_vector;
+  std::vector<Particle::Bank>* source_bank = &simulation::source_bank;
+  std::vector<Particle::Bank> surf_source_bank_vector;
 
   // Reset dataspace sizes and vectors for surface source bank
-  if (surf_src_bank) {
-    dims_size = query_surf_src_size();
-    count_size = simulation::surf_src_bank.size();
+  if (surf_source_bank) {
+    dims_size = query_surf_source_size();
+    count_size = simulation::surf_source_bank.size();
 
-    bank_index = &simulation::surf_src_index;
+    bank_index = &simulation::surf_source_index;
 
     // Copy data in a SharedArray into a vector.
-    surf_src_bank_vector.resize(count_size);
-    surf_src_bank_vector.assign(simulation::surf_src_bank.data(),
-                                simulation::surf_src_bank.data() + count_size);
-    src_bank = &surf_src_bank_vector;
+    surf_source_bank_vector.resize(count_size);
+    surf_source_bank_vector.assign(simulation::surf_source_bank.data(),
+                                   simulation::surf_source_bank.data() + count_size);
+    source_bank = &surf_source_bank_vector;
   }
 
 #ifdef PHDF5
@@ -646,7 +646,7 @@ write_source_bank(hid_t group_id, bool surf_src_bank)
   H5Pset_dxpl_mpio(plist, H5FD_MPIO_COLLECTIVE);
 
   // Write data to file in parallel
-  H5Dwrite(dset, banktype, memspace, dspace, plist, src_bank->data());
+  H5Dwrite(dset, banktype, memspace, dspace, plist, source_bank->data());
 
   // Free resources
   H5Sclose(dspace);
@@ -665,7 +665,7 @@ write_source_bank(hid_t group_id, bool surf_src_bank)
 
     // Save source bank sites since the array is overwritten below
 #ifdef OPENMC_MPI
-    std::vector<Particle::Bank> temp_source {src_bank->begin(), src_bank->end()};
+    std::vector<Particle::Bank> temp_source {source_bank->begin(), source_bank->end()};
 #endif
 
     for (int i = 0; i < mpi::n_procs; ++i) {
@@ -676,7 +676,7 @@ write_source_bank(hid_t group_id, bool surf_src_bank)
 #ifdef OPENMC_MPI
       // Receive source sites from other processes
       if (i > 0)
-        MPI_Recv(src_bank->data(), count[0], mpi::bank, i, i,
+        MPI_Recv(source_bank->data(), count[0], mpi::bank, i, i,
                  mpi::intracomm, MPI_STATUS_IGNORE);
 #endif
 
@@ -686,7 +686,7 @@ write_source_bank(hid_t group_id, bool surf_src_bank)
       H5Sselect_hyperslab(dspace, H5S_SELECT_SET, start, nullptr, count, nullptr);
 
       // Write data to hyperslab
-      H5Dwrite(dset, banktype, memspace, dspace, H5P_DEFAULT, (*src_bank).data());
+      H5Dwrite(dset, banktype, memspace, dspace, H5P_DEFAULT, (*source_bank).data());
 
       H5Sclose(memspace);
       H5Sclose(dspace);
@@ -697,11 +697,11 @@ write_source_bank(hid_t group_id, bool surf_src_bank)
 
 #ifdef OPENMC_MPI
     // Restore state of source bank
-    std::copy(temp_source.begin(), temp_source.end(), src_bank->begin());
+    std::copy(temp_source.begin(), temp_source.end(), source_bank->begin());
 #endif
   } else {
 #ifdef OPENMC_MPI
-    MPI_Send(src_bank->data(), count_size, mpi::bank,
+    MPI_Send(source_bank->data(), count_size, mpi::bank,
       0, mpi::rank, mpi::intracomm);
 #endif
   }

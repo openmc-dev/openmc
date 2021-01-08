@@ -12,7 +12,7 @@ namespace openmc {
 
 // Helper function to get index on incident energy grid
 void
-get_energy_index(const std::vector<double>& energies, double E, int& i, double& f)
+get_energy_index(gsl::span<const double> energies, double E, int& i, double& f)
 {
   // Get index and interpolation factor for elastic grid
   i = 0;
@@ -62,6 +62,36 @@ void CoherentElasticAE::serialize(DataBuffer& buffer) const
   xs_.serialize(buffer);
 }
 
+CoherentElasticXSFlat CoherentElasticAEFlat::xs() const
+{
+  return CoherentElasticXSFlat(data_ + 4);
+}
+
+void
+CoherentElasticAEFlat::sample(double E_in, double& E_out, double& mu, uint64_t* seed) const
+{
+  // Get index and interpolation factor for elastic grid
+  int i;
+  double f;
+  auto xs = this->xs();
+  const auto energies = xs.bragg_edges();
+  get_energy_index(energies, E_in, i, f);
+
+  // Sample a Bragg edge between 1 and i
+  const auto factors = xs.factors();
+  double prob = prn(seed) * factors[i+1];
+  int k = 0;
+  if (prob >= factors.front()) {
+    k = lower_bound_index(factors.begin(), factors.begin() + (i+1), prob);
+  }
+
+  // Characteristic scattering cosine for this Bragg edge (ENDF-102, Eq. 7-2)
+  mu = 1.0 - 2.0*energies[k] / E_in;
+
+  // Energy doesn't change in elastic scattering (ENDF-102, Eq. 7-1)
+  E_out = E_in;
+}
+
 //==============================================================================
 // IncoherentElasticAE implementation
 //==============================================================================
@@ -87,6 +117,23 @@ void IncoherentElasticAE::serialize(DataBuffer& buffer) const
 {
   buffer.add(static_cast<int>(AngleEnergyType::INCOHERENT_ELASTIC));
   buffer.add(debye_waller_);
+}
+
+double IncoherentElasticAEFlat::debye_waller() const
+{
+  return *reinterpret_cast<const double*>(data_ + 4);
+}
+
+void
+IncoherentElasticAEFlat::sample(double E_in, double& E_out, double& mu,
+  uint64_t* seed) const
+{
+  // Sample angle by inverting the distribution in ENDF-102, Eq. 7.4
+  double c = 2 * E_in * this->debye_waller();
+  mu = std::log(1.0 + prn(seed)*(std::exp(2.0*c) - 1))/c - 1.0;
+
+  // Energy doesn't change in elastic scattering (ENDF-102, Eq. 7.4)
+  E_out = E_in;
 }
 
 //==============================================================================
@@ -151,6 +198,68 @@ void IncoherentElasticAEDiscrete::serialize(DataBuffer& buffer) const
   buffer.add(shape[1]);
   buffer.add(energy_);
   buffer.add(mu_out_);
+}
+
+IncoherentElasticAEDiscreteFlat::IncoherentElasticAEDiscreteFlat(const uint8_t* data)
+  : data_(data)
+{
+  n_e_out_ = *reinterpret_cast<const size_t*>(data_ + 4);
+  n_mu_ = *reinterpret_cast<const size_t*>(data_ + 12);
+  mu_out_ = reinterpret_cast<const double*>(data_ + 20 + 8*n_e_out_);
+}
+
+gsl::span<const double> IncoherentElasticAEDiscreteFlat::energy() const
+{
+  auto start = reinterpret_cast<const double*>(data_ + 20);
+  return {start, n_e_out_};
+}
+
+double IncoherentElasticAEDiscreteFlat::mu_out(gsl::index i, gsl::index j) const
+{
+  return *(mu_out_ + i*n_mu_ + j);
+}
+
+void
+IncoherentElasticAEDiscreteFlat::sample(double E_in, double& E_out, double& mu,
+  uint64_t* seed) const
+{
+  // Get index and interpolation factor for elastic grid
+  int i;
+  double f;
+  get_energy_index(this->energy(), E_in, i, f);
+
+  // Interpolate between two discrete cosines corresponding to neighboring
+  // incoming energies.
+
+  // Sample outgoing cosine bin
+  int k = prn(seed) * n_mu_;
+
+  // Rather than use the sampled discrete mu directly, it is smeared over
+  // a bin of width 0.5*min(mu[k] - mu[k-1], mu[k+1] - mu[k]) centered on the
+  // discrete mu value itself.
+
+  // Interpolate kth mu value between distributions at energies i and i+1
+  gsl::index start = 20 + 8*n_e_out_;
+  mu = mu_out(i, k) + f*(mu_out(i+1, k) - mu_out(i, k));
+
+  // Inteprolate (k-1)th mu value between distributions at energies i and i+1.
+  // When k==0, pick a value that will smear the cosine out to a minimum of -1.
+  double mu_left = (k == 0) ?
+    -1.0 - (mu + 1.0) :
+    mu_out(i, k-1) + f*(mu_out(i+1, k-1) - mu_out(i, k-1));
+
+  // Inteprolate (k+1)th mu value between distributions at energies i and i+1.
+  // When k is the last discrete value, pick a value that will smear the cosine
+  // out to a maximum of 1.
+  double mu_right = (k == n_mu_ - 1) ?
+    1.0 + (1.0 - mu) :
+    mu_out(i, k+1) + f*(mu_out(i+1, k+1) - mu_out(i, k+1));
+
+  // Smear cosine
+  mu += std::min(mu - mu_left, mu_right - mu)*(prn(seed) - 0.5);
+
+  // Energy doesn't change in elastic scattering
+  E_out = E_in;
 }
 
 //==============================================================================
@@ -239,6 +348,101 @@ void IncoherentInelasticAEDiscrete::serialize(DataBuffer& buffer) const
   buffer.add(energy_out_);
   buffer.add(mu_out_);
 }
+
+IncoherentInelasticAEDiscreteFlat::IncoherentInelasticAEDiscreteFlat(const uint8_t* data)
+  : data_(data)
+{
+  constexpr size_t bool_size = sizeof(bool);
+  n_energy_ = *reinterpret_cast<const size_t*>(data_ + 4 + bool_size);
+  n_e_out_ = *reinterpret_cast<const size_t*>(data_ + 4 + bool_size + 8);
+  n_mu_ = *reinterpret_cast<const size_t*>(data_ + 4 + bool_size + 16);
+  energy_out_ = reinterpret_cast<const double*>(data_ + 28 + bool_size + 8*n_energy_);
+  mu_out_ = reinterpret_cast<const double*>(data_ + 28 + bool_size + 8*n_energy_*(1 + n_e_out_));
+}
+
+bool IncoherentInelasticAEDiscreteFlat::skewed() const
+{
+  return *reinterpret_cast<const bool*>(data_ + 4);
+}
+
+gsl::span<const double> IncoherentInelasticAEDiscreteFlat::energy() const
+{
+  auto start = reinterpret_cast<const double*>(data_ + 28 + sizeof(bool));
+  return {start, n_energy_};
+}
+
+double IncoherentInelasticAEDiscreteFlat::energy_out(gsl::index i, gsl::index j) const
+{
+  return *(energy_out_ + i*n_e_out_ + j);
+}
+
+double
+IncoherentInelasticAEDiscreteFlat::mu_out(gsl::index i, gsl::index j, gsl::index k) const
+{
+  return *(mu_out_ + n_mu_*(n_e_out_*i + j) + k);
+}
+
+void
+IncoherentInelasticAEDiscreteFlat::sample(double E_in, double& E_out, double& mu,
+  uint64_t* seed) const
+{
+  // Get index and interpolation factor for inelastic grid
+  int i;
+  double f;
+  get_energy_index(this->energy(), E_in, i, f);
+
+  // Now that we have an incoming energy bin, we need to determine the outgoing
+  // energy bin. This will depend on whether the outgoing energy distribution is
+  // skewed. If it is skewed, then the first two and last two bins have lower
+  // probabilities than the other bins (0.1 for the first and last bins and 0.4
+  // for the second and second to last bins, relative to a normal bin
+  // probability of 1). Otherwise, each bin is equally probable.
+
+  int j;
+  int n = n_e_out_;
+  if (!this->skewed()) {
+    // All bins equally likely
+    j = prn(seed) * n;
+  } else {
+    // Distribution skewed away from edge points
+    double r = prn(seed) * (n - 3);
+    if (r > 1.0) {
+      // equally likely N-4 middle bins
+      j = r + 1;
+    } else if (r > 0.6) {
+      // second to last bin has relative probability of 0.4
+      j = n - 2;
+    } else if (r > 0.5) {
+      // last bin has relative probability of 0.1
+      j = n - 1;
+    } else if (r > 0.1) {
+      // second bin has relative probability of 0.4
+      j = 1;
+    } else {
+      // first bin has relative probability of 0.1
+      j = 0;
+    }
+  }
+
+  // Determine outgoing energy corresponding to E_in[i] and E_in[i+1]
+  double E_ij  = energy_out(i, j);
+  double E_i1j = energy_out(i+1, j);
+
+  // Outgoing energy
+  E_out = (1 - f)*E_ij + f*E_i1j;
+
+  // Sample outgoing cosine bin
+  int m = n_mu_;
+  int k = prn(seed) * m;
+
+  // Determine outgoing cosine corresponding to E_in[i] and E_in[i+1]
+  double mu_ijk  = mu_out(i, j, k);
+  double mu_i1jk = mu_out(i+1, j, k);
+
+  // Cosine of angle between incoming and outgoing neutron
+  mu = (1 - f)*mu_ijk + f*mu_i1jk;
+}
+
 
 //==============================================================================
 // IncoherentInelasticAE implementation
@@ -371,7 +575,7 @@ void IncoherentInelasticAE::serialize(DataBuffer& buffer) const
   buffer.add(static_cast<int>(AngleEnergyType::INCOHERENT_INELASTIC));
 
   // Calculate offsets for distributions
-  size_t offset = 8 + (8 + 4)*energy_.size();
+  size_t offset = 4 + 8 + (8 + 4)*energy_.size();
   std::vector<int> offsets;
   for (const auto& dist : distribution_) {
     offsets.push_back(offset);
@@ -396,6 +600,142 @@ void IncoherentInelasticAE::serialize(DataBuffer& buffer) const
     buffer.add(dist.e_out_cdf);
     buffer.add(dist.mu);
   }
+}
+
+IncoherentInelasticAEFlat::IncoherentInelasticAEFlat(const uint8_t* data)
+  : data_(data)
+{
+  n_energy_ =  *reinterpret_cast<const size_t*>(data_ + 4);
+}
+
+gsl::span<const double> IncoherentInelasticAEFlat::energy() const
+{
+  auto start = reinterpret_cast<const double*>(data_ + 12);
+  return {start, n_energy_};
+}
+
+DistEnergySabFlat IncoherentInelasticAEFlat::distribution(gsl::index i) const
+{
+  auto offsets = reinterpret_cast<const int*>(data_ + 12 + 8*n_energy_);
+  return DistEnergySabFlat(data_ + offsets[i]);
+}
+
+void
+IncoherentInelasticAEFlat::sample(double E_in, double& E_out, double& mu,
+  uint64_t* seed) const
+{
+  // Get index and interpolation factor for inelastic grid
+  int i;
+  double f;
+  auto energy = this->energy();
+  get_energy_index(energy, E_in, i, f);
+
+  // Pick closer energy based on interpolation factor
+  int l = f > 0.5 ? i + 1 : i;
+
+  // Determine outgoing energy bin
+  // (First reset n_energy_out to the right value)
+  auto dist = this->distribution(l);
+  auto n = dist.n_e_out();
+  double r1 = prn(seed);
+  auto e_out_cdf = dist.e_out_cdf();
+  double c_j = e_out_cdf[0];
+  double c_j1;
+  std::size_t j;
+  for (j = 0; j < n - 1; ++j) {
+    c_j1 = e_out_cdf[j + 1];
+    if (r1 < c_j1) break;
+    c_j = c_j1;
+  }
+
+  // check to make sure j is <= n_energy_out - 2
+  j = std::min(j, n - 2);
+
+  // Get the data to interpolate between
+  auto e_out = dist.e_out();
+  auto e_out_pdf = dist.e_out_pdf();
+  double E_l_j = e_out[j];
+  double p_l_j = e_out_pdf[j];
+
+  // Next part assumes linear-linear interpolation in standard
+  double E_l_j1 = e_out[j + 1];
+  double p_l_j1 = e_out_pdf[j + 1];
+
+  // Find secondary energy (variable E)
+  double frac = (p_l_j1 - p_l_j) / (E_l_j1 - E_l_j);
+  if (frac == 0.0) {
+    E_out = E_l_j + (r1 - c_j) / p_l_j;
+  } else {
+    E_out = E_l_j + (std::sqrt(std::max(0.0, p_l_j*p_l_j +
+          2.0*frac*(r1 - c_j))) - p_l_j) / frac;
+  }
+
+  // Adjustment of outgoing energy
+  double E_l = energy[l];
+  if (E_out < 0.5*E_l) {
+    E_out *= 2.0*E_in/E_l - 1.0;
+  } else {
+    E_out += E_in - E_l;
+  }
+
+  // Sample outgoing cosine bin
+  int n_mu = dist.n_mu();
+  std::size_t k = prn(seed) * n_mu;
+
+  // Rather than use the sampled discrete mu directly, it is smeared over
+  // a bin of width 0.5*min(mu[k] - mu[k-1], mu[k+1] - mu[k]) centered on the
+  // discrete mu value itself.
+  f = (r1 - c_j)/(c_j1 - c_j);
+
+  // Interpolate kth mu value between distributions at energies j and j+1
+  mu = dist.mu(j, k) + f*(dist.mu(j+1, k) - dist.mu(j, k));
+
+  // Inteprolate (k-1)th mu value between distributions at energies j and j+1.
+  // When k==0, pick a value that will smear the cosine out to a minimum of -1.
+  double mu_left = (k == 0) ?
+    mu_left = -1.0 - (mu + 1.0) :
+    mu_left = dist.mu(j, k-1) + f*(dist.mu(j+1, k-1) - dist.mu(j, k-1));
+
+  // Inteprolate (k+1)th mu value between distributions at energies j and j+1.
+  // When k is the last discrete value, pick a value that will smear the cosine
+  // out to a maximum of 1.
+  double mu_right = (k == n_mu - 1) ?
+    mu_right = 1.0 + (1.0 - mu) :
+    mu_right = dist.mu(j, k+1) + f*(dist.mu(j+1, k+1) - dist.mu(j, k+1));
+
+  // Smear cosine
+  mu += std::min(mu - mu_left, mu_right - mu)*(prn(seed) - 0.5);
+}
+
+DistEnergySabFlat::DistEnergySabFlat(const uint8_t* data)
+  : data_(data)
+{
+  n_e_out_ = *reinterpret_cast<const size_t*>(data_);
+  n_mu_ = *reinterpret_cast<const size_t*>(data_ + 8);
+}
+
+gsl::span<const double> DistEnergySabFlat::e_out() const
+{
+  auto start = reinterpret_cast<const double*>(data_ + 16);
+  return {start, n_e_out_};
+}
+
+gsl::span<const double> DistEnergySabFlat::e_out_pdf() const
+{
+  auto start = reinterpret_cast<const double*>(data_ + 16 + 8*n_e_out_);
+  return {start, n_e_out_};
+}
+
+gsl::span<const double> DistEnergySabFlat::e_out_cdf() const
+{
+  auto start = reinterpret_cast<const double*>(data_ + 16 + 16*n_e_out_);
+  return {start, n_e_out_};
+}
+
+double DistEnergySabFlat::mu(gsl::index i, gsl::index j) const
+{
+  auto start = reinterpret_cast<const double*>(data_ + 16 + 24*n_e_out_);
+  return *(start + i*n_mu_ + j);
 }
 
 } // namespace openmc

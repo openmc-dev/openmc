@@ -150,10 +150,10 @@ public:
   explicit CoherentElasticXSFlat(const uint8_t* data) : data_{data} { }
 
   double operator()(double E) const;
-private:
+
   gsl::span<const double> bragg_edges() const;
   gsl::span<const double> factors() const;
-
+private:
   const uint8_t* data_;
 };
 

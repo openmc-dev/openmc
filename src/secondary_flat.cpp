@@ -3,6 +3,7 @@
 #include "openmc/secondary_correlated.h"
 #include "openmc/secondary_kalbach.h"
 #include "openmc/secondary_nbody.h"
+#include "openmc/secondary_thermal.h"
 #include "openmc/secondary_uncorrelated.h"
 
 namespace openmc {
@@ -53,6 +54,36 @@ AngleEnergyFlat::sample(double E_in, double& E_out, double& mu, uint64_t* seed) 
   case AngleEnergyType::NBODY:
     {
       NBodyPhaseSpaceFlat dist(this->data());
+      dist.sample(E_in, E_out, mu, seed);
+    }
+    break;
+  case AngleEnergyType::COHERENT_ELASTIC:
+    {
+      CoherentElasticAEFlat dist(this->data());
+      dist.sample(E_in, E_out, mu, seed);
+    }
+    break;
+  case AngleEnergyType::INCOHERENT_ELASTIC:
+    {
+      IncoherentElasticAEFlat dist(this->data());
+      dist.sample(E_in, E_out, mu, seed);
+    }
+    break;
+  case AngleEnergyType::INCOHERENT_ELASTIC_DISCRETE:
+    {
+      IncoherentElasticAEDiscreteFlat dist(this->data());
+      dist.sample(E_in, E_out, mu, seed);
+    }
+    break;
+  case AngleEnergyType::INCOHERENT_INELASTIC:
+    {
+      IncoherentInelasticAEFlat dist(this->data());
+      dist.sample(E_in, E_out, mu, seed);
+    }
+    break;
+  case AngleEnergyType::INCOHERENT_INELASTIC_DISCRETE:
+    {
+      IncoherentInelasticAEDiscreteFlat dist(this->data());
       dist.sample(E_in, E_out, mu, seed);
     }
     break;

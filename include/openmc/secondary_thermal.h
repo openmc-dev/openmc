@@ -40,6 +40,23 @@ private:
   const CoherentElasticXS& xs_; //!< Coherent elastic scattering cross section
 };
 
+class CoherentElasticAEFlat {
+public:
+  explicit CoherentElasticAEFlat(const uint8_t* data) : data_(data) { }
+
+  //! Sample distribution for an angle and energy
+  //! \param[in] E_in Incoming energy in [eV]
+  //! \param[out] E_out Outgoing energy in [eV]
+  //! \param[out] mu Outgoing cosine with respect to current direction
+  //! \param[inout] seed Pseudorandom seed pointer
+  void sample(double E_in, double& E_out, double& mu, uint64_t* seed) const;
+
+private:
+  CoherentElasticXSFlat xs() const;
+
+  const uint8_t* data_;
+};
+
 //==============================================================================
 //! Incoherent elastic scattering angle-energy distribution
 //==============================================================================
@@ -62,6 +79,23 @@ public:
   void serialize(DataBuffer& buffer) const override;
 private:
   double debye_waller_;
+};
+
+class IncoherentElasticAEFlat {
+public:
+  explicit IncoherentElasticAEFlat(const uint8_t* data) : data_(data) { }
+
+  //! Sample distribution for an angle and energy
+  //! \param[in] E_in Incoming energy in [eV]
+  //! \param[out] E_out Outgoing energy in [eV]
+  //! \param[out] mu Outgoing cosine with respect to current direction
+  //! \param[inout] seed Pseudorandom number seed pointer
+  void sample(double E_in, double& E_out, double& mu, uint64_t* seed) const;
+
+private:
+  double debye_waller() const;
+
+  const uint8_t* data_;
 };
 
 //==============================================================================
@@ -90,6 +124,27 @@ private:
   xt::xtensor<double, 2> mu_out_; //!< Cosines for each incident energy
 };
 
+class IncoherentElasticAEDiscreteFlat {
+public:
+  explicit IncoherentElasticAEDiscreteFlat(const uint8_t* data);
+
+  //! Sample distribution for an angle and energy
+  //! \param[in] E_in Incoming energy in [eV]
+  //! \param[out] E_out Outgoing energy in [eV]
+  //! \param[out] mu Outgoing cosine with respect to current direction
+  //! \param[inout] seed Pseudorandom number seed pointer
+  void sample(double E_in, double& E_out, double& mu, uint64_t* seed) const;
+
+private:
+  gsl::span<const double> energy() const;
+  double mu_out(gsl::index i, gsl::index j) const;
+
+  const uint8_t* data_;
+  size_t n_e_out_;
+  size_t n_mu_;
+  const double* mu_out_;
+};
+
 //==============================================================================
 //! Incoherent inelastic scattering angle-energy distribution (discrete)
 //==============================================================================
@@ -116,6 +171,31 @@ private:
   xt::xtensor<double, 2> energy_out_; //!< Outgoing energies for each incident energy
   xt::xtensor<double, 3> mu_out_; //!< Outgoing cosines for each incident/outgoing energy
   bool skewed_; //!< Whether outgoing energy distribution is skewed
+};
+
+class IncoherentInelasticAEDiscreteFlat {
+public:
+  explicit IncoherentInelasticAEDiscreteFlat(const uint8_t* data);
+
+  //! Sample distribution for an angle and energy
+  //! \param[in] E_in Incoming energy in [eV]
+  //! \param[out] E_out Outgoing energy in [eV]
+  //! \param[out] mu Outgoing cosine with respect to current direction
+  //! \param[inout] seed Pseudorandom number seed pointer
+  void sample(double E_in, double& E_out, double& mu, uint64_t* seed) const;
+
+private:
+  gsl::span<const double> energy() const;
+  double energy_out(gsl::index i, gsl::index j) const;
+  double mu_out(gsl::index i, gsl::index j, gsl::index k) const;
+  bool skewed() const;
+
+  const uint8_t* data_;
+  size_t n_energy_;
+  size_t n_e_out_;
+  size_t n_mu_;
+  const double* energy_out_;
+  const double* mu_out_;
 };
 
 //==============================================================================
@@ -151,6 +231,40 @@ private:
   std::vector<double> energy_; //!< Incident energies
   std::vector<DistEnergySab> distribution_; //!< Secondary angle-energy at
                                             //!< each incident energy
+};
+
+class DistEnergySabFlat {
+public:
+  explicit DistEnergySabFlat(const uint8_t* data);
+
+  size_t n_e_out() const { return n_e_out_; }
+  size_t n_mu() const { return n_mu_; }
+  gsl::span<const double> e_out() const;
+  gsl::span<const double> e_out_pdf() const;
+  gsl::span<const double> e_out_cdf() const;
+  double mu(gsl::index i, gsl::index j) const;
+private:
+  const uint8_t* data_;
+  size_t n_e_out_;
+  size_t n_mu_;
+};
+
+class IncoherentInelasticAEFlat{
+public:
+  explicit IncoherentInelasticAEFlat(const uint8_t* data);
+
+  //! Sample distribution for an angle and energy
+  //! \param[in] E_in Incoming energy in [eV]
+  //! \param[out] E_out Outgoing energy in [eV]
+  //! \param[out] mu Outgoing cosine with respect to current direction
+  //! \param[inout] seed Pseudorandom number seed pointer
+  void sample(double E_in, double& E_out, double& mu, uint64_t* seed) const;
+private:
+  gsl::span<const double> energy() const;
+  DistEnergySabFlat distribution(gsl::index i) const;
+
+  const uint8_t* data_;
+  size_t n_energy_;
 };
 
 

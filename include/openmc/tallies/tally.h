@@ -75,6 +75,9 @@ public:
   //! A string representing the i-th score on this tally
   std::string score_name(int score_idx) const;
 
+  //! A string representing the i-th nuclide on this tally
+  std::string nuclide_name(int nuclide_idx) const;
+
   //----------------------------------------------------------------------------
   // Major public data members.
 

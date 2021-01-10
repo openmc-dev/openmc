@@ -299,8 +299,8 @@ public:
   //! Set the value of a bin for a variable on the internal
   //  mesh instance
   virtual void set_score_data(const std::string& var_name,
-                              std::vector<double> values,
-                              std::vector<double> std_dev) = 0;
+                              const std::vector<double>& values,
+                              const std::vector<double>& std_dev) = 0;
 
   //! Write the unstructured mesh to file
   //
@@ -373,8 +373,8 @@ public:
 
   //! Set data for a score
   void set_score_data(const std::string& score,
-                      std::vector<double> values,
-                      std::vector<double> std_dev) override;
+                      const std::vector<double>& values,
+                      const std::vector<double>& std_dev) override;
 
   //! Write the mesh with any current tally data
   void write(const std::string& base_filename) const;
@@ -516,8 +516,8 @@ public:
   void remove_scores() override;
 
   void set_score_data(const std::string& var_name,
-                      std::vector<double> values,
-                      std::vector<double> std_dev) override;
+                      const std::vector<double>& values,
+                      const std::vector<double>& std_dev) override;
 
   void write(const std::string& base_filename) const override;
 

@@ -770,8 +770,6 @@ void read_source_bank(hid_t group_id, std::vector<Particle::Bank>& sites, bool d
   H5Tclose(banktype);
 }
 
-
-
 void write_unstructured_mesh_results() {
 
 #if !defined(LIBMESH) && !defined(DAGMC)
@@ -807,18 +805,24 @@ void write_unstructured_mesh_results() {
 
       for (int score_idx = 0; score_idx < tally->scores_.size(); score_idx++) {
         for (int nuc_idx = 0; nuc_idx < tally->nuclides_.size(); nuc_idx++) {
-          // get the name for this nuclide
-          int nuclide = tally->nuclides_[nuc_idx];
-          std::string nuclide_name = "total"; // start with total by default
-          if (nuclide > -1) nuclide_name = data::nuclides[nuclide]->name_;
-
-          // get the name for this score
-          std::string score_name = tally->score_name(score_idx);
-
           // combine the score and nuclide into a name for the value
-          auto score_str = fmt::format("{}_{}", score_name, nuclide_name);
+          auto score_str = fmt::format("{}_{}",
+                           tally->score_name(score_idx),
+                           tally->nuclide_name(nuc_idx));
           // add this score to the mesh
+          // (this is in a separate loop because all variables need to be added
+          //  to libMesh's equation system before any are initialized, which
+          //  happens in set_score_data)
           umesh->add_score(score_str);
+        }
+      }
+
+      for (int score_idx = 0; score_idx < tally->scores_.size(); score_idx++) {
+        for (int nuc_idx = 0; nuc_idx < tally->nuclides_.size(); nuc_idx++) {
+          // combine the score and nuclide into a name for the value
+          auto score_str = fmt::format("{}_{}",
+                                       tally->score_name(score_idx),
+                                       tally->nuclide_name(nuc_idx));
 
           // index for this nuclide and score
           int nuc_score_idx = score_idx + nuc_idx*tally->scores_.size();
@@ -826,9 +830,11 @@ void write_unstructured_mesh_results() {
           // construct result vectors
           std::vector<double> mean_vec, std_dev_vec;
           for (int j = 0; j < tally->results_.shape()[0]; j++) {
+            // get the volume for this bin
+            double volume = umesh->volume(j);
             // compute the mean
             double mean = tally->results_(j, nuc_score_idx, TallyResult::SUM) / n_realizations;
-            mean_vec.push_back(mean);
+            mean_vec.push_back(mean / volume);
 
             // compute the standard deviation
             double sum_sq = tally->results_(j , nuc_score_idx, TallyResult::SUM_SQ);
@@ -837,9 +843,8 @@ void write_unstructured_mesh_results() {
               std_dev = sum_sq/n_realizations - mean*mean;
               std_dev = std::sqrt(std_dev / (n_realizations - 1));
             }
-            std_dev_vec.push_back(std_dev);
+            std_dev_vec.push_back(std_dev / volume);
           }
-
           // set the data for this score
           umesh->set_score_data(score_str, mean_vec, std_dev_vec);
         }

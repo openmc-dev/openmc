@@ -2088,18 +2088,10 @@ void MOABMesh::remove_scores()
 
 void
 MOABMesh::set_score_data(const std::string& score,
-                         std::vector<double> values,
-                         std::vector<double> std_dev)
+                         const std::vector<double>& values,
+                         const std::vector<double>& std_dev)
 {
   auto score_tags = this->get_score_tags(score);
-
-  // normalize tally values by element volume
-  for (int i = 0; i < ehs_.size(); i++) {
-    auto eh = this->get_ent_handle_from_bin(i);
-    double volume = this->tet_volume(eh);
-    values[i] /= volume;
-    std_dev[i] /= volume;
-  }
 
   moab::ErrorCode rval;
   // set the score value
@@ -2250,13 +2242,13 @@ LibMesh::remove_scores()
 {
   auto& eqn_sys = equation_systems_->get_system(eq_system_name_);
   eqn_sys.clear();
-  eqn_sys.init();
+  variable_map_.clear();
 }
 
 void
 LibMesh::set_score_data(const std::string& var_name,
-                        std::vector<double> values,
-                        std::vector<double> std_dev)
+                        const std::vector<double>& values,
+                        const std::vector<double>& std_dev)
 {
   auto& eqn_sys = equation_systems_->get_system(eq_system_name_);
 
@@ -2278,14 +2270,13 @@ LibMesh::set_score_data(const std::string& var_name,
     std::vector<libMesh::dof_id_type> value_dof_indices;
     dof_map.dof_indices(e, value_dof_indices, value_num);
     Ensures(value_dof_indices.size() == 1);
-    eqn_sys.solution->set(value_dof_indices[0], values[bin]);
+    eqn_sys.solution->set(value_dof_indices[0], values.at(bin));
 
     // set std dev
     std::vector<libMesh::dof_id_type> std_dev_dof_indices;
     dof_map.dof_indices(e, std_dev_dof_indices, std_dev_num);
     Ensures(std_dev_dof_indices.size() == 1);
-    eqn_sys.solution->set(std_dev_dof_indices[0], std_dev[bin]);
-
+    eqn_sys.solution->set(std_dev_dof_indices[0], std_dev.at(bin));
   }
 }
 

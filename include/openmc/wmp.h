@@ -73,7 +73,7 @@ public:
 
   // Constant data
   static constexpr int MAX_POLY_COEFFICIENTS =
-    10; //!< Max order of polynomial fit plus one
+    11; //!< Max order of polynomial fit plus one
 };
 
 //========================================================================

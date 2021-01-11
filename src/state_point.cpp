@@ -525,12 +525,11 @@ hid_t h5banktype() {
   return banktype;
 }
 
-int query_surf_source_size()
+std::vector<int64_t> query_surf_source_size()
 {
-  int64_t total;
-
-  simulation::surf_source_index.resize(mpi::n_procs + 1);
-  simulation::surf_source_index[0] = 0;
+  std::vector<int64_t> surf_source_index;
+  surf_source_index.resize(mpi::n_procs + 1);
+  surf_source_index[0] = 0;
 
 #ifdef OPENMC_MPI
   std::vector<int64_t> bank_size;
@@ -546,20 +545,16 @@ int query_surf_source_size()
     // Populate the surf_source_index with cumulative sum of the number of
     // surface source banks per process
     for (int i = 1; i < mpi::n_procs + 1; ++i) {
-      simulation::surf_source_index[i] = \
-        simulation::surf_source_index[i - 1] + bank_size[i - 1];
+      surf_source_index[i] = surf_source_index[i - 1] + bank_size[i - 1];
     }
-    total = simulation::surf_source_index[mpi::n_procs];
   }
-  MPI_Bcast(simulation::surf_source_index.data(), mpi::n_procs + 1, MPI_INT64_T, 0, mpi::intracomm);
-  MPI_Bcast(&total, 1, MPI_INT64_T, 0, mpi::intracomm);
+  MPI_Bcast(surf_source_index.data(), mpi::n_procs + 1, MPI_INT64_T, 0, mpi::intracomm);
 
 #else
-  simulation::surf_source_index[mpi::n_procs] = simulation::surf_source_bank.size();
-  total = simulation::surf_source_bank.size();
+  surf_source_index[mpi::n_procs] = simulation::surf_source_bank.size();
 #endif
 
-  return total;
+  return surf_source_index;
 }
 
 void
@@ -610,14 +605,16 @@ write_source_bank(hid_t group_id, bool surf_source_bank)
   // Set vectors for source bank and starting bank index of each process
   std::vector<int64_t>* bank_index = &simulation::work_index;
   std::vector<Particle::Bank>* source_bank = &simulation::source_bank;
+  std::vector<int64_t> surf_source_index_vector;
   std::vector<Particle::Bank> surf_source_bank_vector;
 
   // Reset dataspace sizes and vectors for surface source bank
   if (surf_source_bank) {
-    dims_size = query_surf_source_size();
+    surf_source_index_vector = query_surf_source_size();
+    dims_size = surf_source_index_vector[mpi::n_procs];
     count_size = simulation::surf_source_bank.size();
 
-    bank_index = &simulation::surf_source_index;
+    bank_index = &surf_source_index_vector;
 
     // Copy data in a SharedArray into a vector.
     surf_source_bank_vector.resize(count_size);

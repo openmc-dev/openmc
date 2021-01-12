@@ -525,7 +525,7 @@ hid_t h5banktype() {
   return banktype;
 }
 
-std::vector<int64_t> query_surf_source_size()
+std::vector<int64_t> calculate_surf_source_size()
 {
   std::vector<int64_t> surf_source_index;
   surf_source_index.reserve(mpi::n_procs + 1);
@@ -601,7 +601,7 @@ write_source_bank(hid_t group_id, bool surf_source_bank)
 
   // Reset dataspace sizes and vectors for surface source bank
   if (surf_source_bank) {
-    surf_source_index_vector = query_surf_source_size();
+    surf_source_index_vector = calculate_surf_source_size();
     dims_size = surf_source_index_vector[mpi::n_procs];
     count_size = simulation::surf_source_bank.size();
 

@@ -115,7 +115,7 @@ int openmc_simulation_init()
   } else {
     // Only initialize primary source bank for eigenvalue simulations
     // or when a surface source file is provided.
-    if (settings::run_mode == RunMode::EIGENVALUE || settings::surf_source_read) {
+    if (settings::run_mode == RunMode::EIGENVALUE) {
       initialize_source();
     }
   }
@@ -287,9 +287,6 @@ void allocate_banks()
 
     // Allocate fission bank
     init_fission_bank(3*simulation::work_per_rank);
-  } else if (settings::surf_source_read) {
-    // Allocate source bank for reading surface source file.
-    simulation::source_bank.resize(simulation::work_per_rank);
   }
 
   if (settings::surf_source_write) {
@@ -458,7 +455,7 @@ void finalize_generation()
 void initialize_history(Particle& p, int64_t index_source)
 {
   // set defaults
-  if (settings::run_mode == RunMode::EIGENVALUE || settings::surf_source_read) {
+  if (settings::run_mode == RunMode::EIGENVALUE) {
     // set defaults for eigenvalue simulations and surface source reading from primary bank
     p.from_source(&simulation::source_bank[index_source - 1]);
   } else if (settings::run_mode == RunMode::FIXED_SOURCE) {

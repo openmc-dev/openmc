@@ -528,30 +528,21 @@ hid_t h5banktype() {
 std::vector<int64_t> query_surf_source_size()
 {
   std::vector<int64_t> surf_source_index;
-  surf_source_index.resize(mpi::n_procs + 1);
-  surf_source_index[0] = 0;
+  surf_source_index.reserve(mpi::n_procs + 1);
 
 #ifdef OPENMC_MPI
-  std::vector<int64_t> bank_size;
-  bank_size.resize(mpi::n_procs);
+  surf_source_index.resize(mpi::n_procs);
+  std::vector<int64_t> bank_size(mpi::n_procs);
 
-  // Collect the number of surface source banks from all processes
+  // Populate the surf_source_index with cumulative sum of the number of
+  // surface source banks per process
   int64_t size = simulation::surf_source_bank.size();
-  MPI_Gather(&size, 1, MPI_INT64_T,
-             bank_size.data(), 1, MPI_INT64_T,
-             0, mpi::intracomm);
-
-  if (mpi::master) {
-    // Populate the surf_source_index with cumulative sum of the number of
-    // surface source banks per process
-    for (int i = 1; i < mpi::n_procs + 1; ++i) {
-      surf_source_index[i] = surf_source_index[i - 1] + bank_size[i - 1];
-    }
-  }
-  MPI_Bcast(surf_source_index.data(), mpi::n_procs + 1, MPI_INT64_T, 0, mpi::intracomm);
-
+  MPI_Scan(&size, bank_size.data(), 1, MPI_INT64_T, MPI_SUM, mpi::intracomm);
+  MPI_Allgather(bank_size.data(), 1, MPI_INT64_T, surf_source_index.data(), 1, MPI_INT64_T, mpi::intracomm);
+  surf_source_index.insert(surf_source_index.begin(), 0);
 #else
-  surf_source_index[mpi::n_procs] = simulation::surf_source_bank.size();
+  surf_source_index.push_back(0);
+  surf_source_index.push_back(simulation::surf_source_bank.size());
 #endif
 
   return surf_source_index;

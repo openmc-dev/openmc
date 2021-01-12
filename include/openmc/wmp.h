@@ -70,6 +70,10 @@ public:
   xt::xtensor<int, 2> windows_; //!< Indices of pole at start/end of window
   xt::xtensor<double, 3> curvefit_; //!< Fitting function (reaction, coeff index, window index)
   xt::xtensor<bool, 1> broaden_poly_; //!< Whether to broaden curvefit
+
+  // Constant data
+  static constexpr int MAX_POLY_COEFFICIENTS =
+    11; //!< Max order of polynomial fit plus one
 };
 
 //========================================================================

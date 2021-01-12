@@ -33,7 +33,7 @@ public:
 
 private:
   std::vector<double> energy_;
-  std::vector<UPtrDist> distribution_;
+  std::vector<std::unique_ptr<Tabular>> distribution_;
 };
 
 } // namespace openmc

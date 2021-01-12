@@ -31,7 +31,7 @@ Environment Variables
 When :ref:`scripts_openmc` is run, it will look for several environment
 variables that indicate where cross sections can be found. While the location of
 cross sections can also be indicated through the
-:attr:`openmc.Materials.cross_setion` attribute (or in the :ref:`materials.xml
+:attr:`openmc.Materials.cross_sections` attribute (or in the :ref:`materials.xml
 <io_materials>` file), if you always use the same set of cross section data, it
 is often easier to just set an environment variable that will be picked up by
 default every time OpenMC is run. The following environment variables are used:
@@ -39,14 +39,14 @@ default every time OpenMC is run. The following environment variables are used:
 :envvar:`OPENMC_CROSS_SECTIONS`
   Indicates the path to the :ref:`cross_sections.xml <io_cross_sections>`
   summary file that is used to locate HDF5 format cross section libraries if the
-  user has not specified :attr:`Materials.cross_sections` (equivalently, the
-  :ref:`cross_sections` in :ref:`materials.xml <io_materials>`).
+  user has not specified :attr:`openmc.Materials.cross_sections` (equivalently,
+  the :ref:`cross_sections` in :ref:`materials.xml <io_materials>`).
 
 :envvar:`OPENMC_MG_CROSS_SECTIONS`
-  Indicates the path to the an :ref:`HDF5 file <io_mgxs_library>` that contains
+  Indicates the path to an :ref:`HDF5 file <io_mgxs_library>` that contains
   multi-group cross sections if the user has not specified
-  :attr:`Materials.cross_sections` (equivalently, the :ref:`cross_sections` in
-  :ref:`materials.xml <io_materials>`).
+  :attr:`openmc.Materials.cross_sections` (equivalently, the
+  :ref:`cross_sections` in :ref:`materials.xml <io_materials>`).
 
 To set these environment variables persistently, export them from your shell
 profile (``.profile`` or ``.bashrc`` in bash_).
@@ -75,12 +75,12 @@ Manually Creating a Library from ACE files
 
 .. currentmodule:: openmc.data
 
-The scripts described above use the :mod:`openmc.data` module in the Python API
-to convert ACE data and create a :ref:`cross_sections.xml <io_cross_sections>`
-file. For those who prefer to use the API directly, the
-:class:`openmc.data.IncidentNeutron` and :class:`openmc.data.ThermalScattering`
-classes can be used to read ACE data and convert it to HDF5. For
-continuous-energy incident neutron data, use the
+The :mod:`openmc.data` module in the Python API enables users to directly
+convert ACE data to OpenMC's HDF5 format and create a corresponding
+:ref:`cross_sections.xml <io_cross_sections>` file. For those who prefer to use
+the API directly, the :class:`openmc.data.IncidentNeutron` and
+:class:`openmc.data.ThermalScattering` classes can be used to read ACE data and
+convert it to HDF5. For continuous-energy incident neutron data, use the
 :meth:`IncidentNeutron.from_ace` class method to read in an existing ACE file
 and the :meth:`IncidentNeutron.export_to_hdf5` method to write the data to an
 HDF5 file.

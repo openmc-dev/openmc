@@ -120,7 +120,7 @@ class CorrelatedAngleEnergy(AngleEnergy):
                                                  self.interpolation))
 
         # Determine total number of (E,p) pairs and create array
-        n_tuple = sum(len(d.x) for d in self.energy_out)
+        n_tuple = sum(len(d) for d in self.energy_out)
         eout = np.empty((5, n_tuple))
 
         # Make sure all mu data is tabular

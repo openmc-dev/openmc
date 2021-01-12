@@ -52,6 +52,9 @@ jobs:
             python-version: 3.8
             omp: n
             mpi: y
+    name: 'Python ${{ matrix.python-version }} (omp=${{ matrix.omp }},
+      mpi=${{ matrix.mpi }}, dagmc=${{ matrix.dagmc }}, event=${{ matrix.event }}
+      vectfit=${{ matrix.vectfit }})'
 
     env:
       MPI: ${{ matrix.mpi }}
@@ -65,7 +68,7 @@ jobs:
       -
         uses: actions/checkout@v2
 
-      - 
+      -
         name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v2
         with:
@@ -94,7 +97,7 @@ jobs:
         run: |
           echo "$HOME/NJOY2016/build" >> $GITHUB_PATH
           $GITHUB_WORKSPACE/tools/ci/gha-install.sh
-      - 
+      -
         name: before
         shell: bash
         run: $GITHUB_WORKSPACE/tools/ci/gha-before-script.sh
@@ -104,12 +107,12 @@ jobs:
         shell: bash
         run: $GITHUB_WORKSPACE/tools/ci/gha-script.sh
 
-      - 
+      -
         name: after_success
         shell: bash
         run: |
           cpp-coveralls -i src -i include --exclude-pattern "/usr/*" --dump cpp_cov.json
-          coveralls --merge=cpp_cov.json
+          coveralls --merge=cpp_cov.json --service=github
 
   finish:
     needs: main

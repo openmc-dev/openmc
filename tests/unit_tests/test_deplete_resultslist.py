@@ -1,6 +1,7 @@
 """Tests the ResultsList class"""
 
 from pathlib import Path
+from math import inf
 
 import numpy as np
 import pytest
@@ -65,3 +66,66 @@ def test_get_eigenvalue(res):
     np.testing.assert_allclose(t, t_ref)
     np.testing.assert_allclose(k[:, 0], k_ref)
     np.testing.assert_allclose(k[:, 1], u_ref)
+
+
+@pytest.mark.parametrize("unit", ("s", "d", "min", "h"))
+def test_get_steps(unit):
+    # Make a ResultsList full of near-empty Result instances
+    # Just fill out a time schedule
+    results = openmc.deplete.ResultsList()
+    # Time in units of unit
+    times = np.linspace(0, 100, num=5)
+    if unit == "d":
+        conversion_to_seconds = 60 * 60 * 24
+    elif unit == "h":
+        conversion_to_seconds = 60 * 60
+    elif unit == "min":
+        conversion_to_seconds = 60
+    else:
+        conversion_to_seconds = 1
+
+    for ix in range(times.size):
+        res = openmc.deplete.Results()
+        res.time = times[ix:ix + 1] * conversion_to_seconds
+        results.append(res)
+
+    for expected, value in enumerate(times):
+        actual = results.get_step_where(
+            value, time_units=unit, atol=0, rtol=0)
+        assert actual == expected, (value, results[actual].time[0])
+
+    with pytest.raises(ValueError):
+        # Emulate a result file with a non-zero initial point in time
+        # as in starting from a restart
+        results.get_step_where(times[0] - 1, time_units=unit, atol=0, rtol=0)
+
+    with pytest.raises(ValueError):
+        results.get_step_where(times[-1] + 1, time_units=unit, atol=0, rtol=0)
+
+    # Grab intermediate points with a small offset
+    delta = (times[1] - times[0])
+    offset = delta * 0.1
+    for expected, value in enumerate(times[1:-1], start=1):
+        # Shoot a little low and a little high
+        for mult in (1, -1):
+            target = value + mult * offset
+            # Compare using absolute and relative tolerances
+            actual = results.get_step_where(
+                target, time_units=unit, atol=offset * 2, rtol=inf)
+            assert actual == expected, (
+                target, times[actual], times[expected], offset)
+
+            actual = results.get_step_where(
+                target, time_units=unit, atol=inf, rtol=offset / value)
+            assert actual == expected, (
+                target, times[actual], times[expected], offset)
+        # Check that the lower index is returned for the exact mid-point
+        target = value + delta * 0.5
+        actual = results.get_step_where(
+            target, time_units=unit, atol=delta, rtol=delta / value)
+        assert actual == expected
+
+    # Shoot way over with no tolerance -> just give closest value
+    actual = results.get_step_where(
+        times[-1] * 100, time_units=unit, atol=inf, rtol=inf)
+    assert actual == times.size - 1

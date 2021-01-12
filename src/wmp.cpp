@@ -56,6 +56,13 @@ WindowedMultipole::WindowedMultipole(hid_t group)
       "array shape in WMP library for " + name_ + ".");
   }
   fit_order_ = curvefit_.shape()[1] - 1;
+
+  // Check the code is compiling to work with sufficiently high fit order
+  if (fit_order_ + 1 > MAX_POLY_COEFFICIENTS) {
+    fatal_error(fmt::format(
+      "Need to compile with WindowedMultipole::MAX_POLY_COEFFICIENTS = {}",
+      fit_order_ + 1));
+  }
 }
 
 std::tuple<double, double, double>
@@ -87,7 +94,7 @@ WindowedMultipole::evaluate(double E, double sqrtkT)
   if (sqrtkT > 0.0 && broaden_poly_(i_window)) {
     // Broaden the curvefit.
     double dopp = sqrt_awr_ / sqrtkT;
-    std::vector<double> broadened_polynomials(fit_order_ + 1);
+    std::array<double, MAX_POLY_COEFFICIENTS> broadened_polynomials;
     broaden_wmp_polynomials(E, dopp, fit_order_ + 1, broadened_polynomials.data());
     for (int i_poly = 0; i_poly < fit_order_ + 1; ++i_poly) {
       sig_s += curvefit_(i_window, i_poly, FIT_S) * broadened_polynomials[i_poly];

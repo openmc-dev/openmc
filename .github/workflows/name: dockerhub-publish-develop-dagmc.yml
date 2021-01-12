@@ -1,8 +1,8 @@
-name: dockerhub-publish-latest
+name: dockerhub-publish-develop-dagmc
 
 on:
   push:
-    branches: master
+    branches: develop
 
 jobs:
   main:
@@ -26,8 +26,9 @@ jobs:
         uses: docker/build-push-action@v2
         with:
           push: true
-          tags: openmc/openmc:latest
+          tags: openmc/openmc:develop-dagmc
           build-args: |
+            include_dagmc=true
             compile_cores=2
       -
         name: Image digest

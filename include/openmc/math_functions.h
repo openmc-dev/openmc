@@ -204,19 +204,6 @@ extern "C" double muir_spectrum(double e0, double m_rat, double kt,
   uint64_t* seed);
 
 //==============================================================================
-//! Doppler broadens the windowed multipole curvefit.
-//!
-//! The curvefit is a polynomial of the form a/E + b/sqrt(E) + c + d sqrt(E)...
-//!
-//! \param E       The energy to evaluate the broadening at
-//! \param dopp    sqrt(atomic weight ratio / kT) with kT given in eV
-//! \param n       The number of components to the polynomial
-//! \param factors The output leading coefficient
-//==============================================================================
-
-extern "C" void broaden_wmp_polynomials(double E, double dopp, int n, double factors[]);
-
-//==============================================================================
 //! Constructs a natural cubic spline.
 //!
 //! Given a tabulated function y_i = f(x_i), this computes the second

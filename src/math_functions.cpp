@@ -718,51 +718,6 @@ double watt_spectrum(double a, double b, uint64_t* seed) {
 }
 
 
-void broaden_wmp_polynomials(double E, double dopp, int n, double factors[])
-{
-  // Factors is already pre-allocated
-  double sqrtE = std::sqrt(E);
-  double beta = sqrtE * dopp;
-  double half_inv_dopp2 = 0.5 / (dopp * dopp);
-  double quarter_inv_dopp4 = half_inv_dopp2 * half_inv_dopp2;
-
-  double erf_beta;    // error function of beta
-  double exp_m_beta2; // exp(-beta**2)
-  if (beta > 6.0) {
-    // Save time, ERF(6) is 1 to machine precision.
-    // beta/sqrtpi*exp(-beta**2) is also approximately 1 machine epsilon.
-    erf_beta = 1.;
-    exp_m_beta2 = 0.;
-  } else {
-    erf_beta = std::erf(beta);
-    exp_m_beta2 = std::exp(-beta * beta);
-  }
-
-  // Assume that, for sure, we'll use a second order (1/E, 1/V, const)
-  // fit, and no less.
-
-  factors[0] = erf_beta / E;
-  factors[1] = 1. / sqrtE;
-  factors[2] = factors[0] * (half_inv_dopp2 + E) + exp_m_beta2 /
-       (beta * SQRT_PI);
-
-  // Perform recursive broadening of high order components
-  for (int i = 0; i < n - 3; i++) {
-    double ip1_dbl = i + 1;
-    if (i != 0) {
-      factors[i + 3] = -factors[i - 1] * (ip1_dbl - 1.) * ip1_dbl *
-           quarter_inv_dopp4 + factors[i + 1] *
-           (E + (1. + 2. * ip1_dbl) * half_inv_dopp2);
-    } else {
-      // Although it's mathematically identical, factors[0] will contain
-      // nothing, and we don't want to have to worry about memory.
-      factors[i + 3] = factors[i + 1] *
-           (E + (1. + 2. * ip1_dbl) * half_inv_dopp2);
-    }
-  }
-}
-
-
 void spline(int n, const double x[], const double y[], double z[])
 {
   std::vector<double> c_new(n-1);

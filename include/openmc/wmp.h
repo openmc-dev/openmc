@@ -53,7 +53,7 @@ public:
   //! \param E Incident neutron energy in [eV]
   //! \param sqrtkT Square root of temperature times Boltzmann constant
   //! \return Tuple of elastic scattering, absorption, and fission cross sections in [b]
-  std::tuple<double, double, double> evaluate(double E, double sqrtkT);
+  std::tuple<double, double, double> evaluate(double E, double sqrtkT) const;
 
   //! \brief Evaluates the windowed multipole equations for the derivative of
   //! cross sections in the resolved resonance regions with respect to
@@ -63,7 +63,7 @@ public:
   //! \param sqrtkT Square root of temperature times Boltzmann constant
   //! \return Tuple of derivatives of elastic scattering, absorption, and
   //!         fission cross sections in [b/K]
-  std::tuple<double, double, double> evaluate_deriv(double E, double sqrtkT);
+  std::tuple<double, double, double> evaluate_deriv(double E, double sqrtkT) const;
 
   // Data members
   std::string name_; //!< Name of nuclide
@@ -96,6 +96,20 @@ void check_wmp_version(hid_t file);
 //!
 //! \param[in] i_nuclide  Index in global nuclides array
 void read_multipole_data(int i_nuclide);
+
+
+//==============================================================================
+//! Doppler broadens the windowed multipole curvefit.
+//!
+//! The curvefit is a polynomial of the form a/E + b/sqrt(E) + c + d sqrt(E)...
+//!
+//! \param E       The energy to evaluate the broadening at
+//! \param dopp    sqrt(atomic weight ratio / kT) with kT given in eV
+//! \param n       The number of components to the polynomial
+//! \param factors The output leading coefficient
+//==============================================================================
+
+extern "C" void broaden_wmp_polynomials(double E, double dopp, int n, double factors[]);
 
 } // namespace openmc
 

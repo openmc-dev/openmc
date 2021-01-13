@@ -514,7 +514,7 @@ CSGCell::distance(Position r, Direction u, int32_t on_surface, Particle* p) cons
 
     // Check if this distance is the new minimum.
     if (d < min_dist) {
-      if (std::abs(d - min_dist) / min_dist >= FP_PRECISION) {
+      if (min_dist - d >= FP_PRECISION*min_dist) {
         min_dist = d;
         i_surf = -token;
       }

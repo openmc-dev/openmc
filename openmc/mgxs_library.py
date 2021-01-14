@@ -776,7 +776,7 @@ class XSdata:
         """
 
         # Get the accepted shapes for this xs
-        shapes = [self.xs_shapes["[DG]"], self.xs_shapes["[DG][G]"]]
+        shapes = [self.xs_shapes["[DG]"]]
 
         # Convert to a numpy array so we can easily get the shape for checking
         decay_rate = np.asarray(decay_rate)

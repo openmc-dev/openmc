@@ -101,12 +101,15 @@ bool write_uwuw_materials_xml() {
   return found_uwuw_mats;
 }
 
-void legacy_assign_material(const std::string& mat_string, DAGCell* c)
+void legacy_assign_material(std::string mat_string, DAGCell* c)
 {
   bool mat_found_by_name = false;
   // attempt to find a material with a matching name
+  to_lower(mat_string);
   for (const auto& m : model::materials) {
-    if (mat_string == m->name_) {
+    std::string m_name = m->name();
+    to_lower(m_name);
+    if (mat_string == m_name) {
       // assign the material with that name
       if (!mat_found_by_name) {
         mat_found_by_name = true;

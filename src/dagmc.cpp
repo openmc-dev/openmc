@@ -66,7 +66,7 @@ bool get_uwuw_materials_xml(std::string& s) {
     ss << "<materials>\n";
     const auto& mat_lib = uwuw.material_library;
     // write materials
-    for (auto mat : mat_lib) { ss << mat.second.openmc("atom"); }
+    for (auto mat : mat_lib) { ss << mat.second->openmc("atom"); }
     // write footer
     ss << "</materials>";
     s = ss.str();
@@ -239,7 +239,7 @@ void load_dagmc_geometry()
         std::string uwuw_mat = DMD.volume_material_property_data_eh[vol_handle];
         if (uwuw.material_library.count(uwuw_mat) != 0) {
           // Note: material numbers are set by UWUW
-          int mat_number = uwuw.material_library[uwuw_mat].metadata["mat_number"].asInt();
+          int mat_number = uwuw.material_library.get_material(uwuw_mat).metadata["mat_number"].asInt();
           c->material_.push_back(mat_number);
         } else {
           fatal_error(fmt::format("Material with value {} not found in the "

@@ -114,7 +114,6 @@ int openmc_simulation_init()
     write_message("Resuming simulation...", 6);
   } else {
     // Only initialize primary source bank for eigenvalue simulations
-    // or when a surface source file is provided.
     if (settings::run_mode == RunMode::EIGENVALUE) {
       initialize_source();
     }
@@ -271,7 +270,6 @@ const RegularMesh* ufs_mesh {nullptr};
 std::vector<double> k_generation;
 std::vector<int64_t> work_index;
 
-std::vector<int64_t> surf_source_index;
 
 } // namespace simulation
 
@@ -387,7 +385,6 @@ void finalize_batch()
 
   // Write out surface source if requested.
   if (settings::surf_source_write && simulation::current_batch == settings::n_batches) {
-
     auto filename = settings::path_output + "surface_source.h5";
     write_source_point(filename.c_str(), true);
   }
@@ -456,7 +453,7 @@ void initialize_history(Particle& p, int64_t index_source)
 {
   // set defaults
   if (settings::run_mode == RunMode::EIGENVALUE) {
-    // set defaults for eigenvalue simulations and surface source reading from primary bank
+    // set defaults for eigenvalue simulations from primary bank
     p.from_source(&simulation::source_bank[index_source - 1]);
   } else if (settings::run_mode == RunMode::FIXED_SOURCE) {
     // initialize random number seed

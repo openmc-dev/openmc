@@ -10,6 +10,7 @@ from tests.testing_harness import PyAPITestHarness
 
 @pytest.fixture
 def model(request):
+    openmc.reset_auto_ids()
     marker = request.node.get_closest_marker("surf_source_op")
     surf_source_op = marker.args[0]
 

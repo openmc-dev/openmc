@@ -144,8 +144,8 @@ element settings {
   }? &
 
   element surf_source_write {
-    (element surf_ids { list { xsd:positiveInteger+ } } |
-      attribute surf_ids { list { xsd:positiveInteger+ } }) &
+    (element surface_ids { list { xsd:positiveInteger+ } } |
+      attribute surface_ids { list { xsd:positiveInteger+ } }) &
     (element max_surf_banks { xsd:positiveInteger } |
       attribute max_surf_banks { xsd:positiveInteger })
   }? &

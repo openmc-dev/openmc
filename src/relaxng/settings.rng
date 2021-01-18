@@ -654,14 +654,14 @@
       <element name="surf_source_write">
         <interleave>
           <choice>
-            <element name="surf_ids">
+            <element name="surface_ids">
               <list>
                 <oneOrMore>
                   <data type="positiveInteger"/>
                 </oneOrMore>
               </list>
             </element>
-            <attribute name="surf_ids">
+            <attribute name="surface_ids">
               <list>
                 <oneOrMore>
                   <data type="positiveInteger"/>

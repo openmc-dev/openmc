@@ -150,7 +150,7 @@ class Settings:
     surf_source_write : dict
         Options for writing surface source points. Acceptable keys are:
 
-        :surf_ids: List of surface ids at which crossing particles are to be
+        :surface_ids: List of surface ids at which crossing particles are to be
                    banked (int)
         :max_surf_banks: Maximum number of particles to be banked on surfaces
                          per process (int)
@@ -604,8 +604,8 @@ class Settings:
         cv.check_type('surface source writing options', surf_source_write, Mapping)
         for key, value in surf_source_write.items():
             cv.check_value('surface source writing key', key,
-                           ('surf_ids', 'max_surf_banks'))
-            if key == 'surf_ids':
+                           ('surface_ids', 'max_surf_banks'))
+            if key == 'surface_ids':
                 cv.check_type('surface ids for source banking', value,
                               Iterable, Integral)
                 for surf_id in value:
@@ -950,10 +950,10 @@ class Settings:
     def _create_surf_source_write_subelement(self, root):
         if self._surf_source_write:
             element = ET.SubElement(root, "surf_source_write")
-            if 'surf_ids' in self._surf_source_write:
-                subelement = ET.SubElement(element, "surf_ids")
+            if 'surface_ids' in self._surf_source_write:
+                subelement = ET.SubElement(element, "surface_ids")
                 subelement.text = ' '.join(
-                    str(x) for x in self._surf_source_write['surf_ids'])
+                    str(x) for x in self._surf_source_write['surface_ids'])
             if 'max_surf_banks' in self._surf_source_write:
                 subelement = ET.SubElement(element, "max_surf_banks")
                 subelement.text = str(self._surf_source_write['max_surf_banks'])
@@ -1230,10 +1230,10 @@ class Settings:
     def _surf_source_write_from_xml_element(self, root):
         elem = root.find('surf_source_write')
         if elem is not None:
-            for key in ('surf_ids', 'max_surf_banks'):
+            for key in ('surface_ids', 'max_surf_banks'):
                 value = get_text(elem, key)
                 if value is not None:
-                    if key == 'surf_ids':
+                    if key == 'surface_ids':
                         value = [int(x) for x in value.split()]
                     elif key in ('max_surf_banks'):
                         value = int(value)

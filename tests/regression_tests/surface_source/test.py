@@ -10,8 +10,8 @@ from tests.testing_harness import PyAPITestHarness
 
 @pytest.fixture
 def model(request):
-    marker = request.node.get_closest_marker("surf_src_op")
-    surf_src_op = marker.args[0]
+    marker = request.node.get_closest_marker("surf_source_op")
+    surf_source_op = marker.args[0]
 
     openmc_model = openmc.model.Model()
 
@@ -40,14 +40,14 @@ def model(request):
     openmc_model.settings.batches = 10
     openmc_model.settings.seed = 1
 
-    if surf_src_op == 'write':
+    if surf_source_op == 'write':
         point = openmc.stats.Point((0, 0, 0))
         pt_src = openmc.Source(space=point)
         openmc_model.settings.source = pt_src
 
         openmc_model.settings.surf_source_write = {'surface_ids': [1],
                                                    'max_particles': 1000}
-    elif surf_src_op == 'read':
+    elif surf_source_op == 'read':
         openmc_model.settings.surf_source_read = {'path': 'surface_source_true.h5'}
 
     # Tallies
@@ -108,7 +108,7 @@ class SurfaceSourceTestHarness(PyAPITestHarness):
             os.remove(fs)
 
 
-@pytest.mark.surf_src_op('write')
+@pytest.mark.surf_source_op('write')
 def test_surface_source_write(model):
     harness = SurfaceSourceTestHarness('statepoint.10.h5',
                                        model,
@@ -116,7 +116,7 @@ def test_surface_source_write(model):
     harness.main()
 
 
-@pytest.mark.surf_src_op('read')
+@pytest.mark.surf_source_op('read')
 def test_surface_source_read(model):
     harness = SurfaceSourceTestHarness('statepoint.10.h5',
                                        model,

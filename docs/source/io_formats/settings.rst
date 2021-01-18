@@ -751,7 +751,7 @@ This element has the following attributes/sub-elements:
 
     *Default*: None
 
-  :max_surf_banks:
+  :max_particles:
     An integer indicating the maximum number of particles to be banked on
     specified surfaces per processor. The size of source bank in
     ``surface_source.h5`` is limited to this value times the number of

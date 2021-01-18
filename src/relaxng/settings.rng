@@ -670,10 +670,10 @@
             </attribute>
           </choice>
           <choice>
-            <element name="max_surf_banks">
+            <element name="max_particles">
               <data type="positiveInteger"/>
             </element>
-            <attribute name="max_surf_banks">
+            <attribute name="max_particles">
               <data type="positiveInteger"/>
             </attribute>
           </choice>

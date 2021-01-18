@@ -23,7 +23,7 @@
     </space>
   </source>
   <surf_source_write>
-    <surf_ids>1</surf_ids>
+    <surface_ids>1</surface_ids>
     <max_surf_banks>1000</max_surf_banks>
   </surf_source_write>
   <seed>1</seed>

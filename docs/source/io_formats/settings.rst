@@ -745,7 +745,7 @@ certain surfaces and write out the source bank in a separate file called
 ``surface_source.h5``.
 This element has the following attributes/sub-elements:
 
-  :surf_ids:
+  :surface_ids:
     A list of integers separated by spaces indicating the unique IDs of surfaces
     for which crossing particles will be banked.
 

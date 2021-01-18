@@ -647,8 +647,8 @@ void read_settings_xml()
     xml_node node_ssw = root.child("surf_source_write");
 
     // Determine surface ids at which crossing particles are to be banked
-    if (check_for_node(node_ssw, "surf_ids")) {
-      auto temp = get_node_array<int>(node_ssw, "surf_ids");
+    if (check_for_node(node_ssw, "surface_ids")) {
+      auto temp = get_node_array<int>(node_ssw, "surface_ids");
       for (const auto& b : temp) {
         source_write_surf_id.insert(b);
       }

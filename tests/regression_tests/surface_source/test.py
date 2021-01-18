@@ -23,16 +23,15 @@ def model(request):
     # - Innermost sphere to bank surface sources
     # - Second shell to tally cell flux
     # - Outermost sphere as vacuum boundary
-    sph_1 = openmc.Sphere(r=1.0, surface_id=1)  # Surface to bank/write sources.
-    sph_2 = openmc.Sphere(r=2.0, surface_id=2)
-    sph_3 = openmc.Sphere(r=2.5, surface_id=3)
-    sph_4 = openmc.Sphere(r=4.0, surface_id=4, boundary_type='vacuum')
-    cell_1 = openmc.Cell(1, region=-sph_1)
-    cell_2 = openmc.Cell(2, region=+sph_1&-sph_2)
-    cell_3 = openmc.Cell(3, region=+sph_2&-sph_3)  # Cell to tally flux.
-    cell_4 = openmc.Cell(4, region=+sph_3&-sph_4)
-    root = openmc.Universe(universe_id=1,
-                           cells=[cell_1, cell_2, cell_3, cell_4])
+    sph_1 = openmc.Sphere(r=1.0)  # Surface to bank/write sources.
+    sph_2 = openmc.Sphere(r=2.0)
+    sph_3 = openmc.Sphere(r=2.5)
+    sph_4 = openmc.Sphere(r=4.0, boundary_type='vacuum')
+    cell_1 = openmc.Cell(region=-sph_1)
+    cell_2 = openmc.Cell(region=+sph_1&-sph_2)
+    cell_3 = openmc.Cell(region=+sph_2&-sph_3)  # Cell to tally flux.
+    cell_4 = openmc.Cell(region=+sph_3&-sph_4)
+    root = openmc.Universe(cells=[cell_1, cell_2, cell_3, cell_4])
     openmc_model.geometry = openmc.Geometry(root)
 
     # Settings

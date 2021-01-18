@@ -146,8 +146,8 @@ element settings {
   element surf_source_write {
     (element surface_ids { list { xsd:positiveInteger+ } } |
       attribute surface_ids { list { xsd:positiveInteger+ } }) &
-    (element max_surf_banks { xsd:positiveInteger } |
-      attribute max_surf_banks { xsd:positiveInteger })
+    (element max_particles { xsd:positiveInteger } |
+      attribute max_particles { xsd:positiveInteger })
   }? &
 
   element survival_biasing { xsd:boolean }? &

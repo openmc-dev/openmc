@@ -289,7 +289,7 @@ void allocate_banks()
 
   if (settings::surf_source_write) {
     // Allocate surface source bank
-    simulation::surf_source_bank.reserve(settings::max_surf_banks);
+    simulation::surf_source_bank.reserve(settings::max_particles);
   }
 
 }

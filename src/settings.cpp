@@ -101,7 +101,7 @@ RunMode run_mode {RunMode::UNSET};
 std::unordered_set<int> sourcepoint_batch;
 std::unordered_set<int> statepoint_batch;
 std::unordered_set<int> source_write_surf_id;
-int64_t max_surf_banks;
+int64_t max_particles;
 TemperatureMethod temperature_method {TemperatureMethod::NEAREST};
 double temperature_tolerance {10.0};
 double temperature_default {293.6};
@@ -655,8 +655,8 @@ void read_settings_xml()
     }
 
     // Get maximum number of particles to be banked per surface
-    if (check_for_node(node_ssw, "max_surf_banks")) {
-      max_surf_banks = std::stoi(get_node_value(node_ssw, "max_surf_banks"));
+    if (check_for_node(node_ssw, "max_particles")) {
+      max_particles = std::stoi(get_node_value(node_ssw, "max_particles"));
     }
   }
 

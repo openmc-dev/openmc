@@ -49,7 +49,7 @@ def model(request):
         openmc_model.settings.surf_source_write = {'surface_ids': [1],
                                                    'max_particles': 1000}
     elif surf_src_op == 'read':
-        openmc_model.settings.surf_src_read = {'path': 'surface_source_true.h5'}
+        openmc_model.settings.surf_source_read = {'path': 'surface_source_true.h5'}
 
     # Tallies
     tal = openmc.Tally()

@@ -4,10 +4,11 @@
 #include <iostream>
 #include "moab/Core.hpp"
 
-namespace openmc::model {
-  extern std::map<int32_t, std::shared_ptr<moab::Interface> > moabPtrs;
+namespace openmc {
+  namespace model {
+    extern std::map<int32_t, std::shared_ptr<moab::Interface> > moabPtrs;
+  }
 }
-
 
 int main(int argc, char * argv[]){
 

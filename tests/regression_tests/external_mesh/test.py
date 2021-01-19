@@ -37,6 +37,9 @@ def cpp_driver(request):
             add_executable(main main.cpp)
             find_package(OpenMC REQUIRED HINTS {})
             target_link_libraries(main OpenMC::libopenmc)
+            set_target_properties(main PROPERTIES CXX_STANDARD 14 CXX_STANDARD_REQUIRED YES CXX_EXTENSIONS NO)
+            set(CMAKE_CXX_FLAGS "-pedantic-errors")
+
             """.format(openmc_dir)))
 
     # Create temporary build directory and change to there

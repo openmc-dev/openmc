@@ -9,6 +9,9 @@
 #ifdef OPENMC_MPI
 #include "mpi.h"
 #endif
+#ifdef _OPENMP
+#include <omp.h>
+#endif
 #include <fmt/core.h> // for fmt
 #include "xtensor/xbuilder.hpp"
 #include "xtensor/xeval.hpp"

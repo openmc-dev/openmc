@@ -93,8 +93,6 @@ WindowedMultipole::evaluate(double E, double sqrtkT) const
   int i_window = std::min(window_info_.size() - 1,
     static_cast<size_t>((sqrtE - std::sqrt(E_min_)) * inv_spacing_));
   const auto& window {window_info_[i_window]};
-  int startw = window.index_start;
-  int endw = window.index_end;
 
   // Initialize the ouptut cross sections
   double sig_s = 0.0;
@@ -134,7 +132,7 @@ WindowedMultipole::evaluate(double E, double sqrtkT) const
 
   if (sqrtkT == 0.0) {
     // If at 0K, use asymptotic form.
-    for (int i_pole = startw; i_pole <= endw; ++i_pole) {
+    for (int i_pole = window.index_start; i_pole <= window.index_end; ++i_pole) {
       std::complex<double> psi_chi = -1.0i / (data_(i_pole, MP_EA) - sqrtE);
       std::complex<double> c_temp = psi_chi * invE;
       sig_s += (data_(i_pole, MP_RS) * c_temp).real();
@@ -146,7 +144,7 @@ WindowedMultipole::evaluate(double E, double sqrtkT) const
   } else {
     // At temperature, use Faddeeva function-based form.
     double dopp = sqrt_awr_ / sqrtkT;
-    for (int i_pole = startw; i_pole <= endw; ++i_pole) {
+    for (int i_pole = window.index_start; i_pole <= window.index_end; ++i_pole) {
       std::complex<double> z = (sqrtE - data_(i_pole, MP_EA)) * dopp;
       std::complex<double> w_val = faddeeva(z) * dopp * invE * SQRT_PI;
       sig_s += (data_(i_pole, MP_RS) * w_val).real();
@@ -179,8 +177,6 @@ WindowedMultipole::evaluate_deriv(double E, double sqrtkT) const
   // Locate us
   int i_window = (sqrtE - std::sqrt(E_min_)) * inv_spacing_;
   const auto& window {window_info_[i_window]};
-  int startw = window.index_start;
-  int endw = window.index_end;
 
   // Initialize the ouptut cross sections.
   double sig_s = 0.0;
@@ -196,7 +192,7 @@ WindowedMultipole::evaluate_deriv(double E, double sqrtkT) const
   // Add the contribution from the poles in this window.
 
   double dopp = sqrt_awr_ / sqrtkT;
-  for (int i_pole = startw; i_pole <= endw; ++i_pole) {
+  for (int i_pole = window.index_start; i_pole <= window.index_end; ++i_pole) {
     std::complex<double> z = (sqrtE - data_(i_pole, MP_EA)) * dopp;
     std::complex<double> w_val = -invE * SQRT_PI * 0.5 * w_derivative(z, 2);
     sig_s += (data_(i_pole, MP_RS) * w_val).real();

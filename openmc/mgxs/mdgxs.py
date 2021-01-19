@@ -2044,7 +2044,6 @@ class DecayRate(MDGXS):
                          num_delayed_groups)
         else:
             new_shape = (num_subdomains, num_delayed_groups)
-        new_shape += xs.shape[1:]
         xs = np.reshape(xs, new_shape)
 
         if squeeze:

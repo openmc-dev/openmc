@@ -263,6 +263,11 @@ void read_multipole_data(int i_nuclide)
 
 void broaden_wmp_polynomials(double E, double dopp, int n, double factors[])
 {
+  // Broadening of polynomials follows procedure outlined in C. Josey, P. Ducru,
+  // B. Forget, and K. Smith, "Windowed multipole for cross section Doppler
+  // broadening," J. Comput. Phys., 307, 715-727 (2016).
+  // https://doi.org/10.1016/j.jcp.2015.08.013
+
   // Factors is already pre-allocated
   double sqrtE = std::sqrt(E);
   double beta = sqrtE * dopp;
@@ -283,25 +288,18 @@ void broaden_wmp_polynomials(double E, double dopp, int n, double factors[])
 
   // Assume that, for sure, we'll use a second order (1/E, 1/V, const)
   // fit, and no less.
-
   factors[0] = erf_beta / E;
   factors[1] = 1. / sqrtE;
   factors[2] = factors[0] * (half_inv_dopp2 + E) + exp_m_beta2 /
        (beta * SQRT_PI);
+  if (n > 3) factors[3] = factors[1] * (E + 3.0 * half_inv_dopp2);
 
-  // Perform recursive broadening of high order components
-  for (int i = 0; i < n - 3; i++) {
+  // Perform recursive broadening of high order components (Eq. 16)
+  for (int i = 1; i < n - 3; i++) {
     double ip1_dbl = i + 1;
-    if (i != 0) {
-      factors[i + 3] = -factors[i - 1] * (ip1_dbl - 1.) * ip1_dbl *
-           quarter_inv_dopp4 + factors[i + 1] *
-           (E + (1. + 2. * ip1_dbl) * half_inv_dopp2);
-    } else {
-      // Although it's mathematically identical, factors[0] will contain
-      // nothing, and we don't want to have to worry about memory.
-      factors[i + 3] = factors[i + 1] *
-           (E + (1. + 2. * ip1_dbl) * half_inv_dopp2);
-    }
+    factors[i + 3] = -factors[i - 1] * (ip1_dbl - 1.) * ip1_dbl *
+          quarter_inv_dopp4 + factors[i + 1] *
+          (E + (1. + 2. * ip1_dbl) * half_inv_dopp2);
   }
 }
 

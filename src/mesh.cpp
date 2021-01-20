@@ -2266,18 +2266,18 @@ LibMesh::set_score_data(const std::string& var_name,
   std::string std_dev_name = var_name + "_std_dev";
   unsigned int std_dev_num = variable_map_.at(std_dev_name);
 
-  for (int bin = 0; bin < this->n_bins(); bin++) {
-    auto e = m_->elem_ptr(bin);
+  for (auto it = m_->local_elements_begin(); it != m_->local_elements_end(); it++) {
+    auto bin = get_bin_from_element(*it);
 
     // set value
     std::vector<libMesh::dof_id_type> value_dof_indices;
-    dof_map.dof_indices(e, value_dof_indices, value_num);
+    dof_map.dof_indices(*it, value_dof_indices, value_num);
     Ensures(value_dof_indices.size() == 1);
     eqn_sys.solution->set(value_dof_indices[0], values.at(bin));
 
     // set std dev
     std::vector<libMesh::dof_id_type> std_dev_dof_indices;
-    dof_map.dof_indices(e, std_dev_dof_indices, std_dev_num);
+    dof_map.dof_indices(*it, std_dev_dof_indices, std_dev_num);
     Ensures(std_dev_dof_indices.size() == 1);
     eqn_sys.solution->set(std_dev_dof_indices[0], std_dev.at(bin));
   }

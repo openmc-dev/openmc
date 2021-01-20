@@ -88,6 +88,7 @@ public:
   int id_; //!< Unique ID
   std::string name_; //!< User-defined name
   std::shared_ptr<BoundaryCondition> bc_ {nullptr}; //!< Boundary condition
+  bool surf_source_ {false};     //!< Activate source banking for the surface?
 
   explicit Surface(pugi::xml_node surf_node);
   Surface();

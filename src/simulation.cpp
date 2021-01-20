@@ -79,10 +79,8 @@ int openmc_simulation_init()
   // Determine how much work each process should do
   calculate_work();
 
-  // Allocate source and fission banks for eigenvalue simulations
-  if (settings::run_mode == RunMode::EIGENVALUE) {
-    allocate_banks();
-  }
+  // Allocate source, fission and surface source banks.
+  allocate_banks();
 
   // If doing an event-based simulation, intialize the particle buffer
   // and event queues
@@ -281,10 +279,19 @@ std::vector<int64_t> work_index;
 
 void allocate_banks()
 {
-  // Allocate source bank
-  simulation::source_bank.resize(simulation::work_per_rank);
-  // Allocate fission bank
-  init_fission_bank(3*simulation::work_per_rank);
+  if (settings::run_mode == RunMode::EIGENVALUE) {
+    // Allocate source bank
+    simulation::source_bank.resize(simulation::work_per_rank);
+
+    // Allocate fission bank
+    init_fission_bank(3*simulation::work_per_rank);
+  }
+
+  if (settings::surf_source_write) {
+    // Allocate surface source bank
+    simulation::surf_source_bank.reserve(settings::max_particles);
+  }
+
 }
 
 void initialize_batch()
@@ -375,6 +382,12 @@ void finalize_batch()
       write_source_point(filename.c_str());
     }
   }
+
+  // Write out surface source if requested.
+  if (settings::surf_source_write && simulation::current_batch == settings::n_batches) {
+    auto filename = settings::path_output + "surface_source.h5";
+    write_source_point(filename.c_str(), true);
+  }
 }
 
 void initialize_generation()
@@ -439,7 +452,10 @@ void finalize_generation()
 void initialize_history(Particle& p, int64_t index_source)
 {
   // set defaults
-  if (settings::run_mode == RunMode::FIXED_SOURCE) {
+  if (settings::run_mode == RunMode::EIGENVALUE) {
+    // set defaults for eigenvalue simulations from primary bank
+    p.from_source(&simulation::source_bank[index_source - 1]);
+  } else if (settings::run_mode == RunMode::FIXED_SOURCE) {
     // initialize random number seed
     int64_t id = (simulation::total_gen + overall_generation() - 1)*settings::n_particles +
       simulation::work_index[mpi::rank] + index_source;
@@ -447,9 +463,6 @@ void initialize_history(Particle& p, int64_t index_source)
     // sample from external source distribution or custom library then set
     auto site = sample_external_source(&seed);
     p.from_source(&site);
-  } else if (settings::run_mode == RunMode::EIGENVALUE) {
-    // set defaults for eigenvalue simulations from primary bank
-    p.from_source(&simulation::source_bank[index_source - 1]);
   }
   p.current_work_ = index_source;
 

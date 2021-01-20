@@ -413,6 +413,20 @@ Particle::cross_surface()
     write_message(1, "    Crossing surface {}", surf->id_);
   }
 
+  if (surf->surf_source_ && simulation::current_batch == settings::n_batches) {
+    Particle::Bank site;
+    site.r = this->r();
+    site.u = this->u();
+    site.E = this->E_;
+    site.wgt = this->wgt_;
+    site.delayed_group = this->delayed_group_;
+    site.surf_id = surf->id_;
+    site.particle = this->type_;
+    site.parent_id = this->id_;
+    site.progeny_id = this->n_progeny_;
+    int64_t idx = simulation::surf_source_bank.thread_safe_append(site);
+  }
+
   // Handle any applicable boundary conditions.
   if (surf->bc_ && settings::run_mode != RunMode::PLOTTING) {
     surf->bc_->handle_particle(*this, *surf);

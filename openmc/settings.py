@@ -143,6 +143,17 @@ class Settings:
         Options for writing state points. Acceptable keys are:
 
         :batches: list of batches at which to write source
+    surf_source_read : dict
+        Options for reading surface source points. Acceptable keys are:
+
+        :path: Path to surface source file (str).
+    surf_source_write : dict
+        Options for writing surface source points. Acceptable keys are:
+
+        :surface_ids: List of surface ids at which crossing particles are to be
+                   banked (int)
+        :max_particles: Maximum number of particles to be banked on surfaces
+                         per process (int)
     survival_biasing : bool
         Indicate whether survival biasing is to be used
     tabular_legendre : dict
@@ -228,6 +239,9 @@ class Settings:
         # Output options
         self._statepoint = {}
         self._sourcepoint = {}
+
+        self._surf_source_read = {}
+        self._surf_source_write = {}
 
         self._no_reduce = None
 
@@ -355,6 +369,14 @@ class Settings:
     @property
     def statepoint(self):
         return self._statepoint
+
+    @property
+    def surf_source_read(self):
+        return self._surf_source_read
+
+    @property
+    def surf_source_write(self):
+        return self._surf_source_write
 
     @property
     def no_reduce(self):
@@ -566,6 +588,35 @@ class Settings:
                 raise ValueError("Unknown key '{}' encountered when setting "
                                  "statepoint options.".format(key))
         self._statepoint = statepoint
+
+    @surf_source_read.setter
+    def surf_source_read(self, surf_source_read):
+        cv.check_type('surface source reading options', surf_source_read, Mapping)
+        for key, value in surf_source_read.items():
+            cv.check_value('surface source reading key', key,
+                           ('path'))
+            if key == 'path':
+                cv.check_type('path to surface source file', value, str)
+        self._surf_source_read = surf_source_read
+
+    @surf_source_write.setter
+    def surf_source_write(self, surf_source_write):
+        cv.check_type('surface source writing options', surf_source_write, Mapping)
+        for key, value in surf_source_write.items():
+            cv.check_value('surface source writing key', key,
+                           ('surface_ids', 'max_particles'))
+            if key == 'surface_ids':
+                cv.check_type('surface ids for source banking', value,
+                              Iterable, Integral)
+                for surf_id in value:
+                    cv.check_greater_than('surface id for source banking',
+                                          surf_id, 0)
+            elif key == 'max_particles':
+                cv.check_type('maximum particle banks on surfaces per process',
+                              value, Integral)
+                cv.check_greater_than('maximum particle banks on surfaces per process',
+                                      value, 0)
+        self._surf_source_write = surf_source_write
 
     @confidence_intervals.setter
     def confidence_intervals(self, confidence_intervals):
@@ -889,6 +940,24 @@ class Settings:
                 subelement = ET.SubElement(element, "overwrite_latest")
                 subelement.text = str(self._sourcepoint['overwrite']).lower()
 
+    def _create_surf_source_read_subelement(self, root):
+        if self._surf_source_read:
+            element = ET.SubElement(root, "surf_source_read")
+            if 'path' in self._surf_source_read:
+                subelement = ET.SubElement(element, "path")
+                subelement.text = self._surf_source_read['path']
+
+    def _create_surf_source_write_subelement(self, root):
+        if self._surf_source_write:
+            element = ET.SubElement(root, "surf_source_write")
+            if 'surface_ids' in self._surf_source_write:
+                subelement = ET.SubElement(element, "surface_ids")
+                subelement.text = ' '.join(
+                    str(x) for x in self._surf_source_write['surface_ids'])
+            if 'max_particles' in self._surf_source_write:
+                subelement = ET.SubElement(element, "max_particles")
+                subelement.text = str(self._surf_source_write['max_particles'])
+
     def _create_confidence_intervals(self, root):
         if self._confidence_intervals is not None:
             element = ET.SubElement(root, "confidence_intervals")
@@ -1151,6 +1220,25 @@ class Settings:
                         value = [int(x) for x in value.split()]
                     self.sourcepoint[key] = value
 
+    def _surf_source_read_from_xml_element(self, root):
+        elem = root.find('surf_source_read')
+        if elem is not None:
+            value = get_text(elem, 'path')
+            if value is not None:
+                self.surf_source_read['path'] = value
+
+    def _surf_source_write_from_xml_element(self, root):
+        elem = root.find('surf_source_write')
+        if elem is not None:
+            for key in ('surface_ids', 'max_particles'):
+                value = get_text(elem, key)
+                if value is not None:
+                    if key == 'surface_ids':
+                        value = [int(x) for x in value.split()]
+                    elif key in ('max_particles'):
+                        value = int(value)
+                    self.surf_source_write[key] = value
+
     def _confidence_intervals_from_xml_element(self, root):
         text = get_text(root, 'confidence_intervals')
         if text is not None:
@@ -1349,6 +1437,8 @@ class Settings:
         self._create_output_subelement(root_element)
         self._create_statepoint_subelement(root_element)
         self._create_sourcepoint_subelement(root_element)
+        self._create_surf_source_read_subelement(root_element)
+        self._create_surf_source_write_subelement(root_element)
         self._create_confidence_intervals(root_element)
         self._create_electron_treatment_subelement(root_element)
         self._create_energy_mode_subelement(root_element)
@@ -1422,6 +1512,8 @@ class Settings:
         settings._output_from_xml_element(root)
         settings._statepoint_from_xml_element(root)
         settings._sourcepoint_from_xml_element(root)
+        settings._surf_source_read_from_xml_element(root)
+        settings._surf_source_write_from_xml_element(root)
         settings._confidence_intervals_from_xml_element(root)
         settings._electron_treatment_from_xml_element(root)
         settings._energy_mode_from_xml_element(root)

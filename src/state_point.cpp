@@ -828,13 +828,14 @@ void write_unstructured_mesh_results() {
           int nuc_score_idx = score_idx + nuc_idx*tally->scores_.size();
 
           // construct result vectors
-          std::vector<double> mean_vec, std_dev_vec;
+          std::vector<double> mean_vec(umesh->n_bins()),
+                              std_dev_vec(umesh->n_bins());
           for (int j = 0; j < tally->results_.shape()[0]; j++) {
             // get the volume for this bin
             double volume = umesh->volume(j);
             // compute the mean
             double mean = tally->results_(j, nuc_score_idx, TallyResult::SUM) / n_realizations;
-            mean_vec.push_back(mean / volume);
+            mean_vec.at(j) = mean / volume;
 
             // compute the standard deviation
             double sum_sq = tally->results_(j , nuc_score_idx, TallyResult::SUM_SQ);
@@ -843,8 +844,12 @@ void write_unstructured_mesh_results() {
               std_dev = sum_sq/n_realizations - mean*mean;
               std_dev = std::sqrt(std_dev / (n_realizations - 1));
             }
-            std_dev_vec.push_back(std_dev / volume);
+            std_dev_vec[j] = std_dev / volume;
           }
+#ifdef OPENMC_MPI
+          MPI_Bcast(mean_vec.data(), mean_vec.size(), MPI_DOUBLE, 0, mpi::intracomm);
+          MPI_Bcast(std_dev_vec.data(), std_dev_vec.size(), MPI_DOUBLE, 0, mpi::intracomm);
+#endif
           // set the data for this score
           umesh->set_score_data(score_str, mean_vec, std_dev_vec);
         }

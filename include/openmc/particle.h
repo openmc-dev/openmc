@@ -172,6 +172,7 @@ public:
     double E;
     double wgt;
     int delayed_group;
+    int surf_id;
     Type particle;
     int64_t parent_id;
     int64_t progeny_id;

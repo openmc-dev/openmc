@@ -17,6 +17,8 @@ namespace simulation {
 
 std::vector<Particle::Bank> source_bank;
 
+SharedArray<Particle::Bank> surf_source_bank;
+
 // The fission bank is allocated as a SharedArray, rather than a vector, as it will
 // be shared by all threads in the simulation. It will be allocated to a fixed
 // maximum capacity in the init_fission_bank() function. Then, Elements will be
@@ -37,6 +39,7 @@ std::vector<int64_t> progeny_per_particle;
 void free_memory_bank()
 {
   simulation::source_bank.clear();
+  simulation::surf_source_bank.clear();
   simulation::fission_bank.clear();
   simulation::progeny_per_particle.clear();
 }

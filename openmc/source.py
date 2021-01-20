@@ -257,17 +257,20 @@ class SourceParticle:
         Weight of the particle
     delayed_group : int
         Delayed group particle was created in (neutrons only)
+    surf_id : int
+        Surface ID where particle is at, if any.
     particle : ParticleType
         Type of the particle
 
     """
     def __init__(self, r=(0., 0., 0.), u=(0., 0., 1.), E=1.0e6, wgt=1.0,
-                 delayed_group=0, particle=ParticleType.NEUTRON):
+                 delayed_group=0, surf_id=0, particle=ParticleType.NEUTRON):
         self.r = tuple(r)
         self.u = tuple(u)
         self.E = float(E)
         self.wgt = float(wgt)
         self.delayed_group = delayed_group
+        self.surf_id = surf_id
         self.particle = particle
 
     def to_tuple(self):
@@ -280,7 +283,7 @@ class SourceParticle:
 
         """
         return (self.r, self.u, self.E, self.wgt,
-                self.delayed_group, self.particle.value)
+                self.delayed_group, self.surf_id, self.particle.value)
 
 
 def write_source_file(source_particles, filename, **kwargs):
@@ -304,6 +307,7 @@ def write_source_file(source_particles, filename, **kwargs):
         ('E', '<f8'),
         ('wgt', '<f8'),
         ('delayed_group', '<i4'),
+        ('surf_id', '<i4'),
         ('particle', '<i4'),
     ])
 

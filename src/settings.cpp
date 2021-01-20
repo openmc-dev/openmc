@@ -60,6 +60,8 @@ bool run_CE                  {true};
 bool source_latest           {false};
 bool source_separate         {false};
 bool source_write            {true};
+bool surf_source_write       {false};
+bool surf_source_read        {false};
 bool survival_biasing        {false};
 bool temperature_multipole   {false};
 bool trigger_on              {false};
@@ -98,6 +100,8 @@ std::vector<std::string> res_scat_nuclides;
 RunMode run_mode {RunMode::UNSET};
 std::unordered_set<int> sourcepoint_batch;
 std::unordered_set<int> statepoint_batch;
+std::unordered_set<int> source_write_surf_id;
+int64_t max_particles;
 TemperatureMethod temperature_method {TemperatureMethod::NEAREST};
 double temperature_tolerance {10.0};
 double temperature_default {293.6};
@@ -437,6 +441,20 @@ void read_settings_xml()
     }
   }
 
+  // Check if the user has specified to read surface source
+  if (check_for_node(root, "surf_source_read")) {
+    surf_source_read = true;
+    // Get surface source read node
+    xml_node node_ssr = root.child("surf_source_read");
+
+    std::string path = "surface_source.h5";
+    // Check if the user has specified different file for surface source reading
+    if (check_for_node(node_ssr, "path")) {
+      path = get_node_value(node_ssr, "path", false, true);
+    }
+    model::external_sources.push_back(std::make_unique<FileSource>(path));
+  }
+
   // If no source specified, default to isotropic point source at origin with Watt spectrum
   if (model::external_sources.empty()) {
     model::external_sources.push_back(std::make_unique<IndependentSource>(
@@ -622,6 +640,26 @@ void read_settings_xml()
     sourcepoint_batch = statepoint_batch;
   }
 
+  // Check if the user has specified to write surface source
+  if (check_for_node(root, "surf_source_write")) {
+    surf_source_write = true;
+    // Get surface source write node
+    xml_node node_ssw = root.child("surf_source_write");
+
+    // Determine surface ids at which crossing particles are to be banked
+    if (check_for_node(node_ssw, "surface_ids")) {
+      auto temp = get_node_array<int>(node_ssw, "surface_ids");
+      for (const auto& b : temp) {
+        source_write_surf_id.insert(b);
+      }
+    }
+
+    // Get maximum number of particles to be banked per surface
+    if (check_for_node(node_ssw, "max_particles")) {
+      max_particles = std::stoi(get_node_value(node_ssw, "max_particles"));
+    }
+  }
+
   // If source is not seperate and is to be written out in the statepoint file,
   // make sure that the sourcepoint batch numbers are contained in the
   // statepoint list
@@ -794,6 +832,7 @@ void read_settings_xml()
 void free_memory_settings() {
   settings::statepoint_batch.clear();
   settings::sourcepoint_batch.clear();
+  settings::source_write_surf_id.clear();
   settings::res_scat_nuclides.clear();
 }
 

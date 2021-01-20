@@ -9,6 +9,8 @@
 #include <limits>
 #include <vector>
 
+#include "openmc/version.h"
+
 namespace openmc {
 
 using double_2dvec = std::vector<std::vector<double>>;
@@ -17,13 +19,6 @@ using double_4dvec = std::vector<std::vector<std::vector<std::vector<double>>>>;
 
 // ============================================================================
 // VERSIONING NUMBERS
-
-// OpenMC major, minor, and release numbers
-constexpr int VERSION_MAJOR {0};
-constexpr int VERSION_MINOR {12};
-constexpr int VERSION_RELEASE {1};
-constexpr bool VERSION_DEV {true};
-constexpr std::array<int, 3> VERSION {VERSION_MAJOR, VERSION_MINOR, VERSION_RELEASE};
 
 // HDF5 data format
 constexpr int HDF5_VERSION[] {3, 0};

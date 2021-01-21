@@ -98,8 +98,6 @@ jobs:
           sudo apt -y update
           sudo apt install -y mpich \
                               libmpich-dev \
-                              libnetcdf-dev \
-                              libpnetcdf-dev \
                               libhdf5-serial-dev \
                               libhdf5-mpich-dev \
                               libeigen3-dev

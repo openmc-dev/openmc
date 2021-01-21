@@ -187,6 +187,9 @@ class Settings:
         described in :ref:`verbosity`.
     volume_calculations : VolumeCalculation or iterable of VolumeCalculation
         Stochastic volume calculation specifications
+        
+    weightwindowmesh : openmc.WeightWindowMesh
+        Mesh to be used for Weight Window
 
     """
 
@@ -258,6 +261,8 @@ class Settings:
 
         self._event_based = None
         self._max_particles_in_flight = None
+        
+        self._weightwindowmesh = None
 
     @property
     def run_mode(self):
@@ -422,6 +427,19 @@ class Settings:
     @property
     def max_particles_in_flight(self):
         return self._max_particles_in_flight
+    
+    @property
+    def weightwindowmesh(self):
+        return self._weightwindowmesh
+    
+    @weightwindowmesh.setter
+    def weightwindowmesh(self, weightwindowmesh):
+	    if not isinstance(weightwindowmesh, WeightWindowMesh):
+		    msg = 'Unable to set weightwindowmesh from "{0}" which is not a '\
+                  ' Python dictionary'.format(cutoff)
+            raise ValueError(msg)
+        ##cv.check_type('weightwindow', weightwindowmesh, WeightWindowMesh)
+        self._weightwindowmesh = weightwindowmesh
 
     @run_mode.setter
     def run_mode(self, run_mode):
@@ -1365,6 +1383,7 @@ class Settings:
         self._create_material_cell_offsets_subelement(root_element)
         self._create_log_grid_bins_subelement(root_element)
         self._create_dagmc_subelement(root_element)
+        self._weightwindowmesh.to_xml_element(root_element)
 
         # Clean the indentation in the file to be user-readable
         clean_indentation(root_element)
@@ -1437,6 +1456,7 @@ class Settings:
         settings._material_cell_offsets_from_xml_element(root)
         settings._log_grid_bins_from_xml_element(root)
         settings._dagmc_from_xml_element(root)
+        self._weightwindowmesh.from_xml_element(root)
 
         # TODO: Get volume calculations
 

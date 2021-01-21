@@ -54,11 +54,6 @@ openmc_statepoint_write(const char* filename, bool* write_source)
   // Write message
   write_message("Creating state point " + filename_ + "...", 5);
 
-#if defined(LIBMESH) || defined(DAGMC)
-  // write unstructured mesh tallies to VTK
-  write_unstructured_mesh_results();
-#endif
-
   hid_t file_id;
   if (mpi::master) {
     // Create statepoint file
@@ -314,6 +309,11 @@ openmc_statepoint_write(const char* filename, bool* write_source)
     write_source_bank(file_id, false);
     if (mpi::master || parallel) file_close(file_id);
   }
+
+#if defined(LIBMESH) || defined(DAGMC)
+  // write unstructured mesh tallies to VTK
+  write_unstructured_mesh_results();
+#endif
 
   simulation::time_statepoint.stop();
 

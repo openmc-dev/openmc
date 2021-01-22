@@ -59,8 +59,8 @@ one_group = openmc.mgxs.EnergyGroups()
 one_group.group_edges = [fine_groups.group_edges[0], fine_groups.group_edges[-1]]
 
 # Instantiate a clock object
-t_outer = np.arange(0., 2.5, 5.e-1)
-clock = openmc.kinetics.Clock(start=0., end=2.0, dt_inner=1.e-2, t_outer=t_outer)
+t_outer = np.arange(0., 1.0, 5.e-1)
+clock = openmc.kinetics.Clock(start=0., end=0.5, dt_inner=1.e-2, t_outer=t_outer)
 
 
 # Prescribe the transient
@@ -84,9 +84,9 @@ for material in materials_file:
     if material.name == 'Moderator':
         Transient[material.name][0]['density'] = material.density
         Transient[material.name][0.5]['density'] = material.density*0.9
-        Transient[material.name][1.0]['density'] = material.density*0.8
-        Transient[material.name][1.5]['density'] = material.density*0.9
-        Transient[material.name][2.0]['density'] = material.density
+#        Transient[material.name][1.0]['density'] = material.density*0.8
+#        Transient[material.name][1.5]['density'] = material.density*0.9
+#        Transient[material.name][2.0]['density'] = material.density
         for t in t_outer:
             Transient[material.name][t]['temperature'] = material.temperature
     else:
@@ -96,7 +96,7 @@ for material in materials_file:
 
 #Instantiate a kinetics solver object
 solver = openmc.kinetics.Solver(directory='PIN_TD_ADIABATIC')
-solver.num_delayed_groups           = 3
+solver.num_delayed_groups           = 6
 solver.amplitude_mesh               = full_pin_cell_mesh
 solver.shape_mesh                   = full_pin_cell_mesh
 solver.tally_mesh                   = full_pin_cell_mesh
@@ -118,7 +118,7 @@ solver.threads                      = 18
 solver.core_volume                  = np.pi*0.39218**2*365.76
 solver.constant_seed                = True
 solver.seed                         = 1
-solver.min_outer_iters              = 2
+solver.min_outer_iters              = 1
 solver.use_pcmfd                    = False
 solver.use_agd                      = False
 solver.condense_dif_coef            = True

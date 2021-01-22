@@ -1,8 +1,9 @@
-from numpy.lib.stride_tricks import as_strided as ast
-import numpy as np
 import scipy.sparse as sps
-from copy import deepcopy
-from scipy.sparse.linalg import spsolve, bicgstab, lgmres, minres, cg
+from scipy.sparse.linalg import spsolve
+
+import numpy as np
+from numpy.lib.stride_tricks import as_strided as ast
+
 
 def gcd(a, b):
     while b:
@@ -168,13 +169,6 @@ def nan_inf_to_zero(array):
     array[array ==  np.inf] = 0.
     return np.nan_to_num(array)
 
-def nan_inf_to_one(array):
-
-    array[array == -np.inf] = 1.0
-    array[array ==  np.inf] = 1.0
-    array[array ==  np.nan] = 1.0
-    return array
-
 def compute_eigenvalue(A, M, flux, tolerance=1.e-6):
 
     # Ensure flux is a 1D array
@@ -192,7 +186,6 @@ def compute_eigenvalue(A, M, flux, tolerance=1.e-6):
     for i in range(10000):
 
         # Solve linear system
-        #flux = lgmres(A, old_source, flux, 1.e-10)[0]
         flux = spsolve(A, old_source)
 
         # Compute new source

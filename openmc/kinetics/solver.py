@@ -1,30 +1,19 @@
-from __future__ import division
 from collections import OrderedDict
-from numbers import Integral
-import warnings
-import os
-import sys
 import copy
-import itertools
-import subprocess
-import time
+import os
+from scipy.sparse.linalg import spsolve
 from shutil import copyfile, move
+import subprocess
+import sys
+import time
 
+import h5py
 import numpy as np
-import scipy.sparse as sps
-from scipy.sparse.linalg import spsolve, bicgstab, lgmres, minres, cg
 
 import openmc
-import openmc.checkvalue as cv
-import openmc.mgxs
 import openmc.kinetics
 from openmc.kinetics.clock import TIME_POINTS
-import h5py
-
-import matplotlib
-from mpl_toolkits.mplot3d import Axes3D
-matplotlib.use("Agg")
-import matplotlib.pyplot as plt
+import openmc.mgxs
 
 
 if sys.version_info[0] >= 3:
@@ -43,97 +32,67 @@ class Solver(object):
     ----------
     directory : str
         A directory to save the transient simulation data.
-
     shape_mesh : openmc.RegularMesh
         Mesh by which shape is computed on.
-
     unity_mesh : openmc.RegularMesh
         Mesh with one cell convering the entire geometry.
-
     amplitude_mesh : openmc.RegularMesh
         Mesh by which amplitude is computed on.
-
     tally_mesh : openmc.RegularMesh
         Mesh by which to tally currents
-
     geometry : openmc.geometry.Geometry
         Geometry which describes the problem being solved.
-
     settings_file : openmc.settings.SettingsFile
         Settings file describing the general settings for each simulation.
-
     materials_file : openmc.materials.MaterialsFile
         Materials file containing the materials info for each simulation.
-
     transient : OrderedDict()
         Ordered dictionary describing the material changes during the transient.
-
     mgxs_lib_file : openmc.materials.MGXSLibrary
         MGXS Library file containing the multi-group xs for mg Monte Carlo.
-
     clock : openmc.kinetics.Clock
         Clock object.
-
     one_group : openmc.mgxs.groups.EnergyGroups
         EnergyGroups which specifies the a one-energy-group structure.
-
     energy_groups : openmc.mgxs.groups.EnergyGroups
         EnergyGroups which specifies the energy groups structure.
-
     fine_groups : openmc.mgxs.groups.EnergyGroups
         EnergyGroups used to tally the transport cross section that will be
         condensed to get the diffusion coefficients in the coarse group
         structure.
-
     initial_power : float
         The initial core power (in MWth).
-
     k_crit : float
         The initial eigenvalue.
-
     mpi_args : list of str, optional
         MPI execute command and any additional MPI arguments to pass,
         e.g. ['mpiexec', '-n', '8'].
-
     threads : int
         The number of OpenMP threads to use.
-
     chi_delayed_by_delayed_group : bool
         Whether to use delayed groups in representing chi-delayed.
-
     chi_delayed_by_mesh : bool
         Whether to use a mesh in representing chi-delayed.
-
     num_delayed_groups : int
         The number of delayed neutron precursor groups.
-
     states : OrderedDict of openmc.kinetics.State
         States of the problem.
-
     use_pregenerated_sps : bool
         Whether to use pregenerated statepoint files.
-
     constant_seed : bool
         Whether to use a constant seed in the OpenMC solve.
-
     seed : int
         The constant seed.
-
     core_volume : float
         The core volume used to normalize the initial power.
-
     log_file_name : str
         Log file name (excluding directory prefix).
-
     run_on_cluster : bool
         Whether to run OpenMC locally or as a job.
-
     job_file : str
         Name of job file to use to run jobs.
-
     multi_group : bool
         Whether the OpenMC run is multi-group or continuous-energy.
-
     min_outer_iters : int
         Minimum number of outer iterations to take
 
@@ -911,7 +870,6 @@ class Solver(object):
             material.temperature = self.transient[material.name][time]['temperature']
             materials_list.append(material)
         self.materials_file = openmc.Materials(materials_list)
-
         
         self.geometry.export_to_xml(self.directory + '/geometry.xml')
         self.materials_file.export_to_xml(self.directory + '/materials.xml')

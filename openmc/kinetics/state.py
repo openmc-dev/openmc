@@ -1,26 +1,18 @@
+from abc import ABCMeta
 from collections import OrderedDict
-from numbers import Integral
-import warnings
 import copy
-import itertools
+import scipy.sparse as sps
+from six import add_metaclass
 import sys
 
+import h5py
 import numpy as np
 np.set_printoptions(precision=6)
-import scipy.sparse as sps
 
 import openmc
-import openmc.checkvalue as cv
-import openmc.mgxs
 import openmc.kinetics
-from openmc.kinetics.clock import TIME_POINTS
-import h5py
-from abc import ABCMeta
-from six import add_metaclass, string_types
+import openmc.mgxs
 
-import matplotlib
-matplotlib.use("Agg")
-import matplotlib.pyplot as plt
 
 if sys.version_info[0] >= 3:
     basestring = str
@@ -34,73 +26,51 @@ class State(object):
     ----------
     amplitude_mesh : openmc.mesh.Mesh
         Mesh by which shape is computed on.
-
     shape_mesh : openmc.mesh.Mesh
         Mesh by which power is reconstructed on.
-
     unity_mesh : openmc.mesh.Mesh
         Mesh with one cell convering the entire geometry..
-
     tally_mesh : openmc.mesh.Mesh
         Mesh to tally currents
-
     one_group : openmc.mgxs.groups.EnergyGroups
         EnergyGroups which specifies the a one-energy-group structure.
-
     energy_groups : openmc.mgxs.groups.EnergyGroups
         EnergyGroups which specifies the energy groups structure.
-
     fine_groups : openmc.mgxs.groups.EnergyGroups
         EnergyGroups used to tally the transport cross section that will be
         condensed to get the diffusion coefficients in the coarse group
         structure.
-
     shape : np.ndarray
         Numpy array used to store the shape function.
-
     amplitude : np.ndarray
         Numpy array used to store the amplitude.
-
     adjoint_flux : np.ndarray
         Numpy array used to store the adjoint flux.
-
     precursors : np.ndarray
         Numpy array used to store the precursor concentrations.
-
     mgxs_lib : OrderedDict of OrderedDict of openmc.tallies
         Dict of Dict of tallies. The first Dict is indexed by time point
         and the second Dict is indexed by rxn type.
-
     k_crit : float
         The initial eigenvalue.
-
     chi_delayed_by_delayed_group : bool
         Whether to use delayed groups in representing chi-delayed.
-
     chi_delayed_by_mesh : bool
         Whether to use a mesh in representing chi-delayed.
-
     use_agd : bool
         Whether to use artificial grid diffusion
-
     use_pcmfd : bool
         Whether to use p-CMFD
-
     num_delayed_groups : int
         The number of delayed neutron precursor groups.
-
     time_point : str
         The time point of this state.
-
     clock : openmc.kinetics.Clock
         A clock object to indicate the current simulation time.
-
     core_volume : float
         The core volume used to normalize the initial power.
-
     log_file : str
         Log file name (including directory prefix).
-
     multi_group : bool
         Whether the OpenMC run is multi-group or continuous-energy.
 
@@ -1511,7 +1481,5 @@ class InnerState(State):
         f['INNER_STEPS'][time_point].attrs['reactivity'] = self.reactivity
         f['INNER_STEPS'][time_point].attrs['beta_eff'] = self.beta_eff.sum()
         f['INNER_STEPS'][time_point].attrs['core_power_density'] = self.core_power_density
-
-
 
         f.close()

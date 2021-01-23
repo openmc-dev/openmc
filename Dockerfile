@@ -108,7 +108,7 @@ RUN if [ "$include_dagmc" = "true" ] ; \
     cd build ; \
     cmake .. -DCMAKE_INSTALL_PREFIX=.. \
              -DMOAB_DIR=/usr/local \
-             -DEMBREE_DIR=/embree/lib/cmake/embree-3.12.1 ; \
+             -DEMBREE_DIR=/embree ; \
     make -j"$compile_cores" ; \
     make -j"$compile_cores" install ; \
     fi

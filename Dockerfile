@@ -36,7 +36,7 @@ RUN apt-get update -y && \
 RUN pip3 install --upgrade pip
 
 # Clone and install NJOY2016
-RUN git clone https://github.com/njoy/NJOY2016 /opt/NJOY2016 && \
+RUN git clone https://github.com/njoy/NJOY2016.git /opt/NJOY2016 && \
     cd /opt/NJOY2016 && \
     mkdir build && cd build && \
     cmake -Dstatic=on .. && make 2>/dev/null && make install
@@ -65,7 +65,7 @@ RUN if [ "$include_dagmc" = "true" ] ; \
 
 # Clone and install Embree
 RUN if [ "$include_dagmc" = "true" ] ; \
-    then git clone https://github.com/embree/embree ; \
+    then git clone https://github.com/embree/embree.git ; \
     cd embree ; \
     mkdir build ; \
     cd build ; \
@@ -81,7 +81,7 @@ RUN if [ "$include_dagmc" = "true" ] ; \
     mkdir MOAB ; \
     cd MOAB ; \
     mkdir build ; \
-    git clone  --single-branch --branch develop https://bitbucket.org/fathomteam/moab/ ; \
+    git clone  --single-branch --branch develop https://bitbucket.org/fathomteam/moab.git ; \
     cd build ; \
     cmake ../moab -DENABLE_HDF5=ON \
                   -DENABLE_NETCDF=ON \
@@ -102,7 +102,7 @@ RUN if [ "$include_dagmc" = "true" ] ; \
 
 # Clone and install Double-Down
 RUN if [ "$include_dagmc" = "true" ] ; \
-    then git clone https://github.com/pshriwise/double-down ; \
+    then git clone https://github.com/pshriwise/double-down.git ; \
     cd double-down ; \
     mkdir build ; \
     cd build ; \
@@ -117,7 +117,7 @@ RUN if [ "$include_dagmc" = "true" ] ; \
 RUN if [ "$include_dagmc" = "true" ] ; \
     then mkdir DAGMC ; \
     cd DAGMC ; \
-    git clone -b develop https://github.com/svalinn/dagmc ; \
+    git clone -b develop https://github.com/svalinn/DAGMC.git ; \
     mkdir build ; \
     cd build ; \
     cmake ../dagmc -DBUILD_TALLY=ON \

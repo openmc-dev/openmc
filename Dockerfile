@@ -120,7 +120,7 @@ RUN if [ "$include_dagmc" = "true" ] ; \
     git clone -b develop https://github.com/svalinn/DAGMC.git ; \
     mkdir build ; \
     cd build ; \
-    cmake ../dagmc -DBUILD_TALLY=ON \
+    cmake ../DAGMC -DBUILD_TALLY=ON \
                    -DCMAKE_INSTALL_PREFIX=/dagmc/ \
                    -DMOAB_DIR=/usr/local \
                    -DBUILD_STATIC_LIBS=OFF \

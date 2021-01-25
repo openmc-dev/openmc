@@ -65,7 +65,7 @@ RUN if [ "$include_dagmc" = "true" ] ; \
 
 # Clone and install Embree
 RUN if [ "$include_dagmc" = "true" ] ; \
-    then git clone https://github.com/embree/embree.git ; \
+    then git clone --single-branch --branch master https://github.com/embree/embree.git ; \
     cd embree ; \
     mkdir build ; \
     cd build ; \
@@ -102,7 +102,7 @@ RUN if [ "$include_dagmc" = "true" ] ; \
 
 # Clone and install Double-Down
 RUN if [ "$include_dagmc" = "true" ] ; \
-    then git clone https://github.com/pshriwise/double-down.git ; \
+    then git clone --single-branch --branch main https://github.com/pshriwise/double-down.git ; \
     cd double-down ; \
     mkdir build ; \
     cd build ; \
@@ -117,16 +117,16 @@ RUN if [ "$include_dagmc" = "true" ] ; \
 RUN if [ "$include_dagmc" = "true" ] ; \
     then mkdir DAGMC ; \
     cd DAGMC ; \
-    git clone -b develop https://github.com/svalinn/DAGMC.git ; \
+    git clone --single-branch --branch develop develop https://github.com/svalinn/DAGMC.git ; \
     mkdir build ; \
     cd build ; \
     cmake ../DAGMC -DBUILD_TALLY=ON \
-                   -DCMAKE_INSTALL_PREFIX=/dagmc/ \
+                   -DCMAKE_INSTALL_PREFIX=/DAGMC/ \
                    -DMOAB_DIR=/usr/local \
                    -DBUILD_STATIC_LIBS=OFF \
                    -DBUILD_STATIC_EXE=OFF ; \
     make -j"$compile_cores" install ; \
-    rm -rf /DAGMC/dagmc /DAGMC/build ; \
+    rm -rf /DAGMC/DAGMC /DAGMC/build ; \
     fi
 
 # Clone and install OpenMC with DAGMC

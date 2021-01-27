@@ -12,7 +12,7 @@ mkdir build && cd build
 export METHODS="opt"
 
 
-if [[ $MPI == 'y']]; then
+if [[ $MPI == 'y' ]]; then
 ../libmesh/configure --prefix=$HOME/LIBMESH CXX=mpicxx.mpich CC=mpicc.mpich FC=mpifort.mpich F77=mpif77.mpich \
 --enable-exodus --disable-netcdf-4 --disable-eigen --disable-lapack
 else

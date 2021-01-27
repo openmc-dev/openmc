@@ -11,7 +11,6 @@ git clone https://github.com/libmesh/libmesh -b v1.6.0 --recurse-submodules
 mkdir build && cd build
 export METHODS="opt"
 
-
 if [[ $MPI == 'y' ]]; then
 ../libmesh/configure --prefix=$HOME/LIBMESH CXX=mpicxx CC=mpicc FC=mpifort F77=mpif77 \
 --enable-exodus --disable-netcdf-4 --disable-eigen --disable-lapack

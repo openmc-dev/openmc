@@ -49,6 +49,10 @@ jobs:
             python-version: 3.8
             mpi: y
             omp: y
+          - libmesh: y
+            python-version: 3.8
+            mpi: n
+            omp: y
           - event: y
             python-version: 3.8
             omp: y
@@ -58,7 +62,8 @@ jobs:
             omp: n
             mpi: y
     name: 'Python ${{ matrix.python-version }} (omp=${{ matrix.omp }},
-      mpi=${{ matrix.mpi }}, dagmc=${{ matrix.dagmc }}, event=${{ matrix.event }}
+      mpi=${{ matrix.mpi }}, dagmc=${{ matrix.dagmc }},
+      libmesh=${{ matrix.libmesh }}, event=${{ matrix.event }}
       vectfit=${{ matrix.vectfit }})'
 
     env:

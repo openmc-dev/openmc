@@ -257,24 +257,11 @@ void read_input_xml()
   read_materials_xml();
   read_geometry_xml();
 
-  // Convert user IDs -> indices, assign temperatures
-  double_2dvec nuc_temps(data::nuclide_map.size());
-  double_2dvec thermal_temps(data::thermal_scatt_map.size());
-  finalize_geometry(nuc_temps, thermal_temps);
+  // Final geometry setup and assign temperatures
+  finalize_geometry();
 
-  if (settings::run_mode != RunMode::PLOTTING) {
-    simulation::time_read_xs.start();
-    if (settings::run_CE) {
-      // Read continuous-energy cross sections
-      read_ce_cross_sections(nuc_temps, thermal_temps);
-    } else {
-      // Create material macroscopic data for MGXS
-      set_mg_interface_nuclides_and_temps();
-      data::mg.init();
-      mark_fissionable_mgxs_materials();
-    }
-    simulation::time_read_xs.stop();
-  }
+  // Finalize cross sections having assigned temperatures
+  finalize_cross_sections();
 
   read_tallies_xml();
 

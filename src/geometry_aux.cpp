@@ -242,8 +242,7 @@ get_temperatures(std::vector<std::vector<double>>& nuc_temps,
 
 //==============================================================================
 
-void finalize_geometry(std::vector<std::vector<double>>& nuc_temps,
-  std::vector<std::vector<double>>& thermal_temps)
+void finalize_geometry()
 {
   // Perform some final operations to set up the geometry
   adjust_indices();
@@ -252,9 +251,6 @@ void finalize_geometry(std::vector<std::vector<double>>& nuc_temps,
 
   // Assign temperatures to cells that don't have temperatures already assigned
   assign_temperatures();
-
-  // Determine desired temperatures for each nuclide and S(a,b) table
-  get_temperatures(nuc_temps, thermal_temps);
 
   // Determine number of nested coordinate levels in the geometry
   model::n_coord_levels = maximum_levels(model::root_universe);

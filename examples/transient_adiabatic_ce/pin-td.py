@@ -64,7 +64,7 @@ clock = openmc.kinetics.Clock(start=0., end=0.5, dt_inner=1.e-2, t_outer=t_outer
 # Prescribe the transient as a dictionary of densities and temperatures 
 Transient = {}
 
-# Fill the dictionary with entires for each material 
+# Create entries for each material 
 for material in materials_file:
     MatChange = {
             material.name: {},
@@ -91,7 +91,7 @@ for material in materials_file:
             Transient[material.name][t]['density'] = material.density
             Transient[material.name][t]['temperature'] = material.temperature
 
-# Instantiate a kinetics s lver object
+# Instantiate a kinetics solver object
 solver = openmc.kinetics.Solver(directory='PIN_TD')
 solver.num_delayed_groups           = 6
 solver.amplitude_mesh               = full_pin_cell_mesh

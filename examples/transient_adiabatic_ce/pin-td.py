@@ -2,26 +2,17 @@ import numpy as np
 import openmc
 import openmc.mgxs
 import openmc.kinetics as kinetics
-from geometry_pin import geometry
 
+from geometry_pin import geometry
 materials_file = openmc.Materials(geometry.get_all_materials().values())
 
-# Create pin cell mesh
-full_pin_cell_mesh = openmc.RegularMesh()
-full_pin_cell_mesh.type = 'regular'
-full_pin_cell_mesh.dimension = [1,1,30]
-full_pin_cell_mesh.lower_left = [-0.62992,-0.62992,-182.88]
-full_pin_cell_mesh.width =[0.62992*2,0.62992*2,12.192]
-
-# OpenMC simulation parameters
-batches = 200
-inactive = 100
-particles = 1000
+###############################################################################
+# Define problem settings
 
 settings_file = openmc.Settings()
-settings_file.batches = batches
-settings_file.inactive = inactive
-settings_file.particles = particles
+settings_file.batches = 200
+settings_file.inactive = 100
+settings_file.particles = 1000
 settings_file.output = {'tallies': False}
 
 # Create an initial uniform spatial source distribution over fissionable zones
@@ -31,17 +22,28 @@ uniform_dist = openmc.stats.Box(lower_left, upper_right, only_fissionable=True)
 settings_file.source = openmc.source.Source(space=uniform_dist)
 
 sourcepoint = dict()
-sourcepoint['batches'] = [batches]
+sourcepoint['batches'] = [settings_file.batches]
 sourcepoint['separate'] = True
 sourcepoint['write'] = True
 settings_file.sourcepoint = sourcepoint
 
+# For source convergence checks, add a mesh that can be used to calculate the
+# Shannon entropy
 entropy_mesh = openmc.RegularMesh()
-entropy_mesh.type = 'regular'
-entropy_mesh.dimension = [1,1,30]
 entropy_mesh.lower_left = lower_left
 entropy_mesh.upper_right = upper_right
+entropy_mesh.dimension = [1,1,30]
 settings_file.entropy_mesh = entropy_mesh
+
+###############################################################################
+# Define transient problem parameters
+
+# Create pin cell mesh
+full_pin_cell_mesh = openmc.RegularMesh()
+full_pin_cell_mesh.type = 'regular'
+full_pin_cell_mesh.dimension = [1,1,30]
+full_pin_cell_mesh.lower_left = [-0.62992,-0.62992,-182.88]
+full_pin_cell_mesh.width =[0.62992*2,0.62992*2,12.192]
 
 # Instantiate an EnergyGroups object for the diffuion coefficients
 fine_groups = openmc.mgxs.EnergyGroups()
@@ -55,14 +57,14 @@ energy_groups.group_edges = [0., 0.13, 0.63, 4.1, 55.6, 9.2e3, 1.36e6, 1.0e7]
 one_group = openmc.mgxs.EnergyGroups()
 one_group.group_edges = [fine_groups.group_edges[0], fine_groups.group_edges[-1]]
 
-t_outer = np.arange(0., 1.0, 5.e-1)
-
 # Instantiate a clock object
+t_outer = np.arange(0., 1.0, 5.e-1)
 clock = openmc.kinetics.Clock(start=0., end=0.5, dt_inner=1.e-2, t_outer=t_outer)
 
-# Prescribe the transient
+# Prescribe the transient as a dictionary of densities and temperatures 
 Transient = {}
 
+# Fill the dictionary with entires for each material 
 for material in materials_file:
     MatChange = {
             material.name: {},
@@ -77,6 +79,7 @@ for material in materials_file:
                 }
         Transient[material.name].update(TimeDict)
 
+# Fill the entries with the desired values
 for material in materials_file:
     if material.name == 'Moderator':
         Transient[material.name][0]['density'] = material.density
@@ -88,7 +91,7 @@ for material in materials_file:
             Transient[material.name][t]['density'] = material.density
             Transient[material.name][t]['temperature'] = material.temperature
 
-#Instantiate a kinetics s lver object
+# Instantiate a kinetics s lver object
 solver = openmc.kinetics.Solver(directory='PIN_TD')
 solver.num_delayed_groups           = 6
 solver.amplitude_mesh               = full_pin_cell_mesh

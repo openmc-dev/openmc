@@ -1,79 +1,56 @@
 import openmc
 
 ###############################################################################
-#                Create the OpenMC materials
-###############################################################################
+# Create materials for the problem
 
-uo2 = openmc.Material(material_id=1, name='UO2')
+uo2 = openmc.Material(name='UO2 fuel at 2.4% wt enrichment')
 uo2.set_density('g/cm3', 10.29769)
-uo2.add_nuclide('U235', 8.6500E-4 , 'ao') 
-uo2.add_nuclide('U238', 2.2250E-2 , 'ao') 
-uo2.add_element('O'   , 4.62200E-2, 'ao')
+uo2.add_element('U', 1., enrichment=2.4)
+uo2.add_element('O', 2.)
 
-water = openmc.Material(name='Moderator')
-water.set_density('g/cm3', 0.74) 
-water.add_element('H', 2*3.3500E-2, 'ao')
-water.add_element('O',   3.3500E-2, 'ao')
-water.add_element('B',   2.7800E-5, 'ao')
-water.add_s_alpha_beta('c_H_in_H2O')
+helium = openmc.Material(name='Helium for gap')
+helium.set_density('g/cm3', 0.001598)
+helium.add_element('He', 2.4044e-4)
 
-zirc = openmc.Material(material_id=3, name='Zr Clad')
-zirc.set_density('g/cm3', 6.55)
-zirc.add_element('Zr', 4.3000E-2, 'ao')
+zircaloy = openmc.Material(name='Zircaloy 4')
+zircaloy.set_density('g/cm3', 6.55)
+zircaloy.add_element('Sn', 0.014  , 'wo')
+zircaloy.add_element('Fe', 0.00165, 'wo')
+zircaloy.add_element('Cr', 0.001  , 'wo')
+zircaloy.add_element('Zr', 0.98335, 'wo')
 
-void = openmc.Material(material_id=4, name='Void')
-void.set_density('g/cm3', 0.001598)
-void.add_element('He', 1.e-10, 'ao')
+borated_water = openmc.Material(name='Moderator')
+borated_water.set_density('g/cm3', 0.740582) 
+borated_water.add_element('B',   2.7800E-5, 'ao')
+borated_water.add_element('H', 2*3.3500E-2, 'ao')
+borated_water.add_element('O',   3.3500E-2, 'ao')
+borated_water.add_s_alpha_beta('c_H_in_H2O')
 
-materials = openmc.Materials([uo2, water, zirc, void])
-
-###############################################################################
-#                       Create the OpenMC Surfaces
-###############################################################################
-
-# Instantiate ZCylinder surfaces
-fuel_or = openmc.ZCylinder(x0=0, y0=0, r=0.39218, name='Fuel OR')
-clad_ir = openmc.ZCylinder(x0=0, y0=0, r=0.40005, name='Clad IR')
-clad_or = openmc.ZCylinder(x0=0, y0=0, r=0.4572, name='Clad OR')
-
-# Instantiate the axial surfaces
-left = openmc.XPlane(x0=-0.62992, name='Pin x-min', boundary_type='reflective')
-right = openmc.XPlane(x0= 0.62992, name='Pin x-max', boundary_type='reflective')
-back = openmc.YPlane(y0=-0.62992, name='Pin y-min', boundary_type='reflective')
-front = openmc.YPlane(y0= 0.62992, name='Pin y-max', boundary_type='reflective')
-bottom = openmc.ZPlane(z0=-182.88, name='Pin z-min')
-top = openmc.ZPlane(z0= 182.88, name='Pin z-max')
-reflect_bot = openmc.ZPlane(z0=-200, name='Lower Reflector z-min', boundary_type='vacuum')
-reflect_top = openmc.ZPlane(z0= 200, name='Upper Reflector z-max', boundary_type='vacuum')
+# Collect the materials together
+materials = openmc.Materials([uo2, helium, zircaloy, borated_water])
 
 ###############################################################################
-#                 Exporting to OpenMC geometry.xml File
-###############################################################################
+# Define problem geometry
 
-fuel = openmc.Cell(name='Fuel')
-fuel.region = -fuel_or & +bottom & -top
-fuel.fill = uo2
+# Create cylindrical surfaces
+fuel_or = openmc.ZCylinder(r=0.39218, name='Fuel OR')
+clad_ir = openmc.ZCylinder(r=0.40005, name='Clad IR')
+clad_or = openmc.ZCylinder(r=0.45720, name='Clad OR')
 
-gap = openmc.Cell(name='Gap')
-gap.region = +fuel_or & -clad_ir & +bottom & -top
-gap.fill = void
+# Create a region represented as the inside of a rectangular prism
+pitch = 1.25984
+box = openmc.rectangular_prism(pitch, pitch, boundary_type='reflective')
+bottom      = openmc.ZPlane(z0=-182.88)
+top         = openmc.ZPlane(z0= 182.88)
+reflect_bot = openmc.ZPlane(z0=-200, boundary_type='vacuum')
+reflect_top = openmc.ZPlane(z0= 200, boundary_type='vacuum')
 
-clad = openmc.Cell(name='Clad')
-clad.region = +clad_ir & -clad_or & +bottom & -top
-clad.fill = zirc
+fuel             = openmc.Cell(fill=uo2,           region=-fuel_or & +bottom & -top)
+gap              = openmc.Cell(fill=helium,        region=+fuel_or & -clad_ir & +bottom & -top)
+clad             = openmc.Cell(fill=zircaloy,      region=+clad_ir & -clad_or & +bottom & -top)
+water            = openmc.Cell(fill=borated_water, region=+clad_or & box & +bottom & -top)
+bottom_reflector = openmc.Cell(fill=borated_water, region=-bottom & +reflect_bot & box)
+top_reflector    = openmc.Cell(fill=borated_water, region=+top & -reflect_top & box)
 
-moderator = openmc.Cell(name='Moderator')
-moderator.region = +clad_or & -right & +left & -front & +back & +bottom & -top
-moderator.fill = water
-
-BottomReflector = openmc.Cell(name='BottomReflector')
-BottomReflector.region = -bottom & +reflect_bot & -right & +left & -front & +back
-BottomReflector.fill = water
-
-TopReflector = openmc.Cell(name='TopReflector')
-TopReflector.region = +top & -reflect_top & -right & +left & -front & +back
-TopReflector.fill = water
-
-root = openmc.Universe(universe_id=0, name='Root')
-root.add_cells([fuel, gap, clad, moderator, BottomReflector, TopReflector])
-geometry = openmc.Geometry(root)
+# Create a geometry
+geometry = openmc.Geometry([fuel, gap, clad, water, bottom_reflector, top_reflector])

@@ -1,14 +1,9 @@
+from math import gcd
 import scipy.sparse as sps
 from scipy.sparse.linalg import spsolve
 
 import numpy as np
 from numpy.lib.stride_tricks import as_strided as ast
-
-
-def gcd(a, b):
-    while b:
-        a, b = b, a % b
-    return a
 
 def lcm(a, b):
     return a * b // gcd(a, b)
@@ -169,7 +164,7 @@ def nan_inf_to_zero(array):
     array[array ==  np.inf] = 0.
     return np.nan_to_num(array)
 
-def compute_eigenvalue(A, M, flux, tolerance=1.e-6):
+def compute_eigenvalue(A, M, flux, tolerance=1.e-6, max_eig_iterations=10000):
 
     # Ensure flux is a 1D array
     flux = flux.flatten()
@@ -183,7 +178,7 @@ def compute_eigenvalue(A, M, flux, tolerance=1.e-6):
 
     print('initial k {}'.format((M*flux).sum() / (A*flux).sum()))
 
-    for i in range(10000):
+    for i in range(max_eig_iterations):
 
         # Solve linear system
         flux = spsolve(A, old_source)
@@ -197,21 +192,19 @@ def compute_eigenvalue(A, M, flux, tolerance=1.e-6):
         # Scale the new source by 1 / k-eff
         new_source  = new_source / k_eff
 
-        # Compute the residual
-        residual_array = (new_source - old_source) / new_source
-        residual_array[residual_array == -np.inf] = 0.
-        residual_array[residual_array ==  np.inf] = 0.
-        residual_array = np.nan_to_num(residual_array)
-        residual_array = np.square(residual_array)
-        residual = np.sqrt(residual_array.mean())
+        # Compute the fractional solution change
+        nonzero = new_source != 0
+        frac_change_array = (new_source[nonzero]-old_source[nonzero])/new_source[nonzero]
+        frac_change_array = np.square(frac_change_array)
+        frac_change = np.sqrt(frac_change_array.mean())
 
         # Copy new source to old source
         old_source = np.copy(new_source)
 
-        print('eigen solve iter {:03d} resid {:1.5e} k-eff {:1.6f}'\
-                  .format(i, residual, k_eff))
+        print('eigen solve iter {:03d} change {:1.5e} k-eff {:1.6f}'\
+                  .format(i, frac_change, k_eff))
 
-        if residual < tolerance and i > 2:
+        if frac_change < tolerance and i > 2:
             break
 
     return flux, k_eff

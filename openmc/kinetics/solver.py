@@ -653,12 +653,14 @@ class Solver(object):
         # Compute the initial eigenvalue
         state.amplitude, self.k_crit = openmc.kinetics.compute_eigenvalue(state.destruction_matrix,
                                                                           state.production_matrix,
-                                                                          np.ones(state.amplitude_nxyz * self.ng), 1.e-6)
+                                                                          np.ones(state.amplitude_nxyz * self.ng),
+                                                                          tolerance = 1.e-6,
+                                                                          max_eig_iterations = 10000)
 
         # Compute the initial adjoint eigenvalue
         state.adjoint_flux, k_adjoint = openmc.kinetics.compute_eigenvalue\
             (state.destruction_matrix.transpose(), state.production_matrix.transpose(),
-             np.ones(state.amplitude_nxyz * self.ng), 1.e-3)
+             np.ones(state.amplitude_nxyz * self.ng), tolerance = 1.e-3, max_eig_iterations= 10000)
 
         # Compute the power and normalize the amplitude
         state.amplitude    /= np.average(state.amplitude.flatten())

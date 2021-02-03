@@ -87,8 +87,6 @@ class Solver(object):
         The core volume used to normalize the initial power.
     log_file_name : str
         Log file name (excluding directory prefix).
-    run_on_cluster : bool
-        Whether to run OpenMC locally or as a job.
     job_file : str
         Name of job file to use to run jobs.
     multi_group : bool
@@ -129,7 +127,6 @@ class Solver(object):
         self._seed = 1
         self._core_volume = 1.
         self._log_file_name = 'log_file.h5'
-        self._run_on_cluster = False
         self._job_file = 'job.pbs'
         self._multi_group = True
         self._inner_tolerance = 1.e-6
@@ -258,10 +255,6 @@ class Solver(object):
     @property
     def log_file_name(self):
         return self._log_file_name
-
-    @property
-    def run_on_cluster(self):
-        return self._run_on_cluster
 
     @property
     def job_file(self):
@@ -440,10 +433,6 @@ class Solver(object):
     def log_file_name(self, name):
         self._log_file_name = name
 
-    @run_on_cluster.setter
-    def run_on_cluster(self, run_on_cluster):
-        self._run_on_cluster = run_on_cluster
-
     @job_file.setter
     def job_file(self, job_file):
         self._job_file = job_file
@@ -551,42 +540,7 @@ class Solver(object):
 
         # Run OpenMC
         if not self.use_pregenerated_sps:
-            if self.run_on_cluster:
-
-                # Copy job file to run directory
-                cmd_str = 'cp ' + self.job_file  + ' ' + self.directory
-                subprocess.Popen(cmd_str, shell=True)
-                time.sleep(5)
-
-                 # Launch job
-                cmd_str = 'qsub -P moose ' + self.job_file
-                proc = subprocess.Popen(cmd_str, cwd=self.directory, stdout=subprocess.PIPE, shell=True)
-
-                 # Get the job number
-                job_name = proc.stdout.readlines()[0]
-                job_number = job_name.split('.')[0]
-
-                 # Pause and wait for run to finish
-                cmd_str = 'qstat | grep ' + str(job_number)
-                is_file_running = 'initially'
-                elapsed_time = 0
-                while (is_file_running is not ''):
-                    time.sleep(10)
-                    proc = subprocess.Popen(cmd_str, stdout=subprocess.PIPE, shell=True)
-                    try:
-                        is_file_running = proc.stdout.readlines()[0].split()[4]
-                        if (is_file_running == 'Q'):
-                            print('job {} queued...'.format(job_number))
-                        elif (is_file_running == 'R'):
-                            elapsed_time = elapsed_time + 10
-                            print('job {} running for {} s...'.format(job_number, elapsed_time))
-                        else:
-                            print('job {} in state {}...'.format(job_number, is_file_running))
-                    except:
-                        print('job {} done'.format(job_number))
-                        break
-            else:
-                openmc.run(threads=self.threads, mpi_args=self.mpi_args,
+            openmc.run(threads=self.threads, mpi_args=self.mpi_args,
                            cwd=self.directory)
 
             # Rename the statepoint and summary files

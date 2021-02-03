@@ -71,7 +71,7 @@ t_outer = np.arange(0., 1.0, 5.e-1)
 clock = openmc.kinetics.Clock(start=0., end=0.5, dt_inner=1.e-2, t_outer=t_outer)
 
 # Prescribe the transient as a dictionary of densities and temperatures 
-Transient = {}
+transient = {}
 
 # Create entries for each material 
 for material in materials_file:
@@ -79,28 +79,28 @@ for material in materials_file:
         material.name: {},
         }
 
-    Transient.update(MatChange)
+    transient.update(MatChange)
     for t in t_outer:
-        TimeDict = {
+        time_dict = {
             t: {
                 'density' : {},
                 'temperature' : {},
                 }
             }
-        Transient[material.name].update(TimeDict)
+        transient[material.name].update(time_dict)
 
 # Fill the entries with the desired values
 for material in materials_file:
     for t in t_outer:
-        Transient[material.name][t]['density'] = material.density
-        Transient[material.name][t]['temperature'] = material.temperature
+        transient[material.name][t]['density'] = material.density
+        transient[material.name][t]['temperature'] = material.temperature
 
 for bank in range(1,2):
     name = 'Moderator Bank {}'.format(bank)
-    Transient[name][0]['density'] = materials[name].density
-    Transient[name][0.5]['density'] = materials[name].density*0.9
+    transient[name][0]['density'] = materials[name].density
+    transient[name][0.5]['density'] = materials[name].density*0.9
     for t in t_outer:
-        Transient[name][t]['temperature'] = materials[name].temperature
+        transient[name][t]['temperature'] = materials[name].temperature
 
 # Instantiate a kinetics solver object
 solver = openmc.kinetics.Solver(directory='C5G7_TD_MG')
@@ -115,7 +115,7 @@ solver.tally_groups                 = energy_groups
 solver.geometry                     = geometry
 solver.settings_file                = settings_file
 solver.materials_file               = materials_file
-solver.transient                    = Transient
+solver.transient                    = transient
 solver.inner_tolerance              = np.inf
 solver.outer_tolerance              = np.inf
 solver.mgxs_lib_file                = mgxs_lib_file
@@ -134,7 +134,6 @@ solver.condense_dif_coef            = True
 solver.chi_delayed_by_delayed_group = True
 solver.chi_delayed_by_mesh          = False
 solver.use_pregenerated_sps         = False
-solver.run_on_cluster               = False
 solver.job_file                     = 'job_broadwell.pbs'
 solver.log_file_name                = 'log_file.h5'
 

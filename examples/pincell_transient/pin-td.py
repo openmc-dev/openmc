@@ -62,34 +62,34 @@ t_outer = np.arange(0., 1.0, 5.e-1)
 clock = openmc.kinetics.Clock(start=0., end=0.5, dt_inner=1.e-2, t_outer=t_outer)
 
 # Prescribe the transient as a dictionary of densities and temperatures 
-Transient = {}
+transient = {}
 
 # Create entries for each material 
 for material in materials_file:
     MatChange = {
             material.name: {},
             }
-    Transient.update(MatChange)
+    transient.update(MatChange)
     for t in t_outer:
-        TimeDict = {
+        time_dict = {
                 t: {
                     'density' : {},
                     'temperature' : {},
                     }
                 }
-        Transient[material.name].update(TimeDict)
+        transient[material.name].update(time_dict)
 
 # Fill the entries with the desired values
 for material in materials_file:
     if material.name == 'Moderator':
-        Transient[material.name][0]['density'] = material.density
-        Transient[material.name][0.5]['density'] = material.density*0.9
+        transient[material.name][0]['density'] = material.density
+        transient[material.name][0.5]['density'] = material.density*0.9
         for t in t_outer:
-            Transient[material.name][t]['temperature'] = material.temperature
+            transient[material.name][t]['temperature'] = material.temperature
     else:
         for t in t_outer:
-            Transient[material.name][t]['density'] = material.density
-            Transient[material.name][t]['temperature'] = material.temperature
+            transient[material.name][t]['density'] = material.density
+            transient[material.name][t]['temperature'] = material.temperature
 
 # Instantiate a kinetics solver object
 solver = openmc.kinetics.Solver(directory='PIN_TD')
@@ -104,7 +104,7 @@ solver.tally_groups                 = energy_groups
 solver.geometry                     = geometry
 solver.settings_file                = settings_file
 solver.materials_file               = materials_file
-solver.transient                    = Transient
+solver.transient                    = transient
 solver.inner_tolerance              = np.inf
 solver.outer_tolerance              = np.inf
 solver.method                       = 'ADIABATIC'
@@ -122,7 +122,6 @@ solver.condense_dif_coef            = True
 solver.chi_delayed_by_delayed_group = True
 solver.chi_delayed_by_mesh          = False
 solver.use_pregenerated_sps         = False
-solver.run_on_cluster               = False
 solver.log_file_name                = 'log_file.h5'
 
 solver.solve()

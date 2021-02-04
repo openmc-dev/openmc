@@ -42,14 +42,12 @@ settings_file.entropy_mesh = entropy_mesh
 
 # Create pin cell mesh
 full_pin_cell_mesh = openmc.RegularMesh()
-full_pin_cell_mesh.type = 'regular'
 full_pin_cell_mesh.dimension = [51,51,1]
 full_pin_cell_mesh.lower_left  = [-32.13, -32.13, -64.26]
 full_pin_cell_mesh.width = [1.26,  1.26,  128.52]
 
 # Create assembly mesh
 full_assembly_mesh = openmc.RegularMesh()
-full_assembly_mesh.type = 'regular'
 full_assembly_mesh.dimension = [3,3,1]
 full_assembly_mesh.lower_left  = [-32.13, -32.13, -64.26]
 full_assembly_mesh.width = [ 21.42,  21.42,  128.52]

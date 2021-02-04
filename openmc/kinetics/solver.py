@@ -287,43 +287,22 @@ class Solver(object):
     @amplitude_mesh.setter
     def amplitude_mesh(self, mesh):
 
-        self._amplitude_mesh = openmc.RegularMesh()
-        self._amplitude_mesh.type = mesh.type
-        self._amplitude_mesh.dimension = mesh.dimension
-        self._amplitude_mesh.lower_left = mesh.lower_left
-
+        self._amplitude_mesh = mesh
         unity_mesh = openmc.RegularMesh()
-        unity_mesh.type = mesh.type
         unity_mesh.dimension = [1,1,1]
         unity_mesh.lower_left  = mesh.lower_left
         if mesh.width is not None:
-            self._amplitude_mesh.width = mesh.width
             unity_mesh.width = [i*j for i,j in zip(mesh.dimension, mesh.width)]
         else:
-            self._amplitude_mesh.width = [i-j for i,j in zip(mesh.upper_right, mesh.lower_left)]
             unity_mesh.width = [i-j for i,j in zip(mesh.upper_right, mesh.lower_left)]
         self._unity_mesh = unity_mesh
 
         # Set the power mesh to the shape mesh if it has not be set
         if self.shape_mesh is None:
-            if mesh.width is not None:
-                self.shape_mesh = mesh
-            else:
-                self.shape_mesh = openmc.RegularMesh()
-                self.shape_mesh.type = mesh.type
-                self.shape_mesh.dimension = mesh.dimension
-                self.shape_mesh.lower_left = mesh.lower_left
-                self.shape_mesh.width = [i-j for i,j in zip(mesh.upper_right, mesh.lower_left)]
+            self.shape_mesh = mesh
 
         if self.tally_mesh is None:
-            if mesh.width is not None:
-                self.tally_mesh = mesh
-            else:
-                self.tally_mesh = openmc.RegularMesh()
-                self.tally_mesh.type = mesh.type
-                self.tally_mesh.dimension = mesh.dimension
-                self.tally_mesh.lower_left = mesh.lower_left
-                self.tally_mesh.width = mesh.width
+            self.tally_mesh = mesh
 
     @shape_mesh.setter
     def shape_mesh(self, mesh):
@@ -474,18 +453,28 @@ class Solver(object):
         f.require_group('shape')
         f['shape'].attrs['id'] = self.shape_mesh.id
         f['shape'].attrs['name'] = self.shape_mesh.name
-        f['shape'].attrs['type'] = self.shape_mesh.type
         f['shape'].attrs['dimension'] = self.shape_mesh.dimension
         f['shape'].attrs['lower_left'] = self.shape_mesh.lower_left
-        f['shape'].attrs['width'] = self.shape_mesh.width
+        if self.shape_mesh.width:
+            f['shape'].attrs['width'] = self.shape_mesh.width
+        else:
+            f['shape'].attrs['width'] = [(i-j)/k for i,j,k in zip(
+                self.shape_mesh.upper_right, 
+                self.shape_mesh.lower_left, 
+                self.shape_mesh.dimension)]
 
         f.require_group('amplitude')
         f['amplitude'].attrs['id'] = self.amplitude_mesh.id
         f['amplitude'].attrs['name'] = self.amplitude_mesh.name
-        f['amplitude'].attrs['type'] = self.amplitude_mesh.type
         f['amplitude'].attrs['dimension'] = self.amplitude_mesh.dimension
         f['amplitude'].attrs['lower_left'] = self.amplitude_mesh.lower_left
-        f['amplitude'].attrs['width'] = self.amplitude_mesh.width
+        if self.amplitude_mesh.width:
+            f['amplitude'].attrs['width'] = self.amplitude_mesh.width
+        else:
+            f['amplitude'].attrs['width'] = [(i-j)/k for i,j,k in zip(
+                self.amplitude_mesh.upper_right, 
+                self.amplitude_mesh.lower_left, 
+                self.amplitude_mesh.dimension)]
 
         for groups,name in \
             zip([self.one_group, self.energy_groups, self.fine_groups, self.tally_groups],

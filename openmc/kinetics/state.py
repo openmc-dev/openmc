@@ -333,14 +333,26 @@ class State(object):
 
     @property
     def shape_dxyz(self):
-        width = list(self.shape_mesh.width)
+        if self.shape_mesh.width:
+            width = list(self.shape_mesh.width)
+        else:
+            width = list([(i-j)/k for i,j,k in 
+                zip(self.shape_mesh.upper_right, 
+                    self.shape_mesh.lower_left, 
+                    self.shape_mesh.dimension)])
         dim = list(self.shape_dimension)[::-1]
         width = [i/j for i,j in zip(width,dim)]
         return np.prod(width)
 
     @property
     def amplitude_dxyz(self):
-        width = list(self.amplitude_mesh.width)
+        if self.amplitude_mesh.width:
+            width = list(self.amplitude_mesh.width)
+        else:
+            width = list([(i-j)/k for i,j,k in 
+                zip(self.amplitude_mesh.upper_right, 
+                    self.amplitude_mesh.lower_left, 
+                    self.amplitude_mesh.dimension)])
         dim = list(self.amplitude_dimension)[::-1]
         width = [i/j for i,j in zip(width,dim)]
         return np.prod(width)
@@ -934,7 +946,13 @@ class OuterState(State):
 
         # Get the dimensions of the mesh
         nz , ny , nx  = self.amplitude_dimension
-        dx , dy , dz  = self.amplitude_mesh.width
+        if self.amplitude_mesh.width:
+            dx , dy , dz  = self.amplitude_mesh.width
+        else:
+            dx , dy , dz  = [(i-j)/k for i,j,k in zip(
+                self.amplitude_mesh.upper_right, 
+                self.amplitude_mesh.lower_left, 
+                self.amplitude_mesh.dimension)]
         ng            = self.ng
 
         dx /= nx

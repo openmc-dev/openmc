@@ -1092,7 +1092,7 @@ openmc_cell_set_fill(int32_t index, int type, int32_t n,
 }
 
 extern "C" int
-openmc_cell_set_temperature(int32_t index, double T, const int32_t* instance)
+openmc_cell_set_temperature(int32_t index, double T, const int32_t* instance, bool set_contained)
 {
   if (index < 0 || index >= model::cells.size()) {
     strcpy(openmc_err_msg, "Index in cells array is out of bounds.");
@@ -1101,7 +1101,7 @@ openmc_cell_set_temperature(int32_t index, double T, const int32_t* instance)
 
   int32_t instance_index = instance ? *instance : -1;
   try {
-    model::cells[index]->set_temperature(T, instance_index);
+    model::cells[index]->set_temperature(T, instance_index, set_contained);
   } catch (const std::exception& e) {
     set_errmsg(e.what());
     return OPENMC_E_UNASSIGNED;

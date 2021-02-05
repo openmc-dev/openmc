@@ -105,7 +105,7 @@ Functions
    :return: Return status (negative if an error occurred)
    :rtype: int
 
-.. c:function:: int openmc_cell_set_temperature(index index, double T, const int32_t* instance)
+.. c:function:: int openmc_cell_set_temperature(index index, double T, const int32_t* instance, bool set_contained)
 
    Set the temperature of a cell.
 
@@ -113,6 +113,8 @@ Functions
    :param double T: Temperature in Kelvin
    :param instance: Which instance of the cell. To set the temperature for all
                     instances, pass a null pointer.
+   :param set_contained: If the cell is not filled by a material, whether to set the temperatures
+                         of all filled cells
    :type instance: const int32_t*
    :return: Return status (negative if an error occurred)
    :rtype: int

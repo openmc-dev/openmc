@@ -18,7 +18,7 @@ extern "C" {
   int openmc_cell_set_name(int32_t index, const char* name);
   int openmc_cell_set_fill(int32_t index, int type, int32_t n, const int32_t* indices);
   int openmc_cell_set_id(int32_t index, int32_t id);
-  int openmc_cell_set_temperature(int32_t index, double T, const int32_t* instance);
+  int openmc_cell_set_temperature(int32_t index, double T, const int32_t* instance, bool set_contained = false);
   int openmc_energy_filter_get_bins(int32_t index, const double** energies, size_t* n);
   int openmc_energy_filter_set_bins(int32_t index, size_t n, const double* energies);
   int openmc_energyfunc_filter_get_energy(int32_t index, size_t* n, const double** energy);

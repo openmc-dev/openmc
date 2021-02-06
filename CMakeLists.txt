@@ -50,6 +50,14 @@ if(dagmc)
 endif()
 
 #===============================================================================
+# Check for submodules perhaps already on system
+#===============================================================================
+
+# If not found, we just pull appropriate versions from github and build them.
+find_package(fmt QUIET)
+find_package(pugixml QUIET)
+
+#===============================================================================
 # HDF5 for binary output
 #===============================================================================
 
@@ -85,7 +93,7 @@ endif()
 # Set compile/link flags based on which compiler is being used
 #===============================================================================
 
-# Skip for Visual Stduio which has its own configurations through GUI
+# Skip for Visual Studio which has its own configurations through GUI
 if(NOT MSVC)
 
 if(openmp)
@@ -126,39 +134,56 @@ endif()
 # Update git submodules as needed
 #===============================================================================
 
+# Function that updates a git submodule, and double-checks that it exists
+function(update_git_submodule git_submodule_name)
+  execute_process(COMMAND ${GIT_EXECUTABLE} submodule update --init vendor/${git_submodule_name}
+                  WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+                  RESULT_VARIABLE GIT_SUBMOD_RESULT)
+  if(NOT GIT_SUBMOD_RESULT EQUAL 0)
+    message(FATAL_ERROR "git submodule update --init failed with \
+      ${GIT_SUBMOD_RESULT} on ${git_submodule_name}, please checkout submodules")
+  endif()
+
+  # Double-check submodule indeed exists
+  if(NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/vendor/${git_submodule_name}/CMakeLists.txt")
+    message(FATAL_ERROR "The git submodule ${git_submodule_name} was not downloaded! GIT_SUBMODULE was \
+      turned off or failed. Please update the ${git_submodule_name} submodule and try again.")
+  endif()
+endfunction()
+
 find_package(Git)
 if(GIT_FOUND AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/.git")
   option(GIT_SUBMODULE "Check submodules during build" ON)
   if(GIT_SUBMODULE)
     message(STATUS "Submodule update")
-    execute_process(COMMAND ${GIT_EXECUTABLE} submodule update --init --recursive
-                    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-                    RESULT_VARIABLE GIT_SUBMOD_RESULT)
-    if(NOT GIT_SUBMOD_RESULT EQUAL 0)
-      message(FATAL_ERROR "git submodule update --init failed with \
-        ${GIT_SUBMOD_RESULT}, please checkout submodules")
+    if (NOT fmt_FOUND)
+      update_git_submodule(fmt)
     endif()
+    if (NOT pugixml_FOUND)
+      update_git_submodule(pugixml)
+    endif()
+    update_git_submodule(gsl-lite)
+    update_git_submodule(xtensor)
+    update_git_submodule(xtl)
   endif()
-endif()
-
-# Check to see if submodules exist (by checking one)
-if(NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/vendor/pugixml/CMakeLists.txt")
-  message(FATAL_ERROR "The git submodules were not downloaded! GIT_SUBMODULE was \
-    turned off or failed. Please update submodules and try again.")
 endif()
 
 #===============================================================================
 # pugixml library
 #===============================================================================
 
-add_subdirectory(vendor/pugixml)
+if (NOT pugixml_FOUND)
+  add_subdirectory(vendor/pugixml)
+endif()
 
 #===============================================================================
 # {fmt} library
 #===============================================================================
 
-set(FMT_INSTALL ON CACHE BOOL "Generate the install target.")
-add_subdirectory(vendor/fmt)
+if (NOT fmt_FOUND)
+  set(FMT_INSTALL ON CACHE BOOL "Generate the install target.")
+  add_subdirectory(vendor/fmt)
+endif()
 
 #===============================================================================
 # xtensor header-only library

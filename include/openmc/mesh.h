@@ -46,6 +46,8 @@ public:
   Mesh(pugi::xml_node node);
   virtual ~Mesh() = default;
 
+  virtual std::string type() const = 0;
+
   // Methods
 
   //! Determine which bins were crossed by a particle
@@ -113,6 +115,14 @@ public:
 
   void bins_crossed(const Particle& p, std::vector<int>& bins,
                     std::vector<double>& lengths) const override;
+
+  //! Count number of bank sites in each mesh bin / energy bin
+  //
+  //! \param[in] Pointer to bank sites
+  //! \param[in] Number of bank sites
+  //! \param[out] Whether any bank sites are outside the mesh
+  xt::xtensor<double, 1> count_sites(const Particle::Bank* bank,
+                                     int64_t length, bool* outside) const;
 
   //! Get bin given mesh indices
   //
@@ -186,6 +196,8 @@ public:
 
   // Overriden methods
 
+  std::string type() const override {return "regular";}
+
   void surface_bins_crossed(const Particle& p, std::vector<int>& bins)
   const override;
 
@@ -199,16 +211,6 @@ public:
   plot(Position plot_ll, Position plot_ur) const override;
 
   void to_hdf5(hid_t group) const override;
-
-  // New methods
-
-  //! Count number of bank sites in each mesh bin / energy bin
-  //
-  //! \param[in] bank Array of bank sites
-  //! \param[out] Whether any bank sites are outside the mesh
-  //! \return Array indicating number of sites in each mesh/energy bin
-  xt::xtensor<double, 1> count_sites(const Particle::Bank* bank, int64_t length,
-    bool* outside) const;
 
   // Data members
 
@@ -221,9 +223,12 @@ class RectilinearMesh : public StructuredMesh
 {
 public:
   // Constructors
+  RectilinearMesh() = default;
   RectilinearMesh(pugi::xml_node node);
 
   // Overriden methods
+
+  std::string type() const override {return "rectilinear";}
 
   void surface_bins_crossed(const Particle& p, std::vector<int>& bins)
   const override;
@@ -239,7 +244,6 @@ public:
 
   void to_hdf5(hid_t group) const override;
 
-private:
   std::vector<std::vector<double>> grid_;
 };
 
@@ -251,6 +255,8 @@ public:
   UnstructuredMesh() = default;
   UnstructuredMesh(pugi::xml_node);
   ~UnstructuredMesh() = default;
+
+  std::string type() const override {return "unstructured";}
 
   void bins_crossed(const Particle& p,
                     std::vector<int>& bins,

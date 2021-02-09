@@ -233,7 +233,6 @@ void process_collision_events()
     simulation::calculate_nonfuel_xs_queue.data(),
     simulation::calculate_fuel_xs_queue.data());
   cudaDeviceSynchronize();
-  std::cout << "ITER" << std::endl;
 
   simulation::fission_bank.updateIndex(gpu::fission_bank_index);
   simulation::calculate_nonfuel_xs_queue.updateIndex(

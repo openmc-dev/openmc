@@ -531,6 +531,7 @@ HD int sample_nuclide(Particle& p)
   p.write_restart();
   throw std::runtime_error{"Did not sample any nuclide during collision."};
 #else
+  printf("no sampled nuclide, trap!\n");
   __trap();
   return 0;
 #endif
@@ -615,6 +616,7 @@ HD Reaction& sample_fission(int i_nuclide, Particle& p)
 
   // If we reached here, no reaction was sampled
 #ifdef __CUDA_ARCH__
+  printf("nu fission reaction successfully sampled!\n");
   __trap();
   return *nuc->fission_rx_[0];
 #else
@@ -801,6 +803,7 @@ HD void scatter(Particle& p, int i_nuclide)
       // Check to make sure inelastic scattering reaction sampled
       if (i >= nuc->reactions_.size()) {
 #ifdef __CUDA_ARCH__
+        printf("unable to sampled inelastic scattering reaction!\n");
         __trap();
 #else
         p.write_restart();
@@ -1080,6 +1083,7 @@ HD Direction sample_target_velocity(const Nuclide& nuc, double E, Direction u,
   } // switch (sampling_method)
 
 #ifdef __CUDA_ARCH__
+  printf("failure in sample_target_velocity!\n");
   __trap();
   return {0, 0, 0};
 #else

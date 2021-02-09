@@ -56,10 +56,8 @@ AngleDistribution::AngleDistribution(hid_t group)
     // CDF values that were passed through to the HDF5 library. At a later
     // time, we can remove the CDF values from the HDF5 library and
     // reconstruct them using the PDF
-    Tabular* mudist = new Tabular{x.data(), p.data(), n, int2interp(interp[i]),
-                                  c.data()};
-
-    distribution_.emplace_back(mudist);
+    distribution_.push_back(make_unique<Tabular>(
+      x.data(), p.data(), n, int2interp(interp[i]), c.data()));
   }
 }
 

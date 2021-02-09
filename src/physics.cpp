@@ -112,7 +112,6 @@ HD void sample_neutron_reaction(Particle& p)
 
   // Sample a nuclide within the material
   int i_nuclide = sample_nuclide(p);
-  printf("%i\n", i_nuclide);
 
   // Save which nuclide particle had collision with
   p.event_nuclide() = i_nuclide;

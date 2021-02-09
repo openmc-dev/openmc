@@ -1090,6 +1090,12 @@ class CMFDRun:
         # Initialize parameters for CMFD tally windows
         self._set_tally_window()
 
+        # Extract spatial and energy indices
+        nx, ny, nz, ng = self._indices
+
+        # Initialize CMFD source to all ones
+        self._cmfd_src = np.ones((nx, ny, nz, ng))
+
         # Define all variables that will exist only on master process
         if openmc.lib.master():
             # Set global albedo
@@ -1100,9 +1106,6 @@ class CMFDRun:
 
             # Set up CMFD coremap
             self._set_coremap()
-
-            # Extract spatial and energy indices
-            nx, ny, nz, ng = self._indices
 
             # Allocate parameters that need to be stored for tally window
             self._openmc_src_rate = np.zeros((nx, ny, nz, ng, 0))

@@ -3,6 +3,7 @@ from ctypes import (c_int, c_int32, c_char_p, c_double, POINTER,
                     create_string_buffer)
 from weakref import WeakValueDictionary
 
+import numpy as np
 from numpy.ctypeslib import as_array
 
 from ..exceptions import AllocationError, InvalidIDError

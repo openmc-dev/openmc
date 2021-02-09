@@ -103,7 +103,7 @@ class Mesh(_FortranObjectWithID):
         _dll.openmc_mesh_set_id(self._index, mesh_id)
 
 
-class RegularMesh(_FortranObjectWithID):
+class RegularMesh(Mesh):
     """RegularMesh stored internally.
 
     This class exposes a mesh that is stored internally in the OpenMC

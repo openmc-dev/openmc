@@ -442,7 +442,7 @@ def test_find_material(lib_init):
     assert mat is openmc.lib.materials[2]
 
 
-def test_mesh(lib_init):
+def test_regular_mesh(lib_init):
     mesh = openmc.lib.RegularMesh()
     mesh.dimension = (2, 3, 4)
     assert mesh.dimension == (2, 3, 4)
@@ -469,6 +469,37 @@ def test_mesh(lib_init):
     for mesh_id, mesh in meshes.items():
         assert isinstance(mesh, openmc.lib.RegularMesh)
         assert mesh_id == mesh.id
+
+    mf = openmc.lib.MeshFilter(mesh)
+    assert mf.mesh == mesh
+
+    msf = openmc.lib.MeshSurfaceFilter(mesh)
+    assert msf.mesh == mesh
+
+
+def test_rectilinear_mesh(lib_init):
+    mesh = openmc.lib.RectilinearMesh()
+    x_grid = [-10., 0., 10.]
+    y_grid = [0., 10., 20.]
+    z_grid = [10., 20., 30.]
+    mesh.set_grid(x_grid, y_grid, z_grid)
+    assert np.all(mesh.lower_left == (-10., 0., 10.))
+    assert np.all(mesh.upper_right == (10., 20., 30.))
+    assert np.all(mesh.dimension == (2, 2, 2))
+    for i, diff_x in enumerate(np.diff(x_grid)):
+        for j, diff_y in enumerate(np.diff(y_grid)):
+            for k, diff_z in enumerate(np.diff(z_grid)):
+                assert np.all(mesh.width[i, j, k, :] == (10, 10, 10))
+
+    with pytest.raises(exc.AllocationError):
+        mesh2 = openmc.lib.RectilinearMesh(mesh.id)
+
+    meshes = openmc.lib.meshes
+    assert isinstance(meshes, Mapping)
+    assert len(meshes) == 2
+
+    mesh = meshes[mesh.id]
+    assert isinstance(mesh, openmc.lib.RectilinearMesh)
 
     mf = openmc.lib.MeshFilter(mesh)
     assert mf.mesh == mesh

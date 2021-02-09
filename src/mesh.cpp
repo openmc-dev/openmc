@@ -162,6 +162,62 @@ int StructuredMesh::n_surface_bins() const
   return 4 * n_dimension_ * n_bins();
 }
 
+xt::xtensor<double, 1>
+StructuredMesh::count_sites(const Particle::Bank* bank,
+                            int64_t length,
+                            bool* outside) const
+{
+  // Determine shape of array for counts
+  std::size_t m = this->n_bins();
+  std::vector<std::size_t> shape = {m};
+
+  // Create array of zeros
+  xt::xarray<double> cnt {shape, 0.0};
+  bool outside_ = false;
+
+  for (int64_t i = 0; i < length; i++) {
+    const auto& site = bank[i];
+
+    // determine scoring bin for entropy mesh
+    int mesh_bin = get_bin(site.r);
+
+    // if outside mesh, skip particle
+    if (mesh_bin < 0) {
+      outside_ = true;
+      continue;
+    }
+
+    // Add to appropriate bin
+    cnt(mesh_bin) += site.wgt;
+  }
+
+  // Create copy of count data. Since ownership will be acquired by xtensor,
+  // std::allocator must be used to avoid Valgrind mismatched free() / delete
+  // warnings.
+  int total = cnt.size();
+  double* cnt_reduced = std::allocator<double>{}.allocate(total);
+
+#ifdef OPENMC_MPI
+  // collect values from all processors
+  MPI_Reduce(cnt.data(), cnt_reduced, total, MPI_DOUBLE, MPI_SUM, 0,
+    mpi::intracomm);
+
+  // Check if there were sites outside the mesh for any processor
+  if (outside) {
+    MPI_Reduce(&outside_, outside, 1, MPI_C_BOOL, MPI_LOR, 0, mpi::intracomm);
+  }
+#else
+  std::copy(cnt.data(), cnt.data() + total, cnt_reduced);
+  if (outside) *outside = outside_;
+#endif
+
+  // Adapt reduced values in array back into an xarray
+  auto arr = xt::adapt(cnt_reduced, total, xt::acquire_ownership(), shape);
+  xt::xarray<double> counts = arr;
+
+  return counts;
+}
+
 bool StructuredMesh::intersects(Position& r0, Position r1, int* ijk) const
 {
   switch(n_dimension_) {
@@ -809,69 +865,13 @@ void RegularMesh::to_hdf5(hid_t group) const
 {
   hid_t mesh_group = create_group(group, "mesh " + std::to_string(id_));
 
-  write_dataset(mesh_group, "type", "regular");
+  write_dataset(mesh_group, "type", type());
   write_dataset(mesh_group, "dimension", shape_);
   write_dataset(mesh_group, "lower_left", lower_left_);
   write_dataset(mesh_group, "upper_right", upper_right_);
   write_dataset(mesh_group, "width", width_);
 
   close_group(mesh_group);
-}
-
-xt::xtensor<double, 1>
-RegularMesh::count_sites(const Particle::Bank* bank,
-                         int64_t length,
-                         bool* outside) const
-{
-  // Determine shape of array for counts
-  std::size_t m = this->n_bins();
-  std::vector<std::size_t> shape = {m};
-
-  // Create array of zeros
-  xt::xarray<double> cnt {shape, 0.0};
-  bool outside_ = false;
-
-  for (int64_t i = 0; i < length; i++) {
-    const auto& site = bank[i];
-
-    // determine scoring bin for entropy mesh
-    int mesh_bin = get_bin(site.r);
-
-    // if outside mesh, skip particle
-    if (mesh_bin < 0) {
-      outside_ = true;
-      continue;
-    }
-
-    // Add to appropriate bin
-    cnt(mesh_bin) += site.wgt;
-  }
-
-  // Create copy of count data. Since ownership will be acquired by xtensor,
-  // std::allocator must be used to avoid Valgrind mismatched free() / delete
-  // warnings.
-  int total = cnt.size();
-  double* cnt_reduced = std::allocator<double>{}.allocate(total);
-
-#ifdef OPENMC_MPI
-  // collect values from all processors
-  MPI_Reduce(cnt.data(), cnt_reduced, total, MPI_DOUBLE, MPI_SUM, 0,
-    mpi::intracomm);
-
-  // Check if there were sites outside the mesh for any processor
-  if (outside) {
-    MPI_Reduce(&outside_, outside, 1, MPI_C_BOOL, MPI_LOR, 0, mpi::intracomm);
-  }
-#else
-  std::copy(cnt.data(), cnt.data() + total, cnt_reduced);
-  if (outside) *outside = outside_;
-#endif
-
-  // Adapt reduced values in array back into an xarray
-  auto arr = xt::adapt(cnt_reduced, total, xt::acquire_ownership(), shape);
-  xt::xarray<double> counts = arr;
-
-  return counts;
 }
 
 //==============================================================================
@@ -883,7 +883,7 @@ RectilinearMesh::RectilinearMesh(pugi::xml_node node)
 {
   n_dimension_ = 3;
 
-  grid_.resize(3);
+  grid_.resize(n_dimension_);
   grid_[0] = get_node_array<double>(node, "x_grid");
   grid_[1] = get_node_array<double>(node, "y_grid");
   grid_[2] = get_node_array<double>(node, "z_grid");
@@ -1122,7 +1122,7 @@ void RectilinearMesh::to_hdf5(hid_t group) const
 {
   hid_t mesh_group = create_group(group, "mesh " + std::to_string(id_));
 
-  write_dataset(mesh_group, "type", "rectilinear");
+  write_dataset(mesh_group, "type", type());
   write_dataset(mesh_group, "x_grid", grid_[0]);
   write_dataset(mesh_group, "y_grid", grid_[1]);
   write_dataset(mesh_group, "z_grid", grid_[2]);
@@ -1145,12 +1145,13 @@ check_mesh(int32_t index)
 }
 
 int
-check_regular_mesh(int32_t index, RegularMesh** mesh)
+check_mesh_type(int32_t index, const std::string& mesh_compare_type)
 {
   if (int err = check_mesh(index)) return err;
-  *mesh = dynamic_cast<RegularMesh*>(model::meshes[index].get());
-  if (!*mesh) {
-    set_errmsg("This function is only valid for regular meshes.");
+  StructuredMesh* mesh = dynamic_cast<StructuredMesh*>(model::meshes[index].get());
+  auto mesh_type = mesh->type();
+  if (mesh_compare_type != mesh_type) {
+    set_errmsg("This function is only valid for " + mesh_type + " meshes.");
     return OPENMC_E_INVALID_TYPE;
   }
   return 0;
@@ -1160,17 +1161,37 @@ check_regular_mesh(int32_t index, RegularMesh** mesh)
 // C API functions
 //==============================================================================
 
+// Return the type of mesh as a C string
+extern "C" int
+openmc_mesh_get_type(int32_t index, char* type)
+{
+  if (int err = check_mesh(index)) return err;
+
+  StructuredMesh* mesh = dynamic_cast<StructuredMesh*>(model::meshes[index].get());
+  std::strcpy(type, mesh->type().c_str());
+  return 0;
+}
+
 RegularMesh* get_regular_mesh(int32_t index) {
   return dynamic_cast<RegularMesh*>(model::meshes[index].get());
 }
 
 //! Extend the meshes array by n elements
 extern "C" int
-openmc_extend_meshes(int32_t n, int32_t* index_start, int32_t* index_end)
+openmc_extend_meshes(int32_t n, const char* type, int32_t* index_start,
+                     int32_t* index_end)
 {
   if (index_start) *index_start = model::meshes.size();
   for (int i = 0; i < n; ++i) {
-    model::meshes.push_back(std::make_unique<RegularMesh>());
+    if (std::strcmp(type, "regular") == 0)
+    {
+      model::meshes.push_back(std::make_unique<RegularMesh>());
+    } else if (std::strcmp(type, "rectilinear") == 0)
+    {
+      model::meshes.push_back(std::make_unique<RectilinearMesh>());
+    } else {
+      throw std::runtime_error{"Unknown mesh type: " + std::string(type)};
+    }
   }
   if (index_end) *index_end = model::meshes.size() - 1;
 
@@ -1209,23 +1230,23 @@ openmc_mesh_set_id(int32_t index, int32_t id)
   return 0;
 }
 
-//! Get the dimension of a mesh
+//! Get the dimension of a regular mesh
 extern "C" int
-openmc_mesh_get_dimension(int32_t index, int** dims, int* n)
+openmc_regular_mesh_get_dimension(int32_t index, int** dims, int* n)
 {
-  RegularMesh* mesh;
-  if (int err = check_regular_mesh(index, &mesh)) return err;
+  if (int err = check_mesh_type(index, "regular")) return err;
+  RegularMesh* mesh = dynamic_cast<RegularMesh*>(model::meshes[index].get());
   *dims = mesh->shape_.data();
   *n = mesh->n_dimension_;
   return 0;
 }
 
-//! Set the dimension of a mesh
+//! Set the dimension of a regular mesh
 extern "C" int
-openmc_mesh_set_dimension(int32_t index, int n, const int* dims)
+openmc_regular_mesh_set_dimension(int32_t index, int n, const int* dims)
 {
-  RegularMesh* mesh;
-  if (int err = check_regular_mesh(index, &mesh)) return err;
+  if (int err = check_mesh_type(index, "regular")) return err;
+  RegularMesh* mesh = dynamic_cast<RegularMesh*>(model::meshes[index].get());
 
   // Copy dimension
   std::vector<std::size_t> shape = {static_cast<std::size_t>(n)};
@@ -1234,12 +1255,13 @@ openmc_mesh_set_dimension(int32_t index, int n, const int* dims)
   return 0;
 }
 
-//! Get the mesh parameters
+//! Get the regular mesh parameters
 extern "C" int
-openmc_mesh_get_params(int32_t index, double** ll, double** ur, double** width, int* n)
+openmc_regular_mesh_get_params(int32_t index, double** ll, double** ur,
+                               double** width, int* n)
 {
-  RegularMesh* m;
-  if (int err = check_regular_mesh(index, &m)) return err;
+  if (int err = check_mesh_type(index, "regular")) return err;
+  RegularMesh* m = dynamic_cast<RegularMesh*>(model::meshes[index].get());
 
   if (m->lower_left_.dimension() == 0) {
     set_errmsg("Mesh parameters have not been set.");
@@ -1253,13 +1275,13 @@ openmc_mesh_get_params(int32_t index, double** ll, double** ur, double** width, 
   return 0;
 }
 
-//! Set the mesh parameters
+//! Set the regular mesh parameters
 extern "C" int
-openmc_mesh_set_params(int32_t index, int n, const double* ll, const double* ur,
-                       const double* width)
+openmc_regular_mesh_set_params(int32_t index, int n, const double* ll,
+                               const double* ur, const double* width)
 {
-  RegularMesh* m;
-  if (int err = check_regular_mesh(index, &m)) return err;
+  if (int err = check_mesh_type(index, "regular")) return err;
+  RegularMesh* m = dynamic_cast<RegularMesh*>(model::meshes[index].get());
 
   std::vector<std::size_t> shape = {static_cast<std::size_t>(n)};
   if (ll && ur) {
@@ -1278,6 +1300,77 @@ openmc_mesh_set_params(int32_t index, int n, const double* ll, const double* ur,
     set_errmsg("At least two parameters must be specified.");
     return OPENMC_E_INVALID_ARGUMENT;
   }
+
+  return 0;
+}
+
+//! Get the rectilinear mesh grid
+extern "C" int
+openmc_rectilinear_mesh_get_grid(int32_t index, double** grid_x, int* nx,
+                       double** grid_y, int * ny, double** grid_z, int* nz)
+{
+  if (int err = check_mesh_type(index, "rectilinear")) return err;
+  RectilinearMesh* m = dynamic_cast<RectilinearMesh*>(model::meshes[index].get());
+
+  if (m->lower_left_.dimension() == 0) {
+    set_errmsg("Mesh parameters have not been set.");
+    return OPENMC_E_ALLOCATE;
+  }
+
+  *grid_x = m->grid_[0].data();
+  *nx = m->grid_[0].size();
+  *grid_y = m->grid_[1].data();
+  *ny = m->grid_[1].size();
+  *grid_z = m->grid_[2].data();
+  *nz = m->grid_[2].size();
+
+  return 0;
+}
+
+//! Set the regular mesh parameters
+extern "C" int
+openmc_rectilinear_mesh_set_grid(int32_t index, const double* grid_x,
+                       const int nx, const double* grid_y, const int ny,
+                       const double* grid_z, const int nz)
+{
+  if (int err = check_mesh_type(index, "rectilinear")) return err;
+  RectilinearMesh* m = dynamic_cast<RectilinearMesh*>(model::meshes[index].get());
+
+  m->n_dimension_ = 3;
+  m->grid_.resize(m->n_dimension_);
+
+  for (int i = 0; i < nx; i++) {
+    m->grid_[0].push_back(grid_x[i]);
+  }
+  for (int i = 0; i < ny; i++) {
+    m->grid_[1].push_back(grid_y[i]);
+  }
+  for (int i = 0; i < nz; i++) {
+    m->grid_[2].push_back(grid_z[i]);
+  }
+
+  m->shape_ = {static_cast<int>(m->grid_[0].size()) - 1,
+               static_cast<int>(m->grid_[1].size()) - 1,
+               static_cast<int>(m->grid_[2].size()) - 1};
+
+  for (const auto& g : m->grid_) {
+    if (g.size() < 2) {
+      set_errmsg("x-, y-, and z- grids for rectilinear meshes "
+        "must each have at least 2 points");
+      return OPENMC_E_INVALID_ARGUMENT;
+    }
+    for (int i = 1; i < g.size(); ++i) {
+      if (g[i] <= g[i-1]) {
+        std::cout << g[i] << " " << g[i-1] << "\n";
+        set_errmsg("Values in for x-, y-, and z- grids for "
+          "rectilinear meshes must be sorted and unique.");
+        return OPENMC_E_INVALID_ARGUMENT;
+      }
+    }
+  }
+
+  m->lower_left_ = {m->grid_[0].front(), m->grid_[1].front(), m->grid_[2].front()};
+  m->upper_right_ = {m->grid_[0].back(), m->grid_[1].back(), m->grid_[2].back()};
 
   return 0;
 }
@@ -1577,7 +1670,7 @@ UnstructuredMesh::to_hdf5(hid_t group) const
 {
     hid_t mesh_group = create_group(group, fmt::format("mesh {}", id_));
 
-    write_dataset(mesh_group, "type", "unstructured");
+    write_dataset(mesh_group, "type", type());
     write_dataset(mesh_group, "filename", filename_);
 
     // write volume and centroid of each tet

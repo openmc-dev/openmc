@@ -236,19 +236,28 @@ Prerequisites
 
       OpenMC supports particle tracking in CAD-based geometries via the Direct
       Accelerated Geometry Monte Carlo (DAGMC) toolkit (`installation
-      instructions
-      <https://svalinn.github.io/DAGMC/install/openmc.html>`_). For use in
-      OpenMC, only the ``MOAB_DIR`` and ``BUILD_TALLY`` variables need to be
-      specified in the CMake configuration step when building DAGMC. This option
-      also allows unstructured mesh tallies on tetrahedral MOAB meshes.
+      instructions <https://svalinn.github.io/DAGMC/install/openmc.html>`_). For
+      use in OpenMC, only the ``MOAB_DIR`` and ``BUILD_TALLY`` variables need to
+      be specified in the CMake configuration step when building DAGMC. This
+      option also allows unstructured mesh tallies on tetrahedral MOAB meshes.
+      In addition to turning this option on, the path to the DAGMC installation
+      should be specified as part of the ``CMAKE_PREFIX_PATH`` variable::
 
-    * libMesh_ mesh library framework for numerical simulations of partial
-    differential equations.
+          cmake -Ddagmc=on -DCMAKE_PREFIX_PATH=/path/to/dagmc/installation
+
+    * libMesh_ mesh library framework for numerical simulations of partial differential equations
 
       This optional dependency enables support for unstructured mesh tally
-      filters using libMesh meshes. Any 3D element type supported by libMesh
-      can be used, but the implementation is currently restricted
-      to collision estimators.
+      filters using libMesh meshes. Any 3D element type supported by libMesh can
+      be used, but the implementation is currently restricted to collision
+      estimators. In addition to turning this option on, the path to the libMesh
+      installation should be specified as part of the ``CMAKE_PREFIX_PATH``
+      variable.::
+
+          CXX=mpicxx cmake -Dlibmesh=on -DCMAKE_PREFIX_PATH=/path/to/libmesh/installation
+
+      Note that libMesh is most commonly compiled with MPI support. If that
+      is the case, then OpenMC should be compiled with MPI support as well.
 
 .. _gcc: https://gcc.gnu.org/
 .. _CMake: https://cmake.org

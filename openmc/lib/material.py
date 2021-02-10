@@ -74,7 +74,7 @@ class Material(_FortranObjectWithID):
     Parameters
     ----------
     uid : int or None
-        Unique ID of the tally
+        Unique ID of the material
     new : bool
         When `index` is None, this argument controls whether a new object is
         created or a view to an existing object is returned.

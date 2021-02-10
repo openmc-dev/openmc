@@ -288,7 +288,6 @@ public:
   UnstructuredMesh(const std::string& filename);
 
   // Methods
-public:
 
   //! Add a variable to the mesh instance
   virtual void add_score(const std::string& var_name) = 0;

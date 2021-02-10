@@ -2184,7 +2184,8 @@ void LibMesh::initialize()
   }
 
   // store first element in the mesh to use as an offset for bin indices
-  first_element_ = *m_->elements_begin();
+  auto first_elem = *m_->elements_begin();
+  first_element_id_ = first_elem->id();
 
   // bounding box for the mesh for quick rejection checks
   bbox_ = libMesh::MeshTools::create_bounding_box(*m_);
@@ -2325,7 +2326,7 @@ LibMesh::get_bin(Position r) const
 int
 LibMesh::get_bin_from_element(const libMesh::Elem* elem) const
 {
-  int bin = elem->id() - first_element_->id();
+  int bin = elem->id() - first_element_id_;
   if (bin >= n_bins() || bin < 0) {
     fatal_error(fmt::format("Invalid bin: {}", bin));
   }

@@ -2211,10 +2211,11 @@ int LibMesh::n_surface_bins() const
   for (int i = 0; i < this->n_bins(); i++) {
     const libMesh::Elem& e = get_element_from_bin(i);
     n_bins += e.n_faces();
-    // if this is a boundary element, sure to count boundary faces
-    // twice
-    for (int j = 0; j < e.n_sides(); j++) {
-      if (e.neighbor_ptr(j) == nullptr) { n_bins++; }
+    // if this is a boundary element, it will only be visited once,
+    // the number of surface bins is incremented to
+    for (auto neighbor_ptr : e.neighbor_ptr_range()) {
+      // null neighbor pointer indicates a boundary face
+      if (!neighbor_ptr) { n_bins++; }
     }
   }
   return n_bins;

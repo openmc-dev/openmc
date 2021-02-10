@@ -2,7 +2,7 @@
 # module and creates a libmesh imported target
 
 if (${CMAKE_VERSION} VERSION_LESS 3.12.0)
-    message((FATAL_ERROR "OpenMC builds with libMesh support require CMake version 3.12.0 or greater."))
+    message(FATAL_ERROR "OpenMC builds with libMesh support require CMake version 3.12.0 or greater.")
 endif()
 
 include(FindPkgConfig)

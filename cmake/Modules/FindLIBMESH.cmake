@@ -1,6 +1,10 @@
 # Finds the libMesh installation using CMake's PkgConfig
 # module and creates a libmesh imported target
 
+if (${CMAKE_VERSION} VERSION_LESS 3.12.0)
+    message((FATAL_ERROR "OpenMC builds with libMesh support require CMake version 3.12.0 or greater."))
+endif()
+
 include(FindPkgConfig)
 set(ENV{PKG_CONFIG_PATH} "$ENV{PKG_CONFIG_PATH}:${LIBMESH_PC}")
 set(PKG_CONFIG_USE_CMAKE_PREFIX_PATH True)

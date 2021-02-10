@@ -207,7 +207,7 @@ UnstructuredMesh::to_hdf5(hid_t group) const
     write_dataset(mesh_group, "type", "unstructured");
     write_dataset(mesh_group, "filename", filename_);
     write_dataset(mesh_group, "library", this->library());
-    // write volume of each tet
+    // write volume of each element
     std::vector<double> tet_vols;
     xt::xtensor<double, 2> centroids({(size_t)this->n_bins(), 3});
     for (int i = 0; i < this->n_bins(); i++) {

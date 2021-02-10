@@ -543,7 +543,7 @@ private:
   std::string eq_system_name_; //!< name of the equation system holding OpenMC results
   std::unordered_map<std::string, unsigned int> variable_map_; //!< mapping of variable names (tally scores) to libMesh variable numbers
   libMesh::BoundingBox bbox_; //!< bounding box of the mesh
-  libMesh::dof_id_type first_element_id_; //!< if of the first element in the mesh
+  libMesh::dof_id_type first_element_id_; //!< id of the first element in the mesh
 };
 #endif
 

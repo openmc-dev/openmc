@@ -85,6 +85,11 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
       -
+        name: Set up CMake for libMesh build
+        uses: jwlawson/actions-setup-cmake@v1.5
+        with:
+          cmake-version: 3.11.x
+      -
         name: Environment Variables
         run: |
           echo "DAGMC_ROOT=$HOME/DAGMC"

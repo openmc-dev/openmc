@@ -55,7 +55,17 @@ endif()
 
 # If not found, we just pull appropriate versions from github and build them.
 find_package(fmt QUIET)
+if(fmt_FOUND)
+  message(STATUS "Found fmt: ${fmt_DIR} (version ${fmt_VERSION})")
+else()
+  message(STATUS "Did not find fmt, will use submodule instead")
+endif()
 find_package(pugixml QUIET)
+if(pugixml_FOUND)
+  message(STATUS "Found pugixml: ${pugixml_DIR}")
+else()
+  message(STATUS "Did not find pugixml, will use submodule instead")
+endif()
 
 #===============================================================================
 # HDF5 for binary output

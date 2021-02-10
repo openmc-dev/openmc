@@ -46,7 +46,7 @@ void collision(Particle& p)
 #ifdef __CUDA_ARCH__
   ++(p.n_collision_);
   sample_neutron_reaction(p);
-  if (p.E_ < gpu::energy_max_neutron) {
+  if (p.E_ < gpu::energy_min_neutron) {
     p.alive_ = false;
     p.wgt_ = 0.0;
   }
@@ -616,7 +616,7 @@ HD Reaction& sample_fission(int i_nuclide, Particle& p)
 
   // If we reached here, no reaction was sampled
 #ifdef __CUDA_ARCH__
-  printf("nu fission reaction successfully sampled!\n");
+  printf("nu fission reaction unsuccessfully sampled!\n");
   __trap();
   return *nuc->fission_rx_[0];
 #else
@@ -689,32 +689,18 @@ HD void absorption(Particle& p, int i_nuclide)
     p.wgt_last() = p.wgt();
 
     // Score implicit absorption estimate of keff
-#ifdef __CUDA_ARCH__
-    p.keff_tally_absorption_ += p.wgt_absorb_ *
-                                p.neutron_xs(i_nuclide).nu_fission /
-                                p.neutron_xs(i_nuclide).absorption;
-#else
-    if (settings::run_mode == RunMode::EIGENVALUE) {
-      p.keff_tally_absorption() += p.wgt_absorb() *
-                                   p.neutron_xs(i_nuclide).nu_fission /
-                                   p.neutron_xs(i_nuclide).absorption;
-    }
-#endif
+    p.keff_tally_absorption() += p.wgt_absorb() *
+                                 p.neutron_xs(i_nuclide).nu_fission /
+                                 p.neutron_xs(i_nuclide).absorption;
   } else {
     // See if disappearance reaction happens
     if (p.neutron_xs(i_nuclide).absorption >
         prn(p.current_seed()) * p.neutron_xs(i_nuclide).total) {
+
       // Score absorption estimate of keff
-#ifdef __CUDA_ARCH__
-      p.keff_tally_absorption_ += p.wgt_ * p.neutron_xs(i_nuclide).nu_fission /
-                                  p.neutron_xs(i_nuclide).absorption;
-#else
-      if (settings::run_mode == RunMode::EIGENVALUE) {
-        p.keff_tally_absorption() += p.wgt() *
-                                     p.neutron_xs(i_nuclide).nu_fission /
-                                     p.neutron_xs(i_nuclide).absorption;
-      }
-#endif
+      p.keff_tally_absorption() += p.wgt() *
+                                   p.neutron_xs(i_nuclide).nu_fission /
+                                   p.neutron_xs(i_nuclide).absorption;
 
       p.alive() = false;
       p.event() = TallyEvent::ABSORB;

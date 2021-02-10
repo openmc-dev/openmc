@@ -392,6 +392,8 @@ Particle::event_death()
     int64_t offset = id() - 1 - simulation::work_index[mpi::rank];
     simulation::progeny_per_particle[offset] = n_progeny();
   }
+
+  n_event_ = 0;
 }
 
 

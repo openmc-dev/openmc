@@ -66,6 +66,11 @@ class Cell(_FortranObjectWithID):
 
     Parameters
     ----------
+    uid : int or None
+         Unique ID of the cell
+    new : bool
+         When `index` is None, this argument controls whether a new object is
+         created or a view to an existing object is returned.
     index : int
          Index in the `cells` array.
 

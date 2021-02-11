@@ -30,17 +30,5 @@ extern __managed__ unsigned managed_calculate_nonfuel_queue_index;
 __global__ void process_calculate_xs_events_device(
   EventQueueItem* queue, unsigned queue_size);
 
-inline void __device__ dispatch_xs_event_device(Particle& p, unsigned p_idx,
-  EventQueueItem* calc_nonfuel_queue, EventQueueItem* calc_fuel_queue)
-{
-  if (p.material_ == MATERIAL_VOID ||
-      !gpu::materials[p.material_]->fissionable_)
-    calc_nonfuel_queue[atomicInc(
-      &managed_calculate_nonfuel_queue_index, 0xFFFFFFF)] = {p, p_idx};
-  else
-    calc_fuel_queue[atomicInc(
-      &managed_calculate_nonfuel_queue_index, 0xFFFFFFF)] = {p, p_idx};
-}
-
 } // namespace gpu
 }

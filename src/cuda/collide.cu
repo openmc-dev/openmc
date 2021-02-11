@@ -10,11 +10,20 @@ __global__ void process_collision_events_device(EventQueueItem* queue,
 {
   for (unsigned tid = threadIdx.x + blockDim.x * blockIdx.x; tid < queue_size;
        tid += blockDim.x * gridDim.x) {
-    Particle& p = particles[queue[tid].idx];
+    auto const& p_idx = queue[tid].idx;
+    Particle& p = particles[p_idx];
     p.event_collide();
-    if (p.alive_)
-      dispatch_xs_event_device(
-        p, queue[tid].idx, calculate_nonfuel_xs_queue, calculate_fuel_xs_queue);
+
+    // Particle now needs an XS lookup
+    if (p.alive_) {
+      if (p.material_ == MATERIAL_VOID ||
+          !gpu::materials[p.material_]->fissionable_)
+        calculate_nonfuel_xs_queue[atomicInc(
+          &managed_calculate_nonfuel_queue_index, 0xFFFFFFF)] = {p, p_idx};
+      else
+        calculate_fuel_xs_queue[atomicInc(
+          &managed_calculate_nonfuel_queue_index, 0xFFFFFFF)] = {p, p_idx};
+    }
   }
 }
 

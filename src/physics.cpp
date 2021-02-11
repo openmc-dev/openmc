@@ -125,6 +125,7 @@ HD void sample_neutron_reaction(Particle& p)
 
   if (nuc->fissionable_) {
     auto& rx = sample_fission(i_nuclide, p);
+    // TODO make GPU work with event mode
 #ifdef __CUDA_ARCH__
     create_fission_sites(p, i_nuclide, rx);
 #else
@@ -724,8 +725,8 @@ HD void scatter(Particle& p, int i_nuclide)
   // Get pointer to nuclide and grid index/interpolation factor
   const auto& nuc {nuclides[i_nuclide]};
   const auto& micro {p.neutron_xs(i_nuclide)};
-  int i_temp =  micro.index_temp;
-  int i_grid =  micro.index_grid;
+  const int& i_temp = micro.index_temp;
+  const int& i_grid = micro.index_grid;
   double f = micro.interp_factor;
 
   // For tallying purposes, this routine might be called directly. In that
@@ -1229,6 +1230,7 @@ void sample_fission_neutron(int i_nuclide, const Reaction& rx, double E_in,
 #else
       __trap();
 #endif
+      }
     }
   }
 

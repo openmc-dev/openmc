@@ -188,21 +188,26 @@ Particle::event_advance()
     coord(j).r += distance * coord(j).u;
   }
 
+  // TODO
+#ifndef __CUDA_ARCH__
   // Score track-length tallies
   if (!model::active_tracklength_tallies.empty()) {
     score_tracklength_tally(*this, distance);
   }
+#endif
 
   // Score track-length estimate of k-eff
-  if (settings::run_mode == RunMode::EIGENVALUE &&
-      type() == ParticleType::neutron) {
+  if (type() == ParticleType::neutron) {
     keff_tally_tracklength() += wgt() * distance * macro_xs().neutron.nu_fission;
   }
 
+  // TODO
+#ifndef __CUDA_ARCH__
   // Score flux derivative accumulators for differential tallies.
   if (!model::active_tallies.empty()) {
     score_track_derivative(*this, distance);
   }
+#endif
 }
 
 void
@@ -244,15 +249,10 @@ Particle::event_collide()
   using model::cells;
 #endif
 
-#ifndef __CUDACC__
   // Score collision estimate of keff
-  if (settings::run_mode == RunMode::EIGENVALUE &&
-      type() == ParticleType::neutron) {
+  if (type() == ParticleType::neutron) {
     keff_tally_collision() += wgt() * macro_xs().neutron.nu_fission / macro_xs().total;
   }
-#else
-  keff_tally_collision_ += wgt_ * macro_xs_.nu_fission / macro_xs_.total;
-#endif
 
   // Score surface current tallies -- this has to be done before the collision
   // since the direction of the particle will change and we need to use the

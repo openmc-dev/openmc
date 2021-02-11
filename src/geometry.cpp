@@ -458,7 +458,7 @@ HD BoundaryInfo distance_to_boundary(Particle& p)
 
       if (d_lat < 0) {
 #ifdef __CUDA_ARCH__
-        asm("trap;");
+        __trap();
 #else
         p.mark_as_lost(fmt::format(
           "Particle {} had a negative distance to a lattice boundary", p.id()));

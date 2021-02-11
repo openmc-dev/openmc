@@ -1,10 +1,11 @@
 import numpy as np
+import pytest
 import scipy as sp
+from scipy.stats import shapiro
 
 import openmc
 import openmc.lib
 
-import pytest
 
 def test_t_percentile():
     # Permutations include 1 DoF, 2 DoF, and > 2 DoF
@@ -205,21 +206,24 @@ def test_watt_spectrum():
 
 
 def test_normal_dist():
+    # When standard deviation is zero, sampled value should be mean
     prn_seed = 1
-    a = 14.08
-    b = 0.0
+    mean = 14.08
+    stdev = 0.0
     ref_val = 14.08
-    test_val = openmc.lib.math.normal_variate(a, b, prn_seed)
-
+    test_val = openmc.lib.math.normal_variate(mean, stdev, prn_seed)
     assert ref_val == pytest.approx(test_val)
 
-    prn_seed = 1
-    a = 14.08
-    b = 1.0
-    ref_val = 16.436645416691427
-    test_val = openmc.lib.math.normal_variate(a, b, prn_seed)
-
-    assert ref_val == pytest.approx(test_val)
+    # Use Shapiro-Wilk test to ensure normality of sampled vairates
+    stdev = 1.0
+    samples = []
+    num_samples = 10000
+    for _ in range(num_samples):
+        # sample the normal distribution from openmc
+        samples.append(openmc.lib.math.normal_variate(mean, stdev, prn_seed))
+        prn_seed += 1
+    stat, p = shapiro(samples)
+    assert p > 0.05
 
 
 def test_broaden_wmp_polynomials():

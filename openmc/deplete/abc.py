@@ -4,23 +4,25 @@ This module contains the Operator class, which is then passed to an integrator
 to run a full depletion simulation.
 """
 
+from abc import ABC, abstractmethod
 from collections import namedtuple, defaultdict
 from collections.abc import Iterable, Callable
+from copy import deepcopy
+from inspect import signature
+from numbers import Real, Integral
 import os
 from pathlib import Path
-from abc import ABC, abstractmethod
-from copy import deepcopy
-from warnings import warn
-from numbers import Real, Integral
-from inspect import signature
+import sys
 import time
+from warnings import warn
 
 from numpy import nonzero, empty, asarray
 from uncertainties import ufloat
 
-from openmc.data import DataLibrary, JOULE_PER_EV
+from openmc.data import DataLibrary
 from openmc.lib import MaterialFilter, Tally
 from openmc.checkvalue import check_type, check_greater_than
+from . import comm
 from .results import Results
 from .chain import Chain
 from .results_list import ResultsList
@@ -29,8 +31,8 @@ from .pool import deplete
 
 __all__ = [
     "OperatorResult", "TransportOperator", "ReactionRateHelper",
-    "EnergyHelper", "FissionYieldHelper", "TalliedFissionYieldHelper",
-    "Integrator", "SIIntegrator", "DepSystemSolver"]
+    "NormalizationHelper", "FissionYieldHelper", "TalliedFissionYieldHelper",
+    "Integrator", "SIIntegrator", "DepSystemSolver", "add_params"]
 
 
 _SECONDS_PER_MINUTE = 60
@@ -136,15 +138,15 @@ class TransportOperator(ABC):
         self._dilute_initial = value
 
     @abstractmethod
-    def __call__(self, vec, power):
+    def __call__(self, vec, source_rate):
         """Runs a simulation.
 
         Parameters
         ----------
         vec : list of numpy.ndarray
             Total atoms to be used in function.
-        power : float
-            Power of the reactor in [W]
+        source_rate : float
+            Power in [W] or source rate in [neutron/sec]
 
         Returns
         -------
@@ -223,11 +225,11 @@ class TransportOperator(ABC):
 class ReactionRateHelper(ABC):
     """Abstract class for generating reaction rates for operators
 
-    Responsible for generating reaction rate tallies for burnable
-    materials, given nuclides and scores from the operator.
+    Responsible for generating reaction rate tallies for burnable materials,
+    given nuclides and scores from the operator.
 
-    Reaction rates are passed back to the operator for be used in
-    an :class:`openmc.deplete.OperatorResult` instance
+    Reaction rates are passed back to the operator to be used by an
+    :class:`openmc.deplete.OperatorResult` instance.
 
     Parameters
     ----------
@@ -244,7 +246,6 @@ class ReactionRateHelper(ABC):
 
     def __init__(self, n_nucs, n_react):
         self._nuclides = None
-        self._rate_tally = None
         self._results_cache = empty((n_nucs, n_react))
 
     @abstractmethod
@@ -260,7 +261,6 @@ class ReactionRateHelper(ABC):
     def nuclides(self, nuclides):
         check_type("nuclides", nuclides, list, str)
         self._nuclides = nuclides
-        self._rate_tally.nuclides = nuclides
 
     @abstractmethod
     def get_material_rates(self, mat_id, nuc_index, react_index):
@@ -279,8 +279,7 @@ class ReactionRateHelper(ABC):
     def divide_by_adens(self, number):
         """Normalize reaction rates by number of nuclides
 
-        Acts on the current material examined by
-        :meth:`get_material_rates`
+        Acts on the current material examined by :meth:`get_material_rates`
 
         Parameters
         ----------
@@ -302,14 +301,14 @@ class ReactionRateHelper(ABC):
         return results
 
 
-class EnergyHelper(ABC):
-    """Abstract class for obtaining energy produced
+class NormalizationHelper(ABC):
+    """Abstract class for obtaining normalization factor on tallies
 
-    The ultimate goal of this helper is to provide instances of
-    :class:`openmc.deplete.Operator` with the total energy produced
-    in a transport simulation. This information, provided with the
-    power requested by the user and reaction rates from a
-    :class:`ReactionRateHelper` will scale reaction rates to the
+    This helper class determines how reaction rates calculated by an instance of
+    :class:`openmc.deplete.Operator` should be normalized for the purpose of
+    constructing a burnup matrix. Based on the method chosen, the power or
+    source rate provided by the user, and reaction rates from a
+    :class:`ReactionRateHelper`, this class will scale reaction rates to the
     correct values.
 
     Attributes
@@ -317,29 +316,22 @@ class EnergyHelper(ABC):
     nuclides : list of str
         All nuclides with desired reaction rates. Ordered to be
         consistent with :class:`openmc.deplete.Operator`
-    energy : float
-        Total energy [J/s/source neutron] produced in a transport simulation.
-        Updated in the material iteration with :meth:`update`.
+
     """
 
     def __init__(self):
         self._nuclides = None
-        self._energy = 0.0
-
-    @property
-    def energy(self):
-        return self._energy * JOULE_PER_EV
 
     def reset(self):
-        """Reset energy produced prior to unpacking tallies"""
-        self._energy = 0.0
+        """Reset state for normalization"""
 
     @abstractmethod
-    def prepare(self, chain_nucs, rate_index, materials):
+    def prepare(self, chain_nucs, rate_index):
         """Perform work needed to obtain energy produced
 
         This method is called prior to the transport simulations
-        in :meth:`openmc.deplete.Operator.initial_condition`.
+        in :meth:`openmc.deplete.Operator.initial_condition`. Only used for
+        energy-based normalization.
 
         Parameters
         ----------
@@ -348,14 +340,11 @@ class EnergyHelper(ABC):
         rate_index : dict of str to int
             Mapping from nuclide name to index in the
             `fission_rates` for :meth:`update`.
-        materials : list of str
-            All materials tracked on the operator helped by this
-            object. Should correspond to
-            :attr:`openmc.deplete.Operator.burnable_materials`
         """
 
-    def update(self, fission_rates, mat_index):
-        """Update the energy produced
+    def update(self, fission_rates):
+        """Update the normalization based on fission rates (only used for
+        energy-based normalization)
 
         Parameters
         ----------
@@ -363,9 +352,6 @@ class EnergyHelper(ABC):
             fission reaction rate for each isotope in the specified
             material. Should be ordered corresponding to initial
             ``rate_index`` used in :meth:`prepare`
-        mat_index : int
-            Index for the specific material in the list of all burnable
-            materials.
         """
 
     @property
@@ -377,6 +363,22 @@ class EnergyHelper(ABC):
     def nuclides(self, nuclides):
         check_type("nuclides", nuclides, list, str)
         self._nuclides = nuclides
+
+    @abstractmethod
+    def factor(self, source_rate):
+        """Return normalization factor
+
+        Parameters
+        ----------
+        source_rate : float
+            Power in [W] or source rate in [neutron/sec]
+
+        Returns
+        -------
+        float
+            Normalization factor for tallies
+
+        """
 
 
 class FissionYieldHelper(ABC):
@@ -554,7 +556,6 @@ class TalliedFissionYieldHelper(FissionYieldHelper):
         self._fission_rate_tally = Tally()
         self._fission_rate_tally.writable = False
         self._fission_rate_tally.scores = ['fission']
-
         self._fission_rate_tally.filters = [MaterialFilter(materials)]
 
     def update_tally_nuclides(self, nuclides):
@@ -596,9 +597,17 @@ class TalliedFissionYieldHelper(FissionYieldHelper):
         """
 
 
+def add_params(cls):
+    cls.__doc__ += cls._params
+    return cls
+
+
+@add_params
 class Integrator(ABC):
     r"""Abstract class for solving the time-integration for depletion
+    """
 
+    _params = r"""
     Parameters
     ----------
     operator : openmc.deplete.TransportOperator
@@ -614,12 +623,16 @@ class Integrator(ABC):
         indicates potentially different power levels for each timestep.
         For a 2D problem, the power can be given in [W/cm] as long
         as the "volume" assigned to a depletion material is actually
-        an area in [cm^2]. Either ``power`` or ``power_density`` must be
-        specified.
+        an area in [cm^2]. Either ``power``, ``power_density``, or
+        ``source_rates`` must be specified.
     power_density : float or iterable of float, optional
         Power density of the reactor in [W/gHM]. It is multiplied by
         initial heavy metal inventory to get total power if ``power``
         is not speficied.
+    source_rates : float or iterable of float, optional
+        Source rate in [neutron/sec] for each interval in :attr:`timesteps`
+
+        .. versionadded:: 0.12.1
     timestep_units : {'s', 'min', 'h', 'd', 'MWd/kg'}
         Units for values specified in the `timesteps` argument. 's' means
         seconds, 'min' means minutes, 'h' means hours, and 'MWd/kg' indicates
@@ -645,8 +658,9 @@ class Integrator(ABC):
         Depletion chain
     timesteps : iterable of float
         Size of each depletion interval in [s]
-    power : iterable of float
-        Power of the reactor in [W] for each interval in :attr:`timesteps`
+    source_rates : iterable of float
+        Source rate in [W] or [neutron/sec] for each interval in
+        :attr:`timesteps`
     solver : callable
         Function that will solve the Bateman equations
         :math:`\frac{\partial}{\partial t}\vec{n} = A_i\vec{n}_i` with a step
@@ -667,7 +681,7 @@ class Integrator(ABC):
     """
 
     def __init__(self, operator, timesteps, power=None, power_density=None,
-                 timestep_units='s', solver="cram48"):
+                 source_rates=None, timestep_units='s', solver="cram48"):
         # Check number of stages previously used
         if operator.prev_res is not None:
             res = operator.prev_res[-1]
@@ -681,22 +695,25 @@ class Integrator(ABC):
         self.operator = operator
         self.chain = operator.chain
 
-        # Determine power and normalize units to W
-        if power is None:
-            if power_density is None:
-                raise ValueError("Either power or power density must be set")
+        # Determine source rate and normalize units to W in using power
+        if power is not None:
+            source_rates = power
+        elif power_density is not None:
             if not isinstance(power_density, Iterable):
-                power = power_density * operator.heavy_metal
+                source_rates = power_density * operator.heavy_metal
             else:
-                power = [p*operator.heavy_metal for p in power_density]
-        if not isinstance(power, Iterable):
-            # Ensure that power is single value if that is the case
-            power = [power] * len(timesteps)
+                source_rates = [p*operator.heavy_metal for p in power_density]
+        elif source_rates is None:
+            raise ValueError("Either power, power_density, or source_rates must be set")
 
-        if len(power) != len(timesteps):
+        if not isinstance(source_rates, Iterable):
+            # Ensure that rate is single value if that is the case
+            source_rates = [source_rates] * len(timesteps)
+
+        if len(source_rates) != len(timesteps):
             raise ValueError(
                 "Number of time steps ({}) != number of powers ({})".format(
-                    len(timesteps), len(power)))
+                    len(timesteps), len(source_rates)))
 
         # Get list of times / units
         if isinstance(timesteps[0], Iterable):
@@ -707,13 +724,13 @@ class Integrator(ABC):
 
         # Determine number of seconds for each timestep
         seconds = []
-        for timestep, unit, watts in zip(times, units, power):
+        for timestep, unit, rate in zip(times, units, source_rates):
             # Make sure values passed make sense
             check_type('timestep', timestep, Real)
             check_greater_than('timestep', timestep, 0.0, False)
             check_type('timestep units', unit, str)
-            check_type('power', watts, Real)
-            check_greater_than('power', watts, 0.0, True)
+            check_type('source rate', rate, Real)
+            check_greater_than('source rate', rate, 0.0, True)
 
             if unit in ('s', 'sec'):
                 seconds.append(timestep)
@@ -726,13 +743,13 @@ class Integrator(ABC):
             elif unit.lower() == 'mwd/kg':
                 watt_days_per_kg = 1e6*timestep
                 kilograms = 1e-3*operator.heavy_metal
-                days = watt_days_per_kg * kilograms / watts
+                days = watt_days_per_kg * kilograms / rate
                 seconds.append(days*_SECONDS_PER_DAY)
             else:
                 raise ValueError("Invalid timestep unit '{}'".format(unit))
 
         self.timesteps = asarray(seconds)
-        self.power = asarray(power)
+        self.source_rates = asarray(source_rates)
 
         if isinstance(solver, str):
             # Delay importing of cram module, which requires this file
@@ -788,7 +805,7 @@ class Integrator(ABC):
         return time.time() - start, results
 
     @abstractmethod
-    def __call__(self, conc, rates, dt, power, i):
+    def __call__(self, conc, rates, dt, source_rate, i):
         """Perform the integration across one time step
 
         Parameters
@@ -799,8 +816,8 @@ class Integrator(ABC):
             Reaction rates from operator
         dt : float
             Time in [s] for the entire depletion interval
-        power : float
-            Power of the system in [W]
+        source_rate : float
+            Power in [W] or source rate in [neutron/sec]
         i : int
             Current depletion step index
 
@@ -825,22 +842,22 @@ class Integrator(ABC):
         """
 
     def __iter__(self):
-        """Return pairs of time steps in [s] and powers in [W]"""
-        return zip(self.timesteps, self.power)
+        """Return pair of time step in [s] and source rate in [W] or [neutron/sec]"""
+        return zip(self.timesteps, self.source_rates)
 
     def __len__(self):
         """Return integer number of depletion intervals"""
         return len(self.timesteps)
 
-    def _get_bos_data_from_operator(self, step_index, step_power, bos_conc):
+    def _get_bos_data_from_operator(self, step_index, source_rate, bos_conc):
         """Get beginning of step concentrations, reaction rates from Operator
         """
         x = deepcopy(bos_conc)
-        res = self.operator(x, step_power)
+        res = self.operator(x, source_rate)
         self.operator.write_bos_data(step_index + self._i_res)
         return x, res
 
-    def _get_bos_data_from_restart(self, step_index, step_power, bos_conc):
+    def _get_bos_data_from_restart(self, step_index, source_rate, bos_conc):
         """Get beginning of step concentrations, reaction rates from restart"""
         res = self.operator.prev_res[-1]
         # Depletion methods expect list of arrays
@@ -848,8 +865,8 @@ class Integrator(ABC):
         rates = res.rates[0]
         k = ufloat(res.k[0, 0], res.k[0, 1])
 
-        # Scale rates by ratio of powers
-        rates *= step_power / res.power[0]
+        # Scale reaction rates by ratio of source rates
+        rates *= source_rate / res.source_rate[0]
         return bos_conc, OperatorResult(k, rates)
 
     def _get_start_data(self):
@@ -873,15 +890,15 @@ class Integrator(ABC):
         with self.operator as conc:
             t, self._i_res = self._get_start_data()
 
-            for i, (dt, p) in enumerate(self):
+            for i, (dt, source_rate) in enumerate(self):
                 # Solve transport equation (or obtain result from restart)
                 if i > 0 or self.operator.prev_res is None:
-                    conc, res = self._get_bos_data_from_operator(i, p, conc)
+                    conc, res = self._get_bos_data_from_operator(i, source_rate, conc)
                 else:
-                    conc, res = self._get_bos_data_from_restart(i, p, conc)
+                    conc, res = self._get_bos_data_from_restart(i, source_rate, conc)
 
                 # Solve Bateman equations over time interval
-                proc_time, conc_list, res_list = self(conc, res.rates, dt, p, i)
+                proc_time, conc_list, res_list = self(conc, res.rates, dt, source_rate, i)
 
                 # Insert BOS concentration, transport results
                 conc_list.insert(0, conc)
@@ -891,7 +908,7 @@ class Integrator(ABC):
                 conc = conc_list.pop()
 
                 Results.save(self.operator, conc_list, res_list, [t, t + dt],
-                             p, self._i_res + i, proc_time)
+                             source_rate, self._i_res + i, proc_time)
 
                 t += dt
 
@@ -899,18 +916,21 @@ class Integrator(ABC):
             # source rate is passed to the transport operator (which knows to
             # just return zero reaction rates without actually doing a transport
             # solve)
-            res_list = [self.operator(conc, p if final_step else 0.0)]
+            res_list = [self.operator(conc, source_rate if final_step else 0.0)]
             Results.save(self.operator, [conc], res_list, [t, t],
-                         p, self._i_res + len(self), proc_time)
+                         source_rate, self._i_res + len(self), proc_time)
             self.operator.write_bos_data(len(self) + self._i_res)
 
 
+@add_params
 class SIIntegrator(Integrator):
     r"""Abstract class for the Stochastic Implicit Euler integrators
 
     Does not provide a ``__call__`` method, but scales and resets
     the number of particles used in initial transport calculation
+    """
 
+    _params = r"""
     Parameters
     ----------
     operator : openmc.deplete.TransportOperator
@@ -926,12 +946,16 @@ class SIIntegrator(Integrator):
         indicates potentially different power levels for each timestep.
         For a 2D problem, the power can be given in [W/cm] as long
         as the "volume" assigned to a depletion material is actually
-        an area in [cm^2]. Either ``power`` or ``power_density`` must be
-        specified.
+        an area in [cm^2]. Either ``power``, ``power_density``, or
+        ``source_rates`` must be specified.
     power_density : float or iterable of float, optional
         Power density of the reactor in [W/gHM]. It is multiplied by
         initial heavy metal inventory to get total power if ``power``
         is not speficied.
+    source_rates : float or iterable of float, optional
+        Source rate in [neutron/sec] for each interval in :attr:`timesteps`
+
+        .. versionadded:: 0.12.1
     timestep_units : {'s', 'min', 'h', 'd', 'MWd/kg'}
         Units for values specified in the `timesteps` argument. 's' means
         seconds, 'min' means minutes, 'h' means hours, and 'MWd/kg' indicates
@@ -982,13 +1006,15 @@ class SIIntegrator(Integrator):
         .. versionadded:: 0.12
 
     """
+
     def __init__(self, operator, timesteps, power=None, power_density=None,
-                 timestep_units='s', n_steps=10, solver="cram48"):
+                 source_rates=None, timestep_units='s', n_steps=10,
+                 solver="cram48"):
         check_type("n_steps", n_steps, Integral)
         check_greater_than("n_steps", n_steps, 0)
         super().__init__(
-            operator, timesteps, power, power_density, timestep_units,
-            solver=solver)
+            operator, timesteps, power, power_density, source_rates,
+            timestep_units=timestep_units, solver=solver)
         self.n_steps = n_steps
 
     def _get_bos_data_from_operator(self, step_index, step_power, bos_conc):

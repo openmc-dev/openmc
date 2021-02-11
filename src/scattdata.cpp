@@ -5,6 +5,7 @@
 #include <cmath>
 
 #include "xtensor/xbuilder.hpp"
+#include "xtensor/xview.hpp"
 
 #include "openmc/constants.h"
 #include "openmc/error.h"
@@ -36,6 +37,22 @@ ScattData::base_init(int order, const xt::xtensor<int, 1>& in_gmin,
     energy[gin] = in_energy[gin];
     mult[gin] = in_mult[gin];
 
+    // Make sure the multiplicity does not have 0s
+    unsigned long int num_converted = 0;
+    for (int go = 0; go < mult[gin].size(); go++) {
+      if (mult[gin][go] == 0.) {
+        num_converted += 1;
+        mult[gin][go] = 1.;
+      }
+    }
+
+    if (num_converted > 0) {
+      // Raise a warning to the user if we did have to do the conversion
+      std::string msg = std::to_string(num_converted) +
+           "entries in the Multiplicity Matrix were changed from 0 to 1";
+      warning(msg);
+    }
+
     // Make sure the energy is normalized
     double norm = std::accumulate(energy[gin].begin(), energy[gin].end(), 0.);
 
@@ -54,77 +71,45 @@ ScattData::base_init(int order, const xt::xtensor<int, 1>& in_gmin,
 //==============================================================================
 
 void
-ScattData::base_combine(size_t max_order,
-     const std::vector<ScattData*>& those_scatts, const std::vector<double>& scalars,
-     xt::xtensor<int, 1>& in_gmin, xt::xtensor<int, 1>& in_gmax, double_2dvec& sparse_mult,
+ScattData::base_combine(size_t max_order, size_t order_dim,
+     const std::vector<ScattData*>& those_scatts,
+     const std::vector<double>& scalars, xt::xtensor<int, 1>& in_gmin,
+     xt::xtensor<int, 1>& in_gmax, double_2dvec& sparse_mult,
      double_3dvec& sparse_scatter)
 {
   size_t groups = those_scatts[0] -> energy.size();
 
   // Now allocate and zero our storage spaces
-  xt::xtensor<double, 3> this_matrix({groups, groups, max_order}, 0.);
-  xt::xtensor<double, 2> mult_numer({groups, groups}, 0.);
-  xt::xtensor<double, 2> mult_denom({groups, groups}, 0.);
-  // TODO: Need to review this:
-  if (this->scattxs.size() > 0) {
-    this_matrix = this->get_matrix(max_order);
-  }
+  xt::xtensor<double, 3> this_nuscatt_matrix({groups, groups, order_dim}, 0.);
+  xt::xtensor<double, 2> this_nuscatt_P0({groups, groups}, 0.);
+  xt::xtensor<double, 2> this_scatt_P0({groups, groups}, 0.);
+  xt::xtensor<double, 2> this_mult({groups, groups}, 1.);
+
   // Build the dense scattering and multiplicity matrices
-  // Get the multiplicity_matrix
-  // To combine from nuclidic data we need to use the final relationship
-  // mult_{gg'} = sum_i(N_i*nuscatt_{i,g,g'}) /
-  //              sum_i(N_i*(nuscatt_{i,g,g'} / mult_{i,g,g'}))
-  // Developed as follows:
-  // mult_{gg'} = nuScatt{g,g'} / Scatt{g,g'}
-  // mult_{gg'} = sum_i(N_i*nuscatt_{i,g,g'}) / sum(N_i*scatt_{i,g,g'})
-  // mult_{gg'} = sum_i(N_i*nuscatt_{i,g,g'}) /
-  //              sum_i(N_i*(nuscatt_{i,g,g'} / mult_{i,g,g'}))
-  // nuscatt_{i,g,g'} can be reconstructed from the energy and scattxs member
-  // variables
   for (int i = 0; i < those_scatts.size(); i++) {
     ScattData* that = those_scatts[i];
 
     // Build the dense matrix for that object
     xt::xtensor<double, 3> that_matrix = that->get_matrix(max_order);
 
-    // Now add that to this for the scattering and multiplicity
+    // Now add that to this for the nu-scatter matrix
+    this_nuscatt_matrix += scalars[i] * that_matrix;
+
+    // Do the same with the P0 matrices
     for (int gin = 0; gin < groups; gin++) {
-      // Only spend time adding that's gmin to gmax data since the rest will
-      // be zeros
-      int i_gout = 0;
-      for (int gout = that->gmin(gin); gout <= that->gmax(gin); gout++) {
-        // Do the scattering matrix
-        for (int l = 0; l < max_order; l++) {
-          this_matrix(gin, gout, l) += scalars[i] * that_matrix(gin, gout, l);
-        }
-
-        // Incorporate that's contribution to the multiplicity matrix data
-        double nuscatt = that->scattxs(gin) * that->energy[gin][i_gout];
-        mult_numer(gin, gout) += scalars[i] * nuscatt;
-        if (that->mult[gin][i_gout] > 0.) {
-          mult_denom(gin, gout) += scalars[i] * nuscatt / that->mult[gin][i_gout];
-        } else {
-          mult_denom(gin, gout) += scalars[i];
-        }
-        i_gout++;
+      for (int go = 0; go < groups; go++) {
+        this_nuscatt_P0(gin, go) +=
+             scalars[i] * that->get_xs(MgxsType::NU_SCATTER, gin, &go, nullptr);
+        this_scatt_P0(gin, go) +=
+             scalars[i] *
+             that->get_xs(MgxsType::SCATTER, gin, &go, nullptr);
       }
     }
   }
 
-  // Combine mult_numer and mult_denom into the combined multiplicity matrix
-  xt::xtensor<double, 2> this_mult({groups, groups}, 1.);
-  // TODO: Need to check this too
-  for (int gin = 0; gin < groups; gin++) {
-    for (int gout = 0; gout < groups; gout++) {
-      if (std::abs(mult_denom(gin, gout)) > 0.0) {
-	   this_mult(gin, gout) = mult_numer(gin, gout) / mult_denom(gin, gout);
-      } else {
-	   if (mult_numer(gin, gout) == 0.0) {
-	     this_mult(gin, gout) = 1.0;
-	   }
-      }
-    }
-  }
+  // Now we have the dense nuscatt and scatt, we can easily compute the
+  // multiplicity matrix by dividing the two and fixing any nans
+  this_mult = xt::nan_to_num(this_nuscatt_P0 / this_scatt_P0);
 
   // We have the data, now we need to convert to a jagged array and then use
   // the initialize function to store it on the object.
@@ -133,8 +118,8 @@ ScattData::base_combine(size_t max_order,
     int gmin_;
     for (gmin_ = 0; gmin_ < groups; gmin_++) {
       bool non_zero = false;
-      for (int l = 0; l < this_matrix.shape()[2]; l++) {
-        if (this_matrix(gin, gmin_, l) != 0.) {
+      for (int l = 0; l < this_nuscatt_matrix.shape()[2]; l++) {
+        if (this_nuscatt_matrix(gin, gmin_, l) != 0.) {
           non_zero = true;
           break;
         }
@@ -144,8 +129,8 @@ ScattData::base_combine(size_t max_order,
     int gmax_;
     for (gmax_ = groups - 1; gmax_ >= 0; gmax_--) {
       bool non_zero = false;
-      for (int l = 0; l < this_matrix.shape()[2]; l++) {
-        if (this_matrix(gin, gmax_, l) != 0.) {
+      for (int l = 0; l < this_nuscatt_matrix.shape()[2]; l++) {
+        if (this_nuscatt_matrix(gin, gmax_, l) != 0.) {
           non_zero = true;
           break;
         }
@@ -168,15 +153,16 @@ ScattData::base_combine(size_t max_order,
     sparse_mult[gin].resize(gmax_ - gmin_ + 1);
     int i_gout = 0;
     for (int gout = gmin_; gout <= gmax_; gout++) {
-      sparse_scatter[gin][i_gout].resize(this_matrix.shape()[2]);
-      for (int l = 0; l < this_matrix.shape()[2]; l++) {
-        sparse_scatter[gin][i_gout][l] = this_matrix(gin, gout, l);
+      sparse_scatter[gin][i_gout].resize(this_nuscatt_matrix.shape()[2]);
+      for (int l = 0; l < this_nuscatt_matrix.shape()[2]; l++) {
+        sparse_scatter[gin][i_gout][l] = this_nuscatt_matrix(gin, gout, l);
       }
       sparse_mult[gin][i_gout] = this_mult(gin, gout);
       i_gout++;
     }
   }
 }
+
 
 //==============================================================================
 
@@ -212,10 +198,10 @@ ScattData::get_xs(MgxsType xstype, int gin, const int* gout, const double* mu)
 
   double val = scattxs[gin];
   switch(xstype) {
-  case MgxsType::SCATTER:
+  case MgxsType::NU_SCATTER:
     if (gout != nullptr) val *= energy[gin][i_gout];
     break;
-  case MgxsType::SCATTER_MULT:
+  case MgxsType::SCATTER:
     if (gout != nullptr) {
       val *= energy[gin][i_gout] / mult[gin][i_gout];
     } else {
@@ -223,7 +209,7 @@ ScattData::get_xs(MgxsType xstype, int gin, const int* gout, const double* mu)
                                 energy[gin].begin(), 0.0);
     }
     break;
-  case MgxsType::SCATTER_FMU_MULT:
+  case MgxsType::NU_SCATTER_FMU:
     if ((gout != nullptr) && (mu != nullptr)) {
       val *= energy[gin][i_gout] * calc_f(gin, *gout, *mu);
     } else {
@@ -407,7 +393,6 @@ ScattDataLegendre::combine(const std::vector<ScattData*>& those_scatts,
     size_t that_order = that->get_order();
     if (that_order > max_order) max_order = that_order;
   }
-  max_order++;  // Add one since this is a Legendre
 
   size_t groups = those_scatts[0] -> energy.size();
 
@@ -419,8 +404,9 @@ ScattDataLegendre::combine(const std::vector<ScattData*>& those_scatts,
   // The rest of the steps do not depend on the type of angular representation
   // so we use a base class method to sum up xs and create new energy and mult
   // matrices
-  ScattData::base_combine(max_order, those_scatts, scalars, in_gmin, in_gmax,
-                          sparse_mult, sparse_scatter);
+  size_t order_dim = max_order + 1;
+  ScattData::base_combine(max_order, order_dim, those_scatts, scalars, in_gmin,
+                          in_gmax, sparse_mult, sparse_scatter);
 
   // Got everything we need, store it.
   init(in_gmin, in_gmax, sparse_mult, sparse_scatter);
@@ -636,8 +622,9 @@ ScattDataHistogram::combine(const std::vector<ScattData*>& those_scatts,
   // The rest of the steps do not depend on the type of angular representation
   // so we use a base class method to sum up xs and create new energy and mult
   // matrices
-  ScattData::base_combine(max_order, those_scatts, scalars, in_gmin, in_gmax,
-                          sparse_mult, sparse_scatter);
+  size_t order_dim = max_order;
+  ScattData::base_combine(max_order, order_dim, those_scatts, scalars, in_gmin,
+                          in_gmax, sparse_mult, sparse_scatter);
 
   // Got everything we need, store it.
   init(in_gmin, in_gmax, sparse_mult, sparse_scatter);
@@ -854,8 +841,9 @@ ScattDataTabular::combine(const std::vector<ScattData*>& those_scatts,
   // The rest of the steps do not depend on the type of angular representation
   // so we use a base class method to sum up xs and create new energy and mult
   // matrices
-  ScattData::base_combine(max_order, those_scatts, scalars, in_gmin, in_gmax,
-                          sparse_mult, sparse_scatter);
+  size_t order_dim = max_order;
+  ScattData::base_combine(max_order, order_dim, those_scatts, scalars, in_gmin,
+                          in_gmax, sparse_mult, sparse_scatter);
 
   // Got everything we need, store it.
   init(in_gmin, in_gmax, sparse_mult, sparse_scatter);

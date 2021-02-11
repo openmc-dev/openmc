@@ -1,6 +1,13 @@
 cmake_minimum_required(VERSION 3.3 FATAL_ERROR)
 project(openmc C CXX)
 
+# Set version numbers
+set(OPENMC_VERSION_MAJOR 0)
+set(OPENMC_VERSION_MINOR 12)
+set(OPENMC_VERSION_RELEASE 1)
+set(OPENMC_VERSION ${OPENMC_VERSION_MAJOR}.${OPENMC_VERSION_MINOR}.${OPENMC_VERSION_RELEASE})
+configure_file(include/openmc/version.h.in "${CMAKE_BINARY_DIR}/include/openmc/version.h" @ONLY)
+
 # Setup output directories
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
@@ -225,6 +232,7 @@ target_compile_options(faddeeva PRIVATE ${cxxflags})
 
 list(APPEND libopenmc_SOURCES
   src/bank.cpp
+  src/boundary_condition.cpp
   src/bremsstrahlung.cpp
   src/dagmc.cpp
   src/cell.cpp
@@ -328,7 +336,7 @@ endif()
 # Avoid vs error lnk1149 :output filename matches input filename
 if(NOT MSVC)
 set_target_properties(libopenmc PROPERTIES
-  OUTPUT_NAME openmc) 
+  OUTPUT_NAME openmc)
 endif()
 
 target_include_directories(libopenmc
@@ -340,6 +348,9 @@ target_include_directories(libopenmc
 
 # Set compile flags
 target_compile_options(libopenmc PRIVATE ${cxxflags})
+
+# Add include directory for configured version file
+target_include_directories(libopenmc PRIVATE ${CMAKE_BINARY_DIR}/include)
 
 if (HDF5_IS_PARALLEL)
   target_compile_definitions(libopenmc PRIVATE -DPHDF5)
@@ -375,6 +386,7 @@ endif()
 #===============================================================================
 add_executable(openmc src/main.cpp)
 target_compile_options(openmc PRIVATE ${cxxflags})
+target_include_directories(openmc PRIVATE ${CMAKE_BINARY_DIR}/include)
 target_link_libraries(openmc libopenmc)
 
 # Ensure C++14 standard is used. Starting with CMake 3.8, another way this could
@@ -398,6 +410,7 @@ add_custom_command(TARGET libopenmc POST_BUILD
 #===============================================================================
 
 configure_file(cmake/OpenMCConfig.cmake.in "${CMAKE_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/OpenMCConfig.cmake" @ONLY)
+configure_file(cmake/OpenMCConfigVersion.cmake.in "${CMAKE_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/OpenMCConfigVersion.cmake" @ONLY)
 
 set(INSTALL_CONFIGDIR ${CMAKE_INSTALL_LIBDIR}/cmake/OpenMC)
 install(TARGETS openmc libopenmc faddeeva
@@ -412,10 +425,14 @@ install(EXPORT openmc-targets
   DESTINATION ${INSTALL_CONFIGDIR})
 
 install(DIRECTORY src/relaxng DESTINATION ${CMAKE_INSTALL_DATADIR}/openmc)
-install(FILES "${CMAKE_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/OpenMCConfig.cmake" DESTINATION ${INSTALL_CONFIGDIR})
+install(FILES
+  "${CMAKE_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/OpenMCConfig.cmake"
+  "${CMAKE_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/OpenMCConfigVersion.cmake"
+  DESTINATION ${INSTALL_CONFIGDIR})
 install(FILES man/man1/openmc.1 DESTINATION ${CMAKE_INSTALL_MANDIR}/man1)
 install(FILES LICENSE DESTINATION "${CMAKE_INSTALL_DOCDIR}" RENAME copyright)
 install(DIRECTORY include/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
+install(FILES "${CMAKE_BINARY_DIR}/include/openmc/version.h" DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/openmc)
 
 # Copy headers for vendored dependencies (note that all except faddeeva are handled
 # separately since they are managed by CMake)

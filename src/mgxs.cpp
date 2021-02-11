@@ -318,7 +318,8 @@ Mgxs::Mgxs(const std::string& in_name, const std::vector<double>& mat_kTs,
   // Get the minimum data needed to initialize:
   // Dont need awr, but lets just initialize it anyways
   double in_awr = -1.;
-  // start with the assumption it is not fissionable
+  // start with the assumption it is not fissionable and set
+  // the fissionable status if we learn differently
   bool in_fissionable = false;
   for (int m = 0; m < micros.size(); m++) {
     if (micros[m]->fissionable) in_fissionable = true;
@@ -377,25 +378,43 @@ Mgxs::Mgxs(const std::string& in_name, const std::vector<double>& mat_kTs,
       } // end switch
     } // end microscopic temperature loop
 
-    // We are about to loop through each of the microscopic objects
-    // and incorporate the contribution of each microscopic data at
-    // one of the two temperature interpolants to this macroscopic quantity.
-    // If we are doing nearest temperature interpolation, then we don't need
-    // to do the 2nd temperature
-    int num_interp_points = 2;
-    if (settings::temperature_method == TemperatureMethod::NEAREST) num_interp_points = 1;
-    std::vector<double> interp(micros.size());
-    std::vector<int> temp_indices(micros.size());
-    for (int interp_point = 0; interp_point < num_interp_points; interp_point++) {
-      for (int m = 0; m < micros.size(); m++) {
-        interp[m] = (1. - micro_t_interp[m]) * atom_densities[m];
-        temp_indices[m] = micro_t[m] + interp_point;
-        micro_t_interp[m] = 1. - micro_t_interp[m];
+    // Now combine the microscopic data at each relevant temperature
+    // We will do this by treating the multiple temperatures of a nuclide as
+    // a different nuclide. Mathematically this just means the temperature
+    // interpolant is included in the number density.
+    // These interpolants are contained within interpolant.
+    std::vector<double> interpolant;     // the interpolant for the Mgxs
+    std::vector<int> temp_indices;       // the temperature index for each Mgxs
+    std::vector<Mgxs*> mgxs_to_combine;  // The Mgxs to combine
+    // Now go through and build the above vectors so that we can use them to
+    // combine the data. We will step through each microscopic data and
+    // add in its lower and upper temperature points
+    for (int m = 0; m < micros.size(); m++) {
+      if (settings::temperature_method == TemperatureMethod::NEAREST) {
+        // Nearest interpolation only has one temperature point per isotope
+        // and so we dont need to include a temperature interpolant in
+        // the interpolant vector
+        interpolant.push_back(atom_densities[m]);
+        temp_indices.push_back(micro_t[m]);
+        mgxs_to_combine.push_back(micros[m]);
+      } else {
+        // This will be an interpolation between two points so get both these
+        // points
+        // Start with the low point
+        interpolant.push_back((1. - micro_t_interp[m]) * atom_densities[m]);
+        temp_indices.push_back(micro_t[m]);
+        mgxs_to_combine.push_back(micros[m]);
+        // The higher point
+        interpolant.push_back((micro_t_interp[m]) * atom_densities[m]);
+        temp_indices.push_back(micro_t[m] + 1);
+        mgxs_to_combine.push_back(micros[m]);
       }
+    }
 
-      combine(micros, interp, temp_indices, t);
-    } // end loop to sum all micros across the temperatures
+    // And finally, combine the data
+    combine(mgxs_to_combine, interpolant, temp_indices, t);
   } // end temperature (t) loop
+
 }
 
 //==============================================================================
@@ -407,9 +426,6 @@ Mgxs::combine(const std::vector<Mgxs*>& micros, const std::vector<double>& scala
   // Build the vector of pointers to the xs objects within micros
   std::vector<XsData*> those_xs(micros.size());
   for (int i = 0; i < micros.size(); i++) {
-    if (!xs[this_t].equiv(micros[i]->xs[micro_ts[i]])) {
-      fatal_error("Cannot combine the Mgxs objects!");
-    }
     those_xs[i] = &(micros[i]->xs[micro_ts[i]]);
   }
 
@@ -448,9 +464,9 @@ Mgxs::get_xs(MgxsType xstype, int gin, const int* gout, const double* mu,
   case MgxsType::KAPPA_FISSION:
     val = fissionable ? xs_t->kappa_fission(a, gin) : 0.;
     break;
+  case MgxsType::NU_SCATTER:
   case MgxsType::SCATTER:
-  case MgxsType::SCATTER_MULT:
-  case MgxsType::SCATTER_FMU_MULT:
+  case MgxsType::NU_SCATTER_FMU:
   case MgxsType::SCATTER_FMU:
     val = xs_t->scatter[a]->get_xs(xstype, gin, gout, mu);
     break;

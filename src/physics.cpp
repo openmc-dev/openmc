@@ -190,6 +190,7 @@ create_fission_sites(Particle& p, int i_nuclide, const Reaction& rx)
     site.wgt = 1. / weight;
     site.parent_id = p.id_;
     site.progeny_id = p.n_progeny_++;
+    site.surf_id = 0;
 
     // Sample delayed group and angle/energy for fission reaction
     sample_fission_neutron(i_nuclide, rx, p.E_, &site, p.current_seed());
@@ -972,7 +973,7 @@ sample_cxs_target_velocity(double awr, double E, Direction u, double kT, uint64_
 
     if (prn(seed) < alpha) {
       // With probability alpha, we sample the distribution p(y) =
-      // y*e^(-y). This can be done with sampling scheme C45 frmo the Monte
+      // y*e^(-y). This can be done with sampling scheme C45 from the Monte
       // Carlo sampler
 
       beta_vt_sq = -std::log(r1*r2);

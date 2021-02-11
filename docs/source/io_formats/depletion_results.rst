@@ -4,7 +4,7 @@
 Depletion Results File Format
 =============================
 
-The current version of the depletion results file format is 1.0.
+The current version of the depletion results file format is 1.1.
 
 **/**
 
@@ -14,7 +14,7 @@ The current version of the depletion results file format is 1.0.
 
 :Datasets: - **eigenvalues** (*double[][][2]*) -- k-eigenvalues at each
              time/stage. This array has shape (number of timesteps, number of
-             stages, value). The last axis contains the eigenvalue and the 
+             stages, value). The last axis contains the eigenvalue and the
              associated uncertainty
            - **number** (*double[][][][]*) -- Total number of atoms. This array
              has shape (number of timesteps, number of stages, number of
@@ -25,7 +25,10 @@ The current version of the depletion results file format is 1.0.
              nuclides, number of reactions).
            - **time** (*double[][2]*) -- Time in [s] at beginning/end of each
              step.
-           - **depletion time** (*double[]*) -- Average process time in [s] 
+           - **source_rate** (*double[][]*) -- Power in [W] or source rate in
+             [neutron/sec]. This array has shape (number of timesteps, number
+             of stages).
+           - **depletion time** (*double[]*) -- Average process time in [s]
              spent depleting a material across all burnable materials and,
              if applicable, MPI processes.
 

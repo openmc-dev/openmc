@@ -7,6 +7,7 @@
 #include <array>
 #include <memory> // for unique_ptr
 #include <unordered_map>
+#include <utility> // for pair
 #include <vector>
 
 #include <gsl/gsl>
@@ -58,6 +59,16 @@ public:
   //! from probability tables.
   void calculate_urr_xs(int i_temp, Particle& p) const;
 
+  //! \brief Calculate reaction rate based on group-wise flux distribution
+  //
+  //! \param[in] MT ENDF MT value for desired reaction
+  //! \param[in] temperature Temperature in [K]
+  //! \param[in] energy Energy group boundaries in [eV]
+  //! \param[in] flux Flux in each energy group (not normalized per eV)
+  //! \return Reaction rate
+  double collapse_rate(int MT, double temperature, gsl::span<const double> energy,
+    gsl::span<const double> flux) const;
+
   // Data members
   std::string name_; //!< Name of nuclide, e.g. "U235"
   int Z_; //!< Atomic number
@@ -104,6 +115,12 @@ public:
 
 private:
   void create_derived(const Function1D* prompt_photons, const Function1D* delayed_photons);
+
+  //! Determine temperature index and interpolation factor
+  //
+  //! \param[in] T Temperature in [K]
+  //! \return Temperature index and interpolation factor
+  std::pair<gsl::index, double> find_temperature(double T) const;
 
   static int XS_TOTAL;
   static int XS_ABSORPTION;

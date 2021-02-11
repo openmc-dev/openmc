@@ -10,6 +10,7 @@
 #include "openmc/hdf5_interface.h"
 #include "openmc/endf.h"
 #include "openmc/random_lcg.h"
+#include "openmc/search.h"
 #include "openmc/secondary_uncorrelated.h"
 
 namespace openmc {
@@ -81,6 +82,70 @@ Reaction::Reaction(hid_t group, const std::vector<int>& temperatures)
     }
   }
   // <<<<<<<<<<<<<<<<<<<<<<<<<<<< REMOVE THIS <<<<<<<<<<<<<<<<<<<<<<<<<
+}
+
+double
+Reaction::collapse_rate(gsl::index i_temp, gsl::span<const double> energy,
+  gsl::span<const double> flux, const std::vector<double>& grid) const
+{
+  // Find index corresponding to first energy
+  const auto& xs = xs_[i_temp].value;
+  int i_low = lower_bound_index(grid.cbegin(), grid.cend(), energy.front());
+
+  // Check for threshold and adjust starting point if necessary
+  int j_start = 0;
+  int i_threshold = xs_[i_temp].threshold;
+  if (i_low < i_threshold) {
+    i_low = i_threshold;
+    while (energy[j_start + 1] < grid[i_low]) {
+      ++j_start;
+      if (j_start + 1 == energy.size()) return 0.0;
+    }
+  }
+
+  double xs_flux_sum = 0.0;
+
+  for (int j = j_start; j < flux.size(); ++j) {
+    double E_group_low = energy[j];
+    double E_group_high = energy[j + 1];
+    double flux_per_eV = flux[j] / (E_group_high - E_group_low);
+
+    // Determine energy grid index corresponding to group high
+    int i_high = i_low;
+    while (grid[i_high + 1] < E_group_high && i_high + 1 < grid.size() - 1) ++i_high;
+
+    // Loop over energy grid points within [E_group_low, E_group_high]
+    for (; i_low <= i_high; ++i_low) {
+      // Determine bounding grid energies and cross sections
+      double E_l = grid[i_low];
+      double E_r = grid[i_low + 1];
+      if (E_l == E_r) continue;
+
+      double xs_l = xs[i_low - i_threshold];
+      double xs_r = xs[i_low + 1 - i_threshold];
+
+      // Determine actual energies
+      double E_low = std::max(E_group_low, E_l);
+      double E_high = std::min(E_group_high, E_r);
+
+      // Determine average cross section across segment
+      double m = (xs_r - xs_l) / (E_r - E_l);
+      double xs_low = xs_l + m*(E_low - E_l);
+      double xs_high = xs_l + m*(E_high - E_l);
+      double xs_avg = 0.5*(xs_low + xs_high);
+
+      // Add contribution from segment
+      double dE = (E_high - E_low);
+      xs_flux_sum += flux_per_eV * xs_avg * dE;
+    }
+
+    i_low = i_high;
+
+    // Check for end of energy grid
+    if (i_low + 1 == grid.size()) break;
+  }
+
+  return xs_flux_sum;
 }
 
 //==============================================================================
@@ -178,7 +243,7 @@ std::unordered_map<int, std::string> REACTION_NAME_MAP {
   {N_3N3HE, "(n,3n3He)"},
   {N_4N3HE, "(n,4n3He)"},
   {N_3N2P, "(n,3n2p)"},
-  {N_3N3A, "(n,3n3a)"},
+  {N_3N2A, "(n,3n2a)"},
   {N_3NPA, "(n,3npa)"},
   {N_DT, "(n,dt)"},
   {N_NPD, "(n,npd)"},

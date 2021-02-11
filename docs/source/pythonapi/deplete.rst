@@ -181,7 +181,7 @@ total system energy.
    helpers.DirectReactionRateHelper
    helpers.EnergyScoreHelper
    helpers.FissionYieldCutoffHelper
-
+   helpers.FluxCollapseHelper
 
 Abstract Base Classes
 ---------------------
@@ -207,7 +207,7 @@ OpenMC simulations back on to the :class:`abc.TransportOperator`
    :nosignatures:
    :template: myclass.rst
 
-   abc.EnergyHelper
+   abc.NormalizationHelper
    abc.FissionYieldHelper
    abc.ReactionRateHelper
    abc.TalliedFissionYieldHelper

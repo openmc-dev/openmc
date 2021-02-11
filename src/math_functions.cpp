@@ -692,25 +692,20 @@ double maxwell_spectrum(double T, uint64_t* seed) {
 
 
 double normal_variate(double mean, double standard_deviation, uint64_t* seed) {
-  // perhaps there should be a limit to the number of resamples
-  while ( true ) {
-    double v1 = 2 * prn(seed) - 1.;
-    double v2 = 2 * prn(seed) - 1.;
-
-    double r = std::pow(v1, 2) + std::pow(v2, 2);
-    double r2 = std::pow(r, 2);
-    if (r2 < 1) {
-      double z = std::sqrt(-2.0 * std::log(r2)/r2);
-      z *= (prn(seed) <= 0.5) ? v1 : v2;
-      return mean + standard_deviation*z;
-    }
-  }
+  // Sample a normal variate using Marsaglia's polar method
+  double x, y, r2;
+  do {
+    x = 2 * prn(seed) - 1.;
+    y = 2 * prn(seed) - 1.;
+    r2 = x*x + y*y;
+  } while (r2 > 1 || r2 == 0);
+  double z = std::sqrt(-2.0 * std::log(r2)/r2);
+  return mean + standard_deviation*z*x;
 }
 
 double muir_spectrum(double e0, double m_rat, double kt, uint64_t* seed) {
-  // note sigma here is a factor of 2 shy of equation
-  // 8 in https://permalink.lanl.gov/object/tr?what=info:lanl-repo/lareport/LA-05411-MS
-  double sigma = std::sqrt(2.*e0*kt/m_rat);
+  // https://permalink.lanl.gov/object/tr?what=info:lanl-repo/lareport/LA-05411-MS
+  double sigma = std::sqrt(4.*e0*kt/m_rat);
   return normal_variate(e0, sigma, seed);
 }
 
@@ -720,51 +715,6 @@ double watt_spectrum(double a, double b, uint64_t* seed) {
   double E_out = w + 0.25 * a * a * b + (2. * prn(seed) - 1.) * std::sqrt(a * a * b * w);
 
   return E_out;
-}
-
-
-void broaden_wmp_polynomials(double E, double dopp, int n, double factors[])
-{
-  // Factors is already pre-allocated
-  double sqrtE = std::sqrt(E);
-  double beta = sqrtE * dopp;
-  double half_inv_dopp2 = 0.5 / (dopp * dopp);
-  double quarter_inv_dopp4 = half_inv_dopp2 * half_inv_dopp2;
-
-  double erf_beta;    // error function of beta
-  double exp_m_beta2; // exp(-beta**2)
-  if (beta > 6.0) {
-    // Save time, ERF(6) is 1 to machine precision.
-    // beta/sqrtpi*exp(-beta**2) is also approximately 1 machine epsilon.
-    erf_beta = 1.;
-    exp_m_beta2 = 0.;
-  } else {
-    erf_beta = std::erf(beta);
-    exp_m_beta2 = std::exp(-beta * beta);
-  }
-
-  // Assume that, for sure, we'll use a second order (1/E, 1/V, const)
-  // fit, and no less.
-
-  factors[0] = erf_beta / E;
-  factors[1] = 1. / sqrtE;
-  factors[2] = factors[0] * (half_inv_dopp2 + E) + exp_m_beta2 /
-       (beta * SQRT_PI);
-
-  // Perform recursive broadening of high order components
-  for (int i = 0; i < n - 3; i++) {
-    double ip1_dbl = i + 1;
-    if (i != 0) {
-      factors[i + 3] = -factors[i - 1] * (ip1_dbl - 1.) * ip1_dbl *
-           quarter_inv_dopp4 + factors[i + 1] *
-           (E + (1. + 2. * ip1_dbl) * half_inv_dopp2);
-    } else {
-      // Although it's mathematically identical, factors[0] will contain
-      // nothing, and we don't want to have to worry about memory.
-      factors[i + 3] = factors[i + 1] *
-           (E + (1. + 2. * ip1_dbl) * half_inv_dopp2);
-    }
-  }
 }
 
 

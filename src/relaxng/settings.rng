@@ -639,6 +639,48 @@
       </element>
     </optional>
     <optional>
+      <element name="surf_source_read">
+        <choice>
+          <element name="path">
+            <data type="string"/>
+          </element>
+          <attribute name="path">
+            <data type="string"/>
+          </attribute>
+        </choice>
+      </element>
+    </optional>
+    <optional>
+      <element name="surf_source_write">
+        <interleave>
+          <choice>
+            <element name="surface_ids">
+              <list>
+                <oneOrMore>
+                  <data type="positiveInteger"/>
+                </oneOrMore>
+              </list>
+            </element>
+            <attribute name="surface_ids">
+              <list>
+                <oneOrMore>
+                  <data type="positiveInteger"/>
+                </oneOrMore>
+              </list>
+            </attribute>
+          </choice>
+          <choice>
+            <element name="max_particles">
+              <data type="positiveInteger"/>
+            </element>
+            <attribute name="max_particles">
+              <data type="positiveInteger"/>
+            </attribute>
+          </choice>
+        </interleave>
+      </element>
+    </optional>
+    <optional>
       <element name="survival_biasing">
         <data type="boolean"/>
       </element>

@@ -4,6 +4,7 @@ from math import floor
 import shutil
 from pathlib import Path
 
+from difflib import unified_diff
 import numpy as np
 import pytest
 import openmc
@@ -130,3 +131,47 @@ def test_full(run_in_tmpdir, problem, multiproc):
 
     # Check that no additional tallies are loaded from the files
     assert np.all(n_tallies == 0)
+
+
+def test_depletion_results_to_material(run_in_tmpdir, problem):
+    """Checks openmc.Materials objects can be created from depletion results"""
+    # Load the reference/test results
+    path_reference = Path(__file__).with_name('test_reference.h5')
+    res_ref = openmc.deplete.ResultsList.from_hdf5(path_reference)
+
+    # Firstly need to export materials.xml file for the initial simulation state
+    geometry, lower_left, upper_right = problem
+    materials = openmc.Materials()
+    for mat in geometry.root_universe.get_all_materials().values():
+        materials.append(mat)
+    materials.export_to_xml()
+
+    # Export last step of depletion to its own openmc.Materials object,
+    # using only nuclides available in the current nuclear data library
+    last_step_materials = res_ref.export_to_materials(-1)
+
+    # Export final depletion  step materials to XML
+    output_xml_file = 'last_step_materials.xml'
+    last_step_materials.export_to_xml(path=output_xml_file)
+    with open(output_xml_file, 'r') as result_file:
+        result_file_lines = result_file.readlines()
+
+    # If updating results, do so and return. We write out the last-step
+    # depleted materials as an XML, and save the list of lines to diff.
+    reference_file = Path(__file__).with_name('last_step_reference_materials.xml')
+    if config['update']:
+        with open(reference_file, 'w') as ref_file:
+            ref_file.writelines(result_file_lines)
+        return
+
+    # Check text of final depletion point material XML matches reference
+    with open(reference_file) as ref_file:
+        reference_lines = ref_file.readlines()
+    diff_vs_expected = unified_diff(reference_lines, result_file_lines)
+
+    # Check all lines match, printing errors along the way
+    success = True 
+    for line in diff_vs_expected:
+        success = False
+        print(line.rstrip())
+    assert success

@@ -776,7 +776,7 @@ class XSdata:
         """
 
         # Get the accepted shapes for this xs
-        shapes = [self.xs_shapes["[DG]"], self.xs_shapes["[DG][G]"]]
+        shapes = [self.xs_shapes["[DG]"]]
 
         # Convert to a numpy array so we can easily get the shape for checking
         decay_rate = np.asarray(decay_rate)
@@ -2044,7 +2044,7 @@ class XSdata:
                     xs_grp.create_dataset("beta", data=self._beta[i])
 
                 if self._decay_rate[i] is not None:
-                    xs_grp.create_dataset("decay rate",
+                    xs_grp.create_dataset("decay-rate",
                                           data=self._decay_rate[i])
 
             if self._scatter_matrix[i] is None:
@@ -2210,7 +2210,7 @@ class XSdata:
             xs_types = ['total', 'absorption', 'fission', 'kappa-fission',
                         'chi', 'chi-prompt', 'chi-delayed', 'nu-fission',
                         'prompt-nu-fission', 'delayed-nu-fission', 'beta',
-                        'decay rate', 'inverse-velocity']
+                        'decay-rate', 'inverse-velocity']
 
             temperature_group = group[temp]
 

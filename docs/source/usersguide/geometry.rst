@@ -162,22 +162,26 @@ surface. To specify a vacuum boundary condition, simply change the
 Reflective and periodic boundary conditions can be set with the strings
 'reflective' and 'periodic'. Vacuum and reflective boundary conditions can be
 applied to any type of surface. Periodic boundary conditions can be applied to
-pairs of planar surfaces. For axis-aligned planes, matching periodic surfaces
-can be determined automatically. For non-axis-aligned planes, it is necessary to
-specify pairs explicitly using the :attr:`Surface.periodic_surface` attribute as
-in the following example::
+pairs of planar surfaces. If there are only two periodic surfaces they will be
+matched automatically. Otherwise it is necessary to specify pairs explicitly
+using the :attr:`Surface.periodic_surface` attribute as in the following
+example::
 
   p1 = openmc.Plane(a=0.3, b=5.0, d=1.0, boundary_type='periodic')
   p2 = openmc.Plane(a=0.3, b=5.0, d=-1.0, boundary_type='periodic')
   p1.periodic_surface = p2
 
-Rotationally-periodic boundary conditions can be specified for a pair of
-:class:`XPlane` and :class:`YPlane`; in that case, the
-:attr:`Surface.periodic_surface` attribute must be specified manually as well.
+Both rotational and translational periodic boundary conditions are specified in
+the same fashion. If both planes have the same normal vector, a translational
+periodicity is assumed; rotational periodicity is assumed otherwise. Currently,
+only rotations about the :math:`z`-axis are supported.
 
-.. caution:: When using rotationally-periodic boundary conditions, your geometry
-             must be defined in the first quadrant, i.e., above the y-plane and
-             to the right of the x-plane.
+For a rotational periodic BC, the normal vectors of each surface must point
+inwards---towards the valid geometry. For example, a :class:`XPlane` and
+:class:`YPlane` would be valid for a 90-degree periodic rotation if the geometry
+lies in the first quadrant of the Cartesian grid. If the geometry instead lies
+in the fourth quadrant, the :class:`YPlane` must be replaced by a
+:class:`Plane` with the normal vector pointing in the :math:`-y` direction.
 
 .. _usersguide_cells:
 

@@ -21,20 +21,22 @@ class PeriodicTest(PyAPITestHarness):
         materials.export_to_xml()
 
         # Define geometry
-        x_min = openmc.XPlane(surface_id=1, x0=-5., boundary_type='periodic')
-        x_max = openmc.XPlane(surface_id=2, x0=5., boundary_type='periodic')
-        x_max.periodic_surface = x_min
+        x_min = openmc.XPlane(surface_id=1, x0=0., boundary_type='periodic')
+        x_max = openmc.XPlane(surface_id=2, x0=5., boundary_type='reflective')
 
-        y_min = openmc.YPlane(surface_id=3, y0=-5., boundary_type='periodic')
-        y_max = openmc.YPlane(surface_id=4, y0=5., boundary_type='periodic')
+        y_min = openmc.YPlane(surface_id=3, y0=0., boundary_type='periodic')
+        y_max = openmc.YPlane(surface_id=4, y0=5., boundary_type='reflective')
+        y_min.periodic_surface = x_min
 
-        z_min = openmc.ZPlane(surface_id=5, z0=-5., boundary_type='reflective')
-        z_max = openmc.ZPlane(surface_id=6, z0=5., boundary_type='reflective')
-        z_cyl = openmc.ZCylinder(surface_id=7, x0=-2.5, y0=2.5, r=2.0)
+        z_min = openmc.ZPlane(surface_id=5, z0=-5., boundary_type='periodic')
+        z_max = openmc.Plane(surface_id=6, a=0, b=0, c=1, d=5.,
+                             boundary_type='periodic')
+        z_cyl = openmc.ZCylinder(surface_id=7, x0=2.5, y0=0., r=2.0)
 
         outside_cyl = openmc.Cell(1, fill=water, region=(
             +x_min & -x_max & +y_min & -y_max & +z_min & -z_max & +z_cyl))
-        inside_cyl = openmc.Cell(2, fill=fuel, region=+z_min & -z_max & -z_cyl)
+        inside_cyl = openmc.Cell(2, fill=fuel, region=(
+            +y_min & +z_min & -z_max & -z_cyl))
         root_universe = openmc.Universe(0, cells=(outside_cyl, inside_cyl))
 
         geometry = openmc.Geometry()
@@ -47,7 +49,7 @@ class PeriodicTest(PyAPITestHarness):
         settings.batches = 4
         settings.inactive = 0
         settings.source = openmc.Source(space=openmc.stats.Box(
-            *outside_cyl.region.bounding_box))
+            (0, 0, 0), (5, 5, 0)))
         settings.export_to_xml()
 
 

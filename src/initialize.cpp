@@ -102,22 +102,23 @@ void initialize_mpi(MPI_Comm intracomm)
 
   // Create bank datatype
   Particle::Bank b;
-  MPI_Aint disp[8];
+  MPI_Aint disp[9];
   MPI_Get_address(&b.r, &disp[0]);
   MPI_Get_address(&b.u, &disp[1]);
   MPI_Get_address(&b.E, &disp[2]);
   MPI_Get_address(&b.wgt, &disp[3]);
   MPI_Get_address(&b.delayed_group, &disp[4]);
-  MPI_Get_address(&b.particle, &disp[5]);
-  MPI_Get_address(&b.parent_id, &disp[6]);
-  MPI_Get_address(&b.progeny_id, &disp[7]);
-  for (int i = 7; i >= 0; --i) {
+  MPI_Get_address(&b.surf_id, &disp[5]);
+  MPI_Get_address(&b.particle, &disp[6]);
+  MPI_Get_address(&b.parent_id, &disp[7]);
+  MPI_Get_address(&b.progeny_id, &disp[8]);
+  for (int i = 8; i >= 0; --i) {
     disp[i] -= disp[0];
   }
 
-  int blocks[] {3, 3, 1, 1, 1, 1, 1, 1};
-  MPI_Datatype types[] {MPI_DOUBLE, MPI_DOUBLE, MPI_DOUBLE, MPI_DOUBLE, MPI_INT, MPI_INT, MPI_LONG, MPI_LONG};
-  MPI_Type_create_struct(8, blocks, disp, types, &mpi::bank);
+  int blocks[] {3, 3, 1, 1, 1, 1, 1, 1, 1};
+  MPI_Datatype types[] {MPI_DOUBLE, MPI_DOUBLE, MPI_DOUBLE, MPI_DOUBLE, MPI_INT, MPI_INT, MPI_INT, MPI_LONG, MPI_LONG};
+  MPI_Type_create_struct(9, blocks, disp, types, &mpi::bank);
   MPI_Type_commit(&mpi::bank);
 }
 #endif // OPENMC_MPI
@@ -256,24 +257,11 @@ void read_input_xml()
   read_materials_xml();
   read_geometry_xml();
 
-  // Convert user IDs -> indices, assign temperatures
-  double_2dvec nuc_temps(data::nuclide_map.size());
-  double_2dvec thermal_temps(data::thermal_scatt_map.size());
-  finalize_geometry(nuc_temps, thermal_temps);
+  // Final geometry setup and assign temperatures
+  finalize_geometry();
 
-  if (settings::run_mode != RunMode::PLOTTING) {
-    simulation::time_read_xs.start();
-    if (settings::run_CE) {
-      // Read continuous-energy cross sections
-      read_ce_cross_sections(nuc_temps, thermal_temps);
-    } else {
-      // Create material macroscopic data for MGXS
-      set_mg_interface_nuclides_and_temps();
-      data::mg.init();
-      mark_fissionable_mgxs_materials();
-    }
-    simulation::time_read_xs.stop();
-  }
+  // Finalize cross sections having assigned temperatures
+  finalize_cross_sections();
 
   read_tallies_xml();
 

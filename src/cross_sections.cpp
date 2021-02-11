@@ -7,6 +7,7 @@
 #include "openmc/dagmc.h"
 #endif
 #include "openmc/error.h"
+#include "openmc/geometry_aux.h"
 #include "openmc/file_utils.h"
 #include "openmc/hdf5_interface.h"
 #include "openmc/material.h"
@@ -17,6 +18,7 @@
 #include "openmc/settings.h"
 #include "openmc/simulation.h"
 #include "openmc/string_utils.h"
+#include "openmc/timer.h"
 #include "openmc/thermal.h"
 #include "openmc/xml_interface.h"
 #include "openmc/wmp.h"
@@ -320,6 +322,27 @@ void read_ce_cross_sections_xml()
   // Make sure file was not empty
   if (data::libraries.empty()) {
     fatal_error("No cross section libraries present in cross_sections.xml file.");
+  }
+}
+
+void finalize_cross_sections(){
+  if (settings::run_mode != RunMode::PLOTTING) {
+    simulation::time_read_xs.start();
+    if (settings::run_CE) {
+      // Determine desired temperatures for each nuclide and S(a,b) table
+      double_2dvec nuc_temps(data::nuclide_map.size());
+      double_2dvec thermal_temps(data::thermal_scatt_map.size());
+      get_temperatures(nuc_temps, thermal_temps);
+
+      // Read continuous-energy cross sections from HDF5
+      read_ce_cross_sections(nuc_temps, thermal_temps);
+    } else {
+      // Create material macroscopic data for MGXS
+      set_mg_interface_nuclides_and_temps();
+      data::mg.init();
+      mark_fissionable_mgxs_materials();
+    }
+    simulation::time_read_xs.stop();
   }
 }
 

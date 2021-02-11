@@ -154,6 +154,47 @@ class Nuclide:
             return None
         return self.yield_data.energies
 
+    def add_decay_mode(self, type, target, branching_ratio):
+        """Add decay mode to the nuclide
+
+        Parameters
+        ----------
+        type : str
+            Type of the decay mode, e.g., 'beta-'
+        target : str or None
+            Nuclide resulting from decay. A value of ``None`` implies the
+            target does not exist in the currently configured depletion
+            chain
+        branching_ratio : float
+            Branching ratio of the decay mode
+
+        """
+        self.decay_modes.append(
+            DecayTuple(type, target, branching_ratio)
+        )
+
+    def add_reaction(self, type, target, Q, branching_ratio):
+        """Add transmutation reaction to the nuclide
+
+        Parameters
+        ----------
+        type : str
+            Type of the reaction, e.g., 'fission'
+        target : str or None
+            Nuclide resulting from reaction. A value of ``None``
+            implies either no single target, e.g. from fission,
+            or that the target nuclide is not considered
+            in the current depletion chain
+        Q : float
+            Q value of the reaction in [eV]
+        branching_ratio : float
+            Branching ratio of the reaction
+
+        """
+        self.reactions.append(
+            ReactionTuple(type, target, Q, branching_ratio)
+        )
+
     @classmethod
     def from_xml(cls, element, root=None, fission_q=None):
         """Read nuclide from an XML element.

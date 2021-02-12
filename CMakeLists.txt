@@ -50,6 +50,24 @@ if(dagmc)
 endif()
 
 #===============================================================================
+# Check for submodules perhaps already on system
+#===============================================================================
+
+# If not found, we just pull appropriate versions from github and build them.
+find_package(fmt QUIET)
+if(fmt_FOUND)
+  message(STATUS "Found fmt: ${fmt_DIR} (version ${fmt_VERSION})")
+else()
+  message(STATUS "Did not find fmt, will use submodule instead")
+endif()
+find_package(pugixml QUIET)
+if(pugixml_FOUND)
+  message(STATUS "Found pugixml: ${pugixml_DIR}")
+else()
+  message(STATUS "Did not find pugixml, will use submodule instead")
+endif()
+
+#===============================================================================
 # HDF5 for binary output
 #===============================================================================
 
@@ -85,7 +103,7 @@ endif()
 # Set compile/link flags based on which compiler is being used
 #===============================================================================
 
-# Skip for Visual Stduio which has its own configurations through GUI
+# Skip for Visual Studio which has its own configurations through GUI
 if(NOT MSVC)
 
 if(openmp)
@@ -151,14 +169,18 @@ endif()
 # pugixml library
 #===============================================================================
 
-add_subdirectory(vendor/pugixml)
+if (NOT pugixml_FOUND)
+  add_subdirectory(vendor/pugixml)
+endif()
 
 #===============================================================================
 # {fmt} library
 #===============================================================================
 
-set(FMT_INSTALL ON CACHE BOOL "Generate the install target.")
-add_subdirectory(vendor/fmt)
+if (NOT fmt_FOUND)
+  set(FMT_INSTALL ON CACHE BOOL "Generate the install target.")
+  add_subdirectory(vendor/fmt)
+endif()
 
 #===============================================================================
 # xtensor header-only library

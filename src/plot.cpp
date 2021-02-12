@@ -100,7 +100,7 @@ uint64_t plotter_seed = 1;
 extern "C"
 int openmc_plot_geometry()
 {
-  for (auto pl : model::plots) {
+  for (auto& pl : model::plots) {
     write_message(5, "Processing plot {}: {}...", pl.id_, pl.path_plot_);
 
     if (PlotType::slice == pl.type_) {
@@ -131,9 +131,8 @@ void read_plots_xml()
 
   pugi::xml_node root = doc.document_element();
   for (auto node : root.children("plot")) {
-    Plot pl(node);
-    model::plots.push_back(pl);
-    model::plot_map[pl.id_] = model::plots.size() - 1;
+    model::plots.emplace_back(node);
+    model::plot_map[model::plots.back().id_] = model::plots.size() - 1;
   }
 }
 
@@ -142,7 +141,7 @@ void read_plots_xml()
 // specification in the portable pixmap format (PPM)
 //==============================================================================
 
-void create_ppm(Plot pl)
+void create_ppm(Plot const& pl)
 {
 
   size_t width = pl.pixels_[0];
@@ -639,7 +638,7 @@ Plot::Plot(pugi::xml_node plot_node)
 // OUTPUT_PPM writes out a previously generated image to a PPM file
 //==============================================================================
 
-void output_ppm(Plot pl, const ImageData& data)
+void output_ppm(Plot const& pl, const ImageData& data)
 {
   // Open PPM file for writing
   std::string fname = pl.path_plot_;
@@ -669,7 +668,7 @@ void output_ppm(Plot pl, const ImageData& data)
 // DRAW_MESH_LINES draws mesh line boundaries on an image
 //==============================================================================
 
-void draw_mesh_lines(Plot pl, ImageData& data)
+void draw_mesh_lines(Plot const& pl, ImageData& data)
 {
   RGBColor rgb;
   rgb = pl.meshlines_color_;
@@ -776,7 +775,7 @@ void draw_mesh_lines(Plot pl, ImageData& data)
 // approximately 15MB.
 // =============================================================================
 
-void create_voxel(Plot pl)
+void create_voxel(Plot const& pl)
 {
   // compute voxel widths in each direction
   std::array<double, 3> vox;

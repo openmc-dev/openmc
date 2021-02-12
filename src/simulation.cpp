@@ -472,6 +472,9 @@ void initialize_history(Particle& p, int64_t index_source)
   // set progeny count to zero
   p.n_progeny_ = 0;
 
+  // Reset particle event counter
+  p.n_event_ = 0;
+
   // set random number seed
   int64_t particle_seed = (simulation::total_gen + overall_generation() - 1)
     * settings::n_particles + p.id_;

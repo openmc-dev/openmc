@@ -73,12 +73,12 @@ public:
   {
     // Atomically capture the index we want to write to
     int64_t idx;
-    #pragma omp atomic capture
+    #pragma omp atomic capture seq_cst
     idx = size_++;
 
     // Check that we haven't written off the end of the array
     if (idx >= capacity_) {
-      #pragma omp atomic write
+      #pragma omp atomic write seq_cst
       size_ = capacity_;
       return -1;
     }

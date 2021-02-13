@@ -865,7 +865,7 @@ void RegularMesh::to_hdf5(hid_t group) const
 {
   hid_t mesh_group = create_group(group, "mesh " + std::to_string(id_));
 
-  write_dataset(mesh_group, "type", type());
+  write_dataset(mesh_group, "type", "regular");
   write_dataset(mesh_group, "dimension", shape_);
   write_dataset(mesh_group, "lower_left", lower_left_);
   write_dataset(mesh_group, "upper_right", upper_right_);
@@ -1122,7 +1122,7 @@ void RectilinearMesh::to_hdf5(hid_t group) const
 {
   hid_t mesh_group = create_group(group, "mesh " + std::to_string(id_));
 
-  write_dataset(mesh_group, "type", type());
+  write_dataset(mesh_group, "type", "rectilinear");
   write_dataset(mesh_group, "x_grid", grid_[0]);
   write_dataset(mesh_group, "y_grid", grid_[1]);
   write_dataset(mesh_group, "z_grid", grid_[2]);
@@ -1148,10 +1148,23 @@ int
 check_mesh_type(int32_t index, const std::string& mesh_compare_type)
 {
   if (int err = check_mesh(index)) return err;
-  StructuredMesh* mesh = dynamic_cast<StructuredMesh*>(model::meshes[index].get());
-  auto mesh_type = mesh->type();
-  if (mesh_compare_type != mesh_type) {
-    set_errmsg("This function is only valid for " + mesh_type + " meshes.");
+
+  if (mesh_compare_type == "regular") {
+    RegularMesh* mesh = dynamic_cast<RegularMesh*>(model::meshes[index].get());
+    if (!mesh) {
+      set_errmsg("This function is only valid for regular meshes.");
+      return OPENMC_E_INVALID_TYPE;
+    }
+  }
+  else if (mesh_compare_type == "rectilinear") {
+    RectilinearMesh* mesh = dynamic_cast<RectilinearMesh*>(model::meshes[index].get());
+    if (!mesh) {
+      set_errmsg("This function is only valid for rectilinear meshes.");
+      return OPENMC_E_INVALID_TYPE;
+    }
+  }
+  else {
+    set_errmsg("Mesh type " + mesh_compare_type + " is not supported.");
     return OPENMC_E_INVALID_TYPE;
   }
   return 0;
@@ -1167,13 +1180,17 @@ openmc_mesh_get_type(int32_t index, char* type)
 {
   if (int err = check_mesh(index)) return err;
 
-  StructuredMesh* mesh = dynamic_cast<StructuredMesh*>(model::meshes[index].get());
-  std::strcpy(type, mesh->type().c_str());
+  RegularMesh* mesh = dynamic_cast<RegularMesh*>(model::meshes[index].get());
+  if (mesh) {
+    std::strcpy(type, "regular");
+  }
+  else {
+    RectilinearMesh* mesh = dynamic_cast<RectilinearMesh*>(model::meshes[index].get());
+    if (mesh) {
+      std::strcpy(type, "rectilinear");
+    }
+  }
   return 0;
-}
-
-RegularMesh* get_regular_mesh(int32_t index) {
-  return dynamic_cast<RegularMesh*>(model::meshes[index].get());
 }
 
 //! Extend the meshes array by n elements
@@ -1182,6 +1199,8 @@ openmc_extend_meshes(int32_t n, const char* type, int32_t* index_start,
                      int32_t* index_end)
 {
   if (index_start) *index_start = model::meshes.size();
+  std::string mesh_type;
+
   for (int i = 0; i < n; ++i) {
     if (std::strcmp(type, "regular") == 0)
     {
@@ -1670,7 +1689,7 @@ UnstructuredMesh::to_hdf5(hid_t group) const
 {
     hid_t mesh_group = create_group(group, fmt::format("mesh {}", id_));
 
-    write_dataset(mesh_group, "type", type());
+    write_dataset(mesh_group, "type", "unstructured");
     write_dataset(mesh_group, "filename", filename_);
 
     // write volume and centroid of each tet

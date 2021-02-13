@@ -46,8 +46,6 @@ public:
   Mesh(pugi::xml_node node);
   virtual ~Mesh() = default;
 
-  virtual std::string type() const = 0;
-
   // Methods
 
   //! Determine which bins were crossed by a particle
@@ -196,8 +194,6 @@ public:
 
   // Overriden methods
 
-  std::string type() const override {return "regular";}
-
   void surface_bins_crossed(const Particle& p, std::vector<int>& bins)
   const override;
 
@@ -228,8 +224,6 @@ public:
 
   // Overriden methods
 
-  std::string type() const override {return "rectilinear";}
-
   void surface_bins_crossed(const Particle& p, std::vector<int>& bins)
   const override;
 
@@ -255,8 +249,6 @@ public:
   UnstructuredMesh() = default;
   UnstructuredMesh(pugi::xml_node);
   ~UnstructuredMesh() = default;
-
-  std::string type() const override {return "unstructured";}
 
   void bins_crossed(const Particle& p,
                     std::vector<int>& bins,
@@ -429,8 +421,6 @@ void read_meshes(pugi::xml_node root);
 //
 //! \param[in] group HDF5 group
 void meshes_to_hdf5(hid_t group);
-
-RegularMesh* get_regular_mesh(int32_t index);
 
 void free_memory_mesh();
 

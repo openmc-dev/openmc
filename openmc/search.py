@@ -1,4 +1,5 @@
 from collections.abc import Callable
+from math import ceil
 from numbers import Real
 import openmc
 import openmc.model
@@ -6,7 +7,7 @@ import openmc.checkvalue as cv
 
 
 def search_for_keff(model_builder, guesses, target=1.0,
-                    kwargs={}, tolerance=1e-2):
+                    kwargs={}, tolerance=1e-3):
 
     _run_safety_checks(model_builder, guesses, target,
                        kwargs, tolerance)
@@ -27,28 +28,27 @@ def search_for_keff(model_builder, guesses, target=1.0,
     while not _critical(k_new, target, tolerance):
 
         z_next = _make_guess(z_new, z_old, k_new, k_old, target)
-        print("guess = {}".format(z_new))
+
         z_old = z_new
-        z_new = z_next
         k_old = k_new
+        z_new = z_next
+        delta = abs(z_new-z_old)
+
+        print("guess = {}".format(z_new))
+
         k_new = _calculate_keff(z_new, model_builder,
                                 kwargs, batches)
 
-        while _delta(z_new, z_old) <= _sigma_z(z_new, z_old, k_new, k_old, target):
+        while delta <= _sigma_z(z_new, z_old, k_new, k_old, target):
 
-            batches *= 2
-            print("increasing batches to {}".format(batches))
+            batches = _increase_batches(batches, k_new, k_old)
+
             k_new = _calculate_keff(
                 z_new, model_builder, kwargs, batches)
 
-        guesses.append(z_new)
-        keffs.append(k_new)
+    _store_results(z_new, k_new, guesses, keffs)
 
     return guesses, keffs
-
-
-def _delta(z_new, z_old):
-    return abs(z_new - z_old)
 
 
 def _calculate_keff(guess, model_builder, kwargs, batches):
@@ -63,17 +63,37 @@ def _calculate_keff(guess, model_builder, kwargs, batches):
     return k
 
 
-def _critical(k, target, tolerance):
-    return abs(k - target) < tolerance
-
-
 def _make_guess(z_new, z_old, k_new, k_old, target):
     DW = (k_new.n - k_old.n)/(z_new - z_old)
     z_next = z_new + (target - k_new.n)/DW
     return z_next
 
 
+def _increase_batches(batches, k_new, k_old):
+
+    # Optional
+    # This function implements Morrow's reccomended increase.
+    # However much of the time k_new.s is smaller than k_old.s
+    # IMO this increases code complexity with little benefit.
+
+    uncertainty_ratio = k_old.s/k_new.s
+
+    if uncertainty_ratio > 1:
+        batches *= ceil(uncertainty_ratio**2)
+    else:
+        batches *= 2
+
+    print("increasing batches to {}".format(batches))
+
+    return batches
+
+
+def _critical(k, target, tolerance):
+    return abs(k - target) < tolerance
+
+
 def _sigma_z(z_new, z_old, k_new, k_old, target):
+
     LHS_numerator = (z_new - z_old) * (k_old.n - target)
     RHS_numerator = (z_new - z_old) * (target - k_new.n)
     denominator = (k_new.n - k_old.n)**2
@@ -84,6 +104,12 @@ def _sigma_z(z_new, z_old, k_new, k_old, target):
     sigma_z = (LHS + RHS)**0.5
 
     return sigma_z
+
+
+def _store_results(z_new, k_new, guesses, keffs):
+    guesses.append(z_new)
+    keffs.append(k_new)
+    return None
 
 
 def _run_safety_checks(model_builder, guesses, target,

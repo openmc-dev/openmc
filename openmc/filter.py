@@ -724,9 +724,11 @@ class MeshFilter(Filter):
 
     """
 
-    def __init__(self, mesh, filter_id=None):
+    def __init__(self, mesh, filter_id=None, translation=None):
+        super().__init__(filter_id)
         self.mesh = mesh
         self.id = filter_id
+        self._translation = translation
 
     def __hash__(self):
         string = type(self).__name__ + '\n'
@@ -750,11 +752,14 @@ class MeshFilter(Filter):
             raise ValueError(cls.__name__ + " requires a 'meshes' keyword "
                              "argument.")
 
+        if 'translation' in group:
+            translation = group['translation'][()]
+
         mesh_id = group['bins'][()]
         mesh_obj = kwargs['meshes'][mesh_id]
         filter_id = int(group.name.split('/')[-1].lstrip('filter '))
 
-        out = cls(mesh_obj, filter_id=filter_id)
+        out = cls(mesh_obj, filter_id=filter_id, translation=translation)
 
         return out
 
@@ -773,6 +778,17 @@ class MeshFilter(Filter):
                 self.bins = list(range(len(mesh.volumes)))
         else:
             self.bins = list(mesh.indices)
+
+    @property
+    def translation(self):
+        return self._translation
+
+    @translation.setter
+    def translation(self, t):
+        if t is not None:
+            cv.check_type('mesh filter translation', t, Iterable, Real)
+            cv.check_length('mesh filter translation', t, 3)
+            self._translation = t
 
     def can_merge(self, other):
         # Mesh filters cannot have more than one bin
@@ -854,6 +870,8 @@ class MeshFilter(Filter):
         """
         element = super().to_xml_element()
         element[0].text = str(self.mesh.id)
+        if self.translation:
+            element.set("translation", ' '.join(map(str, self._translation)))
         return element
 
 

@@ -739,6 +739,7 @@ class MeshFilter(Filter):
         string = type(self).__name__ + '\n'
         string += '{: <16}=\t{}\n'.format('\tMesh ID', self.mesh.id)
         string += '{: <16}=\t{}\n'.format('\tID', self.id)
+        string += '{: <16}=\t{}\n'.format('\tTranslation', self.translation)
         return string
 
     @classmethod
@@ -752,12 +753,13 @@ class MeshFilter(Filter):
             raise ValueError(cls.__name__ + " requires a 'meshes' keyword "
                              "argument.")
 
-        if 'translation' in group:
-            translation = group['translation'][()]
-
         mesh_id = group['bins'][()]
         mesh_obj = kwargs['meshes'][mesh_id]
         filter_id = int(group.name.split('/')[-1].lstrip('filter '))
+
+        translation = group.get('translation')
+        if translation:
+            translation = translation[()]
 
         out = cls(mesh_obj, filter_id=filter_id, translation=translation)
 

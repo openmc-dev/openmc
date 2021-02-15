@@ -28,6 +28,11 @@ MeshFilter::from_xml(pugi::xml_node node)
     fatal_error(fmt::format(
       "Could not find mesh {} specified on tally filter.", id));
   }
+
+  if (check_for_node(node, "translation")) {
+    set_translation(get_node_array<double>(node, "translation"));
+  }
+
 }
 
 void
@@ -61,13 +66,21 @@ MeshFilter::to_statepoint(hid_t filter_group) const
 {
   Filter::to_statepoint(filter_group);
   write_dataset(filter_group, "bins", model::meshes[mesh_]->id_);
+  if (translated_) {
+    write_dataset(filter_group, "translation", translation_);
+  }
 }
 
 std::string
 MeshFilter::text_label(int bin) const
 {
   auto& mesh = *model::meshes.at(mesh_);
-  return mesh.bin_label(bin);
+  std::string label = mesh.bin_label(bin);
+  if (translated_) {
+    label += fmt::format("\nTranslation: {}, {}, {}\n",
+                         translation_.x, translation_.y, translation_.z);
+  }
+  return label;
 }
 
 void

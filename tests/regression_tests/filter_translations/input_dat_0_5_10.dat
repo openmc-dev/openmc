@@ -1,0 +1,60 @@
+<?xml version='1.0' encoding='utf-8'?>
+<geometry>
+  <cell id="11" material="11" region="51 -52 53 -54 60 -59" universe="6" />
+  <cell id="12" material="12" region="~(51 -52 53 -54) (55 -56 57 -58) 60 -59" universe="6" />
+  <surface coeffs="-5.0" id="51" name="minimum x" type="x-plane" />
+  <surface coeffs="5.0" id="52" name="maximum x" type="x-plane" />
+  <surface coeffs="-5.0" id="53" name="minimum y" type="y-plane" />
+  <surface coeffs="5.0" id="54" name="maximum y" type="y-plane" />
+  <surface boundary="reflective" coeffs="-10.0" id="55" name="minimum x" type="x-plane" />
+  <surface boundary="reflective" coeffs="10.0" id="56" name="maximum x" type="x-plane" />
+  <surface boundary="reflective" coeffs="-10.0" id="57" name="minimum y" type="y-plane" />
+  <surface boundary="reflective" coeffs="10.0" id="58" name="maximum y" type="y-plane" />
+  <surface boundary="vacuum" coeffs="10.0" id="59" type="z-plane" />
+  <surface boundary="vacuum" coeffs="-10.0" id="60" type="z-plane" />
+</geometry>
+<?xml version='1.0' encoding='utf-8'?>
+<materials>
+  <material depletable="true" id="11">
+    <density units="g/cm3" value="10.0" />
+    <nuclide ao="1.0" name="U235" />
+  </material>
+  <material id="12">
+    <density units="g/cm3" value="1.0" />
+    <nuclide ao="1.0" name="Zr90" />
+  </material>
+</materials>
+<?xml version='1.0' encoding='utf-8'?>
+<settings>
+  <run_mode>eigenvalue</run_mode>
+  <particles>1000</particles>
+  <batches>5</batches>
+  <inactive>0</inactive>
+</settings>
+<?xml version='1.0' encoding='utf-8'?>
+<tallies>
+  <mesh id="11">
+    <dimension>9 9 9</dimension>
+    <lower_left>-9 -14 -19</lower_left>
+    <upper_right>9 4 -1</upper_right>
+  </mesh>
+  <mesh id="12" type="rectilinear">
+    <x_grid>-9.0 -7.875 -6.75 -5.625 -4.5 -3.375 -2.25 -1.125 0.0 1.125 2.25 3.375 4.5 5.625 6.75 7.875 9.0</x_grid>
+    <y_grid>-14.0 -12.875 -11.75 -10.625 -9.5 -8.375 -7.25 -6.125 -5.0 -3.875 -2.75 -1.625 -0.5 0.625 1.75 2.875 4.0</y_grid>
+    <z_grid>-19.0 -17.875 -16.75 -15.625 -14.5 -13.375 -12.25 -11.125 -10.0 -8.875 -7.75 -6.625 -5.5 -4.375 -3.25 -2.125 -1.0</z_grid>
+  </mesh>
+  <filter id="11" translation="0 5 10" type="mesh">
+    <bins>11</bins>
+  </filter>
+  <filter id="12" translation="0 5 10" type="mesh">
+    <bins>12</bins>
+  </filter>
+  <tally id="11">
+    <filters>11</filters>
+    <scores>total</scores>
+  </tally>
+  <tally id="12">
+    <filters>12</filters>
+    <scores>total</scores>
+  </tally>
+</tallies>

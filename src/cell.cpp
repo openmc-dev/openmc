@@ -505,6 +505,12 @@ CSGCell::contains(Position r, Direction u, int32_t on_surface) const
 std::pair<double, int32_t> HD CSGCell::distance(
   Position r, Direction u, int32_t on_surface, Particle* p) const
 {
+#ifdef __CUDA_ARCH__
+  using gpu::surfaces;
+#else
+  using model::surfaces;
+#endif
+
   double min_dist {INFTY};
   constexpr int32_t default_cell_index = std::numeric_limits<int32_t>::max();
   int32_t i_surf {default_cell_index};
@@ -516,12 +522,7 @@ std::pair<double, int32_t> HD CSGCell::distance(
     // Calculate the distance to this surface.
     // Note the off-by-one indexing
     bool coincident {std::abs(token) == std::abs(on_surface)};
-
-#ifdef __CUDA_ARCH__
-    double d {gpu::surfaces[abs(token) - 1]->distance(r, u, coincident)};
-#else
-    double d {model::surfaces[abs(token)-1]->distance(r, u, coincident)};
-#endif
+    double d {surfaces[abs(token) - 1]->distance(r, u, coincident)};
 
     // Check if this distance is the new minimum.
     if (d < min_dist) {

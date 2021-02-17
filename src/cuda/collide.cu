@@ -14,6 +14,9 @@ __global__ void process_collision_events_device(EventQueueItem* queue,
     Particle& p = particles[p_idx];
     p.event_collide();
 
+    // Replace with revival from secondaries eventually
+    p.n_event_++;
+
     // Particle now needs an XS lookup
     if (p.alive_) {
       if (p.material_ == MATERIAL_VOID ||
@@ -22,7 +25,7 @@ __global__ void process_collision_events_device(EventQueueItem* queue,
           &managed_calculate_nonfuel_queue_index, 0xFFFFFFF)] = {p, p_idx};
       else
         calculate_fuel_xs_queue[atomicInc(
-          &managed_calculate_nonfuel_queue_index, 0xFFFFFFF)] = {p, p_idx};
+          &managed_calculate_fuel_queue_index, 0xFFFFFFF)] = {p, p_idx};
     }
   }
 }

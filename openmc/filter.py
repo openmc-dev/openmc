@@ -716,6 +716,9 @@ class MeshFilter(Filter):
         The mesh object that events will be tallied onto
     id : int
         Unique identifier for the filter
+    translation : Iterable of float
+        This array specifies a vector that is used to translate (shift)
+        the mesh for this filter
     bins : list of tuple
         A list of mesh indices for each filter bin, e.g. [(1, 1, 1), (2, 1, 1),
         ...]
@@ -789,7 +792,7 @@ class MeshFilter(Filter):
         if t is not None:
             cv.check_type('mesh filter translation', t, Iterable, Real)
             cv.check_length('mesh filter translation', t, 3)
-            self._translation = t
+            self._translation = np.asarray(t)
 
     def can_merge(self, other):
         # Mesh filters cannot have more than one bin
@@ -892,6 +895,9 @@ class MeshSurfaceFilter(MeshFilter):
         The mesh ID
     mesh : openmc.MeshBase
         The mesh object that events will be tallied onto
+    translation : Iterable of float
+        This array specifies a vector that is used to translate (shift)
+        the mesh for this filter
     id : int
         Unique identifier for the filter
     bins : list of tuple

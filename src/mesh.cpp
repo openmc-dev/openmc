@@ -1688,11 +1688,11 @@ MOABMesh::intersect_track(const moab::CartVect& start,
 }
 
 void
-MOABUnstructuredMesh::bins_crossed(Position last_r,
-                                  Position r,
-                                  const Direction& u,
-                                  std::vector<int>& bins,
-                                  std::vector<double>& lengths) const
+MOABMesh::bins_crossed(Position last_r,
+                       Position r,
+                       const Direction& u,
+                       std::vector<int>& bins,
+                       std::vector<double>& lengths) const
 {
   // u /= u.norm();
   moab::CartVect r0(last_r.x, last_r.y, last_r.z);
@@ -1819,10 +1819,10 @@ double MOABMesh::tet_volume(moab::EntityHandle tet) const
   return 1.0 / 6.0 * (((p[1] - p[0]) * (p[2] - p[0])) % (p[3] - p[0]));
 }
 
-void MOABUnstructuredMesh::surface_bins_crossed(Position r0,
-                                                Position r1,
-                                                const Direction& u,
-                                                std::vector<int>& bins) const
+void MOABMesh::surface_bins_crossed(Position r0,
+                                    Position r1,
+                                    const Direction& u,
+                                    std::vector<int>& bins) const
 {
 
   // TODO: Implement triangle crossings here

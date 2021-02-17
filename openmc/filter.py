@@ -725,7 +725,6 @@ class MeshFilter(Filter):
     """
 
     def __init__(self, mesh, filter_id=None, translation=None):
-        super().__init__(filter_id)
         self.mesh = mesh
         self.id = filter_id
         self._translation = translation
@@ -872,8 +871,8 @@ class MeshFilter(Filter):
         """
         element = super().to_xml_element()
         element[0].text = str(self.mesh.id)
-        if self.translation:
-            element.set("translation", ' '.join(map(str, self._translation)))
+        if self.translation is not None:
+            element.set('translation', ' '.join(map(str, self._translation)))
         return element
 
 

@@ -470,11 +470,17 @@ def test_regular_mesh(lib_init):
         assert isinstance(mesh, openmc.lib.RegularMesh)
         assert mesh_id == mesh.id
 
+    translation = (1.0, 2.0, 3.0)
+
     mf = openmc.lib.MeshFilter(mesh)
     assert mf.mesh == mesh
+    mf.translation = translation
+    assert mf.translation == translation
 
     msf = openmc.lib.MeshSurfaceFilter(mesh)
     assert msf.mesh == mesh
+    msf.translation = translation
+    assert msf.translation == translation
 
 
 def test_rectilinear_mesh(lib_init):

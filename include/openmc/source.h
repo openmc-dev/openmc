@@ -50,7 +50,8 @@ public:
 class IndependentSource : public Source {
 public:
   // Constructors
-  IndependentSource(UPtrSpace space, UPtrAngle angle, UPtrDist energy);
+  IndependentSource(
+    UPtrSpace space, UPtrAngle angle, unique_ptr<Distribution> energy);
   explicit IndependentSource(pugi::xml_node node);
   IndependentSource(IndependentSource&&) = default;
 
@@ -73,7 +74,7 @@ private:
   double strength_ {1.0}; //!< Source strength
   UPtrSpace space_; //!< Spatial distribution
   UPtrAngle angle_; //!< Angular distribution
-  UPtrDist energy_; //!< Energy distribution
+  unique_ptr<Distribution> energy_; //!< Energy distribution
 };
 
 //==============================================================================

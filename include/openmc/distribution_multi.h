@@ -36,7 +36,8 @@ public:
 
 class PolarAzimuthal : public UnitSphereDistribution {
 public:
-  PolarAzimuthal(Direction u, UPtrDist mu, UPtrDist phi);
+  PolarAzimuthal(
+    Direction u, unique_ptr<Distribution> mu, unique_ptr<Distribution> phi);
   explicit PolarAzimuthal(pugi::xml_node node);
 
   //! Sample a direction from the distribution
@@ -49,8 +50,8 @@ public:
   Distribution* phi() const { return phi_.get(); }
 
 private:
-  UPtrDist mu_;  //!< Distribution of polar angle
-  UPtrDist phi_; //!< Distribution of azimuthal angle
+  unique_ptr<Distribution> mu_;  //!< Distribution of polar angle
+  unique_ptr<Distribution> phi_; //!< Distribution of azimuthal angle
 };
 
 //==============================================================================

@@ -47,8 +47,11 @@ vector<unique_ptr<Source>> external_sources;
 // IndependentSource implementation
 //==============================================================================
 
-IndependentSource::IndependentSource(UPtrSpace space, UPtrAngle angle, UPtrDist energy)
-  : space_{std::move(space)}, angle_{std::move(angle)}, energy_{std::move(energy)} { }
+IndependentSource::IndependentSource(
+  UPtrSpace space, UPtrAngle angle, unique_ptr<Distribution> energy)
+  : space_ {std::move(space)}, angle_ {std::move(angle)}, energy_ {
+                                                            std::move(energy)}
+{}
 
 IndependentSource::IndependentSource(pugi::xml_node node)
 {

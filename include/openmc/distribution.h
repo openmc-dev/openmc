@@ -221,12 +221,10 @@ private:
   vector<xsfloat> x_; //! Possible outcomes
 };
 
-using UPtrDist = unique_ptr<Distribution>;
-
 //! Return univariate probability distribution specified in XML file
 //! \param[in] node XML node representing distribution
 //! \return Unique pointer to distribution
-UPtrDist distribution_from_xml(pugi::xml_node node);
+unique_ptr<Distribution> distribution_from_xml(pugi::xml_node node);
 
 } // namespace openmc
 

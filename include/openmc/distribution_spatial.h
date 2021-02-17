@@ -38,9 +38,9 @@ public:
   Distribution* y() const { return y_.get(); }
   Distribution* z() const { return z_.get(); }
 private:
-  UPtrDist x_; //!< Distribution of x coordinates
-  UPtrDist y_; //!< Distribution of y coordinates
-  UPtrDist z_; //!< Distribution of z coordinates
+  unique_ptr<Distribution> x_; //!< Distribution of x coordinates
+  unique_ptr<Distribution> y_; //!< Distribution of y coordinates
+  unique_ptr<Distribution> z_; //!< Distribution of z coordinates
 };
 
 //==============================================================================
@@ -61,9 +61,9 @@ public:
   Distribution* z() const { return z_.get(); }
   Position origin() const { return origin_; }
 private:
-  UPtrDist r_; //!< Distribution of r coordinates
-  UPtrDist phi_; //!< Distribution of phi coordinates
-  UPtrDist z_; //!< Distribution of z coordinates
+  unique_ptr<Distribution> r_;   //!< Distribution of r coordinates
+  unique_ptr<Distribution> phi_; //!< Distribution of phi coordinates
+  unique_ptr<Distribution> z_;   //!< Distribution of z coordinates
   Position origin_; //!< Cartesian coordinates of the cylinder center
 };
 
@@ -86,9 +86,9 @@ public:
   Distribution* phi() const { return phi_.get(); }
   Position origin () const { return origin_; }
 private:
-  UPtrDist r_; //!< Distribution of r coordinates
-  UPtrDist theta_; //!< Distribution of theta coordinates
-  UPtrDist phi_; //!< Distribution of phi coordinates
+  unique_ptr<Distribution> r_;     //!< Distribution of r coordinates
+  unique_ptr<Distribution> theta_; //!< Distribution of theta coordinates
+  unique_ptr<Distribution> phi_;   //!< Distribution of phi coordinates
   Position origin_; //!< Cartesian coordinates of the sphere center
 };
 

@@ -33,8 +33,10 @@ UnitSphereDistribution::UnitSphereDistribution(pugi::xml_node node)
 // PolarAzimuthal implementation
 //==============================================================================
 
-PolarAzimuthal::PolarAzimuthal(Direction u, UPtrDist mu, UPtrDist phi) :
-  UnitSphereDistribution{u}, mu_{std::move(mu)}, phi_{std::move(phi)} { }
+PolarAzimuthal::PolarAzimuthal(
+  Direction u, unique_ptr<Distribution> mu, unique_ptr<Distribution> phi)
+  : UnitSphereDistribution {u}, mu_ {std::move(mu)}, phi_ {std::move(phi)}
+{}
 
 PolarAzimuthal::PolarAzimuthal(pugi::xml_node node)
   : UnitSphereDistribution{node}

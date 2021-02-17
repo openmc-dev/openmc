@@ -293,7 +293,7 @@ xsfloat Equiprobable::sample(uint64_t* seed) const
 // Helper function
 //==============================================================================
 
-UPtrDist distribution_from_xml(pugi::xml_node node)
+unique_ptr<Distribution> distribution_from_xml(pugi::xml_node node)
 {
   if (!check_for_node(node, "type"))
     openmc::fatal_error("Distribution type must be specified.");

@@ -1431,7 +1431,7 @@ openmc_get_mesh_index(int32_t id, int32_t* index)
   return 0;
 }
 
-// Return the ID of a mesh
+//! Return the ID of a mesh
 extern "C" int
 openmc_mesh_get_id(int32_t index, int32_t* id)
 {

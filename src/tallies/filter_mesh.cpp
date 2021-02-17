@@ -160,26 +160,46 @@ openmc_mesh_filter_set_mesh(int32_t index, int32_t index_mesh)
 }
 
 extern "C" int
+openmc_mesh_filter_get_translation(int32_t index, double translation[3])
+{
+  // Make sure this is a valid index to an allocated filter
+  if (int err = verify_filter(index)) return err;
+
+  // Check the filter type
+  const auto& filter = model::tally_filters[index];
+  if (filter->type() != "mesh" && filter->type() != "meshsurface") {
+    set_errmsg("Tried to get a translation from a non-mesh, non-meshsurface filter.");
+    return OPENMC_E_INVALID_TYPE;
+  }
+
+  // Get translation from the mesh filter and set value
+  auto mesh_filter = static_cast<MeshFilter*>(filter.get());
+  const auto& t = mesh_filter->translation();
+  for (int i = 0; i < 3; i++) { translation[i] = t[i]; }
+
+  return 0;
+}
+
+extern "C" int
 openmc_mesh_filter_set_translation(int32_t index, double translation[3])
 {
   // Make sure this is a valid index to an allocated filter
   if (int err = verify_filter(index)) return err;
 
-  // Get a pointer to the filter and downcast.
-  const auto& filt_base = model::tally_filters[index].get();
-  auto* filt = dynamic_cast<MeshFilter*>(filt_base);
-
+  const auto& filter = model::tally_filters[index];
   // Check the filter type
-  if (!filt) {
-    set_errmsg("Tried to set mesh on a non-mesh filter.");
+  if (filter->type() != "mesh" && filter->type() != "meshsurface") {
+    set_errmsg("Tried to set mesh on a non-mesh, non-meshsurface filter.");
     return OPENMC_E_INVALID_TYPE;
   }
 
+  // Get a pointer to the filter and downcast
+  auto mesh_filter = dynamic_cast<MeshFilter*>(filter.get());
+
   // Set the translation
-  filt->set_translation(translation);
+  mesh_filter->set_translation(translation);
 
   return 0;
 }
-
 
 } // namespace openmc

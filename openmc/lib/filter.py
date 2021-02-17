@@ -84,6 +84,12 @@ _dll.openmc_meshsurface_filter_get_mesh.errcheck = _error_handler
 _dll.openmc_meshsurface_filter_set_mesh.argtypes = [c_int32, c_int32]
 _dll.openmc_meshsurface_filter_set_mesh.restype = c_int
 _dll.openmc_meshsurface_filter_set_mesh.errcheck = _error_handler
+_dll.openmc_mesh_filter_get_translation.argtypes = [c_int32, POINTER(c_double*3)]
+_dll.openmc_mesh_filter_get_translation.restype = c_int
+_dll.openmc_mesh_filter_get_translation.errcheck = _error_handler
+_dll.openmc_mesh_filter_set_translation.argtypes = [c_int32, POINTER(c_double*3)]
+_dll.openmc_mesh_filter_set_translation.restype = c_int
+_dll.openmc_mesh_filter_set_translation.errcheck = _error_handler
 _dll.openmc_new_filter.argtypes = [c_char_p, POINTER(c_int32)]
 _dll.openmc_new_filter.restype = c_int
 _dll.openmc_new_filter.errcheck = _error_handler
@@ -325,6 +331,16 @@ class MeshFilter(Filter):
     def mesh(self, mesh):
         _dll.openmc_mesh_filter_set_mesh(self._index, mesh._index)
 
+    @property
+    def translation(self):
+        translation = (c_double*3)()
+        _dll.openmc_mesh_filter_get_translation(self._index, translation)
+        return tuple(translation)
+
+    @translation.setter
+    def translation(self, translation):
+        _dll.openmc_mesh_filter_set_translation(self._index, (c_double*3)(*translation))
+
 
 class MeshSurfaceFilter(Filter):
     filter_type = 'meshsurface'
@@ -343,6 +359,16 @@ class MeshSurfaceFilter(Filter):
     @mesh.setter
     def mesh(self, mesh):
         _dll.openmc_meshsurface_filter_set_mesh(self._index, mesh._index)
+
+    @property
+    def translation(self):
+        translation = (c_double*3)()
+        _dll.openmc_mesh_filter_get_translation(self._index, translation)
+        return tuple(translation)
+
+    @translation.setter
+    def translation(self, translation):
+        _dll.openmc_mesh_filter_set_translation(self._index, (c_double*3)(*translation))
 
 
 class MuFilter(Filter):

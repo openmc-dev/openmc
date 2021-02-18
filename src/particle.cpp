@@ -505,7 +505,7 @@ Particle::cross_reflective_bc(const Surface& surf, Direction new_u)
   surface() = -surface();
 
   #ifdef DAGMC
-  if (surf->geom_type_ != GeometryType::DAGMC) history_.reset();
+  if (surf.geom_type_ != GeometryType::DAG) history_.reset();
   #endif
 
   // If a reflective surface is coincident with a lattice or universe

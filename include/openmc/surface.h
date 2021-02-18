@@ -97,6 +97,7 @@ public:
   int id_; //!< Unique ID
   std::string name_; //!< User-defined name
   std::shared_ptr<BoundaryCondition> bc_ {nullptr}; //!< Boundary condition
+  GeometryType geom_type_;    //!< Geometry type indicator (CSG or DAGMC)
   bool surf_source_ {false};     //!< Activate source banking for the surface?
 
   explicit Surface(pugi::xml_node surf_node);
@@ -143,13 +144,13 @@ public:
 
   //! Write all information needed to reconstruct the surface to an HDF5 group.
   //! \param group_id An HDF5 group id.
-  virtual void to_hdf5(hid_t group_id) const = 0;
+  void to_hdf5(hid_t group_id) const;
 
   //! Get the BoundingBox for this surface.
   virtual BoundingBox bounding_box(bool /*pos_side*/) const { return {}; }
 
   protected:
-    virtual void to_hdf5_inner(hid_t group_id) const = 0;
+     virtual void to_hdf5_inner(hid_t group_id) const = 0;
 };
 
 class CSGSurface : public Surface
@@ -158,7 +159,8 @@ public:
   explicit CSGSurface(pugi::xml_node surf_node);
   CSGSurface();
 
-  void to_hdf5(hid_t group_id) const;
+protected:
+  virtual void to_hdf5_inner(hid_t group_id) const = 0;
 };
 
 //==============================================================================

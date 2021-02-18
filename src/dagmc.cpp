@@ -154,7 +154,7 @@ void read_dagmc_materials() {
     std::stringstream ss;
     ss << "<?xml version=\"1.0\"?>\n";
     ss << "<materials>\n";
-    for (auto mat : mat_lib) { ss << mat.second.openmc("atom"); }
+    for (auto mat : mat_lib) { ss << mat.second->openmc("atom"); }
     ss << "</materials>";
     std::string mat_xml_string = ss.str();
 
@@ -389,7 +389,7 @@ void DAGUniverse::initialize() {
         std::string uwuw_mat = DMD.volume_material_property_data_eh[vol_handle];
         if (uwuw.material_library.count(uwuw_mat) != 0) {
           // Note: material numbers are set by UWUW
-          int mat_number = uwuw.material_library[uwuw_mat].metadata["mat_number"].asInt();
+          int mat_number = uwuw.material_library.get_material(uwuw_mat).metadata["mat_number"].asInt();
           c->material_.push_back(mat_number);
         } else {
           fatal_error(fmt::format("Material with value {} not found in the "
@@ -448,12 +448,11 @@ void DAGUniverse::initialize() {
     std::string bc_value = DMD.get_surface_property("boundary", surf_handle);
     to_lower(bc_value);
     if (bc_value.empty() || bc_value == "transmit" || bc_value == "transmission") {
-      // set to transmission by default
-      s->bc_ = Surface::BoundaryType::TRANSMIT;
+      // set to transmission by default (nullptr)
     } else if (bc_value == "vacuum") {
-      s->bc_ = Surface::BoundaryType::VACUUM;
+      s->bc_ = std::make_shared<VacuumBC>();
     } else if (bc_value == "reflective" || bc_value == "reflect" || bc_value == "reflecting") {
-      s->bc_ = Surface::BoundaryType::REFLECT;
+      s->bc_ = std::make_shared<ReflectiveBC>();
     } else if (bc_value == "periodic") {
       fatal_error("Periodic boundary condition not supported in DAGMC.");
     } else {
@@ -469,7 +468,7 @@ void DAGUniverse::initialize() {
     // if this surface belongs to the graveyard
     if (graveyard && parent_vols.find(graveyard) != parent_vols.end()) {
       // set graveyard surface BC's to vacuum
-      s->bc_ = Surface::BoundaryType::VACUUM;
+      s->bc_ = std::make_shared<VacuumBC>();
     }
 
     // add to global array and map

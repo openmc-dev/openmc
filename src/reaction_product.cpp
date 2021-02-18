@@ -100,6 +100,10 @@ void ReactionProduct::sample(xsfloat E_in, xsfloat& E_out, xsfloat& mu,
       }
     }
   } else {
+    // NOTE: this is an extra indirection step that's avoidable in most cases.
+    // We could instead directly store the pointer and save a good little bit
+    // of time!
+
     // If only one distribution is present, go ahead and sample it
     distribution_[0]->sample(E_in, E_out, mu, seed);
   }

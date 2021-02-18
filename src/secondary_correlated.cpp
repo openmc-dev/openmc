@@ -145,9 +145,7 @@ CorrelatedAngleEnergy::CorrelatedAngleEnergy(hid_t group)
       // CDF values that were passed through to the HDF5 library. At a later
       // time, we can remove the CDF values from the HDF5 library and
       // reconstruct them using the PDF
-      Tabular* mudist = new Tabular {x.data(), p.data(), m, interp, c.data()};
-
-      d.angle.emplace_back(mudist);
+      d.angle.push_back(make_unique<Tabular>(x.data(), p.data(), m, interp, c.data()));
     } // outgoing energies
 
     distribution_.push_back(std::move(d));

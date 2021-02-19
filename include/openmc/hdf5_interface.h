@@ -212,7 +212,7 @@ read_attribute(hid_t obj_id, const char* name, std::vector<std::string>& vec)
   // Read char data in attribute
   read_attr_string(obj_id, name, n, buffer);
 
-  for (int i = 0; i < m; ++i) {
+  for (decltype(m) i = 0; i < m; ++i) {
     // Determine proper length of string -- strlen doesn't work because
     // buffer[i] might not have any null characters
     std::size_t k = 0;
@@ -478,7 +478,7 @@ write_dataset(hid_t obj_id, const char* name,
   // Copy data into contiguous buffer
   char* temp = new char[n*m];
   std::fill(temp, temp + n*m, '\0');
-  for (int i = 0; i < n; ++i) {
+  for (decltype(n) i = 0; i < n; ++i) {
     std::copy(buffer[i].begin(), buffer[i].end(), temp + i*m);
   }
 

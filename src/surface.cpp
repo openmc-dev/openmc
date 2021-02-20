@@ -117,6 +117,7 @@ void read_coeffs(pugi::xml_node surf_node, int surf_id, double &c1, double &c2,
 
 Surface::Surface(pugi::xml_node surf_node)
 {
+
   if (check_for_node(surf_node, "id")) {
     id_ = std::stoi(get_node_value(surf_node, "id"));
     if (contains(settings::source_write_surf_id, id_)) {
@@ -150,6 +151,12 @@ Surface::Surface(pugi::xml_node surf_node)
     }
   }
 
+  // TODO this is temporary. Remove after merging Sterling's refl. impl.
+  if (bc_ == BoundaryType::PERIODIC) {
+    if (check_for_node(surf_node, "periodic_surface_id")) {
+      i_periodic_ = std::stoi(get_node_value(surf_node, "periodic_surface_id"));
+    }
+  }
 }
 
 HD bool Surface::sense(Position r, Direction u) const
@@ -1182,11 +1189,11 @@ void read_surfaces(pugi::xml_node node)
     // planes are parallel which indicates a translational periodic boundary
     // condition.  Otherwise, it is a rotational periodic BC.
     if (std::abs(1.0 - dot_prod) < FP_PRECISION) {
-      surf1.bc_ = std::make_shared<TranslationalPeriodicBC>(i_surf, j_surf);
-      surf2.bc_ = surf1.bc_;
+      surf1.bc_ = make_unique<TranslationalPeriodicBC>(i_surf, j_surf);
+      surf2.bc_ = make_unique<TranslationalPeriodicBC>(i_surf, j_surf);
     } else {
-      surf1.bc_ = std::make_shared<RotationalPeriodicBC>(i_surf, j_surf);
-      surf2.bc_ = surf1.bc_;
+      surf1.bc_ = make_unique<RotationalPeriodicBC>(i_surf, j_surf);
+      surf2.bc_ = make_unique<RotationalPeriodicBC>(i_surf, j_surf);
     }
   }
 

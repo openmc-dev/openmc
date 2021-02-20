@@ -57,13 +57,13 @@ public:
   void event_pre_calculate_xs();
   void event_calculate_xs();
   HD void event_advance();
-  void event_cross_surface();
+  HD void event_cross_surface();
   HD void event_collide();
   void event_revive_from_secondary();
   void event_death();
 
   //! Cross a surface and handle boundary conditions
-  void cross_surface();
+  HD void cross_surface();
 
   //! Cross a vacuum boundary condition.
   //

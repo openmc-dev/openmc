@@ -9,6 +9,7 @@
 #include "openmc/cuda/advance.h"
 #include "openmc/cuda/calculate_xs.h"
 #include "openmc/cuda/collide.h"
+#include "openmc/cuda/cross_surface.h"
 #endif
 
 namespace openmc {
@@ -192,7 +193,28 @@ void process_surface_crossing_events()
 {
   simulation::time_event_surface_crossing.start();
 
-  #pragma omp parallel for schedule(runtime)
+#ifdef __CUDACC__
+  // Set initial positions of the XS calculation queues for appending
+  // while running on GPU
+  gpu::managed_calculate_nonfuel_queue_index =
+    simulation::calculate_nonfuel_xs_queue.size();
+  gpu::managed_calculate_fuel_queue_index =
+    simulation::calculate_fuel_xs_queue.size();
+
+  gpu::process_surface_crossing_events_device<<<
+    simulation::surface_crossing_queue.size() / 32 + 1, 32>>>(
+    simulation::surface_crossing_queue.data(),
+    simulation::surface_crossing_queue.size(),
+    simulation::calculate_nonfuel_xs_queue.data(),
+    simulation::calculate_fuel_xs_queue.data());
+  cudaDeviceSynchronize();
+
+  simulation::calculate_nonfuel_xs_queue.updateIndex(
+    gpu::managed_calculate_nonfuel_queue_index);
+  simulation::calculate_fuel_xs_queue.updateIndex(
+    gpu::managed_calculate_fuel_queue_index);
+#else
+#pragma omp parallel for schedule(runtime)
   for (int64_t i = 0; i < simulation::surface_crossing_queue.size(); i++) {
     int64_t buffer_idx = simulation::surface_crossing_queue[i].idx;
     ParticleReference p = get_particle(buffer_idx);
@@ -201,6 +223,7 @@ void process_surface_crossing_events()
     if (p.alive())
       dispatch_xs_event(buffer_idx);
   }
+#endif
 
   simulation::surface_crossing_queue.resize(0);
 
@@ -228,7 +251,7 @@ void process_collision_events()
     simulation::calculate_fuel_xs_queue.size();
 
   gpu::process_collision_events_device<<<
-    simulation::advance_particle_queue.size() / 32 + 1, 32>>>(
+    simulation::collision_queue.size() / 32 + 1, 32>>>(
     simulation::collision_queue.data(), simulation::collision_queue.size(),
     simulation::calculate_nonfuel_xs_queue.data(),
     simulation::calculate_fuel_xs_queue.data());

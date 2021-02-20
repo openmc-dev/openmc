@@ -234,10 +234,14 @@ Particle::event_cross_surface()
     cross_surface();
     event() = TallyEvent::SURFACE;
   }
+
+  // TODO make tallies work on GPU
+#ifndef __CUDA_ARCH__
   // Score cell to cell partial currents
   if (!model::active_surface_tallies.empty()) {
     score_surface_tally(*this, model::active_surface_tallies);
   }
+#endif
 }
 
 void
@@ -400,13 +404,26 @@ Particle::event_death()
 void
 Particle::cross_surface()
 {
+#ifdef __CUDA_ARCH__
+  using gpu::run_mode;
+  using gpu::surfaces;
+  const bool using_dagmc = false;
+#else
+  using model::surfaces;
+  using settings::run_mode;
+  const bool using_dagmc = settings::dagmc;
+#endif
+
   int i_surface = std::abs(surface());
-  // TODO: off-by-one
-  const auto& surf {model::surfaces[i_surface - 1].get()};
+  const auto& surf {surfaces[i_surface - 1].get()};
+
+#ifndef __CUDA_ARCH__
   if (settings::verbosity >= 10 || trace()) {
     write_message(1, "    Crossing surface {}", surf->id_);
   }
+#endif
 
+  // TODO make surface sources work on GPU
   if (surf->surf_source_ && simulation::current_batch == settings::n_batches) {
     SourceSite site;
     site.r = r();
@@ -420,6 +437,7 @@ Particle::cross_surface()
     site.progeny_id = n_progeny();
     int64_t idx = simulation::surf_source_bank.thread_safe_append(site);
   }
+#endif
 
   // Handle any applicable boundary conditions.
   if (surf->bc_ && settings::run_mode != RunMode::PLOTTING) {
@@ -460,7 +478,7 @@ Particle::cross_surface()
   n_coord() = 1;
   bool found = exhaustive_find_cell(*this);
 
-  if (settings::run_mode != RunMode::PLOTTING && (!found)) {
+  if (run_mode != RunMode::PLOTTING && (!found)) {
     // If a cell is still not found, there are two possible causes: 1) there is
     // a void in the model, and 2) the particle hit a surface at a tangent. If
     // the particle is really traveling tangent to a surface, if we move it
@@ -473,9 +491,13 @@ Particle::cross_surface()
     // undefined region in the geometry.
 
     if (!exhaustive_find_cell(*this)) {
+#ifndef __CUDA_ARCH__
       mark_as_lost("After particle " + std::to_string(id()) +
                    " crossed surface " + std::to_string(surf->id_) +
                    " it could not be located in any cell and it did not leak.");
+#else
+      __trap();
+#endif
       return;
     }
   }

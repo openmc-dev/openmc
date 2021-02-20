@@ -13,8 +13,23 @@ __constant__ double energy_max_neutron;
 __constant__ double log_spacing;
 __constant__ unsigned number_nuclides;
 __constant__ bool need_depletion_rx;
+
 __managed__ unsigned managed_calculate_fuel_queue_index;
 __managed__ unsigned managed_calculate_nonfuel_queue_index;
+__managed__ unsigned managed_advance_queue_index;
+
+__global__ void process_pre_calculate_xs_events_device(
+  EventQueueItem* queue, unsigned queue_size, EventQueueItem* advance_queue)
+{
+  for (unsigned tid = threadIdx.x + blockDim.x * blockIdx.x; tid < queue_size;
+       tid += blockDim.x * gridDim.x) {
+    auto const& p_idx = queue[tid].idx;
+    Particle& p = particles[p_idx];
+    p.event_pre_calculate_xs();
+    advance_queue[atomicInc(&managed_advance_queue_index, 0xFFFFFFF)] = {
+      p, p_idx};
+  }
+}
 
 __global__ void process_calculate_xs_events_device(
   EventQueueItem* queue, unsigned queue_size)

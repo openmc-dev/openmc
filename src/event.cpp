@@ -107,37 +107,32 @@ void process_calculate_xs_events(SharedArray<EventQueueItem>& queue)
   // queue.size());
   //
 
-  // TODO write a kernel that does this eventually. requires GPU geometry
-#pragma omp parallel for schedule(runtime)
-  for (int64_t i = 0; i < queue.size(); i++) {
-    Particle* p = &simulation::particles[queue[i].idx];
-    p->event_pre_calculate_xs();
-    simulation::advance_particle_queue.thread_safe_append(queue[i]);
-  }
-
 #ifdef __CUDACC__
   // TODO: this could possibly be separated into the retrieval of cached
   // XS components and the lookup of new cross sections for nuclides where
   // necessary.
+  gpu::managed_advance_queue_index = simulation::advance_particle_queue.size();
+  gpu::process_pre_calculate_xs_events_device<<<queue.size() / 32 + 1, 32>>>(
+    queue.data(), queue.size(), simulation::advance_particle_queue.data());
+  cudaDeviceSynchronize();
+  simulation::advance_particle_queue.updateIndex(
+    gpu::managed_advance_queue_index);
+  // #pragma omp parallel for schedule(runtime)
+  //   for (int64_t i = 0; i < queue.size(); i++) {
+  //     Particle* p = &simulation::particles[queue[i].idx];
+  //     p->event_pre_calculate_xs();
+  //     simulation::advance_particle_queue.thread_safe_append(queue[i]);
+  //   }
+
   gpu::process_calculate_xs_events_device<<<queue.size() / 32 + 1, 32>>>(
     queue.data(), queue.size());
   cudaDeviceSynchronize();
-
-  // Copy all of the newly calculated XS back to the host. This copy event
-  // is VERY expensive if done on a particle-by-particle basis. The effective
-  // bandwidth is up by a factor of over 100 if lumping them all into one
-  // vector.
-  simulation::micros.syncToHost();
 #else
+
 #pragma omp parallel for schedule(runtime)
   for (int64_t i = 0; i < queue.size(); i++) {
-    ParticleReference p = get_particle(queue[i].idx);
-    p.event_calculate_xs();
-
-    // After executing a calculate_xs event, particles will
-    // always require an advance event. Therefore, we don't need to use
-    // the protected enqueuing function.
-    simulation::advance_particle_queue[offset + i] = queue[i];
+    Particle* p = &simulation::particles[queue[i].idx];
+    p->event_calculate_xs();
   }
 #endif
 

@@ -102,8 +102,12 @@ void Particle::event_pre_calculate_xs()
   // beginning of the history and again for any secondary particles
   if (coord_[n_coord_ - 1].cell == C_NONE) {
     if (!find_cell(*this, false)) {
+#ifndef __CUDA_ARCH__
       this->mark_as_lost(
         "Could not find the cell containing particle " + std::to_string(id_));
+#else
+      __trap();
+#endif
       return;
     }
 
@@ -126,11 +130,13 @@ void Particle::event_pre_calculate_xs()
   event_nuclide() = NUCLIDE_NONE;
   event_mt() = REACTION_NONE;
 
+#ifndef __CUDA_ARCH__
   // Write particle track.
   if (write_track())
     write_particle_track(*this);
 
   if (settings::check_overlaps) check_cell_overlap(*this);
+#endif
 }
 
 void Particle::event_calculate_xs()

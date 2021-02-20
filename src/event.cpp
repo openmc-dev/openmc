@@ -10,6 +10,7 @@
 #include "openmc/cuda/calculate_xs.h"
 #include "openmc/cuda/collide.h"
 #include "openmc/cuda/cross_surface.h"
+#include "openmc/settings.h" // thread_block_size
 #endif
 
 namespace openmc {
@@ -112,7 +113,8 @@ void process_calculate_xs_events(SharedArray<EventQueueItem>& queue)
   // XS components and the lookup of new cross sections for nuclides where
   // necessary.
   gpu::managed_advance_queue_index = simulation::advance_particle_queue.size();
-  gpu::process_pre_calculate_xs_events_device<<<queue.size() / 32 + 1, 32>>>(
+  gpu::process_pre_calculate_xs_events_device<<<
+    queue.size() / gpu::thread_block_size + 1, gpu::thread_block_size>>>(
     queue.data(), queue.size(), simulation::advance_particle_queue.data());
   cudaDeviceSynchronize();
   simulation::advance_particle_queue.updateIndex(
@@ -124,7 +126,8 @@ void process_calculate_xs_events(SharedArray<EventQueueItem>& queue)
   //     simulation::advance_particle_queue.thread_safe_append(queue[i]);
   //   }
 
-  gpu::process_calculate_xs_events_device<<<queue.size() / 32 + 1, 32>>>(
+  gpu::process_calculate_xs_events_device<<<
+    queue.size() / gpu::thread_block_size + 1, gpu::thread_block_size>>>(
     queue.data(), queue.size());
   cudaDeviceSynchronize();
 #else
@@ -155,8 +158,8 @@ void process_advance_particle_events()
   gpu::managed_collision_queue_index = simulation::collision_queue.size();
 
   gpu::process_advance_events_device<<<
-    simulation::advance_particle_queue.size() / 32 + 1, 32>>>(
-    simulation::advance_particle_queue.data(),
+    simulation::advance_particle_queue.size() / gpu::thread_block_size + 1,
+    gpu::thread_block_size>>>(simulation::advance_particle_queue.data(),
     simulation::advance_particle_queue.size(),
     simulation::surface_crossing_queue.data(),
     simulation::collision_queue.data());
@@ -197,8 +200,8 @@ void process_surface_crossing_events()
     simulation::calculate_fuel_xs_queue.size();
 
   gpu::process_surface_crossing_events_device<<<
-    simulation::surface_crossing_queue.size() / 32 + 1, 32>>>(
-    simulation::surface_crossing_queue.data(),
+    simulation::surface_crossing_queue.size() / gpu::thread_block_size + 1,
+    gpu::thread_block_size>>>(simulation::surface_crossing_queue.data(),
     simulation::surface_crossing_queue.size(),
     simulation::calculate_nonfuel_xs_queue.data(),
     simulation::calculate_fuel_xs_queue.data());
@@ -246,8 +249,9 @@ void process_collision_events()
     simulation::calculate_fuel_xs_queue.size();
 
   gpu::process_collision_events_device<<<
-    simulation::collision_queue.size() / 32 + 1, 32>>>(
-    simulation::collision_queue.data(), simulation::collision_queue.size(),
+    simulation::collision_queue.size() / gpu::thread_block_size + 1,
+    gpu::thread_block_size>>>(simulation::collision_queue.data(),
+    simulation::collision_queue.size(),
     simulation::calculate_nonfuel_xs_queue.data(),
     simulation::calculate_fuel_xs_queue.data());
   cudaDeviceSynchronize();

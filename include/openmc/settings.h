@@ -121,6 +121,8 @@ __constant__ extern ResScatMethod res_scat_method;
 __constant__ extern double res_scat_energy_min;
 __constant__ extern double res_scat_energy_max;
 __constant__ extern RunMode run_mode;
+
+extern unsigned thread_block_size;
 } // namespace gpu
 
 //==============================================================================

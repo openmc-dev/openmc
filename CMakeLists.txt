@@ -77,7 +77,7 @@ else()
 #===============================================================================
 if(cuda)
   enable_language(CUDA)
-  set(CMAKE_CUDA_ARCHITECTURES 61 70)
+  set(CMAKE_CUDA_ARCHITECTURES 70)
   set(CMAKE_CUDA_SEPARABLE_COMPILATION ON)
 endif()
 
@@ -156,15 +156,15 @@ if(coverage)
   list(APPEND cxxflags --coverage)
   list(APPEND ldflags --coverage)
 endif()
-if (cuda)
 
+if (cuda)
   if (debug)
     list(APPEND cuflags -G)
-  # else()
-  #   list(APPEND cuflags -dlto)
+  else()
+    list(APPEND cuflags -Xptxas=-dlcm=ca)
   endif()
 
-  # -G is very bad for just profiling. Use -lineinfo rather
+  # -G is very bad for just profiling CUDA. Use -lineinfo rather
   if (profile)
     list(APPEND cuflags -lineinfo)
   endif()

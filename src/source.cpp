@@ -153,7 +153,7 @@ SourceSite IndependentSource::sample(uint64_t* seed) const
 
   // Repeat sampling source location until a good site has been found
   bool found = false;
-  int n_reject = 0;
+  // int n_reject = 0;
   static int n_accept = 0;
   while (!found) {
     // Set particle type
@@ -162,7 +162,16 @@ SourceSite IndependentSource::sample(uint64_t* seed) const
     // Sample spatial distribution
     site.r = space_->sample(seed);
 
+    // TODO
+    // OK, so, openmc_find_cell is unbearably slow already since it allocates
+    // a full-on particle structure, which is crazy. If we had some approach
+    // where memory can be re-used, that would be great, but at the moment, the
+    // cost incurred by it in allocating memory under my CUDA setup is painful.
+    // I can fix this but the solution is a bit more work than I want to do on
+    // a saturday night...
+
     // Now search to see if location exists in geometry
+#ifndef __CUDACC__
     int32_t cell_index, instance;
     double xyz[] {site.r.x, site.r.y, site.r.z};
     int err = openmc_find_cell(xyz, &cell_index, &instance);
@@ -186,8 +195,6 @@ SourceSite IndependentSource::sample(uint64_t* seed) const
         }
       }
     }
-
-    // Check for rejection
     if (!found) {
       ++n_reject;
       if (n_reject >= EXTSRC_REJECT_THRESHOLD &&
@@ -196,6 +203,13 @@ SourceSite IndependentSource::sample(uint64_t* seed) const
                     "rejected. Please check your external source definition.");
       }
     }
+#else
+    found = true;
+    auto space_box = dynamic_cast<SpatialBox*>(space_.get());
+    if (space_box)
+      if (space_box->only_fissionable())
+        fatal_error("Tell Gavin to implement only_fissionable sources on GPU.");
+#endif
   }
 
   // Increment number of accepted samples

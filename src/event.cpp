@@ -119,12 +119,6 @@ void process_calculate_xs_events(SharedArray<EventQueueItem>& queue)
   cudaDeviceSynchronize();
   simulation::advance_particle_queue.updateIndex(
     gpu::managed_advance_queue_index);
-  // #pragma omp parallel for schedule(runtime)
-  //   for (int64_t i = 0; i < queue.size(); i++) {
-  //     Particle* p = &simulation::particles[queue[i].idx];
-  //     p->event_pre_calculate_xs();
-  //     simulation::advance_particle_queue.thread_safe_append(queue[i]);
-  //   }
 
   gpu::process_calculate_xs_events_device<<<
     queue.size() / gpu::thread_block_size + 1, gpu::thread_block_size>>>(

@@ -60,17 +60,22 @@ endif()
 # Check for submodules perhaps already on system
 #===============================================================================
 # If not found, we just pull appropriate versions from github and build them.
-find_package(fmt QUIET NO_SYSTEM_ENVIRONMENT_PATH)
-if(fmt_FOUND)
-  message(STATUS "Found fmt: ${fmt_DIR} (version ${fmt_VERSION})")
-else()
-  message(STATUS "Did not find fmt, will use submodule instead")
+# If doing a CUDA build, we need to always use submodules because we have patched
+# versions that work with the CUDA compiler.
+if (NOT cuda)
+  find_package(fmt QUIET NO_SYSTEM_ENVIRONMENT_PATH)
+  if(fmt_FOUND)
+    message(STATUS "Found fmt: ${fmt_DIR} (version ${fmt_VERSION})")
+  else()
+    message(STATUS "Did not find fmt, will use submodule instead")
+  endif()
+  find_package(pugixml QUIET NO_SYSTEM_ENVIRONMENT_PATH)
+  if(pugixml_FOUND)
+    message(STATUS "Found pugixml: ${pugixml_DIR}")
+  else()
+    message(STATUS "Did not find pugixml, will use submodule instead")
+  endif()
 endif()
-find_package(pugixml QUIET NO_SYSTEM_ENVIRONMENT_PATH)
-if(pugixml_FOUND)
-  message(STATUS "Found pugixml: ${pugixml_DIR}")
-else()
-  message(STATUS "Did not find pugixml, will use submodule instead")
 
 #===============================================================================
 # CUDA support

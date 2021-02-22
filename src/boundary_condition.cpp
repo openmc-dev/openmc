@@ -126,8 +126,12 @@ TranslationalPeriodicBC::handle_particle(Particle& p, const Surface& surf) const
     new_r = p.r() - translation_;
     new_surface = p.surface() > 0 ? i_surf_ + 1 : -(i_surf_ + 1);
   } else {
+#ifndef __CUDA_ARCH__
     throw std::runtime_error("Called BoundaryCondition::handle_particle after "
       "hitting a surface, but that surface is not recognized by the BC.");
+#else
+    __trap();
+#endif
   }
 
   // Pass the new location and surface to the particle.
@@ -236,8 +240,12 @@ RotationalPeriodicBC::handle_particle(Particle& p, const Surface& surf) const
     theta = -angle_;
     new_surface = p.surface() > 0 ? -(i_surf_ + 1) : i_surf_ + 1;
   } else {
+#ifndef __CUDA_ARCH__
     throw std::runtime_error("Called BoundaryCondition::handle_particle after "
       "hitting a surface, but that surface is not recognized by the BC.");
+#else
+    __trap();
+#endif
   }
 
   // Rotate the particle's position and direction about the z-axis.

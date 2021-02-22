@@ -137,24 +137,17 @@ Surface::Surface(pugi::xml_node surf_node)
     if (surf_bc == "transmission" || surf_bc == "transmit" ||surf_bc.empty()) {
       // Leave the bc_ a nullptr
     } else if (surf_bc == "vacuum") {
-      bc_ = std::make_shared<VacuumBC>();
+      bc_ = make_unique<VacuumBC>();
     } else if (surf_bc == "reflective" || surf_bc == "reflect"
                || surf_bc == "reflecting") {
-      bc_ = std::make_shared<ReflectiveBC>();
+      bc_ = make_unique<ReflectiveBC>();
     } else if (surf_bc == "white") {
-      bc_ = std::make_shared<WhiteBC>();
+      bc_ = make_unique<WhiteBC>();
     } else if (surf_bc == "periodic") {
       // periodic BC's are handled separately
     } else {
       fatal_error(fmt::format("Unknown boundary condition \"{}\" specified "
         "on surface {}", surf_bc, id_));
-    }
-  }
-
-  // TODO this is temporary. Remove after merging Sterling's refl. impl.
-  if (bc_ == BoundaryType::PERIODIC) {
-    if (check_for_node(surf_node, "periodic_surface_id")) {
-      i_periodic_ = std::stoi(get_node_value(surf_node, "periodic_surface_id"));
     }
   }
 }

@@ -361,10 +361,14 @@ void finalize_cross_sections(){
       // Read continuous-energy cross sections from HDF5
       read_ce_cross_sections(nuc_temps, thermal_temps);
     } else {
+#ifdef __CUDACC__
+      fatal_error("No support for multigroup on GPU yet, sorry.");
+#else
       // Create material macroscopic data for MGXS
       set_mg_interface_nuclides_and_temps();
       data::mg.init();
       mark_fissionable_mgxs_materials();
+#endif
     }
     simulation::time_read_xs.stop();
   }

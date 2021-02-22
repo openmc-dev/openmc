@@ -468,6 +468,21 @@ public:
     if (size_ > capacity_)
       throw std::out_of_range("GPU has written off the end of an array!");
   }
+
+  void __host__ assign(const_iterator begin, const_iterator end)
+  {
+    // If bad ordering, vector becomes length zero
+    if (end < begin) {
+      resize(0);
+      return;
+    }
+
+    size_type new_size = end - begin;
+    resize(new_size);
+
+    for (size_type i = 0; i < new_size; ++i)
+      begin_[i] = begin[i];
+  }
 };
 
 template<typename T, typename Alloc>

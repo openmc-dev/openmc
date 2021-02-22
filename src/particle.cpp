@@ -413,11 +413,9 @@ Particle::cross_surface()
 #ifdef __CUDA_ARCH__
   using gpu::run_mode;
   using gpu::surfaces;
-  const bool using_dagmc = false;
 #else
   using model::surfaces;
   using settings::run_mode;
-  const bool using_dagmc = settings::dagmc;
 #endif
 
   int i_surface = std::abs(surface());
@@ -446,7 +444,7 @@ Particle::cross_surface()
 #endif
 
   // Handle any applicable boundary conditions.
-  if (surf->bc_ && settings::run_mode != RunMode::PLOTTING) {
+  if (surf->bc_ && run_mode != RunMode::PLOTTING) {
     surf->bc_->handle_particle(*this, *surf);
     return;
   }
@@ -519,6 +517,7 @@ Particle::cross_vacuum_bc(const Surface& surf)
   // forward slightly so that if the mesh boundary is on the surface, it is
   // still processed
 
+#ifndef __CUDA_ARCH__
   if (!model::active_meshsurf_tallies.empty()) {
     // TODO: Find a better solution to score surface currents than
     // physically moving the particle forward slightly
@@ -526,25 +525,30 @@ Particle::cross_vacuum_bc(const Surface& surf)
     r() += TINY_BIT * u();
     score_surface_tally(*this, model::active_meshsurf_tallies);
   }
+#endif
 
   // Score to global leakage tally
   keff_tally_leakage() += wgt();
 
   // Display message
+#ifndef __CUDA_ARCH__
   if (settings::verbosity >= 10 || trace()) {
     write_message(1, "    Leaked out of surface {}", surf.id_);
   }
+#endif
 }
 
 void
 Particle::cross_reflective_bc(const Surface& surf, Direction new_u)
 {
   // Do not handle reflective boundary conditions on lower universes
+#ifndef __CUDA_ARCH__
   if (n_coord() != 1) {
     mark_as_lost("Cannot reflect particle " + std::to_string(id()) +
                  " off surface in a lower universe.");
     return;
   }
+#endif
 
   // Score surface currents since reflection causes the direction of the
   // particle to change. For surface filters, we need to score the tallies
@@ -553,6 +557,7 @@ Particle::cross_reflective_bc(const Surface& surf, Direction new_u)
   // the particle slightly back in case the surface crossing is coincident
   // with a mesh boundary
 
+#ifndef __CUDA_ARCH__
   if (!model::active_surface_tallies.empty()) {
     score_surface_tally(*this, model::active_surface_tallies);
   }
@@ -563,6 +568,7 @@ Particle::cross_reflective_bc(const Surface& surf, Direction new_u)
     score_surface_tally(*this, model::active_meshsurf_tallies);
     this->r() = r;
   }
+#endif
 
   // Set the new particle direction
   u() = new_u;
@@ -578,8 +584,12 @@ Particle::cross_reflective_bc(const Surface& surf, Direction new_u)
   if (!settings::dagmc) {
     n_coord() = 1;
     if (!neighbor_list_find_cell(*this)) {
+#ifdef __CUDA_ARCH__
+      __trap();
+#else
       mark_as_lost("Couldn't find particle after reflecting from surface " +
                    std::to_string(surf.id_) + ".");
+#endif
       return;
     }
   }
@@ -588,9 +598,11 @@ Particle::cross_reflective_bc(const Surface& surf, Direction new_u)
   r_last_current() = r() + TINY_BIT * u();
 
   // Diagnostic message
+#ifndef __CUDA_ARCH__
   if (settings::verbosity >= 10 || trace()) {
     write_message(1, "    Reflected from surface {}", surf.id_);
   }
+#endif
 }
 
 void
@@ -598,6 +610,7 @@ Particle::cross_periodic_bc(const Surface& surf, Position new_r,
                             Direction new_u, int new_surface)
 {
   // Do not handle periodic boundary conditions on lower universes
+#ifndef __CUDA_ARCH__
   if (n_coord() != 1) {
     mark_as_lost(
       "Cannot transfer particle " + std::to_string(id()) +
@@ -605,6 +618,7 @@ Particle::cross_periodic_bc(const Surface& surf, Position new_r,
       "applied to root universe.");
     return;
   }
+#endif
 
   // Score surface currents since reflection causes the direction of the
   // particle to change -- artificially move the particle slightly back in
@@ -615,6 +629,7 @@ Particle::cross_periodic_bc(const Surface& surf, Position new_r,
     score_surface_tally(*this, model::active_meshsurf_tallies);
     this->r() = r;
   }
+#endif
 
   // Adjust the particle's location and direction.
   r() = new_r;
@@ -627,11 +642,15 @@ Particle::cross_periodic_bc(const Surface& surf, Position new_r,
   n_coord() = 1;
 
   if (!neighbor_list_find_cell(*this)) {
+#ifdef __CUDA_ARCH__
+    __trap();
+#else
     mark_as_lost("Couldn't find particle after hitting periodic "
                  "boundary on surface " +
                  std::to_string(surf.id_) +
                  ". The normal vector "
                  "of one periodic surface may need to be reversed.");
+#endif
     return;
   }
 
@@ -639,9 +658,11 @@ Particle::cross_periodic_bc(const Surface& surf, Position new_r,
   r_last_current() = r() + TINY_BIT * u();
 
   // Diagnostic message
+#ifndef __CUDA_ARCH__
   if (settings::verbosity >= 10 || trace()) {
     write_message(1, "    Hit periodic boundary on surface {}", surf.id_);
   }
+#endif
 }
 
 void

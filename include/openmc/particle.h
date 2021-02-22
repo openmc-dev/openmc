@@ -69,14 +69,14 @@ public:
   //
   //! \param surf The surface (with the vacuum boundary condition) that the
   //!   particle struck.
-  void cross_vacuum_bc(const Surface& surf);
+  HD void cross_vacuum_bc(const Surface& surf);
 
   //! Cross a reflective boundary condition.
   //
   //! \param surf The surface (with the reflective boundary condition) that the
   //!   particle struck.
   //! \param new_u The direction of the particle after reflection.
-  void cross_reflective_bc(const Surface& surf, Direction new_u);
+  HD void cross_reflective_bc(const Surface& surf, Direction new_u);
 
   //! Cross a periodic boundary condition.
   //
@@ -86,8 +86,8 @@ public:
   //! \param new_u The direction of the particle after translation/rotation.
   //! \param new_surface The signed index of the surface that the particle will
   //!   reside on after translation/rotation.
-  void cross_periodic_bc(const Surface& surf, Position new_r, Direction new_u,
-                         int new_surface);
+  HD void cross_periodic_bc(
+    const Surface& surf, Position new_r, Direction new_u, int new_surface);
 
   //! mark a particle as lost and create a particle restart file
   //! \param message A warning message to display

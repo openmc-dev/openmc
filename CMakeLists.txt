@@ -171,6 +171,7 @@ endif()
 
 if (NOT pugixml_FOUND)
   add_subdirectory(vendor/pugixml)
+  set_target_properties(pugixml PROPERTIES CXX_STANDARD 14 CXX_EXTENSIONS OFF)
 endif()
 
 #===============================================================================
@@ -357,8 +358,7 @@ endif()
 
 # Avoid vs error lnk1149 :output filename matches input filename
 if(NOT MSVC)
-set_target_properties(libopenmc PROPERTIES
-  OUTPUT_NAME openmc)
+  set_target_properties(libopenmc PROPERTIES OUTPUT_NAME openmc)
 endif()
 
 target_include_directories(libopenmc
@@ -414,7 +414,7 @@ target_link_libraries(openmc libopenmc)
 # Ensure C++14 standard is used. Starting with CMake 3.8, another way this could
 # be done is using the cxx_std_14 compiler feature.
 set_target_properties(
-    openmc libopenmc faddeeva pugixml
+    openmc libopenmc faddeeva
     PROPERTIES CXX_STANDARD 14 CXX_EXTENSIONS OFF)
 
 #===============================================================================

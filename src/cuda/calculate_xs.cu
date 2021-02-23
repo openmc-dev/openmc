@@ -16,26 +16,14 @@ __constant__ bool need_depletion_rx;
 
 __managed__ unsigned managed_calculate_fuel_queue_index;
 __managed__ unsigned managed_calculate_nonfuel_queue_index;
-__managed__ unsigned managed_advance_queue_index;
-
-__global__ void process_pre_calculate_xs_events_device(
-  EventQueueItem* queue, unsigned queue_size, EventQueueItem* advance_queue)
-{
-  for (unsigned tid = threadIdx.x + blockDim.x * blockIdx.x; tid < queue_size;
-       tid += blockDim.x * gridDim.x) {
-    auto const& p_idx = queue[tid].idx;
-    Particle& p = particles[p_idx];
-    p.event_pre_calculate_xs();
-    advance_queue[atomicInc(&managed_advance_queue_index, 0xFFFFFFF)] = {
-      p, p_idx};
-  }
-}
 
 __global__ void process_calculate_xs_events_device(
   EventQueueItem* queue, unsigned queue_size)
 {
   for (unsigned tid=threadIdx.x+blockDim.x*blockIdx.x; tid<queue_size; tid += blockDim.x * gridDim.x) {
     Particle& p = particles[queue[tid].idx];
+
+    p.event_pre_calculate_xs();
 
     p.macro_xs_.total = 0.0;
     p.macro_xs_.absorption = 0.0;
@@ -144,17 +132,6 @@ __global__ void process_calculate_xs_events_device(
       p.macro_xs_.fission += atom_density * micro.fission;
       p.macro_xs_.nu_fission += atom_density * micro.nu_fission;
     }
-
-    // TODO investigate effect of putting this on its own
-    // for (int i = 0; i < m.nuclide_.size(); ++i) {
-    //   double const& atom_density = m.atom_density_[i];
-    //   auto const& i_nuclide = m.nuclide_[i];
-    //   auto const& micro {micros[particle_id * n_nuclides + i_nuclide]};
-    //   p.macro_xs_.total += atom_density * micro.total;
-    //   p.macro_xs_.absorption += atom_density * micro.absorption;
-    //   p.macro_xs_.fission += atom_density * micro.fission;
-    //   p.macro_xs_.nu_fission += atom_density * micro.nu_fission;
-    // }
   }
 }
 

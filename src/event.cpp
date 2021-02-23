@@ -190,12 +190,12 @@ void process_surface_crossing_events()
   gpu::managed_calculate_fuel_queue_index =
     simulation::calculate_fuel_xs_queue.size();
 
-  gpu::process_surface_crossing_events_device<<<
-    simulation::surface_crossing_queue.size() / gpu::thread_block_size + 1,
-    gpu::thread_block_size>>>(simulation::surface_crossing_queue.data(),
-    simulation::surface_crossing_queue.size(),
-    simulation::calculate_nonfuel_xs_queue.data(),
-    simulation::calculate_fuel_xs_queue.data());
+  gpu::process_surface_crossing_events_device<256>
+    <<<simulation::surface_crossing_queue.size() / gpu::thread_block_size + 1,
+      gpu::thread_block_size>>>(simulation::surface_crossing_queue.data(),
+      simulation::surface_crossing_queue.size(),
+      simulation::calculate_nonfuel_xs_queue.data(),
+      simulation::calculate_fuel_xs_queue.data());
   cudaDeviceSynchronize();
 
   simulation::calculate_nonfuel_xs_queue.updateIndex(

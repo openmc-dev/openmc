@@ -137,7 +137,7 @@ public:
   virtual void to_hdf5(hid_t group_id) const = 0;
 
   //! Get the BoundingBox for this surface.
-  virtual BoundingBox bounding_box(bool pos_side) const { return {}; }
+  virtual BoundingBox bounding_box(bool /*pos_side*/) const { return {}; }
 };
 
 class CSGSurface : public Surface

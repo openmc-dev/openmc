@@ -400,8 +400,7 @@ list(APPEND libopenmc_SOURCES
 if (cuda)
   list(APPEND libopenmc_SOURCES src/cuda/calculate_xs.cu
       src/cuda/advance.cu
-      src/cuda/collide.cu
-      src/cuda/cross_surface.cu)
+      src/cuda/collide.cu)
   set_source_files_properties(${libopenmc_SOURCES} PROPERTIES LANGUAGE CUDA)
   set_source_files_properties(src/main.cpp PROPERTIES LANGUAGE CUDA)
 endif()

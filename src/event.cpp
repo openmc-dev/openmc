@@ -142,9 +142,18 @@ void process_advance_particle_events()
       model::device_lattices, \
       model::device_surfaces, \
       model::device_universes, \
-      model::device_cells, \
+      model::device_cells \
       )
   // I had the last 4 above in model:: commented out for some reason
+  /*
+  is_device_ptr(\
+      simulation::device_particles, \
+      model::device_lattices, \
+      model::device_surfaces, \
+      model::device_universes, \
+      model::device_cells, \
+      )
+      */
 
   //#pragma omp target teams distribute parallel for
   #else
@@ -169,6 +178,8 @@ void process_advance_particle_events()
     // Below is the original version
     int64_t buffer_idx = simulation::advance_particle_queue.device_data_[i].idx;
     Particle& p = simulation::device_particles[buffer_idx];
+    if(p.id_ == 1 )
+      printf("in process_advance_particle_events -- model::device_cells ptr = %p\n", model::device_cells);
     p.event_advance();
   }
   //printf("finished offloaded region!\n");
@@ -185,19 +196,17 @@ void process_advance_particle_events()
     printf("particle %ld distance: %.4le\n", buffer_idx, p.advance_distance_);
   }
   */
-  // Let's look at particle 0
-  /*
+  // Let's look at particle 1
   for (int64_t i = 0; i < simulation::advance_particle_queue.size(); i++) {
     int64_t buffer_idx = simulation::advance_particle_queue[i].idx;
-    if( buffer_idx == 0 )
+    Particle& p = simulation::particles[buffer_idx];
+    if( p.id_ == 1 )
     {
-      Particle& p = simulation::particles[buffer_idx];
-      printf("host   particle %ld distance: %.4le\n", buffer_idx, p.advance_distance_);
-      printf("host   particle %ld material: %ld\n", buffer_idx, p.material_);
+      printf("host   particle %ld distance: %.4le\n", p.id_, p.advance_distance_);
+      printf("host   particle %ld material: %d\n", p.id_, p.material_);
     }
   }
   exit(1);
-  */
   
   #pragma omp parallel for schedule(runtime)
   for (int64_t i = 0; i < simulation::advance_particle_queue.size(); i++) {

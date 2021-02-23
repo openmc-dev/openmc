@@ -210,8 +210,12 @@ Particle::event_calculate_xs()
 void
 Particle::event_advance()
 {
+    if(id_ == 1 )
+      printf("In event_advance() -- model::device_cells ptr = %p\n", model::device_cells);
   // Find the distance to the nearest boundary
   boundary_ = distance_to_boundary(this);
+  if( id_ == 1 )
+    printf("distance to boundary = %.3le\n", boundary_.distance);
 
   // Sample a distance to collision
   if (type_ == Particle::Type::electron ||
@@ -222,6 +226,9 @@ Particle::event_advance()
   } else {
     collision_distance_ = -std::log(prn(this->current_seed())) / macro_xs_.total;
   }
+  
+  if( id_ == 1 )
+    printf("distance to collision = %.3le\n", collision_distance_);
 
   // Select smaller of the two distances
   advance_distance_ = std::min(boundary_.distance, collision_distance_);

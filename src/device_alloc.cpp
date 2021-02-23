@@ -68,6 +68,7 @@ void move_read_only_data_to_device(void)
   sz = model::cells.size() * sizeof(Cell);
   model::device_cells = (Cell *) device_alloc(sz, device_id);
   device_memcpy(model::device_cells, model::cells.data(), sz, device_id, host_id);
+  printf("model::device_cells after allocation: %p\n", model::device_cells);
   
   // Lattices /////////////////////////////////////////////////////////
 

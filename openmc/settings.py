@@ -604,7 +604,7 @@ class Settings:
         cv.check_type('surface source writing options', surf_source_write, Mapping)
         for key, value in surf_source_write.items():
             cv.check_value('surface source writing key', key,
-                           ('surface_ids', 'max_particles'))
+                           ('surface_ids', 'max_surface_particles '))
             if key == 'surface_ids':
                 cv.check_type('surface ids for source banking', value,
                               Iterable, Integral)

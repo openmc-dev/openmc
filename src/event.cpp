@@ -148,12 +148,12 @@ void process_advance_particle_events()
     simulation::surface_crossing_queue.size();
   gpu::managed_collision_queue_index = simulation::collision_queue.size();
 
-  gpu::process_advance_events_device<<<
-    simulation::advance_particle_queue.size() / gpu::thread_block_size + 1,
-    gpu::thread_block_size>>>(simulation::advance_particle_queue.data(),
-    simulation::advance_particle_queue.size(),
-    simulation::surface_crossing_queue.data(),
-    simulation::collision_queue.data());
+  gpu::process_advance_events_device<256>
+    <<<simulation::advance_particle_queue.size() / gpu::thread_block_size + 1,
+      gpu::thread_block_size>>>(simulation::advance_particle_queue.data(),
+      simulation::advance_particle_queue.size(),
+      simulation::surface_crossing_queue.data(),
+      simulation::collision_queue.data());
   cudaDeviceSynchronize();
 
   simulation::surface_crossing_queue.updateIndex(

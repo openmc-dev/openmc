@@ -16,8 +16,6 @@ __global__ void process_surface_crossing_events_device(EventQueueItem* queue,
   EventQueueItem* calculate_fuel_xs_queue)
 {
   unsigned tid = threadIdx.x + blockDim.x * blockIdx.x;
-  unsigned goes_to_nonfuel_queue = 0;
-  unsigned goes_to_fuel_queue = 0;
   bool fuel = false;
   bool nonfuel = false;
   int64_t p_idx;
@@ -32,12 +30,9 @@ __global__ void process_surface_crossing_events_device(EventQueueItem* queue,
     p->n_event_++;
 
     // These are used as booleans here, but are converted to indices shortly.
-    goes_to_nonfuel_queue =
-      p->alive_ && (p->material_ == MATERIAL_VOID ||
-                     !gpu::materials[p->material_]->fissionable_);
-    goes_to_fuel_queue = p->alive_ && !goes_to_nonfuel_queue;
-    fuel = goes_to_fuel_queue;
-    nonfuel = goes_to_nonfuel_queue;
+    nonfuel = p->alive_ && (p->material_ == MATERIAL_VOID ||
+                             !gpu::materials[p->material_]->fissionable_);
+    fuel = p->alive_ && !nonfuel;
   }
 
   block_queue_pushback<BLOCK_SIZE>(nonfuel, fuel, calculate_nonfuel_xs_queue,

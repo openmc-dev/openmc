@@ -18,7 +18,6 @@ __global__ void process_advance_events_device(EventQueueItem* queue,
   unsigned queue_size, EventQueueItem* surface_crossing_queue,
   EventQueueItem* collision_queue)
 {
-
   unsigned tid = threadIdx.x + blockDim.x * blockIdx.x;
   bool surface = false;
   bool collision = false;

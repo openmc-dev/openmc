@@ -239,12 +239,12 @@ void process_collision_events()
   gpu::managed_calculate_fuel_queue_index =
     simulation::calculate_fuel_xs_queue.size();
 
-  gpu::process_collision_events_device<<<
-    simulation::collision_queue.size() / gpu::thread_block_size + 1,
-    gpu::thread_block_size>>>(simulation::collision_queue.data(),
-    simulation::collision_queue.size(),
-    simulation::calculate_nonfuel_xs_queue.data(),
-    simulation::calculate_fuel_xs_queue.data());
+  gpu::process_collision_events_device<256>
+    <<<simulation::collision_queue.size() / gpu::thread_block_size + 1,
+      gpu::thread_block_size>>>(simulation::collision_queue.data(),
+      simulation::collision_queue.size(),
+      simulation::calculate_nonfuel_xs_queue.data(),
+      simulation::calculate_fuel_xs_queue.data());
   cudaDeviceSynchronize();
 
   simulation::fission_bank.updateIndex(gpu::fission_bank_index);

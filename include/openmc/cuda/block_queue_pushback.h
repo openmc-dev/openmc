@@ -15,6 +15,8 @@ namespace gpu {
  * with a parallel scan over boolean values regarding whether the fuel or
  * nonfuel queue should be appended to.
  *
+ * (TODO put back atomicInc code)
+ *
  * This function conditionally appends to one of two arrays living on the GPU
  * based on the values of into_q1 and into_q2. There are two queues in this
  * function, denoted by the abbreviation "q1" and "q2".  The values of into_q1

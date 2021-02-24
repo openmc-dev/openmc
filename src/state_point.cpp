@@ -698,6 +698,17 @@ write_source_bank(hid_t group_id, bool surf_source_bank)
   H5Tclose(banktype);
 }
 
+// Determine member names of a compound HDF5 datatype
+std::string dtype_member_names(hid_t dtype_id)
+{
+  int nmembers = H5Tget_nmembers(dtype_id);
+  std::string names;
+  for (int i = 0; i < nmembers; i++) {
+    names = names.append(H5Tget_member_name(dtype_id, i));
+    if (i < nmembers - 1) names += ", ";
+  }
+  return names;
+}
 
 void read_source_bank(hid_t group_id, std::vector<Particle::Bank>& sites, bool distribute)
 {
@@ -705,6 +716,17 @@ void read_source_bank(hid_t group_id, std::vector<Particle::Bank>& sites, bool d
 
   // Open the dataset
   hid_t dset = H5Dopen(group_id, "source_bank", H5P_DEFAULT);
+
+  // Make sure number of members matches
+  hid_t dtype = H5Dget_type(dset);
+  auto file_member_names = dtype_member_names(dtype);
+  auto bank_member_names = dtype_member_names(banktype);
+  if (file_member_names != bank_member_names) {
+    fatal_error(fmt::format("Source site attributes in file do not match what is "
+      "expected for this version of OpenMC. File attributes = ({}). Expected "
+      "attributes = ({})", file_member_names, bank_member_names));
+  }
+
   hid_t dspace = H5Dget_space(dset);
   hsize_t n_sites;
   H5Sget_simple_extent_dims(dspace, &n_sites, nullptr);

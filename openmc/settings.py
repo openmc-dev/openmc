@@ -954,7 +954,7 @@ class Settings:
                 subelement = ET.SubElement(element, "surface_ids")
                 subelement.text = ' '.join(
                     str(x) for x in self._surf_source_write['surface_ids'])
-            if 'max_particles' in self._surf_source_write:
+            if 'max_surface_particles' in self._surf_source_write:
                 subelement = ET.SubElement(element, "max_surface_particles")
                 subelement.text = str(self._surf_source_write['max_surface_particles'])
 

@@ -24,7 +24,7 @@
   </source>
   <surf_source_write>
     <surface_ids>1</surface_ids>
-    <max_particles>1000</max_particles>
+    <max_surface_particles>1000</max_surface_particles>
   </surf_source_write>
   <seed>1</seed>
 </settings>

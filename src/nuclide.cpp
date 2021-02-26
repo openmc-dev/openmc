@@ -896,18 +896,21 @@ void Nuclide::calculate_urr_xs(int i_temp, Particle& p) const
   if (fission < 0.) {fission = 0.;}
   if (capture < 0.) {capture = 0.;}
 
-  // Set elastic, absorption, fission, and total x/s. Note that the total x/s
-  // is calculated as a sum of partials instead of the table-provided value
+  // Set elastic, absorption, fission, total, and capture x/s. Note that the
+  // total x/s is calculated as a sum of partials instead of the table-provided
+  // value
   micro.elastic = elastic;
   micro.absorption = capture + fission;
   micro.fission = fission;
   micro.total = elastic + inelastic + capture + fission;
+  if (simulation::need_depletion_rx) {
+    micro.reaction[0] = capture;
+  }
 
   // Determine nu-fission cross-section
   if (fissionable_) {
     micro.nu_fission = nu(p.E_, EmissionMode::total) * micro.fission;
   }
-
 }
 
 std::pair<gsl::index, double> Nuclide::find_temperature(double T) const

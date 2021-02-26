@@ -1,4 +1,5 @@
 from random import random
+import subprocess
 
 import h5py
 import numpy as np
@@ -43,3 +44,35 @@ def test_source_file(run_in_tmpdir):
     assert np.all(arr['wgt'] == 1.0)
     assert np.all(arr['delayed_group'] == 0)
     assert np.all(arr['particle'] == 0)
+
+
+def test_wrong_source_attributes(run_in_tmpdir):
+    # Create a source file with animal attributes
+    source_dtype = np.dtype([
+        ('platypus', '<f8'),
+        ('axolotl', '<f8'),
+        ('narwhal', '<i4'),
+    ])
+    arr = np.array([(1.0, 2.0, 3), (4.0, 5.0, 6), (7.0, 8.0, 9)], dtype=source_dtype)
+    with h5py.File('animal_source.h5', 'w') as fh:
+        fh.attrs['filetype'] = np.string_("source")
+        fh.create_dataset('source_bank', data=arr)
+
+    # Create a simple model that uses this lovely animal source
+    m = openmc.Material()
+    m.add_nuclide('U235', 0.02)
+    openmc.Materials([m]).export_to_xml()
+    s = openmc.Sphere(r=10.0, boundary_type='vacuum')
+    c = openmc.Cell(fill=m, region=-s)
+    openmc.Geometry([c]).export_to_xml()
+    settings =  openmc.Settings()
+    settings.particles = 100
+    settings.batches = 10
+    settings.source = openmc.Source(filename='animal_source.h5')
+    settings.export_to_xml()
+
+    # When we run the model, it should error out with a message that includes
+    # the names of the wrong attributes
+    with pytest.raises(subprocess.CalledProcessError) as excinfo:
+        openmc.run()
+    assert 'platypus, axolotl, narwhal' in excinfo.value.output

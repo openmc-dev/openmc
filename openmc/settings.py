@@ -152,7 +152,7 @@ class Settings:
 
         :surface_ids: List of surface ids at which crossing particles are to be
                    banked (int)
-        :max_surface_particles: Maximum number of particles to be banked on 
+        :max_particles: Maximum number of particles to be banked on 
                    surfaces per process (int)
     survival_biasing : bool
         Indicate whether survival biasing is to be used
@@ -604,14 +604,14 @@ class Settings:
         cv.check_type('surface source writing options', surf_source_write, Mapping)
         for key, value in surf_source_write.items():
             cv.check_value('surface source writing key', key,
-                           ('surface_ids', 'max_surface_particles'))
+                           ('surface_ids', 'max_particles'))
             if key == 'surface_ids':
                 cv.check_type('surface ids for source banking', value,
                               Iterable, Integral)
                 for surf_id in value:
                     cv.check_greater_than('surface id for source banking',
                                           surf_id, 0)
-            elif key == 'max_surface_particles':
+            elif key == 'max_particles':
                 cv.check_type('maximum particle banks on surfaces per process',
                               value, Integral)
                 cv.check_greater_than('maximum particle banks on surfaces per process',
@@ -954,9 +954,9 @@ class Settings:
                 subelement = ET.SubElement(element, "surface_ids")
                 subelement.text = ' '.join(
                     str(x) for x in self._surf_source_write['surface_ids'])
-            if 'max_surface_particles' in self._surf_source_write:
+            if 'max_particles' in self._surf_source_write:
                 subelement = ET.SubElement(element, "max_surface_particles")
-                subelement.text = str(self._surf_source_write['max_surface_particles'])
+                subelement.text = str(self._surf_source_write['max_particles'])
 
     def _create_confidence_intervals(self, root):
         if self._confidence_intervals is not None:

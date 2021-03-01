@@ -21,7 +21,7 @@ def test_export_to_xml(run_in_tmpdir):
                      'write': True, 'overwrite': True}
     s.statepoint = {'batches': [50, 150, 500, 1000]}
     s.surf_source_read = {'path': 'surface_source_1.h5'}
-    s.surf_source_write = {'surface_ids': [2], 'max_surface_particles': 200}
+    s.surf_source_write = {'surface_ids': [2], 'max_particles': 200}
     s.confidence_intervals = True
     s.ptables = True
     s.seed = 17
@@ -79,7 +79,7 @@ def test_export_to_xml(run_in_tmpdir):
                              'write': True, 'overwrite': True}
     assert s.statepoint == {'batches': [50, 150, 500, 1000]}
     assert s.surf_source_read == {'path': 'surface_source_1.h5'}
-    assert s.surf_source_write == {'surface_ids': [2], 'max_surface_particles': 200}
+    assert s.surf_source_write == {'surface_ids': [2], 'max_particles': 200}
     assert s.confidence_intervals
     assert s.ptables
     assert s.seed == 17

@@ -655,8 +655,8 @@ void read_settings_xml()
     }
 
     // Get maximum number of particles to be banked per surface
-    if (check_for_node(node_ssw, "max_surface_particles")) {
-      max_surface_particles = std::stoll(get_node_value(node_ssw, "max_surface_particles"));
+    if (check_for_node(node_ssw, "max_particles")) {
+      max_surface_particles = std::stoll(get_node_value(node_ssw, "max_particles"));
     }
   }
 

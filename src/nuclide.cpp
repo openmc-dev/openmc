@@ -90,14 +90,18 @@ Nuclide::Nuclide(hid_t group, const std::vector<double>& temperature)
   double T_min = n > 0 ? settings::temperature_range[0] : 0.0;
   double T_max = n > 0 ? settings::temperature_range[1] : INFTY;
   if (T_max > 0.0) {
-    for (int j = 0; j < temps_available.size() - 1; ++j) {
-      if ((T_min <= temps_available[j] && temps_available[j] < T_max) ||
-          (T_min <= temps_available[j+1] && temps_available[j+1] < T_max)) {
+    // For each interval (T_j, T_j+1), if either T_j or T_j+1 are within the
+    // temperature range, load data for *both* T_j and T_j+1
+    int n = temps_available.size();
+    for (int j = 0; j < n; ++j) {
+      if ((T_min <= temps_available[j] && temps_available[j] < T_max)) {
         int T_j = std::round(temps_available[j]);
-        int T_j1 = std::round(temps_available[j+1]);
         if (!contains(temps_to_read, T_j)) {
           temps_to_read.push_back(T_j);
         }
+      }
+      if (j < n - 1 && T_min <= temps_available[j+1] && temps_available[j+1] < T_max) {
+        int T_j1 = std::round(temps_available[j+1]);
         if (!contains(temps_to_read, T_j1)) {
           temps_to_read.push_back(T_j1);
         }

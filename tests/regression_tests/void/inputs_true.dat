@@ -1,0 +1,132 @@
+<?xml version='1.0' encoding='utf-8'?>
+<geometry>
+  <cell id="1" material="1" region="-1" universe="1" />
+  <cell id="2" material="void" region="1 -2" universe="1" />
+  <cell id="3" material="1" region="2 -3" universe="1" />
+  <cell id="4" material="void" region="3 -4" universe="1" />
+  <cell id="5" material="1" region="4 -5" universe="1" />
+  <cell id="6" material="void" region="5 -6" universe="1" />
+  <cell id="7" material="1" region="6 -7" universe="1" />
+  <cell id="8" material="void" region="7 -8" universe="1" />
+  <cell id="9" material="1" region="8 -9" universe="1" />
+  <cell id="10" material="void" region="9 -10" universe="1" />
+  <cell id="11" material="1" region="10 -11" universe="1" />
+  <cell id="12" material="void" region="11 -12" universe="1" />
+  <cell id="13" material="1" region="12 -13" universe="1" />
+  <cell id="14" material="void" region="13 -14" universe="1" />
+  <cell id="15" material="1" region="14 -15" universe="1" />
+  <cell id="16" material="void" region="15 -16" universe="1" />
+  <cell id="17" material="1" region="16 -17" universe="1" />
+  <cell id="18" material="void" region="17 -18" universe="1" />
+  <cell id="19" material="1" region="18 -19" universe="1" />
+  <cell id="20" material="void" region="19 -20" universe="1" />
+  <cell id="21" material="1" region="20 -21" universe="1" />
+  <cell id="22" material="void" region="21 -22" universe="1" />
+  <cell id="23" material="1" region="22 -23" universe="1" />
+  <cell id="24" material="void" region="23 -24" universe="1" />
+  <cell id="25" material="1" region="24 -25" universe="1" />
+  <cell id="26" material="void" region="25 -26" universe="1" />
+  <cell id="27" material="1" region="26 -27" universe="1" />
+  <cell id="28" material="void" region="27 -28" universe="1" />
+  <cell id="29" material="1" region="28 -29" universe="1" />
+  <cell id="30" material="void" region="29 -30" universe="1" />
+  <cell id="31" material="1" region="30 -31" universe="1" />
+  <cell id="32" material="void" region="31 -32" universe="1" />
+  <cell id="33" material="1" region="32 -33" universe="1" />
+  <cell id="34" material="void" region="33 -34" universe="1" />
+  <cell id="35" material="1" region="34 -35" universe="1" />
+  <cell id="36" material="void" region="35 -36" universe="1" />
+  <cell id="37" material="1" region="36 -37" universe="1" />
+  <cell id="38" material="void" region="37 -38" universe="1" />
+  <cell id="39" material="1" region="38 -39" universe="1" />
+  <cell id="40" material="void" region="39 -40" universe="1" />
+  <cell id="41" material="1" region="40 -41" universe="1" />
+  <cell id="42" material="void" region="41 -42" universe="1" />
+  <cell id="43" material="1" region="42 -43" universe="1" />
+  <cell id="44" material="void" region="43 -44" universe="1" />
+  <cell id="45" material="1" region="44 -45" universe="1" />
+  <cell id="46" material="void" region="45 -46" universe="1" />
+  <cell id="47" material="1" region="46 -47" universe="1" />
+  <cell id="48" material="void" region="47 -48" universe="1" />
+  <cell id="49" material="1" region="48 -49" universe="1" />
+  <cell id="50" material="void" region="49 -50" universe="1" />
+  <cell id="51" material="1" region="50" universe="1" />
+  <surface coeffs="0.0 0.0 0.0 1.0" id="1" type="sphere" />
+  <surface coeffs="0.0 0.0 0.0 3.020408163265306" id="2" type="sphere" />
+  <surface coeffs="0.0 0.0 0.0 5.040816326530612" id="3" type="sphere" />
+  <surface coeffs="0.0 0.0 0.0 7.061224489795918" id="4" type="sphere" />
+  <surface coeffs="0.0 0.0 0.0 9.081632653061224" id="5" type="sphere" />
+  <surface coeffs="0.0 0.0 0.0 11.102040816326529" id="6" type="sphere" />
+  <surface coeffs="0.0 0.0 0.0 13.122448979591836" id="7" type="sphere" />
+  <surface coeffs="0.0 0.0 0.0 15.142857142857142" id="8" type="sphere" />
+  <surface coeffs="0.0 0.0 0.0 17.163265306122447" id="9" type="sphere" />
+  <surface coeffs="0.0 0.0 0.0 19.183673469387752" id="10" type="sphere" />
+  <surface coeffs="0.0 0.0 0.0 21.204081632653057" id="11" type="sphere" />
+  <surface coeffs="0.0 0.0 0.0 23.224489795918366" id="12" type="sphere" />
+  <surface coeffs="0.0 0.0 0.0 25.24489795918367" id="13" type="sphere" />
+  <surface coeffs="0.0 0.0 0.0 27.265306122448976" id="14" type="sphere" />
+  <surface coeffs="0.0 0.0 0.0 29.285714285714285" id="15" type="sphere" />
+  <surface coeffs="0.0 0.0 0.0 31.30612244897959" id="16" type="sphere" />
+  <surface coeffs="0.0 0.0 0.0 33.326530612244895" id="17" type="sphere" />
+  <surface coeffs="0.0 0.0 0.0 35.3469387755102" id="18" type="sphere" />
+  <surface coeffs="0.0 0.0 0.0 37.367346938775505" id="19" type="sphere" />
+  <surface coeffs="0.0 0.0 0.0 39.38775510204081" id="20" type="sphere" />
+  <surface coeffs="0.0 0.0 0.0 41.408163265306115" id="21" type="sphere" />
+  <surface coeffs="0.0 0.0 0.0 43.42857142857142" id="22" type="sphere" />
+  <surface coeffs="0.0 0.0 0.0 45.44897959183673" id="23" type="sphere" />
+  <surface coeffs="0.0 0.0 0.0 47.469387755102034" id="24" type="sphere" />
+  <surface coeffs="0.0 0.0 0.0 49.48979591836734" id="25" type="sphere" />
+  <surface coeffs="0.0 0.0 0.0 51.51020408163265" id="26" type="sphere" />
+  <surface coeffs="0.0 0.0 0.0 53.53061224489795" id="27" type="sphere" />
+  <surface coeffs="0.0 0.0 0.0 55.55102040816326" id="28" type="sphere" />
+  <surface coeffs="0.0 0.0 0.0 57.57142857142857" id="29" type="sphere" />
+  <surface coeffs="0.0 0.0 0.0 59.59183673469387" id="30" type="sphere" />
+  <surface coeffs="0.0 0.0 0.0 61.61224489795918" id="31" type="sphere" />
+  <surface coeffs="0.0 0.0 0.0 63.63265306122448" id="32" type="sphere" />
+  <surface coeffs="0.0 0.0 0.0 65.65306122448979" id="33" type="sphere" />
+  <surface coeffs="0.0 0.0 0.0 67.67346938775509" id="34" type="sphere" />
+  <surface coeffs="0.0 0.0 0.0 69.6938775510204" id="35" type="sphere" />
+  <surface coeffs="0.0 0.0 0.0 71.71428571428571" id="36" type="sphere" />
+  <surface coeffs="0.0 0.0 0.0 73.73469387755101" id="37" type="sphere" />
+  <surface coeffs="0.0 0.0 0.0 75.75510204081633" id="38" type="sphere" />
+  <surface coeffs="0.0 0.0 0.0 77.77551020408163" id="39" type="sphere" />
+  <surface coeffs="0.0 0.0 0.0 79.79591836734693" id="40" type="sphere" />
+  <surface coeffs="0.0 0.0 0.0 81.81632653061223" id="41" type="sphere" />
+  <surface coeffs="0.0 0.0 0.0 83.83673469387755" id="42" type="sphere" />
+  <surface coeffs="0.0 0.0 0.0 85.85714285714285" id="43" type="sphere" />
+  <surface coeffs="0.0 0.0 0.0 87.87755102040815" id="44" type="sphere" />
+  <surface coeffs="0.0 0.0 0.0 89.89795918367346" id="45" type="sphere" />
+  <surface coeffs="0.0 0.0 0.0 91.91836734693877" id="46" type="sphere" />
+  <surface coeffs="0.0 0.0 0.0 93.93877551020407" id="47" type="sphere" />
+  <surface coeffs="0.0 0.0 0.0 95.95918367346938" id="48" type="sphere" />
+  <surface coeffs="0.0 0.0 0.0 97.97959183673468" id="49" type="sphere" />
+  <surface boundary="vacuum" coeffs="0.0 0.0 0.0 100.0" id="50" type="sphere" />
+</geometry>
+<?xml version='1.0' encoding='utf-8'?>
+<materials>
+  <material id="1">
+    <density units="g/cm3" value="7.14" />
+    <nuclide ao="1.0" name="Zn64" />
+  </material>
+</materials>
+<?xml version='1.0' encoding='utf-8'?>
+<settings>
+  <run_mode>fixed source</run_mode>
+  <particles>1000</particles>
+  <batches>3</batches>
+  <source strength="1.0">
+    <space type="point">
+      <parameters>0.0 0.0 0.0</parameters>
+    </space>
+  </source>
+</settings>
+<?xml version='1.0' encoding='utf-8'?>
+<tallies>
+  <filter id="1" type="cell">
+    <bins>1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31 32 33 34 35 36 37 38 39 40 41 42 43 44 45 46 47 48 49 50 51</bins>
+  </filter>
+  <tally id="1">
+    <filters>1</filters>
+    <scores>total</scores>
+  </tally>
+</tallies>

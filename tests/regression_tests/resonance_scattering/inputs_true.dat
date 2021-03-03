@@ -1,0 +1,34 @@
+<?xml version='1.0' encoding='utf-8'?>
+<geometry>
+  <cell id="1" material="1" region="-9" universe="0" />
+  <surface boundary="reflective" coeffs="100" id="9" type="x-plane" />
+</geometry>
+<?xml version='1.0' encoding='utf-8'?>
+<materials>
+  <material depletable="true" id="1">
+    <density units="g/cc" value="1.0" />
+    <nuclide ao="1.0" name="U238" />
+    <nuclide ao="0.02" name="U235" />
+    <nuclide ao="0.02" name="Pu239" />
+    <nuclide ao="20.0" name="H1" />
+  </material>
+</materials>
+<?xml version='1.0' encoding='utf-8'?>
+<settings>
+  <run_mode>eigenvalue</run_mode>
+  <particles>1000</particles>
+  <batches>10</batches>
+  <inactive>5</inactive>
+  <source strength="1.0">
+    <space type="box">
+      <parameters>-4 -4 -4 4 4 4</parameters>
+    </space>
+  </source>
+  <resonance_scattering>
+    <enable>true</enable>
+    <method>rvs</method>
+    <energy_min>1.0</energy_min>
+    <energy_max>210.0</energy_max>
+    <nuclides>U238 U235 Pu239</nuclides>
+  </resonance_scattering>
+</settings>

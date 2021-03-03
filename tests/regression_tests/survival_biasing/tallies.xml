@@ -1,0 +1,16 @@
+<?xml version="1.0"?>
+<tallies>
+
+  <tally id="1">
+    <scores>
+      flux total absorption fission nu-fission delayed-nu-fission kappa-fission
+    </scores>
+    <estimator>analog</estimator>
+  </tally>
+
+  <tally id="2">
+    <scores>total</scores>
+    <estimator>collision</estimator>
+  </tally>
+
+</tallies>

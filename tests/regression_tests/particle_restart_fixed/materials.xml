@@ -1,0 +1,9 @@
+<?xml version="1.0"?>
+<materials>
+
+  <material id="1">
+    <density value="1.4" units="g/cc" />
+    <nuclide name="B10" ao="1.0" />
+  </material>
+
+</materials>

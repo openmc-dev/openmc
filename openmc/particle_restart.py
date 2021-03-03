@@ -1,7 +1,11 @@
-import struct
+import h5py
+
+import openmc.checkvalue as cv
+
+_VERSION_PARTICLE_RESTART = 2
 
 
-class Particle(object):
+class Particle:
     """Information used to restart a specific particle that caused a simulation to
     fail.
 
@@ -14,9 +18,9 @@ class Particle(object):
     ----------
     current_batch : int
         The batch containing the particle
-    gen_per_batch : int
+    generations_per_batch : int
         Number of generations per batch
-    current_gen : int
+    current_generation : int
         The generation containing the particle
     n_particles : int
         Number of particles per generation
@@ -24,10 +28,12 @@ class Particle(object):
         Type of simulation (criticality or fixed source)
     id : long
         Identifier of the particle
+    type : int
+        Particle type (1 = neutron, 2 = photon, 3 = electron, 4 = positron)
     weight : float
         Weight of the particle
     energy : float
-        Energy of the particle in MeV
+        Energy of the particle in eV
     xyz : list of float
         Position of the particle
     uvw : list of float
@@ -36,55 +42,19 @@ class Particle(object):
     """
 
     def __init__(self, filename):
-        import h5py
-        self._f = h5py.File(filename, 'r')
+        with h5py.File(filename, 'r') as f:
 
-        # Ensure filetype and revision are correct
-        if 'filetype' not in self._f or self._f[
-                'filetype'].value.decode() != 'particle restart':
-            raise IOError('{} is not a particle restart file.'.format(filename))
-        if self._f['revision'].value != 1:
-            raise IOError('Particle restart file has a file revision of {} '
-                          'which is not consistent with the revision this '
-                          'version of OpenMC expects ({}).'.format(
-                              self._f['revision'].value, 1))
+            # Ensure filetype and version are correct
+            cv.check_filetype_version(f, 'particle restart', _VERSION_PARTICLE_RESTART)
 
-    @property
-    def current_batch(self):
-        return self._f['current_batch'].value
-
-    @property
-    def current_gen(self):
-        return self._f['current_gen'].value
-
-    @property
-    def energy(self):
-        return self._f['energy'].value
-
-    @property
-    def gen_per_batch(self):
-        return self._f['gen_per_batch'].value
-
-    @property
-    def id(self):
-        return self._f['id'].value
-
-    @property
-    def n_particles(self):
-        return self._f['n_particles'].value
-
-    @property
-    def run_mode(self):
-        return self._f['run_mode'].value.decode()
-
-    @property
-    def uvw(self):
-        return self._f['uvw'].value
-
-    @property
-    def weight(self):
-        return self._f['weight'].value
-
-    @property
-    def xyz(self):
-        return self._f['xyz'].value
+            self.current_batch = f['current_batch'][()]
+            self.current_generation = f['current_generation'][()]
+            self.energy = f['energy'][()]
+            self.generations_per_batch = f['generations_per_batch'][()]
+            self.id = f['id'][()]
+            self.type = f['type'][()]
+            self.n_particles = f['n_particles'][()]
+            self.run_mode = f['run_mode'][()].decode()
+            self.uvw = f['uvw'][()]
+            self.weight = f['weight'][()]
+            self.xyz = f['xyz'][()]

@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<settings>
+
+  <!-- Parameters for criticality calculation -->
+  <run_mode>eigenvalue</run_mode>
+  <batches>20</batches>
+  <inactive>10</inactive>
+  <particles>600</particles>
+
+  <!-- Starting source -->
+  <source strength="1.0">
+    <space type="fission">
+      <parameters>-1.25984 -1.25984 -1 1.25984 1.25984 1</parameters>
+    </space>
+  </source>
+
+  <!-- Shannon Entropy -->
+  <mesh id="10">
+    <dimension> 2 2 1 </dimension>
+    <lower_left> -1.25984 -1.25984 -1.0 </lower_left>
+    <upper_right> 1.25984 1.25984 1.0 </upper_right>
+  </mesh>
+  <entropy_mesh>10</entropy_mesh>
+
+</settings>

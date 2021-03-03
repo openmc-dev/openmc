@@ -1,0 +1,15 @@
+<?xml version="1.0"?>
+<materials>
+  <material id="1">
+    <density value="10.0" units="g/cm3" />
+    <nuclide name="U235" ao="1.0" />
+  </material>
+  <material id="2">
+    <density value="0.01" units="g/cm3" />
+    <nuclide name="He4" ao="1.0" />
+  </material>
+  <material id="3">
+    <density value="5.77" units="g/cm3" />
+    <nuclide name="Zr90" ao="1.0" />
+  </material>
+</materials>

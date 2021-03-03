@@ -9,11 +9,20 @@ essential aspects of using OpenMC to perform simulations.
 
 .. toctree::
     :numbered:
-    :maxdepth: 3
+    :maxdepth: 1
 
     beginners
     install
-    input
-    output/index
+    cross_sections
+    basics
+    materials
+    geometry
+    settings
+    tallies
+    plots
+    depletion
+    scripts
     processing
+    parallel
+    volume
     troubleshoot

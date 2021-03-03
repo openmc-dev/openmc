@@ -4,16 +4,18 @@
 Developer's Guide
 =================
 
-Welcome to the OpenMC Developer's Guide! This guide documents and explains the
-structure of the OpenMC source code and how to do various development tasks such
-as debugging.
+Welcome to the OpenMC Developer's Guide! This guide documents how contributions
+are made to OpenMC, what style rules exist for the code, how to run tests, and
+other related topics.
 
 .. toctree::
     :numbered:
-    :maxdepth: 3
+    :maxdepth: 2
 
-    structures
-    styleguide
+    contributing
     workflow
-    xml-parsing
+    styleguide
+    tests
+    user-input
     docbuild
+    docker

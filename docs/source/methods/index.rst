@@ -12,8 +12,11 @@ Theory and Methodology
     geometry
     cross_sections
     random_numbers
-    physics
+    neutron_physics
+    photon_physics
     tallies
     eigenvalue
+    depletion
+    energy_deposition
     parallelization
     cmfd

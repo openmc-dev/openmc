@@ -1,0 +1,42 @@
+<?xml version='1.0' encoding='utf-8'?>
+<geometry>
+  <cell id="1" material="1" name="box" region="1 -2 3 -4 5 -6" universe="0" />
+  <surface boundary="reflective" coeffs="-1" id="1" type="x-plane" />
+  <surface boundary="reflective" coeffs="1" id="2" type="x-plane" />
+  <surface boundary="reflective" coeffs="-1" id="3" type="y-plane" />
+  <surface boundary="reflective" coeffs="1" id="4" type="y-plane" />
+  <surface boundary="reflective" coeffs="-1" id="5" type="z-plane" />
+  <surface boundary="reflective" coeffs="1" id="6" type="z-plane" />
+</geometry>
+<?xml version='1.0' encoding='utf-8'?>
+<materials>
+  <material id="1" name="mat">
+    <density units="atom/b-cm" value="0.069335" />
+    <nuclide ao="40.0" name="H1" />
+  </material>
+</materials>
+<?xml version='1.0' encoding='utf-8'?>
+<settings>
+  <run_mode>fixed source</run_mode>
+  <particles>100</particles>
+  <batches>10</batches>
+  <source strength="1.0">
+    <space type="box">
+      <parameters>-1 -1 -1 1 1 1</parameters>
+    </space>
+    <energy parameters="988000.0 2.249e-06" type="watt" />
+  </source>
+  <cutoff>
+    <energy_neutron>4.0</energy_neutron>
+  </cutoff>
+</settings>
+<?xml version='1.0' encoding='utf-8'?>
+<tallies>
+  <filter id="1" type="energy">
+    <bins>0.0 4.0</bins>
+  </filter>
+  <tally id="1">
+    <filters>1</filters>
+    <scores>flux</scores>
+  </tally>
+</tallies>

@@ -12,6 +12,46 @@
               <data type="int"/>
             </attribute>
           </choice>
+          <optional>
+            <choice>
+              <element name="name">
+                <data type="string"/>
+              </element>
+              <attribute name="name">
+                <data type="string"/>
+              </attribute>
+            </choice>
+          </optional>
+          <optional>
+            <choice>
+              <element name="depletable">
+                <data type="boolean"/>
+              </element>
+              <attribute name="depletable">
+                <data type="boolean"/>
+              </attribute>
+            </choice>
+          </optional>
+          <optional>
+            <choice>
+              <element name="volume">
+                <data type="double"/>
+              </element>
+              <attribute name="volume">
+                <data type="double"/>
+              </attribute>
+            </choice>
+          </optional>
+          <optional>
+            <choice>
+              <element name="temperature">
+                <data type="double"/>
+              </element>
+              <attribute name="temperature">
+                <data type="double"/>
+              </attribute>
+            </choice>
+          </optional>
           <element name="density">
             <interleave>
               <optional>
@@ -43,30 +83,12 @@
               <interleave>
                 <choice>
                   <element name="name">
-                    <data type="string">
-                      <param name="maxLength">7</param>
-                    </data>
+                    <data type="string"/>
                   </element>
                   <attribute name="name">
-                    <data type="string">
-                      <param name="maxLength">7</param>
-                    </data>
+                    <data type="string"/>
                   </attribute>
                 </choice>
-                <optional>
-                  <choice>
-                    <element name="xs">
-                      <data type="string">
-                        <param name="maxLength">3</param>
-                      </data>
-                    </element>
-                    <attribute name="xs">
-                      <data type="string">
-                        <param name="maxLength">3</param>
-                      </data>
-                    </attribute>
-                  </choice>
-                </optional>
                 <choice>
                   <choice>
                     <element name="ao">
@@ -88,54 +110,21 @@
               </interleave>
             </element>
           </zeroOrMore>
+          <optional>
+            <element name="isotropic">
+              <data type="string"/>
+            </element>
+          </optional>
           <zeroOrMore>
-            <element name="element">
-              <interleave>
-                <choice>
-                  <element name="name">
-                    <data type="string">
-                      <param name="maxLength">2</param>
-                    </data>
-                  </element>
-                  <attribute name="name">
-                    <data type="string">
-                      <param name="maxLength">2</param>
-                    </data>
-                  </attribute>
-                </choice>
-                <optional>
-                  <choice>
-                    <element name="xs">
-                      <data type="string">
-                        <param name="maxLength">3</param>
-                      </data>
-                    </element>
-                    <attribute name="xs">
-                      <data type="string">
-                        <param name="maxLength">3</param>
-                      </data>
-                    </attribute>
-                  </choice>
-                </optional>
-                <choice>
-                  <choice>
-                    <element name="ao">
-                      <data type="double"/>
-                    </element>
-                    <attribute name="ao">
-                      <data type="double"/>
-                    </attribute>
-                  </choice>
-                  <choice>
-                    <element name="wo">
-                      <data type="double"/>
-                    </element>
-                    <attribute name="wo">
-                      <data type="double"/>
-                    </attribute>
-                  </choice>
-                </choice>
-              </interleave>
+            <element name="macroscopic">
+              <choice>
+                <element name="name">
+                  <data type="string"/>
+                </element>
+                <attribute name="name">
+                  <data type="string"/>
+                </attribute>
+              </choice>
             </element>
           </zeroOrMore>
           <zeroOrMore>
@@ -143,27 +132,19 @@
               <interleave>
                 <choice>
                   <element name="name">
-                    <data type="string">
-                      <param name="maxLength">7</param>
-                    </data>
+                    <data type="string"/>
                   </element>
                   <attribute name="name">
-                    <data type="string">
-                      <param name="maxLength">7</param>
-                    </data>
+                    <data type="string"/>
                   </attribute>
                 </choice>
                 <optional>
                   <choice>
-                    <element name="xs">
-                      <data type="string">
-                        <param name="maxLength">3</param>
-                      </data>
+                    <element name="fraction">
+                      <data type="double"/>
                     </element>
-                    <attribute name="xs">
-                      <data type="string">
-                        <param name="maxLength">3</param>
-                      </data>
+                    <attribute name="fraction">
+                      <data type="double"/>
                     </attribute>
                   </choice>
                 </optional>
@@ -174,9 +155,9 @@
       </element>
     </oneOrMore>
     <optional>
-      <element name="default_xs">
+      <element name="cross_sections">
         <data type="string">
-          <param name="maxLength">3</param>
+          <param name="maxLength">255</param>
         </data>
       </element>
     </optional>

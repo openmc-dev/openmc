@@ -1,0 +1,47 @@
+===================
+What's New in 0.5.3
+===================
+
+-------------------
+System Requirements
+-------------------
+
+There are no special requirements for running the OpenMC code. As of this
+release, OpenMC has been tested on a variety of Linux distributions, Mac OS X,
+and Microsoft Windows 7. Memory requirements will vary depending on the size of
+the problem at hand (mostly on the number of nuclides in the problem).
+
+------------
+New Features
+------------
+
+- Output interface enhanced to allow multiple files handles to be opened
+- Particle restart file linked to output interface
+- Particle restarts and state point restarts are both identified with the -r
+  command line flag.
+- Particle instance no longer global, passed to all physics routines
+- Physics routines refactored to rely less on global memory, more arguments
+  passed in
+- CMFD routines refactored and now can compute dominance ratio on the fly
+- PETSc 3.4.2 or higher must be used and compiled with fortran datatype support
+- Memory leaks fixed except for ones from xml-fortran package
+- Test suite enhanced to test output with different compiler options
+- Description of OpenMC development workflow added
+- OpenMP shared-memory parallelism added
+- Special run mode --tallies removed.
+
+---------
+Bug Fixes
+---------
+
+- 2b1e8a_: Normalize direction vector after reflecting particle.
+- 5853d2_: Set blank default for cross section listing alias.
+- e178c7_: Fix infinite loop with words greater than 80 characters in write_message.
+- c18a6e_: Check for valid secondary mode on S(a,b) tables.
+- 82c456_: Fix bug where last process could have zero particles.
+
+.. _2b1e8a: https://github.com/openmc-dev/openmc/commit/2b1e8a
+.. _5853d2: https://github.com/openmc-dev/openmc/commit/5853d2
+.. _e178c7: https://github.com/openmc-dev/openmc/commit/e178c7
+.. _c18a6e: https://github.com/openmc-dev/openmc/commit/c18a6e
+.. _82c456: https://github.com/openmc-dev/openmc/commit/82c456

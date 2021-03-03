@@ -1,184 +1,242 @@
-import sys
+from datetime import datetime
+import glob
 import re
+import os
+import warnings
+
+import h5py
 import numpy as np
+from uncertainties import ufloat
 
 import openmc
+import openmc.checkvalue as cv
 
-if sys.version > '3':
-    long = int
+_VERSION_STATEPOINT = 17
 
 
-class StatePoint(object):
-    """State information on a simulation at a certain point in time (at the end of a
-    given batch). Statepoints can be used to analyze tally results as well as
-    restart a simulation.
+class StatePoint:
+    """State information on a simulation at a certain point in time (at the end
+    of a given batch). Statepoints can be used to analyze tally results as well
+    as restart a simulation.
+
+    Parameters
+    ----------
+    filepath : str or Path
+        Path to file to load
+    autolink : bool, optional
+        Whether to automatically link in metadata from a summary.h5 file and
+        stochastic volume calculation results from volume_*.h5 files. Defaults
+        to True.
 
     Attributes
     ----------
     cmfd_on : bool
         Indicate whether CMFD is active
-    cmfd_balance : ndarray
+    cmfd_balance : numpy.ndarray
         Residual neutron balance for each batch
     cmfd_dominance
         Dominance ratio for each batch
-    cmfd_entropy : ndarray
+    cmfd_entropy : numpy.ndarray
         Shannon entropy of CMFD fission source for each batch
-    cmfd_indices : ndarray
+    cmfd_indices : numpy.ndarray
         Number of CMFD mesh cells and energy groups. The first three indices
         correspond to the x-, y-, and z- spatial directions and the fourth index
         is the number of energy groups.
-    cmfd_srccmp : ndarray
+    cmfd_srccmp : numpy.ndarray
         Root-mean-square difference between OpenMC and CMFD fission source for
         each batch
-    cmfd_src : ndarray
+    cmfd_src : numpy.ndarray
         CMFD fission source distribution over all mesh cells and energy groups.
-    current_batch : Integral
+    current_batch : int
         Number of batches simulated
-    date_and_time : str
-        Date and time when simulation began
-    entropy : ndarray
+    date_and_time : datetime.datetime
+        Date and time at which statepoint was written
+    entropy : numpy.ndarray
         Shannon entropy of fission source at each batch
-    gen_per_batch : Integral
+    filters : dict
+        Dictionary whose keys are filter IDs and whose values are Filter
+        objects
+    generations_per_batch : int
         Number of fission generations per batch
-    global_tallies : ndarray of compound datatype
+    global_tallies : numpy.ndarray of compound datatype
         Global tallies for k-effective estimates and leakage. The compound
         datatype has fields 'name', 'sum', 'sum_sq', 'mean', and 'std_dev'.
-    k_combined : list
-        Combined estimator for k-effective and its uncertainty
-    k_col_abs : Real
+    k_combined : uncertainties.UFloat
+        Combined estimator for k-effective
+    k_col_abs : float
         Cross-product of collision and absorption estimates of k-effective
-    k_col_tra : Real
+    k_col_tra : float
         Cross-product of collision and tracklength estimates of k-effective
-    k_abs_tra : Real
+    k_abs_tra : float
         Cross-product of absorption and tracklength estimates of k-effective
-    k_generation : ndarray
+    k_generation : numpy.ndarray
         Estimate of k-effective for each batch/generation
     meshes : dict
-        Dictionary whose keys are mesh IDs and whose values are Mesh objects
-    n_batches : Integral
+        Dictionary whose keys are mesh IDs and whose values are MeshBase objects
+    n_batches : int
         Number of batches
-    n_inactive : Integral
+    n_inactive : int
         Number of inactive batches
-    n_particles : Integral
+    n_particles : int
         Number of particles per generation
-    n_realizations : Integral
+    n_realizations : int
         Number of tally realizations
     path : str
         Working directory for simulation
+    photon_transport : bool
+        Indicate whether photon transport is active
     run_mode : str
-        Simulation run mode, e.g. 'k-eigenvalue'
-    seed : Integral
+        Simulation run mode, e.g. 'eigenvalue'
+    runtime : dict
+        Dictionary whose keys are strings describing various runtime metrics
+        and whose values are time values in seconds.
+    seed : int
         Pseudorandom number generator seed
-    source : ndarray of compound datatype
-        Array of source sites. The compound datatype has fields 'wgt', 'xyz',
-        'uvw', and 'E' corresponding to the weight, position, direction, and
-        energy of the source site.
+    source : numpy.ndarray of compound datatype
+        Array of source sites. The compound datatype has fields 'r', 'u',
+        'E', 'wgt', 'delayed_group', 'surf_id', and 'particle', corresponding to
+        the position, direction, energy, weight, delayed group, surface ID and
+        particle type of the source site, respectively.
     source_present : bool
         Indicate whether source sites are present
+    sparse : bool
+        Whether or not the tallies uses SciPy's LIL sparse matrix format for
+        compressed data storage
     tallies : dict
         Dictionary whose keys are tally IDs and whose values are Tally objects
     tallies_present : bool
         Indicate whether user-defined tallies are present
+    tally_derivatives : dict
+        Dictionary whose keys are tally derivative IDs and whose values are
+        TallyDerivative objects
     version: tuple of Integral
         Version of OpenMC
-    summary : None or openmc.summary.Summary
+    summary : None or openmc.Summary
         A summary object if the statepoint has been linked with a summary file
 
     """
 
-    def __init__(self, filename):
-        import h5py
+    def __init__(self, filepath, autolink=True):
+        filename = str(filepath)  # in case it's a Path
         self._f = h5py.File(filename, 'r')
+        self._meshes = {}
+        self._filters = {}
+        self._tallies = {}
+        self._derivs = {}
 
-        # Ensure filetype and revision are correct
-        try:
-            if 'filetype' not in self._f or self._f[
-                    'filetype'].value.decode() != 'statepoint':
-                raise IOError('{} is not a statepoint file.'.format(filename))
-        except AttributeError:
-            raise IOError('Could not read statepoint file. This most likely '
-                          'means the statepoint file was produced by a different '
-                          'version of OpenMC than the one you are using.')
-        if self._f['revision'].value != 14:
-            raise IOError('Statepoint file has a file revision of {} '
-                          'which is not consistent with the revision this '
-                          'version of OpenMC expects ({}).'.format(
-                              self._f['revision'].value, 14))
+        # Check filetype and version
+        cv.check_filetype_version(self._f, 'statepoint', _VERSION_STATEPOINT)
 
         # Set flags for what data has been read
         self._meshes_read = False
+        self._filters_read = False
         self._tallies_read = False
-        self._summary = False
+        self._summary = None
         self._global_tallies = None
+        self._sparse = False
+        self._derivs_read = False
 
-    def close(self):
+        # Automatically link in a summary file if one exists
+        if autolink:
+            path_summary = os.path.join(os.path.dirname(filename), 'summary.h5')
+            if os.path.exists(path_summary):
+                su = openmc.Summary(path_summary)
+                self.link_with_summary(su)
+
+            path_volume = os.path.join(os.path.dirname(filename), 'volume_*.h5')
+            for path_i in glob.glob(path_volume):
+                if re.search(r'volume_\d+\.h5', path_i):
+                    vol = openmc.VolumeCalculation.from_hdf5(path_i)
+                    self.add_volume_information(vol)
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *exc):
         self._f.close()
+        if self._summary is not None:
+            self._summary._f.close()
 
     @property
     def cmfd_on(self):
-        return self._f['cmfd_on'].value > 0
+        return self._f.attrs['cmfd_on'] > 0
 
     @property
     def cmfd_balance(self):
-        return self._f['cmfd/cmfd_balance'].value if self.cmfd_on else None
+        return self._f['cmfd/cmfd_balance'][()] if self.cmfd_on else None
 
     @property
     def cmfd_dominance(self):
-        return self._f['cmfd/cmfd_dominance'].value if self.cmfd_on else None
+        return self._f['cmfd/cmfd_dominance'][()] if self.cmfd_on else None
 
     @property
     def cmfd_entropy(self):
-        return self._f['cmfd/cmfd_entropy'].value if self.cmfd_on else None
+        return self._f['cmfd/cmfd_entropy'][()] if self.cmfd_on else None
 
     @property
     def cmfd_indices(self):
-        return self._f['cmfd/indices'].value if self.cmfd_on else None
+        return self._f['cmfd/indices'][()] if self.cmfd_on else None
 
     @property
     def cmfd_src(self):
         if self.cmfd_on:
-            data = self._f['cmfd/cmfd_src'].value
+            data = self._f['cmfd/cmfd_src'][()]
             return np.reshape(data, tuple(self.cmfd_indices), order='F')
         else:
             return None
 
     @property
     def cmfd_srccmp(self):
-        return self._f['cmfd/cmfd_srccmp'].value if self.cmfd_on else None
+        return self._f['cmfd/cmfd_srccmp'][()] if self.cmfd_on else None
 
     @property
     def current_batch(self):
-        return self._f['current_batch'].value
+        return self._f['current_batch'][()]
 
     @property
     def date_and_time(self):
-        return self._f['date_and_time'].value.decode()
+        s = self._f.attrs['date_and_time'].decode()
+        return datetime.strptime(s, '%Y-%m-%d %H:%M:%S')
 
     @property
     def entropy(self):
-        if self.run_mode == 'k-eigenvalue':
-            return self._f['entropy'].value
+        if self.run_mode == 'eigenvalue':
+            return self._f['entropy'][()]
         else:
             return None
 
     @property
-    def gen_per_batch(self):
-        if self.run_mode == 'k-eigenvalue':
-            return self._f['gen_per_batch'].value
+    def filters(self):
+        if not self._filters_read:
+            filters_group = self._f['tallies/filters']
+
+            # Iterate over all Filters
+            for group in filters_group.values():
+                new_filter = openmc.Filter.from_hdf5(group, meshes=self.meshes)
+                self._filters[new_filter.id] = new_filter
+
+            self._filters_read = True
+
+        return self._filters
+
+    @property
+    def generations_per_batch(self):
+        if self.run_mode == 'eigenvalue':
+            return self._f['generations_per_batch'][()]
         else:
             return None
 
     @property
     def global_tallies(self):
         if self._global_tallies is None:
-            data = self._f['global_tallies'].value
-            gt = np.zeros_like(data, dtype=[
+            data = self._f['global_tallies'][()]
+            gt = np.zeros(data.shape[0], dtype=[
                 ('name', 'a14'), ('sum', 'f8'), ('sum_sq', 'f8'),
                 ('mean', 'f8'), ('std_dev', 'f8')])
             gt['name'] = ['k-collision', 'k-absorption', 'k-tracklength',
                           'leakage']
-            gt['sum'] = data['sum']
-            gt['sum_sq'] = data['sum_sq']
+            gt['sum'] = data[:,1]
+            gt['sum_sq'] = data[:,2]
 
             # Calculate mean and sample standard deviation of mean
             n = self.n_realizations
@@ -192,88 +250,54 @@ class StatePoint(object):
     @property
     def k_cmfd(self):
         if self.cmfd_on:
-            return self._f['cmfd/k_cmfd'].value
+            return self._f['cmfd/k_cmfd'][()]
         else:
             return None
 
     @property
     def k_generation(self):
-        if self.run_mode == 'k-eigenvalue':
-            return self._f['k_generation'].value
+        if self.run_mode == 'eigenvalue':
+            return self._f['k_generation'][()]
         else:
             return None
 
     @property
     def k_combined(self):
-        if self.run_mode == 'k-eigenvalue':
-            return self._f['k_combined'].value
+        if self.run_mode == 'eigenvalue':
+            return ufloat(*self._f['k_combined'][()])
         else:
             return None
 
     @property
     def k_col_abs(self):
-        if self.run_mode == 'k-eigenvalue':
-            return self._f['k_col_abs'].value
+        if self.run_mode == 'eigenvalue':
+            return self._f['k_col_abs'][()]
         else:
             return None
 
     @property
     def k_col_tra(self):
-        if self.run_mode == 'k-eigenvalue':
-            return self._f['k_col_tra'].value
+        if self.run_mode == 'eigenvalue':
+            return self._f['k_col_tra'][()]
         else:
             return None
 
     @property
     def k_abs_tra(self):
-        if self.run_mode == 'k-eigenvalue':
-            return self._f['k_abs_tra'].value
+        if self.run_mode == 'eigenvalue':
+            return self._f['k_abs_tra'][()]
         else:
             return None
 
     @property
     def meshes(self):
         if not self._meshes_read:
-            # Initialize dictionaries for the Meshes
-            # Keys     - Mesh IDs
-            # Values - Mesh objects
-            self._meshes = {}
+            mesh_group = self._f['tallies/meshes']
 
-            # Read the number of Meshes
-            n_meshes = self._f['tallies/meshes/n_meshes'].value
-
-            # Read a list of the IDs for each Mesh
-            if n_meshes > 0:
-                # User-defined Mesh IDs
-                mesh_keys = self._f['tallies/meshes/keys'].value
-            else:
-                mesh_keys = []
-
-            # Build dictionary of Meshes
-            base = 'tallies/meshes/mesh '
-
-            # Iterate over all Meshes
-            for mesh_key in mesh_keys:
-                # Read the mesh type
-                mesh_type = self._f['{0}{1}/type'.format(base, mesh_key)].value.decode()
-
-                # Read the mesh dimensions, lower-left coordinates,
-                # upper-right coordinates, and width of each mesh cell
-                dimension = self._f['{0}{1}/dimension'.format(base, mesh_key)].value
-                lower_left = self._f['{0}{1}/lower_left'.format(base, mesh_key)].value
-                upper_right = self._f['{0}{1}/upper_right'.format(base, mesh_key)].value
-                width = self._f['{0}{1}/width'.format(base, mesh_key)].value
-
-                # Create the Mesh and assign properties to it
-                mesh = openmc.Mesh(mesh_key)
-                mesh.dimension = dimension
-                mesh.width = width
-                mesh.lower_left = lower_left
-                mesh.upper_right = upper_right
-                mesh.type = mesh_type
-
-                # Add mesh to the global dictionary of all Meshes
-                self._meshes[mesh_key] = mesh
+            # Iterate over all meshes
+            for group in mesh_group.values():
+                mesh = openmc.MeshBase.from_hdf5(group)
+                self._meshes[mesh.id] = mesh
 
             self._meshes_read = True
 
@@ -281,150 +305,126 @@ class StatePoint(object):
 
     @property
     def n_batches(self):
-        return self._f['n_batches'].value
+        return self._f['n_batches'][()]
 
     @property
     def n_inactive(self):
-        if self.run_mode == 'k-eigenvalue':
-            return self._f['n_inactive'].value
+        if self.run_mode == 'eigenvalue':
+            return self._f['n_inactive'][()]
         else:
             return None
 
     @property
     def n_particles(self):
-        return self._f['n_particles'].value
+        return self._f['n_particles'][()]
 
     @property
     def n_realizations(self):
-        return self._f['n_realizations'].value
+        return self._f['n_realizations'][()]
 
     @property
     def path(self):
-        return self._f['path'].value.decode()
+        return self._f.attrs['path'].decode()
+
+    @property
+    def photon_transport(self):
+        return self._f.attrs['photon_transport'] > 0
 
     @property
     def run_mode(self):
-        return self._f['run_mode'].value.decode()
+        return self._f['run_mode'][()].decode()
+
+    @property
+    def runtime(self):
+        return {name: dataset[()]
+                for name, dataset in self._f['runtime'].items()}
 
     @property
     def seed(self):
-        return self._f['seed'].value
+        return self._f['seed'][()]
 
     @property
     def source(self):
-        return self._f['source_bank'].value if self.source_present else None
+        return self._f['source_bank'][()] if self.source_present else None
 
     @property
     def source_present(self):
-        return self._f['source_present'].value > 0
+        return self._f.attrs['source_present'] > 0
+
+    @property
+    def sparse(self):
+        return self._sparse
 
     @property
     def tallies(self):
-        if not self._tallies_read:
-            # Initialize dictionary for tallies
-            self._tallies = {}
-
+        if self.tallies_present and not self._tallies_read:
             # Read the number of tallies
-            n_tallies = self._f['tallies/n_tallies'].value
+            tallies_group = self._f['tallies']
+            n_tallies = tallies_group.attrs['n_tallies']
 
             # Read a list of the IDs for each Tally
             if n_tallies > 0:
-                # OpenMC Tally IDs (redefined internally from user definitions)
-                tally_keys = self._f['tallies/keys'].value
+                # Tally user-defined IDs
+                tally_ids = tallies_group.attrs['ids']
             else:
-                tally_keys = []
+                tally_ids = []
 
-            base = 'tallies/tally '
+            # Ignore warnings about duplicate IDs
+            with warnings.catch_warnings():
+                warnings.simplefilter('ignore', openmc.IDWarning)
 
-            # Iterate over all Tallies
-            for tally_key in tally_keys:
+                # Iterate over all tallies
+                for tally_id in tally_ids:
+                    group = tallies_group['tally {}'.format(tally_id)]
 
-                # Read the Tally size specifications
-                n_realizations = self._f['{0}{1}/n_realizations'.format(base, tally_key)].value
+                    # Check if tally is internal and therefore has no data
+                    if group.attrs.get("internal"):
+                        continue
 
-                # Create Tally object and assign basic properties
-                tally = openmc.Tally(tally_id=tally_key)
-                tally._sp_filename = self._f.filename
-                tally.estimator = self._f['{0}{1}/estimator'.format(
-                    base, tally_key)].value.decode()
-                tally.num_realizations = n_realizations
+                    # Create Tally object and assign basic properties
+                    tally = openmc.Tally(tally_id)
+                    tally._sp_filename = self._f.filename
+                    tally.name = group['name'][()].decode() if 'name' in group else ''
 
-                # Read the number of Filters
-                n_filters = self._f['{0}{1}/n_filters'.format(base, tally_key)].value
+                    # Read the number of realizations
+                    n_realizations = group['n_realizations'][()]
 
-                subbase = '{0}{1}/filter '.format(base, tally_key)
+                    tally.estimator = group['estimator'][()].decode()
+                    tally.num_realizations = n_realizations
 
-                # Initialize all Filters
-                for j in range(1, n_filters+1):
+                    # Read derivative information.
+                    if 'derivative' in group:
+                        deriv_id = group['derivative'][()]
+                        tally.derivative = self.tally_derivatives[deriv_id]
 
-                    # Read the Filter type
-                    filter_type = self._f['{0}{1}/type'.format(subbase, j)].value.decode()
+                    # Read all filters
+                    n_filters = group['n_filters'][()]
+                    if n_filters > 0:
+                        filter_ids = group['filters'][()]
+                        filters_group = self._f['tallies/filters']
+                        for filter_id in filter_ids:
+                            filter_group = filters_group['filter {}'.format(
+                                filter_id)]
+                            new_filter = openmc.Filter.from_hdf5(
+                                filter_group, meshes=self.meshes)
+                            tally.filters.append(new_filter)
 
-                    # Read the Filter offset
-                    offset = self._f['{0}{1}/offset'.format(subbase, j)].value
+                    # Read nuclide bins
+                    nuclide_names = group['nuclides'][()]
 
-                    n_bins = self._f['{0}{1}/n_bins'.format(subbase, j)].value
+                    # Add all nuclides to the Tally
+                    for name in nuclide_names:
+                        nuclide = openmc.Nuclide(name.decode().strip())
+                        tally.nuclides.append(nuclide)
 
-                    # Read the bin values
-                    bins = self._f['{0}{1}/bins'.format(subbase, j)].value
+                    # Add the scores to the Tally
+                    scores = group['score_bins'][()]
+                    for score in scores:
+                        tally.scores.append(score.decode())
 
-                    # Create Filter object
-                    filter = openmc.Filter(filter_type, bins)
-                    filter.offset = offset
-                    filter.num_bins = n_bins
-
-                    if filter_type == 'mesh':
-                        mesh_ids = self._f['tallies/meshes/ids'].value
-                        mesh_keys = self._f['tallies/meshes/keys'].value
-
-                        key = mesh_keys[mesh_ids == bins][0]
-                        filter.mesh = self.meshes[key]
-
-                    # Add Filter to the Tally
-                    tally.add_filter(filter)
-
-                # Read Nuclide bins
-                nuclide_names = self._f['{0}{1}/nuclides'.format(base, tally_key)].value
-
-                # Add all Nuclides to the Tally
-                for name in nuclide_names:
-                    nuclide = openmc.Nuclide(name.decode().strip())
-                    tally.add_nuclide(nuclide)
-
-                # Read score bins
-                n_score_bins = self._f['{0}{1}/n_score_bins'.format(base, tally_key)].value
-
-                tally.num_score_bins = n_score_bins
-
-                scores = self._f['{0}{1}/score_bins'.format(
-                    base, tally_key)].value
-                n_user_scores = self._f['{0}{1}/n_user_score_bins'
-                                        .format(base, tally_key)].value
-
-                # Compute and set the filter strides
-                for i in range(n_filters):
-                    filter = tally.filters[i]
-                    filter.stride = n_score_bins * len(nuclide_names)
-
-                    for j in range(i+1, n_filters):
-                        filter.stride *= tally.filters[j].num_bins
-
-                # Read scattering moment order strings (e.g., P3, Y-1,2, etc.)
-                moments = self._f['{0}{1}/moment_orders'.format(
-                    base, tally_key)].value
-
-                # Add the scores to the Tally
-                for j, score in enumerate(scores):
-                    score = score.decode()
-
-                    # If this is a moment, use generic moment order
-                    pattern = r'-n$|-pn$|-yn$'
-                    score = re.sub(pattern, '-' + moments[j].decode(), score)
-
-                    tally.add_score(score)
-
-                # Add Tally to the global dictionary of all Tallies
-                self._tallies[tally_key] = tally
+                    # Add Tally to the global dictionary of all Tallies
+                    tally.sparse = self.sparse
+                    self._tallies[tally_id] = tally
 
             self._tallies_read = True
 
@@ -432,30 +432,89 @@ class StatePoint(object):
 
     @property
     def tallies_present(self):
-        return self._f['tallies/tallies_present'].value
+        return self._f.attrs['tallies_present'] > 0
+
+    @property
+    def tally_derivatives(self):
+        if not self._derivs_read:
+            # Populate the dictionary if any derivatives are present.
+            if 'derivatives' in self._f['tallies']:
+                # Read the derivative ids.
+                base = 'tallies/derivatives'
+                deriv_ids = [int(k.split(' ')[1]) for k in self._f[base]]
+
+                # Create each derivative object and add it to the dictionary.
+                for d_id in deriv_ids:
+                    group = self._f['tallies/derivatives/derivative {}'
+                                    .format(d_id)]
+                    deriv = openmc.TallyDerivative(derivative_id=d_id)
+                    deriv.variable = group['independent variable'][()].decode()
+                    if deriv.variable == 'density':
+                        deriv.material = group['material'][()]
+                    elif deriv.variable == 'nuclide_density':
+                        deriv.material = group['material'][()]
+                        deriv.nuclide = group['nuclide'][()].decode()
+                    elif deriv.variable == 'temperature':
+                        deriv.material = group['material'][()]
+                    self._derivs[d_id] = deriv
+
+            self._derivs_read = True
+
+        return self._derivs
 
     @property
     def version(self):
-        return (self._f['version_major'].value,
-                self._f['version_minor'].value,
-                self._f['version_release'].value)
+        return tuple(self._f.attrs['openmc_version'])
 
     @property
     def summary(self):
         return self._summary
 
-    @property
-    def with_summary(self):
-        return False if self.summary is None else True
+    @sparse.setter
+    def sparse(self, sparse):
+        """Convert tally data from NumPy arrays to SciPy list of lists (LIL)
+        sparse matrices, and vice versa.
+
+        This property may be used to reduce the amount of data in memory during
+        tally data processing. The tally data will be stored as SciPy LIL
+        matrices internally within each Tally object. All tally data access
+        properties and methods will return data as a dense NumPy array.
+
+        """
+
+        cv.check_type('sparse', sparse, bool)
+        self._sparse = sparse
+
+        # Update tally sparsities
+        if self._tallies_read:
+            for tally_id in self.tallies:
+                self.tallies[tally_id].sparse = self.sparse
+
+    def add_volume_information(self, volume_calc):
+        """Add volume information to the geometry within the file
+
+        Parameters
+        ----------
+        volume_calc : openmc.VolumeCalculation
+            Results from a stochastic volume calculation
+
+        """
+        if self.summary is not None:
+            self.summary.add_volume_information(volume_calc)
 
     def get_tally(self, scores=[], filters=[], nuclides=[],
-                  name=None, id=None, estimator=None):
+                  name=None, id=None, estimator=None, exact_filters=False,
+                  exact_nuclides=False, exact_scores=False):
         """Finds and returns a Tally object with certain properties.
 
         This routine searches the list of Tallies and returns the first Tally
         found which satisfies all of the input parameters.
-        NOTE: The input parameters do not need to match the complete Tally
-        specification and may only represent a subset of the Tally's properties.
+
+        NOTE: If any of the "exact" parameters are False (default), the input
+        parameters do not need to match the complete Tally specification and
+        may only represent a subset of the Tally's properties. If an "exact"
+        parameter is True then number of scores, filters, or nuclides in the
+        parameters must precisely match those of any matching Tally.
 
         Parameters
         ----------
@@ -471,10 +530,22 @@ class StatePoint(object):
             The id specified for the Tally (default is None).
         estimator: str, optional
             The type of estimator ('tracklength', 'analog'; default is None).
+        exact_filters : bool
+            If True, the number of filters in the parameters must be identical
+            to those in the matching Tally. If False (default), the filters in
+            the parameters may be a subset of those in the matching Tally.
+        exact_nuclides : bool
+            If True, the number of nuclides in the parameters must be identical
+            to those in the matching Tally. If False (default), the nuclides in
+            the parameters may be a subset of those in the matching Tally.
+        exact_scores : bool
+            If True, the number of scores in the parameters must be identical
+            to those in the matching Tally. If False (default), the scores
+            in the parameters may be a subset of those in the matching Tally.
 
         Returns
         -------
-        tally : Tally
+        tally : openmc.Tally
             A tally matching the specified criteria
 
         Raises
@@ -488,7 +559,7 @@ class StatePoint(object):
         tally = None
 
         # Iterate over all tallies to find the appropriate one
-        for tally_id, test_tally in self.tallies.items():
+        for test_tally in self.tallies.values():
 
             # Determine if Tally has queried name
             if name and name != test_tally.name:
@@ -499,20 +570,20 @@ class StatePoint(object):
                 continue
 
             # Determine if Tally has queried estimator
-            if estimator and not estimator == test_tally.estimator:
+            if estimator and estimator != test_tally.estimator:
+                continue
+
+            # The number of filters, nuclides and scores must exactly match
+            if exact_scores and len(scores) != test_tally.num_scores:
+                continue
+            if exact_nuclides and len(nuclides) != test_tally.num_nuclides:
+                continue
+            if exact_filters and len(filters) != test_tally.num_filters:
                 continue
 
             # Determine if Tally has the queried score(s)
             if scores:
-                contains_scores = True
-
-                # Iterate over the scores requested by the user
-                for score in scores:
-                    if score not in test_tally.scores:
-                        contains_scores = False
-                        break
-
-                if not contains_scores:
+                if not all(score in test_tally.scores for score in scores):
                     continue
 
             # Determine if Tally has the queried Filter(s)
@@ -520,13 +591,13 @@ class StatePoint(object):
                 contains_filters = True
 
                 # Iterate over the Filters requested by the user
-                for filter in filters:
+                for outer_filter in filters:
                     contains_filters = False
 
                     # Test if requested filter is a subset of any of the test
                     # tally's filters and if so continue to next filter
-                    for test_filter in test_tally.filters:
-                        if test_filter.is_subset(filter):
+                    for inner_filter in test_tally.filters:
+                        if inner_filter.is_subset(outer_filter):
                             contains_filters = True
                             break
 
@@ -538,15 +609,7 @@ class StatePoint(object):
 
             # Determine if Tally has the queried Nuclide(s)
             if nuclides:
-                contains_nuclides = True
-
-                # Iterate over the Nuclides requested by the user
-                for nuclide in nuclides:
-                    if nuclide not in test_tally.nuclides:
-                        contains_nuclides = False
-                        break
-
-                if not contains_nuclides:
+                if not all(nuclide in test_tally.nuclides for nuclide in nuclides):
                     continue
 
             # If the current Tally met user's request, break loop and return it
@@ -571,7 +634,7 @@ class StatePoint(object):
 
         Parameters
         ----------
-        summary : Summary
+        summary : openmc.Summary
              A Summary object.
 
         Raises
@@ -582,39 +645,27 @@ class StatePoint(object):
 
         """
 
-        if not isinstance(summary, openmc.summary.Summary):
+        if self.summary is not None:
+            warnings.warn('A Summary object has already been linked.',
+                          RuntimeWarning)
+            return
+
+        if not isinstance(summary, openmc.Summary):
             msg = 'Unable to link statepoint with "{0}" which ' \
                   'is not a Summary object'.format(summary)
             raise ValueError(msg)
 
-        for tally_id, tally in self.tallies.items():
-            # Get the Tally name from the summary file
-            tally.name = summary.tallies[tally_id].name
+        cells = summary.geometry.get_all_cells()
+
+        for tally in self.tallies.values():
             tally.with_summary = True
 
-            for filter in tally.filters:
-                if filter.type == 'surface':
-                    surface_ids = []
-                    for bin in filter.bins:
-                        surface_ids.append(summary.surfaces[bin].id)
-                    filter.bins = surface_ids
-
-                if filter.type in ['cell', 'distribcell']:
-                    distribcell_ids = []
-                    for bin in filter.bins:
-                        distribcell_ids.append(summary.cells[bin].id)
-                    filter.bins = distribcell_ids
-
-                if filter.type == 'universe':
-                    universe_ids = []
-                    for bin in filter.bins:
-                        universe_ids.append(summary.universes[bin].id)
-                    filter.bins = universe_ids
-
-                if filter.type == 'material':
-                    material_ids = []
-                    for bin in filter.bins:
-                        material_ids.append(summary.materials[bin].id)
-                    filter.bins = material_ids
+            for tally_filter in tally.filters:
+                if isinstance(tally_filter, (openmc.DistribcellFilter)):
+                    cell_id = tally_filter.bins[0]
+                    cell = cells[cell_id]
+                    if not cell._paths:
+                        summary.geometry.determine_paths()
+                    tally_filter.paths = cell.paths
 
         self._summary = summary

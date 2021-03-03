@@ -1,0 +1,72 @@
+#!/usr/bin/env python3
+
+import struct
+import sys
+from argparse import ArgumentParser
+
+import numpy as np
+import h5py
+import vtk
+
+_min_version = (2, 0)
+
+
+def main():
+    # Process command line arguments
+    parser = ArgumentParser()
+    parser.add_argument('voxel_file', help='Path to voxel file')
+    parser.add_argument('-o', '--output', action='store',
+                        default='plot', help='Path to output VTK file.')
+    args = parser.parse_args()
+
+    # Read data from voxel file
+    fh = h5py.File(args.voxel_file, 'r')
+
+    # check version
+    version = tuple(fh.attrs['version'])
+    if version < _min_version:
+        old_version = ".".join(map(str,version))
+        min_version = ".".join(map(str,_min_version))
+        err_msg = "This voxel file's version is {}. This script " \
+                  "only supports voxel files with version {} or " \
+                  "higher. Please generate a new voxel file using " \
+                  "a newer version of OpenMC.".format(old_version, min_version)
+        raise ValueError(err_msg)
+
+    dimension = fh.attrs['num_voxels']
+    width = fh.attrs['voxel_width']
+    lower_left = fh.attrs['lower_left']
+
+    nx, ny, nz = dimension
+    upper_right = lower_left + width*dimension
+
+    grid = vtk.vtkImageData()
+    grid.SetDimensions(nx+1, ny+1, nz+1)
+    grid.SetOrigin(*lower_left)
+    grid.SetSpacing(*width)
+
+    # transpose data from OpenMC ordering (zyx) to VTK ordering (xyz)
+    # and flatten to 1-D array
+    print("Reading and translating data...")
+    h5data = fh['data'][...]
+
+    data = vtk.vtkIntArray()
+    data.SetName("id")
+    # set the array using the h5data array
+    data.SetArray(h5data, h5data.size, True)
+    # add data to image grid
+    grid.GetCellData().AddArray(data)
+
+    writer = vtk.vtkXMLImageDataWriter()
+    if vtk.vtkVersion.GetVTKMajorVersion() > 5:
+        writer.SetInputData(grid)
+    else:
+        writer.SetInput(grid)
+    if not args.output.endswith(".vti"):
+        args.output += ".vti"
+    writer.SetFileName(args.output)
+    print("Writing VTK file {}...".format(args.output))
+    writer.Write()
+
+if __name__ == '__main__':
+    main()

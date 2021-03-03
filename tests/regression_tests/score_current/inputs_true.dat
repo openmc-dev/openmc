@@ -1,0 +1,55 @@
+<?xml version='1.0' encoding='utf-8'?>
+<geometry>
+  <cell id="1" material="1" region="1 -2 3 -4 10 -9" universe="1" />
+  <cell id="2" material="2" region="~(1 -2 3 -4) (5 -6 7 -8) 10 -9" universe="1" />
+  <surface coeffs="-5.0" id="1" name="minimum x" type="x-plane" />
+  <surface coeffs="5.0" id="2" name="maximum x" type="x-plane" />
+  <surface coeffs="-5.0" id="3" name="minimum y" type="y-plane" />
+  <surface coeffs="5.0" id="4" name="maximum y" type="y-plane" />
+  <surface boundary="reflective" coeffs="-10.0" id="5" name="minimum x" type="x-plane" />
+  <surface boundary="reflective" coeffs="10.0" id="6" name="maximum x" type="x-plane" />
+  <surface boundary="reflective" coeffs="-10.0" id="7" name="minimum y" type="y-plane" />
+  <surface boundary="reflective" coeffs="10.0" id="8" name="maximum y" type="y-plane" />
+  <surface boundary="vacuum" coeffs="10.0" id="9" type="z-plane" />
+  <surface boundary="vacuum" coeffs="-10.0" id="10" type="z-plane" />
+</geometry>
+<?xml version='1.0' encoding='utf-8'?>
+<materials>
+  <material depletable="true" id="1">
+    <density units="g/cm3" value="10.0" />
+    <nuclide ao="1.0" name="U235" />
+  </material>
+  <material id="2">
+    <density units="g/cm3" value="1.0" />
+    <nuclide ao="1.0" name="Zr90" />
+  </material>
+</materials>
+<?xml version='1.0' encoding='utf-8'?>
+<settings>
+  <run_mode>eigenvalue</run_mode>
+  <particles>1000</particles>
+  <batches>5</batches>
+  <inactive>0</inactive>
+</settings>
+<?xml version='1.0' encoding='utf-8'?>
+<tallies>
+  <mesh id="1">
+    <dimension>3 3 3</dimension>
+    <lower_left>-10.0 -10.0 -10.0</lower_left>
+    <upper_right>10.0 10.0 10.0</upper_right>
+  </mesh>
+  <filter id="1" type="meshsurface">
+    <bins>1</bins>
+  </filter>
+  <filter id="2" type="energy">
+    <bins>0.0 0.253 20000000.0</bins>
+  </filter>
+  <tally id="1">
+    <filters>1</filters>
+    <scores>current</scores>
+  </tally>
+  <tally id="2">
+    <filters>1 2</filters>
+    <scores>current</scores>
+  </tally>
+</tallies>

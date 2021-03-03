@@ -20,6 +20,7 @@
 #include "openmc/tallies/filter_cellfrom.h"
 #include "openmc/tallies/filter_delayedgroup.h"
 #include "openmc/tallies/filter_energy.h"
+#include "openmc/tallies/filter_collision.h"
 #include "openmc/tallies/filter_legendre.h"
 #include "openmc/tallies/filter_mesh.h"
 #include "openmc/tallies/filter_meshsurface.h"

@@ -1,0 +1,92 @@
+<?xml version='1.0' encoding='utf-8'?>
+<geometry>
+  <cell id="22" material="22" name="fuel" region="127 -128 129 -130 131 -132" universe="8" />
+  <cell id="23" material="23" name="clad" region="(-127 | 128 | -129 | 130 | -131 | 132) (133 -134 135 -136 137 -138)" universe="8" />
+  <cell id="24" material="24" name="water" region="(-133 | 134 | -135 | 136 | -137 | 138) (139 -140 141 -142 143 -144)" universe="8" />
+  <surface coeffs="-5.0" id="127" name="minimum x" type="x-plane" />
+  <surface coeffs="5.0" id="128" name="maximum x" type="x-plane" />
+  <surface coeffs="-5.0" id="129" name="minimum y" type="y-plane" />
+  <surface coeffs="5.0" id="130" name="maximum y" type="y-plane" />
+  <surface coeffs="-5.0" id="131" name="minimum z" type="z-plane" />
+  <surface coeffs="5.0" id="132" name="maximum z" type="z-plane" />
+  <surface coeffs="-6.0" id="133" name="minimum x" type="x-plane" />
+  <surface coeffs="6.0" id="134" name="maximum x" type="x-plane" />
+  <surface coeffs="-6.0" id="135" name="minimum y" type="y-plane" />
+  <surface coeffs="6.0" id="136" name="maximum y" type="y-plane" />
+  <surface coeffs="-6.0" id="137" name="minimum z" type="z-plane" />
+  <surface coeffs="6.0" id="138" name="maximum z" type="z-plane" />
+  <surface boundary="vacuum" coeffs="-10" id="139" name="minimum x" type="x-plane" />
+  <surface boundary="vacuum" coeffs="10" id="140" name="maximum x" type="x-plane" />
+  <surface boundary="vacuum" coeffs="-10" id="141" name="minimum y" type="y-plane" />
+  <surface boundary="vacuum" coeffs="10" id="142" name="maximum y" type="y-plane" />
+  <surface boundary="vacuum" coeffs="-10" id="143" name="minimum z" type="z-plane" />
+  <surface boundary="vacuum" coeffs="10" id="144" name="maximum z" type="z-plane" />
+</geometry>
+<?xml version='1.0' encoding='utf-8'?>
+<materials>
+  <material depletable="true" id="22" name="fuel">
+    <density units="g/cc" value="4.5" />
+    <nuclide ao="1.0" name="U235" />
+  </material>
+  <material id="23" name="zircaloy">
+    <density units="g/cc" value="5.77" />
+    <nuclide ao="0.5145" name="Zr90" />
+    <nuclide ao="0.1122" name="Zr91" />
+    <nuclide ao="0.1715" name="Zr92" />
+    <nuclide ao="0.1738" name="Zr94" />
+    <nuclide ao="0.028" name="Zr96" />
+  </material>
+  <material id="24" name="water">
+    <density units="atom/b-cm" value="0.07416" />
+    <nuclide ao="2.0" name="H1" />
+    <nuclide ao="1.0" name="O16" />
+  </material>
+</materials>
+<?xml version='1.0' encoding='utf-8'?>
+<settings>
+  <run_mode>fixed source</run_mode>
+  <particles>100</particles>
+  <batches>10</batches>
+  <source strength="1.0">
+    <space origin="0.0 0.0 0.0" type="spherical">
+      <r parameters="0.0 0.0" type="uniform" />
+      <theta type="discrete">
+        <parameters>0.0 1.0</parameters>
+      </theta>
+      <phi type="discrete">
+        <parameters>0.0 1.0</parameters>
+      </phi>
+    </space>
+    <angle reference_uvw="-1.0 0.0 0.0" type="monodirectional" />
+    <energy type="discrete">
+      <parameters>15000000.0 1.0</parameters>
+    </energy>
+  </source>
+</settings>
+<?xml version='1.0' encoding='utf-8'?>
+<tallies>
+  <mesh id="15">
+    <dimension>10 10 10</dimension>
+    <lower_left>-10.0 -10.0 -10.0</lower_left>
+    <upper_right>10.0 10.0 10.0</upper_right>
+  </mesh>
+  <mesh id="16" type="unstructured">
+    <filename>test_mesh_tets.h5m</filename>
+  </mesh>
+  <filter id="15" type="mesh">
+    <bins>15</bins>
+  </filter>
+  <filter id="16" type="mesh">
+    <bins>16</bins>
+  </filter>
+  <tally id="15" name="regular mesh tally">
+    <filters>15</filters>
+    <scores>flux</scores>
+    <estimator>tracklength</estimator>
+  </tally>
+  <tally id="16" name="unstructured mesh tally">
+    <filters>16</filters>
+    <scores>flux</scores>
+    <estimator>tracklength</estimator>
+  </tally>
+</tallies>

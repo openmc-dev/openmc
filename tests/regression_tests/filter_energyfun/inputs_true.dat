@@ -1,0 +1,35 @@
+<?xml version='1.0' encoding='utf-8'?>
+<geometry>
+  <cell id="1" material="1" region="-1" universe="1" />
+  <surface boundary="vacuum" coeffs="0.0 0.0 0.0 100.0" id="1" type="sphere" />
+</geometry>
+<?xml version='1.0' encoding='utf-8'?>
+<materials>
+  <material depletable="true" id="1">
+    <density units="g/cm3" value="10.0" />
+    <nuclide ao="1.0" name="Am241" />
+  </material>
+</materials>
+<?xml version='1.0' encoding='utf-8'?>
+<settings>
+  <run_mode>eigenvalue</run_mode>
+  <particles>1000</particles>
+  <batches>5</batches>
+  <inactive>0</inactive>
+</settings>
+<?xml version='1.0' encoding='utf-8'?>
+<tallies>
+  <filter id="1" type="energyfunction">
+    <energy>1e-05 0.369 1000.0 100000.0 600000.0 1000000.0 2000000.0 4000000.0 30000000.0</energy>
+    <y>0.1 0.1 0.1333 0.158 0.18467 0.25618 0.4297 0.48 0.48</y>
+  </filter>
+  <tally id="1">
+    <nuclides>Am241</nuclides>
+    <scores>(n,gamma)</scores>
+  </tally>
+  <tally id="2">
+    <filters>1</filters>
+    <nuclides>Am241</nuclides>
+    <scores>(n,gamma)</scores>
+  </tally>
+</tallies>

@@ -1,252 +1,244 @@
-from collections import Iterable
-import copy
+from abc import ABCMeta
+from collections import OrderedDict
+from collections.abc import Iterable
+import hashlib
+from itertools import product
 from numbers import Real, Integral
-import sys
+from xml.etree import ElementTree as ET
 
 import numpy as np
+import pandas as pd
 
-from openmc import Mesh
-from openmc.summary import Summary
+import openmc
 import openmc.checkvalue as cv
+from .cell import Cell
+from .material import Material
+from .mixin import IDManagerMixin
+from .surface import Surface
+from .universe import Universe
 
 
-if sys.version_info[0] >= 3:
-    basestring = str
+_FILTER_TYPES = (
+    'universe', 'material', 'cell', 'cellborn', 'surface', 'mesh', 'energy',
+    'energyout', 'mu', 'polar', 'azimuthal', 'distribcell', 'delayedgroup',
+    'energyfunction', 'cellfrom', 'legendre', 'spatiallegendre',
+    'sphericalharmonics', 'zernike', 'zernikeradial', 'particle', 'cellinstance'
+)
+
+_CURRENT_NAMES = (
+    'x-min out', 'x-min in', 'x-max out', 'x-max in',
+    'y-min out', 'y-min in', 'y-max out', 'y-max in',
+    'z-min out', 'z-min in', 'z-max out', 'z-max in'
+)
+
+_PARTICLES = {'neutron', 'photon', 'electron', 'positron'}
 
 
-_FILTER_TYPES = ['universe', 'material', 'cell', 'cellborn', 'surface',
-                 'mesh', 'energy', 'energyout', 'mu', 'polar', 'azimuthal',
-                 'distribcell', 'delayedgroup']
+class FilterMeta(ABCMeta):
+    """Metaclass for filters that ensures class names are appropriate."""
 
-class Filter(object):
-    """A filter used to constrain a tally to a specific criterion, e.g. only
-    tally events when the particle is in a certain cell and energy range.
+    def __new__(cls, name, bases, namespace, **kwargs):
+        # Check the class name.
+        required_suffix = 'Filter'
+        if not name.endswith(required_suffix):
+            raise ValueError("All filter class names must end with 'Filter'")
+
+        # Create a 'short_name' attribute that removes the 'Filter' suffix.
+        namespace['short_name'] = name[:-len(required_suffix)]
+
+        # Subclass methods can sort of inherit the docstring of parent class
+        # methods.  If a function is defined without a docstring, most (all?)
+        # Python interpreters will search through the parent classes to see if
+        # there is a docstring for a function with the same name, and they will
+        # use that docstring.  However, Sphinx does not have that functionality.
+        # This chunk of code handles this docstring inheritance manually so that
+        # the autodocumentation will pick it up.
+        if name != required_suffix:
+            # Look for newly-defined functions that were also in Filter.
+            for func_name in namespace:
+                if func_name in Filter.__dict__:
+                    # Inherit the docstring from Filter if not defined.
+                    if isinstance(namespace[func_name],
+                                  (classmethod, staticmethod)):
+                        new_doc = namespace[func_name].__func__.__doc__
+                        old_doc = Filter.__dict__[func_name].__func__.__doc__
+                        if new_doc is None and old_doc is not None:
+                            namespace[func_name].__func__.__doc__ = old_doc
+                    else:
+                        new_doc = namespace[func_name].__doc__
+                        old_doc = Filter.__dict__[func_name].__doc__
+                        if new_doc is None and old_doc is not None:
+                            namespace[func_name].__doc__ = old_doc
+
+        # Make the class.
+        return super().__new__(cls, name, bases, namespace, **kwargs)
+
+
+def _repeat_and_tile(bins, repeat_factor, data_size):
+    filter_bins = np.repeat(bins, repeat_factor)
+    tile_factor = data_size // len(filter_bins)
+    return np.tile(filter_bins, tile_factor)
+
+
+class Filter(IDManagerMixin, metaclass=FilterMeta):
+    """Tally modifier that describes phase-space and other characteristics.
 
     Parameters
     ----------
-    type : str
-        The type of the tally filter. Acceptable values are "universe",
-        "material", "cell", "cellborn", "surface", "mesh", "energy",
-        "energyout", and "distribcell".
     bins : Integral or Iterable of Integral or Iterable of Real
         The bins for the filter. This takes on different meaning for different
-        filters. See the OpenMC online documentation for more details.
+        filters. See the docstrings for sublcasses of this filter or the online
+        documentation for more details.
+    filter_id : int
+        Unique identifier for the filter
 
     Attributes
     ----------
-    type : str
-        The type of the tally filter.
     bins : Integral or Iterable of Integral or Iterable of Real
         The bins for the filter
+    id : int
+        Unique identifier for the filter
     num_bins : Integral
         The number of filter bins
-    mesh : Mesh or None
-        A Mesh object for 'mesh' type filters.
-    offset : Integral
-        A value used to index tally bins for 'distribcell' tallies.
-    stride : Integral
-        The number of filter, nuclide and score bins within each of this
-        filter's bins.
 
     """
 
-    # Initialize Filter class attributes
-    def __init__(self, type=None, bins=None):
+    next_id = 1
+    used_ids = set()
 
-        self._type = None
-        self._num_bins = 0
-        self._bins = None
-        self._mesh = None
-        self._offset = -1
-        self._stride = None
-
-        if type is not None:
-            self.type = type
-        if bins is not None:
-            self.bins = bins
+    def __init__(self, bins, filter_id=None):
+        self.bins = bins
+        self.id = filter_id
 
     def __eq__(self, other):
-        if not isinstance(other, Filter):
-            return False
-        elif self.type != other.type:
+        if type(self) is not type(other):
             return False
         elif len(self.bins) != len(other.bins):
             return False
-        elif not np.allclose(self.bins, other.bins):
-            return False
         else:
-            return True
+            return np.allclose(self.bins, other.bins)
 
-    def __ne__(self, other):
-        return not self == other
+    def __gt__(self, other):
+        if type(self) is not type(other):
+            if self.short_name in _FILTER_TYPES and \
+                other.short_name in _FILTER_TYPES:
+                delta = _FILTER_TYPES.index(self.short_name) - \
+                        _FILTER_TYPES.index(other.short_name)
+                return delta > 0
+            else:
+                return False
+        else:
+            return max(self.bins) > max(other.bins)
+
+    def __lt__(self, other):
+        return not self > other
 
     def __hash__(self):
-        return hash((self.type, tuple(self.bins)))
-
-    def __deepcopy__(self, memo):
-        existing = memo.get(id(self))
-
-        # If this is the first time we have tried to copy this object, create a copy
-        if existing is None:
-            clone = type(self).__new__(type(self))
-            clone._type = self.type
-            clone._bins = copy.deepcopy(self.bins, memo)
-            clone._num_bins = self.num_bins
-            clone._mesh = copy.deepcopy(self.mesh, memo)
-            clone._offset = self.offset
-            clone._stride = self.stride
-
-            memo[id(self)] = clone
-
-            return clone
-
-        # If this object has been copied before, return the first copy made
-        else:
-            return existing
+        string = type(self).__name__ + '\n'
+        string += '{: <16}=\t{}\n'.format('\tBins', self.bins)
+        return hash(string)
 
     def __repr__(self):
-        string = 'Filter\n'
-        string += '{0: <16}{1}{2}\n'.format('\tType', '=\t', self.type)
-        string += '{0: <16}{1}{2}\n'.format('\tBins', '=\t', self.bins)
-        string += '{0: <16}{1}{2}\n'.format('\tOffset', '=\t', self.offset)
+        string = type(self).__name__ + '\n'
+        string += '{: <16}=\t{}\n'.format('\tBins', self.bins)
+        string += '{: <16}=\t{}\n'.format('\tID', self.id)
         return string
 
-    @property
-    def type(self):
-        return self._type
+    @classmethod
+    def _recursive_subclasses(cls):
+        """Return all subclasses and their subclasses, etc."""
+        all_subclasses = []
+
+        for subclass in cls.__subclasses__():
+            all_subclasses.append(subclass)
+            all_subclasses.extend(subclass._recursive_subclasses())
+
+        return all_subclasses
+
+    @classmethod
+    def from_hdf5(cls, group, **kwargs):
+        """Construct a new Filter instance from HDF5 data.
+
+        Parameters
+        ----------
+        group : h5py.Group
+            HDF5 group to read from
+
+        Keyword arguments
+        -----------------
+        meshes : dict
+            Dictionary mapping integer IDs to openmc.MeshBase objects.  Only
+            used for openmc.MeshFilter objects.
+
+        """
+
+        filter_id = int(group.name.split('/')[-1].lstrip('filter '))
+
+        # If the HDF5 'type' variable matches this class's short_name, then
+        # there is no overriden from_hdf5 method.  Pass the bins to __init__.
+        if group['type'][()].decode() == cls.short_name.lower():
+            out = cls(group['bins'][()], filter_id=filter_id)
+            out._num_bins = group['n_bins'][()]
+            return out
+
+        # Search through all subclasses and find the one matching the HDF5
+        # 'type'.  Call that class's from_hdf5 method.
+        for subclass in cls._recursive_subclasses():
+            if group['type'][()].decode() == subclass.short_name.lower():
+                return subclass.from_hdf5(group, **kwargs)
+
+        raise ValueError("Unrecognized Filter class: '"
+                         + group['type'][()].decode() + "'")
 
     @property
     def bins(self):
         return self._bins
 
-    @property
-    def num_bins(self):
-        if self.bins is None:
-            return 0
-        elif self.type in ['energy', 'energyout']:
-            return len(self.bins) - 1
-        elif self.type in ['cell', 'cellborn', 'surface', 'universe', 'material']:
-            return len(self.bins)
-        else:
-            return self._num_bins
-
-    @property
-    def mesh(self):
-        return self._mesh
-
-    @property
-    def offset(self):
-        return self._offset
-
-    @property
-    def stride(self):
-        return self._stride
-
-    @type.setter
-    def type(self, type):
-        if type is None:
-            self._type = type
-        elif type not in _FILTER_TYPES:
-            msg = 'Unable to set Filter type to "{0}" since it is not one ' \
-                  'of the supported types'.format(type)
-            raise ValueError(msg)
-
-        self._type = type
-
     @bins.setter
     def bins(self, bins):
-        if self.type is None:
-            msg = 'Unable to set bins for Filter to "{0}" since ' \
-                  'the Filter type has not yet been set'.format(bins)
-            raise ValueError(msg)
+        self.check_bins(bins)
+        self._bins = bins
 
-        # If the bin edge is a single value, it is a Cell, Material, etc. ID
-        if not isinstance(bins, Iterable):
-            bins = [bins]
+    @property
+    def num_bins(self):
+        return len(self.bins)
 
-        # If the bins are in a collection, convert it to a list
-        else:
-            bins = list(bins)
+    def check_bins(self, bins):
+        """Make sure given bins are valid for this filter.
 
-        if self.type in ['cell', 'cellborn', 'surface', 'material',
-                         'universe', 'distribcell', 'delayedgroup']:
-            cv.check_iterable_type('filter bins', bins, Integral)
-            for edge in bins:
-                cv.check_greater_than('filter bin', edge, 0, equality=True)
+        Raises
+        ------
+        TypeError
+        ValueError
 
-        elif self.type in ['energy', 'energyout']:
-            for edge in bins:
-                if not cv._isinstance(edge, Real):
-                    msg = 'Unable to add bin edge "{0}" to a "{1}" Filter ' \
-                          'since it is a non-integer or floating point ' \
-                          'value'.format(edge, self.type)
-                    raise ValueError(msg)
-                elif edge < 0.:
-                    msg = 'Unable to add bin edge "{0}" to a "{1}" Filter ' \
-                          'since it is a negative value'.format(edge, self.type)
-                    raise ValueError(msg)
+        """
 
-            # Check that bin edges are monotonically increasing
-            for index in range(len(bins)):
-                if index > 0 and bins[index] < bins[index-1]:
-                    msg = 'Unable to add bin edges "{0}" to a "{1}" Filter ' \
-                          'since they are not monotonically ' \
-                          'increasing'.format(bins, self.type)
-                    raise ValueError(msg)
+        pass
 
-        # mesh filters
-        elif self.type == 'mesh':
-            if not len(bins) == 1:
-                msg = 'Unable to add bins "{0}" to a mesh Filter since ' \
-                      'only a single mesh can be used per tally'.format(bins)
-                raise ValueError(msg)
-            elif not cv._isinstance(bins[0], Integral):
-                msg = 'Unable to add bin "{0}" to mesh Filter since it ' \
-                       'is a non-integer'.format(bins[0])
-                raise ValueError(msg)
-            elif bins[0] < 0:
-                msg = 'Unable to add bin "{0}" to mesh Filter since it ' \
-                       'is a negative integer'.format(bins[0])
-                raise ValueError(msg)
+    def to_xml_element(self):
+        """Return XML Element representing the Filter.
 
-        # If all error checks passed, add bin edges
-        self._bins = np.array(bins)
+        Returns
+        -------
+        element : xml.etree.ElementTree.Element
+            XML element containing filter data
 
-    @num_bins.setter
-    def num_bins(self, num_bins):
-        cv.check_type('filter num_bins', num_bins, Integral)
-        cv.check_greater_than('filter num_bins', num_bins, 0, equality=True)
-        self._num_bins = num_bins
+        """
+        element = ET.Element('filter')
+        element.set('id', str(self.id))
+        element.set('type', self.short_name.lower())
 
-    @mesh.setter
-    def mesh(self, mesh):
-        cv.check_type('filter mesh', mesh, Mesh)
+        subelement = ET.SubElement(element, 'bins')
+        subelement.text = ' '.join(str(b) for b in self.bins)
 
-        self._mesh = mesh
-        self.type = 'mesh'
-        self.bins = self.mesh.id
+        return element
 
-    @offset.setter
-    def offset(self, offset):
-        cv.check_type('filter offset', offset, Integral)
-        self._offset = offset
-
-    @stride.setter
-    def stride(self, stride):
-        cv.check_type('filter stride', stride, Integral)
-        if stride < 0:
-            msg = 'Unable to set stride "{0}" for a "{1}" Filter since it ' \
-                  'is a negative value'.format(stride, self.type)
-            raise ValueError(msg)
-
-        self._stride = stride
-
-    def can_merge(self, filter):
+    def can_merge(self, other):
         """Determine if filter can be merged with another.
 
         Parameters
         ----------
-        filter : Filter
+        other : openmc.Filter
             Filter to compare with
 
         Returns
@@ -255,58 +247,34 @@ class Filter(object):
             Whether the filter can be merged
 
         """
+        return type(self) is type(other)
 
-        if not isinstance(filter, Filter):
-            return False
-
-        # Filters must be of the same type
-        elif self.type != filter.type:
-            return False
-
-        # Distribcell filters cannot have more than one bin
-        elif self.type == 'distribcell':
-            return False
-
-        # Mesh filters cannot have more than one bin
-        elif self.type == 'mesh':
-            return False
-
-        # Different energy bins are not mergeable
-        elif 'energy' in self.type:
-            return False
-
-        else:
-            return True
-
-    def merge(self, filter):
+    def merge(self, other):
         """Merge this filter with another.
 
         Parameters
         ----------
-        filter : Filter
+        other : openmc.Filter
             Filter to merge with
 
         Returns
         -------
-        merged_filter : Filter
+        merged_filter : openmc.Filter
             Filter resulting from the merge
 
         """
 
-        if not self.can_merge(filter):
-            msg = 'Unable to merge "{0}" with "{1}" ' \
-                  'filters'.format(self.type, filter.type)
+        if not self.can_merge(other):
+            msg = 'Unable to merge "{0}" with "{1}" '.format(
+                type(self), type(other))
             raise ValueError(msg)
 
-        # Create deep copy of filter to return as merged filter
-        merged_filter = copy.deepcopy(self)
-
         # Merge unique filter bins
-        merged_bins = list(set(np.concatenate((self.bins, filter.bins))))
-        merged_filter.bins = merged_bins
-        merged_filter.num_bins = len(merged_bins)
+        merged_bins = np.concatenate((self.bins, other.bins))
+        merged_bins = np.unique(merged_bins, axis=0)
 
-        return merged_filter
+        # Create a new filter with these bins and a new auto-generated ID
+        return type(self)(merged_bins)
 
     def is_subset(self, other):
         """Determine if another filter is a subset of this filter.
@@ -316,7 +284,7 @@ class Filter(object):
 
         Parameters
         ----------
-        other : Filter
+        other : openmc.Filter
             The filter to query as a subset of this filter
 
         Returns
@@ -326,18 +294,11 @@ class Filter(object):
 
         """
 
-        if not isinstance(other, Filter):
+        if type(self) is not type(other):
             return False
-        elif self.type != other.type:
-            return False
-        elif self.type in ['energy', 'energyout']:
-            if len(self.bins) != len(other.bins):
-                return False
-            else:
-                return np.allclose(self.bins, other.bins)
 
-        for bin in other.bins:
-            if bin not in self.bins:
+        for b in other.bins:
+            if b not in self.bins:
                 return False
 
         return True
@@ -347,156 +308,54 @@ class Filter(object):
 
         Parameters
         ----------
-        filter_bin : Integral or tuple
+        filter_bin : int or tuple
             The bin is the integer ID for 'material', 'surface', 'cell',
             'cellborn', and 'universe' Filters. The bin is an integer for the
             cell instance ID for 'distribcell' Filters. The bin is a 2-tuple of
             floats for 'energy' and 'energyout' filters corresponding to the
             energy boundaries of the bin of interest. The bin is an (x,y,z)
-            3-tuple for 'mesh' filters corresponding to the mesh cell
+            3-tuple for 'mesh' filters corresponding to the mesh cell of
             interest.
 
         Returns
         -------
-        filter_index : Integral
+        filter_index : int
              The index in the Tally data array for this filter bin.
-
-        See also
-        --------
-        Filter.get_bin()
 
         """
 
-        try:
-            # Filter bins for a mesh are an (x,y,z) tuple
-            if self.type == 'mesh':
-                # Convert (x,y,z) to a single bin -- this is similar to
-                # subroutine mesh_indices_to_bin in openmc/src/mesh.F90.
-                if (len(self.mesh.dimension) == 3):
-                    nx, ny, nz = self.mesh.dimension
-                    val = (filter_bin[0] - 1) * ny * nz + \
-                          (filter_bin[1] - 1) * nz + \
-                          (filter_bin[2] - 1)
-                else:
-                    nx, ny = self.mesh.dimension
-                    val = (filter_bin[0] - 1) * ny + \
-                          (filter_bin[1] - 1)
-
-                filter_index = val
-
-            # Use lower energy bound to find index for energy Filters
-            elif self.type in ['energy', 'energyout']:
-                deltas = np.abs(self.bins - filter_bin[1]) / filter_bin[1]
-                min_delta = np.min(deltas)
-                if min_delta < 1E-3:
-                    filter_index = deltas.argmin() - 1
-                else:
-                    raise ValueError
-
-            # Filter bins for distribcells are "IDs" of each unique placement
-            # of the Cell in the Geometry (integers starting at 0)
-            elif self.type == 'distribcell':
-                filter_index = filter_bin
-
-            # Use ID for all other Filters (e.g., material, cell, etc.)
-            else:
-                val = np.where(self.bins == filter_bin)[0][0]
-                filter_index = val
-
-        except ValueError:
+        if filter_bin not in self.bins:
             msg = 'Unable to get the bin index for Filter since "{0}" ' \
                   'is not one of the bins'.format(filter_bin)
             raise ValueError(msg)
 
-        return filter_index
-
-    def get_bin(self, bin_index):
-        """Returns the filter bin for some filter bin index.
-
-        Parameters
-        ----------
-        bin_index : Integral
-            The zero-based index into the filter's array of bins. The bin
-            index for 'material', 'surface', 'cell', 'cellborn', and 'universe'
-            filters corresponds to the ID in the filter's list of bins. For
-            'distribcell' tallies the bin index necessarily can only be zero
-            since only one cell can be tracked per tally. The bin index for
-            'energy' and 'energyout' filters corresponds to the energy range of
-            interest in the filter bins of energies. The bin index for 'mesh'
-            filters is the index into the flattened array of (x,y) or (x,y,z)
-            mesh cell bins.
-
-        Returns
-        -------
-        bin : 1-, 2-, or 3-tuple of Real
-            The bin in the Tally data array. The bin for 'material', surface',
-            'cell', 'cellborn', 'universe' and 'distribcell' filters is a
-            1-tuple of the ID corresponding to the appropriate filter bin.
-            The bin for 'energy' and 'energyout' filters is a 2-tuple of the
-            lower and upper energies bounding the energy interval for the filter
-            bin. The bin for 'mesh' tallies is a 2-tuple or 3-tuple of the x,y
-            or x,y,z mesh cell indices corresponding to the bin in a 2D/3D mesh.
-
-        See also
-        --------
-        Filter.get_bin_index()
-
-        """
-
-        cv.check_type('bin_index', bin_index, Integral)
-        cv.check_greater_than('bin_index', bin_index, 0, equality=True)
-        cv.check_less_than('bin_index', bin_index, self.num_bins)
-
-        if self.type == 'mesh':
-
-            # Construct 3-tuple of x,y,z cell indices for a 3D mesh
-            if len(self.mesh.dimension) == 3:
-                nx, ny, nz = self.mesh.dimension
-                x = bin_index / (ny * nz)
-                y = (bin_index - (x * ny * nz)) / nz
-                z = bin_index - (x * ny * nz) - (y * nz)
-                filter_bin = (x, y, z)
-
-            # Construct 2-tuple of x,y cell indices for a 2D mesh
-            else:
-                nx, ny = self.mesh.dimension
-                x = bin_index / ny
-                y = bin_index - (x * ny)
-                filter_bin = (x, y)
-
-        # Construct 2-tuple of lower, upper energies for energy(out) filters
-        elif self.type in ['energy', 'energyout']:
-            filter_bin = (self.bins[bin_index], self.bins[bin_index+1])
-        # Construct 1-tuple of with the cell ID for distribcell filters
-        elif self.type == 'distribcell':
-            filter_bin = (self.bins[0],)
-        # Construct 1-tuple with domain ID (e.g., material) for other filters
+        if isinstance(self.bins, np.ndarray):
+            return np.where(self.bins == filter_bin)[0][0]
         else:
-            filter_bin = (self.bins[bin_index],)
+            return self.bins.index(filter_bin)
 
-        return filter_bin
-
-    def get_pandas_dataframe(self, data_size, summary=None):
+    def get_pandas_dataframe(self, data_size, stride, **kwargs):
         """Builds a Pandas DataFrame for the Filter's bins.
 
         This method constructs a Pandas DataFrame object for the filter with
-        columns annotated by filter bin information. This is a helper method
-        for the Tally.get_pandas_dataframe(...) method.
-
-        This capability has been tested for Pandas >=0.13.1. However, it is
-        recommended to use v0.16 or newer versions of Pandas since this method
-        uses Pandas' Multi-index functionality.
+        columns annotated by filter bin information. This is a helper method for
+        :meth:`Tally.get_pandas_dataframe`.
 
         Parameters
         ----------
-        data_size : Integral
+        data_size : int
             The total number of bins in the tally corresponding to this filter
-        summary : None or Summary
-            An optional Summary object to be used to construct columns for
-            distribcell tally filters (default is None). The geometric
-            information in the Summary object is embedded into a Multi-index
-            column with a geometric "path" to each distribcell instance.
-            NOTE: This option requires the OpenCG Python package.
+        stride : int
+            Stride in memory for the filter
+
+        Keyword arguments
+        -----------------
+        paths : bool
+            Only used for DistribcellFilter.  If True (default), expand
+            distribcell indices into multi-index columns describing the path
+            to that distribcell through the CSG tree.  NOTE: This option assumes
+            that all distribcell paths are of the same length and do not have
+            the same universes and cells but different lattice cell indices.
 
         Returns
         -------
@@ -506,147 +365,1073 @@ class Filter(object):
             the total number of bins in the corresponding tally, with the filter
             bin appropriately tiled to map to the corresponding tally bins.
 
-            For 'cell', 'cellborn', 'surface', 'material', and 'universe'
-            filters, the DataFrame includes a single column with the cell,
-            surface, material or universe ID corresponding to each filter bin.
+        See also
+        --------
+        Tally.get_pandas_dataframe(), CrossFilter.get_pandas_dataframe()
 
-            For 'distribcell' filters, the DataFrame either includes:
+        """
+        # Initialize Pandas DataFrame
+        df = pd.DataFrame()
 
-            1. a single column with the cell instance IDs (without summary info)
-            2. separate columns for the cell IDs, universe IDs, and lattice IDs
-               and x,y,z cell indices corresponding to each (with summary info).
+        filter_bins = np.repeat(self.bins, stride)
+        tile_factor = data_size // len(filter_bins)
+        filter_bins = np.tile(filter_bins, tile_factor)
+        df = pd.concat([df, pd.DataFrame(
+            {self.short_name.lower(): filter_bins})])
 
-            For 'energy' and 'energyout' filters, the DataFrame include a single
-            column with each element comprising a string with the lower, upper
-            energy bounds for each filter bin.
+        return df
 
-            For 'mesh' filters, the DataFrame includes three columns for the
-            x,y,z mesh cell indices corresponding to each filter bin.
 
-        Raises
-        ------
-        ImportError
-            When Pandas is not installed, or summary info is requested but
-            OpenCG is not installed.
+class WithIDFilter(Filter):
+    """Abstract parent for filters of types with IDs (Cell, Material, etc.)."""
+    def __init__(self, bins, filter_id=None):
+        bins = np.atleast_1d(bins)
+
+        # Make sure bins are either integers or appropriate objects
+        cv.check_iterable_type('filter bins', bins,
+                               (Integral, self.expected_type))
+
+        # Extract ID values
+        bins = np.array([b if isinstance(b, Integral) else b.id
+                         for b in bins])
+        super().__init__(bins, filter_id)
+
+    def check_bins(self, bins):
+        # Check the bin values.
+        for edge in bins:
+            cv.check_greater_than('filter bin', edge, 0, equality=True)
+
+
+class UniverseFilter(WithIDFilter):
+    """Bins tally event locations based on the Universe they occured in.
+
+    Parameters
+    ----------
+    bins : openmc.Universe, int, or iterable thereof
+        The Universes to tally. Either openmc.Universe objects or their
+        Integral ID numbers can be used.
+    filter_id : int
+        Unique identifier for the filter
+
+    Attributes
+    ----------
+    bins : Iterable of Integral
+        openmc.Universe IDs.
+    id : int
+        Unique identifier for the filter
+    num_bins : Integral
+        The number of filter bins
+
+    """
+    expected_type = Universe
+
+
+class MaterialFilter(WithIDFilter):
+    """Bins tally event locations based on the Material they occured in.
+
+    Parameters
+    ----------
+    bins : openmc.Material, Integral, or iterable thereof
+        The Materials to tally. Either openmc.Material objects or their
+        Integral ID numbers can be used.
+    filter_id : int
+        Unique identifier for the filter
+
+    Attributes
+    ----------
+    bins : Iterable of Integral
+        openmc.Material IDs.
+    id : int
+        Unique identifier for the filter
+    num_bins : Integral
+        The number of filter bins
+
+    """
+    expected_type = Material
+
+
+class CellFilter(WithIDFilter):
+    """Bins tally event locations based on the Cell they occured in.
+
+    Parameters
+    ----------
+    bins : openmc.Cell, int, or iterable thereof
+        The cells to tally. Either openmc.Cell objects or their ID numbers can
+        be used.
+    filter_id : int
+        Unique identifier for the filter
+
+    Attributes
+    ----------
+    bins : Iterable of Integral
+        openmc.Cell IDs.
+    id : int
+        Unique identifier for the filter
+    num_bins : Integral
+        The number of filter bins
+
+    """
+    expected_type = Cell
+
+
+class CellFromFilter(WithIDFilter):
+    """Bins tally on which Cell the neutron came from.
+
+    Parameters
+    ----------
+    bins : openmc.Cell, Integral, or iterable thereof
+        The Cell(s) to tally. Either openmc.Cell objects or their
+        Integral ID numbers can be used.
+    filter_id : int
+        Unique identifier for the filter
+
+    Attributes
+    ----------
+    bins : Integral or Iterable of Integral
+        openmc.Cell IDs.
+    id : int
+        Unique identifier for the filter
+    num_bins : Integral
+        The number of filter bins
+
+    """
+    expected_type = Cell
+
+
+class CellbornFilter(WithIDFilter):
+    """Bins tally events based on which Cell the neutron was born in.
+
+    Parameters
+    ----------
+    bins : openmc.Cell, Integral, or iterable thereof
+        The birth Cells to tally. Either openmc.Cell objects or their
+        Integral ID numbers can be used.
+    filter_id : int
+        Unique identifier for the filter
+
+    Attributes
+    ----------
+    bins : Iterable of Integral
+        openmc.Cell IDs.
+    id : int
+        Unique identifier for the filter
+    num_bins : Integral
+        The number of filter bins
+
+    """
+    expected_type = Cell
+
+
+class CellInstanceFilter(Filter):
+    """Bins tally events based on which cell instance a particle is in.
+
+    This filter is similar to :class:`DistribcellFilter` but allows one to
+    select particular instances to be tallied (instead of obtaining *all*
+    instances by default) and allows instances from different cells to be
+    specified in a single filter.
+
+    .. versionadded:: 0.12
+
+    Parameters
+    ----------
+    bins : iterable of 2-tuples or numpy.ndarray
+        The cell instances to tally, given as 2-tuples. For the first value in
+        the tuple, either openmc.Cell objects or their integral ID numbers can
+        be used.
+    filter_id : int
+        Unique identifier for the filter
+
+    Attributes
+    ----------
+    bins : numpy.ndarray
+        2D numpy array of cell IDs and instances
+    id : int
+        Unique identifier for the filter
+    num_bins : Integral
+        The number of filter bins
+
+    See Also
+    --------
+    DistribcellFilter
+
+    """
+    def __init__(self, bins, filter_id=None):
+        self.bins = bins
+        self.id = filter_id
+
+    @Filter.bins.setter
+    def bins(self, bins):
+        pairs = np.empty((len(bins), 2), dtype=int)
+        for i, (cell, instance) in enumerate(bins):
+            cv.check_type('cell', cell, (openmc.Cell, Integral))
+            cv.check_type('instance', instance, Integral)
+            pairs[i, 0] = cell if isinstance(cell, Integral) else cell.id
+            pairs[i, 1] = instance
+        self._bins = pairs
+
+    def get_pandas_dataframe(self, data_size, stride, **kwargs):
+        """Builds a Pandas DataFrame for the Filter's bins.
+
+        This method constructs a Pandas DataFrame object for the filter with
+        columns annotated by filter bin information. This is a helper method for
+        :meth:`Tally.get_pandas_dataframe`.
+
+        Parameters
+        ----------
+        data_size : int
+            The total number of bins in the tally corresponding to this filter
+        stride : int
+            Stride in memory for the filter
+
+        Returns
+        -------
+        pandas.DataFrame
+            A Pandas DataFrame with a multi-index column for the cell instance.
+            The number of rows in the DataFrame is the same as the total number
+            of bins in the corresponding tally, with the filter bin appropriately
+            tiled to map to the corresponding tally bins.
 
         See also
         --------
         Tally.get_pandas_dataframe(), CrossFilter.get_pandas_dataframe()
 
         """
+        # Repeat and tile bins as necessary to account for other filters.
+        bins = np.repeat(self.bins, stride, axis=0)
+        tile_factor = data_size // len(bins)
+        bins = np.tile(bins, (tile_factor, 1))
 
-        # Attempt to import Pandas
-        try:
-            import pandas as pd
-        except ImportError:
-            msg = 'The Pandas Python package must be installed on your system'
-            raise ImportError(msg)
+        columns = pd.MultiIndex.from_product([[self.short_name.lower()],
+                                              ['cell', 'instance']])
+        return pd.DataFrame(bins, columns=columns)
 
+    def to_xml_element(self):
+        """Return XML Element representing the Filter.
+
+        Returns
+        -------
+        element : xml.etree.ElementTree.Element
+            XML element containing filter data
+
+        """
+        element = ET.Element('filter')
+        element.set('id', str(self.id))
+        element.set('type', self.short_name.lower())
+
+        subelement = ET.SubElement(element, 'bins')
+        subelement.text = ' '.join(str(i) for i in self.bins.ravel())
+        return element
+
+
+class SurfaceFilter(WithIDFilter):
+    """Filters particles by surface crossing
+
+    Parameters
+    ----------
+    bins : openmc.Surface, int, or iterable of Integral
+        The surfaces to tally over. Either openmc.Surface objects or their ID
+        numbers can be used.
+    filter_id : int
+        Unique identifier for the filter
+
+    Attributes
+    ----------
+    bins : Iterable of Integral
+        The surfaces to tally over. Either openmc.Surface objects or their ID
+        numbers can be used.
+    id : int
+        Unique identifier for the filter
+    num_bins : Integral
+        The number of filter bins
+
+    """
+    expected_type = Surface
+
+
+class ParticleFilter(Filter):
+    """Bins tally events based on the Particle type.
+
+    Parameters
+    ----------
+    bins : str, or iterable of str
+        The particles to tally represented as strings ('neutron', 'photon',
+        'electron', 'positron').
+    filter_id : int
+        Unique identifier for the filter
+
+    Attributes
+    ----------
+    bins : Iterable of Integral
+        The Particles to tally
+    id : int
+        Unique identifier for the filter
+    num_bins : Integral
+        The number of filter bins
+
+    """
+    def __eq__(self, other):
+        if type(self) is not type(other):
+            return False
+        elif len(self.bins) != len(other.bins):
+            return False
+        else:
+            return np.all(self.bins == other.bins)
+
+    __hash__ = Filter.__hash__
+
+    @Filter.bins.setter
+    def bins(self, bins):
+        bins = np.atleast_1d(bins)
+        cv.check_iterable_type('filter bins', bins, str)
+        for edge in bins:
+            cv.check_value('filter bin', edge, _PARTICLES)
+        self._bins = bins
+
+    @classmethod
+    def from_hdf5(cls, group, **kwargs):
+        if group['type'][()].decode() != cls.short_name.lower():
+            raise ValueError("Expected HDF5 data for filter type '"
+                             + cls.short_name.lower() + "' but got '"
+                             + group['type'][()].decode() + " instead")
+
+        particles = [b.decode() for b in group['bins'][()]]
+        filter_id = int(group.name.split('/')[-1].lstrip('filter '))
+        return cls(particles, filter_id=filter_id)
+
+
+class MeshFilter(Filter):
+    """Bins tally event locations onto a regular, rectangular mesh.
+
+    Parameters
+    ----------
+    mesh : openmc.MeshBase
+        The mesh object that events will be tallied onto
+    filter_id : int
+        Unique identifier for the filter
+
+    Attributes
+    ----------
+    mesh : openmc.MeshBase
+        The mesh object that events will be tallied onto
+    id : int
+        Unique identifier for the filter
+    bins : list of tuple
+        A list of mesh indices for each filter bin, e.g. [(1, 1, 1), (2, 1, 1),
+        ...]
+    num_bins : Integral
+        The number of filter bins
+
+    """
+
+    def __init__(self, mesh, filter_id=None):
+        self.mesh = mesh
+        self.id = filter_id
+
+    def __hash__(self):
+        string = type(self).__name__ + '\n'
+        string += '{: <16}=\t{}\n'.format('\tMesh ID', self.mesh.id)
+        return hash(string)
+
+    def __repr__(self):
+        string = type(self).__name__ + '\n'
+        string += '{: <16}=\t{}\n'.format('\tMesh ID', self.mesh.id)
+        string += '{: <16}=\t{}\n'.format('\tID', self.id)
+        return string
+
+    @classmethod
+    def from_hdf5(cls, group, **kwargs):
+        if group['type'][()].decode() != cls.short_name.lower():
+            raise ValueError("Expected HDF5 data for filter type '"
+                             + cls.short_name.lower() + "' but got '"
+                             + group['type'][()].decode() + " instead")
+
+        if 'meshes' not in kwargs:
+            raise ValueError(cls.__name__ + " requires a 'meshes' keyword "
+                             "argument.")
+
+        mesh_id = group['bins'][()]
+        mesh_obj = kwargs['meshes'][mesh_id]
+        filter_id = int(group.name.split('/')[-1].lstrip('filter '))
+
+        out = cls(mesh_obj, filter_id=filter_id)
+
+        return out
+
+    @property
+    def mesh(self):
+        return self._mesh
+
+    @mesh.setter
+    def mesh(self, mesh):
+        cv.check_type('filter mesh', mesh, openmc.MeshBase)
+        self._mesh = mesh
+        if isinstance(mesh, openmc.UnstructuredMesh):
+            if mesh.volumes is None:
+                self.bins = []
+            else:
+                self.bins = list(range(len(mesh.volumes)))
+        else:
+            self.bins = list(mesh.indices)
+
+    def can_merge(self, other):
+        # Mesh filters cannot have more than one bin
+        return False
+
+    def get_pandas_dataframe(self, data_size, stride, **kwargs):
+        """Builds a Pandas DataFrame for the Filter's bins.
+
+        This method constructs a Pandas DataFrame object for the filter with
+        columns annotated by filter bin information. This is a helper method for
+        :meth:`Tally.get_pandas_dataframe`.
+
+        Parameters
+        ----------
+        data_size : int
+            The total number of bins in the tally corresponding to this filter
+        stride : int
+            Stride in memory for the filter
+
+        Returns
+        -------
+        pandas.DataFrame
+            A Pandas DataFrame with three columns describing the x,y,z mesh
+            cell indices corresponding to each filter bin.  The number of rows
+            in the DataFrame is the same as the total number of bins in the
+            corresponding tally, with the filter bin appropriately tiled to map
+            to the corresponding tally bins.
+
+        See also
+        --------
+        Tally.get_pandas_dataframe(), CrossFilter.get_pandas_dataframe()
+
+        """
         # Initialize Pandas DataFrame
         df = pd.DataFrame()
 
-        # mesh filters
-        if self.type == 'mesh':
+        # Initialize dictionary to build Pandas Multi-index column
+        filter_dict = {}
 
-            # Initialize dictionary to build Pandas Multi-index column
-            filter_dict = {}
+        # Append mesh ID as outermost index of multi-index
+        mesh_key = 'mesh {}'.format(self.mesh.id)
 
-            # Append Mesh ID as outermost index of mult-index
-            mesh_key = 'mesh {0}'.format(self.mesh.id)
+        # Find mesh dimensions - use 3D indices for simplicity
+        n_dim = len(self.mesh.dimension)
+        if n_dim == 3:
+            nx, ny, nz = self.mesh.dimension
+        elif n_dim == 2:
+            nx, ny = self.mesh.dimension
+            nz = 1
+        else:
+            nx = self.mesh.dimension
+            ny = nz = 1
 
-            # Find mesh dimensions - use 3D indices for simplicity
-            if (len(self.mesh.dimension) == 3):
-                nx, ny, nz = self.mesh.dimension
-            else:
-                nx, ny = self.mesh.dimension
-                nz = 1
+        # Generate multi-index sub-column for x-axis
+        filter_dict[mesh_key, 'x'] = _repeat_and_tile(
+            np.arange(1, nx + 1), stride, data_size)
 
-            # Generate multi-index sub-column for x-axis
-            filter_bins = np.arange(1, nx+1)
-            repeat_factor = ny * nz * self.stride
-            filter_bins = np.repeat(filter_bins, repeat_factor)
-            tile_factor = data_size / len(filter_bins)
-            filter_bins = np.tile(filter_bins, tile_factor)
-            filter_dict[(mesh_key, 'x')] = filter_bins
+        # Generate multi-index sub-column for y-axis
+        filter_dict[mesh_key, 'y'] = _repeat_and_tile(
+            np.arange(1, ny + 1), nx * stride, data_size)
 
-            # Generate multi-index sub-column for y-axis
-            filter_bins = np.arange(1, ny+1)
-            repeat_factor = nz * self.stride
-            filter_bins = np.repeat(filter_bins, repeat_factor)
-            tile_factor = data_size / len(filter_bins)
-            filter_bins = np.tile(filter_bins, tile_factor)
-            filter_dict[(mesh_key, 'y')] = filter_bins
+        # Generate multi-index sub-column for z-axis
+        filter_dict[mesh_key, 'z'] = _repeat_and_tile(
+            np.arange(1, nz + 1), nx * ny * stride, data_size)
 
-            # Generate multi-index sub-column for z-axis
-            filter_bins = np.arange(1, nz+1)
-            repeat_factor = self.stride
-            filter_bins = np.repeat(filter_bins, repeat_factor)
-            tile_factor = data_size / len(filter_bins)
-            filter_bins = np.tile(filter_bins, tile_factor)
-            filter_dict[(mesh_key, 'z')] = filter_bins
+        # Initialize a Pandas DataFrame from the mesh dictionary
+        df = pd.concat([df, pd.DataFrame(filter_dict)])
 
-            # Initialize a Pandas DataFrame from the mesh dictionary
-            df = pd.concat([df, pd.DataFrame(filter_dict)])
+        return df
 
-        # distribcell filters
-        elif self.type == 'distribcell':
-            level_df = None
+    def to_xml_element(self):
+        """Return XML Element representing the Filter.
 
-            if isinstance(summary, Summary):
-                # Attempt to import the OpenCG package
-                try:
-                    import opencg
-                except ImportError:
-                    msg = 'The OpenCG package must be installed ' \
-                          'to use a Summary for distribcell dataframes'
-                    raise ImportError(msg)
+        Returns
+        -------
+        element : xml.etree.ElementTree.Element
+            XML element containing filter data
 
-                # Extract the OpenCG geometry from the Summary
-                opencg_geometry = summary.opencg_geometry
-                openmc_geometry = summary.openmc_geometry
+        """
+        element = super().to_xml_element()
+        element[0].text = str(self.mesh.id)
+        return element
 
-                # Use OpenCG to compute the number of regions
-                opencg_geometry.initialize_cell_offsets()
-                num_regions = opencg_geometry.num_regions
 
-                # Initialize a dictionary mapping OpenMC distribcell
-                # offsets to OpenCG LocalCoords linked lists
-                offsets_to_coords = {}
+class MeshSurfaceFilter(MeshFilter):
+    """Filter events by surface crossings on a regular, rectangular mesh.
 
-                # Use OpenCG to compute LocalCoords linked list for
-                # each region and store in dictionary
-                for region in range(num_regions):
-                    coords = opencg_geometry.find_region(region)
-                    path = opencg.get_path(coords)
-                    cell_id = path[-1]
+    Parameters
+    ----------
+    mesh : openmc.MeshBase
+        The mesh object that events will be tallied onto
+    filter_id : int
+        Unique identifier for the filter
 
-                    # If this region is in Cell corresponding to the
-                    # distribcell filter bin, store it in dictionary
-                    if cell_id == self.bins[0]:
-                        offset = openmc_geometry.get_offset(path, self.offset)
-                        offsets_to_coords[offset] = coords
+    Attributes
+    ----------
+    bins : Integral
+        The mesh ID
+    mesh : openmc.MeshBase
+        The mesh object that events will be tallied onto
+    id : int
+        Unique identifier for the filter
+    bins : list of tuple
 
-                # Each distribcell offset is a DataFrame bin
-                # Unravel the paths into DataFrame columns
-                num_offsets = len(offsets_to_coords)
+        A list of mesh indices / surfaces for each filter bin, e.g. [(1, 1,
+        'x-min out'), (1, 1, 'x-min in'), ...]
 
-                # Initialize termination condition for while loop
-                levels_remain = True
-                counter = 0
+    num_bins : Integral
+        The number of filter bins
 
-                # Iterate over each level in the CSG tree hierarchy
-                while levels_remain:
-                    levels_remain = False
+    """
 
-                    # Initialize dictionary to build Pandas Multi-index
-                    # column for this level in the CSG tree hierarchy
-                    level_dict = {}
+    @MeshFilter.mesh.setter
+    def mesh(self, mesh):
+        cv.check_type('filter mesh', mesh, openmc.MeshBase)
+        self._mesh = mesh
 
+        # Take the product of mesh indices and current names
+        n_dim = mesh.n_dimension
+        self.bins = [mesh_tuple + (surf,) for mesh_tuple, surf in
+                     product(mesh.indices, _CURRENT_NAMES[:4*n_dim])]
+
+    def get_pandas_dataframe(self, data_size, stride, **kwargs):
+        """Builds a Pandas DataFrame for the Filter's bins.
+
+        This method constructs a Pandas DataFrame object for the filter with
+        columns annotated by filter bin information. This is a helper method for
+        :meth:`Tally.get_pandas_dataframe`.
+
+        Parameters
+        ----------
+        data_size : int
+            The total number of bins in the tally corresponding to this filter
+        stride : int
+            Stride in memory for the filter
+
+        Returns
+        -------
+        pandas.DataFrame
+            A Pandas DataFrame with three columns describing the x,y,z mesh
+            cell indices corresponding to each filter bin.  The number of rows
+            in the DataFrame is the same as the total number of bins in the
+            corresponding tally, with the filter bin appropriately tiled to map
+            to the corresponding tally bins.
+
+        See also
+        --------
+        Tally.get_pandas_dataframe(), CrossFilter.get_pandas_dataframe()
+
+        """
+        # Initialize Pandas DataFrame
+        df = pd.DataFrame()
+
+        # Initialize dictionary to build Pandas Multi-index column
+        filter_dict = {}
+
+        # Append mesh ID as outermost index of multi-index
+        mesh_key = 'mesh {}'.format(self.mesh.id)
+
+        # Find mesh dimensions - use 3D indices for simplicity
+        n_surfs = 4 * len(self.mesh.dimension)
+        if len(self.mesh.dimension) == 3:
+            nx, ny, nz = self.mesh.dimension
+        elif len(self.mesh.dimension) == 2:
+            nx, ny = self.mesh.dimension
+            nz = 1
+        else:
+            nx = self.mesh.dimension
+            ny = nz = 1
+
+        # Generate multi-index sub-column for x-axis
+        filter_dict[mesh_key, 'x'] = _repeat_and_tile(
+            np.arange(1, nx + 1), n_surfs * stride, data_size)
+
+        # Generate multi-index sub-column for y-axis
+        if len(self.mesh.dimension) > 1:
+            filter_dict[mesh_key, 'y'] = _repeat_and_tile(
+                np.arange(1, ny + 1), n_surfs * nx * stride, data_size)
+
+        # Generate multi-index sub-column for z-axis
+        if len(self.mesh.dimension) > 2:
+            filter_dict[mesh_key, 'z'] = _repeat_and_tile(
+                np.arange(1, nz + 1), n_surfs * nx * ny * stride, data_size)
+
+        # Generate multi-index sub-column for surface
+        filter_dict[mesh_key, 'surf'] = _repeat_and_tile(
+            _CURRENT_NAMES[:n_surfs], stride, data_size)
+
+        # Initialize a Pandas DataFrame from the mesh dictionary
+        return pd.concat([df, pd.DataFrame(filter_dict)])
+
+
+class RealFilter(Filter):
+    """Tally modifier that describes phase-space and other characteristics
+
+    Parameters
+    ----------
+    values : iterable of float
+        A list of values for which each successive pair constitutes a range of
+        values for a single bin
+    filter_id : int
+        Unique identifier for the filter
+
+    Attributes
+    ----------
+    values : numpy.ndarray
+        An array of values for which each successive pair constitutes a range of
+        values for a single bin
+    id : int
+        Unique identifier for the filter
+    bins : numpy.ndarray
+        An array of shape (N, 2) where each row is a pair of values indicating a
+        filter bin range
+    num_bins : int
+        The number of filter bins
+
+    """
+    def __init__(self, values, filter_id=None):
+        self.values = np.asarray(values)
+        self.bins = np.vstack((self.values[:-1], self.values[1:])).T
+        self.id = filter_id
+
+    def __gt__(self, other):
+        if type(self) is type(other):
+            # Compare largest/smallest bin edges in filters
+            # This logic is used when merging tallies with real filters
+            return self.values[0] >= other.values[-1]
+        else:
+            return super().__gt__(other)
+
+    def __repr__(self):
+        string = type(self).__name__ + '\n'
+        string += '{: <16}=\t{}\n'.format('\tValues', self.values)
+        string += '{: <16}=\t{}\n'.format('\tID', self.id)
+        return string
+
+    @Filter.bins.setter
+    def bins(self, bins):
+        Filter.bins.__set__(self, np.asarray(bins))
+
+    def check_bins(self, bins):
+        for v0, v1 in bins:
+            # Values should be real
+            cv.check_type('filter value', v0, Real)
+            cv.check_type('filter value', v1, Real)
+
+            # Make sure that each tuple has values that are increasing
+            if v1 < v0:
+                raise ValueError('Values {} and {} appear to be out of order'
+                                 .format(v0, v1))
+
+        for pair0, pair1 in zip(bins[:-1], bins[1:]):
+            # Successive pairs should be ordered
+            if pair1[1] < pair0[1]:
+                raise ValueError('Values {} and {} appear to be out of order'
+                                 .format(pair1[1], pair0[1]))
+
+    def can_merge(self, other):
+        if type(self) is not type(other):
+            return False
+
+        if self.bins[0, 0] == other.bins[-1][1]:
+            # This low edge coincides with other's high edge
+            return True
+        elif self.bins[-1][1] == other.bins[0, 0]:
+            # This high edge coincides with other's low edge
+            return True
+        else:
+            return False
+
+    def merge(self, other):
+        if not self.can_merge(other):
+            msg = 'Unable to merge "{0}" with "{1}" ' \
+                  'filters'.format(type(self), type(other))
+            raise ValueError(msg)
+
+        # Merge unique filter bins
+        merged_values = np.concatenate((self.values, other.values))
+        merged_values = np.unique(merged_values)
+
+        # Create a new filter with these bins and a new auto-generated ID
+        return type(self)(sorted(merged_values))
+
+    def is_subset(self, other):
+        """Determine if another filter is a subset of this filter.
+
+        If all of the bins in the other filter are included as bins in this
+        filter, then it is a subset of this filter.
+
+        Parameters
+        ----------
+        other : openmc.Filter
+            The filter to query as a subset of this filter
+
+        Returns
+        -------
+        bool
+            Whether or not the other filter is a subset of this filter
+
+        """
+
+        if type(self) is not type(other):
+            return False
+        elif self.num_bins != other.num_bins:
+            return False
+        else:
+            return np.allclose(self.values, other.values)
+
+    def get_bin_index(self, filter_bin):
+        i = np.where(self.bins[:, 1] == filter_bin[1])[0]
+        if len(i) == 0:
+            msg = 'Unable to get the bin index for Filter since "{0}" ' \
+                  'is not one of the bins'.format(filter_bin)
+            raise ValueError(msg)
+        else:
+            return i[0]
+
+    def get_pandas_dataframe(self, data_size, stride, **kwargs):
+        """Builds a Pandas DataFrame for the Filter's bins.
+
+        This method constructs a Pandas DataFrame object for the filter with
+        columns annotated by filter bin information. This is a helper method for
+        :meth:`Tally.get_pandas_dataframe`.
+
+        Parameters
+        ----------
+        data_size : int
+            The total number of bins in the tally corresponding to this filter
+        stride : int
+            Stride in memory for the filter
+
+        Returns
+        -------
+        pandas.DataFrame
+            A Pandas DataFrame with one column of the lower energy bound and one
+            column of upper energy bound for each filter bin.  The number of
+            rows in the DataFrame is the same as the total number of bins in the
+            corresponding tally, with the filter bin appropriately tiled to map
+            to the corresponding tally bins.
+
+        See also
+        --------
+        Tally.get_pandas_dataframe(), CrossFilter.get_pandas_dataframe()
+
+        """
+        # Initialize Pandas DataFrame
+        df = pd.DataFrame()
+
+        # Extract the lower and upper energy bounds, then repeat and tile
+        # them as necessary to account for other filters.
+        lo_bins = np.repeat(self.bins[:, 0], stride)
+        hi_bins = np.repeat(self.bins[:, 1], stride)
+        tile_factor = data_size // len(lo_bins)
+        lo_bins = np.tile(lo_bins, tile_factor)
+        hi_bins = np.tile(hi_bins, tile_factor)
+
+        # Add the new energy columns to the DataFrame.
+        if hasattr(self, 'units'):
+            units = ' [{}]'.format(self.units)
+        else:
+            units = ''
+
+        df.loc[:, self.short_name.lower() + ' low' + units] = lo_bins
+        df.loc[:, self.short_name.lower() + ' high' + units] = hi_bins
+
+        return df
+
+    def to_xml_element(self):
+        """Return XML Element representing the Filter.
+
+        Returns
+        -------
+        element : xml.etree.ElementTree.Element
+            XML element containing filter data
+
+        """
+        element = super().to_xml_element()
+        element[0].text = ' '.join(str(x) for x in self.values)
+        return element
+
+
+class EnergyFilter(RealFilter):
+    """Bins tally events based on incident particle energy.
+
+    Parameters
+    ----------
+    values : Iterable of Real
+        A list of values for which each successive pair constitutes a range of
+        energies in [eV] for a single bin
+    filter_id : int
+        Unique identifier for the filter
+
+    Attributes
+    ----------
+    values : numpy.ndarray
+        An array of values for which each successive pair constitutes a range of
+        energies in [eV] for a single bin
+    id : int
+        Unique identifier for the filter
+    bins : numpy.ndarray
+        An array of shape (N, 2) where each row is a pair of energies in [eV]
+        for a single filter bin
+    num_bins : int
+        The number of filter bins
+
+    """
+    units = 'eV'
+
+    def get_bin_index(self, filter_bin):
+        # Use lower energy bound to find index for RealFilters
+        deltas = np.abs(self.bins[:, 1] - filter_bin[1]) / filter_bin[1]
+        min_delta = np.min(deltas)
+        if min_delta < 1E-3:
+            return deltas.argmin()
+        else:
+            msg = 'Unable to get the bin index for Filter since "{0}" ' \
+                  'is not one of the bins'.format(filter_bin)
+            raise ValueError(msg)
+
+    def check_bins(self, bins):
+        super().check_bins(bins)
+        for v0, v1 in bins:
+            cv.check_greater_than('filter value', v0, 0., equality=True)
+            cv.check_greater_than('filter value', v1, 0., equality=True)
+
+
+class EnergyoutFilter(EnergyFilter):
+    """Bins tally events based on outgoing particle energy.
+
+    Parameters
+    ----------
+    values : Iterable of Real
+        A list of values for which each successive pair constitutes a range of
+        energies in [eV] for a single bin
+    filter_id : int
+        Unique identifier for the filter
+
+    Attributes
+    ----------
+    values : numpy.ndarray
+        An array of values for which each successive pair constitutes a range of
+        energies in [eV] for a single bin
+    id : int
+        Unique identifier for the filter
+    bins : numpy.ndarray
+        An array of shape (N, 2) where each row is a pair of energies in [eV]
+        for a single filter bin
+    num_bins : int
+        The number of filter bins
+
+    """
+
+
+def _path_to_levels(path):
+    """Convert distribcell path to list of levels
+
+    Parameters
+    ----------
+    path : str
+        Distribcell path
+
+    Returns
+    -------
+    list
+        List of levels in path
+
+    """
+    # Split path into universes/cells/lattices
+    path_items = path.split('->')
+
+    # Pair together universe and cell information from the same level
+    idx = [i for i, item in enumerate(path_items) if item.startswith('u')]
+    for i in reversed(idx):
+        univ_id = int(path_items.pop(i)[1:])
+        cell_id = int(path_items.pop(i)[1:])
+        path_items.insert(i, ('universe', univ_id, cell_id))
+
+    # Reformat lattice into tuple
+    idx = [i for i, item in enumerate(path_items) if isinstance(item, str)]
+    for i in idx:
+        item = path_items.pop(i)[1:-1]
+        lat_id, lat_xyz = item.split('(')
+        lat_id = int(lat_id)
+        lat_xyz = tuple(int(x) for x in lat_xyz.split(','))
+        path_items.insert(i, ('lattice', lat_id, lat_xyz))
+
+    return path_items
+
+
+class DistribcellFilter(Filter):
+    """Bins tally event locations on instances of repeated cells.
+
+    This filter provides a separate score for each unique instance of a repeated
+    cell in a geometry. Note that only one cell can be specified in this filter.
+    The related :class:`CellInstanceFilter` allows one to obtain scores for
+    particular cell instances as well as instances from different cells.
+
+    Parameters
+    ----------
+    cell : openmc.Cell or Integral
+        The distributed cell to tally. Either an openmc.Cell or an Integral
+        cell ID number can be used.
+    filter_id : int
+        Unique identifier for the filter
+
+    Attributes
+    ----------
+    bins : Iterable of Integral
+        An iterable with one element---the ID of the distributed Cell.
+    id : int
+        Unique identifier for the filter
+    num_bins : int
+        The number of filter bins
+    paths : list of str
+        The paths traversed through the CSG tree to reach each distribcell
+        instance (for 'distribcell' filters only)
+
+    See Also
+    --------
+    CellInstanceFilter
+
+    """
+
+    def __init__(self, cell, filter_id=None):
+        self._paths = None
+        super().__init__(cell, filter_id)
+
+    @classmethod
+    def from_hdf5(cls, group, **kwargs):
+        if group['type'][()].decode() != cls.short_name.lower():
+            raise ValueError("Expected HDF5 data for filter type '"
+                             + cls.short_name.lower() + "' but got '"
+                             + group['type'][()].decode() + " instead")
+
+        filter_id = int(group.name.split('/')[-1].lstrip('filter '))
+
+        out = cls(group['bins'][()], filter_id=filter_id)
+        out._num_bins = group['n_bins'][()]
+
+        return out
+
+    @property
+    def num_bins(self):
+        # Need to handle number of bins carefully -- for distribcell tallies, we
+        # need to know how many instances of the cell there are
+        return self._num_bins
+
+    @property
+    def paths(self):
+        return self._paths
+
+    @Filter.bins.setter
+    def bins(self, bins):
+        # Format the bins as a 1D numpy array.
+        bins = np.atleast_1d(bins)
+
+        # Make sure there is only 1 bin.
+        if not len(bins) == 1:
+            msg = 'Unable to add bins "{0}" to a DistribcellFilter since ' \
+                  'only a single distribcell can be used per tally'.format(bins)
+            raise ValueError(msg)
+
+        # Check the type and extract the id, if necessary.
+        cv.check_type('distribcell bin', bins[0], (Integral, openmc.Cell))
+        if isinstance(bins[0], openmc.Cell):
+            bins = np.atleast_1d(bins[0].id)
+
+        self._bins = bins
+
+    @paths.setter
+    def paths(self, paths):
+        cv.check_iterable_type('paths', paths, str)
+        self._paths = paths
+
+    def can_merge(self, other):
+        # Distribcell filters cannot have more than one bin
+        return False
+
+    def get_bin_index(self, filter_bin):
+        # Filter bins for distribcells are indices of each unique placement of
+        # the Cell in the Geometry (consecutive integers starting at 0).
+        return filter_bin
+
+    def get_pandas_dataframe(self, data_size, stride, **kwargs):
+        """Builds a Pandas DataFrame for the Filter's bins.
+
+        This method constructs a Pandas DataFrame object for the filter with
+        columns annotated by filter bin information. This is a helper method for
+        :meth:`Tally.get_pandas_dataframe`.
+
+        Parameters
+        ----------
+        data_size : int
+            The total number of bins in the tally corresponding to this filter
+        stride : int
+            Stride in memory for the filter
+
+        Keyword arguments
+        -----------------
+        paths : bool
+            If True (default), expand distribcell indices into multi-index
+            columns describing the path to that distribcell through the CSG
+            tree.  NOTE: This option assumes that all distribcell paths are of
+            the same length and do not have the same universes and cells but
+            different lattice cell indices.
+
+        Returns
+        -------
+        pandas.DataFrame
+            A Pandas DataFrame with columns describing distributed cells. The
+            dataframe will have either:
+
+            1. a single column with the cell instance IDs (without summary info)
+            2. separate columns for the cell IDs, universe IDs, and lattice IDs
+               and x,y,z cell indices corresponding to each (distribcell paths).
+
+            The number of rows in the DataFrame is the same as the total number
+            of bins in the corresponding tally, with the filter bin
+            appropriately tiled to map to the corresponding tally bins.
+
+        See also
+        --------
+        Tally.get_pandas_dataframe(), CrossFilter.get_pandas_dataframe()
+
+        """
+        # Initialize Pandas DataFrame
+        df = pd.DataFrame()
+
+        level_df = None
+
+        paths = kwargs.setdefault('paths', True)
+
+        # Create Pandas Multi-index columns for each level in CSG tree
+        if paths:
+
+            # Distribcell paths require linked metadata from the Summary
+            if self.paths is None:
+                msg = 'Unable to construct distribcell paths since ' \
+                      'the Summary is not linked to the StatePoint'
+                raise ValueError(msg)
+
+            # Make copy of array of distribcell paths to use in
+            # Pandas Multi-index column construction
+            num_offsets = len(self.paths)
+            paths = [_path_to_levels(p) for p in self.paths]
+
+            # Loop over CSG levels in the distribcell paths
+            num_levels = len(paths[0])
+            for i_level in range(num_levels):
+                # Use level key as first index in Pandas Multi-index column
+                level_key = 'level {}'.format(i_level + 1)
+
+                # Create a dictionary for this level for Pandas Multi-index
+                level_dict = OrderedDict()
+
+                # Use the first distribcell path to determine if level
+                # is a universe/cell or lattice level
+                path = paths[0]
+                if path[i_level][0] == 'lattice':
                     # Initialize prefix Multi-index keys
-                    counter += 1
-                    level_key = 'level {0}'.format(counter)
-                    univ_key = (level_key, 'univ', 'id')
-                    cell_key = (level_key, 'cell', 'id')
                     lat_id_key = (level_key, 'lat', 'id')
                     lat_x_key = (level_key, 'lat', 'x')
                     lat_y_key = (level_key, 'lat', 'y')
@@ -654,105 +1439,463 @@ class Filter(object):
 
                     # Allocate NumPy arrays for each CSG level and
                     # each Multi-index column in the DataFrame
-                    level_dict[univ_key] = np.empty(num_offsets)
-                    level_dict[cell_key] = np.empty(num_offsets)
                     level_dict[lat_id_key] = np.empty(num_offsets)
                     level_dict[lat_x_key] = np.empty(num_offsets)
                     level_dict[lat_y_key] = np.empty(num_offsets)
-                    level_dict[lat_z_key] = np.empty(num_offsets)
+                    if len(path[i_level][2]) == 3:
+                        level_dict[lat_z_key] = np.empty(num_offsets)
 
-                    # Initialize Multi-index columns to NaN - this is
-                    # necessary since some distribcell instances may
-                    # have very different LocalCoords linked lists
-                    level_dict[univ_key][:] = np.NAN
-                    level_dict[cell_key][:] = np.NAN
-                    level_dict[lat_id_key][:] = np.NAN
-                    level_dict[lat_x_key][:] = np.NAN
-                    level_dict[lat_y_key][:] = np.NAN
-                    level_dict[lat_z_key][:] = np.NAN
+                else:
+                    # Initialize prefix Multi-index keys
+                    univ_key = (level_key, 'univ', 'id')
+                    cell_key = (level_key, 'cell', 'id')
 
-                    # Iterate over all regions (distribcell instances)
-                    for offset in range(num_offsets):
-                        coords = offsets_to_coords[offset]
+                    # Allocate NumPy arrays for each CSG level and
+                    # each Multi-index column in the DataFrame
+                    level_dict[univ_key] = np.empty(num_offsets)
+                    level_dict[cell_key] = np.empty(num_offsets)
 
-                        # If entire LocalCoords has been unraveled into
-                        # Multi-index columns already, continue
-                        if coords is None:
-                            continue
+                # Populate Multi-index arrays with all distribcell paths
+                for i, path in enumerate(paths):
 
-                        # Assign entry to Universe Multi-index column
-                        if coords._type == 'universe':
-                            level_dict[univ_key][offset] = coords._universe._id
-                            level_dict[cell_key][offset] = coords._cell._id
-
+                    level = path[i_level]
+                    if level[0] == 'lattice':
                         # Assign entry to Lattice Multi-index column
-                        else:
-                            level_dict[lat_id_key][offset] = coords._lattice._id
-                            level_dict[lat_x_key][offset] = coords._lat_x
-                            level_dict[lat_y_key][offset] = coords._lat_y
-                            level_dict[lat_z_key][offset] = coords._lat_z
+                        level_dict[lat_id_key][i] = level[1]
+                        level_dict[lat_x_key][i] = level[2][0]
+                        level_dict[lat_y_key][i] = level[2][1]
+                        if len(level[2]) == 3:
+                            level_dict[lat_z_key][i] = level[2][2]
 
-                        # Move to next node in LocalCoords linked list
-                        if coords._next is None:
-                            offsets_to_coords[offset] = None
-                        else:
-                            offsets_to_coords[offset] = coords._next
-                            levels_remain = True
-
-                    # Tile the Multi-index columns
-                    for level_key, level_bins in level_dict.items():
-                        level_bins = np.repeat(level_bins, self.stride)
-                        tile_factor = data_size / len(level_bins)
-                        level_bins = np.tile(level_bins, tile_factor)
-                        level_dict[level_key] = level_bins
-
-                    # Initialize a Pandas DataFrame from the level dictionary
-                    if level_df is None:
-                        level_df = pd.DataFrame(level_dict)
                     else:
-                        level_df = pd.concat([level_df, pd.DataFrame(level_dict)], axis=1)
+                        # Assign entry to Universe, Cell Multi-index columns
+                        level_dict[univ_key][i] = level[1]
+                        level_dict[cell_key][i] = level[2]
 
-            # Create DataFrame column for distribcell instances IDs
-            # NOTE: This is performed regardless of whether the user
-            # requests Summary geometric information
-            filter_bins = np.arange(self.num_bins)
-            filter_bins = np.repeat(filter_bins, self.stride)
-            tile_factor = data_size / len(filter_bins)
-            filter_bins = np.tile(filter_bins, tile_factor)
-            filter_bins = filter_bins
-            df = pd.DataFrame({self.type : filter_bins})
+                # Tile the Multi-index columns
+                for level_key, level_bins in level_dict.items():
+                    level_dict[level_key] = _repeat_and_tile(
+                        level_bins, stride, data_size)
 
-            # If OpenCG level info DataFrame was created, concatenate
-            # with DataFrame of distribcell instance IDs
-            if level_df is not None:
-                level_df = level_df.dropna(axis=1, how='all')
-                level_df = level_df.astype(np.int)
-                df = pd.concat([level_df, df], axis=1)
+                # Initialize a Pandas DataFrame from the level dictionary
+                if level_df is None:
+                    level_df = pd.DataFrame(level_dict)
+                else:
+                    level_df = pd.concat([level_df, pd.DataFrame(level_dict)],
+                                         axis=1)
 
-        # energy, energyout filters
-        elif 'energy' in self.type:
-            bins = self.bins
-            num_bins = self.num_bins
+        # Create DataFrame column for distribcell instance IDs
+        # NOTE: This is performed regardless of whether the user
+        # requests Summary geometric information
+        filter_bins = _repeat_and_tile(
+            np.arange(self.num_bins), stride, data_size)
+        df = pd.DataFrame({self.short_name.lower() : filter_bins})
 
-            # Create strings for
-            template = '({0:.1e} - {1:.1e})'
-            filter_bins = []
-            for i in range(num_bins):
-                filter_bins.append(template.format(bins[i], bins[i+1]))
+        # Concatenate with DataFrame of distribcell instance IDs
+        if level_df is not None:
+            level_df = level_df.dropna(axis=1, how='all')
+            level_df = level_df.astype(np.int)
+            df = pd.concat([level_df, df], axis=1)
 
-            # Tile the energy bins into a DataFrame column
-            filter_bins = np.repeat(filter_bins, self.stride)
-            tile_factor = data_size / len(filter_bins)
-            filter_bins = np.tile(filter_bins, tile_factor)
-            filter_bins = filter_bins
-            df = pd.concat([df, pd.DataFrame({self.type + ' [MeV]' : filter_bins})])
+        return df
 
-        # universe, material, surface, cell, and cellborn filters
+
+class MuFilter(RealFilter):
+    """Bins tally events based on particle scattering angle.
+
+    Parameters
+    ----------
+    values : int or Iterable of Real
+        A grid of scattering angles which events will binned into. Values
+        represent the cosine of the scattering angle. If an iterable is given,
+        the values will be used explicitly as grid points. If a single int is
+        given, the range [-1, 1] will be divided up equally into that number of
+        bins.
+    filter_id : int
+        Unique identifier for the filter
+
+    Attributes
+    ----------
+    values : numpy.ndarray
+        An array of values for which each successive pair constitutes a range of
+        scattering angle cosines for a single bin
+    id : int
+        Unique identifier for the filter
+    bins : numpy.ndarray
+        An array of shape (N, 2) where each row is a pair of scattering angle
+        cosines for a single filter bin
+    num_bins : Integral
+        The number of filter bins
+
+    """
+    def __init__(self, values, filter_id=None):
+        if isinstance(values, Integral):
+            values = np.linspace(-1., 1., values + 1)
+        super().__init__(values, filter_id)
+
+    def check_bins(self, bins):
+        super().check_bins(bins)
+        for x in np.ravel(bins):
+            if not np.isclose(x, -1.):
+                cv.check_greater_than('filter value', x, -1., equality=True)
+            if not np.isclose(x, 1.):
+                cv.check_less_than('filter value', x, 1., equality=True)
+
+
+class PolarFilter(RealFilter):
+    """Bins tally events based on the incident particle's direction.
+
+    Parameters
+    ----------
+    values : int or Iterable of Real
+        A grid of polar angles which events will binned into. Values represent
+        an angle in radians relative to the z-axis. If an iterable is given, the
+        values will be used explicitly as grid points. If a single int is given,
+        the range [0, pi] will be divided up equally into that number of bins.
+    filter_id : int
+        Unique identifier for the filter
+
+    Attributes
+    ----------
+    values : numpy.ndarray
+        An array of values for which each successive pair constitutes a range of
+        polar angles in [rad] for a single bin
+    id : int
+        Unique identifier for the filter
+    bins : numpy.ndarray
+        An array of shape (N, 2) where each row is a pair of polar angles for a
+        single filter bin
+    id : int
+        Unique identifier for the filter
+    num_bins : Integral
+        The number of filter bins
+
+    """
+    units = 'rad'
+
+    def __init__(self, values, filter_id=None):
+        if isinstance(values, Integral):
+            values = np.linspace(0., np.pi, values + 1)
+        super().__init__(values, filter_id)
+
+    def check_bins(self, bins):
+        super().check_bins(bins)
+        for x in np.ravel(bins):
+            if not np.isclose(x, 0.):
+                cv.check_greater_than('filter value', x, 0., equality=True)
+            if not np.isclose(x, np.pi):
+                cv.check_less_than('filter value', x, np.pi, equality=True)
+
+
+class AzimuthalFilter(RealFilter):
+    """Bins tally events based on the incident particle's direction.
+
+    Parameters
+    ----------
+    values : int or Iterable of Real
+        A grid of azimuthal angles which events will binned into. Values
+        represent an angle in radians relative to the x-axis and perpendicular
+        to the z-axis. If an iterable is given, the values will be used
+        explicitly as grid points. If a single int is given, the range
+        [-pi, pi) will be divided up equally into that number of bins.
+    filter_id : int
+        Unique identifier for the filter
+
+    Attributes
+    ----------
+    values : numpy.ndarray
+        An array of values for which each successive pair constitutes a range of
+        azimuthal angles in [rad] for a single bin
+    id : int
+        Unique identifier for the filter
+    bins : numpy.ndarray
+        An array of shape (N, 2) where each row is a pair of azimuthal angles
+        for a single filter bin
+    num_bins : Integral
+        The number of filter bins
+
+    """
+    units = 'rad'
+
+    def __init__(self, values, filter_id=None):
+        if isinstance(values, Integral):
+            values = np.linspace(-np.pi, np.pi, values + 1)
+        super().__init__(values, filter_id)
+
+    def check_bins(self, bins):
+        super().check_bins(bins)
+        for x in np.ravel(bins):
+            if not np.isclose(x, -np.pi):
+                cv.check_greater_than('filter value', x, -np.pi, equality=True)
+            if not np.isclose(x, np.pi):
+                cv.check_less_than('filter value', x, np.pi, equality=True)
+
+
+class DelayedGroupFilter(Filter):
+    """Bins fission events based on the produced neutron precursor groups.
+
+    Parameters
+    ----------
+    bins : iterable of int
+        The delayed neutron precursor groups.  For example, ENDF/B-VII.1 uses
+        6 precursor groups so a tally with all groups will have bins =
+        [1, 2, 3, 4, 5, 6].
+    filter_id : int
+        Unique identifier for the filter
+
+    Attributes
+    ----------
+    bins : iterable of int
+        The delayed neutron precursor groups.  For example, ENDF/B-VII.1 uses
+        6 precursor groups so a tally with all groups will have bins =
+        [1, 2, 3, 4, 5, 6].
+    id : int
+        Unique identifier for the filter
+    num_bins : Integral
+        The number of filter bins
+
+    """
+    def check_bins(self, bins):
+        # Check the bin values.
+        for g in bins:
+            cv.check_greater_than('delayed group', g, 0)
+
+
+class EnergyFunctionFilter(Filter):
+    """Multiplies tally scores by an arbitrary function of incident energy.
+
+    The arbitrary function is described by a piecewise linear-linear
+    interpolation of energy and y values.  Values outside of the given energy
+    range will be evaluated as zero.
+
+    Parameters
+    ----------
+    energy : Iterable of Real
+        A grid of energy values in [eV]
+    y : iterable of Real
+        A grid of interpolant values in [eV]
+    filter_id : int
+        Unique identifier for the filter
+
+    Attributes
+    ----------
+    energy : Iterable of Real
+        A grid of energy values in [eV]
+    y : iterable of Real
+        A grid of interpolant values in [eV]
+    id : int
+        Unique identifier for the filter
+    num_bins : Integral
+        The number of filter bins (always 1 for this filter)
+
+    """
+
+    def __init__(self, energy, y, filter_id=None):
+        self.energy = energy
+        self.y = y
+        self.id = filter_id
+
+    def __eq__(self, other):
+        if type(self) is not type(other):
+            return False
+        elif not all(self.energy == other.energy):
+            return False
         else:
-            filter_bins = np.repeat(self.bins, self.stride)
-            tile_factor = data_size / len(filter_bins)
-            filter_bins = np.tile(filter_bins, tile_factor)
-            filter_bins = filter_bins
-            df = pd.concat([df, pd.DataFrame({self.type : filter_bins})])
+            return all(self.y == other.y)
+
+    def __gt__(self, other):
+        if type(self) is not type(other):
+            if self.short_name in _FILTER_TYPES and \
+                other.short_name in _FILTER_TYPES:
+                delta = _FILTER_TYPES.index(self.short_name) - \
+                        _FILTER_TYPES.index(other.short_name)
+                return delta > 0
+            else:
+                return False
+        else:
+            return False
+
+    def __lt__(self, other):
+        if type(self) is not type(other):
+            if self.short_name in _FILTER_TYPES and \
+                other.short_name in _FILTER_TYPES:
+                delta = _FILTER_TYPES.index(self.short_name) - \
+                        _FILTER_TYPES.index(other.short_name)
+                return delta < 0
+            else:
+                return False
+        else:
+            return False
+
+    def __hash__(self):
+        string = type(self).__name__ + '\n'
+        string += '{: <16}=\t{}\n'.format('\tEnergy', self.energy)
+        string += '{: <16}=\t{}\n'.format('\tInterpolant', self.y)
+        return hash(string)
+
+    def __repr__(self):
+        string = type(self).__name__ + '\n'
+        string += '{: <16}=\t{}\n'.format('\tEnergy', self.energy)
+        string += '{: <16}=\t{}\n'.format('\tInterpolant', self.y)
+        string += '{: <16}=\t{}\n'.format('\tID', self.id)
+        return string
+
+    @classmethod
+    def from_hdf5(cls, group, **kwargs):
+        if group['type'][()].decode() != cls.short_name.lower():
+            raise ValueError("Expected HDF5 data for filter type '"
+                             + cls.short_name.lower() + "' but got '"
+                             + group['type'][()].decode() + " instead")
+
+        energy = group['energy'][()]
+        y = group['y'][()]
+        filter_id = int(group.name.split('/')[-1].lstrip('filter '))
+
+        return cls(energy, y, filter_id=filter_id)
+
+    @classmethod
+    def from_tabulated1d(cls, tab1d):
+        """Construct a filter from a Tabulated1D object.
+
+        Parameters
+        ----------
+        tab1d : openmc.data.Tabulated1D
+            A linear-linear Tabulated1D object with only a single interpolation
+            region.
+
+        Returns
+        -------
+        EnergyFunctionFilter
+
+        """
+        cv.check_type('EnergyFunctionFilter tab1d', tab1d,
+                      openmc.data.Tabulated1D)
+        if tab1d.n_regions > 1:
+            raise ValueError('Only Tabulated1Ds with a single interpolation '
+                             'region are supported')
+        if tab1d.interpolation[0] != 2:
+            raise ValueError('Only linear-linar Tabulated1Ds are supported')
+
+        return cls(tab1d.x, tab1d.y)
+
+    @property
+    def energy(self):
+        return self._energy
+
+    @property
+    def y(self):
+        return self._y
+
+    @property
+    def bins(self):
+        raise AttributeError('EnergyFunctionFilters have no bins.')
+
+    @property
+    def num_bins(self):
+        return 1
+
+    @energy.setter
+    def energy(self, energy):
+        # Format the bins as a 1D numpy array.
+        energy = np.atleast_1d(energy)
+
+        # Make sure the values are Real and positive.
+        cv.check_type('filter energy grid', energy, Iterable, Real)
+        for E in energy:
+            cv.check_greater_than('filter energy grid', E, 0, equality=True)
+
+        self._energy = energy
+
+    @y.setter
+    def y(self, y):
+        # Format the bins as a 1D numpy array.
+        y = np.atleast_1d(y)
+
+        # Make sure the values are Real.
+        cv.check_type('filter interpolant values', y, Iterable, Real)
+
+        self._y = y
+
+    @bins.setter
+    def bins(self, bins):
+        raise RuntimeError('EnergyFunctionFilters have no bins.')
+
+    def to_xml_element(self):
+        """Return XML Element representing the Filter.
+
+        Returns
+        -------
+        element : xml.etree.ElementTree.Element
+            XML element containing filter data
+
+        """
+        element = ET.Element('filter')
+        element.set('id', str(self.id))
+        element.set('type', self.short_name.lower())
+
+        subelement = ET.SubElement(element, 'energy')
+        subelement.text = ' '.join(str(e) for e in self.energy)
+
+        subelement = ET.SubElement(element, 'y')
+        subelement.text = ' '.join(str(y) for y in self.y)
+
+        return element
+
+    def can_merge(self, other):
+        return False
+
+    def is_subset(self, other):
+        return self == other
+
+    def get_bin_index(self, filter_bin):
+        # This filter only has one bin.  Always return 0.
+        return 0
+
+    def get_pandas_dataframe(self, data_size, stride, **kwargs):
+        """Builds a Pandas DataFrame for the Filter's bins.
+
+        This method constructs a Pandas DataFrame object for the filter with
+        columns annotated by filter bin information. This is a helper method for
+        :meth:`Tally.get_pandas_dataframe`.
+
+        Parameters
+        ----------
+        data_size : int
+            The total number of bins in the tally corresponding to this filter
+        stride : int
+            Stride in memory for the filter
+
+        Returns
+        -------
+        pandas.DataFrame
+            A Pandas DataFrame with a column that is filled with a hash of this
+            filter. EnergyFunctionFilters have only 1 bin so the purpose of this
+            DataFrame column is to differentiate the filter from other
+            EnergyFunctionFilters. The number of rows in the DataFrame is the
+            same as the total number of bins in the corresponding tally.
+
+        See also
+        --------
+        Tally.get_pandas_dataframe(), CrossFilter.get_pandas_dataframe()
+
+        """
+        df = pd.DataFrame()
+
+        # There is no clean way of sticking all the energy, y data into a
+        # DataFrame so instead we'll just make a column with the filter name
+        # and fill it with a hash of the __repr__.  We want a hash that is
+        # reproducible after restarting the interpreter so we'll use hashlib.md5
+        # rather than the intrinsic hash().
+        hash_fun = hashlib.md5()
+        hash_fun.update(repr(self).encode('utf-8'))
+        out = hash_fun.hexdigest()
+
+        # The full 16 bytes make for a really wide column.  Just 7 bytes (14
+        # hex characters) of the digest are probably sufficient.
+        out = out[:14]
+
+        filter_bins = _repeat_and_tile(out, stride, data_size)
+        df = pd.concat([df, pd.DataFrame(
+            {self.short_name.lower(): filter_bins})])
 
         return df

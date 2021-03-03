@@ -45,17 +45,15 @@
         </optional>
         <optional>
           <choice>
-            <element name="color">
+            <element name="color_by">
               <choice>
                 <value>cell</value>
-                <value>mat</value>
                 <value>material</value>
               </choice>
             </element>
-            <attribute name="color">
+            <attribute name="color_by">
               <choice>
                 <value>cell</value>
-                <value>mat</value>
                 <value>material</value>
               </choice>
             </attribute>
@@ -162,7 +160,7 @@
           </choice>
         </optional>
         <zeroOrMore>
-          <element name="col_spec">
+          <element name="color">
             <interleave>
               <choice>
                 <element name="id">

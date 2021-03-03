@@ -47,7 +47,7 @@ dividing space into two half-spaces.
 
 .. _fig-halfspace:
 
-.. figure:: ../_images/halfspace.*
+.. figure:: ../_images/halfspace.svg
    :align: center
    :figclass: align-center
 
@@ -63,7 +63,7 @@ defined as the intersection of an ellipse and two planes.
 
 .. _fig-union:
 
-.. figure:: ../_images/union.*
+.. figure:: ../_images/union.svg
    :align: center
    :figclass: align-center
 
@@ -84,10 +84,10 @@ to fully define the surface.
     | Plane perpendicular  | x-plane    | :math:`x - x_0 = 0`          | :math:`x_0`             |
     | to :math:`x`-axis    |            |                              |                         |
     +----------------------+------------+------------------------------+-------------------------+
-    | Plane perpendicular  | y-plane    | :math:`x - x_0 = 0`          | :math:`y_0`             |
+    | Plane perpendicular  | y-plane    | :math:`y - y_0 = 0`          | :math:`y_0`             |
     | to :math:`y`-axis    |            |                              |                         |
     +----------------------+------------+------------------------------+-------------------------+
-    | Plane perpendicular  | z-plane    | :math:`x - x_0 = 0`          | :math:`z_0`             |
+    | Plane perpendicular  | z-plane    | :math:`z - z_0 = 0`          | :math:`z_0`             |
     | to :math:`z`-axis    |            |                              |                         |
     +----------------------+------------+------------------------------+-------------------------+
     | Arbitrary plane      | plane      | :math:`Ax + By + Cz = D`     | :math:`A\;B\;C\;D`      |
@@ -205,7 +205,7 @@ traveling in its current direction, it will not hit the surface. The complete
 derivation for different types of surfaces used in OpenMC will be presented in
 the following sections.
 
-Since :math:f(x,y,z)` in general is quadratic in :math:`x`, :math:`y`, and
+Since :math:`f(x,y,z)` in general is quadratic in :math:`x`, :math:`y`, and
 :math:`z`, this implies that :math:`f(x_0 + du_0, y + dv_0, z + dw_0)` is
 quadratic in :math:`d`. Thus we expect at most two real solutions to
 :eq:`dist-to-boundary-1`. If no solutions to :eq:`dist-to-boundary-1` exist or
@@ -264,6 +264,8 @@ to this equation for the distance is
 Again, we need to check whether the denominator is zero. If so, this means that
 the particle's direction of flight is parallel to the plane and it will
 therefore never hit the plane.
+
+.. _cylinder_distance:
 
 Cylinder Parallel to an Axis
 ----------------------------
@@ -366,7 +368,74 @@ will then be either both positive or both negative. If they are both positive,
 the smaller (closer) one will be the solution with a negative sign on the square
 root of the discriminant.
 
-.. TODO: Need to add derivation for x-cone, y-cone, and z-cone.
+Cone Parallel to an Axis
+------------------------
+
+The equation for a cone parallel to, for example, the x-axis is :math:`(y -
+y_0)^2 + (z - z_0)^2 = R^2(x - x_0)^2`. Thus, we need to solve :math:`(y + dv -
+y_0)^2 + (z + dw - z_0)^2 = R^2(x + du - x_0)^2`. Let us define :math:`\bar{x} =
+x - x_0`, :math:`\bar{y} = y - y_0`, and :math:`\bar{z} = z - z_0`. We then have
+
+.. math::
+    :label: dist-xcone-1
+
+    (\bar{y} + dv)^2 + (\bar{z} + dw)^2 = R^2(\bar{x} + du)^2
+
+Expanding equation :eq:`dist-xcone-1` and rearranging terms, we obtain
+
+.. math::
+    :label: dist-xcone-2
+
+    (v^2 + w^2 - R^2u^2) d^2 + 2 (\bar{y}v + \bar{z}w - R^2\bar{x}u) d +
+    (\bar{y}^2 + \bar{z}^2 - R^2\bar{x}^2) = 0
+
+Defining the terms
+
+.. math::
+    :label: dist-xcone-terms
+
+    a = v^2 + w^2 - R^2u^2
+
+    k = \bar{y}v + \bar{z}w - R^2\bar{x}u
+
+    c = \bar{y}^2 + \bar{z}^2 - R^2\bar{x}^2
+
+we then have the simple quadratic equation :math:`ad^2 + 2kd + c = 0` which can
+be solved as described in :ref:`cylinder_distance`.
+
+General Quadric
+---------------
+
+The equation for a general quadric surface is :math:`Ax^2 + By^2 + Cz^2 + Dxy +
+Eyz + Fxz + Gx + Hy + Jz + K = 0`. Thus, we need to solve the equation
+
+.. math::
+    :label: dist-quadric-1
+
+    A(x+du)^2 + B(y+dv)^2 + C(z+dw)^2 + D(x+du)(y+dv) + E(y+dv)(z+dw) + \\
+    F(x+du)(z+dw) + G(x+du) + H(y+dv) + J(z+dw) + K = 0
+
+Expanding equation :eq:`dist-quadric-1` and rearranging terms, we obtain
+
+.. math::
+    :label: dist-quadric-2
+
+    d^2(uv + vw + uw) + 2d(Aux + Bvy + Cwx + (D(uv + vx) + E(vz + wy) + \\
+    F(wx + uz))/2) + (x(Ax + Dy) + y(By + Ez) + z(Cz + Fx)) = 0
+
+Defining the terms
+
+.. math::
+    :label: dist-quadric-terms
+
+    a = uv + vw + uw
+
+    k = Aux + Bvy + Cwx + (D(uv + vx) + E(vz + wy) + F(wx + uz))/2
+
+    c = x(Ax + Dy) + y(By + Ez) + z(Cz + Fx)
+
+we then have the simple quadratic equation :math:`ad^2 + 2kd + c = 0` which can
+be solved as described in :ref:`cylinder_distance`.
 
 .. _find-cell:
 
@@ -413,7 +482,7 @@ upper-right tiles, respectively.
 
 .. _fig-rect-lat:
 
-.. figure:: ../_images/rect_lat.*
+.. figure:: ../_images/rect_lat.svg
    :align: center
    :figclass: align-center
    :width: 400px
@@ -437,6 +506,8 @@ where :math:`(x_0, y_0, z_0)` are the coordinates to the lower-left-bottom
 corner of the lattice, and :math:`p_0, p_1, p_2` are the pitches along the
 :math:`x`, :math:`y`, and :math:`z` axes, respectively.
 
+.. _hexagonal_indexing:
+
 Hexagonal Lattice Indexing
 --------------------------
 
@@ -450,7 +521,7 @@ right side.
 
 .. _fig-hex-lat:
 
-.. figure:: ../_images/hex_lat.*
+.. figure:: ../_images/hex_lat.svg
    :align: center
    :figclass: align-center
    :width: 400px
@@ -546,6 +617,10 @@ condition has been applied, the particle is killed and any surface current
 tallies are scored to as needed. If a reflective boundary condition has been
 applied to the surface, surface current tallies are scored to and then the
 particle's direction is changed according to the procedure in :ref:`reflection`.
+Note that the white boundary condition can be considered as the special case of
+reflective boundary condition, where the same processing method will be applied to
+deal with the surface current tallies scoring, except for determining the
+changes of particle's direction according to the procedures in :ref:`white`.
 
 Next, we need to determine what cell is beyond the surface in the direction of
 travel of the particle so that we can evaluate cross sections based on its
@@ -808,9 +883,85 @@ form of the solution:
 
     w' = w + \frac{2 (\bar{x}u + \bar{y}v - R^2\bar{z}w)}{R^2 (1 + R^2) \bar{z}}
 
+General Quadric
+---------------
 
-.. _constructive solid geometry: http://en.wikipedia.org/wiki/Constructive_solid_geometry
-.. _surfaces: http://en.wikipedia.org/wiki/Surface
+A general quadric surface has the form :math:`f(x,y,z) = Ax^2 + By^2 + Cz^2 +
+Dxy + Eyz + Fxz + Gx + Hy + Jz + K = 0`. Thus, the gradient to the surface is
+
+.. math::
+    :label: reflection-quadric-grad
+
+    \nabla f = \left ( \begin{array}{c} 2Ax + Dy + Fz + G \\ 2By + Dx + Ez + H
+    \\ 2Cz + Ey + Fx + J \end{array} \right ).
+
+
+.. _white:
+
+-------------------------
+White Boundary Conditions
+-------------------------
+
+The `white boundary condition <https://doi.org/10.1016/j.anucene.2019.05.006>`_
+is usually applied in deterministic codes, where the particle will hit the
+surface and travel back with isotropic angular distribution. The change in
+particle's direction is sampled from a cosine distribution instead of uniform.
+Figure :num:`fig-cosine-dist` shows an example of cosine-distribution reflection
+on the arbitrary surface relative to the surface normal.
+
+.. _fig-cosine-dist:
+
+.. figure:: ../_images/cosine-dist.png
+   :align: center
+   :figclass: align-center
+
+   Cosine-distribution reflection on an arbitrary surface.
+
+The probability density function (pdf) for the reflected direction can be
+expressed as follows,
+
+.. math::
+    :label: white-reflection-pdf
+
+    f(\mu, \phi) d\mu d\phi = \frac{\mu}{\pi} d\mu d\phi = 2\mu d\mu \frac{d\phi}{2\pi}
+
+where :math:`\mu = \cos \theta` is the cosine of the polar angle between
+reflected direction and the normal to the surface; and :math:`\theta` is the
+azimuthal angle in :math:`[0,2\pi]`. We can separate the multivariate
+probability density into two separate univariate density functions, one for
+the cosine of the polar angle,
+
+.. math::
+    :label: white-reflection-cosine
+
+    f(\mu) = 2\mu
+
+and one for the azimuthal angle,
+
+.. math::
+    :label: white-reflection-uniform
+
+    f(\phi) = \frac{1}{2\pi}.
+
+Each of these density functions can be sampled by analytical inversion of the
+cumulative distribution distribution, resulting in the following sampling
+scheme:
+
+.. math::
+    :label: white-reflection-sqrt-prn
+
+    \mu = \sqrt{\xi_1} \\
+    \phi = 2\pi\xi_2
+
+where :math:`\xi_1` and :math:`\xi_2` are uniform random numbers on
+:math:`[0,1)`. With the sampled values of :math:`\mu` and :math:`\phi`, the
+final reflected direction vector can be computed via rotation of the surface
+normal using the equations from :ref:`transform-coordinates`. The white boundary
+condition can be applied to any kind of surface, as long as the normal to the
+surface is known as in :ref:`reflection`.
+
+.. _constructive solid geometry: https://en.wikipedia.org/wiki/Constructive_solid_geometry
+.. _surfaces: https://en.wikipedia.org/wiki/Surface
 .. _MCNP: http://mcnp.lanl.gov
 .. _Serpent: http://montecarlo.vtt.fi
-.. _Monte Carlo Performance benchmark: https://github.com/paulromano/benchmarks/tree/master/mc-performance/openmc
+.. _Monte Carlo Performance benchmark: https://github.com/mit-crpg/benchmarks/tree/master/mc-performance/openmc

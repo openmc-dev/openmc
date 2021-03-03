@@ -1,0 +1,83 @@
+Volume calculation 0
+Trigger Type: None
+Trigger threshold: None
+Iterations: 1
+Domain 1: 31.47+/-0.07 cm^3
+Domain 2: 2.093+/-0.031 cm^3
+Domain 3: 2.049+/-0.031 cm^3
+   Cell Nuclide                Atoms
+0     1    U235  (3.482+/-0.008)e+23
+1     1    Mo99  (3.482+/-0.008)e+22
+2     2      H1  (1.400+/-0.021)e+23
+3     2     O16    (7.00+/-0.10)e+22
+4     2     B10    (7.00+/-0.10)e+18
+5     3      H1  (1.370+/-0.021)e+23
+6     3     O16    (6.85+/-0.10)e+22
+7     3     B10    (6.85+/-0.10)e+18
+Volume calculation 1
+Trigger Type: None
+Trigger threshold: None
+Iterations: 1
+Domain 1: 4.14+/-0.04 cm^3
+Domain 2: 31.47+/-0.07 cm^3
+   Material Nuclide                Atoms
+0         1      H1  (2.770+/-0.029)e+23
+1         1     O16  (1.385+/-0.014)e+23
+2         1     B10  (1.385+/-0.014)e+19
+3         2    U235  (3.482+/-0.008)e+23
+4         2    Mo99  (3.482+/-0.008)e+22
+Volume calculation 2
+Trigger Type: None
+Trigger threshold: None
+Iterations: 1
+Domain 0: 35.61+/-0.07 cm^3
+   Universe Nuclide                Atoms
+0         0      H1  (2.770+/-0.029)e+23
+1         0     O16  (1.385+/-0.014)e+23
+2         0     B10  (1.385+/-0.014)e+19
+3         0    U235  (3.482+/-0.008)e+23
+4         0    Mo99  (3.482+/-0.008)e+22
+Volume calculation 3
+Trigger Type: std_dev
+Trigger threshold: 0.1
+Iterations: 521
+Domain 1: 31.47+/-0.10 cm^3
+Domain 2: 2.10+/-0.04 cm^3
+Domain 3: 2.11+/-0.04 cm^3
+   Cell Nuclide                Atoms
+0     1    U235  (3.481+/-0.011)e+23
+1     1    Mo99  (3.481+/-0.011)e+22
+2     2      H1  (1.403+/-0.029)e+23
+3     2     O16    (7.01+/-0.14)e+22
+4     2     B10    (7.01+/-0.14)e+18
+5     3      H1  (1.412+/-0.029)e+23
+6     3     O16    (7.06+/-0.14)e+22
+7     3     B10    (7.06+/-0.14)e+18
+Volume calculation 4
+Trigger Type: rel_err
+Trigger threshold: 0.1
+Iterations: 10
+Domain 1: 4.5+/-0.4 cm^3
+Domain 2: 30.5+/-0.7 cm^3
+   Material Nuclide              Atoms
+0         1      H1  (3.02+/-0.30)e+23
+1         1     O16  (1.51+/-0.15)e+23
+2         1     B10  (1.51+/-0.15)e+19
+3         2    U235  (3.38+/-0.08)e+23
+4         2    Mo99  (3.38+/-0.08)e+22
+Volume calculation 5
+Trigger Type: variance
+Trigger threshold: 0.05
+Iterations: 105
+Domain 1: 31.51+/-0.22 cm^3
+Domain 2: 2.13+/-0.10 cm^3
+Domain 3: 2.11+/-0.10 cm^3
+   Cell Nuclide                Atoms
+0     1    U235  (3.486+/-0.025)e+23
+1     1    Mo99  (3.486+/-0.025)e+22
+2     2      H1    (1.42+/-0.06)e+23
+3     2     O16    (7.11+/-0.32)e+22
+4     2     B10    (7.11+/-0.32)e+18
+5     3      H1    (1.41+/-0.06)e+23
+6     3     O16    (7.05+/-0.32)e+22
+7     3     B10    (7.05+/-0.32)e+18

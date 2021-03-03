@@ -1,100 +1,119 @@
 element settings {
+  element batches { xsd:positiveInteger }? &
+
   element confidence_intervals { xsd:boolean }? &
 
-  (
-    element eigenvalue {
-      (element batches { xsd:positiveInteger } |
-        attribute batches { xsd:positiveInteger }) &
-      (element inactive { xsd:nonNegativeInteger } |
-        attribute inactive { xsd:nonNegativeInteger }) &
-      (element particles { xsd:positiveInteger } |
-        attribute particles { xsd:positiveInteger }) &
-      (element generations_per_batch { xsd:positiveInteger } |
-        attribute generations_per_batch { xsd:positiveInteger })? &
-      (element keff_trigger {
-        (element type { xsd:string } | attribute type { xsd:string }) &
-        (element threshold { xsd:double} | attribute threshold { xsd:double })
-        }
-      )?
-    } |
-    element fixed_source {
-      (element batches { xsd:positiveInteger } |
-        attribute batches { xsd:positiveInteger }) &
-      (element particles { xsd:positiveInteger } |
-        attribute particles { xsd:positiveInteger })
-    }
-  ) &
-
-  element cross_sections { xsd:string { maxLength = "255" } }? &
+  element create_fission_neutrons { xsd:boolean }? &
 
   element cutoff {
     (element weight { xsd:double } | attribute weight { xsd:double })? &
-    (element weight_avg { xsd:double } | attribute weight_avg { xsd:double })?
+    (element weight_avg { xsd:double } | attribute weight_avg { xsd:double })? &
+    (element energy_neutron { xsd:double } | attribute energy_neutron { xsd:double })? &
+    (element energy_photon { xsd:double } | attribute energy_photon { xsd:double })? &
+    (element energy_electron { xsd:double } | attribute energy_electron { xsd:double })? &
+    (element energy_positron { xsd:double } | attribute energy_positron { xsd:double })?
   }? &
+
+  element delayed_photon_scaling { xsd:boolean }? &
+
+  element electron_treatment { ( "led" | "ttb" ) }? &
 
   element energy_grid { ( "nuclide" | "log" | "logarithm" | "logarithmic" | "material-union" | "union" ) }? &
 
-  element entropy {
-    (element dimension { list { xsd:int+ } } |
-      attribute dimension { list { xsd:int+ } })? &
-    (element lower_left { list { xsd:double+ } } |
-      attribute lower_left { list { xsd:double+ } }) &
-    (element upper_right { list { xsd:double+ } } |
-      attribute upper_right { list { xsd:double+ } })
+  element energy_mode { ( "continuous-energy" | "ce" | "CE" | "multi-group" | "mg" | "MG" ) }? &
+
+  element entropy_mesh { xsd:positiveInteger }? &
+  
+  element event_based { xsd:boolean }? &
+  
+  element generations_per_batch { xsd:positiveInteger }? &
+
+  element inactive { xsd:nonNegativeInteger }? &
+
+  element keff_trigger {
+    (element type { xsd:string } | attribute type { xsd:string }) &
+    (element threshold { xsd:double} | attribute threshold { xsd:double })
   }? &
 
   element log_grid_bins { xsd:positiveInteger }? &
 
-  element natural_elements { xsd:string { maxLength = "20" } }? &
+  element material_cell_offsets { xsd:boolean }? &
+  
+  element max_particles_in_flight { xsd:positiveInteger }? &
+
+  element max_order { xsd:nonNegativeInteger }? &
+
+  element mesh {
+    (element id { xsd:int } | attribute id { xsd:int }) &
+    (element type { ( "regular" ) } |
+      attribute type { ( "regular" ) })? &
+    (element dimension { list { xsd:positiveInteger+ } } |
+      attribute dimension { list { xsd:positiveInteger+ } }) &
+    (element lower_left { list { xsd:double+ } } |
+      attribute lower_left { list { xsd:double+ } }) &
+    (
+      (element upper_right { list { xsd:double+ } } |
+        attribute upper_right { list { xsd:double+ } }) |
+      (element width { list { xsd:double+ } } |
+        attribute width { list { xsd:double+ } })
+    )
+  }* &
 
   element no_reduce { xsd:boolean }? &
 
   element output {
     (element summary { xsd:boolean } | attribute summary { xsd:boolean })? &
-    (element cross_sections { xsd:boolean } |
-      attribute cross_sections { xsd:boolean })? &
-    (element tallies { xsd:boolean } | attribute tallies { xsd:boolean })?
+    (element tallies { xsd:boolean } | attribute tallies { xsd:boolean })? &
+    (element path { xsd:string } | attribute path { xsd:string })?
   }? &
 
-  element output_path { xsd:string { maxLength = "255" } }? &
+  element particles { xsd:positiveInteger }? &
+
+  element photon_transport { xsd:boolean }? &
 
   element ptables { xsd:boolean }? &
 
-  element run_cmfd { xsd:boolean }? &
+  element dagmc { xsd:boolean }? &
+
+  element run_mode { xsd:string }? &
 
   element seed { xsd:positiveInteger }? &
 
   element source {
-    element file { xsd:string { maxLength = "255" } }? &
-    element space {
-      (element type { xsd:string { maxLength = "16" } } |
-        attribute type { xsd:string { maxLength = "16" } }) &
-      (element length { xsd:int } | attribute length { xsd:int })? &
-      (element interpolation { xsd:string { maxLength = "10" } } |
-        attribute interplation { xsd:string { maxLength = "10" } })? &
-      (element parameters { list { xsd:double+ } } |
-        attribute parameters { list { xsd:double+ } })?
-    }? &
-    element angle {
-      (element type { xsd:string { maxLength = "16" } } |
-        attribute type { xsd:string { maxLength = "16" } }) &
-      (element length { xsd:int } | attribute length { xsd:int })? &
-      (element interpolation { xsd:string { maxLength = "10" } } |
-        attribute interplation { xsd:string { maxLength = "10" } })? &
-      (element parameters { list { xsd:double+ } } |
-        attribute parameters { list { xsd:double+ } })?
-    }? &
-    element energy {
-      (element type { xsd:string { maxLength = "16" } } |
-        attribute type { xsd:string { maxLength = "16" } }) &
-      (element length { xsd:int } | attribute length { xsd:int })? &
-      (element interpolation { xsd:string { maxLength = "10" } } |
-        attribute interplation { xsd:string { maxLength = "10" } })? &
-      (element parameters { list { xsd:double+ } } |
-        attribute parameters { list { xsd:double+ } })?
-    }? &
-    (element write_initial { xsd:boolean } | attribute write_initial { xsd:boolean })?
-  }? &
+    grammar {
+      start =
+        (element particle { xsd:string } | attribute particle { xsd:string })? &
+        (element strength { xsd:double } | attribute strength { xsd:double })? &
+        (element file { xsd:string } | attribute file { xsd:string })? &
+        element space {
+          (element type { xsd:string } | attribute type { xsd:string }) &
+          (element parameters { list { xsd:double+ } } |
+            attribute parameters { list { xsd:double+ } })? &
+          element x { distribution }? &
+          element y { distribution }? &
+          element z { distribution }? &
+          element r { distribution }? &
+          element theta { distribution }? &
+          element phi { distribution }? &
+          element origin { list { xsd:double, xsd:double, xsd:double } }?
+        }? &
+        element angle {
+          (element type { xsd:string } | attribute type { xsd:string }) &
+          (element reference_uvw { list { xsd:double, xsd:double, xsd:double } } |
+            attribute reference_uvw { list { xsd:double, xsd:double, xsd:double } })? &
+          element mu { distribution }? &
+          element phi { distribution }?
+        }? &
+        element energy { distribution }?
+      distribution =
+        (element type { xsd:string { maxLength = "16" } } |
+          attribute type { xsd:string { maxLength = "16" } }) &
+        (element interpolation { xsd:string } |
+          attribute interpolation { xsd:string })? &
+        (element parameters { list { xsd:double+ } } |
+          attribute parameters { list { xsd:double+ } })?
+    }
+  }* &
 
   element state_point {
     (
@@ -120,7 +139,28 @@ element settings {
       attribute overwrite_latest {xsd:boolean})?
   }? &
 
+  element surf_source_read {
+    (element path { xsd:string } | attribute path { xsd:string })
+  }? &
+
+  element surf_source_write {
+    (element surface_ids { list { xsd:positiveInteger+ } } |
+      attribute surface_ids { list { xsd:positiveInteger+ } }) &
+    (element max_particles { xsd:positiveInteger } |
+      attribute max_particles { xsd:positiveInteger })
+  }? &
+
   element survival_biasing { xsd:boolean }? &
+
+  element temperature_default { xsd:double }? &
+
+  element temperature_method { xsd:string }? &
+
+  element temperature_multipole { xsd:boolean }? &
+
+  element temperature_range { list { xsd:double, xsd:double } }? &
+
+  element temperature_tolerance { xsd:double }? &
 
   element threads { xsd:positiveInteger }? &
 
@@ -134,31 +174,31 @@ element settings {
     (element batch_interval { xsd:positiveInteger } | attribute batch_interval { xsd:positiveInteger })?
   }? &
 
+  element ufs_mesh { xsd:positiveInteger }? &
+
   element verbosity { xsd:positiveInteger }? &
 
-  element uniform_fs{
-    (element dimension { list { xsd:positiveInteger+ } } |
-      attribute dimension { list { xsd:positiveInteger+ } }) &
+  element volume_calc {
+    (element domain_type { xsd:string } |
+      attribute domain_type { xsd:string }) &
+    (element domain_ids { list { xsd:integer+ } } |
+      attribute domain_ids { list { xsd:integer+ } }) &
+    (element samples { xsd:positiveInteger } |
+      attribute samples { xsd:positiveInteger }) &
     (element lower_left { list { xsd:double+ } } |
       attribute lower_left { list { xsd:double+ } }) &
     (element upper_right { list { xsd:double+ } } |
       attribute upper_right { list { xsd:double+ } })
-  }? &
+  }* &
+
+  element write_initial_source { xsd:boolean }? &
 
   element resonance_scattering {
-    element scatterer {
-      (element nuclide { xsd:string { maxLength = "12" } } |
-        attribute nuclide { xsd:string { maxLength = "12" }  }) &
-      (element method { xsd:string { maxLength = "16" } } |
-        attribute method { xsd:string { maxLength = "16" }  }) &
-      (element xs_label { xsd:string { maxLength = "12" } } |
-        attribute xs_label { xsd:string { maxLength = "12" } }) &
-      (element xs_label_0K { xsd:string { maxLength = "12" } } |
-        attribute xs_label_0K { xsd:string { maxLength = "12" } }) &
-      (element E_min { xsd:double } |
-        attribute E_min { xsd:double }) &
-      (element E_max { xsd:double } |
-        attribute E_max { xsd:double })?
-    }*
+    (element enable { xsd:boolean } | attribute enable { xsd:boolean })? &
+    (element method { xsd:string } | attribute method { xsd:string })? &
+    (element energy_min { xsd:double } | attribute energy_min { xsd:double })? &
+    (element energy_max { xsd:double } | attribute energy_max { xsd:double })? &
+    (element nuclides { list { xsd:string+ } } |
+      attribute nuclides { list { xsd:string+ } })?
   }?
 }

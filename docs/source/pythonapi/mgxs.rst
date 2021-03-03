@@ -1,66 +1,77 @@
-.. _pythonapi_mgxs:
+----------------------------------------------------------
+:mod:`openmc.mgxs` -- Multi-Group Cross Section Generation
+----------------------------------------------------------
 
-==========================
-Multi-Group Cross Sections
-==========================
+Energy Groups
+-------------
 
-.. currentmodule:: openmc.mgxs.mgxs
+Module Variables
+++++++++++++++++
 
-----------------------------
-Summary of Available Classes
-----------------------------
+.. autodata:: openmc.mgxs.GROUP_STRUCTURES
+    :annotation:
+
+Classes
++++++++
 
 .. autosummary::
+    :toctree: generated
+    :nosignatures:
+    :template: myclass.rst
 
-   MGXS
-   AbsorptionXS
-   CaptureXS
-   Chi
-   FissionXS
-   NuFissionXS
-   NuScatterXS
-   NuScatterMatrixXS
-   ScatterXS
-   ScatterMatrixXS
-   TotalXS
-   TransportXS
+    openmc.mgxs.EnergyGroups
 
--------------------
-Class Documentation
--------------------
+Multi-group Cross Sections
+--------------------------
 
-.. autoclass:: MGXS
-    :members:
+.. autosummary::
+    :toctree: generated
+    :nosignatures:
+    :template: myclassinherit.rst
 
-.. autoclass:: AbsorptionXS
-    :members:
+    openmc.mgxs.MGXS
+    openmc.mgxs.MatrixMGXS
+    openmc.mgxs.AbsorptionXS
+    openmc.mgxs.CaptureXS
+    openmc.mgxs.Chi
+    openmc.mgxs.Current
+    openmc.mgxs.DiffusionCoefficient
+    openmc.mgxs.FissionXS
+    openmc.mgxs.InverseVelocity
+    openmc.mgxs.KappaFissionXS
+    openmc.mgxs.MultiplicityMatrixXS
+    openmc.mgxs.NuFissionMatrixXS
+    openmc.mgxs.ScatterXS
+    openmc.mgxs.ScatterMatrixXS
+    openmc.mgxs.ScatterProbabilityMatrix
+    openmc.mgxs.TotalXS
+    openmc.mgxs.TransportXS
+    openmc.mgxs.ArbitraryXS
+    openmc.mgxs.ArbitraryMatrixXS
+    openmc.mgxs.MeshSurfaceMGXS
 
-.. autoclass:: CaptureXS
-    :members:
+Multi-delayed-group Cross Sections
+----------------------------------
 
-.. autoclass:: Chi
-    :members:
+.. autosummary::
+    :toctree: generated
+    :nosignatures:
+    :template: myclassinherit.rst
 
-.. autoclass:: FissionXS
-    :members:
+    openmc.mgxs.MDGXS
+    openmc.mgxs.MatrixMDGXS
+    openmc.mgxs.ChiDelayed
+    openmc.mgxs.DelayedNuFissionXS
+    openmc.mgxs.DelayedNuFissionMatrixXS
+    openmc.mgxs.Beta
+    openmc.mgxs.DecayRate
 
-.. autoclass:: NuFissionXS
-    :members:
+Multi-group Cross Section Libraries
+-----------------------------------
 
-.. autoclass:: NuScatterXS
-    :members:
+.. autosummary::
+    :toctree: generated
+    :nosignatures:
+    :template: myclass.rst
 
-.. autoclass:: NuScatterMatrixXS
-    :members:
-
-.. autoclass:: ScatterXS
-    :members:
-
-.. autoclass:: ScatterMatrixXS
-    :members:
-
-.. autoclass:: TotalXS
-    :members:
-
-.. autoclass:: TransportXS
-    :members:
+    openmc.mgxs.Library

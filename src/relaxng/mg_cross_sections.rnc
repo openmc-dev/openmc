@@ -1,0 +1,61 @@
+element cross_sections {
+
+  element groups { xsd:int } &
+
+  element group_structure { list { xsd:double+ } } &
+
+  element inverse_velocities { list { xsd:double+ } }? &
+
+  element xsdata {
+    (element name { xsd:string { maxLength = "15" } } |
+      attribute name { xsd:string { maxLength = "15" } }) &
+    (element alias { xsd:string { maxLength = "15" } } |
+      attribute alias { xsd:string { maxLength = "15" } })? &
+    (element kT { xsd:double } | attribute kT { xsd:double })? &
+    (element fissionable { ( "true" | "false" ) } |
+      attribute fissionable { ( "true" | "false" ) }) &
+    (element representation { ( "isotropic" | "angle" ) } |
+      attribute representation { ( "isotropic" | "angle" ) })? &
+    (element num_azimuthal { xsd:positiveInteger } |
+      attribute num_azimuthal { xsd:positiveInteger })? &
+    (element num_polar { xsd:positiveInteger } |
+      attribute num_polar { xsd:positiveInteger })? &
+    (element scatt_type { ( "legendre" | "histogram" | "tabular" ) } |
+      attribute scatt_type { ( "legendre" | "histogram" | "tabular" ) })? &
+    (element order { xsd:positiveInteger } |
+      attribute order { xsd:positiveInteger }) &
+    element tabular_legendre {
+      (element enable { ( "true" | "false" ) } |
+       attribute enable { ( "true" | "false" ) })? &
+      (element num_points { xsd:positiveInteger } |
+        attribute num_points { xsd:positiveInteger })?
+    }? &
+
+    (element total { list { xsd:double+ } } |
+      attribute total { list { xsd:double+ } })? &
+
+    (element absorption { list { xsd:double+ } } |
+      attribute absorption { list { xsd:double+ } }) &
+
+    (element scatter { list { xsd:double+ } } |
+      attribute scatter { list { xsd:double+ } }) &
+
+    (element fission { list { xsd:double+ } } |
+      attribute fission { list { xsd:double+ } })? &
+
+    (element fission { list { xsd:double+ } } |
+      attribute fission { list { xsd:double+ } })? &
+
+    (element k_fission { list { xsd:double+ } } |
+      attribute k_fission { list { xsd:double+ } })? &
+
+    (element chi { list { xsd:double+ } } |
+      attribute chi { list { xsd:double+ } })? &
+
+    (element nu_fission { list { xsd:double+ } } |
+      attribute nu_fission { list { xsd:double+ } })?
+
+  }*
+
+
+}

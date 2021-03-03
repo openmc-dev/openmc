@@ -1,0 +1,139 @@
+<?xml version="1.0"?>
+<materials>
+
+  <!--
+  ===============================================================
+  Description: Rectangular Array of Water-Moderated MOX Fuel Rods
+  Case:        MIX-COMP-THERM-002, PNL-30
+  Written By:  Paul Romano
+  Date:        9/6/2012
+  ===============================================================
+  -->
+
+  <!-- UO2-PuO2 Mixture -->
+  <material id="1">
+    <density value="9.54" units="g/cm3" />
+    <nuclide name="Pu238" ao="3.8836e-08" />
+    <nuclide name="Pu239" ao="3.9462e-04" />
+    <nuclide name="Pu240" ao="3.3206e-05" />
+    <nuclide name="Pu241" ao="1.6081e-06" />
+    <nuclide name="Pu242" ao="1.1882e-07" />
+    <nuclide name="Am241" ao="1.4954e-06" />
+    <nuclide name="U234"  ao="1.2458e-06" />
+    <nuclide name="U235"  ao="1.4886e-04" />
+    <nuclide name="U236"  ao="2.0936e-09" />
+    <nuclide name="U238"  ao="2.0611e-02" />
+    <nuclide name="O16"   ao="4.3779e-02" />
+  </material>
+
+  <!-- Natural UO2 Layer -->
+  <material id="2">
+    <density value="9.286" units="g/cm3" />
+    <nuclide name="U234"  ao="1.2406e-06" />
+    <nuclide name="U235"  ao="1.4824e-04" />
+    <nuclide name="U236"  ao="2.0848e-09" />
+    <nuclide name="U238"  ao="2.0525e-02" />
+    <nuclide name="O16"   ao="4.1943e-02" />
+  </material>
+
+  <!-- Cladding -->
+  <material id="3">
+    <density units="sum" />
+    <!-- Sn at 4.8328e-4 atom/b-cm -->
+    <nuclide name="Sn112" ao="4.6878e-06" />
+    <nuclide name="Sn114" ao="3.1896e-06" />
+    <nuclide name="Sn115" ao="1.6432e-06" />
+    <nuclide name="Sn116" ao="7.0269e-05" />
+    <nuclide name="Sn117" ao="3.7116e-05" />
+    <nuclide name="Sn118" ao="1.1705e-04" />
+    <nuclide name="Sn119" ao="4.1514e-05" />
+    <nuclide name="Sn120" ao="1.5745e-04" />
+    <nuclide name="Sn122" ao="2.2376e-05" />
+    <nuclide name="Sn124" ao="2.7982e-05" />
+    <!-- Fe at 9.5642e-5 atom/b-cm -->
+    <nuclide name="Fe54" ao="5.5903e-06" />
+    <nuclide name="Fe56" ao="8.7755e-05" />
+    <nuclide name="Fe57" ao="2.0267e-06" />
+    <nuclide name="Fe58" ao="2.6971e-07" />
+    <!-- Cr at 7.6093e-5 atom/b-cm -->
+    <nuclide name="Cr50" ao="3.3062e-06" />
+    <nuclide name="Cr52" ao="6.3758e-05" />
+    <nuclide name="Cr53" ao="7.2296e-06" />
+    <nuclide name="Cr54" ao="1.7996e-06" />
+    <!-- Ni at 3.0336e-5 atom/b-cm -->
+    <nuclide name="Ni58" ao="2.0652e-05" />
+    <nuclide name="Ni60" ao="7.9550e-06" />
+    <nuclide name="Ni61" ao="3.4580e-07" />
+    <nuclide name="Ni62" ao="1.1026e-06" />
+    <nuclide name="Ni64" ao="2.8079e-07" />
+    <!-- Zr at 4.2621e-2 atom/b-cm -->
+    <nuclide name="Zr90" ao="2.1929e-02" />
+    <nuclide name="Zr91" ao="4.7821e-03" />
+    <nuclide name="Zr92" ao="7.3095e-03" />
+    <nuclide name="Zr94" ao="7.4075e-03" />
+    <nuclide name="Zr96" ao="1.1934e-03" />
+  </material>
+
+  <!-- Moderator -->
+  <material id="4">
+    <density units="sum" />
+    <!-- H at 6.6706e-2 atom/b-cm -->
+    <nuclide name="H1" ao="6.6698e-02" />
+    <nuclide name="H2" ao="7.6712e-06" />
+    <!-- O at 3.3353e-2 atom/b-cm -->
+    <nuclide name="O16" ao="3.3340e-02" />
+    <nuclide name="O17" ao="1.2674e-05" />
+    <!-- Boron at 1.7 ppm -->
+    <nuclide name="B10" ao="1.8706e-08" />
+    <nuclide name="B11" ao="7.5770e-08" />
+    <sab name="c_H_in_H2O" />
+  </material>
+
+  <!-- 6061 Aluminum -->
+  <material id="5">
+    <density units="sum" />
+    <!-- Si at 3.4607e-4 atom/b-cm -->
+    <nuclide name="Si28" ao="3.1918e-04" />
+    <nuclide name="Si29" ao="1.6207e-05" />
+    <nuclide name="Si30" ao="1.0684e-05" />
+    <!-- Fe at 1.0152e-4 atom/b-cm -->
+    <nuclide name="Fe54" ao="5.9338e-06" />
+    <nuclide name="Fe56" ao="9.3149e-05" />
+    <nuclide name="Fe57" ao="2.1512e-06" />
+    <nuclide name="Fe58" ao="2.8629e-07" />
+    <!-- Cu at 6.3731e-5 atom/b-cm -->
+    <nuclide name="Cu63" ao="4.4083e-05" />
+    <nuclide name="Cu65" ao="1.9648e-05" />
+    <!-- Mn at 2.2115e-5 atom/b-cm -->
+    <nuclide name="Mn55" ao="2.2115e-05" />
+    <!-- Mg at 6.6651e-4 atom/b-cm -->
+    <nuclide name="Mg24" ao="5.2648e-04" />
+    <nuclide name="Mg25" ao="6.6651e-05" />
+    <nuclide name="Mg26" ao="7.3383e-05" />
+    <!-- Cr at 6.2310e-5 atom/b-cm -->
+    <nuclide name="Cr50" ao="2.7074e-06" />
+    <nuclide name="Cr52" ao="5.2209e-05" />
+    <nuclide name="Cr53" ao="5.9201e-06" />
+    <nuclide name="Cr54" ao="1.4736e-06" />
+    <!-- Zn at 3.0967e-5 atom/b-cm -->
+    <nuclide name="Zn66" ao="3.0967e-05" />
+    <!-- Ti at 2.5375e-5 atom/b-cm -->
+    <nuclide name="Ti46" ao="2.0934e-06" />
+    <nuclide name="Ti47" ao="1.8879e-06" />
+    <nuclide name="Ti48" ao="1.8706e-05" />
+    <nuclide name="Ti49" ao="1.3728e-06" />
+    <nuclide name="Ti50" ao="1.3144e-06" />
+    <!-- Al at 5.8433e-2 atom/b-cm -->
+    <nuclide name="Al27" ao="5.8433e-02" />
+  </material>
+
+  <!-- Lead -->
+  <material id="6">
+    <density value="3.2174e-02" units="atom/b-cm" />
+    <nuclide name="Pb204" ao="4.5044e-04" />
+    <nuclide name="Pb206" ao="7.7539e-03" />
+    <nuclide name="Pb207" ao="7.1105e-03" />
+    <nuclide name="Pb208" ao="1.6859e-02" />
+  </material>
+
+</materials>

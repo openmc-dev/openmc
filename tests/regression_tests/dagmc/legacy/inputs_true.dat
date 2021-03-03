@@ -1,0 +1,36 @@
+<?xml version='1.0' encoding='utf-8'?>
+<materials>
+  <material depletable="true" id="40" name="no-void fuel">
+    <density units="g/cc" value="11" />
+    <nuclide ao="1.0" name="U235" />
+  </material>
+  <material id="41" name="water">
+    <density units="g/cc" value="1.0" />
+    <nuclide ao="2.0" name="H1" />
+    <nuclide ao="1.0" name="O16" />
+    <sab name="c_H_in_H2O" />
+  </material>
+</materials>
+<?xml version='1.0' encoding='utf-8'?>
+<settings>
+  <run_mode>eigenvalue</run_mode>
+  <particles>100</particles>
+  <batches>5</batches>
+  <inactive>0</inactive>
+  <source strength="1.0">
+    <space type="box">
+      <parameters>-4 -4 -4 4 4 4</parameters>
+    </space>
+  </source>
+  <dagmc>true</dagmc>
+</settings>
+<?xml version='1.0' encoding='utf-8'?>
+<tallies>
+  <filter id="1" type="cell">
+    <bins>1</bins>
+  </filter>
+  <tally id="1">
+    <filters>1</filters>
+    <scores>total</scores>
+  </tally>
+</tallies>

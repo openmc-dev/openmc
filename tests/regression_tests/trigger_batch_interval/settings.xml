@@ -1,0 +1,25 @@
+<?xml version="1.0"?>
+<settings>
+  <run_mode>eigenvalue</run_mode>
+  <batches>15</batches>
+  <inactive>5</inactive>
+  <particles>1000</particles>
+  <keff_trigger>
+    <type>std_dev</type>
+    <threshold>0.004</threshold>
+  </keff_trigger>
+
+  <trigger>
+    <active>true</active>
+    <max_batches>30</max_batches>
+    <batch_interval>1</batch_interval>
+  </trigger>
+
+  <source>
+    <space>
+      <type>point</type>
+      <parameters>0.0 0.0 0.0</parameters>
+    </space>
+  </source>
+
+</settings>

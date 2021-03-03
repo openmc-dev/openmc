@@ -1,9 +1,0 @@
-<?xml version="1.0"?>
-<materials>
-
-  <material id="1">
-    <density value="0.1" units="atom/b-cm" />
-    <nuclide name="U-235" xs="71c" ao="1.0" />
-  </material>
-
-</materials>

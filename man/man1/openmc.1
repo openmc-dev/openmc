@@ -3,7 +3,7 @@
 openmc \- Executes the OpenMC Monte Carlo code
 .SH DESCRIPTION
 This command is used to execute the OpenMC Monte Carlo code. It is assumed that
-a set of XML input files has already been created and that ACE format cross
+a set of XML input files has already been created and that HDF5 format cross
 sections are available.
 .SH SYNOPSIS
 \fBopenmc\fR [\fIoptions\fR] [\fIpath\fR]
@@ -13,9 +13,15 @@ It is assumed that if no
 is specified, the XML input files are present in the current directory.
 .SH OPTIONS
 .TP
+.B "\-c\fR, \fP\-\-volume"
+Run in stochastic volume calculation mode
+.TP
+.B "\-e\fR, \fP\-\-event"
+Run using event-based parallelism
+.TP
 .B "\-g\fR, \fP\-\-geometry-debug"
-Run in geometry debugging mode, where cell overlaps are checked for after each
-move of a particle
+Run with geometry debugging turned on, where cell overlaps are checked for after
+each move of a particle
 .TP
 .B "\-p\fR, \fP\-\-plot"
 Run in plotting mode
@@ -40,13 +46,19 @@ The behavior of
 .B openmc
 is affected by the following environment variables.
 .TP
-.B CROSS_SECTIONS
+.B OPENMC_CROSS_SECTIONS
 Indicates the default path to the cross_sections.xml summary file that is used
-to locate ACE format cross section libraries if the user has not specified the
+to locate HDF5 format cross section libraries if the user has not specified the
 <cross_sections> tag in
-.I settings.xml\fP.
+.I materials.xml\fP.
+.TP
+.B OPENMC_MG_CROSS_SECTIONS
+Indicates the default path to an HDF5 file that contains multi-group cross
+section libraries if the user has not specified the <cross_sections> tag in
+.I materials.xml\fP.
 .SH LICENSE
-Copyright \(co 2011-2015 Massachusetts Institute of Technology.
+Copyright \(co 2011-2020 Massachusetts Institute of Technology and OpenMC
+contributors.
 .PP
 Permission is hereby granted, free of charge, to any person obtaining a copy of
 this software and associated documentation files (the "Software"), to deal in
@@ -66,7 +78,7 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 .SH REPORTING BUGS
 The OpenMC source code is hosted on GitHub at
-https://github.com/mit-crpg/openmc. With a github account, you can submit issues
+https://github.com/openmc-dev/openmc. With a github account, you can submit issues
 directly on the github repository that will then be reviewed by OpenMC
 developers. Alternatively, you can send a bug report to
 .I openmc-users@googlegroups.com\fP.

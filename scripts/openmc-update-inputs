@@ -1,31 +1,16 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 """Update OpenMC's input XML files to the latest format.
-
-Usage information can be obtained by running 'openmc-update-inputs --help':
-
-usage: openmc-update-inputs [-h] IN [IN ...]
-
-Update geometry.xml files to the latest format. This will remove 'outside'
-attributes/elements from lattices and replace them with 'outer' attributes. For
-'cell' elements, any 'surfaces' attributes/elements will be renamed
-'region'. Note that this script will not delete the given files; it will append
-'.original' to the given files and write new ones.
-
-positional arguments:
-  IN          Input geometry.xml file(s).
-
-optional arguments:
-  -h, --help  show this help message and exit
 
 """
 
-from __future__ import print_function
-
 import argparse
+from difflib import get_close_matches
 from itertools import chain
 from random import randint
 from shutil import move
 import xml.etree.ElementTree as ET
+
+import openmc.data
 
 
 description = "Update OpenMC's input XML files to the latest format."
@@ -40,6 +25,11 @@ geometry.xml: Lattices containing 'outside' attributes/tags will be replaced
   with lattices containing 'outer' attributes, and the appropriate
   cells/universes will be added. Any 'surfaces' attributes/elements on a cell
   will be renamed 'region'.
+
+materials.xml: Nuclide names will be changed from ACE aliases (e.g., Am-242m) to
+  HDF5/GND names (e.g., Am242_m1). Thermal scattering table names will be
+  changed from ACE aliases (e.g., HH2O) to HDF5/GND names (e.g., c_H_in_H2O).
+
 """
 
 
@@ -51,7 +41,7 @@ def parse_args():
          epilog=epilog,
          formatter_class=argparse.RawTextHelpFormatter)
     parser.add_argument('input', metavar='IN', type=str, nargs='+',
-                        help='Input geometry.xml file(s).')
+                        help='Input XML file(s).')
 
     # Parse and return commandline arguments.
     return parser.parse_args()
@@ -60,20 +50,21 @@ def parse_args():
 def get_universe_ids(geometry_root):
     """Return a set of universe id numbers."""
     root = geometry_root
-    out = {0}
+    out = set()
 
     # Get the ids of universes defined by cells.
     for cell in root.iter('cell'):
-        # Get universe attributes.
+        # Get universe attributes/elements
         if 'universe' in cell.attrib:
             uid = cell.attrib['universe']
             out.add(int(uid))
-
-        # Get universe elements.
         elif cell.find('universe') is not None:
             elem = cell.find('universe')
             uid = elem.text
             out.add(int(uid))
+        else:
+            # Default to universe 0
+            out.add(0)
 
     # Get the ids of universes defined by lattices.
     for lat in root.iter('lattice'):
@@ -245,6 +236,48 @@ def update_geometry(geometry_root):
 
     return was_updated
 
+def update_materials(root):
+    """Update the given XML materials tree. Return True if changes were made."""
+    was_updated = False
+
+    for material in root.findall('material'):
+        for nuclide in material.findall('nuclide'):
+            if 'name' in nuclide.attrib:
+                nucname = nuclide.attrib['name'].replace('-', '')
+                # If a nuclide name is in the ZAID notation (e.g., a number),
+                # convert it to the proper nuclide name.
+                if nucname.strip().isnumeric():
+                    nucname = openmc.data.ace.get_metadata(int(nucname))[0]
+                nucname = nucname.replace('Nat', '0')
+                if nucname.endswith('m'):
+                    nucname = nucname[:-1] + '_m1'
+                nuclide.set('name', nucname)
+                was_updated = True
+
+            elif nuclide.find('name') is not None:
+                name_elem = nuclide.find('name')
+                nucname = name_elem.text
+                nucname = nucname.replace('-', '')
+                nucname = nucname.replace('Nat', '0')
+                if nucname.endswith('m'):
+                    nucname = nucname[:-1] + '_m1'
+                name_elem.text = nucname
+                was_updated = True
+
+        for sab in material.findall('sab'):
+            if 'name' in sab.attrib:
+                sabname = sab.attrib['name']
+                sab.set('name', openmc.data.get_thermal_name(sabname))
+                was_updated = True
+
+            elif sab.find('name') is not None:
+                name_elem = sab.find('name')
+                sabname = name_elem.text
+                name_elem.text = openmc.data.get_thermal_name(sabname)
+                was_updated = True
+
+    return was_updated
+
 
 if __name__ == '__main__':
     args = parse_args()
@@ -256,10 +289,12 @@ if __name__ == '__main__':
 
         if root.tag == 'geometry':
             was_updated = update_geometry(root)
+        elif root.tag == 'materials':
+            was_updated = update_materials(root)
 
         if was_updated:
             # Move the original geometry file to preserve it.
             move(fname, fname + '.original')
 
             # Write a new geometry file.
-            tree.write(fname)
+            tree.write(fname, xml_declaration=True)

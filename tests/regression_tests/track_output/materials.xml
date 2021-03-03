@@ -1,0 +1,95 @@
+<?xml version="1.0"?>
+<materials>
+
+<!-- material 1: Water with 1511 PPM -->
+  <material id="1">
+    <density value="0.99823" units="g/cc" />
+    <nuclide name="H1"  ao="6.6737E-002" />
+    <nuclide name="O16" ao="3.3369E-002" />
+    <nuclide name="B10" ao="1.6769E-005" />
+    <nuclide name="B11" ao="6.7497E-005" />
+    <sab name="c_H_in_H2O" />
+  </material>
+
+<!-- material 2: Fuel (2.459 w/o with B-10 for impurities) -->
+  <material id="2">
+    <density value="10.24" units="g/cc" />
+    <nuclide name="U235" ao="5.6868E-004" />
+<!--    <nuclide name="U234" ao="4.5689E-006" />  -->
+    <nuclide name="U238" ao="2.2268E-002" />
+    <nuclide name="O16"  ao="4.5683E-002" />
+    <nuclide name="B10"  ao="2.6055E-007" />
+  </material>
+
+  <!--               Zircaloy-4               -->
+  <material id="3">
+    <density value="  6.55" units="g/cc" />
+    <nuclide name="O16"  ao="3.0743e-04" />
+<!--    <nuclide name="O17"  ao="7.4887e-07" />-->
+<!--    <nuclide name="Cr50"  ao="3.2962e-06" />-->
+<!--    <nuclide name="Cr52"  ao="6.3564e-05" />-->
+<!--    <nuclide name="Cr53"  ao="7.2076e-06" />-->
+<!--    <nuclide name="Cr54"  ao="1.7941e-06" />-->
+<!--    <nuclide name="Fe54"  ao="8.6699e-06" />-->
+<!--    <nuclide name="Fe56"  ao="1.3610e-04" />-->
+<!--    <nuclide name="Fe57"  ao="3.1431e-06" />-->
+<!--    <nuclide name="Fe58"  ao="4.1829e-07" />-->
+    <nuclide name="Zr90"  ao="2.1827e-02" />
+    <nuclide name="Zr91"  ao="4.7600e-03" />
+    <nuclide name="Zr92"  ao="7.2758e-03" />
+    <nuclide name="Zr94"  ao="7.3734e-03" />
+    <nuclide name="Zr96"  ao="1.1879e-03" />
+<!--    <nuclide name="Sn112"  ao="4.6735e-06" />-->
+<!--    <nuclide name="Sn114"  ao="3.1799e-06" />-->
+<!--    <nuclide name="Sn115"  ao="1.6381e-06" />-->
+<!--    <nuclide name="Sn116"  ao="7.0055e-05" />-->
+<!--    <nuclide name="Sn117"  ao="3.7003e-05" />-->
+<!--    <nuclide name="Sn118"  ao="1.1669e-04" />-->
+<!--    <nuclide name="Sn119"  ao="4.1387e-05" />-->
+<!--    <nuclide name="Sn120"  ao="1.5697e-04" />-->
+<!--    <nuclide name="Sn122"  ao="2.2308e-05" />-->
+<!--    <nuclide name="Sn124"  ao="2.7897e-05" />-->
+  </material>
+
+<!-- material 3: Fuel Aluminum 6061 cladding -->
+<!--  <material id="3">-->
+<!--    <density value="2.5052" units="g/cc" />-->
+<!--    <nuclide name="Al27" ao="5.3985e-02" />-->
+<!--    <nuclide name="Mn55" ao="4.1191e-05" />-->
+<!--    <nuclide name="Mg24" ao="4.9031e-04" />-->
+<!--    <nuclide name="Mg25" ao="6.2072e-05" />-->
+<!--    <nuclide name="Mg26" ao="6.8341e-05" />-->
+<!--    <nuclide name="Si28" ao="2.9726e-04" />-->
+<!--    <nuclide name="Si29" ao="1.5094e-05" />-->
+<!--    <nuclide name="Si30" ao="9.9499e-06" />-->
+<!--    <nuclide name="Cr50" ao="2.5214e-06" />-->
+<!--    <nuclide name="Cr52" ao="4.8622e-05" />-->
+<!--    <nuclide name="Cr53" ao="5.5133e-06" />-->
+<!--    <nuclide name="Cr54" ao="1.3724e-06" />-->
+<!--    <nuclide name="Fe54" ao="1.1053e-05" />-->
+<!--    <nuclide name="Fe56" ao="1.7351e-04" />-->
+<!--    <nuclide name="Fe57" ao="4.0070e-06" />-->
+<!--    <nuclide name="Fe58" ao="5.3326e-07" />-->
+<!--    <nuclide name="Ti46" ao="3.8992e-06" />-->
+<!--    <nuclide name="Ti47" ao="3.5164e-06" />-->
+<!--    <nuclide name="Ti48" ao="3.4842e-05" />-->
+<!--    <nuclide name="Ti49" ao="2.5569e-06" />-->
+<!--    <nuclide name="Ti50" ao="2.4482e-06" />-->
+<!--    <nuclide name="Cu63" ao="4.1054e-05" />-->
+<!--    <nuclide name="Cu65" ao="1.8299e-05" />-->
+<!--  </material>-->
+
+<!-- material 4: Control Rod Material -->
+  <material id="4">
+    <density value="2.2442" units="g/cc" />
+    <nuclide name="B10"  ao="9.7491e-4" />
+    <nuclide name="B11"  ao="3.9241e-3" />
+    <nuclide name="O16"  ao="4.4829e-2" />
+<!--    <nuclide name="Na23" ao="1.7444e-3" />-->
+<!--    <nuclide name="Al27" ao="1.0018e-3" />-->
+<!--    <nuclide name="Si28" ao="1.6884e-02" />-->
+<!--    <nuclide name="Si29" ao="8.5730e-04" />-->
+<!--    <nuclide name="Si30" ao="5.6513e-04" />-->
+  </material>
+
+</materials>

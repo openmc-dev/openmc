@@ -1,0 +1,14 @@
+<?xml version="1.0"?>
+<tallies>
+
+  <tally id="1">
+    <nuclides>all</nuclides>
+    <scores>total absorption fission scatter</scores>
+  </tally>
+
+  <tally id="2">
+    <nuclides>Pu239</nuclides>
+    <scores>total absorption fission scatter</scores>
+  </tally>
+
+</tallies>

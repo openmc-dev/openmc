@@ -1,0 +1,11 @@
+<?xml version="1.0"?>
+<materials>
+
+  <material id="1">
+    <density value="4.5" units="g/cc" />
+    <nuclide name="U238" ao="1.0" />
+    <nuclide name="U235" ao="0.06" />
+    <nuclide name="H1" ao="1.0" />
+  </material>
+
+</materials>

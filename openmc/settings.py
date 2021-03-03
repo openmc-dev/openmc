@@ -152,8 +152,8 @@ class Settings:
 
         :surface_ids: List of surface ids at which crossing particles are to be
                    banked (int)
-        :max_particles: Maximum number of particles to be banked on surfaces
-                         per process (int)
+        :max_particles: Maximum number of particles to be banked on 
+                   surfaces per process (int)
     survival_biasing : bool
         Indicate whether survival biasing is to be used
     tabular_legendre : dict

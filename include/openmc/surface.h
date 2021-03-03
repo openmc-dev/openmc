@@ -149,8 +149,8 @@ public:
   //! Get the BoundingBox for this surface.
   virtual BoundingBox bounding_box(bool /*pos_side*/) const { return {}; }
 
-  protected:
-     virtual void to_hdf5_inner(hid_t group_id) const = 0;
+protected:
+  virtual void to_hdf5_inner(hid_t group_id) const = 0;
 };
 
 class CSGSurface : public Surface

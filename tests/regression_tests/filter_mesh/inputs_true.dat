@@ -1,0 +1,112 @@
+<?xml version='1.0' encoding='utf-8'?>
+<geometry>
+  <cell id="1" material="1" region="1 -2 3 -4 10 -9" universe="1" />
+  <cell id="2" material="2" region="~(1 -2 3 -4) (5 -6 7 -8) 10 -9" universe="1" />
+  <surface coeffs="-5.0" id="1" name="minimum x" type="x-plane" />
+  <surface coeffs="5.0" id="2" name="maximum x" type="x-plane" />
+  <surface coeffs="-5.0" id="3" name="minimum y" type="y-plane" />
+  <surface coeffs="5.0" id="4" name="maximum y" type="y-plane" />
+  <surface boundary="reflective" coeffs="-10.0" id="5" name="minimum x" type="x-plane" />
+  <surface boundary="reflective" coeffs="10.0" id="6" name="maximum x" type="x-plane" />
+  <surface boundary="reflective" coeffs="-10.0" id="7" name="minimum y" type="y-plane" />
+  <surface boundary="reflective" coeffs="10.0" id="8" name="maximum y" type="y-plane" />
+  <surface boundary="vacuum" coeffs="10.0" id="9" type="z-plane" />
+  <surface boundary="vacuum" coeffs="-10.0" id="10" type="z-plane" />
+</geometry>
+<?xml version='1.0' encoding='utf-8'?>
+<materials>
+  <material depletable="true" id="1">
+    <density units="g/cm3" value="10.0" />
+    <nuclide ao="1.0" name="U235" />
+  </material>
+  <material id="2">
+    <density units="g/cm3" value="1.0" />
+    <nuclide ao="1.0" name="Zr90" />
+  </material>
+</materials>
+<?xml version='1.0' encoding='utf-8'?>
+<settings>
+  <run_mode>eigenvalue</run_mode>
+  <particles>1000</particles>
+  <batches>5</batches>
+  <inactive>0</inactive>
+</settings>
+<?xml version='1.0' encoding='utf-8'?>
+<tallies>
+  <mesh id="1">
+    <dimension>5</dimension>
+    <lower_left>-7.5</lower_left>
+    <upper_right>7.5</upper_right>
+  </mesh>
+  <mesh id="2">
+    <dimension>5 5</dimension>
+    <lower_left>-7.5 -7.5</lower_left>
+    <upper_right>7.5 7.5</upper_right>
+  </mesh>
+  <mesh id="3">
+    <dimension>5 5 5</dimension>
+    <lower_left>-7.5 -7.5 -7.5</lower_left>
+    <upper_right>7.5 7.5 7.5</upper_right>
+  </mesh>
+  <mesh id="4" type="rectilinear">
+    <x_grid>-7.5 -6.617647058823529 -5.735294117647059 -4.852941176470589 -3.9705882352941178 -3.0882352941176467 -2.2058823529411766 -1.3235294117647065 -0.4411764705882355 0.4411764705882355 1.3235294117647065 2.2058823529411757 3.0882352941176467 3.9705882352941178 4.852941176470587 5.735294117647058 6.617647058823529 7.5</x_grid>
+    <y_grid>-7.5 -6.617647058823529 -5.735294117647059 -4.852941176470589 -3.9705882352941178 -3.0882352941176467 -2.2058823529411766 -1.3235294117647065 -0.4411764705882355 0.4411764705882355 1.3235294117647065 2.2058823529411757 3.0882352941176467 3.9705882352941178 4.852941176470587 5.735294117647058 6.617647058823529 7.5</y_grid>
+    <z_grid>1.0 1.223224374241637 1.4962778697388448 1.8302835609029084 2.2388474634702153 2.7386127875258306 3.3499379133114306 4.09772570775871 5.012437964687018 6.131336292779302 7.500000000000001</z_grid>
+  </mesh>
+  <filter id="1" type="mesh">
+    <bins>1</bins>
+  </filter>
+  <filter id="5" type="meshsurface">
+    <bins>1</bins>
+  </filter>
+  <filter id="2" type="mesh">
+    <bins>2</bins>
+  </filter>
+  <filter id="6" type="meshsurface">
+    <bins>2</bins>
+  </filter>
+  <filter id="3" type="mesh">
+    <bins>3</bins>
+  </filter>
+  <filter id="7" type="meshsurface">
+    <bins>3</bins>
+  </filter>
+  <filter id="4" type="mesh">
+    <bins>4</bins>
+  </filter>
+  <filter id="8" type="meshsurface">
+    <bins>4</bins>
+  </filter>
+  <tally id="1">
+    <filters>1</filters>
+    <scores>total</scores>
+  </tally>
+  <tally id="2">
+    <filters>5</filters>
+    <scores>current</scores>
+  </tally>
+  <tally id="3">
+    <filters>2</filters>
+    <scores>total</scores>
+  </tally>
+  <tally id="4">
+    <filters>6</filters>
+    <scores>current</scores>
+  </tally>
+  <tally id="5">
+    <filters>3</filters>
+    <scores>total</scores>
+  </tally>
+  <tally id="6">
+    <filters>7</filters>
+    <scores>current</scores>
+  </tally>
+  <tally id="7">
+    <filters>4</filters>
+    <scores>total</scores>
+  </tally>
+  <tally id="8">
+    <filters>8</filters>
+    <scores>current</scores>
+  </tally>
+</tallies>

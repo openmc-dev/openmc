@@ -1,0 +1,11 @@
+sphinx-numfig
+jupyter
+sphinxcontrib-katex
+sphinxcontrib-svg2pdfconverter
+nbsphinx
+numpy
+scipy
+h5py
+pandas
+uncertainties
+matplotlib

@@ -1,0 +1,63 @@
+<?xml version='1.0' encoding='utf-8'?>
+<geometry>
+  <cell id="1" material="1" region="1 -2" universe="0" />
+  <cell id="2" material="2" region="2 -3" universe="0" />
+  <cell id="3" material="3" region="3 -4" universe="0" />
+  <cell id="4" material="4" region="4 -5" universe="0" />
+  <cell id="5" material="5" region="5 -6" universe="0" />
+  <cell id="6" material="6" region="6 -7" universe="0" />
+  <surface boundary="reflective" coeffs="0.0" id="1" type="x-plane" />
+  <surface coeffs="154.90833333333333" id="2" type="x-plane" />
+  <surface coeffs="309.81666666666666" id="3" type="x-plane" />
+  <surface coeffs="464.725" id="4" type="x-plane" />
+  <surface coeffs="619.6333333333333" id="5" type="x-plane" />
+  <surface coeffs="774.5416666666666" id="6" type="x-plane" />
+  <surface boundary="vacuum" coeffs="929.45" id="7" type="x-plane" />
+</geometry>
+<?xml version='1.0' encoding='utf-8'?>
+<materials>
+  <cross_sections>2g.h5</cross_sections>
+  <material id="1" name="vec beta">
+    <density units="macro" value="1.0" />
+    <macroscopic name="mat_1" />
+  </material>
+  <material id="2" name="vec no beta">
+    <density units="macro" value="1.0" />
+    <macroscopic name="mat_2" />
+  </material>
+  <material id="3" name="matrix beta">
+    <density units="macro" value="1.0" />
+    <macroscopic name="mat_3" />
+  </material>
+  <material id="4" name="matrix no beta">
+    <density units="macro" value="1.0" />
+    <macroscopic name="mat_4" />
+  </material>
+  <material id="5" name="vec group beta">
+    <density units="macro" value="1.0" />
+    <macroscopic name="mat_5" />
+  </material>
+  <material id="6" name="matrix group beta">
+    <density units="macro" value="1.0" />
+    <macroscopic name="mat_6" />
+  </material>
+</materials>
+<?xml version='1.0' encoding='utf-8'?>
+<settings>
+  <run_mode>eigenvalue</run_mode>
+  <particles>1000</particles>
+  <batches>10</batches>
+  <inactive>5</inactive>
+  <source strength="1.0">
+    <space type="box">
+      <parameters>0.0 -1000.0 -1000.0 154.90833333333333 1000.0 1000.0</parameters>
+    </space>
+  </source>
+  <output>
+    <summary>false</summary>
+  </output>
+  <energy_mode>multi-group</energy_mode>
+  <tabular_legendre>
+    <enable>false</enable>
+  </tabular_legendre>
+</settings>

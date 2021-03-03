@@ -1,0 +1,23 @@
+<?xml version='1.0' encoding='utf-8'?>
+<geometry>
+  <cell id="1" material="1" region="-1" universe="1" />
+  <surface boundary="vacuum" coeffs="0.0 0.0 0.0 100" id="1" type="sphere" />
+</geometry>
+<?xml version='1.0' encoding='utf-8'?>
+<materials>
+  <material id="1" name="natural_lead">
+    <density units="g/cm3" value="11.34" />
+    <nuclide ao="0.014" name="Pb204" />
+    <nuclide ao="0.241" name="Pb206" />
+    <nuclide ao="0.221" name="Pb207" />
+    <nuclide ao="0.524" name="Pb208" />
+  </material>
+</materials>
+<?xml version='1.0' encoding='utf-8'?>
+<settings>
+  <run_mode>fixed source</run_mode>
+  <particles>1000</particles>
+  <batches>10</batches>
+  <inactive>0</inactive>
+  <source library="build/libsource.so" strength="1.0" />
+</settings>

@@ -1,0 +1,348 @@
+<?xml version='1.0' encoding='utf-8'?>
+<geometry>
+  <cell fill="200" id="1" region="-6 34 -35" universe="0" />
+  <cell fill="201" id="2" region="-6 35 -36" universe="0" />
+  <cell id="3" material="8" region="-7 31 -32" universe="0" />
+  <cell id="4" material="9" region="-5 32 -33" universe="0" />
+  <cell id="5" material="12" region="-5 33 -34" universe="0" />
+  <cell id="6" material="11" region="-5 36 -37" universe="0" />
+  <cell id="7" material="10" region="-5 37 -38" universe="0" />
+  <cell id="8" material="7" region="-7 38 -39" universe="0" />
+  <cell id="9" material="9" region="6 -7 32 -38" universe="0" />
+  <cell id="10" material="5" region="7 -8 31 -39" universe="0" />
+  <cell id="11" material="6" region="5 -6 32 -34" universe="0" />
+  <cell id="12" material="7" region="5 -6 36 -38" universe="0" />
+  <cell id="21" material="1" region="-1" universe="1" />
+  <cell id="22" material="2" region="1 -2" universe="1" />
+  <cell id="23" material="3" region="2" universe="1" />
+  <cell id="24" material="3" region="-3" universe="2" />
+  <cell id="25" material="2" region="3 -4" universe="2" />
+  <cell id="26" material="3" region="4" universe="2" />
+  <cell id="27" material="1" region="-1" universe="3" />
+  <cell id="28" material="2" region="1 -2" universe="3" />
+  <cell id="29" material="4" region="2" universe="3" />
+  <cell id="30" material="4" region="-3" universe="4" />
+  <cell id="31" material="2" region="3 -4" universe="4" />
+  <cell id="32" material="4" region="4" universe="4" />
+  <cell id="50" material="3" region="34 -35" universe="5" />
+  <cell fill="100" id="60" region="34 -35" universe="6" />
+  <cell id="70" material="4" region="35 -36" universe="7" />
+  <cell fill="101" id="80" region="35 -36" universe="8" />
+  <lattice id="100" name="Fuel assembly (lower half)">
+    <pitch>1.26 1.26</pitch>
+    <dimension>17 17</dimension>
+    <lower_left>-10.71 -10.71</lower_left>
+    <universes>
+1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 
+1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 
+1 1 1 1 1 2 1 1 2 1 1 2 1 1 1 1 1 
+1 1 1 2 1 1 1 1 1 1 1 1 1 2 1 1 1 
+1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 
+1 1 2 1 1 2 1 1 2 1 1 2 1 1 2 1 1 
+1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 
+1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 
+1 1 2 1 1 2 1 1 2 1 1 2 1 1 2 1 1 
+1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 
+1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 
+1 1 2 1 1 2 1 1 2 1 1 2 1 1 2 1 1 
+1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 
+1 1 1 2 1 1 1 1 1 1 1 1 1 2 1 1 1 
+1 1 1 1 1 2 1 1 2 1 1 2 1 1 1 1 1 
+1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 
+1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 </universes>
+  </lattice>
+  <lattice id="101" name="Fuel assembly (upper half)">
+    <pitch>1.26 1.26</pitch>
+    <dimension>17 17</dimension>
+    <lower_left>-10.71 -10.71</lower_left>
+    <universes>
+3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 
+3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 
+3 3 3 3 3 4 3 3 4 3 3 4 3 3 3 3 3 
+3 3 3 4 3 3 3 3 3 3 3 3 3 4 3 3 3 
+3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 
+3 3 4 3 3 4 3 3 4 3 3 4 3 3 4 3 3 
+3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 
+3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 
+3 3 4 3 3 4 3 3 4 3 3 4 3 3 4 3 3 
+3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 
+3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 
+3 3 4 3 3 4 3 3 4 3 3 4 3 3 4 3 3 
+3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 
+3 3 3 4 3 3 3 3 3 3 3 3 3 4 3 3 3 
+3 3 3 3 3 4 3 3 4 3 3 4 3 3 3 3 3 
+3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 
+3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 </universes>
+  </lattice>
+  <lattice id="200" name="Core lattice (lower half)">
+    <pitch>21.42 21.42</pitch>
+    <dimension>21 21</dimension>
+    <lower_left>-224.91 -224.91</lower_left>
+    <universes>
+5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 
+5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 
+5 5 5 5 5 5 5 6 6 6 6 6 6 6 5 5 5 5 5 5 5 
+5 5 5 5 5 6 6 6 6 6 6 6 6 6 6 6 5 5 5 5 5 
+5 5 5 5 6 6 6 6 6 6 6 6 6 6 6 6 6 5 5 5 5 
+5 5 5 6 6 6 6 6 6 6 6 6 6 6 6 6 6 6 5 5 5 
+5 5 5 6 6 6 6 6 6 6 6 6 6 6 6 6 6 6 5 5 5 
+5 5 6 6 6 6 6 6 6 6 6 6 6 6 6 6 6 6 6 5 5 
+5 5 6 6 6 6 6 6 6 6 6 6 6 6 6 6 6 6 6 5 5 
+5 5 6 6 6 6 6 6 6 6 6 6 6 6 6 6 6 6 6 5 5 
+5 5 6 6 6 6 6 6 6 6 6 6 6 6 6 6 6 6 6 5 5 
+5 5 6 6 6 6 6 6 6 6 6 6 6 6 6 6 6 6 6 5 5 
+5 5 6 6 6 6 6 6 6 6 6 6 6 6 6 6 6 6 6 5 5 
+5 5 6 6 6 6 6 6 6 6 6 6 6 6 6 6 6 6 6 5 5 
+5 5 5 6 6 6 6 6 6 6 6 6 6 6 6 6 6 6 5 5 5 
+5 5 5 6 6 6 6 6 6 6 6 6 6 6 6 6 6 6 5 5 5 
+5 5 5 5 6 6 6 6 6 6 6 6 6 6 6 6 6 5 5 5 5 
+5 5 5 5 5 6 6 6 6 6 6 6 6 6 6 6 5 5 5 5 5 
+5 5 5 5 5 5 5 6 6 6 6 6 6 6 5 5 5 5 5 5 5 
+5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 
+5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 </universes>
+  </lattice>
+  <lattice id="201" name="Core lattice (lower half)">
+    <pitch>21.42 21.42</pitch>
+    <dimension>21 21</dimension>
+    <lower_left>-224.91 -224.91</lower_left>
+    <universes>
+7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 
+7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 
+7 7 7 7 7 7 7 8 8 8 8 8 8 8 7 7 7 7 7 7 7 
+7 7 7 7 7 8 8 8 8 8 8 8 8 8 8 8 7 7 7 7 7 
+7 7 7 7 8 8 8 8 8 8 8 8 8 8 8 8 8 7 7 7 7 
+7 7 7 8 8 8 8 8 8 8 8 8 8 8 8 8 8 8 7 7 7 
+7 7 7 8 8 8 8 8 8 8 8 8 8 8 8 8 8 8 7 7 7 
+7 7 8 8 8 8 8 8 8 8 8 8 8 8 8 8 8 8 8 7 7 
+7 7 8 8 8 8 8 8 8 8 8 8 8 8 8 8 8 8 8 7 7 
+7 7 8 8 8 8 8 8 8 8 8 8 8 8 8 8 8 8 8 7 7 
+7 7 8 8 8 8 8 8 8 8 8 8 8 8 8 8 8 8 8 7 7 
+7 7 8 8 8 8 8 8 8 8 8 8 8 8 8 8 8 8 8 7 7 
+7 7 8 8 8 8 8 8 8 8 8 8 8 8 8 8 8 8 8 7 7 
+7 7 8 8 8 8 8 8 8 8 8 8 8 8 8 8 8 8 8 7 7 
+7 7 7 8 8 8 8 8 8 8 8 8 8 8 8 8 8 8 7 7 7 
+7 7 7 8 8 8 8 8 8 8 8 8 8 8 8 8 8 8 7 7 7 
+7 7 7 7 8 8 8 8 8 8 8 8 8 8 8 8 8 7 7 7 7 
+7 7 7 7 7 8 8 8 8 8 8 8 8 8 8 8 7 7 7 7 7 
+7 7 7 7 7 7 7 8 8 8 8 8 8 8 7 7 7 7 7 7 7 
+7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 
+7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 </universes>
+  </lattice>
+  <surface coeffs="0.0 0.0 0.41" id="1" type="z-cylinder" />
+  <surface coeffs="0.0 0.0 0.475" id="2" type="z-cylinder" />
+  <surface coeffs="0.0 0.0 0.56" id="3" type="z-cylinder" />
+  <surface coeffs="0.0 0.0 0.62" id="4" type="z-cylinder" />
+  <surface coeffs="0.0 0.0 187.6" id="5" type="z-cylinder" />
+  <surface coeffs="0.0 0.0 209.0" id="6" type="z-cylinder" />
+  <surface coeffs="0.0 0.0 229.0" id="7" type="z-cylinder" />
+  <surface boundary="vacuum" coeffs="0.0 0.0 249.0" id="8" type="z-cylinder" />
+  <surface boundary="vacuum" coeffs="-229.0" id="31" type="z-plane" />
+  <surface coeffs="-199.0" id="32" type="z-plane" />
+  <surface coeffs="-193.0" id="33" type="z-plane" />
+  <surface coeffs="-183.0" id="34" type="z-plane" />
+  <surface coeffs="0.0" id="35" type="z-plane" />
+  <surface coeffs="183.0" id="36" type="z-plane" />
+  <surface coeffs="203.0" id="37" type="z-plane" />
+  <surface coeffs="215.0" id="38" type="z-plane" />
+  <surface boundary="vacuum" coeffs="223.0" id="39" type="z-plane" />
+</geometry>
+<?xml version='1.0' encoding='utf-8'?>
+<materials>
+  <material depletable="true" id="1" name="UOX fuel">
+    <density units="g/cm3" value="10.062" />
+    <nuclide ao="4.9476e-06" name="U234" />
+    <nuclide ao="0.00048218" name="U235" />
+    <nuclide ao="0.021504" name="U238" />
+    <nuclide ao="1.0801e-08" name="Xe135" />
+    <nuclide ao="0.045737" name="O16" />
+  </material>
+  <material id="2" name="Zircaloy">
+    <density units="g/cm3" value="5.77" />
+    <nuclide ao="0.5145" name="Zr90" />
+    <nuclide ao="0.1122" name="Zr91" />
+    <nuclide ao="0.1715" name="Zr92" />
+    <nuclide ao="0.1738" name="Zr94" />
+    <nuclide ao="0.028" name="Zr96" />
+  </material>
+  <material id="3" name="Cold borated water">
+    <density units="atom/b-cm" value="0.07416" />
+    <nuclide ao="2.0" name="H1" />
+    <nuclide ao="1.0" name="O16" />
+    <nuclide ao="0.000649" name="B10" />
+    <nuclide ao="0.002689" name="B11" />
+    <sab name="c_H_in_H2O" />
+  </material>
+  <material id="4" name="Hot borated water">
+    <density units="atom/b-cm" value="0.06614" />
+    <nuclide ao="2.0" name="H1" />
+    <nuclide ao="1.0" name="O16" />
+    <nuclide ao="0.000649" name="B10" />
+    <nuclide ao="0.002689" name="B11" />
+    <sab name="c_H_in_H2O" />
+  </material>
+  <material id="5" name="Reactor pressure vessel steel">
+    <density units="g/cm3" value="7.9" />
+    <nuclide name="Fe54" wo="0.05437098" />
+    <nuclide name="Fe56" wo="0.88500663" />
+    <nuclide name="Fe57" wo="0.0208008" />
+    <nuclide name="Fe58" wo="0.00282159" />
+    <nuclide name="Ni58" wo="0.0067198" />
+    <nuclide name="Ni60" wo="0.0026776" />
+    <nuclide name="Mn55" wo="0.01" />
+    <nuclide name="Cr52" wo="0.002092475" />
+    <nuclide name="C0" wo="0.0025" />
+    <nuclide name="Cu63" wo="0.0013696" />
+  </material>
+  <material id="6" name="Lower radial reflector">
+    <density units="g/cm3" value="4.32" />
+    <nuclide name="H1" wo="0.0095661" />
+    <nuclide name="O16" wo="0.0759107" />
+    <nuclide name="B10" wo="3.08409e-05" />
+    <nuclide name="B11" wo="0.000140499" />
+    <nuclide name="Fe54" wo="0.035620772088" />
+    <nuclide name="Fe56" wo="0.579805982228" />
+    <nuclide name="Fe57" wo="0.01362750048" />
+    <nuclide name="Fe58" wo="0.001848545204" />
+    <nuclide name="Ni58" wo="0.055298376566" />
+    <nuclide name="Mn55" wo="0.018287" />
+    <nuclide name="Cr52" wo="0.145407678031" />
+    <sab name="c_H_in_H2O" />
+  </material>
+  <material id="7" name="Upper radial reflector / Top plate region">
+    <density units="g/cm3" value="4.28" />
+    <nuclide name="H1" wo="0.0086117" />
+    <nuclide name="O16" wo="0.0683369" />
+    <nuclide name="B10" wo="2.77638e-05" />
+    <nuclide name="B11" wo="0.000126481" />
+    <nuclide name="Fe54" wo="0.035953677186" />
+    <nuclide name="Fe56" wo="0.585224740891" />
+    <nuclide name="Fe57" wo="0.01375486056" />
+    <nuclide name="Fe58" wo="0.001865821363" />
+    <nuclide name="Ni58" wo="0.055815129186" />
+    <nuclide name="Mn55" wo="0.0184579" />
+    <nuclide name="Cr52" wo="0.146766614995" />
+    <sab name="c_H_in_H2O" />
+  </material>
+  <material id="8" name="Bottom plate region">
+    <density units="g/cm3" value="7.184" />
+    <nuclide name="H1" wo="0.0011505" />
+    <nuclide name="O16" wo="0.0091296" />
+    <nuclide name="B10" wo="3.70915e-06" />
+    <nuclide name="B11" wo="1.68974e-05" />
+    <nuclide name="Fe54" wo="0.03855611055" />
+    <nuclide name="Fe56" wo="0.627585036425" />
+    <nuclide name="Fe57" wo="0.014750478" />
+    <nuclide name="Fe58" wo="0.002000875025" />
+    <nuclide name="Ni58" wo="0.059855207342" />
+    <nuclide name="Mn55" wo="0.019794" />
+    <nuclide name="Cr52" wo="0.157390026871" />
+    <sab name="c_H_in_H2O" />
+  </material>
+  <material id="9" name="Bottom nozzle region">
+    <density units="g/cm3" value="2.53" />
+    <nuclide name="H1" wo="0.0245014" />
+    <nuclide name="O16" wo="0.1944274" />
+    <nuclide name="B10" wo="7.89917e-05" />
+    <nuclide name="B11" wo="0.000359854" />
+    <nuclide name="Fe54" wo="0.030411411144" />
+    <nuclide name="Fe56" wo="0.495012237964" />
+    <nuclide name="Fe57" wo="0.01163454624" />
+    <nuclide name="Fe58" wo="0.001578204652" />
+    <nuclide name="Ni58" wo="0.047211231662" />
+    <nuclide name="Mn55" wo="0.0156126" />
+    <nuclide name="Cr52" wo="0.124142524198" />
+    <sab name="c_H_in_H2O" />
+  </material>
+  <material id="10" name="Top nozzle region">
+    <density units="g/cm3" value="1.746" />
+    <nuclide name="H1" wo="0.035887" />
+    <nuclide name="O16" wo="0.2847761" />
+    <nuclide name="B10" wo="0.000115699" />
+    <nuclide name="B11" wo="0.000527075" />
+    <nuclide name="Fe54" wo="0.02644016154" />
+    <nuclide name="Fe56" wo="0.43037146399" />
+    <nuclide name="Fe57" wo="0.0101152584" />
+    <nuclide name="Fe58" wo="0.00137211607" />
+    <nuclide name="Ni58" wo="0.04104621835" />
+    <nuclide name="Mn55" wo="0.0135739" />
+    <nuclide name="Cr52" wo="0.107931450781" />
+    <sab name="c_H_in_H2O" />
+  </material>
+  <material id="11" name="Top of fuel assemblies">
+    <density units="g/cm3" value="3.044" />
+    <nuclide name="H1" wo="0.0162913" />
+    <nuclide name="O16" wo="0.1292776" />
+    <nuclide name="B10" wo="5.25228e-05" />
+    <nuclide name="B11" wo="0.000239272" />
+    <nuclide name="Zr90" wo="0.43313403903" />
+    <nuclide name="Zr91" wo="0.09549277374" />
+    <nuclide name="Zr92" wo="0.14759527104" />
+    <nuclide name="Zr94" wo="0.15280552077" />
+    <nuclide name="Zr96" wo="0.02511169542" />
+    <sab name="c_H_in_H2O" />
+  </material>
+  <material id="12" name="Bottom of fuel assemblies">
+    <density units="g/cm3" value="1.762" />
+    <nuclide name="H1" wo="0.0292856" />
+    <nuclide name="O16" wo="0.2323919" />
+    <nuclide name="B10" wo="9.44159e-05" />
+    <nuclide name="B11" wo="0.00043012" />
+    <nuclide name="Zr90" wo="0.3741373658" />
+    <nuclide name="Zr91" wo="0.0824858164" />
+    <nuclide name="Zr92" wo="0.1274914944" />
+    <nuclide name="Zr94" wo="0.1319920622" />
+    <nuclide name="Zr96" wo="0.0216912612" />
+    <sab name="c_H_in_H2O" />
+  </material>
+</materials>
+<?xml version='1.0' encoding='utf-8'?>
+<settings>
+  <run_mode>eigenvalue</run_mode>
+  <particles>100</particles>
+  <batches>10</batches>
+  <inactive>5</inactive>
+  <source strength="1.0">
+    <space type="box">
+      <parameters>-160 -160 -183 160 160 183</parameters>
+    </space>
+  </source>
+</settings>
+<?xml version='1.0' encoding='utf-8'?>
+<tallies>
+  <!--mesh-->
+  <mesh id="1">
+    <dimension>2 2</dimension>
+    <lower_left>-50.0 -50.0</lower_left>
+    <upper_right>50.0 50.0</upper_right>
+  </mesh>
+  <filter id="16" type="cell">
+    <bins>21 27</bins>
+  </filter>
+  <filter id="8" type="energy">
+    <bins>0.0 0.625 20000000.0</bins>
+  </filter>
+  <filter id="6" type="distribcell">
+    <bins>21</bins>
+  </filter>
+  <filter id="7" type="mesh">
+    <bins>1</bins>
+  </filter>
+  <tally id="31" name="cell tally">
+    <filters>16 8</filters>
+    <nuclides>U235 U238</nuclides>
+    <scores>fission nu-fission</scores>
+    <estimator>tracklength</estimator>
+  </tally>
+  <tally id="32" name="distribcell tally">
+    <filters>6 8</filters>
+    <nuclides>U235 U238</nuclides>
+    <scores>fission nu-fission</scores>
+    <estimator>tracklength</estimator>
+  </tally>
+  <tally id="33" name="mesh tally">
+    <filters>7 8</filters>
+    <nuclides>U235 U238</nuclides>
+    <scores>fission nu-fission</scores>
+    <estimator>tracklength</estimator>
+  </tally>
+</tallies>

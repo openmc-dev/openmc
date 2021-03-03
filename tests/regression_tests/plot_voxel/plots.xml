@@ -1,0 +1,10 @@
+<?xml version="1.0"?>
+<plots>
+
+  <plot id="4" type="voxel">
+    <pixels>50 50 10</pixels>
+    <origin>0. 0. 0.</origin>
+    <width>20 20 10</width>
+  </plot>
+
+</plots>

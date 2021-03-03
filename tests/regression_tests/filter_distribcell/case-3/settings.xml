@@ -1,0 +1,20 @@
+<?xml version="1.0"?>
+<settings>
+
+  <run_mode>eigenvalue</run_mode>
+  <batches>3</batches>
+  <inactive>0</inactive>
+  <particles>100</particles>
+
+  <source>
+    <space type="box">
+      <parameters>
+        -160 -160 -183
+         160  160  183
+      </parameters>
+    </space>
+  </source>
+
+  <output tallies="false" />
+
+</settings>

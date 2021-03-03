@@ -1,0 +1,41 @@
+<?xml version="1.0"?>
+<tallies>
+
+  <mesh id="1">
+    <type>regular</type>
+    <dimension>5 3 4</dimension>
+    <lower_left>-10. -5. 0.</lower_left>
+    <upper_right>10. 4. 9.</upper_right>
+  </mesh>
+
+  <filter id="1">
+    <type>mesh</type>
+    <bins>1</bins>
+  </filter>
+
+  <filter id="2">
+    <type>energy</type>
+    <bins>0.0 5.0e6 10.0e6</bins>
+  </filter>
+
+  <filter id="3">
+    <type>energyout</type>
+    <bins>0.0 5.0e6 10.0e6</bins>
+  </filter>
+
+  <filter id="4">
+    <type>cell</type>
+    <bins>1</bins>
+  </filter>
+
+  <tally id="10">
+    <filters>1 2 3</filters>
+    <scores>scatter nu-fission</scores>
+  </tally>
+
+  <tally id="5">
+    <filters>4</filters>
+    <scores>fission absorption total flux</scores>
+  </tally>
+
+</tallies>

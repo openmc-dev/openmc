@@ -1,35 +1,44 @@
-from __future__ import print_function
-
+from difflib import unified_diff
 import filecmp
 import glob
 import hashlib
 from optparse import OptionParser
 import os
 import shutil
-from subprocess import Popen, STDOUT, PIPE, call
 import sys
 
 import numpy as np
+import openmc
+from openmc.examples import pwr_core
+from colorama import Fore, init
 
-sys.path.insert(0, os.path.join(os.pardir, os.pardir))
-from input_set import InputSet
-from openmc.statepoint import StatePoint
-from openmc.executor import Executor
-import openmc.particle_restart as pr
+from tests.regression_tests import config
+
+init()
 
 
-class TestHarness(object):
+def colorize(diff):
+    """Produce colored diff for test results"""
+    for line in diff:
+        if line.startswith('+'):
+            yield Fore.RED + line + Fore.RESET
+        elif line.startswith('-'):
+            yield Fore.GREEN + line + Fore.RESET
+        elif line.startswith('^'):
+            yield Fore.BLUE + line + Fore.RESET
+        else:
+            yield line
+
+
+class TestHarness:
     """General class for running OpenMC regression tests."""
-    def __init__(self, statepoint_name, tallies_present=False):
+
+    def __init__(self, statepoint_name):
         self._sp_name = statepoint_name
-        self._tallies = tallies_present
-        self._opts = None
-        self._args = None
 
     def main(self):
         """Accept commandline arguments and either run or update tests."""
-        self._parse_args()
-        if self._opts.update:
+        if config['update']:
             self.update_results()
         else:
             self.execute_test()
@@ -56,63 +65,47 @@ class TestHarness(object):
         finally:
             self._cleanup()
 
-    def _parse_args(self):
-        parser = OptionParser()
-        parser.add_option('--exe', dest='exe', default='openmc')
-        parser.add_option('--mpi_exec', dest='mpi_exec', default=None)
-        parser.add_option('--mpi_np', dest='mpi_np', type=int, default=3)
-        parser.add_option('--update', dest='update', action='store_true',
-                          default=False)
-        (self._opts, self._args) = parser.parse_args()
-
     def _run_openmc(self):
-        executor = Executor()
-
-        if self._opts.mpi_exec is not None:
-            returncode = executor.run_simulation(mpi_procs=self._opts.mpi_np,
-                                                 openmc_exec=self._opts.exe,
-                                                 mpi_exec=self._opts.mpi_exec)
-
+        if config['mpi']:
+            mpi_args = [config['mpiexec'], '-n', config['mpi_np']]
+            openmc.run(openmc_exec=config['exe'], mpi_args=mpi_args,
+              event_based=config['event'])
         else:
-            returncode = executor.run_simulation(openmc_exec=self._opts.exe)
-
-        assert returncode == 0, 'OpenMC did not exit successfully.'
+            openmc.run(openmc_exec=config['exe'], event_based=config['event'])
 
     def _test_output_created(self):
         """Make sure statepoint.* and tallies.out have been created."""
-        statepoint = glob.glob(os.path.join(os.getcwd(), self._sp_name))
-        assert len(statepoint) == 1, 'Either multiple or no statepoint files ' \
-             'exist.'
+        statepoint = glob.glob(self._sp_name)
+        assert len(statepoint) == 1, 'Either multiple or no statepoint files' \
+            ' exist.'
         assert statepoint[0].endswith('h5'), \
-             'Statepoint file is not a HDF5 file.'
-        if self._tallies:
-            assert os.path.exists(os.path.join(os.getcwd(), 'tallies.out')), \
-                 'Tally output file does not exist.'
+            'Statepoint file is not a HDF5 file.'
+        if os.path.exists('tallies.xml'):
+            assert os.path.exists('tallies.out'), \
+                'Tally output file does not exist.'
 
     def _get_results(self, hash_output=False):
         """Digest info in the statepoint and return as a string."""
         # Read the statepoint file.
-        statepoint = glob.glob(os.path.join(os.getcwd(), self._sp_name))[0]
-        sp = StatePoint(statepoint)
+        statepoint = glob.glob(self._sp_name)[0]
+        with openmc.StatePoint(statepoint) as sp:
+            outstr = ''
+            if sp.run_mode == 'eigenvalue':
+                # Write out k-combined.
+                outstr += 'k-combined:\n'
+                form = '{0:12.6E} {1:12.6E}\n'
+                outstr += form.format(sp.k_combined.n, sp.k_combined.s)
 
-        # Write out k-combined.
-        outstr = 'k-combined:\n'
-        form = '{0:12.6E} {1:12.6E}\n'
-        outstr += form.format(sp.k_combined[0], sp.k_combined[1])
-
-        # Write out tally data.
-        if self._tallies:
-            tally_num = 1
-            for tally_ind in sp.tallies:
+            # Write out tally data.
+            for i, tally_ind in enumerate(sp.tallies):
                 tally = sp.tallies[tally_ind]
-                results = np.zeros((tally.sum.size*2, ))
+                results = np.zeros((tally.sum.size * 2, ))
                 results[0::2] = tally.sum.ravel()
                 results[1::2] = tally.sum_sq.ravel()
                 results = ['{0:12.6E}'.format(x) for x in results]
 
-                outstr += 'tally ' + str(tally_num) + ':\n'
+                outstr += 'tally {}:\n'.format(i + 1)
                 outstr += '\n'.join(results) + '\n'
-                tally_num += 1
 
         # Hash the results if necessary.
         if hash_output:
@@ -132,17 +125,23 @@ class TestHarness(object):
         shutil.copyfile('results_test.dat', 'results_true.dat')
 
     def _compare_results(self):
-        """Make sure the current results agree with the _true standard."""
+        """Make sure the current results agree with the reference."""
         compare = filecmp.cmp('results_test.dat', 'results_true.dat')
         if not compare:
+            expected = open('results_true.dat').readlines()
+            actual = open('results_test.dat').readlines()
+            diff = unified_diff(expected, actual, 'results_true.dat',
+                                'results_test.dat')
+            print('Result differences:')
+            print(''.join(colorize(diff)))
             os.rename('results_test.dat', 'results_error.dat')
-        assert compare, 'Results do not agree.'
+        assert compare, 'Results do not agree'
 
     def _cleanup(self):
         """Delete statepoints, tally, and test files."""
-        output = glob.glob(os.path.join(os.getcwd(), 'statepoint.*.*'))
-        output.append(os.path.join(os.getcwd(), 'tallies.out'))
-        output.append(os.path.join(os.getcwd(), 'results_test.dat'))
+        output = glob.glob('statepoint.*.h5')
+        output += ['tallies.out', 'results_test.dat', 'summary.h5']
+        output += glob.glob('volume_*.h5')
         for f in output:
             if os.path.exists(f):
                 os.remove(f)
@@ -150,110 +149,114 @@ class TestHarness(object):
 
 class HashedTestHarness(TestHarness):
     """Specialized TestHarness that hashes the results."""
+
     def _get_results(self):
         """Digest info in the statepoint and return as a string."""
-        return TestHarness._get_results(self, True)
-
-
-class PlotTestHarness(TestHarness):
-    """Specialized TestHarness for running OpenMC plotting tests."""
-    def __init__(self, plot_names):
-        self._plot_names = plot_names
-        self._opts = None
-        self._args = None
-
-    def _run_openmc(self):
-        executor = Executor()
-        returncode = executor.plot_geometry(openmc_exec=self._opts.exe)
-        assert returncode == 0, 'OpenMC did not exit successfully.'
-
-    def _test_output_created(self):
-        """Make sure *.ppm has been created."""
-        for fname in self._plot_names:
-            assert os.path.exists(os.path.join(os.getcwd(), fname)), \
-                 'Plot output file does not exist.'
-
-    def _cleanup(self):
-        TestHarness._cleanup(self)
-        output = glob.glob(os.path.join(os.getcwd(), '*.ppm'))
-        for f in output:
-            if os.path.exists(f):
-                os.remove(f)
-
-    def _get_results(self):
-        """Return a string hash of the plot files."""
-        # Find the plot files.
-        plot_files = glob.glob(os.path.join(os.getcwd(), '*.ppm'))
-
-        # Read the plot files.
-        outstr = bytes()
-        for fname in sorted(plot_files):
-            with open(fname, 'rb') as fh:
-                outstr += fh.read()
-
-        # Hash the information and return.
-        sha512 = hashlib.sha512()
-        sha512.update(outstr)
-        outstr = sha512.hexdigest()
-
-        return outstr
+        return super()._get_results(True)
 
 
 class CMFDTestHarness(TestHarness):
     """Specialized TestHarness for running OpenMC CMFD tests."""
-    def _get_results(self):
-        """Digest info in the statepoint and return as a string."""
-        # Read the statepoint file.
-        statepoint = glob.glob(os.path.join(os.getcwd(), self._sp_name))[0]
-        sp = StatePoint(statepoint)
 
-        # Write out the eigenvalue and tallies.
-        outstr = TestHarness._get_results(self)
+    def __init__(self, statepoint_name, cmfd_run):
+        super().__init__(statepoint_name)
+        self._create_cmfd_result_str(cmfd_run)
 
-        # Write out CMFD data.
-        outstr += 'cmfd indices\n'
-        outstr += '\n'.join(['{0:12.6E}'.format(x) for x in sp.cmfd_indices])
+    def _create_cmfd_result_str(self, cmfd_run):
+        """Create CMFD result string from variables of CMFDRun instance"""
+        outstr = 'cmfd indices\n'
+        outstr += '\n'.join(['{:.6E}'.format(x) for x in cmfd_run.indices])
         outstr += '\nk cmfd\n'
-        outstr += '\n'.join(['{0:12.6E}'.format(x) for x in sp.k_cmfd])
+        outstr += '\n'.join(['{:.6E}'.format(x) for x in cmfd_run.k_cmfd])
         outstr += '\ncmfd entropy\n'
-        outstr += '\n'.join(['{0:12.6E}'.format(x) for x in sp.cmfd_entropy])
+        outstr += '\n'.join(['{:.6E}'.format(x) for x in cmfd_run.entropy])
         outstr += '\ncmfd balance\n'
-        outstr += '\n'.join(['{0:12.6E}'.format(x) for x in sp.cmfd_balance])
+        outstr += '\n'.join(['{:.5E}'.format(x) for x in cmfd_run.balance])
         outstr += '\ncmfd dominance ratio\n'
-        outstr += '\n'.join(['{0:10.3E}'.format(x) for x in sp.cmfd_dominance])
+        outstr += '\n'.join(['{:.3E}'.format(x) for x in cmfd_run.dom])
         outstr += '\ncmfd openmc source comparison\n'
-        outstr += '\n'.join(['{0:12.6E}'.format(x) for x in sp.cmfd_srccmp])
+        outstr += '\n'.join(['{:.6E}'.format(x) for x in cmfd_run.src_cmp])
         outstr += '\ncmfd source\n'
-        cmfdsrc = np.reshape(sp.cmfd_src, np.product(sp.cmfd_indices),
+        cmfdsrc = np.reshape(cmfd_run.cmfd_src, np.product(cmfd_run.indices),
                              order='F')
-        outstr += '\n'.join(['{0:12.6E}'.format(x) for x in cmfdsrc])
+        outstr += '\n'.join(['{:.6E}'.format(x) for x in cmfdsrc])
         outstr += '\n'
+        self._cmfdrun_results = outstr
 
-        return outstr
+    def execute_test(self):
+        """Don't call _run_openmc as OpenMC will be called through C API for
+        CMFD tests, and write CMFD results that were passsed as argument
+
+        """
+        try:
+            self._test_output_created()
+            results = self._get_results()
+            results += self._cmfdrun_results
+            self._write_results(results)
+            self._compare_results()
+        finally:
+            self._cleanup()
+
+    def update_results(self):
+        """Don't call _run_openmc as OpenMC will be called through C API for
+        CMFD tests, and write CMFD results that were passsed as argument
+
+        """
+        try:
+            self._test_output_created()
+            results = self._get_results()
+            results += self._cmfdrun_results
+            self._write_results(results)
+            self._overwrite_results()
+        finally:
+            self._cleanup()
+
+    def _cleanup(self):
+        """Delete output files for numpy matrices and flux vectors."""
+        super()._cleanup()
+        output = ['loss.npz', 'loss.dat', 'prod.npz', 'prod.dat',
+                  'fluxvec.npy', 'fluxvec.dat']
+        for f in output:
+            if os.path.exists(f):
+                os.remove(f)
 
 
 class ParticleRestartTestHarness(TestHarness):
     """Specialized TestHarness for running OpenMC particle restart tests."""
+
+    def _run_openmc(self):
+        # Set arguments
+        args = {'openmc_exec': config['exe']}
+        if config['mpi']:
+            args['mpi_args'] = [config['mpiexec'], '-n', config['mpi_np']]
+
+        # Initial run
+        openmc.run(**args)
+
+        # Run particle restart
+        args.update({'restart_file': self._sp_name})
+        openmc.run(**args)
+
     def _test_output_created(self):
         """Make sure the restart file has been created."""
-        particle = glob.glob(os.path.join(os.getcwd(), self._sp_name))
+        particle = glob.glob(self._sp_name)
         assert len(particle) == 1, 'Either multiple or no particle restart ' \
-             'files exist.'
+            'files exist.'
         assert particle[0].endswith('h5'), \
-             'Particle restart file is not a HDF5 file.'
+            'Particle restart file is not a HDF5 file.'
 
     def _get_results(self):
         """Digest info in the statepoint and return as a string."""
         # Read the particle restart file.
-        particle = glob.glob(os.path.join(os.getcwd(), self._sp_name))[0]
-        p = pr.Particle(particle)
+        particle = glob.glob(self._sp_name)[0]
+        p = openmc.Particle(particle)
 
         # Write out the properties.
         outstr = ''
         outstr += 'current batch:\n'
         outstr += "{0:12.6E}\n".format(p.current_batch)
-        outstr += 'current gen:\n'
-        outstr += "{0:12.6E}\n".format(p.current_gen)
+        outstr += 'current generation:\n'
+        outstr += "{0:12.6E}\n".format(p.current_generation)
         outstr += 'particle id:\n'
         outstr += "{0:12.6E}\n".format(p.id)
         outstr += 'run mode:\n'
@@ -263,19 +266,34 @@ class ParticleRestartTestHarness(TestHarness):
         outstr += 'particle energy:\n'
         outstr += "{0:12.6E}\n".format(p.energy)
         outstr += 'particle xyz:\n'
-        outstr += "{0:12.6E} {1:12.6E} {2:12.6E}\n".format(p.xyz[0],p.xyz[1],
+        outstr += "{0:12.6E} {1:12.6E} {2:12.6E}\n".format(p.xyz[0], p.xyz[1],
                                                            p.xyz[2])
         outstr += 'particle uvw:\n'
-        outstr += "{0:12.6E} {1:12.6E} {2:12.6E}\n".format(p.uvw[0],p.uvw[1],
+        outstr += "{0:12.6E} {1:12.6E} {2:12.6E}\n".format(p.uvw[0], p.uvw[1],
                                                            p.uvw[2])
 
         return outstr
 
 
 class PyAPITestHarness(TestHarness):
-    def __init__(self, statepoint_name, tallies_present=False):
-        TestHarness.__init__(self, statepoint_name, tallies_present)
-        self._input_set = InputSet()
+    def __init__(self, statepoint_name, model=None, inputs_true=None):
+        super().__init__(statepoint_name)
+        if model is None:
+            self._model = pwr_core()
+        else:
+            self._model = model
+        self._model.plots = []
+
+        self.inputs_true = "inputs_true.dat" if not inputs_true else inputs_true
+
+    def main(self):
+        """Accept commandline arguments and either run or update tests."""
+        if config['build_inputs']:
+            self._build_inputs()
+        elif config['update']:
+            self.update_results()
+        else:
+            self.execute_test()
 
     def execute_test(self):
         """Build input XMLs, run OpenMC, and verify correct results."""
@@ -309,22 +327,14 @@ class PyAPITestHarness(TestHarness):
 
     def _build_inputs(self):
         """Write input XML files."""
-        self._input_set.build_default_materials_and_geometry()
-        self._input_set.build_default_settings()
-        self._input_set.export()
+        self._model.export_to_xml()
 
     def _get_inputs(self):
         """Return a hash digest of the input XML files."""
-        xmls = ('geometry.xml', 'tallies.xml', 'materials.xml', 'settings.xml')
-        xmls = [os.path.join(os.getcwd(), fname) for fname in xmls]
-        outstr = '\n'.join([open(fname).read() for fname in xmls
-                            if os.path.exists(fname)])
-
-        sha512 = hashlib.sha512()
-        sha512.update(outstr.encode('utf-8'))
-        outstr = sha512.hexdigest()
-
-        return outstr
+        xmls = ['geometry.xml', 'materials.xml', 'settings.xml',
+                'tallies.xml', 'plots.xml']
+        return ''.join([open(fname).read() for fname in xmls
+                        if os.path.exists(fname)])
 
     def _write_inputs(self, input_digest):
         """Write the digest of the input XMLs to an ASCII file."""
@@ -333,26 +343,32 @@ class PyAPITestHarness(TestHarness):
 
     def _overwrite_inputs(self):
         """Overwrite inputs_true.dat with inputs_test.dat"""
-        shutil.copyfile('inputs_test.dat', 'inputs_true.dat')
+        shutil.copyfile('inputs_test.dat', self.inputs_true)
 
     def _compare_inputs(self):
         """Make sure the current inputs agree with the _true standard."""
-        compare = filecmp.cmp('inputs_test.dat', 'inputs_true.dat')
+        compare = filecmp.cmp('inputs_test.dat', self.inputs_true)
         if not compare:
-            f = open('inputs_test.dat')
-            for line in f.readlines(): print(line)
-            f.close()
+            expected = open(self.inputs_true, 'r').readlines()
+            actual = open('inputs_test.dat', 'r').readlines()
+            diff = unified_diff(expected, actual, self.inputs_true,
+                                'inputs_test.dat')
+            print('Input differences:')
+            print(''.join(colorize(diff)))
             os.rename('inputs_test.dat', 'inputs_error.dat')
         assert compare, 'Input files are broken.'
 
     def _cleanup(self):
         """Delete XMLs, statepoints, tally, and test files."""
-        TestHarness._cleanup(self)
-        output = [os.path.join(os.getcwd(), 'materials.xml')]
-        output.append(os.path.join(os.getcwd(), 'geometry.xml'))
-        output.append(os.path.join(os.getcwd(), 'settings.xml'))
-        output.append(os.path.join(os.getcwd(), 'inputs_test.dat'))
-        output.append(os.path.join(os.getcwd(), 'summary.h5'))
+        super()._cleanup()
+        output = ['materials.xml', 'geometry.xml', 'settings.xml',
+                  'tallies.xml', 'plots.xml', 'inputs_test.dat']
         for f in output:
             if os.path.exists(f):
                 os.remove(f)
+
+
+class HashedPyAPITestHarness(PyAPITestHarness):
+    def _get_results(self):
+        """Digest info in the statepoint and return as a string."""
+        return super()._get_results(True)

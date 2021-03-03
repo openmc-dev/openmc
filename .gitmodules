@@ -1,3 +1,15 @@
-[submodule "src/xml/fox"]
-	path = src/xml/fox
-	url = https://github.com/mit-crpg/fox.git
+[submodule "vendor/pugixml"]
+	path = vendor/pugixml
+	url = https://github.com/zeux/pugixml.git
+[submodule "vendor/gsl-lite"]
+	path = vendor/gsl-lite
+	url = https://github.com/martinmoene/gsl-lite.git
+[submodule "vendor/xtensor"]
+	path = vendor/xtensor
+	url = https://github.com/xtensor-stack/xtensor.git
+[submodule "vendor/xtl"]
+	path = vendor/xtl
+	url = https://github.com/xtensor-stack/xtl.git
+[submodule "vendor/fmt"]
+	path = vendor/fmt
+	url = https://github.com/fmtlib/fmt.git

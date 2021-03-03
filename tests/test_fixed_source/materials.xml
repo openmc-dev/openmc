@@ -1,9 +1,0 @@
-<?xml version="1.0"?>
-<materials>
-
-  <material id="1">
-    <density value="7.5" units="g/cc" />
-    <nuclide name="O-16" xs="71c" ao="1.0" />
-  </material>
-
-</materials>

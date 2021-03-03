@@ -1,57 +1,70 @@
-cmake_minimum_required(VERSION 2.8 FATAL_ERROR)
-project(openmc Fortran)
+cmake_minimum_required(VERSION 3.3 FATAL_ERROR)
+project(openmc C CXX)
+
+# Set version numbers
+set(OPENMC_VERSION_MAJOR 0)
+set(OPENMC_VERSION_MINOR 12)
+set(OPENMC_VERSION_RELEASE 1)
+set(OPENMC_VERSION ${OPENMC_VERSION_MAJOR}.${OPENMC_VERSION_MINOR}.${OPENMC_VERSION_RELEASE})
+configure_file(include/openmc/version.h.in "${CMAKE_BINARY_DIR}/include/openmc/version.h" @ONLY)
 
 # Setup output directories
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
-set(CMAKE_Fortran_MODULE_DIRECTORY ${CMAKE_BINARY_DIR}/include)
 
 # Set module path
 set(CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules)
 
-# Make sure Fortran module directory is included when building
-include_directories(${CMAKE_BINARY_DIR}/include)
-
-#===============================================================================
-# Architecture specific definitions
-#===============================================================================
-
-if (${UNIX})
-  add_definitions(-DUNIX)
+# Allow user to specify <project>_ROOT variables
+if (NOT (CMAKE_VERSION VERSION_LESS 3.12))
+  cmake_policy(SET CMP0074 NEW)
 endif()
 
 #===============================================================================
 # Command line options
 #===============================================================================
 
-option(openmp   "Enable shared-memory parallelism with OpenMP"   OFF)
+option(openmp   "Enable shared-memory parallelism with OpenMP"   ON)
 option(profile  "Compile with profiling flags"                   OFF)
 option(debug    "Compile with debug flags"                       OFF)
 option(optimize "Turn on all compiler optimization flags"        OFF)
 option(coverage "Compile with coverage analysis flags"           OFF)
-option(mpif08   "Use Fortran 2008 MPI interface"                 OFF)
-
-
-# Maximum number of nested coordinates levels
-set(maxcoord 10 CACHE STRING "Maximum number of nested coordinate levels")
-add_definitions(-DMAX_COORD=${maxcoord})
+option(dagmc    "Enable support for DAGMC (CAD) geometry"        OFF)
 
 #===============================================================================
 # MPI for distributed-memory parallelism
 #===============================================================================
 
 set(MPI_ENABLED FALSE)
-if($ENV{FC} MATCHES "mpi[^/]*$")
-  message("-- Detected MPI wrapper: $ENV{FC}")
-  add_definitions(-DMPI)
+if(${CMAKE_CXX_COMPILER} MATCHES "(mpi[^/]*|CC)$")
+  message(STATUS "Detected MPI wrapper: ${CMAKE_CXX_COMPILER}")
   set(MPI_ENABLED TRUE)
 endif()
 
-# Check for Fortran 2008 MPI interface
-if(MPI_ENABLED AND mpif08)
-  message("-- Using Fortran 2008 MPI bindings")
-  add_definitions(-DMPIF08)
+#===============================================================================
+# DAGMC Geometry Support - need DAGMC/MOAB
+#===============================================================================
+if(dagmc)
+  find_package(DAGMC REQUIRED PATH_SUFFIXES lib/cmake)
+endif()
+
+#===============================================================================
+# Check for submodules perhaps already on system
+#===============================================================================
+
+# If not found, we just pull appropriate versions from github and build them.
+find_package(fmt QUIET)
+if(fmt_FOUND)
+  message(STATUS "Found fmt: ${fmt_DIR} (version ${fmt_VERSION})")
+else()
+  message(STATUS "Did not find fmt, will use submodule instead")
+endif()
+find_package(pugixml QUIET)
+if(pugixml_FOUND)
+  message(STATUS "Found pugixml: ${pugixml_DIR}")
+else()
+  message(STATUS "Did not find pugixml, will use submodule instead")
 endif()
 
 #===============================================================================
@@ -63,348 +76,386 @@ endif()
 # this, we check for the environment variable HDF5_ROOT and if it exists, use it
 # to check whether its a parallel version.
 
-if(DEFINED ENV{HDF5_ROOT} AND EXISTS $ENV{HDF5_ROOT}/bin/h5pcc)
-  set(HDF5_PREFER_PARALLEL TRUE)
-else()
-  set(HDF5_PREFER_PARALLEL FALSE)
+if(NOT DEFINED HDF5_PREFER_PARALLEL)
+  if(DEFINED ENV{HDF5_ROOT} AND EXISTS $ENV{HDF5_ROOT}/bin/h5pcc)
+    set(HDF5_PREFER_PARALLEL TRUE)
+  else()
+    set(HDF5_PREFER_PARALLEL FALSE)
+  endif()
 endif()
 
-find_package(HDF5 COMPONENTS Fortran_HL)
-if(NOT HDF5_FOUND)
-  message(FATAL_ERROR "Could not find HDF5")
-endif()
+find_package(HDF5 REQUIRED COMPONENTS C HL)
 if(HDF5_IS_PARALLEL)
   if(NOT MPI_ENABLED)
     message(FATAL_ERROR "Parallel HDF5 must be used with MPI.")
   endif()
-  add_definitions(-DPHDF5)
-  message("-- Using parallel HDF5")
+  message(STATUS "Using parallel HDF5")
+endif()
+
+# Version 1.12 of HDF5 deprecates the H5Oget_info_by_idx() interface.
+# Thus, we give these flags to allow usage of the old interface in newer
+# versions of HDF5.
+if(NOT (${HDF5_VERSION} VERSION_LESS 1.12.0))
+  list(APPEND cxxflags -DH5Oget_info_by_idx_vers=1 -DH5O_info_t_vers=1)
 endif()
 
 #===============================================================================
 # Set compile/link flags based on which compiler is being used
 #===============================================================================
 
-# Support for Fortran in FindOpenMP was added in CMake 3.1. To support lower
-# versions, we manually add the flags. However, at some point in time, the
-# manual logic can be removed in favor of the block below
+# Skip for Visual Studio which has its own configurations through GUI
+if(NOT MSVC)
 
-#if(NOT (CMAKE_VERSION VERSION_LESS 3.1))
-#  if(openmp)
-#    find_package(OpenMP)
-#    if(OPENMP_FOUND)
-#      list(APPEND f90flags ${OpenMP_Fortran_FLAGS})
-#      list(APPEND ldflags ${OpenMP_Fortran_FLAGS})
-#    endif()
-#  endif()
-#endif()
-
-if(CMAKE_Fortran_COMPILER_ID STREQUAL GNU)
-  # Make sure version is sufficient
-  execute_process(COMMAND ${CMAKE_Fortran_COMPILER} -dumpversion
-    OUTPUT_VARIABLE GCC_VERSION)
-  if(GCC_VERSION VERSION_LESS 4.6)
-    message(FATAL_ERROR "gfortran version must be 4.6 or higher")
+if(openmp)
+  # Requires CMake 3.1+
+  find_package(OpenMP)
+  if(OPENMP_FOUND)
+    list(APPEND cxxflags ${OpenMP_CXX_FLAGS})
+    list(APPEND ldflags ${OpenMP_CXX_FLAGS})
   endif()
+endif()
 
-  # GNU Fortran compiler options
-  list(APPEND f90flags -cpp -std=f2008 -fbacktrace)
-  if(debug)
-    if(NOT (GCC_VERSION VERSION_LESS 4.7))
-      list(APPEND f90flags -Wall)
+set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+
+list(APPEND cxxflags -O2)
+if(debug)
+  list(REMOVE_ITEM cxxflags -O2)
+  list(APPEND cxxflags -g -O0)
+endif()
+if(profile)
+  list(APPEND cxxflags -g -fno-omit-frame-pointer)
+endif()
+if(optimize)
+  list(REMOVE_ITEM cxxflags -O2)
+  list(APPEND cxxflags -O3)
+endif()
+if(coverage)
+  list(APPEND cxxflags --coverage)
+  list(APPEND ldflags --coverage)
+endif()
+
+# Show flags being used
+message(STATUS "OpenMC C++ flags: ${cxxflags}")
+message(STATUS "OpenMC Linker flags: ${ldflags}")
+
+endif()
+
+#===============================================================================
+# Update git submodules as needed
+#===============================================================================
+
+find_package(Git)
+if(GIT_FOUND AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/.git")
+  option(GIT_SUBMODULE "Check submodules during build" ON)
+  if(GIT_SUBMODULE)
+    message(STATUS "Submodule update")
+    execute_process(COMMAND ${GIT_EXECUTABLE} submodule update --init --recursive
+                    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+                    RESULT_VARIABLE GIT_SUBMOD_RESULT)
+    if(NOT GIT_SUBMOD_RESULT EQUAL 0)
+      message(FATAL_ERROR "git submodule update --init failed with \
+        ${GIT_SUBMOD_RESULT}, please checkout submodules")
     endif()
-    list(APPEND f90flags -g -pedantic -fbounds-check
-      -ffpe-trap=invalid,overflow,underflow)
-    list(APPEND ldflags -g)
   endif()
-  if(profile)
-    list(APPEND f90flags -pg)
-    list(APPEND ldflags -pg)
-  endif()
-  if(optimize)
-    list(APPEND f90flags -O3)
-  endif()
-  if(openmp)
-    list(APPEND f90flags -fopenmp)
-    list(APPEND ldflags -fopenmp)
-  endif()
-  if(coverage)
-    list(APPEND f90flags -coverage)
-    list(APPEND ldflags -coverage)
-  endif()
+endif()
 
-elseif(CMAKE_Fortran_COMPILER_ID STREQUAL Intel)
-  # Intel Fortran compiler options
-  list(APPEND f90flags -fpp -std08 -assume byterecl -traceback)
-  if(debug)
-    list(APPEND f90flags -g -warn -ftrapuv -fp-stack-check
-      "-check all" -fpe0)
-    list(APPEND ldflags -g)
-  endif()
-  if(profile)
-    list(APPEND f90flags -pg)
-    list(APPEND ldflags -pg)
-  endif()
-  if(optimize)
-    list(APPEND f90flags -O3)
-  endif()
-  if(openmp)
-    list(APPEND f90flags -openmp)
-    list(APPEND ldflags -openmp)
-  endif()
-
-elseif(CMAKE_Fortran_COMPILER_ID STREQUAL PGI)
-  # PGI Fortran compiler options
-  list(APPEND f90flags -Mpreprocess -Minform=inform -traceback)
-  add_definitions(-DNO_F2008)
-  if(debug)
-    list(APPEND f90flags -g -Mbounds -Mchkptr -Mchkstk)
-    list(APPEND ldflags -g)
-  endif()
-  if(profile)
-    list(APPEND f90flags -pg)
-    list(APPEND ldflags -pg)
-  endif()
-  if(optimize)
-    list(APPEND f90flags -fast -Mipa)
-  endif()
-
-elseif(CMAKE_Fortran_COMPILER_ID STREQUAL XL)
-  # IBM XL compiler options
-  list(APPEND f90flags -O2)
-  add_definitions(-DNO_F2008)
-  if(debug)
-    list(APPEND f90flags -g -C -qflag=i:i -u)
-    list(APPEND ldflags -g)
-  endif()
-  if(profile)
-    list(APPEND f90flags -p)
-    list(APPEND ldflags -p)
-  endif()
-  if(optimize)
-    list(APPEND f90flags -O3)
-  endif()
-  if(openmp)
-    list(APPEND f90flags -qsmp=omp)
-    list(APPEND ldflags -qsmp=omp)
-  endif()
-
-elseif(CMAKE_Fortran_COMPILER_ID STREQUAL Cray)
-  # Cray Fortran compiler options
-  list(APPEND f90flags -e Z -m 0)
-  if(debug)
-    list(APPEND f90flags -g -R abcnsp -O0)
-    list(APPEND ldflags -g)
-  endif()
-
+# Check to see if submodules exist (by checking one)
+if(NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/vendor/pugixml/CMakeLists.txt")
+  message(FATAL_ERROR "The git submodules were not downloaded! GIT_SUBMODULE was \
+    turned off or failed. Please update submodules and try again.")
 endif()
 
 #===============================================================================
-# git SHA1 hash
+# pugixml library
 #===============================================================================
 
-execute_process(COMMAND git rev-parse HEAD
-                WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-                RESULT_VARIABLE GIT_SHA1_SUCCESS
-                OUTPUT_VARIABLE GIT_SHA1
-                ERROR_QUIET OUTPUT_STRIP_TRAILING_WHITESPACE)
-if(GIT_SHA1_SUCCESS EQUAL 0)
-  add_definitions(-DGIT_SHA1="${GIT_SHA1}")
+if (NOT pugixml_FOUND)
+  add_subdirectory(vendor/pugixml)
+  set_target_properties(pugixml PROPERTIES CXX_STANDARD 14 CXX_EXTENSIONS OFF)
 endif()
 
 #===============================================================================
-# FoX Fortran XML Library
+# {fmt} library
 #===============================================================================
 
-# Only initialize git submodules if it is not there. User is responsible
-# for future updates of fox xml submodule.
-if(NOT EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/src/xml/fox/.git)
-  if(NOT EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/.git)
-    message("-- Cloning FoX XML git repository...")
-    execute_process(COMMAND git clone https://github.com/mit-crpg/fox.git src/xml/fox
-      WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
-    execute_process(COMMAND git checkout bdc852f4f43d969fb1b179cba79295c1e095a455
-      WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/src/xml/fox)
-  else()
-    message("-- Initializing/Updating FoX XML submodule...")
-    execute_process(COMMAND git submodule init
-      WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
-    execute_process(COMMAND git submodule update
-      WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
-  endif()
+if (NOT fmt_FOUND)
+  set(FMT_INSTALL ON CACHE BOOL "Generate the install target.")
+  add_subdirectory(vendor/fmt)
 endif()
-add_subdirectory(src/xml/fox)
 
 #===============================================================================
-# Build OpenMC executable
+# xtensor header-only library
 #===============================================================================
 
-set(program "openmc")
-file(GLOB source src/*.F90 src/xml/openmc_fox.F90)
-add_executable(${program} ${source})
+# CMake 3.13+ will complain about policy CMP0079 unless it is set explicitly
+if (NOT (CMAKE_VERSION VERSION_LESS 3.13))
+  cmake_policy(SET CMP0079 NEW)
+endif()
 
-# target_include_directories was added in CMake 2.8.11 and is the recommended
-# way to set include directories. For lesser versions, we revert to set_property
-if(CMAKE_VERSION VERSION_LESS 2.8.11)
-  include_directories(${HDF5_INCLUDE_DIRS})
+add_subdirectory(vendor/xtl)
+set(xtl_DIR ${CMAKE_CURRENT_BINARY_DIR}/vendor/xtl)
+add_subdirectory(vendor/xtensor)
+
+#===============================================================================
+# GSL header-only library
+#===============================================================================
+
+set(GSL_LITE_OPT_INSTALL_COMPAT_HEADER ON CACHE BOOL
+  "Install MS-GSL compatibility header <gsl/gsl>")
+add_subdirectory(vendor/gsl-lite)
+
+# Make sure contract violations throw exceptions
+target_compile_definitions(gsl-lite-v1 INTERFACE GSL_THROW_ON_CONTRACT_VIOLATION)
+target_compile_definitions(gsl-lite-v1 INTERFACE gsl_CONFIG_ALLOWS_NONSTRICT_SPAN_COMPARISON=1)
+
+#===============================================================================
+# RPATH information
+#===============================================================================
+
+# Provide install directory variables as defined by GNU coding standards
+include(GNUInstallDirs)
+
+# This block of code ensures that dynamic libraries can be found via the RPATH
+# whether the executable is the original one from the build directory or the
+# installed one in CMAKE_INSTALL_PREFIX. Ref:
+# https://gitlab.kitware.com/cmake/community/wikis/doc/cmake/RPATH-handling
+
+# use, i.e. don't skip the full RPATH for the build tree
+set(CMAKE_SKIP_BUILD_RPATH  FALSE)
+
+# when building, don't use the install RPATH already
+# (but later on when installing)
+set(CMAKE_BUILD_WITH_INSTALL_RPATH FALSE)
+
+# add the automatically determined parts of the RPATH
+# which point to directories outside the build tree to the install RPATH
+set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
+
+# the RPATH to be used when installing, but only if it's not a system directory
+list(FIND CMAKE_PLATFORM_IMPLICIT_LINK_DIRECTORIES "${CMAKE_INSTALL_FULL_LIBDIR}" isSystemDir)
+if("${isSystemDir}" STREQUAL "-1")
+  set(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_FULL_LIBDIR}")
+endif()
+
+#===============================================================================
+# faddeeva library
+#===============================================================================
+
+add_library(faddeeva STATIC vendor/faddeeva/Faddeeva.cc)
+target_include_directories(faddeeva
+  PUBLIC
+    $<INSTALL_INTERFACE:include/faddeeva>
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/vendor/faddeeva>
+)
+target_compile_options(faddeeva PRIVATE ${cxxflags})
+
+#===============================================================================
+# libopenmc
+#===============================================================================
+
+list(APPEND libopenmc_SOURCES
+  src/bank.cpp
+  src/boundary_condition.cpp
+  src/bremsstrahlung.cpp
+  src/dagmc.cpp
+  src/cell.cpp
+  src/cmfd_solver.cpp
+  src/cross_sections.cpp
+  src/distribution.cpp
+  src/distribution_angle.cpp
+  src/distribution_energy.cpp
+  src/distribution_multi.cpp
+  src/distribution_spatial.cpp
+  src/eigenvalue.cpp
+  src/endf.cpp
+  src/error.cpp
+  src/event.cpp
+  src/initialize.cpp
+  src/finalize.cpp
+  src/geometry.cpp
+  src/geometry_aux.cpp
+  src/hdf5_interface.cpp
+  src/lattice.cpp
+  src/material.cpp
+  src/math_functions.cpp
+  src/mesh.cpp
+  src/message_passing.cpp
+  src/mgxs.cpp
+  src/mgxs_interface.cpp
+  src/nuclide.cpp
+  src/output.cpp
+  src/particle.cpp
+  src/particle_restart.cpp
+  src/photon.cpp
+  src/physics.cpp
+  src/physics_common.cpp
+  src/physics_mg.cpp
+  src/plot.cpp
+  src/position.cpp
+  src/progress_bar.cpp
+  src/random_lcg.cpp
+  src/reaction.cpp
+  src/reaction_product.cpp
+  src/scattdata.cpp
+  src/secondary_correlated.cpp
+  src/secondary_kalbach.cpp
+  src/secondary_nbody.cpp
+  src/secondary_thermal.cpp
+  src/secondary_uncorrelated.cpp
+  src/settings.cpp
+  src/simulation.cpp
+  src/source.cpp
+  src/state_point.cpp
+  src/string_utils.cpp
+  src/summary.cpp
+  src/surface.cpp
+  src/tallies/derivative.cpp
+  src/tallies/filter.cpp
+  src/tallies/filter_azimuthal.cpp
+  src/tallies/filter_cellborn.cpp
+  src/tallies/filter_cellfrom.cpp
+  src/tallies/filter_cell.cpp
+  src/tallies/filter_cell_instance.cpp
+  src/tallies/filter_delayedgroup.cpp
+  src/tallies/filter_distribcell.cpp
+  src/tallies/filter_energyfunc.cpp
+  src/tallies/filter_energy.cpp
+  src/tallies/filter_legendre.cpp
+  src/tallies/filter_material.cpp
+  src/tallies/filter_mesh.cpp
+  src/tallies/filter_meshsurface.cpp
+  src/tallies/filter_mu.cpp
+  src/tallies/filter_particle.cpp
+  src/tallies/filter_polar.cpp
+  src/tallies/filter_sph_harm.cpp
+  src/tallies/filter_sptl_legendre.cpp
+  src/tallies/filter_surface.cpp
+  src/tallies/filter_universe.cpp
+  src/tallies/filter_zernike.cpp
+  src/tallies/tally.cpp
+  src/tallies/tally_scoring.cpp
+  src/tallies/trigger.cpp
+  src/timer.cpp
+  src/thermal.cpp
+  src/track_output.cpp
+  src/urr.cpp
+  src/volume_calc.cpp
+  src/wmp.cpp
+  src/xml_interface.cpp
+  src/xsdata.cpp)
+
+# For Visual Studio compilers
+if(MSVC)
+  # Use static library (otherwise explicit symbol portings are needed)
+  add_library(libopenmc STATIC ${libopenmc_SOURCES})
+
+  # To use the shared HDF5 libraries on Windows, the H5_BUILT_AS_DYNAMIC_LIB
+  # compile definition must be specified.
+  target_compile_definitions(libopenmc PRIVATE -DH5_BUILT_AS_DYNAMIC_LIB)
 else()
-  target_include_directories(${program} PUBLIC ${HDF5_INCLUDE_DIRS})
+  add_library(libopenmc SHARED ${libopenmc_SOURCES})
 endif()
 
-# target_compile_options was added in CMake 2.8.12 and is the recommended way to
-# set compile flags. Note that this sets the COMPILE_OPTIONS property (also
-# available only in 2.8.12+) rather than the COMPILE_FLAGS property, which is
-# deprecated. The former can handle lists whereas the latter cannot.
-if(CMAKE_VERSION VERSION_LESS 4.8.12)
-  string(REPLACE ";" " " f90flags "${f90flags}")
-  set_property(TARGET ${program} PROPERTY COMPILE_FLAGS "${f90flags}")
-else()
-  target_compile_options(${program} PUBLIC ${f90flags})
+# Avoid vs error lnk1149 :output filename matches input filename
+if(NOT MSVC)
+  set_target_properties(libopenmc PROPERTIES OUTPUT_NAME openmc)
 endif()
 
-# Add HDF5 library directories to link line with -L
-foreach(LIBDIR ${HDF5_LIBRARY_DIRS})
-  list(APPEND ldflags "-L${LIBDIR}")
-endforeach()
+target_include_directories(libopenmc
+  PUBLIC
+    $<INSTALL_INTERFACE:include>
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+    ${HDF5_INCLUDE_DIRS}
+)
+
+# Set compile flags
+target_compile_options(libopenmc PRIVATE ${cxxflags})
+
+# Add include directory for configured version file
+target_include_directories(libopenmc PRIVATE ${CMAKE_BINARY_DIR}/include)
+
+if (HDF5_IS_PARALLEL)
+  target_compile_definitions(libopenmc PRIVATE -DPHDF5)
+endif()
+if (MPI_ENABLED)
+  target_compile_definitions(libopenmc PUBLIC -DOPENMC_MPI)
+endif()
+
+# Set git SHA1 hash as a compile definition
+if(GIT_FOUND)
+  execute_process(COMMAND ${GIT_EXECUTABLE} rev-parse HEAD
+                  WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+                  RESULT_VARIABLE GIT_SHA1_SUCCESS
+                  OUTPUT_VARIABLE GIT_SHA1
+                  ERROR_QUIET OUTPUT_STRIP_TRAILING_WHITESPACE)
+  if(GIT_SHA1_SUCCESS EQUAL 0)
+    target_compile_definitions(libopenmc PRIVATE -DGIT_SHA1="${GIT_SHA1}")
+  endif()
+endif()
 
 # target_link_libraries treats any arguments starting with - but not -l as
 # linker flags. Thus, we can pass both linker flags and libraries together.
-target_link_libraries(${program} ${ldflags} ${HDF5_LIBRARIES} fox_dom)
+target_link_libraries(libopenmc ${ldflags} ${HDF5_LIBRARIES} ${HDF5_HL_LIBRARIES}
+                      pugixml faddeeva xtensor gsl-lite-v1 fmt::fmt)
+
+if(dagmc)
+  target_compile_definitions(libopenmc PRIVATE DAGMC)
+  target_link_libraries(libopenmc dagmc-shared uwuw-shared)
+endif()
+
+#===============================================================================
+# openmc executable
+#===============================================================================
+add_executable(openmc src/main.cpp)
+target_compile_options(openmc PRIVATE ${cxxflags})
+target_include_directories(openmc PRIVATE ${CMAKE_BINARY_DIR}/include)
+target_link_libraries(openmc libopenmc)
+
+# Ensure C++14 standard is used. Starting with CMake 3.8, another way this could
+# be done is using the cxx_std_14 compiler feature.
+set_target_properties(
+    openmc libopenmc faddeeva
+    PROPERTIES CXX_STANDARD 14 CXX_EXTENSIONS OFF)
+
+#===============================================================================
+# Python package
+#===============================================================================
+
+add_custom_command(TARGET libopenmc POST_BUILD
+  COMMAND ${CMAKE_COMMAND} -E copy
+  $<TARGET_FILE:libopenmc>
+  ${CMAKE_CURRENT_SOURCE_DIR}/openmc/lib/$<TARGET_FILE_NAME:libopenmc>
+  COMMENT "Copying libopenmc to Python module directory")
 
 #===============================================================================
 # Install executable, scripts, manpage, license
 #===============================================================================
 
-install(TARGETS ${program} RUNTIME DESTINATION bin)
-install(DIRECTORY src/relaxng DESTINATION share/openmc)
-install(FILES man/man1/openmc.1 DESTINATION share/man/man1)
-install(FILES LICENSE DESTINATION "share/doc/${program}/copyright")
+configure_file(cmake/OpenMCConfig.cmake.in "${CMAKE_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/OpenMCConfig.cmake" @ONLY)
+configure_file(cmake/OpenMCConfigVersion.cmake.in "${CMAKE_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/OpenMCConfigVersion.cmake" @ONLY)
 
-find_package(PythonInterp)
-if(PYTHONINTERP_FOUND)
-  install(CODE "execute_process(
-                  COMMAND ${PYTHON_EXECUTABLE} setup.py install
-                  --prefix=${CMAKE_INSTALL_PREFIX}
-                  WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})")
-endif()
+set(INSTALL_CONFIGDIR ${CMAKE_INSTALL_LIBDIR}/cmake/OpenMC)
+install(TARGETS openmc libopenmc faddeeva
+  EXPORT openmc-targets
+  RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+  LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+  ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+)
+install(EXPORT openmc-targets
+  FILE OpenMCTargets.cmake
+  NAMESPACE OpenMC::
+  DESTINATION ${INSTALL_CONFIGDIR})
 
-#===============================================================================
-# Regression tests
-#===============================================================================
+install(DIRECTORY src/relaxng DESTINATION ${CMAKE_INSTALL_DATADIR}/openmc)
+install(FILES
+  "${CMAKE_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/OpenMCConfig.cmake"
+  "${CMAKE_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/OpenMCConfigVersion.cmake"
+  DESTINATION ${INSTALL_CONFIGDIR})
+install(FILES man/man1/openmc.1 DESTINATION ${CMAKE_INSTALL_MANDIR}/man1)
+install(FILES LICENSE DESTINATION "${CMAKE_INSTALL_DOCDIR}" RENAME copyright)
+install(DIRECTORY include/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
+install(FILES "${CMAKE_BINARY_DIR}/include/openmc/version.h" DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/openmc)
 
-# This allows for dashboard configuration
-include(CTest)
-
-# Get a list of all the tests to run
-file(GLOB_RECURSE TESTS ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_*.py)
-
-# Check for MEM_CHECK and COVERAGE variables
-if (DEFINED ENV{MEM_CHECK})
-  set(MEM_CHECK $ENV{MEM_CHECK})
-else(DEFINED ENV{MEM_CHECK})
-  set(MEM_CHECK FALSE)
-endif(DEFINED ENV{MEM_CHECK})
-if (DEFINED ENV{COVERAGE})
-  set(COVERAGE $ENV{COVERAGE})
-else(DEFINED ENV{COVERAGE})
-  set(COVERAGE FALSE)
-endif(DEFINED ENV{COVERAGE})
-
-# Loop through all the tests
-foreach(test ${TESTS})
-
-  # Get test information
-  get_filename_component(TEST_NAME ${test} NAME)
-  get_filename_component(TEST_PATH ${test} PATH)
-
-  # Check for running standard tests (no valgrind, no gcov)
-  if(NOT ${MEM_CHECK} AND NOT ${COVERAGE})
-
-    # Check serial/parallel
-    if (${MPI_ENABLED})
-
-      # Preform a parallel test
-      add_test(NAME ${TEST_NAME}
-        WORKING_DIRECTORY ${TEST_PATH}
-        COMMAND ${PYTHON_EXECUTABLE} ${TEST_NAME} --exe $<TARGET_FILE:openmc>
-        --mpi_exec $ENV{MPI_DIR}/bin/mpiexec)
-
-    else(${MPI_ENABLED})
-
-      # Perform a serial test
-      add_test(NAME ${TEST_NAME}
-        WORKING_DIRECTORY ${TEST_PATH}
-        COMMAND ${PYTHON_EXECUTABLE} ${TEST_NAME} --exe $<TARGET_FILE:openmc>)
-
-    endif(${MPI_ENABLED})
-
-  # Handle special case for valgrind and gcov (run openmc directly, no python)
-  else(NOT ${MEM_CHECK} AND NOT ${COVERAGE})
-
-    # If a plot test is encountered, run with "-p"
-    if (${test} MATCHES "test_plot")
-
-      # Perform serial valgrind and coverage test with plot flag
-      add_test(NAME ${TEST_NAME}
-        WORKING_DIRECTORY ${TEST_PATH}
-        COMMAND $<TARGET_FILE:openmc> -p ${TEST_PATH})
-
-    elseif(${test} MATCHES "test_filter_distribcell")
-
-      # Add each case for distribcell tests
-      add_test(NAME ${TEST_NAME}_case-1
-        WORKING_DIRECTORY ${TEST_PATH}/case-1
-        COMMAND $<TARGET_FILE:openmc> ${TEST_PATH}/case-1)
-      add_test(NAME ${TEST_NAME}_case-2
-        WORKING_DIRECTORY ${TEST_PATH}/case-2
-        COMMAND $<TARGET_FILE:openmc> ${TEST_PATH}/case-2)
-      add_test(NAME ${TEST_NAME}_case-3
-        WORKING_DIRECTORY ${TEST_PATH}/case-3
-        COMMAND $<TARGET_FILE:openmc> ${TEST_PATH}/case-3)
-      add_test(NAME ${TEST_NAME}_case-4
-        WORKING_DIRECTORY ${TEST_PATH}/case-4
-        COMMAND $<TARGET_FILE:openmc> ${TEST_PATH}/case-4)
-
-    # If a restart test is encounted, need to run with -r and restart file(s)
-    elseif(${test} MATCHES "restart")
-
-      # Handle restart tests separately
-      if(${test} MATCHES "test_statepoint_restart")
-        set(RESTART_FILE statepoint.07.h5)
-      elseif(${test} MATCHES "test_sourcepoint_restart")
-        set(RESTART_FILE statepoint.07.h5 source.07.h5)
-      elseif(${test} MATCHES "test_particle_restart_eigval")
-        set(RESTART_FILE particle_9_555.h5)
-      elseif(${test} MATCHES "test_particle_restart_fixed")
-        set(RESTART_FILE particle_7_928.h5)
-      else(${test} MATCHES "test_statepoint_restart")
-        message(FATAL_ERROR "Restart test ${test} not recognized")
-      endif(${test} MATCHES "test_statepoint_restart")
-
-      # Perform serial valgrind and coverage test
-      add_test(NAME ${TEST_NAME}
-        WORKING_DIRECTORY ${TEST_PATH}
-        COMMAND $<TARGET_FILE:openmc> ${TEST_PATH})
-
-      # Perform serial valgrind and coverage restart test
-      add_test(NAME ${TEST_NAME}_restart
-        WORKING_DIRECTORY ${TEST_PATH}
-        COMMAND $<TARGET_FILE:openmc> -r ${RESTART_FILE} ${TEST_PATH})
-
-      # Set test dependency
-      set_tests_properties(${TEST_NAME}_restart PROPERTIES DEPENDS ${TEST_NAME})
-
-
-    # Handle standard tests for valgrind and gcov
-    else(${test} MATCHES "test_plot")
-
-      # Perform serial valgrind and coverage test
-      add_test(NAME ${TEST_NAME}
-        WORKING_DIRECTORY ${TEST_PATH}
-        COMMAND $<TARGET_FILE:openmc> ${TEST_PATH})
-
-    endif(${test} MATCHES "test_plot")
-
-  endif(NOT ${MEM_CHECK} AND NOT ${COVERAGE})
-
-endforeach(test)
+# Copy headers for vendored dependencies (note that all except faddeeva are handled
+# separately since they are managed by CMake)
+install(DIRECTORY vendor/faddeeva DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})

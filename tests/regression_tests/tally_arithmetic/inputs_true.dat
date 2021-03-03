@@ -1,0 +1,56 @@
+<?xml version='1.0' encoding='utf-8'?>
+<geometry>
+  <cell id="1" material="1" region="-1" universe="1" />
+  <cell id="2" material="2" region="1 -2" universe="1" />
+  <surface coeffs="0.0 0.0 5.0" id="1" type="z-cylinder" />
+  <surface boundary="vacuum" coeffs="0.0 0.0 10.0" id="2" type="z-cylinder" />
+</geometry>
+<?xml version='1.0' encoding='utf-8'?>
+<materials>
+  <material depletable="true" id="1">
+    <density units="g/cm3" value="10.0" />
+    <nuclide ao="1.0" name="U234" />
+    <nuclide ao="4.0" name="U235" />
+    <nuclide ao="95.0" name="U238" />
+  </material>
+  <material id="2" name="light water">
+    <density units="g/cm3" value="1.0" />
+    <nuclide ao="2.0" name="H1" />
+    <nuclide ao="1.0" name="O16" />
+    <sab name="c_H_in_H2O" />
+  </material>
+</materials>
+<?xml version='1.0' encoding='utf-8'?>
+<settings>
+  <run_mode>eigenvalue</run_mode>
+  <particles>1000</particles>
+  <batches>5</batches>
+  <inactive>0</inactive>
+</settings>
+<?xml version='1.0' encoding='utf-8'?>
+<tallies>
+  <mesh id="1">
+    <dimension>2 2</dimension>
+    <lower_left>-10.0 -10.0</lower_left>
+    <upper_right>10.0 10.0</upper_right>
+  </mesh>
+  <filter id="2" type="material">
+    <bins>1 2</bins>
+  </filter>
+  <filter id="1" type="energy">
+    <bins>0.0 10.0 20000000.0</bins>
+  </filter>
+  <filter id="3" type="mesh">
+    <bins>1</bins>
+  </filter>
+  <tally id="1" name="tally 1">
+    <filters>2 1</filters>
+    <nuclides>U234 U235</nuclides>
+    <scores>nu-fission total</scores>
+  </tally>
+  <tally id="2" name="tally 2">
+    <filters>1 3</filters>
+    <nuclides>U238 U235</nuclides>
+    <scores>total fission</scores>
+  </tally>
+</tallies>

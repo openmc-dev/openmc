@@ -1,0 +1,13 @@
+<?xml version="1.0"?>
+<settings>
+
+  <run_mode>plot</run_mode>
+
+  <mesh id="1">
+    <dimension>5 4 3</dimension>
+    <lower_left>-10 -10 -10</lower_left>
+    <upper_right>10 10 10</upper_right>
+  </mesh>
+  <entropy_mesh>1</entropy_mesh>
+
+</settings>

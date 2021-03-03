@@ -1,0 +1,51 @@
+===================
+What's New in 0.4.3
+===================
+
+-------------------
+System Requirements
+-------------------
+
+There are no special requirements for running the OpenMC code. As of this
+release, OpenMC has been tested on a variety of Linux distributions, Mac OS X,
+and Microsoft Windows 7. Memory requirements will vary depending on the size of
+the problem at hand (mostly on the number of nuclides in the problem).
+
+------------
+New Features
+------------
+
+- Option to report confidence intervals for tally results.
+- Rotation and translation for filled cells.
+- Ability to explicitly specify <estimator> for tallies.
+- Ability to store state points and use them to restart runs.
+- Fixed source calculations (no subcritical multiplication however).
+- Expanded options for external source distribution.
+- Ability to tally reaction rates for individual nuclides within a material.
+- Reduced memory usage by removing redundant storage or some cross-sections.
+- 3bd35b_: Log-log interpolation for URR probability tables.
+- Support to specify labels on tallies (nelsonag_).
+
+---------
+Bug Fixes
+---------
+
+- 33f29a_: Handle negative values in probability table.
+- 1c472d_: Fixed survival biasing with probability tables.
+- 3c6e80_: Fixed writing tallies with no filters.
+- 460ef1_: Invalid results for duplicate tallies.
+- 0069d5_: Fixed bug with 0 inactive batches.
+- 7af2cf_: Fixed bug in score_analog_tallies.
+- 85a60e_: Pick closest angular distribution for law 61.
+- 3212f5_: Fixed issue with blank line at beginning of XML files.
+
+.. _nelsonag: https://github.com/nelsonag
+.. _33f29a: https://github.com/openmc-dev/openmc/commit/33f29a
+.. _1c472d: https://github.com/openmc-dev/openmc/commit/1c472d
+.. _3c6e80: https://github.com/openmc-dev/openmc/commit/3c6e80
+.. _3bd35b: https://github.com/openmc-dev/openmc/commit/3bd35b
+.. _0069d5: https://github.com/openmc-dev/openmc/commit/0069d5
+.. _7af2cf: https://github.com/openmc-dev/openmc/commit/7af2cf
+.. _460ef1: https://github.com/openmc-dev/openmc/commit/460ef1
+.. _85a60e: https://github.com/openmc-dev/openmc/commit/85a60e
+.. _3212f5: https://github.com/openmc-dev/openmc/commit/3212f5

@@ -1,0 +1,48 @@
+# Data interface
+openmc/data/ @paulromano
+
+# Python bindings to C/C++ API
+openmc/lib/ @paulromano
+
+# Depletion
+openmc/deplete/ @drewejohnson
+tests/regression_tests/deplete/ @drewejohnson
+tests/unit_tests/test_deplete_*.py @drewejohnson
+
+# MG-related functionality
+openmc/mgxs_library.py @nelsonag
+src/mgxs.cpp @nelsonag
+src/mgxs_interface.cpp @nelsonag
+src/physics_mg.cpp @nelsonag
+src/scattdata.cpp @nelsonag
+src/xsdata.cpp @nelsonag
+
+# CMFD
+openmc/cmfd.py @shikhar413
+src/cmfd_solver.cpp @shikhar413
+
+# DAGMC
+src/dagmc.cpp @pshriwise
+tests/regression_tests/dagmc/ @pshriwise
+tests/unit_tests/dagmc/ @pshriwise
+
+# Photon transport
+openmc/data/BREMX.DAT @amandalund
+openmc/data/compton_profiles.h5 @amandalund
+openmc/data/photon.py @amandalund
+src/photon.cpp @amandalund
+src/bremsstrahlung.cpp @amandalund
+tests/regression_tests/photon_production/ @amandalund
+tests/regression_tests/photon_source/ @amandalund
+
+# RCP and TRISOs
+openmc/model/triso.py @amandalund
+tests/regression_tests/triso/ @amandalund
+tests/unit_tests/test_model_triso.py @amandalund
+
+# Geometry plotting
+src/plot.cpp @pshriwise
+openmc/lib/plot.py @pshriwise
+
+# Resonance covariance
+openmc/data/resonance_covariance.py @icmeyer

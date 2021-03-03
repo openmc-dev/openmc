@@ -1,0 +1,75 @@
+<?xml version='1.0' encoding='utf-8'?>
+<geometry>
+  <cell id="1" material="2" region="-1 -3 5" universe="0" />
+  <cell id="2" material="1" region="-2 3" universe="0" />
+  <cell id="3" material="1" region="-4 -3" universe="0" />
+  <surface boundary="vacuum" coeffs="0.0 0.0 1.0" id="1" type="z-cylinder" />
+  <surface boundary="vacuum" coeffs="0.0 0.0 5.0 1.0" id="2" type="sphere" />
+  <surface coeffs="5.0" id="3" type="z-plane" />
+  <surface boundary="vacuum" coeffs="0.0 0.0 -5.0 1.0" id="4" type="sphere" />
+  <surface coeffs="-5.0" id="5" type="z-plane" />
+</geometry>
+<?xml version='1.0' encoding='utf-8'?>
+<materials>
+  <material id="1">
+    <density units="g/cc" value="1.0" />
+    <nuclide ao="2.0" name="H1" />
+    <nuclide ao="1.0" name="O16" />
+    <nuclide ao="0.0001" name="B10" />
+    <sab name="c_H_in_H2O" />
+  </material>
+  <material depletable="true" id="2">
+    <density units="g/cc" value="4.5" />
+    <nuclide ao="1.0" name="U235" />
+    <nuclide ao="0.1" name="Mo99" />
+  </material>
+</materials>
+<?xml version='1.0' encoding='utf-8'?>
+<settings>
+  <run_mode>volume</run_mode>
+  <volume_calc>
+    <domain_type>cell</domain_type>
+    <domain_ids>1 2 3</domain_ids>
+    <samples>100000</samples>
+    <lower_left>-1.0 -1.0 -6.0</lower_left>
+    <upper_right>1.0 1.0 6.0</upper_right>
+  </volume_calc>
+  <volume_calc>
+    <domain_type>material</domain_type>
+    <domain_ids>1 2</domain_ids>
+    <samples>100000</samples>
+    <lower_left>-1.0 -1.0 -6.0</lower_left>
+    <upper_right>1.0 1.0 6.0</upper_right>
+  </volume_calc>
+  <volume_calc>
+    <domain_type>universe</domain_type>
+    <domain_ids>0</domain_ids>
+    <samples>100000</samples>
+    <lower_left>-1.0 -1.0 -6.0</lower_left>
+    <upper_right>1.0 1.0 6.0</upper_right>
+  </volume_calc>
+  <volume_calc>
+    <domain_type>cell</domain_type>
+    <domain_ids>1 2 3</domain_ids>
+    <samples>100</samples>
+    <lower_left>-1.0 -1.0 -6.0</lower_left>
+    <upper_right>1.0 1.0 6.0</upper_right>
+    <threshold threshold="0.1" type="std_dev" />
+  </volume_calc>
+  <volume_calc>
+    <domain_type>material</domain_type>
+    <domain_ids>1 2</domain_ids>
+    <samples>100</samples>
+    <lower_left>-1.0 -1.0 -6.0</lower_left>
+    <upper_right>1.0 1.0 6.0</upper_right>
+    <threshold threshold="0.1" type="rel_err" />
+  </volume_calc>
+  <volume_calc>
+    <domain_type>cell</domain_type>
+    <domain_ids>1 2 3</domain_ids>
+    <samples>100</samples>
+    <lower_left>-1.0 -1.0 -6.0</lower_left>
+    <upper_right>1.0 1.0 6.0</upper_right>
+    <threshold threshold="0.05" type="variance" />
+  </volume_calc>
+</settings>

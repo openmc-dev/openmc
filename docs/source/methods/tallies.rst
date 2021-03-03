@@ -4,6 +4,10 @@
 Tallies
 =======
 
+Note that the methods discussed in this section are written specifically for
+continuous-energy mode but equivalent apply to the multi-group mode if the
+particle's energy is replaced with the particle's group
+
 ------------------
 Filters and Scores
 ------------------
@@ -32,8 +36,9 @@ OpenMC: flux, total reaction rate, scattering reaction rate, neutron production
 from scattering, higher scattering moments, :math:`(n,xn)` reaction rates,
 absorption reaction rate, fission reaction rate, neutron production rate from
 fission, and surface currents. The following variables can be used as filters:
-universe, material, cell, birth cell, surface, mesh, pre-collision energy, and
-post-collision energy.
+universe, material, cell, birth cell, surface, mesh, pre-collision energy,
+post-collision energy, polar angle, azimuthal angle, and the cosine of the
+change-in-angle due to a scattering event.
 
 With filters for pre- and post-collision energy and scoring functions for
 scattering and fission production, it is possible to use OpenMC to generate
@@ -55,9 +60,9 @@ be scored to for each value of the filter variable. If a particle is in cell
 :math:`n`, the mapping would identify what tally/bin combinations specify cell
 :math:`n` for the cell filter variable. In this manner, it is not necessary to
 check the phase space variables against each tally. Note that this technique
-only applies to discrete filter variables and cannot be applied to energy
-bins. For energy filters, it is necessary to perform a binary search on the
-specified energy grid.
+only applies to discrete filter variables and cannot be applied to energy,
+angle, or change-in-angle bins. For these filters, it is necessary to perform
+a binary search on the specified energy grid.
 
 -----------------------------------------
 Volume-Integrated Flux and Reaction Rates
@@ -196,8 +201,9 @@ One important fact to take into consideration is that the use of a track-length
 estimator precludes us from using any filter that requires knowledge of the
 particle's state following a collision because by definition, it will not have
 had a collision at every event. Thus, for tallies with outgoing-energy filters
-(which require the post-collision energy) or for tallies of scattering moments
-(which require the scattering cosine), we must use an analog estimator.
+(which require the post-collision energy), scattering change-in-angle filters,
+or for tallies of scattering moments (which require the scattering cosine of
+the change-in-angle), we must use an analog estimator.
 
 .. TODO: Add description of surface current tallies
 
@@ -377,7 +383,7 @@ Confidence Intervals
 While the sample variance and standard deviation gives us some idea about the
 variability of the estimate of the mean of whatever quantities we've tallied, it
 does not help us interpret how confidence we should be in the results. To
-quantity the reliability of our estimates, we can use `confidence intervals`_
+quantify the reliability of our estimates, we can use `confidence intervals`_
 based on the calculated sample variance.
 
 A :math:`1-\alpha` confidence interval for a population parameter is defined as
@@ -430,7 +436,7 @@ analytically. For one degree of freedom, the t-distribution becomes a standard
 .. math::
     :label: cauchy-cdf
 
-    c(x) = \frac{1}{\pi} \arctan x + \frac{1}{2}. 
+    c(x) = \frac{1}{\pi} \arctan x + \frac{1}{2}.
 
 Thus, inverting the cumulative distribution function, we find the :math:`x`
 percentile of the standard Cauchy distribution to be
@@ -459,8 +465,7 @@ For degrees of freedom greater than two, it is not possible to obtain an
 analytical formula for the inverse of the cumulative distribution function. We
 must resort to either numerically solving for the inverse or to an
 approximation. Approximations for percentiles of the t-distribution have been
-found with high levels of accuracy. OpenMC uses the approximation from
-[George]_:
+found with high levels of accuracy. OpenMC uses the `following approximation`_:
 
 .. math::
     :label: percentile-n
@@ -479,34 +484,32 @@ improve the estimate of the percentile.
 
    .. rubric:: References
 
-.. [George] E. E. Olusegun George and Meenakshi Sivaram, "A modification of the
-   Fisher-Cornish approximation for the student t percentiles," Communication
-   in Statistics - Simulation and Computation, 16 (4), pp. 1123-1132 (1987).
+.. _following approximation: https://doi.org/10.1080/03610918708812641
 
-.. _Bessel's correction: http://en.wikipedia.org/wiki/Bessel's_correction
+.. _Bessel's correction: https://en.wikipedia.org/wiki/Bessel's_correction
 
-.. _random variable: http://en.wikipedia.org/wiki/Random_variable
+.. _random variable: https://en.wikipedia.org/wiki/Random_variable
 
-.. _stochastic process: http://en.wikipedia.org/wiki/Stochastic_process
+.. _stochastic process: https://en.wikipedia.org/wiki/Stochastic_process
 
-.. _independent, identically-distributed random variables: http://en.wikipedia.org/wiki/Independent_and_identically_distributed_random_variables
+.. _independent, identically-distributed random variables: https://en.wikipedia.org/wiki/Independent_and_identically_distributed_random_variables
 
-.. _law of large numbers: http://en.wikipedia.org/wiki/Law_of_large_numbers
+.. _law of large numbers: https://en.wikipedia.org/wiki/Law_of_large_numbers
 
-.. _expected value: http://en.wikipedia.org/wiki/Expected_value
+.. _expected value: https://en.wikipedia.org/wiki/Expected_value
 
-.. _converges in probability: http://en.wikipedia.org/wiki/Convergence_of_random_variables#Convergence_in_probability
+.. _converges in probability: https://en.wikipedia.org/wiki/Convergence_of_random_variables#Convergence_in_probability
 
-.. _normal distribution: http://en.wikipedia.org/wiki/Normal_distribution
+.. _normal distribution: https://en.wikipedia.org/wiki/Normal_distribution
 
-.. _converges in distribution: http://en.wikipedia.org/wiki/Convergence_of_random_variables#Convergence_in_distribution
+.. _converges in distribution: https://en.wikipedia.org/wiki/Convergence_of_random_variables#Convergence_in_distribution
 
-.. _confidence intervals: http://en.wikipedia.org/wiki/Confidence_interval
+.. _confidence intervals: https://en.wikipedia.org/wiki/Confidence_interval
 
-.. _Student's t-distribution: http://en.wikipedia.org/wiki/Student%27s_t-distribution
+.. _Student's t-distribution: https://en.wikipedia.org/wiki/Student%27s_t-distribution
 
-.. _Cauchy distribution: http://en.wikipedia.org/wiki/Cauchy_distribution
+.. _Cauchy distribution: https://en.wikipedia.org/wiki/Cauchy_distribution
 
-.. _unpublished rational approximation: http://home.online.no/~pjacklam/notes/invnorm/
+.. _unpublished rational approximation: https://web.archive.org/web/20150926021742/http://home.online.no/~pjacklam/notes/invnorm/
 
 .. _MC21: http://www.osti.gov/bridge/servlets/purl/903083-HT5p1o/903083.pdf

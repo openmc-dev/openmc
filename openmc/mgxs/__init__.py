@@ -13,13 +13,14 @@ GROUP_STRUCTURES = {}
 - "XMAS-172_" designed for LWR analysis ([SAR1990]_, [SAN2004]_)
 - "SHEM-361_" designed for LWR analysis to eliminate self-shielding calculations
   of thermal resonances ([HFA2005]_, [SAN2007]_, [HEB2008]_)
-- activation_ energy group structures "VITAMIN-J-175", "TRIPOLI-315",
-  "CCFE-709_" and "UKAEA-1102_"
+- activation_ energy group structures "VITAMIN-J-42", "VITAMIN-J-175",
+  "TRIPOLI-315", "CCFE-709_" and "UKAEA-1102_"
 
 .. _CASMO: https://www.studsvik.com/SharepointFiles/CASMO-5%20Development%20and%20Applications.pdf
 .. _XMAS-172: https://www-nds.iaea.org/wimsd/energy.htm
 .. _SHEM-361: https://www.polymtl.ca/merlin/downloads/FP214.pdf
 .. _activation: https://fispact.ukaea.uk/wiki/Keyword:GETXS
+.. _VITAMIN-J-42: https://www.oecd-nea.org/dbdata/nds_jefreports/jefreport-10.pdf
 .. _CCFE-709: https://fispact.ukaea.uk/wiki/CCFE-709_group_structure
 .. _UKAEA-1102: https://fispact.ukaea.uk/wiki/UKAEA-1102_group_structure
 .. [SAR1990] Sartori, E., OECD/NEA Data Bank: Standard Energy Group Structures
@@ -61,6 +62,12 @@ GROUP_STRUCTURES['CASMO-40'] = np.array([
     9.72e-1, 1.02, 1.097, 1.15, 1.3, 1.5, 1.855, 2.1, 2.6, 3.3, 4.,
     9.877, 1.5968e1, 2.77e1, 4.8052e1, 1.4873e2, 5.53e3, 9.118e3,
     1.11e5, 5.e5, 8.21e5, 1.353e6, 2.231e6, 3.679e6, 6.0655e6, 2.e7])
+GROUP_STRUCTURES['VITAMIN-J-42'] = np.array([
+    1.e3, 10.e3, 20.e3, 30.e3, 45.e3, 60.e3, 70.e3, 75.e3, 0.1e6, 0.15e6,
+    0.2e6, 0.3e6, 0.4e6, 0.45e6, 0.51e6, 0.512e6, 0.6e6, 0.7e6, 0.8e6, 1.e6,
+    1.33e6, 1.34e6, 1.5e6, 1.66e6, 2.e6, 2.5e6, 3.e6, 3.5e6, 4.e6, 4.5e6, 5.e6,
+    5.5e6, 6.e6, 6.5e6, 7.e6, 7.5e6, 8.e6, 10.e6, 12.e6, 14.e6, 20.e6, 30.e6,
+    50.e6])
 GROUP_STRUCTURES['CASMO-70'] = np.array([
     0., 5.e-3, 1.e-2, 1.5e-2, 2.e-2, 2.5e-2, 3.e-2, 3.5e-2, 4.2e-2,
     5.e-2, 5.8e-2, 6.7e-2, 8.e-2, 1.e-1, 1.4e-1, 1.8e-1, 2.2e-1,

@@ -13,8 +13,8 @@ GROUP_STRUCTURES = {}
 - "XMAS-172_" designed for LWR analysis ([SAR1990]_, [SAN2004]_)
 - "SHEM-361_" designed for LWR analysis to eliminate self-shielding calculations
   of thermal resonances ([HFA2005]_, [SAN2007]_, [HEB2008]_)
-- activation_ energy group structures "VITAMIN-J-175", "TRIPOLI-315",
-  "CCFE-709_" and "UKAEA-1102_"
+- activation_ energy group structures "VITAMIN-J-42", "VITAMIN-J-175",
+  "TRIPOLI-315", "CCFE-709_" and "UKAEA-1102_"
 
 .. _CASMO: https://www.studsvik.com/SharepointFiles/CASMO-5%20Development%20and%20Applications.pdf
 .. _XMAS-172: https://www-nds.iaea.org/wimsd/energy.htm

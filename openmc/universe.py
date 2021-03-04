@@ -641,8 +641,9 @@ class DAGMCUniverse(UniverseBase):
         automatically be assigned
     name : str, optional
         Name of the universe. If not specified, the name is the empty string.
-    cells : Iterable of openmc.Cell, optional
-        Cells to add to the universe. By default no cells are added.
+    auto_ids : bool
+        Set IDs automatically on initialization (True) or report overlaps
+        in ID space between CSG and DAGMC (False)
 
     Attributes
     ----------

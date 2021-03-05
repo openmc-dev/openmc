@@ -275,6 +275,10 @@ bool brute_force_find_cell(Particle& p)
     p.n_coord_ = 1;
     i_universe = model::root_universe;
   }
+  // Reset all the deeper coordinate levels.
+  for (int i = p.n_coord_; i < p.coord_.size(); i++) {
+    p.coord_[i].reset();
+  }
   return find_cell_inner(p, nullptr);
 }
 

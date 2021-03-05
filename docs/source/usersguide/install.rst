@@ -71,7 +71,7 @@ Now OpenMC should be recognized within the repository and can be installed:
 Binary packages from this PPA may exist for earlier versions of Ubuntu, but they
 are no longer supported.
 
-.. _Personal Package Archive: https://launchpad.net/~paulromano/+archive/staging
+.. _Personal Package Archive: https://launchpad.net/~paulromano/+archive/ubuntu/staging
 .. _APT package manager: https://help.ubuntu.com/community/AptGet/Howto
 
 .. _install-spack:
@@ -242,9 +242,9 @@ Prerequisites
 
 
 .. _gcc: https://gcc.gnu.org/
-.. _CMake: http://www.cmake.org
-.. _OpenMPI: http://www.open-mpi.org
-.. _MPICH: http://www.mpich.org
+.. _CMake: https://cmake.org
+.. _OpenMPI: https://www.open-mpi.org
+.. _MPICH: https://www.mpich.org
 .. _HDF5: https://www.hdfgroup.org/solutions/hdf5/
 .. _DAGMC: https://svalinn.github.io/DAGMC/index.html
 
@@ -256,10 +256,10 @@ directly from GitHub or, if you have the git_ version control software installed
 on your computer, you can use git to obtain the source code. The latter method
 has the benefit that it is easy to receive updates directly from the GitHub
 repository. GitHub has a good set of `instructions
-<http://help.github.com/set-up-git-redirect>`_ for how to set up git to work
-with GitHub since this involves setting up ssh_ keys. With git installed and
-setup, the following command will download the full source code from the GitHub
-repository::
+<https://docs.github.com/en/github/getting-started-with-github/set-up-git>`_ for
+how to set up git to work with GitHub since this involves setting up ssh_ keys.
+With git installed and setup, the following command will download the full
+source code from the GitHub repository::
 
     git clone --recurse-submodules https://github.com/openmc-dev/openmc.git
 
@@ -408,8 +408,8 @@ Compiling on Windows 10
 
 Recent versions of Windows 10 include a subsystem for Linux that allows one to
 run Bash within Ubuntu running in Windows. First, follow the installation guide
-`here <https://msdn.microsoft.com/en-us/commandline/wsl/install_guide>`_ to get
-Bash on Ubuntu on Windows setup. Once you are within bash, obtain the necessary
+`here <https://docs.microsoft.com/en-us/windows/wsl/install-win10>`_ to get Bash
+on Ubuntu on Windows setup. Once you are within bash, obtain the necessary
 :ref:`prerequisites <prerequisites>` via ``apt``. Finally, follow the
 :ref:`instructions for compiling on linux <compile_linux>`.
 
@@ -494,7 +494,7 @@ distributions.
 .. admonition:: Required
    :class: error
 
-   `NumPy <http://www.numpy.org/>`_
+   `NumPy <https://numpy.org/>`_
       NumPy is used extensively within the Python API for its powerful
       N-dimensional array.
 
@@ -502,7 +502,7 @@ distributions.
       SciPy's special functions, sparse matrices, and spatial data structures
       are used for several optional features in the API.
 
-   `pandas <http://pandas.pydata.org/>`_
+   `pandas <https://pandas.pydata.org/>`_
       Pandas is used to generate tally DataFrames as demonstrated in
       an `example notebook <../examples/pandas-dataframes.ipynb>`_.
 
@@ -511,14 +511,14 @@ distributions.
       various HDF5 files, h5py is needed to provide access to data within these
       files from Python.
 
-   `Matplotlib <http://matplotlib.org/>`_
+   `Matplotlib <https://matplotlib.org/>`_
       Matplotlib is used to providing plotting functionality in the API like the
       :meth:`Universe.plot` method and the :func:`openmc.plot_xs` function.
 
    `uncertainties <https://pythonhosted.org/uncertainties/>`_
       Uncertainties are used for decay data in the :mod:`openmc.data` module.
 
-   `lxml <http://lxml.de/>`_
+   `lxml <https://lxml.de/>`_
       lxml is used for the :ref:`scripts_validate` script and various other
       parts of the Python API.
 
@@ -530,11 +530,11 @@ distributions.
       parallel runs. This package is needed if you plan on running depletion
       simulations in parallel using MPI.
 
-   `Cython <http://cython.org/>`_
+   `Cython <https://cython.org/>`_
       Cython is used for resonance reconstruction for ENDF data converted to
       :class:`openmc.data.IncidentNeutron`.
 
-   `vtk <http://www.vtk.org/>`_
+   `vtk <https://vtk.org/>`_
       The Python VTK bindings are needed to convert voxel and track files to VTK
       format.
 
@@ -588,7 +588,7 @@ schemas.xml file in your own OpenMC source directory.
 
 .. _GNU Emacs: http://www.gnu.org/software/emacs/
 .. _validation: https://en.wikipedia.org/wiki/XML_validation
-.. _RELAX NG: http://relaxng.org/
+.. _RELAX NG: https://relaxng.org/
 .. _ctest: https://cmake.org/cmake/help/latest/manual/ctest.1.html
 .. _Conda: https://conda.io/en/latest/
 .. _pip: https://pip.pypa.io/en/stable/

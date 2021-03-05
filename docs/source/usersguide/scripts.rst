@@ -110,8 +110,8 @@ otherwise.
 
 This script generates an HDF5 file called ``compton_profiles.h5`` that contains
 Compton profile data using an existing data library from `Geant4
-<http://geant4.cern.ch/>`_. Note that OpenMC includes this data file by default
-so it should not be necessary in practice to generate it yourself.
+<https://geant4.web.cern.ch/>`_. Note that OpenMC includes this data file by
+default so it should not be necessary in practice to generate it yourself.
 
 
 .. _scripts_depletion_chain:
@@ -250,7 +250,7 @@ Message                   Description
 When OpenMC generates :ref:`voxel plots <usersguide_voxel>`, they are in an
 :ref:`HDF5 format <io_voxel>` that is not terribly useful by itself. The
 ``openmc-voxel-to-vtk`` script converts a voxel HDF5 file to a `VTK
-<http://www.vtk.org/>`_ file. To run this script, you will need to have the VTK
+<https://vtk.org/>`_ file. To run this script, you will need to have the VTK
 Python bindings installed. To convert a voxel file, simply provide the path to
 the file:
 

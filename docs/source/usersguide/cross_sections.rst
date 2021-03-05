@@ -260,7 +260,7 @@ For an example of how to create a multi-group library, see the `example notebook
 .. _MCNP: https://mcnp.lanl.gov
 .. _Serpent: http://montecarlo.vtt.fi
 .. _ENDF/B: https://www.nndc.bnl.gov/endf/b7.1/acefiles.html
-.. _JEFF: http://www.oecd-nea.org/dbdata/jeff/jeff33/
+.. _JEFF: https://www.oecd-nea.org/dbdata/jeff/jeff33/
 .. _TENDL: https://tendl.web.psi.ch/tendl_2017/tendl2017.html
 .. _Seltzer and Berger: https://doi.org/10.1016/0092-640X(86)90014-8
 .. _NIST ESTAR database: https://physics.nist.gov/PhysRefData/Star/Text/ESTAR.html

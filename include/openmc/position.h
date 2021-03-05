@@ -51,6 +51,18 @@ struct Position {
     }
   }
 
+  // Access to x, y, or z by compile time known index (specializations below)
+  template<int i>
+  const double& get() const
+  {
+    throw std::out_of_range {"Index in Position must be between 0 and 2."};
+  }
+  template<int i>
+  double& get()
+  {
+    throw std::out_of_range {"Index in Position must be between 0 and 2."};
+  }
+
   // Other member functions
 
   //! Dot product of two vectors
@@ -76,6 +88,38 @@ struct Position {
   double y = 0.;
   double z = 0.;
 };
+
+// Compile-time known member index access functions
+template<>
+inline const double& Position::get<0>() const
+{
+  return x;
+}
+template<>
+inline const double& Position::get<1>() const
+{
+  return y;
+}
+template<>
+inline const double& Position::get<2>() const
+{
+  return z;
+}
+template<>
+inline double& Position::get<0>()
+{
+  return x;
+}
+template<>
+inline double& Position::get<1>()
+{
+  return y;
+}
+template<>
+inline double& Position::get<2>()
+{
+  return z;
+}
 
 // Binary operators
 inline Position operator+(Position a, Position b) { return a += b; }

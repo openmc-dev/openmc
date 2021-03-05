@@ -23,7 +23,7 @@ public:
   //----------------------------------------------------------------------------
   // Methods
 
-  std::string type() const override { return "numCollisions"; }
+  std::string type() const override { return "collision"; }
 
   void from_xml(pugi::xml_node node) override;
 

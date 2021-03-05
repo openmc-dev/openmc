@@ -72,7 +72,7 @@ find_cell_inner(Particle& p, const NeighborList* neighbor_list)
   // Find which cell of this universe the particle is in.  Use the neighbor list
   // to shorten the search if one was provided.
   bool found = false;
-  int32_t i_cell;
+  int32_t i_cell = C_NONE;
   if (neighbor_list) {
     for (auto it = neighbor_list->cbegin(); it != neighbor_list->cend(); ++it) {
       i_cell = *it;
@@ -91,154 +91,152 @@ find_cell_inner(Particle& p, const NeighborList* neighbor_list)
         break;
       }
     }
+  }
 
-  } else {
-    int i_universe = p.coord_[p.n_coord_-1].universe;
-    const auto& univ {*model::universes[i_universe]};
-    const auto& cells {
-      !univ.partitioner_
-      ? model::universes[i_universe]->cells_
-      : univ.partitioner_->get_cells(p.r_local(), p.u_local())
-    };
-    for (auto it = cells.cbegin(); it != cells.cend(); it++) {
-      i_cell = *it;
-
-      // Make sure the search cell is in the same universe.
+  // Check successively lower coordinate levels until finding material fill
+  for (;;++p.n_coord_) {
+    // If neighbor lists did not find a cell, must do brute force search
+    if (i_cell == C_NONE) {
       int i_universe = p.coord_[p.n_coord_-1].universe;
-      if (model::cells[i_cell]->universe_ != i_universe) continue;
+      const auto& univ {*model::universes[i_universe]};
+      const auto& cells {
+        !univ.partitioner_
+        ? model::universes[i_universe]->cells_
+        : univ.partitioner_->get_cells(p.r_local(), p.u_local())
+      };
 
-      // Check if this cell contains the particle.
-      Position r {p.r_local()};
-      Direction u {p.u_local()};
-      auto surf = p.surface_;
-      if (model::cells[i_cell]->contains(r, u, surf)) {
-        p.coord_[p.n_coord_-1].cell = i_cell;
-        found = true;
-        break;
+      for (auto it = cells.cbegin(); it != cells.cend(); it++) {
+        i_cell = *it;
+
+        // Make sure the search cell is in the same universe.
+        int i_universe = p.coord_[p.n_coord_-1].universe;
+        if (model::cells[i_cell]->universe_ != i_universe) continue;
+
+        // Check if this cell contains the particle.
+        Position r {p.r_local()};
+        Direction u {p.u_local()};
+        auto surf = p.surface_;
+        if (model::cells[i_cell]->contains(r, u, surf)) {
+          p.coord_[p.n_coord_-1].cell = i_cell;
+          found = true;
+          break;
+        }
       }
     }
-  }
 
-  // Announce the cell that the particle is entering.
-  if (found && (settings::verbosity >= 10 || p.trace_)) {
-    auto msg = fmt::format("    Entering cell {}", model::cells[i_cell]->id_);
-    write_message(msg, 1);
-  }
+    // Announce the cell that the particle is entering.
+    if (found && (settings::verbosity >= 10 || p.trace_)) {
+      auto msg = fmt::format("    Entering cell {}", model::cells[i_cell]->id_);
+      write_message(msg, 1);
+    }
 
-  if (found) {
-    Cell& c {*model::cells[i_cell]};
-    if (c.type_ == Fill::MATERIAL) {
-      //=======================================================================
-      //! Found a material cell which means this is the lowest coord level.
+    if (found) {
+      Cell& c {*model::cells[i_cell]};
+      if (c.type_ == Fill::MATERIAL) {
+        // Found a material cell which means this is the lowest coord level.
 
-      // Find the distribcell instance number.
-      int offset = 0;
-      if (c.distribcell_index_ >= 0) {
-        for (int i = 0; i < p.n_coord_; i++) {
-          const auto& c_i {*model::cells[p.coord_[i].cell]};
-          if (c_i.type_ == Fill::UNIVERSE) {
-            offset += c_i.offset_[c.distribcell_index_];
-          } else if (c_i.type_ == Fill::LATTICE) {
-            auto& lat {*model::lattices[p.coord_[i+1].lattice]};
-            int i_xyz[3] {p.coord_[i+1].lattice_x,
-                          p.coord_[i+1].lattice_y,
-                          p.coord_[i+1].lattice_z};
-            if (lat.are_valid_indices(i_xyz)) {
-              offset += lat.offset(c.distribcell_index_, i_xyz);
+        // Find the distribcell instance number.
+        int offset = 0;
+        if (c.distribcell_index_ >= 0) {
+          for (int i = 0; i < p.n_coord_; i++) {
+            const auto& c_i {*model::cells[p.coord_[i].cell]};
+            if (c_i.type_ == Fill::UNIVERSE) {
+              offset += c_i.offset_[c.distribcell_index_];
+            } else if (c_i.type_ == Fill::LATTICE) {
+              auto& lat {*model::lattices[p.coord_[i+1].lattice]};
+              int i_xyz[3] {p.coord_[i+1].lattice_x,
+                            p.coord_[i+1].lattice_y,
+                            p.coord_[i+1].lattice_z};
+              if (lat.are_valid_indices(i_xyz)) {
+                offset += lat.offset(c.distribcell_index_, i_xyz);
+              }
             }
           }
         }
-      }
-      p.cell_instance_ = offset;
+        p.cell_instance_ = offset;
 
-      // Set the material and temperature.
-      p.material_last_ = p.material_;
-      if (c.material_.size() > 1) {
-        p.material_ = c.material_[p.cell_instance_];
-      } else {
-        p.material_ = c.material_[0];
-      }
-      p.sqrtkT_last_ = p.sqrtkT_;
-      if (c.sqrtkT_.size() > 1) {
-        p.sqrtkT_ = c.sqrtkT_[p.cell_instance_];
-      } else {
-        p.sqrtkT_ = c.sqrtkT_[0];
-      }
-
-      return true;
-
-    } else if (c.type_ == Fill::UNIVERSE) {
-      //========================================================================
-      //! Found a lower universe, update this coord level then search the next.
-
-      // Set the lower coordinate level universe.
-      auto& coord {p.coord_[p.n_coord_]};
-      coord.universe = c.fill_;
-
-      // Set the position and direction.
-      coord.r = p.r_local();
-      coord.u = p.u_local();
-
-      // Apply translation.
-      coord.r -= c.translation_;
-
-      // Apply rotation.
-      if (!c.rotation_.empty()) {
-        coord.rotate(c.rotation_);
-      }
-
-      // Update the coordinate level and recurse.
-      ++p.n_coord_;
-      return find_cell_inner(p, nullptr);
-
-    } else if (c.type_ == Fill::LATTICE) {
-      //========================================================================
-      //! Found a lower lattice, update this coord level then search the next.
-
-      Lattice& lat {*model::lattices[c.fill_]};
-
-      // Set the position and direction.
-      auto& coord {p.coord_[p.n_coord_]};
-      coord.r = p.r_local();
-      coord.u = p.u_local();
-
-      // Apply translation.
-      coord.r -= c.translation_;
-
-      // Apply rotation.
-      if (!c.rotation_.empty()) {
-        coord.rotate(c.rotation_);
-      }
-
-      // Determine lattice indices.
-      auto i_xyz = lat.get_indices(coord.r, coord.u);
-
-      // Get local position in appropriate lattice cell
-      coord.r = lat.get_local_position(coord.r, i_xyz);
-
-      // Set lattice indices.
-      coord.lattice = c.fill_;
-      coord.lattice_x = i_xyz[0];
-      coord.lattice_y = i_xyz[1];
-      coord.lattice_z = i_xyz[2];
-
-      // Set the lower coordinate level universe.
-      if (lat.are_valid_indices(i_xyz)) {
-        coord.universe = lat[i_xyz];
-      } else {
-        if (lat.outer_ != NO_OUTER_UNIVERSE) {
-          coord.universe = lat.outer_;
+        // Set the material and temperature.
+        p.material_last_ = p.material_;
+        if (c.material_.size() > 1) {
+          p.material_ = c.material_[p.cell_instance_];
         } else {
-          warning(fmt::format("Particle {} is outside lattice {} but the "
-            "lattice has no defined outer universe.", p.id_, lat.id_));
-          return false;
+          p.material_ = c.material_[0];
+        }
+        p.sqrtkT_last_ = p.sqrtkT_;
+        if (c.sqrtkT_.size() > 1) {
+          p.sqrtkT_ = c.sqrtkT_[p.cell_instance_];
+        } else {
+          p.sqrtkT_ = c.sqrtkT_[0];
+        }
+
+        return true;
+
+      } else if (c.type_ == Fill::UNIVERSE) {
+        //========================================================================
+        //! Found a lower universe, update this coord level then search the next.
+
+        // Set the lower coordinate level universe.
+        auto& coord {p.coord_[p.n_coord_]};
+        coord.universe = c.fill_;
+
+        // Set the position and direction.
+        coord.r = p.r_local();
+        coord.u = p.u_local();
+
+        // Apply translation.
+        coord.r -= c.translation_;
+
+        // Apply rotation.
+        if (!c.rotation_.empty()) {
+          coord.rotate(c.rotation_);
+        }
+
+      } else if (c.type_ == Fill::LATTICE) {
+        //========================================================================
+        //! Found a lower lattice, update this coord level then search the next.
+
+        Lattice& lat {*model::lattices[c.fill_]};
+
+        // Set the position and direction.
+        auto& coord {p.coord_[p.n_coord_]};
+        coord.r = p.r_local();
+        coord.u = p.u_local();
+
+        // Apply translation.
+        coord.r -= c.translation_;
+
+        // Apply rotation.
+        if (!c.rotation_.empty()) {
+          coord.rotate(c.rotation_);
+        }
+
+        // Determine lattice indices.
+        auto i_xyz = lat.get_indices(coord.r, coord.u);
+
+        // Get local position in appropriate lattice cell
+        coord.r = lat.get_local_position(coord.r, i_xyz);
+
+        // Set lattice indices.
+        coord.lattice = c.fill_;
+        coord.lattice_x = i_xyz[0];
+        coord.lattice_y = i_xyz[1];
+        coord.lattice_z = i_xyz[2];
+
+        // Set the lower coordinate level universe.
+        if (lat.are_valid_indices(i_xyz)) {
+          coord.universe = lat[i_xyz];
+        } else {
+          if (lat.outer_ != NO_OUTER_UNIVERSE) {
+            coord.universe = lat.outer_;
+          } else {
+            warning(fmt::format("Particle {} is outside lattice {} but the "
+              "lattice has no defined outer universe.", p.id_, lat.id_));
+            return false;
+          }
         }
       }
-
-      // Update the coordinate level and recurse.
-      ++p.n_coord_;
-      return find_cell_inner(p, nullptr);
     }
+    i_cell = C_NONE; // trip non-neighbor cell search at next iteration
   }
 
   return found;

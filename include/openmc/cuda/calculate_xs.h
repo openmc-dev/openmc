@@ -30,9 +30,5 @@ extern __managed__ unsigned managed_calculate_nonfuel_queue_index;
 __global__ void process_calculate_xs_events_device(
   EventQueueItem* queue, unsigned queue_size);
 
-// Ensure cells are known for any particle about to have XS lookup done
-__global__ void process_pre_calculate_xs_events_device(
-  EventQueueItem* queue, unsigned queue_size, EventQueueItem* advance_queue);
-
 } // namespace gpu
 }

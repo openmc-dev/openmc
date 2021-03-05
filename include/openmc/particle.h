@@ -54,7 +54,6 @@ public:
   void from_source(const SourceSite* src);
 
   // Coarse-grained particle events
-  HD void event_pre_calculate_xs();
   void event_calculate_xs();
   HD void event_advance();
   HD void event_cross_surface();

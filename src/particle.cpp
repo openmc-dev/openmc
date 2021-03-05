@@ -95,19 +95,15 @@ void Particle::from_source(const SourceSite* src)
   E_last() = E();
 }
 
-void Particle::event_pre_calculate_xs()
+void Particle::event_calculate_xs()
 {
   // If the cell hasn't been determined based on the particle's location,
   // initiate a search for the current cell. This generally happens at the
   // beginning of the history and again for any secondary particles
   if (coord_[n_coord_ - 1].cell == C_NONE) {
     if (!brute_force_find_cell(*this)) {
-#ifndef __CUDA_ARCH__
       this->mark_as_lost(
         "Could not find the cell containing particle " + std::to_string(id_));
-#else
-      __trap();
-#endif
       return;
     }
 
@@ -130,17 +126,12 @@ void Particle::event_pre_calculate_xs()
   event_nuclide() = NUCLIDE_NONE;
   event_mt() = REACTION_NONE;
 
-#ifndef __CUDA_ARCH__
   // Write particle track.
   if (write_track())
     write_particle_track(*this);
 
   if (settings::check_overlaps) check_cell_overlap(*this);
-#endif
-}
 
-void Particle::event_calculate_xs()
-{
   // Calculate microscopic and macroscopic cross sections
   if (material() != MATERIAL_VOID) {
     if (settings::run_CE) {
@@ -151,7 +142,6 @@ void Particle::event_calculate_xs()
         model::materials[material()]->calculate_xs(*this);
       }
     } else {
-#ifndef __CUDACC__
       // Get the MG data; unlike the CE case above, we have to re-calculate
       // cross sections for every collision since the cross sections may
       // be angle-dependent
@@ -159,9 +149,6 @@ void Particle::event_calculate_xs()
 
       // Update the particle's group while we know we are multi-group
       g_last() = g();
-#else
-      fatal_error("Cannot calculate MG XS if compiled for CUDA mode.");
-#endif
     }
   } else {
     macro_xs().total = 0.0;

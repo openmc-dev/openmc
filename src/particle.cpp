@@ -101,7 +101,7 @@ void Particle::event_pre_calculate_xs()
   // initiate a search for the current cell. This generally happens at the
   // beginning of the history and again for any secondary particles
   if (coord_[n_coord_ - 1].cell == C_NONE) {
-    if (!find_cell(*this, false)) {
+    if (!brute_force_find_cell(*this)) {
 #ifndef __CUDA_ARCH__
       this->mark_as_lost(
         "Could not find the cell containing particle " + std::to_string(id_));
@@ -581,18 +581,18 @@ Particle::cross_reflective_bc(const Surface& surf, Direction new_u)
   // boundary, it is necessary to redetermine the particle's coordinates in
   // the lower universes.
   // (unless we're using a dagmc model, which has exactly one universe)
-  if (!settings::dagmc) {
-    n_coord() = 1;
-    if (!neighbor_list_find_cell(*this)) {
+#ifndef DAGMC
+  n_coord() = 1;
+  if (!neighbor_list_find_cell(*this)) {
 #ifdef __CUDA_ARCH__
-      __trap();
+    __trap();
 #else
-      mark_as_lost("Couldn't find particle after reflecting from surface " +
-                   std::to_string(surf.id_) + ".");
+    mark_as_lost("Couldn't find particle after reflecting from surface " +
+                 std::to_string(surf.id_) + ".");
 #endif
-      return;
-    }
+    return;
   }
+#endif
 
   // Set previous coordinate going slightly past surface crossing
   r_last_current() = r() + TINY_BIT * u();

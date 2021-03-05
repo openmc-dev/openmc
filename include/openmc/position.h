@@ -71,12 +71,12 @@ struct Position {
 
   // Access to x, y, or z by compile time known index (specializations below)
   template<int i>
-  const double& get() const
+  HD const double& get() const
   {
     throw std::out_of_range {"Index in Position must be between 0 and 2."};
   }
   template<int i>
-  double& get()
+  HD double& get()
   {
     throw std::out_of_range {"Index in Position must be between 0 and 2."};
   }
@@ -108,32 +108,32 @@ struct Position {
 
 // Compile-time known member index access functions
 template<>
-inline const double& Position::get<0>() const
+HD inline const double& Position::get<0>() const
 {
   return x;
 }
 template<>
-inline const double& Position::get<1>() const
+HD inline const double& Position::get<1>() const
 {
   return y;
 }
 template<>
-inline const double& Position::get<2>() const
+HD inline const double& Position::get<2>() const
 {
   return z;
 }
 template<>
-inline double& Position::get<0>()
+HD inline double& Position::get<0>()
 {
   return x;
 }
 template<>
-inline double& Position::get<1>()
+HD inline double& Position::get<1>()
 {
   return y;
 }
 template<>
-inline double& Position::get<2>()
+HD inline double& Position::get<2>()
 {
   return z;
 }

@@ -123,6 +123,9 @@ find_cell_inner(Particle& p, const NeighborList* neighbor_list)
         }
       }
     }
+    if (!found) {
+      return found;
+    }
 
     // Announce the cell that the particle is entering.
     if (found && (settings::verbosity >= 10 || p.trace_)) {
@@ -130,109 +133,107 @@ find_cell_inner(Particle& p, const NeighborList* neighbor_list)
       write_message(msg, 1);
     }
 
-    if (found) {
-      Cell& c {*model::cells[i_cell]};
-      if (c.type_ == Fill::MATERIAL) {
-        // Found a material cell which means this is the lowest coord level.
+    Cell& c {*model::cells[i_cell]};
+    if (c.type_ == Fill::MATERIAL) {
+      // Found a material cell which means this is the lowest coord level.
 
-        // Find the distribcell instance number.
-        int offset = 0;
-        if (c.distribcell_index_ >= 0) {
-          for (int i = 0; i < p.n_coord_; i++) {
-            const auto& c_i {*model::cells[p.coord_[i].cell]};
-            if (c_i.type_ == Fill::UNIVERSE) {
-              offset += c_i.offset_[c.distribcell_index_];
-            } else if (c_i.type_ == Fill::LATTICE) {
-              auto& lat {*model::lattices[p.coord_[i+1].lattice]};
-              int i_xyz[3] {p.coord_[i+1].lattice_x,
-                            p.coord_[i+1].lattice_y,
-                            p.coord_[i+1].lattice_z};
-              if (lat.are_valid_indices(i_xyz)) {
-                offset += lat.offset(c.distribcell_index_, i_xyz);
-              }
+      // Find the distribcell instance number.
+      int offset = 0;
+      if (c.distribcell_index_ >= 0) {
+        for (int i = 0; i < p.n_coord_; i++) {
+          const auto& c_i {*model::cells[p.coord_[i].cell]};
+          if (c_i.type_ == Fill::UNIVERSE) {
+            offset += c_i.offset_[c.distribcell_index_];
+          } else if (c_i.type_ == Fill::LATTICE) {
+            auto& lat {*model::lattices[p.coord_[i + 1].lattice]};
+            int i_xyz[3] {p.coord_[i + 1].lattice_x, p.coord_[i + 1].lattice_y,
+              p.coord_[i + 1].lattice_z};
+            if (lat.are_valid_indices(i_xyz)) {
+              offset += lat.offset(c.distribcell_index_, i_xyz);
             }
           }
         }
-        p.cell_instance_ = offset;
+      }
+      p.cell_instance_ = offset;
 
-        // Set the material and temperature.
-        p.material_last_ = p.material_;
-        if (c.material_.size() > 1) {
-          p.material_ = c.material_[p.cell_instance_];
+      // Set the material and temperature.
+      p.material_last_ = p.material_;
+      if (c.material_.size() > 1) {
+        p.material_ = c.material_[p.cell_instance_];
+      } else {
+        p.material_ = c.material_[0];
+      }
+      p.sqrtkT_last_ = p.sqrtkT_;
+      if (c.sqrtkT_.size() > 1) {
+        p.sqrtkT_ = c.sqrtkT_[p.cell_instance_];
+      } else {
+        p.sqrtkT_ = c.sqrtkT_[0];
+      }
+
+      return true;
+
+    } else if (c.type_ == Fill::UNIVERSE) {
+      //========================================================================
+      //! Found a lower universe, update this coord level then search the next.
+
+      // Set the lower coordinate level universe.
+      auto& coord {p.coord_[p.n_coord_]};
+      coord.universe = c.fill_;
+
+      // Set the position and direction.
+      coord.r = p.r_local();
+      coord.u = p.u_local();
+
+      // Apply translation.
+      coord.r -= c.translation_;
+
+      // Apply rotation.
+      if (!c.rotation_.empty()) {
+        coord.rotate(c.rotation_);
+      }
+
+    } else if (c.type_ == Fill::LATTICE) {
+      //========================================================================
+      //! Found a lower lattice, update this coord level then search the next.
+
+      Lattice& lat {*model::lattices[c.fill_]};
+
+      // Set the position and direction.
+      auto& coord {p.coord_[p.n_coord_]};
+      coord.r = p.r_local();
+      coord.u = p.u_local();
+
+      // Apply translation.
+      coord.r -= c.translation_;
+
+      // Apply rotation.
+      if (!c.rotation_.empty()) {
+        coord.rotate(c.rotation_);
+      }
+
+      // Determine lattice indices.
+      auto i_xyz = lat.get_indices(coord.r, coord.u);
+
+      // Get local position in appropriate lattice cell
+      coord.r = lat.get_local_position(coord.r, i_xyz);
+
+      // Set lattice indices.
+      coord.lattice = c.fill_;
+      coord.lattice_x = i_xyz[0];
+      coord.lattice_y = i_xyz[1];
+      coord.lattice_z = i_xyz[2];
+
+      // Set the lower coordinate level universe.
+      if (lat.are_valid_indices(i_xyz)) {
+        coord.universe = lat[i_xyz];
+      } else {
+        if (lat.outer_ != NO_OUTER_UNIVERSE) {
+          coord.universe = lat.outer_;
         } else {
-          p.material_ = c.material_[0];
-        }
-        p.sqrtkT_last_ = p.sqrtkT_;
-        if (c.sqrtkT_.size() > 1) {
-          p.sqrtkT_ = c.sqrtkT_[p.cell_instance_];
-        } else {
-          p.sqrtkT_ = c.sqrtkT_[0];
-        }
-
-        return true;
-
-      } else if (c.type_ == Fill::UNIVERSE) {
-        //========================================================================
-        //! Found a lower universe, update this coord level then search the next.
-
-        // Set the lower coordinate level universe.
-        auto& coord {p.coord_[p.n_coord_]};
-        coord.universe = c.fill_;
-
-        // Set the position and direction.
-        coord.r = p.r_local();
-        coord.u = p.u_local();
-
-        // Apply translation.
-        coord.r -= c.translation_;
-
-        // Apply rotation.
-        if (!c.rotation_.empty()) {
-          coord.rotate(c.rotation_);
-        }
-
-      } else if (c.type_ == Fill::LATTICE) {
-        //========================================================================
-        //! Found a lower lattice, update this coord level then search the next.
-
-        Lattice& lat {*model::lattices[c.fill_]};
-
-        // Set the position and direction.
-        auto& coord {p.coord_[p.n_coord_]};
-        coord.r = p.r_local();
-        coord.u = p.u_local();
-
-        // Apply translation.
-        coord.r -= c.translation_;
-
-        // Apply rotation.
-        if (!c.rotation_.empty()) {
-          coord.rotate(c.rotation_);
-        }
-
-        // Determine lattice indices.
-        auto i_xyz = lat.get_indices(coord.r, coord.u);
-
-        // Get local position in appropriate lattice cell
-        coord.r = lat.get_local_position(coord.r, i_xyz);
-
-        // Set lattice indices.
-        coord.lattice = c.fill_;
-        coord.lattice_x = i_xyz[0];
-        coord.lattice_y = i_xyz[1];
-        coord.lattice_z = i_xyz[2];
-
-        // Set the lower coordinate level universe.
-        if (lat.are_valid_indices(i_xyz)) {
-          coord.universe = lat[i_xyz];
-        } else {
-          if (lat.outer_ != NO_OUTER_UNIVERSE) {
-            coord.universe = lat.outer_;
-          } else {
-            warning(fmt::format("Particle {} is outside lattice {} but the "
-              "lattice has no defined outer universe.", p.id_, lat.id_));
-            return false;
-          }
+          warning(fmt::format("Particle {} is outside lattice {} but the "
+                              "lattice has no defined outer universe.",
+            p.id_, lat.id_));
+          return false;
         }
       }
     }

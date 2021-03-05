@@ -12,7 +12,7 @@ OpenMC, see :ref:`usersguide_install` in the User's Manual.
 Installing on Linux/Mac with conda-forge
 ----------------------------------------
 
-`Conda <http://conda.pydata.org/docs/>`_ is an open source package management
+`Conda <https://conda.io/en/latest/>`_ is an open source package management
 system and environment management system for installing multiple versions of
 software packages and their dependencies and switching easily between them. If
 you have `conda` installed on your system, OpenMC can be installed via the
@@ -25,16 +25,16 @@ you have `conda` installed on your system, OpenMC can be installed via the
 To list the versions of OpenMC that are available on the `conda-forge` channel,
 in your terminal window or an Anaconda Prompt run:
 
-.. code-block:: sh 
+.. code-block:: sh
 
     conda search openmc
-    
+
 OpenMC can then be installed with:
 
 .. code-block:: sh
 
     conda create -n openmc-env openmc
-    
+
 This will install OpenMC in a conda environment called `openmc-env`. To activate
 the environment, run:
 
@@ -69,7 +69,7 @@ Now OpenMC should be recognized within the repository and can be installed:
 Binary packages from this PPA may exist for earlier versions of Ubuntu, but they
 are no longer supported.
 
-.. _Personal Package Archive: https://launchpad.net/~paulromano/+archive/staging
+.. _Personal Package Archive: https://launchpad.net/~paulromano/+archive/ubuntu/staging
 .. _APT package manager: https://help.ubuntu.com/community/AptGet/Howto
 
 -------------------------------------------
@@ -112,7 +112,7 @@ To install the latest OpenMC with the Python API, use the following command:
 For more information about customizations including MPI, see the
 :ref:`detailed installation instructions using Spack <install-spack>`.
 Once installed, environment/lmod modules can be generated or Spack's `load` feature
-can be used to access the installed packages. 
+can be used to access the installed packages.
 
 .. _Spack: https://spack.readthedocs.io/en/latest/
 .. _setup guide: https://spack.readthedocs.io/en/latest/getting_started.html
@@ -139,9 +139,9 @@ Installing from Source on Linux or Mac OS X
 All OpenMC source code is hosted on `GitHub
 <https://github.com/openmc-dev/openmc>`_. If you have `git
 <https://git-scm.com>`_, the `gcc <https://gcc.gnu.org/>`_ compiler suite,
-`CMake <http://www.cmake.org>`_, and `HDF5 <https://www.hdfgroup.org/HDF5/>`_
-installed, you can download and install OpenMC by entering the following
-commands in a terminal:
+`CMake <https://cmake.org>`_, and `HDF5
+<https://www.hdfgroup.org/solutions/hdf5/>`_ installed, you can download and
+install OpenMC be entering the following commands in a terminal:
 
 .. code-block:: sh
 

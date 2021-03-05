@@ -49,4 +49,4 @@ Windowed Multipole Library Format
         windows[i, 1] are, respectively, the indexes (1-based) of the first and
         last pole in window i.
 
-.. _h5py: http://docs.h5py.org/en/latest/
+.. _h5py: https://docs.h5py.org/en/latest/

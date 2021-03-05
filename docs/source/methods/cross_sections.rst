@@ -269,12 +269,12 @@ or even isotropic scattering.
 
 .. _logarithmic mapping technique:
    https://laws.lanl.gov/vhosts/mcnp.lanl.gov/pdf_files/la-ur-14-24530.pdf
-.. _Hwang: http://www.ans.org/pubs/journals/nse/a_16381
+.. _Hwang: https://doi.org/10.13182/NSE87-A16381
 .. _Josey: https://doi.org/10.1016/j.jcp.2015.08.013
 .. _WMP Library: https://github.com/mit-crpg/WMP_Library
-.. _MCNP: http://mcnp.lanl.gov
+.. _MCNP: https://mcnp.lanl.gov
 .. _Serpent: http://montecarlo.vtt.fi
-.. _NJOY: http://t2.lanl.gov/codes.shtml
-.. _ENDF/B data: http://www.nndc.bnl.gov/endf
+.. _NJOY: https://www.njoy21.io/NJOY21/
+.. _ENDF/B data: https://www.nndc.bnl.gov/endf/b8.0/
 .. _Leppanen: https://doi.org/10.1016/j.anucene.2009.03.019
 .. _algorithms: http://ab-initio.mit.edu/wiki/index.php/Faddeeva_Package

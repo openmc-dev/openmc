@@ -45,7 +45,7 @@ This method can also accept case-insensitive element names such as
 ::
 
   mat.add_element('aluminium', 1.0)
-   
+
 Internally, OpenMC stores data on the atomic masses and natural abundances of
 all known isotopes and then uses this data to determine what isotopes should be
 added to the material. When the material is later exported to XML for use by the
@@ -105,7 +105,7 @@ you would need to add hydrogen and oxygen to a material and then assign the
 Naming Conventions
 ------------------
 
-OpenMC uses the GND_ naming convention for nuclides, metastable states, and
+OpenMC uses the GNDS_ naming convention for nuclides, metastable states, and
 compounds:
 
 :Nuclides: ``SymA`` where "A" is the mass number (e.g., ``Fe56``)
@@ -122,7 +122,7 @@ compounds:
                ENDF/B-VII.1! If you are adding an element via
                :meth:`Material.add_element`, just use ``Sym``.
 
-.. _GND: https://www.oecd-nea.org/science/wpec/sg38/Meetings/2016_May/tlh4gnd-main.pdf
+.. _GNDS: https://www.oecd-nea.org/jcms/pl_39689/specifications-for-the-generalised-nuclear-database-structure-gnds
 
 -----------
 Temperature
@@ -160,26 +160,26 @@ Material Mixtures
 -----------------
 
 In OpenMC it is possible to mix any number of materials to create a new material
-with the correct nuclide composition and density. The 
+with the correct nuclide composition and density. The
 :meth:`Material.mix_materials` method takes a list of materials and
-a list of their mixing fractions. Mixing fractions can be provided as atomic 
+a list of their mixing fractions. Mixing fractions can be provided as atomic
 fractions, weight fractions, or volume fractions. The fraction type
-can be specified by passing 'ao', 'wo', or 'vo' as the third argument, respectively. 
-For example, assuming the required materials have already been defined, a MOX 
+can be specified by passing 'ao', 'wo', or 'vo' as the third argument, respectively.
+For example, assuming the required materials have already been defined, a MOX
 material with 3% plutonium oxide by weight could be created using the following:
 
 ::
 
    mox = openmc.Material.mix_materials([uo2, puo2], [0.97, 0.03], 'wo')
 
-It should be noted that, if mixing fractions are specifed as atomic or weight 
+It should be noted that, if mixing fractions are specifed as atomic or weight
 fractions, the supplied fractions should sum to one. If the fractions are specified
-as volume fractions, and the sum of the fractions is less than one, then the remaining 
-fraction is set as void material. 
+as volume fractions, and the sum of the fractions is less than one, then the remaining
+fraction is set as void material.
 
 .. warning:: Materials with :math:`S(\alpha,\beta)` thermal scattering data
              cannot be used in :meth:`Material.mix_materials`. However, thermal
-             scattering data can be added to a material created by 
+             scattering data can be added to a material created by
              :meth:`Material.mix_materials`.
 
 --------------------

@@ -12,11 +12,11 @@ Installation and Configuration
 Installing on Linux/Mac with conda-forge
 ----------------------------------------
 
-`Conda <http://conda.pydata.org/docs/>`_ is an open source package management
-system and environment management system for installing multiple versions of
-software packages and their dependencies and switching easily between them. If
-you have `conda` installed on your system, OpenMC can be installed via the
-`conda-forge` channel. First, add the `conda-forge` channel with:
+Conda_ is an open source package management system and environment management
+system for installing multiple versions of software packages and their
+dependencies and switching easily between them. If you have `conda` installed on
+your system, OpenMC can be installed via the `conda-forge` channel. First, add
+the `conda-forge` channel with:
 
 .. code-block:: sh
 
@@ -25,16 +25,16 @@ you have `conda` installed on your system, OpenMC can be installed via the
 To list the versions of OpenMC that are available on the `conda-forge` channel,
 in your terminal window or an Anaconda Prompt run:
 
-.. code-block:: sh 
+.. code-block:: sh
 
     conda search openmc
-    
+
 OpenMC can then be installed with:
 
 .. code-block:: sh
 
     conda create -n openmc-env openmc
-    
+
 This will install OpenMC in a conda environment called `openmc-env`. To activate
 the environment, run:
 
@@ -424,7 +424,7 @@ distributions.
 
    `pandas <http://pandas.pydata.org/>`_
       Pandas is used to generate tally DataFrames as demonstrated in
-      :ref:`examples_pandas` example notebook.
+      an `example notebook <../examples/pandas-dataframes.ipynb>`_.
 
    `h5py <http://www.h5py.org/>`_
       h5py provides Python bindings to the HDF5 library. Since OpenMC outputs
@@ -509,7 +509,6 @@ schemas.xml file in your own OpenMC source directory.
 .. _GNU Emacs: http://www.gnu.org/software/emacs/
 .. _validation: https://en.wikipedia.org/wiki/XML_validation
 .. _RELAX NG: http://relaxng.org/
-.. _NNDC: http://www.nndc.bnl.gov/endf/b7.1/acefiles.html
-.. _ctest: http://www.cmake.org/cmake/help/v2.8.12/ctest.html
-.. _Conda: https://docs.conda.io/en/latest/
+.. _ctest: https://cmake.org/cmake/help/latest/manual/ctest.1.html
+.. _Conda: https://conda.io/en/latest/
 .. _pip: https://pip.pypa.io/en/stable/

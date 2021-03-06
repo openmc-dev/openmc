@@ -174,8 +174,8 @@ bool HD find_cell_inner(Particle& p, const NeighborList* neighbor_list)
           if (c_i.type_ == Fill::UNIVERSE) {
             offset += c_i.offset_[c.distribcell_index_];
           } else if (c_i.type_ == Fill::LATTICE) {
-            auto& lat {*model::lattices[p.coord(i + 1).lattice]};
-            const auto& i_xyz {p.coord(i + 1).lattice_i};
+            auto& lat {*lattices[p.coord(i + 1).lattice]};
+            auto const& i_xyz = p.coord(i + 1).lattice_i;
             if (lat.are_valid_indices(i_xyz)) {
               offset += lat.offset(c.distribcell_index_, i_xyz);
             }
@@ -240,18 +240,17 @@ bool HD find_cell_inner(Particle& p, const NeighborList* neighbor_list)
       }
 
       // Determine lattice indices.
-      auto& i_xyz {coord.lattice_i};
-      lat.get_indices(coord.r, coord.u, i_xyz);
+      lat.get_indices(coord.r, coord.u, coord.lattice_i);
 
       // Get local position in appropriate lattice cell
-      coord.r = lat.get_local_position(coord.r, i_xyz);
+      coord.r = lat.get_local_position(coord.r, coord.lattice_i);
 
       // Set lattice indices.
       coord.lattice = c.fill_;
 
       // Set the lower coordinate level universe.
-      if (lat.are_valid_indices(i_xyz)) {
-        coord.universe = lat[i_xyz];
+      if (lat.are_valid_indices(coord.lattice_i)) {
+        coord.universe = lat[coord.lattice_i];
       } else {
         if (lat.outer_ != NO_OUTER_UNIVERSE) {
           coord.universe = lat.outer_;
@@ -434,7 +433,6 @@ HD BoundaryInfo distance_to_boundary(Particle& p)
     // Find the distance to the next lattice tile crossing.
     if (coord.lattice != C_NONE) {
       auto& lat {*lattices[coord.lattice]};
-      array<int, 3> i_xyz {coord.lattice_x, coord.lattice_y, coord.lattice_z};
       //TODO: refactor so both lattice use the same position argument (which
       //also means the lat.type attribute can be removed)
       pair<double, array<int, 3>> lattice_distance;

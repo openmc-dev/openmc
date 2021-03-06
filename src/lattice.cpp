@@ -188,7 +188,7 @@ RectLattice::RectLattice(pugi::xml_node lat_node)
   // Read the universes and make sure the correct number was specified.
   std::string univ_str {get_node_value(lat_node, "universes")};
   vector<string> univ_words {split(univ_str)};
-  if (univ_words.size() != nx*ny*nz) {
+  if (univ_words.size() != n_cells_[0] * n_cells_[1] * n_cells_[2]) {
     fatal_error(fmt::format(
       "Expected {} universes for a rectangular lattice of size {}x{}x{} but {} "
       "were specified.",

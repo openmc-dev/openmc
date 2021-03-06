@@ -90,7 +90,7 @@ public:
   //! \param i_xyz[3] The indices for a lattice tile.
   //! \return true if the given indices fit within the lattice bounds.  False
   //!   otherwise.
-  virtual bool are_valid_indices(array<int, 3> const& i_xyz) const = 0;
+  virtual HD bool are_valid_indices(array<int, 3> const& i_xyz) const = 0;
 
   //! \brief Find the next lattice surface crossing
   //! \param r A 3D Cartesian coordinate.
@@ -125,7 +125,7 @@ public:
   //! \param i_xyz[3] The indices for a lattice tile.
   //! \return Distribcell offset i.e. the largest instance number for the target
   //!  cell found in the geometry tree under this lattice tile.
-  virtual int32_t& offset(int map, array<int, 3> const& i_xyz) = 0;
+  virtual HD int32_t& offset(int map, array<int, 3> const& i_xyz) = 0;
 
   //! \brief Get the distribcell offset for a lattice tile.
   //! \param The map index for the target cell.

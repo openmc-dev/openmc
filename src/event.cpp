@@ -148,7 +148,7 @@ void process_advance_particle_events()
     simulation::surface_crossing_queue.size();
   gpu::managed_collision_queue_index = simulation::collision_queue.size();
 
-  gpu::process_advance_events_device<256>
+  gpu::process_advance_events_device<BLOCKSIZE>
     <<<simulation::advance_particle_queue.size() / gpu::thread_block_size + 1,
       gpu::thread_block_size>>>(simulation::advance_particle_queue.data(),
       simulation::advance_particle_queue.size(),
@@ -190,7 +190,7 @@ void process_surface_crossing_events()
   gpu::managed_calculate_fuel_queue_index =
     simulation::calculate_fuel_xs_queue.size();
 
-  gpu::process_surface_crossing_events_device<256>
+  gpu::process_surface_crossing_events_device<BLOCKSIZE>
     <<<simulation::surface_crossing_queue.size() / gpu::thread_block_size + 1,
       gpu::thread_block_size>>>(simulation::surface_crossing_queue.data(),
       simulation::surface_crossing_queue.size(),
@@ -239,7 +239,7 @@ void process_collision_events()
   gpu::managed_calculate_fuel_queue_index =
     simulation::calculate_fuel_xs_queue.size();
 
-  gpu::process_collision_events_device<256>
+  gpu::process_collision_events_device<BLOCKSIZE>
     <<<simulation::collision_queue.size() / gpu::thread_block_size + 1,
       gpu::thread_block_size>>>(simulation::collision_queue.data(),
       simulation::collision_queue.size(),

@@ -127,7 +127,7 @@ __constant__ double res_scat_energy_min;
 __constant__ double res_scat_energy_max;
 __constant__ RunMode run_mode;
 
-unsigned thread_block_size {32};
+unsigned thread_block_size {BLOCKSIZE};
 } // namespace gpu
 
 //==============================================================================
@@ -860,8 +860,9 @@ void read_settings_xml()
   if (check_for_node(root, "thread_block_size")) {
     gpu::thread_block_size =
       std::stoi(get_node_value(root, "thread_block_size"));
-    if (gpu::thread_block_size == 0)
-      fatal_error("GPU thread block size must be nonzero!");
+    if (gpu::thread_block_size != BLOCKSIZE)
+      fatal_error(
+        "GPU code not compiled for " BLOCKSIZE_S " threads per block!");
   }
 #endif
 

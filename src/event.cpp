@@ -10,6 +10,7 @@
 #include "openmc/cuda/calculate_xs.h"
 #include "openmc/cuda/collide.h"
 #include "openmc/cuda/cross_surface.h"
+#include "openmc/cuda/util.h" // error handling
 #include "openmc/settings.h" // thread_block_size
 #endif
 
@@ -116,6 +117,7 @@ void process_calculate_xs_events(SharedArray<EventQueueItem>& queue)
     queue.size() / gpu::thread_block_size + 1, gpu::thread_block_size>>>(
     queue.data(), queue.size());
   cudaDeviceSynchronize();
+  catchCudaErrors("process_calculate_xs_events_device");
 
   auto size_before = simulation::advance_particle_queue.size();
   cudaMemcpy(simulation::advance_particle_queue.end(), queue.begin(),
@@ -155,6 +157,7 @@ void process_advance_particle_events()
       simulation::surface_crossing_queue.data(),
       simulation::collision_queue.data());
   cudaDeviceSynchronize();
+  catchCudaErrors("process_advance_events_device");
 
   simulation::surface_crossing_queue.updateIndex(
     gpu::managed_surface_crossing_queue_index);
@@ -197,6 +200,7 @@ void process_surface_crossing_events()
       simulation::calculate_nonfuel_xs_queue.data(),
       simulation::calculate_fuel_xs_queue.data());
   cudaDeviceSynchronize();
+  catchCudaErrors("process_surface_crossing_events_device");
 
   simulation::calculate_nonfuel_xs_queue.updateIndex(
     gpu::managed_calculate_nonfuel_queue_index);
@@ -246,6 +250,7 @@ void process_collision_events()
       simulation::calculate_nonfuel_xs_queue.data(),
       simulation::calculate_fuel_xs_queue.data());
   cudaDeviceSynchronize();
+  catchCudaErrors("process_collision_events_device");
 
   simulation::fission_bank.updateIndex(gpu::fission_bank_index);
   simulation::calculate_nonfuel_xs_queue.updateIndex(

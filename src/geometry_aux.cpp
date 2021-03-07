@@ -372,6 +372,25 @@ prepare_distribcell()
   }
   for (auto& lat : model::lattices) {
     lat->allocate_offset_table(n_maps);
+#ifdef __CUDACC__
+    // Since lattices are polymorphic, we have to manually update this
+    // since this step can't be done within the constructor.
+    lat.syncHostToDevice();
+    RectLattice* rlat = dynamic_cast<RectLattice*>(lat.get_host());
+    HexLattice* hlat = dynamic_cast<HexLattice*>(lat.get_host());
+    if (rlat) {
+      auto rlat_dev = reinterpret_cast<RectLattice*>(lat.get_dev());
+      run_move_constructor_on_device<<<1, 1>>>(rlat_dev);
+    } else if (hlat) {
+      auto hlat_dev = reinterpret_cast<HexLattice*>(lat.get_dev());
+      run_move_constructor_on_device<<<1, 1>>>(hlat_dev);
+    } else {
+      fatal_error("If you've not added a new lattice outside HexLattice and "
+                  "RectLattice, this is a bug.\n"
+                  "If you've added a new lattice, you need to add it to the "
+                  "distribcell update in geometry_aux.cpp.");
+    }
+#endif
   }
 
   // Fill the cell and lattice offset tables.

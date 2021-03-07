@@ -67,7 +67,7 @@ public:
 
   virtual __host__ ~Lattice() {}
 
-  virtual int32_t const& operator[](array<int, 3> const& i_xyz) = 0;
+  HD virtual int32_t const& operator[](array<int, 3> const& i_xyz) = 0;
 
   virtual LatticeIter begin();
   LatticeIter end();
@@ -211,7 +211,7 @@ class RectLattice : public Lattice
 public:
   explicit RectLattice(pugi::xml_node lat_node);
 
-  int32_t const& operator[](array<int, 3> const& i_xyz);
+  HD int32_t const& operator[](array<int, 3> const& i_xyz);
 
   HD bool are_valid_indices(array<int, 3> const& i_xyz) const;
 
@@ -243,7 +243,7 @@ class HexLattice : public Lattice
 public:
   explicit HexLattice(pugi::xml_node lat_node);
 
-  int32_t const& operator[](array<int, 3> const& i_xyz);
+  HD int32_t const& operator[](array<int, 3> const& i_xyz);
 
   LatticeIter begin();
 

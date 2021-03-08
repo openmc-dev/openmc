@@ -95,7 +95,7 @@ find_cell_inner(Particle& p, const NeighborList* neighbor_list)
 
   // Check successively lower coordinate levels until finding material fill
   for (;;++p.n_coord_) {
-    // If neighbor lists did not find a cell, must do brute force search
+    // If neighbor lists did not find a cell, must do exhaustive search
     if (i_cell == C_NONE) {
       int i_universe = p.coord_[p.n_coord_-1].universe;
       const auto& univ {*model::universes[i_universe]};
@@ -267,7 +267,7 @@ bool neighbor_list_find_cell(Particle& p)
   return found;
 }
 
-bool brute_force_find_cell(Particle& p)
+bool exhaustive_find_cell(Particle& p)
 {
   int i_universe = p.coord_[p.n_coord_-1].universe;
   if (i_universe == C_NONE) {
@@ -315,7 +315,7 @@ cross_lattice(Particle& p, const BoundaryInfo& boundary)
   if (!lat.are_valid_indices(i_xyz)) {
     // The particle is outside the lattice.  Search for it from the base coords.
     p.n_coord_ = 1;
-    bool found = brute_force_find_cell(p);
+    bool found = exhaustive_find_cell(p);
     if (!found && p.alive_) {
       p.mark_as_lost(fmt::format("Could not locate particle {} after "
         "crossing a lattice boundary", p.id_));
@@ -324,13 +324,13 @@ cross_lattice(Particle& p, const BoundaryInfo& boundary)
   } else {
     // Find cell in next lattice element.
     p.coord_[p.n_coord_-1].universe = lat[i_xyz];
-    bool found = brute_force_find_cell(p);
+    bool found = exhaustive_find_cell(p);
 
     if (!found) {
       // A particle crossing the corner of a lattice tile may not be found.  In
       // this case, search for it from the base coords.
       p.n_coord_ = 1;
-      bool found = brute_force_find_cell(p);
+      bool found = exhaustive_find_cell(p);
       if (!found && p.alive_) {
         p.mark_as_lost(fmt::format("Could not locate particle {} after "
           "crossing a lattice boundary", p.id_));
@@ -446,7 +446,7 @@ openmc_find_cell(const double* xyz, int32_t* index, int32_t* instance)
   p.r() = Position{xyz};
   p.u() = {0.0, 0.0, 1.0};
 
-  if (!brute_force_find_cell(p)) {
+  if (!exhaustive_find_cell(p)) {
     set_errmsg(fmt::format("Could not find cell at position {}.", p.r()));
     return OPENMC_E_GEOMETRY;
   }

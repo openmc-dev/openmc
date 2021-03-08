@@ -156,7 +156,7 @@ Particle::event_calculate_xs()
   // initiate a search for the current cell. This generally happens at the
   // beginning of the history and again for any secondary particles
   if (coord_[n_coord_ - 1].cell == C_NONE) {
-    if (!brute_force_find_cell(*this)) {
+    if (!exhaustive_find_cell(*this)) {
       this->mark_as_lost("Could not find the cell containing particle "
         + std::to_string(id_));
       return;
@@ -463,7 +463,7 @@ Particle::cross_surface()
   // Remove lower coordinate levels and assignment of surface
   surface_ = 0;
   n_coord_ = 1;
-  bool found = brute_force_find_cell(*this);
+  bool found = exhaustive_find_cell(*this);
 
   if (settings::run_mode != RunMode::PLOTTING && (!found)) {
     // If a cell is still not found, there are two possible causes: 1) there is
@@ -477,7 +477,7 @@ Particle::cross_surface()
     // Couldn't find next cell anywhere! This probably means there is an actual
     // undefined region in the geometry.
 
-    if (!brute_force_find_cell(*this)) {
+    if (!exhaustive_find_cell(*this)) {
       this->mark_as_lost("After particle " + std::to_string(id_) +
         " crossed surface " + std::to_string(surf->id_) +
         " it could not be located in any cell and it did not leak.");

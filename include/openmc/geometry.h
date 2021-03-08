@@ -46,7 +46,7 @@ bool check_cell_overlap(Particle& p, bool error=true);
 //! \return True if the particle's location could be found and ascribed to a
 //!   valid geometry coordinate stack.
 //==============================================================================
-bool brute_force_find_cell(Particle& p);
+bool exhaustive_find_cell(Particle& p);
 bool neighbor_list_find_cell(Particle& p); // Only usable on surface crossings
 
 //==============================================================================

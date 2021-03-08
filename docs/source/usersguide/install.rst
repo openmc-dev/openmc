@@ -415,31 +415,6 @@ on Ubuntu on Windows setup. Once you are within bash, obtain the necessary
 :ref:`prerequisites <prerequisites>` via ``apt``. Finally, follow the
 :ref:`instructions for compiling on linux <compile_linux>`.
 
-Compiling for the Intel Xeon Phi
---------------------------------
-
-For the second generation Knights Landing architecture, nothing special is
-required to compile OpenMC. You may wish to experiment with compiler flags that
-control generation of vector instructions to see what configuration gives
-optimal performance for your target problem.
-
-For the first generation Knights Corner architecture, it is necessary to
-cross-compile OpenMC. If you are using the Intel compiler, it is necessary to
-specify that all objects be compiled with the ``-mmic`` flag as follows:
-
-.. code-block:: sh
-
-    mkdir build && cd build
-    CXX=icpc CXXFLAGS=-mmic cmake -Dopenmp=on ..
-    make
-
-Note that unless an HDF5 build for the Intel Xeon Phi (Knights Corner) is
-already on your target machine, you will need to cross-compile HDF5 for the Xeon
-Phi. An `example script`_ to build zlib and HDF5 provides several necessary
-workarounds.
-
-.. _example script: https://github.com/paulromano/install-scripts/blob/master/install-hdf5-mic
-
 Testing Build
 -------------
 

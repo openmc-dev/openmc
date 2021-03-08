@@ -81,7 +81,16 @@ endif()
 # CUDA support
 #===============================================================================
 if(cuda)
+  # Need this to successfully compile on POWER9 machines 
+  if ( (CMAKE_CXX_COMPILER_ID MATCHES GNU) AND (CMAKE_SYSTEM_PROCESSOR MATCHES ppc64le) )
+    if (CMAKE_CXX_COMPILER_VERSION VERSION_GREATER 8.0)
+      set (CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -Xcompiler -mno-float128")
+    endif ()
+  endif ()
+
   enable_language(CUDA)
+
+
   set(CMAKE_CUDA_ARCHITECTURES 70)
   set(CMAKE_CUDA_SEPARABLE_COMPILATION ON)
 endif()

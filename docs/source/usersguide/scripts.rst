@@ -13,7 +13,13 @@ Executables and Scripts
 Once you have a model built (see :ref:`usersguide_basics`), you can either run
 the openmc executable directly from the directory containing your XML input
 files, or you can specify as a command-line argument the directory containing
-the XML input files. For example, if your XML input files are in the directory
+the XML input files.
+
+.. warning::
+
+    OpenMC models should be treated as code, and it is important to be careful with code from untrusted sources.
+
+For example, if your XML input files are in the directory
 ``/home/username/somemodel/``, one way to run the simulation would be:
 
 .. code-block:: sh

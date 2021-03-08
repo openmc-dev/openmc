@@ -42,6 +42,33 @@ the environment, run:
 
     conda activate openmc-env
 
+-------------------------------------------
+Installing on Linux/Mac/Windows with Docker
+-------------------------------------------
+
+OpenMC can be easily deployed using `Docker <https://www.docker.com/>`_ on any
+Windows, Mac, or Linux system. With Docker running, execute the following
+command in the shell to download and run a `Docker image`_ with the most recent
+release of OpenMC from `DockerHub <https://hub.docker.com/>`_ called
+``openmc/openmc:v0.10.0``:
+
+.. code-block:: sh
+
+    docker run openmc/openmc:v0.10.0
+
+This will take several minutes to run depending on your internet download speed.
+The command will place you in an interactive shell running in a `Docker
+container`_ with OpenMC installed.
+
+.. note:: The ``docker run`` command supports many `options`_ for spawning
+          containers including `mounting volumes`_ from the host filesystem,
+          which many users will find useful.
+
+.. _Docker image: https://docs.docker.com/engine/reference/commandline/images/
+.. _Docker container: https://www.docker.com/resources/what-container
+.. _options: https://docs.docker.com/engine/reference/commandline/run/
+.. _mounting volumes: https://docs.docker.com/storage/volumes/
+
 .. _install-spack:
 
 ----------------------------------
@@ -127,6 +154,7 @@ feature can be used to access the installed packages.
 
 .. _Spack: https://spack.readthedocs.io/en/latest/
 .. _setup guide: https://spack.readthedocs.io/en/latest/getting_started.html
+
 
 .. _install_source:
 

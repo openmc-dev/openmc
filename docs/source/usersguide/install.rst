@@ -42,38 +42,6 @@ the environment, run:
 
     conda activate openmc-env
 
-.. _install_ppa:
-
------------------------------
-Installing on Ubuntu with PPA
------------------------------
-
-For users with Ubuntu 15.04 or later, a binary package for OpenMC is available
-through a `Personal Package Archive`_ (PPA) and can be installed through the
-`APT package manager`_. First, add the following PPA to the repository sources:
-
-.. code-block:: sh
-
-    sudo apt-add-repository ppa:paulromano/staging
-
-Next, resynchronize the package index files:
-
-.. code-block:: sh
-
-    sudo apt update
-
-Now OpenMC should be recognized within the repository and can be installed:
-
-.. code-block:: sh
-
-    sudo apt install openmc
-
-Binary packages from this PPA may exist for earlier versions of Ubuntu, but they
-are no longer supported.
-
-.. _Personal Package Archive: https://launchpad.net/~paulromano/+archive/ubuntu/staging
-.. _APT package manager: https://help.ubuntu.com/community/AptGet/Howto
-
 .. _install-spack:
 
 ----------------------------------
@@ -84,9 +52,9 @@ Spack_ is a package management tool designed to support multiple versions and
 configurations of software on a wide variety of platforms and environments.
 Please follow Spack's `setup guide`_ to configure the Spack system.
 
-The OpenMC Spack recipe has been configured with variants that match most options
-provided in the CMakeLists.txt file. To see a list of these variants and other
-information use:
+The OpenMC Spack recipe has been configured with variants that match most
+options provided in the CMakeLists.txt file. To see a list of these variants and
+other information use:
 
 .. code-block:: sh
 
@@ -109,7 +77,8 @@ Spack recipe can be found with the following command:
 
    The only variant for the Python API is ``mpi``.
 
-The most basic installation of OpenMC can be accomplished by entering the following command:
+The most basic installation of OpenMC can be accomplished by entering the
+following command:
 
 .. code-block::
 
@@ -117,14 +86,17 @@ The most basic installation of OpenMC can be accomplished by entering the follow
 
 .. caution::
 
-    When installing any Spack package, dependencies are assumed to be at configured defaults unless otherwise specfied in the
-    specification on the command line. In the above example, assuming the default options weren't changed in Spack's package
-    configuration, py-openmc will link against a non-optimized non-MPI openmc. Even if an optimized openmc was built separately,
-    it will rebuild openmc with optimization OFF. Thus, if you are trying to link against dependencies that were configured
-    different than defaults, ``^openmc[variants]`` will have to be present in the command.
+    When installing any Spack package, dependencies are assumed to be at
+    configured defaults unless otherwise specfied in the specification on the
+    command line. In the above example, assuming the default options weren't
+    changed in Spack's package configuration, py-openmc will link against a
+    non-optimized non-MPI openmc. Even if an optimized openmc was built
+    separately, it will rebuild openmc with optimization OFF. Thus, if you are
+    trying to link against dependencies that were configured different than
+    defaults, ``^openmc[variants]`` will have to be present in the command.
 
-For a more performant build of OpenMC with optimization turned ON and MPI provided by OpenMPI, the following command can be
-used:
+For a more performant build of OpenMC with optimization turned ON and MPI
+provided by OpenMPI, the following command can be used:
 
 .. code-block:: sh
 
@@ -136,20 +108,22 @@ used:
 
 .. tip::
 
-    When installing py-openmc, it will use Spack's preferred Python. For example, assuming Spack's preferred Python
-    is 3.8.7, to build py-openmc against the latest Python 3.7 instead, ``^python@3.7.0:3.7.99`` should be added to the
-    specification on the command line. Additionally, a compiler type and version can be specified at the end of the
-    command using ``%gcc@<version>``, ``%intel@<version>``, etc.
+    When installing py-openmc, it will use Spack's preferred Python. For
+    example, assuming Spack's preferred Python is 3.8.7, to build py-openmc
+    against the latest Python 3.7 instead, ``^python@3.7.0:3.7.99`` should be
+    added to the specification on the command line. Additionally, a compiler
+    type and version can be specified at the end of the command using
+    ``%gcc@<version>``, ``%intel@<version>``, etc.
 
-A useful tool in Spack is to look at the dependency tree before installation. This can be observed using
-Spack's `spec` tool:
+A useful tool in Spack is to look at the dependency tree before installation.
+This can be observed using Spack's `spec` tool:
 
 .. code-block::
 
     spack spec py-openmc+mpi ^openmc+optimize
 
-Once installed, environment/lmod modules can be generated or Spack's `load` feature
-can be used to access the installed packages. 
+Once installed, environment/lmod modules can be generated or Spack's `load`
+feature can be used to access the installed packages.
 
 .. _Spack: https://spack.readthedocs.io/en/latest/
 .. _setup guide: https://spack.readthedocs.io/en/latest/getting_started.html
@@ -449,16 +423,16 @@ section library along with windowed multipole data. Please refer to our
 Installing Python API
 ---------------------
 
-If you installed OpenMC using :ref:`Conda <install_conda>` or :ref:`PPA
-<install_ppa>`, no further steps are necessary in order to use OpenMC's
-:ref:`Python API <pythonapi>`. However, if you are :ref:`installing from source
-<install_source>`, the Python API is not installed by default when ``make
-install`` is run because in many situations it doesn't make sense to install a
-Python package in the same location as the ``openmc`` executable (for example,
-if you are installing the package into a `virtual environment
-<https://docs.python.org/3/tutorial/venv.html>`_). The easiest way to install
-the :mod:`openmc` Python package is to use pip_, which is included by default in
-Python 3.4+. From the root directory of the OpenMC distribution/repository, run:
+If you installed OpenMC using :ref:`Conda <install_conda>`, no further steps are
+necessary in order to use OpenMC's :ref:`Python API <pythonapi>`. However, if
+you are :ref:`installing from source <install_source>`, the Python API is not
+installed by default when ``make install`` is run because in many situations it
+doesn't make sense to install a Python package in the same location as the
+``openmc`` executable (for example, if you are installing the package into a
+`virtual environment <https://docs.python.org/3/tutorial/venv.html>`_). The
+easiest way to install the :mod:`openmc` Python package is to use pip_, which is
+included by default in Python 3.4+. From the root directory of the OpenMC
+distribution/repository, run:
 
 .. code-block:: sh
 

@@ -25,8 +25,12 @@ def _run(args, output, cwd):
 
     # Raise an exception if return status is non-zero
     if p.returncode != 0:
-        raise subprocess.CalledProcessError(p.returncode, ' '.join(args),
-                                            ''.join(lines))
+        # Get error message from output and simplify whitespace
+        output = ''.join(lines)
+        _, _, error_msg = output.partition('ERROR: ')
+        error_msg = ' '.join(error_msg.split())
+
+        raise RuntimeError(error_msg)
 
 
 def plot_geometry(output=True, openmc_exec='openmc', cwd='.'):
@@ -43,7 +47,7 @@ def plot_geometry(output=True, openmc_exec='openmc', cwd='.'):
 
     Raises
     ------
-    subprocess.CalledProcessError
+    RuntimeError
         If the `openmc` executable returns a non-zero status
 
     """
@@ -70,7 +74,7 @@ def plot_inline(plots, openmc_exec='openmc', cwd='.', convert_exec='convert'):
 
     Raises
     ------
-    subprocess.CalledProcessError
+    RuntimeError
         If the `openmc` executable returns a non-zero status
 
     """
@@ -133,7 +137,7 @@ def calculate_volumes(threads=None, output=True, cwd='.',
 
     Raises
     ------
-    subprocess.CalledProcessError
+    RuntimeError
         If the `openmc` executable returns a non-zero status
 
     See Also
@@ -188,7 +192,7 @@ def run(particles=None, threads=None, geometry_debug=False,
 
     Raises
     ------
-    subprocess.CalledProcessError
+    RuntimeError
         If the `openmc` executable returns a non-zero status
 
     """

@@ -42,36 +42,6 @@ the environment, run:
 
     conda activate openmc-env
 
---------------------------------
-Installing on Ubuntu through PPA
---------------------------------
-
-For users with Ubuntu 15.04 or later, a binary package for OpenMC is available
-through a `Personal Package Archive`_ (PPA) and can be installed through the
-`APT package manager`_. First, add the following PPA to the repository sources:
-
-.. code-block:: sh
-
-    sudo apt-add-repository ppa:paulromano/staging
-
-Next, resynchronize the package index files:
-
-.. code-block:: sh
-
-    sudo apt update
-
-Now OpenMC should be recognized within the repository and can be installed:
-
-.. code-block:: sh
-
-    sudo apt install openmc
-
-Binary packages from this PPA may exist for earlier versions of Ubuntu, but they
-are no longer supported.
-
-.. _Personal Package Archive: https://launchpad.net/~paulromano/+archive/ubuntu/staging
-.. _APT package manager: https://help.ubuntu.com/community/AptGet/Howto
-
 -------------------------------------------
 Installing on Linux/Mac/Windows with Docker
 -------------------------------------------

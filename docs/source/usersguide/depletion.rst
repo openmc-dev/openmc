@@ -30,6 +30,12 @@ operator class requires a :class:`openmc.Geometry` instance and a
 
 Any material that contains a fissionable nuclide is depleted by default, but
 this can behavior can be changed with the :attr:`Material.depletable` attribute.
+
+.. important:: The volume must be specified for each material that is depleted by
+               setting the :attr:`Material.volume` attribute. This is necessary
+               in order to calculate the proper normalization of tally results
+               based on the source rate.
+
 :mod:`openmc.deplete` supports multiple time-integration methods for determining
 material compositions over time. Each method appears as a different class.
 For example, :class:`openmc.deplete.CECMIntegrator` runs a depletion calculation

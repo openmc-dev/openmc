@@ -786,10 +786,19 @@ void read_settings_xml()
   if (check_for_node(root, "temperature_default")) {
     temperature_default = std::stod(get_node_value(root, "temperature_default"));
   }
+#ifdef __CUDACC__
+  // Nearest temperature mode is turned off on the GPU to reduce
+  // thread divergence.
+  temperature_method = TemperatureMethod::INTERPOLATION;
+#endif
   if (check_for_node(root, "temperature_method")) {
     auto temp = get_node_value(root, "temperature_method", true, true);
     if (temp == "nearest") {
       temperature_method = TemperatureMethod::NEAREST;
+#ifdef __CUDACC__
+      warning("Ignoring choice of nearest temperature mode and using "
+              "interpolation for GPU.");
+#endif
     } else if (temp == "interpolation") {
       temperature_method = TemperatureMethod::INTERPOLATION;
     } else {

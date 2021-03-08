@@ -76,10 +76,11 @@ absorption cross section (this includes fission), and :math:`\sigma_f` is the
 total fission cross section. If this condition is met, then the neutron is
 killed and we proceed to simulate the next neutron from the source bank.
 
-No secondary particles from disappearance reactions such as photons or
-alpha-particles are produced or tracked. To truly capture the affects of gamma
-heating in a problem, it would be necessary to explicitly track photons
-originating from :math:`(n,\gamma)` and other reactions.
+Note that photons arising from :math:`(n,\gamma)` and other neutron reactions
+are not produced in a microscopically correct manner. Instead, photons are
+sampled probabilistically at each neutron collision, regardless of what reaction
+actually takes place. This is described in more detail in
+:ref:`photon_production`.
 
 ------------------
 Elastic Scattering

@@ -73,6 +73,6 @@ def test_wrong_source_attributes(run_in_tmpdir):
 
     # When we run the model, it should error out with a message that includes
     # the names of the wrong attributes
-    with pytest.raises(subprocess.CalledProcessError) as excinfo:
+    with pytest.raises(RuntimeError) as excinfo:
         openmc.run()
-    assert 'platypus, axolotl, narwhal' in excinfo.value.output
+    assert 'platypus, axolotl, narwhal' in str(excinfo.value)

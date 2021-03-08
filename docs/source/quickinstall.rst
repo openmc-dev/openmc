@@ -91,13 +91,13 @@ can be used to access the installed packages.
 .. _Spack: https://spack.readthedocs.io/en/latest/
 .. _setup guide: https://spack.readthedocs.io/en/latest/getting_started.html
 
----------------------------------------
-Installing from Source on Ubuntu 15.04+
----------------------------------------
+--------------------------------
+Installing from Source on Ubuntu
+--------------------------------
 
 To build OpenMC from source, several :ref:`prerequisites <prerequisites>` are
-needed. If you are using Ubuntu 15.04 or higher, all prerequisites can be
-installed directly from the package manager.
+needed. If you are using Ubuntu or higher, all prerequisites can be installed
+directly from the package manager:
 
 .. code-block:: sh
 
@@ -136,8 +136,8 @@ should specify an installation directory where you have write access, e.g.
 
 The :mod:`openmc` Python package must be installed separately. The easiest way
 to install it is using `pip <https://pip.pypa.io/en/stable/>`_, which is
-included by default in Python 2.7 and Python 3.4+. From the root directory of
-the OpenMC distribution/repository, run:
+included by default in Python 3.4+. From the root directory of the OpenMC
+distribution/repository, run:
 
 .. code-block:: sh
 

@@ -90,7 +90,7 @@ xt::xtensor<double, 1> count_bank_sites(xt::xtensor<int, 1>& bins, bool* outside
   bool outside_ = false;
 
   auto bank_size = simulation::source_bank.size();
-  for (int i = 0; i < bank_size; i++) {
+  for (decltype(bank_size) i = 0; i < bank_size; i++) {
     const auto& site = simulation::source_bank[i];
 
     // determine scoring bin for CMFD mesh
@@ -163,7 +163,7 @@ void openmc_cmfd_reweight(const bool feedback, const double* cmfd_src)
     }
 
     double norm = xt::sum(sourcecounts)()/cmfd::norm;
-    for (int i = 0; i < src_size; i++) {
+    for (decltype(src_size) i = 0; i < src_size; i++) {
       if (sourcecounts[i] > 0 && cmfd_src[i] > 0) {
         weightfactors[i] = cmfd_src[i] * norm / sourcecounts[i];
       }
@@ -178,7 +178,7 @@ void openmc_cmfd_reweight(const bool feedback, const double* cmfd_src)
 #endif
 
   // Iterate through fission bank and update particle weights
-  for (int64_t i = 0; i < bank_size; i++) {
+  for (decltype(bank_size) i = 0; i < bank_size; i++) {
     auto& site = simulation::source_bank[i];
     site.wgt *= weightfactors(bank_bins(i));
   }

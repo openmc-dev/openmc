@@ -9,12 +9,12 @@
 #include <unordered_map>
 #include <vector>
 
-#include <gsl/gsl>
 #include "hdf5.h"
 #include "pugixml.hpp"
 #include "dagmc.h"
 
 #include "openmc/constants.h"
+#include "openmc/lattice.h" // Lattice::size_type
 #include "openmc/neighbor_list.h"
 #include "openmc/position.h"
 #include "openmc/surface.h"
@@ -49,8 +49,8 @@ class Universe;
 class UniversePartitioner;
 
 namespace model {
-  extern std::unordered_map<int32_t, int32_t> cell_map;
   extern std::vector<std::unique_ptr<Cell>> cells;
+  extern std::unordered_map<int32_t, decltype(cells)::size_type> cell_map;
 
   extern std::unordered_map<int32_t, int32_t> universe_map;
   extern std::vector<std::unique_ptr<Universe>> universes;
@@ -168,7 +168,8 @@ public:
   Fill type_;                  //!< Material, universe, or lattice
   int32_t universe_;          //!< Universe # this cell is in
   int32_t fill_;              //!< Universe # filling this cell
-  int32_t n_instances_{0};    //!< Number of instances of this cell
+  std::vector<int32_t>::size_type n_instances_ {
+    0}; //!< Number of instances of this cell
 
   //! \brief Index corresponding to this cell in distribcell arrays
   int distribcell_index_{C_NONE};
@@ -204,11 +205,6 @@ public:
   std::vector<double> rotation_;
 
   std::vector<int32_t> offset_;  //!< Distribcell offset table
-};
-
-struct CellInstanceItem {
-  int32_t index {-1};        //! Index into global cells array
-  int     lattice_indx{-1};  //! Flat index value of the lattice cell
 };
 
 //==============================================================================
@@ -315,8 +311,8 @@ private:
 //==============================================================================
 
 struct ParentCell {
-  gsl::index cell_index;
-  gsl::index lattice_index;
+  decltype(model::cells)::size_type cell_index;
+  Lattice::size_type lattice_index;
 };
 
 //==============================================================================
@@ -328,8 +324,8 @@ struct CellInstance {
   bool operator==(const CellInstance& other) const
   { return index_cell == other.index_cell && instance == other.instance; }
 
-  gsl::index index_cell;
-  gsl::index instance;
+  decltype(model::cells)::size_type index_cell;
+  decltype(model::cells)::size_type instance;
 };
 
 struct CellInstanceHash {

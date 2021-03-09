@@ -50,12 +50,14 @@ class ReverseLatticeIter;
 class Lattice
 {
 public:
-  int32_t id_;                         //!< Universe ID number
-  std::string name_;                   //!< User-defined name
+  int32_t id_;       // Universe ID number
+  std::string name_; // User-defined name
   LatticeType type_;
-  std::vector<int32_t> universes_;     //!< Universes filling each lattice tile
-  int32_t outer_ {NO_OUTER_UNIVERSE};  //!< Universe tiled outside the lattice
-  std::vector<int32_t> offsets_;       //!< Distribcell offset table
+  std::vector<int32_t> universes_; // Universes filling each lattice tile
+  using size_type =
+    std::vector<int32_t>::size_type;  // shorthand size type for universe vector
+  int32_t outer_ {NO_OUTER_UNIVERSE}; // Universe tiled outside the lattice
+  std::vector<int32_t> offsets_;      // Distribcell offset table
 
   explicit Lattice(pugi::xml_node lat_node);
 
@@ -119,8 +121,10 @@ public:
   //! \param indx The index for a lattice tile.
   //! \return true if the given index fit within the lattice bounds.  False
   //!   otherwise.
-  virtual bool is_valid_index(int indx) const
-  {return (indx >= 0) && (indx < universes_.size());}
+  virtual bool is_valid_index(size_type indx) const
+  {
+    return indx < universes_.size();
+  }
 
   //! \brief Get the distribcell offset for a lattice tile.
   //! \param The map index for the target cell.
@@ -158,11 +162,10 @@ protected:
 class LatticeIter
 {
 public:
-  int indx_;  //!< An index to a Lattice universes or offsets array.
+  using size_type = typename Lattice::size_type;
+  size_type indx_; //!< An index to a Lattice universes or offsets array.
 
-  LatticeIter(Lattice &lat, int indx)
-    : indx_(indx), lat_(lat)
-  {}
+  LatticeIter(Lattice& lat, size_type indx) : indx_(indx), lat_(lat) {}
 
   bool operator==(const LatticeIter &rhs) {return (indx_ == rhs.indx_);}
 
@@ -191,17 +194,16 @@ protected:
 class ReverseLatticeIter : public LatticeIter
 {
 public:
-  ReverseLatticeIter(Lattice &lat, int indx)
-    : LatticeIter {lat, indx}
-  {}
+  ReverseLatticeIter(Lattice& lat, size_type indx) : LatticeIter {lat, indx} {}
 
   ReverseLatticeIter& operator++()
   {
-    while (indx_ > -1) {
+    constexpr size_type end_of_iteration = (size_type)(-1);
+    while (indx_ != end_of_iteration) {
       --indx_;
       if (lat_.is_valid_index(indx_)) return *this;
     }
-    indx_ = -1;
+    indx_ = (size_type)(-1);
     return *this;
   }
 };
@@ -267,7 +269,7 @@ public:
   Position
   get_local_position(Position r, const std::array<int, 3> i_xyz) const;
 
-  bool is_valid_index(int indx) const;
+  bool is_valid_index(size_type indx) const;
 
   int32_t& offset(int map, const int i_xyz[3]);
 

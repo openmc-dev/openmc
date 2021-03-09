@@ -32,11 +32,11 @@ namespace openmc {
 //==============================================================================
 
 namespace model {
-  std::unordered_map<int32_t, int32_t> cell_map;
-  std::vector<std::unique_ptr<Cell>> cells;
+std::unordered_map<int32_t, decltype(cells)::size_type> cell_map;
+std::vector<std::unique_ptr<Cell>> cells;
 
-  std::unordered_map<int32_t, int32_t> universe_map;
-  std::vector<std::unique_ptr<Universe>> universes;
+std::unordered_map<int32_t, int32_t> universe_map;
+std::vector<std::unique_ptr<Universe>> universes;
 } // namespace model
 
 //==============================================================================
@@ -55,7 +55,7 @@ tokenize(const std::string region_spec) {
   }
 
   // Parse all halfspaces and operators except for intersection (whitespace).
-  for (int i = 0; i < region_spec.size(); ) {
+  for (std::string::size_type i = 0; i < region_spec.size();) {
     if (region_spec[i] == '(') {
       tokens.push_back(OP_LEFT_PAREN);
       i++;
@@ -76,7 +76,7 @@ tokenize(const std::string region_spec) {
                || std::isdigit(region_spec[i])) {
       // This is the start of a halfspace specification.  Iterate j until we
       // find the end, then push-back everything between i and j.
-      int j = i + 1;
+      auto j = i + 1;
       while (j < region_spec.size() && std::isdigit(region_spec[j])) {j++;}
       tokens.push_back(std::stoi(region_spec.substr(i, j-i)));
       i = j;
@@ -92,8 +92,8 @@ tokenize(const std::string region_spec) {
   }
 
   // Add in intersection operators where a missing operator is needed.
-  int i = 0;
-  while (i < tokens.size()-1) {
+
+  for (std::vector<int32_t>::size_type i = 0; i < tokens.size() - 1; ++i) {
     bool left_compat {(tokens[i] < OP_UNION) || (tokens[i] == OP_RIGHT_PAREN)};
     bool right_compat {(tokens[i+1] < OP_UNION)
                        || (tokens[i+1] == OP_LEFT_PAREN)
@@ -101,7 +101,6 @@ tokenize(const std::string region_spec) {
     if (left_compat && right_compat) {
       tokens.insert(tokens.begin()+i+1, OP_INTERSECTION);
     }
-    i++;
   }
 
   return tokens;
@@ -868,7 +867,7 @@ UniversePartitioner::UniversePartitioner(const Universe& univ)
       if (token < OP_UNION) {
         auto i_surf = std::abs(token) - 1;
         const auto* surf = model::surfaces[i_surf].get();
-        if (const auto* zplane = dynamic_cast<const SurfaceZPlane*>(surf))
+        if (dynamic_cast<const SurfaceZPlane*>(surf))
           surf_set.insert(i_surf);
       }
     }
@@ -918,7 +917,7 @@ UniversePartitioner::UniversePartitioner(const Universe& univ)
     // the positive halfspace given by the lower_token.
     int first_partition = 0;
     if (lower_token > 0) {
-      for (int i = 0; i < surfs_.size(); ++i) {
+      for (decltype(surfs_)::size_type i = 0; i < surfs_.size(); ++i) {
         if (lower_token == surfs_[i] + 1) {
           first_partition = i + 1;
           break;
@@ -930,7 +929,8 @@ UniversePartitioner::UniversePartitioner(const Universe& univ)
     // logic for first_partition.
     int last_partition = surfs_.size();
     if (upper_token < 0) {
-      for (int i = first_partition; i < surfs_.size(); ++i) {
+      for (decltype(surfs_)::size_type i = first_partition; i < surfs_.size();
+           ++i) {
         if (upper_token == -(surfs_[i] + 1)) {
           last_partition = i;
           break;
@@ -989,8 +989,8 @@ UniversePartitioner::get_cells(Position r, Direction u) const
 void read_cells(pugi::xml_node node)
 {
   // Count the number of cells.
-  int n_cells = 0;
-  for (pugi::xml_node cell_node: node.children("cell")) {n_cells++;}
+  auto cell_children = node.children("cell");
+  auto n_cells = std::distance(cell_children.begin(), cell_children.end());
   if (n_cells == 0) {
     fatal_error("No cells found in geometry.xml!");
   }
@@ -1002,7 +1002,7 @@ void read_cells(pugi::xml_node node)
   }
 
   // Fill the cell map.
-  for (int i = 0; i < model::cells.size(); i++) {
+  for (decltype(model::cells)::size_type i = 0; i < model::cells.size(); i++) {
     int32_t id = model::cells[i]->id_;
     auto search = model::cell_map.find(id);
     if (search == model::cell_map.end()) {
@@ -1013,7 +1013,7 @@ void read_cells(pugi::xml_node node)
   }
 
   // Populate the Universe vector and map.
-  for (int i = 0; i < model::cells.size(); i++) {
+  for (decltype(model::cells)::size_type i = 0; i < model::cells.size(); i++) {
     int32_t uid = model::cells[i]->universe_;
     auto it = model::universe_map.find(uid);
     if (it == model::universe_map.end()) {
@@ -1040,19 +1040,20 @@ void read_cells(pugi::xml_node node)
 extern "C" int
 openmc_cell_get_fill(int32_t index, int* type, int32_t** indices, int32_t* n)
 {
-  if (index >= 0 && index < model::cells.size()) {
-    Cell& c {*model::cells[index]};
-    *type = static_cast<int>(c.type_);
-    if (c.type_ == Fill::MATERIAL) {
-      *indices = c.material_.data();
-      *n = c.material_.size();
-    } else {
-      *indices = &c.fill_;
-      *n = 1;
-    }
-  } else {
+  if (index < 0 || static_cast<decltype(model::cells)::size_type>(index) >=
+                     model::cells.size()) {
     set_errmsg("Index in cells array is out of bounds.");
     return OPENMC_E_OUT_OF_BOUNDS;
+  }
+
+  Cell& c {*model::cells[index]};
+  *type = static_cast<int>(c.type_);
+  if (c.type_ == Fill::MATERIAL) {
+    *indices = c.material_.data();
+    *n = c.material_.size();
+  } else {
+    *indices = &c.fill_;
+    *n = 1;
   }
   return 0;
 }
@@ -1062,31 +1063,34 @@ openmc_cell_set_fill(int32_t index, int type, int32_t n,
                      const int32_t* indices)
 {
   Fill filltype = static_cast<Fill>(type);
-  if (index >= 0 && index < model::cells.size()) {
-    Cell& c {*model::cells[index]};
-    if (filltype == Fill::MATERIAL) {
-      c.type_ = Fill::MATERIAL;
-      c.material_.clear();
-      for (int i = 0; i < n; i++) {
-        int i_mat = indices[i];
-        if (i_mat == MATERIAL_VOID) {
-          c.material_.push_back(MATERIAL_VOID);
-        } else if (i_mat >= 0 && i_mat < model::materials.size()) {
-          c.material_.push_back(i_mat);
-        } else {
-          set_errmsg("Index in materials array is out of bounds.");
-          return OPENMC_E_OUT_OF_BOUNDS;
-        }
-      }
-      c.material_.shrink_to_fit();
-    } else if (filltype == Fill::UNIVERSE) {
-      c.type_ = Fill::UNIVERSE;
-    } else {
-      c.type_ = Fill::LATTICE;
-    }
-  } else {
+  if (index < 0 || static_cast<decltype(model::cells)::size_type>(index) >=
+                     model::cells.size()) {
     set_errmsg("Index in cells array is out of bounds.");
     return OPENMC_E_OUT_OF_BOUNDS;
+  }
+
+  Cell& c {*model::cells[index]};
+  if (filltype == Fill::MATERIAL) {
+    c.type_ = Fill::MATERIAL;
+    c.material_.clear();
+    for (int32_t i = 0; i < n; i++) {
+      int32_t i_mat = indices[i];
+      if (i_mat == MATERIAL_VOID) {
+        c.material_.push_back(MATERIAL_VOID);
+      } else if (i_mat >= 0 &&
+                 static_cast<decltype(model::materials)::size_type>(i_mat) <
+                   model::materials.size()) {
+        c.material_.push_back(i_mat);
+      } else {
+        set_errmsg("Index in materials array is out of bounds.");
+        return OPENMC_E_OUT_OF_BOUNDS;
+      }
+    }
+    c.material_.shrink_to_fit();
+  } else if (filltype == Fill::UNIVERSE) {
+    c.type_ = Fill::UNIVERSE;
+  } else {
+    c.type_ = Fill::LATTICE;
   }
   return 0;
 }
@@ -1094,7 +1098,8 @@ openmc_cell_set_fill(int32_t index, int type, int32_t n,
 extern "C" int
 openmc_cell_set_temperature(int32_t index, double T, const int32_t* instance, bool set_contained)
 {
-  if (index < 0 || index >= model::cells.size()) {
+  if (index < 0 || static_cast<decltype(model::cells)::size_type>(index) >=
+                     model::cells.size()) {
     strcpy(openmc_err_msg, "Index in cells array is out of bounds.");
     return OPENMC_E_OUT_OF_BOUNDS;
   }
@@ -1112,7 +1117,8 @@ openmc_cell_set_temperature(int32_t index, double T, const int32_t* instance, bo
 extern "C" int
 openmc_cell_get_temperature(int32_t index, const int32_t* instance, double* T)
 {
-  if (index < 0 || index >= model::cells.size()) {
+  if (index < 0 || static_cast<decltype(model::cells)::size_type>(index) >=
+                     model::cells.size()) {
     strcpy(openmc_err_msg, "Index in cells array is out of bounds.");
     return OPENMC_E_OUT_OF_BOUNDS;
   }
@@ -1152,7 +1158,8 @@ openmc_cell_bounding_box(const int32_t index, double* llc, double* urc) {
 //! Get the name of a cell
 extern "C" int
 openmc_cell_get_name(int32_t index, const char** name) {
-  if (index < 0 || index >= model::cells.size()) {
+  if (index < 0 || static_cast<decltype(model::cells)::size_type>(index) >=
+                     model::cells.size()) {
     set_errmsg("Index in cells array is out of bounds.");
     return OPENMC_E_OUT_OF_BOUNDS;
   }
@@ -1165,7 +1172,8 @@ openmc_cell_get_name(int32_t index, const char** name) {
 //! Set the name of a cell
 extern "C" int
 openmc_cell_set_name(int32_t index, const char* name) {
-  if (index < 0 || index >= model::cells.size()) {
+  if (index < 0 || static_cast<decltype(model::cells)::size_type>(index) >=
+                     model::cells.size()) {
     set_errmsg("Index in cells array is out of bounds.");
     return OPENMC_E_OUT_OF_BOUNDS;
   }
@@ -1214,7 +1222,8 @@ Cell::get_contained_cells_inner(std::unordered_map<int32_t, std::vector<int32_t>
   // filled with universe, add the containing cell to the parent cells
   // and recurse
   } else if (type_ == Fill::UNIVERSE) {
-    parent_cells.push_back({model::cell_map[id_], -1});
+    parent_cells.push_back(
+      {model::cell_map[id_], static_cast<Lattice::size_type>(-1)});
     auto& univ = model::universes[fill_];
     for(auto cell_index : univ->cells_) {
       auto& cell = model::cells[cell_index];
@@ -1255,7 +1264,8 @@ openmc_get_cell_index(int32_t id, int32_t* index)
 extern "C" int
 openmc_cell_get_id(int32_t index, int32_t* id)
 {
-  if (index >= 0 && index < model::cells.size()) {
+  if (index >= 0 && static_cast<decltype(model::cells)::size_type>(index) <
+                      model::cells.size()) {
     *id = model::cells[index]->id_;
     return 0;
   } else {
@@ -1268,7 +1278,8 @@ openmc_cell_get_id(int32_t index, int32_t* id)
 extern "C" int
 openmc_cell_set_id(int32_t index, int32_t id)
 {
-  if (index >= 0 && index < model::cells.size()) {
+  if (index >= 0 && static_cast<decltype(model::cells)::size_type>(index) <
+                      model::cells.size()) {
     model::cells[index]->id_ = id;
     model::cell_map[id] = index;
     return 0;

@@ -67,7 +67,8 @@ void sort_fission_bank()
   // bank for each parent particle id
   int64_t tmp = simulation::progeny_per_particle[0];
   simulation::progeny_per_particle[0] = 0;
-  for (int64_t i = 1; i < simulation::progeny_per_particle.size(); i++) {
+  for (std::vector<int64_t>::size_type i = 1;
+       i < simulation::progeny_per_particle.size(); i++) {
     int64_t value = simulation::progeny_per_particle[i-1] + tmp;
     tmp = simulation::progeny_per_particle[i];
     simulation::progeny_per_particle[i] = value;

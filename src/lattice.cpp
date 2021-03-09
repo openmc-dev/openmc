@@ -958,8 +958,7 @@ const
 
 //==============================================================================
 
-bool
-HexLattice::is_valid_index(int indx) const
+bool HexLattice::is_valid_index(size_type indx) const
 {
   int nx {2*n_rings_ - 1};
   int ny {2*n_rings_ - 1};

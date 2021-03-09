@@ -27,7 +27,12 @@ def _run(args, output, cwd):
     if p.returncode != 0:
         # Get error message from output and simplify whitespace
         output = ''.join(lines)
-        _, _, error_msg = output.partition('ERROR: ')
+        if 'ERROR: ' in output:
+            _, _, error_msg = output.partition('ERROR: ')
+        elif 'what()' in output:
+            _, _, error_msg = output.partition('what(): ')
+        else:
+            error_msg = 'OpenMC aborted unexpectedly.'
         error_msg = ' '.join(error_msg.split())
 
         raise RuntimeError(error_msg)

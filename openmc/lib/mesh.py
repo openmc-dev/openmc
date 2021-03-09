@@ -190,13 +190,16 @@ class RegularMesh(Mesh):
 
 class RectilinearMesh(Mesh):
     """RectilinearMesh stored internally.
+
     This class exposes a mesh that is stored internally in the OpenMC
     library. To obtain a view of a mesh with a given ID, use the
     :data:`openmc.lib.meshes` mapping.
+
     Parameters
     ----------
     index : int
          Index in the `meshes` array.
+
     Attributes
     ----------
     id : int
@@ -209,6 +212,7 @@ class RectilinearMesh(Mesh):
         The upper-right corner of the structrued mesh.
     width : numpy.ndarray
         The width of mesh cells in each direction.
+
     """
     mesh_type = 'rectilinear'
 

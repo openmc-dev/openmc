@@ -84,7 +84,7 @@ extern "C" {
   int openmc_id_map(const void* slice, int32_t* data_out);
   int openmc_property_map(const void* slice, double* data_out);
   int openmc_rectilinear_mesh_get_grid(int32_t index, double** grid_x, int* nx,
-                       double** grid_y, int * ny, double** grid_z, int* nz);
+                       double** grid_y, int* ny, double** grid_z, int* nz);
   int openmc_rectilinear_mesh_set_grid(int32_t index, const double* grid_x,
                        const int nx, const double* grid_y, const int ny,
                        const double* grid_z, const int nz);

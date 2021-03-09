@@ -239,6 +239,8 @@ public:
   void to_hdf5(hid_t group) const override;
 
   std::vector<std::vector<double>> grid_;
+
+  int set_grid();
 };
 
 #ifdef DAGMC

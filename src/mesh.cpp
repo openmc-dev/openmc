@@ -888,21 +888,9 @@ RectilinearMesh::RectilinearMesh(pugi::xml_node node)
   grid_[1] = get_node_array<double>(node, "y_grid");
   grid_[2] = get_node_array<double>(node, "z_grid");
 
-  shape_ = {static_cast<int>(grid_[0].size()) - 1,
-            static_cast<int>(grid_[1].size()) - 1,
-            static_cast<int>(grid_[2].size()) - 1};
-
-  for (const auto& g : grid_) {
-    if (g.size() < 2) fatal_error("x-, y-, and z- grids for rectilinear meshes "
-      "must each have at least 2 points");
-    for (int i = 1; i < g.size(); ++i) {
-      if (g[i] <= g[i-1]) fatal_error("Values in for x-, y-, and z- grids for "
-        "rectilinear meshes must be sorted and unique.");
-    }
+  if (int err = set_grid()) {
+    fatal_error(openmc_err_msg);
   }
-
-  lower_left_ = {grid_[0].front(), grid_[1].front(), grid_[2].front()};
-  upper_right_ = {grid_[0].back(), grid_[1].back(), grid_[2].back()};
 }
 
 double RectilinearMesh::positive_grid_boundary(int* ijk, int i) const
@@ -913,6 +901,33 @@ double RectilinearMesh::positive_grid_boundary(int* ijk, int i) const
 double RectilinearMesh::negative_grid_boundary(int* ijk, int i) const
 {
   return grid_[i][ijk[i] - 1];
+}
+
+int RectilinearMesh::set_grid()
+{
+  shape_ = {static_cast<int>(grid_[0].size()) - 1,
+            static_cast<int>(grid_[1].size()) - 1,
+            static_cast<int>(grid_[2].size()) - 1};
+
+  for (const auto& g : grid_) {
+    if (g.size() < 2) {
+      set_errmsg("x-, y-, and z- grids for rectilinear meshes "
+        "must each have at least 2 points");
+      return OPENMC_E_INVALID_ARGUMENT;
+    }
+    for (int i = 1; i < g.size(); ++i) {
+      if (g[i] <= g[i-1]) {
+        set_errmsg("Values in for x-, y-, and z- grids for "
+          "rectilinear meshes must be sorted and unique.");
+        return OPENMC_E_INVALID_ARGUMENT;
+      }
+    }
+  }
+
+  lower_left_ = {grid_[0].front(), grid_[1].front(), grid_[2].front()};
+  upper_right_ = {grid_[0].back(), grid_[1].back(), grid_[2].back()};
+
+  return 0;
 }
 
 void RectilinearMesh::surface_bins_crossed(const Particle& p,
@@ -1144,27 +1159,15 @@ check_mesh(int32_t index)
   return 0;
 }
 
+template <class T>
 int
-check_mesh_type(int32_t index, const std::string& mesh_compare_type)
+check_mesh_type(int32_t index)
 {
   if (int err = check_mesh(index)) return err;
 
-  if (mesh_compare_type == "regular") {
-    RegularMesh* mesh = dynamic_cast<RegularMesh*>(model::meshes[index].get());
-    if (!mesh) {
-      set_errmsg("This function is only valid for regular meshes.");
-      return OPENMC_E_INVALID_TYPE;
-    }
-  }
-  else if (mesh_compare_type == "rectilinear") {
-    RectilinearMesh* mesh = dynamic_cast<RectilinearMesh*>(model::meshes[index].get());
-    if (!mesh) {
-      set_errmsg("This function is only valid for rectilinear meshes.");
-      return OPENMC_E_INVALID_TYPE;
-    }
-  }
-  else {
-    set_errmsg("Mesh type " + mesh_compare_type + " is not supported.");
+  T* mesh = dynamic_cast<T*>(model::meshes[index].get());
+  if (!mesh) {
+    set_errmsg("This function is not valid for input mesh.");
     return OPENMC_E_INVALID_TYPE;
   }
   return 0;
@@ -1183,8 +1186,7 @@ openmc_mesh_get_type(int32_t index, char* type)
   RegularMesh* mesh = dynamic_cast<RegularMesh*>(model::meshes[index].get());
   if (mesh) {
     std::strcpy(type, "regular");
-  }
-  else {
+  } else {
     RectilinearMesh* mesh = dynamic_cast<RectilinearMesh*>(model::meshes[index].get());
     if (mesh) {
       std::strcpy(type, "rectilinear");
@@ -1202,11 +1204,9 @@ openmc_extend_meshes(int32_t n, const char* type, int32_t* index_start,
   std::string mesh_type;
 
   for (int i = 0; i < n; ++i) {
-    if (std::strcmp(type, "regular") == 0)
-    {
+    if (std::strcmp(type, "regular") == 0) {
       model::meshes.push_back(std::make_unique<RegularMesh>());
-    } else if (std::strcmp(type, "rectilinear") == 0)
-    {
+    } else if (std::strcmp(type, "rectilinear") == 0) {
       model::meshes.push_back(std::make_unique<RectilinearMesh>());
     } else {
       throw std::runtime_error{"Unknown mesh type: " + std::string(type)};
@@ -1253,7 +1253,7 @@ openmc_mesh_set_id(int32_t index, int32_t id)
 extern "C" int
 openmc_regular_mesh_get_dimension(int32_t index, int** dims, int* n)
 {
-  if (int err = check_mesh_type(index, "regular")) return err;
+  if (int err = check_mesh_type<RegularMesh>(index)) return err;
   RegularMesh* mesh = dynamic_cast<RegularMesh*>(model::meshes[index].get());
   *dims = mesh->shape_.data();
   *n = mesh->n_dimension_;
@@ -1264,7 +1264,7 @@ openmc_regular_mesh_get_dimension(int32_t index, int** dims, int* n)
 extern "C" int
 openmc_regular_mesh_set_dimension(int32_t index, int n, const int* dims)
 {
-  if (int err = check_mesh_type(index, "regular")) return err;
+  if (int err = check_mesh_type<RegularMesh>(index)) return err;
   RegularMesh* mesh = dynamic_cast<RegularMesh*>(model::meshes[index].get());
 
   // Copy dimension
@@ -1279,7 +1279,7 @@ extern "C" int
 openmc_regular_mesh_get_params(int32_t index, double** ll, double** ur,
                                double** width, int* n)
 {
-  if (int err = check_mesh_type(index, "regular")) return err;
+  if (int err = check_mesh_type<RegularMesh>(index)) return err;
   RegularMesh* m = dynamic_cast<RegularMesh*>(model::meshes[index].get());
 
   if (m->lower_left_.dimension() == 0) {
@@ -1299,7 +1299,7 @@ extern "C" int
 openmc_regular_mesh_set_params(int32_t index, int n, const double* ll,
                                const double* ur, const double* width)
 {
-  if (int err = check_mesh_type(index, "regular")) return err;
+  if (int err = check_mesh_type<RegularMesh>(index)) return err;
   RegularMesh* m = dynamic_cast<RegularMesh*>(model::meshes[index].get());
 
   std::vector<std::size_t> shape = {static_cast<std::size_t>(n)};
@@ -1326,9 +1326,9 @@ openmc_regular_mesh_set_params(int32_t index, int n, const double* ll,
 //! Get the rectilinear mesh grid
 extern "C" int
 openmc_rectilinear_mesh_get_grid(int32_t index, double** grid_x, int* nx,
-                       double** grid_y, int * ny, double** grid_z, int* nz)
+                       double** grid_y, int* ny, double** grid_z, int* nz)
 {
-  if (int err = check_mesh_type(index, "rectilinear")) return err;
+  if (int err = check_mesh_type<RectilinearMesh>(index)) return err;
   RectilinearMesh* m = dynamic_cast<RectilinearMesh*>(model::meshes[index].get());
 
   if (m->lower_left_.dimension() == 0) {
@@ -1346,13 +1346,13 @@ openmc_rectilinear_mesh_get_grid(int32_t index, double** grid_x, int* nx,
   return 0;
 }
 
-//! Set the regular mesh parameters
+//! Set the rectilienar mesh parameters
 extern "C" int
 openmc_rectilinear_mesh_set_grid(int32_t index, const double* grid_x,
                        const int nx, const double* grid_y, const int ny,
                        const double* grid_z, const int nz)
 {
-  if (int err = check_mesh_type(index, "rectilinear")) return err;
+  if (int err = check_mesh_type<RectilinearMesh>(index)) return err;
   RectilinearMesh* m = dynamic_cast<RectilinearMesh*>(model::meshes[index].get());
 
   m->n_dimension_ = 3;
@@ -1368,30 +1368,8 @@ openmc_rectilinear_mesh_set_grid(int32_t index, const double* grid_x,
     m->grid_[2].push_back(grid_z[i]);
   }
 
-  m->shape_ = {static_cast<int>(m->grid_[0].size()) - 1,
-               static_cast<int>(m->grid_[1].size()) - 1,
-               static_cast<int>(m->grid_[2].size()) - 1};
-
-  for (const auto& g : m->grid_) {
-    if (g.size() < 2) {
-      set_errmsg("x-, y-, and z- grids for rectilinear meshes "
-        "must each have at least 2 points");
-      return OPENMC_E_INVALID_ARGUMENT;
-    }
-    for (int i = 1; i < g.size(); ++i) {
-      if (g[i] <= g[i-1]) {
-        std::cout << g[i] << " " << g[i-1] << "\n";
-        set_errmsg("Values in for x-, y-, and z- grids for "
-          "rectilinear meshes must be sorted and unique.");
-        return OPENMC_E_INVALID_ARGUMENT;
-      }
-    }
-  }
-
-  m->lower_left_ = {m->grid_[0].front(), m->grid_[1].front(), m->grid_[2].front()};
-  m->upper_right_ = {m->grid_[0].back(), m->grid_[1].back(), m->grid_[2].back()};
-
-  return 0;
+  int err = m->set_grid();
+  return err;
 }
 
 #ifdef DAGMC

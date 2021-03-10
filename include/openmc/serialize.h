@@ -21,6 +21,7 @@ public:
 
   DataBuffer() = default;
   explicit DataBuffer(size_t n);
+  ~DataBuffer();
 
   void reserve(size_t n);
   size_t size() const { return offset_; }
@@ -31,7 +32,7 @@ public:
   template<typename T> void add(const std::vector<T>& value);
   template<typename T, std::size_t N> void add(const xt::xtensor<T, N>& value);
 
-  std::unique_ptr<uint8_t[]> data_;
+  uint8_t* data_{nullptr};
   size_t offset_{0};
   Mode mode_{Mode::write};
 };
@@ -41,7 +42,7 @@ std::enable_if_t<std::is_scalar<std::decay_t<T>>::value>
 DataBuffer::add(T value)
 {
   if (mode_ == Mode::write) {
-    auto ptr = reinterpret_cast<T*>(data_.get() + offset_);
+    auto ptr = reinterpret_cast<T*>(data_ + offset_);
     *ptr = value;
   }
   offset_ += sizeof(T);
@@ -51,7 +52,7 @@ template<typename T> inline
 void DataBuffer::add(const std::vector<T>& value)
 {
   if (mode_ == Mode::write) {
-    std::memcpy(data_.get() + offset_, value.data(), sizeof(T)*value.size());
+    std::memcpy(data_ + offset_, value.data(), sizeof(T)*value.size());
   }
   offset_ += sizeof(T)*value.size();
 }
@@ -60,7 +61,7 @@ template<typename T, std::size_t N> inline
 void DataBuffer::add(const xt::xtensor<T, N>& value)
 {
   if (mode_ == Mode::write) {
-    std::memcpy(data_.get() + offset_, value.data(), sizeof(T)*value.size());
+    std::memcpy(data_ + offset_, value.data(), sizeof(T)*value.size());
   }
   offset_ += sizeof(T)*value.size();
 }

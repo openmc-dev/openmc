@@ -23,7 +23,7 @@ public:
 
   double operator()(double x) const;
 
-  const uint8_t* data() const { return buffer_.data_.get(); }
+  const uint8_t* data() const { return buffer_.data_; }
   FunctionType type() const { return type_; }
 private:
   // Data members

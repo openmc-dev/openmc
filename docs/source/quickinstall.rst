@@ -95,6 +95,38 @@ This will take several minutes to run depending on your internet download speed.
 .. _options: https://docs.docker.com/engine/reference/commandline/run/
 .. _mounting volumes: https://docs.docker.com/storage/volumes/
 
+----------------------------------
+Installing from Source using Spack
+----------------------------------
+
+`Spack`_ is a package management tool designed to support multiple versions and
+configurations of software on a wide variety of platforms and environments.
+Please following Spack's `setup guide`_ to configure the Spack system.
+
+To install the latest OpenMC with GNU 9.3.0 without MPI:
+
+.. code-block:: sh
+
+    spack install openmc~mpi %gcc@9.3.0
+
+To install the latest OpenMC with the GNU 9.3.0 compiler and OpenMPI:
+
+.. code-block:: sh
+
+    spack install openmc+mpi ^openmpi %gcc@9.3.0
+
+To install the Python API for OpenMC using GNU 9.3.0 compiler, OpenMPI and latest Python 3.7:
+
+.. code-block:: sh
+
+    spack install py-openmc+mpi ^openmpi ^python@3.7.0:3.7.99 %gcc@9.3.0
+
+Once installed, environment/lmod modules can be generated or Spack's `load` feature
+can be used to access the installed packages. 
+
+.. _Spack: https://spack.readthedocs.io/en/latest/
+.. _setup guide: https://spack.readthedocs.io/en/latest/getting_started.html
+
 ---------------------------------------
 Installing from Source on Ubuntu 15.04+
 ---------------------------------------

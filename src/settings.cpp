@@ -788,7 +788,8 @@ void read_settings_xml()
   }
 #ifdef __CUDACC__
   // Nearest temperature mode is turned off on the GPU to reduce
-  // thread divergence.
+  // needing to have a bra.uni instruction in the xs lookup kernel.
+  // Not sure if this is detrimental to performance at the moment.
   temperature_method = TemperatureMethod::INTERPOLATION;
 #endif
   if (check_for_node(root, "temperature_method")) {

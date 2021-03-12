@@ -99,7 +99,7 @@ This will take several minutes to run depending on your internet download speed.
 Installing from Source using Spack
 ----------------------------------
 
-`Spack`_ is a package management tool designed to support multiple versions and
+Spack_ is a package management tool designed to support multiple versions and
 configurations of software on a wide variety of platforms and environments.
 Please follow Spack's `setup guide`_ to configure the Spack system.
 

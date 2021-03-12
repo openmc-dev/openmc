@@ -80,6 +80,8 @@ if (!settings::libmesh_init && !libMesh::initialized())
   // pass command line args, empty MPI communicator, and number of threads
   settings::libmesh_init = std::make_unique<libMesh::LibMeshInit>(argc, argv, 0, n_threads);
 #endif
+
+  settings::libmesh_comm = &(settings::libmesh_init->comm());
 }
 
 #endif

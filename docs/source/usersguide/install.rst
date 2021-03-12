@@ -82,11 +82,11 @@ Installing from Source using Spack
 
 Spack_ is a package management tool designed to support multiple versions and
 configurations of software on a wide variety of platforms and environments.
-Please following Spack's `setup guide`_ to configure the Spack system.
+Please follow Spack's `setup guide`_ to configure the Spack system.
 
 The OpenMC Spack recipe has been configured with variants that match most options
 provided in the CMakeLists.txt file. To see a list of these variants and other
-information:
+information use:
 
 .. code-block:: sh
 
@@ -98,29 +98,18 @@ information:
     are equivalent to a CMake build type of `RelwithDebInfo`. In addition, MPI
     is OFF while OpenMP is ON.
 
-Assuming one had configured Spack with a GNU 9.3.0 compiler, to build OpenMC
-with optimization, OpenMP support and OpenMPI, use:
-
-.. code-block:: sh
-
-    spack install openmc+mpi+optimize+openmp ^openmpi %gcc@9.3.0
-
-Although the OpenMP variant is by default ON, one can explicitly write it in
-the Spack specification. If a user wanted OpenMC without any MPI or OpenMP support, 
-the variants can be deactivated:
-
-.. code-block:: sh
-
-    spack install openmc~mpi+optimize~openmp
-
-The Python API for OpenMC can be installed in a similar fashion. Looking at the
-information page presented with Spack:
+It is recommended to install OpenMC with the Python API. Information about this
+Spack recipe can be found with the following command:
 
 .. code-block:: sh
 
     spack info py-openmc
 
-The only variant for the Python API is MPI. To configure a serial version of the Python API against a serial version of OpenMC:
+.. note::
+
+   The only variant for the Python API is ``mpi``.
+
+The most basic installation of OpenMC can be accomplished by entering the following command:
 
 .. code-block::
 
@@ -130,32 +119,34 @@ The only variant for the Python API is MPI. To configure a serial version of the
 
     When installing any Spack package, dependencies are assumed to be at configured defaults unless otherwise specfied in the
     specification on the command line. In the above example, assuming the default options weren't changed in Spack's package
-    configuration, py-openmc will want to link against a non-optimized openmc. Even if you have a built an optimized openmc,
+    configuration, py-openmc will link against a non-optimized non-MPI openmc. Even if an optimized openmc was built separately,
     it will rebuild openmc with optimization OFF. Thus, if you are trying to link against dependencies that were configured
-    different than defaults, ^openmc[variants] will have to be present on command line.
+    different than defaults, ``^openmc[variants]`` will have to be present in the command.
 
-To build a parallel version of py-openmc that links against a parallel version of openmc that was used in the previous example:
+For a more performant build of OpenMC with optimization turned ON and MPI provided by OpenMPI, the following command can be
+used:
 
-.. code-block::
+.. code-block:: sh
 
     spack install py-openmc+mpi ^openmc+optimize ^openmpi
 
 .. note::
 
-    If py-openmc is given the +mpi variant, it is automatically passed to openmc so there is no need to specify it explicitly.
+   ``+mpi`` is automatically forwarded to OpenMC.
 
 .. tip::
 
-    When installing py-openmc it will use Spack's preferred Python. For example, assuming Spack's preferred Python
+    When installing py-openmc, it will use Spack's preferred Python. For example, assuming Spack's preferred Python
     is 3.8.7, to build py-openmc against the latest Python 3.7 instead, ``^python@3.7.0:3.7.99`` should be added to the
-    specification on the command line.
+    specification on the command line. Additionally, a compiler type and version can be specified at the end of the
+    command using ``%gcc@<version>``, ``%intel@<version>``, etc.
 
 A useful tool in Spack is to look at the dependency tree before installation. This can be observed using
 Spack's `spec` tool:
 
 .. code-block::
 
-    spack spec py-openmc+mpi ^openmc+optimize %gcc@9.3.0
+    spack spec py-openmc+mpi ^openmc+optimize
 
 Once installed, environment/lmod modules can be generated or Spack's `load` feature
 can be used to access the installed packages. 

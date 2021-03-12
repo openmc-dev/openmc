@@ -87,7 +87,9 @@ endif()
 find_package(HDF5 REQUIRED COMPONENTS C HL)
 if(HDF5_IS_PARALLEL)
   if(NOT MPI_ENABLED)
-    message(FATAL_ERROR "Parallel HDF5 must be used with MPI.")
+    message(FATAL_ERROR "Parallel HDF5 was detected, but the detected compiler,\
+     ${CMAKE_CXX_COMPILER}, does not support MPI. An MPI-capable compiler must \
+     be used with parallel HDF5.")
   endif()
   message(STATUS "Using parallel HDF5")
 endif()

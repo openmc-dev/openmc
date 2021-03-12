@@ -62,7 +62,7 @@ class Function1D(EqualityMixin, ABC):
     def __call__(self): pass
 
     @abstractmethod
-    def to_hdf5(self, group, name='xy'):
+    def to_hdf5(self, group, name='xy', fp_precision='f8'):
         """Write function to an HDF5 group
 
         Parameters
@@ -71,6 +71,8 @@ class Function1D(EqualityMixin, ABC):
             HDF5 group to write to
         name : str
             Name of the dataset to create
+        fp_precision : {'f4', 'f8'}
+            Whether to use 4 or 8 byte for floating point data
 
         """
         pass
@@ -351,7 +353,7 @@ class Tabulated1D(Function1D):
 
         return np.concatenate(([0.], np.cumsum(partial_sum)))
 
-    def to_hdf5(self, group, name='xy'):
+    def to_hdf5(self, group, name='xy', fp_precision='f8'):
         """Write tabulated function to an HDF5 group
 
         Parameters
@@ -360,10 +362,12 @@ class Tabulated1D(Function1D):
             HDF5 group to write to
         name : str
             Name of the dataset to create
+        fp_precision : {'f4', 'f8'}
+            Whether to use 4 or 8 byte for floating point data
 
         """
         dataset = group.create_dataset(name, data=np.vstack(
-            [self.x, self.y]))
+            [self.x, self.y]), dtype=fp_precision)
         dataset.attrs['type'] = np.string_(type(self).__name__)
         dataset.attrs['breakpoints'] = self.breakpoints
         dataset.attrs['interpolation'] = self.interpolation
@@ -448,7 +452,7 @@ class Polynomial(np.polynomial.Polynomial, Function1D):
         Polynomial coefficients in order of increasing degree
 
     """
-    def to_hdf5(self, group, name='xy'):
+    def to_hdf5(self, group, name='xy', fp_precision='f8'):
         """Write polynomial function to an HDF5 group
 
         Parameters
@@ -457,9 +461,11 @@ class Polynomial(np.polynomial.Polynomial, Function1D):
             HDF5 group to write to
         name : str
             Name of the dataset to create
+        fp_precision : {'f4', 'f8'}
+            Whether to use 4 or 8 byte for floating point data
 
         """
-        dataset = group.create_dataset(name, data=self.coef)
+        dataset = group.create_dataset(name, data=self.coef, dtype=fp_precision)
         dataset.attrs['type'] = np.string_(type(self).__name__)
 
     @classmethod

@@ -120,7 +120,7 @@ class KalbachMann(AngleEnergy):
         cv.check_type('Kalbach-Mann slope', slope, Iterable, Tabulated1D)
         self._slope = slope
 
-    def to_hdf5(self, group):
+    def to_hdf5(self, group, fp_precision='f8'):
         """Write distribution to an HDF5 group
 
         Parameters
@@ -131,7 +131,7 @@ class KalbachMann(AngleEnergy):
         """
         group.attrs['type'] = np.string_('kalbach-mann')
 
-        dset = group.create_dataset('energy', data=self.energy)
+        dset = group.create_dataset('energy', data=self.energy, dtype=fp_precision)
         dset.attrs['interpolation'] = np.vstack((self.breakpoints,
                                                  self.interpolation))
 
@@ -177,7 +177,7 @@ class KalbachMann(AngleEnergy):
             j += n
 
         # Create dataset for distributions
-        dset = group.create_dataset('distribution', data=distribution)
+        dset = group.create_dataset('distribution', data=distribution, dtype=fp_precision)
 
         # Write interpolation as attribute
         dset.attrs['offsets'] = offsets

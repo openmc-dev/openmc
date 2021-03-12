@@ -104,7 +104,7 @@ class CorrelatedAngleEnergy(AngleEnergy):
                                mu, Univariate, 2, 2)
         self._mu = mu
 
-    def to_hdf5(self, group):
+    def to_hdf5(self, group, fp_precision='f8'):
         """Write distribution to an HDF5 group
 
         Parameters
@@ -115,7 +115,7 @@ class CorrelatedAngleEnergy(AngleEnergy):
         """
         group.attrs['type'] = np.string_(self._name)
 
-        dset = group.create_dataset('energy', data=self.energy)
+        dset = group.create_dataset('energy', data=self.energy, dtype=fp_precision)
         dset.attrs['interpolation'] = np.vstack((self.breakpoints,
                                                  self.interpolation))
 
@@ -188,7 +188,7 @@ class CorrelatedAngleEnergy(AngleEnergy):
             offset_e += n
 
         # Create dataset for outgoing energy distributions
-        dset = group.create_dataset('energy_out', data=eout)
+        dset = group.create_dataset('energy_out', data=eout, dtype=fp_precision)
 
         # Write interpolation on outgoing energy as attribute
         dset.attrs['offsets'] = offsets
@@ -196,7 +196,7 @@ class CorrelatedAngleEnergy(AngleEnergy):
         dset.attrs['n_discrete_lines'] = n_discrete_lines
 
         # Create dataset for outgoing angle distributions
-        group.create_dataset('mu', data=mu)
+        group.create_dataset('mu', data=mu, dtype=fp_precision)
 
     @classmethod
     def from_hdf5(cls, group):

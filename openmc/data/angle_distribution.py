@@ -58,7 +58,7 @@ class AngleDistribution(EqualityMixin):
                       Iterable, Univariate)
         self._mu = mu
 
-    def to_hdf5(self, group):
+    def to_hdf5(self, group, fp_precision='f8'):
         """Write angle distribution to an HDF5 group
 
         Parameters
@@ -68,7 +68,7 @@ class AngleDistribution(EqualityMixin):
 
         """
 
-        dset = group.create_dataset('energy', data=self.energy)
+        dset = group.create_dataset('energy', data=self.energy, dtype=fp_precision)
 
         # Make sure all data is tabular
         mu_tabular = [mu_i if isinstance(mu_i, Tabular) else
@@ -94,7 +94,7 @@ class AngleDistribution(EqualityMixin):
             j += n
 
         # Create dataset for distributions
-        dset = group.create_dataset('mu', data=pairs)
+        dset = group.create_dataset('mu', data=pairs, dtype=fp_precision)
 
         # Write interpolation as attribute
         dset.attrs['offsets'] = offsets

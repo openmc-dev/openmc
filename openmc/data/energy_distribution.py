@@ -19,7 +19,7 @@ class EnergyDistribution(EqualityMixin, ABC):
         pass
 
     @abstractmethod
-    def to_hdf5(self, group):
+    def to_hdf5(self, group, fp_precision='f8'):
         pass
 
     @staticmethod
@@ -118,7 +118,7 @@ class ArbitraryTabulated(EnergyDistribution):
         self.energy = energy
         self.pdf = pdf
 
-    def to_hdf5(self, group):
+    def to_hdf5(self, group, fp_precision='f8'):
         raise NotImplementedError
 
     @classmethod
@@ -187,7 +187,7 @@ class GeneralEvaporation(EnergyDistribution):
         self.g = g
         self.u = u
 
-    def to_hdf5(self, group):
+    def to_hdf5(self, group, fp_precision='f8'):
         raise NotImplementedError
 
     @classmethod
@@ -267,7 +267,7 @@ class MaxwellEnergy(EnergyDistribution):
         cv.check_type('Maxwell restriction energy', u, Real)
         self._u = u
 
-    def to_hdf5(self, group):
+    def to_hdf5(self, group, fp_precision='f8'):
         """Write distribution to an HDF5 group
 
         Parameters
@@ -279,7 +279,7 @@ class MaxwellEnergy(EnergyDistribution):
 
         group.attrs['type'] = np.string_('maxwell')
         group.attrs['u'] = self.u
-        self.theta.to_hdf5(group, 'theta')
+        self.theta.to_hdf5(group, 'theta', fp_precision=fp_precision)
 
     @classmethod
     def from_hdf5(cls, group):
@@ -400,7 +400,7 @@ class Evaporation(EnergyDistribution):
         cv.check_type('Evaporation restriction energy', u, Real)
         self._u = u
 
-    def to_hdf5(self, group):
+    def to_hdf5(self, group, fp_precision='f8'):
         """Write distribution to an HDF5 group
 
         Parameters
@@ -412,7 +412,7 @@ class Evaporation(EnergyDistribution):
 
         group.attrs['type'] = np.string_('evaporation')
         group.attrs['u'] = self.u
-        self.theta.to_hdf5(group, 'theta')
+        self.theta.to_hdf5(group, 'theta', fp_precision=fp_precision)
 
     @classmethod
     def from_hdf5(cls, group):
@@ -546,7 +546,7 @@ class WattEnergy(EnergyDistribution):
         cv.check_type('Watt restriction energy', u, Real)
         self._u = u
 
-    def to_hdf5(self, group):
+    def to_hdf5(self, group, fp_precision='f8'):
         """Write distribution to an HDF5 group
 
         Parameters
@@ -558,8 +558,8 @@ class WattEnergy(EnergyDistribution):
 
         group.attrs['type'] = np.string_('watt')
         group.attrs['u'] = self.u
-        self.a.to_hdf5(group, 'a')
-        self.b.to_hdf5(group, 'b')
+        self.a.to_hdf5(group, 'a', fp_precision=fp_precision)
+        self.b.to_hdf5(group, 'b', fp_precision=fp_precision)
 
     @classmethod
     def from_hdf5(cls, group):
@@ -718,7 +718,7 @@ class MadlandNix(EnergyDistribution):
         cv.check_type('Madland-Nix maximum temperature', tm, Tabulated1D)
         self._tm = tm
 
-    def to_hdf5(self, group):
+    def to_hdf5(self, group, fp_precision='f8'):
         """Write distribution to an HDF5 group
 
         Parameters
@@ -731,7 +731,7 @@ class MadlandNix(EnergyDistribution):
         group.attrs['type'] = np.string_('madland-nix')
         group.attrs['efl'] = self.efl
         group.attrs['efh'] = self.efh
-        self.tm.to_hdf5(group)
+        self.tm.to_hdf5(group, fp_precision=fp_precision)
 
     @classmethod
     def from_hdf5(cls, group):
@@ -837,7 +837,7 @@ class DiscretePhoton(EnergyDistribution):
         cv.check_type('atomic weight ratio', atomic_weight_ratio, Real)
         self._atomic_weight_ratio = atomic_weight_ratio
 
-    def to_hdf5(self, group):
+    def to_hdf5(self, group, fp_precision='f8'):
         """Write distribution to an HDF5 group
 
         Parameters
@@ -936,7 +936,7 @@ class LevelInelastic(EnergyDistribution):
         cv.check_type('level inelastic mass ratio', mass_ratio, Real)
         self._mass_ratio = mass_ratio
 
-    def to_hdf5(self, group):
+    def to_hdf5(self, group, fp_precision='f8'):
         """Write distribution to an HDF5 group
 
         Parameters
@@ -1065,7 +1065,7 @@ class ContinuousTabular(EnergyDistribution):
                       Iterable, Univariate)
         self._energy_out = energy_out
 
-    def to_hdf5(self, group):
+    def to_hdf5(self, group, fp_precision='f8'):
         """Write distribution to an HDF5 group
 
         Parameters
@@ -1077,7 +1077,7 @@ class ContinuousTabular(EnergyDistribution):
 
         group.attrs['type'] = np.string_('continuous')
 
-        dset = group.create_dataset('energy', data=self.energy)
+        dset = group.create_dataset('energy', data=self.energy, dtype=fp_precision)
         dset.attrs['interpolation'] = np.vstack((self.breakpoints,
                                                  self.interpolation))
 
@@ -1119,7 +1119,7 @@ class ContinuousTabular(EnergyDistribution):
             j += n
 
         # Create dataset for distributions
-        dset = group.create_dataset('distribution', data=pairs)
+        dset = group.create_dataset('distribution', data=pairs, dtype=fp_precision)
 
         # Write interpolation as attribute
         dset.attrs['offsets'] = offsets

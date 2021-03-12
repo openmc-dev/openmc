@@ -129,7 +129,7 @@ class ProbabilityTables(EqualityMixin):
         cv.check_type('probability tables', table, np.ndarray)
         self._table = table
 
-    def to_hdf5(self, group):
+    def to_hdf5(self, group, fp_precision='f8'):
         """Write probability tables to an HDF5 group
 
         Parameters
@@ -143,8 +143,8 @@ class ProbabilityTables(EqualityMixin):
         group.attrs['absorption'] = self.absorption_flag
         group.attrs['multiply_smooth'] = int(self.multiply_smooth)
 
-        group.create_dataset('energy', data=self.energy)
-        group.create_dataset('table', data=self.table)
+        group.create_dataset('energy', data=self.energy, dtype=fp_precision)
+        group.create_dataset('table', data=self.table, dtype=fp_precision)
 
     @classmethod
     def from_hdf5(cls, group):

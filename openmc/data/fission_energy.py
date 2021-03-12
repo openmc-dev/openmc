@@ -355,7 +355,7 @@ class FissionEnergyRelease(EqualityMixin):
         return cls(fragments, prompt_neutrons, delayed_neutrons, prompt_photons,
                    delayed_photons, betas, neutrinos)
 
-    def to_hdf5(self, group):
+    def to_hdf5(self, group, fp_precision='f8'):
         """Write energy release data to an HDF5 group
 
         Parameters
@@ -365,12 +365,12 @@ class FissionEnergyRelease(EqualityMixin):
 
         """
 
-        self.fragments.to_hdf5(group, 'fragments')
-        self.prompt_neutrons.to_hdf5(group, 'prompt_neutrons')
-        self.delayed_neutrons.to_hdf5(group, 'delayed_neutrons')
-        self.prompt_photons.to_hdf5(group, 'prompt_photons')
-        self.delayed_photons.to_hdf5(group, 'delayed_photons')
-        self.betas.to_hdf5(group, 'betas')
-        self.neutrinos.to_hdf5(group, 'neutrinos')
-        self.q_prompt.to_hdf5(group, 'q_prompt')
-        self.q_recoverable.to_hdf5(group, 'q_recoverable')
+        self.fragments.to_hdf5(group, 'fragments', fp_precision=fp_precision)
+        self.prompt_neutrons.to_hdf5(group, 'prompt_neutrons', fp_precision=fp_precision)
+        self.delayed_neutrons.to_hdf5(group, 'delayed_neutrons', fp_precision=fp_precision)
+        self.prompt_photons.to_hdf5(group, 'prompt_photons', fp_precision=fp_precision)
+        self.delayed_photons.to_hdf5(group, 'delayed_photons', fp_precision=fp_precision)
+        self.betas.to_hdf5(group, 'betas', fp_precision=fp_precision)
+        self.neutrinos.to_hdf5(group, 'neutrinos', fp_precision=fp_precision)
+        self.q_prompt.to_hdf5(group, 'q_prompt', fp_precision=fp_precision)
+        self.q_recoverable.to_hdf5(group, 'q_recoverable', fp_precision=fp_precision)

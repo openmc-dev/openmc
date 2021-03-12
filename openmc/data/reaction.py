@@ -882,13 +882,15 @@ class Reaction(EqualityMixin):
             cv.check_type('reaction cross section', value, Callable)
         self._xs = xs
 
-    def to_hdf5(self, group):
+    def to_hdf5(self, group, fp_precision='f8'):
         """Write reaction to an HDF5 group
 
         Parameters
         ----------
         group : h5py.Group
             HDF5 group to write to
+        fp_precision : {'f4', 'f8'}
+            Whether to use 4 or 8 byte values for floating point
 
         """
 
@@ -903,12 +905,12 @@ class Reaction(EqualityMixin):
         for T in self.xs:
             Tgroup = group.create_group(T)
             if self.xs[T] is not None:
-                dset = Tgroup.create_dataset('xs', data=self.xs[T].y)
+                dset = Tgroup.create_dataset('xs', data=self.xs[T].y, dtype=fp_precision)
                 threshold_idx = getattr(self.xs[T], '_threshold_idx', 0)
                 dset.attrs['threshold_idx'] = threshold_idx
         for i, p in enumerate(self.products):
             pgroup = group.create_group('product_{}'.format(i))
-            p.to_hdf5(pgroup)
+            p.to_hdf5(pgroup, fp_precision=fp_precision)
 
     @classmethod
     def from_hdf5(cls, group, energy):

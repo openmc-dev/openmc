@@ -198,7 +198,7 @@ class CoherentElastic(Function1D):
                       Iterable, Real)
         self._factors = np.asarray(factors)
 
-    def to_hdf5(self, group, name):
+    def to_hdf5(self, group, name, fp_precision='f8'):
         """Write coherent elastic scattering to an HDF5 group
 
         Parameters
@@ -207,10 +207,12 @@ class CoherentElastic(Function1D):
             HDF5 group to write to
         name : str
             Name of the dataset to create
+        fp_precision : {'f4', 'f8'}
+            Whether to use 4 or 8 byte for floating point data
 
         """
         dataset = group.create_dataset(name, data=np.vstack(
-            [self.bragg_edges, self.factors]))
+            [self.bragg_edges, self.factors]), dtype=fp_precision)
         dataset.attrs['type'] = np.string_(type(self).__name__)
 
     @classmethod
@@ -271,7 +273,7 @@ class IncoherentElastic(Function1D):
         W = self.debye_waller
         return self.bound_xs / 2.0 * (1 - np.exp(-4*E*W)) / (2*E*W)
 
-    def to_hdf5(self, group, name):
+    def to_hdf5(self, group, name, fp_precision='f8'):
         """Write incoherent elastic scattering to an HDF5 group
 
         Parameters
@@ -280,10 +282,12 @@ class IncoherentElastic(Function1D):
             HDF5 group to write to
         name : str
             Name of the dataset to create
+        fp_precision : {'f4', 'f8'}
+            Whether to use 4 or 8 byte for floating point data
 
         """
         data = np.array([self.bound_xs, self.debye_waller])
-        dataset = group.create_dataset(name, data=data)
+        dataset = group.create_dataset(name, data=data, dtype=fp_precision)
         dataset.attrs['type'] = np.string_(type(self).__name__)
 
     @classmethod

@@ -7,7 +7,7 @@ from openmc.mixin import EqualityMixin
 class AngleEnergy(EqualityMixin, ABC):
     """Distribution in angle and energy of a secondary particle."""
     @abstractmethod
-    def to_hdf5(self, group):
+    def to_hdf5(self, group, fp_precision='f8'):
         pass
 
     @staticmethod

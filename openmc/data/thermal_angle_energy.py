@@ -33,7 +33,7 @@ class CoherentElasticAE(AngleEnergy):
     def __init__(self, coherent_xs):
         self.coherent_xs = coherent_xs
 
-    def to_hdf5(self, group):
+    def to_hdf5(self, group, fp_precision='f8'):
         """Write coherent elastic distribution to an HDF5 group
 
         Parameters
@@ -74,7 +74,7 @@ class IncoherentElasticAE(AngleEnergy):
     def __init__(self, debye_waller):
         self.debye_waller = debye_waller
 
-    def to_hdf5(self, group):
+    def to_hdf5(self, group, fp_precision='f8'):
         """Write incoherent elastic distribution to an HDF5 group
 
         Parameters
@@ -84,7 +84,7 @@ class IncoherentElasticAE(AngleEnergy):
 
         """
         group.attrs['type'] = np.string_('incoherent_elastic')
-        group.create_dataset('debye_waller', data=self.debye_waller)
+        group.create_dataset('debye_waller', data=self.debye_waller, dtype=fp_precision)
 
     @classmethod
     def from_hdf5(cls, group):
@@ -116,7 +116,7 @@ class IncoherentElasticAEDiscrete(AngleEnergy):
     def __init__(self, mu_out):
         self.mu_out = mu_out
 
-    def to_hdf5(self, group):
+    def to_hdf5(self, group, fp_precision='f8'):
         """Write discrete incoherent elastic distribution to an HDF5 group
 
         Parameters
@@ -126,7 +126,7 @@ class IncoherentElasticAEDiscrete(AngleEnergy):
 
         """
         group.attrs['type'] = np.string_('incoherent_elastic_discrete')
-        group.create_dataset('mu_out', data=self.mu_out)
+        group.create_dataset('mu_out', data=self.mu_out, dtype=fp_precision)
 
     @classmethod
     def from_hdf5(cls, group):
@@ -173,7 +173,7 @@ class IncoherentInelasticAEDiscrete(AngleEnergy):
         self.mu_out = mu_out
         self.skewed = skewed
 
-    def to_hdf5(self, group):
+    def to_hdf5(self, group, fp_precision='f8'):
         """Write discrete incoherent inelastic distribution to an HDF5 group
 
         Parameters
@@ -183,9 +183,9 @@ class IncoherentInelasticAEDiscrete(AngleEnergy):
 
         """
         group.attrs['type'] = np.string_('incoherent_inelastic_discrete')
-        group.create_dataset('energy_out', data=self.energy_out)
-        group.create_dataset('mu_out', data=self.mu_out)
-        group.create_dataset('skewed', data=self.skewed)
+        group.create_dataset('energy_out', data=self.energy_out, dtype=fp_precision)
+        group.create_dataset('mu_out', data=self.mu_out, dtype=fp_precision)
+        group.create_dataset('skewed', data=self.skewed, dtype=fp_precision)
 
     @classmethod
     def from_hdf5(cls, group):

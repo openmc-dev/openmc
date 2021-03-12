@@ -115,13 +115,15 @@ class Product(EqualityMixin):
         cv.check_type('product yield', yield_, Function1D)
         self._yield = yield_
 
-    def to_hdf5(self, group):
+    def to_hdf5(self, group, fp_precision='f8'):
         """Write product to an HDF5 group
 
         Parameters
         ----------
         group : h5py.Group
             HDF5 group to write to
+        fp_precision : {'f4', 'f8'}
+            Whether to use 4 or 8 byte values for floating point
 
         """
         group.attrs['particle'] = np.string_(self.particle)
@@ -130,15 +132,15 @@ class Product(EqualityMixin):
             group.attrs['decay_rate'] = self.decay_rate
 
         # Write yield
-        self.yield_.to_hdf5(group, 'yield')
+        self.yield_.to_hdf5(group, 'yield', fp_precision=fp_precision)
 
         # Write applicability/distribution
         group.attrs['n_distribution'] = len(self.distribution)
         for i, d in enumerate(self.distribution):
             dgroup = group.create_group('distribution_{}'.format(i))
             if self.applicability:
-                self.applicability[i].to_hdf5(dgroup, 'applicability')
-            d.to_hdf5(dgroup)
+                self.applicability[i].to_hdf5(dgroup, 'applicability', fp_precision=fp_precision)
+            d.to_hdf5(dgroup, fp_precision=fp_precision)
 
     @classmethod
     def from_hdf5(cls, group):

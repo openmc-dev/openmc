@@ -404,7 +404,7 @@ class IncidentNeutron(EqualityMixin):
         else:
             return [mt] if mt in self else []
 
-    def export_to_hdf5(self, path, mode='a', libver='earliest'):
+    def export_to_hdf5(self, path, mode='a', libver='earliest', fp_precision='f8'):
         """Export incident neutron data to an HDF5 file.
 
         Parameters
@@ -417,7 +417,11 @@ class IncidentNeutron(EqualityMixin):
         libver : {'earliest', 'latest'}
             Compatibility mode for the HDF5 file. 'latest' will produce files
             that are less backwards compatible but have performance benefits.
-
+        fp_precision : {'f4', 'f8'}
+            Choice of either 4 or 8 byte floating point number for output.
+            Normally, 8 byte will be used. Data may require additional checking
+            if using 4 byte mode.
+            
         """
         # If data come from ENDF, don't allow exporting to HDF5
         if hasattr(self, '_evaluation'):
@@ -437,16 +441,16 @@ class IncidentNeutron(EqualityMixin):
             g.attrs['atomic_weight_ratio'] = self.atomic_weight_ratio
             ktg = g.create_group('kTs')
             for i, temperature in enumerate(self.temperatures):
-                ktg.create_dataset(temperature, data=self.kTs[i])
+                ktg.create_dataset(temperature, data=self.kTs[i], dtype=fp_precision)
 
             # Write energy grid
             eg = g.create_group('energy')
             for temperature in self.temperatures:
-                eg.create_dataset(temperature, data=self.energy[temperature])
+                eg.create_dataset(temperature, data=self.energy[temperature], dtype=fp_precision)
 
             # Write 0K energy grid if needed
             if '0K' in self.energy and '0K' not in eg:
-                eg.create_dataset('0K', data=self.energy['0K'])
+                eg.create_dataset('0K', data=self.energy['0K'], dtype=fp_precision)
 
             # Write reaction data
             rxs_group = g.create_group('reactions')
@@ -463,24 +467,24 @@ class IncidentNeutron(EqualityMixin):
                         continue
 
                 rx_group = rxs_group.create_group('reaction_{:03}'.format(rx.mt))
-                rx.to_hdf5(rx_group)
+                rx.to_hdf5(rx_group, fp_precision=fp_precision)
 
                 # Write total nu data if available
                 if len(rx.derived_products) > 0 and 'total_nu' not in g:
                     tgroup = g.create_group('total_nu')
-                    rx.derived_products[0].to_hdf5(tgroup)
+                    rx.derived_products[0].to_hdf5(tgroup, fp_precision=fp_precision)
 
             # Write unresolved resonance probability tables
             if self.urr:
                 urr_group = g.create_group('urr')
                 for temperature, urr in self.urr.items():
                     tgroup = urr_group.create_group(temperature)
-                    urr.to_hdf5(tgroup)
+                    urr.to_hdf5(tgroup, fp_precision=fp_precision)
 
             # Write fission energy release data
             if self.fission_energy is not None:
                 fer_group = g.create_group('fission_energy_release')
-                self.fission_energy.to_hdf5(fer_group)
+                self.fission_energy.to_hdf5(fer_group, fp_precision=fp_precision)
 
     @classmethod
     def from_hdf5(cls, group_or_filename):

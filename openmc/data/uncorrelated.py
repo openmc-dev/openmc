@@ -54,7 +54,7 @@ class UncorrelatedAngleEnergy(AngleEnergy):
                       EnergyDistribution)
         self._energy = energy
 
-    def to_hdf5(self, group):
+    def to_hdf5(self, group, fp_precision='f8'):
         """Write distribution to an HDF5 group
 
         Parameters
@@ -66,11 +66,11 @@ class UncorrelatedAngleEnergy(AngleEnergy):
         group.attrs['type'] = np.string_('uncorrelated')
         if self.angle is not None:
             angle_group = group.create_group('angle')
-            self.angle.to_hdf5(angle_group)
+            self.angle.to_hdf5(angle_group, fp_precision=fp_precision)
 
         if self.energy is not None:
             energy_group = group.create_group('energy')
-            self.energy.to_hdf5(energy_group)
+            self.energy.to_hdf5(energy_group, fp_precision=fp_precision)
 
     @classmethod
     def from_hdf5(cls, group):

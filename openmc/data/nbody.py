@@ -82,7 +82,7 @@ class NBodyPhaseSpace(AngleEnergy):
         cv.check_type(name, q_value, Real)
         self._q_value = q_value
 
-    def to_hdf5(self, group):
+    def to_hdf5(self, group, fp_precision='f8'):
         """Write distribution to an HDF5 group
 
         Parameters

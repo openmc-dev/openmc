@@ -55,6 +55,7 @@ extern std::vector<std::unique_ptr<Mesh>> meshes;
 namespace settings {
 // used when creating new libMesh::Mesh instances
 extern std::unique_ptr<libMesh::LibMeshInit> libmesh_init;
+extern const libMesh::Parallel::Communicator* libmesh_comm;
 }
 #endif
 

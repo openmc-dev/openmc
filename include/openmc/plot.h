@@ -182,7 +182,7 @@ T PlotBase::get_map() const {
         p.r()[in_i] = xyz[in_i] + in_pixel * x;
         p.n_coord_ = 1;
         // local variables
-        bool found_cell = find_cell(p, 0);
+        bool found_cell = exhaustive_find_cell(p);
         j = p.n_coord_ - 1;
         if (level >= 0) { j = level; }
         if (found_cell) {

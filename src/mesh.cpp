@@ -60,6 +60,7 @@ std::vector<std::unique_ptr<Mesh>> meshes;
 #ifdef LIBMESH
 namespace settings {
 std::unique_ptr<libMesh::LibMeshInit> libmesh_init;
+const libMesh::Parallel::Communicator* libmesh_comm;
 }
 #endif
 
@@ -2150,11 +2151,11 @@ LibMesh::LibMesh(const std::string& filename)
 
 void LibMesh::initialize()
 {
-  if (!settings::libmesh_init) {
-    fatal_error("Attempting to use an unstructured mesh without a libMesh::LibMeshInit object.");
+  if (!settings::libmesh_comm) {
+    fatal_error("Attempting to use an unstructured mesh without a libMesh communicator.");
   }
 
-  m_ = std::make_unique<libMesh::Mesh>(settings::libmesh_init->comm(), n_dimension_);
+  m_ = std::make_unique<libMesh::Mesh>(*settings::libmesh_comm, n_dimension_);
   m_->read(filename_);
   m_->prepare_for_use();
 

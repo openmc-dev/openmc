@@ -140,7 +140,7 @@ All OpenMC source code is hosted on `GitHub
 <https://github.com/openmc-dev/openmc>`_. If you have `git
 <https://git-scm.com>`_, the `gcc <https://gcc.gnu.org/>`_ compiler suite,
 `CMake <http://www.cmake.org>`_, and `HDF5 <https://www.hdfgroup.org/HDF5/>`_
-installed, you can download and install OpenMC be entering the following
+installed, you can download and install OpenMC by entering the following
 commands in a terminal:
 
 .. code-block:: sh

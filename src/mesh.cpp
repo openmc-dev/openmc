@@ -60,7 +60,7 @@ std::vector<std::unique_ptr<Mesh>> meshes;
 #ifdef LIBMESH
 namespace settings {
 std::unique_ptr<libMesh::LibMeshInit> libmesh_init;
-const libMesh::Parallel::Communicator* libmesh_comm;
+const libMesh::Parallel::Communicator* libmesh_comm {nullptr};
 }
 #endif
 
@@ -2154,6 +2154,9 @@ void LibMesh::initialize()
   if (!settings::libmesh_comm) {
     fatal_error("Attempting to use an unstructured mesh without a libMesh communicator.");
   }
+
+  // assuming that unstructured meshes used in OpenMC are 3D
+  n_dimension_ = 3;
 
   m_ = std::make_unique<libMesh::Mesh>(*settings::libmesh_comm, n_dimension_);
   m_->read(filename_);

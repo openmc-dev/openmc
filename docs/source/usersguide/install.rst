@@ -236,7 +236,7 @@ To build a parallel version of py-openmc that links against a parallel version o
 
 .. note::
 
-    If py-openmc is given the +mpi variant, it is automatically passed to openmc, no need to specify explicitly.
+    If py-openmc is given the +mpi variant, it is automatically passed to openmc so there is no need to specify it explicitly.
 
 .. tip::
 

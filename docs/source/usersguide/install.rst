@@ -74,6 +74,8 @@ are no longer supported.
 .. _Personal Package Archive: https://launchpad.net/~paulromano/+archive/staging
 .. _APT package manager: https://help.ubuntu.com/community/AptGet/Howto
 
+.. _install-spack:
+
 ----------------------------------
 Installing from Source using Spack
 ----------------------------------

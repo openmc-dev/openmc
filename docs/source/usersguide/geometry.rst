@@ -433,30 +433,65 @@ will handle creating the unverse::
 Using CAD-based Geometry
 --------------------------
 
-OpenMC relies on the Direct Accelerated Geometry Monte Carlo toolkit (`DAGMC
-<https://svalinn.github.io/DAGMC/>`_) to represent CAD-based geometry in a
-surface mesh format. A DAGMC run can be enabled in OpenMC by setting the
-``dagmc`` property to ``True`` in the model Settings either via the Python
-:class:`openmc.settings` Python class::
+Defining Geometry
+-----------------
 
-  settings = openmc.Settings()
-  settings.dagmc = True
+OpenMC relies on the `Direct Accelerated Geometry Monte Carlo`_ (DAGMC)
+to represent CAD-based geometry in a surface mesh format. DAGMC geometries are
+applied as universes in the OpenMC geometry file. A geometry represented
+entirely by a DAGMC geometry will contain only the DAGMC universe. Using a
+:class:`openmc.DAGMCUniverse` looks like the following::
 
-or in the :ref:`settings.xml <io_settings>` file::
+   dag_univ = openmc.DAGMCUniverse(filename='dagmc.h5m')
+   geometry = openmc.Geometry(root=dag_univ)
+   geometry.export_to_xml()
 
-  <dagmc>true</dagmc>
+The resulting ``geometry.xml`` file will be:
 
-With ``dagmc`` set to true, OpenMC will load the DAGMC model (from a local file
-named ``dagmc.h5m``) when initializing a simulation. If a `geometry.xml
-<../io_formats/geometry.html>`_ is present as well, it will be ignored.
+.. code-block:: xml
 
-  **Note:** DAGMC geometries used in OpenMC are currently required to be clean,
-  meaning that all surfaces have been `imprinted and merged
-  <https://svalinn.github.io/DAGMC/usersguide/trelis_workflow.html>`_
-  successfully and that the model is `watertight
-  <https://svalinn.github.io/DAGMC/usersguide/tools.html#make-watertight>`_. Future
-  implementations of DAGMC geometry will support small volume overlaps and
-  un-merged surfaces.
+   <?xml version='1.0' encoding='utf-8'?>
+   <geometry>
+     <dagmc auto_ids="false" filename="dagmc.h5m" id="1" name="" />
+   </geometry>
+
+DAGMC universes can also be used to fill CSG cells or lattice cells in a geometry::
+
+  cell.fill = dagmc_univ
+
+It is important in these cases to understand the DAGMC model's position
+with respect to the CSG geometry. DAGMC geometries can be plotted with
+OpenMC to verify that the model matches one's expectations.
+
+**Note:** DAGMC geometries used in OpenMC are currently required to be clean,
+meaning that all surfaces have been `imprinted and merged
+<https://svalinn.github.io/DAGMC/usersguide/trelis_workflow.html>`_
+successfully and that the model is `watertight
+<https://svalinn.github.io/DAGMC/usersguide/tools.html#make-watertight>`_. Future
+implementations of DAGMC geometry will support small volume overlaps and
+un-merged surfaces.
+
+
+Cell and Material IDs
+---------------------
+
+By default, DAGMC applies cell IDs defined by the CAD engine that the model
+originated in. If these IDs overlap with ID's in the CSG cell ID space, this
+will result in an error. However, the ``auto_ids`` property of a DAGMC universe
+can be set to set DAGMC cell IDs by appending to the existing CSG cell ID space
+in the OpenMC model.
+
+Similar options exist for the material IDs of DAGMC models. If DAGMC material
+assignments are based on natively defined OpenMC materials, no further work is
+required. If DAGMC materials are assigned using the `University of Wisconsin
+Unified Workflow`_ (UWUW), however, material IDs in the UWUW material library
+may overlap with those used in the CSG geometry. In this case, overlaps in the
+UWUW and OpenMC material ID space will cause an error. To automatically resolved
+these ID overlaps, ``auto_ids`` can be set to ``True`` to append the UWUW
+material IDs to the OpenMC material ID space.
+
+.. _Direct Accelerated Geometry Monte Carlo: https://svalinn.github.io/DAGMC/
+.. _University of Wisconsin Unified Workflow: https://svalinn.github.io/DAGMC/usersguide/uw2.html
 
 -------------------------
 Calculating Atoms Content

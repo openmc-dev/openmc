@@ -135,7 +135,8 @@ std::vector<VolumeCalculation::Result> VolumeCalculation::execute() const
         p.u() = {0.5, 0.5, 0.5};
 
         // If this location is not in the geometry at all, move on to next block
-        if (!find_cell(p, false)) continue;
+        if (!exhaustive_find_cell(p))
+          continue;
 
         if (domain_type_ == TallyDomain::MATERIAL) {
           if (p.material_ != MATERIAL_VOID) {

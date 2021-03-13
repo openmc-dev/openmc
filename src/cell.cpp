@@ -22,7 +22,6 @@
 #include "openmc/material.h"
 #include "openmc/nuclide.h"
 #include "openmc/settings.h"
-#include "openmc/surface.h"
 #include "openmc/xml_interface.h"
 
 namespace openmc {

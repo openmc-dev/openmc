@@ -10,7 +10,6 @@
 #include <gsl/gsl>
 #include "hdf5.h"
 #include "pugixml.hpp"
-#include "dagmc.h"
 
 #include "openmc/constants.h"
 #include "openmc/memory.h" // for unique_ptr
@@ -76,29 +75,6 @@ public:
   GeometryType type_ = GeometryType::CSG;
   unique_ptr<UniversePartitioner> partitioner_;
 };
-
-#ifdef DAGMC
-
-class DAGUniverse : public Universe {
-
-public:
-  explicit DAGUniverse(pugi::xml_node node);
-  explicit DAGUniverse(const std::string& filename, bool auto_ids = false);
-
-  void initialize(); //!< Sets up the DAGMC instance and OpenMC internals
-
-  std::map<int32_t, int32_t> read_uwuw_materials(); //!< Reads UWUW materials and returns an ID map
-
-  // Data Members
-  std::string filename_;
-  std::shared_ptr<moab::DagMC> dagmc_instance_; //! DAGMC Instance for this universe
-  int32_t cell_idx_offset_;
-  int32_t surf_idx_offset_;
-  bool adjust_ids_;
-
-};
-
-#endif
 
 //==============================================================================
 //==============================================================================
@@ -372,6 +348,7 @@ void read_cells(pugi::xml_node node);
 
 
 #ifdef DAGMC
+class DAGUniverse;
 int32_t next_cell(DAGUniverse* dag_univ, DAGCell* cur_cell, DAGSurface* surf_xed);
 #endif
 

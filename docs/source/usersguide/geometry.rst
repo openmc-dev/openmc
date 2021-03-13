@@ -471,15 +471,14 @@ successfully and that the model is `watertight
 implementations of DAGMC geometry will support small volume overlaps and
 un-merged surfaces.
 
+Cell, Surface, and Material IDs
+-------------------------------
 
-Cell and Material IDs
----------------------
-
-By default, DAGMC applies cell IDs defined by the CAD engine that the model
-originated in. If these IDs overlap with ID's in the CSG cell ID space, this
-will result in an error. However, the ``auto_ids`` property of a DAGMC universe
-can be set to set DAGMC cell IDs by appending to the existing CSG cell ID space
-in the OpenMC model.
+By default, DAGMC applies cell and surface IDs defined by the CAD engine that
+the model originated in. If these IDs overlap with ID's in the CSG ID space,
+this will result in an error. However, the ``auto_ids`` property of a DAGMC
+universe can be set to set DAGMC cell and surface IDs by appending to the
+existing CSG cell ID space in the OpenMC model.
 
 Similar options exist for the material IDs of DAGMC models. If DAGMC material
 assignments are based on natively defined OpenMC materials, no further work is

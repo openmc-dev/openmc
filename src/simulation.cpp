@@ -6,6 +6,7 @@
 #include "openmc/eigenvalue.h"
 #include "openmc/error.h"
 #include "openmc/event.h"
+#include "openmc/geometry.h"
 #include "openmc/geometry_aux.h"
 #include "openmc/material.h"
 #include "openmc/message_passing.h"
@@ -527,6 +528,23 @@ void initialize_history(Particle& p, int64_t index_source)
   // Add paricle's starting weight to count for normalizing tallies later
   #pragma omp atomic
   simulation::total_weight += p.wgt();
+
+  initialize_history_partial(p);
+
+  // If the cell hasn't been determined based on the particle's location,
+  // initiate a search for the current cell. This generally happens at the
+  // beginning of the history and again for any secondary particles
+  if (p.coord(p.n_coord() - 1).cell == C_NONE) {
+    if (!brute_force_find_cell(p)) {
+      p.mark_as_lost(
+        "Could not find the cell containing particle " + std::to_string(p.id()));
+      return;
+    }
+
+    // Set birth cell attribute
+    if (p.cell_born() == C_NONE)
+      p.cell_born() = p.coord(p.n_coord() - 1).cell;
+  }
 
   // Force calculation of cross-sections by setting last energy to zero
   if (settings::run_CE) {

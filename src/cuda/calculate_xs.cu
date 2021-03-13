@@ -28,25 +28,6 @@ __global__ void process_calculate_xs_events_device(
   auto const& E = queue[tid].E;
   auto const& mat_idx = queue[tid].material;
 
-  // If the cell hasn't been determined based on the particle's location,
-  // initiate a search for the current cell. This generally happens at the
-  // beginning of the history and again for any secondary particles
-  if (p.coord_[p.n_coord_ - 1].cell == C_NONE) {
-    if (!brute_force_find_cell(p))
-      __trap();
-
-    // Set birth cell attribute
-    if (p.cell_born_ == C_NONE)
-      p.cell_born_ = p.coord_[p.n_coord_ - 1].cell;
-  }
-
-  // Set the random number stream
-  if (p.type_ == Particle::Type::neutron) {
-    p.stream_ = STREAM_TRACKING;
-  } else {
-    p.stream_ = STREAM_PHOTON;
-  }
-
   // Store pre-collision particle properties
   p.wgt_last_ = p.wgt_;
   p.E_last_ = E;
@@ -72,7 +53,8 @@ __global__ void process_calculate_xs_events_device(
   unsigned i_log_union = std::log(E / energy_min_neutron) / log_spacing;
 
   // Add contribution from each nuclide in material
-  for (int i = 0; i < m.nuclide_.size(); ++i) {
+  auto const& n_nuclides = m.nuclide_.size();
+  for (int i = 0; i < n_nuclides; ++i) {
     auto const& i_nuclide = m.nuclide_[i];
     auto& micro {micros[number_nuclides * queue[tid].idx + i_nuclide]};
 

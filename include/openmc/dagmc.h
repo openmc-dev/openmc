@@ -24,7 +24,7 @@ class DAGUniverse : public Universe {
 
 public:
   explicit DAGUniverse(pugi::xml_node node);
-  explicit DAGUniverse(const std::string& filename, bool auto_ids = false);
+  explicit DAGUniverse(const std::string& filename, bool auto_geom_ids = false);
 
   void initialize(); //!< Sets up the DAGMC instance and OpenMC internals
 
@@ -35,8 +35,8 @@ public:
   std::shared_ptr<moab::DagMC> dagmc_instance_; //! DAGMC Instance for this universe
   int32_t cell_idx_offset_;
   int32_t surf_idx_offset_;
-  bool adjust_ids_;
-
+  bool adjust_geometry_ids_;
+  bool adjust_material_ids_;
 };
 
 void load_dagmc_geometry();

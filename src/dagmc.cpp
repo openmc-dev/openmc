@@ -222,15 +222,15 @@ DAGUniverse::DAGUniverse(pugi::xml_node node) {
     fatal_error("Must specify a file for the DAGMC universe");
   }
 
-  adjust_ids_ = false;
+  adjust_geometry_ids_ = false;
   if (check_for_node(node, "auto_ids")) {
-    adjust_ids_ = get_node_value_bool(node, "auto_ids");
+    adjust_geometry_ids_ = get_node_value_bool(node, "auto_ids");
   }
   initialize();
 }
 
-DAGUniverse::DAGUniverse(const std::string& filename, bool auto_ids)
-: filename_(filename), adjust_ids_(auto_ids) {
+DAGUniverse::DAGUniverse(const std::string& filename, bool auto_geom_ids)
+: filename_(filename), adjust_geometry_ids_(auto_geom_ids) {
   // determine the next universe id
   int32_t next_univ_id = 0;
   for (const auto& u : model::universes) {
@@ -313,7 +313,7 @@ void DAGUniverse::initialize() {
     // set cell ids using global IDs
     DAGCell* c = new DAGCell();
     c->dag_index_ = i + 1;
-    c->id_ = adjust_ids_ ? next_cell_id++ : dagmc_instance_->id_by_index(3, c->dag_index_);
+    c->id_ = adjust_geometry_ids_ ? next_cell_id++ : dagmc_instance_->id_by_index(3, c->dag_index_);
     c->dagmc_ptr_ = dagmc_instance_;
     c->universe_ = id_; // set to zero for now
     c->fill_ = C_NONE; // no fill, single universe
@@ -404,7 +404,7 @@ void DAGUniverse::initialize() {
     // set cell ids using global IDs
     DAGSurface* s = new DAGSurface();
     s->dag_index_ = i+1;
-    s->id_ = adjust_ids_ ? next_surf_id++ : dagmc_instance_->id_by_index(2, i+1);
+    s->id_ = adjust_geometry_ids_ ? next_surf_id++ : dagmc_instance_->id_by_index(2, i+1);
     s->dagmc_ptr_ = dagmc_instance_;
 
     // set BCs

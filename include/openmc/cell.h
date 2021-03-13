@@ -87,12 +87,15 @@ public:
 
   void initialize(); //!< Sets up the DAGMC instance and OpenMC internals
 
+  std::map<int32_t, int32_t> read_uwuw_materials(); //!< Reads UWUW materials and returns an ID map
+
   // Data Members
   std::string filename_;
   std::shared_ptr<moab::DagMC> dagmc_instance_; //! DAGMC Instance for this universe
   int32_t cell_idx_offset_;
   int32_t surf_idx_offset_;
   bool adjust_ids_;
+
 };
 
 #endif

@@ -14,7 +14,6 @@
 #include "openmc/capi.h"
 #include "openmc/cross_sections.h"
 #include "openmc/container_util.h"
-#include "openmc/dagmc.h"
 #include "openmc/error.h"
 #include "openmc/file_utils.h"
 #include "openmc/hdf5_interface.h"
@@ -1237,9 +1236,6 @@ void read_materials_xml()
   for (pugi::xml_node material_node : root.children("material")) {
     model::materials.push_back(make_unique<Material>(material_node));
   }
-
-  // Search for materials defined on DAGMC models
-  read_dagmc_materials();
 
   model::materials.shrink_to_fit();
 }

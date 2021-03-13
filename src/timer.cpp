@@ -21,6 +21,7 @@ Timer time_tallies;
 Timer time_total;
 Timer time_transport;
 Timer time_event_init;
+Timer time_event_sort;
 Timer time_event_calculate_xs;
 Timer time_event_advance_particle;
 Timer time_event_surface_crossing;

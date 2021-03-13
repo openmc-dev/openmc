@@ -37,7 +37,7 @@ template<unsigned BLOCK_SIZE>
 __device__ void block_queue_pushback(bool const& into_q1, bool const& into_q2,
   EventQueueItem* const& q1, EventQueueItem* const& q2,
   unsigned* const& q1_index, unsigned* const& q2_index, Particle* const& p,
-  int64_t const& p_idx)
+  unsigned const& p_idx)
 {
   // Casts bools to integers of either 0 or 1. We will apply
   // a parallel prefix sum to these to transform them into

@@ -31,28 +31,29 @@ namespace openmc {
 // result in any benefits if not enough particles are present for them to achieve
 // consistent locality improvements. 
 struct EventQueueItem{
-  int64_t idx;         //!< particle index in event-based particle buffer
-  ParticleType type;   //!< particle type
-  int64_t material;    //!< material that particle is in
+  unsigned idx;        //!< particle index in event-based particle buffer
+  int material;        //!< material that particle is in
   double E;            //!< particle energy
 
   // Constructors
   EventQueueItem() = default;
-  HD EventQueueItem(const Particle& p, int64_t buffer_idx)
-    : idx(buffer_idx), type(p.type()), material(p.material()), E(p.E())
+  HD EventQueueItem(const Particle& p, unsigned buffer_idx)
+    : idx(buffer_idx), material(p.material_), E(p.E_)
   {}
 
-  // Compare by particle type, then by material type (4.5% fuel/7.0% fuel/cladding/etc),
-  // then by energy.
-  // TODO: Currently in OpenMC, the material ID corresponds not only to a general
-  // type, but also specific isotopic densities. Ideally we would
-  // like to be able to just sort by general material type, regardless of densities.
-  // A more general material type ID may be added in the future, in which case we
-  // can update the material field of this struct to contain the more general id.
-  bool operator<(const EventQueueItem& rhs) const
-  {
-    return std::tie(type, material, E) < std::tie(rhs.type, rhs.material, rhs.E);
-  }
+  // Compare by particle type, then by material type (4.5% fuel/7.0%
+  // fuel/cladding/etc), then by energy.
+  // TODO: Currently in OpenMC, the material ID corresponds not only to a
+  // general type, but also specific isotopic densities. Ideally we would like
+  // to be able to just sort by general material type, regardless of densities.
+  // A more general material type ID may be added in the future, in which case
+  // we can update the material field of this struct to contain the more general
+  // id. bool operator<(const EventQueueItem& rhs) const
+  // {
+  //   return std::tie(type, material, E) < std::tie(rhs.type, rhs.material,
+  //   rhs.E);
+  // }
+  bool operator<(const EventQueueItem& rhs) const { return E < rhs.E; }
 };
 
 //==============================================================================
@@ -87,7 +88,7 @@ extern pinned_replicated_vector<NuclideMicroXS> micros;
 //! Allocate space for the event queues and particle buffer
 //
 //! \param n_particles The number of particles in the particle buffer
-void init_event_queues(int64_t n_particles);
+void init_event_queues(unsigned n_particles);
 
 //! Free the event queues and particle buffer
 void free_event_queues(void);
@@ -95,13 +96,13 @@ void free_event_queues(void);
 //! Enqueue a particle based on if it is in fuel or a non-fuel material
 //
 //! \param buffer_idx The particle's actual index in the particle buffer
-void dispatch_xs_event(int64_t buffer_idx);
+void dispatch_xs_event(unsigned buffer_idx);
 
 //! Execute the initialization event for all particles
 //
 //! \param n_particles The number of particles in the particle buffer
 //! \param source_offset The offset index in the source bank to use
-void process_init_events(int64_t n_particles, int64_t source_offset);
+void process_init_events(unsigned n_particles, unsigned source_offset);
 
 //! Execute the calculate XS event for all particles in this event's buffer
 //
@@ -120,7 +121,7 @@ void process_collision_events();
 //! Execute the death event for all particles
 //
 //! \param n_particles The number of particles in the particle buffer
-void process_death_events(int64_t n_particles);
+void process_death_events(unsigned n_particles);
 
 } // namespace openmc
 

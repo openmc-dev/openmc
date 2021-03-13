@@ -18,7 +18,7 @@ __global__ void process_collision_events_device(EventQueueItem* queue,
   unsigned tid = threadIdx.x + blockDim.x * blockIdx.x;
   bool nonfuel = false;
   bool fuel = false;
-  int64_t p_idx;
+  unsigned p_idx;
   Particle* p;
 
   if (tid < queue_size) {

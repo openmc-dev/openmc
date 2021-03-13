@@ -12,6 +12,7 @@
 #include "openmc/cuda/cross_surface.h"
 #include "openmc/cuda/util.h" // error handling
 #include "openmc/settings.h" // thread_block_size
+#include <thrust/sort.h>
 #endif
 
 namespace openmc {
@@ -37,15 +38,7 @@ pinned_replicated_vector<NuclideMicroXS> micros;
 // Non-member functions
 //==============================================================================
 
-typedef Particle ParticleReference;
-// typedef Particle& ParticleReference;
-ParticleReference get_particle(const int& p)
-{
-  return Particle(p);
-  // return simulation::particles[p];
-}
-
-void init_event_queues(int64_t n_particles)
+void init_event_queues(unsigned n_particles)
 {
   simulation::calculate_fuel_xs_queue.reserve(n_particles);
   simulation::calculate_nonfuel_xs_queue.reserve(n_particles);
@@ -56,8 +49,9 @@ void init_event_queues(int64_t n_particles)
   // If we're not doing SOA particles, allocate an AOS of particles
   // If we are doing SOA particles, those arrays must be allocated
   // after we know how many tallies and nuclides are in the problem.
-  if (!settings::structure_of_array_particles)
-    simulation::particles.resize(n_particles);
+#ifndef __CUDACC__
+  simulation::particles.resize(n_particles);
+#endif
 }
 
 void free_event_queues(void)
@@ -72,7 +66,7 @@ void free_event_queues(void)
   simulation::micros.clear();
 }
 
-void dispatch_xs_event(int64_t buffer_idx)
+void dispatch_xs_event(unsigned buffer_idx)
 {
   ParticleReference p = get_particle(buffer_idx);
   if (p.material() == MATERIAL_VOID ||
@@ -83,13 +77,12 @@ void dispatch_xs_event(int64_t buffer_idx)
   }
 }
 
-void process_init_events(int64_t n_particles, int64_t source_offset)
+void process_init_events(unsigned n_particles, unsigned source_offset)
 {
   simulation::time_event_init.start();
   #pragma omp parallel for schedule(runtime)
-  for (int64_t i = 0; i < n_particles; i++) {
-    ParticleReference p = get_particle(i);
-    initialize_history(p, source_offset + i + 1);
+  for (unsigned i = 0; i < n_particles; i++) {
+    initialize_history(simulation::particles[i], source_offset + i + 1);
     dispatch_xs_event(i);
   }
   simulation::time_event_init.stop();
@@ -97,8 +90,12 @@ void process_init_events(int64_t n_particles, int64_t source_offset)
 
 void process_calculate_xs_events(SharedArray<EventQueueItem>& queue)
 {
-  simulation::time_event_calculate_xs.start();
 
+  simulation::time_event_sort.start();
+#ifdef __CUDACC__
+  // thrust::sort(queue.begin(), queue.end());
+  // cudaDeviceSynchronize();
+#else
   // TODO: If using C++17, perform a parallel sort of the queue
   // by particle type, material type, and then energy, in order to
   // improve cache locality and reduce thread divergence on GPU. Prior
@@ -108,7 +105,10 @@ void process_calculate_xs_events(SharedArray<EventQueueItem>& queue)
   // std::sort(std::execution::par_unseq, queue.data(), queue.data() +
   // queue.size());
   //
+#endif
+  simulation::time_event_sort.stop();
 
+  simulation::time_event_calculate_xs.start();
 #ifdef __CUDACC__
   // TODO: this could possibly be separated into the retrieval of cached
   // XS components and the lookup of new cross sections for nuclides where
@@ -126,7 +126,7 @@ void process_calculate_xs_events(SharedArray<EventQueueItem>& queue)
 #else
 
 #pragma omp parallel for schedule(runtime)
-  for (int64_t i = 0; i < queue.size(); i++) {
+  for (unsigned i = 0; i < queue.size(); i++) {
     Particle* p = &simulation::particles[queue[i].idx];
     p->event_calculate_xs();
     simulation::advance_particle_queue.thread_safe_append(queue[i]);
@@ -164,9 +164,9 @@ void process_advance_particle_events()
   simulation::collision_queue.updateIndex(gpu::managed_collision_queue_index);
 #else
 #pragma omp parallel for schedule(runtime)
-  for (int64_t i = 0; i < simulation::advance_particle_queue.size(); i++) {
-    int64_t buffer_idx = simulation::advance_particle_queue[i].idx;
-    ParticleReference p = get_particle(buffer_idx);
+  for (unsigned i = 0; i < simulation::advance_particle_queue.size(); i++) {
+    unsigned buffer_idx = simulation::advance_particle_queue[i].idx;
+    Particle& p = simulation::particles[buffer_idx];
     p.event_advance();
     if (p.collision_distance() > p.boundary().distance) {
       simulation::surface_crossing_queue.thread_safe_append({p, buffer_idx});
@@ -208,9 +208,9 @@ void process_surface_crossing_events()
     gpu::managed_calculate_fuel_queue_index);
 #else
 #pragma omp parallel for schedule(runtime)
-  for (int64_t i = 0; i < simulation::surface_crossing_queue.size(); i++) {
-    int64_t buffer_idx = simulation::surface_crossing_queue[i].idx;
-    ParticleReference p = get_particle(buffer_idx);
+  for (unsigned i = 0; i < simulation::surface_crossing_queue.size(); i++) {
+    unsigned buffer_idx = simulation::surface_crossing_queue[i].idx;
+    Particle& p = simulation::particles[buffer_idx];
     p.event_cross_surface();
     p.event_revive_from_secondary();
     if (p.alive())
@@ -259,9 +259,9 @@ void process_collision_events()
     gpu::managed_calculate_fuel_queue_index);
 #else
 #pragma omp parallel for schedule(runtime)
-  for (int64_t i = 0; i < simulation::collision_queue.size(); i++) {
-    int64_t buffer_idx = simulation::collision_queue[i].idx;
-    ParticleReference p = get_particle(buffer_idx);
+  for (unsigned i = 0; i < simulation::collision_queue.size(); i++) {
+    unsigned buffer_idx = simulation::collision_queue[i].idx;
+    Particle& p = simulation::particles[buffer_idx];
     p.event_collide();
     p.event_revive_from_secondary();
     if (p.alive())
@@ -274,7 +274,7 @@ void process_collision_events()
   simulation::time_event_collision.stop();
 }
 
-void process_death_events(int64_t n_particles)
+void process_death_events(unsigned n_particles)
 {
   simulation::time_event_death.start();
   #pragma omp parallel for schedule(runtime)

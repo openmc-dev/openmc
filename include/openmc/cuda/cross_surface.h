@@ -18,7 +18,7 @@ __global__ void process_surface_crossing_events_device(EventQueueItem* queue,
   unsigned tid = threadIdx.x + blockDim.x * blockIdx.x;
   bool fuel = false;
   bool nonfuel = false;
-  int64_t p_idx;
+  unsigned p_idx;
   Particle* p;
 
   if (tid < queue_size) {

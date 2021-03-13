@@ -18,9 +18,9 @@ typename std::iterator_traits<It>::difference_type HD inline
     return last - 1 - first;
   It orig_first = first;
   while (last > first + 2) {
-    // unsigned interpolation = static_cast<unsigned>(
-    //   (value - *first) / (*(last - 1) - *first) * (last - first - 1));
-    unsigned interpolation = static_cast<unsigned>(last - first - 1) / 2;
+    unsigned interpolation = static_cast<unsigned>(
+      (value - *first) / (*(last - 1) - *first) * (last - first - 1));
+    // unsigned interpolation = static_cast<unsigned>(last - first - 1) / 2;
     if (!interpolation)
       interpolation++;
     else if (interpolation == last - first)
@@ -38,6 +38,20 @@ typename std::iterator_traits<It>::difference_type HD inline
       last = mid + 1;
   }
   return first - orig_first;
+}
+
+template<class It, class T>
+typename std::iterator_traits<It>::difference_type
+  HD inline lower_bound_index_linear(It first, It last, const T& value)
+{
+  while (true) {
+    last--;
+    if (*last < value) {
+      // Has to deal with edge case where we ask for first item in list.
+      // Otherwise the ternary expression is unnecessary.
+      return last - first > 0 ? last - first : 0;
+    }
+  }
 }
 
 template<class It, class T>

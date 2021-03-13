@@ -85,7 +85,7 @@ double rel_max_lost_particles {1.0e-6};
 int32_t gen_per_batch {1};
 int64_t n_particles {-1};
 
-int64_t max_particles_in_flight {100000};
+unsigned max_particles_in_flight {100000};
 
 ElectronTreatment electron_treatment {ElectronTreatment::TTB};
 array<double, 4> energy_cutoff {0.0, 1000.0, 0.0, 0.0};

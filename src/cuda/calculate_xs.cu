@@ -25,6 +25,8 @@ __global__ void process_calculate_xs_events_device(
   if (tid >= queue_size)
     return;
   Particle& p = particles[queue[tid].idx];
+  auto const& E = queue[tid].E;
+  auto const& mat_idx = queue[tid].material;
 
   // If the cell hasn't been determined based on the particle's location,
   // initiate a search for the current cell. This generally happens at the
@@ -47,7 +49,7 @@ __global__ void process_calculate_xs_events_device(
 
   // Store pre-collision particle properties
   p.wgt_last_ = p.wgt_;
-  p.E_last_ = p.E_;
+  p.E_last_ = E;
   p.u_last_ = p.u();
   p.r_last_ = p.r();
 
@@ -62,19 +64,19 @@ __global__ void process_calculate_xs_events_device(
   p.macro_xs_.nu_fission = 0.0;
 
   // Skip void material
-  if (p.material_ == -1)
+  if (mat_idx == -1)
     return;
 
-  Material const& m = *materials[p.material_];
+  Material const& m = *materials[mat_idx];
 
-  unsigned i_log_union = std::log(p.E_ / energy_min_neutron) / log_spacing;
+  unsigned i_log_union = std::log(E / energy_min_neutron) / log_spacing;
 
   // Add contribution from each nuclide in material
   for (int i = 0; i < m.nuclide_.size(); ++i) {
     auto const& i_nuclide = m.nuclide_[i];
     auto& micro {micros[number_nuclides * queue[tid].idx + i_nuclide]};
 
-    if (p.E_ != micro.last_E || p.sqrtkT_ != micro.last_sqrtkT) {
+    if (E != micro.last_E || p.sqrtkT_ != micro.last_sqrtkT) {
       auto const& nuclide = *nuclides[i_nuclide];
       micro.elastic = CACHE_INVALID;
       micro.thermal = 0.0;
@@ -101,9 +103,9 @@ __global__ void process_calculate_xs_events_device(
 
       const auto& grid {nuclide.grid_[i_temp]};
       int i_grid;
-      if (p.E_ < grid.energy.front()) {
+      if (E < grid.energy.front()) {
         i_grid = 0;
-      } else if (p.E_ > grid.energy.back()) {
+      } else if (E > grid.energy.back()) {
         i_grid = grid.energy.size() - 2;
       } else {
         // Determine bounding indices based on which equal log-spaced
@@ -112,8 +114,8 @@ __global__ void process_calculate_xs_events_device(
         int i_high = grid.grid_index[i_log_union + 1] + 1;
 
         // Perform binary search over reduced range
-        i_grid = i_low + lower_bound_index(
-                           &grid.energy[i_low], &grid.energy[i_high], p.E_);
+        i_grid = i_low + lower_bound_index_linear(
+                           &grid.energy[i_low], &grid.energy[i_high], E);
       }
       const auto& xs_left {nuclide.xs_[i_temp][i_grid]};
       const auto& xs_right {nuclide.xs_[i_temp][i_grid + 1]};
@@ -122,7 +124,7 @@ __global__ void process_calculate_xs_events_device(
         ++i_grid;
 
       // calculate interpolation factor
-      f = (p.E_ - grid.energy[i_grid]) /
+      f = (E - grid.energy[i_grid]) /
           (grid.energy[i_grid + 1] - grid.energy[i_grid]);
 
       micro.index_temp = i_temp;
@@ -152,7 +154,7 @@ __global__ void process_calculate_xs_events_device(
 
       micro.index_sab = C_NONE;
       micro.sab_frac = 0.0;
-      micro.last_E = p.E_;
+      micro.last_E = E;
       micro.last_sqrtkT = p.sqrtkT_;
     }
 

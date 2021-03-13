@@ -90,8 +90,8 @@ int openmc_simulation_init()
   // If doing an event-based simulation, intialize the particle buffer
   // and event queues
   if (settings::event_based) {
-    int64_t event_buffer_length = std::min(simulation::work_per_rank,
-      settings::max_particles_in_flight);
+    unsigned event_buffer_length =
+      std::min(simulation::work_per_rank, settings::max_particles_in_flight);
     init_event_queues(event_buffer_length);
   }
 
@@ -276,7 +276,7 @@ int restart_batch;
 bool satisfy_triggers {false};
 int total_gen {0};
 double total_weight;
-int64_t work_per_rank;
+unsigned work_per_rank;
 
 const RegularMesh* entropy_mesh {nullptr};
 const RegularMesh* ufs_mesh {nullptr};
@@ -707,8 +707,8 @@ void transport_history_based()
 
 void transport_event_based()
 {
-  int64_t remaining_work = simulation::work_per_rank;
-  int64_t source_offset = 0;
+  unsigned remaining_work = simulation::work_per_rank;
+  unsigned source_offset = 0;
 
   // To cap the total amount of memory used to store particle object data, the
   // number of particles in flight at any point in time can bet set. In the case
@@ -717,7 +717,8 @@ void transport_event_based()
   // loop is executed multiple times until all particles have been completed.
   while (remaining_work > 0) {
     // Figure out # of particles to run for this subiteration
-    int64_t n_particles = std::min(remaining_work, settings::max_particles_in_flight);
+    unsigned n_particles =
+      std::min(remaining_work, settings::max_particles_in_flight);
 
     // Initialize all particle histories for this subiteration
     process_init_events(n_particles, source_offset);

@@ -71,8 +71,8 @@ extern double rel_max_lost_particles;   //!< maximum number of lost particles, r
 extern "C" int32_t gen_per_batch;            //!< number of generations per batch
 extern "C" int64_t n_particles;              //!< number of particles per generation
 
-
-extern int64_t max_particles_in_flight; //!< Max num. event-based particles in flight
+extern unsigned
+  max_particles_in_flight; //!< Max num. event-based particles in flight
 
 extern ElectronTreatment electron_treatment;       //!< how to treat secondary electrons
 extern array<double, 4>

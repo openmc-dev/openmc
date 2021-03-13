@@ -14,11 +14,14 @@ extern "C" const bool DAGMC_ENABLED;
 #include "openmc/position.h"
 #include "openmc/xml_interface.h"
 
+class UWUW;
+
 namespace openmc {
 
 namespace model {
   extern std::shared_ptr<moab::DagMC> DAG;
 }
+
 
 class DAGUniverse : public Universe {
 
@@ -28,7 +31,8 @@ public:
 
   void initialize(); //!< Sets up the DAGMC instance and OpenMC internals
 
-  std::map<int32_t, int32_t> read_uwuw_materials(); //!< Reads UWUW materials and returns an ID map
+  std::shared_ptr<UWUW>
+  read_uwuw_materials(); //!< Reads UWUW materials and returns an ID map
 
   // Data Members
   std::string filename_;

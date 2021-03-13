@@ -275,13 +275,10 @@ void DAGUniverse::initialize() {
   // --- Materials ---
 
   // read any UWUW materials from the file
-  auto uwuw_id_map = read_uwuw_materials();
-
-  // create uwuw instance
-  UWUW uwuw(filename_.c_str());
+  std::shared_ptr<UWUW> uwuw = read_uwuw_materials();
 
   // check for uwuw material definitions
-  bool using_uwuw = !uwuw.material_library.empty();
+  bool using_uwuw = !uwuw->material_library.empty();
 
   // notify user if UWUW materials are going to be used
   if (using_uwuw) {
@@ -355,9 +352,9 @@ void DAGUniverse::initialize() {
       if (using_uwuw) {
         // lookup material in uwuw if present
         std::string uwuw_mat = DMD.volume_material_property_data_eh[vol_handle];
-        if (uwuw.material_library.count(uwuw_mat) != 0) {
+        if (uwuw->material_library.count(uwuw_mat) != 0) {
           // Note: material numbers are set by UWUW
-          int mat_number = uwuw.material_library.get_material(uwuw_mat).metadata["mat_number"].asInt();
+          int mat_number = uwuw->material_library.get_material(uwuw_mat).metadata["mat_number"].asInt();
           c->material_.push_back(mat_number);
         } else {
           fatal_error(fmt::format("Material with value {} not found in the "
@@ -453,12 +450,25 @@ void DAGUniverse::initialize() {
   } // end surface loop
 }
 
-std::map<int32_t, int32_t>
+std::shared_ptr<UWUW>
 DAGUniverse::read_uwuw_materials() {
 
-  UWUW uwuw(filename_.c_str());
-  const auto& mat_lib = uwuw.material_library;
-  if (mat_lib.size() == 0) return {};
+  int32_t next_material_id = 0;
+  for (const auto& m : model::materials) {
+    next_material_id = std::max(m->id_, next_material_id);
+  }
+  next_material_id++;
+
+  auto uwuw = std::make_shared<UWUW>(filename_.c_str());
+  const auto& mat_lib = uwuw->material_library;
+  if (mat_lib.size() == 0) return uwuw;
+
+  // if we're using automatic IDs, update the UWUW material metadata
+  if (adjust_material_ids_) {
+    for (auto& mat : uwuw->material_library) {
+      mat.second->metadata["mat_number"] = std::to_string(next_material_id++);
+    }
+  }
 
   std::stringstream ss;
   ss << "<?xml version=\"1.0\"?>\n";
@@ -477,7 +487,7 @@ DAGUniverse::read_uwuw_materials() {
   for (pugi::xml_node material_node : root.children("material")) {
     model::materials.push_back(std::make_unique<Material>(material_node));
   }
-  return {};
+  return uwuw;
 }
 
 int32_t create_dagmc_universe(const std::string& filename) {

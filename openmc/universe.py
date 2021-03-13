@@ -653,16 +653,25 @@ class DAGMCUniverse(UniverseBase):
         Name of the universe
     filename : str
         Path to the DAGMC file used to represent this universe.
-    auto_ids : bool
+    auto_geom_ids : bool
         Set IDs automatically on initialization (True) or report overlaps
         in ID space between CSG and DAGMC (False)
+    auto_mat_ids : bool
+        Set IDs automatically on initialization (True)  or report overlaps
+        in ID space between OpenMC and UWUW materials (False)
     """
 
-    def __init__(self, filename, universe_id=None, name='', auto_ids=False):
+    def __init__(self,
+                 filename,
+                 universe_id=None,
+                 name='',
+                 auto_geom_ids=False,
+                 auto_mat_ids=False):
         super().__init__(universe_id, name)
         # Initialize class attributes
         self.filename = filename
-        self.auto_ids = auto_ids
+        self.auto_geom_ids = auto_geom_ids
+        self.auto_mat_ids = auto_mat_ids
 
     def __repr__(self):
         fmt_str = '{: <16}=\t{}\n'
@@ -681,13 +690,22 @@ class DAGMCUniverse(UniverseBase):
         self._filename = val
 
     @property
-    def auto_ids(self):
-        return self._auto_ids
+    def auto_geom_ids(self):
+        return self._auto_geom_ids
 
-    @auto_ids.setter
-    def auto_ids(self, val):
-        cv.check_type('DAGMC auto ids', val, bool)
-        self._auto_ids = val
+    @auto_geom_ids.setter
+    def auto_geom_ids(self, val):
+        cv.check_type('DAGMC automatic geometry ids', val, bool)
+        self._auto_geom_ids = val
+
+    @property
+    def auto_mat_ids(self):
+        return self._auto_mat_ids
+
+    @auto_geom_ids.setter
+    def auto_mat_ids(self, val):
+        cv.check_type('DAGMC automatic material ids', val, bool)
+        self._auto_mat_ids = val
 
     def clone(self, clone_materials=True, clone_regions=True, memo=None):
         pass
@@ -710,7 +728,9 @@ class DAGMCUniverse(UniverseBase):
         dagmc_element = ET.Element('dagmc')
         dagmc_element.set('id', str(self.id))
         dagmc_element.set('name', self.name)
-        if self.auto_ids:
-            dagmc_element.set('auto_ids', 'true')
+        if self.auto_geom_ids:
+            dagmc_element.set('auto_geom_ids', 'true')
+        if self.auto_mat_ids:
+            dagmc_element.set('auto_mat_ids', 'true')
         dagmc_element.set('filename', self.filename)
         xml_element.append(dagmc_element)

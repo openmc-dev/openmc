@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='utf-8'?>
 <geometry>
   <cell fill="9" id="13" region="9 -10 11 -12 13 -14" universe="10" />
-  <dagmc auto_ids="true" filename="dagmc.h5m" id="9" name="" />
+  <dagmc auto_geom_ids="true" auto_mat_ids="true" filename="dagmc.h5m" id="9" name="" />
   <surface boundary="reflective" coeffs="-24.0" id="9" name="left" type="x-plane" />
   <surface boundary="reflective" coeffs="24.0" id="10" name="right" type="x-plane" />
   <surface boundary="reflective" coeffs="-24.0" id="11" name="front" type="y-plane" />

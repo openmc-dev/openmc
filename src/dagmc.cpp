@@ -55,7 +55,8 @@ std::string dagmc_file() {
 }
 
 std::string dagmc_ids_for_dim(std::shared_ptr<moab::DagMC>& dagmc_instance,
-                              int dim) {
+                              int dim)
+{
   // generate a vector of ids
   std::vector<int> id_vec;
   int n_cells = dagmc_instance->num_entities(dim);
@@ -128,49 +129,8 @@ bool read_uwuw_materials(pugi::xml_document& doc) {
   return found_uwuw_mats;
 }
 
-void read_dagmc_materials() {
-  std::string filename = settings::path_input + "geometry.xml";
-  if (!file_exists(filename)) {
-    fatal_error(fmt::format("Geometry XML file '{}' does not exist!", filename));
-  }
-
-  pugi::xml_document doc;
-  auto result = doc.load_file(filename.c_str());
-  if (!result) {
-    fatal_error("Error processing geometry.xml file.");
-  }
-  pugi::xml_node root = doc.document_element();
-  // Loop over DAGMC elements
-  for (pugi::xml_node dagmc_node : root.children("dagmc")) {
-    if (!check_for_node(dagmc_node, "filename")) {
-      fatal_error("No filename specified on a DAGMC universe element");
-    }
-    std::string dagmc_filename = get_node_value(dagmc_node, "filename");
-    // Load any existing UWUW materials
-    UWUW uwuw(dagmc_filename.c_str());
-    const auto& mat_lib = uwuw.material_library;
-    if (mat_lib.size() == 0) continue;
-
-    std::stringstream ss;
-    ss << "<?xml version=\"1.0\"?>\n";
-    ss << "<materials>\n";
-    for (auto mat : mat_lib) { ss << mat.second->openmc("atom"); }
-    ss << "</materials>";
-    std::string mat_xml_string = ss.str();
-
-    // create a pugi XML document from this string
-    pugi::xml_document doc;
-    auto result = doc.load_string(mat_xml_string.c_str());
-    if (!result) {
-      fatal_error("Error processing XML created using DAGMC UWUW materials.");
-    }
-    pugi::xml_node root = doc.document_element();
-    for (pugi::xml_node material_node : root.children("material")) {
-      model::materials.push_back(std::make_unique<Material>(material_node));
-    }
-  }
+void read_single_file_dagmc_materials(std::string dagmc_filename) {
 }
-
 
 bool write_uwuw_materials_xml() {
   std::string s;
@@ -308,6 +268,9 @@ void DAGUniverse::initialize() {
 
   // --- Materials ---
 
+  // read any UWUW materials from the file
+  auto uwuw_id_map = read_uwuw_materials();
+
   // create uwuw instance
   UWUW uwuw(filename_.c_str());
 
@@ -317,6 +280,8 @@ void DAGUniverse::initialize() {
   // notify user if UWUW materials are going to be used
   if (using_uwuw) {
     write_message("Found UWUW Materials in the DAGMC geometry file.", 6);
+
+
   }
 
   // load the DAGMC geometry
@@ -352,7 +317,6 @@ void DAGUniverse::initialize() {
     c->dagmc_ptr_ = dagmc_instance_;
     c->universe_ = id_; // set to zero for now
     c->fill_ = C_NONE; // no fill, single universe
-
 
    auto in_map = model::cell_map.find(c->id_);
     if (in_map == model::cell_map.end()) {
@@ -418,7 +382,6 @@ void DAGUniverse::initialize() {
     } else {
       c->sqrtkT_.push_back(std::sqrt(K_BOLTZMANN * settings::temperature_default));
     }
-
   }
 
   // allocate the cell overlap count if necessary
@@ -484,9 +447,34 @@ void DAGUniverse::initialize() {
     model::surfaces.emplace_back(s);
 
   } // end surface loop
-
 }
 
+std::map<int32_t, int32_t>
+DAGUniverse::read_uwuw_materials() {
+
+  UWUW uwuw(filename_.c_str());
+  const auto& mat_lib = uwuw.material_library;
+  if (mat_lib.size() == 0) return {};
+
+  std::stringstream ss;
+  ss << "<?xml version=\"1.0\"?>\n";
+  ss << "<materials>\n";
+  for (auto mat : mat_lib) { ss << mat.second->openmc("atom"); }
+  ss << "</materials>";
+  std::string mat_xml_string = ss.str();
+
+  // create a pugi XML document from this string
+  pugi::xml_document doc;
+  auto result = doc.load_string(mat_xml_string.c_str());
+  if (!result) {
+    fatal_error("Error processing XML created using DAGMC UWUW materials.");
+  }
+  pugi::xml_node root = doc.document_element();
+  for (pugi::xml_node material_node : root.children("material")) {
+    model::materials.push_back(std::make_unique<Material>(material_node));
+  }
+  return {};
+}
 
 int32_t create_dagmc_universe(const std::string& filename) {
   if (!model::DAG) {

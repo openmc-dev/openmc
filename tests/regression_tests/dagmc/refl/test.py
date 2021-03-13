@@ -28,8 +28,7 @@ class UWUWTest(PyAPITestHarness):
         model.settings.export_to_xml()
 
         # geometry
-        dag_univ = openmc.DAGMCUniverse("dagmc.h5m")
-        dag_univ.auto_ids = True
+        dag_univ = openmc.DAGMCUniverse("dagmc.h5m", auto_geom_ids=True)
         model.geometry = openmc.Geometry(root=dag_univ)
 
         # tally

@@ -42,7 +42,7 @@ class DAGMCUniverseTest(PyAPITestHarness):
 
         ### GEOMETRY ###
         # create the DAGMC universe
-        pincell_univ = openmc.DAGMCUniverse(filename='dagmc.h5m', auto_ids=True)
+        pincell_univ = openmc.DAGMCUniverse(filename='dagmc.h5m', auto_geom_ids=True)
 
         left = openmc.XPlane(x0=-24.0, name='left', boundary_type='reflective')
         right = openmc.XPlane(x0=24.0, name='right', boundary_type='reflective')

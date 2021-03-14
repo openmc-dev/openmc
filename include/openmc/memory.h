@@ -303,14 +303,14 @@ public:
 // the host. You have to note that stuff like XML parsing for the constructor
 // won't work, in this case.
 template<typename T, typename... Args>
-__global__ void run_constructor_on_device(T* dist, Args... args)
+__global__ void run_constructor_on_device(T* __restrict__ dist, Args... args)
 {
   new (dist) T(args...);
 }
 
 // This sets up vtables in device memory
 template<typename T>
-__global__ void run_move_constructor_on_device(T* dist)
+__global__ void run_move_constructor_on_device(T* __restrict__ dist)
 {
   // TODO: it may be faster to allocate a buffer in memory here.
   static_assert(std::is_move_constructible<T>::value,

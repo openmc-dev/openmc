@@ -19,14 +19,14 @@ __managed__ unsigned managed_calculate_fuel_queue_index;
 __managed__ unsigned managed_calculate_nonfuel_queue_index;
 
 __global__ void process_calculate_xs_events_device(
-  EventQueueItem* queue, unsigned queue_size)
+  EventQueueItem* __restrict__ queue, unsigned queue_size)
 {
   unsigned tid = threadIdx.x + blockDim.x * blockIdx.x;
   if (tid >= queue_size)
     return;
   Particle& p = particles[queue[tid].idx];
-  auto const& E = queue[tid].E;
-  auto const& mat_idx = queue[tid].material;
+  auto const E = __ldg(&queue[tid].E);
+  auto const mat_idx = __ldg(&queue[tid].material);
 
   // Store pre-collision particle properties
   p.wgt_last_ = p.wgt_;
@@ -53,7 +53,7 @@ __global__ void process_calculate_xs_events_device(
   unsigned i_log_union = std::log(E / energy_min_neutron) / log_spacing;
 
   // Add contribution from each nuclide in material
-  auto const& n_nuclides = m.nuclide_.size();
+  auto const n_nuclides = m.nuclide_.size();
   for (int i = 0; i < n_nuclides; ++i) {
     auto const& i_nuclide = m.nuclide_[i];
     auto& micro {micros[number_nuclides * queue[tid].idx + i_nuclide]};
@@ -92,8 +92,8 @@ __global__ void process_calculate_xs_events_device(
       } else {
         // Determine bounding indices based on which equal log-spaced
         // interval the energy is in
-        int i_low = grid.grid_index[i_log_union];
-        int i_high = grid.grid_index[i_log_union + 1] + 1;
+        int i_low = __ldg(&grid.grid_index[i_log_union]);
+        int i_high = __ldg(&grid.grid_index[i_log_union + 1]) + 1;
 
         // Perform binary search over reduced range
         i_grid = i_low + lower_bound_index_linear(

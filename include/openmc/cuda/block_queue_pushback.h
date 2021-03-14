@@ -35,8 +35,9 @@ namespace gpu {
 
 template<unsigned BLOCK_SIZE>
 __device__ void block_queue_pushback(bool const& into_q1, bool const& into_q2,
-  EventQueueItem* const& q1, EventQueueItem* const& q2,
-  unsigned* const& q1_index, unsigned* const& q2_index, Particle* const& p,
+  EventQueueItem* __restrict__ const& q1,
+  EventQueueItem* __restrict__ const& q2, unsigned* const& q1_index,
+  unsigned* const& q2_index, Particle* __restrict__ const& p,
   unsigned const& p_idx)
 {
   // Casts bools to integers of either 0 or 1. We will apply

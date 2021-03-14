@@ -56,13 +56,13 @@ __global__ void process_calculate_xs_events_device(
   auto const n_nuclides = m.nuclide_.size();
   for (int i = 0; i < n_nuclides; ++i) {
     auto const& i_nuclide = m.nuclide_[i];
-    auto& micro {micros[number_nuclides * queue[tid].idx + i_nuclide]};
+    auto* __restrict__ micro {&micros[number_nuclides * queue[tid].idx + i_nuclide]};
 
-    if (E != micro.last_E || p->sqrtkT_ != micro.last_sqrtkT) {
+    if (E != micro->last_E || p->sqrtkT_ != micro->last_sqrtkT) {
       auto const& nuclide = *nuclides[i_nuclide];
-      micro.elastic = CACHE_INVALID;
-      micro.thermal = 0.0;
-      micro.thermal_elastic = 0.0;
+      micro->elastic = CACHE_INVALID;
+      micro->thermal = 0.0;
+      micro->thermal_elastic = 0.0;
 
       // Find the appropriate temperature index. why would someone use
       // nearest?
@@ -109,42 +109,42 @@ __global__ void process_calculate_xs_events_device(
       f = (E - grid.energy[i_grid]) /
           (grid.energy[i_grid + 1] - grid.energy[i_grid]);
 
-      micro.index_temp = i_temp;
-      micro.index_grid = i_grid;
-      micro.interp_factor = f;
+      micro->index_temp = i_temp;
+      micro->index_grid = i_grid;
+      micro->interp_factor = f;
 
       // Calculate all microscopic cross sections
-      micro.total = (1.0 - f) * xs_left.total + f * xs_right.total;
-      micro.absorption =
+      micro->total = (1.0 - f) * xs_left.total + f * xs_right.total;
+      micro->absorption =
         (1.0 - f) * xs_left.absorption + f * xs_right.absorption;
 
       if (nuclide.fissionable_) {
         // Calculate microscopic nuclide total cross section
-        micro.fission = (1.0 - f) * xs_left.fission + f * xs_right.fission;
+        micro->fission = (1.0 - f) * xs_left.fission + f * xs_right.fission;
 
         // Calculate microscopic nuclide nu-fission cross section
-        micro.nu_fission =
+        micro->nu_fission =
           (1.0 - f) * xs_left.nu_fission + f * xs_right.nu_fission;
       } else {
-        micro.fission = 0.0;
-        micro.nu_fission = 0.0;
+        micro->fission = 0.0;
+        micro->nu_fission = 0.0;
       }
 
       // Calculate microscopic nuclide photon production cross section
-      micro.photon_prod =
+      micro->photon_prod =
         (1.0 - f) * xs_left.photon_production + f * xs_right.photon_production;
 
-      micro.index_sab = C_NONE;
-      micro.sab_frac = 0.0;
-      micro.last_E = E;
-      micro.last_sqrtkT = p->sqrtkT_;
+      micro->index_sab = C_NONE;
+      micro->sab_frac = 0.0;
+      micro->last_E = E;
+      micro->last_sqrtkT = p->sqrtkT_;
     }
 
     double const& atom_density = m.atom_density_[i];
-    p->macro_xs_.total += atom_density * micro.total;
-    p->macro_xs_.absorption += atom_density * micro.absorption;
-    p->macro_xs_.fission += atom_density * micro.fission;
-    p->macro_xs_.nu_fission += atom_density * micro.nu_fission;
+    p->macro_xs_.total += atom_density * micro->total;
+    p->macro_xs_.absorption += atom_density * micro->absorption;
+    p->macro_xs_.fission += atom_density * micro->fission;
+    p->macro_xs_.nu_fission += atom_density * micro->nu_fission;
   }
 }
 

@@ -56,7 +56,8 @@ __global__ void process_calculate_xs_events_device(
   auto const n_nuclides = m.nuclide_.size();
   for (int i = 0; i < n_nuclides; ++i) {
     auto const& i_nuclide = m.nuclide_[i];
-    auto* __restrict__ micro {&micros[number_nuclides * queue[tid].idx + i_nuclide]};
+    auto* __restrict__ micro {
+      &micros[number_nuclides * queue[tid].idx + i_nuclide]};
 
     if (E != micro->last_E || p->sqrtkT_ != micro->last_sqrtkT) {
       auto const& nuclide = *nuclides[i_nuclide];

@@ -1,4 +1,3 @@
-
 #ifndef OPENMC_DAGMC_H
 #define OPENMC_DAGMC_H
 
@@ -53,10 +52,6 @@ void read_dagmc_universes(pugi::xml_node node);
 
 } // namespace openmc
 
-#else
-
-inline void read_dagmc_materials() {};
-
-#endif
+#endif // DAGMC
 
 #endif // OPENMC_DAGMC_H

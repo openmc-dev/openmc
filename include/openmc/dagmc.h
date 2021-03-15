@@ -26,12 +26,23 @@ public:
 
   void initialize(); //!< Sets up the DAGMC instance and OpenMC internals
 
-  std::shared_ptr<UWUW>
-  read_uwuw_materials(); //!< Reads UWUW materials and returns an ID map
+  void read_uwuw_materials(); //!< Reads UWUW materials and returns an ID map
+
+  bool uses_uwuw() const;
+
+  std::string get_uwuw_materials_xml() const;
+
+  void write_uwuw_materials_xml(const std::string& outfile = "uwuw_materials.xml") const;
+
+  void legacy_assign_material(std::string mat_string,
+                              std::unique_ptr<DAGCell>& c) const;
+
+  std::string dagmc_ids_for_dim(int dim) const;
 
   // Data Members
   std::string filename_;
   std::shared_ptr<moab::DagMC> dagmc_instance_; //! DAGMC Instance for this universe
+  std::shared_ptr<UWUW> uwuw_;
   int32_t cell_idx_offset_;
   int32_t surf_idx_offset_;
   bool adjust_geometry_ids_;

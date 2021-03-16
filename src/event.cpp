@@ -164,6 +164,9 @@ void process_advance_particle_events()
   }
   simulation::apq_int = tmp_index;
   */
+
+  // Offloading sanity check
+  /*
     int host = omp_is_initial_device();
   int device;
 #pragma omp target map(tofrom: device)
@@ -171,8 +174,11 @@ void process_advance_particle_events()
     device = omp_is_initial_device();
   }
   printf("should be 1: %d\n", host+device);
+  */
 
 
+  int q_size = simulation::advance_particle_queue.size();
+  
 
   #ifdef USE_DEVICE
 
@@ -201,7 +207,7 @@ void process_advance_particle_events()
   #else
   #pragma omp parallel for schedule(runtime)
   #endif
-  for (int64_t i = 0; i < simulation::advance_particle_queue.size(); i++) {
+  for (int64_t i = 0; i < q_size; i++) {
   //for (int64_t i = 0; i < 1; i++) {
   /*
     //int64_t buffer_idx = simulation::advance_particle_queue[i].idx;
@@ -220,22 +226,26 @@ void process_advance_particle_events()
     //printf("simulation::advance_particle_queue_tmp = %p\n", simulation::advance_particle_queue_tmp);
     
     // Below is the original version
-    int64_t buffer_idx = simulation::advance_particle_queue.device_data_[i].idx;
+    //int64_t buffer_idx = simulation::advance_particle_queue.device_data_[i].idx;
     // Workaround
     //int64_t buffer_idx = simulation::advance_particle_queue_tmp[i].idx;
     //int64_t buffer_idx = simulation::apq_int[i];
     //int64_t buffer_idx = tmp_index[i];
     //printf("advance particle queue size = %ld capacity = %ld\n", simulation::advance_particle_queue.size_, simulation::advance_particle_queue.capacity_);
-    Particle& p = simulation::device_particles[buffer_idx];
+    //Particle& p = simulation::device_particles[buffer_idx];
     /*
     if( i == 0 )
       printf("buffer_idx = %ld   particle id = %ld\n", buffer_idx, p.id_);
     if(p.id_ == 1 )
       printf("in process_advance_particle_events -- model::device_cells ptr = %p\n", model::device_cells);
       */
+
+    // Correct? Version
+    int64_t buffer_idx = simulation::advance_particle_queue.device_data_[i].idx;
+    Particle& p = simulation::device_particles[buffer_idx];
     p.event_advance();
   }
-  //printf("finished offloaded region!\n");
+  printf("offload region exited...\n");
 
   // Move particles device->host
   //device_memcpy(simulation::particles.data(), simulation::device_particles, sz, host_id, device_id);
@@ -254,8 +264,6 @@ void process_advance_particle_events()
     printf("particle %ld distance: %.4le\n", buffer_idx, p.advance_distance_);
   }
   */
-  /*
-  printf("offload region exited...\n");
   // Let's look at particle 1
   for (int64_t i = 0; i < simulation::advance_particle_queue.size(); i++) {
     int64_t buffer_idx = simulation::advance_particle_queue[i].idx;
@@ -267,7 +275,6 @@ void process_advance_particle_events()
     }
   }
   exit(1);
-  */
   
   #pragma omp parallel for schedule(runtime)
   for (int64_t i = 0; i < simulation::advance_particle_queue.size(); i++) {

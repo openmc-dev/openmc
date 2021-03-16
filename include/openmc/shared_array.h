@@ -142,7 +142,7 @@ public:
     */
     //printf("allocate_on_device() called.. Host data ptr is %p capacity is %d\n", data_, capacity_);
     device_data_ = data_; 
-    //#pragma omp target enter data map(alloc: device_data_[:capacity_])
+    #pragma omp target enter data map(alloc: device_data_[:capacity_])
   }
 
   void copy_host_to_device()
@@ -155,7 +155,7 @@ public:
     */
     //printf("copy_host_to_device() called.. Host data ptr is %p, device_data_ ptr is %p, capacity is %d\n", data_, device_data_, capacity_);
     //#pragma omp target enter data map(to: device_data_[:capacity_])
-    //#pragma omp target update to(device_data_[:capacity_])
+    #pragma omp target update to(device_data_[:capacity_])
   }
   
   void copy_device_to_host()

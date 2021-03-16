@@ -95,6 +95,28 @@ This will take several minutes to run depending on your internet download speed.
 .. _options: https://docs.docker.com/engine/reference/commandline/run/
 .. _mounting volumes: https://docs.docker.com/storage/volumes/
 
+----------------------------------
+Installing from Source using Spack
+----------------------------------
+
+Spack_ is a package management tool designed to support multiple versions and
+configurations of software on a wide variety of platforms and environments.
+Please follow Spack's `setup guide`_ to configure the Spack system.
+
+To install the latest OpenMC with the Python API, use the following command:
+
+.. code-block:: sh
+
+    spack install py-openmc
+
+For more information about customizations including MPI, see the
+:ref:`detailed installation instructions using Spack <install-spack>`.
+Once installed, environment/lmod modules can be generated or Spack's `load` feature
+can be used to access the installed packages. 
+
+.. _Spack: https://spack.readthedocs.io/en/latest/
+.. _setup guide: https://spack.readthedocs.io/en/latest/getting_started.html
+
 ---------------------------------------
 Installing from Source on Ubuntu 15.04+
 ---------------------------------------
@@ -118,7 +140,7 @@ All OpenMC source code is hosted on `GitHub
 <https://github.com/openmc-dev/openmc>`_. If you have `git
 <https://git-scm.com>`_, the `gcc <https://gcc.gnu.org/>`_ compiler suite,
 `CMake <http://www.cmake.org>`_, and `HDF5 <https://www.hdfgroup.org/HDF5/>`_
-installed, you can download and install OpenMC be entering the following
+installed, you can download and install OpenMC by entering the following
 commands in a terminal:
 
 .. code-block:: sh

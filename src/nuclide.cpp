@@ -83,17 +83,25 @@ Nuclide::Nuclide(hid_t group, const std::vector<double>& temperature)
   }
 
   // Determine actual temperatures to read -- start by checking whether a
-  // temperature range was given, in which case all temperatures in the range
-  // are loaded irrespective of what temperatures actually appear in the model
+  // temperature range was given (indicated by T_max > 0), in which case all
+  // temperatures in the range are loaded irrespective of what temperatures
+  // actually appear in the model
   std::vector<int> temps_to_read;
   int n = temperature.size();
   double T_min = n > 0 ? settings::temperature_range[0] : 0.0;
   double T_max = n > 0 ? settings::temperature_range[1] : INFTY;
   if (T_max > 0.0) {
-    for (auto T : temps_available) {
-      if (T_min <= T && T <= T_max) {
-        temps_to_read.push_back(std::round(T));
-      }
+    // Determine first available temperature below or equal to T_min
+    auto T_min_it = std::upper_bound(temps_available.begin(), temps_available.end(), T_min);
+    if (T_min_it != temps_available.begin()) --T_min_it;
+
+    // Determine first available temperature above or equal to T_max
+    auto T_max_it = std::lower_bound(temps_available.begin(), temps_available.end(), T_max);
+    if (T_max_it != temps_available.end()) ++T_max_it;
+
+    // Add corresponding temperatures to vector
+    for (auto it = T_min_it; it != T_max_it; ++it) {
+      temps_to_read.push_back(std::round(*it));
     }
   }
 

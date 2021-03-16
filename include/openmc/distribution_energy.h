@@ -6,6 +6,7 @@
 
 #include <vector>
 
+#include <iostream>
 #include "xtensor/xtensor.hpp"
 #include "hdf5.h"
 

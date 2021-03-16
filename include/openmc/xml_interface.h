@@ -7,6 +7,8 @@
 #include <vector>
 
 #include "pugixml.hpp"
+
+#include <iostream>
 #include "xtensor/xarray.hpp"
 #include "xtensor/xadapt.hpp"
 

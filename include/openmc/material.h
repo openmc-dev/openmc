@@ -9,6 +9,7 @@
 #include <gsl/gsl>
 #include <hdf5.h>
 #include "pugixml.hpp"
+#include <iostream>
 #include "xtensor/xtensor.hpp"
 
 #include "openmc/constants.h"

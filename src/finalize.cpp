@@ -132,6 +132,7 @@ int openmc_finalize()
   model::root_universe = -1;
   openmc::openmc_set_seed(DEFAULT_SEED);
 
+
   // Deallocate arrays
   free_memory();
 

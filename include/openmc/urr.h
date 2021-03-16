@@ -3,6 +3,7 @@
 #ifndef OPENMC_URR_H
 #define OPENMC_URR_H
 
+#include <iostream>
 #include "xtensor/xtensor.hpp"
 
 #include "openmc/constants.h"

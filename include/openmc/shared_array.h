@@ -52,8 +52,10 @@ public:
 
   //! Return a reference to the element at specified location i. No bounds
   //! checking is performed.
+  #pragma omp declare target
   T& operator[](int64_t i) {return data_[i];}
   const T& operator[](int64_t i) const { return data_[i]; }
+  #pragma omp end declare target
   
   T& device_at(int64_t i) {return device_data_[i];}
   const T& device_at(int64_t i) const { return device_data_[i]; }
@@ -133,33 +135,48 @@ public:
 
   void allocate_on_device()
   {
+    /*
     int device_id = omp_get_default_device();
     size_t sz = capacity_ * sizeof(T);
     device_data_ = (T *) device_alloc(sz, device_id);
+    */
+    //printf("allocate_on_device() called.. Host data ptr is %p capacity is %d\n", data_, capacity_);
+    device_data_ = data_; 
+    //#pragma omp target enter data map(alloc: device_data_[:capacity_])
   }
 
   void copy_host_to_device()
   {
+    /*
     int host_id = omp_get_initial_device();
     int device_id = omp_get_default_device();
     size_t sz = capacity_ * sizeof(T);
     device_memcpy(device_data_, data_, sz, device_id, host_id);
+    */
+    //printf("copy_host_to_device() called.. Host data ptr is %p, device_data_ ptr is %p, capacity is %d\n", data_, device_data_, capacity_);
+    //#pragma omp target enter data map(to: device_data_[:capacity_])
+    //#pragma omp target update to(device_data_[:capacity_])
   }
   
   void copy_device_to_host()
   {
+    /*
     int host_id = omp_get_initial_device();
     int device_id = omp_get_default_device();
     size_t sz = capacity_ * sizeof(T);
     device_memcpy(data_, device_data_, sz, host_id, device_id);
+    */
+    //#pragma omp target update from(device_data_[:capacity_])
   }
 
+  #pragma omp declare target
   T* device_data_; //!< An RAII handle to the elements
-private: 
+//private: 
   //==========================================================================
   // Data members
 
   T* data_; //!< An RAII handle to the elements
+  #pragma omp end declare target
   int64_t size_ {0}; //!< The current number of elements 
   int64_t capacity_ {0}; //!< The total space allocated for elements
 

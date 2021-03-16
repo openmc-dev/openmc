@@ -6,6 +6,7 @@
 #include <iterator>  // for back_inserter
 #include <stdexcept> // for runtime_error
 
+#include <iostream>
 #include "xtensor/xarray.hpp"
 #include "xtensor/xview.hpp"
 

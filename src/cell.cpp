@@ -233,14 +233,23 @@ void Universe::allocate_and_copy_to_device()
   int device_id = omp_get_default_device();
   size_t sz;
 
+  /*
   sz = cells_.size() * sizeof(int32_t);
   //device_cells_ = (int32_t *) omp_target_alloc(sz, device_id);
   //omp_target_memcpy(device_cells_, cells_.data(), sz, 0, 0, device_id, host_id);
   device_cells_ = (int32_t *) device_alloc(sz, device_id);
   device_memcpy(device_cells_, cells_.data(), sz, device_id, host_id);
+  */
+
+  printf("Copying data from universe cell (%d elements)\n", cells_.size());
+  device_cells_ = cells_.data();
+  #pragma omp target enter data map(to: device_cells_[:cells_.size()])
 
   if(partitioner_ != NULL) 
   {
+    printf("Universe Partitioners not currently supported for offloading. Exiting...\n");
+    exit(1);
+    /*
     // Allocate space on device for partitioner
     sz = sizeof(UniversePartitioner);
     //device_partitioner_ = (UniversePartitioner *) omp_target_alloc(sz, device_id);
@@ -255,6 +264,9 @@ void Universe::allocate_and_copy_to_device()
     //omp_target_memcpy(up.device_surfs_, partitioner_->surfs_.data(), sz, 0, 0, device_id, host_id);
     up.device_surfs_ = (int32_t *) device_alloc(sz, device_id);
     device_memcpy(up.device_surfs_, partitioner_->surfs_.data(), sz, device_id, host_id);
+
+    up.device_surfs_ = partitioner_->surfs_.data();
+    #pragma omp target enter data map(to: up.device_surfs_
     
     // Copy over partions_ 2D vector
 
@@ -293,6 +305,7 @@ void Universe::allocate_and_copy_to_device()
     sz = sizeof(UniversePartitioner);
     //omp_target_memcpy(device_partitioner_, &up, sz, 0, 0, device_id, host_id);
     device_memcpy(device_partitioner_, &up, sz, device_id, host_id);
+    */
   }
 
 }
@@ -347,6 +360,7 @@ Cell::set_temperature(double T, int32_t instance)
   
 void Cell::allocate_on_device()
 {
+  /*
   int device_id = omp_get_default_device();
   size_t sz;
 
@@ -362,40 +376,24 @@ void Cell::allocate_on_device()
   sz = rpn_.size() * sizeof(int32_t);
   device_rpn_ = (int32_t *) device_alloc(sz, device_id);
 
-  /*
-  sz = rotation_.size() * sizeof(double);
-  device_rotation_ = (double *) device_alloc(sz, device_id);
-  */
   
   sz = offset_.size() * sizeof(int32_t);
   device_offset_ = (int32_t *) device_alloc(sz, device_id);
+  */
 }
 
 void Cell::copy_to_device()
 {
-  int host_id = omp_get_initial_device();
-  int device_id = omp_get_default_device();
-  size_t sz;
-
-  sz = material_.size() * sizeof(int32_t);
-  device_memcpy(device_material_, material_.data(), sz, device_id, host_id);
-
-  sz = sqrtkT_.size() * sizeof(double);
-  device_memcpy(device_sqrtkT_, sqrtkT_.data(), sz, device_id, host_id);
-
-  sz = region_.size() * sizeof(int32_t);
-  device_memcpy(device_region_, region_.data(), sz, device_id, host_id);
-
-  sz = rpn_.size() * sizeof(int32_t);
-  device_memcpy(device_rpn_, rpn_.data(), sz, device_id, host_id);
-
-  /*
-  sz = rotation_.size() * sizeof(double);
-  device_memcpy(device_rotation_, rotation_.data(), sz, device_id, host_id);
-  */
-
-  sz = offset_.size() * sizeof(int32_t);
-  device_memcpy(device_offset_, offset_.data(), sz, device_id, host_id);
+  device_material_ = material_.data(); 
+  #pragma omp target enter data map(to: device_material_[:material_.size()])
+  device_sqrtkT_  = sqrtkT_.data()    ;
+  #pragma omp target enter data map(to: device_sqrtkT_[:sqrtkT_.size()])
+  device_region_  = region_.data()    ;
+  #pragma omp target enter data map(to: device_region_[:region_.size()])
+  device_rpn_     = rpn_.data()       ;
+  #pragma omp target enter data map(to: device_rpn_[:rpn_.size()])
+  device_offset_  = offset_.data()    ;
+  #pragma omp target enter data map(to: device_offset_[:offset_.size()])
 }
 
 //==============================================================================

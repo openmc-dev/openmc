@@ -7,6 +7,7 @@
 #include <unordered_map>
 #include <vector>
 
+#include <iostream>
 #include "xtensor/xtensor.hpp"
 
 #include "openmc/angle_energy.h"

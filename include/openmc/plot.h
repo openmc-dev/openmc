@@ -5,6 +5,7 @@
 #include <sstream>
 
 #include "pugixml.hpp"
+#include<iostream>
 #include "xtensor/xarray.hpp"
 
 #include "hdf5.h"

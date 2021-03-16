@@ -62,6 +62,12 @@ extern SharedArray<EventQueueItem> calculate_nonfuel_xs_queue;
   //#pragma omp declare target
 extern SharedArray<EventQueueItem> advance_particle_queue;
   //#pragma omp end declare target
+  /*
+  #pragma omp declare target
+extern EventQueueItem * advance_particle_queue_tmp;
+extern int * apq_int;
+#pragma omp end declare target
+*/
 extern SharedArray<EventQueueItem> surface_crossing_queue;
 extern SharedArray<EventQueueItem> collision_queue;
 

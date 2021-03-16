@@ -402,8 +402,8 @@ cross_lattice(Particle* p, const BoundaryInfo& boundary)
 
 BoundaryInfo distance_to_boundary(Particle* p)
 {
-  if( p->id_ == 1 )
-  printf("in distance_to_boundary -- mode::device_cells ptr = %p\n", model::device_cells);
+  //if( p->id_ == 1 )
+  //printf("in distance_to_boundary -- mode::device_cells ptr = %p\n", model::device_cells);
   BoundaryInfo info;
   double d_lat = INFINITY;
   double d_surf = INFINITY;
@@ -418,17 +418,21 @@ BoundaryInfo distance_to_boundary(Particle* p)
     //Cell& c {model::cells[coord.cell]};
     Cell& c {model::device_cells[coord.cell]};
 
+    /*
     if( p->id_ == 1 )
     {
       printf("in distance_to_boundary -- mode::device_cells ptr = %p   coord.cell = %d\n", model::device_cells, coord.cell);
       printf("cell ID = %d  name = %s\n", c.id_, c.name_.c_str());
     }
+    */
 
 
     // Find the oncoming surface in this cell and the distance to it.
     auto surface_distance = c.distance(r, u, p->surface_, p);
+    /*
     if( p->id_ == 1 )
       printf("coordinate level %d: surface_distance = %.3le\n", i, surface_distance.first);
+      */
     d_surf = surface_distance.first;
     level_surf_cross = surface_distance.second;
 

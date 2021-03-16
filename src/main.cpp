@@ -1,3 +1,4 @@
+
 #ifdef OPENMC_MPI
 #include <mpi.h>
 #endif
@@ -7,9 +8,12 @@
 #include "openmc/message_passing.h"
 #include "openmc/particle_restart.h"
 #include "openmc/settings.h"
+#include "openmc/cell.h"
+#include <stdio.h>
 
 
 int main(int argc, char* argv[]) {
+
   using namespace openmc;
   int err;
 
@@ -48,12 +52,17 @@ int main(int argc, char* argv[]) {
   }
   if (err) fatal_error(openmc_err_msg);
 
+  printf("finished simulation in main..\n");
+
   // Finalize and free up memory
   err = openmc_finalize();
   if (err) fatal_error(openmc_err_msg);
+
+  printf("all done\n");
 
   // If MPI is in use and enabled, terminate it
 #ifdef OPENMC_MPI
   MPI_Finalize();
 #endif
+  printf("seg fault\n");
 }

@@ -3,6 +3,7 @@
 #include <cmath>  // for abs, copysign
 #include <vector> // for vector
 
+#include <iostream>
 #include "xtensor/xarray.hpp"
 #include "xtensor/xview.hpp"
 

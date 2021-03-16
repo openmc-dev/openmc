@@ -92,10 +92,19 @@ if(openmp)
   # Requires CMake 3.1+
   find_package(OpenMP)
   if(OPENMP_FOUND)
+    # Generic
+
     #list(APPEND cxxflags ${OpenMP_CXX_FLAGS})
     #list(APPEND ldflags ${OpenMP_CXX_FLAGS})
-    list(APPEND cxxflags -fiopenmp -fopenmp-targets=spir64 -fexceptions)
-    list(APPEND ldflags -fiopenmp -fopenmp-targets=spir64 -fexceptions)
+
+    # Intel
+
+    #list(APPEND cxxflags -fiopenmp -fopenmp-targets=spir64 -fexceptions)
+    #list(APPEND ldflags -fiopenmp -fopenmp-targets=spir64 -fexceptions)
+
+    # LLVM Targeting V100
+    list(APPEND cxxflags -fopenmp -fopenmp-targets=nvptx64-nvidia-cuda -Xopenmp-target -march=sm_70 -fexceptions)
+    list(APPEND ldflags -fopenmp -fopenmp-targets=nvptx64-nvidia-cuda -Xopenmp-target -march=sm_70 -fexceptions)
   endif()
 endif()
 
@@ -166,6 +175,7 @@ add_subdirectory(vendor/fmt)
 # xtensor header-only library
 #===============================================================================
 
+
 # CMake 3.13+ will complain about policy CMP0079 unless it is set explicitly
 if (NOT (CMAKE_VERSION VERSION_LESS 3.13))
   cmake_policy(SET CMP0079 NEW)
@@ -173,6 +183,7 @@ endif()
 
 add_subdirectory(vendor/xtl)
 set(xtl_DIR ${CMAKE_CURRENT_BINARY_DIR}/vendor/xtl)
+set(XTENSOR_DISABLE_EXCEPTIONS 1)
 add_subdirectory(vendor/xtensor)
 
 #===============================================================================
@@ -184,7 +195,7 @@ set(GSL_LITE_OPT_INSTALL_COMPAT_HEADER ON CACHE BOOL
 add_subdirectory(vendor/gsl-lite)
 
 # Make sure contract violations throw exceptions
-target_compile_definitions(gsl-lite-v1 INTERFACE GSL_THROW_ON_CONTRACT_VIOLATION)
+#target_compile_definitions(gsl-lite-v1 INTERFACE GSL_THROW_ON_CONTRACT_VIOLATION)
 target_compile_definitions(gsl-lite-v1 INTERFACE gsl_CONFIG_ALLOWS_NONSTRICT_SPAN_COMPARISON=1)
 
 #===============================================================================

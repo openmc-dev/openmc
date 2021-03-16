@@ -6,6 +6,7 @@
 #ifdef _OPENMP
 #include <omp.h>
 #endif
+#include <iostream>
 #include "xtensor/xtensor.hpp"
 
 #include "openmc/error.h"

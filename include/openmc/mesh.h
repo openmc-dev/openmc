@@ -10,6 +10,7 @@
 
 #include "hdf5.h"
 #include "pugixml.hpp"
+#include <iostream>
 #include "xtensor/xtensor.hpp"
 
 #include "openmc/particle.h"

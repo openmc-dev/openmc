@@ -84,8 +84,13 @@ int openmc_simulation_init()
       settings::max_particles_in_flight);
     init_event_queues(event_buffer_length);
     //simulation::device_particles = (Particle*) malloc(event_buffer_length* sizeof(Particle));
+    /*
     int device_id = omp_get_default_device();
     simulation::device_particles = (Particle*) device_alloc(event_buffer_length* sizeof(Particle), device_id);
+    */
+    printf("settting deveice particles to host ptr = %p\n", simulation::particles.data());
+    simulation::device_particles = simulation::particles.data();
+    //#pragma omp target enter data map(alloc: simulation::device_particles[:event_buffer_length])
   }
   
 
@@ -106,6 +111,20 @@ int openmc_simulation_init()
   simulation::entropy.clear();
   simulation::need_depletion_rx = false;
   openmc_reset();
+
+  model::device_cells = model::cells.data();
+  /*
+  Cell * some_cells = new Cell[4];
+  printf("attempting to map some cells\n");
+  #pragma omp target enter data map(to: some_cells[0:4])
+  printf("finished mapping cells\n");
+
+  #pragma omp target
+  {
+    printf("hello from device in simulation.cpp!\n");
+  }
+  exit(0);
+  */
   
   move_read_only_data_to_device();
 
@@ -190,6 +209,7 @@ int openmc_simulation_finalize()
   if (settings::check_overlaps) print_overlap_check();
    
   free(simulation::device_particles);
+  printf("freeing device particles was a success!\n");
 
   // Reset flags
   simulation::need_depletion_rx = false;

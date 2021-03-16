@@ -7,6 +7,7 @@
 #include <vector>
 
 #include "hdf5.h"
+#include <iostream>
 #include "xtensor/xtensor.hpp"
 
 #include "openmc/angle_energy.h"

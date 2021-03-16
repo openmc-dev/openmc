@@ -1252,6 +1252,14 @@ Lattice::HexLattice_to_hdf5_inner(hid_t lat_group) const
   
 void Lattice::allocate_and_copy_to_device(void)
 {
+  device_universes_ = universes_.data();
+  #pragma omp target enter data map(to: device_universes_[:universes_.size()])
+
+  device_offsets_ = offsets_.data();
+  #pragma omp target enter data map(to: device_offsets_[:offsets_.size()])
+
+
+  /*
   int host_id = omp_get_initial_device();
   int device_id = omp_get_default_device();
   size_t sz;
@@ -1267,6 +1275,7 @@ void Lattice::allocate_and_copy_to_device(void)
   //omp_target_memcpy(device_offsets_, offsets_.data(), sz, 0, 0, device_id, host_id);
   device_offsets_ = (int32_t *) device_alloc(sz, device_id);
   device_memcpy(device_offsets_, offsets_.data(), sz, device_id, host_id);
+  */
 }
 
 //==============================================================================

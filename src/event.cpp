@@ -16,7 +16,11 @@ namespace simulation {
 
 SharedArray<EventQueueItem> calculate_fuel_xs_queue;
 SharedArray<EventQueueItem> calculate_nonfuel_xs_queue;
+//#pragma omp declare target
 SharedArray<EventQueueItem> advance_particle_queue;
+//#pragma omp end declare target
+//EventQueueItem * advance_particle_queue_tmp;
+//int * apq_int;
 SharedArray<EventQueueItem> surface_crossing_queue;
 SharedArray<EventQueueItem> collision_queue;
 
@@ -41,6 +45,10 @@ void init_event_queues(int64_t n_particles)
 
   // Allocate any queues that are needed on device
   simulation::advance_particle_queue.allocate_on_device();
+
+  // Workaround
+  //simulation::advance_particle_queue_tmp = simulation::advance_particle_queue.data();
+  //#pragma omp target enter data map(alloc: simulation::advance_particle_queue_tmp[:n_particles])
 }
 
 void free_event_queues(void)
@@ -112,13 +120,24 @@ void process_advance_particle_events()
   simulation::time_event_advance_particle.start();
 
   //#pragma omp parallel for schedule(runtime)
+  //#pragma omp target enter data map(to: simulation::advance_particle_queue)
 
   // Move queue and particles host->device
   simulation::advance_particle_queue.copy_host_to_device();
+  
+  // Workaround
+//#pragma omp target enter data map(to: simulation::advance_particle_queue_tmp[:simulation::advance_particle_queue.size()])
+
+  /*
   int host_id = omp_get_initial_device();
   int device_id = omp_get_default_device();
   size_t sz = simulation::particles.size() * sizeof(Particle);
   device_memcpy(simulation::device_particles, simulation::particles.data(), sz, device_id, host_id);
+  */
+  //printf("migrating device particles from host ptr = %p\n", simulation::particles.data());
+  //#pragma omp target enter data map(to: simulation::device_particles[:simulation::particles.size()])
+  #pragma omp target update to(simulation::device_particles[:simulation::particles.size()])
+
   
   // Let's look at particle 0
   /*
@@ -133,17 +152,40 @@ void process_advance_particle_events()
   }
   */
   //printf("device particles pointer = %p\n", simulation::device_particles);
+  //
+
+ // printf("First index in particle queue tmp = %d (queue size = %d)\n", simulation::advance_particle_queue[0].idx, simulation::advance_particle_queue.size());
+
+  /*
+  int * tmp_index = (int *) malloc(sizeof(int) * simulation::advance_particle_queue.size());
+  for( int i = 0; i < simulation::advance_particle_queue.size(); i++)
+  {
+    tmp_index[i] = simulation::advance_particle_queue_tmp[i].idx;
+  }
+  simulation::apq_int = tmp_index;
+  */
+    int host = omp_is_initial_device();
+  int device;
+#pragma omp target map(tofrom: device)
+  {
+    device = omp_is_initial_device();
+  }
+  printf("should be 1: %d\n", host+device);
+
+
 
   #ifdef USE_DEVICE
 
-  #pragma omp target teams distribute parallel for\
+  printf("Launching device kernel...\n");
+  #pragma omp target teams distribute parallel for
+  //#pragma omp target teams distribute parallel for map(to: simulation::advance_particle_queue_tmp[:simulation::advance_particle_queue.size()])
+  //#pragma omp target teams distribute parallel for map(to: tmp_index[:simulation::advance_particle_queue.size()])
+  //#pragma omp target teams distribute parallel for map(to: simulation::apq_int[:simulation::advance_particle_queue.size()])
+  /*
   is_device_ptr(\
-      simulation::device_particles, \
-      model::device_lattices, \
-      model::device_surfaces, \
-      model::device_universes, \
-      model::device_cells \
+      simulation::device_particles \
       )
+      */
   // I had the last 4 above in model:: commented out for some reason
   /*
   is_device_ptr(\
@@ -174,18 +216,34 @@ void process_advance_particle_events()
     
     //p.event_advance();
     */
+
+    //printf("simulation::advance_particle_queue_tmp = %p\n", simulation::advance_particle_queue_tmp);
     
     // Below is the original version
     int64_t buffer_idx = simulation::advance_particle_queue.device_data_[i].idx;
+    // Workaround
+    //int64_t buffer_idx = simulation::advance_particle_queue_tmp[i].idx;
+    //int64_t buffer_idx = simulation::apq_int[i];
+    //int64_t buffer_idx = tmp_index[i];
+    //printf("advance particle queue size = %ld capacity = %ld\n", simulation::advance_particle_queue.size_, simulation::advance_particle_queue.capacity_);
     Particle& p = simulation::device_particles[buffer_idx];
+    /*
+    if( i == 0 )
+      printf("buffer_idx = %ld   particle id = %ld\n", buffer_idx, p.id_);
     if(p.id_ == 1 )
       printf("in process_advance_particle_events -- model::device_cells ptr = %p\n", model::device_cells);
+      */
     p.event_advance();
   }
   //printf("finished offloaded region!\n");
 
   // Move particles device->host
-  device_memcpy(simulation::particles.data(), simulation::device_particles, sz, host_id, device_id);
+  //device_memcpy(simulation::particles.data(), simulation::device_particles, sz, host_id, device_id);
+  
+  //#pragma omp target exit data map(from: simulation::device_particles[:simulation::particles.size()])
+  #pragma omp target update from(simulation::device_particles[:simulation::particles.size()])
+
+  //free(tmp_index);
 
 
   // Let's look at some particles
@@ -196,6 +254,8 @@ void process_advance_particle_events()
     printf("particle %ld distance: %.4le\n", buffer_idx, p.advance_distance_);
   }
   */
+  /*
+  printf("offload region exited...\n");
   // Let's look at particle 1
   for (int64_t i = 0; i < simulation::advance_particle_queue.size(); i++) {
     int64_t buffer_idx = simulation::advance_particle_queue[i].idx;
@@ -207,6 +267,7 @@ void process_advance_particle_events()
     }
   }
   exit(1);
+  */
   
   #pragma omp parallel for schedule(runtime)
   for (int64_t i = 0; i < simulation::advance_particle_queue.size(); i++) {

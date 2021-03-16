@@ -6,6 +6,7 @@
 #include <vector>
 
 #include <fmt/core.h>
+#include <iostream>
 #include "xtensor/xbuilder.hpp" // for empty_like
 #include "xtensor/xview.hpp"
 

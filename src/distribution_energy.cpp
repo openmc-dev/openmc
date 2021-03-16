@@ -4,6 +4,7 @@
 #include <cstddef>   // for size_t
 #include <iterator>  // for back_inserter
 
+#include <iostream>
 #include "xtensor/xview.hpp"
 
 #include "openmc/endf.h"

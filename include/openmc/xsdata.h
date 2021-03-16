@@ -7,6 +7,7 @@
 #include <memory>
 #include <vector>
 
+#include <iostream>
 #include "xtensor/xtensor.hpp"
 
 #include "openmc/hdf5_interface.h"

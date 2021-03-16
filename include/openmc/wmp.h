@@ -2,6 +2,7 @@
 #define OPENMC_WMP_H
 
 #include "hdf5.h"
+#include <iostream>
 #include "xtensor/xtensor.hpp"
 
 #include <array>

@@ -8,6 +8,7 @@
 #include <cstdint> // for int64_t
 #include <vector>
 
+#include <iostream>
 #include "xtensor/xtensor.hpp"
 #include <hdf5.h>
 

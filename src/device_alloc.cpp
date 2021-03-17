@@ -52,6 +52,7 @@ void move_read_only_data_to_device(void)
   device_memcpy(model::device_surfaces, model::surfaces.data(), sz, device_id, host_id);
   */
 
+  std::cout << "Moving " << model::surfaces.size() << " surfaces to device..." << std::endl;
   model::device_surfaces = model::surfaces.data();
   #pragma omp target enter data map(to: model::device_surfaces[:model::surfaces.size()])
   
@@ -97,7 +98,7 @@ void move_read_only_data_to_device(void)
   */
   
   
-  //printf("moving %d cells to device..\n", model::cells.size());
+  printf("moving %d global cells to device..\n", model::cells.size());
   model::device_cells = model::cells.data();
   #pragma omp target enter data map(to: model::device_cells[0:model::cells.size()])
   

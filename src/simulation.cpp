@@ -90,7 +90,7 @@ int openmc_simulation_init()
     */
     printf("settting deveice particles to host ptr = %p\n", simulation::particles.data());
     simulation::device_particles = simulation::particles.data();
-    //#pragma omp target enter data map(alloc: simulation::device_particles[:event_buffer_length])
+    #pragma omp target enter data map(alloc: simulation::device_particles[:event_buffer_length])
   }
   
 

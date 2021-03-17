@@ -178,7 +178,24 @@ void process_advance_particle_events()
 
 
   int q_size = simulation::advance_particle_queue.size();
+  int * tmp_queue = new int[q_size];
+  for( int i = 0; i < q_size; i++ )
+    tmp_queue[i] = simulation::advance_particle_queue[i].idx;
+  #pragma omp target enter data map(to: tmp_queue[0:q_size])
+
+  int n_particles = simulation::particles.size();
+
+ Particle * tmp_p = new Particle[n_particles];
+  for( int i = 0; i < n_particles; i++ )
+   tmp_p[i] = simulation::particles[i]; 
+
+  #pragma omp target enter data map(to: tmp_p[0:n_particles])
   
+  /*
+  Particle * tmp_p = new Particle[simulation::particles.size()];
+  memcpy(tmp_p, simulation::particles.data(), simulation::particles.size() * sizeof(Particle));
+  */
+
 
   #ifdef USE_DEVICE
 
@@ -242,7 +259,11 @@ void process_advance_particle_events()
 
     // Correct? Version
     int64_t buffer_idx = simulation::advance_particle_queue.device_data_[i].idx;
+    //int64_t buffer_idx = tmp_queue[i];
     Particle& p = simulation::device_particles[buffer_idx];
+    //Particle& p = tmp_p[buffer_idx];
+    //if( i == 0 )
+    //  printf("buffer_idx = %ld   particle id = %ld\n", buffer_idx, p.id_);
     p.event_advance();
   }
   printf("offload region exited...\n");

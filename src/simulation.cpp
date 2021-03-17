@@ -208,8 +208,8 @@ int openmc_simulation_finalize()
   }
   if (settings::check_overlaps) print_overlap_check();
    
-  free(simulation::device_particles);
-  printf("freeing device particles was a success!\n");
+  //free(simulation::device_particles);
+  //printf("freeing device particles was a success!\n");
 
   // Reset flags
   simulation::need_depletion_rx = false;

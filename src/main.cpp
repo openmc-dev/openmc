@@ -58,11 +58,8 @@ int main(int argc, char* argv[]) {
   err = openmc_finalize();
   if (err) fatal_error(openmc_err_msg);
 
-  printf("all done\n");
-
   // If MPI is in use and enabled, terminate it
 #ifdef OPENMC_MPI
   MPI_Finalize();
 #endif
-  printf("seg fault\n");
 }

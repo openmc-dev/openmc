@@ -634,7 +634,6 @@ Cell::distance(Position r, Direction u, int32_t on_surface, Particle* p) const
     bool coincident {std::fabs(token) == std::fabs(on_surface)};
     //double d {model::surfaces[abs(token)-1].distance(r, u, coincident)};
     //double d {model::device_surfaces[abs(token)-1].distance(r, u, coincident)};
-  return {0, 1};
     double d {model::device_surfaces[(int) std::fabs(token)-1].distance(r, u, coincident)};
 
     // Check if this distance is the new minimum.

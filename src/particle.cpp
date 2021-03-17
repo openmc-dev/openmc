@@ -210,13 +210,13 @@ Particle::event_calculate_xs()
 void
 Particle::event_advance()
 {
-    if(id_ == 1 )
-      printf("In event_advance() -- model::device_cells ptr = %p\n", model::device_cells);
+  //   if(id_ == 1 )
+  //    printf("In event_advance() -- model::device_cells ptr = %p\n", model::device_cells);
   // Find the distance to the nearest boundary
   boundary_ = distance_to_boundary(this);
-  if( id_ == 1 )
-    printf("distance to boundary = %.3le\n", boundary_.distance);
-  return;
+  //if( id_ == 1 )
+  //  printf("distance to boundary = %.3le\n", boundary_.distance);
+  //return;
 
   // Sample a distance to collision
   if (type_ == Particle::Type::electron ||

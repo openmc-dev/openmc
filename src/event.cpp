@@ -177,6 +177,7 @@ void process_advance_particle_events()
   */
 
 
+  /*
   int q_size = simulation::advance_particle_queue.size();
   int * tmp_queue = new int[q_size];
   for( int i = 0; i < q_size; i++ )
@@ -190,6 +191,7 @@ void process_advance_particle_events()
    tmp_p[i] = simulation::particles[i]; 
 
   #pragma omp target enter data map(to: tmp_p[0:n_particles])
+  */
   
   /*
   Particle * tmp_p = new Particle[simulation::particles.size()];
@@ -199,7 +201,7 @@ void process_advance_particle_events()
 
   #ifdef USE_DEVICE
 
-  printf("Launching device kernel...\n");
+  //printf("Launching device kernel...\n");
   #pragma omp target teams distribute parallel for
   //#pragma omp target teams distribute parallel for map(to: simulation::advance_particle_queue_tmp[:simulation::advance_particle_queue.size()])
   //#pragma omp target teams distribute parallel for map(to: tmp_index[:simulation::advance_particle_queue.size()])
@@ -224,7 +226,7 @@ void process_advance_particle_events()
   #else
   #pragma omp parallel for schedule(runtime)
   #endif
-  for (int64_t i = 0; i < q_size; i++) {
+  for (int64_t i = 0; i < simulation::advance_particle_queue.size(); i++) {
   //for (int64_t i = 0; i < 1; i++) {
   /*
     //int64_t buffer_idx = simulation::advance_particle_queue[i].idx;
@@ -266,7 +268,7 @@ void process_advance_particle_events()
     //  printf("buffer_idx = %ld   particle id = %ld\n", buffer_idx, p.id_);
     p.event_advance();
   }
-  printf("offload region exited...\n");
+  //printf("offload region exited...\n");
 
   // Move particles device->host
   //device_memcpy(simulation::particles.data(), simulation::device_particles, sz, host_id, device_id);
@@ -286,6 +288,7 @@ void process_advance_particle_events()
   }
   */
   // Let's look at particle 1
+  /*
   for (int64_t i = 0; i < simulation::advance_particle_queue.size(); i++) {
     int64_t buffer_idx = simulation::advance_particle_queue[i].idx;
     Particle& p = simulation::particles[buffer_idx];
@@ -296,6 +299,7 @@ void process_advance_particle_events()
     }
   }
   exit(1);
+  */
   
   #pragma omp parallel for schedule(runtime)
   for (int64_t i = 0; i < simulation::advance_particle_queue.size(); i++) {

@@ -78,6 +78,9 @@ class Operator(TransportOperator):
         Results from a previous depletion calculation. If this argument is
         specified, the depletion calculation will start from the latest state
         in the previous results.
+    args : list of str, optional
+        Command-line arguments for openmc solver, which might be used to control
+        over number of OpenMPI processes setting during Monte-Carlo simulation
     diff_burnable_mats : bool, optional
         Whether to differentiate burnable materials with multiple instances.
         Volumes are divided equally from the original material volume.
@@ -187,7 +190,8 @@ class Operator(TransportOperator):
                  fission_q=None, dilute_initial=1.0e3,
                  fission_yield_mode="constant", fission_yield_opts=None,
                  reaction_rate_mode="direct", reaction_rate_opts=None,
-                 reduce_chain=False, reduce_chain_level=None):
+                 reduce_chain=False, reduce_chain_level=None,
+                 args=None):
         check_value('fission yield mode', fission_yield_mode,
                     self._fission_helpers.keys())
         check_value('normalization mode', normalization_mode,
@@ -201,7 +205,8 @@ class Operator(TransportOperator):
         self.settings = settings
         self.geometry = geometry
         self.diff_burnable_mats = diff_burnable_mats
-
+        # Command-line arguments for OpenMC
+        self._args = args
         # Reduce the chain before we create more materials
         if reduce_chain:
             all_isotopes = set()
@@ -535,8 +540,11 @@ class Operator(TransportOperator):
 
         # Initialize OpenMC library
         comm.barrier()
-        openmc.lib.init(intracomm=comm)
-
+        if (self._args):
+            openmc.lib.init(intracomm=comm, args=self._args)
+        else:
+            openmc.lib.init(intracomm=comm)
+        
         # Generate tallies in memory
         materials = [openmc.lib.materials[int(i)]
                      for i in self.burnable_mats]

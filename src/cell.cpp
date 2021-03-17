@@ -233,21 +233,13 @@ void Universe::allocate_and_copy_to_device()
   int device_id = omp_get_default_device();
   size_t sz;
 
-  /*
-  sz = cells_.size() * sizeof(int32_t);
-  //device_cells_ = (int32_t *) omp_target_alloc(sz, device_id);
-  //omp_target_memcpy(device_cells_, cells_.data(), sz, 0, 0, device_id, host_id);
-  device_cells_ = (int32_t *) device_alloc(sz, device_id);
-  device_memcpy(device_cells_, cells_.data(), sz, device_id, host_id);
-  */
-
-  printf("Copying data from universe cell (%d elements)\n", cells_.size());
+  printf("Deep copying %d cell IDs in a universe...\n", cells_.size());
   device_cells_ = cells_.data();
   #pragma omp target enter data map(to: device_cells_[:cells_.size()])
 
   if(partitioner_ != NULL) 
   {
-    printf("Universe Partitioners not currently supported for offloading. Exiting...\n");
+    printf("Universe Partitioners not yet supported for offloading. Exiting...\n");
     exit(1);
     /*
     // Allocate space on device for partitioner
@@ -360,26 +352,7 @@ Cell::set_temperature(double T, int32_t instance)
   
 void Cell::allocate_on_device()
 {
-  /*
-  int device_id = omp_get_default_device();
-  size_t sz;
-
-  sz = material_.size() * sizeof(int32_t);
-  device_material_ = (int32_t *) device_alloc(sz, device_id);
-
-  sz = sqrtkT_.size() * sizeof(double);
-  device_sqrtkT_ = (double *) device_alloc(sz, device_id);
-
-  sz = region_.size() * sizeof(int32_t);
-  device_region_ = (int32_t *) device_alloc(sz, device_id);
-  
-  sz = rpn_.size() * sizeof(int32_t);
-  device_rpn_ = (int32_t *) device_alloc(sz, device_id);
-
-  
-  sz = offset_.size() * sizeof(int32_t);
-  device_offset_ = (int32_t *) device_alloc(sz, device_id);
-  */
+  // Functionality moved to copy_to_device()
 }
 
 void Cell::copy_to_device()

@@ -83,12 +83,9 @@ int openmc_simulation_init()
     int64_t event_buffer_length = std::min(simulation::work_per_rank,
       settings::max_particles_in_flight);
     init_event_queues(event_buffer_length);
-    //simulation::device_particles = (Particle*) malloc(event_buffer_length* sizeof(Particle));
-    /*
-    int device_id = omp_get_default_device();
-    simulation::device_particles = (Particle*) device_alloc(event_buffer_length* sizeof(Particle), device_id);
-    */
-    printf("settting deveice particles to host ptr = %p\n", simulation::particles.data());
+
+    // Allocate particle buffer on device
+    printf("Allocating device particle buffer of size: %.3lf MB\n", simulation::particles.size() * sizeof(Particle) /1024.0/1024.0);
     simulation::device_particles = simulation::particles.data();
     #pragma omp target enter data map(alloc: simulation::device_particles[:event_buffer_length])
   }
@@ -112,20 +109,7 @@ int openmc_simulation_init()
   simulation::need_depletion_rx = false;
   openmc_reset();
 
-  model::device_cells = model::cells.data();
-  /*
-  Cell * some_cells = new Cell[4];
-  printf("attempting to map some cells\n");
-  #pragma omp target enter data map(to: some_cells[0:4])
-  printf("finished mapping cells\n");
-
-  #pragma omp target
-  {
-    printf("hello from device in simulation.cpp!\n");
-  }
-  exit(0);
-  */
-  
+  // Allocate & Copy simulation data from host -> device
   move_read_only_data_to_device();
 
   // If this is a restart run, load the state point data and binary source

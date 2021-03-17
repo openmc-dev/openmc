@@ -52,8 +52,6 @@ int main(int argc, char* argv[]) {
   }
   if (err) fatal_error(openmc_err_msg);
 
-  printf("finished simulation in main..\n");
-
   // Finalize and free up memory
   err = openmc_finalize();
   if (err) fatal_error(openmc_err_msg);

@@ -143,13 +143,13 @@ provided by OpenMPI, the following command can be used:
     ``%gcc@<version>``, ``%intel@<version>``, etc.
 
 A useful tool in Spack is to look at the dependency tree before installation.
-This can be observed using Spack's `spec` tool:
+This can be observed using Spack's ``spec`` tool:
 
 .. code-block::
 
     spack spec py-openmc+mpi ^openmc+optimize
 
-Once installed, environment/lmod modules can be generated or Spack's `load`
+Once installed, environment/lmod modules can be generated or Spack's ``load``
 feature can be used to access the installed packages.
 
 .. _Spack: https://spack.readthedocs.io/en/latest/

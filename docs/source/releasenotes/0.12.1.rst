@@ -42,12 +42,12 @@ New Features
 - Various improvements related to depletion:
 
   - Reactions used in a depletion chain can now be configured through the
-    `reactions` argument to :meth:`openmc.deplete.Chain.from_endf`.
+    ``reactions`` argument to :meth:`openmc.deplete.Chain.from_endf`.
   - Specifying a power of zero during a depletion simulation no longer results
     in an unnecessary transport solve.
   - Reaction rates can be computed either directly or using multigroup flux
     tallies that are used to collapse reaction rates afterward. This is enabled
-    through the `reaction_rate_mode` and `reaction_rate_opts` to
+    through the ``reaction_rate_mode`` and ``reaction_rate_opts`` to
     :class:`openmc.deplete.Operator`.
   - Depletion results can be used to create a new :class:`openmc.Materials`
     object using the :meth:`openmc.deplete.ResultsList.export_to_materials`
@@ -62,7 +62,6 @@ New Features
   using :meth:`openmc.data.WindowedMultipole.from_endf`.
 - The new :func:`openmc.write_source_file` function allows source files to be
   generated programmatically.
-
 
 ---------
 Bug Fixes

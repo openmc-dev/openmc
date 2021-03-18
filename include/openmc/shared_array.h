@@ -114,9 +114,9 @@ public:
   }
 
   //! Return the number of elements in the container
-  //#pragma omp declare target
+  #pragma omp declare target
   int64_t size() {return size_;}
-  //#pragma omp end declare target
+  #pragma omp end declare target
 
   //! Resize the container to contain a specified number of elements. This is
   //! useful in cases where the container is written to in a non-thread safe manner,
@@ -135,50 +135,34 @@ public:
 
   void allocate_on_device()
   {
-    /*
-    int device_id = omp_get_default_device();
-    size_t sz = capacity_ * sizeof(T);
-    device_data_ = (T *) device_alloc(sz, device_id);
-    */
-    //printf("allocate_on_device() called.. Host data ptr is %p capacity is %d\n", data_, capacity_);
     device_data_ = data_; 
     #pragma omp target enter data map(alloc: device_data_[:capacity_])
   }
 
   void copy_host_to_device()
   {
-    /*
-    int host_id = omp_get_initial_device();
-    int device_id = omp_get_default_device();
-    size_t sz = capacity_ * sizeof(T);
-    device_memcpy(device_data_, data_, sz, device_id, host_id);
-    */
-    //printf("copy_host_to_device() called.. Host data ptr is %p, device_data_ ptr is %p, capacity is %d\n", data_, device_data_, capacity_);
-    //#pragma omp target enter data map(to: device_data_[:capacity_])
     #pragma omp target update to(device_data_[:capacity_])
   }
   
   void copy_device_to_host()
   {
-    /*
-    int host_id = omp_get_initial_device();
-    int device_id = omp_get_default_device();
-    size_t sz = capacity_ * sizeof(T);
-    device_memcpy(data_, device_data_, sz, host_id, device_id);
-    */
     //#pragma omp target update from(device_data_[:capacity_])
   }
-
-  #pragma omp declare target
-  T* device_data_; //!< An RAII handle to the elements
-//private: 
+  
   //==========================================================================
   // Data members
 
-  T* data_; //!< An RAII handle to the elements
+  #pragma omp declare target
+  T* device_data_; //!< An RAII handle to the elements
   #pragma omp end declare target
+
+  private: 
+
+  #pragma omp declare target
+  T* data_; //!< An RAII handle to the elements
   int64_t size_ {0}; //!< The current number of elements 
   int64_t capacity_ {0}; //!< The total space allocated for elements
+  #pragma omp end declare target
 
 }; 
 

@@ -16,11 +16,7 @@ namespace simulation {
 
 SharedArray<EventQueueItem> calculate_fuel_xs_queue;
 SharedArray<EventQueueItem> calculate_nonfuel_xs_queue;
-//#pragma omp declare target
 SharedArray<EventQueueItem> advance_particle_queue;
-//#pragma omp end declare target
-//EventQueueItem * advance_particle_queue_tmp;
-//int * apq_int;
 SharedArray<EventQueueItem> surface_crossing_queue;
 SharedArray<EventQueueItem> collision_queue;
 
@@ -45,10 +41,6 @@ void init_event_queues(int64_t n_particles)
 
   // Allocate any queues that are needed on device
   simulation::advance_particle_queue.allocate_on_device();
-
-  // Workaround
-  //simulation::advance_particle_queue_tmp = simulation::advance_particle_queue.data();
-  //#pragma omp target enter data map(alloc: simulation::advance_particle_queue_tmp[:n_particles])
 }
 
 void free_event_queues(void)
@@ -121,17 +113,14 @@ void process_advance_particle_events()
 
   // Move queue and particles host->device
   simulation::advance_particle_queue.copy_host_to_device();
-  
   #pragma omp target update to(simulation::device_particles[:simulation::particles.size()])
-
-  int q_size = simulation::advance_particle_queue.size();
 
   #ifdef USE_DEVICE
   #pragma omp target teams distribute parallel for
   #else
   #pragma omp parallel for schedule(runtime)
   #endif
-  for (int64_t i = 0; i < q_size; i++) {
+  for (int64_t i = 0; i < simulation::advance_particle_queue.size(); i++) {
     int64_t buffer_idx = simulation::advance_particle_queue.device_data_[i].idx;
     Particle& p = simulation::device_particles[buffer_idx];
     p.event_advance();

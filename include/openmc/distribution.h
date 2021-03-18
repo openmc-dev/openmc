@@ -196,7 +196,7 @@ private:
             const double* c=nullptr);
 };
 
-class TabularFlat : public Distribution {
+class TabularFlat {
 public:
   explicit TabularFlat(const uint8_t* data);
 

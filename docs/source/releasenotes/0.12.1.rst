@@ -78,7 +78,7 @@ Bug Fixes
 - `Fix bug related to logging of particle restarts <https://github.com/openmc-dev/openmc/pull/1649>`_
 - `Examine if region exists before removing redundant surfaces <https://github.com/openmc-dev/openmc/pull/1650>`_
 - `Fix plotting of individual universe levels <https://github.com/openmc-dev/openmc/pull/1651>`_
-- `Mixed materials should inhereit depletable attribute <https://github.com/openmc-dev/openmc/pull/1657>`_
+- `Mixed materials should inherit depletable attribute <https://github.com/openmc-dev/openmc/pull/1657>`_
 - `Fix typo in energy units in dose coefficients <https://github.com/openmc-dev/openmc/pull/1659/files>`_
 - `Fixes for large tally cases <https://github.com/openmc-dev/openmc/pull/1666>`_
 - `Fix verification of volume calculation results <https://github.com/openmc-dev/openmc/pull/1677>`_

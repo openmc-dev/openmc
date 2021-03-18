@@ -49,12 +49,11 @@ Installing on Linux/Mac/Windows with Docker
 OpenMC can be easily deployed using `Docker <https://www.docker.com/>`_ on any
 Windows, Mac, or Linux system. With Docker running, execute the following
 command in the shell to download and run a `Docker image`_ with the most recent
-release of OpenMC from `DockerHub <https://hub.docker.com/>`_ called
-``openmc/openmc:v0.10.0``:
+release of OpenMC from `DockerHub <https://hub.docker.com/>`_:
 
 .. code-block:: sh
 
-    docker run openmc/openmc:v0.10.0
+    docker run openmc/openmc:latest
 
 This will take several minutes to run depending on your internet download speed.
 The command will place you in an interactive shell running in a `Docker

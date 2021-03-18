@@ -251,7 +251,7 @@ For a full list of all classes related to statistical distributions, see
 File-based Sources
 ------------------
 
-OpenMC can use a pregenerated HDF5 source file by specfying the ``filename``
+OpenMC can use a pregenerated HDF5 source file by specifying the ``filename``
 argument to :class:`openmc.Source`::
 
   settings.source = openmc.Source(filename='source.h5')
@@ -262,8 +262,9 @@ source file can be manually generated with the :func:`openmc.write_source_file`
 function. This is particularly useful for coupling OpenMC with another program
 that generates a source to be used in OpenMC.
 
-A source file based on particles that cross one or surfaces can be generated
-during a simulation using the :attr:`Settings.surf_source_write` attribute::
+A source file based on particles that cross one or more surfaces can be
+generated during a simulation using the :attr:`Settings.surf_source_write`
+attribute::
 
   settings.surf_source_write = {
       'surfaces_ids': [1, 2, 3],

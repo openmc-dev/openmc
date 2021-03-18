@@ -614,6 +614,37 @@ gsl::span<const double> IncoherentInelasticAEFlat::energy() const
   return {start, n_energy_};
 }
 
+DistEnergySabFlat::DistEnergySabFlat(const uint8_t* data)
+  : data_(data)
+{
+  n_e_out_ = *reinterpret_cast<const size_t*>(data_);
+  n_mu_ = *reinterpret_cast<const size_t*>(data_ + 8);
+}
+
+gsl::span<const double> DistEnergySabFlat::e_out() const
+{
+  auto start = reinterpret_cast<const double*>(data_ + 16);
+  return {start, n_e_out_};
+}
+
+gsl::span<const double> DistEnergySabFlat::e_out_pdf() const
+{
+  auto start = reinterpret_cast<const double*>(data_ + 16 + 8*n_e_out_);
+  return {start, n_e_out_};
+}
+
+gsl::span<const double> DistEnergySabFlat::e_out_cdf() const
+{
+  auto start = reinterpret_cast<const double*>(data_ + 16 + 16*n_e_out_);
+  return {start, n_e_out_};
+}
+
+double DistEnergySabFlat::mu(gsl::index i, gsl::index j) const
+{
+  auto start = reinterpret_cast<const double*>(data_ + 16 + 24*n_e_out_);
+  return *(start + i*n_mu_ + j);
+}
+
 DistEnergySabFlat IncoherentInelasticAEFlat::distribution(gsl::index i) const
 {
   auto offsets = reinterpret_cast<const int*>(data_ + 12 + 8*n_energy_);
@@ -705,37 +736,6 @@ IncoherentInelasticAEFlat::sample(double E_in, double& E_out, double& mu,
 
   // Smear cosine
   mu += std::min(mu - mu_left, mu_right - mu)*(prn(seed) - 0.5);
-}
-
-DistEnergySabFlat::DistEnergySabFlat(const uint8_t* data)
-  : data_(data)
-{
-  n_e_out_ = *reinterpret_cast<const size_t*>(data_);
-  n_mu_ = *reinterpret_cast<const size_t*>(data_ + 8);
-}
-
-gsl::span<const double> DistEnergySabFlat::e_out() const
-{
-  auto start = reinterpret_cast<const double*>(data_ + 16);
-  return {start, n_e_out_};
-}
-
-gsl::span<const double> DistEnergySabFlat::e_out_pdf() const
-{
-  auto start = reinterpret_cast<const double*>(data_ + 16 + 8*n_e_out_);
-  return {start, n_e_out_};
-}
-
-gsl::span<const double> DistEnergySabFlat::e_out_cdf() const
-{
-  auto start = reinterpret_cast<const double*>(data_ + 16 + 16*n_e_out_);
-  return {start, n_e_out_};
-}
-
-double DistEnergySabFlat::mu(gsl::index i, gsl::index j) const
-{
-  auto start = reinterpret_cast<const double*>(data_ + 16 + 24*n_e_out_);
-  return *(start + i*n_mu_ + j);
 }
 
 } // namespace openmc

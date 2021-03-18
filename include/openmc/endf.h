@@ -69,9 +69,11 @@ private:
 
 class PolynomialFlat {
 public:
+  #pragma omp declare target
   explicit PolynomialFlat(const uint8_t* data) : data_(data) { }
 
   double operator()(double x) const;
+  #pragma omp end declare target
 private:
   gsl::span<const double> coef() const;
 
@@ -111,9 +113,11 @@ private:
 
 class Tabulated1DFlat {
 public:
+  #pragma omp declare target
   explicit Tabulated1DFlat(const uint8_t* data);
 
   double operator()(double x) const;
+  #pragma omp end declare target
 
 private:
   gsl::span<const int> nbt() const;
@@ -147,9 +151,11 @@ private:
 
 class CoherentElasticXSFlat {
 public:
+  #pragma omp declare target
   explicit CoherentElasticXSFlat(const uint8_t* data) : data_{data} { }
 
   double operator()(double E) const;
+  #pragma omp end declare target
 
   gsl::span<const double> bragg_edges() const;
   gsl::span<const double> factors() const;
@@ -175,9 +181,11 @@ private:
 
 class IncoherentElasticXSFlat {
 public:
+  #pragma omp declare target
   explicit IncoherentElasticXSFlat(const uint8_t* data) : data_{data} { }
 
   double operator()(double E) const;
+  #pragma omp end declare target
 private:
   double bound_xs() const { return *reinterpret_cast<const double*>(data_ + 4); }
   double debye_waller() const { return *reinterpret_cast<const double*>(data_ + 12); }

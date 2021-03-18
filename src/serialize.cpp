@@ -22,4 +22,14 @@ void DataBuffer::reserve(size_t n)
   offset_ = 0;
 }
 
+void DataBuffer::copy_to_device() const
+{
+  #pragma omp target enter data map(to: data_[:offset_])
+}
+
+void DataBuffer::release_device() const
+{
+  #pragma omp target exit data map(release: data_[:offset_])
+}
+
 } // end namespace openmc

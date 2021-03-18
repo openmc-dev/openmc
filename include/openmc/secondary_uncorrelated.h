@@ -46,6 +46,7 @@ private:
 
 class UncorrelatedAngleEnergyFlat {
 public:
+  #pragma omp declare target
   explicit UncorrelatedAngleEnergyFlat(const uint8_t* data) : data_(data) { }
 
   //! Sample distribution for an angle and energy
@@ -54,6 +55,7 @@ public:
   //! \param[out] mu Outgoing cosine with respect to current direction
   //! \param[inout] seed Pseudorandom seed pointer
   void sample(double E_in, double& E_out, double& mu, uint64_t* seed) const;
+  #pragma omp end declare target
 
   AngleDistributionFlat angle() const;
   EnergyDistributionFlat energy() const;

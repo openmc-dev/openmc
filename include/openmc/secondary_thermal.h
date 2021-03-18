@@ -42,6 +42,7 @@ private:
 
 class CoherentElasticAEFlat {
 public:
+  #pragma omp declare target
   explicit CoherentElasticAEFlat(const uint8_t* data) : data_(data) { }
 
   //! Sample distribution for an angle and energy
@@ -50,6 +51,7 @@ public:
   //! \param[out] mu Outgoing cosine with respect to current direction
   //! \param[inout] seed Pseudorandom seed pointer
   void sample(double E_in, double& E_out, double& mu, uint64_t* seed) const;
+  #pragma omp end declare target
 
 private:
   CoherentElasticXSFlat xs() const;
@@ -83,6 +85,7 @@ private:
 
 class IncoherentElasticAEFlat {
 public:
+  #pragma omp declare target
   explicit IncoherentElasticAEFlat(const uint8_t* data) : data_(data) { }
 
   //! Sample distribution for an angle and energy
@@ -91,6 +94,7 @@ public:
   //! \param[out] mu Outgoing cosine with respect to current direction
   //! \param[inout] seed Pseudorandom number seed pointer
   void sample(double E_in, double& E_out, double& mu, uint64_t* seed) const;
+  #pragma omp end declare target
 
 private:
   double debye_waller() const;
@@ -126,6 +130,7 @@ private:
 
 class IncoherentElasticAEDiscreteFlat {
 public:
+  #pragma omp declare target
   explicit IncoherentElasticAEDiscreteFlat(const uint8_t* data);
 
   //! Sample distribution for an angle and energy
@@ -134,6 +139,7 @@ public:
   //! \param[out] mu Outgoing cosine with respect to current direction
   //! \param[inout] seed Pseudorandom number seed pointer
   void sample(double E_in, double& E_out, double& mu, uint64_t* seed) const;
+  #pragma omp end declare target
 
 private:
   gsl::span<const double> energy() const;
@@ -175,6 +181,7 @@ private:
 
 class IncoherentInelasticAEDiscreteFlat {
 public:
+  #pragma omp declare target
   explicit IncoherentInelasticAEDiscreteFlat(const uint8_t* data);
 
   //! Sample distribution for an angle and energy
@@ -183,6 +190,7 @@ public:
   //! \param[out] mu Outgoing cosine with respect to current direction
   //! \param[inout] seed Pseudorandom number seed pointer
   void sample(double E_in, double& E_out, double& mu, uint64_t* seed) const;
+  #pragma omp end declare target
 
 private:
   gsl::span<const double> energy() const;
@@ -235,7 +243,9 @@ private:
 
 class DistEnergySabFlat {
 public:
+  #pragma omp declare target
   explicit DistEnergySabFlat(const uint8_t* data);
+  #pragma omp end declare target
 
   size_t n_e_out() const { return n_e_out_; }
   size_t n_mu() const { return n_mu_; }
@@ -251,6 +261,7 @@ private:
 
 class IncoherentInelasticAEFlat{
 public:
+  #pragma omp declare target
   explicit IncoherentInelasticAEFlat(const uint8_t* data);
 
   //! Sample distribution for an angle and energy
@@ -259,6 +270,7 @@ public:
   //! \param[out] mu Outgoing cosine with respect to current direction
   //! \param[inout] seed Pseudorandom number seed pointer
   void sample(double E_in, double& E_out, double& mu, uint64_t* seed) const;
+  #pragma omp end declare target
 private:
   gsl::span<const double> energy() const;
   DistEnergySabFlat distribution(gsl::index i) const;

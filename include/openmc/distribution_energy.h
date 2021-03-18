@@ -27,9 +27,11 @@ enum class EnergyDistType {
 
 class EnergyDistributionFlat {
 public:
+  #pragma omp declare target
   EnergyDistributionFlat(const uint8_t* data);
 
   double sample(double E, uint64_t* seed) const;
+  #pragma omp end declare target
 private:
   EnergyDistType type_;
   const uint8_t* data_;

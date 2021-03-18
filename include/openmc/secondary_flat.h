@@ -32,7 +32,12 @@ public:
   //! \param[out] E_out Outgoing energy in [eV]
   //! \param[out] mu Outgoing cosine with respect to current direction
   //! \param[inout] seed Pseudorandom seed pointer
+  #pragma omp declare target
   void sample(double E_in, double& E_out, double& mu, uint64_t* seed) const;
+  #pragma omp end declare target
+
+  void copy_to_device() const;
+  void release_device() const;
 
   const uint8_t* data() const { return buffer_.data_; }
   AngleEnergyType type() const { return type_; }

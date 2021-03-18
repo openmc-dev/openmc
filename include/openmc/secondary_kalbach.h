@@ -57,7 +57,9 @@ private:
 
 class KMTableFlat {
 public:
+  #pragma omp declare target
   explicit KMTableFlat(const uint8_t* data);
+  #pragma omp end declare target
 
   int n_discrete() const;
   Interpolation interpolation() const;
@@ -73,9 +75,11 @@ private:
 
 class KalbachMannFlat {
 public:
+  #pragma omp declare target
   explicit KalbachMannFlat(const uint8_t* data);
 
   void sample(double E_in, double& E_out, double& mu, uint64_t* seed) const;
+  #pragma omp end declare target
 private:
   gsl::span<const int> breakpoints() const;
   Interpolation interpolation(gsl::index i) const;

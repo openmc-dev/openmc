@@ -29,6 +29,16 @@ AngleEnergyFlat::AngleEnergyFlat(DataBuffer buffer)
   type_ = static_cast<AngleEnergyType>(value);
 }
 
+void AngleEnergyFlat::copy_to_device() const
+{
+  buffer_.copy_to_device();
+}
+
+void AngleEnergyFlat::release_device() const
+{
+  buffer_.release_device();
+}
+
 void
 AngleEnergyFlat::sample(double E_in, double& E_out, double& mu, uint64_t* seed) const
 {

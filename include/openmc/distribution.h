@@ -198,9 +198,11 @@ private:
 
 class TabularFlat {
 public:
+  #pragma omp declare target
   explicit TabularFlat(const uint8_t* data);
 
   double sample(uint64_t* seed) const;
+  #pragma omp end declare target
 private:
   Interpolation interp() const;
   gsl::span<const double> x() const;

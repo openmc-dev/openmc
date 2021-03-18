@@ -32,6 +32,9 @@ public:
   template<typename T> void add(const std::vector<T>& value);
   template<typename T, std::size_t N> void add(const xt::xtensor<T, N>& value);
 
+  void copy_to_device() const;
+  void release_device() const;
+
   uint8_t* data_{nullptr};
   size_t offset_{0};
   Mode mode_{Mode::write};

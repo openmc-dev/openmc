@@ -546,6 +546,14 @@ void initialize_history(Particle& p, int64_t index_source)
       p.cell_born() = p.coord(p.n_coord() - 1).cell;
   }
 
+  // Make sure particle starts on the right random number stream
+  if (p.type() == ParticleType::neutron) {
+    p.stream() = STREAM_TRACKING;
+  } else {
+    p.stream() = STREAM_PHOTON;
+  }
+}
+
   // Force calculation of cross-sections by setting last energy to zero
   if (settings::run_CE) {
     p.invalidate_neutron_xs();

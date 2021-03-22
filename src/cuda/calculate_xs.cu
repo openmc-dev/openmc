@@ -70,19 +70,19 @@ __global__ void process_calculate_xs_events_device(
       double kT = p->sqrtkT_ * p->sqrtkT_;
       double f;
 
-      int i_temp = -1;
+      constexpr int i_temp = 0;
 
-      // Find temperatures that bound the actual temperature
-      for (i_temp = 0; i_temp < nuclide.kTs_.size() - 1; ++i_temp) {
-        if (nuclide.kTs_[i_temp] <= kT && kT < nuclide.kTs_[i_temp + 1])
-          break;
-      }
+      // // Find temperatures that bound the actual temperature
+      // for (i_temp = 0; i_temp < nuclide.kTs_.size() - 1; ++i_temp) {
+      //   if (nuclide.kTs_[i_temp] <= kT && kT < nuclide.kTs_[i_temp + 1])
+      //     break;
+      // }
 
-      // Randomly sample between temperature i and i+1
-      f = (kT - nuclide.kTs_[i_temp]) /
-          (nuclide.kTs_[i_temp + 1] - nuclide.kTs_[i_temp]);
-      if (f > prn(p->seeds_))
-        ++i_temp;
+      // // Randomly sample between temperature i and i+1
+      // f = (kT - nuclide.kTs_[i_temp]) /
+      //     (nuclide.kTs_[i_temp + 1] - nuclide.kTs_[i_temp]);
+      // if (f > prn(p->seeds_))
+      //   ++i_temp;
 
       const auto& grid {nuclide.grid_[i_temp]};
       int i_grid;

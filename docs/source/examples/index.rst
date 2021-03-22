@@ -37,6 +37,7 @@ Geometry
     triso
     candu
     cad-based-geometry
+    magnetic_confinement_fusion_breeder_blanket
 
 -----------------------------------
 Multigroup Cross Section Generation

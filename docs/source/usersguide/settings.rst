@@ -54,9 +54,9 @@ If you don't specify a run mode, the default run mode is 'eigenvalue'.
 
 .. _usersguide_particles:
 
--------------------
-Number of Particles
--------------------
+------------
+Run Strategy
+------------
 
 For a fixed source simulation, the total number of source particle histories
 simulated is broken up into a number of *batches*, each corresponding to a
@@ -87,6 +87,79 @@ for accumulating tallies.
    settings.generations_per_batch = 10
    settings.batches = 150
    settings.inactive = 5
+
+.. _usersguide_batches:
+
+Number of Batches
+-----------------
+
+In general, the stochastic uncertainty in your simulation results is directly
+related to how many total active particles are simulated (the product of the
+number of active batches, number of generations per batch, and number of
+particles). At a minimum, you should use enough active batches so that the
+central limit theorem is satisfied (about 30). Otherwise, reducing the overall
+uncertainty in your simulation by a factor of 2 will require using 4 times as
+many batches (since the standard deviation decreases as :math:`1/\sqrt{N}`).
+
+Number of Inactive Batches
+--------------------------
+
+For :math:`k` eigenvalue simulations, the source distribution is not known a
+priori. Thus, a "guess" of the source distribution is made and then iterated on,
+with the source evolving closer to the true distribution at each iteration. Once
+the source distribution has converged, it is then safe to start accumulating
+tallies. Consequently, a preset number of inactive batches are run before the
+active batches (where tallies are turned on) begin. The number of inactive
+batches necessary to reach a converged source depends on the spatial extent of
+the problem, its dominance ratio, what boundary conditions are used, and many
+other factors. For small problems, using 50--100 inactive batches is likely
+sufficient. For larger models, many hundreds of inactive batches may be
+necessary. Users are recommended to use the :ref:`Shannon entropy
+<usersguide_entropy>` diagnostic as a way of determining how many inactive
+batches are necessary.
+
+Specifying the initial source used for the very first batch is described in
+:ref:`below <usersguide_source>`. Although the initial source is arbitrary in
+the sense that any source will eventually converge to the correct distribution,
+using a source guess that is closer to the actual converged source distribution
+will translate into needing fewer inactive batches (and hence less simulation
+time).
+
+For fixed source simulations, the source distribution is known exactly, so no
+inactive batches are needed. In this case the :attr:`Settings.inactive`
+attribute can be omitted since it defaults to zero.
+
+Number of Generations per Batch
+-------------------------------
+
+The standard deviation of tally results is calculated assuming that all
+realizations (batches) are independent. However, in a :math:`k` eigenvalue
+calculation, the source sites for each batch are produced from fissions in the
+preceding batch, resulting in a correlation between successive batches. This
+correlation can result in an underprediction of the variance. That is, the
+variance reported is actually less than the true variance. To mitigate this
+effect, OpenMC allows you to group together multiple fission generations into a
+single batch for statistical purposes, rather than having each fission
+generation be a separate batch, which is the default behavior.
+
+Number of Particles per Generation
+----------------------------------
+
+There are several considerations for choosing the number of particles per
+generation. As discussed in :ref:`usersguide_batches`, the total number of
+active particles will determine the level of stochastic uncertainty in
+simulation results, so using a higher number of particles will result in less
+uncertainty. For parallel simulations that use OpenMP and/or MPI, the number of
+particles per generation should be large enough to ensure good load balancing
+between threads. For example, if you are running on a single processor with 32
+cores, each core should have at least 100 particles or so (i.e., at least 3,200
+particles per generation should be used). Using a larger number of particles per
+generation can also help reduce the cost of synchronization and communication
+between batches. For :math:`k` eigenvalue calculations, experts recommend_ at
+least 10,000 particles per generation to avoid any bias in the estimate of
+:math:`k` eigenvalue or tallies.
+
+.. _recommend: https://permalink.lanl.gov/object/tr?what=info:lanl-repo/lareport/LA-UR-09-03136
 
 .. _usersguide_source:
 
@@ -174,6 +247,32 @@ following would generate a photon source::
 
 For a full list of all classes related to statistical distributions, see
 :ref:`pythonapi_stats`.
+
+File-based Sources
+------------------
+
+OpenMC can use a pregenerated HDF5 source file by specifying the ``filename``
+argument to :class:`openmc.Source`::
+
+  settings.source = openmc.Source(filename='source.h5')
+
+Statepoint and source files are generated automatically when a simulation is run
+and can be used as the starting source in a new simulation. Alternatively, a
+source file can be manually generated with the :func:`openmc.write_source_file`
+function. This is particularly useful for coupling OpenMC with another program
+that generates a source to be used in OpenMC.
+
+A source file based on particles that cross one or more surfaces can be
+generated during a simulation using the :attr:`Settings.surf_source_write`
+attribute::
+
+  settings.surf_source_write = {
+      'surfaces_ids': [1, 2, 3],
+      'max_particles': 10000
+  }
+
+In this example, at most 10,000 source particles are stored when particles cross
+surfaces with IDs of 1, 2, or 3.
 
 .. _custom_source:
 
@@ -300,6 +399,8 @@ the source class when it is created:
 
 As with the basic custom source functionality, the custom source library
 location must be provided in the :attr:`openmc.Source.library` attribute.
+
+.. _usersguide_entropy:
 
 ---------------
 Shannon Entropy

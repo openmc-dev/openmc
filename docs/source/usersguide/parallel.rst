@@ -8,8 +8,8 @@ If you are running a simulation on a computer with multiple cores, multiple
 sockets, or multiple nodes (i.e., a cluster), you can benefit from the fact that
 OpenMC is able to use all available hardware resources if configured
 correctly. OpenMC is capable of using both distributed-memory (`MPI
-<http://mpi-forum.org/>`_) and shared-memory (`OpenMP
-<http://www.openmp.org/>`_) parallelism. If you are on a single-socket
+<https://www.mpi-forum.org/>`_) and shared-memory (`OpenMP
+<https://www.openmp.org/>`_) parallelism. If you are on a single-socket
 workstation or a laptop, using shared-memory parallelism is likely
 sufficient. On a multi-socket node, cluster, or supercomputer, chances are you
 will need to use both distributed-memory (across nodes) and shared-memory
@@ -49,7 +49,7 @@ Distributed-Memory Parallelism (MPI)
 
 MPI defines a library specification for message-passing between processes. There
 are two major implementations of MPI, `OpenMPI <https://www.open-mpi.org/>`_ and
-`MPICH <http://www.mpich.org/>`_. Both implementations are known to work with
+`MPICH <https://www.mpich.org/>`_. Both implementations are known to work with
 OpenMC; there is no obvious reason to prefer one over the other. Building OpenMC
 with support for MPI requires that you have one of these implementations
 installed on your system. For instructions on obtaining MPI, see

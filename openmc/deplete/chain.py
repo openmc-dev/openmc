@@ -326,6 +326,8 @@ class Chain:
             `["(n,2n)", "(n,gamma)"]`. Note that fission is always included if
             it is present. A complete listing of transmutation reactions can be
             found in :data:`openmc.deplete.chain.REACTIONS`.
+
+            .. versionadded:: 0.12.1
         progress : bool, optional
             Flag to print status messages during processing. Does not
             effect warning messages

@@ -302,6 +302,8 @@ class ResultsList(list):
     def export_to_materials(self, burnup_index, nuc_with_data=None) -> Materials:
         """Return openmc.Materials object based on results at a given step
 
+        .. versionadded:: 0.12.1
+
         Parameters
         ----------
         burn_index : int

@@ -7,8 +7,8 @@ Python API
 OpenMC includes a rich Python API that enables programmatic pre- and
 post-processing. The easiest way to begin using the API is to take a look at the
 :ref:`examples`. This assumes that you are already familiar with Python and
-common third-party packages such as `NumPy <http://www.numpy.org/>`_. If you
-have never used Python before, the prospect of learning a new code *and* a
+common third-party packages such as `NumPy <https://numpy.org/>`_. If you have
+never used Python before, the prospect of learning a new code *and* a
 programming language might sound daunting. However, you should keep in mind that
 there are many substantial benefits to using the Python API, including:
 
@@ -28,7 +28,7 @@ there are many substantial benefits to using the Python API, including:
 For those new to Python, there are many good tutorials available online. We
 recommend going through the modules from `Codecademy
 <https://www.codecademy.com/learn/learn-python-3>`_ and/or the `Scipy lectures
-<https://scipy-lectures.github.io/>`_.
+<https://scipy-lectures.org/>`_.
 
 The full API documentation serves to provide more information on a given module
 or class.

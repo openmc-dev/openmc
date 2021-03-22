@@ -54,7 +54,7 @@ Getting Data into MATLAB
 There is currently no front-end utility to dump tally data to MATLAB files, but
 the process is straightforward. First extract the data using the Python API via
 ``openmc.statepoint`` and then use the `Scipy MATLAB IO routines
-<http://docs.scipy.org/doc/scipy/reference/tutorial/io.html>`_ to save to a MAT
+<https://docs.scipy.org/doc/scipy/reference/tutorial/io.html>`_ to save to a MAT
 file. Note that all arrays that are accessible in a statepoint are already in
 NumPy arrays that can be reshaped and dumped to MATLAB in one step.
 

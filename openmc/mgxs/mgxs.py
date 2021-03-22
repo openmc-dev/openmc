@@ -3020,6 +3020,8 @@ class DiffusionCoefficient(TransportXS):
     To incorporate the effect of scattering multiplication in the above
     relation, the `nu` parameter can be set to `True`.
 
+    .. versionadded:: 0.12.1
+
     Parameters
     ----------
     domain : openmc.Material or openmc.Cell or openmc.Universe or openmc.RegularMesh
@@ -6610,6 +6612,8 @@ class MeshSurfaceMGXS(MGXS):
 
     .. note:: Users should instantiate the subclasses of this abstract class.
 
+    .. versionadded:: 0.12.1
+
     Parameters
     ----------
     domain : openmc.RegularMesh
@@ -6991,6 +6995,8 @@ class Current(MeshSurfaceMGXS):
     .. math::
        \frac{\int_{r \in S} dS \int_{E_g}^{E_{g-1}} dE \;
        J(r, E)}{\int_{r \in S} dS \int_{E_g}^{E_{g-1}} dE}.
+
+    .. versionadded:: 0.12.1
 
     Parameters
     ----------

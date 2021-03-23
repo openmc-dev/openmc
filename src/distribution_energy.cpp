@@ -520,8 +520,8 @@ double ContinuousTabularFlat::sample(double E, uint64_t* seed) const
       }
     }
   } else {
-    throw std::runtime_error{"Unexpected interpolation for continuous energy "
-      "distribution."};
+    // throw std::runtime_error{"Unexpected interpolation for continuous energy "
+    //   "distribution."};
   }
 
   // Now interpolate between incident energy bins i and i + 1

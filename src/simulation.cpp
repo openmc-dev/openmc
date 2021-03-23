@@ -5,6 +5,7 @@
 #include "openmc/cell.h"
 #include "openmc/container_util.h"
 #include "openmc/device_alloc.h"
+#include "openmc/device.h"
 #include "openmc/eigenvalue.h"
 #include "openmc/error.h"
 #include "openmc/event.h"
@@ -97,7 +98,7 @@ int openmc_simulation_init()
     simulation::device_particles = simulation::particles.data();
     #pragma omp target enter data map(alloc: simulation::device_particles[:event_buffer_length])
   }
-  
+
 
   // Allocate tally results arrays if they're not allocated yet
   for (auto& t : model::tallies) {
@@ -131,6 +132,9 @@ int openmc_simulation_init()
     }
   }
 
+  // Transfer data to GPU
+  map_to_device();
+
   // Display header
   if (mpi::master) {
     if (settings::run_mode == RunMode::FIXED_SOURCE) {
@@ -157,6 +161,9 @@ int openmc_simulation_finalize()
   // Stop active batch timer and start finalization timer
   simulation::time_active.stop();
   simulation::time_finalize.start();
+
+  // Release data from device
+  release_from_device();
 
   // Clear material nuclide mapping
   for (auto& mat : model::materials) {
@@ -186,7 +193,7 @@ int openmc_simulation_finalize()
     if (settings::verbosity >= 4) print_results();
   }
   if (settings::check_overlaps) print_overlap_check();
-   
+
   //free(simulation::device_particles);
   //printf("freeing device particles was a success!\n");
 

@@ -277,6 +277,7 @@ list(APPEND libopenmc_SOURCES
   src/cell.cpp
   src/cmfd_solver.cpp
   src/cross_sections.cpp
+  src/device.cpp
   src/distribution.cpp
   src/distribution_angle.cpp
   src/distribution_energy.cpp

@@ -69,15 +69,13 @@ constexpr double EXTSRC_REJECT_FRACTION {0.05};
 // ============================================================================
 // MATH AND PHYSICAL CONSTANTS
 
-// Values here are from the Committee on Data for Science and Technology
-// (CODATA) 2018 recommendation (https://physics.nist.gov/cuu/Constants/).
-
-// TODO: cmath::M_PI has 3 more digits precision than the Fortran constant we
-// use so for now we will reuse the Fortran constant until we are OK with
-// modifying test results
-constexpr double PI {3.1415926535898};
+// TODO: replace with <numbers> when we go for C++20
+constexpr double PI {3.141592653589793238462643383279502884L};
 const double SQRT_PI {std::sqrt(PI)};
 constexpr double INFTY {std::numeric_limits<double>::max()};
+
+// Values here are from the Committee on Data for Science and Technology
+// (CODATA) 2018 recommendation (https://physics.nist.gov/cuu/Constants/).
 
 // Physical constants
 constexpr double MASS_NEUTRON     {1.00866491595}; // mass of a neutron in amu
@@ -110,8 +108,8 @@ constexpr int NUCLIDE_NONE  {-1};
 
 // Temperature treatment method
 enum class TemperatureMethod {
- NEAREST,
- INTERPOLATION
+  NEAREST,
+  INTERPOLATION
 };
 
 // Reaction types

@@ -3,6 +3,7 @@
 #include "openmc/bank.h"
 #include "openmc/bremsstrahlung.h"
 #include "openmc/constants.h"
+#include "openmc/distribution_multi.h"
 #include "openmc/eigenvalue.h"
 #include "openmc/endf.h"
 #include "openmc/error.h"
@@ -425,12 +426,7 @@ void sample_positron_reaction(Particle& p)
   }
 
   // Sample angle isotropically
-  double mu = 2.0*prn(p.current_seed()) - 1.0;
-  double phi = 2.0*PI*prn(p.current_seed());
-  Direction u;
-  u.x = mu;
-  u.y = std::sqrt(1.0 - mu*mu)*std::cos(phi);
-  u.z = std::sqrt(1.0 - mu*mu)*std::sin(phi);
+  Direction u = isotropic_direction(p.current_seed());
 
   // Create annihilation photon pair traveling in opposite directions
   p.create_secondary(p.wgt_, u, MASS_ELECTRON_EV, Particle::Type::photon);
@@ -712,13 +708,7 @@ void scatter(Particle& p, int i_nuclide)
     int i_nuc_mat = mat->mat_nuclide_index_[i_nuclide];
     if (mat->p0_[i_nuc_mat]) {
       // Sample isotropic-in-lab outgoing direction
-      double mu = 2.0*prn(p.current_seed()) - 1.0;
-      double phi = 2.0*PI*prn(p.current_seed());
-
-      // Change direction of particle
-      p.u().x = mu;
-      p.u().y = std::sqrt(1.0 - mu*mu)*std::cos(phi);
-      p.u().z = std::sqrt(1.0 - mu*mu)*std::sin(phi);
+      p.u() = isotropic_direction(p.current_seed());
       p.mu_ = u_old.dot(p.u());
     }
   }
@@ -1068,11 +1058,9 @@ void sample_fission_neutron(int i_nuclide, const Reaction& rx, double E_in, Part
   }
 
   // Sample azimuthal angle uniformly in [0, 2*pi) and assign angle
-  // TODO: use rotate_angle instead
-  double phi = 2.0*PI*prn(seed);
-  site->u.x = mu;
-  site->u.y = std::sqrt(1.0 - mu*mu) * std::cos(phi);
-  site->u.z = std::sqrt(1.0 - mu*mu) * std::sin(phi);
+  // TODO: account for dependence on incident neutron?
+  Direction ref(1., 0., 0.);
+  site->u = rotate_angle(ref, mu, nullptr, seed);
 }
 
 void inelastic_scatter(const Nuclide& nuc, const Reaction& rx, Particle& p)

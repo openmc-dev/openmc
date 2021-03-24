@@ -69,12 +69,17 @@ Direction PolarAzimuthal::sample(uint64_t* seed) const
 // Isotropic implementation
 //==============================================================================
 
-Direction Isotropic::sample(uint64_t* seed) const
+Direction isotropic_direction(uint64_t* seed)
 {
   double phi = 2.0*PI*prn(seed);
   double mu = 2.0*prn(seed) - 1.0;
   return {mu, std::sqrt(1.0 - mu*mu) * std::cos(phi),
       std::sqrt(1.0 - mu*mu) * std::sin(phi)};
+}
+
+Direction Isotropic::sample(uint64_t* seed) const
+{
+  return isotropic_direction(seed);
 }
 
 //==============================================================================

@@ -2,6 +2,7 @@
 
 #include "openmc/bremsstrahlung.h"
 #include "openmc/constants.h"
+#include "openmc/distribution_multi.h"
 #include "openmc/hdf5_interface.h"
 #include "openmc/nuclide.h"
 #include "openmc/particle.h"
@@ -662,12 +663,7 @@ void PhotonInteraction::atomic_relaxation(const ElectronSubshell& shell, Particl
 {
   // If no transitions, assume fluorescent photon from captured free electron
   if (shell.n_transitions == 0) {
-    double mu = 2.0*prn(p.current_seed()) - 1.0;
-    double phi = 2.0*PI*prn(p.current_seed());
-    Direction u;
-    u.x = mu;
-    u.y = std::sqrt(1.0 - mu*mu)*std::cos(phi);
-    u.z = std::sqrt(1.0 - mu*mu)*std::sin(phi);
+    Direction u = isotropic_direction(p.current_seed());
     double E = shell.binding_energy;
     p.create_secondary(p.wgt_, u, E, Particle::Type::photon);
     return;
@@ -687,12 +683,7 @@ void PhotonInteraction::atomic_relaxation(const ElectronSubshell& shell, Particl
   int secondary = shell.transition_subshells(i_transition, 1);
 
   // Sample angle isotropically
-  double mu = 2.0*prn(p.current_seed()) - 1.0;
-  double phi = 2.0*PI*prn(p.current_seed());
-  Direction u;
-  u.x = mu;
-  u.y = std::sqrt(1.0 - mu*mu)*std::cos(phi);
-  u.z = std::sqrt(1.0 - mu*mu)*std::sin(phi);
+  Direction u = isotropic_direction(p.current_seed());
 
   // Get the transition energy
   double E = shell.transition_energy(i_transition);

@@ -62,11 +62,6 @@ Direction PolarAzimuthal::sample(uint64_t* seed) const
   // Sample azimuthal angle
   double phi = phi_->sample(seed);
 
-  // If the reference direction is along the z-axis, rotate the aziumthal angle
-  // to match spherical coordinate conventions.
-  // TODO: apply this change directly to rotate_angle
-  if (u_ref_.x == 0 && u_ref_.y == 0) phi += 0.5*PI;
-
   return rotate_angle(u_ref_, mu, &phi, seed);
 }
 

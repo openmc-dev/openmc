@@ -115,12 +115,14 @@ void process_advance_particle_events()
   simulation::advance_particle_queue.copy_host_to_device();
   #pragma omp target update to(simulation::device_particles[:simulation::particles.size()])
 
+  int q_size = simulation::advance_particle_queue.size();
+
   #ifdef USE_DEVICE
   #pragma omp target teams distribute parallel for
   #else
   #pragma omp parallel for schedule(runtime)
   #endif
-  for (int64_t i = 0; i < simulation::advance_particle_queue.size(); i++) {
+  for (int64_t i = 0; i < q_size; i++) {
     int64_t buffer_idx = simulation::advance_particle_queue.device_data_[i].idx;
     Particle& p = simulation::device_particles[buffer_idx];
     p.event_advance();

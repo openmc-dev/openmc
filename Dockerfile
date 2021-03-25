@@ -65,7 +65,7 @@ RUN if [ "$include_dagmc" = "true" ] ; \
 
 # Clone and install Embree
 RUN if [ "$include_dagmc" = "true" ] ; \
-    then git clone --single-branch --branch master https://github.com/embree/embree.git ; \
+    then git clone --single-branch --branch v3.12.2 https://github.com/embree/embree.git ; \
     cd embree ; \
     mkdir build ; \
     cd build ; \
@@ -81,7 +81,7 @@ RUN if [ "$include_dagmc" = "true" ] ; \
     mkdir MOAB ; \
     cd MOAB ; \
     mkdir build ; \
-    git clone  --single-branch --branch master https://bitbucket.org/fathomteam/moab.git ; \
+    git clone  --single-branch --branch 5.2.1 https://bitbucket.org/fathomteam/moab.git ; \
     cd build ; \
     cmake ../moab -DENABLE_HDF5=ON \
                   -DENABLE_NETCDF=ON \

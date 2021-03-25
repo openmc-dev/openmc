@@ -8,18 +8,11 @@ What's New in 0.12.1
 Summary
 -------
 
-This release of OpenMC includes an assortment of new features and many bug fixes.
-In particular, the :mod:`openmc.deplete` module has been heavily tested which
-has resulted in a number of usability improvements, bug fixes, and other
-enhancements. Energy deposition calculations, particularly for coupled
-neutron-photon simulations, have been improved as well.
-
-Improvements in modeling capabilities continue to be added to the code,
-including the ability to rotate surfaces in the Python API, several new
-"composite" surfaces, a variety of new methods on :class:`openmc.Material`,
-unstructured mesh tallies that leverage the existing DAGMC infrastructure,
-effective dose coefficients from ICRP-116, and a new cell instance tally
-filter.
+This release of OpenMC includes an assortment of new features and many bug
+fixes. The :mod:`openmc.deplete` module incorporates a number of improvements in
+usability, accuracy, and performance. Other enhancements include generalized
+rotational periodic boundary conditions, expanded source modeling capabilities,
+and a capability to generate windowed multipole library files from ENDF files.
 
 ------------
 New Features

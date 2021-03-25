@@ -176,7 +176,7 @@ class EnergyFilter(Filter):
             self._index, len(energies), energies_p)
 
 
-class CollisionFilterFilter(CollisionFilter):
+class CollisionFilter(Filter):
     filter_type = 'collision'
 
 

@@ -42,12 +42,10 @@ void CollisionFilter::get_all_bins(
   auto n = p.n_collision_;
 
   // Bin the collision number. Must fit exactly the desired collision number .
-  if (n >= bins_.front() && n <= bins_.back()) {
-    auto search = map_.find(n);
-    if (search != map_.end()){
-      match.bins_.push_back(search->second);
-      match.weights_.push_back(1.0);
-    }
+  auto search = map_.find(n);
+  if (search != map_.end()){
+    match.bins_.push_back(search->second);
+    match.weights_.push_back(1.0);
   }
 }
 

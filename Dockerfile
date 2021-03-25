@@ -117,7 +117,7 @@ RUN if [ "$include_dagmc" = "true" ] ; \
 RUN if [ "$include_dagmc" = "true" ] ; \
     then mkdir DAGMC ; \
     cd DAGMC ; \
-    git clone --single-branch --branch develop https://github.com/svalinn/DAGMC.git ; \
+    git clone --single-branch --branch 3.2.0 https://github.com/svalinn/DAGMC.git ; \
     mkdir build ; \
     cd build ; \
     cmake ../DAGMC -DBUILD_TALLY=ON \

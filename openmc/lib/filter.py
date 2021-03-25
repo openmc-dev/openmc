@@ -16,10 +16,10 @@ from .mesh import RegularMesh
 
 __all__ = [
     'Filter', 'AzimuthalFilter', 'CellFilter', 'CellbornFilter', 'CellfromFilter',
-    'CellInstanceFilter', 'DistribcellFilter', 'DelayedGroupFilter', 'EnergyFilter',
-    'EnergyoutFilter', 'EnergyFunctionFilter', 'LegendreFilter', 'MaterialFilter',
-    'MeshFilter', 'MeshSurfaceFilter', 'MuFilter', 'ParticleFilter', 'PolarFilter',
-    'SphericalHarmonicsFilter', 'SpatialLegendreFilter', 'SurfaceFilter',
+    'CellInstanceFilter', 'CollisionFilter', 'DistribcellFilter', 'DelayedGroupFilter', 
+    'EnergyFilter', 'EnergyoutFilter', 'EnergyFunctionFilter', 'LegendreFilter', 
+    'MaterialFilter', 'MeshFilter', 'MeshSurfaceFilter', 'MuFilter', 'ParticleFilter', 
+    'PolarFilter', 'SphericalHarmonicsFilter', 'SpatialLegendreFilter', 'SurfaceFilter',
     'UniverseFilter', 'ZernikeFilter', 'ZernikeRadialFilter', 'filters'
 ]
 
@@ -174,6 +174,10 @@ class EnergyFilter(Filter):
 
         _dll.openmc_energy_filter_set_bins(
             self._index, len(energies), energies_p)
+
+
+class CollisionFilterFilter(CollisionFilter):
+    filter_type = 'collision'
 
 
 class EnergyoutFilter(EnergyFilter):

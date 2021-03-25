@@ -970,7 +970,7 @@ class CollisionFilter(Filter):
 
     Parameters
     ----------
-    values : Iterable of Int
+    bins : Iterable of int
         A list or iterable of the number of collisions, as integer values. 
         The events whose post-scattering collision number equals one of 
         the provided values will be counted. 
@@ -979,28 +979,24 @@ class CollisionFilter(Filter):
 
     Attributes
     ----------
-    values : numpy.ndarray
-        An array of integer values representing the number of collisions events
-        by which to filter
     id : int
         Unique identifier for the filter
     bins : numpy.ndarray
         An array of integer values representing the number of collisions events
         by which to filter
-    num_bins : Integral
+    num_bins : int
         The number of filter bins
 
     """
 
-    def __init__(self, values, filter_id=None):
-        self.values = np.asarray(values)
-        self.bins = self.values
+    def __init__(self, bins, filter_id=None):
+        self.bins = np.asarray(bins)
         self.id = filter_id
 
 
     def __repr__(self):
         string = type(self).__name__ + '\n'
-        string += '{: <16}=\t{}\n'.format('\tValues', self.values)
+        string += '{: <16}=\t{}\n'.format('\tValues', self.bins)
         string += '{: <16}=\t{}\n'.format('\tID', self.id)
         return string
 
@@ -1014,62 +1010,6 @@ class CollisionFilter(Filter):
             cv.check_type('filter value', x, Integral)
             cv.check_greater_than('filter value', x, 0, equality=True)
 
-    def get_bin_index(self, filter_bin):
-        i = np.where(self.bins[:, 1] == filter_bin[1])[0]
-        if len(i) == 0:
-            msg = 'Unable to get the bin index for Filter since "{0}" ' \
-                  'is not one of the bins'.format(filter_bin)
-            raise ValueError(msg)
-        else:
-            return i[0]
-
-    def get_pandas_dataframe(self, data_size, stride, **kwargs):
-        """Builds a Pandas DataFrame for the Filter's bins.
-
-        This method constructs a Pandas DataFrame object for the filter with
-        columns annotated by filter bin information. This is a helper method for
-        :meth:`Tally.get_pandas_dataframe`.
-
-        Parameters
-        ----------
-        data_size : int
-            The total number of bins in the tally corresponding to this filter
-        stride : int
-            Stride in memory for the filter
-
-        Returns
-        -------
-        pandas.DataFrame
-            A Pandas DataFrame with one column of the lower energy bound and one
-            column of upper energy bound for each filter bin.  The number of
-            rows in the DataFrame is the same as the total number of bins in the
-            corresponding tally, with the filter bin appropriately tiled to map
-            to the corresponding tally bins.
-
-        See also
-        --------
-        Tally.get_pandas_dataframe(), CrossFilter.get_pandas_dataframe()
-
-        """
-        # Initialize Pandas DataFrame
-        df = pd.DataFrame()
-
-        # Extract the lower and upper energy bounds, then repeat and tile
-        # them as necessary to account for other filters.
-        bins = np.repeat(self.bins[:], stride)
-        tile_factor = data_size // len(bins)
-        bins = np.tile(bins, tile_factor)
-
-        # Add the new energy columns to the DataFrame.
-        if hasattr(self, 'units'):
-            units = ' [{}]'.format(self.units)
-        else:
-            units = ''
-
-        df.loc[:, self.short_name.lower() + ' collisions' ] = bins
-
-        return df
-
     def to_xml_element(self):
         """Return XML Element representing the Filter.
 
@@ -1080,9 +1020,8 @@ class CollisionFilter(Filter):
 
         """
         element = super().to_xml_element()
-        element[0].text = ' '.join(str(x) for x in self.values)
+        element[0].text = ' '.join(str(x) for x in self.bins)
         return element
-
 
 
 

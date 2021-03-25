@@ -2,7 +2,7 @@
 #define OPENMC_TALLIES_FILTER_COLLISIONS_H
 
 #include <vector>
-
+#include <unordered_map>
 #include <gsl/gsl>
 
 #include "openmc/tallies/filter.h"
@@ -45,6 +45,9 @@ protected:
   // Data members
 
   std::vector<int> bins_;
+
+  std::unordered_map<int,int> map_;
+
 };
 
 } // namespace openmc

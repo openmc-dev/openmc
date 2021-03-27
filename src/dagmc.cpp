@@ -292,7 +292,7 @@ void DAGUniverse::initialize() {
     c->dag_index_ = i + 1;
     c->id_ = adjust_geometry_ids_ ? next_cell_id++ : dagmc_instance_->id_by_index(3, c->dag_index_);
     c->dagmc_ptr_ = dagmc_instance_;
-    c->universe_ = id_; // set to zero for now
+    c->universe_ = id_;
     c->fill_ = C_NONE; // no fill, single universe
 
    auto in_map = model::cell_map.find(c->id_);
@@ -370,7 +370,7 @@ void DAGUniverse::initialize() {
   }
 
   if (!graveyard) {
-    warning("No graveyard volume found in the DagMC model."
+    warning("No graveyard volume found in the DagMC model. "
             "This may result in lost particles and rapid simulation failure.");
   }
 

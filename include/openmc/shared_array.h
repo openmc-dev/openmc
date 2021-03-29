@@ -136,12 +136,12 @@ public:
   void allocate_on_device()
   {
     device_data_ = data_; 
-    #pragma omp target enter data map(alloc: device_data_[:capacity_])
+    #pragma omp target enter data map(alloc: device_data_[:capacity_], size_)
   }
 
   void copy_host_to_device()
   {
-    #pragma omp target update to(device_data_[:capacity_])
+    #pragma omp target update to(device_data_[:capacity_], size_)
   }
   
   void copy_device_to_host()

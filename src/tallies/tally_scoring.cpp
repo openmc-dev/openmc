@@ -146,32 +146,40 @@ FilterBinIter::FilterBinIter(const Tally& tally, bool end,
 FilterBinIter&
 FilterBinIter::operator++()
 {
-  // Find the next valid combination of filter bins.  To do this, we search
-  // backwards through the filters until we find the first filter whose bins
-  // can be incremented.
-  bool visited_all_combinations = true;
-  for (int i = tally_.filters().size()-1; i >= 0; --i) {
-    auto i_filt = tally_.filters(i);
-    auto& match {filter_matches_[i_filt]};
-
-    if (match.i_bin_ < FILTERMATCH_BINS_WEIGHTS_SIZE-1) {
-      // The bin for this filter can be incremented.  Increment it and do not
-      // touch any of the remaining filters.
-      ++match.i_bin_;
-      visited_all_combinations = false;
-      break;
-    } else {
-      /*
-      // The loop found a new valid combination.  Compute the corresponding
-      // index and weight.
-      compute_index_weight();
-      */
+  // TODO: This function works but needs to be cleaned up and brought in line with
+  // develop
+  if( is_big_ )
+  {
+    // Find the next valid combination of filter bins.  To do this, we search
+    // backwards through the filters until we find the first filter whose bins
+    // can be incremented.
+    bool done_looping = true;
+    for (int i = tally_.filters().size()-1; i >= 0; --i) {
+      auto i_filt = tally_.filters(i);
+      auto& match {(*big_filter_matches_)[i_filt]};
+      if (match.i_bin_ < match.bins_.size()-1) {
+      //if (match.i_bin_ < match.bins_weights_length_-1) {
+        // The bin for this filter can be incremented.  Increment it and do not
+        // touch any of the remaining filters.
+        ++match.i_bin_;
+        done_looping = false;
+        break;
+      } else {
         // This bin cannot be incremented so reset it and continue to the next
         // filter.
         match.i_bin_ = 0;
+      }
+    }
+
+    if (done_looping) {
+      // We have visited every valid combination.  All done!
+      index_ = -1;
+    } else {
+      // The loop found a new valid combination.  Compute the corresponding
+      // index and weight.
+      compute_index_weight();
     }
   }
-  /*
   else
   {
     // Find the next valid combination of filter bins.  To do this, we search
@@ -194,18 +202,18 @@ FilterBinIter::operator++()
         match.i_bin_ = 0;
       }
     }
-    */
 
-  if (visited_all_combinations) {
-    // We have visited every valid combination.  All done!
-    index_ = -1;
-  } else {
-    // The loop found a new valid combination.  Compute the corresponding
-    // index and weight.
-    compute_index_weight();
+    if (done_looping) {
+      // We have visited every valid combination.  All done!
+      index_ = -1;
+    } else {
+      // The loop found a new valid combination.  Compute the corresponding
+      // index and weight.
+      compute_index_weight();
+    }
   }
-
   return *this;
+
 }
 
 void

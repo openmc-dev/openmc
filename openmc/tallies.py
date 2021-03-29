@@ -1,22 +1,20 @@
 from collections.abc import Iterable, MutableSequence
 import copy
-import re
 from functools import partial, reduce
 from itertools import product
 from numbers import Integral, Real
 import operator
 from pathlib import Path
-import warnings
 from xml.etree import ElementTree as ET
 
+import h5py
 import numpy as np
 import pandas as pd
 import scipy.sparse as sps
-import h5py
 
 import openmc
 import openmc.checkvalue as cv
-from openmc._xml import clean_indentation
+from ._xml import clean_indentation, reorder_attributes
 from .mixin import IDManagerMixin
 
 
@@ -356,7 +354,7 @@ class Tally(IDManagerMixin):
             if nuc in visited_nuclides:
                 msg = 'Unable to add a duplicate nuclide "{}" to Tally ID="{}" ' \
                       'since duplicate nuclides are not supported in the OpenMC ' \
-                      'Python API'.format(nuclide, self.id)
+                      'Python API'.format(nuc, self.id)
                 raise ValueError(msg)
             visited_nuclides.add(nuc)
 
@@ -3145,5 +3143,6 @@ class Tallies(cv.CheckedList):
             p /= 'tallies.xml'
 
         # Write the XML Tree to the tallies.xml file
+        reorder_attributes(root_element)  # TODO: Remove when support is Python 3.8+
         tree = ET.ElementTree(root_element)
         tree.write(str(p), xml_declaration=True, encoding='utf-8')

@@ -51,11 +51,12 @@ The current version of the statepoint file format is 17.0.
            - **global_tallies** (*double[][2]*) -- Accumulated sum and
              sum-of-squares for each global tally.
            - **source_bank** (Compound type) -- Source bank information for each
-             particle. The compound type has fields ``wgt``, ``xyz``, ``uvw``,
-             ``E``, ``g``, and ``delayed_group``, which represent the weight,
-             position, direction, energy, energy group, and delayed_group of the
-             source particle, respectively. Only present when `run_mode` is
-             'eigenvalue'.
+             particle. The compound type has fields ``r``, ``u``, ``E``,
+             ``wgt``, ``delayed_group``, ``surf_id``, and ``particle``, which
+             represent the position, direction, energy, weight, delayed group,
+             surface ID, and particle type (0=neutron, 1=photon, 2=electron,
+             3=positron), respectively.
+             Only present when `run_mode` is 'eigenvalue'.
 
 **/tallies/**
 
@@ -161,3 +162,5 @@ All values are given in seconds and are measured on the master process.
              source sites between processes for load balancing.
            - **accumulating tallies** (*double*) -- Time spent communicating
              tally results and evaluating their statistics.
+           - **writing statepoints** (*double*) -- Time spent writing statepoint
+             files

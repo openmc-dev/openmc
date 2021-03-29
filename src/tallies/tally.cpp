@@ -65,180 +65,6 @@ double global_tally_collision;
 double global_tally_tracklength;
 double global_tally_leakage;
 
-int
-score_str_to_int(std::string score_str)
-{
-  if (score_str == "flux")
-    return SCORE_FLUX;
-
-  if (score_str == "total" || score_str == "(n,total)")
-    return SCORE_TOTAL;
-
-  if (score_str == "scatter")
-    return SCORE_SCATTER;
-
-  if (score_str == "nu-scatter")
-    return SCORE_NU_SCATTER;
-
-  if (score_str == "absorption")
-    return SCORE_ABSORPTION;
-
-  if (score_str == "fission" || score_str == "18")
-    return SCORE_FISSION;
-
-  if (score_str == "nu-fission")
-    return SCORE_NU_FISSION;
-
-  if (score_str == "decay-rate")
-    return SCORE_DECAY_RATE;
-
-  if (score_str == "delayed-nu-fission")
-    return SCORE_DELAYED_NU_FISSION;
-
-  if (score_str == "prompt-nu-fission")
-    return SCORE_PROMPT_NU_FISSION;
-
-  if (score_str == "kappa-fission")
-    return SCORE_KAPPA_FISSION;
-
-  if (score_str == "inverse-velocity")
-    return SCORE_INVERSE_VELOCITY;
-
-  if (score_str == "fission-q-prompt")
-    return SCORE_FISS_Q_PROMPT;
-
-  if (score_str == "fission-q-recoverable")
-    return SCORE_FISS_Q_RECOV;
-
-  if (score_str == "heating")
-    return HEATING;
-
-  if (score_str == "heating-local")
-    return HEATING_LOCAL;
-
-  if (score_str == "current")
-    return SCORE_CURRENT;
-
-  if (score_str == "events")
-    return SCORE_EVENTS;
-
-  if (score_str == "elastic" || score_str == "(n,elastic)")
-    return ELASTIC;
-
-  if (score_str == "n2n" || score_str == "(n,2n)")
-    return N_2N;
-
-  if (score_str == "n3n" || score_str == "(n,3n)")
-    return N_3N;
-
-  if (score_str == "n4n" || score_str == "(n,4n)")
-    return N_4N;
-
-  if (score_str == "(n,2nd)")
-    return N_2ND;
-  if (score_str == "(n,na)")
-    return N_2NA;
-  if (score_str == "(n,n3a)")
-    return N_N3A;
-  if (score_str == "(n,2na)")
-    return N_2NA;
-  if (score_str == "(n,3na)")
-    return N_3NA;
-  if (score_str == "(n,np)")
-    return N_NP;
-  if (score_str == "(n,n2a)")
-    return N_N2A;
-  if (score_str == "(n,2n2a)")
-    return N_2N2A;
-  if (score_str == "(n,nd)")
-    return N_ND;
-  if (score_str == "(n,nt)")
-    return N_NT;
-  if (score_str == "(n,nHe-3)")
-    return N_N3HE;
-  if (score_str == "(n,nd2a)")
-    return N_ND2A;
-  if (score_str == "(n,nt2a)")
-    return N_NT2A;
-  if (score_str == "(n,3nf)")
-    return N_3NF;
-  if (score_str == "(n,2np)")
-    return N_2NP;
-  if (score_str == "(n,3np)")
-    return N_3NP;
-  if (score_str == "(n,n2p)")
-    return N_N2P;
-  if (score_str == "(n,npa)")
-    return N_NPA;
-  if (score_str == "(n,n1)")
-    return N_N1;
-  if (score_str == "(n,nc)")
-    return N_NC;
-  if (score_str == "(n,gamma)")
-    return N_GAMMA;
-  if (score_str == "(n,p)")
-    return N_P;
-  if (score_str == "(n,d)")
-    return N_D;
-  if (score_str == "(n,t)")
-    return N_T;
-  if (score_str == "(n,3He)")
-    return N_3HE;
-  if (score_str == "(n,a)")
-    return N_A;
-  if (score_str == "(n,2a)")
-    return N_2A;
-  if (score_str == "(n,3a)")
-    return N_3A;
-  if (score_str == "(n,2p)")
-    return N_2P;
-  if (score_str == "(n,pa)")
-    return N_PA;
-  if (score_str == "(n,t2a)")
-    return N_T2A;
-  if (score_str == "(n,d2a)")
-    return N_D2A;
-  if (score_str == "(n,pd)")
-    return N_PD;
-  if (score_str == "(n,pt)")
-    return N_PT;
-  if (score_str == "(n,da)")
-    return N_DA;
-  if (score_str == "(n,Xp)" || score_str == "H1-production")
-    return N_XP;
-  if (score_str == "(n,Xd)" || score_str == "H2-production")
-    return N_XD;
-  if (score_str == "(n,Xt)" || score_str == "H3-production")
-    return N_XT;
-  if (score_str == "(n,X3He)" || score_str == "He3-production")
-    return N_X3HE;
-  if (score_str == "(n,Xa)" || score_str == "He4-production")
-    return N_XA;
-  if (score_str == "damage-energy")
-    return DAMAGE_ENERGY;
-
-  // So far we have not identified this score string.  Check to see if it is a
-  // deprecated score.
-  if (score_str.rfind("scatter-", 0) == 0
-      || score_str.rfind("nu-scatter-", 0) == 0
-      || score_str.rfind("total-y", 0) == 0
-      || score_str.rfind("flux-y", 0) == 0)
-    fatal_error(score_str + " is no longer an available score");
-
-
-  // Assume the given string is a reaction MT number.  Make sure it's a natural
-  // number then return.
-  int MT;
-  try {
-    MT = std::stoi(score_str);
-  } catch (const std::invalid_argument& ex) {
-    throw std::invalid_argument("Invalid tally score \"" + score_str + "\"");
-  }
-  if (MT < 1)
-    throw std::invalid_argument("Invalid tally score \"" + score_str + "\"");
-  return MT;
-}
-
 //==============================================================================
 // Tally object implementation
 //==============================================================================
@@ -551,7 +377,6 @@ Tally::set_scores(const std::vector<std::string>& scores)
 {
   // Reset state and prepare for the new scores.
   scores_.clear();
-  depletion_rx_ = false;
   scores_.reserve(scores.size());
 
   // Check for the presence of certain restrictive filters.
@@ -584,7 +409,8 @@ Tally::set_scores(const std::vector<std::string>& scores)
         fatal_error("Cannot tally " + score_str + "with a delayedgroup filter");
     }
 
-    auto score = score_str_to_int(score_str);
+    // Determine integer code for score
+    int score = reaction_type(score_str);
 
     switch (score) {
     case SCORE_FLUX:
@@ -620,15 +446,6 @@ Tally::set_scores(const std::vector<std::string>& scores)
         if (energyout_present || legendre_present)
           estimator_ = TallyEstimator::ANALOG;
       }
-      break;
-
-    case N_2N:
-    case N_3N:
-    case N_4N:
-    case N_GAMMA:
-    case N_P:
-    case N_A:
-      depletion_rx_ = true;
       break;
 
     case SCORE_CURRENT:
@@ -753,6 +570,9 @@ Tally::init_triggers(pugi::xml_node node)
     double threshold;
     if (check_for_node(trigger_node, "threshold")) {
       threshold = std::stod(get_node_value(trigger_node, "threshold"));
+      if (threshold <= 0) {
+        fatal_error("Tally trigger threshold must be positive");
+      }
     } else {
       fatal_error(fmt::format(
         "Must specify trigger threshold for tally {} in tally XML file", id_));
@@ -812,7 +632,7 @@ void Tally::accumulate()
     double total_source = 0.0;
     if (settings::run_mode == RunMode::FIXED_SOURCE) {
       for (const auto& s : model::external_sources) {
-        total_source += s.strength();
+        total_source += s->strength();
       }
     } else {
       total_source = 1.0;
@@ -822,6 +642,7 @@ void Tally::accumulate()
     double norm = total_source / (settings::n_particles * settings::gen_per_batch);
 
     // Accumulate each result
+    #pragma omp parallel for
     for (int i = 0; i < results_.shape()[0]; ++i) {
       for (int j = 0; j < results_.shape()[1]; ++j) {
         double val = results_(i, j, TallyResult::VALUE) * norm;
@@ -898,28 +719,34 @@ void read_tallies_xml()
 #ifdef OPENMC_MPI
 void reduce_tally_results()
 {
-  for (int i_tally : model::active_tallies) {
-    // Skip any tallies that are not active
-    auto& tally {model::tallies[i_tally]};
+  // Don't reduce tally is no_reduce option is on
+  if (settings::reduce_tallies) {
+    for (int i_tally : model::active_tallies) {
+      // Skip any tallies that are not active
+      auto& tally {model::tallies[i_tally]};
 
-    // Get view of accumulated tally values
-    auto values_view = xt::view(tally->results_, xt::all(), xt::all(), static_cast<int>(TallyResult::VALUE));
+      // Get view of accumulated tally values
+      auto values_view = xt::view(tally->results_, xt::all(), xt::all(), static_cast<int>(TallyResult::VALUE));
 
-    // Make copy of tally values in contiguous array
-    xt::xtensor<double, 2> values = values_view;
-    xt::xtensor<double, 2> values_reduced = xt::empty_like(values);
+      // Make copy of tally values in contiguous array
+      xt::xtensor<double, 2> values = values_view;
+      xt::xtensor<double, 2> values_reduced = xt::empty_like(values);
 
-    // Reduce contiguous set of tally results
-    MPI_Reduce(values.data(), values_reduced.data(), values.size(),
-      MPI_DOUBLE, MPI_SUM, 0, mpi::intracomm);
+      // Reduce contiguous set of tally results
+      MPI_Reduce(values.data(), values_reduced.data(), values.size(),
+        MPI_DOUBLE, MPI_SUM, 0, mpi::intracomm);
 
-    // Transfer values on master and reset on other ranks
-    if (mpi::master) {
-      values_view = values_reduced;
-    } else {
-      values_view = 0.0;
+      // Transfer values on master and reset on other ranks
+      if (mpi::master) {
+        values_view = values_reduced;
+      } else {
+        values_view = 0.0;
+      }
     }
   }
+
+  // Note that global tallies are *always* reduced even when no_reduce option is
+  // on.
 
   // Get view of global tally values
   auto& gt = simulation::global_tallies;
@@ -954,11 +781,11 @@ accumulate_tallies()
 {
 #ifdef OPENMC_MPI
   // Combine tally results onto master process
-  if (settings::reduce_tallies) reduce_tally_results();
+  if (mpi::n_procs > 1) reduce_tally_results();
 #endif
 
   // Increase number of realizations (only used for global tallies)
-  simulation::n_realizations += settings::reduce_tallies ? 1 : mpi::n_procs;
+  simulation::n_realizations += 1;
 
   // Accumulate on master only unless run is not reduced then do it on all
   if (mpi::master || !settings::reduce_tallies) {
@@ -1029,9 +856,6 @@ setup_active_tallies()
       case TallyType::SURFACE:
         model::active_surface_tallies.push_back(i);
       }
-
-      // Check if tally contains depletion reactions and if so, set flag
-      if (tally.depletion_rx_) simulation::need_depletion_rx = true;
     }
   }
 }

@@ -1,7 +1,7 @@
-import math
-import numpy as np
-import openmc
 from collections.abc import Iterable
+import math
+
+import numpy as np
 
 
 def legendre_from_expcoef(coef, domain=(-1, 1)):
@@ -41,6 +41,8 @@ class ZernikeRadial(Polynomial):
 
     The radial only Zernike polynomials are defined as in
     :class:`ZernikeRadialFilter`.
+
+    .. versionadded:: 0.12
 
     Parameters
     ----------
@@ -84,6 +86,8 @@ class Zernike(Polynomial):
     r"""Create Zernike polynomials given coefficients and domain.
 
     The azimuthal Zernike polynomials are defined as in :class:`ZernikeFilter`.
+
+    .. versionadded:: 0.12
 
     Parameters
     ----------

@@ -16,6 +16,7 @@ Theory and Methodology
     photon_physics
     tallies
     eigenvalue
+    depletion
+    energy_deposition
     parallelization
     cmfd
-    energy_deposition

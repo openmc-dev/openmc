@@ -31,7 +31,8 @@ on. Create a new build directory and type the following commands:
 
 Now when you re-run your problem, it should report exactly where the program
 failed. If after reading the debug output, you are still unsure why the program
-failed, send an email to the OpenMC User's Group `mailing list`_.
+failed, post a message on the `OpenMC Discourse Forum
+<https://openmc.discourse.group/>`_.
 
 ERROR: No cross_sections.xml file was specified in settings.xml or in the OPENMC_CROSS_SECTIONS environment variable.
 *********************************************************************************************************************
@@ -97,8 +98,8 @@ has a collision. For example, if you received this error at cycle 5, generation
     <trace>5 1 4032</trace>
 
 For large runs it is often advantageous to run only the offending particle by
-using particle restart mode with the ``-s``, ``-particle``, or ``--particle``
-command-line options in conjunction with the particle restart files that are
-created when particles are lost with this error.
+using particle restart mode with the ``-r`` command-line option in conjunction
+with the particle restart files that are created when particles are lost with
+this error.
 
 .. _mailing list: https://groups.google.com/forum/?fromgroups=#!forum/openmc-users

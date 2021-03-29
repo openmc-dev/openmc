@@ -82,7 +82,7 @@ element has the following attributes:
 ------------------------------------
 
 The ``<neutron_fission_yields>`` element provides yields of fission products for
-fissionable nuclides. It has the follow sub-elements:
+fissionable nuclides. Normally, it has the follow sub-elements:
 
   :energies:
     Energies in [eV] at which yields for products are tabulated
@@ -100,3 +100,11 @@ fissionable nuclides. It has the follow sub-elements:
 
       :data:
         Independent yields for each fission product
+
+In the event that a nuclide doesn't have any known fission product yields, it is
+possible to have that nuclide borrow yields from another nuclide by indicating
+the other nuclide in a single `parent` attribute. For example:
+
+.. code-block:: xml
+
+    <neutron_fission_yields parent="U235"/>

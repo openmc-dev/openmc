@@ -43,11 +43,11 @@ using LibraryKey = std::pair<Library::Type, std::string>;
 
 namespace data {
 
-//!< Data libraries
-extern std::vector<Library> libraries;
-
 //! Maps (type, name) to index in libraries
 extern std::map<LibraryKey, std::size_t> library_map;
+
+//!< Data libraries
+extern std::vector<Library> libraries;
 
 } // namespace data
 
@@ -69,6 +69,9 @@ void read_ce_cross_sections(const std::vector<std::vector<double>>& nuc_temps,
 
 //! Read cross_sections.xml and populate data libraries
 void read_ce_cross_sections_xml();
+
+//! Load nuclide and thermal scattering data
+void finalize_cross_sections();
 
 void library_clear();
 

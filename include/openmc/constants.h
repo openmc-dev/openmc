@@ -9,6 +9,8 @@
 #include <limits>
 #include <vector>
 
+#include "openmc/version.h"
+
 namespace openmc {
 
 using double_2dvec = std::vector<std::vector<double>>;
@@ -17,13 +19,6 @@ using double_4dvec = std::vector<std::vector<std::vector<std::vector<double>>>>;
 
 // ============================================================================
 // VERSIONING NUMBERS
-
-// OpenMC major, minor, and release numbers
-constexpr int VERSION_MAJOR {0};
-constexpr int VERSION_MINOR {12};
-constexpr int VERSION_RELEASE {0};
-constexpr bool VERSION_DEV {true};
-constexpr std::array<int, 3> VERSION {VERSION_MAJOR, VERSION_MINOR, VERSION_RELEASE};
 
 // HDF5 data format
 constexpr int HDF5_VERSION[] {3, 0};
@@ -209,7 +204,7 @@ enum ReactionType {
   N_3N3HE = 177,
   N_4N3HE = 178,
   N_3N2P  = 179,
-  N_3N3A  = 180,
+  N_3N2A  = 180,
   N_3NPA  = 181,
   N_DT    = 182,
   N_NPD   = 183,
@@ -267,7 +262,7 @@ enum class URRTableParam {
   ELASTIC,
   FISSION,
   N_GAMMA,
-  HEATING 
+  HEATING
 };
 
 // Maximum number of partial fission reactions
@@ -300,9 +295,9 @@ enum class MgxsType {
   ABSORPTION,
   INVERSE_VELOCITY,
   DECAY_RATE,
+  NU_SCATTER,
   SCATTER,
-  SCATTER_MULT,
-  SCATTER_FMU_MULT,
+  NU_SCATTER_FMU,
   SCATTER_FMU,
   FISSION,
   KAPPA_FISSION,
@@ -339,7 +334,7 @@ enum class TallyEvent {
   LATTICE,
   KILL,
   SCATTER,
-  ABSORB 
+  ABSORB
 };
 
 // Tally score type -- if you change these, make sure you also update the
@@ -370,10 +365,10 @@ enum TallyScore {
 // Global tally parameters
 constexpr int N_GLOBAL_TALLIES {4};
 enum class GlobalTally {
-  K_COLLISION, 
-  K_ABSORPTION, 
-  K_TRACKLENGTH, 
-  LEAKAGE       
+  K_COLLISION,
+  K_ABSORPTION,
+  K_TRACKLENGTH,
+  LEAKAGE
 };
 
 // Miscellaneous

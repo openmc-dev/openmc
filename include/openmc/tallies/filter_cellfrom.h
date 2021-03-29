@@ -19,7 +19,7 @@ public:
 
   std::string type() const override {return "cellfrom";}
 
-  void get_all_bins(const Particle* p, TallyEstimator estimator, FilterMatch& match)
+  void get_all_bins(const Particle& p, TallyEstimator estimator, FilterMatch& match)
   const override;
 
   std::string text_label(int bin) const override;

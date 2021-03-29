@@ -17,15 +17,14 @@ generates ACE-format cross sections.
 
 from collections import OrderedDict
 import enum
-from pathlib import PurePath, Path
+from pathlib import Path
 import struct
-import sys
 
 import numpy as np
 
-from openmc.mixin import EqualityMixin
 import openmc.checkvalue as cv
-from .data import ATOMIC_SYMBOL, gnd_name
+from openmc.mixin import EqualityMixin
+from .data import ATOMIC_SYMBOL, gnd_name, EV_PER_MEV, K_BOLTZMANN
 from .endf import ENDF_FLOAT_RE
 
 
@@ -106,66 +105,59 @@ def ascii_to_binary(ascii_file, binary_file):
 
     """
 
-    # Open ASCII file
-    ascii = open(str(ascii_file), 'r')
+    # Read data from ASCII file
+    with open(str(ascii_file), 'r') as ascii_file:
+        lines = ascii_file.readlines()
 
     # Set default record length
     record_length = 4096
 
-    # Read data from ASCII file
-    lines = ascii.readlines()
-    ascii.close()
-
     # Open binary file
-    binary = open(str(binary_file), 'wb')
+    with open(str(binary_file), 'wb') as binary_file:
+        idx = 0
+        while idx < len(lines):
+            # check if it's a > 2.0.0 version header
+            if lines[idx].split()[0][1] == '.':
+                if lines[idx + 1].split()[3] == '3':
+                    idx = idx + 3
+                else:
+                    raise NotImplementedError('Only backwards compatible ACE'
+                                              'headers currently supported')
+            # Read/write header block
+            hz = lines[idx][:10].encode()
+            aw0 = float(lines[idx][10:22])
+            tz = float(lines[idx][22:34])
+            hd = lines[idx][35:45].encode()
+            hk = lines[idx + 1][:70].encode()
+            hm = lines[idx + 1][70:80].encode()
+            binary_file.write(struct.pack(str('=10sdd10s70s10s'),
+                              hz, aw0, tz, hd, hk, hm))
 
-    idx = 0
+            # Read/write IZ/AW pairs
+            data = ' '.join(lines[idx + 2:idx + 6]).split()
+            iz = np.array(data[::2], dtype=int)
+            aw = np.array(data[1::2], dtype=float)
+            izaw = [item for sublist in zip(iz, aw) for item in sublist]
+            binary_file.write(struct.pack(str('=' + 16*'id'), *izaw))
 
-    while idx < len(lines):
-        # check if it's a > 2.0.0 version header
-        if lines[idx].split()[0][1] == '.':
-            if lines[idx + 1].split()[3] == '3':
-                idx = idx + 3
-            else:
-                raise NotImplementedError('Only backwards compatible ACE'
-                                          'headers currently supported')
-        # Read/write header block
-        hz = lines[idx][:10].encode('UTF-8')
-        aw0 = float(lines[idx][10:22])
-        tz = float(lines[idx][22:34])
-        hd = lines[idx][35:45].encode('UTF-8')
-        hk = lines[idx + 1][:70].encode('UTF-8')
-        hm = lines[idx + 1][70:80].encode('UTF-8')
-        binary.write(struct.pack(str('=10sdd10s70s10s'), hz, aw0, tz, hd, hk, hm))
+            # Read/write NXS and JXS arrays. Null bytes are added at the end so
+            # that XSS will start at the second record
+            nxs = [int(x) for x in ' '.join(lines[idx + 6:idx + 8]).split()]
+            jxs = [int(x) for x in ' '.join(lines[idx + 8:idx + 12]).split()]
+            binary_file.write(struct.pack(str('=16i32i{}x'.format(record_length - 500)),
+                                          *(nxs + jxs)))
 
-        # Read/write IZ/AW pairs
-        data = ' '.join(lines[idx + 2:idx + 6]).split()
-        iz = list(map(int, data[::2]))
-        aw = list(map(float, data[1::2]))
-        izaw = [item for sublist in zip(iz, aw) for item in sublist]
-        binary.write(struct.pack(str('=' + 16*'id'), *izaw))
+            # Read/write XSS array. Null bytes are added to form a complete record
+            # at the end of the file
+            n_lines = (nxs[0] + 3)//4
+            start = idx + _ACE_HEADER_SIZE
+            xss = np.fromstring(' '.join(lines[start:start + n_lines]), sep=' ')
+            extra_bytes = record_length - ((len(xss)*8 - 1) % record_length + 1)
+            binary_file.write(struct.pack(str('={}d{}x'.format(
+                nxs[0], extra_bytes)), *xss))
 
-        # Read/write NXS and JXS arrays. Null bytes are added at the end so
-        # that XSS will start at the second record
-        nxs = list(map(int, ' '.join(lines[idx + 6:idx + 8]).split()))
-        jxs = list(map(int, ' '.join(lines[idx + 8:idx + 12]).split()))
-        binary.write(struct.pack(str('=16i32i{0}x'.format(record_length - 500)),
-                                 *(nxs + jxs)))
-
-        # Read/write XSS array. Null bytes are added to form a complete record
-        # at the end of the file
-        n_lines = (nxs[0] + 3)//4
-        xss = list(map(float, ' '.join(lines[
-            idx + 12:idx + 12 + n_lines]).split()))
-        extra_bytes = record_length - ((len(xss)*8 - 1) % record_length + 1)
-        binary.write(struct.pack(str('={0}d{1}x'.format(nxs[0], extra_bytes)),
-                                 *xss))
-
-        # Advance to next table in file
-        idx += 12 + n_lines
-
-    # Close binary file
-    binary.close()
+            # Advance to next table in file
+            idx += _ACE_HEADER_SIZE + n_lines
 
 
 def get_table(filename, name=None):
@@ -195,6 +187,11 @@ def get_table(filename, name=None):
         else:
             raise ValueError('Could not find ACE table with name: {}'
                              .format(name))
+
+
+# The beginning of an ASCII ACE file consists of 12 lines that include the name,
+# atomic weight ratio, iz/aw pairs, and the NXS and JXS arrays
+_ACE_HEADER_SIZE = 12
 
 
 class Library(EqualityMixin):
@@ -298,15 +295,15 @@ class Library(EqualityMixin):
                 continue
 
             if verbose:
-                kelvin = round(temperature * 1e6 / 8.617342e-5)
-                print("Loading nuclide {0} at {1} K".format(name, kelvin))
+                kelvin = round(temperature * EV_PER_MEV / K_BOLTZMANN)
+                print("Loading nuclide {} at {} K".format(name, kelvin))
 
             # Read JXS
             jxs = list(struct.unpack(str('=32i'), ace_file.read(128)))
 
             # Read XSS
             ace_file.seek(start_position + recl_length)
-            xss = list(struct.unpack(str('={0}d'.format(length)),
+            xss = list(struct.unpack(str('={}d'.format(length)),
                                      ace_file.read(length*8)))
 
             # Insert zeros at beginning of NXS, JXS, and XSS arrays so that the
@@ -346,7 +343,7 @@ class Library(EqualityMixin):
 
         tables_seen = set()
 
-        lines = [ace_file.readline() for i in range(13)]
+        lines = [ace_file.readline() for i in range(_ACE_HEADER_SIZE + 1)]
 
         while len(lines) != 0 and lines[0].strip() != '':
             # Read name of table, atomic mass ratio, and temperature. If first
@@ -376,6 +373,8 @@ class Library(EqualityMixin):
             datastr = '0 ' + ' '.join(lines[6:8])
             nxs = np.fromstring(datastr, sep=' ', dtype=int)
 
+            # Detemrine number of lines in the XSS array; each line consists of
+            # four values
             n_lines = (nxs[1] + 3)//4
 
             # Ensure that we have more tables to read in
@@ -387,23 +386,23 @@ class Library(EqualityMixin):
             if (table_names is not None) and (name not in table_names):
                 for _ in range(n_lines - 1):
                     ace_file.readline()
-                lines = [ace_file.readline() for i in range(13)]
+                lines = [ace_file.readline() for i in range(_ACE_HEADER_SIZE + 1)]
                 continue
 
             # Read lines corresponding to this table
             lines += [ace_file.readline() for i in range(n_lines - 1)]
 
             if verbose:
-                kelvin = round(temperature * 1e6 / 8.617342e-5)
-                print("Loading nuclide {0} at {1} K".format(name, kelvin))
+                kelvin = round(temperature * EV_PER_MEV / K_BOLTZMANN)
+                print("Loading nuclide {} at {} K".format(name, kelvin))
 
             # Insert zeros at beginning of NXS, JXS, and XSS arrays so that the
             # indexing will be the same as Fortran. This makes it easier to
             # follow the ACE format specification.
-            datastr = '0 ' + ' '.join(lines[8:12])
+            datastr = '0 ' + ' '.join(lines[8:_ACE_HEADER_SIZE])
             jxs = np.fromstring(datastr, dtype=int, sep=' ')
 
-            datastr = '0.0 ' + ''.join(lines[12:12+n_lines])
+            datastr = '0.0 ' + ''.join(lines[_ACE_HEADER_SIZE:_ACE_HEADER_SIZE + n_lines])
             xss = np.fromstring(datastr, sep=' ')
 
             # When NJOY writes an ACE file, any values less than 1e-100 actually
@@ -422,7 +421,7 @@ class Library(EqualityMixin):
             self.tables.append(table)
 
             # Read all data blocks
-            lines = [ace_file.readline() for i in range(13)]
+            lines = [ace_file.readline() for i in range(_ACE_HEADER_SIZE + 1)]
 
 
 class TableType(enum.Enum):

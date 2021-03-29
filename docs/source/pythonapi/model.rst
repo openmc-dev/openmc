@@ -17,6 +17,20 @@ Convenience Functions
    openmc.model.subdivide
    openmc.model.pin
 
+Composite Surfaces
+------------------
+
+.. autosummary::
+   :toctree: generated
+   :nosignatures:
+   :template: myclass.rst
+
+   openmc.model.RectangularParallelepiped
+   openmc.model.RightCircularCylinder
+   openmc.model.XConeOneSided
+   openmc.model.YConeOneSided
+   openmc.model.ZConeOneSided
+
 TRISO Fuel Modeling
 -------------------
 

@@ -1,13 +1,12 @@
-import sys
-import copy
 from collections.abc import Iterable
+import copy
 
 import numpy as np
 import pandas as pd
 
 import openmc
-from openmc.filter import _FILTER_TYPES
 import openmc.checkvalue as cv
+from .filter import _FILTER_TYPES
 
 
 # Acceptable tally arithmetic binary operations

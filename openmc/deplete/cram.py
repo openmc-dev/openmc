@@ -4,9 +4,6 @@ Implements two different forms of CRAM for use in openmc.deplete.
 """
 
 import numbers
-from itertools import repeat
-from multiprocessing import Pool
-import time
 
 import numpy as np
 import scipy.sparse as sp
@@ -15,76 +12,7 @@ import scipy.sparse.linalg as sla
 from openmc.checkvalue import check_type, check_length
 from .abc import DepSystemSolver
 
-__all__ = [
-    "deplete", "timed_deplete", "CRAM16", "CRAM48",
-    "Cram16Solver", "Cram48Solver", "IPFCramSolver"]
-
-
-def deplete(chain, x, rates, dt, matrix_func=None):
-    """Deplete materials using given reaction rates for a specified time
-
-    Parameters
-    ----------
-    chain : openmc.deplete.Chain
-        Depletion chain
-    x : list of numpy.ndarray
-        Atom number vectors for each material
-    rates : openmc.deplete.ReactionRates
-        Reaction rates (from transport operator)
-    dt : float
-        Time in [s] to deplete for
-    maxtrix_func : Callable, optional
-        Function to form the depletion matrix after calling
-        ``matrix_func(chain, rates, fission_yields)``, where
-        ``fission_yields = {parent: {product: yield_frac}}``
-        Expected to return the depletion matrix required by
-        :func:`CRAM48`.
-
-    Returns
-    -------
-    x_result : list of numpy.ndarray
-        Updated atom number vectors for each material
-    """
-
-    fission_yields = chain.fission_yields
-    if len(fission_yields) == 1:
-        fission_yields = repeat(fission_yields[0])
-    elif len(fission_yields) != len(x):
-        raise ValueError(
-            "Number of material fission yield distributions {} is not equal "
-            "to the number of compositions {}".format(len(fission_yields),
-                len(x)))
-
-    if matrix_func is None:
-        matrices = map(chain.form_matrix, rates, fission_yields)
-    else:
-        matrices = map(matrix_func, repeat(chain), rates, fission_yields)
-
-    # Use multiprocessing pool to distribute work
-    with Pool() as pool:
-        inputs = zip(matrices, x, repeat(dt))
-        x_result = list(pool.starmap(CRAM48, inputs))
-
-    return x_result
-
-
-def timed_deplete(*args, **kwargs):
-    """Wrapper over :func:`deplete` that also returns process time
-
-    All arguments and keyword arguments are passed onto
-    :func:`deplete` directly.
-
-    Returns
-    -------
-    proc_time: float
-        Process time required to return from deplete
-    results: list of numpy arrays
-        Output from :func:`deplete` call
-    """
-
-    start = time.time()
-    results = deplete(*args, **kwargs)
-    return time.time() - start, results
+__all__ = ["CRAM16", "CRAM48", "Cram16Solver", "Cram48Solver", "IPFCramSolver"]
 
 
 class IPFCramSolver(DepSystemSolver):
@@ -148,7 +76,7 @@ class IPFCramSolver(DepSystemSolver):
 
         """
         A = sp.csr_matrix(A * dt, dtype=np.float64)
-        y = np.asarray(n0, dtype=np.float64)
+        y = n0.copy()
         ident = sp.eye(A.shape[0])
         for alpha, theta in zip(self.alpha, self.theta):
             y += 2*np.real(alpha*sla.spsolve(A - theta*ident, y))

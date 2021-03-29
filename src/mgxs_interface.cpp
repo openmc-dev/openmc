@@ -3,6 +3,8 @@
 #include <string>
 #include <unordered_set>
 
+#include <fmt/format.h>
+
 #include "openmc/cell.h"
 #include "openmc/cross_sections.h"
 #include "openmc/container_util.h"
@@ -57,8 +59,7 @@ void MgxsInterface::init()
   // Check if MGXS Library exists
   if (!file_exists(cross_sections_path_)) {
     // Could not find MGXS Library file
-    fatal_error("Cross sections HDF5 file '" + cross_sections_path_ +
-      "' does not exist.");
+    fatal_error(fmt::format("Cross sections HDF5 file '{}' does not exist!", cross_sections_path_));
   }
 
   write_message("Loading cross section data...", 5);
@@ -98,15 +99,14 @@ void
 MgxsInterface::add_mgxs(hid_t file_id, const std::string& name,
   const std::vector<double>& temperature)
 {
-  write_message("Loading " + std::string(name) + " data...", 6);
+  write_message(5, "Loading {} data...", name);
 
   // Check to make sure cross section set exists in the library
   hid_t xs_grp;
   if (object_exists(file_id, name.c_str())) {
     xs_grp = open_group(file_id, name.c_str());
   } else {
-    fatal_error("Data for " + std::string(name) + " does not exist in "
-                + "provided MGXS Library");
+    fatal_error(fmt::format("Data for {} does not exist in provided MGXS Library", name));
   }
 
   nuclides_.emplace_back(xs_grp, temperature, num_energy_groups_,
@@ -187,8 +187,7 @@ void MgxsInterface::read_header(const std::string& path_cross_sections)
   // Check if MGXS Library exists
   if (!file_exists(cross_sections_path_)) {
     // Could not find MGXS Library file
-    fatal_error("Cross sections HDF5 file '" + cross_sections_path_ +
-      "' does not exist.");
+    fatal_error(fmt::format("Cross section HDF5 file '{}' does not exist", cross_sections_path_));
   }
   write_message("Reading cross sections HDF5 file...", 5);
 

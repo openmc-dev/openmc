@@ -1,13 +1,12 @@
+from collections.abc import Iterable
 from numbers import Real
 from xml.etree import ElementTree as ET
-import sys
-import warnings
-from collections.abc import Iterable
 
 import openmc.checkvalue as cv
+from .mixin import EqualityMixin
 
 
-class Trigger:
+class Trigger(EqualityMixin):
     """A criterion for when to finish a simulation based on tally uncertainties.
 
     Parameters
@@ -35,14 +34,11 @@ class Trigger:
         self.threshold = threshold
         self._scores = []
 
-    def __eq__(self, other):
-        return str(self) == str(other)
-
     def __repr__(self):
         string = 'Trigger\n'
-        string += '{0: <16}{1}{2}\n'.format('\tType', '=\t', self._trigger_type)
-        string += '{0: <16}{1}{2}\n'.format('\tThreshold', '=\t', self._threshold)
-        string += '{0: <16}{1}{2}\n'.format('\tScores', '=\t', self._scores)
+        string += '{: <16}=\t{}\n'.format('\tType', self._trigger_type)
+        string += '{: <16}=\t{}\n'.format('\tThreshold', self._threshold)
+        string += '{: <16}=\t{}\n'.format('\tScores', self._scores)
         return string
 
     @property

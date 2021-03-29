@@ -2,16 +2,14 @@ from collections.abc import Iterable, Mapping
 from numbers import Real, Integral
 from pathlib import Path
 import subprocess
-import sys
-import warnings
 from xml.etree import ElementTree as ET
 
 import numpy as np
 
 import openmc
 import openmc.checkvalue as cv
-from openmc._xml import clean_indentation
-from openmc.mixin import IDManagerMixin
+from ._xml import clean_indentation, reorder_attributes
+from .mixin import IDManagerMixin
 
 
 _BASES = ['xy', 'xz', 'yz']
@@ -400,13 +398,13 @@ class Plot(IDManagerMixin):
     def meshlines(self, meshlines):
         cv.check_type('plot meshlines', meshlines, dict)
         if 'type' not in meshlines:
-            msg = 'Unable to set on plot the meshlines "{0}" which ' \
+            msg = 'Unable to set the meshlines to "{}" which ' \
                   'does not have a "type" key'.format(meshlines)
             raise ValueError(msg)
 
         elif meshlines['type'] not in ['tally', 'entropy', 'ufs', 'cmfd']:
             msg = 'Unable to set the meshlines with ' \
-                  'type "{0}"'.format(meshlines['type'])
+                  'type "{}"'.format(meshlines['type'])
             raise ValueError(msg)
 
         if 'id' in meshlines:
@@ -450,11 +448,11 @@ class Plot(IDManagerMixin):
         string += '{: <16}=\t{}\n'.format('\tColor by', self._color_by)
         string += '{: <16}=\t{}\n'.format('\tBackground', self._background)
         string += '{: <16}=\t{}\n'.format('\tMask components',
-                                            self._mask_components)
+                                          self._mask_components)
         string += '{: <16}=\t{}\n'.format('\tMask background',
-                                            self._mask_background)
-        string += '{: <16}=\t{}\n'.format('\Overlap Color',
-                                            self._overlap_color)
+                                          self._mask_background)
+        string += '{: <16}=\t{}\n'.format('\tOverlap Color',
+                                          self._overlap_color)
         string += '{: <16}=\t{}\n'.format('\tColors', self._colors)
         string += '{: <16}=\t{}\n'.format('\tLevel', self._level)
         string += '{: <16}=\t{}\n'.format('\tMeshlines', self._meshlines)
@@ -605,7 +603,7 @@ class Plot(IDManagerMixin):
         element.set("color_by", self._color_by)
         element.set("type", self._type)
 
-        if self._type is 'slice':
+        if self._type == 'slice':
             element.set("basis", self._basis)
 
         subelement = ET.SubElement(element, "origin")
@@ -846,5 +844,6 @@ class Plots(cv.CheckedList):
             p /= 'plots.xml'
 
         # Write the XML Tree to the plots.xml file
+        reorder_attributes(self._plots_file)  # TODO: Remove when support is Python 3.8+
         tree = ET.ElementTree(self._plots_file)
         tree.write(str(p), xml_declaration=True, encoding='utf-8')

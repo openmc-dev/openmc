@@ -26,7 +26,7 @@ _COMBOBOX_SELECTED = '<<ComboboxSelected>>'
 
 class MeshPlotter(tk.Frame):
     def __init__(self, parent, filename):
-        super().__init__(self, parent)
+        super().__init__(parent)
 
         self.labels = {
             'Cell': 'Cell:',

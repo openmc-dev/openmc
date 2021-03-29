@@ -17,6 +17,8 @@ namespace simulation {
 
 std::vector<Particle::Bank> source_bank;
 
+SharedArray<Particle::Bank> surf_source_bank;
+
 // The fission bank is allocated as a SharedArray, rather than a vector, as it will
 // be shared by all threads in the simulation. It will be allocated to a fixed
 // maximum capacity in the init_fission_bank() function. Then, Elements will be
@@ -37,6 +39,7 @@ std::vector<int64_t> progeny_per_particle;
 void free_memory_bank()
 {
   simulation::source_bank.clear();
+  simulation::surf_source_bank.clear();
   simulation::fission_bank.clear();
   simulation::progeny_per_particle.clear();
 }
@@ -72,7 +75,7 @@ void sort_fission_bank()
 
   // TODO: C++17 introduces the exclusive_scan() function which could be
   // used to replace everything above this point in this function.
-  
+
   // We need a scratch vector to make permutation of the fission bank into
   // sorted order easy. Under normal usage conditions, the fission bank is
   // over provisioned, so we can use that as scratch space.
@@ -106,6 +109,11 @@ void sort_fission_bank()
 
 extern "C" int openmc_source_bank(void** ptr, int64_t* n)
 {
+  if (!ptr || !n) {
+    set_errmsg("Received null pointer.");
+    return OPENMC_E_INVALID_ARGUMENT;
+  }
+
   if (simulation::source_bank.size() == 0) {
     set_errmsg("Source bank has not been allocated.");
     return OPENMC_E_ALLOCATE;
@@ -118,6 +126,11 @@ extern "C" int openmc_source_bank(void** ptr, int64_t* n)
 
 extern "C" int openmc_fission_bank(void** ptr, int64_t* n)
 {
+  if (!ptr || !n) {
+    set_errmsg("Received null pointer.");
+    return OPENMC_E_INVALID_ARGUMENT;
+  }
+
   if (simulation::fission_bank.size() == 0) {
     set_errmsg("Fission bank has not been allocated.");
     return OPENMC_E_ALLOCATE;

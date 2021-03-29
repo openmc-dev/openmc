@@ -1,9 +1,6 @@
 from numbers import Integral, Real
 from xml.etree import ElementTree as ET
 
-import numpy as np
-import pandas as pd
-
 import openmc.checkvalue as cv
 from . import Filter
 

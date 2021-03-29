@@ -12,7 +12,7 @@ functions or objects in :mod:`openmc.lib`, for example:
 
 """
 
-from ctypes import CDLL, c_bool
+from ctypes import CDLL, c_bool, c_int
 import os
 import sys
 
@@ -41,6 +41,9 @@ else:
 
 def _dagmc_enabled():
     return c_bool.in_dll(_dll, "dagmc_enabled").value
+
+def _coord_levels():
+    return c_int.in_dll(_dll, "n_coord_levels").value
 
 from .error import *
 from .core import *

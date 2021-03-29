@@ -3,9 +3,12 @@
 #include <array>
 #include <cmath>
 #include <utility>
+#include <set>
 
 #include <fmt/core.h>
+#include <gsl/gsl>
 
+#include "openmc/container_util.h"
 #include "openmc/error.h"
 #include "openmc/dagmc.h"
 #include "openmc/hdf5_interface.h"
@@ -115,6 +118,9 @@ Surface::Surface(pugi::xml_node surf_node, Surface::SurfaceType type) : type_(ty
 {
   if (check_for_node(surf_node, "id")) {
     id_ = std::stoi(get_node_value(surf_node, "id"));
+    if (contains(settings::source_write_surf_id, id_)) {
+      surf_source_ = true;
+    }
   } else {
     fatal_error("Must specify id of surface in geometry XML file.");
   }
@@ -127,25 +133,20 @@ Surface::Surface(pugi::xml_node surf_node, Surface::SurfaceType type) : type_(ty
     std::string surf_bc = get_node_value(surf_node, "boundary", true, true);
 
     if (surf_bc == "transmission" || surf_bc == "transmit" ||surf_bc.empty()) {
-      bc_ = BoundaryType::TRANSMIT;
-
+      // Leave the bc_ a nullptr
     } else if (surf_bc == "vacuum") {
-      bc_ = BoundaryType::VACUUM;
-
+      bc_ = std::make_shared<VacuumBC>();
     } else if (surf_bc == "reflective" || surf_bc == "reflect"
                || surf_bc == "reflecting") {
-      bc_ = BoundaryType::REFLECT;
+      bc_ = std::make_shared<ReflectiveBC>();
     } else if (surf_bc == "white") {
-      bc_ = BoundaryType::WHITE;
+      bc_ = std::make_shared<WhiteBC>();
     } else if (surf_bc == "periodic") {
-      bc_ = BoundaryType::PERIODIC;
+      // periodic BC's are handled separately
     } else {
       fatal_error(fmt::format("Unknown boundary condition \"{}\" specified "
         "on surface {}", surf_bc, id_));
     }
-
-  } else {
-    bc_ = BoundaryType::TRANSMIT;
   }
   if (check_for_node(surf_node, "periodic_surface_id")) {
     i_periodic_ = std::stoi(get_node_value(surf_node, "periodic_surface_id"));
@@ -191,11 +192,9 @@ Surface::reflect(Position r, Direction u, Particle* p) const
   // Determine projection of direction onto normal and squared magnitude of
   // normal.
   Direction n = normal(r);
-  const double projection = n.dot(u);
-  const double magnitude = n.dot(n);
 
   // Reflect direction according to normal.
-  return u -= (2.0 * projection / magnitude) * n;
+  return u.reflect(n);
 }
 
 Direction
@@ -228,22 +227,10 @@ Surface::to_hdf5(hid_t group_id) const
 
   hid_t surf_group = create_group(group_id, group_name);
 
-  switch(bc_) {
-    case BoundaryType::TRANSMIT :
-      write_string(surf_group, "boundary_type", "transmission", false);
-      break;
-    case BoundaryType::VACUUM :
-      write_string(surf_group, "boundary_type", "vacuum", false);
-      break;
-    case BoundaryType::REFLECT :
-      write_string(surf_group, "boundary_type", "reflective", false);
-      break;
-    case BoundaryType::WHITE :
-      write_string(surf_group, "boundary_type", "white", false);
-      break;
-    case BoundaryType::PERIODIC :
-      write_string(surf_group, "boundary_type", "periodic", false);
-      break;
+  if (bc_) {
+    write_string(surf_group, "boundary_type", bc_->type(), false);
+  } else {
+    write_string(surf_group, "boundary_type", "transmission", false);
   }
 
   if (!name_.empty()) {
@@ -296,27 +283,21 @@ Direction DAGSurface::normal(Position r) const
 
 Direction DAGSurface::reflect(Position r, Direction u, Particle* p) const
 {
+  Expects(p);
   p->history_.reset_to_last_intersection();
-  p->last_dir_ = Surface::reflect(r, u, p);
+  moab::ErrorCode rval;
+  moab::EntityHandle surf = dagmc_ptr_->entity_by_index(2, dag_index_);
+  double pnt[3] = {r.x, r.y, r.z};
+  double dir[3];
+  rval = dagmc_ptr_->get_angle(surf, pnt, dir, &p->history_);
+  MB_CHK_ERR_CONT(rval);
+  p->last_dir_ = u.reflect(dir);
   return p->last_dir_;
 }
 
 void DAGSurface::to_hdf5(hid_t group_id) const {}
 
 #endif
-*/
-//==============================================================================
-// PeriodicSurface implementation
-//==============================================================================
-
-/*
-PeriodicSurface::PeriodicSurface(pugi::xml_node surf_node)
-  : Surface {surf_node}
-{
-  if (check_for_node(surf_node, "periodic_surface_id")) {
-    i_periodic_ = std::stoi(get_node_value(surf_node, "periodic_surface_id"));
-  }
-}
 */
 
 //==============================================================================
@@ -385,6 +366,7 @@ bool Surface::SurfaceXPlane_periodic_translate(const Surface* other,
   }
 }
 
+
 BoundingBox
 Surface::SurfaceXPlane_bounding_box(bool pos_side) const
 {
@@ -444,7 +426,6 @@ bool Surface::SurfaceYPlane_periodic_translate(const Surface* other,
     return true;
   }
 }
-
 BoundingBox
 Surface::SurfaceYPlane_bounding_box(bool pos_side) const
 {
@@ -563,8 +544,8 @@ template<int i1, int i2> double
 axis_aligned_cylinder_evaluate(Position r, double offset1,
                                double offset2, double radius)
 {
-  const double r1 = r[i1] - offset1;
-  const double r2 = r[i2] - offset2;
+  const double r1 = r.get<i1>() - offset1;
+  const double r2 = r.get<i2>() - offset2;
   return r1*r1 + r2*r2 - radius*radius;
 }
 
@@ -576,12 +557,12 @@ template<int i1, int i2, int i3> double
 axis_aligned_cylinder_distance(Position r, Direction u,
      bool coincident, double offset1, double offset2, double radius)
 {
-  const double a = 1.0 - u[i1]*u[i1];  // u^2 + v^2
+  const double a = 1.0 - u.get<i1>() * u.get<i1>(); // u^2 + v^2
   if (a == 0.0) return INFTY;
 
-  const double r2 = r[i2] - offset1;
-  const double r3 = r[i3] - offset2;
-  const double k = r2 * u[i2] + r3 * u[i3];
+  const double r2 = r.get<i2>() - offset1;
+  const double r3 = r.get<i3>() - offset2;
+  const double k = r2 * u.get<i2>() + r3 * u.get<i3>();
   const double c = r2*r2 + r3*r3 - radius*radius;
   const double quad = k*k - a*c;
 
@@ -624,9 +605,9 @@ template<int i1, int i2, int i3> Direction
 axis_aligned_cylinder_normal(Position r, double offset1, double offset2)
 {
   Direction u;
-  u[i2] = 2.0 * (r[i2] - offset1);
-  u[i3] = 2.0 * (r[i3] - offset2);
-  u[i1] = 0.0;
+  u.get<i2>() = 2.0 * (r.get<i2>() - offset1);
+  u.get<i3>() = 2.0 * (r.get<i3>() - offset2);
+  u.get<i1>() = 0.0;
   return u;
 }
 #pragma omp end declare target
@@ -819,9 +800,9 @@ template<int i1, int i2, int i3> double
 axis_aligned_cone_evaluate(Position r, double offset1,
                            double offset2, double offset3, double radius_sq)
 {
-  const double r1 = r[i1] - offset1;
-  const double r2 = r[i2] - offset2;
-  const double r3 = r[i3] - offset3;
+  const double r1 = r.get<i1>() - offset1;
+  const double r2 = r.get<i2>() - offset2;
+  const double r3 = r.get<i3>() - offset3;
   return r2*r2 + r3*r3 - radius_sq*r1*r1;
 }
 
@@ -834,12 +815,13 @@ axis_aligned_cone_distance(Position r, Direction u,
      bool coincident, double offset1, double offset2, double offset3,
      double radius_sq)
 {
-  const double r1 = r[i1] - offset1;
-  const double r2 = r[i2] - offset2;
-  const double r3 = r[i3] - offset3;
-  const double a = u[i2]*u[i2] + u[i3]*u[i3]
-                   - radius_sq*u[i1]*u[i1];
-  const double k = r2*u[i2] + r3*u[i3] - radius_sq*r1*u[i1];
+  const double r1 = r.get<i1>() - offset1;
+  const double r2 = r.get<i2>() - offset2;
+  const double r3 = r.get<i3>() - offset3;
+  const double a = u.get<i2>() * u.get<i2>() + u.get<i3>() * u.get<i3>() -
+                   radius_sq * u.get<i1>() * u.get<i1>();
+  const double k =
+    r2 * u.get<i2>() + r3 * u.get<i3>() - radius_sq * r1 * u.get<i1>();
   const double c = r2*r2 + r3*r3 - radius_sq*r1*r1;
   double quad = k*k - a*c;
 
@@ -890,9 +872,9 @@ axis_aligned_cone_normal(Position r, double offset1, double offset2,
                          double offset3, double radius_sq)
 {
   Direction u;
-  u[i1] = -2.0 * radius_sq * (r[i1] - offset1);
-  u[i2] = 2.0 * (r[i2] - offset2);
-  u[i3] = 2.0 * (r[i3] - offset3);
+  u.get<i1>() = -2.0 * radius_sq * (r.get<i1>() - offset1);
+  u.get<i2>() = 2.0 * (r.get<i2>() - offset2);
+  u.get<i3>() = 2.0 * (r.get<i3>() - offset3);
   return u;
 }
   #pragma omp end declare target
@@ -1186,15 +1168,17 @@ bool Surface::periodic_translate(const Surface* other, Position& r,
 
 void read_surfaces(pugi::xml_node node)
 {
-  // Count the number of surfaces.
+  // Count the number of surfaces
   int n_surfaces = 0;
   for (pugi::xml_node surf_node : node.children("surface")) {n_surfaces++;}
   if (n_surfaces == 0) {
     fatal_error("No surfaces found in geometry.xml!");
   }
 
-  // Loop over XML surface elements and populate the array.
+  // Loop over XML surface elements and populate the array.  Keep track of
+  // periodic surfaces.
   model::surfaces.reserve(n_surfaces);
+  std::set<std::pair<int, int>> periodic_pairs;
   {
     pugi::xml_node surf_node;
     int i_surf;
@@ -1202,47 +1186,6 @@ void read_surfaces(pugi::xml_node node)
          surf_node = surf_node.next_sibling("surface"), i_surf++) {
       std::string surf_type = get_node_value(surf_node, "type", true, true);
 
-      /*
-      if (surf_type == "x-plane") {
-        model::surfaces.push_back(std::make_unique<Surface>(surf_node, Surface::SurfaceType::SurfaceXPlane));
-
-      } else if (surf_type == "y-plane") {
-        model::surfaces.push_back(std::make_unique<Surface>(surf_node, Surface::SurfaceType::SurfaceYPlane));
-
-      } else if (surf_type == "z-plane") {
-        model::surfaces.push_back(std::make_unique<Surface>(surf_node, Surface::SurfaceType::SurfaceZPlane));
-
-      } else if (surf_type == "plane") {
-        model::surfaces.push_back(std::make_unique<Surface>(surf_node, Surface::SurfaceType::SurfacePlane));
-
-      } else if (surf_type == "x-cylinder") {
-        model::surfaces.push_back(std::make_unique<Surface>(surf_node, Surface::SurfaceType::SurfaceXCylinder));
-
-      } else if (surf_type == "y-cylinder") {
-        model::surfaces.push_back(std::make_unique<Surface>(surf_node, Surface::SurfaceType::SurfaceYCylinder));
-
-      } else if (surf_type == "z-cylinder") {
-        model::surfaces.push_back(std::make_unique<Surface>(surf_node, Surface::SurfaceType::SurfaceZCylinder));
-
-      } else if (surf_type == "sphere") {
-        model::surfaces.push_back(std::make_unique<Surface>(surf_node, Surface::SurfaceType::SurfaceSphere));
-
-      } else if (surf_type == "x-cone") {
-        model::surfaces.push_back(std::make_unique<Surface>(surf_node, Surface::SurfaceType::SurfaceXCone));
-
-      } else if (surf_type == "y-cone") {
-        model::surfaces.push_back(std::make_unique<Surface>(surf_node, Surface::SurfaceType::SurfaceYCone));
-
-      } else if (surf_type == "z-cone") {
-        model::surfaces.push_back(std::make_unique<Surface>(surf_node, Surface::SurfaceType::SurfaceZCone));
-
-      } else if (surf_type == "quadric") {
-        model::surfaces.push_back(std::make_unique<Surface>(surf_node, Surface::SurfaceType::SurfaceQuadric));
-
-      } else {
-        fatal_error(fmt::format("Invalid surface type, \"{}\"", surf_type));
-      }
-      */
 
       if (surf_type == "x-plane") {
         model::surfaces.emplace_back(surf_node, Surface::SurfaceType::SurfaceXPlane);
@@ -1283,10 +1226,26 @@ void read_surfaces(pugi::xml_node node)
       } else {
         fatal_error(fmt::format("Invalid surface type, \"{}\"", surf_type));
       }
+
+      // Check for a periodic surface
+      if (check_for_node(surf_node, "boundary")) {
+        std::string surf_bc = get_node_value(surf_node, "boundary", true, true);
+        if (surf_bc == "periodic") {
+          if (check_for_node(surf_node, "periodic_surface_id")) {
+            int i_periodic = std::stoi(get_node_value(surf_node,
+                                                      "periodic_surface_id"));
+            int lo_id = std::min(model::surfaces.back().id_, i_periodic);
+            int hi_id = std::max(model::surfaces.back().id_, i_periodic);
+            periodic_pairs.insert({lo_id, hi_id});
+          } else {
+            periodic_pairs.insert({model::surfaces.back().id_, -1});
+          }
+        }
+      }
     }
   }
 
-  // Fill the surface map.
+  // Fill the surface map
   for (int i_surf = 0; i_surf < model::surfaces.size(); i_surf++) {
     int id = model::surfaces[i_surf].id_;
     auto in_map = model::surface_map.find(id);
@@ -1298,115 +1257,62 @@ void read_surfaces(pugi::xml_node node)
     }
   }
 
-  // Find the global bounding box (of periodic BC surfaces).
-  double xmin {INFTY}, xmax {-INFTY}, ymin {INFTY}, ymax {-INFTY},
-         zmin {INFTY}, zmax {-INFTY};
-  int i_xmin, i_xmax, i_ymin, i_ymax, i_zmin, i_zmax;
-  for (int i_surf = 0; i_surf < model::surfaces.size(); i_surf++) {
-    if (model::surfaces[i_surf].bc_ == Surface::BoundaryType::PERIODIC) {
-      // Downcast to the PeriodicSurface type.
-      Surface* surf_base = &model::surfaces[i_surf];
-      //auto surf = dynamic_cast<PeriodicSurface*>(surf_base);
-      auto surf = surf_base;
-
-      // Make sure this surface inherits from PeriodicSurface.
-      //if (!surf) {
-      if (
-          surf->type_ != Surface::SurfaceType::SurfaceXPlane &&
-          surf->type_ != Surface::SurfaceType::SurfaceYPlane &&
-          surf->type_ != Surface::SurfaceType::SurfaceZPlane &&
-          surf->type_ != Surface::SurfaceType::SurfacePlane
-          ) {
-        fatal_error(fmt::format(
-          "Periodic boundary condition not supported for surface {}. Periodic "
-          "BCs are only supported for planar surfaces.", surf_base->id_));
-      }
-
-      // See if this surface makes part of the global bounding box.
-      auto bb = surf->bounding_box(true) & surf->bounding_box(false);
-      if (bb.xmin > -INFTY && bb.xmin < xmin) {
-        xmin = bb.xmin;
-        i_xmin = i_surf;
-      }
-      if (bb.xmax < INFTY && bb.xmax > xmax) {
-        xmax = bb.xmax;
-        i_xmax = i_surf;
-      }
-      if (bb.ymin > -INFTY && bb.ymin < ymin) {
-        ymin = bb.ymin;
-        i_ymin = i_surf;
-      }
-      if (bb.ymax < INFTY && bb.ymax > ymax) {
-        ymax = bb.ymax;
-        i_ymax = i_surf;
-      }
-      if (bb.zmin > -INFTY && bb.zmin < zmin) {
-        zmin = bb.zmin;
-        i_zmin = i_surf;
-      }
-      if (bb.zmax < INFTY && bb.zmax > zmax) {
-        zmax = bb.zmax;
-        i_zmax = i_surf;
-      }
+  // Resolve unpaired periodic surfaces.  A lambda function is used with
+  // std::find_if to identify the unpaired surfaces.
+  auto is_unresolved_pair =
+    [](const std::pair<int, int> p){return p.second == -1;};
+  auto first_unresolved = std::find_if(periodic_pairs.begin(),
+    periodic_pairs.end(), is_unresolved_pair);
+  if (first_unresolved != periodic_pairs.end()) {
+    // Found one unpaired surface; search for a second one
+    auto next_elem = first_unresolved;
+    next_elem++;
+    auto second_unresolved = std::find_if(next_elem, periodic_pairs.end(),
+      is_unresolved_pair);
+    if (second_unresolved == periodic_pairs.end()) {
+      fatal_error("Found only one periodic surface without a specified partner."
+        " Please specify the partner for each periodic surface.");
     }
+
+    // Make sure there isn't a third unpaired surface
+    next_elem = second_unresolved;
+    next_elem++;
+    auto third_unresolved = std::find_if(next_elem,
+      periodic_pairs.end(), is_unresolved_pair);
+    if (third_unresolved != periodic_pairs.end()) {
+      fatal_error("Found at least three periodic surfaces without a specified "
+        "partner. Please specify the partner for each periodic surface.");
+    }
+
+    // Add the completed pair and remove the old, unpaired entries
+    int lo_id = std::min(first_unresolved->first, second_unresolved->first);
+    int hi_id = std::max(first_unresolved->first, second_unresolved->first);
+    periodic_pairs.insert({lo_id, hi_id});
+    periodic_pairs.erase(first_unresolved);
+    periodic_pairs.erase(second_unresolved);
   }
 
-  // Set i_periodic for periodic BC surfaces.
-  for (int i_surf = 0; i_surf < model::surfaces.size(); i_surf++) {
-    if (model::surfaces[i_surf].bc_ == Surface::BoundaryType::PERIODIC) {
-      // Downcast to the PeriodicSurface type.
-      Surface* surf_base = &model::surfaces[i_surf];
-      //auto surf = dynamic_cast<PeriodicSurface*>(surf_base);
-      auto surf = surf_base;
+  // Assign the periodic boundary conditions
+  for (auto periodic_pair : periodic_pairs) {
+    int i_surf = model::surface_map[periodic_pair.first];
+    int j_surf = model::surface_map[periodic_pair.second];
+    Surface& surf1 {model::surfaces[i_surf]};
+    Surface& surf2 {model::surfaces[j_surf]};
 
-      // Also try downcasting to the SurfacePlane type (which must be handled
-      // differently).
-      //SurfacePlane* surf_p = dynamic_cast<SurfacePlane*>(surf);
-      auto surf_p = surf;
+    // Compute the dot product of the surface normals
+    Direction norm1 = surf1.normal({0, 0, 0});
+    Direction norm2 = surf2.normal({0, 0, 0});
+    double dot_prod = norm1.dot(norm2);
 
-      //if (!surf_p) {
-      if (surf_p->type_ != Surface::SurfaceType::SurfacePlane) {
-        // This is not a SurfacePlane.
-        if (surf->i_periodic_ == C_NONE) {
-          // The user did not specify the matching periodic surface.  See if we
-          // can find the partnered surface from the bounding box information.
-          if (i_surf == i_xmin) {
-            surf->i_periodic_ = i_xmax;
-          } else if (i_surf == i_xmax) {
-            surf->i_periodic_ = i_xmin;
-          } else if (i_surf == i_ymin) {
-            surf->i_periodic_ = i_ymax;
-          } else if (i_surf == i_ymax) {
-            surf->i_periodic_ = i_ymin;
-          } else if (i_surf == i_zmin) {
-            surf->i_periodic_ = i_zmax;
-          } else if (i_surf == i_zmax) {
-            surf->i_periodic_ = i_zmin;
-          } else {
-            fatal_error("Periodic boundary condition applied to interior "
-                        "surface");
-          }
-        } else {
-          // Convert the surface id to an index.
-          surf->i_periodic_ = model::surface_map[surf->i_periodic_];
-        }
-      } else {
-        // This is a SurfacePlane.  We won't try to find it's partner if the
-        // user didn't specify one.
-        if (surf->i_periodic_ == C_NONE) {
-          fatal_error(fmt::format("No matching periodic surface specified for "
-            "periodic boundary condition on surface {}", surf->id_));
-        } else {
-          // Convert the surface id to an index.
-          surf->i_periodic_ = model::surface_map[surf->i_periodic_];
-        }
-      }
-
-      // Make sure the opposite surface is also periodic.
-      if (model::surfaces[surf->i_periodic_].bc_ != Surface::BoundaryType::PERIODIC) {
-        fatal_error(fmt::format("Could not find matching surface for periodic "
-          "boundary condition on surface {}", surf->id_));
-      }
+    // If the dot product is 1 (to within floating point precision) then the
+    // planes are parallel which indicates a translational periodic boundary
+    // condition.  Otherwise, it is a rotational periodic BC.
+    if (std::abs(1.0 - dot_prod) < FP_PRECISION) {
+      surf1.bc_ = std::make_shared<TranslationalPeriodicBC>(i_surf, j_surf);
+      surf2.bc_ = surf1.bc_;
+    } else {
+      surf1.bc_ = std::make_shared<RotationalPeriodicBC>(i_surf, j_surf);
+      surf2.bc_ = surf1.bc_;
     }
   }
 
@@ -1414,7 +1320,7 @@ void read_surfaces(pugi::xml_node node)
   // surface
   bool boundary_exists = false;
   for (const auto& surf : model::surfaces) {
-    if (surf.bc_ != Surface::BoundaryType::TRANSMIT) {
+    if (surf.bc_) {
       boundary_exists = true;
       break;
     }

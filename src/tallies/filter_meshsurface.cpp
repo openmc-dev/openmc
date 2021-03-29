@@ -8,7 +8,7 @@
 namespace openmc {
 
 void
-MeshSurfaceFilter::get_all_bins(const Particle* p, TallyEstimator estimator,
+MeshSurfaceFilter::get_all_bins(const Particle& p, TallyEstimator estimator,
                                 FilterMatch& match) const
 {
   int starting_length = match.bins_weights_length_;

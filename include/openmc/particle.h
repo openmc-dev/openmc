@@ -48,6 +48,9 @@ constexpr double CACHE_INVALID {-1.0};
 // Class declarations
 //==============================================================================
 
+// Forward declare the Surface class for use in function arguments.
+class Surface;
+
 class LocalCoord {
 public:
   //void rotate(const std::vector<double>& rotation);
@@ -166,7 +169,7 @@ public:
   };
 
   //! Saved ("banked") state of a particle
-  //! NOTE: This structure's MPI type is built in initialize_mpi() of 
+  //! NOTE: This structure's MPI type is built in initialize_mpi() of
   //! initialize.cpp. Any changes made to the struct here must also be
   //! made when building the Bank MPI type in initialize_mpi().
   //! NOTE: This structure is also used on the python side, and is defined
@@ -178,11 +181,12 @@ public:
     double E;
     double wgt;
     int delayed_group;
+    int surf_id;
     Type particle;
     int64_t parent_id;
     int64_t progeny_id;
   };
-  
+
   //! Saved ("banked") state of a particle, for nu-fission tallying
   struct NuBank {
     double E;  //!< particle energy
@@ -221,10 +225,11 @@ public:
   //
   //! stores the current phase space attributes of the particle in the
   //! secondary bank and increments the number of sites in the secondary bank.
+  //! \param wgt Weight of the secondary particle
   //! \param u Direction of the secondary particle
   //! \param E Energy of the secondary particle in [eV]
   //! \param type Particle type
-  void create_secondary(Direction u, double E, Type type);
+  void create_secondary(double wgt, Direction u, double E, Type type);
 
   //! initialize from a source site
   //
@@ -247,6 +252,30 @@ public:
 
   //! Cross a surface and handle boundary conditions
   void cross_surface();
+
+  //! Cross a vacuum boundary condition.
+  //
+  //! \param surf The surface (with the vacuum boundary condition) that the
+  //!   particle struck.
+  void cross_vacuum_bc(const Surface& surf);
+
+  //! Cross a reflective boundary condition.
+  //
+  //! \param surf The surface (with the reflective boundary condition) that the
+  //!   particle struck.
+  //! \param new_u The direction of the particle after reflection.
+  void cross_reflective_bc(const Surface& surf, Direction new_u);
+
+  //! Cross a periodic boundary condition.
+  //
+  //! \param surf The surface (with the periodic boundary condition) that the
+  //!   particle struck.
+  //! \param new_r The position of the particle after translation/rotation.
+  //! \param new_u The direction of the particle after translation/rotation.
+  //! \param new_surface The signed index of the surface that the particle will
+  //!   reside on after translation/rotation.
+  void cross_periodic_bc(const Surface& surf, Position new_r, Direction new_u,
+                         int new_surface);
 
   //! mark a particle as lost and create a particle restart file
   //! \param message A warning message to display
@@ -340,7 +369,7 @@ public:
   int cell_born_ {-1};      //!< index for cell particle was born in
   int material_ {-1};       //!< index for current material
   int material_last_ {-1};  //!< index for last material
-  
+
   // Boundary information
   BoundaryInfo boundary_;
 
@@ -357,7 +386,7 @@ public:
   // Current PRNG state
   uint64_t seeds_[N_STREAMS]; // current seeds
   int      stream_;           // current RNG stream
-  
+
   // Secondary particle bank
   // This one is necessarilly going to be large/wasteful, unless we add in shared
   // secondary bank among threads or something along those lines
@@ -402,6 +431,14 @@ public:
 
   int64_t n_progeny_ {0}; // Number of progeny produced by this particle
 };
+
+//============================================================================
+//! Functions
+//============================================================================
+
+std::string particle_type_to_str(Particle::Type type);
+
+Particle::Type str_to_particle_type(std::string str);
 
 } // namespace openmc
 

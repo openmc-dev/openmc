@@ -1,11 +1,10 @@
-from abc import ABCMeta, abstractmethod
-from io import StringIO
+from abc import ABC, abstractmethod
 
 import openmc.data
 from openmc.mixin import EqualityMixin
 
 
-class AngleEnergy(EqualityMixin, metaclass=ABCMeta):
+class AngleEnergy(EqualityMixin, ABC):
     """Distribution in angle and energy of a secondary particle."""
     @abstractmethod
     def to_hdf5(self, group):

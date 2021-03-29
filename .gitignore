@@ -14,7 +14,7 @@ dist/
 openmc.egg-info/
 
 # Inputs generated from Python API
-examples/python/**/*.xml
+examples/**/*.xml
 
 # emacs and vim backups
 *~
@@ -101,8 +101,18 @@ examples/jupyter/plots
 .coverage
 htmlcov
 
-#macOS
+# macOS
 *.DS_Store
 
-#Dynamic Library
+# Dynamic Library
 *.dylib
+*.lib
+*.dll
+
+# Visual Studio CMake project
+.vs/
+out/
+CMakeSettings.json
+
+# Visual Studio Code configuration files
+.vscode/

@@ -1,11 +1,11 @@
 from datetime import datetime
+import glob
 import re
 import os
 import warnings
-import glob
 
-import numpy as np
 import h5py
+import numpy as np
 from uncertainties import ufloat
 
 import openmc
@@ -93,9 +93,10 @@ class StatePoint:
     seed : int
         Pseudorandom number generator seed
     source : numpy.ndarray of compound datatype
-        Array of source sites. The compound datatype has fields 'wgt', 'xyz',
-        'uvw', and 'E' corresponding to the weight, position, direction, and
-        energy of the source site.
+        Array of source sites. The compound datatype has fields 'r', 'u',
+        'E', 'wgt', 'delayed_group', 'surf_id', and 'particle', corresponding to
+        the position, direction, energy, weight, delayed group, surface ID and
+        particle type of the source site, respectively.
     source_present : bool
         Indicate whether source sites are present
     sparse : bool
@@ -416,14 +417,10 @@ class StatePoint:
                         nuclide = openmc.Nuclide(name.decode().strip())
                         tally.nuclides.append(nuclide)
 
-                    scores = group['score_bins'][()]
-                    n_score_bins = group['n_score_bins'][()]
-
                     # Add the scores to the Tally
-                    for j, score in enumerate(scores):
-                        score = score.decode()
-
-                        tally.scores.append(score)
+                    scores = group['score_bins'][()]
+                    for score in scores:
+                        tally.scores.append(score.decode())
 
                     # Add Tally to the global dictionary of all Tallies
                     tally.sparse = self.sparse
@@ -586,15 +583,7 @@ class StatePoint:
 
             # Determine if Tally has the queried score(s)
             if scores:
-                contains_scores = True
-
-                # Iterate over the scores requested by the user
-                for score in scores:
-                    if score not in test_tally.scores:
-                        contains_scores = False
-                        break
-
-                if not contains_scores:
+                if not all(score in test_tally.scores for score in scores):
                     continue
 
             # Determine if Tally has the queried Filter(s)
@@ -620,15 +609,7 @@ class StatePoint:
 
             # Determine if Tally has the queried Nuclide(s)
             if nuclides:
-                contains_nuclides = True
-
-                # Iterate over the Nuclides requested by the user
-                for nuclide in nuclides:
-                    if nuclide not in test_tally.nuclides:
-                        contains_nuclides = False
-                        break
-
-                if not contains_nuclides:
+                if not all(nuclide in test_tally.nuclides for nuclide in nuclides):
                     continue
 
             # If the current Tally met user's request, break loop and return it
@@ -676,7 +657,7 @@ class StatePoint:
 
         cells = summary.geometry.get_all_cells()
 
-        for tally_id, tally in self.tallies.items():
+        for tally in self.tallies.values():
             tally.with_summary = True
 
             for tally_filter in tally.filters:

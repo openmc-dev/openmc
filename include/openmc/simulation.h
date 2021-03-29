@@ -63,6 +63,9 @@ void allocate_banks();
 //! Determine number of particles to transport per process
 void calculate_work();
 
+//! Initialize nuclear data before a simulation
+void initialize_data();
+
 //! Initialize a batch
 void initialize_batch();
 
@@ -70,10 +73,10 @@ void initialize_batch();
 void initialize_generation();
 
 //! Full initialization of a particle history
-void initialize_history(Particle* p, int64_t index_source);
+void initialize_history(Particle& p, int64_t index_source);
 
 //! Helper function for initialize_history() that is called independently elsewhere
-void initialize_history_partial(Particle* p);
+void initialize_history_partial(Particle& p);
 
 //! Finalize a batch
 //!

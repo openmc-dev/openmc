@@ -7,8 +7,8 @@ import openmc.checkvalue as cv
 
 
 class EqualityMixin:
-    """A Class which provides generic __eq__ and __ne__ functionality which
-    can easily be inherited by downstream classes.
+    """A Class which provides a generic __eq__ method that can be inherited
+    by downstream classes.
     """
 
     def __eq__(self, other):

@@ -17,7 +17,8 @@ import pytest
 from openmc.deplete import (
     ReactionRates, Results, ResultsList, comm, OperatorResult,
     PredictorIntegrator, CECMIntegrator, CF4Integrator, CELIIntegrator,
-    EPCRK4Integrator, LEQIIntegrator, SICELIIntegrator, SILEQIIntegrator)
+    EPCRK4Integrator, LEQIIntegrator, SICELIIntegrator, SILEQIIntegrator,
+    cram)
 
 from tests import dummy_operator
 
@@ -129,7 +130,7 @@ def test_bad_integrator_inputs():
     timesteps = [1]
 
     # No power nor power density given
-    with pytest.raises(ValueError, match="Either power or power density"):
+    with pytest.raises(ValueError, match="Either power"):
         PredictorIntegrator(op, timesteps)
 
     # Length of power != length time
@@ -146,6 +147,23 @@ def test_bad_integrator_inputs():
 
     with pytest.raises(ValueError, match="n_steps"):
         SICELIIntegrator(op, timesteps, [1], n_steps=0)
+
+    with pytest.raises(ValueError, match="Solver failure"):
+        PredictorIntegrator(op, timesteps, power=1, solver="failure")
+
+    with pytest.raises(TypeError, match=".*callable.*NoneType"):
+        PredictorIntegrator(op, timesteps, power=1, solver=None)
+
+    with pytest.raises(ValueError, match=".*arguments"):
+        PredictorIntegrator(op, timesteps, power=1, solver=mock_bad_solver_nargs)
+
+
+def mock_good_solver(A, n, t):
+    pass
+
+
+def mock_bad_solver_nargs(A, n):
+    pass
 
 
 @pytest.mark.parametrize("scheme", dummy_operator.SCHEMES)
@@ -173,6 +191,19 @@ def test_integrator(run_in_tmpdir, scheme):
     dep_time = res.get_depletion_time()
     assert dep_time.shape == (2, )
     assert all(dep_time > 0)
+
+    integrator = bundle.solver(operator, [0.75], 1, solver=cram.CRAM48)
+    assert integrator.solver is cram.CRAM48
+
+    integrator = bundle.solver(operator, [0.75], 1, solver="cram16")
+    assert integrator.solver is cram.CRAM16
+
+    integrator.solver = mock_good_solver
+    assert integrator.solver is mock_good_solver
+
+    lfunc = lambda A, n, t: mock_good_solver(A, n, t)
+    integrator.solver = lfunc
+    assert integrator.solver is lfunc
 
 
 @pytest.mark.parametrize("integrator", INTEGRATORS)

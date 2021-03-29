@@ -4,11 +4,9 @@ from copy import deepcopy
 from pathlib import Path
 from xml.etree import ElementTree as ET
 
-import numpy as np
-
 import openmc
 import openmc._xml as xml
-from openmc.checkvalue import check_type
+from .checkvalue import check_type
 
 
 class Geometry:
@@ -88,6 +86,8 @@ class Geometry:
             Whether or not to remove redundant surfaces from the geometry when
             exporting
 
+            .. versionadded:: 0.12
+
         """
         # Find and remove redundant surfaces from the geometry
         if remove_surfs:
@@ -110,6 +110,7 @@ class Geometry:
             p /= 'geometry.xml'
 
         # Write the XML Tree to the geometry.xml file
+        xml.reorder_attributes(root_element)  # TODO: Remove when support is Python 3.8+
         tree = ET.ElementTree(root_element)
         tree.write(str(p), xml_declaration=True, encoding='utf-8')
 
@@ -391,7 +392,9 @@ class Geometry:
         return surfaces
 
     def get_redundant_surfaces(self):
-        """Return all of the topologically redundant surface ids
+        """Return all of the topologically redundant surface IDs
+
+        .. versionadded:: 0.12
 
         Returns
         -------
@@ -565,7 +568,8 @@ class Geometry:
         # Iterate through all cells contained in the geometry
         for cell in self.get_all_cells().values():
             # Recursively remove redundant surfaces from regions
-            cell.region.remove_redundant_surfaces(redundant_surfaces)
+            if cell.region:
+                cell.region.remove_redundant_surfaces(redundant_surfaces)
 
     def determine_paths(self, instances_only=False):
         """Determine paths through CSG tree for cells and materials.

@@ -61,6 +61,18 @@ struct Position {
   }
   #pragma omp end declare target
 
+  // Access to x, y, or z by compile time known index (specializations below)
+  template<int i>
+  const double& get() const
+  {
+    throw std::out_of_range {"Index in Position must be between 0 and 2."};
+  }
+  template<int i>
+  double& get()
+  {
+    throw std::out_of_range {"Index in Position must be between 0 and 2."};
+  }
+
   // Other member functions
 
   //! Dot product of two vectors
@@ -73,6 +85,11 @@ struct Position {
     return std::sqrt(x*x + y*y + z*z);
   }
 
+  //! Reflect a direction across a normal vector
+  //! \param[in] other Vector to reflect across
+  //! \result Reflected vector
+  Position reflect(Position n) const;
+
   //! Rotate the position based on a rotation matrix
   //Position rotate(const std::vector<double>& rotation) const;
   #pragma omp declare target
@@ -84,6 +101,38 @@ struct Position {
   double y = 0.;
   double z = 0.;
 };
+
+// Compile-time known member index access functions
+template<>
+inline const double& Position::get<0>() const
+{
+  return x;
+}
+template<>
+inline const double& Position::get<1>() const
+{
+  return y;
+}
+template<>
+inline const double& Position::get<2>() const
+{
+  return z;
+}
+template<>
+inline double& Position::get<0>()
+{
+  return x;
+}
+template<>
+inline double& Position::get<1>()
+{
+  return y;
+}
+template<>
+inline double& Position::get<2>()
+{
+  return z;
+}
 
 // Binary operators
 inline Position operator+(Position a, Position b) { return a += b; }
@@ -101,6 +150,13 @@ inline Position operator*(double a, Position b)   { return b *= a; }
 inline Position operator/(Position a, Position b) { return a /= b; }
 inline Position operator/(Position a, double b)   { return a /= b; }
 inline Position operator/(double a, Position b)   { return b /= a; }
+
+inline Position Position::reflect(Position n) const {
+  const double projection = n.dot(*this);
+  const double magnitude = n.dot(n);
+  n *= (2.0 * projection / magnitude);
+  return *this - n;
+}
 
 inline bool operator==(Position a, Position b)
 {return a.x == b.x && a.y == b.y && a.z == b.z;}

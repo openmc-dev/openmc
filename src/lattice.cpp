@@ -23,7 +23,6 @@ namespace openmc {
 //==============================================================================
 
 namespace model {
-  //std::vector<std::unique_ptr<Lattice>> lattices;
   std::vector<Lattice> lattices;
   Lattice* device_lattices;
   std::unordered_map<int32_t, int32_t> lattice_map;
@@ -377,6 +376,16 @@ Lattice::offset(int map, const int i_xyz[3])
   }
 }
 
+int32_t
+Lattice::offset(int map, int indx) const
+{
+  switch(type_){
+    case LatticeType::rect : return RectLattice_offset(map, indx); break;
+    case LatticeType::hex  : return HexLattice_offset(map, indx); break;
+    default :                fatal_error("Lattice Type not recognized.");
+  }
+}
+
 std::string
 Lattice::index_to_string(int indx) const
 {
@@ -542,6 +551,18 @@ Lattice::RectLattice_offset(int map, const int i_xyz[3])
   int ny {n_cells_[1]};
   int nz {n_cells_[2]};
   return offsets_[nx*ny*nz*map + nx*ny*i_xyz[2] + nx*i_xyz[1] + i_xyz[0]];
+}
+
+//==============================================================================
+
+int32_t
+Lattice::RectLattice_offset(int map, int indx) const
+{
+  // Convenience aliases
+  int nx {n_cells_[0]};
+  int ny {n_cells_[1]};
+  int nz {n_cells_[2]};
+  return offsets_[nx*ny*nz*map + indx];
 }
 
 //==============================================================================
@@ -876,6 +897,7 @@ Lattice::HexLattice_index(std::array<int, 3> i_xyz)
 bool
 Lattice::HexLattice_are_valid_indices(const int i_xyz[3]) const
 {
+  // Check if (x, alpha, z) indices are valid, accounting for number of rings
   return ((i_xyz[0] >= 0) && (i_xyz[1] >= 0) && (i_xyz[2] >= 0)
           && (i_xyz[0] < 2*n_rings_-1) && (i_xyz[1] < 2*n_rings_-1)
           && (i_xyz[0] + i_xyz[1] > n_rings_-2)
@@ -1175,6 +1197,15 @@ Lattice::HexLattice_offset(int map, const int i_xyz[3])
   int ny {2*n_rings_ - 1};
   int nz {n_axial_};
   return offsets_[nx*ny*nz*map + nx*ny*i_xyz[2] + nx*i_xyz[1] + i_xyz[0]];
+}
+
+int32_t
+Lattice::HexLattice_offset(int map, int indx) const
+{
+  int nx {2*n_rings_ - 1};
+  int ny {2*n_rings_ - 1};
+  int nz {n_axial_};
+  return offsets_[nx*ny*nz*map + indx];
 }
 
 //==============================================================================

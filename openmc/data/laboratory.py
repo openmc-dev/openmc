@@ -4,7 +4,7 @@ from numbers import Real, Integral
 import numpy as np
 
 import openmc.checkvalue as cv
-from openmc.stats import Tabular, Univariate, Discrete
+from openmc.stats import Tabular, Univariate
 from .angle_energy import AngleEnergy
 from .endf import get_tab2_record, get_tab1_record
 

@@ -154,14 +154,58 @@ class Nuclide:
             return None
         return self.yield_data.energies
 
+    def add_decay_mode(self, type, target, branching_ratio):
+        """Add decay mode to the nuclide
+
+        Parameters
+        ----------
+        type : str
+            Type of the decay mode, e.g., 'beta-'
+        target : str or None
+            Nuclide resulting from decay. A value of ``None`` implies the
+            target does not exist in the currently configured depletion
+            chain
+        branching_ratio : float
+            Branching ratio of the decay mode
+
+        """
+        self.decay_modes.append(
+            DecayTuple(type, target, branching_ratio)
+        )
+
+    def add_reaction(self, type, target, Q, branching_ratio):
+        """Add transmutation reaction to the nuclide
+
+        Parameters
+        ----------
+        type : str
+            Type of the reaction, e.g., 'fission'
+        target : str or None
+            Nuclide resulting from reaction. A value of ``None``
+            implies either no single target, e.g. from fission,
+            or that the target nuclide is not considered
+            in the current depletion chain
+        Q : float
+            Q value of the reaction in [eV]
+        branching_ratio : float
+            Branching ratio of the reaction
+
+        """
+        self.reactions.append(
+            ReactionTuple(type, target, Q, branching_ratio)
+        )
+
     @classmethod
-    def from_xml(cls, element, fission_q=None):
+    def from_xml(cls, element, root=None, fission_q=None):
         """Read nuclide from an XML element.
 
         Parameters
         ----------
         element : xml.etree.ElementTree.Element
-            XML element to write nuclide data to
+            XML element to read nuclide data from
+        root : xml.etree.ElementTree.Element, optional
+            Root XML element for chain file (only used when fission product
+            yields are borrowed from another parent)
         fission_q : None or float
             User-supplied fission Q value [eV].
             Will be read from the element if not given
@@ -212,6 +256,21 @@ class Nuclide:
 
         fpy_elem = element.find('neutron_fission_yields')
         if fpy_elem is not None:
+            # Check for use of FPY from other nuclide
+            parent = fpy_elem.get('parent')
+            if parent is not None:
+                assert root is not None
+                fpy_elem = root.find(
+                    './/nuclide[@name="{}"]/neutron_fission_yields'.format(parent)
+                )
+                if fpy_elem is None:
+                    raise ValueError(
+                        "Fission product yields for {0} borrow from {1}, but {1} is"
+                        " not present in the chain file or has no yields.".format(
+                            nuc.name, parent
+                        ))
+                nuc._fpy = parent
+
             nuc.yield_data = FissionYieldDistribution.from_xml_element(fpy_elem)
 
         return nuc
@@ -232,9 +291,9 @@ class Nuclide:
             elem.set('half_life', str(self.half_life))
             elem.set('decay_modes', str(len(self.decay_modes)))
             elem.set('decay_energy', str(self.decay_energy))
-            for mode, daughter, br in self.decay_modes:
+            for mode_type, daughter, br in self.decay_modes:
                 mode_elem = ET.SubElement(elem, 'decay')
-                mode_elem.set('type', mode)
+                mode_elem.set('type', mode_type)
                 mode_elem.set('target', daughter or "Nothing")
                 mode_elem.set('branching_ratio', str(br))
 
@@ -243,16 +302,21 @@ class Nuclide:
             rx_elem = ET.SubElement(elem, 'reaction')
             rx_elem.set('type', rx)
             rx_elem.set('Q', str(Q))
-            if rx != 'fission' or daughter is not None:
+            if daughter is not None:
                 rx_elem.set('target', daughter)
             if br != 1.0:
                 rx_elem.set('branching_ratio', str(br))
 
         if self.yield_data:
             fpy_elem = ET.SubElement(elem, 'neutron_fission_yields')
-            energy_elem = ET.SubElement(fpy_elem, 'energies')
-            energy_elem.text = ' '.join(str(E) for E in self.yield_energies)
-            self.yield_data.to_xml_element(fpy_elem)
+
+            if hasattr(self, '_fpy'):
+                # Check for link to other nuclide data
+                fpy_elem.set('parent', self._fpy)
+            else:
+                energy_elem = ET.SubElement(fpy_elem, 'energies')
+                energy_elem.text = ' '.join(str(E) for E in self.yield_energies)
+                self.yield_data.to_xml_element(fpy_elem)
 
         return elem
 
@@ -469,6 +533,8 @@ class FissionYieldDistribution(Mapping):
 
     def restrict_products(self, possible_products):
         """Return a new distribution with select products
+
+        .. versionadded:: 0.12
 
         Parameters
         ----------

@@ -61,6 +61,9 @@ check_tally_triggers(double& ratio, int& tally_id, int& score)
     if (t.n_realizations_ < 2) continue;
 
     for (const auto& trigger : t.triggers_) {
+      // Skip trigger if it is not active
+      if (trigger.metric == TriggerMetric::not_active) continue;
+
       const auto& results = t.results_;
       for (auto filter_index = 0; filter_index < results.shape()[0];
            ++filter_index) {
@@ -85,8 +88,7 @@ check_tally_triggers(double& ratio, int& tally_id, int& score)
               uncertainty = rel_err;
               break;
             case TriggerMetric::not_active:
-              uncertainty = 0.0;
-              break;
+              UNREACHABLE();
           }
 
           // Compute the uncertainty / threshold ratio.
@@ -164,8 +166,7 @@ check_triggers()
   // If all the triggers are satisfied, alert the user and return.
   if (std::max(keff_ratio, tally_ratio) <= 1.) {
     simulation::satisfy_triggers = true;
-    write_message("Triggers satisfied for batch "
-      + std::to_string(current_batch), 7);
+    write_message(7, "Triggers satisfied for batch {}", current_batch);
     return;
   }
 

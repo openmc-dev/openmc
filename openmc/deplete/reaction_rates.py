@@ -2,8 +2,6 @@
 
 An ndarray to store reaction rates with string, integer, or slice indexing.
 """
-from collections import OrderedDict
-
 import numpy as np
 
 

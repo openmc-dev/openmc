@@ -108,9 +108,11 @@ The following tables show all valid scores:
     +----------------------+---------------------------------------------------+
     |Score                 | Description                                       |
     +======================+===================================================+
-    |absorption            |Total absorption rate. This accounts for all       |
-    |                      |reactions which do not produce secondary neutrons  |
-    |                      |as well as fission.                                |
+    |absorption            |Total absorption rate. For incident neutrons, this |
+    |                      |accounts for all reactions that do not produce     |
+    |                      |secondary neutrons as well as fission. For incident|
+    |                      |photons, this includes photoelectric and pair      |
+    |                      |production.                                        |
     +----------------------+---------------------------------------------------+
     |elastic               |Elastic scattering reaction rate.                  |
     +----------------------+---------------------------------------------------+
@@ -144,7 +146,7 @@ The following tables show all valid scores:
     +----------------------+---------------------------------------------------+
     |(n,nt)                |(n,nt) reaction rate.                              |
     +----------------------+---------------------------------------------------+
-    |(n,nHe-3)             |(n,n\ :sup:`3`\ He) reaction rate.                 |
+    |(n,n3He)              |(n,n\ :sup:`3`\ He) reaction rate.                 |
     +----------------------+---------------------------------------------------+
     |(n,nd2a)              |(n,nd2\ :math:`\alpha`\ ) reaction rate.           |
     +----------------------+---------------------------------------------------+
@@ -193,6 +195,14 @@ The following tables show all valid scores:
     |(n,pt)                |(n,pt) reaction rate.                              |
     +----------------------+---------------------------------------------------+
     |(n,da)                |(n,d\ :math:`\alpha`\ ) reaction rate.             |
+    +----------------------+---------------------------------------------------+
+    |coherent-scatter      |Coherent (Rayleigh) scattering reaction rate.      |
+    +----------------------+---------------------------------------------------+
+    |incoherent-scatter    |Incoherent (Compton) scattering reaction rate.     |
+    +----------------------+---------------------------------------------------+
+    |photoelectric         |Photoelectric absorption reaction rate.            |
+    +----------------------+---------------------------------------------------+
+    |pair-production       |Pair production reaction rate.                     |
     +----------------------+---------------------------------------------------+
     |*Arbitrary integer*   |An arbitrary integer is interpreted to mean the    |
     |                      |reaction rate for a reaction with a given ENDF MT  |
@@ -308,3 +318,67 @@ The following tables show all valid scores:
     |                      |particle. This corresponds to MT=444 produced by   |
     |                      |NJOY's HEATR module.                               |
     +----------------------+---------------------------------------------------+
+
+.. _usersguide_tally_normalization:
+
+------------------------------
+Normalization of Tally Results
+------------------------------
+
+As described in :ref:`usersguide_scores`, all tally scores are normalized per
+source particle simulated. However, for analysis of a given system, we usually
+want tally scores in a more natural unit. For example, neutron flux is often
+reported in units of particles/cm\ :sup:`2`\ -s. For a fixed source simulation,
+it is usually straightforward to convert units if the source rate is known. For
+example, if the system being modeled includes a source that is emitting 10\
+:sup:`4` neutrons per second, the tally results just need to be multipled by 10\
+:sup:`4`. This can either be done manually or using the
+:attr:`openmc.Source.strength` attribute.
+
+For a :math:`k`\ -eigenvalue calculation, normalizing tally results is not as
+simple because the source rate is not actually known. Instead, we typically know
+the system power, :math:`P`, which represents how much energy is deposited per
+unit time. Most of this energy originates from fission, but a small percentage
+also results from other reactions (e.g., photons emitted from :math:`(n,\gamma)`
+reactions). The most rigorous method to normalize tally results is to run a
+coupled neutron-photon calculation and tally the ``heating`` score over the
+entire system. This score provides the heating rate in units of [eV/source],
+which we'll denote :math:`H`. Then, calculate the heating rate in J/source as
+
+.. math::
+
+    H' = 1.602\times10^{-19} \left [ \frac{\text{J}}{\text{eV}} \right ] \cdot H
+    \left [\frac{\text{eV}}{\text{source}} \right ].
+
+Dividing the power by the observed heating rate then gives us a normalization
+factor that can be applied to other tallies:
+
+.. math::
+
+    f = \frac{P}{H'} = \frac{[\text{J}/\text{s}]}{[\text{J}/\text{source}]} =
+    \left [ \frac{\text{source}}{\text{s}} \right ].
+
+Multiplying by the normalization factor and dividing by volume, we can then get
+the flux in typical units:
+
+.. math::
+
+    \phi' = \frac{f\phi}{V} =
+    \frac{[\text{source}/\text{s}][\text{particle-cm}/\text{source}]}
+    {[\text{cm}^3]} = \left [\frac{\text{particle}}{\text{cm}^2\cdot\text{s}}
+    \right ]
+
+There are several slight variations on this procedure:
+
+- Run a neutron-only calculation and estimate the total heating using the
+  ``heating-local`` score (this requires that your nuclear data has local
+  heating data available, such as in the official data library at
+  https://openmc.org. See :ref:`methods_heating` for more information.)
+- Run a neutron-only calculation and use the ``kappa-fission`` or
+  ``fission-q-recoverable`` scores along with an estimate of the extra heating
+  due to neutron capture reactions.
+- Calculate the overall fission rate and then used a fixed Q value to estimate
+  the heating rate.
+
+Note that the only difference between these and the above procedures is in how
+:math:`H'` is estimated.

@@ -50,19 +50,19 @@
   <tally id="2">
     <filters>2</filters>
     <nuclides>Al27 total</nuclides>
-    <scores>total</scores>
+    <scores>total (n,gamma)</scores>
     <estimator>tracklength</estimator>
   </tally>
   <tally id="3">
     <filters>2</filters>
     <nuclides>Al27 total</nuclides>
-    <scores>total heating</scores>
+    <scores>total heating (n,gamma)</scores>
     <estimator>collision</estimator>
   </tally>
   <tally id="4">
     <filters>2</filters>
     <nuclides>Al27 total</nuclides>
-    <scores>total heating</scores>
+    <scores>total heating (n,gamma)</scores>
     <estimator>analog</estimator>
   </tally>
 </tallies>

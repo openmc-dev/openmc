@@ -1,19 +1,19 @@
-from abc import ABCMeta
+from abc import ABC
 from collections.abc import Iterable
 from numbers import Real, Integral
-from xml.etree import ElementTree as ET
-import sys
 import warnings
+from xml.etree import ElementTree as ET
 
 import numpy as np
 
 import openmc.checkvalue as cv
 import openmc
-from openmc._xml import get_text
-from openmc.mixin import EqualityMixin, IDManagerMixin
+from ._xml import get_text
+from .mixin import IDManagerMixin
+from .surface import _BOUNDARY_TYPES
 
 
-class MeshBase(IDManagerMixin, metaclass=ABCMeta):
+class MeshBase(IDManagerMixin, ABC):
     """A mesh that partitions geometry for tallying purposes.
 
     Parameters
@@ -323,7 +323,7 @@ class RegularMesh(MeshBase):
 
         return mesh
 
-    def build_cells(self, bc=['reflective'] * 6):
+    def build_cells(self, bc=None):
         """Generates a lattice of universes with the same dimensionality
         as the mesh object.  The individual cells/universes produced
         will not have material definitions applied and so downstream code
@@ -331,12 +331,13 @@ class RegularMesh(MeshBase):
 
         Parameters
         ----------
-        bc : iterable of {'reflective', 'periodic', 'transmission', or 'vacuum'}
+        bc : iterable of {'reflective', 'periodic', 'transmission', 'vacuum', or 'white'}
             Boundary conditions for each of the four faces of a rectangle
-            (if aplying to a 2D mesh) or six faces of a parallelepiped
+            (if applying to a 2D mesh) or six faces of a parallelepiped
             (if applying to a 3D mesh) provided in the following order:
             [x min, x max, y min, y max, z min, z max].  2-D cells do not
-            contain the z min and z max entries.
+            contain the z min and z max entries. Defaults to 'reflective' for
+            all faces.
 
         Returns
         -------
@@ -350,23 +351,24 @@ class RegularMesh(MeshBase):
             geometry.
 
         """
-
-        cv.check_length('bc', bc, length_min=4, length_max=6)
+        if bc is None:
+            bc = ['reflective'] * 6
+        if len(bc) not in (4, 6):
+            raise ValueError('Boundary condition must be of length 4 or 6')
         for entry in bc:
-            cv.check_value('bc', entry, ['transmission', 'vacuum',
-                                         'reflective', 'periodic'])
+            cv.check_value('bc', entry, _BOUNDARY_TYPES)
 
         n_dim = len(self.dimension)
 
         # Build the cell which will contain the lattice
-        xplanes = [openmc.XPlane(self.lower_left[0], bc[0]),
-                   openmc.XPlane(self.upper_right[0], bc[1])]
+        xplanes = [openmc.XPlane(self.lower_left[0], boundary_type=bc[0]),
+                   openmc.XPlane(self.upper_right[0], boundary_type=bc[1])]
         if n_dim == 1:
-            yplanes = [openmc.YPlane(-1e10, 'reflective'),
-                       openmc.YPlane(1e10, 'reflective')]
+            yplanes = [openmc.YPlane(-1e10, boundary_type='reflective'),
+                       openmc.YPlane(1e10, boundary_type='reflective')]
         else:
-            yplanes = [openmc.YPlane(self.lower_left[1], bc[2]),
-                       openmc.YPlane(self.upper_right[1], bc[3])]
+            yplanes = [openmc.YPlane(self.lower_left[1], boundary_type=bc[2]),
+                       openmc.YPlane(self.upper_right[1], boundary_type=bc[3])]
 
         if n_dim <= 2:
             # Would prefer to have the z ranges be the max supported float, but
@@ -376,11 +378,11 @@ class RegularMesh(MeshBase):
             # inconsistency between what numpy uses as the max float and what
             # Fortran expects for a real(8), so this avoids code complication
             # and achieves the same goal.
-            zplanes = [openmc.ZPlane(-1e10, 'reflective'),
-                       openmc.ZPlane(1e10, 'reflective')]
+            zplanes = [openmc.ZPlane(-1e10, boundary_type='reflective'),
+                       openmc.ZPlane(1e10, boundary_type='reflective')]
         else:
-            zplanes = [openmc.ZPlane(self.lower_left[2], bc[4]),
-                       openmc.ZPlane(self.upper_right[2], bc[5])]
+            zplanes = [openmc.ZPlane(self.lower_left[2], boundary_type=bc[4]),
+                       openmc.ZPlane(self.upper_right[2], boundary_type=bc[5])]
         root_cell = openmc.Cell()
         root_cell.region = ((+xplanes[0] & -xplanes[1]) &
                             (+yplanes[0] & -yplanes[1]) &
@@ -391,7 +393,7 @@ class RegularMesh(MeshBase):
         # We will concurrently build cells to assign to these universes
         cells = []
         universes = []
-        for index in self.indices:
+        for _ in self.indices:
             cells.append(openmc.Cell())
             universes.append(openmc.Universe())
             universes[-1].add_cell(cells[-1])
@@ -593,6 +595,8 @@ class RectilinearMesh(MeshBase):
 class UnstructuredMesh(MeshBase):
     """A 3D unstructured mesh
 
+    .. versionadded:: 0.12
+
     Parameters
     ----------
     filename : str
@@ -622,8 +626,8 @@ class UnstructuredMesh(MeshBase):
     def __init__(self, filename, mesh_id=None, name=''):
         super().__init__(mesh_id, name)
         self.filename = filename
-        self._volumes = []
-        self._centroids = []
+        self._volumes = None
+        self._centroids = None
 
     @property
     def filename(self):
@@ -651,6 +655,13 @@ class UnstructuredMesh(MeshBase):
     def centroids(self):
         return self._centroids
 
+    @property
+    def n_elements(self):
+        if self._centroids is None:
+            raise RuntimeError("No information about this mesh has "
+                               "been loaded from a statepoint file.")
+        return len(self._centroids)
+
     @centroids.setter
     def centroids(self, centroids):
         cv.check_type("Unstructured mesh centroids", centroids,
@@ -660,6 +671,91 @@ class UnstructuredMesh(MeshBase):
     def __repr__(self):
         string = super().__repr__()
         return string + '{: <16}=\t{}\n'.format('\tFilename', self.filename)
+
+    def write_data_to_vtk(self, filename, datasets, volume_normalization=True):
+        """Map data to the unstructured mesh element centroids
+           to create a VTK point-cloud dataset.
+
+        Parameters
+        ----------
+        filename : str
+            Name of the VTK file to write.
+        datasets : dict
+            Dictionary whose keys are the data labels
+            and values are the data sets.
+        volume_normalization : bool
+            Whether or not to normalize the data by the
+            volume of the mesh elements
+        """
+
+        import vtk
+        from vtk.util import numpy_support as vtk_npsup
+
+        if self.centroids is None:
+            raise RuntimeError("No centroid information is present on this "
+                               "unstructured mesh. Please load this "
+                               "information from a relevant statepoint file.")
+
+        if self.volumes is None and volume_normalization:
+            raise RuntimeError("No volume data is present on this "
+                               "unstructured mesh. Please load the "
+                               " mesh information from a statepoint file.")
+
+        # check that the data sets are appropriately sized
+        for label, dataset in datasets.items():
+            if isinstance(dataset, np.ndarray):
+                assert dataset.size == self.n_elements
+            else:
+                assert len(dataset) == self.n_elements
+            cv.check_type('label', label, str)
+
+        # create data arrays for the cells/points
+        cell_dim = 1
+        vertices = vtk.vtkCellArray()
+        points = vtk.vtkPoints()
+
+        for centroid in self.centroids:
+            # create a point for each centroid
+            point_id = points.InsertNextPoint(centroid)
+            # create a cell of type "Vertex" for each point
+            cell_id = vertices.InsertNextCell(cell_dim, (point_id,))
+
+        # create a VTK data object
+        poly_data = vtk.vtkPolyData()
+        poly_data.SetPoints(points)
+        poly_data.SetVerts(vertices)
+
+        # strange VTK nuance:
+        # data must be held in some container
+        # until the vtk file is written
+        data_holder = []
+
+        # create VTK arrays for each of
+        # the data sets
+        for label, dataset in datasets.items():
+            dataset = np.asarray(dataset).flatten()
+
+            if volume_normalization:
+                dataset /= self.volumes.flatten()
+
+            array = vtk.vtkDoubleArray()
+            array.SetName(label)
+            array.SetNumberOfComponents(1)
+            array.SetArray(vtk_npsup.numpy_to_vtk(dataset),
+                           dataset.size,
+                           True)
+
+            data_holder.append(dataset)
+            poly_data.GetPointData().AddArray(array)
+
+        # set filename
+        if not filename.endswith(".vtk"):
+            filename += ".vtk"
+
+        writer = vtk.vtkGenericDataObjectWriter()
+        writer.SetFileName(filename)
+        writer.SetInputData(poly_data)
+        writer.Write()
 
     @classmethod
     def from_hdf5(cls, group):

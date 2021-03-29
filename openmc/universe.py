@@ -1,16 +1,15 @@
 from collections import OrderedDict
 from collections.abc import Iterable
 from copy import copy, deepcopy
-from numbers import Integral, Real
+from numbers import Real
 import random
-import sys
 
 import numpy as np
 
 import openmc
 import openmc.checkvalue as cv
-from openmc.plots import _SVG_COLORS
-from openmc.mixin import IDManagerMixin
+from .mixin import IDManagerMixin
+from .plots import _SVG_COLORS
 
 
 class Universe(IDManagerMixin):
@@ -55,7 +54,7 @@ class Universe(IDManagerMixin):
         self._volume = None
         self._atoms = {}
 
-        # Keys     - Cell IDs
+        # Keys   - Cell IDs
         # Values - Cells
         self._cells = OrderedDict()
 
@@ -64,10 +63,9 @@ class Universe(IDManagerMixin):
 
     def __repr__(self):
         string = 'Universe\n'
-        string += '{0: <16}{1}{2}\n'.format('\tID', '=\t', self._id)
-        string += '{0: <16}{1}{2}\n'.format('\tName', '=\t', self._name)
-        string += '{0: <16}{1}{2}\n'.format('\tCells', '=\t',
-                                            list(self._cells.keys()))
+        string += '{: <16}=\t{}\n'.format('\tID', self._id)
+        string += '{: <16}=\t{}\n'.format('\tName', self._name)
+        string += '{: <16}=\t{}\n'.format('\tCells', list(self._cells.keys()))
         return string
 
     @property
@@ -543,7 +541,7 @@ class Universe(IDManagerMixin):
 
         """
         # Iterate over all Cells
-        for cell_id, cell in self._cells.items():
+        for cell in self._cells.values():
 
             # If the cell was already written, move on
             if memo and cell in memo:

@@ -60,7 +60,10 @@ Core Functions
     :template: myfunction.rst
 
     atomic_mass
+    atomic_weight
+    dose_coefficients
     gnd_name
+    isotopes
     linearize
     thin
     water_density

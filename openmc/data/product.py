@@ -1,7 +1,5 @@
 from collections.abc import Iterable
-from io import StringIO
 from numbers import Real
-import sys
 
 import numpy as np
 
@@ -33,25 +31,22 @@ class Product(EqualityMixin):
         delayed neutron precursor). A special value of 'total' is used when the
         yield represents particles from prompt and delayed sources.
     particle : str
-        What particle the reaction product is.
+        The particle type of the reaction product
     yield_ : openmc.data.Function1D
         Yield of secondary particle in the reaction.
 
     """
 
     def __init__(self, particle='neutron'):
-        self.particle = particle
-        self.decay_rate = 0.0
-        self.emission_mode = 'prompt'
-        self.distribution = []
         self.applicability = []
-        self.yield_ = Polynomial((1,))  # 0-order polynomial i.e. a constant
+        self.decay_rate = 0.0
+        self.distribution = []
+        self.emission_mode = 'prompt'
+        self.particle = particle
+        self.yield_ = Polynomial((1,))  # 0-order polynomial, i.e., a constant
 
     def __repr__(self):
-        if isinstance(self.yield_, Real):
-            return "<Product: {}, emission={}, yield={}>".format(
-                self.particle, self.emission_mode, self.yield_)
-        elif isinstance(self.yield_, Tabulated1D):
+        if isinstance(self.yield_, Tabulated1D):
             if np.all(self.yield_.y == self.yield_.y[0]):
                 return "<Product: {}, emission={}, yield={}>".format(
                     self.particle, self.emission_mode, self.yield_.y[0])

@@ -41,14 +41,21 @@ IdData::IdData(size_t h_res, size_t v_res)
 
 void
 IdData::set_value(size_t y, size_t x, const Particle& p, int level) {
-  Cell* c = &model::cells[p.coord_[level].cell];
-  data_(y,x,0) = c->id_;
+  // set cell data
+  if (p.n_coord_ <= level) {
+    data_(y, x, 0) = NOT_FOUND;
+  } else {
+    data_(y, x, 0) = model::cells.at(p.coord_[level].cell).id_;
+  }
+
+  // set material data
+  Cell* c = &model::cells.at(p.coord_[p.n_coord_ - 1].cell);
   if (p.material_ == MATERIAL_VOID) {
-    data_(y,x,1) = MATERIAL_VOID;
+    data_(y, x, 1) = MATERIAL_VOID;
     return;
-  } else if (c->type_ != Fill::UNIVERSE) {
-    Material* m = model::materials[p.material_].get();
-    data_(y,x,1) = m->id_;
+  } else if (c->type_ == Fill::MATERIAL) {
+    Material* m = model::materials.at(p.material_).get();
+    data_(y, x, 1) = m->id_;
   }
 }
 
@@ -62,10 +69,10 @@ PropertyData::PropertyData(size_t h_res, size_t v_res)
 
 void
 PropertyData::set_value(size_t y, size_t x, const Particle& p, int level) {
-  Cell* c = &model::cells[p.coord_[level].cell];
+  Cell* c = &model::cells.at(p.coord_[p.n_coord_ - 1].cell);
   data_(y,x,0) = (p.sqrtkT_ * p.sqrtkT_) / K_BOLTZMANN;
   if (c->type_ != Fill::UNIVERSE && p.material_ != MATERIAL_VOID) {
-    Material* m = model::materials[p.material_].get();
+    Material* m = model::materials.at(p.material_).get();
     data_(y,x,1) = m->density_gpcc_;
   }
 }
@@ -80,8 +87,8 @@ void PropertyData::set_overlap(size_t y, size_t x) {
 
 namespace model {
 
-std::vector<Plot> plots;
 std::unordered_map<int, int> plot_map;
+std::vector<Plot> plots;
 uint64_t plotter_seed = 1;
 
 } // namespace model
@@ -93,9 +100,8 @@ uint64_t plotter_seed = 1;
 extern "C"
 int openmc_plot_geometry()
 {
-  for (auto pl : model::plots) {
-    write_message(fmt::format("Processing plot {}: {}...",
-      pl.id_, pl.path_plot_), 5);
+  for (auto& pl : model::plots) {
+    write_message(5, "Processing plot {}: {}...", pl.id_, pl.path_plot_);
 
     if (PlotType::slice == pl.type_) {
       // create 2D image
@@ -114,7 +120,7 @@ void read_plots_xml()
   // Check if plots.xml exists
   std::string filename = settings::path_input + "plots.xml";
   if (!file_exists(filename)) {
-    fatal_error("Plots XML file '" + filename + "' does not exist!");
+    fatal_error(fmt::format("Plots XML file '{}' does not exist!", filename));
   }
 
   write_message("Reading plot XML file...", 5);
@@ -125,9 +131,8 @@ void read_plots_xml()
 
   pugi::xml_node root = doc.document_element();
   for (auto node : root.children("plot")) {
-    Plot pl(node);
-    model::plots.push_back(pl);
-    model::plot_map[pl.id_] = model::plots.size() - 1;
+    model::plots.emplace_back(node);
+    model::plot_map[model::plots.back().id_] = model::plots.size() - 1;
   }
 }
 
@@ -136,7 +141,7 @@ void read_plots_xml()
 // specification in the portable pixmap format (PPM)
 //==============================================================================
 
-void create_ppm(Plot pl)
+void create_ppm(Plot const& pl)
 {
 
   size_t width = pl.pixels_[0];
@@ -633,7 +638,7 @@ Plot::Plot(pugi::xml_node plot_node)
 // OUTPUT_PPM writes out a previously generated image to a PPM file
 //==============================================================================
 
-void output_ppm(Plot pl, const ImageData& data)
+void output_ppm(Plot const& pl, const ImageData& data)
 {
   // Open PPM file for writing
   std::string fname = pl.path_plot_;
@@ -663,7 +668,7 @@ void output_ppm(Plot pl, const ImageData& data)
 // DRAW_MESH_LINES draws mesh line boundaries on an image
 //==============================================================================
 
-void draw_mesh_lines(Plot pl, ImageData& data)
+void draw_mesh_lines(Plot const& pl, ImageData& data)
 {
   RGBColor rgb;
   rgb = pl.meshlines_color_;
@@ -770,7 +775,7 @@ void draw_mesh_lines(Plot pl, ImageData& data)
 // approximately 15MB.
 // =============================================================================
 
-void create_voxel(Plot pl)
+void create_voxel(Plot const& pl)
 {
   // compute voxel widths in each direction
   std::array<double, 3> vox;

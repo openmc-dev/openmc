@@ -5,7 +5,7 @@ import pathlib
 import h5py
 
 from openmc.mixin import EqualityMixin
-from openmc._xml import clean_indentation
+from openmc._xml import clean_indentation, reorder_attributes
 
 
 class DataLibrary(EqualityMixin):
@@ -31,8 +31,9 @@ class DataLibrary(EqualityMixin):
         name : str
             Name of material, e.g. 'Am241'
         data_type : str
-            Name of data type, e.g. 'neutron', 'photon', 'wmp',
-            or 'thermal'
+            Name of data type, e.g. 'neutron', 'photon', 'wmp', or 'thermal'
+
+            .. versionadded:: 0.12
 
         Returns
         -------
@@ -111,6 +112,7 @@ class DataLibrary(EqualityMixin):
         clean_indentation(root)
 
         # Write XML file
+        reorder_attributes(root)  # TODO: Remove when support is Python 3.8+
         tree = ET.ElementTree(root)
         tree.write(str(path), xml_declaration=True, encoding='utf-8',
                    method='xml')

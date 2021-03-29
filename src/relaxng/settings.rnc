@@ -139,6 +139,17 @@ element settings {
       attribute overwrite_latest {xsd:boolean})?
   }? &
 
+  element surf_source_read {
+    (element path { xsd:string } | attribute path { xsd:string })
+  }? &
+
+  element surf_source_write {
+    (element surface_ids { list { xsd:positiveInteger+ } } |
+      attribute surface_ids { list { xsd:positiveInteger+ } }) &
+    (element max_particles { xsd:positiveInteger } |
+      attribute max_particles { xsd:positiveInteger })
+  }? &
+
   element survival_biasing { xsd:boolean }? &
 
   element temperature_default { xsd:double }? &

@@ -60,6 +60,8 @@ bool run_CE                  {true};
 bool source_latest           {false};
 bool source_separate         {false};
 bool source_write            {true};
+bool surf_source_write       {false};
+bool surf_source_read        {false};
 bool survival_biasing        {false};
 bool temperature_multipole   {false};
 bool trigger_on              {false};
@@ -73,12 +75,9 @@ std::string path_cross_sections;
 std::string path_input;
 std::string path_output;
 std::string path_particle_restart;
-std::string path_source;
-std::string path_source_library;
 std::string path_sourcepoint;
 std::string path_statepoint;
 
-int32_t n_batches;
 int32_t n_inactive {0};
 int32_t max_lost_particles {10};
 double rel_max_lost_particles {1.0e-6};
@@ -92,6 +91,7 @@ std::array<double, 4> energy_cutoff {0.0, 1000.0, 0.0, 0.0};
 int legendre_to_tabular_points {C_NONE};
 int max_order {0};
 int n_log_bins {8000};
+int n_batches;
 int n_max_batches;
 ResScatMethod res_scat_method {ResScatMethod::rvs};
 double res_scat_energy_min {0.01};
@@ -100,6 +100,8 @@ std::vector<std::string> res_scat_nuclides;
 RunMode run_mode {RunMode::UNSET};
 std::unordered_set<int> sourcepoint_batch;
 std::unordered_set<int> statepoint_batch;
+std::unordered_set<int> source_write_surf_id;
+int64_t max_surface_particles;
 TemperatureMethod temperature_method {TemperatureMethod::NEAREST};
 double temperature_tolerance {10.0};
 double temperature_default {293.6};
@@ -149,12 +151,12 @@ void get_run_parameters(pugi::xml_node node_base)
   // Get max number of lost particles
   if (check_for_node(node_base, "max_lost_particles")) {
     max_lost_particles = std::stoi(get_node_value(node_base, "max_lost_particles"));
-  }  
+  }
 
   // Get relative number of lost particles
   if (check_for_node(node_base, "rel_max_lost_particles")) {
     rel_max_lost_particles = std::stod(get_node_value(node_base, "rel_max_lost_particles"));
-  }    
+  }
 
   // Get number of inactive batches
   if (run_mode == RunMode::EIGENVALUE) {
@@ -192,6 +194,9 @@ void get_run_parameters(pugi::xml_node node_base)
       if (check_for_node(node_keff_trigger, "threshold")) {
         keff_trigger.threshold = std::stod(get_node_value(
           node_keff_trigger, "threshold"));
+        if (keff_trigger.threshold <= 0) {
+          fatal_error("keff trigger threshold must be positive");
+        }
       } else {
         fatal_error("Specify keff trigger threshold in settings XML");
       }
@@ -367,7 +372,7 @@ void read_settings_xml()
       fatal_error("Number of max lost particles must be greater than zero.");
     } else if (rel_max_lost_particles <= 0.0 || rel_max_lost_particles >= 1.0) {
       fatal_error("Relative max lost particles must be between zero and one.");
-    }       
+    }
   }
 
   // Copy random number seed if specified
@@ -418,17 +423,45 @@ void read_settings_xml()
 
   // Get point to list of <source> elements and make sure there is at least one
   for (pugi::xml_node node : root.children("source")) {
-    model::external_sources.emplace_back(node);
+    if (check_for_node(node, "file")) {
+      auto path = get_node_value(node, "file", false, true);
+      model::external_sources.push_back(std::make_unique<FileSource>(path));
+    } else if (check_for_node(node, "library")) {
+      // Get shared library path and parameters
+      auto path = get_node_value(node, "library", false, true);
+      std::string parameters;
+      if (check_for_node(node, "parameters")) {
+        parameters = get_node_value(node, "parameters", false, true);
+      }
+
+      // Create custom source
+      model::external_sources.push_back(std::make_unique<CustomSourceWrapper>(path, parameters));
+    } else {
+      model::external_sources.push_back(std::make_unique<IndependentSource>(node));
+    }
+  }
+
+  // Check if the user has specified to read surface source
+  if (check_for_node(root, "surf_source_read")) {
+    surf_source_read = true;
+    // Get surface source read node
+    xml_node node_ssr = root.child("surf_source_read");
+
+    std::string path = "surface_source.h5";
+    // Check if the user has specified different file for surface source reading
+    if (check_for_node(node_ssr, "path")) {
+      path = get_node_value(node_ssr, "path", false, true);
+    }
+    model::external_sources.push_back(std::make_unique<FileSource>(path));
   }
 
   // If no source specified, default to isotropic point source at origin with Watt spectrum
   if (model::external_sources.empty()) {
-    SourceDistribution source {
+    model::external_sources.push_back(std::make_unique<IndependentSource>(
       UPtrSpace{new SpatialPoint({0.0, 0.0, 0.0})},
       UPtrAngle{new Isotropic()},
       UPtrDist{new Watt(0.988e6, 2.249e-6)}
-    };
-    model::external_sources.push_back(std::move(source));
+    ));
   }
 
   // Check if we want to write out source
@@ -507,88 +540,46 @@ void read_settings_xml()
   read_meshes(root);
 
   // Shannon Entropy mesh
-  int32_t index_entropy_mesh = -1;
   if (check_for_node(root, "entropy_mesh")) {
     int temp = std::stoi(get_node_value(root, "entropy_mesh"));
     if (model::mesh_map.find(temp) == model::mesh_map.end()) {
       fatal_error(fmt::format(
         "Mesh {} specified for Shannon entropy does not exist.", temp));
     }
-    index_entropy_mesh = model::mesh_map.at(temp);
 
-  } else if (check_for_node(root, "entropy")) {
-    warning("Specifying a Shannon entropy mesh via the <entropy> element "
-      "is deprecated. Please create a mesh using <mesh> and then reference "
-      "it by specifying its ID in an <entropy_mesh> element.");
-
-    // Read entropy mesh from <entropy>
-    auto node_entropy = root.child("entropy");
-    model::meshes.push_back(std::make_unique<RegularMesh>(node_entropy));
-
-    // Set entropy mesh index
-    index_entropy_mesh = model::meshes.size() - 1;
-
-    // Assign ID and set mapping
-    model::meshes.back()->id_ = 10000;
-    model::mesh_map[10000] = index_entropy_mesh;
-  }
-
-  if (index_entropy_mesh >= 0) {
     auto* m = dynamic_cast<RegularMesh*>(
-      model::meshes[index_entropy_mesh].get());
+      model::meshes[model::mesh_map.at(temp)].get());
     if (!m) fatal_error("Only regular meshes can be used as an entropy mesh");
     simulation::entropy_mesh = m;
 
-    if (m->shape_.size() == 0) {
-      // If the user did not specify how many mesh cells are to be used in
-      // each direction, we automatically determine an appropriate number of
-      // cells
-      int n = std::ceil(std::pow(n_particles / 20.0, 1.0/3.0));
-      m->shape_ = {n, n, n};
-      m->n_dimension_ = 3;
-
-      // Calculate width
-      m->width_ = (m->upper_right_ - m->lower_left_) / m->shape_;
-    }
-
     // Turn on Shannon entropy calculation
     entropy_on = true;
+
+  } else if (check_for_node(root, "entropy")) {
+    fatal_error("Specifying a Shannon entropy mesh via the <entropy> element "
+      "is deprecated. Please create a mesh using <mesh> and then reference "
+      "it by specifying its ID in an <entropy_mesh> element.");
   }
 
   // Uniform fission source weighting mesh
-  int32_t i_ufs_mesh = -1;
   if (check_for_node(root, "ufs_mesh")) {
     auto temp = std::stoi(get_node_value(root, "ufs_mesh"));
     if (model::mesh_map.find(temp) == model::mesh_map.end()) {
       fatal_error(fmt::format("Mesh {} specified for uniform fission site "
         "method does not exist.", temp));
     }
-    i_ufs_mesh = model::mesh_map.at(temp);
 
-  } else if (check_for_node(root, "uniform_fs")) {
-    warning("Specifying a UFS mesh via the <uniform_fs> element "
-      "is deprecated. Please create a mesh using <mesh> and then reference "
-      "it by specifying its ID in a <ufs_mesh> element.");
-
-    // Read entropy mesh from <entropy>
-    auto node_ufs = root.child("uniform_fs");
-    model::meshes.push_back(std::make_unique<RegularMesh>(node_ufs));
-
-    // Set entropy mesh index
-    i_ufs_mesh = model::meshes.size() - 1;
-
-    // Assign ID and set mapping
-    model::meshes.back()->id_ = 10001;
-    model::mesh_map[10001] = index_entropy_mesh;
-  }
-
-  if (i_ufs_mesh >= 0) {
-    auto* m = dynamic_cast<RegularMesh*>(model::meshes[i_ufs_mesh].get());
+    auto* m = dynamic_cast<RegularMesh*>(model::meshes[model::mesh_map.at(temp)].get());
     if (!m) fatal_error("Only regular meshes can be used as a UFS mesh");
     simulation::ufs_mesh = m;
 
     // Turn on uniform fission source weighting
     ufs_on = true;
+
+  } else if (check_for_node(root, "uniform_fs")) {
+    fatal_error("Specifying a UFS mesh via the <uniform_fs> element "
+      "is deprecated. Please create a mesh using <mesh> and then reference "
+      "it by specifying its ID in a <ufs_mesh> element.");
   }
 
   // Check if the user has specified to write state points
@@ -649,6 +640,26 @@ void read_settings_xml()
     sourcepoint_batch = statepoint_batch;
   }
 
+  // Check if the user has specified to write surface source
+  if (check_for_node(root, "surf_source_write")) {
+    surf_source_write = true;
+    // Get surface source write node
+    xml_node node_ssw = root.child("surf_source_write");
+
+    // Determine surface ids at which crossing particles are to be banked
+    if (check_for_node(node_ssw, "surface_ids")) {
+      auto temp = get_node_array<int>(node_ssw, "surface_ids");
+      for (const auto& b : temp) {
+        source_write_surf_id.insert(b);
+      }
+    }
+
+    // Get maximum number of particles to be banked per surface
+    if (check_for_node(node_ssw, "max_particles")) {
+      max_surface_particles = std::stoll(get_node_value(node_ssw, "max_particles"));
+    }
+  }
+
   // If source is not seperate and is to be written out in the statepoint file,
   // make sure that the sourcepoint batch numbers are contained in the
   // statepoint list
@@ -663,7 +674,7 @@ void read_settings_xml()
   // Check if the user has specified to not reduce tallies at the end of every
   // batch
   if (check_for_node(root, "no_reduce")) {
-    reduce_tallies = get_node_value_bool(root, "no_reduce");
+    reduce_tallies = !get_node_value_bool(root, "no_reduce");
   }
 
   // Check if the user has specified to use confidence intervals for
@@ -821,7 +832,60 @@ void read_settings_xml()
 void free_memory_settings() {
   settings::statepoint_batch.clear();
   settings::sourcepoint_batch.clear();
+  settings::source_write_surf_id.clear();
   settings::res_scat_nuclides.clear();
+}
+
+//==============================================================================
+// C API functions
+//==============================================================================
+
+extern "C" int
+openmc_set_n_batches(int32_t n_batches, bool set_max_batches,
+                     bool add_statepoint_batch)
+{
+  if (settings::n_inactive >= n_batches) {
+    set_errmsg("Number of active batches must be greater than zero.");
+    return OPENMC_E_INVALID_ARGUMENT;
+  }
+
+  if (simulation::current_batch >= n_batches) {
+    set_errmsg("Number of batches must be greater than current batch.");
+    return OPENMC_E_INVALID_ARGUMENT;
+  }
+
+  if (!settings::trigger_on) {
+    // Set n_batches and n_max_batches to same value
+    settings::n_batches = n_batches;
+    settings::n_max_batches = n_batches;
+  } else {
+    // Set n_batches and n_max_batches based on value of set_max_batches
+    if (set_max_batches) {
+      settings::n_max_batches = n_batches;
+    } else {
+      settings::n_batches = n_batches;
+    }
+  }
+
+  // Update size of k_generation and entropy
+  int m = settings::n_max_batches * settings::gen_per_batch;
+  simulation::k_generation.reserve(m);
+  simulation::entropy.reserve(m);
+
+  // Add value of n_batches to statepoint_batch
+  if (add_statepoint_batch &&
+      !(contains(settings::statepoint_batch, n_batches)))
+    settings::statepoint_batch.insert(n_batches);
+
+  return 0;
+}
+
+extern "C" int
+openmc_get_n_batches(int* n_batches, bool get_max_batches)
+{
+  *n_batches = get_max_batches ? settings::n_max_batches : settings::n_batches;
+
+  return 0;
 }
 
 } // namespace openmc

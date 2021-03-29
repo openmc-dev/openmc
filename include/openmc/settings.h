@@ -45,6 +45,8 @@ extern "C" bool run_CE;               //!< run with continuous-energy data?
 extern bool source_latest;            //!< write latest source at each batch?
 extern bool source_separate;          //!< write source to separate file?
 extern bool source_write;             //!< write source in HDF5 files?
+extern bool surf_source_write;        //!< write surface source file?
+extern bool surf_source_read;         //!< read surface source file?
 extern bool survival_biasing;         //!< use survival biasing?
 extern bool temperature_multipole;    //!< use multipole data?
 extern "C" bool trigger_on;           //!< tally triggers enabled?
@@ -59,12 +61,9 @@ extern std::string path_cross_sections;   //!< path to cross_sections.xml
 extern std::string path_input;            //!< directory where main .xml files resides
 extern std::string path_output;           //!< directory where output files are written
 extern std::string path_particle_restart; //!< path to a particle restart file
-extern std::string path_source;
-extern std::string path_source_library;   //!< path to the source shared object
 extern std::string path_sourcepoint;      //!< path to a source file
 extern "C" std::string path_statepoint;   //!< path to a statepoint file
 
-extern "C" int32_t n_batches;                //!< number of (inactive+active) batches
 extern "C" int32_t n_inactive;               //!< number of inactive batches
 #pragma omp declare target
 extern "C" int32_t max_lost_particles;     //!< maximum number of lost particles
@@ -81,6 +80,7 @@ extern std::array<double, 4> energy_cutoff;  //!< Energy cutoff in [eV] for each
 extern int legendre_to_tabular_points; //!< number of points to convert Legendres
 extern int max_order;                //!< Maximum Legendre order for multigroup data
 extern int n_log_bins;               //!< number of bins for logarithmic energy grid
+extern int n_batches;                //!< number of (inactive+active) batches
 extern int n_max_batches;            //!< Maximum number of batches
 extern ResScatMethod res_scat_method; //!< resonance upscattering method
 extern double res_scat_energy_min;   //!< Min energy in [eV] for res. upscattering
@@ -89,6 +89,8 @@ extern std::vector<std::string> res_scat_nuclides;  //!< Nuclides using res. ups
 extern RunMode run_mode;                 //!< Run mode (eigenvalue, fixed src, etc.)
 extern std::unordered_set<int> sourcepoint_batch; //!< Batches when source should be written
 extern std::unordered_set<int> statepoint_batch; //!< Batches when state should be written
+extern std::unordered_set<int> source_write_surf_id; //!< Surface ids where sources will be written
+extern int64_t max_surface_particles;    //!< maximum number of particles to be banked on surfaces per process
 extern TemperatureMethod temperature_method;           //!< method for choosing temperatures
 extern double temperature_tolerance;     //!< Tolerance in [K] on choosing temperatures
 extern double temperature_default;       //!< Default T in [K]

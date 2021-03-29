@@ -32,7 +32,8 @@ kwargs = {
     # Data files and librarries
     'package_data': {
         'openmc.lib': ['libopenmc.{}'.format(suffix)],
-        'openmc.data': ['mass16.txt', 'BREMX.DAT', '*.h5']
+        'openmc.data': ['mass16.txt', 'BREMX.DAT', '*.h5'],
+        'openmc.data.effective_dose': ['*.txt']
     },
 
     # Metadata
@@ -43,7 +44,7 @@ kwargs = {
     'download_url': 'https://github.com/openmc-dev/openmc/releases',
     'project_urls': {
         'Issue Tracker': 'https://github.com/openmc-dev/openmc/issues',
-        'Documentation': 'https://openmc.readthedocs.io',
+        'Documentation': 'https://docs.openmc.org',
         'Source Code': 'https://github.com/openmc-dev/openmc',
     },
     'classifiers': [
@@ -59,6 +60,7 @@ kwargs = {
         'Programming Language :: Python :: 3.5',
         'Programming Language :: Python :: 3.6',
         'Programming Language :: Python :: 3.7',
+        'Programming Language :: Python :: 3.8',
     ],
 
     # Dependencies
@@ -68,6 +70,10 @@ kwargs = {
         'pandas', 'lxml', 'uncertainties'
     ],
     'extras_require': {
+        'depletion-mpi': ['mpi4py'],
+        'docs': ['sphinx', 'sphinxcontrib-katex', 'sphinx-numfig', 'jupyter',
+                 'sphinxcontrib-svg2pdfconverter', 'sphinx-rtd-theme',
+                 'nbsphinx'],
         'test': ['pytest', 'pytest-cov', 'colorama'],
         'vtk': ['vtk'],
     },

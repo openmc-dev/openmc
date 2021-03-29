@@ -1,14 +1,11 @@
-import sys
-
 from contextlib import contextmanager
-from ctypes import (CDLL, c_bool, c_int, c_int32, c_int64, c_double, c_char_p,
+from ctypes import (c_bool, c_int, c_int32, c_int64, c_double, c_char_p,
                     c_char, POINTER, Structure, c_void_p, create_string_buffer)
-from warnings import warn
+import sys
 
 import numpy as np
 from numpy.ctypeslib import as_array
 
-from openmc.exceptions import AllocationError
 from . import _dll
 from .error import _error_handler
 import openmc.lib
@@ -20,6 +17,7 @@ class _Bank(Structure):
                 ('E', c_double),
                 ('wgt', c_double),
                 ('delayed_group', c_int),
+                ('surf_id', c_int),
                 ('particle', c_int),
                 ('parent_id', c_int64),
                 ('progeny_id', c_int64)]
@@ -34,6 +32,8 @@ _array_1d_dble = np.ctypeslib.ndpointer(dtype=np.double, ndim=1,
 
 _dll.openmc_calculate_volumes.restype = c_int
 _dll.openmc_calculate_volumes.errcheck = _error_handler
+_dll.openmc_cmfd_reweight.argtypes = c_bool, _array_1d_dble
+_dll.openmc_cmfd_reweight.restype = None
 _dll.openmc_finalize.restype = c_int
 _dll.openmc_finalize.errcheck = _error_handler
 _dll.openmc_find_cell.argtypes = [POINTER(c_double*3), POINTER(c_int32),
@@ -48,8 +48,12 @@ _dll.openmc_init.errcheck = _error_handler
 _dll.openmc_get_keff.argtypes = [POINTER(c_double*2)]
 _dll.openmc_get_keff.restype = c_int
 _dll.openmc_get_keff.errcheck = _error_handler
+_dll.openmc_initialize_mesh_egrid.argtypes = [
+    c_int, _array_1d_int, c_double
+]
+_dll.openmc_initialize_mesh_egrid.restype = None
 _init_linsolver_argtypes = [_array_1d_int, c_int, _array_1d_int, c_int, c_int,
-                            c_double, _array_1d_int, _array_1d_int, c_bool]
+                            c_double, _array_1d_int, c_bool]
 _dll.openmc_initialize_linsolver.argtypes = _init_linsolver_argtypes
 _dll.openmc_initialize_linsolver.restype = None
 _dll.openmc_is_statepoint_batch.restype = c_bool
@@ -63,6 +67,8 @@ _dll.openmc_run.restype = c_int
 _dll.openmc_run.errcheck = _error_handler
 _dll.openmc_reset.restype = c_int
 _dll.openmc_reset.errcheck = _error_handler
+_dll.openmc_reset_timers.restype = c_int
+_dll.openmc_reset_timers.errcheck = _error_handler
 _run_linsolver_argtypes = [_array_1d_dble, _array_1d_dble, _array_1d_dble,
                            c_double]
 _dll.openmc_run_linsolver.argtypes = _run_linsolver_argtypes
@@ -185,16 +191,15 @@ def init(args=None, intracomm=None):
     """
     if args is not None:
         args = ['openmc'] + list(args)
-        argc = len(args)
-
-        # Create the argv array. Note that it is actually expected to be of
-        # length argc + 1 with the final item being a null pointer.
-        argv = (POINTER(c_char) * (argc + 1))()
-        for i, arg in enumerate(args):
-            argv[i] = create_string_buffer(arg.encode())
     else:
-        argc = 0
-        argv = None
+        args = ['openmc']
+
+    argc = len(args)
+    # Create the argv array. Note that it is actually expected to be of
+    # length argc + 1 with the final item being a null pointer.
+    argv = (POINTER(c_char) * (argc + 1))()
+    for i, arg in enumerate(args):
+        argv[i] = create_string_buffer(arg.encode())
 
     if intracomm is not None:
         # If an mpi4py communicator was passed, convert it to void* to be passed
@@ -303,8 +308,13 @@ def plot_geometry():
 
 
 def reset():
-    """Reset tallies and timers."""
+    """Reset tally results"""
     _dll.openmc_reset()
+
+
+def reset_timers():
+    """Reset timers."""
+    _dll.openmc_reset_timers()
 
 
 def run():

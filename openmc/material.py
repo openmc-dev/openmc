@@ -1,10 +1,10 @@
 from collections import OrderedDict, defaultdict, namedtuple, Counter
 from collections.abc import Iterable
 from copy import deepcopy
-from numbers import Real, Integral
+from numbers import Real
 from pathlib import Path
-import warnings
 import re
+import warnings
 from xml.etree import ElementTree as ET
 
 import numpy as np
@@ -12,13 +12,13 @@ import numpy as np
 import openmc
 import openmc.data
 import openmc.checkvalue as cv
-from openmc._xml import clean_indentation
+from ._xml import clean_indentation, reorder_attributes
 from .mixin import IDManagerMixin
 
 
 # Units for density supported by OpenMC
-DENSITY_UNITS = ['g/cm3', 'g/cc', 'kg/m3', 'atom/b-cm', 'atom/cm3', 'sum',
-                 'macro']
+DENSITY_UNITS = ('g/cm3', 'g/cc', 'kg/m3', 'atom/b-cm', 'atom/cm3', 'sum',
+                 'macro')
 
 
 NuclideTuple = namedtuple('NuclideTuple', ['name', 'percent', 'percent_type'])
@@ -489,9 +489,13 @@ class Material(IDManagerMixin):
             Default is None (natural composition).
         enrichment_target: str, optional
             Single nuclide name to enrich from a natural composition (e.g., 'O16')
+
+            .. versionadded:: 0.12
         enrichment_type: {'ao', 'wo'}, optional
             'ao' for enrichment as atom percent and 'wo' for weight percent.
             Default is: 'ao' for two-isotope enrichment; 'wo' for U enrichment
+
+            .. versionadded:: 0.12
 
         Notes
         -----
@@ -560,6 +564,8 @@ class Material(IDManagerMixin):
     def add_elements_from_formula(self, formula, percent_type='ao', enrichment=None,
                                   enrichment_target=None, enrichment_type=None):
         """Add a elements from a chemical formula to the material.
+
+        .. versionadded:: 0.12
 
         Parameters
         ----------
@@ -648,6 +654,8 @@ class Material(IDManagerMixin):
             if enrichment_target is not None and element == re.sub(r'\d+$', '', enrichment_target):
                 self.add_element(element, percent, percent_type, enrichment,
                                  enrichment_target, enrichment_type)
+            elif enrichment is not None and enrichment_target is None and element == 'U':
+                self.add_element(element, percent, percent_type, enrichment)
             else:
                 self.add_element(element, percent, percent_type)
 
@@ -693,6 +701,8 @@ class Material(IDManagerMixin):
 
     def get_elements(self):
         """Returns all elements in the material
+
+        .. versionadded:: 0.12
 
         Returns
         -------
@@ -981,6 +991,8 @@ class Material(IDManagerMixin):
     def mix_materials(cls, materials, fracs, percent_type='ao', name=None):
         """Mix materials together based on atom, weight, or volume fractions
 
+        .. versionadded:: 0.12
+
         Parameters
         ----------
         materials : Iterable of openmc.Material
@@ -1066,6 +1078,10 @@ class Material(IDManagerMixin):
         # Compute mass density for the new material and set it
         new_density = np.sum([dens for dens in mass_per_cc.values()])
         new_mat.set_density('g/cm3', new_density)
+
+        # If any of the involved materials is depletable, the new material is 
+        # depletable
+        new_mat.depletable = any(mat.depletable for mat in materials)
 
         return new_mat
 
@@ -1229,6 +1245,7 @@ class Materials(cv.CheckedList):
                 clean_indentation(element, level=1)
                 element.tail = element.tail.strip(' ')
                 fh.write('  ')
+                reorder_attributes(element)  # TODO: Remove when support is Python 3.8+
                 ET.ElementTree(element).write(fh, encoding='unicode')
 
             # Write the <material> elements.
@@ -1237,6 +1254,7 @@ class Materials(cv.CheckedList):
                 clean_indentation(element, level=1)
                 element.tail = element.tail.strip(' ')
                 fh.write('  ')
+                reorder_attributes(element)  # TODO: Remove when support is Python 3.8+
                 ET.ElementTree(element).write(fh, encoding='unicode')
 
             # Write the closing tag for the root element.

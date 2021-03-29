@@ -462,9 +462,23 @@ attributes/sub-elements:
   :library:
     If this attribute is given, it indicates that the source is to be
     instantiated from an externally compiled source function. This source can be
-    as complex as is required to define the source for your problem. The only
-    requirement is that there is a function called ``sample_source()``. More
-    documentation on how to build sources can be found in :ref:`custom_source`.
+    as complex as is required to define the source for your problem. The library
+    has a few basic requirements:
+
+    * It must contain a class that inherits from ``openmc::Source``;
+    * The class must implement a function called ``sample()``;
+    * There must be an ``openmc_create_source()`` function that creates the source
+      as a unique pointer. This function can be used to pass parameters through to
+      the source from the XML, if needed.
+
+    More documentation on how to build sources can be found in :ref:`custom_source`.
+
+    *Default*: None
+
+  :parameters:
+    If this attribute is given, it provides the parameters to pass through to the
+    class generated using the ``library`` parameter . More documentation on how to
+    build parametrized sources can be found in :ref:`parameterized_custom_source`.
 
     *Default*: None
 
@@ -600,67 +614,6 @@ attributes/sub-elements:
 
     *Default*: false
 
-.. _custom_source:
-
-Custom Sources
-++++++++++++++
-
-It is often the case that one may wish to simulate a complex source
-distribution, which may include physics not present within OpenMC or to be phase
-space complex. It is possible to define a complex source with an externally
-defined source function that is loaded at runtime. A simple example source is
-shown below.
-
-.. code-block:: c++
-
-   #include "openmc/random_lcg.h"
-   #include "openmc/source.h"
-   #include "openmc/particle.h"
-
-   // you must have external C linkage here
-   extern "C" openmc::Particle::Bank sample_source(uint64_t* seed) {
-     openmc::Particle::Bank particle;
-     // weight
-     particle.particle = openmc::Particle::Type::neutron;
-     particle.wgt = 1.0;
-     // position
-     double angle = 2.0 * M_PI * openmc::prn(seed);
-     double radius = 3.0;
-     particle.r.x = radius * std::cos(angle);
-     particle.r.y = radius * std::sin(angle);
-     particle.r.z = 0.0;
-     // angle
-     particle.u = {1.0, 0.0, 0.0};
-     particle.E = 14.08e6;
-     particle.delayed_group = 0;
-     return particle;
-  }
-
-The above source, creates 14.08 MeV neutrons, with an istropic direction
-vector but distributed in a ring with a 3 cm radius. This routine is
-not particularly complex, but should serve as an example upon which to build
-more complicated sources.
-
-  .. note:: The function signature must be declared to be extern "C".
-
-  .. note:: You should only use the openmc::prn() random number generator
-
-In order to build your external source, you will need to link it against the
-OpenMC shared library. This can be done by writing a CMakeLists.txt file:
-
-.. code-block:: cmake
-
-   cmake_minimum_required(VERSION 3.3 FATAL_ERROR)
-   project(openmc_sources CXX)
-   add_library(source SHARED source_ring.cpp)
-   find_package(OpenMC REQUIRED HINTS <path to openmc>)
-   target_link_libraries(source OpenMC::libopenmc)
-
-After running ``cmake`` and ``make``, you will have a libsource.so (or .dylib)
-file in your build directory. Setting the :attr:`openmc.Source.library`
-attribute to the path of this shared library will indicate that it should be
-used for sampling source particles at runtime.
-
 .. _univariate:
 
 Univariate Probability Distributions
@@ -769,6 +722,42 @@ attributes/sub-elements:
     this element to "true" and specify batches to write a permanent source bank.
 
     *Default*: false
+
+---------------------------
+``<surf_src_read>`` Element
+---------------------------
+
+The ``<surf_src_read>`` element specifies a surface source file for OpenMC to
+read source bank for initializing histories.
+This element has the following attributes/sub-elements:
+
+  :path:
+    Absolute or relative path to a surface source file to read in source bank.
+
+    *Default*: ``surface_source.h5`` in current working directory
+
+----------------------------
+``<surf_src_write>`` Element
+----------------------------
+
+The ``<surf_src_write>`` element triggers OpenMC to bank particles crossing
+certain surfaces and write out the source bank in a separate file called
+``surface_source.h5``.
+This element has the following attributes/sub-elements:
+
+  :surface_ids:
+    A list of integers separated by spaces indicating the unique IDs of surfaces
+    for which crossing particles will be banked.
+
+    *Default*: None
+
+  :max_particles:
+    An integer indicating the maximum number of particles to be banked on
+    specified surfaces per processor. The size of source bank in
+    ``surface_source.h5`` is limited to this value times the number of
+    processors.
+
+    *Default*: None
 
 ------------------------------
 ``<survival_biasing>`` Element

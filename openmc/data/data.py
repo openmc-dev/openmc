@@ -177,8 +177,26 @@ ATOMIC_SYMBOL = {0: 'n', 1: 'H', 2: 'He', 3: 'Li', 4: 'Be', 5: 'B', 6: 'C',
                  118: 'Og'}
 ATOMIC_NUMBER = {value: key for key, value in ATOMIC_SYMBOL.items()}
 
+# Values here are from the Committee on Data for Science and Technology
+# (CODATA) 2014 recommendation (doi:10.1103/RevModPhys.88.035009).
+
+# The value of the Boltzman constant in units of eV / K
+K_BOLTZMANN = 8.6173303e-5
+
+# Unit conversions
+EV_PER_MEV = 1.0e6
+JOULE_PER_EV = 1.6021766208e-19
+
+# Avogadro's constant
+AVOGADRO = 6.022140857e23
+
+# Neutron mass in units of amu
+NEUTRON_MASS = 1.00866491588
+
+# Used in atomic_mass function as a cache
 _ATOMIC_MASS = {}
 
+# Regex for GND nuclide names (used in zam function)
 _GND_NAME_RE = re.compile(r'([A-Zn][a-z]*)(\d+)((?:_[em]\d+)?)')
 
 
@@ -218,10 +236,8 @@ def atomic_mass(isotope):
         for element in ['C', 'Zn', 'Pt', 'Os', 'Tl']:
             isotope_zero = element.lower() + '0'
             _ATOMIC_MASS[isotope_zero] = 0.
-            for iso, abundance in NATURAL_ABUNDANCE.items():
-                if re.match(r'{}\d+'.format(element), iso):
-                    _ATOMIC_MASS[isotope_zero] += abundance * \
-                                                  _ATOMIC_MASS[iso.lower()]
+            for iso, abundance in isotopes(element):
+                _ATOMIC_MASS[isotope_zero] += abundance * _ATOMIC_MASS[iso.lower()]
 
     # Get rid of metastable information
     if '_' in isotope:
@@ -239,7 +255,7 @@ def atomic_weight(element):
     Parameters
     ----------
     element : str
-        Name of element, e.g. 'H', 'U'
+        Element symbol (e.g., 'H') or name (e.g., 'helium')
 
     Returns
     -------
@@ -248,9 +264,8 @@ def atomic_weight(element):
 
     """
     weight = 0.
-    for nuclide, abundance in NATURAL_ABUNDANCE.items():
-        if re.match(r'{}\d+'.format(element), nuclide):
-            weight += atomic_mass(nuclide) * abundance
+    for nuclide, abundance in isotopes(element):
+        weight += atomic_mass(nuclide) * abundance
     if weight > 0.:
         return weight
     else:
@@ -290,12 +305,14 @@ def water_density(temperature, pressure=0.1013):
     # but they only use 3 digits for their conversion to K.)
     if pressure > 100.0:
         warn("Results are not valid for pressures above 100 MPa.")
-    if pressure < 0.0:
-        warn("Results are not valid for pressures below zero.")
+    elif pressure < 0.0:
+        raise ValueError("Pressure must be positive.")
     if temperature < 273:
         warn("Results are not valid for temperatures below 273.15 K.")
-    if temperature > 623.15:
+    elif temperature > 623.15:
         warn("Results are not valid for temperatures above 623.15 K.")
+    elif temperature <= 0.0:
+        raise ValueError('Temperature must be positive.')
 
     # IAPWS region 4 parameters
     n4 = [0.11670521452767e4, -0.72421316703206e6, -0.17073846940092e2,
@@ -384,6 +401,43 @@ def gnd_name(Z, A, m=0):
         return '{}{}'.format(ATOMIC_SYMBOL[Z], A)
 
 
+def isotopes(element):
+    """Return naturally occurring isotopes and their abundances
+
+    .. versionadded:: 0.12.1
+
+    Parameters
+    ----------
+    element : str
+        Element symbol (e.g., 'H') or name (e.g., 'helium')
+
+    Returns
+    -------
+    list
+        A list of tuples of (isotope, abundance)
+
+    Raises
+    ------
+    ValueError
+        If the element name is not recognized
+
+    """
+    # Convert name to symbol if needed
+    if len(element) > 2:
+        symbol = ELEMENT_SYMBOL.get(element.lower())
+        if symbol is None:
+            raise ValueError('Element name "{}" not recognised'.format(element))
+        element = symbol
+
+    # Get the nuclides present in nature
+    result = []
+    for kv in sorted(NATURAL_ABUNDANCE.items()):
+        if re.match(r'{}\d+'.format(element), kv[0]):
+            result.append(kv)
+
+    return result
+
+
 def zam(name):
     """Return tuple of (atomic number, mass number, metastable state)
 
@@ -410,20 +464,3 @@ def zam(name):
 
     metastable = int(state[2:]) if state else 0
     return (ATOMIC_NUMBER[symbol], int(A), metastable)
-
-
-# Values here are from the Committee on Data for Science and Technology
-# (CODATA) 2014 recommendation (doi:10.1103/RevModPhys.88.035009).
-
-# The value of the Boltzman constant in units of eV / K
-K_BOLTZMANN = 8.6173303e-5
-
-# Unit conversions
-EV_PER_MEV = 1.0e6
-JOULE_PER_EV = 1.6021766208e-19
-
-# Avogadro's constant
-AVOGADRO = 6.022140857e23
-
-# Neutron mass in units of amu
-NEUTRON_MASS = 1.00866491588

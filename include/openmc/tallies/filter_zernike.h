@@ -26,7 +26,7 @@ public:
 
   void from_xml(pugi::xml_node node) override;
 
-  void get_all_bins(const Particle* p, TallyEstimator estimator, FilterMatch& match)
+  void get_all_bins(const Particle& p, TallyEstimator estimator, FilterMatch& match)
   const override;
 
   void to_statepoint(hid_t filter_group) const override;
@@ -76,7 +76,7 @@ public:
 
   std::string type() const override {return "zernikeradial";}
 
-  void get_all_bins(const Particle* p, TallyEstimator estimator, FilterMatch& match)
+  void get_all_bins(const Particle& p, TallyEstimator estimator, FilterMatch& match)
   const override;
 
   std::string text_label(int bin) const override;

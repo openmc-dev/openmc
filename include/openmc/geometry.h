@@ -18,7 +18,7 @@ namespace openmc {
 namespace model {
 
 extern int root_universe;  //!< Index of root universe
-extern int n_coord_levels; //!< Number of CSG coordinate levels
+extern "C" int n_coord_levels; //!< Number of CSG coordinate levels
 
 extern std::vector<int64_t> overlap_check_count;
 
@@ -36,34 +36,31 @@ inline bool coincident(double d1, double d2) {
 //! Check for overlapping cells at a particle's position.
 //==============================================================================
 
-bool check_cell_overlap(Particle* p, bool error=true);
+bool check_cell_overlap(Particle& p, bool error=true);
 
 //==============================================================================
 //! Locate a particle in the geometry tree and set its geometry data fields.
 //!
 //! \param p A particle to be located.  This function will populate the
 //!   geometry-dependent data fields of the particle.
-//! \param use_neighbor_lists If true, neighbor lists will be used to accelerate
-//!   the geometry search, but this only works if the cell attribute of the
-//!   particle's lowest coordinate level is valid and meaningful.
 //! \return True if the particle's location could be found and ascribed to a
 //!   valid geometry coordinate stack.
 //==============================================================================
-
-bool find_cell(Particle* p, bool use_neighbor_lists);
+bool exhaustive_find_cell(Particle& p);
+bool neighbor_list_find_cell(Particle& p); // Only usable on surface crossings
 
 //==============================================================================
 //! Move a particle into a new lattice tile.
 //==============================================================================
 
-void cross_lattice(Particle* p, const BoundaryInfo& boundary);
+void cross_lattice(Particle& p, const BoundaryInfo& boundary);
 
 //==============================================================================
 //! Find the next boundary a particle will intersect.
 //==============================================================================
 
 #pragma omp declare target
-BoundaryInfo distance_to_boundary(Particle* p);
+BoundaryInfo distance_to_boundary(Particle& p);
 #pragma omp end declare target
 
 } // namespace openmc

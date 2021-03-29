@@ -2,15 +2,16 @@ import copy
 from numbers import Real, Integral
 import os
 
-import numpy as np
 import h5py
-from scipy.interpolate import interp1d
+import numpy as np
 from scipy.integrate import simps
+from scipy.interpolate import interp1d
 from scipy.special import eval_legendre
 
 import openmc
 import openmc.mgxs
-from openmc.checkvalue import check_type, check_value, check_greater_than, \
+from openmc.mgxs import SCATTER_TABULAR, SCATTER_LEGENDRE, SCATTER_HISTOGRAM
+from .checkvalue import check_type, check_value, check_greater_than, \
     check_iterable_type, check_less_than, check_filetype_version
 
 ROOM_TEMPERATURE_KELVIN = 294.0
@@ -24,9 +25,6 @@ _REPRESENTATIONS = [
 ]
 
 # Supported scattering angular distribution representations
-SCATTER_TABULAR = 'tabular'
-SCATTER_LEGENDRE = 'legendre'
-SCATTER_HISTOGRAM = 'histogram'
 _SCATTER_TYPES = [
     SCATTER_TABULAR,
     SCATTER_LEGENDRE,
@@ -350,6 +348,18 @@ class XSdata:
     @property
     def chi_delayed(self):
         return self._chi_delayed
+
+    @property
+    def beta(self):
+        return self._beta
+
+    @property
+    def decay_rate(self):
+        return self._decay_rate
+
+    @property
+    def inverse_velocity(self):
+        return self._inverse_velocity
 
     @property
     def num_orders(self):
@@ -766,7 +776,7 @@ class XSdata:
         """
 
         # Get the accepted shapes for this xs
-        shapes = [self.xs_shapes["[DG]"], self.xs_shapes["[DG][G]"]]
+        shapes = [self.xs_shapes["[DG]"]]
 
         # Convert to a numpy array so we can easily get the shape for checking
         decay_rate = np.asarray(decay_rate)
@@ -2034,7 +2044,7 @@ class XSdata:
                     xs_grp.create_dataset("beta", data=self._beta[i])
 
                 if self._decay_rate[i] is not None:
-                    xs_grp.create_dataset("decay rate",
+                    xs_grp.create_dataset("decay-rate",
                                           data=self._decay_rate[i])
 
             if self._scatter_matrix[i] is None:
@@ -2200,7 +2210,7 @@ class XSdata:
             xs_types = ['total', 'absorption', 'fission', 'kappa-fission',
                         'chi', 'chi-prompt', 'chi-delayed', 'nu-fission',
                         'prompt-nu-fission', 'delayed-nu-fission', 'beta',
-                        'decay rate', 'inverse-velocity']
+                        'decay-rate', 'inverse-velocity']
 
             temperature_group = group[temp]
 

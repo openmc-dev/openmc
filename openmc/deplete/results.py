@@ -5,15 +5,14 @@ Contains results generation and saving capabilities.
 
 from collections import OrderedDict
 import copy
-from warnings import warn
 
-import numpy as np
 import h5py
+import numpy as np
 
-from . import comm, have_mpi, MPI
+from . import comm, MPI
 from .reaction_rates import ReactionRates
 
-_VERSION_RESULTS = (1, 0)
+VERSION_RESULTS = (1, 1)
 
 
 __all__ = ["Results"]
@@ -28,8 +27,8 @@ class Results:
         Eigenvalue and uncertainty for each substep.
     time : list of float
         Time at beginning, end of step, in seconds.
-    power : float
-        Power during time step, in Watts
+    source_rate : float
+        Source rate during timestep in [W] or [neutron/sec]
     n_mat : int
         Number of mats.
     n_nuc : int
@@ -58,7 +57,7 @@ class Results:
     def __init__(self):
         self.k = None
         self.time = None
-        self.power = None
+        self.source_rate = None
         self.rates = None
         self.volume = None
         self.proc_time = None
@@ -175,10 +174,10 @@ class Results:
         """
         new = Results()
         new.volume = {lm: self.volume[lm] for lm in local_materials}
-        new.mat_to_ind = dict(zip(
-            local_materials, range(len(local_materials))))
+        new.mat_to_ind = {mat: idx for (idx, mat) in enumerate(local_materials)}
+
         # Direct transfer
-        direct_attrs = ("time", "k", "power", "nuc_to_ind",
+        direct_attrs = ("time", "k", "source_rate", "nuc_to_ind",
                         "mat_to_hdf5_ind", "proc_time")
         for attr in direct_attrs:
             setattr(new, attr, getattr(self, attr))
@@ -198,16 +197,24 @@ class Results:
             What step is this?
 
         """
-        if have_mpi and h5py.get_config().mpi:
-            kwargs = {'driver': 'mpio', 'comm': comm}
-        else:
-            kwargs = {}
-
         # Write new file if first time step, else add to existing file
-        kwargs['mode'] = "w" if step == 0 else "a"
+        kwargs = {'mode': "w" if step == 0 else "a"}
 
-        with h5py.File(filename, **kwargs) as handle:
-            self._to_hdf5(handle, step)
+        if h5py.get_config().mpi and comm.size > 1:
+            # Write results in parallel
+            kwargs['driver'] = 'mpio'
+            kwargs['comm'] = comm
+            with h5py.File(filename, **kwargs) as handle:
+                self._to_hdf5(handle, step, parallel=True)
+        else:
+            # Gather results at root process
+            all_results = comm.gather(self)
+
+            # Only root process writes results
+            if comm.rank == 0:
+                with h5py.File(filename, **kwargs) as handle:
+                    for res in all_results:
+                        res._to_hdf5(handle, step, parallel=False)
 
     def _write_hdf5_metadata(self, handle):
         """Writes result metadata in HDF5 file
@@ -229,7 +236,7 @@ class Results:
 
         # Store concentration mat and nuclide dictionaries (along with volumes)
 
-        handle.attrs['version'] = np.array(_VERSION_RESULTS)
+        handle.attrs['version'] = np.array(VERSION_RESULTS)
         handle.attrs['filetype'] = np.string_('depletion results')
 
         mat_list = sorted(self.mat_to_hdf5_ind, key=int)
@@ -280,14 +287,14 @@ class Results:
 
         handle.create_dataset("time", (1, 2), maxshape=(None, 2), dtype='float64')
 
-        handle.create_dataset("power", (1, n_stages), maxshape=(None, n_stages),
+        handle.create_dataset("source_rate", (1, n_stages), maxshape=(None, n_stages),
                               dtype='float64')
 
         handle.create_dataset(
             "depletion time", (1,), maxshape=(None,),
             dtype="float64")
 
-    def _to_hdf5(self, handle, index):
+    def _to_hdf5(self, handle, index, parallel=False):
         """Converts results object into an hdf5 object.
 
         Parameters
@@ -296,20 +303,24 @@ class Results:
             An HDF5 file or group type to store this in.
         index : int
             What step is this?
+        parallel : bool
+            Being called with parallel HDF5?
 
         """
         if "/number" not in handle:
-            comm.barrier()
+            if parallel:
+                comm.barrier()
             self._write_hdf5_metadata(handle)
 
-        comm.barrier()
+        if parallel:
+            comm.barrier()
 
         # Grab handles
         number_dset = handle["/number"]
         rxn_dset = handle["/reaction rates"]
         eigenvalues_dset = handle["/eigenvalues"]
         time_dset = handle["/time"]
-        power_dset = handle["/power"]
+        source_rate_dset = handle["/source_rate"]
         proc_time_dset = handle["/depletion time"]
 
         # Get number of results stored
@@ -335,9 +346,9 @@ class Results:
             time_shape[0] = new_shape
             time_dset.resize(time_shape)
 
-            power_shape = list(power_dset.shape)
-            power_shape[0] = new_shape
-            power_dset.resize(power_shape)
+            source_rate_shape = list(source_rate_dset.shape)
+            source_rate_shape[0] = new_shape
+            source_rate_dset.resize(source_rate_shape)
 
             proc_shape = list(proc_time_dset.shape)
             proc_shape[0] = new_shape
@@ -354,13 +365,13 @@ class Results:
         low = min(inds)
         high = max(inds)
         for i in range(n_stages):
-            number_dset[index, i, low:high+1, :] = self.data[i, :, :]
-            rxn_dset[index, i, low:high+1, :, :] = self.rates[i][:, :, :]
+            number_dset[index, i, low:high+1] = self.data[i]
+            rxn_dset[index, i, low:high+1] = self.rates[i]
             if comm.rank == 0:
                 eigenvalues_dset[index, i] = self.k[i]
         if comm.rank == 0:
-            time_dset[index, :] = self.time
-            power_dset[index, :] = self.power
+            time_dset[index] = self.time
+            source_rate_dset[index] = self.source_rate
             if self.proc_time is not None:
                 proc_time_dset[index] = (
                     self.proc_time / (comm.size * self.n_hdf5_mats)
@@ -383,12 +394,16 @@ class Results:
         number_dset = handle["/number"]
         eigenvalues_dset = handle["/eigenvalues"]
         time_dset = handle["/time"]
-        power_dset = handle["/power"]
+        if "source_rate" in handle:
+            source_rate_dset = handle["/source_rate"]
+        else:
+            # Older versions used "power" instead of "source_rate"
+            source_rate_dset = handle["/power"]
 
         results.data = number_dset[step, :, :, :]
         results.k = eigenvalues_dset[step, :]
         results.time = time_dset[step, :]
-        results.power = power_dset[step, :]
+        results.source_rate = source_rate_dset[step, :]
 
         if "depletion time" in handle:
             proc_time_dset = handle["/depletion time"]
@@ -433,7 +448,7 @@ class Results:
         return results
 
     @staticmethod
-    def save(op, x, op_results, t, power, step_ind, proc_time=None):
+    def save(op, x, op_results, t, source_rate, step_ind, proc_time=None):
         """Creates and writes depletion results to disk
 
         Parameters
@@ -446,8 +461,8 @@ class Results:
             Results of applying transport operator
         t : list of float
             Time indices.
-        power : float
-            Power during time step
+        source_rate : float
+            Source rate during time step in [W] or [neutron/sec]
         step_ind : int
             Step index.
         proc_time : float or None
@@ -474,7 +489,7 @@ class Results:
         results.k = [(r.k.nominal_value, r.k.std_dev) for r in op_results]
         results.rates = [r.rates for r in op_results]
         results.time = t
-        results.power = power
+        results.source_rate = source_rate
         results.proc_time = proc_time
         if results.proc_time is not None:
             results.proc_time = comm.reduce(proc_time, op=MPI.SUM)

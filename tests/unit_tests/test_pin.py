@@ -62,7 +62,7 @@ def test_failure(pin_mats, good_radii):
         pin(surfs, pin_mats)
 
     # Passing cells argument
-    with pytest.raises(SyntaxError, match="Cells"):
+    with pytest.raises(ValueError, match="Cells"):
         pin(surfs, pin_mats, cells=[])
 
 

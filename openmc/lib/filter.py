@@ -11,16 +11,17 @@ from . import _dll
 from .core import _FortranObjectWithID
 from .error import _error_handler
 from .material import Material
-from .mesh import RegularMesh
+from .mesh import _get_mesh
 
 
-__all__ = ['Filter', 'AzimuthalFilter', 'CellFilter',
-           'CellbornFilter', 'CellfromFilter', 'DistribcellFilter',
-           'DelayedGroupFilter', 'EnergyFilter', 'EnergyoutFilter',
-           'EnergyFunctionFilter', 'LegendreFilter', 'MaterialFilter', 'MeshFilter',
-           'MeshSurfaceFilter', 'MuFilter', 'PolarFilter', 'SphericalHarmonicsFilter',
-           'SpatialLegendreFilter', 'SurfaceFilter',
-           'UniverseFilter', 'ZernikeFilter', 'ZernikeRadialFilter', 'filters']
+__all__ = [
+    'Filter', 'AzimuthalFilter', 'CellFilter', 'CellbornFilter', 'CellfromFilter',
+    'CellInstanceFilter', 'DistribcellFilter', 'DelayedGroupFilter', 'EnergyFilter',
+    'EnergyoutFilter', 'EnergyFunctionFilter', 'LegendreFilter', 'MaterialFilter',
+    'MeshFilter', 'MeshSurfaceFilter', 'MuFilter', 'ParticleFilter', 'PolarFilter',
+    'SphericalHarmonicsFilter', 'SpatialLegendreFilter', 'SurfaceFilter',
+    'UniverseFilter', 'ZernikeFilter', 'ZernikeRadialFilter', 'filters'
+]
 
 # Tally functions
 _dll.openmc_cell_filter_get_bins.argtypes = [
@@ -202,6 +203,10 @@ class CellfromFilter(Filter):
     filter_type = 'cellfrom'
 
 
+class CellInstanceFilter(Filter):
+    filter_type = 'cellinstance'
+
+
 class DelayedGroupFilter(Filter):
     filter_type = 'delayedgroup'
 
@@ -310,7 +315,7 @@ class MeshFilter(Filter):
     def mesh(self):
         index_mesh = c_int32()
         _dll.openmc_mesh_filter_get_mesh(self._index, index_mesh)
-        return RegularMesh(index=index_mesh.value)
+        return _get_mesh(index_mesh.value)
 
     @mesh.setter
     def mesh(self, mesh):
@@ -329,7 +334,7 @@ class MeshSurfaceFilter(Filter):
     def mesh(self):
         index_mesh = c_int32()
         _dll.openmc_meshsurface_filter_get_mesh(self._index, index_mesh)
-        return RegularMesh(index=index_mesh.value)
+        return _get_mesh(index_mesh.value)
 
     @mesh.setter
     def mesh(self, mesh):
@@ -338,6 +343,10 @@ class MeshSurfaceFilter(Filter):
 
 class MuFilter(Filter):
     filter_type = 'mu'
+
+
+class ParticleFilter(Filter):
+    filter_type = 'particle'
 
 
 class PolarFilter(Filter):
@@ -418,6 +427,7 @@ _FILTER_TYPE_MAP = {
     'cell': CellFilter,
     'cellborn': CellbornFilter,
     'cellfrom': CellfromFilter,
+    'cellinstance': CellInstanceFilter,
     'delayedgroup': DelayedGroupFilter,
     'distribcell': DistribcellFilter,
     'energy': EnergyFilter,
@@ -428,6 +438,7 @@ _FILTER_TYPE_MAP = {
     'mesh': MeshFilter,
     'meshsurface': MeshSurfaceFilter,
     'mu': MuFilter,
+    'particle': ParticleFilter,
     'polar': PolarFilter,
     'sphericalharmonics': SphericalHarmonicsFilter,
     'spatiallegendre': SpatialLegendreFilter,

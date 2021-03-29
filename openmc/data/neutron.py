@@ -20,7 +20,7 @@ from .function import Tabulated1D, Sum, ResonancesWithBackground
 from .grid import linearize, thin
 from .njoy import make_ace
 from .product import Product
-from .reaction import Reaction, _get_photon_products_ace
+from .reaction import Reaction, _get_photon_products_ace, FISSION_MTS
 from . import resonance as res
 from . import resonance_covariance as res_cov
 from .urr import ProbabilityTables
@@ -345,7 +345,8 @@ class IncidentNeutron(EqualityMixin):
                 # Add grid around each resonance that includes the peak +/- the
                 # width times each value in _RESONANCE_ENERGY_GRID. Values are
                 # constrained so that points around one resonance don't overlap
-                # with points around another. This algorithm is from Fudge.
+                # with points around another. This algorithm is from Fudge
+                # (https://doi.org/10.1063/1.1945057).
                 energies = []
                 for e, g, e_lower, e_upper in zip(e_peak, gamma, e_mid[:-1],
                                                   e_mid[1:]):
@@ -410,7 +411,7 @@ class IncidentNeutron(EqualityMixin):
         ----------
         path : str
             Path to write HDF5 file to
-        mode : {'r', 'r+', 'w', 'x', 'a'}
+        mode : {'r+', 'w', 'x', 'a'}
             Mode that is used to open the HDF5 file. This is the second argument
             to the :class:`h5py.File` constructor.
         libver : {'earliest', 'latest'}
@@ -424,64 +425,62 @@ class IncidentNeutron(EqualityMixin):
                                       'originated from an ENDF file.')
 
         # Open file and write version
-        f = h5py.File(str(path), mode, libver=libver)
-        f.attrs['filetype'] = np.string_('data_neutron')
-        f.attrs['version'] = np.array(HDF5_VERSION)
+        with h5py.File(str(path), mode, libver=libver) as f:
+            f.attrs['filetype'] = np.string_('data_neutron')
+            f.attrs['version'] = np.array(HDF5_VERSION)
 
-        # Write basic data
-        g = f.create_group(self.name)
-        g.attrs['Z'] = self.atomic_number
-        g.attrs['A'] = self.mass_number
-        g.attrs['metastable'] = self.metastable
-        g.attrs['atomic_weight_ratio'] = self.atomic_weight_ratio
-        ktg = g.create_group('kTs')
-        for i, temperature in enumerate(self.temperatures):
-            ktg.create_dataset(temperature, data=self.kTs[i])
+            # Write basic data
+            g = f.create_group(self.name)
+            g.attrs['Z'] = self.atomic_number
+            g.attrs['A'] = self.mass_number
+            g.attrs['metastable'] = self.metastable
+            g.attrs['atomic_weight_ratio'] = self.atomic_weight_ratio
+            ktg = g.create_group('kTs')
+            for i, temperature in enumerate(self.temperatures):
+                ktg.create_dataset(temperature, data=self.kTs[i])
 
-        # Write energy grid
-        eg = g.create_group('energy')
-        for temperature in self.temperatures:
-            eg.create_dataset(temperature, data=self.energy[temperature])
+            # Write energy grid
+            eg = g.create_group('energy')
+            for temperature in self.temperatures:
+                eg.create_dataset(temperature, data=self.energy[temperature])
 
-        # Write 0K energy grid if needed
-        if '0K' in self.energy and '0K' not in eg:
-            eg.create_dataset('0K', data=self.energy['0K'])
+            # Write 0K energy grid if needed
+            if '0K' in self.energy and '0K' not in eg:
+                eg.create_dataset('0K', data=self.energy['0K'])
 
-        # Write reaction data
-        rxs_group = g.create_group('reactions')
-        for rx in self.reactions.values():
-            # Skip writing redundant reaction if it doesn't have photon
-            # production or is a summed transmutation reaction. MT=4 is also
-            # sometimes needed for probability tables. Also write gas
-            # production, heating, and damage energy production.
-            if rx.redundant:
-                photon_rx = any(p.particle == 'photon' for p in rx.products)
-                keep_mts = (4, 16, 103, 104, 105, 106, 107,
-                            203, 204, 205, 206, 207, 301, 444, 901)
-                if not (photon_rx or rx.mt in keep_mts):
-                    continue
+            # Write reaction data
+            rxs_group = g.create_group('reactions')
+            for rx in self.reactions.values():
+                # Skip writing redundant reaction if it doesn't have photon
+                # production or is a summed transmutation reaction. MT=4 is also
+                # sometimes needed for probability tables. Also write gas
+                # production, heating, and damage energy production.
+                if rx.redundant:
+                    photon_rx = any(p.particle == 'photon' for p in rx.products)
+                    keep_mts = (4, 16, 103, 104, 105, 106, 107,
+                                203, 204, 205, 206, 207, 301, 444, 901)
+                    if not (photon_rx or rx.mt in keep_mts):
+                        continue
 
-            rx_group = rxs_group.create_group('reaction_{:03}'.format(rx.mt))
-            rx.to_hdf5(rx_group)
+                rx_group = rxs_group.create_group('reaction_{:03}'.format(rx.mt))
+                rx.to_hdf5(rx_group)
 
-            # Write total nu data if available
-            if len(rx.derived_products) > 0 and 'total_nu' not in g:
-                tgroup = g.create_group('total_nu')
-                rx.derived_products[0].to_hdf5(tgroup)
+                # Write total nu data if available
+                if len(rx.derived_products) > 0 and 'total_nu' not in g:
+                    tgroup = g.create_group('total_nu')
+                    rx.derived_products[0].to_hdf5(tgroup)
 
-        # Write unresolved resonance probability tables
-        if self.urr:
-            urr_group = g.create_group('urr')
-            for temperature, urr in self.urr.items():
-                tgroup = urr_group.create_group(temperature)
-                urr.to_hdf5(tgroup)
+            # Write unresolved resonance probability tables
+            if self.urr:
+                urr_group = g.create_group('urr')
+                for temperature, urr in self.urr.items():
+                    tgroup = urr_group.create_group(temperature)
+                    urr.to_hdf5(tgroup)
 
-        # Write fission energy release data
-        if self.fission_energy is not None:
-            fer_group = g.create_group('fission_energy_release')
-            self.fission_energy.to_hdf5(fer_group)
-
-        f.close()
+            # Write fission energy release data
+            if self.fission_energy is not None:
+                fer_group = g.create_group('fission_energy_release')
+                self.fission_energy.to_hdf5(fer_group)
 
     @classmethod
     def from_hdf5(cls, group_or_filename):
@@ -543,7 +542,7 @@ class IncidentNeutron(EqualityMixin):
                 data.reactions[rx.mt] = rx
 
                 # Read total nu data if available
-                if rx.mt in (18, 19, 20, 21, 38) and 'total_nu' in group:
+                if rx.mt in FISSION_MTS and 'total_nu' in group:
                     tgroup = group['total_nu']
                     rx.derived_products.append(Product.from_hdf5(tgroup))
 
@@ -617,18 +616,20 @@ class IncidentNeutron(EqualityMixin):
         absorption_xs = ace.xss[i + 2*n_energy : i + 3*n_energy]
         heating_number = ace.xss[i + 4*n_energy : i + 5*n_energy]*EV_PER_MEV
 
-        # Create redundant reactions (total, absorption, and heating)
+        # Create redundant reaction for total (MT=1)
         total = Reaction(1)
         total.xs[strT] = Tabulated1D(energy, total_xs)
         total.redundant = True
         data.reactions[1] = total
 
+        # Create redundant reaction for absorption (MT=101)
         if np.count_nonzero(absorption_xs) > 0:
             absorption = Reaction(101)
             absorption.xs[strT] = Tabulated1D(energy, absorption_xs)
             absorption.redundant = True
             data.reactions[101] = absorption
 
+        # Create redundant reaction for heating (MT=301)
         heating = Reaction(301)
         heating.xs[strT] = Tabulated1D(energy, heating_number*total_xs)
         heating.redundant = True

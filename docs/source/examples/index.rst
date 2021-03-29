@@ -19,11 +19,12 @@ General Usage
     post-processing
     pandas-dataframes
     tally-arithmetic
+    capi
     expansion-filters
     search
     nuclear-data
     nuclear-data-resonance-covariance
-    pincell-depletion
+    pincell_depletion
 
 --------
 Geometry
@@ -32,14 +33,14 @@ Geometry
 .. toctree::
     :maxdepth: 1
 
-    hexagonal
+    hexagonal-lattice
     triso
     candu
-    cad-geom
+    cad-based-geometry
 
-------------------------------------
-Multi-Group Cross Section Generation
-------------------------------------
+-----------------------------------
+Multigroup Cross Section Generation
+-----------------------------------
 
 .. toctree::
     :maxdepth: 1
@@ -50,9 +51,9 @@ Multi-Group Cross Section Generation
     mdgxs-part-i
     mdgxs-part-ii
 
-----------------
-Multi-Group Mode
-----------------
+---------------
+Multigroup Mode
+---------------
 
 .. toctree::
     :maxdepth: 1

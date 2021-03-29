@@ -12,19 +12,18 @@ is deposited for a specific reaction is referred to as
 "heating numbers" and can be computed using a program like NJOY with the
 ``heatr`` module.
 
-These heating rate is the product of reaction-specific coefficients and
-a reaction cross section
+The heating rate is the product of reaction-specific coefficients and a reaction
+cross section
 
 .. math::
 
     H(E) = \phi(E)\sum_i\rho_i\sum_rk_{i, r}(E),
 
-and has units energy per time, typically eV / s.
-Here, :math:`k_{i, r}` are the KERMA (Kinetic Energy Release in Materials)
-[Mack97]_ coefficients for reaction :math:`r` of isotope :math:`i`.
-The KERMA coefficients have units energy :math:`\times` cross-section, e.g.
-eV-barn, and can be used much like a reaction cross section for the purpose
-of tallying energy deposition.
+and has units energy per time, typically eV/s. Here, :math:`k_{i, r}` are the
+KERMA (Kinetic Energy Release in Materials) [Mack97]_ coefficients for reaction
+:math:`r` of isotope :math:`i`. The KERMA coefficients have units of energy
+:math:`\times` cross-section (e.g., eV-barn) and can be used much like a reaction
+cross section for the purpose of tallying energy deposition.
 
 KERMA coefficients can be computed using the energy-balance method with
 a nuclear data processing code like NJOY, which performs the following
@@ -56,11 +55,11 @@ broken up into the following categories:
 - :math:`E_{\beta}` - energy of released :math:`\beta` particles
 - :math:`E_{\nu}` - energy of neutrinos
 
-These components are defined in MF=1,MT=458 data in a standard ENDF/B-6 formatted
-file. All these quantities may depend upon incident neutron energy,
-but this dependence is not shown to make the following demonstrations cleaner.
-As neutrinos scarcely interact with matter, the recoverable energy from
-fission is defined as
+These components are defined in MF=1, MT=458 data in a standard ENDF-6 formatted
+file. All these quantities may depend upon incident neutron energy, but this
+dependence is not shown to make the following demonstrations cleaner. As
+neutrinos scarcely interact with matter, the recoverable energy from fission is
+defined as
 
 .. math::
 

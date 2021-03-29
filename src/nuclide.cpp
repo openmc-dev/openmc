@@ -15,6 +15,8 @@
 #include "openmc/string_utils.h"
 #include "openmc/thermal.h"
 
+#include <fmt/core.h>
+
 #include "xtensor/xbuilder.hpp"
 #include "xtensor/xview.hpp"
 
@@ -32,8 +34,8 @@ std::array<double, 2> energy_min {0.0, 0.0};
 std::array<double, 2> energy_max {INFTY, INFTY};
 double temperature_min {0.0};
 double temperature_max {INFTY};
-std::vector<std::unique_ptr<Nuclide>> nuclides;
 std::unordered_map<std::string, int> nuclide_map;
+std::vector<std::unique_ptr<Nuclide>> nuclides;
 } // namespace data
 
 //==============================================================================
@@ -46,11 +48,14 @@ int Nuclide::XS_FISSION {2};
 int Nuclide::XS_NU_FISSION {3};
 int Nuclide::XS_PHOTON_PROD {4};
 
-Nuclide::Nuclide(hid_t group, const std::vector<double>& temperature, int i_nuclide)
-  : i_nuclide_{i_nuclide}
+Nuclide::Nuclide(hid_t group, const std::vector<double>& temperature)
 {
+  // Set index of nuclide in global vector
+  index_ = data::nuclides.size();
+
   // Get name of nuclide from group, removing leading '/'
   name_ = object_name(group).substr(1);
+  data::nuclide_map[name_] = index_;
 
   read_attribute(group, "Z", Z_);
   read_attribute(group, "A", A_);
@@ -78,17 +83,25 @@ Nuclide::Nuclide(hid_t group, const std::vector<double>& temperature, int i_nucl
   }
 
   // Determine actual temperatures to read -- start by checking whether a
-  // temperature range was given, in which case all temperatures in the range
-  // are loaded irrespective of what temperatures actually appear in the model
+  // temperature range was given (indicated by T_max > 0), in which case all
+  // temperatures in the range are loaded irrespective of what temperatures
+  // actually appear in the model
   std::vector<int> temps_to_read;
   int n = temperature.size();
   double T_min = n > 0 ? settings::temperature_range[0] : 0.0;
   double T_max = n > 0 ? settings::temperature_range[1] : INFTY;
   if (T_max > 0.0) {
-    for (auto T : temps_available) {
-      if (T_min <= T && T <= T_max) {
-        temps_to_read.push_back(std::round(T));
-      }
+    // Determine first available temperature below or equal to T_min
+    auto T_min_it = std::upper_bound(temps_available.begin(), temps_available.end(), T_min);
+    if (T_min_it != temps_available.begin()) --T_min_it;
+
+    // Determine first available temperature above or equal to T_max
+    auto T_max_it = std::lower_bound(temps_available.begin(), temps_available.end(), T_max);
+    if (T_max_it != temps_available.end()) ++T_max_it;
+
+    // Add corresponding temperatures to vector
+    for (auto it = T_min_it; it != T_max_it; ++it) {
+      temps_to_read.push_back(std::round(*it));
     }
   }
 
@@ -234,6 +247,16 @@ Nuclide::Nuclide(hid_t group, const std::vector<double>& temperature, int i_nucl
     // section should be determined from a normal reaction cross section, we
     // need to get the index of the reaction.
     if (temps_to_read.size() > 0) {
+      // Make sure inelastic flags are consistent for different temperatures
+      for (int i = 0; i < urr_data_.size() - 1; ++i) {
+        if (urr_data_[i].inelastic_flag_ != urr_data_[i+1].inelastic_flag_) {
+          fatal_error(fmt::format("URR inelastic flag is not consistent for "
+            "multiple temperatures in nuclide {}. This most likely indicates "
+            "a problem in how the data was processed.", name_));
+        }
+      }
+
+
       if (urr_data_[0].inelastic_flag_ > 0) {
         for (int i = 0; i < reactions_.size(); i++) {
           if (reactions_[i]->mt_ == urr_data_[0].inelastic_flag_) {
@@ -259,21 +282,29 @@ Nuclide::Nuclide(hid_t group, const std::vector<double>& temperature, int i_nucl
   }
 
   // Read fission energy release data if present
-  std::unique_ptr<Function1D> prompt_photons;
-  std::unique_ptr<Function1D> delayed_photons;
   if (object_exists(group, "fission_energy_release")) {
     hid_t fer_group = open_group(group, "fission_energy_release");
     fission_q_prompt_ = read_function(fer_group, "q_prompt");
     fission_q_recov_ = read_function(fer_group, "q_recoverable");
 
+    // Read fission fragment and delayed beta energy release. This is needed for
+    // energy normalization in k-eigenvalue calculations
+    fragments_ = read_function(fer_group, "fragments");
+    betas_ = read_function(fer_group, "betas");
+
     // We need prompt/delayed photon energy release for scaling fission photon
     // production
-    prompt_photons = read_function(fer_group, "prompt_photons");
-    delayed_photons = read_function(fer_group, "delayed_photons");
+    prompt_photons_ = read_function(fer_group, "prompt_photons");
+    delayed_photons_ = read_function(fer_group, "delayed_photons");
     close_group(fer_group);
   }
 
-  this->create_derived(prompt_photons.get(), delayed_photons.get());
+  this->create_derived(prompt_photons_.get(), delayed_photons_.get());
+}
+
+Nuclide::~Nuclide()
+{
+  data::nuclide_map.erase(name_);
 }
 
 void Nuclide::create_derived(const Function1D* prompt_photons, const Function1D* delayed_photons)
@@ -489,7 +520,7 @@ double Nuclide::nu(double E, EmissionMode mode, int group) const
 void Nuclide::calculate_elastic_xs(Particle& p) const
 {
   // Get temperature index, grid index, and interpolation factor
-  auto& micro {p.neutron_xs_[i_nuclide_]};
+  auto& micro {p.neutron_xs_[index_]};
   int i_temp = micro.index_temp;
   int i_grid = micro.index_grid;
   double f = micro.interp_factor;
@@ -525,7 +556,7 @@ double Nuclide::elastic_xs_0K(double E) const
 
 void Nuclide::calculate_xs(int i_sab, int i_log_union, double sab_frac, Particle& p)
 {
-  auto& micro {p.neutron_xs_[i_nuclide_]};
+  auto& micro {p.neutron_xs_[index_]};
 
   // Initialize cached cross sections to zero
   micro.elastic = CACHE_INVALID;
@@ -732,7 +763,7 @@ void Nuclide::calculate_xs(int i_sab, int i_log_union, double sab_frac, Particle
 
 void Nuclide::calculate_sab_xs(int i_sab, double sab_frac, Particle& p)
 {
-  auto& micro {p.neutron_xs_[i_nuclide_]};
+  auto& micro {p.neutron_xs_[index_]};
 
   // Set flag that S(a,b) treatment should be used for scattering
   micro.index_sab = i_sab;
@@ -761,7 +792,7 @@ void Nuclide::calculate_sab_xs(int i_sab, double sab_frac, Particle& p)
 
 void Nuclide::calculate_urr_xs(int i_temp, Particle& p) const
 {
-  auto& micro = p.neutron_xs_[i_nuclide_];
+  auto& micro = p.neutron_xs_[index_];
   micro.use_ptable = true;
 
   // Create a shorthand for the URR data
@@ -779,8 +810,8 @@ void Nuclide::calculate_urr_xs(int i_temp, Particle& p) const
   // therefore preserving correlation of temperature in probability tables.
   p.stream_ = STREAM_URR_PTABLE;
   //TODO: to maintain the same random number stream as the Fortran code this
-  //replaces, the seed is set with i_nuclide_ + 1 instead of i_nuclide_
-  double r = future_prn(static_cast<int64_t>(i_nuclide_ + 1), *p.current_seed());
+  //replaces, the seed is set with index_ + 1 instead of index_
+  double r = future_prn(static_cast<int64_t>(index_ + 1), *p.current_seed());
   p.stream_ = STREAM_TRACKING;
 
   int i_low = 0;
@@ -873,18 +904,88 @@ void Nuclide::calculate_urr_xs(int i_temp, Particle& p) const
   if (fission < 0.) {fission = 0.;}
   if (capture < 0.) {capture = 0.;}
 
-  // Set elastic, absorption, fission, and total x/s. Note that the total x/s
-  // is calculated as a sum of partials instead of the table-provided value
+  // Set elastic, absorption, fission, total, and capture x/s. Note that the
+  // total x/s is calculated as a sum of partials instead of the table-provided
+  // value
   micro.elastic = elastic;
   micro.absorption = capture + fission;
   micro.fission = fission;
   micro.total = elastic + inelastic + capture + fission;
+  if (simulation::need_depletion_rx) {
+    micro.reaction[0] = capture;
+  }
 
   // Determine nu-fission cross-section
   if (fissionable_) {
     micro.nu_fission = nu(p.E_, EmissionMode::total) * micro.fission;
   }
+}
 
+std::pair<gsl::index, double> Nuclide::find_temperature(double T) const
+{
+  Expects(T >= 0.0);
+
+  // Determine temperature index
+  gsl::index i_temp = 0;
+  double f = 0.0;
+  double kT = K_BOLTZMANN * T;
+  gsl::index n = kTs_.size();
+  switch (settings::temperature_method) {
+  case TemperatureMethod::NEAREST:
+    {
+      double max_diff = INFTY;
+      for (gsl::index t = 0; t < n; ++t) {
+        double diff = std::abs(kTs_[t] - kT);
+        if (diff < max_diff) {
+          i_temp = t;
+          max_diff = diff;
+        }
+      }
+    }
+    break;
+
+  case TemperatureMethod::INTERPOLATION:
+    // Find temperatures that bound the actual temperature
+    while (kTs_[i_temp + 1] < kT && i_temp + 1 < n - 1) ++i_temp;
+
+    // Determine interpolation factor
+    f = (kT - kTs_[i_temp]) / (kTs_[i_temp + 1] - kTs_[i_temp]);
+  }
+
+  Ensures(i_temp >= 0 && i_temp < n);
+
+  return {i_temp, f};
+}
+
+double Nuclide::collapse_rate(int MT, double temperature, gsl::span<const double> energy,
+  gsl::span<const double> flux) const
+{
+  Expects(MT > 0);
+  Expects(energy.size() > 0);
+  Expects(energy.size() == flux.size() + 1);
+
+  int i_rx = reaction_index_[MT];
+  if (i_rx < 0) return 0.0;
+  const auto& rx = reactions_[i_rx];
+
+  // Determine temperature index
+  gsl::index i_temp;
+  double f;
+  std::tie(i_temp, f) = this->find_temperature(temperature);
+
+  // Get reaction rate at lower temperature
+  const auto& grid_low = grid_[i_temp].energy;
+  double rr_low = rx->collapse_rate(i_temp, energy, flux, grid_low);
+
+  if (f > 0.0) {
+    // Interpolate between reaction rate at lower and higher temperature
+    const auto& grid_high = grid_[i_temp + 1].energy;
+    double rr_high = rx->collapse_rate(i_temp + 1, energy, flux, grid_high);
+    return rr_low + f*(rr_high - rr_low);
+  } else {
+    // If interpolation factor is zero, return reaction rate at lower temperature
+    return rr_low;
+  }
 }
 
 //==============================================================================
@@ -919,41 +1020,66 @@ nuclides_size()
 // C API
 //==============================================================================
 
-extern "C" int openmc_load_nuclide(const char* name)
+extern "C" int openmc_load_nuclide(const char* name, const double* temps, int n)
 {
-  if (data::nuclide_map.find(name) == data::nuclide_map.end()) {
-    const auto& it = data::library_map.find({Library::Type::neutron, name});
-    if (it != data::library_map.end()) {
-      // Get filename for library containing nuclide
-      int idx = it->second;
-      std::string& filename = data::libraries[idx].path_;
-      write_message("Reading " + std::string{name} + " from " + filename, 6);
-
-      // Open file and make sure version is sufficient
-      hid_t file_id = file_open(filename, 'r');
-      check_data_version(file_id);
-
-      // Read nuclide data from HDF5
-      hid_t group = open_group(file_id, name);
-      std::vector<double> temperature;
-      int i_nuclide = data::nuclides.size();
-      data::nuclides.push_back(std::make_unique<Nuclide>(
-        group, temperature, i_nuclide));
-
-      close_group(group);
-      file_close(file_id);
-
-      // Add entry to nuclide dictionary
-      data::nuclide_map[name] = i_nuclide;
-
-      // Initialize nuclide grid
-      data::nuclides.back()->init_grid();
-
-      // Read multipole file into the appropriate entry on the nuclides array
-      if (settings::temperature_multipole) read_multipole_data(i_nuclide);
-    } else {
+  if (data::nuclide_map.find(name) == data::nuclide_map.end() ||
+      data::nuclide_map.at(name) >= data::elements.size()) {
+    LibraryKey key {Library::Type::neutron, name};
+    const auto& it = data::library_map.find(key);
+    if (it == data::library_map.end()) {
       set_errmsg("Nuclide '" + std::string{name} + "' is not present in library.");
       return OPENMC_E_DATA;
+    }
+
+    // Get filename for library containing nuclide
+    int idx = it->second;
+    const auto& filename = data::libraries[idx].path_;
+    write_message(6, "Reading {} from {}", name, filename);
+
+    // Open file and make sure version is sufficient
+    hid_t file_id = file_open(filename, 'r');
+    check_data_version(file_id);
+
+    // Read nuclide data from HDF5
+    hid_t group = open_group(file_id, name);
+    std::vector<double> temperature{temps, temps + n};
+    data::nuclides.push_back(std::make_unique<Nuclide>(group, temperature));
+
+    close_group(group);
+    file_close(file_id);
+
+    // Read multipole file into the appropriate entry on the nuclides array
+    int i_nuclide = data::nuclide_map.at(name);
+    if (settings::temperature_multipole) read_multipole_data(i_nuclide);
+
+    // Read elemental data, if necessary
+    if (settings::photon_transport) {
+      auto element = to_element(name);
+      if (data::element_map.find(element) == data::element_map.end() ||
+          data::element_map.at(element) >= data::elements.size()) {
+        // Read photon interaction data from HDF5 photon library
+        LibraryKey key {Library::Type::photon, element};
+        const auto& it = data::library_map.find(key);
+        if (it == data::library_map.end()) {
+          set_errmsg("Element '" + std::string{element} + "' is not present in library.");
+          return OPENMC_E_DATA;
+        }
+
+        int idx = it->second;
+        const auto& filename = data::libraries[idx].path_;
+        write_message(6, "Reading {} from {} ", element, filename);
+
+        // Open file and make sure version is sufficient
+        hid_t file_id = file_open(filename, 'r');
+        check_data_version(file_id);
+
+        // Read element data from HDF5
+        hid_t group = open_group(file_id, element.c_str());
+        data::elements.push_back(std::make_unique<PhotonInteraction>(group));
+
+        close_group(group);
+        file_close(file_id);
+      }
     }
   }
   return 0;
@@ -983,16 +1109,35 @@ openmc_nuclide_name(int index, const char** name)
   }
 }
 
+extern "C" int
+openmc_nuclide_collapse_rate(int index, int MT, double temperature,
+  const double* energy, const double* flux, int n, double* xs)
+{
+  if (index < 0 || index >= data::nuclides.size()) {
+    set_errmsg("Index in nuclides vector is out of bounds.");
+    return OPENMC_E_OUT_OF_BOUNDS;
+  }
+
+  try {
+    *xs = data::nuclides[index]->collapse_rate(MT, temperature,
+      {energy, energy + n + 1}, {flux, flux + n});
+  } catch (const std::out_of_range& e) {
+    fmt::print("Caught error\n");
+    set_errmsg(e.what());
+    return OPENMC_E_OUT_OF_BOUNDS;
+  }
+  return 0;
+}
+
 void nuclides_clear()
 {
   data::nuclides.clear();
   data::nuclide_map.clear();
 }
 
-bool multipole_in_range(const Nuclide* nuc, double E)
+bool multipole_in_range(const Nuclide& nuc, double E)
 {
-  return nuc->multipole_ && E >= nuc->multipole_->E_min_&&
-    E <= nuc->multipole_->E_max_;
+  return E >= nuc.multipole_->E_min_ && E <= nuc.multipole_->E_max_;
 }
 
 } // namespace openmc

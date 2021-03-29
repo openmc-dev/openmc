@@ -7,19 +7,13 @@ http://www-nds.iaea.org/ndspub/documents/endf/endf102/endf102.pdf
 
 """
 import io
-import re
-import os
-from math import pi
 from pathlib import PurePath
-from collections import OrderedDict
-from collections.abc import Iterable
+import re
 
 import numpy as np
-from numpy.polynomial.polynomial import Polynomial
 
-from .data import ATOMIC_SYMBOL, gnd_name
-from .function import Tabulated1D, INTERPOLATION_SCHEME
-from openmc.stats.univariate import Uniform, Tabular, Legendre
+from .data import gnd_name
+from .function import Tabulated1D
 try:
     from ._endf import float_endf
     _CYTHON = True
@@ -397,8 +391,10 @@ class Evaluation:
     def __init__(self, filename_or_obj):
         if isinstance(filename_or_obj, (str, PurePath)):
             fh = open(str(filename_or_obj), 'r')
+            need_to_close = True
         else:
             fh = filename_or_obj
+            need_to_close = False
         self.section = {}
         self.info = {}
         self.target = {}
@@ -446,13 +442,13 @@ class Evaluation:
                     section_data += line
             self.section[MF, MT] = section_data
 
+        if need_to_close:
+            fh.close()
+
         self._read_header()
 
     def __repr__(self):
-        if 'zsymam' in self.target:
-            name = self.target['zsymam'].replace(' ', '')
-        else:
-            name = 'Unknown'
+        name = self.target['zsymam'].replace(' ', '')
         return '<{} for {} {}>'.format(self.info['sublibrary'], name,
                                        self.info['library'])
 
@@ -515,6 +511,8 @@ class Evaluation:
             self.info['date_entry'] = text[1][55:63]
             self.info['identifier'] = text[2:5]
             self.info['description'] = text[5:]
+        else:
+            self.target['zsymam'] = 'Unknown'
 
         # File numbers, reaction designations, and number of records
         for i in range(NXC):

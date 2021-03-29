@@ -1,8 +1,10 @@
 # OpenMC Monte Carlo Particle Transport Code
 
 [![License](https://img.shields.io/github/license/openmc-dev/openmc.svg)](http://openmc.readthedocs.io/en/latest/license.html)
-[![Travis CI build status (Linux)](https://travis-ci.org/openmc-dev/openmc.svg?branch=develop)](https://travis-ci.org/openmc-dev/openmc)
+[![GitHub Actions build status (Linux)](https://github.com/openmc-dev/openmc/workflows/CI/badge.svg?branch=develop)](https://github.com/openmc-dev/openmc/actions?query=workflow%3ACI)
 [![Code Coverage](https://coveralls.io/repos/github/openmc-dev/openmc/badge.svg?branch=develop)](https://coveralls.io/github/openmc-dev/openmc?branch=develop)
+[![dockerhub-publish-develop-dagmc](https://github.com/openmc-dev/openmc/workflows/dockerhub-publish-develop-dagmc/badge.svg)](https://github.com/openmc-dev/openmc/actions?query=workflow%3Adockerhub-publish-develop-dagmc)
+[![dockerhub-publish-develop](https://github.com/openmc-dev/openmc/workflows/dockerhub-publish-develop/badge.svg)](https://github.com/openmc-dev/openmc/actions?query=workflow%3Adockerhub-publish-develop)
 
 The OpenMC project aims to provide a fully-featured Monte Carlo particle
 transport code based on modern methods. It is a constructive solid geometry,
@@ -12,9 +14,7 @@ project started under the Computational Reactor Physics Group at MIT.
 Complete documentation on the usage of OpenMC is hosted on Read the Docs (both
 for the [latest release](http://openmc.readthedocs.io/en/stable/) and
 [developmental](http://openmc.readthedocs.io/en/latest/) version). If you are
-interested in the project or would like to help and contribute, please send a
-message to the OpenMC User's Group [mailing
-list](https://groups.google.com/forum/?fromgroups=#!forum/openmc-users).
+interested in the project, or would like to help and contribute, please get in touch on the OpenMC [discussion forum](https://openmc.discourse.group/).
 
 ## Installation
 
@@ -35,11 +35,9 @@ citing the following publication:
 ## Troubleshooting
 
 If you run into problems compiling, installing, or running OpenMC, first check
-the [Troubleshooting
-section](http://openmc.readthedocs.io/en/stable/usersguide/troubleshoot.html) in
+the [Troubleshooting section](http://openmc.readthedocs.io/en/stable/usersguide/troubleshoot.html) in
 the User's Guide. If you are not able to find a solution to your problem there,
-please send a message to the User's Group [mailing
-list](https://groups.google.com/forum/?fromgroups=#!forum/openmc-users).
+please post to the [discussion forum](https://openmc.discourse.group/).
 
 ## Reporting Bugs
 

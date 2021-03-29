@@ -1,14 +1,14 @@
-from abc import ABCMeta, abstractmethod
+from abc import ABC, abstractmethod
 from collections.abc import Iterable, Callable
 from functools import reduce
 from itertools import zip_longest
-from numbers import Real, Integral
 from math import exp, log
+from numbers import Real, Integral
 
 import numpy as np
 
-import openmc.data
 import openmc.checkvalue as cv
+import openmc.data
 from openmc.mixin import EqualityMixin
 from .data import EV_PER_MEV
 
@@ -56,7 +56,7 @@ def sum_functions(funcs):
         return Polynomial(coeffs)
 
 
-class Function1D(EqualityMixin, metaclass=ABCMeta):
+class Function1D(EqualityMixin, ABC):
     """A function of one independent variable with HDF5 support."""
     @abstractmethod
     def __call__(self): pass

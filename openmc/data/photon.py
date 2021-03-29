@@ -2,18 +2,17 @@ from collections import OrderedDict
 from collections.abc import Mapping, Callable
 from copy import deepcopy
 from io import StringIO
+from math import pi
 from numbers import Integral, Real
-from math import pi, sqrt
 import os
 
 import h5py
 import numpy as np
 import pandas as pd
 from scipy.interpolate import CubicSpline
-from scipy.integrate import quad
 
-from openmc.mixin import EqualityMixin
 import openmc.checkvalue as cv
+from openmc.mixin import EqualityMixin
 from . import HDF5_VERSION
 from .ace import Table, get_metadata, get_table
 from .data import ATOMIC_SYMBOL, EV_PER_MEV
@@ -677,8 +676,10 @@ class IncidentPhoton(EqualityMixin):
         """
         if isinstance(group_or_filename, h5py.Group):
             group = group_or_filename
+            need_to_close = False
         else:
             h5file = h5py.File(str(group_or_filename), 'r')
+            need_to_close = True
 
             # Make sure version matches
             if 'version' in h5file.attrs:
@@ -739,6 +740,10 @@ class IncidentPhoton(EqualityMixin):
                         'num_electrons', 'photon_energy'):
                 data.bremsstrahlung[key] = rgroup[key][()]
 
+        # If HDF5 file was opened here, make sure it gets closed
+        if need_to_close:
+            h5file.close()
+
         return data
 
     def export_to_hdf5(self, path, mode='a', libver='earliest'):
@@ -748,7 +753,7 @@ class IncidentPhoton(EqualityMixin):
         ----------
         path : str
             Path to write HDF5 file to
-        mode : {'r', 'r+', 'w', 'x', 'a'}
+        mode : {'r+', 'w', 'x', 'a'}
             Mode that is used to open the HDF5 file. This is the second argument
             to the :class:`h5py.File` constructor.
         libver : {'earliest', 'latest'}
@@ -756,69 +761,69 @@ class IncidentPhoton(EqualityMixin):
             that are less backwards compatible but have performance benefits.
 
         """
-        # Open file and write version
-        f = h5py.File(str(path), mode, libver=libver)
-        f.attrs['filetype'] = np.string_('data_photon')
-        if 'version' not in f.attrs:
-            f.attrs['version'] = np.array(HDF5_VERSION)
+        with h5py.File(str(path), mode, libver=libver) as f:
+            # Write filetype and version
+            f.attrs['filetype'] = np.string_('data_photon')
+            if 'version' not in f.attrs:
+                f.attrs['version'] = np.array(HDF5_VERSION)
 
-        group = f.create_group(self.name)
-        group.attrs['Z'] = Z = self.atomic_number
+            group = f.create_group(self.name)
+            group.attrs['Z'] = Z = self.atomic_number
 
-        # Determine union energy grid
-        union_grid = np.array([])
-        for rx in self:
-            union_grid = np.union1d(union_grid, rx.xs.x)
-        group.create_dataset('energy', data=union_grid)
+            # Determine union energy grid
+            union_grid = np.array([])
+            for rx in self:
+                union_grid = np.union1d(union_grid, rx.xs.x)
+            group.create_dataset('energy', data=union_grid)
 
-        # Write cross sections
-        shell_group = group.create_group('subshells')
-        designators = []
-        for mt, rx in self.reactions.items():
-            name, key = _REACTION_NAME[mt]
-            if mt in (502, 504, 515, 517, 522, 525):
-                sub_group = group.create_group(key)
-            elif mt >= 534 and mt <= 572:
-                # Subshell
-                designators.append(key)
-                sub_group = shell_group.create_group(key)
+            # Write cross sections
+            shell_group = group.create_group('subshells')
+            designators = []
+            for mt, rx in self.reactions.items():
+                name, key = _REACTION_NAME[mt]
+                if mt in (502, 504, 515, 517, 522, 525):
+                    sub_group = group.create_group(key)
+                elif mt >= 534 and mt <= 572:
+                    # Subshell
+                    designators.append(key)
+                    sub_group = shell_group.create_group(key)
 
-                # Write atomic relaxation
-                if self.atomic_relaxation is not None:
-                    if key in self.atomic_relaxation.subshells:
-                        self.atomic_relaxation.to_hdf5(sub_group, key)
-            else:
-                continue
-
-            rx.to_hdf5(sub_group, union_grid, Z)
-
-        shell_group.attrs['designators'] = np.array(designators, dtype='S')
-
-        # Write Compton profiles
-        if self.compton_profiles:
-            compton_group = group.create_group('compton_profiles')
-
-            profile = self.compton_profiles
-            compton_group.create_dataset('num_electrons',
-                                         data=profile['num_electrons'])
-            compton_group.create_dataset('binding_energy',
-                                         data=profile['binding_energy'])
-
-            # Get electron momentum values
-            compton_group.create_dataset('pz', data=profile['J'][0].x)
-
-            # Create/write 2D array of profiles
-            J = np.array([Jk.y for Jk in profile['J']])
-            compton_group.create_dataset('J', data=J)
-
-        # Write bremsstrahlung
-        if self.bremsstrahlung:
-            brem_group = group.create_group('bremsstrahlung')
-            for key, value in self.bremsstrahlung.items():
-                if key == 'I':
-                    brem_group.attrs[key] = value
+                    # Write atomic relaxation
+                    if self.atomic_relaxation is not None:
+                        if key in self.atomic_relaxation.subshells:
+                            self.atomic_relaxation.to_hdf5(sub_group, key)
                 else:
-                    brem_group.create_dataset(key, data=value)
+                    continue
+
+                rx.to_hdf5(sub_group, union_grid, Z)
+
+            shell_group.attrs['designators'] = np.array(designators, dtype='S')
+
+            # Write Compton profiles
+            if self.compton_profiles:
+                compton_group = group.create_group('compton_profiles')
+
+                profile = self.compton_profiles
+                compton_group.create_dataset('num_electrons',
+                                            data=profile['num_electrons'])
+                compton_group.create_dataset('binding_energy',
+                                            data=profile['binding_energy'])
+
+                # Get electron momentum values
+                compton_group.create_dataset('pz', data=profile['J'][0].x)
+
+                # Create/write 2D array of profiles
+                J = np.array([Jk.y for Jk in profile['J']])
+                compton_group.create_dataset('J', data=J)
+
+            # Write bremsstrahlung
+            if self.bremsstrahlung:
+                brem_group = group.create_group('bremsstrahlung')
+                for key, value in self.bremsstrahlung.items():
+                    if key == 'I':
+                        brem_group.attrs[key] = value
+                    else:
+                        brem_group.create_dataset(key, data=value)
 
     def _add_bremsstrahlung(self):
         """Add the data used in the thick-target bremsstrahlung approximation
@@ -838,7 +843,8 @@ class IncidentPhoton(EqualityMixin):
                     }
 
             filename = os.path.join(os.path.dirname(__file__), 'BREMX.DAT')
-            brem = open(filename, 'r').read().split()
+            with open(filename, 'r') as fh:
+                brem = fh.read().split()
 
             # Incident electron kinetic energy grid in eV
             _BREMSSTRAHLUNG['electron_energy'] = np.logspace(3, 9, 200)
@@ -874,7 +880,7 @@ class IncidentPhoton(EqualityMixin):
                     # Cubic spline interpolation in log energy and linear DCS
                     cs = CubicSpline(logx, y[:, j])
 
-                    # Get scaled DCS values (millibarns) on new energy grid
+                    # Get scaled DCS values (barns) on new energy grid
                     dcs[:, j] = cs(log_energy)
 
                 _BREMSSTRAHLUNG[i]['dcs'] = dcs

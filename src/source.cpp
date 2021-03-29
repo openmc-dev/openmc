@@ -5,6 +5,7 @@
 #endif
 
 #include <algorithm> // for move
+#include <memory> // for unique_ptr
 
 #ifdef HAS_DYNAMIC_LINKING
 #include <dlfcn.h> // for dlopen, dlsym, dlclose, dlerror
@@ -38,27 +39,18 @@ namespace openmc {
 
 namespace model {
 
-std::vector<SourceDistribution> external_sources;
+std::vector<std::unique_ptr<Source>> external_sources;
 
 }
 
-namespace {
-
-using sample_t = Particle::Bank (*)(uint64_t* seed);
-sample_t custom_source_function;
-void* custom_source_library;
-
-}
-
-
 //==============================================================================
-// SourceDistribution implementation
+// IndependentSource implementation
 //==============================================================================
 
-SourceDistribution::SourceDistribution(UPtrSpace space, UPtrAngle angle, UPtrDist energy)
+IndependentSource::IndependentSource(UPtrSpace space, UPtrAngle angle, UPtrDist energy)
   : space_{std::move(space)}, angle_{std::move(angle)}, energy_{std::move(energy)} { }
 
-SourceDistribution::SourceDistribution(pugi::xml_node node)
+IndependentSource::IndependentSource(pugi::xml_node node)
 {
   // Check for particle type
   if (check_for_node(node, "particle")) {
@@ -80,20 +72,7 @@ SourceDistribution::SourceDistribution(pugi::xml_node node)
 
   // Check for external source file
   if (check_for_node(node, "file")) {
-    // Copy path of source file
-    settings::path_source = get_node_value(node, "file", false, true);
 
-    // Check if source file exists
-    if (!file_exists(settings::path_source)) {
-      fatal_error(fmt::format("Source file '{}' does not exist.",
-        settings::path_source));
-    }
-  } else if (check_for_node(node, "library")) {
-    settings::path_source_library = get_node_value(node, "library", false, true);
-    if (!file_exists(settings::path_source_library)) {
-      fatal_error(fmt::format("Source library '{}' does not exist.",
-        settings::path_source_library));
-    }
   } else {
 
     // Spatial distribution for external source
@@ -162,8 +141,7 @@ SourceDistribution::SourceDistribution(pugi::xml_node node)
   }
 }
 
-
-Particle::Bank SourceDistribution::sample(uint64_t* seed) const
+Particle::Bank IndependentSource::sample(uint64_t* seed) const
 {
   Particle::Bank site;
 
@@ -180,10 +158,10 @@ Particle::Bank SourceDistribution::sample(uint64_t* seed) const
 
     // Sample spatial distribution
     site.r = space_->sample(seed);
-    double xyz[] {site.r.x, site.r.y, site.r.z};
 
     // Now search to see if location exists in geometry
     int32_t cell_index, instance;
+    double xyz[] {site.r.x, site.r.y, site.r.z};
     int err = openmc_find_cell(xyz, &cell_index, &instance);
     found = (err != OPENMC_E_GEOMETRY);
 
@@ -247,8 +225,98 @@ Particle::Bank SourceDistribution::sample(uint64_t* seed) const
 
   // Set delayed group
   site.delayed_group = 0;
+  // Set surface ID
+  site.surf_id = 0;
 
   return site;
+}
+
+//==============================================================================
+// FileSource implementation
+//==============================================================================
+
+FileSource::FileSource(std::string path)
+{
+  // Check if source file exists
+  if (!file_exists(path)) {
+    fatal_error(fmt::format("Source file '{}' does not exist.", path));
+  }
+
+  // Read the source from a binary file instead of sampling from some
+  // assumed source distribution
+  write_message(6, "Reading source file from {}...", path);
+
+  // Open the binary file
+  hid_t file_id = file_open(path, 'r', true);
+
+  // Check to make sure this is a source file
+  std::string filetype;
+  read_attribute(file_id, "filetype", filetype);
+  if (filetype != "source" && filetype != "statepoint") {
+    fatal_error("Specified starting source file not a source file type.");
+  }
+
+  // Read in the source particles
+  read_source_bank(file_id, sites_, false);
+
+  // Close file
+  file_close(file_id);
+}
+
+Particle::Bank FileSource::sample(uint64_t* seed) const
+{
+  size_t i_site = sites_.size()*prn(seed);
+  return sites_[i_site];
+}
+
+//==============================================================================
+// CustomSourceWrapper implementation
+//==============================================================================
+
+CustomSourceWrapper::CustomSourceWrapper(std::string path, std::string parameters)
+{
+#ifdef HAS_DYNAMIC_LINKING
+  // Open the library
+  shared_library_ = dlopen(path.c_str(), RTLD_LAZY);
+  if (!shared_library_) {
+    fatal_error("Couldn't open source library " + path);
+  }
+
+  // reset errors
+  dlerror();
+
+  // get the function to create the custom source from the library
+  auto create_custom_source = reinterpret_cast<create_custom_source_t*>(
+    dlsym(shared_library_, "openmc_create_source"));
+
+  // check for any dlsym errors
+  auto dlsym_error = dlerror();
+  if (dlsym_error) {
+    std::string error_msg = fmt::format("Couldn't open the openmc_create_source symbol: {}", dlsym_error);
+    dlclose(shared_library_);
+    fatal_error(error_msg);
+  }
+
+  // create a pointer to an instance of the custom source
+  custom_source_ = create_custom_source(parameters);
+
+#else
+  fatal_error("Custom source libraries have not yet been implemented for "
+    "non-POSIX systems");
+#endif
+}
+
+CustomSourceWrapper::~CustomSourceWrapper()
+{
+  // Make sure custom source is cleared before closing shared library
+  if (custom_source_.get()) custom_source_.reset();
+
+#ifdef HAS_DYNAMIC_LINKING
+  dlclose(shared_library_);
+#else
+  fatal_error("Custom source libraries have not yet been implemented for "
+              "non-POSIX systems");
+#endif
 }
 
 //==============================================================================
@@ -259,48 +327,16 @@ void initialize_source()
 {
   write_message("Initializing source particles...", 5);
 
-  if (!settings::path_source.empty()) {
-    // Read the source from a binary file instead of sampling from some
-    // assumed source distribution
+  // Generation source sites from specified distribution in user input
+  #pragma omp parallel for
+  for (int64_t i = 0; i < simulation::work_per_rank; ++i) {
+    // initialize random number seed
+    int64_t id = simulation::total_gen*settings::n_particles +
+      simulation::work_index[mpi::rank] + i + 1;
+    uint64_t seed = init_seed(id, STREAM_SOURCE);
 
-    write_message(fmt::format("Reading source file from {}...",
-      settings::path_source), 6);
-
-    // Open the binary file
-    hid_t file_id = file_open(settings::path_source, 'r', true);
-
-    // Read the file type
-    std::string filetype;
-    read_attribute(file_id, "filetype", filetype);
-
-    // Check to make sure this is a source file
-    if (filetype != "source" && filetype != "statepoint") {
-      fatal_error("Specified starting source file not a source file type.");
-    }
-
-    // Read in the source bank
-    read_source_bank(file_id);
-
-    // Close file
-    file_close(file_id);
-  } else if (!settings::path_source_library.empty()) {
-
-    write_message(fmt::format("Sampling from library source {}...",
-      settings::path_source), 6);
-
-    fill_source_bank_custom_source();
-
-  } else {
-    // Generation source sites from specified distribution in user input
-    for (int64_t i = 0; i < simulation::work_per_rank; ++i) {
-      // initialize random number seed
-      int64_t id = simulation::total_gen*settings::n_particles +
-        simulation::work_index[mpi::rank] + i + 1;
-      uint64_t seed = init_seed(id, STREAM_SOURCE);
-
-      // sample external source distribution
-      simulation::source_bank[i] = sample_external_source(&seed);
-    }
+    // sample external source distribution
+    simulation::source_bank[i] = sample_external_source(&seed);
   }
 
   // Write out initial source
@@ -308,22 +344,17 @@ void initialize_source()
     write_message("Writing out initial source...", 5);
     std::string filename = settings::path_output + "initial_source.h5";
     hid_t file_id = file_open(filename, 'w', true);
-    write_source_bank(file_id);
+    write_source_bank(file_id, false);
     file_close(file_id);
   }
 }
 
 Particle::Bank sample_external_source(uint64_t* seed)
 {
-  // return values from custom source if using
-  if (!settings::path_source_library.empty()) {
-    return sample_custom_source_library(seed);
-  }
-
   // Determine total source strength
   double total_strength = 0.0;
   for (auto& s : model::external_sources)
-    total_strength += s.strength();
+    total_strength += s->strength();
 
   // Sample from among multiple source distributions
   int i = 0;
@@ -331,13 +362,13 @@ Particle::Bank sample_external_source(uint64_t* seed)
     double xi = prn(seed)*total_strength;
     double c = 0.0;
     for (; i < model::external_sources.size(); ++i) {
-      c += model::external_sources[i].strength();
+      c += model::external_sources[i]->strength();
       if (xi < c) break;
     }
   }
 
   // Sample source site from i-th source distribution
-  Particle::Bank site {model::external_sources[i].sample(seed)};
+  Particle::Bank site {model::external_sources[i]->sample(seed)};
 
   // If running in MG, convert site.E to group
   if (!settings::run_CE) {
@@ -352,67 +383,6 @@ Particle::Bank sample_external_source(uint64_t* seed)
 void free_memory_source()
 {
   model::external_sources.clear();
-}
-
-void load_custom_source_library()
-{
-#ifdef HAS_DYNAMIC_LINKING
-
-  // Open the library
-  custom_source_library = dlopen(settings::path_source_library.c_str(), RTLD_LAZY);
-  if (!custom_source_library) {
-    fatal_error("Couldn't open source library " + settings::path_source_library);
-  }
-
-  // reset errors
-  dlerror();
-
-  // get the function from the library
-  using sample_t = Particle::Bank (*)(uint64_t* seed);
-  custom_source_function = reinterpret_cast<sample_t>(dlsym(custom_source_library, "sample_source"));
-
-  // check for any dlsym errors
-  auto dlsym_error = dlerror();
-  if (dlsym_error) {
-    dlclose(custom_source_library);
-    fatal_error(fmt::format("Couldn't open the sample_source symbol: {}", dlsym_error));
-  }
-
-#else
-  fatal_error("Custom source libraries have not yet been implemented for "
-    "non-POSIX systems");
-#endif
-}
-
-void close_custom_source_library()
-{
-  dlclose(custom_source_library);
-}
-
-Particle::Bank sample_custom_source_library(uint64_t* seed)
-{
-  return custom_source_function(seed);
-}
-
-void fill_source_bank_custom_source()
-{
-  // Load the custom library
-  load_custom_source_library();
-
-  // Generation source sites from specified distribution in the
-  // library source
-  for (int64_t i = 0; i < simulation::work_per_rank; ++i) {
-    // initialize random number seed
-    int64_t id = (simulation::total_gen + overall_generation()) *
-      settings::n_particles + simulation::work_index[mpi::rank] + i + 1;
-     uint64_t seed = init_seed(id, STREAM_SOURCE);
-
-    // sample custom library source
-    simulation::source_bank[i] = sample_custom_source_library(&seed);
-  }
-
-  // release the library
-  close_custom_source_library();
 }
 
 } // namespace openmc

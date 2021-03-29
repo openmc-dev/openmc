@@ -112,34 +112,13 @@ find_cell_inner(Particle& p, const NeighborList* neighbor_list)
     // that.
     if (i_cell == C_NONE) {
       int i_universe = p.coord(p.n_coord() - 1).universe;
-      const auto& univ {*model::universes[i_universe]};
-      const auto& cells {
-        !univ.partitioner_
-        ? model::universes[i_universe]->cells_
-        : univ.partitioner_->get_cells(p.r_local(), p.u_local())
-      };
-
-      for (auto it = cells.cbegin(); it != cells.cend(); it++) {
-        i_cell = *it;
-
-        // Make sure the search cell is in the same universe.
-        int i_universe = p.coord(p.n_coord() - 1).universe;
-        if (model::cells[i_cell]->universe_ != i_universe) continue;
-
-        // Check if this cell contains the particle.
-        Position r {p.r_local()};
-        Direction u {p.u_local()};
-        auto surf = p.surface();
-        if (model::cells[i_cell]->contains(r, u, surf)) {
-          p.coord(p.n_coord() - 1).cell = i_cell;
-          found = true;
-          break;
-        }
-      }
+      const auto& univ {model::universes[i_universe]};
+      found = univ->find_cell(p);
     }
     if (!found) {
       return found;
     }
+    i_cell = p.coord_[p.n_coord_ - 1].cell;
 
     // Announce the cell that the particle is entering.
     if (found && (settings::verbosity >= 10 || p.trace())) {

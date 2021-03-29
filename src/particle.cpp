@@ -101,7 +101,7 @@ void Particle::event_calculate_xs()
   // initiate a search for the current cell. This generally happens at the
   // beginning of the history and again for any secondary particles
   if (coord_[n_coord_ - 1].cell == C_NONE) {
-    if (!brute_force_find_cell(*this)) {
+    if (!exhaustive_find_cell(*this)) {
       this->mark_as_lost(
         "Could not find the cell containing particle " + std::to_string(id_));
       return;

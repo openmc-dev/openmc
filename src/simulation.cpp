@@ -535,7 +535,7 @@ void initialize_history(Particle& p, int64_t index_source)
   // initiate a search for the current cell. This generally happens at the
   // beginning of the history and again for any secondary particles
   if (p.coord(p.n_coord() - 1).cell == C_NONE) {
-    if (!brute_force_find_cell(p)) {
+    if (!exhaustive_find_cell(p)) {
       p.mark_as_lost(
         "Could not find the cell containing particle " + std::to_string(p.id()));
       return;

@@ -70,6 +70,8 @@ public:
   //! \param group_id An HDF5 group id.
   void to_hdf5(hid_t group_id) const;
 
+  virtual bool find_cell(Particle &p) const;
+
   BoundingBox bounding_box() const;
 
   GeometryType type_ = GeometryType::CSG;

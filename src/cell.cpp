@@ -212,6 +212,31 @@ Universe::to_hdf5(hid_t universes_group) const
   close_group(group);
 }
 
+bool
+Universe::find_cell(Particle& p) const {
+  const auto& cells {
+    !partitioner_
+    ? cells_
+    : partitioner_->get_cells(p.r_local(), p.u_local())
+  };
+
+  for (auto it = cells.begin(); it != cells.end(); it++) {
+    int32_t i_cell = *it;
+    int32_t i_univ = p.coord_[p.n_coord_-1].universe;
+    if (model::cells[i_cell]->universe_ != i_univ) continue;
+
+    // Check if this cell contains the particle;
+    Position r {p.r_local()};
+    Direction u {p.u_local()};
+    auto surf = p.surface_;
+    if (model::cells[i_cell]->contains(r, u, surf)) {
+      p.coord_[p.n_coord_-1].cell = i_cell;
+      return true;
+    }
+  }
+  return false;
+}
+
 BoundingBox Universe::bounding_box() const {
   BoundingBox bbox = {INFTY, -INFTY, INFTY, -INFTY, INFTY, -INFTY};
   if (cells_.size() == 0) {

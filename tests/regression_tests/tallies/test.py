@@ -121,12 +121,6 @@ def test_tallies():
     harmonics_tally3.scores = ['flux', 'total']
     harmonics_tally3.estimatir = 'tracklength'
 
-    n_collision = (1,2,5,3,6)
-    collision_filter = CollisionFilter(n_collision)
-    collision_tally = Tally()
-    collision_tally .filters = [collision_filter]
-    collision_tally .scores = ['scatter']
-
     universe_tally = Tally()
     universe_tally.filters = [
         UniverseFilter((model.geometry.get_all_universes()[1],
@@ -174,6 +168,15 @@ def test_tallies():
     fusion_tally = Tally()
     fusion_tally.scores = ['H1-production', 'H2-production', 'H3-production',
         'He3-production', 'He4-production', 'heating', 'damage-energy']
+
+    n_collision = (1,2,5,3,6)
+    collision_filter = CollisionFilter(n_collision)
+    collision_tally = Tally()
+    collision_tally.filters = [collision_filter]
+    collision_tally.scores = ['scatter']
+
+
+
 
     model.tallies += [
         azimuthal_tally1, azimuthal_tally2, azimuthal_tally3,

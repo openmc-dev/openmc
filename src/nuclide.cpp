@@ -32,7 +32,7 @@ namespace openmc {
 namespace data {
 std::array<double, 2> energy_min {0.0, 0.0};
 std::array<double, 2> energy_max {INFTY, INFTY};
-double temperature_min {0.0};
+double temperature_min {INFTY};
 double temperature_max {0.0};
 std::unordered_map<std::string, int> nuclide_map;
 std::vector<std::unique_ptr<Nuclide>> nuclides;

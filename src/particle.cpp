@@ -156,7 +156,7 @@ Particle::event_calculate_xs()
   // initiate a search for the current cell. This generally happens at the
   // beginning of the history and again for any secondary particles
   if (coord_[n_coord_ - 1].cell == C_NONE) {
-    if (!find_cell(*this, false)) {
+    if (!exhaustive_find_cell(*this)) {
       this->mark_as_lost("Could not find the cell containing particle "
         + std::to_string(id_));
       return;
@@ -454,7 +454,8 @@ Particle::cross_surface()
   }
 #endif
 
-  if (find_cell(*this, true)) return;
+  if (neighbor_list_find_cell(*this))
+    return;
 
   // ==========================================================================
   // COULDN'T FIND PARTICLE IN NEIGHBORING CELLS, SEARCH ALL CELLS
@@ -462,7 +463,7 @@ Particle::cross_surface()
   // Remove lower coordinate levels and assignment of surface
   surface_ = 0;
   n_coord_ = 1;
-  bool found = find_cell(*this, false);
+  bool found = exhaustive_find_cell(*this);
 
   if (settings::run_mode != RunMode::PLOTTING && (!found)) {
     // If a cell is still not found, there are two possible causes: 1) there is
@@ -476,7 +477,7 @@ Particle::cross_surface()
     // Couldn't find next cell anywhere! This probably means there is an actual
     // undefined region in the geometry.
 
-    if (!find_cell(*this, false)) {
+    if (!exhaustive_find_cell(*this)) {
       this->mark_as_lost("After particle " + std::to_string(id_) +
         " crossed surface " + std::to_string(surf->id_) +
         " it could not be located in any cell and it did not leak.");
@@ -553,7 +554,7 @@ Particle::cross_reflective_bc(const Surface& surf, Direction new_u)
   // (unless we're using a dagmc model, which has exactly one universe)
   if (!settings::dagmc) {
     n_coord_ = 1;
-    if (!find_cell(*this, true)) {
+    if (!neighbor_list_find_cell(*this)) {
       this->mark_as_lost("Couldn't find particle after reflecting from surface "
                          + std::to_string(surf.id_) + ".");
       return;
@@ -601,7 +602,7 @@ Particle::cross_periodic_bc(const Surface& surf, Position new_r,
   // Figure out what cell particle is in now
   n_coord_ = 1;
 
-  if (!find_cell(*this, true)) {
+  if (!neighbor_list_find_cell(*this)) {
     this->mark_as_lost("Couldn't find particle after hitting periodic "
       "boundary on surface " + std::to_string(surf.id_) + ". The normal vector "
       "of one periodic surface may need to be reversed.");

@@ -479,6 +479,13 @@ double get_nuclide_xs(const Particle& p, int i_nuclide, int score_bin) {
   const auto& rxn {*nuc.reactions_[m]};
   const auto& micro {p.neutron_xs_[i_nuclide]};
 
+  // In the URR, the (n,gamma) cross section is sampled randomly from
+  // probability tables. Make sure we use the sampled value (which is equal to
+  // absorption - fission) rather than the dilute average value
+  if (micro.use_ptable && score_bin == N_GAMMA) {
+    return micro.absorption - micro.fission;
+  }
+
   auto i_temp = micro.index_temp;
   if (i_temp >= 0) { // Can be false due to multipole
     // Get index on energy grid and interpolation factor

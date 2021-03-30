@@ -124,7 +124,7 @@ OpenMC.
 .. hint:: The :class:`IncidentNeutron` class allows you to view/modify cross
           sections, secondary angle/energy distributions, probability tables,
           etc. For a more thorough overview of the capabilities of this class,
-          see the :ref:`notebook_nuclear_data` example notebook.
+          see the `example notebook <../examples/nuclear-data.ipynb>`__.
 
 Manually Creating a Library from ENDF files
 -------------------------------------------
@@ -252,15 +252,15 @@ However, if  obtained or generated their own library, the user
 should set the :envvar:`OPENMC_MG_CROSS_SECTIONS` environment variable
 to the absolute path of the file library expected to used most frequently.
 
-For an example of how to create a multi-group library, see
-:ref:`notebook_mg_mode_part_i`.
+For an example of how to create a multi-group library, see the `example notebook
+<../examples/mg-mode-part-i.ipynb>`__.
 
 .. _NJOY: http://www.njoy21.io/
 .. _NNDC: https://www.nndc.bnl.gov/endf
 .. _MCNP: https://mcnp.lanl.gov
 .. _Serpent: http://montecarlo.vtt.fi
 .. _ENDF/B: https://www.nndc.bnl.gov/endf/b7.1/acefiles.html
-.. _JEFF: http://www.oecd-nea.org/dbdata/jeff/jeff33/
+.. _JEFF: https://www.oecd-nea.org/dbdata/jeff/jeff33/
 .. _TENDL: https://tendl.web.psi.ch/tendl_2017/tendl2017.html
 .. _Seltzer and Berger: https://doi.org/10.1016/0092-640X(86)90014-8
 .. _NIST ESTAR database: https://physics.nist.gov/PhysRefData/Star/Text/ESTAR.html

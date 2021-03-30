@@ -474,8 +474,8 @@ template<int i1, int i2> double
 axis_aligned_cylinder_evaluate(Position r, double offset1,
                                double offset2, double radius)
 {
-  const double r1 = r[i1] - offset1;
-  const double r2 = r[i2] - offset2;
+  const double r1 = r.get<i1>() - offset1;
+  const double r2 = r.get<i2>() - offset2;
   return r1*r1 + r2*r2 - radius*radius;
 }
 
@@ -486,12 +486,12 @@ template<int i1, int i2, int i3> double
 axis_aligned_cylinder_distance(Position r, Direction u,
      bool coincident, double offset1, double offset2, double radius)
 {
-  const double a = 1.0 - u[i1]*u[i1];  // u^2 + v^2
+  const double a = 1.0 - u.get<i1>() * u.get<i1>(); // u^2 + v^2
   if (a == 0.0) return INFTY;
 
-  const double r2 = r[i2] - offset1;
-  const double r3 = r[i3] - offset2;
-  const double k = r2 * u[i2] + r3 * u[i3];
+  const double r2 = r.get<i2>() - offset1;
+  const double r3 = r.get<i3>() - offset2;
+  const double k = r2 * u.get<i2>() + r3 * u.get<i3>();
   const double c = r2*r2 + r3*r3 - radius*radius;
   const double quad = k*k - a*c;
 
@@ -532,9 +532,9 @@ template<int i1, int i2, int i3> Direction
 axis_aligned_cylinder_normal(Position r, double offset1, double offset2)
 {
   Direction u;
-  u[i2] = 2.0 * (r[i2] - offset1);
-  u[i3] = 2.0 * (r[i3] - offset2);
-  u[i1] = 0.0;
+  u.get<i2>() = 2.0 * (r.get<i2>() - offset1);
+  u.get<i3>() = 2.0 * (r.get<i3>() - offset2);
+  u.get<i1>() = 0.0;
   return u;
 }
 
@@ -750,9 +750,9 @@ template<int i1, int i2, int i3> double
 axis_aligned_cone_evaluate(Position r, double offset1,
                            double offset2, double offset3, double radius_sq)
 {
-  const double r1 = r[i1] - offset1;
-  const double r2 = r[i2] - offset2;
-  const double r3 = r[i3] - offset3;
+  const double r1 = r.get<i1>() - offset1;
+  const double r2 = r.get<i2>() - offset2;
+  const double r3 = r.get<i3>() - offset3;
   return r2*r2 + r3*r3 - radius_sq*r1*r1;
 }
 
@@ -764,12 +764,13 @@ axis_aligned_cone_distance(Position r, Direction u,
      bool coincident, double offset1, double offset2, double offset3,
      double radius_sq)
 {
-  const double r1 = r[i1] - offset1;
-  const double r2 = r[i2] - offset2;
-  const double r3 = r[i3] - offset3;
-  const double a = u[i2]*u[i2] + u[i3]*u[i3]
-                   - radius_sq*u[i1]*u[i1];
-  const double k = r2*u[i2] + r3*u[i3] - radius_sq*r1*u[i1];
+  const double r1 = r.get<i1>() - offset1;
+  const double r2 = r.get<i2>() - offset2;
+  const double r3 = r.get<i3>() - offset3;
+  const double a = u.get<i2>() * u.get<i2>() + u.get<i3>() * u.get<i3>() -
+                   radius_sq * u.get<i1>() * u.get<i1>();
+  const double k =
+    r2 * u.get<i2>() + r3 * u.get<i3>() - radius_sq * r1 * u.get<i1>();
   const double c = r2*r2 + r3*r3 - radius_sq*r1*r1;
   double quad = k*k - a*c;
 
@@ -818,9 +819,9 @@ axis_aligned_cone_normal(Position r, double offset1, double offset2,
                          double offset3, double radius_sq)
 {
   Direction u;
-  u[i1] = -2.0 * radius_sq * (r[i1] - offset1);
-  u[i2] = 2.0 * (r[i2] - offset2);
-  u[i3] = 2.0 * (r[i3] - offset3);
+  u.get<i1>() = -2.0 * radius_sq * (r.get<i1>() - offset1);
+  u.get<i2>() = 2.0 * (r.get<i2>() - offset2);
+  u.get<i3>() = 2.0 * (r.get<i3>() - offset3);
   return u;
 }
 

@@ -34,13 +34,13 @@ as requested; it is used in many of the provided plotting utilities, OpenMC's
 regression test suite, and can be used in user-created scripts to carry out
 manipulations of the data.
 
-An :ref:`example IPython notebook <notebook_post_processing>` demonstrates how
-to extract data from a statepoint using the Python API.
+An `example notebook <../examples/post-processing.ipynb>`_ demonstrates how to
+extract data from a statepoint using the Python API.
 
 Plotting in 2D
 --------------
 
-The :ref:`IPython notebook example <notebook_post_processing>` also demonstrates
+The `notebook example <../examples/post-processing.ipynb>`_ also demonstrates
 how to plot a structured mesh tally in two dimensions using the Python API. One
 can also use the :ref:`scripts_plot` script which provides an interactive GUI to
 explore and plot structured mesh tallies for any scores and filter bins.
@@ -54,7 +54,7 @@ Getting Data into MATLAB
 There is currently no front-end utility to dump tally data to MATLAB files, but
 the process is straightforward. First extract the data using the Python API via
 ``openmc.statepoint`` and then use the `Scipy MATLAB IO routines
-<http://docs.scipy.org/doc/scipy/reference/tutorial/io.html>`_ to save to a MAT
+<https://docs.scipy.org/doc/scipy/reference/tutorial/io.html>`_ to save to a MAT
 file. Note that all arrays that are accessible in a statepoint are already in
 NumPy arrays that can be reshaped and dumped to MATLAB in one step.
 
@@ -101,5 +101,5 @@ For eigenvalue problems, OpenMC will store information on the fission source
 sites in the statepoint file by default. For each source site, the weight,
 position, sampled direction, and sampled energy are stored. To extract this data
 from a statepoint file, the ``openmc.statepoint`` module can be used. An
-:ref:`example IPython notebook <notebook_post_processing>` demontrates how to
+`example notebook <../examples/post-processing.ipynb>`_ demontrates how to
 analyze and plot source information.

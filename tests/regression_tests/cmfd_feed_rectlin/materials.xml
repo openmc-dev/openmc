@@ -1,0 +1,12 @@
+<?xml version="1.0"?>
+<materials>
+
+  <!-- Definition of materials -->
+  <material id="1">
+    <density value="19" units="g/cc" />
+    <nuclide name="U235" wo="0.21" />
+    <nuclide name="U238" wo="0.68" />
+    <nuclide name="O16" wo="0.11" />
+  </material>
+
+</materials>

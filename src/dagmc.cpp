@@ -88,6 +88,26 @@ DAGUniverse::dagmc_ids_for_dim(int dim) const
   return out.str();
 }
 
+int32_t
+DAGUniverse::implicit_complement_idx() const {
+  moab::EntityHandle ic;
+  moab::ErrorCode rval = dagmc_instance_->geom_tool()->get_implicit_complement(ic);
+  MB_CHK_SET_ERR_CONT(rval, "Failed to get implicit complement");
+  return cell_idx_offset_ + dagmc_instance_->index_by_handle(ic) - 1;
+}
+
+bool
+DAGUniverse::find_cell(Particle &p) const {
+  // if the particle isn't in any of the other DagMC
+  // cells, place it in the implicit complement
+  bool found = Universe::find_cell(p);
+  if (!found && model::universe_map[this->id_] != model::root_universe) {
+    p.coord_[p.n_coord_ - 1].cell = implicit_complement_idx();
+    found = true;
+  }
+  return found;
+}
+
 bool
 DAGUniverse::uses_uwuw() const
 {

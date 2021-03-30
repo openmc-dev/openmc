@@ -29,6 +29,8 @@ public:
 
   bool uses_uwuw() const;
 
+  int32_t implicit_complement_idx() const;
+
   std::string get_uwuw_materials_xml() const;
 
   void write_uwuw_materials_xml(const std::string& outfile = "uwuw_materials.xml") const;
@@ -37,6 +39,8 @@ public:
                               std::unique_ptr<DAGCell>& c) const;
 
   std::string dagmc_ids_for_dim(int dim) const;
+
+  virtual bool find_cell(Particle &p) const override;
 
   // Data Members
   std::string filename_;

@@ -1,4 +1,7 @@
-from tests.testing_harness import TestHarness
+import pytest
+import openmc
+
+from tests.testing_harness import PyAPITestHarness
 
 
 @pytest.fixture

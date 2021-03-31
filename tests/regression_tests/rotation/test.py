@@ -22,7 +22,8 @@ def model():
     hydrogen_cell = openmc.Cell(fill=h1, region=+inner_sphere)
     univ = openmc.Universe(cells=[fuel_cell, hydrogen_cell])
 
-
+    # Create one cell on top of the other. Only one
+    # has a rotation
     box = openmc.rectangular_prism(15., 15., 'z', boundary_type='vacuum')
     lower_z = openmc.ZPlane(-7.5, boundary_type='vacuum')
     upper_z = openmc.ZPlane(22.5, boundary_type='vacuum')

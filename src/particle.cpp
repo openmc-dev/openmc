@@ -38,10 +38,6 @@ namespace openmc {
 void
 LocalCoord::rotate(const std::vector<double>& rotation)
 {
-  if (rotation.empty()) {
-    this->rotated = false;
-    return;
-  }
   this->r = this->r.rotate(rotation);
   this->u = this->u.rotate(rotation);
   this->rotated = true;

@@ -188,9 +188,7 @@ find_cell_inner(Particle& p, const NeighborList* neighbor_list)
       coord.r -= c.translation_;
 
       // Apply rotation.
-      if (!c.rotation_.empty()) {
-        coord.rotate(c.rotation_);
-      }
+      coord.rotate(c.rotation_);
 
     } else if (c.type_ == Fill::LATTICE) {
       //========================================================================

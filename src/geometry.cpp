@@ -247,6 +247,12 @@ find_cell_inner(Particle& p, const NeighborList* neighbor_list)
 
 bool neighbor_list_find_cell(Particle& p)
 {
+
+  // Reset all the deeper coordinate levels.
+  for (int i = p.n_coord_; i < p.coord_.size(); i++) {
+    p.coord_[i].reset();
+  }
+
   // Get the cell this particle was in previously.
   auto coord_lvl = p.n_coord_ - 1;
   auto i_cell = p.coord_[coord_lvl].cell;

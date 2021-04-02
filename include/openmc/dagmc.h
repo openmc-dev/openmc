@@ -19,6 +19,22 @@ class UWUW;
 
 namespace openmc {
 
+class DAGSurface : public Surface
+{
+public:
+  DAGSurface();
+
+  double evaluate(Position r) const;
+  double distance(Position r, Direction u, bool coincident) const;
+  Direction normal(Position r) const;
+  Direction reflect(Position r, Direction u, Particle* p) const;
+
+  inline void to_hdf5_inner(hid_t group_id) const override {};
+
+  std::shared_ptr<moab::DagMC> dagmc_ptr_; //!< Pointer to DagMC instance
+  int32_t dag_index_;      //!< DagMC index of surface
+};
+
 class DAGCell : public Cell {
 public:
   DAGCell();

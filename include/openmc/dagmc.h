@@ -10,12 +10,31 @@ extern "C" const bool DAGMC_ENABLED;
 #include "DagMC.hpp"
 
 #include "openmc/cell.h"
+#include "openmc/particle.h"
 #include "openmc/position.h"
+#include "openmc/surface.h"
 #include "openmc/xml_interface.h"
 
 class UWUW;
 
 namespace openmc {
+
+class DAGCell : public Cell {
+public:
+  DAGCell();
+
+  bool contains(Position r, Direction u, int32_t on_surface) const;
+
+  std::pair<double, int32_t>
+  distance(Position r, Direction u, int32_t on_surface, Particle* p) const;
+
+  BoundingBox bounding_box() const;
+
+  void to_hdf5_inner(hid_t group_id) const;
+
+  std::shared_ptr<moab::DagMC> dagmc_ptr_; //!< Pointer to DagMC instance
+  int32_t dag_index_;      //!< DagMC index of cell
+};
 
 class DAGUniverse : public Universe {
 
@@ -26,7 +45,6 @@ public:
   void initialize(); //!< Sets up the DAGMC instance and OpenMC internals
 
   void read_uwuw_materials(); //!< Reads UWUW materials and returns an ID map
-
   bool uses_uwuw() const;
 
   int32_t implicit_complement_idx() const;
@@ -52,7 +70,9 @@ public:
   bool adjust_material_ids_;
 };
 
+// DAGMC Functions
 void read_dagmc_universes(pugi::xml_node node);
+int32_t next_cell(DAGUniverse* dag_univ, DAGCell* cur_cell, DAGSurface* surf_xed);
 
 } // namespace openmc
 

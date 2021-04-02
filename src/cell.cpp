@@ -826,81 +826,6 @@ CSGCell::contains_complex(Position r, Direction u, int32_t on_surface) const
 }
 
 //==============================================================================
-// DAGMC Cell implementation
-//==============================================================================
-#ifdef DAGMC
-DAGCell::DAGCell() : Cell{} {
-  geom_type_ = GeometryType::DAG;
-  simple_ = true;
-};
-
-std::pair<double, int32_t>
-DAGCell::distance(Position r, Direction u, int32_t on_surface, Particle* p) const
-{
-  Expects(p);
-  // if we've changed direction or we're not on a surface,
-  // reset the history and update last direction
-  if (u != p->last_dir()) { p->last_dir() = u; p->history().reset(); }
-  if (on_surface == 0) { p->history().reset(); }
-
-  const auto& univ = model::universes[p->coord_[p->n_coord_ - 1].universe];
-
-  DAGUniverse* dag_univ = static_cast<DAGUniverse*>(univ.get());
-  if (!dag_univ) fatal_error("DAGMC call made for particle in a non-DAGMC universe");
-
-  moab::ErrorCode rval;
-  moab::EntityHandle vol = dagmc_ptr_->entity_by_index(3, dag_index_);
-  moab::EntityHandle hit_surf;
-  double dist;
-  double pnt[3] = {r.x, r.y, r.z};
-  double dir[3] = {u.x, u.y, u.z};
-  rval = dagmc_ptr_->ray_fire(vol, pnt, dir, hit_surf, dist, &p->history());
-  MB_CHK_ERR_CONT(rval);
-  int surf_idx;
-  if (hit_surf != 0) {
-    surf_idx = dag_univ->surf_idx_offset_ + dagmc_ptr_->index_by_handle(hit_surf);
-  } else {
-    // indicate that particle is lost
-    surf_idx = -1;
-    dist = INFINITY;
-    if (!dagmc_ptr_->is_implicit_complement(vol) || model::universe_map[dag_univ->id_] == model::root_universe) {
-      p->mark_as_lost(fmt::format("No intersection found with DAGMC cell {}", id_));
-    }
-  }
-
-  return {dist, surf_idx};
-}
-
-bool DAGCell::contains(Position r, Direction u, int32_t on_surface) const
-{
-  moab::ErrorCode rval;
-  moab::EntityHandle vol = dagmc_ptr_->entity_by_index(3, dag_index_);
-
-  int result = 0;
-  double pnt[3] = {r.x, r.y, r.z};
-  double dir[3] = {u.x, u.y, u.z};
-  rval = dagmc_ptr_->point_in_volume(vol, pnt, result, dir);
-  MB_CHK_ERR_CONT(rval);
-  return result;
-}
-
-void DAGCell::to_hdf5_inner(hid_t group_id) const {
-  write_string(group_id, "geom_type", "dagmc", false);
-}
-
-BoundingBox DAGCell::bounding_box() const
-{
-  moab::ErrorCode rval;
-  moab::EntityHandle vol = dagmc_ptr_->entity_by_index(3, dag_index_);
-  double min[3], max[3];
-  rval = dagmc_ptr_->getobb(vol, min, max);
-  MB_CHK_ERR_CONT(rval);
-  return {min[0], max[0], min[1], max[1], min[2], max[2]};
-}
-
-#endif
-
-//==============================================================================
 // UniversePartitioner implementation
 //==============================================================================
 
@@ -1355,21 +1280,6 @@ openmc_extend_cells(int32_t n, int32_t* index_start, int32_t* index_end)
   }
   return 0;
 }
-
-#ifdef DAGMC
-int32_t next_cell(DAGUniverse* dag_univ, DAGCell* cur_cell, DAGSurface* surf_xed)
-{
-  moab::EntityHandle surf =
-    surf_xed->dagmc_ptr_->entity_by_index(2, surf_xed->dag_index_);
-  moab::EntityHandle vol =
-    cur_cell->dagmc_ptr_->entity_by_index(3, cur_cell->dag_index_);
-
-  moab::EntityHandle new_vol;
-  cur_cell->dagmc_ptr_->next_vol(surf, vol, new_vol);
-
-  return cur_cell->dagmc_ptr_->index_by_handle(new_vol) + dag_univ->cell_idx_offset_;
-}
-#endif
 
 extern "C" int cells_size() { return model::cells.size(); }
 

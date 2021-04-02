@@ -261,28 +261,6 @@ protected:
 };
 
 //==============================================================================
-
-#ifdef DAGMC
-class DAGCell : public Cell
-{
-public:
-  DAGCell();
-
-  bool contains(Position r, Direction u, int32_t on_surface) const;
-
-  std::pair<double, int32_t>
-  distance(Position r, Direction u, int32_t on_surface, Particle* p) const;
-
-  BoundingBox bounding_box() const;
-
-  void to_hdf5_inner(hid_t group_id) const;
-
-  std::shared_ptr<moab::DagMC> dagmc_ptr_; //!< Pointer to DagMC instance
-  int32_t dag_index_;      //!< DagMC index of cell
-};
-#endif
-
-//==============================================================================
 //! Speeds up geometry searches by grouping cells in a search tree.
 //
 //! Currently this object only works with universes that are divided up by a
@@ -351,7 +329,6 @@ void read_cells(pugi::xml_node node);
 
 #ifdef DAGMC
 class DAGUniverse;
-int32_t next_cell(DAGUniverse* dag_univ, DAGCell* cur_cell, DAGSurface* surf_xed);
 #endif
 
 } // namespace openmc

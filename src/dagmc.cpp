@@ -578,6 +578,57 @@ int32_t next_cell(DAGUniverse* dag_univ, DAGCell* cur_cell, DAGSurface* surf_xed
   return cur_cell->dagmc_ptr_->index_by_handle(new_vol) + dag_univ->cell_idx_offset_;
 }
 
+//==============================================================================
+// DAGSurface implementation
+//==============================================================================
+DAGSurface::DAGSurface() : Surface{} {
+  geom_type_ = GeometryType::DAG;
+} // empty constructor
+
+double DAGSurface::evaluate(Position r) const
+{
+  return 0.0;
+}
+
+double
+DAGSurface::distance(Position r, Direction u, bool coincident) const
+{
+  moab::ErrorCode rval;
+  moab::EntityHandle surf = dagmc_ptr_->entity_by_index(2, dag_index_);
+  moab::EntityHandle hit_surf;
+  double dist;
+  double pnt[3] = {r.x, r.y, r.z};
+  double dir[3] = {u.x, u.y, u.z};
+  rval = dagmc_ptr_->ray_fire(surf, pnt, dir, hit_surf, dist, NULL, 0, 0);
+  MB_CHK_ERR_CONT(rval);
+  if (dist < 0.0) dist = INFTY;
+  return dist;
+}
+
+Direction DAGSurface::normal(Position r) const
+{
+  moab::ErrorCode rval;
+  moab::EntityHandle surf = dagmc_ptr_->entity_by_index(2, dag_index_);
+  double pnt[3] = {r.x, r.y, r.z};
+  double dir[3];
+  rval = dagmc_ptr_->get_angle(surf, pnt, dir);
+  MB_CHK_ERR_CONT(rval);
+  return dir;
+}
+
+Direction DAGSurface::reflect(Position r, Direction u, Particle* p) const
+{
+  Expects(p);
+  p->history_.reset_to_last_intersection();
+  moab::ErrorCode rval;
+  moab::EntityHandle surf = dagmc_ptr_->entity_by_index(2, dag_index_);
+  double pnt[3] = {r.x, r.y, r.z};
+  double dir[3];
+  rval = dagmc_ptr_->get_angle(surf, pnt, dir, &p->history_);
+  MB_CHK_ERR_CONT(rval);
+  p->last_dir_ = u.reflect(dir);
+  return p->last_dir_;
+}
 
 }
 #endif

@@ -188,7 +188,7 @@ class Settings:
     volume_calculations : VolumeCalculation or iterable of VolumeCalculation
         Stochastic volume calculation specifications
         
-    weightwindowmesh : openmc.WeightWindowMesh
+    weight_window_mesh : openmc.WeightWindowMesh
         Mesh to be used for Weight Window
 
     """

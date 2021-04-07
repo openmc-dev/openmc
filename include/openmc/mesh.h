@@ -329,16 +329,14 @@ public:
 
   void to_hdf5(hid_t group) const override;
 
-private:
-
-  //! Setup method for the mesh. Builds data structures,
-  //! sets up element mapping, creates bounding boxes, etc.
-  virtual void initialize() = 0;
-
-public:
   // Data members
   bool output_ {true}; //!< Write tallies onto the unstructured mesh at the end of a run
   std::string filename_; //!< Path to unstructured mesh file
+
+private:
+  //! Setup method for the mesh. Builds data structures,
+  //! sets up element mapping, creates bounding boxes, etc.
+  virtual void initialize() = 0;
 };
 
 #ifdef DAGMC

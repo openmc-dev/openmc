@@ -69,8 +69,7 @@ int openmc_init(int argc, char* argv[], const void* intracomm)
 
 // initialize libMesh if it hasn't been initialized already
 // (if initialized externally, the libmesh_init object needs to be provided also)
-if (!settings::libmesh_init && !libMesh::initialized())
-{
+if (!settings::libmesh_init && !libMesh::initialized()) {
 #ifdef OPENMC_MPI
   // pass command line args, empty MPI communicator, and number of threads.
   // Because libMesh was not initialized, we assume that OpenMC is the primary

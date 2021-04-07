@@ -103,23 +103,23 @@ def test_tallies():
     legendre_tally = Tally()
     legendre_tally.filters = [legendre_filter]
     legendre_tally.scores = ['scatter', 'nu-scatter']
-    legendre_tally.estimatir = 'analog'
+    legendre_tally.estimator = 'analog'
 
     harmonics_filter = SphericalHarmonicsFilter(order=4)
     harmonics_tally = Tally()
     harmonics_tally.filters = [harmonics_filter]
     harmonics_tally.scores = ['scatter', 'nu-scatter', 'flux', 'total']
-    harmonics_tally.estimatir = 'analog'
+    harmonics_tally.estimator = 'analog'
 
     harmonics_tally2 = Tally()
     harmonics_tally2.filters = [harmonics_filter]
     harmonics_tally2.scores = ['flux', 'total']
-    harmonics_tally2.estimatir = 'collision'
+    harmonics_tally2.estimator = 'collision'
 
     harmonics_tally3 = Tally()
     harmonics_tally3.filters = [harmonics_filter]
     harmonics_tally3.scores = ['flux', 'total']
-    harmonics_tally3.estimatir = 'tracklength'
+    harmonics_tally3.estimator = 'tracklength'
 
     universe_tally = Tally()
     universe_tally.filters = [

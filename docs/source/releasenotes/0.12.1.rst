@@ -1,0 +1,122 @@
+====================
+What's New in 0.12.1
+====================
+
+.. currentmodule:: openmc
+
+-------
+Summary
+-------
+
+This release of OpenMC includes an assortment of new features and many bug
+fixes. The :mod:`openmc.deplete` module incorporates a number of improvements in
+usability, accuracy, and performance. Other enhancements include generalized
+rotational periodic boundary conditions, expanded source modeling capabilities,
+and a capability to generate windowed multipole library files from ENDF files.
+
+------------
+New Features
+------------
+
+- Boundary conditions have been refactored and generalized. Rotational periodic
+  boundary conditions can now be applied to any N-fold symmetric geometry.
+- External source distributions have been refactored and extended. Users writing
+  their own C++ custom sources need to write a class that derives from
+  ``openmc::Source``. These changes have enabled new functionality, such as:
+
+  - Mixing more than one custom source library together
+  - Mixing a normal source with a custom source
+  - Using a file-based source for fixed source simulations
+  - Using a file-based source for eigenvalue simulations even when the number of
+    particles doesn't match
+
+- New capability to read and write a source file based on particles that cross a
+  surface (known as a "surface source").
+- Various improvements related to depletion:
+
+  - Reactions used in a depletion chain can now be configured through the
+    ``reactions`` argument to :meth:`openmc.deplete.Chain.from_endf`.
+  - Specifying a power of zero during a depletion simulation no longer results
+    in an unnecessary transport solve.
+  - Reaction rates can be computed either directly or using multigroup flux
+    tallies that are used to collapse reaction rates afterward. This is enabled
+    through the ``reaction_rate_mode`` and ``reaction_rate_opts`` to
+    :class:`openmc.deplete.Operator`.
+  - Depletion results can be used to create a new :class:`openmc.Materials`
+    object using the :meth:`openmc.deplete.ResultsList.export_to_materials`
+    method.
+
+- Multigroup current and diffusion cross sections can be generated through the
+  :class:`openmc.mgxs.Current` and :class:`openmc.mgxs.DiffusionCoefficient`
+  classes.
+- Added :func:`openmc.data.isotopes` function that returns a list of naturally
+  occurring isotopes for a given element.
+- Windowed multipole libraries can now be generated directly from the Python API
+  using :meth:`openmc.data.WindowedMultipole.from_endf`.
+- The new :func:`openmc.write_source_file` function allows source files to be
+  generated programmatically.
+
+---------
+Bug Fixes
+---------
+
+- `Proper detection of MPI wrappers <https://github.com/openmc-dev/openmc/pull/1619>`_
+- `Fix related to declaration order of maps/vectors <https://github.com/openmc-dev/openmc/pull/1622>`_
+- `Check for existence of decay rate attribute <https://github.com/openmc-dev/openmc/pull/1629>`_
+- `Small updates to deal with JEFF 3.3 data <https://github.com/openmc-dev/openmc/pull/1638>`_
+- `Fix for depletion chain generation <https://github.com/openmc-dev/openmc/pull/1642>`_
+- `Fix call to superclass constructor in MeshPlotter <https://github.com/openmc-dev/openmc/pull/1644>`_
+- `Fix for data crossover in VTK files <https://github.com/openmc-dev/openmc/pull/1645>`_
+- `Make sure reaction names are recognized as valid tally scores <https://github.com/openmc-dev/openmc/pull/1647>`_
+- `Fix bug related to logging of particle restarts <https://github.com/openmc-dev/openmc/pull/1649>`_
+- `Examine if region exists before removing redundant surfaces <https://github.com/openmc-dev/openmc/pull/1650>`_
+- `Fix plotting of individual universe levels <https://github.com/openmc-dev/openmc/pull/1651>`_
+- `Mixed materials should inherit depletable attribute <https://github.com/openmc-dev/openmc/pull/1657>`_
+- `Fix typo in energy units in dose coefficients <https://github.com/openmc-dev/openmc/pull/1659/files>`_
+- `Fixes for large tally cases <https://github.com/openmc-dev/openmc/pull/1666>`_
+- `Fix verification of volume calculation results <https://github.com/openmc-dev/openmc/pull/1677>`_
+- `Fix calculation of decay energy for depletion chains <https://github.com/openmc-dev/openmc/pull/1679>`_
+- `Fix pointers in CartesianIndependent <https://github.com/openmc-dev/openmc/pull/1681>`_
+- `Ensure correct initialization of members for RegularMesh <https://github.com/openmc-dev/openmc/pull/1683>`_
+- `Add missing import in depletion module <https://github.com/openmc-dev/openmc/pull/1715>`_
+- `Fixed several bugs related to decay-rate <https://github.com/openmc-dev/openmc/pull/1718>`_
+- `Fix how depletion operator distributes burnable materials <https://github.com/openmc-dev/openmc/pull/1719>`_
+- `Fix assignment of elemental carbon in JEFF 3.3 <https://github.com/openmc-dev/openmc/pull/1722>`_
+- `Fix typo in RectangularParallelepiped.__pos__ <https://github.com/openmc-dev/openmc/pull/1724>`_
+- `Fix temperature tolerance with S(a,b) data <https://github.com/openmc-dev/openmc/pull/1733>`_
+- `Fix sampling or normal distribution <https://github.com/openmc-dev/openmc/pull/1739>`_
+- `Fix for SharedArray relaxed memory ordering <https://github.com/openmc-dev/openmc/pull/1764>`_
+- `Check for proper format of source files <https://github.com/openmc-dev/openmc/pull/1771>`_
+- `Ensure (n,gamma) reaction rate tally uses sampled cross section <https://github.com/openmc-dev/openmc/pull/1776>`_
+- `Fix for temperature range behavior <https://github.com/openmc-dev/openmc/pull/1777>`_
+
+------------
+Contributors
+------------
+
+This release contains new contributions from the following people:
+
+- `Andrew Davis <https://github.com/makeclean>`_
+- `Guillaume Giudicelli <https://github.com/GiudGiud>`_
+- `Sterling Harper <https://github.com/smharper>`_
+- `Bryan Herman <https://github.com/bryanherman>`_
+- `Yue Jin <https://github.com/kingyue737>`_
+- `Andrew Johnson <https://github.com/drewejohnson>`_
+- `Miriam Kreher <https://github.com/mkreher13>`_
+- `Shikhar Kumar <https://github.com/shikhar413>`_
+- `Jingang Liang <https://github.com/liangjg>`_
+- `Amanda Lund <https://github.com/amandalund>`_
+- `Adam Nelson <https://github.com/nelsonag>`_
+- `April Novak <https://github.com/aprilnovak>`_
+- `YoungHui Park <https://github.com/ypark234>`_
+- `Ariful Islam Pranto <https://github.com/AI-Pranto>`_
+- `Ron Rahaman <https://github.com/RonRahaman>`_
+- `Gavin Ridley <https://github.com/gridley>`_
+- `Paul Romano <https://github.com/paulromano>`_
+- `Jonathan Shimwell <https://github.com/Shimwell>`_
+- `Dan Short <https://github.com/DanShort12>`_
+- `Patrick Shriwise <https://github.com/pshriwise>`_
+- `Roy Stogner <https://github.com/roystgnr>`_
+- `John Tramm <https://github.com/jtramm>`_
+- `Cyrus Wyett <https://github.com/cjwyett>`_
+- `Jiankai Yu <https://github.com/rockfool>`_

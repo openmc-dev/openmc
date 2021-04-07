@@ -11,7 +11,7 @@ from . import _dll
 from .core import _FortranObjectWithID
 from .error import _error_handler
 from .material import Material
-from .mesh import RegularMesh
+from .mesh import _get_mesh
 
 
 __all__ = [
@@ -319,7 +319,7 @@ class MeshFilter(Filter):
     def mesh(self):
         index_mesh = c_int32()
         _dll.openmc_mesh_filter_get_mesh(self._index, index_mesh)
-        return RegularMesh(index=index_mesh.value)
+        return _get_mesh(index_mesh.value)
 
     @mesh.setter
     def mesh(self, mesh):
@@ -338,7 +338,7 @@ class MeshSurfaceFilter(Filter):
     def mesh(self):
         index_mesh = c_int32()
         _dll.openmc_meshsurface_filter_get_mesh(self._index, index_mesh)
-        return RegularMesh(index=index_mesh.value)
+        return _get_mesh(index_mesh.value)
 
     @mesh.setter
     def mesh(self, mesh):

@@ -10,7 +10,7 @@
 #include "openmc/capi.h"
 #include "openmc/settings.h"
 
-#ifdef __GNUC__
+#if defined(__GNUC__) || defined(__clang__)
 #define UNREACHABLE() __builtin_unreachable()
 #else
 #define UNREACHABLE() (void)0

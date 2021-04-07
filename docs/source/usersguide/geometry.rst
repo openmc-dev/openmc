@@ -261,7 +261,7 @@ lowest-level cell at that location::
 
 As you are building a geometry, it is also possible to display a plot of single
 universe using the :meth:`Universe.plot` method. This method requires that you
-have `matplotlib <http://matplotlib.org/>`_ installed.
+have `matplotlib <https://matplotlib.org/>`_ installed.
 
 .. _usersguide_lattices:
 

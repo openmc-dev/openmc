@@ -114,6 +114,14 @@ public:
   void bins_crossed(const Particle& p, std::vector<int>& bins,
                     std::vector<double>& lengths) const override;
 
+  //! Count number of bank sites in each mesh bin / energy bin
+  //
+  //! \param[in] Pointer to bank sites
+  //! \param[in] Number of bank sites
+  //! \param[out] Whether any bank sites are outside the mesh
+  xt::xtensor<double, 1> count_sites(const Particle::Bank* bank,
+                                     int64_t length, bool* outside) const;
+
   //! Get bin given mesh indices
   //
   //! \param[in] Array of mesh indices
@@ -200,16 +208,6 @@ public:
 
   void to_hdf5(hid_t group) const override;
 
-  // New methods
-
-  //! Count number of bank sites in each mesh bin / energy bin
-  //
-  //! \param[in] bank Array of bank sites
-  //! \param[out] Whether any bank sites are outside the mesh
-  //! \return Array indicating number of sites in each mesh/energy bin
-  xt::xtensor<double, 1> count_sites(const Particle::Bank* bank, int64_t length,
-    bool* outside) const;
-
   // Data members
 
   double volume_frac_; //!< Volume fraction of each mesh element
@@ -221,6 +219,7 @@ class RectilinearMesh : public StructuredMesh
 {
 public:
   // Constructors
+  RectilinearMesh() = default;
   RectilinearMesh(pugi::xml_node node);
 
   // Overriden methods
@@ -239,8 +238,9 @@ public:
 
   void to_hdf5(hid_t group) const override;
 
-private:
   std::vector<std::vector<double>> grid_;
+
+  int set_grid();
 };
 
 #ifdef DAGMC
@@ -423,8 +423,6 @@ void read_meshes(pugi::xml_node root);
 //
 //! \param[in] group HDF5 group
 void meshes_to_hdf5(hid_t group);
-
-RegularMesh* get_regular_mesh(int32_t index);
 
 void free_memory_mesh();
 

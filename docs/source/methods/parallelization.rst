@@ -251,8 +251,8 @@ depending on how many nodes are communicating and the size of the message. Using
 multiple algorithms allows one to minimize latency for small messages and
 minimize bandwidth for long messages.
 
-We will focus here on the implementation of broadcast in the MPICH2_
-implementation. For short messages, MPICH2 uses a `binomial tree`_ algorithm. In
+We will focus here on the implementation of broadcast in the MPICH_
+implementation. For short messages, MPICH uses a `binomial tree`_ algorithm. In
 this algorithm, the root process sends the data to one node in the first step,
 and then in the subsequent, both the root and the other node can send the data
 to other nodes. Thus, it takes a total of :math:`\lceil \log_2 p \rceil` steps
@@ -266,7 +266,7 @@ to complete the communication. The time to complete the communication is
 This algorithm works well for short messages since the latency term scales
 logarithmically with the number of nodes. However, for long messages, an
 algorithm that has lower bandwidth has been proposed by Barnett_ and implemented
-in MPICH2. Rather than using a binomial tree, the broadcast is divided into a
+in MPICH. Rather than using a binomial tree, the broadcast is divided into a
 scatter and an allgather. The time to complete the scatter is :math:` \log_2 p
 \: \alpha + \frac{p-1}{p} N\beta` using a binomial tree algorithm. The allgather
 is performed using a ring algorithm that completes in :math:`p-1) \alpha +
@@ -613,7 +613,7 @@ is actually independent of the number of nodes:
 
 .. _Brissenden and Garlick: https://doi.org/10.1016/0306-4549(86)90095-2
 
-.. _MPICH2: http://www.mcs.anl.gov/mpi/mpich
+.. _MPICH: http://www.mpich.org
 
 .. _binomial tree: https://www.mcs.anl.gov/~thakur/papers/ijhpca-coll.pdf
 
@@ -629,19 +629,19 @@ is actually independent of the number of nodes:
 
 .. _message-passing interface: https://en.wikipedia.org/wiki/Message_Passing_Interface
 
-.. _PVM: http://www.csm.ornl.gov/pvm/pvm_home.html
+.. _PVM: https://www.csm.ornl.gov/pvm/pvm_home.html
 
-.. _MPI: http://www.mcs.anl.gov/research/projects/mpi/
+.. _MPI: https://www.mcs.anl.gov/research/projects/mpi/
 
 .. _embarrassingly parallel: https://en.wikipedia.org/wiki/Embarrassingly_parallel
 
-.. _sends: http://www.mcs.anl.gov/research/projects/mpi/www/www3/MPI_Send.html
+.. _sends: https://www.mpich.org//static/docs/latest/www3/MPI_Send.html
 
-.. _broadcasts: http://www.mcs.anl.gov/research/projects/mpi/www/www3/MPI_Bcast.html
+.. _broadcasts: https://www.mpich.org//static/docs/latest/www3/MPI_Bcast.html
 
-.. _scatter: http://www.mcs.anl.gov/research/projects/mpi/www/www3/MPI_Scatter.html
+.. _scatter: https://www.mpich.org//static/docs/latest/www3/MPI_Scatter.html
 
-.. _allgather: http://www.mcs.anl.gov/research/projects/mpi/www/www3/MPI_Allgather.html
+.. _allgather: https://www.mpich.org//static/docs/latest/www3/MPI_Allgather.html
 
 .. _Cauchy distribution: https://en.wikipedia.org/wiki/Cauchy_distribution
 

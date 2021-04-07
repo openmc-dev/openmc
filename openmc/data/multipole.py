@@ -1018,6 +1018,8 @@ class WindowedMultipole(EqualityMixin):
     def from_endf(cls, endf_file, log=False, vf_options=None, wmp_options=None):
         """Generate windowed multipole neutron data from an ENDF evaluation.
 
+        .. versionadded:: 0.12.1
+
         Parameters
         ----------
         endf_file : str

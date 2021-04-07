@@ -184,7 +184,7 @@ nu-diffusion-coefficient
 0         1         2   total  0.000000   0.000000
 (n,gamma)
    material  group in nuclide      mean  std. dev.
-1         1         1   total  0.019727   0.002262
+1         1         1   total  0.019720   0.002260
 0         1         2   total  0.071719   0.006262
 (n,a)
    material  group in nuclide      mean  std. dev.
@@ -490,7 +490,7 @@ nu-diffusion-coefficient
 0         2         2   total  0.000000   0.000000
 (n,gamma)
    material  group in nuclide      mean  std. dev.
-1         2         1   total  0.001569   0.000322
+1         2         1   total  0.001571   0.000323
 0         2         2   total  0.005400   0.000618
 (n,a)
    material  group in nuclide          mean     std. dev.

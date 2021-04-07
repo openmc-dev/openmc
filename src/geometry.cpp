@@ -72,7 +72,7 @@ find_cell_inner(Particle& p, const NeighborList* neighbor_list)
   // Find which cell of this universe the particle is in.  Use the neighbor list
   // to shorten the search if one was provided.
   bool found = false;
-  int32_t i_cell;
+  int32_t i_cell = C_NONE;
   if (neighbor_list) {
     for (auto it = neighbor_list->cbegin(); it != neighbor_list->cend(); ++it) {
       i_cell = *it;
@@ -91,45 +91,51 @@ find_cell_inner(Particle& p, const NeighborList* neighbor_list)
         break;
       }
     }
+  }
 
-  } else {
-    int i_universe = p.coord_[p.n_coord_-1].universe;
-    const auto& univ {*model::universes[i_universe]};
-    const auto& cells {
-      !univ.partitioner_
-      ? model::universes[i_universe]->cells_
-      : univ.partitioner_->get_cells(p.r_local(), p.u_local())
-    };
-    for (auto it = cells.cbegin(); it != cells.cend(); it++) {
-      i_cell = *it;
-
-      // Make sure the search cell is in the same universe.
+  // Check successively lower coordinate levels until finding material fill
+  for (;;++p.n_coord_) {
+    // If neighbor lists did not find a cell, must do exhaustive search
+    if (i_cell == C_NONE) {
       int i_universe = p.coord_[p.n_coord_-1].universe;
-      if (model::cells[i_cell]->universe_ != i_universe) continue;
+      const auto& univ {*model::universes[i_universe]};
+      const auto& cells {
+        !univ.partitioner_
+        ? model::universes[i_universe]->cells_
+        : univ.partitioner_->get_cells(p.r_local(), p.u_local())
+      };
 
-      // Check if this cell contains the particle.
-      Position r {p.r_local()};
-      Direction u {p.u_local()};
-      auto surf = p.surface_;
-      if (model::cells[i_cell]->contains(r, u, surf)) {
-        p.coord_[p.n_coord_-1].cell = i_cell;
-        found = true;
-        break;
+      for (auto it = cells.cbegin(); it != cells.cend(); it++) {
+        i_cell = *it;
+
+        // Make sure the search cell is in the same universe.
+        int i_universe = p.coord_[p.n_coord_-1].universe;
+        if (model::cells[i_cell]->universe_ != i_universe) continue;
+
+        // Check if this cell contains the particle.
+        Position r {p.r_local()};
+        Direction u {p.u_local()};
+        auto surf = p.surface_;
+        if (model::cells[i_cell]->contains(r, u, surf)) {
+          p.coord_[p.n_coord_-1].cell = i_cell;
+          found = true;
+          break;
+        }
       }
     }
-  }
+    if (!found) {
+      return found;
+    }
 
-  // Announce the cell that the particle is entering.
-  if (found && (settings::verbosity >= 10 || p.trace_)) {
-    auto msg = fmt::format("    Entering cell {}", model::cells[i_cell]->id_);
-    write_message(msg, 1);
-  }
+    // Announce the cell that the particle is entering.
+    if (found && (settings::verbosity >= 10 || p.trace_)) {
+      auto msg = fmt::format("    Entering cell {}", model::cells[i_cell]->id_);
+      write_message(msg, 1);
+    }
 
-  if (found) {
     Cell& c {*model::cells[i_cell]};
     if (c.type_ == Fill::MATERIAL) {
-      //=======================================================================
-      //! Found a material cell which means this is the lowest coord level.
+      // Found a material cell which means this is the lowest coord level.
 
       // Find the distribcell instance number.
       int offset = 0;
@@ -139,10 +145,9 @@ find_cell_inner(Particle& p, const NeighborList* neighbor_list)
           if (c_i.type_ == Fill::UNIVERSE) {
             offset += c_i.offset_[c.distribcell_index_];
           } else if (c_i.type_ == Fill::LATTICE) {
-            auto& lat {*model::lattices[p.coord_[i+1].lattice]};
-            int i_xyz[3] {p.coord_[i+1].lattice_x,
-                          p.coord_[i+1].lattice_y,
-                          p.coord_[i+1].lattice_z};
+            auto& lat {*model::lattices[p.coord_[i + 1].lattice]};
+            int i_xyz[3] {p.coord_[i + 1].lattice_x, p.coord_[i + 1].lattice_y,
+              p.coord_[i + 1].lattice_z};
             if (lat.are_valid_indices(i_xyz)) {
               offset += lat.offset(c.distribcell_index_, i_xyz);
             }
@@ -187,10 +192,6 @@ find_cell_inner(Particle& p, const NeighborList* neighbor_list)
         coord.rotate(c.rotation_);
       }
 
-      // Update the coordinate level and recurse.
-      ++p.n_coord_;
-      return find_cell_inner(p, nullptr);
-
     } else if (c.type_ == Fill::LATTICE) {
       //========================================================================
       //! Found a lower lattice, update this coord level then search the next.
@@ -230,15 +231,13 @@ find_cell_inner(Particle& p, const NeighborList* neighbor_list)
           coord.universe = lat.outer_;
         } else {
           warning(fmt::format("Particle {} is outside lattice {} but the "
-            "lattice has no defined outer universe.", p.id_, lat.id_));
+                              "lattice has no defined outer universe.",
+            p.id_, lat.id_));
           return false;
         }
       }
-
-      // Update the coordinate level and recurse.
-      ++p.n_coord_;
-      return find_cell_inner(p, nullptr);
     }
+    i_cell = C_NONE; // trip non-neighbor cell search at next iteration
   }
 
   return found;
@@ -246,44 +245,47 @@ find_cell_inner(Particle& p, const NeighborList* neighbor_list)
 
 //==============================================================================
 
-bool
-find_cell(Particle& p, bool use_neighbor_lists)
+bool neighbor_list_find_cell(Particle& p)
 {
-  // Determine universe (if not yet set, use root universe).
-  int i_universe = p.coord_[p.n_coord_-1].universe;
-  if (i_universe == C_NONE) {
-    p.coord_[0].universe = model::root_universe;
-    p.n_coord_ = 1;
-    i_universe = model::root_universe;
-  }
 
   // Reset all the deeper coordinate levels.
   for (int i = p.n_coord_; i < p.coord_.size(); i++) {
     p.coord_[i].reset();
   }
 
-  if (use_neighbor_lists) {
-    // Get the cell this particle was in previously.
-    auto coord_lvl = p.n_coord_ - 1;
-    auto i_cell = p.coord_[coord_lvl].cell;
-    Cell& c {*model::cells[i_cell]};
+  // Get the cell this particle was in previously.
+  auto coord_lvl = p.n_coord_ - 1;
+  auto i_cell = p.coord_[coord_lvl].cell;
+  Cell& c {*model::cells[i_cell]};
 
-    // Search for the particle in that cell's neighbor list.  Return if we
-    // found the particle.
-    bool found = find_cell_inner(p, &c.neighbors_);
-    if (found) return found;
-
-    // The particle could not be found in the neighbor list.  Try searching all
-    // cells in this universe, and update the neighbor list if we find a new
-    // neighboring cell.
-    found = find_cell_inner(p, nullptr);
-    if (found) c.neighbors_.push_back(p.coord_[coord_lvl].cell);
+  // Search for the particle in that cell's neighbor list.  Return if we
+  // found the particle.
+  bool found = find_cell_inner(p, &c.neighbors_);
+  if (found)
     return found;
 
-  } else {
-    // Search all cells in this universe for the particle.
-    return find_cell_inner(p, nullptr);
+  // The particle could not be found in the neighbor list.  Try searching all
+  // cells in this universe, and update the neighbor list if we find a new
+  // neighboring cell.
+  found = find_cell_inner(p, nullptr);
+  if (found)
+    c.neighbors_.push_back(p.coord_[coord_lvl].cell);
+  return found;
+}
+
+bool exhaustive_find_cell(Particle& p)
+{
+  int i_universe = p.coord_[p.n_coord_-1].universe;
+  if (i_universe == C_NONE) {
+    p.coord_[0].universe = model::root_universe;
+    p.n_coord_ = 1;
+    i_universe = model::root_universe;
   }
+  // Reset all the deeper coordinate levels.
+  for (int i = p.n_coord_; i < p.coord_.size(); i++) {
+    p.coord_[i].reset();
+  }
+  return find_cell_inner(p, nullptr);
 }
 
 //==============================================================================
@@ -319,7 +321,7 @@ cross_lattice(Particle& p, const BoundaryInfo& boundary)
   if (!lat.are_valid_indices(i_xyz)) {
     // The particle is outside the lattice.  Search for it from the base coords.
     p.n_coord_ = 1;
-    bool found = find_cell(p, 0);
+    bool found = exhaustive_find_cell(p);
     if (!found && p.alive_) {
       p.mark_as_lost(fmt::format("Could not locate particle {} after "
         "crossing a lattice boundary", p.id_));
@@ -328,13 +330,13 @@ cross_lattice(Particle& p, const BoundaryInfo& boundary)
   } else {
     // Find cell in next lattice element.
     p.coord_[p.n_coord_-1].universe = lat[i_xyz];
-    bool found = find_cell(p, 0);
+    bool found = exhaustive_find_cell(p);
 
     if (!found) {
       // A particle crossing the corner of a lattice tile may not be found.  In
       // this case, search for it from the base coords.
       p.n_coord_ = 1;
-      bool found = find_cell(p, 0);
+      bool found = exhaustive_find_cell(p);
       if (!found && p.alive_) {
         p.mark_as_lost(fmt::format("Could not locate particle {} after "
           "crossing a lattice boundary", p.id_));
@@ -450,7 +452,7 @@ openmc_find_cell(const double* xyz, int32_t* index, int32_t* instance)
   p.r() = Position{xyz};
   p.u() = {0.0, 0.0, 1.0};
 
-  if (!find_cell(p, false)) {
+  if (!exhaustive_find_cell(p)) {
     set_errmsg(fmt::format("Could not find cell at position {}.", p.r()));
     return OPENMC_E_GEOMETRY;
   }

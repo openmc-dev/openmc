@@ -22,7 +22,7 @@ def test_get_atoms(res):
 
     t_ref = np.array([0.0, 1296000.0, 2592000.0, 3888000.0])
     n_ref = np.array(
-        [6.67473282e+08, 3.76986925e+14, 3.68587383e+14, 3.91338675e+14])
+        [6.67473282e+08, 3.76987065e+14, 3.68586723e+14, 3.91338392e+14])
 
     np.testing.assert_allclose(t, t_ref)
     np.testing.assert_allclose(n, n_ref)
@@ -48,8 +48,8 @@ def test_get_reaction_rate(res):
     t, r = res.get_reaction_rate("1", "Xe135", "(n,gamma)")
 
     t_ref = [0.0, 1296000.0, 2592000.0, 3888000.0]
-    n_ref = [6.67473282e+08, 3.76986925e+14, 3.68587383e+14, 3.91338675e+14]
-    xs_ref = [3.32282266e-05, 2.76207120e-05, 4.10986677e-05, 3.72453665e-05]
+    n_ref = [6.67473282e+08, 3.76987065e+14, 3.68586723e+14, 3.91338392e+14]
+    xs_ref = [3.32282064e-05, 2.76208092e-05, 4.10987995e-05, 3.72454755e-05]
 
     np.testing.assert_allclose(t, t_ref)
     np.testing.assert_allclose(r, np.array(n_ref) * xs_ref)
@@ -60,8 +60,8 @@ def test_get_eigenvalue(res):
     t, k = res.get_eigenvalue()
 
     t_ref = [0.0, 1296000.0, 2592000.0, 3888000.0]
-    k_ref = [1.16984322, 1.19097427, 1.03012572, 1.20045627]
-    u_ref = [0.0375587, 0.0347639, 0.07216021, 0.02839642]
+    k_ref = [1.16984322, 1.19097429, 1.03012517, 1.20045563]
+    u_ref = [0.0375587, 0.03476389, 0.07215969, 0.02839639]
 
     np.testing.assert_allclose(t, t_ref)
     np.testing.assert_allclose(k[:, 0], k_ref)

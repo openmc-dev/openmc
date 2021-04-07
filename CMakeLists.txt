@@ -3,8 +3,8 @@ project(openmc C CXX)
 
 # Set version numbers
 set(OPENMC_VERSION_MAJOR 0)
-set(OPENMC_VERSION_MINOR 12)
-set(OPENMC_VERSION_RELEASE 1)
+set(OPENMC_VERSION_MINOR 13)
+set(OPENMC_VERSION_RELEASE 0)
 set(OPENMC_VERSION ${OPENMC_VERSION_MAJOR}.${OPENMC_VERSION_MINOR}.${OPENMC_VERSION_RELEASE})
 configure_file(include/openmc/version.h.in "${CMAKE_BINARY_DIR}/include/openmc/version.h" @ONLY)
 
@@ -54,13 +54,13 @@ endif()
 #===============================================================================
 
 # If not found, we just pull appropriate versions from github and build them.
-find_package(fmt QUIET)
+find_package(fmt QUIET NO_SYSTEM_ENVIRONMENT_PATH)
 if(fmt_FOUND)
   message(STATUS "Found fmt: ${fmt_DIR} (version ${fmt_VERSION})")
 else()
   message(STATUS "Did not find fmt, will use submodule instead")
 endif()
-find_package(pugixml QUIET)
+find_package(pugixml QUIET NO_SYSTEM_ENVIRONMENT_PATH)
 if(pugixml_FOUND)
   message(STATUS "Found pugixml: ${pugixml_DIR}")
 else()
@@ -87,7 +87,9 @@ endif()
 find_package(HDF5 REQUIRED COMPONENTS C HL)
 if(HDF5_IS_PARALLEL)
   if(NOT MPI_ENABLED)
-    message(FATAL_ERROR "Parallel HDF5 must be used with MPI.")
+    message(FATAL_ERROR "Parallel HDF5 was detected, but the detected compiler,\
+     ${CMAKE_CXX_COMPILER}, does not support MPI. An MPI-capable compiler must \
+     be used with parallel HDF5.")
   endif()
   message(STATUS "Using parallel HDF5")
 endif()

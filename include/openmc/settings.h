@@ -88,7 +88,7 @@ extern RunMode run_mode;                 //!< Run mode (eigenvalue, fixed src, e
 extern std::unordered_set<int> sourcepoint_batch; //!< Batches when source should be written
 extern std::unordered_set<int> statepoint_batch; //!< Batches when state should be written
 extern std::unordered_set<int> source_write_surf_id; //!< Surface ids where sources will be written
-extern int64_t max_particles;            //!< maximum number of particles to be banked on surfaces per process
+extern int64_t max_surface_particles;    //!< maximum number of particles to be banked on surfaces per process
 extern TemperatureMethod temperature_method;           //!< method for choosing temperatures
 extern double temperature_tolerance;     //!< Tolerance in [K] on choosing temperatures
 extern double temperature_default;       //!< Default T in [K]

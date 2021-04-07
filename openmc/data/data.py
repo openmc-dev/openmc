@@ -402,7 +402,9 @@ def gnd_name(Z, A, m=0):
 
 
 def isotopes(element):
-    """Return naturally-occurring isotopes and their abundances
+    """Return naturally occurring isotopes and their abundances
+
+    .. versionadded:: 0.12.1
 
     Parameters
     ----------

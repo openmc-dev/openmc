@@ -43,14 +43,11 @@ bool check_cell_overlap(Particle& p, bool error=true);
 //!
 //! \param p A particle to be located.  This function will populate the
 //!   geometry-dependent data fields of the particle.
-//! \param use_neighbor_lists If true, neighbor lists will be used to accelerate
-//!   the geometry search, but this only works if the cell attribute of the
-//!   particle's lowest coordinate level is valid and meaningful.
 //! \return True if the particle's location could be found and ascribed to a
 //!   valid geometry coordinate stack.
 //==============================================================================
-
-bool find_cell(Particle& p, bool use_neighbor_lists);
+bool exhaustive_find_cell(Particle& p);
+bool neighbor_list_find_cell(Particle& p); // Only usable on surface crossings
 
 //==============================================================================
 //! Move a particle into a new lattice tile.

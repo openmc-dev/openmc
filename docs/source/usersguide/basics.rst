@@ -5,13 +5,13 @@ Basics of Using OpenMC
 ======================
 
 ----------------
-Creating a Model
+Running a Model
 ----------------
 
 When you build and install OpenMC, you will have an :ref:`scripts_openmc`
 executable on your system. When you run ``openmc``, the first thing it will do
 is look for a set of XML_ files that describe the model you want to
-simulation. Three of these files are required and another three are optional, as
+simulate. Three of these files are required and another three are optional, as
 described below.
 
 .. admonition:: Required
@@ -42,6 +42,10 @@ described below.
    :ref:`io_plots`
      This file gives specifications for producing slice or voxel plots of the
      geometry.
+
+.. warning::
+
+    OpenMC models should be treated as code, and it is important to be careful with code from untrusted sources.
 
 eXtensible Markup Language (XML)
 --------------------------------

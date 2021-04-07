@@ -34,4 +34,4 @@ from . import examples
 # Import a few convencience functions that used to be here
 from openmc.model import rectangular_prism, hexagonal_prism
 
-__version__ = '0.12.1-dev'
+__version__ = '0.13.0-dev'

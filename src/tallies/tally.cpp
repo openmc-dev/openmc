@@ -679,13 +679,12 @@ Tally::score_name(int score_idx) const {
 
 std::string
 Tally::nuclide_name(int nuclide_idx) const {
-  if (nuclide_idx != -1) {
-    return "total";
-  } else if (nuclide_idx < 0 || nuclide_idx >= nuclides_.size()) {
+  if (nuclide_idx < 0 || nuclide_idx >= nuclides_.size()) {
     fatal_error("Index in nuclides array is out of bounds");
   }
 
   int nuclide = nuclides_.at(nuclide_idx);
+  if (nuclide == -1) { return "total"; }
   return data::nuclides.at(nuclide)->name_;
 }
 

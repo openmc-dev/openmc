@@ -192,7 +192,7 @@ UnstructuredMesh::UnstructuredMesh(pugi::xml_node node) : Mesh(node) {
 void
 UnstructuredMesh::surface_bins_crossed(const Particle& p,
                                        std::vector<int>& bins) const {
-  throw std::runtime_error{"Unstructured mesh surface tallies are not implemented."};
+  fatal_error("Unstructured mesh surface tallies are not implemented.");
 }
 
 std::string
@@ -210,7 +210,7 @@ UnstructuredMesh::to_hdf5(hid_t group) const
     write_dataset(mesh_group, "library", this->library());
     // write volume of each element
     std::vector<double> tet_vols;
-    xt::xtensor<double, 2> centroids({(size_t)this->n_bins(), 3});
+    xt::xtensor<double, 2> centroids({static_cast<size_t>(this->n_bins()), 3});
     for (int i = 0; i < this->n_bins(); i++) {
       tet_vols.emplace_back(this->volume(i));
       auto c = this->centroid(i);
@@ -2182,9 +2182,9 @@ void LibMesh::initialize()
   #endif
 
   for (int i = 0; i < n_threads; i++) {
-      pl_.emplace_back(m_->sub_point_locator());
-      pl_.back()->set_contains_point_tol(FP_COINCIDENT);
-      pl_.back()->enable_out_of_mesh_mode();
+    pl_.emplace_back(m_->sub_point_locator());
+    pl_.back()->set_contains_point_tol(FP_COINCIDENT);
+    pl_.back()->enable_out_of_mesh_mode();
   }
 
   // store first element in the mesh to use as an offset for bin indices
@@ -2303,7 +2303,7 @@ LibMesh::bins_crossed(const Particle& p,
                       std::vector<double>& lengths) const
 {
   // TODO: Implement triangle crossings here
-  throw std::runtime_error{"Tracklength tallies on libMesh instances are not implemented."};
+  fatal_error("Tracklength tallies on libMesh instances are not implemented.");
 }
 
 int

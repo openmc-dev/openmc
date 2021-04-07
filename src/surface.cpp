@@ -971,8 +971,11 @@ SurfaceQuadric::distance(Position r, Direction ang, bool coincident) const
   } else if (coincident || std::abs(c) < FP_COINCIDENT) {
     // Particle is on the surface, thus one distance is positive/negative and
     // the other is zero. The sign of k determines which distance is zero and
-    // which is not.
-    if (k >= 0.0) {
+    // which is not. Additionally, if a is zero, it means the particle is on
+    // a plane-like surface.
+    if (a == 0.0) {
+      d = INFTY; // see the below explanation
+    } else if (k >= 0.0) {
       d = (-k - sqrt(quad)) / a;
     } else {
       d = (-k + sqrt(quad)) / a;

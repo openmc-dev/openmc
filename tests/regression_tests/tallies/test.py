@@ -184,7 +184,7 @@ def test_tallies():
         transfer_tally, material_tally, mu_tally1, mu_tally2,
         polar_tally1, polar_tally2, polar_tally3, legendre_tally,
         harmonics_tally, harmonics_tally2, harmonics_tally3, 
-        universe_tally,collision_tally]
+        universe_tally, collision_tally]
     model.tallies += score_tallies
     model.tallies += flux_tallies
     model.tallies += all_nuclide_tallies

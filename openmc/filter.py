@@ -993,7 +993,6 @@ class CollisionFilter(Filter):
         self.bins = np.asarray(bins)
         self.id = filter_id
 
-
     def __repr__(self):
         string = type(self).__name__ + '\n'
         string += '{: <16}=\t{}\n'.format('\tValues', self.bins)

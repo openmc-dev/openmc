@@ -1023,7 +1023,6 @@ class CollisionFilter(Filter):
         return element
 
 
-
 class RealFilter(Filter):
     """Tally modifier that describes phase-space and other characteristics
 

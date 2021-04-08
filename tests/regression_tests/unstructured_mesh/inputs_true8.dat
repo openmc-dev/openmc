@@ -69,7 +69,7 @@
     <lower_left>-10.0 -10.0 -10.0</lower_left>
     <upper_right>10.0 10.0 10.0</upper_right>
   </mesh>
-  <mesh id="2" library="libmesh" type="unstructured">
+  <mesh id="2" library="moab" type="unstructured">
     <filename>test_mesh_tets_w_holes.e</filename>
   </mesh>
   <filter id="1" type="mesh">

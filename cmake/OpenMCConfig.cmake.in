@@ -9,6 +9,13 @@ if(@DAGMC_FOUND@)
   find_package(DAGMC REQUIRED HINTS @DAGMC_DIR@)
 endif()
 
+if(@LIBMESH_FOUND@)
+  include(FindPkgConfig)
+  list(APPEND CMAKE_PREFIX_PATH @LIBMESH_PREFIX@)
+  set(PKG_CONFIG_USE_CMAKE_PREFIX_PATH True)
+  pkg_check_modules(LIBMESH REQUIRED @LIBMESH_PC_FILE@>=1.6.0 IMPORTED_TARGET)
+endif()
+
 if(NOT TARGET OpenMC::libopenmc)
   include("${OpenMC_CMAKE_DIR}/OpenMCTargets.cmake")
 endif()

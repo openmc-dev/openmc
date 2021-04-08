@@ -15,12 +15,12 @@
   <surface coeffs="6.0" id="10" name="maximum y" type="y-plane" />
   <surface coeffs="-6.0" id="11" name="minimum z" type="z-plane" />
   <surface coeffs="6.0" id="12" name="maximum z" type="z-plane" />
-  <surface boundary="vacuum" coeffs="-15" id="13" name="minimum x" type="x-plane" />
-  <surface boundary="vacuum" coeffs="15" id="14" name="maximum x" type="x-plane" />
-  <surface boundary="vacuum" coeffs="-15" id="15" name="minimum y" type="y-plane" />
-  <surface boundary="vacuum" coeffs="15" id="16" name="maximum y" type="y-plane" />
-  <surface boundary="vacuum" coeffs="-15" id="17" name="minimum z" type="z-plane" />
-  <surface boundary="vacuum" coeffs="15" id="18" name="maximum z" type="z-plane" />
+  <surface boundary="vacuum" coeffs="-10" id="13" name="minimum x" type="x-plane" />
+  <surface boundary="vacuum" coeffs="10" id="14" name="maximum x" type="x-plane" />
+  <surface boundary="vacuum" coeffs="-10" id="15" name="minimum y" type="y-plane" />
+  <surface boundary="vacuum" coeffs="10" id="16" name="maximum y" type="y-plane" />
+  <surface boundary="vacuum" coeffs="-10" id="17" name="minimum z" type="z-plane" />
+  <surface boundary="vacuum" coeffs="10" id="18" name="maximum z" type="z-plane" />
 </geometry>
 <?xml version='1.0' encoding='utf-8'?>
 <materials>
@@ -69,8 +69,8 @@
     <lower_left>-10.0 -10.0 -10.0</lower_left>
     <upper_right>10.0 10.0 10.0</upper_right>
   </mesh>
-  <mesh id="2" library="libmesh" type="unstructured">
-    <filename>test_mesh_tets_w_holes.e</filename>
+  <mesh id="2" library="moab" type="unstructured">
+    <filename>test_mesh_tets.e</filename>
   </mesh>
   <filter id="1" type="mesh">
     <bins>1</bins>

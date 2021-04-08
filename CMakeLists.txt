@@ -66,6 +66,7 @@ if(pugixml_FOUND)
   message(STATUS "Found pugixml: ${pugixml_DIR}")
 else()
   message(STATUS "Did not find pugixml, will use submodule instead")
+endif()
 
 #===============================================================================
 # libMesh Unstructured Mesh Support

@@ -41,7 +41,7 @@ void CollisionFilter::get_all_bins(
   // Get the number of collisions for the particle
   auto n = p.n_collision_;
 
-  // Bin the collision number. Must fit exactly the desired collision number .
+  // Bin the collision number. Must fit exactly the desired collision number.
   auto search = map_.find(n);
   if (search != map_.end()){
     match.bins_.push_back(search->second);

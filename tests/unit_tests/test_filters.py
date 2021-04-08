@@ -47,7 +47,7 @@ def test_cell_instance():
 
 
 def test_collision():
-    f = openmc.CollisionFilter([1,5,3,2,8])
+    f = openmc.CollisionFilter([1, 5, 3, 2, 8])
     assert f.bins[0] == 1
     assert f.bins[1] == 5
     assert f.bins[-1] == 8

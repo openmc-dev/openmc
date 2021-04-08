@@ -3,7 +3,7 @@
 #define OPENMC_DAGMC_H
 
 namespace openmc {
-extern "C" const bool dagmc_enabled;
+extern "C" const bool DAGMC_ENABLED;
 }
 
 #ifdef DAGMC

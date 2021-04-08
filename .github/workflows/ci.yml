@@ -30,6 +30,7 @@ jobs:
         mpi: [n, y]
         omp: [n, y]
         dagmc: [n]
+        libmesh: [n]
         event: [n]
         vectfit: [n]
 
@@ -44,6 +45,14 @@ jobs:
             python-version: 3.8
             mpi: y
             omp: y
+          - libmesh: y
+            python-version: 3.8
+            mpi: y
+            omp: y
+          - libmesh: y
+            python-version: 3.8
+            mpi: n
+            omp: y
           - event: y
             python-version: 3.8
             omp: y
@@ -53,7 +62,8 @@ jobs:
             omp: n
             mpi: y
     name: 'Python ${{ matrix.python-version }} (omp=${{ matrix.omp }},
-      mpi=${{ matrix.mpi }}, dagmc=${{ matrix.dagmc }}, event=${{ matrix.event }}
+      mpi=${{ matrix.mpi }}, dagmc=${{ matrix.dagmc }},
+      libmesh=${{ matrix.libmesh }}, event=${{ matrix.event }}
       vectfit=${{ matrix.vectfit }})'
 
     env:
@@ -63,6 +73,7 @@ jobs:
       DAGMC: ${{ matrix.dagmc }}
       EVENT: ${{ matrix.event }}
       VECTFIT: ${{ matrix.vectfit }}
+      LIBMESH: ${{ matrix.libmesh }}
 
     steps:
       -
@@ -73,7 +84,6 @@ jobs:
         uses: actions/setup-python@v2
         with:
           python-version: ${{ matrix.python-version }}
-
       -
         name: Environment Variables
         run: |
@@ -88,6 +98,8 @@ jobs:
           sudo apt -y update
           sudo apt install -y mpich \
                               libmpich-dev \
+                              libnetcdf-dev \
+                              libpnetcdf-dev \
                               libhdf5-serial-dev \
                               libhdf5-mpich-dev \
                               libeigen3-dev
@@ -101,7 +113,6 @@ jobs:
         name: before
         shell: bash
         run: $GITHUB_WORKSPACE/tools/ci/gha-before-script.sh
-
       -
         name: test
         shell: bash

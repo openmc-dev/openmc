@@ -19,6 +19,11 @@ if [[ $VECTFIT = 'y' ]]; then
     ./tools/ci/gha-install-vectfit.sh
 fi
 
+# Install libMesh if needed
+if [[ $LIBMESH = 'y' ]]; then
+    ./tools/ci/gha-install-libmesh.sh
+fi
+
 # Install mpi4py for MPI configurations
 if [[ $MPI == 'y' ]]; then
     pip install --no-binary=mpi4py mpi4py

@@ -169,7 +169,7 @@ def test_tallies():
     fusion_tally.scores = ['H1-production', 'H2-production', 'H3-production',
         'He3-production', 'He4-production', 'heating', 'damage-energy']
 
-    n_collision = (1,2,5,3,6)
+    n_collision = (1, 2, 5, 3, 6)
     collision_filter = CollisionFilter(n_collision)
     collision_tally = Tally()
     collision_tally.filters = [collision_filter]

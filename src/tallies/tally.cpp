@@ -282,6 +282,21 @@ Tally::Tally(pugi::xml_node node)
         "Invalid estimator '{}' on tally {}", est, id_)};
     }
   }
+
+#ifdef LIBMESH
+  // ensure a tracklength tally isn't used with a libMesh filter
+  for (auto i : this->filters_) {
+    auto df = dynamic_cast<MeshFilter*>(model::tally_filters[i].get());
+    if (df) {
+      auto lm = dynamic_cast<LibMesh*>(model::meshes[df->mesh()].get());
+      if (lm && estimator_ == TallyEstimator::TRACKLENGTH) {
+        fatal_error("A tracklength estimator cannot be used with "
+                    "an unstructured LibMesh tally.");
+      }
+    }
+  }
+#endif
+
 }
 
 Tally::~Tally()
@@ -660,6 +675,17 @@ Tally::score_name(int score_idx) const {
     fatal_error("Index in scores array is out of bounds.");
   }
   return reaction_name(scores_[score_idx]);
+}
+
+std::string
+Tally::nuclide_name(int nuclide_idx) const {
+  if (nuclide_idx < 0 || nuclide_idx >= nuclides_.size()) {
+    fatal_error("Index in nuclides array is out of bounds");
+  }
+
+  int nuclide = nuclides_.at(nuclide_idx);
+  if (nuclide == -1) { return "total"; }
+  return data::nuclides.at(nuclide)->name_;
 }
 
 //==============================================================================

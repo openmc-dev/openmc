@@ -230,17 +230,34 @@ Prerequisites
           sudo apt install mpich libmpich-dev
           sudo apt install openmpi-bin libopenmpi-dev
 
+    * git_ version control software for obtaining source code
+
     * DAGMC_ toolkit for simulation using CAD-based geometries
 
       OpenMC supports particle tracking in CAD-based geometries via the Direct
       Accelerated Geometry Monte Carlo (DAGMC) toolkit (`installation
-      instructions
-      <https://svalinn.github.io/DAGMC/install/dag_multiple.html>`_). For use in
-      OpenMC, only the ``MOAB_DIR`` and ``BUILD_TALLY`` variables need to be
-      specified in the CMake configuration step.
+      instructions <https://svalinn.github.io/DAGMC/install/openmc.html>`_). For
+      use in OpenMC, only the ``MOAB_DIR`` and ``BUILD_TALLY`` variables need to
+      be specified in the CMake configuration step when building DAGMC. This
+      option also allows unstructured mesh tallies on tetrahedral MOAB meshes.
+      In addition to turning this option on, the path to the DAGMC installation
+      should be specified as part of the ``CMAKE_PREFIX_PATH`` variable::
 
-    * git_ version control software for obtaining source code
+          cmake -Ddagmc=on -DCMAKE_PREFIX_PATH=/path/to/dagmc/installation
 
+    * libMesh_ mesh library framework for numerical simulations of partial differential equations
+
+      This optional dependency enables support for unstructured mesh tally
+      filters using libMesh meshes. Any 3D element type supported by libMesh can
+      be used, but the implementation is currently restricted to collision
+      estimators. In addition to turning this option on, the path to the libMesh
+      installation should be specified as part of the ``CMAKE_PREFIX_PATH``
+      variable.::
+
+          CXX=mpicxx cmake -Dlibmesh=on -DCMAKE_PREFIX_PATH=/path/to/libmesh/installation
+
+      Note that libMesh is most commonly compiled with MPI support. If that
+      is the case, then OpenMC should be compiled with MPI support as well.
 
 .. _gcc: https://gcc.gnu.org/
 .. _CMake: https://cmake.org
@@ -248,6 +265,7 @@ Prerequisites
 .. _MPICH: https://www.mpich.org
 .. _HDF5: https://www.hdfgroup.org/solutions/hdf5/
 .. _DAGMC: https://svalinn.github.io/DAGMC/index.html
+.. _libMesh: https://libmesh.github.io/
 
 Obtaining the Source
 --------------------
@@ -318,10 +336,14 @@ openmp
   being used must support OpenMP. (Default: on)
 
 dagmc
-  Enables use of CAD-based DAGMC_ geometries. Please see the note about DAGMC in
-  the optional dependencies list for more information on this feature. The
-  installation directory for DAGMC should also be defined as `DAGMC_ROOT` in the
-  CMake configuration command. (Default: off)
+  Enables use of CAD-based DAGMC_ geometries and MOAB_ unstructured mesh
+  tallies. Please see the note about DAGMC in the optional dependencies list
+  for more information on this feature. The installation directory for DAGMC
+  should also be defined as `DAGMC_ROOT` in the CMake configuration command.
+  (Default: off)
+
+libmesh
+  Enables the use of unstructured mesh tallies with libMesh_. (Default: off)
 
 coverage
   Compile and link code instrumented for coverage analysis. This is typically

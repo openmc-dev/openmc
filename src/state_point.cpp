@@ -167,11 +167,6 @@ openmc_statepoint_write(const char* filename, bool* write_source)
         tally_ids.push_back(tally->id_);
       write_attribute(tallies_group, "ids", tally_ids);
 
-#ifdef DAGMC
-      // write unstructured mesh tallies to VTK if possible
-      write_unstructured_mesh_results();
-#endif
-
       // Write all tally information except results
       for (const auto& tally : model::tallies) {
         hid_t tally_group = create_group(tallies_group,
@@ -314,6 +309,11 @@ openmc_statepoint_write(const char* filename, bool* write_source)
     write_source_bank(file_id, false);
     if (mpi::master || parallel) file_close(file_id);
   }
+
+#if defined(LIBMESH) || defined(DAGMC)
+  // write unstructured mesh tally files
+  write_unstructured_mesh_results();
+#endif
 
   simulation::time_statepoint.stop();
 
@@ -770,7 +770,6 @@ void read_source_bank(hid_t group_id, std::vector<Particle::Bank>& sites, bool d
   H5Tclose(banktype);
 }
 
-#ifdef DAGMC
 void write_unstructured_mesh_results() {
 
   for (auto& tally : model::tallies) {
@@ -787,6 +786,8 @@ void write_unstructured_mesh_results() {
 
       if (!umesh) continue;
 
+      if (!umesh->output_) continue;
+
       // if this tally has more than one filter, print
       // warning and skip writing the mesh
       if (tally->filters().size() > 1) {
@@ -798,58 +799,75 @@ void write_unstructured_mesh_results() {
 
       int n_realizations = tally->n_realizations_;
 
-      // write each score/nuclide combination for this tally
-      for (int i_score = 0; i_score < tally->scores_.size(); i_score++) {
-        for (int i_nuc = 0; i_nuc < tally->nuclides_.size(); i_nuc++) {
+      for (int score_idx = 0; score_idx < tally->scores_.size(); score_idx++) {
+        for (int nuc_idx = 0; nuc_idx < tally->nuclides_.size(); nuc_idx++) {
+          // combine the score and nuclide into a name for the value
+          auto score_str = fmt::format("{}_{}",
+                           tally->score_name(score_idx),
+                           tally->nuclide_name(nuc_idx));
+          // add this score to the mesh
+          // (this is in a separate loop because all variables need to be added
+          //  to libMesh's equation system before any are initialized, which
+          //  happens in set_score_data)
+          umesh->add_score(score_str);
+        }
+      }
+
+      for (int score_idx = 0; score_idx < tally->scores_.size(); score_idx++) {
+        for (int nuc_idx = 0; nuc_idx < tally->nuclides_.size(); nuc_idx++) {
+          // combine the score and nuclide into a name for the value
+          auto score_str = fmt::format("{}_{}",
+                                       tally->score_name(score_idx),
+                                       tally->nuclide_name(nuc_idx));
 
           // index for this nuclide and score
-          int nuc_score_idx = i_score + i_nuc*tally->scores_.size();
+          int nuc_score_idx = score_idx + nuc_idx*tally->scores_.size();
 
           // construct result vectors
-          std::vector<double> mean_vec, std_dev_vec;
+          std::vector<double> mean_vec(umesh->n_bins()),
+                              std_dev_vec(umesh->n_bins());
           for (int j = 0; j < tally->results_.shape()[0]; j++) {
-            // mean
+            // get the volume for this bin
+            double volume = umesh->volume(j);
+            // compute the mean
             double mean = tally->results_(j, nuc_score_idx, TallyResult::SUM) / n_realizations;
-            mean_vec.push_back(mean);
-            // std. dev.
+            mean_vec.at(j) = mean / volume;
+
+            // compute the standard deviation
             double sum_sq = tally->results_(j , nuc_score_idx, TallyResult::SUM_SQ);
+            double std_dev {0.0};
             if (n_realizations > 1) {
-              double std_dev = sum_sq/n_realizations - mean*mean;
+              std_dev = sum_sq/n_realizations - mean*mean;
               std_dev = std::sqrt(std_dev / (n_realizations - 1));
-              std_dev_vec.push_back(std_dev);
-            } else {
-              std_dev_vec.push_back(0.0);
             }
+            std_dev_vec[j] = std_dev / volume;
           }
-
-          // generate a name for the value
-          std::string nuclide_name = "total"; // start with total by default
-          if (tally->nuclides_[i_nuc] > -1) {
-            nuclide_name = data::nuclides[tally->nuclides_[i_nuc]]->name_;
-          }
-
-          std::string score_name = tally->score_name(i_score);
-          auto score_str = fmt::format("{}_{}", score_name, nuclide_name);
-          tally_scores.push_back(score_str);
+#ifdef OPENMC_MPI
+          MPI_Bcast(mean_vec.data(), mean_vec.size(), MPI_DOUBLE, 0, mpi::intracomm);
+          MPI_Bcast(std_dev_vec.data(), std_dev_vec.size(), MPI_DOUBLE, 0, mpi::intracomm);
+#endif
+          // set the data for this score
           umesh->set_score_data(score_str, mean_vec, std_dev_vec);
         }
       }
 
       // Generate a file name based on the tally id
       // and the current batch number
-      int w = std::to_string(settings::n_max_batches).size();
+      size_t batch_width {std::to_string(settings::n_max_batches).size()};
       std::string filename = fmt::format("tally_{0}.{1:0{2}}",
                                          tally->id_,
                                          simulation::current_batch,
-                                         w);
+                                         batch_width);
+
+      if (umesh->library() == "moab" && !mpi::master) continue;
+
       // Write the unstructured mesh and data to file
       umesh->write(filename);
 
-      for (const auto& score : tally_scores) { umesh->remove_score(score); }
+      umesh->remove_scores();
     }
   }
 }
-#endif
 
 void write_tally_results_nr(hid_t file_id)
 {

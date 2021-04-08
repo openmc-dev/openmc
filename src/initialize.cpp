@@ -3,6 +3,7 @@
 #include <cstddef>
 #include <cstdlib> // for getenv
 #include <cstring>
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -32,6 +33,10 @@
 #include "openmc/thermal.h"
 #include "openmc/timer.h"
 
+#ifdef LIBMESH
+#include "libmesh/libmesh.h"
+#endif
+
 
 int openmc_init(int argc, char* argv[], const void* intracomm)
 {
@@ -53,6 +58,32 @@ int openmc_init(int argc, char* argv[], const void* intracomm)
   // Parse command-line arguments
   int err = parse_command_line(argc, argv);
   if (err) return err;
+
+#ifdef LIBMESH
+
+#ifdef _OPENMP
+  int n_threads = omp_get_max_threads();
+#else
+  int n_threads = 1;
+#endif
+
+// initialize libMesh if it hasn't been initialized already
+// (if initialized externally, the libmesh_init object needs to be provided also)
+if (!settings::libmesh_init && !libMesh::initialized()) {
+#ifdef OPENMC_MPI
+  // pass command line args, empty MPI communicator, and number of threads.
+  // Because libMesh was not initialized, we assume that OpenMC is the primary
+  // application and that its main MPI comm should be used.
+  settings::libmesh_init = std::make_unique<libMesh::LibMeshInit>(argc, argv, comm, n_threads);
+#else
+  // pass command line args, empty MPI communicator, and number of threads
+  settings::libmesh_init = std::make_unique<libMesh::LibMeshInit>(argc, argv, 0, n_threads);
+#endif
+
+  settings::libmesh_comm = &(settings::libmesh_init->comm());
+}
+
+#endif
 
   // Start total and initialization timer
   simulation::time_total.start();

@@ -1,13 +1,16 @@
 #include "openmc/mesh.h"
-
 #include <algorithm> // for copy, equal, min, min_element
 #include <cstddef> // for size_t
 #include <cmath>  // for ceil
 #include <memory> // for allocator
 #include <string>
+#include <gsl/gsl>
 
 #ifdef OPENMC_MPI
 #include "mpi.h"
+#endif
+#ifdef _OPENMP
+#include <omp.h>
 #endif
 #include <fmt/core.h> // for fmt
 #include "xtensor/xbuilder.hpp"
@@ -20,12 +23,19 @@
 #include "openmc/capi.h"
 #include "openmc/constants.h"
 #include "openmc/error.h"
+#include "openmc/file_utils.h"
 #include "openmc/hdf5_interface.h"
 #include "openmc/message_passing.h"
 #include "openmc/search.h"
 #include "openmc/settings.h"
+#include "openmc/tallies/tally.h"
 #include "openmc/tallies/filter.h"
 #include "openmc/xml_interface.h"
+
+#ifdef LIBMESH
+#include "libmesh/mesh_tools.h"
+#include "libmesh/numeric_vector.h"
+#endif
 
 namespace openmc {
 
@@ -33,12 +43,26 @@ namespace openmc {
 // Global variables
 //==============================================================================
 
+#ifdef LIBMESH
+const bool LIBMESH_ENABLED = true;
+#else
+const bool LIBMESH_ENABLED = false;
+#endif
+
+
 namespace model {
 
 std::unordered_map<int32_t, int32_t> mesh_map;
 std::vector<std::unique_ptr<Mesh>> meshes;
 
 } // namespace model
+
+#ifdef LIBMESH
+namespace settings {
+std::unique_ptr<libMesh::LibMeshInit> libmesh_init;
+const libMesh::Parallel::Communicator* libmesh_comm {nullptr};
+}
+#endif
 
 //==============================================================================
 // Helper functions
@@ -84,6 +108,35 @@ Mesh::Mesh(pugi::xml_node node)
   }
 }
 
+void
+Mesh::set_id(int32_t id) {
+  Expects(id >=0 || id == C_NONE);
+
+  // Clear entry in mesh map in case one was already assigned
+  if (id_ != C_NONE) {
+    model::mesh_map.erase(id_);
+    id_ = C_NONE;
+  }
+
+  // Ensure no other mesh has the same ID
+  if (model::mesh_map.find(id) != model::mesh_map.end()) {
+    throw std::runtime_error{fmt::format("Two meshes have the same ID: {}", id)};
+  }
+
+  // If no ID is specified, auto-assign the next ID in the sequence
+  if (id == C_NONE) {
+    id = 0;
+    for (const auto& m : model::meshes) {
+      id = std::max(id, m->id_);
+    }
+    ++id;
+  }
+
+  // Update ID and entry in the mesh map
+  id_ = id;
+  model::mesh_map[id] = model::meshes.size() - 1;
+}
+
 //==============================================================================
 // Structured Mesh implementation
 //==============================================================================
@@ -100,6 +153,73 @@ StructuredMesh::bin_label(int bin) const {
   } else {
     return fmt::format("Mesh Index ({})", ijk[0]) ;
   }
+}
+
+//==============================================================================
+// Unstructured Mesh implementation
+//==============================================================================
+
+UnstructuredMesh::UnstructuredMesh(pugi::xml_node node) : Mesh(node) {
+  n_dimension_ = 3;
+
+  // check the mesh type
+  if (check_for_node(node, "type")) {
+    auto temp = get_node_value(node, "type", true, true);
+    if (temp != "unstructured") {
+      fatal_error(fmt::format("Invalid mesh type: {}", temp));
+    }
+  }
+
+  // get the filename of the unstructured mesh to load
+  if (check_for_node(node, "filename")) {
+    filename_ = get_node_value(node, "filename");
+    if (!file_exists(filename_)) {
+      fatal_error("Mesh file '" + filename_ + "' does not exist!");
+    }
+  }
+  else {
+    fatal_error(fmt::format("No filename supplied for unstructured mesh with ID: {}", id_));
+  }
+
+  // check if mesh tally data should be written with
+  // statepoint files
+  if (check_for_node(node, "output")) {
+    output_ = get_node_value_bool(node, "output");
+  }
+
+}
+
+void
+UnstructuredMesh::surface_bins_crossed(const Particle& p,
+                                       std::vector<int>& bins) const {
+  fatal_error("Unstructured mesh surface tallies are not implemented.");
+}
+
+std::string
+UnstructuredMesh::bin_label(int bin) const {
+  return fmt::format("Mesh Index ({})", bin);
+};
+
+void
+UnstructuredMesh::to_hdf5(hid_t group) const
+{
+    hid_t mesh_group = create_group(group, fmt::format("mesh {}", id_));
+
+    write_dataset(mesh_group, "type", "unstructured");
+    write_dataset(mesh_group, "filename", filename_);
+    write_dataset(mesh_group, "library", this->library());
+    // write volume of each element
+    std::vector<double> tet_vols;
+    xt::xtensor<double, 2> centroids({static_cast<size_t>(this->n_bins()), 3});
+    for (int i = 0; i < this->n_bins(); i++) {
+      tet_vols.emplace_back(this->volume(i));
+      auto c = this->centroid(i);
+      xt::view(centroids, i, xt::all()) = xt::xarray<double>({c.x, c.y, c.z});
+    }
+
+    write_dataset(mesh_group, "volumes", tet_vols);
+    write_dataset(mesh_group, "centroids", centroids);
+    close_group(mesh_group);
 }
 
 void StructuredMesh::get_indices(Position r, int* ijk, bool* in_mesh) const
@@ -874,6 +994,62 @@ void RegularMesh::to_hdf5(hid_t group) const
   close_group(mesh_group);
 }
 
+xt::xtensor<double, 1>
+RegularMesh::count_sites(const Particle::Bank* bank,
+                         int64_t length,
+                         bool* outside) const
+{
+  // Determine shape of array for counts
+  std::size_t m = this->n_bins();
+  std::vector<std::size_t> shape = {m};
+
+  // Create array of zeros
+  xt::xarray<double> cnt {shape, 0.0};
+  bool outside_ = false;
+
+  for (int64_t i = 0; i < length; i++) {
+    const auto& site = bank[i];
+
+    // determine scoring bin for entropy mesh
+    int mesh_bin = get_bin(site.r);
+
+    // if outside mesh, skip particle
+    if (mesh_bin < 0) {
+      outside_ = true;
+      continue;
+    }
+
+    // Add to appropriate bin
+    cnt(mesh_bin) += site.wgt;
+  }
+
+  // Create copy of count data. Since ownership will be acquired by xtensor,
+  // std::allocator must be used to avoid Valgrind mismatched free() / delete
+  // warnings.
+  int total = cnt.size();
+  double* cnt_reduced = std::allocator<double>{}.allocate(total);
+
+#ifdef OPENMC_MPI
+  // collect values from all processors
+  MPI_Reduce(cnt.data(), cnt_reduced, total, MPI_DOUBLE, MPI_SUM, 0,
+    mpi::intracomm);
+
+  // Check if there were sites outside the mesh for any processor
+  if (outside) {
+    MPI_Reduce(&outside_, outside, 1, MPI_C_BOOL, MPI_LOR, 0, mpi::intracomm);
+  }
+#else
+  std::copy(cnt.data(), cnt.data() + total, cnt_reduced);
+  if (outside) *outside = outside_;
+#endif
+
+  // Adapt reduced values in array back into an xarray
+  auto arr = xt::adapt(cnt_reduced, total, xt::acquire_ownership(), shape);
+  xt::xarray<double> counts = arr;
+
+  return counts;
+}
+
 //==============================================================================
 // RectilinearMesh implementation
 //==============================================================================
@@ -1217,6 +1393,43 @@ openmc_extend_meshes(int32_t n, const char* type, int32_t* index_start,
   return 0;
 }
 
+//! Adds a new unstructured mesh to OpenMC
+extern "C" int openmc_add_unstructured_mesh(const char filename[],
+                                            const char library[],
+                                            int* id)
+{
+  std::string lib_name(library);
+  std::string mesh_file(filename);
+  bool valid_lib = false;
+
+#ifdef DAGMC
+  if (lib_name == "moab") {
+    model::meshes.push_back(std::move(std::make_unique<MOABMesh>(mesh_file)));
+    valid_lib = true;
+  }
+#endif
+
+#ifdef LIBMESH
+  if (lib_name == "libmesh") {
+    model::meshes.push_back(std::move(std::make_unique<LibMesh>(mesh_file)));
+    valid_lib = true;
+  }
+#endif
+
+  if (!valid_lib) {
+    set_errmsg(fmt::format("Mesh library {} is not supported "
+                           "by this build of OpenMC", lib_name));
+    return OPENMC_E_INVALID_ARGUMENT;
+  }
+
+  // auto-assign new ID
+  model::meshes.back()->set_id(-1);
+  *id = model::meshes.back()->id_;
+
+  return 0;
+}
+
+
 //! Return the index in the meshes array of a mesh with a given ID
 extern "C" int
 openmc_get_mesh_index(int32_t id, int32_t* index)
@@ -1374,27 +1587,16 @@ openmc_rectilinear_mesh_set_grid(int32_t index, const double* grid_x,
 
 #ifdef DAGMC
 
-UnstructuredMesh::UnstructuredMesh(pugi::xml_node node) : Mesh(node)
-{
-  // unstructured always assumed to be 3D
-  n_dimension_ = 3;
+MOABMesh::MOABMesh(pugi::xml_node node) : UnstructuredMesh(node) {
+  initialize();
+}
 
-  // check the mesh type
-  if (check_for_node(node, "type")) {
-    auto temp = get_node_value(node, "type", true, true);
-    if (temp != "unstructured") {
-      fatal_error("Invalid mesh type: " + temp);
-    }
-  }
+MOABMesh::MOABMesh(const std::string& filename) {
+  filename_ = filename;
+  initialize();
+}
 
-  // get the filename of the unstructured mesh to load
-  if (check_for_node(node, "filename")) {
-    filename_ = get_node_value(node, "filename");
-  } else {
-    fatal_error("No filename supplied for unstructured mesh with ID: " +
-                std::to_string(id_));
-  }
-
+void MOABMesh::initialize() {
   // create MOAB instance
   mbi_ = std::make_unique<moab::Core>();
   // load unstructured mesh file
@@ -1432,7 +1634,7 @@ UnstructuredMesh::UnstructuredMesh(pugi::xml_node node) : Mesh(node)
 }
 
 void
-UnstructuredMesh::build_kdtree(const moab::Range& all_tets)
+MOABMesh::build_kdtree(const moab::Range& all_tets)
 {
   moab::Range all_tris;
   int adj_dim = 2;
@@ -1467,10 +1669,10 @@ UnstructuredMesh::build_kdtree(const moab::Range& all_tets)
 }
 
 void
-UnstructuredMesh::intersect_track(const moab::CartVect& start,
-                                  const moab::CartVect& dir,
-                                  double track_len,
-                                  std::vector<double>& hits) const {
+MOABMesh::intersect_track(const moab::CartVect& start,
+                          const moab::CartVect& dir,
+                          double track_len,
+                          std::vector<double>& hits) const {
   hits.clear();
 
   moab::ErrorCode rval;
@@ -1494,12 +1696,13 @@ UnstructuredMesh::intersect_track(const moab::CartVect& start,
 
   // sorts by first component of std::pair by default
   std::sort(hits.begin(), hits.end());
+
 }
 
 void
-UnstructuredMesh::bins_crossed(const Particle& p,
-                               std::vector<int>& bins,
-                               std::vector<double>& lengths) const
+MOABMesh::bins_crossed(const Particle& p,
+                       std::vector<int>& bins,
+                       std::vector<double>& lengths) const
 {
   Position last_r{p.r_last_};
   Position r{p.r()};
@@ -1574,7 +1777,7 @@ UnstructuredMesh::bins_crossed(const Particle& p,
 };
 
 moab::EntityHandle
-UnstructuredMesh::get_tet(const Position& r) const
+MOABMesh::get_tet(const Position& r) const
 {
   moab::CartVect pos(r.x, r.y, r.z);
   // find the leaf of the kd-tree for this position
@@ -1601,29 +1804,35 @@ UnstructuredMesh::get_tet(const Position& r) const
   return 0;
 }
 
-double UnstructuredMesh::tet_volume(moab::EntityHandle tet) const {
- std::vector<moab::EntityHandle> conn;
- moab::ErrorCode rval = mbi_->get_connectivity(&tet, 1, conn);
- if (rval != moab::MB_SUCCESS) {
-   fatal_error("Failed to get tet connectivity");
- }
-
- moab::CartVect p[4];
- rval = mbi_->get_coords(conn.data(), conn.size(), p[0].array());
- if (rval != moab::MB_SUCCESS) {
-   fatal_error("Failed to get tet coords");
- }
-
- return 1.0 / 6.0 * (((p[1] - p[0]) * (p[2] - p[0])) % (p[3] - p[0]));
+double MOABMesh::volume(int bin) const
+{
+  return tet_volume(get_ent_handle_from_bin(bin));
 }
 
-void UnstructuredMesh::surface_bins_crossed(const Particle& p, std::vector<int>& bins) const {
-  // TODO: Implement triangle crossings here
-  throw std::runtime_error{"Unstructured mesh surface tallies are not implemented."};
+std::string MOABMesh::library() const
+{
+  return "moab";
 }
 
-int
-UnstructuredMesh::get_bin(Position r) const {
+double MOABMesh::tet_volume(moab::EntityHandle tet) const
+{
+  std::vector<moab::EntityHandle> conn;
+  moab::ErrorCode rval = mbi_->get_connectivity(&tet, 1, conn);
+  if (rval != moab::MB_SUCCESS) {
+    fatal_error("Failed to get tet connectivity");
+  }
+
+  moab::CartVect p[4];
+  rval = mbi_->get_coords(conn.data(), conn.size(), p[0].array());
+  if (rval != moab::MB_SUCCESS) {
+     fatal_error("Failed to get tet coords");
+  }
+
+  return 1.0 / 6.0 * (((p[1] - p[0]) * (p[2] - p[0])) % (p[3] - p[0]));
+}
+
+int MOABMesh::get_bin(Position r) const
+{
   moab::EntityHandle tet = get_tet(r);
   if (tet == 0) {
     return -1;
@@ -1633,7 +1842,7 @@ UnstructuredMesh::get_bin(Position r) const {
 }
 
 void
-UnstructuredMesh::compute_barycentric_data(const moab::Range& tets) {
+MOABMesh::compute_barycentric_data(const moab::Range& tets) {
   moab::ErrorCode rval;
 
   baryc_data_.clear();
@@ -1662,32 +1871,10 @@ UnstructuredMesh::compute_barycentric_data(const moab::Range& tets) {
   }
 }
 
-void
-UnstructuredMesh::to_hdf5(hid_t group) const
-{
-    hid_t mesh_group = create_group(group, fmt::format("mesh {}", id_));
-
-    write_dataset(mesh_group, "type", "unstructured");
-    write_dataset(mesh_group, "filename", filename_);
-
-    // write volume and centroid of each tet
-    std::vector<double> tet_vols;
-    xt::xtensor<double, 2> centroids({ehs_.size(), 3});
-    for (int i = 0; i < ehs_.size(); i++) {
-      const auto& eh = ehs_[i];
-      tet_vols.emplace_back(this->tet_volume(eh));
-      Position c = this->centroid(eh);
-      xt::view(centroids, i, xt::all()) = xt::xarray<double>({c.x, c.y, c.z});
-    }
-
-    write_dataset(mesh_group, "volumes", tet_vols);
-    write_dataset(mesh_group, "centroids", centroids);
-
-    close_group(mesh_group);
-}
-
 bool
-UnstructuredMesh::point_in_tet(const moab::CartVect& r, moab::EntityHandle tet) const {
+MOABMesh::point_in_tet(const moab::CartVect& r,
+                       moab::EntityHandle tet) const
+{
 
   moab::ErrorCode rval;
 
@@ -1722,7 +1909,8 @@ UnstructuredMesh::point_in_tet(const moab::CartVect& r, moab::EntityHandle tet) 
 }
 
 int
-UnstructuredMesh::get_bin_from_index(int idx) const {
+MOABMesh::get_bin_from_index(int idx) const
+{
   if (idx >= n_bins()) {
     fatal_error(fmt::format("Invalid bin index: {}", idx));
   }
@@ -1730,25 +1918,29 @@ UnstructuredMesh::get_bin_from_index(int idx) const {
 }
 
 int
-UnstructuredMesh::get_index(const Position& r,
-                            bool* in_mesh) const {
+MOABMesh::get_index(const Position& r,
+                    bool* in_mesh) const
+{
   int bin = get_bin(r);
   *in_mesh = bin != -1;
   return bin;
 }
 
-int UnstructuredMesh::get_index_from_bin(int bin) const {
+int MOABMesh::get_index_from_bin(int bin) const
+{
   return bin;
 }
 
 std::pair<std::vector<double>, std::vector<double>>
-UnstructuredMesh::plot(Position plot_ll, Position plot_ur) const {
+MOABMesh::plot(Position plot_ll, Position plot_ur) const
+{
   // TODO: Implement mesh lines
   return {};
 }
 
 int
-UnstructuredMesh::get_bin_from_ent_handle(moab::EntityHandle eh) const {
+MOABMesh::get_bin_from_ent_handle(moab::EntityHandle eh) const
+{
   int bin = eh - ehs_[0];
   if (bin >= n_bins()) {
     fatal_error(fmt::format("Invalid bin: {}", bin));
@@ -1757,18 +1949,21 @@ UnstructuredMesh::get_bin_from_ent_handle(moab::EntityHandle eh) const {
 }
 
 moab::EntityHandle
-UnstructuredMesh::get_ent_handle_from_bin(int bin) const {
+MOABMesh::get_ent_handle_from_bin(int bin) const
+{
   if (bin >= n_bins()) {
     fatal_error(fmt::format("Invalid bin index: ", bin));
   }
-  return ehs_[bin];
+  return ehs_[0] + bin;
 }
 
-int UnstructuredMesh::n_bins() const {
+int MOABMesh::n_bins() const
+{
   return ehs_.size();
 }
 
-int UnstructuredMesh::n_surface_bins() const {
+int MOABMesh::n_surface_bins() const
+{
   // collect all triangles in the set of tets for this mesh
   moab::Range tris;
   moab::ErrorCode rval;
@@ -1781,8 +1976,11 @@ int UnstructuredMesh::n_surface_bins() const {
 }
 
 Position
-UnstructuredMesh::centroid(moab::EntityHandle tet) const {
+MOABMesh::centroid(int bin) const
+{
   moab::ErrorCode rval;
+
+  auto tet = this->get_ent_handle_from_bin(bin);
 
   // look up the tet connectivity
   std::vector<moab::EntityHandle> conn;
@@ -1810,13 +2008,9 @@ UnstructuredMesh::centroid(moab::EntityHandle tet) const {
   return {centroid[0], centroid[1], centroid[2]};
 }
 
-std::string
-UnstructuredMesh::bin_label(int bin) const {
-  return fmt::format("Mesh Index ({})", bin);
-};
-
 std::pair<moab::Tag, moab::Tag>
-UnstructuredMesh::get_score_tags(std::string score) const {
+MOABMesh::get_score_tags(std::string score) const
+{
   moab::ErrorCode rval;
   // add a tag to the mesh
   // all scores are treated as a single value
@@ -1858,51 +2052,50 @@ UnstructuredMesh::get_score_tags(std::string score) const {
 }
 
 void
-UnstructuredMesh::add_score(std::string score) const {
-  auto score_tags = this->get_score_tags(score);
+MOABMesh::add_score(const std::string& score)
+{
+  auto score_tags = get_score_tags(score);
+  tag_names_.push_back(score);
 }
 
-void UnstructuredMesh::remove_score(std::string score) const {
-  auto value_name = score + "_mean";
-  moab::Tag tag;
-  moab::ErrorCode rval = mbi_->tag_get_handle(value_name.c_str(), tag);
-  if (rval != moab::MB_SUCCESS) return;
+void MOABMesh::remove_scores()
+{
+  for (const auto& name : tag_names_) {
+    auto value_name = name + "_mean";
+    moab::Tag tag;
+    moab::ErrorCode rval = mbi_->tag_get_handle(value_name.c_str(), tag);
+    if (rval != moab::MB_SUCCESS) return;
 
-  rval = mbi_->tag_delete(tag);
-  if (rval != moab::MB_SUCCESS) {
-    auto msg = fmt::format("Failed to delete mesh tag for the score {}"
-                           " on unstructured mesh {}", score, id_);
-    fatal_error(msg);
-  }
+    rval = mbi_->tag_delete(tag);
+    if (rval != moab::MB_SUCCESS) {
+      auto msg = fmt::format("Failed to delete mesh tag for the score {}"
+                            " on unstructured mesh {}", name, id_);
+      fatal_error(msg);
+    }
 
-  auto std_dev_name = score + "_std_dev";
-  rval = mbi_->tag_get_handle(std_dev_name.c_str(), tag);
-  if (rval != moab::MB_SUCCESS) {
-    auto msg = fmt::format("Std. Dev. mesh tag does not exist for the score {}"
-                           " on unstructured mesh {}", score, id_);
-  }
+    auto std_dev_name = name + "_std_dev";
+    rval = mbi_->tag_get_handle(std_dev_name.c_str(), tag);
+    if (rval != moab::MB_SUCCESS) {
+      auto msg = fmt::format("Std. Dev. mesh tag does not exist for the score {}"
+                            " on unstructured mesh {}", name, id_);
+    }
 
-  rval = mbi_->tag_delete(tag);
-  if (rval != moab::MB_SUCCESS) {
-    auto msg = fmt::format("Failed to delete mesh tag for the score {}"
-                           " on unstructured mesh {}", score, id_);
-    fatal_error(msg);
+    rval = mbi_->tag_delete(tag);
+    if (rval != moab::MB_SUCCESS) {
+      auto msg = fmt::format("Failed to delete mesh tag for the score {}"
+                            " on unstructured mesh {}", name, id_);
+      fatal_error(msg);
+    }
   }
+  tag_names_.clear();
 }
 
 void
-UnstructuredMesh::set_score_data(const std::string& score,
-                                 std::vector<double> values,
-                                 std::vector<double> std_dev) const {
+MOABMesh::set_score_data(const std::string& score,
+                         const std::vector<double>& values,
+                         const std::vector<double>& std_dev)
+{
   auto score_tags = this->get_score_tags(score);
-
-  // normalize tally values by element volume
-  for (int i = 0; i < ehs_.size(); i++) {
-    auto eh = this->get_ent_handle_from_bin(i);
-    double volume = this->tet_volume(eh);
-    values[i] /= volume;
-    std_dev[i] /= volume;
-  }
 
   moab::ErrorCode rval;
   // set the score value
@@ -1923,7 +2116,8 @@ UnstructuredMesh::set_score_data(const std::string& score,
 }
 
 void
-UnstructuredMesh::write(std::string base_filename) const {
+MOABMesh::write(const std::string& base_filename) const
+{
   // add extension to the base name
   auto filename = base_filename + ".vtk";
   write_message(5, "Writing unstructured mesh {}...", filename);
@@ -1942,6 +2136,226 @@ UnstructuredMesh::write(std::string base_filename) const {
 
 #endif
 
+#ifdef LIBMESH
+
+LibMesh::LibMesh(pugi::xml_node node) : UnstructuredMesh(node)
+{
+  initialize();
+}
+
+LibMesh::LibMesh(const std::string& filename)
+{
+  filename_ = filename;
+  initialize();
+}
+
+void LibMesh::initialize()
+{
+  if (!settings::libmesh_comm) {
+    fatal_error("Attempting to use an unstructured mesh without a libMesh communicator.");
+  }
+
+  // assuming that unstructured meshes used in OpenMC are 3D
+  n_dimension_ = 3;
+
+  m_ = std::make_unique<libMesh::Mesh>(*settings::libmesh_comm, n_dimension_);
+  m_->read(filename_);
+  m_->prepare_for_use();
+
+  // ensure that the loaded mesh is 3 dimensional
+  if(m_->mesh_dimension() != n_dimension_) {
+    fatal_error(fmt::format("Mesh file {} specified for use in an unstructured mesh is not a 3D mesh.", filename_));
+  }
+
+  // create an equation system for storing values
+  eq_system_name_ = fmt::format("mesh_{}_system", id_);
+
+  equation_systems_ = std::make_unique<libMesh::EquationSystems>(*m_);
+  libMesh::ExplicitSystem& eq_sys =
+    equation_systems_->add_system<libMesh::ExplicitSystem>(eq_system_name_);
+
+
+  #ifdef _OPENMP
+  int n_threads = omp_get_max_threads();
+  #else
+  int n_threads = 1;
+  #endif
+
+  for (int i = 0; i < n_threads; i++) {
+    pl_.emplace_back(m_->sub_point_locator());
+    pl_.back()->set_contains_point_tol(FP_COINCIDENT);
+    pl_.back()->enable_out_of_mesh_mode();
+  }
+
+  // store first element in the mesh to use as an offset for bin indices
+  auto first_elem = *m_->elements_begin();
+  first_element_id_ = first_elem->id();
+
+  // bounding box for the mesh for quick rejection checks
+  bbox_ = libMesh::MeshTools::create_bounding_box(*m_);
+}
+
+Position
+LibMesh::centroid(int bin) const
+{
+  const auto& elem = this->get_element_from_bin(bin);
+  auto centroid = elem.centroid();
+  return {centroid(0), centroid(1), centroid(2)};
+}
+
+std::string LibMesh::library() const { return "libmesh"; }
+
+int LibMesh::n_bins() const
+{
+  return m_->n_elem();
+}
+
+int LibMesh::n_surface_bins() const
+{
+  int n_bins = 0;
+  for (int i = 0; i < this->n_bins(); i++) {
+    const libMesh::Elem& e = get_element_from_bin(i);
+    n_bins += e.n_faces();
+    // if this is a boundary element, it will only be visited once,
+    // the number of surface bins is incremented to
+    for (auto neighbor_ptr : e.neighbor_ptr_range()) {
+      // null neighbor pointer indicates a boundary face
+      if (!neighbor_ptr) { n_bins++; }
+    }
+  }
+  return n_bins;
+}
+
+void
+LibMesh::add_score(const std::string& var_name)
+{
+  // check if this is a new variable
+  std::string value_name = var_name + "_mean";
+  if (!variable_map_.count(value_name)) {
+    auto& eqn_sys = equation_systems_->get_system(eq_system_name_);
+    auto var_num = eqn_sys.add_variable(value_name, libMesh::CONSTANT, libMesh::MONOMIAL);
+    variable_map_[value_name] = var_num;
+  }
+
+  std::string std_dev_name = var_name + "_std_dev";
+  // check if this is a new variable
+  if (!variable_map_.count(std_dev_name)) {
+    auto& eqn_sys = equation_systems_->get_system(eq_system_name_);
+    auto var_num = eqn_sys.add_variable(std_dev_name, libMesh::CONSTANT, libMesh::MONOMIAL);
+    variable_map_[std_dev_name] = var_num;
+  }
+}
+
+void
+LibMesh::remove_scores()
+{
+  auto& eqn_sys = equation_systems_->get_system(eq_system_name_);
+  eqn_sys.clear();
+  variable_map_.clear();
+}
+
+void
+LibMesh::set_score_data(const std::string& var_name,
+                        const std::vector<double>& values,
+                        const std::vector<double>& std_dev)
+{
+  auto& eqn_sys = equation_systems_->get_system(eq_system_name_);
+
+  if (!eqn_sys.is_initialized()) { equation_systems_->init(); }
+
+  const libMesh::DofMap& dof_map = eqn_sys.get_dof_map();
+
+  // look up the value variable
+  std::string value_name = var_name + "_mean";
+  unsigned int value_num = variable_map_.at(value_name);
+  // look up the std dev variable
+  std::string std_dev_name = var_name + "_std_dev";
+  unsigned int std_dev_num = variable_map_.at(std_dev_name);
+
+  for (auto it = m_->local_elements_begin(); it != m_->local_elements_end(); it++) {
+    auto bin = get_bin_from_element(*it);
+
+    // set value
+    std::vector<libMesh::dof_id_type> value_dof_indices;
+    dof_map.dof_indices(*it, value_dof_indices, value_num);
+    Ensures(value_dof_indices.size() == 1);
+    eqn_sys.solution->set(value_dof_indices[0], values.at(bin));
+
+    // set std dev
+    std::vector<libMesh::dof_id_type> std_dev_dof_indices;
+    dof_map.dof_indices(*it, std_dev_dof_indices, std_dev_num);
+    Ensures(std_dev_dof_indices.size() == 1);
+    eqn_sys.solution->set(std_dev_dof_indices[0], std_dev.at(bin));
+  }
+}
+
+void LibMesh::write(const std::string& filename) const
+{
+  write_message(fmt::format("Writing file: {}.e for unstructured mesh {}", filename, this->id_));
+  libMesh::ExodusII_IO exo(*m_);
+  std::set<std::string> systems_out = {eq_system_name_};
+  exo.write_discontinuous_exodusII(filename + ".e", *equation_systems_, &systems_out);
+}
+
+void
+LibMesh::bins_crossed(const Particle& p,
+                      std::vector<int>& bins,
+                      std::vector<double>& lengths) const
+{
+  // TODO: Implement triangle crossings here
+  fatal_error("Tracklength tallies on libMesh instances are not implemented.");
+}
+
+int
+LibMesh::get_bin(Position r) const
+{
+  // look-up a tet using the point locator
+  libMesh::Point p(r.x, r.y, r.z);
+
+  // quick rejection check
+  if (!bbox_.contains_point(p)) { return -1; }
+
+  #ifdef _OPENMP
+  int thread_num = omp_get_thread_num();
+  #else
+  int thread_num = 0;
+  #endif
+
+  const auto& point_locator = pl_.at(thread_num);
+
+  const auto elem_ptr = (*point_locator)(p);
+  return elem_ptr ? get_bin_from_element(elem_ptr) : -1;
+}
+
+int
+LibMesh::get_bin_from_element(const libMesh::Elem* elem) const
+{
+  int bin = elem->id() - first_element_id_;
+  if (bin >= n_bins() || bin < 0) {
+    fatal_error(fmt::format("Invalid bin: {}", bin));
+  }
+  return bin;
+}
+
+std::pair<std::vector<double>, std::vector<double>>
+LibMesh::plot(Position plot_ll, Position plot_ur) const
+{
+  return {};
+}
+
+const libMesh::Elem&
+LibMesh::get_element_from_bin(int bin) const
+{
+  return m_->elem_ref(bin);
+}
+
+double LibMesh::volume(int bin) const
+{
+   return m_->elem_ref(bin).volume();
+}
+
+#endif // LIBMESH
+
 //==============================================================================
 // Non-member functions
 //==============================================================================
@@ -1956,18 +2370,27 @@ void read_meshes(pugi::xml_node root)
       mesh_type = "regular";
     }
 
+    // determine the mesh library to use
+    std::string mesh_lib;
+    if (check_for_node(node, "library")) {
+      mesh_lib = get_node_value(node, "library", true, true);
+    }
+
     // Read mesh and add to vector
     if (mesh_type == "regular") {
       model::meshes.push_back(std::make_unique<RegularMesh>(node));
     } else if (mesh_type == "rectilinear") {
       model::meshes.push_back(std::make_unique<RectilinearMesh>(node));
 #ifdef DAGMC
-    } else if (mesh_type == "unstructured") {
-      model::meshes.push_back(std::make_unique<UnstructuredMesh>(node));
-#else
-    } else if (mesh_type == "unstructured") {
-      fatal_error("Unstructured mesh support is disabled.");
+    } else if (mesh_type == "unstructured" && mesh_lib == "moab") {
+      model::meshes.push_back(std::make_unique<MOABMesh>(node));
 #endif
+#ifdef LIBMESH
+    } else if (mesh_type == "unstructured" && mesh_lib == "libmesh") {
+      model::meshes.push_back(std::make_unique<LibMesh>(node));
+#endif
+    } else if (mesh_type == "unstructured") {
+      fatal_error("Unstructured mesh support is not enabled or the mesh library is invalid.");
     } else {
       fatal_error("Invalid mesh type: " + mesh_type);
     }

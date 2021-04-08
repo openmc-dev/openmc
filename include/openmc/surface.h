@@ -30,7 +30,7 @@ namespace model {
 } // namespace model
 
 //==============================================================================
-//! Coordinates for an axis-aligned cube that bounds a geometric object.
+//! Coordinates for an axis-aligned cuboid bounding a geometric object.
 //==============================================================================
 
 struct BoundingBox

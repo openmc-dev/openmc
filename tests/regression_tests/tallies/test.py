@@ -175,9 +175,6 @@ def test_tallies():
     collision_tally.filters = [collision_filter]
     collision_tally.scores = ['scatter']
 
-
-
-
     model.tallies += [
         azimuthal_tally1, azimuthal_tally2, azimuthal_tally3,
         cellborn_tally, dg_tally, energy_tally, energyout_tally,

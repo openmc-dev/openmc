@@ -971,13 +971,25 @@ SurfaceQuadric::distance(Position r, Direction ang, bool coincident) const
   } else if (coincident || std::abs(c) < FP_COINCIDENT) {
     // Particle is on the surface, thus one distance is positive/negative and
     // the other is zero. The sign of k determines which distance is zero and
-    // which is not.
-    if (k >= 0.0) {
+    // which is not. Additionally, if a is zero, it means the particle is on
+    // a plane-like surface.
+    if (a == 0.0) {
+      d = INFTY; // see the below explanation
+    } else if (k >= 0.0) {
       d = (-k - sqrt(quad)) / a;
     } else {
       d = (-k + sqrt(quad)) / a;
     }
 
+  } else if (a == 0.0) {
+    // Given the orientation of the particle, the quadric looks like a plane in
+    // this case, and thus we have only one solution despite potentially having
+    // quad > 0.0. While the term under the square root may be real, in one
+    // case of the +/- of the quadratic formula, 0/0 results, and in another, a
+    // finite value over 0 results. Applying L'Hopital's to the 0/0 case gives
+    // the below. Alternatively this can be found by simply putting a=0 in the
+    // equation ax^2 + bx + c = 0.
+    d = -0.5 * c / k;
   } else {
     // Calculate both solutions to the quadratic.
     quad = sqrt(quad);

@@ -330,6 +330,7 @@ list(APPEND libopenmc_SOURCES
   src/tallies/filter_distribcell.cpp
   src/tallies/filter_energyfunc.cpp
   src/tallies/filter_energy.cpp
+  src/tallies/filter_collision.cpp
   src/tallies/filter_legendre.cpp
   src/tallies/filter_material.cpp
   src/tallies/filter_mesh.cpp

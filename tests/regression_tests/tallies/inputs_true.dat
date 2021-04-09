@@ -350,6 +350,9 @@
   <filter id="12" type="universe">
     <bins>1 2 3 4 6 8</bins>
   </filter>
+  <filter id="15" type="collision">
+    <bins>1 2 5 3 6</bins>
+  </filter>
   <filter id="13" type="cell">
     <bins>10 21 22 23 60</bins>
   </filter>
@@ -422,22 +425,30 @@
   <tally id="15">
     <filters>10</filters>
     <scores>scatter nu-scatter</scores>
+    <estimator>analog</estimator>
   </tally>
   <tally id="16">
     <filters>11</filters>
     <scores>scatter nu-scatter flux total</scores>
+    <estimator>analog</estimator>
   </tally>
   <tally id="17">
     <filters>11</filters>
     <scores>flux total</scores>
+    <estimator>collision</estimator>
   </tally>
   <tally id="18">
     <filters>11</filters>
     <scores>flux total</scores>
+    <estimator>tracklength</estimator>
   </tally>
   <tally id="19">
     <filters>12</filters>
     <scores>total</scores>
+  </tally>
+  <tally id="34">
+    <filters>15</filters>
+    <scores>scatter</scores>
   </tally>
   <tally id="20">
     <filters>13</filters>

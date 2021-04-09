@@ -22,7 +22,8 @@ _FILTER_TYPES = (
     'universe', 'material', 'cell', 'cellborn', 'surface', 'mesh', 'energy',
     'energyout', 'mu', 'polar', 'azimuthal', 'distribcell', 'delayedgroup',
     'energyfunction', 'cellfrom', 'legendre', 'spatiallegendre',
-    'sphericalharmonics', 'zernike', 'zernikeradial', 'particle', 'cellinstance'
+    'sphericalharmonics', 'zernike', 'zernikeradial', 'particle', 'cellinstance',
+    'collision'
 )
 
 _CURRENT_NAMES = (
@@ -962,6 +963,64 @@ class MeshSurfaceFilter(MeshFilter):
 
         # Initialize a Pandas DataFrame from the mesh dictionary
         return pd.concat([df, pd.DataFrame(filter_dict)])
+
+
+class CollisionFilter(Filter):
+    """Bins tally events based on the number of collisions.
+
+    Parameters
+    ----------
+    bins : Iterable of int
+        A list or iterable of the number of collisions, as integer values. 
+        The events whose post-scattering collision number equals one of 
+        the provided values will be counted. 
+    filter_id : int
+        Unique identifier for the filter
+
+    Attributes
+    ----------
+    id : int
+        Unique identifier for the filter
+    bins : numpy.ndarray
+        An array of integer values representing the number of collisions events
+        by which to filter
+    num_bins : int
+        The number of filter bins
+
+    """
+
+    def __init__(self, bins, filter_id=None):
+        self.bins = np.asarray(bins)
+        self.id = filter_id
+
+    def __repr__(self):
+        string = type(self).__name__ + '\n'
+        string += '{: <16}=\t{}\n'.format('\tValues', self.bins)
+        string += '{: <16}=\t{}\n'.format('\tID', self.id)
+        return string
+
+    @Filter.bins.setter
+    def bins(self, bins):
+        Filter.bins.__set__(self, np.asarray(bins))
+
+    def check_bins(self, bins):
+        for x in bins:
+            # Values should be integers
+            cv.check_type('filter value', x, Integral)
+            cv.check_greater_than('filter value', x, 0, equality=True)
+
+    def to_xml_element(self):
+        """Return XML Element representing the Filter.
+
+        Returns
+        -------
+        element : xml.etree.ElementTree.Element
+            XML element containing filter data
+
+        """
+        element = super().to_xml_element()
+        element[0].text = ' '.join(str(x) for x in self.bins)
+        return element
 
 
 class RealFilter(Filter):

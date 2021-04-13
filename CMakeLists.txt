@@ -273,11 +273,10 @@ list(APPEND libopenmc_SOURCES
   src/boundary_condition.cpp
   src/bremsstrahlung.cpp
   src/dagmc.cpp
-  src/device_alloc.cpp
   src/cell.cpp
   src/cmfd_solver.cpp
   src/cross_sections.cpp
-  src/device.cpp
+  src/device_alloc.cpp
   src/distribution.cpp
   src/distribution_angle.cpp
   src/distribution_energy.cpp

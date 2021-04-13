@@ -5,7 +5,6 @@
 #include "openmc/cell.h"
 #include "openmc/container_util.h"
 #include "openmc/device_alloc.h"
-#include "openmc/device.h"
 #include "openmc/eigenvalue.h"
 #include "openmc/error.h"
 #include "openmc/event.h"
@@ -132,9 +131,6 @@ int openmc_simulation_init()
     }
   }
 
-  // Transfer data to GPU
-  map_to_device();
-
   // Display header
   if (mpi::master) {
     if (settings::run_mode == RunMode::FIXED_SOURCE) {
@@ -163,7 +159,7 @@ int openmc_simulation_finalize()
   simulation::time_finalize.start();
 
   // Release data from device
-  release_from_device();
+  release_data_from_device();
 
   // Clear material nuclide mapping
   for (auto& mat : model::materials) {

@@ -1694,10 +1694,10 @@ MOABMesh::bins_crossed(Position last_r,
                        std::vector<int>& bins,
                        std::vector<double>& lengths) const
 {
-  // u /= u.norm();
   moab::CartVect r0(last_r.x, last_r.y, last_r.z);
   moab::CartVect r1(r.x, r.y, r.z);
   moab::CartVect dir(u.x, u.y, u.z);
+  dir.normalize();
 
   double track_len = (r1 - r0).length();
   if (track_len == 0.0) return;

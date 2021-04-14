@@ -454,7 +454,7 @@ void PhotonInteraction::calculate_xs(Particle& p) const
   // Perform binary search on the element energy grid in order to determine
   // which points to interpolate between
   int n_grid = energy_.size();
-  double log_E = std::log(p.E_);
+  double log_E = std::log(p.E());
   int i_grid;
   if (log_E <= energy_[0]) {
     i_grid = 0;
@@ -472,7 +472,7 @@ void PhotonInteraction::calculate_xs(Particle& p) const
   // calculate interpolation factor
   double f = (log_E - energy_(i_grid)) / (energy_(i_grid+1) - energy_(i_grid));
 
-  auto& xs {p.photon_xs_[index_]};
+  auto& xs {p.photon_xs(index_)};
   xs.index_grid = i_grid;
   xs.interp_factor = f;
 
@@ -506,7 +506,7 @@ void PhotonInteraction::calculate_xs(Particle& p) const
 
   // Calculate microscopic total cross section
   xs.total = xs.coherent + xs.incoherent + xs.photoelectric + xs.pair_production;
-  xs.last_E = p.E_;
+  xs.last_E = p.E();
 }
 
 double PhotonInteraction::rayleigh_scatter(double alpha, uint64_t* seed) const
@@ -669,7 +669,7 @@ void PhotonInteraction::atomic_relaxation(const ElectronSubshell& shell, Particl
     u.y = std::sqrt(1.0 - mu*mu)*std::cos(phi);
     u.z = std::sqrt(1.0 - mu*mu)*std::sin(phi);
     double E = shell.binding_energy;
-    p.create_secondary(p.wgt_, u, E, Particle::Type::photon);
+    p.create_secondary(p.wgt(), u, E, Particle::Type::photon);
     return;
   }
 
@@ -701,7 +701,7 @@ void PhotonInteraction::atomic_relaxation(const ElectronSubshell& shell, Particl
     // Non-radiative transition -- Auger/Coster-Kronig effect
 
     // Create auger electron
-    p.create_secondary(p.wgt_, u, E, Particle::Type::electron);
+    p.create_secondary(p.wgt(), u, E, Particle::Type::electron);
 
     // Fill hole left by emitted auger electron
     int i_hole = shell_map_.at(secondary);
@@ -711,7 +711,7 @@ void PhotonInteraction::atomic_relaxation(const ElectronSubshell& shell, Particl
     // Radiative transition -- get X-ray energy
 
     // Create fluorescent photon
-    p.create_secondary(p.wgt_, u, E, Particle::Type::photon);
+    p.create_secondary(p.wgt(), u, E, Particle::Type::photon);
   }
 
   // Fill hole created by electron transitioning to the photoelectron hole

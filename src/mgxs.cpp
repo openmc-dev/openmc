@@ -627,13 +627,13 @@ Mgxs::calculate_xs(Particle& p)
 #else
   int tid = 0;
 #endif
-  set_temperature_index(p.sqrtkT_);
+  set_temperature_index(p.sqrtkT());
   set_angle_index(p.u_local());
   XsData* xs_t = &xs[cache[tid].t];
-  p.macro_xs_.total = xs_t->total(cache[tid].a, p.g_);
-  p.macro_xs_.absorption = xs_t->absorption(cache[tid].a, p.g_);
-  p.macro_xs_.nu_fission =
-    fissionable ? xs_t->nu_fission(cache[tid].a, p.g_) : 0.;
+  p.macro_xs().total = xs_t->total(cache[tid].a, p.g());
+  p.macro_xs().absorption = xs_t->absorption(cache[tid].a, p.g());
+  p.macro_xs().nu_fission =
+    fissionable ? xs_t->nu_fission(cache[tid].a, p.g()) : 0.;
 }
 
 //==============================================================================

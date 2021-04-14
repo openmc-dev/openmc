@@ -129,7 +129,7 @@ std::vector<VolumeCalculation::Result> VolumeCalculation::execute() const
         int64_t id = iterations * n_samples_ + i;
         uint64_t seed = init_seed(id, STREAM_VOLUME);
 
-        p.n_coord_ = 1;
+        p.n_coord() = 1;
         Position xi {prn(&seed), prn(&seed), prn(&seed)};
         p.r() = lower_left_ + xi*(upper_right_ - lower_left_);
         p.u() = {0.5, 0.5, 0.5};
@@ -139,28 +139,33 @@ std::vector<VolumeCalculation::Result> VolumeCalculation::execute() const
           continue;
 
         if (domain_type_ == TallyDomain::MATERIAL) {
-          if (p.material_ != MATERIAL_VOID) {
+          if (p.material() != MATERIAL_VOID) {
             for (int i_domain = 0; i_domain < n; i_domain++) {
-              if (model::materials[p.material_]->id_ == domain_ids_[i_domain]) {
-                this->check_hit(p.material_, indices[i_domain], hits[i_domain]);
+              if (model::materials[p.material()]->id_ ==
+                  domain_ids_[i_domain]) {
+                this->check_hit(
+                  p.material(), indices[i_domain], hits[i_domain]);
                 break;
               }
             }
           }
         } else if (domain_type_ == TallyDomain::CELL) {
-          for (int level = 0; level < p.n_coord_; ++level) {
+          for (int level = 0; level < p.n_coord(); ++level) {
             for (int i_domain=0; i_domain < n; i_domain++) {
-              if (model::cells[p.coord_[level].cell]->id_ == domain_ids_[i_domain]) {
-                this->check_hit(p.material_, indices[i_domain], hits[i_domain]);
+              if (model::cells[p.coord(level).cell]->id_ ==
+                  domain_ids_[i_domain]) {
+                this->check_hit(
+                  p.material(), indices[i_domain], hits[i_domain]);
                 break;
               }
             }
           }
         } else if (domain_type_ == TallyDomain::UNIVERSE) {
-          for (int level = 0; level < p.n_coord_; ++level) {
+          for (int level = 0; level < p.n_coord(); ++level) {
             for (int i_domain = 0; i_domain < n; ++i_domain) {
-              if (model::universes[p.coord_[level].universe]->id_ == domain_ids_[i_domain]) {
-                check_hit(p.material_, indices[i_domain], hits[i_domain]);
+              if (model::universes[p.coord(level).universe]->id_ ==
+                  domain_ids_[i_domain]) {
+                check_hit(p.material(), indices[i_domain], hits[i_domain]);
                 break;
               }
             }

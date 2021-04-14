@@ -44,6 +44,10 @@ class Material(IDManagerMixin):
     temperature : float, optional
         Temperature of the material in Kelvin. If not specified, the material
         inherits the default temperature applied to the model.
+    reference : str, optional
+        Reference string that can be added to the material and propagates
+        to the material.xml file. Intended use is to containing additional
+        details regarding the source of the material for traceability reasons.
 
     Attributes
     ----------
@@ -51,6 +55,8 @@ class Material(IDManagerMixin):
         Unique identifier for the material
     temperature : float
         Temperature of the material in Kelvin.
+    reference : str
+        Reference details for the material.
     density : float
         Density of the material (units defined separately)
     density_units : str

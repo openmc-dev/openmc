@@ -175,10 +175,17 @@ def rectangular_prism(width, height, axis='z', origin=(0., 0.),
     max_x1 = plane(x1, 'maximum', width/2 + origin[0])
     min_x2 = plane(x2, 'minimum', -height/2 + origin[1])
     max_x2 = plane(x2, 'maximum', height/2 + origin[1])
+    if boundary_type == 'periodic':
+        min_x1.periodic_surface = max_x1
+        min_x2.periodic_surface = max_x2
     prism = +min_x1 & -max_x1 & +min_x2 & -max_x2
 
     # Handle rounded corners if given
     if corner_radius > 0.:
+        if boundary_type == 'periodic':
+            raise ValueError('Periodic boundary conditions not permitted when '
+                             'rounded corners are used.')
+
         args = {'R': corner_radius, 'boundary_type': boundary_type}
 
         args[x1 + '0'] = origin[0] - width/2 + corner_radius

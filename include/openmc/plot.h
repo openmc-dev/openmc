@@ -171,7 +171,7 @@ T PlotBase::get_map() const {
     Particle p;
     p.r() = xyz;
     p.u() = dir;
-    p.coord_[0].universe = model::root_universe;
+    p.coord(0).universe = model::root_universe;
     int level = level_;
     int j{};
 
@@ -180,10 +180,10 @@ T PlotBase::get_map() const {
       p.r()[out_i] =  xyz[out_i] - out_pixel * y;
       for (int x = 0; x < width; x++) {
         p.r()[in_i] = xyz[in_i] + in_pixel * x;
-        p.n_coord_ = 1;
+        p.n_coord() = 1;
         // local variables
         bool found_cell = exhaustive_find_cell(p);
-        j = p.n_coord_ - 1;
+        j = p.n_coord() - 1;
         if (level >= 0) { j = level; }
         if (found_cell) {
           data.set_value(y, x, p, j);

@@ -187,25 +187,6 @@ public:
 
   Particle();
 
-  //==========================================================================
-  // Methods and accessors
-
-  // Accessors for position in global coordinates
-  Position& r() { return coord_[0].r; }
-  const Position& r() const { return coord_[0].r; }
-
-  // Accessors for position in local coordinates
-  Position& r_local() { return coord_[n_coord_ - 1].r; }
-  const Position& r_local() const { return coord_[n_coord_ - 1].r; }
-
-  // Accessors for direction in global coordinates
-  Direction& u() { return coord_[0].u; }
-  const Direction& u() const { return coord_[0].u; }
-
-  // Accessors for direction in local coordinates
-  Direction& u_local() { return coord_[n_coord_ - 1].u; }
-  const Direction& u_local() const { return coord_[n_coord_ - 1].u; }
-
   //! resets all coordinate levels for the particle
   void clear();
 
@@ -279,8 +260,16 @@ public:
   uint64_t* current_seed() {return seeds_ + stream_;}
   const uint64_t* current_seed() const {return seeds_ + stream_;}
 
+  //! Force recalculation of neutron xs by setting last energy to zero
+  void invalidate_neutron_xs()
+  {
+    for (auto& micro : neutron_xs_)
+      micro.last_E = 0.0;
+  }
+
+private:
   //==========================================================================
-  // Data members
+  // Data members (accessor methods are below)
 
   // Cross section caches
   std::vector<NuclideMicroXS> neutron_xs_; //!< Microscopic neutron cross sections
@@ -387,6 +376,138 @@ public:
   #endif
 
   int64_t n_progeny_ {0}; // Number of progeny produced by this particle
+
+public:
+  //==========================================================================
+  // Methods and accessors
+
+  NuclideMicroXS& neutron_xs(const int& i) { return neutron_xs_[i]; }
+  const NuclideMicroXS& neutron_xs(const int& i) const
+  {
+    return neutron_xs_[i];
+  }
+  ElementMicroXS& photon_xs(const int& i) { return photon_xs_[i]; }
+  MacroXS& macro_xs() { return macro_xs_; }
+  const MacroXS& macro_xs() const { return macro_xs_; }
+
+  int64_t& id() { return id_; }
+  Type& type() { return type_; }
+  const Type& type() const { return type_; }
+
+  int& n_coord() { return n_coord_; }
+  const int& n_coord() const { return n_coord_; }
+  int& cell_instance() { return cell_instance_; }
+  const int& cell_instance() const { return cell_instance_; }
+  LocalCoord& coord(const int& i) { return coord_[i]; }
+  const LocalCoord& coord(const int& i) const { return coord_[i]; }
+
+  int& n_coord_last() { return n_coord_last_; }
+  const int& n_coord_last() const { return n_coord_last_; }
+  int& cell_last(const int& i) { return cell_last_[i]; }
+  const int& cell_last(const int& i) const { return cell_last_[i]; }
+
+  double& E() { return E_; }
+  const double& E() const { return E_; }
+  double& E_last() { return E_last_; }
+  const double& E_last() const { return E_last_; }
+  int& g() { return g_; }
+  const int& g() const { return g_; }
+  int& g_last() { return g_last_; }
+  const int& g_last() const { return g_last_; }
+
+  double& wgt() { return wgt_; }
+  double& mu() { return mu_; }
+  const double& mu() const { return mu_; }
+  bool& alive() { return alive_; }
+
+  Position& r_last_current() { return r_last_current_; }
+  const Position& r_last_current() const { return r_last_current_; }
+  Position& r_last() { return r_last_; }
+  const Position& r_last() const { return r_last_; }
+  Position& u_last() { return u_last_; }
+  const Position& u_last() const { return u_last_; }
+  double& wgt_last() { return wgt_last_; }
+  const double& wgt_last() const { return wgt_last_; }
+  double& wgt_absorb() { return wgt_absorb_; }
+  const double& wgt_absorb() const { return wgt_absorb_; }
+
+  bool& fission() { return fission_; }
+  TallyEvent& event() { return event_; }
+  const TallyEvent& event() const { return event_; }
+  int& event_nuclide() { return event_nuclide_; }
+  const int& event_nuclide() const { return event_nuclide_; }
+  int& event_mt() { return event_mt_; }
+  int& delayed_group() { return delayed_group_; }
+
+  int& n_bank() { return n_bank_; }
+  int& n_bank_second() { return n_bank_second_; }
+  double& wgt_bank() { return wgt_bank_; }
+  int* n_delayed_bank() { return n_delayed_bank_; }
+  int& n_delayed_bank(const int& i) { return n_delayed_bank_[i]; }
+
+  int& surface() { return surface_; }
+  const int& surface() const { return surface_; }
+  int& cell_born() { return cell_born_; }
+  const int& cell_born() const { return cell_born_; }
+  int& material() { return material_; }
+  const int& material() const { return material_; }
+  int& material_last() { return material_last_; }
+
+  BoundaryInfo& boundary() { return boundary_; }
+
+  double& sqrtkT() { return sqrtkT_; }
+  const double& sqrtkT() const { return sqrtkT_; }
+  double& sqrtkT_last() { return sqrtkT_last_; }
+
+  int& n_collision() { return n_collision_; }
+
+  bool& write_track() { return write_track_; }
+  uint64_t& seeds(const int& i) { return seeds_[i]; }
+  uint64_t* seeds() { return seeds_; }
+  int& stream() { return stream_; }
+
+  Particle::Bank& secondary_bank(const int& i) { return secondary_bank_[i]; }
+  decltype(secondary_bank_)& secondary_bank() { return secondary_bank_; }
+  int64_t& current_work() { return current_work_; }
+  decltype(flux_derivs_)& flux_derivs() { return flux_derivs_; }
+  const decltype(flux_derivs_)& flux_derivs() const { return flux_derivs_; }
+  decltype(filter_matches_)& filter_matches() { return filter_matches_; }
+  FilterMatch& filter_matches(const int& i) { return filter_matches_[i]; }
+  decltype(tracks_)& tracks() { return tracks_; }
+  decltype(nu_bank_)& nu_bank() { return nu_bank_; }
+  NuBank& nu_bank(const int& i) { return nu_bank_[i]; }
+
+  double& keff_tally_absorption() { return keff_tally_absorption_; }
+  double& keff_tally_collision() { return keff_tally_collision_; }
+  double& keff_tally_tracklength() { return keff_tally_tracklength_; }
+  double& keff_tally_leakage() { return keff_tally_leakage_; }
+
+  bool& trace() { return trace_; }
+  double& collision_distance() { return collision_distance_; }
+  int& n_event() { return n_event_; }
+
+#ifdef DAGMC
+  moab::DagMC::RayHistory& rayhistory() { return history_; }
+  Direction& last_dir() { return last_dir_; }
+#endif
+
+  int64_t& n_progeny() { return n_progeny_; }
+
+  // Accessors for position in global coordinates
+  Position& r() { return coord_[0].r; }
+  const Position& r() const { return coord_[0].r; }
+
+  // Accessors for position in local coordinates
+  Position& r_local() { return coord_[n_coord_ - 1].r; }
+  const Position& r_local() const { return coord_[n_coord_ - 1].r; }
+
+  // Accessors for direction in global coordinates
+  Direction& u() { return coord_[0].u; }
+  const Direction& u() const { return coord_[0].u; }
+
+  // Accessors for direction in local coordinates
+  Direction& u_local() { return coord_[n_coord_ - 1].u; }
+  const Direction& u_local() const { return coord_[n_coord_ - 1].u; }
 };
 
 //============================================================================

@@ -43,8 +43,8 @@ DistribcellFilter::get_all_bins(const Particle& p, TallyEstimator estimator,
 {
   int offset = 0;
   auto distribcell_index = model::cells[cell_]->distribcell_index_;
-  for (int i = 0; i < p.n_coord_; i++) {
-    auto& c {*model::cells[p.coord_[i].cell]};
+  for (int i = 0; i < p.n_coord(); i++) {
+    auto& c {*model::cells[p.coord(i).cell]};
     if (c.type_ == Fill::UNIVERSE) {
       offset += c.offset_[distribcell_index];
     } else if (c.type_ == Fill::LATTICE) {
@@ -56,7 +56,7 @@ DistribcellFilter::get_all_bins(const Particle& p, TallyEstimator estimator,
         offset += lat.offset(distribcell_index, i_xyz);
       }
     }
-    if (cell_ == p.coord_[i].cell) {
+    if (cell_ == p.coord(i).cell) {
       match.bins_.push_back(offset);
       match.weights_.push_back(1.0);
       return;

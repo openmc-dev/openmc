@@ -91,11 +91,12 @@ class Material(IDManagerMixin):
     next_id = 1
     used_ids = set()
 
-    def __init__(self, material_id=None, name='', temperature=None):
+    def __init__(self, material_id=None, name='', temperature=None, reference=None):
         # Initialize class attributes
         self.id = material_id
         self.name = name
         self.temperature = temperature
+        self.reference = reference
         self._density = None
         self._density_units = 'sum'
         self._depletable = False
@@ -120,6 +121,7 @@ class Material(IDManagerMixin):
         string += '{: <16}=\t{}\n'.format('\tID', self._id)
         string += '{: <16}=\t{}\n'.format('\tName', self._name)
         string += '{: <16}=\t{}\n'.format('\tTemperature', self._temperature)
+        string += '{: <16}=\t{}\n'.format('\tReference', self._reference)
 
         string += '{: <16}=\t{}'.format('\tDensity', self._density)
         string += ' [{}]\n'.format(self._density_units)
@@ -148,6 +150,10 @@ class Material(IDManagerMixin):
     @property
     def temperature(self):
         return self._temperature
+
+    @property
+    def reference(self):
+        return self._reference
 
     @property
     def density(self):
@@ -219,6 +225,12 @@ class Material(IDManagerMixin):
         cv.check_type('Temperature for Material ID="{}"'.format(self._id),
                       temperature, (Real, type(None)))
         self._temperature = temperature
+
+    @reference.setter
+    def reference(self, reference):
+        cv.check_type('Reference for Material ID="{}"'.format(self._id),
+                      reference, (str, type(None)))
+        self._reference = reference
 
     @depletable.setter
     def depletable(self, depletable):
@@ -953,6 +965,10 @@ class Material(IDManagerMixin):
         # Create temperature XML subelement
         if self.temperature is not None:
             element.set("temperature", str(self.temperature))
+
+        # Create reference XML subelement
+        if self.reference is not None:
+            element.set("reference", str(self.reference))
 
         # Create density XML subelement
         if self._density is not None or self._density_units == 'sum':

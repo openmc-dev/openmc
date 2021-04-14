@@ -594,6 +594,7 @@ void StructuredMesh::bins_crossed(const Particle& p, std::vector<int>& bins,
 
   // Compute the length of the entire track.
   double total_distance = (r - last_r).norm();
+  if (total_distance == 0.0) return;
 
   // While determining if this track intersects the mesh, offset the starting
   // and ending coords by a bit.  This avoid finite-precision errors that can
@@ -1713,6 +1714,7 @@ MOABMesh::bins_crossed(const Particle& p,
   moab::CartVect dir(u.x, u.y, u.z);
 
   double track_len = (r1 - r0).length();
+  if (track_len == 0.0) return;
 
   r0 -= TINY_BIT * dir;
   r1 += TINY_BIT * dir;

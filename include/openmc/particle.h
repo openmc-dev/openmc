@@ -460,6 +460,7 @@ public:
   double& sqrtkT_last() { return sqrtkT_last_; }
 
   int& n_collision() { return n_collision_; }
+  const int& n_collision() const { return n_collision_; }
 
   bool& write_track() { return write_track_; }
   uint64_t& seeds(const int& i) { return seeds_[i]; }

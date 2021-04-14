@@ -834,7 +834,6 @@ void Material::calculate_neutron_xs(Particle& p) const
 
 void Material::calculate_photon_xs(Particle& p) const
 {
-  p.macro_xs().total = 0.0;
   p.macro_xs().photon.coherent = 0.0;
   p.macro_xs().photon.incoherent = 0.0;
   p.macro_xs().photon.photoelectric = 0.0;

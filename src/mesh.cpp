@@ -589,6 +589,11 @@ void StructuredMesh::bins_crossed(Position r0,
   // ========================================================================
   // Determine where the track intersects the mesh and if it intersects at all.
 
+  // Copy the starting and ending coordinates of the particle.
+  Position last_r {p.r_last()};
+  Position r {p.r()};
+  Direction u {p.u()};
+
   // Compute the length of the entire track.
   double total_distance = (r1 - r0).norm();
   if (total_distance == 0.0) return;
@@ -800,6 +805,14 @@ RegularMesh::surface_bins_crossed(Position r0,
                                   const Direction& u,
                                   vector<int>& bins) const
 {
+  // ========================================================================
+  // Determine if the track intersects the tally mesh.
+
+  // Copy the starting and ending coordinates of the particle.
+  Position r0 {p.r_last_current()};
+  Position r1 {p.r()};
+  Direction u {p.u()};
+
   // Determine indices for starting and ending location.
   int n = n_dimension_;
   vector<int> ijk0(n), ijk1(n);

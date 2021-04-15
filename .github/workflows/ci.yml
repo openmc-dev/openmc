@@ -76,8 +76,9 @@ jobs:
       LIBMESH: ${{ matrix.libmesh }}
 
     steps:
-      -
-        uses: actions/checkout@v2
+      - uses: actions/checkout@v2
+
+      - uses: ./.github/actions/fix-etc-hosts
 
       -
         name: Set up Python ${{ matrix.python-version }}

@@ -101,7 +101,7 @@ void ReactionProduct::sample(double E_in, double& E_out, double& mu,
       if (c <= prob) {
         const auto& d = distribution_[i];
 
-        #pragma omp target map(from: E_out, mu) map(tofrom: seed[:1])
+        // #pragma omp target map(from: E_out, mu) map(tofrom: seed[:1])
         {
           d.sample(E_in, E_out, mu, seed);
         }
@@ -112,7 +112,7 @@ void ReactionProduct::sample(double E_in, double& E_out, double& mu,
     // If only one distribution is present, go ahead and sample it
     const auto& d = distribution_[0];
 
-    #pragma omp target map(from: E_out, mu) map(tofrom: seed[:1])
+    // #pragma omp target map(from: E_out, mu) map(tofrom: seed[:1])
     {
       d.sample(E_in, E_out, mu, seed);
     }

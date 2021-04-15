@@ -117,9 +117,7 @@ void sample_neutron_reaction(Particle& p)
 
   // Create secondary photons
   if (settings::photon_transport) {
-    p.stream_ = STREAM_PHOTON;
     sample_secondary_photons(p, i_nuclide);
-	  p.stream_ = STREAM_TRACKING;
   }
 
   // If survival biasing is being used, the following subroutine adjusts the

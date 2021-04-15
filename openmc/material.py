@@ -44,9 +44,9 @@ class Material(IDManagerMixin):
     temperature : float, optional
         Temperature of the material in Kelvin. If not specified, the material
         inherits the default temperature applied to the model.
-    reference : str, optional
-        Reference string that can be added to the material and propagates
-        to the material.xml file. Intended use is to containing additional
+    comment: str, optional
+        Comment string that can be added to the material and propagates
+        to the materials.xml file. Intended use is to contain additional
         details regarding the source of the material for traceability reasons.
 
     Attributes
@@ -55,8 +55,8 @@ class Material(IDManagerMixin):
         Unique identifier for the material
     temperature : float
         Temperature of the material in Kelvin.
-    reference : str
-        Reference details for the material.
+    comment: str
+        Comment attached to the material.
     density : float
         Density of the material (units defined separately)
     density_units : str
@@ -97,12 +97,12 @@ class Material(IDManagerMixin):
     next_id = 1
     used_ids = set()
 
-    def __init__(self, material_id=None, name='', temperature=None, reference=None):
+    def __init__(self, material_id=None, name='', temperature=None, comment=None):
         # Initialize class attributes
         self.id = material_id
         self.name = name
         self.temperature = temperature
-        self.reference = reference
+        self.comment= comment
         self._density = None
         self._density_units = 'sum'
         self._depletable = False
@@ -127,7 +127,7 @@ class Material(IDManagerMixin):
         string += '{: <16}=\t{}\n'.format('\tID', self._id)
         string += '{: <16}=\t{}\n'.format('\tName', self._name)
         string += '{: <16}=\t{}\n'.format('\tTemperature', self._temperature)
-        string += '{: <16}=\t{}\n'.format('\tReference', self._reference)
+        string += '{: <16}=\t{}\n'.format('\tComment', self.comment)
 
         string += '{: <16}=\t{}'.format('\tDensity', self._density)
         string += ' [{}]\n'.format(self._density_units)
@@ -158,8 +158,8 @@ class Material(IDManagerMixin):
         return self._temperature
 
     @property
-    def reference(self):
-        return self._reference
+    def comment(self):
+        return self._comment
 
     @property
     def density(self):
@@ -232,11 +232,11 @@ class Material(IDManagerMixin):
                       temperature, (Real, type(None)))
         self._temperature = temperature
 
-    @reference.setter
-    def reference(self, reference):
-        cv.check_type('Reference for Material ID="{}"'.format(self._id),
-                      reference, (str, type(None)))
-        self._reference = reference
+    @comment.setter
+    def comment(self, comment):
+        cv.check_type('Comment for Material ID="{}"'.format(self._id),
+                      comment, (str, type(None)))
+        self._comment = comment
 
     @depletable.setter
     def depletable(self, depletable):
@@ -973,8 +973,8 @@ class Material(IDManagerMixin):
             element.set("temperature", str(self.temperature))
 
         # Create reference XML subelement
-        if self.reference is not None:
-            element.set("reference", str(self.reference))
+        if self.comment is not None:
+            element.set("comment", str(self.comment))
 
         # Create density XML subelement
         if self._density is not None or self._density_units == 'sum':

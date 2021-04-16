@@ -13,6 +13,7 @@
 #include "openmc/math_functions.h"
 #include "openmc/message_passing.h"
 #include "openmc/mgxs_interface.h"
+#include "openmc/particle.h"
 #include "openmc/physics_common.h"
 #include "openmc/random_lcg.h"
 #include "openmc/settings.h"
@@ -126,9 +127,9 @@ create_fission_sites(Particle& p)
 
   for (int i = 0; i < nu; ++i) {
     // Initialize fission site object with particle data
-    Particle::Bank site;
+    ParticleBank site;
     site.r = p.r();
-    site.particle = Particle::Type::neutron;
+    site.particle = ParticleType::neutron;
     site.wgt = 1. / weight;
     site.parent_id = p.id();
     site.progeny_id = p.n_progeny()++;
@@ -179,7 +180,7 @@ create_fission_sites(Particle& p)
 
     // Write fission particles to nuBank
     p.nu_bank().emplace_back();
-    Particle::NuBank* nu_bank_entry = &p.nu_bank().back();
+    NuBank* nu_bank_entry = &p.nu_bank().back();
     nu_bank_entry->wgt              = site.wgt;
     nu_bank_entry->E                = site.E;
     nu_bank_entry->delayed_group    = site.delayed_group;

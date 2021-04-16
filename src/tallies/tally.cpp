@@ -196,7 +196,7 @@ Tally::Tally(pugi::xml_node node)
       const auto& f = model::tally_filters[particle_filter_index].get();
       auto pf = dynamic_cast<ParticleFilter*>(f);
       for (auto p : pf->particles()) {
-        if (p != Particle::Type::neutron) {
+        if (p != ParticleType::neutron) {
           warning(fmt::format("Particle filter other than NEUTRON used with "
             "photon transport turned off. All tallies for particle type {}"
             " will have no scores", static_cast<int>(p)));

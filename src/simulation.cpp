@@ -511,11 +511,6 @@ void initialize_history(Particle& p, int64_t index_source)
   #pragma omp atomic
   simulation::total_weight += p.wgt();
 
-  initialize_history_partial(p);
-}
-
-void initialize_history_partial(Particle& p)
-{
   // Force calculation of cross-sections by setting last energy to zero
   if (settings::run_CE) {
     p.invalidate_neutron_xs();
@@ -524,16 +519,6 @@ void initialize_history_partial(Particle& p)
   // Prepare to write out particle track.
   if (p.write_track())
     add_particle_track(p);
-
-  // Every particle starts with no accumulated flux derivative.
-  if (!model::active_tallies.empty())
-  {
-    p.flux_derivs().resize(model::tally_derivs.size(), 0.0);
-    std::fill(p.flux_derivs().begin(), p.flux_derivs().end(), 0.0);
-  }
-
-  // Allocate space for tally filter matches
-  p.filter_matches().resize(model::tally_filters.size());
 }
 
 int overall_generation()
@@ -573,7 +558,7 @@ void initialize_data()
   data::energy_min = {0.0, 0.0};
   for (const auto& nuc : data::nuclides) {
     if (nuc->grid_.size() >= 1) {
-      int neutron = static_cast<int>(Particle::Type::neutron);
+      int neutron = static_cast<int>(ParticleType::neutron);
       data::energy_min[neutron] = std::max(data::energy_min[neutron],
         nuc->grid_[0].energy.front());
       data::energy_max[neutron] = std::min(data::energy_max[neutron],
@@ -584,7 +569,7 @@ void initialize_data()
   if (settings::photon_transport) {
     for (const auto& elem : data::elements) {
       if (elem->energy_.size() >= 1) {
-        int photon = static_cast<int>(Particle::Type::photon);
+        int photon = static_cast<int>(ParticleType::photon);
         int n = elem->energy_.size();
         data::energy_min[photon] = std::max(data::energy_min[photon],
           std::exp(elem->energy_(1)));
@@ -597,7 +582,7 @@ void initialize_data()
       // Determine if minimum/maximum energy for bremsstrahlung is greater/less
       // than the current minimum/maximum
       if (data::ttb_e_grid.size() >= 1) {
-        int photon = static_cast<int>(Particle::Type::photon);
+        int photon = static_cast<int>(ParticleType::photon);
         int n_e = data::ttb_e_grid.size();
         data::energy_min[photon] = std::max(data::energy_min[photon],
           std::exp(data::ttb_e_grid(1)));
@@ -613,7 +598,7 @@ void initialize_data()
     // grid has not been allocated
     if (nuc->grid_.size() > 0) {
       double max_E = nuc->grid_[0].energy.back();
-      int neutron = static_cast<int>(Particle::Type::neutron);
+      int neutron = static_cast<int>(ParticleType::neutron);
       if (max_E == data::energy_max[neutron]) {
         write_message(7, "Maximum neutron transport energy: {} eV for {}",
           data::energy_max[neutron], nuc->name_);
@@ -630,7 +615,7 @@ void initialize_data()
   for (auto& nuc : data::nuclides) {
     nuc->init_grid();
   }
-  int neutron = static_cast<int>(Particle::Type::neutron);
+  int neutron = static_cast<int>(ParticleType::neutron);
   simulation::log_spacing = std::log(data::energy_max[neutron] /
     data::energy_min[neutron]) / settings::n_log_bins;
 }

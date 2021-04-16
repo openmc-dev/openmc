@@ -547,7 +547,7 @@ score_general_ce(Particle& p, int i_tally, int start_index, int filter_index,
   // Get the pre-collision energy of the particle.
   auto E = p.E_last();
 
-  using Type = Particle::Type;
+  using Type = ParticleType;
 
   for (auto i = 0; i < tally.scores_.size(); ++i) {
     auto score_bin = tally.scores_[i];
@@ -2181,7 +2181,7 @@ void score_analog_tally_ce(Particle& p)
   // Note that the heating score does NOT use the flux and will be non-zero for
   // electrons/positrons.
   double flux =
-    (p.type() == Particle::Type::neutron || p.type() == Particle::Type::photon)
+    (p.type() == ParticleType::neutron || p.type() == ParticleType::photon)
       ? 1.0
       : 0.0;
 
@@ -2356,8 +2356,7 @@ void score_collision_tally(Particle& p)
 {
   // Determine the collision estimate of the flux
   double flux = 0.0;
-  if (p.type() == Particle::Type::neutron ||
-      p.type() == Particle::Type::photon) {
+  if (p.type() == ParticleType::neutron || p.type() == ParticleType::photon) {
     if (!settings::survival_biasing) {
       flux = p.wgt_last() / p.macro_xs().total;
     } else {

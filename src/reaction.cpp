@@ -73,7 +73,7 @@ Reaction::Reaction(hid_t group, const std::vector<int>& temperatures)
   // mark fission reactions so that we avoid the angle sampling.
   if (is_fission(mt_)) {
     for (auto& p : products_) {
-      if (p.particle_ == Particle::Type::neutron) {
+      if (p.particle_ == ParticleType::neutron) {
         for (auto& d : p.distribution_) {
           auto d_ = dynamic_cast<UncorrelatedAngleEnergy*>(d.get());
           if (d_) d_->fission() = true;

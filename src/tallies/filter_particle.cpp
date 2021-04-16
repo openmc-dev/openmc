@@ -11,16 +11,15 @@ ParticleFilter::from_xml(pugi::xml_node node)
 {
   auto particles = get_node_array<std::string>(node, "bins");
 
-  // Convert to vector of Particle::Type
-  std::vector<Particle::Type> types;
+  // Convert to vector of ParticleType
+  std::vector<ParticleType> types;
   for (auto& p : particles) {
     types.push_back(str_to_particle_type(p));
   }
   this->set_particles(types);
 }
 
-void
-ParticleFilter::set_particles(gsl::span<Particle::Type> particles)
+void ParticleFilter::set_particles(gsl::span<ParticleType> particles)
 {
   // Clear existing particles
   particles_.clear();

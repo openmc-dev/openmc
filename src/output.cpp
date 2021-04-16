@@ -147,16 +147,16 @@ void print_particle(Particle& p)
 {
   // Display particle type and ID.
   switch (p.type()) {
-  case Particle::Type::neutron:
+  case ParticleType::neutron:
     fmt::print("Neutron ");
     break;
-  case Particle::Type::photon:
+  case ParticleType::photon:
     fmt::print("Photon ");
     break;
-  case Particle::Type::electron:
+  case ParticleType::electron:
     fmt::print("Electron ");
     break;
-  case Particle::Type::positron:
+  case ParticleType::positron:
     fmt::print("Positron ");
     break;
   default:

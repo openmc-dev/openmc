@@ -512,14 +512,17 @@ hid_t h5banktype() {
   // - openmc/statepoint.py
   // - docs/source/io_formats/statepoint.rst
   // - docs/source/io_formats/source.rst
-  hid_t banktype = H5Tcreate(H5T_COMPOUND, sizeof(struct Particle::Bank));
-  H5Tinsert(banktype, "r", HOFFSET(Particle::Bank, r), postype);
-  H5Tinsert(banktype, "u", HOFFSET(Particle::Bank, u), postype);
-  H5Tinsert(banktype, "E", HOFFSET(Particle::Bank, E), H5T_NATIVE_DOUBLE);
-  H5Tinsert(banktype, "wgt", HOFFSET(Particle::Bank, wgt), H5T_NATIVE_DOUBLE);
-  H5Tinsert(banktype, "delayed_group", HOFFSET(Particle::Bank, delayed_group), H5T_NATIVE_INT);
-  H5Tinsert(banktype, "surf_id", HOFFSET(Particle::Bank, surf_id), H5T_NATIVE_INT);
-  H5Tinsert(banktype, "particle", HOFFSET(Particle::Bank, particle), H5T_NATIVE_INT);
+  hid_t banktype = H5Tcreate(H5T_COMPOUND, sizeof(struct ParticleBank));
+  H5Tinsert(banktype, "r", HOFFSET(ParticleBank, r), postype);
+  H5Tinsert(banktype, "u", HOFFSET(ParticleBank, u), postype);
+  H5Tinsert(banktype, "E", HOFFSET(ParticleBank, E), H5T_NATIVE_DOUBLE);
+  H5Tinsert(banktype, "wgt", HOFFSET(ParticleBank, wgt), H5T_NATIVE_DOUBLE);
+  H5Tinsert(banktype, "delayed_group", HOFFSET(ParticleBank, delayed_group),
+    H5T_NATIVE_INT);
+  H5Tinsert(
+    banktype, "surf_id", HOFFSET(ParticleBank, surf_id), H5T_NATIVE_INT);
+  H5Tinsert(
+    banktype, "particle", HOFFSET(ParticleBank, particle), H5T_NATIVE_INT);
 
   H5Tclose(postype);
   return banktype;
@@ -595,9 +598,9 @@ write_source_bank(hid_t group_id, bool surf_source_bank)
 
   // Set vectors for source bank and starting bank index of each process
   std::vector<int64_t>* bank_index = &simulation::work_index;
-  std::vector<Particle::Bank>* source_bank = &simulation::source_bank;
+  std::vector<ParticleBank>* source_bank = &simulation::source_bank;
   std::vector<int64_t> surf_source_index_vector;
-  std::vector<Particle::Bank> surf_source_bank_vector;
+  std::vector<ParticleBank> surf_source_bank_vector;
 
   // Reset dataspace sizes and vectors for surface source bank
   if (surf_source_bank) {
@@ -653,7 +656,8 @@ write_source_bank(hid_t group_id, bool surf_source_bank)
 
     // Save source bank sites since the array is overwritten below
 #ifdef OPENMC_MPI
-    std::vector<Particle::Bank> temp_source {source_bank->begin(), source_bank->end()};
+    std::vector<ParticleBank> temp_source {
+      source_bank->begin(), source_bank->end()};
 #endif
 
     for (int i = 0; i < mpi::n_procs; ++i) {
@@ -710,7 +714,8 @@ std::string dtype_member_names(hid_t dtype_id)
   return names;
 }
 
-void read_source_bank(hid_t group_id, std::vector<Particle::Bank>& sites, bool distribute)
+void read_source_bank(
+  hid_t group_id, std::vector<ParticleBank>& sites, bool distribute)
 {
   hid_t banktype = h5banktype();
 

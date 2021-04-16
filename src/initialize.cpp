@@ -132,7 +132,7 @@ void initialize_mpi(MPI_Comm intracomm)
   mpi::master = (mpi::rank == 0);
 
   // Create bank datatype
-  Particle::Bank b;
+  ParticleBank b;
   MPI_Aint disp[9];
   MPI_Get_address(&b.r, &disp[0]);
   MPI_Get_address(&b.u, &disp[1]);

@@ -109,7 +109,7 @@ apply_derivative_to_score(const Particle& p, int i_tally, int i_nuclide,
   // perturbated variable.
 
   const auto& deriv {model::tally_derivs[tally.deriv_]};
-  const auto flux_deriv = p.flux_derivs()[tally.deriv_];
+  const auto flux_deriv = p.flux_derivs(tally.deriv_);
 
   // Handle special cases where we know that d_c/d_p must be zero.
   if (score_bin == SCORE_FLUX) {
@@ -558,7 +558,7 @@ score_track_derivative(Particle& p, double distance)
 
   for (auto idx = 0; idx < model::tally_derivs.size(); idx++) {
     const auto& deriv = model::tally_derivs[idx];
-    auto& flux_deriv = p.flux_derivs()[idx];
+    auto& flux_deriv = p.flux_derivs(idx);
     if (deriv.diff_material != material.id_) continue;
 
     switch (deriv.variable) {
@@ -606,7 +606,7 @@ void score_collision_derivative(Particle& p)
 
   for (auto idx = 0; idx < model::tally_derivs.size(); idx++) {
     const auto& deriv = model::tally_derivs[idx];
-    auto& flux_deriv = p.flux_derivs()[idx];
+    auto& flux_deriv = p.flux_derivs(idx);
 
     if (deriv.diff_material != material.id_) continue;
 

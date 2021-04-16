@@ -124,6 +124,7 @@ vector<VolumeCalculation::Result> VolumeCalculation::execute() const
       vector<vector<int>> indices(n);
       vector<vector<int>> hits(n);
       Particle p;
+      p.initialize_values();
 
       // Sample locations and count hits
       #pragma omp for

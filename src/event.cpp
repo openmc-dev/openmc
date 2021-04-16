@@ -1,5 +1,6 @@
 #include "openmc/event.h"
 #include "openmc/material.h"
+#include "openmc/settings.h"
 #include "openmc/simulation.h"
 #include "openmc/timer.h"
 
@@ -33,7 +34,11 @@ void init_event_queues(int64_t n_particles)
   simulation::surface_crossing_queue.reserve(n_particles);
   simulation::collision_queue.reserve(n_particles);
 
-  simulation::particles.resize(n_particles);
+  // If we're not doing SOA particles, allocate an AOS of particles
+  // If we are doing SOA particles, those arrays must be allocated
+  // after we know how many tallies and nuclides are in the problem.
+  if (!settings::structure_of_array_particles)
+    simulation::particles.resize(n_particles);
 }
 
 void free_event_queues(void)

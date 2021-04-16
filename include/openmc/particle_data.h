@@ -208,6 +208,12 @@ class ParticleData {
 public:
   ParticleData();
 
+  // Sets default particle data values. Since these are
+  // specified next to the variables below, this doesn't
+  // have to do anything. In structure-of-array mode, though,
+  // we have to explicitly set things.
+  void initialize_values() {}
+
 private:
   //==========================================================================
   // Data members (accessor methods are below)

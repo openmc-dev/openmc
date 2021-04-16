@@ -460,6 +460,7 @@ extern "C" int
 openmc_find_cell(const double* xyz, int32_t* index, int32_t* instance)
 {
   Particle p;
+  p.initialize_values();
 
   p.r() = Position{xyz};
   p.u() = {0.0, 0.0, 1.0};

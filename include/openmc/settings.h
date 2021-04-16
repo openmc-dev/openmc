@@ -106,6 +106,11 @@ extern int trigger_batch_interval;   //!< Batch interval for triggers
 extern "C" int verbosity;                //!< How verbose to make output
 extern double weight_cutoff;         //!< Weight cutoff for Russian roulette
 extern double weight_survive;        //!< Survival weight after Russian roulette
+
+// Compile time settings defined in CMake file
+constexpr bool structure_of_array_particles =
+  false; //!< Whether we're using structures of arrays for particle data
+
 } // namespace settings
 
 //==============================================================================

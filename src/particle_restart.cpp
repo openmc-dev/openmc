@@ -78,6 +78,7 @@ void run_particle_restart()
 
   // Initialize the particle to be tracked
   Particle p;
+  p.initialize_values();
 
   // Read in the restart information
   RunMode previous_run_mode;

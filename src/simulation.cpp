@@ -15,13 +15,14 @@
 #include "openmc/photon.h"
 #include "openmc/random_lcg.h"
 #include "openmc/settings.h"
+#include "openmc/soa_particle.h"
 #include "openmc/source.h"
 #include "openmc/state_point.h"
-#include "openmc/timer.h"
 #include "openmc/tallies/derivative.h"
 #include "openmc/tallies/filter.h"
 #include "openmc/tallies/tally.h"
 #include "openmc/tallies/trigger.h"
+#include "openmc/timer.h"
 #include "openmc/track_output.h"
 
 #ifdef _OPENMP
@@ -98,6 +99,11 @@ int openmc_simulation_init()
   // Set up material nuclide index mapping
   for (auto& mat : model::materials) {
     mat->init_nuclide_index();
+  }
+
+  // Allocate particle data if we're using structures of arrays
+  if (settings::structure_of_array_particles) {
+    allocate_soa_data();
   }
 
   // Reset global variables -- this is done before loading state point (as that
@@ -681,6 +687,7 @@ void transport_history_based()
   #pragma omp parallel for schedule(runtime)
   for (int64_t i_work = 1; i_work <= simulation::work_per_rank; ++i_work) {
     Particle p;
+    p.initialize_values();
     initialize_history(p, i_work);
     transport_history_based_single_particle(p);
   }

@@ -321,6 +321,7 @@ list(APPEND libopenmc_SOURCES
   src/secondary_uncorrelated.cpp
   src/settings.cpp
   src/simulation.cpp
+  src/soa_particle.cpp
   src/source.cpp
   src/state_point.cpp
   src/string_utils.cpp

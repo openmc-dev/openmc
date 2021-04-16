@@ -37,15 +37,15 @@ public:
   //----------------------------------------------------------------------------
   // Accessors
 
-  const std::vector<Particle::Type>& particles() const { return particles_; }
+  const std::vector<ParticleType>& particles() const { return particles_; }
 
-  void set_particles(gsl::span<Particle::Type> particles);
+  void set_particles(gsl::span<ParticleType> particles);
 
 private:
   //----------------------------------------------------------------------------
   // Data members
 
-  std::vector<Particle::Type> particles_;
+  std::vector<ParticleType> particles_;
 };
 
 } // namespace openmc

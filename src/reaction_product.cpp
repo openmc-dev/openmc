@@ -42,7 +42,7 @@ ReactionProduct::ReactionProduct(hid_t group)
   if (emission_mode_ == EmissionMode::delayed) {
     if (attribute_exists(group, "decay_rate")) {
       read_attribute(group, "decay_rate", decay_rate_);
-    } else if (particle_ == Particle::Type::neutron) {
+    } else if (particle_ == ParticleType::neutron) {
       warning(fmt::format("Decay rate doesn't exist for delayed neutron "
         "emission ({}).", object_name(group)));
     }

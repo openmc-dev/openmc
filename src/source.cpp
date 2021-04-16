@@ -56,9 +56,9 @@ IndependentSource::IndependentSource(pugi::xml_node node)
   if (check_for_node(node, "particle")) {
     auto temp_str = get_node_value(node, "particle", true, true);
     if (temp_str == "neutron") {
-      particle_ = Particle::Type::neutron;
+      particle_ = ParticleType::neutron;
     } else if (temp_str == "photon") {
-      particle_ = Particle::Type::photon;
+      particle_ = ParticleType::photon;
       settings::photon_transport = true;
     } else {
       fatal_error(std::string("Unknown source particle type: ") + temp_str);
@@ -141,9 +141,9 @@ IndependentSource::IndependentSource(pugi::xml_node node)
   }
 }
 
-Particle::Bank IndependentSource::sample(uint64_t* seed) const
+ParticleBank IndependentSource::sample(uint64_t* seed) const
 {
-  Particle::Bank site;
+  ParticleBank site;
 
   // Set weight to one by default
   site.wgt = 1.0;
@@ -263,7 +263,7 @@ FileSource::FileSource(std::string path)
   file_close(file_id);
 }
 
-Particle::Bank FileSource::sample(uint64_t* seed) const
+ParticleBank FileSource::sample(uint64_t* seed) const
 {
   size_t i_site = sites_.size()*prn(seed);
   return sites_[i_site];
@@ -349,7 +349,7 @@ void initialize_source()
   }
 }
 
-Particle::Bank sample_external_source(uint64_t* seed)
+ParticleBank sample_external_source(uint64_t* seed)
 {
   // Determine total source strength
   double total_strength = 0.0;
@@ -368,7 +368,7 @@ Particle::Bank sample_external_source(uint64_t* seed)
   }
 
   // Sample source site from i-th source distribution
-  Particle::Bank site {model::external_sources[i]->sample(seed)};
+  ParticleBank site {model::external_sources[i]->sample(seed)};
 
   // If running in MG, convert site.E to group
   if (!settings::run_CE) {

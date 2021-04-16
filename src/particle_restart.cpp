@@ -44,7 +44,7 @@ void read_particle_restart(Particle& p, RunMode& previous_run_mode)
   read_dataset(file_id, "id", p.id());
   int type;
   read_dataset(file_id, "type", type);
-  p.type() = static_cast<Particle::Type>(type);
+  p.type() = static_cast<ParticleType>(type);
   read_dataset(file_id, "weight", p.wgt());
   read_dataset(file_id, "energy", p.E());
   read_dataset(file_id, "xyz", p.r());
@@ -115,16 +115,6 @@ void run_particle_restart()
   // Prepare to write out particle track.
   if (p.write_track())
     add_particle_track(p);
-
-  // Every particle starts with no accumulated flux derivative.
-  if (!model::active_tallies.empty()) {
-    p.flux_derivs().resize(model::tally_derivs.size(), 0.0);
-    std::fill(p.flux_derivs().begin(), p.flux_derivs().end(), 0.0);
-  }
-
-  // Allocate space for tally filter matches (TODO shouldn't this be in the
-  // particle constructor, instead?)
-  p.filter_matches().resize(model::tally_filters.size());
 
   // Transport neutron
   transport_history_based_single_particle(p);

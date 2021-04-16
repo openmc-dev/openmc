@@ -137,7 +137,7 @@ void synchronize_bank()
   // Allocate temporary source bank -- we don't really know how many fission
   // sites were created, so overallocate by a factor of 3
   int64_t index_temp = 0;
-  std::vector<Particle::Bank> temp_sites(3*simulation::work_per_rank);
+  std::vector<ParticleBank> temp_sites(3 * simulation::work_per_rank);
 
   for (int64_t i = 0; i < simulation::fission_bank.size(); i++ ) {
     const auto& site = simulation::fission_bank[i];

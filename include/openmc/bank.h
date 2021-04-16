@@ -16,11 +16,11 @@ namespace openmc {
 
 namespace simulation {
 
-extern std::vector<Particle::Bank> source_bank;
+extern std::vector<ParticleBank> source_bank;
 
-extern SharedArray<Particle::Bank> surf_source_bank;
+extern SharedArray<ParticleBank> surf_source_bank;
 
-extern SharedArray<Particle::Bank> fission_bank;
+extern SharedArray<ParticleBank> fission_bank;
 
 extern std::vector<int64_t> progeny_per_particle;
 

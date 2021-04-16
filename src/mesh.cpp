@@ -283,10 +283,8 @@ int StructuredMesh::n_surface_bins() const
   return 4 * n_dimension_ * n_bins();
 }
 
-xt::xtensor<double, 1>
-StructuredMesh::count_sites(const Particle::Bank* bank,
-                            int64_t length,
-                            bool* outside) const
+xt::xtensor<double, 1> StructuredMesh::count_sites(
+  const ParticleBank* bank, int64_t length, bool* outside) const
 {
   // Determine shape of array for counts
   std::size_t m = this->n_bins();
@@ -989,10 +987,8 @@ void RegularMesh::to_hdf5(hid_t group) const
   close_group(mesh_group);
 }
 
-xt::xtensor<double, 1>
-RegularMesh::count_sites(const Particle::Bank* bank,
-                         int64_t length,
-                         bool* outside) const
+xt::xtensor<double, 1> RegularMesh::count_sites(
+  const ParticleBank* bank, int64_t length, bool* outside) const
 {
   // Determine shape of array for counts
   std::size_t m = this->n_bins();

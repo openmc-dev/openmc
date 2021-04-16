@@ -81,7 +81,7 @@ Direction sample_cxs_target_velocity(double awr, double E, Direction u, double k
   uint64_t* seed);
 
 void sample_fission_neutron(int i_nuclide, const Reaction& rx, double E_in,
-  Particle::Bank* site, uint64_t* seed);
+  ParticleBank* site, uint64_t* seed);
 
 //! handles all reactions with a single secondary neutron (other than fission),
 //! i.e. level scattering, (n,np), (n,na), etc.

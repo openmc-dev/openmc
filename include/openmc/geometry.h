@@ -6,10 +6,12 @@
 #include <cstdint>
 #include <vector>
 
-#include "openmc/particle.h"
-
+#include "openmc/constants.h"
 
 namespace openmc {
+
+class BoundaryInfo;
+class Particle;
 
 //==============================================================================
 // Global variables

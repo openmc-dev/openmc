@@ -231,7 +231,7 @@ PhotonInteraction::PhotonInteraction(hid_t group)
     close_group(rgroup);
 
     // Truncate the bremsstrahlung data at the cutoff energy
-    int photon = static_cast<int>(Particle::Type::photon);
+    int photon = static_cast<int>(ParticleType::photon);
     const auto& E {electron_energy};
     double cutoff = settings::energy_cutoff[photon];
     if (cutoff > E(0)) {
@@ -669,7 +669,7 @@ void PhotonInteraction::atomic_relaxation(const ElectronSubshell& shell, Particl
     u.y = std::sqrt(1.0 - mu*mu)*std::cos(phi);
     u.z = std::sqrt(1.0 - mu*mu)*std::sin(phi);
     double E = shell.binding_energy;
-    p.create_secondary(p.wgt(), u, E, Particle::Type::photon);
+    p.create_secondary(p.wgt(), u, E, ParticleType::photon);
     return;
   }
 
@@ -701,7 +701,7 @@ void PhotonInteraction::atomic_relaxation(const ElectronSubshell& shell, Particl
     // Non-radiative transition -- Auger/Coster-Kronig effect
 
     // Create auger electron
-    p.create_secondary(p.wgt(), u, E, Particle::Type::electron);
+    p.create_secondary(p.wgt(), u, E, ParticleType::electron);
 
     // Fill hole left by emitted auger electron
     int i_hole = shell_map_.at(secondary);
@@ -711,7 +711,7 @@ void PhotonInteraction::atomic_relaxation(const ElectronSubshell& shell, Particl
     // Radiative transition -- get X-ray energy
 
     // Create fluorescent photon
-    p.create_secondary(p.wgt(), u, E, Particle::Type::photon);
+    p.create_secondary(p.wgt(), u, E, ParticleType::photon);
   }
 
   // Fill hole created by electron transitioning to the photoelectron hole

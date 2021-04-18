@@ -151,7 +151,9 @@ Direction rotate_angle(Direction u, double mu, const double* phi,
 //! \return The sampled outgoing energy
 //==============================================================================
 
+#pragma omp declare target
 extern "C" double maxwell_spectrum(double T, uint64_t* seed);
+#pragma omp end declare target
 
 //==============================================================================
 //! Samples an energy from a Watt energy-dependent fission distribution.
@@ -167,7 +169,9 @@ extern "C" double maxwell_spectrum(double T, uint64_t* seed);
 //! \return The sampled outgoing energy
 //==============================================================================
 
+#pragma omp declare target
 extern "C" double watt_spectrum(double a, double b, uint64_t* seed);
+#pragma omp end declare target
 
 //==============================================================================
 //! Samples an energy from the Gaussian energy-dependent fission distribution.

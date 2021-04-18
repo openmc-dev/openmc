@@ -8,8 +8,10 @@
 #include <vector>
 
 #include "hdf5.h"
+#include <gsl/gsl>
 
 #include "openmc/constants.h"
+#include "openmc/serialize.h"
 
 namespace openmc {
 
@@ -42,6 +44,7 @@ class Function1D {
 public:
   virtual double operator()(double x) const = 0;
   virtual ~Function1D() = default;
+  virtual void serialize(DataBuffer& buffer) const = 0;
 };
 
 //==============================================================================
@@ -58,8 +61,23 @@ public:
   //! \param[in] x independent variable
   //! \return Polynomial evaluated at x
   double operator()(double x) const override;
+
+  void serialize(DataBuffer& buffer) const override;
 private:
   std::vector<double> coef_; //!< Polynomial coefficients
+};
+
+class PolynomialFlat {
+public:
+  #pragma omp declare target
+  explicit PolynomialFlat(const uint8_t* data) : data_(data) { }
+
+  double operator()(double x) const;
+  #pragma omp end declare target
+private:
+  gsl::span<const double> coef() const;
+
+  const uint8_t* data_;
 };
 
 //==============================================================================
@@ -79,6 +97,8 @@ public:
   //! \return Function evaluated at x
   double operator()(double x) const override;
 
+  void serialize(DataBuffer& buffer) const override;
+
   // Accessors
   const std::vector<double>& x() const { return x_; }
   const std::vector<double>& y() const { return y_; }
@@ -89,6 +109,25 @@ private:
   std::size_t n_pairs_; //!< number of (x,y) pairs
   std::vector<double> x_; //!< values of abscissa
   std::vector<double> y_; //!< values of ordinate
+};
+
+class Tabulated1DFlat {
+public:
+  #pragma omp declare target
+  explicit Tabulated1DFlat(const uint8_t* data);
+
+  double operator()(double x) const;
+  #pragma omp end declare target
+
+private:
+  gsl::span<const int> nbt() const;
+  Interpolation interp(gsl::index i) const;
+  gsl::span<const double> x() const;
+  gsl::span<const double> y() const;
+
+  const uint8_t* data_;
+  size_t n_regions_;
+  size_t n_pairs_;
 };
 
 //==============================================================================
@@ -103,9 +142,25 @@ public:
 
   const std::vector<double>& bragg_edges() const { return bragg_edges_; }
   const std::vector<double>& factors() const { return factors_; }
+
+  void serialize(DataBuffer& buffer) const override;
 private:
   std::vector<double> bragg_edges_; //!< Bragg edges in [eV]
   std::vector<double> factors_;     //!< Partial sums of structure factors [eV-b]
+};
+
+class CoherentElasticXSFlat {
+public:
+  #pragma omp declare target
+  explicit CoherentElasticXSFlat(const uint8_t* data) : data_{data} { }
+
+  double operator()(double E) const;
+  #pragma omp end declare target
+
+  gsl::span<const double> bragg_edges() const;
+  gsl::span<const double> factors() const;
+private:
+  const uint8_t* data_;
 };
 
 //==============================================================================
@@ -117,9 +172,25 @@ public:
   explicit IncoherentElasticXS(hid_t dset);
 
   double operator()(double E) const override;
+
+  void serialize(DataBuffer& buffer) const override;
 private:
   double bound_xs_; //!< Characteristic bound xs in [b]
   double debye_waller_; //!< Debye-Waller integral divided by atomic mass in [eV^-1]
+};
+
+class IncoherentElasticXSFlat {
+public:
+  #pragma omp declare target
+  explicit IncoherentElasticXSFlat(const uint8_t* data) : data_{data} { }
+
+  double operator()(double E) const;
+  #pragma omp end declare target
+private:
+  double bound_xs() const { return *reinterpret_cast<const double*>(data_ + 4); }
+  double debye_waller() const { return *reinterpret_cast<const double*>(data_ + 12); }
+
+  const uint8_t* data_;
 };
 
 //! Read 1D function from HDF5 dataset

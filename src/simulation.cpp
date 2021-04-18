@@ -97,7 +97,7 @@ int openmc_simulation_init()
     simulation::device_particles = simulation::particles.data();
     #pragma omp target enter data map(alloc: simulation::device_particles[:event_buffer_length])
   }
-  
+
 
   // Allocate tally results arrays if they're not allocated yet
   for (auto& t : model::tallies) {
@@ -158,6 +158,9 @@ int openmc_simulation_finalize()
   simulation::time_active.stop();
   simulation::time_finalize.start();
 
+  // Release data from device
+  release_data_from_device();
+
   // Clear material nuclide mapping
   for (auto& mat : model::materials) {
     mat->mat_nuclide_index_.clear();
@@ -186,7 +189,7 @@ int openmc_simulation_finalize()
     if (settings::verbosity >= 4) print_results();
   }
   if (settings::check_overlaps) print_overlap_check();
-   
+
   //free(simulation::device_particles);
   //printf("freeing device particles was a success!\n");
 

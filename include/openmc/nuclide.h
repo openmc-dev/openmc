@@ -90,13 +90,13 @@ public:
   bool has_partial_fission_ {false}; //!< has partial fission reactions?
   std::vector<Reaction*> fission_rx_; //!< Fission reactions
   int n_precursor_ {0}; //!< Number of delayed neutron precursors
-  std::unique_ptr<Function1D> total_nu_; //!< Total neutron yield
-  std::unique_ptr<Function1D> fission_q_prompt_; //!< Prompt fission energy release
-  std::unique_ptr<Function1D> fission_q_recov_; //!< Recoverable fission energy release
-  std::unique_ptr<Function1D> prompt_photons_; //!< Prompt photon energy release
-  std::unique_ptr<Function1D> delayed_photons_; //!< Delayed photon energy release
-  std::unique_ptr<Function1D> fragments_; //!< Fission fragment energy release
-  std::unique_ptr<Function1D> betas_; //!< Delayed beta energy release
+  std::unique_ptr<Function1DFlat> total_nu_; //!< Total neutron yield
+  std::unique_ptr<Function1DFlat> fission_q_prompt_; //!< Prompt fission energy release
+  std::unique_ptr<Function1DFlat> fission_q_recov_; //!< Recoverable fission energy release
+  std::unique_ptr<Function1DFlat> prompt_photons_; //!< Prompt photon energy release
+  std::unique_ptr<Function1DFlat> delayed_photons_; //!< Delayed photon energy release
+  std::unique_ptr<Function1DFlat> fragments_; //!< Fission fragment energy release
+  std::unique_ptr<Function1DFlat> betas_; //!< Delayed beta energy release
 
   // Resonance scattering information
   bool resonant_ {false};
@@ -114,7 +114,7 @@ public:
   std::vector<int> index_inelastic_scatter_;
 
 private:
-  void create_derived(const Function1D* prompt_photons, const Function1D* delayed_photons);
+  void create_derived(const Function1DFlat* prompt_photons, const Function1DFlat* delayed_photons);
 
   //! Determine temperature index and interpolation factor
   //

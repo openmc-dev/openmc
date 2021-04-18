@@ -94,4 +94,79 @@ double AngleDistribution::sample(double E, uint64_t* seed) const
   return mu;
 }
 
+void AngleDistribution::serialize(DataBuffer& buffer) const
+{
+  int n = energy_.size();
+  buffer.add(n);
+  buffer.add(energy_);
+
+  // Create locators
+  std::vector<int> locators;
+  int offset = 0;
+  for (const auto& dist : distribution_) {
+    locators.push_back(offset);
+    offset += buffer_nbytes(*dist);
+  }
+  buffer.add(locators);
+
+  // Write distributions
+  for (const auto& dist : distribution_) {
+    dist->serialize(buffer);
+  }
+}
+
+AngleDistributionFlat::AngleDistributionFlat(const uint8_t* data) : data_(data)
+{
+  n_ = *reinterpret_cast<const int*>(data_);
+}
+
+double AngleDistributionFlat::sample(double E, uint64_t* seed) const
+{
+  // If angle distribution is empty, sample isotropic
+  if (n_ == 0) return 2.0*prn(seed) - 1.0;
+
+  // Determine number of incoming energies
+  auto energy = this->energy();
+
+  // Find energy bin and calculate interpolation factor -- if the energy is
+  // outside the range of the tabulated energies, choose the first or last bins
+  int i;
+  double r;
+  if (E < energy[0]) {
+    i = 0;
+    r = 0.0;
+  } else if (E > energy[n_ - 1]) {
+    i = n_ - 2;
+    r = 1.0;
+  } else {
+    i = lower_bound_index(energy.begin(), energy.end(), E);
+    r = (E - energy[i])/(energy[i+1] - energy[i]);
+  }
+
+  // Sample between the ith and (i+1)th bin
+  if (r > prn(seed)) ++i;
+
+  // Sample i-th distribution
+  double mu = distribution(i).sample(seed);
+
+  // Make sure mu is in range [-1,1] and return
+  if (std::abs(mu) > 1.0) mu = std::copysign(1.0, mu);
+  return mu;
+}
+
+gsl::span<const double> AngleDistributionFlat::energy() const
+{
+  auto start = reinterpret_cast<const double*>(data_ + 4);
+  return {start, n_};
+}
+
+TabularFlat AngleDistributionFlat::distribution(gsl::index i) const
+{
+  auto indices = reinterpret_cast<const int*>(data_ + 4 + 8*n_);
+  size_t idx = indices[i];
+
+  size_t offset_dist = 4 + (8 + 4)*n_;
+  return TabularFlat(data_ + offset_dist + idx);
+}
+
 } // namespace openmc

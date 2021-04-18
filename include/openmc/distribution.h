@@ -8,9 +8,11 @@
 #include <memory> // for unique_ptr
 #include <vector> // for vector
 
+#include <gsl/gsl>
 #include "pugixml.hpp"
 
 #include "openmc/constants.h"
+#include "openmc/serialize.h"
 
 namespace openmc {
 
@@ -173,6 +175,8 @@ public:
   //! \return Sampled value
   double sample(uint64_t* seed) const;
 
+  void serialize(DataBuffer& buffer) const;
+
   // x property
   std::vector<double>& x() { return x_; }
   const std::vector<double>& x() const { return x_; }
@@ -190,6 +194,23 @@ private:
   //! \param n Number of tabulated values
   void init(const double* x, const double* p, std::size_t n,
             const double* c=nullptr);
+};
+
+class TabularFlat {
+public:
+  #pragma omp declare target
+  explicit TabularFlat(const uint8_t* data);
+
+  double sample(uint64_t* seed) const;
+  #pragma omp end declare target
+private:
+  Interpolation interp() const;
+  gsl::span<const double> x() const;
+  gsl::span<const double> p() const;
+  gsl::span<const double> c() const;
+
+  const uint8_t* data_;
+  size_t n_;
 };
 
 //==============================================================================

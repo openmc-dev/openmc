@@ -195,23 +195,25 @@ ThermalData::ThermalData(hid_t group)
     hid_t elastic_group = open_group(group, "elastic");
 
     // Read elastic cross section
-    elastic_.xs = read_function(elastic_group, "xs");
+    auto elastic_xs = read_function(elastic_group, "xs");
+    elastic_.xs = std::make_unique<Function1DFlat>(*elastic_xs);
 
     // Read angle-energy distribution
     hid_t dgroup = open_group(elastic_group, "distribution");
     std::string temp;
     read_attribute(dgroup, "type", temp);
     if (temp == "coherent_elastic") {
-      auto xs = dynamic_cast<CoherentElasticXS*>(elastic_.xs.get());
-      elastic_.distribution = std::make_unique<CoherentElasticAE>(*xs);
+      auto xs = dynamic_cast<CoherentElasticXS*>(elastic_xs.get());
+      CoherentElasticAE dist(*xs);
+      elastic_.distribution = std::make_unique<AngleEnergyFlat>(dist);
     } else {
       if (temp == "incoherent_elastic") {
-        elastic_.distribution = std::make_unique<IncoherentElasticAE>(dgroup);
+        IncoherentElasticAE dist(dgroup);
+        elastic_.distribution = std::make_unique<AngleEnergyFlat>(dist);
       } else if (temp == "incoherent_elastic_discrete") {
-        auto xs = dynamic_cast<Tabulated1D*>(elastic_.xs.get());
-        elastic_.distribution = std::make_unique<IncoherentElasticAEDiscrete>(
-          dgroup, xs->x()
-        );
+        auto xs = dynamic_cast<Tabulated1D*>(elastic_xs.get());
+        IncoherentElasticAEDiscrete dist(dgroup, xs->x());
+        elastic_.distribution = std::make_unique<AngleEnergyFlat>(dist);
       }
     }
 
@@ -224,19 +226,20 @@ ThermalData::ThermalData(hid_t group)
     hid_t inelastic_group = open_group(group, "inelastic");
 
     // Read inelastic cross section
-    inelastic_.xs = read_function(inelastic_group, "xs");
+    auto inelastic_xs = read_function(inelastic_group, "xs");
+    inelastic_.xs = std::make_unique<Function1DFlat>(*inelastic_xs);
 
     // Read angle-energy distribution
     hid_t dgroup = open_group(inelastic_group, "distribution");
     std::string temp;
     read_attribute(dgroup, "type", temp);
     if (temp == "incoherent_inelastic") {
-      inelastic_.distribution = std::make_unique<IncoherentInelasticAE>(dgroup);
+      IncoherentInelasticAE dist(dgroup);
+      inelastic_.distribution = std::make_unique<AngleEnergyFlat>(dist);
     } else if (temp == "incoherent_inelastic_discrete") {
-      auto xs = dynamic_cast<Tabulated1D*>(inelastic_.xs.get());
-      inelastic_.distribution = std::make_unique<IncoherentInelasticAEDiscrete>(
-        dgroup, xs->x()
-      );
+      auto xs = dynamic_cast<Tabulated1D*>(inelastic_xs.get());
+      IncoherentInelasticAEDiscrete dist(dgroup, xs->x());
+      inelastic_.distribution = std::make_unique<AngleEnergyFlat>(dist);
     }
 
     close_group(inelastic_group);

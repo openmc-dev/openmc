@@ -12,8 +12,30 @@
 
 #include "openmc/constants.h"
 #include "openmc/endf.h"
+#include "openmc/serialize.h"
 
 namespace openmc {
+
+enum class EnergyDistType {
+  DISCRETE_PHOTON,
+  LEVEL_INELASTIC,
+  CONTINUOUS_TABULAR,
+  EVAPORATION,
+  MAXWELL,
+  WATT
+};
+
+class EnergyDistributionFlat {
+public:
+  #pragma omp declare target
+  EnergyDistributionFlat(const uint8_t* data);
+
+  double sample(double E, uint64_t* seed) const;
+  #pragma omp end declare target
+private:
+  EnergyDistType type_;
+  const uint8_t* data_;
+};
 
 //===============================================================================
 //! Abstract class defining an energy distribution that is a function of the
@@ -24,6 +46,7 @@ namespace openmc {
 class EnergyDistribution {
 public:
   virtual double sample(double E, uint64_t* seed) const = 0;
+  virtual void serialize(DataBuffer& buffer) const = 0;
   virtual ~EnergyDistribution() = default;
 };
 
@@ -40,11 +63,26 @@ public:
   //! \param[inout] seed Pseudorandom number seed pointer
   //! \return Sampled energy in [eV]
   double sample(double E, uint64_t* seed) const;
+
+  void serialize(DataBuffer& buffer) const;
 private:
   int primary_flag_; //!< Indicator of whether the photon is a primary or
                      //!< non-primary photon.
   double energy_; //!< Photon energy or binding energy
   double A_; //!< Atomic weight ratio of the target nuclide
+};
+
+class DiscretePhotonFlat {
+public:
+  explicit DiscretePhotonFlat(const uint8_t* data) : data_(data) { }
+
+  double sample(double E, uint64_t* seed) const;
+private:
+  int primary_flag() const { return *reinterpret_cast<const int*>(data_ + 4); }
+  double energy() const { return *reinterpret_cast<const double*>(data_ + 8); }
+  double A() const { return *reinterpret_cast<const double*>(data_ + 16); }
+
+  const uint8_t* data_;
 };
 
 //===============================================================================
@@ -60,9 +98,23 @@ public:
   //! \param[inout] seed Pseudorandom number seed pointer
   //! \return Sampled energy in [eV]
   double sample(double E, uint64_t* seed) const;
+
+  void serialize(DataBuffer& buffer) const;
 private:
   double threshold_; //!< Energy threshold in lab, (A + 1)/A * |Q|
   double mass_ratio_; //!< (A/(A+1))^2
+};
+
+class LevelInelasticFlat {
+public:
+  explicit LevelInelasticFlat(const uint8_t* data) : data_(data) { }
+
+  double sample(double E, uint64_t* seed) const;
+private:
+  double threshold() const { return *reinterpret_cast<const double*>(data_ + 4); }
+  double mass_ratio() const { return *reinterpret_cast<const double*>(data_ + 12); }
+
+  const uint8_t* data_;
 };
 
 //===============================================================================
@@ -80,6 +132,8 @@ public:
   //! \param[inout] seed Pseudorandom number seed pointer
   //! \return Sampled energy in [eV]
   double sample(double E, uint64_t* seed) const;
+
+  void serialize(DataBuffer& buffer) const;
 private:
   //! Outgoing energy for a single incoming energy
   struct CTTable {
@@ -97,6 +151,36 @@ private:
   std::vector<CTTable> distribution_; //!< Distributions for each incident energy
 };
 
+class CTTableFlat {
+public:
+  explicit CTTableFlat(const uint8_t* data);
+
+  Interpolation interpolation() const;
+  int n_discrete() const;
+  gsl::span<const double> e_out() const;
+  gsl::span<const double> p() const;
+  gsl::span<const double> c() const;
+private:
+  const uint8_t* data_;
+  size_t n_eout_;
+};
+
+class ContinuousTabularFlat {
+public:
+  explicit ContinuousTabularFlat(const uint8_t* data);
+
+  double sample(double E, uint64_t* seed) const;
+private:
+  gsl::span<const int> breakpoints() const;
+  Interpolation interpolation(gsl::index i) const;
+  gsl::span<const double> energy() const;
+  CTTableFlat distribution(gsl::index i) const;
+
+  const uint8_t* data_;
+  size_t n_region_;
+  size_t n_energy_;
+};
+
 //===============================================================================
 //! Evaporation spectrum corresponding to ACE law 9 and ENDF File 5, LF=9.
 //===============================================================================
@@ -110,9 +194,24 @@ public:
   //! \param[inout] seed Pseudorandom number seed pointer
   //! \return Sampled energy in [eV]
   double sample(double E, uint64_t* seed) const;
+
+  void serialize(DataBuffer& buffer) const;
 private:
   Tabulated1D theta_; //!< Incoming energy dependent parameter
   double u_; //!< Restriction energy
+};
+
+class EvaporationFlat {
+public:
+  explicit EvaporationFlat(const uint8_t* data) : data_(data) { }
+
+  double sample(double E, uint64_t* seed) const;
+
+private:
+  double u() const;
+  Tabulated1DFlat theta() const;
+
+  const uint8_t* data_;
 };
 
 //===============================================================================
@@ -129,9 +228,24 @@ public:
   //! \param[inout] seed Pseudorandom number seed pointer
   //! \return Sampled energy in [eV]
   double sample(double E, uint64_t* seed) const;
+
+  void serialize(DataBuffer& buffer) const;
 private:
   Tabulated1D theta_; //!< Incoming energy dependent parameter
   double u_; //!< Restriction energy
+};
+
+class MaxwellFlat {
+public:
+  explicit MaxwellFlat(const uint8_t* data) : data_(data) { }
+
+  double sample(double E, uint64_t* seed) const;
+
+private:
+  double u() const;
+  Tabulated1DFlat theta() const;
+
+  const uint8_t* data_;
 };
 
 //===============================================================================
@@ -148,10 +262,26 @@ public:
   //! \param[inout] seed Pseudorandom number seed pointer
   //! \return Sampled energy in [eV]
   double sample(double E, uint64_t* seed) const;
+
+  void serialize(DataBuffer& buffer) const;
 private:
   Tabulated1D a_; //!< Energy-dependent 'a' parameter
   Tabulated1D b_; //!< Energy-dependent 'b' parameter
   double u_; //!< Restriction energy
+};
+
+class WattFlat {
+public:
+  explicit WattFlat(const uint8_t* data) : data_(data) { }
+
+  double sample(double E, uint64_t* seed) const;
+
+private:
+  Tabulated1DFlat a() const;
+  Tabulated1DFlat b() const;
+  double u() const;
+
+  const uint8_t* data_;
 };
 
 } // namespace openmc

@@ -13,6 +13,7 @@
 #include "openmc/angle_energy.h"
 #include "openmc/endf.h"
 #include "openmc/distribution.h"
+#include "openmc/secondary_flat.h"
 
 namespace openmc {
 
@@ -43,6 +44,8 @@ public:
   void sample(double E_in, double& E_out, double& mu,
     uint64_t* seed) const override;
 
+  void serialize(DataBuffer& buffer) const override;
+
   // energy property
   std::vector<double>& energy() { return energy_; }
   const std::vector<double>& energy() const { return energy_; }
@@ -57,6 +60,43 @@ private:
   std::vector<double> energy_; //!< Energies [eV] at which distributions
                                //!< are tabulated
   std::vector<CorrTable> distribution_; //!< Distribution at each energy
+};
+
+class CorrTableFlat {
+public:
+  #pragma omp declare target
+  explicit CorrTableFlat(const uint8_t* data);
+  #pragma omp end declare target
+
+  int n_discrete() const;
+  Interpolation interpolation() const;
+  gsl::span<const double> e_out() const;
+  gsl::span<const double> p() const;
+  gsl::span<const double> c() const;
+  TabularFlat angle(gsl::index i) const;
+private:
+  const uint8_t* data_;
+  size_t n_eout_;
+};
+
+class CorrelatedAngleEnergyFlat {
+public:
+  #pragma omp declare target
+  explicit CorrelatedAngleEnergyFlat(const uint8_t* data);
+  #pragma omp end declare target
+
+  #pragma omp declare target
+  void sample(double E_in, double& E_out, double& mu, uint64_t* seed) const;
+  #pragma omp end declare target
+private:
+  gsl::span<const int> breakpoints() const;
+  Interpolation interpolation(gsl::index i) const;
+  gsl::span<const double> energy() const;
+  CorrTableFlat distribution(gsl::index i) const;
+
+  const uint8_t* data_;
+  size_t n_region_;
+  size_t n_energy_;
 };
 
 } // namespace openmc

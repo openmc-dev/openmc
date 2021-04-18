@@ -1,0 +1,16 @@
+{
+    "version": 2,
+    "configurePresets": [
+        {
+            "name": "spirv",
+            "displayName": "Intel Gen9",
+            "binaryDir": "${sourceDir}/build/spirv",
+            "generator": "Unix Makefiles",
+            "cacheVariables": {
+                "CMAKE_C_COMPILER": "icc",
+                "CMAKE_CXX_COMPILER": "icpx",
+                "CMAKE_CXX_FLAGS": "-fiopenmp -fopenmp-targets=spir64 -gline-tables-only -Dgsl_CONFIG_CONTRACT_CHECKING_OFF"
+            }
+        }
+    ]
+}

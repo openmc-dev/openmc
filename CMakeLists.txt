@@ -273,10 +273,10 @@ list(APPEND libopenmc_SOURCES
   src/boundary_condition.cpp
   src/bremsstrahlung.cpp
   src/dagmc.cpp
-  src/device_alloc.cpp
   src/cell.cpp
   src/cmfd_solver.cpp
   src/cross_sections.cpp
+  src/device_alloc.cpp
   src/distribution.cpp
   src/distribution_angle.cpp
   src/distribution_energy.cpp
@@ -284,6 +284,7 @@ list(APPEND libopenmc_SOURCES
   src/distribution_spatial.cpp
   src/eigenvalue.cpp
   src/endf.cpp
+  src/endf_flat.cpp
   src/error.cpp
   src/event.cpp
   src/initialize.cpp
@@ -318,6 +319,8 @@ list(APPEND libopenmc_SOURCES
   src/secondary_nbody.cpp
   src/secondary_thermal.cpp
   src/secondary_uncorrelated.cpp
+  src/secondary_flat.cpp
+  src/serialize.cpp
   src/settings.cpp
   src/simulation.cpp
   src/source.cpp

@@ -3,6 +3,7 @@
 #include <string>  // for string
 
 #include <fmt/core.h>
+#include <gsl/gsl>
 
 #include "openmc/error.h"
 #include "openmc/hdf5_interface.h"
@@ -69,6 +70,65 @@ UncorrelatedAngleEnergy::sample(double E_in, double& E_out, double& mu,
 
   // Sample outgoing energy
   E_out = energy_->sample(E_in, seed);
+}
+
+void UncorrelatedAngleEnergy::serialize(DataBuffer& buffer) const
+{
+  buffer.add(static_cast<int>(AngleEnergyType::UNCORRELATED));
+
+  // Determine size of angular distribution
+  size_t bytes_angle = buffer_nbytes(angle_);
+
+  // Write locator for energy
+  buffer.add(energy_ ? 4 + 8 + 4 + bytes_angle : 0);
+
+  // Write placeholder for fission
+  int fission = 0;
+  buffer.add(fission);
+
+  // Create buffer and serialize data
+  angle_.serialize(buffer);
+  if (energy_) energy_->serialize(buffer);
+}
+
+AngleDistributionFlat UncorrelatedAngleEnergyFlat::angle() const
+{
+  return AngleDistributionFlat(data_ + 4 + 8 + 4);
+}
+
+EnergyDistributionFlat UncorrelatedAngleEnergyFlat::energy() const
+{
+  size_t offset = *reinterpret_cast<const size_t*>(data_ + 4);
+  return EnergyDistributionFlat(data_ + offset);
+}
+
+bool UncorrelatedAngleEnergyFlat::fission() const
+{
+  return (*reinterpret_cast<const int*>(data_ + 4 + 8) > 0);
+}
+
+void UncorrelatedAngleEnergyFlat::set_fission(bool fission)
+{
+  auto data_writable = const_cast<uint8_t*>(data_);
+  auto data_int = reinterpret_cast<int*>(data_writable + 4 + 8);
+  *data_int = fission ? 1 : 0;
+}
+
+void
+UncorrelatedAngleEnergyFlat::sample(double E_in, double& E_out, double& mu, uint64_t* seed) const
+{
+  // Sample cosine of scattering angle
+  if (this->fission()) {
+    // <<<<<<<<<<<<<<<<<<<<<<<<<<<<<< REMOVE THIS <<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+    // For fission, the angle is not used, so just assign a dummy value
+    mu = 1.0;
+    // <<<<<<<<<<<<<<<<<<<<<<<<<<<<<< REMOVE THIS <<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+  } else {
+    mu = this->angle().sample(E_in, seed);
+  }
+
+  // Sample outgoing energy
+  E_out = this->energy().sample(E_in, seed);
 }
 
 } // namespace openmc

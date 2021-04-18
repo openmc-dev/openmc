@@ -11,7 +11,9 @@
 
 #include "openmc/angle_energy.h"
 #include "openmc/endf.h"
+#include "openmc/endf_flat.h"
 #include "openmc/particle.h"
+#include "openmc/secondary_flat.h"
 
 namespace openmc {
 
@@ -32,7 +34,7 @@ public:
     total    // Delayed emission of secondary particle
   };
 
-  using Secondary = std::unique_ptr<AngleEnergy>;
+  using Secondary = AngleEnergyFlat;
 
   //! Construct reaction product from HDF5 data
   //! \param[in] group HDF5 group containing data
@@ -48,7 +50,7 @@ public:
   Particle::Type particle_; //!< Particle type
   EmissionMode emission_mode_; //!< Emission mode
   double decay_rate_; //!< Decay rate (for delayed neutron precursors) in [1/s]
-  std::unique_ptr<Function1D> yield_; //!< Yield as a function of energy
+  std::unique_ptr<Function1DFlat> yield_; //!< Yield as a function of energy
   std::vector<Tabulated1D> applicability_; //!< Applicability of distribution
   std::vector<Secondary> distribution_; //!< Secondary angle-energy distribution
 };

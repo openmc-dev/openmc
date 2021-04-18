@@ -3,6 +3,8 @@
 
 #include <cstdint>
 
+#include "openmc/serialize.h"
+
 namespace openmc {
 
 //==============================================================================
@@ -17,6 +19,8 @@ public:
   virtual void sample(double E_in, double& E_out, double& mu,
     uint64_t* seed) const = 0;
   virtual ~AngleEnergy() = default;
+
+  virtual void serialize(DataBuffer& buffer) const = 0;
 };
 
 }

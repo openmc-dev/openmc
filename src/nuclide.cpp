@@ -277,25 +277,25 @@ Nuclide::Nuclide(hid_t group, const std::vector<double>& temperature)
   if (object_exists(group, "total_nu")) {
     // Read total nu data
     hid_t nu_group = open_group(group, "total_nu");
-    total_nu_ = read_function(nu_group, "yield");
+    total_nu_ = std::make_unique<Function1DFlat>(*read_function(nu_group, "yield"));
     close_group(nu_group);
   }
 
   // Read fission energy release data if present
   if (object_exists(group, "fission_energy_release")) {
     hid_t fer_group = open_group(group, "fission_energy_release");
-    fission_q_prompt_ = read_function(fer_group, "q_prompt");
-    fission_q_recov_ = read_function(fer_group, "q_recoverable");
+    fission_q_prompt_ = std::make_unique<Function1DFlat>(*read_function(fer_group, "q_prompt"));
+    fission_q_recov_ = std::make_unique<Function1DFlat>(*read_function(fer_group, "q_recoverable"));
 
     // Read fission fragment and delayed beta energy release. This is needed for
     // energy normalization in k-eigenvalue calculations
-    fragments_ = read_function(fer_group, "fragments");
-    betas_ = read_function(fer_group, "betas");
+    fragments_ = std::make_unique<Function1DFlat>(*read_function(fer_group, "fragments"));
+    betas_ = std::make_unique<Function1DFlat>(*read_function(fer_group, "betas"));
 
     // We need prompt/delayed photon energy release for scaling fission photon
     // production
-    prompt_photons_ = read_function(fer_group, "prompt_photons");
-    delayed_photons_ = read_function(fer_group, "delayed_photons");
+    prompt_photons_ = std::make_unique<Function1DFlat>(*read_function(fer_group, "prompt_photons"));
+    delayed_photons_ = std::make_unique<Function1DFlat>(*read_function(fer_group, "delayed_photons"));
     close_group(fer_group);
   }
 
@@ -307,7 +307,7 @@ Nuclide::~Nuclide()
   data::nuclide_map.erase(name_);
 }
 
-void Nuclide::create_derived(const Function1D* prompt_photons, const Function1D* delayed_photons)
+void Nuclide::create_derived(const Function1DFlat* prompt_photons, const Function1DFlat* delayed_photons)
 {
   for (const auto& grid : grid_) {
     // Allocate and initialize cross section

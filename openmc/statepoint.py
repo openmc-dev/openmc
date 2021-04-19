@@ -153,9 +153,7 @@ class StatePoint:
         return self
 
     def __exit__(self, *exc):
-        self._f.close()
-        if self._summary is not None:
-            self._summary._f.close()
+        self.close()
 
     @property
     def cmfd_on(self):
@@ -489,6 +487,14 @@ class StatePoint:
         if self._tallies_read:
             for tally_id in self.tallies:
                 self.tallies[tally_id].sparse = self.sparse
+
+    def close(self):
+        """Close the statepoint HDF5 file and the corresponding
+        summary HDF5 file if present.
+        """
+        self._f.close()
+        if self._summary is not None:
+            self._summary._f.close()
 
     def add_volume_information(self, volume_calc):
         """Add volume information to the geometry within the file

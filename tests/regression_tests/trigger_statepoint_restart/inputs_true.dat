@@ -13,11 +13,11 @@
 <?xml version='1.0' encoding='utf-8'?>
 <settings>
   <run_mode>eigenvalue</run_mode>
-  <particles>200</particles>
-  <batches>10</batches>
-  <inactive>5</inactive>
+  <particles>400</particles>
+  <batches>15</batches>
+  <inactive>10</inactive>
   <keff_trigger>
-    <threshold>0.004</threshold>
+    <threshold>0.003</threshold>
     <type>std_dev</type>
   </keff_trigger>
   <trigger>

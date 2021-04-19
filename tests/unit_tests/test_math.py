@@ -180,7 +180,7 @@ def test_rotate_angle():
 
     # When seed = 1, phi will be sampled as 1.9116495709698769
     # The resultant reference is from hand-calculations given the above
-    ref_uvw = [0.9, 0.410813051297112, 0.1457142302040]
+    ref_uvw = [0.9, -0.422746750548505, 0.10623175090659095]
     test_uvw = openmc.lib.math.rotate_angle(uvw0, mu, phi, prn_seed)
 
     assert np.allclose(ref_uvw, test_uvw)
@@ -189,7 +189,7 @@ def test_rotate_angle():
 def test_maxwell_spectrum():
     prn_seed = 1
     T = 0.5
-    ref_val = 0.6129982175261098
+    ref_val = 0.27767406743161277
     test_val = openmc.lib.math.maxwell_spectrum(T, prn_seed)
 
     assert ref_val == test_val
@@ -199,7 +199,7 @@ def test_watt_spectrum():
     prn_seed = 1
     a = 0.5
     b = 0.75
-    ref_val = 0.6247242713640233
+    ref_val = 0.30957476387766697
     test_val = openmc.lib.math.watt_spectrum(a, b, prn_seed)
 
     assert ref_val == test_val

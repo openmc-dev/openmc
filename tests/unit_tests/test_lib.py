@@ -387,12 +387,12 @@ def test_reset(lib_run):
     openmc.lib.hard_reset()
     openmc.lib.simulation_init()
     try:
-        for i in range(10):
+        for i in range(20):
             openmc.lib.next_batch()
 
         # Make sure there are 5 realizations for the 5 active batches.
-        assert openmc.lib.num_realizations() == 5
-        assert openmc.lib.tallies[2].num_realizations == 5
+        assert openmc.lib.num_realizations() == 15
+        assert openmc.lib.tallies[2].num_realizations == 15
         _, keff_sd1 = openmc.lib.keff()
         tally_sd1 = openmc.lib.tallies[2].std_dev[0]
 

@@ -119,9 +119,9 @@ def test_cell(lib_init):
 def test_cell_temperature(lib_init):
     cell = openmc.lib.cells[1]
     cell.set_temperature(100.0, 0)
-    assert cell.get_temperature(0) == 100.0
+    assert cell.get_temperature(0) == pytest.approx(100.0)
     cell.set_temperature(200)
-    assert cell.get_temperature() == 200.0
+    assert cell.get_temperature() == pytest.approx(200.0)
 
 
 def test_new_cell(lib_init):

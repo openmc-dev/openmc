@@ -9,28 +9,39 @@ namespace openmc {
 int64_t master_seed {1};
 
 // LCG parameters
-constexpr uint64_t prn_mult   {2806196910506780709LL};   // multiplication
-                                                         //   factor, g
-constexpr uint64_t prn_add    {1};                       // additive factor, c
-constexpr uint64_t prn_mod    {0x8000000000000000};      // 2^63
-constexpr uint64_t prn_mask   {0x7fffffffffffffff};      // 2^63 - 1
+constexpr uint64_t prn_mult   {6364136223846793005ULL};  // multiplication
+constexpr uint64_t prn_add    {1442695040888963407ULL};  // additive factor, c
 constexpr uint64_t prn_stride {152917LL};                // stride between
-                                                         //   particles
-constexpr double   prn_norm   {1.0 / prn_mod};           // 2^-63
 
 //==============================================================================
 // PRN
 //==============================================================================
 
+// 64 bit implementation of the PCG-RXS-M-XS 64-bit state / 64-bit output geneator
+// Adapted from: https://github.com/imneme/pcg-c
+// @techreport{oneill:pcg2014,
+//    title = "PCG: A Family of Simple Fast Space-Efficient Statistically Good Algorithms for Random Number Generation",
+//    author = "Melissa E. O'Neill",
+//    institution = "Harvey Mudd College",
+//    address = "Claremont, CA",
+//    number = "HMC-CS-2014-0905",
+//    year = "2014",
+//    month = Sep,
+//    xurl = "https://www.cs.hmc.edu/tr/hmc-cs-2014-0905.pdf",
+//}
 double prn(uint64_t* seed)
 {
-  // This algorithm uses bit-masking to find the next integer(8) value to be
-  // used to calculate the random number.
-  *seed = (prn_mult * (*seed) + prn_add) & prn_mask;
+  // Advance the LCG
+  *seed = (prn_mult * (*seed) + prn_add);
 
-  // Once the integer is calculated, we just need to divide by 2**m,
-  // represented here as multiplying by a pre-calculated factor
-  return (*seed) * prn_norm;
+  // Permute the output
+  uint64_t word = ((*seed >> ((*seed >> 59u) + 5u)) ^ *seed) * 12605985483714917081ull;
+  uint64_t result = (word >> 43u) ^ word;
+
+  // Convert output from unsigned integer to double
+  double result_d = ldexp(result, -64);
+
+  return result_d;
 }
 
 //==============================================================================
@@ -39,7 +50,8 @@ double prn(uint64_t* seed)
 
 double future_prn(int64_t n, uint64_t seed)
 {
-  return future_seed(static_cast<uint64_t>(n), seed) * prn_norm;
+  uint64_t fseed = future_seed(static_cast<uint64_t>(n), seed);
+  return prn( &fseed );
 }
 
 //==============================================================================
@@ -77,9 +89,6 @@ void advance_prn_seed(int64_t n, uint64_t* seed)
 
 uint64_t future_seed(uint64_t n, uint64_t seed)
 {
-  // Make sure nskip is less than 2^M.
-  n &= prn_mask;
-
   // The algorithm here to determine the parameters used to skip ahead is
   // described in F. Brown, "Random Number Generation with Arbitrary Stride,"
   // Trans. Am. Nucl. Soc. (Nov. 1994). This algorithm is able to skip ahead in
@@ -106,7 +115,7 @@ uint64_t future_seed(uint64_t n, uint64_t seed)
   }
 
   // With G and C, we can now find the new seed.
-  return (g_new * seed + c_new) & prn_mask;
+  return g_new * seed + c_new;
 }
 
 //==============================================================================

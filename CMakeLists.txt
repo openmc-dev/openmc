@@ -119,8 +119,8 @@ if(openmp)
 
     # Intel
 
-    list(APPEND cxxflags -fiopenmp -fopenmp-targets=spir64 -fexceptions)
-    list(APPEND ldflags -fiopenmp -fopenmp-targets=spir64 -fexceptions)
+    #list(APPEND cxxflags -fiopenmp -fopenmp-targets=spir64 -fexceptions)
+    #list(APPEND ldflags -fiopenmp -fopenmp-targets=spir64 -fexceptions)
 
     # LLVM Targeting V100
     #list(APPEND cxxflags -fopenmp -fopenmp-targets=nvptx64-nvidia-cuda -Xopenmp-target -march=sm_70 -fexceptions)

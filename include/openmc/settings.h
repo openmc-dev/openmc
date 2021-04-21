@@ -109,7 +109,7 @@ extern double weight_survive;        //!< Survival weight after Russian roulette
 
 // Compile time settings defined in CMake file
 constexpr bool structure_of_array_particles =
-  false; //!< Whether we're using structures of arrays for particle data
+  true; //!< Whether we're using structures of arrays for particle data
 
 } // namespace settings
 

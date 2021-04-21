@@ -116,7 +116,7 @@ create_fission_sites(Particle& p)
   xsfloat nu_d[MAX_DELAYED_GROUPS] = {0.};
 
   // Clear out particle's nu fission bank
-  p.nu_bank().clear();
+  p.nu_bank_clear();
 
   p.fission() = true;
   int skipped = 0;
@@ -167,7 +167,7 @@ create_fission_sites(Particle& p)
         break;
       }
     } else {
-      p.secondary_bank().push_back(site);
+      p.secondary_bank_push_back(site);
     }
 
     // Set the delayed group on the particle as well

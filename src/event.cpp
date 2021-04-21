@@ -26,6 +26,14 @@ vector<Particle> particles;
 // Non-member functions
 //==============================================================================
 
+typedef Particle ParticleReference;
+// typedef Particle& ParticleReference;
+ParticleReference get_particle(const int& p)
+{
+  return Particle(p);
+  // return simulation::particles[p];
+}
+
 void init_event_queues(int64_t n_particles)
 {
   simulation::calculate_fuel_xs_queue.reserve(n_particles);
@@ -54,7 +62,7 @@ void free_event_queues(void)
 
 void dispatch_xs_event(int64_t buffer_idx)
 {
-  Particle& p = simulation::particles[buffer_idx];
+  ParticleReference p = get_particle(buffer_idx);
   if (p.material() == MATERIAL_VOID ||
       !model::materials[p.material()]->fissionable_) {
     simulation::calculate_nonfuel_xs_queue.thread_safe_append({p, buffer_idx});
@@ -68,7 +76,8 @@ void process_init_events(int64_t n_particles, int64_t source_offset)
   simulation::time_event_init.start();
   #pragma omp parallel for schedule(runtime)
   for (int64_t i = 0; i < n_particles; i++) {
-    initialize_history(simulation::particles[i], source_offset + i + 1);
+    ParticleReference p = get_particle(i);
+    initialize_history(p, source_offset + i + 1);
     dispatch_xs_event(i);
   }
   simulation::time_event_init.stop();
@@ -90,8 +99,8 @@ void process_calculate_xs_events(SharedArray<EventQueueItem>& queue)
 
   #pragma omp parallel for schedule(runtime)
   for (int64_t i = 0; i < queue.size(); i++) {
-    Particle* p = &simulation::particles[queue[i].idx];
-    p->event_calculate_xs();
+    ParticleReference p = get_particle(queue[i].idx);
+    p.event_calculate_xs();
 
     // After executing a calculate_xs event, particles will
     // always require an advance event. Therefore, we don't need to use
@@ -113,7 +122,7 @@ void process_advance_particle_events()
   #pragma omp parallel for schedule(runtime)
   for (int64_t i = 0; i < simulation::advance_particle_queue.size(); i++) {
     int64_t buffer_idx = simulation::advance_particle_queue[i].idx;
-    Particle& p = simulation::particles[buffer_idx];
+    ParticleReference p = get_particle(buffer_idx);
     p.event_advance();
     if (p.collision_distance() > p.boundary().distance) {
       simulation::surface_crossing_queue.thread_safe_append({p, buffer_idx});
@@ -134,7 +143,7 @@ void process_surface_crossing_events()
   #pragma omp parallel for schedule(runtime)
   for (int64_t i = 0; i < simulation::surface_crossing_queue.size(); i++) {
     int64_t buffer_idx = simulation::surface_crossing_queue[i].idx;
-    Particle& p = simulation::particles[buffer_idx];
+    ParticleReference p = get_particle(buffer_idx);
     p.event_cross_surface();
     p.event_revive_from_secondary();
     if (p.alive())
@@ -153,7 +162,7 @@ void process_collision_events()
   #pragma omp parallel for schedule(runtime)
   for (int64_t i = 0; i < simulation::collision_queue.size(); i++) {
     int64_t buffer_idx = simulation::collision_queue[i].idx;
-    Particle& p = simulation::particles[buffer_idx];
+    ParticleReference p = get_particle(buffer_idx);
     p.event_collide();
     p.event_revive_from_secondary();
     if (p.alive())
@@ -170,7 +179,7 @@ void process_death_events(int64_t n_particles)
   simulation::time_event_death.start();
   #pragma omp parallel for schedule(runtime)
   for (int64_t i = 0; i < n_particles; i++) {
-    Particle& p = simulation::particles[i];
+    ParticleReference p = get_particle(i);
     p.event_death();
   }
   simulation::time_event_death.stop();

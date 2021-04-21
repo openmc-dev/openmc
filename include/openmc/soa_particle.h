@@ -3,13 +3,9 @@
 
 // Get things like NuBank, ParticleType, etc.
 #include "openmc/error.h"
-#include "openmc/geometry.h" // model::n_coord_levels
-#include "openmc/nuclide.h"  // data::nuclides
 #include "openmc/particle_data.h"
-#include "openmc/photon.h" // data::elements
-#include "openmc/tallies/derivative.h"
-#include "openmc/tallies/filter.h"
-#include "openmc/tallies/tally.h"
+
+#include <cassert>
 
 #ifdef _OPENMP
 #include <omp.h>
@@ -24,8 +20,22 @@ namespace openmc {
 void allocate_soa_data();
 
 namespace soa {
+
+// Max number of secondary particles stored at once by a particle
+// Note: may need to change this!
 constexpr int max_secondary_particles = 5;
+
+// Max possible number of neutrons emitted by one fission event
 constexpr int max_fissions = 5;
+
+// Cached numbers of things required for accessing SOA data
+// This lets us not include the headers included by soa_particle.cpp
+// in practically every other OpenMC, reducing compile time.
+extern int n_nuclides;
+extern int n_elements;
+extern int n_coord_levels;
+extern int n_tally_derivs;
+extern int n_tally_filters;
 
 extern std::vector<NuclideMicroXS> neutron_xs;
 extern std::vector<ElementMicroXS> photon_xs;
@@ -69,12 +79,18 @@ extern std::vector<int> n_collision;
 extern std::vector<char> write_track;
 extern std::vector<uint64_t> seeds; // N_STREAMS pitch
 extern std::vector<int> stream;
+
+extern std::vector<int> secondary_bank_current_indx;
 extern std::vector<ParticleBank>
   secondary_bank; // max_secondary_particles pitch
+
 extern std::vector<int64_t> current_work;
 extern std::vector<double> flux_derivs;         // tally_derivs.size() pitch
 extern std::vector<FilterMatch> filter_matches; // tally_filters.size() pitch
-extern std::vector<NuBank> nu_bank;             // max_fissions pitch
+
+extern std::vector<int> nu_bank_current_indx;
+extern std::vector<NuBank> nu_bank;
+
 extern std::vector<double> keff_tally_absorption;
 extern std::vector<double> keff_tally_collision;
 extern std::vector<double> keff_tally_tracklength;
@@ -113,15 +129,15 @@ public:
 
   NuclideMicroXS& neutron_xs(const int& i)
   {
-    return soa::neutron_xs[p * data::nuclides.size() + i];
+    return soa::neutron_xs[p * soa::n_nuclides + i];
   }
   const NuclideMicroXS& neutron_xs(const int& i) const
   {
-    return soa::neutron_xs[p * data::nuclides.size() + i];
+    return soa::neutron_xs[p * soa::n_nuclides + i];
   }
   ElementMicroXS& photon_xs(const int& i)
   {
-    return soa::photon_xs[p * data::elements.size() + i];
+    return soa::photon_xs[p * soa::n_elements + i];
   }
   MacroXS& macro_xs() { return soa::macro_xs[p]; }
   const MacroXS& macro_xs() const { return soa::macro_xs[p]; }
@@ -137,22 +153,22 @@ public:
   const int& cell_instance() const { return soa::cell_instance[p]; }
   LocalCoord& coord(const int& i)
   {
-    return soa::coord[p * model::n_coord_levels + i];
+    return soa::coord[p * soa::n_coord_levels + i];
   }
   const LocalCoord& coord(const int& i) const
   {
-    return soa::coord[p * model::n_coord_levels + i];
+    return soa::coord[p * soa::n_coord_levels + i];
   }
 
   int& n_coord_last() { return soa::n_coord_last[p]; }
   const int& n_coord_last() const { return soa::n_coord_last[p]; }
   int& cell_last(const int& i)
   {
-    return soa::cell_last[p * model::n_coord_levels + i];
+    return soa::cell_last[p * soa::n_coord_levels + i];
   }
   const int& cell_last(const int& i) const
   {
-    return soa::cell_last[p * model::n_coord_levels + i];
+    return soa::cell_last[p * soa::n_coord_levels + i];
   }
 
   double& E() { return soa::E[p]; }
@@ -230,25 +246,49 @@ public:
   const int64_t& current_work() const { return soa::current_work[p]; }
   double& flux_derivs(const int& i)
   {
-    return soa::flux_derivs[model::tally_derivs.size() * p + i];
+    return soa::flux_derivs[soa::n_tally_derivs * p + i];
   }
   const double& flux_derivs(const int& i) const
   {
-    return soa::flux_derivs[model::tally_derivs.size() * p + i];
+    return soa::flux_derivs[soa::n_tally_derivs * p + i];
   }
   FilterMatch& filter_matches(const int& i)
   {
-    return soa::filter_matches[model::tally_filters.size() * p + i];
+    return soa::filter_matches[soa::n_tally_filters * p + i];
   }
+  FilterMatch* filter_matches()
+  {
+    return &soa::filter_matches[soa::n_tally_filters * p];
+  }
+  void reset_filter_matches()
+  {
+    auto start = soa::n_tally_filters * p;
+    for (int i = 0; i < soa::n_tally_filters; ++i) {
+      soa::filter_matches[start + i].bins_present_ = false;
+    }
+  }
+
   std::vector<std::vector<Position>> tracks()
   {
     fatal_error("tracks cannot be written in SOA mode");
     return std::vector<std::vector<Position>>();
   }
+
   NuBank& nu_bank(const int& i)
   {
     return soa::nu_bank[soa::max_fissions * p + i];
   }
+  NuBank& nu_bank_emplace_back()
+  {
+    return nu_bank(soa::nu_bank_current_indx[p]++);
+    assert(soa::nu_bank_current_indx[p] <= soa::max_fissions);
+  }
+  NuBank& nu_bank_back()
+  {
+    assert(soa::nu_bank_current_indx[p] > 0);
+    return nu_bank(soa::nu_bank_current_indx[p] - 1);
+  }
+  void nu_bank_clear() { soa::nu_bank_current_indx[p] = 0; }
 
   double& keff_tally_absorption() { return soa::keff_tally_absorption[p]; }
   double& keff_tally_collision() { return soa::keff_tally_collision[p]; }
@@ -267,35 +307,35 @@ public:
   int64_t& n_progeny() { return soa::n_progeny[p]; }
 
   // Accessors for position in global coordinates
-  Position& r() { return soa::coord[p * model::n_coord_levels].r; }
-  const Position& r() const { return soa::coord[p * model::n_coord_levels].r; }
+  Position& r() { return soa::coord[p * soa::n_coord_levels].r; }
+  const Position& r() const { return soa::coord[p * soa::n_coord_levels].r; }
 
   // Accessors for position in local coordinates
   Position& r_local()
   {
     const auto& n_coord = soa::n_coord[p];
-    return soa::coord[p * model::n_coord_levels + n_coord - 1].r;
+    return soa::coord[p * soa::n_coord_levels + n_coord - 1].r;
   }
   const Position& r_local() const
   {
     const auto& n_coord = soa::n_coord[p];
-    return soa::coord[p * model::n_coord_levels + n_coord - 1].r;
+    return soa::coord[p * soa::n_coord_levels + n_coord - 1].r;
   }
 
   // Accessors for direction in global coordinates
-  Direction& u() { return soa::coord[p * model::n_coord_levels].u; }
-  const Direction& u() const { return soa::coord[p * model::n_coord_levels].u; }
+  Direction& u() { return soa::coord[p * soa::n_coord_levels].u; }
+  const Direction& u() const { return soa::coord[p * soa::n_coord_levels].u; }
 
   // Accessors for direction in local coordinates
   Direction& u_local()
   {
     const auto& n_coord = soa::n_coord[p];
-    return soa::coord[p * model::n_coord_levels + n_coord - 1].u;
+    return soa::coord[p * soa::n_coord_levels + n_coord - 1].u;
   }
   const Direction& u_local() const
   {
     const auto& n_coord = soa::n_coord[p];
-    return soa::coord[p * model::n_coord_levels + n_coord - 1].u;
+    return soa::coord[p * soa::n_coord_levels + n_coord - 1].u;
   }
 
   //! Gets the pointer to the particle's current PRN seed
@@ -313,16 +353,16 @@ public:
   //! Force recalculation of neutron xs by setting last energy to zero
   void invalidate_neutron_xs()
   {
-    for (int i_nuc = 0; i_nuc < data::nuclides.size(); ++i_nuc) {
-      soa::neutron_xs[p * data::nuclides.size() + i_nuc].last_E = 0.0;
+    for (int i_nuc = 0; i_nuc < soa::n_nuclides; ++i_nuc) {
+      soa::neutron_xs[p * soa::n_nuclides + i_nuc].last_E = 0.0;
     }
   }
 
   //! resets all coordinate levels for the particle
   void clear()
   {
-    for (int i_level = 0; i_level < model::n_coord_levels; ++i_level) {
-      soa::coord[p * model::n_coord_levels + i_level].reset();
+    for (int i_level = 0; i_level < soa::n_coord_levels; ++i_level) {
+      soa::coord[p * soa::n_coord_levels + i_level].reset();
     }
     soa::n_coord[p] = 1;
   }
@@ -336,9 +376,50 @@ public:
 
   void zero_flux_derivs()
   {
-    for (int i_deriv = 0; i_deriv < model::tally_derivs.size(); ++i_deriv) {
-      soa::flux_derivs[p * model::tally_derivs.size() + i_deriv] = 0.0;
+    for (int i_deriv = 0; i_deriv < soa::n_tally_derivs; ++i_deriv) {
+      soa::flux_derivs[p * soa::n_tally_derivs + i_deriv] = 0.0;
     }
+  }
+
+  // Methods for manipulating the secondary bank
+
+  int secondary_bank_size() { return soa::secondary_bank_current_indx[p]; }
+
+  void secondary_bank_pop_back()
+  {
+    int& secondary_indx = soa::secondary_bank_current_indx[p];
+    secondary_indx--;
+    assert(soa::secondary_bank_current_indx[p] >= 0);
+  }
+
+  void secondary_bank_push_back(ParticleBank& site)
+  {
+    // Check we're not writing into the next particle's space
+    assert(soa::secondary_bank_current_indx[p] < soa::max_secondary_particles);
+
+    secondary_bank(soa::secondary_bank_current_indx[p]) = site;
+    soa::secondary_bank_current_indx[p]++;
+  }
+
+  ParticleBank& secondary_bank_back()
+  {
+    assert(soa::secondary_bank_current_indx[p] > 0);
+    return secondary_bank(soa::secondary_bank_current_indx[p] - 1);
+  }
+
+  ParticleBank* secondary_bank_end()
+  {
+    return &secondary_bank(soa::secondary_bank_current_indx[p]);
+  }
+
+  bool secondary_bank_empty()
+  {
+    return soa::secondary_bank_current_indx[p] == 0;
+  }
+
+  ParticleBank& secondary_bank_emplace_back()
+  {
+    return secondary_bank(soa::secondary_bank_current_indx[p]++);
   }
 
   // Applies defaults as defined in particle_data.h
@@ -372,6 +453,9 @@ public:
     trace() = false;
     n_event() = 0;
     n_progeny() = 0;
+
+    soa::secondary_bank_current_indx[p] = 0;
+    soa::nu_bank_current_indx[p] = 0;
   }
 };
 

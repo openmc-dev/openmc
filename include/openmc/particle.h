@@ -13,6 +13,7 @@
 #include "openmc/particle_data.h"
 #include "openmc/position.h"
 #include "openmc/random_lcg.h"
+#include "openmc/soa_particle.h"
 #include "openmc/tallies/filter_match.h"
 #include "openmc/vector.h"
 
@@ -28,13 +29,14 @@ class Surface;
  * can be found in particle_data.h.
  */
 
-class Particle : public ParticleData {
+class Particle : public ParticleHandle {
 public:
 
   //==========================================================================
   // Constructors
 
   Particle() = default;
+  Particle(const int& i_particle) : ParticleHandle(i_particle) {}
 
   //! create a secondary particle
   //

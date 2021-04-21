@@ -610,8 +610,8 @@ write_tallies()
     filter_matches.resize(model::tally_filters.size());
 
     // Loop over all filter bin combinations.
-    auto filter_iter = FilterBinIter(tally, false, &filter_matches);
-    auto end = FilterBinIter(tally, true, &filter_matches);
+    auto filter_iter = FilterBinIter(tally, false, filter_match_start);
+    auto end = FilterBinIter(tally, true, filter_match_start);
     for (; filter_iter != end; ++filter_iter) {
       auto filter_index = filter_iter.index_;
 

@@ -27,7 +27,7 @@ namespace openmc {
 //==============================================================================
 
 FilterBinIter::FilterBinIter(const Tally& tally, Particle& p)
-  : filter_matches_ {p.filter_matches()}, tally_ {tally}
+  : filter_matches_(p.filter_matches()), tally_ {tally}
 {
   // Find all valid bins in each relevant filter if they have not already been
   // found for this event.
@@ -145,7 +145,11 @@ FilterBinIter::compute_index_weight()
 //! Helper function used to increment tallies with a delayed group filter.
 
 void score_fission_delayed_dg(int i_tally, int d_bin, double score,
+<<<<<<< HEAD
   int score_index, vector<FilterMatch>& filter_matches)
+=======
+  int score_index, FilterMatch* filter_matches)
+>>>>>>> 799f80382 (SOA event mode works now)
 {
   // Save the original delayed group bin
   auto& tally {*model::tallies[i_tally]};
@@ -1406,8 +1410,8 @@ score_general_ce(Particle& p, int i_tally, int start_index, int filter_index,
 
         // ...less the energy of any secondary particles since they will be
         // transported individually later
-        const auto& bank = p.secondary_bank();
-        for (auto it = bank.end() - p.n_bank_second(); it < bank.end(); ++it) {
+        for (auto it = p.secondary_bank_end() - p.n_bank_second();
+             it < p.secondary_bank_end(); ++it) {
           score -= it->E;
         }
 
@@ -2195,7 +2199,7 @@ void score_analog_tally_ce(Particle& p)
     // no valid combinations, use a continue statement to ensure we skip the
     // assume_separate break below.
     auto filter_iter = FilterBinIter(tally, p);
-    auto end = FilterBinIter(tally, true, &p.filter_matches());
+    auto end = FilterBinIter(tally, true, p.filter_matches());
     if (filter_iter == end) continue;
 
     // Loop over filter bins.
@@ -2239,8 +2243,7 @@ void score_analog_tally_ce(Particle& p)
   }
 
   // Reset all the filter matches for the next tally event.
-  for (auto& match : p.filter_matches())
-    match.bins_present_ = false;
+  p.reset_filter_matches();
 }
 
 void score_analog_tally_mg(Particle& p)
@@ -2252,7 +2255,7 @@ void score_analog_tally_mg(Particle& p)
     // no valid combinations, use a continue statement to ensure we skip the
     // assume_separate break below.
     auto filter_iter = FilterBinIter(tally, p);
-    auto end = FilterBinIter(tally, true, &p.filter_matches());
+    auto end = FilterBinIter(tally, true, p.filter_matches());
     if (filter_iter == end) continue;
 
     // Loop over filter bins.
@@ -2285,8 +2288,7 @@ void score_analog_tally_mg(Particle& p)
   }
 
   // Reset all the filter matches for the next tally event.
-  for (auto& match : p.filter_matches())
-    match.bins_present_ = false;
+  p.reset_filter_matches();
 }
 
 void
@@ -2302,7 +2304,7 @@ score_tracklength_tally(Particle& p, double distance)
     // no valid combinations, use a continue statement to ensure we skip the
     // assume_separate break below.
     auto filter_iter = FilterBinIter(tally, p);
-    auto end = FilterBinIter(tally, true, &p.filter_matches());
+    auto end = FilterBinIter(tally, true, p.filter_matches());
     if (filter_iter == end) continue;
 
     // Loop over filter bins.
@@ -2351,8 +2353,7 @@ score_tracklength_tally(Particle& p, double distance)
   }
 
   // Reset all the filter matches for the next tally event.
-  for (auto& match : p.filter_matches())
-    match.bins_present_ = false;
+  p.reset_filter_matches();
 }
 
 void score_collision_tally(Particle& p)
@@ -2374,7 +2375,7 @@ void score_collision_tally(Particle& p)
     // no valid combinations, use a continue statement to ensure we skip the
     // assume_separate break below.
     auto filter_iter = FilterBinIter(tally, p);
-    auto end = FilterBinIter(tally, true, &p.filter_matches());
+    auto end = FilterBinIter(tally, true, p.filter_matches());
     if (filter_iter == end) continue;
 
     // Loop over filter bins.
@@ -2419,8 +2420,7 @@ void score_collision_tally(Particle& p)
   }
 
   // Reset all the filter matches for the next tally event.
-  for (auto& match : p.filter_matches())
-    match.bins_present_ = false;
+  p.reset_filter_matches();
 }
 
 void score_surface_tally(Particle& p, const vector<int>& tallies)
@@ -2435,7 +2435,7 @@ void score_surface_tally(Particle& p, const vector<int>& tallies)
     // no valid combinations, use a continue statement to ensure we skip the
     // assume_separate break below.
     auto filter_iter = FilterBinIter(tally, p);
-    auto end = FilterBinIter(tally, true, &p.filter_matches());
+    auto end = FilterBinIter(tally, true, p.filter_matches());
     if (filter_iter == end) continue;
 
     // Loop over filter bins.
@@ -2462,8 +2462,7 @@ void score_surface_tally(Particle& p, const vector<int>& tallies)
   }
 
   // Reset all the filter matches for the next tally event.
-  for (auto& match : p.filter_matches())
-    match.bins_present_ = false;
+  p.reset_filter_matches();
 }
 
 } // namespace openmc

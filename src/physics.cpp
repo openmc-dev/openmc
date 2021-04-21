@@ -108,7 +108,7 @@ void sample_neutron_reaction(Particle& p)
 
       // Make sure particle population doesn't grow out of control for
       // subcritical multiplication problems.
-      if (p.secondary_bank().size() >= 10000) {
+      if (p.secondary_bank_size() >= 10000) {
         fatal_error("The secondary particle bank appears to be growing without "
         "bound. You are likely running a subcritical multiplication problem "
         "with k-effective close to or greater than one.");
@@ -176,7 +176,7 @@ create_fission_sites(Particle& p, int i_nuclide, const Reaction& rx)
   double nu_d[MAX_DELAYED_GROUPS] = {0.};
 
   // Clear out particle's nu fission bank
-  p.nu_bank().clear();
+  p.nu_bank_clear();
 
   p.fission() = true;
   int skipped = 0;
@@ -208,7 +208,7 @@ create_fission_sites(Particle& p, int i_nuclide, const Reaction& rx)
         break;
       }
     } else {
-      p.secondary_bank().push_back(site);
+      p.secondary_bank_push_back(site);
     }
 
     // Set the delayed group on the particle as well

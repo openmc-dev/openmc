@@ -38,9 +38,9 @@ namespace openmc {
 void Particle::create_secondary(
   double wgt, Direction u, double E, ParticleType type)
 {
-  secondary_bank().emplace_back();
+  secondary_bank_emplace_back();
 
-  auto& bank {secondary_bank().back()};
+  auto& bank {secondary_bank_back()};
   bank.particle = type;
   bank.wgt = wgt;
   bank.r = r();
@@ -301,11 +301,11 @@ Particle::event_revive_from_secondary()
   // Check for secondary particles if this particle is dead
   if (!alive()) {
     // If no secondary particles, break out of event loop
-    if (secondary_bank().empty())
+    if (secondary_bank_empty())
       return;
 
-    from_source(&secondary_bank().back());
-    secondary_bank().pop_back();
+    from_source(&secondary_bank_back());
+    secondary_bank_pop_back();
     n_event() = 0;
 
     // Enter new particle in particle track file

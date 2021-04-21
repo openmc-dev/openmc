@@ -1,5 +1,13 @@
 #include "openmc/soa_particle.h"
 #include "openmc/settings.h"
+
+#include "openmc/geometry.h" // model::n_coord_levels
+#include "openmc/nuclide.h"  // data::nuclides
+#include "openmc/photon.h"   // data::elements
+#include "openmc/tallies/derivative.h"
+#include "openmc/tallies/filter.h"
+#include "openmc/tallies/tally.h"
+
 namespace openmc {
 
 void allocate_soa_data()
@@ -19,8 +27,8 @@ void allocate_soa_data()
   }
 
   // Allocate sufficient room in all arrays
-  neutron_xs.resize(particles_in_flight);
-  photon_xs.resize(particles_in_flight);
+  neutron_xs.resize(data::nuclides.size() * particles_in_flight);
+  photon_xs.resize(data::elements.size() * particles_in_flight);
   macro_xs.resize(particles_in_flight);
   id.resize(particles_in_flight);
   type.resize(particles_in_flight);
@@ -62,10 +70,12 @@ void allocate_soa_data()
   seeds.resize(N_STREAMS * particles_in_flight);
   stream.resize(particles_in_flight);
   secondary_bank.resize(max_secondary_particles * particles_in_flight);
+  secondary_bank_current_indx.resize(particles_in_flight);
   current_work.resize(particles_in_flight);
   flux_derivs.resize(model::tally_derivs.size() * particles_in_flight);
   filter_matches.resize(model::tally_filters.size() * particles_in_flight);
   nu_bank.resize(max_fissions * particles_in_flight);
+  nu_bank_current_indx.resize(particles_in_flight);
   keff_tally_absorption.resize(particles_in_flight);
   keff_tally_collision.resize(particles_in_flight);
   keff_tally_tracklength.resize(particles_in_flight);
@@ -78,9 +88,22 @@ void allocate_soa_data()
   last_dir.resize(particles_in_flight);
 #endif
   n_progeny.resize(particles_in_flight);
+
+  // Cache a few frequently accessed variables.
+  n_nuclides = data::nuclides.size();
+  n_elements = data::elements.size();
+  n_coord_levels = model::n_coord_levels;
+  n_tally_derivs = model::tally_derivs.size();
+  n_tally_filters = model::tally_filters.size();
 }
 
 namespace soa {
+int n_nuclides;
+int n_elements;
+int n_coord_levels;
+int n_tally_derivs;
+int n_tally_filters;
+
 std::vector<NuclideMicroXS> neutron_xs;
 std::vector<ElementMicroXS> photon_xs;
 std::vector<MacroXS> macro_xs;
@@ -124,10 +147,12 @@ std::vector<char> write_track;
 std::vector<uint64_t> seeds; // N_STREAMS pitch
 std::vector<int> stream;
 std::vector<ParticleBank> secondary_bank; // max_secondary_particles pitch
+std::vector<int> secondary_bank_current_indx;
 std::vector<int64_t> current_work;
 std::vector<double> flux_derivs;         // tally_derivs.size() pitch
 std::vector<FilterMatch> filter_matches; // tally_filters.size() pitch
 std::vector<NuBank> nu_bank;             // max_fissions pitch
+std::vector<int> nu_bank_current_indx;
 std::vector<double> keff_tally_absorption;
 std::vector<double> keff_tally_collision;
 std::vector<double> keff_tally_tracklength;

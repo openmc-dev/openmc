@@ -78,8 +78,6 @@ jobs:
     steps:
       - uses: actions/checkout@v2
 
-      - uses: ./.github/actions/fix-etc-hosts
-
       -
         name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v2

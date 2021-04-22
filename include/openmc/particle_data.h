@@ -67,7 +67,7 @@ public:
   int cell {-1};
   int universe {-1};
   int lattice {-1};
-  array<int, 3> lattice_i {-1, -1, -1};
+  array<int, 3> lattice_i {{-1, -1, -1}};
   bool rotated {false}; //!< Is the level rotated?
 };
 

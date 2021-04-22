@@ -16,11 +16,6 @@
 #include "openmc/tallies/filter_match.h"
 #include "openmc/vector.h"
 
-#ifdef DAGMC
-#include "DagMC.hpp"
-#endif
-
-
 namespace openmc {
 
 // Forward declare the Surface class for use in Particle::cross_vacuum_bc, etc.

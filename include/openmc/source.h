@@ -4,14 +4,13 @@
 #ifndef OPENMC_SOURCE_H
 #define OPENMC_SOURCE_H
 
-#include <memory>
-#include <vector>
-
 #include "pugixml.hpp"
 
 #include "openmc/distribution_multi.h"
 #include "openmc/distribution_spatial.h"
+#include "openmc/memory.h"
 #include "openmc/particle.h"
+#include "openmc/vector.h"
 
 namespace openmc {
 
@@ -23,7 +22,7 @@ class Source;
 
 namespace model {
 
-extern std::vector<std::unique_ptr<Source>> external_sources;
+extern vector<unique_ptr<Source>> external_sources;
 
 } // namespace model
 
@@ -87,7 +86,7 @@ public:
   ParticleBank sample(uint64_t* seed) const override;
 
 private:
-  std::vector<ParticleBank> sites_; //!< Source sites from a file
+  vector<ParticleBank> sites_; //!< Source sites from a file
 };
 
 //==============================================================================
@@ -109,10 +108,10 @@ public:
   double strength() const override { return custom_source_->strength(); }
 private:
   void* shared_library_; //!< library from dlopen
-  std::unique_ptr<Source> custom_source_;
+  unique_ptr<Source> custom_source_;
 };
 
-typedef std::unique_ptr<Source> create_custom_source_t(std::string parameters);
+typedef unique_ptr<Source> create_custom_source_t(std::string parameters);
 
 //==============================================================================
 // Functions

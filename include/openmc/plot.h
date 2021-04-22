@@ -28,7 +28,7 @@ class Plot;
 namespace model {
 
 extern std::unordered_map<int, int> plot_map; //!< map of plot ids to index
-extern std::vector<Plot> plots; //!< Plot instance container
+extern vector<Plot> plots;                    //!< Plot instance container
 
 extern uint64_t plotter_prn_seeds[N_STREAMS]; // Random number seeds used for plotter
 extern int plotter_stream; // Stream index used by the plotter
@@ -45,7 +45,8 @@ struct RGBColor {
   RGBColor(const int v[3]) : red(v[0]), green(v[1]), blue(v[2]) { };
   RGBColor(int r, int g, int b) : red(r), green(g), blue(b) { };
 
-  RGBColor(const std::vector<int> &v) {
+  RGBColor(const vector<int>& v)
+  {
     if (v.size() != 3) {
       throw std::out_of_range("Incorrect vector size for RGBColor.");
     }
@@ -121,7 +122,7 @@ public:
   Position origin_; //!< Plot origin in geometry
   Position width_; //!< Plot width in geometry
   PlotBasis basis_; //!< Plot basis (XY/XZ/YZ)
-  std::array<size_t, 3> pixels_; //!< Plot size in pixels
+  array<size_t, 3> pixels_; //!< Plot size in pixels
   bool color_overlaps_; //!< Show overlapping cells?
   int level_; //!< Plot universe level
 };
@@ -230,7 +231,7 @@ public:
   RGBColor meshlines_color_; //!< Color of meshlines on the plot
   RGBColor not_found_ {WHITE}; //!< Plot background color
   RGBColor overlap_color_ {RED}; //!< Plot overlap color
-  std::vector<RGBColor> colors_; //!< Plot colors
+  vector<RGBColor> colors_;      //!< Plot colors
   std::string path_plot_; //!< Plot output filename
 };
 

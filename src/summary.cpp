@@ -47,9 +47,9 @@ void write_nuclides(hid_t file)
 {
   // Build vectors of nuclide names and awrs while only sorting nuclides from
   // macroscopics
-  std::vector<std::string> nuc_names;
-  std::vector<std::string> macro_names;
-  std::vector<double> awrs;
+  vector<std::string> nuc_names;
+  vector<std::string> macro_names;
+  vector<double> awrs;
 
   for (int i = 0; i < data::nuclides.size(); ++i) {
     if (settings::run_CE) {

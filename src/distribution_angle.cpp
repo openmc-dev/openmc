@@ -1,7 +1,6 @@
 #include "openmc/distribution_angle.h"
 
 #include <cmath>  // for abs, copysign
-#include <vector> // for vector
 
 #include "xtensor/xarray.hpp"
 #include "xtensor/xview.hpp"
@@ -10,6 +9,7 @@
 #include "openmc/hdf5_interface.h"
 #include "openmc/random_lcg.h"
 #include "openmc/search.h"
+#include "openmc/vector.h" // for vector
 
 namespace openmc {
 
@@ -24,8 +24,8 @@ AngleDistribution::AngleDistribution(hid_t group)
   int n_energy = energy_.size();
 
   // Get outgoing energy distribution data
-  std::vector<int> offsets;
-  std::vector<int> interp;
+  vector<int> offsets;
+  vector<int> interp;
   hid_t dset = open_dataset(group, "mu");
   read_attribute(dset, "offsets", offsets);
   read_attribute(dset, "interpolation", interp);
@@ -47,9 +47,9 @@ AngleDistribution::AngleDistribution(hid_t group)
     auto xs = xt::view(temp, 0, xt::range(j, j+n));
     auto ps = xt::view(temp, 1, xt::range(j, j+n));
     auto cs = xt::view(temp, 2, xt::range(j, j+n));
-    std::vector<double> x {xs.begin(), xs.end()};
-    std::vector<double> p {ps.begin(), ps.end()};
-    std::vector<double> c {cs.begin(), cs.end()};
+    vector<double> x {xs.begin(), xs.end()};
+    vector<double> p {ps.begin(), ps.end()};
+    vector<double> c {cs.begin(), cs.end()};
 
     // To get answers that match ACE data, for now we still use the tabulated
     // CDF values that were passed through to the HDF5 library. At a later

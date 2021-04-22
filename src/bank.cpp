@@ -1,8 +1,9 @@
 #include "openmc/bank.h"
 #include "openmc/capi.h"
 #include "openmc/error.h"
-#include "openmc/simulation.h"
 #include "openmc/message_passing.h"
+#include "openmc/simulation.h"
+#include "openmc/vector.h"
 
 #include <cstdint>
 
@@ -15,7 +16,7 @@ namespace openmc {
 
 namespace simulation {
 
-std::vector<ParticleBank> source_bank;
+vector<ParticleBank> source_bank;
 
 SharedArray<ParticleBank> surf_source_bank;
 
@@ -28,7 +29,7 @@ SharedArray<ParticleBank> fission_bank;
 // Each entry in this vector corresponds to the number of progeny produced
 // this generation for the particle located at that index. This vector is
 // used to efficiently sort the fission bank after each iteration.
-std::vector<int64_t> progeny_per_particle;
+vector<int64_t> progeny_per_particle;
 
 } // namespace simulation
 
@@ -80,7 +81,7 @@ void sort_fission_bank()
   // sorted order easy. Under normal usage conditions, the fission bank is
   // over provisioned, so we can use that as scratch space.
   ParticleBank* sorted_bank;
-  std::vector<ParticleBank> sorted_bank_holder;
+  vector<ParticleBank> sorted_bank_holder;
 
   // If there is not enough space, allocate a temporary vector and point to it
   if (simulation::fission_bank.size() > simulation::fission_bank.capacity() / 2) {

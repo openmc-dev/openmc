@@ -6,9 +6,9 @@
 
 #include "openmc/mesh.h"
 #include "openmc/particle.h"
+#include "openmc/vector.h"
 
 #include <cstdint>
-#include <vector>
 
 namespace openmc {
 
@@ -42,8 +42,8 @@ extern int64_t work_per_rank;         //!< number of particles per MPI rank
 extern const RegularMesh* entropy_mesh;
 extern const RegularMesh* ufs_mesh;
 
-extern std::vector<double> k_generation;
-extern std::vector<int64_t> work_index;
+extern vector<double> k_generation;
+extern vector<int64_t> work_index;
 
 } // namespace simulation
 

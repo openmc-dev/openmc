@@ -12,7 +12,7 @@ ParticleFilter::from_xml(pugi::xml_node node)
   auto particles = get_node_array<std::string>(node, "bins");
 
   // Convert to vector of ParticleType
-  std::vector<ParticleType> types;
+  vector<ParticleType> types;
   for (auto& p : particles) {
     types.push_back(str_to_particle_type(p));
   }
@@ -48,7 +48,7 @@ void
 ParticleFilter::to_statepoint(hid_t filter_group) const
 {
   Filter::to_statepoint(filter_group);
-  std::vector<std::string> particles;
+  vector<std::string> particles;
   for (auto p : particles_) {
     particles.push_back(particle_type_to_str(p));
   }

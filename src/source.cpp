@@ -5,7 +5,6 @@
 #endif
 
 #include <algorithm> // for move
-#include <memory> // for unique_ptr
 
 #ifdef HAS_DYNAMIC_LINKING
 #include <dlfcn.h> // for dlopen, dlsym, dlclose, dlerror
@@ -15,15 +14,16 @@
 #include "xtensor/xadapt.hpp"
 
 #include "openmc/bank.h"
+#include "openmc/capi.h"
 #include "openmc/cell.h"
 #include "openmc/error.h"
 #include "openmc/file_utils.h"
 #include "openmc/hdf5_interface.h"
 #include "openmc/material.h"
+#include "openmc/memory.h"
 #include "openmc/message_passing.h"
 #include "openmc/mgxs_interface.h"
 #include "openmc/nuclide.h"
-#include "openmc/capi.h"
 #include "openmc/random_lcg.h"
 #include "openmc/search.h"
 #include "openmc/settings.h"
@@ -39,8 +39,7 @@ namespace openmc {
 
 namespace model {
 
-std::vector<std::unique_ptr<Source>> external_sources;
-
+vector<unique_ptr<Source>> external_sources;
 }
 
 //==============================================================================

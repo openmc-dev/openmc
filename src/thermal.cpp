@@ -28,14 +28,15 @@ namespace openmc {
 
 namespace data {
 std::unordered_map<std::string, int> thermal_scatt_map;
-std::vector<std::unique_ptr<ThermalScattering>> thermal_scatt;
+vector<unique_ptr<ThermalScattering>> thermal_scatt;
 }
 
 //==============================================================================
 // ThermalScattering implementation
 //==============================================================================
 
-ThermalScattering::ThermalScattering(hid_t group, const std::vector<double>& temperature)
+ThermalScattering::ThermalScattering(
+  hid_t group, const vector<double>& temperature)
 {
   // Get name of table from group
   name_ = object_name(group);
@@ -65,7 +66,7 @@ ThermalScattering::ThermalScattering(hid_t group, const std::vector<double>& tem
   // Determine actual temperatures to read -- start by checking whether a
   // temperature range was given, in which case all temperatures in the range
   // are loaded irrespective of what temperatures actually appear in the model
-  std::vector<int> temps_to_read;
+  vector<int> temps_to_read;
   if (settings::temperature_range[1] > 0.0) {
     for (const auto& T : temps_available) {
       if (settings::temperature_range[0] <= T &&

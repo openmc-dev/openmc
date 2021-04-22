@@ -537,8 +537,8 @@ void calc_zn(int n, double rho, double phi, double zn[]) {
   double sin_phi = std::sin(phi);
   double cos_phi = std::cos(phi);
 
-  std::vector<double> sin_phi_vec(n + 1); // Sin[n * phi]
-  std::vector<double> cos_phi_vec(n + 1); // Cos[n * phi]
+  vector<double> sin_phi_vec(n + 1); // Sin[n * phi]
+  vector<double> cos_phi_vec(n + 1); // Cos[n * phi]
   sin_phi_vec[0] = 1.0;
   cos_phi_vec[0] = 1.0;
   sin_phi_vec[1] = 2.0 * cos_phi;
@@ -556,7 +556,7 @@ void calc_zn(int n, double rho, double phi, double zn[]) {
   // ===========================================================================
   // Calculate R_pq(rho)
   // Matrix forms of the coefficients which are easier to work with
-  std::vector<std::vector<double>> zn_mat(n + 1, std::vector<double>(n + 1));
+  vector<std::vector<double>> zn_mat(n + 1, std::vector<double>(n + 1));
 
   // Fill the main diagonal first (Eq 3.9 in Chong)
   for (int p = 0; p <= n; p++) {
@@ -720,7 +720,7 @@ double watt_spectrum(double a, double b, uint64_t* seed) {
 
 void spline(int n, const double x[], const double y[], double z[])
 {
-  std::vector<double> c_new(n-1);
+  vector<double> c_new(n - 1);
 
   // Set natural boundary conditions
   c_new[0] = 0.0;

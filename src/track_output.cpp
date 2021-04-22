@@ -5,13 +5,13 @@
 #include "openmc/position.h"
 #include "openmc/settings.h"
 #include "openmc/simulation.h"
+#include "openmc/vector.h"
 
 #include <fmt/core.h>
 #include "xtensor/xtensor.hpp"
 
 #include <cstddef> // for size_t
 #include <string>
-#include <vector>
 
 namespace openmc {
 
@@ -40,7 +40,7 @@ void finalize_particle_track(Particle& p)
       simulation::current_batch, simulation::current_gen, p.id());
 
   // Determine number of coordinates for each particle
-  std::vector<int> n_coords;
+  vector<int> n_coords;
   for (auto& coords : p.tracks()) {
     n_coords.push_back(coords.size());
   }

@@ -30,12 +30,12 @@ namespace openmc {
 //==============================================================================
 
 namespace data {
-std::array<double, 2> energy_min {0.0, 0.0};
-std::array<double, 2> energy_max {INFTY, INFTY};
+array<double, 2> energy_min {0.0, 0.0};
+array<double, 2> energy_max {INFTY, INFTY};
 double temperature_min {INFTY};
 double temperature_max {0.0};
 std::unordered_map<std::string, int> nuclide_map;
-std::vector<std::unique_ptr<Nuclide>> nuclides;
+vector<unique_ptr<Nuclide>> nuclides;
 } // namespace data
 
 //==============================================================================
@@ -48,7 +48,7 @@ int Nuclide::XS_FISSION {2};
 int Nuclide::XS_NU_FISSION {3};
 int Nuclide::XS_PHOTON_PROD {4};
 
-Nuclide::Nuclide(hid_t group, const std::vector<double>& temperature)
+Nuclide::Nuclide(hid_t group, const vector<double>& temperature)
 {
   // Set index of nuclide in global vector
   index_ = data::nuclides.size();
@@ -65,7 +65,7 @@ Nuclide::Nuclide(hid_t group, const std::vector<double>& temperature)
   // Determine temperatures available
   hid_t kT_group = open_group(group, "kTs");
   auto dset_names = dataset_names(kT_group);
-  std::vector<double> temps_available;
+  vector<double> temps_available;
   for (const auto& name : dset_names) {
     double T;
     read_dataset(kT_group, name.c_str(), T);
@@ -86,7 +86,7 @@ Nuclide::Nuclide(hid_t group, const std::vector<double>& temperature)
   // temperature range was given (indicated by T_max > 0), in which case all
   // temperatures in the range are loaded irrespective of what temperatures
   // actually appear in the model
-  std::vector<int> temps_to_read;
+  vector<int> temps_to_read;
   int n = temperature.size();
   double T_min = n > 0 ? settings::temperature_range[0] : 0.0;
   double T_max = n > 0 ? settings::temperature_range[1] : INFTY;
@@ -310,7 +310,7 @@ void Nuclide::create_derived(const Function1D* prompt_photons, const Function1D*
 {
   for (const auto& grid : grid_) {
     // Allocate and initialize cross section
-    std::array<size_t, 2> shape {grid.energy.size(), 5};
+    array<size_t, 2> shape {grid.energy.size(), 5};
     xs_.emplace_back(shape, 0.0);
   }
 
@@ -999,7 +999,7 @@ double Nuclide::collapse_rate(int MT, double temperature, gsl::span<const double
 void check_data_version(hid_t file_id)
 {
   if (attribute_exists(file_id, "version")) {
-    std::vector<int> version;
+    vector<int> version;
     read_attribute(file_id, "version", version);
     if (version[0] != HDF5_VERSION[0]) {
       fatal_error("HDF5 data format uses version " + std::to_string(version[0])
@@ -1046,7 +1046,7 @@ extern "C" int openmc_load_nuclide(const char* name, const double* temps, int n)
 
     // Read nuclide data from HDF5
     hid_t group = open_group(file_id, name);
-    std::vector<double> temperature{temps, temps + n};
+    vector<double> temperature {temps, temps + n};
     data::nuclides.push_back(std::make_unique<Nuclide>(group, temperature));
 
     close_group(group);

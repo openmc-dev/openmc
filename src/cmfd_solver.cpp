@@ -1,6 +1,5 @@
 #include "openmc/cmfd_solver.h"
 
-#include <vector>
 #include <cmath>
 
 #ifdef _OPENMP
@@ -9,14 +8,15 @@
 #include "xtensor/xtensor.hpp"
 
 #include "openmc/bank.h"
-#include "openmc/error.h"
-#include "openmc/constants.h"
 #include "openmc/capi.h"
+#include "openmc/constants.h"
+#include "openmc/error.h"
 #include "openmc/mesh.h"
 #include "openmc/message_passing.h"
 #include "openmc/tallies/filter_energy.h"
 #include "openmc/tallies/filter_mesh.h"
 #include "openmc/tallies/tally.h"
+#include "openmc/vector.h"
 
 namespace openmc {
 
@@ -26,9 +26,9 @@ namespace cmfd {
 // Global variables
 //==============================================================================
 
-std::vector<int> indptr;
+vector<int> indptr;
 
-std::vector<int> indices;
+vector<int> indices;
 
 int dim;
 
@@ -42,7 +42,7 @@ int use_all_threads;
 
 StructuredMesh* mesh;
 
-std::vector<double> egrid;
+vector<double> egrid;
 
 double norm;
 
@@ -83,7 +83,7 @@ xt::xtensor<double, 1> count_bank_sites(xt::xtensor<int, 1>& bins, bool* outside
 {
   // Determine shape of array for counts
   std::size_t cnt_size = cmfd::nx * cmfd::ny * cmfd::nz * cmfd::ng;
-  std::vector<std::size_t> cnt_shape = {cnt_size};
+  vector<std::size_t> cnt_shape = {cnt_size};
 
   // Create array of zeros
   xt::xarray<double> cnt {cnt_shape, 0.0};
@@ -299,7 +299,7 @@ int cmfd_linsolver_1g(const double* A_data, const double* b, double* x,
     double err = 0.0;
 
     // Copy over x vector
-    std::vector<double> tmpx {x, x+cmfd::dim};
+    vector<double> tmpx {x, x + cmfd::dim};
 
     // Perform red/black Gauss-Seidel iterations
     for (int irb = 0; irb < 2; irb++) {
@@ -366,7 +366,7 @@ int cmfd_linsolver_2g(const double* A_data, const double* b, double* x,
     double err = 0.0;
 
     // Copy over x vector
-    std::vector<double> tmpx {x, x+cmfd::dim};
+    vector<double> tmpx {x, x + cmfd::dim};
 
     // Perform red/black Gauss-Seidel iterations
     for (int irb = 0; irb < 2; irb++) {
@@ -458,7 +458,7 @@ int cmfd_linsolver_ng(const double* A_data, const double* b, double* x,
     double err = 0.0;
 
     // Copy over x vector
-    std::vector<double> tmpx {x, x+cmfd::dim};
+    vector<double> tmpx {x, x + cmfd::dim};
 
     // Loop around matrix rows
     for (int irow = 0; irow < cmfd::dim; irow++) {
@@ -554,7 +554,7 @@ int openmc_run_linsolver(const double* A_data, const double* b, double* x,
 
 void free_memory_cmfd()
 {
-  // Clear std::vectors
+  // Clear vectors
   cmfd::indptr.clear();
   cmfd::indices.clear();
   cmfd::egrid.clear();

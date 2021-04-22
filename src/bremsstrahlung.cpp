@@ -18,7 +18,7 @@ namespace data {
 
 xt::xtensor<double, 1> ttb_e_grid;
 xt::xtensor<double, 1> ttb_k_grid;
-std::vector<Bremsstrahlung> ttb;
+vector<Bremsstrahlung> ttb;
 
 } // namespace data
 

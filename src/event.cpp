@@ -17,7 +17,7 @@ SharedArray<EventQueueItem> advance_particle_queue;
 SharedArray<EventQueueItem> surface_crossing_queue;
 SharedArray<EventQueueItem> collision_queue;
 
-std::vector<Particle>  particles;
+vector<Particle> particles;
 
 } // namespace simulation
 

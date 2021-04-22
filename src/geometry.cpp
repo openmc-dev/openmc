@@ -1,10 +1,9 @@
 #include "openmc/geometry.h"
 
-#include <array>
-
 #include <fmt/core.h>
 #include <fmt/ostream.h>
 
+#include "openmc/array.h"
 #include "openmc/cell.h"
 #include "openmc/constants.h"
 #include "openmc/error.h"
@@ -27,7 +26,7 @@ namespace model {
 int root_universe {-1};
 int n_coord_levels;
 
-std::vector<int64_t> overlap_check_count;
+vector<int64_t> overlap_check_count;
 
 } // namespace model
 
@@ -371,7 +370,7 @@ BoundaryInfo distance_to_boundary(Particle& p)
   double d_lat = INFINITY;
   double d_surf = INFINITY;
   int32_t level_surf_cross;
-  std::array<int, 3> level_lat_trans {};
+  array<int, 3> level_lat_trans {};
 
   // Loop over each coordinate level.
   for (int i = 0; i < p.n_coord(); i++) {
@@ -391,7 +390,7 @@ BoundaryInfo distance_to_boundary(Particle& p)
       std::array<int, 3> i_xyz {coord.lattice_x, coord.lattice_y, coord.lattice_z};
       //TODO: refactor so both lattice use the same position argument (which
       //also means the lat.type attribute can be removed)
-      std::pair<double, std::array<int, 3>> lattice_distance;
+      std::pair<double, array<int, 3>> lattice_distance;
       switch (lat.type_) {
         case LatticeType::rect:
           lattice_distance = lat.distance(r, u, i_xyz);

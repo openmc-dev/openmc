@@ -269,17 +269,16 @@ void
 print_overlap_check()
 {
   #ifdef OPENMC_MPI
-    std::vector<int64_t> temp(model::overlap_check_count);
-    MPI_Reduce(temp.data(), model::overlap_check_count.data(),
-               model::overlap_check_count.size(), MPI_INT64_T,
-               MPI_SUM, 0, mpi::intracomm);
-  #endif
+  vector<int64_t> temp(model::overlap_check_count);
+  MPI_Reduce(temp.data(), model::overlap_check_count.data(),
+    model::overlap_check_count.size(), MPI_INT64_T, MPI_SUM, 0, mpi::intracomm);
+#endif
 
   if (mpi::master) {
     header("cell overlap check summary", 1);
     fmt::print(" Cell ID      No. Overlap Checks\n");
 
-    std::vector<int32_t> sparse_cell_ids;
+    vector<int32_t> sparse_cell_ids;
     for (int i = 0; i < model::cells.size(); i++) {
       fmt::print(" {:8} {:17}\n", model::cells[i]->id_, model::overlap_check_count[i]);
       if (model::overlap_check_count[i] < 10) {
@@ -606,7 +605,7 @@ write_tallies()
     }
 
     // Initialize Filter Matches Object
-    std::vector<FilterMatch> filter_matches;
+    vector<FilterMatch> filter_matches;
     // Allocate space for tally filter matches
     filter_matches.resize(model::tally_filters.size());
 

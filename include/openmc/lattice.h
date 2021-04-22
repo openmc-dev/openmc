@@ -3,17 +3,16 @@
 
 #include <array>
 #include <cstdint>
-#include <memory> // for unique_ptr
 #include <string>
 #include <unordered_map>
-#include <vector>
 
 #include "hdf5.h"
 #include "pugixml.hpp"
 
 #include "openmc/constants.h"
+#include "openmc/memory.h"
 #include "openmc/position.h"
-
+#include "openmc/vector.h"
 
 namespace openmc {
 
@@ -36,7 +35,7 @@ class Lattice;
 
 namespace model {
   extern std::unordered_map<int32_t, int32_t> lattice_map;
-  extern std::vector<std::unique_ptr<Lattice>> lattices;
+  extern vector<unique_ptr<Lattice>> lattices;
 } // namespace model
 
 //==============================================================================
@@ -53,9 +52,9 @@ public:
   int32_t id_;                         //!< Universe ID number
   std::string name_;                   //!< User-defined name
   LatticeType type_;
-  std::vector<int32_t> universes_;     //!< Universes filling each lattice tile
+  vector<int32_t> universes_;          //!< Universes filling each lattice tile
   int32_t outer_ {NO_OUTER_UNIVERSE};  //!< Universe tiled outside the lattice
-  std::vector<int32_t> offsets_;       //!< Distribcell offset table
+  vector<int32_t> offsets_;            //!< Distribcell offset table
 
   explicit Lattice(pugi::xml_node lat_node);
 
@@ -99,9 +98,8 @@ public:
   //! \param i_xyz The indices for a lattice tile.
   //! \return The distance to the next crossing and an array indicating how the
   //!   lattice indices would change after crossing that boundary.
-  virtual std::pair<double, std::array<int, 3>>
-  distance(Position r, Direction u, const std::array<int, 3>& i_xyz) const
-  = 0;
+  virtual std::pair<double, array<int, 3>> distance(
+    Position r, Direction u, const array<int, 3>& i_xyz) const = 0;
 
   //! \brief Find the lattice tile indices for a given point.
   //! \param r A 3D Cartesian coordinate.
@@ -217,8 +215,8 @@ public:
 
   bool are_valid_indices(const int i_xyz[3]) const;
 
-  std::pair<double, std::array<int, 3>>
-  distance(Position r, Direction u, const std::array<int, 3>& i_xyz) const;
+  std::pair<double, array<int, 3>> distance(
+    Position r, Direction u, const array<int, 3>& i_xyz) const;
 
   std::array<int, 3> get_indices(Position r, Direction u) const;
 
@@ -234,7 +232,7 @@ public:
   void to_hdf5_inner(hid_t group_id) const;
 
 private:
-  std::array<int, 3> n_cells_;    //!< Number of cells along each axis
+  array<int, 3> n_cells_;         //!< Number of cells along each axis
   Position lower_left_;           //!< Global lower-left corner of the lattice
   Position pitch_;                //!< Lattice tile width along each axis
 
@@ -259,8 +257,8 @@ public:
 
   bool are_valid_indices(array<int, 3> const& i_xyz) const;
 
-  std::pair<double, std::array<int, 3>>
-  distance(Position r, Direction u, const std::array<int, 3>& i_xyz) const;
+  std::pair<double, array<int, 3>> distance(
+    Position r, Direction u, const array<int, 3>& i_xyz) const;
 
   std::array<int, 3> get_indices(Position r, Direction u) const;
 
@@ -284,16 +282,16 @@ private:
   };
 
   //! Fill universes_ vector for 'y' orientation
-  void fill_lattice_y(const std::vector<std::string>& univ_words);
+  void fill_lattice_y(const vector<std::string>& univ_words);
 
   //! Fill universes_ vector for 'x' orientation
-  void fill_lattice_x(const std::vector<std::string>& univ_words);
+  void fill_lattice_x(const vector<std::string>& univ_words);
 
   int n_rings_;                   //!< Number of radial tile positions
   int n_axial_;                   //!< Number of axial tile positions
   Orientation orientation_;       //!< Orientation of lattice
   Position center_;               //!< Global center of lattice
-  std::array<double, 2> pitch_;   //!< Lattice tile width and height
+  array<double, 2> pitch_;        //!< Lattice tile width and height
 };
 
 //==============================================================================

@@ -78,8 +78,6 @@ jobs:
     steps:
       - uses: actions/checkout@v2
 
-      - uses: ./.github/actions/fix-etc-hosts
-
       -
         name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v2
@@ -97,12 +95,11 @@ jobs:
         shell: bash
         run: |
           sudo apt -y update
-          sudo apt install -y mpich \
-                              libmpich-dev \
+          sudo apt install -y libopenmpi-dev \
                               libnetcdf-dev \
                               libpnetcdf-dev \
                               libhdf5-serial-dev \
-                              libhdf5-mpich-dev \
+                              libhdf5-openmpi-dev \
                               libeigen3-dev
       -
         name: install

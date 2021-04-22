@@ -7,11 +7,10 @@
 #include "openmc/angle_energy.h"
 #include "openmc/endf.h"
 #include "openmc/secondary_correlated.h"
+#include "openmc/vector.h"
 
 #include <hdf5.h>
 #include "xtensor/xtensor.hpp"
-
-#include <vector>
 
 namespace openmc {
 
@@ -70,7 +69,8 @@ public:
   //
   //! \param[in] group  HDF5 group
   //! \param[in] energy  Energies at which cosines are tabulated
-  explicit IncoherentElasticAEDiscrete(hid_t group, const std::vector<double>& energy);
+  explicit IncoherentElasticAEDiscrete(
+    hid_t group, const vector<double>& energy);
 
   //! Sample distribution for an angle and energy
   //! \param[in] E_in Incoming energy in [eV]
@@ -80,7 +80,7 @@ public:
   void sample(double E_in, double& E_out, double& mu,
     uint64_t* seed) const override;
 private:
-  const std::vector<double>& energy_; //!< Energies at which cosines are tabulated
+  const vector<double>& energy_;  //!< Energies at which cosines are tabulated
   xt::xtensor<double, 2> mu_out_; //!< Cosines for each incident energy
 };
 
@@ -94,7 +94,8 @@ public:
   //
   //! \param[in] group  HDF5 group
   //! \param[in] energy  Incident energies at which distributions are tabulated
-  explicit IncoherentInelasticAEDiscrete(hid_t group, const std::vector<double>& energy);
+  explicit IncoherentInelasticAEDiscrete(
+    hid_t group, const vector<double>& energy);
 
   //! Sample distribution for an angle and energy
   //! \param[in] E_in Incoming energy in [eV]
@@ -104,7 +105,7 @@ public:
   void sample(double E_in, double& E_out, double& mu,
     uint64_t* seed) const override;
 private:
-  const std::vector<double>& energy_; //!< Incident energies
+  const vector<double>& energy_;      //!< Incident energies
   xt::xtensor<double, 2> energy_out_; //!< Outgoing energies for each incident energy
   xt::xtensor<double, 3> mu_out_; //!< Outgoing cosines for each incident/outgoing energy
   bool skewed_; //!< Whether outgoing energy distribution is skewed
@@ -138,9 +139,9 @@ private:
     xt::xtensor<double, 2> mu; //!< Equiprobable angles at each outgoing energy
   };
 
-  std::vector<double> energy_; //!< Incident energies
-  std::vector<DistEnergySab> distribution_; //!< Secondary angle-energy at
-                                            //!< each incident energy
+  vector<double> energy_;              //!< Incident energies
+  vector<DistEnergySab> distribution_; //!< Secondary angle-energy at
+                                       //!< each incident energy
 };
 
 

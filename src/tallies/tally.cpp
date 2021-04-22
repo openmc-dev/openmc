@@ -1,11 +1,12 @@
 #include "openmc/tallies/tally.h"
 
+#include "openmc/array.h"
 #include "openmc/capi.h"
 #include "openmc/constants.h"
 #include "openmc/error.h"
 #include "openmc/file_utils.h"
-#include "openmc/message_passing.h"
 #include "openmc/mesh.h"
+#include "openmc/message_passing.h"
 #include "openmc/mgxs_interface.h"
 #include "openmc/nuclide.h"
 #include "openmc/particle.h"
@@ -18,9 +19,9 @@
 #include "openmc/tallies/filter.h"
 #include "openmc/tallies/filter_cell.h"
 #include "openmc/tallies/filter_cellfrom.h"
+#include "openmc/tallies/filter_collision.h"
 #include "openmc/tallies/filter_delayedgroup.h"
 #include "openmc/tallies/filter_energy.h"
-#include "openmc/tallies/filter_collision.h"
 #include "openmc/tallies/filter_legendre.h"
 #include "openmc/tallies/filter_mesh.h"
 #include "openmc/tallies/filter_meshsurface.h"
@@ -35,7 +36,6 @@
 #include "xtensor/xview.hpp"
 
 #include <algorithm> // for max
-#include <array>
 #include <cstddef> // for size_t
 #include <string>
 
@@ -47,13 +47,13 @@ namespace openmc {
 
 namespace model {
   std::unordered_map<int, int> tally_map;
-  std::vector<std::unique_ptr<Tally>> tallies;
-  std::vector<int> active_tallies;
-  std::vector<int> active_analog_tallies;
-  std::vector<int> active_tracklength_tallies;
-  std::vector<int> active_collision_tallies;
-  std::vector<int> active_meshsurf_tallies;
-  std::vector<int> active_surface_tallies;
+  vector<unique_ptr<Tally>> tallies;
+  vector<int> active_tallies;
+  vector<int> active_analog_tallies;
+  vector<int> active_tracklength_tallies;
+  vector<int> active_collision_tallies;
+  vector<int> active_meshsurf_tallies;
+  vector<int> active_surface_tallies;
 }
 
 namespace simulation {
@@ -103,13 +103,13 @@ Tally::Tally(pugi::xml_node node)
   }
 
   // Determine number of filters
-  std::vector<int> filter_ids;
+  vector<int> filter_ids;
   if (check_for_node(node, "filters")) {
     filter_ids = get_node_array<int>(node, "filters");
   }
 
   // Allocate and store filter user ids
-  std::vector<Filter*> filters;
+  vector<Filter*> filters;
   for (int filter_id : filter_ids) {
     // Determine if filter ID is valid
     auto it = model::filter_map.find(filter_id);
@@ -388,8 +388,7 @@ Tally::set_scores(pugi::xml_node node)
   set_scores(scores);
 }
 
-void
-Tally::set_scores(const std::vector<std::string>& scores)
+void Tally::set_scores(const vector<std::string>& scores)
 {
   // Reset state and prepare for the new scores.
   scores_.clear();
@@ -541,8 +540,7 @@ Tally::set_nuclides(pugi::xml_node node)
   }
 }
 
-void
-Tally::set_nuclides(const std::vector<std::string>& nuclides)
+void Tally::set_nuclides(const vector<std::string>& nuclides)
 {
   nuclides_.clear();
 
@@ -595,7 +593,7 @@ Tally::init_triggers(pugi::xml_node node)
     }
 
     // Read the trigger scores.
-    std::vector<std::string> trigger_scores;
+    vector<std::string> trigger_scores;
     if (check_for_node(trigger_node, "scores")) {
       trigger_scores = get_node_array<std::string>(trigger_node, "scores");
     } else {
@@ -1108,7 +1106,7 @@ openmc_tally_set_scores(int32_t index, int n, const char** scores)
     return OPENMC_E_OUT_OF_BOUNDS;
   }
 
-  std::vector<std::string> scores_str(scores, scores+n);
+  vector<std::string> scores_str(scores, scores + n);
   try {
     model::tallies[index]->set_scores(scores_str);
   } catch (const std::invalid_argument& ex) {
@@ -1143,8 +1141,8 @@ openmc_tally_set_nuclides(int32_t index, int n, const char** nuclides)
     return OPENMC_E_OUT_OF_BOUNDS;
   }
 
-  std::vector<std::string> words(nuclides, nuclides+n);
-  std::vector<int> nucs;
+  vector<std::string> words(nuclides, nuclides + n);
+  vector<int> nucs;
   for (auto word : words){
     if (word == "total") {
       nucs.push_back(-1);
@@ -1188,7 +1186,7 @@ openmc_tally_set_filters(int32_t index, size_t n, const int32_t* indices)
   // Set the filters.
   try {
     // Convert indices to filter pointers
-    std::vector<Filter*> filters;
+    vector<Filter*> filters;
     for (gsl::index i = 0; i < n; ++i) {
       int32_t i_filt = indices[i];
       filters.push_back(model::tally_filters.at(i_filt).get());

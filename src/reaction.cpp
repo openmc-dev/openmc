@@ -19,7 +19,7 @@ namespace openmc {
 // Reaction implementation
 //==============================================================================
 
-Reaction::Reaction(hid_t group, const std::vector<int>& temperatures)
+Reaction::Reaction(hid_t group, const vector<int>& temperatures)
 {
   read_attribute(group, "Q_value", q_value_);
   read_attribute(group, "mt", mt_);
@@ -84,9 +84,9 @@ Reaction::Reaction(hid_t group, const std::vector<int>& temperatures)
   // <<<<<<<<<<<<<<<<<<<<<<<<<<<< REMOVE THIS <<<<<<<<<<<<<<<<<<<<<<<<<
 }
 
-double
-Reaction::collapse_rate(gsl::index i_temp, gsl::span<const double> energy,
-  gsl::span<const double> flux, const std::vector<double>& grid) const
+double Reaction::collapse_rate(gsl::index i_temp,
+  gsl::span<const double> energy, gsl::span<const double> flux,
+  const vector<double>& grid) const
 {
   // Find index corresponding to first energy
   const auto& xs = xs_[i_temp].value;

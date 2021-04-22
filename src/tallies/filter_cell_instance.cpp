@@ -24,7 +24,7 @@ CellInstanceFilter::from_xml(pugi::xml_node node)
   Expects(cells.size() % 2 == 0);
 
   // Convert into vector of CellInstance
-  std::vector<CellInstance> instances;
+  vector<CellInstance> instances;
   for (gsl::index i = 0; i < cells.size() / 2; ++i) {
     int32_t cell_id = cells[2*i];
     gsl::index instance = cells[2*i + 1];

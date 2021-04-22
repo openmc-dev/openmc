@@ -1,5 +1,6 @@
 #include "openmc/particle_restart.h"
 
+#include "openmc/array.h"
 #include "openmc/constants.h"
 #include "openmc/hdf5_interface.h"
 #include "openmc/mgxs_interface.h"
@@ -15,7 +16,6 @@
 #include "openmc/track_output.h"
 
 #include <algorithm> // for copy
-#include <array>
 #include <stdexcept>
 #include <string>
 

@@ -43,9 +43,9 @@ CorrelatedAngleEnergy::CorrelatedAngleEnergy(hid_t group)
 
   // Get outgoing energy distribution data
   dset = open_dataset(group, "energy_out");
-  std::vector<int> offsets;
-  std::vector<int> interp;
-  std::vector<int> n_discrete;
+  vector<int> offsets;
+  vector<int> interp;
+  vector<int> n_discrete;
   read_attribute(dset, "offsets", offsets);
   read_attribute(dset, "interpolation", interp);
   read_attribute(dset, "n_discrete_lines", n_discrete);
@@ -136,9 +136,9 @@ CorrelatedAngleEnergy::CorrelatedAngleEnergy(hid_t group)
       auto ps = xt::view(mu, 1, xt::range(offset_mu, offset_mu + m));
       auto cs = xt::view(mu, 2, xt::range(offset_mu, offset_mu + m));
 
-      std::vector<double> x {xs.begin(), xs.end()};
-      std::vector<double> p {ps.begin(), ps.end()};
-      std::vector<double> c {cs.begin(), cs.end()};
+      vector<double> x {xs.begin(), xs.end()};
+      vector<double> p {ps.begin(), ps.end()};
+      vector<double> c {cs.begin(), cs.end()};
 
       // To get answers that match ACE data, for now we still use the tabulated
       // CDF values that were passed through to the HDF5 library. At a later

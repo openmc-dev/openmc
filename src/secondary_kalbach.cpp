@@ -4,7 +4,6 @@
 #include <cmath>     // for log, sqrt, sinh
 #include <cstddef>   // for size_t
 #include <iterator>  // for back_inserter
-#include <vector>
 
 #include "xtensor/xarray.hpp"
 #include "xtensor/xview.hpp"
@@ -12,6 +11,7 @@
 #include "openmc/hdf5_interface.h"
 #include "openmc/random_lcg.h"
 #include "openmc/search.h"
+#include "openmc/vector.h"
 
 namespace openmc {
 
@@ -43,9 +43,9 @@ KalbachMann::KalbachMann(hid_t group)
 
   // Get outgoing energy distribution data
   dset = open_dataset(group, "distribution");
-  std::vector<int> offsets;
-  std::vector<int> interp;
-  std::vector<int> n_discrete;
+  vector<int> offsets;
+  vector<int> interp;
+  vector<int> n_discrete;
   read_attribute(dset, "offsets", offsets);
   read_attribute(dset, "interpolation", interp);
   read_attribute(dset, "n_discrete_lines", n_discrete);

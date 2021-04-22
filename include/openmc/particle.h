@@ -5,16 +5,16 @@
 //! \brief Particle type
 
 #include <cstdint>
-#include <memory> // for unique_ptr
 #include <sstream>
 #include <string>
-#include <vector>
 
 #include "openmc/constants.h"
+#include "openmc/memory.h" // for unique_ptr
 #include "openmc/particle_data.h"
 #include "openmc/position.h"
 #include "openmc/random_lcg.h"
 #include "openmc/tallies/filter_match.h"
+#include "openmc/vector.h"
 
 #ifdef DAGMC
 #include "DagMC.hpp"

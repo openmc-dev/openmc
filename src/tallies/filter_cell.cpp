@@ -62,7 +62,7 @@ void
 CellFilter::to_statepoint(hid_t filter_group) const
 {
   Filter::to_statepoint(filter_group);
-  std::vector<int32_t> cell_ids;
+  vector<int32_t> cell_ids;
   for (auto c : cells_) cell_ids.push_back(model::cells[c]->id_);
   write_dataset(filter_group, "bins", cell_ids);
 }

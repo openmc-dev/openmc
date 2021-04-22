@@ -1,11 +1,12 @@
 #ifndef OPENMC_PARTICLE_REPRESENTATION_H
 #define OPENMC_PARTICLE_REPRESENTATION_H
 
+#include "openmc/array.h"
 #include "openmc/constants.h"
 #include "openmc/position.h"
 #include "openmc/random_lcg.h"
 #include "openmc/tallies/filter_match.h"
-#include <vector>
+#include "openmc/vector.h"
 
 namespace openmc {
 
@@ -56,7 +57,7 @@ struct NuBank {
 
 class LocalCoord {
 public:
-  void rotate(const std::vector<double>& rotation);
+  void rotate(const vector<double>& rotation);
 
   //! clear data from a single coordinate level
   void reset();
@@ -66,9 +67,7 @@ public:
   int cell {-1};
   int universe {-1};
   int lattice {-1};
-  int lattice_x {-1};
-  int lattice_y {-1};
-  int lattice_z {-1};
+  array<int, 3> lattice_i {-1, -1, -1};
   bool rotated {false}; //!< Is the level rotated?
 };
 
@@ -153,7 +152,7 @@ struct BoundaryInfo {
   double distance {INFINITY}; //!< distance to nearest boundary
   int surface_index {0}; //!< if boundary is surface, index in surfaces vector
   int coord_level;       //!< coordinate level after crossing boundary
-  std::array<int, 3>
+  array<int, 3>
     lattice_translation {}; //!< which way lattice indices will change
 };
 
@@ -171,9 +170,8 @@ private:
   // Data members (accessor methods are below)
 
   // Cross section caches
-  std::vector<NuclideMicroXS>
-    neutron_xs_; //!< Microscopic neutron cross sections
-  std::vector<ElementMicroXS> photon_xs_; //!< Microscopic photon cross sections
+  vector<NuclideMicroXS> neutron_xs_; //!< Microscopic neutron cross sections
+  vector<ElementMicroXS> photon_xs_;  //!< Microscopic photon cross sections
   MacroXS macro_xs_;                      //!< Macroscopic cross sections
 
   int64_t id_;                                //!< Unique ID
@@ -181,11 +179,11 @@ private:
 
   int n_coord_ {1};               //!< number of current coordinate levels
   int cell_instance_;             //!< offset for distributed properties
-  std::vector<LocalCoord> coord_; //!< coordinates for all levels
+  vector<LocalCoord> coord_;      //!< coordinates for all levels
 
   // Particle coordinates before crossing a surface
   int n_coord_last_ {1};       //!< number of current coordinates
-  std::vector<int> cell_last_; //!< coordinates for all levels
+  vector<int> cell_last_;      //!< coordinates for all levels
 
   // Energy data
   double E_;      //!< post-collision energy in eV
@@ -245,17 +243,17 @@ private:
   int stream_;                // current RNG stream
 
   // Secondary particle bank
-  std::vector<ParticleBank> secondary_bank_;
+  vector<ParticleBank> secondary_bank_;
 
   int64_t current_work_; // current work index
 
-  std::vector<double> flux_derivs_; // for derivatives for this particle
+  vector<double> flux_derivs_; // for derivatives for this particle
 
-  std::vector<FilterMatch> filter_matches_; // tally filter matches
+  vector<FilterMatch> filter_matches_; // tally filter matches
 
-  std::vector<std::vector<Position>> tracks_; // tracks for outputting to file
+  vector<std::vector<Position>> tracks_; // tracks for outputting to file
 
-  std::vector<NuBank> nu_bank_; // bank of most recently fissioned particles
+  vector<NuBank> nu_bank_; // bank of most recently fissioned particles
 
   // Global tally accumulators
   double keff_tally_absorption_ {0.0};

@@ -65,7 +65,7 @@ void
 SurfaceFilter::to_statepoint(hid_t filter_group) const
 {
   Filter::to_statepoint(filter_group);
-  std::vector<int32_t> surface_ids;
+  vector<int32_t> surface_ids;
   for (auto c : surfaces_) surface_ids.push_back(model::surfaces[c]->id_);
   write_dataset(filter_group, "bins", surface_ids);
 }

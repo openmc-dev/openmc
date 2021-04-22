@@ -1,5 +1,6 @@
 #include "openmc/photon.h"
 
+#include "openmc/array.h"
 #include "openmc/bremsstrahlung.h"
 #include "openmc/constants.h"
 #include "openmc/hdf5_interface.h"
@@ -13,7 +14,6 @@
 #include "xtensor/xoperation.hpp"
 #include "xtensor/xview.hpp"
 
-#include <array>
 #include <cmath>
 #include <tuple> // for tie
 
@@ -28,7 +28,7 @@ namespace data {
 xt::xtensor<double, 1> compton_profile_pz;
 
 std::unordered_map<std::string, int> element_map;
-std::vector<std::unique_ptr<PhotonInteraction>> elements;
+vector<unique_ptr<PhotonInteraction>> elements;
 
 } // namespace data
 
@@ -110,7 +110,7 @@ PhotonInteraction::PhotonInteraction(hid_t group)
 
   // Read subshell photoionization cross section and atomic relaxation data
   rgroup = open_group(group, "subshells");
-  std::vector<std::string> designators;
+  vector<std::string> designators;
   read_attribute(rgroup, "designators", designators);
   auto n_shell = designators.size();
   if (n_shell == 0) {

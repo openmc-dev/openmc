@@ -29,7 +29,7 @@ UncorrelatedAngleEnergy::UncorrelatedAngleEnergy(hid_t group)
 
     std::string type;
     read_attribute(energy_group, "type", type);
-    using UPtrEDist = std::unique_ptr<EnergyDistribution>;
+    using UPtrEDist = unique_ptr<EnergyDistribution>;
     if (type == "discrete_photon") {
       energy_ = UPtrEDist{new DiscretePhoton{energy_group}};
     } else if (type == "level") {

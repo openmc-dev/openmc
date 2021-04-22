@@ -1,11 +1,12 @@
 #ifndef OPENMC_POSITION_H
 #define OPENMC_POSITION_H
 
-#include <array>
 #include <cmath> // for sqrt
 #include <iostream>
 #include <stdexcept> // for out_of_range
-#include <vector>
+
+#include "openmc/array.h"
+#include "openmc/vector.h"
 
 namespace openmc {
 
@@ -18,8 +19,8 @@ struct Position {
   Position() = default;
   Position(double x_, double y_, double z_) : x{x_}, y{y_}, z{z_} { };
   Position(const double xyz[]) : x{xyz[0]}, y{xyz[1]}, z{xyz[2]} { };
-  Position(const std::vector<double>& xyz) : x{xyz[0]}, y{xyz[1]}, z{xyz[2]} { };
-  Position(const std::array<double, 3>& xyz) : x{xyz[0]}, y{xyz[1]}, z{xyz[2]} { };
+  Position(const vector<double>& xyz) : x {xyz[0]}, y {xyz[1]}, z {xyz[2]} {};
+  Position(const array<double, 3>& xyz) : x {xyz[0]}, y {xyz[1]}, z {xyz[2]} {};
 
   // Unary operators
   Position& operator+=(Position);
@@ -81,7 +82,7 @@ struct Position {
   Position reflect(Position n) const;
 
   //! Rotate the position based on a rotation matrix
-  Position rotate(const std::vector<double>& rotation) const;
+  Position rotate(const vector<double>& rotation) const;
 
   // Data members
   double x = 0.;

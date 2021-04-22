@@ -65,7 +65,7 @@ extern SharedArray<EventQueueItem> surface_crossing_queue;
 extern SharedArray<EventQueueItem> collision_queue;
 
 // Particle buffer
-extern std::vector<Particle>  particles;
+extern vector<Particle> particles;
 
 } // namespace simulation
 

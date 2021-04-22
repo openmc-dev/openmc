@@ -5,12 +5,12 @@
 #define OPENMC_DISTRIBUTION_H
 
 #include <cstddef> // for size_t
-#include <memory> // for unique_ptr
-#include <vector> // for vector
 
 #include "pugixml.hpp"
 
 #include "openmc/constants.h"
+#include "openmc/memory.h" // for unique_ptr
+#include "openmc/vector.h" // for vector
 
 namespace openmc {
 
@@ -39,11 +39,12 @@ public:
   double sample(uint64_t* seed) const;
 
   // Properties
-  const std::vector<double>& x() const { return x_; }
-  const std::vector<double>& p() const { return p_; }
+  const vector<double>& x() const { return x_; }
+  const vector<double>& p() const { return p_; }
+
 private:
-  std::vector<double> x_; //!< Possible outcomes
-  std::vector<double> p_; //!< Probability of each outcome
+  vector<double> x_; //!< Possible outcomes
+  vector<double> p_; //!< Probability of each outcome
 
   //! Normalize distribution so that probabilities sum to unity
   void normalize();
@@ -174,14 +175,14 @@ public:
   double sample(uint64_t* seed) const;
 
   // x property
-  std::vector<double>& x() { return x_; }
-  const std::vector<double>& x() const { return x_; }
-  const std::vector<double>& p() const { return p_; }
+  vector<double>& x() { return x_; }
+  const vector<double>& x() const { return x_; }
+  const vector<double>& p() const { return p_; }
   Interpolation interp() const { return interp_; }
 private:
-  std::vector<double> x_; //!< tabulated independent variable
-  std::vector<double> p_; //!< tabulated probability density
-  std::vector<double> c_; //!< cumulative distribution at tabulated values
+  vector<double> x_;      //!< tabulated independent variable
+  vector<double> p_;      //!< tabulated probability density
+  vector<double> c_;      //!< cumulative distribution at tabulated values
   Interpolation interp_;  //!< interpolation rule
 
   //! Initialize tabulated probability density function
@@ -206,13 +207,13 @@ public:
   //! \return Sampled value
   double sample(uint64_t* seed) const;
 
-  const std::vector<double>& x() const { return x_; }
+  const vector<double>& x() const { return x_; }
+
 private:
-  std::vector<double> x_; //! Possible outcomes
+  vector<double> x_; //! Possible outcomes
 };
 
-
-using UPtrDist = std::unique_ptr<Distribution>;
+using UPtrDist = unique_ptr<Distribution>;
 
 //! Return univariate probability distribution specified in XML file
 //! \param[in] node XML node representing distribution

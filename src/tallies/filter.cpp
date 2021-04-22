@@ -34,7 +34,7 @@
 #include "openmc/tallies/filter_zernike.h"
 
 // explicit template instantiation definition
-template class std::vector<openmc::FilterMatch>;
+template class openmc::vector<openmc::FilterMatch>;
 
 namespace openmc {
 
@@ -44,7 +44,7 @@ namespace openmc {
 
 namespace model {
   std::unordered_map<int, int> filter_map;
-  std::vector<std::unique_ptr<Filter>> tally_filters;
+  vector<unique_ptr<Filter>> tally_filters;
 }
 
 //==============================================================================

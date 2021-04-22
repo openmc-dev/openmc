@@ -9,7 +9,7 @@
 
 #include <fmt/core.h>
 
-template class std::vector<openmc::TallyDerivative>;
+template class openmc::vector<openmc::TallyDerivative>;
 
 namespace openmc {
 
@@ -19,7 +19,7 @@ namespace openmc {
 
 namespace model {
   std::unordered_map<int, int> tally_deriv_map;
-  std::vector<TallyDerivative> tally_derivs;
+  vector<TallyDerivative> tally_derivs;
 }
 
 //==============================================================================

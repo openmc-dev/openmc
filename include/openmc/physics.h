@@ -6,8 +6,7 @@
 #include "openmc/particle.h"
 #include "openmc/position.h"
 #include "openmc/reaction.h"
-
-#include <vector>
+#include "openmc/vector.h"
 
 namespace openmc {
 

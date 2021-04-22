@@ -1,6 +1,5 @@
 #include "openmc/reaction_product.h"
 
-#include <memory> // for unique_ptr
 #include <string> // for string
 
 #include <fmt/core.h>
@@ -8,6 +7,7 @@
 #include "openmc/endf.h"
 #include "openmc/error.h"
 #include "openmc/hdf5_interface.h"
+#include "openmc/memory.h"
 #include "openmc/particle.h"
 #include "openmc/random_lcg.h"
 #include "openmc/secondary_correlated.h"

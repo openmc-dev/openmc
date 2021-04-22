@@ -4,10 +4,12 @@
 #include "hdf5.h"
 #include "xtensor/xtensor.hpp"
 
-#include <array>
 #include <complex>
 #include <string>
 #include <tuple>
+
+#include "openmc/array.h"
+#include "openmc/vector.h"
 
 namespace openmc {
 
@@ -27,7 +29,7 @@ constexpr int FIT_A {1}; // Absorption
 constexpr int FIT_F {2}; // Fission
 
 // Multipole HDF5 file version
-constexpr std::array<int, 2> WMP_VERSION {1, 1};
+constexpr array<int, 2> WMP_VERSION {1, 1};
 
 //========================================================================
 // Windowed multipole data
@@ -73,7 +75,7 @@ public:
   double inv_spacing_; //!< 1 / spacing in sqrt(E) space
   int fit_order_; //!< Order of the fit
   bool fissionable_; //!< Is the nuclide fissionable?
-  std::vector<WindowInfo> window_info_; // Information about a window
+  vector<WindowInfo> window_info_;  // Information about a window
   xt::xtensor<double, 3> curvefit_; // Curve fit coefficients (window, poly order, reaction)
   xt::xtensor<std::complex<double>, 2> data_; //!< Poles and residues
 

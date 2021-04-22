@@ -33,7 +33,7 @@ namespace openmc {
 //==============================================================================
 
 namespace model {
-  std::vector<VolumeCalculation> volume_calcs;
+vector<VolumeCalculation> volume_calcs;
 }
 
 //==============================================================================
@@ -94,12 +94,14 @@ VolumeCalculation::VolumeCalculation(pugi::xml_node node)
 
 }
 
-std::vector<VolumeCalculation::Result> VolumeCalculation::execute() const
+vector<VolumeCalculation::Result> VolumeCalculation::execute() const
 {
   // Shared data that is collected from all threads
   int n = domain_ids_.size();
-  std::vector<std::vector<int>> master_indices(n); // List of material indices for each domain
-  std::vector<std::vector<int>> master_hits(n); // Number of hits for each material in each domain
+  vector<std::vector<int>> master_indices(
+    n); // List of material indices for each domain
+  vector<std::vector<int>> master_hits(
+    n); // Number of hits for each material in each domain
   int iterations = 0;
 
   // Divide work over MPI processes
@@ -119,8 +121,8 @@ std::vector<VolumeCalculation::Result> VolumeCalculation::execute() const
     #pragma omp parallel
     {
       // Variables that are private to each thread
-      std::vector<std::vector<int>> indices(n);
-      std::vector<std::vector<int>> hits(n);
+      vector<std::vector<int>> indices(n);
+      vector<std::vector<int>> hits(n);
       Particle p;
 
       // Sample locations and count hits
@@ -224,7 +226,7 @@ std::vector<VolumeCalculation::Result> VolumeCalculation::execute() const
     double trigger_val = -INFTY;
 
     // Set size for members of the Result struct
-    std::vector<Result> results(n);
+    vector<Result> results(n);
 
     for (int i_domain = 0; i_domain < n; ++i_domain) {
       // Get reference to result for this domain
@@ -353,8 +355,8 @@ std::vector<VolumeCalculation::Result> VolumeCalculation::execute() const
   } // end while
 }
 
-void VolumeCalculation::to_hdf5(const std::string& filename,
-  const std::vector<Result>& results) const
+void VolumeCalculation::to_hdf5(
+  const std::string& filename, const vector<Result>& results) const
 {
   // Create HDF5 file
   hid_t file_id = file_open(filename, 'w');
@@ -418,7 +420,7 @@ void VolumeCalculation::to_hdf5(const std::string& filename,
     // Create array of nuclide names from the vector
     auto n_nuc = result.nuclides.size();
 
-    std::vector<std::string> nucnames;
+    vector<std::string> nucnames;
     for (int i_nuc : result.nuclides) {
       nucnames.push_back(data::nuclides[i_nuc]->name_);
     }
@@ -438,8 +440,8 @@ void VolumeCalculation::to_hdf5(const std::string& filename,
   file_close(file_id);
 }
 
-void VolumeCalculation::check_hit(int i_material, std::vector<int>& indices,
-  std::vector<int>& hits) const
+void VolumeCalculation::check_hit(
+  int i_material, vector<int>& indices, vector<int>& hits) const
 {
 
   // Check if this material was previously hit and if so, increment count

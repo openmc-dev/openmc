@@ -2,7 +2,6 @@
 
 #include <cmath>
 #include <string>
-#include <vector>
 
 #include <fmt/core.h>
 
@@ -12,8 +11,8 @@
 #include "openmc/geometry_aux.h"
 #include "openmc/hdf5_interface.h"
 #include "openmc/string_utils.h"
+#include "openmc/vector.h"
 #include "openmc/xml_interface.h"
-
 
 namespace openmc {
 
@@ -23,7 +22,7 @@ namespace openmc {
 
 namespace model {
   std::unordered_map<int32_t, int32_t> lattice_map;
-  std::vector<std::unique_ptr<Lattice>> lattices;
+  vector<unique_ptr<Lattice>> lattices;
 }
 
 //==============================================================================
@@ -142,7 +141,7 @@ RectLattice::RectLattice(pugi::xml_node lat_node)
 
   // Read the number of lattice cells in each dimension.
   std::string dimension_str {get_node_value(lat_node, "dimension")};
-  std::vector<std::string> dimension_words {split(dimension_str)};
+  vector<std::string> dimension_words {split(dimension_str)};
   if (dimension_words.size() == 2) {
     n_cells_[0] = std::stoi(dimension_words[0]);
     n_cells_[1] = std::stoi(dimension_words[1]);
@@ -159,7 +158,7 @@ RectLattice::RectLattice(pugi::xml_node lat_node)
 
   // Read the lattice lower-left location.
   std::string ll_str {get_node_value(lat_node, "lower_left")};
-  std::vector<std::string> ll_words {split(ll_str)};
+  vector<std::string> ll_words {split(ll_str)};
   if (ll_words.size() != dimension_words.size()) {
     fatal_error("Number of entries on <lower_left> must be the same as the "
                 "number of entries on <dimension>.");
@@ -170,7 +169,7 @@ RectLattice::RectLattice(pugi::xml_node lat_node)
 
   // Read the lattice pitches.
   std::string pitch_str {get_node_value(lat_node, "pitch")};
-  std::vector<std::string> pitch_words {split(pitch_str)};
+  vector<std::string> pitch_words {split(pitch_str)};
   if (pitch_words.size() != dimension_words.size()) {
     fatal_error("Number of entries on <pitch> must be the same as the "
                 "number of entries on <dimension>.");
@@ -181,8 +180,8 @@ RectLattice::RectLattice(pugi::xml_node lat_node)
 
   // Read the universes and make sure the correct number was specified.
   std::string univ_str {get_node_value(lat_node, "universes")};
-  std::vector<std::string> univ_words {split(univ_str)};
-  if (univ_words.size() != nx*ny*nz) {
+  vector<std::string> univ_words {split(univ_str)};
+  if (univ_words.size() != n_cells_[0] * n_cells_[1] * n_cells_[2]) {
     fatal_error(fmt::format(
       "Expected {} universes for a rectangular lattice of size {}x{}x{} but {} "
       "were specified.", nx*ny*nz,  nx, ny, nz, univ_words.size()));
@@ -222,9 +221,8 @@ RectLattice::are_valid_indices(const int i_xyz[3]) const
 
 //==============================================================================
 
-std::pair<double, std::array<int, 3>>
-RectLattice::distance(Position r, Direction u, const std::array<int, 3>& i_xyz)
-const
+std::pair<double, array<int, 3>> RectLattice::distance(
+  Position r, Direction u, const array<int, 3>& i_xyz) const
 {
   // Get short aliases to the coordinates.
   double x = r.x;
@@ -237,7 +235,7 @@ const
 
   // Left and right sides
   double d {INFTY};
-  std::array<int, 3> lattice_trans;
+  array<int, 3> lattice_trans;
   if ((std::abs(x - x0) > FP_PRECISION) && u.x != 0) {
     d = (x0 - x) / u.x;
     if (u.x > 0) {
@@ -378,11 +376,11 @@ RectLattice::to_hdf5_inner(hid_t lat_group) const
     write_dataset(lat_group, "lower_left", lower_left_);
     write_dataset(lat_group, "dimension", n_cells_);
   } else {
-    std::array<double, 2> pitch_short {{pitch_[0], pitch_[1]}};
+    array<double, 2> pitch_short {{pitch_[0], pitch_[1]}};
     write_dataset(lat_group, "pitch", pitch_short);
-    std::array<double, 2> ll_short {{lower_left_[0], lower_left_[1]}};
+    array<double, 2> ll_short {{lower_left_[0], lower_left_[1]}};
     write_dataset(lat_group, "lower_left", ll_short);
-    std::array<int, 2> nc_short {{n_cells_[0], n_cells_[1]}};
+    array<int, 2> nc_short {{n_cells_[0], n_cells_[1]}};
     write_dataset(lat_group, "dimension", nc_short);
   }
 
@@ -392,7 +390,7 @@ RectLattice::to_hdf5_inner(hid_t lat_group) const
     hsize_t nx {static_cast<hsize_t>(n_cells_[0])};
     hsize_t ny {static_cast<hsize_t>(n_cells_[1])};
     hsize_t nz {static_cast<hsize_t>(n_cells_[2])};
-    std::vector<int> out(nx*ny*nz);
+    vector<int> out(nx * ny * nz);
 
     for (int m = 0; m < nz; m++) {
       for (int k = 0; k < ny; k++) {
@@ -410,7 +408,7 @@ RectLattice::to_hdf5_inner(hid_t lat_group) const
   } else {
     hsize_t nx {static_cast<hsize_t>(n_cells_[0])};
     hsize_t ny {static_cast<hsize_t>(n_cells_[1])};
-    std::vector<int> out(nx*ny);
+    vector<int> out(nx * ny);
 
     for (int k = 0; k < ny; k++) {
       for (int j = 0; j < nx; j++) {
@@ -461,7 +459,7 @@ HexLattice::HexLattice(pugi::xml_node lat_node)
 
   // Read the lattice center.
   std::string center_str {get_node_value(lat_node, "center")};
-  std::vector<std::string> center_words {split(center_str)};
+  vector<std::string> center_words {split(center_str)};
   if (is_3d_ && (center_words.size() != 3)) {
     fatal_error("A hexagonal lattice with <n_axial> must have <center> "
                 "specified by 3 numbers.");
@@ -475,7 +473,7 @@ HexLattice::HexLattice(pugi::xml_node lat_node)
 
   // Read the lattice pitches.
   std::string pitch_str {get_node_value(lat_node, "pitch")};
-  std::vector<std::string> pitch_words {split(pitch_str)};
+  vector<std::string> pitch_words {split(pitch_str)};
   if (is_3d_ && (pitch_words.size() != 2)) {
     fatal_error("A hexagonal lattice with <n_axial> must have <pitch> "
                 "specified by 2 numbers.");
@@ -489,7 +487,7 @@ HexLattice::HexLattice(pugi::xml_node lat_node)
   // Read the universes and make sure the correct number was specified.
   int n_univ = (3*n_rings_*n_rings_ - 3*n_rings_ + 1) * n_axial_;
   std::string univ_str {get_node_value(lat_node, "universes")};
-  std::vector<std::string> univ_words {split(univ_str)};
+  vector<std::string> univ_words {split(univ_str)};
   if (univ_words.size() != n_univ) {
     fatal_error(fmt::format(
       "Expected {} universes for a hexagonal lattice with {} rings and {} "
@@ -516,8 +514,7 @@ HexLattice::HexLattice(pugi::xml_node lat_node)
 
 //==============================================================================
 
-void
-HexLattice::fill_lattice_x(const std::vector<std::string>& univ_words)
+void HexLattice::fill_lattice_x(const vector<std::string>& univ_words)
 {
   int input_index = 0;
   for (int m = 0; m < n_axial_; m++) {
@@ -569,8 +566,7 @@ HexLattice::fill_lattice_x(const std::vector<std::string>& univ_words)
 
 //==============================================================================
 
-void
-HexLattice::fill_lattice_y(const std::vector<std::string>& univ_words)
+void HexLattice::fill_lattice_y(const vector<std::string>& univ_words)
 {
   int input_index = 0;
   for (int m = 0; m < n_axial_; m++) {
@@ -689,9 +685,8 @@ HexLattice::are_valid_indices(const int i_xyz[3]) const
 
 //==============================================================================
 
-std::pair<double, std::array<int, 3>>
-HexLattice::distance(Position r, Direction u, const std::array<int, 3>& i_xyz)
-const
+std::pair<double, array<int, 3>> HexLattice::distance(
+  Position r, Direction u, const array<int, 3>& i_xyz) const
 {
   // Short description of the direction vectors used here.  The beta, gamma, and
   // delta vectors point towards the flat sides of each hexagonal tile.
@@ -729,14 +724,14 @@ const
 
   // beta direction
   double d {INFTY};
-  std::array<int, 3> lattice_trans;
+  array<int, 3> lattice_trans;
   double edge = -copysign(0.5*pitch_[0], beta_dir);  // Oncoming edge
   Position r_t;
   if (beta_dir > 0) {
-    const std::array<int, 3> i_xyz_t {i_xyz[0]+1, i_xyz[1], i_xyz[2]};
+    const array<int, 3> i_xyz_t {i_xyz[0] + 1, i_xyz[1], i_xyz[2]};
     r_t = get_local_position(r, i_xyz_t);
   } else {
-    const std::array<int, 3> i_xyz_t {i_xyz[0]-1, i_xyz[1], i_xyz[2]};
+    const array<int, 3> i_xyz_t {i_xyz[0] - 1, i_xyz[1], i_xyz[2]};
     r_t = get_local_position(r, i_xyz_t);
   }
   double beta;
@@ -757,10 +752,10 @@ const
   // gamma direction
   edge = -copysign(0.5*pitch_[0], gamma_dir);
   if (gamma_dir > 0) {
-    const std::array<int, 3> i_xyz_t {i_xyz[0]+1, i_xyz[1]-1, i_xyz[2]};
+    const array<int, 3> i_xyz_t {i_xyz[0] + 1, i_xyz[1] - 1, i_xyz[2]};
     r_t = get_local_position(r, i_xyz_t);
   } else {
-    const std::array<int, 3> i_xyz_t {i_xyz[0]-1, i_xyz[1]+1, i_xyz[2]};
+    const array<int, 3> i_xyz_t {i_xyz[0] - 1, i_xyz[1] + 1, i_xyz[2]};
     r_t = get_local_position(r, i_xyz_t);
   }
   double gamma;
@@ -784,10 +779,10 @@ const
   // delta direction
   edge = -copysign(0.5*pitch_[0], delta_dir);
   if (delta_dir > 0) {
-    const std::array<int, 3> i_xyz_t {i_xyz[0], i_xyz[1]+1, i_xyz[2]};
+    const array<int, 3> i_xyz_t {i_xyz[0], i_xyz[1] + 1, i_xyz[2]};
     r_t = get_local_position(r, i_xyz_t);
   } else {
-    const std::array<int, 3> i_xyz_t {i_xyz[0], i_xyz[1]-1, i_xyz[2]};
+    const array<int, 3> i_xyz_t {i_xyz[0], i_xyz[1] - 1, i_xyz[2]};
     r_t = get_local_position(r, i_xyz_t);
   }
   double delta;
@@ -1028,9 +1023,9 @@ HexLattice::to_hdf5_inner(hid_t lat_group) const
     write_dataset(lat_group, "pitch", pitch_);
     write_dataset(lat_group, "center", center_);
   } else {
-    std::array<double, 1> pitch_short {{pitch_[0]}};
+    array<double, 1> pitch_short {{pitch_[0]}};
     write_dataset(lat_group, "pitch", pitch_short);
-    std::array<double, 2> center_short {{center_[0], center_[1]}};
+    array<double, 2> center_short {{center_[0], center_[1]}};
     write_dataset(lat_group, "center", center_short);
   }
 
@@ -1038,7 +1033,7 @@ HexLattice::to_hdf5_inner(hid_t lat_group) const
   hsize_t nx {static_cast<hsize_t>(2*n_rings_ - 1)};
   hsize_t ny {static_cast<hsize_t>(2*n_rings_ - 1)};
   hsize_t nz {static_cast<hsize_t>(n_axial_)};
-  std::vector<int> out(nx*ny*nz);
+  vector<int> out(nx * ny * nz);
 
   for (int m = 0; m < nz; m++) {
     for (int k = 0; k < ny; k++) {

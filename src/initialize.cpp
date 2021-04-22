@@ -3,9 +3,7 @@
 #include <cstddef>
 #include <cstdlib> // for getenv
 #include <cstring>
-#include <memory>
 #include <string>
-#include <vector>
 
 #ifdef _OPENMP
 #include <omp.h>
@@ -19,6 +17,7 @@
 #include "openmc/geometry_aux.h"
 #include "openmc/hdf5_interface.h"
 #include "openmc/material.h"
+#include "openmc/memory.h"
 #include "openmc/message_passing.h"
 #include "openmc/mgxs_interface.h"
 #include "openmc/nuclide.h"
@@ -32,6 +31,7 @@
 #include "openmc/tallies/tally.h"
 #include "openmc/thermal.h"
 #include "openmc/timer.h"
+#include "openmc/vector.h"
 
 #ifdef LIBMESH
 #include "libmesh/libmesh.h"

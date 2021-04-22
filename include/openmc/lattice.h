@@ -257,7 +257,7 @@ public:
 
   ReverseLatticeIter rbegin();
 
-  bool are_valid_indices(const int i_xyz[3]) const;
+  bool are_valid_indices(array<int, 3> const& i_xyz) const;
 
   std::pair<double, std::array<int, 3>>
   distance(Position r, Direction u, const std::array<int, 3>& i_xyz) const;

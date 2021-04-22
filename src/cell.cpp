@@ -788,9 +788,9 @@ DAGCell::distance(Position r, Direction u, int32_t on_surface, Particle* p) cons
   Expects(p);
   // if we've changed direction or we're not on a surface,
   // reset the history and update last direction
-  if (u != p->last_dir_ || on_surface == 0) {
-    p->history_.reset();
-    p->last_dir_ = u;
+  if (u != p->last_dir() || on_surface == 0) {
+    p->history().reset();
+    p->last_dir() = u;
   }
 
   moab::ErrorCode rval;
@@ -799,7 +799,7 @@ DAGCell::distance(Position r, Direction u, int32_t on_surface, Particle* p) cons
   double dist;
   double pnt[3] = {r.x, r.y, r.z};
   double dir[3] = {u.x, u.y, u.z};
-  rval = dagmc_ptr_->ray_fire(vol, pnt, dir, hit_surf, dist, &p->history_);
+  rval = dagmc_ptr_->ray_fire(vol, pnt, dir, hit_surf, dist, &p->history());
   MB_CHK_ERR_CONT(rval);
   int surf_idx;
   if (hit_surf != 0) {

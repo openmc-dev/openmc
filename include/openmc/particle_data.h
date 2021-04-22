@@ -8,6 +8,10 @@
 #include "openmc/tallies/filter_match.h"
 #include "openmc/vector.h"
 
+#ifdef DAGMC
+#include "DagMC.hpp"
+#endif
+
 namespace openmc {
 
 //==============================================================================
@@ -388,7 +392,7 @@ public:
   int& n_event() { return n_event_; }
 
 #ifdef DAGMC
-  moab::DagMC::RayHistory& rayhistory() { return history_; }
+  moab::DagMC::RayHistory& history() { return history_; }
   Direction& last_dir() { return last_dir_; }
 #endif
 

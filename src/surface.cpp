@@ -264,15 +264,15 @@ Direction DAGSurface::normal(Position r) const
 Direction DAGSurface::reflect(Position r, Direction u, Particle* p) const
 {
   Expects(p);
-  p->history_.reset_to_last_intersection();
+  p->history().reset_to_last_intersection();
   moab::ErrorCode rval;
   moab::EntityHandle surf = dagmc_ptr_->entity_by_index(2, dag_index_);
   double pnt[3] = {r.x, r.y, r.z};
   double dir[3];
-  rval = dagmc_ptr_->get_angle(surf, pnt, dir, &p->history_);
+  rval = dagmc_ptr_->get_angle(surf, pnt, dir, &p->history());
   MB_CHK_ERR_CONT(rval);
-  p->last_dir_ = u.reflect(dir);
-  return p->last_dir_;
+  p->last_dir() = u.reflect(dir);
+  return p->last_dir();
 }
 
 void DAGSurface::to_hdf5(hid_t group_id) const {}

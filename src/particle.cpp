@@ -29,6 +29,10 @@
 #include "openmc/tallies/tally_scoring.h"
 #include "openmc/track_output.h"
 
+#ifdef DAGMC
+#include "DagMC.hpp"
+#endif
+
 namespace openmc {
 
 //==============================================================================
@@ -345,8 +349,9 @@ void
 Particle::event_death()
 {
   #ifdef DAGMC
-  if (settings::dagmc) history_.reset();
-  #endif
+  if (settings::dagmc)
+    history().reset();
+#endif
 
   // Finish particle track output.
   if (write_track()) {

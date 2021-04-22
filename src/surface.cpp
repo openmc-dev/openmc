@@ -1168,6 +1168,8 @@ void read_surfaces(pugi::xml_node node)
     // Compute the dot product of the surface normals
     Direction norm1 = surf1.normal({0, 0, 0});
     Direction norm2 = surf2.normal({0, 0, 0});
+    norm1 /= norm1.norm();
+    norm2 /= norm2.norm();
     double dot_prod = norm1.dot(norm2);
 
     // If the dot product is 1 (to within floating point precision) then the

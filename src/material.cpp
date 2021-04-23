@@ -1236,7 +1236,6 @@ void read_materials_xml()
   for (pugi::xml_node material_node : root.children("material")) {
     model::materials.push_back(make_unique<Material>(material_node));
   }
-
   model::materials.shrink_to_fit();
 }
 

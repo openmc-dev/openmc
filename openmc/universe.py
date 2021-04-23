@@ -638,7 +638,7 @@ class DAGMCUniverse(UniverseBase):
         Path to the DAGMC file used to represent this universe.
     universe_id : int, optional
         Unique identifier of the universe. If not specified, an identifier will
-        automatically be assigned
+        automatically be assigned.
     name : str, optional
         Name of the universe. If not specified, the name is the empty string.
     auto_ids : bool

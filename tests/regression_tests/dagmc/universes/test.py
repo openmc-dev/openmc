@@ -66,6 +66,6 @@ class DAGMCUniverseTest(PyAPITestHarness):
         model.export_to_xml()
 
 
-def test_dagmc_universes():
+def test_univ():
     harness = DAGMCUniverseTest('statepoint.10.h5')
     harness.main()

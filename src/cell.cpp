@@ -193,6 +193,7 @@ Universe::to_hdf5(hid_t universes_group) const
   // Create a group for this universe.
   auto group = create_group(universes_group, fmt::format("universe {}", id_));
 
+  // Write the geometry representation type.
   switch(type_) {
     case GeometryType::CSG :
       write_string(group, "geom_type", "csg", false);
@@ -318,7 +319,7 @@ Cell::set_temperature(double T, int32_t instance, bool set_contained)
 void
 Cell::to_hdf5(hid_t cell_group) const {
 
- // Create a group for this cell.
+  // Create a group for this cell.
   auto group = create_group(cell_group, fmt::format("cell {}", id_));
 
   if (!name_.empty()) {
@@ -983,7 +984,6 @@ void read_cells(pugi::xml_node node)
   for (pugi::xml_node cell_node : node.children("cell")) {
     model::cells.push_back(make_unique<CSGCell>(cell_node));
   }
-
 
   // Fill the cell map.
   for (int i = 0; i < model::cells.size(); i++) {

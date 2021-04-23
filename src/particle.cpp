@@ -392,12 +392,11 @@ Particle::cross_surface()
 
 #ifdef DAGMC
   // in DAGMC, we know what the next cell should be
-  auto surfp = dynamic_cast<DAGSurface*>(model::surfaces[std::abs(surface_) - 1].get());
-  if (surfp) {
+  if (surf->geom_type_ == GeometryType::DAG) {
+    auto surfp = dynamic_cast<DAGSurface*>(surf);
     auto cellp = dynamic_cast<DAGCell*>(model::cells[cell_last_[n_coord_ - 1]].get());
-    // TODO: off-by-one
     auto univp = static_cast<DAGUniverse*>(model::universes[coord_[n_coord_ - 1].universe].get());
-
+    // determine the next cell for this crossing
     int32_t i_cell = next_cell(univp, cellp, surfp) - 1;
     // save material and temp
     material_last_ = material_;
@@ -505,9 +504,8 @@ Particle::cross_reflective_bc(const Surface& surf, Direction new_u)
   coord(0).cell = cell_last(n_coord_last() - 1);
   surface() = -surface();
 
-  #ifdef DAGMC
+  // if we're crossing a CSG surface, make sure the DAG history is reset
   if (surf.geom_type_ != GeometryType::DAG) history_.reset();
-  #endif
 
   // If a reflective surface is coincident with a lattice or universe
   // boundary, it is necessary to redetermine the particle's coordinates in

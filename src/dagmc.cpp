@@ -1,6 +1,5 @@
 #include "openmc/dagmc.h"
 
-#include "openmc/cell.h"
 #include "openmc/constants.h"
 #include "openmc/container_util.h"
 #include "openmc/error.h"
@@ -11,7 +10,6 @@
 #include "openmc/material.h"
 #include "openmc/string_utils.h"
 #include "openmc/settings.h"
-#include "openmc/surface.h"
 
 #ifdef DAGMC
 #include "uwuw.hpp"
@@ -38,173 +36,9 @@ const bool DAGMC_ENABLED = false;
 
 namespace openmc {
 
-const std::string DAGMC_FILENAME = "dagmc.h5m";
-
-std::string dagmc_file() {
-  std::string filename = settings::path_input + DAGMC_FILENAME;
-  if (!file_exists(filename)) {
-    fatal_error("Geometry DAGMC file '" + filename + "' does not exist!");
-  }
-  return filename;
-}
-
-std::string
-DAGUniverse::dagmc_ids_for_dim(int dim) const
-{
-  // generate a vector of ids
-  std::vector<int> id_vec;
-  int n_cells = dagmc_instance_->num_entities(dim);
-  for (int i = 1; i <= n_cells; i++) {
-    id_vec.push_back(dagmc_instance_->id_by_index(dim, i));
-  }
-
-  // sort the vector of ids
-  std::sort(id_vec.begin(), id_vec.end());
-
-  // generate a string representation of the range
-  std::stringstream out;
-
-  int i = 0;
-  int start_id = id_vec[0];
-  int stop_id;
-  while (i < n_cells) {
-    stop_id = id_vec[i];
-
-    if (id_vec[i + 1] > stop_id + 1) {
-      if (start_id != stop_id) {
-        // there are several IDs in a row, print condensed version
-        out << start_id << "-" << stop_id;
-      } else {
-        // only one ID in this contiguous block
-        out << start_id;
-      }
-      if (i < n_cells - 1) { out << ", "; }
-      start_id = id_vec[++i];
-      stop_id = start_id;
-    }
-
-    i++;
-  }
-
-  return out.str();
-}
-
-int32_t
-DAGUniverse::implicit_complement_idx() const {
-  moab::EntityHandle ic;
-  moab::ErrorCode rval = dagmc_instance_->geom_tool()->get_implicit_complement(ic);
-  MB_CHK_SET_ERR_CONT(rval, "Failed to get implicit complement");
-  return cell_idx_offset_ + dagmc_instance_->index_by_handle(ic) - 1;
-}
-
-bool
-DAGUniverse::find_cell(Particle &p) const {
-  // if the particle isn't in any of the other DagMC
-  // cells, place it in the implicit complement
-  bool found = Universe::find_cell(p);
-  if (!found && model::universe_map[this->id_] != model::root_universe) {
-    p.coord_[p.n_coord_ - 1].cell = implicit_complement_idx();
-    found = true;
-  }
-  return found;
-}
-
-bool
-DAGUniverse::uses_uwuw() const
-{
-  return uwuw_ && !uwuw_->material_library.empty();
-}
-
-std::string
-DAGUniverse::get_uwuw_materials_xml() const
-{
-
-  if (!uses_uwuw()) {
-    throw std::runtime_error("This DAGMC Universe does not use UWUW materials");
-  }
-
-  std::stringstream ss;
-  // write header
-  ss << "<?xml version=\"1.0\"?>\n";
-  ss << "<materials>\n";
-  const auto& mat_lib = uwuw_->material_library;
-  // write materials
-  for (auto mat : mat_lib) { ss << mat.second->openmc("atom"); }
-  // write footer
-  ss << "</materials>";
-
-  return ss.str();
-}
-
-void
-DAGUniverse::write_uwuw_materials_xml(const std::string& outfile) const
-{
-  if (!uses_uwuw()) {
-    throw std::runtime_error("This DAGMC universe does not use UWUW materials.");
-  }
-
-  std::string xml_str = get_uwuw_materials_xml();
-  // if there is a material library in the file
-  std::ofstream mats_xml(outfile);
-  mats_xml << xml_str;
-  mats_xml.close();
-}
-
-void
-DAGUniverse::legacy_assign_material(std::string mat_string,
-                                    std::unique_ptr<DAGCell>& c) const
-{
-  bool mat_found_by_name = false;
-  // attempt to find a material with a matching name
-  to_lower(mat_string);
-  for (const auto& m : model::materials) {
-    std::string m_name = m->name();
-    to_lower(m_name);
-    if (mat_string == m_name) {
-      // assign the material with that name
-      if (!mat_found_by_name) {
-        mat_found_by_name = true;
-        c->material_.push_back(m->id_);
-      // report error if more than one material is found
-      } else {
-        fatal_error(fmt::format(
-          "More than one material found with name '{}'. Please ensure materials "
-          "have unique names if using this property to assign materials.",
-          mat_string));
-      }
-    }
-  }
-
-  // if no material was set using a name, assign by id
-  if (!mat_found_by_name) {
-    try {
-      auto id = std::stoi(mat_string);
-      c->material_.emplace_back(id);
-    } catch (const std::invalid_argument&) {
-      fatal_error(fmt::format(
-        "No material '{}' found for volume (cell) {}", mat_string, c->id_));
-    }
-  }
-
-  if (settings::verbosity >= 10) {
-    const auto& m = model::materials[model::material_map.at(c->material_[0])];
-    std::stringstream msg;
-    msg << "DAGMC material " << mat_string << " was assigned";
-    if (mat_found_by_name) {
-      msg << " using material name: " << m->name_;
-    } else {
-      msg << " using material id: " << m->id_;
-    }
-    write_message(msg.str(), 10);
-  }
-}
-
-void read_dagmc_universes(pugi::xml_node node) {
-  for (pugi::xml_node dag_node : node.children("dagmc")) {
-    model::universes.push_back(std::make_unique<DAGUniverse>(dag_node));
-    model::universe_map[model::universes.back()->id_] = model::universes.size() - 1;
-  }
-}
+//==============================================================================
+// DAGMC Universe implementation
+//==============================================================================
 
 DAGUniverse::DAGUniverse(pugi::xml_node node) {
   if (check_for_node(node, "id")) {
@@ -232,8 +66,10 @@ DAGUniverse::DAGUniverse(pugi::xml_node node) {
   initialize();
 }
 
-DAGUniverse::DAGUniverse(const std::string& filename, bool auto_geom_ids)
-: filename_(filename), adjust_geometry_ids_(auto_geom_ids) {
+DAGUniverse::DAGUniverse(const std::string& filename,
+                         bool auto_geom_ids,
+                         bool auto_mat_ids)
+: filename_(filename), adjust_geometry_ids_(auto_geom_ids), adjust_material_ids_(auto_mat_ids) {
   // determine the next universe id
   int32_t next_univ_id = 0;
   for (const auto& u : model::universes) {
@@ -247,7 +83,8 @@ DAGUniverse::DAGUniverse(const std::string& filename, bool auto_geom_ids)
   initialize();
 }
 
-void DAGUniverse::initialize() {
+void
+DAGUniverse::initialize() {
   type_ = GeometryType::DAG;
 
   // determine the next cell id
@@ -283,6 +120,10 @@ void DAGUniverse::initialize() {
   }
 
   // load the DAGMC geometry
+  filename_ = settings::path_input + filename_;
+  if (!file_exists(filename_)) {
+    fatal_error("Geometry DAGMC file '" + filename_ + "' does not exist!");
+  }
   moab::ErrorCode rval = dagmc_instance_->load_file(filename_.c_str());
   MB_CHK_ERR_CONT(rval);
 
@@ -325,7 +166,7 @@ void DAGUniverse::initialize() {
                               "and the CSG geometry.", c->id_, this->id_));
     }
 
-    // MATERIALS
+    // --- Materials ---
 
     // determine volume material assignment
     std::string mat_str = DMD.get_volume_property("material", vol_handle);
@@ -447,8 +288,158 @@ void DAGUniverse::initialize() {
     }
 
     model::surfaces.emplace_back(std::move(s));
-
   } // end surface loop
+}
+
+std::string
+DAGUniverse::dagmc_ids_for_dim(int dim) const
+{
+  // generate a vector of ids
+  std::vector<int> id_vec;
+  int n_cells = dagmc_instance_->num_entities(dim);
+  for (int i = 1; i <= n_cells; i++) {
+    id_vec.push_back(dagmc_instance_->id_by_index(dim, i));
+  }
+
+  // sort the vector of ids
+  std::sort(id_vec.begin(), id_vec.end());
+
+  // generate a string representation of the ID range(s)
+  std::stringstream out;
+
+  int i = 0;
+  int start_id = id_vec[0];
+  int stop_id;
+  while (i < n_cells) {
+    stop_id = id_vec[i];
+
+    if (id_vec[i + 1] > stop_id + 1) {
+      if (start_id != stop_id) {
+        // there are several IDs in a row, print condensed version
+        out << start_id << "-" << stop_id;
+      } else {
+        // only one ID in this contiguous block
+        out << start_id;
+      }
+      if (i < n_cells - 1) { out << ", "; }
+      start_id = id_vec[++i];
+      stop_id = start_id;
+    }
+
+    i++;
+  }
+
+  return out.str();
+}
+
+int32_t
+DAGUniverse::implicit_complement_idx() const {
+  moab::EntityHandle ic;
+  moab::ErrorCode rval = dagmc_instance_->geom_tool()->get_implicit_complement(ic);
+  MB_CHK_SET_ERR_CONT(rval, "Failed to get implicit complement");
+  // off-by-one: DAGMC indices start at one
+  return cell_idx_offset_ + dagmc_instance_->index_by_handle(ic) - 1;
+}
+
+bool
+DAGUniverse::find_cell(Particle &p) const {
+  // if the particle isn't in any of the other DagMC
+  // cells, place it in the implicit complement
+  bool found = Universe::find_cell(p);
+  if (!found && model::universe_map[this->id_] != model::root_universe) {
+    p.coord_[p.n_coord_ - 1].cell = implicit_complement_idx();
+    found = true;
+  }
+  return found;
+}
+
+bool
+DAGUniverse::uses_uwuw() const
+{
+  return !uwuw_->material_library.empty();
+}
+
+std::string
+DAGUniverse::get_uwuw_materials_xml() const
+{
+  if (!uses_uwuw()) {
+    throw std::runtime_error("This DAGMC Universe does not use UWUW materials");
+  }
+
+  std::stringstream ss;
+  // write header
+  ss << "<?xml version=\"1.0\"?>\n";
+  ss << "<materials>\n";
+  const auto& mat_lib = uwuw_->material_library;
+  // write materials
+  for (auto mat : mat_lib) { ss << mat.second->openmc("atom"); }
+  // write footer
+  ss << "</materials>";
+
+  return ss.str();
+}
+
+void
+DAGUniverse::write_uwuw_materials_xml(const std::string& outfile) const
+{
+  if (!uses_uwuw()) {
+    throw std::runtime_error("This DAGMC universe does not use UWUW materials.");
+  }
+
+  std::string xml_str = get_uwuw_materials_xml();
+  // if there is a material library in the file
+  std::ofstream mats_xml(outfile);
+  mats_xml << xml_str;
+  mats_xml.close();
+}
+
+void
+DAGUniverse::legacy_assign_material(std::string mat_string,
+                                    std::unique_ptr<DAGCell>& c) const
+{
+  bool mat_found_by_name = false;
+  // attempt to find a material with a matching name
+  to_lower(mat_string);
+  for (const auto& m : model::materials) {
+    std::string m_name = m->name();
+    to_lower(m_name);
+    if (mat_string == m_name) {
+      // assign the material with that name
+      if (!mat_found_by_name) {
+        mat_found_by_name = true;
+        c->material_.push_back(m->id_);
+      // report error if more than one material is found
+      } else {
+        fatal_error(fmt::format(
+          "More than one material found with name '{}'. Please ensure materials "
+          "have unique names if using this property to assign materials.",
+          mat_string));
+      }
+    }
+  }
+
+  // if no material was set using a name, assign by id
+  if (!mat_found_by_name) {
+    try {
+      auto id = std::stoi(mat_string);
+      c->material_.emplace_back(id);
+    } catch (const std::invalid_argument&) {
+      fatal_error(fmt::format(
+        "No material '{}' found for volume (cell) {}", mat_string, c->id_));
+    }
+  }
+
+  if (settings::verbosity >= 10) {
+    const auto& m = model::materials[model::material_map.at(c->material_[0])];
+    std::stringstream msg;
+    msg << "DAGMC material " << mat_string << " was assigned";
+    if (mat_found_by_name) {
+      msg << " using material name: " << m->name_;
+    } else {
+      msg << " using material id: " << m->id_;
+    }
+    write_message(msg.str(), 10);
+  }
 }
 
 void
@@ -489,7 +480,6 @@ DAGUniverse::read_uwuw_materials() {
     model::materials.push_back(std::make_unique<Material>(material_node));
   }
 }
-
 
 //==============================================================================
 // DAGMC Cell implementation
@@ -537,7 +527,8 @@ DAGCell::distance(Position r, Direction u, int32_t on_surface, Particle* p) cons
   return {dist, surf_idx};
 }
 
-bool DAGCell::contains(Position r, Direction u, int32_t on_surface) const
+bool
+DAGCell::contains(Position r, Direction u, int32_t on_surface) const
 {
   moab::ErrorCode rval;
   moab::EntityHandle vol = dagmc_ptr_->entity_by_index(3, dag_index_);
@@ -550,11 +541,13 @@ bool DAGCell::contains(Position r, Direction u, int32_t on_surface) const
   return result;
 }
 
-void DAGCell::to_hdf5_inner(hid_t group_id) const {
+void
+DAGCell::to_hdf5_inner(hid_t group_id) const {
   write_string(group_id, "geom_type", "dagmc", false);
 }
 
-BoundingBox DAGCell::bounding_box() const
+BoundingBox
+DAGCell::bounding_box() const
 {
   moab::ErrorCode rval;
   moab::EntityHandle vol = dagmc_ptr_->entity_by_index(3, dag_index_);
@@ -564,28 +557,16 @@ BoundingBox DAGCell::bounding_box() const
   return {min[0], max[0], min[1], max[1], min[2], max[2]};
 }
 
-// DAGMC Functions
-int32_t next_cell(DAGUniverse* dag_univ, DAGCell* cur_cell, DAGSurface* surf_xed)
-{
-  moab::EntityHandle surf =
-    surf_xed->dagmc_ptr_->entity_by_index(2, surf_xed->dag_index_);
-  moab::EntityHandle vol =
-    cur_cell->dagmc_ptr_->entity_by_index(3, cur_cell->dag_index_);
-
-  moab::EntityHandle new_vol;
-  cur_cell->dagmc_ptr_->next_vol(surf, vol, new_vol);
-
-  return cur_cell->dagmc_ptr_->index_by_handle(new_vol) + dag_univ->cell_idx_offset_;
-}
-
 //==============================================================================
 // DAGSurface implementation
 //==============================================================================
+
 DAGSurface::DAGSurface() : Surface{} {
   geom_type_ = GeometryType::DAG;
 } // empty constructor
 
-double DAGSurface::evaluate(Position r) const
+double
+DAGSurface::evaluate(Position r) const
 {
   return 0.0;
 }
@@ -605,7 +586,8 @@ DAGSurface::distance(Position r, Direction u, bool coincident) const
   return dist;
 }
 
-Direction DAGSurface::normal(Position r) const
+Direction
+DAGSurface::normal(Position r) const
 {
   moab::ErrorCode rval;
   moab::EntityHandle surf = dagmc_ptr_->entity_by_index(2, dag_index_);
@@ -616,7 +598,8 @@ Direction DAGSurface::normal(Position r) const
   return dir;
 }
 
-Direction DAGSurface::reflect(Position r, Direction u, Particle* p) const
+Direction
+DAGSurface::reflect(Position r, Direction u, Particle* p) const
 {
   Expects(p);
   p->history_.reset_to_last_intersection();
@@ -629,6 +612,31 @@ Direction DAGSurface::reflect(Position r, Direction u, Particle* p) const
   p->last_dir_ = u.reflect(dir);
   return p->last_dir_;
 }
+
+//==============================================================================
+// Non-member functions
+//==============================================================================
+
+void read_dagmc_universes(pugi::xml_node node) {
+  for (pugi::xml_node dag_node : node.children("dagmc")) {
+    model::universes.push_back(std::make_unique<DAGUniverse>(dag_node));
+    model::universe_map[model::universes.back()->id_] = model::universes.size() - 1;
+  }
+}
+
+int32_t next_cell(DAGUniverse* dag_univ, DAGCell* cur_cell, DAGSurface* surf_xed)
+{
+  moab::EntityHandle surf =
+    surf_xed->dagmc_ptr_->entity_by_index(2, surf_xed->dag_index_);
+  moab::EntityHandle vol =
+    cur_cell->dagmc_ptr_->entity_by_index(3, cur_cell->dag_index_);
+
+  moab::EntityHandle new_vol;
+  cur_cell->dagmc_ptr_->next_vol(surf, vol, new_vol);
+
+  return cur_cell->dagmc_ptr_->index_by_handle(new_vol) + dag_univ->cell_idx_offset_;
+}
+
 
 }
 #endif

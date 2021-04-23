@@ -55,8 +55,16 @@ public:
 class DAGUniverse : public Universe {
 
 public:
+
   explicit DAGUniverse(pugi::xml_node node);
-  explicit DAGUniverse(const std::string& filename, bool auto_geom_ids = false);
+
+  //! Create a new DAGMC universe
+  //! \param[in] filename Name of the DAGMC file
+  //! \param[in] auto_geom_ids Whether or not to automatically assign cell and surface IDs
+  //! \param[in] auto_mat_ids Whether or not to automatically assign material IDs
+  explicit DAGUniverse(const std::string& filename,
+                       bool auto_geom_ids = false,
+                       bool auto_mat_ids = false);
 
   //! Initialize the DAGMC accel. data structures, indices, material assignments, etc.
   void initialize();

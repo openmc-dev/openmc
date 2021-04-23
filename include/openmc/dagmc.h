@@ -58,35 +58,52 @@ public:
   explicit DAGUniverse(pugi::xml_node node);
   explicit DAGUniverse(const std::string& filename, bool auto_geom_ids = false);
 
-  void initialize(); //!< Sets up the DAGMC instance and OpenMC internals
+  //! Initialize the DAGMC accel. data structures, indices, material assignments, etc.
+  void initialize();
 
-  void read_uwuw_materials(); //!< Reads UWUW materials and returns an ID map
+  //! Reads UWUW materials and returns an ID map
+  void read_uwuw_materials();
+  //! Indicates whether or not UWUW materials are present
+  //! \return True if UWUW materials are present, False if not
   bool uses_uwuw() const;
 
+  //! Returns the index to the implicit complement's index in OpenMC for this DAGMC universe
   int32_t implicit_complement_idx() const;
 
+  //! Transform UWUW materials into an OpenMC-readable XML format
+  //! \return A string representing a materials.xml file of the UWUW materials in this universe
   std::string get_uwuw_materials_xml() const;
 
+  //! Writes the UWUW material file to XML (for debugging purposes)
   void write_uwuw_materials_xml(const std::string& outfile = "uwuw_materials.xml") const;
 
+  //! Assign a material to a cell based
+  //! \param[in] mat_string The DAGMC material assignment string
+  //! \param[in] c The OpenMC cell to which the material is assigned
   void legacy_assign_material(std::string mat_string,
                               std::unique_ptr<DAGCell>& c) const;
 
+  //! Generate a string representing the ranges of IDs present in the DAGMC model
+  //! \param[in] dim Dimension of the entities
+  //! \return A string of the ID ranges for entities of dimension \p dim
   std::string dagmc_ids_for_dim(int dim) const;
 
   virtual bool find_cell(Particle &p) const override;
 
   // Data Members
-  std::string filename_;
-  std::shared_ptr<moab::DagMC> dagmc_instance_; //! DAGMC Instance for this universe
-  std::shared_ptr<UWUW> uwuw_;
-  int32_t cell_idx_offset_;
-  int32_t surf_idx_offset_;
-  bool adjust_geometry_ids_;
-  bool adjust_material_ids_;
+  std::string filename_; //!< Name of the DAGMC file used to create this universe
+  std::shared_ptr<moab::DagMC> dagmc_instance_; //!< DAGMC Instance for this universe
+  std::shared_ptr<UWUW> uwuw_; //!< Pointer to the UWUW instance for this universe
+  int32_t cell_idx_offset_; //!< An offset to the start of the cells in this universe in OpenMC's cell vector
+  int32_t surf_idx_offset_; //!< An offset to the start of the surfaces in this universe in OpenMC's surface vector
+  bool adjust_geometry_ids_; //!< Indicates whether or not to automatically generate new cell and surface IDs for the universe
+  bool adjust_material_ids_; //!< Indicates whether or not to automatically generate new material IDs for the universe
 };
 
-// DAGMC Functions
+//==============================================================================
+// Non-member functions
+//==============================================================================
+
 void read_dagmc_universes(pugi::xml_node node);
 int32_t next_cell(DAGUniverse* dag_univ, DAGCell* cur_cell, DAGSurface* surf_xed);
 

@@ -115,9 +115,8 @@ find_cell_inner(Particle& p, const NeighborList* neighbor_list)
       const auto& univ {model::universes[i_universe]};
       found = univ->find_cell(p);
     }
-    if (!found) {
-      return found;
-    }
+
+    if (!found) { return found; }
     i_cell = p.coord_[p.n_coord_ - 1].cell;
 
     // Announce the cell that the particle is entering.

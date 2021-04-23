@@ -31,7 +31,7 @@ if [[ $MPI == 'y' ]]; then
 
     export CC=mpicc
     export HDF5_MPI=ON
-    export HDF5_DIR=/usr/lib/x86_64-linux-gnu/hdf5/openmpi
+    export HDF5_DIR=/usr/lib/x86_64-linux-gnu/hdf5/mpich
     pip install --no-binary=h5py h5py
 fi
 

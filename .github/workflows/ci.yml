@@ -95,12 +95,16 @@ jobs:
         shell: bash
         run: |
           sudo apt -y update
-          sudo apt install -y libopenmpi-dev \
+          sudo apt install -y libmpich-dev \
                               libnetcdf-dev \
                               libpnetcdf-dev \
                               libhdf5-serial-dev \
-                              libhdf5-openmpi-dev \
+                              libhdf5-mpich-dev \
                               libeigen3-dev
+          sudo update-alternatives --set mpi /usr/bin/mpicc.mpich
+          sudo update-alternatives --set mpirun /usr/bin/mpirun.mpich
+          sudo update-alternatives --set mpi-x86_64-linux-gnu /usr/include/x86_64-linux-gnu/mpich
+
       -
         name: install
         shell: bash

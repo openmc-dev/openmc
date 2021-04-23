@@ -38,7 +38,7 @@ struct EventQueueItem{
   // Constructors
   EventQueueItem() = default;
   HD EventQueueItem(const Particle& p, unsigned buffer_idx)
-    : idx(buffer_idx), material(p.material_), E(p.E_)
+    : idx(buffer_idx), material(p.material()), E(p.E())
   {}
 
   // Compare by particle type, then by material type (4.5% fuel/7.0%

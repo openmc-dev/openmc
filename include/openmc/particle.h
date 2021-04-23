@@ -46,7 +46,7 @@ public:
   // Constructors
 
   Particle() = default;
-  Particle(const int& i_particle) : ParticleHandle(i_particle) {}
+  HD Particle(const int& i_particle) : ParticleHandle(i_particle) {}
 
   //! create a secondary particle
   //

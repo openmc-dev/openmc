@@ -22,15 +22,13 @@ __global__ void process_advance_events_device(
   unsigned tid = threadIdx.x + blockDim.x * blockIdx.x;
   bool surface = false;
   bool collision = false;
-  unsigned p_idx;
-  Particle* __restrict__ p;
+  unsigned p_idx = tid < queue_size ? queue[tid].idx : 0;
+  Particle p(p_idx);
 
   if (tid < queue_size) {
-    p_idx = queue[tid].idx;
-    p = particles + p_idx;
-    p->event_advance();
+    p.event_advance();
 
-    surface = p->collision_distance_ > p->boundary_.distance;
+    surface = p.collision_distance() > p.boundary().distance;
     collision = !surface;
   }
 

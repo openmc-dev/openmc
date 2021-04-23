@@ -19,21 +19,19 @@ __global__ void process_surface_crossing_events_device(
   unsigned tid = threadIdx.x + blockDim.x * blockIdx.x;
   bool fuel = false;
   bool nonfuel = false;
-  unsigned p_idx;
-  Particle* __restrict__ p;
+  unsigned p_idx = tid < queue_size ? queue[tid].idx : 0;
+  Particle p(p_idx);
 
   if (tid < queue_size) {
-    p_idx = queue[tid].idx;
-    p = particles + p_idx;
-    p->event_cross_surface();
+    p.event_cross_surface();
 
     // Replace with revival from secondaries eventually
-    p->n_event_++;
+    p.n_event()++;
 
     // These are used as booleans here, but are converted to indices shortly.
-    nonfuel = p->alive_ && (p->material_ == MATERIAL_VOID ||
-                             !gpu::materials[p->material_]->fissionable_);
-    fuel = p->alive_ && !nonfuel;
+    nonfuel = p.alive() && (p.material() == MATERIAL_VOID ||
+                             !gpu::materials[p.material()]->fissionable_);
+    fuel = p.alive() && !nonfuel;
   }
 
   block_queue_pushback<BLOCK_SIZE>(nonfuel, fuel, calculate_nonfuel_xs_queue,

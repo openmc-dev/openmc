@@ -68,7 +68,7 @@ void free_event_queues(void)
 
 void dispatch_xs_event(unsigned buffer_idx)
 {
-  ParticleReference p = get_particle(buffer_idx);
+  Particle p(buffer_idx);
   if (p.material() == MATERIAL_VOID ||
       !model::materials[p.material()]->fissionable_) {
     simulation::calculate_nonfuel_xs_queue.thread_safe_append({p, buffer_idx});
@@ -231,7 +231,7 @@ void process_collision_events()
   auto fission_bank_start = simulation::fission_bank.data();
   unsigned fission_bank_capacity = simulation::fission_bank.capacity();
   cudaMemcpyToSymbol(
-    gpu::fission_bank_start, &fission_bank_start, sizeof(Particle::Bank*));
+    gpu::fission_bank_start, &fission_bank_start, sizeof(ParticleBank*));
   cudaMemcpyToSymbol(
     gpu::fission_bank_capacity, &fission_bank_capacity, sizeof(unsigned));
   gpu::fission_bank_index = simulation::fission_bank.size();
@@ -279,7 +279,7 @@ void process_death_events(unsigned n_particles)
   simulation::time_event_death.start();
   #pragma omp parallel for schedule(runtime)
   for (int64_t i = 0; i < n_particles; i++) {
-    ParticleReference p = get_particle(i);
+    Particle p(i);
     p.event_death();
   }
   simulation::time_event_death.stop();

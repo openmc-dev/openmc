@@ -419,8 +419,8 @@ HD BoundaryInfo distance_to_boundary(Particle& p)
   array<int, 3> level_lat_trans;
 
   // Loop over each coordinate level.
-  for (int i = 0; i < p.n_coord_; i++) {
-    const auto& coord {p.coord_[i]};
+  for (int i = 0; i < p.n_coord(); i++) {
+    const auto& coord {p.coord(i)};
     const Position& r {coord.r};
     const Direction& u {coord.u};
     auto& c {*cells[coord.cell]};

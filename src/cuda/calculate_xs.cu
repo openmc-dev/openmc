@@ -24,25 +24,25 @@ __global__ void process_calculate_xs_events_device(
   unsigned tid = threadIdx.x + blockDim.x * blockIdx.x;
   if (tid >= queue_size)
     return;
-  Particle* __restrict__ p = particles + queue[tid].idx;
+  Particle p(queue[tid].idx);
   auto const E = __ldg(&queue[tid].E);
   auto const mat_idx = __ldg(&queue[tid].material);
 
   // Store pre-collision particle properties
-  p->wgt_last_ = p->wgt_;
-  p->E_last_ = E;
-  p->u_last_ = p->u();
-  p->r_last_ = p->r();
+  p.wgt_last() = p.wgt();
+  p.E_last() = E;
+  p.u_last() = p.u();
+  p.r_last() = p.r();
 
   // Reset event variables
-  p->event_ = TallyEvent::KILL;
-  p->event_nuclide_ = NUCLIDE_NONE;
-  p->event_mt_ = REACTION_NONE;
+  p.event() = TallyEvent::KILL;
+  p.event_nuclide() = NUCLIDE_NONE;
+  p.event_mt() = REACTION_NONE;
 
-  p->macro_xs_.total = 0.0;
-  p->macro_xs_.absorption = 0.0;
-  p->macro_xs_.fission = 0.0;
-  p->macro_xs_.nu_fission = 0.0;
+  p.macro_xs().total = 0.0;
+  p.macro_xs().absorption = 0.0;
+  p.macro_xs().fission = 0.0;
+  p.macro_xs().nu_fission = 0.0;
 
   // Skip void material
   if (mat_idx == -1)
@@ -59,7 +59,7 @@ __global__ void process_calculate_xs_events_device(
     auto* __restrict__ micro {
       &micros[number_nuclides * queue[tid].idx + i_nuclide]};
 
-    if (E != micro->last_E || p->sqrtkT_ != micro->last_sqrtkT) {
+    if (E != micro->last_E || p.sqrtkT() != micro->last_sqrtkT) {
       auto const& nuclide = *nuclides[i_nuclide];
       micro->elastic = CACHE_INVALID;
       micro->thermal = 0.0;
@@ -67,7 +67,7 @@ __global__ void process_calculate_xs_events_device(
 
       // Find the appropriate temperature index. why would someone use
       // nearest?
-      double kT = p->sqrtkT_ * p->sqrtkT_;
+      double kT = p.sqrtkT() * p.sqrtkT();
       double f;
 
       constexpr int i_temp = 0;
@@ -138,14 +138,14 @@ __global__ void process_calculate_xs_events_device(
       micro->index_sab = C_NONE;
       micro->sab_frac = 0.0;
       micro->last_E = E;
-      micro->last_sqrtkT = p->sqrtkT_;
+      micro->last_sqrtkT = p.sqrtkT();
     }
 
     double const& atom_density = m.atom_density_[i];
-    p->macro_xs_.total += atom_density * micro->total;
-    p->macro_xs_.absorption += atom_density * micro->absorption;
-    p->macro_xs_.fission += atom_density * micro->fission;
-    p->macro_xs_.nu_fission += atom_density * micro->nu_fission;
+    p.macro_xs().total += atom_density * micro->total;
+    p.macro_xs().absorption += atom_density * micro->absorption;
+    p.macro_xs().fission += atom_density * micro->fission;
+    p.macro_xs().nu_fission += atom_density * micro->nu_fission;
   }
 }
 

@@ -4,8 +4,13 @@
 //! \file particle.h
 //! \brief Particle type
 
+#include <array>
+#include <cstdint>
+#include <sstream>
+
+#include "openmc/array.h"
 #include "openmc/constants.h"
-#include "openmc/memory.h" // for unique_ptr
+#include "openmc/memory.h"
 #include "openmc/particle_data.h"
 #include "openmc/position.h"
 #include "openmc/random_lcg.h"
@@ -13,6 +18,10 @@
 #include "openmc/string.h"
 #include "openmc/tallies/filter_match.h"
 #include "openmc/vector.h"
+
+#ifdef DAGMC
+#include "DagMC.hpp"
+#endif
 
 namespace openmc {
 
@@ -26,7 +35,11 @@ class Surface;
  * can be found in particle_data.h.
  */
 
+#ifdef __CUDACC__
 class Particle : public ParticleHandle {
+#else
+class Particle : public ParticleData {
+#endif
 public:
 
   //==========================================================================

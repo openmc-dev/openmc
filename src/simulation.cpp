@@ -107,9 +107,9 @@ int openmc_simulation_init()
   }
 
   // Allocate particle data if we're using structures of arrays
-  if (settings::structure_of_array_particles) {
-    allocate_soa_data();
-  }
+#ifdef __CUDACC__
+  allocate_soa_data();
+#endif
 
   // Reset global variables -- this is done before loading state point (as that
   // will potentially populate k_generation and entropy)

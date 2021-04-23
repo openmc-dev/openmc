@@ -34,7 +34,7 @@ vector<int64_t> progeny_per_particle;
 } // namespace simulation
 
 namespace gpu {
-__constant__ Particle::Bank* fission_bank_start;
+__constant__ ParticleBank* fission_bank_start;
 __constant__ unsigned fission_bank_capacity;
 __managed__ unsigned fission_bank_index;
 } // namespace gpu

@@ -37,72 +37,255 @@ extern int n_coord_levels;
 extern int n_tally_derivs;
 extern int n_tally_filters;
 
-extern std::vector<NuclideMicroXS> neutron_xs;
-extern std::vector<ElementMicroXS> photon_xs;
-extern std::vector<MacroXS> macro_xs;
-extern std::vector<int64_t> id;
-extern std::vector<ParticleType> type;
-extern std::vector<int> n_coord;
-extern std::vector<int> cell_instance;
-extern std::vector<LocalCoord> coord;
-extern std::vector<int> n_coord_last;
-extern std::vector<int> cell_last;
-extern std::vector<double> E;
-extern std::vector<double> E_last;
-extern std::vector<int> g;
-extern std::vector<int> g_last;
-extern std::vector<double> wgt;
-extern std::vector<double> mu;
-extern std::vector<char> alive; // vector<bool> can't return references
-extern std::vector<Position> r_last_current;
-extern std::vector<Position> r_last;
-extern std::vector<Direction> u_last;
-extern std::vector<double> wgt_last;
-extern std::vector<double> wgt_absorb;
-extern std::vector<char> fission;
-extern std::vector<TallyEvent> event;
-extern std::vector<int> event_nuclide;
-extern std::vector<int> event_mt;
-extern std::vector<int> delayed_group;
-extern std::vector<int> n_bank;
-extern std::vector<int> n_bank_second;
-extern std::vector<double> wgt_bank;
-extern std::vector<int> n_delayed_bank; // MAX_DELAYED_GROUPS pitch
-extern std::vector<int> surface;
-extern std::vector<int> cell_born;
-extern std::vector<int> material;
-extern std::vector<int> material_last;
-extern std::vector<BoundaryInfo> boundary;
-extern std::vector<double> sqrtkT;
-extern std::vector<double> sqrtkT_last;
-extern std::vector<int> n_collision;
-extern std::vector<char> write_track;
-extern std::vector<uint64_t> seeds; // N_STREAMS pitch
-extern std::vector<int> stream;
+namespace gpu {
+extern __constant__ int n_nuclides;
+extern __constant__ int n_elements;
+extern __constant__ int n_coord_levels;
+extern __constant__ int n_tally_derivs;
+extern __constant__ int n_tally_filters;
+} // namespace gpu
 
-extern std::vector<int> secondary_bank_current_indx;
-extern std::vector<ParticleBank>
+extern vector<NuclideMicroXS> neutron_xs;
+extern vector<ElementMicroXS> photon_xs;
+extern vector<MacroXS> macro_xs;
+extern vector<int64_t> id;
+extern vector<ParticleType> type;
+extern vector<int> n_coord;
+extern vector<int> cell_instance;
+extern vector<LocalCoord> coord;
+extern vector<int> n_coord_last;
+extern vector<int> cell_last;
+extern vector<double> E;
+extern vector<double> E_last;
+extern vector<int> g;
+extern vector<int> g_last;
+extern vector<double> wgt;
+extern vector<double> mu;
+extern vector<char> alive; // std::vector<bool> can't return references
+extern vector<Position> r_last_current;
+extern vector<Position> r_last;
+extern vector<Direction> u_last;
+extern vector<double> wgt_last;
+extern vector<double> wgt_absorb;
+extern vector<char> fission;
+extern vector<TallyEvent> event;
+extern vector<int> event_nuclide;
+extern vector<int> event_mt;
+extern vector<int> delayed_group;
+extern vector<int> n_bank;
+extern vector<int> n_bank_second;
+extern vector<double> wgt_bank;
+extern vector<int> n_delayed_bank; // MAX_DELAYED_GROUPS pitch
+extern vector<int> surface;
+extern vector<int> cell_born;
+extern vector<int> material;
+extern vector<int> material_last;
+extern vector<BoundaryInfo> boundary;
+extern vector<double> sqrtkT;
+extern vector<double> sqrtkT_last;
+extern vector<int> n_collision;
+extern vector<char> write_track;
+extern vector<uint64_t> seeds; // N_STREAMS pitch
+extern vector<int> stream;
+
+extern vector<int> secondary_bank_current_indx;
+extern vector<ParticleBank> secondary_bank; // max_secondary_particles pitch
+
+extern vector<int64_t> current_work;
+extern vector<double> flux_derivs;         // tally_derivs.size() pitch
+extern vector<FilterMatch> filter_matches; // tally_filters.size() pitch
+
+extern vector<int> nu_bank_current_indx;
+extern vector<NuBank> nu_bank;
+
+extern vector<double> keff_tally_absorption;
+extern vector<double> keff_tally_collision;
+extern vector<double> keff_tally_tracklength;
+extern vector<double> keff_tally_leakage;
+extern vector<char> trace;
+extern vector<double> collision_distance;
+extern vector<int> n_event;
+extern vector<int64_t> n_progeny;
+
+extern vector<NuclideMicroXS> neutron_xs;
+extern vector<ElementMicroXS> photon_xs;
+extern vector<MacroXS> macro_xs;
+extern vector<int64_t> id;
+extern vector<ParticleType> type;
+extern vector<int> n_coord;
+extern vector<int> cell_instance;
+extern vector<LocalCoord> coord;
+extern vector<int> n_coord_last;
+extern vector<int> cell_last;
+extern vector<double> E;
+extern vector<double> E_last;
+extern vector<int> g;
+extern vector<int> g_last;
+extern vector<double> wgt;
+extern vector<double> mu;
+extern vector<char> alive; // vector<bool> can't return references
+extern vector<Position> r_last_current;
+extern vector<Position> r_last;
+extern vector<Direction> u_last;
+extern vector<double> wgt_last;
+extern vector<double> wgt_absorb;
+extern vector<char> fission;
+extern vector<TallyEvent> event;
+extern vector<int> event_nuclide;
+extern vector<int> event_mt;
+extern vector<int> delayed_group;
+extern vector<int> n_bank;
+extern vector<int> n_bank_second;
+extern vector<double> wgt_bank;
+extern vector<int> n_delayed_bank; // MAX_DELAYED_GROUPS pitch
+extern vector<int> surface;
+extern vector<int> cell_born;
+extern vector<int> material;
+extern vector<int> material_last;
+extern vector<BoundaryInfo> boundary;
+extern vector<double> sqrtkT;
+extern vector<double> sqrtkT_last;
+extern vector<int> n_collision;
+extern vector<char> write_track;
+extern vector<uint64_t> seeds; // N_STREAMS pitch
+extern vector<int> stream;
+
+extern vector<int> secondary_bank_current_indx;
+extern vector<ParticleBank> secondary_bank; // max_secondary_particles pitch
+
+extern vector<int64_t> current_work;
+extern vector<double> flux_derivs;         // tally_derivs.size() pitch
+extern vector<FilterMatch> filter_matches; // tally_filters.size() pitch
+
+extern vector<int> nu_bank_current_indx;
+extern vector<NuBank> nu_bank;
+
+extern vector<double> keff_tally_absorption;
+extern vector<double> keff_tally_collision;
+extern vector<double> keff_tally_tracklength;
+extern vector<double> keff_tally_leakage;
+extern vector<char> trace;
+extern vector<double> collision_distance;
+extern vector<int> n_event;
+extern vector<int64_t> n_progeny;
+
+namespace gpu {
+extern __constant__ NuclideMicroXS* neutron_xs;
+extern __constant__ ElementMicroXS* photon_xs;
+extern __constant__ MacroXS* macro_xs;
+extern __constant__ int64_t* id;
+extern __constant__ ParticleType* type;
+extern __constant__ int* n_coord;
+extern __constant__ int* cell_instance;
+extern __constant__ LocalCoord* coord;
+extern __constant__ int* n_coord_last;
+extern __constant__ int* cell_last;
+extern __constant__ double* E;
+extern __constant__ double* E_last;
+extern __constant__ int* g;
+extern __constant__ int* g_last;
+extern __constant__ double* wgt;
+extern __constant__ double* mu;
+extern __constant__ char* alive; // vector<bool* can't return references
+extern __constant__ Position* r_last_current;
+extern __constant__ Position* r_last;
+extern __constant__ Direction* u_last;
+extern __constant__ double* wgt_last;
+extern __constant__ double* wgt_absorb;
+extern __constant__ char* fission;
+extern __constant__ TallyEvent* event;
+extern __constant__ int* event_nuclide;
+extern __constant__ int* event_mt;
+extern __constant__ int* delayed_group;
+extern __constant__ int* n_bank;
+extern __constant__ int* n_bank_second;
+extern __constant__ double* wgt_bank;
+extern __constant__ int* n_delayed_bank; // MAX_DELAYED_GROUPS pitch
+extern __constant__ int* surface;
+extern __constant__ int* cell_born;
+extern __constant__ int* material;
+extern __constant__ int* material_last;
+extern __constant__ BoundaryInfo* boundary;
+extern __constant__ double* sqrtkT;
+extern __constant__ double* sqrtkT_last;
+extern __constant__ int* n_collision;
+extern __constant__ char* write_track;
+extern __constant__ uint64_t* seeds; // N_STREAMS pitch
+extern __constant__ int* stream;
+extern __constant__ int* secondary_bank_current_indx;
+extern __constant__ ParticleBank*
   secondary_bank; // max_secondary_particles pitch
-
-extern std::vector<int64_t> current_work;
-extern std::vector<double> flux_derivs;         // tally_derivs.size() pitch
-extern std::vector<FilterMatch> filter_matches; // tally_filters.size() pitch
-
-extern std::vector<int> nu_bank_current_indx;
-extern std::vector<NuBank> nu_bank;
-
-extern std::vector<double> keff_tally_absorption;
-extern std::vector<double> keff_tally_collision;
-extern std::vector<double> keff_tally_tracklength;
-extern std::vector<double> keff_tally_leakage;
-extern std::vector<char> trace;
-extern std::vector<double> collision_distance;
-extern std::vector<int> n_event;
-#ifdef DAGMC
-extern std::vector<moab::DagMC::RayHistory> history;
-extern std::vector<Direction> last_dir;
-#endif
-extern std::vector<int64_t> n_progeny;
+extern __constant__ int64_t* current_work;
+extern __constant__ double* flux_derivs;         // tally_derivs.size() pitch
+extern __constant__ FilterMatch* filter_matches; // tally_filters.size() pitch
+extern __constant__ int* nu_bank_current_indx;
+extern __constant__ NuBank* nu_bank;
+extern __constant__ double* keff_tally_absorption;
+extern __constant__ double* keff_tally_collision;
+extern __constant__ double* keff_tally_tracklength;
+extern __constant__ double* keff_tally_leakage;
+extern __constant__ char* trace;
+extern __constant__ double* collision_distance;
+extern __constant__ int* n_event;
+extern __constant__ int64_t* n_progeny;
+extern __constant__ NuclideMicroXS* neutron_xs;
+extern __constant__ ElementMicroXS* photon_xs;
+extern __constant__ MacroXS* macro_xs;
+extern __constant__ int64_t* id;
+extern __constant__ ParticleType* type;
+extern __constant__ int* n_coord;
+extern __constant__ int* cell_instance;
+extern __constant__ LocalCoord* coord;
+extern __constant__ int* n_coord_last;
+extern __constant__ int* cell_last;
+extern __constant__ double* E;
+extern __constant__ double* E_last;
+extern __constant__ int* g;
+extern __constant__ int* g_last;
+extern __constant__ double* wgt;
+extern __constant__ double* mu;
+extern __constant__ char* alive;
+extern __constant__ Position* r_last_current;
+extern __constant__ Position* r_last;
+extern __constant__ Direction* u_last;
+extern __constant__ double* wgt_last;
+extern __constant__ double* wgt_absorb;
+extern __constant__ char* fission;
+extern __constant__ TallyEvent* event;
+extern __constant__ int* event_nuclide;
+extern __constant__ int* event_mt;
+extern __constant__ int* delayed_group;
+extern __constant__ int* n_bank;
+extern __constant__ int* n_bank_second;
+extern __constant__ double* wgt_bank;
+extern __constant__ int* n_delayed_bank;
+extern __constant__ int* surface;
+extern __constant__ int* cell_born;
+extern __constant__ int* material;
+extern __constant__ int* material_last;
+extern __constant__ BoundaryInfo* boundary;
+extern __constant__ double* sqrtkT;
+extern __constant__ double* sqrtkT_last;
+extern __constant__ int* n_collision;
+extern __constant__ char* write_track;
+extern __constant__ uint64_t* seeds;
+extern __constant__ int* stream;
+extern __constant__ int* secondary_bank_current_indx;
+extern __constant__ ParticleBank* secondary_bank;
+extern __constant__ int64_t* current_work;
+extern __constant__ double* flux_derivs;
+extern __constant__ FilterMatch* filter_matches;
+extern __constant__ int* nu_bank_current_indx;
+extern __constant__ NuBank* nu_bank;
+extern __constant__ double* keff_tally_absorption;
+extern __constant__ double* keff_tally_collision;
+extern __constant__ double* keff_tally_tracklength;
+extern __constant__ double* keff_tally_leakage;
+extern __constant__ char* trace;
+extern __constant__ double* collision_distance;
+extern __constant__ int* n_event;
+extern __constant__ int64_t* n_progeny;
+} // namespace gpu
 } // namespace soa
 
 inline int thread_idx()
@@ -118,7 +301,7 @@ class ParticleHandle {
 
 public:
   ParticleHandle() : p(thread_idx()) {}
-  ParticleHandle(const int& indx) : p(indx) {}
+  HD ParticleHandle(const int& indx) : p(indx) {}
 
 private:
   const int p; // index of particle in arrays
@@ -127,303 +310,998 @@ public:
   //==========================================================================
   // Methods and accessors
 
-  NuclideMicroXS& neutron_xs(const int& i)
+  HD NuclideMicroXS& neutron_xs(const int& i)
   {
+#ifdef __CUDA_ARCH__
+    return soa::gpu::neutron_xs[p * soa::gpu::n_nuclides + i];
+#else
     return soa::neutron_xs[p * soa::n_nuclides + i];
+#endif
   }
   const NuclideMicroXS& neutron_xs(const int& i) const
   {
+    // TODO experiment with __ldg here and return by value
+    // (and elsewhere in this class)
+#ifdef __CUDA_ARCH__
+    return soa::gpu::neutron_xs[p * soa::gpu::n_nuclides + i];
+#else
     return soa::neutron_xs[p * soa::n_nuclides + i];
+#endif
   }
-  ElementMicroXS& photon_xs(const int& i)
+  HD ElementMicroXS& photon_xs(const int& i)
   {
+#ifdef __CUDA_ARCH__
+    return soa::gpu::photon_xs[p * soa::gpu::n_elements + i];
+#else
     return soa::photon_xs[p * soa::n_elements + i];
+#endif
   }
-  MacroXS& macro_xs() { return soa::macro_xs[p]; }
-  const MacroXS& macro_xs() const { return soa::macro_xs[p]; }
-
-  int64_t& id() { return soa::id[p]; }
-  const int64_t& id() const { return soa::id[p]; }
-  ParticleType& type() { return soa::type[p]; }
-  const ParticleType& type() const { return soa::type[p]; }
-
-  int& n_coord() { return soa::n_coord[p]; }
-  const int& n_coord() const { return soa::n_coord[p]; }
-  int& cell_instance() { return soa::cell_instance[p]; }
-  const int& cell_instance() const { return soa::cell_instance[p]; }
-  LocalCoord& coord(const int& i)
+  HD MacroXS& macro_xs()
   {
+#ifdef __CUDA_ARCH__
+    return soa::gpu::macro_xs[p];
+#else
+    return soa::macro_xs[p];
+#endif
+  }
+  HD const MacroXS& macro_xs() const
+  {
+#ifdef __CUDA_ARCH__
+    return soa::gpu::macro_xs[p];
+#else
+    return soa::macro_xs[p];
+#endif
+  }
+
+  HD int64_t& id()
+  {
+#ifdef __CUDA_ARCH__
+    return soa::gpu::id[p];
+#else
+    return soa::id[p];
+#endif
+  }
+  HD const int64_t& id() const
+  {
+#ifdef __CUDA_ARCH__
+    return soa::gpu::id[p];
+#else
+    return soa::id[p];
+#endif
+  }
+  HD ParticleType& type()
+  {
+#ifdef __CUDA_ARCH__
+    return soa::gpu::type[p];
+#else
+    return soa::type[p];
+#endif
+  }
+  HD const ParticleType& type() const
+  {
+#ifdef __CUDA_ARCH__
+    return soa::gpu::type[p];
+#else
+    return soa::type[p];
+#endif
+  }
+
+  HD int& n_coord()
+  {
+#ifdef __CUDA_ARCH__
+    return soa::gpu::n_coord[p];
+#else
+    return soa::n_coord[p];
+#endif
+  }
+  HD const int& n_coord() const
+  {
+#ifdef __CUDA_ARCH__
+    return soa::gpu::n_coord[p];
+#else
+    return soa::n_coord[p];
+#endif
+  }
+  HD int& cell_instance()
+  {
+#ifdef __CUDA_ARCH__
+    return soa::gpu::cell_instance[p];
+#else
+    return soa::cell_instance[p];
+#endif
+  }
+  HD const int& cell_instance() const
+  {
+#ifdef __CUDA_ARCH__
+    return soa::gpu::cell_instance[p];
+#else
+    return soa::cell_instance[p];
+#endif
+  }
+  HD LocalCoord& coord(const int& i)
+  {
+#ifdef __CUDA_ARCH__
+    return soa::gpu::coord[p * soa::gpu::n_coord_levels + i];
+#else
     return soa::coord[p * soa::n_coord_levels + i];
+#endif
   }
-  const LocalCoord& coord(const int& i) const
+  HD const LocalCoord& coord(const int& i) const
   {
+#ifdef __CUDA_ARCH__
+    return soa::gpu::coord[p * soa::gpu::n_coord_levels + i];
+#else
     return soa::coord[p * soa::n_coord_levels + i];
+#endif
   }
 
-  int& n_coord_last() { return soa::n_coord_last[p]; }
-  const int& n_coord_last() const { return soa::n_coord_last[p]; }
-  int& cell_last(const int& i)
+  HD int& n_coord_last()
   {
+#ifdef __CUDA_ARCH__
+    return soa::gpu::n_coord_last[p];
+#else
+    return soa::n_coord_last[p];
+#endif
+  }
+  HD const int& n_coord_last() const
+  {
+#ifdef __CUDA_ARCH__
+    return soa::gpu::n_coord_last[p];
+#else
+    return soa::n_coord_last[p];
+#endif
+  }
+  HD int& cell_last(const int& i)
+  {
+#ifdef __CUDA_ARCH__
+    return soa::gpu::cell_last[p * soa::gpu::n_coord_levels + i];
+#else
     return soa::cell_last[p * soa::n_coord_levels + i];
+#endif
   }
-  const int& cell_last(const int& i) const
+  HD const int& cell_last(const int& i) const
   {
+#ifdef __CUDA_ARCH__
+    return soa::gpu::cell_last[p * soa::gpu::n_coord_levels + i];
+#else
     return soa::cell_last[p * soa::n_coord_levels + i];
+#endif
   }
 
-  double& E() { return soa::E[p]; }
-  const double& E() const { return soa::E[p]; }
-  double& E_last() { return soa::E_last[p]; }
-  const double& E_last() const { return soa::E_last[p]; }
-  int& g() { return soa::g[p]; }
-  const int& g() const { return soa::g[p]; }
-  int& g_last() { return soa::g_last[p]; }
-  const int& g_last() const { return soa::g_last[p]; }
-
-  double& wgt() { return soa::wgt[p]; }
-  double& mu() { return soa::mu[p]; }
-  const double& mu() const { return soa::mu[p]; }
-  char& alive() { return soa::alive[p]; }
-
-  Position& r_last_current() { return soa::r_last_current[p]; }
-  const Position& r_last_current() const { return soa::r_last_current[p]; }
-  Position& r_last() { return soa::r_last[p]; }
-  const Position& r_last() const { return soa::r_last[p]; }
-  Position& u_last() { return soa::u_last[p]; }
-  const Position& u_last() const { return soa::u_last[p]; }
-  double& wgt_last() { return soa::wgt_last[p]; }
-  const double& wgt_last() const { return soa::wgt_last[p]; }
-  double& wgt_absorb() { return soa::wgt_absorb[p]; }
-  const double& wgt_absorb() const { return soa::wgt_absorb[p]; }
-
-  char& fission() { return soa::fission[p]; }
-  TallyEvent& event() { return soa::event[p]; }
-  const TallyEvent& event() const { return soa::event[p]; }
-  int& event_nuclide() { return soa::event_nuclide[p]; }
-  const int& event_nuclide() const { return soa::event_nuclide[p]; }
-  int& event_mt() { return soa::event_mt[p]; }
-  int& delayed_group() { return soa::delayed_group[p]; }
-
-  int& n_bank() { return soa::n_bank[p]; }
-  int& n_bank_second() { return soa::n_bank_second[p]; }
-  double& wgt_bank() { return soa::wgt_bank[p]; }
-  int* n_delayed_bank()
+  HD double& E()
   {
+#ifdef __CUDA_ARCH__
+    return soa::gpu::E[p];
+#else
+    return soa::E[p];
+#endif
+  }
+  HD const double& E() const
+  {
+#ifdef __CUDA_ARCH__
+    return soa::gpu::E[p];
+#else
+    return soa::E[p];
+#endif
+  }
+  HD double& E_last()
+  {
+#ifdef __CUDA_ARCH__
+    return soa::gpu::E_last[p];
+#else
+    return soa::E_last[p];
+#endif
+  }
+  HD const double& E_last() const
+  {
+#ifdef __CUDA_ARCH__
+    return soa::gpu::E_last[p];
+#else
+    return soa::E_last[p];
+#endif
+  }
+  HD int& g()
+  {
+#ifdef __CUDA_ARCH__
+    return soa::gpu::g[p];
+#else
+    return soa::g[p];
+#endif
+  }
+  HD const int& g() const
+  {
+#ifdef __CUDA_ARCH__
+    return soa::gpu::g[p];
+#else
+    return soa::g[p];
+#endif
+  }
+  HD int& g_last()
+  {
+#ifdef __CUDA_ARCH__
+    return soa::gpu::g_last[p];
+#else
+    return soa::g_last[p];
+#endif
+  }
+  HD const int& g_last() const
+  {
+#ifdef __CUDA_ARCH__
+    return soa::gpu::g_last[p];
+#else
+    return soa::g_last[p];
+#endif
+  }
+
+  HD double& wgt()
+  {
+#ifdef __CUDA_ARCH__
+    return soa::gpu::wgt[p];
+#else
+    return soa::wgt[p];
+#endif
+  }
+  HD double& mu()
+  {
+#ifdef __CUDA_ARCH__
+    return soa::gpu::mu[p];
+#else
+    return soa::mu[p];
+#endif
+  }
+  HD const double& mu() const
+  {
+#ifdef __CUDA_ARCH__
+    return soa::gpu::mu[p];
+#else
+    return soa::mu[p];
+#endif
+  }
+  HD char& alive()
+  {
+#ifdef __CUDA_ARCH__
+    return soa::gpu::alive[p];
+#else
+    return soa::alive[p];
+#endif
+  }
+
+  HD Position& r_last_current()
+  {
+#ifdef __CUDA_ARCH__
+    return soa::gpu::r_last_current[p];
+#else
+    return soa::r_last_current[p];
+#endif
+  }
+  HD const Position& r_last_current() const
+  {
+#ifdef __CUDA_ARCH__
+    return soa::gpu::r_last_current[p];
+#else
+    return soa::r_last_current[p];
+#endif
+  }
+  HD Position& r_last()
+  {
+#ifdef __CUDA_ARCH__
+    return soa::gpu::r_last[p];
+#else
+    return soa::r_last[p];
+#endif
+  }
+  HD const Position& r_last() const
+  {
+#ifdef __CUDA_ARCH__
+    return soa::gpu::r_last[p];
+#else
+    return soa::r_last[p];
+#endif
+  }
+  HD Position& u_last()
+  {
+#ifdef __CUDA_ARCH__
+    return soa::gpu::u_last[p];
+#else
+    return soa::u_last[p];
+#endif
+  }
+  HD const Position& u_last() const
+  {
+#ifdef __CUDA_ARCH__
+    return soa::gpu::u_last[p];
+#else
+    return soa::u_last[p];
+#endif
+  }
+  HD double& wgt_last()
+  {
+#ifdef __CUDA_ARCH__
+    return soa::gpu::wgt_last[p];
+#else
+    return soa::wgt_last[p];
+#endif
+  }
+  HD const double& wgt_last() const
+  {
+#ifdef __CUDA_ARCH__
+    return soa::gpu::wgt_last[p];
+#else
+    return soa::wgt_last[p];
+#endif
+  }
+  HD double& wgt_absorb()
+  {
+#ifdef __CUDA_ARCH__
+    return soa::gpu::wgt_absorb[p];
+#else
+    return soa::wgt_absorb[p];
+#endif
+  }
+  HD const double& wgt_absorb() const
+  {
+#ifdef __CUDA_ARCH__
+    return soa::gpu::wgt_absorb[p];
+#else
+    return soa::wgt_absorb[p];
+#endif
+  }
+
+  HD char& fission()
+  {
+#ifdef __CUDA_ARCH__
+    return soa::gpu::fission[p];
+#else
+    return soa::fission[p];
+#endif
+  }
+  HD TallyEvent& event()
+  {
+#ifdef __CUDA_ARCH__
+    return soa::gpu::event[p];
+#else
+    return soa::event[p];
+#endif
+  }
+  HD const TallyEvent& event() const
+  {
+#ifdef __CUDA_ARCH__
+    return soa::gpu::event[p];
+#else
+    return soa::event[p];
+#endif
+  }
+  HD int& event_nuclide()
+  {
+#ifdef __CUDA_ARCH__
+    return soa::gpu::event_nuclide[p];
+#else
+    return soa::event_nuclide[p];
+#endif
+  }
+  HD const int& event_nuclide() const
+  {
+#ifdef __CUDA_ARCH__
+    return soa::gpu::event_nuclide[p];
+#else
+    return soa::event_nuclide[p];
+#endif
+  }
+  HD int& event_mt()
+  {
+#ifdef __CUDA_ARCH__
+    return soa::gpu::event_mt[p];
+#else
+    return soa::event_mt[p];
+#endif
+  }
+  HD int& delayed_group()
+  {
+#ifdef __CUDA_ARCH__
+    return soa::gpu::delayed_group[p];
+#else
+    return soa::delayed_group[p];
+#endif
+  }
+
+  HD int& n_bank()
+  {
+#ifdef __CUDA_ARCH__
+    return soa::gpu::n_bank[p];
+#else
+    return soa::n_bank[p];
+#endif
+  }
+  HD int& n_bank_second()
+  {
+#ifdef __CUDA_ARCH__
+    return soa::gpu::n_bank_second[p];
+#else
+    return soa::n_bank_second[p];
+#endif
+  }
+  HD double& wgt_bank()
+  {
+#ifdef __CUDA_ARCH__
+    return soa::gpu::wgt_bank[p];
+#else
+    return soa::wgt_bank[p];
+#endif
+  }
+  HD int* n_delayed_bank()
+  {
+#ifdef __CUDA_ARCH__
+    return soa::gpu::n_delayed_bank + p * MAX_DELAYED_GROUPS;
+#else
     return soa::n_delayed_bank.data() + p * MAX_DELAYED_GROUPS;
+#endif
   }
-  int& n_delayed_bank(const int& i)
+  HD int& n_delayed_bank(const int& i)
   {
+#ifdef __CUDA_ARCH__
+    return soa::gpu::n_delayed_bank[p * MAX_DELAYED_GROUPS + i];
+#else
     return soa::n_delayed_bank[p * MAX_DELAYED_GROUPS + i];
+#endif
   }
 
-  int& surface() { return soa::surface[p]; }
-  const int& surface() const { return soa::surface[p]; }
-  int& cell_born() { return soa::cell_born[p]; }
-  const int& cell_born() const { return soa::cell_born[p]; }
-  int& material() { return soa::material[p]; }
-  const int& material() const { return soa::material[p]; }
-  int& material_last() { return soa::material_last[p]; }
-
-  BoundaryInfo& boundary() { return soa::boundary[p]; }
-
-  double& sqrtkT() { return soa::sqrtkT[p]; }
-  const double& sqrtkT() const { return soa::sqrtkT[p]; }
-  double& sqrtkT_last() { return soa::sqrtkT_last[p]; }
-
-  int& n_collision() { return soa::n_collision[p]; }
-  const int& n_collision() const { return soa::n_collision[p]; }
-
-  char& write_track() { return soa::write_track[p]; }
-  uint64_t& seeds(const int& i) { return soa::seeds[p * N_STREAMS + i]; }
-  uint64_t* seeds() { return soa::seeds.data() + p * N_STREAMS; }
-  int& stream() { return soa::stream[p]; }
-
-  ParticleBank& secondary_bank(const int& i)
+  HD int& surface()
   {
+#ifdef __CUDA_ARCH__
+    return soa::gpu::surface[p];
+#else
+    return soa::surface[p];
+#endif
+  }
+  HD const int& surface() const
+  {
+#ifdef __CUDA_ARCH__
+    return soa::gpu::surface[p];
+#else
+    return soa::surface[p];
+#endif
+  }
+  HD int& cell_born()
+  {
+#ifdef __CUDA_ARCH__
+    return soa::gpu::cell_born[p];
+#else
+    return soa::cell_born[p];
+#endif
+  }
+  HD const int& cell_born() const
+  {
+#ifdef __CUDA_ARCH__
+    return soa::gpu::cell_born[p];
+#else
+    return soa::cell_born[p];
+#endif
+  }
+  HD int& material()
+  {
+#ifdef __CUDA_ARCH__
+    return soa::gpu::material[p];
+#else
+    return soa::material[p];
+#endif
+  }
+  HD const int& material() const
+  {
+#ifdef __CUDA_ARCH__
+    return soa::gpu::material[p];
+#else
+    return soa::material[p];
+#endif
+  }
+  HD int& material_last()
+  {
+#ifdef __CUDA_ARCH__
+    return soa::gpu::material_last[p];
+#else
+    return soa::material_last[p];
+#endif
+  }
+
+  HD BoundaryInfo& boundary()
+  {
+#ifdef __CUDA_ARCH__
+    return soa::gpu::boundary[p];
+#else
+    return soa::boundary[p];
+#endif
+  }
+
+  HD double& sqrtkT()
+  {
+#ifdef __CUDA_ARCH__
+    return soa::gpu::sqrtkT[p];
+#else
+    return soa::sqrtkT[p];
+#endif
+  }
+  HD const double& sqrtkT() const
+  {
+#ifdef __CUDA_ARCH__
+    return soa::gpu::sqrtkT[p];
+#else
+    return soa::sqrtkT[p];
+#endif
+  }
+  HD double& sqrtkT_last()
+  {
+#ifdef __CUDA_ARCH__
+    return soa::gpu::sqrtkT_last[p];
+#else
+    return soa::sqrtkT_last[p];
+#endif
+  }
+
+  HD int& n_collision()
+  {
+#ifdef __CUDA_ARCH__
+    return soa::gpu::n_collision[p];
+#else
+    return soa::n_collision[p];
+#endif
+  }
+  HD const int& n_collision() const
+  {
+#ifdef __CUDA_ARCH__
+    return soa::gpu::n_collision[p];
+#else
+    return soa::n_collision[p];
+#endif
+  }
+
+  HD char& write_track()
+  {
+#ifdef __CUDA_ARCH__
+    return soa::gpu::write_track[p];
+#else
+    return soa::write_track[p];
+#endif
+  }
+  HD uint64_t& seeds(const int& i)
+  {
+#ifdef __CUDA_ARCH__
+    return soa::gpu::seeds[p * N_STREAMS + i];
+#else
+    return soa::seeds[p * N_STREAMS + i];
+#endif
+  }
+  HD uint64_t* seeds()
+  {
+#ifdef __CUDA_ARCH__
+    return soa::gpu::seeds + p * N_STREAMS;
+#else
+    return soa::seeds.data() + p * N_STREAMS;
+#endif
+  }
+  HD int& stream()
+  {
+#ifdef __CUDA_ARCH__
+    return soa::gpu::stream[p];
+#else
+    return soa::stream[p];
+#endif
+  }
+
+  HD ParticleBank& secondary_bank(const int& i)
+  {
+#ifdef __CUDA_ARCH__
+    return soa::gpu::secondary_bank[p * soa::max_secondary_particles + i];
+#else
     return soa::secondary_bank[p * soa::max_secondary_particles + i];
+#endif
   }
-  int64_t& current_work() { return soa::current_work[p]; }
-  const int64_t& current_work() const { return soa::current_work[p]; }
-  double& flux_derivs(const int& i)
+  HD int64_t& current_work()
   {
+#ifdef __CUDA_ARCH__
+    return soa::gpu::current_work[p];
+#else
+    return soa::current_work[p];
+#endif
+  }
+  HD const int64_t& current_work() const
+  {
+#ifdef __CUDA_ARCH__
+    return soa::gpu::current_work[p];
+#else
+    return soa::current_work[p];
+#endif
+  }
+  HD double& flux_derivs(const int& i)
+  {
+#ifdef __CUDA_ARCH__
+    return soa::gpu::flux_derivs[soa::gpu::n_tally_derivs * p + i];
+#else
     return soa::flux_derivs[soa::n_tally_derivs * p + i];
+#endif
   }
-  const double& flux_derivs(const int& i) const
+  HD const double& flux_derivs(const int& i) const
   {
+#ifdef __CUDA_ARCH__
+    return soa::gpu::flux_derivs[soa::gpu::n_tally_derivs * p + i];
+#else
     return soa::flux_derivs[soa::n_tally_derivs * p + i];
+#endif
   }
-  FilterMatch& filter_matches(const int& i)
+  HD FilterMatch& filter_matches(const int& i)
   {
+#ifdef __CUDA_ARCH__
+    return soa::gpu::filter_matches[soa::gpu::n_tally_filters * p + i];
+#else
     return soa::filter_matches[soa::n_tally_filters * p + i];
+#endif
   }
-  FilterMatch* filter_matches()
+  HD FilterMatch* filter_matches()
   {
+#ifdef __CUDA_ARCH__
+    return soa::gpu::filter_matches + soa::gpu::n_tally_filters * p;
+#else
     return &soa::filter_matches[soa::n_tally_filters * p];
+#endif
   }
-  void reset_filter_matches()
+  HD void reset_filter_matches()
   {
+#ifdef __CUDA_ARCH__
+    auto start = soa::gpu::n_tally_filters * p;
+    for (int i = 0; i < soa::gpu::n_tally_filters; ++i) {
+      soa::gpu::filter_matches[start + i].bins_present_ = false;
+    }
+#else
     auto start = soa::n_tally_filters * p;
     for (int i = 0; i < soa::n_tally_filters; ++i) {
       soa::filter_matches[start + i].bins_present_ = false;
     }
+#endif
   }
 
-  std::vector<std::vector<Position>> tracks()
+  vector<vector<Position>> tracks()
   {
     fatal_error("tracks cannot be written in SOA mode");
-    return std::vector<std::vector<Position>>();
+    return vector<vector<Position>>();
   }
 
-  NuBank& nu_bank(const int& i)
+  HD NuBank& nu_bank(const int& i)
   {
+#ifdef __CUDA_ARCH__
+    return soa::gpu::nu_bank[soa::max_fissions * p + i];
+#else
     return soa::nu_bank[soa::max_fissions * p + i];
+#endif
   }
-  NuBank& nu_bank_emplace_back()
+  HD NuBank& nu_bank_emplace_back()
   {
+#ifdef __CUDA_ARCH__
+    return nu_bank(soa::gpu::nu_bank_current_indx[p]++);
+#else
     return nu_bank(soa::nu_bank_current_indx[p]++);
     assert(soa::nu_bank_current_indx[p] <= soa::max_fissions);
-  }
-  NuBank& nu_bank_back()
-  {
-    assert(soa::nu_bank_current_indx[p] > 0);
-    return nu_bank(soa::nu_bank_current_indx[p] - 1);
-  }
-  void nu_bank_clear() { soa::nu_bank_current_indx[p] = 0; }
-
-  double& keff_tally_absorption() { return soa::keff_tally_absorption[p]; }
-  double& keff_tally_collision() { return soa::keff_tally_collision[p]; }
-  double& keff_tally_tracklength() { return soa::keff_tally_tracklength[p]; }
-  double& keff_tally_leakage() { return soa::keff_tally_leakage[p]; }
-
-  char& trace() { return soa::trace[p]; }
-  double& collision_distance() { return soa::collision_distance[p]; }
-  int& n_event() { return soa::n_event[p]; }
-
-#ifdef DAGMC
-  moab::DagMC::RayHistory& rayhistory() { return soa::history[p]; }
-  Direction& last_dir() { return soa::last_dir[p]; }
 #endif
+  }
+  HD NuBank& nu_bank_back()
+  {
+#ifdef __CUDA_ARCH__
+    return nu_bank(soa::gpu::nu_bank_current_indx[p] - 1);
+#else
+    return nu_bank(soa::nu_bank_current_indx[p] - 1);
+#endif
+  }
+  HD void nu_bank_clear()
+  {
+#ifdef __CUDA_ARCH__
+    soa::gpu::nu_bank_current_indx[p] = 0;
+#else
+    soa::nu_bank_current_indx[p] = 0;
+#endif
+  }
 
-  int64_t& n_progeny() { return soa::n_progeny[p]; }
+  HD double& keff_tally_absorption()
+  {
+#ifdef __CUDA_ARCH__
+    return soa::gpu::keff_tally_absorption[p];
+#else
+    return soa::keff_tally_absorption[p];
+#endif
+  }
+  HD double& keff_tally_collision()
+  {
+#ifdef __CUDA_ARCH__
+    return soa::gpu::keff_tally_collision[p];
+#else
+    return soa::keff_tally_collision[p];
+#endif
+  }
+  HD double& keff_tally_tracklength()
+  {
+#ifdef __CUDA_ARCH__
+    return soa::gpu::keff_tally_tracklength[p];
+#else
+    return soa::keff_tally_tracklength[p];
+#endif
+  }
+  HD double& keff_tally_leakage()
+  {
+#ifdef __CUDA_ARCH__
+    return soa::gpu::keff_tally_leakage[p];
+#else
+    return soa::keff_tally_leakage[p];
+#endif
+  }
+
+  HD char& trace()
+  {
+#ifdef __CUDA_ARCH__
+    return soa::gpu::trace[p];
+#else
+    return soa::trace[p];
+#endif
+  }
+  HD double& collision_distance()
+  {
+#ifdef __CUDA_ARCH__
+    return soa::gpu::collision_distance[p];
+#else
+    return soa::collision_distance[p];
+#endif
+  }
+  HD int& n_event()
+  {
+#ifdef __CUDA_ARCH__
+    return soa::gpu::n_event[p];
+#else
+    return soa::n_event[p];
+#endif
+  }
+
+  HD int64_t& n_progeny()
+  {
+#ifdef __CUDA_ARCH__
+    return soa::gpu::n_progeny[p];
+#else
+    return soa::n_progeny[p];
+#endif
+  }
 
   // Accessors for position in global coordinates
-  Position& r() { return soa::coord[p * soa::n_coord_levels].r; }
-  const Position& r() const { return soa::coord[p * soa::n_coord_levels].r; }
+  HD Position& r()
+  {
+#ifdef __CUDA_ARCH__
+    return soa::gpu::coord[p * soa::gpu::n_coord_levels].r;
+#else
+    return soa::coord[p * soa::n_coord_levels].r;
+#endif
+  }
+  HD const Position& r() const
+  {
+#ifdef __CUDA_ARCH__
+    return soa::gpu::coord[p * soa::gpu::n_coord_levels].r;
+#else
+    return soa::coord[p * soa::n_coord_levels].r;
+#endif
+  }
 
   // Accessors for position in local coordinates
-  Position& r_local()
+  HD Position& r_local()
   {
+#ifdef __CUDA_ARCH__
+    const auto& n_coord = soa::gpu::n_coord[p];
+    return soa::gpu::coord[p * soa::gpu::n_coord_levels + n_coord - 1].r;
+#else
     const auto& n_coord = soa::n_coord[p];
     return soa::coord[p * soa::n_coord_levels + n_coord - 1].r;
+#endif
   }
   const Position& r_local() const
   {
+#ifdef __CUDA_ARCH__
+    const auto& n_coord = soa::gpu::n_coord[p];
+    return soa::gpu::coord[p * soa::gpu::n_coord_levels + n_coord - 1].r;
+#else
     const auto& n_coord = soa::n_coord[p];
     return soa::coord[p * soa::n_coord_levels + n_coord - 1].r;
+#endif
   }
 
   // Accessors for direction in global coordinates
-  Direction& u() { return soa::coord[p * soa::n_coord_levels].u; }
-  const Direction& u() const { return soa::coord[p * soa::n_coord_levels].u; }
+  HD Direction& u()
+  {
+#ifdef __CUDA_ARCH__
+    return soa::gpu::coord[p * soa::gpu::n_coord_levels].u;
+#else
+    return soa::coord[p * soa::n_coord_levels].u;
+#endif
+  }
+  HD const Direction& u() const
+  {
+#ifdef __CUDA_ARCH__
+    return soa::gpu::coord[p * soa::gpu::n_coord_levels].u;
+#else
+    return soa::coord[p * soa::n_coord_levels].u;
+#endif
+  }
 
   // Accessors for direction in local coordinates
-  Direction& u_local()
+  HD Direction& u_local()
   {
+#ifdef __CUDA_ARCH__
+    const auto& n_coord = soa::gpu::n_coord[p];
+    return soa::gpu::coord[p * soa::gpu::n_coord_levels + n_coord - 1].u;
+#else
     const auto& n_coord = soa::n_coord[p];
     return soa::coord[p * soa::n_coord_levels + n_coord - 1].u;
+#endif
   }
-  const Direction& u_local() const
+  HD const Direction& u_local() const
   {
+#ifdef __CUDA_ARCH__
+    const auto& n_coord = soa::gpu::n_coord[p];
+    return soa::gpu::coord[p * soa::gpu::n_coord_levels + n_coord - 1].u;
+#else
     const auto& n_coord = soa::n_coord[p];
     return soa::coord[p * soa::n_coord_levels + n_coord - 1].u;
+#endif
   }
 
   //! Gets the pointer to the particle's current PRN seed
-  uint64_t* current_seed()
+  HD uint64_t* current_seed()
   {
+#ifdef __CUDA_ARCH__
+    const auto& stream = soa::gpu::stream[p];
+    return soa::gpu::seeds + p * N_STREAMS + stream;
+#else
     const auto& stream = soa::stream[p];
     return soa::seeds.data() + p * N_STREAMS + stream;
+#endif
   }
-  const uint64_t* current_seed() const
+  HD const uint64_t* current_seed() const
   {
+#ifdef __CUDA_ARCH__
+    const auto& stream = soa::gpu::stream[p];
+    return soa::gpu::seeds + p * N_STREAMS + stream;
+#else
     const auto& stream = soa::stream[p];
     return soa::seeds.data() + p * N_STREAMS + stream;
+#endif
   }
 
   //! Force recalculation of neutron xs by setting last energy to zero
-  void invalidate_neutron_xs()
+  HD void invalidate_neutron_xs()
   {
+#ifdef __CUDA_ARCH__
+    for (int i_nuc = 0; i_nuc < soa::gpu::n_nuclides; ++i_nuc) {
+      soa::gpu::neutron_xs[p * soa::gpu::n_nuclides + i_nuc].last_E = 0.0;
+    }
+#else
     for (int i_nuc = 0; i_nuc < soa::n_nuclides; ++i_nuc) {
       soa::neutron_xs[p * soa::n_nuclides + i_nuc].last_E = 0.0;
     }
+#endif
   }
 
   //! resets all coordinate levels for the particle
-  void clear()
+  HD void clear()
   {
+#ifdef __CUDA_ARCH__
+    for (int i_level = 0; i_level < soa::gpu::n_coord_levels; ++i_level) {
+      soa::gpu::coord[p * soa::gpu::n_coord_levels + i_level].reset();
+    }
+    soa::gpu::n_coord[p] = 1;
+#else
     for (int i_level = 0; i_level < soa::n_coord_levels; ++i_level) {
       soa::coord[p * soa::n_coord_levels + i_level].reset();
     }
-    soa::n_coord[p] = 1;
+#endif
   }
 
-  void zero_delayed_bank()
+  HD void zero_delayed_bank()
   {
+#ifdef __CUDA_ARCH__
+    for (int i_delayed = 0; i_delayed < MAX_DELAYED_GROUPS; ++i_delayed) {
+      soa::gpu::n_delayed_bank[p * MAX_DELAYED_GROUPS + i_delayed] = 0.0;
+    }
+#else
     for (int i_delayed = 0; i_delayed < MAX_DELAYED_GROUPS; ++i_delayed) {
       soa::n_delayed_bank[p * MAX_DELAYED_GROUPS + i_delayed] = 0.0;
     }
+#endif
   }
 
-  void zero_flux_derivs()
+  HD void zero_flux_derivs()
   {
+#ifdef __CUDA_ARCH__
+    for (int i_deriv = 0; i_deriv < soa::gpu::n_tally_derivs; ++i_deriv) {
+      soa::gpu::flux_derivs[p * soa::gpu::n_tally_derivs + i_deriv] = 0.0;
+    }
+#else
     for (int i_deriv = 0; i_deriv < soa::n_tally_derivs; ++i_deriv) {
       soa::flux_derivs[p * soa::n_tally_derivs + i_deriv] = 0.0;
     }
+#endif
   }
 
   // Methods for manipulating the secondary bank
 
-  int secondary_bank_size() { return soa::secondary_bank_current_indx[p]; }
-
-  void secondary_bank_pop_back()
+  HD int secondary_bank_size()
   {
+#ifdef __CUDA_ARCH__
+    return soa::gpu::secondary_bank_current_indx[p];
+#else
+    return soa::secondary_bank_current_indx[p];
+#endif
+  }
+
+  HD void secondary_bank_pop_back()
+  {
+#ifdef __CUDA_ARCH__
+    int& secondary_indx = soa::gpu::secondary_bank_current_indx[p];
+    secondary_indx--;
+    assert(soa::gpu::secondary_bank_current_indx[p] >= 0);
+#else
     int& secondary_indx = soa::secondary_bank_current_indx[p];
     secondary_indx--;
     assert(soa::secondary_bank_current_indx[p] >= 0);
+#endif
   }
 
-  void secondary_bank_push_back(ParticleBank& site)
+  HD void secondary_bank_push_back(ParticleBank& site)
   {
+#ifdef __CUDA_ARCH__
     // Check we're not writing into the next particle's space
+    assert(
+      soa::gpu::secondary_bank_current_indx[p] < soa::max_secondary_particles);
+
+    secondary_bank(soa::gpu::secondary_bank_current_indx[p]) = site;
+    soa::gpu::secondary_bank_current_indx[p]++;
+#else
     assert(soa::secondary_bank_current_indx[p] < soa::max_secondary_particles);
 
     secondary_bank(soa::secondary_bank_current_indx[p]) = site;
     soa::secondary_bank_current_indx[p]++;
+#endif
   }
 
-  ParticleBank& secondary_bank_back()
+  HD ParticleBank& secondary_bank_back()
   {
+#ifdef __CUDA_ARCH__
+    assert(soa::gpu::secondary_bank_current_indx[p] > 0);
+    return secondary_bank(soa::gpu::secondary_bank_current_indx[p] - 1);
+#else
     assert(soa::secondary_bank_current_indx[p] > 0);
     return secondary_bank(soa::secondary_bank_current_indx[p] - 1);
+#endif
   }
 
-  ParticleBank* secondary_bank_end()
+  HD ParticleBank* secondary_bank_end()
   {
+#ifdef __CUDA_ARCH__
+    return &secondary_bank(soa::gpu::secondary_bank_current_indx[p]);
+#else
     return &secondary_bank(soa::secondary_bank_current_indx[p]);
+#endif
   }
 
-  bool secondary_bank_empty()
+  HD bool secondary_bank_empty()
   {
+#ifdef __CUDA_ARCH__
+    return soa::gpu::secondary_bank_current_indx[p] == 0;
+#else
     return soa::secondary_bank_current_indx[p] == 0;
+#endif
   }
 
-  ParticleBank& secondary_bank_emplace_back()
+  HD ParticleBank& secondary_bank_emplace_back()
   {
+#ifdef __CUDA_ARCH__
+    return secondary_bank(soa::gpu::secondary_bank_current_indx[p]++);
+#else
     return secondary_bank(soa::secondary_bank_current_indx[p]++);
+#endif
   }
 
   // Applies defaults as defined in particle_data.h
-  void initialize_values()
+  HD void initialize_values()
   {
     type() = ParticleType::neutron;
     n_coord() = 1;
@@ -454,8 +1332,13 @@ public:
     n_event() = 0;
     n_progeny() = 0;
 
+#ifdef __CUDA_ARCH__
+    soa::gpu::secondary_bank_current_indx[p] = 0;
+    soa::gpu::nu_bank_current_indx[p] = 0;
+#else
     soa::secondary_bank_current_indx[p] = 0;
     soa::nu_bank_current_indx[p] = 0;
+#endif
   }
 };
 

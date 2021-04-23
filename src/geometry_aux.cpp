@@ -66,6 +66,21 @@ void read_geometry_xml()
   read_cells(root);
   read_lattices(root);
 
+  // Check to make sure a boundary condition was applied to at least one
+  // surface
+  bool boundary_exists = false;
+  for (const auto& surf : model::surfaces) {
+    if (surf->bc_) {
+      boundary_exists = true;
+      break;
+    }
+  }
+
+  if (settings::run_mode != RunMode::PLOTTING && !boundary_exists) {
+     fatal_error("No boundary conditions were applied to any surfaces!");
+  }
+
+
   // Allocate universes, universe cell arrays, and assign base universe
   model::root_universe = find_root_universe();
 }

@@ -1133,23 +1133,6 @@ void read_surfaces(pugi::xml_node node)
       surf2.bc_ = surf1.bc_;
     }
   }
-
-  // Check to make sure a boundary condition was applied to at least one
-  // surface
-  bool boundary_exists = false;
-  for (const auto& surf : model::surfaces) {
-    if (surf->bc_) {
-      boundary_exists = true;
-      break;
-    }
-  }
-  // if (settings::run_mode != RunMode::PLOTTING && !boundary_exists) {
-  //   fatal_error("No boundary conditions were applied to any surfaces!");
-  // }
-
-  // if (model::surfaces.size() == 0) {
-  //   fatal_error("No surfaces found in geometry.xml!");
-  // }
 }
 
 void free_memory_surfaces()

@@ -529,8 +529,6 @@ void initialize_history(Particle& p, int64_t index_source)
   #pragma omp atomic
   simulation::total_weight += p.wgt();
 
-  initialize_history_partial(p);
-
   // If the cell hasn't been determined based on the particle's location,
   // initiate a search for the current cell. This generally happens at the
   // beginning of the history and again for any secondary particles
@@ -552,7 +550,6 @@ void initialize_history(Particle& p, int64_t index_source)
   } else {
     p.stream() = STREAM_PHOTON;
   }
-}
 
   // Force calculation of cross-sections by setting last energy to zero
   if (settings::run_CE) {
@@ -560,8 +557,10 @@ void initialize_history(Particle& p, int64_t index_source)
   }
 
   // Prepare to write out particle track.
+#ifndef __CUDACC__
   if (p.write_track())
     add_particle_track(p);
+#endif
 }
 
 int overall_generation()
@@ -787,7 +786,7 @@ void transport_event_based()
 void init_gpu_constant_memory()
 {
 #ifdef __CUDACC__
-  constexpr int neutron = static_cast<int>(Particle::Type::neutron);
+  constexpr int neutron = static_cast<int>(ParticleType::neutron);
   auto first_material = model::materials.data();
   cudaMemcpyToSymbol(
     gpu::materials, &first_material, sizeof(unique_ptr<Material>*));

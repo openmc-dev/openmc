@@ -97,21 +97,6 @@ void Particle::from_source(const SourceSite* src)
 
 void Particle::event_calculate_xs()
 {
-  // If the cell hasn't been determined based on the particle's location,
-  // initiate a search for the current cell. This generally happens at the
-  // beginning of the history and again for any secondary particles
-  if (coord_[n_coord_ - 1].cell == C_NONE) {
-    if (!exhaustive_find_cell(*this)) {
-      this->mark_as_lost(
-        "Could not find the cell containing particle " + std::to_string(id_));
-      return;
-    }
-
-    // Set birth cell attribute
-    if (cell_born_ == C_NONE)
-      cell_born_ = coord_[n_coord_ - 1].cell;
-  }
-
   // Set the random number stream
   stream() = STREAM_TRACKING;
 
@@ -145,10 +130,12 @@ void Particle::event_calculate_xs()
       // Get the MG data; unlike the CE case above, we have to re-calculate
       // cross sections for every collision since the cross sections may
       // be angle-dependent
+#ifndef __CUDACC__
       data::mg.macro_xs_[material()].calculate_xs(*this);
 
       // Update the particle's group while we know we are multi-group
       g_last() = g();
+#endif
     }
   } else {
     macro_xs().total = 0.0;
@@ -390,7 +377,7 @@ Particle::event_death()
     simulation::progeny_per_particle[offset] = n_progeny();
   }
 
-  n_event_ = 0;
+  n_event() = 0;
 }
 
 
@@ -412,7 +399,6 @@ Particle::cross_surface()
   if (settings::verbosity >= 10 || trace()) {
     write_message(1, "    Crossing surface {}", surf->id_);
   }
-#endif
 
   // TODO make surface sources work on GPU
   if (surf->surf_source_ && simulation::current_batch == settings::n_batches) {
@@ -610,6 +596,7 @@ Particle::cross_periodic_bc(const Surface& surf, Position new_r,
   // Score surface currents since reflection causes the direction of the
   // particle to change -- artificially move the particle slightly back in
   // case the surface crossing is coincident with a mesh boundary
+#ifndef __CUDA_ARCH__
   if (!model::active_meshsurf_tallies.empty()) {
     Position r {this->r()};
     this->r() -= TINY_BIT * u();

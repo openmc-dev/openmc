@@ -44,11 +44,11 @@ namespace openmc {
 void collision(Particle& p)
 {
 #ifdef __CUDA_ARCH__
-  ++(p.n_collision_);
+  ++(p.n_collision());
   sample_neutron_reaction(p);
-  if (p.E_ < gpu::energy_min_neutron) {
-    p.alive_ = false;
-    p.wgt_ = 0.0;
+  if (p.E() < gpu::energy_min_neutron) {
+    p.alive() = false;
+    p.wgt() = 0.0;
   }
 #else
   // Add to collision counter for particle
@@ -740,13 +740,13 @@ HD void scatter(Particle& p, int i_nuclide)
   }
 
   // TODO TODO add thermal scattering to the GPU. Also, the code here seems
-  // it really could be cleand up some.
+  // it really could be cleaned up some.
   double prob = micro.elastic - micro.thermal;
 #ifdef __CUDA_ARCH__
-  double kT = nuc->multipole_ ? p.sqrtkT_ * p.sqrtkT_ : nuc->kTs_[i_temp];
+  double kT = nuc->multipole_ ? p.sqrtkT() * p.sqrtkT() : nuc->kTs_[i_temp];
   if (prob > cutoff) {
     elastic_scatter(i_nuclide, *nuc->reactions_[0], kT, p);
-    p.event_mt_ = ELASTIC;
+    p.event_mt() = ELASTIC;
     sampled = true;
   }
 #else
@@ -1211,13 +1211,12 @@ void sample_fission_neutron(int i_nuclide, const Reaction& rx, double E_in,
   while (true) {
     rx.products_[site->delayed_group].sample(E_in, site->E, mu, seed);
 
-    // resample if energy is greater than maximum neutron energy
-#ifndef __CUDA_ARCH__
-    constexpr int neutron = static_cast<int>(ParticleType::neutron);
-    if (site->E < data::energy_max[neutron]) break;
+#ifdef __CUDA_ARCH__
+      if (site->E < gpu::energy_max_neutron)
+        break;
 #else
-    if (site->E < gpu::energy_max_neutron)
-      break;
+      constexpr int neutron = static_cast<int>(ParticleType::neutron);
+      if (site->E < data::energy_max[neutron]) break;
 #endif
 
     // check for large number of resamples

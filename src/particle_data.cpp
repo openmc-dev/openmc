@@ -10,14 +10,14 @@
 
 namespace openmc {
 
-void LocalCoord::rotate(const vector<double>& rotation)
+HD void LocalCoord::rotate(const vector<double>& rotation)
 {
   r = r.rotate(rotation);
   u = u.rotate(rotation);
   rotated = true;
 }
 
-void LocalCoord::reset()
+HD void LocalCoord::reset()
 {
   cell = C_NONE;
   universe = C_NONE;

@@ -14,6 +14,9 @@
 #include "openmc/string_utils.h"
 #include "openmc/surface.h"
 
+#ifdef __CUDACC__
+#include "openmc/soa_particle.h" // soa::gpu::n_coord_levels
+#endif
 
 namespace openmc {
 
@@ -49,7 +52,7 @@ bool check_cell_overlap(Particle& p, bool error)
 
     // Loop through each cell on this level
     for (auto index_cell : univ.cells_) {
-      Cell& c = *model::cells[index_cell];
+      CSGCell& c = *model::cells[index_cell];
       if (c.contains(p.coord(j).r, p.coord(j).u, p.surface())) {
         if (index_cell != p.coord(j).cell) {
           if (error) {
@@ -91,13 +94,13 @@ bool HD find_cell_inner(Particle& p, const NeighborList* neighbor_list)
 
       // Make sure the search cell is in the same universe.
       int i_universe = p.coord(p.n_coord() - 1).universe;
-      if (model::cells[i_cell]->universe_ != i_universe) continue;
+      if (cells[i_cell]->universe_ != i_universe) continue;
 
       // Check if this cell contains the particle.
       Position r {p.r_local()};
       Direction u {p.u_local()};
       auto surf = p.surface();
-      if (model::cells[i_cell]->contains(r, u, surf)) {
+      if (cells[i_cell]->contains(r, u, surf)) {
         p.coord(p.n_coord() - 1).cell = i_cell;
         found = true;
         break;
@@ -125,8 +128,8 @@ bool HD find_cell_inner(Particle& p, const NeighborList* neighbor_list)
     // that.
     if (i_cell == C_NONE) {
       int i_universe = p.coord(p.n_coord() - 1).universe;
-      const auto& univ {*model::universes[i_universe]};
-      const auto& cells {
+      const auto& univ {*universes[i_universe]};
+      const auto& universe_cells {
         !univ.partitioner_
         ? universes[i_universe]->cells_
         : univ.partitioner_->get_cells(p.r_local(), p.u_local())
@@ -137,13 +140,13 @@ bool HD find_cell_inner(Particle& p, const NeighborList* neighbor_list)
 
         // Make sure the search cell is in the same universe.
         int i_universe = p.coord(p.n_coord() - 1).universe;
-        if (model::cells[i_cell]->universe_ != i_universe) continue;
+        if (cells[i_cell]->universe_ != i_universe) continue;
 
         // Check if this cell contains the particle.
         Position r {p.r_local()};
         Direction u {p.u_local()};
         auto surf = p.surface();
-        if (model::cells[i_cell]->contains(r, u, surf)) {
+        if (cells[i_cell]->contains(r, u, surf)) {
           p.coord(p.n_coord() - 1).cell = i_cell;
           found = true;
           break;
@@ -277,19 +280,21 @@ bool neighbor_list_find_cell(Particle& p)
 {
 #ifdef __CUDA_ARCH__
   using gpu::cells;
+  using soa::gpu::n_coord_levels;
 #else
   using model::cells;
+  using model::n_coord_levels;
 #endif
 
   // Reset all the deeper coordinate levels.
-  for (int i = p.n_coord(); i < model::n_coord_levels; i++) {
+  for (int i = p.n_coord(); i < n_coord_levels; i++) {
     p.coord(i).reset();
   }
 
   // Get the cell this particle was in previously.
   auto coord_lvl = p.n_coord() - 1;
   auto i_cell = p.coord(coord_lvl).cell;
-  Cell& c {*model::cells[i_cell]};
+  CSGCell& c {*cells[i_cell]};
 
   // Search for the particle in that cell's neighbor list.  Return if we
   // found the particle.
@@ -310,17 +315,19 @@ bool exhaustive_find_cell(Particle& p)
 {
 #ifdef __CUDA_ARCH__
   using gpu::root_universe;
+  using soa::gpu::n_coord_levels;
 #else
   using model::root_universe;
+  using model::n_coord_levels;
 #endif
   int i_universe = p.coord(p.n_coord() - 1).universe;
   if (i_universe == C_NONE) {
-    p.coord(0).universe = model::root_universe;
+    p.coord(0).universe = root_universe;
     p.n_coord() = 1;
-    i_universe = model::root_universe;
+    i_universe = root_universe;
   }
   // Reset all the deeper coordinate levels.
-  for (int i = p.n_coord(); i < model::n_coord_levels; i++) {
+  for (int i = p.n_coord(); i < n_coord_levels; i++) {
     p.coord(i).reset();
   }
   return find_cell_inner(p, nullptr);
@@ -338,7 +345,7 @@ void HD cross_lattice(Particle& p, const BoundaryInfo& boundary)
   using model::lattices;
 #endif
   auto& coord {p.coord(p.n_coord() - 1)};
-  auto& lat {*model::lattices[coord.lattice]};
+  auto& lat {*lattices[coord.lattice]};
 
 #ifndef __CUDA_ARCH__
   if (settings::verbosity >= 10 || p.trace()) {
@@ -355,7 +362,7 @@ void HD cross_lattice(Particle& p, const BoundaryInfo& boundary)
 
   // Set the new coordinate position.
   const auto& upper_coord {p.coord(p.n_coord() - 2)};
-  const auto& cell {model::cells[upper_coord.cell]};
+  const auto& cell {cells[upper_coord.cell]};
   Position r = upper_coord.r;
   r -= cell->translation_;
   if (!cell->rotation_.empty()) {
@@ -441,7 +448,7 @@ HD BoundaryInfo distance_to_boundary(Particle& p)
           lattice_distance = lat.distance(r, u, coord.lattice_i);
           break;
         case LatticeType::hex:
-          auto& cell_above {model::cells[p.coord(i - 1).cell]};
+          auto& cell_above {cells[p.coord(i - 1).cell]};
           Position r_hex {p.coord(i - 1).r};
           r_hex -= cell_above->translation_;
           if (coord.rotated) {

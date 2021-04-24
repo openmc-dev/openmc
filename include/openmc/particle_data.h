@@ -61,10 +61,10 @@ struct NuBank {
 
 class LocalCoord {
 public:
-  void rotate(const vector<double>& rotation);
+  HD void rotate(const vector<double>& rotation);
 
   //! clear data from a single coordinate level
-  void reset();
+  HD void reset();
 
   Position r;  //!< particle position
   Direction u; //!< particle direction

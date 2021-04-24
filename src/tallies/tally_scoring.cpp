@@ -862,7 +862,7 @@ score_general_ce(Particle& p, int i_tally, int start_index, int filter_index,
             const Material& material {*model::materials[p.material()]};
             for (auto i = 0; i < material.nuclide_.size(); ++i) {
               auto j_nuclide = material.nuclide_[i];
-              auto atom_density = material.atom_density_(i);
+              auto atom_density = material.atom_density_[i];
               score += p.neutron_xs(j_nuclide).fission *
                        data::nuclides[j_nuclide]->nu(
                          E, ReactionProduct::EmissionMode::prompt) *
@@ -1009,7 +1009,7 @@ score_general_ce(Particle& p, int i_tally, int start_index, int filter_index,
               const Material& material {*model::materials[p.material()]};
               for (auto i = 0; i < material.nuclide_.size(); ++i) {
                 auto j_nuclide = material.nuclide_[i];
-                auto atom_density = material.atom_density_(i);
+                auto atom_density = material.atom_density_[i];
                 score += p.neutron_xs(j_nuclide).fission *
                          data::nuclides[j_nuclide]->nu(
                            E, ReactionProduct::EmissionMode::delayed) *
@@ -1295,7 +1295,7 @@ score_general_ce(Particle& p, int i_tally, int start_index, int filter_index,
             const Material& material {*model::materials[p.material()]};
             for (auto i = 0; i < material.nuclide_.size(); ++i) {
               auto j_nuclide = material.nuclide_[i];
-              auto atom_density = material.atom_density_(i);
+              auto atom_density = material.atom_density_[i];
               if (p.neutron_xs(j_nuclide).elastic == CACHE_INVALID)
                 data::nuclides[j_nuclide]->calculate_elastic_xs(p);
               score += p.neutron_xs(j_nuclide).elastic * atom_density * flux;
@@ -2344,7 +2344,7 @@ score_tracklength_tally(Particle& p, double distance)
               auto j =
                 model::materials[p.material()]->mat_nuclide_index_[i_nuclide];
               if (j == C_NONE) continue;
-              atom_density = model::materials[p.material_]->atom_density_[j];
+              atom_density = model::materials[p.material()]->atom_density_[j];
             }
           }
 
@@ -2418,7 +2418,7 @@ void score_collision_tally(Particle& p)
             auto j =
               model::materials[p.material()]->mat_nuclide_index_[i_nuclide];
             if (j == C_NONE) continue;
-            atom_density = model::materials[p.material_]->atom_density_[j];
+            atom_density = model::materials[p.material()]->atom_density_[j];
           }
 
           //TODO: consider replacing this "if" with pointers or templates

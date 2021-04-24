@@ -107,68 +107,6 @@ extern vector<double> collision_distance;
 extern vector<int> n_event;
 extern vector<int64_t> n_progeny;
 
-extern vector<NuclideMicroXS> neutron_xs;
-extern vector<ElementMicroXS> photon_xs;
-extern vector<MacroXS> macro_xs;
-extern vector<int64_t> id;
-extern vector<ParticleType> type;
-extern vector<int> n_coord;
-extern vector<int> cell_instance;
-extern vector<LocalCoord> coord;
-extern vector<int> n_coord_last;
-extern vector<int> cell_last;
-extern vector<double> E;
-extern vector<double> E_last;
-extern vector<int> g;
-extern vector<int> g_last;
-extern vector<double> wgt;
-extern vector<double> mu;
-extern vector<char> alive; // vector<bool> can't return references
-extern vector<Position> r_last_current;
-extern vector<Position> r_last;
-extern vector<Direction> u_last;
-extern vector<double> wgt_last;
-extern vector<double> wgt_absorb;
-extern vector<char> fission;
-extern vector<TallyEvent> event;
-extern vector<int> event_nuclide;
-extern vector<int> event_mt;
-extern vector<int> delayed_group;
-extern vector<int> n_bank;
-extern vector<int> n_bank_second;
-extern vector<double> wgt_bank;
-extern vector<int> n_delayed_bank; // MAX_DELAYED_GROUPS pitch
-extern vector<int> surface;
-extern vector<int> cell_born;
-extern vector<int> material;
-extern vector<int> material_last;
-extern vector<BoundaryInfo> boundary;
-extern vector<double> sqrtkT;
-extern vector<double> sqrtkT_last;
-extern vector<int> n_collision;
-extern vector<char> write_track;
-extern vector<uint64_t> seeds; // N_STREAMS pitch
-extern vector<int> stream;
-
-extern vector<int> secondary_bank_current_indx;
-extern vector<ParticleBank> secondary_bank; // max_secondary_particles pitch
-
-extern vector<int64_t> current_work;
-extern vector<double> flux_derivs;         // tally_derivs.size() pitch
-extern vector<FilterMatch> filter_matches; // tally_filters.size() pitch
-
-extern vector<int> nu_bank_current_indx;
-extern vector<NuBank> nu_bank;
-
-extern vector<double> keff_tally_absorption;
-extern vector<double> keff_tally_collision;
-extern vector<double> keff_tally_tracklength;
-extern vector<double> keff_tally_leakage;
-extern vector<char> trace;
-extern vector<double> collision_distance;
-extern vector<int> n_event;
-extern vector<int64_t> n_progeny;
-
 namespace gpu {
 extern __constant__ NuclideMicroXS* neutron_xs;
 extern __constant__ ElementMicroXS* photon_xs;
@@ -218,63 +156,6 @@ extern __constant__ ParticleBank*
 extern __constant__ int64_t* current_work;
 extern __constant__ double* flux_derivs;         // tally_derivs.size() pitch
 extern __constant__ FilterMatch* filter_matches; // tally_filters.size() pitch
-extern __constant__ int* nu_bank_current_indx;
-extern __constant__ NuBank* nu_bank;
-extern __constant__ double* keff_tally_absorption;
-extern __constant__ double* keff_tally_collision;
-extern __constant__ double* keff_tally_tracklength;
-extern __constant__ double* keff_tally_leakage;
-extern __constant__ char* trace;
-extern __constant__ double* collision_distance;
-extern __constant__ int* n_event;
-extern __constant__ int64_t* n_progeny;
-extern __constant__ NuclideMicroXS* neutron_xs;
-extern __constant__ ElementMicroXS* photon_xs;
-extern __constant__ MacroXS* macro_xs;
-extern __constant__ int64_t* id;
-extern __constant__ ParticleType* type;
-extern __constant__ int* n_coord;
-extern __constant__ int* cell_instance;
-extern __constant__ LocalCoord* coord;
-extern __constant__ int* n_coord_last;
-extern __constant__ int* cell_last;
-extern __constant__ double* E;
-extern __constant__ double* E_last;
-extern __constant__ int* g;
-extern __constant__ int* g_last;
-extern __constant__ double* wgt;
-extern __constant__ double* mu;
-extern __constant__ char* alive;
-extern __constant__ Position* r_last_current;
-extern __constant__ Position* r_last;
-extern __constant__ Direction* u_last;
-extern __constant__ double* wgt_last;
-extern __constant__ double* wgt_absorb;
-extern __constant__ char* fission;
-extern __constant__ TallyEvent* event;
-extern __constant__ int* event_nuclide;
-extern __constant__ int* event_mt;
-extern __constant__ int* delayed_group;
-extern __constant__ int* n_bank;
-extern __constant__ int* n_bank_second;
-extern __constant__ double* wgt_bank;
-extern __constant__ int* n_delayed_bank;
-extern __constant__ int* surface;
-extern __constant__ int* cell_born;
-extern __constant__ int* material;
-extern __constant__ int* material_last;
-extern __constant__ BoundaryInfo* boundary;
-extern __constant__ double* sqrtkT;
-extern __constant__ double* sqrtkT_last;
-extern __constant__ int* n_collision;
-extern __constant__ char* write_track;
-extern __constant__ uint64_t* seeds;
-extern __constant__ int* stream;
-extern __constant__ int* secondary_bank_current_indx;
-extern __constant__ ParticleBank* secondary_bank;
-extern __constant__ int64_t* current_work;
-extern __constant__ double* flux_derivs;
-extern __constant__ FilterMatch* filter_matches;
 extern __constant__ int* nu_bank_current_indx;
 extern __constant__ NuBank* nu_bank;
 extern __constant__ double* keff_tally_absorption;

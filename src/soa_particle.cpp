@@ -1,9 +1,10 @@
 #include "openmc/soa_particle.h"
-#include "openmc/settings.h"
 
 #include "openmc/geometry.h" // model::n_coord_levels
 #include "openmc/nuclide.h"  // data::nuclides
 #include "openmc/photon.h"   // data::elements
+#include "openmc/settings.h"
+#include "openmc/simulation.h"
 #include "openmc/tallies/derivative.h"
 #include "openmc/tallies/filter.h"
 #include "openmc/tallies/tally.h"
@@ -17,7 +18,8 @@ void allocate_soa_data()
   // Pick the number of particles in flight
   int particles_in_flight;
   if (settings::event_based) {
-    particles_in_flight = settings::max_particles_in_flight;
+    particles_in_flight =
+      std::min(simulation::work_per_rank, settings::max_particles_in_flight);
   } else {
 #ifdef _OPENMP
     particles_in_flight = omp_get_max_threads();

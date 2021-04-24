@@ -82,7 +82,9 @@ void process_init_events(unsigned n_particles, unsigned source_offset)
   simulation::time_event_init.start();
   #pragma omp parallel for schedule(runtime)
   for (unsigned i = 0; i < n_particles; i++) {
-    initialize_history(simulation::particles[i], source_offset + i + 1);
+    Particle p(i);
+    p.initialize_values(); // initialize internal particle data
+    initialize_history(p, source_offset + i + 1);
     dispatch_xs_event(i);
   }
   simulation::time_event_init.stop();

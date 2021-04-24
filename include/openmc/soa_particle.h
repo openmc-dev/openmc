@@ -4,6 +4,7 @@
 // Get things like NuBank, ParticleType, etc.
 #include "openmc/error.h"
 #include "openmc/particle_data.h"
+#include "openmc/vector.h"
 
 #include <cassert>
 

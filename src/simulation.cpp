@@ -798,9 +798,6 @@ void init_gpu_constant_memory()
   auto first_particle = simulation::particles.data();
   cudaMemcpyToSymbol(gpu::particles, &first_particle, sizeof(Particle*));
 
-  auto first_micro = simulation::micros.data().device_pointer();
-  cudaMemcpyToSymbol(gpu::micros, &first_micro, sizeof(NuclideMicroXS*));
-
   unsigned num_nuclides = data::nuclides.size();
   cudaMemcpyToSymbol(gpu::number_nuclides, &num_nuclides, sizeof(unsigned));
 

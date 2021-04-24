@@ -35,33 +35,6 @@
 
 namespace openmc {
 
-//==============================================================================
-// LocalCoord implementation
-//==============================================================================
-
-void LocalCoord::rotate(const vector<double>& rotation)
-{
-  r = r.rotate(rotation);
-  u = u.rotate(rotation);
-  rotated = true;
-}
-
-void
-LocalCoord::reset()
-{
-  cell = C_NONE;
-  universe = C_NONE;
-  lattice = C_NONE;
-  lattice_x = 0;
-  lattice_y = 0;
-  lattice_z = 0;
-  rotated = false;
-}
-
-//==============================================================================
-// Particle implementation
-//==============================================================================
-
 void Particle::create_secondary(
   double wgt, Direction u, double E, ParticleType type)
 {

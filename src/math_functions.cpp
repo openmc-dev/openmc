@@ -2,6 +2,9 @@
 
 #include "Faddeeva.hh"
 
+#include "openmc/constants.h"
+#include "openmc/random_lcg.h"
+
 namespace openmc {
 
 //==============================================================================
@@ -666,49 +669,6 @@ Direction rotate_angle(Direction u, double mu, const double* phi, uint64_t* seed
             mu*u.y + a*b*sinphi,
             mu*u.z - a*(u.y*u.z*sinphi + u.x*cosphi) / b};
   }
-}
-
-
-double maxwell_spectrum(double T, uint64_t* seed) {
-  // Set the random numbers
-  double r1 = prn(seed);
-  double r2 = prn(seed);
-  double r3 = prn(seed);
-
-  // determine cosine of pi/2*r
-  double c = std::cos(PI / 2. * r3);
-
-  // Determine outgoing energy
-  double E_out = -T * (std::log(r1) + std::log(r2) * c * c);
-
-  return E_out;
-}
-
-
-double normal_variate(double mean, double standard_deviation, uint64_t* seed) {
-  // Sample a normal variate using Marsaglia's polar method
-  double x, y, r2;
-  do {
-    x = 2 * prn(seed) - 1.;
-    y = 2 * prn(seed) - 1.;
-    r2 = x*x + y*y;
-  } while (r2 > 1 || r2 == 0);
-  double z = std::sqrt(-2.0 * std::log(r2)/r2);
-  return mean + standard_deviation*z*x;
-}
-
-double muir_spectrum(double e0, double m_rat, double kt, uint64_t* seed) {
-  // https://permalink.lanl.gov/object/tr?what=info:lanl-repo/lareport/LA-05411-MS
-  double sigma = std::sqrt(4.*e0*kt/m_rat);
-  return normal_variate(e0, sigma, seed);
-}
-
-
-double watt_spectrum(double a, double b, uint64_t* seed) {
-  double w = maxwell_spectrum(a, seed);
-  double E_out = w + 0.25 * a * a * b + (2. * prn(seed) - 1.) * std::sqrt(a * a * b * w);
-
-  return E_out;
 }
 
 

@@ -6,6 +6,7 @@
 #include "openmc/constants.h"
 #include "openmc/error.h"
 #include "openmc/math_functions.h"
+#include "openmc/random_dist.h"
 #include "openmc/random_lcg.h"
 #include "openmc/xml_interface.h"
 
@@ -71,8 +72,8 @@ Direction PolarAzimuthal::sample(uint64_t* seed) const
 
 Direction isotropic_direction(uint64_t* seed)
 {
-  double phi = 2.0*PI*prn(seed);
-  double mu = 2.0*prn(seed) - 1.0;
+  double phi = uniform_distribution(0., 2.0*PI, seed);
+  double mu = uniform_distribution(-1., 1., seed);
   return {mu, std::sqrt(1.0 - mu*mu) * std::cos(phi),
       std::sqrt(1.0 - mu*mu) * std::sin(phi)};
 }

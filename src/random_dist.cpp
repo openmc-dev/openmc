@@ -7,6 +7,12 @@
 
 namespace openmc {
 
+double uniform_distribution(double a, double b, uint64_t* seed)
+{
+    return a + (b - a)*prn(seed);
+}
+
+
 double maxwell_spectrum(double T, uint64_t* seed) {
   // Set the random numbers
   double r1 = prn(seed);

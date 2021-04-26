@@ -10,6 +10,7 @@
 #include "xtensor/xview.hpp"
 
 #include "openmc/hdf5_interface.h"
+#include "openmc/random_dist.h"
 #include "openmc/random_lcg.h"
 #include "openmc/search.h"
 
@@ -222,7 +223,7 @@ void KalbachMann::sample(double E_in, double& E_out, double& mu, uint64_t* seed)
 
   // Sampled correlated angle from Kalbach-Mann parameters
   if (prn(seed) > km_r) {
-    double T = (2.0*prn(seed) - 1.0) * std::sinh(km_a);
+    double T = uniform_distribution(-1., 1., seed) * std::sinh(km_a);
     mu = std::log(T + std::sqrt(T*T + 1.0))/km_a;
   } else {
     double r1 = prn(seed);

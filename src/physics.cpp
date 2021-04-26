@@ -13,6 +13,7 @@
 #include "openmc/nuclide.h"
 #include "openmc/photon.h"
 #include "openmc/physics_common.h"
+#include "openmc/random_dist.h"
 #include "openmc/random_lcg.h"
 #include "openmc/reaction.h"
 #include "openmc/secondary_uncorrelated.h"
@@ -294,7 +295,7 @@ void sample_photon_reaction(Particle& p)
     }
 
     // Create Compton electron
-    double phi = 2.0*PI*prn(p.current_seed());
+    double phi = uniform_distribution(0., 2.0*PI, p.current_seed());
     double E_electron = (alpha - alpha_out)*MASS_ELECTRON_EV - e_b;
     int electron = static_cast<int>(Particle::Type::electron);
     if (E_electron >= settings::energy_cutoff[electron]) {
@@ -355,7 +356,7 @@ void sample_photon_reaction(Particle& p)
           }
         }
 
-        double phi = 2.0*PI*prn(p.current_seed());
+        double phi = uniform_distribution(0., 2.0*PI, p.current_seed());
         Direction u;
         u.x = mu;
         u.y = std::sqrt(1.0 - mu*mu)*std::cos(phi);
@@ -748,7 +749,7 @@ void elastic_scatter(int i_nuclide, const Reaction& rx, double kT,
   if (!d_->angle().empty()) {
     mu_cm = d_->angle().sample(p.E_, p.current_seed());
   } else {
-    mu_cm = 2.0*prn(p.current_seed()) - 1.0;
+    mu_cm = uniform_distribution(-1., 1., p.current_seed());
   }
 
   // Determine direction cosines in CM
@@ -977,7 +978,7 @@ sample_cxs_target_velocity(double awr, double E, Direction u, double kT, uint64_
     double beta_vt = std::sqrt(beta_vt_sq);
 
     // Sample cosine of angle between neutron and target velocity
-    mu = 2.0*prn(seed) - 1.0;
+    mu = uniform_distribution(-1., 1., seed);
 
     // Determine rejection probability
     double accept_prob = std::sqrt(beta_vn*beta_vn + beta_vt_sq -

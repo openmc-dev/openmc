@@ -6,7 +6,7 @@
 
 #include "openmc/error.h"
 #include "openmc/hdf5_interface.h"
-#include "openmc/random_lcg.h"
+#include "openmc/random_dist.h"
 
 namespace openmc {
 
@@ -59,7 +59,7 @@ UncorrelatedAngleEnergy::sample(double E_in, double& E_out, double& mu,
     mu = angle_.sample(E_in, seed);
   } else {
     // no angle distribution given => assume isotropic for all energies
-    mu = 2.0*prn(seed) - 1.0;
+    mu = uniform_distribution(-1., 1., seed);
   }
 
   // Sample outgoing energy

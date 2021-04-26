@@ -27,7 +27,7 @@ void NBodyPhaseSpace::sample(double E_in, double& E_out, double& mu,
 {
   // By definition, the distribution of the angle is isotropic for an N-body
   // phase space distribution
-  mu = 2.0*prn(seed) - 1.0;
+  mu = uniform_distribution(-1., 1., seed);
 
   // Determine E_max parameter
   double Ap = mass_ratio_;

@@ -6,6 +6,17 @@
 namespace openmc {
 
 //==============================================================================
+//! Sample a uniform distribution [a, b)
+//
+//! \param a Lower bound of uniform distribution
+//! \param b Upper bound of uniform distribtion
+//! \param seed A pointer to the pseudorandom seed
+//! \return Sampled variate
+//==============================================================================
+
+double uniform_distribution(double a, double b, uint64_t* seed);
+
+//==============================================================================
 //! Samples an energy from the Maxwell fission distribution based on a direct
 //! sampling scheme.
 //!

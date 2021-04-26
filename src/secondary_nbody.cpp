@@ -5,6 +5,7 @@
 #include "openmc/constants.h"
 #include "openmc/hdf5_interface.h"
 #include "openmc/math_functions.h"
+#include "openmc/random_dist.h"
 #include "openmc/random_lcg.h"
 
 namespace openmc {

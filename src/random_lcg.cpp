@@ -39,9 +39,7 @@ double prn(uint64_t* seed)
   uint64_t result = (word >> 43u) ^ word;
 
   // Convert output from unsigned integer to double
-  double result_d = ldexp(result, -64);
-
-  return result_d;
+  return ldexp(result, -64);
 }
 
 //==============================================================================
@@ -51,7 +49,7 @@ double prn(uint64_t* seed)
 double future_prn(int64_t n, uint64_t seed)
 {
   uint64_t fseed = future_seed(static_cast<uint64_t>(n), seed);
-  return prn( &fseed );
+  return prn(&fseed);
 }
 
 //==============================================================================

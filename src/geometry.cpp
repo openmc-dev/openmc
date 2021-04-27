@@ -224,6 +224,10 @@ find_cell_inner(Particle& p, const NeighborList* neighbor_list)
     } else if (c.type_ == Fill::UNIVERSE) {
       //========================================================================
       //! Found a lower universe, update this coord level then search the next.
+      
+      #pragma omp target update to(p)
+      #pragma omp target
+      {
 
       // Set the lower coordinate level universe.
       auto& coord {p.coord_[p.n_coord_]};
@@ -241,6 +245,8 @@ find_cell_inner(Particle& p, const NeighborList* neighbor_list)
       if (c.rotation_length_ != 0) {
         coord.rotate(c.rotation_);
       }
+      } // END OMP TARGET
+      #pragma omp target update from(p)
 
     } else if (c.type_ == Fill::LATTICE) {
       //========================================================================

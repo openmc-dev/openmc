@@ -54,7 +54,9 @@ class Surface;
 class LocalCoord {
 public:
   //void rotate(const std::vector<double>& rotation);
+  #pragma omp declare target
   void rotate(const double* rotation);
+  #pragma omp end declare target
 
   //! clear data from a single coordinate level
   void reset();
@@ -207,16 +209,20 @@ public:
   const Position& r() const { return coord_[0].r; }
 
   // Accessors for position in local coordinates
+  #pragma omp declare target
   Position& r_local() { return coord_[n_coord_ - 1].r; }
   const Position& r_local() const { return coord_[n_coord_ - 1].r; }
+  #pragma omp end declare target
 
   // Accessors for direction in global coordinates
   Direction& u() { return coord_[0].u; }
   const Direction& u() const { return coord_[0].u; }
 
   // Accessors for direction in local coordinates
+  #pragma omp declare target
   Direction& u_local() { return coord_[n_coord_ - 1].u; }
   const Direction& u_local() const { return coord_[n_coord_ - 1].u; }
+  #pragma omp end declare target
 
   //! resets all coordinate levels for the particle
   void clear();

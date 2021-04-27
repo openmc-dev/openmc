@@ -60,7 +60,7 @@ DAGUniverse::DAGUniverse(pugi::xml_node node) {
 
   adjust_material_ids_ = false;
   if (check_for_node(node, "auto_mat_ids")) {
-    adjust_geometry_ids_ = get_node_value_bool(node, "auto_mat_ids");
+    adjust_material_ids_ = get_node_value_bool(node, "auto_mat_ids");
   }
 
   initialize();

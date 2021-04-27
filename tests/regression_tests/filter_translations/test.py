@@ -49,8 +49,10 @@ def model(request):
     recti_mesh.z_grid = np.linspace(llc[2], urc[2], 17)
 
     # Create filters
-    filters = [openmc.MeshFilter(reg_mesh, translation=translation),
-               openmc.MeshFilter(recti_mesh, translation=translation)]
+    filters = [openmc.MeshFilter(reg_mesh),
+               openmc.MeshFilter(recti_mesh)]
+    for f in filters:
+        f.translation = translation
 
     # Create tallies
     for f in filters:

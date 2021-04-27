@@ -100,58 +100,70 @@ find_cell_inner(Particle& p, const NeighborList* neighbor_list)
   for (;;++p.n_coord_) {
     // If neighbor lists did not find a cell, must do exhaustive search
     if (i_cell == C_NONE) {
-      int i_universe = p.coord_[p.n_coord_-1].universe;
-      const auto& univ {model::universes[i_universe]};
+      Particle p_inner = p;
+      #pragma omp target map(tofrom: i_cell, found, p_inner)
+      {
+      int i_universe = p_inner.coord_[p_inner.n_coord_-1].universe;
+      //const auto& univ {model::universes[i_universe]};
+      const auto& univ {model::device_universes[i_universe]};
       int ncells;
       int32_t* cells;
-      if(!univ.partitioner_){
-        cells = model::universes[i_universe].cells_.data();
-        ncells = model::universes[i_universe].cells_.size();
-      } else {
-        cells= univ.partitioner_->get_cells(p.r_local(), p.u_local(), ncells);
-      }
+      //if(!univ.partitioner_){
+        //cells = model::universes[i_universe].cells_.data();
+        cells = model::device_universes[i_universe].device_cells_;
+        //ncells = model::universes[i_universe].cells_.size();
+        ncells = model::device_universes[i_universe].cells_.size();
+      //} else {
+        //cells= univ.partitioner_->get_cells(p_inner.r_local(), p_inner.u_local(), ncells);
+      //}
+      //printf("ncells = %d\n", ncells);
 
       for (int i = 0; i < ncells; i++) {
         i_cell = cells[i];
+        printf("i_cell = %d\n", i_cell);
+        //i_cell = model::device_cells[i];
 
         // Make sure the search cell is in the same universe.
-        int i_universe = p.coord_[p.n_coord_-1].universe;
-        if (model::cells[i_cell].universe_ != i_universe) continue;
+        int i_universe = p_inner.coord_[p_inner.n_coord_-1].universe;
+        //if (model::cells[i_cell].universe_ != i_universe) continue;
+        if (model::device_cells[i_cell].universe_ != i_universe) continue;
 
         // Check if this cell contains the particle.
-        Position r {p.r_local()};
-        Direction u {p.u_local()};
-        auto surf = p.surface_;
+        Position r {p_inner.r_local()};
+        Direction u {p_inner.u_local()};
+        auto surf = p_inner.surface_;
 
 
         bool does_contain;
-        #pragma omp target map(from:does_contain)
+        //#pragma omp target map(from:does_contain)
         {
           does_contain = model::device_cells[i_cell].contains(r, u, surf);
         }
         if (does_contain) {
-          p.coord_[p.n_coord_-1].cell = i_cell;
+          p_inner.coord_[p_inner.n_coord_-1].cell = i_cell;
           found = true;
           break;
         }
         /*
         if (model::cells[i_cell].contains(r, u, surf)) {
-          p.coord_[p.n_coord_-1].cell = i_cell;
+          p_inner.coord_[p_inner.n_coord_-1].cell = i_cell;
           found = true;
           break;
         }
         */
       }
+      }
+      p = p_inner;
     }
     if (!found) {
       return found;
     }
 
     // Announce the cell that the particle is entering.
-    if (found && (settings::verbosity >= 10 || p.trace_)) {
+    //if (found && (settings::verbosity >= 10 || p.trace_)) {
       auto msg = fmt::format("    Entering cell {}", model::cells[i_cell].id_);
       write_message(msg, 1);
-    }
+    //}
 
     Cell& c {model::cells[i_cell]};
     if (c.type_ == Fill::MATERIAL) {

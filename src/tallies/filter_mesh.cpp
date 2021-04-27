@@ -76,10 +76,6 @@ MeshFilter::text_label(int bin) const
 {
   auto& mesh = *model::meshes.at(mesh_);
   std::string label = mesh.bin_label(bin);
-  if (translated_) {
-    label += fmt::format("\nTranslation: {}, {}, {}\n",
-                         translation_.x, translation_.y, translation_.z);
-  }
   return label;
 }
 
@@ -98,8 +94,7 @@ void MeshFilter::set_translation(const Position& translation)
 
 void MeshFilter::set_translation(const double translation[3])
 {
-  translated_ = true;
-  translation_ = translation;
+  this->set_translation({translation[0], translation[1], translation[2]});
 }
 
 //==============================================================================
@@ -168,7 +163,7 @@ openmc_mesh_filter_get_translation(int32_t index, double translation[3])
   // Check the filter type
   const auto& filter = model::tally_filters[index];
   if (filter->type() != "mesh" && filter->type() != "meshsurface") {
-    set_errmsg("Tried to get a translation from a non-mesh, non-meshsurface filter.");
+    set_errmsg("Tried to get a translation from a non-mesh-based filter.");
     return OPENMC_E_INVALID_TYPE;
   }
 
@@ -189,7 +184,7 @@ openmc_mesh_filter_set_translation(int32_t index, double translation[3])
   const auto& filter = model::tally_filters[index];
   // Check the filter type
   if (filter->type() != "mesh" && filter->type() != "meshsurface") {
-    set_errmsg("Tried to set mesh on a non-mesh, non-meshsurface filter.");
+    set_errmsg("Tried to set mesh on a non-mesh-based filter.");
     return OPENMC_E_INVALID_TYPE;
   }
 

@@ -190,6 +190,7 @@ std::vector<VolumeCalculation::Result> VolumeCalculation::execute() const
               if (indices[i_domain][j] == master_indices[i_domain][k]) {
                 master_hits[i_domain][k] += hits[i_domain][j];
                 already_added = true;
+                break;
               }
             }
             if (!already_added) {
@@ -233,28 +234,34 @@ std::vector<VolumeCalculation::Result> VolumeCalculation::execute() const
       if (mpi::master) {
         for (int j = 1; j < mpi::n_procs; j++) {
           int q;
-          MPI_Recv(&q, 1, MPI_INTEGER, j, 0, mpi::intracomm, MPI_STATUS_IGNORE);
-          int buffer[2*q];
-          MPI_Recv(&buffer[0], 2*q, MPI_INTEGER, j, 1, mpi::intracomm, MPI_STATUS_IGNORE);
+          MPI_Recv(&q, 1, MPI_INTEGER, j, 2*j, mpi::intracomm, MPI_STATUS_IGNORE);
+          std::vector<int> buffer(2*q);
+          MPI_Recv(buffer.data(), 2*q, MPI_INTEGER, j, 2*j + 1, mpi::intracomm, MPI_STATUS_IGNORE);
           for (int k = 0; k < q; ++k) {
+            bool already_added = false;
             for (int m = 0; m < master_indices[i_domain].size(); ++m) {
               if (buffer[2*k] == master_indices[i_domain][m]) {
                 master_hits[i_domain][m] += buffer[2*k + 1];
+                already_added = true;
                 break;
               }
+            }
+            if (!already_added) {
+              master_indices[i_domain].push_back(buffer[2*k]);
+              master_hits[i_domain].push_back(buffer[2*k + 1]);
             }
           }
         }
       } else {
         int q = master_indices[i_domain].size();
-        int buffer[2*q];
+        std::vector<int> buffer(2*q);
         for (int k = 0; k < q; ++k) {
           buffer[2*k] = master_indices[i_domain][k];
           buffer[2*k + 1] = master_hits[i_domain][k];
         }
 
-        MPI_Send(&q, 1, MPI_INTEGER, 0, 0, mpi::intracomm);
-        MPI_Send(&buffer[0], 2*q, MPI_INTEGER, 0, 1, mpi::intracomm);
+        MPI_Send(&q, 1, MPI_INTEGER, 0, 2*mpi::rank, mpi::intracomm);
+        MPI_Send(buffer.data(), 2*q, MPI_INTEGER, 0, 2*mpi::rank + 1, mpi::intracomm);
       }
 #endif
 

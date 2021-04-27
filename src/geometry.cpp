@@ -168,19 +168,26 @@ find_cell_inner(Particle& p, const NeighborList* neighbor_list)
       write_message(msg, 1);
     }
 
-    Cell& c {model::cells[i_cell]};
+    //Cell& c {model::cells[i_cell]};
+    Cell& c {model::device_cells[i_cell]};
     if (c.type_ == Fill::MATERIAL) {
       // Found a material cell which means this is the lowest coord level.
 
+      #pragma omp target update to(p)
+      #pragma omp target
+      {
       // Find the distribcell instance number.
       int offset = 0;
       if (c.distribcell_index_ >= 0) {
         for (int i = 0; i < p.n_coord_; i++) {
-          const auto& c_i {model::cells[p.coord_[i].cell]};
+          //const auto& c_i {model::cells[p.coord_[i].cell]};
+          const auto& c_i {model::device_cells[p.coord_[i].cell]};
           if (c_i.type_ == Fill::UNIVERSE) {
-            offset += c_i.offset_[c.distribcell_index_];
+            //offset += c_i.offset_[c.distribcell_index_];
+            offset += c_i.device_offset_[c.distribcell_index_];
           } else if (c_i.type_ == Fill::LATTICE) {
-            auto& lat {model::lattices[p.coord_[i + 1].lattice]};
+            //auto& lat {model::lattices[p.coord_[i + 1].lattice]};
+            auto& lat {model::device_lattices[p.coord_[i + 1].lattice]};
             int i_xyz[3] {p.coord_[i + 1].lattice_x, p.coord_[i + 1].lattice_y,
               p.coord_[i + 1].lattice_z};
             if (lat.are_valid_indices(i_xyz)) {
@@ -194,16 +201,23 @@ find_cell_inner(Particle& p, const NeighborList* neighbor_list)
       // Set the material and temperature.
       p.material_last_ = p.material_;
       if (c.material_.size() > 1) {
-        p.material_ = c.material_[p.cell_instance_];
+        //p.material_ = c.material_[p.cell_instance_];
+        p.material_ = c.device_material_[p.cell_instance_];
       } else {
-        p.material_ = c.material_[0];
+        //p.material_ = c.material_[0];
+        p.material_ = c.device_material_[0];
       }
       p.sqrtkT_last_ = p.sqrtkT_;
       if (c.sqrtkT_.size() > 1) {
-        p.sqrtkT_ = c.sqrtkT_[p.cell_instance_];
+        //p.sqrtkT_ = c.sqrtkT_[p.cell_instance_];
+        p.sqrtkT_ = c.device_sqrtkT_[p.cell_instance_];
       } else {
-        p.sqrtkT_ = c.sqrtkT_[0];
+        //p.sqrtkT_ = c.sqrtkT_[0];
+        p.sqrtkT_ = c.device_sqrtkT_[0];
       }
+
+      } // End OMP target
+      #pragma omp target update from(p)
 
       return true;
 

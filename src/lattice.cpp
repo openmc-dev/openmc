@@ -184,7 +184,7 @@ RectLattice::RectLattice(pugi::xml_node lat_node)
   std::vector<std::string> univ_words {split(univ_str)};
   if (univ_words.size() != nx*ny*nz) {
     fatal_error(fmt::format(
-      "Expected {} universes for a rectangular lattice of size {}x{]x{} but {} "
+      "Expected {} universes for a rectangular lattice of size {}x{}x{} but {} "
       "were specified.", nx*ny*nz,  nx, ny, nz, univ_words.size()));
   }
 

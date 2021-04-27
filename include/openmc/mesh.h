@@ -71,13 +71,13 @@ public:
 
   //! Determine which bins were crossed by a particle
   //
-  //! \param[in] last_r Previous position of the particle
-  //! \param[in] r Current position of the particle
+  //! \param[in] r0 Previous position of the particle
+  //! \param[in] r1 Current position of the particle
   //! \param[in] u Particle direction
   //! \param[out] bins Bins that were crossed
   //! \param[out] lengths Fraction of tracklength in each bin
-  virtual void bins_crossed(Position last_r,
-                            Position r,
+  virtual void bins_crossed(Position r0,
+                            Position r1,
                             const Direction& u,
                             std::vector<int>& bins,
                             std::vector<double>& lengths) const = 0;
@@ -147,8 +147,8 @@ public:
 
   int n_surface_bins() const override;
 
-  void bins_crossed(Position last_r,
-                    Position r,
+  void bins_crossed(Position r0,
+                    Position r1,
                     const Direction& u,
                     std::vector<int>& bins,
                     std::vector<double>& lengths) const override;
@@ -341,7 +341,8 @@ public:
 
   std::string bin_label(int bin) const override;
 
-  void surface_bins_crossed(const Particle& p,
+  void surface_bins_crossed(Position r0,
+                            Position r1,
                             std::vector<int>& bins) const;
 
   void to_hdf5(hid_t group) const override;
@@ -365,8 +366,8 @@ public:
   MOABMesh(pugi::xml_node);
   MOABMesh(const std::string& filename);
 
-  void bins_crossed(Position last_r,
-                    Position r,
+  void bins_crossed(Position r0,
+                    Position r1,
                     const Direction& u,
                     std::vector<int>& bins,
                     std::vector<double>& lengths) const override;
@@ -521,8 +522,8 @@ public:
   LibMesh(const std::string& filename);
 
   // Methods
-  void bins_crossed(Position last_r,
-                    Position r,
+  void bins_crossed(Position r0,
+                    Position r1,
                     const Direction& u,
                     std::vector<int>& bins,
                     std::vector<double>& lengths) const override;

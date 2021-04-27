@@ -764,7 +764,7 @@ class MeshFilter(Filter):
 
         translation = group.get('translation')
         if translation:
-            cls.translation = translation[()]
+            out.translation = translation[()]
 
         return out
 

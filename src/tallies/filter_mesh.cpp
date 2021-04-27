@@ -173,7 +173,7 @@ openmc_mesh_filter_get_translation(int32_t index, double translation[3])
   }
 
   // Get translation from the mesh filter and set value
-  auto mesh_filter = static_cast<MeshFilter*>(filter.get());
+  auto mesh_filter = dynamic_cast<MeshFilter*>(filter.get());
   const auto& t = mesh_filter->translation();
   for (int i = 0; i < 3; i++) { translation[i] = t[i]; }
 

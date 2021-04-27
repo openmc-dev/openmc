@@ -730,7 +730,7 @@ class MeshFilter(Filter):
     def __init__(self, mesh, filter_id=None, translation=None):
         self.mesh = mesh
         self.id = filter_id
-        self._translation = translation
+        self.translation = translation
 
     def __hash__(self):
         string = type(self).__name__ + '\n'

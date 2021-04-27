@@ -727,10 +727,10 @@ class MeshFilter(Filter):
 
     """
 
-    def __init__(self, mesh, filter_id=None, translation=None):
+    def __init__(self, mesh, filter_id=None):
         self.mesh = mesh
         self.id = filter_id
-        self.translation = translation
+        self._translation = None
 
     def __hash__(self):
         string = type(self).__name__ + '\n'
@@ -759,11 +759,12 @@ class MeshFilter(Filter):
         mesh_obj = kwargs['meshes'][mesh_id]
         filter_id = int(group.name.split('/')[-1].lstrip('filter '))
 
+
+        out = cls(mesh_obj, filter_id=filter_id)
+
         translation = group.get('translation')
         if translation:
-            translation = translation[()]
-
-        out = cls(mesh_obj, filter_id=filter_id, translation=translation)
+            cls.translation = translation[()]
 
         return out
 
@@ -789,10 +790,9 @@ class MeshFilter(Filter):
 
     @translation.setter
     def translation(self, t):
-        if t is not None:
-            cv.check_type('mesh filter translation', t, Iterable, Real)
-            cv.check_length('mesh filter translation', t, 3)
-            self._translation = np.asarray(t)
+        cv.check_type('mesh filter translation', t, Iterable, Real)
+        cv.check_length('mesh filter translation', t, 3)
+        self._translation = np.asarray(t)
 
     def can_merge(self, other):
         # Mesh filters cannot have more than one bin
@@ -875,7 +875,7 @@ class MeshFilter(Filter):
         element = super().to_xml_element()
         element[0].text = str(self.mesh.id)
         if self.translation is not None:
-            element.set('translation', ' '.join(map(str, self._translation)))
+            element.set('translation', ' '.join(map(str, self.translation)))
         return element
 
 
@@ -996,9 +996,9 @@ class CollisionFilter(Filter):
     Parameters
     ----------
     bins : Iterable of int
-        A list or iterable of the number of collisions, as integer values. 
-        The events whose post-scattering collision number equals one of 
-        the provided values will be counted. 
+        A list or iterable of the number of collisions, as integer values.
+        The events whose post-scattering collision number equals one of
+        the provided values will be counted.
     filter_id : int
         Unique identifier for the filter
 

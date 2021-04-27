@@ -597,9 +597,17 @@ bool
 Cell::contains(Position r, Direction u, int32_t on_surface) const
 {
   if (simple_) {
-    return contains_simple(r, u, on_surface);
+    bool does_contain;
+    //#pragma omp target map(from: does_contain)
+    {
+      does_contain = contains_simple(r, u, on_surface);
+    }
+    return does_contain;
+    //return contains_simple(r, u, on_surface);
   } else {
-    return contains_complex(r, u, on_surface);
+    printf("ERROR - Complex CSG cell geometry not yet supported on device!\n");
+    return false;
+    //return contains_complex(r, u, on_surface);
   }
 }
 
@@ -826,6 +834,36 @@ BoundingBox Cell::bounding_box() const {
 bool
 Cell::contains_simple(Position r, Direction u, int32_t on_surface) const
 {
+  //for (int32_t token : rpn_) {
+  for (int32_t i = 0; i < rpn_.size(); i++) {
+    int32_t token = device_rpn_[i];
+    // Assume that no tokens are operators. Evaluate the sense of particle with
+    // respect to the surface and see if the token matches the sense. If the
+    // particle's surface attribute is set and matches the token, that
+    // overrides the determination based on sense().
+    if (token == on_surface) {
+    } else if (-token == on_surface) {
+      return false;
+    } else {
+      // Note the off-by-one indexing
+      //bool sense = model::surfaces[abs(token)-1].sense(r, u);
+      bool sense;
+      //#pragma omp target map(from:sense)
+      {
+        sense = model::device_surfaces[std::abs(token)-1].sense(r, u);
+        //sense = model::surfaces[std::abs(token)-1].sense(r, u);
+      }
+      if (sense != (token > 0)) {return false;}
+    }
+  }
+  return true;
+}
+
+
+/*
+bool
+Cell::contains_simple(Position r, Direction u, int32_t on_surface) const
+{
   for (int32_t token : rpn_) {
     // Assume that no tokens are operators. Evaluate the sense of particle with
     // respect to the surface and see if the token matches the sense. If the
@@ -837,12 +875,14 @@ Cell::contains_simple(Position r, Direction u, int32_t on_surface) const
     } else {
       // Note the off-by-one indexing
       //bool sense = model::surfaces[abs(token)-1].sense(r, u);
-      bool sense = model::surfaces[std::abs(token)-1].sense(r, u);
+      //bool sense = model::surfaces[std::abs(token)-1].sense(r, u);
+      bool sense = model::device_surfaces[std::abs(token)-1].sense(r, u);
       if (sense != (token > 0)) {return false;}
     }
   }
   return true;
 }
+*/
 
 //==============================================================================
 

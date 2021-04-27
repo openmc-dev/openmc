@@ -126,7 +126,9 @@ public:
   //!   point is very close to the surface.
   //! \return true if the point is on the "positive" side of the surface and
   //!   false otherwise.
+  #pragma omp declare target
   bool sense(Position r, Direction u) const;
+  #pragma omp end declare target
 
   //! Determine the direction of a ray reflected from the surface.
   //! \param[in] r The point at which the ray is incident.
@@ -143,6 +145,7 @@ public:
   //! Surfaces can be described by some function f(x, y, z) = 0.  This member
   //! function evaluates that mathematical function.
   //! \param r A 3D Cartesian coordinate.
+  #pragma omp declare target
   double evaluate(Position r) const;
  double SurfaceXPlane_evaluate(Position r) const;   
  double SurfaceYPlane_evaluate(Position r) const;   
@@ -162,7 +165,6 @@ public:
   //! \param u The direction of the ray.
   //! \param coincident A hint to the code that the given point should lie
   //!   exactly on the surface.
-  #pragma omp declare target
   double distance(Position r, Direction u, bool coincident) const;
  double SurfaceXPlane_distance(Position r, Direction u, bool coincident) const;   
  double SurfaceYPlane_distance(Position r, Direction u, bool coincident) const;   

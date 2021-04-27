@@ -122,11 +122,25 @@ find_cell_inner(Particle& p, const NeighborList* neighbor_list)
         Position r {p.r_local()};
         Direction u {p.u_local()};
         auto surf = p.surface_;
+
+
+        bool does_contain;
+        #pragma omp target map(from:does_contain)
+        {
+          does_contain = model::device_cells[i_cell].contains(r, u, surf);
+        }
+        if (does_contain) {
+          p.coord_[p.n_coord_-1].cell = i_cell;
+          found = true;
+          break;
+        }
+        /*
         if (model::cells[i_cell].contains(r, u, surf)) {
           p.coord_[p.n_coord_-1].cell = i_cell;
           found = true;
           break;
         }
+        */
       }
     }
     if (!found) {

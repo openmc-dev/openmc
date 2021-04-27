@@ -102,6 +102,7 @@ struct Position {
   double z = 0.;
 };
 
+#pragma omp declare target
 // Compile-time known member index access functions
 template<>
 inline const double& Position::get<0>() const
@@ -133,6 +134,7 @@ inline double& Position::get<2>()
 {
   return z;
 }
+#pragma omp end declare target
 
 // Binary operators
 inline Position operator+(Position a, Position b) { return a += b; }

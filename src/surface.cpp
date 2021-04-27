@@ -540,6 +540,7 @@ bool Surface::SurfacePlane_periodic_translate(const Surface* other, Position& r,
 // The template parameters indicate the axes perpendicular to the axis of the
 // cylinder.  offset1 and offset2 should correspond with i1 and i2,
 // respectively.
+  #pragma omp declare target
 template<int i1, int i2> double
 axis_aligned_cylinder_evaluate(Position r, double offset1,
                                double offset2, double radius)
@@ -548,11 +549,13 @@ axis_aligned_cylinder_evaluate(Position r, double offset1,
   const double r2 = r.get<i2>() - offset2;
   return r1*r1 + r2*r2 - radius*radius;
 }
+#pragma omp end declare target
+  
 
+  #pragma omp declare target
 // The first template parameter indicates which axis the cylinder is aligned to.
 // The other two parameters indicate the other two axes.  offset1 and offset2
 // should correspond with i2 and i3, respectively.
-  #pragma omp declare target
 template<int i1, int i2, int i3> double
 axis_aligned_cylinder_distance(Position r, Direction u,
      bool coincident, double offset1, double offset2, double radius)
@@ -685,9 +688,23 @@ BoundingBox Surface::SurfaceYCylinder_bounding_box(bool pos_side) const {
 // SurfaceZCylinder implementation
 //==============================================================================
 
+/*
 double Surface::SurfaceZCylinder_evaluate(Position r) const
 {
   return axis_aligned_cylinder_evaluate<0, 1>(r, x0_, y0_, radius_);
+}
+*/
+double Surface::SurfaceZCylinder_evaluate(Position r) const
+{
+  double x0 = x0_;
+  double y0 = y0_;
+  double radius = radius_;
+  double result;
+  //#pragma omp target map (to: x0, y0, radius) map(from: result)
+  {
+    result = axis_aligned_cylinder_evaluate<0, 1>(r, x0, y0, radius);
+  }
+  return result;
 }
 
 double Surface::SurfaceZCylinder_distance(Position r, Direction u, bool coincident) const
@@ -796,6 +813,7 @@ BoundingBox Surface::SurfaceSphere_bounding_box(bool pos_side) const {
 // The first template parameter indicates which axis the cone is aligned to.
 // The other two parameters indicate the other two axes.  offset1, offset2,
 // and offset3 should correspond with i1, i2, and i3, respectively.
+  #pragma omp declare target
 template<int i1, int i2, int i3> double
 axis_aligned_cone_evaluate(Position r, double offset1,
                            double offset2, double offset3, double radius_sq)
@@ -805,6 +823,7 @@ axis_aligned_cone_evaluate(Position r, double offset1,
   const double r3 = r.get<i3>() - offset3;
   return r2*r2 + r3*r3 - radius_sq*r1*r1;
 }
+  #pragma omp end declare target
 
 // The first template parameter indicates which axis the cone is aligned to.
 // The other two parameters indicate the other two axes.  offset1, offset2,
@@ -1050,6 +1069,56 @@ void Surface::SurfaceQuadric_to_hdf5_inner(hid_t group_id) const
 //==============================================================================
 // Dispatchers
 //==============================================================================
+/*
+double Surface::evaluate(Position r) const
+{
+  double evaluation = 0.0;
+  #pragma omp target map(to: r) map(from:evaluation)
+  {
+    switch(type_){
+      case SurfaceType::SurfaceXPlane:    evaluation =  SurfaceXPlane_evaluate(r);    break;
+      case SurfaceType::SurfaceYPlane:    evaluation =  SurfaceYPlane_evaluate(r);    break;
+      case SurfaceType::SurfaceZPlane:    evaluation =  SurfaceZPlane_evaluate(r);    break;
+      case SurfaceType::SurfacePlane:     evaluation =  SurfacePlane_evaluate(r);     break;
+      case SurfaceType::SurfaceXCylinder: evaluation =  SurfaceXCylinder_evaluate(r); break;
+      case SurfaceType::SurfaceYCylinder: evaluation =  SurfaceYCylinder_evaluate(r); break;
+      case SurfaceType::SurfaceZCylinder: evaluation =  SurfaceZCylinder_evaluate(r); break;
+      case SurfaceType::SurfaceSphere:    evaluation =  SurfaceSphere_evaluate(r);    break;
+      case SurfaceType::SurfaceXCone:     evaluation =  SurfaceXCone_evaluate(r);     break;
+      case SurfaceType::SurfaceYCone:     evaluation =  SurfaceYCone_evaluate(r);     break;
+      case SurfaceType::SurfaceZCone:     evaluation =  SurfaceZCone_evaluate(r);     break;
+      case SurfaceType::SurfaceQuadric:   evaluation =  SurfaceQuadric_evaluate(r);   break;
+    }
+  }
+  return evaluation;
+}
+*/
+/*
+double Surface::evaluate(Position r) const
+{
+  double evaluation = 0.0;
+  Surface inner = *this;
+  #pragma omp target map(to: r, inner) map(from:evaluation)
+  {
+    switch(inner.type_){
+      case SurfaceType::SurfaceXPlane:    evaluation =  inner.SurfaceXPlane_evaluate(r);    break;
+      case SurfaceType::SurfaceYPlane:    evaluation =  inner.SurfaceYPlane_evaluate(r);    break;
+      case SurfaceType::SurfaceZPlane:    evaluation =  inner.SurfaceZPlane_evaluate(r);    break;
+      case SurfaceType::SurfacePlane:     evaluation =  inner.SurfacePlane_evaluate(r);     break;
+      case SurfaceType::SurfaceXCylinder: evaluation =  inner.SurfaceXCylinder_evaluate(r); break;
+      case SurfaceType::SurfaceYCylinder: evaluation =  inner.SurfaceYCylinder_evaluate(r); break;
+      case SurfaceType::SurfaceZCylinder: evaluation =  inner.SurfaceZCylinder_evaluate(r); break;
+      case SurfaceType::SurfaceSphere:    evaluation =  inner.SurfaceSphere_evaluate(r);    break;
+      case SurfaceType::SurfaceXCone:     evaluation =  inner.SurfaceXCone_evaluate(r);     break;
+      case SurfaceType::SurfaceYCone:     evaluation =  inner.SurfaceYCone_evaluate(r);     break;
+      case SurfaceType::SurfaceZCone:     evaluation =  inner.SurfaceZCone_evaluate(r);     break;
+      case SurfaceType::SurfaceQuadric:   evaluation =  inner.SurfaceQuadric_evaluate(r);   break;
+    }
+  }
+  return evaluation;
+}
+*/
+
 double Surface::evaluate(Position r) const
 {
   switch(type_){

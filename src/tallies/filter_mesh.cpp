@@ -46,8 +46,8 @@ const
 
   // apply translation if present
   if (translated_) {
-    last_r -= translation_;
-    r -= translation_;
+    last_r -= translation();
+    r -= translation();
   }
 
   if (estimator != TallyEstimator::TRACKLENGTH) {

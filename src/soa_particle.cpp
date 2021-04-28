@@ -36,9 +36,9 @@ void allocate_soa_data()
   type.resize(particles_in_flight);
   n_coord.resize(particles_in_flight);
   cell_instance.resize(particles_in_flight);
-  coord.resize(particles_in_flight);
+  coord.resize(model::n_coord_levels * particles_in_flight);
   n_coord_last.resize(particles_in_flight);
-  cell_last.resize(particles_in_flight);
+  cell_last.resize(model::n_coord_levels * particles_in_flight);
   E.resize(particles_in_flight);
   E_last.resize(particles_in_flight);
   g.resize(particles_in_flight);

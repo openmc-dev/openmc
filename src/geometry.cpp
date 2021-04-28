@@ -91,11 +91,25 @@ find_cell_inner(Particle& p, const NeighborList* neighbor_list)
         break;
       }
     }
+
+    // If we're attempting a neighbor list search and fail, we
+    // now know we should return false. This will trigger an
+    // exhaustive search from neighbor_list_find_cell and make
+    // the result from that be appended to the neighbor list.
+    if (!found)
+      return false;
   }
 
   // Check successively lower coordinate levels until finding material fill
   for (;;++p.n_coord_) {
-    // If neighbor lists did not find a cell, must do exhaustive search
+    // If we did not attempt to use neighbor lists, i_cell is still C_NONE.  In
+    // that case, we should now do an exhaustive search to find the right value
+    // of i_cell.
+    //
+    // Alternatively, neighbor list searches could have succeeded, but we found
+    // that the fill of the neighbor cell was another universe. As such, in the
+    // code below this conditional, we set i_cell back to C_NONE to indicate
+    // that.
     if (i_cell == C_NONE) {
       int i_universe = p.coord_[p.n_coord_-1].universe;
       const auto& univ {*model::universes[i_universe]};

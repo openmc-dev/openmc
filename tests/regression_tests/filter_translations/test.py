@@ -1,17 +1,15 @@
 from itertools import permutations
+from openmc import mesh
 import numpy as np
 
 import openmc
 import pytest
 
-from tests.testing_harness import HashedPyAPITestHarness
+from tests.testing_harness import PyAPITestHarness
 
 
-translations = list(permutations((10, 5, 0))) + list(permutations((-10, -5, 0)))
-@pytest.fixture(params=translations)
+@pytest.fixture
 def model(request):
-
-    translation = np.array(request.param)
 
     model = openmc.model.Model()
 
@@ -35,24 +33,49 @@ def model(request):
     model.settings.inactive = 0
     model.settings.particles = 1000
 
-    llc = np.array([-9, -9, -9]) - translation
-    urc = np.array([9, 9, 9]) - translation
+    translation = np.array((10, -5, 0))
 
+    llc = np.array([-9, -9, -9])
+    urc = np.array([9, 9, 9])
+
+    mesh_dims = (3, 4, 5)
+
+    filters = []
+
+    # un-translated meshes
     reg_mesh = openmc.RegularMesh()
-    reg_mesh.dimension = [9, 9, 9]
+    reg_mesh.dimension = mesh_dims
     reg_mesh.lower_left = llc
     reg_mesh.upper_right = urc
 
-    recti_mesh = openmc.RectilinearMesh()
-    recti_mesh.x_grid = np.linspace(llc[0], urc[0], 17)
-    recti_mesh.y_grid = np.linspace(llc[1], urc[1], 17)
-    recti_mesh.z_grid = np.linspace(llc[2], urc[2], 17)
+    filters.append(openmc.MeshFilter(reg_mesh))
 
-    # Create filters
-    filters = [openmc.MeshFilter(reg_mesh),
-               openmc.MeshFilter(recti_mesh)]
-    for f in filters:
-        f.translation = translation
+    recti_mesh = openmc.RectilinearMesh()
+    recti_mesh.x_grid = np.linspace(llc[0], urc[0], mesh_dims[0])
+    recti_mesh.y_grid = np.linspace(llc[1], urc[1], mesh_dims[1])
+    recti_mesh.z_grid = np.linspace(llc[2], urc[2], mesh_dims[2])
+
+    filters.append(openmc.MeshFilter(recti_mesh))
+
+    llc -= translation
+    urc -= translation
+
+    # translated meshes
+    translated_reg_mesh = openmc.RegularMesh()
+    translated_reg_mesh.dimension = mesh_dims
+    translated_reg_mesh.lower_left = llc
+    translated_reg_mesh.upper_right = urc
+
+    filters.append(openmc.MeshFilter(translated_reg_mesh))
+    filters[-1].translation = translation
+
+    translated_recti_mesh = openmc.RectilinearMesh()
+    translated_recti_mesh.x_grid = np.linspace(llc[0], urc[0], mesh_dims[0])
+    translated_recti_mesh.y_grid = np.linspace(llc[1], urc[1], mesh_dims[1])
+    translated_recti_mesh.z_grid = np.linspace(llc[2], urc[2], mesh_dims[2])
+
+    filters.append(openmc.MeshFilter(translated_recti_mesh))
+    filters[-1].translation = translation
 
     # Create tallies
     for f in filters:
@@ -61,12 +84,11 @@ def model(request):
         tally.scores = ['total']
         model.tallies.append(tally)
 
-    input_name = 'input_dat_' + '_'.join(map(str, translation)) + '.dat'
-    return model, input_name
+    return model
 
 
 def test_filter_mesh_translations(model):
-    harness = HashedPyAPITestHarness('statepoint.5.h5', *model)
+    harness = PyAPITestHarness('statepoint.5.h5', model)
     harness.main()
 
 

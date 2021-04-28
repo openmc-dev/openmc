@@ -641,9 +641,12 @@ class DAGMCUniverse(UniverseBase):
         automatically be assigned.
     name : str, optional
         Name of the universe. If not specified, the name is the empty string.
-    auto_ids : bool
+    auto_geom_ids : bool
         Set IDs automatically on initialization (True) or report overlaps
         in ID space between CSG and DAGMC (False)
+    auto_mat_ids : bool
+        Set IDs automatically on initialization (True)  or report overlaps
+        in ID space between OpenMC and UWUW materials (False)
 
     Attributes
     ----------
@@ -702,7 +705,7 @@ class DAGMCUniverse(UniverseBase):
     def auto_mat_ids(self):
         return self._auto_mat_ids
 
-    @auto_geom_ids.setter
+    @auto_mat_ids.setter
     def auto_mat_ids(self, val):
         cv.check_type('DAGMC automatic material ids', val, bool)
         self._auto_mat_ids = val

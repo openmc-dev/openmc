@@ -458,7 +458,7 @@ DAGUniverse::read_uwuw_materials() {
   // if we're using automatic IDs, update the UWUW material metadata
   if (adjust_material_ids_) {
     for (auto& mat : uwuw_->material_library) {
-      mat.second->metadata["mat_number"] = std::to_string(next_material_id++);
+      mat.second->metadata["mat_number"] = next_material_id++;
     }
   }
 

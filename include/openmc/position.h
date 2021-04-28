@@ -24,19 +24,15 @@ struct Position {
   // Unary operators
   #pragma omp declare target
   Position& operator+=(Position);
-  #pragma omp end declare target
   Position& operator+=(double);
-  #pragma omp declare target
   Position& operator-=(Position);
-  #pragma omp end declare target
   Position& operator-=(double);
   Position& operator*=(Position);
-  #pragma omp declare target
   Position& operator*=(double);
-  #pragma omp end declare target
   Position& operator/=(Position);
   Position& operator/=(double);
   Position operator-() const;
+  #pragma omp end declare target
 
   #pragma omp declare target
   const double& operator[](int i) const {

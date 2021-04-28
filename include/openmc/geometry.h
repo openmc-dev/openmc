@@ -28,9 +28,11 @@ extern std::vector<int64_t> overlap_check_count;
 //! Check two distances by coincidence tolerance
 //==============================================================================
 
+#pragma omp declare target
 inline bool coincident(double d1, double d2) {
   return std::abs(d1 - d2) < FP_COINCIDENT;
 }
+#pragma omp end declare target
 
 //==============================================================================
 //! Check for overlapping cells at a particle's position.

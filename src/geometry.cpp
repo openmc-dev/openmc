@@ -251,9 +251,13 @@ find_cell_inner(Particle& p, const NeighborList* neighbor_list)
     } else if (c.type_ == Fill::LATTICE) {
       //========================================================================
       //! Found a lower lattice, update this coord level then search the next.
+      
+      #pragma omp target update to(p)
+      #pragma omp target
+      {
 
-      Lattice& lat {model::lattices[c.fill_]};
-      //Lattice& lat {model::device_lattices[c.fill_]};
+      //Lattice& lat {model::lattices[c.fill_]};
+      Lattice& lat {model::device_lattices[c.fill_]};
 
       // Set the position and direction.
       auto& coord {p.coord_[p.n_coord_]};
@@ -288,12 +292,17 @@ find_cell_inner(Particle& p, const NeighborList* neighbor_list)
         if (lat.outer_ != NO_OUTER_UNIVERSE) {
           coord.universe = lat.outer_;
         } else {
+          /*
           warning(fmt::format("Particle {} is outside lattice {} but the "
                               "lattice has no defined outer universe.",
             p.id_, lat.id_));
           return false;
+          */
+          printf("ERROR: particle %d is outside lattice %d but the lattice has no defined outer universe! Undefined behavior to follow...\n", p.id_, lat.id_);
         }
       }
+      } // END OMP TARGET
+      #pragma omp target update from(p)
     }
     i_cell = C_NONE; // trip non-neighbor cell search at next iteration
   }

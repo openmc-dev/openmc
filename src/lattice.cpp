@@ -306,7 +306,8 @@ Lattice::operator[](std::array<int, 3> i_xyz)
   switch(type_){
     case LatticeType::rect : return RectLattice_index(i_xyz); break;
     case LatticeType::hex  : return HexLattice_index(i_xyz); break;
-    default :                fatal_error("Lattice Type not recognized.");
+    //default :                fatal_error("Lattice Type not recognized.");
+    default : printf("Lattice Type not recognized.\n");
   }
 }
 
@@ -350,7 +351,8 @@ Lattice::get_indices(Position r, Direction u) const
   switch(type_){
     case LatticeType::rect : return RectLattice_get_indices(r,u); break;
     case LatticeType::hex  : return HexLattice_get_indices(r, u); break;
-    default :                fatal_error("Lattice Type not recognized.");
+    //default :                fatal_error("Lattice Type not recognized.");
+    default : printf("Lattice Type not recognized.\n");
   }
 }
 
@@ -419,7 +421,8 @@ Lattice::RectLattice_index(std::array<int, 3> i_xyz)
   int ny {n_cells_[1]};
   int nz {n_cells_[2]};
   int indx = nx*ny*i_xyz[2] + nx*i_xyz[1] + i_xyz[0];
-  return universes_[indx];
+  //return universes_[indx];
+  return device_universes_[indx];
 }
 
 //==============================================================================
@@ -891,7 +894,8 @@ Lattice::HexLattice_index(std::array<int, 3> i_xyz)
   int indx = (2*n_rings_-1)*(2*n_rings_-1) * i_xyz[2]
               + (2*n_rings_-1) * i_xyz[1]
               + i_xyz[0];
-  return universes_[indx];
+  //return universes_[indx];
+  return device_universes_[indx];
 }
 
 //==============================================================================

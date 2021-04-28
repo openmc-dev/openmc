@@ -493,7 +493,7 @@ class SphericalIndependent(Spatial):
         return cls(r, theta, phi, origin=origin)
 
 class CylindricalIndependent(Spatial):
-    """Spatial distribution represented in cylindrical coordinates.
+    r"""Spatial distribution represented in cylindrical coordinates.
 
     This distribution allows one to specify coordinates whose :math:`r`,
     :math:`\phi`, and :math:`z` components are sampled independently from

@@ -187,7 +187,7 @@ create_fission_sites(Particle& p, int i_nuclide, const Reaction& rx)
 
   for (int i = 0; i < nu; ++i) {
     // Initialize fission site object with particle data
-    ParticleBank site;
+    SourceSite site;
     site.r = p.r();
     site.particle = ParticleType::neutron;
     site.wgt = 1. / weight;
@@ -1015,7 +1015,7 @@ sample_cxs_target_velocity(double awr, double E, Direction u, double kT, uint64_
 }
 
 void sample_fission_neutron(int i_nuclide, const Reaction& rx, double E_in,
-  ParticleBank* site, uint64_t* seed)
+  SourceSite* site, uint64_t* seed)
 {
   // Sample cosine of angle -- fission neutrons are always emitted
   // isotropically. Sometimes in ACE data, fission reactions actually have

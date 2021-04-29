@@ -127,7 +127,7 @@ create_fission_sites(Particle& p)
 
   for (int i = 0; i < nu; ++i) {
     // Initialize fission site object with particle data
-    ParticleBank site;
+    SourceSite site;
     site.r = p.r();
     site.particle = ParticleType::neutron;
     site.wgt = 1. / weight;

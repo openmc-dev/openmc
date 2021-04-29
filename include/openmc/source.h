@@ -35,7 +35,7 @@ public:
   virtual ~Source() = default;
 
   // Methods that must be implemented
-  virtual ParticleBank sample(uint64_t* seed) const = 0;
+  virtual SourceSite sample(uint64_t* seed) const = 0;
 
   // Methods that can be overridden
   virtual double strength() const { return 1.0; }
@@ -54,7 +54,7 @@ public:
   //! Sample from the external source distribution
   //! \param[inout] seed Pseudorandom seed pointer
   //! \return Sampled site
-  ParticleBank sample(uint64_t* seed) const override;
+  SourceSite sample(uint64_t* seed) const override;
 
   // Properties
   ParticleType particle_type() const { return particle_; }
@@ -83,10 +83,10 @@ public:
   explicit FileSource(std::string path);
 
   // Methods
-  ParticleBank sample(uint64_t* seed) const override;
+  SourceSite sample(uint64_t* seed) const override;
 
 private:
-  vector<ParticleBank> sites_; //!< Source sites from a file
+  vector<SourceSite> sites_; //!< Source sites from a file
 };
 
 //==============================================================================
@@ -100,7 +100,7 @@ public:
   ~CustomSourceWrapper();
 
   // Defer implementation to custom source library
-  ParticleBank sample(uint64_t* seed) const override
+  SourceSite sample(uint64_t* seed) const override
   {
     return custom_source_->sample(seed);
   }
@@ -124,7 +124,7 @@ extern "C" void initialize_source();
 //! source strength
 //! \param[inout] seed Pseudorandom seed pointer
 //! \return Sampled source site
-ParticleBank sample_external_source(uint64_t* seed);
+SourceSite sample_external_source(uint64_t* seed);
 
 void free_memory_source();
 

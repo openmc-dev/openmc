@@ -7,9 +7,9 @@
 
 class CustomSource : public openmc::Source
 {
-  openmc::ParticleBank sample(uint64_t* seed) const
+  openmc::SourceSite sample(uint64_t* seed) const
   {
-    openmc::ParticleBank particle;
+    openmc::SourceSite particle;
     // wgt
     particle.particle = openmc::ParticleType::neutron;
     particle.wgt = 1.0;

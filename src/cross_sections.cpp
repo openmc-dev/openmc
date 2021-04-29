@@ -181,8 +181,8 @@ void read_cross_sections_xml()
   }
 }
 
-void read_ce_cross_sections(const vector<std::vector<double>>& nuc_temps,
-  const vector<std::vector<double>>& thermal_temps)
+void read_ce_cross_sections(const vector<vector<double>>& nuc_temps,
+  const vector<vector<double>>& thermal_temps)
 {
   std::unordered_set<std::string> already_read;
 

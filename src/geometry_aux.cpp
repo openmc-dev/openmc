@@ -191,8 +191,8 @@ assign_temperatures()
 
 //==============================================================================
 
-void get_temperatures(vector<std::vector<double>>& nuc_temps,
-  vector<std::vector<double>>& thermal_temps)
+void get_temperatures(
+  vector<vector<double>>& nuc_temps, vector<vector<double>>& thermal_temps)
 {
   for (const auto& cell : model::cells) {
     // Skip non-material cells.

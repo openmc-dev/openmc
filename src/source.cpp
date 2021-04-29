@@ -140,9 +140,9 @@ IndependentSource::IndependentSource(pugi::xml_node node)
   }
 }
 
-ParticleBank IndependentSource::sample(uint64_t* seed) const
+SourceSite IndependentSource::sample(uint64_t* seed) const
 {
-  ParticleBank site;
+  SourceSite site;
 
   // Set weight to one by default
   site.wgt = 1.0;
@@ -262,7 +262,7 @@ FileSource::FileSource(std::string path)
   file_close(file_id);
 }
 
-ParticleBank FileSource::sample(uint64_t* seed) const
+SourceSite FileSource::sample(uint64_t* seed) const
 {
   size_t i_site = sites_.size()*prn(seed);
   return sites_[i_site];
@@ -348,7 +348,7 @@ void initialize_source()
   }
 }
 
-ParticleBank sample_external_source(uint64_t* seed)
+SourceSite sample_external_source(uint64_t* seed)
 {
   // Determine total source strength
   double total_strength = 0.0;
@@ -367,7 +367,7 @@ ParticleBank sample_external_source(uint64_t* seed)
   }
 
   // Sample source site from i-th source distribution
-  ParticleBank site {model::external_sources[i]->sample(seed)};
+  SourceSite site {model::external_sources[i]->sample(seed)};
 
   // If running in MG, convert site.E to group
   if (!settings::run_CE) {

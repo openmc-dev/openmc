@@ -284,7 +284,7 @@ int StructuredMesh::n_surface_bins() const
 }
 
 xt::xtensor<double, 1> StructuredMesh::count_sites(
-  const ParticleBank* bank, int64_t length, bool* outside) const
+  const SourceSite* bank, int64_t length, bool* outside) const
 {
   // Determine shape of array for counts
   std::size_t m = this->n_bins();
@@ -938,7 +938,7 @@ RegularMesh::surface_bins_crossed(Position r0,
   }
 }
 
-std::pair<vector<double>, std::vector<double>> RegularMesh::plot(
+std::pair<vector<double>, vector<double>> RegularMesh::plot(
   Position plot_ll, Position plot_ur) const
 {
   // Figure out which axes lie in the plane of the plot.
@@ -988,7 +988,7 @@ void RegularMesh::to_hdf5(hid_t group) const
 }
 
 xt::xtensor<double, 1> RegularMesh::count_sites(
-  const ParticleBank* bank, int64_t length, bool* outside) const
+  const SourceSite* bank, int64_t length, bool* outside) const
 {
   // Determine shape of array for counts
   std::size_t m = this->n_bins();
@@ -1264,7 +1264,7 @@ int RectilinearMesh::get_index_in_direction(double r, int i) const
   return lower_bound_index(grid_[i].begin(), grid_[i].end(), r) + 1;
 }
 
-std::pair<vector<double>, std::vector<double>> RectilinearMesh::plot(
+std::pair<vector<double>, vector<double>> RectilinearMesh::plot(
   Position plot_ll, Position plot_ur) const
 {
   // Figure out which axes lie in the plane of the plot.
@@ -1923,7 +1923,7 @@ int MOABMesh::get_index_from_bin(int bin) const
   return bin;
 }
 
-std::pair<vector<double>, std::vector<double>> MOABMesh::plot(
+std::pair<vector<double>, vector<double>> MOABMesh::plot(
   Position plot_ll, Position plot_ur) const
 {
   // TODO: Implement mesh lines
@@ -2337,7 +2337,7 @@ LibMesh::get_bin_from_element(const libMesh::Elem* elem) const
   return bin;
 }
 
-std::pair<vector<double>, std::vector<double>> LibMesh::plot(
+std::pair<vector<double>, vector<double>> LibMesh::plot(
   Position plot_ll, Position plot_ur) const
 {
   return {};

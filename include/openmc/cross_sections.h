@@ -65,8 +65,8 @@ void read_cross_sections_xml();
 //
 //! \param[in] nuc_temps Temperatures for each nuclide in [K]
 //! \param[in] thermal_temps Temperatures for each thermal scattering table in [K]
-void read_ce_cross_sections(const vector<std::vector<double>>& nuc_temps,
-  const vector<std::vector<double>>& thermal_temps);
+void read_ce_cross_sections(const vector<vector<double>>& nuc_temps,
+  const vector<vector<double>>& thermal_temps);
 
 //! Read cross_sections.xml and populate data libraries
 void read_ce_cross_sections_xml();

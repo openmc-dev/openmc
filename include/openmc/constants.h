@@ -13,9 +13,9 @@
 
 namespace openmc {
 
-using double_2dvec = vector<std::vector<double>>;
-using double_3dvec = vector<std::vector<std::vector<double>>>;
-using double_4dvec = vector<std::vector<std::vector<std::vector<double>>>>;
+using double_2dvec = vector<vector<double>>;
+using double_3dvec = vector<vector<vector<double>>>;
+using double_4dvec = vector<vector<vector<vector<double>>>>;
 
 // ============================================================================
 // VERSIONING NUMBERS

@@ -64,7 +64,7 @@ class Mgxs {
     void init(const std::string& in_name, double in_awr,
       const vector<double>& in_kTs, bool in_fissionable,
       AngleDistributionType in_scatter_format, bool in_is_isotropic,
-      const vector<double>& in_polar, const std::vector<double>& in_azimuthal);
+      const vector<double>& in_polar, const vector<double>& in_azimuthal);
 
     //! \brief Initializes the Mgxs object metadata from the HDF5 file
     //!
@@ -84,9 +84,8 @@ class Mgxs {
     //! @param micro_ts The temperature index of the microscopic objects that
     //!   corresponds to the temperature of interest.
     //! @param this_t The temperature index of the macroscopic object.
-    void combine(const vector<Mgxs*>& micros,
-      const std::vector<double>& scalars, const vector<int>& micro_ts,
-      int this_t);
+    void combine(const vector<Mgxs*>& micros, const vector<double>& scalars,
+      const vector<int>& micro_ts, int this_t);
 
     //! \brief Checks to see if this and that are able to be combined
     //!
@@ -124,7 +123,7 @@ class Mgxs {
     //! @param num_group number of energy groups
     //! @param num_delay number of delayed groups
     Mgxs(const std::string& in_name, const vector<double>& mat_kTs,
-      const vector<Mgxs*>& micros, const std::vector<double>& atom_densities,
+      const vector<Mgxs*>& micros, const vector<double>& atom_densities,
       int num_group, int num_delay);
 
     //! \brief Provides a cross section value given certain parameters

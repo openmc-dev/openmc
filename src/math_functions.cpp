@@ -556,7 +556,7 @@ void calc_zn(int n, double rho, double phi, double zn[]) {
   // ===========================================================================
   // Calculate R_pq(rho)
   // Matrix forms of the coefficients which are easier to work with
-  vector<std::vector<double>> zn_mat(n + 1, std::vector<double>(n + 1));
+  vector<vector<double>> zn_mat(n + 1, vector<double>(n + 1));
 
   // Fill the main diagonal first (Eq 3.9 in Chong)
   for (int p = 0; p <= n; p++) {

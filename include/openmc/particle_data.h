@@ -283,12 +283,9 @@ public:
   //==========================================================================
   // Methods and accessors
 
-  NuclideMicroXS& neutron_xs(const int& i) { return neutron_xs_[i]; }
-  const NuclideMicroXS& neutron_xs(const int& i) const
-  {
-    return neutron_xs_[i];
-  }
-  ElementMicroXS& photon_xs(const int& i) { return photon_xs_[i]; }
+  NuclideMicroXS& neutron_xs(int i) { return neutron_xs_[i]; }
+  const NuclideMicroXS& neutron_xs(int i) const { return neutron_xs_[i]; }
+  ElementMicroXS& photon_xs(int i) { return photon_xs_[i]; }
   MacroXS& macro_xs() { return macro_xs_; }
   const MacroXS& macro_xs() const { return macro_xs_; }
 
@@ -301,13 +298,13 @@ public:
   const int& n_coord() const { return n_coord_; }
   int& cell_instance() { return cell_instance_; }
   const int& cell_instance() const { return cell_instance_; }
-  LocalCoord& coord(const int& i) { return coord_[i]; }
-  const LocalCoord& coord(const int& i) const { return coord_[i]; }
+  LocalCoord& coord(int i) { return coord_[i]; }
+  const LocalCoord& coord(int i) const { return coord_[i]; }
 
   int& n_coord_last() { return n_coord_last_; }
   const int& n_coord_last() const { return n_coord_last_; }
-  int& cell_last(const int& i) { return cell_last_[i]; }
-  const int& cell_last(const int& i) const { return cell_last_[i]; }
+  int& cell_last(int i) { return cell_last_[i]; }
+  const int& cell_last(int i) const { return cell_last_[i]; }
 
   double& E() { return E_; }
   const double& E() const { return E_; }
@@ -346,7 +343,7 @@ public:
   int& n_bank_second() { return n_bank_second_; }
   double& wgt_bank() { return wgt_bank_; }
   int* n_delayed_bank() { return n_delayed_bank_; }
-  int& n_delayed_bank(const int& i) { return n_delayed_bank_[i]; }
+  int& n_delayed_bank(int i) { return n_delayed_bank_[i]; }
 
   int& surface() { return surface_; }
   const int& surface() const { return surface_; }
@@ -366,21 +363,21 @@ public:
   const int& n_collision() const { return n_collision_; }
 
   bool& write_track() { return write_track_; }
-  uint64_t& seeds(const int& i) { return seeds_[i]; }
+  uint64_t& seeds(int i) { return seeds_[i]; }
   uint64_t* seeds() { return seeds_; }
   int& stream() { return stream_; }
 
-  SourceSite& secondary_bank(const int& i) { return secondary_bank_[i]; }
+  SourceSite& secondary_bank(int i) { return secondary_bank_[i]; }
   decltype(secondary_bank_)& secondary_bank() { return secondary_bank_; }
   int64_t& current_work() { return current_work_; }
   const int64_t& current_work() const { return current_work_; }
-  double& flux_derivs(const int& i) { return flux_derivs_[i]; }
-  const double& flux_derivs(const int& i) const { return flux_derivs_[i]; }
+  double& flux_derivs(int i) { return flux_derivs_[i]; }
+  const double& flux_derivs(int i) const { return flux_derivs_[i]; }
   decltype(filter_matches_)& filter_matches() { return filter_matches_; }
-  FilterMatch& filter_matches(const int& i) { return filter_matches_[i]; }
+  FilterMatch& filter_matches(int i) { return filter_matches_[i]; }
   decltype(tracks_)& tracks() { return tracks_; }
   decltype(nu_bank_)& nu_bank() { return nu_bank_; }
-  NuBank& nu_bank(const int& i) { return nu_bank_[i]; }
+  NuBank& nu_bank(int i) { return nu_bank_[i]; }
 
   double& keff_tally_absorption() { return keff_tally_absorption_; }
   double& keff_tally_collision() { return keff_tally_collision_; }

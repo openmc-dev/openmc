@@ -55,8 +55,8 @@ def model():
 
     filters.append(openmc.MeshFilter(recti_mesh))
 
-    llc -= translation
-    urc -= translation
+    llc = np.array(llc - translation)
+    urc = np.array(urc - translation)
 
     # translated meshes
     translated_reg_mesh = openmc.RegularMesh()

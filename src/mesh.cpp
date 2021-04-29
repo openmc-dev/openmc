@@ -190,7 +190,8 @@ UnstructuredMesh::UnstructuredMesh(pugi::xml_node node) : Mesh(node) {
 }
 
 void
-UnstructuredMesh::surface_bins_crossed(const Particle& p,
+UnstructuredMesh::surface_bins_crossed(Position r0,
+                                       Position r1,
                                        std::vector<int>& bins) const {
   fatal_error("Unstructured mesh surface tallies are not implemented.");
 }
@@ -581,26 +582,24 @@ bool StructuredMesh::intersects_3d(Position& r0, Position r1, int* ijk) const
   return min_dist < INFTY;
 }
 
-void StructuredMesh::bins_crossed(const Particle& p, std::vector<int>& bins,
-  std::vector<double>& lengths) const
+void StructuredMesh::bins_crossed(Position r0,
+                                  Position r1,
+                                  const Direction& u,
+                                  std::vector<int>& bins,
+                                  std::vector<double>& lengths) const
 {
   // ========================================================================
   // Determine where the track intersects the mesh and if it intersects at all.
 
-  // Copy the starting and ending coordinates of the particle.
-  Position last_r {p.r_last_};
-  Position r {p.r()};
-  Direction u {p.u()};
-
   // Compute the length of the entire track.
-  double total_distance = (r - last_r).norm();
+  double total_distance = (r1 - r0).norm();
   if (total_distance == 0.0) return;
 
   // While determining if this track intersects the mesh, offset the starting
   // and ending coords by a bit.  This avoid finite-precision errors that can
   // occur when the mesh surfaces coincide with lattice or geometric surfaces.
-  Position r0 = last_r + TINY_BIT*u;
-  Position r1 = r - TINY_BIT*u;
+  Position last_r = r0 + TINY_BIT*u;
+  Position r = r1 - TINY_BIT*u;
 
   // Determine the mesh indices for the starting and ending coords. Here, we
   // use arrays for ijk0 and ijk1 instead of std::vector because we obtain a
@@ -611,21 +610,21 @@ void StructuredMesh::bins_crossed(const Particle& p, std::vector<int>& bins,
   int n = n_dimension_;
   int ijk0[3], ijk1[3];
   bool start_in_mesh;
-  get_indices(r0, ijk0, &start_in_mesh);
+  get_indices(last_r, ijk0, &start_in_mesh);
   bool end_in_mesh;
-  get_indices(r1, ijk1, &end_in_mesh);
+  get_indices(r, ijk1, &end_in_mesh);
 
   // Reset coordinates and check for a mesh intersection if necessary.
   if (start_in_mesh) {
     // The initial coords lie in the mesh, use those coords for tallying.
-    r0 = last_r;
+    last_r = r0;
   } else {
     // The initial coords do not lie in the mesh.  Check to see if the particle
     // eventually intersects the mesh and compute the relevant coords and
     // indices.
-    if (!intersects(r0, r1, ijk0)) return;
+    if (!intersects(last_r, r, ijk0)) return;
   }
-  r1 = r;
+  r = r1;
 
   // The TINY_BIT offsets above mean that the preceding logic cannot always find
   // the correct ijk0 and ijk1 indices. For tracks shorter than 2*TINY_BIT, just
@@ -644,7 +643,7 @@ void StructuredMesh::bins_crossed(const Particle& p, std::vector<int>& bins,
     if (std::equal(ijk0, ijk0 + n, ijk1)) {
       // The track ends in this cell.  Use the particle end location rather
       // than the mesh surface and stop iterating.
-      double distance = (r1 - r0).norm();
+      double distance = (last_r - r).norm();
       bins.push_back(get_bin_from_indices(ijk0));
       lengths.push_back(distance / total_distance);
       break;
@@ -657,10 +656,10 @@ void StructuredMesh::bins_crossed(const Particle& p, std::vector<int>& bins,
         d[k] = INFTY;
       } else if (u[k] > 0) {
         double xyz_cross = positive_grid_boundary(ijk0, k);
-        d[k] = (xyz_cross - r0[k]) / u[k];
+        d[k] = (xyz_cross - last_r[k]) / u[k];
       } else {
         double xyz_cross = negative_grid_boundary(ijk0, k);
-        d[k] = (xyz_cross - r0[k]) / u[k];
+        d[k] = (xyz_cross - last_r[k]) / u[k];
       }
     }
 
@@ -671,7 +670,7 @@ void StructuredMesh::bins_crossed(const Particle& p, std::vector<int>& bins,
     lengths.push_back(distance / total_distance);
 
     // Translate to the oncoming mesh surface.
-    r0 += distance * u;
+    last_r += distance * u;
 
     // Increment the indices into the next mesh cell.
     if (u[j] > 0.0) {
@@ -797,17 +796,12 @@ double RegularMesh::negative_grid_boundary(int* ijk, int i) const
   return lower_left_[i] + (ijk[i] - 1) * width_[i];
 }
 
-void RegularMesh::surface_bins_crossed(const Particle& p,
-                                       std::vector<int>& bins) const
+void
+RegularMesh::surface_bins_crossed(Position r0,
+                                  Position r1,
+                                  const Direction& u,
+                                  std::vector<int>& bins) const
 {
-  // ========================================================================
-  // Determine if the track intersects the tally mesh.
-
-  // Copy the starting and ending coordinates of the particle.
-  Position r0 {p.r_last_current_};
-  Position r1 {p.r()};
-  Direction u {p.u()};
-
   // Determine indices for starting and ending location.
   int n = n_dimension_;
   std::vector<int> ijk0(n), ijk1(n);
@@ -1107,17 +1101,11 @@ int RectilinearMesh::set_grid()
   return 0;
 }
 
-void RectilinearMesh::surface_bins_crossed(const Particle& p,
+void RectilinearMesh::surface_bins_crossed(Position r0,
+                                           Position r1,
+                                           const Direction& u,
                                            std::vector<int>& bins) const
 {
-  // ========================================================================
-  // Determine if the track intersects the tally mesh.
-
-  // Copy the starting and ending coordinates of the particle.
-  Position r0 {p.r_last_current_};
-  Position r1 {p.r()};
-  Direction u {p.u()};
-
   // Determine indices for starting and ending location.
   int ijk0[3], ijk1[3];
   bool start_in_mesh;
@@ -1444,7 +1432,7 @@ openmc_get_mesh_index(int32_t id, int32_t* index)
   return 0;
 }
 
-// Return the ID of a mesh
+//! Return the ID of a mesh
 extern "C" int
 openmc_mesh_get_id(int32_t index, int32_t* id)
 {
@@ -1701,26 +1689,25 @@ MOABMesh::intersect_track(const moab::CartVect& start,
 }
 
 void
-MOABMesh::bins_crossed(const Particle& p,
+MOABMesh::bins_crossed(Position r0,
+                       Position r1,
+                       const Direction& u,
                        std::vector<int>& bins,
                        std::vector<double>& lengths) const
 {
-  Position last_r{p.r_last_};
-  Position r{p.r()};
-  Direction u{p.u()};
-  u /= u.norm();
-  moab::CartVect r0(last_r.x, last_r.y, last_r.z);
-  moab::CartVect r1(r.x, r.y, r.z);
+  moab::CartVect start(r0.x, r0.y, r0.z);
+  moab::CartVect end(r1.x, r1.y, r1.z);
   moab::CartVect dir(u.x, u.y, u.z);
+  dir.normalize();
 
-  double track_len = (r1 - r0).length();
+  double track_len = (end - start).length();
   if (track_len == 0.0) return;
 
-  r0 -= TINY_BIT * dir;
-  r1 += TINY_BIT * dir;
+  start -= TINY_BIT * dir;
+  end += TINY_BIT * dir;
 
   std::vector<double> hits;
-  intersect_track(r0, dir, track_len, hits);
+  intersect_track(start, dir, track_len, hits);
 
   bins.clear();
   lengths.clear();
@@ -1729,7 +1716,7 @@ MOABMesh::bins_crossed(const Particle& p,
   // within a single tet. If this is the case, apply entire
   // score to that tet and return.
   if (hits.size() == 0) {
-    Position midpoint = last_r + u * (track_len * 0.5);
+    Position midpoint = r0 + u * (track_len * 0.5);
     int bin = this->get_bin(midpoint);
     if (bin != -1) {
       bins.push_back(bin);
@@ -1740,7 +1727,7 @@ MOABMesh::bins_crossed(const Particle& p,
 
   // for each segment in the set of tracks, try to look up a tet
   // at the midpoint of the segment
-  Position current = last_r;
+  Position current = r0;
   double last_dist = 0.0;
   for (const auto& hit : hits) {
     // get the segment length
@@ -1752,7 +1739,7 @@ MOABMesh::bins_crossed(const Particle& p,
     int bin = this->get_bin(midpoint);
 
     // determine the start point for this segment
-    current = last_r + u * hit;
+    current = r0 + u * hit;
 
     if (bin == -1) {
       continue;
@@ -1767,7 +1754,7 @@ MOABMesh::bins_crossed(const Particle& p,
   // the last segment of the track is in the mesh but doesn't
   // reach the other side of the tet
   if (hits.back() < track_len) {
-    Position segment_start = last_r + u * hits.back();
+    Position segment_start = r0 + u * hits.back();
     double segment_length = track_len - hits.back();
     Position midpoint = segment_start + u * (segment_length * 0.5);
     int bin = this->get_bin(midpoint);
@@ -1831,6 +1818,16 @@ double MOABMesh::tet_volume(moab::EntityHandle tet) const
   }
 
   return 1.0 / 6.0 * (((p[1] - p[0]) * (p[2] - p[0])) % (p[3] - p[0]));
+}
+
+void MOABMesh::surface_bins_crossed(Position r0,
+                                    Position r1,
+                                    const Direction& u,
+                                    std::vector<int>& bins) const
+{
+
+  // TODO: Implement triangle crossings here
+  throw std::runtime_error{"Unstructured mesh surface tallies are not implemented."};
 }
 
 int MOABMesh::get_bin(Position r) const
@@ -2212,8 +2209,18 @@ int LibMesh::n_bins() const
   return m_->n_elem();
 }
 
-int LibMesh::n_surface_bins() const
+void
+LibMesh::surface_bins_crossed(Position r0,
+                              Position r1,
+                              const Direction& u,
+                              std::vector<int>& bins) const
 {
+  // TODO: Implement triangle crossings here
+  throw std::runtime_error{"Unstructured mesh surface tallies are not implemented."};
+}
+
+int
+LibMesh::n_surface_bins() const {
   int n_bins = 0;
   for (int i = 0; i < this->n_bins(); i++) {
     const libMesh::Elem& e = get_element_from_bin(i);
@@ -2300,7 +2307,9 @@ void LibMesh::write(const std::string& filename) const
 }
 
 void
-LibMesh::bins_crossed(const Particle& p,
+LibMesh::bins_crossed(Position r0,
+                      Position r1,
+                      const Direction& u,
                       std::vector<int>& bins,
                       std::vector<double>& lengths) const
 {

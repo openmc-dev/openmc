@@ -74,6 +74,8 @@ extern "C" {
   int openmc_material_filter_set_bins(int32_t index, size_t n, const int32_t* bins);
   int openmc_mesh_filter_get_mesh(int32_t index, int32_t* index_mesh);
   int openmc_mesh_filter_set_mesh(int32_t index, int32_t index_mesh);
+  int openmc_mesh_filter_get_translation(int32_t index, double translation[3]);
+  int openmc_mesh_filter_set_translation(int32_t index, double translation[3]);
   int openmc_mesh_get_id(int32_t index, int32_t* id);
   int openmc_mesh_set_id(int32_t index, int32_t id);
   int openmc_meshsurface_filter_get_mesh(int32_t index, int32_t* index_mesh);

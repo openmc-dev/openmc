@@ -69,16 +69,27 @@ bool check_cell_overlap(Particle& p, bool error)
 bool
 find_cell_inner(Particle& p, const NeighborList* neighbor_list)
 {
+  //printf("Particle %d commencing cell lookup on neighbor list %p...\n", p.id_, neighbor_list);
   // Find which cell of this universe the particle is in.  Use the neighbor list
   // to shorten the search if one was provided.
   bool found = false;
   int32_t i_cell = C_NONE;
   if (neighbor_list) {
-    //printf("searching neighbor_list\n");
+    //printf("\tBeginning neighbor list search on list of length %d...\n", neighbor_list->get_length());
     //for (auto it = neighbor_list->cbegin(); it != neighbor_list->cend(); ++it) {
-    for (int64_t i = 0; i < neighbor_list->get_length(); i++) {
+    //for (int64_t i = 0; i < neighbor_list->get_length(); i++) {
+    for (int64_t i = 0; i < NEIGHBOR_SIZE ; i++) {
       //i_cell = *it;
+      //i_cell = neighbor_list->list_[i];
+
+      // Perform an atomic read of the neighbor list
+      #pragma omp atomic read seq_cst
       i_cell = neighbor_list->list_[i];
+
+      // If the neighbor list item is -1, this means the end of the list has been found
+      if( i_cell == -1 )
+        break;
+      //printf("\t\tChecking neighbor list cell_id %d...\n", i_cell);
 
       // Make sure the search cell is in the same universe.
       int i_universe = p.coord_[p.n_coord_-1].universe;
@@ -91,10 +102,17 @@ find_cell_inner(Particle& p, const NeighborList* neighbor_list)
       if (model::cells[i_cell].contains(r, u, surf)) {
         p.coord_[p.n_coord_-1].cell = i_cell;
         found = true;
+        //printf("\t\t\tSuccess!\n");
         break;
       }
+      //printf("\t\t\tNot a hit.\n");
     }
+    //printf("ERROR - neighbor list not yet supported on device yet!\n");
+    if( !found )
+      return found;
   }
+  //printf("\tNeighbor list success = %d. Cell ID = %d\n", found, i_cell);
+
 
   // Check successively lower coordinate levels until finding material fill
   for (;;++p.n_coord_) {
@@ -163,10 +181,10 @@ find_cell_inner(Particle& p, const NeighborList* neighbor_list)
     }
 
     // Announce the cell that the particle is entering.
-    if (found && (settings::verbosity >= 10 || p.trace_)) {
-      auto msg = fmt::format("    Entering cell {}", model::cells[i_cell].id_);
-      write_message(msg, 1);
-    }
+    //if (found && (settings::verbosity >= 10 || p.trace_)) {
+    //  auto msg = fmt::format("    Entering cell {}", model::cells[i_cell].id_);
+    //  write_message(msg, 1);
+    //}
 
     //Cell& c {model::cells[i_cell]};
     Cell& c {model::device_cells[i_cell]};
@@ -324,6 +342,7 @@ bool neighbor_list_find_cell(Particle& p)
   bool found = find_cell_inner(p, &c.neighbors_);
   if (found)
     return found;
+  printf("EXHAUSTIVE SEARCH REQUIRED!\n");
 
   // The particle could not be found in the neighbor list.  Try searching all
   // cells in this universe, and update the neighbor list if we find a new

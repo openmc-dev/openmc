@@ -25,6 +25,12 @@ class NeighborList
 {
 public:
 
+  NeighborList()
+  {
+    for(int i = 0; i < NEIGHBOR_SIZE; i++)
+      list_[i] = -1;
+  }
+
   // Attempt to add an element.
   //
   // If the relevant OpenMP lock is currently owned by another thread, this
@@ -33,47 +39,38 @@ public:
   // element later is slightly faster than waiting on the lock to be released.
   void push_back(int32_t new_elem)
   {
-    // Lock the object
-    mutex_.lock();
-
-    // Check to see if the element already exists in the list
-    for( int64_t i = 0; i < length_; i++ )
+    printf("pushing back %d\n", new_elem);
+    for( int i = 0; i < NEIGHBOR_SIZE; i++)
     {
-      if( list_[i] == new_elem )
-      {
-        mutex_.unlock();
+      // This line checks to see if the new_elem is already in the list
+      int retrieved_id;
+
+      // OpenMP 5.1
+      /*
+         #pragma omp atomic compare capture
+         {
+         retrieved_id = list_[i];
+         if (list_[i] == -1)
+         list_[i] = new_elem;
+         }
+      */
+
+      // Compiler non-portable builtin atomic CAS. Unclear if this is sequentially consistent or not (needs to be!)
+      __sync_synchronize();
+      retrieved_id = __sync_val_compare_and_swap(&list_[i], -1, new_elem);
+      __sync_synchronize();
+
+      // Case 1: The element was not initialized yet, so the previous line had the effect of setting it to new_elem and returning -1.
+      // Case 2: The element was already initialized to the current new_elem, so the atomicCAS call will return new_elem
+      if( retrieved_id == -1 || retrieved_id == new_elem)
         return;
-      }
+
+      // Case 3: The element was already initialized to a different cell_id, so it will return some other value != -1 and != new_elem
+      // so, we continue reading through the list.
     }
-
-    // Determine the index we want to write to
-    int64_t idx = length_;
-    assert(idx < NEIGHBOR_SIZE);
-    
-    // Copy element value to the array
-    list_[idx] = new_elem;
-
-    #pragma omp atomic
-    length_++;
-
-    // unlock the object
-    mutex_.unlock();
-  }
-
-  int64_t get_length() const
-  {
-    int64_t idx;
-    #pragma omp atomic read
-    idx = length_;
-    assert(idx <= NEIGHBOR_SIZE);
-    return idx;
   }
   
   int32_t list_[NEIGHBOR_SIZE];
-
-private:
-  int64_t length_ {0};
-  OpenMPMutex mutex_;
 };
 
 } // namespace openmc

@@ -17,7 +17,7 @@
 #include <vector>
 
 namespace openmc {
-using vector;
+using std::vector;
 }
 
 #endif // OPENMC_VECTOR_H

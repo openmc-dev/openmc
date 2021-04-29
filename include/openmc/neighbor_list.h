@@ -39,7 +39,6 @@ public:
   // element later is slightly faster than waiting on the lock to be released.
   void push_back(int32_t new_elem)
   {
-    printf("pushing back %d\n", new_elem);
     for( int i = 0; i < NEIGHBOR_SIZE; i++)
     {
       // This line checks to see if the new_elem is already in the list
@@ -53,7 +52,7 @@ public:
          if (list_[i] == -1)
          list_[i] = new_elem;
          }
-      */
+         */
 
       // Compiler non-portable builtin atomic CAS. Unclear if this is sequentially consistent or not (needs to be!)
       __sync_synchronize();

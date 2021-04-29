@@ -69,49 +69,62 @@ bool check_cell_overlap(Particle& p, bool error)
 bool
 find_cell_inner(Particle& p, const NeighborList* neighbor_list)
 {
-  //printf("Particle %d commencing cell lookup on neighbor list %p...\n", p.id_, neighbor_list);
   // Find which cell of this universe the particle is in.  Use the neighbor list
   // to shorten the search if one was provided.
   bool found = false;
   int32_t i_cell = C_NONE;
   if (neighbor_list) {
-    //printf("\tBeginning neighbor list search on list of length %d...\n", neighbor_list->get_length());
-    //for (auto it = neighbor_list->cbegin(); it != neighbor_list->cend(); ++it) {
-    //for (int64_t i = 0; i < neighbor_list->get_length(); i++) {
+    // TODO: ALSO MOVE ALL THE CELL DATA
+    #pragma omp target update to(p, neighbor_list[:1])
+    #pragma omp target map(tofrom: found, i_cell)
+    {
     for (int64_t i = 0; i < NEIGHBOR_SIZE ; i++) {
-      //i_cell = *it;
-      //i_cell = neighbor_list->list_[i];
 
       // Perform an atomic read of the neighbor list
-      #pragma omp atomic read seq_cst
+
+      // TODO: The below is the correct version.
+      // Note: Gives a runtime JIT compiler error (can't find the flush function or something)
+      //#pragma omp atomic read seq_cst
+      
+      // TODO: The below is the workaround
+      // Note: gives a link time error
+      /*
+      __sync_synchronize();
+      #pragma omp atomic read
+      i_cell = neighbor_list->list_[i];
+      __sync_synchronize();
+      */
+
+      // TODO: The below is the workaround for the workaround
+      #pragma omp atomic read
       i_cell = neighbor_list->list_[i];
 
       // If the neighbor list item is -1, this means the end of the list has been found
       if( i_cell == -1 )
         break;
-      //printf("\t\tChecking neighbor list cell_id %d...\n", i_cell);
 
       // Make sure the search cell is in the same universe.
       int i_universe = p.coord_[p.n_coord_-1].universe;
-      if (model::cells[i_cell].universe_ != i_universe) continue;
+      //if (model::cells[i_cell].universe_ != i_universe) continue;
+      if (model::device_cells[i_cell].universe_ != i_universe) continue;
 
       // Check if this cell contains the particle.
       Position r {p.r_local()};
       Direction u {p.u_local()};
       auto surf = p.surface_;
-      if (model::cells[i_cell].contains(r, u, surf)) {
+      //if (model::cells[i_cell].contains(r, u, surf)) {
+      if (model::device_cells[i_cell].contains(r, u, surf)) {
         p.coord_[p.n_coord_-1].cell = i_cell;
         found = true;
-        //printf("\t\t\tSuccess!\n");
         break;
       }
-      //printf("\t\t\tNot a hit.\n");
     }
-    //printf("ERROR - neighbor list not yet supported on device yet!\n");
+    } // END TARGET REGION
+    // TODO: ALSO MOVE ALL THE CELL DATA
+    #pragma omp target update from(p, neighbor_list[:1])
     if( !found )
       return found;
   }
-  //printf("\tNeighbor list success = %d. Cell ID = %d\n", found, i_cell);
 
 
   // Check successively lower coordinate levels until finding material fill
@@ -335,7 +348,8 @@ bool neighbor_list_find_cell(Particle& p)
   // Get the cell this particle was in previously.
   auto coord_lvl = p.n_coord_ - 1;
   auto i_cell = p.coord_[coord_lvl].cell;
-  Cell& c {model::cells[i_cell]};
+  //Cell& c {model::cells[i_cell]};
+  Cell& c {model::device_cells[i_cell]};
 
   // Search for the particle in that cell's neighbor list.  Return if we
   // found the particle.

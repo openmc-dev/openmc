@@ -159,9 +159,8 @@ find_cell_inner(Particle& p, const NeighborList* neighbor_list)
           if (c_i.type_ == Fill::UNIVERSE) {
             offset += c_i.offset_[c.distribcell_index_];
           } else if (c_i.type_ == Fill::LATTICE) {
-            auto& lat {*model::lattices[p.coord_[i + 1].lattice]};
-            int i_xyz[3] {p.coord_[i + 1].lattice_x, p.coord_[i + 1].lattice_y,
-              p.coord_[i + 1].lattice_z};
+            auto& lat {*model::lattices[p.coord(i + 1).lattice]};
+            const auto& i_xyz {p.coord(i + 1).lattice_i};
             if (lat.are_valid_indices(i_xyz)) {
               offset += lat.offset(c.distribcell_index_, i_xyz);
             }
@@ -226,16 +225,14 @@ find_cell_inner(Particle& p, const NeighborList* neighbor_list)
       }
 
       // Determine lattice indices.
-      auto i_xyz = lat.get_indices(coord.r, coord.u);
+      auto& i_xyz {coord.lattice_i};
+      lat.get_indices(coord.r, coord.u, i_xyz);
 
       // Get local position in appropriate lattice cell
       coord.r = lat.get_local_position(coord.r, i_xyz);
 
       // Set lattice indices.
       coord.lattice = c.fill_;
-      coord.lattice_x = i_xyz[0];
-      coord.lattice_y = i_xyz[1];
-      coord.lattice_z = i_xyz[2];
 
       // Set the lower coordinate level universe.
       if (lat.are_valid_indices(i_xyz)) {
@@ -318,10 +315,9 @@ cross_lattice(Particle& p, const BoundaryInfo& boundary)
   }
 
   // Set the lattice indices.
-  coord.lattice_x += boundary.lattice_translation[0];
-  coord.lattice_y += boundary.lattice_translation[1];
-  coord.lattice_z += boundary.lattice_translation[2];
-  std::array<int, 3> i_xyz {coord.lattice_x, coord.lattice_y, coord.lattice_z};
+  coord.lattice_i[0] += boundary.lattice_translation[0];
+  coord.lattice_i[1] += boundary.lattice_translation[1];
+  coord.lattice_i[2] += boundary.lattice_translation[2];
 
   // Set the new coordinate position.
   const auto& upper_coord {p.coord(p.n_coord() - 2)};
@@ -331,9 +327,9 @@ cross_lattice(Particle& p, const BoundaryInfo& boundary)
   if (!cell->rotation_.empty()) {
     r = r.rotate(cell->rotation_);
   }
-  p.r_local() = lat.get_local_position(r, i_xyz);
+  p.r_local() = lat.get_local_position(r, coord.lattice_i);
 
-  if (!lat.are_valid_indices(i_xyz)) {
+  if (!lat.are_valid_indices(coord.lattice_i)) {
     // The particle is outside the lattice.  Search for it from the base coords.
     p.n_coord() = 1;
     bool found = exhaustive_find_cell(p);
@@ -345,7 +341,7 @@ cross_lattice(Particle& p, const BoundaryInfo& boundary)
 
   } else {
     // Find cell in next lattice element.
-    p.coord_[p.n_coord_-1].universe = lat[i_xyz];
+    p.coord(p.n_coord() - 1).universe = lat[coord.lattice_i];
     bool found = exhaustive_find_cell(p);
 
     if (!found) {
@@ -387,13 +383,12 @@ BoundaryInfo distance_to_boundary(Particle& p)
     // Find the distance to the next lattice tile crossing.
     if (coord.lattice != C_NONE) {
       auto& lat {*model::lattices[coord.lattice]};
-      std::array<int, 3> i_xyz {coord.lattice_x, coord.lattice_y, coord.lattice_z};
       //TODO: refactor so both lattice use the same position argument (which
       //also means the lat.type attribute can be removed)
       std::pair<double, array<int, 3>> lattice_distance;
       switch (lat.type_) {
         case LatticeType::rect:
-          lattice_distance = lat.distance(r, u, i_xyz);
+          lattice_distance = lat.distance(r, u, coord.lattice_i);
           break;
         case LatticeType::hex:
           auto& cell_above {model::cells[p.coord(i - 1).cell]};
@@ -403,7 +398,7 @@ BoundaryInfo distance_to_boundary(Particle& p)
             r_hex = r_hex.rotate(cell_above->rotation_);
           }
           r_hex.z = coord.r.z;
-          lattice_distance = lat.distance(r_hex, u, i_xyz);
+          lattice_distance = lat.distance(r_hex, u, coord.lattice_i);
           break;
       }
       d_lat = lattice_distance.first;

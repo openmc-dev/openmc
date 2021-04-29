@@ -184,16 +184,19 @@ RectLattice::RectLattice(pugi::xml_node lat_node)
   if (univ_words.size() != n_cells_[0] * n_cells_[1] * n_cells_[2]) {
     fatal_error(fmt::format(
       "Expected {} universes for a rectangular lattice of size {}x{}x{} but {} "
-      "were specified.", nx*ny*nz,  nx, ny, nz, univ_words.size()));
+      "were specified.",
+      n_cells_[0] * n_cells_[1] * n_cells_[2], n_cells_[0], n_cells_[1],
+      n_cells_[2], univ_words.size()));
   }
 
   // Parse the universes.
-  universes_.resize(nx*ny*nz, C_NONE);
-  for (int iz = 0; iz < nz; iz++) {
-    for (int iy = ny-1; iy > -1; iy--) {
-      for (int ix = 0; ix < nx; ix++) {
-        int indx1 = nx*ny*iz + nx*(ny-iy-1) + ix;
-        int indx2 = nx*ny*iz + nx*iy + ix;
+  universes_.resize(n_cells_[0] * n_cells_[1] * n_cells_[2], C_NONE);
+  for (int iz = 0; iz < n_cells_[2]; iz++) {
+    for (int iy = n_cells_[1] - 1; iy > -1; iy--) {
+      for (int ix = 0; ix < n_cells_[0]; ix++) {
+        int indx1 = n_cells_[0] * n_cells_[1] * iz +
+                    n_cells_[0] * (n_cells_[1] - iy - 1) + ix;
+        int indx2 = n_cells_[0] * n_cells_[1] * iz + n_cells_[0] * iy + ix;
         universes_[indx1] = std::stoi(univ_words[indx2]);
       }
     }
@@ -202,17 +205,16 @@ RectLattice::RectLattice(pugi::xml_node lat_node)
 
 //==============================================================================
 
-int32_t&
-RectLattice::operator[](std::array<int, 3> i_xyz)
+int32_t const& RectLattice::operator[](array<int, 3> const& i_xyz)
 {
-  int indx = nx*ny*i_xyz[2] + nx*i_xyz[1] + i_xyz[0];
+  int indx =
+    n_cells_[0] * n_cells_[1] * i_xyz[2] + n_cells_[0] * i_xyz[1] + i_xyz[0];
   return universes_[indx];
 }
 
 //==============================================================================
 
-bool
-RectLattice::are_valid_indices(const int i_xyz[3]) const
+bool RectLattice::are_valid_indices(array<int, 3> const& i_xyz) const
 {
   return (   (i_xyz[0] >= 0) && (i_xyz[0] < n_cells_[0])
           && (i_xyz[1] >= 0) && (i_xyz[1] < n_cells_[1])
@@ -279,48 +281,44 @@ std::pair<double, array<int, 3>> RectLattice::distance(
 
 //==============================================================================
 
-std::array<int, 3>
-RectLattice::get_indices(Position r, Direction u) const
+void RectLattice::get_indices(
+  Position r, Direction u, array<int, 3>& result) const
 {
   // Determine x index, accounting for coincidence
   double ix_ {(r.x - lower_left_.x) / pitch_.x};
   long ix_close {std::lround(ix_)};
-  int ix;
   if (coincident(ix_, ix_close)) {
-    ix = (u.x > 0) ? ix_close : ix_close - 1;
+    result[0] = (u.x > 0) ? ix_close : ix_close - 1;
   } else {
-    ix = std::floor(ix_);
+    result[0] = std::floor(ix_);
   }
 
   // Determine y index, accounting for coincidence
   double iy_ {(r.y - lower_left_.y) / pitch_.y};
   long iy_close {std::lround(iy_)};
-  int iy;
   if (coincident(iy_, iy_close)) {
-    iy = (u.y > 0) ? iy_close : iy_close - 1;
+    result[1] = (u.y > 0) ? iy_close : iy_close - 1;
   } else {
-    iy = std::floor(iy_);
+    result[1] = std::floor(iy_);
   }
 
   // Determine z index, accounting for coincidence
-  int iz = 0;
+  result[2] = 0;
   if (is_3d_) {
     double iz_ {(r.z - lower_left_.z) / pitch_.z};
     long iz_close {std::lround(iz_)};
     if (coincident(iz_, iz_close)) {
-      iz = (u.z > 0) ? iz_close : iz_close - 1;
+      result[2] = (u.z > 0) ? iz_close : iz_close - 1;
     } else {
-      iz = std::floor(iz_);
+      result[2] = std::floor(iz_);
     }
   }
-  return {ix, iy, iz};
 }
 
 //==============================================================================
 
-Position
-RectLattice::get_local_position(Position r, const std::array<int, 3> i_xyz)
-const
+Position RectLattice::get_local_position(
+  Position r, const array<int, 3>& i_xyz) const
 {
   r.x -= (lower_left_.x + (i_xyz[0] + 0.5)*pitch_.x);
   r.y -= (lower_left_.y + (i_xyz[1] + 0.5)*pitch_.y);
@@ -332,10 +330,11 @@ const
 
 //==============================================================================
 
-int32_t&
-RectLattice::offset(int map, const int i_xyz[3])
+int32_t& RectLattice::offset(int map, array<int, 3> const& i_xyz)
 {
-  return offsets_[nx*ny*nz*map + nx*ny*i_xyz[2] + nx*i_xyz[1] + i_xyz[0]];
+  return offsets_[n_cells_[0] * n_cells_[1] * n_cells_[2] * map +
+                  n_cells_[0] * n_cells_[1] * i_xyz[2] +
+                  n_cells_[0] * i_xyz[1] + i_xyz[0]];
 }
 
 //==============================================================================
@@ -343,7 +342,7 @@ RectLattice::offset(int map, const int i_xyz[3])
 int32_t
 RectLattice::offset(int map, int indx) const
 {
-  return offsets_[nx*ny*nz*map + indx];
+  return offsets_[n_cells_[0] * n_cells_[1] * n_cells_[2] * map + indx];
 }
 
 //==============================================================================
@@ -351,9 +350,9 @@ RectLattice::offset(int map, int indx) const
 std::string
 RectLattice::index_to_string(int indx) const
 {
-  int iz {indx / (nx * ny)};
-  int iy {(indx - nx * ny * iz) / nx};
-  int ix {indx - nx * ny * iz - nx * iy};
+  int iz {indx / (n_cells_[0] * n_cells_[1])};
+  int iy {(indx - n_cells_[0] * n_cells_[1] * iz) / n_cells_[0]};
+  int ix {indx - n_cells_[0] * n_cells_[1] * iz - n_cells_[0] * iy};
   std::string out {std::to_string(ix)};
   out += ',';
   out += std::to_string(iy);
@@ -653,8 +652,7 @@ void HexLattice::fill_lattice_y(const vector<std::string>& univ_words)
 
 //==============================================================================
 
-int32_t&
-HexLattice::operator[](std::array<int, 3> i_xyz)
+int32_t const& HexLattice::operator[](array<int, 3> const& i_xyz)
 {
   int indx = (2*n_rings_-1)*(2*n_rings_-1) * i_xyz[2]
               + (2*n_rings_-1) * i_xyz[1]
@@ -672,8 +670,7 @@ ReverseLatticeIter HexLattice::rbegin()
 
 //==============================================================================
 
-bool
-HexLattice::are_valid_indices(const int i_xyz[3]) const
+bool HexLattice::are_valid_indices(array<int, 3> const& i_xyz) const
 {
   // Check if (x, alpha, z) indices are valid, accounting for number of rings
   return ((i_xyz[0] >= 0) && (i_xyz[1] >= 0) && (i_xyz[2] >= 0)
@@ -826,44 +823,43 @@ std::pair<double, array<int, 3>> HexLattice::distance(
 
 //==============================================================================
 
-std::array<int, 3>
-HexLattice::get_indices(Position r, Direction u) const
+void HexLattice::get_indices(
+  Position r, Direction u, array<int, 3>& result) const
 {
   // Offset the xyz by the lattice center.
   Position r_o {r.x - center_.x, r.y - center_.y, r.z};
   if (is_3d_) {r_o.z -= center_.z;}
 
   // Index the z direction, accounting for coincidence
-  int iz = 0;
+  result[2] = 0;
   if (is_3d_) {
     double iz_ {r_o.z / pitch_[1] + 0.5 * n_axial_};
     long iz_close {std::lround(iz_)};
     if (coincident(iz_, iz_close)) {
-      iz = (u.z > 0) ? iz_close : iz_close - 1;
+      result[2] = (u.z > 0) ? iz_close : iz_close - 1;
     } else {
-      iz = std::floor(iz_);
+      result[2] = std::floor(iz_);
     }
   }
 
-  int i1, i2;
   if (orientation_ == Orientation::y) {
     // Convert coordinates into skewed bases.  The (x, alpha) basis is used to
     // find the index of the global coordinates to within 4 cells.
     double alpha = r_o.y - r_o.x / std::sqrt(3.0);
-    i1 = std::floor(r_o.x / (0.5*std::sqrt(3.0) * pitch_[0]));
-    i2 = std::floor(alpha / pitch_[0]);
+    result[0] = std::floor(r_o.x / (0.5 * std::sqrt(3.0) * pitch_[0]));
+    result[1] = std::floor(alpha / pitch_[0]);
   } else {
     // Convert coordinates into skewed bases.  The (alpha, y) basis is used to
     // find the index of the global coordinates to within 4 cells.
     double alpha = r_o.y - r_o.x * std::sqrt(3.0);
-    i1 = std::floor(-alpha / (std::sqrt(3.0) * pitch_[0]));
-    i2 = std::floor(r_o.y / (0.5*std::sqrt(3.0) * pitch_[0]));
+    result[0] = std::floor(-alpha / (std::sqrt(3.0) * pitch_[0]));
+    result[1] = std::floor(r_o.y / (0.5 * std::sqrt(3.0) * pitch_[0]));
   }
 
   // Add offset to indices (the center cell is (i1, i2) = (0, 0) but
   // the array is offset so that the indices never go below 0).
-  i1 += n_rings_-1;
-  i2 += n_rings_-1;
+  result[0] += n_rings_ - 1;
+  result[1] += n_rings_ - 1;
 
   // Calculate the (squared) distance between the particle and the centers of
   // the four possible cells.  Regular hexagonal tiles form a Voronoi
@@ -882,14 +878,14 @@ HexLattice::get_indices(Position r, Direction u) const
   // is kept (i.e. the cell with the lowest dot product as the vectors will be
   // completely opposed if the particle is moving directly toward the center of
   // the cell).
-  int i1_chg {};
-  int i2_chg {};
+  int i1_chg;
+  int i2_chg;
   double d_min {INFTY};
   double dp_min {INFTY};
   for (int i = 0; i < 2; i++) {
     for (int j = 0; j < 2; j++) {
       // get local coordinates
-      const std::array<int, 3> i_xyz {i1 + j, i2 + i, 0};
+      const array<int, 3> i_xyz {result[0] + j, result[1] + i, 0};
       Position r_t = get_local_position(r, i_xyz);
       // calculate distance
       double d = r_t.x*r_t.x + r_t.y*r_t.y;
@@ -916,17 +912,14 @@ HexLattice::get_indices(Position r, Direction u) const
   }
 
   // update outgoing indices
-  i1 += i1_chg;
-  i2 += i2_chg;
-
-  return {i1, i2, iz};
+  result[0] += i1_chg;
+  result[1] += i2_chg;
 }
 
 //==============================================================================
 
-Position
-HexLattice::get_local_position(Position r, const std::array<int, 3> i_xyz)
-const
+Position HexLattice::get_local_position(
+  Position r, const array<int, 3>& i_xyz) const
 {
   if (orientation_ == Orientation::y) {
     // x_l = x_g - (center + pitch_x*cos(30)*index_x)
@@ -961,14 +954,13 @@ HexLattice::is_valid_index(int indx) const
   int iz = indx / (nx * ny);
   int iy = (indx - nx*ny*iz) / nx;
   int ix = indx - nx*ny*iz - nx*iy;
-  int i_xyz[3] {ix, iy, iz};
+  array<int, 3> i_xyz {ix, iy, iz};
   return are_valid_indices(i_xyz);
 }
 
 //==============================================================================
 
-int32_t&
-HexLattice::offset(int map, const int i_xyz[3])
+int32_t& HexLattice::offset(int map, array<int, 3> const& i_xyz)
 {
   int nx {2*n_rings_ - 1};
   int ny {2*n_rings_ - 1};

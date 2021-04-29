@@ -122,7 +122,7 @@ public:
   //!   of the plot's axes.  For example an xy-slice plot will get back a vector
   //!   of x-coordinates and another of y-coordinates.  These vectors may be
   //!   empty for low-dimensional meshes.
-  virtual std::pair<vector<double>, std::vector<double>> plot(
+  virtual std::pair<vector<double>, vector<double>> plot(
     Position plot_ll, Position plot_ur) const = 0;
 
   //! Return a string representation of the mesh bin
@@ -159,7 +159,7 @@ public:
   //! \param[in] Number of bank sites
   //! \param[out] Whether any bank sites are outside the mesh
   xt::xtensor<double, 1> count_sites(
-    const ParticleBank* bank, int64_t length, bool* outside) const;
+    const SourceSite* bank, int64_t length, bool* outside) const;
 
   //! Get bin given mesh indices
   //
@@ -244,7 +244,7 @@ public:
 
   double negative_grid_boundary(int* ijk, int i) const override;
 
-  std::pair<vector<double>, std::vector<double>> plot(
+  std::pair<vector<double>, vector<double>> plot(
     Position plot_ll, Position plot_ur) const override;
 
   void to_hdf5(hid_t group) const override;
@@ -257,7 +257,7 @@ public:
   //! \param[out] Whether any bank sites are outside the mesh
   //! \return Array indicating number of sites in each mesh/energy bin
   xt::xtensor<double, 1> count_sites(
-    const ParticleBank* bank, int64_t length, bool* outside) const;
+    const SourceSite* bank, int64_t length, bool* outside) const;
 
   // Data members
   double volume_frac_; //!< Volume fraction of each mesh element
@@ -285,12 +285,12 @@ public:
 
   double negative_grid_boundary(int* ijk, int i) const override;
 
-  std::pair<vector<double>, std::vector<double>> plot(
+  std::pair<vector<double>, vector<double>> plot(
     Position plot_ll, Position plot_ur) const override;
 
   void to_hdf5(hid_t group) const override;
 
-  vector<std::vector<double>> grid_;
+  vector<vector<double>> grid_;
 
   int set_grid();
 };
@@ -382,7 +382,7 @@ public:
 
   int n_surface_bins() const override;
 
-  std::pair<vector<double>, std::vector<double>> plot(
+  std::pair<vector<double>, vector<double>> plot(
     Position plot_ll, Position plot_ur) const override;
 
   std::string library() const override;
@@ -534,7 +534,7 @@ public:
 
   int n_surface_bins() const override;
 
-  std::pair<vector<double>, std::vector<double>> plot(
+  std::pair<vector<double>, vector<double>> plot(
     Position plot_ll, Position plot_ur) const override;
 
   void add_score(const std::string& var_name) override;

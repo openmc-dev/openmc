@@ -42,8 +42,8 @@ void assign_temperatures();
 //!   table
 //==============================================================================
 
-void get_temperatures(vector<std::vector<double>>& nuc_temps,
-  vector<std::vector<double>>& thermal_temps);
+void get_temperatures(
+  vector<vector<double>>& nuc_temps, vector<vector<double>>& thermal_temps);
 
 //==============================================================================
 //! \brief Perform final setup for geometry

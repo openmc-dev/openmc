@@ -303,7 +303,7 @@ private:
   //! `partitions_.back()` gives the cells that lie on the positive side of
   //! `surfs_.back()`.  Otherwise, `partitions_[i]` gives cells sandwiched
   //! between `surfs_[i-1]` and `surfs_[i]`.
-  vector<std::vector<int32_t>> partitions_;
+  vector<vector<int32_t>> partitions_;
 };
 
 

@@ -1,5 +1,5 @@
-#ifndef OPENMC_PARTICLE_REPRESENTATION_H
-#define OPENMC_PARTICLE_REPRESENTATION_H
+#ifndef OPENMC_PARTICLE_DATA_H
+#define OPENMC_PARTICLE_DATA_H
 
 #include "openmc/array.h"
 #include "openmc/constants.h"
@@ -40,7 +40,7 @@ enum class ParticleType { neutron, photon, electron, positron };
 //! NOTE: This structure is also used on the python side, and is defined
 //! in lib/core.py. Changes made to the type here must also be made to the
 //! python defintion.
-struct ParticleBank {
+struct SourceSite {
   Position r;
   Direction u;
   double E;
@@ -247,7 +247,7 @@ private:
   int stream_;                // current RNG stream
 
   // Secondary particle bank
-  vector<ParticleBank> secondary_bank_;
+  vector<SourceSite> secondary_bank_;
 
   int64_t current_work_; // current work index
 
@@ -255,7 +255,7 @@ private:
 
   vector<FilterMatch> filter_matches_; // tally filter matches
 
-  vector<std::vector<Position>> tracks_; // tracks for outputting to file
+  vector<vector<Position>> tracks_; // tracks for outputting to file
 
   vector<NuBank> nu_bank_; // bank of most recently fissioned particles
 
@@ -370,7 +370,7 @@ public:
   uint64_t* seeds() { return seeds_; }
   int& stream() { return stream_; }
 
-  ParticleBank& secondary_bank(const int& i) { return secondary_bank_[i]; }
+  SourceSite& secondary_bank(const int& i) { return secondary_bank_[i]; }
   decltype(secondary_bank_)& secondary_bank() { return secondary_bank_; }
   int64_t& current_work() { return current_work_; }
   const int64_t& current_work() const { return current_work_; }
@@ -450,4 +450,4 @@ public:
 
 } // namespace openmc
 
-#endif // OPENMC_PARTICLE_REPRESENTATION_H
+#endif // OPENMC_PARTICLE_DATA_H

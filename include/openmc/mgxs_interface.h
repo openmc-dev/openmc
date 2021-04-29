@@ -23,7 +23,7 @@ public:
   // of XS to read and the corresponding temperatures for each XS
   MgxsInterface(const std::string& path_cross_sections,
     const vector<std::string> xs_to_read,
-    const vector<std::vector<double>> xs_temps);
+    const vector<vector<double>> xs_temps);
 
   // Does things to construct after the nuclides and temperatures to
   // read have been specified.
@@ -31,7 +31,7 @@ public:
 
   // Set which nuclides and temperatures are to be read
   void set_nuclides_and_temperatures(
-    vector<std::string> xs_to_read, vector<std::vector<double>> xs_temps);
+    vector<std::string> xs_to_read, vector<vector<double>> xs_temps);
 
   // Add an Mgxs object to be managed
   void add_mgxs(
@@ -45,20 +45,20 @@ public:
   void create_macro_xs();
 
   // Get the kT values which are used in the OpenMC model
-  vector<std::vector<double>> get_mat_kTs();
+  vector<vector<double>> get_mat_kTs();
 
   int num_energy_groups_;
   int num_delayed_groups_;
   vector<std::string> xs_names_;                 // available names in HDF5 file
   vector<std::string> xs_to_read_;               // XS which appear in materials
-  vector<std::vector<double>> xs_temps_to_read_; // temperatures used
+  vector<vector<double>> xs_temps_to_read_;      // temperatures used
   std::string cross_sections_path_; // path to MGXS h5 file
   vector<Mgxs> nuclides_;
   vector<Mgxs> macro_xs_;
   vector<double> energy_bins_;
   vector<double> energy_bin_avg_;
   vector<double> rev_energy_bins_;
-  vector<std::vector<double>> nuc_temps_; // all available temperatures
+  vector<vector<double>> nuc_temps_; // all available temperatures
 };
 
 namespace data {

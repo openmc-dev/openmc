@@ -1144,9 +1144,9 @@ double sternheimer_adjustment(const vector<double>& f,
   return rho;
 }
 
-double density_effect(const vector<double>& f,
-  const std::vector<double>& e_b_sq, double e_p_sq, double n_conduction,
-  double rho, double E, double tol, int max_iter)
+double density_effect(const vector<double>& f, const vector<double>& e_b_sq,
+  double e_p_sq, double n_conduction, double rho, double E, double tol,
+  int max_iter)
 {
   // Get the total number of oscillators
   int n = f.size();

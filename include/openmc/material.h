@@ -197,9 +197,9 @@ double sternheimer_adjustment(const vector<double>& f,
   double log_I, double tol, int max_iter);
 
 //! Calculate density effect correction
-double density_effect(const vector<double>& f,
-  const std::vector<double>& e_b_sq, double e_p_sq, double n_conduction,
-  double rho, double E, double tol, int max_iter);
+double density_effect(const vector<double>& f, const vector<double>& e_b_sq,
+  double e_p_sq, double n_conduction, double rho, double E, double tol,
+  int max_iter);
 
 //! Read material data from materials.xml
 void read_materials_xml();

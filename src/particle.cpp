@@ -50,7 +50,7 @@ void Particle::create_secondary(
   n_bank_second() += 1;
 }
 
-void Particle::from_source(const ParticleBank* src)
+void Particle::from_source(const SourceSite* src)
 {
   // Reset some attributes
   clear();
@@ -368,7 +368,7 @@ Particle::cross_surface()
   }
 
   if (surf->surf_source_ && simulation::current_batch == settings::n_batches) {
-    ParticleBank site;
+    SourceSite site;
     site.r = r();
     site.u = u();
     site.E = E();

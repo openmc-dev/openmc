@@ -32,7 +32,7 @@ namespace openmc {
 void Mgxs::init(const std::string& in_name, double in_awr,
   const vector<double>& in_kTs, bool in_fissionable,
   AngleDistributionType in_scatter_format, bool in_is_isotropic,
-  const vector<double>& in_polar, const std::vector<double>& in_azimuthal)
+  const vector<double>& in_polar, const vector<double>& in_azimuthal)
 {
   // Set the metadata
   name = in_name;
@@ -307,7 +307,7 @@ Mgxs::Mgxs(
 //==============================================================================
 
 Mgxs::Mgxs(const std::string& in_name, const vector<double>& mat_kTs,
-  const vector<Mgxs*>& micros, const std::vector<double>& atom_densities,
+  const vector<Mgxs*>& micros, const vector<double>& atom_densities,
   int num_group, int num_delay)
   : num_groups(num_group), num_delayed_groups(num_delay)
 {
@@ -415,8 +415,8 @@ Mgxs::Mgxs(const std::string& in_name, const vector<double>& mat_kTs,
 
 //==============================================================================
 
-void Mgxs::combine(const vector<Mgxs*>& micros,
-  const std::vector<double>& scalars, const vector<int>& micro_ts, int this_t)
+void Mgxs::combine(const vector<Mgxs*>& micros, const vector<double>& scalars,
+  const vector<int>& micro_ts, int this_t)
 {
   // Build the vector of pointers to the xs objects within micros
   vector<XsData*> those_xs(micros.size());

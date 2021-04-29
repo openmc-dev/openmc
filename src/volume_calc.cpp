@@ -98,9 +98,9 @@ vector<VolumeCalculation::Result> VolumeCalculation::execute() const
 {
   // Shared data that is collected from all threads
   int n = domain_ids_.size();
-  vector<std::vector<int>> master_indices(
+  vector<vector<int>> master_indices(
     n); // List of material indices for each domain
-  vector<std::vector<int>> master_hits(
+  vector<vector<int>> master_hits(
     n); // Number of hits for each material in each domain
   int iterations = 0;
 
@@ -121,8 +121,8 @@ vector<VolumeCalculation::Result> VolumeCalculation::execute() const
     #pragma omp parallel
     {
       // Variables that are private to each thread
-      vector<std::vector<int>> indices(n);
-      vector<std::vector<int>> hits(n);
+      vector<vector<int>> indices(n);
+      vector<vector<int>> hits(n);
       Particle p;
 
       // Sample locations and count hits

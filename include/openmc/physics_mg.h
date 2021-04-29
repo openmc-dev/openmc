@@ -7,7 +7,6 @@
 #include "openmc/capi.h"
 #include "openmc/nuclide.h"
 #include "openmc/particle.h"
-#include "openmc/vector.h"
 
 namespace openmc {
 

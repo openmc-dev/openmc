@@ -137,7 +137,7 @@ class XsData {
     //! @param micros Microscopic objects to combine.
     //! @param scalars Scalars to multiply the microscopic data by.
     void combine(
-      const vector<XsData*>& those_xs, const std::vector<double>& scalars);
+      const vector<XsData*>& those_xs, const vector<double>& scalars);
 
     //! \brief Checks to see if this and that are able to be combined
     //!

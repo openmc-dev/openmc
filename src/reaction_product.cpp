@@ -99,24 +99,38 @@ void ReactionProduct::sample(double E_in, double& E_out, double& mu,
 
       // If i-th distribution is sampled, sample energy from the distribution
       if (c <= prob) {
-        const auto& d = distribution_[i];
-
-        // #pragma omp target map(from: E_out, mu) map(tofrom: seed[:1])
+        #pragma omp target map(from: E_out, mu) map(tofrom: seed[:1])
         {
-          d.sample(E_in, E_out, mu, seed);
+          device_distribution_[i].sample(E_in, E_out, mu, seed);
         }
         break;
       }
     }
   } else {
     // If only one distribution is present, go ahead and sample it
-    const auto& d = distribution_[0];
-
-    // #pragma omp target map(from: E_out, mu) map(tofrom: seed[:1])
+    #pragma omp target map(from: E_out, mu) map(tofrom: seed[:1])
     {
-      d.sample(E_in, E_out, mu, seed);
+      device_distribution_[0].sample(E_in, E_out, mu, seed);
     }
   }
+}
+
+void ReactionProduct::copy_to_device()
+{
+  device_distribution_ = distribution_.data();
+
+  #pragma omp target enter data map(to: device_distribution_[:distribution_.size()])
+  for (auto& d : distribution_) {
+    d.copy_to_device();
+  }
+}
+
+void ReactionProduct::release_from_device()
+{
+  for (auto& d : distribution_) {
+    d.release_device();
+  }
+  #pragma omp target exit data map(release: device_distribution_[:distribution_.size()])
 }
 
 }

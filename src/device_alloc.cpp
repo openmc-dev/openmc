@@ -100,10 +100,7 @@ void move_read_only_data_to_device()
     std::cout << "Moving " << nuc->name_ << " data to device..." << std::endl;
     for (auto& rx : nuc->reactions_) {
       for (auto& product : rx->products_) {
-        for (auto& d : product.distribution_) {
-          #pragma omp target enter data map(to: d)
-          d.copy_to_device();
-        }
+        product.copy_to_device();
       }
     }
   }
@@ -137,10 +134,7 @@ void release_data_from_device()
   for (auto& nuc : data::nuclides) {
     for (auto& rx : nuc->reactions_) {
       for (auto& product : rx->products_) {
-        for (auto& d : product.distribution_) {
-          d.release_device();
-          #pragma omp target exit data map(release: d)
-        }
+        product.release_from_device();
       }
     }
   }

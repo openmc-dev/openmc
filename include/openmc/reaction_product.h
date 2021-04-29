@@ -47,12 +47,17 @@ public:
   //! \param[inout] seed Pseudorandom seed pointer
   void sample(double E_in, double& E_out, double& mu, uint64_t* seed) const;
 
+  void copy_to_device();
+  void release_from_device();
+
   Particle::Type particle_; //!< Particle type
   EmissionMode emission_mode_; //!< Emission mode
   double decay_rate_; //!< Decay rate (for delayed neutron precursors) in [1/s]
   std::unique_ptr<Function1DFlatContainer> yield_; //!< Yield as a function of energy
   std::vector<Tabulated1D> applicability_; //!< Applicability of distribution
   std::vector<Secondary> distribution_; //!< Secondary angle-energy distribution
+
+  Secondary* device_distribution_;
 };
 
 } // namespace opemc

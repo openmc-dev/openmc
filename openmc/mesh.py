@@ -471,6 +471,8 @@ class RectilinearMesh(MeshBase):
         Unique identifier for the mesh
     name : str
         Name of the mesh
+    dimension : Iterable of int
+        The number of mesh cells in each direction.
     n_dimension : int
         Number of mesh dimensions (always 3 for a RectilinearMesh).
     x_grid : Iterable of float
@@ -491,6 +493,12 @@ class RectilinearMesh(MeshBase):
         self._x_grid = None
         self._y_grid = None
         self._z_grid = None
+
+    @property
+    def dimension(self):
+        return (len(self.x_grid) - 1,
+                len(self.y_grid) - 1,
+                len(self.z_grid) - 1)
 
     @property
     def n_dimension(self):

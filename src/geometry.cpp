@@ -75,8 +75,8 @@ find_cell_inner(Particle& p, const NeighborList* neighbor_list)
   int32_t i_cell = C_NONE;
   if (neighbor_list) {
     // TODO: ALSO MOVE ALL THE CELL DATA
-    #pragma omp target update to(p, neighbor_list[:1])
-    #pragma omp target map(tofrom: found, i_cell)
+    //#pragma omp target update to(p, neighbor_list[:1])
+    //#pragma omp target map(tofrom: found, i_cell)
     {
     for (int64_t i = 0; i < NEIGHBOR_SIZE ; i++) {
 
@@ -121,7 +121,7 @@ find_cell_inner(Particle& p, const NeighborList* neighbor_list)
     }
     } // END TARGET REGION
     // TODO: ALSO MOVE ALL THE CELL DATA
-    #pragma omp target update from(p, neighbor_list[:1])
+    //#pragma omp target update from(p, neighbor_list[:1])
     if( !found )
       return found;
   }
@@ -132,8 +132,8 @@ find_cell_inner(Particle& p, const NeighborList* neighbor_list)
     // If neighbor lists did not find a cell, must do exhaustive search
     if (i_cell == C_NONE) {
       //Particle p_inner = p;
-      #pragma omp target update to(p)
-      #pragma omp target map(tofrom: i_cell, found)
+      //#pragma omp target update to(p)
+      //#pragma omp target map(tofrom: i_cell, found)
       {
       int i_universe = p.coord_[p.n_coord_-1].universe;
       //const auto& univ {model::universes[i_universe]};
@@ -186,7 +186,7 @@ find_cell_inner(Particle& p, const NeighborList* neighbor_list)
         */
       }
       }
-      #pragma omp target update from(p)
+      //#pragma omp target update from(p)
       //p = p_inner;
     }
     if (!found) {
@@ -204,8 +204,8 @@ find_cell_inner(Particle& p, const NeighborList* neighbor_list)
     if (c.type_ == Fill::MATERIAL) {
       // Found a material cell which means this is the lowest coord level.
 
-      #pragma omp target update to(p)
-      #pragma omp target
+      //#pragma omp target update to(p)
+      //#pragma omp target
       {
       // Find the distribcell instance number.
       int offset = 0;
@@ -248,7 +248,7 @@ find_cell_inner(Particle& p, const NeighborList* neighbor_list)
       }
 
       } // End OMP target
-      #pragma omp target update from(p)
+      //#pragma omp target update from(p)
 
       return true;
 
@@ -256,8 +256,8 @@ find_cell_inner(Particle& p, const NeighborList* neighbor_list)
       //========================================================================
       //! Found a lower universe, update this coord level then search the next.
       
-      #pragma omp target update to(p)
-      #pragma omp target
+      //#pragma omp target update to(p)
+      //#pragma omp target
       {
 
       // Set the lower coordinate level universe.
@@ -277,14 +277,14 @@ find_cell_inner(Particle& p, const NeighborList* neighbor_list)
         coord.rotate(c.rotation_);
       }
       } // END OMP TARGET
-      #pragma omp target update from(p)
+      //#pragma omp target update from(p)
 
     } else if (c.type_ == Fill::LATTICE) {
       //========================================================================
       //! Found a lower lattice, update this coord level then search the next.
       
-      #pragma omp target update to(p)
-      #pragma omp target
+      //#pragma omp target update to(p)
+      //#pragma omp target
       {
 
       //Lattice& lat {model::lattices[c.fill_]};
@@ -333,7 +333,7 @@ find_cell_inner(Particle& p, const NeighborList* neighbor_list)
         }
       }
       } // END OMP TARGET
-      #pragma omp target update from(p)
+      //#pragma omp target update from(p)
     }
     i_cell = C_NONE; // trip non-neighbor cell search at next iteration
   }
@@ -353,15 +353,25 @@ bool neighbor_list_find_cell(Particle& p)
 
   // Search for the particle in that cell's neighbor list.  Return if we
   // found the particle.
-  bool found = find_cell_inner(p, &c.neighbors_);
+  bool found;
+  #pragma omp target update to(p, c) 
+  #pragma omp target map(from: found)
+  {
+    found = find_cell_inner(p, &c.neighbors_);
+  }
+  #pragma omp target update from(p, c)
   if (found)
     return found;
-  printf("EXHAUSTIVE SEARCH REQUIRED!\n");
 
   // The particle could not be found in the neighbor list.  Try searching all
   // cells in this universe, and update the neighbor list if we find a new
   // neighboring cell.
-  found = find_cell_inner(p, nullptr);
+  #pragma omp target update to(p, c) 
+  #pragma omp target map(tofrom: found)
+  {
+    found = find_cell_inner(p, nullptr);
+  }
+  #pragma omp target update from(p, c)
   if (found)
     c.neighbors_.push_back(p.coord_[coord_lvl].cell);
   return found;
@@ -379,7 +389,14 @@ bool exhaustive_find_cell(Particle& p)
   for (int i = p.n_coord_; i < 6; i++) {
     p.coord_[i].reset();
   }
-  return find_cell_inner(p, nullptr);
+  bool found;
+  #pragma omp target update to(p) 
+  #pragma omp target map(from: found)
+  {
+    found = find_cell_inner(p, nullptr);
+  }
+  #pragma omp target update from(p) 
+  return found;
 }
 
 //==============================================================================

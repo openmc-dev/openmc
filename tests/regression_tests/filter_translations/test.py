@@ -1,5 +1,3 @@
-from itertools import permutations
-from openmc import mesh
 import numpy as np
 
 import openmc
@@ -9,7 +7,7 @@ from tests.testing_harness import PyAPITestHarness
 
 
 @pytest.fixture
-def model(request):
+def model():
 
     model = openmc.model.Model()
 
@@ -90,5 +88,3 @@ def model(request):
 def test_filter_mesh_translations(model):
     harness = PyAPITestHarness('statepoint.5.h5', model)
     harness.main()
-
-

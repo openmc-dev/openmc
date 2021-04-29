@@ -96,8 +96,9 @@ find_cell_inner(Particle& p, const NeighborList* neighbor_list)
     // now know we should return false. This will trigger an
     // exhaustive search from neighbor_list_find_cell and make
     // the result from that be appended to the neighbor list.
-    if (!found)
-      return false;
+    if (!found) {
+      return found;
+    }
   }
 
   // Check successively lower coordinate levels until finding material fill
@@ -252,6 +253,7 @@ find_cell_inner(Particle& p, const NeighborList* neighbor_list)
       }
     }
     i_cell = C_NONE; // trip non-neighbor cell search at next iteration
+    found = false;
   }
 
   return found;

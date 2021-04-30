@@ -1197,7 +1197,7 @@ class OuterState(State):
 class InnerState(State):
 
     def __init__(self, states):
-        super(InnerState, self).__init__(states)
+        super().__init__(states)
 
         # Initialize Solver class attributes
         self.fwd_state = states['FORWARD_OUTER']

@@ -58,7 +58,7 @@ class Clock:
 
     @dt_inner.setter
     def dt_inner(self, dt_inner):
-        self._dt_inner = np.float64(dt_inner)
+        self._dt_inner = float(dt_inner)
 
     @t_outer.setter
     def t_outer(self, t_outer):
@@ -70,7 +70,7 @@ class Clock:
 
     @times.setter
     def times(self, times):
-        self._times = np.float64(times)
+        self._times = float(times)
 
     @outer_step.setter
     def outer_step(self, outer_step):

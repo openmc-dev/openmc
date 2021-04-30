@@ -1,7 +1,6 @@
 from collections import OrderedDict
 import copy
 import os
-from scipy.sparse.linalg import spsolve
 from shutil import copyfile, move
 import subprocess
 import sys
@@ -9,6 +8,7 @@ import time
 
 import h5py
 import numpy as np
+from scipy.sparse.linalg import spsolve
 
 import openmc
 import openmc.kinetics

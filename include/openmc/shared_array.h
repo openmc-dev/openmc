@@ -96,13 +96,11 @@ public:
     return idx;
   }
 
-  //! Free any space that was allocated for the container. Set the
-  //! container's size and capacity to 0.
+  //! Sets size of the container to 0. As with the behavior of standard
+  //! template library containers, this does not free associated memory.
   void clear()
   {
-    data_.reset();
     size_ = 0;
-    capacity_ = 0;
   }
 
   //! Return the number of elements in the container
@@ -113,7 +111,17 @@ public:
   //! where the internal size of the array needs to be manually updated.
   //
   //! \param size The new size of the container
-  void resize(int64_t size) {size_ = size;}
+  void resize(int64_t size)
+  {
+    if (size > capacity_) {
+      auto tmp = std::make_unique<T[]>(size);
+      std::copy(data_.get(), data_.get() + size_, tmp.get());
+      data_.swap(tmp);
+      // Now when the destructor of tmp gets called, it will free the
+      // previously held memory.
+    }
+    size_ = size;
+  }
 
   //! Return the number of elements that the container has currently allocated
   //! space for.

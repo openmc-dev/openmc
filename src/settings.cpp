@@ -86,6 +86,7 @@ int32_t gen_per_batch {1};
 int64_t n_particles {-1};
 
 unsigned max_particles_in_flight {100000};
+unsigned event_queue_refill_interval {100};
 
 ElectronTreatment electron_treatment {ElectronTreatment::TTB};
 array<double, 4> energy_cutoff {0.0, 1000.0, 0.0, 0.0};
@@ -153,6 +154,12 @@ void get_run_parameters(pugi::xml_node node_base)
   if (check_for_node(node_base, "max_particles_in_flight")) {
     max_particles_in_flight = std::stoll(get_node_value(node_base,
       "max_particles_in_flight"));
+  }
+
+  // Get number of flattened event iterations between queue refill from source
+  if (check_for_node(node_base, "event_queue_refill_interval")) {
+    event_queue_refill_interval =
+      std::stoll(get_node_value(node_base, "event_queue_refill_interval"));
   }
 
   // Get number of basic batches

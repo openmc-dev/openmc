@@ -26,6 +26,7 @@ Timer time_event_calculate_xs;
 Timer time_event_advance_particle;
 Timer time_event_surface_crossing;
 Timer time_event_collision;
+Timer time_event_refill;
 Timer time_event_death;
 
 } // namespace simulation

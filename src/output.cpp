@@ -408,6 +408,7 @@ void print_runtime()
     show_time("Advancing", time_event_advance_particle.elapsed(), 2);
     show_time("Surface crossings", time_event_surface_crossing.elapsed(), 2);
     show_time("Collisions", time_event_collision.elapsed(), 2);
+    show_time("Particle refilling", time_event_refill.elapsed(), 2);
     show_time("Particle death", time_event_death.elapsed(), 2);
   }
   if (settings::run_mode == RunMode::EIGENVALUE) {

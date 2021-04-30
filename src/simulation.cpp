@@ -734,53 +734,66 @@ void transport_event_based()
 {
   unsigned remaining_work = simulation::work_per_rank;
   unsigned source_offset = 0;
+  unsigned event_iteration = 0;
 
   // To cap the total amount of memory used to store particle object data, the
   // number of particles in flight at any point in time can bet set. In the case
   // that the maximum in flight particle count is lower than the total number
   // of particles that need to be run this iteration, the event-based transport
   // loop is executed multiple times until all particles have been completed.
-  while (remaining_work > 0) {
-    // Figure out # of particles to run for this subiteration
-    unsigned n_particles =
-      std::min(remaining_work, settings::max_particles_in_flight);
 
-    // Initialize all particle histories for this subiteration
-    process_init_events(n_particles, source_offset);
+  // Figure out # of particles to run for initial setup
+  unsigned n_particles =
+    std::min(remaining_work, settings::max_particles_in_flight);
 
-    // Event-based transport loop
-    while (true) {
-      // Determine which event kernel has the longest queue
-      int64_t max = std::max({
-        simulation::calculate_fuel_xs_queue.size(),
-        simulation::calculate_nonfuel_xs_queue.size(),
-        simulation::advance_particle_queue.size(),
-        simulation::surface_crossing_queue.size(),
-        simulation::collision_queue.size()});
+  // Initialize all particle histories for this subiteration
+  process_init_events(n_particles, source_offset);
+  remaining_work -= n_particles;
 
-      // Execute event with the longest queue
-      if (max == 0) {
-        break;
-      } else if (max == simulation::calculate_fuel_xs_queue.size()) {
-        process_calculate_xs_events(simulation::calculate_fuel_xs_queue);
-      } else if (max == simulation::calculate_nonfuel_xs_queue.size()) {
-        process_calculate_xs_events(simulation::calculate_nonfuel_xs_queue);
-      } else if (max == simulation::advance_particle_queue.size()) {
-        process_advance_particle_events();
-      } else if (max == simulation::surface_crossing_queue.size()) {
-        process_surface_crossing_events();
-      } else if (max == simulation::collision_queue.size()) {
-        process_collision_events();
-      }
+  // Event-based transport loop
+  while (true) {
+    // Determine which event kernel has the longest queue
+    unsigned max = std::max({simulation::calculate_fuel_xs_queue.size(),
+      simulation::calculate_nonfuel_xs_queue.size(),
+      simulation::advance_particle_queue.size(),
+      simulation::surface_crossing_queue.size(),
+      simulation::collision_queue.size()});
+
+    // Execute event with the longest queue
+    if (max == 0) {
+      break;
+    } else if (max == simulation::calculate_fuel_xs_queue.size()) {
+      process_calculate_xs_events(simulation::calculate_fuel_xs_queue);
+    } else if (max == simulation::calculate_nonfuel_xs_queue.size()) {
+      process_calculate_xs_events(simulation::calculate_nonfuel_xs_queue);
+    } else if (max == simulation::advance_particle_queue.size()) {
+      process_advance_particle_events();
+    } else if (max == simulation::surface_crossing_queue.size()) {
+      process_surface_crossing_events();
+    } else if (max == simulation::collision_queue.size()) {
+      process_collision_events();
     }
 
-    // Execute death event for all particles
-    process_death_events(n_particles);
-
-    // Adjust remaining work and source offset variables
-    remaining_work -= n_particles;
-    source_offset += n_particles;
+    if (event_iteration % settings::event_queue_refill_interval == 0 &&
+        remaining_work > 0) {
+      // Find dead particles in the particle array, and fill them with new
+      // source site info. This treats particle deaths, then refills.
+      unsigned n_revived = process_refill_events(remaining_work, source_offset);
+      remaining_work -= n_revived;
+      source_offset += n_revived;
+    }
+    event_iteration++;
   }
+
+  // Execute death event for all particles. Even though process_revive_events
+  // has run particle's event_death method as they're replaced, it stops running
+  // once the source to process has been exhausted. For the particles that died
+  // after this point, we sweep through the particle array once more to process
+  // their deaths. This does mean that event_death may be called redundantly,
+  // but it is set up so that this has no effect on correctness, e.g. we reset
+  // global k_eff tally contributions to zero on event_death so double-counting
+  // is impossible.
+  process_death_events(n_particles);
 }
 
 void init_gpu_constant_memory()

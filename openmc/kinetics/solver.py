@@ -16,10 +16,6 @@ from openmc.kinetics.clock import TIME_POINTS
 import openmc.mgxs
 
 
-if sys.version_info[0] >= 3:
-    basestring = str
-
-
 class Solver:
     """Solver to propagate the neutron flux and power forward in time.
 

@@ -13,10 +13,6 @@ import openmc.kinetics
 import openmc.mgxs
 
 
-if sys.version_info[0] >= 3:
-    basestring = str
-
-
 class State(ABC):
     """State to store all the variables that describe a specific state of the system.
 

@@ -30,6 +30,7 @@ extern Timer time_event_calculate_xs;
 extern Timer time_event_advance_particle;
 extern Timer time_event_surface_crossing;
 extern Timer time_event_collision;
+extern Timer time_event_refill;
 extern Timer time_event_death;
 
 } // namespace simulation

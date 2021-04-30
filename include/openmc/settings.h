@@ -73,6 +73,9 @@ extern "C" int64_t n_particles;              //!< number of particles per genera
 
 
 extern int64_t max_particles_in_flight; //!< Max num. event-based particles in flight
+extern int
+  event_queue_refill_interval; //!< Number of flattened event iterations between
+                               //!< refill of event queues with source sites
 
 extern ElectronTreatment electron_treatment;       //!< how to treat secondary electrons
 extern std::array<double, 4> energy_cutoff;  //!< Energy cutoff in [eV] for each particle type

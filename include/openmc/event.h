@@ -62,9 +62,10 @@ extern SharedArray<EventQueueItem> calculate_nonfuel_xs_queue;
 extern SharedArray<EventQueueItem> advance_particle_queue;
 extern SharedArray<EventQueueItem> surface_crossing_queue;
 extern SharedArray<EventQueueItem> collision_queue;
+extern SharedArray<int64_t> dead_particle_indices;
 
 // Particle buffer
-extern std::vector<Particle>  particles;
+extern std::vector<Particle> particles;
 
 } // namespace simulation
 
@@ -104,6 +105,12 @@ void process_surface_crossing_events();
 
 //! Execute the collision event for all particles in this event's buffer
 void process_collision_events();
+
+//! Execute the death event for all particles
+//
+//! \param remaining_work Max number of dead particles to revive
+//! \param source_offset The offset index in the source bank to use
+int64_t process_refill_events(int64_t remaining_work, int64_t source_offset);
 
 //! Execute the death event for all particles
 //

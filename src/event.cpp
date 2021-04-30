@@ -16,6 +16,7 @@ SharedArray<EventQueueItem> calculate_nonfuel_xs_queue;
 SharedArray<EventQueueItem> advance_particle_queue;
 SharedArray<EventQueueItem> surface_crossing_queue;
 SharedArray<EventQueueItem> collision_queue;
+SharedArray<int64_t> dead_particle_indices;
 
 std::vector<Particle>  particles;
 
@@ -34,6 +35,7 @@ void init_event_queues(int64_t n_particles)
   simulation::collision_queue.reserve(n_particles);
 
   simulation::particles.resize(n_particles);
+  simulation::dead_particle_indices.reserve(n_particles);
 }
 
 void free_event_queues(void)
@@ -157,6 +159,39 @@ void process_collision_events()
   simulation::collision_queue.resize(0);
 
   simulation::time_event_collision.stop();
+}
+
+int64_t process_refill_events(int64_t remaining_work, int64_t source_offset)
+{
+  simulation::time_event_refill.start();
+
+  // Firstly, do a compaction on particle indices storing
+  // dead particles. This is similar to copy_if, but we want
+  // to copy in indices rather than the particles themself.
+  simulation::dead_particle_indices.clear();
+#pragma omp parallel for schedule(runtime)
+  for (int64_t i = 0; i < simulation::particles.size(); i++) {
+    Particle& p = simulation::particles[i];
+    if (!p.alive_) {
+      p.event_death();
+      simulation::dead_particle_indices.thread_safe_append(i);
+    }
+  }
+  int64_t num_particles_refilled =
+    std::min(simulation::dead_particle_indices.size(), remaining_work);
+
+// Secondly, we loop over dead particle indices, and initialize
+// as many fresh particles there as possible.
+#pragma omp parallel for schedule(runtime)
+  for (int64_t i = 0; i < num_particles_refilled; i++) {
+    const int64_t& buffer_idx = simulation::dead_particle_indices[i];
+    Particle& p = simulation::particles[buffer_idx];
+    initialize_history(p, source_offset + i + 1);
+    dispatch_xs_event(buffer_idx);
+  }
+
+  simulation::time_event_refill.stop();
+  return num_particles_refilled;
 }
 
 void process_death_events(int64_t n_particles)

@@ -2,7 +2,6 @@ from abc import ABCMeta
 from collections import OrderedDict
 import copy
 import scipy.sparse as sps
-from six import add_metaclass
 import sys
 
 import h5py

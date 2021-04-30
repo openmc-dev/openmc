@@ -554,7 +554,7 @@ class Solver(object):
             state = openmc.kinetics.OuterState(self.states)
             state.chi_delayed_by_delayed_group = self.chi_delayed_by_delayed_group
             state.chi_delayed_by_mesh = self.chi_delayed_by_mesh
-            if time_point in ['FORWARD_OUTER', 'PREVIOUS_OUTER']:
+            if time_point in ('FORWARD_OUTER', 'PREVIOUS_OUTER'):
                 state.method = self.method
         else:
             state = openmc.kinetics.InnerState(self.states)

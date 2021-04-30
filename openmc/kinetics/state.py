@@ -1,4 +1,4 @@
-from abc import ABCMeta
+from abc import ABC
 from collections import OrderedDict
 import copy
 import scipy.sparse as sps

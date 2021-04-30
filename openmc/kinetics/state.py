@@ -17,8 +17,7 @@ if sys.version_info[0] >= 3:
     basestring = str
 
 
-@add_metaclass(ABCMeta)
-class State(object):
+class State(ABC):
     """State to store all the variables that describe a specific state of the system.
 
     Attributes

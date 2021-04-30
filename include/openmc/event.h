@@ -119,7 +119,7 @@ void process_collision_events();
 //
 //! \param remaining_work Max number of dead particles to revive
 //! \param source_offset The offset index in the source bank to use
-int64_t process_refill_events(int64_t remaining_work, int64_t source_offset);
+unsigned process_refill_events(unsigned remaining_work, unsigned source_offset);
 
 //! Execute the death event for all particles
 //

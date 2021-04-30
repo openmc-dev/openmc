@@ -15,6 +15,8 @@
 #include <thrust/sort.h>
 #endif
 
+unsigned queue_size;
+
 namespace openmc {
 
 //==============================================================================
@@ -54,6 +56,7 @@ void init_event_queues(unsigned n_particles)
   simulation::particles.resize(n_particles);
 #endif
   simulation::dead_particle_indices.reserve(n_particles);
+  queue_size = n_particles;
 }
 
 void free_event_queues(void)
@@ -287,9 +290,9 @@ unsigned process_refill_events(unsigned remaining_work, unsigned source_offset)
   // to copy in indices rather than the particles themself.
   simulation::dead_particle_indices.clear();
 #pragma omp parallel for schedule(runtime)
-  for (unsigned i = 0; i < simulation::particles.size(); i++) {
+  for (unsigned i = 0; i < queue_size; i++) {
     Particle p(i);
-    if (!p.alive_) {
+    if (!p.alive()) {
       p.event_death();
       simulation::dead_particle_indices.thread_safe_append(i);
     }

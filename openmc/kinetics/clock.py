@@ -8,7 +8,7 @@ TIME_POINTS = ['START',
                'END']
 
 
-class Clock(object):
+class Clock:
 
     def __init__(self, start=0., end=3., dt_inner=None, t_outer=None):
 

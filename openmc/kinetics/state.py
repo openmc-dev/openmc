@@ -560,7 +560,7 @@ class State(ABC):
 class OuterState(State):
 
     def __init__(self, states):
-        super(OuterState, self).__init__(states)
+        super().__init__(states)
 
         # Initialize Solver class attributes
         self._mgxs_lib = None

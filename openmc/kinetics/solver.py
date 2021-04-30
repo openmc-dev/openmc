@@ -20,7 +20,7 @@ if sys.version_info[0] >= 3:
     basestring = str
 
 
-class Solver(object):
+class Solver:
     """Solver to propagate the neutron flux and power forward in time.
 
     Parameters

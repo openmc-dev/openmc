@@ -29,13 +29,14 @@ SharedArray<SourceSite> fission_bank;
 // Each entry in this vector corresponds to the number of progeny produced
 // this generation for the particle located at that index. This vector is
 // used to efficiently sort the fission bank after each iteration.
-vector<int64_t> progeny_per_particle;
+vector<int> progeny_per_particle;
 
 } // namespace simulation
 
 namespace gpu {
 __constant__ ParticleBank* fission_bank_start;
 __constant__ ParticleBank* source_bank;
+__constant__ int* progeny_per_particle;
 __constant__ unsigned fission_bank_capacity;
 __managed__ unsigned fission_bank_index;
 } // namespace gpu
@@ -56,6 +57,9 @@ void init_fission_bank(int64_t max)
 {
   simulation::fission_bank.reserve(max);
   simulation::progeny_per_particle.resize(simulation::work_per_rank);
+
+  auto tmp = simulation::progeny_per_particle.data();
+  cudaMemcpyToSymbol(gpu::progeny_per_particle, &tmp, sizeof(int*));
 }
 
 // Performs an O(n) sort on the fission bank, by leveraging

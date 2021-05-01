@@ -23,7 +23,7 @@ extern SharedArray<SourceSite> surf_source_bank;
 
 extern SharedArray<SourceSite> fission_bank;
 
-extern vector<int64_t> progeny_per_particle;
+extern vector<int> progeny_per_particle;
 
 } // namespace simulation
 
@@ -31,6 +31,7 @@ namespace gpu {
 __constant__ extern ParticleBank* fission_bank_start;
 __constant__ extern ParticleBank* source_bank;
 __constant__ extern unsigned fission_bank_capacity;
+__constant__ extern int* progeny_per_particle;
 __managed__ extern unsigned fission_bank_index;
 } // namespace gpu
 

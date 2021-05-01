@@ -432,8 +432,7 @@ public:
   __host__ __device__ void clear()
   {
     size_ = 0;
-    // Destructors almost always won't work on the device, so if you
-    // call this there, it's your fault.
+    // Destructors almost always won't work on the device!
 #ifndef __CUDA_ARCH__
     for (size_type i = 0; i < size_; ++i)
       (begin_ + i)->~T();

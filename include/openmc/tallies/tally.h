@@ -165,10 +165,10 @@ namespace simulation {
   extern "C" int32_t n_realizations;
 }
 
-extern double global_tally_absorption;
-extern double global_tally_collision;
-extern double global_tally_tracklength;
-extern double global_tally_leakage;
+__managed__ extern double global_tally_absorption;
+__managed__ extern double global_tally_collision;
+__managed__ extern double global_tally_tracklength;
+__managed__ extern double global_tally_leakage;
 
 //==============================================================================
 // Non-member functions

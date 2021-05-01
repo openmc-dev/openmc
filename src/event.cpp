@@ -10,7 +10,9 @@
 #include "openmc/cuda/calculate_xs.h"
 #include "openmc/cuda/collide.h"
 #include "openmc/cuda/cross_surface.h"
+#include "openmc/cuda/death.h"
 #include "openmc/cuda/initialize.h"
+#include "openmc/cuda/refill.h"
 #include "openmc/cuda/util.h" // error handling
 #include "openmc/settings.h" // thread_block_size
 #include <thrust/sort.h>
@@ -31,7 +33,7 @@ SharedArray<EventQueueItem> calculate_nonfuel_xs_queue;
 SharedArray<EventQueueItem> advance_particle_queue;
 SharedArray<EventQueueItem> surface_crossing_queue;
 SharedArray<EventQueueItem> collision_queue;
-SharedArray<int64_t> dead_particle_indices;
+SharedArray<unsigned> dead_particle_indices;
 
 vector<Particle> particles;
 pinned_replicated_vector<NuclideMicroXS> micros;
@@ -57,6 +59,8 @@ void init_event_queues(unsigned n_particles)
   simulation::particles.resize(n_particles);
 #endif
   simulation::dead_particle_indices.reserve(n_particles);
+  auto tmp = simulation::dead_particle_indices.data();
+  cudaMemcpyToSymbol(gpu::dead_particle_indices, &tmp, sizeof(unsigned*));
   queue_size = n_particles;
 }
 
@@ -240,27 +244,36 @@ unsigned process_refill_events(unsigned remaining_work, unsigned source_offset)
   // Firstly, do a compaction on particle indices storing
   // dead particles. This is similar to copy_if, but we want
   // to copy in indices rather than the particles themself.
-  simulation::dead_particle_indices.clear();
-#pragma omp parallel for schedule(runtime)
-  for (unsigned i = 0; i < queue_size; i++) {
-    Particle p(i);
-    if (!p.alive()) {
-      p.event_death();
-      simulation::dead_particle_indices.thread_safe_append(i);
-    }
-  }
+  simulation::dead_particle_indices.updateIndex(0);
+  gpu::dead_particle_indices_indx = 0;
+  gpu::scan_for_dead_particles<<<queue_size / gpu::thread_block_size + 1,
+    gpu::thread_block_size>>>(queue_size);
+  cudaDeviceSynchronize();
+  catchCudaErrors("scan_for_dead_particles");
+  simulation::dead_particle_indices.updateIndex(
+    gpu::dead_particle_indices_indx);
+
   unsigned num_particles_refilled =
     std::min(simulation::dead_particle_indices.size(), remaining_work);
 
 // Secondly, we loop over dead particle indices, and initialize
 // as many fresh particles there as possible.
-#pragma omp parallel for schedule(runtime)
-  for (unsigned i = 0; i < num_particles_refilled; i++) {
-    const unsigned& buffer_idx = simulation::dead_particle_indices[i];
-    Particle p(buffer_idx);
-    initialize_history(p, source_offset + i + 1);
-    dispatch_xs_event(buffer_idx);
-  }
+
+  gpu::managed_calculate_nonfuel_queue_index =
+    simulation::calculate_nonfuel_xs_queue.size();
+  gpu::managed_calculate_fuel_queue_index =
+    simulation::calculate_fuel_xs_queue.size();
+  gpu::refill_dead_particle_slots<BLOCKSIZE>
+    <<<num_particles_refilled / gpu::thread_block_size + 1,
+      gpu::thread_block_size>>>(num_particles_refilled, source_offset,
+      simulation::calculate_nonfuel_xs_queue.data(),
+      simulation::calculate_fuel_xs_queue.data());
+  cudaDeviceSynchronize();
+  catchCudaErrors("refill_dead_particle_slots");
+  simulation::calculate_nonfuel_xs_queue.updateIndex(
+    gpu::managed_calculate_nonfuel_queue_index);
+  simulation::calculate_fuel_xs_queue.updateIndex(
+    gpu::managed_calculate_fuel_queue_index);
 
   simulation::time_event_refill.stop();
   return num_particles_refilled;
@@ -269,11 +282,10 @@ unsigned process_refill_events(unsigned remaining_work, unsigned source_offset)
 void process_death_events(unsigned n_particles)
 {
   simulation::time_event_death.start();
-  #pragma omp parallel for schedule(runtime)
-  for (int64_t i = 0; i < n_particles; i++) {
-    Particle p(i);
-    p.event_death();
-  }
+  // TODO do parallel reduce on particle global tallies here
+  gpu::process_death_events_device<<<n_particles / gpu::thread_block_size + 1,
+    gpu::thread_block_size>>>(n_particles);
+  cudaDeviceSynchronize();
   simulation::time_event_death.stop();
 }
 

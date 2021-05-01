@@ -72,7 +72,7 @@ public:
   HD void event_cross_surface();
   HD void event_collide();
   void event_revive_from_secondary();
-  void event_death();
+  HD void event_death();
 
   //! Cross a surface and handle boundary conditions
   HD void cross_surface();

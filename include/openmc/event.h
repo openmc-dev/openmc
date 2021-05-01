@@ -71,7 +71,7 @@ extern SharedArray<EventQueueItem> calculate_nonfuel_xs_queue;
 extern SharedArray<EventQueueItem> advance_particle_queue;
 extern SharedArray<EventQueueItem> surface_crossing_queue;
 extern SharedArray<EventQueueItem> collision_queue;
-extern SharedArray<int64_t> dead_particle_indices;
+extern SharedArray<unsigned> dead_particle_indices;
 
 // Particle buffer
 extern vector<Particle> particles;

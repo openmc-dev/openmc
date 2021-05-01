@@ -346,19 +346,31 @@ Particle::event_revive_from_secondary()
 void
 Particle::event_death()
 {
-  #ifdef DAGMC
+#ifdef __CUDA_ARCH__
+  using gpu::local_work_index;
+  using gpu::progeny_per_particle;
+  using gpu::run_mode;
+#else
+  using settings::run_mode;
+  using simulation::progeny_per_particle;
+  int64_t local_work_index = simulation::work_index[mpi::rank];
+#endif
+#ifdef DAGMC
   if (settings::dagmc)
     history().reset();
 #endif
 
+#ifndef __CUDA_ARCH__
   // Finish particle track output.
   if (write_track()) {
     write_particle_track(*this);
     finalize_particle_track(*this);
   }
+#endif
 
-  // Contribute tally reduction variables to global accumulator
-  #pragma omp atomic
+#ifndef __CUDA_ARCH__
+// Contribute tally reduction variables to global accumulator
+#pragma omp atomic
   global_tally_absorption += keff_tally_absorption();
 #pragma omp atomic
   global_tally_collision += keff_tally_collision();
@@ -366,6 +378,12 @@ Particle::event_death()
   global_tally_tracklength += keff_tally_tracklength();
 #pragma omp atomic
   global_tally_leakage += keff_tally_leakage();
+#else
+  atomicAdd(&global_tally_absorption, keff_tally_absorption());
+  atomicAdd(&global_tally_collision, keff_tally_collision());
+  atomicAdd(&global_tally_tracklength, keff_tally_tracklength());
+  atomicAdd(&global_tally_leakage, keff_tally_leakage());
+#endif
 
   // Reset particle tallies once accumulated
   keff_tally_absorption() = 0.0;
@@ -375,9 +393,9 @@ Particle::event_death()
 
   // Record the number of progeny created by this particle.
   // This data will be used to efficiently sort the fission bank.
-  if (settings::run_mode == RunMode::EIGENVALUE) {
-    int64_t offset = id() - 1 - simulation::work_index[mpi::rank];
-    simulation::progeny_per_particle[offset] = n_progeny();
+  if (run_mode == RunMode::EIGENVALUE) {
+    int64_t offset = id() - 1 - local_work_index;
+    progeny_per_particle[offset] = n_progeny();
   }
 
   n_event() = 0;

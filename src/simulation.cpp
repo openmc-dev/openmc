@@ -276,7 +276,7 @@ bool need_depletion_rx {false};
 int restart_batch;
 bool satisfy_triggers {false};
 int total_gen {0};
-double total_weight;
+__managed__ double total_weight;
 unsigned work_per_rank;
 
 const RegularMesh* entropy_mesh {nullptr};
@@ -289,6 +289,10 @@ vector<int64_t> work_index;
 
 namespace gpu {
 __constant__ double keff;
+__constant__ int64_t local_work_index;
+__constant__ int total_gen;
+__constant__ int current_batch;
+__constant__ int current_gen;
 }
 
 //==============================================================================
@@ -348,6 +352,8 @@ void initialize_batch()
 
   // Add user tallies to active tallies list
   setup_active_tallies();
+  cudaMemcpyToSymbol(
+    gpu::current_batch, &simulation::current_batch, sizeof(int));
 }
 
 void finalize_batch()
@@ -421,6 +427,7 @@ void initialize_generation()
     simulation::keff_generation = simulation::global_tallies(
       GlobalTally::K_TRACKLENGTH, TallyResult::VALUE);
   }
+  cudaMemcpyToSymbol(gpu::current_gen, &simulation::current_gen, sizeof(int));
 }
 
 void finalize_generation()
@@ -467,25 +474,61 @@ void finalize_generation()
   }
 }
 
+HD int overall_generation()
+{
+#ifdef __CUDA_ARCH__
+  using gpu::current_batch;
+  using gpu::current_gen;
+  using gpu::gen_per_batch;
+#else
+  using settings::gen_per_batch;
+  using simulation::current_batch;
+  using simulation::current_gen;
+#endif
+  return gen_per_batch * (current_batch - 1) + current_gen;
+}
+
 void initialize_history(Particle& p, int64_t index_source)
 {
+#ifdef __CUDA_ARCH__
+  using gpu::current_batch;
+  using gpu::current_gen;
+  using gpu::local_work_index;
+  using gpu::n_particles;
+  using gpu::run_mode;
+  using gpu::source_bank;
+  using gpu::total_gen;
+#else
+  using settings::n_particles;
+  using settings::run_mode;
+  using simulation::current_batch;
+  using simulation::current_gen;
+  using simulation::source_bank;
+  using simulation::total_gen;
+  int64_t local_work_index = simulation::work_index[mpi::rank];
+#endif
+
+  // TODO add support for fixed source
+  p.from_source(&source_bank[index_source - 1]);
+
   // set defaults
-  if (settings::run_mode == RunMode::EIGENVALUE) {
-    // set defaults for eigenvalue simulations from primary bank
-    p.from_source(&simulation::source_bank[index_source - 1]);
-  } else if (settings::run_mode == RunMode::FIXED_SOURCE) {
-    // initialize random number seed
-    int64_t id = (simulation::total_gen + overall_generation() - 1)*settings::n_particles +
-      simulation::work_index[mpi::rank] + index_source;
-    uint64_t seed = init_seed(id, STREAM_SOURCE);
-    // sample from external source distribution or custom library then set
-    auto site = sample_external_source(&seed);
-    p.from_source(&site);
-  }
+  // if (settings::run_mode == RunMode::EIGENVALUE) {
+  //   // set defaults for eigenvalue simulations from primary bank
+  //   p.from_source(&simulation::source_bank[index_source - 1]);
+  // } else if (settings::run_mode == RunMode::FIXED_SOURCE) {
+  //   // initialize random number seed
+  //   int64_t id = (simulation::total_gen + overall_generation() -
+  //   1)*settings::n_particles +
+  //     simulation::work_index[mpi::rank] + index_source;
+  //   uint64_t seed = init_seed(id, STREAM_SOURCE);
+  //   // sample from external source distribution or custom library then set
+  //   auto site = sample_external_source(&seed);
+  //   p.from_source(&site);
+  // }
   p.current_work() = index_source;
 
   // set identifier for particle
-  p.id() = simulation::work_index[mpi::rank] + index_source;
+  p.id() = local_work_index + index_source;
 
   // set progeny count to zero
   p.n_progeny() = 0;
@@ -495,12 +538,12 @@ void initialize_history(Particle& p, int64_t index_source)
 
   // set random number seed
   int64_t particle_seed =
-    (simulation::total_gen + overall_generation() - 1) * settings::n_particles +
-    p.id();
+    (total_gen + overall_generation() - 1) * n_particles + p.id();
   init_particle_seeds(particle_seed, p.seeds());
 
   // set particle trace
   p.trace() = false;
+#ifndef __CUDA_ARCH__
   if (simulation::current_batch == settings::trace_batch &&
       simulation::current_gen == settings::trace_gen &&
       p.id() == settings::trace_particle)
@@ -524,18 +567,27 @@ void initialize_history(Particle& p, int64_t index_source)
   if (settings::verbosity >= 9 || p.trace()) {
     write_message("Simulating Particle {}", p.id());
   }
+#endif
 
   // Add paricle's starting weight to count for normalizing tallies later
-  #pragma omp atomic
+#ifdef __CUDA_ARCH__
+  atomicAdd(&simulation::total_weight, p.wgt());
+#else
+#pragma omp atomic
   simulation::total_weight += p.wgt();
+#endif
 
   // If the cell hasn't been determined based on the particle's location,
   // initiate a search for the current cell. This generally happens at the
   // beginning of the history and again for any secondary particles
   if (p.coord(p.n_coord() - 1).cell == C_NONE) {
     if (!exhaustive_find_cell(p)) {
+#ifdef __CUDA_ARCH__
+      __trap();
+#else
       p.mark_as_lost(
         "Could not find the cell containing particle " + std::to_string(p.id()));
+#endif
       return;
     }
 
@@ -552,21 +604,13 @@ void initialize_history(Particle& p, int64_t index_source)
   }
 
   // Force calculation of cross-sections by setting last energy to zero
-  if (settings::run_CE) {
-    p.invalidate_neutron_xs();
-  }
+  p.invalidate_neutron_xs();
 
   // Prepare to write out particle track.
 #ifndef __CUDACC__
   if (p.write_track())
     add_particle_track(p);
 #endif
-}
-
-int overall_generation()
-{
-  using namespace simulation;
-  return settings::gen_per_batch*(current_batch - 1) + current_gen;
 }
 
 void calculate_work()
@@ -824,6 +868,17 @@ void init_gpu_constant_memory()
     gpu::need_depletion_rx, &simulation::need_depletion_rx, sizeof(bool));
 
   cudaMemcpyToSymbol(gpu::keff, &simulation::keff, sizeof(double));
+
+  auto first_source = simulation::source_bank.data();
+  cudaMemcpyToSymbol(gpu::source_bank, &first_source, sizeof(ParticleBank*));
+
+  int64_t local_work_index = simulation::work_index[mpi::rank];
+  cudaMemcpyToSymbol(gpu::local_work_index, &local_work_index, sizeof(int64_t));
+
+  cudaMemcpyToSymbol(gpu::total_gen, &simulation::total_gen, sizeof(int));
+  cudaMemcpyToSymbol(
+    gpu::current_batch, &simulation::current_batch, sizeof(int));
+  cudaMemcpyToSymbol(gpu::current_gen, &simulation::current_gen, sizeof(int));
 #endif
 }
 

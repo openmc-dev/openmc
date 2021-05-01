@@ -10,6 +10,7 @@
 #include "openmc/cuda/calculate_xs.h"
 #include "openmc/cuda/collide.h"
 #include "openmc/cuda/cross_surface.h"
+#include "openmc/cuda/initialize.h"
 #include "openmc/cuda/util.h" // error handling
 #include "openmc/settings.h" // thread_block_size
 #include <thrust/sort.h>
@@ -85,13 +86,24 @@ void dispatch_xs_event(unsigned buffer_idx)
 void process_init_events(unsigned n_particles, unsigned source_offset)
 {
   simulation::time_event_init.start();
-  #pragma omp parallel for schedule(runtime)
-  for (unsigned i = 0; i < n_particles; i++) {
-    Particle p(i);
-    p.initialize_values(); // initialize internal particle data
-    initialize_history(p, source_offset + i + 1);
-    dispatch_xs_event(i);
-  }
+
+  gpu::managed_calculate_nonfuel_queue_index =
+    simulation::calculate_nonfuel_xs_queue.size();
+  gpu::managed_calculate_fuel_queue_index =
+    simulation::calculate_fuel_xs_queue.size();
+
+  gpu::process_initialize_events_device<BLOCKSIZE>
+    <<<n_particles / gpu::thread_block_size + 1, gpu::thread_block_size>>>(
+      n_particles, source_offset, simulation::calculate_nonfuel_xs_queue.data(),
+      simulation::calculate_fuel_xs_queue.data());
+  cudaDeviceSynchronize();
+  catchCudaErrors("process_init_events");
+
+  simulation::calculate_nonfuel_xs_queue.updateIndex(
+    gpu::managed_calculate_nonfuel_queue_index);
+  simulation::calculate_fuel_xs_queue.updateIndex(
+    gpu::managed_calculate_fuel_queue_index);
+
   simulation::time_event_init.stop();
 }
 
@@ -99,24 +111,11 @@ void process_calculate_xs_events(SharedArray<EventQueueItem>& queue)
 {
 
   simulation::time_event_sort.start();
-#ifdef __CUDACC__
   // thrust::sort(queue.begin(), queue.end());
   // cudaDeviceSynchronize();
-#else
-  // TODO: If using C++17, perform a parallel sort of the queue
-  // by particle type, material type, and then energy, in order to
-  // improve cache locality and reduce thread divergence on GPU. Prior
-  // to C++17, std::sort is a serial only operation, which in this case
-  // makes it too slow to be practical for most test problems.
-  //
-  // std::sort(std::execution::par_unseq, queue.data(), queue.data() +
-  // queue.size());
-  //
-#endif
   simulation::time_event_sort.stop();
 
   simulation::time_event_calculate_xs.start();
-#ifdef __CUDACC__
   // TODO: this could possibly be separated into the retrieval of cached
   // XS components and the lookup of new cross sections for nuclides where
   // necessary.
@@ -130,15 +129,6 @@ void process_calculate_xs_events(SharedArray<EventQueueItem>& queue)
   cudaMemcpy(simulation::advance_particle_queue.end(), queue.begin(),
     queue.size() * sizeof(EventQueueItem), cudaMemcpyDeviceToDevice);
   simulation::advance_particle_queue.updateIndex(size_before + queue.size());
-#else
-
-#pragma omp parallel for schedule(runtime)
-  for (unsigned i = 0; i < queue.size(); i++) {
-    Particle* p = &simulation::particles[queue[i].idx];
-    p->event_calculate_xs();
-    simulation::advance_particle_queue.thread_safe_append(queue[i]);
-  }
-#endif
   queue.resize(0);
 
   simulation::time_event_calculate_xs.stop();
@@ -148,7 +138,6 @@ void process_advance_particle_events()
 {
   simulation::time_event_advance_particle.start();
 
-#ifdef __CUDACC__
   // Can't put SharedArrays in managed memory, so these intermediate variables
   // are used to allow pushing back within the kernel. They are both markers
   // for the new size of the queues, and diagnostics in that we'll know if a
@@ -169,19 +158,6 @@ void process_advance_particle_events()
   simulation::surface_crossing_queue.updateIndex(
     gpu::managed_surface_crossing_queue_index);
   simulation::collision_queue.updateIndex(gpu::managed_collision_queue_index);
-#else
-#pragma omp parallel for schedule(runtime)
-  for (unsigned i = 0; i < simulation::advance_particle_queue.size(); i++) {
-    unsigned buffer_idx = simulation::advance_particle_queue[i].idx;
-    Particle& p = simulation::particles[buffer_idx];
-    p.event_advance();
-    if (p.collision_distance() > p.boundary().distance) {
-      simulation::surface_crossing_queue.thread_safe_append({p, buffer_idx});
-    } else {
-      simulation::collision_queue.thread_safe_append({p, buffer_idx});
-    }
-  }
-#endif
 
   simulation::advance_particle_queue.resize(0);
 
@@ -192,7 +168,6 @@ void process_surface_crossing_events()
 {
   simulation::time_event_surface_crossing.start();
 
-#ifdef __CUDACC__
   // Set initial positions of the XS calculation queues for appending
   // while running on GPU
   gpu::managed_calculate_nonfuel_queue_index =
@@ -213,17 +188,6 @@ void process_surface_crossing_events()
     gpu::managed_calculate_nonfuel_queue_index);
   simulation::calculate_fuel_xs_queue.updateIndex(
     gpu::managed_calculate_fuel_queue_index);
-#else
-#pragma omp parallel for schedule(runtime)
-  for (unsigned i = 0; i < simulation::surface_crossing_queue.size(); i++) {
-    unsigned buffer_idx = simulation::surface_crossing_queue[i].idx;
-    Particle& p = simulation::particles[buffer_idx];
-    p.event_cross_surface();
-    p.event_revive_from_secondary();
-    if (p.alive())
-      dispatch_xs_event(buffer_idx);
-  }
-#endif
 
   simulation::surface_crossing_queue.resize(0);
 
@@ -234,7 +198,6 @@ void process_collision_events()
 {
   simulation::time_event_collision.start();
 
-#ifdef __CUDACC__
   auto fission_bank_start = simulation::fission_bank.data();
   unsigned fission_bank_capacity = simulation::fission_bank.capacity();
   cudaMemcpyToSymbol(
@@ -264,17 +227,6 @@ void process_collision_events()
     gpu::managed_calculate_nonfuel_queue_index);
   simulation::calculate_fuel_xs_queue.updateIndex(
     gpu::managed_calculate_fuel_queue_index);
-#else
-#pragma omp parallel for schedule(runtime)
-  for (unsigned i = 0; i < simulation::collision_queue.size(); i++) {
-    unsigned buffer_idx = simulation::collision_queue[i].idx;
-    Particle& p = simulation::particles[buffer_idx];
-    p.event_collide();
-    p.event_revive_from_secondary();
-    if (p.alive())
-      dispatch_xs_event(buffer_idx);
-  }
-#endif
 
   simulation::collision_queue.resize(0);
 

@@ -57,7 +57,7 @@ uint64_t init_seed(int64_t id, int offset);
 //! @param id The particle ID
 //==============================================================================
 
-void init_particle_seeds(int64_t id, uint64_t* seeds);
+HD void init_particle_seeds(int64_t id, uint64_t* seeds);
 
 //==============================================================================
 //! Advance the random number seed 'n' times from the current seed. This

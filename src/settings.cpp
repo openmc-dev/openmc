@@ -127,6 +127,8 @@ __constant__ ResScatMethod res_scat_method;
 __constant__ double res_scat_energy_min;
 __constant__ double res_scat_energy_max;
 __constant__ RunMode run_mode;
+__constant__ int64_t n_particles;
+__constant__ int32_t gen_per_batch;
 
 unsigned thread_block_size {BLOCKSIZE};
 } // namespace gpu
@@ -912,6 +914,9 @@ void copy_settings_to_gpu()
     gpu::res_scat_energy_min, &settings::res_scat_energy_min, sizeof(double));
   cudaMemcpyToSymbol(
     gpu::res_scat_energy_max, &settings::res_scat_energy_max, sizeof(double));
+  cudaMemcpyToSymbol(gpu::n_particles, &settings::n_particles, sizeof(int64_t));
+  cudaMemcpyToSymbol(
+    gpu::gen_per_batch, &settings::gen_per_batch, sizeof(int32_t));
 }
 #endif
 

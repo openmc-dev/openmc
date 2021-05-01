@@ -82,16 +82,19 @@ void Particle::from_source(const SourceSite* src)
   r_last_current() = src->r;
   r_last() = src->r;
   u_last() = src->u;
+#ifndef __CUDACC__
   if (settings::run_CE) {
     E() = src->E;
     g() = 0;
   } else {
-#ifndef __CUDACC__
     g() = static_cast<int>(src->E);
     g_last() = static_cast<int>(src->E);
     E() = data::mg.energy_bin_avg_[g()];
-#endif
   }
+#else
+  E() = src->E;
+  g() = 0;
+#endif
   E_last() = E();
 }
 

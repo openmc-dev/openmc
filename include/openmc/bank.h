@@ -29,6 +29,7 @@ extern vector<int64_t> progeny_per_particle;
 
 namespace gpu {
 __constant__ extern ParticleBank* fission_bank_start;
+__constant__ extern ParticleBank* source_bank;
 __constant__ extern unsigned fission_bank_capacity;
 __managed__ extern unsigned fission_bank_index;
 } // namespace gpu

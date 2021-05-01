@@ -64,7 +64,7 @@ public:
   //! site may have been produced from an external source, from fission, or
   //! simply as a secondary particle.
   //! \param src Source site data
-  void from_source(const SourceSite* src);
+  HD void from_source(const SourceSite* src);
 
   // Coarse-grained particle events
   void event_calculate_xs();

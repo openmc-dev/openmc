@@ -40,7 +40,7 @@ MeshFilter::get_all_bins(const Particle& p, TallyEstimator estimator, FilterMatc
 const
 {
 
-  Position last_r = p.r_last_;
+  Position last_r = p.r_last();
   Position r = p.r();
   Position u = p.u();
 

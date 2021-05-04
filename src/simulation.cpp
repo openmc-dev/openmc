@@ -730,7 +730,7 @@ void transport_event_based()
       simulation::collision_queue.size()});
 
     // Execute event with the longest queue
-    if (max == 0) {
+    if (max == 0 && remaining_work == 0) {
       break;
     } else if (max == simulation::calculate_fuel_xs_queue.size()) {
       process_calculate_xs_events(simulation::calculate_fuel_xs_queue);

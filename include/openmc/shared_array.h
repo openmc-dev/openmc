@@ -5,6 +5,7 @@
 //! \brief Shared array data structure
 
 #include <memory>
+#include "openmc/error.h"
 
 
 namespace openmc {
@@ -93,6 +94,11 @@ public:
   //! template library containers, this does not free associated memory.
   void clear()
   {
+    // Call destructors on array contents
+    const auto& start = data_.get();
+    for (int i=0; i<size_; ++i) {
+      (start+i)->~T();
+    }
     size_ = 0;
   }
 
@@ -107,11 +113,7 @@ public:
   void resize(int64_t size)
   {
     if (size > capacity_) {
-      auto tmp = std::make_unique<T[]>(size);
-      std::copy(data_.get(), data_.get() + size_, tmp.get());
-      data_.swap(tmp);
-      // Now when the destructor of tmp gets called, it will free the
-      // previously held memory.
+      fatal_error("Attempt to resize SharedArray past its capacity");
     }
     size_ = size;
   }

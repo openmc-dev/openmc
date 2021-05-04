@@ -252,7 +252,7 @@ void read_multipole_data(int i_nuclide)
 
   // Read nuclide data from HDF5
   hid_t group = open_group(file, nuc->name_.c_str());
-  nuc->multipole_ = std::make_unique<WindowedMultipole>(group);
+  nuc->multipole_ = make_unique<WindowedMultipole>(group);
   close_group(group);
   file_close(file);
 }

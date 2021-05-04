@@ -242,7 +242,7 @@ vector<VolumeCalculation::Result> VolumeCalculation::execute() const
         for (int j = 1; j < mpi::n_procs; j++) {
           int q;
           MPI_Recv(&q, 1, MPI_INTEGER, j, 2*j, mpi::intracomm, MPI_STATUS_IGNORE);
-          std::vector<int> buffer(2*q);
+          vector<int> buffer(2 * q);
           MPI_Recv(buffer.data(), 2*q, MPI_INTEGER, j, 2*j + 1, mpi::intracomm, MPI_STATUS_IGNORE);
           for (int k = 0; k < q; ++k) {
             bool already_added = false;
@@ -261,7 +261,7 @@ vector<VolumeCalculation::Result> VolumeCalculation::execute() const
         }
       } else {
         int q = master_indices[i_domain].size();
-        std::vector<int> buffer(2*q);
+        vector<int> buffer(2 * q);
         for (int k = 0; k < q; ++k) {
           buffer[2*k] = master_indices[i_domain][k];
           buffer[2*k + 1] = master_hits[i_domain][k];

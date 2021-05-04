@@ -370,11 +370,8 @@ public:
                     vector<int>& bins,
                     vector<double>& lengths) const override;
 
-  void
-  surface_bins_crossed(Position r0,
-                       Position r1,
-                       const Direction& u,
-                       std::vector<int>& bins) const override;
+  void surface_bins_crossed(Position r0, Position r1, const Direction& u,
+    vector<int>& bins) const override;
 
   int get_bin(Position r) const;
 
@@ -522,11 +519,8 @@ public:
                     vector<int>& bins,
                     vector<double>& lengths) const override;
 
-  void
-  surface_bins_crossed(Position r0,
-                       Position r1,
-                       const Direction& u,
-                       std::vector<int>& bins) const override;
+  void surface_bins_crossed(Position r0, Position r1, const Direction& u,
+    vector<int>& bins) const override;
 
   int get_bin(Position r) const override;
 

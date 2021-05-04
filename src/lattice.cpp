@@ -1055,10 +1055,10 @@ HexLattice::to_hdf5_inner(hid_t lat_group) const
 void read_lattices(pugi::xml_node node)
 {
   for (pugi::xml_node lat_node : node.children("lattice")) {
-    model::lattices.push_back(std::make_unique<RectLattice>(lat_node));
+    model::lattices.push_back(make_unique<RectLattice>(lat_node));
   }
   for (pugi::xml_node lat_node : node.children("hex_lattice")) {
-    model::lattices.push_back(std::make_unique<HexLattice>(lat_node));
+    model::lattices.push_back(make_unique<HexLattice>(lat_node));
   }
 
   // Fill the lattice map.

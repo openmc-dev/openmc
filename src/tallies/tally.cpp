@@ -308,7 +308,7 @@ Tally::~Tally()
 Tally*
 Tally::create(int32_t id)
 {
-  model::tallies.push_back(std::make_unique<Tally>(id));
+  model::tallies.push_back(make_unique<Tally>(id));
   return model::tallies.back().get();
 }
 
@@ -737,7 +737,7 @@ void read_tallies_xml()
   }
 
   for (auto node_tal : root.children("tally")) {
-    model::tallies.push_back(std::make_unique<Tally>(node_tal));
+    model::tallies.push_back(make_unique<Tally>(node_tal));
   }
 }
 
@@ -916,7 +916,7 @@ openmc_extend_tallies(int32_t n, int32_t* index_start, int32_t* index_end)
   if (index_start) *index_start = model::tallies.size();
   if (index_end) *index_end = model::tallies.size() + n - 1;
   for (int i = 0; i < n; ++i) {
-    model::tallies.push_back(std::make_unique<Tally>(-1));
+    model::tallies.push_back(make_unique<Tally>(-1));
   }
   return 0;
 }

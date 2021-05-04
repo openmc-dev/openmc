@@ -565,7 +565,7 @@ void Material::collision_stopping_power(double* s_col, bool positron)
 void Material::init_bremsstrahlung()
 {
   // Create new object
-  ttb_ = std::make_unique<Bremsstrahlung>();
+  ttb_ = make_unique<Bremsstrahlung>();
 
   // Get the size of the energy grids
   auto n_k = data::ttb_k_grid.size();
@@ -1245,7 +1245,7 @@ void read_materials_xml()
   // Loop over XML material elements and populate the array.
   pugi::xml_node root = doc.document_element();
   for (pugi::xml_node material_node : root.children("material")) {
-    model::materials.push_back(std::make_unique<Material>(material_node));
+    model::materials.push_back(make_unique<Material>(material_node));
   }
   model::materials.shrink_to_fit();
 }
@@ -1475,7 +1475,7 @@ openmc_extend_materials(int32_t n, int32_t* index_start, int32_t* index_end)
   if (index_start) *index_start = model::materials.size();
   if (index_end) *index_end = model::materials.size() + n - 1;
   for (int32_t i = 0; i < n; i++) {
-    model::materials.push_back(std::make_unique<Material>());
+    model::materials.push_back(make_unique<Material>());
   }
   return 0;
 }

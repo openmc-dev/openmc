@@ -1054,40 +1054,40 @@ void read_surfaces(pugi::xml_node node)
       // Allocate and initialize the new surface
 
       if (surf_type == "x-plane") {
-        model::surfaces.push_back(std::make_unique<SurfaceXPlane>(surf_node));
+        model::surfaces.push_back(make_unique<SurfaceXPlane>(surf_node));
 
       } else if (surf_type == "y-plane") {
-        model::surfaces.push_back(std::make_unique<SurfaceYPlane>(surf_node));
+        model::surfaces.push_back(make_unique<SurfaceYPlane>(surf_node));
 
       } else if (surf_type == "z-plane") {
-        model::surfaces.push_back(std::make_unique<SurfaceZPlane>(surf_node));
+        model::surfaces.push_back(make_unique<SurfaceZPlane>(surf_node));
 
       } else if (surf_type == "plane") {
-        model::surfaces.push_back(std::make_unique<SurfacePlane>(surf_node));
+        model::surfaces.push_back(make_unique<SurfacePlane>(surf_node));
 
       } else if (surf_type == "x-cylinder") {
-        model::surfaces.push_back(std::make_unique<SurfaceXCylinder>(surf_node));
+        model::surfaces.push_back(make_unique<SurfaceXCylinder>(surf_node));
 
       } else if (surf_type == "y-cylinder") {
-        model::surfaces.push_back(std::make_unique<SurfaceYCylinder>(surf_node));
+        model::surfaces.push_back(make_unique<SurfaceYCylinder>(surf_node));
 
       } else if (surf_type == "z-cylinder") {
-        model::surfaces.push_back(std::make_unique<SurfaceZCylinder>(surf_node));
+        model::surfaces.push_back(make_unique<SurfaceZCylinder>(surf_node));
 
       } else if (surf_type == "sphere") {
-        model::surfaces.push_back(std::make_unique<SurfaceSphere>(surf_node));
+        model::surfaces.push_back(make_unique<SurfaceSphere>(surf_node));
 
       } else if (surf_type == "x-cone") {
-        model::surfaces.push_back(std::make_unique<SurfaceXCone>(surf_node));
+        model::surfaces.push_back(make_unique<SurfaceXCone>(surf_node));
 
       } else if (surf_type == "y-cone") {
-        model::surfaces.push_back(std::make_unique<SurfaceYCone>(surf_node));
+        model::surfaces.push_back(make_unique<SurfaceYCone>(surf_node));
 
       } else if (surf_type == "z-cone") {
-        model::surfaces.push_back(std::make_unique<SurfaceZCone>(surf_node));
+        model::surfaces.push_back(make_unique<SurfaceZCone>(surf_node));
 
       } else if (surf_type == "quadric") {
-        model::surfaces.push_back(std::make_unique<SurfaceQuadric>(surf_node));
+        model::surfaces.push_back(make_unique<SurfaceQuadric>(surf_node));
 
       } else {
         fatal_error(fmt::format("Invalid surface type, \"{}\"", surf_type));

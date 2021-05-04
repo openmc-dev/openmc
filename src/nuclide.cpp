@@ -200,7 +200,7 @@ Nuclide::Nuclide(hid_t group, const vector<double>& temperature)
   for (auto name : group_names(rxs_group)) {
     if (starts_with(name, "reaction_")) {
       hid_t rx_group = open_group(rxs_group, name.c_str());
-      reactions_.push_back(std::make_unique<Reaction>(rx_group, temps_to_read));
+      reactions_.push_back(make_unique<Reaction>(rx_group, temps_to_read));
 
       // Check for 0K elastic scattering
       const auto& rx = reactions_.back();
@@ -1047,7 +1047,7 @@ extern "C" int openmc_load_nuclide(const char* name, const double* temps, int n)
     // Read nuclide data from HDF5
     hid_t group = open_group(file_id, name);
     vector<double> temperature {temps, temps + n};
-    data::nuclides.push_back(std::make_unique<Nuclide>(group, temperature));
+    data::nuclides.push_back(make_unique<Nuclide>(group, temperature));
 
     close_group(group);
     file_close(file_id);
@@ -1079,7 +1079,7 @@ extern "C" int openmc_load_nuclide(const char* name, const double* temps, int n)
 
         // Read element data from HDF5
         hid_t group = open_group(file_id, element.c_str());
-        data::elements.push_back(std::make_unique<PhotonInteraction>(group));
+        data::elements.push_back(make_unique<PhotonInteraction>(group));
 
         close_group(group);
         file_close(file_id);

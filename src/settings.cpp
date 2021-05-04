@@ -425,7 +425,7 @@ void read_settings_xml()
   for (pugi::xml_node node : root.children("source")) {
     if (check_for_node(node, "file")) {
       auto path = get_node_value(node, "file", false, true);
-      model::external_sources.push_back(std::make_unique<FileSource>(path));
+      model::external_sources.push_back(make_unique<FileSource>(path));
     } else if (check_for_node(node, "library")) {
       // Get shared library path and parameters
       auto path = get_node_value(node, "library", false, true);
@@ -435,9 +435,10 @@ void read_settings_xml()
       }
 
       // Create custom source
-      model::external_sources.push_back(std::make_unique<CustomSourceWrapper>(path, parameters));
+      model::external_sources.push_back(
+        make_unique<CustomSourceWrapper>(path, parameters));
     } else {
-      model::external_sources.push_back(std::make_unique<IndependentSource>(node));
+      model::external_sources.push_back(make_unique<IndependentSource>(node));
     }
   }
 
@@ -452,16 +453,14 @@ void read_settings_xml()
     if (check_for_node(node_ssr, "path")) {
       path = get_node_value(node_ssr, "path", false, true);
     }
-    model::external_sources.push_back(std::make_unique<FileSource>(path));
+    model::external_sources.push_back(make_unique<FileSource>(path));
   }
 
   // If no source specified, default to isotropic point source at origin with Watt spectrum
   if (model::external_sources.empty()) {
-    model::external_sources.push_back(std::make_unique<IndependentSource>(
-      UPtrSpace{new SpatialPoint({0.0, 0.0, 0.0})},
-      UPtrAngle{new Isotropic()},
-      UPtrDist{new Watt(0.988e6, 2.249e-6)}
-    ));
+    model::external_sources.push_back(make_unique<IndependentSource>(
+      UPtrSpace {new SpatialPoint({0.0, 0.0, 0.0})},
+      UPtrAngle {new Isotropic()}, UPtrDist {new Watt(0.988e6, 2.249e-6)}));
   }
 
   // Check if we want to write out source

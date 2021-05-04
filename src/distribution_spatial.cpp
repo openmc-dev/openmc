@@ -65,7 +65,7 @@ CylindricalIndependent::CylindricalIndependent(pugi::xml_node node)
     // If no distribution was specified, default to a single point at r=0
     double x[] {0.0};
     double p[] {1.0};
-    r_ = std::make_unique<Discrete>(x, p, 1);
+    r_ = make_unique<Discrete>(x, p, 1);
   }
 
   // Read distribution for phi-coordinate
@@ -76,7 +76,7 @@ CylindricalIndependent::CylindricalIndependent(pugi::xml_node node)
     // If no distribution was specified, default to a single point at phi=0
     double x[] {0.0};
     double p[] {1.0};
-    phi_ = std::make_unique<Discrete>(x, p, 1);
+    phi_ = make_unique<Discrete>(x, p, 1);
   }
 
   // Read distribution for z-coordinate
@@ -87,7 +87,7 @@ CylindricalIndependent::CylindricalIndependent(pugi::xml_node node)
     // If no distribution was specified, default to a single point at z=0
     double x[] {0.0};
     double p[] {1.0};
-    z_ = std::make_unique<Discrete>(x, p, 1);
+    z_ = make_unique<Discrete>(x, p, 1);
   }
 
   // Read cylinder center coordinates
@@ -129,7 +129,7 @@ SphericalIndependent::SphericalIndependent(pugi::xml_node node)
     // If no distribution was specified, default to a single point at r=0
     double x[] {0.0};
     double p[] {1.0};
-    r_ = std::make_unique<Discrete>(x, p, 1);
+    r_ = make_unique<Discrete>(x, p, 1);
   }
 
   // Read distribution for theta-coordinate
@@ -140,7 +140,7 @@ SphericalIndependent::SphericalIndependent(pugi::xml_node node)
     // If no distribution was specified, default to a single point at theta=0
     double x[] {0.0};
     double p[] {1.0};
-    theta_ = std::make_unique<Discrete>(x, p, 1);
+    theta_ = make_unique<Discrete>(x, p, 1);
   }
 
   // Read distribution for phi-coordinate
@@ -151,7 +151,7 @@ SphericalIndependent::SphericalIndependent(pugi::xml_node node)
     // If no distribution was specified, default to a single point at phi=0
     double x[] {0.0};
     double p[] {1.0};
-    phi_ = std::make_unique<Discrete>(x, p, 1);
+    phi_ = make_unique<Discrete>(x, p, 1);
   }
 
   // Read sphere center coordinates

@@ -999,7 +999,7 @@ void read_cells(pugi::xml_node node)
   // Loop over XML cell elements and populate the array.
   model::cells.reserve(n_cells);
   for (pugi::xml_node cell_node : node.children("cell")) {
-    model::cells.push_back(std::make_unique<CSGCell>(cell_node));
+    model::cells.push_back(make_unique<CSGCell>(cell_node));
   }
 
   // Fill the cell map.
@@ -1018,7 +1018,7 @@ void read_cells(pugi::xml_node node)
     int32_t uid = model::cells[i]->universe_;
     auto it = model::universe_map.find(uid);
     if (it == model::universe_map.end()) {
-      model::universes.push_back(std::make_unique<Universe>());
+      model::universes.push_back(make_unique<Universe>());
       model::universes.back()->id_ = uid;
       model::universes.back()->cells_.push_back(i);
       model::universe_map[uid] = model::universes.size() - 1;
@@ -1285,7 +1285,7 @@ openmc_extend_cells(int32_t n, int32_t* index_start, int32_t* index_end)
   if (index_start) *index_start = model::cells.size();
   if (index_end) *index_end = model::cells.size() + n - 1;
   for (int32_t i = 0; i < n; i++) {
-    model::cells.push_back(std::make_unique<CSGCell>());
+    model::cells.push_back(make_unique<CSGCell>());
   }
   return 0;
 }

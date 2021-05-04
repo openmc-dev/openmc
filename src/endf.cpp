@@ -84,13 +84,13 @@ unique_ptr<Function1D> read_function(hid_t group, const char* name)
   read_attribute(dset, "type", func_type);
   unique_ptr<Function1D> func;
   if (func_type == "Tabulated1D") {
-    func = std::make_unique<Tabulated1D>(dset);
+    func = make_unique<Tabulated1D>(dset);
   } else if (func_type == "Polynomial") {
-    func = std::make_unique<Polynomial>(dset);
+    func = make_unique<Polynomial>(dset);
   } else if (func_type == "CoherentElastic") {
-    func = std::make_unique<CoherentElasticXS>(dset);
+    func = make_unique<CoherentElasticXS>(dset);
   } else if (func_type == "IncoherentElastic") {
-    func = std::make_unique<IncoherentElasticXS>(dset);
+    func = make_unique<IncoherentElasticXS>(dset);
   } else {
     throw std::runtime_error{"Unknown function type " + func_type +
       " for dataset " + object_name(dset)};

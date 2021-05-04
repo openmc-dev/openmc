@@ -236,8 +236,8 @@ void read_ce_cross_sections(const vector<vector<double>>& nuc_temps,
 
         // Read thermal scattering data from HDF5
         hid_t group = open_group(file_id, name.c_str());
-        data::thermal_scatt.push_back(std::make_unique<ThermalScattering>(
-          group, thermal_temps[i_table]));
+        data::thermal_scatt.push_back(
+          make_unique<ThermalScattering>(group, thermal_temps[i_table]));
         close_group(group);
         file_close(file_id);
 

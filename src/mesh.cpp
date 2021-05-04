@@ -1366,9 +1366,9 @@ openmc_extend_meshes(int32_t n, const char* type, int32_t* index_start,
 
   for (int i = 0; i < n; ++i) {
     if (std::strcmp(type, "regular") == 0) {
-      model::meshes.push_back(std::make_unique<RegularMesh>());
+      model::meshes.push_back(make_unique<RegularMesh>());
     } else if (std::strcmp(type, "rectilinear") == 0) {
-      model::meshes.push_back(std::make_unique<RectilinearMesh>());
+      model::meshes.push_back(make_unique<RectilinearMesh>());
     } else {
       throw std::runtime_error{"Unknown mesh type: " + std::string(type)};
     }
@@ -1389,14 +1389,14 @@ extern "C" int openmc_add_unstructured_mesh(const char filename[],
 
 #ifdef DAGMC
   if (lib_name == "moab") {
-    model::meshes.push_back(std::move(std::make_unique<MOABMesh>(mesh_file)));
+    model::meshes.push_back(std::move(make_unique<MOABMesh>(mesh_file)));
     valid_lib = true;
   }
 #endif
 
 #ifdef LIBMESH
   if (lib_name == "libmesh") {
-    model::meshes.push_back(std::move(std::make_unique<LibMesh>(mesh_file)));
+    model::meshes.push_back(std::move(make_unique<LibMesh>(mesh_file)));
     valid_lib = true;
   }
 #endif
@@ -1583,7 +1583,7 @@ MOABMesh::MOABMesh(const std::string& filename) {
 
 void MOABMesh::initialize() {
   // create MOAB instance
-  mbi_ = std::make_unique<moab::Core>();
+  mbi_ = make_unique<moab::Core>();
   // load unstructured mesh file
   moab::ErrorCode rval = mbi_->load_file(filename_.c_str());
   if (rval != moab::MB_SUCCESS) {
@@ -1643,7 +1643,7 @@ MOABMesh::build_kdtree(const moab::Range& all_tets)
   all_tets_and_tris.merge(all_tris);
 
   // create a kd-tree instance
-  kdtree_ = std::make_unique<moab::AdaptiveKDTree>(mbi_.get());
+  kdtree_ = make_unique<moab::AdaptiveKDTree>(mbi_.get());
 
   // build the tree
   rval = kdtree_->build_tree(all_tets_and_tris, &kdtree_root_);
@@ -1813,10 +1813,8 @@ double MOABMesh::tet_volume(moab::EntityHandle tet) const
   return 1.0 / 6.0 * (((p[1] - p[0]) * (p[2] - p[0])) % (p[3] - p[0]));
 }
 
-void MOABMesh::surface_bins_crossed(Position r0,
-                                    Position r1,
-                                    const Direction& u,
-                                    std::vector<int>& bins) const
+void MOABMesh::surface_bins_crossed(
+  Position r0, Position r1, const Direction& u, vector<int>& bins) const
 {
 
   // TODO: Implement triangle crossings here
@@ -2148,7 +2146,7 @@ void LibMesh::initialize()
   // assuming that unstructured meshes used in OpenMC are 3D
   n_dimension_ = 3;
 
-  m_ = std::make_unique<libMesh::Mesh>(*settings::libmesh_comm, n_dimension_);
+  m_ = make_unique<libMesh::Mesh>(*settings::libmesh_comm, n_dimension_);
   m_->read(filename_);
   m_->prepare_for_use();
 
@@ -2160,7 +2158,7 @@ void LibMesh::initialize()
   // create an equation system for storing values
   eq_system_name_ = fmt::format("mesh_{}_system", id_);
 
-  equation_systems_ = std::make_unique<libMesh::EquationSystems>(*m_);
+  equation_systems_ = make_unique<libMesh::EquationSystems>(*m_);
   libMesh::ExplicitSystem& eq_sys =
     equation_systems_->add_system<libMesh::ExplicitSystem>(eq_system_name_);
 
@@ -2200,11 +2198,8 @@ int LibMesh::n_bins() const
   return m_->n_elem();
 }
 
-void
-LibMesh::surface_bins_crossed(Position r0,
-                              Position r1,
-                              const Direction& u,
-                              std::vector<int>& bins) const
+void LibMesh::surface_bins_crossed(
+  Position r0, Position r1, const Direction& u, vector<int>& bins) const
 {
   // TODO: Implement triangle crossings here
   throw std::runtime_error{"Unstructured mesh surface tallies are not implemented."};
@@ -2378,16 +2373,16 @@ void read_meshes(pugi::xml_node root)
 
     // Read mesh and add to vector
     if (mesh_type == "regular") {
-      model::meshes.push_back(std::make_unique<RegularMesh>(node));
+      model::meshes.push_back(make_unique<RegularMesh>(node));
     } else if (mesh_type == "rectilinear") {
-      model::meshes.push_back(std::make_unique<RectilinearMesh>(node));
+      model::meshes.push_back(make_unique<RectilinearMesh>(node));
 #ifdef DAGMC
     } else if (mesh_type == "unstructured" && mesh_lib == "moab") {
-      model::meshes.push_back(std::make_unique<MOABMesh>(node));
+      model::meshes.push_back(make_unique<MOABMesh>(node));
 #endif
 #ifdef LIBMESH
     } else if (mesh_type == "unstructured" && mesh_lib == "libmesh") {
-      model::meshes.push_back(std::make_unique<LibMesh>(node));
+      model::meshes.push_back(make_unique<LibMesh>(node));
 #endif
     } else if (mesh_type == "unstructured") {
       fatal_error("Unstructured mesh support is not enabled or the mesh library is invalid.");

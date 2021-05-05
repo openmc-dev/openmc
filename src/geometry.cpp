@@ -106,7 +106,6 @@ bool HD find_cell_inner(Particle& p, const NeighborList* neighbor_list)
         break;
       }
     }
-
     // If we're attempting a neighbor list search and fail, we
     // now know we should return false. This will trigger an
     // exhaustive search from neighbor_list_find_cell and make

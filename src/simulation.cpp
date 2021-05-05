@@ -508,23 +508,22 @@ void initialize_history(Particle& p, int64_t index_source)
   int64_t local_work_index = simulation::work_index[mpi::rank];
 #endif
 
-  // TODO add support for fixed source
-  p.from_source(&source_bank[index_source - 1]);
-
   // set defaults
-  // if (settings::run_mode == RunMode::EIGENVALUE) {
-  //   // set defaults for eigenvalue simulations from primary bank
-  //   p.from_source(&simulation::source_bank[index_source - 1]);
-  // } else if (settings::run_mode == RunMode::FIXED_SOURCE) {
-  //   // initialize random number seed
-  //   int64_t id = (simulation::total_gen + overall_generation() -
-  //   1)*settings::n_particles +
-  //     simulation::work_index[mpi::rank] + index_source;
-  //   uint64_t seed = init_seed(id, STREAM_SOURCE);
-  //   // sample from external source distribution or custom library then set
-  //   auto site = sample_external_source(&seed);
-  //   p.from_source(&site);
-  // }
+  if (run_mode == RunMode::EIGENVALUE) {
+    // set defaults for eigenvalue simulations from primary bank
+    p.from_source(&source_bank[index_source - 1]);
+  } else if (run_mode == RunMode::FIXED_SOURCE) {
+    __trap();
+    // initialize random number seed
+    // int64_t id = (simulation::total_gen + overall_generation() -
+    // 1)*settings::n_particles +
+    //   simulation::work_index[mpi::rank] + index_source;
+    // uint64_t seed = init_seed(id, STREAM_SOURCE);
+    // // sample from external source distribution or custom library then set
+    // auto site = sample_external_source(&seed);
+    // p.from_source(&site);
+  }
+
   p.current_work() = index_source;
 
   // set identifier for particle

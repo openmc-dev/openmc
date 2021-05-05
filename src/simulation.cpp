@@ -793,6 +793,7 @@ void transport_event_based()
   // Initialize all particle histories for this subiteration
   process_init_events(n_particles, source_offset);
   remaining_work -= n_particles;
+  source_offset += n_particles;
 
   // Event-based transport loop
   while (true) {

@@ -8,12 +8,14 @@
 #include <vector> // for vector
 
 #include "hdf5.h"
+#include <gsl/gsl>
 
 #include "openmc/angle_energy.h"
 #include "openmc/endf.h"
 #include "openmc/endf_flat.h"
 #include "openmc/particle.h"
 #include "openmc/secondary_flat.h"
+#include "openmc/serialize.h"
 
 namespace openmc {
 
@@ -34,7 +36,7 @@ public:
     total    // Delayed emission of secondary particle
   };
 
-  using Secondary = AngleEnergyFlatContainer;
+  using Secondary = std::unique_ptr<AngleEnergy>;
 
   //! Construct reaction product from HDF5 data
   //! \param[in] group HDF5 group containing data
@@ -47,17 +49,43 @@ public:
   //! \param[inout] seed Pseudorandom seed pointer
   void sample(double E_in, double& E_out, double& mu, uint64_t* seed) const;
 
+  void serialize(DataBuffer& buffer) const;
+
   void copy_to_device();
   void release_from_device();
 
   Particle::Type particle_; //!< Particle type
   EmissionMode emission_mode_; //!< Emission mode
   double decay_rate_; //!< Decay rate (for delayed neutron precursors) in [1/s]
-  std::unique_ptr<Function1DFlatContainer> yield_; //!< Yield as a function of energy
+  std::unique_ptr<Function1D> yield_; //!< Yield as a function of energy
   std::vector<Tabulated1D> applicability_; //!< Applicability of distribution
   std::vector<Secondary> distribution_; //!< Secondary angle-energy distribution
 
   Secondary* device_distribution_;
+};
+
+class ReactionProductFlat {
+public:
+  // Constructors
+  explicit ReactionProductFlat(const ReactionProduct& product);
+
+  void sample(double E_in, double& E_out, double& mu, uint64_t* seed) const;
+
+  Particle::Type particle() const;
+  ReactionProduct::EmissionMode emission_mode() const;
+  double decay_rate() const;
+  //Function1DFlat yield() const;
+  Tabulated1DFlat applicability(gsl::index i) const;
+  AngleEnergyFlat distribution(gsl::index i) const;
+
+  const uint8_t* data() const { return buffer_.data_; }
+
+private:
+  // Data members
+  size_t yield_size_;
+  size_t n_applicability_;
+  size_t n_distribution_;
+  DataBuffer buffer_;
 };
 
 } // namespace opemc

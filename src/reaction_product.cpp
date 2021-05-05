@@ -49,7 +49,7 @@ ReactionProduct::ReactionProduct(hid_t group)
   }
 
   // Read secondary particle yield
-  yield_ = std::make_unique<Function1DFlatContainer>(*read_function(group, "yield"));
+  yield_ = read_function(group, "yield");
 
   int n;
   read_attribute(group, "n_distribution", n);
@@ -69,17 +69,13 @@ ReactionProduct::ReactionProduct(hid_t group)
     // Determine distribution type and read data
     read_attribute(dgroup, "type", temp);
     if (temp == "uncorrelated") {
-      UncorrelatedAngleEnergy dist(dgroup);
-      distribution_.emplace_back(dist);
+      distribution_.push_back(std::make_unique<UncorrelatedAngleEnergy>(dgroup));
     } else if (temp == "correlated") {
-      CorrelatedAngleEnergy dist(dgroup);
-      distribution_.emplace_back(dist);
+      distribution_.push_back(std::make_unique<CorrelatedAngleEnergy>(dgroup));
     } else if (temp == "nbody") {
-      NBodyPhaseSpace dist(dgroup);
-      distribution_.emplace_back(dist);
+      distribution_.push_back(std::make_unique<NBodyPhaseSpace>(dgroup));
     } else if (temp == "kalbach-mann") {
-      KalbachMann dist(dgroup);
-      distribution_.emplace_back(dist);
+      distribution_.push_back(std::make_unique<KalbachMann>(dgroup));
     }
 
     close_group(dgroup);
@@ -101,7 +97,7 @@ void ReactionProduct::sample(double E_in, double& E_out, double& mu,
       if (c <= prob) {
         #pragma omp target map(from: E_out, mu) map(tofrom: seed[:1])
         {
-          device_distribution_[i].sample(E_in, E_out, mu, seed);
+          distribution_[i]->sample(E_in, E_out, mu, seed);
         }
         break;
       }
@@ -110,27 +106,144 @@ void ReactionProduct::sample(double E_in, double& E_out, double& mu,
     // If only one distribution is present, go ahead and sample it
     #pragma omp target map(from: E_out, mu) map(tofrom: seed[:1])
     {
-      device_distribution_[0].sample(E_in, E_out, mu, seed);
+      distribution_[0]->sample(E_in, E_out, mu, seed);
     }
   }
 }
 
-void ReactionProduct::copy_to_device()
+void ReactionProduct::serialize(DataBuffer& buffer) const
 {
-  device_distribution_ = distribution_.data();
+  buffer.add(static_cast<int>(particle_));             // 4
+  buffer.add(static_cast<int>(emission_mode_));        // 4
+  buffer.add(decay_rate_);                             // 8
 
-  #pragma omp target enter data map(to: device_distribution_[:distribution_.size()])
-  for (auto& d : distribution_) {
-    d.copy_to_device();
+  // Write size of yield followed by yield itself
+  size_t yield_size = buffer_nbytes(*yield_);
+  buffer.add(yield_size);                              // 8
+  yield_->serialize(buffer);                           // yield_size
+
+  size_t n = 4 + 4 + 8 + 8 + yield_size + 16 + 4*(applicability_.size() + distribution_.size());
+  std::vector<int> locators;
+  for (const auto& func : applicability_) {
+    locators.push_back(n);
+    n += buffer_nbytes(func);
+  }
+  for (const auto& d : distribution_) {
+    locators.push_back(n);
+    n += buffer_nbytes(d);
+  }
+
+  buffer.add(applicability_.size());                   // 8
+  buffer.add(distribution_.size());                    // 8
+  buffer.add(locators);                                // 4 * (app + dist size)
+
+  for (const auto& func : applicability_) {
+    func.serialize(buffer);
+  }
+
+  for (const auto& d : distribution_) {
+    d->serialize(buffer);
   }
 }
 
-void ReactionProduct::release_from_device()
+// void ReactionProduct::copy_to_device()
+// {
+//   device_distribution_ = distribution_.data();
+
+//   #pragma omp target enter data map(to: device_distribution_[:distribution_.size()])
+//   for (auto& d : distribution_) {
+//     d.copy_to_device();
+//   }
+// }
+
+// void ReactionProduct::release_from_device()
+// {
+//   for (auto& d : distribution_) {
+//     d.release_device();
+//   }
+//   #pragma omp target exit data map(release: device_distribution_[:distribution_.size()])
+// }
+
+ReactionProductFlat::ReactionProductFlat(const ReactionProduct& product)
 {
-  for (auto& d : distribution_) {
-    d.release_device();
+  // Determine number of bytes needed and create allocation
+  size_t n = buffer_nbytes(product);
+
+  // Write into buffer
+  buffer_.reserve(n);
+  product.serialize(buffer_);
+  Ensures(n == buffer_.size());
+
+  yield_size_ = *reinterpret_cast<const size_t*>(this->data() + 16);
+  n_applicability_ = *reinterpret_cast<const size_t*>(this->data() + 24 + yield_size_);
+  n_distribution_ = *reinterpret_cast<const size_t*>(this->data() + 32 + yield_size_);
+}
+
+void ReactionProductFlat::sample(double E_in, double& E_out, double& mu,
+  uint64_t* seed) const
+{
+  auto n = n_applicability_;
+  if (n > 1) {
+    double prob = 0.0;
+    double c = prn(seed);
+    for (int i = 0; i < n; ++i) {
+      // Determine probability that i-th energy distribution is sampled
+      prob += this->applicability(i)(E_in);
+
+      // If i-th distribution is sampled, sample energy from the distribution
+      if (c <= prob) {
+        #pragma omp target map(from: E_out, mu) map(tofrom: seed[:1])
+        {
+          this->distribution(i).sample(E_in, E_out, mu, seed);
+        }
+        break;
+      }
+    }
+  } else {
+    // If only one distribution is present, go ahead and sample it
+    #pragma omp target map(from: E_out, mu) map(tofrom: seed[:1])
+    {
+      this->distribution(0).sample(E_in, E_out, mu, seed);
+    }
   }
-  #pragma omp target exit data map(release: device_distribution_[:distribution_.size()])
+}
+
+Particle::Type ReactionProductFlat::particle() const
+{
+  return *reinterpret_cast<const Particle::Type*>(this->data());
+}
+
+ReactionProduct::EmissionMode ReactionProductFlat::emission_mode() const
+{
+  return *reinterpret_cast<const ReactionProduct::EmissionMode*>(this->data() + 4);
+}
+
+double ReactionProductFlat::decay_rate() const
+{
+  return *reinterpret_cast<const double*>(this->data() + 8);
+}
+
+// TODO: We need to separate out Function1DFlat into an owning version and a
+// non-owning version since ReactionProduct owns the buffer that the funciton is
+// inside
+
+// Function1DFlat ReactionProductFlat::yield() const
+// {
+//   return Function1DFlat()
+// }
+
+Tabulated1DFlat ReactionProductFlat::applicability(gsl::index i) const
+{
+  auto indices = reinterpret_cast<const int*>(this->data() + 40 + yield_size_);
+  size_t offset = indices[i];
+  return Tabulated1DFlat(this->data() + offset);
+}
+
+AngleEnergyFlat ReactionProductFlat::distribution(gsl::index i) const
+{
+  auto indices = reinterpret_cast<const int*>(this->data() + 40 + yield_size_);
+  size_t offset = indices[n_applicability_ + i];
+  return AngleEnergyFlat(this->data() + offset);
 }
 
 }

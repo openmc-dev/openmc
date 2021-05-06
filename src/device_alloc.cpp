@@ -4,6 +4,8 @@
 #include "openmc/lattice.h"
 #include "openmc/nuclide.h"
 
+#include "openmc/tallies/tally.h"
+
 namespace openmc {
 
   /*
@@ -26,8 +28,20 @@ void device_memcpy( void * dst_ptr, void * src_ptr, size_t sz, int dst_id, int s
 }
 */
 
+void enforce_assumptions()
+{
+  // Notably, I have commented this capability out of particle::cross_vacuum_bc and particle::cross_reflective_bc
+  assert(model::active_meshsurf_tallies.empty() && "Mesh surface tallies not yet supported.");
+  
+  // Commented out of particle::cross_reflective_bc
+  assert(model::active_surface_tallies.empty() && "Surface tallies not yet supported.");
+}
+
 void move_read_only_data_to_device()
 {
+  // Enforce any device-specific assumptions or limitations on user inputs
+  enforce_assumptions();
+
   int host_id = omp_get_initial_device();
   int device_id = omp_get_default_device();
   size_t sz;

@@ -71,7 +71,7 @@ BoundaryCondition::BoundaryCondition(BCType type, int i_surf, int j_surf)
 void
 BoundaryCondition::VacuumBC_handle_particle(Particle& p, const Surface& surf) const
 {
-  p.cross_vacuum_bc(surf);
+    p.cross_vacuum_bc(surf);
 }
 
 

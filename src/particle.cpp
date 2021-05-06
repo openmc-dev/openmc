@@ -532,6 +532,7 @@ Particle::cross_vacuum_bc(const Surface& surf)
   // forward slightly so that if the mesh boundary is on the surface, it is
   // still processed
 
+  /*
   if (!model::active_meshsurf_tallies.empty()) {
     // TODO: Find a better solution to score surface currents than
     // physically moving the particle forward slightly
@@ -539,14 +540,17 @@ Particle::cross_vacuum_bc(const Surface& surf)
     this->r() += TINY_BIT * this->u();
     score_surface_tally(*this, model::active_meshsurf_tallies);
   }
+  */
 
   // Score to global leakage tally
   keff_tally_leakage_ += wgt_;
 
   // Display message
+  /*
   if (settings::verbosity >= 10 || trace_) {
     write_message(1, "    Leaked out of surface {}", surf.id_);
   }
+  */
 }
 
 void
@@ -554,8 +558,12 @@ Particle::cross_reflective_bc(const Surface& surf, Direction new_u)
 {
   // Do not handle reflective boundary conditions on lower universes
   if (n_coord_ != 1) {
+    /*
     this->mark_as_lost("Cannot reflect particle " + std::to_string(id_) +
       " off surface in a lower universe.");
+      */
+    printf("error - cannot reflect particle\n");
+    this->mark_as_lost_short();
     return;
   }
 
@@ -566,6 +574,7 @@ Particle::cross_reflective_bc(const Surface& surf, Direction new_u)
   // the particle slightly back in case the surface crossing is coincident
   // with a mesh boundary
 
+  /*
   if (!model::active_surface_tallies.empty()) {
     score_surface_tally(*this, model::active_surface_tallies);
   }
@@ -576,6 +585,7 @@ Particle::cross_reflective_bc(const Surface& surf, Direction new_u)
     score_surface_tally(*this, model::active_meshsurf_tallies);
     this->r() = r;
   }
+  */
 
   // Set the new particle direction
   this->u() = new_u;
@@ -588,22 +598,28 @@ Particle::cross_reflective_bc(const Surface& surf, Direction new_u)
   // boundary, it is necessary to redetermine the particle's coordinates in
   // the lower universes.
   // (unless we're using a dagmc model, which has exactly one universe)
-  if (!settings::dagmc) {
+  //if (!settings::dagmc) {
     n_coord_ = 1;
     if (!neighbor_list_find_cell(*this)) {
+      this->mark_as_lost_short();
+      printf("lost particle reflecting\n");
+      /*
       this->mark_as_lost("Couldn't find particle after reflecting from surface "
                          + std::to_string(surf.id_) + ".");
+                         */
       return;
     }
-  }
+  //}
 
   // Set previous coordinate going slightly past surface crossing
   r_last_current_ = this->r() + TINY_BIT*this->u();
 
   // Diagnostic message
+  /*
   if (settings::verbosity >= 10 || trace_) {
     write_message(1, "    Reflected from surface {}", surf.id_);
   }
+  */
 }
 
 void

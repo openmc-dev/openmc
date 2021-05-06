@@ -135,12 +135,18 @@ Surface::Surface(pugi::xml_node surf_node, Surface::SurfaceType type) : type_(ty
     if (surf_bc == "transmission" || surf_bc == "transmit" ||surf_bc.empty()) {
       // Leave the bc_ a nullptr
     } else if (surf_bc == "vacuum") {
-      bc_ = std::make_shared<VacuumBC>();
+      //bc_ = std::make_shared<VacuumBC>();
+      //bc_ = std::make_shared<BoundaryCondition>(BoundaryCondition::BCType::Vacuum);
+      bc_ = BoundaryCondition(BoundaryCondition::BCType::Vacuum);
     } else if (surf_bc == "reflective" || surf_bc == "reflect"
                || surf_bc == "reflecting") {
-      bc_ = std::make_shared<ReflectiveBC>();
+      //bc_ = std::make_shared<ReflectiveBC>();
+      //bc_ = std::make_shared<BoundaryCondition>(BoundaryCondition::BCType::Reflective);
+      bc_ = BoundaryCondition(BoundaryCondition::BCType::Reflective);
     } else if (surf_bc == "white") {
-      bc_ = std::make_shared<WhiteBC>();
+      //bc_ = std::make_shared<WhiteBC>();
+      //bc_ = std::make_shared<BoundaryCondition>(BoundaryCondition::BCType::White);
+      bc_ = BoundaryCondition(BoundaryCondition::BCType::White);
     } else if (surf_bc == "periodic") {
       // periodic BC's are handled separately
     } else {
@@ -227,8 +233,8 @@ Surface::to_hdf5(hid_t group_id) const
 
   hid_t surf_group = create_group(group_id, group_name);
 
-  if (bc_) {
-    write_string(surf_group, "boundary_type", bc_->type(), false);
+  if (bc_.type_ != BoundaryCondition::BCType::Transmission) {
+    write_string(surf_group, "boundary_type", bc_.type(), false);
   } else {
     write_string(surf_group, "boundary_type", "transmission", false);
   }
@@ -1377,10 +1383,14 @@ void read_surfaces(pugi::xml_node node)
     // planes are parallel which indicates a translational periodic boundary
     // condition.  Otherwise, it is a rotational periodic BC.
     if (std::abs(1.0 - dot_prod) < FP_PRECISION) {
-      surf1.bc_ = std::make_shared<TranslationalPeriodicBC>(i_surf, j_surf);
+      //surf1.bc_ = std::make_shared<TranslationalPeriodicBC>(i_surf, j_surf);
+      //surf1.bc_ = std::make_shared<BoundaryCondition>(BoundaryCondition::BCType::TranslationalPeriodic, i_surf, j_surf);
+      surf1.bc_ = BoundaryCondition(BoundaryCondition::BCType::TranslationalPeriodic, i_surf, j_surf);
       surf2.bc_ = surf1.bc_;
     } else {
-      surf1.bc_ = std::make_shared<RotationalPeriodicBC>(i_surf, j_surf);
+      //surf1.bc_ = std::make_shared<RotationalPeriodicBC>(i_surf, j_surf);
+      //surf1.bc_ = std::make_shared<BoundaryCondition>(BoundaryCondition::BCType::RotationalPeriodic, i_surf, j_surf);
+      surf1.bc_ = BoundaryCondition(BoundaryCondition::BCType::RotationalPeriodic, i_surf, j_surf);
       surf2.bc_ = surf1.bc_;
     }
   }
@@ -1389,7 +1399,7 @@ void read_surfaces(pugi::xml_node node)
   // surface
   bool boundary_exists = false;
   for (const auto& surf : model::surfaces) {
-    if (surf.bc_) {
+    if (surf.bc_.type_ != BoundaryCondition::BCType::Transmission) {
       boundary_exists = true;
       break;
     }

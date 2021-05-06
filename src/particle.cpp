@@ -464,8 +464,8 @@ Particle::cross_surface()
   }
 
   // Handle any applicable boundary conditions.
-  if (surf->bc_ && settings::run_mode != RunMode::PLOTTING) {
-    surf->bc_->handle_particle(*this, *surf);
+  if (surf->bc_.type_ != BoundaryCondition::BCType::Transmission && settings::run_mode != RunMode::PLOTTING) {
+    surf->bc_.handle_particle(*this, *surf);
     return;
   }
 

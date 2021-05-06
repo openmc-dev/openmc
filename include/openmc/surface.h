@@ -107,7 +107,7 @@ public:
   int id_;                    //!< Unique ID
   SurfaceType type_;                    //!< Surface type
   std::string name_; //!< User-defined name
-  std::shared_ptr<BoundaryCondition> bc_ {nullptr}; //!< Boundary condition
+  BoundaryCondition bc_; //!< Boundary condition
   bool surf_source_ {false};     //!< Activate source banking for the surface?
 
   // Actual values;

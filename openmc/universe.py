@@ -720,7 +720,6 @@ class DAGMCUniverse(UniverseBase):
         return OrderedDict()
 
     def create_xml_subelement(self, xml_element, memo=None):
-
         if memo and self in memo:
             return
 

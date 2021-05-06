@@ -296,8 +296,8 @@ DAGUniverse::dagmc_ids_for_dim(int dim) const
 {
   // generate a vector of ids
   std::vector<int> id_vec;
-  int n_cells = dagmc_instance_->num_entities(dim);
-  for (int i = 1; i <= n_cells; i++) {
+  int n_ents = dagmc_instance_->num_entities(dim);
+  for (int i = 1; i <= n_ents; i++) {
     id_vec.push_back(dagmc_instance_->id_by_index(dim, i));
   }
 
@@ -308,22 +308,30 @@ DAGUniverse::dagmc_ids_for_dim(int dim) const
   std::stringstream out;
 
   int i = 0;
-  int start_id = id_vec[0];
+  int start_id = id_vec[0]; // initialize with first ID
   int stop_id;
-  while (i < n_cells) {
+  // loop over all cells in the universe
+  while (i < n_ents) {
+
     stop_id = id_vec[i];
 
+    // if the next ID is not in this contiguous set of IDS,
+    // figure out how to write the string representing this set
     if (id_vec[i + 1] > stop_id + 1) {
+
       if (start_id != stop_id) {
-        // there are several IDs in a row, print condensed version
+        // there are several IDs in a row, print condensed version (i.e. 1-10, 12-20)
         out << start_id << "-" << stop_id;
       } else {
-        // only one ID in this contiguous block
+        // only one ID in this contiguous block (i.e. 3, 5, 7, 9)
         out << start_id;
       }
-      if (i < n_cells - 1) { out << ", "; }
+      // insert a comma as long as we aren't in the last ID set
+      if (i < n_ents - 1) { out << ", "; }
+
+      // if we are at the end of a set, set the start ID to the first value
+      // in the next set.
       start_id = id_vec[++i];
-      stop_id = start_id;
     }
 
     i++;

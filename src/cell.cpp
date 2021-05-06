@@ -328,7 +328,6 @@ Cell::to_hdf5(hid_t cell_group) const {
 
   write_dataset(group, "universe", model::universes[universe_]->id_);
 
-
   to_hdf5_inner(group);
 
   // Write fill information.

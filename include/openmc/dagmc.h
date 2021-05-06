@@ -91,7 +91,9 @@ public:
   void legacy_assign_material(std::string mat_string,
                               std::unique_ptr<DAGCell>& c) const;
 
-  //! Generate a string representing the ranges of IDs present in the DAGMC model
+  //! Generate a string representing the ranges of IDs present in the DAGMC model.
+  //! Contiguous chunks of IDs are represented as a range (i.e. 1-10). If there is
+  //! a single ID a chunk, it will be represented as a single number (i.e. 2, 4, 6, 8).
   //! \param[in] dim Dimension of the entities
   //! \return A string of the ID ranges for entities of dimension \p dim
   std::string dagmc_ids_for_dim(int dim) const;

@@ -47,7 +47,7 @@ double future_prn(int64_t n, uint64_t seed);
 //! @return The initialized seed value
 //==============================================================================
 
-uint64_t init_seed(int64_t id, int offset);
+HD uint64_t init_seed(int64_t id, int offset);
 
 //==============================================================================
 //! Set the RNG seeds to unique values based on the ID of the particle. This

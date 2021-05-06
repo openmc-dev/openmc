@@ -513,14 +513,17 @@ void initialize_history(Particle& p, int64_t index_source)
     // set defaults for eigenvalue simulations from primary bank
     p.from_source(&source_bank[index_source - 1]);
   } else if (run_mode == RunMode::FIXED_SOURCE) {
-    __trap();
     // initialize random number seed
-    // int64_t id = (simulation::total_gen + overall_generation() -
-    // 1)*settings::n_particles +
-    //   simulation::work_index[mpi::rank] + index_source;
-    // uint64_t seed = init_seed(id, STREAM_SOURCE);
-    // // sample from external source distribution or custom library then set
+    int64_t id = (total_gen + overall_generation() - 1) * n_particles +
+                 local_work_index + index_source;
+    uint64_t seed = init_seed(id, STREAM_SOURCE);
+    // sample from external source distribution or custom library then set
+#ifdef __CUDA_ARCH__
+    __trap();
+#else
     // auto site = sample_external_source(&seed);
+    fatal_error("FIXME fixed source sampling");
+#endif
     // p.from_source(&site);
   }
 

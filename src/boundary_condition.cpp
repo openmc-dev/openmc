@@ -71,7 +71,12 @@ BoundaryCondition::BoundaryCondition(BCType type, int i_surf, int j_surf)
 void
 BoundaryCondition::VacuumBC_handle_particle(Particle& p, const Surface& surf) const
 {
+  #pragma omp target update to(p, surf)
+  #pragma omp target
+  {
     p.cross_vacuum_bc(surf);
+  }
+  #pragma omp target update from(p, surf)
 }
 
 

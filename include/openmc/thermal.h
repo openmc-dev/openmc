@@ -61,8 +61,8 @@ private:
     Reaction() { }
 
     // Data members
-    std::unique_ptr<Function1DFlat> xs; //!< Cross section
-    std::unique_ptr<AngleEnergyFlat> distribution; //!< Secondary angle-energy distribution
+    std::unique_ptr<Function1DFlatContainer> xs; //!< Cross section
+    std::unique_ptr<AngleEnergyFlatContainer> distribution; //!< Secondary angle-energy distribution
   };
 
   // Inelastic scattering data

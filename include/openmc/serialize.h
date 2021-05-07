@@ -21,6 +21,7 @@ public:
 
   DataBuffer() = default;
   explicit DataBuffer(size_t n);
+  DataBuffer(const DataBuffer& buffer);
   ~DataBuffer();
 
   void reserve(size_t n);
@@ -36,6 +37,7 @@ public:
   void release_device() const;
 
   uint8_t* data_{nullptr};
+  size_t capacity_{0};
   size_t offset_{0};
   Mode mode_{Mode::write};
 };

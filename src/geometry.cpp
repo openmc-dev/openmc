@@ -373,7 +373,14 @@ bool neighbor_list_find_cell(Particle& p)
   }
   #pragma omp target update from(p, c)
   if (found)
+  {
+    #pragma omp target update to(p, c) 
+    #pragma omp target
+    {
     c.neighbors_.push_back(p.coord_[coord_lvl].cell);
+    }
+    #pragma omp target update from(p, c)
+  }
   return found;
 }
 

@@ -354,32 +354,32 @@ bool neighbor_list_find_cell(Particle& p)
   // Search for the particle in that cell's neighbor list.  Return if we
   // found the particle.
   bool found;
-  #pragma omp target update to(p, c) 
-  #pragma omp target map(from: found)
+  //#pragma omp target update to(p, c) 
+  //#pragma omp target map(from: found)
   {
     found = find_cell_inner(p, &c.neighbors_);
   }
-  #pragma omp target update from(p, c)
+  //#pragma omp target update from(p, c)
   if (found)
     return found;
 
   // The particle could not be found in the neighbor list.  Try searching all
   // cells in this universe, and update the neighbor list if we find a new
   // neighboring cell.
-  #pragma omp target update to(p, c) 
-  #pragma omp target map(tofrom: found)
+  //#pragma omp target update to(p, c) 
+  //#pragma omp target map(tofrom: found)
   {
     found = find_cell_inner(p, nullptr);
   }
-  #pragma omp target update from(p, c)
+  //#pragma omp target update from(p, c)
   if (found)
   {
-    #pragma omp target update to(p, c) 
-    #pragma omp target
+    //#pragma omp target update to(p, c) 
+    //#pragma omp target
     {
     c.neighbors_.push_back(p.coord_[coord_lvl].cell);
     }
-    #pragma omp target update from(p, c)
+    //#pragma omp target update from(p, c)
   }
   return found;
 }

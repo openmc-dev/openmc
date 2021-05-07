@@ -49,7 +49,9 @@ bool check_cell_overlap(Particle& p, bool error=true);
 //!   valid geometry coordinate stack.
 //==============================================================================
 bool exhaustive_find_cell(Particle& p);
+#pragma omp declare target
 bool neighbor_list_find_cell(Particle& p); // Only usable on surface crossings
+#pragma omp end declare target
 
 //==============================================================================
 //! Move a particle into a new lattice tile.
